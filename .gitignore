@@ -23,3 +23,4 @@ __pycache__/
 # Local session state and scratch runs
 .claude/
 work/
+.superpowers/
