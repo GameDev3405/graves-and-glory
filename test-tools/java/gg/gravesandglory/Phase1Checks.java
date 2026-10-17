@@ -98,8 +98,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 if(hudTick<0&&tick%5==0&&!CommandMode.flashing("infantry")){hudTick=tick;server(c,b->{
                     var own=b.squads.get(player);var u=b.units.stream().filter(v->v.squad==own&&v.spec.group().equals("infantry")&&v.mob.isAlive()&&v.mob.getHealth()>5).findFirst().orElse(null);
                     if(u==null){report("p1-hud-flash",false,"no living infantry of the player's army to damage");return;}
-                    // The brief says 4, but 4 of a full vanguard knight's 36 health across 12 knights is a 0.0093 group drop, under tookLoss's 0.01; 5 (one knight blow) clears it.
-                    u.mob.damage(b.world.getDamageSources().magic(),5);System.out.println("[p1] hud-flash damaged "+u.spec.id()+" to "+u.mob.getHealth());});}
+                    u.mob.damage(b.world.getDamageSources().magic(),4);System.out.println("[p1] hud-flash damaged "+u.spec.id()+" to "+u.mob.getHealth());});}
                 if(hudTick>0&&hudSeen<0&&CommandMode.flashing("infantry"))hudSeen=tick;
                 if(hudSeen>0&&tick==hudSeen+3){boolean still=CommandMode.flashing("infantry");shot(c,"combat-hud-flash");
                     report("p1-hud-flash",hudSeen-hudTick<=30&&still,"flash after "+(hudSeen-hudTick)+" client ticks, still lit at screenshot="+still);stage=11;}

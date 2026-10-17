@@ -56,7 +56,7 @@ final class Tactics {
                 if(time>=u.nextAttack){
                     int cooldown=s.commander.equals("marksman")&&u.spec.group().equals("ranged")?Math.round(u.spec.cooldown()/1.1f):u.spec.cooldown();u.nextAttack=u.nextAttack<time-10?time+cooldown:u.nextAttack+cooldown;mob.swingHand(Hand.MAIN_HAND);
                     BattleEffects.strike(battle,u,enemy);
-                    if(u.spec.ability().equals("blight")){if(time>=u.abilityAt){u.spellCenter=enemy.getPos();u.windupUntil=time+Spec.COMBATDISCIPLINE[0].spellWindupTicks();u.abilityAt=time+Spec.COMBATDISCIPLINE[0].abilityCooldownTicks();Projectiles.fire(battle,u,enemy,"bolt",0);}}
+                    if(u.spec.ability().equals("blight")){if(time>=u.abilityAt){u.spellCenter=enemy.getPos();u.windupUntil=time+Spec.COMBATDISCIPLINE[0].spellWindupTicks();u.abilityAt=time+Spec.COMBATDISCIPLINE[0].abilityCooldownTicks();Projectiles.bolt(battle,u,u.spellCenter);}}
                     else if(!u.spec.ability().equals("mend")){
                         float amount=(float)(u.spec.damage()*battle.campaign.damage(u));
                         // The hit is decided now; a ranged hit lands when its visible arrow arrives.

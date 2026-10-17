@@ -2,6 +2,7 @@ package gg.gravesandglory;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.projectile.ArrowEntity;
 import net.minecraft.entity.projectile.PersistentProjectileEntity;
 import net.minecraft.particle.DustParticleEffect;
@@ -14,8 +15,9 @@ import java.util.ArrayList;
 public final class Projectiles {
     public static final String TAG="gravesandglory-shot";
     static final Spec.CombatDisciplineRow C=Spec.COMBATDISCIPLINE[0];
-    /** kind: "arrow" (damage, vanilla arrow visual), "bolt" (blight cast, visual only), "mend" (heal). */
-    public record Shot(GravesAndGlory.Unit shooter,GravesAndGlory.Squad squad,LivingEntity target,String kind,float amount,Vec3d from,long fired,long lands,Entity visual){}
+    /** kind: "arrow" (damage, vanilla arrow visual), "bolt" (blight cast, visual only), "mend" (heal).
+     *  A bolt has no target: it flies to the fixed point {@code at}; other shots follow their target and leave {@code at} null. */
+    public record Shot(GravesAndGlory.Unit shooter,GravesAndGlory.Squad squad,LivingEntity target,String kind,float amount,Vec3d from,long fired,long lands,Entity visual,Vec3d at){}
     private Projectiles(){}
 
     static Vec3d aim(LivingEntity target){return new Vec3d(target.getX(),target.getBodyY(.5),target.getZ());}
@@ -25,8 +27,6 @@ public final class Projectiles {
         boolean arrow=kind.equals("arrow");
         int travel=BattleMath.travelTicks(from.distanceTo(to),arrow?C.arrowSpeed():C.boltSpeed(),C.projectileMinTicks(),C.projectileMaxTicks());
         long lands=b.time+travel;
-        // The bolt arrives when the blight bursts, never after it.
-        if(kind.equals("bolt")&&u.windupUntil>b.time)lands=Math.min(lands,u.windupUntil);
         Entity visual=null;
         if(arrow){
             // No-clip arrows never collide, so they carry no damage of their own: the queue applies it on landing.
@@ -35,15 +35,21 @@ public final class Projectiles {
             Vec3d v=to.subtract(from).multiply(1.0/travel);a.setVelocity(v.x,v.y,v.z,(float)v.length(),0);
             b.world.spawnEntity(a);visual=a;
         }
-        b.shots.add(new Shot(u,u.squad,target,kind,amount,from,b.time,lands,visual));
+        b.shots.add(new Shot(u,u.squad,target,kind,amount,from,b.time,lands,visual,null));
+    }
+    /** The blight bolt flies to the spell's fixed centre and arrives on the tick the spell bursts. */
+    public static void bolt(GravesAndGlory.Battle b,GravesAndGlory.Unit u,Vec3d center){
+        long lands=Math.max(b.time+C.projectileMinTicks(),u.windupUntil);
+        b.shots.add(new Shot(u,u.squad,null,"bolt",0,u.mob.getEyePos(),b.time,lands,null,center.add(0,.5,0)));
     }
 
     public static void tick(GravesAndGlory.Battle b){
         if(b.shots.isEmpty())return;
         for(Shot s:new ArrayList<>(b.shots)){
-            boolean live=s.target.isAlive()&&!s.target.isRemoved()&&s.target.getWorld()==b.world;
+            // A fallen commander becomes a spectator at base: the shot is lost, it does not chase them home.
+            boolean live=s.target==null||s.target.isAlive()&&!s.target.isRemoved()&&s.target.getWorld()==b.world&&!(s.target instanceof PlayerEntity p&&p.isSpectator());
             if(!live){drop(b,s);continue;}
-            Vec3d to=aim(s.target);
+            Vec3d to=s.target==null?s.at:aim(s.target);
             if(b.time>=s.lands){drop(b,s);land(b,s,to);continue;}
             if(s.visual!=null){
                 // Steer so the arrow meets a moving target exactly on its landing tick.
