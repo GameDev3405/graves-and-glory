@@ -1,0 +1,8 @@
+allprojects {
+  afterEvaluate {
+    tasks.register('diagnoseClientLibraries') {
+      doLast { project.layout.projectDirectory.file('evidence/client-classpath.txt').asFile.text = tasks.named('runClient').get().classpath.asPath }
+    }
+  }
+}
+

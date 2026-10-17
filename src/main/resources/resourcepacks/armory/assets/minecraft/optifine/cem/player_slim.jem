@@ -1,0 +1,9 @@
+{
+	"credit": "Graves and Glory slim-arm player armour overlays, original work (MIT).",
+	"textureSize": [64, 64],
+	"models": [
+		{"part": "body", "id": "bb_tabard", "attach": true, "texture": "gravesandglory:textures/entity/armor_overlay", "translate": [0, 0, 0], "boxes": [{"coordinates": [-3, 1, -3, 6, 13, 1], "textureOffset": [20, 8]}, {"coordinates": [-1, 9, -4, 2, 2, 1], "textureOffset": [34, 8]}, {"coordinates": [-4, 9, -2, 8, 2, 4], "textureOffset": [0, 24], "sizeAdd": 0.4}]},
+		{"part": "right_arm", "id": "bb_right_pauldron", "attach": true, "texture": "gravesandglory:textures/entity/armor_overlay", "translate": [0, 0, 0], "boxes": [{"coordinates": [-2, -2, -2, 3, 4, 4], "textureOffset": [0, 0], "sizeAdd": 0.4}]},
+		{"part": "left_arm", "id": "bb_left_pauldron", "attach": true, "texture": "gravesandglory:textures/entity/armor_overlay", "translate": [0, 0, 0], "boxes": [{"coordinates": [-1, -2, -2, 3, 4, 4], "textureOffset": [0, 0], "sizeAdd": 0.4}]}
+	]
+}

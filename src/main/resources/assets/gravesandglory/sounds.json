@@ -1,0 +1,29 @@
+{
+  "battle_intro": {
+    "subtitle": "subtitles.gravesandglory.battle_intro",
+    "sounds": [
+      {
+        "name": "gravesandglory:battle_intro",
+        "stream": false
+      }
+    ]
+  },
+  "unit_reveal": {
+    "subtitle": "subtitles.gravesandglory.unit_reveal",
+    "sounds": [
+      {
+        "name": "gravesandglory:unit_reveal",
+        "stream": false
+      }
+    ]
+  },
+  "victory": {
+    "subtitle": "subtitles.gravesandglory.victory",
+    "sounds": [
+      {
+        "name": "gravesandglory:victory",
+        "stream": false
+      }
+    ]
+  }
+}

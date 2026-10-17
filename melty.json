@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "mode": "installed",
+  "games": [
+    {
+      "slug": "minecraft-java",
+      "role": "primary",
+      "version": "1.20.1"
+    }
+  ],
+  "components": [
+    {
+      "id": "main",
+      "fileName": "graves-and-glory-0.3.0.zip",
+      "kind": "main",
+      "label": "Graves and Glory",
+      "required": true
+    }
+  ],
+  "requirements": [
+    {
+      "kind": "loader",
+      "id": "fabric",
+      "version": "0.16.14"
+    }
+  ],
+  "mappings": [
+    {
+      "component": "main",
+      "from": "mods/",
+      "to": "{minecraft-instance}/mods"
+    },
+    {
+      "component": "main",
+      "from": "docs/",
+      "to": "{localappdata}/gravesandglory/docs"
+    },
+    {
+      "component": "main",
+      "from": "shaderpacks/",
+      "to": "{minecraft-instance}/shaderpacks"
+    },
+    {
+      "component": "main",
+      "from": "resourcepacks/",
+      "to": "{minecraft-instance}/resourcepacks"
+    }
+  ],
+  "launch": {
+    "kind": "game"
+  },
+  "multiplayer": {
+    "maxPlayers": 8,
+    "connect": {
+      "address": {
+        "log": "{localappdata}/gravesandglory/melty.log",
+        "after": "Melty join address: "
+      },
+      "joinFile": {
+        "path": "{localappdata}/gravesandglory/melty.properties",
+        "key": "join"
+      }
+    }
+  },
+  "test": {
+    "minutes": 5
+  },
+  "runtimeData": [
+    "{localappdata}/gravesandglory",
+    "{minecraft-instance}/gravesandglory",
+    "{minecraft-instance}/saves/Graves and Glory"
+  ]
+}

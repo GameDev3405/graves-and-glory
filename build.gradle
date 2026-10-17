@@ -1,0 +1,50 @@
+plugins { id 'fabric-loom' version '1.7.4' }
+version = '0.3.0'
+group = 'gg.gravesandglory'
+base { archivesName = 'graves-and-glory' }
+repositories { mavenCentral() }
+// Loom's development launcher otherwise upgrades this game's native libraries.
+// Match Minecraft 1.20.1's official LWJGL version, as Sodium requires.
+configurations.configureEach {
+ resolutionStrategy.eachDependency { details ->
+  if (details.requested.group == 'org.lwjgl') details.useVersion('3.3.1')
+ }
+}
+dependencies {
+ minecraft 'com.mojang:minecraft:1.20.1'
+ mappings 'net.fabricmc:yarn:1.20.1+build.10:v2'
+ modImplementation 'net.fabricmc:fabric-loader:0.16.14'
+ modImplementation 'net.fabricmc.fabric-api:fabric-api:0.92.2+1.20.1'
+}
+loom { runs { client { programArgs '--width', '1280', '--height', '720' } } }
+// Dedicated server test: its own run folder, so client logs and options stay untouched.
+loom { runs { server { runDir 'run-server'; programArgs '--nogui' } } }
+tasks.register('compileLocalTestTools', JavaCompile) {
+ source = fileTree('test-tools/java')
+ classpath = sourceSets.main.compileClasspath + sourceSets.main.output
+ dependsOn compileJava
+ destinationDirectory = file('build/localTestTools/classes')
+ options.release = 17
+}
+tasks.register('localTestToolsJar', Jar) {
+ dependsOn compileLocalTestTools
+ from('build/localTestTools/classes')
+ from('test-tools/resources')
+ archiveFileName = 'local-integration-DO-NOT-SHIP.jar'
+ destinationDirectory = file('build/localTestTools')
+}
+if (project.hasProperty('localIntegration') || project.hasProperty('campaignChecks')) {
+ loom.runs.client.vmArg '-Dgravesandglory.localIntegration=true'
+ loom.runs.client.vmArg "-Dfabric.addMods=${file('build/localTestTools/local-integration-DO-NOT-SHIP.jar').absolutePath}"
+ tasks.named('runClient') { dependsOn localTestToolsJar }
+}
+if (project.hasProperty('visualInspection')) { loom.runs.client.vmArg '-Dgravesandglory.visualInspection=true' }
+tasks.register('preflight', Exec) { commandLine 'python', 'tools/preflight.py' }
+compileJava.dependsOn preflight
+tasks.withType(JavaCompile).configureEach { options.release = 17 }
+java { withSourcesJar() }
+tasks.named('jar') { from('LICENSE') }
+
+if (project.hasProperty('commandPlaytest')) { loom.runs.client.vmArg '-Dgravesandglory.commandPlaytest=true' }
+
+if (project.hasProperty("campaignChecks")) { loom.runs.client.vmArg "-Dgravesandglory.localChecks=${file("evidence/local-checks.txt").absolutePath}" }

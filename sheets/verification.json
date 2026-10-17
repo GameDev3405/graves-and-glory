@@ -1,0 +1,70 @@
+{
+  "designCells": {
+    "filled": 814,
+    "unfilled": 0,
+    "unresolvedReferences": 0,
+    "runtimeStatus": "verified by schema, compilation, repeated real-game assertions and visual review"
+  },
+  "compilation": {
+    "status": "passed",
+    "minecraft": "1.20.1",
+    "loader": "fabric",
+    "fabricApi": "0.92.2+1.20.1",
+    "javaBytecode": 17
+  },
+  "packageAudit": {
+    "status": "passed",
+    "files": 5,
+    "unmappedFiles": 0,
+    "oneClickRecipe": "yes",
+    "testedInstall": true,
+    "sha256": "996a92327c7b57c4a9aa3b5ba070dc21b324a10d3b4c3ddd3a155a7cf324b75d"
+  },
+  "runtime": {
+    "status": "passed",
+    "arena": true,
+    "troopMovement": true,
+    "formations": true,
+    "combat": true,
+    "capture": true,
+    "eightyTroopPerformance": true,
+    "twoClientJoin": true,
+    "gameplayMedia": true,
+    "meltyTest": true,
+    "riverBridgesTested": 3,
+    "troopsPerBridge": 20,
+    "hillNavigation": true,
+    "friendlyFire": true,
+    "barracksManagement": true,
+    "barracksUiTransactions": true,
+    "allOrders": true,
+    "officialRuns": 2,
+    "officialMinutesPerRun": 4,
+    "productionMinecraft": "1.20.1",
+    "productionLoader": "Fabric 0.16.14",
+    "officialMetadataLabel": "Melty result labels local catalog version 1.20.1-forge-47.4.0; actual runtime log confirms Minecraft 1.20.1 with Fabric Loader 0.16.14",
+    "visualReview": "complete",
+    "screenChecks": [
+      "R command screen",
+      "four troop formations",
+      "Dawn barracks roster",
+      "Dusk barracks roster",
+      "training queue and cancellation",
+      "live friendly-force map",
+      "battle engagement markers",
+      "village and market",
+      "keep",
+      "shrine",
+      "hills and valleys",
+      "three bridges",
+      "both bases and barracks interiors",
+      "fully rendered overhead terrain"
+    ]
+  },
+  "publishing": {
+    "license": "MIT",
+    "remix": "allowed",
+    "published": false,
+    "approval": "awaiting_final_creator_go_ahead"
+  }
+}

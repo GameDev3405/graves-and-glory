@@ -1,0 +1,21 @@
+# Build products and machine-local launch state
+.gradle/
+build/
+dist/
+run*/
+evidence/
+clips/
+dependencies/mods/
+dependencies/resourcepacks/
+dependencies/shaders/
+dependencies/sources/
+__pycache__/
+*.pyc
+*.log
+.idea/
+.vscode/
+.env
+.env.*
+*.key
+*.pem
+*upload-plan*.json

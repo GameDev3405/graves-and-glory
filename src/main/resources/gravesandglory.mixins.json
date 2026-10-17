@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "package": "gg.gravesandglory.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": ["ContactFeedbackMixin"],
+  "client": [
+    "CommandInputMixin",
+    "BipedAnimationMixin",
+    "EntranceCameraMixin",
+    "CinematicHudMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

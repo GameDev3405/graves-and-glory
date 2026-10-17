@@ -1,0 +1,83 @@
+package gg.gravesandglory;
+
+import com.google.gson.*;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.client.option.Perspective;
+import net.minecraft.sound.*;
+import net.minecraft.text.Text;
+import java.nio.file.*;
+
+/** Portable local collection and a temporary, skippable camera introduction. */
+public final class CampaignClient {
+    static Campaign.Profile profile=new Campaign.Profile();
+    static JsonArray players=new JsonArray();
+    static boolean lead,fill=true;static String mode="2",notice="",headline="",partyKey="";
+    static JsonObject party=emptyParty();static int padCountdown,padDawn,padDusk;
+    static JsonObject emptyParty(){JsonObject j=new JsonObject();j.addProperty("open",false);j.addProperty("member",false);j.addProperty("lead",false);j.addProperty("capacity",2);j.addProperty("leader","");j.add("members",new JsonArray());j.addProperty("inviteSeconds",0);j.addProperty("inviter","");j.add("online",new JsonArray());return j;}
+    static String lastSaved="",revealUnit="";static long revealUntil;static boolean received;
+    static int map=0,serial=-1,intro=0;static boolean lastRunning;
+    public static double cameraX,cameraY,cameraZ;public static float cameraYaw,cameraPitch;
+    public static boolean cinematic(){return camera!=null;}
+    static boolean previousHud;
+    static ArmorStandEntity camera;static Perspective previous;static int cameraTicks;
+    static Path collection(MinecraftClient c){Path now=c.runDirectory.toPath().resolve((Diagnostics.active()?"gravesandglory/test-collections/":"gravesandglory/collections/")+c.getSession().getUuid()+".json");Path old=c.runDirectory.toPath().resolve((Diagnostics.active()?"bannerbound/test-collections/":"bannerbound/collections/")+c.getSession().getUuid()+".json");return !Files.exists(now)&&Files.exists(old)?old:now;}
+    static void sendProfile(MinecraftClient c){
+        try{Path path=collection(c);String json=Files.exists(path)?Files.readString(path):Campaign.JSON.toJson(new Campaign.Profile());if(json.length()<16000&&ClientPlayNetworking.canSend(GravesAndGlory.PROFILE)){var packet=PacketByteBufs.create();packet.writeString(json);ClientPlayNetworking.send(GravesAndGlory.PROFILE,packet);}}catch(Exception ignored){}
+
+    }
+    static void accept(MinecraftClient c,String json,boolean running){
+        try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Campaign.Profile.class);if(received&&nextProfile.unlocked.size()>profile.unlocked.size()){for(var unit:Spec.TROOPS)if(nextProfile.unlocked.contains(unit.id())&&!profile.unlocked.contains(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}profile=nextProfile;received=true;players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
+            JsonObject keyed=new JsonObject();for(var entry:party.entrySet())if(!entry.getKey().equals("inviteSeconds"))keyed.add(entry.getKey(),entry.getValue());partyKey=keyed.toString();
+            JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();fill=j.get("fill").getAsBoolean();mode=j.get("mode").getAsString();notice=j.get("notice").getAsString();headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
+            int next=j.get("map").getAsInt();if(next!=map||Spec.FACTIONS[0].spawnX()!=-283){map=next;CampaignMaps.select(map);GravesAndGloryClient.invalidateMap(c);}
+            int round=j.get("serial").getAsInt();intro=j.get("intro").getAsInt();
+            if(round!=serial&&running&&intro>0){cameraTicks=120-intro;begin(c);}serial=round;
+            if(!running)end(c);
+            if(!running&&lastRunning&&!(c.currentScreen instanceof CampaignLobbyScreen))c.setScreen(new GravesAndGloryClient.LobbyScreen());lastRunning=running;
+            if(!j.get("collectionReady").getAsBoolean()){sendProfile(c);return;}String saved=Campaign.JSON.toJson(profile);if(saved.equals(lastSaved))return;lastSaved=saved;Path path=collection(c);Files.createDirectories(path.getParent());Path tmp=path.resolveSibling(path.getFileName()+".tmp");Files.writeString(tmp,saved);Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING);
+        }catch(Exception e){System.err.println("[Graves and Glory] Collection sync could not be saved: "+e.getClass().getSimpleName());}
+    }
+    static void begin(MinecraftClient c){
+        if(c.player==null||c.world==null||camera!=null)return;
+        frameMs.clear();lastFrame=0;previous=c.options.getPerspective();previousHud=c.options.hudHidden;c.options.hudHidden=false;c.options.setPerspective(Perspective.THIRD_PERSON_BACK);camera=new ArmorStandEntity(c.world,c.player.getX(),c.player.getY()+2,c.player.getZ());camera.setInvisible(true);c.setScreen(null);
+        sound(c,"battle_intro",.8f);
+    }
+    static void sound(MinecraftClient c,String id,float volume){if(c.player!=null)c.player.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory",id)),SoundCategory.MASTER,volume,1);}
+    static void tick(MinecraftClient c){
+        if(camera==null)return;
+        if(c.player==null||!GravesAndGloryClient.running||cameraTicks>=120||c.currentScreen!=null){end(c);return;}
+        cameraTicks++;c.getToastManager().clear();
+    }
+    /** Render-frame sampling avoids stepping the camera at the 20 Hz game tick. */
+    public static void sampleCamera(float partial){
+        var c=MinecraftClient.getInstance();if(camera==null||c.player==null)return;
+        double t=Math.max(0,Math.min(1,(cameraTicks-1+partial)/120.0)),e=t*t*(3-2*t),side=GravesAndGloryClient.team==0?1:-1;
+        double angle=e*Math.PI,dist=8+Math.sin(t*Math.PI)*13;
+        double x=c.player.getX()+side*Math.cos(angle)*dist,z=c.player.getZ()-side*Math.sin(angle)*dist;
+        int ix=(int)Math.floor(x),iz=(int)Math.floor(z);double fx=x-ix,fz=z-iz;
+        double h=(1-fz)*((1-fx)*Arena.ground(ix,iz)+fx*Arena.ground(ix+1,iz))+fz*((1-fx)*Arena.ground(ix,iz+1)+fx*Arena.ground(ix+1,iz+1));
+        double y=Math.max(h+2,c.player.getY()+3+Math.sin(t*Math.PI)*7);
+        double dx=c.player.getX()-x,dz=c.player.getZ()-z,dy=c.player.getY()+1.3-y;
+        cameraX=x;cameraY=y;cameraZ=z;cameraYaw=(float)(Math.toDegrees(Math.atan2(dz,dx))-90);cameraPitch=(float)-Math.toDegrees(Math.atan2(dy,Math.hypot(dx,dz)));
+        frameSample();
+    }
+    static final java.util.List<Double> frameMs=new java.util.ArrayList<>();static long lastFrame;static int take;
+    static void frameSample(){if(!Diagnostics.active())return;long now=System.nanoTime();if(lastFrame!=0)frameMs.add((now-lastFrame)/1000000.0);lastFrame=now;}
+    static void frameReport(){
+        if(!Diagnostics.active()||frameMs.isEmpty())return;
+        try{var sorted=new java.util.ArrayList<>(frameMs);java.util.Collections.sort(sorted);double mean=frameMs.stream().mapToDouble(Double::doubleValue).average().orElse(0);String data="{\"frames\":"+frameMs.size()+",\"averageFps\":"+(1000/mean)+",\"medianFrameMs\":"+sorted.get(sorted.size()/2)+",\"p95FrameMs\":"+sorted.get((int)(sorted.size()*.95))+",\"maxFrameMs\":"+sorted.get(sorted.size()-1)+"}";Path dir=MinecraftClient.getInstance().runDirectory.toPath().resolve("gravesandglory/test-camera");Files.createDirectories(dir);Files.writeString(dir.resolve("take-"+(++take)+".json"),data);System.out.println("[Graves and Glory camera] "+data);}catch(Exception ignored){}
+        frameMs.clear();lastFrame=0;
+    }
+
+    static void end(MinecraftClient c){if(camera!=null){frameReport();c.setCameraEntity(c.player);c.options.hudHidden=previousHud;if(previous!=null)c.options.setPerspective(previous);camera=null;}}
+    public static void hud(DrawContext g,int w,int h){
+        if(camera==null)return;var c=MinecraftClient.getInstance();int bar=Math.max(18,h/10);g.fill(0,0,w,bar,0xff080c13);g.fill(0,h-bar,w,h,0xff080c13);
+        g.drawCenteredTextWithShadow(c.textRenderer,Spec.MAPS[map].name().toUpperCase()+"  /  "+(mode.equals("ai")?"PRACTICE":mode+" v "+mode),w/2,bar+12,GravesAndGloryClient.GOLD);
+        g.drawCenteredTextWithShadow(c.textRenderer,"YOUR BANNER. YOUR ARMY.",w/2,h-bar-24,GravesAndGloryClient.WHITE);
+        g.drawCenteredTextWithShadow(c.textRenderer,GravesAndGloryClient.menu.getBoundKeyLocalizedText().getString()+" or Escape to skip entrance",w/2,h-bar+6,GravesAndGloryClient.MUTED);
+    }
+}

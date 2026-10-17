@@ -1,0 +1,13 @@
+{
+  "glsl-transformer": {
+    "repo": "IrisShaders/glsl-transformer",
+    "ref": "v2.0.1",
+    "archive": "dependencies\\sources\\glsl-transformer-full-source.zip",
+    "url": "https://codeload.github.com/IrisShaders/glsl-transformer/zip/refs/tags/v2.0.1"
+  },
+  "jcpp": {
+    "error": "HTTP Error 404: Not Found",
+    "repo": "shevek/jcpp",
+    "ref": "1.4.14"
+  }
+}

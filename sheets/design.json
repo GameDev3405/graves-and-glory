@@ -1,0 +1,1600 @@
+{
+  "factions": [
+    {
+      "id": "dawn",
+      "name": "Dawn Covenant",
+      "color": 5636095,
+      "spawnX": -108,
+      "spawnZ": 0,
+      "troops": "knight,archer,mage",
+      "barracksX": -108,
+      "barracksZ": -24
+    },
+    {
+      "id": "dusk",
+      "name": "Dusk Legion",
+      "color": 11141290,
+      "spawnX": 108,
+      "spawnZ": 0,
+      "troops": "revenant,bonebow,hexer",
+      "barracksX": 108,
+      "barracksZ": 24
+    }
+  ],
+  "troops": [
+    {
+      "id": "knight",
+      "faction": "dawn",
+      "name": "Dawn Knight",
+      "entity": "husk",
+      "count": 12,
+      "health": 30,
+      "damage": 5,
+      "range": 2.8,
+      "speed": 0.3,
+      "cooldown": 25,
+      "weapon": "iron_sword",
+      "helmet": "iron_helmet",
+      "chest": "iron_chestplate",
+      "magic": false,
+      "cost": 20,
+      "trainingSeconds": 4,
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "group": "infantry",
+      "ability": "shield"
+    },
+    {
+      "id": "archer",
+      "faction": "dawn",
+      "name": "Dawn Ranger",
+      "entity": "husk",
+      "count": 6,
+      "health": 20,
+      "damage": 4,
+      "range": 22.0,
+      "speed": 0.31,
+      "cooldown": 40,
+      "weapon": "bow",
+      "helmet": "chainmail_helmet",
+      "chest": "leather_chestplate",
+      "magic": false,
+      "cost": 25,
+      "trainingSeconds": 4,
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "group": "ranged",
+      "ability": "none"
+    },
+    {
+      "id": "mage",
+      "faction": "dawn",
+      "name": "Sunweaver",
+      "entity": "husk",
+      "count": 2,
+      "health": 18,
+      "damage": 7,
+      "range": 18.0,
+      "speed": 0.29,
+      "cooldown": 55,
+      "weapon": "blaze_rod",
+      "helmet": "golden_helmet",
+      "chest": "leather_chestplate",
+      "magic": true,
+      "cost": 50,
+      "trainingSeconds": 6,
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "group": "support",
+      "ability": "mend"
+    },
+    {
+      "id": "revenant",
+      "faction": "dusk",
+      "name": "Dusk Revenant",
+      "entity": "wither_skeleton",
+      "count": 12,
+      "health": 30,
+      "damage": 5,
+      "range": 2.8,
+      "speed": 0.3,
+      "cooldown": 25,
+      "weapon": "iron_sword",
+      "helmet": "chainmail_helmet",
+      "chest": "iron_chestplate",
+      "magic": false,
+      "cost": 20,
+      "trainingSeconds": 4,
+      "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png",
+      "group": "infantry",
+      "ability": "none"
+    },
+    {
+      "id": "bonebow",
+      "faction": "dusk",
+      "name": "Bone Ranger",
+      "entity": "skeleton",
+      "count": 6,
+      "health": 20,
+      "damage": 4,
+      "range": 22.0,
+      "speed": 0.31,
+      "cooldown": 40,
+      "weapon": "bow",
+      "helmet": "chainmail_helmet",
+      "chest": "leather_chestplate",
+      "magic": false,
+      "cost": 25,
+      "trainingSeconds": 4,
+      "texture": "minecraft:textures/entity/skeleton/skeleton.png",
+      "group": "ranged",
+      "ability": "none"
+    },
+    {
+      "id": "hexer",
+      "faction": "dusk",
+      "name": "Gravecaller",
+      "entity": "wither_skeleton",
+      "count": 2,
+      "health": 18,
+      "damage": 7,
+      "range": 18.0,
+      "speed": 0.29,
+      "cooldown": 55,
+      "weapon": "amethyst_shard",
+      "helmet": "golden_helmet",
+      "chest": "leather_chestplate",
+      "magic": true,
+      "cost": 50,
+      "trainingSeconds": 6,
+      "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png",
+      "group": "support",
+      "ability": "blight"
+    },
+    {
+      "id": "sentinel",
+      "faction": "dawn",
+      "name": "Dawn Sentinel",
+      "entity": "husk",
+      "count": 0,
+      "health": 44,
+      "damage": 6,
+      "range": 2.8,
+      "speed": 0.26,
+      "cooldown": 25,
+      "weapon": "diamond_sword",
+      "helmet": "diamond_helmet",
+      "chest": "iron_chestplate",
+      "magic": false,
+      "cost": 60,
+      "trainingSeconds": 7,
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "group": "infantry",
+      "ability": "shield"
+    },
+    {
+      "id": "longbow",
+      "faction": "dawn",
+      "name": "Dawn Longbow",
+      "entity": "husk",
+      "count": 0,
+      "health": 18,
+      "damage": 6,
+      "range": 30.0,
+      "speed": 0.29,
+      "cooldown": 40,
+      "weapon": "bow",
+      "helmet": "leather_helmet",
+      "chest": "leather_chestplate",
+      "magic": false,
+      "cost": 65,
+      "trainingSeconds": 7,
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "group": "ranged",
+      "ability": "none"
+    },
+    {
+      "id": "oracle",
+      "faction": "dawn",
+      "name": "Dawn Oracle",
+      "entity": "husk",
+      "count": 0,
+      "health": 26,
+      "damage": 4,
+      "range": 18.0,
+      "speed": 0.3,
+      "cooldown": 55,
+      "weapon": "amethyst_shard",
+      "helmet": "golden_helmet",
+      "chest": "leather_chestplate",
+      "magic": true,
+      "cost": 65,
+      "trainingSeconds": 7,
+      "texture": "gravesandglory:textures/entity/dawn_guard.png",
+      "group": "support",
+      "ability": "mend"
+    },
+    {
+      "id": "reaper",
+      "faction": "dusk",
+      "name": "Dusk Reaper",
+      "entity": "wither_skeleton",
+      "count": 0,
+      "health": 34,
+      "damage": 8,
+      "range": 2.8,
+      "speed": 0.33,
+      "cooldown": 25,
+      "weapon": "iron_axe",
+      "helmet": "netherite_helmet",
+      "chest": "iron_chestplate",
+      "magic": false,
+      "cost": 60,
+      "trainingSeconds": 7,
+      "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png",
+      "group": "infantry",
+      "ability": "none"
+    },
+    {
+      "id": "stalker",
+      "faction": "dusk",
+      "name": "Dusk Stalker",
+      "entity": "skeleton",
+      "count": 0,
+      "health": 22,
+      "damage": 5,
+      "range": 27.0,
+      "speed": 0.34,
+      "cooldown": 40,
+      "weapon": "bow",
+      "helmet": "chainmail_helmet",
+      "chest": "leather_chestplate",
+      "magic": false,
+      "cost": 65,
+      "trainingSeconds": 7,
+      "texture": "minecraft:textures/entity/skeleton/skeleton.png",
+      "group": "ranged",
+      "ability": "none"
+    },
+    {
+      "id": "wraith",
+      "faction": "dusk",
+      "name": "Dusk Wraith",
+      "entity": "wither_skeleton",
+      "count": 0,
+      "health": 24,
+      "damage": 9,
+      "range": 19.0,
+      "speed": 0.28,
+      "cooldown": 55,
+      "weapon": "echo_shard",
+      "helmet": "golden_helmet",
+      "chest": "leather_chestplate",
+      "magic": true,
+      "cost": 65,
+      "trainingSeconds": 7,
+      "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png",
+      "group": "support",
+      "ability": "blight"
+    }
+  ],
+  "orders": [
+    {
+      "id": "follow",
+      "label": "Follow",
+      "targeted": false,
+      "engage": true,
+      "engageRadius": 10,
+      "moveMultiplier": 1.0,
+      "meaning": "Guard the commander; keep support behind the frontline."
+    },
+    {
+      "id": "move",
+      "label": "Move",
+      "targeted": true,
+      "engage": false,
+      "engageRadius": 0,
+      "moveMultiplier": 1.0,
+      "meaning": "Travel without pursuing unrelated enemies."
+    },
+    {
+      "id": "attack",
+      "label": "Attack",
+      "targeted": true,
+      "engage": true,
+      "engageRadius": 24,
+      "moveMultiplier": 1.0,
+      "meaning": "Advance and engage nearby threats, or focus a selected enemy."
+    },
+    {
+      "id": "hold",
+      "label": "Hold",
+      "targeted": true,
+      "engage": true,
+      "engageRadius": 10,
+      "moveMultiplier": 1.0,
+      "meaning": "Defend the chosen anchor; pursue only within ten blocks."
+    },
+    {
+      "id": "charge",
+      "label": "Charge",
+      "targeted": true,
+      "engage": true,
+      "engageRadius": 32,
+      "moveMultiplier": 1.25,
+      "meaning": "Commit to a selected enemy with reduced cohesion."
+    },
+    {
+      "id": "retreat",
+      "label": "Retreat",
+      "targeted": true,
+      "engage": false,
+      "engageRadius": 0,
+      "moveMultiplier": 1.15,
+      "meaning": "Disengage to the destination; ignore enemies and interrupt prior attacks."
+    }
+  ],
+  "formations": [
+    {
+      "id": "block",
+      "label": "Compact",
+      "columns": 5,
+      "spacing": 1.8,
+      "wedge": false,
+      "purpose": "Narrow frontage; infantry screen the rear."
+    },
+    {
+      "id": "line",
+      "label": "Line",
+      "columns": 10,
+      "spacing": 1.8,
+      "wedge": false,
+      "purpose": "Wide firing frontage; needs open ground."
+    },
+    {
+      "id": "wedge",
+      "label": "Wedge",
+      "columns": 5,
+      "spacing": 1.8,
+      "wedge": true,
+      "purpose": "Concentrated advance; exposed sides."
+    },
+    {
+      "id": "loose",
+      "label": "Loose",
+      "columns": 5,
+      "spacing": 3.2,
+      "wedge": false,
+      "purpose": "Spread out; less concentrated protection."
+    },
+    {
+      "id": "shieldwall",
+      "label": "Shieldwall",
+      "columns": 12,
+      "spacing": 1.5,
+      "wedge": false,
+      "purpose": "Wide shield front; shield troops brace when enemies close."
+    }
+  ],
+  "points": [
+    {
+      "id": "A",
+      "name": "Old Village",
+      "x": -44,
+      "z": -43,
+      "radius": 12,
+      "captureSeconds": 8,
+      "elevation": 64
+    },
+    {
+      "id": "B",
+      "name": "Shattered Keep",
+      "x": 0,
+      "z": 26,
+      "radius": 12,
+      "captureSeconds": 8,
+      "elevation": 68
+    },
+    {
+      "id": "C",
+      "name": "River Shrine",
+      "x": 44,
+      "z": -43,
+      "radius": 12,
+      "captureSeconds": 8,
+      "elevation": 66
+    }
+  ],
+  "structures": [
+    {
+      "id": "dawn_gate",
+      "kind": "base",
+      "x": -116,
+      "z": 0,
+      "width": 18,
+      "depth": 28,
+      "height": 12,
+      "palette": "dawn",
+      "elevation": 64
+    },
+    {
+      "id": "dusk_gate",
+      "kind": "base",
+      "x": 116,
+      "z": 0,
+      "width": 18,
+      "depth": 28,
+      "height": 12,
+      "palette": "dusk",
+      "elevation": 64
+    },
+    {
+      "id": "keep",
+      "kind": "ruin",
+      "x": 0,
+      "z": 36,
+      "width": 30,
+      "depth": 22,
+      "height": 14,
+      "palette": "stone",
+      "elevation": 68
+    },
+    {
+      "id": "house_west",
+      "kind": "house",
+      "x": -60,
+      "z": -54,
+      "width": 12,
+      "depth": 10,
+      "height": 7,
+      "palette": "wood",
+      "elevation": 64
+    },
+    {
+      "id": "house_north",
+      "kind": "house",
+      "x": -36,
+      "z": -63,
+      "width": 12,
+      "depth": 10,
+      "height": 7,
+      "palette": "wood",
+      "elevation": 64
+    },
+    {
+      "id": "shrine",
+      "kind": "shrine",
+      "x": 44,
+      "z": -48,
+      "width": 16,
+      "depth": 12,
+      "height": 9,
+      "palette": "dusk",
+      "elevation": 66
+    },
+    {
+      "id": "bridge_north",
+      "kind": "bridge",
+      "x": 0,
+      "z": -45,
+      "width": 32,
+      "depth": 9,
+      "height": 2,
+      "palette": "wood",
+      "elevation": 64
+    },
+    {
+      "id": "bridge_south",
+      "kind": "bridge",
+      "x": 0,
+      "z": 3,
+      "width": 32,
+      "depth": 16,
+      "height": 2,
+      "palette": "stone",
+      "elevation": 64
+    },
+    {
+      "id": "dawn_barracks",
+      "kind": "barracks",
+      "x": -108,
+      "z": -24,
+      "width": 20,
+      "depth": 18,
+      "height": 9,
+      "palette": "dawn",
+      "elevation": 64
+    },
+    {
+      "id": "dusk_barracks",
+      "kind": "barracks",
+      "x": 108,
+      "z": 24,
+      "width": 20,
+      "depth": 18,
+      "height": 9,
+      "palette": "dusk",
+      "elevation": 64
+    },
+    {
+      "id": "village_tavern",
+      "kind": "house",
+      "x": -64,
+      "z": -29,
+      "width": 15,
+      "depth": 12,
+      "height": 9,
+      "palette": "wood",
+      "elevation": 64
+    },
+    {
+      "id": "village_mill",
+      "kind": "house",
+      "x": -25,
+      "z": -59,
+      "width": 11,
+      "depth": 10,
+      "height": 8,
+      "palette": "wood",
+      "elevation": 64
+    },
+    {
+      "id": "market",
+      "kind": "market",
+      "x": -39,
+      "z": -23,
+      "width": 18,
+      "depth": 8,
+      "height": 5,
+      "palette": "dawn",
+      "elevation": 64
+    },
+    {
+      "id": "east_bridge",
+      "kind": "bridge",
+      "x": 30,
+      "z": 66,
+      "width": 34,
+      "depth": 18,
+      "height": 2,
+      "palette": "ford",
+      "elevation": 64
+    },
+    {
+      "id": "west_watchtower",
+      "kind": "watchtower",
+      "x": -77,
+      "z": 36,
+      "width": 9,
+      "depth": 9,
+      "height": 12,
+      "palette": "dawn",
+      "elevation": 70
+    },
+    {
+      "id": "east_watchtower",
+      "kind": "watchtower",
+      "x": 79,
+      "z": -10,
+      "width": 9,
+      "depth": 9,
+      "height": 12,
+      "palette": "dusk",
+      "elevation": 68
+    },
+    {
+      "id": "east_ruins",
+      "kind": "ruin",
+      "x": 67,
+      "z": 62,
+      "width": 18,
+      "depth": 15,
+      "height": 8,
+      "palette": "dusk",
+      "elevation": 68
+    },
+    {
+      "id": "hamlet_mill",
+      "kind": "mill",
+      "x": -20,
+      "z": -64,
+      "width": 10,
+      "depth": 10,
+      "height": 8,
+      "palette": "wood",
+      "elevation": 64
+    },
+    {
+      "id": "hamlet_farm",
+      "kind": "farm",
+      "x": -74,
+      "z": -45,
+      "width": 18,
+      "depth": 13,
+      "height": 1,
+      "palette": "wood",
+      "elevation": 64
+    },
+    {
+      "id": "gatehouse_breach",
+      "kind": "breach",
+      "x": -18,
+      "z": 26,
+      "width": 5,
+      "depth": 16,
+      "height": 7,
+      "palette": "stone",
+      "elevation": 68
+    }
+  ],
+  "rules": [
+    {
+      "id": "domination",
+      "maxPlayers": 8,
+      "playersPerTeam": 4,
+      "squadSize": 20,
+      "winScore": 300,
+      "scoreInterval": 80,
+      "respawnSeconds": 12,
+      "reinforceSeconds": 25,
+      "friendlyFire": false,
+      "arenaHalfX": 350,
+      "arenaHalfZ": 250,
+      "floorY": 64,
+      "buildColumnsPerTick": 750,
+      "orderRange": 240,
+      "capturePlayersWeight": 3,
+      "worldHalfX": 366,
+      "worldHalfZ": 266,
+      "automaticReinforcements": false,
+      "commandCooldownTicks": 4,
+      "roundSeconds": 900
+    }
+  ],
+  "hooks": [
+    {
+      "id": "orders",
+      "side": "server",
+      "event": "network",
+      "handler": "receiveOrder",
+      "authority": "owner_only"
+    },
+    {
+      "id": "simulation",
+      "side": "server",
+      "event": "end_tick",
+      "handler": "tick",
+      "authority": "server"
+    },
+    {
+      "id": "hud",
+      "side": "client",
+      "event": "hud_render",
+      "handler": "renderHud",
+      "authority": "read_only"
+    },
+    {
+      "id": "commands",
+      "side": "client",
+      "event": "key_R",
+      "handler": "commandScreen",
+      "authority": "send_request"
+    },
+    {
+      "id": "host_join",
+      "side": "client",
+      "event": "title_tick",
+      "handler": "connectOrHost",
+      "authority": "local_instance"
+    }
+  ],
+  "checks": [
+    {
+      "id": "arena-ready",
+      "evidence": "all columns and structures placed in managed world"
+    },
+    {
+      "id": "troops-commanded",
+      "evidence": "twenty living owned troops received move order and moved"
+    },
+    {
+      "id": "point-captured",
+      "evidence": "real troop presence completed capture countdown"
+    },
+    {
+      "id": "combat-resolved",
+      "evidence": "enemy troop damaged by actual simulation"
+    },
+    {
+      "id": "formations-commanded",
+      "evidence": "client packets applied block, line, wedge and loose on the host"
+    },
+    {
+      "id": "army-capacity",
+      "evidence": "four twenty-troop squads simulated with measured server tick time"
+    },
+    {
+      "id": "barracks-management",
+      "evidence": "paid training, disband, capacity and composition swap exercised"
+    },
+    {
+      "id": "friendly-fire",
+      "evidence": "own troop damage rejected and enemy damage allowed"
+    },
+    {
+      "id": "river-navigation",
+      "evidence": "troops cross the river by an authored bridge"
+    },
+    {
+      "id": "hill-navigation",
+      "evidence": "squad climbs a ridge without teleporting or getting stuck"
+    },
+    {
+      "id": "orders-commanded",
+      "evidence": "client requests applied attack, rush, follow, hold and move"
+    },
+    {
+      "id": "barracks-ui",
+      "evidence": "real UI buttons disband, train, cancel and complete a replacement"
+    }
+  ],
+  "terrain": [
+    {
+      "id": "western_ridge",
+      "x": -80,
+      "z": 52,
+      "radiusX": 32,
+      "radiusZ": 30,
+      "height": 13.0
+    },
+    {
+      "id": "eastern_ridge",
+      "x": 79,
+      "z": 46,
+      "radiusX": 34,
+      "radiusZ": 32,
+      "height": 14.0
+    },
+    {
+      "id": "north_bluff",
+      "x": -13,
+      "z": -79,
+      "radiusX": 30,
+      "radiusZ": 22,
+      "height": 11.0
+    },
+    {
+      "id": "southern_bluff",
+      "x": 18,
+      "z": 82,
+      "radiusX": 29,
+      "radiusZ": 24,
+      "height": 12.0
+    },
+    {
+      "id": "west_woodland",
+      "x": -94,
+      "z": -72,
+      "radiusX": 24,
+      "radiusZ": 25,
+      "height": 8.0
+    },
+    {
+      "id": "east_woodland",
+      "x": 93,
+      "z": -70,
+      "radiusX": 26,
+      "radiusZ": 26,
+      "height": 9.0
+    },
+    {
+      "id": "western_valley",
+      "x": -53,
+      "z": 24,
+      "radiusX": 23,
+      "radiusZ": 25,
+      "height": -3.0
+    },
+    {
+      "id": "eastern_valley",
+      "x": 48,
+      "z": 22,
+      "radiusX": 23,
+      "radiusZ": 24,
+      "height": -3.0
+    }
+  ],
+  "scenery": [
+    {
+      "id": "tree_0",
+      "kind": "tree",
+      "x": -93,
+      "z": -70,
+      "height": 6,
+      "width": 5,
+      "palette": "spruce"
+    },
+    {
+      "id": "tree_1",
+      "kind": "tree",
+      "x": -80,
+      "z": -28,
+      "height": 7,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_2",
+      "kind": "tree",
+      "x": -82,
+      "z": 48,
+      "height": 8,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_3",
+      "kind": "tree",
+      "x": -58,
+      "z": 68,
+      "height": 6,
+      "width": 5,
+      "palette": "spruce"
+    },
+    {
+      "id": "tree_4",
+      "kind": "tree",
+      "x": -25,
+      "z": -82,
+      "height": 7,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_5",
+      "kind": "tree",
+      "x": 24,
+      "z": -81,
+      "height": 8,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_6",
+      "kind": "tree",
+      "x": 76,
+      "z": -68,
+      "height": 6,
+      "width": 5,
+      "palette": "spruce"
+    },
+    {
+      "id": "tree_7",
+      "kind": "tree",
+      "x": 91,
+      "z": -26,
+      "height": 7,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_8",
+      "kind": "tree",
+      "x": 83,
+      "z": 46,
+      "height": 8,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_9",
+      "kind": "tree",
+      "x": 52,
+      "z": 69,
+      "height": 6,
+      "width": 5,
+      "palette": "spruce"
+    },
+    {
+      "id": "tree_10",
+      "kind": "tree",
+      "x": -25,
+      "z": 76,
+      "height": 7,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_11",
+      "kind": "tree",
+      "x": 24,
+      "z": 78,
+      "height": 8,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_12",
+      "kind": "tree",
+      "x": -118,
+      "z": 69,
+      "height": 6,
+      "width": 5,
+      "palette": "spruce"
+    },
+    {
+      "id": "tree_13",
+      "kind": "tree",
+      "x": 118,
+      "z": 69,
+      "height": 7,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_14",
+      "kind": "tree",
+      "x": -99,
+      "z": 54,
+      "height": 8,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_15",
+      "kind": "tree",
+      "x": -91,
+      "z": 63,
+      "height": 6,
+      "width": 5,
+      "palette": "spruce"
+    },
+    {
+      "id": "tree_16",
+      "kind": "tree",
+      "x": -74,
+      "z": 63,
+      "height": 7,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_17",
+      "kind": "tree",
+      "x": -65,
+      "z": 82,
+      "height": 8,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_18",
+      "kind": "tree",
+      "x": -47,
+      "z": 79,
+      "height": 6,
+      "width": 5,
+      "palette": "spruce"
+    },
+    {
+      "id": "tree_19",
+      "kind": "tree",
+      "x": -110,
+      "z": -63,
+      "height": 7,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_20",
+      "kind": "tree",
+      "x": -100,
+      "z": -80,
+      "height": 8,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_21",
+      "kind": "tree",
+      "x": -81,
+      "z": -84,
+      "height": 6,
+      "width": 5,
+      "palette": "spruce"
+    },
+    {
+      "id": "tree_22",
+      "kind": "tree",
+      "x": -119,
+      "z": 44,
+      "height": 7,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_23",
+      "kind": "tree",
+      "x": -125,
+      "z": 58,
+      "height": 8,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_24",
+      "kind": "tree",
+      "x": 89,
+      "z": -82,
+      "height": 6,
+      "width": 5,
+      "palette": "spruce"
+    },
+    {
+      "id": "tree_25",
+      "kind": "tree",
+      "x": 105,
+      "z": -76,
+      "height": 7,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_26",
+      "kind": "tree",
+      "x": 111,
+      "z": -58,
+      "height": 8,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_27",
+      "kind": "tree",
+      "x": 73,
+      "z": -83,
+      "height": 6,
+      "width": 5,
+      "palette": "spruce"
+    },
+    {
+      "id": "tree_28",
+      "kind": "tree",
+      "x": 99,
+      "z": 55,
+      "height": 7,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_29",
+      "kind": "tree",
+      "x": 112,
+      "z": 62,
+      "height": 8,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_30",
+      "kind": "tree",
+      "x": 121,
+      "z": 43,
+      "height": 6,
+      "width": 5,
+      "palette": "spruce"
+    },
+    {
+      "id": "tree_31",
+      "kind": "tree",
+      "x": 62,
+      "z": 83,
+      "height": 7,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_32",
+      "kind": "tree",
+      "x": 78,
+      "z": 79,
+      "height": 8,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_33",
+      "kind": "tree",
+      "x": -118,
+      "z": -45,
+      "height": 6,
+      "width": 5,
+      "palette": "spruce"
+    },
+    {
+      "id": "tree_34",
+      "kind": "tree",
+      "x": 118,
+      "z": -43,
+      "height": 7,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_35",
+      "kind": "tree",
+      "x": -14,
+      "z": 92,
+      "height": 8,
+      "width": 5,
+      "palette": "oak"
+    },
+    {
+      "id": "tree_36",
+      "kind": "tree",
+      "x": 38,
+      "z": 94,
+      "height": 6,
+      "width": 5,
+      "palette": "spruce"
+    },
+    {
+      "id": "rock_0",
+      "kind": "rock",
+      "x": -72,
+      "z": 16,
+      "height": 2,
+      "width": 3,
+      "palette": "stone"
+    },
+    {
+      "id": "rock_1",
+      "kind": "rock",
+      "x": -55,
+      "z": 53,
+      "height": 3,
+      "width": 4,
+      "palette": "stone"
+    },
+    {
+      "id": "rock_2",
+      "kind": "rock",
+      "x": -23,
+      "z": 60,
+      "height": 2,
+      "width": 3,
+      "palette": "stone"
+    },
+    {
+      "id": "rock_3",
+      "kind": "rock",
+      "x": 20,
+      "z": -64,
+      "height": 3,
+      "width": 4,
+      "palette": "stone"
+    },
+    {
+      "id": "rock_4",
+      "kind": "rock",
+      "x": 58,
+      "z": 28,
+      "height": 2,
+      "width": 3,
+      "palette": "stone"
+    },
+    {
+      "id": "rock_5",
+      "kind": "rock",
+      "x": 80,
+      "z": 19,
+      "height": 3,
+      "width": 4,
+      "palette": "stone"
+    },
+    {
+      "id": "rock_6",
+      "kind": "rock",
+      "x": -97,
+      "z": 78,
+      "height": 2,
+      "width": 3,
+      "palette": "stone"
+    },
+    {
+      "id": "rock_7",
+      "kind": "rock",
+      "x": 100,
+      "z": -30,
+      "height": 3,
+      "width": 4,
+      "palette": "stone"
+    }
+  ],
+  "economy": [
+    {
+      "id": "barracks",
+      "startingGold": 160,
+      "passiveGold": 8,
+      "incomeSeconds": 5,
+      "pointGold": 1,
+      "killGold": 0,
+      "maxQueue": 20,
+      "accessRadius": 18,
+      "disbandRefund": 0,
+      "objectiveIncomeCap": 2
+    }
+  ],
+  "navigation": [
+    {
+      "id": "tactical_ai",
+      "waterPenalty": 16.0,
+      "searchRange": 40,
+      "waypointDistance": 16.0,
+      "stuckSeconds": 3,
+      "repathTicks": 20,
+      "rangedRetreatDistance": 4.0,
+      "rangedStandoff": 0.65,
+      "bridgeEntryInset": 2,
+      "unreachableNoticeSeconds": 10,
+      "arrivalTolerance": 0.35,
+      "preciseRange": 2.0
+    }
+  ],
+  "ui": [
+    {
+      "id": "command",
+      "trigger": "R",
+      "screen": "CommandScreen",
+      "content": "attack,rush,move,follow,hold",
+      "bottom": "block,line,wedge,loose,shieldwall"
+    },
+    {
+      "id": "barracks",
+      "trigger": "right_click_lectern",
+      "screen": "BarracksScreen",
+      "content": "buy,train,disband,cancel_queue,roster",
+      "bottom": "gold,capacity,queue"
+    },
+    {
+      "id": "map",
+      "trigger": "M_or_click_map_card",
+      "screen": "MapScreen",
+      "content": "terrain,points,friendly_troops,fighting",
+      "bottom": "legend"
+    }
+  ],
+  "decorations": [
+    {
+      "id": "valley_meadow",
+      "plantEvery": 43,
+      "flowerEvery": 5,
+      "avoidPointRadius": 17,
+      "structureMargin": 3
+    }
+  ],
+  "groups": [
+    {
+      "id": "all",
+      "label": "All troops",
+      "role": "all"
+    },
+    {
+      "id": "infantry",
+      "label": "Infantry",
+      "role": "frontline"
+    },
+    {
+      "id": "ranged",
+      "label": "Ranged",
+      "role": "ranged"
+    },
+    {
+      "id": "support",
+      "label": "Support",
+      "role": "support"
+    }
+  ],
+  "commandInterface": [
+    {
+      "id": "battlefield",
+      "selection": "all,infantry,ranged,support",
+      "orders": "move,attack,charge,hold,follow,retreat",
+      "targeting": "choose,aim,preview,confirm",
+      "facingStep": 15,
+      "targetRange": 240,
+      "acknowledgementSeconds": 3,
+      "lobby": "separate",
+      "confirm": "left_mouse",
+      "cancel": "right_mouse",
+      "preview": "world_slots"
+    }
+  ],
+  "playtestMilestone": [
+    {
+      "id": "command",
+      "requirement": "Visible battlefield group commands",
+      "acceptance": "Independent groups; preview and facing match destination; retreat interrupts combat.",
+      "status": "pending"
+    },
+    {
+      "id": "formations",
+      "requirement": "Positioning changes engagements",
+      "acceptance": "Compare narrow approach, wide frontage, charge, spacing; no common mob pile.",
+      "status": "pending"
+    },
+    {
+      "id": "map",
+      "requirement": "Three memorable combat spaces",
+      "acceptance": "Ground-level review of gatehouse, hamlet and ridge shrine; distinct crossings.",
+      "status": "pending"
+    },
+    {
+      "id": "information",
+      "requirement": "Readable HUD and tactical map",
+      "acceptance": "Groups, ownership, contested state, destinations, teammate pings and feedback.",
+      "status": "pending"
+    },
+    {
+      "id": "economy",
+      "requirement": "Ten-minute 2v2 playtest",
+      "acceptance": "Baseline recovery, limited snowball, little replacement busywork; four real players pending.",
+      "status": "pending"
+    },
+    {
+      "id": "ai",
+      "requirement": "Trustworthy interactions",
+      "acceptance": "Bridge collision, retreat/reinforcements, death, occlusion, ranged rush, order spam, terrain and disconnect.",
+      "status": "pending"
+    },
+    {
+      "id": "identity",
+      "requirement": "Faction identity and authored engineering",
+      "acceptance": "Telegraphed counterable faction mechanic; bounded repair/gate sites.",
+      "status": "pending"
+    },
+    {
+      "id": "quality",
+      "requirement": "Honest experience evidence",
+      "acceptance": "Visual/audio review and measured playtest report; fun/balance not inferred from automated passes.",
+      "status": "pending"
+    }
+  ],
+  "terrainStyle": [
+    {
+      "id": "authored",
+      "warpAmplitude": 7.0,
+      "warpFrequency": 0.035,
+      "roughness": 1.4,
+      "boundaryRise": 12.0,
+      "roadCurve": 4.0
+    }
+  ],
+  "pings": [
+    {
+      "id": "attack",
+      "label": "Attack",
+      "seconds": 8,
+      "cooldownSeconds": 2
+    },
+    {
+      "id": "defend",
+      "label": "Defend",
+      "seconds": 8,
+      "cooldownSeconds": 2
+    },
+    {
+      "id": "help",
+      "label": "Help",
+      "seconds": 8,
+      "cooldownSeconds": 2
+    },
+    {
+      "id": "moving",
+      "label": "Moving here",
+      "seconds": 8,
+      "cooldownSeconds": 2
+    }
+  ],
+  "botCommand": [
+    {
+      "id": "bot-commander",
+      "retreatShare": 0.25,
+      "rallyShare": 0.6,
+      "chargeRatio": 1.5
+    }
+  ],
+  "combatDiscipline": [
+    {
+      "id": "captain",
+      "damageScale": 0.6,
+      "targetMemoryTicks": 40,
+      "rangedObstructionStep": 4.0,
+      "spellWindupTicks": 20,
+      "spellRadius": 2.5,
+      "recoveryIncome": "baseline",
+      "enemyKnowledge": "visible_only",
+      "healAmount": 4.0,
+      "healRadius": 10.0,
+      "abilityCooldownTicks": 100
+    }
+  ],
+  "recruitmentView": [
+    {
+      "id": "barracks",
+      "columns": "available,current_army,training_queue",
+      "refund": "cancel_full_disband_none",
+      "deployment": "barracks_then_current_group_order",
+      "disabledReason": "distance_or_gold_or_capacity",
+      "jobs": "frontline,ranged,support"
+    }
+  ],
+  "scouting": [
+    {
+      "id": "shared_sight",
+      "range": 36,
+      "memorySeconds": 10,
+      "refreshTicks": 10,
+      "confirmed": "solid_red",
+      "lastKnown": "hollow_gray",
+      "authority": "server_team_line_of_sight"
+    }
+  ],
+  "landmarkStyle": [
+    {
+      "id": "hamlet",
+      "features": "framed_windows,chimneys,mill,farm",
+      "navigation": "clear_doorways"
+    },
+    {
+      "id": "gatehouse",
+      "features": "breach,tall_hanging_banner,broken_curtain",
+      "navigation": "front_and_flank"
+    },
+    {
+      "id": "shrine",
+      "features": "broken_pillars,fallen_stone,altar",
+      "navigation": "clear_central_approach"
+    },
+    {
+      "id": "ford",
+      "features": "solid_causeway,water_margins,natural_banks",
+      "navigation": "six_block_clear_center"
+    }
+  ],
+  "revisionChecks": [
+    {
+      "id": "arena-ready",
+      "mode": "explicit_melty_test",
+      "evidence": "real_game",
+      "experienceClaim": "none"
+    },
+    {
+      "id": "independent-packet-orders",
+      "mode": "explicit_melty_test",
+      "evidence": "real_game",
+      "experienceClaim": "none"
+    },
+    {
+      "id": "ranged-group-moves",
+      "mode": "explicit_melty_test",
+      "evidence": "real_game",
+      "experienceClaim": "none"
+    },
+    {
+      "id": "retreat-interrupt",
+      "mode": "explicit_melty_test",
+      "evidence": "real_game",
+      "experienceClaim": "none"
+    },
+    {
+      "id": "retreat-disengages",
+      "mode": "explicit_melty_test",
+      "evidence": "real_game",
+      "experienceClaim": "none"
+    },
+    {
+      "id": "whole-army-recall",
+      "mode": "explicit_melty_test",
+      "evidence": "real_game",
+      "experienceClaim": "none"
+    },
+    {
+      "id": "charge-requires-enemy",
+      "mode": "explicit_melty_test",
+      "evidence": "real_game",
+      "experienceClaim": "none"
+    },
+    {
+      "id": "barracks-queue",
+      "mode": "explicit_melty_test",
+      "evidence": "real_game",
+      "experienceClaim": "none"
+    },
+    {
+      "id": "barracks-cancel",
+      "mode": "explicit_melty_test",
+      "evidence": "real_game",
+      "experienceClaim": "none"
+    },
+    {
+      "id": "teammate-ping",
+      "mode": "explicit_melty_test",
+      "evidence": "real_game",
+      "experienceClaim": "none"
+    },
+    {
+      "id": "dawn-support-heals",
+      "mode": "explicit_melty_test",
+      "evidence": "real_game",
+      "experienceClaim": "none"
+    },
+    {
+      "id": "dusk-blight-resolves",
+      "mode": "explicit_melty_test",
+      "evidence": "real_game",
+      "experienceClaim": "none"
+    },
+    {
+      "id": "revised-crossings",
+      "mode": "explicit_melty_test",
+      "evidence": "real_game",
+      "experienceClaim": "none"
+    }
+  ],
+  "maps": [
+    {
+      "id": "rivergate",
+      "name": "Rivergate Valley",
+      "theme": "river",
+      "description": "A working river town: mill, farms, trade crossing and hilltop shrine."
+    },
+    {
+      "id": "ironhold",
+      "name": "Ironhold Siege",
+      "theme": "fortress",
+      "description": "A breached border fortress: supply yards, gate roads and exposed flanks."
+    },
+    {
+      "id": "frostmarch",
+      "name": "Frostmarch Pass",
+      "theme": "snow",
+      "description": "A mountain trade pass: sheltered camps, ridge routes and a frozen gorge."
+    },
+    {
+      "id": "hollowwood",
+      "name": "Hollowwood Reach",
+      "theme": "forest",
+      "description": "An abandoned woodland road: old logging camps, shrines and marsh crossings."
+    }
+  ],
+  "classes": [
+    {
+      "id": "vanguard",
+      "name": "Vanguard",
+      "group": "infantry",
+      "bonus": "Infantry gain 20% health and 10% damage."
+    },
+    {
+      "id": "marksman",
+      "name": "Marksman",
+      "group": "ranged",
+      "bonus": "Ranged troops gain 15% damage and 10% attack speed."
+    },
+    {
+      "id": "arcanist",
+      "name": "Arcanist",
+      "group": "support",
+      "bonus": "Support gain 20% health and 20% spell or healing power."
+    }
+  ],
+  "campaign": [
+    {
+      "id": "collection",
+      "rollCost": 100,
+      "completionGold": 80,
+      "victoryGold": 40,
+      "practiceGold": 40,
+      "minimumRewardSeconds": 180,
+      "duplicateRefund": 50,
+      "starterGold": 0
+    }
+  ]
+}

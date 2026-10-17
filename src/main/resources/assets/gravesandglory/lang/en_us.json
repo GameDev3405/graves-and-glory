@@ -1,0 +1,15 @@
+{
+  "category.gravesandglory": "Graves and Glory",
+  "key.gravesandglory.menu": "Army commands",
+  "key.gravesandglory.attack": "Aim attack order",
+  "key.gravesandglory.follow": "Follow me",
+  "key.gravesandglory.formation": "Cycle formation",
+  "key.gravesandglory.map": "Open battlefield map",
+  "key.gravesandglory.rotate_left": "Rotate formation left",
+  "key.gravesandglory.rotate_right": "Rotate formation right",
+  "key.gravesandglory.confirm": "Confirm army order",
+  "key.gravesandglory.cancel": "Cancel army order",
+  "subtitles.gravesandglory.battle_intro": "Battle horns sound",
+  "subtitles.gravesandglory.unit_reveal": "A new unit joins your banner",
+  "subtitles.gravesandglory.victory": "Battle ends"
+}

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "gravesandglory_local_test_tools",
+  "version": "1.0.0",
+  "name": "UNSHIPPED Graves and Glory local test tools",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "gg.gravesandglory.testing.LocalIntegration"
+    ],
+    "client": [
+      "gg.gravesandglory.testing.LocalVisualInspection",
+      "gg.gravesandglory.CommandPlaytest",
+      "gg.gravesandglory.CampaignChecks"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.14",
+    "minecraft": "1.20.1",
+    "fabric-api": "*"
+  }
+}

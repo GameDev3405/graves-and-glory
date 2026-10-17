@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "gravesandglory",
+  "version": "0.3.0",
+  "name": "Graves and Glory",
+  "description": "Permanent armies, four battlefields and fantasy army battles for one to eight commanders.",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "gg.gravesandglory.GravesAndGlory"
+    ],
+    "client": [
+      "gg.gravesandglory.GravesAndGloryClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.14",
+    "fabric-api": "*",
+    "minecraft": "1.20.1",
+    "java": ">=17"
+  },
+  "license": "MIT",
+  "mixins": [
+    "gravesandglory.mixins.json"
+  ]
+}
