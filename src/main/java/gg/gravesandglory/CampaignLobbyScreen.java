@@ -26,7 +26,7 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
             int lw=(width-52)*2/3,rx=28+lw,rw=width-rx-16;
             String[] modes={"ai","1","2","3","4"};int bw=lw/5;
             for(int i=0;i<5;i++){String id=modes[i];leadControls.add(button((id.equals(CampaignClient.mode)?"> ":"")+(id.equals("ai")?"Practice":id+"v"+id),16+i*bw,81,bw-4,b->send("mode:"+id)));}
-            int mw=lw/4;for(int i=0;i<4;i++){final int id=i;leadControls.add(button((CampaignClient.map==i?"> ":"")+Spec.MAPS[i].name(),16+i*mw,height-104,mw-4,b->send("map:"+id)));}
+            int mw=lw/Spec.MAPS.length;for(int i=0;i<Spec.MAPS.length;i++){final int id=i;leadControls.add(button((CampaignClient.map==i?"> ":"")+Spec.MAPS[i].name(),16+i*mw,height-104,mw-4,b->send("map:"+id)));}
             leadControls.add(button("Bot fill: "+(CampaignClient.fill?"ON":"OFF"),rx,height-104,rw,b->send("fill")));
         }else if(tab==1){
             int row=0,t=Math.max(0,team),left=width/2+8,cardWidth=(width-left-24)/3;

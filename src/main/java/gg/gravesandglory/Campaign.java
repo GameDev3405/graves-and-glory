@@ -145,7 +145,7 @@ public final class Campaign {
         if(cmd.equals("fill")){if(leader(p))fill=!fill;return true;}
         if(cmd.startsWith("map:")){
             if(!leader(p))return true;int index;try{index=Integer.parseInt(cmd.substring(4));}catch(Exception e){return true;}
-            if(index>=0&&index<4&&index!=map){switchMap(index);notice(p.getUuid(),"Preparing "+Spec.MAPS[map].name()+". Your army choices are saved.");}
+            if(index>=0&&index<Spec.MAPS.length&&index!=map){switchMap(index);notice(p.getUuid(),"Preparing "+Spec.MAPS[map].name()+". Your army choices are saved.");}
             return true;
         }
         if(cmd.equals("start")){
@@ -261,7 +261,7 @@ public final class Campaign {
         if(onPad.size()<2&&!solo){padCountdown=-1;padMapRolled=false;return;}
         if(padCountdown<0){
             if(!padMapRolled){
-                padMapRolled=true;int roll=b.world.random.nextInt(4);
+                padMapRolled=true;int roll=b.world.random.nextInt(Spec.MAPS.length);
                 if(roll!=map){switchMap(roll);for(UUID id:onPad.keySet())notice(id,"Quick match map: "+Spec.MAPS[map].name()+".");return;}
             }
             padCountdown=200;for(UUID id:onPad.keySet())notice(id,"Match starts in 10 seconds: "+padSize()+"v"+padSize()+", bots fill empty seats.");

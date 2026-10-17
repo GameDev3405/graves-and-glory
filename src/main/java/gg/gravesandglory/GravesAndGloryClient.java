@@ -71,7 +71,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.PARTY,(client,handler,buf,responder)->client.execute(()->client.setScreen(new LobbyScreen(3))));
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.STATE,(client,handler,buf,responder)->{
             boolean r=buf.readBoolean(),run=buf.readBoolean();int a=buf.readInt(),b=buf.readInt();String msg=buf.readString();int t=buf.readInt(),n=buf.readInt();String o=buf.readString(),f=buf.readString();int resp=buf.readInt();
-            int points=buf.readInt();if(points!=3)return;boolean[] contest=new boolean[3];int[] own=new int[3],pr=new int[3],ch=new int[3];for(int i=0;i<3;i++){buf.readString();own[i]=buf.readInt();pr[i]=buf.readInt();ch[i]=buf.readInt();contest[i]=buf.readBoolean();}
+            int points=buf.readInt();if(points<1||points>8)return;boolean[] contest=new boolean[points];int[] own=new int[points],pr=new int[points],ch=new int[points];for(int i=0;i<points;i++){buf.readString();own[i]=buf.readInt();pr[i]=buf.readInt();ch[i]=buf.readInt();contest[i]=buf.readBoolean();}
             int g=buf.readInt();boolean near=buf.readBoolean();int q=buf.readInt(),eta=buf.readInt(),types=buf.readInt();if(types!=Spec.TROOPS.length)return;
             int[] owned=new int[types],waiting=new int[types];for(int i=0;i<types;i++){owned[i]=buf.readInt();waiting[i]=buf.readInt();}
             int amount=buf.readInt();if(amount<0||amount>160)return;List<Marker> friendly=new ArrayList<>();for(int i=0;i<amount;i++)friendly.add(new Marker(buf.readFloat(),buf.readFloat(),buf.readBoolean(),buf.readBoolean(),buf.readString()));
@@ -131,7 +131,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static void map(DrawContext g,int x,int y,int w,int h,boolean labels){
         if(mapTexture!=null)g.drawTexture(mapTexture,x,y,w,h,0f,0f,281,201,281,201);else g.fill(x,y,x+w,y+h,0xff34473b);
         g.fill(x,y,x+w,y+h,0x66303c39);
-        for(int i=0;i<Spec.POINTS.length;i++){var p=Spec.POINTS[i];int px=x+(p.x()+350)*w/700,pz=y+(p.z()+250)*h/500;g.fill(px-4,pz-4,px+5,pz+5,0xcc101722);g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,p.id(),px-2,pz-3,factionColor(owners[i]));if(contested[i])g.drawBorder(px-6,pz-6,13,13,0xffffaa55);if(progress[i]>0)g.fill(px-5,pz+5,px-5+10*progress[i]/p.captureSeconds(),pz+7,factionColor(challengers[i]));if(labels)g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,p.name(),px-22,pz+8,WHITE);}
+        for(int i=0;i<Spec.POINTS.length;i++){var p=Spec.POINTS[i];int px=x+(p.x()+350)*w/700,pz=y+(p.z()+250)*h/500;g.fill(px-4,pz-4,px+5,pz+5,0xcc101722);g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,p.id(),px-2,pz-3,factionColor(i<owners.length?owners[i]:-1));if(contested[i])g.drawBorder(px-6,pz-6,13,13,0xffffaa55);if(progress[i]>0)g.fill(px-5,pz+5,px-5+10*progress[i]/p.captureSeconds(),pz+7,factionColor(challengers[i]));if(labels)g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,p.name(),px-22,pz+8,WHITE);}
         for(Marker m:markers){int px=x+(int)((m.x()+350)*w/700),pz=y+(int)((m.z()+250)*h/500);int color=m.fighting()?0xffff995d:m.own()?0xfff5e2a8:0xff6ddfe9;g.fill(px-1,pz-1,px+2,pz+2,color);if(m.fighting())g.fill(px-3,pz-3,px+4,pz-2,color);}
         for(var group:CommandMode.groups){int gx=x+(int)((group.cx()+350)*w/700),gz=y+(int)((group.cz()+250)*h/500);boolean selected=CommandMode.selected.equals("all")||CommandMode.selected.equals(group.id());
             if(selected){int dx=x+(int)((group.x()+350)*w/700),dz=y+(int)((group.z()+250)*h/500);for(int k=0;k<=20;k++){int lx=gx+(dx-gx)*k/20,lz=gz+(dz-gz)*k/20;g.fill(lx,lz,lx+1,lz+1,GOLD);}g.drawBorder(dx-3,dz-3,7,7,GOLD);}
@@ -161,7 +161,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         int w=(int)(c.getWindow().getScaledWidth()/scale),h=(int)(c.getWindow().getScaledHeight()/scale);var font=c.textRenderer;
         if(CampaignClient.cinematic()){CampaignClient.hud(g,w,h);g.getMatrices().pop();return;}
         panel(g,w/2-175,7,350,37);g.drawCenteredTextWithShadow(font,"DAWN "+dawn+" / "+GravesAndGlory.R.winScore()+"  | "+String.format("%d:%02d",CommandMode.seconds/60,CommandMode.seconds%60)+" |  DUSK "+dusk+" / "+GravesAndGlory.R.winScore(),w/2,14,GOLD);
-        for(int i=0;i<3;i++)g.drawTextWithShadow(font,Spec.POINTS[i].id()+": "+(contested[i]?"Contested":progress[i]>0?"Capturing":owners[i]<0?"Neutral":owners[i]==0?"Dawn":"Dusk"),w/2-160+i*110,29,factionColor(owners[i]));
+        int shown=Math.min(Spec.POINTS.length,owners.length),step=330/shown;for(int i=0;i<shown;i++)g.drawTextWithShadow(font,font.trimToWidth(Spec.POINTS[i].id()+": "+(contested[i]?"Contested":progress[i]>0?"Capturing":owners[i]<0?"Neutral":owners[i]==0?"Dawn":"Dusk"),step-4),w/2-165+i*step,29,factionColor(owners[i]));
         CommandMode.hud(g,w,h);Presentation.hud(g,w,h);
         if(!running)g.drawCenteredTextWithShadow(font,menu.getBoundKeyLocalizedText().getString()+": war council / collection / maps",w/2,48,WHITE);
         // Key hints sit under the score panel, clear of the hotbar; hidden while an order is being aimed.

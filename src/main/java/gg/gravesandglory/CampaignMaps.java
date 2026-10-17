@@ -9,7 +9,7 @@ import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.text.Text;
 import java.util.*;
 
-/** Four authored 700 by 500 battlefields. Routes are also terrain constraints. */
+/** Authored 700 by 500 battlefields. Routes are also terrain constraints. */
 public final class CampaignMaps {
     public static int selected=0;
     static final int LOBBY_Z=-310;
@@ -19,15 +19,16 @@ public final class CampaignMaps {
     record Road(int ax,int az,int bx,int bz,int width){}
     static List<Road> roads=new ArrayList<>();
     public static void select(int index){
-        selected=Math.max(0,Math.min(3,index));
+        selected=Math.max(0,Math.min(Spec.MAPS.length-1,index));
         var structures=new ArrayList<Spec.StructuresRow>();var scenery=new ArrayList<Spec.SceneryRow>();
         var terrain=new ArrayList<Spec.TerrainRow>();roads=new ArrayList<>();
-        String[] names=switch(selected){case 1->new String[]{"Supply Yard","Iron Gate","Watch Hill"};case 2->new String[]{"Caravan Refuge","Pass Crossing","Signal Ridge"};case 3->new String[]{"Logging Camp","Old Causeway","Moon Shrine"};default->new String[]{"Mill Hamlet","Trade Crossing","River Shrine"};};
-        int[] zs=selected==1?new int[]{-130,0,130}:selected==2?new int[]{-155,0,155}:new int[]{-145,0,145};
-        Spec.POINTS=new Spec.PointsRow[3];
+        String[] names=switch(selected){case 1->new String[]{"Supply Yard","Iron Gate","Watch Hill"};case 2->new String[]{"Caravan Refuge","Pass Crossing","Signal Ridge"};case 3->new String[]{"Logging Camp","Old Causeway","Moon Shrine"};case 4->new String[]{"North Ford","Kings Bridge","South Ford"};default->new String[]{"Mill Hamlet","Trade Crossing","River Shrine"};};
+        int[] zs=selected==1?new int[]{-130,0,130}:selected==4?new int[]{-160,0,160}:selected==2?new int[]{-155,0,155}:new int[]{-145,0,145};
+        // Kingsfield adds a raised outpost on each flank, placed with half-turn symmetry so neither side is favoured.
+        boolean flanks=selected==4;Spec.POINTS=new Spec.PointsRow[flanks?5:3];
         for(int i=0;i<3;i++){
-            int z=zs[i],rx=(int)riverX(z),px=rx+(i==0?-29:i==2?29:0);
-            Spec.POINTS[i]=new Spec.PointsRow(""+(char)('A'+i),names[i],px,z,17,8,64);
+            int z=zs[i],rx=(int)riverX(z),px=rx+(flanks?0:i==0?-29:i==2?29:0);
+            Spec.POINTS[flanks?i*2:i]=new Spec.PointsRow(""+(char)('A'+(flanks?i*2:i)),names[i],px,z,17,8,64);
             structures.add(s("crossing_"+i,"bridge",rx,z,44,i==1?24:16,2,i==0?"wood":i==2?"ford":"stone",64));
             for(int side:new int[]{-1,1}){road(side*290,0,side*205,z,5);road(side*205,z,rx+side*28,z,5);}
             road(rx-29,z,rx+29,z,6);
@@ -49,8 +50,8 @@ public final class CampaignMaps {
             structures.add(s(palette+"_stores","house",side*287,side*40,18,16,10,"wood",64));
             road(side*286,-32,side*286,40,5);road(side*205,zs[0],side*205,zs[2],4);
             for(int z:new int[]{-85,85}){structures.add(s(palette+"_tower_"+z,"watchtower",side*180,z,11,11,15,palette,67));road(side*180,z,side*205,z,3);}
-            terrain.add(new Spec.TerrainRow(palette+"_ridge",side*138,-80,62,85,selected==2?28.0:13.0));
-            terrain.add(new Spec.TerrainRow(palette+"_hill",side*130,100,65,70,selected==1?18.0:12.0));
+            terrain.add(new Spec.TerrainRow(palette+"_ridge",side*138,flanks?side*80:-80,62,85,selected==2?28.0:13.0));
+            terrain.add(new Spec.TerrainRow(palette+"_hill",side*130,flanks?-side*100:100,65,70,selected==1?18.0:12.0));
             terrain.add(new Spec.TerrainRow(palette+"_shelter",side*265,0,48,64,-2.0));
         }
         terrain.add(new Spec.TerrainRow("north_mountains",0,-247,180,45,selected==2?45.0:20.0));
@@ -66,6 +67,10 @@ public final class CampaignMaps {
             structures.add(s("pass_refuge","house",62,34,20,16,12,"wood",64));
             structures.add(s("signal_tower","watchtower",57,166,14,14,19,"stone",64));
             road(-80,-178,-20,-155,4);road(62,34,25,0,4);
+        }else if(flanks){
+            Spec.POINTS[1]=new Spec.PointsRow("B","West Outpost",-130,100,17,8,74);
+            Spec.POINTS[3]=new Spec.PointsRow("D","East Outpost",130,-100,17,8,74);
+            for(int side:new int[]{-1,1}){road(side*205,-side*100,side*130,-side*100,4);road(side*130,-side*100,side*28,0,4);}
         }else if(selected==3){
             structures.removeIf(st->st.kind().equals("farm")||st.kind().equals("mill"));
             structures.add(s("sawmill","house",-85,-176,24,18,10,"wood",64));

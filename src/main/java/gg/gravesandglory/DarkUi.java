@@ -56,7 +56,7 @@ final class DarkUi {
             if(selected||active&&(isHovered()||isFocused()))g.drawBorder(x+1,y+1,width-2,height-2,GOLD);
             mapSeal(g,x+6,y+5,index);var font=MinecraftClient.getInstance().textRenderer;
             g.drawTextWithShadow(font,font.trimToWidth(getMessage().getString(),width-44),x+36,y+9,active?PAPER:MUTED);
-            String[] labels={"River town / three crossings","Fortress / supply roads","Snow / sheltered passes","Forest / old causeways"};g.drawText(font,font.trimToWidth(labels[index],width-12),x+6,y+28,MUTED,false);
+            String[] labels={"River town / three crossings","Fortress / supply roads","Snow / sheltered passes","Forest / old causeways","Plains / five points, two flanks"};g.drawText(font,font.trimToWidth(labels[index],width-12),x+6,y+28,MUTED,false);
         }
     }
 }

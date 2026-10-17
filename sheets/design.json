@@ -1563,6 +1563,12 @@
       "name": "Hollowwood Reach",
       "theme": "forest",
       "description": "An abandoned woodland road: old logging camps, shrines and marsh crossings."
+    },
+    {
+      "id": "kingsfield",
+      "name": "Kingsfield Crossroads",
+      "theme": "plains",
+      "description": "Five objectives: two fords, a central bridge and a raised outpost on each flank."
     }
   ],
   "classes": [
