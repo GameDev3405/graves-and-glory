@@ -27,7 +27,7 @@ public final class CommandMode {
     static String label(String id){return Character.toUpperCase(id.charAt(0))+id.substring(1);}
     static int count(String id){return groups.stream().filter(g->id.equals("all")||id.equals(g.id())).mapToInt(Group::count).sum();}
     static void changeFormation(String id){formation=id;var c=MinecraftClient.getInstance();if(c.player!=null)issue(selected,"formation",id,c.player.getPos(),c.player.getYaw(),-1);}
-    static void begin(String order){pending=order;facingSet=false;MinecraftClient.getInstance().setScreen(null);}
+    static void begin(String order){if(!GravesAndGloryClient.battleActive())return;pending=order;facingSet=false;MinecraftClient.getInstance().setScreen(null);}
     public static boolean cancel(){if(!active())return false;pending="";destination=null;return true;}
     public static boolean confirm(){
         if(!active())return false;
@@ -37,12 +37,12 @@ public final class CommandMode {
     }
     static void ping(String kind,double x,double z){if(ClientPlayNetworking.canSend(GravesAndGlory.PING)){var b=PacketByteBufs.create();b.writeString(kind);b.writeDouble(x);b.writeDouble(z);ClientPlayNetworking.send(GravesAndGlory.PING,b);}}
     static void issue(String group,String action,String form,Vec3d dest,float yaw,int target){
-        if(!ClientPlayNetworking.canSend(GravesAndGlory.TACTICAL))return;
+        if(!GravesAndGloryClient.battleActive()||!ClientPlayNetworking.canSend(GravesAndGlory.TACTICAL))return;
         var b=PacketByteBufs.create();b.writeString(group);b.writeString(action);b.writeString(form);b.writeDouble(dest.x);b.writeDouble(dest.z);b.writeFloat(yaw);b.writeInt(target);ClientPlayNetworking.send(GravesAndGlory.TACTICAL,b);
         feedback=label(group)+": "+label(action)+" order sent";feedbackUntil=System.currentTimeMillis()+3000;
     }
     static void tick(MinecraftClient c){
-        preview.clear();if(!active()||c.player==null||c.world==null||c.currentScreen!=null)return;
+        preview.clear();if(!GravesAndGloryClient.battleActive()){cancel();return;}if(!active()||c.player==null||c.world==null||c.currentScreen!=null)return;
         if(!facingSet)facing=c.player.getYaw();
         var hit=c.player.raycast(Spec.COMMANDINTERFACE[0].targetRange(),1,false);destination=hit.getType()==HitResult.Type.MISS?null:hit.getPos();enemy=-1;
         // Entity targeting is an aim cone, not an omniscient enemy lookup.

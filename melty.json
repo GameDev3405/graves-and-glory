@@ -11,7 +11,7 @@
   "components": [
     {
       "id": "main",
-      "fileName": "graves-and-glory-0.3.4.zip",
+      "fileName": "graves-and-glory-0.3.7.zip",
       "kind": "main",
       "label": "Graves and Glory",
       "required": true
@@ -71,3 +71,4 @@
     "{minecraft-instance}/saves/Graves and Glory"
   ]
 }
+

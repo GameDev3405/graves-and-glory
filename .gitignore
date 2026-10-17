@@ -19,3 +19,7 @@ __pycache__/
 *.key
 *.pem
 *upload-plan*.json
+
+# Local session state and scratch runs
+.claude/
+work/

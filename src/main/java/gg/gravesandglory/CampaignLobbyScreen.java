@@ -20,7 +20,7 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
         uiScale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/640f,client.getWindow().getScaledHeight()/360f));width=(int)(client.getWindow().getScaledWidth()/uiScale);height=(int)(client.getWindow().getScaledHeight()/uiScale);
         start=null;roll=null;slots.clear();leadControls.clear();key=stateKey();int cw=(width-40)/4;
         String[] names={"Battle setup","Army collection","Commander class","Custom lobby"};
-        for(int i=0;i<4;i++){final int t=i;button((tab==i?"> ":"")+names[i]+(i==3&&invited()?" *":""),16+i*(cw+4),43,cw,b->{tab=t;clearAndInit();});}
+        for(int i=0;i<4;i++){final int t=i;button((tab==i?"> ":"")+names[i]+(i==3&&invited()?" *":""),16+i*(cw+4),43,cw,b->{if(t==0)client.setScreen(new CampScreen("home"));else if(t==3)client.setScreen(new CampScreen("friends"));else{tab=t;clearAndInit();}});}
         button("Visuals & sound",width-156,17,140,b->client.setScreen(new PresentationScreen()));
         if(tab==0){
             int lw=(width-52)*2/3,rx=28+lw,rw=width-rx-16;
@@ -76,9 +76,9 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
         if(!stateKey().equals(key))clearAndInit();
         for(var b:leadControls)b.active=CampaignClient.lead&&ready&&!running;
         if(start!=null)start.active=CampaignClient.lead&&ready&&!running;
-        if(roll!=null){var pick=ArmyCards.spec(selectedUnit);roll.active=pick!=null&&!CampaignClient.profile.unlocked.contains(pick.id())&&CampaignClient.profile.gold>=Spec.CAMPAIGN[0].rollCost()&&!running;}
+        if(roll!=null){var pick=ArmyCards.spec(selectedUnit);roll.active=pick!=null&&!CampaignClient.profile.unlocked.contains(pick.id())&&CampaignClient.profile.gold>=Spec.CAMPAIGN[0].rollCost()&&(!running||CampaignClient.waiting);}
         if(tab==1){var line=CampaignClient.profile.lineup(Math.max(0,team));for(int i=0;i<slots.size();i++)slots.get(i).setUnit(line.get(i));}
-        if(running)close();
+        if(running&&!CampaignClient.waiting)close();
     }
     /** Custom lobby text: the lead, the members, and any invitation waiting for this player. */
     void partyText(DrawContext g){

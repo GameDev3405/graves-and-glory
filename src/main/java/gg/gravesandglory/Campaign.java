@@ -16,8 +16,10 @@ public final class Campaign {
     final GravesAndGlory.Battle b;
     final Map<UUID,Profile> profiles=new HashMap<>();
     final Path directory;
+    SocialHub social=new SocialHub();String activeRoom="",preparingRoom="";
+    final Map<UUID,Integer> mapVotes=new HashMap<>();
     int size=2,map=0;boolean practice=false,fill=true;
-    long introUntil;int serial;
+    long introUntil;int serial;String matchId=UUID.randomUUID().toString();
     final Map<UUID,Long> botRespawns=new HashMap<>();
     final Set<UUID> participants=new HashSet<>();
     final Map<UUID,Long> joinedAt=new HashMap<>();
@@ -31,6 +33,7 @@ public final class Campaign {
     /** AI armies that fell back stay there until rallied, so they do not walk back into the fight. */
     final Set<UUID> botRetreating=new HashSet<>();
     final Map<UUID,String> notices=new HashMap<>();
+    final Map<UUID,JsonObject> results=new HashMap<>();
     String headline="";
     /** Ready pads: who stands on which pad (team), the countdown in ticks, and whether this cycle has rolled its quick-match map. */
     final Map<UUID,Integer> onPad=new HashMap<>();final Set<UUID> padRefused=new HashSet<>();
@@ -38,6 +41,7 @@ public final class Campaign {
     /** Custom lobby: one at a time. Its leader sets mode, map and bot fill, and starts the match. Invites expire after 60 seconds. */
     UUID partyLeader;final LinkedHashSet<UUID> party=new LinkedHashSet<>();final Map<UUID,UUID> invites=new HashMap<>();final Map<UUID,Long> inviteUntil=new HashMap<>();
     public static class Profile {
+        Progression.State progression=new Progression.State();
         int gold=0,matches=0,wins=0;String commander="vanguard";boolean tutorialDone;
         Set<String> unlocked=new LinkedHashSet<>();Map<String,Integer> army=new LinkedHashMap<>();
         Map<String,List<String>> deployment=new HashMap<>();
@@ -50,6 +54,7 @@ public final class Campaign {
             if(!valid){line=new ArrayList<>();for(var t:Spec.TROOPS)if(t.faction().equals(faction))for(int i=0;i<army.getOrDefault(t.id(),0)&&line.size()<20;i++)line.add(t.id());while(line.size()<20)line.add("empty");deployment.put(faction,line);}return line;
         }
         void sanitize(){
+            if(progression==null)progression=new Progression.State();progression.sanitize();
             if(unlocked==null)unlocked=new LinkedHashSet<>();if(army==null)army=new LinkedHashMap<>();
             unlocked.removeIf(id->Arrays.stream(Spec.TROOPS).noneMatch(t->t.id().equals(id)));
             for(var t:Spec.TROOPS)if(t.count()>0)unlocked.add(t.id());
@@ -62,16 +67,23 @@ public final class Campaign {
     Campaign(GravesAndGlory.Battle battle){
         b=battle;Path save=b.server.getSavePath(WorldSavePath.ROOT);
         directory=save.resolve(Diagnostics.active()?"gravesandglory-test-profiles":"gravesandglory-profiles");
+        Path groups=save.resolve("gravesandglory-parties.json");
+        if(Files.exists(groups))try{social=JSON.fromJson(Files.readString(groups),SocialHub.class);if(social==null)throw new IllegalStateException("Empty party data");social.restore();}
+        catch(Exception e){throw new IllegalStateException("Party data could not be read; original and .bak are preserved",e);}
         try {
             LegacyDataMigration.profiles(save.resolve(Diagnostics.active()?"bannerbound-test-profiles":"bannerbound-profiles"),directory);
             LegacyDataMigration.copyMissing(save.resolve("bannerbound-layout.json"),layoutFile());
         } catch(java.io.IOException migration) { throw new IllegalStateException("Could not upgrade legacy commander data; original files were kept",migration); }
         try{JsonObject marker=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();if(marker.get("layout").getAsString().equals("campaign-2"))map=marker.get("map").getAsInt();}catch(Exception ignored){}CampaignMaps.select(map);
     }
-    Profile profile(UUID id){return profiles.computeIfAbsent(id,key->{try{Profile p=JSON.fromJson(Files.readString(directory.resolve(key+".json")),Profile.class);p.sanitize();return p;}catch(Exception e){return new Profile();}});}
+    Profile profile(UUID id){return profiles.computeIfAbsent(id,key->{Path file=directory.resolve(key+".json");if(!Files.exists(file))return new Profile();
+        try{Profile p=JSON.fromJson(Files.readString(file),Profile.class);if(p==null)throw new IllegalStateException("Empty profile");p.sanitize();return p;}
+        catch(Exception e){throw new IllegalStateException("Commander profile could not be read. Original and .bak preserved: "+key,e);}});}
     boolean cached(){try{JsonObject j=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();return j.get("layout").getAsString().equals("campaign-2")&&j.get("map").getAsInt()==map;}catch(Exception e){return false;}}
     void built(){try{Files.writeString(b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-layout.json"),"{\"layout\":\"campaign-2\",\"map\":"+map+"}");}catch(Exception e){System.err.println("[Graves and Glory] Map cache marker could not be saved.");}}
-    void save(UUID id){try{Files.createDirectories(directory);Path path=directory.resolve(id+".json"),tmp=directory.resolve(id+".tmp");Files.writeString(tmp,JSON.toJson(profile(id)));Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING);}catch(Exception e){System.err.println("[Graves and Glory] Could not save commander collection: "+e.getClass().getSimpleName());notice(id,"Collection could not be saved; check disk space.");}}
+    boolean save(UUID id){try{Files.createDirectories(directory);Path path=directory.resolve(id+".json"),tmp=directory.resolve(id+".tmp");Files.writeString(tmp,JSON.toJson(profile(id)));if(Files.exists(path))Files.copy(path,path.resolveSibling(path.getFileName()+".bak"),StandardCopyOption.REPLACE_EXISTING);
+            try{Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}catch(AtomicMoveNotSupportedException e){Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING);}return true;
+        }catch(Exception e){System.err.println("[Graves and Glory] Could not save commander collection: "+e.getClass().getSimpleName());notice(id,"Collection could not be saved; check disk space.");return false;}}
     void importProfile(ServerPlayerEntity p,String json){
         if(json.length()>16000)return;
         // The server's saved collection is the only source of truth. The client's copy is a display cache.
@@ -88,10 +100,12 @@ public final class Campaign {
     void joined(ServerPlayerEntity p){
         if(!Files.exists(directory.resolve(p.getUuid()+".json")))importAllowed.add(p.getUuid());profile(p.getUuid());
         // Rejoining the same battle keeps the original start time, so a dropped connection does not cost the reward.
-        if(!(b.running&&participants.contains(p.getUuid())))joinedAt.put(p.getUuid(),b.time);if(b.running)b.toBase(p,b.squads.get(p.getUuid()).team);else toLobby(p);notice(p.getUuid(),"Welcome to Graves and Glory. R opens your war council.");}
-    void toLobby(ServerPlayerEntity p){b.relocate(p,0,66,CampaignMaps.LOBBY_Z,180,10);p.changeGameMode(GameMode.ADVENTURE);p.setHealth(p.getMaxHealth());}
+        if(!(b.running&&participants.contains(p.getUuid())))joinedAt.put(p.getUuid(),b.time);var squad=b.squads.get(p.getUuid());
+        if(b.running&&squad!=null&&squad.seated)b.toBase(p,squad.team);else toLobby(p);
+        notice(p.getUuid(),b.running&&(squad==null||!squad.seated)?"Battle in progress. Wait in camp for the next round. R opens your war council.":"Welcome to Graves and Glory. R opens your war council.");}
+    void toLobby(ServerPlayerEntity p){b.relocate(p,0,66,CampaignMaps.LOBBY_Z+20,180,8);p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
-        b.running=false;introUntil=0;
+        b.running=false;introUntil=0;social.finish();activeRoom="";
         for(var u:b.units)u.mob.discard();b.units.clear();
         b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}onPad.clear();padCountdown=-1;closeParty();
@@ -100,25 +114,36 @@ public final class Campaign {
     /** Leaving frees the pad, any seat in a custom lobby, and invitations to it. */
     void left(UUID id){onPad.remove(id);padRefused.remove(id);leaveParty(id);}
     boolean handle(ServerPlayerEntity p,String cmd){
+        if(cmd.startsWith("social:"))return socialCommand(p,cmd);
+        if(cmd.startsWith("progress:"))return progressCommand(p,cmd);
+        if(cmd.startsWith("vote:")){try{int pick=Integer.parseInt(cmd.substring(5));if(!b.running&&onPad.containsKey(p.getUuid())&&pick>=0&&pick<Spec.MAPS.length){mapVotes.put(p.getUuid(),pick);notice(p.getUuid(),"Vote saved: "+Spec.MAPS[pick].name());}}catch(NumberFormatException ignored){}return true;}
+        if(cmd.equals("camp:practice")){
+            if(b.running){notice(p.getUuid(),"Wait until the current battle finishes.");return true;}
+            if(social.group(p.getUuid()).size()>1||social.room(p.getUuid())!=null){notice(p.getUuid(),"Practice is solo. Use a private room to play with your party.");return true;}
+            closeParty();partyLeader=p.getUuid();party.add(p.getUuid());practice=true;size=1;fill=true;
+            for(var squad:b.squads.values())if(!squad.bot){squad.seated=squad.owner.equals(p.getUuid());if(squad.seated)squad.team=0;}b.startRound();return true;
+        }
         if(cmd.startsWith("party:")){partyCommand(p,cmd);return true;}
         if(cmd.equals("lobby")){if(b.running)notice(p.getUuid(),"Finish the battle before returning to the lobby.");else toLobby(p);return true;}
         if(b.running){
-            boolean locked=cmd.startsWith("roll")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("class:")||cmd.startsWith("map:")||cmd.startsWith("mode:")||cmd.equals("fill");
-            if(locked)notice(p.getUuid(),"Army, class and battlefield choices are locked until this battle ends.");return locked;
+            var current=b.squads.get(p.getUuid());
+            boolean global=cmd.startsWith("map:")||cmd.startsWith("mode:")||cmd.equals("fill")||cmd.equals("start");
+            boolean personal=cmd.equals("roll")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("class:");
+            if(global||personal&&current!=null&&current.seated){notice(p.getUuid(),"Active battle choices are locked until the match ends.");return true;}
         }
         Profile pr=profile(p.getUuid());var squad=b.squads.get(p.getUuid());if(squad==null)return false;
         if(cmd.equals("roll")){
             var locked=Arrays.stream(Spec.TROOPS).filter(t->!pr.unlocked.contains(t.id())).toList();
             if(locked.isEmpty()){notice(p.getUuid(),"Your collection is complete!");return true;}
             if(pr.gold<Spec.CAMPAIGN[0].rollCost()){notice(p.getUuid(),"A unit roll costs 100 gold. Earn gold by completing battles.");return true;}
-            var reward=locked.get(b.world.random.nextInt(locked.size()));pr.gold-=Spec.CAMPAIGN[0].rollCost();pr.unlocked.add(reward.id());save(p.getUuid());
+            var reward=locked.get(b.world.random.nextInt(locked.size()));pr.gold-=Spec.CAMPAIGN[0].rollCost();pr.unlocked.add(reward.id());if(!save(p.getUuid())){pr.unlocked.remove(reward.id());pr.gold+=Spec.CAMPAIGN[0].rollCost();return true;}
             notice(p.getUuid(),"Unlocked permanently: "+reward.name()+"!");p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","unit_reveal")),.7f,1f);return true;
         }
         if(cmd.startsWith("unlock:")){
             var pick=Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(cmd.substring(7))).findFirst().orElse(null);
             if(pick==null)return true;if(pr.unlocked.contains(pick.id())){notice(p.getUuid(),pick.name()+" is already in your collection.");return true;}
             if(pr.gold<Spec.CAMPAIGN[0].rollCost()){notice(p.getUuid(),"Unlocking a troop costs "+Spec.CAMPAIGN[0].rollCost()+" gold. Earn gold by completing battles.");return true;}
-            pr.gold-=Spec.CAMPAIGN[0].rollCost();pr.unlocked.add(pick.id());save(p.getUuid());
+            pr.gold-=Spec.CAMPAIGN[0].rollCost();pr.unlocked.add(pick.id());if(!save(p.getUuid())){pr.unlocked.remove(pick.id());pr.gold+=Spec.CAMPAIGN[0].rollCost();return true;}
             notice(p.getUuid(),"Unlocked permanently: "+pick.name()+"!");p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","unit_reveal")),.7f,1f);return true;
         }
         if(cmd.startsWith("class:")){String id=cmd.substring(6);if(Arrays.stream(Spec.CLASSES).anyMatch(c->c.id().equals(id))){pr.commander=id;squad.commander=id;save(p.getUuid());}return true;}
@@ -167,8 +192,8 @@ public final class Campaign {
             int target=practice?(team==0?1:1):size;
             if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,GravesAndGlory.Battle.base(team));s.bot=true;s.commander=Spec.CLASSES[i%3].id();s.lane=i%3;b.squads.put(id,s);}
         }
-        participants.clear();for(var s:b.squads.values())if(!s.bot&&s.seated){participants.add(s.owner);joinedAt.put(s.owner,b.time);s.commander=profile(s.owner).commander;}
-        serial++;introUntil=b.time+120;headline="";
+        participants.clear();for(var s:b.squads.values())if(!s.bot&&s.seated){participants.add(s.owner);results.remove(s.owner);joinedAt.put(s.owner,b.time);s.commander=profile(s.owner).commander;}
+        serial++;matchId=UUID.randomUUID().toString();introUntil=b.time+120;headline="";
     }
     int amount(GravesAndGlory.Squad s,Spec.TroopsRow t){return s.bot?t.count():unlocked(s,t.id())?profile(s.owner).army.getOrDefault(t.id(),0):0;}
     boolean unlocked(GravesAndGlory.Squad s,String id){return s.bot||practice||profile(s.owner).unlocked.contains(id);}
@@ -177,19 +202,28 @@ public final class Campaign {
     void finish(int winner){
         if(!b.running)return;
         long seconds=(b.time-b.roundStarted)/20;
-        for(UUID id:participants){var s=b.squads.get(id);if(s==null)continue;Profile p=profile(id);
+        for(UUID id:participants){var s=b.squads.get(id);if(s==null||!s.seated)continue;Profile p=profile(id);String before=JSON.toJson(p);
             int earned=Math.min(seconds,(b.time-joinedAt.getOrDefault(id,b.roundStarted))/20)>=Spec.CAMPAIGN[0].minimumRewardSeconds()?(practice?Spec.CAMPAIGN[0].practiceGold():Spec.CAMPAIGN[0].completionGold()+(s.team==winner?Spec.CAMPAIGN[0].victoryGold():0)):0;
-            p.gold+=earned;p.matches++;if(s.team==winner)p.wins++;save(id);notice(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":""));
+            int priorXp=p.progression.xp;Progression.reset(p.progression,Progression.today());Progression.match(p.progression,matchId,s.team==winner,earned>0);p.gold+=earned;p.matches++;if(s.team==winner)p.wins++;
+            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);results.put(id,report);
+            if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}notice(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":""));
         }
         b.message=(winner<0?"Draw":Spec.FACTIONS[winner].name()+" wins")+"! Back to the war council.";headline=b.message;
-        for(var p:b.server.getPlayerManager().getPlayerList())p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","victory")),.8f,1);
+        for(var p:b.server.getPlayerManager().getPlayerList())if(participants.contains(p.getUuid()))p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","victory")),.8f,1);
         returnLobby();
     }
     void tick(){
+        if(!preparingRoom.isEmpty()&&b.ready&&!b.running){
+            var pending=social.rooms.get(preparingRoom);String code=preparingRoom;preparingRoom="";
+            if(pending!=null){var host=b.server.getPlayerManager().getPlayer(pending.leader);
+                if(host!=null&&pending.map==map&&social.startFailure(pending.leader,false).isEmpty())socialCommand(host,"social:start");
+                else for(UUID member:pending.members)notice(member,"Map prepared. Match cancelled because readiness or room membership changed.");}
+        }
+        if(b.time%20==0)social.presence(new HashSet<>(b.server.getPlayerManager().getPlayerList().stream().map(ServerPlayerEntity::getUuid).toList()),System.currentTimeMillis());
         if(!b.running){for(var p:b.server.getPlayerManager().getPlayerList())if(Math.abs(p.getX())>40||Math.abs(p.getZ()-CampaignMaps.LOBBY_Z)>30||p.getY()<63)toLobby(p);if(b.time%20==0)expireInvites();if(b.time%10==0)padTick();return;}
         // Unseated lobby players wait in the hall while a match runs.
-        if(b.time%20==0)for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(s==null||!s.seated)toLobby(p);}
-        if(b.time<introUntil){for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(s!=null&&p.squaredDistanceTo(GravesAndGlory.Battle.base(s.team))>2)b.toBase(p,s.team);}return;}
+        if(b.time%20==0)for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if((s==null||!s.seated)&&(Math.abs(p.getX())>40||Math.abs(p.getZ()-CampaignMaps.LOBBY_Z)>30||p.getY()<63))toLobby(p);}
+        if(b.time<introUntil){for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(s!=null&&s.seated&&p.squaredDistanceTo(GravesAndGlory.Battle.base(s.team))>2)b.toBase(p,s.team);}return;}
         if(b.time%100!=0)return;
         for(var s:b.squads.values())if(s.bot){
             long living=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).count();
@@ -220,7 +254,7 @@ public final class Campaign {
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
     void switchMap(int index){map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
     /** The lesson a commander is on during their first battle, or -1 once they have finished it or played before. */
-    int tutorialStep(UUID id){Profile pr=profile(id);return !b.running||pr.tutorialDone||pr.matches>0?-1:tutorial.getOrDefault(id,0);}
+    int tutorialStep(UUID id){Profile pr=profile(id);return !b.running||!participants.contains(id)||pr.tutorialDone||pr.matches>0?-1:tutorial.getOrDefault(id,0);}
     /** Advances the first-battle lesson when the commander does what it asks; the last one pays for the first troop unlock. */
     void tutorialDid(ServerPlayerEntity p,int step){
         UUID id=p.getUuid();if(tutorialStep(id)!=step)return;
@@ -236,47 +270,34 @@ public final class Campaign {
     }
     /** Quick match: humans on pads pick a side and ready up. Ten seconds after two are ready, the match starts. Any step-off cancels. */
     void padTick(){
-        if(partyLeader!=null){
-            for(var p:b.server.getPlayerManager().getPlayerList())for(int team=0;team<2;team++)if(CampaignMaps.onPad(team,p.getX(),p.getY(),p.getZ()))notice(p.getUuid(),"A custom lobby is open. Pads reopen when it closes.");
-            return;
-        }
-        Map<UUID,Integer> standing=new HashMap<>();
-        for(var p:b.server.getPlayerManager().getPlayerList())for(int team=0;team<2;team++)if(CampaignMaps.onPad(team,p.getX(),p.getY(),p.getZ()))standing.put(p.getUuid(),team);
-        boolean stepped=false;
-        for(UUID id:new ArrayList<>(onPad.keySet()))if(!Objects.equals(standing.get(id),onPad.get(id))){onPad.remove(id);stepped=true;}
-        padRefused.removeIf(id->!standing.containsKey(id));
-        if(stepped){
-            if(padCountdown>=0)for(UUID id:onPad.keySet())notice(id,"Countdown cancelled.");
-            padCountdown=-1;if(onPad.size()<2)padMapRolled=false;return;
-        }
+        Map<UUID,Integer> standing=new LinkedHashMap<>();
+        for(var p:b.server.getPlayerManager().getPlayerList())if(social.room(p.getUuid())==null)
+            for(int team=0;team<2;team++)if(CampaignMaps.onPad(team,p.getX(),p.getY(),p.getZ()))standing.put(p.getUuid(),team);
+        Map<UUID,Integer> accepted=new LinkedHashMap<>();Set<UUID> seen=new HashSet<>();int[] count={0,0};
         for(var entry:standing.entrySet()){
-            UUID id=entry.getKey();int team=entry.getValue();var s=b.squads.get(id);
-            if(s==null||onPad.containsKey(id)||padRefused.contains(id))continue;
-            if(onPad.values().stream().filter(t->t==team).count()>=4){notice(id,"That side is full.");padRefused.add(id);continue;}
-            if(profile(id).count(team)==0){notice(id,"Every commander needs at least one troop selected.");padRefused.add(id);continue;}
-            onPad.put(id,team);s.team=team;notice(id,"Ready for "+Spec.FACTIONS[team].name()+". Step off to leave.");
+            UUID id=entry.getKey();if(!seen.add(id))continue;Set<UUID> group=social.group(id);seen.addAll(group);int team=entry.getValue();
+            if(group.stream().anyMatch(m->!Objects.equals(standing.get(m),team))){notice(id,"Bring your whole party onto the same pad, or use a private room.");continue;}
+            if(count[team]+group.size()>4){notice(id,"Your whole party will not fit on this side.");continue;}
+            if(group.stream().anyMatch(m->profile(m).count(team)==0)){notice(id,"Every party member needs a troop selected for this faction.");continue;}
+            for(UUID m:group){accepted.put(m,team);var squad=b.squads.get(m);if(squad!=null)squad.team=team;}count[team]+=group.size();
         }
-        // One commander alone on the server may start a 3v3 against bots; with others online, two are still needed.
-        boolean solo=onPad.size()==1&&b.server.getPlayerManager().getPlayerList().size()==1;
-        if(onPad.size()<2&&!solo){padCountdown=-1;padMapRolled=false;return;}
-        if(padCountdown<0){
-            if(!padMapRolled){
-                padMapRolled=true;int roll=b.world.random.nextInt(Spec.MAPS.length);
-                if(roll!=map){switchMap(roll);for(UUID id:onPad.keySet())notice(id,"Quick match map: "+Spec.MAPS[map].name()+".");return;}
-            }
-            padCountdown=200;for(UUID id:onPad.keySet())notice(id,"Match starts in 10 seconds: "+padSize()+"v"+padSize()+", bots fill empty seats.");
-            return;
-        }
-        padCountdown-=10;
-        if(padCountdown<=0)startQuickMatch();
+        boolean changed=!onPad.equals(accepted);onPad.clear();onPad.putAll(accepted);mapVotes.keySet().retainAll(onPad.keySet());
+        if(changed){padCountdown=-1;for(UUID id:onPad.keySet())notice(id,"Ready group changed. Countdown reset; step off to cancel.");}
+        if(onPad.isEmpty()){padCountdown=-1;return;}
+        if(padCountdown<0){padCountdown=200;for(UUID id:onPad.keySet())notice(id,"Starting in 10 seconds. Open camp guide to vote for a map.");return;}
+        padCountdown-=10;if(padCountdown<=0)startQuickMatch();
     }
     void startQuickMatch(){
-        padCountdown=-1;padMapRolled=false;practice=false;size=padSize();fill=true;
-        for(UUID id:onPad.keySet()){var s=b.squads.get(id);if(s==null)continue;s.team=onPad.get(id);s.seated=true;notice(id,"Match starting.");}
-        b.startRound();
+        int selected=map,best=0;for(int i=0;i<Spec.MAPS.length;i++){final int index=i;int votes=(int)mapVotes.values().stream().filter(v->v==index).count();if(votes>best){best=votes;selected=i;}}
+        if(selected!=map){switchMap(selected);padCountdown=20;for(UUID id:onPad.keySet())notice(id,"Preparing voted map: "+Spec.MAPS[selected].name()+".");return;}
+        padCountdown=-1;padMapRolled=false;practice=false;size=padSize();fill=true;activeRoom="";
+        for(var squad:b.squads.values())if(!squad.bot)squad.seated=onPad.containsKey(squad.owner);
+        for(UUID id:onPad.keySet()){var squad=b.squads.get(id);if(squad!=null)squad.team=onPad.get(id);notice(id,"Match starting with your whole group.");}
+        mapVotes.clear();b.startRound();
     }
+
     boolean leader(ServerPlayerEntity p){return p.getUuid().equals(partyLeader);}
-    String name(UUID id){var p=b.server.getPlayerManager().getPlayer(id);return p==null?"Commander":p.getGameProfile().getName();}
+    String name(UUID id){var p=b.server.getPlayerManager().getPlayer(id);return p==null?social.names.getOrDefault(id,"Commander-"+id.toString().substring(0,6)):p.getGameProfile().getName();}
     void closeParty(){partyLeader=null;party.clear();invites.clear();inviteUntil.clear();}
     void expireInvites(){for(var e:new ArrayList<>(inviteUntil.entrySet()))if(e.getValue()<=b.time){invites.remove(e.getKey());inviteUntil.remove(e.getKey());}}
     void leaveParty(UUID id){
@@ -319,14 +340,67 @@ public final class Campaign {
         }
     }
     String snapshot(ServerPlayerEntity p){
-        JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",JSON.toJsonTree(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",Math.max(0,introUntil-b.time));j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("headline",headline);j.addProperty("tutorial",tutorialStep(p.getUuid()));JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
+        JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",JSON.toJsonTree(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("waiting",b.running&&(!b.squads.containsKey(p.getUuid())||!b.squads.get(p.getUuid()).seated));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",b.squads.containsKey(p.getUuid())&&b.squads.get(p.getUuid()).seated?Math.max(0,introUntil-b.time):0);j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("headline",headline);j.addProperty("tutorial",tutorialStep(p.getUuid()));JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
         JsonObject partyJson=new JsonObject();boolean member=party.contains(p.getUuid());Long until=inviteUntil.get(p.getUuid());UUID inviter=invites.get(p.getUuid());
         partyJson.addProperty("open",partyLeader!=null);partyJson.addProperty("member",member);partyJson.addProperty("lead",leader(p));partyJson.addProperty("capacity",size*2);
         partyJson.addProperty("leader",partyLeader==null?"":name(partyLeader));
         JsonArray members=new JsonArray();for(UUID id:party)members.add(name(id));partyJson.add("members",members);
         partyJson.addProperty("inviteSeconds",until==null?0:(int)Math.max(0,(until-b.time+19)/20));partyJson.addProperty("inviter",inviter==null?"":name(inviter));
         JsonArray online=new JsonArray();if(partyLeader!=null)for(var other:b.server.getPlayerManager().getPlayerList())if(!party.contains(other.getUuid())&&b.squads.containsKey(other.getUuid()))online.add(other.getGameProfile().getName());
-        partyJson.add("online",online);j.add("party",partyJson);
-        JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",s.team);row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);return JSON.toJson(j);
+        partyJson.add("online",online);j.add("party",partyJson);j.add("result",results.getOrDefault(p.getUuid(),new JsonObject()));
+        JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",s.team);row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));return JSON.toJson(j);
     }
+
+    boolean saveSocial(){
+        Path file=b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-parties.json"),tmp=file.resolveSibling(file.getFileName()+".tmp");
+        try{Files.writeString(tmp,JSON.toJson(social));if(Files.exists(file))Files.copy(file,file.resolveSibling(file.getFileName()+".bak"),StandardCopyOption.REPLACE_EXISTING);
+            try{Files.move(tmp,file,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}catch(AtomicMoveNotSupportedException e){Files.move(tmp,file,StandardCopyOption.REPLACE_EXISTING);}return true;
+        }catch(java.io.IOException e){System.err.println("[Graves and Glory] Party save failed: "+e.getClass().getSimpleName());return false;}
+    }
+    boolean socialCommand(ServerPlayerEntity p,String cmd){
+        UUID id=p.getUuid();social.presence(new HashSet<>(b.server.getPlayerManager().getPlayerList().stream().map(ServerPlayerEntity::getUuid).toList()),System.currentTimeMillis());
+        String before=JSON.toJson(social);for(var online:b.server.getPlayerManager().getPlayerList())social.names.put(online.getUuid(),online.getGameProfile().getName());String result;String[] parts=cmd.split(":",3);String action=parts.length>1?parts[1]:"",arg=parts.length>2?parts[2]:"";
+        try{result=switch(action){
+            case "create"->social.createParty(id);case "accept"->social.accept(id,System.currentTimeMillis());case "decline"->social.decline(id);
+            case "leave"->social.leaveParty(id);case "disband"->social.disband(id);case "claim"->social.claim(id,System.currentTimeMillis());
+            case "invite","kick","transfer"->{var target=b.server.getPlayerManager().getPlayer(arg);UUID targetId=target==null?social.group(id).stream().filter(m->name(m).equals(arg)).findFirst().orElse(null):target.getUuid();
+                if(targetId==null)yield "Commander not found.";
+                yield action.equals("invite")?social.invite(id,targetId,System.currentTimeMillis()):action.equals("kick")?social.kick(id,targetId):social.transfer(id,targetId);}
+            case "room"->social.createRoom(id);case "join"->social.joinRoom(id,arg);case "exit"->social.leaveRoom(id);case "ready"->social.ready(id);
+            case "team"->social.team(id,Integer.parseInt(arg));
+            case "size","map","fill"->{var room=social.room(id);if(room==null)yield "Create or join a room first.";
+                yield social.configure(id,action.equals("size")?Integer.parseInt(arg):room.size,action.equals("map")?Integer.parseInt(arg):room.map,action.equals("fill")?!room.fill:room.fill,Spec.MAPS.length);}
+            case "start"->{if(!preparingRoom.isEmpty()&&!preparingRoom.equals(social.room(id)==null?"":social.room(id).code))yield "Another room is preparing a battlefield. Your room is saved.";String failure=social.startFailure(id,b.running);if(!failure.isEmpty())yield failure;
+                var room=social.room(id);if(!b.ready)yield "Preparing the battlefield. Please wait.";
+                if(room.map!=map){preparingRoom=room.code;switchMap(room.map);yield "Preparing your chosen map. Your ready group will enter automatically; unready to cancel.";}
+                boolean empty=room.members.stream().anyMatch(m->profile(m).count(room.teams.get(m))==0);if(empty)yield "Every commander needs at least one troop in their selected faction.";
+                size=room.size;fill=room.fill;practice=false;activeRoom=room.code;
+                for(var squad:b.squads.values())if(!squad.bot){squad.seated=room.members.contains(squad.owner);if(squad.seated)squad.team=room.teams.get(squad.owner);}
+                social.begin(room);b.startRound();yield "Your room is entering battle together.";}
+            default->"Unknown social action.";
+        };}catch(IllegalArgumentException e){result="Invalid selection.";}
+        if(!before.equals(JSON.toJson(social))&&!saveSocial()){social.parties=JSON.fromJson(before,SocialHub.class).parties;result="Party change could not be saved. It was not applied; check disk space.";}
+        notice(id,result);return true;
+    }
+    JsonObject socialSnapshot(UUID id){
+        JsonObject j=new JsonObject();var party=social.party(id);var room=social.room(id);j.addProperty("party",party!=null);j.addProperty("partyLead",party!=null&&party.leader.equals(id));j.addProperty("leader",party==null?"":name(party.leader));
+        JsonArray members=new JsonArray();if(party!=null)for(UUID m:party.members){JsonObject row=new JsonObject();row.addProperty("name",name(m));row.addProperty("online",social.online.contains(m));row.addProperty("me",m.equals(id));members.add(row);}j.add("members",members);
+        var invite=social.invites.get(id);j.addProperty("inviter",invite==null?"":name(invite.sender()));j.addProperty("inviteSeconds",invite==null?0:Math.max(0,(invite.expires()-System.currentTimeMillis()+999)/1000));
+        JsonArray available=new JsonArray();for(var p:b.server.getPlayerManager().getPlayerList())if(!p.getUuid().equals(id)&&social.party(p.getUuid())==null)available.add(p.getGameProfile().getName());j.add("available",available);
+        j.addProperty("room",room==null?"":room.code);j.addProperty("host",room!=null&&room.leader.equals(id));j.addProperty("playing",room!=null&&room.playing);j.addProperty("preparing",room!=null&&room.code.equals(preparingRoom));j.addProperty("size",room==null?2:room.size);j.addProperty("map",room==null?0:room.map);j.addProperty("fill",room==null||room.fill);
+        JsonArray commanders=new JsonArray();if(room!=null)for(UUID m:room.members){JsonObject row=new JsonObject();row.addProperty("name",name(m));row.addProperty("team",room.teams.get(m));row.addProperty("ready",room.ready.contains(m));row.addProperty("online",social.online.contains(m));commanders.add(row);}j.add("commanders",commanders);return j;
+    }
+
+    boolean progressCommand(ServerPlayerEntity player,String cmd){
+        UUID id=player.getUuid();Profile p=profile(id);String before=JSON.toJson(p);Progression.reset(p.progression,Progression.today());
+        String action=cmd.substring(9),result;
+        if(action.equals("reroll"))result=Progression.reroll(p.progression);
+        else if(action.startsWith("title:")){String title=action.substring(6);if(p.progression.titles.contains(title)){p.progression.title=title;result="Title equipped: "+title;}else result="That title is locked.";}
+        else {var reward=Progression.claim(p.progression,action);p.gold=Math.min(1_000_000,p.gold+reward.gold());result=reward.message();}
+        if(!save(id)){profiles.put(id,JSON.fromJson(before,Profile.class));result="Reward was not applied because saving failed. Try again after checking disk space.";}
+        notice(id,result);return true;
+    }
+    JsonObject progressSnapshot(UUID id){Profile p=profile(id);Progression.reset(p.progression,Progression.today());JsonObject j=JSON.toJsonTree(p.progression).getAsJsonObject();j.addProperty("tier",Progression.tier(p.progression));j.addProperty("chapter",Progression.chapter(p.progression,p.unlocked.size(),Spec.TROOPS.length));return j;}
+    void progressEvent(UUID id,boolean capture){if(!participants.contains(id))return;var squad=b.squads.get(id);if(squad==null||!squad.seated)return;
+        var state=profile(id).progression;Progression.reset(state,Progression.today());if(capture)state.dailyCaptures++;else state.dailyOrders++;}
 }

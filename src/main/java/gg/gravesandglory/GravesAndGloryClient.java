@@ -67,6 +67,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // Optional launcher integration. Ordinary installs need no runtime directory.
         launcherContext=Files.isRegularFile(runtime.resolve("melty.properties"));
         if(launcherContext)try{Files.writeString(runtime.resolve("melty.log"),"");Properties props=new Properties();try(var in=Files.newInputStream(runtime.resolve("melty.properties"))){props.load(in);}join=props.getProperty("join","").trim();}catch(Exception e){System.err.println("[Graves and Glory] Optional launcher invitation could not be read: "+e.getMessage());}
+        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.CAMP,(client,handler,buf,responder)->{String page=buf.readString(32);client.execute(()->CampScreen.open(page));});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.OPEN_BARRACKS,(client,handler,buf,responder)->client.execute(()->client.setScreen(running?new BarracksScreen():new LobbyScreen())));
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.PARTY,(client,handler,buf,responder)->client.execute(()->client.setScreen(new LobbyScreen(3))));
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.STATE,(client,handler,buf,responder)->{
@@ -91,13 +92,13 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             }
             if(client.player!=null){
                 worldTicks++;if(ready&&worldTicks%20==0)client.getToastManager().clear();prepareMap(client);CampaignClient.tick(client);Diagnostics.tick(client);
-                while(menu.wasPressed()){CampaignClient.end(client);CommandMode.cancel();client.setScreen(running?new CommandScreen():new LobbyScreen());}
+                while(menu.wasPressed()){CampaignClient.end(client);CommandMode.cancel();client.setScreen(battleActive()?new CommandScreen():new CampScreen("home"));}
                 while(attack.wasPressed())CommandMode.begin("attack");while(follow.wasPressed())CommandMode.issue("all","follow",CommandMode.formation,client.player.getPos(),client.player.getYaw(),-1);
                 while(rotateLeft.wasPressed()){CommandMode.facingSet=true;CommandMode.facing-=Spec.COMMANDINTERFACE[0].facingStep();}
                 while(rotateRight.wasPressed()){CommandMode.facingSet=true;CommandMode.facing+=Spec.COMMANDINTERFACE[0].facingStep();}
                 CommandMode.tick(client);
                 while(confirmOrder.wasPressed())if(CommandMode.active())CommandMode.confirm();
-                while(cancelOrder.wasPressed())CommandMode.cancel();while(mapKey.wasPressed())client.setScreen(new MapScreen(null));
+                while(cancelOrder.wasPressed())CommandMode.cancel();while(mapKey.wasPressed())if(battleActive())client.setScreen(new MapScreen(null));
                 while(cycle.wasPressed()){int i=0;for(int k=0;k<Spec.FORMATIONS.length;k++)if(Spec.FORMATIONS[k].id().equals(CommandMode.formation))i=k;CommandMode.changeFormation(Spec.FORMATIONS[(i+1)%Spec.FORMATIONS.length].id());}
                 if(ready&&!opened&&shareCamp&&client.getServer()!=null){opened=true;try{int port=0;String requested=System.getenv("GRAVESANDGLORY_HOST_PORT");if(requested==null)requested=System.getenv("BANNERBOUND_HOST_PORT");if(requested!=null){port=Integer.parseInt(requested);if(port<1024||port>65535)throw new IllegalArgumentException("Invalid host port");}if(port==0)try(ServerSocket socket=new ServerSocket(0)){port=socket.getLocalPort();}if(client.getServer().openToLan(GameMode.ADVENTURE,false,port)){String address=InetAddress.getLocalHost().getHostAddress()+":"+port;say("Melty join address: "+address);client.player.sendMessage(Text.literal("Camp open on your local network: "+address),false);}else client.player.sendMessage(Text.literal("Could not open camp to the local network."),false);}catch(Exception e){client.player.sendMessage(Text.literal("Could not share camp: "+e.getMessage()),false);}}
             }
@@ -155,13 +156,25 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         g.drawCenteredTextWithShadow(font,"FIRST BATTLE / LESSON "+(step+1)+" OF 4",w/2,65,GOLD);
         g.drawCenteredTextWithShadow(font,font.trimToWidth(text,350),w/2,78,WHITE);
     }
+    public static boolean inCamp(){return ready&&!battleActive();}
+    public static boolean battleActive(){return ready&&running&&!CampaignClient.waiting;}
+    static void campHud(DrawContext g,int w,int h){
+        var c=MinecraftClient.getInstance();if(c.currentScreen!=null)return;
+        DarkUi.frame(g,12,12,182,40);g.drawText(c.textRenderer,"BANNER CAMP",22,21,DarkUi.GOLD,false);
+        g.drawText(c.textRenderer,CampaignClient.profile.gold+" gold / "+CampaignClient.profile.progression.title,22,36,DarkUi.PAPER,false);
+        String hint=menu.getBoundKeyLocalizedText().getString()+" / Camp guide    Right-click a station to interact";
+        g.drawCenteredTextWithShadow(c.textRenderer,hint,w/2,h-45,DarkUi.PAPER);
+        if(CampaignClient.padCountdown>0)g.drawCenteredTextWithShadow(c.textRenderer,"War gates: "+CampaignClient.padCountdown+"s / Step off to cancel",w/2,24,DarkUi.GOLD);
+        else if(CampaignClient.waiting)g.drawCenteredTextWithShadow(c.textRenderer,"A battle is underway / Your camp remains open",w/2,24,DarkUi.MUTED);
+    }
     static void renderHud(DrawContext g,float delta){
         var c=MinecraftClient.getInstance();if(c.player==null||c.currentScreen instanceof ArmyScreen||Diagnostics.active()&&Diagnostics.hideHud())return;
         float scale=Math.min(1,c.getWindow().getScaledWidth()/640f);g.getMatrices().push();g.getMatrices().scale(scale,scale,1);
         int w=(int)(c.getWindow().getScaledWidth()/scale),h=(int)(c.getWindow().getScaledHeight()/scale);var font=c.textRenderer;
+        if(!battleActive()){campHud(g,w,h);g.getMatrices().pop();return;}
         if(CampaignClient.cinematic()){CampaignClient.hud(g,w,h);g.getMatrices().pop();return;}
         panel(g,w/2-175,7,350,37);g.drawCenteredTextWithShadow(font,"DAWN "+dawn+" / "+GravesAndGlory.R.winScore()+"  | "+String.format("%d:%02d",CommandMode.seconds/60,CommandMode.seconds%60)+" |  DUSK "+dusk+" / "+GravesAndGlory.R.winScore(),w/2,14,GOLD);
-        int shown=Math.min(Spec.POINTS.length,owners.length),step=330/shown;for(int i=0;i<shown;i++)g.drawTextWithShadow(font,font.trimToWidth(Spec.POINTS[i].id()+": "+(contested[i]?"Contested":progress[i]>0?"Capturing":owners[i]<0?"Neutral":owners[i]==0?"Dawn":"Dusk"),step-4),w/2-165+i*step,29,factionColor(owners[i]));
+        int shown=Math.min(Spec.POINTS.length,owners.length),step=330/Math.max(1,shown);for(int i=0;i<shown;i++)g.drawTextWithShadow(font,font.trimToWidth(Spec.POINTS[i].id()+": "+(contested[i]?"Contested":progress[i]>0?"Capturing":owners[i]<0?"Neutral":owners[i]==0?"Dawn":"Dusk"),step-4),w/2-165+i*step,29,factionColor(owners[i]));
         CommandMode.hud(g,w,h);Presentation.hud(g,w,h);
         if(!running)g.drawCenteredTextWithShadow(font,menu.getBoundKeyLocalizedText().getString()+": war council / collection / maps",w/2,48,WHITE);
         // Key hints sit under the score panel, clear of the hotbar; hidden while an order is being aimed.
@@ -185,7 +198,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     abstract static class ArmyScreen extends Screen {
         ArmyScreen(String title){super(Text.literal(title));}
         @Override public boolean shouldPause(){return false;}
-        @Override public boolean keyPressed(int key,int scan,int mods){if(menu.matchesKey(key,scan)||key==GLFW.GLFW_KEY_ESCAPE){close();return true;}if(mapKey.matchesKey(key,scan)){client.setScreen(new MapScreen(this));return true;}return super.keyPressed(key,scan,mods);}
+        @Override public boolean keyPressed(int key,int scan,int mods){if(menu.matchesKey(key,scan)||key==GLFW.GLFW_KEY_ESCAPE){close();return true;}if(mapKey.matchesKey(key,scan)&&battleActive()){client.setScreen(new MapScreen(this));return true;}return super.keyPressed(key,scan,mods);}
         ButtonWidget primary(String label,int x,int y,int w,java.util.function.Consumer<ButtonWidget> action){var b=new FantasyButton(x,y,w,26,Text.literal(label),action::accept);b.primary=true;return addDrawableChild(b);}
         ButtonWidget button(String label,int x,int y,int w,java.util.function.Consumer<ButtonWidget> action){return addDrawableChild(new FantasyButton(x,y,w,20,Text.literal(label),action::accept));}
     }

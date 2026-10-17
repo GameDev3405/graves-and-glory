@@ -69,8 +69,10 @@ WORLD AND NETWORK
 Keep level-name=Graves and Glory. Activation currently checks the saved world's
 internal level name (Graves and Glory or legacy Bannerbound), not just its folder.
 A random existing world is not automatically converted into this game.
-Default configuration binds localhost, uses online-mode=true, allows eight
-players and disables RCON. It is not an Internet/home deployment configuration.
+Default configuration binds localhost, uses online-mode=true, allows sixteen
+connections (at most eight battle commanders, with room for camp visitors) and
+disables RCON. Existing servers must update max-players themselves to allow
+visitors during a full 4v4. This is a connection limit, not a measured capacity. It is not an Internet/home deployment configuration.
 Starlink public reachability still needs an outbound relay/public-edge assessment.
 No router, firewall, scheduled startup or public endpoint is configured here.
 

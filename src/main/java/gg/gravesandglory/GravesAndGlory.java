@@ -30,6 +30,7 @@ import net.minecraft.entity.ai.pathing.PathNodeType;
 import java.util.*;
 
 public final class GravesAndGlory implements ModInitializer {
+    public static final Identifier CAMP = new Identifier("gravesandglory", "camp_station");
     public static final Identifier ORDER = new Identifier("gravesandglory", "order_v4");
     public static final Identifier PROFILE = new Identifier("gravesandglory", "profile_v1");
     public static final Identifier IMPACT = new Identifier("gravesandglory", "impact_v1");
@@ -52,11 +53,13 @@ public final class GravesAndGlory implements ModInitializer {
         // Old saves decode our vanilla entity types as ordinary hostile mobs.
         // Catch chunks loaded after SERVER_STARTED, not only spawn-area entities.
         ServerEntityEvents.ENTITY_LOAD.register((entity,world)->{
+            if(battle!=null&&!CampWorld.generation.isEmpty()&&entity.getCommandTags().contains(CampWorld.TAG)&&!entity.getCommandTags().contains("camp-generation:"+CampWorld.generation))entity.discard();
+            if(entity.getCommandTags().contains("gravesandglory-lobby")||entity.getCommandTags().contains("bannerbound-lobby"))entity.discard();
             if(battle!=null&&world==battle.world&&(entity.getCommandTags().contains("gravesandglory")||entity.getCommandTags().contains("bannerbound"))&&!(entity instanceof ArmyHusk)&&!(entity instanceof ArmySkeleton)&&!(entity instanceof ArmyWither))entity.discard();
         });
         ServerTickEvents.END_SERVER_TICK.register(server -> { if(battle!=null) battle.tick(); });
         ServerPlayNetworking.registerGlobalReceiver(ORDER, (server, player, handler, buf, responder) -> {
-            String command=buf.readString(32);
+            String command=buf.readString(128);
             server.execute(() -> { if(battle!=null) battle.command(player,command); });
         });
         ServerPlayNetworking.registerGlobalReceiver(PROFILE,(server,p,handler,buf,responder)->{String json=buf.readString(16000);server.execute(()->{if(battle!=null)battle.campaign.importProfile(p,json);});});
@@ -82,6 +85,17 @@ public final class GravesAndGlory implements ModInitializer {
                 if(winner!=null&&winner.team!=victim.squad.team)winner.gold+=Spec.ECONOMY[0].killGold();
             }
         });
+        net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register((player,world,hand,entity,hit)->{
+            String station=entity.getCommandTags().stream().filter(t->t.startsWith("camp:")).map(t->t.substring(5)).findFirst().orElse("");
+            if(station.isEmpty())return ActionResult.PASS;
+            if(!world.isClient&&player instanceof ServerPlayerEntity p&&battle!=null&&p.squaredDistanceTo(entity)<36)openCamp(p,station);
+            return ActionResult.SUCCESS;
+        });
+        UseBlockCallback.EVENT.register((player,world,hand,hit)->{
+            String station=CampWorld.station(hit.getBlockPos());if(station.isEmpty()||battle==null)return ActionResult.PASS;
+            if(!world.isClient&&player instanceof ServerPlayerEntity p&&p.squaredDistanceTo(Vec3d.ofCenter(hit.getBlockPos()))<36)openCamp(p,station);
+            return ActionResult.SUCCESS;
+        });
         UseBlockCallback.EVENT.register((player,world,hand,hit)->{
             if(!world.getBlockState(hit.getBlockPos()).isOf(net.minecraft.block.Blocks.LECTERN))return ActionResult.PASS;
             if(world.isClient)return ActionResult.SUCCESS;
@@ -95,6 +109,10 @@ public final class GravesAndGlory implements ModInitializer {
             }
             return ActionResult.PASS;
         });
+    }
+    static void openCamp(ServerPlayerEntity p,String station){
+        if(battle==null)return;var s=battle.squads.get(p.getUuid());if(battle.running&&s!=null&&s.seated)return;
+        if(ServerPlayNetworking.canSend(p,CAMP)){var packet=PacketByteBufs.create();packet.writeString(station);ServerPlayNetworking.send(p,CAMP,packet);}
     }
     public static final class Squad {
         UUID owner;
@@ -261,21 +279,27 @@ public final class GravesAndGlory implements ModInitializer {
             if(time%10==0)sendState();
         }
         void join(ServerPlayerEntity p){
-            if(running&&squads.values().stream().filter(s->s.seated&&!s.bot).count()>=(campaign.practice?1:campaign.size*2)){
-                p.networkHandler.disconnect(Text.literal("This battle is full or already underway. Join the next round from the lobby."));return;
+            var decision=AdmissionPolicy.decide(running,campaign.practice,campaign.size,p.getUuid(),
+                squads.values().stream().map(s->new AdmissionPolicy.Seat(s.owner,s.team,s.bot,s.seated)).toList(),campaign.vacated);
+            if(running&&!campaign.activeRoom.isEmpty()){
+                var room=campaign.social.rooms.get(campaign.activeRoom);
+                if(room==null||!room.members.contains(p.getUuid()))decision=new AdmissionPolicy.Decision(decision.team(),null,false);
             }
-            int a=(int)squads.values().stream().filter(s->s.team==0).count();
-            int b=(int)squads.values().stream().filter(s->s.team==1).count();
-            int team=a<=b?0:1;
-            // A returning commander gets their own army back; others take a bot seat, preferring one nobody is coming back for.
-            Squad replacement=null;
-            if(running){UUID held=campaign.vacated.remove(p.getUuid());Squad own=held==null?null:squads.get(held);
-                replacement=own!=null&&own.bot?own:squads.values().stream().filter(s->s.bot).min(Comparator.comparing(s->campaign.vacated.containsValue(s.owner))).orElse(null);}
-            Squad s;if(replacement!=null){s=replacement;squads.remove(s.owner);campaign.botRespawns.remove(s.owner);campaign.botRetreating.remove(s.owner);campaign.vacated.values().remove(s.owner);s.owner=p.getUuid();s.bot=false;s.seated=true;team=s.team;}
-            else{s=new Squad(p.getUuid(),team,base(team));s.seated=running;if(running)reinforce(s);}
+            int team=decision.team();
+            Squad replacement=decision.replacement()==null?null:squads.get(decision.replacement());
+            Squad s;
+            if(replacement!=null){
+                s=replacement;squads.remove(s.owner);campaign.botRespawns.remove(s.owner);campaign.botRetreating.remove(s.owner);
+                campaign.vacated.values().remove(s.owner);s.owner=p.getUuid();s.bot=false;s.seated=true;
+            }else{
+                s=new Squad(p.getUuid(),team,base(team));s.seated=decision.seated();
+                if(s.seated)reinforce(s);
+            }
             squads.put(s.owner,s);welcomed.add(s.owner);
-            p.changeGameMode(GameMode.ADVENTURE);toBase(p,team);equipPlayer(p);
-            campaign.joined(p);if(running)campaign.participants.add(s.owner);
+            p.changeGameMode(GameMode.ADVENTURE);equipPlayer(p);
+            campaign.joined(p);
+            if(running&&s.seated)campaign.participants.add(s.owner);
+            else if(running)campaign.participants.remove(s.owner);
 
         }
         void clearOldUnits(){List<Entity> stale=new ArrayList<>();for(Entity e:world.iterateEntities())if(e.getCommandTags().contains("gravesandglory")||e.getCommandTags().contains("bannerbound"))stale.add(e);for(Entity e:stale)e.discard();}
@@ -300,8 +324,11 @@ public final class GravesAndGlory implements ModInitializer {
         }
         static ItemStack unbreakable(Item item){ItemStack s=new ItemStack(item);s.getOrCreateNbt().putBoolean("Unbreakable",true);return s;}
         public void command(ServerPlayerEntity p,String cmd){
-            Squad s=squads.get(p.getUuid());if(s==null||!ready||running&&!s.seated||respawns.containsKey(s.owner))return;
+            if(cmd.startsWith("social:")){campaign.socialCommand(p,cmd);return;}
+            if(cmd.startsWith("progress:")){campaign.progressCommand(p,cmd);return;}
+            Squad s=squads.get(p.getUuid());if(s==null||!ready||respawns.containsKey(s.owner))return;
             if(campaign.handle(p,cmd))return;
+            if(running&&!s.seated)return;
             if(cmd.equals("barracks")){openBarracks(p);return;}
             if(cmd.startsWith("train:")||cmd.startsWith("disband:")||cmd.equals("cancel-training")){manage(p,s,cmd);return;}
             if(time-s.lastOrder<R.commandCooldownTicks())return;s.lastOrder=time;
@@ -348,7 +375,7 @@ public final class GravesAndGlory implements ModInitializer {
                 Assignment a=new Assignment(action,formation,dest,yaw);a.enemy=enemyId;a.issued=time;s.assignments.put(g.id(),a);
             }
             for(Unit u:units)if(u.squad==s&&(group.equals("all")||u.spec.group().equals(group))){u.lockedTarget=null;u.spellCenter=null;u.mob.setTarget(null);u.mob.getNavigation().stop();u.nextPath=0;u.stuckTicks=0;}
-            campaign.tutorialDid(p,action.equals("attack")||action.equals("charge")?2:0);
+            campaign.tutorialDid(p,action.equals("attack")||action.equals("charge")?2:0);campaign.progressEvent(p.getUuid(),false);
             p.playSound(action.equals("retreat")?SoundEvents.BLOCK_NOTE_BLOCK_BELL.value():SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(),.6f,action.equals("charge")?.7f:1.1f);
             p.sendMessage(Text.literal(group+" / "+action+" / "+(int)x+", "+(int)z),true);
         }
@@ -406,7 +433,7 @@ public final class GravesAndGlory implements ModInitializer {
         }
         void reinforce(Squad s){
             Set<Integer> occupied=new HashSet<>();for(Unit u:units)if(u.squad==s&&u.mob.isAlive())occupied.add(u.slot);
-            int slot=0,index=0;for(Squad other:squads.values()){if(other==s)break;if(other.team==s.team)index++;}
+            int slot=0,index=0;for(Squad other:squads.values()){if(other==s)break;if(other.seated&&other.team==s.team)index++;}
             List<String> line;if(s.bot){line=new ArrayList<>();for(var t:Spec.TROOPS)if(t.faction().equals(Spec.FACTIONS[s.team].id()))for(int n=0;n<t.count();n++)line.add(t.id());}else line=campaign.profile(s.owner).lineup(s.team);
             for(String id:line){final String type=id;int position=slot++;if(position>=R.squadSize()||occupied.contains(position)||id.equals("empty")||!campaign.unlocked(s,id))continue;
                 var spec=Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(type)).findFirst().orElse(null);if(spec==null)continue;
@@ -449,7 +476,7 @@ public final class GravesAndGlory implements ModInitializer {
                 for(Unit u:units)if(u.mob.isAlive()&&horizontalDistance(u.mob.getPos(),center)<p.spec.radius()*p.spec.radius())presence[u.squad.team]++;
                 for(ServerPlayerEntity player:server.getPlayerManager().getPlayerList()){
                     Squad s=squads.get(player.getUuid());
-                    if(s!=null&&!player.isSpectator()&&horizontalDistance(player.getPos(),center)<p.spec.radius()*p.spec.radius())presence[s.team]+=R.capturePlayersWeight();
+                    if(s!=null&&s.seated&&!player.isSpectator()&&horizontalDistance(player.getPos(),center)<p.spec.radius()*p.spec.radius())presence[s.team]+=R.capturePlayersWeight();
                 }
                 p.contested=presence[0]>0&&presence[1]>0;
                 int team=presence[0]>0&&presence[1]==0?0:presence[1]>0&&presence[0]==0?1:-1;
@@ -458,19 +485,23 @@ public final class GravesAndGlory implements ModInitializer {
                 p.progress++;
                 if(p.progress>=p.spec.captureSeconds()){
                     p.owner=team;p.challenger=-1;p.progress=0;Arena.flag(world,p.spec,team);
-                    for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList())pl.sendMessage(Text.literal(Spec.FACTIONS[team].name()+" captured "+p.spec.name()).formatted(team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE),true);
+                    for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList()){var squad=squads.get(pl.getUuid());if(squad!=null&&squad.seated&&squad.team==team&&horizontalDistance(pl.getPos(),center)<p.spec.radius()*p.spec.radius())campaign.progressEvent(pl.getUuid(),true);}
+                    for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList())if(squads.containsKey(pl.getUuid())&&squads.get(pl.getUuid()).seated)pl.sendMessage(Text.literal(Spec.FACTIONS[team].name()+" captured "+p.spec.name()).formatted(team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE),true);
                 }
             }
         }
         static double horizontalDistance(Vec3d a,Vec3d b){double x=a.x-b.x,z=a.z-b.z;return x*x+z*z;}
         int teamOf(Entity e){
             if(e==null)return -1;
-            Squad s=squads.get(e.getUuid());if(s!=null)return s.team;
+            Squad s=squads.get(e.getUuid());if(s!=null)return s.seated?s.team:-1;
             for(Unit u:units)if(u.mob==e)return u.squad.team;return -1;
         }
         boolean scalingDamage;
         boolean allowDamage(LivingEntity entity,net.minecraft.entity.damage.DamageSource source,float amount){
             Entity attacker=source.getAttacker();
+            Squad victimSquad=squads.get(entity.getUuid());
+            Squad attackerSquad=attacker==null?null:squads.get(attacker.getUuid());
+            if(victimSquad!=null&&!victimSquad.seated||attackerSquad!=null&&!attackerSquad.seated)return false;
             int team=teamOf(entity),attackTeam=teamOf(attacker);
             if(team<0)return true;
             if(!running)return false;
@@ -490,7 +521,7 @@ public final class GravesAndGlory implements ModInitializer {
         void updateSight(){for(int team=0;team<2;team++){var memory=sightings.computeIfAbsent(team,k->new HashMap<>());memory.values().removeIf(v->time-v.seen>Spec.SCOUTING[0].memorySeconds()*20);
             for(Unit enemy:units)if(enemy.squad.team!=team&&enemy.mob.isAlive()){
                 boolean visible=false;for(Unit ally:units)if(ally.squad.team==team&&ally.mob.isAlive()&&ally.mob.squaredDistanceTo(enemy.mob)<Spec.SCOUTING[0].range()*Spec.SCOUTING[0].range()&&ally.mob.canSee(enemy.mob)){visible=true;break;}
-                if(!visible)for(var player:server.getPlayerManager().getPlayerList()){var s=squads.get(player.getUuid());if(s!=null&&s.team==team&&!player.isSpectator()&&player.squaredDistanceTo(enemy.mob)<Spec.SCOUTING[0].range()*Spec.SCOUTING[0].range()&&player.canSee(enemy.mob)){visible=true;break;}}
+                if(!visible)for(var player:server.getPlayerManager().getPlayerList()){var s=squads.get(player.getUuid());if(s!=null&&s.seated&&s.team==team&&!player.isSpectator()&&player.squaredDistanceTo(enemy.mob)<Spec.SCOUTING[0].range()*Spec.SCOUTING[0].range()&&player.canSee(enemy.mob)){visible=true;break;}}
                 if(visible)memory.put(enemy.mob.getUuid(),new Sight((float)enemy.mob.getX(),(float)enemy.mob.getZ(),time));
             }
         }}

@@ -111,3 +111,39 @@ Creator observed choppy intro, requests smoother entrance and researched multipl
 - Real R input revealed Iris reload also used R. Fixed conflicting unchanged defaults: move Iris reload to F8 (unbound if occupied), preserve custom binds and rebuild/save the key map. Closed test client, upgraded only its original JAR to 0.3.4, then verified real R opens war council, inventory/troop models, custom room, practice battle and normal save/quit. Disabled old JAR retained. This is local mod-only upgrade, not an official platform update.
 - Exact-source development restart/regression: 52 passes, zero failures, including custom-binding preservation. Actual client logs zero invalid rotations/failed models. Effective saved progression/army equal; only raw difference is client materializing default deployment while server derives it. No custom slots edited in manual test.
 - 0.3.4 production server startup/status/save/stop passes. ZIP/MRPACK/server kit rebuilt and verified. Source 6d9266eeb87c808f6766f91b21234bb3bf29c45a21fb173de59c67e76133d648. Evidence/candidate copies: roadmap logs/session-04 and release-candidates. Official Modrinth App/CurseForge, public Internet play and branded loading remain open. No publication or home deployment; existing player game untouched.
+
+## Camp waiting checkpoint — 2026-10-17, 0.3.5
+
+SESSION 5 — CAMP WAITING CANDIDATE, October 17, 2026
+Continued from checklist in new chat go-x20. Local candidate 0.3.5.
+- Full battles retain arrivals as unseated camp visitors instead of disconnecting.
+- Admission policy preserves team capacity, excludes waiting visitors from seat
+  counts, replaces bot armies in place and handles returning reservations.
+  Practice visitors cannot take its AI opponent or the absent host's army.
+- Waiting visitors stay outside intro teleports/camera, damage, captures,
+  scouting contributions, army spawn offsets, tutorial and reward membership.
+  R opens the council and it remains open during the ongoing match.
+- Camp boundary enforcement only relocates visitors outside the boundary;
+  walking inside camp no longer resets them to spawn each second.
+- Exported server templates allow 16 connections (8 battle seats plus visitors).
+  Existing server configurations were not changed. No measured load claim.
+- Offline build + harness compilation pass (one existing mixin warning).
+  746 pure Java admission assertions pass; seven Python export/integrity tests
+  pass. ZIP 77 entries, MRPACK 18 download pins, server kit 67 entries verified.
+- Live join/walk/R/reconnect/next-round verification NOT RUN. 3.15 remains
+  partial. Latest in-game verification remains 0.3.4. No launch/install/publication.
+- Evidence and deliverables: C:/Users/kortt/Documents/Codex/2026-10-17/go-x20/outputs
+
+0.3.6 CAMP / FRIENDS / PROGRESSION — October 17, 2026
+Implemented courtyard/stations, camp-only HUD, recruitment, persistent parties,
+private rooms, ready pads/voting and a 30-tier Founders chapter with contracts.
+Isolated real-client final run passes camp, purchases, room/results/rematch,
+save-failure rollback, changed-map auto-start, pad countdown and cancellation.
+Two real loopback clients pass invite/accept, whole-party team entry, disconnect,
+reserved-army reclaim, results, rematch and saved two-member party readback.
+35 policy scenarios, 746 admission assertions and 7 Python integrity tests pass.
+Build succeeds; ZIP 77 entries, MRPACK 18 downloads, server ZIP 67 entries verified.
+No test harness included in shipped JAR. No launcher installation or publication.
+Public hosting/connectivity remains deferred. Passwords, spectators, simultaneous
+matches, official accounts/economy and remaining roadmap items are still open.
+Evidence: go-x20/outputs/VERIFICATION-0.3.6.json; progression design and screenshots.

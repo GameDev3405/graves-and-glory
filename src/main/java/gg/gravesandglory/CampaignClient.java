@@ -15,11 +15,13 @@ import java.nio.file.*;
 public final class CampaignClient {
     static Campaign.Profile profile=new Campaign.Profile();
     static JsonArray players=new JsonArray();
+    static JsonObject social=new JsonObject(),progression=new JsonObject();
+    static JsonObject result=new JsonObject();static String shownResult="";
     static boolean lead,fill=true;static String mode="2",notice="",headline="",partyKey="";
     static JsonObject party=emptyParty();static int padCountdown,padDawn,padDusk,padSize=2,tutorial=-1;
     static JsonObject emptyParty(){JsonObject j=new JsonObject();j.addProperty("open",false);j.addProperty("member",false);j.addProperty("lead",false);j.addProperty("capacity",2);j.addProperty("leader","");j.add("members",new JsonArray());j.addProperty("inviteSeconds",0);j.addProperty("inviter","");j.add("online",new JsonArray());return j;}
     static String lastSaved="",revealUnit="";static long revealUntil;static boolean received;
-    static int map=0,serial=-1,intro=0;static boolean lastRunning;
+    static int map=0,serial=-1,intro=0;static boolean lastRunning,waiting;
     public static double cameraX,cameraY,cameraZ;public static float cameraYaw,cameraPitch;
     public static boolean cinematic(){return camera!=null;}
     static boolean previousHud;
@@ -30,14 +32,17 @@ public final class CampaignClient {
 
     }
     static void accept(MinecraftClient c,String json,boolean running){
-        try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Campaign.Profile.class);if(received&&nextProfile.unlocked.size()>profile.unlocked.size()){for(var unit:Spec.TROOPS)if(nextProfile.unlocked.contains(unit.id())&&!profile.unlocked.contains(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}profile=nextProfile;received=true;players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
+        try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Campaign.Profile.class);if(received&&nextProfile.unlocked.size()>profile.unlocked.size()){for(var unit:Spec.TROOPS)if(nextProfile.unlocked.contains(unit.id())&&!profile.unlocked.contains(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}nextProfile.sanitize();profile=nextProfile;received=true;social=j.has("social")?j.getAsJsonObject("social"):new JsonObject();progression=j.has("progression")?j.getAsJsonObject("progression"):new JsonObject();if(j.has("progression"))profile.progression=Campaign.JSON.fromJson(progression,Progression.State.class);players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
             JsonObject keyed=new JsonObject();for(var entry:party.entrySet())if(!entry.getKey().equals("inviteSeconds"))keyed.add(entry.getKey(),entry.getValue());partyKey=keyed.toString();
             JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;fill=j.get("fill").getAsBoolean();mode=j.get("mode").getAsString();notice=j.get("notice").getAsString();headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
-            int next=j.get("map").getAsInt();if(next!=map||Spec.FACTIONS[0].spawnX()!=-283){map=next;CampaignMaps.select(map);GravesAndGloryClient.invalidateMap(c);}
+            int next=j.get("map").getAsInt();if(next!=map||Spec.FACTIONS[0].spawnX()!=-283){map=next;if(c.getServer()==null)CampaignMaps.select(map);GravesAndGloryClient.invalidateMap(c);}
+            waiting=j.has("waiting")&&j.get("waiting").getAsBoolean();
             int round=j.get("serial").getAsInt();intro=j.get("intro").getAsInt();
             if(round!=serial&&running&&intro>0){cameraTicks=120-intro;begin(c);}serial=round;
             if(!running)end(c);
-            if(!running&&lastRunning&&!(c.currentScreen instanceof CampaignLobbyScreen))c.setScreen(new GravesAndGloryClient.LobbyScreen());lastRunning=running;
+            result=j.has("result")?j.getAsJsonObject("result"):new JsonObject();
+            if(!running&&result.has("id")&&!result.get("id").getAsString().equals(shownResult)){shownResult=result.get("id").getAsString();c.setScreen(new CampScreen("results"));}
+            else if(!running&&lastRunning&&!(c.currentScreen instanceof CampScreen)&&!(c.currentScreen instanceof CampaignLobbyScreen))c.setScreen(new CampScreen("home"));lastRunning=running;
             if(!j.get("collectionReady").getAsBoolean()){sendProfile(c);return;}String saved=Campaign.JSON.toJson(profile);if(saved.equals(lastSaved))return;lastSaved=saved;Path path=collection(c);Files.createDirectories(path.getParent());Path tmp=path.resolveSibling(path.getFileName()+".tmp");Files.writeString(tmp,saved);Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING);
         }catch(Exception e){System.err.println("[Graves and Glory] Collection sync could not be saved: "+e.getClass().getSimpleName());}
     }

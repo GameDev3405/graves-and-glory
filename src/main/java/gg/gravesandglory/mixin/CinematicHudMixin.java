@@ -13,4 +13,6 @@ abstract class CinematicHudMixin {
         if(gg.gravesandglory.GravesAndGloryClient.menuVisible()){ci.cancel();return;}
         if(CampaignClient.cinematic()){var c=MinecraftClient.getInstance();CampaignClient.hud(g,c.getWindow().getScaledWidth(),c.getWindow().getScaledHeight());ci.cancel();}
     }
+    @Inject(method={"renderHotbar","renderStatusBars","renderExperienceBar","renderMountHealth"},at=@At("HEAD"),cancellable=true)
+    void gravesandgloryCamp(CallbackInfo ci){if(gg.gravesandglory.GravesAndGloryClient.inCamp())ci.cancel();}
 }

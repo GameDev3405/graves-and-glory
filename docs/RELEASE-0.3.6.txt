@@ -1,0 +1,52 @@
+Graves and Glory 0.3.6 — camp and friends local candidate
+October 17, 2026
+
+The camp is now a walled courtyard with four named stewards, recruitment and
+equipment pavilions, contracts, a chapter monument and faction ready gates.
+Camp displays gold and guidance without the battle scoreboard, tactical overlays,
+combat orders, health bars or hotbar. R opens the camp guide. NPCs, tables and
+menu shortcuts route to the same functions. Recruitment displays the remaining
+pool and equal odds, confirms rewards from the server, and stops when complete.
+Direct selection costs the same 100 gold as a random guaranteed-new unlock.
+
+Friend parties are distinct from temporary private rooms. Up to four commanders
+can invite, accept/decline, transfer leadership, leave, kick or disband. Invitations
+expire after 60 seconds. Parties save with the host world and survive matches.
+Private rooms have codes, host-selected maps, 1v1–4v4 capacity, bot fill, whole-party
+team selection and individual ready checks. Results retain rooms for rematches.
+Disconnecting clears readiness; idle rooms allow a two-minute reconnect grace.
+Battle disconnects retain an army reservation and bots take over until return.
+Parties persist across restarts; temporary rooms do not. Online commanders on the
+same server can invite each other; this is not a cross-server friends directory.
+
+Ready pads require a whole party on the same side, reject overcapacity, and
+reset the countdown when the group changes. Step off to cancel. Camp guide map
+votes count once per ready commander; changing a vote replaces it. Highest count
+wins, ties use map order, and no votes retain the current map. A private room's
+map preparation automatically starts its still-ready group when complete.
+
+Progression begins with usable starter troops and a 100-gold tutorial reward.
+The free, nonexpiring Founders chapter has 30 tiers at 250 XP each: 7,500 XP total.
+Eligible matches award 100 XP plus 50 for victory. Three daily contracts grant
+100 gold and 225 XP combined; one free reroll swaps the objective contract for
+tactical orders. Weekly six-match completion grants 150 gold and 300 XP.
+Daily resets use midnight UTC; weeks begin Monday UTC. Every fifth chapter tier
+grants a title, ending in Bannerlord; other tiers grant 25 gold (600 total).
+Titles give no combat advantage. Existing match gold remains 80 + 40 for victory,
+or 40 in practice, with the existing three-minute eligibility requirement.
+
+Progress and claims are server-owned during play. Unique match/claim identifiers
+prevent repeated grants; atomic saves retain a previous-file backup. Failed claims
+and recruitment saves roll back. Corrupt existing profiles are preserved and
+reported rather than silently replaced with blank progress. Local/LAN collection
+imports remain trusted; dedicated servers reject client collection imports.
+
+Validation and remaining scope are recorded in the delivered verification report.
+Local two-client tests cover invite, same-team entry, disconnect/reclaim, results,
+rematch and persisted party readback. Rule tests cover capacity, expiration,
+readiness, resets, repeated claims, clock rollback and all chapter rewards.
+
+One battle runs per server. Passwords, spectators, simultaneous matches, a public
+queue, cross-server accounts, full official-economy security and Internet hosting
+remain future work. This candidate has not been installed into a personal launcher,
+published, or tested as an eight-human Internet session.

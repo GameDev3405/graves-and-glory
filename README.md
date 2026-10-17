@@ -1,11 +1,13 @@
 
 
-# Graves and Glory 0.3.4
+# Graves and Glory 0.3.7
 
 This is a local release candidate. Isolated game checks do not constitute a
 production launcher installation or an eight-human Internet multiplayer playtest.
-Public matchmaking, quests, a battle pass and the home-hosted official service
-remain planned work. Nothing in this update has been published automatically.
+Public Internet matchmaking and the home-hosted official service remain planned
+work. This candidate adds camp stations, persistent friend parties, private rooms,
+daily/weekly contracts and a finite free Founders reward chapter. Nothing in this
+update has been published automatically.
 
 Clients must match the server's game version and build identity. A missing or
 incompatible pack receives an update instruction before entering the world.
@@ -24,9 +26,13 @@ disk space for the copy. If both world folders exist, the current world wins.
 
 Collect soldiers, arrange a twenty-unit army and lead it across four large fantasy battlefields inside Minecraft: Java Edition. Play 1vAI practice, 1v1, 2v2, 3v3 or 4v4, with optional bots filling empty team slots.
 
-## War council and permanent armies
+## Camp, friends and permanent armies
 
-The branded title menu waits for your choice. Enter camp / Practice opens a private Graves and Glory world with a physical lobby, recruitment hall, armoury, troop displays and war table. Play with friends offers local-network hosting and the normal server browser. Hosting announces its LAN address in chat. Public battles are marked as not launched. R opens the war council. The host chooses the map, match size and bot fill. Every commander chooses a faction, army and class.
+The branded title menu waits for your choice. Enter camp opens a walled courtyard with a Quartermaster, Recruiter, Archivist and Steward. Use their stations or press R for army equipment, recruitment, contracts, chapter rewards and friends. Camp hides battle information and combat controls. War Gates offer ready pads, map voting and a countdown; a party must stand together on the same side. Practice remains available from the guide.
+
+Play with friends offers local-network hosting and the normal server browser. Hosting announces its LAN address in chat. Friend parties hold up to four commanders and persist in that host's world across matches and restarts. Invite an online commander, accept, then create or join a private room by code. Each member confirms readiness; the host selects 1v1–4v4, map and bot fill. Parties move teams together and never silently split. Results retain the room for a rematch. Rooms are temporary and end at server restart; parties persist. One battle runs at a time while other rooms wait in camp. Private rooms are code-based, without passwords or spectator mode.
+
+The free, nonexpiring Founders chapter ends at tier 30 (7,500 XP). Eligible matches grant 100 XP, plus 50 for victory. Daily and weekly contracts add claimable gold and XP. Twenty-four tiers grant 25 gold; every fifth tier grants a title, ending with Bannerlord. The current chapter has a clear endpoint; future chapters, troops and cosmetic rewards can extend it. Rewards never raise combat stats.
 
 Arrange twenty deployment slots before battle: place any unlocked unit type in any front or rear slot, or leave slots empty. There is no required ratio of troop types. These positions control initial deployment; battlefield orders and formations take over when issued. Losing a soldier never removes its permanent unlock.
 
@@ -106,3 +112,12 @@ Armour detail uses Entity Model Features overlays from the built-in armory pack:
 Development checks are never in the player archive. They are built from `test-tools/` by the `localTestToolsJar` task and run only with `gradle runClient --offline -PcampaignChecks`.
 
 The war council uses R by default. The bundled Iris shader-reload default moves to F8 when it conflicts with the unchanged war-council default (or becomes unbound if F8 is occupied). Custom key bindings remain configurable in Minecraft Controls.
+
+## 0.3.7 camp waiting candidate
+
+Full matches now admit visitors to camp without granting a battle seat. R opens
+the war council while waiting. New server templates allow 16 connections, with
+a maximum of eight battle commanders; existing servers need `max-players`
+raised to leave room for visitors. Admission policy checks pass; live full-match
+join, camp movement, reconnect and next-round verification remain pending.
+

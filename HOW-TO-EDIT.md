@@ -105,7 +105,7 @@ gradle build --offline -x test        (from a shell with Gradle 8.8 on PATH, or 
 python tools/package.py
 ```
 
-- `gradle.properties` supplies the single `mod_version` value (currently `0.3.4`). Gradle expands it into `fabric.mod.json` and the archive names. Keep `melty.json` `components[].fileName` aligned; packaging rejects a mismatch.
+- `gradle.properties` supplies the single `mod_version` value (currently `0.3.7`). Gradle expands it into `fabric.mod.json` and the archive names. Keep `melty.json` `components[].fileName` aligned; packaging rejects a mismatch.
 - `generateReleaseIdentity` embeds a normalized source fingerprint in `gravesandglory-build.json`. Packaging rejects a stale JAR. The final ZIP uses a staging file so a packaging failure cannot replace an earlier archive.
 - Run `python tools/verify_package.py` after packaging to read back every entry and verify its hash, the inner JAR and the third-party pins.
 - Permission evidence used by packaging is tracked in `dependencies/author-permissions.json`, rather than the ignored `evidence/` directory.
@@ -159,3 +159,4 @@ and prepare only disposable data before using them.
 FrontMenuScreen is the normal entry point. Never restore automatic title-screen world creation. Melty properties are optional and invitations require an explicit action. Practice must not open a LAN listener; friends hosting may do so. Public battles remain disabled until a real service is configured.
 
 The isolated Gradle init scripts set Loom's runDir, because Loom overwrites JavaExec workingDir inside exec(). Always use a disposable run folder and explicit gameDir for client tests. Existing player windows/processes must remain untouched. FrontMenuChecks lives only in test-tools and drives real menu buttons for validation.
+

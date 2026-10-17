@@ -17,18 +17,18 @@ public final class CampaignMaps {
     static final int PAD_Z=LOBBY_Z-14;
     static boolean onPad(int team,double x,double y,double z){double min=team==0?-11:8;return x>=min&&x<min+4&&z>=PAD_Z&&z<PAD_Z+4&&y>64&&y<68;}
     record Road(int ax,int az,int bx,int bz,int width){}
-    static List<Road> roads=new ArrayList<>();
-    public static void select(int index){
+    static List<Road> roads=new ArrayList<>(),building=roads;
+    public static synchronized void select(int index){
         selected=Math.max(0,Math.min(Spec.MAPS.length-1,index));
         var structures=new ArrayList<Spec.StructuresRow>();var scenery=new ArrayList<Spec.SceneryRow>();
-        var terrain=new ArrayList<Spec.TerrainRow>();roads=new ArrayList<>();
+        var terrain=new ArrayList<Spec.TerrainRow>();building=new ArrayList<>();
         String[] names=switch(selected){case 1->new String[]{"Supply Yard","Iron Gate","Watch Hill"};case 2->new String[]{"Caravan Refuge","Pass Crossing","Signal Ridge"};case 3->new String[]{"Logging Camp","Old Causeway","Moon Shrine"};case 4->new String[]{"North Ford","Kings Bridge","South Ford"};default->new String[]{"Mill Hamlet","Trade Crossing","River Shrine"};};
         int[] zs=selected==1?new int[]{-130,0,130}:selected==4?new int[]{-160,0,160}:selected==2?new int[]{-155,0,155}:new int[]{-145,0,145};
         // Kingsfield adds a raised outpost on each flank, placed with half-turn symmetry so neither side is favoured.
-        boolean flanks=selected==4;Spec.POINTS=new Spec.PointsRow[flanks?5:3];
+        boolean flanks=selected==4;var points=new Spec.PointsRow[flanks?5:3];
         for(int i=0;i<3;i++){
             int z=zs[i],rx=(int)riverX(z),px=rx+(flanks?0:i==0?-29:i==2?29:0);
-            Spec.POINTS[flanks?i*2:i]=new Spec.PointsRow(""+(char)('A'+(flanks?i*2:i)),names[i],px,z,17,8,64);
+            points[flanks?i*2:i]=new Spec.PointsRow(""+(char)('A'+(flanks?i*2:i)),names[i],px,z,17,8,64);
             structures.add(s("crossing_"+i,"bridge",rx,z,44,i==1?24:16,2,i==0?"wood":i==2?"ford":"stone",64));
             for(int side:new int[]{-1,1}){road(side*290,0,side*205,z,5);road(side*205,z,rx+side*28,z,5);}
             road(rx-29,z,rx+29,z,6);
@@ -68,8 +68,8 @@ public final class CampaignMaps {
             structures.add(s("signal_tower","watchtower",57,166,14,14,19,"stone",64));
             road(-80,-178,-20,-155,4);road(62,34,25,0,4);
         }else if(flanks){
-            Spec.POINTS[1]=new Spec.PointsRow("B","West Outpost",-130,100,17,8,74);
-            Spec.POINTS[3]=new Spec.PointsRow("D","East Outpost",130,-100,17,8,74);
+            points[1]=new Spec.PointsRow("B","West Outpost",-130,100,17,8,74);
+            points[3]=new Spec.PointsRow("D","East Outpost",130,-100,17,8,74);
             for(int side:new int[]{-1,1}){road(side*205,-side*100,side*130,-side*100,4);road(side*130,-side*100,side*28,0,4);}
         }else if(selected==3){
             structures.removeIf(st->st.kind().equals("farm")||st.kind().equals("mill"));
@@ -77,44 +77,26 @@ public final class CampaignMaps {
             structures.add(s("broken_chapel","ruin",70,100,28,22,12,"dusk",64));
             road(-85,-176,-35,-145,4);road(70,100,40,145,3);
         }
-        Spec.STRUCTURES=structures.toArray(Spec.StructuresRow[]::new);Spec.TERRAIN=terrain.toArray(Spec.TerrainRow[]::new);
+        // The integrated client re-selects the same map while the server builds it,
+        // so every shared table is swapped in whole, never left half filled.
+        Spec.POINTS=points;roads=building;Spec.STRUCTURES=structures.toArray(Spec.StructuresRow[]::new);Spec.TERRAIN=terrain.toArray(Spec.TerrainRow[]::new);
         // Place woodland only outside military roads, homes, fields and objectives.
         for(int x=-325;x<=325;x+=13)for(int z=-225;z<=225;z+=13){int hash=Math.floorMod(x*7343+z*9129,97);boolean forest=selected==3?hash<55:selected==2?hash<13:hash<22;
             if(!forest||roadDistance(x,z)<10||Math.abs(x-riverX(z))<17)continue;
             boolean clear=true;for(var st:Spec.STRUCTURES)if(Math.abs(x-st.x())<st.width()/2+9&&Math.abs(z-st.z())<st.depth()/2+9)clear=false;
-            for(var p:Spec.POINTS)if(Math.hypot(x-p.x(),z-p.z())<30)clear=false;
+            for(var p:points)if(Math.hypot(x-p.x(),z-p.z())<30)clear=false;
             if(clear)scenery.add(new Spec.SceneryRow("tree_"+x+"_"+z,"tree",x,z,selected==3?10+hash%5:7+hash%3,selected==3?7:5,selected>=2?"spruce":"oak"));
         }
-        Spec.SCENERY=scenery.toArray(Spec.SceneryRow[]::new);
+        Spec.POINTS=points;Spec.SCENERY=scenery.toArray(Spec.SceneryRow[]::new);
         Spec.FACTIONS[0]=new Spec.FactionsRow("dawn","Dawn Covenant",5636095,-283,0,"knight,archer,mage",-286,32);
         Spec.FACTIONS[1]=new Spec.FactionsRow("dusk","Dusk Legion",11141290,283,0,"revenant,bonebow,hexer",286,-32);
     }
     static Spec.StructuresRow s(String id,String kind,int x,int z,int w,int d,int h,String palette,int y){return new Spec.StructuresRow(id,kind,x,z,w,d,h,palette,y);}
-    static void road(int a,int b,int c,int d,int width){roads.add(new Road(a,b,c,d,width));}
+    static void road(int a,int b,int c,int d,int width){building.add(new Road(a,b,c,d,width));}
     static double distance(double x,double z,Road r){double dx=r.bx-r.ax,dz=r.bz-r.az,t=Math.max(0,Math.min(1,((x-r.ax)*dx+(z-r.az)*dz)/(dx*dx+dz*dz)));return Math.hypot(x-r.ax-t*dx,z-r.az-t*dz);}
     static double roadDistance(int x,int z){double d=999;for(var r:roads)d=Math.min(d,distance(x,z,r)-r.width);return d;}
     public static boolean road(int x,int z){return roadDistance(x,z)<0;}
     public static double riverX(double z){return switch(selected){case 1->0;case 2->9*Math.sin(z*.013);case 3->18*Math.sin(z*.011);default->12*Math.sin(z*.014);};}
     static boolean river(int x,int z){return Math.abs(x-riverX(z))<(selected==3?9:6);}
-    static void lobby(ServerWorld w){
-        Arena.box(w,-42,64,LOBBY_Z-32,85,1,65,Blocks.STONE_BRICKS);
-        for(int x=-42;x<=42;x++)for(int z=LOBBY_Z-32;z<=LOBBY_Z+32;z++){
-            if(Math.abs(x)==42||Math.abs(z-LOBBY_Z)==32)Arena.box(w,x,65,z,1,2,1,Blocks.STONE_BRICK_WALL);
-            else if(Math.abs(x)<5||Math.abs(z-LOBBY_Z)<4)Arena.put(w,x,64,z,Blocks.POLISHED_ANDESITE);
-        }
-        for(int x:new int[]{-32,32})for(int dz:new int[]{-23,23}){Arena.box(w,x,65,LOBBY_Z+dz,2,9,2,Blocks.STONE_BRICKS);Arena.box(w,x,74,LOBBY_Z+dz,2,2,2,Blocks.SEA_LANTERN);}
-        var old=new ArrayList<net.minecraft.entity.Entity>();for(var e:w.iterateEntities())if(e.getCommandTags().contains("gravesandglory-lobby")||e.getCommandTags().contains("bannerbound-lobby"))old.add(e);for(var e:old)e.discard();
-        int display=0;for(var unit:Spec.TROOPS)if(unit.count()>0){
-            int x=-15+display*6;ArmorStandEntity stand=new ArmorStandEntity(w,x,65,LOBBY_Z+6);stand.setNoGravity(true);stand.setInvulnerable(true);stand.setCustomName(Text.literal(unit.name()));stand.setCustomNameVisible(true);stand.addCommandTag("gravesandglory-lobby");
-            stand.equipStack(EquipmentSlot.MAINHAND,new ItemStack(net.minecraft.registry.Registries.ITEM.get(new net.minecraft.util.Identifier(unit.weapon()))));
-            stand.equipStack(EquipmentSlot.HEAD,new ItemStack(net.minecraft.registry.Registries.ITEM.get(new net.minecraft.util.Identifier(unit.helmet()))));
-            stand.equipStack(EquipmentSlot.CHEST,new ItemStack(net.minecraft.registry.Registries.ITEM.get(new net.minecraft.util.Identifier(unit.chest()))));w.spawnEntity(stand);display++;
-        }
-        // Open-sided recruitment hall, armoury and war-table pavilion.
-        for(int cx:new int[]{-25,25}){Arena.box(w,cx-10,64,LOBBY_Z-20,21,1,22,Blocks.DARK_OAK_PLANKS);for(int dx:new int[]{-10,10})for(int dz:new int[]{-20,1})Arena.box(w,cx+dx,65,LOBBY_Z+dz,1,7,1,Blocks.STRIPPED_OAK_LOG);Arena.box(w,cx-11,72,LOBBY_Z-21,23,1,24,Blocks.DARK_OAK_SLAB);Arena.put(w,cx,65,LOBBY_Z-10,cx<0?Blocks.ENCHANTING_TABLE:Blocks.SMITHING_TABLE);Arena.put(w,cx+3,65,LOBBY_Z-10,Blocks.LECTERN);}
-        Arena.box(w,-9,65,LOBBY_Z+14,19,1,9,Blocks.CHISELED_STONE_BRICKS);Arena.put(w,0,66,LOBBY_Z+18,Blocks.CARTOGRAPHY_TABLE);Arena.put(w,3,66,LOBBY_Z+18,Blocks.LECTERN);
-        for(int team=0;team<2;team++)for(int x=team==0?-11:8;x<(team==0?-7:12);x++)for(int z=PAD_Z;z<PAD_Z+4;z++)Arena.put(w,x,64,z,team==0?Blocks.LIGHT_BLUE_WOOL:Blocks.MAGENTA_WOOL);
-        for(int x=-18;x<=18;x+=6){Arena.put(w,x,65,LOBBY_Z-26,Blocks.LANTERN);}
-        for(int x:new int[]{-38,38})for(int dz=-24;dz<=24;dz+=12)Arena.put(w,x,65,LOBBY_Z+dz,Blocks.LANTERN);
-    }
+    static void lobby(ServerWorld w){CampWorld.build(w);}
 }

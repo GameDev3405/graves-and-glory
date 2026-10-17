@@ -14,6 +14,9 @@ allprojects {
    systemProperty 'gravesandglory.expectedTexture', System.getenv('GRAVES_ROADMAP_TEXTURE') ?: '2'
    systemProperty 'gravesandglory.startupOnly', System.getenv('GRAVES_ROADMAP_STARTUP_ONLY') ?: 'false'
    systemProperty 'gravesandglory.compatibilityCase', System.getenv('GRAVES_ROADMAP_COMPAT_CASE') ?: ''
+   systemProperty 'gravesandglory.networkHost', System.getenv('GRAVES_NETWORK_HOST') ?: 'false'
+   systemProperty 'gravesandglory.networkRoot', System.getenv('GRAVES_NETWORK_ROOT') ?: testRoot
+   systemProperty 'gravesandglory.campChecks', System.getenv('GRAVES_CAMP_CHECKS') ?: 'false'
    systemProperty 'gravesandglory.frontChecks', System.getenv('GRAVES_ROADMAP_FRONT_CHECKS') ?: 'false'
    systemProperty 'gravesandglory.frontHost', System.getenv('GRAVES_ROADMAP_FRONT_HOST') ?: 'false'
   }

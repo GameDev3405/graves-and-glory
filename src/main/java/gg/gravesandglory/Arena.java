@@ -58,12 +58,17 @@ public final class Arena {
         for(var s:Spec.STRUCTURES)structure(w,s);
         for(var p:Spec.POINTS){for(int dx=-p.radius();dx<=p.radius();dx++)for(int dz=-p.radius();dz<=p.radius();dz++){double d=Math.hypot(dx,dz);if(d>=p.radius()-1&&d<=p.radius())put(w,p.x()+dx,p.elevation(),p.z()+dz,Blocks.SMOOTH_STONE);}box(w,p.x()-1,p.elevation(),p.z()-1,3,1,3,Blocks.CHISELED_STONE_BRICKS);flag(w,p,-1);}
         for(var s:Spec.SCENERY){int y=height(s.x(),s.z())+1;if(s.kind().equals("tree")){
-            Block log=s.palette().equals("spruce")?Blocks.SPRUCE_LOG:Blocks.OAK_LOG,leaf=s.palette().equals("spruce")?Blocks.SPRUCE_LEAVES:Blocks.OAK_LEAVES;
-            box(w,s.x(),y,s.z(),1,s.height(),1,log);for(int tier=0;tier<3;tier++){int r=s.width()/2-tier/2;box(w,s.x()-r,y+s.height()-3+tier,s.z()-r,r*2+1,1,r*2+1,leaf);}
+            // Spruce grows as a cone, oak as a rounded crown; leaves are persistent so the woods never thin out mid-battle.
+            boolean spruce=s.palette().equals("spruce");Block log=spruce?Blocks.SPRUCE_LOG:Blocks.OAK_LOG;
+            BlockState leaf=(spruce?Blocks.SPRUCE_LEAVES:Blocks.OAK_LEAVES).getDefaultState().with(LeavesBlock.PERSISTENT,true);int r=s.width()/2,top=y+s.height();
+            if(spruce)for(int dy=0;dy<s.height()-1;dy++){int ly=y+2+dy;int rr=Math.max(0,(int)Math.round(r*(1-dy/(double)(s.height()-1))+(dy%2==0?0:-.6)));
+                for(int dx=-rr;dx<=rr;dx++)for(int dz=-rr;dz<=rr;dz++)if(dx*dx+dz*dz<=rr*rr+1&&!(dx==0&&dz==0))w.setBlockState(new BlockPos(s.x()+dx,ly,s.z()+dz),leaf,2);}
+            else for(int dx=-r;dx<=r;dx++)for(int dy=-2;dy<=2;dy++)for(int dz=-r;dz<=r;dz++){double e=dx*dx/(double)(r*r)+dy*dy/4.5+dz*dz/(double)(r*r);if(e<=1.05&&Math.floorMod(dx*31+dy*17+dz*7+s.x(),11)!=0)w.setBlockState(new BlockPos(s.x()+dx,top-2+dy,s.z()+dz),leaf,2);}
+            box(w,s.x(),y,s.z(),1,spruce?s.height():s.height()-1,1,log);if(spruce)w.setBlockState(new BlockPos(s.x(),top,s.z()),leaf,2);
         }else for(int dx=0;dx<s.width();dx++)for(int dz=0;dz<s.width();dz++)for(int dy=0;dy<s.height();dy++)if(dx+dz+dy<s.width()+s.height()-1)put(w,s.x()+dx,y+dy,s.z()+dz,(dx+dz)%3==0?Blocks.MOSSY_COBBLESTONE:Blocks.ANDESITE);}
         if(CampaignMaps.selected==3)for(int row=0;row<3;row++)box(w,-90+row*3,65,-164,2,2,8,Blocks.SPRUCE_LOG);
         if(CampaignMaps.selected==1)for(int row=0;row<4;row++)box(w,-109+row*4,65,-152,3,2,3,Blocks.HAY_BLOCK);
-        for(int x=-260;x<=260;x+=26)for(int z:new int[]{-9,9})if(!river(x,z)){int y=height(x,z);box(w,x,y+1,z,1,3,1,Blocks.STONE_BRICK_WALL);put(w,x,y+4,z,Blocks.LANTERN);}
+        if(!Boolean.getBoolean("gravesandglory.noDressing"))MapDressing.dress(w); // off only in local A/B harness runs
     }
     static void structure(ServerWorld w,Spec.StructuresRow s){
         int x=s.x()-s.width()/2,z=s.z()-s.depth()/2,ground=s.elevation(),y=ground+1;

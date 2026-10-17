@@ -57,7 +57,7 @@ def export():
                           'level-name=Graves and Glory','level-type=minecraft:flat',
                           'generator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains","structures":{}}',
                           'generate-structures=false',
-                          'gamemode=adventure','difficulty=normal','online-mode=true','max-players=8',
+                          'gamemode=adventure','difficulty=normal','online-mode=true','max-players=16',
                           'server-ip=127.0.0.1','server-port=25565','spawn-protection=0','enable-rcon=false',''])
         pack.writestr('server-overrides/server.properties',server)
         pack.writestr('server-overrides/SERVER-README.txt',

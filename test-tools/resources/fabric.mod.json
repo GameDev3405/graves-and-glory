@@ -13,7 +13,11 @@
       "gg.gravesandglory.CommandPlaytest",
       "gg.gravesandglory.CompatibilityChecks",
       "gg.gravesandglory.FrontMenuChecks",
-      "gg.gravesandglory.CampaignChecks"
+      "gg.gravesandglory.CampaignChecks",
+      "gg.gravesandglory.MapTour",
+      "gg.gravesandglory.SelfTestHost",
+      "gg.gravesandglory.CampRedesignChecks",
+      "gg.gravesandglory.CampNetworkChecks"
     ]
   },
   "depends": {

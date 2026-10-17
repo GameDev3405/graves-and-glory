@@ -1,0 +1,22 @@
+Graves and Glory 0.3.5 — local candidate, October 17, 2026
+
+Full-match arrivals remain in camp instead of being disconnected. Waiting
+commanders are unseated: no extra army, match reward, capture contribution,
+combat damage or battle introduction. R opens the war council while waiting.
+Camp visitors can walk without being reset to spawn every second; leaving the
+camp boundary still returns them. Normal round completion brings everyone back.
+
+Seat assignment counts seated armies only. New arrivals can take a bot seat
+or an empty team slot without exceeding 1v1–4v4 capacity. Returning commanders
+reclaim their reserved bot when available. Practice's opponent remains AI.
+The existing fallback that replaces a reserved bot when no other bot is free
+is preserved outside practice; durable reconnect reservations remain future work.
+
+New server templates allow 16 connections to leave camp space beside a full
+8-commander match. Existing servers need their max-players setting updated.
+This does not establish a measured 16-player hosting/performance guarantee.
+
+Validation: 746 standalone admission assertions; offline mod and development
+harness compilation. Package integrity checks are recorded in the work log.
+Live full-match join, camp walk, reconnect and next-round tests remain pending.
+No running game, installed launcher, existing server or public listing changed.

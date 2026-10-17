@@ -37,7 +37,7 @@ public final class CampaignChecks implements ClientModInitializer {
     }
     @Override public void onInitializeClient(){
         // The battle self-test (-PselfTest) drives its own battle; these suites would fight it for the same world.
-        if(!MeltyTest.active()||Boolean.getBoolean("gravesandglory.selfTest"))return;
+        if(!MeltyTest.active()||Boolean.getBoolean("gravesandglory.selfTest")||Boolean.getBoolean("gravesandglory.campChecks")||Boolean.getBoolean("gravesandglory.networkHost")||Boolean.getBoolean("gravesandglory.networkJoin"))return;
         stateProbe();
         ClientTickEvents.END_CLIENT_TICK.register(c->{
             if(c.player==null||c.getServer()==null||!GravesAndGloryClient.ready)return;
