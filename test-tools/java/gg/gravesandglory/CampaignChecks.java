@@ -12,21 +12,50 @@ import java.util.*;
 /** Explicit test runs only. Real client packets, game entities and saved profiles. */
 public final class CampaignChecks implements ClientModInitializer {
     int tick,contactsBefore;volatile boolean failed;Campaign.Profile backup;GravesAndGlory.Unit victim;float health;Vec3d botStart;UUID bot;UUID repairBot;
-    void server(MinecraftClient c,java.util.function.Consumer<GravesAndGlory.Battle> f){c.getServer().execute(()->{if(GravesAndGlory.battle!=null)try{f.accept(GravesAndGlory.battle);}catch(Exception e){MeltyTest.report("suite-exception",false,e.toString());e.printStackTrace();}});}
+    void server(MinecraftClient c,java.util.function.Consumer<GravesAndGlory.Battle> f){c.getServer().execute(()->{if(GravesAndGlory.battle!=null)try{f.accept(GravesAndGlory.battle);}catch(Exception e){failed=true;MeltyTest.report("suite-exception",false,e.toString());e.printStackTrace();}});}
     void shot(MinecraftClient c,String name){ScreenshotRecorder.saveScreenshot(c.runDirectory,"campaign-"+name+".png",c.getFramebuffer(),text->{});}
     void report(String id,boolean result,String why){if(!result)failed=true;MeltyTest.report(id,result,why);System.out.println("[Graves and Glory campaign] "+id+"="+result+" "+why);}
     /** Present after run 1 saves the collection; its existence marks the relaunch. */
     static Path restartFile(MinecraftClient c){return c.runDirectory.toPath().resolve("../evidence/restart-state.json");}
     /** Restart and fixture steps exist only in the development harness, never in a player or Melty test install. */
     static boolean devRun(){return net.fabricmc.loader.api.FabricLoader.getInstance().isDevelopmentEnvironment();}
+    /** Temporary diagnostic (dev harness only): why the lobby never receives STATE. */
+    static int probeServer,probeClient;
+    static void probeLine(String line){try{Path p=net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir().resolve("../evidence/state-probe.txt");Files.writeString(p,line+System.lineSeparator(),StandardOpenOption.CREATE,StandardOpenOption.APPEND);}catch(Exception ignored){}}
+    static void stateProbe(){
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(s->{
+            if(++probeServer%100!=0)return;
+            var b=GravesAndGlory.battle;StringBuilder sb=new StringBuilder("server tick="+probeServer+" battle="+(b!=null));
+            if(b!=null)sb.append(" ready="+b.ready+" time="+b.time+" points="+b.points.size());
+            for(var p:s.getPlayerManager().getPlayerList())sb.append(" player="+p.getName().getString()+" canSend="+net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(p,GravesAndGlory.STATE));
+            probeLine(sb.toString());
+        });
+        ClientTickEvents.END_CLIENT_TICK.register(c->{
+            if(c.player==null||++probeClient%100!=0)return;
+            probeLine("client tick="+probeClient+" ready="+GravesAndGloryClient.ready+" running="+GravesAndGloryClient.running+" message="+GravesAndGloryClient.message+" screen="+(c.currentScreen==null?"none":c.currentScreen.getClass().getSimpleName()));
+        });
+    }
     @Override public void onInitializeClient(){
         if(!MeltyTest.active())return;
+        stateProbe();
         ClientTickEvents.END_CLIENT_TICK.register(c->{
             if(c.player==null||c.getServer()==null||!GravesAndGloryClient.ready)return;
             tick++;
+            if(Boolean.getBoolean("gravesandglory.startupOnly")){
+                if(tick==25)report("startup-texture-choice",Presentation.textures()==Integer.getInteger("gravesandglory.expectedTexture",2),"Selected texture index "+Presentation.textures());
+                if(tick==35){report("startup-suite",!failed,"Startup-only fixture complete");c.scheduleStop();}
+                return;
+            }
             if(tick==20){c.setScreen(new GravesAndGloryClient.LobbyScreen());server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());backup=Campaign.JSON.fromJson(Campaign.JSON.toJson(b.campaign.profile(p.getUuid())),Campaign.Profile.class);report("lobby-ready",p.getZ()<-275&&b.world.getBlockState(new BlockPos(0,64,CampaignMaps.LOBBY_Z)).isSolidBlock(b.world,new BlockPos(0,64,CampaignMaps.LOBBY_Z)),"Player stands in built war council");});}
             if(tick==25&&devRun()&&Files.exists(restartFile(c))){shot(c,"restart-lobby");server(c,b->{try{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var pr=b.campaign.profile(p.getUuid());var saved=Campaign.JSON.fromJson(Files.readString(restartFile(c)),Campaign.Profile.class);
-                report("restart-collection",pr.unlocked.equals(saved.unlocked)&&pr.gold==saved.gold,"Collection after reopen matches the one saved before quitting");
+                report("restart-collection",Campaign.JSON.toJsonTree(pr).equals(Campaign.JSON.toJsonTree(saved)),"Entire collection, loadout and commander profile after reopen matches the saved profile");
+                if(Boolean.getBoolean("gravesandglory.migrationFixture")){
+                    Path run=c.runDirectory.toPath(),save=b.server.getSavePath(net.minecraft.util.WorldSavePath.ROOT);
+                    report("legacy-world-upgrade",Files.isRegularFile(run.resolve("saves/Bannerbound/level.dat"))&&Files.isRegularFile(run.resolve("saves/Graves and Glory/level.dat"))&&b.server.getSaveProperties().getLevelName().equals("Bannerbound"),"Legacy-named Minecraft world loaded from a copy; original remains");
+                    report("legacy-profile-upgrade",Files.isDirectory(save.resolve("bannerbound-test-profiles"))&&Files.isRegularFile(b.campaign.directory.resolve(p.getUuid()+".json"))&&pr.gold==saved.gold,"Legacy host profile directory retained and current profile available");
+                    report("legacy-layout-upgrade",Files.exists(save.resolve("bannerbound-layout.json"))&&Files.exists(save.resolve("gravesandglory-layout.json")),"Legacy map cache marker copied and retained");
+                    report("legacy-settings-upgrade",Files.mismatch(run.resolve("bannerbound/presentation.json"),run.resolve("gravesandglory/presentation.json"))==-1,"Legacy visual preferences copied without altering original");
+                }
                 long stale=0;for(var e:b.world.iterateEntities())if(e.getCommandTags().contains("gravesandglory")&&e.getClass()==net.minecraft.entity.mob.HuskEntity.class)stale++;
                 report("restart-clean-lobby",stale==0,"Hostile husks left from the earlier session: "+stale);}catch(Exception e){report("restart-collection",false,e.toString());}});}
             if(tick==40)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());b.relocate(p,-9.5,65,-322,90,0);});
@@ -51,12 +80,12 @@ public final class CampaignChecks implements ClientModInitializer {
                 report("invite-accept",camp.party.contains(me)&&!camp.invites.containsKey(me),"Accepting a live invitation joins the custom lobby");
                 camp.closeParty();});
             if(tick==60)shot(c,"war-council");
-            if(tick==100&&devRun()&&Files.exists(restartFile(c))){shot(c,"restart-excalibur");report("restart-excalibur",Presentation.textures()==2,"Excalibur look enabled after reopen (texture index "+Presentation.textures()+")");}
+            if(tick==100&&devRun()&&Files.exists(restartFile(c))){shot(c,"restart-excalibur");int expected=Integer.getInteger("gravesandglory.expectedTexture",2);report("restart-texture-choice",Presentation.textures()==expected,"Saved texture choice preserved; expected "+expected+", actual "+Presentation.textures());}
             if(tick==80)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var pr=b.campaign.profile(p.getUuid());int before=pr.unlocked.size();pr.gold=100;b.campaign.handle(p,"roll");report("unit-unlocks",pr.unlocked.size()==before+1&&pr.gold==0,"One paid random roll unlocks one previously locked type");
                 try{var loaded=Campaign.JSON.fromJson(Files.readString(b.campaign.directory.resolve(p.getUuid()+".json")),Campaign.Profile.class);report("profile-persistence",loaded.unlocked.equals(pr.unlocked)&&loaded.gold==pr.gold,"Read collection back from disk");}catch(Exception e){report("profile-persistence",false,e.toString());}
                 for(var t:Spec.TROOPS)if(t.faction().equals("dawn"))pr.army.put(t.id(),0);
                 for(int i=0;i<20;i++)b.campaign.handle(p,"army:knight:add");b.campaign.handle(p,"army:knight:add");b.campaign.handle(p,"slot:0:archer");boolean grid=pr.lineup(0).get(0).equals("archer")&&pr.army.get("archer")==1&&pr.army.get("knight")==19;report("army-composition",pr.count(0)==20&&grid,"Twenty selected; twenty-first rejected; grid replaces one slot and updates counts");b.campaign.handle(p,"slot:0:knight");
-                b.campaign.handle(p,"mode:ai");b.campaign.handle(p,"start");var s=b.squads.get(p.getUuid());report("bot-practice",b.squads.size()==2&&b.squads.values().stream().filter(x->x.bot).count()==1&&b.units.size()==40,"One real commander and one AI army");
+                b.campaign.handle(p,"party:open");b.campaign.handle(p,"mode:ai");b.campaign.handle(p,"start");var s=b.squads.get(p.getUuid());report("bot-practice",b.squads.size()==2&&b.squads.values().stream().filter(x->x.bot).count()==1&&b.units.size()==40,"One real commander and one AI army");
                 var knight=b.units.stream().filter(u->u.squad==s).findFirst().orElseThrow();report("commander-bonuses",Math.abs(knight.mob.getMaxHealth()-knight.spec.health()*1.2)<.01,"Vanguard infantry bonus applied at spawn");var enemy=b.units.stream().filter(u->u.squad.bot).findFirst().orElseThrow();bot=enemy.mob.getUuid();botStart=enemy.mob.getPos();});
             if(tick==150){report("intro-camera",CampaignClient.cinematic()&&c.options.getPerspective()!=net.minecraft.client.option.Perspective.FIRST_PERSON,"Camera shows commander without moving their entity");shot(c,"commander-entrance");}
             if(tick==240)server(c,b->{var u=b.units.stream().filter(x->x.mob.getUuid().equals(bot)).findFirst().orElse(null);report("bot-objectives",u!=null&&u.mob.squaredDistanceTo(botStart)>4&&u.squad.order.equals("attack"),"AI army advances toward an objective");var s=b.squads.get(c.player.getUuid());
@@ -70,7 +99,7 @@ public final class CampaignChecks implements ClientModInitializer {
             if(tick==450){c.setScreen(new GravesAndGloryClient.LobbyScreen());((CampaignLobbyScreen)c.currentScreen).showTab(2);}
             if(tick==460&&c.currentScreen instanceof CampaignLobbyScreen screen){screen.pendingClass="marksman";screen.showTab(2);screen.confirmClass.onPress();}
             if(tick==480){report("class-confirmation",CampaignClient.profile.commander.equals("marksman"),"Confirmed class selection reached server and returned in profile state");shot(c,"classes");}
-            if(tick==500){c.setScreen(null);server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());boolean pass=true;for(int n=1;n<=4;n++){b.campaign.handle(p,"mode:"+n);b.campaign.handle(p,"start");pass&=b.squads.size()==n*2&&b.units.size()==n*40;for(int team=0;team<2;team++){final int t=team;pass&=b.squads.values().stream().filter(s->s.team==t).count()==n;}if(n<4)b.campaign.finish(-1);}report("team-modes",pass,"1v1, 2v2, 3v3, 4v4 filled to exact team capacities");});}
+            if(tick==500){c.setScreen(null);server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());boolean pass=true;for(int n=1;n<=4;n++){b.campaign.handle(p,"party:open");b.campaign.handle(p,"mode:"+n);b.campaign.handle(p,"start");pass&=b.squads.size()==n*2&&b.units.size()==n*40;for(int team=0;team<2;team++){final int t=team;pass&=b.squads.values().stream().filter(s->s.team==t).count()==n;}if(n<4)b.campaign.finish(-1);}report("team-modes",pass,"1v1, 2v2, 3v3, 4v4 filled to exact team capacities");});}
             if(tick==650)server(c,b->{report("large-battle",b.units.size()==160&&b.units.stream().allMatch(u->u.mob.isAlive()),"Eight twenty-troop armies simulated; tick ms="+b.server.getTickTime());var missing=b.units.stream().filter(u->u.squad.bot).findFirst().orElseThrow();repairBot=missing.squad.owner;missing.mob.discard();var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());p.changeGameMode(GameMode.SPECTATOR);p.teleport(b.world,-235,85,28,-70,25);});
             if(tick==655)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());b.relocate(p,-286,Arena.ground(-286,40)+1,40,0,0);p.changeGameMode(GameMode.ADVENTURE);p.setHealth(p.getMaxHealth());});
             if(tick==669)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var s=b.squads.get(p.getUuid());report("barracks-ready",b.atBarracks(p,s)&&!b.respawns.containsKey(p.getUuid())&&!p.isSpectator(),"Fixture stands outside barracks: "+p.getPos()+" respawn="+b.respawns.containsKey(p.getUuid()));});

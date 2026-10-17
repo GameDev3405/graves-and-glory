@@ -143,3 +143,12 @@ python test-tools/standalone/test_release_integrity.py
 ```
 
 These standalone checks stay under `test-tools/standalone`, outside the player and development Fabric source sets. They do not replace a real installation, save-upgrade, restart or multiplayer test.
+
+For isolated game regressions, `test-tools/isolated-checks.gradle` requires
+GRAVES_ROADMAP_TEST_ROOT and routes the run directory, runtime and check output
+there. Use it with `-PcampaignChecks --init-script test-tools/isolated-checks.gradle`
+and matching `--gameDir` arguments. Optional variables: GRAVES_ROADMAP_MIGRATION
+(true for controlled legacy fixtures), GRAVES_ROADMAP_TEXTURE (expected texture
+index), GRAVES_ROADMAP_STARTUP_ONLY (true for a short startup check). These are
+development controls, never production settings. Obtain launch authorization
+and prepare only disposable data before using them.

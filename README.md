@@ -7,6 +7,10 @@ constitute a new in-game, launcher-installation or Internet multiplayer playtest
 Public matchmaking, quests, a battle pass and the home-hosted official service
 remain planned work. Nothing in this update has been published automatically.
 
+Known issue: fresh Excalibur-default testing reports invalid model rotations
+for some campfire and decorative-item models in the existing texture stack on
+Minecraft 1.20.1. Compatibility work remains before final visual approval.
+
 Upgrades copy legacy Bannerbound collections, deployment data and visual
 preferences into the current folders without overwriting current files. When
 only a legacy Bannerbound world exists, it is copied before opening; the original

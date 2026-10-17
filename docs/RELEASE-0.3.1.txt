@@ -11,13 +11,21 @@ Release foundation:
 - Legacy collections, visual settings, world regions and server profiles are
   copied while retaining originals. A locked legacy world is refused.
 - Legacy world names are recognized; stale legacy troops/displays are cleaned.
+- First-launch graphics initialization now selects the documented Excalibur
+  default when its required packs exist; existing texture selections are retained.
 
 This candidate also includes the previously unbundled ready pads and custom-room
 invitation implementation already present in the 0.3.0 working source. Those
-features still need an explicit in-game regression run on this exact candidate.
+features were exercised in an isolated development client, including pad admission,
+step-off and invitation handling. Multi-human joining remains separate work.
 
 Verification boundaries:
 Standalone migration checks exercise temporary filesystem fixtures. They do not
-establish that a real Minecraft world loads correctly after upgrade. Existing
-game test logs predate this candidate. CurseForge/Modrinth exports and publication
+establish that a real Minecraft world loads correctly after upgrade. New isolated development-client checks cover battle mechanics and a controlled
+legacy-world upgrade fixture. Production launcher installation remains pending. CurseForge/Modrinth exports and publication
 are separate checklist work. No public-server availability is promised.
+
+Known graphics issue found during fresh-default testing: the Excalibur/backport
+combination reports invalid model rotations for some campfire and decorative
+item models on Minecraft 1.20.1. The game loads, but those assets require a
+separate compatibility fix. This candidate is not a final visual-polish release.

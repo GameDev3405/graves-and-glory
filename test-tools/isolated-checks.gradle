@@ -1,0 +1,15 @@
+allprojects {
+ afterEvaluate {
+  tasks.matching { it.name == 'runClient' }.configureEach {
+   def testRoot = System.getenv('GRAVES_ROADMAP_TEST_ROOT')
+   if (!testRoot) throw new GradleException('GRAVES_ROADMAP_TEST_ROOT is required')
+   workingDir file(testRoot + '/run')
+   jvmArgs = jvmArgs.findAll { !it.startsWith('-Dgravesandglory.localChecks=') && !it.startsWith('-Dgravesandglory.runtime=') }
+   systemProperty 'gravesandglory.localChecks', testRoot + '/evidence/local-checks.txt'
+   systemProperty 'gravesandglory.runtime', testRoot + '/runtime'
+   systemProperty 'gravesandglory.migrationFixture', System.getenv('GRAVES_ROADMAP_MIGRATION') ?: 'false'
+   systemProperty 'gravesandglory.expectedTexture', System.getenv('GRAVES_ROADMAP_TEXTURE') ?: '2'
+   systemProperty 'gravesandglory.startupOnly', System.getenv('GRAVES_ROADMAP_STARTUP_ONLY') ?: 'false'
+  }
+ }
+}

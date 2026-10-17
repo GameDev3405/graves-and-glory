@@ -77,3 +77,14 @@ Creator observed choppy intro, requests smoother entrance and researched multipl
 - Not done: dev-client EMF load check and in-game screenshot. A javaw process (PID 24748, window "Minecraft 1.20.1 - Multiplayer (LAN)", started 8:33 PM) was already running and is not mine, so no game was launched or closed.
 - Not decided: dist/bannerbound-0.2.0.zip still contains harness classes. Keep or move aside (Kort).
 - Not published. Release 7c68b875 is unchanged. Publishing waits for Kort's confirmation.
+
+## Roadmap implementation checkpoint — 2026-10-17, 0.3.1
+- Local Git baseline acb5056; release-foundation changes tracked in Git.
+- Version in gradle.properties; generated mod metadata and embedded source fingerprint. Package rejects stale JARs, wrong identity/version and development code. Every package entry has SHA-256 and is read back by tools/verify_package.py.
+- Non-destructive legacy data migration, world-name compatibility and old troop/display cleanup. 13 standalone filesystem checks pass.
+- User authorized separate test windows. Used isolated run/runtime/evidence folders; did not close or control the pre-existing game. Fresh regression: 35 passing markers/checks. Corrected first-launch texture selection. Final upgraded-world restart: 40 passing markers/checks, full profile and saved-look preservation. Fresh Excalibur-default startup: three passes.
+- The initial upgrade test's hard-coded Excalibur assertion failed; investigated, fixed actual first-launch ordering, and changed restart assertion to compare the saved look. Failure logs retained.
+- Existing texture stack emits invalid campfire/decorative model rotation diagnostics under 1.20.1; recorded as open compatibility work.
+- Final candidate ZIP: 151a3f5ed68657da81ac9bb01350b9f1e74d99f44a96f085ff3ed59b214a08da. Main-source fingerprint f6ef9feaa4e99cf8dfbc0637cf81fca59e82d3d260ed08d2750c5439342bfb6f.
+- Production CurseForge/Modrinth installation, incompatible-client messaging, home hosting and publication remain pending. No uploads/submissions/publication.
+- Authoritative checklist and dated evidence: C:/Users/kortt/Documents/Codex/2026-10-17/i-w/outputs/Graves-and-Glory-Roadmap/05-WORK-LOG.txt and logs/.

@@ -20,11 +20,13 @@ public final class Presentation {
     static void load(){if(loaded)return;loaded=true;try{var j=JsonParser.parseString(Files.readString(file())).getAsJsonObject();impact=Math.max(0,Math.min(2,j.get("impact").getAsInt()));packsInitialized=j.has("packsInitialized")&&j.get("packsInitialized").getAsBoolean();armoryInitialized=j.has("armoryInitialized")&&j.get("armoryInitialized").getAsBoolean();}catch(Exception ignored){}}
     static void save(){try{Files.createDirectories(file().getParent());Files.writeString(file(),"{\"impact\":"+impact+",\"packsInitialized\":"+packsInitialized+",\"armoryInitialized\":"+armoryInitialized+"}");}catch(Exception e){notice="Your visual preference could not be saved.";}}
     static boolean prepareResources(MinecraftClient c){
-        if(!armoryPrepared&&!armoryInitialized){armoryPrepared=true;armoryInitialized=true;c.getResourcePackManager().scanPacks();
-            if(c.getResourcePackManager().getNames().contains("gravesandglory:armory")){selectTextures(textures());return false;}}
-        if(resourceState==2||packsInitialized)return true;if(resourceState==1)return false;
+        if(resourceState==2)return true;if(resourceState==1)return false;
+        if(packsInitialized&&armoryInitialized){resourceState=2;return true;}
         c.getResourcePackManager().scanPacks();if(!c.getResourcePackManager().getNames().contains(FRESH)){resourceState=2;return true;}
-        resourceState=1;selectTextures(c.getResourcePackManager().getNames().containsAll(java.util.List.of(EXCAL,CLARENT,PATCH))?2:0);return false;
+        // Select defaults once; adding the armory must not preempt first-launch
+        // Excalibur selection or change an existing player's texture choice.
+        int index=packsInitialized?textures():c.getResourcePackManager().getNames().containsAll(java.util.List.of(EXCAL,CLARENT,PATCH))?2:0;
+        armoryPrepared=true;resourceState=1;selectTextures(index);return false;
     }
     static int textures(){var names=MinecraftClient.getInstance().getResourcePackManager().getEnabledNames();return names.contains(EXCAL)?2:names.contains(FAITHFUL)?1:0;}
     static void selectTextures(int index){
@@ -39,7 +41,7 @@ public final class Presentation {
         c.options.write();notice="Loading textures and troop animations...";
         c.reloadResources().whenComplete((nothing,error)->c.execute(()->{
             changing=false;resourceState=2;
-            if(error==null){packsInitialized=true;save();notice=TEXTURES[index]+" enabled. Your choice is saved.";}
+            if(error==null){packsInitialized=true;armoryInitialized=true;save();notice=TEXTURES[index]+" enabled. Your choice is saved.";}
             else {c.getResourcePackManager().setEnabledProfiles(previous);c.options.resourcePacks.clear();c.options.resourcePacks.addAll(previous);c.options.incompatibleResourcePacks.clear();c.options.incompatibleResourcePacks.addAll(previousIncompatible);c.options.write();c.reloadResources();notice="Could not load that look. Restored your previous textures.";}
             if(c.currentScreen instanceof PresentationScreen screen)screen.refresh();
         }));
