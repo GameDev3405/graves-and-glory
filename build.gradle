@@ -1,5 +1,5 @@
 plugins { id 'fabric-loom' version '1.7.4' }
-version = '0.3.0'
+version = project.property('mod_version')
 group = 'gg.gravesandglory'
 base { archivesName = 'graves-and-glory' }
 repositories { mavenCentral() }
@@ -41,8 +41,27 @@ if (project.hasProperty('localIntegration') || project.hasProperty('campaignChec
 if (project.hasProperty('visualInspection')) { loom.runs.client.vmArg '-Dgravesandglory.visualInspection=true' }
 tasks.register('preflight', Exec) { commandLine 'python', 'tools/preflight.py' }
 compileJava.dependsOn preflight
+
+// Reject stale release JARs by embedding the identity of their build inputs.
+def releaseResources = layout.buildDirectory.dir('generated/release-resources')
+tasks.register('generateReleaseIdentity', Exec) {
+ dependsOn preflight
+ inputs.dir('src/main')
+ inputs.files('build.gradle', 'gradle.properties', 'settings.gradle',
+              'sheets/design.json', 'tools/package.py', 'tools/release_config.py',
+              'tools/build_identity.py')
+ outputs.file(releaseResources.map { it.file('gravesandglory-build.json') })
+ commandLine 'python', 'tools/build_identity.py', releaseResources.get().file('gravesandglory-build.json').asFile
+}
+sourceSets.main.resources.srcDir releaseResources
+processResources {
+ dependsOn generateReleaseIdentity
+ inputs.property('version', project.version)
+ filesMatching('fabric.mod.json') { expand(version: project.version) }
+}
 tasks.withType(JavaCompile).configureEach { options.release = 17 }
 java { withSourcesJar() }
+tasks.named('sourcesJar') { dependsOn generateReleaseIdentity }
 tasks.named('jar') { from('LICENSE') }
 
 if (project.hasProperty('commandPlaytest')) { loom.runs.client.vmArg '-Dgravesandglory.commandPlaytest=true' }

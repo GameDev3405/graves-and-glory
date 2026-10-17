@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "gravesandglory",
-  "version": "0.3.0",
+  "version": "${version}",
   "name": "Graves and Glory",
   "description": "Permanent armies, four battlefields and fantasy army battles for one to eight commanders.",
   "environment": "*",

@@ -1,6 +1,17 @@
 
 
-# Graves and Glory 0.3.0
+# Graves and Glory 0.3.1
+
+This is a local release candidate. The 0.3.1 build and migration checks do not
+constitute a new in-game, launcher-installation or Internet multiplayer playtest.
+Public matchmaking, quests, a battle pass and the home-hosted official service
+remain planned work. Nothing in this update has been published automatically.
+
+Upgrades copy legacy Bannerbound collections, deployment data and visual
+preferences into the current folders without overwriting current files. When
+only a legacy Bannerbound world exists, it is copied before opening; the original
+is retained. Close that world normally before upgrading, keep a backup, and allow
+disk space for the copy. If both world folders exist, the current world wins.
 
 Collect soldiers, arrange a twenty-unit army and lead it across four large fantasy battlefields inside Minecraft: Java Edition. Play 1vAI practice, 1v1, 2v2, 3v3 or 4v4, with optional bots filling empty team slots.
 

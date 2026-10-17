@@ -1,11 +1,15 @@
 import hashlib,json,pathlib,shutil,zipfile
+from release_config import version, source_identity, validate_player_jar
 root=pathlib.Path(__file__).resolve().parents[1]
 dist=root/'dist';dist.mkdir(exist_ok=True)
-jar=root/'build/libs/graves-and-glory-0.3.0.jar'
+release_version=version()
+jar=root/f'build/libs/graves-and-glory-{release_version}.jar'
+package=dist/f'graves-and-glory-{release_version}.zip'
+identity=source_identity()
 api=next((pathlib.Path.home()/'.gradle/caches/modules-2/files-2.1/net.fabricmc.fabric-api/fabric-api/0.92.2+1.20.1').rglob('fabric-api-0.92.2+1.20.1.jar'))
 entries=[];files={}
 dependencies=json.loads((root/'dependencies/manifest.json').read_text(encoding='utf8'))
-research=json.loads((root/'evidence/polish-research.json').read_text(encoding='utf8'))
+research=json.loads((root/'dependencies/author-permissions.json').read_text(encoding='utf8'))
 sources=json.loads((root/'dependencies/source-manifest.json').read_text(encoding='utf8'))
 credits=['# Graves and Glory: third-party credits and permissions','',
  'Graves and Glory original code, environments, effects and original sounds: Kort Tjepkema, assisted by OpenAI Codex; MIT.',
@@ -23,19 +27,19 @@ credits=['# Graves and Glory: third-party credits and permissions','',
  'Fabric API: FabricMC contributors, Apache-2.0; Fabric Loader is installed by Melty.',
  'Nested libraries retain their original licenses: ANTLR 4.13.1 (BSD-3-Clause), glsl-transformer 2.0.1 (AGPL-3.0), jcpp 1.4.14 (Apache-2.0), Reflect 1.6.2 (MIT), Kirin 1.15.6 (MIT).',
  'Corresponding library sources and build files are supplied in docs/third-party/sources alongside their notices. They may be replaced by compatible builds; no library is merged into Graves and Glory\'s code.', '']
-with zipfile.ZipFile(jar) as player_jar:
-    forbidden=('MeltyTest','CampaignChecks','CampaignDevControl','MapRouteChecks','VisualChecks','RevisionChecks','LocalProbe','gg/gravesandglory/testing/')
-    assert not any(any(token in name for token in forbidden) for name in player_jar.namelist()), 'Development harness leaked into player jar'
-    assert 'gg.gravesandglory.CampaignChecks' not in player_jar.read('fabric.mod.json').decode()
-with zipfile.ZipFile(dist/'graves-and-glory-0.3.0.zip','w',zipfile.ZIP_DEFLATED) as archive:
+validate_player_jar(jar,identity)
+recipe=json.loads((root/'melty.json').read_text())
+if recipe['components'][0]['fileName']!=package.name:
+    raise RuntimeError('Melty component does not match release version')
+with zipfile.ZipFile(package.with_suffix('.zip.tmp'),'w',zipfile.ZIP_DEFLATED) as archive:
     def add(src,dest):
-        archive.write(src,dest);entries.append({'path':dest,'size':src.stat().st_size})
+        archive.write(src,dest);entries.append({'path':dest,'size':src.stat().st_size,'sha256':hashlib.sha256(src.read_bytes()).hexdigest()})
         if src.suffix in ['.md','.txt','.json','.pom'] or src.name=='LICENSE':files[dest]=src.read_text(encoding='utf8',errors='replace')
     def content(dest,data):
         if isinstance(data,str):data=data.encode('utf8')
-        archive.writestr(dest,data);entries.append({'path':dest,'size':len(data)})
+        archive.writestr(dest,data);entries.append({'path':dest,'size':len(data),'sha256':hashlib.sha256(data).hexdigest()})
         if len(data)<40000:files[dest]=data.decode('utf8',errors='replace')
-    for src,dest in [(jar,'mods/'+jar.name),(api,'mods/'+api.name),(root/'README.md','docs/README.md'),(root/'docs/UI_REDESIGN.md','docs/UI_REDESIGN.md'),(root/'LICENSE','docs/LICENSE')]:
+    for src,dest in [(jar,'mods/'+jar.name),(api,'mods/'+api.name),(root/'README.md','docs/README.md'),(root/'docs/UI_REDESIGN.md','docs/UI_REDESIGN.md'),(root/'docs/RELEASE-0.3.1.txt','docs/RELEASE-0.3.1.txt'),(root/'LICENSE','docs/LICENSE')]:
         add(src,dest)
     # Preserve the exact upstream license without changing its notices.
     with zipfile.ZipFile(api) as z:
@@ -43,11 +47,12 @@ with zipfile.ZipFile(dist/'graves-and-glory-0.3.0.zip','w',zipfile.ZIP_DEFLATED)
         if not licenses: raise RuntimeError('Fabric API license missing')
         for n in licenses:
             data=z.read(n);dest='docs/third-party/'+pathlib.Path(n).name
-            archive.writestr(dest,data);entries.append({'path':dest,'size':len(data)})
-            files[dest]=data.decode('utf8')
+            content(dest,data)
     # Explicit manifest allowlist: no test harness, player save, game asset jar or credentials.
     for dep in dependencies:
-        src=root/dep['path'];assert hashlib.sha256(src.read_bytes()).hexdigest()==dep['sha256']
+        src=root/dep['path']
+        if hashlib.sha256(src.read_bytes()).hexdigest()!=dep['sha256']:
+            raise RuntimeError('Pinned dependency checksum mismatch: '+dep['path'])
         folder='mods' if '/mods/' in dep['path'] else 'shaderpacks' if '/shaders/' in dep['path'] else 'resourcepacks'
         add(src,folder+'/'+src.name)
         who=(dep.get('manifest') or {}).get('authors',[])
@@ -73,7 +78,8 @@ with zipfile.ZipFile(dist/'graves-and-glory-0.3.0.zip','w',zipfile.ZIP_DEFLATED)
         add(root/'dependencies'/name,'docs/third-party/'+name)
     content('docs/THIRD_PARTY.md','\n'.join(credits))
 with zipfile.ZipFile(jar) as z:files['mods/'+jar.name+'!/fabric.mod.json']=z.read('fabric.mod.json').decode()
-package=dist/'graves-and-glory-0.3.0.zip'
-manifest={'fileName':package.name,'size':package.stat().st_size,'sha256':hashlib.sha256(package.read_bytes()).hexdigest(),'entries':entries,'files':files}
+package.with_suffix('.zip.tmp').replace(package)
+manifest={'fileName':package.name,'build':identity,'size':package.stat().st_size,'sha256':hashlib.sha256(package.read_bytes()).hexdigest(),'entries':entries,'files':files}
 (dist/'package-manifest.json').write_text(json.dumps(manifest,indent=2))
-print(json.dumps({k:v for k,v in manifest.items() if k!='files'},indent=2))
+print(json.dumps({k:v for k,v in manifest.items() if k not in ('files','entries')},indent=2))
+print('Packaged entries:',len(entries))

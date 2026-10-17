@@ -24,7 +24,7 @@ public final class CampaignClient {
     public static boolean cinematic(){return camera!=null;}
     static boolean previousHud;
     static ArmorStandEntity camera;static Perspective previous;static int cameraTicks;
-    static Path collection(MinecraftClient c){Path now=c.runDirectory.toPath().resolve((Diagnostics.active()?"gravesandglory/test-collections/":"gravesandglory/collections/")+c.getSession().getUuid()+".json");Path old=c.runDirectory.toPath().resolve((Diagnostics.active()?"bannerbound/test-collections/":"bannerbound/collections/")+c.getSession().getUuid()+".json");return !Files.exists(now)&&Files.exists(old)?old:now;}
+    static Path collection(MinecraftClient c){return c.runDirectory.toPath().resolve((Diagnostics.active()?"gravesandglory/test-collections/":"gravesandglory/collections/")+c.getSession().getUuid()+".json");}
     static void sendProfile(MinecraftClient c){
         try{Path path=collection(c);String json=Files.exists(path)?Files.readString(path):Campaign.JSON.toJson(new Campaign.Profile());if(json.length()<16000&&ClientPlayNetworking.canSend(GravesAndGlory.PROFILE)){var packet=PacketByteBufs.create();packet.writeString(json);ClientPlayNetworking.send(GravesAndGlory.PROFILE,packet);}}catch(Exception ignored){}
 

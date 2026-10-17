@@ -1,0 +1,23 @@
+Graves and Glory 0.3.1 — local release candidate
+
+Release foundation:
+- One version value in gradle.properties drives Gradle, mod metadata and ZIP name.
+- JAR embeds gravesandglory-build.json with the source fingerprint.
+- Packaging rejects a stale source fingerprint, wrong mod ID/version or a
+  mismatched Melty artifact reference, and checks for development harness leaks.
+- Packaging uses tracked dependency permission evidence instead of relying on
+  the developer's untracked evidence directory.
+- Existing current data always takes precedence during legacy migration.
+- Legacy collections, visual settings, world regions and server profiles are
+  copied while retaining originals. A locked legacy world is refused.
+- Legacy world names are recognized; stale legacy troops/displays are cleaned.
+
+This candidate also includes the previously unbundled ready pads and custom-room
+invitation implementation already present in the 0.3.0 working source. Those
+features still need an explicit in-game regression run on this exact candidate.
+
+Verification boundaries:
+Standalone migration checks exercise temporary filesystem fixtures. They do not
+establish that a real Minecraft world loads correctly after upgrade. Existing
+game test logs predate this candidate. CurseForge/Modrinth exports and publication
+are separate checklist work. No public-server availability is promised.

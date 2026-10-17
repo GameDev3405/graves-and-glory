@@ -98,7 +98,7 @@ public final class CampaignMaps {
             else if(Math.abs(x)<5||Math.abs(z-LOBBY_Z)<4)Arena.put(w,x,64,z,Blocks.POLISHED_ANDESITE);
         }
         for(int x:new int[]{-32,32})for(int dz:new int[]{-23,23}){Arena.box(w,x,65,LOBBY_Z+dz,2,9,2,Blocks.STONE_BRICKS);Arena.box(w,x,74,LOBBY_Z+dz,2,2,2,Blocks.SEA_LANTERN);}
-        var old=new ArrayList<net.minecraft.entity.Entity>();for(var e:w.iterateEntities())if(e.getCommandTags().contains("gravesandglory-lobby"))old.add(e);for(var e:old)e.discard();
+        var old=new ArrayList<net.minecraft.entity.Entity>();for(var e:w.iterateEntities())if(e.getCommandTags().contains("gravesandglory-lobby")||e.getCommandTags().contains("bannerbound-lobby"))old.add(e);for(var e:old)e.discard();
         int display=0;for(var unit:Spec.TROOPS)if(unit.count()>0){
             int x=-15+display*6;ArmorStandEntity stand=new ArmorStandEntity(w,x,65,LOBBY_Z+6);stand.setNoGravity(true);stand.setInvulnerable(true);stand.setCustomName(Text.literal(unit.name()));stand.setCustomNameVisible(true);stand.addCommandTag("gravesandglory-lobby");
             stand.equipStack(EquipmentSlot.MAINHAND,new ItemStack(net.minecraft.registry.Registries.ITEM.get(new net.minecraft.util.Identifier(unit.weapon()))));

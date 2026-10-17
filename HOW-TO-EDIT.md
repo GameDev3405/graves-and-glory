@@ -104,8 +104,11 @@ gradle build --offline -x test        (from a shell with Gradle 8.8 on PATH, or 
 python tools/package.py
 ```
 
-- `build.gradle` sets the version (`0.3.0`). `tools/package.py` names the jar and zip with the same version, and `melty.json` `components[].fileName` must match. Update all three together.
-- If old classes survive a rebuild, delete `build/classes/java/main` and build again.
+- `gradle.properties` supplies the single `mod_version` value (currently `0.3.1`). Gradle expands it into `fabric.mod.json` and the archive names. Keep `melty.json` `components[].fileName` aligned; packaging rejects a mismatch.
+- `generateReleaseIdentity` embeds a normalized source fingerprint in `gravesandglory-build.json`. Packaging rejects a stale JAR. The final ZIP uses a staging file so a packaging failure cannot replace an earlier archive.
+- Run `python tools/verify_package.py` after packaging to read back every entry and verify its hash, the inner JAR and the third-party pins.
+- Permission evidence used by packaging is tracked in `dependencies/author-permissions.json`, rather than the ignored `evidence/` directory.
+- If old classes survive a rebuild, run a clean Gradle build. Do not reuse a prior remapped JAR.
 - `tools/package.py` fails the build if any harness name appears in the player jar. It also builds `dist/package-manifest.json` with hashes, credits and every third-party notice.
 - Only `dependencies/manifest.json` entries are included, and each file is checked against its pinned SHA-256.
 
@@ -114,7 +117,7 @@ python tools/package.py
 - Source: `test-tools/java/gg/gravesandglory/` (campaign checks, Melty test hooks, route checks, visual checks).
 - Built into `build/localTestTools/local-integration-DO-NOT-SHIP.jar` by the `localTestToolsJar` task.
 - Used by `gradle runClient --offline -PcampaignChecks`. Never include that jar in a release.
-- `melty.json` `test.checks` is current. All 12 ids exist in `CampaignChecks.java`. Newer checks (`barracks-*`, `impact-contact`, `friendly-fire`, `match-rewards`) are not in the recipe yet.
+- `melty.json` currently requests a timed test without named checks. Do not infer coverage from the recipe. In-game regression and launcher installation for 0.3.1 remain pending.
 
 ## 8. Known gaps and open decisions
 
@@ -126,3 +129,17 @@ python tools/package.py
 - Batches 1-4 (respawn countdown, key strip, result headline and PLAY AGAIN, Shieldwall, bot retreat and charge) compile and package. Their in-game behaviour is not yet verified. Balance of bot retreat and charge needs human playtests.
 - `tools/prepare_preview_checks.py` and `tools/implement_experience.py` reference removed hooks. Do not run them.
 - `CommandPlaytest` writes to `evidence/revision-02`, which does not exist. Expect it to fail until that path is created.
+
+## 9. Rename migration and standalone checks (0.3.1)
+
+`LegacyDataMigration` copies old collection/profile JSON and presentation settings without overwriting current files. It copies an inactive `saves/Bannerbound` into `saves/Graves and Glory` only if no current world exists, excludes session locks, retains the old save, and refuses locked or ambiguous saves. The server accepts the legacy level name in the copied level data. A unique incomplete staging copy is cleaned after failure.
+
+Never run migration experiments on a live player save. Back up after normal shutdown before deployment. The helper is exercised against temporary filesystem fixtures without launching Minecraft:
+
+```
+javac --release 17 -d build/migration-checks src/main/java/gg/gravesandglory/LegacyDataMigration.java test-tools/standalone/LegacyDataMigrationCheck.java
+java -cp build/migration-checks gg.gravesandglory.LegacyDataMigrationCheck
+python test-tools/standalone/test_release_integrity.py
+```
+
+These standalone checks stay under `test-tools/standalone`, outside the player and development Fabric source sets. They do not replace a real installation, save-upgrade, restart or multiplayer test.

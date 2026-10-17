@@ -45,13 +45,13 @@ public final class GravesAndGlory implements ModInitializer {
         for(String cue:new String[]{"battle_intro","unit_reveal","victory"}){var id=new Identifier("gravesandglory",cue);net.minecraft.registry.Registry.register(Registries.SOUND_EVENT,id,SoundEvent.of(id));}
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             // Only the dedicated Graves and Glory save belongs to this mod.
-            if (server.getSaveProperties().getLevelName().equals("Graves and Glory")) battle = new Battle(server);
+            if (java.util.Set.of("Graves and Glory", "Bannerbound").contains(server.getSaveProperties().getLevelName())) battle = new Battle(server);
         });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> battle=null);
         // Old saves decode our vanilla entity types as ordinary hostile mobs.
         // Catch chunks loaded after SERVER_STARTED, not only spawn-area entities.
         ServerEntityEvents.ENTITY_LOAD.register((entity,world)->{
-            if(battle!=null&&world==battle.world&&entity.getCommandTags().contains("gravesandglory")&&!(entity instanceof ArmyHusk)&&!(entity instanceof ArmySkeleton)&&!(entity instanceof ArmyWither))entity.discard();
+            if(battle!=null&&world==battle.world&&(entity.getCommandTags().contains("gravesandglory")||entity.getCommandTags().contains("bannerbound"))&&!(entity instanceof ArmyHusk)&&!(entity instanceof ArmySkeleton)&&!(entity instanceof ArmyWither))entity.discard();
         });
         ServerTickEvents.END_SERVER_TICK.register(server -> { if(battle!=null) battle.tick(); });
         ServerPlayNetworking.registerGlobalReceiver(ORDER, (server, player, handler, buf, responder) -> {
@@ -273,7 +273,7 @@ public final class GravesAndGlory implements ModInitializer {
             campaign.joined(p);if(running)campaign.participants.add(s.owner);
 
         }
-        void clearOldUnits(){List<Entity> stale=new ArrayList<>();for(Entity e:world.iterateEntities())if(e.getCommandTags().contains("gravesandglory"))stale.add(e);for(Entity e:stale)e.discard();}
+        void clearOldUnits(){List<Entity> stale=new ArrayList<>();for(Entity e:world.iterateEntities())if(e.getCommandTags().contains("gravesandglory")||e.getCommandTags().contains("bannerbound"))stale.add(e);for(Entity e:stale)e.discard();}
         void leave(UUID owner){
             campaign.left(owner);
             Squad s=squads.remove(owner);welcomed.remove(owner);respawns.remove(owner);

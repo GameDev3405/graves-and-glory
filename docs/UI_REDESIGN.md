@@ -9,7 +9,12 @@ Implemented screens use the actual troops, classes, maps, prices, and server act
 
 ## Added depth
 
-Original lightweight geometry adds infantry pauldrons, helmet crests, faction tabards and belt buckles. It follows the animated biped parts on named Graves and Glory troops and their menu previews. No simulation stats change.
+The built-in armory resource pack supplies EMF overlays for player, husk,
+skeleton and wither-skeleton models: tabard, buckle, belt and shoulder pauldrons.
+This is one neutral armor set, not faction-specific Java troop geometry. It
+applies to matching vanilla entity types while enabled, and replaces competing
+skeleton/wither-skeleton model definitions from the other packs. Its combined
+in-game appearance still requires verification. No simulation stats change.
 
 The built-in `gravesandglory:armory` resource pack supplies original volumetric swords, axes, pickaxes, shovels and hoes for six vanilla material tiers. It is enabled above the world texture packs by the visual presets. Disable it in Minecraft's resource-pack screen to restore other item models; choosing a Graves and Glory texture preset enables it again. Bow and armor textures retain their existing resources.
 
