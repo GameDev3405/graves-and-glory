@@ -26,6 +26,8 @@ public final class Campaign {
     final Set<UUID> importAllowed=new HashSet<>();
     /** Commanders who left mid-battle, mapped to the bot squad holding their army until they return this round. */
     final Map<UUID,UUID> vacated=new HashMap<>();
+    /** First-battle lessons reached this session: 0 move, 1 formation, 2 attack, 3 barracks. */
+    final Map<UUID,Integer> tutorial=new HashMap<>();
     /** AI armies that fell back stay there until rallied, so they do not walk back into the fight. */
     final Set<UUID> botRetreating=new HashSet<>();
     final Map<UUID,String> notices=new HashMap<>();
@@ -36,7 +38,7 @@ public final class Campaign {
     /** Custom lobby: one at a time. Its leader sets mode, map and bot fill, and starts the match. Invites expire after 60 seconds. */
     UUID partyLeader;final LinkedHashSet<UUID> party=new LinkedHashSet<>();final Map<UUID,UUID> invites=new HashMap<>();final Map<UUID,Long> inviteUntil=new HashMap<>();
     public static class Profile {
-        int gold=0,matches=0,wins=0;String commander="vanguard";
+        int gold=0,matches=0,wins=0;String commander="vanguard";boolean tutorialDone;
         Set<String> unlocked=new LinkedHashSet<>();Map<String,Integer> army=new LinkedHashMap<>();
         Map<String,List<String>> deployment=new HashMap<>();
         public Profile(){for(var t:Spec.TROOPS)if(t.count()>0){unlocked.add(t.id());army.put(t.id(),t.count());}}
@@ -210,6 +212,15 @@ public final class Campaign {
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
     void switchMap(int index){map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
+    /** The lesson a commander is on during their first battle, or -1 once they have finished it or played before. */
+    int tutorialStep(UUID id){Profile pr=profile(id);return !b.running||pr.tutorialDone||pr.matches>0?-1:tutorial.getOrDefault(id,0);}
+    /** Advances the first-battle lesson when the commander does what it asks; the last one pays for the first unlock roll. */
+    void tutorialDid(ServerPlayerEntity p,int step){
+        UUID id=p.getUuid();if(tutorialStep(id)!=step)return;
+        if(step<3){tutorial.put(id,step+1);return;}
+        Profile pr=profile(id);pr.tutorialDone=true;pr.gold+=Spec.CAMPAIGN[0].rollCost();save(id);tutorial.remove(id);
+        notice(id,"Training complete: +"+Spec.CAMPAIGN[0].rollCost()+" gold, enough for your first unlock roll after the battle.");
+    }
     /** Quick-match size from who is ready: half the commanders rounded up, at least the larger side, 2v2 to 4v4. A lone commander gets 3v3. */
     int padSize(){
         int n=onPad.size();if(n<2)return 3;
@@ -301,7 +312,7 @@ public final class Campaign {
         }
     }
     String snapshot(ServerPlayerEntity p){
-        JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",JSON.toJsonTree(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",Math.max(0,introUntil-b.time));j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("headline",headline);JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
+        JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",JSON.toJsonTree(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",Math.max(0,introUntil-b.time));j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("headline",headline);j.addProperty("tutorial",tutorialStep(p.getUuid()));JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
         JsonObject partyJson=new JsonObject();boolean member=party.contains(p.getUuid());Long until=inviteUntil.get(p.getUuid());UUID inviter=invites.get(p.getUuid());
         partyJson.addProperty("open",partyLeader!=null);partyJson.addProperty("member",member);partyJson.addProperty("lead",leader(p));partyJson.addProperty("capacity",size*2);
         partyJson.addProperty("leader",partyLeader==null?"":name(partyLeader));

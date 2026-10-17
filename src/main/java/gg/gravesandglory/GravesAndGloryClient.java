@@ -142,6 +142,19 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         var p=MinecraftClient.getInstance().player;if(p!=null){int px=x+(int)((p.getX()+350)*w/700),pz=y+(int)((p.getZ()+250)*h/500);g.fill(px-1,pz-2,px+2,pz+3,0xffffffff);}
     }
     static String keyHints(){return "Attack "+attack.getBoundKeyLocalizedText().getString()+"   Follow "+follow.getBoundKeyLocalizedText().getString()+"   Formation "+cycle.getBoundKeyLocalizedText().getString()+"   Map "+mapKey.getBoundKeyLocalizedText().getString()+"   Menu "+menu.getBoundKeyLocalizedText().getString();}
+    /** First-battle lessons, one at a time, each naming the player's own key binding. The server advances them. */
+    static void lesson(DrawContext g,net.minecraft.client.font.TextRenderer font,int w){
+        int step=CampaignClient.tutorial;if(step<0||step>3)return;
+        String text=switch(step){
+            case 0->"Press "+menu.getBoundKeyLocalizedText().getString()+", choose a group and Move, then click the ground to send them.";
+            case 1->"Press "+cycle.getBoundKeyLocalizedText().getString()+" to change formation. Shieldwall holds a line; Wedge breaks one.";
+            case 2->"Press "+attack.getBoundKeyLocalizedText().getString()+" and aim at an enemy or a point to send your army in.";
+            default->"Lost troops? Walk back to your barracks and right-click its lectern to recruit.";
+        };
+        panel(g,w/2-180,60,360,32);
+        g.drawCenteredTextWithShadow(font,"FIRST BATTLE / LESSON "+(step+1)+" OF 4",w/2,65,GOLD);
+        g.drawCenteredTextWithShadow(font,font.trimToWidth(text,350),w/2,78,WHITE);
+    }
     static void renderHud(DrawContext g,float delta){
         var c=MinecraftClient.getInstance();if(c.player==null||c.currentScreen instanceof ArmyScreen||Diagnostics.active()&&Diagnostics.hideHud())return;
         float scale=Math.min(1,c.getWindow().getScaledWidth()/640f);g.getMatrices().push();g.getMatrices().scale(scale,scale,1);
@@ -152,7 +165,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         CommandMode.hud(g,w,h);Presentation.hud(g,w,h);
         if(!running)g.drawCenteredTextWithShadow(font,menu.getBoundKeyLocalizedText().getString()+": war council / collection / maps",w/2,48,WHITE);
         // Key hints sit under the score panel, clear of the hotbar; hidden while an order is being aimed.
-        else{if(!CommandMode.active())g.drawCenteredTextWithShadow(font,keyHints(),w/2,48,MUTED);if(respawn>0){panel(g,w/2-100,h/2-40,200,26);g.drawCenteredTextWithShadow(font,"Respawn in "+respawn+" s",w/2,h/2-32,GOLD);}}
+        else{if(!CommandMode.active()){g.drawCenteredTextWithShadow(font,keyHints(),w/2,48,MUTED);lesson(g,font,w);}if(respawn>0){panel(g,w/2-100,h/2-40,200,26);g.drawCenteredTextWithShadow(font,"Respawn in "+respawn+" s",w/2,h/2-32,GOLD);}}
         panel(g,w-116,h-100,108,92);g.drawTextWithShadow(font,"M / BATTLEFIELD",w-109,h-92,MUTED);map(g,w-110,h-79,96,68,false);CampaignClient.hud(g,w,h);g.getMatrices().pop();
     }
     static final class FantasyButton extends ButtonWidget {

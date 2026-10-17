@@ -309,10 +309,11 @@ public final class GravesAndGlory implements ModInitializer {
             for(var f:Spec.FORMATIONS)if(cmd.equals("formation:"+f.id())){
                 s.formation=f.id();s.yaw=p.getYaw();for(Assignment a:s.assignments.values())a.formation=f.id();
                 if(Diagnostics.active()&&testedFormations.add(f.id())&&testedFormations.size()==Spec.FORMATIONS.length)Diagnostics.report("formations-commanded",true,null);
-                return;
+                campaign.tutorialDid(p,1);return;
             }
             for(var order:Spec.ORDERS)if(cmd.equals(order.id())){
                 s.assignments.clear();s.order=order.id();s.yaw=p.getYaw();
+                campaign.tutorialDid(p,order.id().equals("attack")||order.id().equals("charge")?2:0);
                 if(Diagnostics.active()&&testedOrders.add(order.id())&&testedOrders.size()==Spec.ORDERS.length)Diagnostics.report("orders-commanded",true,null);
                 if(order.targeted()){
                     // Target is derived on the server, never trusted from the client.
@@ -332,7 +333,7 @@ public final class GravesAndGlory implements ModInitializer {
             if(Arrays.stream(Spec.GROUPS).noneMatch(g->g.id().equals(group))||Arrays.stream(Spec.FORMATIONS).noneMatch(f->f.id().equals(formation)))return;
             if(action.equals("formation")){
                 for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id()))){Assignment a=s.assignments.computeIfAbsent(g.id(),k->new Assignment(s.order,s.formation,s.target,s.yaw));a.formation=formation;}
-                s.lastOrder=time;return;
+                s.lastOrder=time;campaign.tutorialDid(p,1);return;
             }
             var order=Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(action)).findFirst().orElse(null);
             if(order==null||!Double.isFinite(x)||!Double.isFinite(z)||!Float.isFinite(yaw)||Math.abs(x)>R.arenaHalfX()-10||Math.abs(z)>R.arenaHalfZ()-10)return;
@@ -347,6 +348,7 @@ public final class GravesAndGlory implements ModInitializer {
                 Assignment a=new Assignment(action,formation,dest,yaw);a.enemy=enemyId;a.issued=time;s.assignments.put(g.id(),a);
             }
             for(Unit u:units)if(u.squad==s&&(group.equals("all")||u.spec.group().equals(group))){u.lockedTarget=null;u.spellCenter=null;u.mob.setTarget(null);u.mob.getNavigation().stop();u.nextPath=0;u.stuckTicks=0;}
+            campaign.tutorialDid(p,action.equals("attack")||action.equals("charge")?2:0);
             p.playSound(action.equals("retreat")?SoundEvents.BLOCK_NOTE_BLOCK_BELL.value():SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(),.6f,action.equals("charge")?.7f:1.1f);
             p.sendMessage(Text.literal(group+" / "+action+" / "+(int)x+", "+(int)z),true);
         }
@@ -362,7 +364,7 @@ public final class GravesAndGlory implements ModInitializer {
         public boolean atBarracks(ServerPlayerEntity p,Squad s){
             var f=Spec.FACTIONS[s.team];return horizontalDistance(p.getPos(),new Vec3d(f.barracksX(),65,f.barracksZ()))<=Spec.ECONOMY[0].accessRadius()*Spec.ECONOMY[0].accessRadius();
         }
-        void openBarracks(ServerPlayerEntity p){if(ServerPlayNetworking.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,OPEN_BARRACKS,PacketByteBufs.create());}
+        void openBarracks(ServerPlayerEntity p){if(running)campaign.tutorialDid(p,3);if(ServerPlayNetworking.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,OPEN_BARRACKS,PacketByteBufs.create());}
         void manage(ServerPlayerEntity p,Squad s,String cmd){
             if(!atBarracks(p,s)){p.sendMessage(Text.literal("Return to your faction's barracks to train or disband troops."),true);return;}
             if(cmd.equals("cancel-training")){for(Training t:s.training)s.gold+=t.spec().cost();s.training.clear();return;}
