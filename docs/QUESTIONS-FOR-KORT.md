@@ -26,4 +26,6 @@ Each item says what was decided in the meantime so work could continue.
 
 ## Builds to try
 
-(none yet)
+- 0.3.7 (master 2437e4f): camp, pads, parties, rooms, contracts verified by
+  automated checks in a real client. Run it from the dev client or import
+  dist/graves-and-glory-0.3.6.mrpack into Prism (0.3.7 mrpack not yet exported).

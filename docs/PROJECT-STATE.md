@@ -105,6 +105,14 @@ Verified in a real game (dev client or Prism):
   camera ~118 FPS.
 - Legacy Bannerbound upgrade preserves profile and look.
 - 0.3.6 two-loopback-client party/room/rematch flow (Codex isolated run).
+- 0.3.7 camp suite in a real isolated client (2026-10-17 17:00, worktree
+  bannerbound-runs/work/verify-037): 33 checks pass (stewards, camp HUD off,
+  server-confirmed recruit, party and room packets, room start with bots,
+  results and rewards, daily claim and ledger, rematch, short-match no
+  reward, failed-save rollback, map-prep auto-start, gate countdown and
+  step-off). 14 screenshots under run/screenshots. Seen in them: tutorial
+  lesson text overflows its panel; vanilla advancement toast shows in
+  battle; camp courtyard is plain stone brick with text signs.
 
 Claimed only by unit/policy tests or code reading:
 - Camp waiting admission (746 assertions), contracts/chapter claims, Kingsfield
