@@ -32,3 +32,6 @@ add to it, never remove from it. Date and source on each line.
 
 ## Design sheets unused by code
 - hooks, landmarkStyle, recruitmentView, terrainStyle, duplicateRefund, starterGold (HOW-TO-EDIT 0.3.x).
+- Team-only glow for Mark Prey (Phase 2 plan; needs a client renderer, vanilla Glowing used instead).
+- +5 shard campaign bonus objective (Phase 2 plan; no bonus objectives exist yet).
+- In-world rendering of renown and banner cosmetics (Phase 2 plan; recorded only, rendering is Phase 3 art).

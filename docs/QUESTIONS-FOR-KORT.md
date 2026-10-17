@@ -20,6 +20,16 @@ Each item says what was decided in the meantime so work could continue.
    Legendary names; the 29-hour median to a full roster; commander ability on
    key G. I am proceeding with the designer's calls; overturn any when back.
 
+3. **Phase 2 plan (docs/superpowers/plans/2026-10-17-phase-2-houses.md).**
+   The planner resolved 17 spec gaps (listed at the end of the plan); the ones
+   that change what you asked for: commander active moves to key H (G is
+   already Attack); classes split by House batch; the three later Houses are
+   hidden from banners until their batch; Ballista evolve line reduced to fit
+   the +6% cap. Two new questions: should players who claimed Founders tier 20
+   before migration also get the tier-20 Rare once? Is Mark Prey's glow being
+   visible to both teams acceptable, or is a team-only glow worth a client
+   renderer? Proceeding with: no retro Rare; vanilla glow (team-only parked).
+
 ## Problems hit
 
 1. **Kingsfield (map 4) crashes the client when the lobby switches to it**
