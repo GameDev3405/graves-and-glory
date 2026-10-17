@@ -32,7 +32,7 @@ public final class FrontMenuChecks implements ClientModInitializer {
                 if(!started){
                     if(!(c.currentScreen instanceof FrontMenuScreen)&&step==0)return;
                     ticks++;
-                    if(ticks==80){report("idle-no-world",c.player==null&&c.getServer()==null);report("public-disabled",!find(c,"Public battles").active);controls(c);shot(c,"home");}
+                    if(ticks==80){report("idle-no-world",c.player==null&&c.getServer()==null);report("no-public-placeholder",c.currentScreen.children().stream().noneMatch(e->e instanceof ButtonWidget w&&w.getMessage().getString().startsWith("Public battles")));controls(c);shot(c,"home");}
                     if(ticks==90){click(c,"Settings");step=1;}
                     if(ticks==100){report("settings",c.currentScreen instanceof net.minecraft.client.gui.screen.option.OptionsScreen);c.currentScreen.close();}
                     if(ticks==110){click(c,"Credits");}

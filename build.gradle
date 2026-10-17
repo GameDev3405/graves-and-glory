@@ -33,10 +33,15 @@ tasks.register('localTestToolsJar', Jar) {
  archiveFileName = 'local-integration-DO-NOT-SHIP.jar'
  destinationDirectory = file('build/localTestTools')
 }
-if (project.hasProperty('localIntegration') || project.hasProperty('campaignChecks')) {
+if (project.hasProperty('localIntegration') || project.hasProperty('campaignChecks') || project.hasProperty('selfTest')) {
  loom.runs.client.vmArg '-Dgravesandglory.localIntegration=true'
  loom.runs.client.vmArg "-Dfabric.addMods=${file('build/localTestTools/local-integration-DO-NOT-SHIP.jar').absolutePath}"
  tasks.named('runClient') { dependsOn localTestToolsJar }
+}
+// Battle self-test: pathing, capture, combat, capacity, bridges, hills, friendly fire and barracks.
+if (project.hasProperty('selfTest')) {
+ loom.runs.client.vmArg '-Dgravesandglory.selfTest=true'
+ loom.runs.client.vmArg "-Dgravesandglory.localChecks=${file('evidence/self-test.txt').absolutePath}"
 }
 if (project.hasProperty('visualInspection')) { loom.runs.client.vmArg '-Dgravesandglory.visualInspection=true' }
 tasks.register('preflight', Exec) { commandLine 'python', 'tools/preflight.py' }

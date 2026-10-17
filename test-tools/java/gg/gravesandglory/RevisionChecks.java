@@ -28,7 +28,7 @@ public final class RevisionChecks implements ClientModInitializer {
             if(tick==180)shot(c,"command-interface");
             if(tick==200){c.setScreen(null);server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());p.changeGameMode(GameMode.SPECTATOR);p.teleport(b.world,-85,84,5,-90,45);});CommandMode.begin("move");}
             if(tick==220)shot(c,"world-preview");
-            if(tick==240){CommandMode.cancel();c.setScreen(new GravesAndGloryClient.MapScreen());}
+            if(tick==240){CommandMode.cancel();c.setScreen(new GravesAndGloryClient.MapScreen(null));}
             if(tick==260)shot(c,"tactical-map");
             if(tick==280)c.setScreen(null);
             if(tick==340)server(c,b->{var s=b.squads.get(c.player.getUuid());var unit=b.units.stream().filter(u->u.squad==s&&u.spec.group().equals("ranged")).findFirst().orElseThrow();result("ranged-group-moves",unit.mob.squaredDistanceTo(initial)>16,"distance="+Math.sqrt(unit.mob.squaredDistanceTo(initial)));var infantry=b.units.stream().filter(u->u.squad==s&&u.spec.group().equals("infantry")).findFirst().orElseThrow();var enemy=new GravesAndGlory.Squad(UUID.randomUUID(),1-s.team,infantry.mob.getPos().add(2,0,0));enemy.order="hold";var type=Arrays.stream(Spec.TROOPS).filter(t->t.faction().equals(Spec.FACTIONS[enemy.team].id())&&!t.magic()&&t.range()<3).findFirst().orElseThrow();victim=b.spawn(enemy,type,0,infantry.mob.getPos().add(2,0,0));});
@@ -45,7 +45,7 @@ public final class RevisionChecks implements ClientModInitializer {
             if(tick==700){shot(c,"barracks-queue");result("barracks-queue",GravesAndGloryClient.queued==1,"Purchased replacement through real UI");}
             if(tick==710){if(c.currentScreen instanceof GravesAndGloryClient.BarracksScreen screen)screen.cancel.onPress();}
             if(tick==740){result("barracks-cancel",GravesAndGloryClient.queued==0,"Cancelled through real UI");c.setScreen(null);}
-            if(tick==760){CommandMode.ping("help",-44,-43);c.setScreen(new GravesAndGloryClient.MapScreen());}
+            if(tick==760){CommandMode.ping("help",-44,-43);c.setScreen(new GravesAndGloryClient.MapScreen(null));}
             if(tick==780){shot(c,"map-ping");result("teammate-ping",!CommandMode.pings.isEmpty(),"Server relayed map ping");}
             if(tick==800){c.setScreen(null);server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());p.changeGameMode(GameMode.SPECTATOR);p.teleport(b.world,-43,83,-25,145,28);});}
             if(tick==860)shot(c,"hamlet");

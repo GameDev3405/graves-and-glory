@@ -203,6 +203,7 @@ public final class GravesAndGlory implements ModInitializer {
         }
         public void tick(){
             time++;
+            if(ready&&testStage<8&&Diagnostics.selfTest())selfTest();
             if(!ready){
                 // The flat world starts far below this arena: keep arriving players safe
                 // while their floor is constructed, before admitting them to the round.
@@ -430,14 +431,6 @@ public final class GravesAndGlory implements ModInitializer {
             mob.setCustomName(Text.literal(spec.name()).formatted(s.team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE));
             mob.setCustomNameVisible(false);world.spawnEntity(mob);
             Unit u=new Unit(mob,s,spec,slot);units.add(u);return u;
-        }
-        Vec3d formation(Squad s,int slot){
-            var f=Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(s.formation)).findFirst().orElse(Spec.FORMATIONS[0]);
-            double side=(slot%f.columns()-(f.columns()-1)/2.0)*f.spacing();
-            double back=(slot/f.columns()+1)*f.spacing();
-            if(f.wedge()){int rank=(int)((Math.sqrt(1+4*slot)-1)/2);int offset=slot-rank*(rank+1);side=(offset-rank-.5)*f.spacing();back=(rank+1)*f.spacing();}
-            double angle=Math.toRadians(s.yaw);
-            return s.target.add(Math.cos(angle)*side+Math.sin(angle)*back,0,Math.sin(angle)*side-Math.cos(angle)*back);
         }
         final Set<Long> unitChunks=new HashSet<>();
         void updateUnitChunks(){

@@ -24,7 +24,7 @@ final class VisualChecks {
         if(c.getServer()==null){
             if(GravesAndGloryClient.worldTicks==200)GravesAndGloryClient.send("barracks");
             if(GravesAndGloryClient.worldTicks==240)shot(c,"joiner-dusk-barracks");
-            if(GravesAndGloryClient.worldTicks==260)c.setScreen(new GravesAndGloryClient.MapScreen());
+            if(GravesAndGloryClient.worldTicks==260)c.setScreen(new GravesAndGloryClient.MapScreen(null));
             if(GravesAndGloryClient.worldTicks==300)shot(c,"joiner-dusk-map");
             if(GravesAndGloryClient.worldTicks==320)c.setScreen(null);
             return;
@@ -71,7 +71,7 @@ final class VisualChecks {
             String[] orders={"follow","move","hold","attack","rush"};
             for(int i=0;i<orders.length;i++)if(showcase==680+i*20)GravesAndGloryClient.send(orders[i]);
             if(showcase==790)shot(c,"gravesandglory-battle");
-            if(showcase==810)c.setScreen(new GravesAndGloryClient.MapScreen());
+            if(showcase==810)c.setScreen(new GravesAndGloryClient.MapScreen(null));
             if(showcase==835)shot(c,"map-friendly-battle");
             if(showcase==850)c.setScreen(null);
             if(showcase==880)camera(c,60,86,85,126,30);
