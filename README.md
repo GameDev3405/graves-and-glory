@@ -79,11 +79,11 @@ Sodium, Iris, Lithium, FerriteCore, ImmediatelyFast and ModernFix support render
 
 ## Required game and multiplayer
 
-Requires an account owning Minecraft: Java Edition. Built for Minecraft 1.20.1, Fabric Loader 0.16.14 and Fabric API 0.92.2+1.20.1. Melty supplies Minecraft, Java and Fabric Loader; the redistributable Fabric API is bundled. Roblox's Command an Army is inspiration only; Roblox is not required. No Minecraft or Roblox content is included.
+Requires an account owning Minecraft: Java Edition. Built for Minecraft 1.20.1, Fabric Loader 0.16.14 and Fabric API 0.92.2+1.20.1. Install the Modrinth .mrpack in Prism Launcher or another launcher that imports .mrpack files; it sets up Minecraft and Fabric Loader for the instance and downloads the pinned mods, including Fabric API. Java 17 or newer is required. The plain zip bundles the redistributable Fabric API and expects you to install Fabric Loader yourself. Roblox's Command an Army is inspiration only; Roblox is not required. No Minecraft or Roblox content is included.
 
-A local Modrinth .mrpack candidate is also prepared, with pinned official downloads and a localhost-only dedicated-server configuration template. The title menu works without Melty runtime files. Dedicated-server and real launcher checks are tracked in the work log; they do not establish Internet reachability. It is not yet a published Modrinth or CurseForge release.
+A local Modrinth .mrpack candidate, a plain zip and a dedicated-server kit are prepared, with pinned official downloads and a localhost-only dedicated-server configuration template. The title menu works with no launcher-specific runtime files. A Prism Launcher import and start of the 0.3.3 .mrpack was checked on this PC; 0.3.7 has not been installed that way. Dedicated-server and real launcher checks are tracked in the work log; they do not establish Internet reachability. It is not yet a published Modrinth or CurseForge release.
 
-Up to eight human commanders, four per faction, each with twenty troops (160 total). A client can host a local-network camp and stay open, or players can join a separately configured dedicated server. Practice stays private. Melty invitations, when supplied, are optional actions under Play with friends; they do not start a connection automatically. Remote friends need a reachable server or a supported launcher relay. Direct Internet reachability and an eight-human Internet match have not been independently tested.
+Up to eight human commanders, four per faction, each with twenty troops (160 total). A client can host a local-network camp and stay open, or players can join a separately configured dedicated server. Practice stays private. If a launcher supplies an invitation file, it adds an optional action under Play with friends and never starts a connection automatically; an ordinary Prism or Modrinth install has no such file. Remote friends need a reachable server. Direct Internet reachability and an eight-human Internet match have not been independently tested.
 
 ## Verification
 
@@ -95,7 +95,7 @@ Concept and direction: Kort Tjepkema. Implementation, authored environments, ani
 
 Inspired by Command an Army on Roblox; no Roblox code, assets or branding included. Minecraft belongs to Mojang/Microsoft. Minecraft models, equipment, textures, particles and stock sounds are read from each player's own game and are not redistributed.
 
-Fabric API: FabricMC contributors, Apache License 2.0, bundled with its original license. Fabric Loader is installed by Melty from its authors. Third-party components retain their licenses.
+Fabric API: FabricMC contributors, Apache License 2.0, bundled with its original license. Fabric Loader is installed from its authors by the launcher (or the server setup script). Third-party components retain their licenses.
 
 Complementary Reimagined / Unbound: EminGTR and [Complementary Development](https://www.complementary.dev/shaders/), License Agreement 1.5 in the supplied r5.5.1 files. Compatibility support for this modpack is Graves and Glory's responsibility. MakeUp Ultra Fast: [javiergcim](https://github.com/javiergcim/MakeUpUltraFast), LGPL-3.0-or-later, with its shader sources and notices.
 

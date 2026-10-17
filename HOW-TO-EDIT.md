@@ -4,7 +4,7 @@ Guide for people and AI helpers changing this project. Project root: `C:\Users\k
 
 ## 1. Rules to follow
 
-- Do not publish, upload or submit anything to Melty until Kort explicitly confirms.
+- A release is a plain zip, a Modrinth `.mrpack` and a server kit (section 6). Publishing, uploading or submitting any of them anywhere (Modrinth, CurseForge, GitHub, a launcher or marketplace) needs Kort's go.
 - Do not hand-edit `src/main/java/gg/gravesandglory/Spec.java`. It is generated from `sheets/design.json` on every build. Change the sheet, then rebuild.
 - Do not launch the game, send mouse or keyboard input, or close game processes you did not start. Kort may be playing; check first.
 - Do not run `tools/prepare_preview_checks.py` or `tools/revise_command_design.py` for a release. They rewrite `design.json` and, for the first one, harness sources under `src`.
@@ -25,9 +25,10 @@ Guide for people and AI helpers changing this project. Project root: `C:\Users\k
 | `sheets/verification.json` | Verification status notes. Not read by the generator |
 | `tools/preflight.py` | Validates `design.json` and regenerates `Spec.java` |
 | `tools/package.py` | Builds the player zip in `dist/` and checks the jar for harness leaks |
+| `tools/verify_package.py`, `tools/export_modrinth.py`, `tools/verify_modrinth.py`, `tools/export_server.py` | Read back the zip; build and read back the `.mrpack`; build the server kit (section 6) |
 | `dependencies/` | Pinned third-party mods and resource packs (`manifest.json`), notices and source archives |
 | `test-tools/java/gg/gravesandglory/` | Development test harness. Not in the player jar |
-| `melty.json` | Melty publish metadata: component file name, multiplayer settings, test checks |
+| `melty.json` | Legacy Melty publish metadata. Kept for now but unused: packaging and verification never read it, so it can go stale or be deleted |
 | `README.md` | Player-facing description. Keep it accurate |
 | `UPDATE_PLAN.md` | Working log: status, evidence, decisions, open items |
 | `build.gradle` | Build config, version, Loom run configs, harness tasks |
@@ -100,12 +101,18 @@ The overlays apply to every husk, skeleton and wither skeleton in a Graves and G
 
 ## 6. Packaging a release
 
+A release is a plain zip, a Modrinth `.mrpack` and a server kit. There is no launcher or marketplace recipe step. Publishing any of them anywhere needs Kort's go.
+
 ```
 gradle build --offline -x test        (from a shell with Gradle 8.8 on PATH, or the full gradle.bat path)
-python tools/package.py
+python tools/package.py               -> dist/graves-and-glory-<version>.zip and dist/package-manifest.json
+python tools/verify_package.py        -> reads back the zip
+python tools/export_modrinth.py       -> dist/graves-and-glory-<version>.mrpack
+python tools/verify_modrinth.py       -> reads back the .mrpack
+python tools/export_server.py         -> dist/graves-and-glory-<version>-server.zip
 ```
 
-- `gradle.properties` supplies the single `mod_version` value (currently `0.3.7`). Gradle expands it into `fabric.mod.json` and the archive names. Keep `melty.json` `components[].fileName` aligned; packaging rejects a mismatch.
+- `gradle.properties` supplies the single `mod_version` value (currently `0.3.7`). Gradle expands it into `fabric.mod.json` and the archive names. `docs/RELEASE-<version>.txt` must exist for that version, or packaging fails. Packaging does not read `melty.json`.
 - `generateReleaseIdentity` embeds a normalized source fingerprint in `gravesandglory-build.json`. Packaging rejects a stale JAR. The final ZIP uses a staging file so a packaging failure cannot replace an earlier archive.
 - Run `python tools/verify_package.py` after packaging to read back every entry and verify its hash, the inner JAR and the third-party pins.
 - Permission evidence used by packaging is tracked in `dependencies/author-permissions.json`, rather than the ignored `evidence/` directory.
@@ -115,10 +122,10 @@ python tools/package.py
 
 ## 7. Test harness (development only)
 
-- Source: `test-tools/java/gg/gravesandglory/` (campaign checks, Melty test hooks, route checks, visual checks).
+- Source: `test-tools/java/gg/gravesandglory/` (campaign checks, route checks, visual checks, and `MeltyTest`, the shared check-report hook).
 - Built into `build/localTestTools/local-integration-DO-NOT-SHIP.jar` by the `localTestToolsJar` task.
 - Used by `gradle runClient --offline -PcampaignChecks`. Never include that jar in a release.
-- `melty.json` currently requests a timed test without named checks. Do not infer coverage from the recipe. In-game regression and launcher installation for 0.3.1 remain pending.
+- The Melty test recipe is retired. `MeltyTest` keeps its legacy name, but every harness check reports through `MeltyTest.report`, driven by `-Dgravesandglory.localChecks` in development runs, so it stays. Its `%LOCALAPPDATA%\Melty\test` branch is the retirable part, and renaming the class touches about a dozen harness files. The leak check in `release_config.py` still lists `MeltyTest` by name for that reason. In-game regression and launcher installation for 0.3.1 remain pending.
 
 ## 8. Known gaps and open decisions
 

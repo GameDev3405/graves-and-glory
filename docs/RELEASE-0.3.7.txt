@@ -1,0 +1,14 @@
+Graves and Glory 0.3.7 — camp waiting local candidate
+October 17, 2026
+
+Full matches now admit visitors to camp without granting a battle seat. R opens
+the war council while waiting. New server templates allow 16 connections, with
+a maximum of eight battle commanders; existing servers need max-players raised
+to leave room for visitors. Admission policy checks pass; live full-match join,
+camp movement, reconnect and next-round verification remain pending.
+
+Packaging: a release is a plain zip, a Modrinth .mrpack and a server kit. The
+Melty publishing recipe is no longer part of the packaging or verification path.
+
+This candidate has not been installed into a personal launcher, published, or
+tested as an eight-human Internet session.

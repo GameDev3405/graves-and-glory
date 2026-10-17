@@ -28,9 +28,6 @@ credits=['# Graves and Glory: third-party credits and permissions','',
  'Nested libraries retain their original licenses: ANTLR 4.13.1 (BSD-3-Clause), glsl-transformer 2.0.1 (AGPL-3.0), jcpp 1.4.14 (Apache-2.0), Reflect 1.6.2 (MIT), Kirin 1.15.6 (MIT).',
  'Corresponding library sources and build files are supplied in docs/third-party/sources alongside their notices. They may be replaced by compatible builds; no library is merged into Graves and Glory\'s code.', '']
 validate_player_jar(jar,identity)
-recipe=json.loads((root/'melty.json').read_text())
-if recipe['components'][0]['fileName']!=package.name:
-    raise RuntimeError('Melty component does not match release version')
 with zipfile.ZipFile(package.with_suffix('.zip.tmp'),'w',zipfile.ZIP_DEFLATED) as archive:
     def add(src,dest):
         archive.write(src,dest);entries.append({'path':dest,'size':src.stat().st_size,'sha256':hashlib.sha256(src.read_bytes()).hexdigest()})
