@@ -242,6 +242,7 @@ public final class Campaign {
             if(living<=full*tactics.retreatShare())botRetreating.add(s.owner);
             else if(living>=full*tactics.rallyShare())botRetreating.remove(s.owner);
             long enemies=b.units.stream().filter(u->u.squad.team!=s.team&&u.mob.isAlive()).count();
+            boolean couldCharge=b.startsCharge(s,"all");
             s.assignments.clear();
             if(botRetreating.contains(s.owner)){s.order="retreat";s.formation="loose";s.target=GravesAndGlory.Battle.base(s.team);}
             else{
@@ -249,6 +250,7 @@ public final class Campaign {
                 if(s.order.equals("attack")&&enemies>0&&living>=enemies*tactics.chargeRatio())s.order="charge";
             }
             s.yaw=s.team==0?-90:90;
+            if(s.order.equals("charge")&&couldCharge)b.chargeHorn(s,"all");
         }
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */

@@ -25,5 +25,32 @@
         "stream": false
       }
     ]
+  },
+  "horn_charge": {
+    "subtitle": "subtitles.gravesandglory.horn_charge",
+    "sounds": [
+      {
+        "name": "gravesandglory:horn_charge",
+        "stream": false
+      }
+    ]
+  },
+  "horn_rout": {
+    "subtitle": "subtitles.gravesandglory.horn_rout",
+    "sounds": [
+      {
+        "name": "gravesandglory:horn_rout",
+        "stream": false
+      }
+    ]
+  },
+  "horn_rally": {
+    "subtitle": "subtitles.gravesandglory.horn_rally",
+    "sounds": [
+      {
+        "name": "gravesandglory:horn_rally",
+        "stream": false
+      }
+    ]
   }
 }

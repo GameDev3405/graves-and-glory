@@ -12,7 +12,7 @@ import org.joml.Vector3f;
 
 /** Selection -> live-world aim/formation preview -> explicit confirmation. */
 public final class CommandMode {
-    public record Group(String id,int count,float health,String order,String formation,float x,float z,float yaw,float cx,float cz,boolean fighting){}
+    public record Group(String id,int count,float health,String order,String formation,float x,float z,float yaw,float cx,float cz,boolean fighting,boolean routing){}
     record Ping(String kind,float x,float z){}
     static java.util.List<Ping> pings=java.util.List.of();static int seconds=600;
     static java.util.List<Group> groups=java.util.List.of();
@@ -89,7 +89,8 @@ public final class CommandMode {
             GravesAndGloryClient.panel(g,8,y,210,28);if(hit)g.drawBorder(8,y,210,28,DANGER);if(chosen)g.fill(8,y,10,y+28,GravesAndGloryClient.GOLD);
             g.fill(16,y+24,210,y+27,0xff2a3236);g.fill(16,y+24,16+Math.round(194*Math.max(0,Math.min(1,group.health()))),y+27,hit?DANGER:GravesAndGloryClient.GOLD);
             g.drawTextWithShadow(c.textRenderer,(chosen?"> ":"  ")+label(group.id())+" / "+group.count()+" / "+Math.round(group.health()*100)+"%",16,y+4,GravesAndGloryClient.WHITE);
-            g.drawTextWithShadow(c.textRenderer,label(group.order())+(group.fighting()?" / FIGHTING":""),16,y+16,group.fighting()?0xffffaa66:GravesAndGloryClient.MUTED);y+=30;
+            if(group.routing())g.drawTextWithShadow(c.textRenderer,"ROUTING",16,y+16,DANGER);
+            else g.drawTextWithShadow(c.textRenderer,label(group.order())+(group.fighting()?" / FIGHTING":""),16,y+16,group.fighting()?0xffffaa66:GravesAndGloryClient.MUTED);y+=30;
         }
         if(active()){
             GravesAndGloryClient.panel(g,w/2-180,52,360,40);

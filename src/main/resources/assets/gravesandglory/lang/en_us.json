@@ -11,5 +11,8 @@
   "key.gravesandglory.cancel": "Cancel army order",
   "subtitles.gravesandglory.battle_intro": "Battle horns sound",
   "subtitles.gravesandglory.unit_reveal": "A new unit joins your banner",
-  "subtitles.gravesandglory.victory": "Battle ends"
+  "subtitles.gravesandglory.victory": "Battle ends",
+  "subtitles.gravesandglory.horn_charge": "Charge horn",
+  "subtitles.gravesandglory.horn_rout": "Retreat horn",
+  "subtitles.gravesandglory.horn_rally": "Rally horn"
 }

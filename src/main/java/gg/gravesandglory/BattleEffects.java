@@ -17,6 +17,18 @@ public final class BattleEffects {
         b.world.spawnParticles(ParticleTypes.CRIT,at.x,at.y,at.z,3,.2,.2,.2,.02);
         flashes++;lastFlashColor=rgb;
     }
+    /** Harness counter: horns actually played, by kind (charge, rout, rally). */
+    public static final java.util.Map<String,Integer> horns=new java.util.concurrent.ConcurrentHashMap<>();
+    static final java.util.Map<GravesAndGlory.Squad,java.util.Map<String,Long>> lastHorn=new java.util.WeakHashMap<>();
+    /** A battle horn at a group's centre: charge, rout or rally. One of each kind per army per hornCooldownSeconds; Dusk horns sound lower. */
+    public static void horn(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Vec3d at,String kind){
+        var heard=lastHorn.computeIfAbsent(s,k->new java.util.HashMap<>());Long last=heard.get(kind);
+        if(last!=null&&b.time-last<Spec.MORALE[0].hornCooldownSeconds()*20L)return;
+        heard.put(kind,b.time);
+        var sound=net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","horn_"+kind));if(sound==null)return;
+        b.world.playSound(null,at.x,at.y,at.z,sound,SoundCategory.HOSTILE,(float)Spec.MORALE[0].hornVolume(),s.team==1?.85f:1f);
+        horns.merge(kind,1,Integer::sum);
+    }
     public static void contact(LivingEntity victim,net.minecraft.entity.damage.DamageSource source,float amount){
         if(!(source.getAttacker() instanceof net.minecraft.server.network.ServerPlayerEntity player))return;
         var b=GravesAndGlory.battle;if(b==null||!b.running||player.getWorld()!=b.world)return;

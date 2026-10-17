@@ -36,7 +36,7 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier IMPACT = new Identifier("gravesandglory", "impact_v1");
     public static final Identifier PING = new Identifier("gravesandglory", "ping_v1");
     public static final Identifier TACTICAL = new Identifier("gravesandglory", "tactical_v1");
-    public static final Identifier STATE = new Identifier("gravesandglory", "state_v4");
+    public static final Identifier STATE = new Identifier("gravesandglory", "state_v5");
     public static final Identifier OPEN_BARRACKS = new Identifier("gravesandglory", "barracks_v1");
     public static final Identifier PARTY = new Identifier("gravesandglory", "party_v1");
     public static Battle battle;
@@ -44,7 +44,7 @@ public final class GravesAndGlory implements ModInitializer {
     @Override public void onInitialize() {
         Diagnostics.start();
         VersionGate.registerServer();
-        for(String cue:new String[]{"battle_intro","unit_reveal","victory"}){var id=new Identifier("gravesandglory",cue);net.minecraft.registry.Registry.register(Registries.SOUND_EVENT,id,SoundEvent.of(id));}
+        for(String cue:new String[]{"battle_intro","unit_reveal","victory","horn_charge","horn_rout","horn_rally"}){var id=new Identifier("gravesandglory",cue);net.minecraft.registry.Registry.register(Registries.SOUND_EVENT,id,SoundEvent.of(id));}
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             // Only the dedicated Graves and Glory save belongs to this mod.
             if (java.util.Set.of("Graves and Glory", "Bannerbound").contains(server.getSaveProperties().getLevelName())) battle = new Battle(server);
@@ -127,6 +127,9 @@ public final class GravesAndGlory implements ModInitializer {
         int gold=Spec.ECONOMY[0].startingGold();
         final Map<String,Assignment> assignments=new HashMap<>();
         final ArrayDeque<Training> training=new ArrayDeque<>();
+        /** Morale per group: when a rout began (present only while routing), rout immunity after a regroup, and the group's full lineup health this round. */
+        final Map<String,Long> routedAt=new HashMap<>(),steadyUntil=new HashMap<>();
+        final Map<String,Double> fullHealth=new HashMap<>();
         Squad(UUID owner,int team,Vec3d pos) {this.owner=owner;this.team=team;target=pos;}
     }
     public static final class Assignment {
@@ -262,6 +265,7 @@ public final class GravesAndGlory implements ModInitializer {
             updateUnitChunks();
             if(running&&time>=campaign.introUntil){
                 Projectiles.tick(this);
+                if(time%20==0)Morale.tick(this);
                 for(Unit u:new ArrayList<>(units))unitTick(u);
                 if(time%20==0)captureTick();
                 if(time%R.scoreInterval()==0){
@@ -345,7 +349,8 @@ public final class GravesAndGlory implements ModInitializer {
                 campaign.tutorialDid(p,1);return;
             }
             for(var order:Spec.ORDERS)if(cmd.equals(order.id())){
-                s.assignments.clear();s.order=order.id();s.yaw=p.getYaw();
+                boolean charging=order.id().equals("charge")&&startsCharge(s,"all");
+                s.assignments.clear();s.order=order.id();s.yaw=p.getYaw();if(charging)chargeHorn(s,"all");
                 campaign.tutorialDid(p,order.id().equals("attack")||order.id().equals("charge")?2:0);
                 if(Diagnostics.active()&&testedOrders.add(order.id())&&testedOrders.size()==Spec.ORDERS.length)Diagnostics.report("orders-commanded",true,null);
                 if(order.targeted()){
@@ -359,7 +364,15 @@ public final class GravesAndGlory implements ModInitializer {
                 return;
             }
         }
-        Assignment assignment(Unit u){return u.squad.assignments.getOrDefault(u.spec.group(),new Assignment(u.squad.order,u.squad.formation,u.squad.target,u.squad.yaw));}
+        /** The order a group is under. A routing group runs for base; its stored order waits untouched for the regroup. */
+        Assignment assignment(Unit u){if(Morale.routing(u.squad,u.spec.group()))return new Assignment("retreat","loose",base(u.squad.team),u.squad.team==0?-90:90);return storedAssignment(u.squad,u.spec.group());}
+        Assignment storedAssignment(Squad s,String group){return s.assignments.getOrDefault(group,new Assignment(s.order,s.formation,s.target,s.yaw));}
+        /** Sounds the charge horn at the centre of the named group(s) that are not routing. */
+        void chargeHorn(Squad s,String group){
+            Vec3d sum=Vec3d.ZERO;int n=0;for(Unit u:units)if(u.squad==s&&u.mob.isAlive()&&(group.equals("all")||u.spec.group().equals(group))&&!Morale.routing(s,u.spec.group())){sum=sum.add(u.mob.getPos());n++;}
+            BattleEffects.horn(this,s,n==0?s.target:sum.multiply(1.0/n),"charge");
+        }
+        boolean startsCharge(Squad s,String group){return Arrays.stream(Morale.GROUPS).anyMatch(g->(group.equals("all")||group.equals(g))&&!Morale.routing(s,g)&&!storedAssignment(s,g).order.equals("charge"));}
         public void tactical(ServerPlayerEntity p,String group,String action,String formation,double x,double z,float yaw,int enemyId){
             Squad s=squads.get(p.getUuid());
             if(s==null||!ready||!running||!s.seated||time<campaign.introUntil||respawns.containsKey(s.owner)||time-s.lastOrder<R.commandCooldownTicks())return;
@@ -375,18 +388,19 @@ public final class GravesAndGlory implements ModInitializer {
             if(enemyId>=0&&(enemy==null||!enemy.isAlive()||teamOf(enemy)<0||teamOf(enemy)==s.team||!p.canSee(enemy))){p.sendMessage(Text.literal("Target lost. Aim again or issue an attack-move."),true);return;}
             if(action.equals("charge")&&enemy==null){p.sendMessage(Text.literal("Charge needs a visible enemy. Use Attack to advance to terrain."),true);return;}
             if(Arena.river((int)x,(int)z)&&Arena.ground((int)x,(int)z)<64){p.sendMessage(Text.literal("Choose dry ground or a crossing."),true);return;}
-            s.lastOrder=time;Vec3d dest=new Vec3d(x,Arena.ground((int)x,(int)z)+1,z);
+            s.lastOrder=time;Vec3d dest=new Vec3d(x,Arena.ground((int)x,(int)z)+1,z);boolean charging=action.equals("charge")&&startsCharge(s,group);
             if(action.equals("follow"))dest=p.getPos();
             for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id()))){
                 Assignment a=new Assignment(action,formation,dest,yaw);a.enemy=enemyId;a.issued=time;s.assignments.put(g.id(),a);
             }
+            if(charging)chargeHorn(s,group);
             for(Unit u:units)if(u.squad==s&&(group.equals("all")||u.spec.group().equals(group))){u.lockedTarget=null;u.spellCenter=null;u.mob.setTarget(null);u.mob.getNavigation().stop();u.nextPath=0;u.stuckTicks=0;}
             campaign.tutorialDid(p,action.equals("attack")||action.equals("charge")?2:0);campaign.progressEvent(p.getUuid(),false);
             p.playSound(action.equals("retreat")?SoundEvents.BLOCK_NOTE_BLOCK_BELL.value():SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(),.6f,action.equals("charge")?.7f:1.1f);
             p.sendMessage(Text.literal(group+" / "+action+" / "+(int)x+", "+(int)z),true);
         }
         Vec3d formation(Unit u){
-            Assignment a=assignment(u);if(!u.squad.bot&&u.squad.order.equals("hold")&&!u.squad.assignments.containsKey(u.spec.group()))return u.deployed;var f=Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(a.formation)).findFirst().orElse(Spec.FORMATIONS[0]);
+            Assignment a=assignment(u);if(!u.squad.bot&&u.squad.order.equals("hold")&&!u.squad.assignments.containsKey(u.spec.group())&&!Morale.routing(u.squad,u.spec.group()))return u.deployed;var f=Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(a.formation)).findFirst().orElse(Spec.FORMATIONS[0]);
             int slot=0;for(Unit other:units)if(other.squad==u.squad&&other.spec.group().equals(u.spec.group())&&other.mob.isAlive()&&other.slot<u.slot)slot++;
             double role=u.spec.group().equals("support")?9:u.spec.group().equals("ranged")?5:0;
             int columns=Math.min(f.columns(),u.spec.group().equals("support")?2:u.spec.group().equals("ranged")?6:12);
@@ -431,7 +445,7 @@ public final class GravesAndGlory implements ModInitializer {
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
             respawns.clear();
             for(Squad s:squads.values()){
-                if(!s.seated)continue;s.assignments.clear();s.training.clear();s.gold=Spec.ECONOMY[0].startingGold();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
+                if(!s.seated)continue;s.assignments.clear();s.training.clear();s.routedAt.clear();s.steadyUntil.clear();s.fullHealth.clear();s.gold=Spec.ECONOMY[0].startingGold();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
                 var player=server.getPlayerManager().getPlayer(s.owner);
                 if(player!=null){toBase(player,s.team);player.changeGameMode(GameMode.ADVENTURE);equipPlayer(player);}
                 reinforce(s);
@@ -442,6 +456,7 @@ public final class GravesAndGlory implements ModInitializer {
             Set<Integer> occupied=new HashSet<>();for(Unit u:units)if(u.squad==s&&u.mob.isAlive())occupied.add(u.slot);
             int slot=0,index=0;for(Squad other:squads.values()){if(other==s)break;if(other.seated&&other.team==s.team)index++;}
             List<String> line;if(s.bot){line=new ArrayList<>();for(var t:Spec.TROOPS)if(t.faction().equals(Spec.FACTIONS[s.team].id()))for(int n=0;n<t.count();n++)line.add(t.id());}else line=campaign.profile(s.owner).lineup(s.team);
+            Morale.lineup(this,s,line);
             for(String id:line){final String type=id;int position=slot++;if(position>=R.squadSize()||occupied.contains(position)||id.equals("empty")||!campaign.unlocked(s,id))continue;
                 var spec=Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(type)).findFirst().orElse(null);if(spec==null)continue;
                 double x=base(s.team).x+(s.team==0?1:-1)*(20-position/5*3),z=base(s.team).z+(index-1.5)*22+(position%5-2)*2.5;
@@ -554,11 +569,11 @@ public final class GravesAndGlory implements ModInitializer {
                 b.writeInt(3);
                 for(var g:Spec.GROUPS)if(!g.id().equals("all")){
                     var members=units.stream().filter(u->u.squad==s&&u.spec.group().equals(g.id())&&u.mob.isAlive()).toList();
-                    Assignment a=s==null?new Assignment("follow","block",Vec3d.ZERO,0):s.assignments.getOrDefault(g.id(),new Assignment(s.order,s.formation,s.target,s.yaw));
+                    Assignment a=s==null?new Assignment("follow","block",Vec3d.ZERO,0):storedAssignment(s,g.id());
                     b.writeString(g.id());b.writeInt(members.size());b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getHealth()/u.mob.getMaxHealth()).average().orElse(0));
                     b.writeString(a.order);b.writeString(a.formation);b.writeFloat((float)a.target.x);b.writeFloat((float)a.target.z);b.writeFloat(a.yaw);
                     b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getX()).average().orElse(a.target.x));b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getZ()).average().orElse(a.target.z));
-                    b.writeBoolean(members.stream().anyMatch(u->u.mob.getTarget()!=null));
+                    b.writeBoolean(members.stream().anyMatch(u->u.mob.getTarget()!=null));b.writeBoolean(s!=null&&Morale.routing(s,g.id()));
                 }
                 var visiblePings=pings.stream().filter(v->s!=null&&v.team==s.team&&v.until>time).toList();b.writeInt(visiblePings.size());for(var ping:visiblePings){b.writeString(ping.kind);b.writeFloat((float)ping.x);b.writeFloat((float)ping.z);}
                 b.writeInt(running?(int)Math.max(0,R.roundSeconds()-(time-roundStarted)/20):R.roundSeconds());

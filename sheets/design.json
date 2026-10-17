@@ -1607,5 +1607,22 @@
       "duplicateRefund": 50,
       "starterGold": 0
     }
+  ],
+  "morale": [
+    {
+      "id": "domination",
+      "routShare": 0.25,
+      "flankedRoutShare": 0.6,
+      "flankRadius": 8.0,
+      "flankArcDegrees": 110.0,
+      "flankMinAttackers": 3,
+      "engageCheckRadius": 16.0,
+      "routMinSeconds": 6,
+      "routMaxSeconds": 15,
+      "routSafeRadius": 12.0,
+      "regroupImmunitySeconds": 20,
+      "hornCooldownSeconds": 8,
+      "hornVolume": 1.6
+    }
   ]
 }
