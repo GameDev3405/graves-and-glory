@@ -82,6 +82,8 @@ public final class GravesAndGlory implements ModInitializer {
             for(Unit victim:battle.units)if(victim.mob==entity){
                 Squad winner=attacker==null?null:battle.squads.get(attacker.getUuid());
                 for(Unit u:battle.units)if(u.mob==attacker)winner=u.squad;
+                // A shot that lands after its archer fell still credits the archer's army.
+                if(winner==null)winner=victim.lastHitBy;
                 if(winner!=null&&winner.team!=victim.squad.team)winner.gold+=Spec.ECONOMY[0].killGold();
             }
         });
@@ -142,6 +144,8 @@ public final class GravesAndGlory implements ModInitializer {
         Vec3d lastPosition,lastGoal,deployed;
         int stuckTicks;
         LivingEntity lockedTarget;long lockUntil;
+        /** The army whose blow last hurt this unit; kill credit when the attacker itself is gone. */
+        Squad lastHitBy;
         Unit(MobEntity m,Squad s,Spec.TroopsRow t,int slot){mob=m;squad=s;spec=t;this.slot=slot;lastPosition=m.getPos();deployed=m.getPos();}
     }
     public static final class Capture {
@@ -173,6 +177,7 @@ public final class GravesAndGlory implements ModInitializer {
         public final LinkedHashMap<UUID,Squad> squads=new LinkedHashMap<>();
         public final List<Unit> units=new ArrayList<>();
         public final List<Capture> points=new ArrayList<>();
+        public final List<Projectiles.Shot> shots=new ArrayList<>();
         final Map<UUID,Long> respawns=new HashMap<>();
         final int[] scores={0,0};
         final Set<UUID> welcomed=new HashSet<>();
@@ -256,6 +261,7 @@ public final class GravesAndGlory implements ModInitializer {
             campaign.tick();
             updateUnitChunks();
             if(running&&time>=campaign.introUntil){
+                Projectiles.tick(this);
                 for(Unit u:new ArrayList<>(units))unitTick(u);
                 if(time%20==0)captureTick();
                 if(time%R.scoreInterval()==0){
@@ -302,7 +308,7 @@ public final class GravesAndGlory implements ModInitializer {
             else if(running)campaign.participants.remove(s.owner);
 
         }
-        void clearOldUnits(){List<Entity> stale=new ArrayList<>();for(Entity e:world.iterateEntities())if(e.getCommandTags().contains("gravesandglory")||e.getCommandTags().contains("bannerbound"))stale.add(e);for(Entity e:stale)e.discard();}
+        void clearOldUnits(){List<Entity> stale=new ArrayList<>();for(Entity e:world.iterateEntities())if(e.getCommandTags().contains("gravesandglory")||e.getCommandTags().contains("bannerbound")||e.getCommandTags().contains(Projectiles.TAG))stale.add(e);for(Entity e:stale)e.discard();}
         void leave(UUID owner){
             campaign.left(owner);
             Squad s=squads.remove(owner);welcomed.remove(owner);respawns.remove(owner);
@@ -419,6 +425,7 @@ public final class GravesAndGlory implements ModInitializer {
             }
         }
         void startRound(){
+            Projectiles.clear(this);
             campaign.prepareRound();
             Arrays.fill(scores,0);
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
@@ -514,6 +521,8 @@ public final class GravesAndGlory implements ModInitializer {
                 p.setHealth(p.getMaxHealth());toBase(p,team);p.changeGameMode(GameMode.SPECTATOR);
                 respawns.put(p.getUuid(),time+R.respawnSeconds()*20L);return false;
             }
+            Squad hitter=attackerSquad;for(Unit u:units)if(u.mob==attacker)hitter=u.squad;
+            if(hitter!=null)for(Unit u:units)if(u.mob==entity){u.lastHitBy=hitter;break;}
             return true;
         }
         record Sight(float x,float z,long seen){}

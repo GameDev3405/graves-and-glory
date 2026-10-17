@@ -23,6 +23,15 @@ public final class CommandMode {
     static final java.util.List<Vec3d> preview=new java.util.ArrayList<>();
     static int enemy=-1;
     static String feedback="";static long feedbackUntil;
+    /** How long a group panel flashes after it takes a loss (presentation only). */
+    public static final long FLASH_MS=450;
+    static final int DANGER=0xffd9634c;
+    static final java.util.Map<String,Long> flashUntil=new java.util.HashMap<>();
+    /** Compares consecutive server snapshots; a death or a health drop flashes that group's panel. */
+    public static void noteGroups(java.util.List<Group> before,java.util.List<Group> after,long nowMs){
+        for(Group now:after)for(Group was:before)if(was.id().equals(now.id())&&BattleMath.tookLoss(was.health(),was.count(),now.health(),now.count()))flashUntil.put(now.id(),nowMs+FLASH_MS);
+    }
+    public static boolean flashing(String groupId){return net.minecraft.util.Util.getMeasuringTimeMs()<flashUntil.getOrDefault(groupId,0L);}
     public static boolean active(){return !pending.isEmpty();}
     static String label(String id){return Character.toUpperCase(id.charAt(0))+id.substring(1);}
     static int count(String id){return groups.stream().filter(g->id.equals("all")||id.equals(g.id())).mapToInt(Group::count).sum();}
@@ -76,7 +85,9 @@ public final class CommandMode {
     static void hud(DrawContext g,int w,int h){
         var c=MinecraftClient.getInstance();int y=h-150;
         for(Group group:groups){boolean chosen=selected.equals("all")||selected.equals(group.id());
-            GravesAndGloryClient.panel(g,8,y,210,28);if(chosen)g.fill(8,y,10,y+28,GravesAndGloryClient.GOLD);
+            boolean hit=flashing(group.id());
+            GravesAndGloryClient.panel(g,8,y,210,28);if(hit)g.drawBorder(8,y,210,28,DANGER);if(chosen)g.fill(8,y,10,y+28,GravesAndGloryClient.GOLD);
+            g.fill(16,y+24,210,y+27,0xff2a3236);g.fill(16,y+24,16+Math.round(194*Math.max(0,Math.min(1,group.health()))),y+27,hit?DANGER:GravesAndGloryClient.GOLD);
             g.drawTextWithShadow(c.textRenderer,(chosen?"> ":"  ")+label(group.id())+" / "+group.count()+" / "+Math.round(group.health()*100)+"%",16,y+4,GravesAndGloryClient.WHITE);
             g.drawTextWithShadow(c.textRenderer,label(group.order())+(group.fighting()?" / FIGHTING":""),16,y+16,group.fighting()?0xffffaa66:GravesAndGloryClient.MUTED);y+=30;
         }

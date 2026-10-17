@@ -1,0 +1,74 @@
+package gg.gravesandglory;
+
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.projectile.ArrowEntity;
+import net.minecraft.entity.projectile.PersistentProjectileEntity;
+import net.minecraft.particle.DustParticleEffect;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.util.math.Vec3d;
+import org.joml.Vector3f;
+import java.util.ArrayList;
+
+/** Delayed, visible ranged hits. Tactics still decides the hit; this queue only lands it after the shot's flight time. */
+public final class Projectiles {
+    public static final String TAG="gravesandglory-shot";
+    static final Spec.CombatDisciplineRow C=Spec.COMBATDISCIPLINE[0];
+    /** kind: "arrow" (damage, vanilla arrow visual), "bolt" (blight cast, visual only), "mend" (heal). */
+    public record Shot(GravesAndGlory.Unit shooter,GravesAndGlory.Squad squad,LivingEntity target,String kind,float amount,Vec3d from,long fired,long lands,Entity visual){}
+    private Projectiles(){}
+
+    static Vec3d aim(LivingEntity target){return new Vec3d(target.getX(),target.getBodyY(.5),target.getZ());}
+
+    public static void fire(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,String kind,float amount){
+        Vec3d from=u.mob.getEyePos(),to=aim(target);
+        boolean arrow=kind.equals("arrow");
+        int travel=BattleMath.travelTicks(from.distanceTo(to),arrow?C.arrowSpeed():C.boltSpeed(),C.projectileMinTicks(),C.projectileMaxTicks());
+        long lands=b.time+travel;
+        // The bolt arrives when the blight bursts, never after it.
+        if(kind.equals("bolt")&&u.windupUntil>b.time)lands=Math.min(lands,u.windupUntil);
+        Entity visual=null;
+        if(arrow){
+            // No-clip arrows never collide, so they carry no damage of their own: the queue applies it on landing.
+            ArrowEntity a=new ArrowEntity(b.world,from.x,from.y,from.z);
+            a.setNoGravity(true);a.setNoClip(true);a.pickupType=PersistentProjectileEntity.PickupPermission.DISALLOWED;a.addCommandTag(TAG);
+            Vec3d v=to.subtract(from).multiply(1.0/travel);a.setVelocity(v.x,v.y,v.z,(float)v.length(),0);
+            b.world.spawnEntity(a);visual=a;
+        }
+        b.shots.add(new Shot(u,u.squad,target,kind,amount,from,b.time,lands,visual));
+    }
+
+    public static void tick(GravesAndGlory.Battle b){
+        if(b.shots.isEmpty())return;
+        for(Shot s:new ArrayList<>(b.shots)){
+            boolean live=s.target.isAlive()&&!s.target.isRemoved()&&s.target.getWorld()==b.world;
+            if(!live){drop(b,s);continue;}
+            Vec3d to=aim(s.target);
+            if(b.time>=s.lands){drop(b,s);land(b,s,to);continue;}
+            if(s.visual!=null){
+                // Steer so the arrow meets a moving target exactly on its landing tick.
+                Vec3d v=to.subtract(s.visual.getPos()).multiply(1.0/Math.max(1,s.lands-b.time));
+                s.visual.setVelocity(v);s.visual.velocityModified=true;
+            }else{
+                double t=Math.min(1,(b.time-s.fired)/(double)Math.max(1,s.lands-s.fired));Vec3d p=s.from.lerp(to,t);
+                int rgb=Spec.FACTIONS[s.squad.team].color();
+                b.world.spawnParticles(new DustParticleEffect(new Vector3f((rgb>>16&255)/255f,(rgb>>8&255)/255f,(rgb&255)/255f),1.4f),p.x,p.y,p.z,2,.04,.04,.04,0);
+                b.world.spawnParticles(s.squad.team==1?ParticleTypes.WITCH:ParticleTypes.ENCHANT,p.x,p.y,p.z,1,.05,.05,.05,0);
+            }
+        }
+    }
+    static void drop(GravesAndGlory.Battle b,Shot s){b.shots.remove(s);if(s.visual!=null)s.visual.discard();}
+    static void land(GravesAndGlory.Battle b,Shot s,Vec3d at){
+        switch(s.kind){
+            case "arrow"->{
+                for(var v:b.units)if(v.mob==s.target){v.lastHitBy=s.squad;break;}
+                s.target.damage(b.world.getDamageSources().mobAttack(s.shooter.mob),s.amount);
+                BattleEffects.flash(b,at,s.squad.team);
+            }
+            case "mend"->{s.target.heal(s.amount);b.world.spawnParticles(ParticleTypes.HEART,s.target.getX(),s.target.getY()+2,s.target.getZ(),3,.3,.2,.3,0);}
+            default->BattleEffects.flash(b,at,s.squad.team);
+        }
+    }
+    public static void clear(GravesAndGlory.Battle b){for(Shot s:b.shots)if(s.visual!=null)s.visual.discard();b.shots.clear();}
+    public static int inFlight(GravesAndGlory.Battle b){return b.shots.size();}
+}

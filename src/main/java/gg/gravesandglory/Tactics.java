@@ -39,7 +39,7 @@ final class Tactics {
         if(shield&&!mob.isUsingItem())mob.setCurrentHand(Hand.OFF_HAND);else if(!shield&&mob.isUsingItem())mob.stopUsingItem();
         if(u.spec.ability().equals("mend")&&time>=u.abilityAt){
             var ally=battle.units.stream().filter(v->v.squad.team==s.team&&v.mob.isAlive()&&v.mob.getHealth()<v.mob.getMaxHealth()&&v.mob.squaredDistanceTo(mob)<Spec.COMBATDISCIPLINE[0].healRadius()*Spec.COMBATDISCIPLINE[0].healRadius()&&mob.canSee(v.mob)).min(java.util.Comparator.comparingDouble(v->v.mob.getHealth()/v.mob.getMaxHealth())).orElse(null);
-            if(ally!=null){ally.mob.heal((float)(Spec.COMBATDISCIPLINE[0].healAmount()*battle.campaign.damage(u)));u.abilityAt=time+Spec.COMBATDISCIPLINE[0].abilityCooldownTicks();battle.world.spawnParticles(ParticleTypes.HEART,ally.mob.getX(),ally.mob.getY()+2,ally.mob.getZ(),3,.3,.2,.3,0);}
+            if(ally!=null){Projectiles.fire(battle,u,ally.mob,"mend",(float)(Spec.COMBATDISCIPLINE[0].healAmount()*battle.campaign.damage(u)));u.abilityAt=time+Spec.COMBATDISCIPLINE[0].abilityCooldownTicks();}
         }
         if(u.spellCenter!=null){
             double radius=Spec.COMBATDISCIPLINE[0].spellRadius();for(int i=0;i<12;i++){double angle=i*Math.PI/6;battle.world.spawnParticles(ParticleTypes.WITCH,u.spellCenter.x+Math.cos(angle)*radius,u.spellCenter.y+.2,u.spellCenter.z+Math.sin(angle)*radius,1,0,0,0,0);}
@@ -56,11 +56,13 @@ final class Tactics {
                 if(time>=u.nextAttack){
                     int cooldown=s.commander.equals("marksman")&&u.spec.group().equals("ranged")?Math.round(u.spec.cooldown()/1.1f):u.spec.cooldown();u.nextAttack=u.nextAttack<time-10?time+cooldown:u.nextAttack+cooldown;mob.swingHand(Hand.MAIN_HAND);
                     BattleEffects.strike(battle,u,enemy);
-                    if(u.spec.ability().equals("blight")){if(time>=u.abilityAt){u.spellCenter=enemy.getPos();u.windupUntil=time+Spec.COMBATDISCIPLINE[0].spellWindupTicks();u.abilityAt=time+Spec.COMBATDISCIPLINE[0].abilityCooldownTicks();}}
-                    else if(!u.spec.ability().equals("mend"))enemy.damage(battle.world.getDamageSources().mobAttack(mob),(float)(u.spec.damage()*battle.campaign.damage(u)));
+                    if(u.spec.ability().equals("blight")){if(time>=u.abilityAt){u.spellCenter=enemy.getPos();u.windupUntil=time+Spec.COMBATDISCIPLINE[0].spellWindupTicks();u.abilityAt=time+Spec.COMBATDISCIPLINE[0].abilityCooldownTicks();Projectiles.fire(battle,u,enemy,"bolt",0);}}
+                    else if(!u.spec.ability().equals("mend")){
+                        float amount=(float)(u.spec.damage()*battle.campaign.damage(u));
+                        // The hit is decided now; a ranged hit lands when its visible arrow arrives.
+                        if(u.spec.range()>3)Projectiles.fire(battle,u,enemy,"arrow",amount);else enemy.damage(battle.world.getDamageSources().mobAttack(mob),amount);
+                    }
                     if(u.spec.range()>3){
-                        Vec3d from=mob.getEyePos(),to=new Vec3d(enemy.getX(),enemy.getBodyY(.5),enemy.getZ());
-                        for(int i=0;i<=10;i++){Vec3d p=from.lerp(to,i/10.0);battle.world.spawnParticles(u.spec.magic()?(s.team==0?ParticleTypes.FLAME:ParticleTypes.WITCH):ParticleTypes.CRIT,p.x,p.y,p.z,1,0,0,0,0);}
                         battle.world.playSound(null,mob.getBlockPos(),u.spec.magic()?SoundEvents.ENTITY_EVOKER_CAST_SPELL:SoundEvents.ENTITY_ARROW_SHOOT,SoundCategory.HOSTILE,.25f,1.1f);
                     }
                 }

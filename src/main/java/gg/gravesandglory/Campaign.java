@@ -105,7 +105,7 @@ public final class Campaign {
         notice(p.getUuid(),b.running&&(squad==null||!squad.seated)?"Battle in progress. Wait in camp for the next round. R opens your war council.":"Welcome to Graves and Glory. R opens your war council.");}
     void toLobby(ServerPlayerEntity p){b.relocate(p,0,66,CampaignMaps.LOBBY_Z+20,180,8);p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
-        b.running=false;introUntil=0;social.finish();activeRoom="";
+        b.running=false;introUntil=0;social.finish();activeRoom="";Projectiles.clear(b);
         for(var u:b.units)u.mob.discard();b.units.clear();
         b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}onPad.clear();padCountdown=-1;closeParty();
@@ -252,7 +252,7 @@ public final class Campaign {
         }
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
-    void switchMap(int index){map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
+    void switchMap(int index){Projectiles.clear(b);map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
     /** The lesson a commander is on during their first battle, or -1 once they have finished it or played before. */
     int tutorialStep(UUID id){Profile pr=profile(id);return !b.running||!participants.contains(id)||pr.tutorialDone||pr.matches>0?-1:tutorial.getOrDefault(id,0);}
     /** Advances the first-battle lesson when the commander does what it asks; the last one pays for the first troop unlock. */

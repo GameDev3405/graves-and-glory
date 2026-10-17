@@ -38,8 +38,8 @@ public record PingsRow(String id,String label,int seconds,int cooldownSeconds) {
 public static PingsRow[] PINGS = new PingsRow[] {new PingsRow("attack","Attack",8,2),new PingsRow("defend","Defend",8,2),new PingsRow("help","Help",8,2),new PingsRow("moving","Moving here",8,2)};
 public record BotCommandRow(String id,double retreatShare,double rallyShare,double chargeRatio) {}
 public static BotCommandRow[] BOTCOMMAND = new BotCommandRow[] {new BotCommandRow("bot-commander",0.25,0.6,1.5)};
-public record CombatDisciplineRow(String id,double damageScale,int targetMemoryTicks,double rangedObstructionStep,int spellWindupTicks,double spellRadius,String recoveryIncome,String enemyKnowledge,double healAmount,double healRadius,int abilityCooldownTicks) {}
-public static CombatDisciplineRow[] COMBATDISCIPLINE = new CombatDisciplineRow[] {new CombatDisciplineRow("captain",0.6,40,4.0,20,2.5,"baseline","visible_only",4.0,10.0,100)};
+public record CombatDisciplineRow(String id,double damageScale,int targetMemoryTicks,double rangedObstructionStep,int spellWindupTicks,double spellRadius,String recoveryIncome,String enemyKnowledge,double healAmount,double healRadius,int abilityCooldownTicks,double arrowSpeed,double boltSpeed,int projectileMinTicks,int projectileMaxTicks,int impactParticles) {}
+public static CombatDisciplineRow[] COMBATDISCIPLINE = new CombatDisciplineRow[] {new CombatDisciplineRow("captain",0.6,40,4.0,20,2.5,"baseline","visible_only",4.0,10.0,100,2.2,1.2,2,14,8)};
 public record RecruitmentViewRow(String id,String columns,String refund,String deployment,String disabledReason,String jobs) {}
 public static RecruitmentViewRow[] RECRUITMENTVIEW = new RecruitmentViewRow[] {new RecruitmentViewRow("barracks","available,current_army,training_queue","cancel_full_disband_none","barracks_then_current_group_order","distance_or_gold_or_capacity","frontline,ranged,support")};
 public record ScoutingRow(String id,int range,int memorySeconds,int refreshTicks,String confirmed,String lastKnown,String authority) {}

@@ -35,3 +35,4 @@ add to it, never remove from it. Date and source on each line.
 - Team-only glow for Mark Prey (Phase 2 plan; needs a client renderer, vanilla Glowing used instead).
 - +5 shard campaign bonus objective (Phase 2 plan; no bonus objectives exist yet).
 - In-world rendering of renown and banner cosmetics (Phase 2 plan; recorded only, rendering is Phase 3 art).
+- Display-entity arrows with interpolation, and arrow arcs (2026-10-17, Phase 1 plan; no-clip arrows chosen as the smallest reliable visual).
