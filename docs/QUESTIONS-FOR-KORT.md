@@ -22,7 +22,15 @@ Each item says what was decided in the meantime so work could continue.
 
 ## Problems hit
 
-(none yet)
+1. **Kingsfield (map 4) crashes the client when the lobby switches to it**
+   (`ArrayIndexOutOfBoundsException` in `GravesAndGloryClient.map`: the minimap
+   draws 5 points while the contested/progress arrays still hold 3 until the
+   next state packet). Found 2026-10-17 by the harness-fix run. Decision: fix it
+   inside Phase 1 (regression task) and add a check for it; until then do not
+   pick Kingsfield from the lobby.
+2. **Two campaign-suite checks were already failing before Phase 1:**
+   `solo-pad-3v3` and `roadmap-suite`. Left as-is for now; Phase 1 Task 9
+   either fixes them or records why they are stale.
 
 ## Builds to try
 
