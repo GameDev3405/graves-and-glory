@@ -1,0 +1,20 @@
+Graves and Glory 0.3.2 — local release candidate
+
+Adds a login-stage compatibility check. Clients must report the server's game
+version, protocol and exact main-source build identity before joining the game.
+Missing/old versions and mismatched builds receive an update instruction with the
+required version/build. Malformed responses are refused. This prevents accidental
+version mismatches; it is not authentication or proof of an unmodified client.
+
+Texture/dependency work and platform exports are being verified in this candidate.
+Excalibur is pinned to the author's unchanged 1.21.10 release, matching Clarent's
+12110_1201_v3 support target. Finite fractional single-axis rotations within the
+vanilla range are accepted when rescaling is off; normal vanilla angles and
+invalid input retain vanilla handling. This fixes decorative model parsing without
+copying or modifying Excalibur artwork. Existing Excalibur preset selections
+upgrade to the matching file while retaining the user's chosen preset.
+
+The current working tree also contains a solo ready-pad 3v3 bot-battle change.
+It is preserved and covered by the updated development regression.
+See the development work log for the actual completed checks and remaining limits.
+Public hosting and publication remain separate, unfinished work.

@@ -11,6 +11,7 @@
     "client": [
       "gg.gravesandglory.testing.LocalVisualInspection",
       "gg.gravesandglory.CommandPlaytest",
+      "gg.gravesandglory.CompatibilityChecks",
       "gg.gravesandglory.CampaignChecks"
     ]
   },

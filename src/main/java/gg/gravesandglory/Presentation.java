@@ -13,22 +13,22 @@ public final class Presentation {
     static long hitAt,lastHit;static float hitStrength;static int receivedImpacts;
     static final String[] SHADERS={"Off / fastest","Reimagined","Unbound","MakeUp Ultra Fast"};
     static final String[] FILES={"","ComplementaryReimagined_r5.5.1.zip","ComplementaryUnbound_r5.5.1.zip","MakeUp-UltraFast-9.5g.zip"};
-    static final String FRESH="file/FreshAnimations_v1.10.4.zip",FAITHFUL="file/Faithful 32x - 1.20.1.zip",EXCAL="file/Excalibur_V1.21.11.zip",CLARENT="file/Clarent_12110_1201_v3.zip",PATCH="file/EFA_1.10.4 Hotfix 3.zip";
-    static final java.util.Set<String> MANAGED=java.util.Set.of(FRESH,FAITHFUL,EXCAL,CLARENT,PATCH,"gravesandglory:armory");
+    static final String FRESH="file/FreshAnimations_v1.10.4.zip",FAITHFUL="file/Faithful 32x - 1.20.1.zip",EXCAL="file/Excalibur_V1.21.10.zip",OLD_EXCAL="file/Excalibur_V1.21.11.zip",CLARENT="file/Clarent_12110_1201_v3.zip",PATCH="file/EFA_1.10.4 Hotfix 3.zip";
+    static final java.util.Set<String> MANAGED=java.util.Set.of(FRESH,FAITHFUL,EXCAL,OLD_EXCAL,CLARENT,PATCH,"gravesandglory:armory");
     static final String[] TEXTURES={"Minecraft + Fresh","Faithful 32x + Fresh","Excalibur + Fresh"};
     static Path file(){return MinecraftClient.getInstance().runDirectory.toPath().resolve("gravesandglory/presentation.json");}
     static void load(){if(loaded)return;loaded=true;try{var j=JsonParser.parseString(Files.readString(file())).getAsJsonObject();impact=Math.max(0,Math.min(2,j.get("impact").getAsInt()));packsInitialized=j.has("packsInitialized")&&j.get("packsInitialized").getAsBoolean();armoryInitialized=j.has("armoryInitialized")&&j.get("armoryInitialized").getAsBoolean();}catch(Exception ignored){}}
     static void save(){try{Files.createDirectories(file().getParent());Files.writeString(file(),"{\"impact\":"+impact+",\"packsInitialized\":"+packsInitialized+",\"armoryInitialized\":"+armoryInitialized+"}");}catch(Exception e){notice="Your visual preference could not be saved.";}}
     static boolean prepareResources(MinecraftClient c){
         if(resourceState==2)return true;if(resourceState==1)return false;
-        if(packsInitialized&&armoryInitialized){resourceState=2;return true;}
+        if(packsInitialized&&armoryInitialized&&!c.getResourcePackManager().getEnabledNames().contains(OLD_EXCAL)){resourceState=2;return true;}
         c.getResourcePackManager().scanPacks();if(!c.getResourcePackManager().getNames().contains(FRESH)){resourceState=2;return true;}
         // Select defaults once; adding the armory must not preempt first-launch
         // Excalibur selection or change an existing player's texture choice.
         int index=packsInitialized?textures():c.getResourcePackManager().getNames().containsAll(java.util.List.of(EXCAL,CLARENT,PATCH))?2:0;
         armoryPrepared=true;resourceState=1;selectTextures(index);return false;
     }
-    static int textures(){var names=MinecraftClient.getInstance().getResourcePackManager().getEnabledNames();return names.contains(EXCAL)?2:names.contains(FAITHFUL)?1:0;}
+    static int textures(){var names=MinecraftClient.getInstance().getResourcePackManager().getEnabledNames();return names.contains(EXCAL)||names.contains(OLD_EXCAL)?2:names.contains(FAITHFUL)?1:0;}
     static void selectTextures(int index){
         if(index<0||index>2||changing){resourceState=2;return;}var c=MinecraftClient.getInstance();c.getResourcePackManager().scanPacks();
         var packs=new java.util.ArrayList<String>();if(index==1)packs.add(FAITHFUL);if(index==2){packs.add(EXCAL);packs.add(CLARENT);}packs.add(FRESH);if(index==2)packs.add(PATCH);packs.add("gravesandglory:armory");

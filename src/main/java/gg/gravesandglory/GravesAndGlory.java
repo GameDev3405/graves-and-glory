@@ -42,6 +42,7 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Spec.RulesRow R = Spec.RULES[0];
     @Override public void onInitialize() {
         Diagnostics.start();
+        VersionGate.registerServer();
         for(String cue:new String[]{"battle_intro","unit_reveal","victory"}){var id=new Identifier("gravesandglory",cue);net.minecraft.registry.Registry.register(Registries.SOUND_EVENT,id,SoundEvent.of(id));}
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             // Only the dedicated Graves and Glory save belongs to this mod.

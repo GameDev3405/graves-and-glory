@@ -24,7 +24,7 @@ with zipfile.ZipFile(path) as archive:
     identity = source_identity()
     jar_name = 'mods/graves-and-glory-' + identity['version'] + '.jar'
     validate_player_jar(io.BytesIO(archive.read(jar_name)), identity)
-    for dep in json.loads((ROOT / 'dependencies/manifest.json').read_text()):
+    for dep in json.loads((ROOT / 'dependencies/manifest.json').read_text(encoding='utf8')):
         folder = 'mods' if '/mods/' in dep['path'] else 'shaderpacks' if '/shaders/' in dep['path'] else 'resourcepacks'
         if hashlib.sha256(archive.read(folder + '/' + dep['fileName'])).hexdigest() != dep['sha256']:
             raise RuntimeError('Packaged dependency differs from pin: ' + dep['fileName'])

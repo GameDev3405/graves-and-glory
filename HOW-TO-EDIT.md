@@ -16,7 +16,8 @@ Guide for people and AI helpers changing this project. Project root: `C:\Users\k
 | --- | --- |
 | `src/main/java/gg/gravesandglory/` | All game code (see section 3) |
 | `src/main/java/gg/gravesandglory/mixin/` | Mixins into vanilla classes; registered in `src/main/resources/gravesandglory.mixins.json` |
-| `src/main/resources/fabric.mod.json` | Mod metadata; version lives here too |
+| `gradle.properties` | Authoritative mod_version; Gradle expands fabric.mod.json and embeds the source fingerprint |
+| `src/main/resources/fabric.mod.json` | Mod metadata template and entrypoints |
 | `src/main/resources/assets/gravesandglory/` | Mod textures, sounds (`sounds.json`), language file (`lang/en_us.json`) |
 | `src/main/resources/resourcepacks/armory/` | Built-in resource pack for weapons and armour overlays (section 5) |
 | `sheets/design.json` | Game data tables: troops, factions, orders, formations, points, structures, rules, maps, classes and more |

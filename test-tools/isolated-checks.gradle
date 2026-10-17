@@ -10,6 +10,7 @@ allprojects {
    systemProperty 'gravesandglory.migrationFixture', System.getenv('GRAVES_ROADMAP_MIGRATION') ?: 'false'
    systemProperty 'gravesandglory.expectedTexture', System.getenv('GRAVES_ROADMAP_TEXTURE') ?: '2'
    systemProperty 'gravesandglory.startupOnly', System.getenv('GRAVES_ROADMAP_STARTUP_ONLY') ?: 'false'
+   systemProperty 'gravesandglory.compatibilityCase', System.getenv('GRAVES_ROADMAP_COMPAT_CASE') ?: ''
   }
  }
 }

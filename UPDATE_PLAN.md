@@ -88,3 +88,11 @@ Creator observed choppy intro, requests smoother entrance and researched multipl
 - Final candidate ZIP: 151a3f5ed68657da81ac9bb01350b9f1e74d99f44a96f085ff3ed59b214a08da. Main-source fingerprint f6ef9feaa4e99cf8dfbc0637cf81fca59e82d3d260ed08d2750c5439342bfb6f.
 - Production CurseForge/Modrinth installation, incompatible-client messaging, home hosting and publication remain pending. No uploads/submissions/publication.
 - Authoritative checklist and dated evidence: C:/Users/kortt/Documents/Codex/2026-10-17/i-w/outputs/Graves-and-Glory-Roadmap/05-WORK-LOG.txt and logs/.
+
+## Roadmap checkpoint — 2026-10-17, 0.3.2
+- Login compatibility gate refuses missing/old/version/build/protocol mismatches before world admission, with required release and update instructions. Matching full-stack client: 39 passing markers/checks. Actual missing/old fixtures pass; six pure policy checks pass. This is compatibility checking, not authentication.
+- Excalibur aligned to unchanged official 1.21.10 matching Clarent. Original client parser backport accepts finite unrescaled fractional angles in the normal range; final full-stack run logs zero invalid-rotation/failed-model messages. Other preset appearances still need review.
+- 18 official Modrinth file IDs/downloads/hash pairs reviewed. Local .mrpack exporter and readback verification added; five format tests and two release-integrity tests pass. Headless and real launcher installation remain unverified. No publication.
+- Final ZIP SHA-256 afd6c36821b5e0a27fc3e96049ab2120b658e09551453c6ca4e87b3de5cadd68; MRPACK 59e61f3900b8300f9d65150c42b67f37d9e06bd157c095809d78dcb51e493882. Source identity 38f61d6fc8936c7e05423d41a8f1a9ed550ab0095c43f0bcf8824c4b86f46e9c.
+- Concurrent solo-ready-pad 3v3 change in Campaign.java preserved, tested and left outside this session's commit. Initial two-human pad fixture failed; updated behavior assertions and full rerun pass. Logs retain the failure and correction.
+- Checklist now has ten checked items; milestone 1 stays open. Authoritative evidence: outputs/Graves-and-Glory-Roadmap/logs/session-02 in the Codex roadmap workspace.

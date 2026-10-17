@@ -24,7 +24,7 @@ credits=['# Graves and Glory: third-party credits and permissions','',
  'Fresh Animations: FreshLX. Excalibur: Matthew (Maffhew) Dillow. Clarent: GrandPappyJay. Excalibur Fresh Animations Patch: GrandPappyJay and Ruseki, with FreshLX and Maffhew; see included original notices.',
  'Lato body font: Lukasz Dziedzic, SIL Open Font License 1.1; original OFL is inside the Graves and Glory jar. Source: https://github.com/google/fonts/tree/main/ofl/lato',
  'Marcellus heading font: Brian J. Bonislawsky / Astigmatic, SIL Open Font License 1.1; original OFL is inside the Graves and Glory jar.',
- 'Fabric API: FabricMC contributors, Apache-2.0; Fabric Loader is installed by Melty.',
+ 'Fabric API: FabricMC contributors, Apache-2.0; Fabric Loader is provided by the selected launcher or server installer.',
  'Nested libraries retain their original licenses: ANTLR 4.13.1 (BSD-3-Clause), glsl-transformer 2.0.1 (AGPL-3.0), jcpp 1.4.14 (Apache-2.0), Reflect 1.6.2 (MIT), Kirin 1.15.6 (MIT).',
  'Corresponding library sources and build files are supplied in docs/third-party/sources alongside their notices. They may be replaced by compatible builds; no library is merged into Graves and Glory\'s code.', '']
 validate_player_jar(jar,identity)
@@ -39,7 +39,7 @@ with zipfile.ZipFile(package.with_suffix('.zip.tmp'),'w',zipfile.ZIP_DEFLATED) a
         if isinstance(data,str):data=data.encode('utf8')
         archive.writestr(dest,data);entries.append({'path':dest,'size':len(data),'sha256':hashlib.sha256(data).hexdigest()})
         if len(data)<40000:files[dest]=data.decode('utf8',errors='replace')
-    for src,dest in [(jar,'mods/'+jar.name),(api,'mods/'+api.name),(root/'README.md','docs/README.md'),(root/'docs/UI_REDESIGN.md','docs/UI_REDESIGN.md'),(root/'docs/RELEASE-0.3.1.txt','docs/RELEASE-0.3.1.txt'),(root/'LICENSE','docs/LICENSE')]:
+    for src,dest in [(jar,'mods/'+jar.name),(api,'mods/'+api.name),(root/'README.md','docs/README.md'),(root/'docs/UI_REDESIGN.md','docs/UI_REDESIGN.md'),(root/f'docs/RELEASE-{release_version}.txt',f'docs/RELEASE-{release_version}.txt'),(root/'LICENSE','docs/LICENSE')]:
         add(src,dest)
     # Preserve the exact upstream license without changing its notices.
     with zipfile.ZipFile(api) as z:

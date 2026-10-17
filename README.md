@@ -1,15 +1,20 @@
 
 
-# Graves and Glory 0.3.1
+# Graves and Glory 0.3.2
 
-This is a local release candidate. The 0.3.1 build and migration checks do not
-constitute a new in-game, launcher-installation or Internet multiplayer playtest.
+This is a local release candidate. Isolated game checks do not constitute a
+production launcher installation or an eight-human Internet multiplayer playtest.
 Public matchmaking, quests, a battle pass and the home-hosted official service
 remain planned work. Nothing in this update has been published automatically.
 
-Known issue: fresh Excalibur-default testing reports invalid model rotations
-for some campfire and decorative-item models in the existing texture stack on
-Minecraft 1.20.1. Compatibility work remains before final visual approval.
+Clients must match the server's game version and build identity. A missing or
+incompatible pack receives an update instruction before entering the world.
+This compatibility check does not authenticate progression or prevent cheating.
+
+The Excalibur preset now pairs the author's unchanged 1.21.10 release with its
+matching Clarent backport. A client-only parser compatibility patch supports the
+finite fractional single-axis angles used by its decorative models, without
+editing upstream assets. Other preset and visual checks remain on the roadmap.
 
 Upgrades copy legacy Bannerbound collections, deployment data and visual
 preferences into the current folders without overwriting current files. When
@@ -69,6 +74,8 @@ Sodium, Iris, Lithium, FerriteCore, ImmediatelyFast and ModernFix support render
 ## Required game and multiplayer
 
 Requires an account owning Minecraft: Java Edition. Built for Minecraft 1.20.1, Fabric Loader 0.16.14 and Fabric API 0.92.2+1.20.1. Melty supplies Minecraft, Java and Fabric Loader; the redistributable Fabric API is bundled. Roblox's Command an Army is inspiration only; Roblox is not required. No Minecraft or Roblox content is included.
+
+A local Modrinth .mrpack candidate is also prepared, with pinned official downloads and a localhost-only dedicated-server configuration template. Launcher import, dedicated-server startup and a normal launcher-independent title menu remain unverified or unfinished. It is not yet a published Modrinth or CurseForge release.
 
 Up to eight human commanders, four per faction, each with twenty troops (160 total). One client hosts and stays open. Everyone uses the same package; there is no separate server download. Melty passes a joining client's address automatically and clears it for solo/hosting Play. Its native relay supports remote joining on supported networks. Direct Internet reachability and an eight-human Internet match have not been independently tested.
 
