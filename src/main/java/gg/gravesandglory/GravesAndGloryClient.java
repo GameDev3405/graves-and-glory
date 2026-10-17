@@ -86,7 +86,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);ready=false;running=false;team=-1;opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
             if(client.getOverlay()==null&&client.currentScreen instanceof TitleScreen){
-                if(!attempted){if(!Presentation.prepareResources(client))return;attempted=true;}
+                if(!attempted){PackControls.prepare(client);if(!Presentation.prepareResources(client))return;attempted=true;}
                 client.setScreen(error.isEmpty()?new FrontMenuScreen():new FailureScreen(error));
             }
             if(client.player!=null){

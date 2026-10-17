@@ -1,6 +1,6 @@
 
 
-# Graves and Glory 0.3.3
+# Graves and Glory 0.3.4
 
 This is a local release candidate. Isolated game checks do not constitute a
 production launcher installation or an eight-human Internet multiplayer playtest.
@@ -104,3 +104,5 @@ Redesigned battle setup, class selection and barracks with live troop previews, 
 Armour detail uses Entity Model Features overlays from the built-in armory pack: a tabard, buckle, belt and shoulder pauldrons on player, husk, skeleton and wither skeleton models. Limits: one neutral armour set, so faction colours are not applied to these overlays; the overlays apply to every husk, skeleton and wither skeleton in a Graves and Glory world, not only named troops; and while the armory pack is enabled it replaces the Excalibur and Fresh Animations patch skeleton and wither skeleton models.
 
 Development checks are never in the player archive. They are built from `test-tools/` by the `localTestToolsJar` task and run only with `gradle runClient --offline -PcampaignChecks`.
+
+The war council uses R by default. The bundled Iris shader-reload default moves to F8 when it conflicts with the unchanged war-council default (or becomes unbound if F8 is occupied). Custom key bindings remain configurable in Minecraft Controls.

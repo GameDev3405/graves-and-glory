@@ -14,6 +14,16 @@ public final class FrontMenuChecks implements ClientModInitializer {
     ButtonWidget find(MinecraftClient c,String prefix){return c.currentScreen.children().stream().filter(e->e instanceof ButtonWidget b&&b.getMessage().getString().startsWith(prefix)).map(e->(ButtonWidget)e).findFirst().orElseThrow();}
     void click(MinecraftClient c,String prefix){find(c,prefix).onPress();}
     void shot(MinecraftClient c,String name){ScreenshotRecorder.saveScreenshot(c.runDirectory,"front-"+name+".png",c.getFramebuffer(),t->{});}
+    void controls(MinecraftClient c){
+        for(var key:c.options.allKeys)if(key.getTranslationKey().equals("iris.keybind.reload")){
+            report("iris-default-conflict",!key.getBoundKeyTranslationKey().equals(GravesAndGloryClient.menu.getBoundKeyTranslationKey()));
+            var saved=net.minecraft.client.util.InputUtil.fromTranslationKey(key.getBoundKeyTranslationKey());
+            key.setBoundKey(net.minecraft.client.util.InputUtil.Type.KEYSYM.createFromCode(org.lwjgl.glfw.GLFW.GLFW_KEY_P));
+            PackControls.prepare(c);
+            report("iris-custom-preserved",key.getBoundKeyTranslationKey().equals("key.keyboard.p"));
+            key.setBoundKey(saved);net.minecraft.client.option.KeyBinding.updateKeysByCode();
+        }
+    }
     @Override public void onInitializeClient(){
         if(!Boolean.getBoolean("gravesandglory.frontChecks"))return;
         ClientTickEvents.END_CLIENT_TICK.register(c->{
@@ -22,7 +32,7 @@ public final class FrontMenuChecks implements ClientModInitializer {
                 if(!started){
                     if(!(c.currentScreen instanceof FrontMenuScreen)&&step==0)return;
                     ticks++;
-                    if(ticks==80){report("idle-no-world",c.player==null&&c.getServer()==null);report("public-disabled",!find(c,"Public battles").active);shot(c,"home");}
+                    if(ticks==80){report("idle-no-world",c.player==null&&c.getServer()==null);report("public-disabled",!find(c,"Public battles").active);controls(c);shot(c,"home");}
                     if(ticks==90){click(c,"Settings");step=1;}
                     if(ticks==100){report("settings",c.currentScreen instanceof net.minecraft.client.gui.screen.option.OptionsScreen);c.currentScreen.close();}
                     if(ticks==110){click(c,"Credits");}

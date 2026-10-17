@@ -1,0 +1,10 @@
+Graves and Glory 0.3.4 - local release candidate
+
+Fixes a default key conflict found in the real Prism launcher installation.
+Both Iris shader reload and Graves and Glory war council used R. With both
+bindings unchanged, shader reload now moves to F8 (or unbound if F8 is occupied).
+Custom bindings are preserved. R continues to open the war council.
+
+Retains 0.3.3 branded menu, private practice, explicit friends/LAN hosting,
+saved-server browser and dedicated-server kit. Public service and branded
+loading screens remain unfinished. No publication or public deployment.
