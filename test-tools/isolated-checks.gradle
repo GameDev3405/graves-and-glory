@@ -1,5 +1,8 @@
 allprojects {
  afterEvaluate {
+  def isolatedRoot = System.getenv('GRAVES_ROADMAP_TEST_ROOT')
+  if (!isolatedRoot) throw new GradleException('GRAVES_ROADMAP_TEST_ROOT is required')
+  project.extensions.getByName('loom').runs.getByName('client').runDir = project.relativePath(file(isolatedRoot + '/run'))
   tasks.matching { it.name == 'runClient' }.configureEach {
    def testRoot = System.getenv('GRAVES_ROADMAP_TEST_ROOT')
    if (!testRoot) throw new GradleException('GRAVES_ROADMAP_TEST_ROOT is required')
@@ -11,6 +14,8 @@ allprojects {
    systemProperty 'gravesandglory.expectedTexture', System.getenv('GRAVES_ROADMAP_TEXTURE') ?: '2'
    systemProperty 'gravesandglory.startupOnly', System.getenv('GRAVES_ROADMAP_STARTUP_ONLY') ?: 'false'
    systemProperty 'gravesandglory.compatibilityCase', System.getenv('GRAVES_ROADMAP_COMPAT_CASE') ?: ''
+   systemProperty 'gravesandglory.frontChecks', System.getenv('GRAVES_ROADMAP_FRONT_CHECKS') ?: 'false'
+   systemProperty 'gravesandglory.frontHost', System.getenv('GRAVES_ROADMAP_FRONT_HOST') ?: 'false'
   }
  }
 }

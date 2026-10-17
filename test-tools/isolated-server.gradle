@@ -1,0 +1,11 @@
+allprojects {
+ afterEvaluate {
+  def testRoot = System.getenv('GRAVES_ROADMAP_SERVER_ROOT')
+  if (!testRoot) throw new GradleException('GRAVES_ROADMAP_SERVER_ROOT is required')
+  // Loom sets workingDir again inside exec(); set its run configuration itself.
+  project.extensions.getByName('loom').runs.getByName('server').runDir = project.relativePath(file(testRoot))
+  tasks.matching { it.name == 'runServer' }.configureEach {
+   standardInput = System.in
+  }
+ }
+}

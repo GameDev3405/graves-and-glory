@@ -1,6 +1,6 @@
 
 
-# Graves and Glory 0.3.2
+# Graves and Glory 0.3.3
 
 This is a local release candidate. Isolated game checks do not constitute a
 production launcher installation or an eight-human Internet multiplayer playtest.
@@ -26,7 +26,7 @@ Collect soldiers, arrange a twenty-unit army and lead it across four large fanta
 
 ## War council and permanent armies
 
-Play opens a dedicated Graves and Glory world with a physical lobby, recruitment hall, armoury, troop displays and war table. R opens the war council. The host chooses the map, match size and bot fill. Every commander chooses a faction, army and class.
+The branded title menu waits for your choice. Enter camp / Practice opens a private Graves and Glory world with a physical lobby, recruitment hall, armoury, troop displays and war table. Play with friends offers local-network hosting and the normal server browser. Hosting announces its LAN address in chat. Public battles are marked as not launched. R opens the war council. The host chooses the map, match size and bot fill. Every commander chooses a faction, army and class.
 
 Arrange twenty deployment slots before battle: place any unlocked unit type in any front or rear slot, or leave slots empty. There is no required ratio of troop types. These positions control initial deployment; battlefield orders and formations take over when issued. Losing a soldier never removes its permanent unlock.
 
@@ -75,9 +75,9 @@ Sodium, Iris, Lithium, FerriteCore, ImmediatelyFast and ModernFix support render
 
 Requires an account owning Minecraft: Java Edition. Built for Minecraft 1.20.1, Fabric Loader 0.16.14 and Fabric API 0.92.2+1.20.1. Melty supplies Minecraft, Java and Fabric Loader; the redistributable Fabric API is bundled. Roblox's Command an Army is inspiration only; Roblox is not required. No Minecraft or Roblox content is included.
 
-A local Modrinth .mrpack candidate is also prepared, with pinned official downloads and a localhost-only dedicated-server configuration template. Launcher import, dedicated-server startup and a normal launcher-independent title menu remain unverified or unfinished. It is not yet a published Modrinth or CurseForge release.
+A local Modrinth .mrpack candidate is also prepared, with pinned official downloads and a localhost-only dedicated-server configuration template. The title menu works without Melty runtime files. Dedicated-server and real launcher checks are tracked in the work log; they do not establish Internet reachability. It is not yet a published Modrinth or CurseForge release.
 
-Up to eight human commanders, four per faction, each with twenty troops (160 total). One client hosts and stays open. Everyone uses the same package; there is no separate server download. Melty passes a joining client's address automatically and clears it for solo/hosting Play. Its native relay supports remote joining on supported networks. Direct Internet reachability and an eight-human Internet match have not been independently tested.
+Up to eight human commanders, four per faction, each with twenty troops (160 total). A client can host a local-network camp and stay open, or players can join a separately configured dedicated server. Practice stays private. Melty invitations, when supplied, are optional actions under Play with friends; they do not start a connection automatically. Remote friends need a reachable server or a supported launcher relay. Direct Internet reachability and an eight-human Internet match have not been independently tested.
 
 ## Verification
 

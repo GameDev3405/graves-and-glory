@@ -115,9 +115,9 @@ public final class CampaignChecks implements ClientModInitializer {
                 boolean routes=true;for(var bridge:Spec.STRUCTURES)if(bridge.kind().equals("bridge")){for(int x=bridge.x()-bridge.width()/2;x<=bridge.x()+bridge.width()/2;x++)routes&=Math.abs(Arena.ground(x,bridge.z())-64)<=1;}
                 report("map-routes",routes&&GravesAndGlory.R.arenaHalfX()*2==700&&GravesAndGlory.R.arenaHalfZ()*2==500,"Authored dry centreline across all three river crossings");
                 var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var s=b.squads.get(p.getUuid());var friendly=b.units.stream().filter(u->u.squad==s).findFirst().orElseThrow();float hp=friendly.mob.getHealth();friendly.mob.damage(b.world.getDamageSources().playerAttack(p),5);report("friendly-fire",friendly.mob.getHealth()==hp,"Allied damage rejected");
-                b.campaign.finish(-1);if(backup!=null){b.campaign.profiles.put(p.getUuid(),backup);b.campaign.save(p.getUuid());}b.campaign.handle(p,"mode:4");});
+                b.campaign.finish(-1);if(backup!=null){b.campaign.profiles.put(p.getUuid(),Campaign.JSON.fromJson(Campaign.JSON.toJson(backup),Campaign.Profile.class));b.campaign.save(p.getUuid());}b.campaign.handle(p,"mode:4");});
             if(tick==865)report("impact-friendly-filter",Presentation.receivedImpacts==contactsBefore,"Rejected friendly damage produced no contact accent");
-            if(tick==890&&devRun()&&!Files.exists(restartFile(c)))server(c,b->{try{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());Files.writeString(restartFile(c),Campaign.JSON.toJson(b.campaign.profile(p.getUuid())));
+            if(tick==1010&&devRun())server(c,b->{try{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());Files.writeString(restartFile(c),Campaign.JSON.toJson(b.campaign.profile(p.getUuid())));
                 var husk=net.minecraft.entity.EntityType.HUSK.create(b.world);husk.addCommandTag("gravesandglory");husk.refreshPositionAndAngles(-20,65,CampaignMaps.LOBBY_Z,0,0);b.world.spawnEntity(husk);
                 report("restart-fixture",true,"Collection saved and one stale hostile husk planted for the reopen test");}catch(Exception e){report("restart-fixture",false,e.toString());}});
             if(tick==900){c.setScreen(new GravesAndGloryClient.LobbyScreen());report("campaign-suite",!failed,"Mechanical checks finished; local multiplayer joining is a separate run");shot(c,"final-lobby");}
@@ -126,7 +126,7 @@ public final class CampaignChecks implements ClientModInitializer {
                 b.relocate(p,-9.5,65,-322,90,0);camp.padMapRolled=true;camp.padCountdown=10;
                 camp.padTick();
                 report("solo-pad-3v3",b.running&&camp.size==3&&b.squads.size()==6&&b.units.size()==120&&b.squads.values().stream().filter(s->s.bot).count()==5,"One ready commander starts a 3v3 with five AI commanders");
-                camp.finish(-1);if(backup!=null){camp.profiles.put(p.getUuid(),backup);camp.save(p.getUuid());}
+                camp.finish(-1);if(backup!=null){camp.profiles.put(p.getUuid(),Campaign.JSON.fromJson(Campaign.JSON.toJson(backup),Campaign.Profile.class));camp.save(p.getUuid());}
             });
             if(tick==980)report("roadmap-suite",!failed,"Full regression including solo ready-pad battle completed");
         });

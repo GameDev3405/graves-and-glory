@@ -41,7 +41,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static KeyBinding menu,attack,follow,cycle,mapKey,rotateLeft,rotateRight,confirmOrder,cancelOrder;
     static Path runtime;
     static String join="",error="";
-    static boolean attempted,opened,joined;
+    static boolean attempted,opened,joined,shareCamp,launcherContext,connectingInvitation;
     static int titleTicks,worldTicks;
     static Identifier mapTexture;
     static boolean preparingMap;
@@ -64,7 +64,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         confirmOrder=KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory.confirm",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_ENTER,"category.gravesandglory"));
         cancelOrder=KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory.cancel",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_BACKSPACE,"category.gravesandglory"));
         String local=System.getenv("LOCALAPPDATA");runtime=Path.of(System.getProperty("gravesandglory.runtime",local==null?"gravesandglory-runtime":local+"/gravesandglory"));
-        try{Files.createDirectories(runtime);Files.writeString(runtime.resolve("melty.log"),"");Properties props=new Properties();try(var in=Files.newInputStream(runtime.resolve("melty.properties"))){props.load(in);}catch(Exception ignored){}join=props.getProperty("join","").trim();}catch(Exception e){error="Could not prepare multiplayer settings.";}
+        // Optional launcher integration. Ordinary installs need no runtime directory.
+        launcherContext=Files.isRegularFile(runtime.resolve("melty.properties"));
+        if(launcherContext)try{Files.writeString(runtime.resolve("melty.log"),"");Properties props=new Properties();try(var in=Files.newInputStream(runtime.resolve("melty.properties"))){props.load(in);}join=props.getProperty("join","").trim();}catch(Exception e){System.err.println("[Graves and Glory] Optional launcher invitation could not be read: "+e.getMessage());}
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.OPEN_BARRACKS,(client,handler,buf,responder)->client.execute(()->client.setScreen(running?new BarracksScreen():new LobbyScreen())));
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.PARTY,(client,handler,buf,responder)->client.execute(()->client.setScreen(new LobbyScreen(3))));
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.STATE,(client,handler,buf,responder)->{
@@ -80,10 +82,13 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             String campaignJson=buf.readString(16000);
             client.execute(()->{CampaignClient.accept(client,campaignJson,run);sightings=List.copyOf(sight);contested=contest;CommandMode.pings=java.util.List.copyOf(pings);CommandMode.seconds=seconds;CommandMode.groups=java.util.List.copyOf(groups);ready=r;running=run;dawn=a;dusk=b;message=msg;team=t;count=n;order=o;formation=f;respawn=resp;owners=own;progress=pr;challengers=ch;gold=g;nearBarracks=near;queued=q;trainingSeconds=eta;roster=owned;pending=waiting;markers=List.copyOf(friendly);});
         });
-        ClientPlayConnectionEvents.JOIN.register((handler,sender,client)->{CampaignClient.sendProfile(client);if(!join.isEmpty()&&!joined){joined=true;say("Melty joined: "+join);}});
-        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(!join.isEmpty()&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);ready=false;running=false;team=-1;});
+        ClientPlayConnectionEvents.JOIN.register((handler,sender,client)->{CampaignClient.sendProfile(client);if(connectingInvitation&&!joined){joined=true;say("Melty joined: "+join);}});
+        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);ready=false;running=false;team=-1;opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
-            if(client.getOverlay()==null&&(client.currentScreen instanceof TitleScreen||client.currentScreen instanceof AccessibilityOnboardingScreen)&&!attempted){if(Presentation.prepareResources(client)&&++titleTicks>=40){attempted=true;if(error.isEmpty())connectOrHost(client);else client.setScreen(new FailureScreen(error));}}else if(!attempted)titleTicks=0;
+            if(client.getOverlay()==null&&client.currentScreen instanceof TitleScreen){
+                if(!attempted){if(!Presentation.prepareResources(client))return;attempted=true;}
+                client.setScreen(error.isEmpty()?new FrontMenuScreen():new FailureScreen(error));
+            }
             if(client.player!=null){
                 worldTicks++;if(ready&&worldTicks%20==0)client.getToastManager().clear();prepareMap(client);CampaignClient.tick(client);Diagnostics.tick(client);
                 while(menu.wasPressed()){CampaignClient.end(client);CommandMode.cancel();client.setScreen(running?new CommandScreen():new LobbyScreen());}
@@ -94,7 +99,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
                 while(confirmOrder.wasPressed())if(CommandMode.active())CommandMode.confirm();
                 while(cancelOrder.wasPressed())CommandMode.cancel();while(mapKey.wasPressed())client.setScreen(new MapScreen());
                 while(cycle.wasPressed()){int i=0;for(int k=0;k<Spec.FORMATIONS.length;k++)if(Spec.FORMATIONS[k].id().equals(CommandMode.formation))i=k;CommandMode.changeFormation(Spec.FORMATIONS[(i+1)%Spec.FORMATIONS.length].id());}
-                if(ready&&!opened&&join.isEmpty()&&client.getServer()!=null){opened=true;try{int port=0;String requested=System.getenv("GRAVES AND GLORY_HOST_PORT");if(requested!=null){port=Integer.parseInt(requested);if(port<1024||port>65535)throw new IllegalArgumentException("Invalid host port");}if(port==0)try(ServerSocket socket=new ServerSocket(0)){port=socket.getLocalPort();}if(client.getServer().openToLan(GameMode.ADVENTURE,false,port))say("Melty join address: "+InetAddress.getLocalHost().getHostAddress()+":"+port);else say("Melty host failed: could not open port");}catch(Exception e){say("Melty host failed: "+e.getMessage());}}
+                if(ready&&!opened&&shareCamp&&client.getServer()!=null){opened=true;try{int port=0;String requested=System.getenv("GRAVES AND GLORY_HOST_PORT");if(requested!=null){port=Integer.parseInt(requested);if(port<1024||port>65535)throw new IllegalArgumentException("Invalid host port");}if(port==0)try(ServerSocket socket=new ServerSocket(0)){port=socket.getLocalPort();}if(client.getServer().openToLan(GameMode.ADVENTURE,false,port)){String address=InetAddress.getLocalHost().getHostAddress()+":"+port;say("Melty join address: "+address);client.player.sendMessage(Text.literal("Camp open on your local network: "+address),false);}else client.player.sendMessage(Text.literal("Could not open camp to the local network."),false);}catch(Exception e){client.player.sendMessage(Text.literal("Could not share camp: "+e.getMessage()),false);}}
             }
         });
         HudRenderCallback.EVENT.register(GravesAndGloryClient::renderHud);
@@ -104,12 +109,17 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static void say(String line){try{Files.writeString(runtime.resolve("melty.log"),line+"\n",StandardOpenOption.CREATE,StandardOpenOption.APPEND);}catch(Exception ignored){}}
     static void send(String action){if(ClientPlayNetworking.canSend(GravesAndGlory.ORDER)){PacketByteBuf b=PacketByteBufs.create();b.writeString(action);ClientPlayNetworking.send(GravesAndGlory.ORDER,b);}}
     static void connectOrHost(MinecraftClient c){
-        if(!join.isEmpty()){ConnectScreen.connect(new TitleScreen(),c,ServerAddress.parse(join),new ServerInfo("Graves and Glory",join,false),false);return;}
+        if(!join.isEmpty()){connectingInvitation=true;ConnectScreen.connect(new FrontMenuScreen("friends"),c,ServerAddress.parse(join),new ServerInfo("Graves and Glory",join,false),false);return;}
         try { LegacyDataMigration.world(c.runDirectory.toPath().resolve("saves")); }
         catch (java.io.IOException migration) { c.setScreen(new FailureScreen("Could not upgrade the Bannerbound world. Originals were kept. "+migration.getMessage()));return; }
         if(Files.exists(c.runDirectory.toPath().resolve("saves/Graves and Glory/level.dat"))){c.createIntegratedServerLoader().start(new TitleScreen(),"Graves and Glory");return;}
         var info=new LevelInfo("Graves and Glory",GameMode.ADVENTURE,false,Difficulty.NORMAL,true,new GameRules(),DataConfiguration.SAFE_MODE);
         c.createIntegratedServerLoader().createAndStart("Graves and Glory",info,new GeneratorOptions(728619L,false,false),r->r.get(RegistryKeys.WORLD_PRESET).get(WorldPresets.FLAT).createDimensionsRegistryHolder());
+    }
+    static void startCamp(MinecraftClient c,boolean friends){
+        // A saved launcher invitation never redirects an explicit local-play choice.
+        String invitation=join;join="";shareCamp=friends;opened=false;joined=false;connectingInvitation=false;
+        try{connectOrHost(c);}finally{join=invitation;}
     }
     static void invalidateMap(MinecraftClient c){if(mapTexture!=null){c.getTextureManager().destroyTexture(mapTexture);mapTexture=null;}preparingMap=false;}
     static void prepareMap(MinecraftClient c){

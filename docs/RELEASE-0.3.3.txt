@@ -1,0 +1,20 @@
+Graves and Glory 0.3.3 — local release candidate
+
+Adds an original branded front menu with explicit camp/practice, friends,
+settings, credits and quit actions. The public service is clearly marked as
+not launched. Loading the game no longer starts a world or joins an invitation.
+
+Practice stays private. Hosting a friends camp opens it to the local network
+and prints its address in chat. Join a server opens the normal saved-server
+browser. A supplied Melty invitation is an optional action in the friends menu;
+ordinary launcher installs need no Melty runtime files. Remote Internet access
+still requires a reachable host or a supported relay. Parties, matchmaking and
+the home official server are separate unfinished roadmap work.
+
+The menu is restored after leaving a world. Version/build are visible on it.
+Minecraft's accessibility onboarding and standard settings remain available.
+Startup/resource and connection-screen branding remain planned work.
+
+Retains the 0.3.2 login compatibility gate, dependency alignment and model parser
+fix. Read the development work log for actual tests and installation limitations.
+No publication, router changes or public deployment is included.

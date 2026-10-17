@@ -12,6 +12,7 @@
       "gg.gravesandglory.testing.LocalVisualInspection",
       "gg.gravesandglory.CommandPlaytest",
       "gg.gravesandglory.CompatibilityChecks",
+      "gg.gravesandglory.FrontMenuChecks",
       "gg.gravesandglory.CampaignChecks"
     ]
   },

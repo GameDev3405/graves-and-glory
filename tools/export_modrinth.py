@@ -54,7 +54,9 @@ def export():
             for name in source.namelist():
                 if name.startswith('docs/'):pack.writestr('overrides/'+name,source.read(name))
         server='\n'.join(['# Local dedicated-server candidate; configure hosting before public use.',
-                          'level-name=Graves and Glory','level-type=minecraft:flat','generate-structures=false',
+                          'level-name=Graves and Glory','level-type=minecraft:flat',
+                          'generator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains","structures":{}}',
+                          'generate-structures=false',
                           'gamemode=adventure','difficulty=normal','online-mode=true','max-players=8',
                           'server-ip=127.0.0.1','server-port=25565','spawn-protection=0','enable-rcon=false',''])
         pack.writestr('server-overrides/server.properties',server)
