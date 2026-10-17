@@ -16,7 +16,7 @@ public final class CampaignClient {
     static Campaign.Profile profile=new Campaign.Profile();
     static JsonArray players=new JsonArray();
     static boolean lead,fill=true;static String mode="2",notice="",headline="",partyKey="";
-    static JsonObject party=emptyParty();static int padCountdown,padDawn,padDusk;
+    static JsonObject party=emptyParty();static int padCountdown,padDawn,padDusk,padSize=2;
     static JsonObject emptyParty(){JsonObject j=new JsonObject();j.addProperty("open",false);j.addProperty("member",false);j.addProperty("lead",false);j.addProperty("capacity",2);j.addProperty("leader","");j.add("members",new JsonArray());j.addProperty("inviteSeconds",0);j.addProperty("inviter","");j.add("online",new JsonArray());return j;}
     static String lastSaved="",revealUnit="";static long revealUntil;static boolean received;
     static int map=0,serial=-1,intro=0;static boolean lastRunning;
@@ -32,7 +32,7 @@ public final class CampaignClient {
     static void accept(MinecraftClient c,String json,boolean running){
         try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Campaign.Profile.class);if(received&&nextProfile.unlocked.size()>profile.unlocked.size()){for(var unit:Spec.TROOPS)if(nextProfile.unlocked.contains(unit.id())&&!profile.unlocked.contains(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}profile=nextProfile;received=true;players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
             JsonObject keyed=new JsonObject();for(var entry:party.entrySet())if(!entry.getKey().equals("inviteSeconds"))keyed.add(entry.getKey(),entry.getValue());partyKey=keyed.toString();
-            JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();fill=j.get("fill").getAsBoolean();mode=j.get("mode").getAsString();notice=j.get("notice").getAsString();headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
+            JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;fill=j.get("fill").getAsBoolean();mode=j.get("mode").getAsString();notice=j.get("notice").getAsString();headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
             int next=j.get("map").getAsInt();if(next!=map||Spec.FACTIONS[0].spawnX()!=-283){map=next;CampaignMaps.select(map);GravesAndGloryClient.invalidateMap(c);}
             int round=j.get("serial").getAsInt();intro=j.get("intro").getAsInt();
             if(round!=serial&&running&&intro>0){cameraTicks=120-intro;begin(c);}serial=round;

@@ -119,8 +119,8 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
             text(g,total+" commander slots",rx,height-72,rw,MUTED);
             String hint=CampaignClient.lead?(hasResult?"Choose the battlefield, then open a custom lobby to play again.":"Choose your battlefield, then start from the Custom lobby tab."):(hasResult?"Stand on a pad or open a custom lobby to play again.":"Only the custom lobby lead chooses the battlefield. Stand on a pad to quick-match.");
             text(g,hint,18,height-23,width-230,MUTED);
-            if(CampaignClient.padCountdown>0)text(g,"Match starts in "+CampaignClient.padCountdown+" s",18,height-44,width-230,GOLD);
-            else if(CampaignClient.padDawn+CampaignClient.padDusk>0)text(g,"On pads: Dawn "+CampaignClient.padDawn+", Dusk "+CampaignClient.padDusk,18,height-44,width-230,MUTED);
+            if(CampaignClient.padCountdown>0)text(g,"Match starts in "+CampaignClient.padCountdown+" s / "+CampaignClient.padSize+"v"+CampaignClient.padSize,18,height-44,width-230,GOLD);
+            else if(CampaignClient.padDawn+CampaignClient.padDusk>0)text(g,"On pads: Dawn "+CampaignClient.padDawn+", Dusk "+CampaignClient.padDusk+" / plays "+CampaignClient.padSize+"v"+CampaignClient.padSize,18,height-44,width-230,MUTED);
         }else if(tab==1){
             text(g,(team==1?"DUSK":"DAWN")+" / "+CampaignClient.profile.count(Math.max(0,team))+" OF 20 SELECTED",16,74,width-32,GOLD);
             DarkUi.frame(g,15,88,285,182);text(g,"FRONT / toward the enemy",24,94,270,MUTED);text(g,"REAR",24,260,270,MUTED);

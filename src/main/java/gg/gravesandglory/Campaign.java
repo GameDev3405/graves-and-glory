@@ -210,6 +210,12 @@ public final class Campaign {
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
     void switchMap(int index){map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
+    /** Quick-match size from who is ready: half the commanders rounded up, at least the larger side, 2v2 to 4v4. A lone commander gets 3v3. */
+    int padSize(){
+        int n=onPad.size();if(n<2)return 3;
+        int side=(int)Math.max(onPad.values().stream().filter(t->t==0).count(),onPad.values().stream().filter(t->t==1).count());
+        return Math.min(4,Math.max(2,Math.max((n+1)/2,side)));
+    }
     /** Quick match: humans on pads pick a side and ready up. Ten seconds after two are ready, the match starts. Any step-off cancels. */
     void padTick(){
         if(partyLeader!=null){
@@ -228,24 +234,26 @@ public final class Campaign {
         for(var entry:standing.entrySet()){
             UUID id=entry.getKey();int team=entry.getValue();var s=b.squads.get(id);
             if(s==null||onPad.containsKey(id)||padRefused.contains(id))continue;
-            if(onPad.values().stream().filter(t->t==team).count()>=2){notice(id,"That side is full.");padRefused.add(id);continue;}
+            if(onPad.values().stream().filter(t->t==team).count()>=4){notice(id,"That side is full.");padRefused.add(id);continue;}
             if(profile(id).count(team)==0){notice(id,"Every commander needs at least one troop selected.");padRefused.add(id);continue;}
             onPad.put(id,team);s.team=team;notice(id,"Ready for "+Spec.FACTIONS[team].name()+". Step off to leave.");
         }
-        if(onPad.size()<2){padCountdown=-1;padMapRolled=false;return;}
+        // One commander alone on the server may start a 3v3 against bots; with others online, two are still needed.
+        boolean solo=onPad.size()==1&&b.server.getPlayerManager().getPlayerList().size()==1;
+        if(onPad.size()<2&&!solo){padCountdown=-1;padMapRolled=false;return;}
         if(padCountdown<0){
             if(!padMapRolled){
                 padMapRolled=true;int roll=b.world.random.nextInt(4);
                 if(roll!=map){switchMap(roll);for(UUID id:onPad.keySet())notice(id,"Quick match map: "+Spec.MAPS[map].name()+".");return;}
             }
-            padCountdown=200;for(UUID id:onPad.keySet())notice(id,"Match starts in 10 seconds.");
+            padCountdown=200;for(UUID id:onPad.keySet())notice(id,"Match starts in 10 seconds: "+padSize()+"v"+padSize()+", bots fill empty seats.");
             return;
         }
         padCountdown-=10;
         if(padCountdown<=0)startQuickMatch();
     }
     void startQuickMatch(){
-        padCountdown=-1;padMapRolled=false;practice=false;size=2;fill=true;
+        padCountdown=-1;padMapRolled=false;practice=false;size=padSize();fill=true;
         for(UUID id:onPad.keySet()){var s=b.squads.get(id);if(s==null)continue;s.team=onPad.get(id);s.seated=true;notice(id,"Match starting.");}
         b.startRound();
     }
@@ -293,7 +301,7 @@ public final class Campaign {
         }
     }
     String snapshot(ServerPlayerEntity p){
-        JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",JSON.toJsonTree(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",Math.max(0,introUntil-b.time));j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("headline",headline);JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());j.add("pads",pads);
+        JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",JSON.toJsonTree(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",Math.max(0,introUntil-b.time));j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("headline",headline);JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
         JsonObject partyJson=new JsonObject();boolean member=party.contains(p.getUuid());Long until=inviteUntil.get(p.getUuid());UUID inviter=invites.get(p.getUuid());
         partyJson.addProperty("open",partyLeader!=null);partyJson.addProperty("member",member);partyJson.addProperty("lead",leader(p));partyJson.addProperty("capacity",size*2);
         partyJson.addProperty("leader",partyLeader==null?"":name(partyLeader));
