@@ -136,7 +136,7 @@ python tools/export_server.py         -> dist/graves-and-glory-<version>-server.
 - Player 3D depth is an overlay, not a new model. Its in-game look has not been verified.
 - Batches 1-4 (respawn countdown, key strip, result headline and PLAY AGAIN, Shieldwall, bot retreat and charge) compile and package. Their in-game behaviour is not yet verified. Balance of bot retreat and charge needs human playtests.
 - `tools/prepare_preview_checks.py` and `tools/implement_experience.py` reference removed hooks. Do not run them.
-- `CommandPlaytest` writes to `evidence/revision-02`, which does not exist. Expect it to fail until that path is created.
+- `CommandPlaytest` writes to `evidence/revision-02` (relative to the run folder) and creates that folder itself when it is missing.
 
 ## 9. Rename migration and standalone checks (0.3.1)
 

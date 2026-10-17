@@ -199,7 +199,7 @@ public final class GravesAndGlory implements ModInitializer {
         final Set<String> testedOrders=new HashSet<>();
         final Set<UUID> testOwners=new HashSet<>();
         int trainingGold,trainingMageBefore;
-        int testBridgeIndex;
+        int testBridgeIndex,hillClimbY;
         boolean bridgesPassed=true;
         public Battle(MinecraftServer server){
             this.server=server;world=server.getOverworld();campaign=new Campaign(this);
@@ -566,7 +566,7 @@ public final class GravesAndGlory implements ModInitializer {
                 var point=points.get(0).spec;
                 for(Unit u:units)if(u.squad==testSquad)u.mob.refreshPositionAndAngles(point.x()-22+(u.slot%5)*1.4,65,point.z()+(u.slot/5)*1.4,0,0);
                 testSquad.order="move";testSquad.target=new Vec3d(point.x(),65,point.z());testSquad.yaw=180;
-                testStart=units.get(0).mob.getPos();testAt=time;testStage=1;
+                testStart=units.get(0).mob.getPos();testAt=campaign.introUntil;testStage=1; // units do not tick until the round intro ends, so the wait starts there
             } else if(testStage==1&&time-testAt>100){
                 long living=units.stream().filter(u->u.squad==testSquad&&u.mob.isAlive()).count();
                 boolean moved=units.get(0).mob.squaredDistanceTo(testStart)>9;
@@ -608,12 +608,12 @@ public final class GravesAndGlory implements ModInitializer {
                     System.out.println("[Graves and Glory test] "+bridge.id()+": "+crossed+"/20 crossed without teleporting.");
                     testBridgeIndex++;
                     if(testBridgeIndex<Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).count()){prepareBridgeTest();testAt=time;}
-                    else{Diagnostics.report("river-navigation",bridgesPassed,"one or more bridges failed to carry all twenty troops");prepareNavigation(-112,44,new Vec3d(-82,Arena.height(-82,52)+1,52),-90);testStage=6;testAt=time;}
+                    else{Diagnostics.report("river-navigation",bridgesPassed,"one or more bridges failed to carry all twenty troops");prepareHillTest();testStage=6;testAt=time;}
                 }
             }else if(testStage==6){
-                long climbed=units.stream().filter(u->u.squad==testSquad&&u.mob.getX()>-102&&u.mob.getY()>=69).count();
+                long climbed=units.stream().filter(u->u.squad==testSquad&&u.mob.isAlive()&&u.mob.getY()>=hillClimbY).count();
                 if(climbed==20||time-testAt>700){
-                    Diagnostics.report("hill-navigation",climbed==20,"only "+climbed+" of twenty troops climbed the ridge");
+                    Diagnostics.report("hill-navigation",climbed==20,"only "+climbed+" of twenty troops climbed to y>="+hillClimbY+" on the ridge");
                     var p=server.getPlayerManager().getPlayer(testSquad.owner);var f=Spec.FACTIONS[testSquad.team];
                     p.teleport(world,f.barracksX(),65,f.barracksZ(),0,0);
                     String melee=Spec.TROOPS[testSquad.team==0?0:3].id(),mage=Spec.TROOPS[testSquad.team==0?2:5].id();
@@ -637,6 +637,13 @@ public final class GravesAndGlory implements ModInitializer {
         void prepareNavigation(double x,double z,Vec3d target,float yaw){
             testSquad.order="move";testSquad.target=target;testSquad.yaw=yaw;
             for(Unit u:units)if(u.squad==testSquad){double px=x+(u.slot%5)*1.5,pz=z+(u.slot/5-1.5)*1.4;u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(px,Arena.ground((int)px,(int)pz)+1,pz,yaw,0);u.nextPath=0;u.stuckTicks=0;}
+        }
+        /** Rivergate's dawn ridge is the climb: troops start on its flat eastern foot, march west to the crest, and must end at least eight blocks above where they began. */
+        void prepareHillTest(){
+            var ridge=Arrays.stream(Spec.TERRAIN).filter(t->t.id().equals("dawn_ridge")).findFirst().orElseThrow();
+            int startX=ridge.x()+ridge.radiusX()*4/5,crestX=ridge.x()+6,z=ridge.z();
+            hillClimbY=Arena.ground(startX,z)+8;
+            prepareNavigation(startX,z,new Vec3d(crestX,Arena.height(crestX,z)+1,z),90);
         }
         void prepareBridgeTest(){var b=Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList().get(testBridgeIndex);prepareNavigation(b.x()-b.width()/2.0-14,b.z(),new Vec3d(b.x()+b.width()/2.0+16,65,b.z()),-90);}
         void prepareVisualSquads(boolean fight){

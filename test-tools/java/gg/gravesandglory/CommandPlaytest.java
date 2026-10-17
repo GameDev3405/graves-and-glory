@@ -11,7 +11,7 @@ import java.util.*;
 /** Unshipped interaction tests; reports mechanics, never asserts fun or balance. */
 public final class CommandPlaytest implements ClientModInitializer {
     int tick;boolean started;Vec3d initial;float hp;GravesAndGlory.Unit victim,healer,hexer;boolean fourSeen;
-    static void result(String name,boolean pass,String detail){try{Files.writeString(Path.of("../evidence/revision-02/playtest.txt"),(pass?"PASS ":"FAIL ")+name+" "+detail+"\n",StandardOpenOption.CREATE,StandardOpenOption.APPEND);}catch(Exception e){throw new RuntimeException(e);}}
+    static void result(String name,boolean pass,String detail){try{Path file=Path.of("../evidence/revision-02/playtest.txt");Files.createDirectories(file.getParent());Files.writeString(file,(pass?"PASS ":"FAIL ")+name+" "+detail+"\n",StandardOpenOption.CREATE,StandardOpenOption.APPEND);}catch(Exception e){throw new RuntimeException(e);}}
     void server(MinecraftClient c,java.util.function.Consumer<GravesAndGlory.Battle> action){c.getServer().execute(()->action.accept(GravesAndGlory.battle));}
     void shot(MinecraftClient c,String name){ScreenshotRecorder.saveScreenshot(c.runDirectory,"revision-"+name+".png",c.getFramebuffer(),t->{});}
     @Override public void onInitializeClient(){

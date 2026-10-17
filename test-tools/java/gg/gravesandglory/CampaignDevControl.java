@@ -27,7 +27,7 @@ final class CampaignDevControl {
             if(action.equals("hud")){c.options.hudHidden=j.get("hidden").getAsBoolean();return;}
             if(action.equals("barracks")){c.setScreen(new GravesAndGloryClient.BarracksScreen());return;}
             if(action.equals("resize")){org.lwjgl.glfw.GLFW.glfwSetWindowSize(c.getWindow().getHandle(),j.get("width").getAsInt(),j.get("height").getAsInt());return;}
-            if(action.equals("routes")){routes=new MapRouteChecks(c);return;}
+            if(action.equals("routes")){int[] maps=null;if(j.has("maps")){var list=j.getAsJsonArray("maps");maps=new int[list.size()];for(int i=0;i<maps.length;i++)maps[i]=list.get(i).getAsInt();}routes=new MapRouteChecks(c,maps);return;}
             if(action.equals("shot")){ScreenshotRecorder.saveScreenshot(c.runDirectory,j.get("name").getAsString()+".png",c.getFramebuffer(),text->{});return;}
             if(action.equals("presentation")){c.setScreen(new PresentationScreen());return;}
             if(action.equals("shader")){Presentation.selectShader(j.get("index").getAsInt());return;}
