@@ -15,7 +15,8 @@ public final class RevisionChecks implements ClientModInitializer {
     void server(MinecraftClient c,java.util.function.Consumer<GravesAndGlory.Battle> action){c.getServer().execute(()->action.accept(GravesAndGlory.battle));}
     void shot(MinecraftClient c,String name){ScreenshotRecorder.saveScreenshot(c.runDirectory,"revision-"+name+".png",c.getFramebuffer(),t->{});}
     @Override public void onInitializeClient(){
-        if(!MeltyTest.active())return;
+        // The battle self-test (-PselfTest) drives its own battle; these suites would fight it for the same world.
+        if(!MeltyTest.active()||Boolean.getBoolean("gravesandglory.selfTest"))return;
         ClientTickEvents.END_CLIENT_TICK.register(c->{
             if(c.player==null||c.getServer()==null||!GravesAndGloryClient.ready)return;
             c.options.pauseOnLostFocus=false;tick++;
