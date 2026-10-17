@@ -22,6 +22,10 @@ public final class Campaign {
     final Set<UUID> participants=new HashSet<>();
     final Map<UUID,Long> joinedAt=new HashMap<>();
     final Set<UUID> collectionsReady=new HashSet<>();
+    /** Players with no server record when they joined; only they may bring a collection from their own computer, once. */
+    final Set<UUID> importAllowed=new HashSet<>();
+    /** Commanders who left mid-battle, mapped to the bot squad holding their army until they return this round. */
+    final Map<UUID,UUID> vacated=new HashMap<>();
     /** AI armies that fell back stay there until rallied, so they do not walk back into the fight. */
     final Set<UUID> botRetreating=new HashSet<>();
     final Map<UUID,String> notices=new HashMap<>();
@@ -68,20 +72,26 @@ public final class Campaign {
     void save(UUID id){try{Files.createDirectories(directory);Path path=directory.resolve(id+".json"),tmp=directory.resolve(id+".tmp");Files.writeString(tmp,JSON.toJson(profile(id)));Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING);}catch(Exception e){System.err.println("[Graves and Glory] Could not save commander collection: "+e.getClass().getSimpleName());notice(id,"Collection could not be saved; check disk space.");}}
     void importProfile(ServerPlayerEntity p,String json){
         if(json.length()>16000)return;
-        // Collections travel with the player's local Minecraft profile. This is a
-        // friends-hosted mod, not an authenticated competitive economy service.
-        try{Profile portable=JSON.fromJson(json,Profile.class);portable.sanitize();Profile stored=profile(p.getUuid());
-            if(portable.matches>=stored.matches){profiles.put(p.getUuid(),portable);save(p.getUuid());}
+        // The server's saved collection is the only source of truth. The client's copy is a display cache.
+        // It is imported once, on a first visit to a single-player or LAN world with no record yet, so
+        // existing collections carry over; dedicated servers never accept one.
+        UUID id=p.getUuid();boolean allowed=importAllowed.remove(id)&&!b.server.isDedicated();
+        try{Profile portable=JSON.fromJson(json,Profile.class);portable.sanitize();
+            if(allowed){profiles.put(id,portable);save(id);}
+            else{Profile stored=profile(id);if(portable.gold>stored.gold||!stored.unlocked.containsAll(portable.unlocked))System.out.println("[Graves and Glory] Ignored the collection sent by "+p.getName().getString()+"; the server's saved collection is kept.");}
         }catch(Exception ignored){}
-        collectionsReady.add(p.getUuid());
+        collectionsReady.add(id);
     }
     void notice(UUID id,String text){notices.put(id,text);var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)p.sendMessage(Text.literal(text),true);}
-    void joined(ServerPlayerEntity p){profile(p.getUuid());joinedAt.put(p.getUuid(),b.time);if(b.running)b.toBase(p,b.squads.get(p.getUuid()).team);else toLobby(p);notice(p.getUuid(),"Welcome to Graves and Glory. R opens your war council.");}
+    void joined(ServerPlayerEntity p){
+        if(!Files.exists(directory.resolve(p.getUuid()+".json")))importAllowed.add(p.getUuid());profile(p.getUuid());
+        // Rejoining the same battle keeps the original start time, so a dropped connection does not cost the reward.
+        if(!(b.running&&participants.contains(p.getUuid())))joinedAt.put(p.getUuid(),b.time);if(b.running)b.toBase(p,b.squads.get(p.getUuid()).team);else toLobby(p);notice(p.getUuid(),"Welcome to Graves and Glory. R opens your war council.");}
     void toLobby(ServerPlayerEntity p){b.relocate(p,0,66,CampaignMaps.LOBBY_Z,180,10);p.changeGameMode(GameMode.ADVENTURE);p.setHealth(p.getMaxHealth());}
     void returnLobby(){
         b.running=false;introUntil=0;
         for(var u:b.units)u.mob.discard();b.units.clear();
-        b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();
+        b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}onPad.clear();padCountdown=-1;closeParty();
         for(var p:b.server.getPlayerManager().getPlayerList())toLobby(p);
     }
@@ -90,7 +100,10 @@ public final class Campaign {
     boolean handle(ServerPlayerEntity p,String cmd){
         if(cmd.startsWith("party:")){partyCommand(p,cmd);return true;}
         if(cmd.equals("lobby")){if(b.running)notice(p.getUuid(),"Finish the battle before returning to the lobby.");else toLobby(p);return true;}
-        if(b.running)return cmd.startsWith("roll")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("class:")||cmd.startsWith("map:")||cmd.startsWith("mode:")||cmd.equals("fill");
+        if(b.running){
+            boolean locked=cmd.startsWith("roll")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("class:")||cmd.startsWith("map:")||cmd.startsWith("mode:")||cmd.equals("fill");
+            if(locked)notice(p.getUuid(),"Army, class and battlefield choices are locked until this battle ends.");return locked;
+        }
         Profile pr=profile(p.getUuid());var squad=b.squads.get(p.getUuid());if(squad==null)return false;
         if(cmd.equals("roll")){
             var locked=Arrays.stream(Spec.TROOPS).filter(t->!pr.unlocked.contains(t.id())).toList();
@@ -140,7 +153,7 @@ public final class Campaign {
     void prepareRound(){
         onPad.clear();padCountdown=-1;padMapRolled=false;
         b.squads.values().removeIf(s->s.bot);balance();
-        for(var u:b.units)u.mob.discard();b.units.clear();botRespawns.clear();botRetreating.clear();
+        for(var u:b.units)u.mob.discard();b.units.clear();botRespawns.clear();botRetreating.clear();vacated.clear();
         for(int team=0;team<2;team++){final int t=team;int humans=(int)b.squads.values().stream().filter(s->s.team==t&&s.seated).count();
             int target=practice?(team==0?1:1):size;
             if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,GravesAndGlory.Battle.base(team));s.bot=true;s.commander=Spec.CLASSES[i%3].id();s.lane=i%3;b.squads.put(id,s);}

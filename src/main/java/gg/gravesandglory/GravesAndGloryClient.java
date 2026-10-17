@@ -97,9 +97,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
                 while(rotateRight.wasPressed()){CommandMode.facingSet=true;CommandMode.facing+=Spec.COMMANDINTERFACE[0].facingStep();}
                 CommandMode.tick(client);
                 while(confirmOrder.wasPressed())if(CommandMode.active())CommandMode.confirm();
-                while(cancelOrder.wasPressed())CommandMode.cancel();while(mapKey.wasPressed())client.setScreen(new MapScreen());
+                while(cancelOrder.wasPressed())CommandMode.cancel();while(mapKey.wasPressed())client.setScreen(new MapScreen(null));
                 while(cycle.wasPressed()){int i=0;for(int k=0;k<Spec.FORMATIONS.length;k++)if(Spec.FORMATIONS[k].id().equals(CommandMode.formation))i=k;CommandMode.changeFormation(Spec.FORMATIONS[(i+1)%Spec.FORMATIONS.length].id());}
-                if(ready&&!opened&&shareCamp&&client.getServer()!=null){opened=true;try{int port=0;String requested=System.getenv("GRAVES AND GLORY_HOST_PORT");if(requested!=null){port=Integer.parseInt(requested);if(port<1024||port>65535)throw new IllegalArgumentException("Invalid host port");}if(port==0)try(ServerSocket socket=new ServerSocket(0)){port=socket.getLocalPort();}if(client.getServer().openToLan(GameMode.ADVENTURE,false,port)){String address=InetAddress.getLocalHost().getHostAddress()+":"+port;say("Melty join address: "+address);client.player.sendMessage(Text.literal("Camp open on your local network: "+address),false);}else client.player.sendMessage(Text.literal("Could not open camp to the local network."),false);}catch(Exception e){client.player.sendMessage(Text.literal("Could not share camp: "+e.getMessage()),false);}}
+                if(ready&&!opened&&shareCamp&&client.getServer()!=null){opened=true;try{int port=0;String requested=System.getenv("GRAVESANDGLORY_HOST_PORT");if(requested==null)requested=System.getenv("BANNERBOUND_HOST_PORT");if(requested!=null){port=Integer.parseInt(requested);if(port<1024||port>65535)throw new IllegalArgumentException("Invalid host port");}if(port==0)try(ServerSocket socket=new ServerSocket(0)){port=socket.getLocalPort();}if(client.getServer().openToLan(GameMode.ADVENTURE,false,port)){String address=InetAddress.getLocalHost().getHostAddress()+":"+port;say("Melty join address: "+address);client.player.sendMessage(Text.literal("Camp open on your local network: "+address),false);}else client.player.sendMessage(Text.literal("Could not open camp to the local network."),false);}catch(Exception e){client.player.sendMessage(Text.literal("Could not share camp: "+e.getMessage()),false);}}
             }
         });
         HudRenderCallback.EVENT.register(GravesAndGloryClient::renderHud);
@@ -147,11 +147,12 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         float scale=Math.min(1,c.getWindow().getScaledWidth()/640f);g.getMatrices().push();g.getMatrices().scale(scale,scale,1);
         int w=(int)(c.getWindow().getScaledWidth()/scale),h=(int)(c.getWindow().getScaledHeight()/scale);var font=c.textRenderer;
         if(CampaignClient.cinematic()){CampaignClient.hud(g,w,h);g.getMatrices().pop();return;}
-        panel(g,w/2-175,7,350,37);g.drawCenteredTextWithShadow(font,"DAWN "+dawn+" / 300  | "+String.format("%d:%02d",CommandMode.seconds/60,CommandMode.seconds%60)+" |  DUSK "+dusk+" / 300",w/2,14,GOLD);
+        panel(g,w/2-175,7,350,37);g.drawCenteredTextWithShadow(font,"DAWN "+dawn+" / "+GravesAndGlory.R.winScore()+"  | "+String.format("%d:%02d",CommandMode.seconds/60,CommandMode.seconds%60)+" |  DUSK "+dusk+" / "+GravesAndGlory.R.winScore(),w/2,14,GOLD);
         for(int i=0;i<3;i++)g.drawTextWithShadow(font,Spec.POINTS[i].id()+": "+(contested[i]?"Contested":progress[i]>0?"Capturing":owners[i]<0?"Neutral":owners[i]==0?"Dawn":"Dusk"),w/2-160+i*110,29,factionColor(owners[i]));
         CommandMode.hud(g,w,h);Presentation.hud(g,w,h);
         if(!running)g.drawCenteredTextWithShadow(font,menu.getBoundKeyLocalizedText().getString()+": war council / collection / maps",w/2,48,WHITE);
-        else{g.drawCenteredTextWithShadow(font,keyHints(),w/2,h-14,MUTED);if(respawn>0){panel(g,w/2-100,h/2-40,200,26);g.drawCenteredTextWithShadow(font,"Respawn in "+respawn+" s",w/2,h/2-32,GOLD);}}
+        // Key hints sit under the score panel, clear of the hotbar; hidden while an order is being aimed.
+        else{if(!CommandMode.active())g.drawCenteredTextWithShadow(font,keyHints(),w/2,48,MUTED);if(respawn>0){panel(g,w/2-100,h/2-40,200,26);g.drawCenteredTextWithShadow(font,"Respawn in "+respawn+" s",w/2,h/2-32,GOLD);}}
         panel(g,w-116,h-100,108,92);g.drawTextWithShadow(font,"M / BATTLEFIELD",w-109,h-92,MUTED);map(g,w-110,h-79,96,68,false);CampaignClient.hud(g,w,h);g.getMatrices().pop();
     }
     static final class FantasyButton extends ButtonWidget {
@@ -171,7 +172,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     abstract static class ArmyScreen extends Screen {
         ArmyScreen(String title){super(Text.literal(title));}
         @Override public boolean shouldPause(){return false;}
-        @Override public boolean keyPressed(int key,int scan,int mods){if(menu.matchesKey(key,scan)||key==GLFW.GLFW_KEY_ESCAPE){close();return true;}if(mapKey.matchesKey(key,scan)){client.setScreen(new MapScreen());return true;}return super.keyPressed(key,scan,mods);}
+        @Override public boolean keyPressed(int key,int scan,int mods){if(menu.matchesKey(key,scan)||key==GLFW.GLFW_KEY_ESCAPE){close();return true;}if(mapKey.matchesKey(key,scan)){client.setScreen(new MapScreen(this));return true;}return super.keyPressed(key,scan,mods);}
         ButtonWidget primary(String label,int x,int y,int w,java.util.function.Consumer<ButtonWidget> action){var b=new FantasyButton(x,y,w,26,Text.literal(label),action::accept);b.primary=true;return addDrawableChild(b);}
         ButtonWidget button(String label,int x,int y,int w,java.util.function.Consumer<ButtonWidget> action){return addDrawableChild(new FantasyButton(x,y,w,20,Text.literal(label),action::accept));}
     }
@@ -185,7 +186,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             int groupWidth=Math.min(100,(width-24)/4);int i=0;
             for(var group:Spec.GROUPS){String id=group.id();button((CommandMode.selected.equals(id)?"> ":"")+group.label()+" "+CommandMode.count(id),width/2-2*groupWidth+i*groupWidth,8,groupWidth-3,b->{CommandMode.selected=id;clearAndInit();});i++;}
             i=0;for(String id:new String[]{"move","attack","charge","hold","follow","retreat"}){var order=Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(id)).findFirst().orElseThrow();var btn=button(order.label(),8,40+i*21,72,b->{if(id.equals("follow")){CommandMode.issue(CommandMode.selected,id,CommandMode.formation,client.player.getPos(),client.player.getYaw(),-1);close();}else CommandMode.begin(id);});btn.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(order.meaning())));i++;}
-            button("Map",width-76,45,68,b->client.setScreen(new MapScreen()));
+            button("Map",width-76,45,68,b->client.setScreen(new MapScreen(this)));
             int cardWidth=Math.min(105,(width-24)/Spec.FORMATIONS.length);i=0;
             for(var f:Spec.FORMATIONS){String id=f.id();var btn=button((id.equals(CommandMode.formation)?"> ":"")+f.label(),width/2-Spec.FORMATIONS.length*cardWidth/2+i*cardWidth,height-27,cardWidth-3,b->{CommandMode.changeFormation(id);clearAndInit();});btn.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(f.purpose())));i++;}
         }
@@ -200,8 +201,10 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     public static final class BarracksScreen extends RecruitmentScreen { BarracksScreen(){super();} }
     public static final class MapScreen extends ArmyScreen {
         int x,y,w,h;Marker selected;String pingMode="";
-        MapScreen(){super("Battlefield map");}
-        @Override protected void init(){h=Math.min(height-86,230);w=Math.min(width-40,h*280/200);h=w*200/280;x=(width-w)/2;y=34;button("Back",12,8,55,b->client.setScreen(new CommandScreen()));int i=0;for(var ping:Spec.PINGS){String id=ping.id();button(ping.label(),width/2-152+i*77,height-22,74,b->pingMode=id);i++;}}
+        /** The screen that opened the map; Back returns there, or to the game when opened by the map key. */
+        final Screen parent;
+        MapScreen(Screen parent){super("Battlefield map");this.parent=parent;}
+        @Override protected void init(){h=Math.min(height-86,230);w=Math.min(width-40,h*280/200);h=w*200/280;x=(width-w)/2;y=34;button("Back",12,8,55,b->client.setScreen(parent));int i=0;for(var ping:Spec.PINGS){String id=ping.id();button(ping.label(),width/2-152+i*77,height-22,74,b->pingMode=id);i++;}}
         @Override public boolean mouseClicked(double mx,double my,int b){if(!pingMode.isEmpty()&&b==0&&mx>=x&&mx<=x+w&&my>=y&&my<=y+h){CommandMode.ping(pingMode,(mx-x)*700/w-350,(my-y)*500/h-250);pingMode="";return true;}if(b==1&&mx>=x&&mx<=x+w&&my>=y&&my<=y+h){double tx=(mx-x)*700/w-350,tz=(my-y)*500/h-250;CommandMode.issue(CommandMode.selected,"move",CommandMode.formation,new net.minecraft.util.math.Vec3d(tx,65,tz),client.player.getYaw(),-1);return true;}
             for(var group:CommandMode.groups){double gx=x+(group.cx()+350)*w/700,gz=y+(group.cz()+250)*h/500;if(b==0&&Math.hypot(mx-gx,my-gz)<8){CommandMode.selected=group.id();return true;}}
             for(Marker m:markers){double px=x+(m.x()+350)*w/700,pz=y+(m.z()+250)*h/500;if(Math.hypot(mx-px,my-pz)<6){selected=m;return true;}}return super.mouseClicked(mx,my,b);}

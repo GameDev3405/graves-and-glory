@@ -39,7 +39,7 @@ public final class CommandMode {
     static void issue(String group,String action,String form,Vec3d dest,float yaw,int target){
         if(!ClientPlayNetworking.canSend(GravesAndGlory.TACTICAL))return;
         var b=PacketByteBufs.create();b.writeString(group);b.writeString(action);b.writeString(form);b.writeDouble(dest.x);b.writeDouble(dest.z);b.writeFloat(yaw);b.writeInt(target);ClientPlayNetworking.send(GravesAndGlory.TACTICAL,b);
-        feedback="Sent: "+label(group)+" / "+label(action);feedbackUntil=System.currentTimeMillis()+3000;
+        feedback=label(group)+": "+label(action)+" order sent";feedbackUntil=System.currentTimeMillis()+3000;
     }
     static void tick(MinecraftClient c){
         preview.clear();if(!active()||c.player==null||c.world==null||c.currentScreen!=null)return;

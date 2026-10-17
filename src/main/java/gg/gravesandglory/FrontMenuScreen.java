@@ -4,7 +4,6 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen;
 import net.minecraft.client.gui.screen.option.OptionsScreen;
-import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
@@ -23,11 +22,9 @@ public final class FrontMenuScreen extends Screen {
         if(page.equals("home")){
             button("Enter camp / Practice",top,true,()->GravesAndGloryClient.startCamp(client,false));
             button("Play with friends",top+22,false,()->client.setScreen(new FrontMenuScreen("friends")));
-            var publicPlay=button("Public battles / Coming soon",top+44,false,()->{});publicPlay.active=false;
-            publicPlay.setTooltip(Tooltip.of(Text.literal("The official public service has not launched yet.")));
-            button("Settings",top+66,false,()->client.setScreen(new OptionsScreen(this,client.options)));
-            button("Credits",top+88,false,()->client.setScreen(new FrontMenuScreen("credits")));
-            button("Quit game",top+110,false,client::scheduleStop);
+            button("Settings",top+44,false,()->client.setScreen(new OptionsScreen(this,client.options)));
+            button("Credits",top+66,false,()->client.setScreen(new FrontMenuScreen("credits")));
+            button("Quit game",top+88,false,client::scheduleStop);
         }else if(page.equals("friends")){
             button("Host a camp on this network",top,true,()->GravesAndGloryClient.startCamp(client,true));
             button("Join a server",top+22,false,()->client.setScreen(new MultiplayerScreen(this)));
@@ -47,7 +44,6 @@ public final class FrontMenuScreen extends Screen {
         g.getMatrices().push();g.getMatrices().translate(width/2f,29,0);g.getMatrices().scale(1.5f,1.5f,1);
         g.drawCenteredTextWithShadow(textRenderer,Text.literal("GRAVES AND GLORY").setStyle(net.minecraft.text.Style.EMPTY.withFont(DarkUi.TITLE)),0,0,DarkUi.GOLD);g.getMatrices().pop();
         g.drawCenteredTextWithShadow(textRenderer,"Collect an army. Command the battlefield.",width/2,54,DarkUi.PAPER);
-        if(page.equals("home"))g.drawCenteredTextWithShadow(textRenderer,"PUBLIC SERVICE: NOT LAUNCHED",width/2,maxTop()-17,DarkUi.MUTED);
         if(page.equals("friends")){
             g.drawCenteredTextWithShadow(textRenderer,"PLAY WITH FRIENDS",width/2,maxTop()-17,DarkUi.GOLD);
             g.drawCenteredTextWithShadow(textRenderer,"Hosting shares this camp on your local network.",width/2,height/2+54,DarkUi.MUTED);

@@ -266,8 +266,11 @@ public final class GravesAndGlory implements ModInitializer {
             int a=(int)squads.values().stream().filter(s->s.team==0).count();
             int b=(int)squads.values().stream().filter(s->s.team==1).count();
             int team=a<=b?0:1;
-            Squad replacement=running?squads.values().stream().filter(s->s.bot).findFirst().orElse(null):null;
-            Squad s;if(replacement!=null){s=replacement;squads.remove(s.owner);s.owner=p.getUuid();s.bot=false;s.seated=true;team=s.team;}
+            // A returning commander gets their own army back; others take a bot seat, preferring one nobody is coming back for.
+            Squad replacement=null;
+            if(running){UUID held=campaign.vacated.remove(p.getUuid());Squad own=held==null?null:squads.get(held);
+                replacement=own!=null&&own.bot?own:squads.values().stream().filter(s->s.bot).min(Comparator.comparing(s->campaign.vacated.containsValue(s.owner))).orElse(null);}
+            Squad s;if(replacement!=null){s=replacement;squads.remove(s.owner);campaign.botRespawns.remove(s.owner);campaign.botRetreating.remove(s.owner);campaign.vacated.values().remove(s.owner);s.owner=p.getUuid();s.bot=false;s.seated=true;team=s.team;}
             else{s=new Squad(p.getUuid(),team,base(team));s.seated=running;if(running)reinforce(s);}
             squads.put(s.owner,s);welcomed.add(s.owner);
             p.changeGameMode(GameMode.ADVENTURE);toBase(p,team);equipPlayer(p);
@@ -278,6 +281,8 @@ public final class GravesAndGlory implements ModInitializer {
         void leave(UUID owner){
             campaign.left(owner);
             Squad s=squads.remove(owner);welcomed.remove(owner);respawns.remove(owner);
+            // Mid-battle, a bot commands the army until its owner rejoins, so the team is not left a commander short.
+            if(s!=null&&running&&s.seated&&!s.bot){UUID stand=UUID.randomUUID();s.owner=stand;s.bot=true;s.order="attack";squads.put(stand,s);campaign.vacated.put(owner,stand);return;}
             units.removeIf(u->{if(u.squad==s){u.mob.discard();return true;}return false;});
         }
         static Vec3d base(int t){var f=Spec.FACTIONS[t];return new Vec3d(f.spawnX(),Arena.height(f.spawnX(),f.spawnZ())+1,f.spawnZ());}
