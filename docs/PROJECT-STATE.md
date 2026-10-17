@@ -125,9 +125,12 @@ Never done:
 - Visual check of EMF armour overlays in game.
 
 Known broken or stale:
-- Self-test checks `troops-commanded` (fires before 120-tick intro ends) and
-  `hill-navigation` are out of date with current code.
-- Route harness invalid on maps 1-4 since the camp lobby arrived.
+- (fixed e78b81b) Self-test and route harness updated to current code:
+  self-test 8/8 pass, routes 20/20 on maps 0-3.
+- Kingsfield (map 4) crashes the client when selected from the lobby
+  (minimap indexes 5 points before the state packet arrives); fix planned
+  in Phase 1.
+- Campaign-suite checks `solo-pad-3v3` and `roadmap-suite` fail before Phase 1.
 - Pre-existing road blockers: bridge railing posts, Ironhold gate walls,
   Hollowwood log pile (35 cells).
 - "Overview" tour camera shot renders at ground level.
