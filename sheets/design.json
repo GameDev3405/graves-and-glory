@@ -1212,14 +1212,14 @@
     {
       "id": "barracks",
       "startingGold": 160,
-      "passiveGold": 8,
+      "passiveGold": 5,
       "incomeSeconds": 5,
-      "pointGold": 1,
-      "killGold": 0,
+      "pointGold": 3,
+      "killGold": 1,
       "maxQueue": 20,
       "accessRadius": 18,
       "disbandRefund": 0,
-      "objectiveIncomeCap": 2
+      "objectiveIncomeCap": 9
     }
   ],
   "navigation": [

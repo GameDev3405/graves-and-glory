@@ -103,7 +103,7 @@ public final class Campaign {
         if(cmd.startsWith("party:")){partyCommand(p,cmd);return true;}
         if(cmd.equals("lobby")){if(b.running)notice(p.getUuid(),"Finish the battle before returning to the lobby.");else toLobby(p);return true;}
         if(b.running){
-            boolean locked=cmd.startsWith("roll")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("class:")||cmd.startsWith("map:")||cmd.startsWith("mode:")||cmd.equals("fill");
+            boolean locked=cmd.startsWith("roll")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("class:")||cmd.startsWith("map:")||cmd.startsWith("mode:")||cmd.equals("fill");
             if(locked)notice(p.getUuid(),"Army, class and battlefield choices are locked until this battle ends.");return locked;
         }
         Profile pr=profile(p.getUuid());var squad=b.squads.get(p.getUuid());if(squad==null)return false;
@@ -113,6 +113,13 @@ public final class Campaign {
             if(pr.gold<Spec.CAMPAIGN[0].rollCost()){notice(p.getUuid(),"A unit roll costs 100 gold. Earn gold by completing battles.");return true;}
             var reward=locked.get(b.world.random.nextInt(locked.size()));pr.gold-=Spec.CAMPAIGN[0].rollCost();pr.unlocked.add(reward.id());save(p.getUuid());
             notice(p.getUuid(),"Unlocked permanently: "+reward.name()+"!");p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","unit_reveal")),.7f,1f);return true;
+        }
+        if(cmd.startsWith("unlock:")){
+            var pick=Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(cmd.substring(7))).findFirst().orElse(null);
+            if(pick==null)return true;if(pr.unlocked.contains(pick.id())){notice(p.getUuid(),pick.name()+" is already in your collection.");return true;}
+            if(pr.gold<Spec.CAMPAIGN[0].rollCost()){notice(p.getUuid(),"Unlocking a troop costs "+Spec.CAMPAIGN[0].rollCost()+" gold. Earn gold by completing battles.");return true;}
+            pr.gold-=Spec.CAMPAIGN[0].rollCost();pr.unlocked.add(pick.id());save(p.getUuid());
+            notice(p.getUuid(),"Unlocked permanently: "+pick.name()+"!");p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","unit_reveal")),.7f,1f);return true;
         }
         if(cmd.startsWith("class:")){String id=cmd.substring(6);if(Arrays.stream(Spec.CLASSES).anyMatch(c->c.id().equals(id))){pr.commander=id;squad.commander=id;save(p.getUuid());}return true;}
         if(cmd.startsWith("slot:")){
@@ -214,12 +221,12 @@ public final class Campaign {
     void switchMap(int index){map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
     /** The lesson a commander is on during their first battle, or -1 once they have finished it or played before. */
     int tutorialStep(UUID id){Profile pr=profile(id);return !b.running||pr.tutorialDone||pr.matches>0?-1:tutorial.getOrDefault(id,0);}
-    /** Advances the first-battle lesson when the commander does what it asks; the last one pays for the first unlock roll. */
+    /** Advances the first-battle lesson when the commander does what it asks; the last one pays for the first troop unlock. */
     void tutorialDid(ServerPlayerEntity p,int step){
         UUID id=p.getUuid();if(tutorialStep(id)!=step)return;
         if(step<3){tutorial.put(id,step+1);return;}
         Profile pr=profile(id);pr.tutorialDone=true;pr.gold+=Spec.CAMPAIGN[0].rollCost();save(id);tutorial.remove(id);
-        notice(id,"Training complete: +"+Spec.CAMPAIGN[0].rollCost()+" gold, enough for your first unlock roll after the battle.");
+        notice(id,"Training complete: +"+Spec.CAMPAIGN[0].rollCost()+" gold, enough to unlock a troop of your choice after the battle.");
     }
     /** Quick-match size from who is ready: half the commanders rounded up, at least the larger side, 2v2 to 4v4. A lone commander gets 3v3. */
     int padSize(){

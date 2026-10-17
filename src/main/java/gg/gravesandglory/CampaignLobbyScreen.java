@@ -32,12 +32,13 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
             int row=0,t=Math.max(0,team),left=width/2+8,cardWidth=(width-left-24)/3;
             if(Arrays.stream(Spec.TROOPS).noneMatch(u->u.id().equals(selectedUnit)&&u.faction().equals(Spec.FACTIONS[t].id()))&&!selectedUnit.equals("empty"))selectedUnit=t==0?"knight":"revenant";
             for(var unit:Spec.TROOPS)if(unit.faction().equals(Spec.FACTIONS[t].id())){String id=unit.id();
-                var choose=addDrawableChild(new ArmyCards.Recruit(unit,left+(row%3)*(cardWidth+4),91+(row/3)*84,cardWidth,b->{selectedUnit=id;clearAndInit();}));choose.active=CampaignClient.profile.unlocked.contains(id)||CampaignClient.mode.equals("ai");row++;
+                var choose=addDrawableChild(new ArmyCards.Recruit(unit,left+(row%3)*(cardWidth+4),91+(row/3)*84,cardWidth,b->{selectedUnit=id;clearAndInit();}));choose.active=true;row++;
             }
             for(int slot=0;slot<20;slot++){final int index=slot;slots.add(addDrawableChild(new ArmyCards.Deployment(index,24+(slot%5)*54,111+(slot/5)*36,b->send("slot:"+index+":"+selectedUnit))));}
             button((selectedUnit.equals("empty")?"> ":"")+"Remove from slot",20,276,160,b->{selectedUnit="empty";clearAndInit();});
             var remove=button("-",left,264,26,b->send("army:"+selectedUnit+":remove"));var add=button("+",width-46,264,26,b->send("army:"+selectedUnit+":add"));remove.active=add.active=!selectedUnit.equals("empty");
-            roll=button("ROLL UNIT / 100 GOLD",16,height-52,Math.min(220,width-32),b->send("roll"));
+            var pick=ArmyCards.spec(selectedUnit);boolean owned=pick==null||CampaignClient.profile.unlocked.contains(pick.id());
+            roll=button(owned?"SELECT A LOCKED TROOP TO UNLOCK":"UNLOCK "+pick.name().toUpperCase()+" / "+Spec.CAMPAIGN[0].rollCost()+" GOLD",16,height-52,Math.min(260,width-32),b->{if(!owned)send("unlock:"+pick.id());});
         }else if(tab==2){
             if(pendingClass.isEmpty())pendingClass=CampaignClient.profile.commander;
             int cw2=(width-48)/3;
@@ -75,7 +76,7 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
         if(!stateKey().equals(key))clearAndInit();
         for(var b:leadControls)b.active=CampaignClient.lead&&ready&&!running;
         if(start!=null)start.active=CampaignClient.lead&&ready&&!running;
-        if(roll!=null)roll.active=CampaignClient.profile.gold>=100&&CampaignClient.profile.unlocked.size()<Spec.TROOPS.length&&!running;
+        if(roll!=null){var pick=ArmyCards.spec(selectedUnit);roll.active=pick!=null&&!CampaignClient.profile.unlocked.contains(pick.id())&&CampaignClient.profile.gold>=Spec.CAMPAIGN[0].rollCost()&&!running;}
         if(tab==1){var line=CampaignClient.profile.lineup(Math.max(0,team));for(int i=0;i<slots.size();i++)slots.get(i).setUnit(line.get(i));}
         if(running)close();
     }
