@@ -32,6 +32,8 @@ public final class BattleMathCheck {
         check(!BattleMath.timedCharge(60,20,8,1.3,18) && BattleMath.timedCharge(15,20,8,1.3,18) && BattleMath.timedCharge(60,20,8,1.5,0), "hard waits for range; normal ignores distance");
         check(!BattleMath.timedCharge(15,8,20,1.3,18), "an outnumbered army does not charge even with the enemy in range");
         check(BattleMath.shieldwallVsArchers(4,0,3,true) && !BattleMath.shieldwallVsArchers(4,1,3,true) && !BattleMath.shieldwallVsArchers(4,0,3,false), "shieldwall only vs archers, only with shields");
+        check(MatchStats.winRate(7,10) == .7 && MatchStats.winRate(0,0) == 0, "win rate");
+        var st=new MatchStats.SquadStats(); st.goldEarned+=5; check(st.goldEarned == 5, "stats accumulate");
         System.out.println("BattleMathCheck: " + checks + " checks passed");
     }
 }

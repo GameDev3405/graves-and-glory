@@ -6,7 +6,8 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "gg.gravesandglory.testing.LocalIntegration"
+      "gg.gravesandglory.testing.LocalIntegration",
+      "gg.gravesandglory.BotSimulation"
     ],
     "client": [
       "gg.gravesandglory.testing.LocalVisualInspection",

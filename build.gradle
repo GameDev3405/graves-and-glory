@@ -43,6 +43,17 @@ if (project.hasProperty('selfTest')) {
  loom.runs.client.vmArg '-Dgravesandglory.selfTest=true'
  loom.runs.client.vmArg "-Dgravesandglory.localChecks=${file('evidence/self-test.txt').absolutePath}"
 }
+// Bot-vs-bot simulation on the dedicated server (test-tools/java/gg/gravesandglory/BotSimulation.java):
+// -PbotSim=<matches> [-PsimDawn=<tier> -PsimDusk=<tier> -PsimMaps=0,1,2 -PsimSize=3 -PsimRoundSeconds=300]; results in <server root>/botsim/.
+if (project.hasProperty('botSim')) {
+ loom.runs.server.vmArg '-Dgravesandglory.localIntegration=true'
+ loom.runs.server.vmArg "-Dfabric.addMods=${file('build/localTestTools/local-integration-DO-NOT-SHIP.jar').absolutePath}"
+ loom.runs.server.vmArg "-Dgravesandglory.botSim=${project.property('botSim')}"
+ ['simDawn', 'simDusk', 'simMaps', 'simSize', 'simRoundSeconds'].each { name ->
+  if (project.hasProperty(name)) loom.runs.server.vmArg "-Dgravesandglory.${name}=${project.property(name)}"
+ }
+ tasks.named('runServer') { dependsOn localTestToolsJar }
+}
 if (project.hasProperty('visualInspection')) { loom.runs.client.vmArg '-Dgravesandglory.visualInspection=true' }
 tasks.register('preflight', Exec) { commandLine 'python', 'tools/preflight.py' }
 compileJava.dependsOn preflight

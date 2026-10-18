@@ -84,7 +84,7 @@ public final class GravesAndGlory implements ModInitializer {
                 for(Unit u:battle.units)if(u.mob==attacker)winner=u.squad;
                 // A shot that lands after its archer fell still credits the archer's army.
                 if(winner==null)winner=victim.lastHitBy;
-                if(winner!=null&&winner.team!=victim.squad.team)winner.gold+=Spec.ECONOMY[0].killGold();
+                if(winner!=null&&winner.team!=victim.squad.team){winner.gold+=Spec.ECONOMY[0].killGold();winner.stats.goldEarned+=Spec.ECONOMY[0].killGold();}
             }
         });
         net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register((player,world,hand,entity,hit)->{
@@ -127,6 +127,8 @@ public final class GravesAndGlory implements ModInitializer {
         float yaw;
         long lastOrder=-100, reinforceAt;
         int gold=Spec.ECONOMY[0].startingGold();
+        /** This round's tally (gold earned so far); Battle.startRound gives the squad a fresh one. */
+        MatchStats.SquadStats stats=new MatchStats.SquadStats();
         final Map<String,Assignment> assignments=new HashMap<>();
         final ArrayDeque<Training> training=new ArrayDeque<>();
         /** Morale per group: when a rout began (present only while routing), rout immunity after a regroup, and the group's full lineup health this round. */
@@ -193,6 +195,8 @@ public final class GravesAndGlory implements ModInitializer {
         public boolean running=false;
         /** New troops deploy from a safely held point nearest the fight instead of the barracks; a check can switch it off. */
         public boolean forwardReinforcement=Spec.ECONOMY[0].forwardReinforcement();
+        /** Round length in seconds, from the rules sheet; the bot simulation shortens it. */
+        public int roundSeconds=R.roundSeconds();
         String message="Preparing the battlefield...";
         int buildColumn=0;
         int rounds=0;long roundStarted;
@@ -287,10 +291,10 @@ public final class GravesAndGlory implements ModInitializer {
                     }
                 }
                 if(time%(Spec.ECONOMY[0].incomeSeconds()*20)==0)for(Squad s:squads.values()){if(!s.seated)continue;
-                    s.gold+=Spec.ECONOMY[0].passiveGold()+Math.min(Spec.ECONOMY[0].objectiveIncomeCap(),points.stream().filter(p->p.owner==s.team).count()*Spec.ECONOMY[0].pointGold());
+                    int income=(int)(Spec.ECONOMY[0].passiveGold()+Math.min(Spec.ECONOMY[0].objectiveIncomeCap(),points.stream().filter(p->p.owner==s.team).count()*Spec.ECONOMY[0].pointGold()));s.gold+=income;s.stats.goldEarned+=income;
                 }
             }
-            if(running&&time-roundStarted>=R.roundSeconds()*20L)campaign.finish(scores[0]==scores[1]?-1:scores[0]>scores[1]?0:1);
+            if(running&&time-roundStarted>=roundSeconds*20L)campaign.finish(scores[0]==scores[1]?-1:scores[0]>scores[1]?0:1);
             // Explicit revision checks are driven by the client test timeline.
             if(time%10==0)sendState();
         }
@@ -474,7 +478,7 @@ public final class GravesAndGlory implements ModInitializer {
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
             respawns.clear();
             for(Squad s:squads.values()){
-                if(!s.seated)continue;s.assignments.clear();s.training.clear();s.routedAt.clear();s.steadyUntil.clear();s.fullHealth.clear();s.gold=Spec.ECONOMY[0].startingGold();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
+                if(!s.seated)continue;s.assignments.clear();s.training.clear();s.routedAt.clear();s.steadyUntil.clear();s.fullHealth.clear();s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
                 var player=server.getPlayerManager().getPlayer(s.owner);
                 if(player!=null){toBase(player,s.team);player.changeGameMode(GameMode.ADVENTURE);equipPlayer(player);}
                 reinforce(s);
@@ -605,7 +609,7 @@ public final class GravesAndGlory implements ModInitializer {
                     b.writeBoolean(members.stream().anyMatch(u->u.mob.getTarget()!=null));b.writeBoolean(s!=null&&Morale.routing(s,g.id()));
                 }
                 var visiblePings=pings.stream().filter(v->s!=null&&v.team==s.team&&v.until>time).toList();b.writeInt(visiblePings.size());for(var ping:visiblePings){b.writeString(ping.kind);b.writeFloat((float)ping.x);b.writeFloat((float)ping.z);}
-                b.writeInt(running?(int)Math.max(0,R.roundSeconds()-(time-roundStarted)/20):R.roundSeconds());
+                b.writeInt(running?(int)Math.max(0,roundSeconds-(time-roundStarted)/20):roundSeconds);
                 var memory=s==null?Map.<UUID,Sight>of():sightings.getOrDefault(s.team,Map.of());b.writeInt(memory.size());for(var sight:memory.values()){b.writeFloat(sight.x);b.writeFloat(sight.z);b.writeInt((int)(time-sight.seen));}
                 b.writeString(campaign.snapshot(p));
                 ServerPlayNetworking.send(p,STATE,b);

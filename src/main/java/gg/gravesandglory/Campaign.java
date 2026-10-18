@@ -37,6 +37,8 @@ public final class Campaign {
     String headline="";
     /** Bot difficulty for the next round: the id of a Spec.BOTCOMMAND row (easy, normal, hard). There is one battle per server, so one setting covers it. */
     String difficulty="normal";
+    /** The winner of the last finished round: 0 Dawn, 1 Dusk, -1 a draw (and before any round has finished). */
+    int lastWinner=-1;
     /** Ready pads: who stands on which pad (team), the countdown in ticks, and whether this cycle has rolled its quick-match map. */
     final Map<UUID,Integer> onPad=new HashMap<>();final Set<UUID> padRefused=new HashSet<>();
     int padCountdown=-1;boolean padMapRolled;
@@ -208,6 +210,7 @@ public final class Campaign {
     double health(GravesAndGlory.Squad s,Spec.TroopsRow t){return s.commander.equals("vanguard")&&t.group().equals("infantry")||s.commander.equals("arcanist")&&t.group().equals("support")?1.2:1;}
     void finish(int winner){
         if(!b.running)return;
+        lastWinner=winner;
         long seconds=(b.time-b.roundStarted)/20;
         for(UUID id:participants){var s=b.squads.get(id);if(s==null||!s.seated)continue;Profile p=profile(id);String before=JSON.toJson(p);
             int earned=Math.min(seconds,(b.time-joinedAt.getOrDefault(id,b.roundStarted))/20)>=Spec.CAMPAIGN[0].minimumRewardSeconds()?(practice?Spec.CAMPAIGN[0].practiceGold():Spec.CAMPAIGN[0].completionGold()+(s.team==winner?Spec.CAMPAIGN[0].victoryGold():0)):0;
