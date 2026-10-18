@@ -19,9 +19,13 @@
       "gg.gravesandglory.SelfTestHost",
       "gg.gravesandglory.CampRedesignChecks",
       "gg.gravesandglory.CampNetworkChecks",
-      "gg.gravesandglory.Phase1Checks"
+      "gg.gravesandglory.Phase1Checks",
+      "gg.gravesandglory.TitleDemos"
     ]
   },
+  "mixins": [
+    "gravesandglory_test_tools.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=0.16.14",
     "minecraft": "1.20.1",
