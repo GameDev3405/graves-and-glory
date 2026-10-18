@@ -192,7 +192,17 @@ public final class Campaign {
         for(var squad:b.squads.values())if(!squad.bot){squad.seated=squad.owner.equals(p.getUuid());if(squad.seated)squad.team=0;}
         activeBattle=row;b.startRound();
     }
-    void balance(){int[] n={0,0};for(var s:b.squads.values())if(!s.bot&&s.seated){if(!practice&&n[s.team]>=size)s.team=1-s.team;n[s.team]++;}}
+    void balance(){for(var seat:balanced(seats(s->s.seated),practice,size))b.squads.get(seat.owner()).team=seat.team();}
+    /** A commander's seat as balance and the side pick read it: who, on which team. */
+    record Seat(UUID owner,int team){}
+    /** The commanders (bots left out) whose squads pass the filter, in b.squads order, the order balance and the side pick read, each on his squad's team. */
+    List<Seat> seats(java.util.function.Predicate<GravesAndGlory.Squad> in){List<Seat> out=new ArrayList<>();for(var s:b.squads.values())if(!s.bot&&in.test(s))out.add(new Seat(s.owner,s.team));return out;}
+    /** balance's rule: in order, outside practice, a commander whose team already holds size commanders goes to the other team. */
+    static List<Seat> balanced(List<Seat> seats,boolean practice,int size){
+        int[] n={0,0};List<Seat> out=new ArrayList<>();
+        for(var s:seats){int team=s.team();if(!practice&&n[team]>=size)team=1-team;n[team]++;out.add(new Seat(s.owner(),team));}
+        return out;
+    }
     void prepareRound(){
         onPad.clear();padCountdown=-1;padMapRolled=false;tutorial.clear();
         b.squads.values().removeIf(s->s.bot);balance();
@@ -238,16 +248,16 @@ public final class Campaign {
     }
     double damage(GravesAndGlory.Unit u){return progression(u.squad,u.spec,false);}
     double health(GravesAndGlory.Squad s,Spec.TroopsRow t){return progression(s,t,true);}
-    /** Sets the side row each team flies this round (Battle.sides) from the seated squads; see sidesFor. */
-    void chooseSides(){b.sides=sidesFor(b.squads.values().stream().filter(s->s.seated).toList());}
+    /** Sets the side row each team flies this round (Battle.sides) from the seated commanders; see sidesFor. */
+    void chooseSides(){b.sides=sidesFor(seats(s->s.seated));}
     /**
      * The side rows two teams fly (spec 1.1): team 0 takes its first commander's bannerColour; team 1 its first commander's
      * colour unless team 0 already flies it; a team still without a row (all bots, or the colour was taken) takes the first
      * row, in sheet order, that the other team does not fly. Indexes into Spec.FACTIONS.
      */
-    int[] sidesFor(Collection<GravesAndGlory.Squad> squads){
+    int[] sidesFor(List<Seat> seats){
         int[] picked={-1,-1};
-        for(int team=0;team<2;team++)for(var s:squads)if(!s.bot&&s.team==team){int row=sideIndex(profile(s.owner).bannerColour);if(row>=0&&(team==0||row!=picked[0]))picked[team]=row;break;}
+        for(int team=0;team<2;team++)for(var s:seats)if(s.team()==team){int row=sideIndex(profile(s.owner()).bannerColour);if(row>=0&&(team==0||row!=picked[0]))picked[team]=row;break;}
         for(int team=0;team<2;team++)if(picked[team]<0)for(int row=0;row<Spec.FACTIONS.length;row++)if(row!=picked[1-team]){picked[team]=row;break;}
         return picked;
     }
@@ -526,10 +536,25 @@ public final class Campaign {
         partyJson.addProperty("inviteSeconds",until==null?0:(int)Math.max(0,(until-b.time+19)/20));partyJson.addProperty("inviter",inviter==null?"":name(inviter));
         JsonArray online=new JsonArray();if(partyLeader!=null)for(var other:b.server.getPlayerManager().getPlayerList())if(!party.contains(other.getUuid())&&b.squads.containsKey(other.getUuid()))online.add(other.getGameProfile().getName());
         partyJson.add("online",online);j.add("party",partyJson);j.add("result",results.getOrDefault(p.getUuid(),new JsonObject()));
-        JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",s.team);row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("sides",sidesJson());j.add("banner",bannerJson(p.getUuid()));j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));return fitted(j,p.getUuid());
+        JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",s.team);row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("sides",sidesJson(p.getUuid()));j.add("banner",bannerJson(p.getUuid()));j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));return fitted(j,p.getUuid());
     }
-    /** The side ids the two teams fly: this round's while a battle runs, else the pick chooseSides would make now from the commanders' teams. */
-    JsonArray sidesJson(){int[] rows=b.running?b.sides:sidesFor(b.squads.values().stream().filter(s->!s.bot).toList());JsonArray out=new JsonArray();for(int t=0;t<2;t++)out.add(Spec.FACTIONS[rows[t]].id());return out;}
+    /**
+     * The seats the viewer's next round would have, for the lobby's side preview. While a start is under way they are the seated
+     * commanders, exactly what chooseSides reads. Between rounds nobody is seated, so they are the commanders the viewer's start
+     * would seat, balanced as prepareRound balances them: his pad group on its pads, his room on its teams, his custom lobby on
+     * their teams, or he alone on team 0, as a solo battle seats him. A commander in the lobby who will not enter with him does
+     * not set his preview.
+     */
+    List<Seat> nextSeats(UUID viewer){
+        var seated=seats(s->s.seated);if(!seated.isEmpty())return seated;
+        if(onPad.containsKey(viewer))return balanced(seats(s->onPad.containsKey(s.owner)).stream().map(s->new Seat(s.owner(),onPad.get(s.owner()))).toList(),false,padSize());
+        var room=social.room(viewer);
+        if(room!=null)return balanced(seats(s->room.members.contains(s.owner)).stream().map(s->new Seat(s.owner(),room.teams.getOrDefault(s.owner(),s.team()))).toList(),false,room.size);
+        if(party.contains(viewer))return balanced(seats(s->party.contains(s.owner)),practice,size);
+        return List.of(new Seat(viewer,0));
+    }
+    /** The side ids the two teams fly, for the viewer's snapshot: this round's while a battle runs, else chooseSides' pick over the seats his next round would have (nextSeats). */
+    JsonArray sidesJson(UUID viewer){int[] rows=b.running?b.sides:sidesFor(nextSeats(viewer));JsonArray out=new JsonArray();for(int t=0;t<2;t++)out.add(Spec.FACTIONS[rows[t]].id());return out;}
     /** The banner a commander fields: his battle banner while he is seated in a running battle, else his profile banner. */
     JsonArray bannerJson(UUID id){var s=b.squads.get(id);List<String> shown=b.running&&s!=null&&s.seated?s.banner:profile(id).banner;JsonArray out=new JsonArray();for(String entry:shown)out.add(entry);return out;}
     /** The client's copy of a profile: match ids stay on the server. They only stop one match paying twice, and 256 of them (94 characters a match across both copies) would outgrow SNAPSHOT_LIMIT. */

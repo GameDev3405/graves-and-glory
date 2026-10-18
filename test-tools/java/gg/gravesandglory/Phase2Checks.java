@@ -109,6 +109,7 @@ public final class Phase2Checks implements ClientModInitializer {
         void mark(){goldBefore=own.gold;earnedBefore=own.stats.goldEarned;}
 
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
+        static List<String> ids(com.google.gson.JsonArray a){List<String> out=new ArrayList<>();for(var e:a)out.add(e.getAsString());return out;}
         long since(GravesAndGlory.Battle b){return b.time-stageAt;}
         ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
         Profile profile(GravesAndGlory.Battle b){return b.campaign.profile(player);}
@@ -286,7 +287,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 }
                 case 20->{
                     var s=b.squads.get(player);
-                    if(s==null){if(since(b)>100){report("p2-takeover",false,"the commander never rejoined");b.campaign.returnLobby();next(b,99);}return;}
+                    if(s==null){if(since(b)>100){report("p2-takeover",false,"the commander never rejoined");b.campaign.returnLobby();next(b,23);}return;}
                     own=s;var row=botRows.get(s);var pr=profile(b);
                     List<String> shown=new ArrayList<>();for(var e:b.campaign.bannerJson(player))shown.add(e.getAsString());
                     boolean seat=row!=null&&!s.bot&&s.seated,mine=s.banner.equals(b.campaign.banner(s)),snapshot=shown.equals(pr.banner),commander=s.commander.equals(pr.commander);
@@ -294,7 +295,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     takeOk=seat&&mine&&snapshot&&commander;
                     takeWhy="took a bot seat="+seat+" (team "+s.team+", lane "+s.lane+", the bot's banner "+(row==null?"none":String.join(",",row))+"); his banner is campaign.banner(s)="+mine
                         +"; the snapshot banner is his profile banner="+snapshot+"; commander "+s.commander+" from his profile="+commander;
-                    if(foreign==null){report("p2-takeover",false,takeWhy+"; every troop of the bot's banner is also in his");b.campaign.returnLobby();next(b,99);return;}
+                    if(foreign==null){report("p2-takeover",false,takeWhy+"; every troop of the bot's banner is also in his");b.campaign.returnLobby();next(b,23);return;}
                     // Room for one more unit: the inherited army loses troops that are not knights, as casualties would.
                     int weight=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).mapToInt(u->u.spec.slotWeight()).sum()+s.training.stream().mapToInt(t->t.spec().slotWeight()).sum();
                     for(var u:new ArrayList<>(b.units))if(weight>GravesAndGlory.R.squadSize()-2&&u.squad==s&&u.mob.isAlive()&&!u.spec.id().equals("knight")){u.mob.discard();b.units.remove(u);weight-=u.spec.slotWeight();}
@@ -309,7 +310,20 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 22->{if(since(b)>=20){var knight=Campaign.troop("knight");
                     boolean taken=own.training.size()==queuedBefore+1&&own.training.getLast().spec()==knight&&spent()==knight.cost();takeOk&=taken;
                     takeWhy+="; train:knight ("+alive(b,own,"knight")+" alive, "+Collections.frequency(own.banner,"knight")+" in his banner) accepted="+taken+" (queued "+(own.training.size()-queuedBefore)+", spent "+spent()+")";
-                    report("p2-takeover",takeOk,takeWhy);b.campaign.returnLobby();next(b,99);}}
+                    report("p2-takeover",takeOk,takeWhy);b.campaign.returnLobby();next(b,23);}}
+                case 23->{ // p2-side-preview: in the lobby the preview runs the side pick on the seats his next round would have, so an unseated commander ahead of him does not set it
+                    var camp=b.campaign;if(b.running){camp.returnLobby();return;}
+                    String asked=profile(b).bannerColour;List<String> alone=ids(camp.sidesJson(player));
+                    // a commander who joined first, unseated on team 0 and asking for teal: the old preview, read from every squad in the lobby, gave team 0 his colour
+                    UUID first=UUID.randomUUID();var ahead=new GravesAndGlory.Squad(first,0,GravesAndGlory.Battle.base(0));ahead.seated=false;
+                    var rest=new LinkedHashMap<>(b.squads);b.squads.clear();b.squads.put(first,ahead);b.squads.putAll(rest);camp.profile(first).bannerColour="teal";
+                    List<String> behind=ids(camp.sidesJson(player));
+                    camp.onPad.put(player,1);List<String> pad=ids(camp.sidesJson(player));camp.onPad.remove(player);
+                    b.squads.remove(first);camp.profiles.remove(first);
+                    boolean ok=asked.equals("crimson")&&alone.equals(List.of("crimson","gold"))&&behind.equals(alone)&&pad.equals(List.of("gold","crimson"));
+                    report("p2-side-preview",ok,"request "+asked+"; lobby preview alone "+alone+" (want crimson, gold: a solo battle seats him on team 0); with an unseated teal commander first in the lobby on team 0 "+behind+" (want the same); on a team-1 pad "+pad+" (want gold, crimson)");
+                    next(b,99);
+                }
                 default->{}
             }
         }
