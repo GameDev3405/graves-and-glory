@@ -24,10 +24,10 @@ final class DarkUi {
     static int teamColor(int team){return team==0?DAWN:team==1?DUSK:MUTED;}
     private static final String[] SUN={"...x...",".x...x.","..xxx..","x.xxx.x","..xxx..",".x...x.","...x..."};
     private static final String[] CRESCENT={"..xxxx.",".xxx...","xxx....","xxx....","xxx....",".xxx...","..xxxx."};
-    private static final String[] DIAMOND={"...x...","..x.x..",".x...x.","x.....x",".x...x.","..x.x..","...x..."};
-    /** A 7x7 team mark in the team colour: a sun for Dawn (0), a crescent for Dusk (1), a hollow diamond otherwise. */
+    private static final String[] SQUARE={"xxxxxxx","x.....x","x.....x","x.....x","x.....x","x.....x","xxxxxxx"};
+    /** A 7x7 team mark in the team colour: a sun for Dawn (0), a crescent for Dusk (1), a hollow square otherwise (spec 6.1: the diamond is Dusk's, the bare square is neutral). */
     static void teamMark(DrawContext g,int team,int x,int y){
-        String[] rows=team==0?SUN:team==1?CRESCENT:DIAMOND;int color=teamColor(team);
+        String[] rows=team==0?SUN:team==1?CRESCENT:SQUARE;int color=teamColor(team);
         for(int j=0;j<7;j++)for(int i=0;i<7;i++)if(rows[j].charAt(i)=='x')g.fill(x+i,y+j,x+i+1,y+j+1,color);
     }
     static void background(DrawContext g,int w,int h){

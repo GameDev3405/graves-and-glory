@@ -31,6 +31,9 @@ def glyph_faded(name):
     return glyph(GLYPHS[name], INK[3], PAPER['grey']['light'])
 
 
+# Mirrors v4a_hud.py seal('B') (lines 396-469): the size and offset (400-402), B's square plate and field (411-412),
+# the shadow (431-435), iron_shade (436) and B's bead ring (441-444). Left out: the crossed swords (413-430), the teal
+# and violet field (445-460), the split (461-464) and the glint (465-468); the field is bare IRON[4] instead.
 def seal_neutral():
     """the neutral point: seal('B')'s square iron plate, its bead ring and its shadow, without the crossed swords,
     the field bare iron in IRON[4] (a square with nothing on it reads as nobody's, without colour)"""
@@ -51,6 +54,8 @@ def seal_neutral():
     return S
 
 
+# Mirrors v4a_hud.py hp_fill (lines 561-575): three rows of one ramp, light to dark (563-564, 569-571), then the dark
+# edge in the last column (572-574), with VIOL in place of TEAL.
 def hp_full_dusk(n=102):
     """v4a_hud.hp_fill's rule in the Dusk ramp: rows VIOL[4], VIOL[3], VIOL[2], the dark edge VIOL[1] in the last column"""
     S = Spr(n, 3)

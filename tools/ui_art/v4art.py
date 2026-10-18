@@ -28,6 +28,10 @@ def oak_table(W=960, H=540, seed=11, avoid=()):
     with end grain and domed nail heads that bleed rust and sit in a hammer dent. Scratches, dents and rubbed
     patches where hands rest; a stepped vignette that keeps the eye in the middle."""
     rnd = random.Random(seed)
+    # tools/ui_art edit, UI Task 1 fix round 1: the light and the scratches round it sit where the mock put them on its
+    # 960x540 table, (480, 300), 30 px below the middle, and keep that place relative to the middle of a bigger table,
+    # so the 1280x720 exports are lit from (640, 390) and not from up and left. The 960x540 table paints as before.
+    lx, ly = 480 + (W - 960) / 2.0, 300 + (H - 540) / 2.0
 
     def clear(x, y0, y1, pad=10):
         return not any(ax0 - pad <= x <= ax1 + pad and y0 <= ay1 and y1 >= ay0 for (ax0, ay0, ax1, ay1) in avoid)
@@ -202,7 +206,7 @@ def oak_table(W=960, H=540, seed=11, avoid=()):
         prev = joints
     # scratches, dents and rubbed patches where hands and tokens rest
     for _ in range(140):
-        cx = rnd.gauss(480, 200); cy = rnd.gauss(300, 120)
+        cx = rnd.gauss(lx, 200); cy = rnd.gauss(ly, 120)
         if not (20 < cx < W - 20 and 60 < cy < H - 20):
             continue
         ln = rnd.randint(4, 14); ang = rnd.uniform(-0.5, 0.5) + (math.pi / 2 if rnd.random() < 0.15 else 0)
@@ -220,7 +224,7 @@ def oak_table(W=960, H=540, seed=11, avoid=()):
     nz = Noise(seed + 5, 30, 3)
     for yy in range(H):
         for xx in range(W):
-            dx = (xx - 480) / 600.0; dy = (yy - 300) / 380.0
+            dx = (xx - lx) / 600.0; dy = (yy - ly) / 380.0
             r = math.sqrt(dx * dx + dy * dy)
             dk = max(0.0, min(1.0, (r - 0.5) / 0.55)) * 1.9
             steps = int(dk + (nz(xx, yy) - 0.5) * 0.9 + 0.5) if dk > 0 else 0

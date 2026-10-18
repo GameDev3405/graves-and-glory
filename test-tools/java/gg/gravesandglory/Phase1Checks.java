@@ -1023,7 +1023,7 @@ public final class Phase1Checks implements ClientModInitializer {
         public void step(MinecraftClient c,int tick){
             if(tick>3000&&stage<6){report("p1-ui-art-timeout",false,"stuck in stage "+stage+" at page "+(sheet==null?-1:sheet.page));end(c);return;}
             switch(stage){
-                case 0->{if(tick<20)return;c.setScreen(null);var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();atlas(c);window(c,960,540,1);stage=1;}
+                case 0->{if(tick<20)return;c.setScreen(null);var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();atlas(c);reload(c);window(c,960,540,1);stage=1;}
                 case 1->{canvas(c,"960x540 GUI 1",UiCanvas.k()==1&&UiCanvas.width()==960&&UiCanvas.height()==540);window(c,1280,720,3);stage=2;}
                 case 2->{canvas(c,"1280x720 GUI 3",UiCanvas.k()==1&&UiCanvas.width()==1280&&UiCanvas.toCanvas(100)==300);window(c,1280,720,0);stage=3;}
                 case 3->{canvas(c,"1280x720 GUI Auto",UiCanvas.k()==1);report("p1-ui-canvas",canvasOk,canvas.toString());window(c,960,540,1);stage=4;}
@@ -1059,6 +1059,16 @@ public final class Phase1Checks implements ClientModInitializer {
             }
             var card=UiTex.has("hud/card-sel")?UiTex.entry("hud/card-sel"):null;boolean cardOk=card!=null&&card.w()==181&&card.h()==68&&card.ox()==1&&card.oy()==1;
             report("p1-ui-atlas",bad.isEmpty()&&cardOk&&opened>0&&opened==textures.size(),opened+" of "+textures.size()+" atlas.json entries open through the resource manager at their listed size and read alike by UiTex; hud/card-sel "+(card==null?"missing":card.w()+"x"+card.h()+" at "+card.ox()+", "+card.oy())+" (181x68 at 1, 1 wanted); "+(bad.isEmpty()?"no pt- names and no PNG outside the atlas":bad.size()+" wrong: "+String.join("; ",bad.subList(0,Math.min(6,bad.size())))));
+        }
+
+        /** p1-ui-atlas-reload (fix round 1): a resource reload that finds no atlas, or an atlas it cannot read, keeps the textures read before (UiTex logs each); the real atlas then reads again. */
+        void reload(MinecraftClient c){
+            var before=UiTex.has("hud/card-sel")?UiTex.entry("hud/card-sel"):null;int n=UiTex.count();
+            UiTex.load(id->Optional.empty());boolean missing=before!=null&&UiTex.has("hud/card-sel")&&UiTex.entry("hud/card-sel")==before&&UiTex.count()==n;
+            UiTex.load(id->id.equals(UiTex.ATLAS)?Optional.of(new net.minecraft.resource.Resource(null,()->new java.io.ByteArrayInputStream("{\"textures\":{\"hud/x\":".getBytes(java.nio.charset.StandardCharsets.UTF_8)))):Optional.empty());
+            boolean unreadable=UiTex.has("hud/card-sel")&&UiTex.entry("hud/card-sel")==before&&UiTex.count()==n;
+            UiTex.load(c.getResourceManager());boolean reread=UiTex.has("hud/card-sel")&&UiTex.entry("hud/card-sel").equals(before)&&UiTex.count()==n;
+            report("p1-ui-atlas-reload",missing&&unreadable&&reread,"a reload with no atlas kept the "+n+" textures="+missing+", one with a cut-off atlas.json kept them="+unreadable+", the real atlas read again="+reread+" ("+UiTex.count()+" textures)");
         }
 
         /** One reading for p1-ui-canvas, with the window it was taken at. */

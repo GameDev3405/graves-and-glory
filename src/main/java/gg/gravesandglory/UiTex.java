@@ -5,6 +5,7 @@ import com.google.gson.JsonParser;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.resource.ResourceFactory;
 import net.minecraft.resource.ResourceManager;
 import net.minecraft.util.Identifier;
 import java.util.Collections;
@@ -32,11 +33,13 @@ public final class UiTex {
         @Override public void reload(ResourceManager manager) { load(manager); }
     };
 
-    static void load(ResourceManager manager) {
-        Map<String, Entry> next = new LinkedHashMap<>();
+    /** Reads the atlas. A reload that finds no atlas, or one it cannot read, logs it and keeps the textures read before;
+     *  with none read yet, entry throws for every name until a reload finds the atlas. */
+    static void load(ResourceFactory manager) {
         var resource = manager.getResource(ATLAS);
-        if (resource.isEmpty()) System.err.println("[Graves and Glory] The UI atlas " + ATLAS + " is missing; UI textures will not draw.");
-        else try (var reader = resource.get().getReader()) {
+        if (resource.isEmpty()) { keep("is missing"); return; }
+        Map<String, Entry> next = new LinkedHashMap<>();
+        try (var reader = resource.get().getReader()) {
             JsonObject textures = JsonParser.parseReader(reader).getAsJsonObject().getAsJsonObject("textures");
             for (var e : textures.entrySet()) {
                 JsonObject o = e.getValue().getAsJsonObject();
@@ -44,12 +47,18 @@ public final class UiTex {
                     o.get("w").getAsInt(), o.get("h").getAsInt(), o.get("ox").getAsInt(), o.get("oy").getAsInt(), o.get("kind").getAsString(),
                     o.get("l").getAsInt(), o.get("t").getAsInt(), o.get("r").getAsInt(), o.get("b").getAsInt(), o.get("frames").getAsInt()));
             }
-        } catch (Exception e) {
-            System.err.println("[Graves and Glory] The UI atlas " + ATLAS + " could not be read: " + e);
-            next.clear();
-        }
+        } catch (Exception e) { keep("could not be read (" + e + ")"); return; }
         entries = Collections.unmodifiableMap(next);
     }
+
+    private static void keep(String why) {
+        int n = entries.size();
+        System.err.println("[Graves and Glory] The UI atlas " + ATLAS + " " + why + "; " + (n > 0 ? "keeping the " + n + " UI textures read before."
+            : "no UI texture is known yet, so UiTex.entry throws for every name and no UI texture draws until a resource reload finds it."));
+    }
+
+    /** How many textures the atlas named at the last good read. */
+    static int count() { return entries.size(); }
 
     public static Entry entry(String name) {
         Entry e = entries.get(name);

@@ -2,7 +2,8 @@
 mockups' own painters (copied into tools/ui_art/), into src/main/resources/assets/gravesandglory/textures/gui/
 <folder>/<name>.png, with atlas.json holding each PNG's size, box offset, kind and slice insets.
 
-  python tools/build_ui_art.py               paint every manifest entry (and remove PNGs the manifest no longer has)
+  python tools/build_ui_art.py               paint every manifest entry, and remove the PNGs the previous atlas.json
+                                             listed that the manifest no longer paints (never a PNG no atlas listed)
   python tools/build_ui_art.py --verify      repaint into a temp dir and compare; exit 1 naming the first difference
   python tools/build_ui_art.py --import DIR  refresh the painter copies from DIR (only when a task says so)
 
@@ -24,7 +25,9 @@ OUT = ROOT / 'src/main/resources/assets/gravesandglory/textures/gui'
 JAVA = (ROOT / 'src/main/java', ROOT / 'test-tools/java')
 PAINTERS = ('v4lib', 'v4pal', 'v4a_table', 'v4a_paper', 'v4a_hud', 'v4a_recruit', 'v4a_ink', 'v4a_map', 'v4a_furn',
             'v4a_portrait', 'v4a_recruit2', 'v4art')
-NAME_IN_JAVA = re.compile(r'UiTex\.\w+\(\w+,\s*"([a-z0-9/-]+)"')
+# a texture name written as a string literal in a UiTex call: the first argument (entry, has) or the second (draw,
+# nine, bar...), on the line of the "(" or a later one. Names held in variables are not checked.
+NAME_IN_JAVA = re.compile(r'UiTex\.\w+\(\s*(?:[\w.]+\s*,\s*)?"([^"\\\n]+)"')
 KINDS = ('fixed', 'nine', 'three-h', 'three-v', 'sheet')
 
 
@@ -73,11 +76,26 @@ def pngs(root):
     return sorted(p.relative_to(root).with_suffix('').as_posix() for p in root.rglob('*.png'))
 
 
+def listed(atlas_file):
+    """the texture names an atlas.json lists (none when it is missing or unreadable)"""
+    try:
+        return set(json.loads(atlas_file.read_text(encoding='utf-8')).get('textures', {}))
+    except (OSError, ValueError, AttributeError):
+        return set()
+
+
 def export():
+    before = listed(OUT / 'atlas.json')
     atlas = paint(OUT)
-    for stale in sorted(set(pngs(OUT)) - set(atlas['textures'])):
-        (OUT / (stale + '.png')).unlink()
-        print('build_ui_art: removed', stale + '.png')
+    for gone in sorted(before - set(atlas['textures'])):   # painted by the last export, dropped from the manifest since
+        path = OUT / (gone + '.png')
+        if path.is_file():
+            path.unlink()
+            print('build_ui_art: removed', gone + '.png')
+    strays = sorted(set(pngs(OUT)) - set(atlas['textures']))
+    if strays:
+        print('build_ui_art: left %d PNG(s) that no atlas listed, first %s.png; --verify fails until they go'
+              % (len(strays), strays[0]))
     print('build_ui_art: %d textures painted into %s' % (len(atlas['textures']), OUT.relative_to(ROOT).as_posix()))
 
 
