@@ -48,7 +48,8 @@ POSITION_RARITY=['common','common','rare','rare','epic','legendary']
 squad=data['rules'][0]['squadSize']
 houses={h['id']:h for h in data['houses']}
 rarities={r['id']:r for r in data['rarities']}
-if set(rarities)!=set(POSITION_RARITY): errors.append('rarities: the rows must be common, rare, epic and legendary')
+RARITY_ORDER=['common','rare','epic','legendary']
+if [r['id'] for r in data['rarities']]!=RARITY_ORDER: errors.append('rarities: the rows must be common, rare, epic, legendary, in that order (validBanner checks bannerMax from the last row up, rarest first)')
 houseOf,rarityOf={},{}
 for h in houses.values():
     if h['glyph']!=f'gravesandglory:textures/gui/house/{h["id"]}.png': errors.append(f'houses/{h["id"]}: glyph must be gravesandglory:textures/gui/house/{h["id"]}.png')
@@ -57,14 +58,21 @@ for h in houses.values():
     for i,t in enumerate(ids[:len(POSITION_RARITY)]):
         if t in houseOf: errors.append(f'houses/{h["id"]}: {t} is already in {houseOf[t]}')
         houseOf[t]=h['id'];rarityOf[t]=POSITION_RARITY[i]
+thresholds={}
 for h in houses:
     tiers=sorted((t for t in data['houseTraits'] if t['house']==h),key=lambda t:t['tier'])
     if [t['tier'] for t in tiers]!=[1,2,3]: errors.append(f'houseTraits: {h} needs exactly tiers 1, 2 and 3')
     if len({t['mechanic'] for t in tiers})>1: errors.append(f'houseTraits: {h} uses one mechanic on every tier')
     if any(a['slots']>=b['slots'] for a,b in zip(tiers,tiers[1:])): errors.append(f'houseTraits: {h} slots must rise with the tier')
+    thresholds[h]=[t['slots'] for t in tiers]
+base=next(iter(thresholds),None)
+for h,s in thresholds.items():
+    if s!=thresholds[base]: errors.append(f'houseTraits: {h} tier slots {s} differ from {base} {thresholds[base]}; matchRewards takes one threshold array, so every House needs the same slots per tier')
+TRAIT_MECHANICS=('rise_again','bulwark','pack_hunters','entrench','riptide')
 for t in data['houseTraits']:
     if t['house'] not in houses: errors.append(f'houseTraits/{t["id"]}: house does not resolve')
     if t['id']!=f'{t["house"]}_{t["tier"]}': errors.append(f'houseTraits/{t["id"]}: id must be <house>_<tier>')
+    if t['mechanic'] not in TRAIT_MECHANICS: errors.append(f'houseTraits/{t["id"]}: mechanic {t["mechanic"]} is not one of {", ".join(TRAIT_MECHANICS)} (CounterMath.is reads bulwark, pack_hunters, entrench and riptide; rise_again is the Graveborn death rule)')
 MECHANICS={'none','shield','mend','blight','stance','pierce','cleave','onhit_slow','pounce','aura','slam','fearless','mist'}
 TRIGGERS={'passive','onhit','cast','hold','timer','charge_contact'}
 for a in data['abilities']:

@@ -189,9 +189,10 @@ public final class RosterMath {
 
     /**
      * Shards and Renown for one eligible match (spec 4.3 and 4.5), in the campaign sheet's amounts. Every House whose banner
-     * slots reach trait tier I earns completionShards shards and completionRenown Renown. On a win each of those Houses
-     * earns victoryRenown more Renown, and the largest of them victoryShards more shards (a tie goes to the House earlier
-     * in houseOrder). A House below tier I earns nothing. At the sheet's 1 / 1 / 1 / 1 a win gives the largest House 2 shards.
+     * slots reach trait tier I earns completionShards shards and completionRenown Renown, plus victoryRenown more Renown on
+     * a win. On a win the largest House in the banner also earns victoryShards shards, whatever its tier (Task 1 review
+     * ruling, 2026-10-18); a tie goes to the House earlier in houseOrder. At the sheet's 1 / 1 / 1 / 1 a win gives the
+     * largest House 2 shards when it is at tier I or higher and 1 when it is below.
      */
     public static Rewards matchRewards(Map<String, Integer> bannerSlots, int[] thresholds, List<String> houseOrder, boolean won) {
         var amounts = Spec.CAMPAIGN[0];
@@ -200,10 +201,10 @@ public final class RosterMath {
         int most = 0;
         for (String house : houseOrder) {
             int slots = bannerSlots.getOrDefault(house, 0);
+            if (slots > most) { most = slots; largest = house; }
             if (traitTier(slots, thresholds) == 0) continue;
             earn(shards, house, amounts.completionShards());
             earn(renown, house, amounts.completionRenown() + (won ? amounts.victoryRenown() : 0));
-            if (slots > most) { most = slots; largest = house; }
         }
         if (won && largest != null) earn(shards, largest, amounts.victoryShards());
         return new Rewards(shards, renown);

@@ -141,6 +141,24 @@ public final class HousesCheck {
         return addCopy(o, r);
     }
 
+    /** Always draws the top of the range, so a roll that is not forced takes the Epic, the last share of the pool. */
+    static final RandomGenerator TOP = new RandomGenerator() {
+        @Override public long nextLong() { return -1L; }
+        @Override public int nextInt(int bound) { return bound - 1; }
+    };
+    /** Pity after a rolled (not forced) Epic: a Gilded roll at pity 5, well below recruitment.epicPity. */
+    static int rolledEpicPity() {
+        Roll r = rollOnce("gilded", 5, Spec.RECRUITMENT[0].epicPity(), TOP);
+        return r.troop().equals("mage") ? r.pityAfter() : -1;
+    }
+    /** Stars after adding one copy to an owned troop with these copies and stars; -1 if the copy was dismantled or not counted. */
+    static int starsAfterCopy(int copies, int stars, String rarityId) {
+        var o = new Profile.Owned();
+        o.copies = copies;
+        o.stars = stars;
+        return addCopy(o, rarity(rarityId)) == 0 && o.copies == copies + 1 ? o.stars : -1;
+    }
+
     public static void main(String[] args) {
         // the sheets agree with the spec section 2 fixture
         check(Arrays.stream(Spec.HOUSES).map(Spec.HousesRow::id).toList().equals(HOUSES), "houses sheet lists the five Houses in order");
@@ -166,6 +184,7 @@ public final class HousesCheck {
         check(houseSlots(starterBanner(),cat).equals(Map.of("gilded",20)) && houseSlots(banner("knight,^,empty*18"),cat).equals(Map.of("gilded",1)), "a ^ counts only for the unit it belongs to");
         check(trait("gilded",0)==null && trait("gilded",2).id().equals("gilded_2") && bulwark(null,true,"arrow")==1, "tier 0 has no trait row");
         check(eq(bulwark(trait("gilded",3),true,"arrow"),0.55) && eq(bulwark(trait("gilded",3),true,"blight"),0.55) && bulwark(trait("gilded",3),false,"arrow")==1 && bulwark(trait("gilded",3),true,"melee")==1, "bulwark");
+        check(eq(bulwark(trait("gilded",3),true,"bolt"),0.55), "bulwark: a bolt is a ranged hit too");
         check(eq(packHunters(trait("wildmoot",2),3,0),1.2) && eq(packHunters(trait("wildmoot",2),2,120),1.2) && eq(packHunters(trait("wildmoot",2),3,120),1.2) && packHunters(trait("wildmoot",2),2,90)==1, "pack hunters once");
         check(eq(entrench(trait("ironclad",1),true,false),0.9) && eq(entrench(trait("ironclad",1),true,true),0.8) && entrench(trait("ironclad",1),false,true)==1, "entrench doubled on points");
         check(eq(riptideSpeed(trait("tidecallers",2),true),1.25) && riptideSpeed(trait("tidecallers",2),false)==1 && riptideSpeed(trait("gilded",2),true)==1, "riptide speed in water or rain only");
@@ -178,24 +197,29 @@ public final class HousesCheck {
         check(starFromCopies(1,C)==1 && starFromCopies(2,C)==2 && starFromCopies(3,C)==2 && starFromCopies(4,C)==3, "4 copies for star 3");
         check(starFromCopies(9,rarity("legendary"))==1 && starPct(1,C)==0 && eq(starPct(2,C),0.03) && eq(starPct(3,rarity("epic")),0.12), "star bonuses; Legendary stars come from shards only");
         check(addCopyAt(4,"common")==2 && addCopyAt(4,"rare")==4 && addCopyAt(4,"epic")==8 && addCopyAt(1,"common")==0, "dismantle past star 3");
+        check(starsAfterCopy(1,1,"common")==2 && starsAfterCopy(3,2,"common")==3, "addCopy raises stars: the 2nd copy gives star 2 and the 4th star 3");
         // rolls (shares() runs 200,000 rolls with new SplittableRandom(7) and epicPity = Integer.MAX_VALUE)
         var sh=shares(200_000, new SplittableRandom(7), Integer.MAX_VALUE);
         check(Math.abs(sh.common()-.86)<=.005 && Math.abs(sh.rare()-.12)<=.004 && Math.abs(sh.epic()-.02)<=.002, "weights 43/6/2");
         check(firstEpicWithZeroRng()==40 && pityAfterEpic()==0, "pity: 40th roll gives the Epic, then resets");
+        check(rolledEpicPity()==0, "pity: a rolled Epic resets the counter too, not only the forced 40th roll");
         check(noLegendaryIn(10_000), "Legendaries never roll");
         // banners
         check(validBanner(SPEC_EXAMPLE_BANNER,cat,ALL)==null && "missing_marker".equals(validBanner(V1_DAWN_DEFAULT,cat,ALL)), "validation");
         check("size".equals(validBanner(banner("knight*19"),cat,ALL)) && "unknown".equals(validBanner(banner("oracle,knight*19"),cat,ALL)) && "not_owned".equals(validBanner(starterBanner(),cat,Set.of("knight")))
             && "orphan_marker".equals(validBanner(banner("knight,^,knight*18"),cat,ALL)) && "legendary_limit".equals(validBanner(TWO_LEGENDARIES,cat,ALL)) && "epic_limit".equals(validBanner(THREE_EPICS,cat,ALL)), "each validation failure is named");
+        check("missing_marker".equals(validBanner(banner("knight*19,mage"),cat,ALL)), "an Epic in the last slot has no room for its ^: missing_marker");
         check(repack(V1_DAWN_DEFAULT,cat,ALL).equals(EXPECTED_DAWN_REPACK), "v1 Dawn line repacks to knight x12, archer x6, mage, ^");
         check(legendaries(repack(TWO_LEGENDARIES,cat,ALL))==1 && epics(repack(THREE_EPICS,cat,ALL))==2 && repack(THREE_EPICS,cat,ALL).size()==20, "limits and size");
         check(repack(banner("knight*12,mage,^,oracle,archer*8"),cat,Set.of("knight","archer")).equals(banner("knight*12,archer*8")) && starterBanner().equals(banner("knight*12,archer*8")), "repack drops unowned and unknown ids; the starter banner");
+        check(repack(banner("knight*17,gl_marshal,archer"),cat,ALL).equals(banner("knight*17,archer,empty*2")), "repack skips a Legendary that does not fit and still places the Common after it");
         for (var b : Spec.BOTBANNERS) check(validBanner(Arrays.asList(b.slots().split(",")),cat,ALL)==null, "bot banner " + b.id() + " is a valid banner");
         // renown, rewards, mastery
         check(renownLevel(2,R)==0 && renownLevel(3,R)==1 && renownLevel(29,R)==4 && renownLevel(30,R)==5, "renown 3/8/15/22/30");
         var w=matchRewards(Map.of("gilded",14,"graveborn",6),T,HOUSES,true); check(w.shards().equals(Map.of("gilded",2,"graveborn",1)) && w.renown().equals(Map.of("gilded",2,"graveborn",2)), "win rewards");
         var l=matchRewards(Map.of("gilded",14,"graveborn",5),T,HOUSES,false); check(l.shards().equals(Map.of("gilded",1)) && l.renown().equals(Map.of("gilded",1)), "loss rewards, tier 0 earns nothing");
         var tie=matchRewards(Map.of("gilded",10,"graveborn",10),T,HOUSES,true); check(tie.shards().equals(Map.of("gilded",2,"graveborn",1)), "a tied largest House is the first in House order");
+        var low=matchRewards(Map.of("gilded",5,"graveborn",5,"wildmoot",5,"ironclad",5),T,HOUSES,true); check(low.shards().equals(Map.of("gilded",1)) && low.renown().isEmpty(), "a win gives the largest House its shard even below tier I (a tie goes to the first in House order); Renown still needs tier I");
         check(masteryLevel(39,8,M)==0 && masteryLevel(40,8,M)==1 && masteryLevel(150,24,M)==1 && masteryLevel(400,60,M)==3, "mastery needs both");
         System.out.println("HousesCheck: " + checks + " checks passed");
     }

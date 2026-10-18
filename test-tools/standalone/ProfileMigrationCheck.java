@@ -114,6 +114,7 @@ public final class ProfileMigrationCheck {
         check(blank.schema == 2 && blank.banner.equals(RosterMath.starterBanner()) && blank.commander.equals("champion") && blank.bannerColour.equals("gold"), "profile-default: schema 2, the starter banner, champion, gold");
         var p = new Profile();
         p.owned.put("knight", owned(0, 0, 5)); p.owned.put("mage", owned(2, 7, 3)); p.owned.put("oracle", owned(1, 1, 1)); p.owned.put("archer", null);
+        p.owned.get("knight").mastery = 9; p.owned.get("mage").mastery = -1;
         p.banner = new ArrayList<>(line("knight*12,oracle,mage*2"));
         p.commander = "vanguard"; p.bannerColour = "dawn";
         p.shards = new HashMap<>(Map.of("gilded", -5, "bogus", 3)); p.renown = null; p.pity = new HashMap<>();
@@ -123,6 +124,7 @@ public final class ProfileMigrationCheck {
         var knight = p.owned.get("knight");
         var mage = p.owned.get("mage");
         check(knight.copies == 1 && knight.stars == 1 && knight.stage == 3 && mage.stars == 3 && mage.stage == 1, "sanitize: stars and stages clamp to 1..3, stage 1 for an Epic");
+        check(knight.mastery == 3 && mage.mastery == 0, "sanitize: mastery clamps to 0..3, the last mastery level (9 becomes 3, -1 becomes 0)");
         check(RosterMath.validBanner(p.banner, cat, p.owned.keySet()) == null && p.banner.equals(line("knight*12,mage,^,mage,^,empty*4")), "sanitize: a banner that fails validBanner is repacked");
         check(p.commander.equals("champion") && p.bannerColour.equals("gold"), "sanitize: an unknown class maps to champion and an unknown colour to gold");
         check(zeros(p.shards) && zeros(p.renown) && zeros(p.pity), "sanitize: shards, renown and pity hold the five House keys at 0 or more, and nothing else");
