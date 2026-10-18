@@ -274,12 +274,12 @@ public final class Phase3Checks implements ClientModInitializer {
      *  shipped structure file; export builds each, writes GRAVES_STUDIO_OUT/GROUP/NAME.nbt and photographs the piece. Both end with the dump round trip of the marker. */
     static final class StudioChecks implements Suite {
         static final String MARKER="test/p3_marker";
-        volatile int stage;volatile boolean exporting;volatile List<String> pieces=List.of();volatile Vec3i size=new Vec3i(1,1,1);
+        volatile int stage;volatile UUID player;volatile boolean exporting;volatile List<String> pieces=List.of();volatile Vec3i size=new Vec3i(1,1,1);
         int index;
         @Override public int limit(){return 1200+400*pieces.size();}
         static String slug(String id){return id.replace('/','-');}
         @Override public void step(MinecraftClient c,int tick){
-            if(tick==20){c.setScreen(null);server(c,this::begin);}
+            if(tick==20){player=c.player.getUuid();c.setScreen(null);server(c,this::begin);}
             switch(stage){
                 case 1->{
                     if(index>=pieces.size()){stage=4;server(c,this::roundtrip);}
@@ -346,6 +346,7 @@ public final class Phase3Checks implements ClientModInitializer {
             try{
                 dumpGenerated(b);
                 dumpOrder(b);
+                placeCommand(b);
             }finally{if(saved==null)System.clearProperty("gravesandglory.studioOut");else System.setProperty("gravesandglory.studioOut",saved);}
         }
 
@@ -408,6 +409,42 @@ public final class Phase3Checks implements ClientModInitializer {
                 if(!again.equals(fixture))bad.append("the saved dump differs from the fixture: ").append(StructureStudio.difference(again,fixture)).append("; ");
             }catch(Throwable e){bad.append("harness failure ").append(e).append("; ");}
             report("p3-studio-dump-order",bad.length()==0,bad.length()==0?"a ceiling vine and a south-hung vine survive script, save, dump ("+lines+" lines, the stones first), build, save: the two saves are equal":bad.toString());
+        }
+
+        /** /studio place puts a piece with its centre block under the feet of the player who types it. The player is moved to a known block and the command is
+         *  typed from his own source; what the command says and what stands in the world must agree with Structures.footprint (the floor is the block under
+         *  his feet, so the y-1 of the command is proven too). */
+        void placeCommand(GravesAndGlory.Battle b){
+            var bad=new StringBuilder();String said="";BlockBox want=null;
+            try{
+                var w=b.world;var p=b.server.getPlayerManager().getPlayer(player);
+                if(p==null)throw new IllegalStateException("the player is not on the server");
+                int x=1012,y=70,z=1060;var feet=new BlockPos(x,y,z);
+                StructureStudio.force(w,1004,1052,1020,1068);
+                air(w,x-4,y-3,z-4,x+4,y+6,z+4);
+                b.campaign.leash=false;p.changeGameMode(GameMode.SPECTATOR);b.relocate(p,x+0.5,y,z+0.5,0,0);
+                if(!BlockPos.ofFloored(p.getPos()).equals(feet))bad.append("the player stands at ").append(p.getPos()).append(", not on ").append(xyz(feet)).append("; ");
+                var output=new Said();int result=dispatch(b,p.getCommandSource(),output,"studio place "+MARKER+" 90");said=output.text();
+                if(result!=1)bad.append("the command failed: ").append(said).append("; ");
+                want=Structures.footprint(Pipeline.SIZE,x,y-1,z,90);
+                var last=Structures.LOG.isEmpty()?null:Structures.LOG.get(Structures.LOG.size()-1);
+                if(last==null||last.missing()||!last.id().equals(MARKER)||last.blocks()!=31||!last.box().equals(want))bad.append("the last placement is ").append(last).append(", not ").append(MARKER).append(" with 31 blocks in ").append(want).append("; ");
+                if(!said.contains(String.valueOf(want)))bad.append("the feedback does not name the box ").append(want).append(": ").append(said).append("; ");
+                BlockPos lo=null,hi=null;
+                for(int i=x-4;i<=x+4;i++)for(int j=y-3;j<=y+6;j++)for(int k=z-4;k<=z+4;k++)if(!at(w,i,j,k).isAir()){
+                    lo=lo==null?new BlockPos(i,j,k):new BlockPos(Math.min(lo.getX(),i),Math.min(lo.getY(),j),Math.min(lo.getZ(),k));
+                    hi=hi==null?new BlockPos(i,j,k):new BlockPos(Math.max(hi.getX(),i),Math.max(hi.getY(),j),Math.max(hi.getZ(),k));
+                }
+                if(lo==null||!BlockBox.create(lo,hi).equals(want))bad.append("the blocks found span ").append(lo==null?"nothing":xyz(lo)+"-"+xyz(hi)).append(", not ").append(want).append("; ");
+                int floor=0;for(int i=-2;i<=2;i++)for(int k=-2;k<=2;k++)if(at(w,x+i,y-1,z+k).isOf(Blocks.POLISHED_ANDESITE))floor++;
+                if(floor!=25)bad.append("the floor under the feet holds ").append(floor).append("/25 polished_andesite; ");
+                for(int j=0;j<3;j++)if(!at(w,x,y+j,z).isOf(Blocks.STONE_BRICKS))bad.append("pillar y").append(y+j).append(" is ").append(name(at(w,x,y+j,z))).append("; ");
+                if(!at(w,x,y+3,z).isOf(Blocks.LANTERN))bad.append("lantern missing at ").append(xyz(new BlockPos(x,y+3,z))).append("; ");
+                BlockPos stairs=Structures.toWorld(Pipeline.SIZE,x,y-1,z,90,2,1,4);BlockState stairsState=w.getBlockState(stairs);
+                if(!stairsState.isOf(Blocks.OAK_STAIRS)||facing(stairsState)!=Direction.WEST)bad.append("stairs at ").append(xyz(stairs)).append(" are ").append(name(stairsState)).append(" facing ").append(facing(stairsState)).append(", want west; ");
+            }catch(Throwable e){bad.append("harness failure ").append(e).append("; ");}
+            finally{b.campaign.leash=true;}
+            report("p3-studio-place",bad.length()==0,bad.length()==0?"typed by the player standing on (1012,70,1060), 'studio place "+MARKER+" 90' put the marker in "+want+" (Structures.footprint): floor 25/25 under his feet, pillar where he stood, stairs west; it said: "+said:bad.toString());
         }
     }
 }
