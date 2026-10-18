@@ -9,7 +9,8 @@
     "EntranceCameraMixin",
     "CinematicHudMixin",
     "ModelAngleCompatibilityMixin",
-    "HungerHudMixin"
+    "HungerHudMixin",
+    "ChatHudMixin"
   ],
   "injectors": {
     "defaultRequire": 1

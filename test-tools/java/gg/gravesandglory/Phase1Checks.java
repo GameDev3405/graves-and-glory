@@ -1151,6 +1151,8 @@ public final class Phase1Checks implements ClientModInitializer {
         // client thread
         int oldW,oldH,oldGui,waitFrom,seen,flashAt,askAt,abilitySeen=-1,framesAt,win;
         boolean finished,keepLesson,sealsOk,smallOk=true,abilityOk,edgeOk;String sealsWhy="",smallWhy="",abilityWhy="",edgeWhy="";List<BattleHud.CardDraw> two=List.of();
+        // p1-ui-chat-lift (controller addition A, client thread): the chat above the left column in battle, in place in camp
+        int campLift=-1;boolean chatOk=true;String chatWhy="";
         // client thread, every HUD frame: the food draws the mixin skipped in that frame, watched during the hunger run and while the
         // five-seal battlefield builds
         int lastSkipped,hungerFrames,hungerFull,hungerLow,buildFrames,buildFull,buildLow,buildCloses;boolean watchHunger,watchBuild;String hungerOdd="",buildOdd="";
@@ -1251,7 +1253,7 @@ public final class Phase1Checks implements ClientModInitializer {
             switch(stage){
                 case 0->{
                     if(tick<20)return;c.setScreen(null);var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();
-                    CommandMode.selected="all";UUID id=c.player.getUuid();window(c,960,540,1);waitFrom=tick;stage=-1;server(c,b->{player=id;stage=1;});
+                    campLift=ChatPlacement.lift(w.getScaledHeight());CommandMode.selected="all";UUID id=c.player.getUuid();window(c,960,540,1);waitFrom=tick;stage=-1;server(c,b->{player=id;stage=1;});
                 }
                 case -1,1->{if(tick-waitFrom>2400){report("p1-ui-hud-fixture",false,"no fixture 2400 ticks after the request");end(c);}}
                 case 2->{ // the fixture on screen; then p1-ui-seals, part one
@@ -1324,17 +1326,18 @@ public final class Phase1Checks implements ClientModInitializer {
                     else if(tick-askAt>60){report("p1-ui-ability",false,abilityWhy+"; the slot was still drawn 60 ticks after testAbility was cleared");stage=40;}
                 }
                 case 40->{keepLesson=true;keepRespawn=true;win=0;stage=-40;server(c,b->{b.testAbility=new GravesAndGlory.Battle.AbilityState("rally_horn",960,1800);stage=41;});}
-                case 41->{var s=WINDOWS[win];window(c,s[0],s[1],s[2],s[3]==1);waitFrom=tick;stage=42;}
+                case 41->{var s=WINDOWS[win];window(c,s[0],s[1],s[2],s[3]==1);waitFrom=tick;stage=42;
+                    var chat=c.inGameHud.getChatHud();chat.clear(false);chat.addMessage(net.minecraft.text.Text.literal("Chat check: hold the ford"));chat.addMessage(net.minecraft.text.Text.literal("Chat check: archers to the ridge"));}
                 case 42->{ // p1-ui-small-window, one window size
                     var r=BattleHud.rects();var s=WINDOWS[win];var score=r.get("score");
                     boolean full=r.containsKey("lesson")&&r.containsKey("respawn")&&r.containsKey("ability")&&r.containsKey("spine")&&BattleHud.cards().size()==3&&score!=null&&score[0]==UiCanvas.width()/2-128;
                     if(full||tick-waitFrom>100){
                         if(full)measure(c,s,r);else{smallOk=false;smallWhy+=(smallWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": no frame with every element in 100 ticks (drew "+r.keySet()+")";}
-                        if(win==1)shot(c,"ui-hud-small");if(win==2)shot(c,"ui-hud-1280");if(win==3)shot(c,"ui-hud-1080-gui2");if(win==4)shot(c,"ui-hud-1080-gui4");
+                        if(win==0)shot(c,"ui-hud-chat");if(win==1)shot(c,"ui-hud-small");if(win==2)shot(c,"ui-hud-1280");if(win==3)shot(c,"ui-hud-1080-gui2");if(win==4)shot(c,"ui-hud-1080-gui4");
                         win++;stage=win<WINDOWS.length?41:43;
                     }
                 }
-                case 43->{keepLesson=false;keepRespawn=false;CampaignClient.tutorial=-1;report("p1-ui-small-window",smallOk,smallWhy);window(c,960,540,1);stage=-43;server(c,b->{b.respawns.remove(player);b.testAbility=null;stage=50;});}
+                case 43->{keepLesson=false;keepRespawn=false;CampaignClient.tutorial=-1;report("p1-ui-small-window",smallOk,smallWhy);report("p1-ui-chat-lift",chatOk&&campLift==0,"in camp the chat moved "+campLift+" GUI px; "+chatWhy);window(c,960,540,1);stage=-43;server(c,b->{b.respawns.remove(player);b.testAbility=null;stage=50;});}
                 case 50->{waitFrom=tick;stage=-50;server(c,b->{kill(b,b.squads.get(player),"support",9);stage=51;});}
                 case 51->{ // p1-ui-cards-edge
                     var sup=BattleHud.cards().stream().filter(d->d.group().equals("support")).findFirst().orElse(null);String count=BattleHud.texts().get("count-support");
@@ -1431,6 +1434,12 @@ public final class Phase1Checks implements ClientModInitializer {
             int[] hotbar=canvas(c,sw/2-91,sh-22,182,22),hearts=canvas(c,sw/2-91,sh-39,81,9);
             for(var e:r.entrySet()){if(meets(e.getValue(),hotbar))bad.add(e.getKey()+" meets the hotbar");if(meets(e.getValue(),hearts))bad.add(e.getKey()+" meets the hearts");}
             smallOk&=bad.isEmpty();
+            // p1-ui-chat-lift: the chat's two lines above the left column (ChatPlacement), and the lines it shows, unfocused and focused
+            var hud=c.inGameHud.getChatHud();int top=ChatPlacement.columnTop(r),lh=(int)(9*(c.options.getChatLineSpacing().getValue()+1));int[] dr=ChatPlacement.drawn;
+            int[] chat=dr==null?null:canvas(c,dr[0],dr[1],dr[2],dr[3]);String first=r.keySet().stream().filter(k->k.startsWith("card-")).min(Comparator.comparingInt(k->r.get(k)[1])).orElse(null);
+            int focused=ChatPlacement.lines(net.minecraft.client.gui.hud.ChatHud.getHeight(c.options.getChatHeightFocused().getValue())/lh,sh,hud.getChatScale(),lh,hud.getWidth());
+            boolean apart=chat!=null&&top>=0&&chat[1]+chat[3]<=top&&ChatPlacement.drawnLines==2&&first!=null&&!meets(chat,r.get(first));chatOk&=apart;
+            chatWhy+=(chatWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": chat scale "+hud.getChatScale()+", lifted "+ChatPlacement.lift(sh)+" GUI px, "+ChatPlacement.drawnLines+" lines drawn at canvas "+box(chat)+" (GUI "+box(dr)+"), the column's top at "+top+" and "+first+" "+box(first==null?null:r.get(first))+"; it shows "+hud.getVisibleLineCount()+" lines unfocused, "+focused+" focused"+(apart?"":", WRONG");
             smallWhy+=(smallWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": canvas "+cw+"x"+ch+" (k "+UiCanvas.k()+"), "+r.size()+" rects, cards "+BattleHud.cards().stream().map(d->d.group()+" "+d.y()).toList()+", ability "+box(r.get("ability"))+", lesson "+box(r.get("lesson"))+", respawn "+box(r.get("respawn"))+", spine "+box(r.get("spine"))+", hotbar "+box(hotbar)+", hearts "+box(hearts)+(bad.isEmpty()?", every rect inside and apart":", WRONG: "+String.join("; ",bad.subList(0,Math.min(6,bad.size()))));
         }
 
