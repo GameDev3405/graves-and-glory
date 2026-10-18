@@ -1126,17 +1126,18 @@ public final class Phase1Checks implements ClientModInitializer {
         static final double AX=-220,AZ=0; // open ground on the Dawn road, 63 blocks out from the live Dawn base at x=-283
         static final List<BattleHud.CardDraw> CARDS=List.of(new BattleHud.CardDraw("infantry","FLASH",false,24,348,176,48),new BattleHud.CardDraw("ranged","SELECTED",true,24,404,176,62),new BattleHud.CardDraw("support","ROUTING",false,24,474,176,48));
         static final List<BattleHud.SealDraw> SEALS=List.of(new BattleHud.SealDraw("hud/seal-dawn",439,41),new BattleHud.SealDraw("hud/seal-contested",467,40),new BattleHud.SealDraw("hud/seal-dusk",495,41));
-        static final int[][] WINDOWS={{960,540,1},{854,480,2},{1280,720,3}};
+        static final int[][] WINDOWS={{960,540,1},{854,480,2},{1280,720,3},{1920,1080,2},{1920,1080,4}};
         // Written by both threads. A negative stage is a hand-off: the client waits for the server task it sent to set the next stage.
         volatile int stage;volatile UUID player;
         volatile boolean hungerOn,hungerDone,routSupport,keepRespawn,fiveReady;volatile int hungerSets,hungerOk;volatile String hungerWrong="",fixture="";
         // server thread
         long hungerStart=-1;final List<GravesAndGlory.Unit> pair=new ArrayList<>();
         // client thread
-        int oldW,oldH,oldGui,waitFrom,seen,flashAt,askAt,abilitySeen=-1,framesAt,skippedAt,framesSpan,skippedSpan,win;
+        int oldW,oldH,oldGui,waitFrom,seen,flashAt,askAt,abilitySeen=-1,framesAt,win;
         boolean finished,keepLesson,sealsOk,smallOk=true,abilityOk,edgeOk;String sealsWhy="",smallWhy="",abilityWhy="",edgeWhy="";List<BattleHud.CardDraw> two=List.of();
-        // client thread, every HUD frame: the food draws the mixin skipped in that frame, watched while the five-seal battlefield builds
-        int lastSkipped,buildFrames,buildFull,buildLow;boolean watchBuild;String buildOdd="";
+        // client thread, every HUD frame: the food draws the mixin skipped in that frame, watched during the hunger run and while the
+        // five-seal battlefield builds
+        int lastSkipped,hungerFrames,hungerFull,hungerLow,buildFrames,buildFull,buildLow;boolean watchHunger,watchBuild;String hungerOdd="",buildOdd="";
 
         ServerPlayerEntity sp(GravesAndGlory.Battle b){return player==null?null:b.server.getPlayerManager().getPlayer(player);}
         static CommandMode.Group group(String id){for(var g:CommandMode.groups)if(g.id().equals(id))return g;return null;}
@@ -1205,13 +1206,16 @@ public final class Phase1Checks implements ClientModInitializer {
             if(stage==71&&!fiveReady)five(b);
         }
 
-        /** Each HUD frame: how many food draws the mixin skipped in it. While the five-seal battlefield builds (the client's ready is
-         *  false) every frame at food 20 must skip the whole row: 20 draws, 10 backgrounds and 10 icons. */
+        /** Each HUD frame: how many food draws the mixin skipped in it. During the hunger run, and while the five-seal battlefield
+         *  builds (the client's ready is false), every frame at food 20 must skip the whole row: 20 draws, 10 backgrounds and 10 icons.
+         *  Frames at lower food (the harness's food set can reach the client before the next tick's pin) are counted apart. */
         public void hudFrame(MinecraftClient c){
             int skipped=BattleHud.foodSkipped,delta=skipped-lastSkipped;lastSkipped=skipped;
-            if(!watchBuild||GravesAndGloryClient.ready||c.player==null||c.interactionManager==null||!c.interactionManager.hasStatusBars())return;
-            if(c.player.getHungerManager().getFoodLevel()!=20){buildLow++;return;}
-            buildFrames++;if(delta==20)buildFull++;else if(buildOdd.length()<60)buildOdd+=(buildOdd.isEmpty()?"":", ")+delta;
+            boolean build=watchBuild&&!GravesAndGloryClient.ready;
+            if(!(watchHunger||build)||c.player==null||c.interactionManager==null||!c.interactionManager.hasStatusBars())return;
+            boolean full=c.player.getHungerManager().getFoodLevel()==20;
+            if(watchHunger){if(!full)hungerLow++;else{hungerFrames++;if(delta==20)hungerFull++;else if(hungerOdd.length()<60)hungerOdd+=(hungerOdd.isEmpty()?"":", ")+delta;}}
+            if(build){if(!full)buildLow++;else{buildFrames++;if(delta==20)buildFull++;else if(buildOdd.length()<60)buildOdd+=(buildOdd.isEmpty()?"":", ")+delta;}}
         }
         void reportBuild(){
             watchBuild=false;
@@ -1236,14 +1240,14 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(seen>0&&tick>=seen+2){sealsOk=BattleHud.seals().equals(SEALS);sealsWhy="owners [0, contested, 1]: "+BattleHud.seals()+(sealsOk?"":" (wanted "+SEALS+")");seen=0;stage=3;}
                     else if(seen==0&&tick-waitFrom>2400){report("p1-ui-hud-fixture",false,"the client never showed the fixture ("+fixture+"): groups "+CommandMode.groups+", owners "+Arrays.toString(GravesAndGloryClient.owners)+", contested "+Arrays.toString(GravesAndGloryClient.contested));end(c);}
                 }
-                case 3->{hungerOn=true;framesAt=BattleHud.frames;skippedAt=BattleHud.foodSkipped;waitFrom=tick;stage=4;}
+                case 3->{hungerOn=true;watchHunger=true;waitFrom=tick;stage=4;}
                 case 4->{ // p1-ui-no-hunger
                     if(tick==waitFrom+30)shot(c,"ui-hud-no-hunger");
-                    if(framesSpan==0&&BattleHud.frames-framesAt>=20){framesSpan=BattleHud.frames-framesAt;skippedSpan=BattleHud.foodSkipped-skippedAt;}
-                    if(hungerDone&&framesSpan>0&&tick>waitFrom+30){
-                        report("p1-ui-no-hunger",hungerSets==10&&hungerOk==10&&skippedSpan>=10*framesSpan,hungerSets+" times the server set the food to 6 and added 40 exhaustion; one tick later the food was 20 and the saturation 0 "+hungerOk+" times"+(hungerWrong.isEmpty()?"":" (wrong: "+hungerWrong+")")+"; the HUD skipped "+skippedSpan+" food icons over "+framesSpan+" frames (at least 10 a frame wanted)");
+                    if(hungerDone&&tick>waitFrom+30){
+                        watchHunger=false;
+                        report("p1-ui-no-hunger",hungerSets==10&&hungerOk==10&&hungerFrames>=20&&hungerFull==hungerFrames,hungerSets+" times the server set the food to 6 and added 40 exhaustion; one tick later the food was 20 and the saturation 0 "+hungerOk+" times"+(hungerWrong.isEmpty()?"":" (wrong: "+hungerWrong+")")+"; "+hungerFull+" of "+hungerFrames+" HUD frames at food 20 skipped all 20 food draws"+(hungerOdd.isEmpty()?"":" (the others skipped "+hungerOdd+")")+(hungerLow>0?"; "+hungerLow+" frames at lower food left out":""));
                         hungerOn=false;stage=10;
-                    }else if(tick-waitFrom>600){report("p1-ui-no-hunger",false,"the hunger run did not finish: "+hungerSets+" sets, "+hungerOk+" good, "+framesSpan+" frames measured");hungerOn=false;stage=10;}
+                    }else if(tick-waitFrom>600){watchHunger=false;report("p1-ui-no-hunger",false,"the hunger run did not finish: "+hungerSets+" sets, "+hungerOk+" good, "+hungerFrames+" frames at food 20 measured");hungerOn=false;stage=10;}
                 }
                 case 10->{ // p1-ui-cards: ranged selected, support routing, then infantry hurt
                     CommandMode.selected="ranged";routSupport=true;waitFrom=tick;stage=-10;
@@ -1263,9 +1267,16 @@ public final class Phase1Checks implements ClientModInitializer {
                     else if(tick-waitFrom>40){shot(c,"ui-hud-cards");report("p1-ui-cards",false,"no infantry flash within 40 client ticks of the damage");stage=20;}
                 }
                 case 13->{
-                    var cs=BattleHud.cards();boolean match=cs.equals(CARDS);var t=BattleHud.texts();
+                    var cs=BattleHud.cards();var t=BattleHud.texts();boolean cards=cs.equals(CARDS);
+                    // The fixture's counts and words; the ledger as the server set it (148, 7:42, 121), allowing one score tick and the seconds since.
+                    boolean words="9/12".equals(t.get("count-infantry"))&&"6/6".equals(t.get("count-ranged"))&&"1/2".equals(t.get("count-support"))
+                        &&"Fighting".equals(t.get("state-infantry"))&&"Steady".equals(t.get("state-ranged"))&&"ROUTING".equals(t.get("state-support"));
+                    int dawn=GravesAndGloryClient.dawn,dusk=GravesAndGloryClient.dusk,secs=CommandMode.seconds;
+                    boolean ledger=String.valueOf(dawn).equals(t.get("score-dawn"))&&String.valueOf(dusk).equals(t.get("score-dusk"))&&UiMath.clock(secs).equals(t.get("clock"))
+                        &&dawn>=148&&dawn<=149&&dusk>=121&&dusk<=122&&secs>=442&&secs<=462;
+                    boolean match=cards&&words&&ledger;
                     if(match||tick>=flashAt+3){shot(c,"ui-hud-cards");
-                        report("p1-ui-cards",match,(tick-flashAt)+" client tick(s) after the flash the cards drew "+cs+(match?"":" (wanted "+CARDS+")")+"; counts "+t.get("count-infantry")+", "+t.get("count-ranged")+", "+t.get("count-support")+"; infantry reads "+t.get("state-infantry")+"; ledger "+t.get("score-dawn")+" "+t.get("clock")+" "+t.get("score-dusk"));stage=20;}
+                        report("p1-ui-cards",match,(tick-flashAt)+" client tick(s) after the flash the cards drew "+cs+(cards?"":" (wanted "+CARDS+")")+"; counts "+t.get("count-infantry")+", "+t.get("count-ranged")+", "+t.get("count-support")+" (wanted 9/12, 6/6, 1/2); words "+t.get("state-infantry")+", "+t.get("state-ranged")+", "+t.get("state-support")+" (wanted Fighting, Steady, ROUTING); ledger "+t.get("score-dawn")+" "+t.get("clock")+" "+t.get("score-dusk")+" (client "+dawn+", "+UiMath.clock(secs)+", "+dusk+"; wanted 148 or 149, 7:22 to 7:42, 121 or 122)");stage=20;}
                 }
                 case 20->{CommandMode.selected="all";routSupport=false;waitFrom=tick;stage=-20;server(c,b->{b.squads.get(player).routedAt.remove("support");stage=21;});}
                 case 21->{ // p1-ui-army-selected
@@ -1297,7 +1308,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     boolean full=r.containsKey("lesson")&&r.containsKey("respawn")&&r.containsKey("ability")&&r.containsKey("spine")&&BattleHud.cards().size()==3&&score!=null&&score[0]==UiCanvas.width()/2-128;
                     if(full||tick-waitFrom>100){
                         if(full)measure(c,s,r);else{smallOk=false;smallWhy+=(smallWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": no frame with every element in 100 ticks (drew "+r.keySet()+")";}
-                        if(win==1)shot(c,"ui-hud-small");if(win==2)shot(c,"ui-hud-1280");
+                        if(win==1)shot(c,"ui-hud-small");if(win==2)shot(c,"ui-hud-1280");if(win==3)shot(c,"ui-hud-1080-gui2");if(win==4)shot(c,"ui-hud-1080-gui4");
                         win++;stage=win<WINDOWS.length?41:43;
                     }
                 }
@@ -1363,7 +1374,7 @@ public final class Phase1Checks implements ClientModInitializer {
 
         /** Puts the window, the selection and every forced value back; p1-ui-hud-suite follows once the window has settled. */
         void end(MinecraftClient c){
-            finished=true;keepLesson=false;keepRespawn=false;routSupport=false;hungerOn=false;CommandMode.selected="all";
+            finished=true;keepLesson=false;keepRespawn=false;routSupport=false;hungerOn=false;watchHunger=false;watchBuild=false;CommandMode.selected="all";
             UUID id=player;server(c,b->{b.testAbility=null;if(id!=null)b.respawns.remove(id);});
             if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;
         }
