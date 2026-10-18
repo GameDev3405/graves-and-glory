@@ -25,6 +25,7 @@
 - Isolated runs only, always `--offline`. Branch `phase-3-built-world` from `master` after Phase 1 merges; commit locally per task; never push, publish or upload; `mod_version` is the controller's call.
 - Pixel UI icons are not in this plan. Hook: tent and display labels stay text; when the separate pixel UI pass lands, `CampDisplays` draws `gravesandglory:textures/gui/house/<id>.png` beside each label, with no world change.
 - Cut ideas go to `docs/PARKED.md` (append, never delete).
+- Walkthrough gate (Kort, 2026-10-18): every build task (2 to 8) ends with a first-person walkthrough by a Sonnet 5.5 max tester who steers a player through the whole map or camp piece, screenshots every landmark, approach and sight line from the walker's eye, and grades the result 1 to 10 against `work/ui-concepts/GRADING-RUBRIC.md` adapted to world pieces (readability, silhouette, detail, purpose, no clipping or floating blocks, no visible seams). Below 9 is a fix round, not an approval. Nothing less than a 9 ships. Do not rush these tasks; give them more help (a second pass, a second tester) rather than less time.
 
 ## Review Focus
 

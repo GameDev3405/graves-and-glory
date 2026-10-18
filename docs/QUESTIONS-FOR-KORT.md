@@ -186,3 +186,19 @@ Kort liked all six title demos but asked for a reshoot with no sword: Steve stan
 `docs/copy/chapter-1.md`: the six Road North briefings (spec text kept verbatim), new victory/defeat lines, bonus tags, Survival and Banner how-to lines, mode feed lines, the Writ card and a 40-word camp blurb, with a table mapping every string to its sheet column. Read it when you like; the spec's words are approved, the new lines are not until you say so. Twelve choices where the spec was silent are listed at the end of the file (new columns campaignBattles.victory/defeat, bonusObjectives.tag, chapters.writText/blurb; five section 8 lines reworded to fit the 140 px feed slip).
 
 **Kort, 2026-10-18 evening:** chat goes above the group cards, kept small but readable. Applied in UI Task 3. The ledger-scale question is still open. Playtest of 0.4.0 waits until Kort has reviewed more.
+
+## 0.4.0 soak verdict and one defect (2026-10-18 evening)
+
+Forty bot-only 3v3 rounds on the shipped commit (20 on a normal world, 20 on the shipped flat world): every round ended with a winner, 0 exceptions, tick mean at most 7 ms, heap flat. Verdict: safe for your playtest. Full report: bannerbound-runs/work/p1/soak-145424/SOAK-REPORT.md.
+
+Defect found, not blocking: every arena rebuild over an existing arena spills hundreds of loose items (poppies, seeds, lanterns) because the build clears columns bottom to top without suppressing neighbour updates. Worlds that switch maps many times fill with items and slow by about 1 ms of tick per 1,000. Fix folded into Phase 3 Task 2 (Arena is its file): write with flags 2|16 and discard items inside the arena box at finish. A second, smaller note: a one-second freeze when a round starts on a fresh server, from the arena finish meeting the autosave. Left as is.
+
+**Kort, 2026-10-18 late:** story spec answers. 1 Hollow King is Osric: NO (identity to be reworked as the plot twist). 2 Wren blew the Horn: yes. 3 Companions join one by one: yes. 4 Tomas lives: yes. 5 "Bannerbound" rejected; wants name options. 6 (voice) not answered yet. 7 Scenes unskippable the first time, free after. Wants: love interests, sorrow and despair, a plot twist, every chapter ends on a cliffhanger, depth. Storybook framing approved: book on the table, wind flips it open to the current page, 2 to 4 scenes per page, X pages per chapter, click a scene to play it, then the match.
+
+**Kort, 2026-10-18 late, second round:** Hollow King is Edric Vane (the second name on the writ, Maud's lover): yes. Company name: the Writborne. Voice: some speakers Kort, some friends, maybe some AI, undecided; write dialog and captions now, voice later. The storybook must be given real art and detail (the demo was a flow mockup).
+
+## Kort directions, 2026-10-18 late
+
+1. **Unit AI deep dive.** Kort wants a dedicated pass on troop AI: pathfinding, stances, unit cohesion (staying together as a unit), commands, decision-making. Not a task in any current plan. Recorded here and on the roadmap as its own phase, "The soldiers think", to be brainstormed and specced after Phase 3 lands (pathfinding depends on the built maps). Recommendation: run it between Phase 3 and Phase 4, before the campaign battles are tuned.
+2. **Media after polish.** Title scene, announcement video and snapshots start once maps, lobby and units are done and polished; the shot list is in docs/media/SHOTLIST.md (parked earlier today). Confirmed.
+3. **Map and lobby quality.** Do not rush the Phase 3 work; add help rather than cut time; approve nothing below a 9. Review method: a controlled character walks each map and the camp, screenshots are taken from the walker's eye, graded, then edited. Applied as a walkthrough gate in the Phase 3 plan (Global Constraints) and ledger.
