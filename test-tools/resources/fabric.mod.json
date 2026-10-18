@@ -7,6 +7,7 @@
   "entrypoints": {
     "main": [
       "gg.gravesandglory.testing.LocalIntegration",
+      "gg.gravesandglory.StructureStudio",
       "gg.gravesandglory.BotSimulation"
     ],
     "client": [
@@ -19,6 +20,7 @@
       "gg.gravesandglory.SelfTestHost",
       "gg.gravesandglory.CampRedesignChecks",
       "gg.gravesandglory.CampNetworkChecks",
+      "gg.gravesandglory.Phase3Checks",
       "gg.gravesandglory.Phase1Checks",
       "gg.gravesandglory.TitleDemos"
     ]

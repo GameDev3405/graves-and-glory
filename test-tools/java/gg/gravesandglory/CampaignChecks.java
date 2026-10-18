@@ -36,6 +36,7 @@ public final class CampaignChecks implements ClientModInitializer {
         });
     }
     @Override public void onInitializeClient(){
+        if(!System.getProperty("gravesandglory.phase3Checks","").isEmpty())return; // the Phase 3 suites drive their own world
         // The battle self-test (-PselfTest) drives its own battle; these suites would fight it for the same world.
         if(!MeltyTest.active()||Boolean.getBoolean("gravesandglory.selfTest")||Boolean.getBoolean("gravesandglory.campChecks")||Boolean.getBoolean("gravesandglory.networkHost")||Boolean.getBoolean("gravesandglory.networkJoin")||!System.getProperty("gravesandglory.phase1Checks","").isEmpty())return;
         stateProbe();

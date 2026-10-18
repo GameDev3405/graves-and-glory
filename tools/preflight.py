@@ -3,6 +3,48 @@ root = pathlib.Path(__file__).resolve().parents[1]
 data = json.loads((root/'sheets/design.json').read_text())
 errors=[]
 cells=0
+# Structure files (Phase 3): gzip NBT with DataVersion 3465, a studio script of the same id, ids <group>/<name> in [a-z0-9_/].
+import gzip, re, struct
+STRUCTURE_DATA_VERSION=3465
+def nbt_skip(buf, pos, tag):
+    """Position after the payload of one tag of the given type, without reading its value."""
+    if tag==1: return pos+1
+    if tag==2: return pos+2
+    if tag in (3,5): return pos+4
+    if tag in (4,6): return pos+8
+    if tag==7: return pos+4+struct.unpack_from('>i',buf,pos)[0]
+    if tag==8: return pos+2+struct.unpack_from('>H',buf,pos)[0]
+    if tag==9:
+        item=buf[pos]; count=struct.unpack_from('>i',buf,pos+1)[0]; pos+=5
+        for _ in range(count): pos=nbt_skip(buf,pos,item)
+        return pos
+    if tag==10:
+        while buf[pos]!=0:
+            name=struct.unpack_from('>H',buf,pos+1)[0]; pos=nbt_skip(buf,pos+3+name,buf[pos])
+        return pos+1
+    if tag==11: return pos+4+4*struct.unpack_from('>i',buf,pos)[0]
+    if tag==12: return pos+4+8*struct.unpack_from('>i',buf,pos)[0]
+    raise ValueError(f'unknown NBT tag {tag}')
+def structure_data_version(path):
+    """The DataVersion int of a gzip structure file: walks the root compound and skips every other tag."""
+    buf=gzip.decompress(path.read_bytes())
+    if buf[0]!=10: raise ValueError('the root tag is not a compound')
+    pos=3+struct.unpack_from('>H',buf,1)[0]
+    while buf[pos]!=0:
+        tag=buf[pos]; length=struct.unpack_from('>H',buf,pos+1)[0]; name=buf[pos+3:pos+3+length].decode('utf-8'); pos+=3+length
+        if name=='DataVersion' and tag==3: return struct.unpack_from('>i',buf,pos)[0]
+        pos=nbt_skip(buf,pos,tag)
+    return None
+studio_scripts='test-tools/resources/data/gravesandglory_studio/functions'
+for folder in ('src/main/resources/data/gravesandglory/structures','test-tools/resources/data/gravesandglory/structures'):
+    if not (root/folder).is_dir(): continue
+    for nbt in sorted((root/folder).rglob('*.nbt')):
+        sid=nbt.relative_to(root/folder).with_suffix('').as_posix()
+        if not re.fullmatch(r'[a-z0-9_]+(/[a-z0-9_]+)+',sid): errors.append(f'structure {sid}: the id must be <group>/<name> in [a-z0-9_/]')
+        if not (root/studio_scripts/(sid+'.mcfunction')).is_file(): errors.append(f'structure {sid}: no script {studio_scripts}/{sid}.mcfunction')
+        try: version=structure_data_version(nbt)
+        except Exception as e: errors.append(f'structure {sid}: cannot read the NBT ({e})'); continue
+        if version!=STRUCTURE_DATA_VERSION: errors.append(f'structure {sid}: DataVersion {version}, expected {STRUCTURE_DATA_VERSION}')
 for sheet, rows in data.items():
     if not rows: errors.append(f'{sheet}: empty sheet'); continue
     columns=set(rows[0])
