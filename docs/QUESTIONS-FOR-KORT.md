@@ -148,3 +148,16 @@ Recommended answer in brackets. The plan (docs/superpowers/plans/2026-10-18-ui-p
 | C: Easy = Normal + retreat 0.35, rally 0.7 | 7 / 1 / 8 | 2 1 2 2 1 | -16.0 |
 
 Reading: the flank/garrison picker caused Hard's deficit on the three-point maps (3/16 -> 9/16 without it) and also its Kingsfield wins (4/4 -> 0/4); without it Hard is level with Normal, and the rest of Hard's row shows no measurable edge. No tested knob explains Easy beating Normal; decisionTicks 160 is the only Easy knob untested, and 13/20 sits inside noise around parity. The Dawn-seat bias (15 to 17 of 20 in every batch) is larger than any tier effect. Knight-to-revenant kill ratio ~1.5 in every batch, so the effects come from where armies go, not melee. Parked until the Phase 3 maps, per Kort. Run roots: work/p1/botsim-5f-{A,B,C}-*.
+
+## Phase 4 spec questions (2026-10-18, docs/superpowers/specs/2026-10-18-phase-4-modes-campaign-design.md, draft)
+
+Recommended answer in brackets. Nothing in Phase 4 is planned or built until you have read the draft; the builder check may add a question or two.
+1. Banner mode is "carry the enemy banner home"; the supply-wagon escort variant goes to PARKED. [Yes; the carry reuses touch pickup and the rout override, a wagon needs a moving vehicle and a road path]
+2. Campaign battles 3 to 6 bring allied bot banners (Ironclad from battle 3, Wildmoot too in battle 6), so the chapter grows from 1v1 to 3v3. [Yes; battle 3 needs ballistas a new player does not own, and the growing host is the chapter's arc]
+3. Each campaign battle has one fixed difficulty, no picker. [Yes; a picker triples tuning and bonus checks]
+4. Skirmish "any banner" means you choose the enemy's House and always field your own banner. [Yes; Practice is where you try troops you do not own]
+5. The Hollow King in battle 6 is a normal Legendary troop in the enemy banner, no boss rules. [Yes; boss rules can wait for chapter 2]
+6. A profile that already got the chapter 1 Writ from the one-battle Phase 2 chapter keeps it and gets no second Writ for finishing all six. [Yes; nothing is taken back]
+7. (builder check) A solo Skirmish starts straight from the picker, not through the war-gates pads; pads stay for parties and Phase 5; the Ride plate keeps its name. [Yes; otherwise pad team, pad size and map votes fight the picker]
+Call made in the draft after the builder check: Practice fields unowned troops through an uncapped practice barracks (own banner as the starting lineup, every troop buyable at star 1, nothing saved); unowned troops are never written into the saved banner.
+Code facts the vision did not account for (from the draft): campaign battles currently run as practice (one bot, 40 practice gold, every troop unlocked, size ignored, any battle startable in any order), so "your own banner" and normal rewards need new seating code; the Phase 2 plan grants the chapter 1 Writ once every chapter 1 row is cleared, which until Phase 4 is battle 1 alone; mode changes (bases, barracks, respawn, rout targets, morale row, bot targets) are per-team or global constants today; Ironhold's gate wall can be walked round at both ends, so a yard-then-gate Siege needs Siege-only ward walls and a gate that starts open; and the tier ladder is not monotonic, so a campaign curve cannot rely on tier labels alone.
