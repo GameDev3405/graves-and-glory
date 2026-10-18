@@ -10,8 +10,11 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.util.ScreenshotRecorder;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.projectile.ArrowEntity;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
@@ -89,6 +92,7 @@ public final class Phase1Checks implements ClientModInitializer {
         Projectiles.Shot first;float firstHealth;boolean firstDelayOk;
         GravesAndGlory.Unit chosen;Projectiles.Shot duskShot;int flashesBefore;boolean duskOk;String duskWhy="";
         GravesAndGlory.Unit orphanShooter,orphanSecond;Exception orphanError;
+        NbtCompound savedArrow;boolean arrowAlive,arrowSaved;
         double tickSum;int tickSamples,troops;
 
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
@@ -103,6 +107,22 @@ public final class Phase1Checks implements ClientModInitializer {
         /** The commander's army fights as a bot in the tick-cost stage; the next suite's returnLobby drops bot armies, and with it his seat, so he gets it back however this suite ends. */
         void handBack(GravesAndGlory.Battle b){var mine=player==null?null:b.squads.get(player);if(mine!=null)mine.bot=false;}
         public void cleanup(MinecraftClient c){server(c,this::handBack);}
+
+        /** p1-arrow-reload, part 1 (final review, minor 1): the arrow of the shot just fired survives its own spawn, and is written to NBT in flight the way a chunk save writes it. */
+        void saveArrow(GravesAndGlory.Battle b){
+            var arrow=b.shots.get(b.shots.size()-1).visual();
+            arrowAlive=arrow!=null&&!arrow.isRemoved();
+            savedArrow=new NbtCompound();arrowSaved=arrow!=null&&arrow.shouldSave()&&arrow.saveNbt(savedArrow);
+        }
+        /** p1-arrow-reload, part 2: the round has ended, so nothing is queued, as after a restart. The arrow rebuilt from its NBT and added to the world fires the same load event a chunk load does, and must be discarded, not fly on as a real arrow. A real quit and reload is not scripted here. */
+        void reloadArrow(GravesAndGlory.Battle b){
+            Entity back=arrowSaved?EntityType.getEntityFromNbt(savedArrow,b.world).orElse(null):null;
+            boolean arrowAgain=back instanceof ArrowEntity&&back.getCommandTags().contains(Projectiles.TAG);
+            if(back!=null){back.setUuid(UUID.randomUUID());b.world.spawnEntity(back);}
+            boolean gone=back!=null&&back.isRemoved();int left=tagged(b);
+            report("p1-arrow-reload",arrowAlive&&arrowSaved&&arrowAgain&&gone&&left==0&&Projectiles.inFlight(b)==0,"a fresh shot's arrow alive after its own spawn="+arrowAlive+"; written to NBT in flight="+arrowSaved+", read back as a tagged arrow="+arrowAgain+"; with "+Projectiles.inFlight(b)+" shots queued the rebuilt arrow was discarded on entering the world="+gone+", tagged arrows left="+left);
+            if(back!=null&&!back.isRemoved())back.discard(); // a stray must not fail the checks after this one
+        }
 
         public void step(MinecraftClient c,int tick){
             if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;next(b,1);});}
@@ -189,9 +209,9 @@ public final class Phase1Checks implements ClientModInitializer {
                     Projectiles.fire(b,orphanShooter,gone.mob,"arrow",4);gone.mob.discard();next(b,12);
                 }
                 case 12->{if(b.time-stageAt>=2){
-                    try{Projectiles.fire(b,orphanShooter,orphanSecond.mob,"arrow",4);System.out.println("[p1] orphan: "+Projectiles.inFlight(b)+" in flight at finish");b.campaign.finish(-1);}catch(Exception e){orphanError=e;e.printStackTrace();}
+                    try{Projectiles.fire(b,orphanShooter,orphanSecond.mob,"arrow",4);System.out.println("[p1] orphan: "+Projectiles.inFlight(b)+" in flight at finish");saveArrow(b);b.campaign.finish(-1);}catch(Exception e){orphanError=e;e.printStackTrace();}
                     next(b,13);}}
-                case 13->{int left=tagged(b);report("p1-shot-orphan",orphanError==null&&Projectiles.inFlight(b)==0&&left==0&&!b.running,"error="+orphanError+" inFlight="+Projectiles.inFlight(b)+" taggedArrows="+left+" running="+b.running);next(b,14);}
+                case 13->{int left=tagged(b);report("p1-shot-orphan",orphanError==null&&Projectiles.inFlight(b)==0&&left==0&&!b.running,"error="+orphanError+" inFlight="+Projectiles.inFlight(b)+" taggedArrows="+left+" running="+b.running);reloadArrow(b);next(b,14);}
                 case 14->{ // tick cost: eight bot armies fighting around the centre point
                     var p=sp(b);if(p==null||!skirmish(b,p,0,4,"normal"))return;
                     var own=b.squads.get(player);own.bot=true;own.order="attack";b.reinforce(own);
@@ -932,6 +952,17 @@ public final class Phase1Checks implements ClientModInitializer {
             return r;
         }
         static JsonObject parse(String json){return com.google.gson.JsonParser.parseString(json).getAsJsonObject();}
+        /** p1-report-stale-kill (final review, minor 2): a death with no attacker (here /kill, standing for a fall or lava) credits the army whose blow last hurt the victim only inside Projectiles.CREDIT_WINDOW_TICKS. A blow one tick past the window earns nothing; one on its last tick earns the kill and the kill gold. */
+        void staleKill(GravesAndGlory.Battle b){
+            var foes=b.units.stream().filter(u->u.squad.team!=own.team&&u.mob.isAlive()).limit(2).toList();
+            if(foes.size()<2){report("p1-report-stale-kill",false,"fewer than two living enemy troops to test with ("+foes.size()+")");return;}
+            int window=Projectiles.CREDIT_WINDOW_TICKS,kills0=own.stats.kills,gold0=own.gold;
+            var stale=foes.get(0);stale.lastHitBy=own;stale.lastHitAt=b.time-window-1;stale.mob.kill();
+            int kills1=own.stats.kills,gold1=own.gold;
+            var fresh=foes.get(1);fresh.lastHitBy=own;fresh.lastHitAt=b.time-window;fresh.mob.kill();
+            report("p1-report-stale-kill",!stale.mob.isAlive()&&!fresh.mob.isAlive()&&kills1==kills0&&gold1==gold0&&own.stats.kills==kills1+1&&own.gold==gold1+E.killGold(),
+                "window "+window+" ticks; an enemy killed with no attacker "+(window+1)+" ticks after the commander's army last hit him: kills "+kills0+" -> "+kills1+", gold "+gold0+" -> "+gold1+"; one killed "+window+" ticks after: kills "+kills1+" -> "+own.stats.kills+", gold "+gold1+" -> "+own.gold+" (kill gold "+E.killGold()+")");
+        }
         /** The camp snapshot at its realistic worst (256 match ids held, every claim and title, the 8-row report) fits the client's read limit as sent today, carries no match ids, and the saved profile still refuses a repeat id; then each fallback of Campaign.fitted stays inside the limit. Everything is put back before this server tick ends, so no state packet carries the fixture. */
         void snapshotChecks(GravesAndGlory.Battle b){
             var c=b.campaign;var p=sp(b);var st=c.profile(player).progression;var grants=new LinkedHashSet<>(st.matchGrants);var claims=new HashSet<>(st.claims);var titles=new LinkedHashSet<>(st.titles);var realReport=c.results.get(player);String notice=c.notices.get(player);
@@ -1011,7 +1042,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 6->{if(b.time>arrow.lands()){
                     boolean gone=!archer.mob.isAlive()&&!b.units.contains(archer);
                     report("p1-report-late-kill",!mark.mob.isAlive()&&gone&&own.stats.kills==killsBefore+1,"arrow loosed at tick "+arrow.fired()+" by an archer killed the same tick (out of the battle at landing="+gone+"), landed at "+arrow.lands()+": target alive="+mark.mob.isAlive()+", last hit by the commander's army="+(mark.lastHitBy==own)+"; the army's kills "+killsBefore+" -> "+own.stats.kills);
-                    next(b,7);
+                    staleKill(b);next(b,7);
                 }}
                 case 7->{ // the round ends: the commander's report as the server keeps it for his client
                     int seated=(int)b.squads.values().stream().filter(s->s.seated).count();String side=own.team==0?"dawn":"dusk";

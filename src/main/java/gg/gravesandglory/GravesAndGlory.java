@@ -56,6 +56,8 @@ public final class GravesAndGlory implements ModInitializer {
             if(battle!=null&&!CampWorld.generation.isEmpty()&&entity.getCommandTags().contains(CampWorld.TAG)&&!entity.getCommandTags().contains("camp-generation:"+CampWorld.generation))entity.discard();
             if(entity.getCommandTags().contains("gravesandglory-lobby")||entity.getCommandTags().contains("bannerbound-lobby"))entity.discard();
             if(battle!=null&&world==battle.world&&(entity.getCommandTags().contains("gravesandglory")||entity.getCommandTags().contains("bannerbound"))&&!(entity instanceof ArmyHusk)&&!(entity instanceof ArmySkeleton)&&!(entity instanceof ArmyWither))entity.discard();
+            // A shot's arrow saved mid-flight comes back from disk as a real, clipping arrow. This event also fires for a new spawn, so only a tagged arrow that no queued shot owns is discarded (Projectiles.fire queues the shot before it spawns the arrow). Any world.
+            if(entity.getCommandTags().contains(Projectiles.TAG)&&!Projectiles.owns(battle,entity))entity.discard();
         });
         ServerTickEvents.END_SERVER_TICK.register(server -> { if(battle!=null) battle.tick(); });
         ServerPlayNetworking.registerGlobalReceiver(ORDER, (server, player, handler, buf, responder) -> {
@@ -82,8 +84,8 @@ public final class GravesAndGlory implements ModInitializer {
             for(Unit victim:battle.units)if(victim.mob==entity){
                 Squad winner=attacker==null?null:battle.squads.get(attacker.getUuid());
                 for(Unit u:battle.units)if(u.mob==attacker)winner=u.squad;
-                // A shot that lands after its archer fell still credits the archer's army.
-                if(winner==null)winner=victim.lastHitBy;
+                // A shot that lands after its archer fell still credits the archer's army, and so does a death soon after an enemy's blow; a fall, lava, cramming or /kill long after one is nobody's kill.
+                if(winner==null&&BattleMath.creditWindowOpen(battle.time,victim.lastHitAt,Projectiles.CREDIT_WINDOW_TICKS))winner=victim.lastHitBy;
                 victim.squad.stats.lost++;
                 if(winner!=null&&winner.team!=victim.squad.team){winner.earn(Spec.ECONOMY[0].killGold());winner.stats.kills++;}
             }
@@ -156,6 +158,8 @@ public final class GravesAndGlory implements ModInitializer {
         LivingEntity lockedTarget;long lockUntil;
         /** The army whose blow last hurt this unit; kill credit when the attacker itself is gone. */
         Squad lastHitBy;
+        /** Battle time (ticks) of that blow: a death with no attacker credits lastHitBy only within Projectiles.CREDIT_WINDOW_TICKS of it. */
+        long lastHitAt;
         Unit(MobEntity m,Squad s,Spec.TroopsRow t,int slot){mob=m;squad=s;spec=t;this.slot=slot;lastPosition=m.getPos();deployed=m.getPos();}
     }
     public static final class Capture {
@@ -585,7 +589,7 @@ public final class GravesAndGlory implements ModInitializer {
                 respawns.put(p.getUuid(),time+R.respawnSeconds()*20L);return false;
             }
             Squad hitter=attackerSquad;for(Unit u:units)if(u.mob==attacker)hitter=u.squad;
-            if(hitter!=null)for(Unit u:units)if(u.mob==entity){u.lastHitBy=hitter;break;}
+            if(hitter!=null)for(Unit u:units)if(u.mob==entity){u.lastHitBy=hitter;u.lastHitAt=time;break;}
             return true;
         }
         record Sight(float x,float z,long seen){}

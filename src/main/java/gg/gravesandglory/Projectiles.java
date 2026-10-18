@@ -15,6 +15,8 @@ import java.util.ArrayList;
 public final class Projectiles {
     public static final String TAG="gravesandglory-shot";
     static final Spec.CombatDisciplineRow C=Spec.COMBATDISCIPLINE[0];
+    /** Ticks after an enemy's last blow on a unit during which a death with no attacker still credits the blow's army: the longest a shot can fly, so an arrow that lands after its archer fell always pays him, plus 20 ticks (one second) for a blow that kills one step later, a knockback into a fall say. Past that, a fall, lava, cramming or /kill is nobody's kill. */
+    public static final int CREDIT_WINDOW_TICKS=C.projectileMaxTicks()+20;
     /** kind: "arrow" (damage, vanilla arrow visual), "bolt" (blight cast, visual only), "mend" (heal).
      *  A bolt has no target: it flies to the fixed point {@code at}; other shots follow their target and leave {@code at} null. */
     public record Shot(GravesAndGlory.Unit shooter,GravesAndGlory.Squad squad,LivingEntity target,String kind,float amount,Vec3d from,long fired,long lands,Entity visual,Vec3d at){}
@@ -33,9 +35,11 @@ public final class Projectiles {
             ArrowEntity a=new ArrowEntity(b.world,from.x,from.y,from.z);
             a.setNoGravity(true);a.setNoClip(true);a.pickupType=PersistentProjectileEntity.PickupPermission.DISALLOWED;a.addCommandTag(TAG);
             Vec3d v=to.subtract(from).multiply(1.0/travel);a.setVelocity(v.x,v.y,v.z,(float)v.length(),0);
-            b.world.spawnEntity(a);visual=a;
+            visual=a;
         }
         b.shots.add(new Shot(u,u.squad,target,kind,amount,from,b.time,lands,visual,null));
+        // Queued first, then spawned: the load handler also runs for a new spawn, and discards a tagged arrow that no queued shot owns.
+        if(visual!=null)b.world.spawnEntity(visual);
     }
     /** The blight bolt flies to the spell's fixed centre and arrives on the tick the spell bursts. */
     public static void bolt(GravesAndGlory.Battle b,GravesAndGlory.Unit u,Vec3d center){
@@ -63,11 +67,13 @@ public final class Projectiles {
             }
         }
     }
+    /** Whether entity is the arrow of a shot still in the queue. The load handler discards every other tagged arrow: one saved in flight and loaded again belongs to no shot of this battle. */
+    public static boolean owns(GravesAndGlory.Battle b,Entity entity){if(b!=null)for(Shot s:b.shots)if(s.visual==entity)return true;return false;}
     static void drop(GravesAndGlory.Battle b,Shot s){b.shots.remove(s);if(s.visual!=null)s.visual.discard();}
     static void land(GravesAndGlory.Battle b,Shot s,Vec3d at){
         switch(s.kind){
             case "arrow"->{
-                for(var v:b.units)if(v.mob==s.target){v.lastHitBy=s.squad;break;}
+                for(var v:b.units)if(v.mob==s.target){v.lastHitBy=s.squad;v.lastHitAt=b.time;break;}
                 s.target.damage(b.world.getDamageSources().mobAttack(s.shooter.mob),s.amount);
                 BattleEffects.flash(b,at,s.squad.team);
             }
