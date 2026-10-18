@@ -198,7 +198,7 @@ public final class GravesAndGlory implements ModInitializer {
         public final List<Projectiles.Shot> shots=new ArrayList<>();
         final Map<UUID,Long> respawns=new HashMap<>();
         final int[] scores={0,0};
-        /** The side row each team flies this round, as indexes into Spec.FACTIONS (spec 5.2); Campaign.chooseSides sets it as the round is prepared. Positions still come from rows 0 and 1 by team. */
+        /** The side row each team flies this round, as indexes into Spec.FACTIONS (spec 1.1); Campaign.chooseSides sets it as the round is prepared. Positions still come from rows 0 and 1 by team. */
         public int[] sides={0,1};
         /** The side row a team flies: its colour, name and glyph. */
         public Spec.FactionsRow side(int team){int row=team==0||team==1?sides[team]:-1;return Spec.FACTIONS[row>=0&&row<Spec.FACTIONS.length?row:Math.max(0,Math.min(1,team))];}

@@ -14,7 +14,7 @@ for sheet, rows in data.items():
         for col in columns:
             cells+=1
             if col not in row or row[col] is None or row[col]=='': errors.append(f'{sheet}/{row.get("id")}/{col}: unfilled')
-# Sides (spec 5.2): factions holds the banner colours. Team 0 and team 1 read their positions from rows 0 and 1;
+# Sides (spec 1.1): factions holds the banner colours. Team 0 and team 1 read their positions from rows 0 and 1;
 # colour, name and glyph come from the side each team fields (Battle.side).
 GLYPHS=('sun','moon','star','wave')
 sides=data['factions']

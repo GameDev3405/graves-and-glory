@@ -150,7 +150,7 @@ public final class Campaign {
             if(type!=null&&Collections.frequency(next,id)<Collections.frequency(entries,id))notice(p.getUuid(),"No room for "+type.name()+": a banner holds 2 Epics (2 slots each) and 1 Legendary (4).");
             pr.banner=next;if(!save(p.getUuid()))pr.banner=before;return true;
         }
-        if(cmd.startsWith("colour:")){ // the side row this commander asks to fly (spec 5.2); chooseSides settles it as the round is prepared
+        if(cmd.startsWith("colour:")){ // the side row this commander asks to fly (spec 1.1); chooseSides settles it as the round is prepared
             String side=cmd.substring(7);var row=Arrays.stream(Spec.FACTIONS).filter(f->f.id().equals(side)).findFirst().orElse(null);if(row==null)return true;
             String before=pr.bannerColour;pr.bannerColour=side;if(!save(p.getUuid())){pr.bannerColour=before;return true;}
             notice(p.getUuid(),"You fly the "+row.name()+", unless the other team flies it first.");return true;
@@ -216,7 +216,7 @@ public final class Campaign {
         if(s.bot)return botBanner(s);
         return RosterMath.fieldable(profile(s.owner).banner,RosterMath.Catalog.fromSpec(),RosterMath.fieldableHouses());
     }
-    /** A bot's banner (spec 6.2): of the botBanners rows for its tier whose troops all belong to fieldable Houses, the one at lane % rows; Normal rows for a tier with none, the starter banner if no row fits. */
+    /** A bot's banner (the botBanners sheet, spec 6.1): of the botBanners rows for its tier whose troops all belong to fieldable Houses, the one at lane % rows; Normal rows for a tier with none, the starter banner if no row fits. */
     List<String> botBanner(GravesAndGlory.Squad s){
         var rows=fieldableBotBanners(s.tier);if(rows.isEmpty())rows=fieldableBotBanners("normal");
         if(rows.isEmpty())return RosterMath.starterBanner();
@@ -242,7 +242,7 @@ public final class Campaign {
     /** Sets the side row each team flies this round (Battle.sides) from the seated squads; see sidesFor. */
     void chooseSides(){b.sides=sidesFor(b.squads.values().stream().filter(s->s.seated).toList());}
     /**
-     * The side rows two teams fly (spec 5.2): team 0 takes its first commander's bannerColour; team 1 its first commander's
+     * The side rows two teams fly (spec 1.1): team 0 takes its first commander's bannerColour; team 1 its first commander's
      * colour unless team 0 already flies it; a team still without a row (all bots, or the colour was taken) takes the first
      * row, in sheet order, that the other team does not fly. Indexes into Spec.FACTIONS.
      */
