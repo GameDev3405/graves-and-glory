@@ -10,7 +10,7 @@
 6. A profile that already got the chapter 1 Writ from the one-battle Phase 2 chapter keeps it and gets no second Writ for finishing all six. [Yes; nothing is taken back, and the gate run uses a fresh profile]
 7. A solo Skirmish starts straight from the picker (mode, map, difficulty, enemy House, size, Siege side) and does not go through the war-gates pads; the pads stay for parties and Phase 5, and the Ride plate keeps its name. [Yes; pad team, pad size and map votes would otherwise fight the picker, and it settles who owns the settings when two players share a server]
 
-Status: draft for Kort, 2026-10-18. Sources: the vision (binding), the approved Houses spec, the built-world spec and the UI spec. Phase 4 starts after Phases 2 and 3 merge and assumes their plans as written. Every number invented here is marked "(draft value)"; numbers taken from a sheet or another spec are not.
+Status: approved by Kort 2026-10-18 (all seven questions answered yes; the escort variant is parked and will be revisited). Plan to be written once Phase 2's code names exist. Sources: the vision (binding), the approved Houses spec, the built-world spec and the UI spec. Phase 4 starts after Phases 2 and 3 merge and assumes their plans as written. Every number invented here is marked "(draft value)"; numbers taken from a sheet or another spec are not.
 
 ## 1. Intent and why
 
