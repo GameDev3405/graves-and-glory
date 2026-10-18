@@ -28,7 +28,7 @@ public final class Campaign {
     final Set<UUID> importAllowed=new HashSet<>();
     /** Commanders who left mid-battle, mapped to the bot squad holding their army until they return this round. */
     final Map<UUID,UUID> vacated=new HashMap<>();
-    /** First-battle lessons reached this session: 0 move, 1 formation, 2 attack, 3 barracks. */
+    /** Lessons reached in the campaign battle being fought, when its sheet row teaches: 0 move, 1 formation, 2 attack, 3 barracks, 4 all done. Cleared as each round starts. */
     final Map<UUID,Integer> tutorial=new HashMap<>();
     /** AI armies that fell back stay there until rallied, so they do not walk back into the fight. */
     final Set<UUID> botRetreating=new HashSet<>();
@@ -37,6 +37,10 @@ public final class Campaign {
     String headline="";
     /** Bot difficulty for the next round: the id of a Spec.BOTCOMMAND row (easy, normal, hard). There is one battle per server, so one setting covers it. */
     String difficulty="normal";
+    /** The Long March battle being fought (a Spec.CAMPAIGNBATTLES row), or null in practice, pad matches and rooms. Cleared in returnLobby. */
+    Spec.CampaignBattlesRow activeBattle;
+    /** A battle asked for before its map was built, and the commander who asked; it starts on the first ready tick. */
+    Spec.CampaignBattlesRow pendingBattle;UUID pendingCommander;
     /** The winner of the last finished round: 0 Dawn, 1 Dusk, -1 a draw (and before any round has finished). The bot simulation sets -2 before each of its rounds. */
     int lastWinner=-1;
     /** Ready pads: who stands on which pad (team), the countdown in ticks, and whether this cycle has rolled its quick-match map. */
@@ -47,6 +51,8 @@ public final class Campaign {
     public static class Profile {
         Progression.State progression=new Progression.State();
         int gold=0,matches=0,wins=0;String commander="vanguard";boolean tutorialDone;
+        /** The Long March: the highest campaignBattles order this commander has won (0 before battle 1). */
+        int campaignCleared;
         Set<String> unlocked=new LinkedHashSet<>();Map<String,Integer> army=new LinkedHashMap<>();
         Map<String,List<String>> deployment=new HashMap<>();
         public Profile(){for(var t:Spec.TROOPS)if(t.count()>0){unlocked.add(t.id());army.put(t.id(),t.count());}}
@@ -62,7 +68,7 @@ public final class Campaign {
             if(unlocked==null)unlocked=new LinkedHashSet<>();if(army==null)army=new LinkedHashMap<>();
             unlocked.removeIf(id->Arrays.stream(Spec.TROOPS).noneMatch(t->t.id().equals(id)));
             for(var t:Spec.TROOPS)if(t.count()>0)unlocked.add(t.id());
-            gold=Math.max(0,Math.min(1000000,gold));matches=Math.max(0,matches);wins=Math.max(0,Math.min(matches,wins));
+            gold=Math.max(0,Math.min(1000000,gold));matches=Math.max(0,matches);wins=Math.max(0,Math.min(matches,wins));campaignCleared=Math.max(0,campaignCleared);
             if(Arrays.stream(Spec.CLASSES).noneMatch(c->c.id().equals(commander)))commander="vanguard";
             for(int team=0;team<2;team++){int total=0;for(var t:Spec.TROOPS)if(t.faction().equals(Spec.FACTIONS[team].id())){int n=unlocked.contains(t.id())?Math.max(0,Math.min(20,army.getOrDefault(t.id(),0))):0;n=Math.min(n,20-total);army.put(t.id(),n);total+=n;}}
         }
@@ -109,7 +115,7 @@ public final class Campaign {
         notice(p.getUuid(),b.running&&(squad==null||!squad.seated)?"Battle in progress. Wait in camp for the next round. R opens your war council.":"Welcome to Graves and Glory. R opens your war council.");}
     void toLobby(ServerPlayerEntity p){b.relocate(p,0,66,CampaignMaps.LOBBY_Z+20,180,8);p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
-        b.running=false;introUntil=0;social.finish();activeRoom="";Projectiles.clear(b);
+        b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;Projectiles.clear(b);
         for(var u:b.units)u.mob.discard();b.units.clear();
         b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}onPad.clear();padCountdown=-1;closeParty();
@@ -126,6 +132,14 @@ public final class Campaign {
             if(social.group(p.getUuid()).size()>1||social.room(p.getUuid())!=null){notice(p.getUuid(),"Practice is solo. Use a private room to play with your party.");return true;}
             closeParty();partyLeader=p.getUuid();party.add(p.getUuid());practice=true;size=1;fill=true;
             for(var squad:b.squads.values())if(!squad.bot){squad.seated=squad.owner.equals(p.getUuid());if(squad.seated)squad.team=0;}b.startRound();return true;
+        }
+        if(cmd.startsWith("campaign:")){ // a Long March battle: solo, on its own map, which is built first if another map stands
+            var row=Arrays.stream(Spec.CAMPAIGNBATTLES).filter(r->r.id().equals(cmd.substring(9))).findFirst().orElse(null);
+            if(row==null||row.map()<0||row.map()>=Spec.MAPS.length)return true;
+            String refused=battleRefusal(p.getUuid());if(!refused.isEmpty()){notice(p.getUuid(),refused);return true;}
+            pendingBattle=row;pendingCommander=p.getUuid();
+            if(row.map()!=map){switchMap(row.map());notice(p.getUuid(),"Preparing "+Spec.MAPS[map].name()+" for "+row.name()+".");}
+            return true;
         }
         if(cmd.startsWith("party:")){partyCommand(p,cmd);return true;}
         if(cmd.equals("lobby")){if(b.running)notice(p.getUuid(),"Finish the battle before returning to the lobby.");else toLobby(p);return true;}
@@ -192,14 +206,27 @@ public final class Campaign {
         }
         return false;
     }
+    /** Why a commander cannot march into a campaign battle now, or "" when they can. The march is solo, by the same party rules as practice. */
+    String battleRefusal(UUID id){
+        if(b.running)return "Wait until the current battle finishes.";
+        if(social.group(id).size()>1||social.room(id)!=null)return "The Long March is played solo. Leave your party or room first.";
+        if(!preparingRoom.isEmpty()||pendingBattle!=null&&!id.equals(pendingCommander))return "Another battlefield is being prepared. Try again shortly.";
+        return "";
+    }
+    /** Starts a Long March battle: the commander alone on Dawn, seated as practice seats them, against bots of the battle tier. */
+    void startBattle(ServerPlayerEntity p,Spec.CampaignBattlesRow row){
+        closeParty();partyLeader=p.getUuid();party.add(p.getUuid());practice=true;size=row.size();fill=true;
+        for(var squad:b.squads.values())if(!squad.bot){squad.seated=squad.owner.equals(p.getUuid());if(squad.seated)squad.team=0;}
+        activeBattle=row;b.startRound();
+    }
     void balance(){int[] n={0,0};for(var s:b.squads.values())if(!s.bot&&s.seated){if(!practice&&n[s.team]>=size)s.team=1-s.team;n[s.team]++;}}
     void prepareRound(){
-        onPad.clear();padCountdown=-1;padMapRolled=false;
+        onPad.clear();padCountdown=-1;padMapRolled=false;tutorial.clear();
         b.squads.values().removeIf(s->s.bot);balance();
         for(var u:b.units)u.mob.discard();b.units.clear();botRespawns.clear();botRetreating.clear();vacated.clear();
         for(int team=0;team<2;team++){final int t=team;int humans=(int)b.squads.values().stream().filter(s->s.team==t&&s.seated).count();
             int target=practice?(team==0?1:1):size;
-            if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,GravesAndGlory.Battle.base(team));s.bot=true;s.tier=difficulty;s.commander=Spec.CLASSES[i%3].id();s.lane=i%3;b.squads.put(id,s);}
+            if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,GravesAndGlory.Battle.base(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():difficulty;s.commander=Spec.CLASSES[i%3].id();s.lane=i%3;b.squads.put(id,s);}
         }
         participants.clear();for(var s:b.squads.values())if(!s.bot&&s.seated){participants.add(s.owner);results.remove(s.owner);joinedAt.put(s.owner,b.time);s.commander=profile(s.owner).commander;}
         serial++;matchId=UUID.randomUUID().toString();introUntil=b.time+120;headline="";
@@ -214,7 +241,7 @@ public final class Campaign {
         long seconds=(b.time-b.roundStarted)/20;
         for(UUID id:participants){var s=b.squads.get(id);if(s==null||!s.seated)continue;Profile p=profile(id);String before=JSON.toJson(p);
             int earned=Math.min(seconds,(b.time-joinedAt.getOrDefault(id,b.roundStarted))/20)>=Spec.CAMPAIGN[0].minimumRewardSeconds()?(practice?Spec.CAMPAIGN[0].practiceGold():Spec.CAMPAIGN[0].completionGold()+(s.team==winner?Spec.CAMPAIGN[0].victoryGold():0)):0;
-            int priorXp=p.progression.xp;Progression.reset(p.progression,Progression.today());Progression.match(p.progression,matchId,s.team==winner,earned>0);p.gold+=earned;p.matches++;if(s.team==winner)p.wins++;
+            int priorXp=p.progression.xp;Progression.reset(p.progression,Progression.today());Progression.match(p.progression,matchId,s.team==winner,earned>0);p.gold+=earned;p.matches++;if(s.team==winner)p.wins++;if(s.team==winner&&activeBattle!=null)p.campaignCleared=Math.max(p.campaignCleared,activeBattle.order());
             boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);results.put(id,report);
             if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}notice(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":""));
         }
@@ -223,6 +250,12 @@ public final class Campaign {
         returnLobby();
     }
     void tick(){
+        if(pendingBattle!=null){ // the map of a campaign battle is built: it starts unless something changed meanwhile
+            var row=pendingBattle;UUID id=pendingCommander;pendingBattle=null;pendingCommander=null;
+            var host=b.server.getPlayerManager().getPlayer(id);String refused=host==null?"":battleRefusal(id);
+            if(host!=null&&refused.isEmpty()&&row.map()==map)startBattle(host,row);
+            else if(host!=null)notice(id,refused.isEmpty()?"The battlefield changed. "+row.name()+" did not start.":refused);
+        }
         if(!preparingRoom.isEmpty()&&b.ready&&!b.running){
             var pending=social.rooms.get(preparingRoom);String code=preparingRoom;preparingRoom="";
             if(pending!=null){var host=b.server.getPlayerManager().getPlayer(pending.leader);
@@ -333,13 +366,17 @@ public final class Campaign {
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
     void switchMap(int index){Projectiles.clear(b);map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
-    /** The lesson a commander is on during their first battle, or -1 once they have finished it or played before. */
-    int tutorialStep(UUID id){Profile pr=profile(id);return !b.running||!participants.contains(id)||pr.tutorialDone||pr.matches>0?-1:tutorial.getOrDefault(id,0);}
-    /** Advances the first-battle lesson when the commander does what it asks; the last one pays for the first troop unlock. */
+    /** The lesson a commander is on, or -1: only a campaign battle whose sheet row teaches (lessons) shows them, to its commanders, until all four are done. They repeat on every replay. */
+    int tutorialStep(UUID id){
+        if(!b.running||activeBattle==null||!activeBattle.lessons()||!participants.contains(id))return -1;
+        int step=tutorial.getOrDefault(id,0);return step>3?-1:step;
+    }
+    /** Advances the lesson when the commander does what it asks. The last one pays for the first troop unlock, once per commander (tutorialDone). */
     void tutorialDid(ServerPlayerEntity p,int step){
         UUID id=p.getUuid();if(tutorialStep(id)!=step)return;
-        if(step<3){tutorial.put(id,step+1);return;}
-        Profile pr=profile(id);pr.tutorialDone=true;pr.gold+=Spec.CAMPAIGN[0].rollCost();save(id);tutorial.remove(id);
+        tutorial.put(id,step+1);if(step<3)return;
+        Profile pr=profile(id);if(pr.tutorialDone){notice(id,"Training complete. Its gold is paid only once.");return;}
+        pr.tutorialDone=true;pr.gold+=Spec.CAMPAIGN[0].rollCost();save(id);
         notice(id,"Training complete: +"+Spec.CAMPAIGN[0].rollCost()+" gold, enough to unlock a troop of your choice after the battle.");
     }
     /** Quick-match size from who is ready: half the commanders rounded up, at least the larger side, 2v2 to 4v4. A lone commander gets 3v3. */
@@ -420,7 +457,7 @@ public final class Campaign {
         }
     }
     String snapshot(ServerPlayerEntity p){
-        JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",JSON.toJsonTree(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("waiting",b.running&&(!b.squads.containsKey(p.getUuid())||!b.squads.get(p.getUuid()).seated));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("difficulty",difficulty);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",b.squads.containsKey(p.getUuid())&&b.squads.get(p.getUuid()).seated?Math.max(0,introUntil-b.time):0);j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("headline",headline);j.addProperty("tutorial",tutorialStep(p.getUuid()));JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
+        JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",JSON.toJsonTree(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("waiting",b.running&&(!b.squads.containsKey(p.getUuid())||!b.squads.get(p.getUuid()).seated));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("difficulty",difficulty);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",b.squads.containsKey(p.getUuid())&&b.squads.get(p.getUuid()).seated?Math.max(0,introUntil-b.time):0);j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("headline",headline);j.addProperty("tutorial",tutorialStep(p.getUuid()));JsonObject battle=new JsonObject();if(activeBattle!=null){battle.addProperty("id",activeBattle.id());battle.addProperty("name",activeBattle.name());battle.addProperty("briefing",activeBattle.briefing());battle.addProperty("reason",activeBattle.reason());}j.add("battle",battle);JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
         JsonObject partyJson=new JsonObject();boolean member=party.contains(p.getUuid());Long until=inviteUntil.get(p.getUuid());UUID inviter=invites.get(p.getUuid());
         partyJson.addProperty("open",partyLeader!=null);partyJson.addProperty("member",member);partyJson.addProperty("lead",leader(p));partyJson.addProperty("capacity",size*2);
         partyJson.addProperty("leader",partyLeader==null?"":name(partyLeader));

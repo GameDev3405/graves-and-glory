@@ -19,7 +19,7 @@ final class CampScreen extends ArmyScreen {
     JsonArray rows(String name){return social().has(name)?social().getAsJsonArray(name):new JsonArray();}
     void action(String cmd){if(System.currentTimeMillis()-requestAt<300)return;requestAt=System.currentTimeMillis();send(cmd);}
     void page(String next){page=next;offset=0;clearAndInit();}
-    String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.unlocked+CampaignClient.difficulty+running+ready;}
+    String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.unlocked+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready;}
     @Override protected void init(){
         scale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/760f,client.getWindow().getScaledHeight()/460f));width=(int)(client.getWindow().getScaledWidth()/scale);height=(int)(client.getWindow().getScaledHeight()/scale);key=state();code=null;
         String[] names={"Camp guide","Recruitment","Friends","Private room","Contracts","Chapter rewards"};String[] ids={"home","recruit","friends","room","contracts","chapter"};
@@ -28,7 +28,10 @@ final class CampScreen extends ArmyScreen {
         int x=194,w=width-x-22;
         if(CampaignClient.result.has("id"))button("Last battle",18,370,150,b->page("results"));
         if(page.equals("home")){
-            primary("OPEN RECRUITMENT",x,167,w/2-7,b->page("recruit"));primary("PARTY WITH FRIENDS",x+w/2+7,167,w/2-7,b->page("friends"));
+            // The Long March: battle 1 is the primary button until it is won, which points new commanders to it; then a normal button for replays.
+            var march=Spec.CAMPAIGNBATTLES[0];String go="campaign:"+march.id();
+            var marchButton=CampaignClient.profile.campaignCleared<march.order()?primary("THE LONG MARCH / BATTLE "+march.order(),x,147,w,b->action(go)):button("The Long March / battle "+march.order(),x,147,w,b->action(go));marchButton.active=!running;
+            primary("OPEN RECRUITMENT",x,181,w/2-7,b->page("recruit"));primary("PARTY WITH FRIENDS",x+w/2+7,181,w/2-7,b->page("friends"));
             button("Practice / learn command",x,262,w/2-7,b->action("camp:practice"));button("Army / deployment",x+w/2+7,262,w/2-7,b->open("army"));
             var bots=button(CampaignClient.botsLabel(),x,286,w/2-7,b->action("difficulty:"+CampaignClient.nextDifficulty()));bots.active=!running;
             button("Ready gates & map voting",x,350,w/2-7,b->page("match"));button("Daily contracts",x+w/2+7,350,w/2-7,b->page("contracts"));
@@ -84,8 +87,8 @@ final class CampScreen extends ArmyScreen {
         line(g,title,x,91,DarkUi.GOLD,w);
         var p=CampaignClient.profile;var progress=p.progression;
         if(page.equals("home")){
-            line(g,"Recruit an army. Gather your friends. Fight under one banner.",x,123,DarkUi.PAPER,w);
-            line(g,"Quartermaster west / Recruiter east",x,145,DarkUi.MUTED,w);
+            line(g,"Recruit an army. Gather your friends. Fight under one banner.",x,113,DarkUi.PAPER,w);
+            line(g,"Quartermaster west / Recruiter east",x,131,DarkUi.MUTED,w);
             line(g,Progression.chapter(progress,p.unlocked.size(),Spec.TROOPS.length),x,218,DarkUi.GOLD,w);
             line(g,"Practice teaches orders, formations, capture and reinforcements.",x,239,DarkUi.MUTED,w);
             line(g,"Easy, Normal or Hard AI commanders.",x+w/2+7,292,DarkUi.MUTED,w/2-7);

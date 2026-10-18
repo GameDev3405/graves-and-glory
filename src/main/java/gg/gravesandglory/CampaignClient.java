@@ -17,6 +17,11 @@ public final class CampaignClient {
     static JsonArray players=new JsonArray();
     static JsonObject social=new JsonObject(),progression=new JsonObject();
     static JsonObject result=new JsonObject();static String shownResult="";
+    /** The campaign battle being fought (id, name, briefing, reason), or an empty object. */
+    static JsonObject battle=new JsonObject();
+    static String text(JsonObject j,String key){return j.has(key)?j.get(key).getAsString():"";}
+    /** The Long March number (sheet order) of the battle being fought; 1 when none is known. */
+    static int battleOrder(){for(var row:Spec.CAMPAIGNBATTLES)if(row.id().equals(text(battle,"id")))return row.order();return 1;}
     static boolean lead,fill=true;static String mode="2",notice="",headline="",partyKey="";
     /** The server-wide bot difficulty (a Spec.BOTCOMMAND id), as last sent in the snapshot. */
     static String difficulty="normal";
@@ -39,7 +44,7 @@ public final class CampaignClient {
     static void accept(MinecraftClient c,String json,boolean running){
         try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Campaign.Profile.class);if(received&&nextProfile.unlocked.size()>profile.unlocked.size()){for(var unit:Spec.TROOPS)if(nextProfile.unlocked.contains(unit.id())&&!profile.unlocked.contains(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}nextProfile.sanitize();profile=nextProfile;received=true;social=j.has("social")?j.getAsJsonObject("social"):new JsonObject();progression=j.has("progression")?j.getAsJsonObject("progression"):new JsonObject();if(j.has("progression"))profile.progression=Campaign.JSON.fromJson(progression,Progression.State.class);players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
             JsonObject keyed=new JsonObject();for(var entry:party.entrySet())if(!entry.getKey().equals("inviteSeconds"))keyed.add(entry.getKey(),entry.getValue());partyKey=keyed.toString();
-            JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;fill=j.get("fill").getAsBoolean();difficulty=j.has("difficulty")?j.get("difficulty").getAsString():"normal";mode=j.get("mode").getAsString();notice=j.get("notice").getAsString();headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
+            JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;battle=j.has("battle")?j.getAsJsonObject("battle"):new JsonObject();fill=j.get("fill").getAsBoolean();difficulty=j.has("difficulty")?j.get("difficulty").getAsString():"normal";mode=j.get("mode").getAsString();notice=j.get("notice").getAsString();headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
             int next=j.get("map").getAsInt();if(next!=map||Spec.FACTIONS[0].spawnX()!=-283){map=next;if(c.getServer()==null)CampaignMaps.select(map);GravesAndGloryClient.invalidateMap(c);}
             waiting=j.has("waiting")&&j.get("waiting").getAsBoolean();
             int round=j.get("serial").getAsInt();intro=j.get("intro").getAsInt();
@@ -86,8 +91,20 @@ public final class CampaignClient {
     static void end(MinecraftClient c){if(camera!=null){frameReport();c.setCameraEntity(c.player);c.options.hudHidden=previousHud;if(previous!=null)c.options.setPerspective(previous);camera=null;}}
     public static void hud(DrawContext g,int w,int h){
         if(camera==null)return;var c=MinecraftClient.getInstance();int bar=Math.max(18,h/10);g.fill(0,0,w,bar,0xff080c13);g.fill(0,h-bar,w,h,0xff080c13);
-        g.drawCenteredTextWithShadow(c.textRenderer,Spec.MAPS[map].name().toUpperCase()+"  /  "+(mode.equals("ai")?"PRACTICE":mode+" v "+mode),w/2,bar+12,GravesAndGloryClient.GOLD);
+        boolean march=battle.has("name");
+        g.drawCenteredTextWithShadow(c.textRenderer,Spec.MAPS[map].name().toUpperCase()+"  /  "+(march?"THE LONG MARCH":mode.equals("ai")?"PRACTICE":mode+" v "+mode),w/2,bar+12,GravesAndGloryClient.GOLD);
+        if(march)briefing(g,c.textRenderer,w,h-bar-34);
         g.drawCenteredTextWithShadow(c.textRenderer,"YOUR BANNER. YOUR ARMY.",w/2,h-bar-24,GravesAndGloryClient.WHITE);
         g.drawCenteredTextWithShadow(c.textRenderer,GravesAndGloryClient.menu.getBoundKeyLocalizedText().getString()+" or Escape to skip entrance",w/2,h-bar+6,GravesAndGloryClient.MUTED);
+    }
+    /** The briefing card of a campaign battle during its entrance: the battle name, the order of the day and why it matters, ending at y=bottom. */
+    static void briefing(DrawContext g,net.minecraft.client.font.TextRenderer font,int w,int bottom){
+        int cw=Math.min(400,w-40),x=(w-cw)/2;
+        var orders=font.wrapLines(DarkUi.body(text(battle,"briefing")),cw-24);var why=font.wrapLines(DarkUi.body(text(battle,"reason")),cw-24);
+        int y=bottom-(36+11*(orders.size()+why.size()));DarkUi.frame(g,x,y,cw,bottom-y);
+        String name=text(battle,"name").toUpperCase(java.util.Locale.ROOT);int tw=(int)(font.getWidth(Text.literal(name).setStyle(net.minecraft.text.Style.EMPTY.withFont(DarkUi.TITLE)))*1.35f);
+        DarkUi.title(g,name,w/2-tw/2,y+9,DarkUi.GOLD);y+=26;
+        for(var line:orders){g.drawText(font,line,w/2-font.getWidth(line)/2,y,DarkUi.PAPER,false);y+=11;}y+=3;
+        for(var line:why){g.drawText(font,line,w/2-font.getWidth(line)/2,y,DarkUi.MUTED,false);y+=11;}
     }
 }

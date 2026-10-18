@@ -54,4 +54,6 @@ public record CampaignRow(String id,int rollCost,int completionGold,int victoryG
 public static CampaignRow[] CAMPAIGN = new CampaignRow[] {new CampaignRow("collection",100,80,40,40,180,50,0)};
 public record MoraleRow(String id,double routShare,double flankedRoutShare,double flankRadius,double flankArcDegrees,int flankMinAttackers,double engageCheckRadius,int routMinSeconds,int routMaxSeconds,double routSafeRadius,int regroupImmunitySeconds,int hornCooldownSeconds,double hornVolume) {}
 public static MoraleRow[] MORALE = new MoraleRow[] {new MoraleRow("domination",0.25,0.6,8.0,110.0,3,16.0,6,15,12.0,20,8,1.6)};
+public record CampaignBattlesRow(String id,int chapter,int order,String name,int map,int size,String difficulty,boolean lessons,String briefing,String reason) {}
+public static CampaignBattlesRow[] CAMPAIGNBATTLES = new CampaignBattlesRow[] {new CampaignBattlesRow("march-1",1,1,"The Training Field",0,1,"easy",true,"Dusk raiders hold the river road. Take the crossings and teach your banner to follow you.","The road west must open before the march begins.")};
 }

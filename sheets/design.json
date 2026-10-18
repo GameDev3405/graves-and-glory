@@ -1661,5 +1661,19 @@
       "hornCooldownSeconds": 8,
       "hornVolume": 1.6
     }
+  ],
+  "campaignBattles": [
+    {
+      "id": "march-1",
+      "chapter": 1,
+      "order": 1,
+      "name": "The Training Field",
+      "map": 0,
+      "size": 1,
+      "difficulty": "easy",
+      "lessons": true,
+      "briefing": "Dusk raiders hold the river road. Take the crossings and teach your banner to follow you.",
+      "reason": "The road west must open before the march begins."
+    }
   ]
 }

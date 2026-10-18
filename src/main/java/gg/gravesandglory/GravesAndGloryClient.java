@@ -158,15 +158,15 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             case 0->"Press "+menu.getBoundKeyLocalizedText().getString()+", choose a group and Move, then click the ground to send them.";
             case 1->"Press "+cycle.getBoundKeyLocalizedText().getString()+" to change formation. Shieldwall holds a line; Wedge breaks one.";
             case 2->"Press "+attack.getBoundKeyLocalizedText().getString()+" and aim at an enemy or a point to send your army in.";
-            default->"Recruit at your barracks lectern. Trained troops march out from the held point nearest the fight.";
+            default->"Recruit at your barracks lectern ("+MinecraftClient.getInstance().options.useKey.getBoundKeyLocalizedText().getString()+"). Trained troops march out from the held point nearest the fight.";
         };
     }
-    /** First-battle lessons, one at a time, each naming the player's own key binding. The server advances them. The copy wraps; the panel grows a row per line. */
+    /** The Long March lessons (battles whose sheet row teaches), one at a time, each naming the player's own key binding. The server advances them. The copy wraps; the panel grows a row per line. */
     static void lesson(DrawContext g,net.minecraft.client.font.TextRenderer font,int w){
         int step=CampaignClient.tutorial;if(step<0||step>3)return;
         List<String> lines=font.getTextHandler().wrapLines(lessonText(step),LESSON_TEXT_WIDTH,net.minecraft.text.Style.EMPTY).stream().map(net.minecraft.text.StringVisitable::getString).toList();
         panel(g,w/2-180,60,360,21+11*lines.size());
-        g.drawCenteredTextWithShadow(font,"FIRST BATTLE / LESSON "+(step+1)+" OF 4",w/2,65,GOLD);
+        g.drawCenteredTextWithShadow(font,"THE LONG MARCH / BATTLE "+CampaignClient.battleOrder()+" / LESSON "+(step+1)+" OF 4",w/2,65,GOLD);
         for(int i=0;i<lines.size();i++)g.drawCenteredTextWithShadow(font,lines.get(i),w/2,78+11*i,WHITE);
         lessonDrawn=lines;
     }
