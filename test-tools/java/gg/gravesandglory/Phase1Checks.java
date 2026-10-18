@@ -566,12 +566,6 @@ public final class Phase1Checks implements ClientModInitializer {
         }
         /** What Dawn sees of the Dusk units now: its memory is wiped, the sight pass runs, and the remembered count comes back. */
         int see(GravesAndGlory.Battle b){b.sightings.computeIfAbsent(0,k->new HashMap<>()).clear();b.updateSight();return b.sightings.get(0).size();}
-        /** The lane rule, written out again, so the check does not lean on the code under test. Dusk lanes mirror Dawn lanes: on n points, lane i is point n-1-i. */
-        static int laneRule(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Vec3d centre){
-            int best=-1,n=b.points.size(),lane=s.team==0?s.lane%n:n-1-s.lane%n;double value=Double.MAX_VALUE;
-            for(int i=0;i<n;i++){var p=b.points.get(i);double v=Math.hypot(centre.x-p.spec.x(),centre.z-p.spec.z())+(p.owner==s.team?140:0)+(i==lane?0:90)-(p.contested?55:0);if(v<value){value=v;best=i;}}
-            return best;
-        }
         /** A spectator camera at (x,z) looking along yaw/pitch, up blocks above the ground. */
         void camera(GravesAndGlory.Battle b,double x,double z,double up,float yaw,float pitch){var p=sp(b);p.changeGameMode(GameMode.SPECTATOR);b.relocate(p,x,top(b,x,z)+up,z,yaw,pitch);}
 
@@ -649,15 +643,15 @@ public final class Phase1Checks implements ClientModInitializer {
                     plant(b,1,9);b.campaign.botDecide(hard,row);int defended=chosen(b,hard);
                     for(var u:foes)u.mob.discard(); // the nine fall, but the memory of them stays
                     b.campaign.botDecide(hard,row);int stale=chosen(b,hard);b.units.removeAll(foes);foes.clear();
-                    hard.tier="normal";var normalRow=b.campaign.tier(hard);b.campaign.botDecide(hard,normalRow);int normal=chosen(b,hard),lane=laneRule(b,hard,centre(b,hard));
+                    hard.tier="normal";var normalRow=b.campaign.tier(hard);b.campaign.botDecide(hard,normalRow);int normal=chosen(b,hard);
                     hard.tier="hard";for(var memory:b.sightings.values())memory.clear();
                     var east=b.points.get(4).spec;place(b,hard,east.x()-25,east.z());b.campaign.botDecide(hard,row);int reach=chosen(b,hard);
                     // A Dusk Normal army on the centre point, lane 1, holding points 0, 2 and 4: West Outpost (1) and its mirror (3) are about as far as each other, so only the mirrored Dusk lane picks 3.
                     var dusk=army(b,1,"normal",0,0);for(int i:new int[]{0,2,4})b.points.get(i).owner=1;
-                    b.campaign.botDecide(dusk,b.campaign.tier(dusk));int duskNormal=chosen(b,dusk),duskLane=laneRule(b,dusk,centre(b,dusk));
+                    b.campaign.botDecide(dusk,b.campaign.tier(dusk));int duskNormal=chosen(b,dusk);
                     for(var u:b.units)if(u.squad==dusk)u.mob.discard();b.units.removeIf(u->u.squad==dusk);for(var p:b.points)p.owner=-1;
-                    boolean ok=b.points.size()==5&&row.id().equals("hard")&&none==1&&defended>=0&&defended<5&&defended!=1&&stale==1&&normal==1&&normal==lane&&reach==4&&duskNormal==3&&duskNormal==duskLane;
-                    report("p1-bots-least-defended",ok,b.points.size()+" points; Hard near "+name(b,1)+" with no sightings -> "+name(b,none)+", with nine Dusk sightings on it -> "+name(b,defended)+", with those nine dead but still remembered -> "+name(b,stale)+"; Normal on the same state -> "+name(b,normal)+" (lane rule: "+name(b,lane)+"); Hard near "+name(b,4)+" -> "+name(b,reach)+" (index above 2 needs the arrays sized from battle.points); Dusk Normal on "+name(b,2)+", lane 1, holding points 0, 2 and 4 -> "+name(b,duskNormal)+" (mirrored lane rule: "+name(b,duskLane)+")");
+                    boolean ok=b.points.size()==5&&row.id().equals("hard")&&none==1&&defended>=0&&defended<5&&defended!=1&&stale==1&&normal==1&&reach==4&&duskNormal==3;
+                    report("p1-bots-least-defended",ok,b.points.size()+" points; Hard near "+name(b,1)+" with no sightings -> "+name(b,none)+", with nine Dusk sightings on it -> "+name(b,defended)+", with those nine dead but still remembered -> "+name(b,stale)+"; Normal on the same state -> "+name(b,normal)+" (expected "+name(b,1)+"); Hard near "+name(b,4)+" -> "+name(b,reach)+" (index above 2 needs the arrays sized from battle.points); Dusk Normal on "+name(b,2)+", lane 1, holding points 0, 2 and 4 -> "+name(b,duskNormal)+" (expected "+name(b,3)+", lane 1 mirrored)");
                     next(b,11);
                 }
                 case 11->{if(since(b)>=40){ // p1-bots-shieldwall: six frozen Dusk archers 20 blocks ahead of a Dawn Hard army

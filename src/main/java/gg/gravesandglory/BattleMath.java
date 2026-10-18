@@ -59,35 +59,46 @@ public final class BattleMath {
         }
         return best;
     }
-    /** Per army index, the point index that army must hold, or -1 (free to flank). Positions are {x,z}.
-     *  Every point owned by team with no army of team within nearRadius takes the nearest army not yet holding one (ties by lower index);
-     *  the nearest army-point pair is settled first, so an army holds at most one point and goes to the nearer of two that need it. */
-    public static int[] garrison(int[] owners, int team, double[][] armyPos, double[][] pointPos, double nearRadius) {
+    /** Per army index, the point index that army must hold, or -1 (free to flank). Positions are {x,z}; near means within nearRadius.
+     *  Guards first: a point owned by team keeps the nearest army standing near it as its guard (ties: the lower army index), and that army
+     *  holds it, so a point is not left the moment it is taken. Then every owned point still unguarded takes the nearest army that is neither
+     *  guarding nor holding. In both passes the nearest army-point pair is settled first, so an army takes at most one point and goes to the
+     *  nearer of two. assignable (one per army) is false for an army the bots cannot order, a player's: it still guards the point it stands
+     *  on, so no bot is pulled back to it, but it is never sent to one and always gets -1. */
+    public static int[] garrison(int[] owners, int team, double[][] armyPos, boolean[] assignable, double[][] pointPos, double nearRadius) {
         int[] hold = new int[armyPos.length];
         for (int i = 0; i < hold.length; i++) hold[i] = -1;
         int n = Math.min(owners.length, pointPos.length);
-        boolean[] open = new boolean[n];
-        for (int j = 0; j < n; j++) {
-            if (owners[j] != team) continue;
-            boolean guarded = false;
-            for (double[] army : armyPos) if (Math.hypot(army[0] - pointPos[j][0], army[1] - pointPos[j][1]) <= nearRadius) { guarded = true; break; }
-            open[j] = !guarded;
+        boolean[] open = new boolean[n], taken = new boolean[armyPos.length];
+        for (int j = 0; j < n; j++) open[j] = owners[j] == team;
+        int[] pair;
+        while ((pair = nearestPair(open, taken, null, armyPos, pointPos, nearRadius)) != null) {
+            taken[pair[0]] = true;
+            open[pair[1]] = false;
+            if (assignable[pair[0]]) hold[pair[0]] = pair[1];
         }
-        while (true) {
-            int army = -1, point = -1;
-            double best = Double.MAX_VALUE;
-            for (int j = 0; j < n; j++) {
-                if (!open[j]) continue;
-                for (int i = 0; i < armyPos.length; i++) {
-                    if (hold[i] >= 0) continue;
-                    double distance = Math.hypot(armyPos[i][0] - pointPos[j][0], armyPos[i][1] - pointPos[j][1]);
-                    if (distance < best) { best = distance; army = i; point = j; }
-                }
+        while ((pair = nearestPair(open, taken, assignable, armyPos, pointPos, Double.POSITIVE_INFINITY)) != null) {
+            taken[pair[0]] = true;
+            open[pair[1]] = false;
+            hold[pair[0]] = pair[1];
+        }
+        return hold;
+    }
+    /** The nearest {army, point} pair, at most limit apart, of an open point and an army not yet taken (and assignable, unless that is null),
+     *  or null. Points, then armies, are scanned in index order and only a strictly nearer pair replaces the best, so ties go to the lower
+     *  point index, then the lower army index. */
+    private static int[] nearestPair(boolean[] open, boolean[] taken, boolean[] assignable, double[][] armyPos, double[][] pointPos, double limit) {
+        int[] best = null;
+        double bestDistance = limit;
+        for (int j = 0; j < open.length; j++) {
+            if (!open[j]) continue;
+            for (int i = 0; i < armyPos.length; i++) {
+                if (taken[i] || assignable != null && !assignable[i]) continue;
+                double distance = Math.hypot(armyPos[i][0] - pointPos[j][0], armyPos[i][1] - pointPos[j][1]);
+                if (best == null ? distance <= limit : distance < bestDistance) { best = new int[]{i, j}; bestDistance = distance; }
             }
-            if (army < 0) return hold;
-            hold[army] = point;
-            open[point] = false;
         }
+        return best;
     }
     /** The point index a bot army's lane sends it to. Dawn's lane i is point i; Dusk's is the mirror, points-1-i, so both teams
      *  play the same plan from their own side (Kingsfield: Dawn A, B, C against Dusk E, D, C; three points: Dusk C, B, A). */

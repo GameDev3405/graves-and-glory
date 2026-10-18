@@ -313,28 +313,23 @@ public final class Campaign {
         }
         if(s.order.equals("charge")&&couldCharge)b.chargeHorn(s,"all");
     }
-    /** Hard holds what it has taken before it flanks. The team's bot armies (alive and not retreating, in squad order; a fixture's army outside
-     *  b.squads goes last) share out the owned points, near meaning within NEAR_RADIUS_FACTOR*chargeDistance. An owned point keeps the nearest army
-     *  standing near it as its guard (ties: lower index), so a captured point is not left the moment it is taken. Owned points with no army near
-     *  them go to the nearest of the other armies (BattleMath.garrison). Returns the index of the point this army holds, or -1: free to flank. */
+    /** Hard holds what it has taken before it flanks. Gathers the team's armies for BattleMath.garrison, near meaning within
+     *  NEAR_RADIUS_FACTOR*chargeDistance: its bot armies (alive and not retreating, in squad order; a fixture's army outside b.squads goes last)
+     *  and its seated human armies, which guard a point they stand on but are never sent to one. Returns the index of the point this army
+     *  holds, or -1: free to flank. */
     int garrisonPoint(GravesAndGlory.Squad s,Vec3d center,Spec.BotCommandRow tier){
         if(botRetreating.contains(s.owner))return -1;
-        List<double[]> at=new ArrayList<>();int me=-1;
-        for(var army:b.squads.values())if(army==s||army.bot&&army.seated&&army.team==s.team&&!botRetreating.contains(army.owner)){
-            if(army==s){me=at.size();at.add(new double[]{center.x,center.z});continue;}
-            var units=b.units.stream().filter(u->u.squad==army&&u.mob.isAlive()).toList();if(!units.isEmpty()){Vec3d c=Morale.centre(units);at.add(new double[]{c.x,c.z});}
+        List<double[]> at=new ArrayList<>();List<Boolean> bots=new ArrayList<>();int me=-1;
+        for(var army:b.squads.values()){
+            if(army==s){me=at.size();at.add(new double[]{center.x,center.z});bots.add(true);continue;}
+            if(army.team!=s.team||!army.seated||army.bot&&botRetreating.contains(army.owner))continue; // a seated human army stays in: it guards
+            var units=b.units.stream().filter(u->u.squad==army&&u.mob.isAlive()).toList();if(!units.isEmpty()){Vec3d c=Morale.centre(units);at.add(new double[]{c.x,c.z});bots.add(army.bot);}
         }
-        if(me<0){me=at.size();at.add(new double[]{center.x,center.z});}
-        int count=b.points.size(),n=at.size();double radius=NEAR_RADIUS_FACTOR*tier.chargeDistance();
-        int[] owners=new int[count],guard=new int[n];double[][] points=new double[count][];Arrays.fill(guard,-1);
+        if(me<0){me=at.size();at.add(new double[]{center.x,center.z});bots.add(true);}
+        int count=b.points.size();int[] owners=new int[count];double[][] points=new double[count][];boolean[] assignable=new boolean[at.size()];
         for(int j=0;j<count;j++){var p=b.points.get(j);owners[j]=p.owner;points[j]=new double[]{p.spec.x(),p.spec.z()};}
-        for(int j=0;j<count;j++){if(owners[j]!=s.team)continue;int best=-1;double bestDistance=0;
-            for(int i=0;i<n;i++){double d=Math.hypot(at.get(i)[0]-points[j][0],at.get(i)[1]-points[j][1]);if(guard[i]<0&&d<=radius&&(best<0||d<bestDistance)){best=i;bestDistance=d;}}
-            if(best>=0){guard[best]=j;owners[j]=-1;}} // a guarded point is not handed out again
-        if(guard[me]>=0)return guard[me];
-        List<double[]> free=new ArrayList<>();int mine=-1;
-        for(int i=0;i<n;i++)if(guard[i]<0){if(i==me)mine=free.size();free.add(at.get(i));}
-        return BattleMath.garrison(owners,s.team,free.toArray(double[][]::new),points,radius)[mine];
+        for(int i=0;i<assignable.length;i++)assignable[i]=bots.get(i);
+        return BattleMath.garrison(owners,s.team,at.toArray(double[][]::new),assignable,points,NEAR_RADIUS_FACTOR*tier.chargeDistance())[me];
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
     void switchMap(int index){Projectiles.clear(b);map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}

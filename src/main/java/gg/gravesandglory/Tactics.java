@@ -12,8 +12,15 @@ import java.util.*;
 /** Server-authoritative targeting, separation, bridge routing and local path recovery. */
 final class Tactics {
     static final Spec.NavigationRow N=Spec.NAVIGATION[0];
+    /** Between beats a shield troop re-reads the distance to the enemy it chose on its beat, so a block knight lowers its shield on the tick
+     *  that enemy steps into sword reach (BattleMath.raiseShield). With no live target it keeps the beat's decision until the next beat. */
+    static void brace(GravesAndGlory.Battle battle,GravesAndGlory.Unit u){
+        var t=u.lockedTarget;if(!u.spec.ability().equals("shield")||t==null||!t.isAlive())return;
+        var a=battle.assignment(u);boolean shield=BattleMath.raiseShield(a.formation,a.order,u.mob.squaredDistanceTo(t),u.spec.range()*u.spec.range(),true);
+        if(shield&&!u.mob.isUsingItem())u.mob.setCurrentHand(Hand.OFF_HAND);else if(!shield&&u.mob.isUsingItem())u.mob.stopUsingItem();
+    }
     static void tick(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,long time){
-        if(time%10!=u.slot%10)return;
+        if(time%10!=u.slot%10){brace(battle,u);return;} // the shield is decided every tick; everything else on the unit's 10-tick beat
         var mob=u.mob;var s=u.squad;var a=battle.assignment(u);
         var owner=battle.server.getPlayerManager().getPlayer(s.owner);
         if(a.order.equals("follow")&&owner!=null&&!battle.respawns.containsKey(s.owner)){a.target=owner.getPos();a.yaw=owner.getYaw();}
