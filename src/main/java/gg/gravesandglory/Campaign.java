@@ -13,6 +13,8 @@ import java.util.*;
 /** Lobby, permanent collections, team admission, rewards and bot commanders. */
 public final class Campaign {
     static final Gson JSON=new GsonBuilder().setPrettyPrinting().create();
+    /** The client reads the camp snapshot with readString(SNAPSHOT_LIMIT) and a longer string drops its connection, so fitted() never returns one. WIRE is the compact form it falls back to. */
+    static final int SNAPSHOT_LIMIT=16000;static final Gson WIRE=new Gson();
     final GravesAndGlory.Battle b;
     final Map<UUID,Profile> profiles=new HashMap<>();
     final Path directory;
@@ -34,6 +36,8 @@ public final class Campaign {
     final Set<UUID> botRetreating=new HashSet<>();
     final Map<UUID,String> notices=new HashMap<>();
     final Map<UUID,JsonObject> results=new HashMap<>();
+    /** The shortened form each commander's camp snapshot was last sent in, while it does not fit; each change is logged once. */
+    final Map<UUID,String> snapshotForm=new HashMap<>();
     String headline="";
     /** Bot difficulty for the next round: the id of a Spec.BOTCOMMAND row (easy, normal, hard). There is one battle per server, so one setting covers it. */
     String difficulty="normal";
@@ -472,7 +476,7 @@ public final class Campaign {
         }
     }
     String snapshot(ServerPlayerEntity p){
-        JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",JSON.toJsonTree(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("waiting",b.running&&(!b.squads.containsKey(p.getUuid())||!b.squads.get(p.getUuid()).seated));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("difficulty",difficulty);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",b.squads.containsKey(p.getUuid())&&b.squads.get(p.getUuid()).seated?Math.max(0,introUntil-b.time):0);j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("headline",headline);j.addProperty("tutorial",tutorialStep(p.getUuid()));JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
+        JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",forClient(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("waiting",b.running&&(!b.squads.containsKey(p.getUuid())||!b.squads.get(p.getUuid()).seated));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("difficulty",difficulty);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",b.squads.containsKey(p.getUuid())&&b.squads.get(p.getUuid()).seated?Math.max(0,introUntil-b.time):0);j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("headline",headline);j.addProperty("tutorial",tutorialStep(p.getUuid()));JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
         JsonObject battle=new JsonObject();if(activeBattle!=null){battle.addProperty("id",activeBattle.id());battle.addProperty("name",activeBattle.name());battle.addProperty("briefing",activeBattle.briefing());battle.addProperty("reason",activeBattle.reason());}j.add("battle",battle); // the Long March battle being fought, or {}
         JsonObject partyJson=new JsonObject();boolean member=party.contains(p.getUuid());Long until=inviteUntil.get(p.getUuid());UUID inviter=invites.get(p.getUuid());
         partyJson.addProperty("open",partyLeader!=null);partyJson.addProperty("member",member);partyJson.addProperty("lead",leader(p));partyJson.addProperty("capacity",size*2);
@@ -481,7 +485,18 @@ public final class Campaign {
         partyJson.addProperty("inviteSeconds",until==null?0:(int)Math.max(0,(until-b.time+19)/20));partyJson.addProperty("inviter",inviter==null?"":name(inviter));
         JsonArray online=new JsonArray();if(partyLeader!=null)for(var other:b.server.getPlayerManager().getPlayerList())if(!party.contains(other.getUuid())&&b.squads.containsKey(other.getUuid()))online.add(other.getGameProfile().getName());
         partyJson.add("online",online);j.add("party",partyJson);j.add("result",results.getOrDefault(p.getUuid(),new JsonObject()));
-        JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",s.team);row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));return JSON.toJson(j);
+        JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",s.team);row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));return fitted(j,p.getUuid());
+    }
+    /** The client's copy of a profile: match ids stay on the server. They only stop one match paying twice, and 256 of them (94 characters a match across both copies) would outgrow SNAPSHOT_LIMIT. */
+    static JsonObject forClient(Profile p){JsonObject j=JSON.toJsonTree(p).getAsJsonObject();j.add("progression",forClient(p.progression));return j;}
+    static JsonObject forClient(Progression.State s){JsonObject j=JSON.toJsonTree(s).getAsJsonObject();j.remove("matchGrants");return j;}
+    /** The snapshot as sent: pretty when it fits SNAPSHOT_LIMIT, else compact, else compact without the battle report, else "{}" (the client then keeps its last camp state). */
+    String fitted(JsonObject j,UUID id){
+        String out=JSON.toJson(j);if(out.length()<=SNAPSHOT_LIMIT){snapshotForm.remove(id);return out;}int full=out.length();String form="compact";
+        out=WIRE.toJson(j);if(out.length()>SNAPSHOT_LIMIT){j.add("result",new JsonObject());out=WIRE.toJson(j);form="compact without the battle report";}
+        if(out.length()>SNAPSHOT_LIMIT){out="{}";form="empty";}
+        if(!form.equals(snapshotForm.put(id,form)))System.err.println("[Graves and Glory] The camp snapshot for "+name(id)+" ran to "+full+" characters, over the client's "+SNAPSHOT_LIMIT+"; sent "+form+" ("+out.length()+" characters).");
+        return out;
     }
 
     boolean saveSocial(){
@@ -533,7 +548,7 @@ public final class Campaign {
         if(!save(id)){profiles.put(id,JSON.fromJson(before,Profile.class));result="Reward was not applied because saving failed. Try again after checking disk space.";}
         notice(id,result);return true;
     }
-    JsonObject progressSnapshot(UUID id){Profile p=profile(id);Progression.reset(p.progression,Progression.today());JsonObject j=JSON.toJsonTree(p.progression).getAsJsonObject();j.addProperty("tier",Progression.tier(p.progression));j.addProperty("chapter",Progression.chapter(p.progression,p.unlocked.size(),Spec.TROOPS.length));return j;}
+    JsonObject progressSnapshot(UUID id){Profile p=profile(id);Progression.reset(p.progression,Progression.today());JsonObject j=forClient(p.progression);j.addProperty("tier",Progression.tier(p.progression));j.addProperty("chapter",Progression.chapter(p.progression,p.unlocked.size(),Spec.TROOPS.length));return j;}
     void progressEvent(UUID id,boolean capture){if(!participants.contains(id))return;var squad=b.squads.get(id);if(squad==null||!squad.seated)return;
         var state=profile(id).progression;Progression.reset(state,Progression.today());if(capture)state.dailyCaptures++;else state.dailyOrders++;}
 }
