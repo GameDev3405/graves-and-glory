@@ -18,6 +18,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.Heightmap;
+import org.lwjgl.glfw.GLFW;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -56,8 +57,17 @@ public final class Phase1Checks implements ClientModInitializer {
         report("p1-"+suite+"-suite",!failed,failed?"an earlier p1 check failed":"all checks passed");
         current=null;if(queue.isEmpty())c.scheduleStop();
     }
-    /** Sets the window to w x h and the GUI Scale option to gui (0 is Auto), applies both, then holds the suite for 5 client ticks. */
-    public static void window(MinecraftClient c,int w,int h,int gui){c.getWindow().setWindowedSize(w,h);c.options.getGuiScale().setValue(gui);c.onResolutionChanged();hold=5;}
+    /** Sets the window to w x h and the GUI Scale option to gui (0 is Auto), applies both, then holds the suite for 5 client ticks.
+     *  The window has its title bar. */
+    public static void window(MinecraftClient c,int w,int h,int gui){window(c,w,h,gui,false);}
+    /** As window(c,w,h,gui), but borderless at the top left of the screen when bare is set. With its title bar a 1920x1080 window
+     *  does not fit a 1920x1080 desktop: Windows clamps it to 1920x1061 (fix round 1, run ui-fix1-155207), where the canvas is k 1.
+     *  A window set without bare gets its title bar back. */
+    public static void window(MinecraftClient c,int w,int h,int gui,boolean bare){
+        var win=c.getWindow();GLFW.glfwSetWindowAttrib(win.getHandle(),GLFW.GLFW_DECORATED,bare?GLFW.GLFW_FALSE:GLFW.GLFW_TRUE);
+        win.setWindowedSize(w,h);if(bare)GLFW.glfwSetWindowPos(win.getHandle(),0,0);
+        c.options.getGuiScale().setValue(gui);c.onResolutionChanged();hold=5;
+    }
 
     @Override public void onInitializeClient(){
         String list=System.getProperty("gravesandglory.phase1Checks","");if(list.isBlank())return;
@@ -1126,7 +1136,8 @@ public final class Phase1Checks implements ClientModInitializer {
         static final double AX=-220,AZ=0; // open ground on the Dawn road, 63 blocks out from the live Dawn base at x=-283
         static final List<BattleHud.CardDraw> CARDS=List.of(new BattleHud.CardDraw("infantry","FLASH",false,24,348,176,48),new BattleHud.CardDraw("ranged","SELECTED",true,24,404,176,62),new BattleHud.CardDraw("support","ROUTING",false,24,474,176,48));
         static final List<BattleHud.SealDraw> SEALS=List.of(new BattleHud.SealDraw("hud/seal-dawn",439,41),new BattleHud.SealDraw("hud/seal-contested",467,40),new BattleHud.SealDraw("hud/seal-dusk",495,41));
-        static final int[][] WINDOWS={{960,540,1},{854,480,2},{1280,720,3},{1920,1080,2},{1920,1080,4}};
+        /** Width, height, GUI scale, and 1 for a borderless window (the 1080 windows: see window(c,w,h,gui,bare)). */
+        static final int[][] WINDOWS={{960,540,1,0},{854,480,2,0},{1280,720,3,0},{1920,1080,2,1},{1920,1080,4,1}};
         // Written by both threads. A negative stage is a hand-off: the client waits for the server task it sent to set the next stage.
         volatile int stage;volatile UUID player;
         volatile boolean hungerOn,hungerDone,routSupport,keepRespawn,fiveReady;volatile int hungerSets,hungerOk;volatile String hungerWrong="",fixture="";
@@ -1302,7 +1313,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     else if(tick-askAt>60){report("p1-ui-ability",false,abilityWhy+"; the slot was still drawn 60 ticks after testAbility was cleared");stage=40;}
                 }
                 case 40->{keepLesson=true;keepRespawn=true;win=0;stage=-40;server(c,b->{b.testAbility=new GravesAndGlory.Battle.AbilityState("rally_horn",960,1800);stage=41;});}
-                case 41->{var s=WINDOWS[win];window(c,s[0],s[1],s[2]);waitFrom=tick;stage=42;}
+                case 41->{var s=WINDOWS[win];window(c,s[0],s[1],s[2],s[3]==1);waitFrom=tick;stage=42;}
                 case 42->{ // p1-ui-small-window, one window size
                     var r=BattleHud.rects();var s=WINDOWS[win];var score=r.get("score");
                     boolean full=r.containsKey("lesson")&&r.containsKey("respawn")&&r.containsKey("ability")&&r.containsKey("spine")&&BattleHud.cards().size()==3&&score!=null&&score[0]==UiCanvas.width()/2-128;
