@@ -184,6 +184,10 @@ Known broken or stale:
   server; a snapshot that still does not fit goes compact, then without the
   battle report, then as {} (logged once per form). Checked by
   p1-report-snapshot and p1-report-snapshot-guard.
+- (fixed in UI Task 3) Every client run logged two "Invalid path in mod
+  resource-pack gravesandglory" errors, for font/OFL-Lato.txt and
+  font/OFL-Marcellus.txt (resource paths must be lowercase). The licence
+  texts are now font/ofl-lato.txt and font/ofl-marcellus.txt, unchanged.
 - Pre-existing road blockers: bridge railing posts, Ironhold gate walls,
   Hollowwood log pile (35 cells).
 - "Overview" tour camera shot renders at ground level.
@@ -192,11 +196,8 @@ Known broken or stale:
 - Baseline log noise: Excalibur pumpkin hats, Iris BIOME_PALE_GARDEN, ETF
   properties, Realms auth offline. Also expected in every isolated 0.4.0 run
   and not a fault: "Failed to verify authentication" (offline), Realms lines,
-  "Invalid path in mod resource-pack gravesandglory:
-  gravesandglory:font/OFL-Marcellus.txt" and the same for OFL-Lato.txt (the
-  font licence texts sit beside the fonts; the game ignores them), vanilla
-  "Missing sound for event" for goat_horn.play and goat.screaming.horn_break
-  (the battle horns are the mod's own sounds), the
+  vanilla "Missing sound for event" for goat_horn.play and
+  goat.screaming.horn_break (the battle horns are the mod's own sounds), the
   rendertype_entity_translucent_emissive Sampler2 shader warning, the
   PerfmonDisabled registry warning, and "Can't keep up!" during the heavy
   check stages.
