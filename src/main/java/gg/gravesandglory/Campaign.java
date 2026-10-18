@@ -254,19 +254,23 @@ public final class Campaign {
     }
     /** An enemy infantry unit this close to a Hard bot's army counts as melee: no shieldwall. */
     static final double MELEE_THREAT_RANGE=8;
+    /** A remembered enemy counts as near a point, or near an army, within this many times the point's radius or the tier's charge distance. */
+    static final double NEAR_RADIUS_FACTOR=2;
     /** One command decision for a bot army, run at its tier's cadence: retreat or rally, pick the point to take, set the order, sound the charge horn.
      *  Easy and Normal read the whole battlefield; Hard reads only what its team has seen (b.sightings). */
     void botDecide(GravesAndGlory.Squad s,Spec.BotCommandRow tier){
         var mine=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).toList();
         long living=mine.size();if(living==0)return;
         Vec3d center=mine.stream().map(u->u.mob.getPos()).reduce(Vec3d.ZERO,Vec3d::add).multiply(1.0/living);
-        Map<UUID,GravesAndGlory.Battle.Sight> seen=b.sightings.getOrDefault(s.team,Map.of());
+        // One live view of the enemy for the whole decision: the living enemy units, and only the sightings of units that are still alive.
+        Map<UUID,GravesAndGlory.Unit> foes=new HashMap<>();for(var u:b.units)if(u.squad.team!=s.team&&u.mob.isAlive())foes.put(u.mob.getUuid(),u);
+        Map<UUID,GravesAndGlory.Battle.Sight> seen=new HashMap<>();for(var entry:b.sightings.getOrDefault(s.team,Map.of()).entrySet())if(foes.containsKey(entry.getKey()))seen.put(entry.getKey(),entry.getValue());
         int count=b.points.size();GravesAndGlory.Capture choice;
         if(tier.flankLeastDefended()){
             // Every point of the current map counts (Kingsfield has five); a point is defended by the enemies this team last saw near it.
             double[] px=new double[count],pz=new double[count];int[] owner=new int[count],defenders=new int[count];
             for(int i=0;i<count;i++){var p=b.points.get(i);px[i]=p.spec.x();pz[i]=p.spec.z();owner[i]=p.owner;
-                for(var sight:seen.values())if(Math.hypot(sight.x()-px[i],sight.z()-pz[i])<=2*p.spec.radius())defenders[i]++;}
+                for(var sight:seen.values())if(Math.hypot(sight.x()-px[i],sight.z()-pz[i])<=NEAR_RADIUS_FACTOR*p.spec.radius())defenders[i]++;}
             choice=b.points.get(Math.max(0,BattleMath.leastDefended(center.x,center.z,px,pz,owner,defenders,s.team,tier.defenderWeight())));
         }else{
             choice=b.points.get(s.lane%count);double best=Double.MAX_VALUE;
@@ -275,7 +279,7 @@ public final class Campaign {
         int full=Arrays.stream(Spec.TROOPS).filter(t->t.faction().equals(Spec.FACTIONS[s.team].id())).mapToInt(Spec.TroopsRow::count).sum();
         if(living<=full*tier.retreatShare())botRetreating.add(s.owner);
         else if(living>=full*tier.rallyShare())botRetreating.remove(s.owner);
-        long enemies=b.units.stream().filter(u->u.squad.team!=s.team&&u.mob.isAlive()).count();
+        long enemies=foes.size();
         boolean couldCharge=b.startsCharge(s,"all"),retreating=botRetreating.contains(s.owner);
         s.assignments.clear();
         if(retreating){s.order="retreat";s.formation="loose";s.target=GravesAndGlory.Battle.base(s.team);}
@@ -285,18 +289,17 @@ public final class Campaign {
                 if(tier.chargeDistance()>0){
                     // Timed charge: judged on the enemies this team has seen, counted near the army, and only once the nearest is in range.
                     double nearest=Double.MAX_VALUE;long near=0;
-                    for(var sight:seen.values()){double d=Math.hypot(sight.x()-center.x,sight.z()-center.z);nearest=Math.min(nearest,d);if(d<=2*tier.chargeDistance())near++;}
+                    for(var sight:seen.values()){double d=Math.hypot(sight.x()-center.x,sight.z()-center.z);nearest=Math.min(nearest,d);if(d<=NEAR_RADIUS_FACTOR*tier.chargeDistance())near++;}
                     if(near>0&&BattleMath.timedCharge(nearest,living,near,tier.chargeRatio(),tier.chargeDistance()))s.order="charge";
                 }else if(enemies>0&&BattleMath.timedCharge(0,living,enemies,tier.chargeRatio(),0))s.order="charge";
             }
-            s.yaw=s.team==0?-90:90;
         }
+        s.yaw=s.team==0?-90:90;
         if(!retreating&&tier.shieldwallVsArchers()){
             // Brace the shield troops when remembered archers are in range and nothing has closed to melee. Only troops with a shield can brace.
             boolean shields=mine.stream().anyMatch(u->u.spec.group().equals("infantry")&&u.spec.ability().equals("shield"));
-            Map<UUID,GravesAndGlory.Unit> known=new HashMap<>();for(var u:b.units)if(u.squad.team!=s.team&&u.mob.isAlive())known.put(u.mob.getUuid(),u);
             int ranged=0,melee=0;
-            for(var entry:seen.entrySet()){var enemy=known.get(entry.getKey());if(enemy==null)continue;
+            for(var entry:seen.entrySet()){var enemy=foes.get(entry.getKey());
                 double d=Math.hypot(entry.getValue().x()-center.x,entry.getValue().z()-center.z);
                 if(enemy.spec.group().equals("ranged")&&d<=tier.archerThreatRange())ranged++;
                 else if(enemy.spec.group().equals("infantry")&&d<=MELEE_THREAT_RANGE)melee++;}

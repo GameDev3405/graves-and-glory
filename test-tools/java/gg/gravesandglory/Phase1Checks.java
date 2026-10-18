@@ -557,11 +557,14 @@ public final class Phase1Checks implements ClientModInitializer {
             return -1;
         }
         static String name(GravesAndGlory.Battle b,int i){return i<0?"none":b.points.get(i).spec.name()+" ("+i+")";}
-        /** Plants Dusk sightings, as the Dawn team's memory, on a point. */
+        /** Puts n frozen Dusk revenants on a point and plants them in the Dawn team's memory. The bots only count sightings of units that are still alive, so the sightings carry the units' own ids. */
         void plant(GravesAndGlory.Battle b,int point,int n){
-            var memory=b.sightings.computeIfAbsent(0,k->new HashMap<>());var at=b.points.get(point).spec;
-            for(int i=0;i<n;i++)memory.put(UUID.randomUUID(),new GravesAndGlory.Battle.Sight((float)(at.x()+(i%3-1)*2),(float)(at.z()+(i/3-1)*2),b.time));
+            var at=b.points.get(point).spec;spawnFoes(b,"revenant",n,at.x(),at.z());
+            var memory=b.sightings.computeIfAbsent(0,k->new HashMap<>());
+            for(var u:foes)memory.put(u.mob.getUuid(),new GravesAndGlory.Battle.Sight((float)u.mob.getX(),(float)u.mob.getZ(),b.time));
         }
+        /** What Dawn sees of the Dusk units now: its memory is wiped, the sight pass runs, and the remembered count comes back. */
+        int see(GravesAndGlory.Battle b){b.sightings.computeIfAbsent(0,k->new HashMap<>()).clear();b.updateSight();return b.sightings.get(0).size();}
         /** The old lane rule, written out again, so the check does not lean on the code under test. */
         static int laneRule(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Vec3d centre){
             int best=-1;double value=Double.MAX_VALUE;
@@ -643,11 +646,13 @@ public final class Phase1Checks implements ClientModInitializer {
                     var row=b.campaign.tier(hard);
                     b.campaign.botDecide(hard,row);int none=chosen(b,hard);
                     plant(b,1,9);b.campaign.botDecide(hard,row);int defended=chosen(b,hard);
+                    for(var u:foes)u.mob.discard(); // the nine fall, but the memory of them stays
+                    b.campaign.botDecide(hard,row);int stale=chosen(b,hard);b.units.removeAll(foes);foes.clear();
                     hard.tier="normal";var normalRow=b.campaign.tier(hard);b.campaign.botDecide(hard,normalRow);int normal=chosen(b,hard),lane=laneRule(b,hard,centre(b,hard));
                     hard.tier="hard";for(var memory:b.sightings.values())memory.clear();
                     var east=b.points.get(4).spec;place(b,hard,east.x()-25,east.z());b.campaign.botDecide(hard,row);int reach=chosen(b,hard);
-                    boolean ok=b.points.size()==5&&row.id().equals("hard")&&none==1&&defended>=0&&defended<5&&defended!=1&&normal==1&&normal==lane&&reach==4;
-                    report("p1-bots-least-defended",ok,b.points.size()+" points; Hard near "+name(b,1)+" with no sightings -> "+name(b,none)+", with nine Dusk sightings on it -> "+name(b,defended)+"; Normal on the same state -> "+name(b,normal)+" (lane rule: "+name(b,lane)+"); Hard near "+name(b,4)+" -> "+name(b,reach)+" (index above 2 needs the arrays sized from battle.points)");
+                    boolean ok=b.points.size()==5&&row.id().equals("hard")&&none==1&&defended>=0&&defended<5&&defended!=1&&stale==1&&normal==1&&normal==lane&&reach==4;
+                    report("p1-bots-least-defended",ok,b.points.size()+" points; Hard near "+name(b,1)+" with no sightings -> "+name(b,none)+", with nine Dusk sightings on it -> "+name(b,defended)+", with those nine dead but still remembered -> "+name(b,stale)+"; Normal on the same state -> "+name(b,normal)+" (lane rule: "+name(b,lane)+"); Hard near "+name(b,4)+" -> "+name(b,reach)+" (index above 2 needs the arrays sized from battle.points)");
                     next(b,11);
                 }
                 case 11->{if(since(b)>=40){ // p1-bots-shieldwall: six frozen Dusk archers 20 blocks ahead of a Dawn Hard army
@@ -673,12 +678,18 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 13->{ // p1-bots-charge-timing: eight frozen Dusk revenants 60 blocks away, then 15 blocks away
                     clear(b);hard=army(b,0,"hard",-100,0);foes.clear();Vec3d at=centre(b,hard);
-                    spawnFoes(b,"revenant",8,at.x+60,at.z);b.updateSight();int seenFar=b.sightings.get(0).size();
+                    spawnFoes(b,"revenant",8,at.x+60,at.z);int seenFar=see(b);
                     b.campaign.botDecide(hard,b.campaign.tier(hard));farOrder=hard.order;hornsBefore=BattleEffects.horns.getOrDefault("charge",0);int hornsFar=hornsBefore;
-                    spawnFoes(b,"revenant",8,at.x+15,at.z);b.updateSight();int seenNear=b.sightings.get(0).size();
+                    spawnFoes(b,"revenant",8,at.x+28,at.z);int seenMid=see(b); // seen, and the army outnumbers them, but they are outside the 18-block gate
+                    b.campaign.botDecide(hard,b.campaign.tier(hard));String midOrder=hard.order;int hornsMid=BattleEffects.horns.getOrDefault("charge",0);
+                    spawnFoes(b,"revenant",8,at.x+15,at.z);int seenNear=see(b);
                     b.campaign.botDecide(hard,b.campaign.tier(hard));int hornsNear=BattleEffects.horns.getOrDefault("charge",0);
-                    report("p1-bots-charge-timing",farOrder.equals("attack")&&hard.order.equals("charge")&&hornsNear>hornsFar,"Hard army with eight Dusk revenants 60 blocks off ("+seenFar+" remembered): order "+farOrder+"; 15 blocks off ("+seenNear+" remembered): order "+hard.order+"; charge horns "+hornsFar+" -> "+hornsNear);
-                    for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,99);
+                    report("p1-bots-charge-timing",farOrder.equals("attack")&&midOrder.equals("attack")&&seenMid==8&&hornsMid==hornsFar&&hard.order.equals("charge")&&seenNear==8&&hornsNear>hornsMid,"Hard army with eight Dusk revenants 60 blocks off ("+seenFar+" remembered): order "+farOrder+"; 28 blocks off ("+seenMid+" remembered, outside the 18-block gate): order "+midOrder+"; 15 blocks off ("+seenNear+" remembered): order "+hard.order+"; charge horns "+hornsFar+" -> "+hornsMid+" -> "+hornsNear);
+                    for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();
+                    for(var u:b.units)if(u.squad==hard&&u.slot>=3)u.mob.discard(); // three left of twenty: the army retreats
+                    hard.yaw=0;b.campaign.botDecide(hard,b.campaign.tier(hard));
+                    report("p1-bots-retreat-facing",hard.order.equals("retreat")&&hard.yaw==-90,"Hard army cut down to three: order "+hard.order+", facing "+hard.yaw+" (Dawn faces -90 after every decision, retreat included)");
+                    next(b,99);
                 }
                 default->{}
             }
