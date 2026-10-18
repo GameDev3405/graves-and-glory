@@ -110,6 +110,12 @@ public final class Phase2Checks implements ClientModInitializer {
 
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
         static List<String> ids(com.google.gson.JsonArray a){List<String> out=new ArrayList<>();for(var e:a)out.add(e.getAsString());return out;}
+        /** What the camp snapshot shows this commander in the lobby: the side ids, then each commander row as name=team, in list order. */
+        static String lobbyView(Campaign camp,ServerPlayerEntity p){
+            var j=com.google.gson.JsonParser.parseString(camp.snapshot(p)).getAsJsonObject();if(!j.has("players")||!j.has("sides"))return "no snapshot";
+            StringBuilder rows=new StringBuilder();for(var e:j.getAsJsonArray("players")){var r=e.getAsJsonObject();if(rows.length()>0)rows.append(", ");rows.append(r.get("name").getAsString()).append('=').append(r.get("team").getAsInt());}
+            return ids(j.getAsJsonArray("sides"))+" / "+rows;
+        }
         long since(GravesAndGlory.Battle b){return b.time-stageAt;}
         ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
         Profile profile(GravesAndGlory.Battle b){return b.campaign.profile(player);}
@@ -311,17 +317,17 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean taken=own.training.size()==queuedBefore+1&&own.training.getLast().spec()==knight&&spent()==knight.cost();takeOk&=taken;
                     takeWhy+="; train:knight ("+alive(b,own,"knight")+" alive, "+Collections.frequency(own.banner,"knight")+" in his banner) accepted="+taken+" (queued "+(own.training.size()-queuedBefore)+", spent "+spent()+")";
                     report("p2-takeover",takeOk,takeWhy);b.campaign.returnLobby();next(b,23);}}
-                case 23->{ // p2-side-preview: in the lobby the preview runs the side pick on the seats his next round would have, so an unseated commander ahead of him does not set it
-                    var camp=b.campaign;if(b.running){camp.returnLobby();return;}
-                    String asked=profile(b).bannerColour;List<String> alone=ids(camp.sidesJson(player));
+                case 23->{ // p2-side-preview: in the lobby the snapshot's sides and commander rows come from the seats his next round would have, so an unseated commander ahead of him does not set them
+                    var camp=b.campaign;var me=sp(b);if(me==null)return;if(b.running){camp.returnLobby();return;}
+                    String asked=profile(b).bannerColour,name=me.getGameProfile().getName();String alone=lobbyView(camp,me);
                     // a commander who joined first, unseated on team 0 and asking for teal: the old preview, read from every squad in the lobby, gave team 0 his colour
                     UUID first=UUID.randomUUID();var ahead=new GravesAndGlory.Squad(first,0,GravesAndGlory.Battle.base(0));ahead.seated=false;
                     var rest=new LinkedHashMap<>(b.squads);b.squads.clear();b.squads.put(first,ahead);b.squads.putAll(rest);camp.profile(first).bannerColour="teal";
-                    List<String> behind=ids(camp.sidesJson(player));
-                    camp.onPad.put(player,1);List<String> pad=ids(camp.sidesJson(player));camp.onPad.remove(player);
+                    String behind=lobbyView(camp,me);
+                    camp.onPad.put(player,1);String pad=lobbyView(camp,me);camp.onPad.remove(player);
                     b.squads.remove(first);camp.profiles.remove(first);
-                    boolean ok=asked.equals("crimson")&&alone.equals(List.of("crimson","gold"))&&behind.equals(alone)&&pad.equals(List.of("gold","crimson"));
-                    report("p2-side-preview",ok,"request "+asked+"; lobby preview alone "+alone+" (want crimson, gold: a solo battle seats him on team 0); with an unseated teal commander first in the lobby on team 0 "+behind+" (want the same); on a team-1 pad "+pad+" (want gold, crimson)");
+                    boolean ok=asked.equals("crimson")&&alone.equals("[crimson, gold] / "+name+"=0")&&behind.equals("[crimson, gold] / Commander=-1, "+name+"=0")&&pad.equals("[gold, crimson] / Commander=-1, "+name+"=1");
+                    report("p2-side-preview",ok,"request "+asked+"; the lobby snapshot (sides / rows name=team) alone "+alone+" (a solo battle seats him on team 0); with an unseated teal commander inserted first on team 0 "+behind+" (not in his round: -1); on a team-1 pad "+pad);
                     next(b,99);
                 }
                 default->{}
