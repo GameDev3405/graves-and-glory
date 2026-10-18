@@ -103,4 +103,12 @@ public final class BattleMath {
     public static boolean shieldwallVsArchers(int rangedThreats, int meleeThreats, int threshold, boolean hasShields) {
         return hasShields && rangedThreats >= threshold && meleeThreats == 0;
     }
+    /** Whether a shield troop holds its shield up. Shieldwall braces against any enemy. Block raises it only on the approach, with the
+     *  enemy inside 6 blocks but outside sword reach (reachSq: the troop's range, squared), and lowers it to swing once the enemy is in
+     *  reach, as a player must. Never on a charge or a retreat. Distances are squared, in blocks. */
+    public static boolean raiseShield(String formation, String order, double nearestSq, double reachSq, boolean hasEnemy) {
+        if (!hasEnemy || order.equals("charge") || order.equals("retreat")) return false;
+        if (formation.equals("shieldwall")) return true;
+        return formation.equals("block") && nearestSq > reachSq && nearestSq < 6 * 6;
+    }
 }

@@ -514,6 +514,7 @@ public final class Phase1Checks implements ClientModInitializer {
         final Map<UUID,Vec3d> firstTarget=new HashMap<>();final Map<UUID,Long> decidedAt=new HashMap<>();
         GravesAndGlory.Squad hard;List<GravesAndGlory.Unit> foes=new ArrayList<>();
         int hornsBefore;String farOrder="";boolean shieldFormation;double gap;
+        GravesAndGlory.Unit hexer,aim;final Map<GravesAndGlory.Unit,Float> hpBefore=new HashMap<>();final Set<GravesAndGlory.Unit> bracedBefore=new HashSet<>();boolean frontalBlocked;String frontalWhy="";
 
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
         long since(GravesAndGlory.Battle b){return b.time-stageAt;}
@@ -565,10 +566,10 @@ public final class Phase1Checks implements ClientModInitializer {
         }
         /** What Dawn sees of the Dusk units now: its memory is wiped, the sight pass runs, and the remembered count comes back. */
         int see(GravesAndGlory.Battle b){b.sightings.computeIfAbsent(0,k->new HashMap<>()).clear();b.updateSight();return b.sightings.get(0).size();}
-        /** The old lane rule, written out again, so the check does not lean on the code under test. */
+        /** The lane rule, written out again, so the check does not lean on the code under test. Dusk lanes mirror Dawn lanes: on n points, lane i is point n-1-i. */
         static int laneRule(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Vec3d centre){
-            int best=-1;double value=Double.MAX_VALUE;
-            for(int i=0;i<b.points.size();i++){var p=b.points.get(i);double v=Math.hypot(centre.x-p.spec.x(),centre.z-p.spec.z())+(p.owner==s.team?140:0)+(i==s.lane?0:90)-(p.contested?55:0);if(v<value){value=v;best=i;}}
+            int best=-1,n=b.points.size(),lane=s.team==0?s.lane%n:n-1-s.lane%n;double value=Double.MAX_VALUE;
+            for(int i=0;i<n;i++){var p=b.points.get(i);double v=Math.hypot(centre.x-p.spec.x(),centre.z-p.spec.z())+(p.owner==s.team?140:0)+(i==lane?0:90)-(p.contested?55:0);if(v<value){value=v;best=i;}}
             return best;
         }
         /** A spectator camera at (x,z) looking along yaw/pitch, up blocks above the ground. */
@@ -651,8 +652,12 @@ public final class Phase1Checks implements ClientModInitializer {
                     hard.tier="normal";var normalRow=b.campaign.tier(hard);b.campaign.botDecide(hard,normalRow);int normal=chosen(b,hard),lane=laneRule(b,hard,centre(b,hard));
                     hard.tier="hard";for(var memory:b.sightings.values())memory.clear();
                     var east=b.points.get(4).spec;place(b,hard,east.x()-25,east.z());b.campaign.botDecide(hard,row);int reach=chosen(b,hard);
-                    boolean ok=b.points.size()==5&&row.id().equals("hard")&&none==1&&defended>=0&&defended<5&&defended!=1&&stale==1&&normal==1&&normal==lane&&reach==4;
-                    report("p1-bots-least-defended",ok,b.points.size()+" points; Hard near "+name(b,1)+" with no sightings -> "+name(b,none)+", with nine Dusk sightings on it -> "+name(b,defended)+", with those nine dead but still remembered -> "+name(b,stale)+"; Normal on the same state -> "+name(b,normal)+" (lane rule: "+name(b,lane)+"); Hard near "+name(b,4)+" -> "+name(b,reach)+" (index above 2 needs the arrays sized from battle.points)");
+                    // A Dusk Normal army on the centre point, lane 1, holding points 0, 2 and 4: West Outpost (1) and its mirror (3) are about as far as each other, so only the mirrored Dusk lane picks 3.
+                    var dusk=army(b,1,"normal",0,0);for(int i:new int[]{0,2,4})b.points.get(i).owner=1;
+                    b.campaign.botDecide(dusk,b.campaign.tier(dusk));int duskNormal=chosen(b,dusk),duskLane=laneRule(b,dusk,centre(b,dusk));
+                    for(var u:b.units)if(u.squad==dusk)u.mob.discard();b.units.removeIf(u->u.squad==dusk);for(var p:b.points)p.owner=-1;
+                    boolean ok=b.points.size()==5&&row.id().equals("hard")&&none==1&&defended>=0&&defended<5&&defended!=1&&stale==1&&normal==1&&normal==lane&&reach==4&&duskNormal==3&&duskNormal==duskLane;
+                    report("p1-bots-least-defended",ok,b.points.size()+" points; Hard near "+name(b,1)+" with no sightings -> "+name(b,none)+", with nine Dusk sightings on it -> "+name(b,defended)+", with those nine dead but still remembered -> "+name(b,stale)+"; Normal on the same state -> "+name(b,normal)+" (lane rule: "+name(b,lane)+"); Hard near "+name(b,4)+" -> "+name(b,reach)+" (index above 2 needs the arrays sized from battle.points); Dusk Normal on "+name(b,2)+", lane 1, holding points 0, 2 and 4 -> "+name(b,duskNormal)+" (mirrored lane rule: "+name(b,duskLane)+")");
                     next(b,11);
                 }
                 case 11->{if(since(b)>=40){ // p1-bots-shieldwall: six frozen Dusk archers 20 blocks ahead of a Dawn Hard army
@@ -674,9 +679,32 @@ public final class Phase1Checks implements ClientModInitializer {
                         report("p1-bots-shieldwall",shieldFormation&&up>=6,"Hard infantry formation shieldwall (Normal left it alone)="+shieldFormation+"; "+up+" of "+knights+" knights using their shield "+since(b)+" ticks later; six Dusk archers "+String.format("%.0f",gap)+" blocks in front of the front rank when ordered ("+String.format("%.0f",Math.abs(foes.get(0).mob.getX()-at.x))+" from the army centre now), no Dusk melee");
                         wantShot="bots-shieldwall";
                     }
-                    if(shotAsked&&wantShot==null){for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,13);}
+                    if(shotAsked&&wantShot==null)next(b,13); // the archers stay, so the wall keeps bracing for p1-bots-blight
                 }
-                case 13->{ // p1-bots-charge-timing: eight frozen Dusk revenants 60 blocks away, then 15 blocks away
+                case 13->{ // p1-bots-blight: a frontal blow on a knight braced in shieldwall is blocked; a Gravecaller burst on the same wall is not
+                    var knights=b.units.stream().filter(u->u.squad==hard&&u.spec.id().equals("knight")&&u.mob.isAlive()).toList();
+                    if(hexer==null){
+                        var braced=knights.stream().filter(u->u.mob.isBlocking()).toList();
+                        if(braced.size()<2){report("p1-bots-blight",false,"only "+braced.size()+" knights braced");for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,14);return;}
+                        aim=braced.get(0);var guard=braced.get(1);double hx=aim.mob.getX()+12,hz=aim.mob.getZ(); // 12 blocks ahead of the wall (Dawn faces +x), inside every shield arc
+                        var squad=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(hx,top(b,hx,hz),hz));squad.order="hold";squad.yaw=90;
+                        hexer=freezeIt(b.spawn(squad,troop("hexer"),0,new Vec3d(hx,top(b,hx,hz),hz)));foes.add(hexer);
+                        float hp=guard.mob.getHealth();int regen=guard.mob.timeUntilRegen;boolean hit=guard.mob.damage(b.world.getDamageSources().mobAttack(hexer.mob),5);
+                        frontalBlocked=!hit&&regen<=10&&guard.mob.getHealth()==hp;frontalWhy="a frontal blow of 5 from the Gravecaller on a braced knight: health "+hp+" -> "+guard.mob.getHealth()+" (hurt cooldown before it "+regen+")";
+                    }
+                    if(hexer.spellCenter!=null||hpBefore.isEmpty()){
+                        if(since(b)>60){report("p1-bots-blight",false,"the burst never landed; "+frontalWhy);for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,14);return;}
+                        // Until the burst lands (on the next Gravecaller decision tick): keep it on the aimed knight, and note every knight health and brace.
+                        hexer.spellCenter=aim.mob.getPos();hexer.windupUntil=b.time;hpBefore.clear();bracedBefore.clear();
+                        for(var u:knights){hpBefore.put(u,u.mob.getHealth());if(u.mob.isBlocking())bracedBefore.add(u);}
+                        return;
+                    }
+                    float before=hpBefore.getOrDefault(aim,0f),after=aim.mob.getHealth();boolean aimBraced=bracedBefore.contains(aim);
+                    long hitBraced=bracedBefore.stream().filter(u->u.mob.getHealth()<hpBefore.get(u)).count();
+                    report("p1-bots-blight",frontalBlocked&&aimBraced&&after<before,frontalWhy+", blocked="+frontalBlocked+"; then a Gravecaller burst on a braced knight (braced="+aimBraced+"): health "+before+" -> "+after+"; "+hitBraced+" of "+bracedBefore.size()+" braced knights lost health");
+                    for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();hexer=null;next(b,14);
+                }
+                case 14->{ // p1-bots-charge-timing: eight frozen Dusk revenants 60 blocks away, then 15 blocks away
                     clear(b);hard=army(b,0,"hard",-100,0);foes.clear();Vec3d at=centre(b,hard);
                     spawnFoes(b,"revenant",8,at.x+60,at.z);int seenFar=see(b);
                     b.campaign.botDecide(hard,b.campaign.tier(hard));farOrder=hard.order;hornsBefore=BattleEffects.horns.getOrDefault("charge",0);int hornsFar=hornsBefore;

@@ -35,7 +35,7 @@ final class Tactics {
         }
         if(enemy!=u.lockedTarget){u.lockedTarget=enemy;u.lockUntil=time+Spec.COMBATDISCIPLINE[0].targetMemoryTicks();}
         mob.setTarget(enemy);mob.setAttacking(enemy!=null);
-        boolean shield=u.spec.ability().equals("shield")&&(a.formation.equals("block")||a.formation.equals("shieldwall"))&&!a.order.equals("charge")&&!a.order.equals("retreat")&&enemy!=null&&(nearest<36||a.formation.equals("shieldwall"));
+        boolean shield=u.spec.ability().equals("shield")&&BattleMath.raiseShield(a.formation,a.order,nearest,u.spec.range()*u.spec.range(),enemy!=null); // block: up on the approach, down to swing once the enemy is in reach; shieldwall: the full brace
         if(shield&&!mob.isUsingItem())mob.setCurrentHand(Hand.OFF_HAND);else if(!shield&&mob.isUsingItem())mob.stopUsingItem();
         if(u.spec.ability().equals("mend")&&time>=u.abilityAt){
             var ally=battle.units.stream().filter(v->v.squad.team==s.team&&v.mob.isAlive()&&v.mob.getHealth()<v.mob.getMaxHealth()&&v.mob.squaredDistanceTo(mob)<Spec.COMBATDISCIPLINE[0].healRadius()*Spec.COMBATDISCIPLINE[0].healRadius()&&mob.canSee(v.mob)).min(java.util.Comparator.comparingDouble(v->v.mob.getHealth()/v.mob.getMaxHealth())).orElse(null);
@@ -43,7 +43,7 @@ final class Tactics {
         }
         if(u.spellCenter!=null){
             double radius=Spec.COMBATDISCIPLINE[0].spellRadius();for(int i=0;i<12;i++){double angle=i*Math.PI/6;battle.world.spawnParticles(ParticleTypes.WITCH,u.spellCenter.x+Math.cos(angle)*radius,u.spellCenter.y+.2,u.spellCenter.z+Math.sin(angle)*radius,1,0,0,0,0);}
-            if(time>=u.windupUntil){for(var v:battle.units)if(v.squad.team!=s.team&&v.mob.isAlive()&&v.mob.squaredDistanceTo(u.spellCenter)<radius*radius){v.mob.damage(battle.world.getDamageSources().mobAttack(mob),(float)(u.spec.damage()*battle.campaign.damage(u)));v.mob.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.SLOWNESS,40,0));}u.spellCenter=null;}
+            if(time>=u.windupUntil){for(var v:battle.units)if(v.squad.team!=s.team&&v.mob.isAlive()&&v.mob.squaredDistanceTo(u.spellCenter)<radius*radius){v.mob.damage(battle.world.getDamageSources().indirectMagic(mob,mob),(float)(u.spec.damage()*battle.campaign.damage(u)));v.mob.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.SLOWNESS,40,0));}u.spellCenter=null;} // blight ignores shields: indirect magic is in bypasses_shield (and bypasses_armor), and keeps the Gravecaller as the attacker for kill credit
         }
         if(enemy!=null){
             mob.getLookControl().lookAt(enemy,40,40);

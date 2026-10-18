@@ -42,6 +42,12 @@ public final class BattleMathCheck {
         check(!BattleMath.timedCharge(60,20,8,1.3,18) && BattleMath.timedCharge(15,20,8,1.3,18) && BattleMath.timedCharge(60,20,8,1.5,0), "hard waits for range; normal ignores distance");
         check(!BattleMath.timedCharge(15,8,20,1.3,18), "an outnumbered army does not charge even with the enemy in range");
         check(BattleMath.shieldwallVsArchers(4,0,3,true) && !BattleMath.shieldwallVsArchers(4,1,3,true) && !BattleMath.shieldwallVsArchers(4,0,3,false), "shieldwall only vs archers, only with shields");
+        double reach=2.8*2.8; // a knight's sword reach, squared
+        check(!BattleMath.raiseShield("block","attack",2*2,reach,true) && !BattleMath.raiseShield("block","attack",reach,reach,true), "block: the shield comes down with the enemy in sword reach, so the knight can swing");
+        check(BattleMath.raiseShield("block","attack",4*4,reach,true) && !BattleMath.raiseShield("block","attack",7*7,reach,true), "block: the shield is up on the approach (enemy at 4 blocks), not yet at 7");
+        check(BattleMath.raiseShield("shieldwall","attack",2*2,reach,true) && BattleMath.raiseShield("shieldwall","hold",20*20,reach,true), "shieldwall braces in reach and at range");
+        check(!BattleMath.raiseShield("block","charge",4*4,reach,true) && !BattleMath.raiseShield("shieldwall","charge",2*2,reach,true) && !BattleMath.raiseShield("shieldwall","retreat",4*4,reach,true), "no shield on a charge or a retreat");
+        check(!BattleMath.raiseShield("block","attack",4*4,reach,false) && !BattleMath.raiseShield("shieldwall","hold",4*4,reach,false) && !BattleMath.raiseShield("loose","attack",4*4,reach,true), "no shield with no enemy, or outside block and shieldwall");
         check(MatchStats.winRate(7,10) == .7 && MatchStats.winRate(0,0) == 0, "win rate");
         var st=new MatchStats.SquadStats(); st.goldEarned+=5; check(st.goldEarned == 5, "stats accumulate");
         System.out.println("BattleMathCheck: " + checks + " checks passed");
