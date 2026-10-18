@@ -48,3 +48,8 @@ Kort pictures up to a thousand concurrent players a year out and wants the serve
 - Hosting: home box sits behind Starlink CGNAT; public play needs a rented front door or rented game hosts; scale the match pool with demand.
 - Money (Mojang commercial guidelines): sell access, supporter rank (name colour, title, camp decoration, reserved queue slot) and cosmetics only (alternate skins and overlays per House via the unit identity pipeline, banner frames, horn and impact effects, a paid cosmetic chapter track beside the free one). Never paid gold, troops, shards or random rolls. Store via Tebex-style delivery to the account database; needs an entitlement table. Break-even around several thousand monthly actives at 2-5% conversion.
 - Build order: Phase 5 as planned, then a network phase tested with bots as stand-in players, then a small invite-only public opening.
+
+## Bot balance leftovers (2026-10-18, Phase 1 Tasks 5b-5e)
+- Blight borrows vanilla indirect_magic to pass shields, so it also bypasses armour; the Phase 2 gravesandglory:troop damage type is where blight gets bypasses_shield without bypasses_armor.
+- Spawn-row centring and the Dusk mirror (GravesAndGlory.reinforce) are inline; a pure BattleMath row-offset helper would let BattleMathCheck pin the half-turn mirror.
+- Hard loses to Normal (6/20 after 5e) and the Dawn seat wins 75% of Normal mirrors; the next experiment is sheet-only (hard.flankLeastDefended=false, hard.chargeDistance=0) and waits for Kort's call.

@@ -49,7 +49,9 @@ Each item says what was decided in the meantime so work could continue.
    22, gravecaller 20), measured at 50/50 in a 10-round test. Also fixed: the
    3-army spawn rows gave one side a 10-13 block head start; Normal's lane rule
    did not mirror on Kingsfield (Dusk won 16/18 there). Reruns are in progress
-   (Task 5c). Hard still sits at 45% against Normal; the flanking question in
+   (Task 5c; later the offset went to 20% in 5d and was halved in 5e to 32/21/19;
+   the Health number on recruit and army cards shows it, the model does not).
+   Hard still sits at 45% against Normal; the flanking question in
    item 3 stands.
    Update 03:40: the health offset did nothing (Dawn 10/10, knights killing
    revenants 3.3 to 1, same as before). The real cause is a mechanic: knights
@@ -59,7 +61,7 @@ Each item says what was decided in the meantime so work could continue.
    on the approach and drops while the knight is in reach and swinging
    (Shieldwall keeps the full brace); and blight now ignores shields as your
    unit identity spec says. Reruns follow. Note for Phase 2: when the Risen
-   becomes a zombie it gains 2 natural armour, so the +10% health must go then.
+   becomes a zombie it gains 2 natural armour, so that health offset must go then (it is +5-7% now: revenant 32, bone ranger 21, gravecaller 19, after Task 5e).
 
 ## Builds to try
 

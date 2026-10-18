@@ -63,7 +63,7 @@ shown. All husk.
 ### Order Squire
 Gilded | infantry | Common | Order Squire > Knight > Knight-Captain | `knight` (today Dawn Knight)
 - **Purpose.** The cheap shield line that advances into arrow fire and screens the bows. Beats archers and Arbalists; loses to Shieldbreakers, cleave and blight.
-- **Look.** Upright, shield forward. Enamel #D9D3C1, steel #7C8591, gilt #96783A. Iron cap, mail, hip-length white surcoat with a team panel, arming sword. Young, clean-shaven. **Mark:** team shield, white pale. **Tell:** shield to the chin in Compact and Shieldwall.
+- **Look.** Upright, shield forward. Enamel #D9D3C1, steel #7C8591, gilt #96783A. Iron cap, mail, hip-length white surcoat with a team panel, arming sword. Young, clean-shaven. **Mark:** team shield, white pale. **Tell:** shield to the chin in Shieldwall, and on the approach in Compact (it drops to swing; Phase 1 Task 5d).
 - **Build.** husk; iron_helmet, iron_chestplate; iron_sword; shield, white `cs`.
 - **Portrait.** Standard.
 
