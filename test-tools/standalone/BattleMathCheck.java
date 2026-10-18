@@ -29,6 +29,13 @@ public final class BattleMathCheck {
         check(BattleMath.leastDefended(0,0,px,pz,own,new int[]{0,9,0},1,25) != 1, "nine defenders push hard bots off the centre");
         check(BattleMath.leastDefended(0,0,px,pz,own,new int[]{0,0,0},1,25) == 1, "undefended nearest point wins");
         check(BattleMath.leastDefended(0,0,px,pz,new int[]{1,1,1},new int[]{0,0,0},1,25) == 1, "all owned falls back to all points");
+        double[][] at={{-44,-43},{0,0},{44,43}};
+        int[] held=BattleMath.garrison(new int[]{0,0,0},0,new double[][]{{-44,-43},{60,80},{0,0}},at,36); // armies on A and B; the middle one stands 40 blocks off C
+        check(held.length == 3 && held[0] == -1 && held[1] == 2 && held[2] == -1, "the unguarded owned point gets the nearest free army; the two on their points stay free");
+        int[] none=BattleMath.garrison(new int[]{-1,1,-1},0,new double[][]{{-44,-43},{60,80},{0,0}},at,36);
+        check(none[0] == -1 && none[1] == -1 && none[2] == -1, "nothing owned means nothing to hold");
+        int[] one=BattleMath.garrison(new int[]{0,0,-1},0,new double[][]{{40,20}},at,36); // 45 blocks from B, 105 from A
+        check(one.length == 1 && one[0] == 1, "one army, two unguarded owned points: it holds the nearer only");
         check(!BattleMath.timedCharge(60,20,8,1.3,18) && BattleMath.timedCharge(15,20,8,1.3,18) && BattleMath.timedCharge(60,20,8,1.5,0), "hard waits for range; normal ignores distance");
         check(!BattleMath.timedCharge(15,8,20,1.3,18), "an outnumbered army does not charge even with the enemy in range");
         check(BattleMath.shieldwallVsArchers(4,0,3,true) && !BattleMath.shieldwallVsArchers(4,1,3,true) && !BattleMath.shieldwallVsArchers(4,0,3,false), "shieldwall only vs archers, only with shields");

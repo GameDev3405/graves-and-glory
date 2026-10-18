@@ -59,6 +59,36 @@ public final class BattleMath {
         }
         return best;
     }
+    /** Per army index, the point index that army must hold, or -1 (free to flank). Positions are {x,z}.
+     *  Every point owned by team with no army of team within nearRadius takes the nearest army not yet holding one (ties by lower index);
+     *  the nearest army-point pair is settled first, so an army holds at most one point and goes to the nearer of two that need it. */
+    public static int[] garrison(int[] owners, int team, double[][] armyPos, double[][] pointPos, double nearRadius) {
+        int[] hold = new int[armyPos.length];
+        for (int i = 0; i < hold.length; i++) hold[i] = -1;
+        int n = Math.min(owners.length, pointPos.length);
+        boolean[] open = new boolean[n];
+        for (int j = 0; j < n; j++) {
+            if (owners[j] != team) continue;
+            boolean guarded = false;
+            for (double[] army : armyPos) if (Math.hypot(army[0] - pointPos[j][0], army[1] - pointPos[j][1]) <= nearRadius) { guarded = true; break; }
+            open[j] = !guarded;
+        }
+        while (true) {
+            int army = -1, point = -1;
+            double best = Double.MAX_VALUE;
+            for (int j = 0; j < n; j++) {
+                if (!open[j]) continue;
+                for (int i = 0; i < armyPos.length; i++) {
+                    if (hold[i] >= 0) continue;
+                    double distance = Math.hypot(armyPos[i][0] - pointPos[j][0], armyPos[i][1] - pointPos[j][1]);
+                    if (distance < best) { best = distance; army = i; point = j; }
+                }
+            }
+            if (army < 0) return hold;
+            hold[army] = point;
+            open[point] = false;
+        }
+    }
     /** A charge goes in when the army outnumbers the enemies near it by chargeRatio and, when chargeDistance is above zero, the nearest enemy is within it. */
     public static boolean timedCharge(double nearestEnemyDistance, long living, long enemiesNear, double chargeRatio, double chargeDistance) {
         return living >= enemiesNear * chargeRatio && (chargeDistance <= 0 || nearestEnemyDistance <= chargeDistance);

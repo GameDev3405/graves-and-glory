@@ -104,7 +104,7 @@
       "trainingSeconds": 4,
       "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png",
       "group": "infantry",
-      "ability": "none"
+      "ability": "shield"
     },
     {
       "id": "bonebow",

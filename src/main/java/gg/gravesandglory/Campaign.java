@@ -260,7 +260,7 @@ public final class Campaign {
     /** A remembered enemy counts as near a point, or near an army, within this many times the point's radius or the tier's charge distance. */
     static final double NEAR_RADIUS_FACTOR=2;
     /** One command decision for a bot army, run at its tier's cadence: retreat or rally, pick the point to take, set the order, sound the charge horn.
-     *  Easy and Normal read the whole battlefield; Hard reads only what its team has seen (b.sightings). */
+     *  Easy and Normal read the whole battlefield; Hard reads only what its team has seen (b.sightings), and holds the points it owns before it flanks (garrisonPoint). */
     void botDecide(GravesAndGlory.Squad s,Spec.BotCommandRow tier){
         var mine=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).toList();
         long living=mine.size();if(living==0)return;
@@ -269,7 +269,12 @@ public final class Campaign {
         Map<UUID,GravesAndGlory.Unit> foes=new HashMap<>();for(var u:b.units)if(u.squad.team!=s.team&&u.mob.isAlive())foes.put(u.mob.getUuid(),u);
         Map<UUID,GravesAndGlory.Battle.Sight> seen=new HashMap<>();for(var entry:b.sightings.getOrDefault(s.team,Map.of()).entrySet())if(foes.containsKey(entry.getKey()))seen.put(entry.getKey(),entry.getValue());
         int count=b.points.size();GravesAndGlory.Capture choice;
-        if(tier.flankLeastDefended()){
+        int full=Arrays.stream(Spec.TROOPS).filter(t->t.faction().equals(Spec.FACTIONS[s.team].id())).mapToInt(Spec.TroopsRow::count).sum();
+        if(living<=full*tier.retreatShare())botRetreating.add(s.owner);
+        else if(living>=full*tier.rallyShare())botRetreating.remove(s.owner);
+        int hold=tier.flankLeastDefended()?garrisonPoint(s,center,tier):-1;
+        if(hold>=0)choice=b.points.get(hold);
+        else if(tier.flankLeastDefended()){
             // Every point of the current map counts (Kingsfield has five); a point is defended by the enemies this team last saw near it.
             double[] px=new double[count],pz=new double[count];int[] owner=new int[count],defenders=new int[count];
             for(int i=0;i<count;i++){var p=b.points.get(i);px[i]=p.spec.x();pz[i]=p.spec.z();owner[i]=p.owner;
@@ -279,9 +284,6 @@ public final class Campaign {
             choice=b.points.get(s.lane%count);double best=Double.MAX_VALUE;
             for(int i=0;i<count;i++){var p=b.points.get(i);double value=Math.hypot(center.x-p.spec.x(),center.z-p.spec.z())+(p.owner==s.team?140:0)+(i==s.lane?0:90)-(p.contested?55:0);if(value<best){best=value;choice=p;}}
         }
-        int full=Arrays.stream(Spec.TROOPS).filter(t->t.faction().equals(Spec.FACTIONS[s.team].id())).mapToInt(Spec.TroopsRow::count).sum();
-        if(living<=full*tier.retreatShare())botRetreating.add(s.owner);
-        else if(living>=full*tier.rallyShare())botRetreating.remove(s.owner);
         long enemies=foes.size();
         boolean couldCharge=b.startsCharge(s,"all"),retreating=botRetreating.contains(s.owner);
         s.assignments.clear();
@@ -309,6 +311,29 @@ public final class Campaign {
             if(BattleMath.shieldwallVsArchers(ranged,melee,tier.archerThreatCount(),shields))s.assignments.put("infantry",new GravesAndGlory.Assignment(s.order,"shieldwall",s.target,s.yaw));
         }
         if(s.order.equals("charge")&&couldCharge)b.chargeHorn(s,"all");
+    }
+    /** Hard holds what it has taken before it flanks. The team's bot armies (alive and not retreating, in squad order; a fixture's army outside
+     *  b.squads goes last) share out the owned points, near meaning within NEAR_RADIUS_FACTOR*chargeDistance. An owned point keeps the nearest army
+     *  standing near it as its guard (ties: lower index), so a captured point is not left the moment it is taken. Owned points with no army near
+     *  them go to the nearest of the other armies (BattleMath.garrison). Returns the index of the point this army holds, or -1: free to flank. */
+    int garrisonPoint(GravesAndGlory.Squad s,Vec3d center,Spec.BotCommandRow tier){
+        if(botRetreating.contains(s.owner))return -1;
+        List<double[]> at=new ArrayList<>();int me=-1;
+        for(var army:b.squads.values())if(army==s||army.bot&&army.seated&&army.team==s.team&&!botRetreating.contains(army.owner)){
+            if(army==s){me=at.size();at.add(new double[]{center.x,center.z});continue;}
+            var units=b.units.stream().filter(u->u.squad==army&&u.mob.isAlive()).toList();if(!units.isEmpty()){Vec3d c=Morale.centre(units);at.add(new double[]{c.x,c.z});}
+        }
+        if(me<0){me=at.size();at.add(new double[]{center.x,center.z});}
+        int count=b.points.size(),n=at.size();double radius=NEAR_RADIUS_FACTOR*tier.chargeDistance();
+        int[] owners=new int[count],guard=new int[n];double[][] points=new double[count][];Arrays.fill(guard,-1);
+        for(int j=0;j<count;j++){var p=b.points.get(j);owners[j]=p.owner;points[j]=new double[]{p.spec.x(),p.spec.z()};}
+        for(int j=0;j<count;j++){if(owners[j]!=s.team)continue;int best=-1;double bestDistance=0;
+            for(int i=0;i<n;i++){double d=Math.hypot(at.get(i)[0]-points[j][0],at.get(i)[1]-points[j][1]);if(guard[i]<0&&d<=radius&&(best<0||d<bestDistance)){best=i;bestDistance=d;}}
+            if(best>=0){guard[best]=j;owners[j]=-1;}} // a guarded point is not handed out again
+        if(guard[me]>=0)return guard[me];
+        List<double[]> free=new ArrayList<>();int mine=-1;
+        for(int i=0;i<n;i++)if(guard[i]<0){if(i==me)mine=free.size();free.add(at.get(i));}
+        return BattleMath.garrison(owners,s.team,free.toArray(double[][]::new),points,radius)[mine];
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
     void switchMap(int index){Projectiles.clear(b);map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}

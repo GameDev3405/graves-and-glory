@@ -489,12 +489,13 @@ public final class GravesAndGlory implements ModInitializer {
         }
         void reinforce(Squad s){
             Set<Integer> occupied=new HashSet<>();for(Unit u:units)if(u.squad==s&&u.mob.isAlive())occupied.add(u.slot);
-            int slot=0,index=0;for(Squad other:squads.values()){if(other==s)break;if(other.seated&&other.team==s.team)index++;}
+            int slot=0,index=0,count=1;for(Squad other:squads.values()){if(other==s)break;if(other.seated&&other.team==s.team)index++;}
+            for(Squad other:squads.values())if(other!=s&&other.seated&&other.team==s.team)count++; // this team's armies, this one included (a joining squad is not in squads yet)
             List<String> line;if(s.bot){line=new ArrayList<>();for(var t:Spec.TROOPS)if(t.faction().equals(Spec.FACTIONS[s.team].id()))for(int n=0;n<t.count();n++)line.add(t.id());}else line=campaign.profile(s.owner).lineup(s.team);
             Morale.lineup(this,s,line);
             for(String id:line){final String type=id;int position=slot++;if(position>=R.squadSize()||occupied.contains(position)||id.equals("empty")||!campaign.unlocked(s,id))continue;
                 var spec=Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(type)).findFirst().orElse(null);if(spec==null)continue;
-                double x=base(s.team).x+(s.team==0?1:-1)*(20-position/5*3),z=base(s.team).z+(index-1.5)*22+(position%5-2)*2.5;
+                double x=base(s.team).x+(s.team==0?1:-1)*(20-position/5*3),z=base(s.team).z+(index-(count-1)/2.0)*22+(position%5-2)*2.5; // rows centred on the base for any army count
                 spawn(s,spec,position,new Vec3d(x,Arena.ground((int)x,(int)z)+1,z));
             }
         }
