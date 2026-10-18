@@ -84,7 +84,7 @@ public final class GravesAndGlory implements ModInitializer {
                 for(Unit u:battle.units)if(u.mob==attacker)winner=u.squad;
                 // A shot that lands after its archer fell still credits the archer's army.
                 if(winner==null)winner=victim.lastHitBy;
-                if(winner!=null&&winner.team!=victim.squad.team){winner.gold+=Spec.ECONOMY[0].killGold();winner.stats.goldEarned+=Spec.ECONOMY[0].killGold();}
+                if(winner!=null&&winner.team!=victim.squad.team)winner.earn(Spec.ECONOMY[0].killGold());
             }
         });
         net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register((player,world,hand,entity,hit)->{
@@ -129,6 +129,8 @@ public final class GravesAndGlory implements ModInitializer {
         int gold=Spec.ECONOMY[0].startingGold();
         /** This round's tally (gold earned so far); Battle.startRound gives the squad a fresh one. */
         MatchStats.SquadStats stats=new MatchStats.SquadStats();
+        /** Gold the squad earns (income, kills): into the bank and this round's tally. Starting gold and refunds go straight to gold. */
+        void earn(int amount){gold+=amount;stats.goldEarned+=amount;}
         final Map<String,Assignment> assignments=new HashMap<>();
         final ArrayDeque<Training> training=new ArrayDeque<>();
         /** Morale per group: when a rout began (present only while routing), rout immunity after a regroup, and the group's full lineup health this round. */
@@ -291,7 +293,7 @@ public final class GravesAndGlory implements ModInitializer {
                     }
                 }
                 if(time%(Spec.ECONOMY[0].incomeSeconds()*20)==0)for(Squad s:squads.values()){if(!s.seated)continue;
-                    int income=(int)(Spec.ECONOMY[0].passiveGold()+Math.min(Spec.ECONOMY[0].objectiveIncomeCap(),points.stream().filter(p->p.owner==s.team).count()*Spec.ECONOMY[0].pointGold()));s.gold+=income;s.stats.goldEarned+=income;
+                    s.earn((int)(Spec.ECONOMY[0].passiveGold()+Math.min(Spec.ECONOMY[0].objectiveIncomeCap(),points.stream().filter(p->p.owner==s.team).count()*Spec.ECONOMY[0].pointGold())));
                 }
             }
             if(running&&time-roundStarted>=roundSeconds*20L)campaign.finish(scores[0]==scores[1]?-1:scores[0]>scores[1]?0:1);

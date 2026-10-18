@@ -48,6 +48,8 @@ if (project.hasProperty('selfTest')) {
 if (project.hasProperty('botSim')) {
  loom.runs.server.vmArg '-Dgravesandglory.localIntegration=true'
  loom.runs.server.vmArg "-Dfabric.addMods=${file('build/localTestTools/local-integration-DO-NOT-SHIP.jar').absolutePath}"
+ // The test tools' checks probe would otherwise append to the file a Melty test descriptor names; keep its lines in the server root.
+ loom.runs.server.vmArg '-Dgravesandglory.localChecks=local-checks.txt'
  loom.runs.server.vmArg "-Dgravesandglory.botSim=${project.property('botSim')}"
  ['simDawn', 'simDusk', 'simMaps', 'simSize', 'simRoundSeconds'].each { name ->
   if (project.hasProperty(name)) loom.runs.server.vmArg "-Dgravesandglory.${name}=${project.property(name)}"

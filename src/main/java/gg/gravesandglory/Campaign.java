@@ -37,7 +37,7 @@ public final class Campaign {
     String headline="";
     /** Bot difficulty for the next round: the id of a Spec.BOTCOMMAND row (easy, normal, hard). There is one battle per server, so one setting covers it. */
     String difficulty="normal";
-    /** The winner of the last finished round: 0 Dawn, 1 Dusk, -1 a draw (and before any round has finished). */
+    /** The winner of the last finished round: 0 Dawn, 1 Dusk, -1 a draw (and before any round has finished). The bot simulation sets -2 before each of its rounds. */
     int lastWinner=-1;
     /** Ready pads: who stands on which pad (team), the countdown in ticks, and whether this cycle has rolled its quick-match map. */
     final Map<UUID,Integer> onPad=new HashMap<>();final Set<UUID> padRefused=new HashSet<>();
