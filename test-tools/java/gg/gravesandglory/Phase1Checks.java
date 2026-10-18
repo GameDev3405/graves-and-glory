@@ -1,5 +1,8 @@
 package gg.gravesandglory;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -7,8 +10,11 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.util.ScreenshotRecorder;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.projectile.ArrowEntity;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
@@ -19,11 +25,13 @@ import java.util.function.Supplier;
 
 /** Isolated real-client checks for Phase 1 (solo core). GRAVES_PHASE1_CHECKS=<suite>[,<suite>...]. Never included in releases. */
 public final class Phase1Checks implements ClientModInitializer {
-    public interface Suite { void step(MinecraftClient c,int tick); }
+    public interface Suite { void step(MinecraftClient c,int tick);
+        /** Called once on the client thread when the suite ends by any path (done, timed out or thrown), before the next suite starts: puts back what the suite changed, or fails a check that never ran. */
+        default void cleanup(MinecraftClient c){} }
     /** Optional for a suite: called on the server thread after every Battle.tick, for checks that need exact tick timing. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -43,10 +51,12 @@ public final class Phase1Checks implements ClientModInitializer {
         for(var s:b.squads.values())if(!s.bot){s.seated=s.owner.equals(p.getUuid());if(s.seated)s.team=0;}
         b.startRound();c.introUntil=b.time;return true;
     }
-    /** Reports p1-<suite>-suite, then stops the client once the last listed suite is done. */
+    /** Runs the suite's cleanup, reports p1-<suite>-suite, then stops the client once the last listed suite is done. */
     public static void finish(MinecraftClient c,String suite){
+        var done=current;current=null;
+        if(done!=null)try{done.cleanup(c);}catch(Exception e){report("p1-"+suite+"-exception",false,"cleanup: "+e);e.printStackTrace();}
         report("p1-"+suite+"-suite",!failed,failed?"an earlier p1 check failed":"all checks passed");
-        current=null;if(queue.isEmpty())c.scheduleStop();
+        if(queue.isEmpty())c.scheduleStop();
     }
 
     @Override public void onInitializeClient(){
@@ -82,6 +92,7 @@ public final class Phase1Checks implements ClientModInitializer {
         Projectiles.Shot first;float firstHealth;boolean firstDelayOk;
         GravesAndGlory.Unit chosen;Projectiles.Shot duskShot;int flashesBefore;boolean duskOk;String duskWhy="";
         GravesAndGlory.Unit orphanShooter,orphanSecond;Exception orphanError;
+        NbtCompound savedArrow;boolean arrowAlive,arrowSaved;
         double tickSum;int tickSamples,troops;
 
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
@@ -91,6 +102,26 @@ public final class Phase1Checks implements ClientModInitializer {
         void camera(GravesAndGlory.Battle b,Vec3d look,double side,double up){
             var p=sp(b);p.changeGameMode(GameMode.SPECTATOR);double drop=up+p.getStandingEyeHeight()-1;
             b.relocate(p,look.x,look.y+up,look.z+side,180,(float)Math.toDegrees(Math.atan2(drop,side)));
+        }
+
+        /** The commander's army fights as a bot in the tick-cost stage; the next suite's returnLobby drops bot armies, and with it his seat, so he gets it back however this suite ends. */
+        void handBack(GravesAndGlory.Battle b){var mine=player==null?null:b.squads.get(player);if(mine!=null)mine.bot=false;}
+        public void cleanup(MinecraftClient c){server(c,this::handBack);}
+
+        /** p1-arrow-reload, part 1 (final review, minor 1): the arrow of the shot just fired survives its own spawn, and is written to NBT in flight the way a chunk save writes it. */
+        void saveArrow(GravesAndGlory.Battle b){
+            var arrow=b.shots.get(b.shots.size()-1).visual();
+            arrowAlive=arrow!=null&&!arrow.isRemoved();
+            savedArrow=new NbtCompound();arrowSaved=arrow!=null&&arrow.shouldSave()&&arrow.saveNbt(savedArrow);
+        }
+        /** p1-arrow-reload, part 2: the round has ended, so nothing is queued, as after a restart. The arrow rebuilt from its NBT and added to the world fires the same load event a chunk load does, and must be discarded, not fly on as a real arrow. A real quit and reload is not scripted here. */
+        void reloadArrow(GravesAndGlory.Battle b){
+            Entity back=arrowSaved?EntityType.getEntityFromNbt(savedArrow,b.world).orElse(null):null;
+            boolean arrowAgain=back instanceof ArrowEntity&&back.getCommandTags().contains(Projectiles.TAG);
+            if(back!=null){back.setUuid(UUID.randomUUID());b.world.spawnEntity(back);}
+            boolean gone=back!=null&&back.isRemoved();int left=tagged(b);
+            report("p1-arrow-reload",arrowAlive&&arrowSaved&&arrowAgain&&gone&&left==0&&Projectiles.inFlight(b)==0,"a fresh shot's arrow alive after its own spawn="+arrowAlive+"; written to NBT in flight="+arrowSaved+", read back as a tagged arrow="+arrowAgain+"; with "+Projectiles.inFlight(b)+" shots queued the rebuilt arrow was discarded on entering the world="+gone+", tagged arrows left="+left);
+            if(back!=null&&!back.isRemoved())back.discard(); // a stray must not fail the checks after this one
         }
 
         public void step(MinecraftClient c,int tick){
@@ -178,9 +209,9 @@ public final class Phase1Checks implements ClientModInitializer {
                     Projectiles.fire(b,orphanShooter,gone.mob,"arrow",4);gone.mob.discard();next(b,12);
                 }
                 case 12->{if(b.time-stageAt>=2){
-                    try{Projectiles.fire(b,orphanShooter,orphanSecond.mob,"arrow",4);System.out.println("[p1] orphan: "+Projectiles.inFlight(b)+" in flight at finish");b.campaign.finish(-1);}catch(Exception e){orphanError=e;e.printStackTrace();}
+                    try{Projectiles.fire(b,orphanShooter,orphanSecond.mob,"arrow",4);System.out.println("[p1] orphan: "+Projectiles.inFlight(b)+" in flight at finish");saveArrow(b);b.campaign.finish(-1);}catch(Exception e){orphanError=e;e.printStackTrace();}
                     next(b,13);}}
-                case 13->{int left=tagged(b);report("p1-shot-orphan",orphanError==null&&Projectiles.inFlight(b)==0&&left==0&&!b.running,"error="+orphanError+" inFlight="+Projectiles.inFlight(b)+" taggedArrows="+left+" running="+b.running);next(b,14);}
+                case 13->{int left=tagged(b);report("p1-shot-orphan",orphanError==null&&Projectiles.inFlight(b)==0&&left==0&&!b.running,"error="+orphanError+" inFlight="+Projectiles.inFlight(b)+" taggedArrows="+left+" running="+b.running);reloadArrow(b);next(b,14);}
                 case 14->{ // tick cost: eight bot armies fighting around the centre point
                     var p=sp(b);if(p==null||!skirmish(b,p,0,4,"normal"))return;
                     var own=b.squads.get(player);own.bot=true;own.order="attack";b.reinforce(own);
@@ -196,7 +227,8 @@ public final class Phase1Checks implements ClientModInitializer {
                     tickSum+=b.server.getTickTime();tickSamples++;
                     if(b.time-stageAt>=600){double avg=tickSum/tickSamples;float now=b.server.getTickTime();
                         System.out.println("[p1] tick-cost avg="+String.format("%.2f",avg));
-                        report("p1-tick-cost",now<40,"server tick "+String.format("%.2f",now)+" ms (600-tick mean "+String.format("%.2f",avg)+" ms) with "+troops+" troops at start, "+b.units.size()+" at end");next(b,16);}
+                        report("p1-tick-cost",now<40,"server tick "+String.format("%.2f",now)+" ms (600-tick mean "+String.format("%.2f",avg)+" ms) with "+troops+" troops at start, "+b.units.size()+" at end");
+                        handBack(b);next(b,16);}
                 }
                 default->{}
             }
@@ -355,7 +387,7 @@ public final class Phase1Checks implements ClientModInitializer {
     static final class ReinforceChecks implements Suite,ServerWatch {
         static final Spec.EconomyRow E=Spec.ECONOMY[0];
         static final int TIMEOUT=2400; // ticks a measured walk may take
-        static final String[] PROBES={"p1-forward-contested","p1-forward-enemy-near","p1-forward-flipped","p1-forward-fresh"};
+        static final String[] PROBES={"p1-forward-contested","p1-forward-enemy-near","p1-forward-flipped","p1-forward-fresh","p1-forward-enemy-spawn"};
         volatile int stage;volatile String wantShot;volatile boolean finished;
         volatile UUID player;long stageAt;int shotDelay;
         final Spec.TroopsRow knight=troop("knight");
@@ -363,7 +395,7 @@ public final class Phase1Checks implements ClientModInitializer {
         Set<GravesAndGlory.Unit> known=new HashSet<>();GravesAndGlory.Unit trained,foe;long appeared;Vec3d spawnAt;
         double before,after;boolean shotAsked,control,heldOk;int probe;
         GravesAndGlory.Unit garrison;long captured=-1;
-        Spec.TroopsRow support;double fullOne,fullTwo,fullThree;
+        Spec.TroopsRow support;double fullOne,fullTwo,fullThree,fullFour;
 
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
         long since(GravesAndGlory.Battle b){return b.time-stageAt;}
@@ -395,6 +427,9 @@ public final class Phase1Checks implements ClientModInitializer {
             return b.reinforcementAnchors(0).contains(point);
         }
         void drop(GravesAndGlory.Battle b){if(trained!=null){trained.mob.discard();b.units.remove(trained);trained=null;}}
+        /** One frozen Dusk revenant at (x,z) in an ad hoc hold squad, the enemy of the enemy probes; ideal() removes it. */
+        void foeAt(GravesAndGlory.Battle b,double x,double z){var dusk=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(x,65,z));dusk.order="hold";dusk.yaw=90;
+            foe=b.spawn(dusk,troop("revenant"),30,new Vec3d(x,top(b,x,z),z));freeze(foe);foe.deployed=foe.mob.getPos();}
         void disband(GravesAndGlory.Battle b,GravesAndGlory.Unit u){if(u!=null){u.mob.discard();b.units.remove(u);}}
         long supporters(GravesAndGlory.Battle b){return b.units.stream().filter(u->u.squad==own&&u.spec==support&&u.mob.isAlive()).count();}
         double fullHealth(){return own.fullHealth.getOrDefault("support",0.0);}
@@ -454,10 +489,12 @@ public final class Phase1Checks implements ClientModInitializer {
                     control=ideal(b);
                     switch(probe){
                         case 0->point.contested=true;
-                        case 1->{double z=point.spec.z()+10;var dusk=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(point.spec.x(),65,z));dusk.order="hold";dusk.yaw=90;
-                            foe=b.spawn(dusk,troop("revenant"),30,new Vec3d(point.spec.x(),top(b,point.spec.x(),z),z));freeze(foe);foe.deployed=foe.mob.getPos();}
+                        case 1->foeAt(b,point.spec.x(),point.spec.z()+10);
                         case 2->point.owner=1;
-                        default->point.ownedSince=b.time;
+                        case 3->point.ownedSince=b.time;
+                        default->{ // the enemy stands beyond the safe radius of the point centre but inside it of where the troops appear (forwardSpawnOffset toward the base)
+                            Vec3d at=b.deployCentre(0,point);double dx=at.x-point.spec.x(),dz=at.z-point.spec.z(),len=Math.hypot(dx,dz),t=E.forwardSafeRadius()-E.forwardSpawnOffset()/2;
+                            foeAt(b,at.x+dx/len*t,at.z+dz/len*t);}
                     }
                     if(!buy(b)){fail(b,PROBES[probe],"no living knight to disband");break;}
                     next(b,71);
@@ -465,7 +502,8 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 71->{
                     if(!arrived(b)){if(since(b)>100){report(PROBES[probe],false,"the bought knight never appeared");probe++;next(b,7);}break;}
                     Vec3d home=GravesAndGlory.Battle.base(0);double fromBase=flat(spawnAt,home.x,home.z),fromPoint=flat(spawnAt,point.spec.x(),point.spec.z());
-                    report(PROBES[probe],control&&fromBase<=30,"point an anchor before the change="+control+"; knight appeared "+String.format("%.1f",fromBase)+" blocks from the barracks spot and "+String.format("%.1f",fromPoint)+" from the point (owner "+point.owner+", contested "+point.contested+")");
+                    Vec3d at=b.deployCentre(0,point);String enemy=foe==null?"":", the enemy "+String.format("%.1f",flat(foe.mob.getPos(),point.spec.x(),point.spec.z()))+" blocks from the point centre and "+String.format("%.1f",flat(foe.mob.getPos(),at.x,at.z))+" from where troops appear, safe radius "+E.forwardSafeRadius();
+                    report(PROBES[probe],control&&fromBase<=30,"point an anchor before the change="+control+"; knight appeared "+String.format("%.1f",fromBase)+" blocks from the barracks spot and "+String.format("%.1f",fromPoint)+" from the point (owner "+point.owner+", contested "+point.contested+enemy+")");
                     drop(b);probe++;next(b,7);
                 }
                 case 8->{ // p1-forward-message: the deploy notice names the point, or the barracks
@@ -498,9 +536,12 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 10->{if(supporters(b)==2){fullTwo=fullHealth();
                     for(var u:b.units)if(u.squad==own&&u.spec==support&&u.mob.isAlive()){u.mob.kill();break;}b.units.removeIf(u->!u.mob.isAlive()||u.mob.isRemoved());
                     own.training.addLast(new GravesAndGlory.Training(support,b.time));next(b,11);}else if(since(b)>100){fail(b,"p1-trained-fullhealth","the second support troop never appeared");}}
-                case 11->{if(supporters(b)==2){fullThree=fullHealth();double one=support.health()*b.campaign.health(own,support);
-                    report("p1-trained-fullhealth",Math.abs(fullOne-one)<1e-6&&Math.abs(fullTwo-2*one)<1e-6&&Math.abs(fullThree-2*one)<1e-6,"support ceiling after 1, 2 and a replaced troop: "+fullOne+", "+fullTwo+", "+fullThree+" (one troop is "+one+")");
-                    next(b,99);}else if(since(b)>100){fail(b,"p1-trained-fullhealth","the replacement support troop never appeared");}}
+                case 11->{if(supporters(b)==2){fullThree=fullHealth(); // then both fall and one is trained: the ceiling keeps two troops (adding would give four, the living sum one)
+                    for(var u:b.units)if(u.squad==own&&u.spec==support&&u.mob.isAlive())u.mob.kill();b.units.removeIf(u->!u.mob.isAlive()||u.mob.isRemoved());
+                    own.training.addLast(new GravesAndGlory.Training(support,b.time));next(b,12);}else if(since(b)>100){fail(b,"p1-trained-fullhealth","the replacement support troop never appeared");}}
+                case 12->{if(supporters(b)==1){fullFour=fullHealth();double one=support.health()*b.campaign.health(own,support);
+                    report("p1-trained-fullhealth",Math.abs(fullOne-one)<1e-6&&Math.abs(fullTwo-2*one)<1e-6&&Math.abs(fullThree-2*one)<1e-6&&Math.abs(fullFour-2*one)<1e-6,"support ceiling after 1, 2, a replaced troop, and 2 lost then 1 trained: "+fullOne+", "+fullTwo+", "+fullThree+", "+fullFour+" (one troop is "+one+")");
+                    next(b,99);}else if(since(b)>100){fail(b,"p1-trained-fullhealth","the support troop trained after both fell never appeared");}}
                 default->{}
             }
         }
@@ -601,6 +642,8 @@ public final class Phase1Checks implements ClientModInitializer {
             switch(stage){
                 case 1->{ // map 0 camp: open a custom lobby so the player leads it
                     var p=sp(b);if(p==null||!b.ready)return;
+                    if(b.running){b.campaign.returnLobby();stageAt=b.time;return;} // an earlier suite's skirmish still runs: back to camp first
+                    if(since(b)<40)return; // the client hears that the round and its lobby are over before a new lobby opens
                     b.command(p,"party:open");System.out.println("[p1] bots start: map "+b.campaign.map+", difficulty "+b.campaign.difficulty+", lead="+b.campaign.leader(p));next(b,2);
                 }
                 case 3->{ // the command, once no lobby needs a leader
@@ -638,7 +681,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 10->{ // p1-bots-least-defended
                     clear(b);hard=army(b,0,"hard",-105,100); // 25 blocks east of West Outpost (index 1)
-                    var row=b.campaign.tier(hard);
+                    var shipped=b.campaign.tier(hard);var row=new Spec.BotCommandRow(shipped.id(),shipped.retreatShare(),shipped.rallyShare(),shipped.chargeRatio(),shipped.decisionTicks(),true,shipped.defenderWeight(),shipped.shieldwallVsArchers(),shipped.archerThreatCount(),shipped.archerThreatRange(),shipped.chargeDistance()); // the flanking rule stays tested; the shipped Hard row has it off (Kort, 2026-10-18)
                     b.campaign.botDecide(hard,row);int none=chosen(b,hard);
                     plant(b,1,9);b.campaign.botDecide(hard,row);int defended=chosen(b,hard);
                     for(var u:foes)u.mob.discard(); // the nine fall, but the memory of them stays
@@ -874,6 +917,147 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 default->{}
             }
+        }
+    }
+
+    /** Task 7: the end-of-match report on Kingsfield Crossroads (map 4, five points). The commander strikes down two Dusk troops, loses one of
+     *  his own, holds point 0 for 60 ticks and one income interval, and a Dawn archer's arrow lands after the archer fell; then the round ends.
+     *  Every troop is frozen while the fixture runs, so only the fixture kills. Stages run on the server tick; the client checks the results page,
+     *  then photographs the same page holding the fullest report it can get (4v4 on five points) as layout evidence. */
+    static final class ReportChecks implements Suite,ServerWatch {
+        static final Spec.EconomyRow E=Spec.ECONOMY[0];
+        volatile int stage;volatile boolean finished,over;volatile UUID player;long stageAt;
+        GravesAndGlory.Squad own;GravesAndGlory.Capture point;GravesAndGlory.Unit archer,mark;Projectiles.Shot arrow;int killsBefore;
+        int overAt=-1,shownAt=-1,staleTicks;JsonObject real,crowd; // client thread only
+
+        void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
+        long since(GravesAndGlory.Battle b){return b.time-stageAt;}
+        ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
+        /** Keeps the commander on foot in the middle of point 0, where captureTick counts him. */
+        void stand(GravesAndGlory.Battle b){
+            var p=sp(b);var at=point.spec;if(p.isSpectator())p.changeGameMode(GameMode.ADVENTURE);
+            if(Math.hypot(p.getX()-at.x(),p.getZ()-at.z())>2)b.relocate(p,at.x()+.5,top(b,at.x(),at.z()),at.z()+.5,-90,10);
+        }
+        /** p1-kingsfield-stale-points cannot pass by never running: without its 30 qualifying client ticks before the suite ends, it fails. */
+        public void cleanup(MinecraftClient c){if(staleTicks<30)report("p1-kingsfield-stale-points",false,"only "+staleTicks+" of 30 client ticks drawn against three-entry point arrays before the suite ended (stage "+stage+")");}
+        static JsonArray rows(JsonObject report,String key){return report!=null&&report.has(key)&&report.get(key).isJsonArray()?report.getAsJsonArray(key):new JsonArray();}
+        static int number(JsonElement row,String key){var o=row.getAsJsonObject();return o.has(key)?o.get(key).getAsInt():-1;}
+        static String text(JsonElement row,String key){var o=row.getAsJsonObject();return o.has(key)?o.get(key).getAsString():"";}
+        /** The given report with the fullest table it can hold: 4v4 with the widest 16-letter names, three-digit tallies, four-digit gold and long holds. */
+        static JsonObject crowded(JsonObject real){
+            var r=real.deepCopy();var squads=new JsonArray();String[] names={"WWWWWWWWWWWWWWWW","MMMMMMMMMMMMMMMM","hard bot","hard bot","QQQQQQQQQQQQQQQQ","normal bot","normal bot","normal bot"};
+            for(int i=0;i<8;i++){var row=new JsonObject();boolean bot=names[i].endsWith(" bot");row.addProperty("name",names[i]);row.addProperty("team",i/4);row.addProperty("bot",bot);row.addProperty("tier",bot?names[i].substring(0,names[i].length()-4):"");row.addProperty("you",i==0);
+                row.addProperty("kills",i==4?212:97+i);row.addProperty("lost",88+i);row.addProperty("gold",1180+37*i);row.addProperty("objective",640+13*i);squads.add(row);}
+            r.add("squads",squads);for(var e:r.getAsJsonArray("points")){var p=e.getAsJsonObject();p.addProperty("dawn",700+p.get("dawn").getAsInt());p.addProperty("dusk",600+p.get("dusk").getAsInt());}
+            return r;
+        }
+        static JsonObject parse(String json){return com.google.gson.JsonParser.parseString(json).getAsJsonObject();}
+        /** p1-report-stale-kill (final review, minor 2): a death with no attacker (here /kill, standing for a fall or lava) credits the army whose blow last hurt the victim only inside Projectiles.CREDIT_WINDOW_TICKS. A blow one tick past the window earns nothing; one on its last tick earns the kill and the kill gold. */
+        void staleKill(GravesAndGlory.Battle b){
+            var foes=b.units.stream().filter(u->u.squad.team!=own.team&&u.mob.isAlive()).limit(2).toList();
+            if(foes.size()<2){report("p1-report-stale-kill",false,"fewer than two living enemy troops to test with ("+foes.size()+")");return;}
+            int window=Projectiles.CREDIT_WINDOW_TICKS,kills0=own.stats.kills,gold0=own.gold;
+            var stale=foes.get(0);stale.lastHitBy=own;stale.lastHitAt=b.time-window-1;stale.mob.kill();
+            int kills1=own.stats.kills,gold1=own.gold;
+            var fresh=foes.get(1);fresh.lastHitBy=own;fresh.lastHitAt=b.time-window;fresh.mob.kill();
+            report("p1-report-stale-kill",!stale.mob.isAlive()&&!fresh.mob.isAlive()&&kills1==kills0&&gold1==gold0&&own.stats.kills==kills1+1&&own.gold==gold1+E.killGold(),
+                "window "+window+" ticks; an enemy killed with no attacker "+(window+1)+" ticks after the commander's army last hit him: kills "+kills0+" -> "+kills1+", gold "+gold0+" -> "+gold1+"; one killed "+window+" ticks after: kills "+kills1+" -> "+own.stats.kills+", gold "+gold1+" -> "+own.gold+" (kill gold "+E.killGold()+")");
+        }
+        /** The camp snapshot at its realistic worst (256 match ids held, every claim and title, the 8-row report) fits the client's read limit as sent today, carries no match ids, and the saved profile still refuses a repeat id; then each fallback of Campaign.fitted stays inside the limit. Everything is put back before this server tick ends, so no state packet carries the fixture. */
+        void snapshotChecks(GravesAndGlory.Battle b){
+            var c=b.campaign;var p=sp(b);var st=c.profile(player).progression;var grants=new LinkedHashSet<>(st.matchGrants);var claims=new HashSet<>(st.claims);var titles=new LinkedHashSet<>(st.titles);var realReport=c.results.get(player);String notice=c.notices.get(player);
+            try{
+                while(st.matchGrants.size()<256)st.matchGrants.add(UUID.randomUUID().toString());
+                for(int i=0;i<3;i++)st.claims.add("daily:"+i);st.claims.add("weekly");for(int t=1;t<=Progression.TIERS;t++)st.claims.add(Progression.SEASON+":"+t);st.titles.addAll(Arrays.asList(Progression.TITLES));
+                var four=crowded(realReport);c.results.put(player,four);String worst=c.snapshot(p);
+                var saved=Campaign.JSON.fromJson(Campaign.JSON.toJson(c.profile(player)),Campaign.Profile.class).progression;var again=Progression.match(saved,st.matchGrants.iterator().next(),true,true);
+                String key=Progression.State.MATCH_GRANTS;boolean named=Campaign.JSON.toJsonTree(st).getAsJsonObject().has(key);
+                boolean pretty=worst.contains("\n"),ids=worst.contains(key)||st.matchGrants.stream().anyMatch(worst::contains),kept=parse(worst).getAsJsonObject("result").has("id");
+                report("p1-report-snapshot",worst.length()<=Campaign.SNAPSHOT_LIMIT&&pretty&&kept&&named&&!ids&&saved.matchGrants.size()==256&&again.xp()==0,
+                    "worst camp snapshot ("+st.matchGrants.size()+" match ids held by the server, "+st.claims.size()+" claims, "+st.titles.size()+" titles, an 8-row report on "+b.points.size()+" points) is "+worst.length()+" of "+Campaign.SNAPSHOT_LIMIT+" characters, sent pretty="+pretty+" with the report="+kept+", carries match ids="+ids+" (key "+key+" names the saved field="+named+"); the saved profile keeps "+saved.matchGrants.size()+" ids and pays a repeat id "+again.xp()+" XP");
+                // the guard: grow the report until the pretty form no longer fits, then until the compact form does not either, then a notice longer than the limit
+                var rows=four.getAsJsonArray("squads");var row=rows.get(0);String compact="",dropped="",empty;int compactRows=0,droppedRows=0;
+                for(int n=0;n<200&&compact.isEmpty();n++){for(int k=0;k<5;k++)rows.add(row.deepCopy());String s=c.snapshot(p);if(!s.contains("\n")){compact=s;compactRows=rows.size();}}
+                for(int n=0;n<400&&dropped.isEmpty();n++){for(int k=0;k<5;k++)rows.add(row.deepCopy());String s=c.snapshot(p);var r=s.length()>2?parse(s).getAsJsonObject("result"):null;if(r!=null&&!r.has("id")){dropped=s;droppedRows=rows.size();}}
+                c.notices.put(player,"x".repeat(Campaign.SNAPSHOT_LIMIT));empty=c.snapshot(p);
+                boolean compactOk=!compact.isEmpty()&&compact.length()<=Campaign.SNAPSHOT_LIMIT&&parse(compact).getAsJsonObject("result").has("id");
+                boolean droppedOk=!dropped.isEmpty()&&dropped.length()<=Campaign.SNAPSHOT_LIMIT&&parse(dropped).has("profile");
+                report("p1-report-snapshot-guard",compactOk&&droppedOk&&empty.equals("{}"),
+                    "with "+compactRows+" report rows the snapshot went compact at "+compact.length()+" characters (report kept="+compactOk+"); with "+droppedRows+" rows it left the report out at "+dropped.length()+" (profile kept="+droppedOk+"); with a "+Campaign.SNAPSHOT_LIMIT+"-character notice it sent "+empty+" (limit "+Campaign.SNAPSHOT_LIMIT+")");
+            }finally{st.matchGrants.clear();st.matchGrants.addAll(grants);st.claims.clear();st.claims.addAll(claims);st.titles.clear();st.titles.addAll(titles);c.results.put(player,realReport);if(notice==null)c.notices.remove(player);else c.notices.put(player,notice);}
+        }
+
+        public void step(MinecraftClient c,int tick){
+            if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;next(b,1);});}
+            if((stage==3||stage==4)&&staleTicks<30&&GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()){ // the Kingsfield crash (fixed in 6ecbfb0): after a switch to five points the client's point arrays hold three until the next state packet, and the battle HUD's point strip and minimap must still draw
+                GravesAndGloryClient.contested=new boolean[3];GravesAndGloryClient.owners=new int[]{-1,-1,-1};GravesAndGloryClient.progress=new int[3];GravesAndGloryClient.challengers=new int[]{-1,-1,-1};
+                if(++staleTicks==30){shot(c,"kingsfield-stale");report("p1-kingsfield-stale-points",Spec.POINTS.length==5,"battle HUD point strip and minimap drawn for 30 client ticks with "+Spec.POINTS.length+" points against three-entry point arrays (the state between a switch to Kingsfield and the next state packet); the client kept running");}
+            }
+            if(over&&overAt<0)overAt=tick;
+            if(overAt>=0&&shownAt<0&&!finished){
+                if(c.currentScreen instanceof CampScreen s&&s.page.equals("results"))shownAt=tick;
+                else if(tick-overAt>60){shot(c,"report");report("p1-report-screen",false,"no results page 60 client ticks after the round ended (screen: "+(c.currentScreen==null?"none":c.currentScreen.getClass().getSimpleName())+")");finished=true;finish(c,"report");}
+            }
+            if(shownAt>=0&&tick==shownAt+5){ // a few frames after the page opened, so the screenshot holds it
+                var r=CampaignClient.result;int rows=rows(r,"squads").size(),points=rows(r,"points").size();shot(c,"report");
+                report("p1-report-screen",shownAt-overAt<=60&&rows>0&&points==5,"results page open "+(shownAt-overAt)+" client ticks after the round ended; the client holds "+rows+" squad rows and "+points+" point rows");
+                if(points==5){real=r;crowd=crowded(r);CampaignClient.result=crowd;}else{finished=true;finish(c,"report");}
+            }
+            if(crowd!=null&&tick>shownAt+8){ // layout evidence, not a check: shot once no state packet has put the real report back since the last tick
+                if(CampaignClient.result==crowd){shot(c,"report-4v4");CampaignClient.result=real;crowd=null;finished=true;finish(c,"report");}
+                else CampaignClient.result=crowd;
+            }
+            if(tick>12000&&!finished){finished=true;report("p1-report-timeout",false,"stuck in stage "+stage);finish(c,"report");}
+        }
+
+        public void serverTick(GravesAndGlory.Battle b){
+            switch(stage){
+                case 1->{ // fixture: practice on Kingsfield Crossroads against one Normal bot; nobody refills
+                    var p=sp(b);if(p==null||!skirmish(b,p,4,1,"normal"))return;
+                    own=b.squads.get(player);point=b.points.get(0);
+                    for(var s:b.squads.values()){s.reinforceAt=Long.MAX_VALUE;if(s.bot)b.campaign.botRespawns.put(s.owner,Long.MAX_VALUE);}
+                    System.out.println("[p1] report fixture: map "+b.campaign.map+" "+Spec.MAPS[b.campaign.map].name()+", "+b.points.size()+" points, "+b.units.size()+" troops, point 0 is "+point.spec.name()+" at "+point.spec.x()+", "+point.spec.z());
+                    next(b,2);
+                }
+                case 2->{ // two Dusk troops fall to the commander's blows and one of his own dies; then his team owns point 0 and he stands on it
+                    var p=sp(b);var foes=b.units.stream().filter(u->u.squad.team!=own.team&&u.mob.isAlive()).limit(2).toList();
+                    for(var u:foes)u.mob.damage(b.world.getDamageSources().playerAttack(p),99);
+                    var mine=b.units.stream().filter(u->u.squad==own&&u.mob.isAlive()).findFirst().orElseThrow();mine.mob.kill();
+                    System.out.println("[p1] report blows: "+foes.stream().filter(u->!u.mob.isAlive()).count()+" of "+foes.size()+" Dusk troops struck down by the commander, his own "+mine.spec.id()+" dead="+!mine.mob.isAlive()+"; tally kills "+own.stats.kills+", lost "+own.stats.lost);
+                    point.owner=own.team;point.ownedSince=b.time;point.challenger=-1;point.progress=0;point.contested=false;Arena.flag(b.world,point.spec,own.team);
+                    stand(b);next(b,3);
+                }
+                case 3->{stand(b);if(since(b)>=60){System.out.println("[p1] report point: 60 ticks on "+point.spec.name()+", objective "+own.stats.objectiveSeconds+" s");next(b,4);}}
+                case 4->{stand(b);if(since(b)>=E.incomeSeconds()*20L){System.out.println("[p1] report income: one interval waited, gold earned "+own.stats.goldEarned);next(b,5);}}
+                case 5->{ // the late kill: a Dawn archer looses at a Dusk troop on its last health point and falls before the arrow lands
+                    mark=b.units.stream().filter(u->u.squad.team!=own.team&&u.mob.isAlive()&&u.spec.group().equals("infantry")).findFirst().orElse(null);
+                    if(mark==null){report("p1-report-late-kill",false,"no living Dusk infantry to shoot");next(b,7);break;}
+                    mark.mob.setHealth(1);double x=mark.mob.getX()-12,z=mark.mob.getZ();
+                    archer=b.spawn(own,troop("archer"),30,new Vec3d(x,top(b,x,z),z));freeze(archer);
+                    Projectiles.fire(b,archer,mark.mob,"arrow",(float)(archer.spec.damage()*b.campaign.damage(archer)));arrow=b.shots.get(b.shots.size()-1);
+                    archer.mob.kill();killsBefore=own.stats.kills;
+                    System.out.println("[p1] report late shot: fired at tick "+arrow.fired()+", lands at "+arrow.lands()+", archer dead="+!archer.mob.isAlive()+", army kills "+killsBefore);
+                    next(b,6);
+                }
+                case 6->{if(b.time>arrow.lands()){
+                    boolean gone=!archer.mob.isAlive()&&!b.units.contains(archer);
+                    report("p1-report-late-kill",!mark.mob.isAlive()&&gone&&own.stats.kills==killsBefore+1,"arrow loosed at tick "+arrow.fired()+" by an archer killed the same tick (out of the battle at landing="+gone+"), landed at "+arrow.lands()+": target alive="+mark.mob.isAlive()+", last hit by the commander's army="+(mark.lastHitBy==own)+"; the army's kills "+killsBefore+" -> "+own.stats.kills);
+                    staleKill(b);next(b,7);
+                }}
+                case 7->{ // the round ends: the commander's report as the server keeps it for his client
+                    int seated=(int)b.squads.values().stream().filter(s->s.seated).count();String side=own.team==0?"dawn":"dusk";
+                    b.campaign.finish(own.team);var r=b.campaign.results.get(player);var squads=rows(r,"squads");var points=rows(r,"points");
+                    JsonElement me=null;boolean names=true;for(var e:squads){if(text(e,"you").equals("true"))me=e;if(text(e,"bot").equals("true"))names&=text(e,"name").equals(text(e,"tier")+" bot");}
+                    boolean ownFirst=squads.size()>0&&number(squads.get(0),"team")==own.team;
+                    report("p1-report-fields",squads.size()==seated&&me!=null&&number(me,"kills")>=2&&number(me,"lost")>=1&&number(me,"gold")>=E.passiveGold()&&number(me,"objective")>=2&&ownFirst&&names,
+                        squads.size()+" squad rows for "+seated+" seated armies, own team first="+ownFirst+", bot rows named \"<tier> bot\"="+names+"; rows "+squads+" (the commander's row needs kills>=2, lost>=1, gold>="+E.passiveGold()+", objective>=2); the snapshot is "+b.campaign.snapshot(sp(b)).length()+" of the client's "+Campaign.SNAPSHOT_LIMIT+" characters");
+                    report("p1-report-five-points",points.size()==5&&number(points.get(0),side)>=2,points.size()+" point rows "+points+" (point 0 needs 2 s or more for "+side+")");
+                    snapshotChecks(b);
+                    over=true;next(b,8);
+                }
+                default->{}
+            }
+            if(stage>=2&&stage<=6)for(var u:b.units)freeze(u); // only the fixture strikes
         }
     }
 }

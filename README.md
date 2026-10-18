@@ -1,13 +1,15 @@
 
 
-# Graves and Glory 0.3.7
+# Graves and Glory 0.4.0
 
 This is a local release candidate. Isolated game checks do not constitute a
 production launcher installation or an eight-human Internet multiplayer playtest.
 Public Internet matchmaking and the home-hosted official service remain planned
-work. This candidate adds camp stations, persistent friend parties, private rooms,
-daily/weekly contracts and a finite free Founders reward chapter. Nothing in this
-update has been published automatically.
+work. This candidate reworks the solo game: shots that fly before they land,
+lines that rout and rally, recruits deploying from held points, Easy, Normal and
+Hard bots, a guided first campaign battle and a report after every match (see
+"0.4.0 solo rework candidate" below). Nothing in this update has been published
+automatically.
 
 Clients must match the server's game version and build identity. A missing or
 incompatible pack receives an update instruction before entering the world.
@@ -24,7 +26,7 @@ only a legacy Bannerbound world exists, it is copied before opening; the origina
 is retained. Close that world normally before upgrading, keep a backup, and allow
 disk space for the copy. If both world folders exist, the current world wins.
 
-Collect soldiers, arrange a twenty-unit army and lead it across four large fantasy battlefields inside Minecraft: Java Edition. Play 1vAI practice, 1v1, 2v2, 3v3 or 4v4, with optional bots filling empty team slots.
+Collect soldiers, arrange a twenty-unit army and lead it across five large fantasy battlefields inside Minecraft: Java Edition. Play 1vAI practice, 1v1, 2v2, 3v3 or 4v4, with optional bots filling empty team slots.
 
 ## Camp, friends and permanent armies
 
@@ -42,14 +44,15 @@ Earn 80 collection gold for completing a regular match, plus 40 for victory. Pra
 
 Classes boost matching troops: Vanguard grants infantry 20% health and 10% damage; Marksman grants ranged troops 15% damage and 10% attack speed; Arcanist grants support 20% health and 20% spell or healing power. Dawn shield troops guard in close compact combat and support heal wounded allies. Dusk casters mark an area before a damaging slowing spell lands. Ranged attacks require line of sight.
 
-## Four purposeful battlefields
+## Five purposeful battlefields
 
-Every playable map is 700 by 500 blocks, with three objectives. Roads connect settlements, bases and river crossings; broad approaches, flanking routes, hills and woods offer different positions.
+Every playable map is 700 by 500 blocks, with three objectives (Kingsfield Crossroads has five). Roads connect settlements, bases and river crossings; broad approaches, flanking routes, hills and woods offer different positions.
 
 - Rivergate Valley: a river settlement with mill, farms, market, customs buildings, trade crossing and shrine.
 - Ironhold Siege: a breached fortress, curtain walls, supply barn, garrison and flanking military roads.
 - Frostmarch Pass: snowy ridges, a mountain river, caravan lodge, sheltered refuge and signal tower.
 - Hollowwood Reach: dense woodland, a logging settlement, abandoned chapel, old causeway and moon shrine.
+- Kingsfield Crossroads: open plains with five objectives (two fords, a central bridge and a raised outpost on each flank).
 
 The first visit prepares the selected map and caches its completed layout. Selecting a different map prepares that battlefield. Collection saves are separate from map generation.
 
@@ -121,3 +124,15 @@ a maximum of eight battle commanders; existing servers need `max-players`
 raised to leave room for visitors. Admission policy checks pass; live full-match
 join, camp movement, reconnect and next-round verification remain pending.
 
+## 0.4.0 solo rework candidate
+
+Arrows, bolts and spells fly before they land, with team-coloured impact puffs,
+and a group card flashes when its troops take hits. A shattered group, or one
+taken from behind, routs with a horn and rallies; orders given during the rout
+apply on regroup. Barracks recruits march out from a point your side has held
+for ten seconds near the fight. Bots come in Easy, Normal and Hard (Bots button
+in the camp guide). The Long March battle 1, The Training Field, teaches
+command with lessons that name your own keys, and every match ends with a
+battle report of kills, losses, gold and time on points, with an MVP.
+Verified by automated checks in an isolated development client; bot tier
+balance is parked until the rebuilt maps.

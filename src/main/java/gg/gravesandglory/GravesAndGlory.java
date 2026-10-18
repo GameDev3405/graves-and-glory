@@ -56,6 +56,8 @@ public final class GravesAndGlory implements ModInitializer {
             if(battle!=null&&!CampWorld.generation.isEmpty()&&entity.getCommandTags().contains(CampWorld.TAG)&&!entity.getCommandTags().contains("camp-generation:"+CampWorld.generation))entity.discard();
             if(entity.getCommandTags().contains("gravesandglory-lobby")||entity.getCommandTags().contains("bannerbound-lobby"))entity.discard();
             if(battle!=null&&world==battle.world&&(entity.getCommandTags().contains("gravesandglory")||entity.getCommandTags().contains("bannerbound"))&&!(entity instanceof ArmyHusk)&&!(entity instanceof ArmySkeleton)&&!(entity instanceof ArmyWither))entity.discard();
+            // A shot's arrow saved mid-flight comes back from disk as a real, clipping arrow. This event also fires for a new spawn, so only a tagged arrow that no queued shot owns is discarded (Projectiles.fire queues the shot before it spawns the arrow). Any world.
+            if(entity.getCommandTags().contains(Projectiles.TAG)&&!Projectiles.owns(battle,entity))entity.discard();
         });
         ServerTickEvents.END_SERVER_TICK.register(server -> { if(battle!=null) battle.tick(); });
         ServerPlayNetworking.registerGlobalReceiver(ORDER, (server, player, handler, buf, responder) -> {
@@ -82,9 +84,10 @@ public final class GravesAndGlory implements ModInitializer {
             for(Unit victim:battle.units)if(victim.mob==entity){
                 Squad winner=attacker==null?null:battle.squads.get(attacker.getUuid());
                 for(Unit u:battle.units)if(u.mob==attacker)winner=u.squad;
-                // A shot that lands after its archer fell still credits the archer's army.
-                if(winner==null)winner=victim.lastHitBy;
-                if(winner!=null&&winner.team!=victim.squad.team)winner.earn(Spec.ECONOMY[0].killGold());
+                // A shot that lands after its archer fell still credits the archer's army, and so does a death soon after an enemy's blow; a fall, lava, cramming or /kill long after one is nobody's kill.
+                if(winner==null&&BattleMath.creditWindowOpen(battle.time,victim.lastHitAt,Projectiles.CREDIT_WINDOW_TICKS))winner=victim.lastHitBy;
+                victim.squad.stats.lost++;
+                if(winner!=null&&winner.team!=victim.squad.team){winner.earn(Spec.ECONOMY[0].killGold());winner.stats.kills++;}
             }
         });
         net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register((player,world,hand,entity,hit)->{
@@ -155,6 +158,8 @@ public final class GravesAndGlory implements ModInitializer {
         LivingEntity lockedTarget;long lockUntil;
         /** The army whose blow last hurt this unit; kill credit when the attacker itself is gone. */
         Squad lastHitBy;
+        /** Battle time (ticks) of that blow: a death with no attacker credits lastHitBy only within Projectiles.CREDIT_WINDOW_TICKS of it. */
+        long lastHitAt;
         Unit(MobEntity m,Squad s,Spec.TroopsRow t,int slot){mob=m;squad=s;spec=t;this.slot=slot;lastPosition=m.getPos();deployed=m.getPos();}
     }
     public static final class Capture {
@@ -191,6 +196,8 @@ public final class GravesAndGlory implements ModInitializer {
         public final List<Projectiles.Shot> shots=new ArrayList<>();
         final Map<UUID,Long> respawns=new HashMap<>();
         final int[] scores={0,0};
+        /** Seconds each team held each point this round, [team][point]; startRound sizes it from points (five on Kingsfield). */
+        int[][] pointSeconds=new int[2][0];
         final Set<UUID> welcomed=new HashSet<>();
         long time;
         public boolean ready=false;
@@ -231,6 +238,7 @@ public final class GravesAndGlory implements ModInitializer {
             world.getGameRules().get(GameRules.DO_MOB_GRIEFING).set(false,server);
             world.getGameRules().get(GameRules.DO_MOB_LOOT).set(false,server);
             world.getGameRules().get(GameRules.KEEP_INVENTORY).set(true,server);
+            world.getGameRules().get(GameRules.ANNOUNCE_ADVANCEMENTS).set(false,server); // vanilla advancement lines do not belong in battle chat
             world.setTimeOfDay(3000);
             world.setWeather(0,0,false,false);
             world.setSpawnPos(new BlockPos(-108,66,0),-90);
@@ -450,23 +458,28 @@ public final class GravesAndGlory implements ModInitializer {
                 var player=server.getPlayerManager().getPlayer(s.owner);if(player!=null)player.sendMessage(Text.literal(t.spec().name()+" trained: "+deployNote(s,at.anchor())),true);
             }
         }
-        /** Points this team has held long enough, uncontested and with no enemy near: where new troops may deploy instead of the barracks. Phase 2 banners add their anchors here. */
+        /** Points this team has held long enough, uncontested and with no enemy near where the troops would appear: where new troops may deploy instead of the barracks. Phase 2 banners add their anchors here. */
         List<Capture> reinforcementAnchors(int team){
             var E=Spec.ECONOMY[0];List<Capture> anchors=new ArrayList<>();
-            for(Capture p:points)if(p.owner==team&&!p.contested&&time-p.ownedSince>=E.forwardHoldSeconds()*20L&&!Morale.enemyWithin(this,team,new Vec3d(p.spec.x(),p.spec.elevation()+1,p.spec.z()),E.forwardSafeRadius()))anchors.add(p);
+            for(Capture p:points)if(p.owner==team&&!p.contested&&time-p.ownedSince>=E.forwardHoldSeconds()*20L&&!Morale.enemyWithin(this,team,deployCentre(team,p),E.forwardSafeRadius()))anchors.add(p);
             return anchors;
+        }
+        /** Where troops deployed at a held point appear: its centre moved forwardSpawnOffset toward the team's base; each slot then stands in its ring place around this spot. The safe radius is measured here, not at the point centre. */
+        Vec3d deployCentre(int team,Capture p){
+            Vec3d home=base(team),back=new Vec3d(home.x-p.spec.x(),0,home.z-p.spec.z());back=back.lengthSquared()<1e-6?Vec3d.ZERO:back.normalize().multiply(Spec.ECONOMY[0].forwardSpawnOffset());
+            double x=p.spec.x()+back.x,z=p.spec.z()+back.z;return new Vec3d(x,Arena.ground((int)Math.floor(x),(int)Math.floor(z))+1,z);
         }
         /** Where a troop trained now appears, and the held point it deploys at (null: the barracks). Chosen at spawn time, so a point that was lost, contested or approached since the purchase sends the troop home. */
         record Deploy(Vec3d at,Capture anchor){}
         Deploy deploy(Squad s,int slot){
-            var E=Spec.ECONOMY[0];Vec3d home=base(s.team),ring=new Vec3d((slot%5-2)*2,0,(slot/5-2)*2),barracks=home.add(ring);
+            Vec3d home=base(s.team),ring=new Vec3d((slot%5-2)*2,0,(slot/5-2)*2),barracks=home.add(ring);
             if(!forwardReinforcement)return new Deploy(barracks,null);
             List<Capture> anchors=reinforcementAnchors(s.team);if(anchors.isEmpty())return new Deploy(barracks,null);
             Vec3d target=storedAssignment(s,"infantry").target;double[] ax=new double[anchors.size()],az=new double[anchors.size()];
             for(int i=0;i<ax.length;i++){ax[i]=anchors.get(i).spec.x();az[i]=anchors.get(i).spec.z();}
             int chosen=BattleMath.nearestAnchor(target.x,target.z,home.x,home.z,ax,az);if(chosen<0)return new Deploy(barracks,null);
-            Capture anchor=anchors.get(chosen);Vec3d back=new Vec3d(home.x-ax[chosen],0,home.z-az[chosen]);back=back.lengthSquared()<1e-6?Vec3d.ZERO:back.normalize().multiply(E.forwardSpawnOffset());
-            double x=ax[chosen]+back.x+ring.x,z=az[chosen]+back.z+ring.z;int gx=(int)Math.floor(x),gz=(int)Math.floor(z);
+            Capture anchor=anchors.get(chosen);Vec3d centre=deployCentre(s.team,anchor);
+            double x=centre.x+ring.x,z=centre.z+ring.z;int gx=(int)Math.floor(x),gz=(int)Math.floor(z);
             if(Arena.river(gx,gz)&&Arena.ground(gx,gz)<64)return new Deploy(barracks,null);
             return new Deploy(new Vec3d(x,Arena.ground(gx,gz)+1,z),anchor);
         }
@@ -476,7 +489,7 @@ public final class GravesAndGlory implements ModInitializer {
         void startRound(){
             Projectiles.clear(this);
             campaign.prepareRound();
-            Arrays.fill(scores,0);
+            Arrays.fill(scores,0);pointSeconds=new int[2][points.size()];
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
             respawns.clear();
             for(Squad s:squads.values()){
@@ -529,12 +542,13 @@ public final class GravesAndGlory implements ModInitializer {
         }
         void unitTick(Unit u){ Tactics.tick(this,u,time); }
         void captureTick(){
+            Set<Squad> onPoint=new HashSet<>(); // armies with a troop or their commander inside any point radius this second
             for(Capture p:points){
                 int[] presence={0,0};Vec3d center=new Vec3d(p.spec.x(),65,p.spec.z());
-                for(Unit u:units)if(u.mob.isAlive()&&horizontalDistance(u.mob.getPos(),center)<p.spec.radius()*p.spec.radius())presence[u.squad.team]++;
+                for(Unit u:units)if(u.mob.isAlive()&&horizontalDistance(u.mob.getPos(),center)<p.spec.radius()*p.spec.radius()){presence[u.squad.team]++;onPoint.add(u.squad);}
                 for(ServerPlayerEntity player:server.getPlayerManager().getPlayerList()){
                     Squad s=squads.get(player.getUuid());
-                    if(s!=null&&s.seated&&!player.isSpectator()&&horizontalDistance(player.getPos(),center)<p.spec.radius()*p.spec.radius())presence[s.team]+=R.capturePlayersWeight();
+                    if(s!=null&&s.seated&&!player.isSpectator()&&horizontalDistance(player.getPos(),center)<p.spec.radius()*p.spec.radius()){presence[s.team]+=R.capturePlayersWeight();onPoint.add(s);}
                 }
                 p.contested=presence[0]>0&&presence[1]>0;
                 int team=presence[0]>0&&presence[1]==0?0:presence[1]>0&&presence[0]==0?1:-1;
@@ -547,6 +561,8 @@ public final class GravesAndGlory implements ModInitializer {
                     for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList())if(squads.containsKey(pl.getUuid())&&squads.get(pl.getUuid()).seated)pl.sendMessage(Text.literal(Spec.FACTIONS[team].name()+" captured "+p.spec.name()).formatted(team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE),true);
                 }
             }
+            for(Squad s:onPoint)s.stats.objectiveSeconds++;
+            MatchStats.teamPointSeconds(pointSeconds,points.stream().mapToInt(c->c.owner).toArray());
         }
         static double horizontalDistance(Vec3d a,Vec3d b){double x=a.x-b.x,z=a.z-b.z;return x*x+z*z;}
         int teamOf(Entity e){
@@ -573,7 +589,7 @@ public final class GravesAndGlory implements ModInitializer {
                 respawns.put(p.getUuid(),time+R.respawnSeconds()*20L);return false;
             }
             Squad hitter=attackerSquad;for(Unit u:units)if(u.mob==attacker)hitter=u.squad;
-            if(hitter!=null)for(Unit u:units)if(u.mob==entity){u.lastHitBy=hitter;break;}
+            if(hitter!=null)for(Unit u:units)if(u.mob==entity){u.lastHitBy=hitter;u.lastHitAt=time;break;}
             return true;
         }
         record Sight(float x,float z,long seen){}

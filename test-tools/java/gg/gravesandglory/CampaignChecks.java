@@ -124,8 +124,9 @@ public final class CampaignChecks implements ClientModInitializer {
             if(tick==900){c.setScreen(new GravesAndGloryClient.LobbyScreen());report("campaign-suite",!failed,"Mechanical checks finished; local multiplayer joining is a separate run");shot(c,"final-lobby");}
             if(tick==950)server(c,b->{
                 var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var camp=b.campaign;
-                b.relocate(p,-9.5,65,-322,90,0);camp.padMapRolled=true;camp.padCountdown=10;
-                camp.padTick();
+                b.relocate(p,-9.5,65,-322,90,0);camp.padMapRolled=true;
+                camp.padTick(); // since 0.3.5 a new ready group first resets the countdown, so this tick only seats him on the pad
+                camp.padCountdown=10;camp.padTick();
                 report("solo-pad-3v3",b.running&&camp.size==3&&b.squads.size()==6&&b.units.size()==120&&b.squads.values().stream().filter(s->s.bot).count()==5,"One ready commander starts a 3v3 with five AI commanders");
                 camp.finish(-1);if(backup!=null){camp.profiles.put(p.getUuid(),Campaign.JSON.fromJson(Campaign.JSON.toJson(backup),Campaign.Profile.class));camp.save(p.getUuid());}
             });

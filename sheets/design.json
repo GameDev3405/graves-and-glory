@@ -1431,7 +1431,7 @@
       "rallyShare": 0.55,
       "chargeRatio": 1.3,
       "decisionTicks": 60,
-      "flankLeastDefended": true,
+      "flankLeastDefended": false,
       "defenderWeight": 25.0,
       "shieldwallVsArchers": true,
       "archerThreatCount": 3,
