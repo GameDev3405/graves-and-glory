@@ -66,4 +66,4 @@ A yes to 1 passes the gate; every other note becomes a Phase 1 fix or a line in 
 [botsim] matches=10 dawn(normal)=5 dusk(easy)=4 draws=1 dawnWin=50% meanGoldEarnedAtEnd dawn=1532 dusk=1479
 ```
 
-What they say: Hard wins 9 of 20 against Normal, level rather than harder, and 0 of its 4 on Kingsfield Crossroads, while Easy beats Normal 13 of 20 and the Dawn seat wins 13 to 17 of every 20 in all six batches, more than any tier. You parked the tier ladder until the Phase 3 maps (2026-10-18), so in Skirmish 3 "harder" is your judgement, not the sim's. Full table and run roots: `docs/QUESTIONS-FOR-KORT.md`, problem 5 follow-up.
+What they say: Hard wins 9 of 20 against Normal, level rather than harder, and 0 of its 4 on Kingsfield Crossroads, while Easy beats Normal 13 of 20 and the Dawn seat wins 13 to 17 of every 20 in all six batches, more than any tier. You parked the tier ladder until the Phase 3 maps (2026-10-18), so in Skirmish 3 "harder" is your judgement, not the sim's. Full table and run roots (work/p1/botsim-5e-* and botsim-5f-*): `docs/QUESTIONS-FOR-KORT.md`, problem 5 follow-up.
