@@ -62,3 +62,7 @@ Kort pictures up to a thousand concurrent players a year out and wants the serve
 - Three primary buttons on the camp home (THE LONG MARCH / BATTLE 1, OPEN RECRUITMENT, PARTY WITH FRIENDS); whether the other two step down while battle 1 is unwon is left for the UI pass.
 - MVP exact tie on equal non-zero kills and seconds crowns each viewer's own first row (2026-10-18, Phase 1 Task 7); a viewer-independent tiebreak (owner id) if it is ever noticed.
 - Banner mode: supply-wagon escort variant (2026-10-18, Phase 4 spec question 1). Kort: parked for now, to be revisited after the carry variant ships.
+
+## Media shoot: stills, trailer, gameplay footage (2026-10-18, parked by Kort)
+
+- Full shot list in `docs/media/SHOTLIST.md` (sets A to E: Steve watching with empty hands, face close-ups near and far, walking away, ten scenarios, trailer clips, gameplay footage, intro and outro plates). Kort: hold until units and maps are designed and polished. Resume after Phase 2 Task 5 (skins) and Phase 3 (built world). The title-screen pick from the six demos is deferred to the same point; the staging harness (TitleDemos + mixins) is committed.
