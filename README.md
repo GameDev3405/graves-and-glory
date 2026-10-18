@@ -5,9 +5,11 @@
 This is a local release candidate. Isolated game checks do not constitute a
 production launcher installation or an eight-human Internet multiplayer playtest.
 Public Internet matchmaking and the home-hosted official service remain planned
-work. This candidate adds camp stations, persistent friend parties, private rooms,
-daily/weekly contracts and a finite free Founders reward chapter. Nothing in this
-update has been published automatically.
+work. This candidate reworks the solo game: shots that fly before they land,
+lines that rout and rally, recruits deploying from held points, Easy, Normal and
+Hard bots, a guided first campaign battle and a report after every match (see
+"0.4.0 solo rework candidate" below). Nothing in this update has been published
+automatically.
 
 Clients must match the server's game version and build identity. A missing or
 incompatible pack receives an update instruction before entering the world.

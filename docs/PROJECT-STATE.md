@@ -66,23 +66,20 @@ type, charcoal/brass "dark ironwork" UI.
 
 - `gradle.properties` mod_version = 0.4.0 on branch `phase-1-solo-core` (the
   Phase 1 solo rework candidate, committed locally 2026-10-18, not merged, not
-  pushed); `master` stays at 0.3.7.
-- Git HEAD `04bec2d` = Claude's audit-fix and map commits (F-01..F-06, F-08,
-  F-10, F-17, F-22). Those are committed; nothing is pushed; no remote exists.
-- **Uncommitted on top of HEAD (two authors, both unsaved to git):**
-  - Codex 0.3.5 -> 0.3.7: `AdmissionPolicy`, `CampScreen`, `CampWorld`,
-    `Progression`, `SocialHub`, Campaign/GravesAndGlory changes, server
-    templates, release notes 0.3.5/0.3.6.
-  - Claude map session: `MapDressing.java` + Arena/CampaignMaps edits
-    (spawn parade grounds, capture rings, cover, obelisks, bridge pillars).
-- Last live-game evidence is 0.3.4 (Prism import, menu, camp, practice).
-  0.3.5 to 0.3.7 have build/policy/unit checks only.
+  pushed); `master` stays at 0.3.7 (`e78b81b`).
+- Everything earlier is committed: Claude's audit-fix and map commits
+  (F-01..F-06, F-08, F-10, F-17, F-22, up to `04bec2d`), then the Codex
+  0.3.5 -> 0.3.7 camp, party and progression layer with Claude's map
+  dressing (`cea7968`, 2026-10-17). Nothing is pushed; no remote exists.
+- Last Prism evidence is 0.3.4 (import, menu, camp, practice). 0.3.7 and
+  0.4.0 have runs in isolated development clients (section 5), no Prism
+  install yet.
 - Published state: Melty listing is 0.2.0 (release 7c68b875, published on
   Kort's instruction; it still contains harness classes and bundles
   Excalibur/Clarent/Fresh Animations whose licences may not allow that).
   0.3.0 is a held Melty draft. Nothing on Modrinth or CurseForge. Any further
   publish requires Kort's explicit go.
-- Working tree compiles offline (compileJava + test tools, 2026-10-17 16:10).
+- The branch compiles offline (compileJava + test tools, 2026-10-18).
 
 ## 4. Timeline (what happened in which tool)
 
@@ -131,8 +128,17 @@ Verified in a real game (dev client or Prism):
   p1-bots-lobby, p1-bots-difficulty, p1-bots-shieldwall, p1-tutorial-briefing,
   p1-tutorial-lesson-1 to 4, p1-tutorial-camp-before, p1-tutorial-camp-after,
   p1-kingsfield-stale, p1-report, p1-report-4v4. Still seen in them: vanilla
-  advancement lines in battle chat; lobby map buttons cut long names
-  ("Rivergate Vall").
+  advancement lines in battle chat (off since fix round 1, below); lobby map
+  buttons cut long names ("Rivergate Vall").
+- Task 9 fix round 1 re-run (2026-10-18, root work/p1/fix1-122551): suites
+  combat, reinforce, report and tutorial in one launch, 37 of 37 pass. New
+  in it: p1-forward-enemy-spawn (the safe radius is measured where the
+  troops appear: an enemy 24 blocks from Trade Crossing's centre but 16 from
+  that spot sends the knight to the barracks) and p1-trained-fullhealth with
+  2 lost then 1 trained (ceilings 18, 36, 36, 36). Walk 84.1 s -> 13.2 s.
+  With announceAdvancements off on the battle world the log holds no
+  advancement chat line (the regression had Suit Up and Monster Hunter,
+  which are still earned); none of the 13 screenshots shows one.
 - Old campaign suite on 0.4.0 (2026-10-18, `-PcampaignChecks -PautoHost`, root
   work/p1/campaign-113806): 39 of 39 pass, including campaign-suite,
   solo-pad-3v3 and roadmap-suite.
@@ -182,7 +188,7 @@ Known broken or stale:
   and would have outgrown the client's 16000-character read after about 140
   rewarded matches, dropping the connection. Match ids now stay on the
   server; a snapshot that still does not fit goes compact, then without the
-  battle report, then as {} (logged once per form). Checked by
+  battle report, then as {} (each form logged once per commander). Checked by
   p1-report-snapshot and p1-report-snapshot-guard.
 - Pre-existing road blockers: bridge railing posts, Ironhold gate walls,
   Hollowwood log pile (35 cells).
@@ -198,13 +204,16 @@ Known broken or stale:
   "Missing sound for event" for goat_horn.play and goat.screaming.horn_break
   (the battle horns are the mod's own sounds), the
   rendertype_entity_translucent_emissive Sampler2 shader warning, the
-  PerfmonDisabled registry warning, and "Can't keep up!" during the heavy
-  check stages.
+  PerfmonDisabled registry warning, "Can't keep up!" during the heavy
+  check stages, and in report-suite runs the three "[Graves and Glory] The
+  camp snapshot for ... ran to ... characters, over the client's 16000;
+  sent compact / compact without the battle report / empty" lines that
+  p1-report-snapshot-guard provokes on purpose.
 
 ## 6. Open audit findings (from the 25)
 
-Done: F-01, 02, 03, 04, 05, 06, 08 (first numbers), 10 (chosen unlocks), 17,
-18, 19, 20, 22 (one new map).
+Done: F-01, 02, 03, 04, 05, 06, 08 (first numbers), 09 (Phase 1), 10 (chosen
+unlocks), 14 (Phase 1), 17, 18, 19, 20, 22 (one new map).
 
 Phase 1 (branch phase-1-solo-core, 0.4.0, 2026-10-18; evidence root
 work/p1/regression-112412 unless another is named):
