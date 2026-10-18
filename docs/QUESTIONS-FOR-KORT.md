@@ -175,3 +175,8 @@ Six real in-game captures (no AI art) at `work/ui-concepts/title/demos/` and on 
 ## Media shoot (2026-10-18, afternoon): PARKED by Kort the same day
 
 Kort liked all six title demos but asked for a reshoot with no sword: Steve standing and watching the battle, face close-ups near and far, walking-away shots, brainstormed scenarios, trailer film, gameplay footage, intro and outro plates. Then: "write all this down and put a hold on it until all the units are designed and polished, maps are designed and polished". Shot list kept at `docs/media/SHOTLIST.md`; the shoot agent was stopped before it produced anything. Resume after Phase 2 Task 5 and Phase 3. The title-screen pick is deferred to the same point.
+
+## UI Task 2 (Iron Ledger in game) raised two things for you (2026-10-18, afternoon)
+
+1. **Chat over the group cards.** Vanilla chat (and advancement lines) draws at the bottom left, over the group cards. Neither the spec nor the mock says where chat goes. Recommendation: move the chat origin up so it sits above the top card (the cards never move), and let a later task shrink chat width in battle. UI Task 3 does this unless you say otherwise.
+2. **The ledger looks small at 1280x720.** The spec's scale rule gives the HUD 1x at that window while the vanilla hotbar is 2x or 3x, so the hotbar looks bigger than the ledger. Options: (a) keep the rule (the mock's intent: the HUD is sized to the canvas, not to GUI Scale); (b) let the ledger follow GUI Scale up to 2x on windows under 1600 wide. Recommendation: (b), one line in UiMath.pixelScale, re-checked by the existing canvas checks. Parked until you answer; nothing changes meanwhile.
