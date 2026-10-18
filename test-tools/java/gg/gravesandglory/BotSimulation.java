@@ -13,7 +13,7 @@ import java.util.stream.IntStream;
 
 /** Unshipped: runServer -PbotSim=<matches> plays bot-vs-bot rounds on a dedicated server with nobody online and stops the server when done.
  *  One match at a time (one Battle per server). Dawn's bots play -PsimDawn, Dusk's -PsimDusk (Spec.BOTCOMMAND ids); -PsimMaps is cycled.
- *  -PsimKit=native (default) gives each team its own faction's troops; dawn or dusk gives both teams that faction's troop rows (colours and bases stay), so kit and seat can be told apart.
+ *  -PsimKit=native (default) fields Dawn's seat with the gilded_<tier> bot banner and Dusk's with graveborn_<tier>; gilded or graveborn gives both seats that House's row (sides and bases stay), so House and seat can be told apart.
  *  Writes botsim/results.csv (one row per match) and botsim/gold.csv (each team every 30 s of round time) under the server root. */
 public final class BotSimulation implements ModInitializer {
     static final int SAMPLE_TICKS=600;
@@ -22,7 +22,7 @@ public final class BotSimulation implements ModInitializer {
     /** Campaign.lastWinner while a simulated round runs. Only Campaign.finish overwrites it, so a round that stops any other way is recorded as aborted. */
     static final int ABORTED=-2;
     int matches,size,roundSeconds,waited,notReady;int[] maps;String dawnTier,duskTier,kit;Path results,gold;
-    /** The seats, for the CSV team columns: -PsimKit may give both teams one faction id. */
+    /** The seats, for the CSV team columns: -PsimKit may give both teams one House. */
     static final String[] SEATS={"dawn","dusk"};
     /** The match being prepared or played (0-based); playing while its round runs. */
     int match;boolean playing,done;
@@ -39,7 +39,7 @@ public final class BotSimulation implements ModInitializer {
         maps=mapList==null?IntStream.range(0,Spec.MAPS.length).toArray():Arrays.stream(mapList.split(",")).map(String::trim).filter(v->!v.isEmpty()).mapToInt(v->number("simMaps",v)).toArray();
         size=number("simSize",System.getProperty("gravesandglory.simSize","3"));roundSeconds=number("simRoundSeconds",System.getProperty("gravesandglory.simRoundSeconds","300"));
         kit=System.getProperty("gravesandglory.simKit","native").trim();
-        if(!kit.equals("native")&&Arrays.stream(Spec.FACTIONS).noneMatch(f->f.id().equals(kit)))throw new IllegalArgumentException("[botsim] simKit must be native, dawn or dusk, got '"+kit+"'");
+        if(!kit.equals("native")&&Arrays.stream(Spec.HOUSES).noneMatch(h->h.id().equals(kit)&&h.fieldable()))throw new IllegalArgumentException("[botsim] simKit must be native or a fieldable House (gilded, graveborn), got '"+kit+"'");
         if(matches<1||roundSeconds<1||size<1||size>Spec.RULES[0].playersPerTeam()||maps.length==0||Arrays.stream(maps).anyMatch(m->m<0||m>=Spec.MAPS.length))
             throw new IllegalArgumentException("[botsim] bad settings: matches="+matches+" size="+size+" roundSeconds="+roundSeconds+" maps="+Arrays.toString(maps));
         Path dir=FabricLoader.getInstance().getGameDir().resolve("botsim");results=dir.resolve("results.csv");gold=dir.resolve("gold.csv");
@@ -71,18 +71,18 @@ public final class BotSimulation implements ModInitializer {
         int map=maps[match%maps.length];
         if(b.campaign.map!=map){b.campaign.switchMap(map);return;}
         var c=b.campaign;c.size=size;c.fill=true;c.practice=false;c.difficulty=dawnTier;b.roundSeconds=roundSeconds;c.lastWinner=ABORTED;
-        useKit();
         b.startRound();
         armies.clear();for(var s:b.squads.values())if(s.bot){if(s.team==1)s.tier=duskTier;armies.add(s);}
+        field(b);
         playing=true;
     }
-    /** -PsimKit dawn or dusk: both teams' faction rows take that faction's id and troops, so the bots' lineup, purchases and full strength
-     *  (all read Spec.FACTIONS[team].id()) use one kit. Name, colour, base and barracks stay the seat's. Map switches restore the rows,
-     *  so this runs before every round. */
-    void useKit(){
-        if(kit.equals("native"))return;
-        var donor=Arrays.stream(Spec.FACTIONS).filter(f->f.id().equals(kit)).findFirst().orElseThrow();
-        for(int t=0;t<2;t++){var f=Spec.FACTIONS[t];Spec.FACTIONS[t]=new Spec.FactionsRow(kit,f.name(),f.color(),f.spawnX(),f.spawnZ(),donor.troops(),f.barracksX(),f.barracksZ());}
+    /** Phase 2: once each seat's tier is set, every bot army fields one bot banner row for its tier (Spec.BOTBANNERS), replacing the
+     *  lane-picked banner startRound gave it: native gives Dawn's seat gilded_<tier> and Dusk's graveborn_<tier>; -PsimKit gilded or
+     *  graveborn gives both seats that House's row. Sides, bases and barracks stay the seat's. */
+    void field(GravesAndGlory.Battle b){
+        for(var s:armies){String house=kit.equals("native")?(s.team==0?"gilded":"graveborn"):kit;
+            b.units.removeIf(u->{if(u.squad!=s)return false;u.mob.discard();return true;});
+            s.banner=Campaign.bannerRow(house+"_"+s.tier);s.fullHealth.clear();b.reinforce(s);}
     }
     /** One gold.csv row per team: gold earned so far, gold in hand and living troops. */
     void sample(GravesAndGlory.Battle b,long second){
@@ -100,7 +100,7 @@ public final class BotSimulation implements ModInitializer {
             String.valueOf(b.scores[0]),String.valueOf(b.scores[1]),String.valueOf((b.time-b.roundStarted)/20))+"\n");
     }
     /** The final line. Mean gold earned is a team's total over its commanders at the end of a round, averaged over the matches.
-     *  " aborted=N" goes on the end only when a round stopped without Campaign.finish, and " kit=<id>" only under -PsimKit dawn or dusk, so a normal run keeps the documented format. */
+     *  " aborted=N" goes on the end only when a round stopped without Campaign.finish, and " kit=<id>" only under -PsimKit gilded or graveborn, so a normal run keeps the documented format. */
     void summary(){
         System.out.println(String.format(Locale.ROOT,"[botsim] matches=%d dawn(%s)=%d dusk(%s)=%d draws=%d dawnWin=%.0f%% meanGoldEarnedAtEnd dawn=%.0f dusk=%.0f",
             matches,dawnTier,dawnWins,duskTier,duskWins,draws,100*MatchStats.winRate(dawnWins,matches),earnedAtEnd[0]/(double)matches,earnedAtEnd[1]/(double)matches)+(aborted>0?" aborted="+aborted:"")+(kit.equals("native")?"":" kit="+kit));

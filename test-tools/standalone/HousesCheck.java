@@ -221,6 +221,13 @@ public final class HousesCheck {
         var tie=matchRewards(Map.of("gilded",10,"graveborn",10),T,HOUSES,true); check(tie.shards().equals(Map.of("gilded",2,"graveborn",1)), "a tied largest House is the first in House order");
         var low=matchRewards(Map.of("gilded",5,"graveborn",5,"wildmoot",5,"ironclad",5),T,HOUSES,true); check(low.shards().equals(Map.of("gilded",1)) && low.renown().isEmpty(), "a win gives the largest House its shard even below tier I (a tie goes to the first in House order); Renown still needs tier I");
         check(masteryLevel(39,8,M)==0 && masteryLevel(40,8,M)==1 && masteryLevel(150,24,M)==1 && masteryLevel(400,60,M)==3, "mastery needs both");
+        // the troops sheet (Task 2): the catalog, units and what a banner can field
+        check(Catalog.fromSpec().equals(cat), "Catalog.fromSpec() equals the fixture catalog: House, rarity and slot weight of all 30 troops");
+        check(units(SPEC_EXAMPLE_BANNER,cat)==15 && units(starterBanner(),cat)==20 && units(banner("mage,^,empty*18"),cat)==1 && units(null,cat)==0, "units: an Epic or a Legendary counts once, markers and empty slots not at all");
+        check(fieldableHouses().equals(Set.of("gilded","graveborn")), "Gilded and Graveborn are the fieldable Houses");
+        var wild=banner("wm_seer,^,knight*10,wm_hound*4,wm_oldhorn,^,^,^");
+        check(fieldable(wild,cat,fieldableHouses()).equals(banner("empty*2,knight*10,empty*8")) && validBanner(fieldable(wild,cat,fieldableHouses()),cat,ALL)==null && wild.get(0).equals("wm_seer"), "fieldable: an unfieldable unit and its markers become empty, the rest keep their slots, and the input is unchanged");
+        check(fieldable(SPEC_EXAMPLE_BANNER,cat,fieldableHouses()).equals(SPEC_EXAMPLE_BANNER), "fieldable: a banner of fieldable Houses is unchanged");
         System.out.println("HousesCheck: " + checks + " checks passed");
     }
 }

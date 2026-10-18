@@ -9,6 +9,27 @@ import net.minecraft.util.Identifier;
 final class DarkUi {
     static final int GOLD=0xffc8a56b, EDGE=0xff414b50, PAPER=0xffeee9df, MUTED=0xffafb9bc;
     static final Identifier TITLE=new Identifier("gravesandglory","title");
+    /** The side row a team flies (CampaignClient.sides, from the camp snapshot); null for no team. */
+    static Spec.FactionsRow side(int team){
+        if(team!=0&&team!=1)return null;String id=CampaignClient.sides[team];
+        for(var f:Spec.FACTIONS)if(f.id().equals(id))return f;return Spec.FACTIONS[team];
+    }
+    /** A team's side colour, opaque; muted for no team. Always paired with its glyph (teamMark), never alone. */
+    static int teamColor(int team){var f=side(team);return f==null?MUTED:0xff000000|f.color();}
+    /** A team's side in one word, the first of its name (Gold, Violet, Crimson, Teal); Neutral for no team. */
+    static String teamText(int team){var f=side(team);if(f==null)return "Neutral";int space=f.name().indexOf(' ');return space<0?f.name():f.name().substring(0,space);}
+    private static final String[] SUN={"...x...",".x...x.","..xxx..","x.xxx.x","..xxx..",".x...x.","...x..."};
+    private static final String[] MOON={"..xxxx.",".xxx...","xxx....","xxx....","xxx....",".xxx...","..xxxx."};
+    private static final String[] STAR={"...x...","...x...","xxxxxxx",".xxxxx.","..xxx..",".xx.xx.","xx...xx"};
+    private static final String[] WAVE={".......",".xx..x.","x..xx.x",".......",".xx..x.","x..xx.x","......."};
+    private static final String[] SQUARE={"xxxxxxx","x.....x","x.....x","x.....x","x.....x","x.....x","xxxxxxx"};
+    /** A 7x7 mark in the team's side colour: its factions.glyph (sun, moon, star or wave); a hollow square for no team. */
+    static void teamMark(DrawContext g,int team,int x,int y){sideMark(g,side(team),x,y);}
+    /** The 7x7 glyph of a side row in its colour; a muted hollow square for null. */
+    static void sideMark(DrawContext g,Spec.FactionsRow f,int x,int y){
+        String[] rows=f==null?SQUARE:switch(f.glyph()){case "sun"->SUN;case "moon"->MOON;case "star"->STAR;case "wave"->WAVE;default->SQUARE;};int color=f==null?MUTED:0xff000000|f.color();
+        for(int j=0;j<7;j++)for(int i=0;i<7;i++)if(rows[j].charAt(i)=='x')g.fill(x+i,y+j,x+i+1,y+j+1,color);
+    }
     static void background(DrawContext g,int w,int h){
         // Keep the actual world visible behind a quiet, readable scrim.
         g.fill(0,0,w,h,0xd9101518);
@@ -26,7 +47,7 @@ final class DarkUi {
     }
     static void model(DrawContext g,Spec.TroopsRow troop,int x,int bottom,int size){
         var entity=ArmyCards.portrait(troop);
-        if(entity!=null)net.minecraft.client.gui.screen.ingame.InventoryScreen.drawEntity(g,x,bottom,size,22,0,entity);
+        if(entity!=null)net.minecraft.client.gui.screen.ingame.InventoryScreen.drawEntity(g,x,bottom,ArmyCards.size(entity,size),22,0,entity);
     }
     static void title(DrawContext g,String text,int x,int y,int color){
         g.getMatrices().push();g.getMatrices().translate(x,y,0);g.getMatrices().scale(1.35f,1.35f,1);g.drawText(MinecraftClient.getInstance().textRenderer,Text.literal(text).setStyle(Style.EMPTY.withFont(TITLE)),0,0,color,false);g.getMatrices().pop();

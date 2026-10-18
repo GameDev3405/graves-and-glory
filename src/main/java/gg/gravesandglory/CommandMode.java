@@ -50,6 +50,13 @@ public final class CommandMode {
         var b=PacketByteBufs.create();b.writeString(group);b.writeString(action);b.writeString(form);b.writeDouble(dest.x);b.writeDouble(dest.z);b.writeFloat(yaw);b.writeInt(target);ClientPlayNetworking.send(GravesAndGlory.TACTICAL,b);
         feedback=label(group)+": "+label(action)+" order sent";feedbackUntil=System.currentTimeMillis()+3000;
     }
+    /** The team a unit fights for, read from its name colour (team 0 aqua, team 1 light purple; see GravesAndGlory.spawn), or -1. */
+    static int nameTeam(net.minecraft.entity.Entity e){
+        var name=e.getCustomName();var colour=name==null?null:name.getStyle().getColor();if(colour==null)return -1;
+        if(colour.getRgb()==net.minecraft.util.Formatting.AQUA.getColorValue())return 0;
+        if(colour.getRgb()==net.minecraft.util.Formatting.LIGHT_PURPLE.getColorValue())return 1;
+        return -1;
+    }
     static void tick(MinecraftClient c){
         preview.clear();if(!GravesAndGloryClient.battleActive()){cancel();return;}if(!active()||c.player==null||c.world==null||c.currentScreen!=null)return;
         if(!facingSet)facing=c.player.getYaw();
@@ -58,7 +65,8 @@ public final class CommandMode {
         Vec3d eye=c.player.getEyePos(),look=c.player.getRotationVec(1);double best=destination==null?64:eye.distanceTo(destination);
         for(var e:c.world.getEntities())if(e instanceof LivingEntity living&&e!=c.player&&e.isAlive()&&e.hasCustomName()&&c.player.canSee(e)){
             Vec3d v=e.getPos().add(0,1,0).subtract(eye);double along=v.dotProduct(look);
-            boolean foe=false;for(var troop:Spec.TROOPS)if(troop.name().equals(e.getCustomName().getString())&&GravesAndGloryClient.team>=0&&!troop.faction().equals(Spec.FACTIONS[GravesAndGloryClient.team].id()))foe=true;
+            // Both teams can field the same House, so the side comes from the name colour the server gives every unit.
+            boolean foe=false;int side=nameTeam(e);for(var troop:Spec.TROOPS)if(troop.name().equals(e.getCustomName().getString())&&GravesAndGloryClient.team>=0&&side>=0&&side!=GravesAndGloryClient.team)foe=true;
             if(foe&&along>0&&along<best&&v.subtract(look.multiply(along)).length()<1.3){best=along;enemy=e.getId();destination=e.getPos();}
         }
         if(destination==null||Math.abs(destination.x)>GravesAndGlory.R.arenaHalfX()-10||Math.abs(destination.z)>GravesAndGlory.R.arenaHalfZ()-10){destination=null;return;}

@@ -44,7 +44,7 @@ if (project.hasProperty('selfTest')) {
  loom.runs.client.vmArg "-Dgravesandglory.localChecks=${file('evidence/self-test.txt').absolutePath}"
 }
 // Bot-vs-bot simulation on the dedicated server (test-tools/java/gg/gravesandglory/BotSimulation.java):
-// -PbotSim=<matches> [-PsimDawn=<tier> -PsimDusk=<tier> -PsimMaps=0,1,2 -PsimSize=3 -PsimRoundSeconds=300 -PsimKit=native|dawn|dusk]; results in <server root>/botsim/.
+// -PbotSim=<matches> [-PsimDawn=<tier> -PsimDusk=<tier> -PsimMaps=0,1,2 -PsimSize=3 -PsimRoundSeconds=300 -PsimKit=native|gilded|graveborn]; results in <server root>/botsim/.
 if (project.hasProperty('botSim')) {
  loom.runs.server.vmArg '-Dgravesandglory.localIntegration=true'
  loom.runs.server.vmArg "-Dfabric.addMods=${file('build/localTestTools/local-integration-DO-NOT-SHIP.jar').absolutePath}"

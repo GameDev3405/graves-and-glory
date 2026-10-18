@@ -61,7 +61,7 @@ public final class Projectiles {
                 s.visual.setVelocity(v);s.visual.velocityModified=true;
             }else{
                 double t=Math.min(1,(b.time-s.fired)/(double)Math.max(1,s.lands-s.fired));Vec3d p=s.from.lerp(to,t);
-                int rgb=Spec.FACTIONS[s.squad.team].color();
+                int rgb=b.side(s.squad.team).color();
                 b.world.spawnParticles(new DustParticleEffect(new Vector3f((rgb>>16&255)/255f,(rgb>>8&255)/255f,(rgb&255)/255f),1.4f),p.x,p.y,p.z,2,.04,.04,.04,0);
                 b.world.spawnParticles(s.squad.team==1?ParticleTypes.WITCH:ParticleTypes.ENCHANT,p.x,p.y,p.z,1,.05,.05,.05,0);
             }

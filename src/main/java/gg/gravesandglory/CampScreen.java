@@ -19,7 +19,7 @@ final class CampScreen extends ArmyScreen {
     JsonArray rows(String name){return social().has(name)?social().getAsJsonArray(name):new JsonArray();}
     void action(String cmd){if(System.currentTimeMillis()-requestAt<300)return;requestAt=System.currentTimeMillis();send(cmd);}
     void page(String next){page=next;offset=0;clearAndInit();}
-    String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.unlocked+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready;}
+    String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready;}
     @Override protected void init(){
         scale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/760f,client.getWindow().getScaledHeight()/460f));width=(int)(client.getWindow().getScaledWidth()/scale);height=(int)(client.getWindow().getScaledHeight()/scale);key=state();code=null;
         String[] names={"Camp guide","Recruitment","Friends","Private room","Contracts","Chapter rewards"};String[] ids={"home","recruit","friends","room","contracts","chapter"};
@@ -36,10 +36,9 @@ final class CampScreen extends ArmyScreen {
             var bots=button(CampaignClient.botsLabel(),x,286,w/2-7,b->action("difficulty:"+CampaignClient.nextDifficulty()));bots.active=!running;
             button("Ready gates & map voting",x,350,w/2-7,b->page("match"));button("Daily contracts",x+w/2+7,350,w/2-7,b->page("contracts"));
         }else if(page.equals("recruit")){
-            var locked=Arrays.stream(Spec.TROOPS).filter(t->!CampaignClient.profile.unlocked.contains(t.id())).toList();
-            var roll=primary(locked.isEmpty()?"COLLECTION COMPLETE":"RECRUIT RANDOM / "+Spec.CAMPAIGN[0].rollCost()+" GOLD",x,height-78,w,b->action("roll"));roll.active=!locked.isEmpty()&&CampaignClient.profile.gold>=Spec.CAMPAIGN[0].rollCost()&&(!running||CampaignClient.waiting);
-            int shown=Math.min(6,locked.size()-Math.min(offset,locked.size()));for(int i=0;i<shown;i++){var troop=locked.get(offset+i);var choose=button("Choose / "+Spec.CAMPAIGN[0].rollCost()+" gold",x+(i%3)*(w/3),218+(i/3)*130,w/3-10,b->action("unlock:"+troop.id()));choose.active=CampaignClient.profile.gold>=Spec.CAMPAIGN[0].rollCost()&&(!running||CampaignClient.waiting);}
-            if(locked.size()>6){button("Previous",x,80,85,b->{offset=Math.max(0,offset-6);clearAndInit();});button("Next",x+w-85,80,85,b->{offset=offset+6<locked.size()?offset+6:0;clearAndInit();});}
+            // Layout kept until Phase 2 Task 3; the roll now draws from one House (spec 4.2) and duplicates raise stars.
+            int cost=Spec.RECRUITMENT[0].rollCost();String house=Campaign.rollHouse(CampaignClient.profile.banner);
+            var roll=primary("RECRUIT RANDOM / "+Campaign.houseName(house).toUpperCase()+" / "+cost+" GOLD",x,height-78,w,b->action("roll"));roll.active=CampaignClient.profile.gold>=cost&&(!running||CampaignClient.waiting);
             button("Skip reveal",width-126,49,104,b->CampaignClient.revealUntil=0);
         }else if(page.equals("friends")){
             if(!flag("party"))primary("CREATE PARTY",x,117,180,b->action("social:create"));else{
@@ -79,6 +78,11 @@ final class CampScreen extends ArmyScreen {
         }
     }
     @Override public void tick(){if(!key.equals(state())&&!(code!=null&&code.isFocused()))clearAndInit();if(running&&!CampaignClient.waiting)close();}
+    /** The troops one recruitment roll in this House can give: its Commons, Rares and Epic in sheet order (Legendaries come from Writs). */
+    static List<Spec.TroopsRow> pool(String house){return Arrays.stream(Spec.TROOPS).filter(t->t.house().equals(house)&&!t.rarity().equals("legendary")).toList();}
+    static int weight(Spec.TroopsRow t){var r=RosterMath.rarityRow(t.rarity());return r==null?0:r.rollWeight();}
+    static String odds(List<Spec.TroopsRow> pool,String rarity,int total){int w=0;for(var t:pool)if(t.rarity().equals(rarity))w+=weight(t);return String.format(java.util.Locale.ROOT,"%.0f",100.0*w/Math.max(1,total))+"%";}
+    static String cap(String s){return s.isEmpty()?s:Character.toUpperCase(s.charAt(0))+s.substring(1);}
     void line(DrawContext g,String text,int x,int y,int color,int max){g.drawText(textRenderer, textRenderer.trimToWidth(text,max),x,y,color,false);}
     /** The battle report table from y down: COMMANDER / KILLS / LOST / GOLD / ON POINTS, one row per army (your team first, a rule before the
      *  enemy, your row in brass, a crest on the MVP), then one line per point with the seconds each team held it. Returns the y under it. */
@@ -108,15 +112,19 @@ final class CampScreen extends ArmyScreen {
         if(page.equals("home")){
             line(g,"Recruit an army. Gather your friends. Fight under one banner.",x,113,DarkUi.PAPER,w);
             line(g,"Quartermaster west / Recruiter east",x,131,DarkUi.MUTED,w);
-            line(g,Progression.chapter(progress,p.unlocked.size(),Spec.TROOPS.length),x,218,DarkUi.GOLD,w);
+            var roster=Campaign.launchRoster();line(g,Progression.chapter(progress,(int)roster.stream().filter(p.owned::containsKey).count(),roster.size()),x,218,DarkUi.GOLD,w);
             line(g,"Practice: a skirmish against one AI commander at the chosen difficulty.",x,239,DarkUi.MUTED,w);
             line(g,"Easy, Normal or Hard AI commanders.",x+w/2+7,292,DarkUi.MUTED,w/2-7);
             line(g,"War gates: stand together to ready; step off to cancel.",x,314,DarkUi.PAPER,w);
             line(g,"Local matches only. Internet matchmaking is on hold.",x,333,DarkUi.MUTED,w);
         }else if(page.equals("recruit")){
-            var locked=Arrays.stream(Spec.TROOPS).filter(t->!p.unlocked.contains(t.id())).toList();
-            line(g,locked.isEmpty()?"Every launch troop is yours. No further rolls or charges.":"Guaranteed NEW troop / equal odds: "+String.format(java.util.Locale.ROOT,"%.1f",100.0/locked.size())+"% each / no duplicates",x,110,DarkUi.PAPER,w);
-            for(int i=0;i<6&&offset+i<locked.size();i++){var troop=locked.get(offset+i);int cx=x+(i%3)*(w/3),y=136+(i/3)*130;DarkUi.frame(g,cx,y,w/3-10,78);DarkUi.model(g,troop,cx+28,y+66,25);line(g,troop.name(),cx+58,y+16,DarkUi.GOLD,w/3-72);line(g,troop.group(),cx+58,y+35,DarkUi.MUTED,w/3-72);}
+            String house=Campaign.rollHouse(p.banner);var pool=pool(house);int total=0;for(var t:pool)total+=weight(t);
+            int rolls=Math.max(1,Spec.RECRUITMENT[0].epicPity()-p.pity.getOrDefault(house,0));
+            line(g,"Draws from the "+Campaign.houseName(house)+", the largest House in your banner you can field.",x,110,DarkUi.PAPER,w);
+            line(g,odds(pool,"common",total)+" Commons / "+odds(pool,"rare",total)+" Rares / "+odds(pool,"epic",total)+" Epic, sure within "+rolls+(rolls==1?" roll":" rolls")+" / a duplicate raises stars",x,122,DarkUi.MUTED,w);
+            for(int i=0;i<6&&i<pool.size();i++){var troop=pool.get(i);int cx=x+(i%3)*(w/3),y=136+(i/3)*130;DarkUi.frame(g,cx,y,w/3-10,78);DarkUi.model(g,troop,cx+28,y+66,25);line(g,troop.name(),cx+58,y+16,DarkUi.GOLD,w/3-72);
+                line(g,cap(troop.rarity())+" / "+String.format(java.util.Locale.ROOT,"%.0f",100.0*weight(troop)/Math.max(1,total))+"%",cx+58,y+35,DarkUi.MUTED,w/3-72);
+                var owned=p.owned.get(troop.id());line(g,owned==null?"Not yet yours":"Owned / star "+owned.stars,cx+58,y+54,owned==null?DarkUi.MUTED:DarkUi.PAPER,w/3-72);}
         }else if(page.equals("friends")){
             line(g,flag("party")?"Leader: "+value("leader")+" / party survives matches and server restarts":"Parties hold up to four friends and always enter one team.",x,104,DarkUi.MUTED,w);
             if(!value("inviter").isEmpty())line(g,"Invitation from "+value("inviter")+" ("+number("inviteSeconds",0)+"s)",x,149,DarkUi.GOLD,w);
@@ -156,7 +164,7 @@ final class CampScreen extends ArmyScreen {
             line(g,"Vote while on a ready pad. Most votes wins; ties use map order.",x,133,DarkUi.MUTED,w);
         }
         line(g,CampaignClient.notice,x,height-42,DarkUi.GOLD,w);super.render(g,(int)(mx/scale),(int)(my/scale),delta);
-        if(page.equals("recruit")&&CampaignClient.revealUntil>System.currentTimeMillis()){DarkUi.frame(g,x+30,180,w-60,100);line(g,"RECRUITMENT CONFIRMED",x+50,201,DarkUi.GOLD,w-100);line(g,CampaignClient.revealUnit+" has joined your collection.",x+50,226,DarkUi.PAPER,w-100);line(g,"Permanently unlocked / use Skip reveal above to continue",x+50,251,DarkUi.MUTED,w-100);}
+        if(page.equals("recruit")&&CampaignClient.revealUntil>System.currentTimeMillis()){DarkUi.frame(g,x+30,180,w-60,100);line(g,"RECRUITMENT CONFIRMED",x+50,201,DarkUi.GOLD,w-100);line(g,CampaignClient.revealUnit+" has joined your collection.",x+50,226,DarkUi.PAPER,w-100);line(g,"Place it in your banner in the war council / Skip reveal above to continue",x+50,251,DarkUi.MUTED,w-100);}
         g.getMatrices().pop();
     }
     @Override public boolean mouseClicked(double x,double y,int button){return super.mouseClicked(x/scale,y/scale,button);}

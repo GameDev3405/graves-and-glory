@@ -15,7 +15,7 @@ public final class RosterMath {
     /** A banner slot with no unit. */
     public static final String EMPTY = "empty";
 
-    /** The House, rarity and slot weight of each troop id. Task 2 adds fromSpec(). */
+    /** The House, rarity and slot weight of each troop id. */
     public record Catalog(Map<String, String> house, Map<String, String> rarity, Map<String, Integer> slotWeight) {
         /** The troop's rarity (a rarities id), or null for a marker, an empty slot or an unknown id. */
         public String rarityOf(String id) { return id == null ? null : rarity.get(id); }
@@ -28,6 +28,24 @@ public final class RosterMath {
         }
         /** True for a troop id in the catalog. */
         public boolean known(String id) { return houseOf(id) != null; }
+
+        private static Spec.TroopsRow[] cachedRows;
+        private static Catalog cached;
+        /** The catalog of the troops sheet: each troop's house, rarity and slotWeight columns. */
+        public static synchronized Catalog fromSpec() {
+            if (cachedRows != Spec.TROOPS) {
+                Map<String, String> house = new LinkedHashMap<>(), rarity = new LinkedHashMap<>();
+                Map<String, Integer> weight = new LinkedHashMap<>();
+                for (var t : Spec.TROOPS) {
+                    house.put(t.id(), t.house());
+                    rarity.put(t.id(), t.rarity());
+                    weight.put(t.id(), t.slotWeight());
+                }
+                cached = new Catalog(Collections.unmodifiableMap(house), Collections.unmodifiableMap(rarity), Collections.unmodifiableMap(weight));
+                cachedRows = Spec.TROOPS;
+            }
+            return cached;
+        }
     }
 
     /** Slots in a banner (rules.squadSize). */
@@ -129,6 +147,36 @@ public final class RosterMath {
         List<String> out = new ArrayList<>(size);
         while (out.size() < Math.min(12, size)) out.add("knight");
         while (out.size() < size) out.add("archer");
+        return out;
+    }
+
+    /** Units in a banner: its troop entries, so an Epic or a Legendary counts once and markers and empty slots not at all. */
+    public static int units(List<String> banner, Catalog c) {
+        int n = 0;
+        if (banner != null) for (String id : banner) if (c.known(id)) n++;
+        return n;
+    }
+
+    /** The Houses a banner may field in this build (houses.fieldable). */
+    public static Set<String> fieldableHouses() {
+        Set<String> out = new LinkedHashSet<>();
+        for (var h : Spec.HOUSES) if (h.fieldable()) out.add(h.id());
+        return out;
+    }
+
+    /**
+     * The banner as it can take the field: a unit of a House outside fieldable, and each of its markers, becomes empty, so
+     * the other units keep their slots and a valid banner stays valid. The input is not changed.
+     */
+    public static List<String> fieldable(List<String> banner, Catalog c, Set<String> fieldable) {
+        List<String> out = new ArrayList<>(banner == null ? List.of() : banner);
+        boolean dropping = false;
+        for (int i = 0; i < out.size(); i++) {
+            String id = out.get(i);
+            if (MARKER.equals(id)) { if (dropping) out.set(i, EMPTY); continue; }
+            dropping = c.known(id) && !fieldable.contains(c.houseOf(id));
+            if (dropping) out.set(i, EMPTY);
+        }
         return out;
     }
 

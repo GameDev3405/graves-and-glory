@@ -4,10 +4,12 @@ import java.util.*;
 
 /**
  * A commander's saved collection, schema 2 (spec 6.2): the banner, the owned troops with stars, stages and mastery, and per
- * House shards, Renown and Epic pity. Server-owned JSON, one file per player. Pure, so the standalone checks compile it;
- * it replaces Campaign.Profile in Task 2.
+ * House shards, Renown and Epic pity. Server-owned JSON, one file per player (Campaign.profile loads it, migrating a
+ * schema-1 file first). Pure, so the standalone checks compile it.
  */
 public final class Profile {
+    /** The JSON key of progression. Campaign.forClient finds the nested state by it to strip the match ids; a rename of the field that leaves this behind sends them again, which p1-report-snapshot catches. */
+    static final String PROGRESSION = "progression";
     /** One owned troop type: copies received, stars (1 to 3), evolution stage (1 to 3), and its mastery ledger. */
     static final class Owned { int copies=1, stars=1, stage=1, kills, survived, mastery; String variant="base"; }
 
@@ -19,7 +21,8 @@ public final class Profile {
     List<String> banner = RosterMath.starterBanner();
     /** The side row (factions) this commander asks to fly. */
     String bannerColour = "gold";
-    Map<String, Owned> owned = new LinkedHashMap<>();
+    /** Owned troop types by id. A new commander owns one copy of each House Common (spec 6.2). */
+    Map<String, Owned> owned = commons();
     Map<String, Integer> shards = new LinkedHashMap<>(), renown = new LinkedHashMap<>(), pity = new LinkedHashMap<>();
     int writs;
     Progression.State progression = new Progression.State();
@@ -68,6 +71,25 @@ public final class Profile {
         writChapters.removeIf(chapter -> chapter == null || chapter < 1);
         if (cosmetics == null) cosmetics = new LinkedHashSet<>();
         cosmetics.removeIf(id -> id == null || id.isBlank());
+    }
+    /** One copy of each Common in the troops sheet, in sheet order. */
+    static Map<String, Owned> commons() {
+        Map<String, Owned> out = new LinkedHashMap<>();
+        for (var t : Spec.TROOPS) if (t.rarity().equals("common")) out.put(t.id(), new Owned());
+        return out;
+    }
+    /** sanitize against the sheets: the troops catalog, the classes, the side rows and the House order. */
+    void sanitize() {
+        Set<String> classes = new LinkedHashSet<>(), sides = new LinkedHashSet<>();
+        for (var c : Spec.CLASSES) classes.add(c.id());
+        for (var f : Spec.FACTIONS) sides.add(f.id());
+        sanitize(RosterMath.Catalog.fromSpec(), classes, sides, houseOrder());
+    }
+    /** House ids in sheet order. */
+    static List<String> houseOrder() {
+        List<String> out = new ArrayList<>();
+        for (var h : Spec.HOUSES) out.add(h.id());
+        return out;
     }
     static int clamp(int value, int min, int max) { return Math.max(min, Math.min(max, value)); }
     /** The last evolution stage a troop can reach: its highest evolutions.stage, or 1 without an evolve line. */

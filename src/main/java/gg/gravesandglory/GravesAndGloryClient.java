@@ -55,7 +55,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.IMPACT,(client,handler,buf,responder)->{float strength=buf.readFloat();client.execute(()->{Presentation.receivedImpacts++;Presentation.impact(strength);});});
         net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry.register(net.minecraft.entity.EntityType.HUSK,context->new net.minecraft.client.render.entity.HuskEntityRenderer(context){
             @Override public Identifier getTexture(net.minecraft.entity.mob.ZombieEntity entity){
-                if(entity.getCustomName()!=null)for(var t:Spec.TROOPS)if(t.faction().equals("dawn")&&entity.getCustomName().getString().equals(t.name()))return new Identifier(t.texture());
+                if(entity.getCustomName()!=null)for(var t:Spec.TROOPS)if(t.house().equals("gilded")&&entity.getCustomName().getString().equals(t.name()))return new Identifier(t.texture());
                 return super.getTexture(entity);
             }
         });
@@ -127,7 +127,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         if(preparingMap)return;preparingMap=true;final int generation=CampaignMaps.selected;
         CompletableFuture.supplyAsync(()->{NativeImage image=new NativeImage(281,201,false);for(int x=0;x<281;x++)for(int z=0;z<201;z++){int col=Arena.mapColor((int)((x-140)*2.5),(int)((z-100)*2.5));image.setColor(x,z,(col&0xff00ff00)|((col>>16)&255)|((col&255)<<16));}return image;}).thenAccept(image->c.execute(()->{if(generation!=CampaignMaps.selected){image.close();preparingMap=false;return;}mapTexture=c.getTextureManager().registerDynamicTexture("gravesandglory_map",new NativeImageBackedTexture(image));}));
     }
-    static int factionColor(int t){return t<0?0xffc5cad1:t==0?0xff57d9ee:0xffc58bff;}
+    static int factionColor(int t){return DarkUi.teamColor(t);}
     // The point arrays refill with the next state packet after a map switch, so until then they can be shorter or longer than Spec.POINTS.
     static boolean contestedAt(int i){var a=contested;return i>=0&&i<a.length&&a[i];}
     static int ownerAt(int i){var a=owners;return i>=0&&i<a.length?a[i]:-1;}
@@ -187,8 +187,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         int w=(int)(c.getWindow().getScaledWidth()/scale),h=(int)(c.getWindow().getScaledHeight()/scale);var font=c.textRenderer;
         if(!battleActive()){campHud(g,w,h);g.getMatrices().pop();return;}
         if(CampaignClient.cinematic()){CampaignClient.hud(g,w,h);g.getMatrices().pop();return;}
-        panel(g,w/2-175,7,350,37);g.drawCenteredTextWithShadow(font,"DAWN "+dawn+" / "+GravesAndGlory.R.winScore()+"  | "+String.format("%d:%02d",CommandMode.seconds/60,CommandMode.seconds%60)+" |  DUSK "+dusk+" / "+GravesAndGlory.R.winScore(),w/2,14,GOLD);
-        var pts=Spec.POINTS;int shown=pts.length,step=330/Math.max(1,shown);for(int i=0;i<shown;i++)g.drawTextWithShadow(font,font.trimToWidth(pts[i].id()+": "+(contestedAt(i)?"Contested":progressAt(i)>0?"Capturing":ownerAt(i)<0?"Neutral":ownerAt(i)==0?"Dawn":"Dusk"),step-4),w/2-165+i*step,29,factionColor(ownerAt(i)));
+        panel(g,w/2-175,7,350,37);g.drawCenteredTextWithShadow(font,DarkUi.teamText(0).toUpperCase()+" "+dawn+" / "+GravesAndGlory.R.winScore()+"  | "+String.format("%d:%02d",CommandMode.seconds/60,CommandMode.seconds%60)+" |  "+DarkUi.teamText(1).toUpperCase()+" "+dusk+" / "+GravesAndGlory.R.winScore(),w/2,14,GOLD);
+        DarkUi.teamMark(g,0,w/2-168,14);DarkUi.teamMark(g,1,w/2+161,14);
+        var pts=Spec.POINTS;int shown=pts.length,step=330/Math.max(1,shown);for(int i=0;i<shown;i++)g.drawTextWithShadow(font,font.trimToWidth(pts[i].id()+": "+(contestedAt(i)?"Contested":progressAt(i)>0?"Capturing":DarkUi.teamText(ownerAt(i))),step-4),w/2-165+i*step,29,factionColor(ownerAt(i)));
         CommandMode.hud(g,w,h);Presentation.hud(g,w,h);
         if(!running)g.drawCenteredTextWithShadow(font,menu.getBoundKeyLocalizedText().getString()+": war council / collection / maps",w/2,48,WHITE);
         // Key hints sit under the score panel, clear of the hotbar; hidden while an order is being aimed.
@@ -223,8 +224,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     public static final class CommandScreen extends ArmyScreen {
         CommandScreen(){super("Battlefield commands");}
         @Override protected void init(){
-            int groupWidth=Math.min(100,(width-24)/4);int i=0;
-            for(var group:Spec.GROUPS){String id=group.id();button((CommandMode.selected.equals(id)?"> ":"")+group.label()+" "+CommandMode.count(id),width/2-2*groupWidth+i*groupWidth,8,groupWidth-3,b->{CommandMode.selected=id;clearAndInit();});i++;}
+            int groupWidth=Math.min(100,(width-24)/Spec.GROUPS.length);int i=0;
+            for(var group:Spec.GROUPS){String id=group.id();button((CommandMode.selected.equals(id)?"> ":"")+group.label()+" "+CommandMode.count(id),width/2-Spec.GROUPS.length*groupWidth/2+i*groupWidth,8,groupWidth-3,b->{CommandMode.selected=id;clearAndInit();});i++;}
             i=0;for(String id:new String[]{"move","attack","charge","hold","follow","retreat"}){var order=Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(id)).findFirst().orElseThrow();var btn=button(order.label(),8,40+i*21,72,b->{if(id.equals("follow")){CommandMode.issue(CommandMode.selected,id,CommandMode.formation,client.player.getPos(),client.player.getYaw(),-1);close();}else CommandMode.begin(id);});btn.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(order.meaning())));i++;}
             button("Map",width-76,45,68,b->client.setScreen(new MapScreen(this)));
             int cardWidth=Math.min(105,(width-24)/Spec.FORMATIONS.length);i=0;

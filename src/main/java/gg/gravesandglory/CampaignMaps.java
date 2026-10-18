@@ -88,8 +88,8 @@ public final class CampaignMaps {
             if(clear)scenery.add(new Spec.SceneryRow("tree_"+x+"_"+z,"tree",x,z,selected==3?10+hash%5:7+hash%3,selected==3?7:5,selected>=2?"spruce":"oak"));
         }
         Spec.POINTS=points;Spec.SCENERY=scenery.toArray(Spec.SceneryRow[]::new);
-        Spec.FACTIONS[0]=new Spec.FactionsRow("dawn","Dawn Covenant",5636095,-283,0,"knight,archer,mage",-286,32);
-        Spec.FACTIONS[1]=new Spec.FactionsRow("dusk","Dusk Legion",11141290,283,0,"revenant,bonebow,hexer",286,-32);
+        // Rows 0 and 1 hold the team positions; each keeps its side identity (id, name, colour, glyph).
+        for(int t=0;t<2;t++){var f=Spec.FACTIONS[t];Spec.FACTIONS[t]=new Spec.FactionsRow(f.id(),f.name(),f.color(),f.glyph(),t==0?-283:283,0,t==0?-286:286,t==0?32:-32);}
     }
     static Spec.StructuresRow s(String id,String kind,int x,int z,int w,int d,int h,String palette,int y){return new Spec.StructuresRow(id,kind,x,z,w,d,h,palette,y);}
     static void road(int a,int b,int c,int d,int width){building.add(new Road(a,b,c,d,width));}

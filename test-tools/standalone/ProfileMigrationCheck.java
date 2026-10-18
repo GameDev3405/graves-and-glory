@@ -112,7 +112,10 @@ public final class ProfileMigrationCheck {
         // profile defaults and the sanitizer
         var blank = new Profile();
         check(blank.schema == 2 && blank.banner.equals(RosterMath.starterBanner()) && blank.commander.equals("champion") && blank.bannerColour.equals("gold"), "profile-default: schema 2, the starter banner, champion, gold");
+        check(blank.owned.keySet().equals(COMMONS) && new ArrayList<>(blank.owned.keySet()).equals(List.of("knight", "archer", "revenant", "bonebow", "wm_hound", "wm_hunter", "ic_hearthguard", "ic_arbalist", "tc_raider", "tc_harpooner"))
+            && blank.owned.values().stream().allMatch(o -> o.copies == 1 && o.stars == 1 && o.stage == 1) && RosterMath.validBanner(blank.banner, cat, blank.owned.keySet()) == null, "profile-default: one copy of each of the 10 Commons, in sheet order, so the starter banner is valid");
         var p = new Profile();
+        p.owned.clear();
         p.owned.put("knight", owned(0, 0, 5)); p.owned.put("mage", owned(2, 7, 3)); p.owned.put("oracle", owned(1, 1, 1)); p.owned.put("archer", null);
         p.owned.get("knight").mastery = 9; p.owned.get("mage").mastery = -1;
         p.banner = new ArrayList<>(line("knight*12,oracle,mage*2"));

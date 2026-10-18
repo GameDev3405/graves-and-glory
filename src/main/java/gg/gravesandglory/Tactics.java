@@ -12,10 +12,13 @@ import java.util.*;
 /** Server-authoritative targeting, separation, bridge routing and local path recovery. */
 final class Tactics {
     static final Spec.NavigationRow N=Spec.NAVIGATION[0];
+    static final Map<String,String> MECHANICS=new java.util.concurrent.ConcurrentHashMap<>();
+    /** The abilities-sheet mechanic of a troop's ability (shield, mend, blight...); none for an id the sheet lacks. */
+    static String mechanic(Spec.TroopsRow t){return MECHANICS.computeIfAbsent(t.ability(),id->{for(var a:Spec.ABILITIES)if(a.id().equals(id))return a.mechanic();return "none";});}
     /** Between beats a shield troop re-reads the distance to the enemy it chose on its beat, so a block knight lowers its shield on the tick
      *  that enemy steps into sword reach (BattleMath.raiseShield). With no live target it keeps the beat's decision until the next beat. */
     static void brace(GravesAndGlory.Battle battle,GravesAndGlory.Unit u){
-        var t=u.lockedTarget;if(!u.spec.ability().equals("shield")||t==null||!t.isAlive())return;
+        var t=u.lockedTarget;if(!mechanic(u.spec).equals("shield")||t==null||!t.isAlive())return;
         var a=battle.assignment(u);boolean shield=BattleMath.raiseShield(a.formation,a.order,u.mob.squaredDistanceTo(t),u.spec.range()*u.spec.range(),true);
         if(shield&&!u.mob.isUsingItem())u.mob.setCurrentHand(Hand.OFF_HAND);else if(!shield&&u.mob.isUsingItem())u.mob.stopUsingItem();
     }
@@ -42,9 +45,9 @@ final class Tactics {
         }
         if(enemy!=u.lockedTarget){u.lockedTarget=enemy;u.lockUntil=time+Spec.COMBATDISCIPLINE[0].targetMemoryTicks();}
         mob.setTarget(enemy);mob.setAttacking(enemy!=null);
-        boolean shield=u.spec.ability().equals("shield")&&BattleMath.raiseShield(a.formation,a.order,nearest,u.spec.range()*u.spec.range(),enemy!=null); // block: up on the approach, down to swing once the enemy is in reach; shieldwall: the full brace
+        boolean shield=mechanic(u.spec).equals("shield")&&BattleMath.raiseShield(a.formation,a.order,nearest,u.spec.range()*u.spec.range(),enemy!=null); // block: up on the approach, down to swing once the enemy is in reach; shieldwall: the full brace
         if(shield&&!mob.isUsingItem())mob.setCurrentHand(Hand.OFF_HAND);else if(!shield&&mob.isUsingItem())mob.stopUsingItem();
-        if(u.spec.ability().equals("mend")&&time>=u.abilityAt){
+        if(mechanic(u.spec).equals("mend")&&time>=u.abilityAt){
             var ally=battle.units.stream().filter(v->v.squad.team==s.team&&v.mob.isAlive()&&v.mob.getHealth()<v.mob.getMaxHealth()&&v.mob.squaredDistanceTo(mob)<Spec.COMBATDISCIPLINE[0].healRadius()*Spec.COMBATDISCIPLINE[0].healRadius()&&mob.canSee(v.mob)).min(java.util.Comparator.comparingDouble(v->v.mob.getHealth()/v.mob.getMaxHealth())).orElse(null);
             if(ally!=null){Projectiles.fire(battle,u,ally.mob,"mend",(float)(Spec.COMBATDISCIPLINE[0].healAmount()*battle.campaign.damage(u)));u.abilityAt=time+Spec.COMBATDISCIPLINE[0].abilityCooldownTicks();}
         }
@@ -61,10 +64,10 @@ final class Tactics {
                     walk(battle,u,mob.getPos().add(away.multiply(5)),time,1.05);
                 }else mob.getNavigation().stop();
                 if(time>=u.nextAttack){
-                    int cooldown=s.commander.equals("marksman")&&u.spec.group().equals("ranged")?Math.round(u.spec.cooldown()/1.1f):u.spec.cooldown();u.nextAttack=u.nextAttack<time-10?time+cooldown:u.nextAttack+cooldown;mob.swingHand(Hand.MAIN_HAND);
+                    int cooldown=u.spec.cooldown();u.nextAttack=u.nextAttack<time-10?time+cooldown:u.nextAttack+cooldown;mob.swingHand(Hand.MAIN_HAND);
                     BattleEffects.strike(battle,u,enemy);
-                    if(u.spec.ability().equals("blight")){if(time>=u.abilityAt){u.spellCenter=enemy.getPos();u.windupUntil=time+Spec.COMBATDISCIPLINE[0].spellWindupTicks();u.abilityAt=time+Spec.COMBATDISCIPLINE[0].abilityCooldownTicks();Projectiles.bolt(battle,u,u.spellCenter);}}
-                    else if(!u.spec.ability().equals("mend")){
+                    if(mechanic(u.spec).equals("blight")){if(time>=u.abilityAt){u.spellCenter=enemy.getPos();u.windupUntil=time+Spec.COMBATDISCIPLINE[0].spellWindupTicks();u.abilityAt=time+Spec.COMBATDISCIPLINE[0].abilityCooldownTicks();Projectiles.bolt(battle,u,u.spellCenter);}}
+                    else if(!mechanic(u.spec).equals("mend")){
                         float amount=(float)(u.spec.damage()*battle.campaign.damage(u));
                         // The hit is decided now; a ranged hit lands when its visible arrow arrives.
                         if(u.spec.range()>3)Projectiles.fire(battle,u,enemy,"arrow",amount);else enemy.damage(battle.world.getDamageSources().mobAttack(mob),amount);

@@ -17,14 +17,14 @@ public final class CampRedesignChecks implements ClientModInitializer {
   ClientTickEvents.END_CLIENT_TICK.register(c->{try{
    if(c.getOverlay()!=null)return;if(!started){if(c.currentScreen instanceof FrontMenuScreen&&++front==40){started=true;GravesAndGloryClient.startCamp(c,false);}return;}
    if(c.player==null||c.getServer()==null||!GravesAndGloryClient.ready)return;tick++;
-   if(tick==20)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());b.campaign.returnLobby();b.campaign.profiles.put(p.getUuid(),new Campaign.Profile());b.campaign.profile(p.getUuid()).gold=300;b.campaign.collectionsReady.add(p.getUuid());b.campaign.importAllowed.remove(p.getUuid());b.campaign.save(p.getUuid());
+   if(tick==20)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());b.campaign.returnLobby();b.campaign.profiles.put(p.getUuid(),new Profile());b.campaign.profile(p.getUuid()).gold=300;b.campaign.collectionsReady.add(p.getUuid());b.campaign.importAllowed.remove(p.getUuid());b.campaign.save(p.getUuid());
     long npcs=0;for(var e:b.world.iterateEntities())if(e.getCommandTags().contains(CampWorld.TAG)&&e instanceof net.minecraft.entity.passive.VillagerEntity)npcs++;
     check("four-interactive-stewards",npcs==4);check("no-camp-weapons",p.getInventory().isEmpty());});
    if(tick==45){c.setScreen(null);check("battle-hud-off",GravesAndGloryClient.inCamp()&&!GravesAndGloryClient.battleActive());CommandMode.begin("attack");check("orders-disabled-in-camp",!CommandMode.active());}
    if(tick==70)shot(c,"courtyard");
    if(tick==80)c.setScreen(new CampScreen("home"));if(tick==95)shot(c,"guide");
    if(tick==100)CampScreen.open("recruit");if(tick==115)shot(c,"recruitment");if(tick==120)press(c,"RECRUIT RANDOM");
-   if(tick==150){check("server-confirmed-recruit",CampaignClient.profile.gold==200&&CampaignClient.profile.unlocked.size()==7);shot(c,"reward-reveal");}
+   if(tick==150){var pr=CampaignClient.profile;check("server-confirmed-recruit",pr.gold==200&&pr.owned.values().stream().mapToInt(o->o.copies).sum()+pr.shards.values().stream().mapToInt(Integer::intValue).sum()==Profile.commons().size()+1); /* one roll: a new troop or one more copy */shot(c,"reward-reveal");}
    if(tick==175){CampScreen.open("friends");press(c,"CREATE PARTY");}
    if(tick==200){check("party-packet",CampaignClient.social.get("party").getAsBoolean());shot(c,"friends");press(c,"CREATE PRIVATE ROOM");}
    if(tick==225){server(c,b->{var r=b.campaign.social.room(c.player.getUuid());if(r!=null)r.map=b.campaign.map;});CampScreen.open("room");check("room-packet",!CampaignClient.social.get("room").getAsString().isEmpty());}
@@ -46,7 +46,7 @@ public final class CampRedesignChecks implements ClientModInitializer {
    if(tick==710){shot(c,"small-guide");CampScreen.open("recruit");}
    if(tick==730){shot(c,"small-recruitment");CampScreen.open("results");check("short-match-no-rewards-report",CampaignClient.result.get("gold").getAsInt()==0&&CampaignClient.result.get("xp").getAsInt()==0);}
    if(tick==740)shot(c,"small-results");
-   if(tick==750){check("suite",!failed);c.setScreen(new CampScreen("home"));server(c,b->{var path=b.server.getSavePath(net.minecraft.util.WorldSavePath.ROOT).resolve("gravesandglory-parties.json");try{var saved=Campaign.JSON.fromJson(java.nio.file.Files.readString(path),SocialHub.class);saved.restore();check("party-readback",saved.party(c.player.getUuid())!=null);var profile=Campaign.JSON.fromJson(java.nio.file.Files.readString(b.campaign.directory.resolve(c.player.getUuid()+".json")),Campaign.Profile.class);check("profile-readback",profile.progression.claims.contains("daily:0")&&profile.progression.xp>=225);}catch(Exception e){check("readback",false);}});}
+   if(tick==750){check("suite",!failed);c.setScreen(new CampScreen("home"));server(c,b->{var path=b.server.getSavePath(net.minecraft.util.WorldSavePath.ROOT).resolve("gravesandglory-parties.json");try{var saved=Campaign.JSON.fromJson(java.nio.file.Files.readString(path),SocialHub.class);saved.restore();check("party-readback",saved.party(c.player.getUuid())!=null);var profile=Campaign.JSON.fromJson(java.nio.file.Files.readString(b.campaign.directory.resolve(c.player.getUuid()+".json")),Profile.class);check("profile-readback",profile.progression.claims.contains("daily:0")&&profile.progression.xp>=225);}catch(Exception e){check("readback",false);}});}
    if(tick==780){c.setScreen(null);server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());b.relocate(p,22,66,CampaignMaps.LOBBY_Z-7,-145,5);GravesAndGlory.openCamp(p,"recruit");});}
    if(tick==800){check("station-network-route",c.currentScreen instanceof CampScreen screen&&screen.page.equals("recruit"));c.setScreen(null);}
    if(tick==820)shot(c,"recruiter-station");

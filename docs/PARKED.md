@@ -70,3 +70,11 @@ Kort pictures up to a thousand concurrent players a year out and wants the serve
 ## Phase 2 Task 1 leftovers (2026-10-18)
 - houses.glyph is checked for its path format only, because the House glyph PNGs do not exist yet; once they land (the DarkUi.houseMark step), preflight should check each file exists, as it does for troop textures.
 - Two rule numbers stay in CounterMath: the Entrench reduction doubles (x2) inside an owned capture radius, and a hit is frontal at 90 degrees or less (the vanilla shield half-plane). houseTraits has no column for the x2; one could be added if Kort wants it tunable.
+
+## Phase 2 Task 2 leftovers (2026-10-18)
+- House glyph art still missing: the four side marks (sun, moon, star, wave) are 7x7 pixel patterns drawn in DarkUi.sideMark until real glyph textures exist.
+- Team cloth on the maps (MapDressing.cloth) and the camp wording still say Dawn and Dusk: the pad line "Dawn n / 4 | Dusk n / 4", the room buttons "Move party to Dawn/Dusk" and the battle report's point lines ("Dawn Ns / Dusk Ns"). They follow the side colours with the Task 3 HUD and the Phase 3 built world.
+- Chosen recruits (recruitment.chosenCost, rarities.chosenPrice) are not offered yet: `unlock:` and `army:` are refused with a notice, and the camp recruit page keeps its layout with the House roll only until the Task 3 shrine.
+- Classes are inert until Task 4: the six Task 4 class rows resolve and can be chosen, but no class bonus or active applies (the Phase 1 class bonuses left with the old rows); bots still take Spec.CLASSES[i%3].
+- Wildmoot, Ironclad and Tidecallers troops name entity types the server cannot spawn yet (wolf, spider, polar bear, vindicator, pillager, iron golem, drowned, evoker, ravager, zombified piglin); the editor and the server keep them out of every banner until their Houses are fieldable.
+- The tactical bar offers six groups (commandInterface.selection gained cavalry and siege); those two buttons select nothing until a fieldable House has cavalry or siege troops, and STATE still carries the three morale groups (layout decided at Task 3).

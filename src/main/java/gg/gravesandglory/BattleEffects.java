@@ -12,7 +12,7 @@ public final class BattleEffects {
     public static int flashes,lastFlashColor;
     /** An impact puff in the hitting team's colour, so a crowded melee shows who is landing blows. */
     public static void flash(GravesAndGlory.Battle b,Vec3d at,int team){
-        int rgb=Spec.FACTIONS[team].color();
+        int rgb=b.side(team).color();
         b.world.spawnParticles(new DustParticleEffect(new Vector3f((rgb>>16&255)/255f,(rgb>>8&255)/255f,(rgb&255)/255f),1.4f),at.x,at.y,at.z,Spec.COMBATDISCIPLINE[0].impactParticles(),.25,.25,.25,0);
         b.world.spawnParticles(ParticleTypes.CRIT,at.x,at.y,at.z,3,.2,.2,.2,.02);
         flashes++;lastFlashColor=rgb;

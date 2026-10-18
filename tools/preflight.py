@@ -14,16 +14,16 @@ for sheet, rows in data.items():
         for col in columns:
             cells+=1
             if col not in row or row[col] is None or row[col]=='': errors.append(f'{sheet}/{row.get("id")}/{col}: unfilled')
-factions={r['id'] for r in data['factions']}
+# Sides (spec 5.2): factions holds the banner colours. Team 0 and team 1 read their positions from rows 0 and 1;
+# colour, name and glyph come from the side each team fields (Battle.side).
+GLYPHS=('sun','moon','star','wave')
+sides=data['factions']
+if len(sides)<2: errors.append('factions: at least two side rows, since teams 0 and 1 read their positions from rows 0 and 1')
+for f in sides:
+    if f['glyph'] not in GLYPHS: errors.append(f'factions/{f["id"]}: glyph {f["glyph"]} is not one of {", ".join(GLYPHS)}')
+if len({f['glyph'] for f in sides})!=len(sides) or len({f['color'] for f in sides})!=len(sides): errors.append('factions: every side needs its own colour and its own glyph')
 troops={r['id']:r for r in data['troops']}
-for r in troops.values():
-    if r['faction'] not in factions: errors.append(f'{r["id"]}: faction does not resolve')
-for f in data['factions']:
-    refs=f['troops'].split(',')
-    for t in refs:
-        if t not in troops or troops[t]['faction']!=f['id']: errors.append(f'{f["id"]}: troop {t} does not resolve')
-    if sum(troops[t]['count'] for t in refs if t in troops)!=data['rules'][0]['squadSize']: errors.append('squad count mismatch')
-if data['rules'][0]['playersPerTeam']*len(factions)!=data['rules'][0]['maxPlayers']: errors.append('capacity mismatch')
+if data['rules'][0]['playersPerTeam']*2!=data['rules'][0]['maxPlayers']: errors.append('capacity mismatch: maxPlayers must be playersPerTeam for each of the two teams')
 groups={g['id'] for g in data.get('groups',[])}
 orders={o['id'] for o in data['orders']}
 for t in data['troops']:
@@ -42,22 +42,39 @@ for r in data['ui']:
         formationIds={f['id'] for f in data['formations']}
         for id in r['bottom'].split(','):
             if id not in formationIds: errors.append('UI formation reference missing: '+id)
-# Phase 2 Houses (spec 6.1). Until troops gain house and rarity columns, a troop's House and rarity come from houses.troops,
-# which lists Common infantry, Common ranged, Rare, Rare, Epic, Legendary in that order.
-POSITION_RARITY=['common','common','rare','rare','epic','legendary']
+# Phase 2 Houses (spec 6.1): a troop's House, rarity, ability and evolve line are its own columns.
 squad=data['rules'][0]['squadSize']
 houses={h['id']:h for h in data['houses']}
 rarities={r['id']:r for r in data['rarities']}
 RARITY_ORDER=['common','rare','epic','legendary']
 if [r['id'] for r in data['rarities']]!=RARITY_ORDER: errors.append('rarities: the rows must be common, rare, epic, legendary, in that order (validBanner checks bannerMax from the last row up, rarest first)')
+abilityIds={a['id'] for a in data['abilities']}
+evolveTroops={e['troop'] for e in data['evolutions']}
+HOUSE_SHAPE={'common':2,'rare':2,'epic':1,'legendary':1}
 houseOf,rarityOf={},{}
+for t in data['troops']:
+    name=f'troops/{t["id"]}'
+    if t['house'] not in houses or t['rarity'] not in rarities: errors.append(f'{name}: house {t["house"]} or rarity {t["rarity"]} does not resolve'); continue
+    houseOf[t['id']]=t['house'];rarityOf[t['id']]=t['rarity']
+    if t['ability'] not in abilityIds: errors.append(f'{name}: ability {t["ability"]} does not resolve')
+    if t['rarity'] in ('common','rare'):
+        if t['evolveLine'] not in evolveTroops: errors.append(f'{name}: a Common or Rare needs an evolveLine that names an evolutions troop, not {t["evolveLine"]}')
+    elif t['evolveLine']!='none': errors.append(f'{name}: an Epic or Legendary has evolveLine none')
+    if t['slotWeight']!=rarities[t['rarity']]['slotWeight']: errors.append(f'{name}: slotWeight {t["slotWeight"]} differs from rarities/{t["rarity"]} slotWeight {rarities[t["rarity"]]["slotWeight"]}')
+    if t['ranged']!=(t['range']>3): errors.append(f'{name}: ranged must be true exactly when range is above 3')
+    for slot in ('weapon','helmet','chest'):
+        if not t[slot].startswith('minecraft:'): errors.append(f'{name}: {slot} {t[slot]} must be a minecraft: item id (minecraft:air for none)')
+    tags=t['tags'].split(',')
+    if 'none' in tags and len(tags)>1: errors.append(f'{name}: tags is none or a comma list of tags, never both')
 for h in houses.values():
     if h['glyph']!=f'gravesandglory:textures/gui/house/{h["id"]}.png': errors.append(f'houses/{h["id"]}: glyph must be gravesandglory:textures/gui/house/{h["id"]}.png')
-    ids=h['troops'].split(',')
-    if len(ids)!=len(POSITION_RARITY): errors.append(f'houses/{h["id"]}: troops must list {len(POSITION_RARITY)} ids')
-    for i,t in enumerate(ids[:len(POSITION_RARITY)]):
-        if t in houseOf: errors.append(f'houses/{h["id"]}: {t} is already in {houseOf[t]}')
-        houseOf[t]=h['id'];rarityOf[t]=POSITION_RARITY[i]
+    mine=[t['id'] for t in data['troops'] if t['house']==h['id']]
+    if h['troops'].split(',')!=mine: errors.append(f'houses/{h["id"]}: troops must be {",".join(mine)}, the House troops in sheet order')
+    for r,n in HOUSE_SHAPE.items():
+        have=sum(1 for t in mine if rarityOf.get(t)==r)
+        if have>n or (h['fieldable'] and have!=n): errors.append(f'houses/{h["id"]}: {have} {r} troops; a House has at most {n}, and a fieldable House exactly {n}')
+for c in data['classes']:
+    if c['group'] not in groups: errors.append(f'classes/{c["id"]}: group {c["group"]} does not resolve')
 thresholds={}
 for h in houses:
     tiers=sorted((t for t in data['houseTraits'] if t['house']==h),key=lambda t:t['tier'])
@@ -82,8 +99,9 @@ for a in data['abilities']:
     if a['mechanic']=='stance' and a['amount']!=0: errors.append(f'abilities/{a["id"]}: stance multipliers live only in counters, so amount must be 0.0')
     if len(a['text'])>90: errors.append(f'abilities/{a["id"]}: text is {len(a["text"])} characters, over 90')
 CONDITIONS={'always','raised_front','lowered_front','front','charge_impact','charge','hold','flank','no_sky','in_mist'}
-# A counter tag is a dynamic tag, an ability id or a troop tag (spec section 3 list until the troops sheet carries tags).
-TAGS={'melee','arrow','shot','magic','nonsiege','ranged','charging','holding','structure','any'}|{'shield','spear','beast','cavalry','siege','large','small','fearless'}|{a['id'] for a in data['abilities']}
+# A counter tag is a dynamic tag, an ability id or a tag some troop carries in its tags column.
+troopTags={tag for t in data['troops'] for tag in t['tags'].split(',')}-{'none'}
+TAGS={'melee','arrow','shot','magic','nonsiege','ranged','charging','holding','structure','any'}|troopTags|abilityIds
 counterIds={c['id'] for c in data['counters']}
 for c in data['counters']:
     if c['condition'] not in CONDITIONS: errors.append(f'counters/{c["id"]}: condition {c["condition"]} is not in the closed list')
@@ -139,6 +157,8 @@ for b in data['botBanners']:
         if weights!=squad: errors.append(f'{name}: slot weights sum to {weights}, not {squad}')
         for r,n in units.items():
             if n>rarities.get(r,{}).get('bannerMax',squad): errors.append(f'{name}: {n} {r} units, over bannerMax {rarities[r]["bannerMax"]}')
+for d in sorted(difficulties):
+    if not any(b['difficulty']==d and all(houses.get(houseOf.get(s),{}).get('fieldable') for s in b['slots'].split(',') if s!='^') for b in data['botBanners']): errors.append(f'botBanners: no {d} banner fields only fieldable Houses (Campaign.botBanner picks from those)')
 if errors:
     print('\n'.join(errors)); sys.exit(1)
 def typ(v): return 'boolean' if isinstance(v,bool) else 'int' if isinstance(v,int) else 'double' if isinstance(v,float) else 'String'
