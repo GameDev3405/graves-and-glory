@@ -22,7 +22,9 @@ import java.util.function.Supplier;
 
 /** Isolated real-client checks for Phase 1 (solo core). GRAVES_PHASE1_CHECKS=<suite>[,<suite>...]. Never included in releases. */
 public final class Phase1Checks implements ClientModInitializer {
-    public interface Suite { void step(MinecraftClient c,int tick); }
+    public interface Suite { void step(MinecraftClient c,int tick);
+        /** Called once on the client thread when the suite ends by any path (done, timed out or thrown), before the next suite starts: puts back what the suite changed, or fails a check that never ran. */
+        default void cleanup(MinecraftClient c){} }
     /** Optional for a suite: called on the server thread after every Battle.tick, for checks that need exact tick timing. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
@@ -46,10 +48,12 @@ public final class Phase1Checks implements ClientModInitializer {
         for(var s:b.squads.values())if(!s.bot){s.seated=s.owner.equals(p.getUuid());if(s.seated)s.team=0;}
         b.startRound();c.introUntil=b.time;return true;
     }
-    /** Reports p1-<suite>-suite, then stops the client once the last listed suite is done. */
+    /** Runs the suite's cleanup, reports p1-<suite>-suite, then stops the client once the last listed suite is done. */
     public static void finish(MinecraftClient c,String suite){
+        var done=current;current=null;
+        if(done!=null)try{done.cleanup(c);}catch(Exception e){report("p1-"+suite+"-exception",false,"cleanup: "+e);e.printStackTrace();}
         report("p1-"+suite+"-suite",!failed,failed?"an earlier p1 check failed":"all checks passed");
-        current=null;if(queue.isEmpty())c.scheduleStop();
+        if(queue.isEmpty())c.scheduleStop();
     }
 
     @Override public void onInitializeClient(){
@@ -95,6 +99,10 @@ public final class Phase1Checks implements ClientModInitializer {
             var p=sp(b);p.changeGameMode(GameMode.SPECTATOR);double drop=up+p.getStandingEyeHeight()-1;
             b.relocate(p,look.x,look.y+up,look.z+side,180,(float)Math.toDegrees(Math.atan2(drop,side)));
         }
+
+        /** The commander's army fights as a bot in the tick-cost stage; the next suite's returnLobby drops bot armies, and with it his seat, so he gets it back however this suite ends. */
+        void handBack(GravesAndGlory.Battle b){var mine=player==null?null:b.squads.get(player);if(mine!=null)mine.bot=false;}
+        public void cleanup(MinecraftClient c){server(c,this::handBack);}
 
         public void step(MinecraftClient c,int tick){
             if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;next(b,1);});}
@@ -200,8 +208,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(b.time-stageAt>=600){double avg=tickSum/tickSamples;float now=b.server.getTickTime();
                         System.out.println("[p1] tick-cost avg="+String.format("%.2f",avg));
                         report("p1-tick-cost",now<40,"server tick "+String.format("%.2f",now)+" ms (600-tick mean "+String.format("%.2f",avg)+" ms) with "+troops+" troops at start, "+b.units.size()+" at end");
-                        var mine=b.squads.get(player);if(mine!=null)mine.bot=false; // the commander's army fought as a bot here; the next suite's returnLobby drops bot armies, and with it his seat
-                        next(b,16);}
+                        handBack(b);next(b,16);}
                 }
                 default->{}
             }
@@ -360,7 +367,7 @@ public final class Phase1Checks implements ClientModInitializer {
     static final class ReinforceChecks implements Suite,ServerWatch {
         static final Spec.EconomyRow E=Spec.ECONOMY[0];
         static final int TIMEOUT=2400; // ticks a measured walk may take
-        static final String[] PROBES={"p1-forward-contested","p1-forward-enemy-near","p1-forward-flipped","p1-forward-fresh"};
+        static final String[] PROBES={"p1-forward-contested","p1-forward-enemy-near","p1-forward-flipped","p1-forward-fresh","p1-forward-enemy-spawn"};
         volatile int stage;volatile String wantShot;volatile boolean finished;
         volatile UUID player;long stageAt;int shotDelay;
         final Spec.TroopsRow knight=troop("knight");
@@ -368,7 +375,7 @@ public final class Phase1Checks implements ClientModInitializer {
         Set<GravesAndGlory.Unit> known=new HashSet<>();GravesAndGlory.Unit trained,foe;long appeared;Vec3d spawnAt;
         double before,after;boolean shotAsked,control,heldOk;int probe;
         GravesAndGlory.Unit garrison;long captured=-1;
-        Spec.TroopsRow support;double fullOne,fullTwo,fullThree;
+        Spec.TroopsRow support;double fullOne,fullTwo,fullThree,fullFour;
 
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
         long since(GravesAndGlory.Battle b){return b.time-stageAt;}
@@ -400,6 +407,9 @@ public final class Phase1Checks implements ClientModInitializer {
             return b.reinforcementAnchors(0).contains(point);
         }
         void drop(GravesAndGlory.Battle b){if(trained!=null){trained.mob.discard();b.units.remove(trained);trained=null;}}
+        /** One frozen Dusk revenant at (x,z) in an ad hoc hold squad, the enemy of the enemy probes; ideal() removes it. */
+        void foeAt(GravesAndGlory.Battle b,double x,double z){var dusk=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(x,65,z));dusk.order="hold";dusk.yaw=90;
+            foe=b.spawn(dusk,troop("revenant"),30,new Vec3d(x,top(b,x,z),z));freeze(foe);foe.deployed=foe.mob.getPos();}
         void disband(GravesAndGlory.Battle b,GravesAndGlory.Unit u){if(u!=null){u.mob.discard();b.units.remove(u);}}
         long supporters(GravesAndGlory.Battle b){return b.units.stream().filter(u->u.squad==own&&u.spec==support&&u.mob.isAlive()).count();}
         double fullHealth(){return own.fullHealth.getOrDefault("support",0.0);}
@@ -459,10 +469,12 @@ public final class Phase1Checks implements ClientModInitializer {
                     control=ideal(b);
                     switch(probe){
                         case 0->point.contested=true;
-                        case 1->{double z=point.spec.z()+10;var dusk=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(point.spec.x(),65,z));dusk.order="hold";dusk.yaw=90;
-                            foe=b.spawn(dusk,troop("revenant"),30,new Vec3d(point.spec.x(),top(b,point.spec.x(),z),z));freeze(foe);foe.deployed=foe.mob.getPos();}
+                        case 1->foeAt(b,point.spec.x(),point.spec.z()+10);
                         case 2->point.owner=1;
-                        default->point.ownedSince=b.time;
+                        case 3->point.ownedSince=b.time;
+                        default->{ // the enemy stands beyond the safe radius of the point centre but inside it of where the troops appear (forwardSpawnOffset toward the base)
+                            Vec3d at=b.deployCentre(0,point);double dx=at.x-point.spec.x(),dz=at.z-point.spec.z(),len=Math.hypot(dx,dz),t=E.forwardSafeRadius()-E.forwardSpawnOffset()/2;
+                            foeAt(b,at.x+dx/len*t,at.z+dz/len*t);}
                     }
                     if(!buy(b)){fail(b,PROBES[probe],"no living knight to disband");break;}
                     next(b,71);
@@ -470,7 +482,8 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 71->{
                     if(!arrived(b)){if(since(b)>100){report(PROBES[probe],false,"the bought knight never appeared");probe++;next(b,7);}break;}
                     Vec3d home=GravesAndGlory.Battle.base(0);double fromBase=flat(spawnAt,home.x,home.z),fromPoint=flat(spawnAt,point.spec.x(),point.spec.z());
-                    report(PROBES[probe],control&&fromBase<=30,"point an anchor before the change="+control+"; knight appeared "+String.format("%.1f",fromBase)+" blocks from the barracks spot and "+String.format("%.1f",fromPoint)+" from the point (owner "+point.owner+", contested "+point.contested+")");
+                    Vec3d at=b.deployCentre(0,point);String enemy=foe==null?"":", the enemy "+String.format("%.1f",flat(foe.mob.getPos(),point.spec.x(),point.spec.z()))+" blocks from the point centre and "+String.format("%.1f",flat(foe.mob.getPos(),at.x,at.z))+" from where troops appear, safe radius "+E.forwardSafeRadius();
+                    report(PROBES[probe],control&&fromBase<=30,"point an anchor before the change="+control+"; knight appeared "+String.format("%.1f",fromBase)+" blocks from the barracks spot and "+String.format("%.1f",fromPoint)+" from the point (owner "+point.owner+", contested "+point.contested+enemy+")");
                     drop(b);probe++;next(b,7);
                 }
                 case 8->{ // p1-forward-message: the deploy notice names the point, or the barracks
@@ -503,9 +516,12 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 10->{if(supporters(b)==2){fullTwo=fullHealth();
                     for(var u:b.units)if(u.squad==own&&u.spec==support&&u.mob.isAlive()){u.mob.kill();break;}b.units.removeIf(u->!u.mob.isAlive()||u.mob.isRemoved());
                     own.training.addLast(new GravesAndGlory.Training(support,b.time));next(b,11);}else if(since(b)>100){fail(b,"p1-trained-fullhealth","the second support troop never appeared");}}
-                case 11->{if(supporters(b)==2){fullThree=fullHealth();double one=support.health()*b.campaign.health(own,support);
-                    report("p1-trained-fullhealth",Math.abs(fullOne-one)<1e-6&&Math.abs(fullTwo-2*one)<1e-6&&Math.abs(fullThree-2*one)<1e-6,"support ceiling after 1, 2 and a replaced troop: "+fullOne+", "+fullTwo+", "+fullThree+" (one troop is "+one+")");
-                    next(b,99);}else if(since(b)>100){fail(b,"p1-trained-fullhealth","the replacement support troop never appeared");}}
+                case 11->{if(supporters(b)==2){fullThree=fullHealth(); // then both fall and one is trained: the ceiling keeps two troops (adding would give four, the living sum one)
+                    for(var u:b.units)if(u.squad==own&&u.spec==support&&u.mob.isAlive())u.mob.kill();b.units.removeIf(u->!u.mob.isAlive()||u.mob.isRemoved());
+                    own.training.addLast(new GravesAndGlory.Training(support,b.time));next(b,12);}else if(since(b)>100){fail(b,"p1-trained-fullhealth","the replacement support troop never appeared");}}
+                case 12->{if(supporters(b)==1){fullFour=fullHealth();double one=support.health()*b.campaign.health(own,support);
+                    report("p1-trained-fullhealth",Math.abs(fullOne-one)<1e-6&&Math.abs(fullTwo-2*one)<1e-6&&Math.abs(fullThree-2*one)<1e-6&&Math.abs(fullFour-2*one)<1e-6,"support ceiling after 1, 2, a replaced troop, and 2 lost then 1 trained: "+fullOne+", "+fullTwo+", "+fullThree+", "+fullFour+" (one troop is "+one+")");
+                    next(b,99);}else if(since(b)>100){fail(b,"p1-trained-fullhealth","the support troop trained after both fell never appeared");}}
                 default->{}
             }
         }
@@ -902,6 +918,8 @@ public final class Phase1Checks implements ClientModInitializer {
             var p=sp(b);var at=point.spec;if(p.isSpectator())p.changeGameMode(GameMode.ADVENTURE);
             if(Math.hypot(p.getX()-at.x(),p.getZ()-at.z())>2)b.relocate(p,at.x()+.5,top(b,at.x(),at.z()),at.z()+.5,-90,10);
         }
+        /** p1-kingsfield-stale-points cannot pass by never running: without its 30 qualifying client ticks before the suite ends, it fails. */
+        public void cleanup(MinecraftClient c){if(staleTicks<30)report("p1-kingsfield-stale-points",false,"only "+staleTicks+" of 30 client ticks drawn against three-entry point arrays before the suite ended (stage "+stage+")");}
         static JsonArray rows(JsonObject report,String key){return report!=null&&report.has(key)&&report.get(key).isJsonArray()?report.getAsJsonArray(key):new JsonArray();}
         static int number(JsonElement row,String key){var o=row.getAsJsonObject();return o.has(key)?o.get(key).getAsInt():-1;}
         static String text(JsonElement row,String key){var o=row.getAsJsonObject();return o.has(key)?o.get(key).getAsString():"";}
@@ -922,9 +940,10 @@ public final class Phase1Checks implements ClientModInitializer {
                 for(int i=0;i<3;i++)st.claims.add("daily:"+i);st.claims.add("weekly");for(int t=1;t<=Progression.TIERS;t++)st.claims.add(Progression.SEASON+":"+t);st.titles.addAll(Arrays.asList(Progression.TITLES));
                 var four=crowded(realReport);c.results.put(player,four);String worst=c.snapshot(p);
                 var saved=Campaign.JSON.fromJson(Campaign.JSON.toJson(c.profile(player)),Campaign.Profile.class).progression;var again=Progression.match(saved,st.matchGrants.iterator().next(),true,true);
-                boolean pretty=worst.contains("\n"),ids=worst.contains("matchGrants"),kept=parse(worst).getAsJsonObject("result").has("id");
-                report("p1-report-snapshot",worst.length()<=Campaign.SNAPSHOT_LIMIT&&pretty&&kept&&!ids&&saved.matchGrants.size()==256&&again.xp()==0,
-                    "worst camp snapshot ("+st.matchGrants.size()+" match ids held by the server, "+st.claims.size()+" claims, "+st.titles.size()+" titles, an 8-row report on "+b.points.size()+" points) is "+worst.length()+" of "+Campaign.SNAPSHOT_LIMIT+" characters, sent pretty="+pretty+" with the report="+kept+", carries match ids="+ids+"; the saved profile keeps "+saved.matchGrants.size()+" ids and pays a repeat id "+again.xp()+" XP");
+                String key=Progression.State.MATCH_GRANTS;boolean named=Campaign.JSON.toJsonTree(st).getAsJsonObject().has(key);
+                boolean pretty=worst.contains("\n"),ids=worst.contains(key)||st.matchGrants.stream().anyMatch(worst::contains),kept=parse(worst).getAsJsonObject("result").has("id");
+                report("p1-report-snapshot",worst.length()<=Campaign.SNAPSHOT_LIMIT&&pretty&&kept&&named&&!ids&&saved.matchGrants.size()==256&&again.xp()==0,
+                    "worst camp snapshot ("+st.matchGrants.size()+" match ids held by the server, "+st.claims.size()+" claims, "+st.titles.size()+" titles, an 8-row report on "+b.points.size()+" points) is "+worst.length()+" of "+Campaign.SNAPSHOT_LIMIT+" characters, sent pretty="+pretty+" with the report="+kept+", carries match ids="+ids+" (key "+key+" names the saved field="+named+"); the saved profile keeps "+saved.matchGrants.size()+" ids and pays a repeat id "+again.xp()+" XP");
                 // the guard: grow the report until the pretty form no longer fits, then until the compact form does not either, then a notice longer than the limit
                 var rows=four.getAsJsonArray("squads");var row=rows.get(0);String compact="",dropped="",empty;int compactRows=0,droppedRows=0;
                 for(int n=0;n<200&&compact.isEmpty();n++){for(int k=0;k<5;k++)rows.add(row.deepCopy());String s=c.snapshot(p);if(!s.contains("\n")){compact=s;compactRows=rows.size();}}
@@ -1000,7 +1019,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     JsonElement me=null;boolean names=true;for(var e:squads){if(text(e,"you").equals("true"))me=e;if(text(e,"bot").equals("true"))names&=text(e,"name").equals(text(e,"tier")+" bot");}
                     boolean ownFirst=squads.size()>0&&number(squads.get(0),"team")==own.team;
                     report("p1-report-fields",squads.size()==seated&&me!=null&&number(me,"kills")>=2&&number(me,"lost")>=1&&number(me,"gold")>=E.passiveGold()&&number(me,"objective")>=2&&ownFirst&&names,
-                        squads.size()+" squad rows for "+seated+" seated armies, own team first="+ownFirst+", bot rows named \"<tier> bot\"="+names+"; rows "+squads+" (the commander's row needs kills>=2, lost>=1, gold>="+E.passiveGold()+", objective>=2); the snapshot is "+b.campaign.snapshot(sp(b)).length()+" of the client's 16000 characters");
+                        squads.size()+" squad rows for "+seated+" seated armies, own team first="+ownFirst+", bot rows named \"<tier> bot\"="+names+"; rows "+squads+" (the commander's row needs kills>=2, lost>=1, gold>="+E.passiveGold()+", objective>=2); the snapshot is "+b.campaign.snapshot(sp(b)).length()+" of the client's "+Campaign.SNAPSHOT_LIMIT+" characters");
                     report("p1-report-five-points",points.size()==5&&number(points.get(0),side)>=2,points.size()+" point rows "+points+" (point 0 needs 2 s or more for "+side+")");
                     snapshotChecks(b);
                     over=true;next(b,8);

@@ -9,6 +9,8 @@ final class Progression {
     static final int TIERS=30, XP_PER_TIER=250;
     static final String[] TITLES={"Scout","Pathfinder","Captain","Vanguard","Veteran","Bannerlord"};
     static final class State {
+        /** The JSON key of matchGrants. Campaign.forClient strips it from every client copy and p1-report-snapshot checks that it names a real key, so a rename of the field fails a check instead of sending match ids again. */
+        static final String MATCH_GRANTS="matchGrants";
         int schema=1,xp,totalBattles,totalWins,weeklyBattles;
         String day="",week="",title="Recruit";boolean rerolled;
         int dailyBattles,dailyCaptures,dailyOrders;

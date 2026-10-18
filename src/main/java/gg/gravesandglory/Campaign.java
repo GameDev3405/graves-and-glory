@@ -36,8 +36,8 @@ public final class Campaign {
     final Set<UUID> botRetreating=new HashSet<>();
     final Map<UUID,String> notices=new HashMap<>();
     final Map<UUID,JsonObject> results=new HashMap<>();
-    /** The shortened form each commander's camp snapshot was last sent in, while it does not fit; each change is logged once. */
-    final Map<UUID,String> snapshotForm=new HashMap<>();
+    /** The shortened forms each commander's camp snapshot has been sent in: each form is logged once, until he leaves. */
+    final Map<UUID,Set<String>> snapshotForms=new HashMap<>();
     String headline="";
     /** Bot difficulty for the next round: the id of a Spec.BOTCOMMAND row (easy, normal, hard). There is one battle per server, so one setting covers it. */
     String difficulty="normal";
@@ -125,8 +125,8 @@ public final class Campaign {
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}onPad.clear();padCountdown=-1;closeParty();
         for(var p:b.server.getPlayerManager().getPlayerList())toLobby(p);
     }
-    /** Leaving frees the pad, any seat in a custom lobby, and invitations to it. */
-    void left(UUID id){onPad.remove(id);padRefused.remove(id);leaveParty(id);}
+    /** Leaving frees the pad, any seat in a custom lobby, and invitations to it, and forgets which snapshot forms were logged for him. */
+    void left(UUID id){onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);}
     boolean handle(ServerPlayerEntity p,String cmd){
         if(cmd.startsWith("social:"))return socialCommand(p,cmd);
         if(cmd.startsWith("progress:"))return progressCommand(p,cmd);
@@ -488,14 +488,14 @@ public final class Campaign {
         JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",s.team);row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));return fitted(j,p.getUuid());
     }
     /** The client's copy of a profile: match ids stay on the server. They only stop one match paying twice, and 256 of them (94 characters a match across both copies) would outgrow SNAPSHOT_LIMIT. */
-    static JsonObject forClient(Profile p){JsonObject j=JSON.toJsonTree(p).getAsJsonObject();j.add("progression",forClient(p.progression));return j;}
-    static JsonObject forClient(Progression.State s){JsonObject j=JSON.toJsonTree(s).getAsJsonObject();j.remove("matchGrants");return j;}
-    /** The snapshot as sent: pretty when it fits SNAPSHOT_LIMIT, else compact, else compact without the battle report, else "{}" (the client then keeps its last camp state). */
+    static JsonObject forClient(Profile p){JsonObject j=JSON.toJsonTree(p).getAsJsonObject();var s=j.getAsJsonObject("progression");if(s!=null)s.remove(Progression.State.MATCH_GRANTS);return j;}
+    static JsonObject forClient(Progression.State s){JsonObject j=JSON.toJsonTree(s).getAsJsonObject();j.remove(Progression.State.MATCH_GRANTS);return j;}
+    /** The snapshot as sent: pretty when it fits SNAPSHOT_LIMIT, else compact, else compact without the battle report, else "{}" (the client then keeps its last camp state). Each shortened form is logged the first time a commander is sent it. */
     String fitted(JsonObject j,UUID id){
-        String out=JSON.toJson(j);if(out.length()<=SNAPSHOT_LIMIT){snapshotForm.remove(id);return out;}int full=out.length();String form="compact";
+        String out=JSON.toJson(j);if(out.length()<=SNAPSHOT_LIMIT)return out;int full=out.length();String form="compact";
         out=WIRE.toJson(j);if(out.length()>SNAPSHOT_LIMIT){j.add("result",new JsonObject());out=WIRE.toJson(j);form="compact without the battle report";}
         if(out.length()>SNAPSHOT_LIMIT){out="{}";form="empty";}
-        if(!form.equals(snapshotForm.put(id,form)))System.err.println("[Graves and Glory] The camp snapshot for "+name(id)+" ran to "+full+" characters, over the client's "+SNAPSHOT_LIMIT+"; sent "+form+" ("+out.length()+" characters).");
+        if(snapshotForms.computeIfAbsent(id,k->new HashSet<>()).add(form))System.err.println("[Graves and Glory] The camp snapshot for "+name(id)+" ran to "+full+" characters, over the client's "+SNAPSHOT_LIMIT+"; sent "+form+" ("+out.length()+" characters).");
         return out;
     }
 

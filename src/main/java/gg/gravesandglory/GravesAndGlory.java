@@ -234,6 +234,7 @@ public final class GravesAndGlory implements ModInitializer {
             world.getGameRules().get(GameRules.DO_MOB_GRIEFING).set(false,server);
             world.getGameRules().get(GameRules.DO_MOB_LOOT).set(false,server);
             world.getGameRules().get(GameRules.KEEP_INVENTORY).set(true,server);
+            world.getGameRules().get(GameRules.ANNOUNCE_ADVANCEMENTS).set(false,server); // vanilla advancement lines do not belong in battle chat
             world.setTimeOfDay(3000);
             world.setWeather(0,0,false,false);
             world.setSpawnPos(new BlockPos(-108,66,0),-90);
@@ -453,23 +454,28 @@ public final class GravesAndGlory implements ModInitializer {
                 var player=server.getPlayerManager().getPlayer(s.owner);if(player!=null)player.sendMessage(Text.literal(t.spec().name()+" trained: "+deployNote(s,at.anchor())),true);
             }
         }
-        /** Points this team has held long enough, uncontested and with no enemy near: where new troops may deploy instead of the barracks. Phase 2 banners add their anchors here. */
+        /** Points this team has held long enough, uncontested and with no enemy near where the troops would appear: where new troops may deploy instead of the barracks. Phase 2 banners add their anchors here. */
         List<Capture> reinforcementAnchors(int team){
             var E=Spec.ECONOMY[0];List<Capture> anchors=new ArrayList<>();
-            for(Capture p:points)if(p.owner==team&&!p.contested&&time-p.ownedSince>=E.forwardHoldSeconds()*20L&&!Morale.enemyWithin(this,team,new Vec3d(p.spec.x(),p.spec.elevation()+1,p.spec.z()),E.forwardSafeRadius()))anchors.add(p);
+            for(Capture p:points)if(p.owner==team&&!p.contested&&time-p.ownedSince>=E.forwardHoldSeconds()*20L&&!Morale.enemyWithin(this,team,deployCentre(team,p),E.forwardSafeRadius()))anchors.add(p);
             return anchors;
+        }
+        /** Where troops deployed at a held point appear: its centre moved forwardSpawnOffset toward the team's base; each slot then stands in its ring place around this spot. The safe radius is measured here, not at the point centre. */
+        Vec3d deployCentre(int team,Capture p){
+            Vec3d home=base(team),back=new Vec3d(home.x-p.spec.x(),0,home.z-p.spec.z());back=back.lengthSquared()<1e-6?Vec3d.ZERO:back.normalize().multiply(Spec.ECONOMY[0].forwardSpawnOffset());
+            double x=p.spec.x()+back.x,z=p.spec.z()+back.z;return new Vec3d(x,Arena.ground((int)Math.floor(x),(int)Math.floor(z))+1,z);
         }
         /** Where a troop trained now appears, and the held point it deploys at (null: the barracks). Chosen at spawn time, so a point that was lost, contested or approached since the purchase sends the troop home. */
         record Deploy(Vec3d at,Capture anchor){}
         Deploy deploy(Squad s,int slot){
-            var E=Spec.ECONOMY[0];Vec3d home=base(s.team),ring=new Vec3d((slot%5-2)*2,0,(slot/5-2)*2),barracks=home.add(ring);
+            Vec3d home=base(s.team),ring=new Vec3d((slot%5-2)*2,0,(slot/5-2)*2),barracks=home.add(ring);
             if(!forwardReinforcement)return new Deploy(barracks,null);
             List<Capture> anchors=reinforcementAnchors(s.team);if(anchors.isEmpty())return new Deploy(barracks,null);
             Vec3d target=storedAssignment(s,"infantry").target;double[] ax=new double[anchors.size()],az=new double[anchors.size()];
             for(int i=0;i<ax.length;i++){ax[i]=anchors.get(i).spec.x();az[i]=anchors.get(i).spec.z();}
             int chosen=BattleMath.nearestAnchor(target.x,target.z,home.x,home.z,ax,az);if(chosen<0)return new Deploy(barracks,null);
-            Capture anchor=anchors.get(chosen);Vec3d back=new Vec3d(home.x-ax[chosen],0,home.z-az[chosen]);back=back.lengthSquared()<1e-6?Vec3d.ZERO:back.normalize().multiply(E.forwardSpawnOffset());
-            double x=ax[chosen]+back.x+ring.x,z=az[chosen]+back.z+ring.z;int gx=(int)Math.floor(x),gz=(int)Math.floor(z);
+            Capture anchor=anchors.get(chosen);Vec3d centre=deployCentre(s.team,anchor);
+            double x=centre.x+ring.x,z=centre.z+ring.z;int gx=(int)Math.floor(x),gz=(int)Math.floor(z);
             if(Arena.river(gx,gz)&&Arena.ground(gx,gz)<64)return new Deploy(barracks,null);
             return new Deploy(new Vec3d(x,Arena.ground(gx,gz)+1,z),anchor);
         }
