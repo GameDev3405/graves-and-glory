@@ -32,3 +32,11 @@ Each item says what was decided in the meantime so work could continue.
   automated checks in a real client. Import dist/graves-and-glory-0.3.7.mrpack
   (rebuilt 2026-10-17 22:18, Melty removed, archive verified) into Prism.
   Pre-Phase-1 game: no projectiles, morale or bot tiers yet.
+
+## Decisions from Kort 2026-10-17 (UI/HUD round 2)
+
+- Direction chosen: the War Table screens (UI A) and the Iron Ledger group cards (HUD B). Polish only that family; no more three-way reworks.
+- Unit portraits show the actual soldier (an in-game model render), not pixel art. Placeholder pixel busts stay until the unit identity pass below delivers each unit's look.
+- New track: a unit identity pass. An agent examines every unit and designs each one deliberately with a distinct look and a distinct purpose; the agreed look then feeds the UI portraits. Spec: docs/superpowers/specs/2026-10-17-unit-identity.md (in progress).
+- Hunger is removed: no hunger bar and no eating mid-battle. Something else takes that slot later. Goes into the UI implementation plan (hide the bar client-side, pin food level server-side).
+- Pixel art detail goes way up on the chosen screens; no corner cutting.
