@@ -1,5 +1,7 @@
 package gg.gravesandglory;
 
+import java.util.List;
+
 /** Pure Phase 1 battle maths: projectile travel, HUD loss detection and rout maths. Never shipped. */
 public final class BattleMathCheck {
     static int checks;
@@ -60,6 +62,8 @@ public final class BattleMathCheck {
         check(!BattleMath.raiseShield("block","attack",4*4,reach,false) && !BattleMath.raiseShield("shieldwall","hold",4*4,reach,false) && !BattleMath.raiseShield("loose","attack",4*4,reach,true), "no shield with no enemy, or outside block and shieldwall");
         check(MatchStats.winRate(7,10) == .7 && MatchStats.winRate(0,0) == 0, "win rate");
         var st=new MatchStats.SquadStats(); st.goldEarned+=5; check(st.goldEarned == 5, "stats accumulate");
+        var a=new MatchStats.SquadStats(); a.kills=4; a.objectiveSeconds=10; var b2=new MatchStats.SquadStats(); b2.kills=4; b2.objectiveSeconds=30;
+        check(MatchStats.mvp(List.of(a,b2)) == 1 && MatchStats.mvp(List.of()) == -1, "mvp by kills then objective time");
         System.out.println("BattleMathCheck: " + checks + " checks passed");
     }
 }

@@ -242,12 +242,27 @@ public final class Campaign {
         for(UUID id:participants){var s=b.squads.get(id);if(s==null||!s.seated)continue;Profile p=profile(id);String before=JSON.toJson(p);
             int earned=Math.min(seconds,(b.time-joinedAt.getOrDefault(id,b.roundStarted))/20)>=Spec.CAMPAIGN[0].minimumRewardSeconds()?(practice?Spec.CAMPAIGN[0].practiceGold():Spec.CAMPAIGN[0].completionGold()+(s.team==winner?Spec.CAMPAIGN[0].victoryGold():0)):0;
             int priorXp=p.progression.xp;Progression.reset(p.progression,Progression.today());Progression.match(p.progression,matchId,s.team==winner,earned>0);p.gold+=earned;p.matches++;if(s.team==winner)p.wins++;if(s.team==winner&&activeBattle!=null)p.campaignCleared=Math.max(p.campaignCleared,activeBattle.order());
-            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);results.put(id,report);
+            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());results.put(id,report);
             if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}notice(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":""));
         }
         b.message=(winner<0?"Draw":Spec.FACTIONS[winner].name()+" wins")+"! Back to the war council.";headline=b.message;
         for(var p:b.server.getPlayerManager().getPlayerList())if(participants.contains(p.getUuid()))p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","victory")),.8f,1);
         returnLobby();
+    }
+    /** The report table for one commander: every seated army of both teams, his own team first (join order kept); a bot is named after its tier. */
+    JsonArray reportSquads(GravesAndGlory.Squad me){
+        JsonArray rows=new JsonArray();
+        for(boolean mine:new boolean[]{true,false})for(var s:b.squads.values())if(s.seated&&(s.team==me.team)==mine){
+            JsonObject row=new JsonObject();row.addProperty("name",s.bot?s.tier+" bot":name(s.owner));row.addProperty("team",s.team);row.addProperty("bot",s.bot);row.addProperty("tier",s.bot?s.tier:"");row.addProperty("you",s==me);
+            row.addProperty("kills",s.stats.kills);row.addProperty("lost",s.stats.lost);row.addProperty("gold",s.stats.goldEarned);row.addProperty("objective",s.stats.objectiveSeconds);rows.add(row);
+        }
+        return rows;
+    }
+    /** Seconds each team held each point this round: one entry per battle point, so five on Kingsfield. */
+    JsonArray reportPoints(){
+        JsonArray rows=new JsonArray();int[][] held=b.pointSeconds;
+        for(int i=0;i<b.points.size();i++){JsonObject row=new JsonObject();row.addProperty("name",b.points.get(i).spec.name());row.addProperty("dawn",i<held[0].length?held[0][i]:0);row.addProperty("dusk",i<held[1].length?held[1][i]:0);rows.add(row);}
+        return rows;
     }
     void tick(){
         if(pendingBattle!=null&&b.ready){ // the map of a campaign battle is built: it starts unless something changed meanwhile

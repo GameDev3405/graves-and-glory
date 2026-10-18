@@ -84,7 +84,8 @@ public final class GravesAndGlory implements ModInitializer {
                 for(Unit u:battle.units)if(u.mob==attacker)winner=u.squad;
                 // A shot that lands after its archer fell still credits the archer's army.
                 if(winner==null)winner=victim.lastHitBy;
-                if(winner!=null&&winner.team!=victim.squad.team)winner.earn(Spec.ECONOMY[0].killGold());
+                victim.squad.stats.lost++;
+                if(winner!=null&&winner.team!=victim.squad.team){winner.earn(Spec.ECONOMY[0].killGold());winner.stats.kills++;}
             }
         });
         net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register((player,world,hand,entity,hit)->{
@@ -191,6 +192,8 @@ public final class GravesAndGlory implements ModInitializer {
         public final List<Projectiles.Shot> shots=new ArrayList<>();
         final Map<UUID,Long> respawns=new HashMap<>();
         final int[] scores={0,0};
+        /** Seconds each team held each point this round, [team][point]; startRound sizes it from points (five on Kingsfield). */
+        int[][] pointSeconds=new int[2][0];
         final Set<UUID> welcomed=new HashSet<>();
         long time;
         public boolean ready=false;
@@ -476,7 +479,7 @@ public final class GravesAndGlory implements ModInitializer {
         void startRound(){
             Projectiles.clear(this);
             campaign.prepareRound();
-            Arrays.fill(scores,0);
+            Arrays.fill(scores,0);pointSeconds=new int[2][points.size()];
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
             respawns.clear();
             for(Squad s:squads.values()){
@@ -529,12 +532,13 @@ public final class GravesAndGlory implements ModInitializer {
         }
         void unitTick(Unit u){ Tactics.tick(this,u,time); }
         void captureTick(){
+            Set<Squad> onPoint=new HashSet<>(); // armies with a troop or their commander inside any point radius this second
             for(Capture p:points){
                 int[] presence={0,0};Vec3d center=new Vec3d(p.spec.x(),65,p.spec.z());
-                for(Unit u:units)if(u.mob.isAlive()&&horizontalDistance(u.mob.getPos(),center)<p.spec.radius()*p.spec.radius())presence[u.squad.team]++;
+                for(Unit u:units)if(u.mob.isAlive()&&horizontalDistance(u.mob.getPos(),center)<p.spec.radius()*p.spec.radius()){presence[u.squad.team]++;onPoint.add(u.squad);}
                 for(ServerPlayerEntity player:server.getPlayerManager().getPlayerList()){
                     Squad s=squads.get(player.getUuid());
-                    if(s!=null&&s.seated&&!player.isSpectator()&&horizontalDistance(player.getPos(),center)<p.spec.radius()*p.spec.radius())presence[s.team]+=R.capturePlayersWeight();
+                    if(s!=null&&s.seated&&!player.isSpectator()&&horizontalDistance(player.getPos(),center)<p.spec.radius()*p.spec.radius()){presence[s.team]+=R.capturePlayersWeight();onPoint.add(s);}
                 }
                 p.contested=presence[0]>0&&presence[1]>0;
                 int team=presence[0]>0&&presence[1]==0?0:presence[1]>0&&presence[0]==0?1:-1;
@@ -547,6 +551,8 @@ public final class GravesAndGlory implements ModInitializer {
                     for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList())if(squads.containsKey(pl.getUuid())&&squads.get(pl.getUuid()).seated)pl.sendMessage(Text.literal(Spec.FACTIONS[team].name()+" captured "+p.spec.name()).formatted(team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE),true);
                 }
             }
+            for(Squad s:onPoint)s.stats.objectiveSeconds++;
+            MatchStats.teamPointSeconds(pointSeconds,points.stream().mapToInt(c->c.owner).toArray());
         }
         static double horizontalDistance(Vec3d a,Vec3d b){double x=a.x-b.x,z=a.z-b.z;return x*x+z*z;}
         int teamOf(Entity e){
