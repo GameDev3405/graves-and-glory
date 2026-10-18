@@ -20,7 +20,7 @@ public final class RevisionChecks implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(c->{
             if(c.player==null||c.getServer()==null||!GravesAndGloryClient.ready)return;
             c.options.pauseOnLostFocus=false;tick++;
-            if(tick==1){c.setScreen(null);server(c,b->{b.startRound();var s=b.squads.get(c.player.getUuid());for(var u:b.units)if(u.squad==s){double x=-78+u.slot%5*2,z=10+u.slot/5*2;u.mob.refreshPositionAndAngles(x,Arena.ground((int)x,(int)z)+1,z,-90,0);}var p=b.server.getPlayerManager().getPlayer(s.owner);p.teleport(b.world,-93,72,22,-70,20);});}
+            if(tick==1){c.setScreen(null);server(c,b->{var s=b.squads.get(c.player.getUuid());s.seated=true;b.startRound();b.campaign.introUntil=b.time; /* a lobby join is unseated (AdmissionPolicy) and startRound fields seated squads only, so seat the player as the self-test seats its squads; and end the 120-tick intro, during which tactical refuses orders, because these checks issue theirs from tick 60 */for(var u:b.units)if(u.squad==s){double x=-78+u.slot%5*2,z=10+u.slot/5*2;u.mob.refreshPositionAndAngles(x,Arena.ground((int)x,(int)z)+1,z,-90,0);}var p=b.server.getPlayerManager().getPlayer(s.owner);p.teleport(b.world,-93,72,22,-70,20);});}
             if(tick==60){CommandMode.selected="infantry";CommandMode.issue("infantry","hold","line",new Vec3d(-68,65,10),-90,-1);}
             if(tick==80)CommandMode.issue("ranged","move","line",new Vec3d(-70,65,35),-90,-1);
             if(tick==100)CommandMode.issue("support","hold","loose",new Vec3d(-92,65,12),-90,-1);
