@@ -62,3 +62,10 @@ Answered by Kort 2026-10-18: all five as recommended (1 yes, 2 allow, 3 brace on
 3. Tusk Spear and Trident Guard share the same brace. Split by job only, or make Tusk Spear brace on Charge instead of Hold? [Brace on Charge; a stat-identical pair is what the pass exists to remove]
 4. One large team-colour cloth per Legendary (Aldric's standard, Hollow King's cloak, Old Horn's antler banner, Brassjaw's belt banner, Vael's coat lining)? [Yes]
 5. Vanilla posing overrides the aim mixin, so husks and boar-kin raise zombie arms in combat. Fix the pose before the Gilded art is made? [Yes, in Phase 2 Task 5 (skin pipeline spike)]
+
+## UI round 3 feedback from Kort (2026-10-18)
+
+- v3 War Table and Iron Ledger: "getting better but not quite there yet." Double or triple the pixel art detail (map card named as the example). v4 in progress.
+- Mode cards get a small one-line subtitle: Practice (train against bots), Skirmish (one battle, your rules), Campaign (the story, battle by battle).
+- HUD gets a battle event feed on the right: troop losses, a fellow commander down, points taken or lost, routs and regroups, reinforcements; colour-coded by kind with a glyph per kind so colour is never alone. Replaces the notice slip above the group cards.
+- Title screen: current one is "absolutely depressing". Direction chosen: "The Hill" (real shaders-on battlefield panorama, pixel-art cliff and commander with banner in the foreground, text-column buttons bottom-left, "Ride to camp" primary). Mockups in progress.
