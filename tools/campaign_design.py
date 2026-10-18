@@ -18,5 +18,5 @@ p.write_text(json.dumps(d,indent=2))
 q=root/'tools/preflight.py';s=q.read_text().replace("public static final {name}[]", "public static {name}[]");q.write_text(s)
 for path in ['build.gradle','src/main/resources/fabric.mod.json','tools/package.py','melty.json']:
  q=root/path;s=q.read_text().replace('0.2.0-preview.1','0.2.0');q.write_text(s)
-q=root/'src/main/resources/fabric.mod.json';j=json.loads(q.read_text());j['description']='Permanent armies, four battlefields and fantasy army battles for one to eight commanders.';j['entrypoints']['client']=['gg.gravesandglory.GravesAndGloryClient','gg.gravesandglory.CampaignChecks'];q.write_text(json.dumps(j,indent=2))
+q=root/'src/main/resources/fabric.mod.json';j=json.loads(q.read_text());j['description']='Permanent armies, five battlefields and fantasy army battles for one to eight commanders.';j['entrypoints']['client']=['gg.gravesandglory.GravesAndGloryClient','gg.gravesandglory.CampaignChecks'];q.write_text(json.dumps(j,indent=2))
 print('Campaign design updated')

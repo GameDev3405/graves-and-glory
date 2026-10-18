@@ -42,7 +42,7 @@ Guide for people and AI helpers changing this project. Project root: `C:\Users\k
 - `Campaign.java`: match flow for a player's campaign. Rolls, rewards, bot logic each tick, class numbers (the numbers that class bonuses use are in code, not read from the text).
 - `CampaignClient.java`: client side of the campaign. Collection file location and per-frame sampling.
 - `CampaignLobbyScreen.java`: the physical lobby UI: collection, rolls, army and class selection, enter-battle.
-- `CampaignMaps.java`: the four battlefields and their objectives.
+- `CampaignMaps.java`: the five battlefields and their objectives.
 - `Arena.java`: builds the battlefield, structures and bridges, sets time of day per map.
 - `Tactics.java`: unit abilities (shield, mend, blight), class-specific behaviour, orders.
 - `CommandMode.java`: battlefield command mode: targeting, facing and the formation preview math. It duplicates the server's formation math, so change both together.

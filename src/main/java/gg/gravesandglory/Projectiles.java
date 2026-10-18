@@ -15,7 +15,7 @@ import java.util.ArrayList;
 public final class Projectiles {
     public static final String TAG="gravesandglory-shot";
     static final Spec.CombatDisciplineRow C=Spec.COMBATDISCIPLINE[0];
-    /** Ticks after an enemy's last blow on a unit during which a death with no attacker still credits the blow's army: the longest a shot can fly, so an arrow that lands after its archer fell always pays him, plus 20 ticks (one second) for a blow that kills one step later, a knockback into a fall say. Past that, a fall, lava, cramming or /kill is nobody's kill. */
+    /** Ticks after an enemy's last blow on a unit during which a death with no attacker still credits the blow's army. lastHitAt is stamped when a blow lands (melee, or an arrow on impact), so flight time never counts: this is a blow-to-death allowance, sized as projectileMaxTicks plus 20 so a late shot plus a short fall still pays. The +20 is a code-held tuning number; see docs/PARKED.md. */
     public static final int CREDIT_WINDOW_TICKS=C.projectileMaxTicks()+20;
     /** kind: "arrow" (damage, vanilla arrow visual), "bolt" (blight cast, visual only), "mend" (heal).
      *  A bolt has no target: it flies to the fixed point {@code at}; other shots follow their target and leave {@code at} null. */
