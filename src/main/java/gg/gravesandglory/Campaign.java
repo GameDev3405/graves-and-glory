@@ -90,13 +90,13 @@ public final class Campaign {
             LegacyDataMigration.profiles(save.resolve(Diagnostics.active()?"bannerbound-test-profiles":"bannerbound-profiles"),directory);
             LegacyDataMigration.copyMissing(save.resolve("bannerbound-layout.json"),layoutFile());
         } catch(java.io.IOException migration) { throw new IllegalStateException("Could not upgrade legacy commander data; original files were kept",migration); }
-        try{JsonObject marker=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();if(marker.get("layout").getAsString().equals("campaign-2"))map=marker.get("map").getAsInt();}catch(Exception ignored){}CampaignMaps.select(map);
+        try{JsonObject marker=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();if(marker.get("layout").getAsString().equals("campaign-3"))map=marker.get("map").getAsInt();}catch(Exception ignored){}CampaignMaps.select(map);
     }
     Profile profile(UUID id){return profiles.computeIfAbsent(id,key->{Path file=directory.resolve(key+".json");if(!Files.exists(file))return new Profile();
         try{Profile p=JSON.fromJson(Files.readString(file),Profile.class);if(p==null)throw new IllegalStateException("Empty profile");p.sanitize();return p;}
         catch(Exception e){throw new IllegalStateException("Commander profile could not be read. Original and .bak preserved: "+key,e);}});}
-    boolean cached(){try{JsonObject j=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();return j.get("layout").getAsString().equals("campaign-2")&&j.get("map").getAsInt()==map;}catch(Exception e){return false;}}
-    void built(){try{Files.writeString(b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-layout.json"),"{\"layout\":\"campaign-2\",\"map\":"+map+"}");}catch(Exception e){System.err.println("[Graves and Glory] Map cache marker could not be saved.");}}
+    boolean cached(){try{JsonObject j=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();return j.get("layout").getAsString().equals("campaign-3")&&j.get("map").getAsInt()==map;}catch(Exception e){return false;}}
+    void built(){try{Files.writeString(b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-layout.json"),"{\"layout\":\"campaign-3\",\"map\":"+map+"}");}catch(Exception e){System.err.println("[Graves and Glory] Map cache marker could not be saved.");}}
     boolean save(UUID id){try{Files.createDirectories(directory);Path path=directory.resolve(id+".json"),tmp=directory.resolve(id+".tmp");Files.writeString(tmp,JSON.toJson(profile(id)));if(Files.exists(path))Files.copy(path,path.resolveSibling(path.getFileName()+".bak"),StandardCopyOption.REPLACE_EXISTING);
             try{Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}catch(AtomicMoveNotSupportedException e){Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING);}return true;
         }catch(Exception e){System.err.println("[Graves and Glory] Could not save commander collection: "+e.getClass().getSimpleName());notice(id,"Collection could not be saved; check disk space.");return false;}}

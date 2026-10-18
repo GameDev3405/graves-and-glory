@@ -48,6 +48,7 @@ public final class Phase3Checks implements ClientModInitializer {
     static{
         SUITES.put("pipeline",Pipeline::new);
         SUITES.put("studio",StudioChecks::new);
+        SUITES.put("routes",Routes::new);
     }
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed,broken;
@@ -477,6 +478,61 @@ public final class Phase3Checks implements ClientModInitializer {
                 note=stage.size()+" stage chunk(s)";
             }catch(Throwable e){bad.append("harness failure ").append(e).append("; ");}
             report("p3-studio-build-releases",bad.length()==0,bad.length()==0?"'studio build "+MARKER+"' built the piece and left none of its "+note+" forced (the studio holds none and the world's forced chunks hold none); 'studio save' wrote it with the size of the header":bad.toString());
+        }
+    }
+
+    /** Task 2: the roads, on all five maps. Per map: the walk scan (p3-walk-map<N> passes with no blocked road, deck or through-road cell; all six counts are in
+     *  its line), the hits in screenshots/p3-walk-map<N>-blocked.txt, and two photographs of each of the three decks: deck-map<N>-bridge-<k> from the camera the plan gives
+     *  (a ring obelisk can stand in front of it) and deck-map<N>-bridge-<k>-high from thirty-four blocks above and out on the south side, over any obelisk. Then the route harness sends twenty knights over
+     *  every crossing of the five maps, and p3-routes-map<N> passes when all three crossings of the map had 20 of 20 across. */
+    static final class Routes implements Suite {
+        static final int[] MAPS={0,1,2,3,4};
+        int map,bridge,stage,waited;MapRouteChecks routes; // bridge counts photographs: two per crossing
+        volatile boolean switched,scanned,finished;
+        /** Active ticks only: nothing steps while the client is told the arena is not ready, so the builds are not in it. Worst case 15 crossings that all time out is about 20000. */
+        @Override public int limit(){return 24000;}
+        @Override public void step(MinecraftClient c,int tick){
+            if(tick<20)return;
+            int n=map<MAPS.length?MAPS[map]:-1;
+            switch(stage){
+                case 0->{switched=false;scanned=false;waited=0;server(c,b->{if(b.campaign.map!=n)b.campaign.switchMap(n);switched=true;});stage=1;}
+                case 1->{
+                    var b=GravesAndGlory.battle;
+                    if(switched&&b!=null&&b.ready&&b.campaign.map==n&&CampaignMaps.selected==n){stage=2;server(c,x->scan(x,n));}
+                    else if(++waited>3000){report("p3-walk-map"+n,false,"the arena of map "+n+" was not ready after "+waited+" ticks");map++;stage=map<MAPS.length?0:4;}
+                }
+                case 2->{if(scanned){bridge=0;stage=3;}}
+                case 3->{
+                    var bridges=MapRouteChecks.bridges();
+                    if(bridge>=bridges.size()*2){map++;stage=map<MAPS.length?0:4;}
+                    else{var s=bridges.get(bridge/2);int k=bridge/2;
+                        boolean taken=bridge%2==0?view(c,"deck-map"+n+"-bridge-"+k,s.x()-8,70,s.z()+s.depth()/2+10,s.x(),65,s.z())
+                            :view(c,"deck-map"+n+"-bridge-"+k+"-high",s.x()-16,s.elevation()+34,s.z()+s.depth()/2+22,s.x(),s.elevation()+1,s.z());
+                        if(taken)bridge++;}
+                }
+                case 4->{routes=new MapRouteChecks(c,MAPS);stage=5;}
+                case 5->{if(tick%10==0)server(c,this::pump);if(finished)finish(c,"routes");}
+                default->{}
+            }
+        }
+        @Override public void cleanup(MinecraftClient c){server(c,b->b.campaign.leash=true);}
+
+        /** The scan of the map that stands, reported and written beside the screenshots. */
+        void scan(GravesAndGlory.Battle b,int n){
+            long start=System.nanoTime();var s=Walkability.scan(b);
+            report("p3-walk-map"+n,s.road()==0&&s.through()==0,"cells="+s.cells()+" road="+s.road()+" through="+s.through()+" building="+s.building()+" base="+s.base()+" point="+s.point());
+            try{Path file=MinecraftClient.getInstance().runDirectory.toPath().resolve("screenshots/p3-walk-map"+n+"-blocked.txt");Files.createDirectories(file.getParent());Files.writeString(file,s.detail());}
+            catch(Exception e){report("p3-walk-map"+n+"-file",false,e.toString());}
+            System.out.println("[p3] note walk map "+n+" scanned in "+(System.nanoTime()-start)/1000000+" ms");
+            scanned=true;
+        }
+        /** On the server thread, as the dev control calls it: one step of the route harness, and its verdict per map once it is done. */
+        void pump(GravesAndGlory.Battle b){
+            if(finished)return;
+            routes.tick();
+            if(!routes.done)return;
+            for(int n:MAPS){int got=routes.crossed.getOrDefault(n,0);report("p3-routes-map"+n,got==3,got+" of 3 crossings with 20 of 20 knights across");}
+            finished=true;
         }
     }
 }

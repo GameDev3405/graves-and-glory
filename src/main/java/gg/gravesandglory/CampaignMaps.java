@@ -35,12 +35,12 @@ public final class CampaignMaps {
             if(i==0){
                 structures.add(s("mill","mill",rx-18,z-28,12,12,8,"wood",64));
                 structures.add(s("farm","farm",rx-90,z-25,26,18,1,"wood",64));
-                structures.add(s("market","market",rx-65,z+25,18,8,5,"dawn",64));
-                for(int k=0;k<4;k++){int hx=rx-75-(k%2)*26,hz=z-4+(k/2)*31;structures.add(s("house_"+k,"house",hx,hz,14,12,9,"wood",64));road(hx,hz,rx-29,z,3);}
+                structures.add(s("market","market",rx-50,z+33,18,8,5,"dawn",64));
+                for(int k=0;k<4;k++){int hx=rx-75-(k%2)*26,hz=z+12+(k/2)*15;structures.add(s("house_"+k,"house",hx,hz,14,12,9,"wood",64));road(hx,hz,rx-29,z,3);}
                 road(rx-90,z-25,rx-29,z,3);road(rx-18,z-28,rx-29,z,3);
             } else if(i==1){
                 if(selected==1){structures.add(s("ironhold","ruin",0,27,58,42,20,"stone",64));structures.add(s("breach","breach",-37,0,6,50,10,"stone",64));}
-                else {structures.add(s("customs","house",rx-58,30,18,14,10,"wood",64));structures.add(s("warehouse","barracks",rx+60,-30,24,18,10,"stone",64));}
+                else {boolean kings=selected==4;structures.add(s("customs","house",kings?-45:rx-58,kings?47:30,18,14,10,"wood",64));structures.add(s("warehouse","barracks",kings?45:rx+60,kings?-47:-30,24,18,10,"stone",64));}
             } else structures.add(s("shrine","shrine",rx+59,z-18,22,18,13,"dusk",64));
         }
         for(int side:new int[]{-1,1}){
@@ -59,13 +59,13 @@ public final class CampaignMaps {
         if(selected==1){
             structures.removeIf(st->st.kind().equals("farm")||st.kind().equals("mill")||st.kind().equals("shrine"));
             structures.add(s("supply_barn","house",-105,-160,24,18,11,"wood",64));
-            structures.add(s("garrison","barracks",65,135,30,22,13,"stone",64));
+            structures.add(s("garrison","barracks",65,147,30,22,13,"stone",64));
             for(int side:new int[]{-1,1})for(int z:new int[]{-62,62})structures.add(s("curtain_"+side+"_"+z,"breach",side*72,z,5,68,13,"stone",64));
         }else if(selected==2){
             structures.removeIf(st->st.kind().equals("farm")||st.kind().equals("mill")||st.kind().equals("market"));
             structures.add(s("caravan_lodge","house",-80,-178,26,18,12,"wood",64));
             structures.add(s("pass_refuge","house",62,34,20,16,12,"wood",64));
-            structures.add(s("signal_tower","watchtower",57,166,14,14,19,"stone",64));
+            structures.add(s("signal_tower","watchtower",62,170,14,14,19,"stone",64));
             road(-80,-178,-20,-155,4);road(62,34,25,0,4);
         }else if(flanks){
             points[1]=new Spec.PointsRow("B","West Outpost",-130,100,17,8,74);
