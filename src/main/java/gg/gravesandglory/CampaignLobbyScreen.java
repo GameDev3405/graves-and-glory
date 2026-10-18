@@ -14,7 +14,7 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
     String selectedUnit="knight";final List<ArmyCards.Deployment> slots=new ArrayList<>();
     String pendingClass="";int tab=0;String key="";List<ButtonWidget> leadControls=new ArrayList<>();ButtonWidget start,roll,confirmClass;
     public CampaignLobbyScreen(){super("Graves and Glory war council");}
-    String stateKey(){return CampaignClient.mode+CampaignClient.map+CampaignClient.fill+CampaignClient.partyKey+team+CampaignClient.profile.commander+CampaignClient.profile.unlocked.size()+CampaignClient.headline;}
+    String stateKey(){return CampaignClient.mode+CampaignClient.map+CampaignClient.fill+CampaignClient.difficulty+CampaignClient.partyKey+team+CampaignClient.profile.commander+CampaignClient.profile.unlocked.size()+CampaignClient.headline;}
     public void showTab(int value){tab=value;clearAndInit();}
     @Override protected void init(){
         uiScale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/640f,client.getWindow().getScaledHeight()/360f));width=(int)(client.getWindow().getScaledWidth()/uiScale);height=(int)(client.getWindow().getScaledHeight()/uiScale);
@@ -27,7 +27,8 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
             String[] modes={"ai","1","2","3","4"};int bw=lw/5;
             for(int i=0;i<5;i++){String id=modes[i];leadControls.add(button((id.equals(CampaignClient.mode)?"> ":"")+(id.equals("ai")?"Practice":id+"v"+id),16+i*bw,81,bw-4,b->send("mode:"+id)));}
             int mw=lw/Spec.MAPS.length;for(int i=0;i<Spec.MAPS.length;i++){final int id=i;leadControls.add(button((CampaignClient.map==i?"> ":"")+Spec.MAPS[i].name(),16+i*mw,height-104,mw-4,b->send("map:"+id)));}
-            leadControls.add(button("Bot fill: "+(CampaignClient.fill?"ON":"OFF"),rx,height-104,rw,b->send("fill")));
+            leadControls.add(button("Bot fill: "+(CampaignClient.fill?"ON":"OFF"),rx,height-104,rw/2-2,b->send("fill")));
+            leadControls.add(button(CampaignClient.botsLabel(),rx+rw/2+2,height-104,rw-rw/2-2,b->send("difficulty:"+CampaignClient.nextDifficulty())));
         }else if(tab==1){
             int row=0,t=Math.max(0,team),left=width/2+8,cardWidth=(width-left-24)/3;
             if(Arrays.stream(Spec.TROOPS).noneMatch(u->u.id().equals(selectedUnit)&&u.faction().equals(Spec.FACTIONS[t].id()))&&!selectedUnit.equals("empty"))selectedUnit=t==0?"knight":"revenant";

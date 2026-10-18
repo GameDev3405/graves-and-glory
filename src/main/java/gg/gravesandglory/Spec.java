@@ -36,8 +36,8 @@ public record TerrainStyleRow(String id,double warpAmplitude,double warpFrequenc
 public static TerrainStyleRow[] TERRAINSTYLE = new TerrainStyleRow[] {new TerrainStyleRow("authored",7.0,0.035,1.4,12.0,4.0)};
 public record PingsRow(String id,String label,int seconds,int cooldownSeconds) {}
 public static PingsRow[] PINGS = new PingsRow[] {new PingsRow("attack","Attack",8,2),new PingsRow("defend","Defend",8,2),new PingsRow("help","Help",8,2),new PingsRow("moving","Moving here",8,2)};
-public record BotCommandRow(String id,double retreatShare,double rallyShare,double chargeRatio) {}
-public static BotCommandRow[] BOTCOMMAND = new BotCommandRow[] {new BotCommandRow("bot-commander",0.25,0.6,1.5)};
+public record BotCommandRow(String id,double retreatShare,double rallyShare,double chargeRatio,int decisionTicks,boolean flankLeastDefended,double defenderWeight,boolean shieldwallVsArchers,int archerThreatCount,double archerThreatRange,double chargeDistance) {}
+public static BotCommandRow[] BOTCOMMAND = new BotCommandRow[] {new BotCommandRow("easy",0.35,0.7,2.5,160,false,0.0,false,3,30.0,0.0),new BotCommandRow("normal",0.25,0.6,1.5,100,false,0.0,false,3,30.0,0.0),new BotCommandRow("hard",0.2,0.55,1.3,60,true,25.0,true,3,30.0,18.0)};
 public record CombatDisciplineRow(String id,double damageScale,int targetMemoryTicks,double rangedObstructionStep,int spellWindupTicks,double spellRadius,String recoveryIncome,String enemyKnowledge,double healAmount,double healRadius,int abilityCooldownTicks,double arrowSpeed,double boltSpeed,int projectileMinTicks,int projectileMaxTicks,int impactParticles) {}
 public static CombatDisciplineRow[] COMBATDISCIPLINE = new CombatDisciplineRow[] {new CombatDisciplineRow("captain",0.6,40,4.0,20,2.5,"baseline","visible_only",4.0,10.0,100,2.2,1.2,2,14,8)};
 public record RecruitmentViewRow(String id,String columns,String refund,String deployment,String disabledReason,String jobs) {}

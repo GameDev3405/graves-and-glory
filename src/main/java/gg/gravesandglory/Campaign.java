@@ -35,6 +35,8 @@ public final class Campaign {
     final Map<UUID,String> notices=new HashMap<>();
     final Map<UUID,JsonObject> results=new HashMap<>();
     String headline="";
+    /** Bot difficulty for the next round: the id of a Spec.BOTCOMMAND row (easy, normal, hard). There is one battle per server, so one setting covers it. */
+    String difficulty="normal";
     /** Ready pads: who stands on which pad (team), the countdown in ticks, and whether this cycle has rolled its quick-match map. */
     final Map<UUID,Integer> onPad=new HashMap<>();final Set<UUID> padRefused=new HashSet<>();
     int padCountdown=-1;boolean padMapRolled;
@@ -127,9 +129,14 @@ public final class Campaign {
         if(cmd.equals("lobby")){if(b.running)notice(p.getUuid(),"Finish the battle before returning to the lobby.");else toLobby(p);return true;}
         if(b.running){
             var current=b.squads.get(p.getUuid());
-            boolean global=cmd.startsWith("map:")||cmd.startsWith("mode:")||cmd.equals("fill")||cmd.equals("start");
+            boolean global=cmd.startsWith("map:")||cmd.startsWith("mode:")||cmd.equals("fill")||cmd.equals("start")||cmd.startsWith("difficulty:");
             boolean personal=cmd.equals("roll")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("class:");
             if(global||personal&&current!=null&&current.seated){notice(p.getUuid(),"Active battle choices are locked until the match ends.");return true;}
+        }
+        if(cmd.startsWith("difficulty:")){
+            String id=cmd.substring(11);if(Arrays.stream(Spec.BOTCOMMAND).noneMatch(r->r.id().equals(id)))return true;
+            if(partyLeader!=null&&!leader(p)){notice(p.getUuid(),"Only the custom lobby leader sets the bots.");return true;}
+            difficulty=id;notice(p.getUuid(),"Bots: "+id.substring(0,1).toUpperCase()+id.substring(1)+".");return true;
         }
         Profile pr=profile(p.getUuid());var squad=b.squads.get(p.getUuid());if(squad==null)return false;
         if(cmd.equals("roll")){
@@ -190,7 +197,7 @@ public final class Campaign {
         for(var u:b.units)u.mob.discard();b.units.clear();botRespawns.clear();botRetreating.clear();vacated.clear();
         for(int team=0;team<2;team++){final int t=team;int humans=(int)b.squads.values().stream().filter(s->s.team==t&&s.seated).count();
             int target=practice?(team==0?1:1):size;
-            if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,GravesAndGlory.Battle.base(team));s.bot=true;s.commander=Spec.CLASSES[i%3].id();s.lane=i%3;b.squads.put(id,s);}
+            if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,GravesAndGlory.Battle.base(team));s.bot=true;s.tier=difficulty;s.commander=Spec.CLASSES[i%3].id();s.lane=i%3;b.squads.put(id,s);}
         }
         participants.clear();for(var s:b.squads.values())if(!s.bot&&s.seated){participants.add(s.owner);results.remove(s.owner);joinedAt.put(s.owner,b.time);s.commander=profile(s.owner).commander;}
         serial++;matchId=UUID.randomUUID().toString();introUntil=b.time+120;headline="";
@@ -224,34 +231,78 @@ public final class Campaign {
         // Unseated lobby players wait in the hall while a match runs.
         if(b.time%20==0)for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if((s==null||!s.seated)&&(Math.abs(p.getX())>40||Math.abs(p.getZ()-CampaignMaps.LOBBY_Z)>30||p.getY()<63))toLobby(p);}
         if(b.time<introUntil){for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(s!=null&&s.seated&&p.squaredDistanceTo(GravesAndGlory.Battle.base(s.team))>2)b.toBase(p,s.team);}return;}
-        if(b.time%100!=0)return;
+        boolean economy=b.time%100==0;
         for(var s:b.squads.values())if(s.bot){
-            long living=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).count();
-            if(living==0){long until=botRespawns.computeIfAbsent(s.owner,k->b.time+240);if(b.time<until)continue;}else botRespawns.remove(s.owner);
-            for(var type:Spec.TROOPS)if(type.faction().equals(Spec.FACTIONS[s.team].id())&&type.count()>0){
-                long have=b.units.stream().filter(u->u.squad==s&&u.spec==type&&u.mob.isAlive()).count()+s.training.stream().filter(q->q.spec()==type).count();
-                while(have<type.count()&&s.gold>=type.cost()&&living+s.training.size()<20){s.gold-=type.cost();long previous=s.training.isEmpty()?b.time:s.training.getLast().finished();s.training.addLast(new GravesAndGlory.Training(type,Math.max(b.time,previous)+type.trainingSeconds()*20L));have++;}
+            var tier=tier(s);boolean decide=b.time%Math.max(1,tier.decisionTicks())==0;
+            if(!economy&&!decide)continue;
+            if(economy){
+                long living=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).count();
+                if(living==0){long until=botRespawns.computeIfAbsent(s.owner,k->b.time+240);if(b.time<until)continue;}else botRespawns.remove(s.owner);
+                for(var type:Spec.TROOPS)if(type.faction().equals(Spec.FACTIONS[s.team].id())&&type.count()>0){
+                    long have=b.units.stream().filter(u->u.squad==s&&u.spec==type&&u.mob.isAlive()).count()+s.training.stream().filter(q->q.spec()==type).count();
+                    while(have<type.count()&&s.gold>=type.cost()&&living+s.training.size()<20){s.gold-=type.cost();long previous=s.training.isEmpty()?b.time:s.training.getLast().finished();s.training.addLast(new GravesAndGlory.Training(type,Math.max(b.time,previous)+type.trainingSeconds()*20L));have++;}
+                }
             }
-            if(living==0)continue;
-
-            Vec3d center=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).map(u->u.mob.getPos()).reduce(Vec3d.ZERO,Vec3d::add).multiply(1.0/living);
-            GravesAndGlory.Capture choice=b.points.get(s.lane%3);double best=Double.MAX_VALUE;
-            for(int i=0;i<b.points.size();i++){var p=b.points.get(i);double value=Math.hypot(center.x-p.spec.x(),center.z-p.spec.z())+(p.owner==s.team?140:0)+(i==s.lane?0:90)-(p.contested?55:0);if(value<best){best=value;choice=p;}}
-            int full=Arrays.stream(Spec.TROOPS).filter(t->t.faction().equals(Spec.FACTIONS[s.team].id())).mapToInt(Spec.TroopsRow::count).sum();
-            var tactics=Spec.BOTCOMMAND[0];
-            if(living<=full*tactics.retreatShare())botRetreating.add(s.owner);
-            else if(living>=full*tactics.rallyShare())botRetreating.remove(s.owner);
-            long enemies=b.units.stream().filter(u->u.squad.team!=s.team&&u.mob.isAlive()).count();
-            boolean couldCharge=b.startsCharge(s,"all");
-            s.assignments.clear();
-            if(botRetreating.contains(s.owner)){s.order="retreat";s.formation="loose";s.target=GravesAndGlory.Battle.base(s.team);}
-            else{
-                s.order=choice.owner==s.team?"hold":"attack";s.formation=living<8?"loose":"block";s.target=new Vec3d(choice.spec.x(),choice.spec.elevation()+1,choice.spec.z());
-                if(s.order.equals("attack")&&enemies>0&&living>=enemies*tactics.chargeRatio())s.order="charge";
+            if(decide)botDecide(s,tier);
+        }
+    }
+    /** The command row for a bot's difficulty (its tier id); Normal when the id is unknown. */
+    Spec.BotCommandRow tier(GravesAndGlory.Squad s){
+        for(var row:Spec.BOTCOMMAND)if(row.id().equals(s.tier))return row;
+        for(var row:Spec.BOTCOMMAND)if(row.id().equals("normal"))return row;
+        return Spec.BOTCOMMAND[0];
+    }
+    /** An enemy infantry unit this close to a Hard bot's army counts as melee: no shieldwall. */
+    static final double MELEE_THREAT_RANGE=8;
+    /** One command decision for a bot army, run at its tier's cadence: retreat or rally, pick the point to take, set the order, sound the charge horn.
+     *  Easy and Normal read the whole battlefield; Hard reads only what its team has seen (b.sightings). */
+    void botDecide(GravesAndGlory.Squad s,Spec.BotCommandRow tier){
+        var mine=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).toList();
+        long living=mine.size();if(living==0)return;
+        Vec3d center=mine.stream().map(u->u.mob.getPos()).reduce(Vec3d.ZERO,Vec3d::add).multiply(1.0/living);
+        Map<UUID,GravesAndGlory.Battle.Sight> seen=b.sightings.getOrDefault(s.team,Map.of());
+        int count=b.points.size();GravesAndGlory.Capture choice;
+        if(tier.flankLeastDefended()){
+            // Every point of the current map counts (Kingsfield has five); a point is defended by the enemies this team last saw near it.
+            double[] px=new double[count],pz=new double[count];int[] owner=new int[count],defenders=new int[count];
+            for(int i=0;i<count;i++){var p=b.points.get(i);px[i]=p.spec.x();pz[i]=p.spec.z();owner[i]=p.owner;
+                for(var sight:seen.values())if(Math.hypot(sight.x()-px[i],sight.z()-pz[i])<=2*p.spec.radius())defenders[i]++;}
+            choice=b.points.get(Math.max(0,BattleMath.leastDefended(center.x,center.z,px,pz,owner,defenders,s.team,tier.defenderWeight())));
+        }else{
+            choice=b.points.get(s.lane%count);double best=Double.MAX_VALUE;
+            for(int i=0;i<count;i++){var p=b.points.get(i);double value=Math.hypot(center.x-p.spec.x(),center.z-p.spec.z())+(p.owner==s.team?140:0)+(i==s.lane?0:90)-(p.contested?55:0);if(value<best){best=value;choice=p;}}
+        }
+        int full=Arrays.stream(Spec.TROOPS).filter(t->t.faction().equals(Spec.FACTIONS[s.team].id())).mapToInt(Spec.TroopsRow::count).sum();
+        if(living<=full*tier.retreatShare())botRetreating.add(s.owner);
+        else if(living>=full*tier.rallyShare())botRetreating.remove(s.owner);
+        long enemies=b.units.stream().filter(u->u.squad.team!=s.team&&u.mob.isAlive()).count();
+        boolean couldCharge=b.startsCharge(s,"all"),retreating=botRetreating.contains(s.owner);
+        s.assignments.clear();
+        if(retreating){s.order="retreat";s.formation="loose";s.target=GravesAndGlory.Battle.base(s.team);}
+        else{
+            s.order=choice.owner==s.team?"hold":"attack";s.formation=living<8?"loose":"block";s.target=new Vec3d(choice.spec.x(),choice.spec.elevation()+1,choice.spec.z());
+            if(s.order.equals("attack")){
+                if(tier.chargeDistance()>0){
+                    // Timed charge: judged on the enemies this team has seen, counted near the army, and only once the nearest is in range.
+                    double nearest=Double.MAX_VALUE;long near=0;
+                    for(var sight:seen.values()){double d=Math.hypot(sight.x()-center.x,sight.z()-center.z);nearest=Math.min(nearest,d);if(d<=2*tier.chargeDistance())near++;}
+                    if(near>0&&BattleMath.timedCharge(nearest,living,near,tier.chargeRatio(),tier.chargeDistance()))s.order="charge";
+                }else if(enemies>0&&BattleMath.timedCharge(0,living,enemies,tier.chargeRatio(),0))s.order="charge";
             }
             s.yaw=s.team==0?-90:90;
-            if(s.order.equals("charge")&&couldCharge)b.chargeHorn(s,"all");
         }
+        if(!retreating&&tier.shieldwallVsArchers()){
+            // Brace the shield troops when remembered archers are in range and nothing has closed to melee. Only troops with a shield can brace.
+            boolean shields=mine.stream().anyMatch(u->u.spec.group().equals("infantry")&&u.spec.ability().equals("shield"));
+            Map<UUID,GravesAndGlory.Unit> known=new HashMap<>();for(var u:b.units)if(u.squad.team!=s.team&&u.mob.isAlive())known.put(u.mob.getUuid(),u);
+            int ranged=0,melee=0;
+            for(var entry:seen.entrySet()){var enemy=known.get(entry.getKey());if(enemy==null)continue;
+                double d=Math.hypot(entry.getValue().x()-center.x,entry.getValue().z()-center.z);
+                if(enemy.spec.group().equals("ranged")&&d<=tier.archerThreatRange())ranged++;
+                else if(enemy.spec.group().equals("infantry")&&d<=MELEE_THREAT_RANGE)melee++;}
+            if(BattleMath.shieldwallVsArchers(ranged,melee,tier.archerThreatCount(),shields))s.assignments.put("infantry",new GravesAndGlory.Assignment(s.order,"shieldwall",s.target,s.yaw));
+        }
+        if(s.order.equals("charge")&&couldCharge)b.chargeHorn(s,"all");
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
     void switchMap(int index){Projectiles.clear(b);map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
@@ -342,7 +393,7 @@ public final class Campaign {
         }
     }
     String snapshot(ServerPlayerEntity p){
-        JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",JSON.toJsonTree(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("waiting",b.running&&(!b.squads.containsKey(p.getUuid())||!b.squads.get(p.getUuid()).seated));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",b.squads.containsKey(p.getUuid())&&b.squads.get(p.getUuid()).seated?Math.max(0,introUntil-b.time):0);j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("headline",headline);j.addProperty("tutorial",tutorialStep(p.getUuid()));JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
+        JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",JSON.toJsonTree(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("waiting",b.running&&(!b.squads.containsKey(p.getUuid())||!b.squads.get(p.getUuid()).seated));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("difficulty",difficulty);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",b.squads.containsKey(p.getUuid())&&b.squads.get(p.getUuid()).seated?Math.max(0,introUntil-b.time):0);j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("headline",headline);j.addProperty("tutorial",tutorialStep(p.getUuid()));JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
         JsonObject partyJson=new JsonObject();boolean member=party.contains(p.getUuid());Long until=inviteUntil.get(p.getUuid());UUID inviter=invites.get(p.getUuid());
         partyJson.addProperty("open",partyLeader!=null);partyJson.addProperty("member",member);partyJson.addProperty("lead",leader(p));partyJson.addProperty("capacity",size*2);
         partyJson.addProperty("leader",partyLeader==null?"":name(partyLeader));

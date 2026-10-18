@@ -4,6 +4,8 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.util.ScreenshotRecorder;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.projectile.ArrowEntity;
@@ -21,7 +23,7 @@ public final class Phase1Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every Battle.tick, for checks that need exact tick timing. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -36,7 +38,7 @@ public final class Phase1Checks implements ClientModInitializer {
         if(b.running)c.returnLobby();
         if(c.map!=map){c.switchMap(map);return false;}
         if(!b.ready||!b.squads.containsKey(p.getUuid()))return false;
-        // difficulty is accepted for the bot tiers of later tasks; Task 1 bots use the one existing behaviour.
+        c.difficulty=difficulty; // the bots of this round take this tier (a Spec.BOTCOMMAND id)
         c.closeParty();c.partyLeader=p.getUuid();c.party.add(p.getUuid());c.practice=size==1;c.size=size;c.fill=true;
         for(var s:b.squads.values())if(!s.bot){s.seated=s.owner.equals(p.getUuid());if(s.seated)s.team=0;}
         b.startRound();c.introUntil=b.time;return true;
@@ -499,6 +501,185 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 11->{if(supporters(b)==2){fullThree=fullHealth();double one=support.health()*b.campaign.health(own,support);
                     report("p1-trained-fullhealth",Math.abs(fullOne-one)<1e-6&&Math.abs(fullTwo-2*one)<1e-6&&Math.abs(fullThree-2*one)<1e-6,"support ceiling after 1, 2 and a replaced troop: "+fullOne+", "+fullTwo+", "+fullThree+" (one troop is "+one+")");
                     next(b,99);}else if(since(b)>100){fail(b,"p1-trained-fullhealth","the replacement support troop never appeared");}}
+                default->{}
+            }
+        }
+    }
+
+    /** Task 4: bot difficulty tiers. The command, the lobby and camp buttons and the Hard cadence first (map 0), then Hard's decisions on Kingsfield Crossroads (map 4, five points). Stages run on the server tick; the UI stages run on the client tick. */
+    static final class Bots implements Suite,ServerWatch {
+        volatile int stage;volatile String wantShot;volatile boolean finished,shotAsked;
+        volatile UUID player;long stageAt;int shotDelay,lobbyAt=-1,homeAt=-1;
+        boolean lobbyOk,commandOk,homeOk,buttonOk,tiersOk,refusedOk;String lobbyWhy="",homeWhy="",tiersWhy="";
+        final Map<UUID,Vec3d> firstTarget=new HashMap<>();final Map<UUID,Long> decidedAt=new HashMap<>();
+        GravesAndGlory.Squad hard;List<GravesAndGlory.Unit> foes=new ArrayList<>();
+        int hornsBefore;String farOrder="";boolean shieldFormation;double gap;
+
+        void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
+        long since(GravesAndGlory.Battle b){return b.time-stageAt;}
+        ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
+        static ButtonWidget button(Screen screen,String prefix){
+            if(screen!=null)for(var e:screen.children())if(e instanceof ButtonWidget w&&w.getMessage().getString().startsWith(prefix))return w;
+            return null;
+        }
+        /** Stops the real armies fighting or refilling, and removes every troop and remembered sighting. */
+        void clear(GravesAndGlory.Battle b){
+            for(var s:b.squads.values()){s.reinforceAt=Long.MAX_VALUE;if(s.bot)b.campaign.botRespawns.put(s.owner,Long.MAX_VALUE);}
+            for(var u:b.units)u.mob.discard();b.units.clear();
+            for(var memory:b.sightings.values())memory.clear();
+            for(var p:b.points){p.owner=-1;p.contested=false;p.progress=0;p.challenger=-1;}
+        }
+        /** A synthetic bot army (not in b.squads, so only the fixture decides for it): the lineup of the team's starting troops, frozen, in rows behind (cx,cz). */
+        GravesAndGlory.Squad army(GravesAndGlory.Battle b,int team,String tier,double cx,double cz){
+            var s=new GravesAndGlory.Squad(UUID.randomUUID(),team,new Vec3d(cx,top(b,cx,cz),cz));
+            s.bot=true;s.tier=tier;s.lane=1;s.order="hold";s.yaw=team==0?-90:90;int slot=0;
+            for(var spec:Spec.TROOPS)if(spec.faction().equals(Spec.FACTIONS[team].id())&&spec.count()>0)
+                for(int n=0;n<spec.count();n++,slot++)freeze(b.spawn(s,spec,slot,new Vec3d(cx,top(b,cx,cz),cz)));
+            place(b,s,cx,cz);return s;
+        }
+        /** Stands the army's rows behind the front rank at (cx,cz), facing the enemy. */
+        void place(GravesAndGlory.Battle b,GravesAndGlory.Squad s,double cx,double cz){
+            int back=s.team==0?-1:1;
+            for(var u:b.units)if(u.squad==s){double x=cx+back*(u.slot/5)*1.8,z=cz+(u.slot%5-2)*1.8;
+                u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(x,top(b,x,z),z,s.team==0?-90:90,0);u.deployed=u.mob.getPos();u.lastPosition=u.mob.getPos();u.nextPath=0;u.stuckTicks=0;}
+        }
+        static Vec3d centre(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return Morale.centre(b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).toList());}
+        /** Frozen foes of the given kind in rows of four, the front rank at x, centred on z. */
+        void spawnFoes(GravesAndGlory.Battle b,String id,int count,double x,double z){
+            for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();
+            var squad=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(x,top(b,x,z),z));squad.order="hold";squad.yaw=90;
+            for(int i=0;i<count;i++){double fx=x+(i/4)*2,fz=z+(i%4-1.5)*2;foes.add(freezeIt(b.spawn(squad,troop(id),i,new Vec3d(fx,top(b,fx,fz),fz))));}
+        }
+        static GravesAndGlory.Unit freezeIt(GravesAndGlory.Unit u){freeze(u);return u;}
+        /** Index of the point the bot's target sits on, or -1. */
+        static int chosen(GravesAndGlory.Battle b,GravesAndGlory.Squad s){
+            for(int i=0;i<b.points.size();i++)if(Math.abs(b.points.get(i).spec.x()-s.target.x)<.01&&Math.abs(b.points.get(i).spec.z()-s.target.z)<.01)return i;
+            return -1;
+        }
+        static String name(GravesAndGlory.Battle b,int i){return i<0?"none":b.points.get(i).spec.name()+" ("+i+")";}
+        /** Plants Dusk sightings, as the Dawn team's memory, on a point. */
+        void plant(GravesAndGlory.Battle b,int point,int n){
+            var memory=b.sightings.computeIfAbsent(0,k->new HashMap<>());var at=b.points.get(point).spec;
+            for(int i=0;i<n;i++)memory.put(UUID.randomUUID(),new GravesAndGlory.Battle.Sight((float)(at.x()+(i%3-1)*2),(float)(at.z()+(i/3-1)*2),b.time));
+        }
+        /** The old lane rule, written out again, so the check does not lean on the code under test. */
+        static int laneRule(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Vec3d centre){
+            int best=-1;double value=Double.MAX_VALUE;
+            for(int i=0;i<b.points.size();i++){var p=b.points.get(i);double v=Math.hypot(centre.x-p.spec.x(),centre.z-p.spec.z())+(p.owner==s.team?140:0)+(i==s.lane?0:90)-(p.contested?55:0);if(v<value){value=v;best=i;}}
+            return best;
+        }
+        /** A spectator camera at (x,z) looking along yaw/pitch, up blocks above the ground. */
+        void camera(GravesAndGlory.Battle b,double x,double z,double up,float yaw,float pitch){var p=sp(b);p.changeGameMode(GameMode.SPECTATOR);b.relocate(p,x,top(b,x,z)+up,z,yaw,pitch);}
+
+        public void step(MinecraftClient c,int tick){
+            if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;next(b,1);});}
+            if(wantShot!=null&&++shotDelay>=2){shot(c,wantShot);wantShot=null;shotDelay=0;}
+            if(stage==2){ // the war council, as the lobby lead: Bot fill and Bots share the row
+                if(lobbyAt==-1&&CampaignClient.lead){lobbyAt=tick;c.setScreen(new GravesAndGloryClient.LobbyScreen());}
+                else if(lobbyAt>=0&&tick==lobbyAt+25){
+                    var bots=button(c.currentScreen,"Bots: ");var fill=button(c.currentScreen,"Bot fill");
+                    lobbyOk=bots!=null&&fill!=null&&bots.getMessage().getString().equals("Bots: Normal")&&bots.active&&fill.active&&fill.getX()+fill.getWidth()<=bots.getX();
+                    lobbyWhy=bots==null||fill==null?"a button is missing":"\""+fill.getMessage().getString()+"\" and \""+bots.getMessage().getString()+"\", active="+bots.active+", "+fill.getWidth()+" + "+bots.getWidth()+" px side by side";
+                    wantShot="bots-lobby";
+                }
+                else if(lobbyAt>=0&&tick==lobbyAt+30){c.setScreen(null);lobbyAt=-2;server(c,b->next(b,3));}
+            }
+            if(stage==4){ // the camp home page after difficulty:hard, then a real press of the Bots button
+                if(homeAt==-1){homeAt=tick;CampScreen.open("home");}
+                else if(tick==homeAt+25){
+                    var bots=button(c.currentScreen,"Bots: ");
+                    homeOk=c.currentScreen instanceof CampScreen&&bots!=null&&bots.getMessage().getString().equals("Bots: Hard")&&bots.active;
+                    homeWhy=bots==null?"no Bots button on the camp home page":"\""+bots.getMessage().getString()+"\", active="+bots.active;
+                    wantShot="bots-difficulty";
+                }
+                else if(tick==homeAt+30){var bots=button(c.currentScreen,"Bots: ");if(bots!=null)bots.onPress();homeAt=-2;server(c,b->next(b,5));}
+            }
+            if(stage>=6&&c.currentScreen!=null)c.setScreen(null);
+            if(stage==99&&!finished&&wantShot==null){finished=true;finish(c,"bots");}
+            if(tick>12000&&!finished){finished=true;report("p1-bots-timeout",false,"stuck in stage "+stage);finish(c,"bots");}
+        }
+
+        public void serverTick(GravesAndGlory.Battle b){
+            switch(stage){
+                case 1->{ // map 0 camp: open a custom lobby so the player leads it
+                    var p=sp(b);if(p==null||!b.ready)return;
+                    b.command(p,"party:open");System.out.println("[p1] bots start: map "+b.campaign.map+", difficulty "+b.campaign.difficulty+", lead="+b.campaign.leader(p));next(b,2);
+                }
+                case 3->{ // the command, once no lobby needs a leader
+                    var p=sp(b);b.command(p,"party:leave");b.command(p,"difficulty:hard");
+                    commandOk=b.campaign.difficulty.equals("hard");System.out.println("[p1] difficulty:hard -> "+b.campaign.difficulty);next(b,4);
+                }
+                case 5->{ // the Bots button was pressed on the client: hard -> easy; put it back on hard by command
+                    if(b.campaign.difficulty.equals("easy")){buttonOk=true;b.command(sp(b),"difficulty:hard");System.out.println("[p1] Bots button moved the tier hard -> easy; command set it back to "+b.campaign.difficulty);next(b,6);}
+                    else if(since(b)>100){System.out.println("[p1] Bots button press did not reach the server; difficulty is "+b.campaign.difficulty);b.command(sp(b),"difficulty:hard");next(b,6);}
+                }
+                case 6->{ // a solo pad 3v3 match: every bot takes the tier; the command is refused while it runs
+                    var c=b.campaign;c.closeParty();c.onPad.clear();c.onPad.put(player,0);c.mapVotes.clear();c.startQuickMatch();c.introUntil=b.time;
+                    var bots=b.squads.values().stream().filter(s->s.bot).toList();
+                    tiersOk=b.running&&bots.size()==5&&bots.stream().allMatch(s->s.tier.equals("hard"));
+                    tiersWhy=bots.size()+" bots with tiers "+bots.stream().map(s->s.tier).toList()+" (running="+b.running+", "+c.size+"v"+c.size+")";
+                    b.command(sp(b),"difficulty:easy");refusedOk=c.difficulty.equals("hard");
+                    for(var s:bots)firstTarget.put(s.owner,s.target);
+                    report("p1-bots-tiers",lobbyOk&&commandOk&&homeOk&&buttonOk&&tiersOk&&refusedOk,"lobby: "+lobbyWhy+"; difficulty:hard set it="+commandOk+"; camp home: "+homeWhy+"; button press reached the server="+buttonOk+"; solo pad 3v3: "+tiersWhy+"; difficulty:easy refused while running (still "+c.difficulty+")="+refusedOk);
+                    next(b,7);
+                }
+                case 7->{ // Hard decides on its 60-tick beat: each bot's first order change lands on a multiple of 60
+                    for(var s:b.squads.values())if(s.bot&&!decidedAt.containsKey(s.owner)&&!s.target.equals(firstTarget.get(s.owner)))decidedAt.put(s.owner,b.time);
+                    if(decidedAt.size()==firstTarget.size()||since(b)>=130){
+                        boolean ok=decidedAt.size()==firstTarget.size()&&decidedAt.values().stream().allMatch(t->t%60==0);
+                        report("p1-bots-cadence",ok,decidedAt.size()+" of "+firstTarget.size()+" Hard bots chose a point; first decision ticks "+decidedAt.values()+" (every one must be a multiple of 60)");
+                        b.campaign.returnLobby();next(b,8);
+                    }
+                }
+                case 8->{if(since(b)>=40)next(b,9);} // the client learns the round is over before the map changes under it
+                case 9->{ // Kingsfield Crossroads, a camera over the shieldwall ground, everything else inert
+                    var p=sp(b);if(p==null||!skirmish(b,p,4,1,"normal"))return;
+                    clear(b);camera(b,-92,11,2,180,6);
+                    System.out.println("[p1] bots fixture: map "+b.campaign.map+" "+Spec.MAPS[b.campaign.map].name()+", "+b.points.size()+" points: "+b.points.stream().map(c->c.spec.id()+"@"+c.spec.x()+","+c.spec.z()).toList());
+                    next(b,10);
+                }
+                case 10->{ // p1-bots-least-defended
+                    clear(b);hard=army(b,0,"hard",-105,100); // 25 blocks east of West Outpost (index 1)
+                    var row=b.campaign.tier(hard);
+                    b.campaign.botDecide(hard,row);int none=chosen(b,hard);
+                    plant(b,1,9);b.campaign.botDecide(hard,row);int defended=chosen(b,hard);
+                    hard.tier="normal";var normalRow=b.campaign.tier(hard);b.campaign.botDecide(hard,normalRow);int normal=chosen(b,hard),lane=laneRule(b,hard,centre(b,hard));
+                    hard.tier="hard";for(var memory:b.sightings.values())memory.clear();
+                    var east=b.points.get(4).spec;place(b,hard,east.x()-25,east.z());b.campaign.botDecide(hard,row);int reach=chosen(b,hard);
+                    boolean ok=b.points.size()==5&&row.id().equals("hard")&&none==1&&defended>=0&&defended<5&&defended!=1&&normal==1&&normal==lane&&reach==4;
+                    report("p1-bots-least-defended",ok,b.points.size()+" points; Hard near "+name(b,1)+" with no sightings -> "+name(b,none)+", with nine Dusk sightings on it -> "+name(b,defended)+"; Normal on the same state -> "+name(b,normal)+" (lane rule: "+name(b,lane)+"); Hard near "+name(b,4)+" -> "+name(b,reach)+" (index above 2 needs the arrays sized from battle.points)");
+                    next(b,11);
+                }
+                case 11->{if(since(b)>=40){ // p1-bots-shieldwall: six frozen Dusk archers 20 blocks ahead of a Dawn Hard army
+                    clear(b);hard=army(b,0,"hard",-100,0);Vec3d at=centre(b,hard);
+                    for(var u:foes)u.mob.discard();foes.clear();
+                    var duskSquad=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(-80,top(b,-80,0),0));duskSquad.order="hold";duskSquad.yaw=90;
+                    for(int i=0;i<6;i++){double z=(i-2.5)*2;foes.add(freezeIt(b.spawn(duskSquad,troop("bonebow"),i,new Vec3d(-80,top(b,-80,z),z))));}
+                    b.updateSight();int sighted=b.sightings.get(0).size();gap=-80-b.units.stream().filter(u->u.squad==hard).mapToDouble(u->u.mob.getX()).max().orElse(0);
+                    hard.tier="normal";b.campaign.botDecide(hard,b.campaign.tier(hard));boolean normalPlain=!hard.assignments.containsKey("infantry");
+                    hard.tier="hard";b.campaign.botDecide(hard,b.campaign.tier(hard));var wall=hard.assignments.get("infantry");
+                    boolean formation=wall!=null&&wall.formation.equals("shieldwall");
+                    System.out.println("[p1] shieldwall fixture: army centre "+at+", "+sighted+" Dusk sightings, Normal on the same state leaves infantry in "+hard.formation+" (no override="+normalPlain+"), Hard infantry assignment "+(wall==null?"none":wall.order+"/"+wall.formation));
+                    shieldFormation=formation&&normalPlain;next(b,12);
+                }}
+                case 12->{
+                    if(since(b)>=40&&!shotAsked){shotAsked=true;
+                        long up=b.units.stream().filter(u->u.squad==hard&&u.spec.id().equals("knight")&&u.mob.isUsingItem()).count(),knights=b.units.stream().filter(u->u.squad==hard&&u.spec.id().equals("knight")&&u.mob.isAlive()).count();
+                        Vec3d at=centre(b,hard);
+                        report("p1-bots-shieldwall",shieldFormation&&up>=6,"Hard infantry formation shieldwall (Normal left it alone)="+shieldFormation+"; "+up+" of "+knights+" knights using their shield "+since(b)+" ticks later; six Dusk archers "+String.format("%.0f",gap)+" blocks in front of the front rank when ordered ("+String.format("%.0f",Math.abs(foes.get(0).mob.getX()-at.x))+" from the army centre now), no Dusk melee");
+                        wantShot="bots-shieldwall";
+                    }
+                    if(shotAsked&&wantShot==null){for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,13);}
+                }
+                case 13->{ // p1-bots-charge-timing: eight frozen Dusk revenants 60 blocks away, then 15 blocks away
+                    clear(b);hard=army(b,0,"hard",-100,0);foes.clear();Vec3d at=centre(b,hard);
+                    spawnFoes(b,"revenant",8,at.x+60,at.z);b.updateSight();int seenFar=b.sightings.get(0).size();
+                    b.campaign.botDecide(hard,b.campaign.tier(hard));farOrder=hard.order;hornsBefore=BattleEffects.horns.getOrDefault("charge",0);int hornsFar=hornsBefore;
+                    spawnFoes(b,"revenant",8,at.x+15,at.z);b.updateSight();int seenNear=b.sightings.get(0).size();
+                    b.campaign.botDecide(hard,b.campaign.tier(hard));int hornsNear=BattleEffects.horns.getOrDefault("charge",0);
+                    report("p1-bots-charge-timing",farOrder.equals("attack")&&hard.order.equals("charge")&&hornsNear>hornsFar,"Hard army with eight Dusk revenants 60 blocks off ("+seenFar+" remembered): order "+farOrder+"; 15 blocks off ("+seenNear+" remembered): order "+hard.order+"; charge horns "+hornsFar+" -> "+hornsNear);
+                    for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,99);
+                }
                 default->{}
             }
         }

@@ -36,3 +36,4 @@ add to it, never remove from it. Date and source on each line.
 - +5 shard campaign bonus objective (Phase 2 plan; no bonus objectives exist yet).
 - In-world rendering of renown and banner cosmetics (Phase 2 plan; recorded only, rendering is Phase 3 art).
 - Display-entity arrows with interpolation, and arrow arcs (2026-10-17, Phase 1 plan; no-clip arrows chosen as the smallest reliable visual).
+- Shield raise range for a shieldwall order (2026-10-17, Phase 1 Task 4): a shieldwall now raises shields whenever the trooper has a target, not only within 6 blocks, so Hard bots can brace against archers; a rule tied to arrow flight time was left out as larger than the task.

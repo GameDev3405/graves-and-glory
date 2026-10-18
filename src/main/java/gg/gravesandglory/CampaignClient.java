@@ -18,6 +18,11 @@ public final class CampaignClient {
     static JsonObject social=new JsonObject(),progression=new JsonObject();
     static JsonObject result=new JsonObject();static String shownResult="";
     static boolean lead,fill=true;static String mode="2",notice="",headline="",partyKey="";
+    /** The server-wide bot difficulty (a Spec.BOTCOMMAND id), as last sent in the snapshot. */
+    static String difficulty="normal";
+    static String botsLabel(){return "Bots: "+difficulty.substring(0,1).toUpperCase()+difficulty.substring(1);}
+    /** The tier a press of the Bots button asks for: the next row of the sheet, wrapping round. */
+    static String nextDifficulty(){for(int i=0;i<Spec.BOTCOMMAND.length;i++)if(Spec.BOTCOMMAND[i].id().equals(difficulty))return Spec.BOTCOMMAND[(i+1)%Spec.BOTCOMMAND.length].id();return Spec.BOTCOMMAND[0].id();}
     static JsonObject party=emptyParty();static int padCountdown,padDawn,padDusk,padSize=2,tutorial=-1;
     static JsonObject emptyParty(){JsonObject j=new JsonObject();j.addProperty("open",false);j.addProperty("member",false);j.addProperty("lead",false);j.addProperty("capacity",2);j.addProperty("leader","");j.add("members",new JsonArray());j.addProperty("inviteSeconds",0);j.addProperty("inviter","");j.add("online",new JsonArray());return j;}
     static String lastSaved="",revealUnit="";static long revealUntil;static boolean received;
@@ -34,7 +39,7 @@ public final class CampaignClient {
     static void accept(MinecraftClient c,String json,boolean running){
         try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Campaign.Profile.class);if(received&&nextProfile.unlocked.size()>profile.unlocked.size()){for(var unit:Spec.TROOPS)if(nextProfile.unlocked.contains(unit.id())&&!profile.unlocked.contains(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}nextProfile.sanitize();profile=nextProfile;received=true;social=j.has("social")?j.getAsJsonObject("social"):new JsonObject();progression=j.has("progression")?j.getAsJsonObject("progression"):new JsonObject();if(j.has("progression"))profile.progression=Campaign.JSON.fromJson(progression,Progression.State.class);players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
             JsonObject keyed=new JsonObject();for(var entry:party.entrySet())if(!entry.getKey().equals("inviteSeconds"))keyed.add(entry.getKey(),entry.getValue());partyKey=keyed.toString();
-            JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;fill=j.get("fill").getAsBoolean();mode=j.get("mode").getAsString();notice=j.get("notice").getAsString();headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
+            JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;fill=j.get("fill").getAsBoolean();difficulty=j.has("difficulty")?j.get("difficulty").getAsString():"normal";mode=j.get("mode").getAsString();notice=j.get("notice").getAsString();headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
             int next=j.get("map").getAsInt();if(next!=map||Spec.FACTIONS[0].spawnX()!=-283){map=next;if(c.getServer()==null)CampaignMaps.select(map);GravesAndGloryClient.invalidateMap(c);}
             waiting=j.has("waiting")&&j.get("waiting").getAsBoolean();
             int round=j.get("serial").getAsInt();intro=j.get("intro").getAsInt();

@@ -19,7 +19,7 @@ final class CampScreen extends ArmyScreen {
     JsonArray rows(String name){return social().has(name)?social().getAsJsonArray(name):new JsonArray();}
     void action(String cmd){if(System.currentTimeMillis()-requestAt<300)return;requestAt=System.currentTimeMillis();send(cmd);}
     void page(String next){page=next;offset=0;clearAndInit();}
-    String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.unlocked+running+ready;}
+    String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.unlocked+CampaignClient.difficulty+running+ready;}
     @Override protected void init(){
         scale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/760f,client.getWindow().getScaledHeight()/460f));width=(int)(client.getWindow().getScaledWidth()/scale);height=(int)(client.getWindow().getScaledHeight()/scale);key=state();code=null;
         String[] names={"Camp guide","Recruitment","Friends","Private room","Contracts","Chapter rewards"};String[] ids={"home","recruit","friends","room","contracts","chapter"};
@@ -30,6 +30,7 @@ final class CampScreen extends ArmyScreen {
         if(page.equals("home")){
             primary("OPEN RECRUITMENT",x,167,w/2-7,b->page("recruit"));primary("PARTY WITH FRIENDS",x+w/2+7,167,w/2-7,b->page("friends"));
             button("Practice / learn command",x,262,w/2-7,b->action("camp:practice"));button("Army / deployment",x+w/2+7,262,w/2-7,b->open("army"));
+            var bots=button(CampaignClient.botsLabel(),x,286,w/2-7,b->action("difficulty:"+CampaignClient.nextDifficulty()));bots.active=!running;
             button("Ready gates & map voting",x,350,w/2-7,b->page("match"));button("Daily contracts",x+w/2+7,350,w/2-7,b->page("contracts"));
         }else if(page.equals("recruit")){
             var locked=Arrays.stream(Spec.TROOPS).filter(t->!CampaignClient.profile.unlocked.contains(t.id())).toList();
@@ -87,6 +88,7 @@ final class CampScreen extends ArmyScreen {
             line(g,"Quartermaster west / Recruiter east",x,145,DarkUi.MUTED,w);
             line(g,Progression.chapter(progress,p.unlocked.size(),Spec.TROOPS.length),x,218,DarkUi.GOLD,w);
             line(g,"Practice teaches orders, formations, capture and reinforcements.",x,239,DarkUi.MUTED,w);
+            line(g,"Easy, Normal or Hard AI commanders.",x+w/2+7,292,DarkUi.MUTED,w/2-7);
             line(g,"War gates: stand together to ready; step off to cancel.",x,314,DarkUi.PAPER,w);
             line(g,"Local matches only. Internet matchmaking is on hold.",x,333,DarkUi.MUTED,w);
         }else if(page.equals("recruit")){

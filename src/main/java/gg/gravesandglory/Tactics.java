@@ -35,7 +35,7 @@ final class Tactics {
         }
         if(enemy!=u.lockedTarget){u.lockedTarget=enemy;u.lockUntil=time+Spec.COMBATDISCIPLINE[0].targetMemoryTicks();}
         mob.setTarget(enemy);mob.setAttacking(enemy!=null);
-        boolean shield=u.spec.ability().equals("shield")&&(a.formation.equals("block")||a.formation.equals("shieldwall"))&&!a.order.equals("charge")&&!a.order.equals("retreat")&&enemy!=null&&nearest<36;
+        boolean shield=u.spec.ability().equals("shield")&&(a.formation.equals("block")||a.formation.equals("shieldwall"))&&!a.order.equals("charge")&&!a.order.equals("retreat")&&enemy!=null&&(nearest<36||a.formation.equals("shieldwall"));
         if(shield&&!mob.isUsingItem())mob.setCurrentHand(Hand.OFF_HAND);else if(!shield&&mob.isUsingItem())mob.stopUsingItem();
         if(u.spec.ability().equals("mend")&&time>=u.abilityAt){
             var ally=battle.units.stream().filter(v->v.squad.team==s.team&&v.mob.isAlive()&&v.mob.getHealth()<v.mob.getMaxHealth()&&v.mob.squaredDistanceTo(mob)<Spec.COMBATDISCIPLINE[0].healRadius()*Spec.COMBATDISCIPLINE[0].healRadius()&&mob.canSee(v.mob)).min(java.util.Comparator.comparingDouble(v->v.mob.getHealth()/v.mob.getMaxHealth())).orElse(null);

@@ -121,6 +121,8 @@ public final class GravesAndGlory implements ModInitializer {
         int team;
         String order="follow", formation="block", commander="vanguard";
         boolean bot, seated=true; int lane;
+        /** A bot's difficulty: the id of its Spec.BOTCOMMAND row. Set from Campaign.difficulty when the round is prepared. */
+        String tier="normal";
         Vec3d target;
         float yaw;
         long lastOrder=-100, reinforceAt;
@@ -321,7 +323,7 @@ public final class GravesAndGlory implements ModInitializer {
             campaign.left(owner);
             Squad s=squads.remove(owner);welcomed.remove(owner);respawns.remove(owner);
             // Mid-battle, a bot commands the army until its owner rejoins, so the team is not left a commander short.
-            if(s!=null&&running&&s.seated&&!s.bot){UUID stand=UUID.randomUUID();s.owner=stand;s.bot=true;s.order="attack";squads.put(stand,s);campaign.vacated.put(owner,stand);return;}
+            if(s!=null&&running&&s.seated&&!s.bot){UUID stand=UUID.randomUUID();s.owner=stand;s.bot=true;s.tier=campaign.difficulty;s.order="attack";squads.put(stand,s);campaign.vacated.put(owner,stand);return;}
             units.removeIf(u->{if(u.squad==s){u.mob.discard();return true;}return false;});
         }
         static Vec3d base(int t){var f=Spec.FACTIONS[t];return new Vec3d(f.spawnX(),Arena.height(f.spawnX(),f.spawnZ())+1,f.spawnZ());}

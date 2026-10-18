@@ -45,4 +45,26 @@ public final class BattleMath {
         }
         return best;
     }
+    /** Index of the point to attack: the one minimising distance + defenders*defenderWeight among points not owned by team (all points when the team owns every one). */
+    public static int leastDefended(double cx, double cz, double[] px, double[] pz, int[] owner, int[] defenders, int team, double defenderWeight) {
+        int n = Math.min(Math.min(px.length, pz.length), Math.min(owner.length, defenders.length));
+        boolean anyFree = false;
+        for (int i = 0; i < n; i++) if (owner[i] != team) { anyFree = true; break; }
+        int best = -1;
+        double bestValue = Double.MAX_VALUE;
+        for (int i = 0; i < n; i++) {
+            if (anyFree && owner[i] == team) continue;
+            double value = Math.hypot(px[i] - cx, pz[i] - cz) + defenders[i] * defenderWeight;
+            if (value < bestValue) { bestValue = value; best = i; }
+        }
+        return best;
+    }
+    /** A charge goes in when the army outnumbers the enemies near it by chargeRatio and, when chargeDistance is above zero, the nearest enemy is within it. */
+    public static boolean timedCharge(double nearestEnemyDistance, long living, long enemiesNear, double chargeRatio, double chargeDistance) {
+        return living >= enemiesNear * chargeRatio && (chargeDistance <= 0 || nearestEnemyDistance <= chargeDistance);
+    }
+    /** Brace behind shields when enough archers threaten, no melee has closed in, and there are shields to raise. */
+    public static boolean shieldwallVsArchers(int rangedThreats, int meleeThreats, int threshold, boolean hasShields) {
+        return hasShields && rangedThreats >= threshold && meleeThreats == 0;
+    }
 }

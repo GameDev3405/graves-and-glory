@@ -1399,10 +1399,43 @@
   ],
   "botCommand": [
     {
-      "id": "bot-commander",
+      "id": "easy",
+      "retreatShare": 0.35,
+      "rallyShare": 0.7,
+      "chargeRatio": 2.5,
+      "decisionTicks": 160,
+      "flankLeastDefended": false,
+      "defenderWeight": 0.0,
+      "shieldwallVsArchers": false,
+      "archerThreatCount": 3,
+      "archerThreatRange": 30.0,
+      "chargeDistance": 0.0
+    },
+    {
+      "id": "normal",
       "retreatShare": 0.25,
       "rallyShare": 0.6,
-      "chargeRatio": 1.5
+      "chargeRatio": 1.5,
+      "decisionTicks": 100,
+      "flankLeastDefended": false,
+      "defenderWeight": 0.0,
+      "shieldwallVsArchers": false,
+      "archerThreatCount": 3,
+      "archerThreatRange": 30.0,
+      "chargeDistance": 0.0
+    },
+    {
+      "id": "hard",
+      "retreatShare": 0.2,
+      "rallyShare": 0.55,
+      "chargeRatio": 1.3,
+      "decisionTicks": 60,
+      "flankLeastDefended": true,
+      "defenderWeight": 25.0,
+      "shieldwallVsArchers": true,
+      "archerThreatCount": 3,
+      "archerThreatRange": 30.0,
+      "chargeDistance": 18.0
     }
   ],
   "combatDiscipline": [
