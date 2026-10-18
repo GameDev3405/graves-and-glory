@@ -45,11 +45,11 @@ final class ArmyCards {
     /** A portrait size that fits any model in the same frame: a husk at size, a wolf no larger than 1.25 times, a golem smaller. */
     static int size(MobEntity e,int size){return (int)Math.round(size*Math.min(1.25,1.95/Math.max(.6,Math.max(e.getHeight(),e.getWidth()))));}
     static final class Recruit extends ButtonWidget {
-        final Spec.TroopsRow spec;boolean selected,owned;
+        final Spec.TroopsRow spec;boolean selected;
         Recruit(Spec.TroopsRow spec,int x,int y,int w,PressAction action){super(x,y,w,78,Text.literal(spec.name()),action,DEFAULT_NARRATION_SUPPLIER);this.spec=spec;var h=house(spec);
             setTooltip(Tooltip.of(Text.literal(spec.name()+" / "+(h==null?spec.house():h.name())+" "+spec.rarity()+" / "+CommandMode.label(spec.group())+" / "+spec.health()+" health / "+spec.damage()+" damage"+(fieldable(spec)?"":" / cannot be fielded yet"))));}
         @Override public void renderButton(DrawContext g,int mx,int my,float delta){
-            var c=MinecraftClient.getInstance();selected=c.currentScreen instanceof CampaignLobbyScreen lobby&&lobby.selectedUnit.equals(spec.id());owned=CampaignClient.profile.owned.containsKey(spec.id());
+            var c=MinecraftClient.getInstance();selected=c.currentScreen instanceof CampaignLobbyScreen lobby&&lobby.selectedUnit.equals(spec.id());
             int x=getX(),y=getY();DarkUi.frame(g,x,y,width,height);
             if(selected||active&&(isHovered()||isFocused()))g.drawBorder(x+1,y+1,width-2,height-2,DarkUi.GOLD);
             var h=house(spec);int col=0x33000000|(h==null?0x4c9391:h.accent()&0xffffff);g.fillGradient(x+4,y+4,x+width-4,y+55,col,0x00181820); // the House accent
