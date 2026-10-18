@@ -433,7 +433,7 @@ Positions are always read by team index from rows 0 and 1. Colour, name and glyp
   - It reuses `Phase1Checks.server(...)` and `Phase1Checks.skirmish(...)`, and adds `skirmishBanners(Battle b, ServerPlayerEntity p, int map, String banner0, String banner1)`.
 
 - [ ] **Step 1: Write suite `banners`:**
-  - `p2-migrate-live`: copy `fixtures/profile-v1-partial.json` into the test profile dir as `<player uuid>.json`, drop the cached profile, and call `campaign.profile(uuid)`. Expect: owned has sentinel, mage at star 1, hexer with copies 2 and stars 2 (wraith merged), and the 10 Commons; commander `warden`; `<uuid>.v1.json` exists and equals the fixture.
+  - `p2-migrate-live`: copy `fixtures/profile-v1-partial.json` into the test profile dir as `<player uuid>.json`, drop the cached profile, and call `campaign.profile(uuid)`. Expect: owned has sentinel and the 10 Commons; mage, hexer, oracle and wraith are not owned and `economy.refundGold` was added for each the v1 profile had (spec 6.3; Task 1 `ProfileMigration.toV2` already does this, corrected 2026-10-18); commander `warden`; `<uuid>.v1.json` exists and equals the fixture.
   - `p2-sides`: send `colour:crimson` and start a 1v1 skirmish. Expect `b.side(team).id()=="crimson"`, the bot side `gold`, and `BattleEffects.lastFlashColor == 14701130` after a melee hit by the player's troop.
   - `p2-bot-banners`: in a Normal 3v3 practice, every bot `banner` is a `*_normal` row of a fieldable House. After reinforce, each bot has the units its banner lists (an Epic counted once, its `^` slot empty).
   - `p2-banner-edit`: `slot:19:mage` keeps the banner valid (repacked, `validBanner == null`); `slot:0:gl_marshal` (unowned) leaves the banner unchanged.
