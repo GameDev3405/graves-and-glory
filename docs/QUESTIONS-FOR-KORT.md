@@ -129,3 +129,10 @@ Recommended answer in brackets. The plan (docs/superpowers/plans/2026-10-18-ui-p
 3. Recruit banners say "Dawn Covenant" and "Dusk Legion" until Phase 2, or Gilded Order and Graveborn now? [Keep the faction names until the Houses exist, so nothing on screen promises what is not there]
 4. The minimap leaves the battle HUD; M opens the full map. [Yes; it is what the approved Iron Ledger mock shows]
 5. With food pinned full, players heal slowly (1 heart every 8 s). Keep, or no natural healing? [Keep; without it a commander who survives a fight never recovers, and Mend is Dawn-only]
+
+## Kort's answers 2026-10-18 (decision board, morning)
+
+- Mockups: War Table home map is too cluttered after the detail pass ("you can't tell what's what"); keep the detail but zoom it out. Recruit table approved. Title "The Hill" day and night: the pixel art is good but is not Minecraft; make it blocky, and put a Steve-style commander with a diamond sword at the top of the hill. HUD Iron Ledger v4.1 not objected to. Home map and title go back to the designer.
+- Bot tiers: Hard flanking off (open question 3: yes). Tier ladder parked until the Phase 3 maps; no more sim hours on it in Phase 1.
+- UI spec questions 1 to 5 and the 8-task UI plan: all recommendations approved.
+- Phase 3 built-world questions 1 to 6: all recommendations approved.
