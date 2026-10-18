@@ -147,7 +147,7 @@ Recommended answer in brackets. The plan (docs/superpowers/plans/2026-10-18-ui-p
 | B: Easy = Normal + chargeRatio 2.5 | 8 / 1 / 9 | 2 0 3 2 2 | -3.6 |
 | C: Easy = Normal + retreat 0.35, rally 0.7 | 7 / 1 / 8 | 2 1 2 2 1 | -16.0 |
 
-Reading: the flank/garrison picker caused Hard's deficit on the three-point maps (3/16 -> 9/16 without it) and also its Kingsfield wins (4/4 -> 0/4); without it Hard is level with Normal, and the rest of Hard's row shows no measurable edge. No tested knob explains Easy beating Normal; decisionTicks 160 is the only Easy knob untested, and 13/20 sits inside noise around parity. The Dawn-seat bias (15 to 17 of 20 in every batch) is larger than any tier effect. Knight-to-revenant kill ratio ~1.5 in every batch, so the effects come from where armies go, not melee. Parked until the Phase 3 maps, per Kort. Run roots: work/p1/botsim-5f-{A,B,C}-*.
+Reading: the flank/garrison picker caused Hard's deficit on the three-point maps (3/16 -> 9/16 without it) and also its Kingsfield wins (4/4 -> 0/4); without it Hard is level with Normal, and the rest of Hard's row shows no measurable edge. No tested knob explains Easy beating Normal; decisionTicks 160 is the only Easy knob untested, and 13/20 sits inside noise around parity. The Dawn-seat bias (13 to 17 of 20 across the six batches) is larger than any tier effect. Knight-to-revenant kill ratio ~1.5 in every batch, so the effects come from where armies go, not melee. Parked until the Phase 3 maps, per Kort. Run roots: work/p1/botsim-5f-{A,B,C}-*.
 
 ## Phase 4 spec questions (2026-10-18, docs/superpowers/specs/2026-10-18-phase-4-modes-campaign-design.md, draft)
 

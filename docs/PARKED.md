@@ -52,7 +52,7 @@ Kort pictures up to a thousand concurrent players a year out and wants the serve
 ## Bot balance leftovers (2026-10-18, Phase 1 Tasks 5b-5e)
 - Blight borrows vanilla indirect_magic to pass shields, so it also bypasses armour; the Phase 2 gravesandglory:troop damage type is where blight gets bypasses_shield without bypasses_armor.
 - Spawn-row centring and the Dusk mirror (GravesAndGlory.reinforce) are inline; a pure BattleMath row-offset helper would let BattleMathCheck pin the half-turn mirror.
-- Tier ladder (2026-10-18): Hard ships without flanking (9/20 vs Normal, level); Easy's edge over Normal (13/20) is unexplained by charge ratio or retreat/rally (decisionTicks 160 untested); the Dawn seat wins 75-85% of every batch. Next steps when the Phase 3 maps land: test decisionTicks, then re-run the ladder on the rebuilt maps; consider a Hard-only point picker that holds but does not flank. Data in docs/QUESTIONS-FOR-KORT.md problem 5 follow-up.
+- Tier ladder (2026-10-18): Hard ships without flanking (9/20 vs Normal, level); Easy's edge over Normal (13/20) is unexplained by charge ratio or retreat/rally (decisionTicks 160 untested); the Dawn seat wins 65-85% of every batch (13 to 17 of 20). Next steps when the Phase 3 maps land: test decisionTicks, then re-run the ladder on the rebuilt maps; consider a Hard-only point picker that holds but does not flank. Data in docs/QUESTIONS-FOR-KORT.md problem 5 follow-up.
 
 ## The Long March leftovers (2026-10-18, Phase 1 Task 6 review)
 - campaignBattles.size is not honoured: a Long March battle is seated as practice, so it is one commander against one bot whatever the row says.
