@@ -34,7 +34,7 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
         }else if(tab==1){
             // The banner editor (spec 6.2): pick an owned troop, then a slot. Troops of a House that cannot be fielded yet stay inactive.
             int left=width/2+8,rw=width-left-16,cardWidth=(rw-8)/3,row=0;
-            if(house.isEmpty())house=Campaign.rollHouse(CampaignClient.profile.banner);
+            if(house.isEmpty())house=RosterMath.rollHouse(CampaignClient.profile.banner);
             // House filter: each button as wide as its name needs (the label plus the button's 14 px padding), shared out over the row so none is cut.
             int need=0;for(var h:Spec.HOUSES)need+=textRenderer.getWidth(DarkUi.body(h.name().split(" ")[0]))+17;
             int hx=left;for(var h:Spec.HOUSES){String id=h.id(),label=h.name().split(" ")[0];int hw=row==Spec.HOUSES.length-1?left+rw-hx:(int)Math.round((textRenderer.getWidth(DarkUi.body(label))+17)*(double)rw/Math.max(1,need));
@@ -141,7 +141,7 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
             text(g,row!=null&&!row.fieldable()?row.name()+" has not joined the war: its troops cannot be fielded yet.":"Pick a troop, then a slot. Epics fill 2 slots, Legendaries 4.",left,280,width-left-16,MUTED);
             text(g,"New troops join by recruitment rolls at the camp shrine, "+Spec.RECRUITMENT[0].rollCost()+" gold each. The four marks set your banner colour.",16,height-27,width-32,MUTED);
         }else if(tab==2){
-            int cw=(width-48)/3,ph=classPanelHeight();String home=Campaign.rollHouse(CampaignClient.profile.banner);
+            int cw=(width-48)/3,ph=classPanelHeight();String home=RosterMath.rollHouse(CampaignClient.profile.banner);
             for(int i=0;i<Spec.CLASSES.length;i++){var c=Spec.CLASSES[i];int x=16+(i%3)*(cw+8),y=77+(i/3)*(ph+6);boolean selected=pendingClass.equals(c.id());
                 panel(g,x,y,cw,ph);if(selected){g.fill(x,y,x+cw,y+3,GOLD);g.drawBorder(x,y,cw,ph,GOLD);}
                 DarkUi.title(g,c.name().toUpperCase(),x+12,y+10,WHITE);

@@ -136,7 +136,7 @@ public final class Campaign {
             difficulty=id;notice(p.getUuid(),"Bots: "+id.substring(0,1).toUpperCase()+id.substring(1)+".");return true;
         }
         Profile pr=profile(p.getUuid());var squad=b.squads.get(p.getUuid());if(squad==null)return false;
-        if(cmd.equals("roll")||cmd.startsWith("roll:")){roll(p,pr,cmd.equals("roll")?rollHouse(pr.banner):cmd.substring(5));return true;}
+        if(cmd.equals("roll")||cmd.startsWith("roll:")){roll(p,pr,cmd.equals("roll")?RosterMath.rollHouse(pr.banner):cmd.substring(5));return true;}
         if(cmd.startsWith("unlock:")||cmd.startsWith("army:")){notice(p.getUuid(),"Troops now join by recruitment rolls at the camp shrine.");return true;}
         if(cmd.startsWith("class:")){String id=cmd.substring(6);if(Arrays.stream(Spec.CLASSES).anyMatch(c->c.id().equals(id))){pr.commander=id;squad.commander=id;save(p.getUuid());}return true;}
         if(cmd.startsWith("slot:")){ // slot:<i>:<troop id or empty>: the banner is rebuilt with repack, so markers follow their Epic or Legendary
@@ -144,7 +144,7 @@ public final class Campaign {
             var catalog=RosterMath.Catalog.fromSpec();String id=parts[2];var type=troop(id);
             if(slot<0||slot>=pr.banner.size()||type==null&&!id.equals(RosterMath.EMPTY))return true;
             if(type!=null&&!pr.owned.containsKey(id)){notice(p.getUuid(),type.name()+" is not in your collection. Recruit it first.");return true;}
-            if(type!=null&&!RosterMath.fieldableHouses().contains(type.house())){notice(p.getUuid(),type.name()+" cannot be fielded yet: "+houseName(type.house())+" has not joined the war.");return true;}
+            if(type!=null&&!RosterMath.fieldableHouses().contains(type.house())){notice(p.getUuid(),type.name()+" cannot be fielded yet: "+RosterMath.houseName(type.house())+" has not joined the war.");return true;}
             List<String> entries=new ArrayList<>(pr.banner);entries.set(slot,id);
             List<String> before=pr.banner,next=RosterMath.fieldable(RosterMath.repack(entries,catalog,pr.owned.keySet()),catalog,RosterMath.fieldableHouses());
             if(type!=null&&Collections.frequency(next,id)<Collections.frequency(entries,id))notice(p.getUuid(),"No room for "+type.name()+": a banner holds 2 Epics (2 slots each) and 1 Legendary (4).");
@@ -208,7 +208,6 @@ public final class Campaign {
     }
     /** A troop row by id, or null for empty, ^ or an unknown id. */
     static Spec.TroopsRow troop(String id){for(var t:Spec.TROOPS)if(t.id().equals(id))return t;return null;}
-    static String houseName(String id){for(var h:Spec.HOUSES)if(h.id().equals(id))return h.name();return id;}
     /** A botBanners row as a banner list, or the starter banner when the sheet has no such row. */
     static List<String> bannerRow(String id){for(var row:Spec.BOTBANNERS)if(row.id().equals(id))return new ArrayList<>(Arrays.asList(row.slots().split(",")));return RosterMath.starterBanner();}
     /** The banner a squad fields this round: a bot's from botBanner, a commander's own banner with the units of Houses that cannot be fielded yet left empty. */
@@ -253,14 +252,6 @@ public final class Campaign {
         return picked;
     }
     static int sideIndex(String id){for(int i=0;i<Spec.FACTIONS.length;i++)if(Spec.FACTIONS[i].id().equals(id))return i;return -1;}
-    /** The launch roster on the chapter line: every troop of a fieldable House a recruitment roll can give (Legendaries come from Writs). */
-    static List<String> launchRoster(){var fieldable=RosterMath.fieldableHouses();List<String> out=new ArrayList<>();for(var t:Spec.TROOPS)if(fieldable.contains(t.house())&&!t.rarity().equals("legendary"))out.add(t.id());return out;}
-    /** The House a plain roll draws from: the fieldable House with the most slots in the banner (a tie goes to House order), else the first fieldable House. */
-    static String rollHouse(List<String> banner){
-        var slots=RosterMath.houseSlots(banner,RosterMath.Catalog.fromSpec());var fieldable=RosterMath.fieldableHouses();String best=null;int most=0;
-        for(var h:Spec.HOUSES)if(fieldable.contains(h.id())&&slots.getOrDefault(h.id(),0)>most){most=slots.get(h.id());best=h.id();}
-        return best!=null?best:fieldable.isEmpty()?Spec.HOUSES[0].id():fieldable.iterator().next();
-    }
     /**
      * One recruitment roll from a House's pool (spec 4.2) for recruitment.rollCost gold: its Commons, Rares and Epic at the
      * rarities.rollWeight odds, the Epic forced at recruitment.epicPity. A new troop joins the collection; a duplicate counts
@@ -602,7 +593,7 @@ public final class Campaign {
         if(!save(id)){profiles.put(id,JSON.fromJson(before,Profile.class));result="Reward was not applied because saving failed. Try again after checking disk space.";}
         notice(id,result);return true;
     }
-    JsonObject progressSnapshot(UUID id){Profile p=profile(id);Progression.reset(p.progression,Progression.today());JsonObject j=forClient(p.progression);j.addProperty("tier",Progression.tier(p.progression));var roster=launchRoster();j.addProperty("chapter",Progression.chapter(p.progression,(int)roster.stream().filter(p.owned::containsKey).count(),roster.size()));return j;}
+    JsonObject progressSnapshot(UUID id){Profile p=profile(id);Progression.reset(p.progression,Progression.today());JsonObject j=forClient(p.progression);j.addProperty("tier",Progression.tier(p.progression));var roster=RosterMath.launchRoster();j.addProperty("chapter",Progression.chapter(p.progression,(int)roster.stream().filter(p.owned::containsKey).count(),roster.size()));return j;}
     void progressEvent(UUID id,boolean capture){if(!participants.contains(id))return;var squad=b.squads.get(id);if(squad==null||!squad.seated)return;
         var state=profile(id).progression;Progression.reset(state,Progression.today());if(capture)state.dailyCaptures++;else state.dailyOrders++;}
 }

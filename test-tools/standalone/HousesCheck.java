@@ -228,6 +228,12 @@ public final class HousesCheck {
         var wild=banner("wm_seer,^,knight*10,wm_hound*4,wm_oldhorn,^,^,^");
         check(fieldable(wild,cat,fieldableHouses()).equals(banner("empty*2,knight*10,empty*8")) && validBanner(fieldable(wild,cat,fieldableHouses()),cat,ALL)==null && wild.get(0).equals("wm_seer"), "fieldable: an unfieldable unit and its markers become empty, the rest keep their slots, and the input is unchanged");
         check(fieldable(SPEC_EXAMPLE_BANNER,cat,fieldableHouses()).equals(SPEC_EXAMPLE_BANNER), "fieldable: a banner of fieldable Houses is unchanged");
+        // the roll House, House names and the launch roster (moved from Campaign to RosterMath in fix round 1, so the camp screens read pure helpers)
+        check(houseName("gilded").equals("Gilded Order") && houseName("graveborn").equals("Graveborn") && houseName("nowhere").equals("nowhere"), "houseName: the House's sheet name, or the id when no House has it");
+        check(rollHouse(starterBanner()).equals("gilded") && rollHouse(banner("revenant*3,knight*2,empty*15")).equals("graveborn") && rollHouse(banner("knight*2,revenant*2,empty*16")).equals("gilded")
+                && rollHouse(banner("wm_seer,^,wm_hound*8,empty*10")).equals("gilded") && rollHouse(null).equals("gilded"), "rollHouse: the fieldable House with most slots, a tie to House order, else the first fieldable House");
+        var roster = launchRoster();
+        check(roster.equals(List.of("knight", "archer", "sentinel", "longbow", "mage", "revenant", "bonebow", "reaper", "stalker", "hexer")), "launchRoster: the Commons, Rares and Epic of each fieldable House, no Legendary: " + roster);
         System.out.println("HousesCheck: " + checks + " checks passed");
     }
 }

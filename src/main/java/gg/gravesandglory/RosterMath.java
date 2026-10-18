@@ -164,6 +164,33 @@ public final class RosterMath {
         return out;
     }
 
+    /** A House's name (houses.name), or the id itself when no House has it. */
+    public static String houseName(String id) {
+        for (var h : Spec.HOUSES) if (h.id().equals(id)) return h.name();
+        return id;
+    }
+
+    /** The launch roster on the chapter line: every troop of a fieldable House a recruitment roll can give (Legendaries come from Writs). */
+    public static List<String> launchRoster() {
+        Set<String> fieldable = fieldableHouses();
+        List<String> out = new ArrayList<>();
+        for (var t : Spec.TROOPS) if (fieldable.contains(t.house()) && !t.rarity().equals("legendary")) out.add(t.id());
+        return out;
+    }
+
+    /**
+     * The House a plain roll draws from: the fieldable House with the most slots in the banner (a tie goes to House order),
+     * else the first fieldable House, else the first House of the sheet.
+     */
+    public static String rollHouse(List<String> banner) {
+        Map<String, Integer> slots = houseSlots(banner, Catalog.fromSpec());
+        Set<String> fieldable = fieldableHouses();
+        String best = null;
+        int most = 0;
+        for (var h : Spec.HOUSES) if (fieldable.contains(h.id()) && slots.getOrDefault(h.id(), 0) > most) { most = slots.get(h.id()); best = h.id(); }
+        return best != null ? best : fieldable.isEmpty() ? Spec.HOUSES[0].id() : fieldable.iterator().next();
+    }
+
     /**
      * The banner as it can take the field: a unit of a House outside fieldable, and each of its markers, becomes empty, so
      * the other units keep their slots and a valid banner stays valid. The input is not changed.

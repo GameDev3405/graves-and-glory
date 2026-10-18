@@ -37,8 +37,8 @@ final class CampScreen extends ArmyScreen {
             button("Ready gates & map voting",x,350,w/2-7,b->page("match"));button("Daily contracts",x+w/2+7,350,w/2-7,b->page("contracts"));
         }else if(page.equals("recruit")){
             // Layout kept until Phase 2 Task 3; the roll now draws from one House (spec 4.2) and duplicates raise stars.
-            int cost=Spec.RECRUITMENT[0].rollCost();String house=Campaign.rollHouse(CampaignClient.profile.banner);
-            var roll=primary("RECRUIT RANDOM / "+Campaign.houseName(house).toUpperCase()+" / "+cost+" GOLD",x,height-78,w,b->action("roll"));roll.active=CampaignClient.profile.gold>=cost&&(!running||CampaignClient.waiting);
+            int cost=Spec.RECRUITMENT[0].rollCost();String house=RosterMath.rollHouse(CampaignClient.profile.banner);
+            var roll=primary("RECRUIT RANDOM / "+RosterMath.houseName(house).toUpperCase()+" / "+cost+" GOLD",x,height-78,w,b->action("roll"));roll.active=CampaignClient.profile.gold>=cost&&(!running||CampaignClient.waiting);
             button("Skip reveal",width-126,49,104,b->CampaignClient.revealUntil=0);
         }else if(page.equals("friends")){
             if(!flag("party"))primary("CREATE PARTY",x,117,180,b->action("social:create"));else{
@@ -112,15 +112,15 @@ final class CampScreen extends ArmyScreen {
         if(page.equals("home")){
             line(g,"Recruit an army. Gather your friends. Fight under one banner.",x,113,DarkUi.PAPER,w);
             line(g,"Quartermaster west / Recruiter east",x,131,DarkUi.MUTED,w);
-            var roster=Campaign.launchRoster();line(g,Progression.chapter(progress,(int)roster.stream().filter(p.owned::containsKey).count(),roster.size()),x,218,DarkUi.GOLD,w);
+            var roster=RosterMath.launchRoster();line(g,Progression.chapter(progress,(int)roster.stream().filter(p.owned::containsKey).count(),roster.size()),x,218,DarkUi.GOLD,w);
             line(g,"Practice: a skirmish against one AI commander at the chosen difficulty.",x,239,DarkUi.MUTED,w);
             line(g,"Easy, Normal or Hard AI commanders.",x+w/2+7,292,DarkUi.MUTED,w/2-7);
             line(g,"War gates: stand together to ready; step off to cancel.",x,314,DarkUi.PAPER,w);
             line(g,"Local matches only. Internet matchmaking is on hold.",x,333,DarkUi.MUTED,w);
         }else if(page.equals("recruit")){
-            String house=Campaign.rollHouse(p.banner);var pool=pool(house);int total=0;for(var t:pool)total+=weight(t);
+            String house=RosterMath.rollHouse(p.banner);var pool=pool(house);int total=0;for(var t:pool)total+=weight(t);
             int rolls=Math.max(1,Spec.RECRUITMENT[0].epicPity()-p.pity.getOrDefault(house,0));
-            line(g,"Draws from the "+Campaign.houseName(house)+", the largest House in your banner you can field.",x,110,DarkUi.PAPER,w);
+            line(g,"Draws from the "+RosterMath.houseName(house)+", the largest House in your banner you can field.",x,110,DarkUi.PAPER,w);
             line(g,odds(pool,"common",total)+" Commons / "+odds(pool,"rare",total)+" Rares / "+odds(pool,"epic",total)+" Epic, sure within "+rolls+(rolls==1?" roll":" rolls")+" / a duplicate raises stars",x,122,DarkUi.MUTED,w);
             for(int i=0;i<6&&i<pool.size();i++){var troop=pool.get(i);int cx=x+(i%3)*(w/3),y=136+(i/3)*130;DarkUi.frame(g,cx,y,w/3-10,78);DarkUi.model(g,troop,cx+28,y+66,25);line(g,troop.name(),cx+58,y+16,DarkUi.GOLD,w/3-72);
                 line(g,cap(troop.rarity())+" / "+String.format(java.util.Locale.ROOT,"%.0f",100.0*weight(troop)/Math.max(1,total))+"%",cx+58,y+35,DarkUi.MUTED,w/3-72);
