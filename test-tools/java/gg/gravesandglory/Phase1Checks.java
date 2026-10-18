@@ -1314,7 +1314,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 52->{
                     var cs=BattleHud.cards();
-                    if(cs.size()==2){two=cs;framesAt=BattleHud.frames;stage=53;}
+                    if(cs.size()==2){two=List.copyOf(cs);framesAt=BattleHud.frames;stage=53;} // cards() is a view the next frame refills
                     else if(tick-waitFrom>100){report("p1-ui-cards-edge",false,edgeWhy+"; with support's full count gone the cards still drew "+cs);stage=60;}
                 }
                 case 53->{

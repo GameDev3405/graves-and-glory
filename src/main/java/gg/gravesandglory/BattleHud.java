@@ -1,10 +1,14 @@
 package gg.gravesandglory;
 
+import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.resource.ResourceManager;
 import net.minecraft.text.StringVisitable;
+import net.minecraft.text.Style;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import java.util.*;
 
 /** The Iron Ledger battle HUD (UI spec 4.5, mock v4-hud-iron-ledger): the score bar between the two bosses, the point seals hanging
@@ -26,11 +30,21 @@ public final class BattleHud {
     /** Frames the battle HUD has drawn. */
     public static int frames;
 
-    private static List<CardDraw> cards=List.of();
-    private static List<SealDraw> seals=List.of();
-    private static Map<String,int[]> rects=Map.of();
-    private static Map<String,String> texts=Map.of();
+    // What the last frame drew: filled in place every frame, read through the views below.
+    private static final List<CardDraw> cardsDrawn=new ArrayList<>();
+    private static final List<SealDraw> sealsDrawn=new ArrayList<>();
+    private static final Map<String,int[]> rectsDrawn=new LinkedHashMap<>();
+    private static final Map<String,String> textsDrawn=new LinkedHashMap<>();
+    private static final List<CardDraw> cards=Collections.unmodifiableList(cardsDrawn);
+    private static final List<SealDraw> seals=Collections.unmodifiableList(sealsDrawn);
+    private static final Map<String,int[]> rects=Collections.unmodifiableMap(rectsDrawn);
+    private static final Map<String,String> texts=Collections.unmodifiableMap(textsDrawn);
+    /** Set when a frame named a texture the atlas lacks: the HUD stays off, and the client up, until the next resource reload. */
+    private static boolean stopped;
+    // The lesson copy last wrapped, its style and its lines.
+    private static String wrappedCopy;private static Style wrappedStyle;private static List<String> wrappedLines=List.of();private static String wrappedJoined="";
 
+    /** The cards the last frame drew. This and the three below are read-only views that the next frame refills: copy one to keep it. */
     public static List<CardDraw> cards(){return cards;}
     public static List<SealDraw> seals(){return seals;}
     /** Each element's box {x,y,w,h} in canvas px, keyed score, dawn-boss, dusk-boss, seal-(i), card-(group), spine, lesson, respawn
@@ -40,22 +54,36 @@ public final class BattleHud {
      *  ability, ability-seconds and ability-key. */
     public static Map<String,String> texts(){return texts;}
     /** A frame without the ledger (camp, a battle's entrance, a menu over the HUD): nothing reads as drawn. */
-    static void clear(){cards=List.of();seals=List.of();rects=Map.of();texts=Map.of();}
+    static void clear(){cardsDrawn.clear();sealsDrawn.clear();rectsDrawn.clear();textsDrawn.clear();}
+
+    /** At every resource reload (fonts and the atlas can change there): wrap the lesson again, and try the HUD again after a texture
+     *  stop. GravesAndGloryClient registers it. */
+    public static final SimpleSynchronousResourceReloadListener RELOADER=new SimpleSynchronousResourceReloadListener(){
+        @Override public Identifier getFabricId(){return new Identifier("gravesandglory","battle_hud");}
+        @Override public void reload(ResourceManager manager){wrappedCopy=null;stopped=false;}
+    };
 
     public static void render(DrawContext g,float delta){
+        clear();
+        if(stopped)return;
         var c=MinecraftClient.getInstance();var font=c.textRenderer;
-        Map<String,int[]> r=new LinkedHashMap<>();List<CardDraw> cd=new ArrayList<>();List<SealDraw> sd=new ArrayList<>();Map<String,String> tx=new LinkedHashMap<>();
-        UiCanvas.begin(g);
         try{
-            int w=UiCanvas.width(),h=UiCanvas.height(),cx=w/2;
-            ledger(g,font,cx,r,tx);
-            seals(g,font,w,r,sd);
-            cards(g,font,h,r,cd,tx);
-            lesson(g,font,cx,r,tx);
-            respawn(g,font,cx,h,r,tx);
-        }finally{UiCanvas.end(g);}
-        ability(g,c,font,r,tx);
-        frames++;cards=List.copyOf(cd);seals=List.copyOf(sd);rects=Collections.unmodifiableMap(r);texts=Collections.unmodifiableMap(tx);
+            UiCanvas.begin(g);
+            try{
+                int w=UiCanvas.width(),h=UiCanvas.height(),cx=w/2;
+                ledger(g,font,cx,rectsDrawn,textsDrawn);
+                seals(g,font,w,rectsDrawn,sealsDrawn);
+                cards(g,font,h,rectsDrawn,cardsDrawn,textsDrawn);
+                lesson(g,font,cx,rectsDrawn,textsDrawn);
+                respawn(g,font,cx,h,rectsDrawn,textsDrawn);
+            }finally{UiCanvas.end(g);}
+            ability(g,c,font,rectsDrawn,textsDrawn);
+        }catch(IllegalArgumentException e){ // UiTex.entry names a texture the atlas lacks: a resource pack's atlas, or none read at all
+            stopped=true;clear();
+            System.err.println("[Graves and Glory] The battle HUD stopped: "+e.getMessage()+". It stays off until the next resource reload.");
+            return;
+        }
+        frames++;
     }
 
     /** The x that centres an 8 px text on cx as the mock does: the text's box is its width plus one, the shadow's column. */
@@ -209,12 +237,22 @@ public final class BattleHud {
      *  line, so nothing is cut. Hidden while an order is being aimed. */
     static void lesson(DrawContext g,TextRenderer font,int cx,Map<String,int[]> r,Map<String,String> tx){
         int step=CampaignClient.tutorial;if(step<0||step>3||CommandMode.active())return;
-        List<String> lines=font.getTextHandler().wrapLines(GravesAndGloryClient.lessonText(step),GravesAndGloryClient.LESSON_TEXT_WIDTH,DarkUi.BODY_STYLE).stream().map(StringVisitable::getString).toList();
+        List<String> lines=wrapped(font,GravesAndGloryClient.lessonText(step),DarkUi.BODY_STYLE);
         int x=cx-200,y=88,h=40+11*Math.max(0,lines.size()-1);
         lessonCard(g,x,y,h);
         g.drawText(font,"THE LONG MARCH / BATTLE "+CampaignClient.battleOrder()+" / LESSON "+(step+1)+" OF 4",x+10,y+7,DarkUi.SEPIA,false);
         for(int i=0;i<lines.size();i++)g.drawText(font,DarkUi.body(lines.get(i)),x+10,y+20+11*i,DarkUi.INK_TEXT,false);
-        GravesAndGloryClient.lessonDrawn=lines;r.put("lesson",new int[]{x,y,400,h});tx.put("lesson",String.join(" ",lines));
+        GravesAndGloryClient.lessonDrawn=lines;r.put("lesson",new int[]{x,y,400,h});tx.put("lesson",wrappedJoined);
+    }
+
+    /** The lesson copy wrapped to LESSON_TEXT_WIDTH. It is wrapped again only when the copy changes (the next step, or a rebound key
+     *  the copy names) or its style does; a resource reload clears it, since the font may have changed. */
+    static List<String> wrapped(TextRenderer font,String copy,Style style){
+        if(!copy.equals(wrappedCopy)||!style.equals(wrappedStyle)){
+            wrappedLines=font.getTextHandler().wrapLines(copy,GravesAndGloryClient.LESSON_TEXT_WIDTH,style).stream().map(StringVisitable::getString).toList();
+            wrappedJoined=String.join(" ",wrappedLines);wrappedCopy=copy;wrappedStyle=style;
+        }
+        return wrappedLines;
     }
 
     /** hud/lesson-card at any height. Its corner brackets run down the side edges to rows 19 and 22 of the PNG, so rows 20 and 21
