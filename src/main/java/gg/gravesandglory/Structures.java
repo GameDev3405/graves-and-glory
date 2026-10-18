@@ -60,7 +60,7 @@ public final class Structures {
         Optional<NbtCompound> nbt=read(w.getServer(),id);if(nbt.isEmpty())return null;
         try{
             StructureTemplate template=w.getStructureTemplateManager().createTemplate(nbt.get());
-            Loaded made=new Loaded(template,template.writeNbt(new NbtCompound()).getList("blocks",NbtElement.COMPOUND_TYPE).size());
+            Loaded made=new Loaded(template,nbt.get().getList("blocks",NbtElement.COMPOUND_TYPE).size()); // counted in the file as read: serialising the template again would double the first placement of a large piece
             CACHE.put(id,made);return made;
         }catch(Exception e){System.err.println("[Graves and Glory] structure unreadable: "+id+": "+e);return null;}
     }
