@@ -21,7 +21,7 @@ public final class Phase1Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every Battle.tick, for checks that need exact tick timing. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -344,6 +344,161 @@ public final class Phase1Checks implements ClientModInitializer {
                     report("p1-charge-horn",first==before+1&&second==first&&ranged!=null&&ranged.order.equals("charge"),"charge horns "+before+" -> "+first+" after the infantry charge, "+second+" after the ranged charge inside the "+M.hornCooldownSeconds()+" s cooldown (ranged order "+(ranged==null?"none":ranged.order)+")");
                     next(b,99);
                 }}
+                default->{}
+            }
+        }
+    }
+
+    /** Task 3: forward reinforcement from a held point, the walk measured before and after, and the fallbacks to the barracks. Stages run on the server tick. */
+    static final class ReinforceChecks implements Suite,ServerWatch {
+        static final Spec.EconomyRow E=Spec.ECONOMY[0];
+        static final int TIMEOUT=2400; // ticks a measured walk may take
+        static final String[] PROBES={"p1-forward-contested","p1-forward-enemy-near","p1-forward-flipped","p1-forward-fresh"};
+        volatile int stage;volatile String wantShot;volatile boolean finished;
+        volatile UUID player;long stageAt;int shotDelay;
+        final Spec.TroopsRow knight=troop("knight");
+        GravesAndGlory.Squad own;GravesAndGlory.Capture point,anchor;
+        Set<GravesAndGlory.Unit> known=new HashSet<>();GravesAndGlory.Unit trained,foe;long appeared;Vec3d spawnAt;
+        double before,after;boolean shotAsked,control,heldOk;int probe;
+        GravesAndGlory.Unit garrison;long captured=-1;
+        Spec.TroopsRow support;double fullOne,fullTwo,fullThree;
+
+        void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
+        long since(GravesAndGlory.Battle b){return b.time-stageAt;}
+        ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
+        static double flat(Vec3d a,double x,double z){return Math.hypot(a.x-x,a.z-z);}
+        /** A spectator camera at (x,y,z) looking at the given spot. */
+        void camera(GravesAndGlory.Battle b,double x,double y,double z,Vec3d look){
+            var p=sp(b);p.changeGameMode(GameMode.SPECTATOR);double dx=look.x-x,dz=look.z-z;
+            b.relocate(p,x,y,z,(float)Math.toDegrees(Math.atan2(-dx,dz)),(float)-Math.toDegrees(Math.atan2(look.y-y,Math.hypot(dx,dz))));
+        }
+        void fail(GravesAndGlory.Battle b,String id,String why){report(id,false,why);next(b,99);}
+        /** Disbands one knight and queues a replacement that is due now, so the next training tick spawns it and makes the deploy decision. */
+        boolean buy(GravesAndGlory.Battle b){
+            var gone=b.units.stream().filter(u->u.squad==own&&u.spec==knight&&u.mob.isAlive()).findFirst().orElse(null);if(gone==null)return false;
+            gone.mob.discard();b.units.remove(gone);known=new HashSet<>(b.units);trained=null;
+            own.training.addLast(new GravesAndGlory.Training(knight,b.time));return true;
+        }
+        /** True once the bought troop exists; records when and where it appeared. */
+        boolean arrived(GravesAndGlory.Battle b){
+            if(trained==null)for(var u:b.units)if(u.squad==own&&u.mob.isAlive()&&!known.contains(u)){trained=u;appeared=b.time;spawnAt=u.mob.getPos();break;}
+            return trained!=null;
+        }
+        /** Ticks from appearing until the troop stands within arrivalTolerance+3 of its formation point, or -1 while it has not. */
+        long walked(GravesAndGlory.Battle b){Vec3d goal=b.formation(trained);return flat(trained.mob.getPos(),goal.x,goal.z)<=Spec.NAVIGATION[0].arrivalTolerance()+3?b.time-appeared:-1;}
+        /** Puts the middle point in the state that makes it an anchor; returns whether it now is one. */
+        boolean ideal(GravesAndGlory.Battle b){
+            b.forwardReinforcement=true;point.owner=0;point.ownedSince=b.time-E.forwardHoldSeconds()*20L-1;point.contested=false;
+            if(foe!=null){foe.mob.discard();b.units.remove(foe);foe=null;}
+            return b.reinforcementAnchors(0).contains(point);
+        }
+        void drop(GravesAndGlory.Battle b){if(trained!=null){trained.mob.discard();b.units.remove(trained);trained=null;}}
+        void disband(GravesAndGlory.Battle b,GravesAndGlory.Unit u){if(u!=null){u.mob.discard();b.units.remove(u);}}
+        long supporters(GravesAndGlory.Battle b){return b.units.stream().filter(u->u.squad==own&&u.spec==support&&u.mob.isAlive()).count();}
+        double fullHealth(){return own.fullHealth.getOrDefault("support",0.0);}
+
+        public void step(MinecraftClient c,int tick){
+            if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;next(b,1);});}
+            if(wantShot!=null&&++shotDelay>=2){c.setScreen(null);shot(c,wantShot);wantShot=null;shotDelay=0;}
+            if(stage==99&&!finished&&wantShot==null){finished=true;finish(c,"reinforce");}
+            if(tick>9000&&!finished){finished=true;report("p1-reinforce-timeout",false,"stuck in stage "+stage);finish(c,"reinforce");}
+        }
+
+        public void serverTick(GravesAndGlory.Battle b){
+            switch(stage){
+                case 1->{ // fixture: practice on map 0; the Dusk army is removed and inert; the player's army marches on a spot 40 blocks past the middle point
+                    var p=sp(b);if(p==null||!skirmish(b,p,0,1,"normal"))return;
+                    own=b.squads.get(player);point=b.points.get(1);
+                    for(var s:b.squads.values()){s.reinforceAt=Long.MAX_VALUE;if(s.bot)b.campaign.botRespawns.put(s.owner,Long.MAX_VALUE);}
+                    for(var u:b.units)if(u.squad!=own)u.mob.discard();b.units.removeIf(u->u.squad!=own);
+                    double gx=point.spec.x()+40,gz=point.spec.z();
+                    own.order="move";own.formation="block";own.target=new Vec3d(gx,Arena.ground((int)gx,(int)gz)+1,gz);own.yaw=-90;
+                    System.out.println("[p1] reinforce fixture: map "+b.campaign.map+", "+b.points.size()+" points, middle point "+point.spec.name()+" at "+point.spec.x()+", "+point.spec.z()+", Dawn base "+GravesAndGlory.Battle.base(0)+", army ordered to "+(int)gx+", "+(int)gz+", "+b.units.size()+" troops");
+                    next(b,2);
+                }
+                case 2->{ // before: forward reinforcement off, so the new knight walks from the barracks
+                    b.forwardReinforcement=false;
+                    if(!buy(b)){fail(b,"p1-reinforce-walk","no living knight to disband");break;}
+                    next(b,3);
+                }
+                case 3->{
+                    if(!arrived(b)){if(since(b)>100)fail(b,"p1-reinforce-walk","the bought knight never appeared (before)");break;}
+                    long t=walked(b);
+                    if(t>=0||b.time-appeared>=TIMEOUT){before=(t>=0?t:TIMEOUT)/20.0;System.out.println("[p1] reinforce before: appeared at "+spawnAt+", "+(t>=0?"arrived":"TIMED OUT")+" after "+(b.time-appeared)+" ticks");drop(b);next(b,4);}
+                }
+                case 4->{ // the point is now held: put the camera above it and give the client time to load the chunks
+                    Arena.flag(b.world,point.spec,0);
+                    if(!ideal(b)){fail(b,"p1-reinforce-walk","the middle point did not become an anchor");break;}
+                    double g=Arena.ground(point.spec.x(),point.spec.z());
+                    camera(b,point.spec.x()-10,g+4,point.spec.z()+12,new Vec3d(point.spec.x()-9,g+2.5,point.spec.z()-3));
+                    next(b,5);
+                }
+                case 5->{if(since(b)>=80){
+                    if(!ideal(b)||!buy(b)){fail(b,"p1-reinforce-walk","the point stopped being an anchor or no knight to disband");break;}
+                    next(b,6);
+                }}
+                case 6->{ // after: forward reinforcement on, the point held 10 s: the new knight appears at the point
+                    if(!arrived(b)){if(since(b)>100)fail(b,"p1-reinforce-walk","the bought knight never appeared (after)");break;}
+                    if(!shotAsked){shotAsked=true;anchor=b.deploy(own,trained.slot).anchor();wantShot="reinforce-forward";
+                        System.out.println("[p1] reinforce after: appeared at "+spawnAt+", "+String.format("%.1f",flat(spawnAt,point.spec.x(),point.spec.z()))+" blocks from the point centre, anchor "+(anchor==null?"none":anchor.spec.name()));}
+                    long t=walked(b);
+                    if(t>=0||b.time-appeared>=TIMEOUT){after=(t>=0?t:TIMEOUT)/20.0;
+                        System.out.println("[p1] reinforce-walk before="+String.format("%.1f",before)+"s after="+String.format("%.1f",after)+"s");
+                        report("p1-reinforce-walk",t>=0&&anchor==point&&after<before&&after<=20,"walk to the formation point "+String.format("%.1f",before)+" s from the barracks, "+String.format("%.1f",after)+" s from "+(anchor==null?"no anchor":anchor.spec.name())+" (needs after < before and <= 20 s)");
+                        drop(b);next(b,7);}
+                }
+                case 7->{ // one disturbance per probe on an otherwise ideal point; the troop must deploy at the barracks
+                    if(probe>=PROBES.length){next(b,8);break;}
+                    control=ideal(b);
+                    switch(probe){
+                        case 0->point.contested=true;
+                        case 1->{double z=point.spec.z()+10;var dusk=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(point.spec.x(),65,z));dusk.order="hold";dusk.yaw=90;
+                            foe=b.spawn(dusk,troop("revenant"),30,new Vec3d(point.spec.x(),top(b,point.spec.x(),z),z));freeze(foe);foe.deployed=foe.mob.getPos();}
+                        case 2->point.owner=1;
+                        default->point.ownedSince=b.time;
+                    }
+                    if(!buy(b)){fail(b,PROBES[probe],"no living knight to disband");break;}
+                    next(b,71);
+                }
+                case 71->{
+                    if(!arrived(b)){if(since(b)>100){report(PROBES[probe],false,"the bought knight never appeared");probe++;next(b,7);}break;}
+                    Vec3d home=GravesAndGlory.Battle.base(0);double fromBase=flat(spawnAt,home.x,home.z),fromPoint=flat(spawnAt,point.spec.x(),point.spec.z());
+                    report(PROBES[probe],control&&fromBase<=30,"point an anchor before the change="+control+"; knight appeared "+String.format("%.1f",fromBase)+" blocks from the barracks spot and "+String.format("%.1f",fromPoint)+" from the point (owner "+point.owner+", contested "+point.contested+")");
+                    drop(b);probe++;next(b,7);
+                }
+                case 8->{ // p1-forward-message: the deploy notice names the point, or the barracks
+                    ideal(b);String at=anchor==null?"":b.deployNote(own,anchor),home=b.deployNote(own,null);
+                    report("p1-forward-message",anchor==point&&at.contains(point.spec.name())&&home.contains("barracks"),"anchored note \""+at+"\", barracks note \""+home+"\"");
+                    // p1-forward-held, nothing faked: a lone Dawn knight on a neutral point captures it through captureTick, which stamps ownedSince
+                    point.owner=-1;point.challenger=-1;point.progress=0;point.contested=false;point.ownedSince=0;Arena.flag(b.world,point.spec,-1);
+                    var holder=new GravesAndGlory.Squad(UUID.randomUUID(),0,new Vec3d(point.spec.x(),65,point.spec.z()));holder.order="hold";holder.yaw=-90;
+                    garrison=b.spawn(holder,knight,31,new Vec3d(point.spec.x(),top(b,point.spec.x(),point.spec.z()),point.spec.z()));freeze(garrison);garrison.deployed=garrison.mob.getPos();next(b,81);
+                }
+                case 81->{
+                    if(captured<0){
+                        if(point.owner==0){captured=b.time;heldOk=point.ownedSince==b.time&&!b.reinforcementAnchors(0).contains(point);}
+                        else if(since(b)>400){report("p1-forward-held",false,"the garrison never captured the point in 400 ticks");disband(b,garrison);next(b,82);}
+                        break;
+                    }
+                    long held=b.time-captured,need=E.forwardHoldSeconds()*20L;
+                    if(held==need-1)heldOk&=!b.reinforcementAnchors(0).contains(point);
+                    if(held==need){boolean anchorNow=b.reinforcementAnchors(0).contains(point);
+                        report("p1-forward-held",heldOk&&anchorNow,"captured at tick "+captured+" (ownedSince "+point.ownedSince+"); not an anchor for the first "+need+" ticks="+heldOk+", an anchor at "+held+" ticks held="+anchorNow);
+                        disband(b,garrison);next(b,82);}
+                }
+                case 82->{
+                    // the Task 2 review fix: a group made only of trained troops still gets a health ceiling
+                    support=Arrays.stream(Spec.TROOPS).filter(t->t.faction().equals(Spec.FACTIONS[0].id())&&t.group().equals("support")).findFirst().orElseThrow();
+                    for(var u:b.units)if(u.squad==own&&u.spec.group().equals("support"))u.mob.discard();b.units.removeIf(u->!u.mob.isAlive()||u.mob.isRemoved());
+                    own.fullHealth.remove("support");own.training.addLast(new GravesAndGlory.Training(support,b.time));next(b,9);
+                }
+                case 9->{if(supporters(b)==1){fullOne=fullHealth();own.training.addLast(new GravesAndGlory.Training(support,b.time));next(b,10);}else if(since(b)>100){fail(b,"p1-trained-fullhealth","the first support troop never appeared");}}
+                case 10->{if(supporters(b)==2){fullTwo=fullHealth();
+                    for(var u:b.units)if(u.squad==own&&u.spec==support&&u.mob.isAlive()){u.mob.kill();break;}b.units.removeIf(u->!u.mob.isAlive()||u.mob.isRemoved());
+                    own.training.addLast(new GravesAndGlory.Training(support,b.time));next(b,11);}else if(since(b)>100){fail(b,"p1-trained-fullhealth","the second support troop never appeared");}}
+                case 11->{if(supporters(b)==2){fullThree=fullHealth();double one=support.health()*b.campaign.health(own,support);
+                    report("p1-trained-fullhealth",Math.abs(fullOne-one)<1e-6&&Math.abs(fullTwo-2*one)<1e-6&&Math.abs(fullThree-2*one)<1e-6,"support ceiling after 1, 2 and a replaced troop: "+fullOne+", "+fullTwo+", "+fullThree+" (one troop is "+one+")");
+                    next(b,99);}else if(since(b)>100){fail(b,"p1-trained-fullhealth","the replacement support troop never appeared");}}
                 default->{}
             }
         }

@@ -21,6 +21,10 @@ public final class BattleMathCheck {
         check(BattleMath.flanked(0, rx, rz, 110, 3) && !BattleMath.flanked(0, fx, fz, 110, 3) && !BattleMath.flanked(0, new double[]{0,0}, new double[]{-5,-5}, 110, 3), "three rear attackers flank; front or two do not");
         check(BattleMath.shouldRout(.2, false, .25, .6) && BattleMath.shouldRout(.5, true, .25, .6), "weak routs; flanked half-strength routs");
         check(!BattleMath.shouldRout(.5, false, .25, .6) && !BattleMath.shouldRout(.9, true, .25, .6), "half-strength unflanked and flanked fresh hold");
+        double[] ax={0,-40}, az={0,-140};
+        check(BattleMath.nearestAnchor(40, 0, -108, 0, ax, az) == 0, "centre point is nearer the front than base");
+        check(BattleMath.nearestAnchor(-100, 0, -108, 0, ax, az) == -1, "base wins when the fight is at home");
+        check(BattleMath.nearestAnchor(40, 0, -108, 0, new double[0], new double[0]) == -1, "no anchors means base");
         System.out.println("BattleMathCheck: " + checks + " checks passed");
     }
 }

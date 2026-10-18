@@ -150,7 +150,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             case 0->"Press "+menu.getBoundKeyLocalizedText().getString()+", choose a group and Move, then click the ground to send them.";
             case 1->"Press "+cycle.getBoundKeyLocalizedText().getString()+" to change formation. Shieldwall holds a line; Wedge breaks one.";
             case 2->"Press "+attack.getBoundKeyLocalizedText().getString()+" and aim at an enemy or a point to send your army in.";
-            default->"Lost troops? Walk back to your barracks and right-click its lectern to recruit.";
+            default->"Recruit at your barracks lectern. Trained troops march out from the held point nearest the fight.";
         };
         panel(g,w/2-180,60,360,32);
         g.drawCenteredTextWithShadow(font,"FIRST BATTLE / LESSON "+(step+1)+" OF 4",w/2,65,GOLD);

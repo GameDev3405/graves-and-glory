@@ -25,6 +25,12 @@ public final class Morale {
         for(var e:full.entrySet())s.fullHealth.merge(e.getKey(),e.getValue(),Math::max);
     }
 
+    /** A troop joined mid-round: the group's ceiling rises to the health actually fielded (so a trained-only group can still rout), and never falls. */
+    static void fielded(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String group){
+        double health=0;for(var u:b.units)if(u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive())health+=u.spec.health()*b.campaign.health(s,u.spec);
+        s.fullHealth.merge(group,health,Math::max);
+    }
+
     /** Runs every 20 ticks while the round is live. */
     public static void tick(GravesAndGlory.Battle b){
         for(var s:new ArrayList<>(b.squads.values())){if(!s.seated)continue;

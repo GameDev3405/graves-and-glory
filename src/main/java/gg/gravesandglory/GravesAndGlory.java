@@ -154,6 +154,8 @@ public final class GravesAndGlory implements ModInitializer {
     public static final class Capture {
         Spec.PointsRow spec;
         int owner=-1, challenger=-1, progress=0;boolean contested;
+        /** Battle time (ticks) when the current owner took the point. */
+        long ownedSince;
         Capture(Spec.PointsRow spec){this.spec=spec;}
     }
     public static final class ArmyHusk extends HuskEntity {
@@ -187,6 +189,8 @@ public final class GravesAndGlory implements ModInitializer {
         long time;
         public boolean ready=false;
         public boolean running=false;
+        /** New troops deploy from a safely held point nearest the fight instead of the barracks; a check can switch it off. */
+        public boolean forwardReinforcement=Spec.ECONOMY[0].forwardReinforcement();
         String message="Preparing the battlefield...";
         int buildColumn=0;
         int rounds=0;long roundStarted;
@@ -434,10 +438,33 @@ public final class GravesAndGlory implements ModInitializer {
                 Training t=s.training.removeFirst();Set<Integer> used=new HashSet<>();for(Unit u:units)if(u.squad==s&&u.mob.isAlive())used.add(u.slot);
                 int slot=0;while(used.contains(slot))slot++;
                 if(slot>=R.squadSize()){s.gold+=t.spec().cost();continue;}
-                spawn(s,t.spec(),slot,base(s.team).add((slot%5-2)*2,0,(slot/5-2)*2));
-                var player=server.getPlayerManager().getPlayer(s.owner);if(player!=null)player.sendMessage(Text.literal(t.spec().name()+" trained: deploying from barracks"),true);
+                var at=deploy(s,slot);spawn(s,t.spec(),slot,at.at());Morale.fielded(this,s,t.spec().group());
+                var player=server.getPlayerManager().getPlayer(s.owner);if(player!=null)player.sendMessage(Text.literal(t.spec().name()+" trained: "+deployNote(s,at.anchor())),true);
             }
         }
+        /** Points this team has held long enough, uncontested and with no enemy near: where new troops may deploy instead of the barracks. Phase 2 banners add their anchors here. */
+        List<Capture> reinforcementAnchors(int team){
+            var E=Spec.ECONOMY[0];List<Capture> anchors=new ArrayList<>();
+            for(Capture p:points)if(p.owner==team&&!p.contested&&time-p.ownedSince>=E.forwardHoldSeconds()*20L&&!Morale.enemyWithin(this,team,new Vec3d(p.spec.x(),p.spec.elevation()+1,p.spec.z()),E.forwardSafeRadius()))anchors.add(p);
+            return anchors;
+        }
+        /** Where a troop trained now appears, and the held point it deploys at (null: the barracks). Chosen at spawn time, so a point that was lost, contested or approached since the purchase sends the troop home. */
+        record Deploy(Vec3d at,Capture anchor){}
+        Deploy deploy(Squad s,int slot){
+            var E=Spec.ECONOMY[0];Vec3d home=base(s.team),ring=new Vec3d((slot%5-2)*2,0,(slot/5-2)*2),barracks=home.add(ring);
+            if(!forwardReinforcement)return new Deploy(barracks,null);
+            List<Capture> anchors=reinforcementAnchors(s.team);if(anchors.isEmpty())return new Deploy(barracks,null);
+            Vec3d target=storedAssignment(s,"infantry").target;double[] ax=new double[anchors.size()],az=new double[anchors.size()];
+            for(int i=0;i<ax.length;i++){ax[i]=anchors.get(i).spec.x();az[i]=anchors.get(i).spec.z();}
+            int chosen=BattleMath.nearestAnchor(target.x,target.z,home.x,home.z,ax,az);if(chosen<0)return new Deploy(barracks,null);
+            Capture anchor=anchors.get(chosen);Vec3d back=new Vec3d(home.x-ax[chosen],0,home.z-az[chosen]);back=back.lengthSquared()<1e-6?Vec3d.ZERO:back.normalize().multiply(E.forwardSpawnOffset());
+            double x=ax[chosen]+back.x+ring.x,z=az[chosen]+back.z+ring.z;int gx=(int)Math.floor(x),gz=(int)Math.floor(z);
+            if(Arena.river(gx,gz)&&Arena.ground(gx,gz)<64)return new Deploy(barracks,null);
+            return new Deploy(new Vec3d(x,Arena.ground(gx,gz)+1,z),anchor);
+        }
+        Vec3d deployPoint(Squad s,int slot){return deploy(s,slot).at();}
+        /** The deploy notice after "<troop> trained: " (a null anchor means the barracks). */
+        String deployNote(Squad s,Capture anchor){return anchor==null?"deploying from barracks":"deploying at "+anchor.spec.name();}
         void startRound(){
             Projectiles.clear(this);
             campaign.prepareRound();
@@ -506,7 +533,7 @@ public final class GravesAndGlory implements ModInitializer {
                 if(p.challenger!=team){p.challenger=team;p.progress=0;}
                 p.progress++;
                 if(p.progress>=p.spec.captureSeconds()){
-                    p.owner=team;p.challenger=-1;p.progress=0;Arena.flag(world,p.spec,team);
+                    p.owner=team;p.ownedSince=time;p.challenger=-1;p.progress=0;Arena.flag(world,p.spec,team);
                     for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList()){var squad=squads.get(pl.getUuid());if(squad!=null&&squad.seated&&squad.team==team&&horizontalDistance(pl.getPos(),center)<p.spec.radius()*p.spec.radius())campaign.progressEvent(pl.getUuid(),true);}
                     for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList())if(squads.containsKey(pl.getUuid())&&squads.get(pl.getUuid()).seated)pl.sendMessage(Text.literal(Spec.FACTIONS[team].name()+" captured "+p.spec.name()).formatted(team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE),true);
                 }

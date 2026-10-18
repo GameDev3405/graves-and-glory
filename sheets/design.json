@@ -1219,7 +1219,11 @@
       "maxQueue": 20,
       "accessRadius": 18,
       "disbandRefund": 0,
-      "objectiveIncomeCap": 9
+      "objectiveIncomeCap": 9,
+      "forwardReinforcement": true,
+      "forwardHoldSeconds": 10,
+      "forwardSafeRadius": 20.0,
+      "forwardSpawnOffset": 8.0
     }
   ],
   "navigation": [

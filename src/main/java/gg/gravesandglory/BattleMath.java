@@ -35,4 +35,14 @@ public final class BattleMath {
     public static boolean shouldRout(double strength, boolean flanked, double routShare, double flankedRoutShare) {
         return strength <= routShare || flanked && strength <= flankedRoutShare;
     }
+    /** Index of the anchor nearest the target (tx,tz), or -1 when no anchor is strictly nearer to the target than the base (bx,bz). */
+    public static int nearestAnchor(double tx, double tz, double bx, double bz, double[] ax, double[] az) {
+        int best = -1;
+        double bestDistance = Math.hypot(tx - bx, tz - bz);
+        for (int i = 0; i < Math.min(ax.length, az.length); i++) {
+            double distance = Math.hypot(tx - ax[i], tz - az[i]);
+            if (distance < bestDistance) { bestDistance = distance; best = i; }
+        }
+        return best;
+    }
 }
