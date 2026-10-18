@@ -29,8 +29,8 @@ public final class Phase1Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every Battle.tick, for checks that need exact tick timing. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     /** A suite that sees every HUD frame (Fabric's HUD callback runs after InGameHud has drawn the status bars), including frames
-     *  while the client's ready is false, when step() does not run. */
-    public interface HudWatch { void hudFrame(MinecraftClient c); }
+     *  while the client's ready is false, when step() does not run. clientTick runs every client tick, ready or not. */
+    public interface HudWatch { void hudFrame(MinecraftClient c); default void clientTick(MinecraftClient c){} }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
     static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
@@ -78,6 +78,7 @@ public final class Phase1Checks implements ClientModInitializer {
             c.options.pauseOnLostFocus=false; // an unfocused test window must not pause the integrated server
             if(c.getOverlay()!=null)return;
             if(!started){if(c.currentScreen instanceof FrontMenuScreen&&++front==40){started=true;GravesAndGloryClient.startCamp(c,false);}return;}
+            if(current instanceof HudWatch w)try{w.clientTick(c);}catch(Exception e){report("p1-"+currentName+"-exception",false,e.toString());e.printStackTrace();}
             if(c.player==null||c.getServer()==null||!GravesAndGloryClient.ready)return;
             if(current==null){
                 if(queue.isEmpty())return;
@@ -1148,7 +1149,7 @@ public final class Phase1Checks implements ClientModInitializer {
         boolean finished,keepLesson,sealsOk,smallOk=true,abilityOk,edgeOk;String sealsWhy="",smallWhy="",abilityWhy="",edgeWhy="";List<BattleHud.CardDraw> two=List.of();
         // client thread, every HUD frame: the food draws the mixin skipped in that frame, watched during the hunger run and while the
         // five-seal battlefield builds
-        int lastSkipped,hungerFrames,hungerFull,hungerLow,buildFrames,buildFull,buildLow;boolean watchHunger,watchBuild;String hungerOdd="",buildOdd="";
+        int lastSkipped,hungerFrames,hungerFull,hungerLow,buildFrames,buildFull,buildLow,buildCloses;boolean watchHunger,watchBuild;String hungerOdd="",buildOdd="";
 
         ServerPlayerEntity sp(GravesAndGlory.Battle b){return player==null?null:b.server.getPlayerManager().getPlayer(player);}
         static CommandMode.Group group(String id){for(var g:CommandMode.groups)if(g.id().equals(id))return g;return null;}
@@ -1228,9 +1229,15 @@ public final class Phase1Checks implements ClientModInitializer {
             if(watchHunger){if(!full)hungerLow++;else{hungerFrames++;if(delta==20)hungerFull++;else if(hungerOdd.length()<60)hungerOdd+=(hungerOdd.isEmpty()?"":", ")+delta;}}
             if(build){if(!full)buildLow++;else{buildFrames++;if(delta==20)buildFull++;else if(buildOdd.length()<60)buildOdd+=(buildOdd.isEmpty()?"":", ")+delta;}}
         }
+        /** While the five-seal battlefield builds, the camp screen the round's end opened hides the whole HUD (CinematicHudMixin
+         *  cancels InGameHud under any ArmyScreen), so no food draw would run to be skipped. A player who presses Escape sees the HUD,
+         *  hotbar and hearts included: the check closes the screen the same way (ArmyScreen's Escape is setScreen(null)). */
+        @Override public void clientTick(MinecraftClient c){
+            if(watchBuild&&!GravesAndGloryClient.ready&&GravesAndGloryClient.menuVisible()){c.setScreen(null);buildCloses++;}
+        }
         void reportBuild(){
             watchBuild=false;
-            report("p1-ui-no-hunger-build",buildFrames>=20&&buildFull==buildFrames,"while the five-seal battlefield built (client ready false) "+buildFrames+" HUD frames had food 20 and "+buildFull+" of them skipped all 20 food draws"+(buildOdd.isEmpty()?"":" (the others skipped "+buildOdd+")")+(buildLow>0?"; "+buildLow+" frames at lower food left out":""));
+            report("p1-ui-no-hunger-build",buildFrames>=20&&buildFull==buildFrames,"while the five-seal battlefield built (client ready false) "+buildFrames+" HUD frames had food 20 and "+buildFull+" of them skipped all 20 food draws"+(buildOdd.isEmpty()?"":" (the others skipped "+buildOdd+")")+(buildLow>0?"; "+buildLow+" frames at lower food left out":"")+"; camp screens closed during the build (as Escape would): "+buildCloses);
         }
 
         public void step(MinecraftClient c,int tick){
