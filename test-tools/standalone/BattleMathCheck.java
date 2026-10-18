@@ -36,6 +36,9 @@ public final class BattleMathCheck {
         check(none[0] == -1 && none[1] == -1 && none[2] == -1, "nothing owned means nothing to hold");
         int[] one=BattleMath.garrison(new int[]{0,0,-1},0,new double[][]{{40,20}},at,36); // 45 blocks from B, 105 from A
         check(one.length == 1 && one[0] == 1, "one army, two unguarded owned points: it holds the nearer only");
+        check(BattleMath.laneTarget(0,0,5) == 0 && BattleMath.laneTarget(1,0,5) == 1 && BattleMath.laneTarget(2,0,5) == 2
+            && BattleMath.laneTarget(0,1,5) == 4 && BattleMath.laneTarget(1,1,5) == 3 && BattleMath.laneTarget(2,1,5) == 2
+            && BattleMath.laneTarget(0,1,3) == 2 && BattleMath.laneTarget(1,1,3) == 1 && BattleMath.laneTarget(2,1,3) == 0, "Dusk lanes mirror Dawn's: A,B,C against E,D,C on five points, C,B,A on three");
         check(!BattleMath.timedCharge(60,20,8,1.3,18) && BattleMath.timedCharge(15,20,8,1.3,18) && BattleMath.timedCharge(60,20,8,1.5,0), "hard waits for range; normal ignores distance");
         check(!BattleMath.timedCharge(15,8,20,1.3,18), "an outnumbered army does not charge even with the enemy in range");
         check(BattleMath.shieldwallVsArchers(4,0,3,true) && !BattleMath.shieldwallVsArchers(4,1,3,true) && !BattleMath.shieldwallVsArchers(4,0,3,false), "shieldwall only vs archers, only with shields");

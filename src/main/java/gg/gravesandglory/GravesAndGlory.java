@@ -495,7 +495,7 @@ public final class GravesAndGlory implements ModInitializer {
             Morale.lineup(this,s,line);
             for(String id:line){final String type=id;int position=slot++;if(position>=R.squadSize()||occupied.contains(position)||id.equals("empty")||!campaign.unlocked(s,id))continue;
                 var spec=Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(type)).findFirst().orElse(null);if(spec==null)continue;
-                double x=base(s.team).x+(s.team==0?1:-1)*(20-position/5*3),z=base(s.team).z+(index-(count-1)/2.0)*22+(position%5-2)*2.5; // rows centred on the base for any army count
+                double side=s.team==0?1:-1,x=base(s.team).x+side*(20-position/5*3),z=base(s.team).z+side*((index-(count-1)/2.0)*22+(position%5-2)*2.5); // rows centred on the base for any army count; Dusk's mirror Dawn's, so army i forms on the side of its lane point (BattleMath.laneTarget)
                 spawn(s,spec,position,new Vec3d(x,Arena.ground((int)x,(int)z)+1,z));
             }
         }

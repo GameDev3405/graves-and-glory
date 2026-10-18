@@ -281,8 +281,9 @@ public final class Campaign {
                 for(var sight:seen.values())if(Math.hypot(sight.x()-px[i],sight.z()-pz[i])<=NEAR_RADIUS_FACTOR*p.spec.radius())defenders[i]++;}
             choice=b.points.get(Math.max(0,BattleMath.leastDefended(center.x,center.z,px,pz,owner,defenders,s.team,tier.defenderWeight())));
         }else{
-            choice=b.points.get(s.lane%count);double best=Double.MAX_VALUE;
-            for(int i=0;i<count;i++){var p=b.points.get(i);double value=Math.hypot(center.x-p.spec.x(),center.z-p.spec.z())+(p.owner==s.team?140:0)+(i==s.lane?0:90)-(p.contested?55:0);if(value<best){best=value;choice=p;}}
+            int lane=BattleMath.laneTarget(s.lane,s.team,count); // Dusk's lane points mirror Dawn's; GravesAndGlory.reinforce mirrors its rows to match
+            choice=b.points.get(lane);double best=Double.MAX_VALUE;
+            for(int i=0;i<count;i++){var p=b.points.get(i);double value=Math.hypot(center.x-p.spec.x(),center.z-p.spec.z())+(p.owner==s.team?140:0)+(i==lane?0:90)-(p.contested?55:0);if(value<best){best=value;choice=p;}}
         }
         long enemies=foes.size();
         boolean couldCharge=b.startsCharge(s,"all"),retreating=botRetreating.contains(s.owner);

@@ -89,6 +89,12 @@ public final class BattleMath {
             open[point] = false;
         }
     }
+    /** The point index a bot army's lane sends it to. Dawn's lane i is point i; Dusk's is the mirror, points-1-i, so both teams
+     *  play the same plan from their own side (Kingsfield: Dawn A, B, C against Dusk E, D, C; three points: Dusk C, B, A). */
+    public static int laneTarget(int lane, int team, int points) {
+        int i = Math.floorMod(lane, points);
+        return team == 0 ? i : points - 1 - i;
+    }
     /** A charge goes in when the army outnumbers the enemies near it by chargeRatio and, when chargeDistance is above zero, the nearest enemy is within it. */
     public static boolean timedCharge(double nearestEnemyDistance, long living, long enemiesNear, double chargeRatio, double chargeDistance) {
         return living >= enemiesNear * chargeRatio && (chargeDistance <= 0 || nearestEnemyDistance <= chargeDistance);
