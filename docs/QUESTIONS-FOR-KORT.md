@@ -63,6 +63,22 @@ Each item says what was decided in the meantime so work could continue.
    unit identity spec says. Reruns follow. Note for Phase 2: when the Risen
    becomes a zombie it gains 2 natural armour, so that health offset must go then (it is +5-7% now: revenant 32, bone ranger 21, gravecaller 19, after Task 5e).
 
+5. **Bot tiers come out upside down (Tasks 5d/5e, 2026-10-18 08:00).** After the
+   shield fix the sims say: Easy beats Normal 13/20, Normal beats Hard 13/20, and
+   the Dawn seat wins 15/20 Normal mirrors (Dusk loses whichever tier it plays).
+   Hard wins 4/4 on Kingsfield but 3/16 on the three-point maps, so its
+   flank-least-defended picker loses to plain lanes when there are only three
+   points; one Hard round ended 153-0 with its army never reaching a fight.
+   Every tier knob moves the same way (faster decisions, earlier charges, later
+   retreats from Easy to Hard), so the sims cannot say which one is backwards.
+   Decision: no more kit or mechanic tuning in Phase 1; two sheet-only
+   single-knob experiments are running from the runs worktree (Hard with
+   flanking off; Normal with Easy's charge ratio) and their numbers will be
+   appended here. My recommendation when you are back: turn Hard's flanking
+   off (your item 3), make Normal charge like Easy if the experiment says
+   charging loses, and accept a 60-70% Dawn seat until the maps are rebuilt in
+   Phase 3 (the village around point A sits on Dawn's side on every map).
+
 ## Builds to try
 
 - 0.3.7 (master e78b81b): camp, pads, parties, rooms, contracts verified by
