@@ -69,3 +69,14 @@ Answered by Kort 2026-10-18: all five as recommended (1 yes, 2 allow, 3 brace on
 - Mode cards get a small one-line subtitle: Practice (train against bots), Skirmish (one battle, your rules), Campaign (the story, battle by battle).
 - HUD gets a battle event feed on the right: troop losses, a fellow commander down, points taken or lost, routs and regroups, reinforcements; colour-coded by kind with a glyph per kind so colour is never alone. Replaces the notice slip above the group cards.
 - Title screen: current one is "absolutely depressing". Direction chosen: "The Hill" (real shaders-on battlefield panorama, pixel-art cliff and commander with banner in the foreground, text-column buttons bottom-left, "Ride to camp" primary). Mockups in progress.
+
+## Phase 3 built-world spec questions (2026-10-18, docs/superpowers/specs/2026-10-17-built-world-design.md)
+
+Recommended answer in brackets (planner and controller agree). Work follows the recommendation until Kort says otherwise; nothing in Phase 3 is built before Phase 1 merges.
+1. Graveborn recruit at the graveyard shrine, not a fifth tent. [Yes]
+2. All six troops of each House stand as live displays in camp, showing LOCKED or the player's stars. [Yes]
+3. The training yard teaches with lesson boards plus a START for campaign battle 1, not a separate in-camp drill. [Yes]
+4. Replace every generic battlefield building except bases and bridges, with a shared kit plus signature pieces per map. [Yes]
+5. Existing worlds rebuild the camp and the maps by themselves on first load of the new build. [Yes]
+6. Leave the bases' barracks and store road clips for Phase 4, recorded in PARKED. [Yes]
+Risk the planner named: agent-built pieces can look boxy; per-piece studio screenshots are the early catch, and the final gate is Kort's screenshot review.
