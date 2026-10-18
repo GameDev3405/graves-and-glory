@@ -1,4 +1,4 @@
-import json, pathlib, sys
+import json, os, pathlib, re, sys, zipfile
 root = pathlib.Path(__file__).resolve().parents[1]
 data = json.loads((root/'sheets/design.json').read_text())
 errors=[]
@@ -33,10 +33,29 @@ for row in data.get('commandInterface',[]):
         if group not in groups: errors.append('command selection does not resolve: '+group)
     for order in row['orders'].split(','):
         if order not in orders: errors.append('command order does not resolve: '+order)
+# Troop textures. A gravesandglory: path must exist in the mod's assets. A minecraft: path must be one of VANILLA_TEXTURES, the
+# vanilla paths the sheet may name, each checked by hand against the Minecraft client jar of build.gradle (1.20.1); when Loom has
+# cached that jar (after the first build) the path must also be an entry of it, so a misspelled or renamed vanilla texture fails
+# here instead of showing as a missing-texture model in game. The list keeps the result the same on a machine without the jar:
+# naming a new vanilla texture in the sheet means adding it here.
+VANILLA_TEXTURES=('textures/entity/bear/polarbear.png','textures/entity/illager/evoker.png','textures/entity/illager/pillager.png',
+    'textures/entity/illager/ravager.png','textures/entity/illager/vindicator.png','textures/entity/iron_golem/iron_golem.png',
+    'textures/entity/piglin/zombified_piglin.png','textures/entity/skeleton/skeleton.png','textures/entity/skeleton/wither_skeleton.png',
+    'textures/entity/spider/spider.png','textures/entity/wolf/wolf.png','textures/entity/zombie/drowned.png')
+mcVersion=re.search(r"minecraft 'com\.mojang:minecraft:([^']+)'",(root/'build.gradle').read_text()) if (root/'build.gradle').is_file() else None
+mcVersion=mcVersion.group(1) if mcVersion else None
+clientJar=pathlib.Path(os.environ.get('GRADLE_USER_HOME') or pathlib.Path.home()/'.gradle')/'caches/fabric-loom'/(mcVersion or '-')/'minecraft-client.jar'
+vanilla=None
+if mcVersion and clientJar.is_file():
+    with zipfile.ZipFile(clientJar) as jar: vanilla={n for n in jar.namelist() if n.startswith('assets/minecraft/textures/')}
 for r in data['troops']:
-    if r['texture'].startswith('gravesandglory:'):
-        texture=root/'src/main/resources/assets/gravesandglory'/r['texture'].split(':',1)[1]
-        if not texture.exists(): errors.append(f'{r["id"]}: missing texture')
+    space,_,path=r['texture'].partition(':')
+    if space=='gravesandglory':
+        if not (root/'src/main/resources/assets/gravesandglory'/path).exists(): errors.append(f'{r["id"]}: missing texture')
+    elif space=='minecraft':
+        if path not in VANILLA_TEXTURES: errors.append(f'troops/{r["id"]}: texture {r["texture"]} is not in VANILLA_TEXTURES (tools/preflight.py), the vanilla paths checked against the {mcVersion} client jar')
+        elif vanilla is not None and 'assets/minecraft/'+path not in vanilla: errors.append(f'troops/{r["id"]}: texture {r["texture"]} is not in the Minecraft {mcVersion} client jar ({clientJar})')
+    else: errors.append(f'troops/{r["id"]}: texture {r["texture"]} must be a gravesandglory: or a minecraft: path')
 for r in data['ui']:
     if r['id']=='command':
         formationIds={f['id'] for f in data['formations']}
