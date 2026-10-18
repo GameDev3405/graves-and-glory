@@ -39,6 +39,19 @@ Each item says what was decided in the meantime so work could continue.
    charges and shieldwalls, but picks points like Normal)? My recommendation:
    yes, flanking is worth less than a Hard that actually wins.
 
+4. **Bot balance, round two (Task 5b, 2026-10-18 03:00).** The seat bias is now
+   explained: Dawn knights raise shields in block formation and stop frontal
+   hits, arrows and blight; revenants had no shield, and husks carry 2 natural
+   armour where skeletons carry 0. With equal kits the Dawn seat won 9/20. The
+   agent gave revenants a shield to even it, which contradicts the unit identity
+   spec you approved (Graveborn carry no shields), so I reverted that and used
+   the invisible fix instead: Dusk troop health +10% (revenant 33, bone archer
+   22, gravecaller 20), measured at 50/50 in a 10-round test. Also fixed: the
+   3-army spawn rows gave one side a 10-13 block head start; Normal's lane rule
+   did not mirror on Kingsfield (Dusk won 16/18 there). Reruns are in progress
+   (Task 5c). Hard still sits at 45% against Normal; the flanking question in
+   item 3 stands.
+
 ## Builds to try
 
 - 0.3.7 (master e78b81b): camp, pads, parties, rooms, contracts verified by
