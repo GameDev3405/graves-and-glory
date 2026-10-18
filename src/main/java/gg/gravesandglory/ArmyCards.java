@@ -20,11 +20,18 @@ final class ArmyCards {
     static Spec.HousesRow house(Spec.TroopsRow t){for(var h:Spec.HOUSES)if(h.id().equals(t.house()))return h;return null;}
     /** Whether a troop's House can take the field in this build (houses.fieldable). */
     static boolean fieldable(Spec.TroopsRow t){var h=house(t);return h!=null&&h.fieldable();}
-    /** The colour this commander's troops wear: the side row of his bannerColour. */
-    static int bannerColour(){for(var f:Spec.FACTIONS)if(f.id().equals(CampaignClient.profile.bannerColour))return f.color();return Spec.FACTIONS[0].color();}
+    /**
+     * The colour this commander's troops wear. In battle it is the side his team flies (DarkUi.side, from the snapshot), which is not
+     * his request when the other team or a teammate claimed that colour first; in the camp and the lobby it is the side row of his
+     * bannerColour, the colour he asks for.
+     */
+    static int troopColour(){
+        if(GravesAndGloryClient.battleActive()){var side=DarkUi.side(GravesAndGloryClient.team);if(side!=null)return side.color();}
+        for(var f:Spec.FACTIONS)if(f.id().equals(CampaignClient.profile.bannerColour))return f.color();return Spec.FACTIONS[0].color();
+    }
     static MobEntity portrait(Spec.TroopsRow spec){
         var c=MinecraftClient.getInstance();if(world!=c.world){portraits.clear();world=c.world;}if(c.world==null)return null;
-        int colour=bannerColour();
+        int colour=troopColour();
         return portraits.computeIfAbsent(spec.id()+"/"+colour,key->{
             // The sheet's entity type: battles spawn husks, skeletons and wither skeletons; the other Houses' beasts and crews show here first.
             MobEntity e=switch(spec.entity()){case "husk"->new HuskEntity(EntityType.HUSK,c.world);case "skeleton"->new SkeletonEntity(EntityType.SKELETON,c.world);case "wither_skeleton"->new WitherSkeletonEntity(EntityType.WITHER_SKELETON,c.world);
