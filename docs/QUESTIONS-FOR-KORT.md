@@ -5,30 +5,13 @@ Each item says what was decided in the meantime so work could continue.
 
 ## Open questions
 
-1. **Phase gates without you.** Each phase ends with a Kort playtest gate.
-   I am treating the gates as "screenshots reviewed by a tester subagent"
-   and moving on; please play the builds listed under "Builds to try" below
-   when you are back and send corrections.
+(none; the 2026-10-17 items are answered below)
 
-2. **Houses design (docs/superpowers/specs/2026-10-17-houses-design.md, section 8).**
-   The designer made 12 calls that change the vision table and has 7 questions:
-   trait tiers count banner slots (6/10/14) not troop count (3/5/7); the iron
-   golem moved to Ironclad's Legendary and the ravager to Tidecallers; Wildmoot
-   hunters are boar-kin on the zombified-piglin model, alpha is a polar bear;
-   Sunweaver and Gravecaller become Epics (Oracle/Wraith fold into them as a
-   star); migrated players keep two Epics free; spiders climbing walls in Siege;
-   Legendary names; the 29-hour median to a full roster; commander ability on
-   key G. I am proceeding with the designer's calls; overturn any when back.
+## Answered 2026-10-17
 
-3. **Phase 2 plan (docs/superpowers/plans/2026-10-17-phase-2-houses.md).**
-   The planner resolved 17 spec gaps (listed at the end of the plan); the ones
-   that change what you asked for: commander active moves to key H (G is
-   already Attack); classes split by House batch; the three later Houses are
-   hidden from banners until their batch; Ballista evolve line reduced to fit
-   the +6% cap. Two new questions: should players who claimed Founders tier 20
-   before migration also get the tier-20 Rare once? Is Mark Prey's glow being
-   visible to both teams acceptable, or is a team-only glow worth a client
-   renderer? Proceeding with: no retro Rare; vanilla glow (team-only parked).
+- Phase gates: tester subagent reviews screenshots; Kort playtests the builds listed below when he wants.
+- Houses: trait tiers by banner slots 6/10/14; migrated Sunweaver/Gravecaller (and Oracle/Wraith if unlocked) refunded 300 gold each, not kept; spiders keep climbing in Siege; Legendary names approved; boar-kin Wildmoot approved; 29-hour chase accepted; commander active on H; no retro Founders tier-20 Rare; Mark Prey uses the vanilla glow.
+- Phase 2 planner's other calls (classes split by House batch, later Houses hidden until their batch, Ballista evolve trimmed to the cap) stand.
 
 ## Problems hit
 

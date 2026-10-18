@@ -303,12 +303,12 @@ check(masteryLevel(39,8,M)==0 && masteryLevel(40,8,M)==1 && masteryLevel(150,24,
 ```
 - [ ] **Step 2: Write the failing `ProfileMigrationCheck`.** Build the fixtures in Java and use parse/write stubs (no Gson):
   - `mig-fresh` (v1 defaults: Dawn knight x12, archer x6, mage x2; Dusk revenant x12, bonebow x6, hexer x2; gold 420; vanguard):
-    - `owned` keys are the 10 Commons plus `mage` and `hexer`, all at star 1 and stage 1.
-    - banner = knight x12, archer x6, `mage`, `^`; commander `champion`.
-    - gold, matches, wins and campaignCleared are copied.
+    - `owned` keys are exactly the 10 Commons, all at star 1 and stage 1 (`mage` and `hexer` are refunded, not owned; Kort's decision 2026-10-17).
+    - banner = knight x12, archer x6, `empty` x2; commander `champion`.
+    - gold = v1 gold + 600 (300 each for the `mage` and `hexer` starters); matches, wins and campaignCleared are copied.
     - shards, renown and pity each have five House keys at 0; `schema==2`.
-  - `mig-full` (all 12 v1 ids unlocked): adds sentinel, longbow, reaper and stalker. `mage` has copies 2 and stars 2; `hexer` has copies 2 and stars 2; there is no `oracle` or `wraith` key.
-  - `mig-invalid-dawn` (a Dawn line of 7): banner = revenant x12, bonebow x6, `hexer`, `^`.
+  - `mig-full` (all 12 v1 ids unlocked): adds sentinel, longbow, reaper and stalker. There is no `mage`, `hexer`, `oracle` or `wraith` key; gold = v1 gold + 1200 (300 for each of those four).
+  - `mig-invalid-dawn` (a Dawn line of 7): banner = revenant x12, bonebow x6, `empty` x2.
   - `mig-both-invalid`: banner = `starterBanner()`.
   - `mig-class`: marksman maps to warden, arcanist to warlock, unknown to champion.
   - `mig-progression`: xp, claims and titles (including `Vanguard`) are copied unchanged.
@@ -325,7 +325,7 @@ check(masteryLevel(39,8,M)==0 && masteryLevel(40,8,M)==1 && masteryLevel(150,24,
   Run preflight; expect `Preflight clean`.
 - [ ] **Step 5: Implement `RosterMath`, `CounterMath`, `Profile` and `ProfileMigration`** per the Interfaces. `ProfileMigration.ID_MAP` is the spec 6.3 table. `toV2`:
   - grants every Common of every House (from the catalog) plus the mapped v1 ids;
-  - merges `oracle` and `wraith` as +1 copy of `mage` and `hexer`, through `addCopy`;
+  - does not grant `mage` or `hexer`; instead adds `refundGold` (sheet `economy`, 300) to gold for each of `mage`, `hexer`, `oracle`, `wraith` that the v1 profile had unlocked (`mage` and `hexer` always, as starters);
   - takes the Dawn deployment if it is 20 entries of known Dawn ids or `empty` with at least one troop, else the Dusk one, else `starterBanner()`;
   - repacks the result through `validBanner` and `repack`.
 - [ ] **Step 6: Run the standalone checks; expect all three summary lines.**
@@ -1061,15 +1061,15 @@ Every variant model attaches `gg_pennant` (box `[-2,-14,2,4,8,1]` on `body`, tex
 ## Needs Kort
 
 From spec section 8.3:
-1. Trait counting: banner slots at 6 / 10 / 14 (the builder's pick), or distinct troop types at 2 / 4 / 6?
-2. Should migrated players keep Sunweaver and Gravecaller as owned Epics, or should those two be refunded as gold (300 each) and earned again?
-3. Spiders climbing walls in Siege: keep it (Wildmoot's answer to forts) or disable climbing in Siege mode?
-4. Are the five Legendary names right? (Lord Marshal Aldric, The Hollow King, Old Horn the Antlered Alpha, Brassjaw the Forge Colossus, Admiral Vael the Drowned Tide.)
-5. Wildmoot as boar-kin (piglin snouts) instead of generic beast-folk: does that read right to you?
-6. Is a 29-hour median with a 21-hour lucky tail acceptable, or should the Epic weight drop to 1.5 to push the median toward 35 hours?
+1. ANSWERED 2026-10-17: banner slots at 6 / 10 / 14.
+2. ANSWERED 2026-10-17: refund 300 gold each (Sunweaver, Gravecaller, and Oracle/Wraith if unlocked); they are earned again through rolls. The migration fixtures above reflect this.
+3. ANSWERED 2026-10-17: keep climbing.
+4. ANSWERED 2026-10-17: names approved as listed.
+5. ANSWERED 2026-10-17: boar-kin approved.
+6. ANSWERED 2026-10-17: 29-hour median accepted; Epic weight stays 2.
 7. Commander active on G: is that key free in your controls, or should it be another one? (Planning found that G is the Attack order key; the plan uses H.)
 
 Raised while planning:
 
-8. Players who claimed Founders tier 20 before migration keep "Vanguard" and miss the tier-20 Rare. Should migration grant them the Rare once?
-9. With the vanilla effect, Mark Prey's glow is visible to both teams. Is that acceptable, or is a client-side team-only glow worth building?
+8. ANSWERED 2026-10-17: no retro grant.
+9. ANSWERED 2026-10-17: vanilla glow; team-only glow stays parked.

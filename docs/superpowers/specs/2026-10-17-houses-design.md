@@ -728,16 +728,16 @@ sanitizer. It keeps a copy of the v1 file next to it (`<uuid>.v1.json`).
 |---|---|---|---|
 | knight (Dawn) | knight | Gilded / Common | owned |
 | archer (Dawn) | archer | Gilded / Common | owned |
-| mage (Dawn) | mage | Gilded / **Epic** | owned (it was a v1 starter, so every migrated player keeps it) **[B]** |
+| mage (Dawn) | mage | Gilded / **Epic** | not owned; refund 300 gold (Kort, 2026-10-17) |
 | sentinel (Dawn) | sentinel | Gilded / Rare | owned if unlocked |
 | longbow (Dawn) | longbow | Gilded / Rare | owned if unlocked |
-| oracle (Dawn) | mage | merged | if unlocked: +1 copy of mage (star 2) |
+| oracle (Dawn) | mage | merged | if unlocked: refund 300 gold |
 | revenant (Dusk) | revenant | Graveborn / Common | owned |
 | bonebow (Dusk) | bonebow | Graveborn / Common | owned |
-| hexer (Dusk) | hexer | Graveborn / **Epic** | owned (v1 starter) |
+| hexer (Dusk) | hexer | Graveborn / **Epic** | not owned; refund 300 gold |
 | reaper (Dusk) | reaper | Graveborn / Rare | owned if unlocked |
 | stalker (Dusk) | stalker | Graveborn / Rare | owned if unlocked |
-| wraith (Dusk) | hexer | merged | if unlocked: +1 copy of hexer (star 2) |
+| wraith (Dusk) | hexer | merged | if unlocked: refund 300 gold |
 
 After the table is applied:
 - All Commons of every House are granted. New profiles get the same 10
@@ -810,10 +810,10 @@ its House's six portraits and glyph, so cards are never blank.
 2. **Epics fill 2 slots and Legendaries fill 4**, with at most one Legendary
    and two Epics per banner. This is how "Legendaries take a lot of the
    budget" is made concrete, together with their high round-gold cost.
-3. **Sunweaver (`mage`) and Gravecaller (`hexer`) become Epics.** Every
-   migrated player keeps these two Epics, which they had as starters, and
-   Oracle and Wraith merge into them as a star. New players start with
-   Commons only.
+3. **Sunweaver (`mage`) and Gravecaller (`hexer`) become Epics.** Migrated
+   players do not keep them: each of mage, hexer and (if unlocked) Oracle and
+   Wraith is refunded as 300 gold and earned again through rolls (Kort's
+   decision, 2026-10-17). Everyone starts the chase with Commons only.
 4. **Legacy ids are kept** for the 12 old troops (`knight`, `revenant`, and
    so on), and new troops get House prefixes. This avoids breaking harness
    ids and profiles.
@@ -854,22 +854,18 @@ its House's six portraits and glyph, so cards are never blank.
 | 15 base mob types and five new entity models raise client cost in 8-player, 160-troop fights. | Frame rate. | The Phase 1 tick-cost check is rerun per batch with mixed banners. |
 | Per-hit counter checks (flank bearing, sky check) run for 160 troops. | Server tick time. | Every check is O(1) per hit; the Pack Hunters target counts are cached per 10-tick Tactics pass. |
 | The economy model assumes the Phase 1 reward numbers, and Phase 4 bonus objectives add income. | The roster finishes faster than 25 hours. | The model sheet is rerun every time a gold source is added. |
-| Legacy players keep two Epics for free. | A small head start, and possible perceived unfairness among friends. | Accepted; see question 2. |
+| Legacy players lose their two starter casters at migration (refunded as gold). | A migrated banner has two empty slots until the first rolls. | Accepted by Kort 2026-10-17; the refund covers six rolls. |
 
-### 8.3 Questions for Kort
+### 8.3 Questions for Kort (answered 2026-10-17)
 
-1. Trait counting: banner slots at 6 / 10 / 14 (my pick), or distinct troop
-   types at 2 / 4 / 6?
-2. Should migrated players keep Sunweaver and Gravecaller as owned Epics, or
-   should those two be refunded as gold (300 each) and earned again?
-3. Spiders climbing walls in Siege: keep it (Wildmoot's answer to forts) or
-   disable climbing in Siege mode?
-4. Are the five Legendary names right? (Lord Marshal Aldric, The Hollow
-   King, Old Horn the Antlered Alpha, Brassjaw the Forge Colossus, Admiral
-   Vael the Drowned Tide.)
-5. Wildmoot as boar-kin (piglin snouts) instead of generic beast-folk: does
-   that read right to you?
-6. Is a 29-hour median with a 21-hour lucky tail acceptable, or should the
-   Epic weight drop to 1.5 to push the median toward 35 hours?
-7. Commander active on G: is that key free in your controls, or should it be
-   another one?
+1. Trait counting: **banner slots at 6 / 10 / 14.**
+2. Migrated Sunweaver and Gravecaller: **refunded, 300 gold each** (Oracle and
+   Wraith too if unlocked); earned again through rolls.
+3. Spiders climbing walls in Siege: **keep it.**
+4. Legendary names: **approved** (Lord Marshal Aldric, The Hollow King, Old Horn
+   the Antlered Alpha, Brassjaw the Forge Colossus, Admiral Vael the Drowned Tide).
+5. Wildmoot as boar-kin: **approved.**
+6. Chase length: **29-hour median accepted**; Epic weight stays 2.
+7. Commander active key: **H** (G is the Attack order); Kort did not object.
+8. Founders tier-20 Rare for pre-migration claimers: **no retro grant.**
+9. Mark Prey glow: **vanilla glow**, visible to both teams; team-only glow parked.
