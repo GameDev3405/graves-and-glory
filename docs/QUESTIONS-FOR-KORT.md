@@ -53,3 +53,12 @@ Each item says what was decided in the meantime so work could continue.
 - New track: a unit identity pass. An agent examines every unit and designs each one deliberately with a distinct look and a distinct purpose; the agreed look then feeds the UI portraits. Spec: docs/superpowers/specs/2026-10-17-unit-identity.md (in progress).
 - Hunger is removed: no hunger bar and no eating mid-battle. Something else takes that slot later. Goes into the UI implementation plan (hide the bar client-side, pin food level server-side).
 - Pixel art detail goes way up on the chosen screens; no corner cutting.
+
+## Unit identity spec questions (2026-10-17, docs/superpowers/specs/2026-10-17-unit-identity.md)
+
+Recommended answer in brackets. Work continues on the recommendation until Kort says otherwise.
+1. Troops never show gold or diamond armour (gold reads as the gold side, diamond as teal); golden helmets become chainmail, diamond weapons iron, Aldric's diamond chest netherite. [Yes]
+2. Painted shields and CustomModelData weapons (longbow, scythe, boar spear, sun staff): one sheet column and one line each in Battle.spawn and ArmyCards.portrait, or EMF-only fallbacks? [Allow the column; it is the cheaper path to distinct silhouettes]
+3. Tusk Spear and Trident Guard share the same brace. Split by job only, or make Tusk Spear brace on Charge instead of Hold? [Brace on Charge; a stat-identical pair is what the pass exists to remove]
+4. One large team-colour cloth per Legendary (Aldric's standard, Hollow King's cloak, Old Horn's antler banner, Brassjaw's belt banner, Vael's coat lining)? [Yes]
+5. Vanilla posing overrides the aim mixin, so husks and boar-kin raise zombie arms in combat. Fix the pose before the Gilded art is made? [Yes, in Phase 2 Task 5 (skin pipeline spike)]
