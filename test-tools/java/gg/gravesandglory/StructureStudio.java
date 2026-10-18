@@ -21,6 +21,7 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.structure.StructureTemplate;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
@@ -243,11 +244,15 @@ public final class StructureStudio implements ModInitializer {
                 .then(CommandManager.literal("save").then(CommandManager.argument("id",IdentifierArgumentType.identifier()).suggests(PIECES).executes(context->act(context,(source,id)->{
                     Path file=write(save(source.getServer(),id,size(source.getServer(),id)),id);return "saved what stands at "+ORIGIN.toShortString()+" to "+file;}))))
                 .then(CommandManager.literal("dump").then(CommandManager.argument("id",IdentifierArgumentType.identifier()).suggests(PIECES).executes(context->act(context,(source,id)->{
-                    var template=Structures.template(source.getWorld(),id);
-                    if(template.isEmpty())throw new StudioException("no structure file for "+id);
+                    // The vanilla manager reads <world>/generated first, which is where a structure block saves, and the mod's own copy after:
+                    // an edit of Kort's is what gets dumped. (Structures.template reads the mod only, by design, so it would dump the stale piece.)
+                    var server=source.getServer();Path generated=server.getSavePath(WorldSavePath.GENERATED).resolve(Structures.NS+"/structures/"+id+".nbt");
+                    var template=server.getStructureTemplateManager().getTemplate(new Identifier(Structures.NS,id));
+                    if(template.isEmpty())throw new StudioException("no structure file for "+id+": not in "+generated+" and not in the mod resources");
                     String script=dump(template.get());Path file=out().resolve(id+".mcfunction");
                     Files.createDirectories(file.getParent());Files.writeString(file,script,StandardCharsets.UTF_8);
-                    return "dumped "+id+" as a script of "+script.split("\n").length+" lines to "+file;}))))
+                    String from=Files.isRegularFile(generated)?"the generated file was used: "+generated:"no generated file, so the shipped piece was used";
+                    return "dumped "+id+" ("+from+") as a script of "+script.split("\n").length+" lines to "+file;}))))
                 .then(CommandManager.literal("place").then(CommandManager.argument("id",IdentifierArgumentType.identifier()).suggests(PIECES).then(CommandManager.argument("rotation",IntegerArgumentType.integer(0,270)).executes(context->act(context,(source,id)->{
                     int rotation=IntegerArgumentType.getInteger(context,"rotation");BlockPos at=BlockPos.ofFloored(source.getPlayerOrThrow().getPos());
                     var placed=Structures.place(source.getWorld(),id,at.getX(),at.getY()-1,at.getZ(),rotation);

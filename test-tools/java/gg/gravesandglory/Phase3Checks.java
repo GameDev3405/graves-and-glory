@@ -13,9 +13,12 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.server.command.CommandOutput;
+import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.state.property.Properties;
 import net.minecraft.structure.StructureTemplate;
+import net.minecraft.text.Text;
 import net.minecraft.util.BlockRotation;
 import net.minecraft.util.DyeColor;
 import net.minecraft.util.Identifier;
@@ -118,6 +121,26 @@ public final class Phase3Checks implements ClientModInitializer {
     static String name(BlockState s){return net.minecraft.registry.Registries.BLOCK.getId(s.getBlock()).getPath();}
     static Direction facing(BlockState s){return s.contains(Properties.HORIZONTAL_FACING)?s.get(Properties.HORIZONTAL_FACING):null;}
     static String xyz(BlockPos p){return "("+p.getX()+","+p.getY()+","+p.getZ()+")";}
+    /** What a command said: its feedback and its errors both arrive here. */
+    static final class Said implements CommandOutput {
+        final List<String> lines=new ArrayList<>();
+        @Override public void sendMessage(Text message){lines.add(message.getString());}
+        @Override public boolean shouldReceiveFeedback(){return true;}
+        @Override public boolean shouldTrackOutput(){return true;}
+        @Override public boolean shouldBroadcastConsoleToOps(){return false;}
+        String text(){return String.join(" | ",lines);}
+    }
+    /** Types a command as an operator would, from the given source at level 4, keeping what it says. Comes back with the command's result: 1, or 0 when it reported an error. */
+    static int dispatch(GravesAndGlory.Battle b,ServerCommandSource base,Said said,String command)throws Exception{
+        return b.server.getCommandManager().getDispatcher().execute(command,base.withLevel(4).withOutput(said));
+    }
+    /** A 1x1x1 gold_block structure file at the given path, saved from the world the way a structure block saves a piece. */
+    static void writeGoldOverride(ServerWorld w,BlockPos scratch,Path file)throws Exception{
+        w.setBlockState(scratch,Blocks.GOLD_BLOCK.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
+        var gold=new StructureTemplate();gold.saveFromWorld(w,scratch,new Vec3i(1,1,1),false,Blocks.STRUCTURE_VOID);
+        w.setBlockState(scratch,Blocks.AIR.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
+        Files.createDirectories(file.getParent());NbtIo.writeCompressed(gold.writeNbt(new NbtCompound()),file.toFile());
+    }
 
     /** Task 1: the placer. The 5x5x5 test marker is placed four ways in the real world and read back block by block; the camera then looks at it. */
     static final class Pipeline implements Suite {
@@ -212,11 +235,7 @@ public final class Phase3Checks implements ClientModInitializer {
             var manager=w.getStructureTemplateManager();var id=new Identifier(Structures.NS,MARKER);
             Path generated=b.server.getSavePath(WorldSavePath.GENERATED).resolve(Structures.NS+"/structures/"+MARKER+".nbt");
             try{
-                var scratch=new BlockPos(1000,80,1100);
-                w.setBlockState(scratch,Blocks.GOLD_BLOCK.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
-                var gold=new StructureTemplate();gold.saveFromWorld(w,scratch,new Vec3i(1,1,1),false,Blocks.STRUCTURE_VOID);
-                w.setBlockState(scratch,Blocks.AIR.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
-                Files.createDirectories(generated.getParent());NbtIo.writeCompressed(gold.writeNbt(new NbtCompound()),generated.toFile());
+                writeGoldOverride(w,new BlockPos(1000,80,1100),generated);
                 Structures.clearCache();manager.unloadTemplate(id);
                 vanilla=manager.getTemplate(id).map(t->t.getSize().toShortString()).orElse("none");
                 if(!vanilla.equals("1, 1, 1"))bad.append("fixture did not take effect: the vanilla manager read ").append(vanilla).append(", not 1, 1, 1; "); // else the check could pass with nothing to resist
@@ -316,7 +335,43 @@ public final class Phase3Checks implements ClientModInitializer {
                 boolean ok=again.equals(reference);
                 report("p3-studio-roundtrip",ok,ok?"the dump of "+MARKER+" ("+script.split("\n").length+" lines), built and saved, equals "+source:"the rebuilt dump differs from "+source+": "+StructureStudio.difference(again,reference));
             }catch(Exception e){report("p3-studio-roundtrip",false,e.getMessage()==null?e.toString():e.getMessage());}
+            commands(b);
             stage=5;
+        }
+
+        /** The /studio commands, typed through the command dispatcher as an operator types them. What they write goes beside the real studio output, in command-checks. */
+        void commands(GravesAndGlory.Battle b){
+            String saved=System.getProperty("gravesandglory.studioOut");
+            System.setProperty("gravesandglory.studioOut",StructureStudio.out().resolve("command-checks").toString());
+            try{
+                dumpGenerated(b);
+            }finally{if(saved==null)System.clearProperty("gravesandglory.studioOut");else System.setProperty("gravesandglory.studioOut",saved);}
+        }
+
+        /** /studio dump reads the structure block save in generated/ before the shipped piece: with a 1x1x1 file there the script starts "# size 1 1 1",
+         *  without it "# size 5 5 5", and the feedback says which one it used. */
+        void dumpGenerated(GravesAndGlory.Battle b){
+            var bad=new StringBuilder();String withFile="",withoutFile="";
+            var manager=b.world.getStructureTemplateManager();var id=new Identifier(Structures.NS,MARKER);
+            Path generated=b.server.getSavePath(WorldSavePath.GENERATED).resolve(Structures.NS+"/structures/"+MARKER+".nbt");
+            try{
+                Path script=StructureStudio.out().resolve(MARKER+".mcfunction");
+                try{
+                    writeGoldOverride(b.world,StructureStudio.ORIGIN.up(36),generated);
+                    manager.unloadTemplate(id);
+                    var said=new Said();int result=dispatch(b,b.server.getCommandSource(),said,"studio dump "+MARKER);
+                    withFile=Files.readString(script).lines().findFirst().orElse("");
+                    if(result!=1)bad.append("with the override the command failed: ").append(said.text()).append("; ");
+                    if(!withFile.equals("# size 1 1 1"))bad.append("with the override the script begins '").append(withFile).append("', not '# size 1 1 1' (the stale shipped piece); ");
+                    if(!said.text().contains("the generated file was used"))bad.append("with the override the feedback does not say the generated file was used: ").append(said.text()).append("; ");
+                }finally{Files.deleteIfExists(generated);manager.unloadTemplate(id);}
+                var said=new Said();int result=dispatch(b,b.server.getCommandSource(),said,"studio dump "+MARKER);
+                withoutFile=Files.readString(script).lines().findFirst().orElse("");
+                if(result!=1)bad.append("without the override the command failed: ").append(said.text()).append("; ");
+                if(!withoutFile.equals("# size 5 5 5"))bad.append("without the override the script begins '").append(withoutFile).append("', not '# size 5 5 5'; ");
+                if(!said.text().contains("no generated file"))bad.append("without the override the feedback does not say the shipped piece was used: ").append(said.text()).append("; ");
+            }catch(Throwable e){bad.append("harness failure ").append(e).append("; ");}
+            report("p3-studio-dump-generated",bad.length()==0,bad.length()==0?"with a 1x1x1 file in generated/ the dump of "+MARKER+" begins '"+withFile+"' and the feedback says the generated file was used; with the file deleted it begins '"+withoutFile+"' and says the shipped piece was used":bad.toString());
         }
     }
 }
