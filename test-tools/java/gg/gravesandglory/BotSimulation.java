@@ -6,15 +6,22 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.MinecraftServer;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.lang.management.BufferPoolMXBean;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.IntStream;
 
 /** Unshipped: runServer -PbotSim=<matches> plays bot-vs-bot rounds on a dedicated server with nobody online and stops the server when done.
  *  One match at a time (one Battle per server). Dawn's bots play -PsimDawn, Dusk's -PsimDusk (Spec.BOTCOMMAND ids); -PsimMaps is cycled.
  *  -PsimKit=native (default) gives each team its own faction's troops; dawn or dusk gives both teams that faction's troop rows (colours and bases stay), so kit and seat can be told apart.
- *  Writes botsim/results.csv (one row per match) and botsim/gold.csv (each team every 30 s of round time) under the server root. */
+ *  Writes botsim/results.csv (one row per match) and botsim/gold.csv (each team every 30 s of round time) under the server root.
+ *  Soak aid, off by default: GRAVES_BOTSIM_PROBE=1 in the environment (or -Dgravesandglory.simProbe=true) also writes botsim/probe.csv and prints one "[botsim] probe" line per match:
+ *  server tick times over the round, entities and the battle's own collections after the round's cleanup, and heap after a forced GC. */
 public final class BotSimulation implements ModInitializer {
     static final int SAMPLE_TICKS=600;
     /** How long an arena build may take (5 minutes) before the simulation gives up. */
@@ -29,6 +36,11 @@ public final class BotSimulation implements ModInitializer {
     /** This round's bot armies. They leave Battle.squads when the round ends, so the end-of-round tally is read from here. */
     final List<GravesAndGlory.Squad> armies=new ArrayList<>();
     int dawnWins,duskWins,draws,aborted;final long[] earnedAtEnd={0,0};
+    /** Soak probe: the columns of botsim/probe.csv, and the state of the round being timed. */
+    static final String[] PROBE_COLUMNS={"match","map","startedAt","endedAt","roundTicks","tickMeanMs","tickP50Ms","tickP95Ms","tickP99Ms","tickMaxMs","ticksOver50ms","ticksOver100ms","serverAvgTickMs",
+        "heapMbBeforeGc","heapMbAfterGc","heapMaxMb","gcCount","gcMillis","threads","classes","directMb","nonHeapMb","loadedChunks","entities","units","shots","points","specPoints","squads","respawns","pings","botRespawns","botRetreating","vacated","kinds"};
+    static final DateTimeFormatter CLOCK=DateTimeFormatter.ofPattern("HH:mm:ss");
+    boolean probe;Path probeCsv;long tickStart;long[] tickNanos=new long[8192];int tickCount;String startedAt="";
 
     @Override public void onInitialize(){
         // Absent means a normal server. Given but blank or non-numeric is an error, not a silent plain server.
@@ -48,6 +60,14 @@ public final class BotSimulation implements ModInitializer {
             Files.writeString(gold,"match,second,team,goldEarned,goldBank,living\n",StandardCharsets.UTF_8);
         }catch(IOException e){throw new UncheckedIOException(e);}
         ServerTickEvents.END_SERVER_TICK.register(this::tick);
+        probe="1".equals(System.getenv("GRAVES_BOTSIM_PROBE"))||Boolean.getBoolean("gravesandglory.simProbe");
+        if(probe){
+            probeCsv=dir.resolve("probe.csv");
+            try{Files.writeString(probeCsv,String.join(",",PROBE_COLUMNS)+"\n",StandardCharsets.UTF_8);}catch(IOException e){throw new UncheckedIOException(e);}
+            // Registered after the harness's own listener, so the tick that ends a round is not timed as part of it.
+            ServerTickEvents.START_SERVER_TICK.register(s->tickStart=System.nanoTime());
+            ServerTickEvents.END_SERVER_TICK.register(s->{if(playing){if(tickCount==tickNanos.length)tickNanos=Arrays.copyOf(tickNanos,tickCount*2);tickNanos[tickCount++]=System.nanoTime()-tickStart;}});
+        }
     }
     static String tier(String id){
         String t=id.trim();if(Arrays.stream(Spec.BOTCOMMAND).noneMatch(r->r.id().equals(t)))throw new IllegalArgumentException("[botsim] unknown bot tier: "+id);return t;
@@ -74,7 +94,7 @@ public final class BotSimulation implements ModInitializer {
         useKit();
         b.startRound();
         armies.clear();for(var s:b.squads.values())if(s.bot){if(s.team==1)s.tier=duskTier;armies.add(s);}
-        playing=true;
+        playing=true;if(probe)probeStart();
     }
     /** -PsimKit dawn or dusk: both teams' faction rows take that faction's id and troops, so the bots' lineup, purchases and full strength
      *  (all read Spec.FACTIONS[team].id()) use one kit. Name, colour, base and barracks stay the seat's. Map switches restore the rows,
@@ -98,12 +118,44 @@ public final class BotSimulation implements ModInitializer {
         for(var s:armies)earnedAtEnd[s.team]+=s.stats.goldEarned;
         append(results,String.join(",",String.valueOf(match+1),String.valueOf(maps[match%maps.length]),dawnTier,duskTier,winner==ABORTED?"aborted":winner<0?"draw":SEATS[winner],
             String.valueOf(b.scores[0]),String.valueOf(b.scores[1]),String.valueOf((b.time-b.roundStarted)/20))+"\n");
+        if(probe)probeRow(b);
     }
     /** The final line. Mean gold earned is a team's total over its commanders at the end of a round, averaged over the matches.
      *  " aborted=N" goes on the end only when a round stopped without Campaign.finish, and " kit=<id>" only under -PsimKit dawn or dusk, so a normal run keeps the documented format. */
     void summary(){
         System.out.println(String.format(Locale.ROOT,"[botsim] matches=%d dawn(%s)=%d dusk(%s)=%d draws=%d dawnWin=%.0f%% meanGoldEarnedAtEnd dawn=%.0f dusk=%.0f",
             matches,dawnTier,dawnWins,duskTier,duskWins,draws,100*MatchStats.winRate(dawnWins,matches),earnedAtEnd[0]/(double)matches,earnedAtEnd[1]/(double)matches)+(aborted>0?" aborted="+aborted:"")+(kit.equals("native")?"":" kit="+kit));
+    }
+    void probeStart(){tickCount=0;startedAt=LocalTime.now().format(CLOCK);System.out.println("[botsim] probe start match="+(match+1)+" map="+maps[match%maps.length]+" at="+startedAt);}
+    static double pct(long[] sorted,double p){return sorted.length==0?0:sorted[Math.max(0,(int)Math.ceil(p*sorted.length)-1)]/1e6;}
+    static String ms(double v){return String.format(Locale.ROOT,"%.2f",v);}
+    static String mb(long bytes){return String.format(Locale.ROOT,"%.1f",bytes/1048576.0);}
+    /** One row of server health at the end of a match, after the round's own cleanup (returnLobby discards the troops and arrows): the round's server tick bodies (START to END of MinecraftServer.tick),
+     *  the entities still alive in the world by class, the battle's own collections, and the heap after a forced GC. A failure is printed, never thrown: the probe must not end the soak it measures. */
+    void probeRow(GravesAndGlory.Battle b){
+        try{
+            int n=tickCount;long[] t=Arrays.copyOf(tickNanos,n);Arrays.sort(t);tickCount=0;
+            Map<String,Integer> kinds=new TreeMap<>();int entities=0;
+            for(var e:b.world.iterateEntities())if(!e.isRemoved()){entities++;kinds.merge(e.getClass().getSimpleName(),1,Integer::sum);}
+            StringBuilder kindText=new StringBuilder();for(var k:kinds.entrySet())kindText.append(kindText.length()==0?"":";").append(k.getKey()).append('=').append(k.getValue());
+            Runtime rt=Runtime.getRuntime();long before=rt.totalMemory()-rt.freeMemory();
+            System.gc();
+            long after=rt.totalMemory()-rt.freeMemory(),gcCount=0,gcMillis=0,direct=0;
+            for(GarbageCollectorMXBean g:ManagementFactory.getGarbageCollectorMXBeans()){gcCount+=Math.max(0,g.getCollectionCount());gcMillis+=Math.max(0,g.getCollectionTime());}
+            for(BufferPoolMXBean p:ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class))if(p.getName().equals("direct"))direct+=p.getMemoryUsed();
+            var c=b.campaign;
+            List<String> v=new ArrayList<>(List.of(String.valueOf(match+1),String.valueOf(maps[match%maps.length]),startedAt,LocalTime.now().format(CLOCK),String.valueOf(n),
+                ms(n==0?0:Arrays.stream(t).average().orElse(0)/1e6),ms(pct(t,.50)),ms(pct(t,.95)),ms(pct(t,.99)),ms(n==0?0:t[n-1]/1e6),
+                String.valueOf(Arrays.stream(t).filter(x->x>50_000_000L).count()),String.valueOf(Arrays.stream(t).filter(x->x>100_000_000L).count()),ms(b.server.getTickTime()),
+                mb(before),mb(after),mb(rt.maxMemory()),String.valueOf(gcCount),String.valueOf(gcMillis),String.valueOf(ManagementFactory.getThreadMXBean().getThreadCount()),
+                String.valueOf(ManagementFactory.getClassLoadingMXBean().getLoadedClassCount()),mb(direct),mb(ManagementFactory.getMemoryMXBean().getNonHeapMemoryUsage().getUsed()),
+                String.valueOf(b.world.getChunkManager().getLoadedChunkCount()),String.valueOf(entities),String.valueOf(b.units.size()),String.valueOf(b.shots.size()),
+                String.valueOf(b.points.size()),String.valueOf(Spec.POINTS.length),String.valueOf(b.squads.size()),String.valueOf(b.respawns.size()),String.valueOf(b.pings.size()),
+                String.valueOf(c.botRespawns.size()),String.valueOf(c.botRetreating.size()),String.valueOf(c.vacated.size()),kindText.toString()));
+            append(probeCsv,String.join(",",v)+"\n");
+            StringBuilder line=new StringBuilder("[botsim] probe");for(int i=0;i<PROBE_COLUMNS.length;i++)line.append(' ').append(PROBE_COLUMNS[i]).append('=').append(v.get(i));
+            System.out.println(line);
+        }catch(Throwable e){System.out.println("[botsim] probe failed: "+e);}
     }
     /** Recreates botsim/ if it vanished. A failed write is logged, not thrown, so the run still ends with its summary line. */
     static void append(Path file,String text){
