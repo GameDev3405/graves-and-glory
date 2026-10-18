@@ -2,14 +2,29 @@ package gg.gravesandglory;
 import net.minecraft.block.*;
 import net.minecraft.block.enums.SlabType;
 import net.minecraft.block.enums.WallShape;
+import net.minecraft.entity.EntityType;
+import net.minecraft.registry.Registries;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.*;
 import net.minecraft.world.Heightmap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.TreeMap;
 
 /** Authored terrain shared by world construction, navigation and the map. */
 public final class Arena {
     static final int Y=GravesAndGlory.R.floorY();
-    static void put(ServerWorld w,int x,int y,int z,Block b){w.setBlockState(new BlockPos(x,y,z),b.getDefaultState(),2);}
+    /** True while the arena build (column, finish) runs: its blocks are written with flags 2|16 (force state), so no neighbour shape update runs and clearing a block cannot break
+     *  the plant, lantern or crop that stood on or against it and spill it as an item (column clears each column bottom to top). The lobby (CampWorld) shares put and box and keeps plain 2. */
+    static boolean building;
+    static int flags(){return building?Block.NOTIFY_LISTENERS|Block.FORCE_STATE:Block.NOTIFY_LISTENERS;}
+    /** How many loose items the last finish found in the built area and discarded. */
+    static volatile int discarded;
+    /** The fences, walls and panes the build placed, in order (server thread only). A placement with flag 16 runs no shape update, so settleShapes connects them once the build is done. */
+    static final List<BlockPos> shaped=new ArrayList<>();
+    static boolean connects(Block b){return b instanceof HorizontalConnectingBlock||b instanceof WallBlock;}
+    static void note(BlockPos pos,Block b){if(building&&connects(b))shaped.add(pos);}
+    static void put(ServerWorld w,int x,int y,int z,Block b){var pos=new BlockPos(x,y,z);w.setBlockState(pos,b.getDefaultState(),flags());note(pos,b);}
     static void box(ServerWorld w,int x,int y,int z,int sx,int sy,int sz,Block b){for(int a=0;a<sx;a++)for(int h=0;h<sy;h++)for(int c=0;c<sz;c++)put(w,x+a,y+h,z+c,b);}
     public static double riverX(double z){return CampaignMaps.riverX(z);}
     public static boolean river(int x,int z){return CampaignMaps.river(x,z);}
@@ -41,7 +56,9 @@ public final class Arena {
         double k=.9+Math.min(.18,(height(x-1,z)-height(x+1,z))*.025);
         return 0xff000000|((int)((color>>16&255)*k)<<16)|((int)((color>>8&255)*k)<<8)|(int)((color&255)*k);
     }
-    public static void column(ServerWorld w,int x,int z){
+    public static void column(ServerWorld w,int x,int z){building=true;try{buildColumn(w,x,z);}finally{building=false;}}
+    static void buildColumn(ServerWorld w,int x,int z){
+        w.getChunk(x>>4,z>>4); // load it first: getTopY answers the world bottom for an unloaded chunk, and without shape updates nothing else has read this chunk yet
         int h=height(x,z),top=w.getTopY(Heightmap.Type.WORLD_SURFACE,x,z);
         for(int y=h+1;y<=top;y++)if(!w.getBlockState(new BlockPos(x,y,z)).isAir())put(w,x,y,z,Blocks.AIR);
         for(int y=Y-9;y<h-2;y++)put(w,x,y,z,Blocks.STONE);
@@ -57,7 +74,8 @@ public final class Arena {
         }
         if(Math.abs(x)==GravesAndGlory.R.arenaHalfX()||Math.abs(z)==GravesAndGlory.R.arenaHalfZ())box(w,x,h+1,z,1,6,1,Blocks.BARRIER);
     }
-    public static void finish(ServerWorld w){
+    public static void finish(ServerWorld w){building=true;try{finishBuild(w);settleShapes(w);discardLoose(w);}finally{building=false;shaped.clear();}}
+    static void finishBuild(ServerWorld w){
         w.setTimeOfDay(CampaignMaps.selected==3?11500:CampaignMaps.selected==2?6000:3000);
         for(var s:Spec.STRUCTURES)structure(w,s);
         clearDecks(w);
@@ -67,12 +85,26 @@ public final class Arena {
             boolean spruce=s.palette().equals("spruce");Block log=spruce?Blocks.SPRUCE_LOG:Blocks.OAK_LOG;
             BlockState leaf=(spruce?Blocks.SPRUCE_LEAVES:Blocks.OAK_LEAVES).getDefaultState().with(LeavesBlock.PERSISTENT,true);int r=s.width()/2,top=y+s.height();
             if(spruce)for(int dy=0;dy<s.height()-1;dy++){int ly=y+2+dy;int rr=Math.max(0,(int)Math.round(r*(1-dy/(double)(s.height()-1))+(dy%2==0?0:-.6)));
-                for(int dx=-rr;dx<=rr;dx++)for(int dz=-rr;dz<=rr;dz++)if(dx*dx+dz*dz<=rr*rr+1&&!(dx==0&&dz==0))w.setBlockState(new BlockPos(s.x()+dx,ly,s.z()+dz),leaf,2);}
-            else for(int dx=-r;dx<=r;dx++)for(int dy=-2;dy<=2;dy++)for(int dz=-r;dz<=r;dz++){double e=dx*dx/(double)(r*r)+dy*dy/4.5+dz*dz/(double)(r*r);if(e<=1.05&&Math.floorMod(dx*31+dy*17+dz*7+s.x(),11)!=0)w.setBlockState(new BlockPos(s.x()+dx,top-2+dy,s.z()+dz),leaf,2);}
-            box(w,s.x(),y,s.z(),1,spruce?s.height():s.height()-1,1,log);if(spruce)w.setBlockState(new BlockPos(s.x(),top,s.z()),leaf,2);
+                for(int dx=-rr;dx<=rr;dx++)for(int dz=-rr;dz<=rr;dz++)if(dx*dx+dz*dz<=rr*rr+1&&!(dx==0&&dz==0))w.setBlockState(new BlockPos(s.x()+dx,ly,s.z()+dz),leaf,flags());}
+            else for(int dx=-r;dx<=r;dx++)for(int dy=-2;dy<=2;dy++)for(int dz=-r;dz<=r;dz++){double e=dx*dx/(double)(r*r)+dy*dy/4.5+dz*dz/(double)(r*r);if(e<=1.05&&Math.floorMod(dx*31+dy*17+dz*7+s.x(),11)!=0)w.setBlockState(new BlockPos(s.x()+dx,top-2+dy,s.z()+dz),leaf,flags());}
+            box(w,s.x(),y,s.z(),1,spruce?s.height():s.height()-1,1,log);if(spruce)w.setBlockState(new BlockPos(s.x(),top,s.z()),leaf,flags());
         }else for(int dx=0;dx<s.width();dx++)for(int dz=0;dz<s.width();dz++)for(int dy=0;dy<s.height();dy++)if(dx+dz+dy<s.width()+s.height()-1)put(w,s.x()+dx,y+dy,s.z()+dz,(dx+dz)%3==0?Blocks.MOSSY_COBBLESTONE:Blocks.ANDESITE);}
         if(CampaignMaps.selected==1)for(int row=0;row<4;row++)box(w,-109+row*4,65,-152,3,2,3,Blocks.HAY_BLOCK);
         if(!Boolean.getBoolean("gravesandglory.noDressing"))MapDressing.dress(w); // off only in local A/B harness runs
+    }
+    /** Gives every fence, wall and pane the build placed the connections its neighbours imply, the state a placement with shape updates would have had, written without notifying anything around it. */
+    static void settleShapes(ServerWorld w){
+        for(var pos:shaped){var s=w.getBlockState(pos);if(!connects(s.getBlock()))continue;var n=Block.postProcessState(s,w,pos);if(n!=s&&!n.isAir())w.setBlockState(pos,n,flags());}
+    }
+    /** The safety net after a build: the item entities loaded in the built area are discarded and counted in discarded. Items in chunks that are no longer loaded are out of reach, which is why the
+     *  build itself writes without shape updates. */
+    static void discardLoose(ServerWorld w){
+        int hx=GravesAndGlory.R.worldHalfX(),hz=GravesAndGlory.R.worldHalfZ();
+        var found=w.getEntitiesByType(EntityType.ITEM,new Box(-hx,w.getBottomY(),-hz,hx+1,w.getTopY(),hz+1),e->true);
+        var kinds=new TreeMap<String,Integer>();
+        for(var e:found){kinds.merge(Registries.ITEM.getId(e.getStack().getItem()).getPath(),e.getStack().getCount(),Integer::sum);e.discard();}
+        discarded=found.size();
+        if(!found.isEmpty())System.out.println("[Graves and Glory] The arena build left "+found.size()+" loose items, discarded: "+kinds);
     }
     /** A deck is its planks only (x..x+width-1 by z..z+depth-1 from the footprint corner): above each deck cell, up to twelve blocks, are cleared, whatever else was built across it. */
     public static void clearDecks(ServerWorld w){for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge"))box(w,s.x()-s.width()/2,s.elevation()+1,s.z()-s.depth()/2,s.width(),12,s.depth(),Blocks.AIR);}
@@ -87,9 +119,9 @@ public final class Arena {
                 int wheelX=x+s.width(),wheelZ=z+s.depth()/2;for(int dy=-3;dy<=3;dy++)for(int dz=-3;dz<=3;dz++)if(Math.abs(dy*dy+dz*dz-9)<4||dy==0||dz==0)put(w,wheelX,y+2+dy,wheelZ+dz,Blocks.DARK_OAK_SLAB);
                 put(w,x+2,y,z-1,Blocks.BARREL);put(w,x+6,y,z-1,Blocks.HAY_BLOCK);
             }
-            case "farm" -> {for(int dx=0;dx<s.width();dx++)for(int dz=0;dz<s.depth();dz++){put(w,x+dx,ground,z+dz,dx%5==2?Blocks.WATER:Blocks.FARMLAND);if(dx%5!=2)w.setBlockState(new BlockPos(x+dx,y,z+dz),Blocks.WHEAT.getDefaultState().with(CropBlock.AGE,7),2);}for(int dx=0;dx<s.width();dx+=3){put(w,x+dx,y,z-1,Blocks.OAK_FENCE);put(w,x+dx,y,z+s.depth(),Blocks.OAK_FENCE);}}
+            case "farm" -> {for(int dx=0;dx<s.width();dx++)for(int dz=0;dz<s.depth();dz++){put(w,x+dx,ground,z+dz,dx%5==2?Blocks.WATER:Blocks.FARMLAND);if(dx%5!=2)w.setBlockState(new BlockPos(x+dx,y,z+dz),Blocks.WHEAT.getDefaultState().with(CropBlock.AGE,7),flags());}for(int dx=0;dx<s.width();dx+=3){put(w,x+dx,y,z-1,Blocks.OAK_FENCE);put(w,x+dx,y,z+s.depth(),Blocks.OAK_FENCE);}}
             case "breach" -> {for(int dz=0;dz<s.depth();dz++)if(Math.abs(dz-s.depth()/2)>(s.id().equals("breach")?5:3))box(w,x,y,z+dz,s.width(),Math.max(2,s.height()-Math.abs(dz-s.depth()/2)/2),1,Blocks.CRACKED_STONE_BRICKS);box(w,x+1,y,z,1,11,1,Blocks.DARK_OAK_FENCE);box(w,x+2,y+7,z,2,4,1,Blocks.CYAN_WOOL);}
-            case "bridge" -> {if(s.palette().equals("ford")){for(int dx=0;dx<s.width();dx++)for(int dz=0;dz<s.depth();dz++){int px=x+dx,pz=z+dz;boolean center=Math.abs(pz-s.z())<4;boolean wet=!center&&Math.abs(px-riverX(pz))<6;put(w,px,ground-1,pz,Blocks.STONE);put(w,px,ground,pz,wet?Blocks.WATER:Math.abs(px-riverX(pz))>8?Blocks.COARSE_DIRT:(dx+dz)%4==0?Blocks.MOSSY_COBBLESTONE:Blocks.ANDESITE);}break;}if(s.palette().equals("wood")){box(w,x,ground,z,s.width(),1,s.depth(),Blocks.SPRUCE_PLANKS);for(int row:new int[]{z-1,z+s.depth()})for(int dx=0;dx<s.width();dx++){int px=x+dx;if(dx%4==0)box(w,px,ground-3,row,1,4,1,Blocks.SPRUCE_LOG);else w.setBlockState(new BlockPos(px,ground,row),Blocks.SPRUCE_SLAB.getDefaultState().with(SlabBlock.TYPE,SlabType.TOP),2);if(wet(px,row))w.setBlockState(new BlockPos(px,y,row),Blocks.SPRUCE_FENCE.getDefaultState().with(FenceBlock.EAST,wet(px+1,row)).with(FenceBlock.WEST,wet(px-1,row)),2);}break;}box(w,x,ground,z,s.width(),1,s.depth(),Blocks.STONE_BRICKS);for(int row:new int[]{z-1,z+s.depth()})for(int a=0;a<s.width();a++){int px=x+a;if(!wet(px,row))continue;put(w,px,ground,row,Blocks.STONE_BRICKS);w.setBlockState(new BlockPos(px,y,row),Blocks.STONE_BRICK_WALL.getDefaultState().with(WallBlock.EAST_SHAPE,wet(px+1,row)?WallShape.LOW:WallShape.NONE).with(WallBlock.WEST_SHAPE,wet(px-1,row)?WallShape.LOW:WallShape.NONE).with(WallBlock.UP,a%8==0),2);if(a%8==0)put(w,px,y+1,row,Blocks.LANTERN);}for(int end:new int[]{x,x+s.width()-1})box(w,end,ground-4,z+1,1,4,s.depth()-2,stone);}
+            case "bridge" -> {if(s.palette().equals("ford")){for(int dx=0;dx<s.width();dx++)for(int dz=0;dz<s.depth();dz++){int px=x+dx,pz=z+dz;boolean center=Math.abs(pz-s.z())<4;boolean wet=!center&&Math.abs(px-riverX(pz))<6;put(w,px,ground-1,pz,Blocks.STONE);put(w,px,ground,pz,wet?Blocks.WATER:Math.abs(px-riverX(pz))>8?Blocks.COARSE_DIRT:(dx+dz)%4==0?Blocks.MOSSY_COBBLESTONE:Blocks.ANDESITE);}break;}if(s.palette().equals("wood")){box(w,x,ground,z,s.width(),1,s.depth(),Blocks.SPRUCE_PLANKS);for(int row:new int[]{z-1,z+s.depth()})for(int dx=0;dx<s.width();dx++){int px=x+dx;if(dx%4==0)box(w,px,ground-3,row,1,4,1,Blocks.SPRUCE_LOG);else w.setBlockState(new BlockPos(px,ground,row),Blocks.SPRUCE_SLAB.getDefaultState().with(SlabBlock.TYPE,SlabType.TOP),flags());if(wet(px,row))w.setBlockState(new BlockPos(px,y,row),Blocks.SPRUCE_FENCE.getDefaultState().with(FenceBlock.EAST,wet(px+1,row)).with(FenceBlock.WEST,wet(px-1,row)),flags());}break;}box(w,x,ground,z,s.width(),1,s.depth(),Blocks.STONE_BRICKS);for(int row:new int[]{z-1,z+s.depth()})for(int a=0;a<s.width();a++){int px=x+a;if(!wet(px,row))continue;put(w,px,ground,row,Blocks.STONE_BRICKS);w.setBlockState(new BlockPos(px,y,row),Blocks.STONE_BRICK_WALL.getDefaultState().with(WallBlock.EAST_SHAPE,wet(px+1,row)?WallShape.LOW:WallShape.NONE).with(WallBlock.WEST_SHAPE,wet(px-1,row)?WallShape.LOW:WallShape.NONE).with(WallBlock.UP,a%8==0),flags());if(a%8==0)put(w,px,y+1,row,Blocks.LANTERN);}for(int end:new int[]{x,x+s.width()-1})box(w,end,ground-4,z+1,1,4,s.depth()-2,stone);}
             case "base" -> {for(int dz:new int[]{0,s.depth()-5}){box(w,x,y,z+dz,5,s.height(),5,stone);box(w,x+5,y+2,z+dz+1,1,s.height()-4,3,cloth);for(int a=0;a<5;a+=2){put(w,x+a,y+s.height(),z+dz,stone);put(w,x+a,y+s.height(),z+dz+4,stone);}put(w,x+2,y+s.height(),z+dz+2,Blocks.SEA_LANTERN);}box(w,x,y+8,z+5,4,3,s.depth()-10,stone);box(w,x-3,ground,z-3,s.width()+6,1,s.depth()+6,Blocks.POLISHED_ANDESITE);}
             case "house", "barracks" -> {
                 boolean barracks=s.kind().equals("barracks");Block wall=barracks?stone:Blocks.OAK_PLANKS;

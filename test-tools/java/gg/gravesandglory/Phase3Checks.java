@@ -6,6 +6,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BannerBlockEntity;
+import net.minecraft.entity.EntityType;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.ScreenshotRecorder;
 import net.minecraft.entity.player.PlayerEntity;
@@ -49,6 +50,7 @@ public final class Phase3Checks implements ClientModInitializer {
         SUITES.put("pipeline",Pipeline::new);
         SUITES.put("studio",StudioChecks::new);
         SUITES.put("routes",Routes::new);
+        SUITES.put("arena",Rebuild::new);
     }
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed,broken;
@@ -533,6 +535,53 @@ public final class Phase3Checks implements ClientModInitializer {
             if(!routes.done)return;
             for(int n:MAPS){int got=routes.crossed.getOrDefault(n,0);report("p3-routes-map"+n,got==3,got+" of 3 crossings with 20 of 20 knights across");}
             finished=true;
+        }
+    }
+
+    /** The 0.4.0 soak, Finding 1: an arena rebuilt over an arena spilled loose items (a plant, lantern or crop whose support the build had cleared first).
+     *  Map 0 is built, then map 1 over it, on the same world, and the item entities loaded in the built area are counted after each finish:
+     *  p3-arena-items passes when the second count is 0 (the safety net in Arena.finish discards what is loaded); p3-arena-spill passes when the second finish found nothing
+     *  to discard, that is when the build itself spilled none (it writes without neighbour shape updates). */
+    static final class Rebuild implements Suite {
+        int stage,waited;volatile boolean switched,counted;volatile String before="",after="";volatile int firstSpill=-1,spill=-1,paneCount=-1,paneLone=-1;
+        @Override public int limit(){return 2400;}
+        @Override public void step(MinecraftClient c,int tick){
+            if(tick<20)return;
+            var b=GravesAndGlory.battle;
+            switch(stage){
+                case 0->{switched=false;server(c,x->{if(x.campaign.map!=0)x.campaign.switchMap(0);switched=true;});stage=1;waited=0;}
+                case 1->{
+                    if(switched&&b!=null&&b.ready&&b.campaign.map==0&&CampaignMaps.selected==0){counted=false;server(c,x->{before=items(x);firstSpill=Arena.discarded;counted=true;});stage=2;}
+                    else if(++waited>3000){report("p3-arena-items",false,"map 0 was not ready after "+waited+" ticks");stage=5;}
+                }
+                case 2->{if(counted){switched=false;server(c,x->{x.campaign.switchMap(1);switched=true;});stage=3;waited=0;}}
+                case 3->{
+                    if(switched&&b!=null&&b.ready&&b.campaign.map==1&&CampaignMaps.selected==1){counted=false;server(c,x->{after=items(x);spill=Arena.discarded;var pn=panes(x);paneCount=pn[0];paneLone=pn[1];counted=true;});stage=4;}
+                    else if(++waited>3000){report("p3-arena-items",false,"map 1 was not ready after "+waited+" ticks");stage=5;}
+                }
+                case 4->{if(counted){report("p3-arena-items",after.startsWith("0 "),"item entities loaded in the built area: "+before+" after the first build (map 0); "+after+" after map 1 was built over it");
+                    report("p3-arena-spill",spill==0,"loose items the safety net found and discarded: "+firstSpill+" at the first finish (map 0), "+spill+" at the second (map 1)");
+                    report("p3-arena-shapes",paneCount>0&&paneLone==0,"glass panes inside the structures after map 1 was built over map 0: "+paneCount+", with no connection: "+paneLone);stage=5;}}
+                case 5->{finish(c,"arena");stage=6;}
+                default->{}
+            }
+        }
+        /** The glass panes inside the footprints of the structures: {all, those touching nothing}. A pane that touches nothing renders as a post, which is what a build without shape updates leaves behind. Server thread. */
+        static int[] panes(GravesAndGlory.Battle b){
+            var w=b.world;int all=0,lone=0;
+            for(var s:Spec.STRUCTURES)for(int x=s.x()-s.width()/2;x<=s.x()+s.width()/2;x++)for(int z=s.z()-s.depth()/2;z<=s.z()+s.depth()/2;z++)for(int y=s.elevation();y<=s.elevation()+s.height()+3;y++){
+                var st=w.getBlockState(new BlockPos(x,y,z));
+                if(st.getBlock() instanceof net.minecraft.block.PaneBlock){all++;if(!st.get(Properties.NORTH)&&!st.get(Properties.EAST)&&!st.get(Properties.SOUTH)&&!st.get(Properties.WEST))lone++;}
+            }
+            return new int[]{all,lone};
+        }
+        /** The item entities loaded in the built area, with what they are: "N (id xCount, ...)". Server thread. */
+        static String items(GravesAndGlory.Battle b){
+            var w=b.world;int hx=GravesAndGlory.R.worldHalfX(),hz=GravesAndGlory.R.worldHalfZ();
+            var found=w.getEntitiesByType(EntityType.ITEM,new Box(-hx,w.getBottomY(),-hz,hx+1,w.getTopY(),hz+1),e->true);
+            var kinds=new TreeMap<String,Integer>();
+            for(var e:found)kinds.merge(net.minecraft.registry.Registries.ITEM.getId(e.getStack().getItem()).getPath(),e.getStack().getCount(),Integer::sum);
+            return found.size()+" "+kinds;
         }
     }
 }

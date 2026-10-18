@@ -27,7 +27,7 @@ final class MapDressing {
     static int hash(int x,int z){return Math.floorMod(x*734287+z*912931+x*z*17,100003);}
     int h(int x,int z){return Arena.height(x,z);}
     void put(int x,int y,int z,Block b){Arena.put(w,x,y,z,b);}
-    void set(int x,int y,int z,BlockState s){w.setBlockState(new BlockPos(x,y,z),s,2);}
+    void set(int x,int y,int z,BlockState s){var pos=new BlockPos(x,y,z);w.setBlockState(pos,s,Arena.flags());Arena.note(pos,s.getBlock());}
     /** A muster lane: the strip in front of each spawn where squads appear (GravesAndGlory spawn layout). */
     static boolean muster(int x,int z){for(int t=0;t<2;t++){var f=Spec.FACTIONS[t];int u=(x-f.spawnX())*(t==0?1:-1);if(u>=-2&&u<=24&&Math.abs(z-f.spawnZ())<=40)return true;}return false;}
     static boolean onStructure(int x,int z,int margin){for(var s:Spec.STRUCTURES)if(Math.abs(x-s.x())<=s.width()/2+margin&&Math.abs(z-s.z())<=s.depth()/2+margin)return true;return false;}
