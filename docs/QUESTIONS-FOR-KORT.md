@@ -167,3 +167,7 @@ Code facts the vision did not account for (from the draft): campaign battles cur
 - War Table home v4.2 approved. The focused order sheet is the enlarged sealed one and focus follows hover (Practice hovered: Skirmish drops to normal size with no seal, Practice grows and takes the seal); the menu gets animation and effects so it feels alive. Written into the UI spec and plan Task 5.
 - Title v3 (blocky) rejected: "Steve on a hill facing the battle, overlooking it, sword in the air; one unified hill, no close-up/far-away split". Next step is quick demos to choose from, staged in the game itself, before any long build.
 - Phase 4 spec questions: 1 yes (the escort variant is parked for now and will be revisited), 2 to 7 yes. Spec status moves from draft to approved; the Phase 4 plan is written once Phase 2's names exist in code.
+
+## Title demos ready (2026-10-18, afternoon)
+
+Six real in-game captures (no AI art) at `work/ui-concepts/title/demos/` and on the decision board: classic Steve on one built hill, diamond sword raised, a live 120-troop battle on the Rivergate bridge below, shaders on. Demos 1 to 5 raise the arm with a ten-line render hook (vanilla has no overhead pose); demo 6 is the best hookless swing frame. Pick one, with any notes on time of day, camera and how much battle. The real title adds the v2 lockup, menu, slow drift and the day/night clock rule on top of the chosen scene. UI plan Task 4 is re-planned around the pick.
