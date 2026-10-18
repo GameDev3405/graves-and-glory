@@ -25,7 +25,7 @@
 - Balance gate per House batch: the House's `<house>_normal` bot banner against the current best pure normal banner. 20 matches (10 per side), Normal bots, maps 0 to 4. The combined win rate must be between 40% and 60%.
 - Launch rules are unchanged from Phase 1: no launch while Kort is playing (run the process check first); use an isolated, disposable `GRAVES_ROADMAP_TEST_ROOT` or `GRAVES_ROADMAP_SERVER_ROOT` under the scratchpad; always pass `--offline`; `JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot"`.
 - Never publish, upload or push. Commit locally per task on branch `phase-2-houses`, cut from `main` after Phase 1 is merged.
-- Packet layout changes bump the channel id. Phase 2 moves `state_v5` to `state_v6` once (Task 3) with every Phase 2 field reserved, so later tasks do not change the layout.
+- Packet layout changes bump the channel id. Phase 2 bumps the state id once (Task 3) to the next unused number: `state_v8` if the UI plan (v7) has landed, else `state_v7`; the plan text says `state_v8` below with every Phase 2 field reserved, so later tasks do not change the layout.
 - UI uses the `DarkUi` tokens (charcoal, ivory, brass) and Marcellus headings. Team colour is drawn only through `DarkUi.teamMark/teamText/teamColor`. Key names come only through `HintText.expand` or `GravesAndGloryClient.hint`. Copy tone: grim but heroic, short, plain.
 - Deferred ideas go to `docs/PARKED.md` (append only).
 
@@ -470,7 +470,7 @@ Positions are always read by team index from rows 0 and 1. Colour, name and glyp
 - Modify: `GravesAndGlory.java`:
   - `ArmyHusk`, `ArmySkeleton` and `ArmyWither` implement `ArmyMob` and gain the daylight and water overrides;
   - spawning and stale cleanup go through `ArmyMobs`;
-  - new `Unit` fields; `STATE` becomes `state_v6`.
+  - new `Unit` fields; `STATE` becomes `state_v8`.
 - Modify: `Tactics.java`: `ranged()` replaces every `range()>3`; the attack branch goes through `Abilities`; the shield is raised based on the `shield` tag.
 - Modify: `Projectiles.java` (landing calls `Combat.resolve`) and `ArmyCards.java` (`ArmyMobs.portrait`).
 - Modify: `CommandMode.java` and `GravesAndGloryClient.java` (HUD House strip), `CampScreen.java` (`recruit` page with House tabs), `Campaign.java` (`roll:<house>`).
@@ -500,7 +500,7 @@ Positions are always read by team index from rows 0 and 1. Colour, name and glyp
 - Produces (state fields):
   - `Unit` gains `Set<String> tags`, `int stage`, `boolean temporary`, `long expiresAt`, `long stunnedUntil`, `boolean rose`, `double travelSinceAttack` and `long chargeHitAt`.
   - `Squad` gains `Map<String,Long> chargedAt`, set where Phase 1 plays the charge horn.
-  - `state_v6` layout (written now, filled later), after the Phase 1 fields: the side ids for teams 0 and 1 (2 strings); the own squad's trait count (byte), then `(house string, tier byte)` pairs; the commander `active` id (string), `readyInTicks` (int) and `activeForTicks` (int).
+  - `state_v8` layout (written now, filled later), after the Phase 1 fields: the side ids for teams 0 and 1 (2 strings); the own squad's trait count (byte), then `(house string, tier byte)` pairs; the commander `active` id (string), `readyInTicks` (int) and `activeForTicks` (int).
 - Produces (rolls):
   - Command `roll:<house>` (fieldable or not). It requires gold >= `rollCost`, uses `RosterMath.roll` with `pity[house]` and `addCopy`, adds shards from any dismantle, and refunds on a failed save.
   - Harness hook `Campaign.rollRng` (`RandomGenerator`, defaulting to a `world.random` adapter).
@@ -529,7 +529,7 @@ Positions are always read by team index from rows 0 and 1. Colour, name and glyp
 - [ ] **Step 2: Run suite `engine`; expect failures.**
 - [ ] **Step 3: Add `ArmyMobs`, `ArmyMob` and the daylight and water overrides, and replace the three entity switches with the factory.** The switches are in `Battle.spawn`, `ArmyCards.portrait` and the stale-entity filter. Spawn sets `Unit.tags`, adds the off-hand shield when the tags contain `shield`, and sets the custom name to the stage name (stage 1 is the troop name).
 - [ ] **Step 4: Add the damage type and `Combat.resolve`.** `Tactics` and `Projectiles` route all troop damage through it: `arrow` and damaging `bolt` shots resolve on landing, and 0-amount bolts stay visual.
-- [ ] **Step 5: Add the `Abilities` shell and the `ranged` column** (replacing every `spec.range()>3`). Add `Houses.recompute` and `traitSeconds`. Add `state_v6` and the HUD House strip: `DarkUi.houseMark(DrawContext g, String house, int tier, int x, int y)` draws the 16x16 glyph plus a Roman numeral next to the group panels.
+- [ ] **Step 5: Add the `Abilities` shell and the `ranged` column** (replacing every `spec.range()>3`). Add `Houses.recompute` and `traitSeconds`. Add `state_v8` and the HUD House strip: `DarkUi.houseMark(DrawContext g, String house, int tier, int x, int y)` draws the 16x16 glyph plus a Roman numeral next to the group panels.
 - [ ] **Step 6: Build the camp `recruit` page with House tabs, and add `roll:<house>`.**
   - A tab row of five glyph tabs.
   - A grid of the House's six cards. Each card shows the portrait from `ArmyMobs.portrait` with the stage name, the rarity label, stars as pips and the stage; unowned troops show LOCKED.
@@ -815,7 +815,7 @@ Every variant model attaches `gg_pennant` (box `[-2,-14,2,4,8,1]` on `body`, tex
   - Sweep: deals 70% to other enemies within 3, at most once per 60 ticks.
   - Brace works through counter C18c.
   - Riptide: speed x(1+value) while `isTouchingWater()` or `world.isRaining()`. Riptide hits apply Slowness I for `durationTicks`; when brine also applies, the longer duration wins.
-  - Warden Mark Prey: a raycast of 40 picks an enemy troop or commander, which takes x1.30 from the warden's troops and the warden for 240 ticks. The mark uses the vanilla `GLOWING` effect, so both teams see it. A team-only glow would need a client renderer, which `state_v6` does not support; see Spec gaps.
+  - Warden Mark Prey: a raycast of 40 picks an enemy troop or commander, which takes x1.30 from the warden's troops and the warden for 240 ticks. The mark uses the vanilla `GLOWING` effect, so both teams see it. A team-only glow would need a client renderer, which `state_v8` does not support; see Spec gaps.
 
 - [ ] **Step 1: Write suite `tidecallers`:**
   - `p2-tidecallers-mobs`: goals only; the drowned never throws tridents on its own; the evoker never summons; the ravager never roars outside its sweep.
