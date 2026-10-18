@@ -128,15 +128,14 @@ public final class Campaign {
         if(cmd.startsWith("progress:"))return progressCommand(p,cmd);
         if(cmd.startsWith("vote:")){try{int pick=Integer.parseInt(cmd.substring(5));if(!b.running&&onPad.containsKey(p.getUuid())&&pick>=0&&pick<Spec.MAPS.length){mapVotes.put(p.getUuid(),pick);notice(p.getUuid(),"Vote saved: "+Spec.MAPS[pick].name());}}catch(NumberFormatException ignored){}return true;}
         if(cmd.equals("camp:practice")){
-            if(b.running){notice(p.getUuid(),"Wait until the current battle finishes.");return true;}
-            if(social.group(p.getUuid()).size()>1||social.room(p.getUuid())!=null){notice(p.getUuid(),"Practice is solo. Use a private room to play with your party.");return true;}
-            closeParty();partyLeader=p.getUuid();party.add(p.getUuid());practice=true;size=1;fill=true;
-            for(var squad:b.squads.values())if(!squad.bot){squad.seated=squad.owner.equals(p.getUuid());if(squad.seated)squad.team=0;}b.startRound();return true;
+            String refused=soloRefusal(p.getUuid(),"Practice is solo. Use a private room to play with your party.");if(!refused.isEmpty()){notice(p.getUuid(),refused);return true;}
+            soloStart(p,null);return true;
         }
         if(cmd.startsWith("campaign:")){ // a Long March battle: solo, on its own map, which is built first if another map stands
             var row=Arrays.stream(Spec.CAMPAIGNBATTLES).filter(r->r.id().equals(cmd.substring(9))).findFirst().orElse(null);
-            if(row==null||row.map()<0||row.map()>=Spec.MAPS.length)return true;
-            String refused=battleRefusal(p.getUuid());if(!refused.isEmpty()){notice(p.getUuid(),refused);return true;}
+            if(row==null)return true;
+            if(row.map()<0||row.map()>=Spec.MAPS.length){notice(p.getUuid(),row.name()+" cannot start: its map is missing.");return true;}
+            String refused=soloRefusal(p.getUuid(),MARCH_SOLO);if(!refused.isEmpty()){notice(p.getUuid(),refused);return true;}
             pendingBattle=row;pendingCommander=p.getUuid();
             if(row.map()!=map){switchMap(row.map());notice(p.getUuid(),"Preparing "+Spec.MAPS[map].name()+" for "+row.name()+".");}
             return true;
@@ -202,20 +201,21 @@ public final class Campaign {
             if(practice&&party.size()>1){notice(p.getUuid(),"Practice is for one commander.");return true;}
             for(UUID id:party){var s=b.squads.get(id);if(s!=null&&profile(id).count(s.team)==0){notice(p.getUuid(),"Every commander needs at least one troop selected.");return true;}}
             for(UUID id:party){var s=b.squads.get(id);if(s!=null)s.seated=true;}
-            b.startRound();return true;
+            activeBattle=null;b.startRound();return true;
         }
         return false;
     }
-    /** Why a commander cannot march into a campaign battle now, or "" when they can. The march is solo, by the same party rules as practice. */
-    String battleRefusal(UUID id){
+    static final String MARCH_SOLO="The Long March is played solo. Leave your party or room first.";
+    /** Why a commander cannot start a solo battle (practice or a Long March battle) now, or "" when they can: one battle at a time, solo means no party and no room (soloRule says so), and a battlefield being prepared for someone else stays theirs. */
+    String soloRefusal(UUID id,String soloRule){
         if(b.running)return "Wait until the current battle finishes.";
-        if(social.group(id).size()>1||social.room(id)!=null)return "The Long March is played solo. Leave your party or room first.";
+        if(social.group(id).size()>1||social.room(id)!=null)return soloRule;
         if(!preparingRoom.isEmpty()||pendingBattle!=null&&!id.equals(pendingCommander))return "Another battlefield is being prepared. Try again shortly.";
         return "";
     }
-    /** Starts a Long March battle: the commander alone on Dawn, seated as practice seats them, against bots of the battle tier. */
-    void startBattle(ServerPlayerEntity p,Spec.CampaignBattlesRow row){
-        closeParty();partyLeader=p.getUuid();party.add(p.getUuid());practice=true;size=row.size();fill=true;
+    /** Starts a solo battle: the commander alone on Dawn against one bot. Practice passes no row; a Long March battle passes its row, which sets the bot tier and the lessons. */
+    void soloStart(ServerPlayerEntity p,Spec.CampaignBattlesRow row){
+        closeParty();partyLeader=p.getUuid();party.add(p.getUuid());practice=true;size=1;fill=true;
         for(var squad:b.squads.values())if(!squad.bot){squad.seated=squad.owner.equals(p.getUuid());if(squad.seated)squad.team=0;}
         activeBattle=row;b.startRound();
     }
@@ -250,10 +250,10 @@ public final class Campaign {
         returnLobby();
     }
     void tick(){
-        if(pendingBattle!=null){ // the map of a campaign battle is built: it starts unless something changed meanwhile
+        if(pendingBattle!=null&&b.ready){ // the map of a campaign battle is built: it starts unless something changed meanwhile
             var row=pendingBattle;UUID id=pendingCommander;pendingBattle=null;pendingCommander=null;
-            var host=b.server.getPlayerManager().getPlayer(id);String refused=host==null?"":battleRefusal(id);
-            if(host!=null&&refused.isEmpty()&&row.map()==map)startBattle(host,row);
+            var host=b.server.getPlayerManager().getPlayer(id);String refused=host==null?"":soloRefusal(id,MARCH_SOLO);
+            if(host!=null&&refused.isEmpty()&&row.map()==map)soloStart(host,row);
             else if(host!=null)notice(id,refused.isEmpty()?"The battlefield changed. "+row.name()+" did not start.":refused);
         }
         if(!preparingRoom.isEmpty()&&b.ready&&!b.running){
@@ -375,7 +375,7 @@ public final class Campaign {
     void tutorialDid(ServerPlayerEntity p,int step){
         UUID id=p.getUuid();if(tutorialStep(id)!=step)return;
         tutorial.put(id,step+1);if(step<3)return;
-        Profile pr=profile(id);if(pr.tutorialDone){notice(id,"Training complete. Its gold is paid only once.");return;}
+        Profile pr=profile(id);if(pr.tutorialDone){notice(id,"Training complete. The reward is paid once.");return;}
         pr.tutorialDone=true;pr.gold+=Spec.CAMPAIGN[0].rollCost();save(id);
         notice(id,"Training complete: +"+Spec.CAMPAIGN[0].rollCost()+" gold, enough to unlock a troop of your choice after the battle.");
     }
@@ -407,7 +407,7 @@ public final class Campaign {
     void startQuickMatch(){
         int selected=map,best=0;for(int i=0;i<Spec.MAPS.length;i++){final int index=i;int votes=(int)mapVotes.values().stream().filter(v->v==index).count();if(votes>best){best=votes;selected=i;}}
         if(selected!=map){switchMap(selected);padCountdown=20;for(UUID id:onPad.keySet())notice(id,"Preparing voted map: "+Spec.MAPS[selected].name()+".");return;}
-        padCountdown=-1;padMapRolled=false;practice=false;size=padSize();fill=true;activeRoom="";
+        padCountdown=-1;padMapRolled=false;practice=false;size=padSize();fill=true;activeRoom="";activeBattle=null;
         for(var squad:b.squads.values())if(!squad.bot)squad.seated=onPad.containsKey(squad.owner);
         for(UUID id:onPad.keySet()){var squad=b.squads.get(id);if(squad!=null)squad.team=onPad.get(id);notice(id,"Match starting with your whole group.");}
         mapVotes.clear();b.startRound();
@@ -457,7 +457,8 @@ public final class Campaign {
         }
     }
     String snapshot(ServerPlayerEntity p){
-        JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",JSON.toJsonTree(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("waiting",b.running&&(!b.squads.containsKey(p.getUuid())||!b.squads.get(p.getUuid()).seated));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("difficulty",difficulty);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",b.squads.containsKey(p.getUuid())&&b.squads.get(p.getUuid()).seated?Math.max(0,introUntil-b.time):0);j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("headline",headline);j.addProperty("tutorial",tutorialStep(p.getUuid()));JsonObject battle=new JsonObject();if(activeBattle!=null){battle.addProperty("id",activeBattle.id());battle.addProperty("name",activeBattle.name());battle.addProperty("briefing",activeBattle.briefing());battle.addProperty("reason",activeBattle.reason());}j.add("battle",battle);JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
+        JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",JSON.toJsonTree(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("waiting",b.running&&(!b.squads.containsKey(p.getUuid())||!b.squads.get(p.getUuid()).seated));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("difficulty",difficulty);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",b.squads.containsKey(p.getUuid())&&b.squads.get(p.getUuid()).seated?Math.max(0,introUntil-b.time):0);j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("headline",headline);j.addProperty("tutorial",tutorialStep(p.getUuid()));JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
+        JsonObject battle=new JsonObject();if(activeBattle!=null){battle.addProperty("id",activeBattle.id());battle.addProperty("name",activeBattle.name());battle.addProperty("briefing",activeBattle.briefing());battle.addProperty("reason",activeBattle.reason());}j.add("battle",battle); // the Long March battle being fought, or {}
         JsonObject partyJson=new JsonObject();boolean member=party.contains(p.getUuid());Long until=inviteUntil.get(p.getUuid());UUID inviter=invites.get(p.getUuid());
         partyJson.addProperty("open",partyLeader!=null);partyJson.addProperty("member",member);partyJson.addProperty("lead",leader(p));partyJson.addProperty("capacity",size*2);
         partyJson.addProperty("leader",partyLeader==null?"":name(partyLeader));
@@ -491,7 +492,7 @@ public final class Campaign {
                 var room=social.room(id);if(!b.ready)yield "Preparing the battlefield. Please wait.";
                 if(room.map!=map){preparingRoom=room.code;switchMap(room.map);yield "Preparing your chosen map. Your ready group will enter automatically; unready to cancel.";}
                 boolean empty=room.members.stream().anyMatch(m->profile(m).count(room.teams.get(m))==0);if(empty)yield "Every commander needs at least one troop in their selected faction.";
-                size=room.size;fill=room.fill;practice=false;activeRoom=room.code;
+                size=room.size;fill=room.fill;practice=false;activeRoom=room.code;activeBattle=null;
                 for(var squad:b.squads.values())if(!squad.bot){squad.seated=room.members.contains(squad.owner);if(squad.seated)squad.team=room.teams.get(squad.owner);}
                 social.begin(room);b.startRound();yield "Your room is entering battle together.";}
             default->"Unknown social action.";

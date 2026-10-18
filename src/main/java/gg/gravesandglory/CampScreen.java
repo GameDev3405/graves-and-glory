@@ -32,7 +32,7 @@ final class CampScreen extends ArmyScreen {
             var march=Spec.CAMPAIGNBATTLES[0];String go="campaign:"+march.id();
             var marchButton=CampaignClient.profile.campaignCleared<march.order()?primary("THE LONG MARCH / BATTLE "+march.order(),x,147,w,b->action(go)):button("The Long March / battle "+march.order(),x,147,w,b->action(go));marchButton.active=!running;
             primary("OPEN RECRUITMENT",x,181,w/2-7,b->page("recruit"));primary("PARTY WITH FRIENDS",x+w/2+7,181,w/2-7,b->page("friends"));
-            button("Practice / learn command",x,262,w/2-7,b->action("camp:practice"));button("Army / deployment",x+w/2+7,262,w/2-7,b->open("army"));
+            button("Practice / skirmish",x,262,w/2-7,b->action("camp:practice"));button("Army / deployment",x+w/2+7,262,w/2-7,b->open("army"));
             var bots=button(CampaignClient.botsLabel(),x,286,w/2-7,b->action("difficulty:"+CampaignClient.nextDifficulty()));bots.active=!running;
             button("Ready gates & map voting",x,350,w/2-7,b->page("match"));button("Daily contracts",x+w/2+7,350,w/2-7,b->page("contracts"));
         }else if(page.equals("recruit")){
@@ -90,7 +90,7 @@ final class CampScreen extends ArmyScreen {
             line(g,"Recruit an army. Gather your friends. Fight under one banner.",x,113,DarkUi.PAPER,w);
             line(g,"Quartermaster west / Recruiter east",x,131,DarkUi.MUTED,w);
             line(g,Progression.chapter(progress,p.unlocked.size(),Spec.TROOPS.length),x,218,DarkUi.GOLD,w);
-            line(g,"Practice teaches orders, formations, capture and reinforcements.",x,239,DarkUi.MUTED,w);
+            line(g,"Practice: a skirmish against one AI commander at the chosen difficulty.",x,239,DarkUi.MUTED,w);
             line(g,"Easy, Normal or Hard AI commanders.",x+w/2+7,292,DarkUi.MUTED,w/2-7);
             line(g,"War gates: stand together to ready; step off to cancel.",x,314,DarkUi.PAPER,w);
             line(g,"Local matches only. Internet matchmaking is on hold.",x,333,DarkUi.MUTED,w);

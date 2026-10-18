@@ -53,3 +53,9 @@ Kort pictures up to a thousand concurrent players a year out and wants the serve
 - Blight borrows vanilla indirect_magic to pass shields, so it also bypasses armour; the Phase 2 gravesandglory:troop damage type is where blight gets bypasses_shield without bypasses_armor.
 - Spawn-row centring and the Dusk mirror (GravesAndGlory.reinforce) are inline; a pure BattleMath row-offset helper would let BattleMathCheck pin the half-turn mirror.
 - Hard loses to Normal (6/20 after 5e) and the Dawn seat wins 75% of Normal mirrors; the next experiment is sheet-only (hard.flankLeastDefended=false, hard.chargeDistance=0) and waits for Kort's call.
+
+## The Long March leftovers (2026-10-18, Phase 1 Task 6 review)
+- campaignBattles.size is not honoured: a Long March battle is seated as practice, so it is one commander against one bot whatever the row says.
+- campaignBattles.difficulty is not checked by preflight; a tier that is not a botCommand id plays as Normal without a word.
+- campaignBattles.map is not checked by preflight; a bad index only stops the battle in game, with a notice to the player.
+- Three primary buttons on the camp home (THE LONG MARCH / BATTLE 1, OPEN RECRUITMENT, PARTY WITH FRIENDS); whether the other two step down while battle 1 is unwon is left for the UI pass.

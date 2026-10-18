@@ -158,7 +158,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             case 0->"Press "+menu.getBoundKeyLocalizedText().getString()+", choose a group and Move, then click the ground to send them.";
             case 1->"Press "+cycle.getBoundKeyLocalizedText().getString()+" to change formation. Shieldwall holds a line; Wedge breaks one.";
             case 2->"Press "+attack.getBoundKeyLocalizedText().getString()+" and aim at an enemy or a point to send your army in.";
-            default->"Recruit at your barracks lectern ("+MinecraftClient.getInstance().options.useKey.getBoundKeyLocalizedText().getString()+"). Trained troops march out from the held point nearest the fight.";
+            default->"Press "+MinecraftClient.getInstance().options.useKey.getBoundKeyLocalizedText().getString()+" at your barracks lectern to recruit. Trained troops march out from the held point nearest the fight.";
         };
     }
     /** The Long March lessons (battles whose sheet row teaches), one at a time, each naming the player's own key binding. The server advances them. The copy wraps; the panel grows a row per line. */

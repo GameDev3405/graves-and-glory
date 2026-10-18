@@ -40,6 +40,6 @@ final class Progression {
         s.claims.add(key);s.xp=Math.min(1_000_000,s.xp+xp);return new Grant(gold,xp,"Claimed reward: +"+gold+" gold / +"+xp+" XP"+(key.startsWith(SEASON+":")&&gold==0?" / title unlocked":""));}
     static int parse(String value){try{return Integer.parseInt(value);}catch(NumberFormatException e){return -1;}}
     static String reroll(State s){if(s.rerolled)return "Your free daily reroll is already used.";if(s.claims.contains("daily:2"))return "That contract is already claimed.";s.rerolled=true;return "Third contract changed to tactical orders. One free reroll per day.";}
-    static String chapter(State s,int unlocked,int total){if(s.totalBattles==0)return "1 / Learn command in practice";if(unlocked<total)return "2 / Recruit the launch roster";if(tier(s)<TIERS)return "3 / Complete the Founders chapter";return "Chapter complete / master your army and await the next chapter";}
+    static String chapter(State s,int unlocked,int total){if(s.totalBattles==0)return "1 / Learn command on The Long March";if(unlocked<total)return "2 / Recruit the launch roster";if(tier(s)<TIERS)return "3 / Complete the Founders chapter";return "Chapter complete / master your army and await the next chapter";}
     static LocalDate today(){return LocalDate.now(ZoneOffset.UTC);}
 }
