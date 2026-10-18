@@ -64,8 +64,10 @@ class RecruitmentScreen extends ArmyScreen {
         if(roster[i]+pending[i]>=listed)return "All "+listed+" of your banner are fielded or in training.";
         if(weight(true)+t.slotWeight()>GravesAndGlory.R.squadSize())return "Army and training queue are full.";
         if(gold<t.cost())return "You need "+(t.cost()-gold)+" more gold.";
-        return "Training time: "+t.trainingSeconds()+" seconds";
+        return trainingTime(t);
     }
+    /** The training time line: whole seconds without a decimal (4 seconds), others as the sheet gives them (3.5 seconds). */
+    static String trainingTime(Spec.TroopsRow t){double s=t.trainingSeconds();String n=s==Math.rint(s)?Long.toString(Math.round(s)):Double.toString(s);return "Training time: "+n+(n.equals("1")?" second":" seconds");}
     void update(){
         for(var c:controls){var t=Spec.TROOPS[c.index];c.train.active=trainable(t);c.disband.active=nearBarracks&&roster[c.index]>0;}
         var c=chosen();if(c!=null){recruit.active=c.train.active;disband.active=c.disband.active;recruit.setMessage(Text.literal("RECRUIT / "+Spec.TROOPS[selected].cost()+" GOLD"));}

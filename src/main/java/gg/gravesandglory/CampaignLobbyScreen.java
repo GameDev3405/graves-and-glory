@@ -22,7 +22,7 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
     String pickLine(){
         if(selectedUnit.isEmpty())return "No troop picked.";
         var chosen=ArmyCards.spec(selectedUnit);
-        return chosen==null?"Clear: pick a slot to empty it.":chosen.name()+" / "+chosen.rarity()+(chosen.slotWeight()>1?" / fills "+chosen.slotWeight()+" slots":"");
+        return chosen==null?"Clear: pick a slot to empty it.":chosen.name()+" / "+ArmyCards.rarityName(chosen)+(chosen.slotWeight()>1?" / fills "+chosen.slotWeight()+" slots":"");
     }
     String stateKey(){return CampaignClient.mode+CampaignClient.map+CampaignClient.fill+CampaignClient.difficulty+CampaignClient.partyKey+team+CampaignClient.profile.commander+CampaignClient.profile.owned.size()+CampaignClient.headline;}
     public void showTab(int value){tab=value;clearAndInit();}

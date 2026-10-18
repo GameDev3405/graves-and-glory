@@ -1,6 +1,7 @@
 package gg.gravesandglory;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.gui.tooltip.Tooltip;
@@ -18,6 +19,8 @@ final class ArmyCards {
     static final Map<String,MobEntity> portraits=new HashMap<>();static Object world;
     static Spec.TroopsRow spec(String id){return Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(id)).findFirst().orElse(null);}
     static Spec.HousesRow house(Spec.TroopsRow t){for(var h:Spec.HOUSES)if(h.id().equals(t.house()))return h;return null;}
+    /** A troop's rarity as a word: Common, Rare, Epic, Legendary. */
+    static String rarityName(Spec.TroopsRow t){return CommandMode.label(t.rarity());}
     /** Whether a troop's House can take the field in this build (houses.fieldable). */
     static boolean fieldable(Spec.TroopsRow t){var h=house(t);return h!=null&&h.fieldable();}
     /**
@@ -46,8 +49,9 @@ final class ArmyCards {
     static int size(MobEntity e,int size){return (int)Math.round(size*Math.min(1.25,1.95/Math.max(.6,Math.max(e.getHeight(),e.getWidth()))));}
     static final class Recruit extends ButtonWidget {
         final Spec.TroopsRow spec;boolean selected;
-        Recruit(Spec.TroopsRow spec,int x,int y,int w,PressAction action){super(x,y,w,78,Text.literal(spec.name()),action,DEFAULT_NARRATION_SUPPLIER);this.spec=spec;var h=house(spec);
-            setTooltip(Tooltip.of(Text.literal(spec.name()+" / "+(h==null?spec.house():h.name())+" "+spec.rarity()+" / "+CommandMode.label(spec.group())+" / "+spec.health()+" health / "+spec.damage()+" damage"+(fieldable(spec)?"":" / cannot be fielded yet"))));}
+        Recruit(Spec.TroopsRow spec,int x,int y,int w,PressAction action){super(x,y,w,78,Text.literal(spec.name()),action,DEFAULT_NARRATION_SUPPLIER);this.spec=spec;setTooltip(Tooltip.of(Text.literal(describe(spec))));}
+        /** The card's tooltip: name, House and rarity, group, health and damage, and whether the House cannot be fielded yet. */
+        static String describe(Spec.TroopsRow spec){var h=house(spec);return spec.name()+" / "+(h==null?spec.house():h.name())+" "+rarityName(spec)+" / "+CommandMode.label(spec.group())+" / "+spec.health()+" health / "+spec.damage()+" damage"+(fieldable(spec)?"":" / cannot be fielded yet");}
         @Override public void renderButton(DrawContext g,int mx,int my,float delta){
             var c=MinecraftClient.getInstance();selected=c.currentScreen instanceof CampaignLobbyScreen lobby&&lobby.selectedUnit.equals(spec.id());
             int x=getX(),y=getY();DarkUi.frame(g,x,y,width,height);
@@ -63,13 +67,23 @@ final class ArmyCards {
     }
     static final class Deployment extends ButtonWidget {
         final int index;String unit=RosterMath.EMPTY;
+        /**
+         * The word under a filled slot's weapon. An Epic or Legendary names its rarity (drawn in gold; its ^ slots follow): the whole
+         * word when it fits the room, else its first six letters and a full stop, so LEGENDARY reads LEGEND. in the default font's 51 px
+         * slot. Other troops show the first three letters of their group (INF, RAN, SUP).
+         */
+        static String slotLabel(Spec.TroopsRow spec,TextRenderer font,int room){
+            if(spec.slotWeight()<=1){String group=spec.group().toUpperCase(Locale.ROOT);return group.substring(0,Math.min(3,group.length()));}
+            String rarity=spec.rarity().toUpperCase(Locale.ROOT);
+            return rarity.length()<=6||font.getWidth(rarity)<=room?rarity:rarity.substring(0,6)+".";
+        }
         Deployment(int index,int x,int y,PressAction action){super(x,y,51,32,Text.literal("Empty banner slot "+(index+1)),action,DEFAULT_NARRATION_SUPPLIER);this.index=index;}
         void setUnit(String id){unit=id;var spec=spec(id);setMessage(Text.literal("Slot "+(index+1)+": "+(spec!=null?spec.name():RosterMath.MARKER.equals(id)?"held by the unit before it":"Empty")));setTooltip(Tooltip.of(getMessage()));}
         @Override public void renderButton(DrawContext g,int mx,int my,float delta){
             int x=getX(),y=getY();var c=MinecraftClient.getInstance();var spec=spec(unit);boolean held=RosterMath.MARKER.equals(unit);
             g.fillGradient(x,y,x+width,y+height,spec!=null?0xff36302b:held?0xff2e2924:0xff19171d,0xff18151b);g.drawBorder(x,y,width,height,isHovered()||isFocused()?DarkUi.GOLD:DarkUi.EDGE);
             g.drawText(c.textRenderer,String.format("%02d",index+1),x+3,y+3,0xff7f735f,false);
-            if(spec!=null){g.drawItem(new ItemStack(Registries.ITEM.get(new Identifier(spec.weapon()))),x+width/2-8,y+4);boolean wide=spec.slotWeight()>1;String label=wide?spec.rarity():CommandMode.label(spec.group());label=label.substring(0,Math.min(wide?6:3,label.length())).toUpperCase(); // an Epic or Legendary names its rarity in gold (its ^ slots follow); others their group, as before
+            if(spec!=null){g.drawItem(new ItemStack(Registries.ITEM.get(new Identifier(spec.weapon()))),x+width/2-8,y+4);boolean wide=spec.slotWeight()>1;String label=slotLabel(spec,c.textRenderer,width-4);
                 g.drawCenteredTextWithShadow(c.textRenderer,label,x+width/2,y+23,wide?DarkUi.GOLD:DarkUi.PAPER);}
             else if(held){if(index%5!=0)g.fill(x-3,y+height/2-1,x,y+height/2+1,DarkUi.GOLD);g.drawCenteredTextWithShadow(c.textRenderer,"^",x+width/2,y+13,DarkUi.GOLD);} // a slot of the Epic or Legendary before it
             else g.drawCenteredTextWithShadow(c.textRenderer,"+",x+width/2,y+13,DarkUi.MUTED);
