@@ -26,7 +26,7 @@ only a legacy Bannerbound world exists, it is copied before opening; the origina
 is retained. Close that world normally before upgrading, keep a backup, and allow
 disk space for the copy. If both world folders exist, the current world wins.
 
-Collect soldiers, arrange a twenty-unit army and lead it across four large fantasy battlefields inside Minecraft: Java Edition. Play 1vAI practice, 1v1, 2v2, 3v3 or 4v4, with optional bots filling empty team slots.
+Collect soldiers, arrange a twenty-unit army and lead it across five large fantasy battlefields inside Minecraft: Java Edition. Play 1vAI practice, 1v1, 2v2, 3v3 or 4v4, with optional bots filling empty team slots.
 
 ## Camp, friends and permanent armies
 
@@ -46,7 +46,7 @@ Classes boost matching troops: Vanguard grants infantry 20% health and 10% damag
 
 ## Four purposeful battlefields
 
-Every playable map is 700 by 500 blocks, with three objectives. Roads connect settlements, bases and river crossings; broad approaches, flanking routes, hills and woods offer different positions.
+Every playable map is 700 by 500 blocks, with three objectives (Kingsfield Crossroads has five). Roads connect settlements, bases and river crossings; broad approaches, flanking routes, hills and woods offer different positions.
 
 - Rivergate Valley: a river settlement with mill, farms, market, customs buildings, trade crossing and shrine.
 - Ironhold Siege: a breached fortress, curtain walls, supply barn, garrison and flanking military roads.
