@@ -65,6 +65,9 @@ export JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot"; G=$
 cd /c/Users/kortt/Melty/bannerbound
 export GRAVES_ROADMAP_TEST_ROOT="$(cygpath -m "$PWD")/work/p3/<first-suite>-$(date +%H%M%S)"
 mkdir -p "$GRAVES_ROADMAP_TEST_ROOT"/{run,evidence,runtime}
+printf 'pauseOnLostFocus:false
+onboardAccessibility:false
+' > "$GRAVES_ROADMAP_TEST_ROOT/run/options.txt"   # a fresh root otherwise idles on the first-run accessibility screen (Phase 3 Task 1 finding; Phase3Checks also closes it)
 GRAVES_PHASE3_CHECKS=<list> "$G" runClient --offline -PcampaignChecks --init-script test-tools/isolated-checks.gradle --args="--gameDir $GRAVES_ROADMAP_TEST_ROOT/run"
 grep -E "^(pass|fail) " "$GRAVES_ROADMAP_TEST_ROOT/evidence/local-checks.txt"; grep "\[p3\]" "$GRAVES_ROADMAP_TEST_ROOT/run/logs/latest.log"; ls "$GRAVES_ROADMAP_TEST_ROOT/run/screenshots"
 ```
