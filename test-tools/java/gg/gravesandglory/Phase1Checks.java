@@ -1142,6 +1142,10 @@ public final class Phase1Checks implements ClientModInitializer {
         // Written by both threads. A negative stage is a hand-off: the client waits for the server task it sent to set the next stage.
         volatile int stage;volatile UUID player;
         volatile boolean hungerOn,hungerDone,routSupport,keepRespawn,fiveReady;volatile int hungerSets,hungerOk;volatile String hungerWrong="",fixture="";
+        volatile int lessonStep=3; // the lesson keepLesson pins: 3, the longest, two lines, so the card grows; the cache check also pins 2
+        // p1-ui-hud-cache and p1-ui-hud-guard (fix round 1), client thread
+        int cacheW,cacheF,sameWraps=-1,stepWraps=-1,reloadWraps=-1,guardF;boolean viewsSame,guardStopped;Object[] views;String lessonBefore="",guardWhy="";
+        java.util.concurrent.CompletableFuture<Void> reloading;
         // server thread
         long hungerStart=-1;final List<GravesAndGlory.Unit> pair=new ArrayList<>();
         // client thread
@@ -1242,7 +1246,7 @@ public final class Phase1Checks implements ClientModInitializer {
 
         public void step(MinecraftClient c,int tick){
             if(tick>9000&&!finished){report("p1-ui-hud-timeout",false,"stuck in stage "+stage);end(c);return;}
-            if(keepLesson)CampaignClient.tutorial=3; // the longest lesson, two lines, so the card grows
+            if(keepLesson)CampaignClient.tutorial=lessonStep;
             if(Math.abs(stage)>=2&&stage<99&&c.currentScreen!=null)c.setScreen(null);
             switch(stage){
                 case 0->{
@@ -1368,8 +1372,48 @@ public final class Phase1Checks implements ClientModInitializer {
                         boolean clear=r.containsKey("seal-0")&&r.containsKey("seal-4")&&!meets(r.get("seal-0"),r.get("dawn-boss"))&&!meets(r.get("seal-4"),r.get("dusk-boss"));
                         shot(c,"ui-hud-five-seals");
                         report("p1-ui-seals-five",xs.equals(List.of(411,439,467,495,523))&&clear,"map "+CampaignClient.map+": seals "+ss+"; seal-0 "+box(r.get("seal-0"))+" and dawn-boss "+box(r.get("dawn-boss"))+", seal-4 "+box(r.get("seal-4"))+" and dusk-boss "+box(r.get("dusk-boss")));
-                        reportBuild();seen=0;end(c);
+                        reportBuild();seen=0;stage=80;
                     }else if(seen==0&&tick-waitFrom>2400){reportBuild();report("p1-ui-seals-five",false,"no five-point battle 2400 ticks after the request (owners "+GravesAndGloryClient.owners.length+", server ready "+fiveReady+")");end(c);}
+                }
+                case 80->{keepLesson=true;lessonStep=3;waitFrom=tick;stage=81;} // p1-ui-hud-cache: lesson 4 pinned
+                case 81->{ // after 10 ticks lesson 4's wrap is cached: the next 40 frames wrap nothing and keep the same read-back views
+                    if(tick-waitFrom>=10&&BattleHud.rects().containsKey("lesson")){cacheW=BattleHud.wraps;cacheF=BattleHud.frames;lessonBefore=BattleHud.texts().get("lesson");views=new Object[]{BattleHud.rects(),BattleHud.texts(),BattleHud.cards(),BattleHud.seals()};waitFrom=tick;stage=82;}
+                    else if(tick-waitFrom>200)lateFail(c,"the lesson card was not drawn 200 ticks after lesson 4 was pinned");
+                }
+                case 82->{
+                    if(BattleHud.frames-cacheF>=40){sameWraps=BattleHud.wraps-cacheW;viewsSame=views[0]==BattleHud.rects()&&views[1]==BattleHud.texts()&&views[2]==BattleHud.cards()&&views[3]==BattleHud.seals();
+                        cacheW=BattleHud.wraps;cacheF=BattleHud.frames;lessonStep=2;waitFrom=tick;stage=83;}
+                    else if(tick-waitFrom>200)lateFail(c,"40 HUD frames did not pass in 200 ticks ("+(BattleHud.frames-cacheF)+" did)");
+                }
+                case 83->{ // lesson 3 pinned: one wrap for the new copy over the next 40 frames
+                    if(tick-waitFrom>=10&&BattleHud.frames-cacheF>=40&&BattleHud.texts().containsKey("lesson")&&!BattleHud.texts().get("lesson").equals(lessonBefore)){stepWraps=BattleHud.wraps-cacheW;stage=84;}
+                    else if(tick-waitFrom>200)lateFail(c,"lesson 3 was not drawn 200 ticks after it was pinned");
+                }
+                case 84->{ // p1-ui-hud-guard: an atlas without hud/spine, as a resource pack's could be, must stop the HUD and not the client
+                    try{byte[] json=atlasWithout(c,"hud/spine").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                        UiTex.load(id->id.equals(UiTex.ATLAS)?Optional.of(new net.minecraft.resource.Resource(null,()->new java.io.ByteArrayInputStream(json))):Optional.empty());
+                    }catch(Exception e){lateFail(c,"could not write an atlas without hud/spine: "+e);return;}
+                    guardF=BattleHud.frames;waitFrom=tick;stage=85;
+                }
+                case 85->{ // 10 ticks on that atlas, then a full resource reload (F3+T's), which reads the real atlas again
+                    if(tick-waitFrom>=10){
+                        guardStopped=!UiTex.has("hud/spine")&&BattleHud.frames==guardF&&BattleHud.rects().isEmpty()&&BattleHud.cards().isEmpty();
+                        guardWhy="with hud/spine gone from the atlas ("+UiTex.count()+" textures) the client ran on and the HUD drew "+(BattleHud.frames-guardF)+" whole frames in 10 ticks, leaving "+BattleHud.rects().size()+" rects";
+                        cacheW=BattleHud.wraps;reloading=c.reloadResources();waitFrom=tick;stage=86;
+                    }
+                }
+                case 86->{ // the step stops while the reload's overlay is up
+                    if(reloading.isDone()){guardF=BattleHud.frames;waitFrom=tick;stage=87;}
+                    else if(tick-waitFrom>1200)lateFail(c,"the resource reload had not finished 1200 ticks after it began");
+                }
+                case 87->{
+                    if(tick-waitFrom>=10){
+                        boolean back=!reloading.isCompletedExceptionally()&&UiTex.has("hud/spine")&&BattleHud.frames>guardF&&BattleHud.rects().containsKey("spine")&&BattleHud.rects().containsKey("lesson");
+                        reloadWraps=BattleHud.wraps-cacheW;
+                        report("p1-ui-hud-guard",guardStopped&&back,guardWhy+"; after the resource reload the atlas has "+UiTex.count()+" textures and the HUD drew "+(BattleHud.frames-guardF)+" frames in 10 ticks with the spine "+box(BattleHud.rects().get("spine"))+" and the lesson "+box(BattleHud.rects().get("lesson")));
+                        report("p1-ui-hud-cache",sameWraps==0&&viewsSame&&stepWraps==1&&reloadWraps==1,"lesson 4 held for 40 frames: "+sameWraps+" wraps (wanted 0), the same read-back views="+viewsSame+"; lesson 3 for 40 frames: "+stepWraps+" wrap (wanted 1); after the resource reload: "+reloadWraps+" (wanted 1)");
+                        keepLesson=false;lessonStep=3;CampaignClient.tutorial=-1;end(c);
+                    }
                 }
                 case 99->{stage=100;finish(c,"ui-hud");}
                 default->{}
@@ -1390,6 +1434,17 @@ public final class Phase1Checks implements ClientModInitializer {
             smallWhy+=(smallWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": canvas "+cw+"x"+ch+" (k "+UiCanvas.k()+"), "+r.size()+" rects, cards "+BattleHud.cards().stream().map(d->d.group()+" "+d.y()).toList()+", ability "+box(r.get("ability"))+", lesson "+box(r.get("lesson"))+", respawn "+box(r.get("respawn"))+", spine "+box(r.get("spine"))+", hotbar "+box(hotbar)+", hearts "+box(hearts)+(bad.isEmpty()?", every rect inside and apart":", WRONG: "+String.join("; ",bad.subList(0,Math.min(6,bad.size()))));
         }
 
+        /** The real atlas JSON with one texture left out. */
+        static String atlasWithout(MinecraftClient c,String name)throws java.io.IOException{
+            try(var reader=c.getResourceManager().getResource(UiTex.ATLAS).orElseThrow().getReader()){
+                JsonObject atlas=com.google.gson.JsonParser.parseReader(reader).getAsJsonObject();atlas.getAsJsonObject("textures").remove(name);return atlas.toString();
+            }
+        }
+        /** p1-ui-hud-cache or p1-ui-hud-guard could not finish: both fail, the real atlas and the HUD come back, and the suite ends. */
+        void lateFail(MinecraftClient c,String why){
+            report("p1-ui-hud-cache",false,why);report("p1-ui-hud-guard",false,why);
+            UiTex.load(c.getResourceManager());BattleHud.RELOADER.reload(c.getResourceManager());keepLesson=false;lessonStep=3;CampaignClient.tutorial=-1;end(c);
+        }
         /** Puts the window, the selection and every forced value back; p1-ui-hud-suite follows once the window has settled. */
         void end(MinecraftClient c){
             finished=true;keepLesson=false;keepRespawn=false;routSupport=false;hungerOn=false;watchHunger=false;watchBuild=false;CommandMode.selected="all";

@@ -29,6 +29,8 @@ public final class BattleHud {
     public static int foodSkipped;
     /** Frames the battle HUD has drawn. */
     public static int frames;
+    /** Times the lesson copy was wrapped: once per new copy or style, and once more after a resource reload. */
+    public static int wraps;
 
     // What the last frame drew: filled in place every frame, read through the views below.
     private static final List<CardDraw> cardsDrawn=new ArrayList<>();
@@ -250,7 +252,7 @@ public final class BattleHud {
     static List<String> wrapped(TextRenderer font,String copy,Style style){
         if(!copy.equals(wrappedCopy)||!style.equals(wrappedStyle)){
             wrappedLines=font.getTextHandler().wrapLines(copy,GravesAndGloryClient.LESSON_TEXT_WIDTH,style).stream().map(StringVisitable::getString).toList();
-            wrappedJoined=String.join(" ",wrappedLines);wrappedCopy=copy;wrappedStyle=style;
+            wrappedJoined=String.join(" ",wrappedLines);wrappedCopy=copy;wrappedStyle=style;wraps++;
         }
         return wrappedLines;
     }
