@@ -51,6 +51,15 @@ Each item says what was decided in the meantime so work could continue.
    did not mirror on Kingsfield (Dusk won 16/18 there). Reruns are in progress
    (Task 5c). Hard still sits at 45% against Normal; the flanking question in
    item 3 stands.
+   Update 03:40: the health offset did nothing (Dawn 10/10, knights killing
+   revenants 3.3 to 1, same as before). The real cause is a mechanic: knights
+   in block formation raise the shield whenever an enemy is within 6 blocks and
+   keep swinging while blocking, which a player can never do, so every melee is
+   a free full frontal block. Task 5d: in block formation the shield is up only
+   on the approach and drops while the knight is in reach and swinging
+   (Shieldwall keeps the full brace); and blight now ignores shields as your
+   unit identity spec says. Reruns follow. Note for Phase 2: when the Risen
+   becomes a zombie it gains 2 natural armour, so the +10% health must go then.
 
 ## Builds to try
 
@@ -93,3 +102,12 @@ Recommended answer in brackets (planner and controller agree). Work follows the 
 5. Existing worlds rebuild the camp and the maps by themselves on first load of the new build. [Yes]
 6. Leave the bases' barracks and store road clips for Phase 4, recorded in PARKED. [Yes]
 Risk the planner named: agent-built pieces can look boxy; per-piece studio screenshots are the early catch, and the final gate is Kort's screenshot review.
+
+## UI spec questions (2026-10-18, docs/superpowers/specs/2026-10-18-ui-design.md)
+
+Recommended answer in brackets. The plan (docs/superpowers/plans/2026-10-18-ui-plan.md, 8 tasks) starts only after you have graded v4.1 and the title and after Phase 1 Tasks 6 and 7 land; it follows the recommendations until you say otherwise.
+1. Our screens size themselves from the window (2x at 1080p) and ignore a larger GUI Scale so the pixel art stays sharp; hearts and hotbar keep your GUI Scale. [Yes; forcing GUI Scale 2 on everything would shrink vanilla text for people who need it bigger]
+2. Night title by the computer's clock (19:00 to 06:00), or day only for now? [By the clock; the night painting exists and it costs one capture]
+3. Recruit banners say "Dawn Covenant" and "Dusk Legion" until Phase 2, or Gilded Order and Graveborn now? [Keep the faction names until the Houses exist, so nothing on screen promises what is not there]
+4. The minimap leaves the battle HUD; M opens the full map. [Yes; it is what the approved Iron Ledger mock shows]
+5. With food pinned full, players heal slowly (1 heart every 8 s). Keep, or no natural healing? [Keep; without it a commander who survives a fight never recovers, and Mend is Dawn-only]
