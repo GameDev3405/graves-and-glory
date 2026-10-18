@@ -128,11 +128,16 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         CompletableFuture.supplyAsync(()->{NativeImage image=new NativeImage(281,201,false);for(int x=0;x<281;x++)for(int z=0;z<201;z++){int col=Arena.mapColor((int)((x-140)*2.5),(int)((z-100)*2.5));image.setColor(x,z,(col&0xff00ff00)|((col>>16)&255)|((col&255)<<16));}return image;}).thenAccept(image->c.execute(()->{if(generation!=CampaignMaps.selected){image.close();preparingMap=false;return;}mapTexture=c.getTextureManager().registerDynamicTexture("gravesandglory_map",new NativeImageBackedTexture(image));}));
     }
     static int factionColor(int t){return t<0?0xffc5cad1:t==0?0xff57d9ee:0xffc58bff;}
+    // The point arrays refill with the next state packet after a map switch, so until then they can be shorter or longer than Spec.POINTS.
+    static boolean contestedAt(int i){var a=contested;return i>=0&&i<a.length&&a[i];}
+    static int ownerAt(int i){var a=owners;return i>=0&&i<a.length?a[i]:-1;}
+    static int progressAt(int i){var a=progress;return i>=0&&i<a.length?a[i]:0;}
+    static int challengerAt(int i){var a=challengers;return i>=0&&i<a.length?a[i]:-1;}
     static void panel(DrawContext g,int x,int y,int w,int h){DarkUi.frame(g,x,y,w,h);}
     static void map(DrawContext g,int x,int y,int w,int h,boolean labels){
         if(mapTexture!=null)g.drawTexture(mapTexture,x,y,w,h,0f,0f,281,201,281,201);else g.fill(x,y,x+w,y+h,0xff34473b);
         g.fill(x,y,x+w,y+h,0x66303c39);
-        for(int i=0;i<Spec.POINTS.length;i++){var p=Spec.POINTS[i];int px=x+(p.x()+350)*w/700,pz=y+(p.z()+250)*h/500;g.fill(px-4,pz-4,px+5,pz+5,0xcc101722);g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,p.id(),px-2,pz-3,factionColor(i<owners.length?owners[i]:-1));if(contested[i])g.drawBorder(px-6,pz-6,13,13,0xffffaa55);if(progress[i]>0)g.fill(px-5,pz+5,px-5+10*progress[i]/p.captureSeconds(),pz+7,factionColor(challengers[i]));if(labels)g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,p.name(),px-22,pz+8,WHITE);}
+        var pts=Spec.POINTS;for(int i=0;i<pts.length;i++){var p=pts[i];int px=x+(p.x()+350)*w/700,pz=y+(p.z()+250)*h/500;g.fill(px-4,pz-4,px+5,pz+5,0xcc101722);g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,p.id(),px-2,pz-3,factionColor(ownerAt(i)));if(contestedAt(i))g.drawBorder(px-6,pz-6,13,13,0xffffaa55);if(progressAt(i)>0)g.fill(px-5,pz+5,px-5+10*progressAt(i)/p.captureSeconds(),pz+7,factionColor(challengerAt(i)));if(labels)g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,p.name(),px-22,pz+8,WHITE);}
         for(Marker m:markers){int px=x+(int)((m.x()+350)*w/700),pz=y+(int)((m.z()+250)*h/500);int color=m.fighting()?0xffff995d:m.own()?0xfff5e2a8:0xff6ddfe9;g.fill(px-1,pz-1,px+2,pz+2,color);if(m.fighting())g.fill(px-3,pz-3,px+4,pz-2,color);}
         for(var group:CommandMode.groups){int gx=x+(int)((group.cx()+350)*w/700),gz=y+(int)((group.cz()+250)*h/500);boolean selected=CommandMode.selected.equals("all")||CommandMode.selected.equals(group.id());
             if(selected){int dx=x+(int)((group.x()+350)*w/700),dz=y+(int)((group.z()+250)*h/500);for(int k=0;k<=20;k++){int lx=gx+(dx-gx)*k/20,lz=gz+(dz-gz)*k/20;g.fill(lx,lz,lx+1,lz+1,GOLD);}g.drawBorder(dx-3,dz-3,7,7,GOLD);}
@@ -174,7 +179,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         if(!battleActive()){campHud(g,w,h);g.getMatrices().pop();return;}
         if(CampaignClient.cinematic()){CampaignClient.hud(g,w,h);g.getMatrices().pop();return;}
         panel(g,w/2-175,7,350,37);g.drawCenteredTextWithShadow(font,"DAWN "+dawn+" / "+GravesAndGlory.R.winScore()+"  | "+String.format("%d:%02d",CommandMode.seconds/60,CommandMode.seconds%60)+" |  DUSK "+dusk+" / "+GravesAndGlory.R.winScore(),w/2,14,GOLD);
-        int shown=Math.min(Spec.POINTS.length,owners.length),step=330/Math.max(1,shown);for(int i=0;i<shown;i++)g.drawTextWithShadow(font,font.trimToWidth(Spec.POINTS[i].id()+": "+(contested[i]?"Contested":progress[i]>0?"Capturing":owners[i]<0?"Neutral":owners[i]==0?"Dawn":"Dusk"),step-4),w/2-165+i*step,29,factionColor(owners[i]));
+        var pts=Spec.POINTS;int shown=pts.length,step=330/Math.max(1,shown);for(int i=0;i<shown;i++)g.drawTextWithShadow(font,font.trimToWidth(pts[i].id()+": "+(contestedAt(i)?"Contested":progressAt(i)>0?"Capturing":ownerAt(i)<0?"Neutral":ownerAt(i)==0?"Dawn":"Dusk"),step-4),w/2-165+i*step,29,factionColor(ownerAt(i)));
         CommandMode.hud(g,w,h);Presentation.hud(g,w,h);
         if(!running)g.drawCenteredTextWithShadow(font,menu.getBoundKeyLocalizedText().getString()+": war council / collection / maps",w/2,48,WHITE);
         // Key hints sit under the score panel, clear of the hotbar; hidden while an order is being aimed.
