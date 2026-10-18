@@ -93,6 +93,7 @@ public final class Phase2Checks implements ClientModInitializer {
         List<String> before;boolean editOk,sidesSaved,sideIds;String editWhy="",sidesWhy="";
         GravesAndGlory.Unit striker;int flashesBefore;
         GravesAndGlory.Squad own;int goldBefore,earnedBefore;boolean trainOk=true;String trainWhy="";
+        final Map<GravesAndGlory.Squad,List<String>> botRows=new HashMap<>();String foreign;int queuedBefore;boolean takeOk;String takeWhy="";
         /** Gold the commander's army spent since mark(): battle income (passive gold every economy.incomeSeconds) is not spending. */
         int spent(){return goldBefore+(own.stats.goldEarned-earnedBefore)-own.gold;}
         void mark(){goldBefore=own.gold;earnedBefore=own.stats.goldEarned;}
@@ -233,7 +234,40 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean taken=own.training.size()==1&&own.training.getFirst().spec()==knight&&spent()==knight.cost();trainOk&=taken;
                     trainWhy+="; then train:knight accepted="+taken+" (queued "+own.training.size()+", spent "+spent()+")";mark();command(b,"train:knight",18);}}
                 case 18->{if(since(b)>=20){boolean refused=own.training.size()==1&&spent()==0;trainOk&=refused;trainWhy+="; a second train:knight (11 alive + 1 queued) refused="+refused+" (queued "+own.training.size()+", spent "+spent()+")";
-                    report("p2-train-limit",trainOk,trainWhy);b.campaign.returnLobby();next(b,99);}}
+                    report("p2-train-limit",trainOk,trainWhy);b.campaign.returnLobby();next(b,19);}}
+                case 19->{ // p2-takeover: in a running Normal 3v3 with bot fill, a commander with no seat of his own joins and takes a bot's seat
+                    var p=sp(b);if(p==null||!Phase1Checks.skirmish(b,p,b.campaign.map,3,"normal"))return;
+                    var mine=b.squads.get(player);for(var u:b.units)if(u.squad==mine)u.mob.discard();b.units.removeIf(u->u.squad==mine);
+                    b.squads.remove(player);b.welcomed.remove(player);b.campaign.vacated.remove(player); /* no seat and no reservation: the next battle tick calls join(p), which hands him the first bot seat */
+                    botRows.clear();for(var s:b.squads.values()){s.reinforceAt=Long.MAX_VALUE;if(s.bot&&s.seated)botRows.put(s,new ArrayList<>(s.banner));}
+                    next(b,20);
+                }
+                case 20->{
+                    var s=b.squads.get(player);
+                    if(s==null){if(since(b)>100){report("p2-takeover",false,"the commander never rejoined");b.campaign.returnLobby();next(b,99);}return;}
+                    own=s;var row=botRows.get(s);var pr=profile(b);
+                    List<String> shown=new ArrayList<>();for(var e:b.campaign.bannerJson(player))shown.add(e.getAsString());
+                    boolean seat=row!=null&&!s.bot&&s.seated,mine=s.banner.equals(b.campaign.banner(s)),snapshot=shown.equals(pr.banner),commander=s.commander.equals(pr.commander);
+                    foreign=row==null?null:row.stream().filter(id->Campaign.troop(id)!=null&&!s.banner.contains(id)).findFirst().orElse(null);
+                    takeOk=seat&&mine&&snapshot&&commander;
+                    takeWhy="took a bot seat="+seat+" (team "+s.team+", lane "+s.lane+", the bot's banner "+(row==null?"none":String.join(",",row))+"); his banner is campaign.banner(s)="+mine
+                        +"; the snapshot banner is his profile banner="+snapshot+"; commander "+s.commander+" from his profile="+commander;
+                    if(foreign==null){report("p2-takeover",false,takeWhy+"; every troop of the bot's banner is also in his");b.campaign.returnLobby();next(b,99);return;}
+                    // Room for one more unit: the inherited army loses troops that are not knights, as casualties would.
+                    int weight=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).mapToInt(u->u.spec.slotWeight()).sum()+s.training.stream().mapToInt(t->t.spec().slotWeight()).sum();
+                    for(var u:new ArrayList<>(b.units))if(weight>GravesAndGlory.R.squadSize()-2&&u.squad==s&&u.mob.isAlive()&&!u.spec.id().equals("knight")){u.mob.discard();b.units.remove(u);weight-=u.spec.slotWeight();}
+                    var f=Spec.FACTIONS[s.team];b.relocate(sp(b),f.barracksX()+.5,Arena.ground(f.barracksX(),f.barracksZ())+1,f.barracksZ()+.5,0,0);
+                    s.gold=1000;mark();queuedBefore=s.training.size();
+                    takeWhy+="; at the barracks "+b.atBarracks(sp(b),s);
+                    command(b,"train:"+foreign,21);
+                }
+                case 21->{if(since(b)>=20){boolean refused=own.training.size()==queuedBefore&&spent()==0;takeOk&=refused;
+                    takeWhy+="; train:"+foreign+" (in the bot's banner, not in his) refused="+refused+" (queued "+(own.training.size()-queuedBefore)+", spent "+spent()+")";
+                    mark();queuedBefore=own.training.size();command(b,"train:knight",22);}}
+                case 22->{if(since(b)>=20){var knight=Campaign.troop("knight");
+                    boolean taken=own.training.size()==queuedBefore+1&&own.training.getLast().spec()==knight&&spent()==knight.cost();takeOk&=taken;
+                    takeWhy+="; train:knight ("+alive(b,own,"knight")+" alive, "+Collections.frequency(own.banner,"knight")+" in his banner) accepted="+taken+" (queued "+(own.training.size()-queuedBefore)+", spent "+spent()+")";
+                    report("p2-takeover",takeOk,takeWhy);b.campaign.returnLobby();next(b,99);}}
                 default->{}
             }
         }

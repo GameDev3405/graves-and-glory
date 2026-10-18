@@ -327,6 +327,8 @@ public final class GravesAndGlory implements ModInitializer {
             if(replacement!=null){
                 s=replacement;squads.remove(s.owner);campaign.botRespawns.remove(s.owner);campaign.botRetreating.remove(s.owner);
                 campaign.vacated.values().remove(s.owner);s.owner=p.getUuid();s.bot=false;s.seated=true;
+                // The seat keeps the bot's living army and its queue, but from now on it trains and reinforces from the joiner's own banner, and fights under his class.
+                s.banner=campaign.banner(s);s.commander=campaign.profile(s.owner).commander;
             }else{
                 s=new Squad(p.getUuid(),team,base(team));s.seated=decision.seated();
                 if(s.seated){s.banner=campaign.banner(s);reinforce(s);}
