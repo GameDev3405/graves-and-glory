@@ -5,7 +5,7 @@ seal is the contested seal's square plate without the swords; the Dusk health fi
 the crescent feed glyph is an FG grid inked as the notices are; the iron Enlist plate is the brass plate in iron."""
 from v4lib import Spr, rgba
 from v4pal import IRON, BRASS, VIOL
-from v4a_hud import glyph, INK, PAPER, FEEDV_GLYPH, SHADOW, iron_shade
+from v4a_hud import glyph, INK, PAPER, FEEDV_GLYPH, SHADOW, iron_shade, ledger_card
 
 # 'k' ink, 'L' the light vellum inside a shape, as in v4a_hud.GLYPHS
 GLYPHS = {
@@ -90,3 +90,30 @@ def btn_iron(brass):
             if p[:3] in lut:
                 px[x, y] = lut[p[:3]] + (p[3],)
     return brass
+
+
+def lesson_card():
+    """hud/lesson-card as a three-v, t=20, b=24 (UI plan Task 3, controller addition B): the mock's ledger_card(400, 40, 'lo',
+    IRON, seed=15), its box at (1, 1), with a 10-row middle band, PNG rows 20 to 29, set between the painting's rows 19 and 22.
+    The corner brackets run down the side edges to rows 19 and 22, so rows 20 and 21 are the only rows whose edges are plain: the
+    band's 14 columns at either side are those two rows in turn, and between them lies the vellum of rows 20 to 29. A card 40 px
+    tall drawn from it is the painting itself (its middle is band rows 0 and 1, the painting's rows 20 and 21); a taller card tiles
+    the band, so a bracket never repeats."""
+    card = ledger_card(400, 40, 'lo', IRON, seed=15).im
+    w, h = card.size
+    side, band = 14, 10
+    out = Spr(w, h + band - 2)
+    im = out.im
+    im.paste(card.crop((0, 0, w, 20)), (0, 0))
+    for i in range(band):
+        edge = 20 + i % 2
+        im.paste(card.crop((0, edge, side, edge + 1)), (0, 20 + i))
+        im.paste(card.crop((side, 20 + i, w - side, 21 + i)), (side, 20 + i))
+        im.paste(card.crop((w - side, edge, w, edge + 1)), (w - side, 20 + i))
+    im.paste(card.crop((0, 22, w, h)), (0, 20 + band))
+    # no bracket inside the band: between its edges only opaque, warm vellum (iron is grey, its red under its blue)
+    for y in range(20, 20 + band):
+        for x in range(side, w - side):
+            r, g, b, a = im.getpixel((x, y))
+            assert a == 255 and r - b >= 30, ('hud/lesson-card band', x, y, (r, g, b, a))
+    return out

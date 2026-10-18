@@ -298,22 +298,11 @@ public final class BattleHud {
         return wrappedLines;
     }
 
-    /** hud/lesson-card at any height. Its corner brackets run down the side edges to rows 19 and 22 of the PNG, so rows 20 and 21
-     *  are the only rows with a plain edge, and the card grows between them: the PNG's top 21 rows; then the extra rows, with the
-     *  plain edge (rows 20 and 21) in the 14 columns at either side and plain vellum (rows 21 to 30) between them; then the rest of
-     *  the PNG (the bottom brackets, the edge and the shadow), lowered by the extra rows. */
-    static void lessonCard(DrawContext g,int x,int y,int h){
-        int extra=h-40;
-        if(extra<=0){UiTex.draw(g,"hud/lesson-card",x,y);return;}
-        var e=UiTex.entry("hud/lesson-card");int px=x-e.ox(),py=y-e.oy(),split=21,side=14;
-        UiTex.part(g,"hud/lesson-card",px,py,0,0,e.w(),split);
-        for(int o=0;o<extra;o+=2){
-            UiTex.part(g,"hud/lesson-card",px,py+split+o,0,20,side,Math.min(2,extra-o));
-            UiTex.part(g,"hud/lesson-card",px+e.w()-side,py+split+o,e.w()-side,20,side,Math.min(2,extra-o));
-        }
-        for(int o=0;o<extra;o+=10)UiTex.part(g,"hud/lesson-card",px+side,py+split+o,side,21,e.w()-2*side,Math.min(10,extra-o));
-        UiTex.part(g,"hud/lesson-card",px,py+split+extra,0,split,e.w(),e.h()-split);
-    }
+    /** The PNG rows outside a lesson card's box: one above it (the atlas oy) and five of shadow below. */
+    static final int LESSON_FRAME=6;
+    /** hud/lesson-card at any height: a three-v (tools/ui_art kit_extra.lesson_card) whose middle band is the side edges' plain rows
+     *  around bare vellum, so the card grows between its corner brackets; at 40 px it is the painting itself. */
+    static void lessonCard(DrawContext g,int x,int y,int h){UiTex.three(g,"hud/lesson-card",x,y,h+LESSON_FRAME);}
 
     /** The event feed (v4.1): the vellum leaf at the right edge, its box at (W-188, H/2-38), the newest line on the bottom row (4) and
      *  older ones above. A line is its glyph and its text, trimmed to 140 px, in its style's ink, fading over its last 2 s (a line

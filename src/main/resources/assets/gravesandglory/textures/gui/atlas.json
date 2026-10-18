@@ -72,7 +72,7 @@
 "hud/fgv-rout":{"w":8,"h":8,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "hud/fgv-sun":{"w":8,"h":8,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "hud/fgv-moon":{"w":8,"h":8,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
-"hud/lesson-card":{"w":405,"h":46,"ox":1,"oy":1,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
+"hud/lesson-card":{"w":405,"h":54,"ox":1,"oy":1,"kind":"three-v","l":0,"t":20,"r":0,"b":24,"frames":1},
 "hud/respawn-card":{"w":205,"h":34,"ox":1,"oy":1,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "table/oak-table":{"w":1280,"h":720,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "table/oak-table-recruit":{"w":1280,"h":720,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},

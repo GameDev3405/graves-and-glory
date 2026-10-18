@@ -80,7 +80,8 @@ for _n in ('fgv-skull', 'fgv-skull-grey', 'fgv-banner-down', 'fgv-banner-up', 'f
     mock('hud', _n)
 add('hud/fgv-moon', kit_extra.fgv_moon)
 # cards that carry text
-add('hud/lesson-card', lambda: ledger_card(400, 40, 'lo', IRON, seed=15), ox=1, oy=1)
+# the lesson card grows a row per line of its copy: a three-v whose middle band is plain edge and bare vellum (kit_extra)
+add('hud/lesson-card', kit_extra.lesson_card, kind='three-v', t=20, b=24, ox=1, oy=1)
 add('hud/respawn-card', lambda: ledger_card(200, 28, 'lo', IRON, seed=16), ox=1, oy=1)
 
 # ================================================================ table/

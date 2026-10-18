@@ -1380,7 +1380,8 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 80->{keepLesson=true;lessonStep=3;waitFrom=tick;stage=81;} // p1-ui-hud-cache: lesson 4 pinned
                 case 81->{ // after 10 ticks lesson 4's wrap is cached: the next 40 frames wrap nothing and keep the same read-back views
-                    if(tick-waitFrom>=10&&BattleHud.rects().containsKey("lesson")){cacheW=BattleHud.wraps;cacheF=BattleHud.frames;lessonBefore=BattleHud.texts().get("lesson");views=new Object[]{BattleHud.rects(),BattleHud.texts(),BattleHud.cards(),BattleHud.seals()};waitFrom=tick;stage=82;}
+                    if(tick-waitFrom>=10&&BattleHud.rects().containsKey("lesson")){shot(c,"ui-hud-lesson");System.out.println("[p1] ui-hud-lesson: the three-v lesson card at "+box(BattleHud.rects().get("lesson"))+" with "+GravesAndGloryClient.lessonDrawn.size()+" lines"); // controller addition B
+                        cacheW=BattleHud.wraps;cacheF=BattleHud.frames;lessonBefore=BattleHud.texts().get("lesson");views=new Object[]{BattleHud.rects(),BattleHud.texts(),BattleHud.cards(),BattleHud.seals()};waitFrom=tick;stage=82;}
                     else if(tick-waitFrom>200)lateFail(c,"the lesson card was not drawn 200 ticks after lesson 4 was pinned");
                 }
                 case 82->{
