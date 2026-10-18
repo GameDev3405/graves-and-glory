@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.util.ScreenshotRecorder;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.projectile.ArrowEntity;
@@ -26,10 +27,10 @@ public final class Phase1Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every Battle.tick, for checks that need exact tick timing. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
-    static int tick,front;static boolean started;
+    static int tick,front,hold;static boolean started; // hold: client ticks the current suite waits (Phase1Checks.window)
 
     /** One evidence line (pass/fail id) plus a "[p1] id=result why" log line. */
     public static void report(String id,boolean pass,String why){if(!pass)failed=true;MeltyTest.report(id,pass,why);System.out.println("[p1] "+id+"="+pass+" "+why);}
@@ -51,6 +52,8 @@ public final class Phase1Checks implements ClientModInitializer {
         report("p1-"+suite+"-suite",!failed,failed?"an earlier p1 check failed":"all checks passed");
         current=null;if(queue.isEmpty())c.scheduleStop();
     }
+    /** Sets the window to w x h and the GUI Scale option to gui (0 is Auto), applies both, then holds the suite for 5 client ticks. */
+    public static void window(MinecraftClient c,int w,int h,int gui){c.getWindow().setWindowedSize(w,h);c.options.getGuiScale().setValue(gui);c.onResolutionChanged();hold=5;}
 
     @Override public void onInitializeClient(){
         String list=System.getProperty("gravesandglory.phase1Checks","");if(list.isBlank())return;
@@ -67,6 +70,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 if(make==null){report("p1-"+currentName+"-suite",false,"unknown suite");if(queue.isEmpty())c.scheduleStop();return;}
                 current=make.get();
             }
+            if(hold>0){hold--;return;}
             try{current.step(c,++tick);}catch(Exception e){report("p1-"+currentName+"-exception",false,e.toString());e.printStackTrace();finish(c,currentName);}
         });
     }
@@ -1009,5 +1013,91 @@ public final class Phase1Checks implements ClientModInitializer {
             }
             if(stage>=2&&stage<=6)for(var u:b.units)freeze(u); // only the fixture strikes
         }
+    }
+
+    /** UI plan Task 1, the UI kit: the exported atlas, the canvas scale at three window sizes, then the kit sheet at 960x540 GUI 1, where a canvas pixel is a framebuffer pixel, shot page by page with every opaque pixel of every native-size draw and bar cut compared with its PNG. Client thread only. */
+    static final class UiArtChecks implements Suite {
+        int stage,oldW,oldH,oldGui,shootAt,reopened,compared,wrong,magenta,drawn,shots;boolean canvasOk=true;
+        final StringBuilder canvas=new StringBuilder(),first=new StringBuilder();UiKitSheet sheet;Map<String,NativeImage> art;
+
+        public void step(MinecraftClient c,int tick){
+            if(tick>3000&&stage<6){report("p1-ui-art-timeout",false,"stuck in stage "+stage+" at page "+(sheet==null?-1:sheet.page));end(c);return;}
+            switch(stage){
+                case 0->{if(tick<20)return;c.setScreen(null);var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();atlas(c);window(c,960,540,1);stage=1;}
+                case 1->{canvas(c,"960x540 GUI 1",UiCanvas.k()==1&&UiCanvas.width()==960&&UiCanvas.height()==540);window(c,1280,720,3);stage=2;}
+                case 2->{canvas(c,"1280x720 GUI 3",UiCanvas.k()==1&&UiCanvas.width()==1280&&UiCanvas.toCanvas(100)==300);window(c,1280,720,0);stage=3;}
+                case 3->{canvas(c,"1280x720 GUI Auto",UiCanvas.k()==1);report("p1-ui-canvas",canvasOk,canvas.toString());window(c,960,540,1);stage=4;}
+                case 4->{ // toasts draw over screens, so none may show while the sheet is shot
+                    c.getToastManager().clear();sheet=new UiKitSheet();c.setScreen(sheet);
+                    try{art=UiKitSheet.loadArt(sheet.names);}catch(Exception e){report("p1-ui-kit-sheet",false,"the kit PNGs could not be read: "+e);end(c);return;}
+                    shootAt=tick+10;stage=5;
+                }
+                case 5->shoot(c,tick);
+                case 6->{stage=7;finish(c,"ui-art");}
+                default->{}
+            }
+        }
+
+        /** p1-ui-atlas: every atlas.json entry's PNG opens through the resource manager at the entry's size and UiTex read the entry alike; hud/card-sel is 181x68 at 1, 1; no name holds a mockup-only pt- texture and no PNG under textures/gui is missing from the atlas. */
+        void atlas(MinecraftClient c){
+            var rm=c.getResourceManager();var res=rm.getResource(UiTex.ATLAS);List<String> bad=new ArrayList<>();int opened=0;JsonObject textures=new JsonObject();
+            if(res.isEmpty())bad.add("no "+UiTex.ATLAS);
+            else try(var r=res.get().getReader()){textures=com.google.gson.JsonParser.parseReader(r).getAsJsonObject().getAsJsonObject("textures");}catch(Exception e){bad.add("atlas.json unreadable: "+e);}
+            for(var t:textures.entrySet()){
+                String n=t.getKey();var o=t.getValue().getAsJsonObject();int w=o.get("w").getAsInt(),h=o.get("h").getAsInt();
+                if(n.contains("pt-"))bad.add(n+" is a mockup-only pt- texture");
+                if(!UiTex.has(n)){bad.add(n+" is not in UiTex");continue;}
+                var e=UiTex.entry(n);
+                if(e.w()!=w||e.h()!=h||e.ox()!=o.get("ox").getAsInt()||e.oy()!=o.get("oy").getAsInt()||!e.kind().equals(o.get("kind").getAsString())||e.l()!=o.get("l").getAsInt()||e.t()!=o.get("t").getAsInt()||e.r()!=o.get("r").getAsInt()||e.b()!=o.get("b").getAsInt()||e.frames()!=o.get("frames").getAsInt())bad.add(n+" read by UiTex as "+e);
+                var png=rm.getResource(e.id());if(png.isEmpty()){bad.add(n+": no "+e.id());continue;}
+                try(var in=png.get().getInputStream();var img=NativeImage.read(in)){if(img.getWidth()==w&&img.getHeight()==h)opened++;else bad.add(n+" is "+img.getWidth()+"x"+img.getHeight()+", the atlas says "+w+"x"+h);}
+                catch(Exception x){bad.add(n+": "+x);}
+            }
+            for(var id:rm.findResources("textures/gui",f->f.getNamespace().equals("gravesandglory")&&f.getPath().endsWith(".png")).keySet()){
+                String n=id.getPath().substring("textures/gui/".length(),id.getPath().length()-4);
+                if(!textures.has(n))bad.add(id+" is not in the atlas");
+            }
+            var card=UiTex.has("hud/card-sel")?UiTex.entry("hud/card-sel"):null;boolean cardOk=card!=null&&card.w()==181&&card.h()==68&&card.ox()==1&&card.oy()==1;
+            report("p1-ui-atlas",bad.isEmpty()&&cardOk&&opened>0&&opened==textures.size(),opened+" of "+textures.size()+" atlas.json entries open through the resource manager at their listed size and read alike by UiTex; hud/card-sel "+(card==null?"missing":card.w()+"x"+card.h()+" at "+card.ox()+", "+card.oy())+" (181x68 at 1, 1 wanted); "+(bad.isEmpty()?"no pt- names and no PNG outside the atlas":bad.size()+" wrong: "+String.join("; ",bad.subList(0,Math.min(6,bad.size())))));
+        }
+
+        /** One reading for p1-ui-canvas, with the window it was taken at. */
+        void canvas(MinecraftClient c,String label,boolean pass){
+            var w=c.getWindow();canvasOk&=pass;
+            canvas.append(canvas.isEmpty()?"":"; ").append(label).append(pass?": ":" WRONG: ").append("framebuffer ").append(w.getFramebufferWidth()).append('x').append(w.getFramebufferHeight())
+                .append(", GUI Scale option ").append(c.options.getGuiScale().getValue()).append(" (in effect ").append((int)w.getScaleFactor()).append("), k ").append(UiCanvas.k())
+                .append(", canvas ").append(UiCanvas.width()).append('x').append(UiCanvas.height()).append(", 100 GUI px = ").append(UiCanvas.toCanvas(100)).append(" canvas px");
+        }
+
+        /** One page of the kit sheet, once the last frame drew it: the missing texture's magenta counted, the art compared, the screenshot taken. */
+        void shoot(MinecraftClient c,int tick){
+            c.getToastManager().clear();
+            if(c.currentScreen!=sheet){ // something replaced the sheet: put it back and let it draw again
+                if(++reopened>3){report("p1-ui-kit-sheet",false,"the sheet was replaced four times, last by "+c.currentScreen);end(c);return;}
+                c.setScreen(sheet);shootAt=tick+5;return;
+            }
+            if(tick<shootAt||sheet.shownPage!=sheet.page)return;
+            var w=c.getWindow();
+            if(w.getFramebufferWidth()!=960||w.getFramebufferHeight()!=540||w.getScaleFactor()!=1||UiCanvas.k()!=1){report("p1-ui-kit-sheet",false,"the sheet is not at 960x540 GUI 1: framebuffer "+w.getFramebufferWidth()+"x"+w.getFramebufferHeight()+", GUI scale "+w.getScaleFactor()+", k "+UiCanvas.k());end(c);return;}
+            try(NativeImage img=ScreenshotRecorder.takeScreenshot(c.getFramebuffer())){
+                for(int y=0;y<img.getHeight();y++)for(int x=0;x<img.getWidth();x++)if((img.getColor(x,y)&0xffffff)==0xf800f8)magenta++;
+                int[] cw=sheet.compare(img,art,first);compared+=cw[0];wrong+=cw[1];
+            }
+            drawn+=sheet.drawnOnPage;shots++;
+            shot(c,sheet.page==0?"ui-kit-sheet":"ui-kit-sheet-"+(sheet.page+1));
+            if(sheet.page+1<sheet.pages){sheet.page++;shootAt=tick+4;return;}
+            int fixed=0,nine=0,three=0;Set<String> all=new HashSet<>(sheet.names),onSheet=new HashSet<>();
+            for(String n:sheet.names)switch(UiTex.entry(n).kind()){case "nine"->nine++;case "three-h","three-v"->three++;default->fixed++;}
+            for(var p:sheet.placed)if(!p.item().how().equals("bar"))onSheet.add(p.item().name());
+            int bars=sheet.count("bar",false);boolean everyOne=!all.isEmpty()&&onSheet.equals(all);
+            boolean layout=everyOne&&sheet.count("draw",false)==fixed&&sheet.count("nine",false)==nine&&sheet.count("nine",true)==nine&&sheet.count("three",false)==three&&sheet.count("three",true)==three&&bars==UiKitSheet.BAR_LENGTHS.length;
+            report("p1-ui-kit-sheet",layout&&sheet.error==null&&drawn==sheet.placed.size()&&shots==sheet.pages&&compared>0&&wrong==0&&magenta==0,
+                all.size()+" atlas textures on "+sheet.pages+" pages of 960x540 at GUI 1 ("+fixed+" drawn once, "+nine+" nine and "+three+" three slices twice, at native size and 1.5x, "+bars+" bar cuts of lengths "+Arrays.toString(UiKitSheet.BAR_LENGTHS)+"), every texture placed="+everyOne+": "+drawn+" of "+sheet.placed.size()+" draws made"+(sheet.error==null?"":", first error "+sheet.error)
+                +"; "+compared+" opaque pixels of the native-size draws and bar cuts compared with their PNGs, "+wrong+" wrong"+(first.isEmpty()?"":" (first: "+first+")")+"; "+magenta+" missing-texture magenta pixels; "+shots+" screenshots, p1-ui-kit-sheet"+(shots>1?" to p1-ui-kit-sheet-"+shots:""));
+            end(c);
+        }
+
+        /** Closes the sheet and puts the window back as the suite found it; p1-ui-art-suite follows once it has settled. */
+        void end(MinecraftClient c){if(art!=null)UiKitSheet.closeAll(art);art=null;c.setScreen(null);if(oldW>0)window(c,oldW,oldH,oldGui);stage=6;}
     }
 }

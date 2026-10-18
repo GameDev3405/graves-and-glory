@@ -7,8 +7,29 @@ import net.minecraft.util.Identifier;
 
 /** Original, code-drawn ironwork and heraldry; no reference-game art is copied. */
 final class DarkUi {
-    static final int GOLD=0xffc8a56b, EDGE=0xff414b50, PAPER=0xffeee9df, MUTED=0xffafb9bc;
-    static final Identifier TITLE=new Identifier("gravesandglory","title");
+    // UI spec tokens. On dark: ivory primary, muted secondary, brass headings and selection. On vellum: ink and sepia.
+    static final int IVORY=0xffeee9df, PAPER=IVORY, MUTED=0xffafb9bc, BRASS=0xffc8a56b, GOLD=BRASS, BRASS_HI=0xffdfbd77, EDGE=0xff414b50;
+    static final int INK_TEXT=0xff2a2219, SEPIA=0xff5c4a32, ALARM_TEXT=0xffe47a64, ROUT_TEXT=0xff5e140b, CHIP_TEXT=0xfff1e7cb;
+    static final int DAWN=0xff5fb3ad, DUSK=0xffa07cc2, DUSK_TEXT=0xffb99ad6, VELLUM=0xffe6d9b8, CHARCOAL=0xff1a2125, OAK0=0xff160c0d;
+    // The mockups' remaining inks: labels on brass plates, "Enter" on brass keys, keys on rail plaques, the ability's key,
+    // the shadow under tags, and the cooldown sweep's veil, leading edge and twelve o'clock line.
+    static final int PLATE_INK=0xff1e1509, KEY_INK=0xff3a2a12, RAIL_KEY=0xfff0d9a0, ABILITY_KEY=0xff2e1f0c, TAG_SHADOW=0xff120d16;
+    static final int SWEEP_VEIL=0xcd15191c, SWEEP_EDGE=0xe6dfbd77, SWEEP_LINE=0xc8b08a4a;
+    static final Identifier TITLE=new Identifier("gravesandglory","title"), FOCAL=new Identifier("gravesandglory","focal");
+    /** The one 16 px Marcellus focal line of a screen. */
+    static Text focal(String text){return Text.literal(text).setStyle(Style.EMPTY.withFont(FOCAL));}
+    /** 11 px Marcellus, for headings and names. */
+    static Text heading(String text){return Text.literal(text).setStyle(Style.EMPTY.withFont(TITLE));}
+    /** Dawn's teal, Dusk's violet, muted for anyone else. Always paired with a shape (teamMark), never alone. */
+    static int teamColor(int team){return team==0?DAWN:team==1?DUSK:MUTED;}
+    private static final String[] SUN={"...x...",".x...x.","..xxx..","x.xxx.x","..xxx..",".x...x.","...x..."};
+    private static final String[] CRESCENT={"..xxxx.",".xxx...","xxx....","xxx....","xxx....",".xxx...","..xxxx."};
+    private static final String[] DIAMOND={"...x...","..x.x..",".x...x.","x.....x",".x...x.","..x.x..","...x..."};
+    /** A 7x7 team mark in the team colour: a sun for Dawn (0), a crescent for Dusk (1), a hollow diamond otherwise. */
+    static void teamMark(DrawContext g,int team,int x,int y){
+        String[] rows=team==0?SUN:team==1?CRESCENT:DIAMOND;int color=teamColor(team);
+        for(int j=0;j<7;j++)for(int i=0;i<7;i++)if(rows[j].charAt(i)=='x')g.fill(x+i,y+j,x+i+1,y+j+1,color);
+    }
     static void background(DrawContext g,int w,int h){
         // Keep the actual world visible behind a quiet, readable scrim.
         g.fill(0,0,w,h,0xd9101518);
