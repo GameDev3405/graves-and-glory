@@ -1,0 +1,127 @@
+package gg.gravesandglory;
+
+import java.util.*;
+
+/**
+ * Pure counter-table maths (spec section 3) and the House trait multipliers (spec 1.3). No Minecraft types, so the
+ * standalone HousesCheck compiles it. Every multiplier comes from the counters and houseTraits sheets.
+ */
+public final class CounterMath {
+    private CounterMath() {}
+    /** A hit is frontal within this bearing of the target's facing: the half-plane a vanilla shield covers. */
+    static final double FRONT_DEGREES = 90;
+
+    /**
+     * One troop hit as the counter table sees it. attacker and target hold troop tags, ability ids and the dynamic tags
+     * (melee, arrow, shot, magic, nonsiege, ranged, charging, holding, structure); a row's "any" matches every hit.
+     * bearing is BattleMath.relativeBearing(targetYaw, attacker - target): 0 straight in front of the target, 180 behind.
+     * raised is the target's shield. chargeImpact (the first hit of a fresh Charge), charging and holding are the
+     * attacker's group order, noSky is whether the attacker cannot see the sky, and inMist is the shooter or the target
+     * standing in a Mist cloud.
+     */
+    public record Hit(Set<String> attacker, Set<String> target, double bearing, boolean raised, boolean chargeImpact, boolean charging, boolean holding, boolean noSky, boolean inMist) {}
+
+    /** True when a counters row applies to a hit: its attacker tag, its target tag (a+b needs both) and its condition. */
+    public static boolean matches(Spec.CountersRow r, Hit h) {
+        return tagged(r.attackerTag(), h.attacker()) && tagged(r.targetTag(), h.target()) && condition(r.condition(), h);
+    }
+    static boolean tagged(String rule, Set<String> tags) {
+        for (String part : rule.split("\\+")) if (!part.equals("any") && !tags.contains(part)) return false;
+        return true;
+    }
+    /** The closed condition list (spec 6.1). Front is a bearing of FRONT_DEGREES or less; flank is more than morale.flankArcDegrees. */
+    static boolean condition(String condition, Hit h) {
+        boolean front = h.bearing() <= FRONT_DEGREES;
+        return switch (condition) {
+            case "always" -> true;
+            case "raised_front" -> h.raised() && front;
+            case "lowered_front" -> !h.raised() && front;
+            case "front" -> front;
+            case "flank" -> h.bearing() > flankDegrees();
+            case "charge_impact" -> h.chargeImpact();
+            case "charge" -> h.charging();
+            case "hold" -> h.holding();
+            case "no_sky" -> h.noSky();
+            case "in_mist" -> h.inMist();
+            default -> false;
+        };
+    }
+    /** The Phase 1 flank arc (morale.flankArcDegrees, 110): counter row C16 and Pack Hunters flank exactly as morale does. */
+    static double flankDegrees() { return Spec.MORALE[0].flankArcDegrees(); }
+
+    /** The counter multiplier for a hit: the product of the applied rows' multipliers, 1 when no row matches. */
+    public static double counters(Hit h, Spec.CountersRow[] rows) {
+        double product = 1;
+        for (var r : winners(h, rows)) product *= r.multiplier();
+        return product;
+    }
+    /** The ids of the rows counters(h, rows) multiplies, in sheet order: the largest of each group of matched rows. */
+    public static List<String> applied(Hit h, Spec.CountersRow[] rows) {
+        List<String> ids = new ArrayList<>();
+        for (var r : winners(h, rows)) ids.add(r.id());
+        return ids;
+    }
+    /**
+     * The matched rows that contribute. A matched row and the matched rows its replaces column lists form one group (groups
+     * that share a row merge), and each group contributes only its largest multiplier; a tie keeps the earlier row.
+     */
+    static List<Spec.CountersRow> winners(Hit h, Spec.CountersRow[] rows) {
+        int n = rows.length;
+        int[] group = new int[n]; // the group label of a matched row, -1 for a row that does not match
+        for (int i = 0; i < n; i++) group[i] = matches(rows[i], h) ? i : -1;
+        for (int i = 0; i < n; i++) {
+            if (group[i] < 0 || rows[i].replaces().equals("none")) continue;
+            for (String id : rows[i].replaces().split("\\|"))
+                for (int j = 0; j < n; j++)
+                    if (group[j] >= 0 && rows[j].id().equals(id)) relabel(group, group[j], group[i]);
+        }
+        List<Spec.CountersRow> out = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            if (group[i] < 0) continue;
+            int best = -1;
+            for (int j = 0; j < n; j++) if (group[j] == group[i] && (best < 0 || rows[j].multiplier() > rows[best].multiplier())) best = j;
+            if (best == i) out.add(rows[i]);
+        }
+        return out;
+    }
+    static void relabel(int[] group, int from, int to) {
+        for (int k = 0; k < group.length; k++) if (group[k] == from) group[k] = to;
+    }
+
+    /** The full multiplier for a hit: counters x traits x auras x commander, clamped to [min, max] (combatDiscipline.multiplierMin and multiplierMax). */
+    public static double total(double counters, double traits, double auras, double commander, double min, double max) {
+        return Math.max(min, Math.min(max, counters * traits * auras * commander));
+    }
+
+    /** A House's trait row at a tier, or null at tier 0 (or for a tier the sheet lacks). */
+    public static Spec.HouseTraitsRow trait(Spec.HouseTraitsRow[] rows, String house, int tier) {
+        if (tier <= 0) return null;
+        for (var r : rows) if (r.house().equals(house) && r.tier() == tier) return r;
+        return null;
+    }
+
+    /** Gilded Bulwark: a shield-tag troop takes 1 - value from an arrow, bolt or blight hit, raised shield or not; anything else, or no Bulwark row, is 1. */
+    public static double bulwark(Spec.HouseTraitsRow t, boolean shieldTag, String kind) {
+        boolean ranged = "arrow".equals(kind) || "bolt".equals(kind) || "blight".equals(kind);
+        return is(t, "bulwark") && shieldTag && ranged ? 1 - t.value() : 1;
+    }
+
+    /**
+     * Wildmoot Pack Hunters: an attack deals 1 + value when at least value2 own Wildmoot troops target the same enemy, or
+     * when the attacker strikes from the flank (a bearing beyond morale.flankArcDegrees). Both at once still give it once.
+     */
+    public static double packHunters(Spec.HouseTraitsRow t, int sameTarget, double bearing) {
+        return is(t, "pack_hunters") && (sameTarget >= t.value2() || bearing > flankDegrees()) ? 1 + t.value() : 1;
+    }
+
+    /** Ironclad Entrench: a troop that has stood still takes 1 - value, with the reduction doubled inside an owned objective's capture radius; a moving troop takes full damage. */
+    public static double entrench(Spec.HouseTraitsRow t, boolean still, boolean onOwnedPoint) {
+        return is(t, "entrench") && still ? 1 - t.value() * (onOwnedPoint ? 2 : 1) : 1;
+    }
+
+    /** Tidecallers Riptide: the movement-speed multiplier, 1 + value in water or while it rains, else 1. */
+    public static double riptideSpeed(Spec.HouseTraitsRow t, boolean wetOrRain) {
+        return is(t, "riptide") && wetOrRain ? 1 + t.value() : 1;
+    }
+    static boolean is(Spec.HouseTraitsRow t, String mechanic) { return t != null && t.mechanic().equals(mechanic); }
+}

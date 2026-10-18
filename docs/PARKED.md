@@ -59,3 +59,7 @@ Kort pictures up to a thousand concurrent players a year out and wants the serve
 - campaignBattles.difficulty is not checked by preflight; a tier that is not a botCommand id plays as Normal without a word.
 - campaignBattles.map is not checked by preflight; a bad index only stops the battle in game, with a notice to the player.
 - Three primary buttons on the camp home (THE LONG MARCH / BATTLE 1, OPEN RECRUITMENT, PARTY WITH FRIENDS); whether the other two step down while battle 1 is unwon is left for the UI pass.
+
+## Phase 2 Task 1 leftovers (2026-10-18)
+- houses.glyph is checked for its path format only, because the House glyph PNGs do not exist yet; once they land (the DarkUi.houseMark step), preflight should check each file exists, as it does for troop textures.
+- Two rule numbers stay in CounterMath: the Entrench reduction doubles (x2) inside an owned capture radius, and a hit is frontal at 90 degrees or less (the vanilla shield half-plane). houseTraits has no column for the x2; one could be added if Kort wants it tunable.
