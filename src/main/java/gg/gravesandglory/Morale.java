@@ -52,16 +52,18 @@ public final class Morale {
                 if(!BattleMath.shouldRout(strength,flanked(b,s,group,members,centre),M.routShare(),M.flankedRoutShare()))continue;
                 boolean held=false;for(var guard:GUARDS)if(guard.holds(b,s,group)){held=true;break;}
                 if(held)continue;
-                s.routedAt.put(group,b.time);
+                s.routedAt.put(group,b.time);FeedEvents.rout(b,s,group,true);
                 // Break contact at once: drop targets and paths so the group turns for home this tick.
                 for(var u:members){u.lockedTarget=null;u.spellCenter=null;u.mob.setTarget(null);u.mob.getNavigation().stop();u.nextPath=0;u.stuckTicks=0;}
                 BattleEffects.horn(b,s,centre,"rout");
             }
         }
     }
-    /** Ends a rout now (or steadies a group that is not routing): immunity starts and the rally horn sounds. */
+    /** Ends a rout now (or steadies a group that is not routing): immunity starts and the rally horn sounds. Only a group that was
+     *  routing tells its owner's feed it regrouped. */
     public static void rally(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String group){
-        s.routedAt.remove(group);s.steadyUntil.put(group,b.time+M.regroupImmunitySeconds()*20L);
+        boolean was=routing(s,group);
+        s.routedAt.remove(group);s.steadyUntil.put(group,b.time+M.regroupImmunitySeconds()*20L);if(was)FeedEvents.rout(b,s,group,false);
         for(var u:b.units)if(u.squad==s&&u.spec.group().equals(group)){u.nextPath=0;u.stuckTicks=0;}
         List<GravesAndGlory.Unit> members=new ArrayList<>();for(var u:b.units)if(u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive())members.add(u);
         BattleEffects.horn(b,s,members.isEmpty()?s.target:centre(members),"rally");

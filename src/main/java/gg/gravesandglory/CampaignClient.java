@@ -90,12 +90,12 @@ public final class CampaignClient {
 
     static void end(MinecraftClient c){if(camera!=null){frameReport();c.setCameraEntity(c.player);c.options.hudHidden=previousHud;if(previous!=null)c.options.setPerspective(previous);camera=null;}}
     public static void hud(DrawContext g,int w,int h){
-        if(camera==null)return;var c=MinecraftClient.getInstance();int bar=Math.max(18,h/10);g.fill(0,0,w,bar,0xff080c13);g.fill(0,h-bar,w,h,0xff080c13);
+        if(camera==null)return;var c=MinecraftClient.getInstance();int bar=Math.max(18,h/10);g.fill(0,0,w,bar,DarkUi.LETTERBOX);g.fill(0,h-bar,w,h,DarkUi.LETTERBOX);
         boolean march=battle.has("name");
-        g.drawCenteredTextWithShadow(c.textRenderer,Spec.MAPS[map].name().toUpperCase()+"  /  "+(march?"THE LONG MARCH":mode.equals("ai")?"PRACTICE":mode+" v "+mode),w/2,bar+12,GravesAndGloryClient.GOLD);
+        g.drawCenteredTextWithShadow(c.textRenderer,Spec.MAPS[map].name().toUpperCase()+"  /  "+(march?"THE LONG MARCH":mode.equals("ai")?"PRACTICE":mode+" v "+mode),w/2,bar+12,DarkUi.GOLD);
         if(march)briefing(g,c.textRenderer,w,h-bar-34);
-        g.drawCenteredTextWithShadow(c.textRenderer,"YOUR BANNER. YOUR ARMY.",w/2,h-bar-24,GravesAndGloryClient.WHITE);
-        g.drawCenteredTextWithShadow(c.textRenderer,GravesAndGloryClient.menu.getBoundKeyLocalizedText().getString()+" or Escape to skip entrance",w/2,h-bar+6,GravesAndGloryClient.MUTED);
+        g.drawCenteredTextWithShadow(c.textRenderer,"YOUR BANNER. YOUR ARMY.",w/2,h-bar-24,DarkUi.IVORY);
+        g.drawCenteredTextWithShadow(c.textRenderer,HintText.expand("{key:menu} or Escape to skip entrance",GravesAndGloryClient::hint),w/2,h-bar+6,DarkUi.MUTED);
     }
     /** The briefing card of a campaign battle during its entrance: the battle name, the order of the day and why it matters, ending at y=bottom. */
     static void briefing(DrawContext g,net.minecraft.client.font.TextRenderer font,int w,int bottom){

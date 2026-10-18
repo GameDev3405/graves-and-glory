@@ -1,5 +1,6 @@
 package gg.gravesandglory;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -9,13 +10,15 @@ import net.minecraft.text.StringVisitable;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.Util;
 import java.util.*;
 
 /** The Iron Ledger battle HUD (UI spec 4.5, mock v4-hud-iron-ledger): the score bar between the two bosses, the point seals hanging
  *  from it, the group cards on their iron spine, the commander's ability slot beside the hotbar, and the lesson and respawn cards.
  *  All but the ability slot is drawn on the UiCanvas; the slot sits in vanilla GUI space at the player's GUI Scale, next to the
  *  hotbar. Colour never carries a meaning alone (spec 6.1): seals carry their owner's emblem, a routing card its stamp and grey
- *  card, a fallen one its word. What the last frame drew is kept for checks: cards(), seals(), rects() and texts(). */
+ *  card, a fallen one its word. The event feed hangs at the right edge; the hint layer (altLayer) puts every key row on the cards
+ *  and the hint slip above them. What the last frame drew is kept for checks: cards(), seals(), rects(), texts() and hintRows(). */
 public final class BattleHud {
     private BattleHud() {}
 
@@ -31,16 +34,23 @@ public final class BattleHud {
     public static int frames;
     /** Times the lesson copy was wrapped: once per new copy or style, and once more after a resource reload. */
     public static int wraps;
+    /** How long a round's start shows every key hint (UI spec 4.5: its first 60 s), a presentation timing. */
+    public static final long HINT_LAYER_MS=60000;
+    /** The client clock (ms) when running last turned true; the hint layer shows until HINT_LAYER_MS after it. The STATE receiver
+     *  sets it, and a check may move it back. */
+    public static long roundShownMs;
 
     // What the last frame drew: filled in place every frame, read through the views below.
     private static final List<CardDraw> cardsDrawn=new ArrayList<>();
     private static final List<SealDraw> sealsDrawn=new ArrayList<>();
     private static final Map<String,int[]> rectsDrawn=new LinkedHashMap<>();
     private static final Map<String,String> textsDrawn=new LinkedHashMap<>();
+    private static final List<List<String>> hintRowsDrawn=new ArrayList<>();
     private static final List<CardDraw> cards=Collections.unmodifiableList(cardsDrawn);
     private static final List<SealDraw> seals=Collections.unmodifiableList(sealsDrawn);
     private static final Map<String,int[]> rects=Collections.unmodifiableMap(rectsDrawn);
     private static final Map<String,String> texts=Collections.unmodifiableMap(textsDrawn);
+    private static final List<List<String>> hintRows=Collections.unmodifiableList(hintRowsDrawn);
     /** Set when a frame named a texture the atlas lacks: the HUD stays off, and the client up, until the next resource reload. */
     private static boolean stopped;
     // The lesson copy last wrapped, its style and its lines.
@@ -49,14 +59,22 @@ public final class BattleHud {
     /** The cards the last frame drew. This and the three below are read-only views that the next frame refills: copy one to keep it. */
     public static List<CardDraw> cards(){return cards;}
     public static List<SealDraw> seals(){return seals;}
-    /** Each element's box {x,y,w,h} in canvas px, keyed score, dawn-boss, dusk-boss, seal-(i), card-(group), spine, lesson, respawn
-     *  and ability (the slot converted from GUI px, rounded outward). */
+    /** Each element's box {x,y,w,h} in canvas px, keyed score, dawn-boss, dusk-boss, seal-(i), card-(group), spine, hints (the hint
+     *  slip), lesson, respawn, feed (the feed slip, while a line lives) and ability (the slot converted from GUI px, rounded outward). */
     public static Map<String,int[]> rects(){return rects;}
     /** The words and numbers the last frame drew: score-dawn, clock, score-dusk, count-(group), state-(group), lesson, respawn,
-     *  ability, ability-seconds and ability-key. */
+     *  feed-(row) (each feed line as trimmed, rows 0 to 4 from the top), ability, ability-seconds and ability-key. */
     public static Map<String,String> texts(){return texts;}
+    /** The chip and word texts of each row the hint slip last drew, in order; empty while the hint layer is down. */
+    public static List<List<String>> hintRows(){return hintRows;}
+    /** The hint layer is up: the hints key held, the round's first HINT_LAYER_MS, or an order being aimed. Every living card then
+     *  carries its key row, and the hint slip above the cards names the other keys. */
+    public static boolean altLayer(){
+        var k=GravesAndGloryClient.hints;
+        return k!=null&&k.isPressed()||Util.getMeasuringTimeMs()-roundShownMs<HINT_LAYER_MS||CommandMode.active();
+    }
     /** A frame without the ledger (camp, a battle's entrance, a menu over the HUD): nothing reads as drawn. */
-    static void clear(){cardsDrawn.clear();sealsDrawn.clear();rectsDrawn.clear();textsDrawn.clear();}
+    static void clear(){cardsDrawn.clear();sealsDrawn.clear();rectsDrawn.clear();textsDrawn.clear();hintRowsDrawn.clear();}
 
     /** At every resource reload (fonts and the atlas can change there): wrap the lesson again, and try the HUD again after a texture
      *  stop. GravesAndGloryClient registers it. */
@@ -78,6 +96,7 @@ public final class BattleHud {
                 cards(g,font,h,rectsDrawn,cardsDrawn,textsDrawn);
                 lesson(g,font,cx,rectsDrawn,textsDrawn);
                 respawn(g,font,cx,h,rectsDrawn,textsDrawn);
+                feed(g,font,w,h,rectsDrawn,textsDrawn);
             }finally{UiCanvas.end(g);}
             ability(g,c,font,rectsDrawn,textsDrawn);
         }catch(IllegalArgumentException e){ // UiTex.entry names a texture the atlas lacks: a resource pack's atlas, or none read at all
@@ -128,19 +147,41 @@ public final class BattleHud {
     }
 
     /** The group cards, stacked up from 18 px above the canvas bottom on the iron spine, infantry first. A group the round never
-     *  fielded has no card. The card that carries the key row (the selected group's, or the bottom one while the whole army is
-     *  selected) is 62 px tall, the rest 48. */
+     *  fielded has no card. A card that carries the key row (the selected group's, or the bottom one while the whole army is
+     *  selected; in the hint layer every card with troops left) is 62 px tall, the rest 48. In the hint layer the hint slip hangs
+     *  above the top card (above the stack's foot when there is no card). */
     static void cards(DrawContext g,TextRenderer font,int h,Map<String,int[]> r,List<CardDraw> cd,Map<String,String> tx){
-        String sel=CommandMode.selected;boolean army=sel.equals("all");
+        String sel=CommandMode.selected;boolean army=sel.equals("all"),alt=altLayer();
         List<CommandMode.Group> shown=new ArrayList<>();
         for(String id:Morale.GROUPS)for(var grp:CommandMode.groups)if(grp.id().equals(id)&&grp.full()>0){shown.add(grp);break;}
-        if(shown.isEmpty())return;
+        if(shown.isEmpty()){if(alt)hintSlip(g,font,h-18,r);return;}
         int n=shown.size();int[] heights=new int[n];
-        for(int i=0;i<n;i++)heights[i]=(army?i==n-1:sel.equals(shown.get(i).id()))?62:48;
+        for(int i=0;i<n;i++)heights[i]=(army?i==n-1:sel.equals(shown.get(i).id()))||alt&&shown.get(i).count()>0?62:48;
         int[] tops=UiMath.cardTops(h,heights);
         int first=tops[0],last=tops[n-1]+heights[n-1];
         UiTex.three(g,"hud/spine",12,first-4,last-first+8);r.put("spine",new int[]{12,first-4,9,last-first+8});
         for(int i=0;i<n;i++)card(g,font,shown.get(i),24,tops[i],heights[i]==62,army||sel.equals(shown.get(i).id()),r,cd,tx);
+        if(alt)hintSlip(g,font,first,r);
+    }
+
+    /** The hint slip, its box 48 px above firstTop: row one names Map and Commands (Confirm and Cancel while an order is aimed), row
+     *  two the facing keys and the hints key. Each key is an ink chip naming the player's binding, a mouse button as LMB, RMB or MMB. */
+    static void hintSlip(DrawContext g,TextRenderer font,int firstTop,Map<String,int[]> r){
+        int x=24,y=firstTop-48;boolean aiming=CommandMode.active();
+        UiTex.draw(g,"hud/notice-slip",x,y);
+        String[][] ids={aiming?new String[]{"confirm","cancel"}:new String[]{"map","menu"},{"rotate_left","rotate_right","hints"}};
+        String[][] words={aiming?new String[]{"Confirm","Cancel"}:new String[]{"Map","Commands"},{null,"Turn","Hints"}};
+        for(int row=0;row<2;row++){
+            List<String> drawn=new ArrayList<>();int kx=x+10,ky=y+(row==0?7:22);
+            for(int k=0;k<ids[row].length;k++){
+                String key=HintText.chip(GravesAndGloryClient.hint(ids[row][k]));int kw=UiMath.chipWidth(font.getWidth(key));
+                UiTex.three(g,"hud/key-chip",kx,ky,kw);g.drawText(font,key,kx+2,ky+2,DarkUi.CHIP_TEXT,false);drawn.add(key);kx+=kw+2;
+                String word=words[row][k];
+                if(word!=null){g.drawText(font,word,kx,ky+2,DarkUi.SEPIA,false);drawn.add(word);kx+=font.getWidth(word)+8;}
+            }
+            hintRowsDrawn.add(List.copyOf(drawn));
+        }
+        r.put("hints",new int[]{x,y,176,40});
     }
 
     /** One card. State, first match wins: FALLEN (none left of a fielded group), ROUTING, FLASH (a loss in the last 450 ms),
@@ -272,6 +313,42 @@ public final class BattleHud {
         }
         for(int o=0;o<extra;o+=10)UiTex.part(g,"hud/lesson-card",px+side,py+split+o,side,21,e.w()-2*side,Math.min(10,extra-o));
         UiTex.part(g,"hud/lesson-card",px,py+split+extra,0,split,e.w(),e.h()-split);
+    }
+
+    /** The event feed (v4.1): the vellum leaf at the right edge, its box at (W-188, H/2-38), the newest line on the bottom row (4) and
+     *  older ones above. A line is its glyph and its text, trimmed to 140 px, in its style's ink, fading over its last 2 s (a line
+     *  whose alpha is under 4 is skipped: Minecraft draws such text opaque). The slip draws while a line lives, at the newest line's
+     *  alpha. */
+    static void feed(DrawContext g,TextRenderer font,int w,int h,Map<String,int[]> r,Map<String,String> tx){
+        long now=Util.getMeasuringTimeMs();var lines=EventFeed.lines(now);if(lines.isEmpty())return;
+        int x=w-188,y=h/2-38,n=lines.size(),viewer=GravesAndGloryClient.team;
+        try{RenderSystem.setShaderColor(1,1,1,UiMath.feedAlpha(now-lines.get(n-1).bornMs()));UiTex.draw(g,"hud/feed-slip",x,y);}finally{RenderSystem.setShaderColor(1,1,1,1);}
+        for(int i=0;i<n;i++){
+            var line=lines.get(i);int row=EventFeed.MAX_LINES-n+i,ry=y+9+12*row;float a=UiMath.feedAlpha(now-line.bornMs());int alpha=Math.round(a*255);
+            if(alpha<4)continue;
+            var style=FeedLines.style(line.kind(),line.team(),viewer);
+            try{RenderSystem.setShaderColor(1,1,1,a);feedGlyph(g,style.glyph(),x+8,ry);}finally{RenderSystem.setShaderColor(1,1,1,1);}
+            String text=UiMath.trim(line.text(),140,font::getWidth);
+            g.drawText(font,text,x+20,ry,alpha<<24|style.argb()&0xffffff,false);tx.put("feed-"+row,text);
+        }
+        r.put("feed",new int[]{x,y,172,74});
+    }
+
+    /** A feed glyph by its atlas name, each name written out so the art check sees it. */
+    static void feedGlyph(DrawContext g,String glyph,int x,int y){
+        switch(glyph){
+            case "hud/fgv-seal-dawn"->UiTex.draw(g,"hud/fgv-seal-dawn",x,y);
+            case "hud/fgv-seal-dusk"->UiTex.draw(g,"hud/fgv-seal-dusk",x,y);
+            case "hud/fgv-seal-x-dawn"->UiTex.draw(g,"hud/fgv-seal-x-dawn",x,y);
+            case "hud/fgv-seal-x-dusk"->UiTex.draw(g,"hud/fgv-seal-x-dusk",x,y);
+            case "hud/fgv-skull"->UiTex.draw(g,"hud/fgv-skull",x,y);
+            case "hud/fgv-skull-grey"->UiTex.draw(g,"hud/fgv-skull-grey",x,y);
+            case "hud/fgv-banner-down"->UiTex.draw(g,"hud/fgv-banner-down",x,y);
+            case "hud/fgv-banner-up"->UiTex.draw(g,"hud/fgv-banner-up",x,y);
+            case "hud/fgv-rout"->UiTex.draw(g,"hud/fgv-rout",x,y);
+            case "hud/fgv-moon"->UiTex.draw(g,"hud/fgv-moon",x,y);
+            default->UiTex.draw(g,"hud/fgv-sun",x,y);
+        }
     }
 
     /** While the commander is down: a card at the middle of the canvas counting the seconds. */

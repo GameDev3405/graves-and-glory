@@ -19,15 +19,15 @@ final class PresentationScreen extends GravesAndGloryClient.ArmyScreen {
     @Override public boolean mouseReleased(double x,double y,int b){return super.mouseReleased(x/scale,y/scale,b);}
     @Override public void render(DrawContext g,int mx,int my,float delta){
         g.getMatrices().push();g.getMatrices().scale(scale,scale,1);DarkUi.background(g,width,height);
-        DarkUi.title(g,"THE LOOK OF WAR",30,25,GravesAndGloryClient.GOLD);g.drawText(textRenderer,"VISUALS & SOUND / saved on your PC",30,46,GravesAndGloryClient.MUTED,false);
-        DarkUi.frame(g,20,73,395,127);g.drawText(textRenderer,"SHADER",30,80,GravesAndGloryClient.GOLD,false);
+        DarkUi.title(g,"THE LOOK OF WAR",30,25,DarkUi.GOLD);g.drawText(textRenderer,"VISUALS & SOUND / saved on your PC",30,46,DarkUi.MUTED,false);
+        DarkUi.frame(g,20,73,395,127);g.drawText(textRenderer,"SHADER",30,80,DarkUi.GOLD,false);
         String[] desc={"Highest battle performance","Soft light / Minecraft character","Dramatic skies / reflections","Lighter cinematic lighting"};
-        for(int i=0;i<4;i++)g.drawText(textRenderer,desc[i],30+i%2*190,120+i/2*55,GravesAndGloryClient.MUTED,false);
+        for(int i=0;i<4;i++)g.drawText(textRenderer,desc[i],30+i%2*190,120+i/2*55,DarkUi.MUTED,false);
         DarkUi.crest(g,width-145,91,48,GravesAndGloryClient.team==1);
-        g.drawText(textRenderer,"One shader at a time.",width-192,158,GravesAndGloryClient.WHITE,false);g.drawText(textRenderer,"Switch in the lobby.",width-192,174,GravesAndGloryClient.MUTED,false);
-        g.drawText(textRenderer,"WORLD TEXTURES / all include Fresh Animations",30,207,GravesAndGloryClient.GOLD,false);
-        g.drawText(textRenderer,"Accents confirm your hits. They never pause the battle.",30,289,GravesAndGloryClient.MUTED,false);
-        g.drawText(textRenderer,textRenderer.trimToWidth(Presentation.notice,width-60),30,height-24,GravesAndGloryClient.GOLD,false);
+        g.drawText(textRenderer,"One shader at a time.",width-192,158,DarkUi.IVORY,false);g.drawText(textRenderer,"Switch in the lobby.",width-192,174,DarkUi.MUTED,false);
+        g.drawText(textRenderer,"WORLD TEXTURES / all include Fresh Animations",30,207,DarkUi.GOLD,false);
+        g.drawText(textRenderer,"Accents confirm your hits. They never pause the battle.",30,289,DarkUi.MUTED,false);
+        g.drawText(textRenderer,textRenderer.trimToWidth(Presentation.notice,width-60),30,height-24,DarkUi.GOLD,false);
         super.render(g,(int)(mx/scale),(int)(my/scale),delta);g.getMatrices().pop();
     }
     @Override public void close(){client.setScreen(new GravesAndGloryClient.LobbyScreen());}

@@ -3,14 +3,14 @@ package gg.gravesandglory;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Vector3f;
 
-/** Selection -> live-world aim/formation preview -> explicit confirmation. */
+/** Selection -> live-world aim/formation preview -> explicit confirmation. While an order is aimed the battle HUD shows its key
+ *  hints (BattleHud.altLayer) and the aimed point's name under its seal; a refused confirmation is a notice in the event feed. */
 public final class CommandMode {
     /** One group of the player's army as the server last sent it: full is the most of it alive at once this round (0: no card), strength its living health over its full health. */
     public record Group(String id,int count,float health,String order,String formation,float x,float z,float yaw,float cx,float cz,boolean fighting,boolean routing,int full,float strength){}
@@ -23,7 +23,6 @@ public final class CommandMode {
     static boolean facingSet;
     static final java.util.List<Vec3d> preview=new java.util.ArrayList<>();
     static int enemy=-1;
-    static String feedback="";static long feedbackUntil;
     /** How long a group card flashes after it takes a loss (presentation only). */
     public static final long FLASH_MS=450;
     static final java.util.Map<String,Long> flashUntil=new java.util.HashMap<>();
@@ -54,15 +53,19 @@ public final class CommandMode {
     public static boolean cancel(){if(!active())return false;pending="";destination=null;return true;}
     public static boolean confirm(){
         if(!active())return false;
-        if(destination==null){feedback="Aim at reachable terrain";feedbackUntil=System.currentTimeMillis()+2500;return true;}
-        if(pending.equals("charge")&&enemy<0){feedback="Charge: aim at an enemy";feedbackUntil=System.currentTimeMillis()+2500;return true;}
+        if(destination==null){refuse("Aim at reachable terrain");return true;}
+        if(pending.equals("charge")&&enemy<0){refuse("Charge: aim at an enemy");return true;}
         issue(selected,pending,formation,destination,facing,enemy);pending="";return true;
+    }
+    /** A refused confirmation as a feed notice; clicking again while the same notice still shows adds no second line. */
+    static void refuse(String why){
+        long now=net.minecraft.util.Util.getMeasuringTimeMs();var lines=EventFeed.lines(now);
+        if(lines.isEmpty()||!lines.get(lines.size()-1).text().equals(why))EventFeed.push("notice",GravesAndGloryClient.team,why,now);
     }
     static void ping(String kind,double x,double z){if(ClientPlayNetworking.canSend(GravesAndGlory.PING)){var b=PacketByteBufs.create();b.writeString(kind);b.writeDouble(x);b.writeDouble(z);ClientPlayNetworking.send(GravesAndGlory.PING,b);}}
     static void issue(String group,String action,String form,Vec3d dest,float yaw,int target){
         if(!GravesAndGloryClient.battleActive()||!ClientPlayNetworking.canSend(GravesAndGlory.TACTICAL))return;
         var b=PacketByteBufs.create();b.writeString(group);b.writeString(action);b.writeString(form);b.writeDouble(dest.x);b.writeDouble(dest.z);b.writeFloat(yaw);b.writeInt(target);ClientPlayNetworking.send(GravesAndGlory.TACTICAL,b);
-        feedback=label(group)+": "+label(action)+" order sent";feedbackUntil=System.currentTimeMillis()+3000;
     }
     static void tick(MinecraftClient c){
         preview.clear();if(!GravesAndGloryClient.battleActive()){cancel();return;}if(!active()||c.player==null||c.world==null||c.currentScreen!=null)return;
@@ -95,18 +98,6 @@ public final class CommandMode {
         var lines=context.consumers().getBuffer(net.minecraft.client.render.RenderLayer.getLines());
         for(Vec3d p:preview)net.minecraft.client.render.WorldRenderer.drawBox(matrices,lines,new net.minecraft.util.math.Box(p.x-.32,p.y,p.z-.32,p.x+.32,p.y+.09,p.z+.32),1,.82f,.4f,1);
         matrices.pop();
-    }
-    /** The order aim panel, destination line and order feedback (the group panels became BattleHud's cards; Task 3 replaces the rest).
-     *  The aim panel sits at y 76, below the seals and the aimed point's name. */
-    static void hud(DrawContext g,int w,int h){
-        var c=MinecraftClient.getInstance();
-        if(active()){
-            GravesAndGloryClient.panel(g,w/2-180,76,360,40);
-            g.drawCenteredTextWithShadow(c.textRenderer,label(selected)+" / "+label(pending)+" / "+label(formation),w/2,83,GravesAndGloryClient.GOLD);
-            g.drawCenteredTextWithShadow(c.textRenderer,"Click: confirm / Right-click: cancel | Facing: "+GravesAndGloryClient.rotateLeft.getBoundKeyLocalizedText().getString()+" / "+GravesAndGloryClient.rotateRight.getBoundKeyLocalizedText().getString(),w/2,98,GravesAndGloryClient.WHITE);
-            g.drawCenteredTextWithShadow(c.textRenderer,destination==null?"Choose visible terrain":enemy>=0?"Enemy selected":"Destination: "+(int)destination.x+", "+(int)destination.z,w/2,h/2+20,GravesAndGloryClient.GOLD);
-        }
-        if(System.currentTimeMillis()<feedbackUntil)g.drawCenteredTextWithShadow(c.textRenderer,feedback,w/2,h-65,GravesAndGloryClient.GOLD);
     }
 }
 

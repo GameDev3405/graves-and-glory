@@ -85,6 +85,16 @@ public final class UiMath {
         return Math.round(Math.max(0f, Math.min(1f, strength)) * 102);
     }
 
+    /** How long an event feed line lives, and the last stretch of that over which it fades out (presentation timings). */
+    public static final long FEED_LIFE_MS = 8000, FEED_FADE_MS = 2000;
+
+    /** An event feed line's alpha at ageMs: 1 until its last FEED_FADE_MS, then down in a straight line to 0 at FEED_LIFE_MS. */
+    public static float feedAlpha(long ageMs) {
+        long left = FEED_LIFE_MS - ageMs;
+        if (left <= 0) return 0f;
+        return left >= FEED_FADE_MS ? 1f : left / (float) FEED_FADE_MS;
+    }
+
     /** The cooldown sweep's pixel class at (x,y) of a size x size square with `remain` (0..1) of the time left:
      *  0 clear, 1 veil over the part of the turn still to come (clockwise from twelve), 2 the bright leading edge,
      *  3 the start line at twelve. A port of the cooldown painter in tools/ui_art/v4a_hud.py. */

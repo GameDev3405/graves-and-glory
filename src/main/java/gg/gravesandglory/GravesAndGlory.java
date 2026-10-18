@@ -39,6 +39,8 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier STATE = new Identifier("gravesandglory", "state_v7");
     public static final Identifier OPEN_BARRACKS = new Identifier("gravesandglory", "barracks_v1");
     public static final Identifier PARTY = new Identifier("gravesandglory", "party_v1");
+    /** S2C battle event feed lines (FeedEvents): kind, the event's team, text. */
+    public static final Identifier FEED = new Identifier("gravesandglory", "feed_v1");
     public static Battle battle;
     public static final Spec.RulesRow R = Spec.RULES[0];
     @Override public void onInitialize() {
@@ -59,7 +61,7 @@ public final class GravesAndGlory implements ModInitializer {
         });
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             if(battle==null) return;
-            battle.tick();
+            battle.tick();FeedEvents.tick(battle);
             // No hunger in Graves and Glory: food stays full (sprinting and slow natural healing still work) and saturation empty (so healing stays slow).
             for(ServerPlayerEntity p:server.getPlayerManager().getPlayerList()){var hunger=p.getHungerManager();if(hunger.getFoodLevel()!=20)hunger.setFoodLevel(20);hunger.setSaturationLevel(0);hunger.setExhaustion(0);}
         });
@@ -91,6 +93,7 @@ public final class GravesAndGlory implements ModInitializer {
                 if(winner==null)winner=victim.lastHitBy;
                 victim.squad.stats.lost++;
                 if(winner!=null&&winner.team!=victim.squad.team){winner.earn(Spec.ECONOMY[0].killGold());winner.stats.kills++;}
+                FeedEvents.died(battle,victim,winner);
             }
         });
         net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register((player,world,hand,entity,hit)->{
@@ -271,7 +274,7 @@ public final class GravesAndGlory implements ModInitializer {
                     Arena.column(world,x,z);
                 }
                 if(buildColumn>=total){
-                    Arena.finish(world);campaign.built();ready=true;message="Your war council is ready. Press R.";
+                    Arena.finish(world);campaign.built();ready=true;message="Your war council is ready. Press {key:menu}.";
                     Diagnostics.report("arena-ready",true,null);
                 }
                 if(time%20==0){message="Preparing "+Spec.MAPS[campaign.map].name()+" / "+buildColumn*100/total+"%";sendState();}
@@ -282,7 +285,7 @@ public final class GravesAndGlory implements ModInitializer {
                 if(!squads.containsKey(p.getUuid())||!squads.get(p.getUuid()).seated)continue;
                 Long until=respawns.get(p.getUuid());
                 if(until!=null){
-                    if(time>=until){respawns.remove(p.getUuid());p.changeGameMode(GameMode.ADVENTURE);equipPlayer(p);}
+                    if(time>=until){respawns.remove(p.getUuid());p.changeGameMode(GameMode.ADVENTURE);equipPlayer(p);FeedEvents.commander(this,p,true);}
                 } else if(running&&(Math.abs(p.getX())>R.arenaHalfX()-2||Math.abs(p.getZ())>R.arenaHalfZ()-2||p.getY()<56))toBase(p,squads.get(p.getUuid()).team);
             }
             units.removeIf(u->!u.mob.isAlive()||u.mob.isRemoved());
@@ -461,7 +464,7 @@ public final class GravesAndGlory implements ModInitializer {
                 int slot=0;while(used.contains(slot))slot++;
                 if(slot>=R.squadSize()){s.gold+=t.spec().cost();continue;}
                 var at=deploy(s,slot);spawn(s,t.spec(),slot,at.at());Morale.fielded(this,s,t.spec().group());
-                var player=server.getPlayerManager().getPlayer(s.owner);if(player!=null)player.sendMessage(Text.literal(t.spec().name()+" trained: "+deployNote(s,at.anchor())),true);
+                FeedEvents.deployed(this,s,t.spec());
             }
         }
         /** Points this team has held long enough, uncontested and with no enemy near: where new troops may deploy instead of the barracks. Phase 2 banners add their anchors here. */
@@ -488,7 +491,7 @@ public final class GravesAndGlory implements ModInitializer {
         /** The deploy notice after "<troop> trained: " (a null anchor means the barracks). */
         String deployNote(Squad s,Capture anchor){return anchor==null?"deploying from barracks":"deploying at "+anchor.spec.name();}
         void startRound(){
-            Projectiles.clear(this);
+            Projectiles.clear(this);FeedEvents.clear();
             campaign.prepareRound();
             Arrays.fill(scores,0);pointSeconds=new int[2][points.size()];
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
@@ -557,7 +560,7 @@ public final class GravesAndGlory implements ModInitializer {
                 if(p.challenger!=team){p.challenger=team;p.progress=0;}
                 p.progress++;
                 if(p.progress>=p.spec.captureSeconds()){
-                    p.owner=team;p.ownedSince=time;p.challenger=-1;p.progress=0;Arena.flag(world,p.spec,team);
+                    p.owner=team;p.ownedSince=time;p.challenger=-1;p.progress=0;Arena.flag(world,p.spec,team);FeedEvents.point(this,p,team);
                     for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList()){var squad=squads.get(pl.getUuid());if(squad!=null&&squad.seated&&squad.team==team&&horizontalDistance(pl.getPos(),center)<p.spec.radius()*p.spec.radius())campaign.progressEvent(pl.getUuid(),true);}
                     for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList())if(squads.containsKey(pl.getUuid())&&squads.get(pl.getUuid()).seated)pl.sendMessage(Text.literal(Spec.FACTIONS[team].name()+" captured "+p.spec.name()).formatted(team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE),true);
                 }
@@ -587,7 +590,7 @@ public final class GravesAndGlory implements ModInitializer {
             if(entity instanceof ServerPlayerEntity p&&p.getHealth()<=amount){
                 if(Diagnostics.active())System.out.println("[Graves and Glory damage] respawn cause="+source.getType().msgId()+" amount="+amount+" hp="+p.getHealth()+" pos="+p.getPos()+" fall="+p.fallDistance);
                 p.setHealth(p.getMaxHealth());toBase(p,team);p.changeGameMode(GameMode.SPECTATOR);
-                respawns.put(p.getUuid(),time+R.respawnSeconds()*20L);return false;
+                respawns.put(p.getUuid(),time+R.respawnSeconds()*20L);FeedEvents.commander(this,p,false);return false;
             }
             Squad hitter=attackerSquad;for(Unit u:units)if(u.mob==attacker)hitter=u.squad;
             if(hitter!=null)for(Unit u:units)if(u.mob==entity){u.lastHitBy=hitter;break;}

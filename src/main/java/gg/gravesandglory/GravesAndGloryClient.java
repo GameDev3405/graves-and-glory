@@ -43,14 +43,13 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static int[] owners={-1,-1,-1},progress={0,0,0},challengers={-1,-1,-1},roster=new int[Spec.TROOPS.length],pending=new int[Spec.TROOPS.length];
     static List<Marker> markers=List.of();
     record Marker(float x,float z,boolean fighting,boolean own,String name){}
-    static KeyBinding menu,attack,follow,cycle,mapKey,rotateLeft,rotateRight,confirmOrder,cancelOrder,ability;
+    static KeyBinding menu,attack,follow,cycle,mapKey,rotateLeft,rotateRight,confirmOrder,cancelOrder,ability,hints;
     static Path runtime;
     static String join="",error="";
     static boolean attempted,opened,joined,shareCamp,launcherContext,connectingInvitation;
     static int titleTicks,worldTicks;
     static Identifier mapTexture;
     static boolean preparingMap;
-    static final int GOLD=0xffc8a56b,INK=0xf019171d,MUTED=0xffafb9bc,WHITE=0xffeee9df;
     @Override public void onInitializeClient(){
         ClientLoginNetworking.registerGlobalReceiver(VersionGate.CHANNEL,(client,handler,buffer,listeners)->CompletableFuture.completedFuture(VersionGate.response()));
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.registerBuiltinResourcePack(new Identifier("gravesandglory","armory"),net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("gravesandglory").orElseThrow(),net.fabricmc.fabric.api.resource.ResourcePackActivationType.DEFAULT_ENABLED);
@@ -59,6 +58,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         Presentation.load();
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.CLIENT_RESOURCES).registerReloadListener(UiTex.RELOADER); // the UI kit's atlas.json, read at every resource reload
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.CLIENT_RESOURCES).registerReloadListener(BattleHud.RELOADER); // the battle HUD's lesson wrap and texture stop
+        // Event feed lines from the server (FeedEvents); only a running round shows them.
+        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.FEED,(client,handler,buf,responder)->{String kind=buf.readString(16);int team=buf.readInt();String text=buf.readString(FeedEvents.MAX_TEXT);client.execute(()->{if(running)EventFeed.push(kind,team,text,net.minecraft.util.Util.getMeasuringTimeMs());});});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.IMPACT,(client,handler,buf,responder)->{float strength=buf.readFloat();client.execute(()->{Presentation.receivedImpacts++;Presentation.impact(strength);});});
         net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry.register(net.minecraft.entity.EntityType.HUSK,context->new net.minecraft.client.render.entity.HuskEntityRenderer(context){
             @Override public Identifier getTexture(net.minecraft.entity.mob.ZombieEntity entity){
@@ -69,6 +70,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         menu=key("menu",GLFW.GLFW_KEY_R);attack=key("attack",GLFW.GLFW_KEY_G);follow=key("follow",GLFW.GLFW_KEY_V);cycle=key("formation",GLFW.GLFW_KEY_B);mapKey=key("map",GLFW.GLFW_KEY_M);
         rotateLeft=key("rotate_left",GLFW.GLFW_KEY_LEFT_BRACKET);rotateRight=key("rotate_right",GLFW.GLFW_KEY_RIGHT_BRACKET);
         ability=key("ability",GLFW.GLFW_KEY_H); // the commander ability: bound now so the HUD slot can name it; Phase 2 gives it a handler
+        hints=key("hints",GLFW.GLFW_KEY_LEFT_ALT); // held, the battle HUD shows every key hint (BattleHud.altLayer)
         confirmOrder=KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory.confirm",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_ENTER,"category.gravesandglory"));
         cancelOrder=KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory.cancel",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_BACKSPACE,"category.gravesandglory"));
         String local=System.getenv("LOCALAPPDATA");runtime=Path.of(System.getProperty("gravesandglory.runtime",local==null?"gravesandglory-runtime":local+"/gravesandglory"));
@@ -91,10 +93,15 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             int pingCount=buf.readInt();if(pingCount<0||pingCount>4)return;var pings=new ArrayList<CommandMode.Ping>();for(int i=0;i<pingCount;i++)pings.add(new CommandMode.Ping(buf.readString(),buf.readFloat(),buf.readFloat()));int seconds=buf.readInt();
             int seen=buf.readInt();if(seen<0||seen>160)return;var sight=new ArrayList<Sight>();for(int i=0;i<seen;i++)sight.add(new Sight(buf.readFloat(),buf.readFloat(),buf.readInt()));
             String campaignJson=buf.readString(Campaign.SNAPSHOT_LIMIT);
-            client.execute(()->{CampaignClient.accept(client,campaignJson,run);sightings=List.copyOf(sight);contested=contest;CommandMode.pings=java.util.List.copyOf(pings);CommandMode.seconds=seconds;CommandMode.noteGroups(CommandMode.groups,groups,net.minecraft.util.Util.getMeasuringTimeMs());CommandMode.groups=java.util.List.copyOf(groups);ready=r;running=run;dawn=a;dusk=b;message=msg;team=t;count=n;order=o;formation=f;respawn=resp;owners=own;progress=pr;challengers=ch;gold=g;nearBarracks=near;queued=q;trainingSeconds=eta;roster=owned;pending=waiting;markers=List.copyOf(friendly);abilityId=abilityRead;abilityRemaining=cooldownLeft;abilityTotal=cooldownAll;});
+            client.execute(()->{boolean was=running;String before=message;long now=net.minecraft.util.Util.getMeasuringTimeMs();
+                // The feed starts empty with each round and empties when it ends, so a map build's "Preparing ..." never reaches it;
+                // while the round runs, a changed server message joins it as a notice with the player's own keys filled in.
+                if(run!=was)EventFeed.clear();if(run&&!was)BattleHud.roundShownMs=now;
+                if(run&&!msg.isEmpty()&&(!msg.equals(before)||!was))EventFeed.push("notice",t,HintText.expand(msg,GravesAndGloryClient::hint),now);
+                CampaignClient.accept(client,campaignJson,run);sightings=List.copyOf(sight);contested=contest;CommandMode.pings=java.util.List.copyOf(pings);CommandMode.seconds=seconds;CommandMode.noteGroups(CommandMode.groups,groups,net.minecraft.util.Util.getMeasuringTimeMs());CommandMode.groups=java.util.List.copyOf(groups);ready=r;running=run;dawn=a;dusk=b;message=msg;team=t;count=n;order=o;formation=f;respawn=resp;owners=own;progress=pr;challengers=ch;gold=g;nearBarracks=near;queued=q;trainingSeconds=eta;roster=owned;pending=waiting;markers=List.copyOf(friendly);abilityId=abilityRead;abilityRemaining=cooldownLeft;abilityTotal=cooldownAll;});
         });
         ClientPlayConnectionEvents.JOIN.register((handler,sender,client)->{CampaignClient.sendProfile(client);if(connectingInvitation&&!joined){joined=true;say("Melty joined: "+join);}});
-        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);ready=false;modServer=false;running=false;team=-1;opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
+        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);EventFeed.clear();ready=false;modServer=false;running=false;team=-1;opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
             if(client.getOverlay()==null&&client.currentScreen instanceof TitleScreen){
                 if(!attempted){PackControls.prepare(client);if(!Presentation.prepareResources(client))return;attempted=true;}
@@ -117,14 +124,16 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(CommandMode::renderWorld);
     }
     static KeyBinding key(String name,int key){return KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory."+name,InputUtil.Type.KEYSYM,key,"category.gravesandglory"));}
-    /** The player's own key for an action, as a hint shows it: key.attack for confirm and hit, key.use for cancel and use, and
-     *  key.gravesandglory.(id) for the rest (menu, attack, follow, formation, map, rotate_left, rotate_right, ability); "Not bound"
-     *  when that binding is unbound or unknown. */
+    /** The player's own key for an action, as a hint shows it: the binding HintText.bindingKey names (key.attack for confirm and
+     *  hit, key.use for cancel and use, key.gravesandglory.(id) for the rest: menu, attack, follow, formation, map, rotate_left,
+     *  rotate_right, ability, hints); "Not bound" when that binding is unbound or unknown. */
     public static String hint(String id){
-        String name=switch(id){case "confirm","hit"->"key.attack";case "cancel","use"->"key.use";default->"key.gravesandglory."+id;};
+        String name=HintText.bindingKey(id);
         for(KeyBinding k:MinecraftClient.getInstance().options.allKeys)if(k.getTranslationKey().equals(name))return k.isUnbound()?"Not bound":k.getBoundKeyLocalizedText().getString();
         return "Not bound";
     }
+    /** The camp's bottom hint, naming the player's own menu and use keys (a mouse button as LMB, RMB or MMB). */
+    public static String campHint(){return hint("menu")+" / Camp guide    "+HintText.chip(hint("use"))+" on a station to interact";}
     static void say(String line){try{Files.writeString(runtime.resolve("melty.log"),line+"\n",StandardOpenOption.CREATE,StandardOpenOption.APPEND);}catch(Exception ignored){}}
     static void send(String action){if(ClientPlayNetworking.canSend(GravesAndGlory.ORDER)){PacketByteBuf b=PacketByteBufs.create();b.writeString(action);ClientPlayNetworking.send(GravesAndGlory.ORDER,b);}}
     static void connectOrHost(MinecraftClient c){
@@ -143,29 +152,36 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static void invalidateMap(MinecraftClient c){if(mapTexture!=null){c.getTextureManager().destroyTexture(mapTexture);mapTexture=null;}preparingMap=false;}
     static void prepareMap(MinecraftClient c){
         if(preparingMap)return;preparingMap=true;final int generation=CampaignMaps.selected;
-        CompletableFuture.supplyAsync(()->{NativeImage image=new NativeImage(281,201,false);for(int x=0;x<281;x++)for(int z=0;z<201;z++){int col=Arena.mapColor((int)((x-140)*2.5),(int)((z-100)*2.5));image.setColor(x,z,(col&0xff00ff00)|((col>>16)&255)|((col&255)<<16));}return image;}).thenAccept(image->c.execute(()->{if(generation!=CampaignMaps.selected){image.close();preparingMap=false;return;}mapTexture=c.getTextureManager().registerDynamicTexture("gravesandglory_map",new NativeImageBackedTexture(image));}));
+        CompletableFuture.supplyAsync(()->{NativeImage image=new NativeImage(281,201,false);for(int x=0;x<281;x++)for(int z=0;z<201;z++){int col=Arena.mapColor((int)((x-140)*2.5),(int)((z-100)*2.5));image.setColor(x,z,(col&~0xff00ff)|((col>>16)&255)|((col&255)<<16));}return image;}).thenAccept(image->c.execute(()->{if(generation!=CampaignMaps.selected){image.close();preparingMap=false;return;}mapTexture=c.getTextureManager().registerDynamicTexture("gravesandglory_map",new NativeImageBackedTexture(image));}));
     }
-    static int factionColor(int t){return t<0?0xffc5cad1:t==0?0xff57d9ee:0xffc58bff;}
     // The point arrays refill with the next state packet after a map switch, so until then they can be shorter or longer than Spec.POINTS.
     static boolean contestedAt(int i){var a=contested;return i>=0&&i<a.length&&a[i];}
     static int ownerAt(int i){var a=owners;return i>=0&&i<a.length?a[i]:-1;}
     static int progressAt(int i){var a=progress;return i>=0&&i<a.length?a[i]:0;}
     static int challengerAt(int i){var a=challengers;return i>=0&&i<a.length?a[i]:-1;}
     static void panel(DrawContext g,int x,int y,int w,int h){DarkUi.frame(g,x,y,w,h);}
+    /** The battlefield map at (x, y), w x h. Shapes carry the meaning, colour only the state (spec 6.1): each point's owner as its
+     *  team mark (sun, crescent, or the bare square while neutral) on a dark pin with its letter beside it, a ring round a contested
+     *  point, capture progress as a bar in the challenger's colour with the challenger's mark; your troops as filled dots, allied
+     *  troops as rings, enemy sightings as an x (a small one once only remembered). */
     static void map(DrawContext g,int x,int y,int w,int h,boolean labels){
+        var font=MinecraftClient.getInstance().textRenderer;
         if(mapTexture!=null)g.drawTexture(mapTexture,x,y,w,h,0f,0f,281,201,281,201);else g.fill(x,y,x+w,y+h,0xff34473b);
         g.fill(x,y,x+w,y+h,0x66303c39);
-        var pts=Spec.POINTS;for(int i=0;i<pts.length;i++){var p=pts[i];int px=x+(p.x()+350)*w/700,pz=y+(p.z()+250)*h/500;g.fill(px-4,pz-4,px+5,pz+5,0xcc101722);g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,p.id(),px-2,pz-3,factionColor(ownerAt(i)));if(contestedAt(i))g.drawBorder(px-6,pz-6,13,13,0xffffaa55);if(progressAt(i)>0)g.fill(px-5,pz+5,px-5+10*progressAt(i)/p.captureSeconds(),pz+7,factionColor(challengerAt(i)));if(labels)g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,p.name(),px-22,pz+8,WHITE);}
-        for(Marker m:markers){int px=x+(int)((m.x()+350)*w/700),pz=y+(int)((m.z()+250)*h/500);int color=m.fighting()?0xffff995d:m.own()?0xfff5e2a8:0xff6ddfe9;g.fill(px-1,pz-1,px+2,pz+2,color);if(m.fighting())g.fill(px-3,pz-3,px+4,pz-2,color);}
+        var pts=Spec.POINTS;for(int i=0;i<pts.length;i++){var p=pts[i];int px=x+(p.x()+350)*w/700,pz=y+(p.z()+250)*h/500;
+            g.fill(px-4,pz-4,px+5,pz+5,DarkUi.MAP_PIN);DarkUi.teamMark(g,ownerAt(i),px-3,pz-3);g.drawTextWithShadow(font,p.id(),px+7,pz-3,DarkUi.IVORY);
+            if(contestedAt(i))g.drawBorder(px-6,pz-6,13,13,DarkUi.CONTEST);
+            if(progressAt(i)>0){int ch=challengerAt(i);g.fill(px-5,pz+6,px-5+10*progressAt(i)/p.captureSeconds(),pz+8,DarkUi.teamColor(ch));DarkUi.teamMark(g,ch,px+7,pz+6);}
+            if(labels)g.drawTextWithShadow(font,p.name(),px-22,pz+14,DarkUi.IVORY);}
+        for(Marker m:markers){int px=x+(int)((m.x()+350)*w/700),pz=y+(int)((m.z()+250)*h/500);int color=m.fighting()?DarkUi.WARN:DarkUi.MAP_TROOP;DarkUi.mapMark(g,m.own()?"own":"ally",px,pz,color);if(m.fighting())g.fill(px-3,pz-4,px+4,pz-3,color);}
         for(var group:CommandMode.groups){int gx=x+(int)((group.cx()+350)*w/700),gz=y+(int)((group.cz()+250)*h/500);boolean selected=CommandMode.selected.equals("all")||CommandMode.selected.equals(group.id());
-            if(selected){int dx=x+(int)((group.x()+350)*w/700),dz=y+(int)((group.z()+250)*h/500);for(int k=0;k<=20;k++){int lx=gx+(dx-gx)*k/20,lz=gz+(dz-gz)*k/20;g.fill(lx,lz,lx+1,lz+1,GOLD);}g.drawBorder(dx-3,dz-3,7,7,GOLD);}
-            g.fill(gx-4,gz-4,gx+5,gz+5,0xff111923);g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,group.id().substring(0,1).toUpperCase(),gx-2,gz-3,group.fighting()?0xffff9955:GOLD);
+            if(selected){int dx=x+(int)((group.x()+350)*w/700),dz=y+(int)((group.z()+250)*h/500);for(int k=0;k<=20;k++){int lx=gx+(dx-gx)*k/20,lz=gz+(dz-gz)*k/20;g.fill(lx,lz,lx+1,lz+1,DarkUi.GOLD);}g.drawBorder(dx-3,dz-3,7,7,DarkUi.GOLD);}
+            g.fill(gx-4,gz-4,gx+5,gz+5,DarkUi.MAP_GROUP);g.drawTextWithShadow(font,group.id().substring(0,1).toUpperCase(),gx-2,gz-3,group.fighting()?DarkUi.WARN:DarkUi.GOLD);
         }
-        for(var sight:sightings){int px=x+(int)((sight.x()+350)*w/700),pz=y+(int)((sight.z()+250)*h/500);if(sight.age()<20)g.fill(px-2,pz-2,px+3,pz+3,0xffff6860);else g.drawBorder(px-2,pz-2,5,5,0xffa2a5aa);}
-        for(var ping:CommandMode.pings){int px=x+(int)((ping.x()+350)*w/700),pz=y+(int)((ping.z()+250)*h/500);g.drawBorder(px-6,pz-6,13,13,0xffffcc55);if(labels)g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,ping.kind().toUpperCase(),px+8,pz,0xffffcc55);}
-        var p=MinecraftClient.getInstance().player;if(p!=null){int px=x+(int)((p.getX()+350)*w/700),pz=y+(int)((p.getZ()+250)*h/500);g.fill(px-1,pz-2,px+2,pz+3,0xffffffff);}
+        for(var sight:sightings){int px=x+(int)((sight.x()+350)*w/700),pz=y+(int)((sight.z()+250)*h/500);if(sight.age()<20)DarkUi.mapMark(g,"enemy",px,pz,DarkUi.MAP_ENEMY);else DarkUi.mapMark(g,"enemy-old",px,pz,DarkUi.MAP_STALE);}
+        for(var ping:CommandMode.pings){int px=x+(int)((ping.x()+350)*w/700),pz=y+(int)((ping.z()+250)*h/500);g.drawBorder(px-6,pz-6,13,13,DarkUi.PING);if(labels)g.drawTextWithShadow(font,ping.kind().toUpperCase(),px+8,pz,DarkUi.PING);}
+        var p=MinecraftClient.getInstance().player;if(p!=null){int px=x+(int)((p.getX()+350)*w/700),pz=y+(int)((p.getZ()+250)*h/500);g.fill(px-1,pz-2,px+2,pz+3,DarkUi.MAP_YOU);}
     }
-    static String keyHints(){return "Attack "+attack.getBoundKeyLocalizedText().getString()+"   Follow "+follow.getBoundKeyLocalizedText().getString()+"   Formation "+cycle.getBoundKeyLocalizedText().getString()+"   Map "+mapKey.getBoundKeyLocalizedText().getString()+"   Menu "+menu.getBoundKeyLocalizedText().getString();}
     /** Lesson text wraps to this width (body style) inside the 400-pixel lesson card BattleHud draws. */
     static final int LESSON_TEXT_WIDTH=350;
     /** The lesson text lines drawn in the last frame, so a check can compare them with the full copy. */
@@ -173,10 +189,10 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     /** The copy of lesson step (0 to 3), naming the player's own key binding. */
     static String lessonText(int step){
         return switch(step){
-            case 0->"Press "+menu.getBoundKeyLocalizedText().getString()+", choose a group and Move, then click the ground to send them.";
-            case 1->"Press "+cycle.getBoundKeyLocalizedText().getString()+" to change formation. Shieldwall holds a line; Wedge breaks one.";
-            case 2->"Press "+attack.getBoundKeyLocalizedText().getString()+" and aim at an enemy or a point to send your army in.";
-            default->"Press "+MinecraftClient.getInstance().options.useKey.getBoundKeyLocalizedText().getString()+" at your barracks lectern to recruit. Trained troops march out from the held point nearest the fight.";
+            case 0->"Press "+hint("menu")+", choose a group and Move, then click the ground to send them.";
+            case 1->"Press "+hint("formation")+" to change formation. Shieldwall holds a line; Wedge breaks one.";
+            case 2->"Press "+hint("attack")+" and aim at an enemy or a point to send your army in.";
+            default->"Press "+hint("use")+" at your barracks lectern to recruit. Trained troops march out from the held point nearest the fight.";
         };
     }
     public static boolean inCamp(){return ready&&!battleActive();}
@@ -185,13 +201,12 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         var c=MinecraftClient.getInstance();if(c.currentScreen!=null)return;
         DarkUi.frame(g,12,12,182,40);g.drawText(c.textRenderer,"BANNER CAMP",22,21,DarkUi.GOLD,false);
         g.drawText(c.textRenderer,CampaignClient.profile.gold+" gold / "+CampaignClient.profile.progression.title,22,36,DarkUi.PAPER,false);
-        String hint=menu.getBoundKeyLocalizedText().getString()+" / Camp guide    Right-click a station to interact";
-        g.drawCenteredTextWithShadow(c.textRenderer,hint,w/2,h-45,DarkUi.PAPER);
+        g.drawCenteredTextWithShadow(c.textRenderer,campHint(),w/2,h-45,DarkUi.PAPER);
         if(CampaignClient.padCountdown>0)g.drawCenteredTextWithShadow(c.textRenderer,"War gates: "+CampaignClient.padCountdown+"s / Step off to cancel",w/2,24,DarkUi.GOLD);
         else if(CampaignClient.waiting)g.drawCenteredTextWithShadow(c.textRenderer,"A battle is underway / Your camp remains open",w/2,24,DarkUi.MUTED);
     }
     /** The HUD: the camp line in camp, the entrance letterbox during a battle's entrance, else the Iron Ledger (BattleHud), with the
-     *  order aim panel, its feedback and the contact accent still drawn the old way over it (Task 3 redraws them). */
+     *  contact accent over it. */
     static void renderHud(DrawContext g,float delta){
         var c=MinecraftClient.getInstance();if(c.player==null||c.currentScreen instanceof ArmyScreen||Diagnostics.active()&&Diagnostics.hideHud()){BattleHud.clear();return;}
         boolean ledger=battleActive()&&!CampaignClient.cinematic();
@@ -200,7 +215,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         int w=(int)(c.getWindow().getScaledWidth()/scale),h=(int)(c.getWindow().getScaledHeight()/scale);
         if(!battleActive())campHud(g,w,h);
         else if(!ledger)CampaignClient.hud(g,w,h);
-        else{CommandMode.hud(g,w,h);Presentation.hud(g,w,h);}
+        else Presentation.hud(g,w,h);
         g.getMatrices().pop();
     }
     static final class FantasyButton extends ButtonWidget {
@@ -241,9 +256,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         @Override public void render(DrawContext g,int mx,int my,float delta){
             panel(g,4,35,80,132);panel(g,width-80,39,76,32);
             int cardWidth=Math.min(105,(width-24)/Spec.FORMATIONS.length),i=0;
-            for(var f:Spec.FORMATIONS){int x=width/2-Spec.FORMATIONS.length*cardWidth/2+i*cardWidth;panel(g,x,height-65,cardWidth-3,37);if(f.id().equals(CommandMode.formation))g.drawBorder(x,height-65,cardWidth-3,37,GOLD);
-                for(int n=0;n<12;n++){int col=f.id().equals("line")||f.id().equals("shieldwall")?6:4;int dx=n%col*7,dy=n/col*6;if(f.wedge()){int rank=(int)Math.sqrt(n);dx=(n-rank*rank-rank)*7+20;dy=rank*6;}if(f.id().equals("loose")){dx*=2;dy*=2;}g.fill(x+12+dx,height-60+dy,x+15+dx,height-57+dy,GOLD);}i++;}
-            g.drawCenteredTextWithShadow(textRenderer,"Choose group and order. Aim and confirm in the battlefield.",width/2,32,WHITE);super.render(g,mx,my,delta);
+            for(var f:Spec.FORMATIONS){int x=width/2-Spec.FORMATIONS.length*cardWidth/2+i*cardWidth;panel(g,x,height-65,cardWidth-3,37);if(f.id().equals(CommandMode.formation))g.drawBorder(x,height-65,cardWidth-3,37,DarkUi.GOLD);
+                for(int n=0;n<12;n++){int col=f.id().equals("line")||f.id().equals("shieldwall")?6:4;int dx=n%col*7,dy=n/col*6;if(f.wedge()){int rank=(int)Math.sqrt(n);dx=(n-rank*rank-rank)*7+20;dy=rank*6;}if(f.id().equals("loose")){dx*=2;dy*=2;}g.fill(x+12+dx,height-60+dy,x+15+dx,height-57+dy,DarkUi.GOLD);}i++;}
+            g.drawCenteredTextWithShadow(textRenderer,"Choose group and order. Aim and confirm in the battlefield.",width/2,32,DarkUi.IVORY);super.render(g,mx,my,delta);
         }
     }
     public static final class BarracksScreen extends RecruitmentScreen { BarracksScreen(){super();} }
@@ -256,12 +271,22 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         @Override public boolean mouseClicked(double mx,double my,int b){if(!pingMode.isEmpty()&&b==0&&mx>=x&&mx<=x+w&&my>=y&&my<=y+h){CommandMode.ping(pingMode,(mx-x)*700/w-350,(my-y)*500/h-250);pingMode="";return true;}if(b==1&&mx>=x&&mx<=x+w&&my>=y&&my<=y+h){double tx=(mx-x)*700/w-350,tz=(my-y)*500/h-250;CommandMode.issue(CommandMode.selected,"move",CommandMode.formation,new net.minecraft.util.math.Vec3d(tx,65,tz),client.player.getYaw(),-1);return true;}
             for(var group:CommandMode.groups){double gx=x+(group.cx()+350)*w/700,gz=y+(group.cz()+250)*h/500;if(b==0&&Math.hypot(mx-gx,my-gz)<8){CommandMode.selected=group.id();return true;}}
             for(Marker m:markers){double px=x+(m.x()+350)*w/700,pz=y+(m.z()+250)*h/500;if(Math.hypot(mx-px,my-pz)<6){selected=m;return true;}}return super.mouseClicked(mx,my,b);}
-        @Override public void render(DrawContext g,int mx,int my,float delta){g.fill(0,0,width,height,0xee0c1420);g.drawCenteredTextWithShadow(textRenderer,"BATTLEFIELD / FRIENDLY FORCES",width/2,12,GOLD);panel(g,x-4,y-4,w+8,h+8);map(g,x,y,w,h,true);g.drawCenteredTextWithShadow(textRenderer,"Click group to select / Right-click to move / Gold yours, cyan ally",width/2,y+h+12,MUTED);if(selected!=null)g.drawCenteredTextWithShadow(textRenderer,selected.name()+" / "+(selected.own()?"Your troop":"Allied troop")+(selected.fighting()?" / IN COMBAT":" / moving or holding"),width/2,y+h+24,WHITE);super.render(g,mx,my,delta);}
+        @Override public void render(DrawContext g,int mx,int my,float delta){g.fill(0,0,width,height,DarkUi.SCRIM);g.drawCenteredTextWithShadow(textRenderer,"BATTLEFIELD / FRIENDLY FORCES",width/2,12,DarkUi.GOLD);panel(g,x-4,y-4,w+8,h+8);map(g,x,y,w,h,true);key(g,width/2,y+h+12);if(selected!=null)g.drawCenteredTextWithShadow(textRenderer,selected.name()+" / "+(selected.own()?"Your troop":"Allied troop")+(selected.fighting()?" / IN COMBAT":" / moving or holding"),width/2,y+h+24,DarkUi.IVORY);super.render(g,mx,my,delta);}
+        /** The map's controls, named by the player's own bindings (a mouse button as LMB, RMB or MMB). */
+        public static String legend(){return HintText.chip(hint("hit"))+" a group to select / "+HintText.chip(hint("use"))+" to move";}
+        /** The legend, then on the same line the key to the troop marks in the map's own glyphs (a dot for yours, a ring for allies,
+         *  an x for enemy sightings), centred on cx with its top at y. */
+        void key(DrawContext g,int cx,int y){
+            String legend=legend();String[] kinds={"own","ally","enemy"},words={"Yours","Ally","Enemy"};int[] colors={DarkUi.MAP_TROOP,DarkUi.MAP_TROOP,DarkUi.MAP_ENEMY};
+            int total=textRenderer.getWidth(legend)+16+2*12;for(String word:words)total+=8+textRenderer.getWidth(word);
+            int x=cx-total/2;g.drawTextWithShadow(textRenderer,legend,x,y,DarkUi.MUTED);x+=textRenderer.getWidth(legend)+16;
+            for(int i=0;i<3;i++){DarkUi.mapMark(g,kinds[i],x+2,y+3,colors[i]);g.drawTextWithShadow(textRenderer,words[i],x+8,y,DarkUi.MUTED);x+=8+textRenderer.getWidth(words[i])+12;}
+        }
     }
     static final class FailureScreen extends ArmyScreen {
         final String why;FailureScreen(String why){super("Graves and Glory");this.why=why;}
         @Override protected void init(){button("Return to Minecraft",width/2-100,height/2+40,200,b->client.setScreen(new TitleScreen()));}
-        @Override public void render(DrawContext g,int x,int y,float d){renderBackground(g);g.drawCenteredTextWithShadow(textRenderer,why,width/2,height/2,0xffffaaaa);super.render(g,x,y,d);}
+        @Override public void render(DrawContext g,int x,int y,float d){renderBackground(g);g.drawCenteredTextWithShadow(textRenderer,why,width/2,height/2,DarkUi.ALARM_TEXT);super.render(g,x,y,d);}
     }
 }
 

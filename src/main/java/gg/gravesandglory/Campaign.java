@@ -110,13 +110,24 @@ public final class Campaign {
         }catch(Exception ignored){}
         collectionsReady.add(id);
     }
-    void notice(UUID id,String text){notices.put(id,text);var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)p.sendMessage(Text.literal(text),true);}
+    /** The welcome notices a joining player gets (waiting while a battle runs, or in the camp), each naming his own menu key. */
+    static final String WELCOME_WAIT="Battle in progress. Wait in camp for the next round. {key:menu} opens your war council.",WELCOME="Welcome to Graves and Glory. {key:menu} opens your war council.";
+    /** A notice for one player: kept for the camp snapshot (the client fills in its keys) and sent to the action bar, where each
+     *  {key:(id)} shows the player's own binding. */
+    void notice(UUID id,String text){notices.put(id,text);var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)p.sendMessage(keyText(text),true);}
+    /** A {key:(id)} template as chat text: each text as it is, each id as Text.keybind of its binding (HintText.bindingKey), so
+     *  every client shows its own key, or its "Not bound". */
+    public static Text keyText(String template){
+        var parts=HintText.tokens(template);var out=Text.literal(parts.get(0));
+        for(int i=1;i<parts.size();i+=2)out.append(Text.keybind(HintText.bindingKey(parts.get(i)))).append(parts.get(i+1));
+        return out;
+    }
     void joined(ServerPlayerEntity p){
         if(!Files.exists(directory.resolve(p.getUuid()+".json")))importAllowed.add(p.getUuid());profile(p.getUuid());
         // Rejoining the same battle keeps the original start time, so a dropped connection does not cost the reward.
         if(!(b.running&&participants.contains(p.getUuid())))joinedAt.put(p.getUuid(),b.time);var squad=b.squads.get(p.getUuid());
         if(b.running&&squad!=null&&squad.seated)b.toBase(p,squad.team);else toLobby(p);
-        notice(p.getUuid(),b.running&&(squad==null||!squad.seated)?"Battle in progress. Wait in camp for the next round. R opens your war council.":"Welcome to Graves and Glory. R opens your war council.");}
+        notice(p.getUuid(),b.running&&(squad==null||!squad.seated)?WELCOME_WAIT:WELCOME);}
     void toLobby(ServerPlayerEntity p){b.relocate(p,0,66,CampaignMaps.LOBBY_Z+20,180,8);p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
         b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;Projectiles.clear(b);
@@ -384,7 +395,7 @@ public final class Campaign {
         return BattleMath.garrison(owners,s.team,at.toArray(double[][]::new),assignable,points,NEAR_RADIUS_FACTOR*tier.chargeDistance())[me];
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
-    void switchMap(int index){Projectiles.clear(b);map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
+    void switchMap(int index){Projectiles.clear(b);FeedEvents.clear();map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
     /** The lesson a commander is on, or -1: only a campaign battle whose sheet row teaches (lessons) shows them, to its commanders, until all four are done. They repeat on every replay. */
     int tutorialStep(UUID id){
         if(!b.running||activeBattle==null||!activeBattle.lessons()||!participants.contains(id))return -1;

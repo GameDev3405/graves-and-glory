@@ -32,7 +32,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  while the client's ready is false, when step() does not run. clientTick runs every client tick, ready or not. */
     public interface HudWatch { void hudFrame(MinecraftClient c); default void clientTick(MinecraftClient c){} }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front,hold;static boolean started; // hold: client ticks the current suite waits (Phase1Checks.window)
@@ -1258,7 +1258,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     var inf=group("infantry");var ran=group("ranged");var sup=group("support");
                     boolean shown=GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()&&inf!=null&&inf.count()==9&&ran!=null&&ran.count()==6&&sup!=null&&sup.count()==1
                         &&GravesAndGloryClient.ownerAt(0)==0&&GravesAndGloryClient.ownerAt(2)==1&&GravesAndGloryClient.contestedAt(1)&&!GravesAndGloryClient.contestedAt(0)&&!GravesAndGloryClient.contestedAt(2);
-                    if(shown&&seen==0)seen=tick;
+                    if(shown&&seen==0){seen=tick;BattleHud.roundShownMs=net.minecraft.util.Util.getMeasuringTimeMs()-61000;} // past the hint layer of the round's first 60 s (suite ui-feed checks it)
                     if(seen>0&&tick>=seen+2){sealsOk=BattleHud.seals().equals(SEALS);sealsWhy="owners [0, contested, 1]: "+BattleHud.seals()+(sealsOk?"":" (wanted "+SEALS+")");seen=0;stage=3;}
                     else if(seen==0&&tick-waitFrom>2400){report("p1-ui-hud-fixture",false,"the client never showed the fixture ("+fixture+"): groups "+CommandMode.groups+", owners "+Arrays.toString(GravesAndGloryClient.owners)+", contested "+Arrays.toString(GravesAndGloryClient.contested));end(c);}
                 }
@@ -1366,7 +1366,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 70->{waitFrom=tick;fiveReady=false;watchBuild=true;stage=71;} // the server switches to Kingsfield; the build is watched frame by frame
                 case 71->{ // p1-ui-seals-five
-                    if(seen==0&&fiveReady&&GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()&&GravesAndGloryClient.owners.length==5)seen=tick;
+                    if(seen==0&&fiveReady&&GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()&&GravesAndGloryClient.owners.length==5){seen=tick;BattleHud.roundShownMs=net.minecraft.util.Util.getMeasuringTimeMs()-61000;}
                     if(seen>0&&tick>=seen+3){
                         var ss=BattleHud.seals();var r=BattleHud.rects();var xs=ss.stream().map(BattleHud.SealDraw::x).toList();
                         boolean clear=r.containsKey("seal-0")&&r.containsKey("seal-4")&&!meets(r.get("seal-0"),r.get("dawn-boss"))&&!meets(r.get("seal-4"),r.get("dusk-boss"));
@@ -1449,6 +1449,274 @@ public final class Phase1Checks implements ClientModInitializer {
         void end(MinecraftClient c){
             finished=true;keepLesson=false;keepRespawn=false;routSupport=false;hungerOn=false;watchHunger=false;watchBuild=false;CommandMode.selected="all";
             UUID id=player;server(c,b->{b.testAbility=null;if(id!=null)b.respawns.remove(id);});
+            if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;
+        }
+    }
+
+    /** UI Task 3: the battle event feed (feed_v1), key hints from the player's own bindings, the hint layer and the map's glyphs, over
+     *  four practice rounds: A on map 0 (the bindings, the hint layer, the map), B on map 0 (a point taken, losses and kills), C on
+     *  map 0 (a rout, a deploy, a fallen solo commander) and D on Kingsfield (the flood). Each round goes back to the camp before the
+     *  next starts, so the client sees running turn false and then true: the feed clears and the hint layer's first 60 s begin again.
+     *  The window is 960x540 at GUI 1 (k 1, the mock's size), but GUI 2 for the map's screenshot. */
+    static final class UiFeedChecks implements Suite,ServerWatch {
+        static final double AX=-220,AZ=0; // open ground on map 0's Dawn road (UiHudChecks.AX)
+        static final String NOTICE="{key:menu} opens your war council.";
+        static final String LONG="The long notice of the flood check runs on well past the width of the feed slip, so the slip trims it";
+        static final List<List<String>> HINT_ROWS=List.of(List.of("Not bound","Map","K","Commands"),List.of("[","]","Turn","Left Alt","Hints"));
+        static final List<String> AIM_ROW=List.of("LMB","Confirm","RMB","Cancel");
+        static final List<String> COLOURS=List.of("red","blue","green","gold","yellow","purple","white","grey","gray","orange","cyan","aqua","black","pink","violet","brown");
+        static final UUID STALE=UUID.randomUUID(); // the remembered sighting the map stage keeps 100 ticks old
+        // Written by both threads. A negative stage is a hand-off: the client waits for the server task it sent to set the next stage.
+        volatile int stage,want,live;volatile UUID player;volatile boolean fixed,pointOwned,mapMarks;volatile long floodAt=-1,pointTicks=-1;
+        volatile String fixture="",pointName="",killed="",deployWhy="",flooded="";
+        // server thread
+        int floodSet;long fixedAt;
+        // client thread
+        int oldW,oldH,oldGui,round,after,waitFrom,seen,seen2,mark=-1,routAt,respawnAt,sentBefore;boolean finished,campOk,battleOk,rowsOk,inFirst,respawnSeen,banner,floodOk,prepOk;
+        String campWhy="",battleWhy="",rowsWhy="",prepWhy="",floodWhy="";List<Boolean> tallFirst=List.of(),tallLate=List.of();
+
+        ServerPlayerEntity sp(GravesAndGlory.Battle b){return player==null?null:b.server.getPlayerManager().getPlayer(player);}
+        static List<EventFeed.Line> lines(){return EventFeed.lines(net.minecraft.util.Util.getMeasuringTimeMs());}
+        static long count(String kind,int team,String text){return lines().stream().filter(l->l.kind().equals(kind)&&l.team()==team&&l.text().equals(text)).count();}
+        static String feed(){return lines().stream().map(l->l.kind()+"/"+l.team()+" '"+l.text()+"'").toList().toString();}
+        static boolean bannerLine(){return lines().stream().anyMatch(l->l.kind().equals("down")||l.kind().equals("up"));}
+        static List<Boolean> talls(){return BattleHud.cards().stream().map(BattleHud.CardDraw::tall).toList();}
+        static net.minecraft.client.util.InputUtil.Key hintsKey(){return net.minecraft.client.util.InputUtil.fromTranslationKey(GravesAndGloryClient.hints.getBoundKeyTranslationKey());}
+        /** The troop a loss line names ("?" for none). */
+        static String troopOf(String text){for(var t:Spec.TROOPS)if(text.equals(FeedLines.lost(1,t.name()))||text.endsWith(" "+FeedLines.plural(t.name())+" lost"))return t.id();return "?";}
+        static int killTroop(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String id,int n){int k=0;for(var u:b.units)if(k<n&&u.squad==s&&u.spec.id().equals(id)&&u.mob.isAlive()){u.mob.kill();k++;}b.units.removeIf(u->!u.mob.isAlive());return k;}
+        /** Frozen, and with its AI off so it keeps the place the map shows. */
+        static void still(GravesAndGlory.Unit u){freeze(u);u.mob.setAiDisabled(true);}
+        /** Client ticks since this stage began (the first step that called this in it). */
+        int since(int tick){if(mark!=stage){mark=stage;waitFrom=tick;}return tick-waitFrom;}
+        /** The menu and map keys back on their defaults (R and M). */
+        static void defaults(){GravesAndGloryClient.menu.setBoundKey(GravesAndGloryClient.menu.getDefaultKey());GravesAndGloryClient.mapKey.setBoundKey(GravesAndGloryClient.mapKey.getDefaultKey());net.minecraft.client.option.KeyBinding.updateKeysByCode();}
+        /** Back to the camp (the client must see running false), then round r on its map; 20 ticks after the client shows it, stage next. */
+        void restart(MinecraftClient c,int r,int next){round=r;after=next;stage=-900;server(c,b->{if(b.running)b.campaign.returnLobby();stage=900;});}
+
+        void fixture(GravesAndGlory.Battle b,ServerPlayerEntity p,int r){
+            var own=b.squads.get(player);UiHudChecks.quiet(b,own);float yaw=-90;
+            if(r==1){ // own troops on a 24-block grid (a map dot apart at GUI 2), three allied knights to the south and three revenants to the east, all held in place
+                int i=0;for(var u:b.units)if(u.squad==own){double x=AX+(i%5)*24,z=AZ-36+(i/5)*24;MoraleChecks.place(b,u,x,z,yaw);still(u);i++;}
+                var ally=new GravesAndGlory.Squad(UUID.randomUUID(),0,new Vec3d(AX,top(b,AX,AZ+70),AZ+70));ally.order="hold";
+                var foes=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(AX+120,top(b,AX+120,AZ),AZ));foes.order="hold";foes.yaw=90;
+                for(int k=0;k<3;k++){double ax=AX+k*24,az=AZ+70,ex=AX+120,ez=AZ-24+k*24;
+                    still(b.spawn(ally,troop("knight"),k,new Vec3d(ax,top(b,ax,az),az)));still(b.spawn(foes,troop("revenant"),k,new Vec3d(ex,top(b,ex,ez),ez)));}
+                b.relocate(p,AX-10,top(b,AX-10,AZ),AZ,-90,12);
+                fixture=i+" own troops on a 24-block grid from "+(int)AX+", "+(int)(AZ-36)+", three allied knights at z "+(int)(AZ+70)+" and three revenants at x "+(int)(AX+120)+", AI off";
+            }else if(r==2){ // the infantry holds point 0
+                var spot=b.points.get(0).spec;double px=spot.x(),pz=spot.z();pointName=spot.name();
+                own.assignments.put("infantry",new GravesAndGlory.Assignment("hold","block",new Vec3d(px,top(b,px,pz),pz),yaw));
+                for(var u:b.units)if(u.squad==own){if(u.spec.group().equals("infantry")){Vec3d at=b.formation(u);MoraleChecks.place(b,u,at.x,at.z,yaw);}freeze(u);}
+                b.relocate(p,px-8,top(b,px-8,pz),pz,yaw,12);
+                fixture="the infantry holds point 0 ("+spot.id()+", "+pointName+" at "+spot.x()+", "+spot.z()+")";
+            }else if(r==3){ // the army at AX with a frozen revenant 7 blocks in front of the infantry, close enough for the morale rules
+                own.assignments.put("infantry",new GravesAndGlory.Assignment("hold","block",new Vec3d(AX,top(b,AX,AZ),AZ),yaw));
+                own.assignments.put("ranged",new GravesAndGlory.Assignment("hold","line",new Vec3d(AX-9,top(b,AX-9,AZ),AZ),yaw));
+                own.assignments.put("support",new GravesAndGlory.Assignment("hold","block",new Vec3d(AX-16,top(b,AX-16,AZ+9),AZ+9),yaw));
+                for(var u:b.units)if(u.squad==own){Vec3d at=b.formation(u);MoraleChecks.place(b,u,at.x,at.z,yaw);freeze(u);}
+                var foes=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(AX+7,top(b,AX+7,AZ),AZ));foes.order="hold";foes.yaw=90;
+                freeze(b.spawn(foes,troop("revenant"),0,new Vec3d(AX+7,top(b,AX+7,AZ),AZ)));
+                b.relocate(p,AX-16,top(b,AX-16,AZ+9),AZ+9,-120,12);
+                fixture="the army at "+(int)AX+", "+(int)AZ+" with a frozen revenant 7 blocks in front of the infantry";
+            }else{ // Kingsfield: a fourth troop, five Dawn Sentinels beside the army
+                var at=b.units.stream().filter(u->u.squad==own).map(u->u.mob.getPos()).findFirst().orElse(GravesAndGlory.Battle.base(0));
+                for(int k=0;k<5;k++){double x=at.x+2+k*1.5,z=at.z+3;b.spawn(own,troop("sentinel"),20+k,new Vec3d(x,top(b,x,z),z));}
+                for(var u:b.units)if(u.squad==own)freeze(u);
+                fixture="map "+b.campaign.map+" ("+b.points.size()+" points) with five Dawn Sentinels beside the army: "+b.units.stream().filter(u->u.squad==own).count()+" own troops";
+            }
+            System.out.println("[p1] ui-feed round "+r+": "+fixture);
+        }
+        /** The map stage: each revenant a fresh sighting and one remembered sighting 100 ticks old, every tick. */
+        void marks(GravesAndGlory.Battle b){
+            var memory=b.sightings.computeIfAbsent(0,k->new HashMap<>());
+            for(var u:b.units)if(u.squad.team==1&&u.mob.isAlive())memory.put(u.mob.getUuid(),new GravesAndGlory.Battle.Sight((float)u.mob.getX(),(float)u.mob.getZ(),b.time));
+            memory.put(STALE,new GravesAndGlory.Battle.Sight((float)(AX+150),(float)AZ,b.time-100));
+        }
+        /** p1-ui-feed-loss-kill, one server tick: three own knights die, and the player's attack kills two Dusk Revenants. */
+        void lossKill(GravesAndGlory.Battle b){
+            var own=b.squads.get(player);var p=sp(b);int k=killTroop(b,own,"knight",3);
+            var foes=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(AX,top(b,AX,AZ+30),AZ+30));foes.order="hold";
+            List<GravesAndGlory.Unit> two=new ArrayList<>();for(int i=0;i<2;i++){double x=AX+i*3,z=AZ+30;two.add(b.spawn(foes,troop("revenant"),i,new Vec3d(x,top(b,x,z),z)));}
+            int dead=0;for(var u:two){u.mob.damage(p.getDamageSources().playerAttack(p),1000f);if(!u.mob.isAlive())dead++;}
+            b.units.removeIf(u->!u.mob.isAlive());
+            killed="in one server tick "+k+" own Dawn Knights were killed and the player's attack killed "+dead+" of two Dusk Revenants";
+        }
+        /** p1-ui-feed-deploy: one knight dies, and the player trains one at the barracks. */
+        void deploy(GravesAndGlory.Battle b){
+            var own=b.squads.get(player);var p=sp(b);int k=killTroop(b,own,"knight",1);var f=Spec.FACTIONS[0];
+            b.relocate(p,f.barracksX(),top(b,f.barracksX(),f.barracksZ())+1,f.barracksZ(),-90,8);int gold=own.gold;
+            b.manage(p,own,"train:knight");
+            deployWhy=k+" knight killed; at the barracks (in reach: "+b.atBarracks(p,own)+") train:knight queued "+own.training.size()+" (gold "+gold+" to "+own.gold+")";
+        }
+        /** p1-ui-feed-flood, one server tick: 20 own troops of four kinds die, every point changes hands, and the first of ten messages. */
+        void flood(GravesAndGlory.Battle b){
+            var own=b.squads.get(player);Map<String,Integer> plan=Map.of("knight",8,"archer",5,"mage",2,"sentinel",5);Map<String,Integer> dead=new TreeMap<>();
+            for(var e:plan.entrySet())dead.put(e.getKey(),killTroop(b,own,e.getKey(),e.getValue()));
+            for(int i=0;i<b.points.size();i++)FeedEvents.point(b,b.points.get(i),i%2);
+            b.message="Flood notice 1";b.sendState();floodSet=1;floodAt=b.time;
+            flooded="in one server tick own troops died "+dead+", FeedEvents.point ran for "+b.points.size()+" points (Dawn and Dusk in turn), and the message changed ten times over ten ticks (the last "+LONG.length()+" characters)";
+        }
+
+        public void serverTick(GravesAndGlory.Battle b){
+            if(want>0){var p=sp(b);if(p!=null&&skirmish(b,p,want==4?4:0,1,"normal")){live=want;want=0;fixture(b,p,live);fixedAt=b.time;fixed=true;}}
+            if(live==2&&!pointOwned&&b.running&&!b.points.isEmpty()&&b.points.get(0).owner==0){pointTicks=b.time-fixedAt;pointOwned=true;}
+            if(mapMarks&&b.running)marks(b);
+            if(floodAt>=0&&floodSet<10&&b.running&&b.time-floodAt>=floodSet){b.message=floodSet==9?LONG:"Flood notice "+(floodSet+1);b.sendState();floodSet++;}
+        }
+
+        public void step(MinecraftClient c,int tick){
+            if(tick>24000&&!finished){report("p1-ui-feed-timeout",false,"stuck in stage "+stage+" (round "+round+")");end(c);return;}
+            if(stage!=0&&stage!=19&&!finished&&c.currentScreen!=null)c.setScreen(null);
+            switch(stage){
+                case 0->{ // p1-ui-hints-rebound: the menu key on K, the map key unbound
+                    if(tick<20)return;c.setScreen(null);var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();
+                    CommandMode.selected="all";window(c,960,540,1);
+                    GravesAndGloryClient.menu.setBoundKey(net.minecraft.client.util.InputUtil.Type.KEYSYM.createFromCode(GLFW.GLFW_KEY_K));
+                    GravesAndGloryClient.mapKey.setBoundKey(net.minecraft.client.util.InputUtil.UNKNOWN_KEY);net.minecraft.client.option.KeyBinding.updateKeysByCode();
+                    String camp=GravesAndGloryClient.campHint();campOk=camp.contains("K");campWhy="campHint() '"+camp+"'";
+                    CampaignClient.notice="";UUID id=c.player.getUuid();stage=-1;server(c,b->{player=id;b.campaign.notice(id,Campaign.WELCOME_WAIT);stage=1;});
+                }
+                case 1,2->{ // the camp path, for each welcome string: the template the client keeps, what CampScreen draws, the action bar's text
+                    String sent=stage==1?Campaign.WELCOME_WAIT:Campaign.WELCOME;boolean got=sent.equals(CampaignClient.notice);
+                    if(got){String drawn=HintText.expand(CampaignClient.notice,GravesAndGloryClient::hint),bar=Campaign.keyText(CampaignClient.notice).getString();
+                        campOk&=drawn.contains("K opens")&&bar.contains("K opens");campWhy+="; notice '"+CampaignClient.notice+"': CampScreen draws '"+drawn+"', the action bar reads '"+bar+"'";}
+                    else if(since(tick)>200){campOk=false;campWhy+="; the client's notice was '"+CampaignClient.notice+"' 200 ticks after the server sent '"+sent+"'";}
+                    if(got||since(tick)>200){
+                        if(stage==1){CampaignClient.notice="";stage=-2;server(c,b->{b.campaign.notice(player,Campaign.WELCOME);stage=2;});}
+                        else restart(c,1,10);
+                    }
+                }
+                case 900->{
+                    if(!GravesAndGloryClient.running){fixed=false;seen=0;want=round;stage=901;}
+                    else if(since(tick)>200){report("p1-ui-feed-fixture",false,"the client still showed a round 200 ticks after the return to the camp");end(c);}
+                }
+                case 901->{
+                    if(seen==0&&fixed&&GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic())seen=tick;
+                    if(seen>0&&tick>=seen+20){seen=0;stage=after;}
+                    else if(seen==0&&since(tick)>3000){report("p1-ui-feed-fixture",false,"round "+round+" was not on screen 3000 ticks after it was asked for");end(c);}
+                }
+                // Round A: map 0
+                case 10->{stage=-10;server(c,b->{b.message=NOTICE;stage=11;});}
+                case 11->{ // the battle path: the STATE message as the newest feed line, with the player's key
+                    var ls=lines();String newest=ls.isEmpty()?"":ls.get(ls.size()-1).text();int k=since(tick);
+                    if(newest.equals("K opens your war council.")||k>20){battleOk=newest.equals("K opens your war council.");battleWhy="the server set the message '"+NOTICE+"'; "+k+" client ticks later the newest feed line was '"+newest+"'";seen=tick;stage=12;}
+                }
+                case 12->{ // the hint layer in the round's first 60 s, then the screenshot, then an order aimed
+                    if(tick>=seen+2){var rows=List.copyOf(BattleHud.hintRows());long age=net.minecraft.util.Util.getMeasuringTimeMs()-BattleHud.roundShownMs;
+                        rowsOk=rows.equals(HINT_ROWS)&&age<BattleHud.HINT_LAYER_MS;rowsWhy="hint rows "+rows+" "+age/1000+" s into the round";
+                        shot(c,"ui-hud-hints");CommandMode.begin("move");seen=tick;stage=13;}
+                }
+                case 13->{
+                    if(tick>=seen+2){var rows=BattleHud.hintRows();List<String> first=rows.isEmpty()?List.of():List.copyOf(rows.get(0));boolean aimed=CommandMode.active();
+                        boolean aimOk=aimed&&first.equals(AIM_ROW);CommandMode.cancel();defaults();
+                        report("p1-ui-hints-rebound",campOk&&battleOk&&rowsOk&&aimOk,campWhy+"; "+battleWhy+"; "+rowsWhy+"; aiming (active "+aimed+") row 1 "+first+"; then the menu and map keys went back to "+GravesAndGloryClient.hint("menu")+" and "+GravesAndGloryClient.hint("map"));
+                        seen=tick;stage=14;}
+                }
+                case 14->{ // p1-ui-alt-layer: in the first 60 s every card is tall
+                    if(tick>=seen+2&&!CommandMode.active()){tallFirst=talls();inFirst=net.minecraft.util.Util.getMeasuringTimeMs()-BattleHud.roundShownMs<BattleHud.HINT_LAYER_MS;
+                        CommandMode.selected="ranged";BattleHud.roundShownMs-=61000;seen=tick;stage=15;}
+                }
+                case 15->{if(tick>=seen+2){tallLate=talls();net.minecraft.client.option.KeyBinding.setKeyPressed(hintsKey(),true);seen=tick;stage=16;}}
+                case 16->{
+                    net.minecraft.client.option.KeyBinding.setKeyPressed(hintsKey(),true);
+                    if(tick>=seen+2){var held=talls();boolean pressed=GravesAndGloryClient.hints.isPressed();net.minecraft.client.option.KeyBinding.setKeyPressed(hintsKey(),false);CommandMode.selected="all";
+                        boolean ok=inFirst&&tallFirst.size()==3&&!tallFirst.contains(false)&&tallLate.equals(List.of(false,true,false))&&held.size()==3&&!held.contains(false);
+                        report("p1-ui-alt-layer",ok,"in the round's first 60 s (true: "+inFirst+") with the army selected the cards drew tall "+tallFirst+"; with roundShownMs moved 61 s back and ranged selected "+tallLate+"; with the hints key ("+GravesAndGloryClient.hint("hints")+") held (pressed "+pressed+") "+held);
+                        stage=17;}
+                }
+                case 17->{window(c,960,540,2);mapMarks=true;seen=tick;stage=18;}
+                case 18->{if(tick>=seen+20){c.setScreen(new GravesAndGloryClient.MapScreen(null));seen=tick;stage=19;}}
+                case 19->{ // p1-ui-map-glyphs
+                    if(tick>=seen+5){
+                        String legend=GravesAndGloryClient.MapScreen.legend(),lower=" "+legend.toLowerCase(Locale.ROOT)+" ";
+                        List<String> colours=COLOURS.stream().filter(word->java.util.regex.Pattern.compile("[^a-z]"+word+"[^a-z]").matcher(lower).find()).toList();
+                        var ms=GravesAndGloryClient.markers;long own=ms.stream().filter(GravesAndGloryClient.Marker::own).count(),ally=ms.size()-own;
+                        var ss=GravesAndGloryClient.sightings;long fresh=ss.stream().filter(v->v.age()<20).count(),old=ss.size()-fresh;
+                        boolean open=c.currentScreen instanceof GravesAndGloryClient.MapScreen;
+                        shot(c,"ui-map");
+                        report("p1-ui-map-glyphs",open&&legend.equals("LMB a group to select / RMB to move")&&colours.isEmpty()&&own>0&&ally>0&&fresh>0&&old>0,"legend '"+legend+"' (colour words in it: "+colours+"); the map (open: "+open+", GUI 2) marks "+own+" own troops (dots), "+ally+" allied (rings), "+fresh+" fresh sightings (x) and "+old+" remembered (small x); "+fixture);
+                        c.setScreen(null);mapMarks=false;window(c,960,540,1);restart(c,2,30);
+                    }
+                }
+                // Round B: map 0
+                case 30->{ // p1-ui-feed-point: the infantry holds point 0
+                    if(pointOwned){seen=tick;stage=31;}
+                    else if(since(tick)>1300){report("p1-ui-feed-point",false,"point 0 ("+pointName+") had no Dawn owner 1300 client ticks after the infantry was set to hold it; feed "+feed());stage=32;}
+                }
+                case 31->{
+                    String line="Dawn took "+pointName;long n=count("point",0,line);
+                    if(n==1||tick>seen+20){report("p1-ui-feed-point",n==1&&pointTicks<=1200,fixture+"; Dawn owned it "+pointTicks+" server ticks later; "+(tick-seen)+" client ticks after that the feed held "+n+" line(s) ('point', 0, '"+line+"'): "+feed());stage=32;}
+                }
+                case 32->{EventFeed.clear();stage=-32;server(c,b->{lossKill(b);stage=33;});}
+                case 33->{ // p1-ui-feed-loss-kill
+                    if(since(tick)>=60){long lost=count("loss",0,"3 Dawn Knights lost"),slain=count("kill",0,"2 Dusk Revenants lost");
+                        report("p1-ui-feed-loss-kill",lost==1&&slain==1,killed+"; 60 client ticks later the feed held "+lost+" '3 Dawn Knights lost' (loss, 0) and "+slain+" '2 Dusk Revenants lost' (kill, 0): "+feed());restart(c,3,50);}
+                }
+                // Round C: map 0
+                case 50->{EventFeed.clear();stage=-50;server(c,b->{killTroop(b,b.squads.get(player),"knight",10);stage=51;});}
+                case 51->{ // p1-ui-feed-rout: the morale rules rout the infantry
+                    int k=since(tick);
+                    if(count("rout",0,"Infantry routing")==1){routAt=k;stage=-52;server(c,b->{Morale.rally(b,b.squads.get(player),"infantry");stage=52;});}
+                    else if(k>100){report("p1-ui-feed-rout",false,"no 'Infantry routing' line 100 client ticks after 10 of the 12 knights died: "+feed());stage=54;}
+                }
+                case 52->{
+                    int k=since(tick);
+                    if(count("regroup",0,"Infantry regrouped")==1){stage=-53;server(c,b->{Morale.rally(b,b.squads.get(player),"ranged");stage=53;});}
+                    else if(k>40){report("p1-ui-feed-rout",false,"'Infantry routing' "+routAt+" client ticks after the deaths, but no 'Infantry regrouped' 40 ticks after Morale.rally: "+feed());stage=54;}
+                }
+                case 53->{
+                    if(since(tick)>=30){long regroups=lines().stream().filter(l->l.kind().equals("regroup")).count();
+                        report("p1-ui-feed-rout",regroups==1&&count("regroup",0,"Ranged regrouped")==0,"'Infantry routing' "+routAt+" client ticks after 10 of the 12 knights died, then 'Infantry regrouped' after Morale.rally; 30 ticks after Morale.rally on ranged (not routing) the feed holds "+regroups+" regroup line(s): "+feed());stage=54;}
+                }
+                case 54->{EventFeed.clear();stage=-54;server(c,b->{deploy(b);stage=55;});}
+                case 55->{ // p1-ui-feed-deploy
+                    int k=since(tick);long n=count("deploy",0,"Dawn Knight deploying");
+                    if(n==1||k>400){report("p1-ui-feed-deploy",n==1,deployWhy+"; "+k+" client ticks later the feed held "+n+" 'Dawn Knight deploying' (deploy, 0): "+feed());stage=56;}
+                }
+                case 56->{banner=false;respawnSeen=false;seen2=0;sentBefore=FeedEvents.sent;stage=-56;server(c,b->{var p=sp(b);p.damage(p.getDamageSources().magic(),1000f);stage=57;});}
+                case 57->{ // p1-ui-feed-commander-solo
+                    int k=since(tick);banner|=bannerLine();
+                    if(BattleHud.rects().containsKey("respawn")){respawnSeen=true;respawnAt=k;stage=58;}
+                    else if(k>60){report("p1-ui-feed-commander-solo",false,"no respawn card 60 client ticks after the player was killed: "+feed());restart(c,4,70);}
+                }
+                case 58->{
+                    int k=since(tick);banner|=bannerLine();
+                    if(seen2==0&&!BattleHud.rects().containsKey("respawn")&&GravesAndGloryClient.respawn==0)seen2=tick;
+                    if(seen2>0&&tick>=seen2+40){int sent=FeedEvents.sent-sentBefore;
+                        report("p1-ui-feed-commander-solo",respawnSeen&&!banner,"the respawn card showed "+respawnAt+" client ticks after the player was killed and left "+(seen2-waitFrom)+" ticks after that; "+(banner?"a down or up line arrived":"no down or up line arrived")+" up to 40 ticks after the respawn ("+sent+" feed lines sent by the server meanwhile): "+feed());
+                        restart(c,4,70);}
+                    else if(seen2==0&&k>600){report("p1-ui-feed-commander-solo",false,"the respawn had not ended 600 client ticks after the card showed: "+feed());restart(c,4,70);}
+                }
+                // Round D: Kingsfield
+                case 70->{ // p1-ui-feed-flood
+                    var prep=lines().stream().map(EventFeed.Line::text).filter(t->t.startsWith("Preparing")).toList();prepOk=prep.isEmpty();prepWhy=prep.isEmpty()?"no Preparing line of the build reached the feed":"build lines in the feed: "+prep;
+                    stage=-70;server(c,b->{flood(b);stage=71;});
+                }
+                case 71->{
+                    if(since(tick)>=60){
+                        var ls=lines();var font=c.textRenderer;List<String> wide=new ArrayList<>(),rows=new ArrayList<>(),troops=new ArrayList<>();
+                        for(int r=0;r<EventFeed.MAX_LINES;r++){String t=BattleHud.texts().get("feed-"+r);if(t==null)continue;rows.add(t+" ("+font.getWidth(t)+" px)");if(font.getWidth(t)>140)wide.add(t);}
+                        for(var l:ls)if(l.kind().equals("loss"))troops.add(troopOf(l.text()));
+                        boolean unique=new HashSet<>(troops).size()==troops.size()&&!troops.contains("?");
+                        floodOk=ls.size()<=5&&rows.size()==ls.size()&&wide.isEmpty()&&unique&&prepOk;
+                        floodWhy=fixture+"; "+flooded+"; 60 client ticks later "+ls.size()+" lines live: "+feed()+"; drawn "+rows+(wide.isEmpty()?", none over 140 px":", over 140 px: "+wide)+"; loss lines by troop "+troops+"; "+prepWhy;
+                        shot(c,"ui-feed-flood");stage=-72;server(c,b->{b.campaign.returnLobby();stage=72;});
+                    }
+                }
+                case 72->{
+                    int k=since(tick);boolean empty=lines().isEmpty();
+                    if(empty||k>20){report("p1-ui-feed-flood",floodOk&&empty,floodWhy+"; after returnLobby the feed was "+(empty?"empty "+k+" client ticks later":"still "+feed()+" 20 ticks later"));end(c);}
+                }
+                case 99->{stage=100;finish(c,"ui-feed");}
+                default->{}
+            }
+        }
+        /** Puts the keys, the selection, the hints key and the window back; p1-ui-feed-suite follows once the window has settled. */
+        void end(MinecraftClient c){
+            finished=true;mapMarks=false;want=0;CommandMode.cancel();CommandMode.selected="all";defaults();
+            if(GravesAndGloryClient.hints!=null)net.minecraft.client.option.KeyBinding.setKeyPressed(hintsKey(),false);
+            if(c.currentScreen instanceof GravesAndGloryClient.MapScreen)c.setScreen(null);
             if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;
         }
     }

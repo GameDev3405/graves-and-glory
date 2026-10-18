@@ -15,6 +15,11 @@ final class DarkUi {
     // the shadow under tags, and the cooldown sweep's veil, leading edge and twelve o'clock line.
     static final int PLATE_INK=0xff1e1509, KEY_INK=0xff3a2a12, RAIL_KEY=0xfff0d9a0, ABILITY_KEY=0xff2e1f0c, TAG_SHADOW=0xff120d16;
     static final int SWEEP_VEIL=0xcd15191c, SWEEP_EDGE=0xe6dfbd77, SWEEP_LINE=0xc8b08a4a;
+    // The battlefield map's inks: the dark pin under a point's mark, a group's pin, the contested ring, anything fighting, the
+    // friendly troop marks, fresh and remembered enemy sightings, pings and the player.
+    static final int MAP_PIN=0xcc101722, MAP_GROUP=0xff111923, CONTEST=0xffffaa55, WARN=0xffff9955, MAP_TROOP=0xfff5e2a8, MAP_ENEMY=0xffff6860, MAP_STALE=0xffa2a5aa, PING=0xffffcc55, MAP_YOU=0xffffffff;
+    // Screen inks: the map screen's scrim, the entrance letterbox, the band over the battle preview and the chapter bar's track.
+    static final int SCRIM=0xee0c1420, LETTERBOX=0xff080c13, PREVIEW_BAND=0xdd172126, TRACK=0xff29383c;
     static final Identifier TITLE=new Identifier("gravesandglory","title"), FOCAL=new Identifier("gravesandglory","focal"), BODY=new Identifier("gravesandglory","body");
     /** The Lato body style: body and label draw in it, and BattleHud wraps the lesson in it. */
     static final Style BODY_STYLE=Style.EMPTY.withFont(BODY);
@@ -31,6 +36,16 @@ final class DarkUi {
     static void teamMark(DrawContext g,int team,int x,int y){
         String[] rows=team==0?SUN:team==1?CRESCENT:SQUARE;int color=teamColor(team);
         for(int j=0;j<7;j++)for(int i=0;i<7;i++)if(rows[j].charAt(i)=='x')g.fill(x+i,y+j,x+i+1,y+j+1,color);
+    }
+    private static final String[] DOT={".xxx.","xxxxx","xxxxx","xxxxx",".xxx."};
+    private static final String[] RING={".xxx.","x...x","x...x","x...x",".xxx."};
+    private static final String[] CROSS={"x...x",".x.x.","..x..",".x.x.","x...x"};
+    private static final String[] SMALL_CROSS={".....",".x.x.","..x..",".x.x.","....."};
+    /** A 5x5 map mark centred on (x, y), its shape the meaning (spec 6.1): "own" a filled dot (your troops), "ally" a ring (allied
+     *  troops), "enemy" an x (an enemy seen now), "enemy-old" a small x (an enemy remembered). The colour shows only a state. */
+    static void mapMark(DrawContext g,String kind,int x,int y,int color){
+        String[] rows=switch(kind){case "own"->DOT;case "ally"->RING;case "enemy-old"->SMALL_CROSS;default->CROSS;};
+        for(int j=0;j<5;j++)for(int i=0;i<5;i++)if(rows[j].charAt(i)=='x')g.fill(x-2+i,y-2+j,x-1+i,y-1+j,color);
     }
     static void background(DrawContext g,int w,int h){
         // Keep the actual world visible behind a quiet, readable scrim.

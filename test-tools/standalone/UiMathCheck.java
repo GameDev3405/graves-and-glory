@@ -1,6 +1,7 @@
 package gg.gravesandglory;
 
-/** Pure UI maths: the canvas pixel scale, text trimming, WCAG contrast and key widths. Never shipped. */
+/** Pure UI maths: the canvas pixel scale, text trimming, WCAG contrast and key widths; key hint text and the event feed's copy,
+ *  styles and fade. Never shipped. */
 public final class UiMathCheck {
     static int checks;
     static void check(boolean pass, String message) {
@@ -25,6 +26,21 @@ public final class UiMathCheck {
         check(UiMath.sweep(18,6,24,0.5)==0 && UiMath.sweep(5,18,24,0.5)==1 && UiMath.sweep(12,20,24,0.5)==2 && UiMath.sweep(12,3,24,1.0)==3, "sweep classes");
         int veil=0; for(int y=0;y<24;y++) for(int x=0;x<24;x++) if(UiMath.sweep(x,y,24,48/90.0)==1) veil++;
         check(veil==297, "the painter's sweep at 48 of 90 s veils 297 pixels");
+        java.util.function.Function<String,String> keys = id -> id.equals("menu") ? "K" : "Not bound";
+        check(HintText.expand("{key:menu} opens your war council.",keys).equals("K opens your war council."), "token replaced");
+        check(HintText.expand("Map {key:map}",keys).equals("Map Not bound") && HintText.expand("{key:menu",keys).equals("{key:menu"), "unbound and malformed");
+        check(HintText.chip("Left Button").equals("LMB") && HintText.chip("Right Button").equals("RMB") && HintText.chip("Middle Button").equals("MMB") && HintText.chip("K").equals("K"), "mouse chips");
+        check(HintText.tokens("a {key:menu} b").equals(java.util.List.of("a ","menu"," b")) && HintText.tokens("{key:map}").equals(java.util.List.of("","map","")) && HintText.tokens("{key:menu").equals(java.util.List.of("{key:menu")), "tokens alternate text and key ids");
+        check(HintText.bindingKey("menu").equals("key.gravesandglory.menu") && HintText.bindingKey("hit").equals("key.attack") && HintText.bindingKey("confirm").equals("key.attack") && HintText.bindingKey("cancel").equals("key.use") && HintText.bindingKey("use").equals("key.use"), "binding translation keys");
+        check(FeedLines.lost(3,"Dawn Knight").equals("3 Dawn Knights lost") && FeedLines.lost(1,"Dawn Knight").equals("Dawn Knight lost") && FeedLines.lost(4,"Dusk Revenant").equals("4 Dusk Revenants lost"), "loss copy");
+        check(FeedLines.pointTaken("Dawn","Mill Hamlet").equals("Dawn took Mill Hamlet") && FeedLines.bannerDown("Ansel").equals("Ansel's banner has fallen") && FeedLines.bannerUp("Ansel").equals("Ansel is back in the field"), "point and banner copy");
+        check(FeedLines.regrouped("Ranged").equals("Ranged regrouped") && FeedLines.routing("Support").equals("Support routing") && FeedLines.deploying(2,"Dawn Knight").equals("Dawn Knights deploying") && FeedLines.deploying(1,"Dawn Knight").equals("Dawn Knight deploying"), "rout and deploy copy");
+        check(FeedLines.plural("Risen").equals("Risen") && FeedLines.plural("Order Bowman").equals("Order Bowmen") && FeedLines.teamShort("Dusk Legion").equals("Dusk"), "plurals and team names");
+        check(FeedLines.style("point",0,0).equals(new FeedLines.Style("hud/fgv-seal-dawn",0xff1d4f4c)) && FeedLines.style("point",1,0).equals(new FeedLines.Style("hud/fgv-seal-x-dusk",0xff563a73)) && FeedLines.style("point",1,1).equals(new FeedLines.Style("hud/fgv-seal-dusk",0xff563a73)) && FeedLines.style("point",0,1).equals(new FeedLines.Style("hud/fgv-seal-x-dawn",0xff1d4f4c)), "seal by perspective, ink by team");
+        check(FeedLines.style("loss",0,0).argb()==0xff7a2416 && FeedLines.style("kill",1,0).glyph().equals("hud/fgv-skull-grey") && FeedLines.style("down",0,0).glyph().equals("hud/fgv-banner-down") && FeedLines.style("regroup",0,0).argb()==0xff504b44, "loss, kill, banner, regroup");
+        check(FeedLines.style("deploy",0,0).glyph().equals("hud/fgv-sun") && FeedLines.style("notice",1,1).glyph().equals("hud/fgv-moon") && FeedLines.style("bogus",0,0).equals(FeedLines.style("notice",0,0)), "own emblem; unknown kinds are notices");
+        for(String kind:new String[]{"point","loss","kill","down","rout","deploy"}) for(int t=0;t<2;t++) check(UiMath.contrast(FeedLines.style(kind,t,0).argb(),0xffdccb9f)>=4.5, "feed ink "+kind+" holds 4.5:1 on the slip");
+        check(UiMath.feedAlpha(0)==1f && UiMath.feedAlpha(6000)==1f && Math.abs(UiMath.feedAlpha(7000)-0.5f)<1e-6 && UiMath.feedAlpha(8000)==0f && UiMath.feedAlpha(9000)==0f, "8 s life, 2 s fade");
         System.out.println("UiMathCheck: " + checks + " checks passed");
     }
 }

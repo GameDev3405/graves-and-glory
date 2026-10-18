@@ -81,18 +81,19 @@ final class CampScreen extends ArmyScreen {
     @Override public void tick(){if(!key.equals(state())&&!(code!=null&&code.isFocused()))clearAndInit();if(running&&!CampaignClient.waiting)close();}
     void line(DrawContext g,String text,int x,int y,int color,int max){g.drawText(textRenderer, textRenderer.trimToWidth(text,max),x,y,color,false);}
     /** The battle report table from y down: COMMANDER / KILLS / LOST / GOLD / ON POINTS, one row per army (your team first, a rule before the
-     *  enemy, your row in brass, a crest on the MVP), then one line per point with the seconds each team held it. Returns the y under it. */
+     *  enemy, each row's team mark in the team column, your row in brass, a crest on the MVP), then one line per point with the seconds each
+     *  team held it. Returns the y under it. */
     int table(DrawContext g,JsonObject report,int x,int y,int w){
         if(!report.has("squads")||!report.has("points"))return y;
         JsonArray rows=report.getAsJsonArray("squads");String[] heads={"KILLS","LOST","GOLD","ON POINTS"},keys={"kills","lost","gold","objective"};int[] right={x+w-200,x+w-140,x+w-70,x+w};int name=right[0]-x-74;
-        line(g,"COMMANDER",x+14,y,DarkUi.MUTED,name);for(int c=0;c<4;c++)g.drawText(textRenderer,heads[c],right[c]-textRenderer.getWidth(heads[c]),y,DarkUi.MUTED,false);
+        line(g,"COMMANDER",x+25,y,DarkUi.MUTED,name-11);for(int c=0;c<4;c++)g.drawText(textRenderer,heads[c],right[c]-textRenderer.getWidth(heads[c]),y,DarkUi.MUTED,false);
         DarkUi.rule(g,x,y+11,w);y+=14;
         List<MatchStats.SquadStats> tally=new ArrayList<>();for(var e:rows){var s=new MatchStats.SquadStats();s.kills=e.getAsJsonObject().get("kills").getAsInt();s.objectiveSeconds=e.getAsJsonObject().get("objective").getAsInt();tally.add(s);}
         int mvp=MatchStats.mvp(tally);
         for(int i=0;i<rows.size();i++,y+=11){var r=rows.get(i).getAsJsonObject();int color=r.get("you").getAsBoolean()?DarkUi.GOLD:DarkUi.PAPER;
             if(i>0&&r.get("team").getAsInt()!=rows.get(i-1).getAsJsonObject().get("team").getAsInt()){DarkUi.rule(g,x+14,y,w-14);y+=3;}
             if(i==mvp)DarkUi.crest(g,x,y-1,10,r.get("team").getAsInt()==1);
-            line(g,r.get("name").getAsString()+(i==mvp?"  MVP":""),x+14,y,color,name);
+            DarkUi.teamMark(g,r.get("team").getAsInt(),x+14,y);line(g,r.get("name").getAsString()+(i==mvp?"  MVP":""),x+25,y,color,name-11);
             for(int c=0;c<4;c++){String v=r.get(keys[c]).getAsInt()+(c==3?"s":"");g.drawText(textRenderer,v,right[c]-textRenderer.getWidth(v),y,color,false);}
         }
         y+=3;
@@ -142,11 +143,11 @@ final class CampScreen extends ArmyScreen {
                 line(g,report.get("outcome").getAsString()+" / "+report.get("map").getAsString(),x,117,DarkUi.GOLD,w);
                 int y=Math.max(table(g,report,x,132,w)+5,height-163); // the battle table first; the rewards sit above the buttons, or right under a long table
                 boolean saved=report.get("saved").getAsBoolean();
-                line(g,saved?"+"+report.get("gold").getAsInt()+" GOLD     +"+report.get("xp").getAsInt()+" CHAPTER XP":"REWARDS NOT SAVED / Progress unchanged",x,y,saved?DarkUi.PAPER:0xffff7777,w);
+                line(g,saved?"+"+report.get("gold").getAsInt()+" GOLD     +"+report.get("xp").getAsInt()+" CHAPTER XP":"REWARDS NOT SAVED / Progress unchanged",x,y,saved?DarkUi.PAPER:DarkUi.ALARM_TEXT,w);
                 line(g,!saved?"Check disk space before playing again.":report.get("eligible").getAsBoolean()?"Rewards saved. Contract and tier rewards are claimed separately.":"No match rewards: play at least 3 minutes to qualify.",x,y+11,DarkUi.MUTED,w);
                 y+=25;int tier=Progression.tier(progress),xp=Math.min(progress.xp,7500),half=w/2-8,right=x+w-half; // chapter progress on the left, contracts on the right
                 line(g,"FOUNDERS / Tier "+tier+" of 30 / "+xp+" XP",x,y,DarkUi.GOLD,half);
-                g.fill(x,y+11,x+half,y+15,0xff29383c);g.fill(x,y+11,x+(int)(half*(tier==30?1:(xp%250)/250f)),y+15,DarkUi.GOLD);
+                g.fill(x,y+11,x+half,y+15,DarkUi.TRACK);g.fill(x,y+11,x+(int)(half*(tier==30?1:(xp%250)/250f)),y+15,DarkUi.GOLD);
                 line(g,tier==30?"Chapter complete. Troops and titles stay yours.":"Next: tier "+(tier+1)+" / "+((tier+1)%5==0?Progression.TITLES[(tier+1)/5-1]+" title":"25 gold")+" / "+(250-xp%250)+" XP to go",x,y+19,DarkUi.PAPER,half);
                 for(int i=0;i<3;i++)line(g,Progression.contract(progress,i)+"  "+Math.min(Progression.progress(progress,i),Progression.target(progress,i))+"/"+Progression.target(progress,i)+(progress.claims.contains("daily:"+i)?" / claimed":Progression.progress(progress,i)>=Progression.target(progress,i)?" / READY TO CLAIM":""),right,y+i*11,DarkUi.MUTED,half);
                 line(g,"Weekly battles: "+Math.min(progress.weeklyBattles,6)+"/6"+(progress.claims.contains("weekly")?" / claimed":progress.weeklyBattles>=6?" / READY TO CLAIM":""),right,y+33,DarkUi.MUTED,half);
@@ -155,7 +156,7 @@ final class CampScreen extends ArmyScreen {
             line(g,"Dawn "+CampaignClient.padDawn+" / 4   |   Dusk "+CampaignClient.padDusk+" / 4   |   "+CampaignClient.padCountdown+"s",x,116,DarkUi.GOLD,w);
             line(g,"Vote while on a ready pad. Most votes wins; ties use map order.",x,133,DarkUi.MUTED,w);
         }
-        line(g,CampaignClient.notice,x,height-42,DarkUi.GOLD,w);super.render(g,(int)(mx/scale),(int)(my/scale),delta);
+        line(g,HintText.expand(CampaignClient.notice,GravesAndGloryClient::hint),x,height-42,DarkUi.GOLD,w);super.render(g,(int)(mx/scale),(int)(my/scale),delta);
         if(page.equals("recruit")&&CampaignClient.revealUntil>System.currentTimeMillis()){DarkUi.frame(g,x+30,180,w-60,100);line(g,"RECRUITMENT CONFIRMED",x+50,201,DarkUi.GOLD,w-100);line(g,CampaignClient.revealUnit+" has joined your collection.",x+50,226,DarkUi.PAPER,w-100);line(g,"Permanently unlocked / use Skip reveal above to continue",x+50,251,DarkUi.MUTED,w-100);}
         g.getMatrices().pop();
     }
