@@ -41,7 +41,7 @@ public final class CommandPlaytest implements ClientModInitializer {
             if(tick==620)GravesAndGloryClient.send("barracks");
             if(tick==640)shot(c,"barracks");
             if(tick==660){if(c.currentScreen instanceof GravesAndGloryClient.BarracksScreen screen)screen.controls.get(0).disband().onPress();}
-            if(tick==680){if(c.currentScreen instanceof GravesAndGloryClient.BarracksScreen screen)screen.controls.get(2).train().onPress();}
+            if(tick==680){if(c.currentScreen instanceof GravesAndGloryClient.BarracksScreen screen)screen.controls.get(0).train().onPress();} /* the barracks lists one row per troop type of the banner; row 0 is the troop disbanded at tick 660 */
             if(tick==700){shot(c,"barracks-queue");result("barracks-queue",GravesAndGloryClient.queued==1,"Purchased replacement through real UI");}
             if(tick==710){if(c.currentScreen instanceof GravesAndGloryClient.BarracksScreen screen)screen.cancel.onPress();}
             if(tick==740){result("barracks-cancel",GravesAndGloryClient.queued==0,"Cancelled through real UI");c.setScreen(null);}
