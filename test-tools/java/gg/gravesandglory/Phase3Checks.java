@@ -345,6 +345,7 @@ public final class Phase3Checks implements ClientModInitializer {
             System.setProperty("gravesandglory.studioOut",StructureStudio.out().resolve("command-checks").toString());
             try{
                 dumpGenerated(b);
+                dumpOrder(b);
             }finally{if(saved==null)System.clearProperty("gravesandglory.studioOut");else System.setProperty("gravesandglory.studioOut",saved);}
         }
 
@@ -372,6 +373,41 @@ public final class Phase3Checks implements ClientModInitializer {
                 if(!said.text().contains("no generated file"))bad.append("without the override the feedback does not say the shipped piece was used: ").append(said.text()).append("; ");
             }catch(Throwable e){bad.append("harness failure ").append(e).append("; ");}
             report("p3-studio-dump-generated",bad.length()==0,bad.length()==0?"with a 1x1x1 file in generated/ the dump of "+MARKER+" begins '"+withFile+"' and the feedback says the generated file was used; with the file deleted it begins '"+withoutFile+"' and says the shipped piece was used":bad.toString());
+        }
+
+        /** A ceiling vine and a south-hung vine, as a piece script: each hangs on a block that the script writes before it. */
+        static final String VINES="""
+            # size 5 3 5
+            fill ~0 ~0 ~0 ~4 ~2 ~4 minecraft:air
+            setblock ~1 ~2 ~1 minecraft:stone
+            setblock ~1 ~1 ~1 minecraft:vine[up=true]
+            setblock ~3 ~1 ~3 minecraft:stone
+            setblock ~3 ~1 ~2 minecraft:vine[south=true]
+            """;
+
+        /** What a block hangs on is written before it. The update of any neighbour written while nothing holds a vine removes it, so the two vines of VINES are
+         *  built from the script, saved, dumped, built again from the dump and saved again: both must still stand and the two saves must be equal. */
+        void dumpOrder(GravesAndGlory.Battle b){
+            var bad=new StringBuilder();String lines="?";
+            try{
+                var w=b.world;
+                Vec3i size=StructureStudio.run(b.server,"vine fixture",VINES);
+                var ceiling=new BlockPos(1001,65,1001);var south=new BlockPos(1003,65,1002); // ORIGIN + (1,1,1) and (3,1,2)
+                BlockState a=at(w,1001,65,1001),c=at(w,1003,65,1002);
+                if(!a.isOf(Blocks.VINE)||!a.get(Properties.UP)||!c.isOf(Blocks.VINE)||!c.get(Properties.SOUTH))bad.append("fixture: the vines are ").append(name(a)).append(" and ").append(name(c)).append(" before any dump; ");
+                NbtCompound fixture=StructureStudio.save(b.server,"vine fixture",size);
+                String script=StructureStudio.dump(w.getStructureTemplateManager().createTemplate(fixture));
+                lines=String.valueOf(script.lines().count());
+                int lastStone=script.lastIndexOf("minecraft:stone"),firstVine=script.indexOf("minecraft:vine");
+                if(lastStone<0||firstVine<0||lastStone>firstVine)bad.append("the dump writes a vine before the stone it hangs on; ");
+                Vec3i built=StructureStudio.run(b.server,"dump of the vine fixture",script);
+                a=at(w,1001,65,1001);c=at(w,1003,65,1002);
+                if(!a.isOf(Blocks.VINE)||!a.get(Properties.UP))bad.append("the ceiling vine at ").append(xyz(ceiling)).append(" is ").append(name(a)).append(" once the dump is built; ");
+                if(!c.isOf(Blocks.VINE)||!c.get(Properties.SOUTH))bad.append("the south-hung vine at ").append(xyz(south)).append(" is ").append(name(c)).append(" once the dump is built; ");
+                NbtCompound again=StructureStudio.save(b.server,"vine fixture",built);
+                if(!again.equals(fixture))bad.append("the saved dump differs from the fixture: ").append(StructureStudio.difference(again,fixture)).append("; ");
+            }catch(Throwable e){bad.append("harness failure ").append(e).append("; ");}
+            report("p3-studio-dump-order",bad.length()==0,bad.length()==0?"a ceiling vine and a south-hung vine survive script, save, dump ("+lines+" lines, the stones first), build, save: the two saves are equal":bad.toString());
         }
     }
 }

@@ -190,9 +190,10 @@ public final class StructureStudio implements ModInitializer {
         for(String key:new TreeSet<>(properties.getKeys()))parts.add(key+"="+properties.getString(key));
         return parts.isEmpty()?name:name+"["+String.join(",",parts)+"]";
     }
-    /** The script that rebuilds a template: the size header, then one setblock per block (block entity data kept), with a run of equal blocks along x
-     *  that carry no block entity data merged into one fill. Structure void is left out; air is written, because a piece may need to clear. Lines run
-     *  in order of y, then z, then x. */
+    /** The script that rebuilds a template: the size header, then one setblock per block (block entity data kept), with a run of equal blocks along z
+     *  that follow each other in the template and carry no block entity data merged into one fill. Structure void is left out; air is written, because
+     *  a piece may need to clear. Lines keep the order the template stores its blocks in (full cubes, then the other blocks, then the block entities,
+     *  each by y, x, z), so what a block hangs on is written before it: a vine or a banner is not removed by the update of a neighbour written first. */
     public static String dump(StructureTemplate template){
         NbtCompound nbt=template.writeNbt(new NbtCompound());Vec3i size=template.getSize();
         NbtList palette=nbt.getList("palette",NbtElement.COMPOUND_TYPE);
@@ -211,16 +212,15 @@ public final class StructureStudio implements ModInitializer {
             }
             cells.add(new Cell(at.getInt(0),at.getInt(1),at.getInt(2),states[state],data));
         }
-        cells.sort(Comparator.comparingInt(Cell::y).thenComparingInt(Cell::z).thenComparingInt(Cell::x));
         var out=new StringBuilder("# size "+size.getX()+" "+size.getY()+" "+size.getZ()+"\n");
         for(int i=0;i<cells.size();){
             Cell first=cells.get(i);int last=i;
             while(first.nbt()==null&&last+1<cells.size()){
                 Cell now=cells.get(last),next=cells.get(last+1);
-                if(next.y()!=now.y()||next.z()!=now.z()||next.x()!=now.x()+1||next.nbt()!=null||!next.state().equals(first.state()))break;
+                if(next.x()!=now.x()||next.y()!=now.y()||next.z()!=now.z()+1||next.nbt()!=null||!next.state().equals(first.state()))break;
                 last++;
             }
-            if(last>i)out.append("fill ~").append(first.x()).append(" ~").append(first.y()).append(" ~").append(first.z()).append(" ~").append(cells.get(last).x()).append(" ~").append(first.y()).append(" ~").append(first.z()).append(' ').append(first.state()).append('\n');
+            if(last>i)out.append("fill ~").append(first.x()).append(" ~").append(first.y()).append(" ~").append(first.z()).append(" ~").append(first.x()).append(" ~").append(first.y()).append(" ~").append(cells.get(last).z()).append(' ').append(first.state()).append('\n');
             else out.append("setblock ~").append(first.x()).append(" ~").append(first.y()).append(" ~").append(first.z()).append(' ').append(first.state()).append(first.nbt()==null?"":first.nbt()).append('\n');
             i=last+1;
         }
