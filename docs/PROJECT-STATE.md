@@ -155,7 +155,7 @@ Claimed only by unit/policy tests or code reading:
   Normal (0 of 4 on Kingsfield), Easy 13 of 20; the Dawn seat wins 13 to 17
   of 20 in every batch. Ladder parked until the Phase 3 maps (Kort,
   2026-10-18); docs/QUESTIONS-FOR-KORT.md problem 5.
-- Standalone checks on 0.4.0 (2026-10-18): BattleMathCheck 39, CampRulesCheck
+- Standalone checks on 0.4.0 (2026-10-18): BattleMathCheck 41, CampRulesCheck
   41 scenarios, admission 746 assertions, compatibility 2, legacy migration
   13, release integrity 2 tests, Modrinth export 5 tests, preflight clean.
 - Build and packaging on 0.4.0 (2026-10-18): `gradle build --offline -x test`,
