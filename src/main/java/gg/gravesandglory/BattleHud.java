@@ -4,9 +4,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.StringVisitable;
-import net.minecraft.text.Style;
 import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 import java.util.*;
 
 /** The Iron Ledger battle HUD (UI spec 4.5, mock v4-hud-iron-ledger): the score bar between the two bosses, the point seals hanging
@@ -28,8 +26,6 @@ public final class BattleHud {
     /** Frames the battle HUD has drawn. */
     public static int frames;
 
-    static final String[] GROUPS={"infantry","ranged","support"};
-    static final Style BODY=Style.EMPTY.withFont(new Identifier("gravesandglory","body"));
     private static List<CardDraw> cards=List.of();
     private static List<SealDraw> seals=List.of();
     private static Map<String,int[]> rects=Map.of();
@@ -107,7 +103,7 @@ public final class BattleHud {
     static void cards(DrawContext g,TextRenderer font,int h,Map<String,int[]> r,List<CardDraw> cd,Map<String,String> tx){
         String sel=CommandMode.selected;boolean army=sel.equals("all");
         List<CommandMode.Group> shown=new ArrayList<>();
-        for(String id:GROUPS)for(var grp:CommandMode.groups)if(grp.id().equals(id)&&grp.full()>0){shown.add(grp);break;}
+        for(String id:Morale.GROUPS)for(var grp:CommandMode.groups)if(grp.id().equals(id)&&grp.full()>0){shown.add(grp);break;}
         if(shown.isEmpty())return;
         int n=shown.size();int[] heights=new int[n];
         for(int i=0;i<n;i++)heights[i]=(army?i==n-1:sel.equals(shown.get(i).id()))?62:48;
@@ -213,7 +209,7 @@ public final class BattleHud {
      *  line, so nothing is cut. Hidden while an order is being aimed. */
     static void lesson(DrawContext g,TextRenderer font,int cx,Map<String,int[]> r,Map<String,String> tx){
         int step=CampaignClient.tutorial;if(step<0||step>3||CommandMode.active())return;
-        List<String> lines=font.getTextHandler().wrapLines(GravesAndGloryClient.lessonText(step),GravesAndGloryClient.LESSON_TEXT_WIDTH,BODY).stream().map(StringVisitable::getString).toList();
+        List<String> lines=font.getTextHandler().wrapLines(GravesAndGloryClient.lessonText(step),GravesAndGloryClient.LESSON_TEXT_WIDTH,DarkUi.BODY_STYLE).stream().map(StringVisitable::getString).toList();
         int x=cx-200,y=88,h=40+11*Math.max(0,lines.size()-1);
         lessonCard(g,x,y,h);
         g.drawText(font,"THE LONG MARCH / BATTLE "+CampaignClient.battleOrder()+" / LESSON "+(step+1)+" OF 4",x+10,y+7,DarkUi.SEPIA,false);

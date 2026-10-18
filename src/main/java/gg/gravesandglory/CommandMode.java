@@ -27,18 +27,19 @@ public final class CommandMode {
     /** How long a group card flashes after it takes a loss (presentation only). */
     public static final long FLASH_MS=450;
     static final java.util.Map<String,Long> flashUntil=new java.util.HashMap<>();
-    static final java.util.Map<String,Float> lostFrom=new java.util.HashMap<>();
+    /** Each group's strength before the loss that started its current flash. */
+    static final java.util.Map<String,Float> flashFrom=new java.util.HashMap<>();
     /** Compares consecutive server snapshots; a death or a health drop flashes that group's card. A loss inside a flash lengthens it
      *  and keeps the strength from before the first loss, so the card shows everything lost since the flash began. */
     public static void noteGroups(java.util.List<Group> before,java.util.List<Group> after,long nowMs){
         for(Group now:after)for(Group was:before)if(was.id().equals(now.id())&&BattleMath.tookLoss(was.health(),was.count(),now.health(),now.count())){
-            if(nowMs>=flashUntil.getOrDefault(now.id(),0L))lostFrom.put(now.id(),was.strength());
+            if(nowMs>=flashUntil.getOrDefault(now.id(),0L))flashFrom.put(now.id(),was.strength());
             flashUntil.put(now.id(),nowMs+FLASH_MS);
         }
     }
     public static boolean flashing(String groupId){return net.minecraft.util.Util.getMeasuringTimeMs()<flashUntil.getOrDefault(groupId,0L);}
     /** The group's strength before the loss that started its current flash (0 when it never flashed). */
-    public static float lostFrom(String group){return lostFrom.getOrDefault(group,0f);}
+    public static float lostFrom(String group){return flashFrom.getOrDefault(group,0f);}
     /** The point whose radius holds the aimed ground position while an order is aimed, else -1. */
     public static int aimPoint(){
         var at=destination;if(!active()||at==null)return -1;var pts=Spec.POINTS;

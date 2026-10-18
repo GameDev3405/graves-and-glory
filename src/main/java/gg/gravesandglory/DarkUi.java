@@ -15,7 +15,9 @@ final class DarkUi {
     // the shadow under tags, and the cooldown sweep's veil, leading edge and twelve o'clock line.
     static final int PLATE_INK=0xff1e1509, KEY_INK=0xff3a2a12, RAIL_KEY=0xfff0d9a0, ABILITY_KEY=0xff2e1f0c, TAG_SHADOW=0xff120d16;
     static final int SWEEP_VEIL=0xcd15191c, SWEEP_EDGE=0xe6dfbd77, SWEEP_LINE=0xc8b08a4a;
-    static final Identifier TITLE=new Identifier("gravesandglory","title"), FOCAL=new Identifier("gravesandglory","focal");
+    static final Identifier TITLE=new Identifier("gravesandglory","title"), FOCAL=new Identifier("gravesandglory","focal"), BODY=new Identifier("gravesandglory","body");
+    /** The Lato body style: body and label draw in it, and BattleHud wraps the lesson in it. */
+    static final Style BODY_STYLE=Style.EMPTY.withFont(BODY);
     /** The one 16 px Marcellus focal line of a screen. */
     static Text focal(String text){return Text.literal(text).setStyle(Style.EMPTY.withFont(FOCAL));}
     /** 11 px Marcellus, for headings and names. */
@@ -41,7 +43,7 @@ final class DarkUi {
         g.fill(x,y,x+w,y+h,0xee1a2125);
         g.drawBorder(x,y,w,h,0xff394246);
     }
-    static Text body(String text){return Text.literal(text).setStyle(Style.EMPTY.withFont(new Identifier("gravesandglory","body")));}
+    static Text body(String text){return Text.literal(text).setStyle(BODY_STYLE);}
     static void label(DrawContext g,String text,int x,int y,int color){
         g.drawText(MinecraftClient.getInstance().textRenderer,body(text),x,y,color,false);
     }
