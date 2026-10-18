@@ -26,6 +26,19 @@ Each item says what was decided in the meantime so work could continue.
    `solo-pad-3v3` and `roadmap-suite`. Left as-is for now; Phase 1 Task 9
    either fixes them or records why they are stale.
 
+3. **Bot balance misses two of three acceptance targets** (Task 5 sim, 40 matches,
+   2026-10-17 23:00). Normal beats Easy 9/10 (pass). Hard beats Normal only 10/20
+   (needs 60%). Normal vs Normal: Dawn wins 8/10 (needs 35-65%), and across every
+   pairing Dawn won 30/32 on the 3-point maps while Dusk won 5/8 on Kingsfield.
+   So the seat decides more than the tier. Decision: a follow-up task (5b) first
+   finds the seat bias (suspects: Dawn's base holds the world spawn so its chunks
+   always tick; 3-squad spawn rows are centred for 4; Dawn shields vs Dusk kit),
+   then makes Hard's flank picker leave a garrison on held points, then reruns.
+   Question for you: if Hard still cannot reach 60% with flanking on, is it fine
+   to turn `hard.flankLeastDefended` off (Hard keeps faster decisions, timed
+   charges and shieldwalls, but picks points like Normal)? My recommendation:
+   yes, flanking is worth less than a Hard that actually wins.
+
 ## Builds to try
 
 - 0.3.7 (master e78b81b): camp, pads, parties, rooms, contracts verified by
