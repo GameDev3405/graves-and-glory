@@ -184,3 +184,5 @@ Kort liked all six title demos but asked for a reshoot with no sword: Steve stan
 ## Chapter 1 copy draft ready to read (2026-10-18, afternoon)
 
 `docs/copy/chapter-1.md`: the six Road North briefings (spec text kept verbatim), new victory/defeat lines, bonus tags, Survival and Banner how-to lines, mode feed lines, the Writ card and a 40-word camp blurb, with a table mapping every string to its sheet column. Read it when you like; the spec's words are approved, the new lines are not until you say so. Twelve choices where the spec was silent are listed at the end of the file (new columns campaignBattles.victory/defeat, bonusObjectives.tag, chapters.writText/blurb; five section 8 lines reworded to fit the 140 px feed slip).
+
+**Kort, 2026-10-18 evening:** chat goes above the group cards, kept small but readable. Applied in UI Task 3. The ledger-scale question is still open. Playtest of 0.4.0 waits until Kort has reviewed more.
