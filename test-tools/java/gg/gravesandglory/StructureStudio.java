@@ -231,9 +231,19 @@ public final class StructureStudio implements ModInitializer {
     static final SuggestionProvider<ServerCommandSource> PIECES=(context,builder)->CommandSource.suggestMatching(scripts(context.getSource().getServer()),builder);
     static String id(CommandContext<ServerCommandSource> context){return IdentifierArgumentType.getIdentifier(context,"id").getPath();}
     interface Action { String run(ServerCommandSource source,String id) throws Exception; }
+    /** Runs a /studio action and lets go of the chunks it forced: forcing is saved with the world, so a command must not leave one behind that no suite holds. */
     static int act(CommandContext<ServerCommandSource> context,Action action){
+        ServerWorld world=context.getSource().getServer().getOverworld();Set<Long> held=new HashSet<>(forced);
         try{String said=action.run(context.getSource(),id(context));context.getSource().sendFeedback(()->Text.literal(said),false);return 1;}
         catch(Exception e){context.getSource().sendError(Text.literal(String.valueOf(e.getMessage()==null?e:e.getMessage())));return 0;}
+        finally{letGo(world,held);}
+    }
+    /** Lets go of every chunk forced since held was taken, and of no other. */
+    static void letGo(ServerWorld w,Set<Long> held){
+        for(var it=forced.iterator();it.hasNext();){
+            long key=it.next();if(held.contains(key))continue;
+            w.setChunkForced(ChunkPos.getPackedX(key),ChunkPos.getPackedZ(key),false);it.remove();
+        }
     }
 
     @Override public void onInitialize(){

@@ -25,6 +25,7 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
@@ -347,6 +348,7 @@ public final class Phase3Checks implements ClientModInitializer {
                 dumpGenerated(b);
                 dumpOrder(b);
                 placeCommand(b);
+                buildReleases(b);
             }finally{if(saved==null)System.clearProperty("gravesandglory.studioOut");else System.setProperty("gravesandglory.studioOut",saved);}
         }
 
@@ -445,6 +447,36 @@ public final class Phase3Checks implements ClientModInitializer {
             }catch(Throwable e){bad.append("harness failure ").append(e).append("; ");}
             finally{b.campaign.leash=true;}
             report("p3-studio-place",bad.length()==0,bad.length()==0?"typed by the player standing on (1012,70,1060), 'studio place "+MARKER+" 90' put the marker in "+want+" (Structures.footprint): floor 25/25 under his feet, pillar where he stood, stairs west; it said: "+said:bad.toString());
+        }
+
+        /** /studio build forces the chunks of the stage to build in them, and forcing is saved with the world, so the command must let go of them when it
+         *  finishes. With nothing held when it starts, the stage chunks must be free again afterwards in the studio's own set and in the world's forced
+         *  chunks, the piece must stand, and /studio save must write the marker as the script builds it. */
+        void buildReleases(GravesAndGlory.Battle b){
+            var bad=new StringBuilder();String note="";
+            try{
+                var w=b.world;
+                StructureStudio.release(w); // from here on a forced chunk is the command's
+                var o=StructureStudio.ORIGIN;Vec3i size=StructureStudio.size(b.server,MARKER);
+                var stage=new ArrayList<Long>(); // the chunks of the piece's box grown by the margin of 2
+                for(int cx=(o.getX()-2)>>4;cx<=(o.getX()+size.getX()+1)>>4;cx++)for(int cz=(o.getZ()-2)>>4;cz<=(o.getZ()+size.getZ()+1)>>4;cz++)stage.add(ChunkPos.toLong(cx,cz));
+                for(long key:stage)if(w.getForcedChunks().contains(key))bad.append("chunk ").append(new ChunkPos(key)).append(" was forced before the command; ");
+                var built=new Said();int result=dispatch(b,b.server.getCommandSource(),built,"studio build "+MARKER);
+                if(result!=1)bad.append("studio build failed: ").append(built.text()).append("; ");
+                if(!at(w,o.getX()+2,o.getY()+1,o.getZ()+2).isOf(Blocks.STONE_BRICKS))bad.append("the pillar does not stand at ORIGIN+(2,1,2); ");
+                for(long key:stage)if(w.getForcedChunks().contains(key))bad.append("chunk ").append(new ChunkPos(key)).append(" is still forced after the command; ");
+                if(!StructureStudio.forced.isEmpty())bad.append("the studio still holds ").append(StructureStudio.forced.size()).append(" chunk(s) after the command; ");
+                var saved=new Said();int saveResult=dispatch(b,b.server.getCommandSource(),saved,"studio save "+MARKER);
+                if(saveResult!=1)bad.append("studio save failed: ").append(saved.text()).append("; ");
+                Path file=StructureStudio.out().resolve(MARKER+".nbt");
+                NbtCompound onDisk=NbtIo.readCompressed(file.toFile());
+                Vec3i wrote=w.getStructureTemplateManager().createTemplate(onDisk).getSize();
+                if(!wrote.equals(size))bad.append("studio save wrote size ").append(wrote.toShortString()).append(", the header says ").append(size.toShortString()).append("; ");
+                NbtCompound fresh=StructureStudio.save(b.server,MARKER,size);
+                if(!onDisk.equals(fresh))bad.append("studio save wrote something other than what stands: ").append(StructureStudio.difference(onDisk,fresh)).append("; ");
+                note=stage.size()+" stage chunk(s)";
+            }catch(Throwable e){bad.append("harness failure ").append(e).append("; ");}
+            report("p3-studio-build-releases",bad.length()==0,bad.length()==0?"'studio build "+MARKER+"' built the piece and left none of its "+note+" forced (the studio holds none and the world's forced chunks hold none); 'studio save' wrote it with the size of the header":bad.toString());
         }
     }
 }
