@@ -112,7 +112,7 @@ python tools/verify_modrinth.py       -> reads back the .mrpack
 python tools/export_server.py         -> dist/graves-and-glory-<version>-server.zip
 ```
 
-- `gradle.properties` supplies the single `mod_version` value (currently `0.3.7`). Gradle expands it into `fabric.mod.json` and the archive names. `docs/RELEASE-<version>.txt` must exist for that version, or packaging fails. Packaging does not read `melty.json`.
+- `gradle.properties` supplies the single `mod_version` value (currently `0.4.0`). Gradle expands it into `fabric.mod.json` and the archive names. `docs/RELEASE-<version>.txt` must exist for that version, or packaging fails. Packaging does not read `melty.json`.
 - `generateReleaseIdentity` embeds a normalized source fingerprint in `gravesandglory-build.json`. Packaging rejects a stale JAR. The final ZIP uses a staging file so a packaging failure cannot replace an earlier archive.
 - Run `python tools/verify_package.py` after packaging to read back every entry and verify its hash, the inner JAR and the third-party pins.
 - Permission evidence used by packaging is tracked in `dependencies/author-permissions.json`, rather than the ignored `evidence/` directory.

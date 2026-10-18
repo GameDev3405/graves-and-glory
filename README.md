@@ -1,6 +1,6 @@
 
 
-# Graves and Glory 0.3.7
+# Graves and Glory 0.4.0
 
 This is a local release candidate. Isolated game checks do not constitute a
 production launcher installation or an eight-human Internet multiplayer playtest.
@@ -121,3 +121,15 @@ a maximum of eight battle commanders; existing servers need `max-players`
 raised to leave room for visitors. Admission policy checks pass; live full-match
 join, camp movement, reconnect and next-round verification remain pending.
 
+## 0.4.0 solo rework candidate
+
+Arrows, bolts and spells fly before they land, with team-coloured impact puffs,
+and a group card flashes when its troops take hits. A shattered group, or one
+taken from behind, routs with a horn and rallies; orders given during the rout
+apply on regroup. Barracks recruits march out from a point your side has held
+for ten seconds near the fight. Bots come in Easy, Normal and Hard (Bots button
+in the camp guide). The Long March battle 1, The Training Field, teaches
+command with lessons that name your own keys, and every match ends with a
+battle report of kills, losses, gold and time on points, with an MVP.
+Verified by automated checks in an isolated development client; bot tier
+balance is parked until the rebuilt maps.

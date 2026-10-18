@@ -199,7 +199,9 @@ public final class Phase1Checks implements ClientModInitializer {
                     tickSum+=b.server.getTickTime();tickSamples++;
                     if(b.time-stageAt>=600){double avg=tickSum/tickSamples;float now=b.server.getTickTime();
                         System.out.println("[p1] tick-cost avg="+String.format("%.2f",avg));
-                        report("p1-tick-cost",now<40,"server tick "+String.format("%.2f",now)+" ms (600-tick mean "+String.format("%.2f",avg)+" ms) with "+troops+" troops at start, "+b.units.size()+" at end");next(b,16);}
+                        report("p1-tick-cost",now<40,"server tick "+String.format("%.2f",now)+" ms (600-tick mean "+String.format("%.2f",avg)+" ms) with "+troops+" troops at start, "+b.units.size()+" at end");
+                        var mine=b.squads.get(player);if(mine!=null)mine.bot=false; // the commander's army fought as a bot here; the next suite's returnLobby drops bot armies, and with it his seat
+                        next(b,16);}
                 }
                 default->{}
             }
@@ -604,6 +606,8 @@ public final class Phase1Checks implements ClientModInitializer {
             switch(stage){
                 case 1->{ // map 0 camp: open a custom lobby so the player leads it
                     var p=sp(b);if(p==null||!b.ready)return;
+                    if(b.running){b.campaign.returnLobby();stageAt=b.time;return;} // an earlier suite's skirmish still runs: back to camp first
+                    if(since(b)<40)return; // the client hears that the round and its lobby are over before a new lobby opens
                     b.command(p,"party:open");System.out.println("[p1] bots start: map "+b.campaign.map+", difficulty "+b.campaign.difficulty+", lead="+b.campaign.leader(p));next(b,2);
                 }
                 case 3->{ // the command, once no lobby needs a leader
@@ -888,7 +892,7 @@ public final class Phase1Checks implements ClientModInitializer {
         static final Spec.EconomyRow E=Spec.ECONOMY[0];
         volatile int stage;volatile boolean finished,over;volatile UUID player;long stageAt;
         GravesAndGlory.Squad own;GravesAndGlory.Capture point;GravesAndGlory.Unit archer,mark;Projectiles.Shot arrow;int killsBefore;
-        int overAt=-1,shownAt=-1;JsonObject real,crowd; // client thread only
+        int overAt=-1,shownAt=-1,staleTicks;JsonObject real,crowd; // client thread only
 
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
         long since(GravesAndGlory.Battle b){return b.time-stageAt;}
@@ -935,6 +939,10 @@ public final class Phase1Checks implements ClientModInitializer {
 
         public void step(MinecraftClient c,int tick){
             if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;next(b,1);});}
+            if((stage==3||stage==4)&&staleTicks<30&&GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()){ // the Kingsfield crash (fixed in 6ecbfb0): after a switch to five points the client's point arrays hold three until the next state packet, and the battle HUD's point strip and minimap must still draw
+                GravesAndGloryClient.contested=new boolean[3];GravesAndGloryClient.owners=new int[]{-1,-1,-1};GravesAndGloryClient.progress=new int[3];GravesAndGloryClient.challengers=new int[]{-1,-1,-1};
+                if(++staleTicks==30){shot(c,"kingsfield-stale");report("p1-kingsfield-stale-points",Spec.POINTS.length==5,"battle HUD point strip and minimap drawn for 30 client ticks with "+Spec.POINTS.length+" points against three-entry point arrays (the state between a switch to Kingsfield and the next state packet); the client kept running");}
+            }
             if(over&&overAt<0)overAt=tick;
             if(overAt>=0&&shownAt<0&&!finished){
                 if(c.currentScreen instanceof CampScreen s&&s.page.equals("results"))shownAt=tick;

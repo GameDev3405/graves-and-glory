@@ -1,0 +1,19 @@
+Graves and Glory 0.4.0 — solo rework local candidate
+October 18, 2026
+
+Arrows, bolts and spells now fly before they land, with team-coloured puffs
+where they hit, and a group card flashes when its troops take hits. A group
+that is shattered or taken from behind breaks and runs for home with a horn,
+then rallies; an order given during the rout applies when it regroups.
+Recruits trained at the barracks march out from a point your side has held
+for ten seconds, near the fight, instead of the base. Bots come in Easy,
+Normal and Hard: Hard decides faster, braces a shieldwall against archers and
+charges only from close range. The first battle of The Long March, The
+Training Field, now teaches command with four lessons that name your own
+keys. Every match ends with a battle report: kills, losses, gold and time on
+points for each commander, with an MVP. The camp snapshot no longer carries
+match ids to the client, so a long-lived profile cannot outgrow the packet.
+
+Verified by automated checks in an isolated development client. Bot tier
+balance is measured and parked until the Phase 3 maps. This candidate has not
+been installed into a personal launcher, published, or played by Kort yet.
