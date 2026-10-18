@@ -60,10 +60,11 @@ public final class BattleHud {
     public static List<CardDraw> cards(){return cards;}
     public static List<SealDraw> seals(){return seals;}
     /** Each element's box {x,y,w,h} in canvas px, keyed score, dawn-boss, dusk-boss, seal-(i), card-(group), spine, hints (the hint
-     *  slip), lesson, respawn, feed (the feed slip, while a line lives) and ability (the slot converted from GUI px, rounded outward). */
+     *  slip), lesson, respawn, feed (the feed slip, while a line lives), aim-name (the aimed point's name, while an order is aimed into
+     *  a point) and ability (the slot converted from GUI px, rounded outward). */
     public static Map<String,int[]> rects(){return rects;}
     /** The words and numbers the last frame drew: score-dawn, clock, score-dusk, count-(group), state-(group), lesson, respawn,
-     *  feed-(row) (each feed line as trimmed, rows 0 to 4 from the top), ability, ability-seconds and ability-key. */
+     *  feed-(row) (each feed line as trimmed, rows 0 to 4 from the top), aim-name, ability, ability-seconds and ability-key. */
     public static Map<String,String> texts(){return texts;}
     /** The chip and word texts of each row the hint slip last drew, in order; empty while the hint layer is down. */
     public static List<List<String>> hintRows(){return hintRows;}
@@ -92,7 +93,7 @@ public final class BattleHud {
             try{
                 int w=UiCanvas.width(),h=UiCanvas.height(),cx=w/2;
                 ledger(g,font,cx,rectsDrawn,textsDrawn);
-                seals(g,font,w,rectsDrawn,sealsDrawn);
+                seals(g,font,w,rectsDrawn,sealsDrawn,textsDrawn);
                 cards(g,font,h,rectsDrawn,cardsDrawn,textsDrawn);
                 lesson(g,font,cx,rectsDrawn,textsDrawn);
                 respawn(g,font,cx,h,rectsDrawn,textsDrawn);
@@ -129,7 +130,7 @@ public final class BattleHud {
 
     /** The points hang from the bar on a 28 px pitch: chain, seal (its owner's, or split while contested) and letter; while an order
      *  is aimed into a point's radius, that point's name hangs below its seal. */
-    static void seals(DrawContext g,TextRenderer font,int w,Map<String,int[]> r,List<SealDraw> sd){
+    static void seals(DrawContext g,TextRenderer font,int w,Map<String,int[]> r,List<SealDraw> sd,Map<String,String> tx){
         int n=GravesAndGloryClient.owners.length,aim=CommandMode.aimPoint();var pts=Spec.POINTS;
         for(int i=0;i<n;i++){
             int sc=UiMath.sealCentre(i,n,w),owner=GravesAndGloryClient.ownerAt(i);boolean contested=GravesAndGloryClient.contestedAt(i);
@@ -141,7 +142,7 @@ public final class BattleHud {
             else{sprite="hud/seal-neutral";UiTex.draw(g,"hud/seal-neutral",sc-13,y);}
             String id=i<pts.length?pts[i].id():String.valueOf((char)('A'+i));
             g.drawText(font,id,centred(font,id,sc),contested?49:50,DarkUi.IVORY,true);
-            if(aim==i&&i<pts.length){String name=pts[i].name();g.drawText(font,name,centred(font,name,sc),62,DarkUi.IVORY,true);}
+            if(aim==i&&i<pts.length){String name=pts[i].name();int nx=centred(font,name,sc);g.drawText(font,name,nx,62,DarkUi.IVORY,true);tx.put("aim-name",name);r.put("aim-name",new int[]{nx,62,font.getWidth(name)+1,9});}
             sd.add(new SealDraw(sprite,sc-13,y));r.put("seal-"+i,new int[]{sc-13,37,27,31});
         }
     }

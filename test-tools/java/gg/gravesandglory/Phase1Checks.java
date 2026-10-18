@@ -1364,8 +1364,21 @@ public final class Phase1Checks implements ClientModInitializer {
                     boolean neutral=GravesAndGloryClient.owners.length==3;for(int i=0;i<GravesAndGloryClient.owners.length;i++)if(GravesAndGloryClient.ownerAt(i)>=0||GravesAndGloryClient.contestedAt(i))neutral=false;
                     if(neutral&&seen==0)seen=tick;
                     if(seen>0&&tick>=seen+2){var ss=BattleHud.seals();boolean all=ss.size()==3&&ss.stream().allMatch(v->v.sprite().equals("hud/seal-neutral"));
-                        report("p1-ui-seals",sealsOk&&all,sealsWhy+"; every owner -1: "+ss);seen=0;stage=70;}
-                    else if(seen==0&&tick-waitFrom>200){report("p1-ui-seals",false,sealsWhy+"; the client never showed every point neutral and uncontested");stage=70;}
+                        report("p1-ui-seals",sealsOk&&all,sealsWhy+"; every owner -1: "+ss);seen=0;stage=62;}
+                    else if(seen==0&&tick-waitFrom>200){report("p1-ui-seals",false,sealsWhy+"; the client never showed every point neutral and uncontested");stage=62;}
+                }
+                // p1-ui-aim-name (controller addition C): a move aimed into point B hangs B's name below its seal, at canvas y 62
+                case 62->{waitFrom=tick;stage=-62;server(c,b->{var p=sp(b);var spot=b.points.get(1).spec;double x=spot.x()-6;if(p!=null)b.relocate(p,x,top(b,x,spot.z()),spot.z(),-90,35);stage=63;});}
+                case 63->{if(tick-waitFrom>=10){CommandMode.begin("move");seen=0;waitFrom=tick;stage=64;}}
+                case 64->{
+                    if(seen==0&&CommandMode.aimPoint()==1)seen=tick;
+                    if(seen>0&&tick>=seen+3){
+                        var font=c.textRenderer;String want=Spec.POINTS[1].name(),got=BattleHud.texts().get("aim-name");int[] r=BattleHud.rects().get("aim-name");
+                        int[] wantR={BattleHud.centred(font,want,UiMath.sealCentre(1,GravesAndGloryClient.owners.length,UiCanvas.width())),62,font.getWidth(want)+1,9};
+                        shot(c,"ui-hud-aim");
+                        report("p1-ui-aim-name",want.equals(got)&&Arrays.equals(r,wantR)&&CommandMode.aimPoint()==1,"a move aimed at "+CommandMode.destination+" (point "+Spec.POINTS[1].id()+") drew the name '"+got+"' at "+box(r)+" (wanted '"+want+"' at "+box(wantR)+"); seal-1 "+box(BattleHud.rects().get("seal-1")));
+                        CommandMode.cancel();seen=0;stage=70;
+                    }else if(seen==0&&tick-waitFrom>100){report("p1-ui-aim-name",false,"the aim never came into point "+Spec.POINTS[1].id()+" in 100 ticks (aimPoint "+CommandMode.aimPoint()+", aimed at "+CommandMode.destination+")");CommandMode.cancel();stage=70;}
                 }
                 case 70->{waitFrom=tick;fiveReady=false;watchBuild=true;stage=71;} // the server switches to Kingsfield; the build is watched frame by frame
                 case 71->{ // p1-ui-seals-five
