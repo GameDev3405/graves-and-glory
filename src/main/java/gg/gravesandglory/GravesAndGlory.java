@@ -541,6 +541,7 @@ public final class GravesAndGlory implements ModInitializer {
             if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,side(s.team).color());
             mob.equipStack(EquipmentSlot.CHEST,chest);
             for(EquipmentSlot eq:EquipmentSlot.values())mob.setEquipmentDropChance(eq,0);
+            // The name colour is the team tag, not the side colour: CommandMode.nameTeam reads it on the client to tell friend from foe (both teams can field the same House). Recolour names by side only together with that reader.
             mob.setCustomName(Text.literal(spec.name()).formatted(s.team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE));
             mob.setCustomNameVisible(false);world.spawnEntity(mob);
             Unit u=new Unit(mob,s,spec,slot);units.add(u);return u;
