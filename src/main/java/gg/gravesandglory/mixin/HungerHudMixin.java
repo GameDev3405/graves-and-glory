@@ -8,8 +8,10 @@ import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Slice;
-/** No hunger in Graves and Glory (the server pins food at 20): the food row is not drawn. Only the icon blits between the
- *  profiler's "food" and "air" sections are skipped, so hearts, armour and air bubbles draw as before. */
+/** No hunger on a Graves and Glory server (it pins food at 20): the food row is not drawn there, in camp, in battle and while a
+ *  battlefield builds. The gate is GravesAndGloryClient.modServer, set by the first STATE packet and cleared on disconnect, so
+ *  saves the mod does not run keep vanilla hunger and their food row. Only the icon blits between the profiler's "food" and "air"
+ *  sections are skipped, so hearts, armour and air bubbles draw as before. */
 @Mixin(InGameHud.class)
 abstract class HungerHudMixin {
     @WrapWithCondition(method = "renderStatusBars",
@@ -17,7 +19,7 @@ abstract class HungerHudMixin {
         slice = @Slice(from = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/util/profiler/Profiler;swap(Ljava/lang/String;)V", args = "ldc=food"),
                        to = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/util/profiler/Profiler;swap(Ljava/lang/String;)V", args = "ldc=air")))
     private boolean gravesandglory$food(DrawContext g, Identifier id, int x, int y, int u, int v, int w, int h) {
-        if (!GravesAndGloryClient.ready) return true;
+        if (!GravesAndGloryClient.modServer) return true;
         BattleHud.foodSkipped++; return false;
     }
 }

@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
@@ -26,6 +27,9 @@ public final class Phase1Checks implements ClientModInitializer {
     public interface Suite { void step(MinecraftClient c,int tick); }
     /** Optional for a suite: called on the server thread after every Battle.tick, for checks that need exact tick timing. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
+    /** A suite that sees every HUD frame (Fabric's HUD callback runs after InGameHud has drawn the status bars), including frames
+     *  while the client's ready is false, when step() does not run. */
+    public interface HudWatch { void hudFrame(MinecraftClient c); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
     static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
@@ -59,6 +63,7 @@ public final class Phase1Checks implements ClientModInitializer {
         String list=System.getProperty("gravesandglory.phase1Checks","");if(list.isBlank())return;
         for(String name:list.split(","))if(!name.isBlank())queue.add(name.trim());
         ServerTickEvents.END_SERVER_TICK.register(s->{if(current instanceof ServerWatch w&&GravesAndGlory.battle!=null)try{w.serverTick(GravesAndGlory.battle);}catch(Exception e){report("p1-"+currentName+"-exception",false,e.toString());e.printStackTrace();}});
+        HudRenderCallback.EVENT.register((g,delta)->{if(current instanceof HudWatch w)try{w.hudFrame(MinecraftClient.getInstance());}catch(Exception e){report("p1-"+currentName+"-exception",false,e.toString());e.printStackTrace();}});
         ClientTickEvents.END_CLIENT_TICK.register(c->{
             c.options.pauseOnLostFocus=false; // an unfocused test window must not pause the integrated server
             if(c.getOverlay()!=null)return;
@@ -1117,7 +1122,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  frozen Dawn knight and Dusk revenant share point B (contested); A is Dawn's and C is Dusk's. Three knights and a mage fall
      *  first, so the cards read 9/12, 6/6 and 1/2 as in v4-hud-iron-ledger. Fixtures run on the server tick; every check reads what
      *  BattleHud reports the last frame drew. Kingsfield (map 4, five points) comes last. */
-    static final class UiHudChecks implements Suite,ServerWatch {
+    static final class UiHudChecks implements Suite,ServerWatch,HudWatch {
         static final double AX=-220,AZ=0; // open ground on the Dawn road, 63 blocks out from the live Dawn base at x=-283
         static final List<BattleHud.CardDraw> CARDS=List.of(new BattleHud.CardDraw("infantry","FLASH",false,24,348,176,48),new BattleHud.CardDraw("ranged","SELECTED",true,24,404,176,62),new BattleHud.CardDraw("support","ROUTING",false,24,474,176,48));
         static final List<BattleHud.SealDraw> SEALS=List.of(new BattleHud.SealDraw("hud/seal-dawn",439,41),new BattleHud.SealDraw("hud/seal-contested",467,40),new BattleHud.SealDraw("hud/seal-dusk",495,41));
@@ -1130,6 +1135,8 @@ public final class Phase1Checks implements ClientModInitializer {
         // client thread
         int oldW,oldH,oldGui,waitFrom,seen,flashAt,askAt,abilitySeen=-1,framesAt,skippedAt,framesSpan,skippedSpan,win;
         boolean finished,keepLesson,sealsOk,smallOk=true,abilityOk,edgeOk;String sealsWhy="",smallWhy="",abilityWhy="",edgeWhy="";List<BattleHud.CardDraw> two=List.of();
+        // client thread, every HUD frame: the food draws the mixin skipped in that frame, watched while the five-seal battlefield builds
+        int lastSkipped,buildFrames,buildFull,buildLow;boolean watchBuild;String buildOdd="";
 
         ServerPlayerEntity sp(GravesAndGlory.Battle b){return player==null?null:b.server.getPlayerManager().getPlayer(player);}
         static CommandMode.Group group(String id){for(var g:CommandMode.groups)if(g.id().equals(id))return g;return null;}
@@ -1196,6 +1203,19 @@ public final class Phase1Checks implements ClientModInitializer {
             if(keepRespawn&&player!=null)b.respawns.put(player,b.time+12*20L);
             if(hungerOn&&!hungerDone)hunger(b);
             if(stage==71&&!fiveReady)five(b);
+        }
+
+        /** Each HUD frame: how many food draws the mixin skipped in it. While the five-seal battlefield builds (the client's ready is
+         *  false) every frame at food 20 must skip the whole row: 20 draws, 10 backgrounds and 10 icons. */
+        public void hudFrame(MinecraftClient c){
+            int skipped=BattleHud.foodSkipped,delta=skipped-lastSkipped;lastSkipped=skipped;
+            if(!watchBuild||GravesAndGloryClient.ready||c.player==null||c.interactionManager==null||!c.interactionManager.hasStatusBars())return;
+            if(c.player.getHungerManager().getFoodLevel()!=20){buildLow++;return;}
+            buildFrames++;if(delta==20)buildFull++;else if(buildOdd.length()<60)buildOdd+=(buildOdd.isEmpty()?"":", ")+delta;
+        }
+        void reportBuild(){
+            watchBuild=false;
+            report("p1-ui-no-hunger-build",buildFrames>=20&&buildFull==buildFrames,"while the five-seal battlefield built (client ready false) "+buildFrames+" HUD frames had food 20 and "+buildFull+" of them skipped all 20 food draws"+(buildOdd.isEmpty()?"":" (the others skipped "+buildOdd+")")+(buildLow>0?"; "+buildLow+" frames at lower food left out":""));
         }
 
         public void step(MinecraftClient c,int tick){
@@ -1311,7 +1331,7 @@ public final class Phase1Checks implements ClientModInitializer {
                         report("p1-ui-seals",sealsOk&&all,sealsWhy+"; every owner -1: "+ss);seen=0;stage=70;}
                     else if(seen==0&&tick-waitFrom>200){report("p1-ui-seals",false,sealsWhy+"; the client never showed every point neutral and uncontested");stage=70;}
                 }
-                case 70->{waitFrom=tick;fiveReady=false;stage=71;} // the server switches to Kingsfield
+                case 70->{waitFrom=tick;fiveReady=false;watchBuild=true;stage=71;} // the server switches to Kingsfield; the build is watched frame by frame
                 case 71->{ // p1-ui-seals-five
                     if(seen==0&&fiveReady&&GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()&&GravesAndGloryClient.owners.length==5)seen=tick;
                     if(seen>0&&tick>=seen+3){
@@ -1319,8 +1339,8 @@ public final class Phase1Checks implements ClientModInitializer {
                         boolean clear=r.containsKey("seal-0")&&r.containsKey("seal-4")&&!meets(r.get("seal-0"),r.get("dawn-boss"))&&!meets(r.get("seal-4"),r.get("dusk-boss"));
                         shot(c,"ui-hud-five-seals");
                         report("p1-ui-seals-five",xs.equals(List.of(411,439,467,495,523))&&clear,"map "+CampaignClient.map+": seals "+ss+"; seal-0 "+box(r.get("seal-0"))+" and dawn-boss "+box(r.get("dawn-boss"))+", seal-4 "+box(r.get("seal-4"))+" and dusk-boss "+box(r.get("dusk-boss")));
-                        seen=0;end(c);
-                    }else if(seen==0&&tick-waitFrom>2400){report("p1-ui-seals-five",false,"no five-point battle 2400 ticks after the request (owners "+GravesAndGloryClient.owners.length+", server ready "+fiveReady+")");end(c);}
+                        reportBuild();seen=0;end(c);
+                    }else if(seen==0&&tick-waitFrom>2400){reportBuild();report("p1-ui-seals-five",false,"no five-point battle 2400 ticks after the request (owners "+GravesAndGloryClient.owners.length+", server ready "+fiveReady+")");end(c);}
                 }
                 case 99->{stage=100;finish(c,"ui-hud");}
                 default->{}

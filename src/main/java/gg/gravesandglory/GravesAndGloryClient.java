@@ -29,9 +29,10 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 public final class GravesAndGloryClient implements ClientModInitializer {
-    /** The mod's world is up, in camp or in battle. Public because HungerHudMixin reads it from inside InGameHud. */
-    public static boolean ready;
-    static boolean running,nearBarracks;
+    static boolean ready,running,nearBarracks;
+    /** This server runs Graves and Glory: a STATE packet has arrived since joining (the server sends them while a battlefield builds
+     *  too), cleared on disconnect. Public because HungerHudMixin reads it from inside InGameHud. */
+    public static volatile boolean modServer;
     static int dawn,dusk,team=-1,count,respawn,gold,queued,trainingSeconds;
     static String message="Preparing battlefield",order="follow",formation="block";
     /** The commander ability the HUD slot shows ("none": no slot), with the ticks left and in all of its cooldown. */
@@ -77,6 +78,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.OPEN_BARRACKS,(client,handler,buf,responder)->client.execute(()->client.setScreen(running?new BarracksScreen():new LobbyScreen())));
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.PARTY,(client,handler,buf,responder)->client.execute(()->client.setScreen(new LobbyScreen(3))));
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.STATE,(client,handler,buf,responder)->{
+            modServer=true;
             boolean r=buf.readBoolean(),run=buf.readBoolean();int a=buf.readInt(),b=buf.readInt();String msg=buf.readString();int t=buf.readInt(),n=buf.readInt();String o=buf.readString(),f=buf.readString();int resp=buf.readInt();
             int points=buf.readInt();if(points<1||points>8)return;boolean[] contest=new boolean[points];int[] own=new int[points],pr=new int[points],ch=new int[points];for(int i=0;i<points;i++){buf.readString();own[i]=buf.readInt();pr[i]=buf.readInt();ch[i]=buf.readInt();contest[i]=buf.readBoolean();}
             int g=buf.readInt();boolean near=buf.readBoolean();int q=buf.readInt(),eta=buf.readInt(),types=buf.readInt();if(types!=Spec.TROOPS.length)return;
@@ -91,7 +93,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             client.execute(()->{CampaignClient.accept(client,campaignJson,run);sightings=List.copyOf(sight);contested=contest;CommandMode.pings=java.util.List.copyOf(pings);CommandMode.seconds=seconds;CommandMode.noteGroups(CommandMode.groups,groups,net.minecraft.util.Util.getMeasuringTimeMs());CommandMode.groups=java.util.List.copyOf(groups);ready=r;running=run;dawn=a;dusk=b;message=msg;team=t;count=n;order=o;formation=f;respawn=resp;owners=own;progress=pr;challengers=ch;gold=g;nearBarracks=near;queued=q;trainingSeconds=eta;roster=owned;pending=waiting;markers=List.copyOf(friendly);abilityId=abilityRead;abilityRemaining=cooldownLeft;abilityTotal=cooldownAll;});
         });
         ClientPlayConnectionEvents.JOIN.register((handler,sender,client)->{CampaignClient.sendProfile(client);if(connectingInvitation&&!joined){joined=true;say("Melty joined: "+join);}});
-        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);ready=false;running=false;team=-1;opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
+        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);ready=false;modServer=false;running=false;team=-1;opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
             if(client.getOverlay()==null&&client.currentScreen instanceof TitleScreen){
                 if(!attempted){PackControls.prepare(client);if(!Presentation.prepareResources(client))return;attempted=true;}
