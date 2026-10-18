@@ -44,7 +44,7 @@ Earn 80 collection gold for completing a regular match, plus 40 for victory. Pra
 
 Classes boost matching troops: Vanguard grants infantry 20% health and 10% damage; Marksman grants ranged troops 15% damage and 10% attack speed; Arcanist grants support 20% health and 20% spell or healing power. Dawn shield troops guard in close compact combat and support heal wounded allies. Dusk casters mark an area before a damaging slowing spell lands. Ranged attacks require line of sight.
 
-## Four purposeful battlefields
+## Five purposeful battlefields
 
 Every playable map is 700 by 500 blocks, with three objectives (Kingsfield Crossroads has five). Roads connect settlements, bases and river crossings; broad approaches, flanking routes, hills and woods offer different positions.
 
@@ -52,6 +52,7 @@ Every playable map is 700 by 500 blocks, with three objectives (Kingsfield Cross
 - Ironhold Siege: a breached fortress, curtain walls, supply barn, garrison and flanking military roads.
 - Frostmarch Pass: snowy ridges, a mountain river, caravan lodge, sheltered refuge and signal tower.
 - Hollowwood Reach: dense woodland, a logging settlement, abandoned chapel, old causeway and moon shrine.
+- Kingsfield Crossroads: open plains with five objectives (two fords, a central bridge and a raised outpost on each flank).
 
 The first visit prepares the selected map and caches its completed layout. Selecting a different map prepares that battlefield. Collection saves are separate from map generation.
 

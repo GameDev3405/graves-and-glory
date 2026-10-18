@@ -24,7 +24,7 @@ Camp guide: set **Bots** to Normal. At the War Gates stand alone on the **DAWN**
 
 | You should see | Yes | No |
 |---|:-:|:-:|
-| Your own line routing at least once: cut below a quarter of its strength, or attacked from the side or rear by three or more troops while under 60%. A horn sounds, its group card reads ROUTING and the troops run for home. | [ ] | [ ] |
+| Your own line routing at least once: cut below a quarter of its strength, or attacked from behind (more than 110 degrees off the line's facing) by three or more troops while at or below 60%. A horn sounds, its group card reads ROUTING and the troops run for home. | [ ] | [ ] |
 | It regrouping within 15 s, with the rally horn. | [ ] | [ ] |
 | An order you give the routing group (Hold, or Move somewhere) being what it does once it regroups. | [ ] | [ ] |
 | Bots that lose troops buying replacements with their gold and sending them back in. | [ ] | [ ] |

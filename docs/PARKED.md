@@ -18,6 +18,7 @@ add to it, never remove from it. Date and source on each line.
 - Duplicate rolls levelling units (Roblox comparison; now rank stars).
 - Free-for-all with alliances and betrayal; war table with fog of war; land conquest (Kingdom & Army vision, 2026-10-09).
 - Player classes Knight/Mage/Ranger/Healer/Tank (Kingdom & Army; replaced by the six-class vision).
+- Three morale/bot numbers live in code, not sheets: rout home radius 10 (Morale.java), MELEE_THREAT_RANGE 8 and NEAR_RADIUS_FACTOR 2 (Campaign.java). Move to `morale`/`botCommand` columns when tier tuning reopens in Phase 3 (final review 2026-10-18).
 
 ## Content
 - OGG sound variants (night session).
