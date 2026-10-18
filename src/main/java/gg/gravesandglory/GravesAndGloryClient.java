@@ -148,18 +148,27 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         var p=MinecraftClient.getInstance().player;if(p!=null){int px=x+(int)((p.getX()+350)*w/700),pz=y+(int)((p.getZ()+250)*h/500);g.fill(px-1,pz-2,px+2,pz+3,0xffffffff);}
     }
     static String keyHints(){return "Attack "+attack.getBoundKeyLocalizedText().getString()+"   Follow "+follow.getBoundKeyLocalizedText().getString()+"   Formation "+cycle.getBoundKeyLocalizedText().getString()+"   Map "+mapKey.getBoundKeyLocalizedText().getString()+"   Menu "+menu.getBoundKeyLocalizedText().getString();}
-    /** First-battle lessons, one at a time, each naming the player's own key binding. The server advances them. */
-    static void lesson(DrawContext g,net.minecraft.client.font.TextRenderer font,int w){
-        int step=CampaignClient.tutorial;if(step<0||step>3)return;
-        String text=switch(step){
+    /** Lesson text fits this width inside the 360-pixel lesson panel. */
+    static final int LESSON_TEXT_WIDTH=350;
+    /** The lesson text lines drawn in the last frame, so a check can compare them with the full copy. */
+    static List<String> lessonDrawn=List.of();
+    /** The copy of lesson step (0 to 3), naming the player's own key binding. */
+    static String lessonText(int step){
+        return switch(step){
             case 0->"Press "+menu.getBoundKeyLocalizedText().getString()+", choose a group and Move, then click the ground to send them.";
             case 1->"Press "+cycle.getBoundKeyLocalizedText().getString()+" to change formation. Shieldwall holds a line; Wedge breaks one.";
             case 2->"Press "+attack.getBoundKeyLocalizedText().getString()+" and aim at an enemy or a point to send your army in.";
             default->"Recruit at your barracks lectern. Trained troops march out from the held point nearest the fight.";
         };
-        panel(g,w/2-180,60,360,32);
+    }
+    /** First-battle lessons, one at a time, each naming the player's own key binding. The server advances them. The copy wraps; the panel grows a row per line. */
+    static void lesson(DrawContext g,net.minecraft.client.font.TextRenderer font,int w){
+        int step=CampaignClient.tutorial;if(step<0||step>3)return;
+        List<String> lines=font.getTextHandler().wrapLines(lessonText(step),LESSON_TEXT_WIDTH,net.minecraft.text.Style.EMPTY).stream().map(net.minecraft.text.StringVisitable::getString).toList();
+        panel(g,w/2-180,60,360,21+11*lines.size());
         g.drawCenteredTextWithShadow(font,"FIRST BATTLE / LESSON "+(step+1)+" OF 4",w/2,65,GOLD);
-        g.drawCenteredTextWithShadow(font,font.trimToWidth(text,350),w/2,78,WHITE);
+        for(int i=0;i<lines.size();i++)g.drawCenteredTextWithShadow(font,lines.get(i),w/2,78+11*i,WHITE);
+        lessonDrawn=lines;
     }
     public static boolean inCamp(){return ready&&!battleActive();}
     public static boolean battleActive(){return ready&&running&&!CampaignClient.waiting;}

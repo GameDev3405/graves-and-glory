@@ -23,7 +23,7 @@ public final class Phase1Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every Battle.tick, for checks that need exact tick timing. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -713,6 +713,81 @@ public final class Phase1Checks implements ClientModInitializer {
                     report("p1-bots-retreat-facing",hard.order.equals("retreat")&&hard.yaw==-90,"Hard army cut down to three: order "+hard.order+", facing "+hard.yaw+" (Dawn faces -90 after every decision, retreat included)");
                     next(b,99);
                 }
+                default->{}
+            }
+        }
+    }
+
+    /** Task 6: the four lessons in a real round, each advanced by the command its key sends, and the lesson reward (rollCost gold, once).
+     *  Commands run on the server tick; the client records the lesson it shows and photographs each one. */
+    static final class TutorialChecks implements Suite,ServerWatch {
+        static final int ROLL=Spec.CAMPAIGN[0].rollCost();
+        volatile int stage;volatile boolean finished,lessonsDone;volatile UUID player;long stageAt,introUntil;
+        /** The lesson run: the server's lesson after each command, the profile gold around the barracks lesson, what the client showed. */
+        final List<Integer> serverSteps=Collections.synchronizedList(new ArrayList<>());volatile int goldBefore=-1,goldAfter=-1,goldRepeat=-1;volatile String commandWhy="",startWhy="";
+        final List<Integer> clientSeen=new ArrayList<>();final boolean[] lessonShot=new boolean[4],lessonWhole=new boolean[4];int steady=-9,steadyTicks,clientGoldBefore=-1,clientWait;String copyWhy="";
+
+        void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
+        long since(GravesAndGlory.Battle b){return b.time-stageAt;}
+        ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
+        int gold(GravesAndGlory.Battle b){return b.campaign.profile(player).gold;}
+        /** Lesson n's command, as the keys send it: R then Move (a tactical move), B (a tactical formation), G (a tactical attack on open ground ahead), the barracks lectern. Dawn faces +x. */
+        void lesson(GravesAndGlory.Battle b,int n){
+            var p=sp(b);Vec3d at=p.getPos();
+            switch(n){
+                case 0->b.tactical(p,"all","move","block",at.x+12,at.z,p.getYaw(),-1);
+                case 1->b.tactical(p,"all","formation","wedge",at.x,at.z,p.getYaw(),-1);
+                case 2->b.tactical(p,"all","attack","block",at.x+20,at.z,p.getYaw(),-1);
+                default->{goldBefore=gold(b);b.command(p,"barracks");goldAfter=gold(b);}
+            }
+            serverSteps.add(b.campaign.tutorialStep(player));commandWhy+=(n==0?"":", ")+new String[]{"move","formation","attack","barracks"}[n]+" at intro+"+(b.time-introUntil);
+        }
+
+        public void step(MinecraftClient c,int tick){
+            if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;next(b,1);});}
+            if(stage>=4&&stage<=6&&!lessonsDone){ // each new lesson value from the first lesson on; each lesson photographed after three steady ticks on screen
+                int now=CampaignClient.tutorial;if(now==3&&clientGoldBefore<0)clientGoldBefore=CampaignClient.profile.gold;
+                if((now>=0||!clientSeen.isEmpty())&&(clientSeen.isEmpty()||clientSeen.get(clientSeen.size()-1)!=now))clientSeen.add(now);
+                boolean shown=now>=0&&now<=3&&!lessonShot[now]&&GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()&&c.currentScreen==null;
+                steadyTicks=shown?(now==steady?steadyTicks+1:1):0;steady=now;
+                if(steadyTicks>=3){shot(c,"tutorial-lesson-"+(now+1));lessonShot[now]=true;
+                    // what the lesson panel drew this frame against the lesson's full copy: nothing cut, every line inside the panel
+                    String full=GravesAndGloryClient.lessonText(now);var drawn=GravesAndGloryClient.lessonDrawn;String joined=String.join(" ",drawn);
+                    boolean whole=joined.replace(" ","").equals(full.replace(" ","")),fits=drawn.stream().allMatch(l->c.textRenderer.getWidth(l)<=GravesAndGloryClient.LESSON_TEXT_WIDTH);
+                    lessonWhole[now]=whole&&fits;copyWhy+=(copyWhy.isEmpty()?"":"; ")+"lesson "+(now+1)+": "+drawn.size()+" line(s), whole="+whole+", inside "+GravesAndGloryClient.LESSON_TEXT_WIDTH+" px="+fits+(whole?"":", drawn ends \""+joined.substring(Math.max(0,joined.length()-16))+"\"");
+                }
+            }
+            if(stage==6&&c.currentScreen!=null)c.setScreen(null); // the barracks lesson opens the barracks screen
+            if(stage==6&&!lessonsDone&&goldRepeat>=0&&++clientWait>=40){ // 40 ticks for the lesson end and the new gold to reach the client
+                lessonsDone=true;int shots=0,whole=0;for(int i=0;i<4;i++){if(lessonShot[i])shots++;if(lessonWhole[i])whole++;}
+                report("p1-tutorial-lessons",clientSeen.equals(List.of(0,1,2,3,-1))&&List.copyOf(serverSteps).equals(List.of(1,2,3,-1))&&shots==4&&whole==4,startWhy+"; client showed lessons "+clientSeen+" (expected [0, 1, 2, 3, -1]); server lesson after each command "+serverSteps+" (expected [1, 2, 3, -1]); "+commandWhy+"; "+shots+" of 4 lesson screenshots; "+whole+" of 4 lessons drawn whole inside the panel ("+copyWhy+")");
+                report("p1-tutorial-reward-once",goldAfter-goldBefore==ROLL&&goldRepeat==goldAfter&&CampaignClient.profile.gold-clientGoldBefore==ROLL,"profile gold "+goldBefore+" -> "+goldAfter+" on the barracks lesson (expected +"+ROLL+"), "+goldRepeat+" after a second barracks command; client profile gold "+clientGoldBefore+" -> "+CampaignClient.profile.gold);
+                server(c,b->next(b,7));
+            }
+            if(stage==99&&!finished){finished=true;finish(c,"tutorial");}
+            if(tick>6000&&!finished){finished=true;report("p1-tutorial-timeout",false,"stuck in stage "+stage);finish(c,"tutorial");}
+        }
+
+        public void serverTick(GravesAndGlory.Battle b){
+            switch(stage){
+                case 1->{ // a fresh commander in camp: no round running, a new profile
+                    var p=sp(b);if(p==null||!b.ready)return;
+                    if(b.running){b.campaign.returnLobby();stageAt=b.time;return;}
+                    if(since(b)<40)return;
+                    b.campaign.profiles.put(player,new Campaign.Profile());b.campaign.save(player);
+                    System.out.println("[p1] tutorial start: map "+b.campaign.map+", fresh profile, gold "+gold(b));
+                    b.command(p,"camp:practice");next(b,4);
+                }
+                case 4->{ // the round starts
+                    if(b.running){introUntil=b.campaign.introUntil;startWhy="practice started on map "+b.campaign.map+" ("+b.campaign.size+"v"+b.campaign.size+")";System.out.println("[p1] "+startWhy+", intro until "+introUntil);next(b,5);}
+                    else if(since(b)>900){startWhy="no round 900 ticks after the start command";report("p1-tutorial-lessons",false,startWhy);report("p1-tutorial-reward-once",false,startWhy);next(b,7);}
+                }
+                case 5->{ // one lesson command every 60 ticks after the intro
+                    long t=b.time-introUntil;
+                    if(t>0&&t%60==0){int n=(int)(t/60)-1;lesson(b,n);if(n==3)next(b,6);}
+                }
+                case 6->{if(since(b)==20){b.command(sp(b),"barracks");goldRepeat=gold(b);}}
+                case 7->{if(b.running)b.campaign.returnLobby();next(b,99);}
                 default->{}
             }
         }
