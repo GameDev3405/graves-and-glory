@@ -16,6 +16,14 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
     /** The House whose owned troops the banner editor shows; "" until the tab opens, then the largest House in the banner. */
     String house="";
     public CampaignLobbyScreen(){super("Graves and Glory war council");}
+    /** Shows a House's troops in the banner editor. A picked troop of another House is let go, so a slot click never places a troop the tab does not show; the clear tool stays. */
+    void showHouse(String id){house=id;var picked=ArmyCards.spec(selectedUnit);if(picked!=null&&!picked.house().equals(id))selectedUnit="";}
+    /** The gold line under the editor's troop cards: the picked troop, the clear tool, or no pick. */
+    String pickLine(){
+        if(selectedUnit.isEmpty())return "No troop picked.";
+        var chosen=ArmyCards.spec(selectedUnit);
+        return chosen==null?"Clear: pick a slot to empty it.":chosen.name()+" / "+chosen.rarity()+(chosen.slotWeight()>1?" / fills "+chosen.slotWeight()+" slots":"");
+    }
     String stateKey(){return CampaignClient.mode+CampaignClient.map+CampaignClient.fill+CampaignClient.difficulty+CampaignClient.partyKey+team+CampaignClient.profile.commander+CampaignClient.profile.owned.size()+CampaignClient.headline;}
     public void showTab(int value){tab=value;clearAndInit();}
     @Override protected void init(){
@@ -34,16 +42,16 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
         }else if(tab==1){
             // The banner editor (spec 6.2): pick an owned troop, then a slot. Troops of a House that cannot be fielded yet stay inactive.
             int left=width/2+8,rw=width-left-16,cardWidth=(rw-8)/3,row=0;
-            if(house.isEmpty())house=RosterMath.rollHouse(CampaignClient.profile.banner);
+            if(house.isEmpty())showHouse(RosterMath.rollHouse(CampaignClient.profile.banner));
             // House filter: each button as wide as its name needs (the label plus the button's 14 px padding), shared out over the row so none is cut.
             int need=0;for(var h:Spec.HOUSES)need+=textRenderer.getWidth(DarkUi.body(h.name().split(" ")[0]))+17;
             int hx=left;for(var h:Spec.HOUSES){String id=h.id(),label=h.name().split(" ")[0];int hw=row==Spec.HOUSES.length-1?left+rw-hx:(int)Math.round((textRenderer.getWidth(DarkUi.body(label))+17)*(double)rw/Math.max(1,need));
-                button((house.equals(id)?"> ":"")+label,hx,74,hw-3,b->{house=id;clearAndInit();});hx+=hw;row++;}
+                button((house.equals(id)?"> ":"")+label,hx,74,hw-3,b->{showHouse(id);clearAndInit();});hx+=hw;row++;}
             row=0;
             for(var unit:Spec.TROOPS)if(unit.house().equals(house)&&CampaignClient.profile.owned.containsKey(unit.id())){String id=unit.id();
                 var choose=addDrawableChild(new ArmyCards.Recruit(unit,left+(row%3)*(cardWidth+4),97+(row/3)*84,cardWidth,b->{selectedUnit=id;clearAndInit();}));choose.active=ArmyCards.fieldable(unit);row++;
             }
-            for(int slot=0;slot<20;slot++){final int index=slot;slots.add(addDrawableChild(new ArmyCards.Deployment(index,24+(slot%5)*54,111+(slot/5)*36,b->send("slot:"+index+":"+selectedUnit))));}
+            for(int slot=0;slot<20;slot++){final int index=slot;slots.add(addDrawableChild(new ArmyCards.Deployment(index,24+(slot%5)*54,111+(slot/5)*36,b->{if(!selectedUnit.isEmpty())send("slot:"+index+":"+selectedUnit);})));}
             button((selectedUnit.equals(RosterMath.EMPTY)?"> ":"")+"Clear a slot",20,276,120,b->{selectedUnit=RosterMath.EMPTY;clearAndInit();});
             for(int i=0;i<Spec.FACTIONS.length;i++){var side=Spec.FACTIONS[i];addDrawableChild(new ArmyCards.Colour(side,146+i*38,276,b->send("colour:"+side.id())));}
         }else if(tab==2){
@@ -136,8 +144,7 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
             DarkUi.frame(g,15,88,285,182);text(g,"FRONT / toward the enemy",24,94,270,MUTED);text(g,"REAR",24,260,270,MUTED);
             int left=width/2+8;var row=Arrays.stream(Spec.HOUSES).filter(h->h.id().equals(house)).findFirst().orElse(null);
             if(row!=null&&Arrays.stream(Spec.TROOPS).noneMatch(t->t.house().equals(house)&&CampaignClient.profile.owned.containsKey(t.id())))text(g,"No "+row.name()+" troops in your collection yet.",left,104,width-left-16,MUTED);
-            var chosen=ArmyCards.spec(selectedUnit);
-            text(g,chosen==null?"Clear: pick a slot to empty it.":chosen.name()+" / "+chosen.rarity()+(chosen.slotWeight()>1?" / fills "+chosen.slotWeight()+" slots":""),left,266,width-left-16,GOLD);
+            text(g,pickLine(),left,266,width-left-16,GOLD);
             text(g,row!=null&&!row.fieldable()?row.name()+" has not joined the war: its troops cannot be fielded yet.":"Pick a troop, then a slot. Epics fill 2 slots, Legendaries 4.",left,280,width-left-16,MUTED);
             text(g,"New troops join by recruitment rolls at the camp shrine, "+Spec.RECRUITMENT[0].rollCost()+" gold each. The four marks set your banner colour.",16,height-27,width-32,MUTED);
         }else if(tab==2){
