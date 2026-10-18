@@ -219,6 +219,7 @@ public final class Phase3Checks implements ClientModInitializer {
                 Files.createDirectories(generated.getParent());NbtIo.writeCompressed(gold.writeNbt(new NbtCompound()),generated.toFile());
                 Structures.clearCache();manager.unloadTemplate(id);
                 vanilla=manager.getTemplate(id).map(t->t.getSize().toShortString()).orElse("none");
+                if(!vanilla.equals("1, 1, 1"))bad.append("fixture did not take effect: the vanilla manager read ").append(vanilla).append(", not 1, 1, 1; "); // else the check could pass with nothing to resist
                 var again=Structures.template(w,MARKER);
                 if(again.isEmpty())bad.append("template missing after the override file was written; ");
                 else if(!again.get().getSize().equals(SIZE))bad.append("size ").append(again.get().getSize().toShortString()).append(" is not 5, 5, 5 (the override won); ");
