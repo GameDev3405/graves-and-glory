@@ -136,3 +136,15 @@ Recommended answer in brackets. The plan (docs/superpowers/plans/2026-10-18-ui-p
 - Bot tiers: Hard flanking off (open question 3: yes). Tier ladder parked until the Phase 3 maps; no more sim hours on it in Phase 1.
 - UI spec questions 1 to 5 and the 8-task UI plan: all recommendations approved.
 - Phase 3 built-world questions 1 to 6: all recommendations approved.
+
+### Problem 5 follow-up: tier diagnostics finished (2026-10-18, sheet-only experiments, 20 matches each, 3v3, maps 0-4, 300 s)
+
+| Variant vs Normal | Wins Dawn / Dusk / total of 20 | Per map 0-4 (of 4) | Score margin, seat-averaged |
+|---|---|---|---|
+| Baseline Hard (5e) | 5 / 2 / 7 | 1 2 0 0 4 | -18.7 |
+| A: Hard, flankLeastDefended=false (now shipped) | 7 / 2 / 9 | 2 2 3 2 0 | +6.2 |
+| Baseline Easy (5e) | 9 / 4 / 13 (+1 draw) | 2 4 3 2 2 | +18.0 |
+| B: Easy = Normal + chargeRatio 2.5 | 8 / 1 / 9 | 2 0 3 2 2 | -3.6 |
+| C: Easy = Normal + retreat 0.35, rally 0.7 | 7 / 1 / 8 | 2 1 2 2 1 | -16.0 |
+
+Reading: the flank/garrison picker caused Hard's deficit on the three-point maps (3/16 -> 9/16 without it) and also its Kingsfield wins (4/4 -> 0/4); without it Hard is level with Normal, and the rest of Hard's row shows no measurable edge. No tested knob explains Easy beating Normal; decisionTicks 160 is the only Easy knob untested, and 13/20 sits inside noise around parity. The Dawn-seat bias (15 to 17 of 20 in every batch) is larger than any tier effect. Knight-to-revenant kill ratio ~1.5 in every batch, so the effects come from where armies go, not melee. Parked until the Phase 3 maps, per Kort. Run roots: work/p1/botsim-5f-{A,B,C}-*.
