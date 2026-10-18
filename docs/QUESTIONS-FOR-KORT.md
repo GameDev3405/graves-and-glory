@@ -21,6 +21,7 @@ Each item says what was decided in the meantime so work could continue.
    next state packet). Found 2026-10-17 by the harness-fix run. Decision: fix it
    inside Phase 1 (regression task) and add a check for it; until then do not
    pick Kingsfield from the lobby.
+   Fixed on phase-1-solo-core (commit 6ecbfb0); in-game verification in the regression task.
 2. **Two campaign-suite checks were already failing before Phase 1:**
    `solo-pad-3v3` and `roadmap-suite`. Left as-is for now; Phase 1 Task 9
    either fixes them or records why they are stale.
