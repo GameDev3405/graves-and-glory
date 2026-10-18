@@ -27,7 +27,7 @@ public final class Phase1Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every Battle.tick, for checks that need exact tick timing. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front,hold;static boolean started; // hold: client ticks the current suite waits (Phase1Checks.window)
@@ -788,7 +788,7 @@ public final class Phase1Checks implements ClientModInitializer {
             if(steadyTicks>=3){shot(c,"tutorial-lesson-"+(now+1));lessonShot[now]=true;
                 // what the lesson panel drew this frame against the full lesson copy: nothing cut, every line inside the panel
                 String full=GravesAndGloryClient.lessonText(now);var drawn=GravesAndGloryClient.lessonDrawn;String joined=String.join(" ",drawn);
-                boolean whole=joined.replace(" ","").equals(full.replace(" ","")),fits=drawn.stream().allMatch(l->c.textRenderer.getWidth(l)<=GravesAndGloryClient.LESSON_TEXT_WIDTH);
+                boolean whole=joined.replace(" ","").equals(full.replace(" ","")),fits=drawn.stream().allMatch(l->c.textRenderer.getWidth(DarkUi.body(l))<=GravesAndGloryClient.LESSON_TEXT_WIDTH); // measured in the body style it wraps in
                 lessonWhole[now]=whole&&fits;copyWhy+=(copyWhy.isEmpty()?"":"; ")+"lesson "+(now+1)+": "+drawn.size()+" line(s), whole="+whole+", inside "+GravesAndGloryClient.LESSON_TEXT_WIDTH+" px="+fits+(whole?"":", drawn ends \""+joined.substring(Math.max(0,joined.length()-16))+"\"");
             }
         }
@@ -1109,5 +1109,243 @@ public final class Phase1Checks implements ClientModInitializer {
 
         /** Closes the sheet and puts the window back as the suite found it; p1-ui-art-suite follows once it has settled. */
         void end(MinecraftClient c){if(art!=null)UiKitSheet.closeAll(art);art=null;c.setScreen(null);if(oldW>0)window(c,oldW,oldH,oldGui);stage=6;}
+    }
+
+    /** UI Task 2: the Iron Ledger battle HUD and no hunger (UI spec 4.5), at 960x540 GUI 1 unless a check says otherwise. Practice on
+     *  map 0 with the enemy army gone: the player's army stands on the Dawn road 63 blocks out from the base with the player just
+     *  behind it, every troop frozen; one frozen Dusk revenant stands in front of the infantry (which then reads Fighting), and a
+     *  frozen Dawn knight and Dusk revenant share point B (contested); A is Dawn's and C is Dusk's. Three knights and a mage fall
+     *  first, so the cards read 9/12, 6/6 and 1/2 as in v4-hud-iron-ledger. Fixtures run on the server tick; every check reads what
+     *  BattleHud reports the last frame drew. Kingsfield (map 4, five points) comes last. */
+    static final class UiHudChecks implements Suite,ServerWatch {
+        static final double AX=-220,AZ=0; // open ground on the Dawn road, 63 blocks out from the live Dawn base at x=-283
+        static final List<BattleHud.CardDraw> CARDS=List.of(new BattleHud.CardDraw("infantry","FLASH",false,24,348,176,48),new BattleHud.CardDraw("ranged","SELECTED",true,24,404,176,62),new BattleHud.CardDraw("support","ROUTING",false,24,474,176,48));
+        static final List<BattleHud.SealDraw> SEALS=List.of(new BattleHud.SealDraw("hud/seal-dawn",439,41),new BattleHud.SealDraw("hud/seal-contested",467,40),new BattleHud.SealDraw("hud/seal-dusk",495,41));
+        static final int[][] WINDOWS={{960,540,1},{854,480,2},{1280,720,3}};
+        // Written by both threads. A negative stage is a hand-off: the client waits for the server task it sent to set the next stage.
+        volatile int stage;volatile UUID player;
+        volatile boolean hungerOn,hungerDone,routSupport,keepRespawn,fiveReady;volatile int hungerSets,hungerOk;volatile String hungerWrong="",fixture="";
+        // server thread
+        long hungerStart=-1;final List<GravesAndGlory.Unit> pair=new ArrayList<>();
+        // client thread
+        int oldW,oldH,oldGui,waitFrom,seen,flashAt,askAt,abilitySeen=-1,framesAt,skippedAt,framesSpan,skippedSpan,win;
+        boolean finished,keepLesson,sealsOk,smallOk=true,abilityOk,edgeOk;String sealsWhy="",smallWhy="",abilityWhy="",edgeWhy="";List<BattleHud.CardDraw> two=List.of();
+
+        ServerPlayerEntity sp(GravesAndGlory.Battle b){return player==null?null:b.server.getPlayerManager().getPlayer(player);}
+        static CommandMode.Group group(String id){for(var g:CommandMode.groups)if(g.id().equals(id))return g;return null;}
+        static boolean meets(int[] a,int[] b){return a!=null&&b!=null&&a[0]<b[0]+b[2]&&b[0]<a[0]+a[2]&&a[1]<b[1]+b[3]&&b[1]<a[1]+a[3];}
+        static boolean inside(int[] a,int w,int h){return a[0]>=0&&a[1]>=0&&a[0]+a[2]<=w&&a[1]+a[3]<=h;}
+        static String box(int[] a){return a==null?"none":Arrays.toString(a);}
+        /** A card may hang on the spine and a boss may sit on the score card; nothing else may touch. */
+        static boolean allowed(String a,String b){
+            if(a.startsWith("card-")&&b.equals("spine")||b.startsWith("card-")&&a.equals("spine"))return true;
+            return a.endsWith("-boss")&&b.equals("score")||b.endsWith("-boss")&&a.equals("score");
+        }
+        /** A GUI box in canvas px, rounded outward. */
+        static int[] canvas(MinecraftClient c,int x,int y,int w,int h){
+            double f=c.getWindow().getScaleFactor()/UiCanvas.k();
+            int x0=(int)Math.floor(x*f+1e-9),y0=(int)Math.floor(y*f+1e-9),x1=(int)Math.ceil((x+w)*f-1e-9),y1=(int)Math.ceil((y+h)*f-1e-9);
+            return new int[]{x0,y0,x1-x0,y1-y0};
+        }
+        static void kill(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String group,int n){int k=0;for(var u:b.units)if(k<n&&u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive()){u.mob.kill();k++;}b.units.removeIf(u->!u.mob.isAlive());}
+        /** Every enemy troop gone, and neither army refills. */
+        static void quiet(GravesAndGlory.Battle b,GravesAndGlory.Squad own){
+            for(var s:b.squads.values()){s.reinforceAt=Long.MAX_VALUE;if(s.bot)b.campaign.botRespawns.put(s.owner,Long.MAX_VALUE);}
+            for(var u:b.units)if(u.squad!=own)u.mob.discard();b.units.removeIf(u->u.squad!=own);
+        }
+
+        void fixture(GravesAndGlory.Battle b){
+            var p=sp(b);if(p==null||!skirmish(b,p,0,1,"normal"))return;
+            var own=b.squads.get(player);quiet(b,own);float yaw=-90;
+            own.order="hold";own.formation="block";own.target=new Vec3d(AX,top(b,AX,AZ),AZ);own.yaw=yaw;
+            own.assignments.put("infantry",new GravesAndGlory.Assignment("attack","shieldwall",new Vec3d(AX,top(b,AX,AZ),AZ),yaw));
+            own.assignments.put("ranged",new GravesAndGlory.Assignment("hold","line",new Vec3d(AX-9,top(b,AX-9,AZ),AZ),yaw));
+            own.assignments.put("support",new GravesAndGlory.Assignment("follow","block",new Vec3d(AX-16,top(b,AX-16,AZ+9),AZ+9),yaw));
+            for(var u:b.units)if(u.squad==own){Vec3d at=b.formation(u);MoraleChecks.place(b,u,at.x,at.z,yaw);freeze(u);}
+            kill(b,own,"infantry",3);kill(b,own,"support",1);
+            var foes=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(AX+7,top(b,AX+7,AZ),AZ));foes.order="hold";foes.yaw=90;
+            freeze(b.spawn(foes,troop("revenant"),0,new Vec3d(AX+7,top(b,AX+7,AZ),AZ)));
+            var spot=b.points.get(1).spec;double px=spot.x(),pz=spot.z();
+            for(int team=0;team<2;team++){
+                var s=new GravesAndGlory.Squad(UUID.randomUUID(),team,new Vec3d(px,top(b,px,pz),pz));s.order="hold";s.yaw=team==0?-90:90;
+                double x=px+(team==0?-2:2);var u=b.spawn(s,troop(team==0?"knight":"revenant"),0,new Vec3d(x,top(b,x,pz),pz));freeze(u);pair.add(u);
+            }
+            b.points.get(0).owner=0;b.points.get(2).owner=1;
+            b.relocate(p,AX-16,top(b,AX-16,AZ+9),AZ+9,-120,12);
+            fixture=b.units.stream().filter(u->u.squad==own).count()+" own troops at "+(int)AX+", "+(int)AZ+", a frozen revenant in front of them, a frozen pair on "+spot.id()+" ("+spot.name()+" at "+spot.x()+", "+spot.z()+"), map "+b.campaign.map;
+            System.out.println("[p1] ui-hud fixture: "+fixture);stage=2;
+        }
+        /** Every 20 ticks for 200 ticks: food 6 and 40 exhaustion; one tick later the pin must have put food back to 20 with no saturation. */
+        void hunger(GravesAndGlory.Battle b){
+            var p=sp(b);if(p==null)return;var hm=p.getHungerManager();
+            if(hungerStart<0)hungerStart=b.time;long k=b.time-hungerStart;
+            if(k%20==1&&k<=181){if(hm.getFoodLevel()==20&&hm.getSaturationLevel()==0)hungerOk++;else hungerWrong+=(hungerWrong.isEmpty()?"":", ")+"food "+hm.getFoodLevel()+" saturation "+hm.getSaturationLevel()+" at +"+k;}
+            if(k%20==0&&k<200){hm.setFoodLevel(6);hm.addExhaustion(40);hungerSets++;}
+            if(k>=181)hungerDone=true;
+        }
+        void five(GravesAndGlory.Battle b){
+            var p=sp(b);if(p==null||!skirmish(b,p,4,1,"normal"))return;
+            quiet(b,b.squads.get(player));int[] owners={0,0,-1,1,1};for(int i=0;i<b.points.size()&&i<owners.length;i++)b.points.get(i).owner=owners[i];
+            System.out.println("[p1] ui-hud five seals: map "+b.campaign.map+", "+b.points.size()+" points");fiveReady=true;
+        }
+
+        public void serverTick(GravesAndGlory.Battle b){
+            if(stage==1)fixture(b);
+            var own=player==null?null:b.squads.get(player);
+            if(own!=null&&routSupport&&b.units.stream().anyMatch(u->u.squad==own&&u.spec.group().equals("support")&&u.mob.isAlive()))own.routedAt.put("support",b.time); // never long enough to regroup
+            if(keepRespawn&&player!=null)b.respawns.put(player,b.time+12*20L);
+            if(hungerOn&&!hungerDone)hunger(b);
+            if(stage==71&&!fiveReady)five(b);
+        }
+
+        public void step(MinecraftClient c,int tick){
+            if(tick>9000&&!finished){report("p1-ui-hud-timeout",false,"stuck in stage "+stage);end(c);return;}
+            if(keepLesson)CampaignClient.tutorial=3; // the longest lesson, two lines, so the card grows
+            if(Math.abs(stage)>=2&&stage<99&&c.currentScreen!=null)c.setScreen(null);
+            switch(stage){
+                case 0->{
+                    if(tick<20)return;c.setScreen(null);var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();
+                    CommandMode.selected="all";UUID id=c.player.getUuid();window(c,960,540,1);waitFrom=tick;stage=-1;server(c,b->{player=id;stage=1;});
+                }
+                case -1,1->{if(tick-waitFrom>2400){report("p1-ui-hud-fixture",false,"no fixture 2400 ticks after the request");end(c);}}
+                case 2->{ // the fixture on screen; then p1-ui-seals, part one
+                    var inf=group("infantry");var ran=group("ranged");var sup=group("support");
+                    boolean shown=GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()&&inf!=null&&inf.count()==9&&ran!=null&&ran.count()==6&&sup!=null&&sup.count()==1
+                        &&GravesAndGloryClient.ownerAt(0)==0&&GravesAndGloryClient.ownerAt(2)==1&&GravesAndGloryClient.contestedAt(1)&&!GravesAndGloryClient.contestedAt(0)&&!GravesAndGloryClient.contestedAt(2);
+                    if(shown&&seen==0)seen=tick;
+                    if(seen>0&&tick>=seen+2){sealsOk=BattleHud.seals().equals(SEALS);sealsWhy="owners [0, contested, 1]: "+BattleHud.seals()+(sealsOk?"":" (wanted "+SEALS+")");seen=0;stage=3;}
+                    else if(seen==0&&tick-waitFrom>2400){report("p1-ui-hud-fixture",false,"the client never showed the fixture ("+fixture+"): groups "+CommandMode.groups+", owners "+Arrays.toString(GravesAndGloryClient.owners)+", contested "+Arrays.toString(GravesAndGloryClient.contested));end(c);}
+                }
+                case 3->{hungerOn=true;framesAt=BattleHud.frames;skippedAt=BattleHud.foodSkipped;waitFrom=tick;stage=4;}
+                case 4->{ // p1-ui-no-hunger
+                    if(tick==waitFrom+30)shot(c,"ui-hud-no-hunger");
+                    if(framesSpan==0&&BattleHud.frames-framesAt>=20){framesSpan=BattleHud.frames-framesAt;skippedSpan=BattleHud.foodSkipped-skippedAt;}
+                    if(hungerDone&&framesSpan>0&&tick>waitFrom+30){
+                        report("p1-ui-no-hunger",hungerSets==10&&hungerOk==10&&skippedSpan>=10*framesSpan,hungerSets+" times the server set the food to 6 and added 40 exhaustion; one tick later the food was 20 and the saturation 0 "+hungerOk+" times"+(hungerWrong.isEmpty()?"":" (wrong: "+hungerWrong+")")+"; the HUD skipped "+skippedSpan+" food icons over "+framesSpan+" frames (at least 10 a frame wanted)");
+                        hungerOn=false;stage=10;
+                    }else if(tick-waitFrom>600){report("p1-ui-no-hunger",false,"the hunger run did not finish: "+hungerSets+" sets, "+hungerOk+" good, "+framesSpan+" frames measured");hungerOn=false;stage=10;}
+                }
+                case 10->{ // p1-ui-cards: ranged selected, support routing, then infantry hurt
+                    CommandMode.selected="ranged";routSupport=true;waitFrom=tick;stage=-10;
+                    server(c,b->{b.scores[0]=148;b.scores[1]=121;b.roundStarted=b.time-(b.roundSeconds-462)*20L;stage=11;}); // the mock's 148, 7:42 and 121
+                }
+                case 11->{
+                    var cs=BattleHud.cards();
+                    if(cs.size()==3&&cs.get(2).state().equals("ROUTING")&&cs.get(1).tall()&&!CommandMode.flashing("infantry")){
+                        waitFrom=tick;stage=-12;
+                        server(c,b->{var own=b.squads.get(player);int n=0;
+                            for(var u:b.units)if(n<4&&u.squad==own&&u.spec.group().equals("infantry")&&u.mob.isAlive()&&u.mob.getHealth()>10){u.mob.damage(b.world.getDamageSources().magic(),10);n++;}
+                            System.out.println("[p1] ui-hud: "+n+" knights take 10 magic damage");stage=12;});
+                    }else if(tick-waitFrom>200){report("p1-ui-cards",false,"support never drew ROUTING with ranged selected: "+cs);stage=20;}
+                }
+                case 12->{
+                    if(CommandMode.flashing("infantry")){flashAt=tick;stage=13;}
+                    else if(tick-waitFrom>40){shot(c,"ui-hud-cards");report("p1-ui-cards",false,"no infantry flash within 40 client ticks of the damage");stage=20;}
+                }
+                case 13->{
+                    var cs=BattleHud.cards();boolean match=cs.equals(CARDS);var t=BattleHud.texts();
+                    if(match||tick>=flashAt+3){shot(c,"ui-hud-cards");
+                        report("p1-ui-cards",match,(tick-flashAt)+" client tick(s) after the flash the cards drew "+cs+(match?"":" (wanted "+CARDS+")")+"; counts "+t.get("count-infantry")+", "+t.get("count-ranged")+", "+t.get("count-support")+"; infantry reads "+t.get("state-infantry")+"; ledger "+t.get("score-dawn")+" "+t.get("clock")+" "+t.get("score-dusk"));stage=20;}
+                }
+                case 20->{CommandMode.selected="all";routSupport=false;waitFrom=tick;stage=-20;server(c,b->{b.squads.get(player).routedAt.remove("support");stage=21;});}
+                case 21->{ // p1-ui-army-selected
+                    var sup=group("support");boolean settled=sup!=null&&!sup.routing()&&!CommandMode.flashing("infantry")&&!CommandMode.flashing("ranged")&&!CommandMode.flashing("support");
+                    if(!settled)seen=0;else if(seen==0)seen=tick;
+                    if(seen>0&&tick>=seen+2){var cs=BattleHud.cards();
+                        boolean ok=cs.size()==3&&cs.stream().allMatch(d->d.state().equals("SELECTED"))&&cs.stream().map(BattleHud.CardDraw::tall).toList().equals(List.of(false,false,true))&&cs.stream().map(BattleHud.CardDraw::y).toList().equals(List.of(348,404,460));
+                        report("p1-ui-army-selected",ok,"with the whole army selected the cards drew "+cs);seen=0;stage=30;}
+                    else if(seen==0&&tick-waitFrom>200){report("p1-ui-army-selected",false,"support never stopped routing, or a flash never ended: "+BattleHud.cards());stage=30;}
+                }
+                case 30->{askAt=tick;stage=-30;server(c,b->{b.testAbility=new GravesAndGlory.Battle.AbilityState("rally_horn",960,1800);stage=31;});}
+                case 31->{ // p1-ui-ability
+                    if(abilitySeen<0&&GravesAndGloryClient.abilityId.equals("rally_horn"))abilitySeen=tick;
+                    if(abilitySeen>=0&&tick>=abilitySeen+1){
+                        int[] r=BattleHud.rects().get("ability");String secs=BattleHud.texts().get("ability-seconds");
+                        abilityOk=abilitySeen-askAt<=12&&Arrays.equals(r,new int[]{584,493,50,32})&&"48".equals(secs);
+                        abilityWhy="the client read abilityId rally_horn "+(abilitySeen-askAt)+" client ticks after the request (10 server ticks, the hand-off and a frame allowed: 12); rect ability "+box(r)+", seconds \""+secs+"\", key \""+BattleHud.texts().get("ability-key")+"\"";
+                        shot(c,"ui-hud-ability");askAt=tick;stage=-32;server(c,b->{b.testAbility=null;stage=32;});
+                    }else if(abilitySeen<0&&tick-askAt>60){report("p1-ui-ability",false,"the client never read rally_horn (abilityId "+GravesAndGloryClient.abilityId+")");stage=40;}
+                }
+                case 32->{
+                    if(!BattleHud.rects().containsKey("ability")&&GravesAndGloryClient.abilityId.equals("none")){report("p1-ui-ability",abilityOk&&tick-askAt<=12,abilityWhy+"; with testAbility null the slot was gone "+(tick-askAt)+" client ticks later");stage=40;}
+                    else if(tick-askAt>60){report("p1-ui-ability",false,abilityWhy+"; the slot was still drawn 60 ticks after testAbility was cleared");stage=40;}
+                }
+                case 40->{keepLesson=true;keepRespawn=true;win=0;stage=-40;server(c,b->{b.testAbility=new GravesAndGlory.Battle.AbilityState("rally_horn",960,1800);stage=41;});}
+                case 41->{var s=WINDOWS[win];window(c,s[0],s[1],s[2]);waitFrom=tick;stage=42;}
+                case 42->{ // p1-ui-small-window, one window size
+                    var r=BattleHud.rects();var s=WINDOWS[win];var score=r.get("score");
+                    boolean full=r.containsKey("lesson")&&r.containsKey("respawn")&&r.containsKey("ability")&&r.containsKey("spine")&&BattleHud.cards().size()==3&&score!=null&&score[0]==UiCanvas.width()/2-128;
+                    if(full||tick-waitFrom>100){
+                        if(full)measure(c,s,r);else{smallOk=false;smallWhy+=(smallWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": no frame with every element in 100 ticks (drew "+r.keySet()+")";}
+                        if(win==1)shot(c,"ui-hud-small");if(win==2)shot(c,"ui-hud-1280");
+                        win++;stage=win<WINDOWS.length?41:43;
+                    }
+                }
+                case 43->{keepLesson=false;keepRespawn=false;CampaignClient.tutorial=-1;report("p1-ui-small-window",smallOk,smallWhy);window(c,960,540,1);stage=-43;server(c,b->{b.respawns.remove(player);b.testAbility=null;stage=50;});}
+                case 50->{waitFrom=tick;stage=-50;server(c,b->{kill(b,b.squads.get(player),"support",9);stage=51;});}
+                case 51->{ // p1-ui-cards-edge
+                    var sup=BattleHud.cards().stream().filter(d->d.group().equals("support")).findFirst().orElse(null);String count=BattleHud.texts().get("count-support");
+                    boolean fallen=sup!=null&&sup.state().equals("FALLEN");
+                    if(fallen||tick-waitFrom>100){
+                        edgeOk=fallen&&"0/2".equals(count);edgeWhy="with every support troop killed the support card drew "+sup+" with count \""+count+"\"";
+                        CommandMode.selected="infantry";waitFrom=tick;stage=-52;
+                        server(c,b->{var own=b.squads.get(player);own.fullCount.remove("support");own.fullHealth.remove("support");stage=52;});
+                    }
+                }
+                case 52->{
+                    var cs=BattleHud.cards();
+                    if(cs.size()==2){two=cs;framesAt=BattleHud.frames;stage=53;}
+                    else if(tick-waitFrom>100){report("p1-ui-cards-edge",false,edgeWhy+"; with support's full count gone the cards still drew "+cs);stage=60;}
+                }
+                case 53->{
+                    if(BattleHud.frames>=framesAt+100){
+                        boolean ok=edgeOk&&two.stream().map(BattleHud.CardDraw::y).toList().equals(List.of(404,474))&&two.get(0).group().equals("infantry")&&two.get(0).tall()&&BattleHud.cards().size()==2;
+                        report("p1-ui-cards-edge",ok,edgeWhy+"; with support's full count and health gone and infantry selected the cards drew "+two+"; "+(BattleHud.frames-framesAt)+" frames later the HUD still draws "+BattleHud.cards().size()+" cards");stage=60;
+                    }else if(tick-waitFrom>600){report("p1-ui-cards-edge",false,edgeWhy+"; only "+(BattleHud.frames-framesAt)+" HUD frames in 600 ticks after the two-card layout");stage=60;}
+                }
+                case 60->{CommandMode.selected="all";waitFrom=tick;stage=-60;server(c,b->{for(var p:b.points){p.owner=-1;p.progress=0;p.challenger=-1;}for(var u:pair)u.mob.discard();b.units.removeAll(pair);pair.clear();stage=61;});}
+                case 61->{ // p1-ui-seals, part two
+                    boolean neutral=GravesAndGloryClient.owners.length==3;for(int i=0;i<GravesAndGloryClient.owners.length;i++)if(GravesAndGloryClient.ownerAt(i)>=0||GravesAndGloryClient.contestedAt(i))neutral=false;
+                    if(neutral&&seen==0)seen=tick;
+                    if(seen>0&&tick>=seen+2){var ss=BattleHud.seals();boolean all=ss.size()==3&&ss.stream().allMatch(v->v.sprite().equals("hud/seal-neutral"));
+                        report("p1-ui-seals",sealsOk&&all,sealsWhy+"; every owner -1: "+ss);seen=0;stage=70;}
+                    else if(seen==0&&tick-waitFrom>200){report("p1-ui-seals",false,sealsWhy+"; the client never showed every point neutral and uncontested");stage=70;}
+                }
+                case 70->{waitFrom=tick;fiveReady=false;stage=71;} // the server switches to Kingsfield
+                case 71->{ // p1-ui-seals-five
+                    if(seen==0&&fiveReady&&GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()&&GravesAndGloryClient.owners.length==5)seen=tick;
+                    if(seen>0&&tick>=seen+3){
+                        var ss=BattleHud.seals();var r=BattleHud.rects();var xs=ss.stream().map(BattleHud.SealDraw::x).toList();
+                        boolean clear=r.containsKey("seal-0")&&r.containsKey("seal-4")&&!meets(r.get("seal-0"),r.get("dawn-boss"))&&!meets(r.get("seal-4"),r.get("dusk-boss"));
+                        shot(c,"ui-hud-five-seals");
+                        report("p1-ui-seals-five",xs.equals(List.of(411,439,467,495,523))&&clear,"map "+CampaignClient.map+": seals "+ss+"; seal-0 "+box(r.get("seal-0"))+" and dawn-boss "+box(r.get("dawn-boss"))+", seal-4 "+box(r.get("seal-4"))+" and dusk-boss "+box(r.get("dusk-boss")));
+                        seen=0;end(c);
+                    }else if(seen==0&&tick-waitFrom>2400){report("p1-ui-seals-five",false,"no five-point battle 2400 ticks after the request (owners "+GravesAndGloryClient.owners.length+", server ready "+fiveReady+")");end(c);}
+                }
+                case 99->{stage=100;finish(c,"ui-hud");}
+                default->{}
+            }
+        }
+
+        /** One window of p1-ui-small-window: every rect inside the canvas, none touching another (but a card and the spine, a boss and
+         *  the score card), and none touching the vanilla hotbar or hearts converted to canvas px. */
+        void measure(MinecraftClient c,int[] s,Map<String,int[]> r){
+            var w=c.getWindow();int cw=UiCanvas.width(),ch=UiCanvas.height(),sw=w.getScaledWidth(),sh=w.getScaledHeight();List<String> bad=new ArrayList<>();
+            if(w.getFramebufferWidth()!=s[0]||w.getFramebufferHeight()!=s[1]||(int)w.getScaleFactor()!=s[2])bad.add("the window is "+w.getFramebufferWidth()+"x"+w.getFramebufferHeight()+" at GUI "+(int)w.getScaleFactor());
+            for(var e:r.entrySet())if(!inside(e.getValue(),cw,ch))bad.add(e.getKey()+" "+box(e.getValue())+" leaves the canvas");
+            var keys=new ArrayList<>(r.keySet());
+            for(int i=0;i<keys.size();i++)for(int j=i+1;j<keys.size();j++)if(!allowed(keys.get(i),keys.get(j))&&meets(r.get(keys.get(i)),r.get(keys.get(j))))bad.add(keys.get(i)+" "+box(r.get(keys.get(i)))+" meets "+keys.get(j)+" "+box(r.get(keys.get(j))));
+            int[] hotbar=canvas(c,sw/2-91,sh-22,182,22),hearts=canvas(c,sw/2-91,sh-39,81,9);
+            for(var e:r.entrySet()){if(meets(e.getValue(),hotbar))bad.add(e.getKey()+" meets the hotbar");if(meets(e.getValue(),hearts))bad.add(e.getKey()+" meets the hearts");}
+            smallOk&=bad.isEmpty();
+            smallWhy+=(smallWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": canvas "+cw+"x"+ch+" (k "+UiCanvas.k()+"), "+r.size()+" rects, cards "+BattleHud.cards().stream().map(d->d.group()+" "+d.y()).toList()+", ability "+box(r.get("ability"))+", lesson "+box(r.get("lesson"))+", respawn "+box(r.get("respawn"))+", spine "+box(r.get("spine"))+", hotbar "+box(hotbar)+", hearts "+box(hearts)+(bad.isEmpty()?", every rect inside and apart":", WRONG: "+String.join("; ",bad.subList(0,Math.min(6,bad.size()))));
+        }
+
+        /** Puts the window, the selection and every forced value back; p1-ui-hud-suite follows once the window has settled. */
+        void end(MinecraftClient c){
+            finished=true;keepLesson=false;keepRespawn=false;routSupport=false;hungerOn=false;CommandMode.selected="all";
+            UUID id=player;server(c,b->{b.testAbility=null;if(id!=null)b.respawns.remove(id);});
+            if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;
+        }
     }
 }

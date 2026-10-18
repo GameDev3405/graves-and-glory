@@ -12,7 +12,8 @@ import org.joml.Vector3f;
 
 /** Selection -> live-world aim/formation preview -> explicit confirmation. */
 public final class CommandMode {
-    public record Group(String id,int count,float health,String order,String formation,float x,float z,float yaw,float cx,float cz,boolean fighting,boolean routing){}
+    /** One group of the player's army as the server last sent it: full is the most of it alive at once this round (0: no card), strength its living health over its full health. */
+    public record Group(String id,int count,float health,String order,String formation,float x,float z,float yaw,float cx,float cz,boolean fighting,boolean routing,int full,float strength){}
     record Ping(String kind,float x,float z){}
     static java.util.List<Ping> pings=java.util.List.of();static int seconds=600;
     static java.util.List<Group> groups=java.util.List.of();
@@ -23,15 +24,27 @@ public final class CommandMode {
     static final java.util.List<Vec3d> preview=new java.util.ArrayList<>();
     static int enemy=-1;
     static String feedback="";static long feedbackUntil;
-    /** How long a group panel flashes after it takes a loss (presentation only). */
+    /** How long a group card flashes after it takes a loss (presentation only). */
     public static final long FLASH_MS=450;
-    static final int DANGER=0xffd9634c;
     static final java.util.Map<String,Long> flashUntil=new java.util.HashMap<>();
-    /** Compares consecutive server snapshots; a death or a health drop flashes that group's panel. */
+    static final java.util.Map<String,Float> lostFrom=new java.util.HashMap<>();
+    /** Compares consecutive server snapshots; a death or a health drop flashes that group's card. A loss inside a flash lengthens it
+     *  and keeps the strength from before the first loss, so the card shows everything lost since the flash began. */
     public static void noteGroups(java.util.List<Group> before,java.util.List<Group> after,long nowMs){
-        for(Group now:after)for(Group was:before)if(was.id().equals(now.id())&&BattleMath.tookLoss(was.health(),was.count(),now.health(),now.count()))flashUntil.put(now.id(),nowMs+FLASH_MS);
+        for(Group now:after)for(Group was:before)if(was.id().equals(now.id())&&BattleMath.tookLoss(was.health(),was.count(),now.health(),now.count())){
+            if(nowMs>=flashUntil.getOrDefault(now.id(),0L))lostFrom.put(now.id(),was.strength());
+            flashUntil.put(now.id(),nowMs+FLASH_MS);
+        }
     }
     public static boolean flashing(String groupId){return net.minecraft.util.Util.getMeasuringTimeMs()<flashUntil.getOrDefault(groupId,0L);}
+    /** The group's strength before the loss that started its current flash (0 when it never flashed). */
+    public static float lostFrom(String group){return lostFrom.getOrDefault(group,0f);}
+    /** The point whose radius holds the aimed ground position while an order is aimed, else -1. */
+    public static int aimPoint(){
+        var at=destination;if(!active()||at==null)return -1;var pts=Spec.POINTS;
+        for(int i=0;i<pts.length;i++){double dx=at.x-pts[i].x(),dz=at.z-pts[i].z(),r=pts[i].radius();if(dx*dx+dz*dz<r*r)return i;}
+        return -1;
+    }
     public static boolean active(){return !pending.isEmpty();}
     static String label(String id){return Character.toUpperCase(id.charAt(0))+id.substring(1);}
     static int count(String id){return groups.stream().filter(g->id.equals("all")||id.equals(g.id())).mapToInt(Group::count).sum();}
@@ -82,20 +95,14 @@ public final class CommandMode {
         for(Vec3d p:preview)net.minecraft.client.render.WorldRenderer.drawBox(matrices,lines,new net.minecraft.util.math.Box(p.x-.32,p.y,p.z-.32,p.x+.32,p.y+.09,p.z+.32),1,.82f,.4f,1);
         matrices.pop();
     }
+    /** The order aim panel, destination line and order feedback (the group panels became BattleHud's cards; Task 3 replaces the rest).
+     *  The aim panel sits at y 76, below the seals and the aimed point's name. */
     static void hud(DrawContext g,int w,int h){
-        var c=MinecraftClient.getInstance();int y=h-150;
-        for(Group group:groups){boolean chosen=selected.equals("all")||selected.equals(group.id());
-            boolean hit=flashing(group.id());
-            GravesAndGloryClient.panel(g,8,y,210,28);if(hit)g.drawBorder(8,y,210,28,DANGER);if(chosen)g.fill(8,y,10,y+28,GravesAndGloryClient.GOLD);
-            g.fill(16,y+24,210,y+27,0xff2a3236);g.fill(16,y+24,16+Math.round(194*Math.max(0,Math.min(1,group.health()))),y+27,hit?DANGER:GravesAndGloryClient.GOLD);
-            g.drawTextWithShadow(c.textRenderer,(chosen?"> ":"  ")+label(group.id())+" / "+group.count()+" / "+Math.round(group.health()*100)+"%",16,y+4,GravesAndGloryClient.WHITE);
-            if(group.routing())g.drawTextWithShadow(c.textRenderer,"ROUTING",16,y+16,DANGER);
-            else g.drawTextWithShadow(c.textRenderer,label(group.order())+(group.fighting()?" / FIGHTING":""),16,y+16,group.fighting()?0xffffaa66:GravesAndGloryClient.MUTED);y+=30;
-        }
+        var c=MinecraftClient.getInstance();
         if(active()){
-            GravesAndGloryClient.panel(g,w/2-180,52,360,40);
-            g.drawCenteredTextWithShadow(c.textRenderer,label(selected)+" / "+label(pending)+" / "+label(formation),w/2,59,GravesAndGloryClient.GOLD);
-            g.drawCenteredTextWithShadow(c.textRenderer,"Click: confirm / Right-click: cancel | Facing: "+GravesAndGloryClient.rotateLeft.getBoundKeyLocalizedText().getString()+" / "+GravesAndGloryClient.rotateRight.getBoundKeyLocalizedText().getString(),w/2,74,GravesAndGloryClient.WHITE);
+            GravesAndGloryClient.panel(g,w/2-180,76,360,40);
+            g.drawCenteredTextWithShadow(c.textRenderer,label(selected)+" / "+label(pending)+" / "+label(formation),w/2,83,GravesAndGloryClient.GOLD);
+            g.drawCenteredTextWithShadow(c.textRenderer,"Click: confirm / Right-click: cancel | Facing: "+GravesAndGloryClient.rotateLeft.getBoundKeyLocalizedText().getString()+" / "+GravesAndGloryClient.rotateRight.getBoundKeyLocalizedText().getString(),w/2,98,GravesAndGloryClient.WHITE);
             g.drawCenteredTextWithShadow(c.textRenderer,destination==null?"Choose visible terrain":enemy>=0?"Enemy selected":"Destination: "+(int)destination.x+", "+(int)destination.z,w/2,h/2+20,GravesAndGloryClient.GOLD);
         }
         if(System.currentTimeMillis()<feedbackUntil)g.drawCenteredTextWithShadow(c.textRenderer,feedback,w/2,h-65,GravesAndGloryClient.GOLD);

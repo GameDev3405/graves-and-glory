@@ -46,4 +46,57 @@ public final class UiMath {
     public static int chipWidth(int textW) {
         return Math.max(10, textW + 4);
     }
+
+    /** Centre x of point i's seal of n: a 28 px pitch centred on the canvas (452, 480, 508 for three at 960). */
+    public static int sealCentre(int i, int n, int canvasW) {
+        return canvasW / 2 + 28 * i - 14 * (n - 1);
+    }
+
+    /** Tops of the group cards stacked upward: the bottom card ends 18 px above the canvas bottom, 8 px between cards. */
+    public static int[] cardTops(int canvasH, int[] heights) {
+        int[] tops = new int[heights.length];
+        int bottom = canvasH - 18;
+        for (int i = heights.length - 1; i >= 0; i--) {
+            tops[i] = bottom - heights[i];
+            bottom = tops[i] - 8;
+        }
+        return tops;
+    }
+
+    /** A card's head count: alive of the round's most, as "9/12". */
+    public static String countText(int alive, int full) {
+        return alive + "/" + full;
+    }
+
+    /** Round clock as m:ss (7:42); negative time reads 0:00. */
+    public static String clock(int seconds) {
+        int s = Math.max(0, seconds);
+        return s / 60 + ":" + (s % 60 < 10 ? "0" : "") + s % 60;
+    }
+
+    /** Filled pixels of a 54 px score track: round(54*score/win), clamped to 0..54, 0 when there is no win score. */
+    public static int trackFill(int score, int win) {
+        if (win <= 0) return 0;
+        return (int) Math.max(0, Math.min(54, Math.round(54.0 * score / win)));
+    }
+
+    /** Filled pixels of a card's 102 px strength bar. */
+    public static int barWidth(float strength) {
+        return Math.round(Math.max(0f, Math.min(1f, strength)) * 102);
+    }
+
+    /** The cooldown sweep's pixel class at (x,y) of a size x size square with `remain` (0..1) of the time left:
+     *  0 clear, 1 veil over the part of the turn still to come (clockwise from twelve), 2 the bright leading edge,
+     *  3 the start line at twelve. A port of the cooldown painter in tools/ui_art/v4a_hud.py. */
+    public static int sweep(int x, int y, int size, double remain) {
+        double c = (size - 1) / 2.0, start = 2 * Math.PI * (1 - remain);
+        double ex = Math.sin(start), ey = -Math.cos(start), dx = x - c, dy = y - c;
+        double ang = Math.atan2(dx, -dy);
+        if (ang < 0) ang += 2 * Math.PI;
+        int k = ang >= start ? 1 : 0;
+        double along = dx * ex + dy * ey, across = Math.abs(dx * ey - dy * ex);
+        if (along > 0.5 && across < 0.62) k = 2;
+        if (k > 0 && x == (int) Math.rint(c) && y <= c) k = 3;
+        return k;
+    }
 }

@@ -36,7 +36,7 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier IMPACT = new Identifier("gravesandglory", "impact_v1");
     public static final Identifier PING = new Identifier("gravesandglory", "ping_v1");
     public static final Identifier TACTICAL = new Identifier("gravesandglory", "tactical_v1");
-    public static final Identifier STATE = new Identifier("gravesandglory", "state_v6");
+    public static final Identifier STATE = new Identifier("gravesandglory", "state_v7");
     public static final Identifier OPEN_BARRACKS = new Identifier("gravesandglory", "barracks_v1");
     public static final Identifier PARTY = new Identifier("gravesandglory", "party_v1");
     public static Battle battle;
@@ -57,7 +57,12 @@ public final class GravesAndGlory implements ModInitializer {
             if(entity.getCommandTags().contains("gravesandglory-lobby")||entity.getCommandTags().contains("bannerbound-lobby"))entity.discard();
             if(battle!=null&&world==battle.world&&(entity.getCommandTags().contains("gravesandglory")||entity.getCommandTags().contains("bannerbound"))&&!(entity instanceof ArmyHusk)&&!(entity instanceof ArmySkeleton)&&!(entity instanceof ArmyWither))entity.discard();
         });
-        ServerTickEvents.END_SERVER_TICK.register(server -> { if(battle!=null) battle.tick(); });
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            if(battle==null) return;
+            battle.tick();
+            // No hunger in Graves and Glory: food stays full (sprinting and slow natural healing still work) and saturation empty (so healing stays slow).
+            for(ServerPlayerEntity p:server.getPlayerManager().getPlayerList()){var hunger=p.getHungerManager();if(hunger.getFoodLevel()!=20)hunger.setFoodLevel(20);hunger.setSaturationLevel(0);hunger.setExhaustion(0);}
+        });
         ServerPlayNetworking.registerGlobalReceiver(ORDER, (server, player, handler, buf, responder) -> {
             String command=buf.readString(128);
             server.execute(() -> { if(battle!=null) battle.command(player,command); });
@@ -137,6 +142,8 @@ public final class GravesAndGlory implements ModInitializer {
         /** Morale per group: when a rout began (present only while routing), rout immunity after a regroup, and the group's full lineup health this round. */
         final Map<String,Long> routedAt=new HashMap<>(),steadyUntil=new HashMap<>();
         final Map<String,Double> fullHealth=new HashMap<>();
+        /** The most troops of each group alive at once this round (the HUD card's "of" count), raised with fullHealth and cleared with it. */
+        final Map<String,Integer> fullCount=new HashMap<>();
         Squad(UUID owner,int team,Vec3d pos) {this.owner=owner;this.team=team;target=pos;}
     }
     public static final class Assignment {
@@ -212,6 +219,10 @@ public final class GravesAndGlory implements ModInitializer {
             if(s==null||!s.seated||!running||spec==null||!Double.isFinite(x)||!Double.isFinite(z)||Math.abs(x)>R.arenaHalfX()-10||Math.abs(z)>R.arenaHalfZ()-10||time-lastPing.getOrDefault(s.owner,-100L)<spec.cooldownSeconds()*20)return;
             lastPing.put(s.owner,time);pings.removeIf(v->v.owner.equals(s.owner)||v.until<time);pings.add(new Ping(s.owner,s.team,kind,x,z,time+spec.seconds()*20));
         }
+        /** The commander ability the HUD slot shows: its id and the ticks left and in all of its cooldown. */
+        public record AbilityState(String id,int remaining,int total){}
+        /** Null in play; only the harness sets it (Phase 2 sends the real ability). */
+        public volatile AbilityState testAbility;
         public volatile int testStage=0;
         long testAt=0;
         Vec3d testStart;
@@ -483,7 +494,7 @@ public final class GravesAndGlory implements ModInitializer {
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
             respawns.clear();
             for(Squad s:squads.values()){
-                if(!s.seated)continue;s.assignments.clear();s.training.clear();s.routedAt.clear();s.steadyUntil.clear();s.fullHealth.clear();s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
+                if(!s.seated)continue;s.assignments.clear();s.training.clear();s.routedAt.clear();s.steadyUntil.clear();s.fullHealth.clear();s.fullCount.clear();s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
                 var player=server.getPlayerManager().getPlayer(s.owner);
                 if(player!=null){toBase(player,s.team);player.changeGameMode(GameMode.ADVENTURE);equipPlayer(player);}
                 reinforce(s);
@@ -616,7 +627,10 @@ public final class GravesAndGlory implements ModInitializer {
                     b.writeString(a.order);b.writeString(a.formation);b.writeFloat((float)a.target.x);b.writeFloat((float)a.target.z);b.writeFloat(a.yaw);
                     b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getX()).average().orElse(a.target.x));b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getZ()).average().orElse(a.target.z));
                     b.writeBoolean(members.stream().anyMatch(u->u.mob.getTarget()!=null));b.writeBoolean(s!=null&&Morale.routing(s,g.id()));
+                    b.writeInt(s==null?0:s.fullCount.getOrDefault(g.id(),0));
+                    b.writeFloat((float)BattleMath.strength(members.stream().mapToDouble(u->u.mob.getHealth()).sum(),s==null?0:s.fullHealth.getOrDefault(g.id(),0.0)));
                 }
+                var ability=testAbility;b.writeString(ability==null?"none":ability.id());b.writeInt(ability==null?0:ability.remaining());b.writeInt(ability==null?0:ability.total());
                 var visiblePings=pings.stream().filter(v->s!=null&&v.team==s.team&&v.until>time).toList();b.writeInt(visiblePings.size());for(var ping:visiblePings){b.writeString(ping.kind);b.writeFloat((float)ping.x);b.writeFloat((float)ping.z);}
                 b.writeInt(running?(int)Math.max(0,roundSeconds-(time-roundStarted)/20):roundSeconds);
                 var memory=s==null?Map.<UUID,Sight>of():sightings.getOrDefault(s.team,Map.of());b.writeInt(memory.size());for(var sight:memory.values()){b.writeFloat(sight.x);b.writeFloat(sight.z);b.writeInt((int)(time-sight.seen));}

@@ -8,7 +8,8 @@
     "BipedAnimationMixin",
     "EntranceCameraMixin",
     "CinematicHudMixin",
-    "ModelAngleCompatibilityMixin"
+    "ModelAngleCompatibilityMixin",
+    "HungerHudMixin"
   ],
   "injectors": {
     "defaultRequire": 1
