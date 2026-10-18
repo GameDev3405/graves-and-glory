@@ -59,3 +59,4 @@ Kort pictures up to a thousand concurrent players a year out and wants the serve
 - campaignBattles.difficulty is not checked by preflight; a tier that is not a botCommand id plays as Normal without a word.
 - campaignBattles.map is not checked by preflight; a bad index only stops the battle in game, with a notice to the player.
 - Three primary buttons on the camp home (THE LONG MARCH / BATTLE 1, OPEN RECRUITMENT, PARTY WITH FRIENDS); whether the other two step down while battle 1 is unwon is left for the UI pass.
+- MVP exact tie on equal non-zero kills and seconds crowns each viewer's own first row (2026-10-18, Phase 1 Task 7); a viewer-independent tiebreak (owner id) if it is ever noticed.
