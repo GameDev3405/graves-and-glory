@@ -4,28 +4,28 @@
 
 **Goal:** Turn Domination into one of four battle modes (Siege on Ironhold, Survival on Hollowwood, Banner on Rivergate), open them through a Skirmish and Practice picker, and ship campaign chapter 1, "The Road North": six battles fought with the player's own banner, told through a storybook of in-game footage, data-driven scenes, dialog cards and four companions who fight, fall and talk in camp, ending in a Legendary Pact.
 
-**Architecture:** One `BattleMode` object per round owns setup, teardown, field bases, anchors, scoring, end, morale shares, bot plans and the ledger; `DominationMode` is today's code moved behind it, and every mode reads its numbers from new sheets (`modes`, `modeSites`, `modeRules`, `waves`, `waveGroups`). Campaign battles seat the player's banner plus the battle's bot banners, pay normal rewards, open in order and track one bonus each, saved atomically with gold in profile schema 3. The story is data too: scene files under `data/gravesandglory/scenes/c1/`, parsed by the pure `SceneScript`, run per player by the server's `ScenePlayer` and drawn by the client's `SceneScreen` and `DialogCard` over a new `scene_v1` channel; the storybook, camp lines, companions and voice read the story sheets through pure classes (`StoryBook`, `StoryLines`, `StoryNames`) checked by standalone `javac` runs. Every scene image is in-game footage (Kort's ruling, 2026-10-18 late): book panels are sets placed on a stage area and shot under a drifting camera, stage scenes play on the battle maps, thumbnails are frames the harness captures, and portraits are the characters' own live models, drawn through Phase 2's troop models.
+**Architecture:** One `BattleMode` object per round owns setup, teardown, field bases, anchors, scoring, end, morale shares, bot plans and the ledger; `DominationMode` is today's code moved behind it, and every mode reads its numbers from new sheets (`modes`, `modeSites`, `modeRules`, `waves`, `waveGroups`). Campaign battles seat the player's banner plus the battle's bot banners, pay normal rewards, open in order and track one bonus each, saved atomically with gold in profile schema 3. The story is data too: scene files under `data/gravesandglory/scenes/c1/`, parsed by the pure `SceneScript`, run per player by the server's `ScenePlayer` and drawn by the client's `SceneScreen` and `DialogCard` over a new `scene_v1` channel; the storybook, camp lines, companions and voice read the story sheets through pure classes (`StoryBook`, `StoryLines`, `StoryNames`) checked by standalone `javac` runs. Every scene image is in-game footage (Kort's ruling, 2026-10-18 late): book panels are sets placed on a stage area and shot under a drifting camera, stage scenes play on the battle maps, thumbnails are frames the harness captures, and portraits are the characters' own live models, drawn through Phase 2's troop models in each named character's own face and skin (Task 19).
 
-**Tech Stack:** Minecraft 1.20.1, Fabric Loader 0.16.14 (bundles MixinExtras), Fabric API 0.92.2+1.20.1, Yarn 1.20.1+build.10, Loom 1.7.4, Java 17, Gradle 8.8 (offline); Python 3.12.2 with Pillow and numpy (`tools/ui_art`, `tools/preflight.py`, `tools/economy_model.py`, `tools/write_voice_sounds.py`, `tools/mode_gate.py`); ffmpeg `C:\ffmpeg\ffmpeg-8.1-full_build\bin\ffmpeg` (contact sheets, the test voice fixture).
+**Tech Stack:** Minecraft 1.20.1, Fabric Loader 0.16.14 (bundles MixinExtras), Fabric API 0.92.2+1.20.1, Yarn 1.20.1+build.10, Loom 1.7.4, Java 17, Gradle 8.8 (offline); Python 3.12.2 with Pillow and numpy (`tools/ui_art`, `tools/preflight.py`, `tools/economy_model.py`, `tools/write_voice_sounds.py`, `tools/mode_gate.py`, Phase 2's `tools/build_skins.py`); ffmpeg `C:\ffmpeg\ffmpeg-8.1-full_build\bin\ffmpeg` (contact sheets, the test voice fixture).
 
-**Spec:** `docs/superpowers/specs/2026-10-18-phase-4-modes-campaign-design.md` (modes, Skirmish, the six battles, data, save state, harness), and `docs/superpowers/specs/2026-10-18-campaign-story-design.md` (v2, approved 2026-10-18 late; it is newer and wins every conflict: cutscenes and voice are in, boss mechanics stay out, the storybook replaces the march page, the War Table plaque reads "The March", companions are campaign-only in a company row of up to four beside the 20-slot banner). Every player-facing string of chapter 1 is transcribed from `docs/copy/chapter-1.md`, never written here and never edited by a task. The Houses spec (`2026-10-17-houses-design.md`), the built-world spec (`2026-10-17-built-world-design.md`) and the UI spec (`2026-10-18-ui-design.md`) bind as those specs say.
+**Spec:** `docs/superpowers/specs/2026-10-18-phase-4-modes-campaign-design.md` (modes, Skirmish, the six battles, data, save state, harness), and `docs/superpowers/specs/2026-10-18-campaign-story-design.md` (v2, approved 2026-10-18 late; it is newer and wins every conflict: cutscenes and voice are in, boss mechanics stay out, the storybook replaces the march page, the War Table plaque reads "The March", companions are campaign-only in a company row of up to four beside the 20-slot banner). Every player-facing string of chapter 1 is transcribed from `docs/copy/chapter-1.md`, never written here and never edited by a task, except the two amendments the rulings of 2026-10-19 give Tasks 3 and 27 (the Siege yard line, and Maud's camp guide card). The Houses spec (`2026-10-17-houses-design.md`), the built-world spec (`2026-10-17-built-world-design.md`) and the UI spec (`2026-10-18-ui-design.md`) bind as those specs say.
 
-**Base:** branch `phase-4-modes-campaign`, cut from the merge of `phase-1-solo-core`, `phase-2-houses` (worktree `C:\Users\kortt\Melty\bannerbound-p2`) and `ui-plan` (worktree `C:\Users\kortt\Melty\bannerbound-ui`), each complete to its plan. Phase 2 here is its rewritten plan, in which troops have their own models, loader and renderer (its Tasks 5, 5b and 5c), and EMF, ETF and Fresh Animations leave the modpack. That merge's STATE channel is `state_v9`, the union of Phase 2's `state_v8` and the UI plan's `state_v7`; this plan keeps its layout. The Phase 4 spec also assumes Phase 3 (`phase-3-built-world`, worktree `C:\Users\kortt\Melty\bannerbound-p3`): Tasks 4 to 27 need its pieces, landmarks, camp and `Structures` (Task 11 seats Siege, Survival and Banner battles, which need Tasks 5 to 7); merge it before Task 4. Tasks 1 to 3 run without it. Step 1 of every task compiles that base.
+**Base:** branch `phase-4-modes-campaign`, cut from the merge of `phase-1-solo-core`, `phase-2-houses` (worktree `C:\Users\kortt\Melty\bannerbound-p2`) and `ui-plan` (worktree `C:\Users\kortt\Melty\bannerbound-ui`), each complete to its plan. Phase 2 here is its rewritten plan, in which troops have their own models, loader and renderer (its Tasks 5, 5b and 5c), and EMF, ETF and Fresh Animations leave the modpack. That merge's STATE channel is `state_v9`, the union of Phase 2's `state_v8` and the UI plan's `state_v7`; this plan keeps its layout. The Phase 4 spec also assumes Phase 3 (`phase-3-built-world`, worktree `C:\Users\kortt\Melty\bannerbound-p3`): Tasks 4 to 28 need its pieces, landmarks, camp and `Structures` (Task 11 seats Siege, Survival and Banner battles, which need Tasks 5 to 7); merge it before Task 4. Tasks 1 to 3 run without it. Step 1 of every task compiles that base.
 
 ## Global Constraints
 
 - Minecraft 1.20.1 and Fabric only; no new dependency, no loader change, no new entity renderer (troops and companions draw through Phase 2's troop renderer), no new map. Pillow and numpy are dev tools and never enter the jar.
 - Never hand-edit `src/main/java/gg/gravesandglory/Spec.java`. Change `sheets/design.json`, then `python tools/preflight.py` (also run by every `compileJava`). Every row of a sheet has the same columns and every cell is filled; a column is `double` only if the first row's value has a decimal point (`1.0`, not `1`); an empty sheet is an error, so a sheet is added in the task that has its first rows. Lists inside a cell are comma lists; `none` or `-` means empty, as each sheet below says.
-- Every game number lives in a sheet. Numbers the specs mark "(draft value)" are drafts here too and are tuned only through the sims (Task 9), the march run (Tasks 11 and 27) and Kort's gate. Presentation-only constants stay named in code: `SiegeMode.BLOW_CONTEST_TICKS = 60` (the seal stays contested 3 s after a gate blow), `StorybookScreen.WIND_TICKS = 40`, `DialogCard.CARET_MS = 500`, `SceneScreen.FADE_STEP` (one alpha step per tick).
+- Every game number lives in a sheet. Numbers the specs mark "(draft value)" are drafts here too and are tuned only through the sims (Task 9), the march run (Tasks 11 and 28) and Kort's gate. Presentation-only constants stay named in code: `SiegeMode.BLOW_CONTEST_TICKS = 60` (the seal stays contested 3 s after a gate blow), `StorybookScreen.WIND_TICKS = 40`, `DialogCard.CARET_MS = 500`, `SceneScreen.FADE_STEP` (one alpha step per tick).
 - The harness lives only in `test-tools/`. Add `Phase4Checks`, `ModeMathCheck`, `MarchMathCheck`, `StoryCheck` and `t_voice` to the `forbidden` tuple in `tools/release_config.py`.
 - Working copy is CRLF (`core.autocrlf=true`). Edit dense one-line Java in place; never reformat a file or re-save it with other line endings. Add lines to the shared harness files (`test-tools/isolated-checks.gradle`, `test-tools/resources/fabric.mod.json`, `tools/release_config.py`); never reorder them.
 - Commit locally per task on `phase-4-modes-campaign`, adding files by explicit path (never `git add -A`), each message ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Never push, publish or upload.
 - No launch while Kort plays. Before every launch run `powershell -NoProfile -Command "Get-Process java,javaw -ErrorAction SilentlyContinue | Select-Object Id,StartTime,MainWindowTitle"` and read each java command line: a java process with `--gameDir` outside `C:\Users\kortt\Melty\*\work\` is Kort's, so wait; otherwise at two harness clients, wait (Kort's ruling, 2026-10-18: two harness clients may run at once, never while Kort plays). One client per agent.
-- Isolated runs only, always `--offline`: a fresh `GRAVES_ROADMAP_TEST_ROOT` under `C:/Users/kortt/Melty/bannerbound/work/p4/` with `run/options.txt` seeded (recipe below). Never edit anything under `work/`; creating a fresh run root under `work/p4/` is the only write there.
+- Isolated runs only, always `--offline`: a fresh `GRAVES_ROADMAP_TEST_ROOT` under `C:/Users/kortt/Melty/bannerbound/work/p4/` with `run/options.txt` seeded (recipe below). Never edit anything under `work/`. Creating a fresh run root under `work/p4/` is the only write there, besides the paint templates that Phase 2's `build_skins.py --template` writes to `work/troops/` (Task 19). The staging run's files under `work/ui-concepts/storybook/stills/` are read, never changed.
 - Pillar 5 binds: nothing is done until a running game shows it by log line and screenshot. The tester opens every named screenshot and states in one sentence what it shows; a screenshot that does not show the claim fails the step even if its check passed.
-- Art gate: every scene image is real in-game footage, and nothing is painted (Kort's ruling, 2026-10-18 late). Panels are sets on the stage area, thumbnails are captured frames, and portraits are rendered from live models. Every book leaf, card, chit and kit piece, every set's grading frame in both looks (Task 18), every thumbnail and every portrait is graded 1 to 10 against `work/ui-concepts/GRADING-RUBRIC.md` by a Sonnet 5.5 max tester before Kort sees it, at the detail Kort set for the War Table (two to three times the first round's pixel detail). Below 9 is a fix round. Walkthrough gate (Phase 3's rule): every world piece (Task 4) is walked first-person by a Sonnet 5.5 max tester and graded on the same rubric adapted to world pieces; below 9 is a fix round.
+- Art gate: every scene image is real in-game footage, and nothing is painted (Kort's ruling, 2026-10-18 late). Panels are sets on the stage area, thumbnails are captured frames, and portraits are rendered from live models. Every book leaf, card, chit and kit piece, every set's grading frame in both looks (Task 18), every named character's face and skin (Task 19), every thumbnail and every portrait is graded 1 to 10 against `work/ui-concepts/GRADING-RUBRIC.md` by a Sonnet 5.5 max tester before Kort sees it, at the detail Kort set for the War Table (two to three times the first round's pixel detail). Below 9 is a fix round. Walkthrough gate (Phase 3's rule): every world piece (Task 4) is walked first-person by a Sonnet 5.5 max tester and graded on the same rubric adapted to world pieces; below 9 is a fix round.
 - Executors: Opus 5.5 max or Sonnet 5.5 max only, as named on each task. Testers (runs, screenshots, grades, walkthroughs) are Sonnet 5.5 max.
-- Text: ASCII, no dashes as punctuation, no exclamation marks, no modern idiom. Feed lines fit 140 px. A dialog card wraps to at most three lines, an item card to at most five. "Chapter" stays the Founders plaque's word; on screen the campaign is "The Long March, I: The Road North". The game mode is `battleMode` in code; "mode" appears only on screen. A string that does not fit is reported back to the copy, never rewritten by the task.
+- Text: ASCII, no dashes as punctuation, no exclamation marks, no modern idiom. Feed lines fit 140 px. A dialog card wraps to at most three lines, an item card to at most five. "Chapter" stays the Founders plaque's word; on screen the campaign is "The Long March, I: The Road North". The game mode is `battleMode` in code; "mode" appears only on screen. A string that does not fit is reported back to the copy, never rewritten by the task; the one exception is the Siege yard line, which Task 3 shortens and records in the copy (ruling, 2026-10-19).
 - The paper is "the Pact" or "a Pact" in every player-facing string, never "Writ". Internal names keep the merged code's: the Pact count is `Profile.writs` and its chapters `Profile.writChapters`, and the Pact command is `legendary:<house>:pact`.
 - Packet layouts: STATE stays `state_v9` (mode values ride in its two scores, its point list and its time left; the rest rides in the snapshot JSON it already carries every 10 ticks); `feed_v1` is unchanged (mode notices use kind `notice`, which draws the viewer's emblem); the story adds channel `gravesandglory:scene_v1`. Any later layout change bumps the channel id; host and client must run the same build.
 - Scene ids, voice ids and speaker initials are the copy's (voice ids `c1_` + initial + two digits). Cut or deferred ideas go to `docs/PARKED.md` (append, never delete).
@@ -34,8 +34,8 @@
 
 1. A round that ends abnormally in the middle of a mode (every player leaves, `switchMap`, the server stops, or `finish` while the portcullis countdown runs or a banner is carried): the gate, wards, flags, world clock, carrier helmet, glow and speed are restored, no countdown fires later, and the next Domination round on that map plays normally. (Tests: `p4-mode-teardown-mid` and `p4-siege-crash`, Task 5; `p4-banner-teardown-head`, Task 7.)
 2. A scene interrupted by a disconnect, Escape, a server stop or a map switch: the camera, HUD and game mode come back, actors and scene props are gone, the scene stays unread so it plays again, and a pending battle or the deferred report still follows. (Test: `p4-scene-interrupt`, Task 17.)
-3. Copy that does not fit: a card that wraps to four lines, a long speaker label, a feed line over 140 px (the Crimson yard line measures 143), at GUI Scale 1 to 3 and the 854x480 window. (Tests: `p4-feed-fit`, Task 3; `p4-scenes-fit`, Task 16.)
-4. A profile that played before the story existed (schema 2 with `campaignCleared` 3, or holding the Pact that Phase 2's one-battle chapter granted): it migrates once, keeps its Pact (the Pact count and `writChapters` untouched), opens the book on page 1 with won battles and their before-scenes read, catches up through the unread after-scenes before the next battle, and no companion appears before the scene that brings them. (Tests: `p4-migrate-v2`, Task 10; `p4-book-catchup`, Task 13; `p4-book-migrated`, Task 24.)
+3. Copy that does not fit: a card that wraps to four lines, a long speaker label, a feed line over 140 px (the copy's Crimson yard line measured 143 until Task 3's amendment), at GUI Scale 1 to 3 and the 854x480 window. (Tests: `p4-feed-fit`, Task 3; `p4-scenes-fit`, Task 16.)
+4. A profile that played before the story existed (schema 2 with `campaignCleared` 3, or holding the Pact that Phase 2's one-battle chapter granted): it migrates once, keeps its Pact (the Pact count and `writChapters` untouched), opens the book on page 1 with won battles and their before-scenes read, catches up through the unread after-scenes before the next battle, and no companion appears before the scene that brings them. (Tests: `p4-migrate-v2`, Task 10; `p4-book-catchup`, Task 13; `p4-book-migrated`, Task 25.)
 5. Input during a scene: a rebound use key, an unbound skip key, held movement keys, Escape, mouse clicks and the number keys on the choice chits. The real binding is shown, use hurries the typing and then advances, skip is refused on a first reading and allowed on a replay, the player does not move, and Escape opens the pause menu and returns to the same card. (Test: `p4-scene-keys`, Task 16.)
 
 ## Constraints from the merged code (and the smallest change chosen)
@@ -44,11 +44,11 @@
 - `Battle.base(t)` is fixed per team from `Spec.FACTIONS` rows 0 and 1. The sheet holds x -108 and 108, but `CampaignMaps.select` rewrites both rows for every battle map: spawn (-283,0) and barracks (-286,32) for team 0, spawn (283,0) and barracks (286,-32) for team 1. Respawn (`toBase`), the lineup (`reinforce`), deploy, `deployCentre`, the retreat assignment and `Morale`'s rout home read `base(t)`; barracks access (the `accessRadius` test) and the barracks teleport read the row's `barracksX/Z`. Task 2 adds `Battle.fieldBase(int team)` and `Battle.fieldBarracks(int team)` (the mode's answers) and switches those call sites; `base(t)` stays for squad creation, camp and legacy code.
 - `Morale` reads one row (`M=Spec.MORALE[0]`) and keeps `RoutGuard { boolean holds(Battle b,Squad s,String group); }` guards in `GUARDS`; Phase 2's `routShareFor` picks the share. Task 2 makes the row the mode's (`modes.morale`) and the share `b.mode.routShare(...)`, lowest wins.
 - `Campaign.soloStart` seats a battle as practice (one bot, practice gold, every troop); `prepareRound` creates `practice?1:size` bots per team with tier `activeBattle.difficulty()`, and `botBanner(s)` picks a `botBanners` row of that tier by lane. Task 11 adds `Squad.fixedBanner` so each campaign seat fields exactly its row.
-- `Campaign.finish(int winner)` computes the reward, raises `campaignCleared`, saves, builds the report and calls `returnLobby()`, in that order. Tasks 11, 17, 25 and 26 extend it in place; an after-scene defers only `returnLobby()`.
+- `Campaign.finish(int winner)` computes the reward, raises `campaignCleared`, saves, builds the report and calls `returnLobby()`, in that order. Tasks 11, 17, 26 and 27 extend it in place; an after-scene defers only `returnLobby()`.
 - `campaign:<id>` starts any row in any order behind `soloRefusal(MARCH_SOLO)`. Task 11 adds the order lock, Task 17 the before-scene.
-- `GravesAndGlory.openCamp(ServerPlayerEntity p,String station)` (static) returns early for a commander seated in a running battle, then sends one station string and the client opens that page (`army`, the war table in the command tent, opens the lobby; Phase 3 stations come from `campStations` and `campPieces`, tents send `recruit:<house>`, the graveyard shrine `recruit:graveborn`, the archivist `contracts`, the Founders' Stone `chapter`). Task 16 calls `Story.atStation(p,station)` first and skips the page when it returns true; Task 26 adds the camp lines.
+- `GravesAndGlory.openCamp(ServerPlayerEntity p,String station)` (static) returns early for a commander seated in a running battle, then sends one station string and the client opens that page (`army`, the war table in the command tent, opens the lobby; Phase 3 stations come from `campStations` and `campPieces`, tents send `recruit:<house>`, the graveyard shrine `recruit:graveborn`, the archivist `contracts`, the Founders' Stone `chapter`). Task 16 calls `Story.atStation(p,station)` first and skips the page when it returns true; Task 27 adds the camp lines.
 - `CampaignClient` runs the 120-tick entrance (`cinematic()`, `sampleCamera(partial)`) and draws `briefing(...)` only for campaign battles. `EntranceCameraMixin` (Camera.update TAIL) and `CinematicHudMixin` live in main; scenes generalise both, and nothing in main may call `TitleDemos` (test-tools). Phase 2 Task 5b deletes `BipedAnimationMixin`: every troop rig, illagers included, takes a scene pose through `TroopAnimator.setScenePose(int entityId,String pose)` (`sword_up`, `kneel`, `fallen`, `stand`, `helm_off`, `point`, `sit`, `raise`), which moves into place over 0.4 to 0.8 s and holds, so this plan adds no pose mixin. Troops draw no vanilla held item (Phase 2 Needs Kort 10), so scenes place props as item displays.
-- Command tags never reach the client, and custom names stay troop names, because `TroopModels.resolve` reads them to give each troop its own model (Phase 2 Task 5). Portraits on cards, the book and the banner page are live models rendered into the portrait rect (`ArmyMobs.portrait`, `Portrait.draw`), never textures. The client learns companions, labels and poses only from the snapshot's `company` array and `scene_v1` pose ops, keyed by entity id. The Phase 2 interfaces this plan consumes are `ArmyMobs.create`/`portrait`/`stageName`, `ArmyCards.portrait`, `TroopModels.resolve`/`portraitTall`, `TroopAnimator.setScenePose`, `Battle.joinSide` and `Battle.shield`; each task's Interfaces block names the ones it uses.
+- Command tags never reach the client, and custom names stay troop names, because `TroopModels.resolve` reads them to give each troop its own model (Phase 2 Task 5). Portraits on cards, the book and the banner page are live models rendered into the portrait rect (`CharacterSkins.portrait` over `ArmyMobs.portrait`, then `Portrait.draw`), never textures, and each named character wears their own face and skin on their troop's rig (Task 19). The client learns companions, labels, poses and the named cast only from the snapshot's `company` array and the `scene_v1` `pose` and `cast` ops, keyed by entity id. The Phase 2 interfaces this plan consumes are `ArmyMobs.create`/`portrait`/`stageName`, `ArmyCards.portrait`, `TroopModels.resolve`/`portraitTall`, `TroopAnimator.setScenePose`, `Battle.joinSide` and `Battle.shield`, and Task 19 extends `tools/build_skins.py`, `TroopModelLoader`, `TroopRenderer` and `TroopFeatures`; each task's Interfaces block names the ones it uses.
 - `tools/preflight.py` requires `botBanners` ids of the form `<house>_<difficulty>` or `mix_<house>_<house>_<difficulty>`, difficulties that are `botCommand` ids, slots that are troops or `^`, and slot weights summing to 20. Task 10 adds two narrow exceptions for the campaign-only row.
 - `Profile` is schema 2 (pure; `sanitize` sets `schema=2`); `ProfileMigration.upgradeFile` upgrades only schema 1 and keeps `<uuid>.v1.json`. Task 10 adds the schema 2 to 3 step beside it.
 - `FeedLines.bannerDown(name)` already means a commander's banner fell, so Banner mode's "down" line is `FeedLines.bannerLying(owner)`. `FeedLines.style(kind,...)` draws the viewer's emblem for any unlisted kind, so mode notices use kind `notice`.
@@ -73,10 +73,11 @@
 | `Story.java`, `ScenePlayer.java`, `SceneScreen.java`, `DialogCard.java`, `StoryVoice.java`, `OggLength.java` (pure) | server story glue and one running scene per player; the client's scene screen, cards with live portraits, and voice | 16 |
 | `SceneMath.java` (pure), `SceneCamera.java`, `SceneSky.java`, `ScenePoses.java`, `MarchCard.java`; mixins `SceneSkyMixin`, `SceneFogMixin` | stage scenes: camera, time and weather, fog, poses, letterbox, the march card | 17 |
 | `StageArea.java`, suite `story-capture`, `build_ui_art.py --thumbs` | the stage area for panels, frame capture, thumbnails | 18 |
-| `structures/story/*.nbt`, their studio scripts and `storySets` rows | the sets, staged and graded from their frames | 19 to 23 |
-| `StorybookScreen.java` | the book and the March plaque | 24 |
-| `Company.java`, `CompanyNames.java`; mixin `CompanyLabelMixin` | companions in battle, protection, the fall, overhead labels | 25 |
-| `StoryCamp.java` | the viewer's own companions in camp, as client-only entities, so no other player sees them | 26 |
+| `CharacterSkins.java`, `art/characters/`, `art/parts/hollow_helm.json`; mixins `VillagerSkinMixin`, `VillagerClothingMixin` | the named cast's own faces and skins on their troops' rigs, the `cast` op | 19 |
+| `structures/story/*.nbt`, their studio scripts and `storySets` rows | the sets, staged and graded from their frames | 20 to 24 |
+| `StorybookScreen.java` | the book and the March plaque | 25 |
+| `Company.java`, `CompanyNames.java`; mixin `CompanyLabelMixin` | companions in battle, protection, the fall, overhead labels | 26 |
+| `StoryCamp.java`, `scenes/c1/c1_guide.scene` | the viewer's own companions in camp, as client-only entities, so no other player sees them; Maud's camp guide card | 27 |
 | `Phase4Checks.java`, `ModeMathCheck.java`, `MarchMathCheck.java`, `StoryCheck.java` (test-tools) | suites and standalone checks | 1 onward |
 
 ## Test runs used by every task
@@ -102,6 +103,8 @@ J="/c/Program Files/Eclipse Adoptium/jdk-17.0.19.10-hotspot/bin"; S=src/main/jav
 Pass: `<Check>: <n> checks passed`; StoryCheck also prints `story-names: clean`, `story-voice: <v> voiced, <u> unrecorded, <s> silent, clean` and `story-copy: <n> lines match`. (Voice is recorded after the copy is locked, story 12.4, so a voiced line without its `.ogg` yet is "unrecorded", not an error; `sounds.json` lists only files that exist.) ProfileMigrationCheck needs `HousesCheck` (its fixture catalog) and that class's pure dependencies. A failure throws `AssertionError` naming the check. A task that grows a check's class set updates its line here in the same commit.
 
 **Art export check:** `python tools/build_ui_art.py --verify` prints `build_ui_art: <n> textures verified`.
+
+**Skin export check** (from Task 19): `python test-tools/standalone/test_build_skins.py` prints `OK`, and `python tools/build_skins.py --verify` exits 0.
 
 **In-game suite `<suite>`** (one launch; the suite stops the client itself):
 ```bash
@@ -230,6 +233,7 @@ git commit -m "Phase 4: the battle mode frame, Domination moved behind it, the m
 
 **Files:**
 - Modify: `src/main/java/gg/gravesandglory/{FeedLines,FeedEvents,BattleHud,CampaignClient,WarTableHome}.java`
+- Modify: `docs/copy/chapter-1.md` (one copy amendment, the Siege yard line: Step 4)
 - Modify: `test-tools/java/gg/gravesandglory/Phase4Checks.java` (suite `hud`)
 
 **Interfaces:**
@@ -241,17 +245,20 @@ git commit -m "Phase 4: the battle mode frame, Domination moved behind it, the m
 
 - [ ] **Step 1: Compile both source sets.**
 - [ ] **Step 2: Write suite `hud` (this task's ids):**
-  - `p4-feed-fit`: with the real font, every line above at its widest values measures at most 140 px: teams Dawn, Dusk, Gold, Violet, Crimson and Teal (as `teamShort` gives them) in both team slots, sites `the chapel`, `the ford`, `the deep wood`, `the track`, waves 1 to 7 with gold 0 to 100, scores 0 to 3, both bonus forms with the tag `strike the King`. The one exception is `yardTaken("Crimson")` (143 px, the copy's known overflow): its drawn text after `UiMath.trimWords(text,140,...)` is at most 140 px, and the suite logs `[p4] feed-overflow yardTaken Crimson <px>`. Any other line over 140 fails and is reported to the copy.
+  - `p4-feed-fit`: with the real font, every line above at its widest values measures at most 140 px: teams Dawn, Dusk, Gold, Violet, Crimson and Teal (as `teamShort` gives them) in both team slots, sites `the chapel`, `the ford`, `the deep wood`, `the track`, waves 1 to 7 with gold 0 to 100, scores 0 to 3, both bonus forms with the tag `strike the King`. There is no exception: the copy's yard line measured 143 px as Crimson, so Step 4 shortens it first. Any line over 140 fails and is reported to the copy.
   - `p4-feed-lines`: each new line sent once through `FeedEvents.mode` reaches the feed. A `point` line from team 0 shows `hud/fgv-seal-dawn` to a team 0 viewer and the struck seal to a team 1 viewer; a `notice` shows the viewer's emblem. Screenshots `p4-feed-yard`, `p4-feed-rise`, `p4-feed-wave`, `p4-feed-banner`, `p4-feed-score`, `p4-feed-bonus`.
   - `p4-briefing-howto`: battle `march-1`'s intro card draws its briefing, its reason and the three Domination how-to lines in that order, all inside the card. Screenshot `p4-briefing-domination`.
   - `p4-field-rule`: the field card reads `Domination to 300`; after `battlemode:banner` it reads `Banner: first to 3`.
   - `p4-hud-domination`: in a Domination round the ledger draws both scores and fills the tracks as before. Screenshot `p4-hud-domination`.
 - [ ] **Step 3: Run suite `hud`; expect failures** (missing functions, no how-to lines on the card).
-- [ ] **Step 4: Implement** the copy functions, `FeedEvents.mode`, the snapshot read, the ledger, the briefing lines and the field card line.
-- [ ] **Step 5: Run suite `hud`; expect the five ids and `pass p4-hud-suite`.** The tester states what each screenshot shows. The Crimson overflow goes into the task report, for the copy.
+- [ ] **Step 4: Amend the yard line, then implement.**
+  - The copy's `{team} took the Outer Yard` is 143 px as Crimson. Write one shorter wording for every team (the line is a `{team}` template) that fits 140 px for all six, under the copy's rules ("How these were written") and the Text constraint (ruling, 2026-10-19).
+  - Record it in `docs/copy/chapter-1.md` as a copy amendment dated 2026-10-19: the Siege table's "Yard falls" row takes the new line and its px as Dawn; "Fit changes" gains a row with both Crimson widths; the overflow note under "How these were written" and the "Not changed" line drop the old line. `yardTaken` transcribes the new one.
+  - Then implement the copy functions, `FeedEvents.mode`, the snapshot read, the ledger, the briefing lines and the field card line.
+- [ ] **Step 5: Run suite `hud`; expect the five ids and `pass p4-hud-suite`.** The tester states what each screenshot shows. The task report quotes the yard line's old and new wording with their Crimson widths.
 - [ ] **Step 6: Commit.**
 ```bash
-git add src/main/java/gg/gravesandglory/{FeedLines,FeedEvents,BattleHud,CampaignClient,WarTableHome}.java test-tools/java/gg/gravesandglory/Phase4Checks.java
+git add src/main/java/gg/gravesandglory/{FeedLines,FeedEvents,BattleHud,CampaignClient,WarTableHome}.java test-tools/java/gg/gravesandglory/Phase4Checks.java docs/copy/chapter-1.md
 git commit -m "Phase 4: mode feed lines, the ledger from the snapshot, briefing how-to lines"
 ```
 
@@ -818,7 +825,7 @@ git commit -m "Phase 4: story sheets, StoryBook, StoryLines and StoryNames"
 - Create: `test-tools/resources/data/gravesandglory/scenes/test/{ok,nested_if,voiced_count,unknown,panel_in_stage,no_end}.scene`
 - Modify: `test-tools/standalone/StoryCheck.java` (the scene half), `tools/preflight.py`
 
-**The command set.** Story 7.3's list, plus six additions that Kort's footage ruling (2026-10-18 late) needs. The additions are marked "added" and are reported back to the story spec, because the spec says new commands come back through it.
+**The command set.** Story 7.3's list, plus six additions that Kort's footage ruling (2026-10-18 late) needs. The additions are marked "added"; story 7.3 now lists them (2026-10-19), since the spec says new commands come back through it.
 - Line 1 is `# scene <id> <kind>`, where kind is `panel`, `stage` or `card`. Every other line is blank, a `#` comment, or one command.
 - World: `map <n>`, `camp`, `time <0..23999>`.
   - `weather clear|rain|thunder|snow` (`snow` added, for page 7).
@@ -828,7 +835,7 @@ git commit -m "Phase 4: story sheets, StoryBook, StoryLines and StoryNames"
     - `team` is added: it gives the side cloth. Without it the actor wears linen, as portraits do.
     - `commander` is added: the player's own body stands there, because the copy stages the commander in four scenes. A scene has at most one.
   - `walk <actor> to x y z over <ticks>`.
-  - `pose <actor> <p>`, where `p` is one of Phase 2 Task 5b's scene poses: `sword_up`, `kneel`, `fallen`, `stand`, `helm_off`, `point`, `sit` or `raise`. Story 7.3 counts six poses, but Phase 2's set has eight and no `swing`, so the eight are the list (reported back).
+  - `pose <actor> <p>`, where `p` is one of Phase 2 Task 5b's scene poses: `sword_up`, `kneel`, `fallen`, `stand`, `helm_off`, `point`, `sit` or `raise`. Story 7.3 now names Phase 2's clip set and no `swing`; its list gives `walk`, which is this file's `walk` command, and leaves out `sword_up`, so Phase 2 Task 5b's eight are the list.
   - `prop <id> <item id> at x y z [facing <yaw>] [scale <s>]` (added). It places a vanilla `item_display`, because a troop draws no held item (Phase 2 Task 5, Needs Kort 10). Uses: the horn, the pact on the table, the dropped pact-copy, the crown.
 - Camera:
   - `camera x y z to x y z over <ticks> [look x y z | look <actor>]` (`look` added on the moving form; without it the camera faces along its path).
@@ -867,7 +874,7 @@ git commit -m "Phase 4: story sheets, StoryBook, StoryLines and StoryNames"
 - the copy's card-level branches (`c1_king_after` cards 6a and 6b under `if match killed:gb_hollowking`);
 - `end`.
 
-Staging (map, time, actors, camera, sets, panel lines) is added by Tasks 19 to 23. A skeleton plays as cards over the player's own view.
+Staging (map, time, actors, camera, sets, panel lines) is added by Tasks 20 to 24. A skeleton plays as cards over the player's own view.
 
 - [ ] **Step 1: Compile both source sets.**
 - [ ] **Step 2: Write the failing tests.**
@@ -905,7 +912,7 @@ git commit -m "Phase 4: SceneScript and the chapter 1 scene skeletons"
 
 **Executor:** Sonnet 5.5 max.
 
-Under Kort's ruling, this task draws only the book and its chrome. It draws no portrait, no panel and no thumbnail: portraits are live models (Task 16), and panels and thumbnails are in-game frames (Tasks 18 to 23).
+Under Kort's ruling, this task draws only the book and its chrome. It draws no portrait, no panel and no thumbnail: portraits are live models (Tasks 16 and 19), and panels and thumbnails are in-game frames (Tasks 18 and 20 to 24).
 
 **Files:**
 - Create: `tools/ui_art/storybook/{sb_common,sb_book,sb_table,sb_props,sb_ui}.py`.
@@ -935,7 +942,7 @@ Under Kort's ruling, this task draws only the book and its chrome. It draws no p
 
 **Interfaces:**
 - Consumes: the UI plan's exporter (`build_ui_art.py`, `--verify`, `atlas.json`), `UiTex`, `UiKitSheet` and suite `ui-art`.
-- Produces: the `story/<name>` atlas names above, used by Tasks 16, 17, 18 and 24.
+- Produces: the `story/<name>` atlas names above, used by Tasks 16, 17, 18 and 25.
 
 - [ ] **Step 1: Compile both source sets.** Run `python tools/build_ui_art.py --verify`; record n.
 - [ ] **Step 2: Add the `story/` entries to `manifest.py`.** Run `--verify`; **expect FAIL** naming the first `story/` PNG missing.
@@ -981,8 +988,8 @@ git commit -m "Phase 4: storybook UI kit (book, leaves, cards, chits, glyphs)"
   - Phase 2 Task 5: `ArmyMobs.portrait(String entity,World w)`, `ArmyMobs.stageName(Spec.TroopsRow,int)` (the custom name `TroopModels.resolve` reads to pick the model), `TroopModels.portraitTall(String troop)`.
   - Phase 2 Task 5b: `TroopAnimator.setScenePose(int entityId,String pose)`.
 - Produces (server):
-  - `Story.command(ServerPlayerEntity p,String cmd)->boolean`, for `story:play:<id>`, `story:next`, `story:skip` and `story:choice:warm|plain`. Tasks 17 and 24 add `story:arrived`, `story:march` and `story:book`; Task 26 adds `story:camp` and `story:talk:<companion>`.
-  - `Story.atStation(ServerPlayerEntity p,String station)->boolean`: it plays the NEXT card scene whose `storyPages.station` is this station, and returns true. Task 26 adds camp lines.
+  - `Story.command(ServerPlayerEntity p,String cmd)->boolean`, for `story:play:<id>`, `story:next`, `story:skip` and `story:choice:warm|plain`. Tasks 17 and 25 add `story:arrived`, `story:march` and `story:book`; Task 27 adds `story:camp` and `story:talk:<companion>`.
+  - `Story.atStation(ServerPlayerEntity p,String station)->boolean`: it plays the NEXT card scene whose `storyPages.station` is this station, and returns true. Task 27 adds camp lines.
   - `Story.play(ServerPlayerEntity p,String sceneId,Runnable follow)`, `Story.running(UUID)->ScenePlayer`, and `Story.cond(ServerPlayerEntity p,List<String> ifArgs)->boolean`:
     - `companion:<s> standing|wounded|resting` reads `StoryState.wounded`/`resting`;
     - `match killed:<troop>|bonus|won` reads `StoryState.last` (`killed`, `bonus` `kept`, `won`).
@@ -1017,7 +1024,8 @@ git commit -m "Phase 4: storybook UI kit (book, leaves, cards, chits, glyphs)"
     - `troop:<id>` is a fresh, uncached `ArmyMobs.portrait(row.entity(),world)` named `ArmyMobs.stageName(row,1)` (so `TroopModels.resolve` gives it its own model), one per speaker per scene, with `tall` from `TroopModels.portraitTall`;
     - `npc:contracts` is a client `VillagerEntity` with the librarian profession at level 5, as the camp's Archivist;
     - when a `pose` op sets `helm_off` on the speaker's own actor, the card calls `TroopAnimator.setScenePose(portrait.getId(),"helm_off")`;
-    - every portrait pose clears when the scene closes.
+    - every portrait pose clears when the scene closes;
+    - Task 19 swaps both entities for `CharacterSkins.portrait`: the same models in each character's own face and skin.
   - `StoryVoice.play(String id)->int`: it plays `gravesandglory:voice.<id>` when the sound exists and returns its length in ticks (`OggLength`), or 0.
   - `OggLength.seconds(InputStream ogg)->double`: the last page's granule position over the identification header's sample rate.
 
@@ -1116,6 +1124,7 @@ git commit -m "Phase 4: scene runtime, dialog cards with live portraits, card sc
     - `companion:<s>` is that speaker's `troop`.
     - `walk` moves the actor along its line each tick, facing its travel.
     - `pose` sends `{"op":"pose","entity","pose"}`.
+    - A `sit` pose, from `actor` or `pose`, also seats the actor on an invisible marker armour stand at its point, tagged `gg_scene`, as the staging run seats its actors (`work/ui-concepts/storybook/stills/STAGING.md`). A later pose dismounts it and discards the stand.
     - `prop` spawns an `item_display` tagged `gg_scene`. A `prop` line naming a placed prop moves that prop instead.
   - **Effects.** `structure` calls `placeSaving` with tag `scene-<uuid>-<set>`. `sound` plays to the player at the camera, and `particles` goes through `ServerWorld.spawnParticles(player,...)`.
   - **Camera ops:**
@@ -1128,7 +1137,7 @@ git commit -m "Phase 4: scene runtime, dialog cards with live portraits, card sc
     - When the pending battle's map is ready and its before-scene is unread, the scene plays first.
     - At its end the client holds the last frame and shows the `MarchCard` (`{"op":"march","battle"}`).
     - `story:march` runs today's start: `soloStart` after the same map and solo checks.
-    - `story:book` sends the player to camp with nothing started; Task 24 reopens the book there.
+    - `story:book` sends the player to camp with nothing started; Task 25 reopens the book there.
     - A read before-scene replayed from the book returns to the book at its end (assumption).
   - **After a battle.** On a battle's first win with an unread after-scene, `finish` keeps its order up to `returnLobby()`. The scene plays on the map, then `returnLobby()` runs, so the report opens after it.
   - **Abort.** `Story.abort` is called on a disconnect, a server stop, `switchMap` and `startRound`. It:
@@ -1149,7 +1158,8 @@ git commit -m "Phase 4: scene runtime, dialog cards with live portraits, card sc
     - for `snow`, the precipitation drawn at the camera is snow.
   - **`SceneFogMixin`:**
     - `BackgroundRenderer.applyFog` (TAIL) sets the fog end to `max(8, viewDistance*(1-density))` and the start to `0.15*end`;
-    - `BackgroundRenderer.render` (TAIL) sets the clear and fog colour when a colour is given.
+    - `BackgroundRenderer.render` (TAIL) sets the clear and fog colour when a colour is given;
+    - both apply in the fog render with the shader on or off, and no scene sets a shader option: the staging run found that Complementary clears its own fog near the ground and draws its edge fog as a hard wall (`STAGING.md`).
   - **`ScenePoses.apply(int entityId,String pose)`** calls `TroopAnimator.setScenePose` and records the id. `clearAll()` runs on `close`.
   - **`SceneScreen` for stage scenes:**
     - `story/bar-top` at (0,0) and `bar-bot` at (0,492), sliding in over 10 ticks;
@@ -1169,16 +1179,18 @@ git commit -m "Phase 4: scene runtime, dialog cards with live portraits, card sc
 
     While the card shows, Enter sends `story:march` and Escape sends `story:book`. Strings come from the rows and NOTES.md ruling 7.
 
+    Back to the book stands (ruling, 2026-10-19): story 7.1 keeps the player from the table between a before-scene and its battle, not from the book.
+
 - [ ] **Step 1: Compile both source sets.**
 - [ ] **Step 2: Write the failing tests.**
   - `p4-camera-math` (StoryCheck):
     - `ease(0.25)==0.15625`;
     - `at` at t 1 is `to`;
     - `look` from the origin to (1,0,0) is yaw -90, and to (0,-1,1) is pitch 45.
-  - Suite `scenes` gains `p4-stage-fixture`. `test_stage.scene` (map 1, time 18000, rain, fog 0.6 2a3a4a, actor `knight` team 1 posed `kneel`, a prop, a move with `look`, a hold, `structure c1_b3_gate`) plays:
+  - Suite `scenes` gains `p4-stage-fixture`. `test_stage.scene` (map 1, time 18000, rain, fog 0.6 2a3a4a, actor `knight` team 1 posed `kneel`, actor `seat` `sentinel` posed `sit`, a prop, a move with `look`, a hold, `structure c1_b3_gate`) plays:
     - the client's time reads 18000 while the server's is unchanged;
     - rain is 1, and the fog end and colour match;
-    - the actor has AI off and tag `gg_scene`, and its kneel pose is recorded;
+    - the actors have AI off and tag `gg_scene`, the kneel pose is recorded, and `seat` rides a marker armour stand tagged `gg_scene`;
     - the camera ends the move within 0.1 block and 1 degree;
     - the gate cells are unwalkable during the scene and walkable after;
     - the player is spectator during it and back in adventure at their camp spot after.
@@ -1235,6 +1247,7 @@ git commit -m "Phase 4: stage scenes (camera, actors, sky, fog), march card, han
   - Task 17: `storySets`, `SceneCamera`, `ScenePlayer`'s player handling, `story:arrived`, the marker, `SceneScreen.hideChrome`.
   - Phase 3: `Structures.place(ServerWorld,String,int,int,int,int)->Placed` and `Placed.box`.
   - The UI plan: `Phase1Checks.window(c,w,h,scale)` and the capture suites' mod, shader and resource pack copy; `Presentation.selectShader`.
+  - The staging run (2026-10-19): test-tools `StoryStills` and its shots under `work/ui-concepts/storybook/stills/`, with `STAGING.md` recording the client, shader and options they were taken with.
 - Produces `StageArea` (server):
   - `static final BlockPos CENTRE = new BlockPos(0,64,3000)`. It is flat-world air, 2,700 blocks past the camp (z -310) and every map.
   - `static Structures.Placed place(ServerWorld w,Spec.StorySetsRow row)`: clears the last set's box (grown by 1) to air, places `row.piece()` centred on `CENTRE` at `row.rotation()`, forces the box's chunks while a scene uses it, and writes the box to `<world>/gravesandglory/stage.json`.
@@ -1292,6 +1305,7 @@ Camp rows use map -1 with camp coordinates. A battle's camera is a high three-qu
 - [ ] **Step 3: Run suite `scenes`; expect FAIL** (`StageArea` not defined).
 - [ ] **Step 4: Implement** `StageArea`, `panel`, the panel chrome, the drift, the capture suite, `--thumbs` and the twelve rows.
 - [ ] **Step 5: Run suite `scenes`, then `story-capture` twice** (`GRAVES_P4_LOOK` `off`, then `reimagined`, with the UI plan's mod and shader copy into the run root).
+  - Both runs also capture `test_stage` (added to `GRAVES_P4_CAPTURE`; `--thumbs` takes only `storyPages` ids, so it makes no thumbnail). The tester checks that its fog reads the same in both looks, since Task 17's fog must show with the shader on or off.
   - Run `--thumbs` on the `reimagined` frames; they are the committed thumbnails, as the title panorama was taken with shaders on.
   - **Expect:**
     - every `scenes` id passes, with `pass p4-scenes-suite`;
@@ -1306,18 +1320,115 @@ git commit -m "Phase 4: book panels on the stage area, frame capture, card and b
 
 ---
 
-### Task 19: Sets for `c1_fall`, the five panels of the Fall
+### Task 19: The named cast: their own faces and skins on their troops' rigs
+
+**Executor:** Opus 5.5 max. The tester is Sonnet 5.5 max (the in-game contact sheet and the grades).
+
+The eight named characters of chapter 1 each wear their own hand-drawn face and skin on their troop's rig (story 7.4; the ruling of 2026-10-19): Maud and Tomas on `sentinel`, Wren on `bonebow`, Dunmar on `ic_breaker`, Ashka on `wm_hunter`, the Hollow King helmed on `gb_hollowking`, and Pell on the camp's librarian villager. Edric is the face under the King's helm, so one file, `king`, carries both, and `helm_off` shows him. A troop of the same type that is not a character keeps its troop skin everywhere, the cached portraits of the recruit page included.
+
+**Files:**
+- Create (sources, pixel-art skill):
+  - `art/characters/{maud,tomas,wren,dunmar,ashka,king,pell}.json`, each with `<id>_s1.png` (and `<id>_o.png` or `<id>_e.png` where its file names them);
+  - `art/parts/hollow_helm.json`.
+- Generated by `build_skins.py` and committed: `textures/entity/troop/character/<id>_s1.png` (and `_o`, `_e`), `models/troop/character/king.json`, and the `characters` list in `models/troop/index.json`.
+- Create (client): `src/main/java/gg/gravesandglory/CharacterSkins.java`, and `src/main/java/gg/gravesandglory/mixin/{VillagerSkinMixin,VillagerClothingMixin}.java`, registered in `gravesandglory.mixins.json` (client).
+- Create: `test-tools/resources/data/gravesandglory/scenes/test/test_cast.scene`.
+- Modify:
+  - Phase 2 Task 5's `tools/build_skins.py`, `test-tools/standalone/test_build_skins.py`, `TroopModelLoader.java`, `TroopRenderer.java` and `TroopFeatures.java`;
+  - `tools/preflight.py`;
+  - `ScenePlayer.java` (the `cast` op), `DialogCard.java` (the portraits), `GravesAndGloryClient.java` (the `cast` receiver, `ClientEntityEvents.ENTITY_LOAD` and `ENTITY_UNLOAD`, and the disconnect);
+  - `Phase4Checks.java` (suite `cast`) and `docs/PHASE-4-GATES.md` (section "Named cast").
+
+**Sources.**
+- `art/characters/<id>.json`: `character` (the `speakers` id), `troop` (`pell` has `rig` `villager` instead), `skin` (`<id>_s1`), and optional `outer` (`<id>_o`), `glow` (`<id>_e`), `parts` (added parts, in a troop file's `parts[]` format) and `hide` (troop part names this character does not draw).
+- Each skin is drawn with the pixel-art skill over `python tools/build_skins.py --template <troop>`. Pell's is drawn over the vanilla 64x64 villager layout, robes included, because the villager's clothing layer does not draw on him. The template is Phase 2's scratch output under `work/troops/`, the one write outside `work/p4/` that the Global Constraints allow.
+- The looks are the story spec's cast (section 5) and the copy's speaker directions. Each companion still reads as their House's troop by silhouette; the face, hair and paint make the person.
+- Only the King's file has `parts` or `hide`. `parts` adds `hollow_helm` (a closed helm with the broken crown worked onto it, on `head`, `tag` `helm`), and `hide` drops the troop's own `broken_crown`. With `helm_off`, nothing covers his face but Edric's own paint.
+
+**Rules** (`build_skins.py` exits 1, naming the character and the reason):
+- an unknown troop, a `rig` other than `villager`, or a `character` that is not a `speakers` id;
+- a skin whose size is not the troop's (64x64 for the villager);
+- an unknown added part, a duplicate bone, an added part overlapping the troop's boxes in UV, or a `hide` name that is not one of the troop's parts;
+- team tint rule 1 on any skin pixel, or a glow over the troop's rarity cap counted with its weapon's glow (Phase 2 Task 5's rules, unchanged);
+- `outer` or `glow` on a villager character;
+- for a character whose drawn parts include a `helm` part: a transparent pixel on the front face of any `head` box (UV (u+d, v+d), w by h, in Minecraft's box layout). So Maud, Tomas and Edric each have a face under the helm.
+
+Outputs follow Phase 2's naming and vanilla-key rules. The index's `characters` list holds `id, troop, rig, skin, outer, glow, model`, where `model` is `character/<id>` for a character with `parts` or `hide`, else `-`. A character skin ignores stage and Veteran, since every character entity is stage 1.
+
+**Preflight** adds two rules:
+- every `speakers` row whose `portrait` is not `-` has `art/characters/<id>.json`, listed in the index, whose troop is the portrait's (`troop:<id>`), or whose `rig` is `villager` for `npc:contracts`;
+- a scene `actor` line whose id is a character id names that character's troop or `companion:<id>`.
+
+**Interfaces:**
+- Consumes:
+  - Phase 2 Task 5: `build_skins.py` (`load`, `bake`, `template`, `export`, `verify`, `fail`), `TroopModelLoader.parse`, `TroopModels.Look`/`resolve`/`skin`/`glow`/`portraitTall`, `TroopModel.prepare(Look,boolean folded,boolean helmOff)`, `TroopRenderer.vanilla()`, the `TroopFeatures` layers, `ArmyMobs.portrait(String,World)`, `ArmyMobs.stageName(Spec.TroopsRow,int)` and `ArmyCards.portrait(Spec.TroopsRow,int)`.
+  - Phase 2 Task 5b: `TroopAnimator.setScenePose(int,String)`, whose `helm_off` keeps the clip and hides `helm` parts.
+  - Phase 3: `CampWorld.where("contracts")`, the Archivist's station.
+  - Task 13: the `speakers` rows. Task 16: `DialogCard` and the card op's `portrait`. Task 17: `ScenePlayer`'s actors and `ScenePoses`. Task 18: the stage area.
+- Produces (server): the `scene_v1` op `{"op":"cast","entity","character"}`. `ScenePlayer` sends it right after it spawns an actor whose id is a `speakers` id with a `troop:` portrait, or whose unit is `companion:<s>` (character `s`).
+- Produces (client), `CharacterSkins`, keyed by entity id:
+  - `assign(int entityId,String character)` (null clears), `of(int entityId)->String` (null when none) and `clearAll()`;
+  - `skin(String character)`, `outer(String character)` and `glow(String character)`, each `->Identifier`, null when the character has none;
+  - `model(String character)->TroopModel<?>`: the character's own model (the King's), else null. `TroopModelLoader` builds it from the index's `characters` list as it builds the troops';
+  - `portrait(String character,World w)->LivingEntity`: a fresh, uncached `ArmyMobs.portrait(row.entity(),w)` named `ArmyMobs.stageName(row,1)` for the character's troop row, or a librarian villager at level 5 for Pell. It takes the next id from -200000 down, so no world entity shares it, and is assigned under that id;
+  - `ids()->Set<String>`.
+  - The `cast` op assigns. `ENTITY_LOAD` assigns `pell` to a villager within 1.0 block of `CampWorld.where("contracts")`. `ENTITY_UNLOAD` clears that entity's id, and a disconnect calls `clearAll()`.
+- Produces (client, drawing):
+  - `TroopRenderer`: for an entity with a character, the model is `CharacterSkins.model` when there is one, else the troop's, and `getTexture` returns `CharacterSkins.skin`. The `Look` stays the troop's, so the cloth, weapon, shield and tells are the troop's.
+  - `TroopFeatures`: `Outer` and `Glow` draw the character's `outer` and `glow`, and nothing when it has none. A troop's own never draw on a character.
+  - `VillagerSkinMixin` (`VillagerEntityRenderer.getTexture`, HEAD, cancellable) returns `CharacterSkins.skin("pell")` for an entity assigned `pell`. `VillagerClothingMixin` (`VillagerClothingFeatureRenderer.render`, HEAD) cancels for it.
+  - `DialogCard`: every speaker whose portrait is not `-` draws `CharacterSkins.portrait(speaker,world)` in place of Task 16's entity, so the `helm_off` mirror shows Edric's face on the King's card. The portraits' ids are cleared when the scene closes.
+
+- [ ] **Step 1: Compile both source sets.** Run `python test-tools/standalone/test_build_skins.py`; expect `OK` (Phase 2's tests).
+- [ ] **Step 2: Write the failing tests.**
+  - `test_build_skins.py` gains, on fixture characters:
+    - `test_character_size`: a 64x32 skin on a biped troop exits 1; a 64x64 villager skin passes;
+    - `test_character_troop`: an unknown troop, a non-speaker id, an unknown added part and an unknown `hide` name each exit 1, naming it;
+    - `test_character_tint`: a #E3B341 skin pixel exits 1 as on a troop, and 7 lit glow pixels on a Common troop's character exit 1;
+    - `test_character_helm_face`: a `sentinel` character with one transparent pixel on the head's front face exits 1, naming the character; with the face filled it passes;
+    - `test_character_model`: a character with `parts` or `hide` bakes `character/<id>.json` with only the allowed keys, the added part present and the hidden one absent; a character with neither bakes no model;
+    - `test_character_index`: the index's `characters` list holds the fixture characters and their outputs, and a removed character's outputs are deleted on the next export.
+  - `test_cast.scene`: `actor maud companion:maud`, `actor king gb_hollowking`, a card from each, `pose king helm_off`, a card from the King, `end`. Its cards are lines transcribed from the copy's `c1_king_before`.
+  - Suite `cast`, at 1920x1080, GUI scale 2, noon, on the stage area, with no team (linen):
+    - `p4-cast-render`: the harness spawns the six troop characters as scene actors, each with its `cast` op, beside an unassigned `sentinel`. Each draws `CharacterSkins.skin` of its id, the King's model is `character/king`, and the plain sentinel draws `sentinel_s1`. In camp the Archivist draws `pell_s1` and no clothing layer. Screenshots `p4-cast-<id>` for the seven (4 blocks, yaw 30) and `p4-cast-lineup`.
+    - `p4-cast-portraits`: after `CharacterSkins.portrait("maud",w)` and `("tomas",w)`, `ArmyCards.portrait(sentinel,1)` still draws `sentinel_s1`, and both portraits have ids at or below -200000 that no world entity holds.
+    - `p4-cast-edric`: the King posed `helm_off` hides `hollow_helm` and every other `helm` part, keeps his clip, and draws his face. Screenshot `p4-cast-edric`, framed as `p4-cast-king`.
+    - `p4-cast-scene`: `test_cast` sends one `cast` op for each actor before its first card. Maud's and the King's card portraits draw their own skins, and after `pose king helm_off` the King's portrait records `helm_off`. When the scene closes, `CharacterSkins.of` is null for every actor and portrait. Screenshots `p4-cast-card-maud` and `p4-cast-card-edric`.
+    - `p4-cast-clear`: a disconnect empties `CharacterSkins`.
+- [ ] **Step 3: Run both; expect FAIL** (`build_skins.py` knows no characters; `CharacterSkins` is not defined).
+- [ ] **Step 4: Implement** the `build_skins.py` rules, `CharacterSkins`, the loader, renderer and feature changes, the two mixins, the `cast` op and the card portraits. Run `python test-tools/standalone/test_build_skins.py`; expect `OK`.
+- [ ] **Step 5: Draw the seven** (pixel-art skill), each over its template, at the detail Kort set for the War Table: Maud, Tomas, Wren, Dunmar, Ashka, the King (with `hollow_helm`, and Edric's face under it) and Pell.
+  - Run `python tools/build_skins.py`, then `--verify`.
+  - Add the two preflight rules. Run preflight; expect `Preflight clean`.
+- [ ] **Step 6: Run suite `cast`; expect the five ids and `pass p4-cast-suite`.** Then run suite `scenes` and Phase 2's `spike,gilded-art,graveborn`; every id passes as before.
+- [ ] **Step 7: The contact sheet and the grades.** Build sheet `cast` 4x3 from the eleven `p4-cast-*` screenshots with Phase 3's `sheet` function (frames 480x270).
+  - The Sonnet 5.5 max tester states in one sentence what each screenshot shows, against the story spec's cast lines, and grades each against `work/ui-concepts/GRADING-RUBRIC.md`, adapted to models as Phase 2 Task 5 grades its troops.
+  - The lookalike check: Maud against Tomas by face, and each companion against a plain troop of the same type by face. Each companion still reads as their House's troop.
+  - The grades go in `docs/PHASE-4-GATES.md` under "Named cast". Below 9 is a fix round on Step 5.
+- [ ] **Step 8: Commit.**
+```bash
+git add art/characters art/parts/hollow_helm.json tools/build_skins.py tools/preflight.py test-tools/standalone/test_build_skins.py src/main/resources/assets/gravesandglory/textures/entity/troop/character src/main/resources/assets/gravesandglory/models/troop src/main/java/gg/gravesandglory/{CharacterSkins,TroopModelLoader,TroopRenderer,TroopFeatures,ScenePlayer,DialogCard,GravesAndGloryClient}.java src/main/java/gg/gravesandglory/mixin/{VillagerSkinMixin,VillagerClothingMixin}.java src/main/resources/gravesandglory.mixins.json test-tools/resources/data/gravesandglory/scenes/test/test_cast.scene test-tools/java/gg/gravesandglory/Phase4Checks.java docs/PHASE-4-GATES.md
+git commit -m "Phase 4: the named cast's own faces and skins on their troops' rigs"
+```
+
+**Assumptions:** Pell is drawn on the camp's librarian villager, since he has no troop. Character skins ignore stage and Veteran. The King's helm is a character part, so the Hollow King troop keeps the unit identity's look in every other battle.
+
+---
+
+### Task 20: Sets for `c1_fall`, the five panels of the Fall
 
 **Executor:** Opus 5.5 max. The tester is Sonnet 5.5 max.
 
-Tasks 19 to 23 are content work: they build sets in the world under Kort's footage ruling. They need Phase 2's own models for every troop on a set (Phase 2 Tasks 5 to 10, the unit identity pass the story spec's order of work puts first). A troop still drawn by its vanilla renderer fails the grade.
+Tasks 20 to 24 are content work: they build sets in the world under Kort's footage ruling. They need Phase 2's own models for every troop on a set (Phase 2 Tasks 5 to 10, the unit identity pass the story spec's order of work puts first) and Task 19's own faces and skins for every named character. A troop still drawn by its vanilla renderer, or a named character in its troop's skin, fails the grade.
 
-**The set recipe** (Tasks 19 to 23 follow it for each set):
+**The set recipe** (Tasks 20 to 24 follow it for each set):
 1. **Author the piece.**
    - Write the piece as a Phase 3 studio script: `test-tools/resources/data/gravesandglory_studio/functions/story/<set>.mcfunction`, with the size header and one command a line.
    - Export it with `GRAVES_PHASE3_CHECKS=studio GRAVES_STUDIO_MODE=export GRAVES_STUDIO_PIECES=story/<set>` and copy it to `src/main/resources/data/gravesandglory/structures/story/<set>.nbt`.
    - Add its `pieces` row (size equal to the export) and its `storySets` row.
    - A panel piece carries its own ground and backdrop out to the edge of its camera's view.
+   - Where the staging run (2026-10-19) covers a set, start from its shot file in `work/ui-concepts/storybook/stills/sets/`. Each replays its frame to within 1.5/255 in test-tools `StoryStills` (suite `storystills` under `GRAVES_PHASE1_CHECKS`). Its `/fill` and `/setblock` lines go into the studio script, its `/summon` lines become `actor` lines on the troops' own models, and its camera line becomes the set's camera. A new set may be tried as a StoryStills shot before it is exported.
+   - `STAGING.md`, beside the shots, holds the lessons every set follows: light, seats, the moon, the Hollow's standard and fog.
 2. **Stage the scene.** Add the lines to the scene file before, between and after its cards: `map` or `panel`, `time`, `weather`, `fog`, `actor`, `prop`, `pose`, `walk`, `camera`, `structure`, `sound`, `particles`, `wait` and `fade`. The brief is the copy's place line and staging note for the scene.
    - Times: day 6000, dusk 12500, night 18000, dawn 23300.
    - No card, caption or item text changes.
@@ -1336,11 +1447,11 @@ Tasks 19 to 23 are content work: they build sets in the world under Kort's foota
 - Modify: `scenes/c1/c1_fall.scene`, `sheets/design.json` (five `pieces` rows, five `panel` rows), `Phase4Checks.java` (the per-scene ids, this task only)
 
 **Interfaces:**
-- Consumes: Task 18 (`panel`, `StageArea`, `story-capture`, `--thumbs`); Task 17 (actors, props, poses, sky, fog); Phase 3's `StructureStudio`; Phase 2's `TroopAnimator` poses, through the scene's `pose` lines.
-- Produces, in suite `scenes`, `p4-scene-<id>` for each id in `GRAVES_P4_SCENES` (default none; Task 27 lists all twenty). Each plays the scene headless with typing hurried and checks:
+- Consumes: Task 18 (`panel`, `StageArea`, `story-capture`, `--thumbs`); Task 17 (actors, props, poses, sky, fog); Task 19 (the `cast` op); the staging run's `StoryStills` and shots; Phase 3's `StructureStudio`; Phase 2's `TroopAnimator` poses, through the scene's `pose` lines.
+- Produces, in suite `scenes`, `p4-scene-<id>` for each id in `GRAVES_P4_SCENES` (default none; Task 28 lists all twenty). Each plays the scene headless with typing hurried and checks:
   - each card draws its text and label inside its rect;
   - each camera op reaches its end point;
-  - each actor and prop stands at its point, and each pose is recorded;
+  - each actor and prop stands at its point, each pose is recorded, and each named actor has its `cast` op;
   - each `structure` is placed during the scene and restored after;
   - each `panel` places its set and reaches its camera point;
   - a stage scene has `map`, `time` and at least one `camera`, and a panel scene has a `panel` before its first caption.
@@ -1351,6 +1462,7 @@ Tasks 19 to 23 are content work: they build sets in the world under Kort's foota
 1. `c1_fall_1`, a river in fog: fog with colour, and the Tide coming up the river in it.
 2. `c1_fall_2`, a table with the pact: the pact as a prop, with the seal set to it.
 3. `c1_fall_3`, the highest mound under the moon: a small figure climbing it against the sky, holding something in both hands. It is small because it is far.
+   It starts from `fall-03-mound-night.cmd`. The moon is a set element or the vanilla moon, which `STAGING.md` (shot 1) found square under the shipped shader options.
 4. `c1_fall_4`, the mounds against the sea: the kings and their hosts standing up out of the mounds, and the Tide breaking.
 5. `c1_fall_5`, the dead king and the lieutenant: a lieutenant lifting a crown prop from a dead king's head.
 
@@ -1368,7 +1480,7 @@ git commit -m "Phase 4: the Fall's five panel sets, staged and graded"
 
 ---
 
-### Task 20: Sets for `c1_crown`, the two panels of the Highest Mound
+### Task 21: Sets for `c1_crown`, the two panels of the Highest Mound
 
 **Executor:** Opus 5.5 max. The tester is Sonnet 5.5 max.
 
@@ -1377,7 +1489,7 @@ git commit -m "Phase 4: the Fall's five panel sets, staged and graded"
 - Modify: `scenes/c1/c1_crown.scene`, `sheets/design.json` (two `pieces` rows, two `panel` rows)
 
 **Interfaces:**
-- Consumes: the set recipe and `p4-scene-<id>` (Task 19); Task 4's `kingsfield/mounds`. A script may place it with the vanilla `place template gravesandglory:kingsfield/mounds` line, so the panels' mounds match the map's.
+- Consumes: the set recipe and `p4-scene-<id>` (Task 20); Task 4's `kingsfield/mounds`. A script may place it with the vanilla `place template gravesandglory:kingsfield/mounds` line, so the panels' mounds match the map's.
 
 **The two panels** (the copy's `c1_crown` note):
 1. `c1_crown_1`, dawn on the first king's mound, the highest: Wren (`companion:wren`) small on its top, holding a crown prop in both hands in the `raise` pose, the way she once held a horn.
@@ -1395,7 +1507,7 @@ git commit -m "Phase 4: the Highest Mound's two panel sets, staged and graded"
 
 ---
 
-### Task 21: Sets for Rivergate's four stage scenes
+### Task 22: Sets for Rivergate's four stage scenes
 
 **Executor:** Opus 5.5 max. The tester is Sonnet 5.5 max.
 
@@ -1405,17 +1517,19 @@ git commit -m "Phase 4: the Highest Mound's two panel sets, staged and graded"
 - Modify: `scenes/c1/{c1_b1_before,c1_b1_after,c1_b4_before,c1_b4_after}.scene`, `sheets/design.json` (`pieces` rows and `dressing` rows on map 0)
 
 **Interfaces:**
-- Consumes: the set recipe and `p4-scene-<id>` (Task 19); Task 17's actors (`companion:`, `commander`, `team`), props, poses, `structure` and the hand-offs; Task 7's Rivergate stands (Mill Hamlet at (-39,-145)) for the mill.
+- Consumes: the set recipe and `p4-scene-<id>` (Task 20); Task 17's actors (`companion:`, `commander`, `team`), props, poses, `structure` and the hand-offs; Task 7's Rivergate stands (Mill Hamlet at (-39,-145)) for the mill.
 
 **The four scenes** (map 0; each brief is the copy's place line and staging note):
 - `c1_b1_before`, day:
   - Maud and the commander on the south bank;
   - the turncoats' colours on the three crossings, as `knight` actors on `team 1`, whose pennants carry the colour.
   - It hands to `battle_1`, and its last frame is mockup 05's held frame.
+  - It starts from two staging shots: its last card frames `plate-order-crossings.cmd` (its plate), and the hold after it frames `training-field-day.cmd` (mockup 05, the centre third clear under the march card).
 - `c1_b1_after`, dusk:
   - the fire on the north bank, with Maud seated, counting, and the company eating;
   - sentries and lanterns on the crossing;
   - the pact-copy prop by the fire. Maud picks it up: a second `prop` line with the same id moves it to her hand.
+  - It starts from `north-crossing-dusk.cmd` (mockup 04): Maud seated on the log, helm off, in her own face and skin.
 - `c1_b4_before`: heavy coloured fog on the water, the mill wheel standing in it, and grain barges untouched at the bank. It hands to `battle_4`.
 - `c1_b4_after`:
   - card 1 at the fire by the mill wheel;
@@ -1436,7 +1550,7 @@ git commit -m "Phase 4: Rivergate's stage sets (battles 1 and 4), staged and gra
 
 ---
 
-### Task 22: Sets for Hollowwood's and Ironhold's four stage scenes
+### Task 23: Sets for Hollowwood's and Ironhold's four stage scenes
 
 **Executor:** Opus 5.5 max. The tester is Sonnet 5.5 max.
 
@@ -1447,7 +1561,7 @@ git commit -m "Phase 4: Rivergate's stage sets (battles 1 and 4), staged and gra
 
 **Interfaces:**
 - Consumes:
-  - the set recipe and `p4-scene-<id>` (Task 19);
+  - the set recipe and `p4-scene-<id>` (Task 20);
   - Task 17's `c1_b3_gate` row;
   - Hollowwood's shrine and chapel landmarks (`hw-moon-shrine` (76,127), `hw-chapel` (70,100));
   - Task 5's Siege gate at (-37,64,0);
@@ -1483,7 +1597,7 @@ git commit -m "Phase 4: Hollowwood's and Ironhold's stage sets (battles 2 and 3)
 
 ---
 
-### Task 23: Sets for Frostmarch's and Kingsfield's four stage scenes
+### Task 24: Sets for Frostmarch's and Kingsfield's four stage scenes
 
 **Executor:** Opus 5.5 max. The tester is Sonnet 5.5 max.
 
@@ -1494,11 +1608,11 @@ git commit -m "Phase 4: Hollowwood's and Ironhold's stage sets (battles 2 and 3)
 
 **Interfaces:**
 - Consumes:
-  - the set recipe and `p4-scene-<id>` (Task 19);
+  - the set recipe and `p4-scene-<id>` (Task 20);
   - Task 4's `kf-mounds` landmark, with the child's stone;
   - Task 16's portrait mirror of `helm_off`;
   - Task 17's `if` branches over `StoryState`;
-  - Phase 2's `gb_hollowking` model, whose `helm` parts hide in `helm_off`.
+  - Task 19's King, whose `hollow_helm` hides in `helm_off` and shows Edric's face.
 
 **The four scenes** (each brief is the copy's place line and staging note):
 - `c1_b5_before`, map 2, `weather snow`: snow falling, the lodge at the foot of the pass, and the treeline above it full of watchers (Wildmoot actors, `team 1`, still) who do not come down. It hands to `battle_5`.
@@ -1533,7 +1647,7 @@ git commit -m "Phase 4: Frostmarch's and Kingsfield's stage sets (battles 5 and 
 
 ---
 
-### Task 24: The storybook screen and the March plaque
+### Task 25: The storybook screen and the March plaque
 
 **Executor:** Opus 5.5 max.
 
@@ -1552,7 +1666,7 @@ git commit -m "Phase 4: Frostmarch's and Kingsfield's stage sets (battles 5 and 
   - Task 13: `StoryBook.state`/`next`/`currentPage`/`company`, `StoryNames.label`, and the `storyPages` and `speakers` rows.
   - Task 15: `story/` textures. Task 17: `MarchCard`. Task 18: the thumbnails.
   - The UI plan: `WarTable.plaque(int x,int width,String icon,String label,String key,int keyX,int badge,PressAction a)`, `Portrait.draw` and `UiTex`.
-  - Phase 2 Task 5: `ArmyCards.portrait(Spec.TroopsRow,int stage)` and `TroopModels.portraitTall`.
+  - Task 19: `CharacterSkins.portrait(String,World)` and `assign`. Phase 2 Task 5: `TroopModels.portraitTall`.
 - Produces:
   - `StorybookScreen(int page)`: `open()` shows the table with the book closed, and `opened` is set after `WIND_TICKS` or on Enter. Plus `static int page()`, `static Map<String,int[]> rects` (harness) and `static Map<String,StoryBook.State> drawnStates` (harness).
   - `{"op":"book"}`: the client opens `StorybookScreen` on the current page.
@@ -1573,7 +1687,7 @@ git commit -m "Phase 4: Frostmarch's and Kingsfield's stage sets (battles 5 and 
     - the running head, centred x 230, top 89. It reads "I: The Road North", the title line's ASCII form, in place of the mockup's middle dot (reported back);
     - the page title in `focal`, centred x 230, top 118;
     - the passage in `body`, at (70,154), 320 wide, under `cap-<letter>`;
-    - the company rows: at (66, 272+52i), 328x46, in join order, with nothing drawn for a companion not yet joined. Each row has `mini-46` with the live model in its 40 px window inset 3 (`Portrait.draw`, `ArmyCards.portrait(row,1)`), the label in `heading` at (52,5), and the want in `body` sepia at (52,25).
+    - the company rows: at (66, 272+52i), 328x46, in join order, with nothing drawn for a companion not yet joined. Each row has `mini-46` with the live model in its 40 px window inset 3 (`Portrait.draw` of `CharacterSkins.portrait(id,world)`, made when the book opens and cleared when it closes), the label in `heading` at (52,5), and the want in `body` sepia at (52,25).
     - A wounded companion: `mini-46-grey`, the portrait under `RenderSystem.setShaderColor(0.55f,0.55f,0.55f,1f)`, and `bandage` at (34,-2).
     - A resting companion: grey too, `moon` at (37,-3), and "Resting" at (100,7).
   - **The right leaf:**
@@ -1589,11 +1703,11 @@ git commit -m "Phase 4: Frostmarch's and Kingsfield's stage sets (battles 5 and 
 - **Acting.**
   - Clicking a READ, NEXT or OPEN plate, or pressing Enter on the NEXT one, sends `story:play:<id>`. A battle plate instead opens `MarchCard` over the book under `SWEEP_VEIL`, and its March sends `campaign:<id>`.
   - A SEALED plate sends nothing.
-  - When `c1_crown` is in `StoryState.pending`, opening the book plays it before the spread. The book's other trigger, the return to camp, is Task 26's.
+  - When `c1_crown` is in `StoryState.pending`, opening the book plays it before the spread. The book's other trigger, the return to camp, is Task 27's.
 - **The War Table home.**
   - "The March" is a rail plaque: `WarTable.plaque(784,112,"story/icon-book","The March",null,0,0,...)`. It opens the book.
   - The Campaign card's Change also opens the book.
-  - The camp guide blurb (`chapters.blurb`) is not placed. The copy says the spec is silent, so it is parked for Kort (Task 27).
+  - The camp guide blurb (`chapters.blurb`) is not drawn here: Kort ruled (2026-10-19) that Maud says it, one short card on the first camp arrival (Task 27).
 
 - [ ] **Step 1: Compile both source sets.**
 - [ ] **Step 2: Write suite `storybook`** at 1920x1080, GUI scale 2:
@@ -1629,7 +1743,7 @@ git commit -m "Phase 4: the storybook screen and the March plaque"
 
 ---
 
-### Task 25: Companions as units, protection and the fall
+### Task 26: Companions as units, protection and the fall
 
 **Executor:** Opus 5.5 max.
 
@@ -1651,6 +1765,7 @@ git commit -m "Phase 4: the storybook screen and the March plaque"
   - `Battle.spawn(Squad,Spec.TroopsRow,int slot,Vec3d)`.
   - Phase 2 Task 7: Graveborn's Rise Again rule, for Wren's one rise.
   - Phase 2 Task 5b: `TroopAnimator.setScenePose(int,String)`, for `fallen` and `kneel`.
+  - Task 19: `CharacterSkins.assign` and `portrait`.
   - `Unit.lastHitBy`.
 - Produces (server):
   - `Company.field(Battle b,Squad player,Spec.CampaignBattlesRow row)`: at round start in a campaign battle only, it spawns each companion of `StoryBook.company` who is not wounded or resting. Each spawns through `Battle.spawn` with its `speakers.troop`, in slots 20 to 23 by join order, at the player's deploy point.
@@ -1668,16 +1783,16 @@ git commit -m "Phase 4: the storybook screen and the March plaque"
     - `fell`: companions in fall order.
 
     Each fallen companion but Wren becomes `wounded` until the finish of `MarchMath.nextUnwon` (or `next` when none is unwon), and Wren after a second fall becomes `resting` the same way. Any wound whose battle just finished heals first.
-  - **The snapshot** gains `company`: `[{"id","entity","label","state","team"}]`, with `state` `standing`, `fallen`, `kneeling` or `resting`. Tomas appears in it with label `""`.
+  - **The snapshot** gains `company`: `[{"id","entity","label","state","team"}]`, with `state` `standing`, `fallen`, `kneeling` or `resting`. Tomas and the Hollow King (the `gb_hollowking` of `march-6`, id `king`) appear in it with label `""`.
 - Produces (client):
-  - `CompanyNames.of(int entityId)->Entry` (`id`, `label`, `state`, `team`), from each snapshot. On a change to `fallen`, `kneeling` or `resting` it calls `TroopAnimator.setScenePose(entity,"fallen"|"kneel"|"fallen")`. Back to `standing` (Wren's rise) it sets `stand`.
+  - `CompanyNames.of(int entityId)->Entry` (`id`, `label`, `state`, `team`), from each snapshot, which also calls `CharacterSkins.assign(entity,id)` for every entry, so the companions, Tomas and the King wear their own faces and skins in battle. On a change to `fallen`, `kneeling` or `resting` it calls `TroopAnimator.setScenePose(entity,"fallen"|"kneel"|"fallen")`. Back to `standing` (Wren's rise) it sets `stand`.
   - `CompanyLabelMixin` (`EntityRenderer.renderLabelIfPresent`): it draws a company entry's label over the head in its side colour (`DarkUi.teamColor`). The custom name stays the troop name, because `TroopModels.resolve` reads it.
-  - The banner page: inside `sheet-banner`, under the seats, "The company" (the approved label) in `heading` at (60,284), and up to four `mini-46` frames at (60+56i,304). Each frame holds the live model, greyed with `bandage` or `moon` as the book draws it.
+  - The banner page: inside `sheet-banner`, under the seats, "The company" (the approved label) in `heading` at (60,284), and up to four `mini-46` frames at (60+56i,304). Each frame holds `CharacterSkins.portrait(id,world)`, made when the page opens and cleared when it closes, greyed with `bandage` or `moon` as the book draws it.
 
 - [ ] **Step 1: Compile both source sets.**
 - [ ] **Step 2: Write suite `companions`:**
   - `p4-comp-field`: `march-4` with Maud, Wren and Dunmar in the company fields the player's 20 slots plus three company units in slots 20 to 22.
-    - `Houses` tiers equal those of the banner alone.
+    - `Houses` tiers equal those of the banner alone, and each company unit's `CharacterSkins.of` is its speaker id.
     - No reinforce wave respawns a company unit.
     - `skirmish:start` and `camp:practice` rounds field none.
   - `p4-comp-fall`: Maud driven to 0 HP stays at 1 HP in `fallen`.
@@ -1689,11 +1804,11 @@ git commit -m "Phase 4: the storybook screen and the March plaque"
     - Finishing `march-5`, won or lost, heals her.
     - Screenshot `p4-comp-banner-row`.
   - `p4-comp-wren`: Wren's first fall rises; her second leaves her `resting`, never `wounded`.
-  - `p4-comp-tomas`: in `march-6`, Tomas at 1 HP kneels, and no bot targets him for 200 ticks. The Hollow King killed by the player's banner sets `killed` true.
+  - `p4-comp-tomas`: in `march-6`, the snapshot's `company` holds `tomas` and `king` with label `""`, and both draw their own skins. Tomas at 1 HP kneels, and no bot targets him for 200 ticks. The Hollow King killed by the player's banner sets `killed` true.
   - `p4-comp-facts`: `last` after a fixture match (a fall, a rout, the bonus missed on a win, 9 losses of 20) holds those facts and `losses` 9. A fixture card holding `{losses}` then types `9`.
 - [ ] **Step 3: Run suite `companions`; expect FAIL** (no company units).
 - [ ] **Step 4: Implement** `Company`, the floor, the fall, the healing in `finish`, the snapshot array, `CompanyNames`, the mixin and the banner row.
-- [ ] **Step 5: Run suites `companions,march,save`, and Phase 2 `graveborn,gilded`.**
+- [ ] **Step 5: Run suites `companions,cast,march,save`, and Phase 2 `graveborn,gilded`.**
   - **Expect** every id, `pass p4-companions-suite`, and the Phase 2 ids as before. The Rise Again rule is unchanged for troops.
   - The tester states one sentence for each screenshot.
 - [ ] **Step 6: Commit.**
@@ -1704,12 +1819,13 @@ git commit -m "Phase 4: companions as protected campaign units; falls, wounds an
 
 ---
 
-### Task 26: The camp story: arrival lines, tents, the shrine, the Archivist and the Stone
+### Task 27: The camp story: arrival lines, the guide card, tents, the shrine, the Archivist and the Stone
 
 **Executor:** Sonnet 5.5 max.
 
 **Files:**
 - Create: `src/main/java/gg/gravesandglory/StoryCamp.java` (client)
+- Create: `src/main/resources/data/gravesandglory/scenes/c1/c1_guide.scene`, Maud's camp guide card (Kort, 2026-10-19)
 - Modify:
   - `Story.java`: `Line`, `line`, `dueArrival`, `story:camp`, `story:talk:<companion>`, the station lines in `atStation`, `recruited`, and two first-reading marks;
   - `StoryNames.java`: the state label; `Company.java`: `lastFielded`;
@@ -1717,16 +1833,17 @@ git commit -m "Phase 4: companions as protected campaign units; falls, wounds an
   - `CampScreen.java`: closing a campaign report sends `story:camp`;
   - `Campaign.java`: `finish` calls `Story.dueArrival`; the return after a campaign battle raises `shrineDue`; a Graveborn `roll` or `buy` calls `Story.recruited`;
   - `GravesAndGloryClient.java`: `StoryCamp` and its `UseEntityCallback`;
+  - `docs/copy/chapter-1.md`: the guide card's amendment; `tools/preflight.py` and `test-tools/standalone/StoryCheck.java`: `c1_guide` is the one scene file with no `storyPages` row, read by `story-copy`, `story-names` and `story-voice` with the rest;
   - `Phase4Checks.java`: suite `campstory`.
 
 **Interfaces:**
 - Consumes:
   - Task 13: `StoryLines.reaction`/`wounded`/`shrine`/`recruit`/`pell`/`choice`, `StoryBook.company`/`currentPage`, the `speakers` (`station`, `joins`, `namedAt`), `graveRoll` and `objects` rows.
   - Task 16: `Story.play`, `ScenePlayer` (substitutions, labels, voice), `SceneScreen`, the `card` op's `chits`, `story:choice:warm|plain`.
-  - Task 24: `CampaignClient.story()`. Task 25: `StoryState.last`, `wounded`, `resting`; `Company.field`.
+  - Task 25: `CampaignClient.story()`. Task 26: `StoryState.last`, `wounded`, `resting`; `Company.field`.
   - Phase 3: `CampWorld.station(BlockPos)`, `slot(Spec.CampPiecesRow,int)`, `yaw(int)`, `inCamp`, `Spot`; the `campPieces` rows whose station is `recruit:<house>` (the graveyard's is `recruit:graveborn`); the stations `contracts` (the Archivist) and `chapter` (the Founders' Stone).
   - Phase 2: `roll:<house>`, `buy:<troop>`, `Campaign.rollRng`.
-  - Phase 2 Task 5: `ArmyMobs.portrait(String,World)` and `ArmyMobs.stageName(Spec.TroopsRow,int)` (the name `TroopModels.resolve` reads, so each companion wears its own model). Phase 2 Task 5b: `TroopAnimator.setScenePose(int,String)`.
+  - Task 19: `CharacterSkins.portrait(String,World)` and `assign`, so each companion wears their own face and skin on their troop's model. Phase 2 Task 5b: `TroopAnimator.setScenePose(int,String)`.
 - Produces (server):
   - `record Story.Line(String speaker,String text,String voice,String choice)`:
     - `Line.of(Spec.StoryLinesRow)` (`choice` is the trigger of a `choice_<n>` row, else null);
@@ -1744,9 +1861,11 @@ git commit -m "Phase 4: companions as protected campaign units; falls, wounds an
   - `Story.dueArrival(UUID)`: `finish` calls it for a campaign battle, and the harness for fixtures.
   - `story:camp` with an arrival due plays, in order:
     1. up to three `StoryLines.reaction` lines over `last`, with `present` = `Company.lastFielded(uuid)` and `joinedAt` the `battle` cell of each speaker's `joins` row;
-    2. when `c1_crown` is pending: `c1_shrine_2` if unread, every due memory row in order, then `c1_crown`.
+    2. the camp guide card `c1_guide`, on the first arrival with `c1_third_name` read and `c1_guide` unread. It plays through `Story.play`, over the War Table as its report closes, and its first reading adds it to `StoryState.read`, so it never plays again;
+    3. when `c1_crown` is pending: `c1_shrine_2` if unread, every due memory row in order, then `c1_crown`.
 
     Without an arrival due it does nothing.
+  - **The guide card** (Kort, 2026-10-19: Maud says the camp guide blurb, one short card at the war table on the first camp arrival, never again). `c1_guide.scene` is a `card` scene of one Maud card. Its line is one of Maud's lines in the copy or a new one written there. Either way the copy gains a `c1_guide` section as an amendment dated 2026-10-19, giving the card its own voice id (the next free `c1_m<nn>`) under the copy's rules, and the scene file transcribes it. It waits for `c1_third_name` because Maud's first line is `c1_m01` there. `chapters.blurb` stays in its sheet as the copy maps it, and no screen draws it.
   - `story:talk:<companion>` (ignored while a scene runs) plays the first of:
     - the next `wounded` or `resting` line, while wounded or resting;
     - Ashka's open choice;
@@ -1761,8 +1880,8 @@ git commit -m "Phase 4: companions as protected campaign units; falls, wounds an
   - `Company.lastFielded(UUID)->List<String>`: the speakers that `Company.field` last fielded for that player.
 - Produces (client):
   - `StoryCamp`: while the player is in camp (`CampWorld.inCamp`) and `CampaignClient.story()` is known, it adds one client-only entity per companion of `StoryBook.company`:
-    - each is `ArmyMobs.portrait(row.entity(),world)` for the speaker's troop row, named `ArmyMobs.stageName(row,1)`, with NoAI and no gravity;
-    - each is added with `ClientWorld.addEntity` under ids from -100000 down, at `spot(speakers.station)`, facing `CampWorld.yaw(rotation)`;
+    - each is `CharacterSkins.portrait(speaker,world)`, the speaker's troop model in their own face and skin, with NoAI and no gravity;
+    - each is added with `ClientWorld.addEntity` under ids from -100000 down, at `spot(speakers.station)`, facing `CampWorld.yaw(rotation)`, and assigned again under that id (`CharacterSkins.assign`), since the mapping is keyed by entity id;
     - they are rebuilt on each profile update and removed on leaving camp. The server world holds none of them, so no other player sees them.
   - `static CampWorld.Spot spot(String station)` (pure): the `campPieces` row with that station. The spot is 2.5 blocks in front of `slot(row,5)` along the row's facing, with the feet at the row's `y`+1.
   - **The stretcher.** A wounded or resting companion lies at its spot in `fallen` (`TroopAnimator.setScenePose`) on a stretcher.
@@ -1771,15 +1890,20 @@ git commit -m "Phase 4: companions as protected campaign units; falls, wounds an
   - **The use.** `UseEntityCallback`: a use on one of these returns `ActionResult.CONSUME`, so no packet is sent, and sends `story:talk:<companion>`. `static String of(int entityId)` serves the harness.
 
 - [ ] **Step 1: Compile both source sets.**
-- [ ] **Step 2: Write suite `campstory`.** The harness sets `last`, `lastFielded` and the story state, then calls `dueArrival`.
+- [ ] **Step 2: Write suite `campstory`.** The harness sets `last`, `lastFielded` and the story state, then calls `dueArrival`. Every fixture but `p4-camp-guide`'s holds `c1_guide` in `read`.
   - `p4-camp-arrival`: `march-4` won with Dunmar and Wren fielded (Maud wounded), Wren fallen once, a rout and the bonus missed.
     - Closing the report plays `c1_w24`, `c1_d15` and `c1_d16` in that order, in one line scene: a fall, a rout and the bonus. Maud's line about Wren is skipped, since she was absent.
     - A second `story:camp` plays nothing.
     - With Maud, Dunmar and Wren fielded, Maud fallen, a rout and the bonus missed, it plays `c1_d14`, `c1_m54` and `c1_w26`, and never a fourth.
     - Screenshot `p4-camp-reaction`.
+  - `p4-camp-guide`:
+    - with `c1_third_name` read, the first arrival (closing `march-1`'s report) plays the reaction lines, then `c1_guide`, labelled `Maud`, and `c1_guide` joins `read`;
+    - the next arrival does not play it;
+    - with `c1_third_name` unread, an arrival does not play it, and the first arrival after it is read does;
+    - Screenshot `p4-camp-guide`.
   - `p4-camp-losses`: `march-1` won with the bonus kept and 9 losses of 20 plays `c1_m41`, typed as `9 lost on the river road, to Order blades. Count them. Then count them again.`, then `c1_m42`.
   - `p4-camp-wounded`:
-    - Maud wounded lies fallen on the stretcher at the Gilded tent. Three uses play `c1_m73`, `c1_m74` and `c1_m73`, each labelled `Maud`.
+    - Maud wounded lies fallen, in her own face and skin, on the stretcher at the Gilded tent. Three uses play `c1_m73`, `c1_m74` and `c1_m73`, each labelled `Maud`.
     - Wren resting plays `c1_w46`, then `c1_w47`.
     - Dunmar wounded before `c1_letter` is read is labelled `The gate-warden`.
     - Screenshot `p4-camp-stretcher`.
@@ -1810,19 +1934,19 @@ git commit -m "Phase 4: companions as protected campaign units; falls, wounds an
     A Graveborn roll from the War Table plays nothing, and so does one without Wren.
   - `p4-camp-company`: with all four in the company, each stands at `spot` on a solid block with two free blocks above. None exists in a battle, and the server world holds none of them. They go on leaving camp and return with the player. Screenshot `p4-camp-company`.
 - [ ] **Step 3: Run suite `campstory`; expect FAIL** (`story:camp` unknown).
-- [ ] **Step 4: Implement** `Line`, `line`, the label, the marks, `shrineDue`, the arrival, the talk, the station lines, `recruited`, `lastFielded` and `StoryCamp`.
+- [ ] **Step 4: Implement** `Line`, `line`, the label, the marks, `shrineDue`, the arrival, the talk, the station lines, `recruited`, `lastFielded` and `StoryCamp`. For the guide card, write the copy amendment first, then `c1_guide.scene` from it, then the preflight and StoryCheck exception; preflight prints `Preflight clean`.
 - [ ] **Step 5: Run suites `campstory,companions,scenes,storybook` and the StoryCheck line.**
   - **Expect** every id, `pass p4-campstory-suite`, the other suites as before, and `StoryCheck: 12 checks passed`.
   - The tester grades `p4-camp-stretcher`, `p4-camp-choice` and `p4-camp-company` against the rubric. Below 9 is a fix round.
 - [ ] **Step 6: Commit.**
 ```bash
-git add src/main/java/gg/gravesandglory/{StoryCamp,Story,StoryNames,Company,SceneScreen,DialogCard,CampScreen,Campaign,GravesAndGloryClient}.java test-tools/java/gg/gravesandglory/Phase4Checks.java
-git commit -m "Phase 4: the camp story: arrival lines, the stretcher, the shrine, the Archivist and the Stone"
+git add src/main/java/gg/gravesandglory/{StoryCamp,Story,StoryNames,Company,SceneScreen,DialogCard,CampScreen,Campaign,GravesAndGloryClient}.java src/main/resources/data/gravesandglory/scenes/c1/c1_guide.scene docs/copy/chapter-1.md tools/preflight.py test-tools/standalone/StoryCheck.java test-tools/java/gg/gravesandglory/Phase4Checks.java
+git commit -m "Phase 4: the camp story: arrival lines, the guide card, the stretcher, the shrine, the Archivist and the Stone"
 ```
 
 ---
 
-### Task 27: Final regression, contact sheets and Kort's gate
+### Task 28: Final regression, contact sheets and Kort's gate
 
 **Executor:** Sonnet 5.5 max.
 
@@ -1837,14 +1961,15 @@ git commit -m "Phase 4: the camp story: arrival lines, the stretcher, the shrine
   - Preflight prints `Preflight clean`. The four standalone lines of the Test runs pass, with `StoryCheck: 12 checks passed`, `story-names: clean`, `story-voice: <v> voiced, <u> unrecorded, <s> silent, clean` and `story-copy: <n> lines match`.
   - `python -m unittest tools/test_mode_gate.py tools/test_write_voice_sounds.py -v` prints `OK`.
   - `python tools/build_ui_art.py --verify` prints `26 of 26 thumbnails`.
+  - `python test-tools/standalone/test_build_skins.py` prints `OK`, and `python tools/build_skins.py --verify` exits 0.
   - `python tools/economy_model.py` passes as in Task 12.
 - [ ] **Step 2: Every Phase 4 suite,** each launch on a fresh root:
   - `modes,hud,world,siege,survival,banner,skirmish`;
-  - `march,save,report,companions,campstory`;
+  - `march,save,report,cast,companions,campstory`;
   - `scenes,storybook` with `GRAVES_P4_SCENES` set to the twenty scene ids of `storyPages` (every row whose kind is not `battle`);
   - `story-capture` with `GRAVES_P4_LOOK=reimagined` (as Task 18 runs it) and `GRAVES_P4_CAPTURE` set to the fourteen book and stage scene ids.
 
-  Expected: every `p4-*` id `pass`, the fifteen suite lines, the twenty `p4-scene-<id>`, and a `p4-set-<scene>-<n>-reimagined` frame for every panel and stage set.
+  Expected: every `p4-*` id `pass`, the sixteen suite lines, the twenty `p4-scene-<id>`, and a `p4-set-<scene>-<n>-reimagined` frame for every panel and stage set.
 - [ ] **Step 3: Earlier suites, each on a fresh root:**
   - Phase 3's `pipeline,studio,camp,houses,yard,landmarks,routes`, with `GRAVES_PHASE3_MAPS` unset;
   - Phase 2's final list;
@@ -1855,25 +1980,22 @@ git commit -m "Phase 4: the camp story: arrival lines, the stretcher, the shrine
 - [ ] **Step 4: Bot runs on the final build.** Task 9's three mode runs and Task 11's march run, as those tasks give them. Expected: three `pass` lines and six `pass` lines, appended to `PHASE-4-GATES.md` under "Final regression". A fail is tuned as those tasks say and the step rerun.
 - [ ] **Step 5: Release build, not uploaded.**
   - Run `"$G" build --offline -x test`, then `python tools/package.py`. Its leak check passes: no `Phase4Checks`, `ModeMathCheck`, `MarchMathCheck`, `StoryCheck` or `t_voice` in the jar. The zip stays in `dist/`.
-  - `J=$(ls build/libs/graves-and-glory-*.jar | grep -v -- -sources); unzip -l "$J" | grep -c "data/gravesandglory/scenes/c1/.*\.scene"` prints `20`.
-- [ ] **Step 6: Contact sheets** from the Step 2 screenshots, with Phase 3's `sheet` function (frames scaled to 480x270): `modes` 4x4 from `p4-hud-*`, `p4-siege-*`, `p4-surv-*`, `p4-banner-*` and `p4-skirmish-*`; `scenes` 5x4 from `p4-scene-*`; `sets` 5x4 from the `p4-set-*-reimagined` frames; `book` 4x3 from `p4-book-*` and `p4-card-*`; `camp` 4x3 from `p4-comp-*` and `p4-camp-*`. Expected five sheets.
-- [ ] **Step 7: Screenshot gate.** A Sonnet 5.5 max tester reviews the five sheets and every grade in `PHASE-4-GATES.md`.
+  - `J=$(ls build/libs/graves-and-glory-*.jar | grep -v -- -sources); unzip -l "$J" | grep -c "data/gravesandglory/scenes/c1/.*\.scene"` prints `21` (the twenty book scenes and `c1_guide`).
+- [ ] **Step 6: Contact sheets** from the Step 2 screenshots, with Phase 3's `sheet` function (frames scaled to 480x270): `modes` 4x4 from `p4-hud-*`, `p4-siege-*`, `p4-surv-*`, `p4-banner-*` and `p4-skirmish-*`; `scenes` 5x4 from `p4-scene-*`; `sets` 5x4 from the `p4-set-*-reimagined` frames; `book` 4x3 from `p4-book-*` and `p4-card-*`; `camp` 4x3 from `p4-comp-*` and `p4-camp-*`; `cast` 4x3 from `p4-cast-*`. Expected six sheets.
+- [ ] **Step 7: Screenshot gate.** A Sonnet 5.5 max tester reviews the six sheets and every grade in `PHASE-4-GATES.md`.
   - Every graded image stands at 9 or better, and each sheet gets one sentence on what it shows.
   - An image under 9 goes back to its task as a fix round before Step 8.
 - [ ] **Step 8: Write `docs/PHASE-4-PLAYTEST.md`** (one page).
   - **Setup:** this build, a fresh profile, scenes on, voice silent.
   - **The session:** Kort plays chapter 1 start to finish in one sitting, about 90 to 120 minutes (draft value): the book from page 1, all six battles, the camp between them and `c1_crown`.
-  - **Yes or no boxes:** each mode played once (Survival at the shrine, Siege at the gate, Banner at the river); a companion fell and was wounded; Wren's memory rows played; the Pact card granted the Legendary.
+  - **Yes or no boxes:** each mode played once (Survival at the shrine, Siege at the gate, Banner at the river); a companion fell and was wounded; Wren's memory rows played; Maud's guide card played on the first return to camp and never again; the Pact card granted the Legendary.
   - **The questions, which are the pass mark:**
     - what Maud, Wren, Dunmar and Ashka each wanted, and who the Hollow King was (story 11: a part he cannot answer is rewritten before the chapter ships);
     - whether he wants chapter 2 (Phase 4 spec 13).
-  - **Appendix:** the five sheets and every gate line.
+  - **Appendix:** the six sheets and every gate line.
 - [ ] **Step 9: Append to `docs/PARKED.md`:**
-  - "The camp guide blurb's placement (the copy's 40 words in `chapters.blurb`; neither spec places it) (Phase 4, for Kort)";
   - "Chapter 1 voice recording (story 7.9 and 12.4; who voices whom is Kort's call)";
-  - "A `swing` scene pose (story 7.3 lists it; Phase 2 Task 5b has none)";
-  - "A turning mill wheel for `c1_b4_after` (no command or piece moves it)";
-  - "Scene fog under shader packs (the override may not show)".
+  - "A turning mill wheel for `c1_b4_after` (no command or piece moves it)".
 - [ ] **Step 10: Update `docs/PROJECT-STATE.md`:** Phase 4 built and waiting on Kort's gate, with the test roots of Steps 2 and 3.
 - [ ] **Step 11: Commit.**
 ```bash
@@ -1891,43 +2013,46 @@ git commit -m "Phase 4: regression, contact sheets and Kort's gate"
   - section 4, the mode frame: Task 2, on Task 1's pure rules;
   - section 5, Siege: Tasks 4 and 5. Section 6, Survival: Task 6. Section 7, Banner: Task 7;
   - section 8, feed lines and the briefing card: Tasks 3 and 12. Section 9, Skirmish: Task 8;
-  - section 10, the six battles: Tasks 10 to 12. The march page becomes the book (Task 24), as the story spec rules;
+  - section 10, the six battles: Tasks 10 to 12. The march page becomes the book (Task 25), as the story spec rules;
   - section 11, data: each sheet lands with its first rows, in Tasks 2, 4 to 7, 10, 13 and 17;
-  - section 12, save state: Tasks 10, 11, 25 and 26;
-  - section 13, harness and gates: Tasks 2, 9, 11 and 27.
+  - section 12, save state: Tasks 10, 11, 26 and 27;
+  - section 13, harness and gates: Tasks 2, 9, 11 and 28.
 - **The story spec:**
-  - 7.1, the storybook: Tasks 15, 18 and 24;
+  - section 5, the cast: Task 19 gives the eight named characters their own faces and skins;
+  - 7.1, the storybook: Tasks 15, 18 and 25;
   - 7.2, the three kinds of scene: Tasks 16 (card), 17 (stage) and 18 (book);
-  - 7.3, scene files: Task 14, with six commands added for the footage ruling (reported);
-  - 7.4, dialog cards: Task 16, with mockup ruling 3's 60 px live portrait in place of 32 px pixel art (reported, since 7.4 is not yet rewritten);
-  - 7.5, companions: Task 25, and their reaction lines Task 26;
-  - 7.6, the shrine: Tasks 13 and 26. 7.7, the chits: Tasks 16 and 26. 7.8, protection: Task 25. 7.9, voice: Tasks 14 and 16;
-  - 7.10, where the lore lives: Task 4 (the Stone's letters), Task 16 (the item cards) and Task 26 (the Stone's reading, the Archivist, the shrine, the tents);
-  - section 11, the suites and checks: Tasks 13, 14, 16, 19 and 24 to 26;
-  - 12.3, the sets built in the world and graded from their frames: Tasks 18 to 23, on Phase 2's own troop models.
+  - 7.3, scene files: Task 14, with the six commands the footage ruling needs, which 7.3 now lists. Its new pose list gives `walk` (a command here) and omits `sword_up`, so the plan keeps Phase 2 Task 5b's eight;
+  - 7.4, dialog cards: Task 16, the live portrait in mockup ruling 3's 60 px window (7.4's frame is 32 texture px, 64 screen px at GUI scale 2), and Task 19 for the eight named characters' own faces and skins, the King's helm hidden by `helm_off`;
+  - 7.5, companions: Task 26, and their reaction lines Task 27;
+  - 7.6, the shrine: Tasks 13 and 27. 7.7, the chits: Tasks 16 and 27. 7.8, protection: Task 26. 7.9, voice: Tasks 14 and 16;
+  - 7.10, where the lore lives: Task 4 (the Stone's letters), Task 16 (the item cards) and Task 27 (the Stone's reading, the Archivist, the shrine, the tents);
+  - section 11, the suites and checks: Tasks 13, 14, 16, 19, 20 and 25 to 27;
+  - 12.3, the sets built in the world and graded from their frames: Tasks 18 and 20 to 24, on Phase 2's own troop models and Task 19's named cast, starting from the staging run's shots.
 - **Kort's rulings:**
-  - the footage ruling: Tasks 17 to 23 and the Art gate;
+  - the footage ruling: Tasks 17 to 24 and the Art gate;
   - the Pact's naming: the Global Constraints;
   - Tomas named on page 8: Task 13's `StoryNames`;
-  - the Phase 2 interface change: the merged-code constraints and every Interfaces block from Task 14 on.
-- **Parked by Task 27, not built here:** the blurb's placement, voice recording, a `swing` pose, a turning mill wheel, and fog under shader packs.
+  - the Phase 2 interface change: the merged-code constraints and every Interfaces block from Task 14 on;
+  - the rulings of 2026-10-19: the named cast (Task 19), the Crimson yard line shortened in the copy (Task 3), Back to the book on the march card (Task 17), Maud's camp guide card (Task 27), and the staging run's shots and lessons (Tasks 17, 18 and 20 to 24).
+- **Parked by Task 28, not built here:** voice recording and a turning mill wheel.
 
-**2. Step scan.** Every test step names its ids with the copy's voice ids and the sheets' values. Every code step names its file, its signature and the values the specs pin. Every run step names its command or suite list and the output that passes. The only code bodies are the two pure checks' assertion lists (Tasks 1 and 10). A string that does not fit goes back to the copy; no step writes copy.
+**2. Step scan.** Every test step names its ids with the copy's voice ids and the sheets' values. Every code step names its file, its signature and the values the specs pin. Every run step names its command or suite list and the output that passes. The only code bodies are the two pure checks' assertion lists (Tasks 1 and 10). A string that does not fit goes back to the copy. No step writes copy except the two amendments the rulings of 2026-10-19 assign: the Siege yard line (Task 3) and Maud's guide card (Task 27).
 
 **3. Type consistency.** These are the names used across tasks, checked against their defining task:
 - the modes: `ModeMath`, `BattleMode`, `Modes.registered`, `Battle.mode`/`fieldBase`/`fieldBarracks`, `Campaign.battleMode`, `CampaignClient.battleMode`/`howTo`/`lastChosen`/`story()`;
 - the march: `FeedLines.bannerLying`/`bonus`/`fallen`, `Structures.placeSaving`/`restore`, `Walkability.reach`, `MarchMath.cleared`/`lockedBy`/`nextUnwon`/`ride`/`teamSizes`/`settle`, `Squad.fixedBanner`, `Bonus`;
 - the story state: `StoryState` and `Facts`; `StoryBook.State`/`next`/`state`/`currentPage`/`company`; `StoryLines.reaction`/`wounded`/`shrine`/`recruit`/`pell`/`choice`; `StoryNames.label` (both forms);
 - the scenes: `SceneScript.Op`/`Scene`/`parse`; `Story.command`/`atStation`/`play`/`running`/`cond`/`abort`/`recover`/`line`/`Line`/`dueArrival`/`recruited`; `SceneScreen.active`/`hideChrome`; `DialogCard.CPT`/`wrap`; `StoryVoice.play`; `OggLength.seconds`; `SceneMath`; `StageArea`; `MarchCard`;
+- the cast: `CharacterSkins.assign`/`of`/`skin`/`outer`/`glow`/`model`/`portrait`/`ids`, and the `cast` op;
 - the book and the company: `StorybookScreen`; `Company.field`/`lastFielded`; `CompanyNames.of`; `StoryCamp.spot`/`of`;
 - the sheets `modes`, `modeSites`, `modeRules`, `waves`, `waveGroups`, `campaignBattles`, `bonusObjectives`, `chapters`, `storyPages`, `speakers`, `storyLines`, `graveRoll`, `objects` and `storySets`, and the channel `scene_v1`;
-- Phase 2: `ArmyMobs.create`/`portrait`/`stageName`, `ArmyCards.portrait`, `TroopModels.resolve`/`portraitTall`, `TroopAnimator.setScenePose(int,String)` with its eight poses, `Battle.joinSide`, `Battle.shield`.
+- Phase 2: `ArmyMobs.create`/`portrait`/`stageName`, `ArmyCards.portrait`, `TroopModels.resolve`/`portraitTall`, `TroopAnimator.setScenePose(int,String)` with its eight poses, `Battle.joinSide`, `Battle.shield`, and the pieces Task 19 extends: `build_skins.py`, `TroopModelLoader`, `TroopRenderer`, `TroopFeatures`.
 
 **4. Review Focus.** Each of the five lines has its test in the task that owns the code:
 - 1: `p4-mode-teardown-mid` and `p4-siege-crash` (Task 5), and `p4-banner-teardown-head` (Task 7);
 - 2: `p4-scene-interrupt` (Task 17);
 - 3: `p4-feed-fit` (Task 3) and `p4-scenes-fit` (Task 16);
-- 4: `p4-migrate-v2` (Task 10), `p4-book-catchup` (Task 13) and `p4-book-migrated` (Task 24);
+- 4: `p4-migrate-v2` (Task 10), `p4-book-catchup` (Task 13) and `p4-book-migrated` (Task 25);
 - 5: `p4-scene-keys` (Task 16).
 
-**5. Proportion.** The plan runs to about 1.8 times the two specs together, for 27 tasks. It does not restate the copy: it names voice ids and quotes a line only where an assertion needs the exact text. Its code blocks are run commands, commits and the two assertion lists.
+**5. Proportion.** The plan runs to about twice the two specs together, for 28 tasks. It does not restate the copy: it names voice ids and quotes a line only where an assertion needs the exact text. Its code blocks are run commands, commits and the two assertion lists.
