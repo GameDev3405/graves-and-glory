@@ -142,7 +142,7 @@ The twist is told one piece per chapter, never as a lecture, and chapter 1 plant
 
 | Chapter | What lands | Who says it |
 |---|---|---|
-| 1 | The echo, noticed and dropped. *"Hollow. Like him."* *"Like the company. Eat."* | Wren, Maud, at the first fire |
+| 1 | The echo, noticed and dropped. *"Hollow. Like him."* *"Like the company. Eat."* | Wren, Maud, at the first fire Wren shares (`c1_b2_after`, page 3; she joins after battle 2) |
 | 2 | The roll of captains in the archive, every name signed *of the Hollow*. Danta's name is the paper's, not his blood's; he does not know who he was before the writ | Pell, then Danta alone with the page |
 | 3 | The mounds have a word for the captain who wears the crown for the company, and Edric was not the first | Ashka, who learned it from the clan's dead |
 | 4 | The cost of the reforged crown: whoever carries it to the field as the Hollow becomes its king | Dunmar, at the forge |
@@ -328,13 +328,14 @@ Commands (the builder adds nothing not listed; new commands come back through th
 - `map <n>` or `camp`; `time`, `weather`, `fog`.
 - `actor <id> <unit or companion:<name>> at x y z facing <yaw> [pose <name>]`; `walk <actor> to x y z over <ticks>`; `pose <actor> <name>` (poses: the title demos' arm poses plus `kneel`, `fallen`, `stand`, `helm_off`; **[call]** six poses, no custom animation in chapter 1).
 - `camera x y z to x y z over <ticks>`, `camera hold x y z look <actor>`, `camera player`.
+- `card item:<id> "<text>"`: an object's text on the vellum card, no portrait, no voice (the scraped writ, the roll page, the shroud). **[call, from the copy]**
 - `card <speaker> "<text>" [voice <id>]`: at most three wrapped lines. Text may hold `{count}` (troops standing after the match), `{losses}` (troops lost in the match) and `{bonus}` (the match's bonus word); a voiced line never carries a substitution. The player is named (Danta), so lines that say his name are plain text and can be voiced.
 - `panel <png> [pan dx dy over <ticks>] [layers n]` (book only); `caption "<text>"`.
 - `structure <id>`: places a structure piece for a stage scene (page 4's before-scene shows `ironhold/gate_intact` standing, as Siege will).
 - `sound <id>`, `particles <type> at x y z count n`, `wait <ticks>`, `fade in|out <ticks>`, `end`.
 - `if companion:<name> standing|wounded|resting` and `if match killed:<unit> | bonus | won` ... `else` ... `endif`: the only branches.
 
-Lines that are not scenes (reaction, wounded, shrine, Pell, the grave roll) are table-shaped and live in sheets, not scene files: `storyLines` (companion, trigger, priority, text, voice) and `graveRoll`. The `story-voice` check scans both the scene files and the sheets.
+Lines that are not scenes (reaction, wounded, shrine, Pell, the grave roll) are table-shaped and live in sheets, not scene files: `storyLines` (companion, trigger, priority, text, voice; choice rows add `warm` and `plain` for the chits) and `graveRoll` (troopType, name, line, voice). `storyPages` carries, on a page's first row, `pageTitle` and `passage` (the leaf text) and a `want` per companion for the left leaf **[call, from the copy]**. Object text (the writ, the Stone, the shroud) lives in an `objects` sheet (id, text). The `story-voice` check scans both the scene files and the sheets.
 
 ### 7.4 Dialog cards
 
@@ -350,9 +351,9 @@ The UI kit's vellum card with a 32x32 pixel portrait at the left, the speaker's 
 
 ### 7.6 The shrine and Wren's memory
 
-Wren's shrine line advances once per visit after each battle, six in chapter 1, and does not depend on anything else, so a player who never loses still hears her remember. The six, in order: she was good at climbing; the fog had a sound; someone gave her something to carry; it was heavy and it was not a bow; she was higher than everyone; she was cold before she was anything else. Page 8's last scene is the seventh.
+Wren's memory advances once per return to camp after a chapter battle, win or lose, six in chapter 1 (the first is `c1_shrine_2`), and does not depend on anything else, so a player who never loses still hears all six before `c1_crown`. **[call]** The six, in order: she was good at climbing; the fog had a sound; someone gave her something to carry; it was heavy and it was not a bow; she was higher than everyone; she was cold before she was anything else. Page 8's last scene is the seventh.
 
-When the player recruits a Graveborn troop at the shrine, Wren says a line from a sheet (`graveRoll`: troop type, name, line): she "knew" the kind of dead that troop is, and gives it a name from the roll. Names are flavour in a sheet, not saved per troop; the game's troops stay types with stars, as the Houses spec says. Pell's roll of the dead is the same sheet read in the archive.
+When the player recruits a Graveborn troop at the shrine, Wren says a line from a sheet (`graveRoll`: troop type, name, line): she "knew" the kind of dead that troop is, and gives it a byname from the roll (the ferryman, the bridge guard; the familial rule keeps proper names to the company). Bynames are flavour in a sheet, not saved per troop; the game's troops stay types with stars, as the Houses spec says. Pell's roll of the dead is the same sheet read in the archive.
 
 ### 7.7 Love, and what the player can do about it
 
@@ -380,6 +381,8 @@ Every `card` line has a `voice` id. A voice line is an `.ogg` under `assets/grav
 
 ## 8. Writing the copy
 
+Rulings from the copy, 2026-10-18 late: Tomas is "her brother" through chapter 1 and Maud says his name in chapter 2 (page 8 already spends its name on Edric); the bonus-missed reaction line plays only on a win without the bonus; plant 3 (Ashka as the heir) sits in her second choice card, a tent card the player may never open, which is acceptable because plants 1 and 2 carry the twist; `c1_king_after` stages Tomas's capture without a card; page 4's leaf is "The Gate" and page 8's "The Field of Kings"; battle 6's feed lines are "The King's host is broken." and "The King's host holds." The copy is at `docs/copy/chapter-1.md`.
+
 Volume for chapter 1, sized so Kort can read it in one sitting:
 
 | Piece | Count | Words each |
@@ -396,7 +399,7 @@ Volume for chapter 1, sized so Kort can read it in one sitting:
 
 About 200 lines, roughly 2,800 words. Every line carries a speaker, a scene id, a voice id and a one-line direction for the voice.
 
-Voice directions: Maud, level and low, never raises it; Wren, light, a little late on every line, as if listening; Dunmar, slow, every word placed; Ashka, quick and warm; Pell, precise, old; the Hollow King, kind, which is the horror of it; Edric alive (one line), young and certain; Tomas, certain.
+Voice directions: the Record (the book's captions), plain and unhurried, a reader not a player; a raider of the Tide (`c1_b4_after`), drowned and failing, sure of the Admiral; Maud, level and low, never raises it; Wren, light, a little late on every line, as if listening; Dunmar, slow, every word placed; Ashka, quick and warm; Pell, precise, old; the Hollow King, kind, which is the horror of it; Edric alive (one line), young and certain; Tomas, certain.
 
 ## 9. Chapters 2 to 5: the plan
 
