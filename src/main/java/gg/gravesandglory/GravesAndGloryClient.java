@@ -155,7 +155,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static void invalidateMap(MinecraftClient c){if(mapTexture!=null){c.getTextureManager().destroyTexture(mapTexture);mapTexture=null;}preparingMap=false;}
     static void prepareMap(MinecraftClient c){
         if(preparingMap)return;preparingMap=true;final int generation=CampaignMaps.selected;
-        CompletableFuture.supplyAsync(()->{NativeImage image=new NativeImage(281,201,false);for(int x=0;x<281;x++)for(int z=0;z<201;z++){int col=Arena.mapColor((int)((x-140)*2.5),(int)((z-100)*2.5));image.setColor(x,z,(col&~0xff00ff)|((col>>16)&255)|((col&255)<<16));}return image;}).thenAccept(image->c.execute(()->{if(generation!=CampaignMaps.selected){image.close();preparingMap=false;return;}mapTexture=c.getTextureManager().registerDynamicTexture("gravesandglory_map",new NativeImageBackedTexture(image));}));
+        // Arena.mapColor gives ARGB and NativeImage takes ABGR: the bit mask 0xff00ff00 keeps alpha and green, and red and blue swap.
+        CompletableFuture.supplyAsync(()->{NativeImage image=new NativeImage(281,201,false);for(int x=0;x<281;x++)for(int z=0;z<201;z++){int col=Arena.mapColor((int)((x-140)*2.5),(int)((z-100)*2.5));image.setColor(x,z,(col&0xff00ff00)|((col>>16)&255)|((col&255)<<16));}return image;}).thenAccept(image->c.execute(()->{if(generation!=CampaignMaps.selected){image.close();preparingMap=false;return;}mapTexture=c.getTextureManager().registerDynamicTexture("gravesandglory_map",new NativeImageBackedTexture(image));}));
     }
     // The point arrays refill with the next state packet after a map switch, so until then they can be shorter or longer than Spec.POINTS.
     static boolean contestedAt(int i){var a=contested;return i>=0&&i<a.length&&a[i];}

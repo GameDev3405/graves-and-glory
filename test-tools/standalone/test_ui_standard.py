@@ -2,7 +2,7 @@
 - no hint hardcodes a default key: no string literal matches a banned pattern below, unless the match sits inside a {key:...} token;
 - the old team colours and factionColor( live only in DarkUi.java;
 - the HUD and screen files listed below draw no ARGB literal of their own (colours live in DarkUi, the feed inks in FeedLines),
-  except the map terrain fills and the FantasyButton class body;
+  except the map terrain fills, the FantasyButton class body and a bit mask (a literal right after &, as in col&0xff00ff00);
 - every teamColor( outside DarkUi.java has a teamMark( within three lines, so colour never carries a meaning alone.
 Prints 'test_ui_standard: clean', or one 'file: snippet' line per finding and exits 1."""
 import pathlib
@@ -105,7 +105,8 @@ def check_file(path):
     if name in NO_ARGB or name.startswith('WarTable'):
         button = body_span(code, 'FantasyButton')
         for m in ARGB.finditer(code):
-            if m.group().lower() in ARGB_ALLOWED or button and button[0] <= m.start() < button[1]:
+            mask = code[max(0, m.start() - 16):m.start()].rstrip().endswith('&')  # keeps channels of a colour: not a colour itself
+            if mask or m.group().lower() in ARGB_ALLOWED or button and button[0] <= m.start() < button[1]:
                 continue
             found.append(f'{path.name}:{line_of(text, m.start())}: {m.group()}')
     if name != 'DarkUi':
