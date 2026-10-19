@@ -28,6 +28,8 @@ final class MapDressing {
     int h(int x,int z){return Arena.height(x,z);}
     void put(int x,int y,int z,Block b){Arena.put(w,x,y,z,b);}
     void set(int x,int y,int z,BlockState s){var pos=new BlockPos(x,y,z);w.setBlockState(pos,s,Arena.flags());Arena.note(pos,s.getBlock());}
+    /** A lantern that hangs from the block above it (a slab, a plank, a chain): every lantern of the arena hangs from or stands on a block. */
+    void hang(int x,int y,int z,Block lantern){set(x,y,z,lantern.getDefaultState().with(LanternBlock.HANGING,true));}
     /** A muster lane: the strip in front of each spawn where squads appear (GravesAndGlory spawn layout). */
     static boolean muster(int x,int z){for(int t=0;t<2;t++){var f=Spec.FACTIONS[t];int u=(x-f.spawnX())*(t==0?1:-1);if(u>=-2&&u<=24&&Math.abs(z-f.spawnZ())<=40)return true;}return false;}
     static boolean onStructure(int x,int z,int margin){for(var s:Spec.STRUCTURES)if(Math.abs(x-s.x())<=s.width()/2+margin&&Math.abs(z-s.z())<=s.depth()/2+margin)return true;return false;}
@@ -106,7 +108,7 @@ final class MapDressing {
         for(int dx:new int[]{-3,3})for(int dz:new int[]{-3,3})for(int a=1;a<=3;a++)put(cx+dx,y+a,cz+dz,Blocks.DARK_OAK_FENCE);
         for(int dx=-3;dx<=3;dx++)for(int dz=-3;dz<=3;dz++)put(cx+dx,y+4,cz+dz,Blocks.DARK_OAK_SLAB);
         put(cx,y+1,cz,Blocks.ANVIL);put(cx+2*fwd,y+1,cz-2,Blocks.BLAST_FURNACE);put(cx+2*fwd,y+2,cz-2,Blocks.CAMPFIRE);put(cx-2*fwd,y+1,cz-2,Blocks.LAVA_CAULDRON);
-        put(cx-2*fwd,y+1,cz+2,Blocks.GRINDSTONE);put(cx+2*fwd,y+1,cz+2,Blocks.SMITHING_TABLE);put(cx,y+3,cz,lamp==Blocks.SOUL_LANTERN?Blocks.SOUL_LANTERN:Blocks.LANTERN);
+        put(cx-2*fwd,y+1,cz+2,Blocks.GRINDSTONE);put(cx+2*fwd,y+1,cz+2,Blocks.SMITHING_TABLE);hang(cx,y+3,cz,lamp);
     }
 
     // ---- objectives: the places armies hold ------------------------------
@@ -164,7 +166,7 @@ final class MapDressing {
         for(var s:Spec.STRUCTURES){if(!s.kind().equals("bridge"))continue;boolean ford=s.palette().equals("ford");
             for(int end:new int[]{-1,1})for(int side:new int[]{-1,1}){int x=s.x()+end*(s.width()/2+1),z=s.z()+side*(s.depth()/2+1);for(int k=0;k<4&&CampaignMaps.roadDistance(x,z)<0.5;k++)z+=side;if(Math.abs(x-Arena.riverX(z))<7||CampaignMaps.roadDistance(x,z)<0.5)continue;int y=h(x,z);
                 if(ford){for(int a=1;a<=2;a++)put(x,y+a,z,Blocks.MOSSY_COBBLESTONE_WALL);put(x,y+3,z,lamp);continue;}
-                for(int a=1;a<=4;a++)put(x,y+a,z,trim);put(x,y+5,z,Blocks.CHISELED_STONE_BRICKS);put(x,y+6,z,lamp);put(x,y+3,z-side,Blocks.LANTERN);}}
+                for(int a=1;a<=4;a++)put(x,y+a,z,trim);put(x,y+5,z,Blocks.CHISELED_STONE_BRICKS);put(x,y+6,z,lamp);put(x,y+4,z-side,trim);hang(x,y+3,z-side,Blocks.LANTERN);}}
     }
     /** Where each army's flank road meets its lateral road: a crescent of earthworks facing the enemy, with a rally banner. */
     void redoubts(){
@@ -221,7 +223,7 @@ final class MapDressing {
         for(int a:new int[]{1,5})for(int b:new int[]{-1,1}){put(x+a*dir,y-1,z+b,Blocks.SPRUCE_LOG);put(x+a*dir,y+1,z+b,Blocks.SPRUCE_FENCE);}put(x+5*dir,y+2,z+1,Blocks.LANTERN);put(x,y+1,z-1,Blocks.BARREL);}
     void well(int cx,int cz){if(!area(cx-2,cz-2,cx+2,cz+2))return;int y=h(cx,cz);
         for(int dx=-1;dx<=1;dx++)for(int dz=-1;dz<=1;dz++){put(cx+dx,y-1,cz+dz,Blocks.COBBLESTONE);put(cx+dx,y,cz+dz,dx==0&&dz==0?Blocks.WATER:Blocks.COBBLESTONE);if(dx!=0||dz!=0)put(cx+dx,y+1,cz+dz,Blocks.COBBLESTONE_WALL);}
-        for(int dx:new int[]{-1,1})for(int a=2;a<=3;a++)put(cx+dx,y+a,cz,Blocks.OAK_FENCE);for(int dx=-2;dx<=2;dx++)put(cx+dx,y+4,cz,Blocks.OAK_SLAB);put(cx,y+3,cz,Blocks.LANTERN);}
+        for(int dx:new int[]{-1,1})for(int a=2;a<=3;a++)put(cx+dx,y+a,cz,Blocks.OAK_FENCE);for(int dx=-2;dx<=2;dx++)put(cx+dx,y+4,cz,Blocks.OAK_SLAB);hang(cx,y+3,cz,Blocks.LANTERN);}
     void trebuchet(int cx,int cz,int face){if(!area(cx-3,cz-3,cx+3,cz+3))return;int y=h(cx,cz);
         for(int dz:new int[]{-2,2})for(int a=1;a<=5;a++)put(cx,y+a,cz+dz,Blocks.DARK_OAK_LOG);for(int dz=-2;dz<=2;dz++)put(cx,y+6,cz+dz,Blocks.DARK_OAK_PLANKS);
         for(int a=-4;a<=4;a++)put(cx-a*face,y+6+(a>0?a/2:0),cz,Blocks.STRIPPED_DARK_OAK_LOG);put(cx+4*face,y+5,cz,Blocks.COBBLESTONE);put(cx+4*face,y+4,cz,Blocks.CHAIN);
