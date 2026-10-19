@@ -14,6 +14,8 @@ final class CampScreen extends ArmyScreen {
     WarTableHome home;
     /** The War Table recruit page (page recruit), kept while the page is open; leaving the page drops it, so a later visit opens on the first House. */
     WarTableRecruit recruit;
+    /** The keys whose press the recruit page took, not released since. Minecraft hands a screen each repeat of a held key as another keyPressed: those go no further, on whatever page the press left the table at (a held Esc that went home must not then close it), until keyReleased lets the key through again. */
+    final Set<Integer> held=new HashSet<>();
     CampScreen(String page){super("Banner camp");this.page=page;}
     static void open(String page){var c=net.minecraft.client.MinecraftClient.getInstance();if(page.equals("army"))c.setScreen(new LobbyScreen(1));else c.setScreen(new CampScreen(page));}
     JsonObject social(){return CampaignClient.social;}
@@ -150,7 +152,9 @@ final class CampScreen extends ArmyScreen {
     @Override public boolean mouseScrolled(double x,double y,double amount){if(page.equals("recruit")&&recruit!=null)return recruit.scrolled(amount);return super.mouseScrolled(x/scale,y/scale,amount);}
     @Override public boolean mouseReleased(double x,double y,int button){return super.mouseReleased(x/scale,y/scale,button);}
     @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){return super.mouseDragged(x/scale,y/scale,button,dx/scale,dy/scale);}
-    @Override public boolean keyPressed(int key,int scan,int mods){if(page.equals("home")&&home!=null&&home.keyPressed(key))return true;if(page.equals("recruit")&&recruit!=null&&recruit.keyPressed(key))return true;if(code!=null&&code.isFocused()&&key!=256)return code.keyPressed(key,scan,mods);if(key==77)return true;return super.keyPressed(key,scan,mods);}
+    @Override public boolean keyPressed(int key,int scan,int mods){if(held.contains(key))return true;if(page.equals("home")&&home!=null&&home.keyPressed(key))return true;if(page.equals("recruit")&&recruit!=null&&recruit.keyPressed(key)){held.add(key);return true;}if(code!=null&&code.isFocused()&&key!=256)return code.keyPressed(key,scan,mods);if(key==77)return true;return super.keyPressed(key,scan,mods);}
+    /** A held key's release lets its presses through again (see held). */
+    @Override public boolean keyReleased(int key,int scan,int mods){if(held.remove(key))return true;return super.keyReleased(key,scan,mods);}
     @Override public void mouseMoved(double x,double y){if(page.equals("home")&&home!=null)home.mouseMoved(x,y);super.mouseMoved(x/scale,y/scale);}
     @Override public void setFocused(net.minecraft.client.gui.Element e){super.setFocused(e);if(page.equals("home")&&home!=null)home.focusChanged(e);}
 }

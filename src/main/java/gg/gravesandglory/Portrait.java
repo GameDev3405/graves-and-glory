@@ -25,9 +25,9 @@ final class Portrait {
     static final float TILT = 5f;
 
     /** What the last draw passed to InventoryScreen.drawEntity: the window's centre x, the feet y and the model size, in canvas
-     *  px, with the window's size, the extra model pixels it was asked for, the renderer's own scale the size was divided by and
-     *  whether it drew a silhouette. Null before the first draw. */
-    record Drawn(int x, int feet, int size, int window, int tall, float scale, boolean silhouette) {}
+     *  px, with the window's size, the extra model pixels it was asked for, the renderer's own scale the size was divided by,
+     *  whether it drew a silhouette, and the top-left corner of the window it scissored the model to. Null before the first draw. */
+    record Drawn(int x, int feet, int size, int window, int tall, float scale, boolean silhouette, int left, int top) {}
     private static Drawn last;
     static Drawn last() { return last; }
 
@@ -58,7 +58,7 @@ final class Portrait {
                 RenderSystem.setShaderFogEnd(-1f);
                 RenderSystem.setShaderFogColor(((s >> 16) & 255) / 255f, ((s >> 8) & 255) / 255f, (s & 255) / 255f, 1f);
             }
-            last = new Drawn(cx, feet, size, window, tall, scale, silhouette);
+            last = new Drawn(cx, feet, size, window, tall, scale, silhouette, x, y);
             InventoryScreen.drawEntity(g, cx, feet, size, body, camera, e);
             // the model stands in front of the page (z 50 and up), and text drawn later tests depth: clear the window's depth
             // (the scissor bounds the clear) so a note laid over the portrait is not cut where the model was

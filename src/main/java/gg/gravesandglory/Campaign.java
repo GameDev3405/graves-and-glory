@@ -182,7 +182,7 @@ public final class Campaign {
             if(faction==null&&!cmd.equals("roll"))return true;
             var locked=Arrays.stream(Spec.TROOPS).filter(t->!pr.unlocked.contains(t.id())&&(faction==null||t.faction().equals(faction.id()))).toList();
             if(locked.isEmpty()){notice(p.getUuid(),faction==null?"Your collection is complete!":"Every "+faction.name()+" troop is already yours.");return true;}
-            if(pr.gold<Spec.CAMPAIGN[0].rollCost()){notice(p.getUuid(),"A unit roll costs 100 gold. Earn gold by completing battles.");return true;}
+            if(pr.gold<Spec.CAMPAIGN[0].rollCost()){notice(p.getUuid(),"A unit roll costs "+Spec.CAMPAIGN[0].rollCost()+" gold. Earn gold by completing battles.");return true;}
             var reward=locked.get(b.world.random.nextInt(locked.size()));pr.gold-=Spec.CAMPAIGN[0].rollCost();pr.unlocked.add(reward.id());if(!save(p.getUuid())){pr.unlocked.remove(reward.id());pr.gold+=Spec.CAMPAIGN[0].rollCost();return true;}
             notice(p.getUuid(),"Unlocked permanently: "+reward.name()+"!");p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","unit_reveal")),.7f,1f);return true;
         }

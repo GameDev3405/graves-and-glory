@@ -37,6 +37,27 @@ public final class UiMath {
         return trim(s, maxW, width);
     }
 
+    /** The text in at most `lines` lines no wider than maxW. A line too long breaks after the last sentence end (". ", "! ", "? ")
+     *  that fits, else at the last space that fits; the last line, or a line with no space that fits, ends as trimWords ends it.
+     *  Joined with spaces, the lines are the text again when nothing was trimmed. */
+    public static List<String> lines(String s, int maxW, int lines, ToIntFunction<String> width) {
+        List<String> out = new ArrayList<>();
+        String rest = s.strip();
+        while (!rest.isEmpty() && out.size() < lines) {
+            if (out.size() == lines - 1 || width.applyAsInt(rest) <= maxW) { out.add(trimWords(rest, maxW, width)); break; }
+            int space = -1, sentence = -1;
+            for (int at = rest.indexOf(' '); at > 0 && width.applyAsInt(rest.substring(0, at)) <= maxW; at = rest.indexOf(' ', at + 1)) {
+                space = at;
+                if (".!?".indexOf(rest.charAt(at - 1)) >= 0) sentence = at;
+            }
+            int cut = sentence > 0 ? sentence : space;
+            if (cut <= 0) { out.add(trimWords(rest, maxW, width)); break; }
+            out.add(rest.substring(0, cut));
+            rest = rest.substring(cut + 1).strip();
+        }
+        return out;
+    }
+
     /** WCAG 2 contrast ratio of two colours (alpha ignored): 1 for equal colours, 21 for black on white. */
     public static double contrast(int argbA, int argbB) {
         double a = luminance(argbA), b = luminance(argbB);
@@ -271,6 +292,27 @@ public final class UiMath {
     public static String oddsLine(int remaining) {
         if (remaining <= 0) return "Nothing left to draw";
         return String.format(java.util.Locale.ROOT, "Each new troop: %.1f%%", 100.0 / remaining);
+    }
+
+    /** A list's place after a turn of the wheel (UI plan Task 6, the recruit roll): the first row shown, and the part of a row's
+     *  turn carried toward the next. */
+    public record Wheel(int first, double carry) {}
+
+    /** The wheel turned by `amount` (what Minecraft hands Screen.mouseScrolled: positive away from the player, and 0 or a fraction
+     *  as well as whole notches) over a list whose first row shown is `first`, from 0 to `last`, with `carry` left from the turns
+     *  before: a row down for each whole unit turned toward the player, a row up for each away, and the fraction carried, so a
+     *  touchpad's small turns add up to a row. A turn of 0 (a sideways-only scroll) moves nothing; nothing carries past either
+     *  end, so a turn back from an end moves at once. */
+    public static Wheel wheel(int first, int last, double carry, double amount) {
+        if (amount == 0 || !Double.isFinite(amount)) return new Wheel(first, carry);
+        double total = carry - amount;
+        long rows = (long) (total + Math.copySign(1e-9, total)); // toward zero; ten turns of 0.1 make a row
+        double rest = total - rows;
+        if (Math.abs(rest) < 1e-9) rest = 0;
+        long to = first + rows;
+        int next = (int) Math.max(0, Math.min(last, to));
+        boolean end = to != next || next >= last && rest > 0 || next <= 0 && rest < 0;
+        return new Wheel(next, end ? 0 : rest);
     }
 
     /** The cooldown sweep's pixel class at (x,y) of a size x size square with `remain` (0..1) of the time left:

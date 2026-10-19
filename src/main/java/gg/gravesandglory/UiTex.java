@@ -68,10 +68,12 @@ public final class UiTex {
 
     public static boolean has(String name) { return entries.containsKey(name); }
 
-    /** The whole PNG, its box at (x, y). */
-    public static void draw(DrawContext g, String name, int x, int y) {
+    /** The whole PNG, its box at (x, y). Returns the art it covered, {x, y, w, h} in canvas px: the box's corner less the
+     *  entry's offsets, and the PNG's size. */
+    public static int[] draw(DrawContext g, String name, int x, int y) {
         Entry e = entry(name);
         blit(g, e, x - e.ox, y - e.oy, 0, 0, e.w, e.h);
+        return new int[]{x - e.ox, y - e.oy, e.w, e.h};
     }
 
     /** Cell `frame` of a sheet (wrapping), its box at (x, y). */
@@ -87,11 +89,14 @@ public final class UiTex {
         slice(g, e, x - e.ox, y - e.oy, w, h);
     }
 
-    /** A three-slice drawn `length` long, across for three-h and down for three-v, its box at (x, y). */
-    public static void three(DrawContext g, String name, int x, int y, int length) {
+    /** A three-slice drawn `length` long, across for three-h and down for three-v, its box at (x, y). Returns the art it
+     *  covered, {x, y, w, h} in canvas px, as draw does. */
+    public static int[] three(DrawContext g, String name, int x, int y, int length) {
         Entry e = entry(name);
-        if (e.kind.equals("three-v")) slice(g, e, x - e.ox, y - e.oy, e.w, length);
-        else slice(g, e, x - e.ox, y - e.oy, length, e.h);
+        boolean down = e.kind.equals("three-v");
+        int w = down ? e.w : length, h = down ? length : e.h;
+        slice(g, e, x - e.ox, y - e.oy, w, h);
+        return new int[]{x - e.ox, y - e.oy, w, h};
     }
 
     /** The sub-rectangle (u, v, w, h) of the PNG drawn at (x, y), with no box offset. */

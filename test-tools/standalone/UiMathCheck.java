@@ -70,6 +70,14 @@ public final class UiMathCheck {
         check(UiMath.lettersLine(0).equals("No letters left") && UiMath.lettersLine(1).equals("1 letter left") && UiMath.lettersLine(3).equals("3 letters left"), "letters left");
         check(UiMath.pityLine(28).equals("Epic within 28 letters") && UiMath.pityLine(1).equals("Epic in the next letter"), "pity line (Phase 2)");
         check(UiMath.oddsLine(4).equals("Each new troop: 25.0%") && UiMath.oddsLine(3).equals("Each new troop: 33.3%") && UiMath.oddsLine(0).equals("Nothing left to draw"), "odds line");
+        check(UiMath.wheel(2,4,0,-1).equals(new UiMath.Wheel(3,0)) && UiMath.wheel(2,4,0,1).equals(new UiMath.Wheel(1,0)) && UiMath.wheel(0,0,0,-1).equals(new UiMath.Wheel(0,0)), "a notch toward the player moves a row down the list, away a row up; a roll that fits moves not at all");
+        check(UiMath.wheel(2,4,0,0).equals(new UiMath.Wheel(2,0)) && UiMath.wheel(2,4,0.4,0).equals(new UiMath.Wheel(2,0.4)) && UiMath.wheel(2,4,0,Double.NaN).equals(new UiMath.Wheel(2,0)), "a turn of 0 (a sideways scroll) moves nothing and keeps the carry");
+        UiMath.Wheel w = new UiMath.Wheel(0,0); int firstMove = -1;
+        for (int i = 1; i <= 10; i++) { w = UiMath.wheel(w.first(), 4, w.carry(), -0.1); if (w.first() == 1 && firstMove < 0) firstMove = i; }
+        check(firstMove == 10 && w.first() == 1 && w.carry() == 0 && UiMath.wheel(1,4,0.5,-0.4).equals(new UiMath.Wheel(1,0.9)) && UiMath.wheel(1,4,0.5,0.75).equals(new UiMath.Wheel(1,-0.25)), "a touchpad's tenth turns add up to one row on the tenth; fractions carry either way");
+        check(UiMath.wheel(3,4,0,-5).equals(new UiMath.Wheel(4,0)) && UiMath.wheel(4,4,0,-0.5).equals(new UiMath.Wheel(4,0)) && UiMath.wheel(4,4,0,1).equals(new UiMath.Wheel(3,0)) && UiMath.wheel(1,4,0,3).equals(new UiMath.Wheel(0,0)) && UiMath.wheel(0,4,0,0.5).equals(new UiMath.Wheel(0,0)) && UiMath.wheel(0,4,0,-2.5).equals(new UiMath.Wheel(2,0.5)), "past either end nothing carries, so a turn back moves at once");
+        check(UiMath.lines("A unit roll costs 100 gold. Earn gold by completing battles.",200,2,six).equals(java.util.List.of("A unit roll costs 100 gold.","Earn gold by completing battles.")) && UiMath.lines("Every Dawn Covenant troop is already yours.",300,2,six).equals(java.util.List.of("Every Dawn Covenant troop is already yours.")), "a notice too long for a line breaks after a sentence that fits; one that fits stays whole");
+        check(UiMath.lines("Hold the ford at the bridge",60,2,six).equals(java.util.List.of("Hold the","ford at...")) && UiMath.lines("Hold the ford",60,3,six).equals(java.util.List.of("Hold the","ford")) && UiMath.lines("Unbreakable line",60,2,six).equals(java.util.List.of("Unbreak...")) && UiMath.lines("  ",60,2,six).isEmpty(), "else at the last space that fits; the last line ends as trimWords ends it");
         System.out.println("UiMathCheck: " + checks + " checks passed");
     }
 }
