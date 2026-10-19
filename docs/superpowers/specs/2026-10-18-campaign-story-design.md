@@ -119,7 +119,7 @@ The five Legendaries answer writs because every one of them is bound to the crow
 
 ### 4.8 Names
 
-Places are the shipped maps. The player is **Danta Hollow** (Kort, 2026-10-18 late), a named hero; the profile name still labels saves and lobbies, the story calls him Danta. The company is **the Hollow** ("the Hollow" never "the Hollow", which is retired): his troops, named for his line. The enemy keeps the title the Hollow King, and the echo is not an accident: **[open for Kort]** the recommended binding is that the title was always "king of the Hollow", the old company's name, which Danta's line carries, and Edric took it when he took the writ; chapter 1 lets a character notice it once, chapter 5 pays it off. Until Kort answers, the copy notices it and explains nothing. People: one or two syllables for the living, plain English roots, no apostrophes; the dead keep the names they had. Legendaries keep their spec names.
+Places are the shipped maps. The player is **Danta Hollow** (Kort, 2026-10-18 late), a named hero; the profile name still labels saves and lobbies, the story calls him Danta. The company is **the Hollow** ("the Hollow" never "the Hollow", which is retired): his troops, named for his line. The enemy keeps the title the Hollow King, and the echo is the saga's hidden meaning (Kort, 2026-10-18 late: approved): see section 4.9. Chapter 1's copy notices it once and explains nothing. People: one or two syllables for the living, plain English roots, no apostrophes; the dead keep the names they had. Legendaries keep their spec names.
 
 **The familial rule (Kort, 2026-10-18 late, approved).** The player should carry people, not a gazetteer. In dialog and captions:
 
@@ -131,6 +131,24 @@ Places are the shipped maps. The player is **Danta Hollow** (Kort, 2026-10-18 la
 - The Houses keep their names; they are the game's words. The company name is one word everywhere, so a rename is one replacement.
 
 The `story-voice` check counts proper nouns per page against this rule (section 11).
+
+### 4.9 The Hollow, and its kings (the saga's hidden meaning)
+
+"Hollow" is not Danta's family name. It is the writ's. The company has been the Hollow since the first writ was sealed, and every captain the writ names takes the company's name the way a ship's captain takes the ship: Halden Rook signed *Rook, of the Hollow*; Edric Vane signed the same; Maud wrote *Danta Hollow* this spring because that is how a writ is written, and Danta has never known another name because the camp raised him. He does not know this when chapter 1 opens. Neither does the player.
+
+So "the Hollow King" was never a word for empty eyes. It is a title: the captain of the Hollow who takes the crown for himself. Edric is only the latest. The ring of mounds at Kingsfield holds the Hollow's kings, and the first mound belongs to the first captain who did it, four hundred years ago, before the Houses had names. The crown calls them and cannot send them home because a Hollow who crowns himself is the wrong hand, every time: the Horn's rule wants one hand, and the captain's hand is already on the standard.
+
+The twist is told one piece per chapter, never as a lecture, and chapter 1 plants only the echo:
+
+| Chapter | What lands | Who says it |
+|---|---|---|
+| 1 | The echo, noticed and dropped. *"Hollow. Like him."* *"Like the company. Eat."* | Wren, Maud, at the first fire |
+| 2 | The roll of captains in the archive, every name signed *of the Hollow*. Danta's name is the paper's, not his blood's; he does not know who he was before the writ | Pell, then Danta alone with the page |
+| 3 | The mounds have a word for the captain who wears the crown for the company, and Edric was not the first | Ashka, who learned it from the clan's dead |
+| 4 | The cost of the reforged crown: whoever carries it to the field as the Hollow becomes its king | Dunmar, at the forge |
+| 5 | The first mound opens and the first Hollow King stands up. The title was always waiting for Danta. He is the first captain of the Hollow who refuses it, and the Horn goes to the hand | The field |
+
+Rules for the copy: the word "Hollow" is said by the company about itself with pride and by the Crown's Own as an accusation, and the player should not be able to tell which is older until chapter 2. Nobody explains the title before chapter 3. Danta's own name on the writ is shown, not read aloud, on page 1 (the Writ card) so the player sees the form *Danta, of the Hollow* before anyone says what it means. The `story-names` check treats "Hollow" and "the Hollow" as the player's own name, not a new noun.
 
 ## 5. The cast
 
@@ -388,24 +406,28 @@ Each chapter meets one House on its own ground, answers one question, turns on o
 - **Opens on the cliffhanger.** Wren is gone from the camp with the crown. The mounds at Kingsfield stand open and empty; the dead kings have walked. Tomas, in custody, says he saw her take it and knows where the dead are going: the sea.
 - **Question answered.** Where the crown went, and what the Tide wants. Wren remembers blowing the Horn and remembers what the crown did to Edric; she is carrying it to the coast to drown it so that no hand can ever wear it. Vael wants exactly that, because a crown under the sea sends nobody home and the drowned are his.
 - **The chase.** Down the rivers to the coast through Tidecaller ground, Tomas guiding, Maud not speaking to him, then speaking.
+- **The name (section 4.9).** Before the coast, the archive: Pell lays the roll of captains open, and every name on it is signed *of the Hollow*, Rook and Edric among them. Danta's surname is the writ's. The sorrow beat of the chapter is Danta alone with the page, asking Maud what he was called before, and Maud not knowing.
 - **Twist.** Vael was at Kingsfield the night the Horn was blown, on the mound, and he carried Wren's body down. He has been trying to reach the Horn-blower for nineteen years. He does not want to drown the crown. He wants the hand.
 - **Cliffhanger.** The player takes the crown back from the shore. Maud puts her sword down, takes Tomas's hand, and walks west with him to find the heir herself, because the Marshal's letters have stopped and somebody must. The Hollow lose their sergeant. The last page: Aldric's final letter, delivered a month late, one line: *The heir is dead. I found the guard.*
 
 ### Chapter 3: The Thornwood (Wildmoot)
 - **Question answered.** Why the woods stopped keeping the dead: Old Horn's bargain was with the crown, and it lapsed when the crown walked. The woods will keep their dead again for a crown that is worn, which is why the Wildmoot want the player's crown as much as the Tide did.
 - **Twist.** The guard Aldric found was Elin's. The child was not among them. Ashka's clan found a child in that snow. Ashka is Osric's daughter: the living hand. Tarn died keeping the toll off her because the clan knew what she was and never told her. The warm count from chapter 1 decides how she hears it from the player (not whether).
+- **The name (section 4.9).** Ashka, who grew up among a clan that talks to its dead, tells Danta what the mounds call the captain who wears the crown for the company, and that Edric was not the first. She is the one who says the words "Hollow King" as a title, not a name, and the player hears the chapter 1 echo land.
 - **Cliffhanger.** Old Horn kneels to her at the heart of the Thornwood, every hunter with him. Ashka looks at the crown in the player's hands and runs. The last page: Aldric's riders at the edge of the woods, come for the heir, with Tomas and Maud among them.
 
 ### Chapter 4: The Deep Hold (Ironclad)
 - **Question answered.** What the forge-mark on Brassjaw means: the clans forged the Barrow Crown four hundred years ago, and a crown can be reforged for a hand that will not take it, if the forge is lit by the one who banked it. Dunmar goes in through his own gate.
 - **Twist.** Hesper is in the lower forge, dead and working, and she has kept the forge lit for nineteen years waiting for him to open the door, because the hold remembers every siege and so does she. The reforging needs the crown melted, which frees Edric's rest and every dead thing's; Dunmar asks the player not to, because it also frees her.
+- **The name (section 4.9).** Dunmar names the reforged crown's cost at the forge: whoever carries it to the field as the Hollow becomes its king, and the mound ring has room. The forge choice below is the player's first look at that door; the chapter does not let him walk through it yet.
 - **Cliffhanger.** The player chooses the forge (the saga's second choice, binary, remembered): the crown is reforged or it is not. Either way Dunmar stays in the hold. The last page: Aldric has Ashka, and is marching her to Kingsfield to crown her on the mounds, with the Crown's Own at his back, because the oath says the last living crown and he has decided she is it.
 
 ### Chapter 5: The Barrow Horn (Kingsfield)
 - **Question answered.** Pell's word. The player, or Pell, finally reads the Stone against the copy: *one hand*, not *a living hand*. The rule never needed a living king. It needed the hand that called them: the hand on the Horn. Aldric's crowning of Ashka on the mounds does nothing, and he knows it on the mound-top, and says nothing.
 - **Twist.** Wren has known since the last page of chapter 1. She took the crown to the sea not to drown it but to find the Horn, which Vael kept. She has it. She is the hand. She is dead, and the rule never said living.
+- **The first mound (section 4.9).** When Aldric's crowning of Ashka fails, the first mound opens and the first Hollow King stands up: a captain four hundred years dead, the oldest form of the broken crown on his head, and he turns to Danta as to an heir, because the title was always waiting for him. The reforged or unreforged crown is in Danta's hands. He is the first captain of the Hollow who refuses it. That refusal is staged, not chosen: the player has already made the saga's choices, and this is who Danta is. The Horn goes to the hand.
 - **The ending, the saga's one real choice.** Wren on the first king's mound with the Horn, as she was. If she blows it, the dead go home: the kings, the hosts, Edric, Hesper, every Graveborn the player recruited at the shrine, and Wren. If she does not, the Barrowlands keep their dead and their captain keeps her. The player decides, and the game remembers, and chapter 5 ends either way on a quiet field at dawn with the standard planted on the mound.
-- **The close.** No cliffhanger. The saga ends whole: the standard planted, the company accounted for, every companion's want answered one way or the other. The last page is a page of the roll of the dead in Pell's hand, with the player's name written at the bottom as captain, and under it a blank line. That blank line is the door a sixth chapter walks through (Kort: complete, but able to be added onto). The field the dead left, or the field they kept, is the ground a chapter 6 would start from.
+- **The close.** No cliffhanger. The saga ends whole: the standard planted, the company accounted for, every companion's want answered one way or the other. The last page is a page of the roll of the dead in Pell's hand, with *Danta, of the Hollow* written at the bottom as captain, the first name on the roll of captains with no mound beside it, and under it a blank line. That blank line is the door a sixth chapter walks through (Kort: complete, but able to be added onto), and the mound that did not open is the ground it stands on. The field the dead left, or the field they kept, is the ground a chapter 6 would start from.
 
 Aldric is in every chapter as a letter and in chapters 3 to 5 in person. Vael, Old Horn and Brassjaw are each met on their own ground, and each is recruitable by writ after their chapter, as the Houses spec allows.
 
