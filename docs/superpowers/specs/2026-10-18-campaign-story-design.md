@@ -333,13 +333,14 @@ Commands (the builder adds nothing not listed; new commands come back through th
 - `panel <set> [drift dx dy dz over <ticks>]` (book only): places the named set template on the stage area, holds the camera on the set's camera point and drifts it; `time`, `weather`, `fog`, `actor` and `pose` apply as in a stage scene; `caption "<text>"`.
 - `structure <id>`: places a structure piece for a stage scene (page 4's before-scene shows `ironhold/gate_intact` standing, as Siege will).
 - `sound <id>`, `particles <type> at x y z count n`, `wait <ticks>`, `fade in|out <ticks>`, `end`.
+- Added by the Phase 4 plan (2026-10-19): `snow`, `fog <density> <colour>`, `camera look <actor|x y z>`, `actor ... team <side>`, `commander at x y z facing <yaw>` (the player's own figure in a scene), `prop <id> at x y z`. Poses are Phase 2's clip set on each rig (`kneel`, `fallen`, `stand`, `point`, `sit`, `raise`, `helm_off`, `walk`); there is no `swing`. A pose moves into place over 0.4 to 0.8 s and holds.
 - `if companion:<name> standing|wounded|resting` and `if match killed:<unit> | bonus | won` ... `else` ... `endif`: the only branches.
 
 Lines that are not scenes (reaction, wounded, shrine, Pell, the grave roll) are table-shaped and live in sheets, not scene files: `storyLines` (companion, trigger, priority, text, voice; choice rows add `warm` and `plain` for the chits) and `graveRoll` (troopType, name, line, voice). `storyPages` carries, on a page's first row, `pageTitle` and `passage` (the leaf text) and a `want` per companion for the left leaf **[call, from the copy]**. Object text (the pact, the Stone, the shroud) lives in an `objects` sheet (id, text). The `story-voice` check scans both the scene files and the sheets.
 
 ### 7.4 Dialog cards
 
-The UI kit's vellum card with a 32x32 pixel portrait at the left, the speaker's name in the title font, the line in the body font, typed at two characters per tick with a soft quill sound, and a small continue glyph. Portraits are pixel art, one per speaker (eight in chapter 1: Maud, Wren, Dunmar, Ashka, Pell, Tomas, the Hollow King helmed, Edric), drawn by the designer pipeline and graded like any other art. Cards never cover the Iron Ledger's seal row. In battle the only cards are the king's two scenes; everything else is before or after.
+The UI kit's vellum card with the speaker's live model rendered chest-up in a 32 px (texture; 64 screen px at GUI scale 2) frame at the left, the speaker's name in the title font, the line in the body font, typed at two characters per tick with a soft quill sound, and a small continue glyph. Portraits are live renders of each speaker's own model (Kort, 2026-10-18 late); the eight named characters of chapter 1 (Maud, Wren, Dunmar, Ashka, Pell, Tomas, the Hollow King helmed, Edric) each get their own face and skin on their troop's rig, hand-drawn and graded like any other art, with the Hollow King's helm a separable part that `helm_off` hides. Cards never cover the Iron Ledger's seal row. In battle the only cards are the king's two scenes; everything else is before or after.
 
 ### 7.5 Companions as units
 
