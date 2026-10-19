@@ -276,6 +276,7 @@ class BuildSkinsChecks(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             cat = build_skins.load(fixture(tmp))
             gold, linen = build_skins.cloth(cat, 'gold').convert('RGBA'), build_skins.cloth(cat, None).convert('RGBA')
+            company = build_skins.cloth(cat, 'company').convert('RGBA')
         rgb = ((GOLD >> 16) & 255, (GOLD >> 8) & 255, GOLD & 255)
         for xy, k in FIELD.items():
             if xy in GLYPH_AT or xy == CHARGE_AT:
@@ -283,10 +284,12 @@ class BuildSkinsChecks(unittest.TestCase):
             want = tuple(int(c * k + 0.5) for c in rgb)
             self.assertEqual(gold.getpixel(xy)[:3], want, (xy, k))
             self.assertEqual(linen.getpixel(xy)[:3], tuple(int(c * k + 0.5) for c in (0xCF, 0xC6, 0xB0)), (xy, k))
+            self.assertEqual(company.getpixel(xy)[:3], tuple(int(c * k + 0.5) for c in (0x2A, 0x37, 0x47)), (xy, k))
         self.assertEqual(gold.getpixel((2, 2))[:3], rgb)   # grey x1.0 is the side colour itself
         for xy in GLYPH_AT:
             self.assertEqual(gold.getpixel(xy)[:3], build_skins.GLYPH)
             self.assertEqual(linen.getpixel(xy)[:3], (0xCF, 0xC6, 0xB0))
+            self.assertEqual(company.getpixel(xy)[:3], (0x2A, 0x37, 0x47))   # the company's cloth carries no glyph
         self.assertEqual(gold.getpixel(CHARGE_AT)[:3], WHITE)
         self.assertEqual(gold.getpixel(POLE_AT)[:3], POLE)
         self.assertEqual(linen.getpixel(CHARGE_AT)[:3], WHITE)
@@ -303,7 +306,7 @@ class BuildSkinsChecks(unittest.TestCase):
             self.assertEqual(index['weapons'], ['sword'])
             written = sorted(p.relative_to(root / ASSETS).as_posix() for p in (root / ASSETS).rglob('*') if p.is_file())
             self.assertEqual(sorted(index['outputs'] + ['models/troop/index.json']), written)
-            for side in ('gold', 'violet', 'crimson', 'teal', 'linen'):
+            for side in ('gold', 'violet', 'crimson', 'teal', 'linen', 'company'):
                 self.assertIn('textures/entity/troop/team_cloth_%s.png' % side, index['outputs'])
             self.assertIn('models/troop/sentinel.json', index['outputs'])
             (root / 'art/troops/sentinel.json').unlink()

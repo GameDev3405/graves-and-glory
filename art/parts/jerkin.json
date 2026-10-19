@@ -1,0 +1,12 @@
+{
+"part":"jerkin",
+"note":"The archers' team jerkin: a sleeveless jacket in the side's cloth, a leather belt at the waist (fixed paint), and a short skirt over the hips. The part scale makes it a 0.25 px jacket layer, as vanilla's.",
+"bone":"body",
+"team":true,
+"tag":"",
+"scale":[1.0625,1.0417,1.125],
+"boxes":[
+{"origin":[-4,-12,-2],"size":[8,12,4],"uv":[64,0],"note":"the jerkin over the gambeson, a jacket layer 0.25 px out (the part scale); its neck opening is cut out of the cloth"},
+{"origin":[-4.5,0,-2.5],"size":[9,3,5],"uv":[88,0],"note":"its skirt flaring over the hips"}
+]
+}

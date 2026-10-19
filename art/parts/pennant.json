@@ -6,8 +6,8 @@
 "tag":"",
 "boxes":[
 {"origin":[-2.5,-26,6.25],"size":[1,24,1],"uv":[0,0],"note":"pole, body-frame y -26..-2"},
-{"origin":[-1.5,-26,6.25],"size":[4,8,1],"uv":[8,0],"note":"the 4x8 flag, side-hung from the pole, its top 6 px over an unscaled head"},
-{"origin":[-2.5,-11,0.25],"size":[1,1,6],"uv":[8,9],"note":"upper bracket, from inside the back to the pole"},
-{"origin":[-2.5,-5,0.25],"size":[1,1,6],"uv":[8,16],"note":"lower bracket"}
+{"origin":[-1.5,-26,6.25],"size":[4,8,1],"uv":[4,0],"note":"the 4x8 flag, side-hung from the pole, its top 6 px over an unscaled head"},
+{"origin":[-2.5,-11,0.25],"size":[1,1,6],"uv":[4,10],"note":"upper bracket, from inside the back to the pole"},
+{"origin":[-2.5,-5,0.25],"size":[1,1,6],"uv":[4,18],"note":"lower bracket"}
 ]
 }

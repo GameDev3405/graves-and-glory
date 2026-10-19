@@ -5,7 +5,7 @@
 "team":true,
 "tag":"",
 "boxes":[
-{"origin":[-1.1,-0.5,-2.6],"size":[3,9,1],"uv":[50,0],"note":"front flap, knee-length"},
-{"origin":[-1.1,-0.5,1.6],"size":[3,9,1],"uv":[50,10],"note":"back flap"}
+{"origin":[-1.1,-0.5,-2.6],"size":[3,9,1],"uv":[38,16],"note":"front flap, past the knee"},
+{"origin":[-1.1,-0.5,1.6],"size":[3,9,1],"uv":[46,16],"note":"back flap"}
 ]
 }

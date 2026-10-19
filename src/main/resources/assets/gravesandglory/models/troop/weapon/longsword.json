@@ -2,7 +2,7 @@
 "format":1,
 "weapon":"longsword",
 "size":[32,32],
-"grip":{"offset":[0,0,-0.5],"rotation":[90,0,0]},
+"grip":{"offset":[0,0,-0.5],"rotation":[45,0,0]},
 "boxes":[
 {"origin":[-0.5,-15.5,-1],"size":[1,13,2],"uv":[0,0],"mirror":false,"dilation":[0,0,0]},
 {"origin":[-0.5,-16.5,-0.5],"size":[1,1,1],"uv":[6,0],"mirror":false,"dilation":[0,0,0]},

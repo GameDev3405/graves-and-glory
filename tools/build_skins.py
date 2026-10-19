@@ -1,7 +1,8 @@
 """Builds the troops' own models and skins (Phase 2 Task 5) from art/ into src/main/resources/assets/gravesandglory/:
 models/troop/<troop>.json, rig/<rig>.json, weapon/<id>.json and index.json (every troop, rig, weapon and output), and
 textures/entity/troop/<troop>_s<stage>.png, _veteran, _e (glow), _o (outer layer), weapon/<id>.png (and _e), and one
-team_cloth_<side>.png per factions row plus team_cloth_linen.png.
+team_cloth_<side>.png per factions row plus team_cloth_linen.png (no side) and team_cloth_company.png (the company's navy,
+which portraits wear: unit identity rule 8 as Kort ruled it, Needs Kort 11).
 
   python tools/build_skins.py                     export everything, and remove the outputs the previous index.json
                                                   listed that are no longer built (never a file no index listed)
@@ -78,6 +79,7 @@ IDLE_ARMS = ('hang', 'forward', 'folded')
 PORTRAIT = re.compile(r'(standard|tall \d+|wide \d+|beast \d+( yaw -?\d+)?)')
 GREYS = {(160, 160, 160): 1.0, (128, 128, 128): 0.8, (96, 96, 96): 0.6}   # the cloth template's field greys
 LINEN = (0xCF, 0xC6, 0xB0)
+COMPANY = (0x2A, 0x37, 0x47)   # the Hollow's navy (work/ui-concepts/storybook/NOTES.md), the company's cloth
 GLYPH = (0xF3, 0xEF, 0xE4)   # the pennant glyph's white, the white of the charges
 GLOW_CAP = {'epic': 16, 'legendary': 16}   # any other rarity: 6
 TINT_SATURATION, TINT_VALUE, TINT_HUE = 0.45, 0.60, 45.0
@@ -165,6 +167,9 @@ def load(root: Path) -> Catalog:
     design = read_json(root / 'sheets/design.json')
     cat.sheet = {r['id']: r for r in design.get('troops', [])}
     cat.factions = {f['id']: f for f in design.get('factions', [])}
+    for reserved in ('linen', 'company'):
+        if reserved in cat.factions:
+            fail('factions row %s: linen and company name the cloths with no side' % reserved)
     lines = {}
     for e in design.get('evolutions', []):
         lines.setdefault(e['troop'], set()).add(int(e['stage']))
@@ -633,12 +638,15 @@ def troop_outputs(cat, troop, weapon_lit):
 
 
 def cloth(cat: Catalog, side) -> Image.Image:
-    """The team cloth sheet of a side (a factions id), or linen for None: the template's three greys take the colour
-    x1.0, x0.8 and x0.6, every other pixel keeps its paint, and a side's glyph mask goes on in white."""
+    """The team cloth sheet of a side (a factions id), linen for None, or the company's navy for 'company': the
+    template's three greys take the colour x1.0, x0.8 and x0.6, every other pixel keeps its paint, and a side's glyph mask
+    goes on in white (linen and the company carry none)."""
     if cat.template is None:
         fail('art/team/team_cloth.png is missing')
     if side is None:
         rgb, glyph = LINEN, None
+    elif side == 'company':
+        rgb, glyph = COMPANY, None
     else:
         row = cat.factions.get(side)
         if row is None:
@@ -683,13 +691,13 @@ def build(cat):
              'bones': [clean_bone(b, rig['size']) for b in bones]})
     for tid in sorted(cat.troops):
         files.update(troop_outputs(cat, tid, weapon_lit))
-    sides = [f for f in cat.factions]
-    for side in sides + [None]:
+    sides = list(cat.factions)
+    for side in sides + [None, 'company']:
         files['%s/team_cloth_%s.png' % (TEXTURES, side or 'linen')] = png_bytes(cloth(cat, side))
     index = {'format': FORMAT, 'troops': sorted(cat.troops), 'rigs': sorted(cat.rigs), 'weapons': sorted(cat.weapons),
              'outputs': sorted(files)}
     files['%s/index.json' % MODELS] = dumps(index)
-    return files, index, len(sides) + 1
+    return files, index, len(sides) + 2
 
 
 def listed(index_file):

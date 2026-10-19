@@ -1,15 +1,17 @@
 {
 "troop":"knight",
-"note":"Order Squire > Knight > Knight-Captain (unit identity 1): husk, biped, no scale; iron cap and hip surcoat, team chest panel and pennant; stage 3 crest plume.",
+"note":"Order Squire > Knight > Knight-Captain (unit identity 1): husk, biped, no scale; iron cap and hip-length white surcoat over mail, the team pale down it and the pennant; stage 3 crest plume. Young, clean-shaven; arming sword, the shield on the left arm.",
 "rig":"biped",
+"size":[128,64],
 "idleArms":"hang",
 "parts":[
-{"part":"iron_cap","uv":[0,32]},
-{"part":"surcoat_skirt","uv":[32,0]},
+{"part":"iron_cap","uv":[64,0]},
+{"part":"surcoat_skirt","uv":[64,12]},
+{"part":"crest_plume","uv":[92,12],"stages":[3]},
 {"part":"chest_panel"},
 {"part":"pennant"}
 ],
-"skins":{"1":"knight_s1.png"},
+"skins":{"1":"knight_s1.png","3":"knight_s3.png"},
 "weapon":"arming_sword",
 "hand":"right",
 "portrait":"standard"

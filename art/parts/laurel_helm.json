@@ -1,0 +1,15 @@
+{
+"part":"laurel_helm",
+"note":"Lord Marshal Aldric's open helm with the gilt laurel (was a crown-helm): blackened steel, cheek plates and a neck guard, the bearded face open. Block 64x25.",
+"bone":"head",
+"team":false,
+"tag":"helm",
+"boxes":[
+{"origin":[-4.5,-9,-4.5],"size":[9,4,9],"uv":[0,0],"note":"the skull of the open helm, blackened"},
+{"origin":[-3.5,-10,-3.5],"size":[7,1,7],"uv":[36,0],"note":"its crown"},
+{"origin":[-5,-8,-5],"size":[10,2,10],"uv":[0,13],"note":"the gilt laurel round it, cut into leaves"},
+{"origin":[-4.5,-5,-4.5],"size":[1,4,3],"uv":[40,13],"note":"right cheek plate"},
+{"origin":[3.5,-5,-4.5],"size":[1,4,3],"uv":[48,13],"note":"left cheek plate"},
+{"origin":[-4.5,-5,2.5],"size":[9,3,2],"uv":[40,20],"note":"the neck guard"}
+]
+}
