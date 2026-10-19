@@ -589,8 +589,9 @@ public final class Phase3Checks implements ClientModInitializer {
      *  Task 2, fix round 1, per map: p3-arena-river-map<N> passes when no block stands above the water of a river column that the build of that map does not account for, which is what
      *  the map built before it leaves behind (river); p3-arena-rails-map<N> passes when every bridge rail stands where there is water and every run of stone wall ends on a post (rails).
      *  Task 2, fix round 2, per map, by built() (the walkthrough runs the same as p3-wt<N>-ring and so on): p3-arena-ring-map<N> passes when the ring of smooth stone of every capture point lies over no river water, no deck and no air, and its 3x3 pad has no air under it (ring);
-     *  p3-arena-lantern-map<N> when every lantern could be placed where it stands (lantern); p3-arena-floors-map<N> when no floor course of a building holds road soil (floors); p3-arena-pits-map<N> when no dirt path block stands alone or inside a plaza (pits);
-     *  p3-arena-plaza-map<N> when every cell of every plaza is the block of its pattern (plaza). */
+     *  p3-arena-lantern-map<N> when every lantern could be placed where it stands (lantern); p3-arena-floors-map<N> when no floor course of a building holds road soil (floors); p3-arena-pits-map<N> when no dirt path block stands alone (no dirt path on any of its four sides, anywhere in the arena) or inside a plaza or on a parade ground, and no coarse dirt or gravel lies on the ground off the plazas (pits);
+     *  p3-arena-plaza-map<N> when every cell of every plaza is the block of its pattern (plaza).
+     *  Task 2, fix round 3: p3-arena-wear-map<N> passes when the worn band (dirt path, one block, along every road edge) and the worn ring (one block outside the edge stone of every point whose stone ring is laid) have no gap where MapDressing.wearable says plain ground may be worn (wear). */
     static final class Rebuild implements Suite {
         static final int[] MAPS={0,1,2,3,4};
         int index,stage,waited;volatile boolean switched,counted;volatile String before="",after="";volatile int firstSpill=-1,spill=-1,paneCount=-1,paneLone=-1;
@@ -641,7 +642,10 @@ public final class Phase3Checks implements ClientModInitializer {
             var pi=pits(b);
             try{Path file=MinecraftClient.getInstance().runDirectory.toPath().resolve("screenshots/p3-pits-map"+n+".txt");Files.createDirectories(file.getParent());Files.writeString(file,pi.detail());}
             catch(Exception e){report(name.apply("pits-file"),false,e.toString());}
-            report(name.apply("pits"),pi.paths()>0&&pi.paved()==0,"dirt path cells "+pi.paths()+", of them inside a plaza (within 9.2 blocks of a flag pole) or on the parade ground of a camp, where everything is paved, off the floors and decks: "+pi.paved()+(pi.paved()==0?"":", first "+pi.sample())+"; alone on the open road (the edge of a ribbon, not counted): "+pi.lone());
+            report(name.apply("pits"),pi.paths()>0&&pi.paved()==0&&pi.lone()==0&&pi.earth()==0,"dirt path cells "+pi.paths()+", of them inside a plaza (within 9.2 blocks of a flag pole) or on the parade ground of a camp, where everything is paved, off the floors and decks: "+pi.paved()+(pi.paved()==0?"":", first "+pi.sample())
+                +"; with no dirt path on any of their four sides (anywhere): "+pi.lone()+"; coarse dirt or gravel on the ground outside the plazas and off the river: "+pi.earth()+(pi.earth()==0?"":", first "+pi.earthSample())+"; lone cells the dressing's own guard put back as ground: "+MapDressing.despeckled);
+            var we=wear(b);
+            report(name.apply("wear"),we.verge()>0&&we.ring()>0&&we.gaps()==0,"worn band: dirt path cells that touch a road cell on a side "+we.verge()+", plain ground left beside a road that the band should have covered "+we.gapsRoad()+"; worn ring: dirt path cells just outside the edge stone of a point "+we.ring()+", plain ground left in it "+we.gapsRing()+(we.gaps()==0?"":", first "+we.sample()));
             var pl=plazas(b,n);
             report(name.apply("plaza"),pl.cells()>0&&pl.wrong()==0,"plaza cells (within 9.2 blocks of a flag pole, off the 3x3 pad, the water and the buildings) "+pl.cells()+", not the block of the pattern (earth, a compass of trim, a ring of paving) "+pl.wrong()+(pl.wrong()==0?"":", first: "+pl.sample()));
         }
@@ -703,12 +707,19 @@ public final class Phase3Checks implements ClientModInitializer {
         /** The dirt path cells of the arena (the block at Arena.height of each column): how many, how many have no dirt path on any of their four sides (a dirt path block is 15/16 high, so one between full blocks draws as a dark pit; the diagonal
          *  stripes of coarse dirt that Arena lays in every road leave some at the edge of a ribbon, which is how a road looks and is only reported), and how many lie where the dressing paves everything: within 9.2 blocks of a flag pole (the plaza) or on the
          *  parade ground of a camp (19 blocks behind to 25 in front of the spawn, 63 either side), off the floors and decks the structures build. */
-        record Pits(int paths,int lone,int paved,String sample,String detail){}
+        record Pits(int paths,int lone,int paved,int earth,String sample,String earthSample,String detail){}
         static Pits pits(GravesAndGlory.Battle b){
-            var w=b.world;int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ(),wz=2*hz+1,paths=0,lone=0,plaza=0;var path=new BitSet((2*hx+1)*wz);var sample=new StringBuilder();var detail=new StringBuilder();
+            var w=b.world;int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ(),wz=2*hz+1,paths=0,lone=0,plaza=0,earth=0;var path=new BitSet((2*hx+1)*wz);var sample=new StringBuilder();var earthSample=new StringBuilder();var detail=new StringBuilder();
             for(int x=-hx;x<=hx;x++)for(int z=-hz;z<=hz;z++){
                 if((z&15)==0)w.getChunk(x>>4,z>>4);
-                if(!w.getBlockState(new BlockPos(x,Arena.height(x,z),z)).isOf(Blocks.DIRT_PATH))continue;
+                var top=w.getBlockState(new BlockPos(x,Arena.height(x,z),z));
+                if(!top.isOf(Blocks.DIRT_PATH)){
+                    if((top.isOf(Blocks.COARSE_DIRT)||top.isOf(Blocks.GRAVEL))&&!Arena.river(x,z)){ // trampled earth is the floor of a plaza and the worn strips of dirt path: coarse dirt or gravel anywhere else is a patch
+                        double pd=999;for(var q:Spec.POINTS)pd=Math.min(pd,Math.hypot(x-q.x(),z-q.z()));
+                        if(pd>=9.2){earth++;if(earth<=6)earthSample.append(earth>1?"; ":"").append(name(top)).append(" at (").append(x).append(", ").append(z).append(')');detail.append("earth ").append(name(top)).append(' ').append(x).append(' ').append(z).append((char)10);}
+                    }
+                    continue;
+                }
                 path.set((x+hx)*wz+(z+hz));paths++;
                 boolean zone=false;String of="";
                 for(var p:Spec.POINTS)if(Math.hypot(x-p.x(),z-p.z())<9.2){zone=true;of="plaza of point "+p.id();break;}
@@ -725,11 +736,44 @@ public final class Phase3Checks implements ClientModInitializer {
                     detail.append("lone ").append(x).append(' ').append(z).append(" road ").append(Arena.road(x,z)).append(" footprint ").append((int)foot).append(" point ").append((int)pt).append('\n');
                 }
             }
-            return new Pits(paths,lone,plaza,sample.toString(),detail.toString());
+            return new Pits(paths,lone,plaza,earth,sample.toString(),earthSample.toString(),detail.toString());
+        }
+        /** The worn band and the worn ring, looked at on the map that stands: the dirt path cells that touch a road cell (not a road cell themselves), and the plain ground that is still left beside a road cell of dirt path where MapDressing.wearable says the band
+         *  should lie (gapsRoad), the dirt path cells of the worn ring of every point whose stone ring is laid, and the plain ground still left in it (gapsRing). */
+        record Wear(int verge,int ring,int gapsRoad,int gapsRing,String sample){int gaps(){return gapsRoad+gapsRing;}}
+        /** The top blocks on the four sides of a cell (west, east, north, south), a star after a road cell. */
+        static String around(net.minecraft.server.world.ServerWorld w,int x,int z){
+            var sb=new StringBuilder();
+            for(int[] o:new int[][]{{-1,0},{1,0},{0,-1},{0,1}}){int ax=x+o[0],az=z+o[1];sb.append(sb.length()>0?", ":"").append(name(w.getBlockState(new BlockPos(ax,Arena.height(ax,az),az)))).append(Arena.road(ax,az)?"*":"");}
+            return sb.toString();
+        }
+        static Wear wear(GravesAndGlory.Battle b){
+            var w=b.world;var d=new MapDressing(w);int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ(),verge=0,ring=0,gr=0,gg=0;var sample=new StringBuilder();
+            for(int x=-hx+1;x<hx;x++)for(int z=-hz+1;z<hz;z++){
+                if((z&15)==0)w.getChunk(x>>4,z>>4);
+                if(Arena.road(x,z)||!(Arena.road(x-1,z)||Arena.road(x+1,z)||Arena.road(x,z-1)||Arena.road(x,z+1)))continue;
+                if(w.getBlockState(new BlockPos(x,Arena.height(x,z),z)).isOf(Blocks.DIRT_PATH))verge++;
+                else if(d.follows(x,z)&&d.wearable(x,z)){gr++;if(gr+gg<=6)sample.append(sample.length()>0?"; ":"").append("band (").append(x).append(", ").append(z).append(") with ").append(around(w,x,z));}
+            }
+            for(var p:Spec.POINTS){
+                if(!Arena.ringLaid(p))continue;
+                int r=p.radius();
+                for(int dx=-r-4;dx<=r+4;dx++)for(int dz=-r-4;dz<=r+4;dz++){
+                    if(!MapDressing.ringCell(dx,dz,r+.5))continue;
+                    int x=p.x()+dx,z=p.z()+dz;var bd=MapDressing.bandOf(p,dx,dz);
+                    if(Arena.wetBank(bd[0],bd[1])||Arena.deckCell(bd[0],bd[1]))continue;
+                    if(w.getBlockState(new BlockPos(x,Arena.height(x,z),z)).isOf(Blocks.DIRT_PATH))ring++;
+                    else if(d.wearable(x,z)){gg++;if(gr+gg<=6)sample.append(sample.length()>0?"; ":"").append("ring of ").append(p.id()).append(" (").append(x).append(", ").append(z).append(") with ").append(around(w,x,z));}
+                }
+            }
+            return new Wear(verge,ring,gr,gg,sample.toString());
         }
         /** On what a structure builds: the cells x0..x0+width-1 by z0..z0+depth-1 (floor course, or the planks of a deck). */
         static boolean builtCell(int x,int z){
-            for(var s:Spec.STRUCTURES){int x0=s.x()-s.width()/2,z0=s.z()-s.depth()/2;if(x>=x0&&x<x0+s.width()&&z>=z0&&z<z0+s.depth())return true;}
+            for(var s:Spec.STRUCTURES){
+                int x0=s.x()-s.width()/2,z0=s.z()-s.depth()/2;
+                if(x>=x0&&x<x0+s.width()&&z>=z0&&z<z0+s.depth()&&!(s.palette().equals("ford")&&Math.abs(x-Arena.riverX(z))>8))return true; // the approaches of a ford are ground
+            }
             return false;
         }
         /** The paving of the plazas: within 9.2 blocks of a flag pole, off the 3x3 pad of the pole, off the water (11 columns of the river line) and off the buildings, every cell is the block of one pattern: the ring of paving from 8 blocks out, the compass of trim
@@ -839,14 +883,14 @@ public final class Phase3Checks implements ClientModInitializer {
      *  first spur of each kind (houses and farm and mill, one tower of each camp); where a lane had a stuck window, the place from 16 and from 6 blocks before it (stuck-); the water where the ring band of a point on a deck crossed it, seen from the north
      *  edge of the deck (band-); the four ends of the two rails of each deck and the two edges of the strip of a ford (rail-); the two corners of the bank at the middle crossing where a post and the edge stone of the dressing once stood in the
      *  river (posts-); the two places 16 and 6 blocks before the wall of a camp barracks that the straight fan road used to run into, and the lanes that bend past it (wall-, lane<k>-barracks-); the inside of each barracks hall looking up at its
-     *  lantern (hall-); the plaza floor of the first two points on dry land (plaza-); the view up at each raised outpost from the road and from the plateau (outpost-) and the road up to it from where the climb begins (ramp-); each kind of floating piece from where a walker can see it (float-);
+     *  lantern (hall-); the plaza floor of the first two points on dry land (plaza-); the edge of an open road, seen from the grass beside it (edge-); the view up at each raised outpost from the road and from the shoulder of the plateau (outpost-) and the road up to it from where the climb begins (ramp-); each kind of floating piece from where a walker can see it (float-);
      *  each building no road leads to (building-); and the two longest sight lines of the map at render distance 28 (sight-).
      *  Checks: p3-wt<N>-leg-<id> passes when the walker reached the end of the lane and no 2-second window of walking gained less than 3 blocks (a window that did is a stuck window, counted per lane; the walker then hops, and if that does not help
      *  is put on past the obstacle, on the road and not on a roof); p3-wt<N>-stuck is the total for the map; auto-jumps (a step up the walker had to hop), windows under 6 blocks and the y range of each lane are in the notes. p3-wt<N>-foreign
      *  passes when no column of the arena has a top block that belongs to another map; p3-wt<N>-river is the river check of the arena suite run again on the map as it stands; p3-wt<N>-floating passes when every solid block of the arena touches,
      *  by a face, an edge or a corner, a chain of solid blocks that reaches the floor. The rest of the scans (bands over water, hanging ring and pad, blocks standing in the river, the profile of every lane, the sight lines, every floating piece)
      *  are notes in screenshots/p3-wt<N>-notes.txt.
-     *  GRAVES_WALK_ONLY (or a file walk-only.txt in the run folder) lists name fragments: only the lanes and picture groups whose name contains one of them are done (camp, lane1, flank, link, spur0, band, rail, posts, wall, hall, plaza, outpost, ramp, float, building, sight). */
+     *  GRAVES_WALK_ONLY (or a file walk-only.txt in the run folder) lists name fragments: only the lanes and picture groups whose name contains one of them are done (camp, lane1, flank, link, spur0, band, rail, posts, wall, hall, plaza, edge, outpost, ramp, float, building, sight). */
     static final class Walkthrough implements Suite {
         static final net.minecraft.world.Heightmap.Type FEET=net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES;
         record Stop(String name,double arc,double tx,double ty,double tz){}
@@ -1276,11 +1320,18 @@ public final class Phase3Checks implements ClientModInitializer {
                     jobs.add(new ShotJob("plaza-"+p.id()+"-down",p.x()+0.5+cam[0]*6.0,p.z()+0.5+cam[1]*6.0,p.x()+0.5+cam[0]*3.0,e,p.z()+0.5+cam[1]*3.0,12,"point "+p.id()+": the plaza floor from 6 blocks out, looking down at the floor 3 blocks from the pole"));
                 }
             }
+            if(want("edge"))for(var l:legs){ // the edge of an open road: from the grass three blocks off it, 60 blocks along lane1, looking along the edge
+                if(!l.id.equals("lane1"))continue;
+                double s0=Math.min(60.0,l.len/3.0);double[] a=l.at(s0),c=l.at(s0+8.0);
+                double ux=c[0]-a[0],uz=c[1]-a[1],ul=Math.hypot(ux,uz);if(ul<1e-6)continue;
+                ux/=ul;uz/=ul;double nx=-uz,nz=ux,edge=5.0;
+                for(double k=0;k<=12;k+=0.25)if(CampaignMaps.roadDistance((int)Math.floor(a[0]+nx*k),(int)Math.floor(a[1]+nz*k))>=0){edge=k;break;}
+                double[] t=l.at(Math.min(l.len,s0+60.0));
+                jobs.add(new ShotJob("edge-lane1",a[0]+nx*(edge+3.2),a[1]+nz*(edge+3.2),t[0]+nx*edge,66.0,t[1]+nz*edge,12,"lane1: the edge of the open road from the grass 3 blocks off it, "+(int)Math.round(s0)+" blocks along the lane, looking along the edge 60 blocks ahead"));
+            }
             if(want("outpost"))for(var p:Spec.POINTS)if(p.elevation()>Arena.Y){
                 Leg on=null;for(var l:legs)if(on==null&&l.nearest(p.x(),p.z())[1]<=3.5)on=l;
                 if(on!=null){double[] a=on.at(on.arcOf(p.x(),p.z())+9.0);jobs.add(new ShotJob("outpost-"+p.id()+"-under",a[0],a[1],p.x()+0.5,p.elevation()+0.5,p.z()+0.5,12,"point "+p.id()+": from the road 9 blocks past the centre, up at the pad and the ring"));}
-                double[] top=plateau(p,12.0,17.0,0);
-                if(top!=null)jobs.add(new ShotJob("outpost-"+p.id()+"-top",top[0],top[1],p.x()+0.5,p.elevation()+0.5,p.z()+0.5,12,"point "+p.id()+": from the plateau, 12 to 17 blocks out, at the centre"));
                 double[] near=plateau(p,5.5,9.0,6);
                 if(near!=null)jobs.add(new ShotJob("outpost-"+p.id()+"-near",near[0],near[1],p.x()+0.5,p.elevation()+1.5,p.z()+0.5,12,"point "+p.id()+": from the shoulder of the plateau, 6 to 9 blocks out, at the pad"));
             }
