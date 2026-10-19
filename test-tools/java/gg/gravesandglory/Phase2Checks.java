@@ -831,7 +831,7 @@ public final class Phase2Checks implements ClientModInitializer {
             var tag=net.minecraft.item.BlockItem.getBlockEntityNbt(e.getOffHandStack());
             boolean shield=tag!=null&&tag.getInt("Base")==net.minecraft.util.DyeColor.LIGHT_GRAY.getId()&&tag.getList("Patterns",10).size()==1&&tag.getList("Patterns",10).getCompound(0).getString("Pattern").equals("sc");
             report("p2-spike-portrait",look&&company&&noPennant&&shield,"ArmyCards.portrait(sentinel, 1): named \""+(e==null?"":e.getCustomName().getString())+"\", resolves "+(l==null?"null":l.troop().id()+" stage "+l.stage()+" side "+l.side())+", no scoreboard team="+look
-                +"; cloth "+cloth+" ("+tex+" present="+company+"; Kort's portrait ruling replaced linen with the company's navy); the pennant hidden and the tabard drawn="+noPennant+"; shield "+(tag==null?"none":tag)+" (light-grey field, white saltire)="+shield);
+                +"; cloth "+cloth+" ("+tex+" present="+company+"; Kort's portrait ruling replaced linen with the company's navy); the pennant hidden and the tabard drawn="+noPennant+"; shield "+(tag==null?"none":tag)+" (light-grey field, white straight cross)="+shield);
             c.setScreen(new PortraitProbe(List.of(ArmyCards.portrait(ArmyCards.spec("knight"),1),e)));
         }
         void clean(GravesAndGlory.Battle b){
