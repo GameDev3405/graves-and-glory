@@ -30,7 +30,11 @@ public final class CampaignMaps {
             int z=zs[i],rx=(int)riverX(z),px=rx+(flanks?0:i==0?-29:i==2?29:0);
             points[flanks?i*2:i]=new Spec.PointsRow(""+(char)('A'+(flanks?i*2:i)),names[i],px,z,17,8,64);
             structures.add(s("crossing_"+i,"bridge",rx,z,44,i==1?24:16,2,i==0?"wood":i==2?"ford":"stone",64));
-            for(int side:new int[]{-1,1}){road(side*290,0,side*205,z,5);road(side*205,z,rx+side*28,z,5);}
+            for(int side:new int[]{-1,1}){
+                var bend=fanBend(side,z);
+                if(bend==null)road(side*290,0,side*205,z,5);else{road(side*290,0,bend[0],bend[1],5);road(bend[0],bend[1],side*205,z,5);}
+                road(side*205,z,rx+side*28,z,5);
+            }
             road(rx-29,z,rx+29,z,6);
             if(i==0){
                 structures.add(s("mill","mill",rx-18,z-28,12,12,8,"wood",64));
@@ -91,6 +95,9 @@ public final class CampaignMaps {
         Spec.FACTIONS[0]=new Spec.FactionsRow("dawn","Dawn Covenant",5636095,-283,0,"knight,archer,mage",-286,32);
         Spec.FACTIONS[1]=new Spec.FactionsRow("dusk","Dusk Legion",11141290,283,0,"revenant,bonebow,hexer",286,-32);
     }
+    /** The fan road from the muster point of a camp (side*290, 0) to a lane head (side*205, z) bends once on the side where the barracks of the camp stand (the Dawn barracks are south of the muster point, the Dusk barracks north of it), at (side*266, -side*12),
+     *  so that the road passes the end of the hall 5 blocks off. It used to run straight and into the wall of the barracks. Null: the road is straight. */
+    static int[] fanBend(int side,int z){return Integer.signum(z)==-side?new int[]{side*266,-side*12}:null;}
     static Spec.StructuresRow s(String id,String kind,int x,int z,int w,int d,int h,String palette,int y){return new Spec.StructuresRow(id,kind,x,z,w,d,h,palette,y);}
     static void road(int a,int b,int c,int d,int width){building.add(new Road(a,b,c,d,width));}
     static double distance(double x,double z,Road r){double dx=r.bx-r.ax,dz=r.bz-r.az,t=Math.max(0,Math.min(1,((x-r.ax)*dx+(z-r.az)*dz)/(dx*dx+dz*dz)));return Math.hypot(x-r.ax-t*dx,z-r.az-t*dz);}
