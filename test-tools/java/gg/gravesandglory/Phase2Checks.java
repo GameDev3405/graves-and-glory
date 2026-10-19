@@ -1110,13 +1110,21 @@ public final class Phase2Checks implements ClientModInitializer {
 
     /**
      * Task 5 Step 12: the Gilded proof set in game. The six Gilded troops in a row for each team at stage 1, then each gold
-     * troop alone in the studio (4 blocks, turned 30 degrees), the knight's three stages, the kit (weapons, glow, shields)
+     * troop alone in the studio (4 blocks, turned 30 degrees), then the later stages' close-ups, each evolution line's three
+     * stages side by side (Step 15), the kit (weapons, glow, shields)
      * and the recruit page's Gilded tab.
      */
     static final class GildedArt extends Stage {
         static final List<String> SIX=List.of("knight","archer","sentinel","longbow","mage","gl_marshal");
         final Map<String,GravesAndGlory.Unit> golds=new LinkedHashMap<>(),violets=new LinkedHashMap<>();
-        final List<GravesAndGlory.Unit> stages=new ArrayList<>();int ci;boolean closeOk=true;final StringBuilder closeWhy=new StringBuilder();Frame cullFrame;float cullPitch;
+        /** The close-ups after the six at stage 1: the knight at stages 3 and 2, and the other lines at stage 3 (Step 15). */
+        static final List<Map.Entry<String,Integer>> LATER=List.of(Map.entry("knight",3),Map.entry("knight",2),Map.entry("archer",3),Map.entry("sentinel",3),Map.entry("longbow",3));
+        /** The evolution lines shot side by side, and the parts each shows at stage 3 only (the houses spec's 2.7 extras). */
+        static final List<String> LINES=List.of("knight","archer","sentinel","longbow");
+        static final Map<String,List<String>> STAGE3=Map.of("knight",List.of("crest_plume"),"archer",List.of("signal_horn"),"sentinel",List.of("cape","cape_skirt_right","cape_skirt_left"),"longbow",List.of("long_feather"));
+        final Map<String,List<GravesAndGlory.Unit>> lines=new java.util.concurrent.ConcurrentHashMap<>();final Set<GravesAndGlory.Unit> staged=java.util.concurrent.ConcurrentHashMap.newKeySet();
+        int li;boolean stagesOk=true;final StringBuilder stagesWhy=new StringBuilder();
+        int ci;boolean closeOk=true;final StringBuilder closeWhy=new StringBuilder();Frame cullFrame;float cullPitch;
         /** The sides shot's four knights (gold, violet, crimson, teal) and the cards' portraits' draw counts before the Gilded tab drew. */
         final List<GravesAndGlory.Unit> sided=new ArrayList<>();final Map<String,Integer> cardDraws=new HashMap<>();
         static final List<String> FOUR=List.of("gold","violet","crimson","teal");
@@ -1142,26 +1150,28 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 0->{if(ready&&posted.size()==12&&posted.stream().allMatch(u->{var e=client(c,u.mob);return e!=null&&e.getCustomName()!=null;})&&lit(c)){c.options.hudHidden=true;wait=0;cs=1;}
                     else if(++wait%600==0)System.out.println("[p2-wait] gilded-art step 0 after "+wait+" ticks: ready="+ready+", posted "+posted.size()+" of 12; "+litWhy(c));}
                 case 1->{wait++;if(wait==60){if(shotReady(c,"gilded-lineup")){lineup(c);shot(c,"gilded-lineup");cs=2;wait=0;ci=0;}else wait--;}}
-                case 2->{wait++; // one gold troop at a time in the studio, then the knight at stage 3
-                    String troop=ci<6?SIX.get(ci):"knight";
-                    if(wait==1){final int k=ci;server(c,b->{var u=golds.get(troop);move(u.mob,0,STUDIO,180+30);if(k==6)stage(u,3);camera(b,0,1.45,STUDIO-4,0,6);});}
-                    if(wait==45){String n=ci<6?"gilded-"+troop:"gilded-knight-s3";if(shotReady(c,n)){close(c,troop,ci<6?1:3);shot(c,n);}else wait--;}
-                    if(wait==50){final int k=ci;server(c,b->{var u=golds.get(troop);if(k==6)stage(u,1);move(u.mob,-6.25+SIX.indexOf(troop)*2.5,0,0);});ci++;wait=0;if(ci>6){report("p2-gilded-close",closeOk,"each close-up's troop was last drawn through its own model at the stage shot, in gold, 4 blocks from the camera: "+closeWhy.toString().trim());cs=3;}}}
-                case 3->{wait++; // the knight's stages side by side in the studio, stage 1 on the left (the camera looks south: +x is its left)
-                    if(wait==1)server(c,b->{for(int s=1;s<=3;s++){var u=post(b,gold,"knight",(2-s)*2.0,STUDIO,180+20);stage(u,s);stages.add(u);}camera(b,0,1.6,STUDIO-5,0,8);});
-                    if(wait==50){if(shotReady(c,"gilded-stages")){stagesCheck(c);shot(c,"gilded-stages");}else wait--;}
-                    if(wait==55){kit(c);cs=5;wait=0;}}
+                case 2->{wait++; // one gold troop at a time in the studio at stage 1, then the later stages (LATER)
+                    String troop=ci<6?SIX.get(ci):LATER.get(ci-6).getKey();int st=ci<6?1:LATER.get(ci-6).getValue();
+                    if(wait==1){server(c,b->{var u=golds.get(troop);move(u.mob,0,STUDIO,180+30);if(st>1)stage(u,st);camera(b,0,1.45,STUDIO-4,0,6);});}
+                    if(wait==45){String n=st==1?"gilded-"+troop:"gilded-"+troop+"-s"+st;if(shotReady(c,n)){close(c,troop,st);shot(c,n);}else wait--;}
+                    if(wait==50){server(c,b->{var u=golds.get(troop);if(st>1)stage(u,1);move(u.mob,-6.25+SIX.indexOf(troop)*2.5,0,0);});ci++;wait=0;if(ci>=6+LATER.size()){report("p2-gilded-close",closeOk,"each close-up's troop was last drawn through its own model at the stage shot, in gold, 4 blocks from the camera, its stage 3 parts drawn at stage 3 only: "+closeWhy.toString().trim());cs=3;}}}
+                case 3->{wait++; // each line's stages side by side in the studio, stage 1 on the left (the camera looks south: +x is its left)
+                    String line=LINES.get(li);
+                    if(wait==1)server(c,b->{List<GravesAndGlory.Unit> us=new ArrayList<>();for(int s=1;s<=3;s++){var u=post(b,gold,line,(2-s)*2.0,STUDIO,180+20);stage(u,s);us.add(u);staged.add(u);}lines.put(line,us);camera(b,0,1.6,STUDIO-5,0,8);});
+                    if(wait==50){String n=line.equals("knight")?"gilded-stages":"gilded-stages-"+line;if(lines.containsKey(line)&&shotReady(c,n)){stagesCheck(c,line);shot(c,n);}else wait--;}
+                    if(wait==55){var us=lines.get(line);server(c,b->{for(var u:us){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();pins.removeIf(p->p.mob()==u.mob);b.units.remove(u);posted.remove(u);}});
+                        li++;wait=0;if(li==LINES.size()){report("p2-gilded-stages",stagesOk,stagesWhy.toString().trim());kit(c);cs=5;}}}
                 case 5->{wait++; // the culling box: the camera 1.1 blocks in front of Aldric looks up at his standard, his body and the vanilla box below the view
                     if(wait==1){fovScale(c,0.0);cullPitch=-(float)(c.options.getFov().getValue()/2.0-CULL_DIP);final float pitch=cullPitch;
-                        server(c,b->{for(var u:stages){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();pins.removeIf(p->p.mob()==u.mob);b.units.remove(u);posted.remove(u);}
-                            move(golds.get("gl_marshal").mob,0,STUDIO,180);camera(b,0,CULL_EYE,STUDIO-1.1,0,pitch);});}
+                        server(c,b->{move(golds.get("gl_marshal").mob,0,STUDIO,180);camera(b,0,CULL_EYE,STUDIO-1.1,0,pitch);});}
                     if(wait==40){var e=client(c,golds.get("gl_marshal").mob);Vec3d at=at(0,STUDIO);
                         if(e==null||e.squaredDistanceTo(at)>0.01||!lit(c))wait--;else cullFrame=Frame.watch(e.getId(),x->x.squaredDistanceTo(at)<0.01);}
                     if(wait>40&&(cullFrame.done||wait>=80)){cullCheck(c);fovScale(c,-1);server(c,b->move(golds.get("gl_marshal").mob,-6.25+SIX.indexOf("gl_marshal")*2.5,0,0));cs=6;wait=0;}}
                 case 6->{wait++; // one troop on all four sides (finding 11): four Squires in the studio, gold, violet, crimson and teal from the left, 4 blocks off
                     if(wait==1)server(c,b->{var board=b.server.getScoreboard();
                         for(int i=0;i<4;i++){var u=post(b,i==1?violet:gold,"knight",(1.5-i)*1.6,STUDIO,180+20);sided.add(u);
-                            if(i>=2){String team="gg_"+FOUR.get(i);var t=board.getTeam(team);if(t==null)t=board.addTeam(team);board.addPlayerToTeam(u.mob.getEntityName(),t);}}
+                            if(i>=2){String team="gg_"+FOUR.get(i);var t=board.getTeam(team);if(t==null)t=board.addTeam(team);board.addPlayerToTeam(u.mob.getEntityName(),t);
+                                for(var f:Spec.FACTIONS)if(f.id().equals(FOUR.get(i)))u.mob.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(u.spec,f.dye()));}}
                         camera(b,0,1.45,STUDIO-4,0,6);});
                     if(wait==50){if(sided.size()==4&&shotReady(c,"gilded-sides")){sidesCheck(c);shot(c,"gilded-sides");}else wait--;}
                     if(wait==55){server(c,b->{for(var u:sided){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();pins.removeIf(p->p.mob()==u.mob);b.units.remove(u);posted.remove(u);}});cs=4;wait=0;}}
@@ -1192,8 +1202,11 @@ public final class Phase2Checks implements ClientModInitializer {
         void close(MinecraftClient c,String troop,int stage){
             var e=client(c,golds.get(troop).mob);var dr=e==null?null:TroopRenderer.drawn(e);var l=dr==null?null:dr.last.look();
             double d=e==null||c.player==null?-1:Math.hypot(e.getX()-c.player.getX(),e.getZ()-c.player.getZ());
-            boolean good=l!=null&&l.troop().id().equals(troop)&&l.stage()==stage&&"gold".equals(l.side())&&"gold".equals(dr.last.cloth())&&TroopModels.model(troop)!=null&&Math.abs(d-4)<0.25;closeOk&=good;
-            closeWhy.append(troop).append(" stage ").append(l==null?"-":String.valueOf(l.stage())).append(" side ").append(l==null?"-":l.side()).append(String.format(Locale.ROOT," at %.2f blocks",d)).append(good?"":" (BAD)").append("; ");
+            var m=TroopModels.model(troop);List<String> parts=STAGE3.getOrDefault(troop,List.of()),shown=dr==null||m==null?List.of():m.shownBones(dr.last.bones());
+            long on=parts.stream().filter(shown::contains).count();boolean partsOk=stage==3?on==parts.size():on==0;
+            boolean good=l!=null&&l.troop().id().equals(troop)&&l.stage()==stage&&"gold".equals(l.side())&&"gold".equals(dr.last.cloth())&&m!=null&&Math.abs(d-4)<0.25&&partsOk;closeOk&=good;
+            closeWhy.append(troop).append(" stage ").append(l==null?"-":String.valueOf(l.stage())).append(" side ").append(l==null?"-":l.side()).append(String.format(Locale.ROOT," at %.2f blocks",d))
+                .append(parts.isEmpty()?"":", "+String.join("+",parts)+" "+(on==parts.size()?"drawn":on==0?"not drawn":on+" of "+parts.size()+" drawn")).append(good?"":" (BAD)").append("; ");
         }
         /** p2-gilded-cull: with only the top of Aldric's standard in view, at the bottom of the frame, he is drawn (the vanilla box test would drop him), the standard's cloth on the frame in gold. */
         void cullCheck(MinecraftClient c){
@@ -1216,12 +1229,18 @@ public final class Phase2Checks implements ClientModInitializer {
                 why.append(FOUR.get(i)).append(": ").append(last==null?"not drawn":"drawn in "+last.cloth()+", flag "+(shown.contains("pennant")?"shown":"hidden")).append(good?"":" (BAD)").append("; ");}
             report("p2-gilded-sides",ok,"one Squire on each side, left to right on the frame: "+why.toString().trim());
         }
-        void stagesCheck(MinecraftClient c){
-            var m=TroopModels.model("knight");boolean ok=m!=null&&m.bones().contains("crest_plume");StringBuilder why=new StringBuilder();
-            for(var u:stages){var e=client(c,u.mob);var d=e==null?null:TroopRenderer.drawn(e);var l=d==null?null:d.last.look();if(l==null||m==null){ok=false;why.append("not drawn; ");continue;}
-                boolean plume=m.shownBones(d.last.bones()).contains("crest_plume");boolean want=l.stage()==3;ok&=plume==want&&l.stage()==u.stage;
-                why.append("\"").append(e.getCustomName().getString()).append("\" drawn at stage ").append(l.stage()).append(", plume ").append(plume?"drawn":"not drawn").append(plume==want&&l.stage()==u.stage?"":" (BAD)").append("; ");}
-            report("p2-gilded-stages",ok,why.toString());
+        /** One line of p2-gilded-stages: each of its three troops was last drawn at its own stage, in that stage's skin, with the line's stage 3 parts at stage 3 only. */
+        void stagesCheck(MinecraftClient c,String line){
+            var m=TroopModels.model(line);List<String> parts=STAGE3.get(line);boolean ok=m!=null&&m.bones().containsAll(parts);
+            stagesWhy.append(line).append(m!=null&&m.bones().containsAll(parts)?"":" (BAD: the model lacks "+parts+")").append(": ");
+            for(var u:lines.get(line)){var e=client(c,u.mob);var d=e==null?null:TroopRenderer.drawn(e);var l=d==null?null:d.last.look();
+                if(l==null||m==null){ok=false;stagesWhy.append("stage ").append(u.stage).append(" not drawn (BAD); ");continue;}
+                List<String> shown=m.shownBones(d.last.bones());long on=parts.stream().filter(shown::contains).count();
+                var skin=TroopModels.skin(l);boolean skinOk=skin!=null&&skin.getPath().endsWith("/"+line+"_s"+u.stage+".png")&&c.getResourceManager().getResource(skin).isPresent();
+                boolean good=l.stage()==u.stage&&(l.stage()==3?on==parts.size():on==0)&&skinOk;ok&=good;
+                stagesWhy.append("\"").append(e.getCustomName().getString()).append("\" drawn at stage ").append(l.stage()).append(" in ").append(skin==null?"no skin":skin.getPath().substring(skin.getPath().lastIndexOf('/')+1))
+                    .append(", ").append(String.join("+",parts)).append(" ").append(on==parts.size()?"drawn":on==0?"not drawn":on+" of "+parts.size()+" drawn").append(good?"":" (BAD)").append("; ");}
+            stagesOk&=ok;
         }
         void kit(MinecraftClient c){
             boolean ok=true;StringBuilder why=new StringBuilder();
@@ -1230,7 +1249,7 @@ public final class Phase2Checks implements ClientModInitializer {
             boolean lit=glow!=null&&c.getResourceManager().getResource(glow).isPresent();ok&=lit;why.append("the Sunweaver's glow ").append(glow).append(lit?"":" (BAD)").append("; ");
             final boolean client=ok;final String clientWhy=why.toString();
             server(c,b->{boolean shields=true;StringBuilder sw=new StringBuilder();
-                for(var u:posted){if(!List.of("knight","sentinel","gl_marshal").contains(u.spec.id())||stages.contains(u))continue;
+                for(var u:posted){if(!List.of("knight","sentinel","gl_marshal").contains(u.spec.id())||staged.contains(u)||sided.contains(u))continue;
                     var tag=net.minecraft.item.BlockItem.getBlockEntityNbt(u.mob.getOffHandStack());String dye=b.side(u.squad.team).dye();
                     StringBuilder want=new StringBuilder();for(String layer:u.spec.shield().split(","))want.append(layer).append(",");
                     StringBuilder got=new StringBuilder();if(tag!=null){var list=tag.getList("Patterns",10);for(int i=0;i<list.size();i++){var p=list.getCompound(i);got.append(net.minecraft.util.DyeColor.byId(p.getInt("Color")).getName()).append(":").append(p.getString("Pattern")).append(",");}}

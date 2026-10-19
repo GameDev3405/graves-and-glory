@@ -10,9 +10,12 @@
 {"part":"long_tabard"},
 {"part":"tabard_skirt","name":"tabard_skirt_right"},
 {"part":"tabard_skirt","name":"tabard_skirt_left","bone":"left_leg","offset":[-0.8,0,0]},
-{"part":"pennant","scale":[0.952381,0.909091,0.952381],"offset":[0,-1.0909,0.2381]}
+{"part":"pennant","scale":[0.952381,0.909091,0.952381],"offset":[0,-1.0909,0.2381]},
+{"part":"cape","uv":[64,20],"stages":[3]},
+{"part":"cape_skirt","name":"cape_skirt_right","uv":[64,41],"stages":[3]},
+{"part":"cape_skirt","name":"cape_skirt_left","bone":"left_leg","offset":[3.2,0,0],"uv":[80,41],"stages":[3]}
 ],
-"skins":{"1":"sentinel_s1.png"},
+"skins":{"1":"sentinel_s1.png","2":"sentinel_s2.png","3":"sentinel_s3.png"},
 "weapon":"longsword",
 "hand":"right",
 "portrait":"tall 2"

@@ -11,7 +11,7 @@
 {"part":"chest_panel"},
 {"part":"pennant"}
 ],
-"skins":{"1":"knight_s1.png","3":"knight_s3.png"},
+"skins":{"1":"knight_s1.png","2":"knight_s2.png","3":"knight_s3.png"},
 "weapon":"arming_sword",
 "hand":"right",
 "portrait":"standard"

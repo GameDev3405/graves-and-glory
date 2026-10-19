@@ -1,0 +1,10 @@
+{
+"part":"cape_skirt",
+"note":"Half of the Templar Commander's mantle below the waist (stage 3), behind the tabard's back flap on one leg and flaring past it, split up the back as a riding mantle so the legs never cut through it; the left half takes bone left_leg and offset [3.2,0,0]. Block 14x11.",
+"bone":"right_leg",
+"team":false,
+"tag":"",
+"boxes":[
+{"origin":[-4.6,0,2.7],"size":[6,10,1],"uv":[0,0],"note":"the half mantle, to the ankle, flaring past the leg"}
+]
+}
