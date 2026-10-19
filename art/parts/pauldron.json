@@ -1,0 +1,43 @@
+{
+ "part": "pauldron",
+ "note": "A shoulder plate: a cap over the top of the arm and a rolled rim along its top edge. It widens the shoulders, which is what tells an armoured troop from a cloth one at 36 px. It hangs from the arm bone, so it moves with the shoulder.",
+ "bone": "right_arm",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -4,
+    -2,
+    -2.5
+   ],
+   "size": [
+    5,
+    3,
+    5
+   ],
+   "uv": [
+    0,
+    0
+   ],
+   "note": "the cap over the shoulder, overhanging outward"
+  },
+  {
+   "origin": [
+    -4.5,
+    -2.5,
+    -3
+   ],
+   "size": [
+    6,
+    1,
+    5
+   ],
+   "uv": [
+    0,
+    9
+   ],
+   "note": "the rolled rim along the top edge"
+  }
+ ]
+}

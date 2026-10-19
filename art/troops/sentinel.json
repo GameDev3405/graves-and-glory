@@ -1,22 +1,141 @@
 {
-"troop":"sentinel",
-"note":"Templar > Templar Knight > Templar Commander (unit identity 1): husk, biped, tall; white plate, the flat-topped great helm, the team long tabard with the white cross and the gilt belt, the pennant; stage 3 cape. Longsword, the shield on the left arm.",
-"rig":"biped",
-"size":[128,64],
-"bones":{"body":{"scale":[1.05,1.1,1.05]},"right_leg":{"scale":[1,1.15,1]},"left_leg":{"scale":[1,1.15,1]}},
-"idleArms":"hang",
-"parts":[
-{"part":"great_helm","uv":[64,0]},
-{"part":"long_tabard"},
-{"part":"tabard_skirt","name":"tabard_skirt_right"},
-{"part":"tabard_skirt","name":"tabard_skirt_left","bone":"left_leg","offset":[-0.8,0,0]},
-{"part":"pennant","scale":[0.952381,0.909091,0.952381],"offset":[0,-1.0909,0.2381]},
-{"part":"cape","uv":[64,20],"stages":[3]},
-{"part":"cape_skirt","name":"cape_skirt_right","uv":[64,41],"stages":[3]},
-{"part":"cape_skirt","name":"cape_skirt_left","bone":"left_leg","offset":[3.2,0,0],"uv":[80,41],"stages":[3]}
-],
-"skins":{"1":"sentinel_s1.png","2":"sentinel_s2.png","3":"sentinel_s3.png"},
-"weapon":"longsword",
-"hand":"right",
-"portrait":"tall 2"
+ "troop": "sentinel",
+ "note": "Templar > Templar Knight > Templar Commander (unit identity 1): husk, biped, tall; white plate, the flat-topped great helm, the team long tabard with the white cross and the gilt belt, the pennant; stage 3 cape. Longsword, the shield on the left arm.",
+ "rig": "biped",
+ "size": [
+  128,
+  64
+ ],
+ "bones": {
+  "body": {
+   "scale": [
+    1.05,
+    1.1,
+    1.05
+   ]
+  },
+  "right_leg": {
+   "scale": [
+    1,
+    1.15,
+    1
+   ]
+  },
+  "left_leg": {
+   "scale": [
+    1,
+    1.15,
+    1
+   ]
+  }
+ },
+ "idleArms": "hang",
+ "parts": [
+  {
+   "part": "great_helm",
+   "uv": [
+    64,
+    0
+   ]
+  },
+  {
+   "part": "long_tabard"
+  },
+  {
+   "part": "tabard_skirt",
+   "name": "tabard_skirt_right"
+  },
+  {
+   "part": "tabard_skirt",
+   "name": "tabard_skirt_left",
+   "bone": "left_leg",
+   "offset": [
+    -0.8,
+    0,
+    0
+   ]
+  },
+  {
+   "part": "pennant",
+   "scale": [
+    0.952381,
+    0.909091,
+    0.952381
+   ],
+   "offset": [
+    0,
+    -1.0909,
+    0.2381
+   ]
+  },
+  {
+   "part": "cape",
+   "uv": [
+    64,
+    20
+   ],
+   "stages": [
+    3
+   ]
+  },
+  {
+   "part": "cape_skirt",
+   "name": "cape_skirt_right",
+   "uv": [
+    64,
+    41
+   ],
+   "stages": [
+    3
+   ]
+  },
+  {
+   "part": "cape_skirt",
+   "name": "cape_skirt_left",
+   "bone": "left_leg",
+   "offset": [
+    3.2,
+    0,
+    0
+   ],
+   "uv": [
+    80,
+    41
+   ],
+   "stages": [
+    3
+   ]
+  },
+  {
+   "part": "pauldron",
+   "name": "pauldron_right",
+   "bone": "right_arm",
+   "uv": [
+    102,
+    0
+   ]
+  },
+  {
+   "part": "pauldron",
+   "name": "pauldron_left",
+   "bone": "left_arm",
+   "uv": [
+    94,
+    40
+   ],
+   "offset": [
+    3,
+    0,
+    0
+   ]
+  }
+ ],
+ "skins": {
+  "1": "sentinel_s1.png",
+  "2": "sentinel_s2.png",
+  "3": "sentinel_s3.png"
+ },
+ "weapon": "longsword",
+ "hand": "right",
+ "portrait": "tall 2"
 }

@@ -183,6 +183,31 @@ def garment(p, bone, top, field_code, lit, dark, foot=None, back=None, folds=Tru
     p.paint(bone, 'bottom', lambda w, h, c=foot or deep: vgrad(w, h, c))
 
 
+def pauldron(p, metal='S'):
+    """Paints the pauldron lames. The upper lame is the big one over the shoulder, the
+    second hangs below it, and the third is the rolled rim on top in gilt. It takes the
+    troop's metal, so the Templar's is white plate and the Marshal's is blackened."""
+    lit, mid, dark, deep = {
+        'S': ('S0', 'S1', 'S2', 'S3'),
+        'B': ('B0', 'B1', 'B2', 'B3'),
+    }[metal]
+    for name in ('pauldron_right', 'pauldron_left'):
+        # the cap, box 0: a lit top edge, a graded field, a shadowed foot
+        p.paint(name, 'north', lambda w, h, l=lit, m=mid, d=dark, c=deep: cylinder(w, h, [l, m, d, c]))
+        p.paint(name, 'south', lambda w, h, m=mid, d=dark, c=deep: cylinder(w, h, [m, d, c, c]))
+        p.paint(name, 'west', lambda w, h, l=lit, m=mid, d=dark, c=deep: cylinder(w, h, [l, m, d, c]))
+        p.paint(name, 'east', lambda w, h, m=mid, d=dark, c=deep: cylinder(w, h, [m, d, c, c]))
+        p.paint(name, 'top', lambda w, h, l=lit, m=mid: cylinder(w, h, [l, m]))
+        p.paint(name, 'bottom', lambda w, h, c=deep: cylinder(w, h, [c]))
+        # the rolled rim, box 1: gilt, a lit roll
+        p.paint(name, 'north', lambda w, h: vgrad(w, h, ['G0', 'G1', 'G3'], mid_at=max(1, h // 3)), box=1)
+        p.paint(name, 'south', lambda w, h: vgrad(w, h, ['G1', 'G2', 'G4'], mid_at=max(1, h // 3)), box=1)
+        p.paint(name, 'west', lambda w, h: vgrad(w, h, ['G0', 'G1', 'G3'], mid_at=max(1, h // 3)), box=1)
+        p.paint(name, 'east', lambda w, h: vgrad(w, h, ['G1', 'G2', 'G4'], mid_at=max(1, h // 3)), box=1)
+        p.paint(name, 'top', lambda w, h: vgrad(w, h, ['G0', 'G1']), box=1)
+        p.paint(name, 'bottom', lambda w, h: vgrad(w, h, ['G3', 'G4']), box=1)
+
+
 def skirt_front(hem='E4', field='E1', edge='E3'):
     """A skirt front: a lit field, a fold every other column and a shadowed hem."""
     def spec(w, h):
@@ -258,6 +283,8 @@ def knight(stage):
             p.paint(leg, 'top', lambda w, h: vgrad(w, h, 'M2'))
             p.paint(leg, 'bottom', lambda w, h: vgrad(w, h, 'L3'))
     else:
+        # ---- the pauldron: the shoulders that tell an armoured troop from a cloth one ----
+        pauldron(p, 'S')
         # ---- the Knight's plate arms: a polished pauldron rimmed in gilt, mail at the
         # gap, a gilt couter, the vambrace, a gilt cuff and the steel gauntlet ----
         def arm_plate(w, h):
@@ -381,14 +408,15 @@ def archer(stage):
 
     # ---- the white fletched quiver across the back ----
     for f in ('north', 'west', 'east', 'south'):
-        p.paint('white_quiver', f, lambda w, h: vgrad(w, h, ['L1', 'L2', 'L3', 'L4'], mid_at=max(1, h // 6)), box=0)
-    p.paint('white_quiver', 'top', lambda w, h: vgrad(w, h, ['L1', 'L0', 'L2'], mid_at=max(1, h // 3)), box=0)
-    p.paint('white_quiver', 'bottom', lambda w, h: vgrad(w, h, 'L4'), box=0)
-    # the white fletching on top
+        p.paint('white_quiver', f, lambda w, h: vgrad(w, h, ['R0', 'R1', 'R2', 'R3'], mid_at=max(1, h // 6)), box=0)
+    p.paint('white_quiver', 'top', lambda w, h: vgrad(w, h, ['R0', 'R1', 'R2'], mid_at=max(1, h // 3)), box=0)
+    p.paint('white_quiver', 'bottom', lambda w, h: vgrad(w, h, 'R3'), box=0)
+    # the white fletching on top: the brightest value on the archer, so the mark
+    # reads over the shoulder the way the spec says it must
     for f in ('north', 'west', 'east', 'south'):
-        p.paint('white_quiver', f, lambda w, h: vgrad(w, h, ['BONE', 'BONE', 'N2'], mid_at=max(1, h // 2)), box=1)
-    p.paint('white_quiver', 'top', lambda w, h: vgrad(w, h, ['BONE', 'BONE', 'N2'], mid_at=max(1, h // 2)), box=1)
-    p.paint('white_quiver', 'bottom', lambda w, h: vgrad(w, h, 'N2'), box=1)
+        p.paint('white_quiver', f, lambda w, h: vgrad(w, h, ['U0', 'U1', 'U2'], mid_at=max(1, h // 2)), box=1)
+    p.paint('white_quiver', 'top', lambda w, h: vgrad(w, h, ['U0', 'U1', 'U2'], mid_at=max(1, h // 2)), box=1)
+    p.paint('white_quiver', 'bottom', lambda w, h: vgrad(w, h, 'U2'), box=1)
 
     # ---- arms: a gambeson sleeve, a bracer and a glove ----
     for arm in ('right_arm', 'left_arm'):
@@ -498,6 +526,8 @@ def sentinel(stage):
         p.paint(side, 'top', lambda w, h: vgrad(w, h, 'E3'))
         p.paint(side, 'bottom', lambda w, h: vgrad(w, h, 'E4'))
 
+    # ---- the pauldron: the shoulders that tell an armoured troop from a cloth one ----
+    pauldron(p, 'S')
     # ---- arms: plate with a great pauldron, a couter, a vambrace and a gauntlet ----
     def arm_plate(w, h):
         out = []
@@ -731,6 +761,8 @@ def gl_marshal():
     p.paint('surcoat_skirt', 'top', lambda w, h: vgrad(w, h, 'E3'))
     p.paint('surcoat_skirt', 'bottom', lambda w, h: vgrad(w, h, 'E4'))
 
+    # ---- the pauldron: the shoulders that tell an armoured troop from a cloth one ----
+    pauldron(p, 'B')
     # ---- arms: blackened plate, a great pauldron, a couter, a vambrace ----
     def arm_plate(w, h):
         out = []
