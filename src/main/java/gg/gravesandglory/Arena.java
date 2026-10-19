@@ -32,6 +32,23 @@ public final class Arena {
     static boolean wet(int px,int row){return (river(px-1,row)||river(px,row)||river(px+1,row))&&!paved(px,row);}
     /** Inside the footprint of a structure that is not a bridge (the test MapDressing.onStructure makes with no margin). */
     static boolean paved(int x,int z){for(var s:Spec.STRUCTURES)if(!s.kind().equals("bridge")&&Math.abs(x-s.x())<=s.width()/2&&Math.abs(z-s.z())<=s.depth()/2)return true;return false;}
+    /** Water in the column or in either column beside it. */
+    static boolean wetBank(int x,int z){return river(x-1,z)||river(x,z)||river(x+1,z);}
+    /** A cell of a bridge: its planks, and the two rail rows beside them. */
+    static boolean deckCell(int x,int z){
+        for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")){int x0=s.x()-s.width()/2,z0=s.z()-s.depth()/2;if(x>=x0&&x<x0+s.width()&&z>=z0-1&&z<=z0+s.depth())return true;}
+        return false;
+    }
+    /** Whether the ring of a capture point is laid at all: its band (radius-1 to radius out) has to run on the ground, off the river and its banks and off the decks, for at least 40 cells in one piece round the circle. At a point on the river
+     *  the water and the deck cut the band into pieces of a few cells, and those would lie on the banks as loose pale blocks; there the point is the bridge, and neither the ring nor the edge stone of MapDressing is laid. */
+    public static boolean ringLaid(Spec.PointsRow p){
+        int r=p.radius();var cells=new ArrayList<int[]>();
+        for(int dx=-r;dx<=r;dx++)for(int dz=-r;dz<=r;dz++){double d=Math.hypot(dx,dz);if(d>=r-1&&d<=r)cells.add(new int[]{dx,dz});}
+        cells.sort(java.util.Comparator.comparingDouble(c->Math.atan2(c[1],c[0])));
+        int n=cells.size(),run=0,best=0;
+        for(int i=0;i<2*n;i++){var c=cells.get(i%n);int x=p.x()+c[0],z=p.z()+c[1];if(!wetBank(x,z)&&!deckCell(x,z)){run++;best=Math.max(best,Math.min(run,n));}else run=0;}
+        return best>=40;
+    }
     public static boolean road(int x,int z){return CampaignMaps.road(x,z);}
     static double blend(double h,double flat,double dist,double radius,double shoulder){double t=MathHelper.clamp((dist-radius)/shoulder,0,1);t=t*t*(3-2*t);return flat+(h-flat)*t;}
     public static int height(int x,int z){
@@ -95,7 +112,14 @@ public final class Arena {
         w.setTimeOfDay(CampaignMaps.selected==3?11500:CampaignMaps.selected==2?6000:3000);
         for(var s:Spec.STRUCTURES)structure(w,s);
         clearDecks(w);
-        for(var p:Spec.POINTS){for(int dx=-p.radius();dx<=p.radius();dx++)for(int dz=-p.radius();dz<=p.radius();dz++){double d=Math.hypot(dx,dz);if(d>=p.radius()-1&&d<=p.radius())put(w,p.x()+dx,p.elevation(),p.z()+dz,Blocks.SMOOTH_STONE);}box(w,p.x()-1,p.elevation(),p.z()-1,3,1,3,Blocks.CHISELED_STONE_BRICKS);flag(w,p,-1);}
+        for(var p:Spec.POINTS){
+            boolean laid=ringLaid(p);
+            for(int dx=-p.radius();dx<=p.radius();dx++)for(int dz=-p.radius();dz<=p.radius();dz++){
+                double d=Math.hypot(dx,dz);int x=p.x()+dx,z=p.z()+dz;
+                if(laid&&d>=p.radius()-1&&d<=p.radius()&&!wetBank(x,z)&&!deckCell(x,z))put(w,x,p.elevation(),z,Blocks.SMOOTH_STONE); // the ring is laid on the ground: not across the river, not across a deck
+            }
+            box(w,p.x()-1,p.elevation(),p.z()-1,3,1,3,Blocks.CHISELED_STONE_BRICKS);flag(w,p,-1);
+        }
         for(var s:Spec.SCENERY){int y=height(s.x(),s.z())+1;if(s.kind().equals("tree")){
             // Spruce grows as a cone, oak as a rounded crown; leaves are persistent so the woods never thin out mid-battle.
             boolean spruce=s.palette().equals("spruce");Block log=spruce?Blocks.SPRUCE_LOG:Blocks.OAK_LOG;

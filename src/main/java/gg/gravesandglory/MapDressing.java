@@ -120,7 +120,7 @@ final class MapDressing {
                 if(b!=null)put(x,y,z,b);}
             // Capture edge: a flush band of dark stone exactly on the radius, so the line you must cross is on the ground.
             Block edge=map==2?Blocks.BLUE_ICE:map==3?Blocks.POLISHED_BLACKSTONE_BRICKS:Blocks.POLISHED_BLACKSTONE;
-            for(int dx=-r-1;dx<=r+1;dx++)for(int dz=-r-1;dz<=r+1;dz++){double d=Math.hypot(dx,dz);int x=p.x()+dx,z=p.z()+dz;
+            if(Arena.ringLaid(p))for(int dx=-r-1;dx<=r+1;dx++)for(int dz=-r-1;dz<=r+1;dz++){double d=Math.hypot(dx,dz);int x=p.x()+dx,z=p.z()+dz;
                 if(d<r-.5||d>=r+.5||nearRiver(x,z)||onStructure(x,z,0))continue;put(x,h(x,z),z,edge);}
             // Boundary posts: lanterns just outside the ring show the capture edge at night.
             for(int k=0;k<20;k++){double a=k*Math.PI/10;int x=p.x()+(int)Math.round(Math.cos(a)*(r+1.5)),z=p.z()+(int)Math.round(Math.sin(a)*(r+1.5));
