@@ -18,8 +18,8 @@ import java.util.*;
  *  All but the ability slot is drawn on the UiCanvas; the slot sits in vanilla GUI space at the player's GUI Scale, next to the
  *  hotbar. Colour never carries a meaning alone (spec 6.1): seals carry their owner's emblem, a routing card its stamp and grey
  *  card, a fallen one its word. The event feed hangs at the right edge; the hint layer (altLayer) puts every key row on the cards
- *  and the hint slip above them. What the last frame drew is kept for checks: cards(), seals(), rects(), texts(), hintRows() and
- *  hintEnds(). */
+ *  and the hint slip above them. What the last frame drew is kept for checks: cards(), seals(), rects(), texts(), hintRows(),
+ *  hintEnds() and keyRows(). */
 public final class BattleHud {
     private BattleHud() {}
 
@@ -28,6 +28,9 @@ public final class BattleHud {
     public record CardDraw(String group,String state,boolean tall,int x,int y,int w,int h){}
     /** A seal the last frame drew: its sprite and its place in canvas px. */
     public record SealDraw(String sprite,int x,int y){}
+    /** A tall card's key row the last frame drew: its group, its chips and words in order, and the canvas x where each starts and
+     *  where it ends. */
+    public record KeyRowDraw(String group,List<String> parts,List<Integer> from,List<Integer> to){}
 
     /** Food icons HungerHudMixin skipped. It lives here because a mixin class cannot be referenced at runtime. */
     public static int foodSkipped;
@@ -48,12 +51,14 @@ public final class BattleHud {
     private static final Map<String,String> textsDrawn=new LinkedHashMap<>();
     private static final List<List<String>> hintRowsDrawn=new ArrayList<>();
     private static final List<Integer> hintEndsDrawn=new ArrayList<>();
+    private static final List<KeyRowDraw> keyRowsDrawn=new ArrayList<>();
     private static final List<CardDraw> cards=Collections.unmodifiableList(cardsDrawn);
     private static final List<SealDraw> seals=Collections.unmodifiableList(sealsDrawn);
     private static final Map<String,int[]> rects=Collections.unmodifiableMap(rectsDrawn);
     private static final Map<String,String> texts=Collections.unmodifiableMap(textsDrawn);
     private static final List<List<String>> hintRows=Collections.unmodifiableList(hintRowsDrawn);
     private static final List<Integer> hintEnds=Collections.unmodifiableList(hintEndsDrawn);
+    private static final List<KeyRowDraw> keyRows=Collections.unmodifiableList(keyRowsDrawn);
     /** Set when a frame named a texture the atlas lacks: the HUD stays off, and the client up, until the next resource reload. */
     private static boolean stopped;
     // The lesson copy last wrapped, its style and its lines.
@@ -74,6 +79,8 @@ public final class BattleHud {
     /** The canvas x where each row of the hint slip ends (its last chip or word), as the last frame drew it; empty while the hint
      *  layer is down. */
     public static List<Integer> hintEnds(){return hintEnds;}
+    /** The key rows the tall cards last drew, in drawing order; empty while no card is tall. */
+    public static List<KeyRowDraw> keyRows(){return keyRows;}
     /** The hint layer is up: the hints key held, the round's first HINT_LAYER_MS, or an order being aimed. Every living card then
      *  carries its key row, and the hint slip above the cards names the other keys. */
     public static boolean altLayer(){
@@ -81,7 +88,7 @@ public final class BattleHud {
         return k!=null&&k.isPressed()||Util.getMeasuringTimeMs()-roundShownMs<HINT_LAYER_MS||CommandMode.active();
     }
     /** A frame without the ledger (camp, a battle's entrance, a menu over the HUD): nothing reads as drawn. */
-    static void clear(){cardsDrawn.clear();sealsDrawn.clear();rectsDrawn.clear();textsDrawn.clear();hintRowsDrawn.clear();hintEndsDrawn.clear();}
+    static void clear(){cardsDrawn.clear();sealsDrawn.clear();rectsDrawn.clear();textsDrawn.clear();hintRowsDrawn.clear();hintEndsDrawn.clear();keyRowsDrawn.clear();}
     /** A disconnect (GravesAndGloryClient's handler, on the client thread): the last battle's records go with it, since no HUD frame
      *  runs without a world to clear them, and ChatPlacement.lift reads rects() before the next world's first frame. That is what
      *  the frame drew, the lesson wrap and the lines drawn from it, and the hint layer's round clock. */
@@ -184,6 +191,8 @@ public final class BattleHud {
     /** How far a hint-slip row may run: from 10 px into the slip to 8 px inside the right edge of its paper, which the slip's PNG
      *  paints from x 2 to 172. */
     static final int HINT_ROW_W=154;
+    /** The words on a tall card's key row, and the short ones its row takes where long key names crowd it (UiMath.cardRow). */
+    static final List<String> CARD_WORDS=List.of("Attack","Follow","Formation"),CARD_SHORT_WORDS=List.of("Attack","Follow","Form");
 
     /** The hint slip, its box 48 px above firstTop: row one names Map and Commands (Confirm and Cancel while an order is aimed), row
      *  two the facing keys and the hints key. Each key is an ink chip naming the player's binding, a mouse button as LMB, RMB or MMB.
@@ -244,14 +253,17 @@ public final class BattleHud {
             formationGlyph(g,grp.formation(),down,x+72,y+30);
             g.drawText(font,formationLabel(grp.formation()),x+84,y+31,DarkUi.INK_TEXT,false);
         }else formationGlyph(g,grp.formation(),down,x+25,y+30);
-        if(tall){ // the order keys, each in an ink chip as wide as its key's name
-            int[] at={10,58,105};String[] ids={"attack","follow","formation"},words={"Attack","Follow","Formation"};
+        if(tall){ // the order keys, each in an ink chip as wide as its key's name: at the mock's places, or where long names crowd the row, flowed and fitted as on the hint slip (UiMath.cardRow)
+            var row=UiMath.cardRow(List.of(GravesAndGloryClient.hint("attack"),GravesAndGloryClient.hint("follow"),GravesAndGloryClient.hint("formation")),CARD_WORDS,CARD_SHORT_WORDS,font::getWidth);
+            List<String> parts=new ArrayList<>();List<Integer> from=new ArrayList<>(),to=new ArrayList<>();
             for(int k=0;k<3;k++){
-                String key=GravesAndGloryClient.hint(ids[k]);int kw=UiMath.chipWidth(font.getWidth(key)),kx=x+at[k];
+                String key=row.keys().get(k),label=row.words().get(k);int kw=UiMath.chipWidth(font.getWidth(key)),kx=x+row.at().get(k);
                 UiTex.three(g,"hud/key-chip",kx,y+44,kw);
                 g.drawText(font,key,kx+2,y+46,DarkUi.CHIP_TEXT,false);
-                g.drawText(font,words[k],kx+kw+2,y+46,DarkUi.SEPIA,false);
+                g.drawText(font,label,kx+kw+2,y+46,DarkUi.SEPIA,false);
+                parts.add(key);from.add(kx);to.add(kx+kw);parts.add(label);from.add(kx+kw+2);to.add(kx+kw+2+font.getWidth(label));
             }
+            keyRowsDrawn.add(new KeyRowDraw(id,List.copyOf(parts),List.copyOf(from),List.copyOf(to)));
         }
         int ch=tall?62:48;cd.add(new CardDraw(id,state,tall,x,y,176,ch));r.put("card-"+id,new int[]{x,y,176,ch});
         tx.put("count-"+id,count);tx.put("state-"+id,word);

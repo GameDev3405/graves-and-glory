@@ -87,14 +87,19 @@ public final class UiMath {
     /** A hint-slip row's width: each key chip (chipWidth) and 2 px after it, each word (null for none) and 8 px after it, less the
      *  gap after the last. */
     public static int hintRowWidth(List<String> keys, List<String> words, ToIntFunction<String> width) {
+        return hintRowWidth(keys, words, 8, width);
+    }
+
+    /** A key row's width as hintRowWidth measures it, with wordGap px after each word in place of the slip's 8 (a tall card's row). */
+    public static int hintRowWidth(List<String> keys, List<String> words, int wordGap, ToIntFunction<String> width) {
         int w = 0, gap = 0;
         for (int k = 0; k < keys.size(); k++) {
             w += chipWidth(width.applyAsInt(keys.get(k))) + 2;
             gap = 2;
             String word = k < words.size() ? words.get(k) : null;
             if (word != null) {
-                w += width.applyAsInt(word) + 8;
-                gap = 8;
+                w += width.applyAsInt(word) + wordGap;
+                gap = wordGap;
             }
         }
         return w - gap;
@@ -104,12 +109,17 @@ public final class UiMath {
      *  cap at which the row fits, so the longest names give way first, and alike. A narrower cap never widens a name, so the cap is
      *  found by halving. */
     public static List<String> fitKeys(List<String> keys, List<String> words, int maxW, ToIntFunction<String> width) {
-        if (hintRowWidth(keys, words, width) <= maxW) return keys;
+        return fitKeys(keys, words, maxW, 8, width);
+    }
+
+    /** fitKeys for a key row with wordGap px after each word in place of the slip's 8 (a tall card's row). */
+    public static List<String> fitKeys(List<String> keys, List<String> words, int maxW, int wordGap, ToIntFunction<String> width) {
+        if (hintRowWidth(keys, words, wordGap, width) <= maxW) return keys;
         int lo = 0, hi = 0;
         for (String k : keys) hi = Math.max(hi, width.applyAsInt(k));
         while (lo < hi) {
             int mid = (lo + hi + 1) / 2;
-            if (hintRowWidth(capped(keys, mid, width), words, width) <= maxW) lo = mid;
+            if (hintRowWidth(capped(keys, mid, width), words, wordGap, width) <= maxW) lo = mid;
             else hi = mid - 1;
         }
         return capped(keys, lo, width);
@@ -119,6 +129,42 @@ public final class UiMath {
         List<String> out = new ArrayList<>();
         for (String k : keys) out.add(trimKey(k, cap, width));
         return out;
+    }
+
+    /** The x on a tall card where its key row must end, from the card's left edge: where the state word and the count end. */
+    public static final int CARD_ROW_END = 166;
+    /** The px a tall card's key row keeps clear after each word, before the next chip. */
+    public static final int CARD_ROW_GAP = 3;
+    /** The mock's places for a tall card's three key chips, x from the card's left edge (UI plan: 10, 58 and 105). */
+    private static final int[] CARD_KEY_AT = {10, 58, 105};
+
+    /** A tall card's key row as drawn: each chip's text (its key's name, or a trim of it), the word beside it, and the chip's x
+     *  from the card's left edge. */
+    public record CardRow(List<String> keys, List<String> words, List<Integer> at) {}
+
+    /** A tall card's key row for its three order keys, given their words and short words for a crowded row. Each chip sits at the
+     *  mock's place while every pair (the chip, 2 px, its word) ends CARD_ROW_GAP px short of the next chip and the last by
+     *  CARD_ROW_END: one-character keys, the defaults. Else the pairs flow from x 10, CARD_ROW_GAP px apart, with the short words,
+     *  and long names give way alike as on the hint slip (fitKeys), so no pair runs into the next and the row ends by
+     *  CARD_ROW_END. */
+    public static CardRow cardRow(List<String> keys, List<String> words, List<String> shortWords, ToIntFunction<String> width) {
+        boolean fixed = true;
+        for (int k = 0; k < keys.size(); k++) {
+            int end = CARD_KEY_AT[k] + chipWidth(width.applyAsInt(keys.get(k))) + 2 + width.applyAsInt(words.get(k));
+            if (end > (k + 1 < keys.size() ? CARD_KEY_AT[k + 1] - CARD_ROW_GAP : CARD_ROW_END)) fixed = false;
+        }
+        List<Integer> at = new ArrayList<>();
+        if (fixed) {
+            for (int k = 0; k < keys.size(); k++) at.add(CARD_KEY_AT[k]);
+            return new CardRow(List.copyOf(keys), List.copyOf(words), List.copyOf(at));
+        }
+        List<String> fitted = fitKeys(keys, shortWords, CARD_ROW_END - CARD_KEY_AT[0], CARD_ROW_GAP, width);
+        int x = CARD_KEY_AT[0];
+        for (int k = 0; k < fitted.size(); k++) {
+            at.add(x);
+            x += chipWidth(width.applyAsInt(fitted.get(k))) + 2 + width.applyAsInt(shortWords.get(k)) + CARD_ROW_GAP;
+        }
+        return new CardRow(List.copyOf(fitted), List.copyOf(shortWords), List.copyOf(at));
     }
 
     /** Centre x of point i's seal of n: a 28 px pitch centred on the canvas (452, 480, 508 for three at 960). */

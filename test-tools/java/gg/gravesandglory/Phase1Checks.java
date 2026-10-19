@@ -1591,7 +1591,7 @@ public final class Phase1Checks implements ClientModInitializer {
         /** Client ticks since this stage began (the first step that called this in it). */
         int since(int tick){if(mark!=stage){mark=stage;waitFrom=tick;}return tick-waitFrom;}
         /** The menu, map and turn keys back on their defaults (R, M, [ and ]). */
-        static void defaults(){for(var k:new net.minecraft.client.option.KeyBinding[]{GravesAndGloryClient.menu,GravesAndGloryClient.mapKey,GravesAndGloryClient.rotateLeft,GravesAndGloryClient.rotateRight})k.setBoundKey(k.getDefaultKey());net.minecraft.client.option.KeyBinding.updateKeysByCode();}
+        static void defaults(){for(var k:new net.minecraft.client.option.KeyBinding[]{GravesAndGloryClient.menu,GravesAndGloryClient.mapKey,GravesAndGloryClient.rotateLeft,GravesAndGloryClient.rotateRight,GravesAndGloryClient.attack})k.setBoundKey(k.getDefaultKey());net.minecraft.client.option.KeyBinding.updateKeysByCode();}
         /** A chip shows the name, or a trim of it (UiMath.trimKey): a start of the name, the dots, then an end of it. */
         static boolean trimOf(String chip,String name){int d=chip.indexOf("...");return chip.equals(name)||d>=0&&name.startsWith(chip.substring(0,d))&&name.endsWith(chip.substring(d+3));}
         /** Back to the camp (the client must see running false), then round r on its map; 20 ticks after the client shows it, stage next. */
@@ -1728,10 +1728,13 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 23->{ // p1-ui-hints-long (UI polish M4): two long names on each row of the hint slip, which must still end on its paper.
                     // The turn keys go on Page Up and Page Down, two long names with one start, as the review's Keypad 4 and 6 would be; in
                     // game those read 4 and 6 (GLFW names a printable key by its character) and fit (run ui-polish1-201624). The row cannot
-                    // keep every last word whole (UiMathCheck: P...Up, Pag..., L...Alt), so the two turn chips need only differ
+                    // keep every last word whole (UiMathCheck: P...Up, Pag..., L...Alt), so the two turn chips need only differ. Attack goes on
+                    // Caps Lock (UI polish round 2), too long for the mock's places on the tall cards: each card's key row must still keep
+                    // its Attack pair clear of the Follow chip and end by the card's x + 166
                     var keysym=net.minecraft.client.util.InputUtil.Type.KEYSYM;
                     GravesAndGloryClient.menu.setBoundKey(keysym.createFromCode(GLFW.GLFW_KEY_RIGHT_SHIFT));GravesAndGloryClient.mapKey.setBoundKey(net.minecraft.client.util.InputUtil.UNKNOWN_KEY);
                     GravesAndGloryClient.rotateLeft.setBoundKey(keysym.createFromCode(GLFW.GLFW_KEY_PAGE_UP));GravesAndGloryClient.rotateRight.setBoundKey(keysym.createFromCode(GLFW.GLFW_KEY_PAGE_DOWN));
+                    GravesAndGloryClient.attack.setBoundKey(keysym.createFromCode(GLFW.GLFW_KEY_CAPS_LOCK));
                     net.minecraft.client.option.KeyBinding.updateKeysByCode();seen=tick;stage=24;}
                 case 24->{
                     if(tick>=seen+2){var rows=List.copyOf(BattleHud.hintRows());var ends=List.copyOf(BattleHud.hintEnds());int[] slip=BattleHud.rects().get("hints");
@@ -1741,8 +1744,13 @@ public final class Phase1Checks implements ClientModInitializer {
                         boolean named=shape&&shift.equals("Right Shift")&&up.equals("Page Up")&&down.equals("Page Down")&&trimOf(rows.get(0).get(0),"Not bound")&&rows.get(0).get(1).equals("Map")&&trimOf(rows.get(0).get(2),shift)&&rows.get(0).get(3).equals("Commands")
                             &&trimOf(rows.get(1).get(0),up)&&trimOf(rows.get(1).get(1),down)&&rows.get(1).get(2).equals("Turn")&&trimOf(rows.get(1).get(3),"Left Alt")&&rows.get(1).get(4).equals("Hints");
                         boolean apart=shape&&!rows.get(1).get(0).equals(rows.get(1).get(1))&&rows.get(0).get(2).endsWith("Shift")&&String.join("",rows.get(0)).contains("...")&&String.join("",rows.get(1)).contains("...");
+                        String caps=GravesAndGloryClient.attack.getBoundKeyLocalizedText().getString();var keyRows=List.copyOf(BattleHud.keyRows());List<String> cardsWrong=new ArrayList<>();
+                        for(var kr:keyRows){int[] card=BattleHud.rects().get("card-"+kr.group());var p=kr.parts();
+                            boolean ok=card!=null&&p.size()==6&&trimOf(p.get(0),caps)&&p.get(1).equals("Attack")&&p.get(2).equals(GravesAndGloryClient.hint("follow"))&&p.get(3).equals("Follow")&&p.get(4).equals(GravesAndGloryClient.hint("formation"))&&p.get(5).equals("Form")&&kr.from().get(0)>=card[0]+10&&kr.to().get(5)<=card[0]+166;
+                            for(int i=0;ok&&i<5;i++)ok=kr.to().get(i)<kr.from().get(i+1);if(!ok)cardsWrong.add(kr.group());}
+                        boolean cardsOk=caps.equals("Caps Lock")&&keyRows.size()==3&&cardsWrong.isEmpty();
                         shot(c,"ui-hud-hints-long");defaults();
-                        report("p1-ui-hints-long",on&&named&&apart,"with Map unbound, Commands on "+shift+" and Turn on "+up+" and "+down+", the slip at "+UiHudChecks.box(slip)+" drew the rows "+rows+", ending at canvas x "+ends+" (the paper's text edge at "+(slip==null?"?":String.valueOf(slip[0]+164))+"); then the keys went back to "+GravesAndGloryClient.hint("menu")+", "+GravesAndGloryClient.hint("map")+", "+GravesAndGloryClient.hint("rotate_left")+" and "+GravesAndGloryClient.hint("rotate_right"));
+                        report("p1-ui-hints-long",on&&named&&apart&&cardsOk,"with Map unbound, Commands on "+shift+" and Turn on "+up+" and "+down+", the slip at "+UiHudChecks.box(slip)+" drew the rows "+rows+", ending at canvas x "+ends+" (the paper's text edge at "+(slip==null?"?":String.valueOf(slip[0]+164))+"); with Attack on "+caps+" the tall cards drew the key rows "+keyRows.stream().map(kr->kr.group()+" "+kr.parts()+" from x "+kr.from()+" to "+kr.to()+" (the card at "+UiHudChecks.box(BattleHud.rects().get("card-"+kr.group()))+")").toList()+(cardsWrong.isEmpty()?"":", WRONG on "+cardsWrong)+"; then the keys went back to "+GravesAndGloryClient.hint("menu")+", "+GravesAndGloryClient.hint("map")+", "+GravesAndGloryClient.hint("rotate_left")+", "+GravesAndGloryClient.hint("rotate_right")+" and "+GravesAndGloryClient.hint("attack"));
                         seen=tick;stage=14;}
                 }
                 case 14->{ // p1-ui-alt-layer: in the first 60 s every card is tall
@@ -1870,10 +1878,10 @@ public final class Phase1Checks implements ClientModInitializer {
         public void hudFrame(MinecraftClient c){}
         /** What the battle HUD keeps between frames. */
         static String records(MinecraftClient c){
-            return "rects "+BattleHud.rects().keySet()+", "+BattleHud.texts().size()+" texts, "+BattleHud.cards().size()+" cards, "+BattleHud.seals().size()+" seals, hint rows "+BattleHud.hintRows()+", "+EventFeed.lines(net.minecraft.util.Util.getMeasuringTimeMs()).size()+" feed lines, order aimed "+CommandMode.active()+" (at "+CommandMode.destination+"), "+CommandMode.groups.size()+" groups, "+CommandMode.flashUntil.size()+" flashes, lesson wrap "+(BattleHud.wrappedFor()!=null)+", "+GravesAndGloryClient.lessonDrawn.size()+" lesson lines, round clock "+BattleHud.roundShownMs+", chat lift "+ChatPlacement.lift(c.getWindow().getScaledHeight());
+            return "rects "+BattleHud.rects().keySet()+", "+BattleHud.texts().size()+" texts, "+BattleHud.cards().size()+" cards, "+BattleHud.seals().size()+" seals, hint rows "+BattleHud.hintRows()+", "+BattleHud.keyRows().size()+" card key rows, "+EventFeed.lines(net.minecraft.util.Util.getMeasuringTimeMs()).size()+" feed lines, order aimed "+CommandMode.active()+" (at "+CommandMode.destination+"), "+CommandMode.groups.size()+" groups, "+CommandMode.flashUntil.size()+" flashes, lesson wrap "+(BattleHud.wrappedFor()!=null)+", "+GravesAndGloryClient.lessonDrawn.size()+" lesson lines, round clock "+BattleHud.roundShownMs+", chat lift "+ChatPlacement.lift(c.getWindow().getScaledHeight());
         }
         static boolean empty(MinecraftClient c){
-            return BattleHud.rects().isEmpty()&&BattleHud.texts().isEmpty()&&BattleHud.cards().isEmpty()&&BattleHud.seals().isEmpty()&&BattleHud.hintRows().isEmpty()&&BattleHud.hintEnds().isEmpty()&&EventFeed.lines(net.minecraft.util.Util.getMeasuringTimeMs()).isEmpty()
+            return BattleHud.rects().isEmpty()&&BattleHud.texts().isEmpty()&&BattleHud.cards().isEmpty()&&BattleHud.seals().isEmpty()&&BattleHud.hintRows().isEmpty()&&BattleHud.hintEnds().isEmpty()&&BattleHud.keyRows().isEmpty()&&EventFeed.lines(net.minecraft.util.Util.getMeasuringTimeMs()).isEmpty()
                 &&!CommandMode.active()&&CommandMode.destination==null&&CommandMode.groups.isEmpty()&&CommandMode.flashUntil.isEmpty()&&BattleHud.wrappedFor()==null&&GravesAndGloryClient.lessonDrawn.isEmpty()&&BattleHud.roundShownMs==0&&ChatPlacement.lift(c.getWindow().getScaledHeight())==0;
         }
         public void step(MinecraftClient c,int tick){

@@ -27,6 +27,15 @@ public final class UiMathCheck {
         check(shift.equals(java.util.List.of("Not b...","R...Shift")) && UiMath.hintRowWidth(shift,map,mc)==153, "two long names on row one fit the slip");
         var page = UiMath.fitKeys(java.util.List.of("Page Up","Page Down","Left Alt"),turn,154,mc); // keypad keys read 4 and 6 in game: these are long
         check(UiMath.hintRowWidth(java.util.List.of("Page Up","Page Down","Left Alt"),turn,mc)==204 && page.equals(java.util.List.of("P...Up","Pag...","L...Alt")) && UiMath.hintRowWidth(page,turn,mc)==147, "the turn keys on Page Up and Page Down fit the slip");
+        var orders = java.util.List.of("Attack","Follow","Formation"); var ordersShort = java.util.List.of("Attack","Follow","Form"); // a tall card's key row (UI polish round 2)
+        var plain = UiMath.cardRow(java.util.List.of("G","V","B"),orders,ordersShort,mc);
+        check(plain.keys().equals(java.util.List.of("G","V","B")) && plain.words().equals(orders) && plain.at().equals(java.util.List.of(10,58,105)), "the default order keys keep the mock's places and words");
+        var mmb = UiMath.cardRow(java.util.List.of("MMB","V","B"),orders,ordersShort,mc);
+        check(mmb.keys().equals(java.util.List.of("MMB","V","B")) && mmb.words().equals(ordersShort) && mmb.at().equals(java.util.List.of(10,68,113)), "MMB on Attack would reach the Follow chip: the row flows, Formation as Form, MMB whole");
+        var caps = UiMath.cardRow(java.util.List.of("Caps Lock","V","B"),orders,ordersShort,mc);
+        check(caps.keys().equals(java.util.List.of("C...Lock","V","B")) && caps.at().equals(java.util.List.of(10,85,130)) && UiMath.hintRowWidth(caps.keys(),ordersShort,UiMath.CARD_ROW_GAP,mc)==156, "a long Attack name gives way as on the slip: C...Lock, the row ending at x 166");
+        var three = UiMath.cardRow(java.util.List.of("Right Shift","Left Alt","Page Down"),orders,ordersShort,mc);
+        check(three.keys().equals(java.util.List.of("Ri...","L...","P...")) && UiMath.hintRowWidth(three.keys(),ordersShort,UiMath.CARD_ROW_GAP,mc)==147, "three long names give way alike and the row still ends by x 166");
         check(UiMath.contrast(0xffeee9df,0xff1f2427)>=4.5 && UiMath.contrast(0xffe47a64,0xff1f2427)>=4.5, "ivory and alarm text on the iron plate");
         check(Math.abs(UiMath.contrast(0xff000000,0xffffffff)-21.0)<0.01, "WCAG ratio");
         check(UiMath.sealCentre(0,3,960)==452 && UiMath.sealCentre(2,3,960)==508 && UiMath.sealCentre(0,5,960)==424 && UiMath.sealCentre(4,5,960)==536, "seals on a 28 px pitch, centred");
