@@ -587,7 +587,10 @@ public final class Phase3Checks implements ClientModInitializer {
      *  (it writes without neighbour shape updates); p3-arena-shapes passes when no glass pane of the structures is left without a connection. All three see the chunks that are loaded,
      *  and the shapes check counts glass panes only (fences and walls are not looked at).
      *  Task 2, fix round 1, per map: p3-arena-river-map<N> passes when no block stands above the water of a river column that the build of that map does not account for, which is what
-     *  the map built before it leaves behind (river); p3-arena-rails-map<N> passes when every bridge rail stands where there is water and every run of stone wall ends on a post (rails). */
+     *  the map built before it leaves behind (river); p3-arena-rails-map<N> passes when every bridge rail stands where there is water and every run of stone wall ends on a post (rails).
+     *  Task 2, fix round 2, per map, by built() (the walkthrough runs the same as p3-wt<N>-ring and so on): p3-arena-ring-map<N> passes when the ring of smooth stone of every capture point lies over no river water, no deck and no air, and its 3x3 pad has no air under it (ring);
+     *  p3-arena-lantern-map<N> when every lantern could be placed where it stands (lantern); p3-arena-floors-map<N> when no floor course of a building holds road soil (floors); p3-arena-pits-map<N> when no dirt path block stands alone or inside a plaza (pits);
+     *  p3-arena-plaza-map<N> when every cell of every plaza is the block of its pattern (plaza). */
     static final class Rebuild implements Suite {
         static final int[] MAPS={0,1,2,3,4};
         int index,stage,waited;volatile boolean switched,counted;volatile String before="",after="";volatile int firstSpill=-1,spill=-1,paneCount=-1,paneLone=-1;
@@ -623,6 +626,108 @@ public final class Phase3Checks implements ClientModInitializer {
             catch(Exception e){report("p3-arena-river-map"+n+"-file",false,e.toString());}
             var ra=rails(x);
             report("p3-arena-rails-map"+n,ra[0]>0&&ra[1]==0&&ra[2]==0,"bridge rail cells "+ra[0]+", on dry ground or on a building floor "+ra[1]+", ends of stone wall runs without a post "+ra[2]);
+            built(x,n,k->"p3-arena-"+k+"-map"+n);
+        }
+        /** Task 2, fix round 2: what the finish stage and the dressing leave standing, looked at on the map that stands, by one reporter for the arena suite and the walkthrough (name turns a short name into the id of the check). Server thread. */
+        static void built(GravesAndGlory.Battle b,int n,java.util.function.Function<String,String> name){
+            var ri=ring(b);
+            report(name.apply("ring"),ri.ok(),ri.text());
+            var la=lanterns(b);
+            try{Path file=MinecraftClient.getInstance().runDirectory.toPath().resolve("screenshots/p3-lanterns-map"+n+".txt");Files.createDirectories(file.getParent());Files.writeString(file,la.detail());}
+            catch(Exception e){report(name.apply("lantern-file"),false,e.toString());}
+            report(name.apply("lantern"),la.total()>0&&la.loose()==0,"lanterns "+la.total()+", without a block to hang from or to stand on (the test LanternBlock.canPlaceAt makes) "+la.loose()+(la.loose()==0?"":", first: "+la.sample()));
+            var fl=floors(b);
+            report(name.apply("floors"),fl.cells()>0&&fl.soil()==0,"floor cells of "+fl.halls()+" buildings "+fl.cells()+", with road soil (dirt path, coarse dirt, gravel) or ground on them "+fl.soil()+(fl.soil()==0?"":": "+fl.sample()));
+            var pi=pits(b);
+            report(name.apply("pits"),pi.paths()>0&&pi.lone()==0&&pi.plaza()==0,"dirt path cells "+pi.paths()+", of them alone (no dirt path beside them: a dark pit between full blocks) "+pi.lone()+", inside a plaza "+pi.plaza()+(pi.lone()+pi.plaza()==0?"":", first alone: "+pi.sample()));
+            var pl=plazas(b,n);
+            report(name.apply("plaza"),pl.cells()>0&&pl.wrong()==0,"plaza cells (within 9.2 blocks of a flag pole, off the 3x3 pad, the water and the buildings) "+pl.cells()+", not the block of the pattern (earth, a compass of trim, a ring of paving) "+pl.wrong()+(pl.wrong()==0?"":", first: "+pl.sample()));
+        }
+        /** The ring of every capture point: per point {ring cells, those over river water, those on a deck or its rails, those with air under, pad cells with air under}. A ring cell is smooth stone at the elevation of the point, radius-1 to radius out. */
+        record Ring(boolean ok,String text){}
+        static Ring ring(GravesAndGlory.Battle b){
+            var w=b.world;boolean ok=true;var text=new StringBuilder("per point: ring cells / over river water / on a deck / with air under / pad cells with air under: ");
+            for(var p:Spec.POINTS){
+                int r=p.radius(),e=p.elevation(),cells=0,water=0,deck=0,air=0,pad=0;
+                for(int dx=-r;dx<=r;dx++)for(int dz=-r;dz<=r;dz++){
+                    int x=p.x()+dx,z=p.z()+dz;double d=Math.hypot(dx,dz);
+                    if(d>=r-1&&d<=r&&w.getBlockState(new BlockPos(x,e,z)).isOf(Blocks.SMOOTH_STONE)){
+                        cells++;var under=w.getBlockState(new BlockPos(x,e-1,z));
+                        if(under.isAir())air++;
+                        if(Arena.river(x,z)&&under.isOf(Blocks.WATER))water++;
+                        if(Walkthrough.deckCell(x,z))deck++;
+                    }
+                    if(Math.abs(dx)<=1&&Math.abs(dz)<=1&&w.getBlockState(new BlockPos(x,e-1,z)).isAir())pad++;
+                }
+                if(cells<30||water!=0||deck!=0||air!=0||pad!=0)ok=false;
+                text.append(p.id()).append(" (").append(p.x()).append(", ").append(p.z()).append(") elevation ").append(e).append(' ').append(cells).append('/').append(water).append('/').append(deck).append('/').append(air).append('/').append(pad).append("; ");
+            }
+            return new Ring(ok,text.toString());
+        }
+        /** Every lantern of the arena: how many there are and how many have nothing to hang from or stand on (LanternBlock.canPlaceAt is false: the next neighbour update would break it). */
+        record Lanterns(int total,int loose,String sample,String detail){}
+        static Lanterns lanterns(GravesAndGlory.Battle b){
+            var w=b.world;int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ(),total=0,loose=0;var sample=new StringBuilder();var detail=new StringBuilder();var pos=new BlockPos.Mutable();
+            for(int cx=Math.floorDiv(-hx,16);cx<=Math.floorDiv(hx,16);cx++)for(int cz=Math.floorDiv(-hz,16);cz<=Math.floorDiv(hz,16);cz++){
+                var ch=w.getChunk(cx,cz);
+                for(int x=Math.max(-hx,cx*16);x<=Math.min(hx,cx*16+15);x++)for(int z=Math.max(-hz,cz*16);z<=Math.min(hz,cz*16+15);z++)for(int y=Arena.Y-2;y<=Arena.Y+60;y++){
+                    var st=ch.getBlockState(pos.set(x,y,z));
+                    if(!(st.getBlock() instanceof net.minecraft.block.LanternBlock))continue;
+                    total++;
+                    if(!st.canPlaceAt(w,pos)){loose++;if(loose<=6)sample.append(loose>1?"; ":"").append(name(st)).append(' ').append(xyz(pos.toImmutable()));detail.append(name(st)).append(' ').append(x).append(' ').append(y).append(' ').append(z).append(" hanging ").append(st.get(net.minecraft.block.LanternBlock.HANGING)).append('\n');}
+                }
+            }
+            return new Lanterns(total,loose,sample.toString(),detail.toString());
+        }
+        /** The floor course of every building that has one (the cells x0..x0+width-1 by z0..z0+depth-1 that Arena.structure lays at the elevation of the building): how many cells, and how many hold road soil
+         *  or ground (dirt path, coarse dirt, gravel, dirt, grass, podzol, snow block), which the muster lanes of the camps wrote over them. */
+        record Floors(int halls,int cells,int soil,String sample){}
+        static Floors floors(GravesAndGlory.Battle b){
+            var w=b.world;int halls=0,cells=0,soil=0;var sample=new StringBuilder();
+            for(var s:Spec.STRUCTURES){
+                if(!List.of("house","barracks","mill","ruin","watchtower","shrine","base").contains(s.kind()))continue;
+                halls++;int x0=s.x()-s.width()/2,z0=s.z()-s.depth()/2,mine=0;
+                for(int x=x0;x<x0+s.width();x++)for(int z=z0;z<z0+s.depth();z++){
+                    cells++;var st=w.getBlockState(new BlockPos(x,s.elevation(),z));
+                    if(st.isOf(Blocks.DIRT_PATH)||st.isOf(Blocks.COARSE_DIRT)||st.isOf(Blocks.GRAVEL)||st.isOf(Blocks.DIRT)||st.isOf(Blocks.GRASS_BLOCK)||st.isOf(Blocks.PODZOL)||st.isOf(Blocks.SNOW_BLOCK))mine++;
+                }
+                soil+=mine;if(mine>0)sample.append(sample.length()>0?"; ":"").append(s.id()).append(' ').append(mine);
+            }
+            return new Floors(halls,cells,soil,sample.toString());
+        }
+        /** The dirt path cells of the arena (the block at Arena.height of each column): how many, how many have no dirt path on any of their four sides (a dirt path block is 15/16 high, so one between full blocks draws as a dark pit), and how many lie
+         *  within 9.2 blocks of a flag pole, inside the plaza. A road is a ribbon of them and has no lone cell. */
+        record Pits(int paths,int lone,int plaza,String sample){}
+        static Pits pits(GravesAndGlory.Battle b){
+            var w=b.world;int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ(),wz=2*hz+1,paths=0,lone=0,plaza=0;var path=new BitSet((2*hx+1)*wz);var sample=new StringBuilder();
+            for(int x=-hx;x<=hx;x++)for(int z=-hz;z<=hz;z++){
+                if((z&15)==0)w.getChunk(x>>4,z>>4);
+                if(!w.getBlockState(new BlockPos(x,Arena.height(x,z),z)).isOf(Blocks.DIRT_PATH))continue;
+                path.set((x+hx)*wz+(z+hz));paths++;
+                for(var p:Spec.POINTS)if(Math.hypot(x-p.x(),z-p.z())<9.2){plaza++;break;}
+            }
+            for(int x=-hx;x<=hx;x++)for(int z=-hz;z<=hz;z++){
+                if(!path.get((x+hx)*wz+(z+hz)))continue;
+                boolean side=x>-hx&&path.get((x-1+hx)*wz+(z+hz))||x<hx&&path.get((x+1+hx)*wz+(z+hz))||z>-hz&&path.get((x+hx)*wz+(z-1+hz))||z<hz&&path.get((x+hx)*wz+(z+1+hz));
+                if(!side){lone++;if(lone<=8)sample.append(lone>1?"; ":"").append('(').append(x).append(", ").append(z).append(')');}
+            }
+            return new Pits(paths,lone,plaza,sample.toString());
+        }
+        /** The paving of the plazas: within 9.2 blocks of a flag pole, off the 3x3 pad of the pole, off the water (11 columns of the river line) and off the buildings, every cell is the block of one pattern: the ring of paving from 8 blocks out, the compass of trim
+         *  (three wide along the axes) inside it, trampled earth (coarse dirt) between. {cells looked at, those that are another block, the first of those}. */
+        record Plazas(int cells,int wrong,String sample){}
+        static Plazas plazas(GravesAndGlory.Battle b,int map){
+            var w=b.world;int cells=0,wrong=0;var sample=new StringBuilder();
+            Block pave=switch(map){case 1->Blocks.ANDESITE;case 2->Blocks.PACKED_ICE;case 3->Blocks.MUD_BRICKS;default->Blocks.POLISHED_ANDESITE;};
+            Block trim=switch(map){case 2->Blocks.POLISHED_DIORITE;case 3->Blocks.MOSSY_STONE_BRICKS;default->Blocks.STONE_BRICKS;};
+            for(var p:Spec.POINTS)for(int dx=-9;dx<=9;dx++)for(int dz=-9;dz<=9;dz++){
+                int x=p.x()+dx,z=p.z()+dz;double d=Math.hypot(dx,dz);
+                if(d>=9.2||Math.abs(dx)<=1&&Math.abs(dz)<=1||Math.abs(x-Arena.riverX(z))<11||MapDressing.onStructure(x,z,0))continue;
+                Block want=d>=8?pave:(Math.abs(dx)<=1||Math.abs(dz)<=1)?trim:Blocks.COARSE_DIRT;
+                cells++;var st=w.getBlockState(new BlockPos(x,Arena.height(x,z),z));
+                if(!st.isOf(want)){wrong++;if(wrong<=8)sample.append(wrong>1?"; ":"").append(name(st)).append(" for ").append(name(want.getDefaultState())).append(" at (").append(x).append(", ").append(z).append(") of point ").append(p.id());}
+            }
+            return new Plazas(cells,wrong,sample.toString());
         }
         record River(int columns,int builtOn,int looked,int flat,int left,String sample,String detail){}
         /** The river columns of the map that stands (the build range, every z), minus the places the finish stage of the map builds above the water on purpose (builtOn). In each of the others the
@@ -647,8 +752,8 @@ public final class Phase3Checks implements ClientModInitializer {
             }
             return new River(columns,builtOn,looked,flat,left,sample.toString(),detail.toString());
         }
-        /** Where Arena.finish builds above the water of a river column on purpose: a bridge (deck planks and the two rail rows), the footprint of any other structure, a capture ring (its band of smooth stone, the edge stone and the
-         *  boundary posts MapDressing puts on the radius and just outside it, which on the wider river of Hollowwood reach its outermost column; the 3x3 centre with the flag pole, the banner three cells east of the pole) and, on map 0, the fishing piers MapDressing puts on the river banks. */
+        /** Where Arena.finish builds above the water of a river column on purpose: a bridge (deck planks and the two rail rows), the footprint of any other structure, the 3x3 centre of a capture point with its flag pole and the banner three cells east of the pole (the ring of smooth stone,
+         *  the edge stone and the boundary posts of a point are not excused any more: since fix round 2 they stay off the water and off the decks) and, on map 0, the fishing piers MapDressing puts on the river banks. */
         static boolean builtOn(int x,int z){
             for(var s:Spec.STRUCTURES){
                 if(s.kind().equals("bridge")){int x0=s.x()-s.width()/2,z0=s.z()-s.depth()/2;if(x>=x0&&x<x0+s.width()&&z>=z0-1&&z<=z0+s.depth())return true;}
@@ -656,7 +761,6 @@ public final class Phase3Checks implements ClientModInitializer {
             }
             for(var p:Spec.POINTS){
                 int dx=x-p.x(),dz=z-p.z();double d=Math.hypot(dx,dz);
-                if(d>=p.radius()-1.5&&d<=p.radius()+2.5)return true;
                 if(Math.abs(dx)<=1&&Math.abs(dz)<=1)return true;
                 if(dz==0&&dx>=1&&dx<=3)return true;
             }
@@ -1203,9 +1307,11 @@ public final class Phase3Checks implements ClientModInitializer {
                 note("point "+p.id()+" "+p.name()+" ("+p.x()+", "+p.z()+") elevation "+e+", ground at its centre "+Arena.height(p.x(),p.z())+": ring band "+cells+" blocks, "+over+" over river water"+(over==0?"":" (x "+minX+" to "+maxX+", z "+minZ+" to "+maxZ+")")+", "+hang+" with air under; 3x3 pad "+pad+" blocks, "+padHang+" with air under; blocks standing in the river within "+(r+5)+" of the centre: "+inRiver.size()+(inRiver.isEmpty()?"":" "+inRiver.subList(0,Math.min(12,inRiver.size()))));
             }
             bandWater=wet;standing=stand;
+            report("p3-wt"+map+"-posts",stand.isEmpty(),"blocks standing in a river column within 22 blocks of a capture point's centre (off the decks and the buildings, smooth stone excepted): "+stand.size()+(stand.isEmpty()?"":", first "+stand.stream().limit(6).map(q->"("+q[0]+", "+q[1]+", "+q[2]+") of point "+Spec.POINTS[q[3]].id()).toList()));
             // 3. the check of the river columns from Task 2, run again on the map as it stands
             var rv=Rebuild.river(b);
             report("p3-wt"+map+"-river",rv.left()==0,"river columns "+rv.columns()+", built on by this map "+rv.builtOn()+", looked at "+rv.looked()+": "+rv.left()+" blocks above the water that this map does not account for"+(rv.left()==0?"":", first: "+rv.sample()));
+            Rebuild.built(b,map,k->"p3-wt"+map+"-"+k);
             // 4. the ground along the line each lane is walked on
             for(var leg:mine){
                 int steps=0,wetCells=0,cells=0;double last=Double.NaN,lo=1e9,hi=-1e9;var where=new StringBuilder();
