@@ -103,7 +103,7 @@ public final class Campaign {
     void toLobby(ServerPlayerEntity p){b.relocate(p,0,66,CampaignMaps.LOBBY_Z+20,180,8);p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
         b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;Projectiles.clear(b);
-        for(var u:b.units)u.mob.discard();b.units.clear();
+        for(var u:b.units)u.mob.discard();b.units.clear();b.clearSides();
         b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}onPad.clear();padCountdown=-1;closeParty();
         for(var p:b.server.getPlayerManager().getPlayerList())toLobby(p);
@@ -211,7 +211,7 @@ public final class Campaign {
     void prepareRound(){
         onPad.clear();padCountdown=-1;padMapRolled=false;tutorial.clear();
         b.squads.values().removeIf(s->s.bot);balance();
-        for(var u:b.units)u.mob.discard();b.units.clear();botRespawns.clear();botRetreating.clear();vacated.clear();
+        for(var u:b.units){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();}b.units.clear();botRespawns.clear();botRetreating.clear();vacated.clear();
         for(int team=0;team<2;team++){final int t=team;int humans=(int)b.squads.values().stream().filter(s->s.team==t&&s.seated).count();
             int target=practice?(team==0?1:1):size;
             if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,GravesAndGlory.Battle.base(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():difficulty;s.commander=Spec.CLASSES[i%3].id();s.lane=i%3;b.squads.put(id,s);}
@@ -443,7 +443,7 @@ public final class Campaign {
         return BattleMath.garrison(owners,s.team,at.toArray(double[][]::new),assignable,points,NEAR_RADIUS_FACTOR*tier.chargeDistance())[me];
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
-    void switchMap(int index){Projectiles.clear(b);map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
+    void switchMap(int index){Projectiles.clear(b);b.clearSides();map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
     /** The lesson a commander is on, or -1: only a campaign battle whose sheet row teaches (lessons) shows them, to its commanders, until all four are done. They repeat on every replay. */
     int tutorialStep(UUID id){
         if(!b.running||activeBattle==null||!activeBattle.lessons()||!participants.contains(id))return -1;

@@ -32,16 +32,25 @@ final class ArmyCards {
         if(GravesAndGloryClient.battleActive()){var side=DarkUi.side(GravesAndGloryClient.team);if(side!=null)return side.color();}
         for(var f:Spec.FACTIONS)if(f.id().equals(CampaignClient.profile.bannerColour))return f.color();return Spec.FACTIONS[0].color();
     }
-    static MobEntity portrait(Spec.TroopsRow spec){
+    /** The stage 1 portrait. */
+    static MobEntity portrait(Spec.TroopsRow spec){return portrait(spec,1);}
+    /**
+     * A portrait mob of a troop at an evolution stage, named as Battle.spawn names it (ArmyMobs.stageName), so a troop with a
+     * model draws it through TroopRenderer: no team, so no match side and no pennant, in the company's cloth (unit identity
+     * rule 8 as Kort ruled it), with its painted shield on a light-grey field. Cached per id, stage and colour: the chest item
+     * is still dyed the commander's colour (the barracks and editor checks read it), though troop armour never draws.
+     */
+    static MobEntity portrait(Spec.TroopsRow spec,int stage){
         var c=MinecraftClient.getInstance();if(world!=c.world){portraits.clear();world=c.world;}if(c.world==null)return null;
         int colour=troopColour();
-        return portraits.computeIfAbsent(spec.id()+"/"+colour,key->{
+        return portraits.computeIfAbsent(spec.id()+"/"+stage+"/"+colour,key->{
             // The sheet's entity type (ArmyMobs.portrait): a vanilla mob, so a card draws a House's beasts and crews before the House can take the field.
             MobEntity e=ArmyMobs.portrait(spec.entity(),c.world);
-            e.setCustomName(Text.literal(spec.name()));e.setCustomNameVisible(false);e.setPersistent();e.setSilent(true);
+            e.setCustomName(Text.literal(ArmyMobs.stageName(spec,stage)));e.setCustomNameVisible(false);e.setPersistent();e.setSilent(true);
             e.equipStack(EquipmentSlot.MAINHAND,new ItemStack(Registries.ITEM.get(new Identifier(spec.weapon()))));e.equipStack(EquipmentSlot.HEAD,new ItemStack(Registries.ITEM.get(new Identifier(spec.helmet()))));
             var chest=new ItemStack(Registries.ITEM.get(new Identifier(spec.chest())));if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,colour);e.equipStack(EquipmentSlot.CHEST,chest);
-            if(ArmyMobs.tags(spec).contains("shield"))e.equipStack(EquipmentSlot.OFFHAND,new ItemStack(Items.SHIELD));return e;
+            if(ArmyMobs.tags(spec).contains("shield"))e.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(spec,"light_gray"));
+            TroopModels.dress(e,"company");return e;
         });
     }
     /** A portrait size that fits any model in the same frame: a husk at size, a wolf no larger than 1.25 times, a golem smaller. */
