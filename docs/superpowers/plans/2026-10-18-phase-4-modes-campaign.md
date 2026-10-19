@@ -2035,6 +2035,7 @@ git commit -m "Phase 4: regression, contact sheets and Kort's gate"
   - the Phase 2 interface change: the merged-code constraints and every Interfaces block from Task 14 on;
   - the rulings of 2026-10-19: the named cast (Task 19), the Crimson yard line shortened in the copy (Task 3), Back to the book on the march card (Task 17), Maud's camp guide card (Task 27), and the staging run's shots and lessons (Tasks 17, 18 and 20 to 24).
 - **Parked by Task 28, not built here:** voice recording and a turning mill wheel.
+- **Note for Task 19 (controller, 2026-10-19):** the Hollow's standard in the staged stills is a vanilla blue banner with a red roundel, since vanilla has no navy dye; the approved mark is navy cloth with a hollow through it, so Task 19 also ships the company standard as the mod's own banner texture (a `prop` the scene files can place), and the north crossing set is reshot with it.
 
 **2. Step scan.** Every test step names its ids with the copy's voice ids and the sheets' values. Every code step names its file, its signature and the values the specs pin. Every run step names its command or suite list and the output that passes. The only code bodies are the two pure checks' assertion lists (Tasks 1 and 10). A string that does not fit goes back to the copy. No step writes copy except the two amendments the rulings of 2026-10-19 assign: the Siege yard line (Task 3) and Maud's guide card (Task 27).
 
