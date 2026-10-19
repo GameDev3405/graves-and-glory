@@ -12,6 +12,8 @@ import net.minecraft.util.math.BlockPos;
  * building (inside any other footprint, bridges excepted) and through (a building cell that a road of width 4 or more covers while neither end
  * of that road lies inside that footprint: a house lane ends at its house, a through road does not), point (inside a capture ring).
  * A through cell counts in building and in through; detail names it "through". detail has one "kind x z block" line per blocked cell.
+ * The one exception on a deck is the pole of a capture point's flag, the oak_fence at the exact centre of a point (Arena.flag builds and recolours it): it is point dressing wherever it stands,
+ * one cell a knight walks around, so it counts as point and not as road.
  * A deck is the planks only: columns x..x+width-1 and rows z..z+depth-1 from x=s.x()-width/2, z=s.z()-depth/2. Arena.ground also counts the
  * row z+depth and the column x+width as bridge, but nothing is built on them as a deck.
  */
@@ -32,6 +34,7 @@ final class Walkability {
             for(int y=g+1;y<=g+2&&hit==null;y++){var pos=new BlockPos(x,y,z);var st=b.world.getBlockState(pos);if(!st.getCollisionShape(b.world,pos).isEmpty())hit=Registries.BLOCK.getId(st.getBlock()).getPath();}
             if(hit==null)continue;
             String kind="road";
+            if(deck&&flagPole(x,z,hit))kind="point";
             if(!deck){
                 boolean inBase=false,inBuilding=false,inThrough=false;
                 for(var s:Spec.STRUCTURES){if(s.kind().equals("bridge")||!inside(s,x,z))continue;if(baseLike(s))inBase=true;else{inBuilding=true;inThrough|=through(x,z,s);}}
@@ -43,6 +46,12 @@ final class Walkability {
         return new Scan(cells,road,through,building,base,point,all.toString());
     }
 
+    /** The oak_fence column Arena.flag stands at the exact centre of a capture point. */
+    static boolean flagPole(int x,int z,String block){
+        if(!block.equals("oak_fence"))return false;
+        for(var p:Spec.POINTS)if(p.x()==x&&p.z()==z)return true;
+        return false;
+    }
     /** The planks of a bridge, not Arena.ground's wider test. */
     static boolean onDeck(int x,int z){
         for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")){int bx=s.x()-s.width()/2,bz=s.z()-s.depth()/2;if(x>=bx&&x<bx+s.width()&&z>=bz&&z<bz+s.depth())return true;}
