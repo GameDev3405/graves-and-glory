@@ -7,7 +7,7 @@
 3. Each campaign battle has one fixed difficulty, with no difficulty picker. [Yes; a picker triples the tuning and the bonus checks, and the banners carry the curve]
 4. Skirmish's "any banner" means you choose the enemy's House and always field your own banner. [Yes; Practice is where you try troops you do not own]
 5. The Hollow King in battle 6 is a normal Legendary troop in the enemy banner, with no boss rules of his own. [Yes; boss rules can wait for chapter 2]
-6. A profile that already got the chapter 1 Writ from the one-battle Phase 2 chapter keeps it and gets no second Writ for finishing all six. [Yes; nothing is taken back, and the gate run uses a fresh profile]
+6. A profile that already got the chapter 1 Pact from the one-battle Phase 2 chapter keeps it and gets no second Pact for finishing all six. [Yes; nothing is taken back, and the gate run uses a fresh profile]
 7. A solo Skirmish starts straight from the picker (mode, map, difficulty, enemy House, size, Siege side) and does not go through the war-gates pads; the pads stay for parties and Phase 5, and the Ride plate keeps its name. [Yes; pad team, pad size and map votes would otherwise fight the picker, and it settles who owns the settings when two players share a server]
 
 Status: approved by Kort 2026-10-18 (all seven questions answered yes; the escort variant is parked and will be revisited). Plan to be written once Phase 2's code names exist. Sources: the vision (binding), the approved Houses spec, the built-world spec and the UI spec. Phase 4 starts after Phases 2 and 3 merge and assumes their plans as written. Every number invented here is marked "(draft value)"; numbers taken from a sheet or another spec are not.
@@ -28,7 +28,7 @@ How it serves the pillars:
 Goals
 1. Siege, Survival and Banner, each with a win condition, a clock, scoring, reinforcement and morale rules, bot play at all three tiers and a ledger bar.
 2. Skirmish: any mode on the maps that host it, any difficulty, any enemy House, your own banner, normal rewards.
-3. Campaign chapter 1, "The Road North": six battles in the Houses order, each with a briefing card, a reason, one bonus objective and a fixed difficulty. Finishing it grants the Houses spec's Legendary Writ.
+3. Campaign chapter 1, "The Road North": six battles in the Houses order, each with a briefing card, a reason, one bonus objective and a fixed difficulty. Finishing it grants the Houses spec's Legendary Pact.
 4. Campaign battles seat the player's own banner, honour the battle's allies and enemies, pay normal rewards and open in order.
 5. Battles won, bonuses claimed and the chapter claim are saved in the same atomic save as gold.
 6. In-game checks per mode and per battle, one bot-vs-bot run per mode, and Kort's one-sitting gate.
@@ -66,7 +66,7 @@ What the code assumes today, all of it Domination:
 - `campaign:<id>` starts any battle in any order, and `soloStart` seats it as practice: one bot, practice gold, every troop unlocked, `campaignBattles.size` ignored. `campaignCleared` is the highest order won.
 - "Mode" already means lobby size in the snapshot and the `mode:` command, and the order sheets in the UI spec. This spec calls the game mode `battleMode` in code; "mode" appears only on screen.
 
-From Phases 2 and 3 this design relies on: all five Houses fieldable; `botBanners` rows `<house>_<difficulty>` and the mixed rows; the `Anchor` record and `reinforcementAnchors`; structure targets; profile schema 2 with `writs`, `writChapters` and `campaignCleared`, migrated by the pure `ProfileMigration`; the landmark pipeline, one piece per tick at most 100 ms each; and the reserved `ironhold/gate_intact`.
+From Phases 2 and 3 this design relies on: all five Houses fieldable; `botBanners` rows `<house>_<difficulty>` and the mixed rows; the `Anchor` record and `reinforcementAnchors`; structure targets; profile schema 2 with `pacts`, `writChapters` and `campaignCleared`, migrated by the pure `ProfileMigration`; the landmark pipeline, one piece per tick at most 100 ms each; and the reserved `ironhold/gate_intact`.
 
 ## 4. The mode frame
 
@@ -327,14 +327,14 @@ Each bonus pays 5 shards to the battle's House, as the Houses spec says, and 40 
 - No new House: battle 6 is the payoff. Its `house` names the Graveborn so the bonus shards have a home.
 
 The chapter reward:
-- When battle 6 is won and every chapter 1 battle is in `battlesWon`, finish grants one Legendary Writ through the Phase 2 rule: `writs` +1 and `writChapters` gains 1, once per profile.
+- When battle 6 is won and every chapter 1 battle is in `battlesWon`, finish grants one Legendary Pact through the Phase 2 rule: `pacts` +1 and `writChapters` gains 1, once per profile.
 - Which Legendary: the player's choice of the five, as the approved Houses spec decides: Lord Marshal Aldric, the Hollow King, Brassjaw, Admiral Vael or Old Horn.
-- How: the end-of-match report shows the chapter's epilogue and a "Choose your Legendary" button. It opens the recruit page's Writ view, which spends the Writ with Phase 2's `legendary:<house>:writ`. Closing the screen keeps the Writ for later.
+- How: the end-of-match report shows the chapter's epilogue and a "Choose your Legendary" button. It opens the recruit page's Pact view, which spends the Pact with Phase 2's `legendary:<house>:pact`. Closing the screen keeps the Pact for later.
 - Epilogue: "Kingsfield holds. When the field was searched, the Hollow King's crown was gone." It promises nothing.
 
 The War Table:
 - The Campaign sheet's Ride plate reads "Ride to" and the next unwon battle, as today. Once the chapter is done, Ride replays the battle last chosen.
-- New: the march page, a 4.4 kit page behind the Campaign sheet's Change button. It shows six battle plaques, won ones with a wax seal, the next in brass and later ones in iron, each with its House glyph, mode name and bonus state, and the Writ plaque at the foot. Choosing a plaque shows its briefing card.
+- New: the march page, a 4.4 kit page behind the Campaign sheet's Change button. It shows six battle plaques, won ones with a wax seal, the next in brass and later ones in iron, each with its House glyph, mode name and bonus state, and the Pact plaque at the foot. Choosing a plaque shows its briefing card.
 - On screen the campaign reads "The Long March, I: The Road North". The word "Chapter" stays the Founders plaque's.
 
 ## 11. Data
@@ -349,7 +349,7 @@ New and changed sheets in sheets/design.json:
 | `waves` | new | id, set, wave, seconds, gold |
 | `waveGroups` | new | id, wave, troop, count, site |
 | `bonusObjectives` | new, 6 rows | id, kind, value, target, shards, gold, text |
-| `chapters` | new, 1 row | id, name, writ, epilogue |
+| `chapters` | new, 1 row | id, name, pact, epilogue |
 | `campaignBattles` | changed, 6 rows | `size` goes; adds mode, house, allyBanners, enemyBanners, side, waveSet, bonus |
 | `botBanners` | one new row | `march1_turncoats` |
 | `morale` | new column and row | column wallRoutShare; row `siege` |
@@ -388,7 +388,7 @@ New and changed sheets in sheets/design.json:
 
 `bonusObjectives`: one row per battle with the kind and value from section 10. `target` is "gate" for `stage_by`, "gb_hollowking" for `kill_unit` and "none" otherwise; shards are 5, from the Houses spec; gold is 40 (draft value). The closed list of kinds is `hold_all`, `lose_at_most`, `stage_by`, `carry_self`, `win_within` and `kill_unit`. Each kind is one tracker on the round state; a later chapter adds a kind by adding a tracker.
 
-`chapters`: id 1, name "The Road North", writ true, and the epilogue from section 10.
+`chapters`: id 1, name "The Road North", pact true, and the epilogue from section 10.
 
 New preflight checks:
 - every `modes.maps` entry is a map index;
@@ -407,15 +407,15 @@ Profile schema 3:
 |---|---|---|
 | `battlesWon` | new, a set of strings | `campaignBattles` ids won at least once |
 | `bonusClaimed` | new, a set of strings | `bonusObjectives` ids already paid |
-| `writChapters` | from Phase 2 | chapters whose Writ was granted: the chapter claim |
+| `writChapters` | from Phase 2 | chapters whose Pact was granted: the chapter claim |
 | `campaignCleared` | from Phase 1 | kept and now derived: the highest order with every lower order won; the Ride plate and CampWorld.spawn still read it |
 
 At finish, before returnLobby, in this order:
 1. On a win in a campaign battle, add its id to `battlesWon` and recompute `campaignCleared`.
 2. Read the round's bonus tracker. If the bonus was kept and its id is not in `bonusClaimed`, add the id, the shards to the battle's House and the bonus gold.
-3. If every row of the chapter is in `battlesWon` and `writChapters` lacks the chapter, grant the Writ.
+3. If every row of the chapter is in `battlesWon` and `writChapters` lacks the chapter, grant the Pact.
 4. Write it all in the one atomic save that already carries gold, with the Phase 1 .bak and atomic move. A failed save rolls all of it back in memory.
-5. The report JSON gains `battleMode`, the stage, wave or capture count, `bonus` with id, kept, shards and gold, and `chapter` with done and writ.
+5. The report JSON gains `battleMode`, the stage, wave or capture count, `bonus` with id, kept, shards and gold, and `chapter` with done and pact.
 6. returnLobby then clears `activeBattle` and the mode state, as it does today.
 
 A round that ends without finish, because everyone left or the server stopped, records nothing, as today.
@@ -423,7 +423,7 @@ A round that ends without finish, because everyone left or the server stopped, r
 Migration from schema 2 to 3, in `ProfileMigration` with its standalone check:
 - `battlesWon` gets the ids of chapter rows whose order is at most `campaignCleared`;
 - `bonusClaimed` starts empty, since no bonus existed before;
-- `writs` and `writChapters` stay as they are, which is question 6;
+- `pacts` and `writChapters` stay as they are, which is question 6;
 - the v2 file is kept once as `<uuid>.v2.json`, as Phase 2 keeps v1.
 
 ## 13. Harness and gates
@@ -437,8 +437,8 @@ Phase4Checks lives in test-tools/, runs with GRAVES_PHASE4_CHECKS=<suite>, follo
 | survival | groups rise at their sites after the warning; counts for one and four banners and for Easy and Hard match the formula, and the alive cap holds; wave gold on clear and no passive income; the dead never rout; shrine taken is a loss, the last wave cleared or timed out is a win; the shrine barracks sells; night at setup and day after; `tickCost` at four banners logged beside a 4 v 4 Domination round; screenshots of a rising and the ledger |
 | banner | pickup by a troop and by a commander; the carrier glows, wears the banner, never routs, never attacks and moves at x0.9; drop on death, owner touch returns, and the 20 s return; scoring at your own stand, also with both banners out; 3 captures win and a tied time-out draws; a bot raider picks up and carries, and guards chase within `chaseRange`; screenshots |
 | skirmish | one solo start per mode with normal rewards; the enemy House picks the right `botBanners` row; Siege defend seats the player on team 1; Practice keeps practice gold |
-| march | `p4-march-1-start` to `p4-march-6-start` check map, mode, banners, tier, side and waves; each battle's bonus kind driven once to kept and once to lost; `p4-march-lock` refuses battle 3 before battle 2 is won; a replay pays normal gold and no bonus; battle 6 with all won grants the Writ once, and a replay grants nothing; the p1-tutorial suite still passes with the new enemy row |
-| save | the profile file on disk holds `battlesWon`, `bonusClaimed` and the gold before returnLobby runs, and a forced save failure rolls back all three; a relog shows them; a schema 2 fixture with campaignCleared 1 and writChapters 1 migrates to `battlesWon` march-1 with the Writ untouched and one backup |
+| march | `p4-march-1-start` to `p4-march-6-start` check map, mode, banners, tier, side and waves; each battle's bonus kind driven once to kept and once to lost; `p4-march-lock` refuses battle 3 before battle 2 is won; a replay pays normal gold and no bonus; battle 6 with all won grants the Pact once, and a replay grants nothing; the p1-tutorial suite still passes with the new enemy row |
+| save | the profile file on disk holds `battlesWon`, `bonusClaimed` and the gold before returnLobby runs, and a forced save failure rolls back all three; a relog shows them; a schema 2 fixture with campaignCleared 1 and writChapters 1 migrates to `battlesWon` march-1 with the Pact untouched and one backup |
 | hud | ledger screenshots per mode, and one per new feed line |
 
 Bot-vs-bot: BotSimulation gains `gravesandglory.simMode`, and results.csv gains the stage reached, the wave reached and the captures. One run per mode, 10 matches each (draft value), Normal against Normal on the Phase 2 `simBanner` rows:

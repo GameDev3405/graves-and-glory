@@ -395,7 +395,7 @@ stay in the pool; rolling one gives a duplicate (stars first, then shards).
 
 ### 4.3 Legendaries
 
-- **Legendary Writ**: finishing campaign chapter 1 grants one Writ, which
+- **Legendary Pact**: finishing campaign chapter 1 grants one Pact, which
   can be spent on any House's Legendary.
 - **House Renown**: +1 Renown in a House for each eligible match in which
   that House's trait was at tier I or higher in your banner, and +1 more on a
@@ -485,7 +485,7 @@ Assumptions:
 - 1.5 hours of play per play day, 4 play days a week.
 - The player rolls one House until its Epic drops, then buys any missing
   Rare for 300 (the cheapest policy).
-- Legendary #1 comes from the Writ.
+- Legendary #1 comes from the Pact.
 
 Income per hour:
 - matches: 4 x (80 + 0.5 x 40) = 400
@@ -507,7 +507,7 @@ rolls). For all five Houses the mean is 14,700 gold, the 10th percentile
 | Unlucky (90th percentile) | 17,600 | 36 |
 
 Parallel gates, which do not bind at the median:
-- Renown V in the four non-Writ Houses needs 4 x 20 House-matches. Fielding
+- Renown V in the four non-Pact Houses needs 4 x 20 House-matches. Fielding
   two Houses per match, that is 40 matches, or 10 hours.
 - Shards for four Legendaries (200 total) arrive at about 20 per hour: 2.5
   per match, contracts, and about 100 automatic dismantles over the run at 2
@@ -521,7 +521,7 @@ Next visible goal at each point for a median player:
 
 | Hour | What just happened | Next goal on screen |
 |---|---|---|
-| 0 to 2 | campaign chapter 1, 10 Commons owned, Writ spent | first Rare (300 gold or rolls) |
+| 0 to 2 | campaign chapter 1, 10 Commons owned, Pact spent | first Rare (300 gold or rolls) |
 | 2 to 6 | 2 to 4 Rares, first stars on Commons | first Epic (pity counter shown) |
 | 6 to 12 | first House complete except its Legendary, Renown III | Renown V in that House |
 | 12 to 20 | second and third Houses, Legendary #2 | first stage-3 evolution |
@@ -705,7 +705,7 @@ Profiles are stored as today: server-owned JSON per player, saved through
   "shards": {"gilded": 34, "graveborn": 12, "wildmoot": 0, "ironclad": 3, "tidecallers": 0},
   "renown": {"gilded": 27, "graveborn": 9,  "wildmoot": 0, "ironclad": 1, "tidecallers": 0},
   "pity":   {"gilded": 12, "graveborn": 4,  "wildmoot": 0, "ironclad": 0, "tidecallers": 0},
-  "writs": 0,
+  "pacts": 0,
   "progression": { "...": "Progression.State unchanged, schema 1" }
 }
 ```

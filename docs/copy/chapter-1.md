@@ -18,8 +18,8 @@ Player-facing strings and the full script for campaign chapter 1. The battle str
 | Rise site names | `modeSites` | `name`, rows of kind `rise` | s11 |
 | Mode and bonus feed lines | none: `FeedLines` over `feed_v1` | n/a | s8 names the lines, no sheet |
 | Epilogue | `chapters` | `epilogue` | s10, s11 |
-| Writ card: title, body, note (new column) | `chapters` | `writText`, 3 lines split by a vertical bar | spec silent |
-| Button "Choose your Legendary" | code (recruit page, Writ view) | n/a | s10 |
+| Pact card: title, body, note (new column) | `chapters` | `writText`, 3 lines split by a vertical bar | spec silent |
+| Button "Choose your Legendary" | code (recruit page, Pact view) | n/a | s10 |
 | Camp guide blurb (new column) | `chapters` | `blurb` | spec silent |
 | Scene name on its thumbnail | `storyPages` | `title` | story s7.1, s7.3 |
 | Page title and leaf passage (new columns) | `storyPages` | `pageTitle`, `passage`, on the page's first row | story s6, s7.1; columns story silent |
@@ -122,7 +122,7 @@ Map: Kingsfield Crossroads (map 4, five points). Mode: Domination. Difficulty: H
 - Victory feed: `The King's host is broken.` (129 px)
 - Defeat feed: `The King's host holds.` (109 px)
 - Note: The earlier lines said "The Hollow host". With the company named the Hollow, "The Hollow host holds" on a defeat would read as ours, so the feed says "the King's", as the bonus tag does.
-- Story: page 8. `c1_king_before` hands to this battle; on the first win `c1_king_after` plays, then the end-of-match report with the epilogue and the Writ card, then `c1_crown` the next time the book opens or the player returns to camp.
+- Story: page 8. `c1_king_before` hands to this battle; on the first win `c1_king_after` plays, then the end-of-match report with the epilogue and the Pact card, then `c1_crown` the next time the book opens or the player returns to camp.
 
 ## Modes
 
@@ -194,23 +194,23 @@ Emblem glyph: `Bonus kept: {tag}` and `Bonus lost: {tag}`, with the tag from eac
 | 2 | Recruits march out from the held point nearest the fight. (57) |
 | 3 | Reach the target score first, or lead when time ends. (53) |
 
-## The Writ (reward card)
+## The Pact (reward card)
 
-Shown on the end-of-match report when battle 6 grants the Writ: the epilogue, then the card. A profile that already holds the chapter 1 Writ (spec question 6) is granted none, so it sees the epilogue alone; the spec does not say, this is my reading.
+Shown on the end-of-match report when battle 6 grants the Pact: the epilogue, then the card. A profile that already holds the chapter 1 Pact (spec question 6) is granted none, so it sees the epilogue alone; the spec does not say, this is my reading.
 
-This is the reward card, and it stays as written. The Hollow's own writ, with its two scraped names and "Danta, of the Hollow" under them, is a different paper: an item, under "Object text" below. Story s6 page 1 says `c1_third_name` shows "the Writ card from the chapter 1 copy"; this copy reads that as the scraped writ's item card, because the reward card belongs to the end of the chapter. The reward card's body names the five Legendaries as the recruit page does; it is the game's interface, not a character's voice, so the familial rule does not reach it.
+This is the reward card, and it stays as written. The Hollow's own pact, with its two scraped names and "Danta, of the Hollow" under them, is a different paper: an item, under "Object text" below. Story s6 page 1 says `c1_third_name` shows "the Pact card from the chapter 1 copy"; this copy reads that as the scraped pact's item card, because the reward card belongs to the end of the chapter. The reward card's body names the five Legendaries as the recruit page does; it is the game's interface, not a character's voice, so the familial rule does not reach it.
 
 | Part | Copy |
 |---|---|
 | Epilogue (`chapters.epilogue`, spec, verbatim) | Kingsfield holds. When the field was searched, the Hollow King's crown was gone. |
-| Title | Legendary Writ |
-| Body | The road north is behind you. This writ calls one Legendary to your banner: Lord Marshal Aldric, the Hollow King, Brassjaw, Admiral Vael or Old Horn. |
-| Note | Choose now, or keep the Writ for later. It is spent once, on one Legendary. |
+| Title | Legendary Pact |
+| Body | The road north is behind you. This pact calls one Legendary to your banner: Lord Marshal Aldric, the Hollow King, Brassjaw, Admiral Vael or Old Horn. |
+| Note | Choose now, or keep the Pact for later. It is spent once, on one Legendary. |
 | Button (spec, verbatim) | Choose your Legendary |
 
 ## Camp guide blurb (40 words)
 
-The dead do not stay buried, and the Hollow's road north runs through them. Six battles, five Houses and four ways to fight lie between Rivergate and Kingsfield. Win one to open the next. The last pays a Legendary Writ.
+The dead do not stay buried, and the Hollow's road north runs through them. Six battles, five Houses and four ways to fight lie between Rivergate and Kingsfield. Win one to open the next. The last pays a Legendary Pact.
 
 ## Fit changes against the spec's section 8 examples
 
@@ -273,7 +273,7 @@ Nicknames, set once and kept in every line after:
 
 | Who | Calls | Set in | Why |
 |---|---|---|---|
-| Maud | Danta "Third" | `c1_third_name` card 4 | the third name on the writ |
+| Maud | Danta "Third" | `c1_third_name` card 4 | the third name on the pact |
 | Wren | Maud "Grey" | `c1_b2_after` card 3 | "You have gone grey" |
 | Dunmar | Danta "Hollow" | `c1_b3_before` card 3 | Dunmar is formal |
 | Wren | Dunmar "Tidy" | `c1_b3_before` card 4 | he built the gate and the engines to break it |
@@ -301,11 +301,11 @@ The leaf shows each companion who has joined, under the label their cards use, w
 
 Page titles are the story's, except page 4 (story: "Ironhold") and page 8 (story: "Kingsfield"), which are map names; the familial rule keeps those to the match cards and the battle table, so those leaves read "The Gate" and "The Field of Kings". Battle scenes keep their battle names on the thumbnails. Every leaf passage is written to open on a drop capital.
 
-### Page 1: The Writ
+### Page 1: The Pact
 
 Leaf passage (57 words):
 
-> Nineteen years the land has had no king. The dead do not lie down, and the living bury under consecrated ground and keep their doors shut. In the camp the Hollow have gathered what is left of them: a standard, a sergeant, and a writ with two names scraped from it and a third written this spring.
+> Nineteen years the land has had no king. The dead do not lie down, and the living bury under consecrated ground and keep their doors shut. In the camp the Hollow have gathered what is left of them: a standard, a sergeant, and a pact with two names scraped from it and a third written this spring.
 
 #### `c1_fall` (book, 5 panels): "The Fall"
 
@@ -314,20 +314,20 @@ No names on screen. The climber is a silhouette. Panel 5's caption is the lieute
 | Panel | Speaker | Voice | Caption |
 |---|---|---|---|
 | 1, fog on the rivers | the Record | `c1_r01` | Day one. A fog came up the rivers and did not lift, and the Tide came in it to the field of kings. (23) |
-| 2, the writ signed | the Record | `c1_r02` | Day two. The old king sent his only child north, and set his seal to a writ: carry the standard to the field of kings, and hold it. (27) |
+| 2, the pact signed | the Record | `c1_r02` | Day two. The old king sent his only child north, and set his seal to a pact: carry the standard to the field of kings, and hold it. (27) |
 | 3, the climber on the highest mound | the Record | `c1_r03` | Day three. The guard could not reach the highest mound through the Tide. Someone small climbed it alone, with something held in both hands. (24) |
 | 4, the dead stand up against the sea | the Record | `c1_r04` | That night the kings came up out of their mounds, and every host they ever led, and broke the Tide. At dawn the old king lay dead, crowned. (28) |
 | 5, a lieutenant lifts the crown | Edric alive | `c1_e01` | Then I will carry it until there is a hand. |
 
 #### `c1_third_name` (card, camp, the war table): "The Third Name"
 
-Maud at the war table. The Archivist brings the writ to her.
+Maud at the war table. The Archivist brings the pact to her.
 
 | # | Speaker | Voice | Line | Note |
 |---|---|---|---|---|
 | 1 | Maud | `c1_m01` | I am your sergeant, Danta. I was sergeant to the two names before yours. | Label "The sergeant". Her first line: what she is to him. |
-| 2 | the Archivist | `c1_p01` | Here is the writ, Maud. The ink on the third name is dry. | Her name lands. Page 1's new name. |
-| 3 | item | none | The scraped writ (see Object text). | Shows "Danta, of the Hollow". |
+| 2 | the Archivist | `c1_p01` | Here is the pact, Maud. The ink on the third name is dry. | Her name lands. Page 1's new name. |
+| 3 | item | none | The scraped pact (see Object text). | Shows "Danta, of the Hollow". |
 | 4 | Maud | `c1_m02` | Two names above yours, both scraped. The second was my knife. That makes you Third. | Sets "Third". |
 | 5 | Maud | `c1_m03` | It says the standard goes north. It does not say why. Nobody who knew is alive. | Story s6's line. |
 | 6 | Maud | `c1_m04` | The Hollow carry it until there is a living hand for the crown. Then the dead can rest. | Her want. The company's name, said with pride. (18) |
@@ -336,7 +336,7 @@ Maud at the war table. The Archivist brings the writ to her.
 
 | # | Speaker | Voice | Line | Note |
 |---|---|---|---|---|
-| 1 | the Archivist | `c1_p02` | A writ is the crown's seal on paper. It names a captain and gives them a standard. | Pell sheet line 1, first card. |
+| 1 | the Archivist | `c1_p02` | A pact is the crown's seal on paper. It names a captain and gives them a standard. | Pell sheet line 1, first card. |
 | 2 | the Archivist | `c1_p03` | The rule is carved on the Stone. I read it from the book. The crown calls them. | He reads the copy, not the Stone. |
 | 3 | the Archivist | `c1_p04` | The crown sends them home. A living hand, one crown, one standard, on the field of kings. | The copy's words. |
 | 4 | item | none | The roll of the dead, its first page (see Object text). | |
@@ -364,13 +364,13 @@ The briefing card, spec strings verbatim (see "The six battles"). The lessons an
 
 #### `c1_b1_after` (stage, the north crossing, a fire at dusk): "The North Crossing"
 
-The fire: Maud counting, the company eating. A dropped writ-copy lies by the fire; Maud picks it up.
+The fire: Maud counting, the company eating. A dropped pact-copy lies by the fire; Maud picks it up.
 
 | # | Speaker | Voice | Line | Note |
 |---|---|---|---|---|
 | 1 | Maud | `c1_m08` | {count} standing. I will count them after every fight. Somebody taught me to. | Typed. "Somebody" is Edric. |
 | 2 | Maud | `c1_m09` | Those were Order. Remember that when you count them. | Story s6's line. |
-| 3 | item | none | The turncoat's writ-copy (see Object text). | |
+| 3 | item | none | The turncoat's pact-copy (see Object text). | |
 | 4 | Maud | `c1_m10` | Leave that with me. It is nothing you need tonight. Eat something, Third. | She keeps it and does not explain. |
 
 ### Page 3: The Moon Shrine
@@ -579,7 +579,7 @@ The Hollow King, helmed and crowned, on the mound by the centre bridge; her brot
 
 | # | Speaker | Voice | Line | Note |
 |---|---|---|---|---|
-| 1 | the Hollow King | `c1_k01` | You carry a writ under my seal. I would know it anywhere. | He asks for the paper. |
+| 1 | the Hollow King | `c1_k01` | You carry a pact under my seal. I would know it anywhere. | He asks for the paper. |
 | 2 | the Hollow King | `c1_k02` | I signed that on the second day. I remember the hand. | He reads his own seal. |
 | 3 | the Hollow King | `c1_k03` | Danta. Written under a name someone has scraped. It does not matter. The seal is whole. | Voiced: the name is fixed, so no substitution. The scraped name is his own. (16) |
 | 4 | Tomas | `c1_t01` | Kneel, Hollow. And you, Maud. You swore to the last living crown, and there he stands. | Label "Her brother". "Hollow" as an accusation. (16) |
@@ -597,14 +597,14 @@ Staging, before card 1: `if match killed:gb_hollowking` he is already down on th
 | # | Speaker | Voice | Line | Note |
 |---|---|---|---|---|
 | 1 | the Hollow King | `c1_k05` | Danta. That is the name on the paper. You carried it well. | Edric's portrait. He says it kindly, and stops. |
-| 2 | Maud | `c1_m33` | Edric. I scraped your name off the writ with my own knife. I thought you were under the mounds. | Page 8's new name. The longest she ever says begins. (19) |
+| 2 | Maud | `c1_m33` | Edric. I scraped your name off the pact with my own knife. I thought you were under the mounds. | Page 8's new name. The longest she ever says begins. (19) |
 | 3 | Maud | `c1_m34` | You said you would carry it until there was a hand. Then you put it on. | His line from `c1_fall`. (16) |
 | 4 | Maud | `c1_m35` | Twelve years, and you do not know my face. That is all right. I know yours. | (16) |
 | 5 | Wren | `c1_w16` | I saw him lift it. The first morning. I was on the ground and I saw him lift it. | Story s6's line. (19) |
 | 6a | Maud | `c1_m36` | Your banner struck him, Third. Bind my brother, and do not kill him. His name is Tomas. I have counted enough. | `if match killed:gb_hollowking`. Page 8's second new name, Kort's call. (17) |
 | 6b | Maud | `c1_m37` | Bind my brother, and do not kill him. His name is Tomas. I have counted enough. | `else`. Page 8's second new name, Kort's call. |
 
-Then the end-of-match report, as Phase 4 says: the epilogue (spec, verbatim) "Kingsfield holds. When the field was searched, the Hollow King's crown was gone.", the Writ card, and the "Choose your Legendary" button (spec, verbatim). The book's last scene waits behind it.
+Then the end-of-match report, as Phase 4 says: the epilogue (spec, verbatim) "Kingsfield holds. When the field was searched, the Hollow King's crown was gone.", the Pact card, and the "Choose your Legendary" button (spec, verbatim). The book's last scene waits behind it.
 
 #### `c1_crown` (book, 2 panels, unskippable the first time): "The Highest Mound"
 
@@ -733,7 +733,7 @@ A lost battle 6 comes before the helm is lifted, so no line here names him or sa
 | Dunmar | `b6_fell` | 1 | `c1_d25` | Down by the bridge. My engines kept firing without me. I taught them that. |
 | Dunmar | `b6_fell:wren` | 1 | `c1_d26` | Wren went down by the mounds and lay there longer than she needed to. |
 | Dunmar | `b6_rout` | 2 | `c1_d27` | They broke at the fords. Even good stone breaks, if it is struck enough. |
-| Dunmar | `b6_bonus_lost` | 3 | `c1_d28` | Not your banner's blow, Hollow. A thing like that should be done by the one who carries the writ. |
+| Dunmar | `b6_bonus_lost` | 3 | `c1_d28` | Not your banner's blow, Hollow. A thing like that should be done by the one who carries the pact. |
 | Dunmar | `b6_losses` | 4 | `c1_d29` | Heavy losses. The field of kings takes its toll the way the pass does. Without asking. |
 | Dunmar | `b6_bonus_kept` | 5 | `c1_d30` | Your banner's blow, and clean. I have seen smiths strike worse on a good day. |
 | Ashka | `b6_fell` | 1 | `c1_a15` | They had me on the slope by the fords. I was slow. Do not tell the snow. |
@@ -846,7 +846,7 @@ Plant 3 of 3: the seal on a cloak in the snow. She says no more than this.
 
 | Part | Speaker | Voice | Line |
 |---|---|---|---|
-| Her line | Ashka | `c1_a09` | That seal on your writ. I have seen it before, on a cloak, in the snow. I was small. |
+| Her line | Ashka | `c1_a09` | That seal on your pact. I have seen it before, on a cloak, in the snow. I was small. |
 | Warm chit | Danta | none | Tell me about the snow. |
 | Plain chit | Danta | none | That seal is on a great many things. |
 | After warm | Ashka | `c1_a10` | Cold. A cloak. My brother pulling me out of it. He paid the toll, later. Now he walks. |
@@ -868,7 +868,7 @@ Sheet `storyLines`, companion `pell`. Six lines of one or two cards, each line u
 
 | # | Topic | Open | Voice | Card |
 |---|---|---|---|---|
-| 1 | What a writ is | always | `c1_p02` | A writ is the crown's seal on paper. It names a captain and gives them a standard. |
+| 1 | What a pact is | always | `c1_p02` | A pact is the crown's seal on paper. It names a captain and gives them a standard. |
 | 1 | | | `c1_p07` | Yours names three. Two are scraped. The seal does not mind. The seal is what matters. |
 | 2 | The rule, from the copy | always | `c1_p03` | The rule is carved on the Stone. I read it from the book. The crown calls them. |
 | 2 | | | `c1_p04` | The crown sends them home. A living hand, one crown, one standard, on the field of kings. |
@@ -877,7 +877,7 @@ Sheet `storyLines`, companion `pell`. Six lines of one or two cards, each line u
 | 4 | The Horn | after `c1_letter` | `c1_p09` | The Horn is older than the crown. It calls the buried kings when the land falls. |
 | 4 | | | `c1_p10` | Who blew it, the book does not say. I was copying. I did not look up. |
 | 5 | The Stone | after `c1_rule`, when the rule is asked for again | `c1_p11` | Against the Stone? I never have. I copied it myself, by lantern, and I am sure of my hand. |
-| 6 | The first captain | from page 3 | `c1_p12` | The first captain was first on your writ and on my roll. He died holding the standard over someone. |
+| 6 | The first captain | from page 3 | `c1_p12` | The first captain was first on your pact and on my roll. He died holding the standard over someone. |
 | 6 | | | `c1_p13` | Over whom, nobody wrote down. I have always meant to ask. |
 
 The scenes use some of these cards: `c1_archive` (`c1_p02` to `c1_p05`) and `c1_rule` (`c1_p03`, `c1_p04`). `c1_p01` and `c1_p06` belong to their scenes only.
@@ -888,13 +888,13 @@ Item text, read by the commander, never spoken. The sheet is not named in the st
 
 | Object | Where | Text |
 |---|---|---|
-| The scraped writ | `c1_third_name` card 3; the writ in the archive | The crown's seal. To the captain of the standard's guard: carry the standard to the field of kings and hold it until a living hand takes the crown. Two names scraped, the second deeper. Then: Danta, of the Hollow. (39) |
-| The turncoat's writ-copy | `c1_b1_after` card 3 | A fair copy, the wax still soft. By the crown's seal, a company of the Crown's Own is raised to serve the last living crown. On the back, in a firm hand: She will come this way. (37) |
+| The scraped pact | `c1_third_name` card 3; the pact in the archive | The crown's seal. To the captain of the standard's guard: carry the standard to the field of kings and hold it until a living hand takes the crown. Two names scraped, the second deeper. Then: Danta, of the Hollow. (39) |
+| The turncoat's pact-copy | `c1_b1_after` card 3 | A fair copy, the wax still soft. By the crown's seal, a company of the Crown's Own is raised to serve the last living crown. On the back, in a firm hand: She will come this way. (37) |
 | The drowned shroud | `c1_b4_after` card 2 | A burial shroud, sea-grey, stiff with salt. Someone has sewn the crown's seal on it in gold thread, small and exact. It is still wet. It does not dry. (29) |
 | The roll of the dead, first page | `c1_archive` card 4 | The roll of the dead. At the top, in a careful hand: the captain of the standard's guard, fallen on the third day. Below him, names, page after page. (29) |
 | The child's stone, drawn on the piece | `c1_king_after`, Plant 2 | FOR THE CHILD WE SENT NORTH |
 
-The first name on the writ was scraped by the second captain when he wrote his own under it; the second, Edric's, by Maud's knife, deeper. The hand on the back of the writ-copy is her brother's; Maud knows it and says nothing. The writ's own form for the commander is "Danta, of the Hollow".
+The first name on the pact was scraped by the second captain when he wrote his own under it; the second, Edric's, by Maud's knife, deeper. The hand on the back of the pact-copy is her brother's; Maud knows it and says nothing. The pact's own form for the commander is "Danta, of the Hollow".
 
 ## The Stone and the copy
 
@@ -906,7 +906,7 @@ The Founders' Stone's own letters are drawn on the piece in the archive, in carv
 | 2 | The crown sends them home. | The crown sends them home. |
 | 3 | One hand, one crown, one standard, on the field of kings. | A living hand, one crown, one standard, on the field of kings. |
 
-The difference is the one word "living" (with the copy's "A" where the Stone has "One"). The copy's reading is also in the writ's own text, "until a living hand takes the crown", and in Maud's want, `c1_m04`.
+The difference is the one word "living" (with the copy's "A" where the Stone has "One"). The copy's reading is also in the pact's own text, "until a living hand takes the crown", and in Maud's want, `c1_m04`.
 
 ## The silent set
 
@@ -924,11 +924,11 @@ Where the story design and the briefs are silent, this copy chose. The draft thi
 4. The line about another's fall has one named speaker per battle and is skipped if that speaker was absent or fell.
 5. Wren's fell line plays after one fall; after two, a resting line plays in its place.
 6. `c1_shrine_2` is row 1 of Wren's memory, and the shrine's own rows start at 2, one per battle after that scene. A straight run with no replays reaches row 3 or 4 before `c1_crown`; the six are all heard only by a commander who replays or loses.
-7. Item cards inside scenes (the writ, the writ-copy, the roll, the shroud) need a card with no portrait; `card item:<id>` is proposed, since the command list has none.
+7. Item cards inside scenes (the pact, the pact-copy, the roll, the shroud) need a card with no portrait; `card item:<id>` is proposed, since the command list has none.
 8. The dying raider speaks with no portrait and the voice initial x; the brief's list of initials has none for him.
 9. Her brother speaks once, in `c1_king_before`, so his portrait has a line, and his name waits for chapter 2 under the one-name-a-page rule. Maud's "your banner" line rides on her last card of `c1_king_after`, so the scene stays at six cards. **Overturned by Kort, 2026-10-18 late:** Tomas is named on page 8, the page he first speaks; Maud says it in `c1_king_after` card 6, and page 8 is the one page allowed two new names.
 10. The child's name on the mound is a role, "FOR THE CHILD WE SENT NORTH", by the familial rule. Plant 3, which story s6 does not place, is the cloak in the snow in Ashka's second choice card.
 11. The grave roll's names are bynames, and the Archivist does not give his name in chapter 1, both by the familial rule.
 12. The echo sits at the first fire Wren shares, on page 3. The leaves of pages 4 and 8 are titled "The Gate" and "The Field of Kings", and battle 6's feed says "the King's host", so neither a map name nor "the Hollow host" reaches a leaf or the feed.
 
-Kort's verdict, 2026-10-18 late (click-through): 1 to 5, 7, 8, 10 to 12 kept; 6 superseded by the spec's rule that Wren's memory advances on every return to camp after a chapter battle, confirmed, so all six are heard in a straight run before `c1_crown`; 9 overturned as noted above.
+Kort's verdict, 2026-10-18 late (click-through): 1 to 5, 7, 8, 10 to 12 kept; 6 superseded by the spec's rule that Wren's memory advances on every return to camp after a chapter battle, confirmed, so all six are heard in a straight run before `c1_crown`; 9 overturned as noted above. The copy is approved for the Phase 4 build, voice later (Kort, 2026-10-18 late).

@@ -48,7 +48,7 @@ Anti-goals (a failure even if it works):
 
 - Kort's 2026-10-18 direction amends one line of the approved Phase 4 spec: its anti-goal "no boss mechanics, cutscenes or voice" is lifted for cutscenes and voice. Boss mechanics stay out: the Hollow King has no rules of his own in the battle. The Phase 4 plan is written from both documents.
 - The Phase 4 battle table binds: six battles, their maps, modes, sides, bonuses and the Houses met in order (Gilded, Graveborn, Ironclad, Tidecallers, Wildmoot, then Kingsfield). The epilogue line "Kingsfield holds. When the field was searched, the Hollow King's crown was gone." binds and is the last line before the cliffhanger page.
-- The Houses spec binds the five Houses and their five Legendaries. Legendaries stay recruitable by Writ and Renown; section 4.6 says why a Legendary answers a writ.
+- The Houses spec binds the five Houses and their five Legendaries. Legendaries stay recruitable by Pact and Renown; section 4.6 says why a Legendary answers a pact.
 - The built world binds the places: Rivergate, Ironhold, Frostmarch, Hollowwood, Kingsfield (five points: two fords, the centre bridge, two raised outposts), and Banner Camp (command tent, war table, War Gates, archive with the Founders' Stone, House ring with the graveyard shrine, training yard).
 - The story needs one landmark the built world does not list yet: the kings' mounds at Kingsfield, a ring of barrows beside the centre bridge with the first king's mound highest. It is added to Phase 3's Kingsfield landmark task **[call]**; `c1_king_before` and `c1_crown` wait for it.
 - The UI spec binds the look: vellum, brass, iron, the Iron Ledger, the War Table. The storybook and its cards are drawn from the same kit, at the same detail Kort demanded for the mockups (two to three times the pixel detail of the first round), and graded against `work/ui-concepts/GRADING-RUBRIC.md` before Kort sees them.
@@ -78,20 +78,20 @@ The Barrow Horn is older than the crown. It calls the buried kings and their hos
 ### 4.3 The Fall at Kingsfield, nineteen years ago (day by day)
 
 - **Day 1.** The Tide comes up the rivers in a fog that does not lift. Admiral Vael's host lands at Kingsfield. King Osric meets it with the Order under Lord Marshal Aldric, the clans, and the woods' hunters. Osric is losing.
-- **Day 2.** Osric sends his only child, Elin, nine years old, north toward Frostmarch with a guard of twelve. He signs a writ naming Ser Halden Rook captain of the standard's guard, "to carry the standard to the field of kings and hold it until a living hand takes the crown". This is the Hollow's writ. Halden Rook is its first name.
+- **Day 2.** Osric sends his only child, Elin, nine years old, north toward Frostmarch with a guard of twelve. He signs a pact naming Ser Halden Rook captain of the standard's guard, "to carry the standard to the field of kings and hold it until a living hand takes the crown". This is the Hollow's pact. Halden Rook is its first name.
 - **Day 3.** Aldric orders the Barrow Horn blown from the first king's mound, the highest. The guard cannot reach it through the Tide. The company's scout can. Her name is Wren. She blows it. The dead of the mounds stand up and break the Tide in a night. Wren is found at the foot of the mound in the morning with the Horn in her hands and no breath in her. Halden Rook dies on the mound-top holding the standard over her.
-- **Day 4.** The Tide is broken. Osric is dead on the field, crown on, from a Tidecaller trident. The dead kings walk back to their mounds and do not close them. Their hosts do not go home. The Horn is still sounding, faintly, under everything. Edric Vane, Rook's lieutenant, takes the crown off the dead king's head so that there is a crown to put on a living hand, writes his own name under Rook's on the writ, and marches the standard's guard north after the heir. They call themselves the Hollow from that morning. Wren rises on the fifth day and follows the standard, because it is the only thing she still recognises.
+- **Day 4.** The Tide is broken. Osric is dead on the field, crown on, from a Tidecaller trident. The dead kings walk back to their mounds and do not close them. Their hosts do not go home. The Horn is still sounding, faintly, under everything. Edric Vane, Rook's lieutenant, takes the crown off the dead king's head so that there is a crown to put on a living hand, writes his own name under Rook's on the pact, and marches the standard's guard north after the heir. They call themselves the Hollow from that morning. Wren rises on the fifth day and follows the standard, because it is the only thing she still recognises.
 - **The nineteen years.** Elin's guard is never found. The Hollow search north, then west, then north again, and the realm comes apart behind them. The dead do not lie down, but they wander without purpose, and the living learn to bury under consecrated ground. The Order breaks over the oath (section 4.5). Vael takes the coast. The clans seal the holds. The woods close.
-- **Two years ago.** Edric brings the Hollow back to Kingsfield with the crown and the standard. He has read the Archivist's copy a thousand times: a living hand, one crown, one standard, the field of kings. He has all three, he thinks, and no heir. He puts the crown on himself at the mounds, to send the dead home. The crown takes him, and it cracks on his head, a split from the brow to the back that never closes. What stands up is hollow behind the eyes and kind in the voice, and every dead thing within hearing turns toward it. The Hollow scatter. Maud Harrow, his sergeant and his lover, carries the standard out of Kingsfield with eleven people, believes him dead under the mounds, and scrapes his name off the writ with her own knife on the road.
-- **This spring.** Maud writes the third name on the writ: the player's. Banner Camp is where the Hollow have gathered what is left. The Road North is the march back to the field of kings, to hold the standard there until Aldric brings a hand.
+- **Two years ago.** Edric brings the Hollow back to Kingsfield with the crown and the standard. He has read the Archivist's copy a thousand times: a living hand, one crown, one standard, the field of kings. He has all three, he thinks, and no heir. He puts the crown on himself at the mounds, to send the dead home. The crown takes him, and it cracks on his head, a split from the brow to the back that never closes. What stands up is hollow behind the eyes and kind in the voice, and every dead thing within hearing turns toward it. The Hollow scatter. Maud Harrow, his sergeant and his lover, carries the standard out of Kingsfield with eleven people, believes him dead under the mounds, and scrapes his name off the pact with her own knife on the road.
+- **This spring.** Maud writes the third name on the pact: the player's. Banner Camp is where the Hollow have gathered what is left. The Road North is the march back to the field of kings, to hold the standard there until Aldric brings a hand.
 
 ### 4.4 The Hollow King
 
 The Hollow King is Edric Vane, crowned at the mounds two years ago by his own hand. He is not a villain and he is not mad. He is a dead man who believes he is king, because the oath says the crown makes the king and the crown is on his head. He is coming home to Kingsfield to hold court, and he is bringing every dead thing that ever answered the Horn, because they turn toward the crown like a field toward the sun. Everywhere he walks, the ground remembers the Horn and the dead get up: the old graves of Hollowwood, the smiths of Ironhold, the drowned in the river. He does not raise them on purpose. He is the call, walking.
 
-He keeps writs. Every commission the crown ever sealed, he honours, which is why the Gilded turncoats serve him and why his first words to the player at Kingsfield are about the paper in their hand. He does not remember Maud. That is the horror and the sorrow of him: kindness with nothing behind it.
+He keeps pacts. Every commission the crown ever sealed, he honours, which is why the Gilded turncoats serve him and why his first words to the player at Kingsfield are about the paper in their hand. He does not remember Maud. That is the horror and the sorrow of him: kindness with nothing behind it.
 
-The Houses spec calls him the Hollow King and makes him the Graveborn Legendary. The story keeps both. When a player spends a Writ on him in Phase 2's recruit page, the story's reading is that the seal on the writ was his own.
+The Houses spec calls him the Hollow King and makes him the Graveborn Legendary. The story keeps both. When a player spends a Pact on him in Phase 2's recruit page, the story's reading is that the seal on the pact was his own.
 
 The crown on his head is the real Barrow Crown, broken (the Houses spec's broken crown on the model is this crack). A broken crown can still call the dead; it cannot send them home. That is chapter 4. When he falls at Kingsfield, it is gone when the field is searched. The last page of chapter 1 says who has it.
 
@@ -101,13 +101,13 @@ The Order swore *to the last living crown*. When the crown walked out of Kingsfi
 
 Lord Marshal Aldric leads the oathkeepers from the west and does not march with the player. He ordered the Horn blown, he has read the Stone with his own eyes, and he is looking for a living hand. In chapter 1 he is a name in one letter. In chapter 5 he is on the mounds with nothing to say for himself.
 
-### 4.6 Writs, the standard, and why Legendaries answer
+### 4.6 Pacts, the standard, and why Legendaries answer
 
-A writ is a royal commission: the crown's seal on a paper that names a captain and gives them a standard. A banner (the game's deployment) is the company raised under a writ. The Hollow's writ has three names on it, two scraped: Halden Rook, Edric Vane, and the player.
+A pact is a royal commission: the crown's seal on a paper that names a captain and gives them a standard. A banner (the game's deployment) is the company raised under a pact. The Hollow's pact has three names on it, two scraped: Halden Rook, Edric Vane, and the player.
 
 The standard is the Hollow's banner pole and cloth, the thing the player carries into every battle, and the third of the Horn's three things. Whoever holds it on the field of kings with a crown and a hand can finish the rite, or stop it. That is why the Tide comes for it at Rivergate (battle 4), why Aldric's letter says hold it, and why the Hollow King asks for it.
 
-The five Legendaries answer writs because every one of them is bound to the crown's seal: by oath (Aldric), by the crown itself (the Hollow King), by old bargain (Old Horn and the woods), by forge-mark (Brassjaw bears the seal on his chest; the clans forged the crown), or by hunger for it (Vael). When the player spends a Legendary Writ, the story says the seal was recognised. **[call]** This is why the chapter reward is a Writ and not gold.
+The five Legendaries answer pacts because every one of them is bound to the crown's seal: by oath (Aldric), by the crown itself (the Hollow King), by old bargain (Old Horn and the woods), by forge-mark (Brassjaw bears the seal on his chest; the clans forged the crown), or by hunger for it (Vael). When the player spends a Legendary Pact, the story says the seal was recognised. **[call]** This is why the chapter reward is a Pact and not gold.
 
 ### 4.7 The Houses in the story
 
@@ -134,7 +134,7 @@ The `story-voice` check counts proper nouns per page against this rule (section 
 
 ### 4.9 The Hollow, and its kings (the saga's hidden meaning)
 
-"Hollow" is not Danta's family name. It is the writ's. The company has been the Hollow since the first writ was sealed, and every captain the writ names takes the company's name the way a ship's captain takes the ship: Halden Rook signed *Rook, of the Hollow*; Edric Vane signed the same; Maud wrote *Danta Hollow* this spring because that is how a writ is written, and Danta has never known another name because the camp raised him. He does not know this when chapter 1 opens. Neither does the player.
+"Hollow" is not Danta's family name. It is the pact's. The company has been the Hollow since the first pact was sealed, and every captain the pact names takes the company's name the way a ship's captain takes the ship: Halden Rook signed *Rook, of the Hollow*; Edric Vane signed the same; Maud wrote *Danta Hollow* this spring because that is how a pact is written, and Danta has never known another name because the camp raised him. He does not know this when chapter 1 opens. Neither does the player.
 
 So "the Hollow King" was never a word for empty eyes. It is a title: the captain of the Hollow who takes the crown for himself. Edric is only the latest. The ring of mounds at Kingsfield holds the Hollow's kings, and the first mound belongs to the first captain who did it, four hundred years ago, before the Houses had names. The crown calls them and cannot send them home because a Hollow who crowns himself is the wrong hand, every time: the Horn's rule wants one hand, and the captain's hand is already on the standard.
 
@@ -143,12 +143,12 @@ The twist is told one piece per chapter, never as a lecture, and chapter 1 plant
 | Chapter | What lands | Who says it |
 |---|---|---|
 | 1 | The echo, noticed and dropped. *"Hollow. Like him."* *"Like the company. Eat."* | Wren, Maud, at the first fire Wren shares (`c1_b2_after`, page 3; she joins after battle 2) |
-| 2 | The roll of captains in the archive, every name signed *of the Hollow*. Danta's name is the paper's, not his blood's; he does not know who he was before the writ | Pell, then Danta alone with the page |
+| 2 | The roll of captains in the archive, every name signed *of the Hollow*. Danta's name is the paper's, not his blood's; he does not know who he was before the pact | Pell, then Danta alone with the page |
 | 3 | The mounds have a word for the captain who wears the crown for the company, and Edric was not the first | Ashka, who learned it from the clan's dead |
 | 4 | The cost of the reforged crown: whoever carries it to the field as the Hollow becomes its king | Dunmar, at the forge |
 | 5 | The first mound opens and the first Hollow King stands up. The title was always waiting for Danta. He is the first captain of the Hollow who refuses it, and the Horn goes to the hand | The field |
 
-Rules for the copy: the word "Hollow" is said by the company about itself with pride and by the Crown's Own as an accusation, and the player should not be able to tell which is older until chapter 2. Nobody explains the title before chapter 3. Danta's own name on the writ is shown, not read aloud, on page 1 (the Writ card) so the player sees the form *Danta, of the Hollow* before anyone says what it means. The `story-names` check treats "Hollow" and "the Hollow" as the player's own name, not a new noun.
+Rules for the copy: the word "Hollow" is said by the company about itself with pride and by the Crown's Own as an accusation, and the player should not be able to tell which is older until chapter 2. Nobody explains the title before chapter 3. Danta's own name on the pact is shown, not read aloud, on page 1 (the Pact card) so the player sees the form *Danta, of the Hollow* before anyone says what it means. The `story-names` check treats "Hollow" and "the Hollow" as the player's own name, not a new noun.
 
 ## 5. The cast
 
@@ -168,7 +168,7 @@ Four companions, met along the road in House order, one voice from the dead, one
 
 Forties, Order sergeant, a scar through one eyebrow from the Fall. She has kept the oath the plain way for nineteen years: the king is dead, the crown waits, she serves the standard until there is a hand to give it to. She was Edric's sergeant for seventeen of those years and his lover for twelve, and she does not say so, because the Hollow who are left all know and the new ones do not need to. She is the march's spine. She shows care by counting the player's troops after every battle out loud, and she teaches the player to command because Edric taught her.
 
-She believes Edric died under the mounds two years ago. She scraped his name off the writ on the road out of Kingsfield so that the writ could take another, and she thinks that was the hardest thing she has done. It was not. Battle 6 is.
+She believes Edric died under the mounds two years ago. She scraped his name off the pact on the road out of Kingsfield so that the pact could take another, and she thinks that was the hardest thing she has done. It was not. Battle 6 is.
 
 Her brother Tomas took the other reading of the oath. They have not spoken in nineteen years and she will not say his name until page 8 makes her.
 
@@ -209,7 +209,7 @@ She does not know she is Osric's daughter. Her clan found a child of nine with a
 
 ### 5.5 Pell, the Archivist
 
-Banner Camp's keeper of the record, in the archive by the Founders' Stone. Old, precise, and wrong once: when he copied the Stone's rule into the camp's book, nineteen years ago, by lantern light, with the Tide a mile off, he wrote *a living hand* where the Stone says *one hand*, because that is what everyone had always said it meant. The march has read his copy ever since. Edric read it. In chapter 1 Pell reads the rule aloud when asked (from the copy), tells the player what a writ is, keeps the roll of the dead that Wren adds to, and says once, if the player asks twice, that he has never checked the copy against the Stone because he is sure of his hand.
+Banner Camp's keeper of the record, in the archive by the Founders' Stone. Old, precise, and wrong once: when he copied the Stone's rule into the camp's book, nineteen years ago, by lantern light, with the Tide a mile off, he wrote *a living hand* where the Stone says *one hand*, because that is what everyone had always said it meant. The march has read his copy ever since. Edric read it. In chapter 1 Pell reads the rule aloud when asked (from the copy), tells the player what a pact is, keeps the roll of the dead that Wren adds to, and says once, if the player asks twice, that he has never checked the copy against the Stone because he is sure of his hand.
 
 ### 5.6 Ser Tomas Harrow
 
@@ -217,7 +217,7 @@ Maud's younger brother, sergeant of the Crown's Own. He is not on the field in b
 
 ### 5.7 Edric Vane
 
-The Hollow King, and before that the second name on the writ. In chapter 1 he is seen twice: on the mounds before battle 6, helmed, asking for the standard; and after, when Maud lifts the helm. One line is his alive, in the storybook opening, on day 4: *"Then I will carry it until there is a hand."* Everything he says dead is kind and about the paper.
+The Hollow King, and before that the second name on the pact. In chapter 1 he is seen twice: on the mounds before battle 6, helmed, asking for the standard; and after, when Maud lifts the helm. One line is his alive, in the storybook opening, on day 4: *"Then I will carry it until there is a hand."* Everything he says dead is kind and about the paper.
 
 ## 6. Chapter 1, "The Road North": the pages
 
@@ -225,15 +225,15 @@ The chapter is eight pages. A page is a spread: the left leaf holds the page's t
 
 Scene ids are the ones the scene files use.
 
-### Page 1: The Writ
-1. `c1_fall` (book, 5 panels). The Fall, day by day: the fog on the rivers; the writ signed; a small figure climbing the highest mound with a horn; the dead standing up out of the mounds against the sea; a lieutenant lifting a crown from a dead king's head, and his line: *"Then I will carry it until there is a hand."* No names on screen except Osric's. The climber is a silhouette.
-2. `c1_third_name` (card, camp, Maud at the war table). Two names scraped, hers is the knife, the third is the player's. *"It says the standard goes north. It does not say why. Nobody who knew is alive."* Then the Writ card from the chapter 1 copy.
-3. `c1_archive` (card, optional, Pell at the Stone). What a writ is. The rule, read from the copy. The roll of the dead, open on the first page: Halden Rook, then a long list.
+### Page 1: The Pact
+1. `c1_fall` (book, 5 panels). The Fall, day by day: the fog on the rivers; the pact signed; a small figure climbing the highest mound with a horn; the dead standing up out of the mounds against the sea; a lieutenant lifting a crown from a dead king's head, and his line: *"Then I will carry it until there is a hand."* No names on screen except Osric's. The climber is a silhouette.
+2. `c1_third_name` (card, camp, Maud at the war table). Two names scraped, hers is the knife, the third is the player's. *"It says the standard goes north. It does not say why. Nobody who knew is alive."* Then the Pact card from the chapter 1 copy.
+3. `c1_archive` (card, optional, Pell at the Stone). What a pact is. The rule, read from the copy. The roll of the dead, open on the first page: Halden Rook, then a long list.
 
 ### Page 2: The River Road
 1. `c1_b1_before` (stage, Rivergate). Order on the crossings. Maud: our Order, the other reading of the oath. Take the bridges one at a time.
 2. `battle_1` The Training Field (Rivergate, Domination, Easy; lessons and the free roll stay).
-3. `c1_b1_after` (stage, the north crossing). Maud counts. *"Those were Order. Remember that when you count them."* A dropped writ-copy with the king's seal; she takes it and will not explain.
+3. `c1_b1_after` (stage, the north crossing). Maud counts. *"Those were Order. Remember that when you count them."* A dropped pact-copy with the king's seal; she takes it and will not explain.
 
 ### Page 3: The Moon Shrine
 1. `c1_b2_before` (stage, Hollowwood, night). The old graves are opening; he came through here a week ago. Consecrated ground; the dead do not come up through it, they will come at it. *"There is nowhere else to sleep."*
@@ -262,14 +262,14 @@ Scene ids are the ones the scene files use.
 4. `c1_council` (card, camp, the war table, all four). Each says one thing. Maud: Tomas is there. Wren: she remembers a horn. Dunmar: the engines can reach the centre bridge from the raised outposts. Ashka: he was standing at the mounds when she left the trees, and the host is larger than the march. The player gives no speech. The scene ends on the standard.
 
 ### Page 8: Kingsfield
-1. `c1_king_before` (stage, the mounds, night). The Hollow King, helmed, crowned. He asks for the writ. He reads his own seal. He says Danta's name, because it is on the paper. *"You have carried the standard to the field of kings. Well done. Now give it to me."* Maud: *"Do not answer him."* The player does not. The battle starts when the card closes.
+1. `c1_king_before` (stage, the mounds, night). The Hollow King, helmed, crowned. He asks for the pact. He reads his own seal. He says Danta's name, because it is on the paper. *"You have carried the standard to the field of kings. Well done. Now give it to me."* Maud: *"Do not answer him."* The player does not. The battle starts when the card closes.
 2. `battle_6` Kingsfield (Domination, five points, Hard). Tomas's banner is on the field, script-protected. The bonus, strike down the Hollow King with your own banner, is the story's demand too. The battle has no boss rules: the king is a Legendary in a bot banner and the bots play him as they play any Legendary. When the match ends in the player's favour, however it ended (points, or his death by anyone), the after-scene stages the same fact: the host broke and the king is down on the mound. If the player's banner killed him, one of Maud's lines says so (`if match killed:gb_hollowking`); if he was alive at the end, the scene shows him on his knees on the mound as the dead stop answering him, and he falls. Tomas kneels where the script puts him at the end, whatever his HP.
 3. `c1_king_after` (stage, the mounds, dawn coming). The king down. Maud lifts the helm. Edric. He does not know her. He says the paper's name again, kindly, and stops. Maud's three lines, the longest she ever says. Tomas is found fallen and taken alive. Wren looks at Edric's face: *"I saw him lift it. The first morning. I was on the ground and I saw him lift it."* Dunmar's engines are silent. Ashka is looking at the mounds. Plant 2: one mound has a child's name on it that nobody reads aloud. Then the end-of-match report, as Phase 4 says: the spec's epilogue line, *"Kingsfield holds. When the field was searched, the Hollow King's crown was gone."*, and the "Choose your Legendary" button. The book's last scene waits behind it.
 4. `c1_crown` (book, 2 panels, unskippable the first time, the cliffhanger; it plays when the player next opens the book or returns to camp, whichever is first). Dawn. The first king's mound, the highest. Wren on top of it with the crown in both hands, the way she once held a horn. *"I remember now."* The mounds open behind her, all of them. Black. Chapter 2.
 
 ### 6.1 The plot twist and why it lands
 
-The player spends seven pages learning the oath, the Horn, the writ and the standard through four people who each carry one of them, and watching Maud not say a name. On page 8 the dead king holds up the paper that makes the player who they are and asks for the thing they have carried the whole road. The player refuses and strikes him down with their own banner, which the game rewards. Then Maud lifts the helm, and the player learns they have killed the man who wrote the writ, the man Maud loved, the second name under their own, who did exactly what the player is doing and ended like this. Nothing earlier was a lie: Maud's silence, the scraped name, the king's kindness, Wren's "I saw him lift it", the Writ reward itself (the seal recognised its own captain's hand).
+The player spends seven pages learning the oath, the Horn, the pact and the standard through four people who each carry one of them, and watching Maud not say a name. On page 8 the dead king holds up the paper that makes the player who they are and asks for the thing they have carried the whole road. The player refuses and strikes him down with their own banner, which the game rewards. Then Maud lifts the helm, and the player learns they have killed the man who wrote the pact, the man Maud loved, the second name under their own, who did exactly what the player is doing and ended like this. Nothing earlier was a lie: Maud's silence, the scraped name, the king's kindness, Wren's "I saw him lift it", the Pact reward itself (the seal recognised its own captain's hand).
 
 Then the crown is gone, and the last page shows who has it, and why the mounds are opening, and the chapter ends with the dead kings standing up again and Wren remembering. Chapter 1 ends worse than it began, with four people who would follow the player anywhere, which is the point.
 
@@ -279,7 +279,7 @@ Then the crown is gone, and the last page shows who has it, and why the mounds a
 - Dunmar at Hesper's open grave (page 4), and his refusal to let the dead be put back twice.
 - Wren introducing the player's own fallen by name at the shrine, every visit.
 - The toll at the pass counted in the player's real losses (page 7).
-- The Writ reward, which the player now understands was Edric's seal.
+- The Pact reward, which the player now understands was Edric's seal.
 - The last page: the dead the player fought all chapter were never the enemy; the Horn was.
 
 ## 7. How the story is told in the game
@@ -328,14 +328,14 @@ Commands (the builder adds nothing not listed; new commands come back through th
 - `map <n>` or `camp`; `time`, `weather`, `fog`.
 - `actor <id> <unit or companion:<name>> at x y z facing <yaw> [pose <name>]`; `walk <actor> to x y z over <ticks>`; `pose <actor> <name>` (poses: the title demos' arm poses plus `kneel`, `fallen`, `stand`, `helm_off`; **[call]** six poses, no custom animation in chapter 1).
 - `camera x y z to x y z over <ticks>`, `camera hold x y z look <actor>`, `camera player`.
-- `card item:<id> "<text>"`: an object's text on the vellum card, no portrait, no voice (the scraped writ, the roll page, the shroud). **[call, from the copy]**
+- `card item:<id> "<text>"`: an object's text on the vellum card, no portrait, no voice (the scraped pact, the roll page, the shroud). **[call, from the copy]**
 - `card <speaker> "<text>" [voice <id>]`: at most three wrapped lines. Text may hold `{count}` (troops standing after the match), `{losses}` (troops lost in the match) and `{bonus}` (the match's bonus word); a voiced line never carries a substitution. The player is named (Danta), so lines that say his name are plain text and can be voiced.
 - `panel <png> [pan dx dy over <ticks>] [layers n]` (book only); `caption "<text>"`.
 - `structure <id>`: places a structure piece for a stage scene (page 4's before-scene shows `ironhold/gate_intact` standing, as Siege will).
 - `sound <id>`, `particles <type> at x y z count n`, `wait <ticks>`, `fade in|out <ticks>`, `end`.
 - `if companion:<name> standing|wounded|resting` and `if match killed:<unit> | bonus | won` ... `else` ... `endif`: the only branches.
 
-Lines that are not scenes (reaction, wounded, shrine, Pell, the grave roll) are table-shaped and live in sheets, not scene files: `storyLines` (companion, trigger, priority, text, voice; choice rows add `warm` and `plain` for the chits) and `graveRoll` (troopType, name, line, voice). `storyPages` carries, on a page's first row, `pageTitle` and `passage` (the leaf text) and a `want` per companion for the left leaf **[call, from the copy]**. Object text (the writ, the Stone, the shroud) lives in an `objects` sheet (id, text). The `story-voice` check scans both the scene files and the sheets.
+Lines that are not scenes (reaction, wounded, shrine, Pell, the grave roll) are table-shaped and live in sheets, not scene files: `storyLines` (companion, trigger, priority, text, voice; choice rows add `warm` and `plain` for the chits) and `graveRoll` (troopType, name, line, voice). `storyPages` carries, on a page's first row, `pageTitle` and `passage` (the leaf text) and a `want` per companion for the left leaf **[call, from the copy]**. Object text (the pact, the Stone, the shroud) lives in an `objects` sheet (id, text). The `story-voice` check scans both the scene files and the sheets.
 
 ### 7.4 Dialog cards
 
@@ -358,7 +358,7 @@ When the player recruits a Graveborn troop at the shrine, Wren says a line from 
 ### 7.7 Love, and what the player can do about it
 
 Three loves, three ways:
-- **Maud and Edric** is over before the chapter starts and the player only learns it on page 8. It is told in silences: she never says his name, she counts troops the way he taught her, the second scrape on the writ is deeper than the first.
+- **Maud and Edric** is over before the chapter starts and the player only learns it on page 8. It is told in silences: she never says his name, she counts troops the way he taught her, the second scrape on the pact is deeper than the first.
 - **Dunmar and Hesper** is a grave. He says her name once, at it, and once more in chapter 4.
 - **Ashka and the player** is the one that can grow. From page 7 on, some of her camp cards end with a choice of two replies for the silent commander, drawn as two small vellum chits (the game's first and only choice UI in chapter 1 **[call]**): one warm, one plain. Neither is wrong. The game counts the warm ones. Nothing in chapter 1 depends on the count; chapter 3 reads it. The player who never picks warm still gets her whole story.
 
@@ -373,11 +373,11 @@ Every `card` line has a `voice` id. A voice line is an `.ogg` under `assets/grav
 ### 7.10 Where the lore lives in the game
 
 - The Founders' Stone in the archive: the rule, readable, from the copy. (The Stone's own letters are drawn on the piece. A player who reads the piece's text and the copy's text can find the difference in chapter 1. Nobody in the game points it out until chapter 5.)
-- Pell: the roll of the dead, what a writ is, what the Horn is (after the letter).
+- Pell: the roll of the dead, what a pact is, what the Horn is (after the letter).
 - The storybook (the War Table's March plaque): every scene, replayable, and the company's portraits with their one-line wants.
 - The shrine: Wren.
 - The tents: each companion's camp lines.
-- Item text: the scraped writ, the turncoat's writ-copy, the drowned shroud. Three objects, each a hook.
+- Item text: the scraped pact, the turncoat's pact-copy, the drowned shroud. Three objects, each a hook.
 
 ## 8. Writing the copy
 
@@ -409,7 +409,7 @@ Each chapter meets one House on its own ground, answers one question, turns on o
 - **Opens on the cliffhanger.** Wren is gone from the camp with the crown. The mounds at Kingsfield stand open and empty; the dead kings have walked. Tomas, in custody, says he saw her take it and knows where the dead are going: the sea.
 - **Question answered.** Where the crown went, and what the Tide wants. Wren remembers blowing the Horn and remembers what the crown did to Edric; she is carrying it to the coast to drown it so that no hand can ever wear it. Vael wants exactly that, because a crown under the sea sends nobody home and the drowned are his.
 - **The chase.** Down the rivers to the coast through Tidecaller ground, Tomas guiding, Maud not speaking to him, then speaking.
-- **The name (section 4.9).** Before the coast, the archive: Pell lays the roll of captains open, and every name on it is signed *of the Hollow*, Rook and Edric among them. Danta's surname is the writ's. The sorrow beat of the chapter is Danta alone with the page, asking Maud what he was called before, and Maud not knowing.
+- **The name (section 4.9).** Before the coast, the archive: Pell lays the roll of captains open, and every name on it is signed *of the Hollow*, Rook and Edric among them. Danta's surname is the pact's. The sorrow beat of the chapter is Danta alone with the page, asking Maud what he was called before, and Maud not knowing.
 - **Twist.** Vael was at Kingsfield the night the Horn was blown, on the mound, and he carried Wren's body down. He has been trying to reach the Horn-blower for nineteen years. He does not want to drown the crown. He wants the hand.
 - **Cliffhanger.** The player takes the crown back from the shore. Maud puts her sword down, takes Tomas's hand, and walks west with him to find the heir herself, because the Marshal's letters have stopped and somebody must. The Hollow lose their sergeant. The last page: Aldric's final letter, delivered a month late, one line: *The heir is dead. I found the guard.*
 
@@ -432,7 +432,7 @@ Each chapter meets one House on its own ground, answers one question, turns on o
 - **The ending, the saga's one real choice.** Wren on the first king's mound with the Horn, as she was. If she blows it, the dead go home: the kings, the hosts, Edric, Hesper, every Graveborn the player recruited at the shrine, and Wren. If she does not, the Barrowlands keep their dead and their captain keeps her. The player decides, and the game remembers, and chapter 5 ends either way on a quiet field at dawn with the standard planted on the mound.
 - **The close.** No cliffhanger. The saga ends whole: the standard planted, the company accounted for, every companion's want answered one way or the other. The last page is a page of the roll of the dead in Pell's hand, with *Danta, of the Hollow* written at the bottom as captain, the first name on the roll of captains with no mound beside it, and under it a blank line. That blank line is the door a sixth chapter walks through (Kort: complete, but able to be added onto), and the mound that did not open is the ground it stands on. The field the dead left, or the field they kept, is the ground a chapter 6 would start from.
 
-Aldric is in every chapter as a letter and in chapters 3 to 5 in person. Vael, Old Horn and Brassjaw are each met on their own ground, and each is recruitable by writ after their chapter, as the Houses spec allows.
+Aldric is in every chapter as a letter and in chapters 3 to 5 in person. Vael, Old Horn and Brassjaw are each met on their own ground, and each is recruitable by pact after their chapter, as the Houses spec allows.
 
 ## 10. The timeline, in one table
 
@@ -440,14 +440,14 @@ Aldric is in every chapter as a letter and in chapters 3 to 5 in person. Vael, O
 |---|---|---|
 | 400 years ago | The clans forge the Barrow Crown; the first king is crowned and buried at Kingsfield; the Horn's rule is carved | Pell (the copy), nobody (the Stone) |
 | Year 0, day 1 | The Tide lands at Kingsfield | Everyone |
-| Day 2 | Elin sent north; the writ signed, Halden Rook its first name | Maud, Pell |
+| Day 2 | Elin sent north; the pact signed, Halden Rook its first name | Maud, Pell |
 | Day 3 | Aldric orders the Horn blown; Wren climbs and blows it; she dies; Rook dies over her | Maud (the order, not the hand); Wren (by the last page) |
 | Day 4 | Osric dies crowned; Edric lifts the crown, writes his name, marches the Hollow north; Vael carries Wren's body down | Maud; Wren (the lifting); Vael |
 | Day 5 | Wren rises and follows the standard | Maud, Wren |
 | Year 0 to 2 | The search for Elin; the guard found dead in the snow by Aldric, years later; the child raised by the Thornwood clan | Aldric (the guard); the clan |
 | Year 8 | Tarn dies at the pass keeping the toll off Ashka | The clan |
 | Year 17 | Edric crowns himself at the mounds; becomes the Hollow King; Maud scrapes his name | Maud |
-| Year 19, spring | Danta Hollow's name on the writ; Banner Camp | Everyone |
+| Year 19, spring | Danta Hollow's name on the pact; Banner Camp | Everyone |
 | Year 19, the chapter | The Road North | |
 
 ## 11. Harness and gates
