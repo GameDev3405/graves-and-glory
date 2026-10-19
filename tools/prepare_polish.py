@@ -3,6 +3,7 @@ import concurrent.futures, hashlib, io, json, pathlib, urllib.request, zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 RESEARCH = json.loads((ROOT/'evidence/polish-research.json').read_text(encoding='utf8'))
+# No third-party resource packs are pinned: the modpack ships its own look (Kort, 2026-10-18).
 PINS = {
     'iris': '1.7.6+1.20.1', 'sodium': 'mc1.20.1-0.5.13-fabric',
     'lithium': 'mc1.20.1-0.11.4-fabric', 'ferrite-core': '6.0.1',
@@ -10,22 +11,17 @@ PINS = {
     'entity-model-features': '3.3.12-fabric-1.20.1',
     'entitytexturefeatures': '7.2.6-fabric-1.20.1',
     'presence-footsteps': '1.10.1+1.20.1',
-    'fresh-animations': '1.10.4',
     # 5.5.1 retains the author's explicit modpack redistribution grant.
     # 5.6+ disallows uploading the original pack outside CF/Modrinth systems.
     'complementary-reimagined': 'r5.5.1', 'complementary-unbound': 'r5.5.1',
     'makeup-ultra-fast-shaders': '9.5g',
-    'faithful-32x': '1.20.1-june-2026',
-    'excal': '1.21.11',
-    'clarent': '12110_1201_v3',
-    'excalibur-fresh-animations': '1.10.4_3',
 }
 
 def fetch(slug):
     project=next(p for p in RESEARCH if p['slug']==slug)
     v=next(v for v in project['versions'] if v['version_number']==PINS[slug])
     f=next(f for f in v['files'] if f['primary'])
-    folder='shaders' if 'shaders' in v['loaders'] or slug.startswith('complementary') or slug.startswith('makeup') else 'resourcepacks' if slug in ['fresh-animations','faithful-32x','excal','clarent','excalibur-fresh-animations'] else 'mods'
+    folder='shaders' if 'shaders' in v['loaders'] or slug.startswith('complementary') or slug.startswith('makeup') else 'resourcepacks' if v['loaders']==['minecraft'] else 'mods'
     dest=ROOT/'dependencies'/folder/f['filename'];dest.parent.mkdir(parents=True,exist_ok=True)
     if not dest.exists():
         req=urllib.request.Request(f['url'],headers={'User-Agent':'Graves and Glory/0.2.0 (Minecraft compatibility evaluation)'})

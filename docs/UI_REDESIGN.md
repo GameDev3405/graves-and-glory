@@ -12,18 +12,17 @@ Implemented screens use the actual troops, classes, maps, prices, and server act
 The built-in armory resource pack supplies EMF overlays for player, husk,
 skeleton and wither-skeleton models: tabard, buckle, belt and shoulder pauldrons.
 This is one neutral armor set, not faction-specific Java troop geometry. It
-applies to matching vanilla entity types while enabled, and replaces competing
-skeleton/wither-skeleton model definitions from the other packs. Its combined
-in-game appearance still requires verification. No simulation stats change.
+applies to matching vanilla entity types while enabled. Its combined in-game
+appearance still requires verification. No simulation stats change.
 
-The built-in `gravesandglory:armory` resource pack supplies original volumetric swords, axes, pickaxes, shovels and hoes for six vanilla material tiers. It is enabled above the world texture packs by the visual presets. Disable it in Minecraft's resource-pack screen to restore other item models; choosing a Graves and Glory texture preset enables it again. Bow and armor textures retain their existing resources.
+The built-in `gravesandglory:armory` resource pack supplies original volumetric swords, axes, pickaxes, shovels and hoes for six vanilla material tiers. Fabric enables it on a first launch, and it is the only resource pack the modpack carries. Disable it in Minecraft's resource-pack screen to restore the vanilla item models; it stays off until enabled there again. Bow and armor textures retain their existing resources.
 
-The supplied shaders, EMF, ETF and Fresh Animations remain in use. The concept art is a visual direction, not a promise of identical lighting or bespoke character meshes.
+The supplied shaders, EMF and ETF remain in use; the modpack ships no third-party resource packs (Kort, 2026-10-18). The concept art is a visual direction, not a promise of identical lighting or bespoke character meshes.
 
 ## Research checked 2026-10-16
 
 - Iris + Sodium: already installed. Iris supplies shader support; shaders improve lighting but do not turn flat tools into volumetric meshes. https://www.irisshaders.dev/download/
-- Entity Model Features + Entity Texture Features: already installed. EMF supports custom entity models and Fresh Animations, making authored CEM packs another way to replace whole troop models. https://modrinth.com/mod/entity-model-features
+- Entity Model Features + Entity Texture Features: already installed. EMF supports custom entity models, making authored CEM packs another way to replace whole troop models. https://modrinth.com/mod/entity-model-features
 - 3D Skin Layers: Fabric and 1.20.x support, but its geometry applies to player skin outer layers, not this mod's husk/skeleton troop models. Its current project text limits modpack jar redistribution to Modrinth/CurseForge. Not bundled. https://modrinth.com/mod/3dskinlayers
 - Actually 3D Equipment: lists 1.20.1 and volumetric tools/weapons. Project license metadata and prose permissions differ, and its prose explicitly mentions Modrinth modpacks. Not bundled into the Melty package; original models avoid relying on that ambiguity. https://modrinth.com/resourcepack/3d-equipment
 
@@ -31,4 +30,4 @@ The supplied shaders, EMF, ETF and Fresh Animations remain in use. The concept a
 
 `gradle runClient --offline -PcampaignChecks` builds and loads the separate local test jar. Test runners, file-driven capture controls and MeltyTest are under test-tools and are absent from the player jar. Main code exposes only an optional no-provider diagnostics contract. Existing test names are preserved. The old Melty recipe cannot automatically test this release without a separately prepared compatible test companion; do not publish on the strength of earlier 0.2.0 results.
 
-Screenshots used as battlefield previews are real game captures with the bundled Excalibur look and Complementary Reimagined, not generated artwork. Third-party assets and their original notices remain governed by the existing package credits.
+Screenshots used as battlefield previews are real game captures with Complementary Reimagined, not generated artwork. They were taken with a third-party texture pack that the modpack no longer ships (Kort, 2026-10-18), so they show that earlier look until they are recaptured. Third-party assets and their original notices remain governed by the existing package credits.

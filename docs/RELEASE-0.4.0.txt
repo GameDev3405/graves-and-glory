@@ -17,3 +17,8 @@ match ids to the client, so a long-lived profile cannot outgrow the packet.
 Verified by automated checks in an isolated development client. Bot tier
 balance is measured and parked until the Phase 3 maps. This candidate has not
 been installed into a personal launcher, published, or played by Kort yet.
+
+The modpack now ships no third-party resource packs (Kort, 2026-10-18). The
+world texture choice is gone from Visuals and sound, and the built-in armory
+pack no longer borrows another pack's skeleton animations. Shaders, the
+performance mods and your hit-accent setting are unchanged.

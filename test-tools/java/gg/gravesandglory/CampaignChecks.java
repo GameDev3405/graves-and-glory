@@ -17,6 +17,8 @@ public final class CampaignChecks implements ClientModInitializer {
     void report(String id,boolean result,String why){if(!result)failed=true;MeltyTest.report(id,result,why);System.out.println("[Graves and Glory campaign] "+id+"="+result+" "+why);}
     /** Present after run 1 saves the collection; its existence marks the relaunch. */
     static Path restartFile(MinecraftClient c){return c.runDirectory.toPath().resolve("../evidence/restart-state.json");}
+    /** The built-in armory pack is the only resource pack the modpack carries; Fabric enables it on a first launch. */
+    static boolean armoryEnabled(MinecraftClient c){return c.getResourcePackManager().getEnabledNames().contains("gravesandglory:armory");}
     /** Restart and fixture steps exist only in the development harness, never in a player or Melty test install. */
     static boolean devRun(){return net.fabricmc.loader.api.FabricLoader.getInstance().isDevelopmentEnvironment();}
     /** Temporary diagnostic (dev harness only): why the lobby never receives STATE. */
@@ -43,7 +45,7 @@ public final class CampaignChecks implements ClientModInitializer {
             if(c.player==null||c.getServer()==null||!GravesAndGloryClient.ready)return;
             tick++;
             if(Boolean.getBoolean("gravesandglory.startupOnly")){
-                if(tick==25)report("startup-texture-choice",Presentation.textures()==Integer.getInteger("gravesandglory.expectedTexture",2),"Selected texture index "+Presentation.textures());
+                if(tick==25)report("startup-armory-enabled",armoryEnabled(c),"The built-in armory pack is enabled on a first launch");
                 if(tick==35){report("startup-suite",!failed,"Startup-only fixture complete");c.scheduleStop();}
                 return;
             }
@@ -81,7 +83,7 @@ public final class CampaignChecks implements ClientModInitializer {
                 report("invite-accept",camp.party.contains(me)&&!camp.invites.containsKey(me),"Accepting a live invitation joins the custom lobby");
                 camp.closeParty();});
             if(tick==60)shot(c,"war-council");
-            if(tick==100&&devRun()&&Files.exists(restartFile(c))){shot(c,"restart-excalibur");int expected=Integer.getInteger("gravesandglory.expectedTexture",2);report("restart-texture-choice",Presentation.textures()==expected,"Saved texture choice preserved; expected "+expected+", actual "+Presentation.textures());}
+            if(tick==100&&devRun()&&Files.exists(restartFile(c))){shot(c,"restart-look");report("restart-armory-enabled",armoryEnabled(c),"The armory pack stays enabled across a restart");}
             if(tick==80)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var pr=b.campaign.profile(p.getUuid());int before=pr.unlocked.size();pr.gold=100;b.campaign.handle(p,"roll");report("unit-unlocks",pr.unlocked.size()==before+1&&pr.gold==0,"One paid random roll unlocks one previously locked type");var want=java.util.Arrays.stream(Spec.TROOPS).filter(t->!pr.unlocked.contains(t.id())).findFirst().orElse(null);if(want!=null){pr.gold=100;b.campaign.handle(p,"unlock:"+want.id());report("chosen-unlock",pr.unlocked.contains(want.id())&&pr.gold==0,"A paid unlock adds exactly the chosen troop");}
                 try{var loaded=Campaign.JSON.fromJson(Files.readString(b.campaign.directory.resolve(p.getUuid()+".json")),Campaign.Profile.class);report("profile-persistence",loaded.unlocked.equals(pr.unlocked)&&loaded.gold==pr.gold,"Read collection back from disk");}catch(Exception e){report("profile-persistence",false,e.toString());}
                 for(var t:Spec.TROOPS)if(t.faction().equals("dawn"))pr.army.put(t.id(),0);

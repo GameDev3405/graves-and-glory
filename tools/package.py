@@ -16,12 +16,8 @@ credits=['# Graves and Glory: third-party credits and permissions','',
  'Original Graves and Glory licensing does not replace any third-party terms below. Keep their notices when sharing a remix.',
  'This free Minecraft modpack is not endorsed by Mojang, Microsoft or the authors below.',
  'Shader/modpack compatibility support is the responsibility of Graves and Glory, not the shader authors.',
- 'Excalibur and its patches are included unchanged for noncommercial use. Do not modify their assets or monetize a derivative containing them.',
- 'Fresh Animations is included unchanged under the author\'s explicit modpack permission. Do not reupload it as your own pack.',
- 'Faithful 32x is included unchanged as an optional world texture choice. https://faithfulpack.net/ and https://faithfulpack.net/license',
  'Complementary Reimagined and Unbound r5.5.1 are by EminGTR / Complementary Development: https://www.complementary.dev/shaders/ . Their contained License Agreement 1.5 explicitly permits modpack redistribution. Newer versions have different terms; do not replace these files automatically.',
  'MakeUp Ultra Fast: Javier GC (javiergcim), LGPL-3.0-or-later; GLSL source is inside its unchanged shader archive.',
- 'Fresh Animations: FreshLX. Excalibur: Matthew (Maffhew) Dillow. Clarent: GrandPappyJay. Excalibur Fresh Animations Patch: GrandPappyJay and Ruseki, with FreshLX and Maffhew; see included original notices.',
  'Lato body font: Lukasz Dziedzic, SIL Open Font License 1.1; original OFL is inside the Graves and Glory jar. Source: https://github.com/google/fonts/tree/main/ofl/lato',
  'Marcellus heading font: Brian J. Bonislawsky / Astigmatic, SIL Open Font License 1.1; original OFL is inside the Graves and Glory jar.',
  'Fabric API: FabricMC contributors, Apache-2.0; Fabric Loader is provided by the selected launcher or server installer.',
@@ -61,8 +57,8 @@ with zipfile.ZipFile(package.with_suffix('.zip.tmp'),'w',zipfile.ZIP_DEFLATED) a
                     data=z.read(name)
                     if len(data)<120000:content(noticeRoot+pathlib.Path(name).name,data)
             if dep.get('manifest'):files[folder+'/'+src.name+'!/fabric.mod.json']=json.dumps(dep['manifest'],indent=2)
-        if dep['slug'] in ['fresh-animations','clarent','excalibur-fresh-animations']:
-            body=next(p['body'] for p in research if p['slug']==dep['slug']);content(noticeRoot+'author-project-terms.md',body)
+        permission=next((p['body'] for p in research if p['slug']==dep['slug']),None)
+        if permission:content(noticeRoot+'author-project-terms.md',permission)
         if dep['slug'] in sources:
             info=sources[dep['slug']]
             for name,data in info['licenses'].items():content(noticeRoot+'source-'+pathlib.Path(name).name,data)

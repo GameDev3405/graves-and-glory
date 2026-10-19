@@ -15,10 +15,8 @@ Clients must match the server's game version and build identity. A missing or
 incompatible pack receives an update instruction before entering the world.
 This compatibility check does not authenticate progression or prevent cheating.
 
-The Excalibur preset now pairs the author's unchanged 1.21.10 release with its
-matching Clarent backport. A client-only parser compatibility patch supports the
-finite fractional single-axis angles used by its decorative models, without
-editing upstream assets. Other preset and visual checks remain on the roadmap.
+This modpack ships no third-party resource packs (Kort, 2026-10-18). Its look is
+its own built-in assets plus the shaders credited below.
 
 Upgrades copy legacy Bannerbound collections, deployment data and visual
 preferences into the current folders without overwriting current files. When
@@ -74,7 +72,7 @@ The war council, collection, class selection, command controls and battlefield p
 
 Visuals & sound in the lobby lets each player choose one shader: Complementary Reimagined r5.5.1, Complementary Unbound r5.5.1, MakeUp Ultra Fast 9.5g, or shaders off. Shader changes are saved locally. Shaders begin off for reliable battle performance on a range of PCs; selecting one loads it inside the game. Complementary's pinned releases have an explicit modpack distribution grant; the latest shader versions have different distribution terms and are not silently substituted.
 
-World texture choices are Minecraft, Faithful 32x, or medieval Excalibur. All three include Fresh Animations with Entity Model Features and Entity Texture Features. Excalibur is the first-launch default, using the authors' Clarent backport and Fresh Animations compatibility patch on Minecraft 1.20.1. Resource packs reload when changed. Graves and Glory's own faction skin and equipment remain identifiable. Each player's graphics choices are independent in multiplayer.
+The look is the modpack's own. It ships no third-party resource packs, so there is no world texture choice: Minecraft's textures come from each player's own game, and the built-in armory pack adds the weapon and armour overlays. Each player's graphics choices are independent in multiplayer.
 
 Confirmed commander hits receive a brief ink-and-gold contact accent and restrained camera recoil. Choose Off, Subtle (default), or Strong. Ambient troop fights never trigger repeated screen flashes; accents do not stop the simulation, change damage or interrupt other players. The camera entrance is sampled every rendered frame instead of stepping its coordinates at the simulation tick rate.
 
@@ -102,15 +100,13 @@ Fabric API: FabricMC contributors, Apache License 2.0, bundled with its original
 
 Complementary Reimagined / Unbound: EminGTR and [Complementary Development](https://www.complementary.dev/shaders/), License Agreement 1.5 in the supplied r5.5.1 files. Compatibility support for this modpack is Graves and Glory's responsibility. MakeUp Ultra Fast: [javiergcim](https://github.com/javiergcim/MakeUpUltraFast), LGPL-3.0-or-later, with its shader sources and notices.
 
-[Fresh Animations](https://modrinth.com/resourcepack/fresh-animations): FreshLX, included unchanged under its modpack permission. [Excalibur](https://www.curseforge.com/minecraft/texture-packs/excalibur): Matthew (Maffhew) Dillow, CC-BY-NC-ND-3.0 with the included author terms. [Clarent](https://modrinth.com/resourcepack/clarent): GrandPappyJay. [Excalibur Fresh Animations Patch](https://modrinth.com/resourcepack/excalibur-fresh-animations): GrandPappyJay and Ruseki, with FreshLX and Maffhew; unchanged, noncommercial modpack inclusion. [Faithful 32x](https://faithfulpack.net/): Faithful contributors, optional world textures under the [Faithful License](https://faithfulpack.net/license); original archive notices are retained. These packs are not assets owned by Graves and Glory or covered by its MIT grant.
-
 Sodium: CaffeineMC, PolyForm Shield 1.0.0. Iris: IrisShaders contributors, LGPL-3.0. Lithium: CaffeineMC contributors, LGPL-3.0. FerriteCore: malte0811, MIT. ImmediatelyFast: RaphiMC, LGPL-3.0-or-later. ModernFix: embeddedt and contributors, LGPL-3.0. Entity Model Features / Entity Texture Features: Traben and contributors, LGPL-3.0. Presence Footsteps: Ha3, Sollace and contributors, MIT for the supplied 1.10.1 release. Marcellus font: Brian J. Bonislawsky / Astigmatic, SIL OFL 1.1. Original author notices and corresponding library sources are supplied with the release. See THIRD_PARTY.md for links, exact versions and nested libraries.
 
 ## Interface and troop detail (0.3.0)
 
 Redesigned battle setup, class selection and barracks with live troop previews, readable Lato body type, and restrained brass selection states. Select a class, then confirm it. Recruitment costs and availability remain server-authoritative.
 
-Armour detail uses Entity Model Features overlays from the built-in armory pack: a tabard, buckle, belt and shoulder pauldrons on player, husk, skeleton and wither skeleton models. Limits: one neutral armour set, so faction colours are not applied to these overlays; the overlays apply to every husk, skeleton and wither skeleton in a Graves and Glory world, not only named troops; and while the armory pack is enabled it replaces the Excalibur and Fresh Animations patch skeleton and wither skeleton models.
+Armour detail uses Entity Model Features overlays from the built-in armory pack: a tabard, buckle, belt and shoulder pauldrons on player, husk, skeleton and wither skeleton models. Limits: one neutral armour set, so faction colours are not applied to these overlays; the overlays apply to every husk, skeleton and wither skeleton in a Graves and Glory world, not only named troops.
 
 Development checks are never in the player archive. They are built from `test-tools/` by the `localTestToolsJar` task and run only with `gradle runClient --offline -PcampaignChecks`.
 

@@ -775,7 +775,7 @@ Troops get their own models, skins, glow layers and weapon models, owned by the 
 - [ ] **Step 9: Implement the client classes, the side teams and the painted shield** to the Interfaces above.
 - [ ] **Step 10: Run suite `spike` twice:**
   - first bare;
-  - then with the presentation mods: copy `run/mods/*.jar` (EMF 3.3.12 and ETF 7.2.6) and `run/resourcepacks/*` (Fresh Animations, Excalibur and the patch) into the test root, and enable the packs.
+  - then with the presentation mods: copy `run/mods/entity_model_features-3.3.12-1.20.1-fabric.jar` and `run/mods/entity_texture_features-7.2.6-1.20.1-fabric.jar` (EMF 3.3.12 and ETF 7.2.6) into the test root. No resource pack is copied or enabled; the modpack ships none.
 
   Every id passes in both runs, and the screenshots match. A difference is a renderer bug to fix here, never a reason to depend on those mods.
 - [ ] **Step 11: Make the Gilded proof set** (pixel-art skill; unit identity section 1 Look and Build lines):

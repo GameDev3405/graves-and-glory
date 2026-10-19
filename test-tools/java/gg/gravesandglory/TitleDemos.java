@@ -167,7 +167,7 @@ public final class TitleDemos implements Phase1Checks.Suite,Phase1Checks.ServerW
         });
     }
     /** The local player wears the vanilla wide Steve skin, read from the game's own default pack so a resource pack's
-     *  steve.png (Excalibur ships one) cannot replace it. Returns true once the renderer reports that skin. */
+     *  steve.png cannot replace it. Returns true once the renderer reports that skin. */
     boolean classicSteve(MinecraftClient c){
         try{
             var entry=c.getNetworkHandler()==null?null:c.getNetworkHandler().getPlayerListEntry(c.player.getUuid());

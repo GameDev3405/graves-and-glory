@@ -147,3 +147,7 @@ No test harness included in shipped JAR. No launcher installation or publication
 Public hosting/connectivity remains deferred. Passwords, spectators, simultaneous
 matches, official accounts/economy and remaining roadmap items are still open.
 Evidence: go-x20/outputs/VERIFICATION-0.3.6.json; progression design and screenshots.
+
+## Resource packs removed (2026-10-18)
+
+Kort ruled that every third-party resource pack leaves the modpack, so it depends on nothing but its own assets and its pinned mods and shaders. Excalibur, Clarent, the Excalibur Fresh Animations patch, Fresh Animations and Faithful 32x are gone from the dependency manifests, the packaging and export tooling, the code (the world texture choice and its settings row) and the docs. The entries above describe the old stack and stay as history.

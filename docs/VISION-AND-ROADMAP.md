@@ -50,8 +50,10 @@ Builder's calls made by the orchestrator (flagged, not Kort's words):
 - Phase 4 modes retrofit existing maps (Siege on Ironhold, Survival on
   Hollowwood, Banner on Rivergate). Purpose-built fortress and shrine maps are
   Phase 6 content, not Phase 4.
-- All troop skins and House readability must work on vanilla and Faithful
-  textures; Excalibur stays optional and by-reference.
+- All troop skins and House readability must work on vanilla textures with the
+  modpack's own assets; it ships no third-party resource packs (Kort,
+  2026-10-18). History: this line used to add Faithful as a second test case and
+  keep Excalibur optional and by-reference.
 
 Standing rules that still apply: never publish without Kort's go; never hand-
 edit `Spec.java`; harness stays in `test-tools/`; no game launches while Kort
@@ -208,9 +210,9 @@ roster at one star, with a visible next goal at every point.
 - Stay on Minecraft 1.20.1 and Fabric. No loader change.
 - Drop the Melty recipe from the build (keep `melty.json` only in git history).
 - Release channel: Modrinth `.mrpack` and Prism import first (already works),
-  CurseForge export second. Bundled third-party packs must be referenced by
-  platform ID where their licences require it; Excalibur, Clarent and the
-  Fresh Animations patch are the known cases.
+  CurseForge export second. The modpack ships no third-party resource packs
+  (Kort, 2026-10-18), so no pack needs referencing by platform ID. History:
+  Excalibur, Clarent and the Fresh Animations patch were the known cases.
 - Dedicated server kit stays and is the friends-phase host on tjepkema-server.
 - Versioning: 0.4.x for the solo rework, 0.5.x when friends join, 1.0 at
   public.

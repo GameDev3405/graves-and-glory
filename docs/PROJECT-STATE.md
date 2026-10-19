@@ -38,11 +38,13 @@ Modes: 1vAI practice, 1v1 to 4v4 (8 humans, 160 troops), bot fill for empty
 seats, a joining friend can take over a bot army.
 
 Presentation stack (all pinned, licences recorded): Sodium, Iris, Lithium,
-FerriteCore, ImmediatelyFast, ModernFix, EMF/ETF, Fresh Animations, Presence
-Footsteps; shaders Complementary Reimagined/Unbound r5.5.1 + MakeUp Ultra
-Fast; textures Excalibur+Clarent (default), Faithful 32x, vanilla; built-in
-"armory" pack with 3D weapons and EMF armour overlays. Marcellus + Lato UI
-type, charcoal/brass "dark ironwork" UI.
+FerriteCore, ImmediatelyFast, ModernFix, EMF/ETF, Presence Footsteps; shaders
+Complementary Reimagined/Unbound r5.5.1 + MakeUp Ultra Fast; built-in "armory"
+pack with 3D weapons and EMF armour overlays. Marcellus + Lato UI type,
+charcoal/brass "dark ironwork" UI. No third-party resource packs: the modpack
+ships its own look (Kort, 2026-10-18). History: Excalibur, Clarent, the
+Excalibur Fresh Animations patch, Fresh Animations and Faithful 32x were
+bundled until then.
 
 ## 2. Where everything lives
 
@@ -76,7 +78,8 @@ type, charcoal/brass "dark ironwork" UI.
   install yet.
 - Published state: Melty listing is 0.2.0 (release 7c68b875, published on
   Kort's instruction; it still contains harness classes and bundles
-  Excalibur/Clarent/Fresh Animations whose licences may not allow that).
+  Excalibur/Clarent/Fresh Animations whose licences may not allow that; current
+  builds ship no third-party resource pack).
   0.3.0 is a held Melty draft. Nothing on Modrinth or CurseForge. Any further
   publish requires Kort's explicit go.
 - The branch compiles offline (compileJava + test tools, 2026-10-18).
@@ -195,8 +198,9 @@ Known broken or stale:
 - "Overview" tour camera shot renders at ground level.
 - Design sheets unused by code: hooks, landmarkStyle, recruitmentView,
   terrainStyle, duplicateRefund, starterGold.
-- Baseline log noise: Excalibur pumpkin hats, Iris BIOME_PALE_GARDEN, ETF
-  properties, Realms auth offline. Also expected in every isolated 0.4.0 run
+- Baseline log noise: Iris BIOME_PALE_GARDEN, ETF properties, Realms auth
+  offline (the old pumpkin-hat model errors came from a third-party pack that is
+  gone). Also expected in every isolated 0.4.0 run
   and not a fault: "Failed to verify authentication" (offline), Realms lines,
   "Invalid path in mod resource-pack gravesandglory:
   gravesandglory:font/OFL-Marcellus.txt" and the same for OFL-Lato.txt (the
@@ -280,8 +284,9 @@ shown; F-24 one battle per server; F-25 texture version match.
 - Ready pads replace "first joiner is host"; parties and pads exclusive;
   one match at a time (accepted defaults).
 - CurseForge: full modpack listing, not mod-only. He has a creator account.
-- Licences: Excalibur, Clarent, EFA patch may only be referenced by ID on
-  CurseForge, not bundled; Modrinth cannot reference CurseForge files.
+- Licences: no third-party resource packs ship (Kort, 2026-10-18). History:
+  Excalibur, Clarent and the EFA patch could only be referenced by ID on
+  CurseForge, not bundled, and Modrinth cannot reference CurseForge files.
 
 ## 10. Parked ideas (never delete, not yet decided)
 

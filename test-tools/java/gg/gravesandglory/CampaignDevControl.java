@@ -31,7 +31,6 @@ final class CampaignDevControl {
             if(action.equals("shot")){ScreenshotRecorder.saveScreenshot(c.runDirectory,j.get("name").getAsString()+".png",c.getFramebuffer(),text->{});return;}
             if(action.equals("presentation")){c.setScreen(new PresentationScreen());return;}
             if(action.equals("shader")){Presentation.selectShader(j.get("index").getAsInt());return;}
-            if(action.equals("textures")){Presentation.selectTextures(j.get("index").getAsInt());return;}
             if(action.equals("impact")){Presentation.impact(1);return;}
             if(action.equals("ui")){var s=new GravesAndGloryClient.LobbyScreen();c.setScreen(s);s.showTab(j.has("tab")?j.get("tab").getAsInt():0);return;}
             if(action.equals("perspective")){c.options.setPerspective(j.get("value").getAsString().equals("front")?net.minecraft.client.option.Perspective.THIRD_PERSON_FRONT:net.minecraft.client.option.Perspective.THIRD_PERSON_BACK);return;}

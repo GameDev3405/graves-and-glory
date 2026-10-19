@@ -39,11 +39,6 @@
       "component": "main",
       "from": "shaderpacks/",
       "to": "{minecraft-instance}/shaderpacks"
-    },
-    {
-      "component": "main",
-      "from": "resourcepacks/",
-      "to": "{minecraft-instance}/resourcepacks"
     }
   ],
   "launch": {
