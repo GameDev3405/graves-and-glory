@@ -52,6 +52,7 @@ public final class Phase3Checks implements ClientModInitializer {
         SUITES.put("routes",Routes::new);
         SUITES.put("walk",()->new Routes(true));
         SUITES.put("arena",Rebuild::new);
+        SUITES.put("walkthrough",Walkthrough::new);
     }
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed,broken;
@@ -702,6 +703,634 @@ public final class Phase3Checks implements ClientModInitializer {
             var kinds=new TreeMap<String,Integer>();
             for(var e:found)kinds.merge(net.minecraft.registry.Registries.ITEM.getId(e.getStack().getItem()).getPath(),e.getStack().getCount(),Integer::sum);
             return found.size()+" "+kinds;
+        }
+    }
+
+    /** Task 2, the walkthrough gate (suite walkthrough): the owner's walk of the battle maps, by a real client player who runs along the roads with the movement keys held and photographs what he sees.
+     *  GRAVES_PHASE3_MAPS (system property gravesandglory.phase3Maps) lists the maps, default all five; one map per launch keeps a launch under half an hour. Each map is built over the map built before it (N+4 modulo 5 when the
+     *  suite starts), so a stale block of the older map would show. Per map the walker follows, 2 blocks to the right of the centre line (a flag pole stands at the centre of a point), every lane from the Dawn camp over its crossing
+     *  to the Dusk camp (lane0 to lane2), on Kingsfield the flank road over both outposts and the king's bridge (flank), the two link roads that join the lane heads of one side (link-west, link-east), and every spur road that ends at a
+     *  building (spur<k>-<building>; a spur is walked up to the wall of its building).
+     *  The pictures (screenshots/p3-wt<N>-<sequence>-<what>.png, 1280x720, taken where the walker stands, hand and HUD hidden) are: both camps from their dais (camp-); per lane the start of the lane, the approach to the deck from the west
+     *  bank, each capture point from 14 blocks up the road, the middle of the deck looking along it, the approach from the east bank (looking back at the deck) and the head of the lane on the Dusk side; per link road its start and middle; the
+     *  first spur of each kind (houses and farm and mill, one tower of each camp); where a lane had a stuck window, the place from 16 and from 6 blocks before it (stuck-); the ring band seen across the water from the deck (band-, the stone
+     *  strip of a ford); the four ends of the two rails of each deck and the two edges of the strip of a ford (rail-); every dressing post that stands in a river column (posts-); the view up at each raised outpost from the road and from the
+     *  plateau (outpost-); each kind of floating piece from where a walker can see it (float-); each building no road leads to (building-); and the two longest sight lines of the map at render distance 28 (sight-).
+     *  Checks: p3-wt<N>-leg-<id> passes when the walker reached the end of the lane and no 2-second window of walking gained less than 3 blocks (a window that did is a stuck window, counted per lane; the walker then hops, and if that does not help
+     *  is put on past the obstacle, on the road and not on a roof); p3-wt<N>-stuck is the total for the map; auto-jumps (a step up the walker had to hop), windows under 6 blocks and the y range of each lane are in the notes. p3-wt<N>-foreign
+     *  passes when no column of the arena has a top block that belongs to another map; p3-wt<N>-river is the river check of the arena suite run again on the map as it stands; p3-wt<N>-floating passes when every solid block of the arena touches,
+     *  by a face, an edge or a corner, a chain of solid blocks that reaches the floor. The rest of the scans (bands over water, hanging ring and pad, blocks standing in the river, the profile of every lane, the sight lines, every floating piece)
+     *  are notes in screenshots/p3-wt<N>-notes.txt.
+     *  GRAVES_WALK_ONLY (or a file walk-only.txt in the run folder) lists name fragments: only the lanes and picture groups whose name contains one of them are done (camp, lane1, flank, link, spur0, band, rail, posts, outpost, float, building, sight). */
+    static final class Walkthrough implements Suite {
+        static final net.minecraft.world.Heightmap.Type FEET=net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES;
+        record Stop(String name,double arc,double tx,double ty,double tz){}
+
+        /** A road to walk: its centre line c, the line q a walker keeps to (off blocks to his right of c, mitred at the bends) with the length arc of q up to each vertex. */
+        static final class Leg {
+            final String id;final double off,len;final double[][] c,q;final double[] arc;final List<Stop> stops=new ArrayList<>();
+            int stuck,slow,bumps,forced,ticks,photos;double walked,ymin=1e9,ymax=-1e9,stuckArc=-1;boolean finished,failed;
+            Leg(String id,double off,double[]... centre){
+                this.id=id;this.off=off;c=centre;int m=c.length;q=new double[m][2];arc=new double[m];double[][] r=new double[m-1][2];
+                for(int i=0;i<m-1;i++){double dx=c[i+1][0]-c[i][0],dz=c[i+1][1]-c[i][1],l=Math.hypot(dx,dz);r[i][0]=-dz/l;r[i][1]=dx/l;} // the right-hand normal: east -> south, south -> west
+                for(int i=0;i<m;i++){
+                    double nx,nz;
+                    if(i==0){nx=r[0][0];nz=r[0][1];}
+                    else if(i==m-1){nx=r[m-2][0];nz=r[m-2][1];}
+                    else{double k=Math.max(.35,1+r[i-1][0]*r[i][0]+r[i-1][1]*r[i][1]);nx=(r[i-1][0]+r[i][0])/k;nz=(r[i-1][1]+r[i][1])/k;}
+                    q[i][0]=c[i][0]+nx*off;q[i][1]=c[i][1]+nz*off;
+                }
+                for(int i=1;i<m;i++)arc[i]=arc[i-1]+Math.hypot(q[i][0]-q[i-1][0],q[i][1]-q[i-1][1]);
+                len=arc[m-1];
+            }
+            /** The point of q at arc length s (clamped to the ends). */
+            double[] at(double s){
+                s=Math.max(0,Math.min(len,s));int i=0;while(i<q.length-2&&arc[i+1]<s)i++;
+                double l=arc[i+1]-arc[i],t=l<1e-9?0:(s-arc[i])/l;
+                return new double[]{q[i][0]+(q[i+1][0]-q[i][0])*t,q[i][1]+(q[i+1][1]-q[i][1])*t};
+            }
+            /** {arc length, distance} of the point of q nearest to (x,z). */
+            double[] nearest(double x,double z){
+                double best=1e18,bs=0;
+                for(int i=0;i<q.length-1;i++){
+                    double dx=q[i+1][0]-q[i][0],dz=q[i+1][1]-q[i][1],l2=dx*dx+dz*dz,t=Math.max(0,Math.min(1,((x-q[i][0])*dx+(z-q[i][1])*dz)/l2));
+                    double ex=q[i][0]+dx*t-x,ez=q[i][1]+dz*t-z,d=ex*ex+ez*ez;
+                    if(d<best){best=d;bs=arc[i]+t*Math.sqrt(l2);}
+                }
+                return new double[]{bs,Math.sqrt(best)};
+            }
+            double arcOf(double x,double z){return nearest(x,z)[0];}
+        }
+
+        // ---- configuration and state ----
+        final int[] maps;final List<String> only=new ArrayList<>();
+        int mi,stage,waited,seq,n,goal;boolean pre,preBuilding;
+        final ArrayDeque<Job> jobs=new ArrayDeque<>();Job job;List<Leg> legs=List.of();
+        final List<String> notes=Collections.synchronizedList(new ArrayList<>());
+        int stuckTotal,slowTotal,bumpTotal,forcedTotal,legsDone,legsFailed,photoTotal;double walkedTotal;
+        volatile boolean switched,scanned;volatile List<Sight> sights=List.of();volatile List<int[]> standing=List.of();volatile Map<String,Integer> bandWater=Map.of();
+        Walkthrough(){
+            var list=new ArrayList<Integer>();
+            for(String s:System.getProperty("gravesandglory.phase3Maps","0,1,2,3,4").split(","))if(!s.isBlank())list.add(Integer.parseInt(s.trim()));
+            maps=list.stream().mapToInt(Integer::intValue).toArray();
+            String f=System.getenv("GRAVES_WALK_ONLY");
+            if(f!=null)for(String s:f.split("[,\s]+"))if(!s.isBlank())only.add(s);
+        }
+        /** Active ticks only (nothing steps while the arena is being built): about 14000 for a map, most of it walking. */
+        @Override public int limit(){return 8000+maps.length*20000;}
+        boolean want(String id){if(only.isEmpty())return true;for(String f:only)if(id.contains(f))return true;return false;}
+        void note(String text){notes.add(text);System.out.println("[p3] note wt"+n+" "+text);}
+
+        @Override public void step(MinecraftClient c,int tick){
+            if(tick<20)return;
+            if(tick==20)setup(c);
+            n=mi<maps.length?maps[mi]:-1;
+            var b=GravesAndGlory.battle;
+            if(stage==0){
+                int target=mi==0&&!pre?(n+4)%5:n;preBuilding=target!=n;pre=true;goal=target;switched=false;waited=0;
+                server(c,x->{if(x.campaign.map!=target)x.campaign.switchMap(target);switched=true;});
+                stage=1;
+            }else if(stage==1){
+                if(switched&&b!=null&&b.ready&&b.campaign.map==goal&&CampaignMaps.selected==goal){
+                    if(preBuilding){preBuilding=false;stage=0;}
+                    else{beginMap(c);stage=2;}
+                }else if(++waited>3000){report("p3-wt"+n+"-ready",false,"map "+goal+" was not ready after "+waited+" ticks");finish(c,"walkthrough");stage=9;}
+            }else if(stage==2){
+                if(scanned){assemble();server(c,x->x.campaign.leash=false);stage=3;}
+            }else if(stage==3){
+                if(job==null){job=jobs.poll();if(job==null){stage=4;return;}}
+                if(job.step(c)){if(job instanceof LegJob lj)legDone(lj.leg);job=null;}
+            }else if(stage==4){
+                endMap(c);mi++;stage=mi<maps.length?0:5;
+            }else if(stage==5){
+                finish(c,"walkthrough");stage=9;
+            }
+        }
+        @Override public void cleanup(MinecraftClient c){
+            release(c);c.gameRenderer.setRenderHand(true);
+            server(c,b->b.campaign.leash=true);
+        }
+        static void release(MinecraftClient c){var o=c.options;o.forwardKey.setPressed(false);o.sprintKey.setPressed(false);o.jumpKey.setPressed(false);o.backKey.setPressed(false);o.leftKey.setPressed(false);o.rightKey.setPressed(false);o.sneakKey.setPressed(false);}
+        static boolean terrainReady(MinecraftClient c,double x,double z){return c.world.isChunkLoaded(((int)Math.floor(x))>>4,((int)Math.floor(z))>>4)&&c.worldRenderer.isTerrainRenderComplete();}
+        static float wrap(float a){return net.minecraft.util.math.MathHelper.wrapDegrees(a);}
+
+        /** Once: the walker's own view (no bobbing, no hand, no sprint zoom), auto-jump on as a player has it, and the option files. */
+        void setup(MinecraftClient c){
+            var o=c.options;
+            o.getBobView().setValue(false);o.getFovEffectScale().setValue(0.0);o.getDistortionEffectScale().setValue(0.0);o.getAutoJump().setValue(true);o.getViewDistance().setValue(12);
+            c.gameRenderer.setRenderHand(false);
+            try{Path f=c.runDirectory.toPath().resolve("walk-only.txt");if(Files.exists(f))for(String s:Files.readString(f).trim().split("[,\s]+"))if(!s.isBlank())only.add(s);}catch(Exception e){System.out.println("[p3] note walk-only.txt: "+e);}
+            System.out.println("[p3] note walkthrough maps "+Arrays.toString(maps)+" only "+only);
+        }
+        /** A new map stands: counters to zero, the lanes made, the scans started on the server thread. */
+        void beginMap(MinecraftClient c){
+            seq=0;stuckTotal=slowTotal=bumpTotal=forcedTotal=legsDone=legsFailed=photoTotal=0;walkedTotal=0;notes.clear();scanned=false;
+            legs=buildLegs();final List<Leg> mine=legs;final int map=n;
+            note("map "+map+": "+Spec.POINTS.length+" points, "+MapRouteChecks.bridges().size()+" crossings, "+mine.size()+" lanes to walk: "+mine.stream().map(l->l.id+" "+Math.round(l.len)).toList());
+            server(c,x->scanMap(x,map,mine));
+        }
+        void endMap(MinecraftClient c){
+            int total=0;for(var l:legs)if(want(l.id))total++;
+            report("p3-wt"+n+"-stuck",stuckTotal==0&&legsFailed==0&&legsDone==total,"lanes finished "+legsDone+" of "+total+", failed "+legsFailed+", blocks walked "+Math.round(walkedTotal)+", stuck windows "+stuckTotal+", slow windows (under 6 blocks in 2 s) "+slowTotal+", forced steps "+forcedTotal+", auto-jumps "+bumpTotal+", pictures "+photoTotal);
+            try{Path file=c.runDirectory.toPath().resolve("screenshots/p3-wt"+n+"-notes.txt");Files.createDirectories(file.getParent());synchronized(notes){Files.writeString(file,String.join("\n",notes)+"\n");}}
+            catch(Exception e){report("p3-wt"+n+"-notes",false,e.toString());}
+            release(c);c.options.getViewDistance().setValue(12);UUID id=c.player.getUuid();
+            server(c,x->{x.campaign.leash=true;var sp=x.server.getPlayerManager().getPlayer(id);if(sp!=null)x.campaign.toLobby(sp);});
+        }
+        void legDone(Leg leg){
+            stuckTotal+=leg.stuck;slowTotal+=leg.slow;bumpTotal+=leg.bumps;forcedTotal+=leg.forced;walkedTotal+=leg.walked;
+            if(leg.finished)legsDone++;else legsFailed++;
+            if(leg.stuckArc>=0){
+                double[] on=leg.at(leg.stuckArc+1.5);
+                for(int back:new int[]{16,6}){double[] from=leg.at(Math.max(0.0,leg.stuckArc-back));
+                    jobs.addFirst(new ShotJob("stuck-"+leg.id+"-"+back,from[0],from[1],on[0],66.0,on[1],12,"lane "+leg.id+": "+back+" blocks before the place of its first stuck window ("+Math.round(on[0])+", "+Math.round(on[1])+"), looking at it"));}
+            }
+            report("p3-wt"+n+"-leg-"+leg.id,leg.finished&&leg.stuck==0,String.format(Locale.ROOT,"%s lane of %.0f blocks walked in %d ticks (%.1f s): stuck windows %d, slow windows %d, forced steps %d, auto-jumps %d, y %.2f to %.2f, pictures %d",leg.finished?"finished":"NOT finished,",leg.len,leg.ticks,leg.ticks/20.0,leg.stuck,leg.slow,leg.forced,leg.bumps,leg.ymin,leg.ymax,leg.photos));
+        }
+        /** One picture: the file is p3-wt<N>-<sequence>-<tag>.png, and its check line says where the walker stood and looked. */
+        void took(MinecraftClient c,String tag,String what,Leg leg){
+            String file="wt"+n+"-"+String.format(Locale.ROOT,"%02d",++seq)+"-"+tag;shot(c,file);photoTotal++;if(leg!=null)leg.photos++;
+            var p=c.player;
+            report("p3-"+file,true,String.format(Locale.ROOT,"feet (%.1f, %.1f, %.1f), eye y %.2f, yaw %.1f, pitch %.1f, render distance %d: %s",p.getX(),p.getY(),p.getZ(),p.getEyeY(),p.getYaw(),p.getPitch(),c.options.getViewDistance().getValue(),what));
+        }
+
+        // ---- the jobs ----
+        /** One thing the walker does; step is called every client tick until it answers true. */
+        abstract class Job{int t;abstract boolean step(MinecraftClient c);}
+
+        /** Puts the walker on the ground at (x,z) looking at a target and photographs it (tag null: only puts him there, for the start of a lane). */
+        final class ShotJob extends Job {
+            final String tag,what;final double x,z,tx,ty,tz,fixedY;final int view;
+            volatile boolean placed;volatile double feet,yaw,pitch;int arrived;
+            ShotJob(String tag,double x,double z,double tx,double ty,double tz,int view,String what){this(tag,x,z,tx,ty,tz,view,what,Double.NaN);}
+            /** fixedY: the height of the feet when the walker stands somewhere the heightmap does not know (inside a hall). */
+            ShotJob(String tag,double x,double z,double tx,double ty,double tz,int view,String what,double fixedY){this.tag=tag;this.x=x;this.z=z;this.tx=tx;this.ty=ty;this.tz=tz;this.view=view;this.what=what;this.fixedY=fixedY;}
+            @Override boolean step(MinecraftClient c){
+                var p=c.player;if(p==null)return false;
+                if(c.currentScreen!=null)c.setScreen(null);
+                t++;
+                if(t==1){
+                    release(c);if(c.options.getViewDistance().getValue()!=view)c.options.getViewDistance().setValue(view);
+                    UUID id=p.getUuid();
+                    server(c,b->{
+                        var sp=b.server.getPlayerManager().getPlayer(id);if(sp==null)return;
+                        int bx=(int)Math.floor(x),bz=(int)Math.floor(z);
+                        b.world.getChunk(bx>>4,bz>>4);
+                        double top=Double.isNaN(fixedY)?b.world.getTopY(FEET,bx,bz):fixedY;
+                        var v=MapTour.look("walk",x,top+1.62,z,tx,ty,tz);
+                        sp.changeGameMode(GameMode.ADVENTURE);b.clearOldUnits();
+                        b.relocate(sp,x,top,z,v.yaw(),v.pitch());
+                        yaw=v.yaw();pitch=v.pitch();feet=top;placed=true;
+                    });
+                    return false;
+                }
+                String label=tag==null?"start":tag;
+                if(!placed){if(t>200){report("p3-wt"+n+"-port-"+label,false,"the server did not place the walker");return true;}return false;}
+                if(p.squaredDistanceTo(x,feet,z)>2.25){if(t>400){report("p3-wt"+n+"-port-"+label,false,"the walker did not arrive at ("+x+", "+feet+", "+z+"), he stands at ("+p.getX()+", "+p.getY()+", "+p.getZ()+")");return true;}return false;}
+                if(arrived==0)arrived=t;
+                p.setYaw((float)yaw);p.setPitch((float)pitch);p.prevYaw=(float)yaw;p.prevPitch=(float)pitch;
+                boolean steady=p.isOnGround()&&p.getVelocity().horizontalLength()<0.02&&terrainReady(c,x,z);
+                int since=t-arrived;
+                if(tag==null)return since>=14&&steady||since>=150;
+                if(since<24||!steady&&since<300)return false;
+                took(c,tag,what,null);return true;
+            }
+        }
+
+        /** What stands in front of the walker's feet and head, for a log line. */
+        static String ahead(MinecraftClient c){
+            var p=c.player;double yaw=Math.toRadians(p.getYaw()),dx=-Math.sin(yaw),dz=Math.cos(yaw);var sb=new StringBuilder();
+            for(int s=1;s<=2;s++)for(int dy=0;dy<=1;dy++){
+                var pos=BlockPos.ofFloored(p.getX()+dx*s*0.8,p.getY()+dy+0.1,p.getZ()+dz*s*0.8);var st=c.world.getBlockState(pos);
+                if(!st.isAir())sb.append(name(st)).append(' ').append(xyz(pos)).append("; ");
+            }
+            return sb.length()==0?"nothing":sb.toString();
+        }
+
+        /** The walk: the real client player runs along a lane with the forward and sprint keys held, steering by his yaw alone (the lane line five blocks ahead), and stops for each of its pictures. */
+        final class LegJob extends Job {
+            final Leg leg;int seg,stopIx,phaseT,jump,win,run;String phase="walk";double wx,wz;boolean hasWin,ground=true;
+            LegJob(Leg leg){this.leg=leg;}
+            @Override boolean step(MinecraftClient c){
+                var p=c.player;if(p==null)return false;
+                if(c.currentScreen!=null)c.setScreen(null);
+                t++;leg.ticks=t;var o=c.options;
+                double px=p.getX(),pz=p.getZ();var q=leg.q;int m=q.length;
+                while(seg<m-2){ // past the end of a stretch: on to the next one
+                    double sx=q[seg+1][0]-q[seg][0],sz=q[seg+1][1]-q[seg][1],sl=Math.hypot(sx,sz),u=((px-q[seg][0])*sx+(pz-q[seg][1])*sz)/sl;
+                    if(u>=sl-0.5||Math.hypot(px-q[seg+1][0],pz-q[seg+1][1])<1.5)seg++;else break;
+                }
+                double sx=q[seg+1][0]-q[seg][0],sz=q[seg+1][1]-q[seg][1],sl=Math.hypot(sx,sz);
+                double u=Math.max(0,Math.min(sl,((px-q[seg][0])*sx+(pz-q[seg][1])*sz)/sl)),arc=leg.arc[seg]+u;
+                leg.ymin=Math.min(leg.ymin,p.getY());leg.ymax=Math.max(leg.ymax,p.getY());
+                if(p.getY()<Arena.Y-6||p.isDead()){release(c);leg.failed=true;report("p3-wt"+n+"-fell-"+leg.id,false,String.format(Locale.ROOT,"the walker fell or died at (%.1f, %.1f, %.1f), %.0f of %.0f blocks along lane %s",px,p.getY(),pz,arc,leg.len,leg.id));return true;}
+                if(seg==m-2&&sl-u<1.2){release(c);leg.finished=true;return true;}
+                if(t>leg.len*8+900){release(c);leg.failed=true;report("p3-wt"+n+"-timeout-"+leg.id,false,String.format(Locale.ROOT,"lane %s not finished after %d ticks, the walker is at (%.1f, %.1f, %.1f), %.0f of %.0f blocks",leg.id,t,px,p.getY(),pz,arc,leg.len));return true;}
+                boolean g=p.isOnGround();
+                if(phase.equals("walk")){
+                    if(stopIx<leg.stops.size()&&arc>=leg.stops.get(stopIx).arc()-1.8){phase="brake";phaseT=0;release(c);ground=g;return false;}
+                    double[] a=leg.at(arc+5.0);
+                    float want=(float)Math.toDegrees(Math.atan2(-(a[0]-px),a[1]-pz)),cur=p.getYaw(),d=wrap(want-cur);
+                    p.setYaw(cur+Math.max(-25f,Math.min(25f,d)));p.prevYaw=p.getYaw();p.setPitch(4f);p.prevPitch=4f;
+                    boolean go=Math.abs(wrap(want-p.getYaw()))<35f;
+                    o.forwardKey.setPressed(go);o.sprintKey.setPressed(go);o.jumpKey.setPressed(jump>0);if(jump>0)jump--;
+                    if(ground&&!g&&p.getVelocity().y>0.2&&!o.jumpKey.isPressed()){
+                        leg.bumps++;if(leg.bumps<=10)note(String.format(Locale.ROOT,"auto-jump %d on lane %s at (%.1f, %.1f, %.1f), %.0f of %.0f blocks; ahead: %s",leg.bumps,leg.id,px,p.getY(),pz,arc,leg.len,ahead(c)));
+                    }
+                    if(go)watch(c,px,pz,arc);
+                }else if(phase.equals("brake")){
+                    release(c);
+                    if(p.getVelocity().horizontalLength()<0.03||++phaseT>30){phase="look";phaseT=0;}
+                }else if(phase.equals("look")){
+                    var st=leg.stops.get(stopIx);var v=MapTour.look(st.name(),p.getX(),p.getEyeY(),p.getZ(),st.tx(),st.ty(),st.tz());
+                    p.setYaw(v.yaw());p.setPitch(v.pitch());p.prevYaw=v.yaw();p.prevPitch=v.pitch();phase="wait";phaseT=0;
+                }else if(phase.equals("wait")){
+                    var st=leg.stops.get(stopIx);
+                    if(++phaseT>=24&&(terrainReady(c,p.getX(),p.getZ())||phaseT>=240)){
+                        took(c,st.name(),String.format(Locale.ROOT,"lane %s at %.0f of %.0f blocks, looking at (%.1f, %.1f, %.1f)",leg.id,arc,leg.len,st.tx(),st.ty(),st.tz()),leg);
+                        stopIx++;phase="walk";hasWin=false;
+                    }
+                }
+                ground=g;
+                return false;
+            }
+            /** Every 40 ticks of walking: did he gain 3 blocks? If not, a stuck window (he hops; a second one in a row puts him 8 blocks on). */
+            void watch(MinecraftClient c,double px,double pz,double arc){
+                if(!hasWin){wx=px;wz=pz;win=0;hasWin=true;return;}
+                if(++win<40)return;
+                double moved=Math.hypot(px-wx,pz-wz);leg.walked+=moved;
+                if(moved<3.0){
+                    leg.stuck++;run++;
+                    report("p3-wt"+n+"-stuck-"+leg.id+"-"+leg.stuck,false,String.format(Locale.ROOT,"gained %.1f blocks in 2 s at (%.1f, %.1f, %.1f), %.0f of %.0f blocks along lane %s; ahead: %s",moved,px,c.player.getY(),pz,arc,leg.len,leg.id,ahead(c)));
+                    if(leg.stuck==1)leg.stuckArc=arc;
+                    if(run==1)jump=10;
+                    else{
+                        leg.forced++;run=0;
+                        UUID id=c.player.getUuid();float yaw=c.player.getYaw();
+                        server(c,b->{var sp=b.server.getPlayerManager().getPlayer(id);if(sp==null)return;
+                            double[] f=leg.at(Math.min(leg.len,arc+8.0));int top=0;
+                            for(double ds=8.0;ds<=70.0;ds+=2.0){ // on past a wall: the first cell of the lane that is on the ground of the road, not on a roof
+                                f=leg.at(Math.min(leg.len,arc+ds));int bx=(int)Math.floor(f[0]),bz=(int)Math.floor(f[1]);b.world.getChunk(bx>>4,bz>>4);top=b.world.getTopY(FEET,bx,bz);
+                                if(top<=Arena.Y+2)break;
+                            }
+                            b.relocate(sp,f[0],top,f[1],yaw,4f);});
+                    }
+                }else{run=0;if(moved<6.0)leg.slow++;}
+                wx=px;wz=pz;win=0;
+            }
+        }
+
+        // ---- the lanes ----
+        static Stop stop(Leg leg,String name,double x,double z,double tx,double ty,double tz){return new Stop(name,leg.arcOf(x,z),tx,ty,tz);}
+        /** The structure other than a bridge whose footprint holds (x,z), or null. */
+        static Spec.StructuresRow owner(double x,double z){
+            int ix=(int)Math.floor(x),iz=(int)Math.floor(z);
+            for(var s:Spec.STRUCTURES)if(!s.kind().equals("bridge")&&Walkability.inside(s,ix,iz))return s;
+            return null;
+        }
+        /** A picture of each capture point whose centre the lane passes within 3.5 blocks: 14 blocks before it, looking at the flag. Each point goes to the first lane that passes it. */
+        static void pointStops(Leg leg,Set<String> claimed){
+            for(var p:Spec.POINTS){
+                if(claimed.contains(p.id()))continue;
+                var near=leg.nearest(p.x(),p.z());
+                if(near[1]>3.5)continue;
+                claimed.add(p.id());
+                leg.stops.add(new Stop(leg.id+"-point-"+p.id(),Math.max(0.5,near[0]-14),p.x(),p.elevation()+4.5,p.z()));
+            }
+            leg.stops.sort(Comparator.comparingDouble(Stop::arc));
+        }
+        /** The lanes of the map that stands. Lane k runs from the Dawn camp (-290, 0) by the road to its lane head (-205, z), along it to the crossing, over the deck and on to (205, z) and the Dusk camp (290, 0), exactly the roads CampaignMaps.select lays
+         *  for crossing k; on Kingsfield the flank lane runs the two outpost roads and the king's bridge; a spur is a road with one end in a building, walked from the free end up to the wall of the building. The camp road between the barracks and the stores
+         *  (both ends in a camp building) is not walked. */
+        List<Leg> buildLegs(){
+            var out=new ArrayList<Leg>();var claimed=new HashSet<String>();double[] west={-290,0},east={290,0};int k=0;
+            for(var s:MapRouteChecks.bridges()){
+                int rx=s.x(),z=s.z(),xw=rx-s.width()/2,xe=xw+s.width()-1;double lz=z+2.0;
+                var leg=new Leg("lane"+k,2.0,west,new double[]{-205,z},new double[]{rx-28,z},new double[]{rx+28,z},new double[]{205,z},east);
+                leg.stops.add(stop(leg,"lane"+k+"-head",-195,lz,-35,65.0,lz));
+                leg.stops.add(stop(leg,"lane"+k+"-west-approach",xw-12,lz,xe+8,64.9,lz));
+                leg.stops.add(stop(leg,"lane"+k+"-dusk-head",195,lz,35,65.0,lz));
+                leg.stops.add(stop(leg,"lane"+k+"-deck-mid",rx,lz,rx+60,65.0,lz));
+                leg.stops.add(stop(leg,"lane"+k+"-east-approach",xe+13,lz,xw-40,64.9,lz));
+                pointStops(leg,claimed);out.add(leg);k++;
+            }
+            if(CampaignMaps.selected==4){
+                var leg=new Leg("flank",2.0,west,new double[]{-205,0},new double[]{-205,100},new double[]{-130,100},new double[]{-28,0},new double[]{28,0},new double[]{130,-100},new double[]{205,-100},new double[]{205,0},east);
+                leg.stops.add(new Stop("flank-kings-west",leg.arc[4]-12,0,65.0,0));
+                pointStops(leg,claimed);out.add(leg);
+            }
+            for(var r:CampaignMaps.roads)if(r.width()==4&&r.ax()==r.bx()&&Math.abs(r.ax())==205){ // the road that joins the lane heads of one side: from the camp roads along x=-205 or x=205
+                String id=r.ax()<0?"link-west":"link-east";double sgn=Math.signum(r.bz()-r.az());
+                var leg=new Leg(id,2.0,new double[]{r.ax(),r.az()},new double[]{r.bx(),r.bz()});
+                leg.stops.add(new Stop(id+"-start",8.0,r.ax(),65.0,r.az()+sgn*120));
+                leg.stops.add(new Stop(id+"-middle",leg.len/2,r.ax(),65.0,(r.az()+r.bz())/2.0+sgn*120));
+                out.add(leg);
+            }
+            int sp=0;var towerPal=new HashSet<String>();
+            for(var r:CampaignMaps.roads){
+                var a=owner(r.ax(),r.az());var b=owner(r.bx(),r.bz());
+                if((a==null)==(b==null))continue;
+                boolean aIn=a!=null;var st=aIn?a:b;
+                double sx=aIn?r.bx():r.ax(),sz=aIn?r.bz():r.az(),ex=aIn?r.ax():r.bx(),ez=aIn?r.az():r.bz(),l=Math.hypot(ex-sx,ez-sz),ux=(ex-sx)/l,uz=(ez-sz)/l,from=0,to=l;
+                for(var p:Spec.POINTS)if(Math.hypot(sx-p.x(),sz-p.z())<3.0)from=4.0; // it starts on the pole of a flag
+                for(double d=from;d<=l;d+=1.0)if(owner(sx+ux*d,sz+uz*d)!=null){to=d-1.0;break;}
+                if(to-from<8.0)continue;
+                var leg=new Leg("spur"+sp+"-"+st.id(),Math.min(2.0,r.width()-1.5),new double[]{sx+ux*from,sz+uz*from},new double[]{sx+ux*to,sz+uz*to});
+                boolean isTower=st.kind().equals("watchtower");
+                if(!isTower||towerPal.add(st.palette())){double look=Math.min(to,from+40);leg.stops.add(new Stop(leg.id+"-start",2.0,sx+ux*look,66.0,sz+uz*look));}
+                out.add(leg);sp++;
+            }
+            return out;
+        }
+        static Spec.StructuresRow deckNear(int x,int z){
+            Spec.StructuresRow best=null;double bd=1e9;
+            for(var s:MapRouteChecks.bridges()){double d=Math.hypot(x-s.x(),z-s.z());if(Math.abs(x-s.x())<=s.width()/2+12&&Math.abs(z-s.z())<=s.depth()/2+14&&d<bd){bd=d;best=s;}}
+            return best;
+        }
+        /** A cell of a deck or of its two rail rows. */
+        static boolean deckCell(int x,int z){
+            for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")){int x0=s.x()-s.width()/2,z0=s.z()-s.depth()/2;if(x>=x0&&x<x0+s.width()&&z>=z0-1&&z<=z0+s.depth())return true;}
+            return false;
+        }
+        /** The cell on the plateau of a raised point: dmin to dmax blocks from its centre, where the ground is at the point's elevation, as far from the roads as it gets (the roads cut a gorge through the plateau) and near the middle of the window; null when there is none. */
+        static double[] plateau(Spec.PointsRow p,double dmin,double dmax,int tol){
+            double[] best=null;double bs=-1e9;
+            for(int dx=-17;dx<=17;dx++)for(int dz=-17;dz<=17;dz++){
+                double d=Math.hypot(dx,dz);if(d<dmin||d>dmax)continue;
+                int x=p.x()+dx,z=p.z()+dz;
+                int hh=Arena.height(x,z);if(Math.abs(hh-p.elevation())>tol)continue;
+                double sc=Math.min(CampaignMaps.roadDistance(x,z),12.0)*10.0-Math.abs(d-(dmin+dmax)/2)+hh*6.0;
+                if(sc>bs){bs=sc;best=new double[]{x+0.5,z+0.5};}
+            }
+            return best;
+        }
+
+        /** The jobs of the map in the order they are done: the camp, then every lane (the walker put at its start first), then the pictures that move the walker to where they are taken. */
+        void assemble(){
+            jobs.clear();var f=Spec.FACTIONS[0];double cx=f.spawnX(),cz=f.spawnZ();
+            if(want("camp")){
+                jobs.add(new ShotJob("camp-east",cx,cz,cx+120,66.5,cz,12,"the Dawn camp from the dais, down the muster lane to the east"));
+                jobs.add(new ShotJob("camp-gate",cx,cz,cx-60,71.0,cz,12,"the Dawn camp from the dais, back to the gatehouse in the west"));
+                var d=Spec.FACTIONS[1];double ex=d.spawnX(),ez=d.spawnZ();
+                jobs.add(new ShotJob("camp-dusk-west",ex,ez,ex-120,66.5,ez,12,"the Dusk camp from the dais, down the muster lane to the west"));
+                jobs.add(new ShotJob("camp-dusk-gate",ex,ez,ex+60,71.0,ez,12,"the Dusk camp from the dais, back to the gatehouse in the east"));
+            }
+            for(var leg:legs)if(want(leg.id)){
+                jobs.add(new ShotJob(null,leg.q[0][0],leg.q[0][1],leg.q[1][0],66.0,leg.q[1][1],12,"start of "+leg.id));
+                jobs.add(new LegJob(leg));
+            }
+            if(want("band"))for(var s:MapRouteChecks.bridges())for(var p:Spec.POINTS){
+                if(Math.abs(p.x()-s.x())>3||Math.abs(p.z()-s.z())>3||bandWater.getOrDefault(p.id(),0)==0)continue;
+                int z0=s.palette().equals("ford")?s.z()-3:s.z()-s.depth()/2;
+                jobs.add(new ShotJob("band-"+p.id(),p.x()+0.5,z0+0.5,p.x()+0.5,p.elevation()+1.0,p.z()-p.radius()+0.5,12,"point "+p.id()+": the ring band across the water, from the north edge of the "+(s.palette().equals("ford")?"stone strip of the ford":"deck")));
+            }
+            if(want("rail"))for(var s:MapRouteChecks.bridges()){
+                boolean ford=s.palette().equals("ford"); // a ford has no rails: its two pictures are of the edges of its stone strip
+                int xw=s.x()-s.width()/2,xe=xw+s.width()-1,z0=s.z()-s.depth()/2,z1=z0+s.depth()-1; // plank rows z0..z1, the rails stand on z0-1 and z1+1
+                if(ford){
+                    int nz=s.z()-3,sz=s.z()+3;
+                    jobs.add(new ShotJob("rail-north-"+s.id(),xw+1.5,nz+1.5,xe-2.0,65.8,nz-0.5,12,"crossing "+s.id()+" (ford): the north edge of the stone strip, from its west end, looking along it to the east"));
+                    jobs.add(new ShotJob("rail-south-"+s.id(),xe-0.5,sz-0.5,xw+2.0,65.8,sz+1.5,12,"crossing "+s.id()+" (ford): the south edge of the stone strip, from its east end, looking along it to the west"));
+                    continue;
+                }
+                double mx=s.x()+0.5; // the rails stand over the water; from 3 blocks inside the middle of the deck each end of each rail is looked at along the rail
+                String tag=" ("+s.palette()+"): the ";
+                jobs.add(new ShotJob("rail-nw-"+s.id(),mx+3.0,z0+1.5,xw+4.0,65.8,z0-0.5,12,"crossing "+s.id()+tag+"north rail seen along it toward its west end, from the middle of the deck"));
+                jobs.add(new ShotJob("rail-ne-"+s.id(),mx-3.0,z0+1.5,xe-4.0,65.8,z0-0.5,12,"crossing "+s.id()+tag+"north rail seen along it toward its east end, from the middle of the deck"));
+                jobs.add(new ShotJob("rail-sw-"+s.id(),mx+3.0,z1-0.5,xw+4.0,65.8,z1+1.5,12,"crossing "+s.id()+tag+"south rail seen along it toward its west end, from the middle of the deck"));
+                jobs.add(new ShotJob("rail-se-"+s.id(),mx-3.0,z1-0.5,xe-4.0,65.8,z1+1.5,12,"crossing "+s.id()+tag+"south rail seen along it toward its east end, from the middle of the deck"));
+            }
+            if(want("posts")){
+                int shots=0;var seen=new HashSet<Integer>();
+                for(int[] st:standing){
+                    if(shots>=2||st[1]<Arena.Y)continue;
+                    var pt=Spec.POINTS[st[3]];
+                    if(!seen.add(st[3]*2+(st[2]<pt.z()?0:1)))continue;
+                    var s=deckNear(st[0],st[2]);if(s==null)continue;
+                    int xw=s.x()-s.width()/2,xe=xw+s.width()-1,z0=s.z()-s.depth()/2;
+                    double wx=Math.max(xw+1,Math.min(xe-1,st[0]-5))+0.5,wz=st[2]<s.z()?z0+0.5:z0+s.depth()-0.5;
+                    jobs.add(new ShotJob("posts-"+pt.id(),wx,wz,st[0]+0.5,st[1]+0.5,st[2]+0.5,12,"a dressing block of point "+pt.id()+" standing in the river at ("+st[0]+", "+st[1]+", "+st[2]+"), from the deck edge"));shots++;
+                }
+            }
+            if(want("outpost"))for(var p:Spec.POINTS)if(p.elevation()>Arena.Y){
+                Leg on=null;for(var l:legs)if(on==null&&l.nearest(p.x(),p.z())[1]<=3.5)on=l;
+                if(on!=null){double[] a=on.at(on.arcOf(p.x(),p.z())+9.0);jobs.add(new ShotJob("outpost-"+p.id()+"-under",a[0],a[1],p.x()+0.5,p.elevation()+0.5,p.z()+0.5,12,"point "+p.id()+": from the road 9 blocks past the centre, up at the pad and the ring"));}
+                double[] top=plateau(p,12.0,17.0,0);
+                if(top!=null)jobs.add(new ShotJob("outpost-"+p.id()+"-top",top[0],top[1],p.x()+0.5,p.elevation()+0.5,p.z()+0.5,12,"point "+p.id()+": from the plateau, 12 to 17 blocks out, at the centre"));
+                double[] near=plateau(p,5.5,9.0,6);
+                if(near!=null)jobs.add(new ShotJob("outpost-"+p.id()+"-near",near[0],near[1],p.x()+0.5,p.elevation()+1.5,p.z()+0.5,12,"point "+p.id()+": from the shoulder of the plateau, 6 to 9 blocks out, at the pad"));
+            }
+            if(want("float")){
+                int shots=0;var done=new HashSet<String>();
+                for(var pc:pieces){
+                    if(shots>=4||pc.cam()==null)continue;
+                    boolean atOutpost=false;for(var p:Spec.POINTS)if(p.elevation()>Arena.Y&&Math.hypot(pc.cx()-p.x(),pc.cz()-p.z())<=p.radius()+6)atOutpost=true;
+                    if(atOutpost||!done.add(pc.top()+"/"+pc.size()))continue;
+                    shots++;
+                    jobs.add(new ShotJob("float-"+shots,pc.cam()[0],pc.cam()[2],pc.cx(),pc.cy(),pc.cz(),12,"a floating piece of "+pc.size()+" blocks ("+pc.top()+") at x "+pc.x0()+".."+pc.x1()+", y "+pc.y0()+".."+pc.y1()+", z "+pc.z0()+".."+pc.z1(),pc.cam()[1]));
+                }
+            }
+            if(want("building")){
+                int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ();
+                for(var s:Spec.STRUCTURES){
+                    String id=s.id();
+                    if(s.kind().equals("bridge")||id.matches("house_\\d|farm|mill|(dawn|dusk)_gate")||id.contains("_tower_"))continue; // those are seen from their roads, the gates from the dais
+                    double R=Math.max(s.width(),s.depth())/2.0+12.0,bs=1e9,bx=0,bz=0;boolean found=false;
+                    for(int k=0;k<16;k++){
+                        double a=k*Math.PI/8,x=Math.floor(s.x()+Math.cos(a)*R)+0.5,z=Math.floor(s.z()+Math.sin(a)*R)+0.5;int ix=(int)Math.floor(x),iz=(int)Math.floor(z);
+                        if(Math.abs(x)>hx-12||Math.abs(z)>hz-12||owner(x,z)!=null||deckCell(ix,iz)||Arena.river(ix,iz))continue;
+                        int g=Arena.height(ix,iz);if(g<Arena.Y-1||g>s.elevation()+3)continue;
+                        double rd=CampaignMaps.roadDistance(ix,iz); // as near a road as it gets: where a walker would be
+                        if(rd<bs){bs=rd;bx=x;bz=z;found=true;}
+                    }
+                    if(found)jobs.add(new ShotJob("building-"+id,bx,bz,s.x()+0.5,s.elevation()+1.0+Math.min(s.height(),9)/2.0,s.z()+0.5,12,"the "+s.kind()+" "+id+" ("+s.width()+" by "+s.depth()+" by "+s.height()+", "+s.palette()+") from "+(int)Math.round(R)+" blocks out, "+(int)Math.round(bs)+" blocks off the nearest road"));
+                }
+            }
+            if(want("sight")){
+                int i=0;
+                for(var s:sights){
+                    i++;double ux=-Math.sin(Math.toRadians(s.yaw())),uz=Math.cos(Math.toRadians(s.yaw()));
+                    jobs.add(new ShotJob("sight-"+i,s.x(),s.z(),s.x()+ux*100,s.top()+0.12,s.z()+uz*100,28,String.format(Locale.ROOT,"sight line %d: %.0f blocks clear at eye height from (%.1f, %.1f) toward yaw %.0f, ends at (%.0f, %.0f, %.0f) on %s",i,s.len(),s.x(),s.z(),s.yaw(),s.ex(),s.ey(),s.ez(),s.by())));
+                }
+            }
+        }
+
+        // ---- the scans, on the server thread ----
+        record Sight(double len,double x,double z,double yaw,double ex,double ey,double ez,int road,int sign,double top,String by){}
+        /** Top blocks that cannot belong to this map: the snow and ice of Frostmarch, the podzol, ferns and mud bricks of Hollowwood, grass on the two maps without it, the leaves of the other family of trees. */
+        static Set<String> alien(int map){
+            var s=new HashSet<String>();
+            if(map!=2)s.addAll(List.of("snow","snow_block","powder_snow","packed_ice","blue_ice","ice"));
+            if(map!=3)s.addAll(List.of("podzol","fern","mud_bricks"));
+            if(map==2||map==3)s.addAll(List.of("grass_block","grass","poppy"));
+            if(map<2)s.add("spruce_leaves");else if(map<4)s.add("oak_leaves");
+            return s;
+        }
+        void scanMap(GravesAndGlory.Battle b,int map,List<Leg> mine){
+            var w=b.world;
+            // 1. the top block of every column of the arena against what this map may be made of (a block of the map built before, left standing, would show here)
+            int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ(),foreign=0;var bad=alien(map);var tops=new TreeMap<String,Integer>();var firsts=new ArrayList<String>();
+            for(int cx=Math.floorDiv(-hx,16);cx<=Math.floorDiv(hx,16);cx++)for(int cz=Math.floorDiv(-hz,16);cz<=Math.floorDiv(hz,16);cz++){
+                w.getChunk(cx,cz);
+                for(int x=Math.max(-hx,cx*16);x<=Math.min(hx,cx*16+15);x++)for(int z=Math.max(-hz,cz*16);z<=Math.min(hz,cz*16+15);z++){
+                    int y=w.getTopY(net.minecraft.world.Heightmap.Type.WORLD_SURFACE,x,z)-1;
+                    String nm=name(w.getBlockState(new BlockPos(x,y,z)));tops.merge(nm,1,Integer::sum);
+                    if(bad.contains(nm)){foreign++;if(firsts.size()<8)firsts.add(nm+" ("+x+", "+y+", "+z+")");}
+                }
+            }
+            var common=new ArrayList<>(tops.entrySet());common.sort((p,q)->q.getValue()-p.getValue());
+            var top10=new StringBuilder();for(int i=0;i<Math.min(10,common.size());i++)top10.append(i>0?", ":"").append(common.get(i).getKey()).append(' ').append(common.get(i).getValue());
+            report("p3-wt"+map+"-foreign",foreign==0,"top blocks of the "+(2*hx+1)+" by "+(2*hz+1)+" columns: "+top10+"; blocks that belong to another map: "+foreign+(foreign==0?"":", first "+firsts));
+            // 2. the ring of every point: its band over the river, what hangs in the air, what stands in the river
+            var wet=new LinkedHashMap<String,Integer>();var stand=new ArrayList<int[]>();
+            for(int pi=0;pi<Spec.POINTS.length;pi++){
+                var p=Spec.POINTS[pi];int r=p.radius(),e=p.elevation(),cells=0,over=0,hang=0,pad=0,padHang=0,minX=9999,maxX=-9999,minZ=9999,maxZ=-9999;var inRiver=new ArrayList<String>();
+                for(int dx=-r-5;dx<=r+5;dx++)for(int dz=-r-5;dz<=r+5;dz++){
+                    int x=p.x()+dx,z=p.z()+dz;double d=Math.hypot(dx,dz);
+                    if(d>=r-1&&d<=r&&w.getBlockState(new BlockPos(x,e,z)).isOf(Blocks.SMOOTH_STONE)){
+                        cells++;
+                        if(w.getBlockState(new BlockPos(x,e-1,z)).isAir())hang++;
+                        if(Arena.river(x,z)&&!deckCell(x,z)&&w.getBlockState(new BlockPos(x,e-1,z)).isOf(Blocks.WATER)){over++;minX=Math.min(minX,x);maxX=Math.max(maxX,x);minZ=Math.min(minZ,z);maxZ=Math.max(maxZ,z);}
+                    }
+                    if(Math.abs(dx)<=1&&Math.abs(dz)<=1){pad++;if(w.getBlockState(new BlockPos(x,e-1,z)).isAir())padHang++;}
+                    if(d>2.5&&Arena.river(x,z)&&!deckCell(x,z)&&owner(x,z)==null)for(int y=Arena.Y-2;y<=Arena.Y+9;y++){
+                        var st=w.getBlockState(new BlockPos(x,y,z));
+                        if(st.isAir()||st.isOf(Blocks.WATER)||st.isOf(Blocks.SMOOTH_STONE))continue;
+                        inRiver.add(name(st)+" ("+x+", "+y+", "+z+")");stand.add(new int[]{x,y,z,pi});
+                    }
+                }
+                wet.put(p.id(),over);
+                note("point "+p.id()+" "+p.name()+" ("+p.x()+", "+p.z()+") elevation "+e+", ground at its centre "+Arena.height(p.x(),p.z())+": ring band "+cells+" blocks, "+over+" over river water"+(over==0?"":" (x "+minX+" to "+maxX+", z "+minZ+" to "+maxZ+")")+", "+hang+" with air under; 3x3 pad "+pad+" blocks, "+padHang+" with air under; blocks standing in the river within "+(r+5)+" of the centre: "+inRiver.size()+(inRiver.isEmpty()?"":" "+inRiver.subList(0,Math.min(12,inRiver.size()))));
+            }
+            bandWater=wet;standing=stand;
+            // 3. the check of the river columns from Task 2, run again on the map as it stands
+            var rv=Rebuild.river(b);
+            report("p3-wt"+map+"-river",rv.left()==0,"river columns "+rv.columns()+", built on by this map "+rv.builtOn()+", looked at "+rv.looked()+": "+rv.left()+" blocks above the water that this map does not account for"+(rv.left()==0?"":", first: "+rv.sample()));
+            // 4. the ground along the line each lane is walked on
+            for(var leg:mine){
+                int steps=0,wetCells=0,cells=0;double last=Double.NaN,lo=1e9,hi=-1e9;var where=new StringBuilder();
+                for(double s=0;s<=leg.len;s+=1.0){
+                    var a=leg.at(s);int bx=(int)Math.floor(a[0]),bz=(int)Math.floor(a[1]);
+                    w.getChunk(bx>>4,bz>>4);int top=w.getTopY(FEET,bx,bz);cells++;
+                    if(w.getBlockState(new BlockPos(bx,top-1,bz)).isOf(Blocks.WATER))wetCells++;
+                    lo=Math.min(lo,top);hi=Math.max(hi,top);
+                    if(!Double.isNaN(last)&&Math.abs(top-last)>=1.0){steps++;if(steps<=6)where.append(steps>1?"; ":"").append((int)last).append(" to ").append(top).append(" at (").append(bx).append(", ").append(bz).append(")");}
+                    last=top;
+                }
+                note("profile of "+leg.id+": "+cells+" cells of the lane line, ground (feet) y "+(int)lo+" to "+(int)hi+", "+steps+" changes of a block or more"+(steps==0?"":": "+where)+", "+wetCells+" cells on water");
+            }
+            // 5. sight lines: from a point of a road, 2 blocks to the right of it, looking along the road at eye height, how far is it clear (blocks that stop a camera stop the ray)
+            var ent=b.server.getPlayerManager().getPlayerList().get(0);var cands=new ArrayList<Sight>();int ri=0;
+            for(var r:CampaignMaps.roads){
+                double dx=r.bx()-r.ax(),dz=r.bz()-r.az(),len=Math.hypot(dx,dz);
+                if(len>=100&&r.width()>=4)for(int sign:new int[]{1,-1}){
+                    double ux=dx/len*sign,uz=dz/len*sign,ox=-uz*2.0,oz=ux*2.0,sx0=sign>0?r.ax():r.bx(),sz0=sign>0?r.az():r.bz();
+                    for(double s=4;s<=len-30;s+=12){
+                        double x=sx0+ux*s+ox,z=sz0+uz*s+oz;int bx=(int)Math.floor(x),bz=(int)Math.floor(z);
+                        if(Math.abs(x)>hx-8||Math.abs(z)>hz-8)continue;
+                        w.getChunk(bx>>4,bz>>4);int top=w.getTopY(FEET,bx,bz);
+                        if(top>Arena.Y+2||w.getBlockState(new BlockPos(bx,top-1,bz)).isOf(Blocks.WATER))continue; // a walker stands on the road, not on a roof or in the river
+                        double tx=ux>0?(hx-x)/ux:ux<0?(-hx-x)/ux:1e9,tz=uz>0?(hz-z)/uz:uz<0?(-hz-z)/uz:1e9,reach=Math.min(700.0,Math.min(tx,tz)); // the line stops at the edge of the arena
+                        var from=new Vec3d(x,top+1.62,z);var to=new Vec3d(x+ux*reach,top+1.62,z+uz*reach);
+                        var hit=w.raycast(new net.minecraft.world.RaycastContext(from,to,net.minecraft.world.RaycastContext.ShapeType.VISUAL,net.minecraft.world.RaycastContext.FluidHandling.NONE,ent));
+                        boolean miss=hit.getType()==net.minecraft.util.hit.HitResult.Type.MISS;var end=miss?to:hit.getPos();
+                        cands.add(new Sight(from.distanceTo(end),x,z,Math.toDegrees(Math.atan2(-ux,uz)),end.x,end.y,end.z,ri,sign,top,miss?"nothing before the edge of the arena":name(w.getBlockState(hit.getBlockPos()))));
+                    }
+                }
+                ri++;
+            }
+            cands.sort((p,q)->Double.compare(q.len(),p.len()));
+            var pick=new ArrayList<Sight>();
+            for(var cd:cands){
+                if(pick.isEmpty()){pick.add(cd);continue;}
+                var first=pick.get(0);
+                if(Math.hypot(cd.x()-first.x(),cd.z()-first.z())>=120&&cd.road()!=first.road()){pick.add(cd);break;}
+            }
+            if(pick.size()==1&&cands.size()>1)pick.add(cands.get(1));
+            sights=pick;
+            for(int i=0;i<pick.size();i++){var cd=pick.get(i);note(String.format(Locale.ROOT,"sight line %d: %.0f blocks clear at eye height from (%.1f, %.1f) toward yaw %.0f, ends at (%.0f, %.0f, %.0f) on %s (%d candidates, best %.0f)",i+1,cd.len(),cd.x(),cd.z(),cd.yaw(),cd.ex(),cd.ey(),cd.ez(),cd.by(),cands.size(),cands.isEmpty()?0.0:cands.get(0).len()));}
+            // 6. blocks that float: every solid block of the arena that cannot be reached from the floor of the scan through blocks that touch face to face
+            floating(w,hx,hz,ent);
+            scanned=true;
+        }
+        /** Solid for this scan: any block but air, water, lava and the invisible ones (barrier, light, structure void). */
+        static boolean solid(BlockState st){return !st.isAir()&&!st.isOf(Blocks.WATER)&&!st.isOf(Blocks.LAVA)&&!st.isOf(Blocks.BARRIER)&&!st.isOf(Blocks.LIGHT)&&!st.isOf(Blocks.STRUCTURE_VOID);}
+        /** A piece that floats: its blocks, its box, and its three commonest blocks. */
+        record Piece(int size,int x0,int y0,int z0,int x1,int y1,int z1,String top,double[] cam){
+            double cx(){return (x0+x1)/2.0+0.5;}double cy(){return (y0+y1)/2.0+0.5;}double cz(){return (z0+z1)/2.0+0.5;}
+        }
+        volatile List<Piece> pieces=List.of();
+        /** The floor of the scan is Arena.Y-8, its top Arena.Y+80. A solid block that touches (face, edge or corner: a tent of wool rows meets at its edges) nothing that leads back to the floor is part of a floating piece; the pieces are counted and listed. */
+        void floating(ServerWorld w,int hx,int hz,net.minecraft.entity.Entity ent){
+            int y0=Arena.Y-8,y1=Arena.Y+80,wz=2*hz+1,hy=y1-y0+1,cx0=(-hx)>>4,cz0=(-hz)>>4,ncx=(hx>>4)-cx0+1,ncz=(hz>>4)-cz0+1;
+            var chunks=new net.minecraft.world.chunk.Chunk[ncx*ncz];
+            for(int a=0;a<ncx;a++)for(int c=0;c<ncz;c++)chunks[a*ncz+c]=w.getChunk(cx0+a,cz0+c);
+            var seen=new BitSet((2*hx+1)*wz*hy);var pos=new BlockPos.Mutable();
+            int[] st=new int[1<<20];int sp=0;long reached=0;
+            int[] dx=new int[26],dy=new int[26],dz=new int[26];int q=0;
+            for(int a=-1;a<=1;a++)for(int b=-1;b<=1;b++)for(int c=-1;c<=1;c++)if(a!=0||b!=0||c!=0){dx[q]=a;dy[q]=b;dz[q]=c;q++;}
+            for(int x=-hx;x<=hx;x++)for(int z=-hz;z<=hz;z++){
+                var ch=chunks[((x>>4)-cx0)*ncz+((z>>4)-cz0)];
+                if(solid(ch.getBlockState(pos.set(x,y0,z)))){int id=((x+hx)*wz+(z+hz))*hy;if(!seen.get(id)){seen.set(id);if(sp==st.length)st=Arrays.copyOf(st,sp*2);st[sp++]=id;}}
+            }
+            while(sp>0){
+                int id=st[--sp];reached++;int y=id%hy+y0,r=id/hy,z=r%wz-hz,x=r/wz-hx;
+                for(int k=0;k<26;k++){
+                    int nx=x+dx[k],ny=y+dy[k],nz=z+dz[k];
+                    if(nx<-hx||nx>hx||nz<-hz||nz>hz||ny<y0||ny>y1)continue;
+                    int nid=((nx+hx)*wz+(nz+hz))*hy+(ny-y0);if(seen.get(nid))continue;
+                    if(!solid(chunks[((nx>>4)-cx0)*ncz+((nz>>4)-cz0)].getBlockState(pos.set(nx,ny,nz))))continue;
+                    seen.set(nid);if(sp==st.length)st=Arrays.copyOf(st,sp*2);st[sp++]=nid;
+                }
+            }
+            var found=new ArrayList<Piece>();long floatTotal=0;
+            for(int x=-hx;x<=hx;x++)for(int z=-hz;z<=hz;z++)for(int y=y0;y<=y1;y++){
+                int id=((x+hx)*wz+(z+hz))*hy+(y-y0);if(seen.get(id))continue;
+                if(!solid(chunks[((x>>4)-cx0)*ncz+((z>>4)-cz0)].getBlockState(pos.set(x,y,z))))continue;
+                seen.set(id);sp=0;st[sp++]=id;int size=0,bx0=x,by0=y,bz0=z,bx1=x,by1=y,bz1=z;var names=new TreeMap<String,Integer>();
+                while(sp>0){
+                    int cid=st[--sp];size++;int cy=cid%hy+y0,r=cid/hy,cz=r%wz-hz,cx=r/wz-hx;
+                    bx0=Math.min(bx0,cx);bx1=Math.max(bx1,cx);by0=Math.min(by0,cy);by1=Math.max(by1,cy);bz0=Math.min(bz0,cz);bz1=Math.max(bz1,cz);
+                    names.merge(name(chunks[((cx>>4)-cx0)*ncz+((cz>>4)-cz0)].getBlockState(pos.set(cx,cy,cz))),1,Integer::sum);
+                    for(int k=0;k<26;k++){
+                        int nx=cx+dx[k],ny=cy+dy[k],nz=cz+dz[k];
+                        if(nx<-hx||nx>hx||nz<-hz||nz>hz||ny<y0||ny>y1)continue;
+                        int nid=((nx+hx)*wz+(nz+hz))*hy+(ny-y0);if(seen.get(nid))continue;
+                        if(!solid(chunks[((nx>>4)-cx0)*ncz+((nz>>4)-cz0)].getBlockState(pos.set(nx,ny,nz))))continue;
+                        seen.set(nid);if(sp==st.length)st=Arrays.copyOf(st,sp*2);st[sp++]=nid;
+                    }
+                }
+                floatTotal+=size;var topNames=new ArrayList<>(names.entrySet());topNames.sort((p,o)->o.getValue()-p.getValue());
+                var tn=new StringBuilder();for(int i=0;i<Math.min(3,topNames.size());i++)tn.append(i>0?", ":"").append(topNames.get(i).getKey()).append(' ').append(topNames.get(i).getValue());
+                found.add(new Piece(size,bx0,by0,bz0,bx1,by1,bz1,tn.toString(),null));
+            }
+            found.sort((p,o)->o.size()-p.size());
+            // a place to stand for the pictures of the first pieces: 3 to 10 blocks off, on a floor under the piece, with a clear ray from the eye to the piece
+            var sigs=new HashSet<String>();
+            for(int i=0;i<found.size()&&sigs.size()<6;i++){
+                var pc=found.get(i);if(!sigs.add(pc.top()+"/"+pc.size()))continue;
+                double bestScore=1e9;double[] cam=null;var to=new Vec3d(pc.cx(),pc.cy(),pc.cz());
+                for(int ring=3;ring<=10;ring++)for(int k=0;k<24;k++){
+                    double a=k*Math.PI/12;int x=(int)Math.floor(pc.cx()+Math.cos(a)*ring),z=(int)Math.floor(pc.cz()+Math.sin(a)*ring);
+                    if(Math.abs(x)>hx-4||Math.abs(z)>hz-4)continue;
+                    int fy=Integer.MIN_VALUE;
+                    for(int y=Math.min(pc.y0(),Arena.Y+14);y>=Arena.Y-1;y--){
+                        if(solid(w.getBlockState(new BlockPos(x,y-1,z)))&&!solid(w.getBlockState(new BlockPos(x,y,z)))&&!solid(w.getBlockState(new BlockPos(x,y+1,z)))&&!w.getBlockState(new BlockPos(x,y-1,z)).isOf(Blocks.WATER)){fy=y;break;}
+                    }
+                    if(fy==Integer.MIN_VALUE||w.getBlockState(new BlockPos(x,fy,z)).isOf(Blocks.WATER))continue;
+                    var from=new Vec3d(x+0.5,fy+1.62,z+0.5);
+                    var hit=w.raycast(new net.minecraft.world.RaycastContext(from,to,net.minecraft.world.RaycastContext.ShapeType.VISUAL,net.minecraft.world.RaycastContext.FluidHandling.NONE,ent));
+                    boolean clear=hit.getType()==net.minecraft.util.hit.HitResult.Type.MISS;
+                    if(!clear){var hp=hit.getBlockPos();clear=hp.getX()>=pc.x0()&&hp.getX()<=pc.x1()&&hp.getY()>=pc.y0()&&hp.getY()<=pc.y1()&&hp.getZ()>=pc.z0()&&hp.getZ()<=pc.z1();}
+                    if(!clear)continue;
+                    double score=Math.abs(ring-6)+(fy>pc.y0()-2?0:Math.max(0,pc.y0()-fy-6)*0.5);
+                    if(score<bestScore){bestScore=score;cam=new double[]{x+0.5,fy,z+0.5};}
+                }
+                found.set(i,new Piece(pc.size(),pc.x0(),pc.y0(),pc.z0(),pc.x1(),pc.y1(),pc.z1(),pc.top(),cam));
+            }
+            pieces=found;
+            report("p3-wt"+n+"-floating",found.isEmpty(),"solid blocks reached from the floor "+reached+", floating pieces "+found.size()+" of "+floatTotal+" blocks"+(found.isEmpty()?"":", the biggest "+found.stream().limit(6).map(p->p.size()+" blocks x "+p.x0()+".."+p.x1()+" y "+p.y0()+".."+p.y1()+" z "+p.z0()+".."+p.z1()+" ("+p.top()+")").toList()));
+            for(int i=0;i<Math.min(40,found.size());i++){var p=found.get(i);note("floating piece "+(i+1)+": "+p.size()+" blocks, x "+p.x0()+" to "+p.x1()+", y "+p.y0()+" to "+p.y1()+", z "+p.z0()+" to "+p.z1()+": "+p.top());}
         }
     }
 }
