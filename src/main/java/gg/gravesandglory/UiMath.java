@@ -246,10 +246,13 @@ public final class UiMath {
         return (float) (1.0 - u * u * u);
     }
 
-    /** The wax seal stamping down on the risen sheet: 0 until the last 2 ticks of the rise, then 0 to 1, falling faster as it
-     *  goes (an ease-in, so it lands with a hit). */
+    /** The wax seal's stamp takes the last SEAL_TICKS ticks of the rise (100 ms). */
+    public static final int SEAL_TICKS = 2;
+
+    /** The wax seal stamping down on the risen sheet: 0 until the last SEAL_TICKS ticks of the rise, then 0 to 1, falling faster
+     *  as it goes (an ease-in, so it lands with a hit). */
     public static float sealStamp(long ticksSinceFocus, float partial) {
-        double t = Math.max(0.0, Math.min(1.0, (ticksSinceFocus + (double) partial - (SHEET_TICKS - 2)) / 2.0));
+        double t = Math.max(0.0, Math.min(1.0, (ticksSinceFocus + (double) partial - (SHEET_TICKS - SEAL_TICKS)) / SEAL_TICKS));
         return (float) (t * t);
     }
 

@@ -11,6 +11,8 @@ final class DarkUi {
     static final int IVORY=0xffeee9df, PAPER=IVORY, MUTED=0xffafb9bc, BRASS=0xffc8a56b, GOLD=BRASS, BRASS_HI=0xffdfbd77, EDGE=0xff414b50;
     static final int INK_TEXT=0xff2a2219, SEPIA=0xff5c4a32, ALARM_TEXT=0xffe47a64, ROUT_TEXT=0xff5e140b, CHIP_TEXT=0xfff1e7cb;
     static final int DAWN=0xff5fb3ad, DUSK=0xffa07cc2, DUSK_TEXT=0xffb99ad6, VELLUM=0xffe6d9b8, CHARCOAL=0xff1a2125, OAK0=0xff160c0d;
+    /** The floor a canvas larger than the War Table shows round the planks: the kit's deepest iron (tools/ui_art/v4pal.IRON[0]). */
+    static final int FLOOR=0xff0b0d0f;
     // The mockups' remaining inks: labels on brass plates, "Enter" on brass keys, keys on rail plaques, the ability's key,
     // the shadow under tags, and the cooldown sweep's veil, leading edge and twelve o'clock line.
     static final int PLATE_INK=0xff1e1509, KEY_INK=0xff3a2a12, RAIL_KEY=0xfff0d9a0, ABILITY_KEY=0xff2e1f0c, TAG_SHADOW=0xff120d16;

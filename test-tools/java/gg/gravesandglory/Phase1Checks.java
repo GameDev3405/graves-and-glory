@@ -1888,12 +1888,16 @@ public final class Phase1Checks implements ClientModInitializer {
         static final int[][] LAYOUT={{56,12,96,28},{184,12,112,28},{304,12,112,28},{424,12,112,28},{544,12,112,28},{664,12,112,28},{228,200,152,136},{392,188,176,160},{580,200,152,136},{796,340,80,24},{360,388,240,40}};
         static final int[] PRACTICE_LO={228,200,152,136},PRACTICE_HI={216,188,176,160},SKIRMISH_LO={404,200,152,136};
         // the server thread writes these, the client thread reads them
-        volatile int stage;volatile UUID player;volatile boolean serverRunning,serverOnPad;volatile int padCountdown=-1;
+        volatile int stage;volatile UUID player;volatile boolean serverRunning,serverOnPad,serverRoom;volatile int padCountdown=-1;
         // client thread only
-        int mark=-1,waitFrom,oldW,oldH,oldGui,runAt=-1,padAt=-1;boolean finished,focusOk=true,modesOk=true,scalesOk=true;
-        String focusWhy="",modesWhy="",gatesWhy="",scalesWhy="";
+        int mark=-1,waitFrom,oldW,oldH,oldGui,runAt=-1,padAt=-1;boolean finished,focusOk=true,modesOk=true,scalesOk=true,noticeOk=true,badgesOk;
+        String focusWhy="",modesWhy="",gatesWhy="",scalesWhy="",noticeWhy="",badgesWhy="";
+        long noticeFirst,noticeSecond;Progression.State oldProgression;JsonObject oldResult;
+        /** The result the suite pretends the last battle left, held in CampaignClient.result every tick (each camp snapshot puts the server's back), so Last battle is on the home for the stages that follow. */
+        JsonObject fakeResult;
+        static final String PRACTICE_SOLO="Practice is solo. Use a private room to play with your party.";
 
-        public void serverTick(GravesAndGlory.Battle b){serverRunning=b.running;var id=player;serverOnPad=id!=null&&b.campaign.onPad.containsKey(id);padCountdown=b.campaign.padCountdown;}
+        public void serverTick(GravesAndGlory.Battle b){serverRunning=b.running;var id=player;serverOnPad=id!=null&&b.campaign.onPad.containsKey(id);serverRoom=id!=null&&b.campaign.social.room(id)!=null;padCountdown=b.campaign.padCountdown;}
         /** Steps since the suite entered its current stage. */
         int since(int tick){if(mark!=stage){mark=stage;waitFrom=tick;}return tick-waitFrom;}
         static WarTableHome home(MinecraftClient c){return c.currentScreen instanceof CampScreen s&&s.page.equals("home")?s.home:null;}
@@ -1909,6 +1913,22 @@ public final class Phase1Checks implements ClientModInitializer {
         static boolean inside(int[] a,int w,int h){return a[0]>=0&&a[1]>=0&&a[0]+a[2]<=w&&a[1]+a[3]<=h;}
         /** The widgets' canvas boxes by name, in Tab order. */
         static Map<String,int[]> boxes(MinecraftClient c){Map<String,int[]> m=new LinkedHashMap<>();var h=home(c);if(h!=null)for(var e:h.buttons.entrySet())m.put(e.getKey(),e.getValue().canvasBox());return m;}
+        /** Skirmish eases flat as Practice rises; a tick on the pointer moves to Campaign and Skirmish is the third sheet: it must go on
+         *  along the same curve, not start it again from where it stood (a jump of 0.2 of the rise at that tick). */
+        static boolean thirdSheetKeepsItsCurve(WarTableHome src){
+            var t=new WarTableHome(src.screen);t.focused=1;for(int i=0;i<3;i++){t.from[i]=t.to[i]=i==1?1:0;}
+            t.focus(0);t.changedAt[1]-=1; // a tick on from its start
+            float before=t.rise(1,t.clock());t.focus(2);float after=t.rise(1,t.clock());
+            return before>0.1f&&before<0.9f&&Math.abs(after-before)<0.05f;
+        }
+        /** The framebuffer's colour at canvas (x, y) as 0xRRGGBB (the last frame drawn), or -1. */
+        static int pixel(MinecraftClient c,int x,int y){
+            try(NativeImage img=ScreenshotRecorder.takeScreenshot(c.getFramebuffer())){
+                int px=x*UiCanvas.k(),py=y*UiCanvas.k();if(px<0||py<0||px>=img.getWidth()||py>=img.getHeight())return -1;
+                int abgr=img.getColor(px,py);return ((abgr&0xff)<<16)|(abgr&0xff00)|((abgr>>16)&0xff);
+            }catch(Exception ex){return -1;}
+        }
+        static boolean darker(int a,int b){return ((a>>16)&0xff)<((b>>16)&0xff)&&((a>>8)&0xff)<((b>>8)&0xff)&&(a&0xff)<(b&0xff);}
         /** The Ride plate's label as the last frame drew it. */
         static String label(){return WarTableHome.texts().getOrDefault("ride","none");}
         /** The solid pixels (alpha 200 or more: the props themselves, not their light or shadows) of frame f of a sheet, as {x,y}
@@ -1923,6 +1943,7 @@ public final class Phase1Checks implements ClientModInitializer {
 
         public void step(MinecraftClient c,int tick){
             if(tick>8000&&!finished){report("p1-ui-home-timeout",false,"stuck in stage "+stage);end(c);return;}
+            if(fakeResult!=null)CampaignClient.result=fakeResult;
             switch(stage){
                 case 0->{ // at camp with no round running, the window at 960x540 GUI 1, the session's sheet back on Skirmish
                     if(tick<20)return;var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();player=c.player.getUuid();
@@ -1937,14 +1958,17 @@ public final class Phase1Checks implements ClientModInitializer {
                     var boxes=boxes(c);StringBuilder bad=new StringBuilder();
                     for(int i=0;i<LAYOUT.length;i++){int[] b=boxes.get(LAYOUT_NAMES[i]);if(b==null||!Arrays.equals(b,LAYOUT[i]))bad.append(bad.length()==0?"":", ").append(LAYOUT_NAMES[i]).append(" ").append(str(b)).append(" not ").append(str(LAYOUT[i]));}
                     int[] o=WarTable.origin();String ride=label();var t=WarTableHome.texts();
-                    report("p1-ui-home-layout",home(c)!=null&&bad.length()==0&&ride.equals("Ride to the war gates")&&o[0]==0&&o[1]==0&&CampaignClient.homeMode.equals("skirmish"),
-                        "canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", origin "+o[0]+","+o[1]+"; "+(bad.length()==0?"the 11 widget boxes as pinned":"wrong: "+bad)+"; the plate reads \""+ride+"\"; homeMode "+CampaignClient.homeMode+"; field card \""+t.get("field-name")+"\" / \""+t.get("field-rule")+"\" / \""+t.get("field-teams")+"\"");
+                    int[] drawnTable=WarTable.drawn().get("table"),drawnRail=WarTable.drawn().get("rail");var badges=WarTable.badges();
+                    boolean chrome=WarTable.drawnTable().equals("table/oak-table")&&Arrays.equals(drawnTable,new int[]{-160,-90,1280,720})&&drawnRail!=null&&drawnRail[2]==UiCanvas.width()&&drawnRail[3]==UiTex.entry("table/rail").h()&&Arrays.equals(WarTable.drawn().get("floor"),new int[]{0,0,UiCanvas.width(),UiCanvas.height()})&&Arrays.equals(WarTable.drawn().get("maproll"),new int[]{148,48,156,80});
+                    boolean badged=Integer.valueOf(WarTableHome.contractsBadge()).equals(badges.get("Contracts"))&&Integer.valueOf(WarTableHome.friendsBadge()).equals(badges.get("Friends"))&&badges.get("Camp")!=null&&badges.get("Camp")==0;
+                    report("p1-ui-home-layout",home(c)!=null&&bad.length()==0&&ride.equals("Ride to the war gates")&&o[0]==0&&o[1]==0&&CampaignClient.homeMode.equals("skirmish")&&chrome&&badged,
+                        "canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", origin "+o[0]+","+o[1]+"; "+(bad.length()==0?"the 11 widget boxes as pinned":"wrong: "+bad)+"; the plate reads \""+ride+"\"; homeMode "+CampaignClient.homeMode+"; drawChrome drew "+WarTable.drawnTable()+" at "+str(drawnTable)+", the rail "+str(drawnRail)+", badges "+badges+"; field card \""+t.get("field-name")+"\" / \""+t.get("field-rule")+"\" / \""+t.get("field-teams")+"\"");
                     shot(c,"ui-home");stage=3;
                 }
                 case 3->{ // p1-ui-home-party: solo, the local player's seat with the live model, then the Invite seat
                     var r=WarTableHome.rects();var pt=WarTableHome.portraits();String name=c.player.getGameProfile().getName();int[] invite=box(c,"invite");
                     boolean seat=Arrays.equals(r.get("seat-0"),new int[]{56,206,48,48})&&r.containsKey("ready-0")&&!r.containsKey("seat-1")&&name.equals(WarTableHome.texts().get("seat-0"));
-                    boolean model=pt.size()==1&&pt.get(0).model()&&pt.get(0).name().equals(name)&&pt.get(0).size()==32&&pt.get(0).feet()==282&&pt.get(0).x()==80;
+                    boolean model=pt.size()==1&&pt.get(0).model()&&pt.get(0).name().equals(name)&&pt.get(0).size()==32&&pt.get(0).feet()==282&&pt.get(0).x()==80&&Portrait.last()!=null&&Portrait.last().window()==40&&Portrait.last().tall()==0&&Portrait.last().size()==32&&Portrait.last().feet()==282&&Portrait.last().x()==80;
                     report("p1-ui-home-party",seat&&model&&invite!=null&&invite[1]==262&&Arrays.equals(r.get("invite"),invite),"seat-0 "+str(r.get("seat-0"))+" named \""+WarTableHome.texts().get("seat-0")+"\" (player "+name+"), ready check "+str(r.get("ready-0"))+", seat-1 "+str(r.get("seat-1"))+"; Invite seat "+str(invite)+" (drawn "+str(r.get("invite"))+"); portraits "+pt);
                     stage=4;
                 }
@@ -1958,6 +1982,7 @@ public final class Phase1Checks implements ClientModInitializer {
                         focusWhy+="; 10 ticks later (focus): practice "+str(r.get("practice"))+" (widget "+str(box(c,"practice"))+"), skirmish "+str(r.get("skirmish"))+" (widget "+str(box(c,"skirmish"))+"), seal "+str(r.get("seal"))+", ribbon "+str(r.get("ribbon"));}
                     else if(k==12){key(c,GLFW.GLFW_KEY_RIGHT);int a=h.focused;key(c,GLFW.GLFW_KEY_RIGHT);int b=h.focused;key(c,GLFW.GLFW_KEY_RIGHT);focusOk&=a==1&&b==2&&h.focused==2;focusWhy+="; Right, Right, Right: focused "+a+", "+b+", "+h.focused;}
                     else if(k==14){key(c,GLFW.GLFW_KEY_LEFT);key(c,GLFW.GLFW_KEY_LEFT);key(c,GLFW.GLFW_KEY_LEFT);focusOk&=h.focused==0&&CampaignClient.homeMode.equals("practice");focusWhy+="; Left three times: "+h.focused+" ("+CampaignClient.homeMode+")";}
+                    else if(k==30){boolean third=thirdSheetKeepsItsCurve(h);focusOk&=third;focusWhy+="; a third sheet still easing keeps its curve when the focus moves again: "+third;}
                     else if(k==40){var dir=c.runDirectory.toPath().resolve("screenshots");boolean mid=java.nio.file.Files.exists(dir.resolve("p1-ui-home-focus-mid.png")),done=java.nio.file.Files.exists(dir.resolve("p1-ui-home-focus.png"));
                         report("p1-ui-home-focus",focusOk&&mid&&done,focusWhy+"; p1-ui-home-focus-mid.png "+(mid?"saved":"missing")+", p1-ui-home-focus.png "+(done?"saved":"missing"));stage=5;}
                 }
@@ -2023,38 +2048,105 @@ public final class Phase1Checks implements ClientModInitializer {
                         for(int[] q:px){int x=px0[s]+q[0],y=py0[s]+q[1];pixels++;if(x<12||y<12||x>=w-12||y>=h-12)edge++;
                             for(int i=0;i<content.size();i++){int[] b=content.get(i);if(x>=b[0]&&y>=b[1]&&x<b[0]+b[2]&&y<b[1]+b[3]){under++;if(first.isEmpty())first=names.get(i)+" at "+x+","+y;}}}
                         if(edge>0||under>0)bad.append("; ").append(sheet[s]).append(" frame ").append(f).append(": ").append(edge).append(" px within 12 px of the edge, ").append(under).append(" under content").append(first.isEmpty()?"":" (first "+first+")");}
-                    boolean wood=WarTable.tableTexture("home").equals("table/oak-table")&&WarTable.tableTexture("recruit").equals("table/oak-table-recruit")&&WarTable.tableTexture("chapter").equals("table/oak-table");
+                    boolean wood=WarTable.tableTexture("home").equals("table/oak-table")&&WarTable.tableTexture("recruit").equals("table/oak-table-recruit")&&WarTable.tableTexture("chapter").equals("table/oak-table")&&WarTable.tableTexture("table/oak-table-recruit").equals("table/oak-table-recruit")&&WarTable.tableTexture("table/oak-table").equals("table/oak-table")&&WarTable.tableTexture("nonesuch").equals("table/oak-table");
                     var r=WarTableHome.rects();boolean drawn=r.containsKey("glow")&&r.containsKey("candle")&&r.containsKey("inkwell");
                     report("p1-ui-home-props",bad.length()==0&&pixels>0&&wood&&drawn,pixels+" solid prop pixels (the candle's 4 frames, the inkwell's 3) against the 12 px edge and "+content.size()+" content boxes (a full party of four, every sheet flat and raised, the field card, Ride, Last battle, the notice line, the rail, every widget)"+(bad.length()==0?": all clear":bad)
-                        +"; the wood: home "+WarTable.tableTexture("home")+", recruit "+WarTable.tableTexture("recruit")+", chapter (not painted yet) "+WarTable.tableTexture("chapter")+"; drawn: glow "+str(r.get("glow"))+", candle "+str(r.get("candle"))+", inkwell "+str(r.get("inkwell")));
-                    stage=12;
+                        +"; the wood: home "+WarTable.tableTexture("home")+", recruit "+WarTable.tableTexture("recruit")+" (or by name "+WarTable.tableTexture("table/oak-table-recruit")+"), chapter (not painted yet) "+WarTable.tableTexture("chapter")+", an unknown page "+WarTable.tableTexture("nonesuch")+"; drawn: glow "+str(r.get("glow"))+", candle "+str(r.get("candle"))+", inkwell "+str(r.get("inkwell")));
+                    stage=14;
                 }
-                case 12->{ // p1-ui-home-scales: 1280x720 at GUI 3 (canvas 1280x720), 854x480 at GUI 2 (smaller than the page), 1920x1080 at GUI 2
+                case 14->{ // p1-ui-home-notice: a refusal sent again shows again; a notice already waiting when the table opens stays hidden
+                    int k=since(tick);var h=home(c);if(h==null){report("p1-ui-home-notice",false,noticeWhy+"; the home closed at step "+k);stage=15;return;}
+                    if(k==0){click(c,box(c,"practice"));h.screen.action("social:room");noticeWhy="Practice chosen ("+CampaignClient.homeMode+"), a private room asked for";}
+                    else if(k==12){
+                        if(!serverRoom||!CampaignClient.homeMode.equals("practice")){noticeOk=false;noticeWhy+="; no private room ("+serverRoom+") or Practice not chosen ("+CampaignClient.homeMode+"): Enter not pressed";stage=15;report("p1-ui-home-notice",false,noticeWhy);return;}
+                        noticeFirst=h.noticeAt;key(c,GLFW.GLFW_KEY_ENTER);}
+                    else if(k==26){String t1=WarTableHome.texts().get("notice");noticeSecond=h.noticeAt;
+                        noticeOk&=PRACTICE_SOLO.equals(t1)&&noticeSecond>noticeFirst;noticeWhy+="; the first Ride: the line reads \""+t1+"\", shown at tick "+noticeSecond+" (was "+noticeFirst+")";key(c,GLFW.GLFW_KEY_ENTER);}
+                    else if(k==40){String t2=WarTableHome.texts().get("notice");boolean again=h.noticeAt>noticeSecond;
+                        noticeOk&=PRACTICE_SOLO.equals(t2)&&again;noticeWhy+="; the same refusal again: the line reads \""+t2+"\", shown again at tick "+h.noticeAt+" (was "+noticeSecond+"), "+(again?"it showed anew":"it did not show anew");
+                        click(c,box(c,"skirmish"));h.screen.action("social:exit");}
+                    else if(k==60){CampScreen.open("home");}
+                    else if(k==72){String stale=WarTableHome.texts().get("notice");boolean hidden=stale==null&&home(c)!=null&&!serverRoom;
+                        noticeOk&=hidden;noticeWhy+="; the room left and the table opened again: "+(stale==null?"no notice shown (the one waiting is stale)":"\""+stale+"\" shown")+", room open "+serverRoom;
+                        report("p1-ui-home-notice",noticeOk,noticeWhy);stage=15;}
+                }
+                case 15->{ // p1-ui-home-badges: the Contracts badge counts the Claim buttons the Contracts page would show, the Friends badge a waiting invitation
+                    int k=since(tick);var h=home(c);if(h==null){report("p1-ui-home-badges",false,"the home closed");stage=16;return;}
+                    if(k==0)oldProgression=CampaignClient.profile.progression;
+                    if(k<=6){ // put in again each tick: the camp snapshot, every 10 ticks, puts the server's profile and party back
+                        var st=new Progression.State();st.sanitize();st.dailyBattles=3;st.weeklyBattles=Progression.WEEKLY_BATTLES;st.claims.add("daily:0");
+                        CampaignClient.profile.progression=st;CampaignClient.party.addProperty("inviteSeconds",30);h.screen.rebuild();
+                    }
+                    if(k>=1&&k<=7){var bd=WarTable.badges();
+                        if(Integer.valueOf(2).equals(bd.get("Contracts"))&&Integer.valueOf(1).equals(bd.get("Friends"))&&WarTableHome.contractsBadge()==2&&Integer.valueOf(0).equals(bd.get("Recruit"))){badgesOk=true;badgesWhy="drawn "+bd+" with daily 1 and the weekly claimable, daily 0 claimed, daily 2 unfinished, an invitation waiting";}}
+                    if(k==8){CampaignClient.profile.progression=oldProgression;CampaignClient.party.addProperty("inviteSeconds",0);h.screen.rebuild();
+                        report("p1-ui-home-badges",badgesOk,badgesOk?badgesWhy:"the badges never read Contracts 2 and Friends 1: "+WarTable.badges());stage=16;}
+                }
+                case 16->{ // p1-ui-home-last: a result id puts Last battle under the field card, clear of Change and Ride; it stays for the scales
+                    int k=since(tick);var h=home(c);if(h==null){report("p1-ui-home-last",false,"the home closed");stage=12;return;}
+                    if(k==0){oldResult=CampaignClient.result;fakeResult=new JsonObject();fakeResult.addProperty("id","ui-home-fix1");CampaignClient.result=fakeResult;h.screen.rebuild();}
+                    else if(k==10){
+                        int[] last=box(c,"last"),change=box(c,"change"),ride=box(c,"ride"),card=WarTableHome.rects().get("field");var r=WarTableHome.rects();
+                        boolean placed=Arrays.equals(last,new int[]{792,392,88,24});
+                        boolean clear=last!=null&&change!=null&&ride!=null&&card!=null&&!overlap(last,change)&&!overlap(last,ride)&&!overlap(last,card)&&inside(last,UiCanvas.width(),UiCanvas.height());
+                        boolean drawn=Arrays.equals(r.get("last"),last)&&"Last battle".equals(WarTableHome.texts().get("last"));
+                        shot(c,"ui-home-last");
+                        var s=(CampScreen)c.currentScreen;click(c,last);boolean opens=s.page.equals("results");s.page("home"); // put back before a frame draws a result that has only an id
+                        report("p1-ui-home-last",placed&&clear&&drawn&&opens,"Last battle "+str(last)+" (pinned 792,392,88,24), drawn "+str(r.get("last"))+" reading \""+WarTableHome.texts().get("last")+"\"; Change "+str(change)+", Ride "+str(ride)+", field card "+str(card)+": "+(clear?"clear of all three and inside the canvas":"overlapping or outside")+"; a click opens "+(opens?"Results":"nothing"));
+                        stage=12;}
+                }
+                case 12->{ // p1-ui-home-scales: 1280x720 at GUI 3 (canvas 1280x720), 854x480 at GUI 2 (smaller than the page), 1920x1080 at GUI 2, then canvases larger than the table: 1920x974 and 1920x1080 at GUI 1
                     int k=since(tick);
                     if(k==0){window(c,1280,720,3);return;}
                     if(k==20){int[] o=WarTable.origin();var r=WarTableHome.rects();int[] t=r.get("table"),rail=r.get("rail"),ride=box(c,"ride");int w=UiCanvas.width(),h=UiCanvas.height();
                         boolean covers=t!=null&&t[0]<=0&&t[1]<=0&&t[0]+t[2]>=w&&t[1]+t[3]>=h;
                         boolean props=r.containsKey("candle")&&r.containsKey("inkwell")&&r.containsKey("glow");
-                        scalesOk&=home(c)!=null&&w==1280&&h==720&&o[0]==160&&o[1]==90&&Arrays.equals(ride,new int[]{520,478,240,40})&&rail!=null&&rail[2]==1280&&covers&&props;
+                        scalesOk&=home(c)!=null&&w==1280&&h==720&&o[0]==160&&o[1]==90&&Arrays.equals(ride,new int[]{520,478,240,40})&&rail!=null&&rail[2]==1280&&covers&&props&&box(c,"last")!=null;
                         scalesWhy="1280x720 GUI 3: canvas "+w+"x"+h+" (k "+UiCanvas.k()+"), origin "+o[0]+","+o[1]+", ride "+str(ride)+", rail "+str(rail)+", table "+str(t)+(covers?" covers the canvas":" leaves a gap")+", candle "+str(r.get("candle"))+", inkwell "+str(r.get("inkwell"));shot(c,"ui-home-720");return;}
                     if(k==22){window(c,854,480,2);return;}
                     if(k==42){int w=UiCanvas.width(),h=UiCanvas.height();var b=boxes(c);List<String> out=new ArrayList<>(),over=new ArrayList<>();var keys=new ArrayList<>(b.keySet());
                         for(int i=0;i<keys.size();i++){if(!inside(b.get(keys.get(i)),w,h))out.add(keys.get(i)+" "+str(b.get(keys.get(i))));for(int j=i+1;j<keys.size();j++)if(overlap(b.get(keys.get(i)),b.get(keys.get(j))))over.add(keys.get(i)+"/"+keys.get(j));}
                         var r=WarTableHome.rects();boolean cut=r.containsKey("candle")||r.containsKey("inkwell")||r.containsKey("glow"); // the props would cross the edge: left off
-                        scalesOk&=home(c)!=null&&w==854&&h==480&&b.size()>=12&&out.isEmpty()&&over.isEmpty()&&!cut;
-                        scalesWhy+="; 854x480 GUI 2: canvas "+w+"x"+h+", origin "+Arrays.toString(WarTable.origin())+", "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+", props "+(cut?"drawn across the edge: candle "+str(r.get("candle"))+", inkwell "+str(r.get("inkwell")):"left off (they would cross the 12 px edge)");shot(c,"ui-home-small");return;}
+                        // the field card at x 752 of the page lands on canvas 699 to 866 of 854: its last 13 columns, its shadow and its right tack are off the canvas (accepted for this task; docs/PARKED.md, Task 8: a compact layout)
+                        int[] field=r.get("field");boolean cropped=Arrays.equals(field,new int[]{699,158,168,188})&&field[0]+field[2]-w==13;
+                        scalesOk&=home(c)!=null&&w==854&&h==480&&b.size()>=12&&out.isEmpty()&&over.isEmpty()&&!cut&&cropped;
+                        scalesWhy+="; 854x480 GUI 2: canvas "+w+"x"+h+", origin "+Arrays.toString(WarTable.origin())+", "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+", props "+(cut?"drawn across the edge: candle "+str(r.get("candle"))+", inkwell "+str(r.get("inkwell")):"left off (they would cross the 12 px edge)")
+                            +", field card "+str(field)+(field==null?"":" runs "+(field[0]+field[2]-w)+" columns past the right edge")+" (pinned: 13)";shot(c,"ui-home-small");return;}
                     if(k==44){window(c,1920,1080,2,true);return;}
                     if(k==64){int[] o=WarTable.origin();boolean same=Arrays.equals(box(c,"ride"),LAYOUT[10])&&Arrays.equals(box(c,"camp"),LAYOUT[0]);
                         scalesOk&=home(c)!=null&&UiCanvas.k()==2&&UiCanvas.width()==960&&UiCanvas.height()==540&&o[0]==0&&o[1]==0&&same;
-                        scalesWhy+="; 1920x1080 GUI 2 (borderless): k "+UiCanvas.k()+", canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", camp "+str(box(c,"camp"))+", ride "+str(box(c,"ride"));shot(c,"ui-home-1080");
+                        scalesWhy+="; 1920x1080 GUI 2 (borderless): k "+UiCanvas.k()+", canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", camp "+str(box(c,"camp"))+", ride "+str(box(c,"ride"));shot(c,"ui-home-1080");return;}
+                    if(k==66){window(c,1920,974,1,true);return;}
+                    if(k==86){scalesWhy+="; "+bigCanvas(c,1920,974,"ui-home-1920x974");return;}
+                    if(k==88){window(c,1920,1080,1,true);return;}
+                    if(k==108){scalesWhy+="; "+bigCanvas(c,1920,1080,"ui-home-1920x1080-gui1");
                         report("p1-ui-home-scales",scalesOk,scalesWhy);end(c);}
                 }
                 case 99->{stage=100;finish(c,"ui-home");}
                 default->{}
             }
         }
+        /** A canvas larger than the table (a maximized window on a 1080p screen, 1920x1080 at GUI 1): the page stays centred, the floor
+         *  shows round the planks with the table's shadow on it, the rail runs the width, every widget is inside and the props are drawn.
+         *  Reads the framebuffer's pixels for the floor and the shadow. Returns the line for the report and clears scalesOk when wrong. */
+        String bigCanvas(MinecraftClient c,int w,int h,String shotName){
+            int cw=UiCanvas.width(),ch=UiCanvas.height(),k=UiCanvas.k();int[] o=WarTable.origin();var r=WarTableHome.rects();var b=boxes(c);
+            int tx=(cw-1280)/2,ty=(ch-720)/2,floor=DarkUi.FLOOR&0xffffff;
+            List<String> out=new ArrayList<>(),over=new ArrayList<>();var keys=new ArrayList<>(b.keySet());
+            for(int i=0;i<keys.size();i++){if(!inside(b.get(keys.get(i)),cw,ch))out.add(keys.get(i));for(int j=i+1;j<keys.size();j++)if(overlap(b.get(keys.get(i)),b.get(keys.get(j))))over.add(keys.get(i)+"/"+keys.get(j));}
+            int[] t=r.get("table"),rail=r.get("rail");
+            boolean placed=cw==w&&ch==h&&k==1&&o[0]==(w-960)/2&&o[1]==(h-540)/2&&Arrays.equals(t,new int[]{tx,ty,1280,720})&&Arrays.equals(r.get("floor"),new int[]{0,0,cw,ch})&&rail!=null&&rail[2]==cw&&Arrays.equals(box(c,"ride"),new int[]{o[0]+360,o[1]+388,240,40});
+            boolean props=r.containsKey("candle")&&r.containsKey("inkwell")&&r.containsKey("glow")&&!r.containsKey("maproll"); // the rolled map hangs from the rail, which is over bare floor here: it is left off
+            int farLeft=pixel(c,tx/2,ch/2),shadow1=pixel(c,tx-1,ch/2),shadow4=pixel(c,tx-4,ch/2),beyond=pixel(c,tx-5,ch/2),plank=pixel(c,tx+8,ch/2),below=pixel(c,cw/2,ty+720),farBelow=pixel(c,cw/2,ty+720+WarTable.SHADOW+1);
+            boolean floorOk=farLeft==floor&&beyond==floor&&darker(shadow1,floor)&&shadow4!=floor&&darker(below,floor)&&farBelow==floor&&plank!=floor&&plank!=shadow1;
+            boolean ok=placed&&out.isEmpty()&&over.isEmpty()&&props&&floorOk&&b.size()>=13;
+            scalesOk&=ok;shot(c,shotName);
+            return w+"x"+h+" GUI 1: canvas "+cw+"x"+ch+" (k "+k+"), origin "+o[0]+","+o[1]+", table "+str(t)+" (the canvas does not stop at the planks: "+tx+" px of floor left and right, "+ty+" above and below), rail "+str(rail)+", ride "+str(box(c,"ride"))+", "+b.size()+" widgets, outside "+out+", overlapping "+over+", props "
+                +(props?"drawn, the rolled map left off (the rail is over bare floor)":"missing or the rolled map hanging over the floor")+"; pixels: far left "+hex(farLeft)+", shadow beside the planks "+hex(shadow1)+" to "+hex(shadow4)+", floor again "+hex(beyond)+", below the planks "+hex(below)+" then "+hex(farBelow)+", plank "+hex(plank)+" (floor "+hex(floor)+")"+(ok?"":" WRONG");
+        }
+        static String hex(int rgb){return rgb<0?"none":String.format("%06x",rgb);}
         /** Closes the table, puts the session's sheet back on Skirmish and the window as the suite found it; p1-ui-home-suite follows. */
-        void end(MinecraftClient c){finished=true;c.setScreen(null);CampaignClient.homeMode="skirmish";if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;}
+        void end(MinecraftClient c){finished=true;fakeResult=null;if(oldResult!=null)CampaignClient.result=oldResult;c.setScreen(null);CampaignClient.homeMode="skirmish";if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;}
     }
 
     /** UI polish M11, the last suite listed (it leaves the world): a disconnect empties what the battle HUD keeps between frames. A

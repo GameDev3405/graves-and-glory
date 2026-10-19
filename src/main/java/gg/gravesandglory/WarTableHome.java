@@ -49,8 +49,9 @@ final class WarTableHome {
     /** The props at the table's edges (page coordinates of each frame's top left), at the kit's pixel scale (Kort, 2026-10-18
      *  late), and their solid parts {x, y, w, h} inside a frame: the flame, wax, brass, glass, quill and ink drops, not the
      *  light or the shadows. Solid parts stay 12 px inside the page and clear of the content: the candle, burned low, stands
-     *  under a full party of four, the inkwell under the Last battle tag. FLAME is kit_props.FLAME_AT, where the light centres. */
-    static final int CANDLE_X = 48, CANDLE_Y = 422, INKWELL_X = 812, INKWELL_Y = 386, GLOW_W = 381, GLOW_H = 301;
+     *  under a full party of four, the inkwell under the Last battle tag. FLAME is kit_props.FLAME_AT, where the light centres:
+     *  tools/build_ui_art.py --verify fails when the two differ. */
+    static final int CANDLE_X = 48, CANDLE_Y = 422, INKWELL_X = 812, INKWELL_Y = 386;
     static final int[] CANDLE_SOLID = {8, 10, 102, 96}, INKWELL_SOLID = {8, 5, 120, 137}, FLAME = {50, 26};
     /** How far inside the canvas edge a prop's solid part keeps. On a canvas smaller than the page (the default 854x480 window)
      *  a prop that would come closer is left off, with its light, rather than cut by the edge. */
@@ -84,18 +85,18 @@ final class WarTableHome {
     private static final Map<String, String> texts = Collections.unmodifiableMap(textsDrawn);
     private static final List<PortraitDraw> portraits = Collections.unmodifiableList(portraitsDrawn);
 
-    /** Boxes {x,y,w,h} in canvas px: table, rail, glow, candle (its solid part), inkwell (its solid part), seat-(i), ready-(i),
+    /** Boxes {x,y,w,h} in canvas px: floor, table, maproll and rail (as WarTable.drawChrome drew them), glow, candle (its solid part), inkwell (its solid part), seat-(i), ready-(i),
      *  invite, practice, skirmish and campaign (the sheets as drawn this frame, between their flat and raised boxes), seal,
-     *  ribbon, field, ride-label and notice. */
+     *  ribbon, field, last, ride-label and notice. */
     static Map<String, int[]> rects() { return rects; }
     /** Words drawn: seat-(i), field-name, field-rule, field-teams, ride (the plate's label as drawn) and notice. */
     static Map<String, String> texts() { return texts; }
     static List<PortraitDraw> portraits() { return portraits; }
 
     final CampScreen screen;
-    /** The raised sheet, 0 to 2, and the client tick it took the focus (the animation runs from its partial tick, focusStart). */
+    /** The raised sheet, 0 to 2, and the table clock (ticks plus the partial tick) when it took the focus: the seal and the
+     *  ribbon run from it. */
     int focused;
-    long focusedAt = -1000;
     double focusStart = -1000;
     /** Per sheet: its rise when its last change began, where it is going (0 flat, 1 raised) and when that change began. */
     final float[] from = new float[3], to = new float[3];
@@ -104,7 +105,10 @@ final class WarTableHome {
     long ticks;
     double stampedFor = -1000, glintAt = 0, quillAt = -1000;
     long quillNext;
-    String noticeSeen;
+    /** The server's notice serial the table has shown, the notice it showed and the tick it appeared: a notice shows when the
+     *  serial moves, so the same text sent again shows again, and one already waiting when the table opened stays hidden. */
+    int noticeSerialSeen;
+    String noticeText = "";
     long noticeAt = -1000;
     int builtFriends = -1;
     final Random random = new Random();
@@ -116,7 +120,7 @@ final class WarTableHome {
         this.screen = screen;
         focused = Math.max(0, Arrays.asList(MODES).indexOf(CampaignClient.homeMode));
         for (int i = 0; i < 3; i++) from[i] = to[i] = i == focused ? 1 : 0;
-        noticeSeen = CampaignClient.notice;
+        noticeSerialSeen = CampaignClient.noticeSerial;
         quillNext = nextTwitch();
     }
 
@@ -171,10 +175,11 @@ final class WarTableHome {
     void focus(int i) {
         if (i == focused || i < 0 || i > 2) return;
         double now = clock();
-        for (int k = 0; k < 3; k++) from[k] = rise(k, now);
-        to[focused] = 0; changedAt[focused] = now;
+        int old = focused; // only the two sheets whose change restarts are rebased; a third one still easing keeps its curve
+        from[old] = rise(old, now); from[i] = rise(i, now);
+        to[old] = 0; changedAt[old] = now;
         to[i] = 1; changedAt[i] = now;
-        focused = i; focusedAt = ticks; focusStart = now;
+        focused = i; focusStart = now;
         CampaignClient.homeMode = MODES[i];
         placeSheets();
         if (ride != null) ride.setMessage(Text.literal(rideLabel()));
@@ -211,8 +216,8 @@ final class WarTableHome {
     static int contractsBadge() {
         var p = CampaignClient.profile.progression;
         int n = 0;
-        for (int i = 0; i < 3; i++) if (Progression.progress(p, i) >= Progression.target(p, i) && !p.claims.contains("daily:" + i)) n++;
-        if (p.weeklyBattles >= 6 && !p.claims.contains("weekly")) n++;
+        for (int i = 0; i < 3; i++) if (Progression.claimable(p, "daily:" + i)) n++;
+        if (Progression.claimable(p, "weekly")) n++;
         return n;
     }
 
@@ -249,7 +254,10 @@ final class WarTableHome {
     void tick() {
         ticks++;
         if (friendsBadge() != builtFriends) screen.rebuild();
-        if (!Objects.equals(CampaignClient.notice, noticeSeen)) { noticeSeen = CampaignClient.notice; if (!noticeSeen.isEmpty()) noticeAt = ticks; }
+        if (CampaignClient.noticeSerial != noticeSerialSeen) {
+            noticeSerialSeen = CampaignClient.noticeSerial; noticeText = CampaignClient.notice;
+            if (!noticeText.isEmpty()) noticeAt = ticks;
+        }
         if (ticks >= quillNext) { quillAt = ticks; quillNext = nextTwitch(); }
     }
 
@@ -280,12 +288,10 @@ final class WarTableHome {
         double now = clock();
         UiCanvas.begin(g);
         try {
-            int w = UiCanvas.width(), h = UiCanvas.height();
             int[] o = WarTable.origin();
             int ox = o[0], oy = o[1];
             WarTable.drawChrome(g, "home");
-            rectsDrawn.put("table", new int[]{(w - 1280) / 2, (h - 720) / 2, 1280, 720});
-            rectsDrawn.put("rail", new int[]{0, 0, w, 66});
+            rectsDrawn.putAll(WarTable.drawn()); // floor, table, maproll and rail, as drawChrome drew them
             props(g, ox, oy, now);
             party(g, ox, oy);
             field(g, ox + FIELD_X, oy + FIELD_Y);
@@ -303,7 +309,8 @@ final class WarTableHome {
     /** The candle's light under everything, breathing; the candle on its flame frame; the inkwell on its quill frame. Each prop
      *  draws only where its solid part keeps PROP_EDGE inside the canvas. */
     void props(DrawContext g, int ox, int oy, double now) {
-        int cx = ox + CANDLE_X, cy = oy + CANDLE_Y, gx = cx + FLAME[0] - GLOW_W / 2, gy = cy + FLAME[1] - GLOW_H / 2;
+        var glow = UiTex.entry("table/prop-glow"); // the light's size is the atlas's
+        int cx = ox + CANDLE_X, cy = oy + CANDLE_Y, gx = cx + FLAME[0] - glow.w() / 2, gy = cy + FLAME[1] - glow.h() / 2;
         int[] candle = {cx + CANDLE_SOLID[0], cy + CANDLE_SOLID[1], CANDLE_SOLID[2], CANDLE_SOLID[3]};
         int[] inkwell = {ox + INKWELL_X + INKWELL_SOLID[0], oy + INKWELL_Y + INKWELL_SOLID[1], INKWELL_SOLID[2], INKWELL_SOLID[3]};
         if (inside(candle)) {
@@ -311,7 +318,7 @@ final class WarTableHome {
             RenderSystem.setShaderColor(1, 1, 1, breath);
             try { UiTex.draw(g, "table/prop-glow", gx, gy); } finally { RenderSystem.setShaderColor(1, 1, 1, 1); }
             UiTex.frame(g, "table/prop-candle", (int) (ticks / FLAME_TICKS) % 4, cx, cy);
-            rectsDrawn.put("glow", new int[]{gx, gy, GLOW_W, GLOW_H});
+            rectsDrawn.put("glow", new int[]{gx, gy, glow.w(), glow.h()});
             rectsDrawn.put("candle", candle);
         }
         if (inside(inkwell)) {
@@ -341,7 +348,8 @@ final class WarTableHome {
             if (!m.me() && c.world != null) for (var p : c.world.getPlayers()) if (p.getGameProfile().getName().equals(m.name())) e = p;
             if (e != null) {
                 Portrait.draw(g, e, x + 4, y + 4, 40, 0);
-                portraitsDrawn.add(new PortraitDraw(m.name(), x + 24, y + 4 + UiMath.portraitFeet(40, 0), UiMath.portraitSize(40, 0), true));
+                var d = Portrait.last(); // what reached drawEntity
+                portraitsDrawn.add(new PortraitDraw(m.name(), d.x(), d.feet(), d.size(), true));
             } else {
                 var entry = c.getNetworkHandler() == null ? null : c.getNetworkHandler().getPlayerListEntry(m.name());
                 if (entry != null) {
@@ -482,6 +490,8 @@ final class WarTableHome {
         var label = DarkUi.heading("Last battle");
         int lx = centred(g, label, x + 44, y + 6, DarkUi.INK_TEXT);
         if (hot) g.fill(lx, y + 18, lx + font.getWidth(label), y + 19, DarkUi.INK_TEXT);
+        rectsDrawn.put("last", new int[]{x, y, w, h});
+        textsDrawn.put("last", "Last battle");
     }
 
     /** The one primary action: brass with the Enter key and the label, or iron and idle while a battle runs. */
@@ -515,10 +525,10 @@ final class WarTableHome {
     /** A notice the server sent while the table is open (a refusal, the map being prepared), under the Ride plate. */
     void notice(DrawContext g, int ox, int oy) {
         long age = ticks - noticeAt;
-        if (noticeSeen == null || noticeSeen.isEmpty() || age >= NOTICE_TICKS + NOTICE_FADE_TICKS) return;
+        if (noticeText.isEmpty() || age >= NOTICE_TICKS + NOTICE_FADE_TICKS) return;
         var font = MinecraftClient.getInstance().textRenderer;
         float fade = age < NOTICE_TICKS ? 1 : 1 - (age - NOTICE_TICKS) / (float) NOTICE_FADE_TICKS;
-        String text = UiMath.trim(HintText.expand(noticeSeen, GravesAndGloryClient::hint), 440, s -> font.getWidth(DarkUi.body(s)));
+        String text = UiMath.trim(HintText.expand(noticeText, GravesAndGloryClient::hint), 440, s -> font.getWidth(DarkUi.body(s)));
         int alpha = Math.max(4, Math.round(fade * 255));
         int x = centred(g, DarkUi.body(text), ox + 480, oy + 440, (alpha << 24) | (DarkUi.IVORY & 0xffffff));
         textsDrawn.put("notice", text);

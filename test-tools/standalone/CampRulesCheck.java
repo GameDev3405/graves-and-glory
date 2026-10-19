@@ -35,10 +35,13 @@ public final class CampRulesCheck {
   check(Progression.claim(s,"daily:0").gold()==0,"Unfinished contract cannot claim");
   Progression.match(s,"round-1",true,true);int xp=s.xp;Progression.match(s,"round-1",true,true);check(s.xp==xp&&s.dailyBattles==1,"Duplicate match cannot grant twice");
   Progression.match(s,"short",true,false);check(s.xp==xp,"Short battle gives no progression");
-  check(Progression.claim(s,"daily:0").gold()==30,"Completed daily pays once");check(Progression.claim(s,"daily:0").gold()==0,"Repeated claim blocked");
+  check(Progression.claimable(s,"daily:0")&&!Progression.claimable(s,"daily:1")&&!Progression.claimable(s,"daily:00"),"claimable names the finished daily and only it");
+  check(Progression.claim(s,"daily:0").gold()==30,"Completed daily pays once");check(!Progression.claimable(s,"daily:0"),"A claimed daily is no longer claimable");check(Progression.claim(s,"daily:0").gold()==0,"Repeated claim blocked");
   check(Progression.claim(s,"daily:00").gold()==0&&Progression.claim(s,"daily:+0").gold()==0,"Alternate numeric spellings cannot bypass claim ledger");
   Progression.reset(s,day.minusDays(1));check(s.claims.contains("daily:0"),"Clock rollback does not reopen claims");
   Progression.reset(s,day.plusDays(1));check(s.dailyBattles==0&&!s.claims.contains("daily:0")&&s.weeklyBattles==1,"Daily reset retains weekly progress");
+  s.weeklyBattles=Progression.WEEKLY_BATTLES-1;check(!Progression.claimable(s,"weekly")&&Progression.claim(s,"weekly").gold()==0,"The weekly needs "+Progression.WEEKLY_BATTLES+" battles");
+  s.weeklyBattles=Progression.WEEKLY_BATTLES;check(Progression.claimable(s,"weekly")&&Progression.claim(s,"weekly").gold()==150&&!Progression.claimable(s,"weekly"),"The weekly pays once at "+Progression.WEEKLY_BATTLES+" battles");
   Progression.reroll(s);check(s.rerolled&&Progression.target(s,2)==10,"Free reroll substitutes achievable orders quest");check(Progression.reroll(s).contains("already"),"Only one free reroll");
   s.xp=7500;check(Progression.tier(s)==30,"Chapter has a defined tier-30 endpoint");int gold=0;for(int i=1;i<=30;i++)gold+=Progression.claim(s,"founders:"+i).gold();
   check(gold==600&&s.titles.size()==7&&s.titles.contains("Bannerlord"),"Complete track pays 600 gold and six distinct titles");

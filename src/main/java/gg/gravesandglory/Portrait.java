@@ -17,6 +17,12 @@ final class Portrait {
     /** The camera's tilt below eye level, in degrees, built as vanilla's mouse overload builds its X tilt. */
     static final float TILT = 5f;
 
+    /** What the last draw passed to InventoryScreen.drawEntity: the window's centre x, the feet y and the model size, in canvas
+     *  px, with the window's size and the extra model pixels it was asked for. Null before the first draw. */
+    record Drawn(int x, int feet, int size, int window, int tall) {}
+    private static Drawn last;
+    static Drawn last() { return last; }
+
     /** Draws e in the window (x, y, window x window), scissored to it; tall is the extra model pixels of a tall unit (0 for a
      *  player). The entity's yaws and pitch are put back as they were. Other players' name labels stay off, as the HUD does. */
     static void draw(DrawContext g, LivingEntity e, int x, int y, int window, int tall) {
@@ -29,7 +35,9 @@ final class Portrait {
         try {
             e.bodyYaw = YAW; e.setYaw(YAW); e.setPitch(0); e.headYaw = YAW; e.prevHeadYaw = YAW;
             c.options.hudHidden = true; // LivingEntityRenderer.hasLabel asks MinecraftClient.isHudEnabled()
-            InventoryScreen.drawEntity(g, x + window / 2, y + UiMath.portraitFeet(window, tall), UiMath.portraitSize(window, tall), body, camera, e);
+            int cx = x + window / 2, feet = y + UiMath.portraitFeet(window, tall), size = UiMath.portraitSize(window, tall);
+            last = new Drawn(cx, feet, size, window, tall);
+            InventoryScreen.drawEntity(g, cx, feet, size, body, camera, e);
         } finally {
             c.options.hudHidden = hudHidden;
             e.bodyYaw = bodyYaw; e.setYaw(yaw); e.setPitch(pitch); e.prevHeadYaw = prevHead; e.headYaw = head;

@@ -124,7 +124,7 @@ final class CampScreen extends ArmyScreen {
                 int[] count={0,0};for(var e:rows("commanders")){var r=e.getAsJsonObject();int team=r.get("team").getAsInt();line(g,r.get("name").getAsString()+" / "+(!r.get("online").getAsBoolean()?"reconnecting":r.get("ready").getAsBoolean()?"READY":"not ready"),x+team*(w/2),193+count[team]++*24,DarkUi.PAPER,w/2-10);}}
         }else if(page.equals("contracts")){
             for(int i=0;i<3;i++){int y=128+i*65;line(g,Progression.contract(progress,i),x,y,DarkUi.PAPER,w-110);line(g,Math.min(Progression.progress(progress,i),Progression.target(progress,i))+" / "+Progression.target(progress,i)+"  |  "+(i==1?40:30)+" gold + 75 XP"+(progress.claims.contains("daily:"+i)?" / CLAIMED":""),x,y+21,DarkUi.MUTED,w-110);}
-            line(g,"Weekly: "+progress.weeklyBattles+" / 6 battles / 150 gold + 300 XP",x,358,DarkUi.PAPER,w-140);line(g,"Daily reset 00:00 UTC / weekly reset Monday 00:00 UTC",x,386,DarkUi.MUTED,w);
+            line(g,"Weekly: "+progress.weeklyBattles+" / "+Progression.WEEKLY_BATTLES+" battles / 150 gold + 300 XP",x,358,DarkUi.PAPER,w-140);line(g,"Daily reset 00:00 UTC / weekly reset Monday 00:00 UTC",x,386,DarkUi.MUTED,w);
         }else if(page.equals("chapter")){
             line(g,"Tier "+Progression.tier(progress)+" / 30  |  "+Math.min(progress.xp,7500)+" / 7500 XP  |  Free; no expiry",x,108,DarkUi.PAPER,w);
             for(int i=0;i<10;i++){int tier=offset+i+1;String reward=tier%5==0?Progression.TITLES[tier/5-1]+" title":"25 gold";line(g,reward+(progress.claims.contains("founders:"+tier)?" / claimed":Progression.tier(progress)<tier?" / locked":" / earned"),x+(i%2)*(w/2)+4,146+(i/2)*45,DarkUi.MUTED,w/2-16);}
@@ -142,7 +142,7 @@ final class CampScreen extends ArmyScreen {
                 g.fill(x,y+11,x+half,y+15,DarkUi.TRACK);g.fill(x,y+11,x+(int)(half*(tier==30?1:(xp%250)/250f)),y+15,DarkUi.GOLD);
                 line(g,tier==30?"Chapter complete. Troops and titles stay yours.":"Next: tier "+(tier+1)+" / "+((tier+1)%5==0?Progression.TITLES[(tier+1)/5-1]+" title":"25 gold")+" / "+(250-xp%250)+" XP to go",x,y+19,DarkUi.PAPER,half);
                 for(int i=0;i<3;i++)line(g,Progression.contract(progress,i)+"  "+Math.min(Progression.progress(progress,i),Progression.target(progress,i))+"/"+Progression.target(progress,i)+(progress.claims.contains("daily:"+i)?" / claimed":Progression.progress(progress,i)>=Progression.target(progress,i)?" / READY TO CLAIM":""),right,y+i*11,DarkUi.MUTED,half);
-                line(g,"Weekly battles: "+Math.min(progress.weeklyBattles,6)+"/6"+(progress.claims.contains("weekly")?" / claimed":progress.weeklyBattles>=6?" / READY TO CLAIM":""),right,y+33,DarkUi.MUTED,half);
+                line(g,"Weekly battles: "+Math.min(progress.weeklyBattles,Progression.WEEKLY_BATTLES)+"/"+Progression.WEEKLY_BATTLES+(progress.claims.contains("weekly")?" / claimed":Progression.claimable(progress,"weekly")?" / READY TO CLAIM":""),right,y+33,DarkUi.MUTED,half);
             }
         }else if(page.equals("match")){
             line(g,"Dawn "+CampaignClient.padDawn+" / 4   |   Dusk "+CampaignClient.padDusk+" / 4   |   "+CampaignClient.padCountdown+"s",x,116,DarkUi.GOLD,w);

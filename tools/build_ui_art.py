@@ -104,6 +104,18 @@ def fail(why):
     sys.exit(1)
 
 
+def check_flame():
+    """the candle's flame point is drawn into the art, so the Java that centres the light on it copies it: the two must agree"""
+    sys.path.insert(0, str(ART))
+    import kit_props
+    src = (ROOT / 'src/main/java/gg/gravesandglory/WarTableHome.java').read_text(encoding='utf-8')
+    m = re.search(r'\bFLAME\s*=\s*\{\s*(\d+)\s*,\s*(\d+)\s*\}', src)
+    if not m:
+        fail('WarTableHome.java has no FLAME = {x, y} to check against kit_props.FLAME_AT')
+    if (int(m.group(1)), int(m.group(2))) != tuple(kit_props.FLAME_AT):
+        fail('WarTableHome.FLAME is {%s, %s}; kit_props.FLAME_AT is %s' % (m.group(1), m.group(2), tuple(kit_props.FLAME_AT)))
+
+
 def verify():
     from PIL import Image
     with tempfile.TemporaryDirectory() as tmp:
@@ -135,6 +147,7 @@ def verify():
             for name in NAME_IN_JAVA.findall(path.read_text(encoding='utf-8')):
                 if name not in fresh['textures']:
                     fail('%s names texture "%s", which atlas.json lacks' % (path.relative_to(ROOT).as_posix(), name))
+    check_flame()
     print('build_ui_art: %d textures verified' % len(fresh['textures']))
 
 

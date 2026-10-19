@@ -29,14 +29,23 @@ final class Progression {
         while(s.matchGrants.size()>256)s.matchGrants.remove(s.matchGrants.iterator().next());
         s.totalBattles++;s.dailyBattles++;s.weeklyBattles++;if(won)s.totalWins++;
         int xp=won?150:100;s.xp=Math.min(1_000_000,s.xp+xp);return new Grant(0,xp,"Battle progress saved.");}
+    /** Battles in a week for the weekly contract. */
+    static final int WEEKLY_BATTLES=6;
+    /** Why key cannot be claimed now ("" when it can): the one place the claim rules live, for the claim itself, the War Table's Contracts badge and the Contracts page. */
+    static String refusal(State s,String key){
+        if(s.claims.contains(key))return "Already claimed.";
+        if(key.startsWith("daily:")){int slot=parse(key.substring(6));return !key.equals("daily:"+slot)||slot<0||slot>2||progress(s,slot)<target(s,slot)?"Contract is not complete.":"";}
+        if(key.equals("weekly"))return s.weeklyBattles<WEEKLY_BATTLES?"Complete "+WEEKLY_BATTLES+" battles this week.":"";
+        if(key.startsWith(SEASON+":")){int level=parse(key.substring(SEASON.length()+1));return !key.equals(SEASON+":"+level)||level<1||level>TIERS||tier(s)<level?"That chapter tier is locked.":"";}
+        return "Unknown reward.";
+    }
+    static boolean claimable(State s,String key){return refusal(s,key).isEmpty();}
     static Grant claim(State s,String key){
-        if(s.claims.contains(key))return new Grant(0,0,"Already claimed.");
+        String why=refusal(s,key);if(!why.isEmpty())return new Grant(0,0,why);
         int gold=0,xp=0;
-        if(key.startsWith("daily:")){int slot=parse(key.substring(6));if(!key.equals("daily:"+slot)||slot<0||slot>2||progress(s,slot)<target(s,slot))return new Grant(0,0,"Contract is not complete.");gold=slot==1?40:30;xp=75;}
-        else if(key.equals("weekly")){if(s.weeklyBattles<6)return new Grant(0,0,"Complete 6 battles this week.");gold=150;xp=300;}
-        else if(key.startsWith(SEASON+":")){int level=parse(key.substring(SEASON.length()+1));if(!key.equals(SEASON+":"+level)||level<1||level>TIERS||tier(s)<level)return new Grant(0,0,"That chapter tier is locked.");
-            if(level%5==0)s.titles.add(TITLES[level/5-1]);else gold=25;}
-        else return new Grant(0,0,"Unknown reward.");
+        if(key.startsWith("daily:")){gold=parse(key.substring(6))==1?40:30;xp=75;}
+        else if(key.equals("weekly")){gold=150;xp=300;}
+        else{int level=parse(key.substring(SEASON.length()+1));if(level%5==0)s.titles.add(TITLES[level/5-1]);else gold=25;}
         s.claims.add(key);s.xp=Math.min(1_000_000,s.xp+xp);return new Grant(gold,xp,"Claimed reward: +"+gold+" gold / +"+xp+" XP"+(key.startsWith(SEASON+":")&&gold==0?" / title unlocked":""));}
     static int parse(String value){try{return Integer.parseInt(value);}catch(NumberFormatException e){return -1;}}
     static String reroll(State s){if(s.rerolled)return "Your free daily reroll is already used.";if(s.claims.contains("daily:2"))return "That contract is already claimed.";s.rerolled=true;return "Third contract changed to tactical orders. One free reroll per day.";}
