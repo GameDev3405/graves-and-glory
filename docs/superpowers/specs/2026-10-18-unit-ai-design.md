@@ -232,12 +232,12 @@ Each task ends with its suite, screenshots a tester has opened, and the tick gat
 Recommended answers in brackets.
 1. **Rout on Hold.** Groups still break below a quarter of their strength, or when three enemies strike from behind at 60% or less (Phase 1). Is a held line that routs disobeying you? [Keep the rout; the card warns "Wavering" 10 points (proposal) before the break]
 2. **Detach.** A reserve needs a spare group. Add a Detach order that splits a group in two, for you and so for the General? [Yes, one split per group]
-3. **Tier and banner.** Phase 2 gives Hard bots a Legendary, an Epic and tier III traits, and Phase 4's curve rests on banners, yet your rule says a tier changes only knowledge and reaction. Keep the stronger banners? [Keep them in play; measure the ladder with equal banners]
+3. **Tier and banner.** Controller's ruling: keep Phase 2's stronger Hard banners (an approved spec), and the AI scorecard measures the tier ladder with equal banners, so the brain's contribution is read on its own. The "never stats" rule binds the brain, not the roster.
 4. **How Hard should feel:** an even fight, or one you usually lose until you learn its tells? [Usually lose at first]
-5. **Your troops' reaction:** Hard's 6 ticks always, or matched to the enemy's tier? [Always Hard's]
-6. **A visible general:** a banner-bearer whose death stalls the plan, or a brain only? [Brain only for now]
+5. **Your troops' reaction:** controller's ruling: always Hard's 6 ticks. The player's troops obey at full speed whatever the enemy's tier.
+6. **A visible general:** controller's ruling: a brain only in this phase. A banner-bearer is a later chapter's unit, not an AI feature.
 7. **Allied bots:** announce their plan (a map marker, "Gilded bot: attacking C"), or only fill in around your pings? [Announce it]
-8. **Keys:** do any new commands earn a default key beside G, V and B? [Council only until you have played them]
+8. **Keys:** controller's ruling: the new commands live in the R council only until Kort has played them; no new default keys in this phase.
 
 ## Calls made in this draft
 
