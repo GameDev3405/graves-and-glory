@@ -36,13 +36,12 @@ final class ArmyCards {
         var c=MinecraftClient.getInstance();if(world!=c.world){portraits.clear();world=c.world;}if(c.world==null)return null;
         int colour=troopColour();
         return portraits.computeIfAbsent(spec.id()+"/"+colour,key->{
-            // The sheet's entity type: battles spawn husks, skeletons and wither skeletons; the other Houses' beasts and crews show here first.
-            MobEntity e=switch(spec.entity()){case "husk"->new HuskEntity(EntityType.HUSK,c.world);case "skeleton"->new SkeletonEntity(EntityType.SKELETON,c.world);case "wither_skeleton"->new WitherSkeletonEntity(EntityType.WITHER_SKELETON,c.world);
-                default->{var made=Registries.ENTITY_TYPE.get(new Identifier(spec.entity())).create(c.world);yield made instanceof MobEntity mob?mob:new HuskEntity(EntityType.HUSK,c.world);}};
+            // The sheet's entity type (ArmyMobs.portrait): a vanilla mob, so a card draws a House's beasts and crews before the House can take the field.
+            MobEntity e=ArmyMobs.portrait(spec.entity(),c.world);
             e.setCustomName(Text.literal(spec.name()));e.setCustomNameVisible(false);e.setPersistent();e.setSilent(true);
             e.equipStack(EquipmentSlot.MAINHAND,new ItemStack(Registries.ITEM.get(new Identifier(spec.weapon()))));e.equipStack(EquipmentSlot.HEAD,new ItemStack(Registries.ITEM.get(new Identifier(spec.helmet()))));
             var chest=new ItemStack(Registries.ITEM.get(new Identifier(spec.chest())));if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,colour);e.equipStack(EquipmentSlot.CHEST,chest);
-            if(Tactics.mechanic(spec).equals("shield"))e.equipStack(EquipmentSlot.OFFHAND,new ItemStack(Items.SHIELD));return e;
+            if(ArmyMobs.tags(spec).contains("shield"))e.equipStack(EquipmentSlot.OFFHAND,new ItemStack(Items.SHIELD));return e;
         });
     }
     /** A portrait size that fits any model in the same frame: a husk at size, a wolf no larger than 1.25 times, a golem smaller. */

@@ -28,7 +28,7 @@ public final class Profile {
     Progression.State progression = new Progression.State();
     /** The Long March: the highest campaignBattles order won (Phase 1). */
     int campaignCleared;
-    /** Campaign chapters whose Legendary Writ was granted, so each chapter grants one. */
+    /** Campaign chapters whose Legendary Pact was granted, so each chapter grants one. */
     Set<Integer> writChapters = new LinkedHashSet<>();
     /** Unlocked banner cosmetics (renown rewards such as cosmetic:pennant). */
     Set<String> cosmetics = new LinkedHashSet<>();

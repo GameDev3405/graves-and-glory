@@ -14,6 +14,7 @@ import java.util.stream.IntStream;
 /** Unshipped: runServer -PbotSim=<matches> plays bot-vs-bot rounds on a dedicated server with nobody online and stops the server when done.
  *  One match at a time (one Battle per server). Dawn's bots play -PsimDawn, Dusk's -PsimDusk (Spec.BOTCOMMAND ids); -PsimMaps is cycled.
  *  -PsimKit=native (default) fields Dawn's seat with the gilded_<tier> bot banner and Dusk's with graveborn_<tier>; gilded or graveborn gives both seats that House's row (sides and bases stay), so House and seat can be told apart.
+ *  -PsimBanner0 and -PsimBanner1 (botBanners ids, for example gilded_normal) field every bot of team 0 or team 1 with that exact banner, whatever the kit says; results.csv and the summary name the banners fielded.
  *  Writes botsim/results.csv (one row per match) and botsim/gold.csv (each team every 30 s of round time) under the server root. */
 public final class BotSimulation implements ModInitializer {
     static final int SAMPLE_TICKS=600;
@@ -29,6 +30,8 @@ public final class BotSimulation implements ModInitializer {
     /** This round's bot armies. They leave Battle.squads when the round ends, so the end-of-round tally is read from here. */
     final List<GravesAndGlory.Squad> armies=new ArrayList<>();
     int dawnWins,duskWins,draws,aborted;final long[] earnedAtEnd={0,0};
+    /** -PsimBanner0 and -PsimBanner1: the botBanners id each team must field, or null for the kit's banner. fielded holds the id each team fields this run, for the CSV and the summary. */
+    final String[] bannerChoice={null,null},fielded={"",""};
 
     @Override public void onInitialize(){
         // Absent means a normal server. Given but blank or non-numeric is an error, not a silent plain server.
@@ -40,11 +43,13 @@ public final class BotSimulation implements ModInitializer {
         size=number("simSize",System.getProperty("gravesandglory.simSize","3"));roundSeconds=number("simRoundSeconds",System.getProperty("gravesandglory.simRoundSeconds","300"));
         kit=System.getProperty("gravesandglory.simKit","native").trim();
         if(!kit.equals("native")&&Arrays.stream(Spec.HOUSES).noneMatch(h->h.id().equals(kit)&&h.fieldable()))throw new IllegalArgumentException("[botsim] simKit must be native or a fieldable House (gilded, graveborn), got '"+kit+"'");
+        for(int team=0;team<2;team++){String id=System.getProperty("gravesandglory.simBanner"+team);if(id==null)continue;String row=id.trim();
+            if(Arrays.stream(Spec.BOTBANNERS).noneMatch(r->r.id().equals(row)))throw new IllegalArgumentException("[botsim] simBanner"+team+" must be a botBanners id, got '"+id+"'");bannerChoice[team]=row;}
         if(matches<1||roundSeconds<1||size<1||size>Spec.RULES[0].playersPerTeam()||maps.length==0||Arrays.stream(maps).anyMatch(m->m<0||m>=Spec.MAPS.length))
             throw new IllegalArgumentException("[botsim] bad settings: matches="+matches+" size="+size+" roundSeconds="+roundSeconds+" maps="+Arrays.toString(maps));
         Path dir=FabricLoader.getInstance().getGameDir().resolve("botsim");results=dir.resolve("results.csv");gold=dir.resolve("gold.csv");
         try{Files.createDirectories(dir);
-            Files.writeString(results,"match,map,dawnTier,duskTier,winner,dawnScore,duskScore,seconds\n",StandardCharsets.UTF_8);
+            Files.writeString(results,"match,map,dawnTier,duskTier,winner,dawnScore,duskScore,seconds,banner0,banner1\n",StandardCharsets.UTF_8);
             Files.writeString(gold,"match,second,team,goldEarned,goldBank,living\n",StandardCharsets.UTF_8);
         }catch(IOException e){throw new UncheckedIOException(e);}
         ServerTickEvents.END_SERVER_TICK.register(this::tick);
@@ -78,11 +83,13 @@ public final class BotSimulation implements ModInitializer {
     }
     /** Phase 2: once each seat's tier is set, every bot army fields one bot banner row for its tier (Spec.BOTBANNERS), replacing the
      *  lane-picked banner startRound gave it: native gives Dawn's seat gilded_<tier> and Dusk's graveborn_<tier>; -PsimKit gilded or
-     *  graveborn gives both seats that House's row. Sides, bases and barracks stay the seat's. */
+     *  graveborn gives both seats that House's row; -PsimBanner0 or -PsimBanner1 overrides a whole team with one exact row.
+     *  Sides, bases and barracks stay the seat's. */
     void field(GravesAndGlory.Battle b){
         for(var s:armies){String house=kit.equals("native")?(s.team==0?"gilded":"graveborn"):kit;
             b.units.removeIf(u->{if(u.squad!=s)return false;u.mob.discard();return true;});
-            s.banner=Campaign.bannerRow(house+"_"+s.tier);s.fullHealth.clear();b.reinforce(s);}
+            String id=bannerChoice[s.team]!=null?bannerChoice[s.team]:house+"_"+s.tier;fielded[s.team]=id;
+            s.banner=Campaign.bannerRow(id);s.fullHealth.clear();b.reinforce(s);}
     }
     /** One gold.csv row per team: gold earned so far, gold in hand and living troops. */
     void sample(GravesAndGlory.Battle b,long second){
@@ -97,13 +104,13 @@ public final class BotSimulation implements ModInitializer {
         if(winner==0)dawnWins++;else if(winner==1)duskWins++;else if(winner==ABORTED)aborted++;else draws++;
         for(var s:armies)earnedAtEnd[s.team]+=s.stats.goldEarned;
         append(results,String.join(",",String.valueOf(match+1),String.valueOf(maps[match%maps.length]),dawnTier,duskTier,winner==ABORTED?"aborted":winner<0?"draw":SEATS[winner],
-            String.valueOf(b.scores[0]),String.valueOf(b.scores[1]),String.valueOf((b.time-b.roundStarted)/20))+"\n");
+            String.valueOf(b.scores[0]),String.valueOf(b.scores[1]),String.valueOf((b.time-b.roundStarted)/20),fielded[0],fielded[1])+"\n");
     }
     /** The final line. Mean gold earned is a team's total over its commanders at the end of a round, averaged over the matches.
-     *  " aborted=N" goes on the end only when a round stopped without Campaign.finish, and " kit=<id>" only under -PsimKit gilded or graveborn, so a normal run keeps the documented format. */
+     *  " aborted=N" goes on the end only when a round stopped without Campaign.finish, " kit=<id>" only under -PsimKit gilded or graveborn, and " banner0=<id> banner1=<id>" always closes the line: the banners the two teams fielded. */
     void summary(){
         System.out.println(String.format(Locale.ROOT,"[botsim] matches=%d dawn(%s)=%d dusk(%s)=%d draws=%d dawnWin=%.0f%% meanGoldEarnedAtEnd dawn=%.0f dusk=%.0f",
-            matches,dawnTier,dawnWins,duskTier,duskWins,draws,100*MatchStats.winRate(dawnWins,matches),earnedAtEnd[0]/(double)matches,earnedAtEnd[1]/(double)matches)+(aborted>0?" aborted="+aborted:"")+(kit.equals("native")?"":" kit="+kit));
+            matches,dawnTier,dawnWins,duskTier,duskWins,draws,100*MatchStats.winRate(dawnWins,matches),earnedAtEnd[0]/(double)matches,earnedAtEnd[1]/(double)matches)+(aborted>0?" aborted="+aborted:"")+(kit.equals("native")?"":" kit="+kit)+" banner0="+fielded[0]+" banner1="+fielded[1]);
     }
     /** Recreates botsim/ if it vanished. A failed write is logged, not thrown, so the run still ends with its summary line. */
     static void append(Path file,String text){

@@ -170,7 +170,7 @@ public final class RosterMath {
         return id;
     }
 
-    /** The launch roster on the chapter line: every troop of a fieldable House a recruitment roll can give (Legendaries come from Writs). */
+    /** The launch roster on the chapter line: every troop of a fieldable House a recruitment roll can give (Legendaries come from Pacts). */
     public static List<String> launchRoster() {
         Set<String> fieldable = fieldableHouses();
         List<String> out = new ArrayList<>();

@@ -30,6 +30,16 @@ final class DarkUi {
         String[] rows=f==null?SQUARE:switch(f.glyph()){case "sun"->SUN;case "moon"->MOON;case "star"->STAR;case "wave"->WAVE;default->SQUARE;};int color=f==null?MUTED:0xff000000|f.color();
         for(int j=0;j<7;j++)for(int i=0;i<7;i++)if(rows[j].charAt(i)=='x')g.fill(x+i,y+j,x+i+1,y+j+1,color);
     }
+    /** A trait tier as a Roman numeral: I, II or III (anything else draws nothing). */
+    static String roman(int tier){return switch(tier){case 1->"I";case 2->"II";case 3->"III";default->"";};}
+    /** The width houseMark draws for a tier: the 16 px glyph, a gap and the numeral. */
+    static int houseMarkWidth(int tier){return 19+MinecraftClient.getInstance().textRenderer.getWidth(roman(tier));}
+    /** A House's 16x16 glyph (houses.glyph) with its trait tier in Roman numerals beside it, in the House's accent. Nothing is drawn for a House the sheet lacks. */
+    static void houseMark(DrawContext g,String house,int tier,int x,int y){
+        Spec.HousesRow row=null;for(var h:Spec.HOUSES)if(h.id().equals(house))row=h;if(row==null)return;
+        g.drawTexture(new Identifier(row.glyph()),x,y,0f,0f,16,16,16,16);
+        g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,roman(tier),x+19,y+4,0xff000000|row.accent());
+    }
     static void background(DrawContext g,int w,int h){
         // Keep the actual world visible behind a quiet, readable scrim.
         g.fill(0,0,w,h,0xd9101518);

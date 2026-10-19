@@ -1,5 +1,5 @@
 package gg.gravesandglory.mixin;
-import gg.gravesandglory.Spec;
+import gg.gravesandglory.ArmyMobs;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.render.entity.model.BipedEntityModel;
 import net.minecraft.entity.LivingEntity;
@@ -17,13 +17,13 @@ abstract class BipedAnimationMixin<T extends LivingEntity> {
     @Inject(method="setAngles(Lnet/minecraft/entity/LivingEntity;FFFFF)V",at=@At("TAIL"))
     void gravesandgloryPose(T e,float limb,float distance,float age,float yaw,float pitch,CallbackInfo ci){
         if(e.getCustomName()==null)return;
-        for(var t:Spec.TROOPS)if(t.name().equals(e.getCustomName().getString())){
-            if(e instanceof net.minecraft.entity.mob.MobEntity mob&&mob.isAttacking()&&t.range()>3){
+        var t=ArmyMobs.named(e.getCustomName().getString()); // a troop's name or its evolved stage name
+        if(t!=null){
+            if(e instanceof net.minecraft.entity.mob.MobEntity mob&&mob.isAttacking()&&t.ranged()){
                 rightArm.pitch=-1.5f+head.pitch;rightArm.yaw=head.yaw-.1f;
                 leftArm.pitch=t.magic()?-1.05f+(float)Math.sin(age*.2)*.12f:-1.5f+head.pitch;
                 leftArm.yaw=head.yaw+(t.magic()?.6f:.35f);
             }else if(distance<.05){rightArm.roll+=(float)Math.sin(age*.065)*.025f;leftArm.roll-=(float)Math.sin(age*.065)*.025f;}
-            break;
         }
     }
 }

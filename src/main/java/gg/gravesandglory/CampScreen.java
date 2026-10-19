@@ -2,7 +2,9 @@ package gg.gravesandglory;
 
 import com.google.gson.*;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.util.Identifier;
 import net.minecraft.text.Text;
 import java.util.*;
 import static gg.gravesandglory.GravesAndGloryClient.*;
@@ -10,6 +12,9 @@ import static gg.gravesandglory.GravesAndGloryClient.*;
 /** Quiet camp navigation; social, recruitment and progression have separate destinations. */
 final class CampScreen extends ArmyScreen {
     String page;float scale=1;int offset;String key="",roomInput="";long requestAt;TextFieldWidget code;
+    /** The House whose six cards the recruit page shows and whose pool a roll draws from; its tab row changes it. It starts on the House the banner leans on. */
+    String house=RosterMath.rollHouse(CampaignClient.profile.banner);
+    final List<HouseTab> tabs=new ArrayList<>();
     CampScreen(String page){super("Banner camp");this.page=page;}
     static void open(String page){var c=net.minecraft.client.MinecraftClient.getInstance();if(page.equals("army"))c.setScreen(new LobbyScreen(1));else c.setScreen(new CampScreen(page));}
     JsonObject social(){return CampaignClient.social;}
@@ -19,7 +24,7 @@ final class CampScreen extends ArmyScreen {
     JsonArray rows(String name){return social().has(name)?social().getAsJsonArray(name):new JsonArray();}
     void action(String cmd){if(System.currentTimeMillis()-requestAt<300)return;requestAt=System.currentTimeMillis();send(cmd);}
     void page(String next){page=next;offset=0;clearAndInit();}
-    String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready;}
+    String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready;}
     @Override protected void init(){
         scale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/760f,client.getWindow().getScaledHeight()/460f));width=(int)(client.getWindow().getScaledWidth()/scale);height=(int)(client.getWindow().getScaledHeight()/scale);key=state();code=null;
         String[] names={"Camp guide","Recruitment","Friends","Private room","Contracts","Chapter rewards"};String[] ids={"home","recruit","friends","room","contracts","chapter"};
@@ -36,9 +41,11 @@ final class CampScreen extends ArmyScreen {
             var bots=button(CampaignClient.botsLabel(),x,286,w/2-7,b->action("difficulty:"+CampaignClient.nextDifficulty()));bots.active=!running;
             button("Ready gates & map voting",x,350,w/2-7,b->page("match"));button("Daily contracts",x+w/2+7,350,w/2-7,b->page("contracts"));
         }else if(page.equals("recruit")){
-            // Layout kept until Phase 2 Task 3; the roll now draws from one House (spec 4.2) and duplicates raise stars.
-            int cost=Spec.RECRUITMENT[0].rollCost();String house=RosterMath.rollHouse(CampaignClient.profile.banner);
-            var roll=primary("RECRUIT RANDOM / "+RosterMath.houseName(house).toUpperCase()+" / "+cost+" GOLD",x,height-78,w,b->action("roll"));roll.active=CampaignClient.profile.gold>=cost&&(!running||CampaignClient.waiting);
+            // A tab per House, then its six cards; the roll draws from the chosen House (spec 4.2, 4.6) and a duplicate raises stars.
+            tabs.clear();int tabWidth=w/Spec.HOUSES.length;
+            for(int i=0;i<Spec.HOUSES.length;i++)tabs.add(addDrawableChild(new HouseTab(Spec.HOUSES[i].id(),x+i*tabWidth,112,tabWidth-6)));
+            int cost=Spec.RECRUITMENT[0].rollCost();
+            var roll=primary(rollLabel(),x,height-78,w,b->action("roll:"+house));roll.active=CampaignClient.profile.gold>=cost&&(!running||CampaignClient.waiting);
             button("Skip reveal",width-126,49,104,b->CampaignClient.revealUntil=0);
         }else if(page.equals("friends")){
             if(!flag("party"))primary("CREATE PARTY",x,117,180,b->action("social:create"));else{
@@ -78,11 +85,64 @@ final class CampScreen extends ArmyScreen {
         }
     }
     @Override public void tick(){if(!key.equals(state())&&!(code!=null&&code.isFocused()))clearAndInit();if(running&&!CampaignClient.waiting)close();}
-    /** The troops one recruitment roll in this House can give: its Commons, Rares and Epic in sheet order (Legendaries come from Writs). */
+    /** The troops one recruitment roll in this House can give: its Commons, Rares and Epic in sheet order (Legendaries come from Pacts). */
     static List<Spec.TroopsRow> pool(String house){return Arrays.stream(Spec.TROOPS).filter(t->t.house().equals(house)&&!t.rarity().equals("legendary")).toList();}
     static int weight(Spec.TroopsRow t){var r=RosterMath.rarityRow(t.rarity());return r==null?0:r.rollWeight();}
     static String odds(List<Spec.TroopsRow> pool,String rarity,int total){int w=0;for(var t:pool)if(t.rarity().equals(rarity))w+=weight(t);return String.format(java.util.Locale.ROOT,"%.0f",100.0*w/Math.max(1,total))+"%";}
     static String cap(String s){return s.isEmpty()?s:Character.toUpperCase(s.charAt(0))+s.substring(1);}
+    /** The camp's header line: the earned title and the gold in hand. */
+    String header(){return CampaignClient.profile.progression.title+"  /  "+CampaignClient.profile.gold+" gold";}
+    /** The recruit page's roll button: ROLL <HOUSE> / <cost> GOLD for the chosen House. */
+    String rollLabel(){return "ROLL "+RosterMath.houseName(house).toUpperCase(java.util.Locale.ROOT)+" / "+Spec.RECRUITMENT[0].rollCost()+" GOLD";}
+    /** The pity line under the cards: rolls left until the chosen House's Epic is certain. */
+    String pityLine(){return "Epic guaranteed within "+(Spec.RECRUITMENT[0].epicPity()-CampaignClient.profile.pity.getOrDefault(house,0))+" rolls";}
+    /** The five House tabs of the recruit page, in House order (empty on other pages). */
+    List<HouseTab> houseTabs(){return List.copyOf(tabs);}
+    /** Shows another House's cards and rolls from its pool. */
+    void pickHouse(String next){house=next;clearAndInit();}
+    /** One card of the recruit page: a troop of the House, whether the commander owns it, and its stars, evolution stage and copies. */
+    record Card(Spec.TroopsRow troop,boolean owned,int stars,int stage,int copies){}
+    /** The six troops of a House in sheet order, each with the commander's holding of it. */
+    static List<Card> cards(String house,Profile p){
+        List<Card> out=new ArrayList<>();
+        for(var t:Spec.TROOPS)if(t.house().equals(house)){var o=p.owned.get(t.id());out.add(new Card(t,o!=null,o==null?0:o.stars,o==null?0:o.stage,o==null?0:o.copies));}
+        return out;
+    }
+    static int rarityColour(String rarity){return switch(rarity){case "rare"->0xff8fb8d8;case "epic"->0xffc79be0;case "legendary"->DarkUi.GOLD;default->DarkUi.MUTED;};}
+    /** One troop card: the portrait on the House accent, the stage name, the rarity, the stars as pips and the stage; a troop the commander lacks is dimmed and says LOCKED with its odds. */
+    void card(DrawContext g,Card card,int x,int y,int w,int h,int poolTotal){
+        var troop=card.troop();DarkUi.frame(g,x,y,w,h);
+        var row=ArmyCards.house(troop);g.fillGradient(x+3,y+3,x+w-3,y+h-3,0x33000000|(row==null?0x4c9391:row.accent()&0xffffff),0x00181820);
+        var portrait=ArmyCards.portrait(troop);float wide=portrait==null?0:portrait.getWidth()*1.25f; // a wide model (a spider's legs) is drawn smaller so it stays inside its card
+        DarkUi.model(g,troop,x+34,y+h-12,wide>1.5f?(int)(28*1.5f/wide):28);
+        if(!card.owned())g.fill(x+3,y+3,x+w-3,y+h-3,0x99111119);
+        int tx=x+70,room=w-76;
+        // A long name (a Legendary's title) wraps onto a second line, and everything under it moves down a line.
+        var title=textRenderer.wrapLines(Text.literal(ArmyMobs.stageName(troop,card.owned()?card.stage():1)),room);int more=title.size()>1?10:0;
+        for(int i=0;i<Math.min(2,title.size());i++)g.drawText(textRenderer,title.get(i),tx,y+10+i*10,card.owned()?DarkUi.GOLD:DarkUi.MUTED,false);
+        line(g,cap(troop.rarity()),tx,y+24+more,rarityColour(troop.rarity()),room);
+        if(card.owned()){
+            for(int i=0;i<Spec.RECRUITMENT[0].maxStars();i++){int px=tx+i*11;g.drawBorder(px,y+40+more,8,8,DarkUi.GOLD);if(i<card.stars())g.fill(px+1,y+41+more,px+7,y+47+more,DarkUi.GOLD);}
+            int last=Profile.lastStage(troop.id());line(g,"Stage "+card.stage()+(last>1?" of "+last:""),tx,y+54+more,DarkUi.PAPER,room);
+            line(g,card.copies()+(card.copies()==1?" copy":" copies"),tx,y+68+more,DarkUi.MUTED,room);
+        }else{
+            line(g,"LOCKED",tx,y+44+more,DarkUi.PAPER,room);
+            line(g,troop.rarity().equals("legendary")||weight(troop)<=0?"Comes from a Pact":String.format(java.util.Locale.ROOT,"%.1f",100.0*weight(troop)/Math.max(1,poolTotal))+"% a roll",tx,y+58+more,DarkUi.MUTED,room);
+        }
+    }
+    /** One House's tab on the recruit page: its glyph and name, the chosen one edged in brass. */
+    final class HouseTab extends ButtonWidget {
+        final String house;
+        HouseTab(String house,int x,int y,int w){super(x,y,w,28,Text.literal(RosterMath.houseName(house)),b->CampScreen.this.pickHouse(house),DEFAULT_NARRATION_SUPPLIER);this.house=house;}
+        boolean selected(){return CampScreen.this.house.equals(house);}
+        @Override public void renderButton(DrawContext g,int mx,int my,float delta){
+            int x=getX(),y=getY();boolean chosen=selected(),focus=active&&(isHovered()||isFocused());
+            g.fill(x,y,x+width,y+height,chosen?0xff30474a:focus?0xff39464b:0xff252f34);g.drawBorder(x,y,width,height,chosen||focus?DarkUi.GOLD:0xff455156);
+            for(var row:Spec.HOUSES)if(row.id().equals(house))g.drawTexture(new Identifier(row.glyph()),x+6,y+6,0f,0f,16,16,16,16);
+            var font=textRenderer;g.drawText(font,font.trimToWidth(getMessage().getString(),width-34),x+28,y+10,chosen?DarkUi.PAPER:DarkUi.MUTED,false);
+            if(chosen)g.fill(x,y+height-2,x+width,y+height,DarkUi.GOLD);
+        }
+    }
     void line(DrawContext g,String text,int x,int y,int color,int max){g.drawText(textRenderer, textRenderer.trimToWidth(text,max),x,y,color,false);}
     /** The battle report table from y down: COMMANDER / KILLS / LOST / GOLD / ON POINTS, one row per army (your team first, a rule before the
      *  enemy, your row in brass, a crest on the MVP), then one line per point with the seconds each team held it. Returns the y under it. */
@@ -105,7 +165,7 @@ final class CampScreen extends ArmyScreen {
     }
     @Override public void render(DrawContext g,int mx,int my,float delta){
         g.getMatrices().push();g.getMatrices().scale(scale,scale,1);DarkUi.background(g,width,height);DarkUi.crest(g,20,16,26,false);DarkUi.title(g,"BANNER CAMP",58,19,DarkUi.GOLD);
-        line(g,CampaignClient.profile.progression.title+"  /  "+CampaignClient.profile.gold+" gold",width-280,24,DarkUi.PAPER,260);
+        line(g,header(),width-280,24,DarkUi.PAPER,260);
         int x=194,w=width-x-22;DarkUi.frame(g,x-12,79,w+24,height-139);String title=switch(page){case "recruit"->"RECRUITMENT SHRINE";case "friends"->"YOUR FRIEND GROUP";case "room"->"PRIVATE WAR ROOM";case "contracts"->"CONTRACT BOARD";case "chapter"->"FOUNDERS CHAPTER";case "match"->"WAR GATES";case "results"->"BATTLE REPORT";default->"A PLACE TO PREPARE";};
         line(g,title,x,91,DarkUi.GOLD,w);
         var p=CampaignClient.profile;var progress=p.progression;
@@ -118,13 +178,11 @@ final class CampScreen extends ArmyScreen {
             line(g,"War gates: stand together to ready; step off to cancel.",x,314,DarkUi.PAPER,w);
             line(g,"Local matches only. Internet matchmaking is on hold.",x,333,DarkUi.MUTED,w);
         }else if(page.equals("recruit")){
-            String house=RosterMath.rollHouse(p.banner);var pool=pool(house);int total=0;for(var t:pool)total+=weight(t);
-            int rolls=Math.max(1,Spec.RECRUITMENT[0].epicPity()-p.pity.getOrDefault(house,0));
-            line(g,"Draws from the "+RosterMath.houseName(house)+", the largest House in your banner you can field.",x,110,DarkUi.PAPER,w);
-            line(g,odds(pool,"common",total)+" Commons / "+odds(pool,"rare",total)+" Rares / "+odds(pool,"epic",total)+" Epic, sure within "+rolls+(rolls==1?" roll":" rolls")+" / a duplicate raises stars",x,122,DarkUi.MUTED,w);
-            for(int i=0;i<6&&i<pool.size();i++){var troop=pool.get(i);int cx=x+(i%3)*(w/3),y=136+(i/3)*130;DarkUi.frame(g,cx,y,w/3-10,78);DarkUi.model(g,troop,cx+28,y+66,25);line(g,troop.name(),cx+58,y+16,DarkUi.GOLD,w/3-72);
-                line(g,cap(troop.rarity())+" / "+String.format(java.util.Locale.ROOT,"%.0f",100.0*weight(troop)/Math.max(1,total))+"%",cx+58,y+35,DarkUi.MUTED,w/3-72);
-                var owned=p.owned.get(troop.id());line(g,owned==null?"Not yet yours":"Owned / star "+owned.stars,cx+58,y+54,owned==null?DarkUi.MUTED:DarkUi.PAPER,w/3-72);}
+            var pool=pool(house);int total=0;for(var t:pool)total+=weight(t);
+            line(g,"Draws from the "+RosterMath.houseName(house)+" pool: "+odds(pool,"common",total)+" Commons / "+odds(pool,"rare",total)+" Rares / "+odds(pool,"epic",total)+" Epic / a duplicate raises stars",x,99,DarkUi.MUTED,w);
+            var cards=cards(house,p);int cardWidth=w/3-10,cardHeight=96;
+            for(int i=0;i<cards.size();i++)card(g,cards.get(i),x+(i%3)*(w/3),152+(i/3)*(cardHeight+8),cardWidth,cardHeight,total);
+            line(g,pityLine()+(ArmyCards.house(pool.get(0))!=null&&!ArmyCards.house(pool.get(0)).fieldable()?"  /  "+RosterMath.houseName(house)+" cannot take the field yet":""),x,height-96,DarkUi.GOLD,w);
         }else if(page.equals("friends")){
             line(g,flag("party")?"Leader: "+value("leader")+" / party survives matches and server restarts":"Parties hold up to four friends and always enter one team.",x,104,DarkUi.MUTED,w);
             if(!value("inviter").isEmpty())line(g,"Invitation from "+value("inviter")+" ("+number("inviteSeconds",0)+"s)",x,149,DarkUi.GOLD,w);

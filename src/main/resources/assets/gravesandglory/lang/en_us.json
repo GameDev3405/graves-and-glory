@@ -14,5 +14,7 @@
   "subtitles.gravesandglory.victory": "Battle ends",
   "subtitles.gravesandglory.horn_charge": "Charge horn",
   "subtitles.gravesandglory.horn_rout": "Retreat horn",
-  "subtitles.gravesandglory.horn_rally": "Rally horn"
+  "subtitles.gravesandglory.horn_rally": "Rally horn",
+  "death.attack.gravesandglory.troop": "%1$s was cut down by %2$s",
+  "death.attack.gravesandglory.troop.player": "%1$s was cut down by a troop"
 }

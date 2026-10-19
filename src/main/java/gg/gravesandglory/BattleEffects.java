@@ -40,7 +40,7 @@ public final class BattleEffects {
         }
     }
     static void strike(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity enemy){
-        if(u.spec.range()<3){
+        if(!u.spec.ranged()){
             Vec3d at=u.mob.getPos().add(0,1,0),dir=enemy.getPos().subtract(u.mob.getPos()).normalize();
             b.world.spawnParticles(ParticleTypes.SWEEP_ATTACK,at.x+dir.x,at.y,at.z+dir.z,1,0,0,0,0);
             flash(b,new Vec3d(enemy.getX(),enemy.getBodyY(.6),enemy.getZ()),u.squad.team);

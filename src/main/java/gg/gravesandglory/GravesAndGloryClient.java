@@ -32,6 +32,10 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static boolean ready,running,nearBarracks;
     static int dawn,dusk,team=-1,count,respawn,gold,queued,trainingSeconds;
     static String message="Preparing battlefield",order="follow",formation="block";
+    /** state_v8: the side id each team flies, this army's House trait tiers (tier I or higher), and the commander ability (id, ticks until ready, ticks left active; the commander task fills them). */
+    static String[] sideIds={"",""};static Map<String,Integer> houses=Map.of();static String commanderActive="";static int commanderReady,commanderFor;
+    /** A harness holds a House strip here so a screenshot can show every House at once; null in play. */
+    static volatile Map<String,Integer> houseStripOverride;
     static boolean[] contested={false,false,false};
     record Sight(float x,float z,int age){}
     static List<Sight> sightings=List.of();
@@ -55,7 +59,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.IMPACT,(client,handler,buf,responder)->{float strength=buf.readFloat();client.execute(()->{Presentation.receivedImpacts++;Presentation.impact(strength);});});
         net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry.register(net.minecraft.entity.EntityType.HUSK,context->new net.minecraft.client.render.entity.HuskEntityRenderer(context){
             @Override public Identifier getTexture(net.minecraft.entity.mob.ZombieEntity entity){
-                if(entity.getCustomName()!=null)for(var t:Spec.TROOPS)if(t.house().equals("gilded")&&entity.getCustomName().getString().equals(t.name()))return new Identifier(t.texture());
+                if(entity.getCustomName()!=null){var t=ArmyMobs.named(entity.getCustomName().getString());if(t!=null&&t.house().equals("gilded"))return new Identifier(t.texture());} // a troop's name or its evolved stage name
                 return super.getTexture(entity);
             }
         });
@@ -81,10 +85,12 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             int pingCount=buf.readInt();if(pingCount<0||pingCount>4)return;var pings=new ArrayList<CommandMode.Ping>();for(int i=0;i<pingCount;i++)pings.add(new CommandMode.Ping(buf.readString(),buf.readFloat(),buf.readFloat()));int seconds=buf.readInt();
             int seen=buf.readInt();if(seen<0||seen>160)return;var sight=new ArrayList<Sight>();for(int i=0;i<seen;i++)sight.add(new Sight(buf.readFloat(),buf.readFloat(),buf.readInt()));
             String campaignJson=buf.readString(Campaign.SNAPSHOT_LIMIT);
-            client.execute(()->{CampaignClient.accept(client,campaignJson,run);sightings=List.copyOf(sight);contested=contest;CommandMode.pings=java.util.List.copyOf(pings);CommandMode.seconds=seconds;CommandMode.noteGroups(CommandMode.groups,groups,net.minecraft.util.Util.getMeasuringTimeMs());CommandMode.groups=java.util.List.copyOf(groups);ready=r;running=run;dawn=a;dusk=b;message=msg;team=t;count=n;order=o;formation=f;respawn=resp;owners=own;progress=pr;challengers=ch;gold=g;nearBarracks=near;queued=q;trainingSeconds=eta;roster=owned;pending=waiting;markers=List.copyOf(friendly);});
+            String sideA=buf.readString(64),sideB=buf.readString(64);int tierCount=buf.readByte();if(tierCount<0||tierCount>Spec.HOUSES.length)return;Map<String,Integer> tiers=new LinkedHashMap<>();for(int i=0;i<tierCount;i++){String house=buf.readString(64);tiers.put(house,(int)buf.readByte());}
+            String ability=buf.readString(64);int abilityReady=buf.readInt(),abilityFor=buf.readInt();
+            client.execute(()->{sideIds=new String[]{sideA,sideB};houses=Collections.unmodifiableMap(tiers);commanderActive=ability;commanderReady=abilityReady;commanderFor=abilityFor;CampaignClient.accept(client,campaignJson,run);sightings=List.copyOf(sight);contested=contest;CommandMode.pings=java.util.List.copyOf(pings);CommandMode.seconds=seconds;CommandMode.noteGroups(CommandMode.groups,groups,net.minecraft.util.Util.getMeasuringTimeMs());CommandMode.groups=java.util.List.copyOf(groups);ready=r;running=run;dawn=a;dusk=b;message=msg;team=t;count=n;order=o;formation=f;respawn=resp;owners=own;progress=pr;challengers=ch;gold=g;nearBarracks=near;queued=q;trainingSeconds=eta;roster=owned;pending=waiting;markers=List.copyOf(friendly);});
         });
         ClientPlayConnectionEvents.JOIN.register((handler,sender,client)->{CampaignClient.sendProfile(client);if(connectingInvitation&&!joined){joined=true;say("Melty joined: "+join);}});
-        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);ready=false;running=false;team=-1;opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
+        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);ready=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
             if(client.getOverlay()==null&&client.currentScreen instanceof TitleScreen){
                 if(!attempted){PackControls.prepare(client);if(!Presentation.prepareResources(client))return;attempted=true;}

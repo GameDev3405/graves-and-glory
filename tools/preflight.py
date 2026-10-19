@@ -87,6 +87,7 @@ for t in data['troops']:
     if 'none' in tags and len(tags)>1: errors.append(f'{name}: tags is none or a comma list of tags, never both')
 for h in houses.values():
     if h['glyph']!=f'gravesandglory:textures/gui/house/{h["id"]}.png': errors.append(f'houses/{h["id"]}: glyph must be gravesandglory:textures/gui/house/{h["id"]}.png')
+    elif not (root/'src/main/resources/assets/gravesandglory'/h['glyph'].partition(':')[2]).is_file(): errors.append(f'houses/{h["id"]}: missing glyph texture {h["glyph"]}')
     mine=[t['id'] for t in data['troops'] if t['house']==h['id']]
     if h['troops'].split(',')!=mine: errors.append(f'houses/{h["id"]}: troops must be {",".join(mine)}, the House troops in sheet order')
     for r,n in HOUSE_SHAPE.items():

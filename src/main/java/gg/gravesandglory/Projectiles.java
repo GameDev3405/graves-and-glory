@@ -17,8 +17,8 @@ public final class Projectiles {
     static final Spec.CombatDisciplineRow C=Spec.COMBATDISCIPLINE[0];
     /** Ticks after an enemy's last blow on a unit during which a death with no attacker still credits the blow's army. lastHitAt is stamped when a blow lands (melee, or an arrow on impact), so flight time never counts: this is a blow-to-death allowance, sized as projectileMaxTicks plus 20 so a late shot plus a short fall still pays. The +20 is a code-held tuning number; see docs/PARKED.md. */
     public static final int CREDIT_WINDOW_TICKS=C.projectileMaxTicks()+20;
-    /** kind: "arrow" (damage, vanilla arrow visual), "bolt" (blight cast, visual only), "mend" (heal).
-     *  A bolt has no target: it flies to the fixed point {@code at}; other shots follow their target and leave {@code at} null. */
+    /** kind: "arrow" (damage, vanilla arrow visual), "bolt" (the blight cast, visual only; with a target and an amount, a magic shot that damages on landing), "mend" (heal).
+     *  The blight cast's bolt has no target: it flies to the fixed point {@code at}; other shots follow their target and leave {@code at} null. */
     public record Shot(GravesAndGlory.Unit shooter,GravesAndGlory.Squad squad,LivingEntity target,String kind,float amount,Vec3d from,long fired,long lands,Entity visual,Vec3d at){}
     private Projectiles(){}
 
@@ -73,8 +73,13 @@ public final class Projectiles {
     static void land(GravesAndGlory.Battle b,Shot s,Vec3d at){
         switch(s.kind){
             case "arrow"->{
-                for(var v:b.units)if(v.mob==s.target){v.lastHitBy=s.squad;v.lastHitAt=b.time;break;}
-                s.target.damage(b.world.getDamageSources().mobAttack(s.shooter.mob),s.amount);
+                // Combat.resolve credits the shooter's army (lastHitBy), applies the counters and hurts the target with the troop damage type.
+                Combat.resolve(b,s.shooter,s.target,s.amount,"arrow",false);
+                BattleEffects.flash(b,at,s.squad.team);
+            }
+            case "bolt"->{
+                // A bolt with a target and an amount is a damaging magic shot; the blight cast's bolt has neither and stays a visual that arrives with the burst.
+                if(s.target!=null&&s.amount>0)Combat.resolve(b,s.shooter,s.target,s.amount,"bolt",false);
                 BattleEffects.flash(b,at,s.squad.team);
             }
             case "mend"->{s.target.heal(s.amount);b.world.spawnParticles(ParticleTypes.HEART,s.target.getX(),s.target.getY()+2,s.target.getZ(),3,.3,.2,.3,0);}

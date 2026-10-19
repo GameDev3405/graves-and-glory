@@ -39,6 +39,11 @@ public final class Campaign {
     /** The shortened forms each commander's camp snapshot has been sent in: each form is logged once, until he leaves. */
     final Map<UUID,Set<String>> snapshotForms=new HashMap<>();
     String headline="";
+    /** The draw behind a recruitment roll: the world's random by default; a harness swaps in a fixed one to land a roll on a chosen troop. */
+    java.util.random.RandomGenerator rollRng=new java.util.random.RandomGenerator(){
+        @Override public long nextLong(){return b.world.random.nextLong();}
+        @Override public int nextInt(int bound){return b.world.random.nextInt(bound);}
+    };
     /** Bot difficulty for the next round: the id of a Spec.BOTCOMMAND row (easy, normal, hard). There is one battle per server, so one setting covers it. */
     String difficulty="normal";
     /** The Long March battle being fought (a Spec.CAMPAIGNBATTLES row), or null in practice, pad matches and rooms. Cleared in returnLobby. */
@@ -246,6 +251,10 @@ public final class Campaign {
         if(o.stage>=2)for(var e:Spec.EVOLUTIONS)if(e.troop().equals(t.evolveLine())&&e.stage()==o.stage)stage=health?e.healthPct():e.damagePct();
         return RosterMath.progressionMultiplier(rarity==null?0:RosterMath.starPct(o.stars,rarity),stage,Spec.RECRUITMENT[0].capPct());
     }
+    /** The evolution stage (1 to 3) a commander's owned troop fights at; 1 for a bot, for a troop he does not own and for one with no evolve line. */
+    int stage(GravesAndGlory.Squad s,Spec.TroopsRow t){
+        if(s.bot)return 1;var o=profile(s.owner).owned.get(t.id());return o==null?1:Math.max(1,Math.min(3,o.stage));
+    }
     double damage(GravesAndGlory.Unit u){return progression(u.squad,u.spec,false);}
     double health(GravesAndGlory.Squad s,Spec.TroopsRow t){return progression(s,t,true);}
     /** Sets the side row each team flies this round (Battle.sides) from the seated commanders; see sidesFor. */
@@ -269,7 +278,6 @@ public final class Campaign {
      */
     void roll(ServerPlayerEntity p,Profile pr,String house){
         var row=Arrays.stream(Spec.HOUSES).filter(h->h.id().equals(house)).findFirst().orElse(null);if(row==null)return;
-        if(!row.fieldable()){notice(p.getUuid(),row.name()+" has not joined the war yet. Recruit from a House you can field.");return;}
         int cost=Spec.RECRUITMENT[0].rollCost();
         if(pr.gold<cost){notice(p.getUuid(),"A recruitment roll costs "+cost+" gold. Earn gold by completing battles.");return;}
         List<String> commons=new ArrayList<>(),rares=new ArrayList<>();String epic=null;
@@ -277,7 +285,7 @@ public final class Campaign {
         var common=RosterMath.rarityRow("common");var rare=RosterMath.rarityRow("rare");var epicRow=RosterMath.rarityRow("epic");
         if(commons.isEmpty()||rares.isEmpty()||epic==null||common==null||rare==null||epicRow==null)return;
         String before=JSON.toJson(pr);
-        var drawn=RosterMath.roll(commons,rares,epic,common.rollWeight(),rare.rollWeight(),epicRow.rollWeight(),pr.pity.getOrDefault(house,0),Spec.RECRUITMENT[0].epicPity(),java.util.concurrent.ThreadLocalRandom.current());
+        var drawn=RosterMath.roll(commons,rares,epic,common.rollWeight(),rare.rollWeight(),epicRow.rollWeight(),pr.pity.getOrDefault(house,0),Spec.RECRUITMENT[0].epicPity(),rollRng);
         pr.gold-=cost;pr.pity.put(house,drawn.pityAfter());
         var t=troop(drawn.troop());var owned=pr.owned.get(t.id());String result;
         if(owned==null){pr.owned.put(t.id(),new Profile.Owned());result="Joined your collection: "+t.name()+"!";}
@@ -406,7 +414,7 @@ public final class Campaign {
         s.yaw=s.team==0?-90:90;
         if(!retreating&&tier.shieldwallVsArchers()){
             // Brace the shield troops when remembered archers are in range and nothing has closed to melee. Only troops with a shield can brace.
-            boolean shields=mine.stream().anyMatch(u->u.spec.group().equals("infantry")&&Tactics.mechanic(u.spec).equals("shield"));
+            boolean shields=mine.stream().anyMatch(u->u.spec.group().equals("infantry")&&u.tags.contains("shield"));
             int ranged=0,melee=0;
             for(var entry:seen.entrySet()){var enemy=foes.get(entry.getKey());
                 double d=Math.hypot(entry.getValue().x()-center.x,entry.getValue().z()-center.z);

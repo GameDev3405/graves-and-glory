@@ -66,7 +66,7 @@ public final class CommandMode {
         for(var e:c.world.getEntities())if(e instanceof LivingEntity living&&e!=c.player&&e.isAlive()&&e.hasCustomName()&&c.player.canSee(e)){
             Vec3d v=e.getPos().add(0,1,0).subtract(eye);double along=v.dotProduct(look);
             // Both teams can field the same House, so the side comes from the name colour the server gives every unit.
-            boolean foe=false;int side=nameTeam(e);for(var troop:Spec.TROOPS)if(troop.name().equals(e.getCustomName().getString())&&GravesAndGloryClient.team>=0&&side>=0&&side!=GravesAndGloryClient.team)foe=true;
+            boolean foe=false;int side=nameTeam(e);if(ArmyMobs.named(e.getCustomName().getString())!=null&&GravesAndGloryClient.team>=0&&side>=0&&side!=GravesAndGloryClient.team)foe=true;
             if(foe&&along>0&&along<best&&v.subtract(look.multiply(along)).length()<1.3){best=along;enemy=e.getId();destination=e.getPos();}
         }
         if(destination==null||Math.abs(destination.x)>GravesAndGlory.R.arenaHalfX()-10||Math.abs(destination.z)>GravesAndGlory.R.arenaHalfZ()-10){destination=null;return;}
@@ -90,8 +90,23 @@ public final class CommandMode {
         for(Vec3d p:preview)net.minecraft.client.render.WorldRenderer.drawBox(matrices,lines,new net.minecraft.util.math.Box(p.x-.32,p.y,p.z-.32,p.x+.32,p.y+.09,p.z+.32),1,.82f,.4f,1);
         matrices.pop();
     }
+    /**
+     * The House strip over the group panels: the side the army flies as its glyph and full name (Gold Banner, never the bare word that also
+     * names the currency), then each House the army has a trait tier in as its 16x16 glyph and a Roman numeral. Nothing is drawn without a tier.
+     */
+    static void houseStrip(DrawContext g,int y){
+        var c=MinecraftClient.getInstance();var tiers=GravesAndGloryClient.houseStripOverride!=null?GravesAndGloryClient.houseStripOverride:GravesAndGloryClient.houses;
+        if(tiers.isEmpty())return;
+        int team=GravesAndGloryClient.team;Spec.FactionsRow side=null; // the live state names the side first; the camp snapshot is the fallback
+        if(team==0||team==1)for(var f:Spec.FACTIONS)if(f.id().equals(GravesAndGloryClient.sideIds[team]))side=f;
+        if(side==null)side=DarkUi.side(team);
+        GravesAndGloryClient.panel(g,8,y,210,38);
+        if(side!=null){DarkUi.sideMark(g,side,16,y+4);g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth(side.name().toUpperCase(java.util.Locale.ROOT)+" / HOUSES",190),28,y+4,GravesAndGloryClient.MUTED);}
+        int x=16;for(var house:Spec.HOUSES){int tier=tiers.getOrDefault(house.id(),0);if(tier<=0)continue;DarkUi.houseMark(g,house.id(),tier,x,y+17);x+=DarkUi.houseMarkWidth(tier)+12;}
+    }
     static void hud(DrawContext g,int w,int h){
         var c=MinecraftClient.getInstance();int y=h-150;
+        houseStrip(g,y-42);
         for(Group group:groups){boolean chosen=selected.equals("all")||selected.equals(group.id());
             boolean hit=flashing(group.id());
             GravesAndGloryClient.panel(g,8,y,210,28);if(hit)g.drawBorder(8,y,210,28,DANGER);if(chosen)g.fill(8,y,10,y+28,GravesAndGloryClient.GOLD);
