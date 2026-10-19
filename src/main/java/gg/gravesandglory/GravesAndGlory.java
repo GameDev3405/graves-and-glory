@@ -213,6 +213,8 @@ public final class GravesAndGlory implements ModInitializer {
         /** Round length in seconds, from the rules sheet; the bot simulation shortens it. */
         public int roundSeconds=R.roundSeconds();
         String message="Preparing the battlefield...";
+        /** The notice a round opens with, short enough to show whole on one line of the feed (140 px). */
+        public static final String ROUND_START="Capture the objectives.";
         int buildColumn=0;
         int rounds=0;long roundStarted;
         record Ping(UUID owner,int team,String kind,double x,double z,long until){}
@@ -502,7 +504,7 @@ public final class GravesAndGlory implements ModInitializer {
                 if(player!=null){toBase(player,s.team);player.changeGameMode(GameMode.ADVENTURE);equipPlayer(player);}
                 reinforce(s);
             }
-            rounds++;roundStarted=time;running=true;message="Capture the objectives. Your army awaits your orders.";
+            rounds++;roundStarted=time;running=true;message=ROUND_START;
         }
         void reinforce(Squad s){
             Set<Integer> occupied=new HashSet<>();for(Unit u:units)if(u.squad==s&&u.mob.isAlive())occupied.add(u.slot);

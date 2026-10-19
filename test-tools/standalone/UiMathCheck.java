@@ -14,6 +14,7 @@ public final class UiMathCheck {
         check(UiMath.pixelScale(1366,768,3)==1 && UiMath.pixelScale(854,480,2)==1, "small windows never go below 1");
         java.util.function.ToIntFunction<String> six = s -> 6*s.length();
         check(UiMath.trim("abcdefghijklmnopqrstuvwxyz",60,six).equals("abcdefg...") && UiMath.trim("short",60,six).equals("short"), "trim with an ellipsis");
+        check(UiMath.trimWords("Capture the objectives. Your army awaits your orders.",150,six).equals("Capture the objectives...") && UiMath.trimWords("Capture the objectives. Your army awaits your orders.",140,six).equals("Capture the...") && UiMath.trimWords("Hold the ford",140,six).equals("Hold the ford") && UiMath.trimWords("Hold, the ford",60,six).equals("Hold...") && UiMath.trimWords("Unbreakable line",60,six).equals("Unbreak..."), "trim at a word, else inside the first");
         check(UiMath.brassKeyWidth(18,3)==27 && UiMath.brassKeyWidth(28,5)==37 && UiMath.brassKeyWidth(6,1)==13 && UiMath.brassKeyWidth(80,12)==48, "brass keys: Esc 27, Enter 37, B 13, cap 48");
         check(UiMath.chipWidth(6)==10 && UiMath.chipWidth(18)==22, "ink chips: G 10, LMB 22");
         java.util.function.ToIntFunction<String> mc = s -> s.chars().map(ch -> ch==' '||ch=='t'||ch=='['||ch==']' ? 4 : ch=='.'||ch=='i' ? 2 : ch=='l' ? 3 : ch=='f'||ch=='k' ? 5 : 6).sum(); // Minecraft's font, near enough

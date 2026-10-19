@@ -323,9 +323,9 @@ public final class BattleHud {
     static void lessonCard(DrawContext g,int x,int y,int h){UiTex.three(g,"hud/lesson-card",x,y,h+LESSON_FRAME);}
 
     /** The event feed (v4.1): the vellum leaf at the right edge, its box at (W-188, H/2-38), the newest line on the bottom row (4) and
-     *  older ones above. A line is its glyph and its text, trimmed to 140 px, in its style's ink, fading over its last 2 s (a line
-     *  whose alpha is under 4 is skipped: Minecraft draws such text opaque). The slip draws while a line lives, at the newest line's
-     *  alpha. */
+     *  older ones above. A line is its glyph and its text, trimmed to 140 px after a whole word (UiMath.trimWords), in its style's
+     *  ink, fading over its last 2 s (a line whose alpha is under 4 is skipped: Minecraft draws such text opaque). The slip draws
+     *  while a line lives, at the newest line's alpha. */
     static void feed(DrawContext g,TextRenderer font,int w,int h,Map<String,int[]> r,Map<String,String> tx){
         long now=Util.getMeasuringTimeMs();var lines=EventFeed.lines(now);if(lines.isEmpty())return;
         int x=w-188,y=h/2-38,n=lines.size(),viewer=GravesAndGloryClient.team;
@@ -335,7 +335,7 @@ public final class BattleHud {
             if(alpha<4)continue;
             var style=FeedLines.style(line.kind(),line.team(),viewer);
             try{RenderSystem.setShaderColor(1,1,1,a);feedGlyph(g,style.glyph(),x+8,ry);}finally{RenderSystem.setShaderColor(1,1,1,1);}
-            String text=UiMath.trim(line.text(),140,font::getWidth);
+            String text=UiMath.trimWords(line.text(),140,font::getWidth);
             g.drawText(font,text,x+20,ry,alpha<<24|style.argb()&0xffffff,false);tx.put("feed-"+row,text);
         }
         r.put("feed",new int[]{x,y,172,74});

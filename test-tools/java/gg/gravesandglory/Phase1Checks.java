@@ -1667,6 +1667,10 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 12->{ // the hint layer in the round's first 60 s, then the screenshot, then an order aimed
                     if(tick>=seen+2){var rows=List.copyOf(BattleHud.hintRows());long age=net.minecraft.util.Util.getMeasuringTimeMs()-BattleHud.roundShownMs;
                         rowsOk=rows.equals(HINT_ROWS)&&age<BattleHud.HINT_LAYER_MS;rowsWhy="hint rows "+rows+" "+age/1000+" s into the round";
+                        // p1-ui-feed-round-notice (UI polish M7): the round's opening notice, under the newest line, is drawn whole
+                        List<String> feedRows=new ArrayList<>();for(int r=0;r<EventFeed.MAX_LINES;r++){String t=BattleHud.texts().get("feed-"+r);if(t!=null)feedRows.add(t);}
+                        String opening=GravesAndGlory.Battle.ROUND_START;
+                        report("p1-ui-feed-round-notice",feedRows.contains(opening)&&c.textRenderer.getWidth(opening)<=140,"the feed drew "+feedRows+"; the opening notice '"+opening+"' is "+c.textRenderer.getWidth(opening)+" px of the 140 a line holds");
                         shot(c,"ui-hud-hints");CommandMode.begin("move");seen=tick;stage=13;}
                 }
                 case 13->{
@@ -1777,8 +1781,11 @@ public final class Phase1Checks implements ClientModInitializer {
                         for(int r=0;r<EventFeed.MAX_LINES;r++){String t=BattleHud.texts().get("feed-"+r);if(t==null)continue;rows.add(t+" ("+font.getWidth(t)+" px)");if(font.getWidth(t)>140)wide.add(t);}
                         for(var l:ls)if(l.kind().equals("loss"))troops.add(troopOf(l.text()));
                         boolean unique=new HashSet<>(troops).size()==troops.size()&&!troops.contains("?");
-                        floodOk=ls.size()<=5&&rows.size()==ls.size()&&wide.isEmpty()&&unique&&prepOk;
-                        floodWhy=fixture+"; "+flooded+"; 60 client ticks later "+ls.size()+" lines live: "+feed()+"; drawn "+rows+(wide.isEmpty()?", none over 140 px":", over 140 px: "+wide)+"; loss lines by troop "+troops+"; "+prepWhy;
+                        // the long notice cut after a whole word (UI polish M7), not inside one
+                        String cut=null;for(int r=0;r<EventFeed.MAX_LINES;r++){String t=BattleHud.texts().get("feed-"+r);if(t!=null&&t.startsWith("The long"))cut=t;}
+                        String kept=cut!=null&&cut.endsWith("...")?cut.substring(0,cut.length()-3):null;boolean atWord=kept!=null&&kept.length()<LONG.length()&&LONG.startsWith(kept)&&!Character.isLetterOrDigit(LONG.charAt(kept.length()));
+                        floodOk=ls.size()<=5&&rows.size()==ls.size()&&wide.isEmpty()&&unique&&prepOk&&atWord;
+                        floodWhy=fixture+"; "+flooded+"; 60 client ticks later "+ls.size()+" lines live: "+feed()+"; drawn "+rows+(wide.isEmpty()?", none over 140 px":", over 140 px: "+wide)+"; the long notice drawn as '"+cut+"' (cut after a whole word: "+atWord+"); loss lines by troop "+troops+"; "+prepWhy;
                         shot(c,"ui-feed-flood");stage=-72;server(c,b->{b.campaign.returnLobby();stage=72;});
                     }
                 }

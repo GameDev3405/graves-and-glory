@@ -24,6 +24,19 @@ public final class UiMath {
         return "";
     }
 
+    /** The text unchanged if it fits in maxW, else cut after its last whole word that leaves room for "...", with no space or
+     *  stop before the dots; a first word too long for that is cut inside it (trim). */
+    public static String trimWords(String s, int maxW, ToIntFunction<String> width) {
+        if (width.applyAsInt(s) <= maxW) return s;
+        for (int at = s.lastIndexOf(' '); at > 0; at = s.lastIndexOf(' ', at - 1)) {
+            int n = at;
+            while (n > 0 && " .,;:".indexOf(s.charAt(n - 1)) >= 0) n--;
+            String t = s.substring(0, n) + "...";
+            if (n > 0 && width.applyAsInt(t) <= maxW) return t;
+        }
+        return trim(s, maxW, width);
+    }
+
     /** WCAG 2 contrast ratio of two colours (alpha ignored): 1 for equal colours, 21 for black on white. */
     public static double contrast(int argbA, int argbB) {
         double a = luminance(argbA), b = luminance(argbB);
