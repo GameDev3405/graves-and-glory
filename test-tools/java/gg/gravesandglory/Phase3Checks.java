@@ -836,15 +836,17 @@ public final class Phase3Checks implements ClientModInitializer {
      *  building (spur<k>-<building>; a spur is walked up to the wall of its building).
      *  The pictures (screenshots/p3-wt<N>-<sequence>-<what>.png, 1280x720, taken where the walker stands, hand and HUD hidden) are: both camps from their dais (camp-); per lane the start of the lane, the approach to the deck from the west
      *  bank, each capture point from 14 blocks up the road, the middle of the deck looking along it, the approach from the east bank (looking back at the deck) and the head of the lane on the Dusk side; per link road its start and middle; the
-     *  first spur of each kind (houses and farm and mill, one tower of each camp); where a lane had a stuck window, the place from 16 and from 6 blocks before it (stuck-); the ring band seen across the water from the deck (band-, the stone
-     *  strip of a ford); the four ends of the two rails of each deck and the two edges of the strip of a ford (rail-); every dressing post that stands in a river column (posts-); the view up at each raised outpost from the road and from the
-     *  plateau (outpost-); each kind of floating piece from where a walker can see it (float-); each building no road leads to (building-); and the two longest sight lines of the map at render distance 28 (sight-).
+     *  first spur of each kind (houses and farm and mill, one tower of each camp); where a lane had a stuck window, the place from 16 and from 6 blocks before it (stuck-); the water where the ring band of a point on a deck crossed it, seen from the north
+     *  edge of the deck (band-); the four ends of the two rails of each deck and the two edges of the strip of a ford (rail-); the two corners of the bank at the middle crossing where a post and the edge stone of the dressing once stood in the
+     *  river (posts-); the two places 16 and 6 blocks before the wall of a camp barracks that the straight fan road used to run into, and the lanes that bend past it (wall-, lane<k>-barracks-); the inside of each barracks hall looking up at its
+     *  lantern (hall-); the plaza floor of the first two points on dry land (plaza-); the view up at each raised outpost from the road and from the plateau (outpost-); each kind of floating piece from where a walker can see it (float-);
+     *  each building no road leads to (building-); and the two longest sight lines of the map at render distance 28 (sight-).
      *  Checks: p3-wt<N>-leg-<id> passes when the walker reached the end of the lane and no 2-second window of walking gained less than 3 blocks (a window that did is a stuck window, counted per lane; the walker then hops, and if that does not help
      *  is put on past the obstacle, on the road and not on a roof); p3-wt<N>-stuck is the total for the map; auto-jumps (a step up the walker had to hop), windows under 6 blocks and the y range of each lane are in the notes. p3-wt<N>-foreign
      *  passes when no column of the arena has a top block that belongs to another map; p3-wt<N>-river is the river check of the arena suite run again on the map as it stands; p3-wt<N>-floating passes when every solid block of the arena touches,
      *  by a face, an edge or a corner, a chain of solid blocks that reaches the floor. The rest of the scans (bands over water, hanging ring and pad, blocks standing in the river, the profile of every lane, the sight lines, every floating piece)
      *  are notes in screenshots/p3-wt<N>-notes.txt.
-     *  GRAVES_WALK_ONLY (or a file walk-only.txt in the run folder) lists name fragments: only the lanes and picture groups whose name contains one of them are done (camp, lane1, flank, link, spur0, band, rail, posts, outpost, float, building, sight). */
+     *  GRAVES_WALK_ONLY (or a file walk-only.txt in the run folder) lists name fragments: only the lanes and picture groups whose name contains one of them are done (camp, lane1, flank, link, spur0, band, rail, posts, wall, hall, plaza, outpost, float, building, sight). */
     static final class Walkthrough implements Suite {
         static final net.minecraft.world.Heightmap.Type FEET=net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES;
         record Stop(String name,double arc,double tx,double ty,double tz){}
@@ -1105,6 +1107,11 @@ public final class Phase3Checks implements ClientModInitializer {
 
         // ---- the lanes ----
         static Stop stop(Leg leg,String name,double x,double z,double tx,double ty,double tz){return new Stop(name,leg.arcOf(x,z),tx,ty,tz);}
+        /** The barracks of the camp on a side (-1 Dawn, 1 Dusk), the hall at the end of the muster ground, or null. */
+        static Spec.StructuresRow campHall(int side){
+            for(var s:Spec.STRUCTURES)if(s.kind().equals("barracks")&&Integer.signum(s.x())==side&&Math.abs(s.x())>256)return s;
+            return null;
+        }
         /** The structure other than a bridge whose footprint holds (x,z), or null. */
         static Spec.StructuresRow owner(double x,double z){
             int ix=(int)Math.floor(x),iz=(int)Math.floor(z);
@@ -1129,7 +1136,14 @@ public final class Phase3Checks implements ClientModInitializer {
             var out=new ArrayList<Leg>();var claimed=new HashSet<String>();double[] west={-290,0},east={290,0};int k=0;
             for(var s:MapRouteChecks.bridges()){
                 int rx=s.x(),z=s.z(),xw=rx-s.width()/2,xe=xw+s.width()-1;double lz=z+2.0;
-                var leg=new Leg("lane"+k,2.0,west,new double[]{-205,z},new double[]{rx-28,z},new double[]{rx+28,z},new double[]{205,z},east);
+                var wp=new ArrayList<double[]>();wp.add(west); // the fan roads of the camps bend once on the side of the barracks (CampaignMaps.fanBend)
+                var bw=CampaignMaps.fanBend(-1,z);if(bw!=null)wp.add(new double[]{bw[0],bw[1]});
+                wp.add(new double[]{-205,z});wp.add(new double[]{rx-28,z});wp.add(new double[]{rx+28,z});wp.add(new double[]{205,z});
+                var be=CampaignMaps.fanBend(1,z);if(be!=null)wp.add(new double[]{be[0],be[1]});
+                wp.add(east);
+                var leg=new Leg("lane"+k,2.0,wp.toArray(new double[0][]));
+                var hallW=campHall(-1);if(bw!=null&&hallW!=null)leg.stops.add(new Stop("lane"+k+"-barracks-dawn",leg.arcOf(bw[0],bw[1])+5.0,hallW.x()+0.5,hallW.elevation()+3.0,hallW.z()+0.5));
+                var hallE=campHall(1);if(be!=null&&hallE!=null)leg.stops.add(new Stop("lane"+k+"-barracks-dusk",Math.max(0.5,leg.arcOf(be[0],be[1])-5.0),hallE.x()+0.5,hallE.elevation()+3.0,hallE.z()+0.5));
                 leg.stops.add(stop(leg,"lane"+k+"-head",-195,lz,-35,65.0,lz));
                 leg.stops.add(stop(leg,"lane"+k+"-west-approach",xw-12,lz,xe+8,64.9,lz));
                 leg.stops.add(stop(leg,"lane"+k+"-dusk-head",195,lz,35,65.0,lz));
@@ -1203,7 +1217,7 @@ public final class Phase3Checks implements ClientModInitializer {
                 jobs.add(new LegJob(leg));
             }
             if(want("band"))for(var s:MapRouteChecks.bridges())for(var p:Spec.POINTS){
-                if(Math.abs(p.x()-s.x())>3||Math.abs(p.z()-s.z())>3||bandWater.getOrDefault(p.id(),0)==0)continue;
+                if(Math.abs(p.x()-s.x())>3||Math.abs(p.z()-s.z())>3)continue;
                 int z0=s.palette().equals("ford")?s.z()-3:s.z()-s.depth()/2;
                 jobs.add(new ShotJob("band-"+p.id(),p.x()+0.5,z0+0.5,p.x()+0.5,p.elevation()+1.0,p.z()-p.radius()+0.5,12,"point "+p.id()+": the ring band across the water, from the north edge of the "+(s.palette().equals("ford")?"stone strip of the ford":"deck")));
             }
@@ -1223,16 +1237,43 @@ public final class Phase3Checks implements ClientModInitializer {
                 jobs.add(new ShotJob("rail-sw-"+s.id(),mx+3.0,z1-0.5,xw+4.0,65.8,z1+1.5,12,"crossing "+s.id()+tag+"south rail seen along it toward its west end, from the middle of the deck"));
                 jobs.add(new ShotJob("rail-se-"+s.id(),mx-3.0,z1-0.5,xe-4.0,65.8,z1+1.5,12,"crossing "+s.id()+tag+"south rail seen along it toward its east end, from the middle of the deck"));
             }
-            if(want("posts")){
-                int shots=0;var seen=new HashSet<Integer>();
-                for(int[] st:standing){
-                    if(shots>=2||st[1]<Arena.Y)continue;
-                    var pt=Spec.POINTS[st[3]];
-                    if(!seen.add(st[3]*2+(st[2]<pt.z()?0:1)))continue;
-                    var s=deckNear(st[0],st[2]);if(s==null)continue;
-                    int xw=s.x()-s.width()/2,xe=xw+s.width()-1,z0=s.z()-s.depth()/2;
-                    double wx=Math.max(xw+1,Math.min(xe-1,st[0]-5))+0.5,wz=st[2]<s.z()?z0+0.5:z0+s.depth()-0.5;
-                    jobs.add(new ShotJob("posts-"+pt.id(),wx,wz,st[0]+0.5,st[1]+0.5,st[2]+0.5,12,"a dressing block of point "+pt.id()+" standing in the river at ("+st[0]+", "+st[1]+", "+st[2]+"), from the deck edge"));shots++;
+            if(want("posts")){ // the two corners of the bank at the middle crossing where, on Hollowwood, a post and the edge stone of the dressing stood in the outermost column of the river (the same two places on every map)
+                Spec.StructuresRow mid=null;for(var s:MapRouteChecks.bridges())if(mid==null||Math.abs(s.z())<Math.abs(mid.z()))mid=s;
+                if(mid!=null)for(var p:Spec.POINTS){
+                    if(Math.abs(p.x()-mid.x())>3||Math.abs(p.z()-mid.z())>3)continue;
+                    int z0=mid.z()-mid.depth()/2;
+                    jobs.add(new ShotJob("posts-"+p.id()+"-nw",p.x()-15.5,z0+0.5,p.x()-10.5,p.elevation()+1.5,p.z()-14.5,12,"point "+p.id()+": the north-west corner of the bank, where a boundary post of the dressing stood over the river, from the north edge of the deck"));
+                    jobs.add(new ShotJob("posts-"+p.id()+"-se",p.x()-9.5,z0+mid.depth()-0.5,p.x()+11.5,p.elevation()+1.0,p.z()+13.5,12,"point "+p.id()+": the south-east corner of the bank, where the edge stone of the dressing ran down to the water, from the south edge of the deck"));
+                }
+            }
+            if(want("wall"))for(int side:new int[]{-1,1}){ // the places the gate stood 16 and 6 blocks before the wall of a barracks that the straight fan road ran into (the road bends now)
+                var hall=campHall(side);if(hall==null)continue;
+                int z=0;for(var s:MapRouteChecks.bridges())if(CampaignMaps.fanBend(side,s.z())!=null){z=s.z();break;}
+                if(z==0)continue;
+                var old=new Leg("old",2.0,new double[]{side*290,0},new double[]{side*205,z});
+                double hit=old.len;for(double a=0;a<old.len;a+=0.25){var q=old.at(a);if(Walkability.inside(hall,(int)Math.floor(q[0]),(int)Math.floor(q[1]))){hit=a;break;}}
+                var on=old.at(hit+1.5);String who=side<0?"dawn":"dusk";
+                for(int back:new int[]{16,6}){var from=old.at(Math.max(0.0,hit-back));
+                    jobs.add(new ShotJob("wall-"+who+"-"+back,from[0],from[1],on[0],66.0,on[1],12,"the wall of the "+who+" barracks at ("+Math.round(on[0])+", "+Math.round(on[1])+"), where the straight fan road used to run into it, "+back+" blocks before it on the old line"));}
+            }
+            if(want("hall"))for(var s:Spec.STRUCTURES)if(s.kind().equals("barracks")){ // 6 blocks east of the lantern, on the floor, looking up at it
+                int y=s.elevation()+1;
+                jobs.add(new ShotJob("hall-"+s.id(),s.x()+6.5,s.z()+0.5,s.x()+0.5,y+4.5,s.z()+0.5,12,"inside the "+s.id()+" ("+s.width()+" by "+s.depth()+" by "+s.height()+") 6 blocks east of its lantern, looking up at it",y));
+            }
+            if(want("plaza")){ // the floor round the pole of the first two points on dry land: from the road 10 blocks out at the foot of the pole, and from 6 blocks out looking down at the floor 3 blocks ahead
+                int shots=0;
+                for(var p:Spec.POINTS){
+                    if(shots>=2||Math.abs(p.x()-Arena.riverX(p.z()))<14)continue;
+                    double[] cam=null;double bestRoad=1e9;
+                    for(int k=0;k<8;k++){
+                        double a=k*Math.PI/4,qx=p.x()+Math.cos(a)*10.0,qz=p.z()+Math.sin(a)*10.0;int ix=(int)Math.floor(qx),iz=(int)Math.floor(qz);
+                        if(owner(qx,qz)!=null||deckCell(ix,iz)||Arena.river(ix,iz)||Math.abs(Arena.height(ix,iz)-p.elevation())>1)continue;
+                        double rd=CampaignMaps.roadDistance(ix,iz);if(rd<bestRoad){bestRoad=rd;cam=new double[]{Math.cos(a),Math.sin(a)};}
+                    }
+                    if(cam==null)continue;
+                    shots++;double e=p.elevation()+1.0;
+                    jobs.add(new ShotJob("plaza-"+p.id()+"-far",p.x()+0.5+cam[0]*10.0,p.z()+0.5+cam[1]*10.0,p.x()+0.5,e,p.z()+0.5,12,"point "+p.id()+": the plaza floor from the road 10 blocks out, at the foot of the pole"));
+                    jobs.add(new ShotJob("plaza-"+p.id()+"-down",p.x()+0.5+cam[0]*6.0,p.z()+0.5+cam[1]*6.0,p.x()+0.5+cam[0]*3.0,e,p.z()+0.5+cam[1]*3.0,12,"point "+p.id()+": the plaza floor from 6 blocks out, looking down at the floor 3 blocks from the pole"));
                 }
             }
             if(want("outpost"))for(var p:Spec.POINTS)if(p.elevation()>Arena.Y){
