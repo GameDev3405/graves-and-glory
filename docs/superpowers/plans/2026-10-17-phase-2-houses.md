@@ -6,13 +6,13 @@
 
 **Architecture:** All new numbers live in new `sheets/design.json` sheets, read through the generated `Spec`. Every arithmetic rule sits in a pure class with no Minecraft imports (`RosterMath`, `CounterMath`, `Profile`, `ProfileMigration`, `Progression`), proved by javac-only standalone checks. Server code gets one entity factory (`ArmyMobs`), one damage path (`Combat.resolve`), one ability dispatcher (`Abilities`), one trait engine (`Houses`) and one commander engine (`Commander`). Each House lands as its own batch with its art, its mechanics, an in-game `Phase2Checks` suite with screenshots, and a bot-vs-bot balance gate.
 
-**Tech Stack:** Minecraft 1.20.1, Fabric Loader 0.16.14, Fabric API 0.92.2+1.20.1, Yarn 1.20.1+build.10, Loom 1.7.4, Java 17, Gradle 8.8 (offline), Python 3. Entity Texture Features 7.2.6 and Entity Model Features 3.3.12 are already pinned in `dependencies/manifest.json`, as is Fresh Animations 1.10.4.
+**Tech Stack:** Minecraft 1.20.1, Fabric Loader 0.16.14, Fabric API 0.92.2+1.20.1, Yarn 1.20.1+build.10, Loom 1.7.4, Java 17, Gradle 8.8 (offline), Python 3 (3.12 and Pillow for the art tools). Troop models, skins and animations are the mod's own; Entity Texture Features 7.2.6, Entity Model Features 3.3.12 and Fresh Animations 1.10.4 stay pinned in `dependencies/manifest.json` for the presentation modpack only (Needs Kort 13).
 
 **Spec:** `docs/superpowers/specs/2026-10-17-houses-design.md` (binding, all sections). Context: `docs/VISION-AND-ROADMAP.md` sections 4, 5 and 8; `HOW-TO-EDIT.md`; the Phase 1 plan `docs/superpowers/plans/2026-10-17-phase-1-solo-core.md`. Phase 1 is assumed merged, and this plan uses its names exactly.
 
 ## Global Constraints
 
-- Minecraft 1.20.1 and Fabric only; no new dependencies. Skins and models use the pinned ETF 7.2.6, EMF 3.3.12 and Fresh Animations 1.10.4.
+- Minecraft 1.20.1 and Fabric only; no new dependencies. Troop models, skins and animations are the mod's own code and resources (Tasks 5 to 5c); nothing depends on EMF, ETF or Fresh Animations.
 - Never hand-edit `Spec.java`. Change `sheets/design.json`, then run `python tools/preflight.py`. Every row of a sheet has the same columns and every cell is filled. A column is `double` only if the first row's value has a decimal point.
 - Game numbers live in sheets (spec 6.1). No class, trait, counter, rarity or reward number is hard-coded in Java. The only code constants are the spec's fixed effect kinds (Resistance I, Speed II) and presentation timings.
 - The harness lives only in `test-tools/`. Add `Phase2Checks`, `HousesCheck` and `ProfileMigrationCheck` to the `forbidden` tuple in `tools/release_config.py`.
@@ -21,7 +21,7 @@
 - Mob rule (spec section 0): no brain-AI mobs (piglin brute, hoglin, zoglin, warden, camel, sniffer, goat), no flying mobs, no guardians. Every `Army*` subclass keeps only `SwimGoal` and returns `false` from `shouldSave`. Every undead one also returns `false` from `isAffectedByDaylight()` and `canConvertInWater()`.
 - Hard progression cap: star bonus plus evolution bonus is at most +12% per stat over the sheet base, in every mode. Class effects and House traits are battle effects and sit outside the cap.
 - The counter product is clamped to [0.25, 2.5] (`combatDiscipline.multiplierMin/Max`). Troop damage uses the damage type `gravesandglory:troop`, tagged `minecraft:bypasses_shield`; armour still applies.
-- Skins: 64x64 vanilla layout, flat-shaded, 3 to 4 tones per material. The team colour is the loudest read (tabard plus back pennant); Houses read by silhouette and material. Every unit's look (purpose, silhouette, palette, armour and weapon, mark, tell, build basis, portrait crop) is fixed by `docs/superpowers/specs/2026-10-17-unit-identity.md` (approved by Kort 2026-10-18); Tasks 5 to 10 build to that spec, and where it differs from Houses spec 2.7 the unit identity spec wins. Its five approved rules: no gold or diamond on troops; painted shields and CustomModelData weapons via one sheet column; Tusk Spear braces on Charge; one team-colour cloth per Legendary; fix the husk and boar-kin arm pose in Task 5 before any Gilded art.
+- Skins: 64x64 on the rig's UV layout (128 wide for the colossus and the large beasts), flat-shaded, 3 to 4 tones per material. The team colour is the loudest read (tabard plus back pennant); Houses read by silhouette and material. Every unit's look (purpose, silhouette, palette, armour and weapon, mark, tell, build basis, portrait crop) is fixed by `docs/superpowers/specs/2026-10-17-unit-identity.md` (approved by Kort 2026-10-18); Tasks 5 to 10 build to that spec, and where it differs from Houses spec 2.7 the unit identity spec wins. Its five approved rules: no gold or diamond on troops; painted shields via one sheet column, and weapons as each troop's own model; Tusk Spear braces on Charge; one team-colour cloth per Legendary; troops pose only through their own rigs and clips (Tasks 5 and 5b), so no husk or boar-kin arm pose reaches the Gilded art.
 - Balance gate per House batch: the House's `<house>_normal` bot banner against the current best pure normal banner. 20 matches (10 per side), Normal bots, maps 0 to 4. The combined win rate must be between 40% and 60%.
 - Launch rules are unchanged from Phase 1: no launch while Kort is playing (run the process check first); use an isolated, disposable `GRAVES_ROADMAP_TEST_ROOT` or `GRAVES_ROADMAP_SERVER_ROOT` under the scratchpad; always pass `--offline`; `JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot"`.
 - Never publish, upload or push. Commit locally per task on branch `phase-2-houses`, cut from `main` after Phase 1 is merged.
@@ -31,7 +31,7 @@
 
 ## Review Focus
 
-1. **Side-team cleanup.** A troop dies, rises (Rise Again), is raised by Grave Bloom, or the round ends or the map switches. Its scoreboard side team (`gg_<side>`) membership is removed with the entity, so ETF `teams=` never leaks and the scoreboard does not grow across rounds. (Test: `p2-teams-clean`, Task 5.)
+1. **Side-team cleanup.** A troop dies, rises (Rise Again), is raised by Grave Bloom, or the round ends or the map switches. Its scoreboard side team (`gg_<side>`) membership is removed with the entity, so a pennant never shows a stale side and the scoreboard does not grow across rounds. (Test: `p2-teams-clean`, Task 5.)
 2. **Awkward v1 profiles.** Cases: removed ids (`oracle`, `wraith`); a deployment that is too short or names locked troops; a v1 client cache imported on a first LAN visit. Each is migrated exactly once, the server copy wins, and `<uuid>.v1.json` is kept and never deleted. (Tests: `mig-*` in `ProfileMigrationCheck`, Task 1; `p2-migrate-import`, Task 13.)
 3. **Temporary troops at round end.** Temporary Grave Bloom Risen and risen Graveborn never count toward the 20-slot reinforce check and never earn mastery "survived". They vanish at `startRound`, `returnLobby` and `switchMap`, and the death log is cleared. (Test: `p2-bloom-cleanup`, Task 7.)
 4. **Supply banner lost before deploy.** A Forward Supply banner is destroyed, or an enemy arrives within 12, between purchase and deploy. The troop deploys at the next valid anchor or at the barracks, decided at spawn time. (Test: `p2-supply-lost`, Task 8.)
@@ -598,50 +598,488 @@ Positions are always read by team index from rows 0 and 1. Colour, name and glyp
 
 ---
 
-### Task 5: Skin pipeline spike, team pennants and Gilded art
+### Task 5: Troop model pipeline spike, team cloth and Gilded art
+
+Troops get their own models, skins, glow layers and weapon models, owned by the mod in code (Kort, 2026-10-18 late; unit identity section 0). Nothing here depends on EMF, ETF or Fresh Animations. On the client a troop is still a plain vanilla mob named by `Battle.spawn`, so the renderer is registered per vanilla entity type, resolves the troop from the custom name, and hands every other mob of that type to the vanilla renderer.
 
 **Files:**
-- Create: `tools/build_skins.py`. It reads the `design.json` troops and evolutions plus the `art/` sources, writes the pack files below with deterministic numbering, and prints `skins: <n> textures, <m> models`.
-- Create, for the six Gilded troops (pixel-art skill, 64x64, spec 2.7 rows):
-  - `art/troops/<troop>_s<stage>.png`, plus an optional `_e.png` emissive layer;
-  - `art/troops/<troop>.jem`, and `art/troops/<troop>_s3.jem` for the stage-3 extra part;
-  - `art/pennant/pennant_<side>.png` (4).
-- Generated and committed:
-  - `src/main/resources/resourcepacks/armory/assets/minecraft/optifine/random/entity/zombie/husk{N}.png` and `husk.properties`;
-  - `.../optifine/cem/husk{N}.jem` and `.../optifine/cem/husk.properties`;
-  - `assets/gravesandglory/textures/entity/pennant.png`, with `assets/gravesandglory/optifine/random/entity/pennant.properties`.
+- Create: `tools/build_skins.py` (Python 3.12 and Pillow, dev only), with the `build_ui_art.py` conventions:
+  - it re-executes itself with `PYTHONHASHSEED=0` and exports by default;
+  - `--verify` rebuilds into a temp dir and exits 1 naming the first byte difference;
+  - `--template <troop>` writes a paint template;
+  - outputs listed in the previous index and no longer built are removed;
+  - it prints `build_skins: <n> ...` lines.
+- Create: `test-tools/standalone/test_build_skins.py` (unittest, laid out like `test_release_integrity.py`).
+- Create (sources, pixel-art skill):
+  - `art/rigs/{biped,hound,spider,colossus}.json`;
+  - `art/parts/<part>.json`, the shared part library: the Gilded six's parts as their unit identity Build lines name them, plus `pennant` and `standard`;
+  - `art/weapons/<id>.json` and `<id>.png`: `arming_sword`, `order_bow`, `longsword`, `longbow`, `sun_staff`, `marshal_sword`;
+  - `art/team/team_cloth.png` (greyscale template) and `art/team/glyph_{sun,moon,star,wave}.png`;
+  - `art/troops/<troop>.json` and `art/troops/<troop>_s<stage>.png` (plus `<troop>_e.png`) for the six Gilded troops.
+- Generated by `build_skins.py` and committed:
+  - under `src/main/resources/assets/gravesandglory/models/troop/`: `<troop>.json`, `rig/<rig>.json`, `weapon/<id>.json`, and `index.json` (every troop, rig, weapon and output path; fixed formatting, LF);
+  - under `src/main/resources/assets/gravesandglory/textures/entity/troop/`: `<troop>_s<stage>.png`, `<troop>_veteran.png`, `<troop>_e.png`, `<troop>_o.png`, `weapon/<id>.png` (and `<id>_e.png`), a `team_cloth_<side>.png` for each `factions` row, and `team_cloth_linen.png`.
+- Create (client): `src/main/java/gg/gravesandglory/{TroopModelLoader,TroopModels,TroopModel,TroopRenderer,TroopRenderers,TroopFeatures}.java`.
+- Modify: `GravesAndGloryClient.java:60-65`: remove the husk renderer override; call `TroopRenderers.register()` and register `TroopModelLoader`.
+- Modify: `GravesAndGlory.java` (side teams; the painted shield in `Battle.spawn`), `Campaign.java` (`clearSides` in `returnLobby` and `switchMap`) and `ArmyCards.java` (`portrait(spec, stage)`; the painted shield).
+- Modify: `sheets/design.json` (`troops.shield`, `factions.dye`) and `tools/preflight.py`.
+- Modify: `Phase2Checks.java` (suites `spike` and `gilded-art`). No harness class is added outside it, so the `forbidden` tuple in `tools/release_config.py` is unchanged.
 
-  `husk.jem` stays model 1.
-- Modify: `GravesAndGlory.java`: `Battle.joinSide(MobEntity mob, int team)` and `Battle.clearSides()` use scoreboard teams `gg_<side>`; a troop leaves its team on discard or death.
-- Modify: `GravesAndGloryClient.java`: the husk renderer override applies only when `entity_texture_features` is not loaded.
-- Modify: `Phase2Checks.java` (suites `spike` and `gilded-art`).
+**Source formats.** All sizes are in model pixels, with y pointing down and the ground at y 24. Angles are in degrees.
+- Rig: `rig`, `size [w,h]`, `outer` (the outer twin's dilation, 0.25), `hands {right, left}`, and `bones[]` of `{name, parent, pivot, boxes[{origin, size, uv, mirror}]}`, listed parents first. The four skeletons, with fixed bone names:
+  - `biped`, 64x64 zombie layout: `root`; `body` (pivot at the hips) holding `head`, `right_arm` > `right_hand`, `left_arm` > `left_hand` and `arms_folded`; `right_leg` and `left_leg` under `root`.
+  - `hound`, 64x64 with the wolf layout on top: `root`; `body` (pivot at the hips) > `chest` > `head` > `jaw`; `chest` > `front_left_leg`, `front_right_leg`; `body` > `tail`; `back_left_leg` and `back_right_leg` under `root`.
+  - `spider`, 64x64 with the spider layout on top: `root` > `thorax` > `head` > `fangs`; `thorax` > `abdomen`, `left_leg_1` to `left_leg_4` and `right_leg_1` to `right_leg_4` (1 is the front pair).
+  - `colossus`, 128x128 iron golem layout: the biped's bone names on golem boxes.
+- Rig per sheet entity (`TroopModels.RIGS`):
+  - biped: husk, zombie, skeleton, stray, wither_skeleton, drowned, zombified_piglin, vindicator, pillager and evoker;
+  - hound: wolf, polar_bear and ravager;
+  - spider: spider;
+  - colossus: iron_golem.
+- Part: `part`, `bone` (the default anchor), `boxes[]`, `team` (bool) and `tag` (`""` or `helm`). Box UVs are relative to the part's `uv`, except that a team part's UVs are absolute on the cloth sheet.
+- Troop:
+  - identity and geometry: `troop`, `rig`, `size` (default the rig's), `bones {<name>: {pivot?, boxes?, scale?}}`, `hunch` (biped only) and `idleArms` (`hang`, `forward` or `folded`);
+  - `parts[]` of `{part, name?, bone?, uv, offset?, rotation?, scale?, stages?}`;
+  - textures: `skins {<stage>: <file>}`, `veteran`, `glow`, `glowFrom` (default 1) and `outer`. `veteran`, `glow` and `outer` default to `<troop>_veteran`, `<troop>_e` and `<troop>_o` when those files exist;
+  - `weapon` (an id or `none`), `hand` (`right` or `left`) and `portrait` (`standard`, `tall N`, `wide N` or `beast N [yaw D]`).
+- Weapon: `weapon`, `size`, `boxes[]` and `grip {offset, rotation}`, with `<id>.png`, plus `<id>_e.png` for a lit weapon.
 
-**Rules:** `build_skins.py` writes:
-- in `<mob>.properties` (ETF), for every troop and stage: `textures.N=N` and `name.N=regex:^<escaped stage name>( \(Veteran\))?$`;
-- in the EMF `<mob>.properties`, for every troop: `models.N=N` with a regex over stages 1 and 2, and a second model over stage 3.
-
-Every variant model attaches `gg_pennant` (box `[-2,-14,2,4,8,1]` on `body`, texture `gravesandglory:textures/entity/pennant`) and keeps the Fresh Animations root entry (`<mob>_animations.jpm`) where one ships. `pennant.properties` maps `teams.N=gg_<side>` to the four side pennants.
+**Rules:**
+- Proportions are baked at build time, never scaled at runtime.
+  - A bone `scale` k scales the bone's boxes about its pivot. The origin becomes k x origin + size x (k-1)/2, the dilation becomes size x (k-1)/2 per axis, and the UV size stays the integer size.
+  - The same scale moves the bone's children's pivots by k.
+  - A part takes its anchor bone's scale times its own.
+  - After baking, `root` shifts so the lowest leg box bottom sits at y 24.
+  - `hunch` h joins the default transform: body pitch +h, head pitch -h, arm pitch -h.
+  - `arms_folded` keeps its boxes only when `idleArms` is `folded`.
+- `build_skins.py` exits 1, naming the troop and the reason, on any of these:
+  - an unknown rig, bone or part, or a rig that is not its sheet entity's rig;
+  - a duplicate bone name (a part's bone is its `name`, which defaults to the part id);
+  - two skin boxes overlapping in UV, or a box outside the sheet;
+  - a skin whose size is not the troop's, or a stage that the troop's evolution line lacks;
+  - more than 6 lit pixels in a troop's glow and its weapon's glow together (16 for Epics and Legendaries, by `troops.rarity`);
+  - an opaque skin pixel with saturation over 0.45 and value over 0.60 that lies within 45 degrees of hue of a `factions` colour (team tint rule 1);
+  - a skin named `<troop>.png`. Skins always end `_s<stage>` or `_veteran`, because ETF, when a player has it, pairs `<name>_e.png` with `<name>.png`.
+- A generated model's top-level keys are only `format, troop, rig, size, bones, skins, veteran, glow, glowFrom, outer, weapon, hand, idleArms, portrait`. Vanilla 1.20.1 parses every `models/**/*.json` as a block model, so no generated model may carry `parent`, `elements`, `textures`, `display`, `overrides`, `gui_light` or `ambientocclusion`.
+- Team cloth:
+  - the template's three greys become the side colour x1.0, x0.8 and x0.6 (`factions.color`);
+  - every other pixel keeps its paint (white charges, the pole);
+  - the side's `factions.glyph` mask goes on the pennant field in white;
+  - linen is #CFC6B0, with no glyph.
+- The `pennant` part is a 4x8x1 team box on `body`, behind the back, its top 6 px above the head (unit identity rule 2). Hound and spider troops hang it from `chest` or `thorax` at the shoulders. Aldric's `standard` is 6x10, 12 px above the head.
+- A troop stage without its own skin draws the next lower stage's skin, and a Veteran without `<troop>_veteran.png` draws its stage skin. The Veteran gilt edge is skin paint around the chest panel; the cloth sheets have no Veteran variant.
+- The troops sheet `texture` column stays for preflight. A troop with no generated model draws through its vanilla renderer until its House task makes one.
+- Assumption (Needs Kort 10): no vanilla armour, held-item or elytra layer draws on a troop. Helmets and chests give armour points only, and the weapon item feeds ability code only. The off-hand shield is the one vanilla item drawn.
+- Assumption (Needs Kort 11): portraits have no team (unit identity rule 8), so they show linen panels and no pennant.
+  - `ArmyCards` still dyes the portrait's chest item with `troopColour()`. The dye no longer draws, but `p2-barracks-colour` and `p2-editor-colour` still read it.
+- The renderer registers no `EntityModelLayer` and builds its `ModelPart`s itself, so EMF cannot replace them.
 
 **Interfaces:**
-- Produces: `Battle.joinSide(MobEntity mob, int team)`, which adds the mob's UUID score holder to `gg_<side(team).id()>`, creating the team on first use.
-- Produces: `Battle.clearSides()`, which empties all four teams in `startRound`, `returnLobby` and `switchMap`.
-- Produces: `ArmyCards.portrait` sets the stage custom name, so cards show the variant.
+- Consumes: Task 2 `ArmyMobs.named(String)` and `ArmyMobs.stageName(Spec.TroopsRow, int)`; Task 3 `Battle.side(int team)` and the `factions` rows.
+- Produces (server):
+  - `Battle.joinSide(MobEntity mob, int team)`: adds the mob's UUID to scoreboard team `gg_<side(team).id()>`, creating the team on first use. `Battle.spawn` calls it.
+  - `Battle.leaveSide(Entity e)`: called in the `AFTER_DEATH` handler and wherever a troop is discarded.
+  - `Battle.clearSides()`: empties the four teams in `startRound`, `returnLobby` and `switchMap`.
+  - `Battle.shield(Spec.TroopsRow t, String dye) -> ItemStack`: an unbreakable shield whose `BlockEntityTag` has `Base` set to the dye and `Patterns` taken from `troops.shield`. `Battle.spawn` passes the side's `factions.dye`.
+- Produces (client):
+  - `TroopModelLoader implements SimpleSynchronousResourceReloadListener` (id `gravesandglory:troop_models`) and `static TexturedModelData parse(JsonObject model)`. A bad file logs `[troop-models] <file>: <reason>`, and that troop stays on its vanilla renderer.
+  - `record TroopModels.Look(Spec.TroopsRow troop, int stage, boolean veteran, String side)` and `TroopModels.resolve(Entity e) -> Look`:
+    - it returns null for a non-troop or for a troop with no model;
+    - the name may end in ` (Veteran)`;
+    - `side` is the side of the entity's `gg_` team, else null.
+  - Model lookups: `TroopModels.model(String troop) -> TroopModel<?>`, `rig(String rig) -> TroopModel<?>` (the bare rig, for Task 5b), `ids() -> Set<String>`, and `RIGS` (`Map<String,String>`, entity to rig).
+  - Texture lookups:
+    - `TroopModels.skin(Look l) -> Identifier`;
+    - `glow(Look l) -> Identifier`, null below `glowFrom`;
+    - `cloth(String side) -> Identifier`, linen for null;
+    - `weapon(String id) -> TroopModels.Weapon`, a record of `ModelPart part, Identifier texture, Identifier glow`.
+  - Portrait framing: `TroopModels.portraitTall(String troop) -> int` (N for `tall N`, else 0), for the UI plan's `Portrait.draw` `tall` argument, and `framing(String troop) -> String` (the raw `portrait` value).
+  - `TroopModel<T extends MobEntity> extends SinglePartEntityModel<T>`:
+    - `getPart()`, `bone(String name) -> ModelPart`, `bones() -> Set<String>` and `restBounds() -> Box` (model pixels);
+    - `prepare(Look l, boolean folded, boolean helmOff)` sets part visibility for the stage, the fold and the `helm` parts, and hides team bones for the skin pass;
+    - `teamPaths() -> List<List<ModelPart>>` and `handPath(String hand) -> List<ModelPart>`, each path running from root to the bone;
+    - until Task 5b, `setAngles` gives the rest pose plus head look.
+  - `TroopRenderer<T extends MobEntity> extends LivingEntityRenderer<T, TroopModel<T>>`:
+    - it is built with an empty placeholder model, because entity renderers and `TroopModelLoader` reload in either order, and with the vanilla renderer it falls back to, exposed as `vanilla()`;
+    - per entity it sets `this.model` from `resolve`, and draws an entity whose `Look` is null through `vanilla()`;
+    - its `setupTransforms` applies only the body yaw, never the vanilla death tilt.
+  - `TroopRenderers.register()` registers one `TroopRenderer` per sheet entity type, each over its vanilla factory and vanilla shadow radius. The types are husk, zombie, skeleton, stray, wither_skeleton, drowned, zombified_piglin, vindicator, pillager, evoker, wolf, spider, polar_bear, iron_golem and ravager. For zombified_piglin the factory is `PiglinEntityRenderer` with the zombified piglin layers.
+  - `TroopFeatures` holds five layers:
+    - `Outer`: `<troop>_o` on the rig boxes, dilated by the rig's `outer`;
+    - `Cloth`: each team bone, drawn through its ancestor chain with `cloth(side)`; the pennant and standard hide when `side` is null or `troops.pennant` is false;
+    - `Glow`: drawn with `RenderLayer.getEyes`;
+    - `Weapon`: the weapon part at the hand bone, plus its glow;
+    - `Shield`: the off-hand shield, drawn through `HeldItemRenderer` at `left_hand` so the painted patterns and the vanilla blocking model show.
+    The weapon and shield skip while the troop's arms are folded and while it is invisible.
+  - `ArmyCards.portrait(Spec.TroopsRow spec, int stage) -> MobEntity`: custom name `ArmyMobs.stageName(spec, stage)`, cached per id, stage and colour, with no team and a painted shield on a light-grey field. `portrait(spec)` means stage 1.
 
-- [ ] **Step 1: Make the spike art only.** Use placeholder flat-colour skins for `knight` stage 1 and `sentinel` stage 1, one variant JEM with the pennant, and four pennants. Run `python tools/build_skins.py`.
-- [ ] **Step 2: Write suite `spike`.** Place two knights and two Templars (one of each per team, gold vs violet) 3 blocks apart in front of the camera at noon.
-  - `p2-spike-names`: the custom names equal `Order Squire` and `Templar`.
-  - `p2-spike-teams`: each mob is on `gg_gold` or `gg_violet`.
-  - Screenshots: `spike-name-skin` (two different skins), `spike-name-model` (pennant box visible on both) and `spike-team-pennant` (gold and violet pennants differ).
-  - `p2-teams-clean`: kill all four, then `returnLobby`; no `gg_*` team has members.
-- [ ] **Step 3: Run suite `spike`. Gate:** the tester states for each screenshot whether the variant shows.
-  - If all three show, continue.
-  - If one fails, stop and report to the orchestrator. The fallback (spec 8.2) is a client lookup `TroopSkins.texture(MobEntity e) -> Identifier` by custom name and team, used by renderer overrides for the affected mob, and built only for the failing mechanism.
-- [ ] **Step 4: Make the Gilded art.** Final skins for the six troops at each of their stages (Commons and Rares 3 stages, Epic and Legendary 1); the emissive Sunweaver halo; the six models plus three stage-3 models, per spec 2.7. Rerun `build_skins.py`.
-- [ ] **Step 5: Write suite `gilded-art`:**
-  - `p2-gilded-lineup`: spawn the six Gilded troops in a row for each team (stage 1); screenshot `gilded-lineup`.
-  - `p2-gilded-stages`: spawn knight stages 1, 2 and 3; screenshot `gilded-stages`.
-  - `p2-gilded-cards`: open the recruit page Gilded tab; screenshot `gilded-cards`.
-- [ ] **Step 6: Run suites `spike,gilded-art`.** The tester confirms that Squire, Archer, Templar, Longbow, Sunweaver and Aldric read as distinct silhouettes, that the team pennants differ, and that stage 3 shows the extra part. Commit `"Phase 2: ETF/EMF troop skin pipeline, team pennants, Gilded Order art"`.
+- [ ] **Step 1: Write the failing `test_build_skins.py`**, against fixture sources and a minimal `sheets/design.json` in a temp dir:
+  - `test_bake_scale_about_pivot`: biped `body` scale `[1.2,1,1]` gives box origin x -4.0, size 8 and dilation x 0.8, and moves the arm pivots from x +/-5 to +/-6.
+  - `test_feet_on_ground`: legs scale `[1,1.15,1]` leaves the lowest leg box bottom at y 24.
+  - `test_hunch`: `hunch 20` gives body pitch 20, and head and arm pitch -20.
+  - `test_uv_overlap`: two parts at one `uv` exit 1, naming both.
+  - `test_bad_names`: each of these exits 1, naming it: an unknown rig, bone or part; a rig that is not the entity's; a duplicate bone.
+  - `test_vanilla_keys`: no generated model has a top-level key from the vanilla list.
+  - `test_skin_names`: outputs end only in `_s<n>`, `_veteran`, `_e` or `_o`; a source `<troop>.png` exits 1.
+  - `test_glow_cap`: 7 lit pixels on a Common exit 1; 16 on an Epic pass.
+  - `test_tint_rule`: a #E3B341 skin pixel exits 1; gilt #96783A passes.
+  - `test_team_cloth`: gold maps the three greys to 14922561 x1.0, x0.8 and x0.6, keeps white, and stamps the sun; linen is #CFC6B0 with no glyph.
+  - `test_index_and_stale`: the index lists exactly the fixture troops, rigs, weapons and outputs; a removed troop's outputs are deleted on the next export.
+  - `test_verify`: `--verify` after an export exits 0; after one output byte changes, it exits 1 naming that file.
+- [ ] **Step 2: Run it and expect failure.** Run: `python test-tools/standalone/test_build_skins.py`. Expected: `ModuleNotFoundError: No module named 'build_skins'`.
+- [ ] **Step 3: Implement `tools/build_skins.py`:**
+  - `load(root: Path) -> Catalog`;
+  - `bake(cat: Catalog, troop: str) -> dict`;
+  - `cloth(cat: Catalog, side: str | None) -> Image.Image`;
+  - `template(cat: Catalog, troop: str) -> Image.Image`, which paints each box face a flat colour and is written to `work/troops/<troop>_template.png`;
+  - `export(root: Path, out: Path) -> dict`, which returns the index;
+  - `verify(root: Path) -> int`;
+  - `fail(why: str) -> NoReturn`.
+- [ ] **Step 4: Run it and expect `OK`.**
+- [ ] **Step 5: Make the spike sources only:**
+  - the four rigs;
+  - flat-colour placeholder skins and parts for `knight` and `sentinel` at stage 1;
+  - `pennant`;
+  - the cloth template and the four glyphs;
+  - the `arming_sword` and `longsword` weapons.
+
+  Run `python tools/build_skins.py`. Expected: `build_skins: 2 troops, 4 rigs, 2 weapons, 5 cloths`.
+- [ ] **Step 6: Add the sheet columns and preflight rules.**
+  - `troops.shield` holds comma-joined `<dye>:<pattern>` pairs, or `none`:
+    - knight `white:cs`;
+    - sentinel `white:sc`;
+    - gl_marshal `white:sc,light_gray:bo`;
+    - ic_hearthguard `black:bo,light_gray:mc`;
+    - every other row `none`.
+  - `factions.dye`: gold `yellow`, violet `purple`, crimson `red`, teal `cyan` (team tint rule 4).
+  - Preflight checks three things:
+    - `shield` is `none` exactly when a row lacks the `shield` tag, and otherwise names vanilla dyes and banner pattern codes;
+    - every `art/troops/<id>.json` names a troop id;
+    - `models/troop/index.json` lists exactly those ids.
+
+  Run `python tools/preflight.py` and `python tools/build_skins.py --verify`. Expected: both pass.
+- [ ] **Step 7: Write suite `spike`.** Place two knights and two Templars (one of each per team, gold vs violet) 3 blocks apart in front of the camera at noon, plus one unnamed husk.
+  - `p2-spike-renderer`: the four troops draw through `TroopRenderer` with their own models. For the husk, `resolve` is null and `vanilla()` is a `HuskEntityRenderer`.
+  - `p2-spike-names`: the custom names are `Order Squire` and `Templar`; `resolve` gives `knight` and `sentinel` at stage 1, on sides gold and violet.
+  - `p2-spike-teams`: each troop is on `gg_gold` or `gg_violet`.
+  - `p2-spike-bones`: both models have head, body, right_arm, left_arm, right_hand, left_hand, right_leg, left_leg and pennant. The knight also has `iron_cap`; the Templar has `great_helm` and `long_tabard`.
+  - `p2-spike-feet`: in both models the `restBounds` bottom is at y 24, and the Templar's top is at least 2 px above the knight's.
+  - `p2-spike-load`: `latest.log` has no `Failed to load model` line naming `gravesandglory:troop/`, and no `[troop-models]` line.
+  - `p2-spike-portrait`: `ArmyCards.portrait(sentinel, 1)` resolves with a null side, so it draws `team_cloth_linen` and no pennant. Screenshot `spike-portrait`.
+  - Screenshots:
+    - `spike-name-skin`: two different skins;
+    - `spike-name-model`: the iron cap against the great helm;
+    - `spike-team-pennant`: the gold and violet pennants and panels differ.
+  - `p2-teams-clean`: kill all four, then `returnLobby`. No `gg_*` team has members.
+- [ ] **Step 8: Run suite `spike` and expect failures.**
+- [ ] **Step 9: Implement the client classes, the side teams and the painted shield** to the Interfaces above.
+- [ ] **Step 10: Run suite `spike` twice:**
+  - first bare;
+  - then with the presentation mods: copy `run/mods/*.jar` (EMF 3.3.12 and ETF 7.2.6) and `run/resourcepacks/*` (Fresh Animations, Excalibur and the patch) into the test root, and enable the packs.
+
+  Every id passes in both runs, and the screenshots match. A difference is a renderer bug to fix here, never a reason to depend on those mods.
+- [ ] **Step 11: Make the Gilded proof set** (pixel-art skill; unit identity section 1 Look and Build lines):
+  - the six troops at stage 1, with their parts, weapons, `mage_e.png` and painted shields;
+  - the knight at stage 3, with `crest_plume`;
+  - all of it on the final cloth template.
+
+  Run `python tools/build_skins.py --template <troop>` before painting and `python tools/build_skins.py` after.
+- [ ] **Step 12: Write suite `gilded-art`:**
+  - `p2-gilded-lineup`: the six Gilded troops in a row for each team, at stage 1. Screenshot `gilded-lineup`.
+  - `p2-gilded-close`: one screenshot per troop, `gilded-<troop>` (gold, 4 blocks, yaw 30), plus `gilded-knight-s3`.
+  - `p2-gilded-stages`: knight stages 1, 2 and 3; `crest_plume` shows only at stage 3. Screenshot `gilded-stages`.
+  - `p2-gilded-kit`: each troop's weapon model resolves, and the Sunweaver's glow resolves. The knight, Templar and Aldric carry shields whose `BlockEntityTag` matches `troops.shield` on the side's dye.
+  - `p2-gilded-cards`: the recruit page's Gilded tab. Screenshot `gilded-cards`.
+- [ ] **Step 13: Run suite `gilded-art`, then grade.**
+  - Grade every `spike` and `gilded-art` screenshot against `work/ui-concepts/GRADING-RUBRIC.md`.
+  - Include the unit identity lookalike check: Squire against Templar by silhouette alone.
+  - Anything that scores below 9 goes back to Step 11.
+  - The tester confirms three things: Squire, Archer, Templar, Longbow, Sunweaver and Aldric read as distinct silhouettes; the team pennants differ; stage 3 shows the plume.
+- [ ] **Step 14: Compile, then run suites `spike,gilded-art,engine`; all pass.** Commit `"Phase 2: own troop models and renderer, team cloth, Gilded proof set"`.
+
+  Hand the graded proof sheet to the orchestrator for Kort, and wait for his answer before Step 15. Tasks 5b and 5c may proceed meanwhile.
+- [ ] **Step 15: After Kort's yes, finish the Gilded stages:** knight stage 2, and archer, sentinel and longbow stages 2 and 3 with their stage-3 parts.
+
+  Rerun `build_skins.py` and suite `gilded-art`, and regrade at 9 or better. Commit `"Phase 2: Gilded Order stage art"`.
+
+---
+
+### Task 5b: Rig animation sets
+
+Each rig gets one keyframe clip per pose, built on Minecraft's own animation system: `Animation` (Mojang's `AnimationDefinition`) in `net.minecraft.client.render.entity.animation`. `TroopAnimator` picks the clips from the unit's state, its order and a scene's `pose`. The sets cover both the story's scene poses and the unit AI stances.
+
+**Files:**
+- Create (client): `src/main/java/gg/gravesandglory/{TroopClips,BipedClips,HoundClips,SpiderClips,ColossusClips,TroopAnimator}.java`.
+- Modify: `TroopModel.java` (`setAngles` calls `TroopAnimator.pose`).
+- Modify:
+  - `GravesAndGlory.java`: the `STANCE` id, `Unit.stance` and the tracking send;
+  - `Tactics.java`: `STANCES`, `stance` and the send on change;
+  - `GravesAndGloryClient.java`: the receiver and the unload cleanup.
+- Delete: `src/main/java/gg/gravesandglory/mixin/BipedAnimationMixin.java`, and its `client` entry in `src/main/resources/gravesandglory.mixins.json`.
+  - It reached troops through `BipedEntityModel.setAngles`, which no troop uses now.
+  - `bow_draw`, `cast` and `idle` replace its aim, gesture and breathing.
+- Modify: `Phase2Checks.java` (suite `anim`).
+
+**Clips.** There is one `Animation` per clip per rig.
+- Build each clip with `Animation.Builder`, `Transformation(Targets.ROTATE or Targets.TRANSLATE, Keyframe...)` and `AnimationHelper.createRotationalVector`.
+- Each frame, apply clips with `AnimationHelper.animate(model, clip, ms, weight, tmp)` after `getPart().traverse().forEach(ModelPart::resetTransform)`.
+- No clip uses `Targets.SCALE`. In 1.20.1, `resetTransform` leaves scale alone, so a scale clip would grow every frame.
+- A `loop` clip ends on its first frame, a `once` clip ends at rest, and a `hold` clip stops on its last frame.
+
+In the table, angles are in degrees, and an arm pitch of -90 points the arm forward.
+
+| Clip | Kind | Length s | biped | hound | spider | colossus |
+|---|---|---|---|---|---|---|
+| idle | loop | 3.0 | breath: body pitch 1.5, arms roll +/-2 | breath, tail sway +/-10 | abdomen bob 0.3 px, legs +/-3 | breath, arms sway +/-3 |
+| walk | loop | 1.0 | legs +/-30, arms +/-25 opposed | diagonal pairs +/-25 | alternating fours, legs yaw +/-20 | legs +/-25, arms +/-20 opposed |
+| run | loop | 0.6 | legs +/-50, arms +/-45 opposed, body pitch 10 | bound: pairs +/-40, body +/-5 | legs yaw +/-35, body bob 0.5 px | legs +/-40, arms +/-35 opposed |
+| attack | once | 0.5 | right arm -110 to 20, body yaw 20 | lunge: chest 2 px forward, jaw 30 | front pair up 40, fangs 20 | both arms up 120, then down |
+| hit | once | 0.3 | body pitch -10, head -15 | head yaw 15 | legs flinch 15 | body pitch -12 |
+| death | hold | 0.9 | knees give, falls back flat | rolls onto its side | legs curl 60 | falls forward flat |
+| shield_up | hold | 0.2 | left arm -60, yaw 30 | head down 20 | front pair up 30 | arms crossed at the chest |
+| bow_draw | loop | 1.2 | left arm -90; right arm draws to the cheek and releases | pounce crouch: chest down 2 px, legs fold 20 | rears: front pairs -50 | right arm -90 |
+| cast | loop | 1.0 | arms up and out, sway +/-10 (the evoker spell pose) | howl: head -50, jaw 30 | front pairs raised, waving +/-15 | arms -100, sway +/-10 |
+| kneel | hold | 0.6 | right knee down, root down 4 px | lies down: legs fold, body down 4 px | legs fold 30, body down 3 px | one knee down, root down 5 px |
+| point | hold | 0.4 | right arm -90, yaw with the head | head pitch -15, nose forward | front leg -60 | right arm -90 |
+| sit | hold | 0.6 | legs -90, root down 10 px | the wolf sit: body -35, back legs fold | legs splay 30, body down 3 px | legs -90, root down 12 px |
+| raise | hold | 0.5 | right arm -170 (sword or horn high) | rears: body -45 | front pairs -70 | both arms -170 |
+| fall | hold | 0.8 | collapses flat | lies on its side | legs curl 60 | collapses forward |
+| stand | once | 0.8 | from fall's last frame to rest | rises from lying | rises | rises |
+| brace | loop | 2.0 | knees bent, body pitch 15, weapon arm -70 level, sway +/-1 | crouch: legs fold 15, head low 10 | body down 2 px, legs splay 15 | crouch, arms forward 20 |
+| hold | loop | 2.0 | weapon ready: right arm -30, left arm -20, weight shift +/-1 | head up 12, tail still | legs set wide 12 | arms forward 12 |
+| fall_back | loop | 1.0 | backward walk: legs +/-25 reversed, arms on guard -40 | backward walk | backward walk | backward walk |
+
+`death` lasts at most 0.9 s, because the client removes a dead mob after 20 ticks.
+
+**Selection.** `TroopAnimator.choose` takes the first rule that matches.
+1. `dead`: `death`.
+2. A scene pose, set by `setScenePose`, holds its clip.
+   - `fallen` plays `fall`, and the title demos' `sword_up` plays `raise`.
+   - `stand` after `kneel`, `sit`, `point` or `raise` plays that clip reversed.
+   - `helm_off` keeps the current clip and hides `helm` parts.
+   - There is no head look while posed.
+3. Overlays, applied on the bones they name. Each named bone resets to rest before its overlay applies.
+   - Melee: `attack` on each swing start (`handSwinging` turning true).
+   - Ranged (`ranged()` and not `magic()`): `bow_draw` while `isAttacking()`, restarted by each swing (a shot). A ranged troop never plays `attack`.
+   - Magic, while attacking, or an evoker while `isSpellcasting()`: `cast`, restarted by each swing.
+   - Off-hand `isUsingItem()`: `shield_up`.
+   - A polar bear's `isWarning()`: `raise`.
+   - `hurtTime` turning positive: `hit`, on the bones no other overlay holds.
+4. Base: the still clip and the move clip, both chosen by stance and blended by motion.
+   - The still clip is `brace`, `hold` or `idle`. It plays at weight 1 - m.
+   - The move clip is `fall_back`, `run` or `walk`. It runs on limb angle like vanilla's `animateMovement(clip, limbAngle, limbDistance, 2.0, 2.5)`: ms = limbAngle x 100, at weight m = min(2.5 x limbDistance, 1).
+   - Under base clips, `idleArms forward` adds arm pitch -80.
+   - `folded` shows `arms_folded` and hides both arms, the weapon and the shield, while no overlay names an arm and the troop is not attacking.
+5. Head look: `head` yaw and pitch follow `headYaw` and `headPitch`, except when the troop is dead or posed.
+
+Overlays and scene poses fade in and out over `BLEND_TICKS = 3`, a presentation timing passed as `animate`'s weight.
+
+Assumption (Needs Kort 12): a scene pose moves into place over its clip's length and then holds; it does not snap.
+
+**Stances, server to client.**
+- `Tactics.STANCES = {"", "hold", "brace", "fall_back", "run"}`.
+- `Tactics.stance(Battle b, Unit u) -> String` reads `b.assignment(u)`:
+  - order `hold`: `brace` when the formation is `shieldwall` or `u.spec.tags()` has `spear`, else `hold`;
+  - order `fall_back` (unit AI phase): `fall_back`;
+  - `charge`, and `retreat` (routing included): `run`;
+  - anything else: `""`.
+- When the unit AI phase adds its `stances` sheet, `stance` maps those rows:
+  - hold and guard: `hold`;
+  - brace: `brace`;
+  - march, advance and skirmish: `""` (charge and retreat still give `run`).
+- The Tusk Spear braces on Charge (Global Constraints). Whichever task moves its counter to Charge also makes `stance` give a `wm_tusk` on `charge` `brace`; no other rule changes.
+- Packet `GravesAndGlory.STANCE = new Identifier("gravesandglory","stance_v1")` carries a varInt entity id and a byte index into `Tactics.STANCES`.
+  - It goes to `PlayerLookup.tracking(mob)` when `u.stance` changes on the unit's beat.
+  - It also goes to a player on `EntityTrackingEvents.START_TRACKING`.
+- The client keeps `TroopAnimator.STANCES` and clears an entity's entry on `ClientEntityEvents.ENTITY_UNLOAD`.
+
+**Coverage.** The rig sets cover both needs:
+
+| Need | Names | Clips |
+|---|---|---|
+| Story scenes (story spec 7.3 and 7.5; Phase 4 `ScenePoses`) | `kneel`, `fallen`, `stand`, `helm_off` and the title demos' `sword_up`, plus `point`, `sit` and `raise` (the horn) | kneel, fall, stand, the current clip with `helm` parts hidden, raise, point, sit, raise |
+| A walking scene actor | `walk <actor> to ...` | walk, from its motion |
+| Unit AI stances (unit AI spec 5) | march, advance, skirmish | idle or walk |
+| | hold, guard | hold |
+| | brace (Hold in Shieldwall) | brace |
+| | the `fall_back` order; `charge` and `retreat` | fall_back; run |
+
+**Interfaces:**
+- Consumes: Task 5 `TroopModel`, `TroopModels.resolve`, `TroopModels.rig` and `TroopModels.model`.
+- Produces:
+  - Clip tables:
+    - `enum TroopClips.Kind {LOOP, ONCE, HOLD}`;
+    - `TroopClips.NAMES` (the 18 clips in table order), `TroopClips.KINDS` (`Map<String,Kind>`) and `TroopClips.of(String rig) -> Map<String,Animation>`;
+    - `BipedClips.CLIPS`, `HoundClips.CLIPS`, `SpiderClips.CLIPS` and `ColossusClips.CLIPS`.
+  - `record TroopAnimator.View(String rig, boolean dead, boolean swingStart, boolean hurtStart, boolean attacking, boolean ranged, boolean magic, boolean spellcasting, boolean shieldUp, boolean rearing, float limbDistance, String stance, String scenePose, String lastPose)`.
+  - `record TroopAnimator.Choice(String still, String move, String overlay, boolean reverse, boolean headLook)` and the pure `static Choice choose(View v)`.
+  - `static void pose(TroopModel<?> m, MobEntity e, float limbAngle, float limbDistance, float age, float headYaw, float headPitch)`, with per-entity state in a `WeakHashMap<Entity,...>`.
+  - `static void setScenePose(int entityId, String pose)`: null clears the pose. Phase 4's `ScenePoses` calls it for `scene_v1` pose ops.
+  - `static final Map<Integer,String> STANCES`.
+  - Harness hook: `static final Map<Integer,Forced> forced` with `record Forced(String clip, float seconds)`, which freezes one clip at one time.
+  - `Tactics.STANCES`, `Tactics.stance(Battle b, Unit u) -> String`, and `Unit.stance` (`String`, default `""`).
+
+- [ ] **Step 1: Write suite `anim`:**
+  - `p2-anim-cover`: every rig defines all 18 clips; every bone a clip names exists in `TroopModels.rig(rig)`; no clip uses `Transformation.Targets.SCALE`.
+  - `p2-anim-change`: on every rig, sampled every 50 ms, every clip moves some bone at least 10 degrees from rest. For idle the threshold is 1.5 degrees or 0.3 px.
+  - `p2-anim-return`:
+    - loop clips end within 1 degree of their first frame;
+    - once clips end within 1 degree of rest;
+    - a cleared hold clip leaves the rig at rest, within 1 degree, after `BLEND_TICKS`.
+  - `p2-anim-death`: `death` ends by 0.9 s, and a killed knight never gets the vanilla 90-degree death tilt.
+  - `p2-anim-choose`: synthetic `View`s give:
+    - `dead`: death, over everything;
+    - scene `kneel`: kneel, over any overlay;
+    - `fallen`: fall;
+    - `stand` after `kneel`: kneel reversed;
+    - a melee swing start: attack;
+    - ranged and attacking: bow_draw, which a swing restarts, never attack;
+    - magic and attacking, or spellcasting: cast;
+    - off-hand use: shield_up;
+    - bear warning: raise;
+    - hurt start: hit;
+    - moving with stance `run`, `fall_back` or `""`: run, fall_back or walk;
+    - still with `brace`, `hold` or `""`: brace, hold or idle;
+    - no head look when dead or posed.
+  - `p2-anim-stance`:
+    - with a knight group on `hold` in `shieldwall`, the client reads `brace` within 20 ticks;
+    - `charge` gives `run`, a routing group `run`, and `follow` `""`;
+    - a knight spawned into a group already on `hold`, not in `shieldwall`, reads `hold` on its first tracked tick, through `START_TRACKING`.
+  - `p2-anim-scene`:
+    - `setScenePose(id, "kneel")` on a knight reaches kneel's last frame, within 1 degree, after 0.6 s;
+    - `helm_off` hides `iron_cap` and keeps the clip;
+    - `null` returns the knight to idle after `BLEND_TICKS`.
+  - `p2-anim-fold`: `prepare(look, true, false)` on the knight shows `arms_folded` and hides both arms, the weapon and the shield. An attacking troop unfolds.
+  - Screenshots `anim-biped-<clip>` for all 18 clips on a gold knight, through `forced`: loop clips at a quarter of their length, once clips at their peak, and hold clips at their end.
+- [ ] **Step 2: Run suite `anim` and expect failures.**
+- [ ] **Step 3: Implement `TroopClips` and the four clip sets** from the table.
+- [ ] **Step 4: Implement `TroopAnimator`**, and call it from `TroopModel.setAngles`.
+- [ ] **Step 5: Implement `Unit.stance`, `Tactics.stance`, the packet and the client receiver.**
+- [ ] **Step 6: Delete `BipedAnimationMixin`** and its `gravesandglory.mixins.json` entry. A grep finds no `BipedAnimationMixin` under `src/`.
+- [ ] **Step 7: Compile, then run suites `anim` and `spike,gilded-art,engine`; all pass.** The tester describes each `anim-biped-*` screenshot in one sentence. A screenshot that does not show its clip, such as a kneel that does not kneel, fails.
+- [ ] **Step 8: Commit** `"Phase 2: rig animation sets, clip selection and stance sync"`.
+
+---
+
+### Task 5c: Troop tells and House attack flavour
+
+**Files:**
+- Create (client): `src/main/java/gg/gravesandglory/{TroopTells,HouseAttacks}.java`.
+- Modify: `TroopAnimator.java`: add the idle tell slot, and look up every clip through `TroopTells.clip`.
+- Modify: `tools/build_skins.py` and `test-tools/standalone/test_build_skins.py` (`--contact`).
+- Modify: `Phase2Checks.java` (suite `tells`).
+
+**Rules:**
+- A tell is a `once` clip of 0.8 to 2.0 s, with 2 to 4 keyframes per bone.
+  - It moves rig bones only, so it fits every troop of the rig whatever its parts.
+  - It is drawn from the troop's unit identity **Tell** line. The particles and sounds in those lines stay with House tasks 6 to 10.
+- A tell plays over `idle` only: still, with no overlay and no scene pose.
+  - It starts when `(age + entityId % STAGGER_TICKS) % PERIOD_TICKS == 0`.
+  - `PERIOD_TICKS = 160` and `STAGGER_TICKS = 40` are presentation timings.
+- `TroopTells.clip(String troop, String house, String rig, String clip) -> Animation` resolves every clip, in order:
+  - the troop's override;
+  - else the House's attack variant (biped `attack` only);
+  - else the rig's clip.
+
+Tells (`TroopTells.TELLS`), each drawn from its troop's Tell line; angles in degrees:
+
+| Troop | Rig | Idle gesture |
+|---|---|---|
+| knight | biped | shield to the chin: left arm -50, head -5 |
+| archer | biped | bow to the eye and down: left arm -70, head -5 |
+| sentinel | biped | shield lift and set feet: left arm -40, body pitch 3 |
+| longbow | biped | sights with the bow canted: left arm -60, roll 25 |
+| mage | biped | staff forward: right arm -40, head nod 8 |
+| gl_marshal | biped | horn to the lips: left arm -110, head -15 |
+| revenant | biped | head loll: head roll 20, right arm twitch -10 |
+| bonebow | biped | eases the string: right arm yaw -30 |
+| reaper | biped | rolls the scythe on the shoulder: right arm -60, body yaw 10 |
+| stalker | biped | pulls the mantle close: body pitch 5, arms yaw +/-10 |
+| hexer | biped | lifts the lantern: right arm -70 |
+| gb_hollowking | biped | tilts the crown: head roll -15, pitch -10 |
+| wm_hound | hound | growl: head pitch 20, jaw 25 |
+| wm_hunter | biped | sniffs the air: head pitch -20, yaw +/-15 |
+| wm_stalker | spider | taps a front leg: left_leg_1 -30 |
+| wm_tusk | biped | plants the spear butt: right arm -20, body pitch 5 |
+| wm_seer | biped | short howl: head pitch -40 |
+| wm_oldhorn | hound | half rear: body pitch -15 |
+| ic_hearthguard | biped | settles the folded arms: arms_folded pitch -8, head 8 |
+| ic_arbalist | biped | cranks the crossbow: right arm roll +/-20 |
+| ic_breaker | biped | rolls the anvil shoulder: body roll 8 |
+| ic_ballista | biped | taps the frame: right arm -40 |
+| ic_mortar | biped | checks the barrel: head pitch -30 |
+| ic_colossus | colossus | arms swing up a little: both arms -30 |
+| tc_raider | biped | half-step lunge: body pitch 10, arms -10 |
+| tc_harpooner | biped | hefts the harpoon: right arm -150 |
+| tc_tideguard | biped | trident overhead: right arm -160 |
+| tc_mist | biped | lifts the folded arms: arms_folded pitch -15 |
+| tc_brute | hound | head-butt feint: head pitch 20 |
+| tc_admiral | biped | trident overhead: right arm -160 |
+
+Overrides (`TroopTells.OVERRIDES`), for the Tell lines that change a clip:
+
+| Troop | Clip | Replacement |
+|---|---|---|
+| sentinel | walk | the slow plod: legs +/-20, arms +/-8, body bob 0.5 px |
+| longbow | bow_draw | the biped draw with the bow arm rolled 25 (canted) |
+| hexer | cast | lantern raised: right arm -120, left arm -30 |
+| wm_seer | cast | howl: head pitch -50, arms -30 |
+| ic_arbalist | bow_draw | crossbow level at the chest: both arms -90 turned in, the right arm cranking |
+| ic_ballista | bow_draw | hands on the frame: both arms -70, a pull on release |
+| ic_mortar | bow_draw | loads the barrel: arms -150, then down |
+| tc_harpooner | bow_draw | the throw: right arm back to -170, then forward to -60 |
+| tc_tideguard | attack | trident overhead: right arm -170 thrusting to -100, body pitch 10 |
+| tc_admiral | attack | as the Trident Guard's |
+
+House attacks (`HouseAttacks.VARIANTS`) replace the biped `attack` for the House's biped troops; beasts and the colossus keep their rig's attack. Each lasts 0.5 to 0.6 s, with its strike time in `HouseAttacks.STRIKE`:
+
+| House | Variant | Strike s |
+|---|---|---|
+| gilded | thrust from behind the shield: left arm held -40, right arm back to -60, then a thrust to -95 with body yaw 15 | 0.20 |
+| graveborn | overhead hack with a stoop: right arm -170 down to 0, body pitch 25 at the strike | 0.30 |
+| wildmoot | low lunging swipe: body pitch 30, right arm -60 sweeping from yaw 70 to -40 | 0.25 |
+| ironclad | two-handed shoulder chop: both arms -150 down to -20, body pitch 15 | 0.35 |
+| tidecallers | wide sweeping lunge: right arm -80 sweeping from yaw 90 to -60, body yaw 25, left leg -20 | 0.30 |
+
+**Interfaces:**
+- Consumes: Task 5b `TroopClips.of`, `BipedClips.CLIPS`, `TroopAnimator.forced` and `TroopModels.RIGS`.
+- Produces:
+  - `TroopTells.TELLS` (`Map<String,Animation>`), `TroopTells.OVERRIDES` (`Map<String,Map<String,Animation>>`), `TroopTells.PERIOD_TICKS`, `TroopTells.STAGGER_TICKS` and `TroopTells.clip(...)`.
+  - `HouseAttacks.VARIANTS` (`Map<String,Animation>`, by House id) and `HouseAttacks.STRIKE` (`Map<String,Float>`, in seconds).
+  - `TroopAnimator.Forced` also accepts `tell` as a clip name.
+  - `build_skins.py --contact <shots dir> <out.png>`.
+
+- [ ] **Step 1: Add `test_contact_sheet`** to `test_build_skins.py`. Given three fixture screenshots, `p2-tells-knight.png`, `p2-tells-archer.png` and `p2-tells-revenant.png`, the output is a 6-column, 5-row grid of equal cells in `houses` order. Those three cells are filled; the other 27 are the grey fill.
+- [ ] **Step 2: Run it and expect failure** (`build_skins.py: unknown option --contact`).
+- [ ] **Step 3: Implement `contact(shots: Path, out: Path) -> None`:**
+  - Houses are rows, in `houses` order;
+  - troops are columns, in each row's `troops` order;
+  - each cell is that troop's `p2-tells-<troop>.png`, cropped square at the centre and labelled with the troop name;
+  - a missing screenshot leaves a labelled grey cell.
+- [ ] **Step 4: Run it and expect `OK`.**
+- [ ] **Step 5: Write suite `tells`:**
+  - `p2-tells-cover`: `TELLS` holds exactly the 30 `Spec.TROOPS` ids. Each tell:
+    - names only bones of its troop's rig (`TroopModels.RIGS`);
+    - lasts 0.8 to 2.0 s;
+    - has 2 to 4 keyframes per bone;
+    - ends at rest, within 1 degree.
+  - `p2-tells-period`: two knights idle for 400 ticks, with ids that differ mod 40, start their tells on different ticks, each 160 ticks apart. A walking or attacking knight starts none.
+  - `p2-tells-lookup`:
+    - `clip("longbow","gilded","biped","bow_draw")` is the longbow override;
+    - `clip("knight","gilded","biped","attack")` is `VARIANTS.get("gilded")`;
+    - `clip("wm_hound","wildmoot","hound","attack")` is the `HoundClips` attack;
+    - `clip("knight","gilded","biped","walk")` is the `BipedClips` walk.
+  - `p2-house-attacks`: at its strike time, each variant differs from the biped `attack` by at least 10 degrees on some bone. Each ends at rest, within 1 degree.
+  - Screenshots, both taken through `TroopAnimator.forced`:
+    - `tells-<troop>` for every troop with a model (`TroopModels.ids()`; the Gilded six here), at its tell's peak;
+    - `tells-attack-<house>` for each of the five variants on a gold knight, at its strike time.
+- [ ] **Step 6: Run suite `tells` and expect failures.**
+- [ ] **Step 7: Implement `TroopTells`, `HouseAttacks`, and the lookup and tell slot in `TroopAnimator`.**
+- [ ] **Step 8: Compile, then run suites `tells` and `anim,gilded-art`; all pass.**
+  - Build the contact sheet: `python tools/build_skins.py --contact <root>/run/screenshots work/troops/tells-contact.png`. `work/` is local and gitignored.
+  - Grade the sheet against `work/ui-concepts/GRADING-RUBRIC.md`; it needs 9 or better.
+  - The tester confirms that each Gilded tell reads as its Tell line, and that the five attacks read as five Houses.
+- [ ] **Step 9: Commit** `"Phase 2: troop idle tells and House attack flavour"`.
 
 ---
 
@@ -703,7 +1141,7 @@ Every variant model attaches `gg_pennant` (box `[-2,-14,2,4,8,1]` on `body`, tex
 - Modify: `GravesAndGlory.java` (`ArmyZombie` and `ArmyStray` registered in `ArmyMobs`; the `ALLOW_DEATH` handler; `Battle.deaths`).
 - Modify: `sheets/design.json` (`revenant.entity = zombie`, `stalker.entity = stray`).
 - Modify: `Abilities.java` (`cleave`, `onhit_slow`, `dread`), `Morale.java` (`routShareFor`), `Houses.java` (Rise Again), `Commander.java` (`grave_bloom`) and `ArmyCards.java`.
-- Art and generated pack files for zombie, skeleton, stray and wither_skeleton (via `build_skins.py`).
+- Art and generated troop models and textures for zombie, skeleton, stray and wither_skeleton (via `build_skins.py`).
 - Modify: `Phase2Checks.java` (suite `graveborn`).
 
 **Interfaces:**
@@ -749,7 +1187,7 @@ Every variant model attaches `gg_pennant` (box `[-2,-14,2,4,8,1]` on `body`, tex
 - Modify: `GravesAndGlory.java` (`ArmyVindicator`, `ArmyPillager`, `ArmyGolem`; the `Anchor` record; `reinforcementAnchors` and `deployNote` widened; formation spacing per entity width).
 - Modify: `sheets/design.json` (`houses` row `ironclad.fieldable = true`).
 - Modify: `Abilities.java` (`slam`, the `shell` minimum range, attack animation statuses), `Houses.java` (Entrench), `Commander.java` (`forward_supply`), `Tactics.java` (targeting structures) and `CommandMode.java` (the same spacing rule as the server).
-- Art for vindicator, pillager and iron_golem, with the ballista frame and mortar barrel as EMF root parts.
+- Art for vindicator, pillager and iron_golem, with the ballista frame and mortar barrel as root parts of the troop models.
 - Modify: `Phase2Checks.java` (suite `ironclad`).
 
 **Interfaces:**
@@ -850,7 +1288,7 @@ Every variant model attaches `gg_pennant` (box `[-2,-14,2,4,8,1]` on `body`, tex
   - `ArmyBear` (no `setWarning` outside trample; a `setWarning` pulse serves as its attack animation).
 - Modify: `sheets/design.json` (`houses.wildmoot.fieldable = true`).
 - Modify: `Abilities.java` (`pounce`, `howl`, `trample`), `Houses.java` (Pack Hunters with `Battle.targeters`) and `Commander.java` (`bloodrush`).
-- Art for zombified_piglin, wolf, spider and polar_bear. The polar bear gets a new JEM with vanilla geometry plus parts.
+- Art for zombified_piglin, wolf, spider and polar_bear. Old Horn is the hound rig on his own bear boxes, plus parts.
 - Modify: `Phase2Checks.java` (suite `wildmoot`).
 
 **Interfaces:**
@@ -876,7 +1314,7 @@ Every variant model attaches `gg_pennant` (box `[-2,-14,2,4,8,1]` on `body`, tex
   - `p2-wildmoot-showcase`: Moot Hounds hitting an archer line from the flank, a Web Stalker on a wall, and Old Horn trampling, screenshotted. Also lineup and stages screenshots, and `tickCost`.
 - [ ] **Step 2: Run; expect failures.**
 - [ ] **Step 3: Add the subclasses and registration, and give each mob a 2-minute bot run before any art.** The log must show no sitting, rearing or stuck troops.
-- [ ] **Step 4: Make the Wildmoot art** (quadruped JEMs; the polar bear has no Fresh Animations root).
+- [ ] **Step 4: Make the Wildmoot art** (the hound and spider rigs, Old Horn on his own bear boxes, and the boar-kin bipeds with a hunch).
 - [ ] **Step 5: Implement pounce, ambush, ensnare, howl and trample.**
 - [ ] **Step 6: Implement Pack Hunters and `targeters`.**
 - [ ] **Step 7: Implement `bloodrush`.**
@@ -890,7 +1328,7 @@ Every variant model attaches `gg_pennant` (box `[-2,-14,2,4,8,1]` on `body`, tex
 
 **Files:**
 - Modify: `src/main/java/gg/gravesandglory/Progression.java` (Founders re-author, House-aware claims).
-- Modify: `Campaign.java` (commands, `finish` rewards and ledger, writs).
+- Modify: `Campaign.java` (commands, `finish` rewards and ledger, pacts).
 - Modify: `MatchStats.java` (report rows) and `GravesAndGlory.java` (kill credit per troop type).
 - Modify: `test-tools/standalone/HousesCheck.java` and `Phase2Checks.java` (suite `chase`).
 - Modify: `docs/PARKED.md`: campaign bonus-objective shards wait for bonus objectives to exist.
@@ -914,13 +1352,13 @@ Every variant model attaches `gg_pennant` (box `[-2,-14,2,4,8,1]` on `body`, tex
   - `buy:<troop>`: a Common or Rare for `chosenCost`, as a new troop or a duplicate copy.
   - `evolve:<troop>`: applies the next `evolutions` row, paying shards of the troop's House and gold, and checking `requiresMastery`.
   - `star:<troop>`: an Epic or Legendary star paid in shards.
-  - `legendary:<house>:writ` and `legendary:<house>:shards` (the latter needs renown >= 30 and 50 shards).
+  - `legendary:<house>:pact` and `legendary:<house>:shards` (the latter needs renown >= 30 and 50 shards).
   - `progress:<claim key>`.
 - `finish` additions, in the same save as gold:
   - shards and renown from `RosterMath.matchRewards(Houses.bannerTiers...)`;
   - per troop type: `kills`, credited to the killing unit's type via `lastHitBy` and the shooter's spec; and `survived`, +1 per type with a living non-temporary unit at the end;
   - `mastery` from `masteryLevel`, granting the titles `"<Troop> Veteran"` and `"<Troop> Master"`, and the House title once all six troops reach Mastery I;
-  - a Writ when every `campaignBattles` row of a chapter is cleared and `writChapters` lacks that chapter.
+  - a Pact when every `campaignBattles` row of a chapter is cleared and `writChapters` lacks that chapter.
 - The report JSON gains `"houses": [{"house","tier","traitSeconds","shards","renown"}]`, and the `CampScreen` results page lists them.
 
 - [ ] **Step 1: Add failing `HousesCheck` assertions for `Progression`:**
@@ -938,12 +1376,12 @@ Every variant model attaches `gg_pennant` (box `[-2,-14,2,4,8,1]` on `body`, tex
   - `p2-evolve`: knight stage 2 costs 10 gilded shards and 100 gold. Stage 3 is refused without Mastery I and allowed after setting 40 kills and 8 survived. A newly spawned knight's custom name is then `Knight-Captain`.
   - `p2-cap`: a star 3, stage 3 knight spawns with max HP 32 x 1.12.
   - `p2-star-shards`: an Epic reaches star 2 for 30 shards.
-  - `p2-legendary-writ` and `p2-legendary-renown`.
+  - `p2-legendary-pact` and `p2-legendary-renown`.
   - `p2-match-rewards`: finish a won match with banner Gilded 14 / Graveborn 6. Expect shards +2/+1 and renown +2/+2; kills are recorded by type; temporary units are excluded.
   - `p2-report-houses`: the report rows are present (screenshot `chase-report`).
   - `p2-founders`: claims work through `progress:` commands.
 - [ ] **Step 6: Run; expect failures.**
-- [ ] **Step 7: Implement the commands, rewards, ledger, writs and report rows.**
+- [ ] **Step 7: Implement the commands, rewards, ledger, pacts and report rows.**
 - [ ] **Step 8: Compile; run suite `chase` and the standalone checks; all pass.**
 - [ ] **Step 9: Commit** `"Phase 2: chosen buys, evolutions, stars, shards, renown, mastery and the re-authored Founders chapter"`.
 
@@ -1009,13 +1447,13 @@ Every variant model attaches `gg_pennant` (box `[-2,-14,2,4,8,1]` on `body`, tex
   - `p2-full-roster`: a test profile owning all 30 troops at star 1 shows every House tab complete. Screenshot `migration-full-roster`.
 - [ ] **Step 2: Run suite `migration` twice on one root** (the restart case); all pass.
 - [ ] **Step 3: Full regression, in this order:**
-  - one launch with `GRAVES_PHASE2_CHECKS=banners,engine,commander,spike,gilded-art,gilded,graveborn,ironclad,tidecallers,wildmoot,chase,screens,migration`;
+  - one launch with `GRAVES_PHASE2_CHECKS=banners,engine,commander,spike,gilded-art,anim,tells,gilded,graveborn,ironclad,tidecallers,wildmoot,chase,screens,migration`;
   - then Phase 1 `combat,morale,reinforce,bots,tutorial,report,ui`;
   - then `-PcampaignChecks` without either variable.
 
   Expected: every id passes.
 - [ ] **Step 4: Mixed vs pure sims:** `mix_gilded_graveborn_normal` vs `gilded_normal`, and `mix_ironclad_tidecallers_normal` vs `tidecallers_normal`, 20 matches each, run as for the gate. There is no gate: log both, and flag any result outside 40-60% in the playtest doc.
-- [ ] **Step 5: Standalone checks and packaging.** Run the three standalone checks, `test_ui_standard.py` and the `HOW-TO-EDIT.md` section 9 checks. Then run `"$G" build --offline -x test` and `python tools/package.py`; the leak check must find no `Phase2Checks`, `HousesCheck`, `ProfileMigrationCheck` or `BotSimulation` in the jar. Output stays in local `dist/` only.
+- [ ] **Step 5: Standalone checks and packaging.** Run the three standalone checks, `test_ui_standard.py`, `test_build_skins.py`, `python tools/build_skins.py --verify` and the `HOW-TO-EDIT.md` section 9 checks. Then run `"$G" build --offline -x test` and `python tools/package.py`; the leak check must find no `Phase2Checks`, `HousesCheck`, `ProfileMigrationCheck` or `BotSimulation` in the jar. Output stays in local `dist/` only.
 - [ ] **Step 6: Write `docs/PHASE-2-PLAYTEST.md`** (one page). Setup: the 0.5.0 build, with his existing camp so he sees the migration.
   - Session 1: his migrated collection on the recruit page, and a few House rolls.
   - Session 2: a pure Gilded skirmish on Normal (shieldwall, Bulwark tile, Aldric's banner).
@@ -1050,13 +1488,13 @@ Every variant model attaches `gg_pennant` (box `[-2,-14,2,4,8,1]` on `body`, tex
     - Phase 1's `campaignCleared` is copied.
     - Founders claims stay untouched, so a player who claimed tier 20 before migration keeps the Vanguard title and does not get the tier-20 Rare.
 13. **Profile I/O stays pure.** `ProfileMigration` takes parse and write functions, so the standalone check needs no Gson.
-14. **Skin numbering is generated** by `tools/build_skins.py` from the `art/` sources, so ETF and EMF indices never collide by hand. Names match by `regex:` over the stage names, with an optional ` (Veteran)` suffix.
+14. **Troop models are generated** by `tools/build_skins.py` from the `art/` sources into `models/troop/` and `textures/entity/troop/`. The client picks a troop's model and stage skin from its custom name (a troop or stage name, with an optional ` (Veteran)` suffix) and its cloth from its `gg_<side>` team.
 15. **Mastery levels need both thresholds** (kills and matches survived). Claims that grant shards carry the House in the key, and the House selector is on the contracts and chapter pages.
 16. **Deferred:**
     - the +5 shard campaign bonus objective, since no bonus objectives exist yet (parked);
     - in-world rendering of renown and banner cosmetics: unlocks are recorded and listed, and rendering is Phase 3 art;
     - a team-only glow for Mark Prey. The plan uses the vanilla Glowing effect, which both teams can see; a team-only glow needs a client renderer (parked).
-17. **Writ timing:** the Writ is granted when every `campaignBattles` row of chapter 1 is cleared. In Phase 2 chapter 1 has only battle 1, which matches the spec's hour 0 to 2 model.
+17. **Pact timing:** the Pact is granted when every `campaignBattles` row of chapter 1 is cleared. In Phase 2 chapter 1 has only battle 1, which matches the spec's hour 0 to 2 model.
 
 ## Needs Kort
 
@@ -1073,3 +1511,7 @@ Raised while planning:
 
 8. ANSWERED 2026-10-17: no retro grant.
 9. ANSWERED 2026-10-17: vanilla glow; team-only glow stays parked.
+10. **Armour on troops.** Task 5 assumes no armour layer draws on a troop: helmets and chests give armour points only, and helms, hoods and coats are the troop's own parts (unit identity rules 3 and 7). Rule 3 used to draw armour on husks, zombies, drowned, skeletons, strays, wither skeletons and zombified piglins. Confirm that armour never draws? ANSWERED by the controller, 2026-10-18 late: yes. No vanilla armour, held item or elytra layer draws on a troop; helms, hoods and plate are the troop's own parts (Kort: new characters, not recolours). The off-hand shield stays the one drawn item.
+11. **Portrait colour.** Task 5 keeps unit identity rule 8: portraits have no team, so linen panels and no pennant. The M7 fix dyes the portrait's chest in the side colour, and that dye no longer draws. Keep linen, or show the side colour on the portrait's panels and pennant? ANSWERED by the controller, 2026-10-18 late, from Kort's portrait ruling: portraits are the live model rendered in the company's cloth (the Hollow's navy on campaign and camp pages, the House's colour on a House page), never a match side, and no pennant. Rule 8's linen reading is replaced by this.
+12. **Scene poses animate.** Story spec 7.3 says six poses and no custom animation in chapter 1. With the rig clips, `kneel`, `fallen`, `stand`, `point`, `sit` and `raise` move into place over 0.4 to 0.8 s and then hold, and `helm_off` hides the helm parts (Task 5b). Is that all right, or should a pose snap into place? ANSWERED by the controller, 2026-10-18 late: a 0.4 to 0.8 s move into the pose, then hold, is acceptable; the story spec's "no custom animation" forbids bespoke per-scene clips, not a blend into a shared pose.
+13. **Presentation mods.** Troops no longer use EMF, ETF or Fresh Animations. Keep the three in the presentation modpack (they still dress players and vanilla mobs), or drop them? And may the armory pack's husk, skeleton and wither_skeleton `.jem` files go? ANSWERED by the controller, 2026-10-18 late, from Kort's animation ruling: EMF, ETF and Fresh Animations leave the modpack when Tasks 5 to 5c ship, in Task 13's release step, not before (0.4.0 stays untouched); the armory pack's husk, skeleton and wither_skeleton .jem files are deleted in the same step. Until then they stay pinned for the presentation modpack only.
