@@ -230,13 +230,13 @@ Each task ends with its suite, screenshots a tester has opened, and the tick gat
 ## 14. Questions for Kort
 
 Recommended answers in brackets.
-1. **Rout on Hold.** Groups still break below a quarter of their strength, or when three enemies strike from behind at 60% or less (Phase 1). Is a held line that routs disobeying you? [Keep the rout; the card warns "Wavering" 10 points (proposal) before the break]
-2. **Detach.** A reserve needs a spare group. Add a Detach order that splits a group in two, for you and so for the General? [Yes, one split per group]
+1. **Rout on Hold.** Kort, 2026-10-18: **hold means never break.** A held group is exempt from the rout rules (the quarter-strength break and the strike-from-behind break) for as long as the order stands; when a member falls, the survivors close the gap in the formation as best they can (re-slot toward the centre of the line, the front rank refilled from the rear) and keep holding. The group card still shows morale as information, never as a break. The cost is that Hold is strong, which is the point: a line that holds because it was told to is the player's reward for choosing where to stand.
+2. **Detach.** Kort: **yes, once per group.** Detach splits a group into two halves that take orders separately; a second Detach on either half is refused. Rejoin is the reverse and is free. The General has the same order.
 3. **Tier and banner.** Controller's ruling: keep Phase 2's stronger Hard banners (an approved spec), and the AI scorecard measures the tier ladder with equal banners, so the brain's contribution is read on its own. The "never stats" rule binds the brain, not the roster.
-4. **How Hard should feel:** an even fight, or one you usually lose until you learn its tells? [Usually lose at first]
+4. **How Hard should feel:** Kort: **a fight the player loses until they learn its tells and strategies.** The scorecard's target for Hard against a scripted "first-time" player is a loss; against the scripted "learned" player (one who answers the tells) it is an even fight.
 5. **Your troops' reaction:** controller's ruling: always Hard's 6 ticks. The player's troops obey at full speed whatever the enemy's tier.
 6. **A visible general:** controller's ruling: a brain only in this phase. A banner-bearer is a later chapter's unit, not an AI feature.
-7. **Allied bots:** announce their plan (a map marker, "Gilded bot: attacking C"), or only fill in around your pings? [Announce it]
+7. **Allied bots:** Kort: **announce their plans, and the player can ask them for aid and tell them where to look.** Each allied bot posts its current objective as a map marker and a feed line. The player gets two requests on the ping wheel aimed at a place: "Aid here" (the council sends the nearest allied bot with a spare group, or answers "Cannot, holding B" in the feed) and "Watch here" (the council adds the place to its objectives at the player's priority). The council treats a request as an order when it can be met and says why when it cannot.
 8. **Keys:** controller's ruling: the new commands live in the R council only until Kort has played them; no new default keys in this phase.
 
 ## Calls made in this draft
