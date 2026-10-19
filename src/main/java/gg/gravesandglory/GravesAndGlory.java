@@ -45,6 +45,11 @@ public final class GravesAndGlory implements ModInitializer {
         Diagnostics.start();
         VersionGate.registerServer();
         for(String cue:new String[]{"battle_intro","unit_reveal","victory","horn_charge","horn_rout","horn_rally"}){var id=new Identifier("gravesandglory",cue);net.minecraft.registry.Registry.register(Registries.SOUND_EVENT,id,SoundEvent.of(id));}
+        // The rout guards (Gilded Bulwark, the Champion's Stand Fast, the Lord Marshal's Oath Banner) and the commander actives, once.
+        for(var guard:List.of(Houses.BULWARK_GUARD,Commander.STAND_FAST_GUARD,Abilities.OATH_GUARD))Morale.GUARDS.addIfAbsent(guard);
+        Commander.register();
+        // A planted banner block must not outlive the battle in the save.
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {if(battle!=null)Abilities.clearBanners(battle);});
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             // Only the dedicated Graves and Glory save belongs to this mod.
             if (java.util.Set.of("Graves and Glory", "Bannerbound").contains(server.getSaveProperties().getLevelName())) battle = new Battle(server);
@@ -183,6 +188,8 @@ public final class GravesAndGlory implements ModInitializer {
         double travelSinceAttack;
         /** Battle time of this troop's last charge-impact hit: the impact is the first hit of a fresh Charge (the combatDiscipline chargeImpactTicks window). */
         long chargeHitAt=-1;
+        /** The group order an aura troop found on its last beat (Abilities.aura): the Oath Banner plants when it turns to Hold. Null before its first beat. */
+        String seenOrder;
         Unit(MobEntity m,Squad s,Spec.TroopsRow t,int slot){mob=m;squad=s;spec=t;this.slot=slot;lastPosition=m.getPos();deployed=m.getPos();tags=new HashSet<>(ArmyMobs.tags(t));}
     }
     public static final class Capture {
@@ -222,6 +229,8 @@ public final class GravesAndGlory implements ModInitializer {
         public final List<Unit> units=new ArrayList<>();
         public final List<Capture> points=new ArrayList<>();
         public final List<Projectiles.Shot> shots=new ArrayList<>();
+        /** The standing banners (the Oath Banner); Abilities.bannerTick takes them down on time, and startRound, the lobby and a map switch clear them. */
+        public final List<Abilities.Banner> banners=new ArrayList<>();
         final Map<UUID,Long> respawns=new HashMap<>();
         final int[] scores={0,0};
         /** The side row each team flies this round, as indexes into Spec.FACTIONS (spec 1.1); Campaign.chooseSides sets it as the round is prepared. Positions still come from rows 0 and 1 by team. */
@@ -316,7 +325,7 @@ public final class GravesAndGlory implements ModInitializer {
             campaign.tick();
             updateUnitChunks();
             if(running&&time>=campaign.introUntil){
-                Projectiles.tick(this);Commander.tick(this);
+                Projectiles.tick(this);Commander.tick(this);Abilities.bannerTick(this);
                 if(time%20==0){Morale.tick(this);Houses.tick(this);}
                 for(Unit u:new ArrayList<>(units))unitTick(u);
                 if(time%20==0)captureTick();
@@ -534,7 +543,7 @@ public final class GravesAndGlory implements ModInitializer {
         /** The deploy notice after "<troop> trained: " (a null anchor means the barracks). */
         String deployNote(Squad s,Capture anchor){return anchor==null?"deploying from barracks":"deploying at "+anchor.spec.name();}
         void startRound(){
-            Projectiles.clear(this);
+            Projectiles.clear(this);Abilities.clearBanners(this);
             campaign.prepareRound();
             Arrays.fill(scores,0);pointSeconds=new int[2][points.size()];
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
