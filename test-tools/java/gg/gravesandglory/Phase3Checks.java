@@ -538,33 +538,89 @@ public final class Phase3Checks implements ClientModInitializer {
         }
     }
 
-    /** The 0.4.0 soak, Finding 1: an arena rebuilt over an arena spilled loose items (a plant, lantern or crop whose support the build had cleared first).
-     *  Map 0 is built, then map 1 over it, on the same world, and the item entities loaded in the built area are counted after each finish:
-     *  p3-arena-items passes when the second count is 0 (the safety net in Arena.finish discards what is loaded); p3-arena-spill passes when the second finish found nothing
-     *  to discard, that is when the build itself spilled none (it writes without neighbour shape updates). */
+    /** The arena build (suite arena). The maps 0 to 4 are built one over the other on one world, and after each finish the world is looked at.
+     *  The 0.4.0 soak, Finding 1: an arena rebuilt over an arena spilled loose items (a plant, lantern or crop whose support the build had cleared first).
+     *  The item entities loaded in the built area are counted after map 0 and after map 1 was built over it: p3-arena-items passes when the second count is 0
+     *  (the safety net in Arena.finish discards what is loaded); p3-arena-spill passes when the second finish found nothing to discard, that is when the build itself spilled none
+     *  (it writes without neighbour shape updates); p3-arena-shapes passes when no glass pane of the structures is left without a connection. All three see the chunks that are loaded,
+     *  and the shapes check counts glass panes only (fences and walls are not looked at).
+     *  Task 2, fix round 1, per map: p3-arena-river-map<N> passes when no block stands above the water of a river column that the build of that map does not account for, which is what
+     *  the map built before it leaves behind (river). */
     static final class Rebuild implements Suite {
-        int stage,waited;volatile boolean switched,counted;volatile String before="",after="";volatile int firstSpill=-1,spill=-1,paneCount=-1,paneLone=-1;
-        @Override public int limit(){return 2400;}
+        static final int[] MAPS={0,1,2,3,4};
+        int index,stage,waited;volatile boolean switched,counted;volatile String before="",after="";volatile int firstSpill=-1,spill=-1,paneCount=-1,paneLone=-1;
+        /** Active ticks only: nothing steps while the client is told the arena is not ready, so the builds are not in it. */
+        @Override public int limit(){return 6000;}
         @Override public void step(MinecraftClient c,int tick){
             if(tick<20)return;
             var b=GravesAndGlory.battle;
             switch(stage){
-                case 0->{switched=false;server(c,x->{if(x.campaign.map!=0)x.campaign.switchMap(0);switched=true;});stage=1;waited=0;}
+                case 0->{int n=MAPS[index];switched=false;server(c,x->{if(x.campaign.map!=n)x.campaign.switchMap(n);switched=true;});stage=1;waited=0;}
                 case 1->{
-                    if(switched&&b!=null&&b.ready&&b.campaign.map==0&&CampaignMaps.selected==0){counted=false;server(c,x->{before=items(x);firstSpill=Arena.discarded;counted=true;});stage=2;}
-                    else if(++waited>3000){report("p3-arena-items",false,"map 0 was not ready after "+waited+" ticks");stage=5;}
+                    int n=MAPS[index],at=index;
+                    if(switched&&b!=null&&b.ready&&b.campaign.map==n&&CampaignMaps.selected==n){counted=false;server(c,x->{measure(x,n,at);counted=true;});stage=2;}
+                    else if(++waited>3000){report("p3-arena-river-map"+n,false,"map "+n+" was not ready after "+waited+" ticks");stage=3;}
                 }
-                case 2->{if(counted){switched=false;server(c,x->{x.campaign.switchMap(1);switched=true;});stage=3;waited=0;}}
+                case 2->{if(counted){index++;stage=index<MAPS.length?0:3;}}
                 case 3->{
-                    if(switched&&b!=null&&b.ready&&b.campaign.map==1&&CampaignMaps.selected==1){counted=false;server(c,x->{after=items(x);spill=Arena.discarded;var pn=panes(x);paneCount=pn[0];paneLone=pn[1];counted=true;});stage=4;}
-                    else if(++waited>3000){report("p3-arena-items",false,"map 1 was not ready after "+waited+" ticks");stage=5;}
-                }
-                case 4->{if(counted){report("p3-arena-items",after.startsWith("0 "),"item entities loaded in the built area: "+before+" after the first build (map 0); "+after+" after map 1 was built over it");
+                    report("p3-arena-items",after.startsWith("0 "),"item entities loaded in the built area: "+before+" after the first build (map 0); "+after+" after map 1 was built over it");
                     report("p3-arena-spill",spill==0,"loose items the safety net found and discarded: "+firstSpill+" at the first finish (map 0), "+spill+" at the second (map 1)");
-                    report("p3-arena-shapes",paneCount>0&&paneLone==0,"glass panes inside the structures after map 1 was built over map 0: "+paneCount+", with no connection: "+paneLone);stage=5;}}
-                case 5->{finish(c,"arena");stage=6;}
+                    report("p3-arena-shapes",paneCount>0&&paneLone==0,"glass panes inside the structures after map 1 was built over map 0: "+paneCount+", with no connection: "+paneLone);
+                    finish(c,"arena");stage=4;
+                }
                 default->{}
             }
+        }
+        /** On the server thread, with the map that stands (the at-th of MAPS): the item and pane counts of the soak check after maps 0 and 1, then the river of this map. */
+        void measure(GravesAndGlory.Battle x,int n,int at){
+            if(at==0){before=items(x);firstSpill=Arena.discarded;}
+            if(at==1){after=items(x);spill=Arena.discarded;var pn=panes(x);paneCount=pn[0];paneLone=pn[1];}
+            var r=river(x);
+            report("p3-arena-river-map"+n,r.left()==0,"river columns "+r.columns()+", built on by this map "+r.builtOn()+", looked at "+r.looked()+" (of them "+r.flat()+" with the ground at "+Arena.Y+" or above): "+r.left()+" blocks above the water that this map does not account for"+(r.left()==0?"":", first: "+r.sample()));
+            try{Path file=MinecraftClient.getInstance().runDirectory.toPath().resolve("screenshots/p3-arena-river-map"+n+".txt");Files.createDirectories(file.getParent());Files.writeString(file,r.detail());}
+            catch(Exception e){report("p3-arena-river-map"+n+"-file",false,e.toString());}
+        }
+        record River(int columns,int builtOn,int looked,int flat,int left,String sample,String detail){}
+        /** The river columns of the map that stands (the build range, every z), minus the places the finish stage of the map builds above the water on purpose (builtOn). In each of the others the
+         *  blocks from y=max(h,Y) up three cells must be air or water (or the barrier wall): h=Arena.height is the cell the column code clears from, so a block of the map that stood before
+         *  survives exactly there when h is Y or more. The detail has one "block x y z" line per block found. Server thread. */
+        static River river(GravesAndGlory.Battle b){
+            var w=b.world;int hz=GravesAndGlory.R.worldHalfZ(),columns=0,builtOn=0,looked=0,flat=0,left=0;var sample=new StringBuilder();var detail=new StringBuilder();
+            for(int z=-hz;z<=hz;z++){
+                int rx=(int)Math.floor(Arena.riverX(z));
+                for(int x=rx-10;x<=rx+10;x++){
+                    if(!Arena.river(x,z))continue;
+                    columns++;
+                    if(builtOn(x,z)){builtOn++;continue;}
+                    looked++;int h=Arena.height(x,z),y0=Math.max(h,Arena.Y);if(h>=Arena.Y)flat++;
+                    for(int y=y0;y<=y0+2;y++){
+                        var st=w.getBlockState(new BlockPos(x,y,z));
+                        if(st.isAir()||st.isOf(Blocks.WATER)||st.isOf(Blocks.BARRIER))continue;
+                        left++;detail.append(name(st)).append(' ').append(x).append(' ').append(y).append(' ').append(z).append('\n');
+                        if(left<=6)sample.append(left>1?"; ":"").append(name(st)).append(' ').append(xyz(new BlockPos(x,y,z)));
+                    }
+                }
+            }
+            return new River(columns,builtOn,looked,flat,left,sample.toString(),detail.toString());
+        }
+        /** Where Arena.finish builds above the water of a river column on purpose: a bridge (deck planks and the two rail rows), the footprint of any other structure, a capture ring (its band of smooth stone, the edge stone and the
+         *  boundary posts MapDressing puts on the radius and just outside it, which on the wider river of Hollowwood reach its outermost column; the 3x3 centre with the flag pole, the banner three cells east of the pole) and, on map 0, the fishing piers MapDressing puts on the river banks. */
+        static boolean builtOn(int x,int z){
+            for(var s:Spec.STRUCTURES){
+                if(s.kind().equals("bridge")){int x0=s.x()-s.width()/2,z0=s.z()-s.depth()/2;if(x>=x0&&x<x0+s.width()&&z>=z0-1&&z<=z0+s.depth())return true;}
+                else if(Walkability.inside(s,x,z))return true;
+            }
+            for(var p:Spec.POINTS){
+                int dx=x-p.x(),dz=z-p.z();double d=Math.hypot(dx,dz);
+                if(d>=p.radius()-1.5&&d<=p.radius()+2.5)return true;
+                if(Math.abs(dx)<=1&&Math.abs(dz)<=1)return true;
+                if(dz==0&&dx>=1&&dx<=3)return true;
+            }
+            if(CampaignMaps.selected==0)for(int pz:new int[]{-215,-72,72,215})for(int bank:new int[]{-1,1}){
+                int from=(int)Math.round(Arena.riverX(pz))+bank*7,to=from-bank*5;
+                if(x>=Math.min(from,to)&&x<=Math.max(from,to)&&Math.abs(z-pz)<=1)return true;
+            }
+            return false;
         }
         /** The glass panes inside the footprints of the structures: {all, those touching nothing}. A pane that touches nothing renders as a post, which is what a build without shape updates leaves behind. Server thread. */
         static int[] panes(GravesAndGlory.Battle b){

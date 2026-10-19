@@ -60,7 +60,8 @@ public final class Arena {
     static void buildColumn(ServerWorld w,int x,int z){
         w.getChunk(x>>4,z>>4); // load it first: getTopY answers the world bottom for an unloaded chunk, and without shape updates nothing else has read this chunk yet
         int h=height(x,z),top=w.getTopY(Heightmap.Type.WORLD_SURFACE,x,z);
-        for(int y=h+1;y<=top;y++)if(!w.getBlockState(new BlockPos(x,y,z)).isAir())put(w,x,y,z,Blocks.AIR);
+        int from=river(x,z)?Math.min(h+1,Y):h+1; // a river column writes water up to Y-1 and nothing at y=h, so from Y up the block of the map built before would survive at h
+        for(int y=from;y<=top;y++)if(!w.getBlockState(new BlockPos(x,y,z)).isAir())put(w,x,y,z,Blocks.AIR);
         for(int y=Y-9;y<h-2;y++)put(w,x,y,z,Blocks.STONE);
         put(w,x,h-2,z,Blocks.STONE);put(w,x,h-1,z,Blocks.DIRT);
         if(river(x,z)){for(int y=Y-5;y<=Y-3;y++)put(w,x,y,z,Blocks.GRAVEL);for(int y=Y-2;y<=Y-1;y++)put(w,x,y,z,Blocks.WATER);}
