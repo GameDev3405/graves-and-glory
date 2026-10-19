@@ -1,0 +1,10 @@
+{
+"part":"long_tabard",
+"note":"The Templar's team tabard over the plate, white cross front and back (fixed paint on the cloth sheet); its skirt is tabard_skirt, one flap pair per leg so the legs never cut through it.",
+"bone":"body",
+"team":true,
+"tag":"",
+"boxes":[
+{"origin":[-3,-11.5,-2.5],"size":[6,11,5],"uv":[32,15],"note":"chest and back, the white cross painted on the cloth sheet"}
+]
+}

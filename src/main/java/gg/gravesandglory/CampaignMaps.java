@@ -89,7 +89,7 @@ public final class CampaignMaps {
         }
         Spec.POINTS=points;Spec.SCENERY=scenery.toArray(Spec.SceneryRow[]::new);
         // Rows 0 and 1 hold the team positions; each keeps its side identity (id, name, colour, glyph).
-        for(int t=0;t<2;t++){var f=Spec.FACTIONS[t];Spec.FACTIONS[t]=new Spec.FactionsRow(f.id(),f.name(),f.color(),f.glyph(),t==0?-283:283,0,t==0?-286:286,t==0?32:-32);}
+        for(int t=0;t<2;t++){var f=Spec.FACTIONS[t];Spec.FACTIONS[t]=new Spec.FactionsRow(f.id(),f.name(),f.color(),f.glyph(),f.dye(),t==0?-283:283,0,t==0?-286:286,t==0?32:-32);}
     }
     static Spec.StructuresRow s(String id,String kind,int x,int z,int w,int d,int h,String palette,int y){return new Spec.StructuresRow(id,kind,x,z,w,d,h,palette,y);}
     static void road(int a,int b,int c,int d,int width){building.add(new Road(a,b,c,d,width));}

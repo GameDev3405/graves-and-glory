@@ -1,0 +1,11 @@
+{
+"part":"tabard_skirt",
+"note":"Half of a long tabard's skirt, front and back flap, on one leg; the left half takes bone left_leg and offset [-0.8,0,0].",
+"bone":"right_leg",
+"team":true,
+"tag":"",
+"boxes":[
+{"origin":[-1.1,-0.5,-2.6],"size":[3,9,1],"uv":[50,0],"note":"front flap, knee-length"},
+{"origin":[-1.1,-0.5,1.6],"size":[3,9,1],"uv":[50,10],"note":"back flap"}
+]
+}

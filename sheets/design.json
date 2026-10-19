@@ -5,6 +5,7 @@
       "name": "Gold Banner",
       "color": 14922561,
       "glyph": "sun",
+      "dye": "yellow",
       "spawnX": -108,
       "spawnZ": 0,
       "barracksX": -108,
@@ -15,6 +16,7 @@
       "name": "Violet Banner",
       "color": 11566335,
       "glyph": "moon",
+      "dye": "purple",
       "spawnX": 108,
       "spawnZ": 0,
       "barracksX": 108,
@@ -25,6 +27,7 @@
       "name": "Crimson Banner",
       "color": 14701130,
       "glyph": "star",
+      "dye": "red",
       "spawnX": -108,
       "spawnZ": 0,
       "barracksX": -108,
@@ -35,6 +38,7 @@
       "name": "Teal Banner",
       "color": 4179904,
       "glyph": "wave",
+      "dye": "cyan",
       "spawnX": 108,
       "spawnZ": 0,
       "barracksX": 108,
@@ -66,6 +70,7 @@
       "evolveLine": "knight",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "white:cs",
       "texture": "gravesandglory:textures/entity/dawn_guard.png"
     },
     {
@@ -92,6 +97,7 @@
       "evolveLine": "archer",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "gravesandglory:textures/entity/dawn_guard.png"
     },
     {
@@ -118,6 +124,7 @@
       "evolveLine": "sentinel",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "white:sc",
       "texture": "gravesandglory:textures/entity/dawn_guard.png"
     },
     {
@@ -144,6 +151,7 @@
       "evolveLine": "longbow",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "gravesandglory:textures/entity/dawn_guard.png"
     },
     {
@@ -170,6 +178,7 @@
       "evolveLine": "none",
       "slotWeight": 2,
       "pennant": true,
+      "shield": "none",
       "texture": "gravesandglory:textures/entity/dawn_guard.png"
     },
     {
@@ -196,6 +205,7 @@
       "evolveLine": "none",
       "slotWeight": 4,
       "pennant": true,
+      "shield": "white:sc,light_gray:bo",
       "texture": "gravesandglory:textures/entity/dawn_guard.png"
     },
     {
@@ -222,6 +232,7 @@
       "evolveLine": "revenant",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png"
     },
     {
@@ -248,6 +259,7 @@
       "evolveLine": "bonebow",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/skeleton/skeleton.png"
     },
     {
@@ -274,6 +286,7 @@
       "evolveLine": "reaper",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png"
     },
     {
@@ -300,6 +313,7 @@
       "evolveLine": "stalker",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/skeleton/skeleton.png"
     },
     {
@@ -326,6 +340,7 @@
       "evolveLine": "none",
       "slotWeight": 2,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png"
     },
     {
@@ -352,6 +367,7 @@
       "evolveLine": "none",
       "slotWeight": 4,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/skeleton/wither_skeleton.png"
     },
     {
@@ -378,6 +394,7 @@
       "evolveLine": "wm_hound",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/wolf/wolf.png"
     },
     {
@@ -404,6 +421,7 @@
       "evolveLine": "wm_hunter",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/piglin/zombified_piglin.png"
     },
     {
@@ -430,6 +448,7 @@
       "evolveLine": "wm_stalker",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/spider/spider.png"
     },
     {
@@ -456,6 +475,7 @@
       "evolveLine": "wm_tusk",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/piglin/zombified_piglin.png"
     },
     {
@@ -482,6 +502,7 @@
       "evolveLine": "none",
       "slotWeight": 2,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/piglin/zombified_piglin.png"
     },
     {
@@ -508,6 +529,7 @@
       "evolveLine": "none",
       "slotWeight": 4,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/bear/polarbear.png"
     },
     {
@@ -534,6 +556,7 @@
       "evolveLine": "ic_hearthguard",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "black:bo,light_gray:mc",
       "texture": "minecraft:textures/entity/illager/vindicator.png"
     },
     {
@@ -560,6 +583,7 @@
       "evolveLine": "ic_arbalist",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/illager/pillager.png"
     },
     {
@@ -586,6 +610,7 @@
       "evolveLine": "ic_breaker",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/illager/vindicator.png"
     },
     {
@@ -612,6 +637,7 @@
       "evolveLine": "ic_ballista",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/illager/pillager.png"
     },
     {
@@ -638,6 +664,7 @@
       "evolveLine": "none",
       "slotWeight": 2,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/illager/pillager.png"
     },
     {
@@ -664,6 +691,7 @@
       "evolveLine": "none",
       "slotWeight": 4,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/iron_golem/iron_golem.png"
     },
     {
@@ -690,6 +718,7 @@
       "evolveLine": "tc_raider",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/zombie/drowned.png"
     },
     {
@@ -716,6 +745,7 @@
       "evolveLine": "tc_harpooner",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/zombie/drowned.png"
     },
     {
@@ -742,6 +772,7 @@
       "evolveLine": "tc_tideguard",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/zombie/drowned.png"
     },
     {
@@ -768,6 +799,7 @@
       "evolveLine": "tc_mist",
       "slotWeight": 1,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/illager/evoker.png"
     },
     {
@@ -794,6 +826,7 @@
       "evolveLine": "none",
       "slotWeight": 2,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/illager/ravager.png"
     },
     {
@@ -820,6 +853,7 @@
       "evolveLine": "none",
       "slotWeight": 4,
       "pennant": true,
+      "shield": "none",
       "texture": "minecraft:textures/entity/zombie/drowned.png"
     }
   ],

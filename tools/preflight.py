@@ -56,6 +56,29 @@ for r in data['troops']:
         if path not in VANILLA_TEXTURES: errors.append(f'troops/{r["id"]}: texture {r["texture"]} is not in VANILLA_TEXTURES (tools/preflight.py), the vanilla paths checked against the {mcVersion} client jar')
         elif vanilla is not None and 'assets/minecraft/'+path not in vanilla: errors.append(f'troops/{r["id"]}: texture {r["texture"]} is not in the Minecraft {mcVersion} client jar ({clientJar})')
     else: errors.append(f'troops/{r["id"]}: texture {r["texture"]} must be a gravesandglory: or a minecraft: path')
+# Troop looks (Phase 2 Task 5, unit identity rules 2 and 7): the painted shield is the one vanilla item a troop draws,
+# its patterns from troops.shield on the side's factions.dye; each art/troops/<id>.json is a troop's own model source, and
+# tools/build_skins.py lists every model it built in models/troop/index.json.
+DYES=('white','orange','magenta','light_blue','yellow','lime','pink','gray','light_gray','cyan','purple','blue','brown','green','red','black')
+BANNER_PATTERNS=('b','bl','br','tl','tr','bs','ts','ls','rs','cs','ms','drs','dls','ss','cr','sc','bt','tt','bts','tts','ld','rd','lud','rud',
+    'mc','mr','vh','hh','vhr','hhb','bo','cbo','gra','gru','bri','glb','cre','sku','flo','moj','pig')
+for f in sides:
+    if f['dye'] not in DYES: errors.append(f'factions/{f["id"]}: dye {f["dye"]} is not a vanilla dye ({", ".join(DYES)})')
+for r in data['troops']:
+    shielded='shield' in r['tags'].split(',')
+    if (r['shield']=='none')==shielded: errors.append(f'troops/{r["id"]}: shield must be none exactly when tags lacks shield, not {r["shield"]}')
+    elif r['shield']!='none':
+        for layer in r['shield'].split(','):
+            dye,_,code=layer.partition(':')
+            if dye not in DYES or code not in BANNER_PATTERNS: errors.append(f'troops/{r["id"]}: shield layer {layer} must be <vanilla dye>:<banner pattern code>')
+artTroops=sorted(p.stem for p in (root/'art/troops').glob('*.json')) if (root/'art/troops').is_dir() else []
+for t in artTroops:
+    if t not in troops: errors.append(f'art/troops/{t}.json: {t} is not a troops id')
+troopIndex=root/'src/main/resources/assets/gravesandglory/models/troop/index.json'
+if artTroops or troopIndex.is_file():
+    try: listedTroops=json.loads(troopIndex.read_text(encoding='utf-8')).get('troops')
+    except (OSError,ValueError): listedTroops=None
+    if listedTroops!=artTroops: errors.append(f'models/troop/index.json: troops {listedTroops} must be exactly the art/troops ids {artTroops}; run python tools/build_skins.py')
 for r in data['ui']:
     if r['id']=='command':
         formationIds={f['id'] for f in data['formations']}

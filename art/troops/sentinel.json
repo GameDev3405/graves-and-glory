@@ -1,0 +1,19 @@
+{
+"troop":"sentinel",
+"note":"Templar > Templar Knight > Templar Commander (unit identity 1): husk, biped, tall; great helm, team long tabard with the white cross, and pennant; stage 3 cape.",
+"rig":"biped",
+"size":[128,64],
+"bones":{"body":{"scale":[1.05,1.1,1.05]},"right_leg":{"scale":[1,1.15,1]},"left_leg":{"scale":[1,1.15,1]}},
+"idleArms":"hang",
+"parts":[
+{"part":"great_helm","uv":[64,0]},
+{"part":"long_tabard"},
+{"part":"tabard_skirt","name":"tabard_skirt_right"},
+{"part":"tabard_skirt","name":"tabard_skirt_left","bone":"left_leg","offset":[-0.8,0,0]},
+{"part":"pennant","scale":[0.952381,0.909091,0.952381],"offset":[0,-1.0909,0.2381]}
+],
+"skins":{"1":"sentinel_s1.png"},
+"weapon":"longsword",
+"hand":"right",
+"portrait":"tall 2"
+}

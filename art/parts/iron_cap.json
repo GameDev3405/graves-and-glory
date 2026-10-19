@@ -1,0 +1,11 @@
+{
+"part":"iron_cap",
+"note":"The Squire's iron cap: a round skull cap over the brow, the face open under it. Block 64x12.",
+"bone":"head",
+"team":false,
+"tag":"helm",
+"boxes":[
+{"origin":[-4.5,-9,-4.5],"size":[9,3,9],"uv":[0,0],"note":"skull, 0.5 px proud, over the brow"},
+{"origin":[-3.5,-10,-3.5],"size":[7,1,7],"uv":[36,0],"note":"crown"}
+]
+}

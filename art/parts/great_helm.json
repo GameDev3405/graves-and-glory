@@ -1,0 +1,10 @@
+{
+"part":"great_helm",
+"note":"The Templar's closed great helm, flat-topped, the slit painted. Block 38x19.",
+"bone":"head",
+"team":false,
+"tag":"helm",
+"boxes":[
+{"origin":[-5,-9.75,-4.5],"size":[10,10,9],"uv":[0,0],"note":"the flat-topped bucket, 1 px proud at the sides and 0.5 front and back, closed to the shoulders"}
+]
+}

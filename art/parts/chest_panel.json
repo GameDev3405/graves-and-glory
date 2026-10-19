@@ -1,0 +1,11 @@
+{
+"part":"chest_panel",
+"note":"The 4 px team panel down a white surcoat, front and back, chest to hem; the belt crosses it.",
+"bone":"body",
+"team":true,
+"tag":"",
+"boxes":[
+{"origin":[-2,-11,-2.5],"size":[4,10,5],"uv":[32,0],"note":"the 4 px panel, 0.5 px proud of the chest and the back"},
+{"origin":[-2,0.1,-3],"size":[4,4,6],"uv":[16,31],"note":"its run down the surcoat skirt, 0.5 px proud of it"}
+]
+}
