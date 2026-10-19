@@ -335,6 +335,33 @@ class BuildSkinsChecks(unittest.TestCase):
                 said = self.fails(build_skins.verify, root)
                 self.assertIn(target, said)
 
+    def test_verify_pixels(self):
+        """--verify compares a PNG by its pixels: the same pixels in other bytes pass, and export leaves them alone; one
+        changed pixel in a source fails, naming the output and the pixel."""
+        target = 'textures/entity/troop/knight_s1.png'
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            self.export(root)
+            path = root / ASSETS / target
+            before = path.read_bytes()
+            with Image.open(path) as im:
+                same = im.copy()
+            same.save(path, 'PNG', compress_level=1)
+            recoded = path.read_bytes()
+            self.assertNotEqual(recoded, before)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(build_skins.verify(root), 0)
+            self.export(root)
+            self.assertEqual(path.read_bytes(), recoded)
+            source = root / 'art/troops/knight_s1.png'
+            with Image.open(source) as im:
+                changed = im.copy()
+            changed.putpixel((3, 2), (90, 90, 90, 255))
+            changed.save(source)
+            said = self.fails(build_skins.verify, root)
+            self.assertIn(target, said)
+            self.assertIn('pixel (3, 2)', said)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

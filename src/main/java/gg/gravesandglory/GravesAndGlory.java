@@ -245,8 +245,13 @@ public final class GravesAndGlory implements ModInitializer {
             for(var f:Spec.FACTIONS){var t=board.getTeam(sideTeam(f));if(t!=null)for(String member:new ArrayList<>(t.getPlayerList()))board.removePlayerFromTeam(member,t);}
         }
         /**
+         * The field of a portrait's shield (ArmyCards.portrait): grey, a dye no side flies and no troops.shield layer uses
+         * (tools/preflight.py reads it here and refuses a clash), so every layer shows on a card.
+         */
+        public static final String PORTRAIT_FIELD="gray";
+        /**
          * The troop's painted shield (unit identity rule 7): unbreakable, its BlockEntityTag Base the given dye (the side's
-         * factions.dye in battle, light_gray on portraits) and its Patterns the troops.shield layers, <dye>:<pattern> each.
+         * factions.dye in battle, PORTRAIT_FIELD on portraits) and its Patterns the troops.shield layers, <dye>:<pattern> each.
          */
         public static ItemStack shield(Spec.TroopsRow t,String dye){
             ItemStack s=unbreakable(Items.SHIELD);NbtCompound tag=new NbtCompound();tag.putInt("Base",DyeColor.byName(dye,DyeColor.WHITE).getId());

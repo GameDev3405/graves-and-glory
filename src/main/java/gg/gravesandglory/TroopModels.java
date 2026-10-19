@@ -1,5 +1,6 @@
 package gg.gravesandglory;
 
+import com.google.common.collect.MapMaker;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.mob.MobEntity;
@@ -14,7 +15,11 @@ import java.util.*;
  */
 public final class TroopModels {
     private TroopModels() {}
-    /** What a troop entity looks like: its row, evolution stage, Veteran skin, and the side of its gg_ team (null for none). */
+    /**
+     * What a troop entity looks like: its row, evolution stage, Veteran skin, and its side: the side of its gg_ team, else
+     * the side this client last resolved for it (the server takes a troop off its team as it dies, and the body stays a second
+     * longer in its colours, with its flag), else null.
+     */
     public record Look(Spec.TroopsRow troop, int stage, boolean veteran, String side) {}
     /** A weapon model: its part (the grip already placed in the hand bone's frame), its texture and its glow (null for none). */
     public record Weapon(ModelPart part, Identifier texture, Identifier glow) {}
@@ -26,10 +31,15 @@ public final class TroopModels {
         Map.entry("wolf","hound"),Map.entry("polar_bear","hound"),Map.entry("ravager","hound"),
         Map.entry("spider","spider"),Map.entry("iron_golem","colossus"));
     static final String VETERAN=" (Veteran)",TEAM="gg_",NAMESPACE="gravesandglory",CLOTH="textures/entity/troop/team_cloth_";
+    /** Ticks a troop in the world waits undrawn for its side's team (the spawn packet can reach a client a frame before the team packet); after that it draws in linen. */
+    static final int HOLD_TICKS=40;
     private static volatile Map<String,TroopModel<?>> troops=Map.of(),rigs=Map.of();
     private static volatile Map<String,Weapon> weapons=Map.of();
-    /** The cloth a team-less mob wears instead of linen (ArmyCards puts its portraits in the company's cloth). */
-    private static final Map<Entity,String> DRESS=Collections.synchronizedMap(new WeakHashMap<>());
+    /** The cloth a team-less mob wears instead of linen (ArmyCards puts its portraits in the company's cloth). Weak keys by identity: a client-built portrait mob can share a network id with a world mob. */
+    private static final Map<Entity,String> DRESS=new MapMaker().weakKeys().makeMap();
+    /** What this client last saw of a troop entity: the side it last resolved and when it first resolved it (world time). Weak keys by identity. */
+    private static final Map<Entity,Seen> SEEN=new MapMaker().weakKeys().makeMap();
+    private static final class Seen { volatile String side;final long first;Seen(long first){this.first=first;} }
 
     /** Called by TroopModelLoader at the end of each resource reload. */
     static void publish(Map<String,TroopModel<?>> troopModels,Map<String,TroopModel<?>> rigModels,Map<String,Weapon> weaponModels){
@@ -39,7 +49,8 @@ public final class TroopModels {
 
     /**
      * The Look of a troop entity: null for a mob that is no troop (no custom name, or a name no troop or stage has) and for a
-     * troop whose House has no model yet, which therefore draws through its vanilla renderer.
+     * troop whose House has no model yet, which therefore draws through its vanilla renderer. A troop without a gg_ team keeps
+     * the side this client last resolved for it, for as long as the entity exists.
      */
     public static Look resolve(Entity e){
         if(!(e instanceof MobEntity)||e.getCustomName()==null)return null;
@@ -50,7 +61,17 @@ public final class TroopModels {
         if(!name.equals(t.name()))for(var row:Spec.EVOLUTIONS)if(row.troop().equals(t.evolveLine())&&row.name().equals(name)){stage=row.stage();break;}
         var team=e.getScoreboardTeam();String side=null;
         if(team!=null&&team.getName().startsWith(TEAM))side=team.getName().substring(TEAM.length());
+        Seen seen=SEEN.computeIfAbsent(e,k->new Seen(k.getWorld()==null?0:k.getWorld().getTime()));
+        if(side!=null)seen.side=side;else side=seen.side;
         return new Look(t,stage,veteran,side);
+    }
+    /**
+     * Whether a troop waits undrawn this frame: it has no side yet (its team has not reached this client), wears no dress (a
+     * portrait), and was first resolved less than HOLD_TICKS ago. The first frame that draws it then shows its side's colours.
+     */
+    static boolean held(Entity e,Look l){
+        if(l.side()!=null||DRESS.containsKey(e)||e.getWorld()==null)return false;
+        Seen seen=SEEN.get(e);return seen!=null&&e.getWorld().getTime()-seen.first<HOLD_TICKS;
     }
     public static TroopModel<?> model(String troop){return troops.get(troop);}
     @SuppressWarnings("unchecked") static <T extends MobEntity> TroopModel<T> modelOf(String troop){return (TroopModel<T>)troops.get(troop);}

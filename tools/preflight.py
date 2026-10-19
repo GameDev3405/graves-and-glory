@@ -64,6 +64,20 @@ BANNER_PATTERNS=('b','bl','br','tl','tr','bs','ts','ls','rs','cs','ms','drs','dl
     'mc','mr','vh','hh','vhr','hhb','bo','cbo','gra','gru','bri','glb','cre','sku','flo','moj','pig')
 for f in sides:
     if f['dye'] not in DYES: errors.append(f'factions/{f["id"]}: dye {f["dye"]} is not a vanilla dye ({", ".join(DYES)})')
+# A shield's field is its side's factions.dye in battle and GravesAndGlory.Battle.PORTRAIT_FIELD on a portrait (read from the
+# source here, so the two cannot drift). A layer in the colour of a field vanishes on that field, and two sides with one
+# dye fly the same shields, so every field dye is a side's own and no layer takes one.
+battleSource=root/'src/main/java/gg/gravesandglory/GravesAndGlory.java'
+portraitField=re.search(r'PORTRAIT_FIELD\s*=\s*"([a-z_]+)"',battleSource.read_text(encoding='utf-8')) if battleSource.is_file() else None
+portraitField=portraitField.group(1) if portraitField else None
+fields={}
+for f in sides:
+    if f['dye'] in fields: errors.append(f'factions/{f["id"]}: dye {f["dye"]} is also {fields[f["dye"]]}; every side needs its own shield field')
+    fields.setdefault(f['dye'],f'factions/{f["id"]} dye')
+if portraitField is None: errors.append('GravesAndGlory.java: no PORTRAIT_FIELD="<dye>", the shield field of a portrait')
+elif portraitField not in DYES: errors.append(f'GravesAndGlory.java: PORTRAIT_FIELD {portraitField} is not a vanilla dye')
+elif portraitField in fields: errors.append(f'GravesAndGlory.java: PORTRAIT_FIELD {portraitField} is {fields[portraitField]}, so a portrait would fly that side')
+else: fields[portraitField]='the portrait field (GravesAndGlory.Battle.PORTRAIT_FIELD)'
 for r in data['troops']:
     shielded='shield' in r['tags'].split(',')
     if (r['shield']=='none')==shielded: errors.append(f'troops/{r["id"]}: shield must be none exactly when tags lacks shield, not {r["shield"]}')
@@ -71,6 +85,7 @@ for r in data['troops']:
         for layer in r['shield'].split(','):
             dye,_,code=layer.partition(':')
             if dye not in DYES or code not in BANNER_PATTERNS: errors.append(f'troops/{r["id"]}: shield layer {layer} must be <vanilla dye>:<banner pattern code>')
+            elif dye in fields: errors.append(f'troops/{r["id"]}: shield layer {layer} is the colour of {fields[dye]}, and vanishes on that field')
 artTroops=sorted(p.stem for p in (root/'art/troops').glob('*.json')) if (root/'art/troops').is_dir() else []
 for t in artTroops:
     if t not in troops: errors.append(f'art/troops/{t}.json: {t} is not a troops id')

@@ -6,8 +6,10 @@ which portraits wear: unit identity rule 8 as Kort ruled it, Needs Kort 11).
 
   python tools/build_skins.py                     export everything, and remove the outputs the previous index.json
                                                   listed that are no longer built (never a file no index listed)
-  python tools/build_skins.py --verify            rebuild into a temp dir and compare byte for byte; exit 1 naming the
-                                                  first difference
+  python tools/build_skins.py --verify            rebuild into a temp dir and compare: a PNG by its size and RGBA
+                                                  pixels (another Pillow or zlib may encode the same pixels in other
+                                                  bytes), anything else byte for byte; exit 1 naming the first
+                                                  difference
   python tools/build_skins.py --template <troop>  write work/troops/<troop>_template.png: every skin box face of the
                                                   troop in a flat colour, the sheet to paint over
 
@@ -725,7 +727,7 @@ def export(root: Path, out: Path) -> dict:
     for rel, data in files.items():
         path = out / rel
         path.parent.mkdir(parents=True, exist_ok=True)
-        if not path.is_file() or path.read_bytes() != data:
+        if not path.is_file() or differs(rel, path.read_bytes(), data):
             path.write_bytes(data)
     for gone in sorted(before - set(index['outputs'])):
         path = out / gone
@@ -744,9 +746,37 @@ def export(root: Path, out: Path) -> dict:
     return index
 
 
+def pixels(data):
+    """A PNG's size and its pixels as RGBA bytes."""
+    with Image.open(io.BytesIO(data)) as im:
+        return im.size, im.convert('RGBA').tobytes()
+
+
+def differs(rel, a, b):
+    """How a committed output differs from its rebuild, or None when they match: a PNG by its size and RGBA pixels (the
+    same pixels may be encoded in other bytes by another Pillow or zlib build, and that is no change), anything else byte
+    for byte."""
+    if a == b:
+        return None
+    if rel.endswith('.png'):
+        try:
+            (sa, pa), (sb, pb) = pixels(a), pixels(b)
+        except Exception as e:  # Pillow raises OSError, SyntaxError or zlib.error on a broken file
+            return 'is not a PNG its rebuild can be compared with (%s)' % e
+        if sa != sb:
+            return 'is %dx%d, its rebuild %dx%d' % (sa + sb)
+        if pa == pb:
+            return None
+        at = next(i for i in range(len(pa)) if pa[i] != pb[i]) // 4
+        return 'differs from its rebuild at pixel (%d, %d): #%s, rebuilt #%s' % (
+            at % sa[0], at // sa[0], pa[at * 4:at * 4 + 4].hex().upper(), pb[at * 4:at * 4 + 4].hex().upper())
+    at = next((i for i in range(min(len(a), len(b))) if a[i] != b[i]), min(len(a), len(b)))
+    return 'differs from its rebuild at byte %d' % at
+
+
 def verify(root: Path) -> int:
-    """Rebuilds into a temp dir and compares every output byte for byte with the committed one; exits 1 naming the first
-    difference, a missing output or a file the index does not list."""
+    """Rebuilds into a temp dir and compares every output with the committed one (differs: PNGs by pixels, the rest byte
+    for byte); exits 1 naming the first difference, a missing output or a file the index does not list."""
     root = Path(root)
     out = root / ASSETS
     if not (out / MODELS / 'index.json').is_file():
@@ -767,10 +797,9 @@ def verify(root: Path) -> int:
             a, b = out / rel, Path(tmp) / rel
             if not a.is_file():
                 fail('%s is missing; run python tools/build_skins.py' % rel)
-            da, db = a.read_bytes(), b.read_bytes()
-            if da != db:
-                at = next((i for i in range(min(len(da), len(db))) if da[i] != db[i]), min(len(da), len(db)))
-                fail('%s differs from its rebuild at byte %d; run python tools/build_skins.py' % (rel, at))
+            why = differs(rel, a.read_bytes(), b.read_bytes())
+            if why:
+                fail('%s %s; run python tools/build_skins.py' % (rel, why))
         extra = sorted(set(owned_files(out)) - set(fresh))
         if extra:
             fail('%s is not in %s/index.json' % (extra[0], MODELS))

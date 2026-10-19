@@ -37,7 +37,7 @@ final class ArmyCards {
     /**
      * A portrait mob of a troop at an evolution stage, named as Battle.spawn names it (ArmyMobs.stageName), so a troop with a
      * model draws it through TroopRenderer: no team, so no match side and no pennant, in the company's cloth (unit identity
-     * rule 8 as Kort ruled it), with its painted shield on a light-grey field. Cached per id, stage and colour: the chest item
+     * rule 8 as Kort ruled it), with its painted shield on a grey field (Battle.PORTRAIT_FIELD). Cached per id, stage and colour: the chest item
      * is still dyed the commander's colour (the barracks and editor checks read it), though troop armour never draws.
      */
     static MobEntity portrait(Spec.TroopsRow spec,int stage){
@@ -49,7 +49,7 @@ final class ArmyCards {
             e.setCustomName(Text.literal(ArmyMobs.stageName(spec,stage)));e.setCustomNameVisible(false);e.setPersistent();e.setSilent(true);
             e.equipStack(EquipmentSlot.MAINHAND,new ItemStack(Registries.ITEM.get(new Identifier(spec.weapon()))));e.equipStack(EquipmentSlot.HEAD,new ItemStack(Registries.ITEM.get(new Identifier(spec.helmet()))));
             var chest=new ItemStack(Registries.ITEM.get(new Identifier(spec.chest())));if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,colour);e.equipStack(EquipmentSlot.CHEST,chest);
-            if(ArmyMobs.tags(spec).contains("shield"))e.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(spec,"light_gray"));
+            if(ArmyMobs.tags(spec).contains("shield"))e.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(spec,GravesAndGlory.Battle.PORTRAIT_FIELD));
             TroopModels.dress(e,"company");return e;
         });
     }
