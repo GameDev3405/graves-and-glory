@@ -1137,8 +1137,11 @@ public final class Phase1Checks implements ClientModInitializer {
         static final double AX=-220,AZ=0; // open ground on the Dawn road, 63 blocks out from the live Dawn base at x=-283
         static final List<BattleHud.CardDraw> CARDS=List.of(new BattleHud.CardDraw("infantry","FLASH",false,24,348,176,48),new BattleHud.CardDraw("ranged","SELECTED",true,24,404,176,62),new BattleHud.CardDraw("support","ROUTING",false,24,474,176,48));
         static final List<BattleHud.SealDraw> SEALS=List.of(new BattleHud.SealDraw("hud/seal-dawn",439,41),new BattleHud.SealDraw("hud/seal-contested",467,40),new BattleHud.SealDraw("hud/seal-dusk",495,41));
-        /** Width, height, GUI scale, and 1 for a borderless window (the 1080 windows: see window(c,w,h,gui,bare)). */
-        static final int[][] WINDOWS={{960,540,1,0},{854,480,2,0},{1280,720,3,0},{1920,1080,2,1},{1920,1080,4,1}};
+        /** Width, height, GUI scale, 1 for a borderless window (the 1080 windows: see window(c,w,h,gui,bare)), then the chat lines
+         *  p1-ui-chat-lift wants there, unfocused and focused (UI polish M1, worked out by hand): vanilla's 10 and 20 where the chat
+         *  stops short of the screen's centre, else what fits between the chat's bottom and 4 px below vanilla's 15 px crosshair at
+         *  the centre (1 at 854x480 GUI 2, 4 at 1280x720 GUI 3, 2 at 1920x1080 GUI 4). */
+        static final int[][] WINDOWS={{960,540,1,0,10,20},{854,480,2,0,1,1},{1280,720,3,0,4,4},{1920,1080,2,1,10,20},{1920,1080,4,1,2,2}};
         // Written by both threads. A negative stage is a hand-off: the client waits for the server task it sent to set the next stage.
         volatile int stage;volatile UUID player;
         volatile boolean hungerOn,hungerDone,routSupport,keepRespawn,fiveReady;volatile int hungerSets,hungerOk;volatile String hungerWrong="",fixture="";
@@ -1456,12 +1459,14 @@ public final class Phase1Checks implements ClientModInitializer {
             int[] hotbar=canvas(c,sw/2-91,sh-22,182,22),hearts=canvas(c,sw/2-91,sh-39,81,9);
             for(var e:r.entrySet()){if(meets(e.getValue(),hotbar))bad.add(e.getKey()+" meets the hotbar");if(meets(e.getValue(),hearts))bad.add(e.getKey()+" meets the hearts");}
             smallOk&=bad.isEmpty();
-            // p1-ui-chat-lift: the chat's two lines above the left column (ChatPlacement), and the lines it shows, unfocused and focused
-            var hud=c.inGameHud.getChatHud();int top=ChatPlacement.columnTop(r),lh=((gg.gravesandglory.mixin.ChatHudAccessor)hud).gravesandglory$getLineHeight();int[] dr=ChatPlacement.drawn;
+            // p1-ui-chat-lift: the chat's lines above the left column (ChatPlacement), its top below vanilla's crosshair wherever it
+            // reaches the screen's centre (UI polish M1), and the lines it shows, unfocused and focused, the window's wanted counts
+            var hud=c.inGameHud.getChatHud();int top=ChatPlacement.columnTop(r),lh=((gg.gravesandglory.mixin.ChatHudAccessor)hud).gravesandglory$getLineHeight();int[] dr=ChatPlacement.drawn,cross={(sw-15)/2,(sh-15)/2,15,15};
             int[] chat=dr==null?null:canvas(c,dr[0],dr[1],dr[2],dr[3]);String first=r.keySet().stream().filter(k->k.startsWith("card-")).min(Comparator.comparingInt(k->r.get(k)[1])).orElse(null);
-            int focused=ChatPlacement.lines(net.minecraft.client.gui.hud.ChatHud.getHeight(c.options.getChatHeightFocused().getValue())/lh,sh,hud.getChatScale(),lh,hud.getWidth());
-            boolean apart=chat!=null&&top>=0&&chat[1]+chat[3]<=top&&ChatPlacement.drawnLines==2&&first!=null&&!meets(chat,r.get(first));chatOk&=apart;
-            chatWhy+=(chatWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": chat scale "+hud.getChatScale()+", lifted "+ChatPlacement.lift(sh)+" GUI px, "+ChatPlacement.drawnLines+" lines drawn at canvas "+box(chat)+" (GUI "+box(dr)+"), the column's top at "+top+" and "+first+" "+box(first==null?null:r.get(first))+"; it shows "+hud.getVisibleLineCount()+" lines unfocused, "+focused+" focused"+(apart?"":", WRONG");
+            int shown=hud.getVisibleLineCount(),focused=ChatPlacement.lines(net.minecraft.client.gui.hud.ChatHud.getHeight(c.options.getChatHeightFocused().getValue())/lh,sw,sh,hud.getChatScale(),lh,hud.getWidth());
+            boolean clear=dr!=null&&(dr[0]+dr[2]<=cross[0]||dr[1]>=cross[1]+cross[3]);
+            boolean apart=chat!=null&&top>=0&&chat[1]+chat[3]<=top&&ChatPlacement.drawnLines==Math.min(2,s[4])&&shown==s[4]&&focused==s[5]&&clear&&first!=null&&!meets(chat,r.get(first));chatOk&=apart;
+            chatWhy+=(chatWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": chat scale "+hud.getChatScale()+", lifted "+ChatPlacement.lift(sh)+" GUI px, "+ChatPlacement.drawnLines+" lines drawn at canvas "+box(chat)+" (GUI "+box(dr)+"), the column's top at "+top+" and "+first+" "+box(first==null?null:r.get(first))+", the crosshair at GUI "+box(cross)+(clear?" clear":" COVERED")+"; it shows "+shown+" lines unfocused, "+focused+" focused (wanted "+s[4]+" and "+s[5]+")"+(apart?"":", WRONG");
             smallWhy+=(smallWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": canvas "+cw+"x"+ch+" (k "+UiCanvas.k()+"), "+r.size()+" rects, cards "+BattleHud.cards().stream().map(d->d.group()+" "+d.y()).toList()+", ability "+box(r.get("ability"))+", lesson "+box(r.get("lesson"))+", respawn "+box(r.get("respawn"))+", spine "+box(r.get("spine"))+", hotbar "+box(hotbar)+", hearts "+box(hearts)+(bad.isEmpty()?", every rect inside and apart":", WRONG: "+String.join("; ",bad.subList(0,Math.min(6,bad.size()))));
         }
 
