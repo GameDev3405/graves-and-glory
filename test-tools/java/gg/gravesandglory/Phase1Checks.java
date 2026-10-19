@@ -1457,7 +1457,7 @@ public final class Phase1Checks implements ClientModInitializer {
             for(var e:r.entrySet()){if(meets(e.getValue(),hotbar))bad.add(e.getKey()+" meets the hotbar");if(meets(e.getValue(),hearts))bad.add(e.getKey()+" meets the hearts");}
             smallOk&=bad.isEmpty();
             // p1-ui-chat-lift: the chat's two lines above the left column (ChatPlacement), and the lines it shows, unfocused and focused
-            var hud=c.inGameHud.getChatHud();int top=ChatPlacement.columnTop(r),lh=(int)(9*(c.options.getChatLineSpacing().getValue()+1));int[] dr=ChatPlacement.drawn;
+            var hud=c.inGameHud.getChatHud();int top=ChatPlacement.columnTop(r),lh=((gg.gravesandglory.mixin.ChatHudAccessor)hud).gravesandglory$getLineHeight();int[] dr=ChatPlacement.drawn;
             int[] chat=dr==null?null:canvas(c,dr[0],dr[1],dr[2],dr[3]);String first=r.keySet().stream().filter(k->k.startsWith("card-")).min(Comparator.comparingInt(k->r.get(k)[1])).orElse(null);
             int focused=ChatPlacement.lines(net.minecraft.client.gui.hud.ChatHud.getHeight(c.options.getChatHeightFocused().getValue())/lh,sh,hud.getChatScale(),lh,hud.getWidth());
             boolean apart=chat!=null&&top>=0&&chat[1]+chat[3]<=top&&ChatPlacement.drawnLines==2&&first!=null&&!meets(chat,r.get(first));chatOk&=apart;

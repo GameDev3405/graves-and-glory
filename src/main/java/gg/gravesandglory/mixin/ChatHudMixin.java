@@ -30,7 +30,7 @@ abstract class ChatHudMixin {
 
     @ModifyReturnValue(method = "getVisibleLineCount", at = @At("RETURN"))
     private int gravesandglory$lines(int lines) {
-        int lineHeight = (int) (9.0 * (client.options.getChatLineSpacing().getValue() + 1.0)); // ChatHud.getLineHeight
+        int lineHeight = ((ChatHudAccessor) (Object) this).gravesandglory$getLineHeight();
         return ChatPlacement.lines(lines, client.getWindow().getScaledHeight(), getChatScale(), lineHeight, getWidth());
     }
 

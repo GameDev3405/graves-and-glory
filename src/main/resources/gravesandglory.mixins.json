@@ -10,7 +10,8 @@
     "CinematicHudMixin",
     "ModelAngleCompatibilityMixin",
     "HungerHudMixin",
-    "ChatHudMixin"
+    "ChatHudMixin",
+    "ChatHudAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
