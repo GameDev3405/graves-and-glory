@@ -1,7 +1,7 @@
 # The soldiers think: unit AI and enemy AI, design
 Status: approved by Kort, 2026-10-18 late, as written (click-through); plan to follow once Phase 3 lands.
 
-Draft v1, 2026-10-18, for Kort to correct; nothing here is planned or built. Invented numbers carry (proposal); unmarked numbers come from a sheet or an approved document. The controller's open calls are marked **controller's call**, drafting calls (call N); all are listed at the end for Kort to overturn.
+Draft v1, 2026-10-18, approved as written (see Status); nothing here is planned or built yet. Invented numbers carry (proposal); unmarked numbers come from a sheet or an approved document. The controller's open calls are marked **controller's call**, drafting calls (call N); all are listed at the end for Kort to overturn.
 
 ## 1. Intent and why
 
