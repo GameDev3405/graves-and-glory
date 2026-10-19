@@ -12,6 +12,7 @@
     "HungerHudMixin",
     "ChatHudMixin",
     "ChatHudAccessor",
+    "LivingEntityRendererAccessor",
     "KeybindTextMixin"
   ],
   "injectors": {

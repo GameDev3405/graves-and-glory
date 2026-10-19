@@ -12,6 +12,8 @@ final class CampScreen extends ArmyScreen {
     String page;float scale=1;int offset;String key="",roomInput="";long requestAt;TextFieldWidget code;
     /** The War Table home (page home), kept while this screen lives so its focus and animation survive a rebuild. */
     WarTableHome home;
+    /** The War Table recruit page (page recruit), kept while the page is open; leaving the page drops it, so a later visit opens on the first House. */
+    WarTableRecruit recruit;
     CampScreen(String page){super("Banner camp");this.page=page;}
     static void open(String page){var c=net.minecraft.client.MinecraftClient.getInstance();if(page.equals("army"))c.setScreen(new LobbyScreen(1));else c.setScreen(new CampScreen(page));}
     JsonObject social(){return CampaignClient.social;}
@@ -19,27 +21,23 @@ final class CampScreen extends ArmyScreen {
     String value(String name){return social().has(name)?social().get(name).getAsString():"";}
     int number(String name,int fallback){return social().has(name)?social().get(name).getAsInt():fallback;}
     JsonArray rows(String name){return social().has(name)?social().getAsJsonArray(name):new JsonArray();}
-    void action(String cmd){if(System.currentTimeMillis()-requestAt<300)return;requestAt=System.currentTimeMillis();send(cmd);}
+    /** Sends cmd to the server unless a command went less than 300 ms ago; returns whether it went. */
+    boolean action(String cmd){if(System.currentTimeMillis()-requestAt<300)return false;requestAt=System.currentTimeMillis();send(cmd);return true;}
     /** Until UI Task 7 builds the field picker, page field (the home's Change) is the map voting page, with the bots' tier. */
-    void page(String next){page=next.equals("field")?"match":next;offset=0;clearAndInit();}
+    void page(String next){page=next.equals("field")?"match":next;offset=0;if(!page.equals("recruit"))recruit=null;clearAndInit();}
     void rebuild(){clearAndInit();}
     UiButton add(UiButton b){return addDrawableChild(b);}
     String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.unlocked+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready;}
     @Override protected void init(){
         if(page.equals("home")){scale=1;key=state();code=null;if(home==null)home=new WarTableHome(this);home.init();return;} // the War Table draws in canvas pixels
+        if(page.equals("recruit")){scale=1;key=state();code=null;if(recruit==null)recruit=new WarTableRecruit(this);recruit.init();return;}
         scale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/760f,client.getWindow().getScaledHeight()/460f));width=(int)(client.getWindow().getScaledWidth()/scale);height=(int)(client.getWindow().getScaledHeight()/scale);key=state();code=null;
         String[] names={"Camp guide","Recruitment","Friends","Private room","Contracts","Chapter rewards"};String[] ids={"home","recruit","friends","room","contracts","chapter"};
         for(int i=0;i<ids.length;i++){String id=ids[i];button((page.equals(id)?"> ":"")+names[i],18,94+i*34,150,b->page(id));}
         button("Army & equipment",18,310,150,b->open("army"));button("Visuals & sound",18,340,150,b->client.setScreen(new PresentationScreen()));button("Return to camp",18,height-42,150,b->close());
         int x=194,w=width-x-22;
         if(CampaignClient.result.has("id"))button("Last battle",18,370,150,b->page("results"));
-        if(page.equals("recruit")){
-            var locked=Arrays.stream(Spec.TROOPS).filter(t->!CampaignClient.profile.unlocked.contains(t.id())).toList();
-            var roll=primary(locked.isEmpty()?"COLLECTION COMPLETE":"RECRUIT RANDOM / "+Spec.CAMPAIGN[0].rollCost()+" GOLD",x,height-78,w,b->action("roll"));roll.active=!locked.isEmpty()&&CampaignClient.profile.gold>=Spec.CAMPAIGN[0].rollCost()&&(!running||CampaignClient.waiting);
-            int shown=Math.min(6,locked.size()-Math.min(offset,locked.size()));for(int i=0;i<shown;i++){var troop=locked.get(offset+i);var choose=button("Choose / "+Spec.CAMPAIGN[0].rollCost()+" gold",x+(i%3)*(w/3),218+(i/3)*130,w/3-10,b->action("unlock:"+troop.id()));choose.active=CampaignClient.profile.gold>=Spec.CAMPAIGN[0].rollCost()&&(!running||CampaignClient.waiting);}
-            if(locked.size()>6){button("Previous",x,80,85,b->{offset=Math.max(0,offset-6);clearAndInit();});button("Next",x+w-85,80,85,b->{offset=offset+6<locked.size()?offset+6:0;clearAndInit();});}
-            button("Skip reveal",width-126,49,104,b->CampaignClient.revealUntil=0);
-        }else if(page.equals("friends")){
+        if(page.equals("friends")){
             if(!flag("party"))primary("CREATE PARTY",x,117,180,b->action("social:create"));else{
                 button("Leave party",x,117,120,b->action("social:leave"));button(flag("partyLead")?"Disband party":"Claim offline lead",x+130,117,160,b->action(flag("partyLead")?"social:disband":"social:claim"));
                 primary("CREATE PRIVATE ROOM",x+w-215,113,215,b->action("social:room"));
@@ -77,7 +75,7 @@ final class CampScreen extends ArmyScreen {
             button("Play with friends in a room",x,350,w,b->page("room"));
         }
     }
-    @Override public void tick(){if(home!=null&&page.equals("home"))home.tick();if(!key.equals(state())&&!(code!=null&&code.isFocused()))clearAndInit();if(running&&!CampaignClient.waiting)close();}
+    @Override public void tick(){if(home!=null&&page.equals("home"))home.tick();if(recruit!=null&&page.equals("recruit"))recruit.tick();if(!key.equals(state())&&!(code!=null&&code.isFocused()))clearAndInit();if(running&&!CampaignClient.waiting)close();}
     void line(DrawContext g,String text,int x,int y,int color,int max){g.drawText(textRenderer, textRenderer.trimToWidth(text,max),x,y,color,false);}
     /** The battle report table from y down: COMMANDER / KILLS / LOST / GOLD / ON POINTS, one row per army (your team first, a rule before the
      *  enemy, each row's team mark in the team column, your row in brass, a crest on the MVP), then one line per point with the seconds each
@@ -101,16 +99,13 @@ final class CampScreen extends ArmyScreen {
     }
     @Override public void render(DrawContext g,int mx,int my,float delta){
         if(page.equals("home")&&home!=null){home.render(g);super.render(g,mx,my,delta);return;}
+        if(page.equals("recruit")&&recruit!=null){recruit.render(g);super.render(g,mx,my,delta);recruit.overlay(g);return;} // the Odds note lies over the widgets
         g.getMatrices().push();g.getMatrices().scale(scale,scale,1);DarkUi.background(g,width,height);DarkUi.crest(g,20,16,26,false);DarkUi.title(g,"BANNER CAMP",58,19,DarkUi.GOLD);
         line(g,CampaignClient.profile.progression.title+"  /  "+CampaignClient.profile.gold+" gold",width-280,24,DarkUi.PAPER,260);
-        int x=194,w=width-x-22;DarkUi.frame(g,x-12,79,w+24,height-139);String title=switch(page){case "recruit"->"RECRUITMENT SHRINE";case "friends"->"YOUR FRIEND GROUP";case "room"->"PRIVATE WAR ROOM";case "contracts"->"CONTRACT BOARD";case "chapter"->"FOUNDERS CHAPTER";case "match"->"WAR GATES";case "results"->"BATTLE REPORT";default->"A PLACE TO PREPARE";};
+        int x=194,w=width-x-22;DarkUi.frame(g,x-12,79,w+24,height-139);String title=switch(page){case "friends"->"YOUR FRIEND GROUP";case "room"->"PRIVATE WAR ROOM";case "contracts"->"CONTRACT BOARD";case "chapter"->"FOUNDERS CHAPTER";case "match"->"WAR GATES";case "results"->"BATTLE REPORT";default->"A PLACE TO PREPARE";};
         line(g,title,x,91,DarkUi.GOLD,w);
         var p=CampaignClient.profile;var progress=p.progression;
-        if(page.equals("recruit")){
-            var locked=Arrays.stream(Spec.TROOPS).filter(t->!p.unlocked.contains(t.id())).toList();
-            line(g,locked.isEmpty()?"Every launch troop is yours. No further rolls or charges.":"Guaranteed NEW troop / equal odds: "+String.format(java.util.Locale.ROOT,"%.1f",100.0/locked.size())+"% each / no duplicates",x,110,DarkUi.PAPER,w);
-            for(int i=0;i<6&&offset+i<locked.size();i++){var troop=locked.get(offset+i);int cx=x+(i%3)*(w/3),y=136+(i/3)*130;DarkUi.frame(g,cx,y,w/3-10,78);DarkUi.model(g,troop,cx+28,y+66,25);line(g,troop.name(),cx+58,y+16,DarkUi.GOLD,w/3-72);line(g,troop.group(),cx+58,y+35,DarkUi.MUTED,w/3-72);}
-        }else if(page.equals("friends")){
+        if(page.equals("friends")){
             line(g,flag("party")?"Leader: "+value("leader")+" / party survives matches and server restarts":"Parties hold up to four friends and always enter one team.",x,104,DarkUi.MUTED,w);
             if(!value("inviter").isEmpty())line(g,"Invitation from "+value("inviter")+" ("+number("inviteSeconds",0)+"s)",x,149,DarkUi.GOLD,w);
             int i=0;for(var e:rows("members")){var r=e.getAsJsonObject();line(g,r.get("name").getAsString()+" / "+(r.get("online").getAsBoolean()?"online":"offline"),x,223+i++*27,DarkUi.PAPER,w-215);}
@@ -149,13 +144,13 @@ final class CampScreen extends ArmyScreen {
             line(g,"Vote while on a ready pad. Most votes wins; ties use map order.",x,133,DarkUi.MUTED,w);
         }
         line(g,HintText.expand(CampaignClient.notice,GravesAndGloryClient::hint),x,height-42,DarkUi.GOLD,w);super.render(g,(int)(mx/scale),(int)(my/scale),delta);
-        if(page.equals("recruit")&&CampaignClient.revealUntil>System.currentTimeMillis()){DarkUi.frame(g,x+30,180,w-60,100);line(g,"RECRUITMENT CONFIRMED",x+50,201,DarkUi.GOLD,w-100);line(g,CampaignClient.revealUnit+" has joined your collection.",x+50,226,DarkUi.PAPER,w-100);line(g,"Permanently unlocked / use Skip reveal above to continue",x+50,251,DarkUi.MUTED,w-100);}
         g.getMatrices().pop();
     }
-    @Override public boolean mouseClicked(double x,double y,int button){return super.mouseClicked(x/scale,y/scale,button);}
+    @Override public boolean mouseClicked(double x,double y,int button){if(page.equals("recruit")&&recruit!=null&&recruit.clickCloses())return true;return super.mouseClicked(x/scale,y/scale,button);}
+    @Override public boolean mouseScrolled(double x,double y,double amount){if(page.equals("recruit")&&recruit!=null)return recruit.scrolled(amount);return super.mouseScrolled(x/scale,y/scale,amount);}
     @Override public boolean mouseReleased(double x,double y,int button){return super.mouseReleased(x/scale,y/scale,button);}
     @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){return super.mouseDragged(x/scale,y/scale,button,dx/scale,dy/scale);}
-    @Override public boolean keyPressed(int key,int scan,int mods){if(page.equals("home")&&home!=null&&home.keyPressed(key))return true;if(code!=null&&code.isFocused()&&key!=256)return code.keyPressed(key,scan,mods);if(key==77)return true;return super.keyPressed(key,scan,mods);}
+    @Override public boolean keyPressed(int key,int scan,int mods){if(page.equals("home")&&home!=null&&home.keyPressed(key))return true;if(page.equals("recruit")&&recruit!=null&&recruit.keyPressed(key))return true;if(code!=null&&code.isFocused()&&key!=256)return code.keyPressed(key,scan,mods);if(key==77)return true;return super.keyPressed(key,scan,mods);}
     @Override public void mouseMoved(double x,double y){if(page.equals("home")&&home!=null)home.mouseMoved(x,y);super.mouseMoved(x/scale,y/scale);}
     @Override public void setFocused(net.minecraft.client.gui.Element e){super.setFocused(e);if(page.equals("home")&&home!=null)home.focusChanged(e);}
 }

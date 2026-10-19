@@ -124,6 +124,8 @@ mock('recruit', 'row-mark', ox=4)
 for _n in ('rule-208', 'star-s', 'star-s-empty', 'star-l', 'star-l-empty', 'sparkle', 'padlock-brass', 'letter-hi',
            'wax-star', 'wax-broken', 'letter-bundle', 'coin-m', 'pouch', 'die'):
     mock('recruit', _n)
+# the Odds note over the letter: light parchment and two tacks (kit_extra; UI plan Task 6)
+add('recruit/odds-note', kit_extra.odds_note)
 
 # portraits are live models, never exported
 assert not any('pt-' in n for n in MANIFEST)

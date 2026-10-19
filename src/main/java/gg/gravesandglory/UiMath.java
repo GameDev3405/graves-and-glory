@@ -256,6 +256,23 @@ public final class UiMath {
         return (float) (t * t);
     }
 
+    /** The recruit ladder's rung in Phase 1 (UI plan Task 6): the House's troops still to be drawn, one letter each. */
+    public static String lettersLine(int left) {
+        if (left <= 0) return "No letters left";
+        return left == 1 ? "1 letter left" : left + " letters left";
+    }
+
+    /** The rung once Phase 2 counts toward the next Epic: `left` letters to go, 1 meaning the next one is sure to be it. */
+    public static String pityLine(int left) {
+        return left <= 1 ? "Epic in the next letter" : "Epic within " + left + " letters";
+    }
+
+    /** The first line of the Odds note: each of the `remaining` troops not yet drawn is equally likely (no duplicates). */
+    public static String oddsLine(int remaining) {
+        if (remaining <= 0) return "Nothing left to draw";
+        return String.format(java.util.Locale.ROOT, "Each new troop: %.1f%%", 100.0 / remaining);
+    }
+
     /** The cooldown sweep's pixel class at (x,y) of a size x size square with `remain` (0..1) of the time left:
      *  0 clear, 1 veil over the part of the turn still to come (clockwise from twelve), 2 the bright leading edge,
      *  3 the start line at twelve. A port of the cooldown painter in tools/ui_art/v4a_hud.py. */

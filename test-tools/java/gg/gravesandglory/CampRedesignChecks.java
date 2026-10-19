@@ -23,7 +23,7 @@ public final class CampRedesignChecks implements ClientModInitializer {
    if(tick==45){c.setScreen(null);check("battle-hud-off",GravesAndGloryClient.inCamp()&&!GravesAndGloryClient.battleActive());CommandMode.begin("attack");check("orders-disabled-in-camp",!CommandMode.active());}
    if(tick==70)shot(c,"courtyard");
    if(tick==80)c.setScreen(new CampScreen("home"));if(tick==95)shot(c,"guide");
-   if(tick==100)CampScreen.open("recruit");if(tick==115)shot(c,"recruitment");if(tick==120)press(c,"RECRUIT RANDOM");
+   if(tick==100)CampScreen.open("recruit");if(tick==115)shot(c,"recruitment");if(tick==120)press(c,"Enlist"); // the War Table recruit page's plate (UI plan Task 6)
    if(tick==150){check("server-confirmed-recruit",CampaignClient.profile.gold==200&&CampaignClient.profile.unlocked.size()==7);shot(c,"reward-reveal");}
    if(tick==175){CampScreen.open("friends");press(c,"CREATE PARTY");}
    if(tick==200){check("party-packet",CampaignClient.social.get("party").getAsBoolean());shot(c,"friends");press(c,"CREATE PRIVATE ROOM");}

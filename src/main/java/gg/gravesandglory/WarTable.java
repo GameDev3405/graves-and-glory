@@ -73,7 +73,7 @@ final class WarTable {
         UiTex.draw(g, table, tx, ty);
         drawnTable = table;
         drawnRects.put("table", new int[]{tx, ty, TABLE_W, TABLE_H});
-        if ((page.equals("home") || page.equals(HOME_TABLE)) && ty <= MAPROLL_Y) { // on a tall canvas the rail ends above the planks: the roll would hang over bare floor, so it stays off
+        if ((page.equals("home") || page.equals(HOME_TABLE)) && ty <= railH) { // the roll lies on the planks while the rail covers the table's top edge; on a taller canvas it would hang over bare floor, so it stays off
             UiTex.draw(g, "table/prop-maproll", ox + 148, MAPROLL_Y);
             drawnRects.put("maproll", new int[]{ox + 148, MAPROLL_Y, UiTex.entry("table/prop-maproll").w(), UiTex.entry("table/prop-maproll").h()});
         }

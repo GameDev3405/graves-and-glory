@@ -2,10 +2,12 @@
 builder). Each follows the rule of its mock siblings: the order glyphs move, charge and retreat and the formation
 glyphs wedge and loose are 9 x 9 ink grids in the GLYPHS style (with the mock's -faded rule); the neutral point
 seal is the contested seal's square plate without the swords; the Dusk health fill is hp_fill in the Dusk ramp;
-the crescent feed glyph is an FG grid inked as the notices are; the iron Enlist plate is the brass plate in iron."""
+the crescent feed glyph is an FG grid inked as the notices are; the iron Enlist plate is the brass plate in iron;
+the recruit page's Odds note is a light parchment pinned by two tacks (UI plan Task 6)."""
 from v4lib import Spr, rgba
 from v4pal import IRON, BRASS, VIOL
 from v4a_hud import glyph, INK, PAPER, FEEDV_GLYPH, SHADOW, iron_shade, ledger_card
+from v4a_paper import parchment, tack
 
 # 'k' ink, 'L' the light vellum inside a shape, as in v4a_hud.GLYPHS
 GLYPHS = {
@@ -117,3 +119,15 @@ def lesson_card():
             r, g, b, a = im.getpixel((x, y))
             assert a == 255 and r - b >= 30, ('hud/lesson-card band', x, y, (r, g, b, a))
     return out
+
+
+# ================================================================ recruit/
+def odds_note():
+    """recruit/odds-note (UI plan Task 6): the note the recruit page lays over its letter when Odds is pressed,
+    parchment(240, 160, kind='hi') with its shadow, pinned at its top corners by two tacks placed as the field card's
+    are (4 px down, 6 px in from the left edge and 13 px in from the right, so a tack's 6 px and its shadow sit on the sheet)"""
+    note, _ = parchment(240, 160, kind='hi')
+    pin = tack()
+    note.blit(pin, 6, 4)
+    note.blit(pin, 240 - 13, 4)
+    return note

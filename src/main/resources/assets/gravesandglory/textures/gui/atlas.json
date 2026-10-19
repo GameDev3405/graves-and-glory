@@ -181,5 +181,6 @@
 "recruit/letter-bundle":{"w":240,"h":218,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "recruit/coin-m":{"w":7,"h":7,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "recruit/pouch":{"w":30,"h":26,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
-"recruit/die":{"w":9,"h":9,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1}
+"recruit/die":{"w":9,"h":9,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
+"recruit/odds-note":{"w":244,"h":165,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1}
 }}

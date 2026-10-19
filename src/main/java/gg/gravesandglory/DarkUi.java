@@ -13,6 +13,9 @@ final class DarkUi {
     static final int DAWN=0xff5fb3ad, DUSK=0xffa07cc2, DUSK_TEXT=0xffb99ad6, VELLUM=0xffe6d9b8, CHARCOAL=0xff1a2125, OAK0=0xff160c0d;
     /** The floor a canvas larger than the War Table shows round the planks: the kit's deepest iron (tools/ui_art/v4pal.IRON[0]). */
     static final int FLOOR=0xff0b0d0f;
+    /** A troop not yet recruited, as the muster roll's portraits show it: the flat silhouette the mock's portraits are painted in
+     *  (tools/ui_art/v4a_portrait.py, sil). */
+    static final int SILHOUETTE=0xff46555b;
     // The mockups' remaining inks: labels on brass plates, "Enter" on brass keys, keys on rail plaques, the ability's key,
     // the shadow under tags, and the cooldown sweep's veil, leading edge and twelve o'clock line.
     static final int PLATE_INK=0xff1e1509, KEY_INK=0xff3a2a12, RAIL_KEY=0xfff0d9a0, ABILITY_KEY=0xff2e1f0c, TAG_SHADOW=0xff120d16;

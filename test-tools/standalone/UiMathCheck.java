@@ -67,6 +67,9 @@ public final class UiMathCheck {
         check(UiMath.plateLabelX(126)==57 && UiMath.plateLabelX(150)==57 && UiMath.plateLabelX(100)==70, "plate label clears the Enter key");
         check(UiMath.sheetRise(0,0f)==0f && UiMath.sheetRise(3,0f)==1f && UiMath.sheetRise(40,0.5f)==1f && UiMath.sheetRise(1,0.5f)>0.5f && UiMath.sheetRise(1,0.5f)<UiMath.sheetRise(2,0f) && Math.abs(UiMath.sheetRise(1,0.5f)-0.875f)<1e-6, "the focused sheet rises over 3 ticks (150 ms), easing out");
         check(UiMath.sealStamp(0,0.9f)==0f && UiMath.sealStamp(1,0f)==0f && UiMath.sealStamp(2,0f)==0.25f && UiMath.sealStamp(3,0f)==1f && UiMath.sealStamp(9,0.5f)==1f, "the seal stamps in the rise's last 2 ticks (100 ms), easing in");
+        check(UiMath.lettersLine(0).equals("No letters left") && UiMath.lettersLine(1).equals("1 letter left") && UiMath.lettersLine(3).equals("3 letters left"), "letters left");
+        check(UiMath.pityLine(28).equals("Epic within 28 letters") && UiMath.pityLine(1).equals("Epic in the next letter"), "pity line (Phase 2)");
+        check(UiMath.oddsLine(4).equals("Each new troop: 25.0%") && UiMath.oddsLine(3).equals("Each new troop: 33.3%") && UiMath.oddsLine(0).equals("Nothing left to draw"), "odds line");
         System.out.println("UiMathCheck: " + checks + " checks passed");
     }
 }
