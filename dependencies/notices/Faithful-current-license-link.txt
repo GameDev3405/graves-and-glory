@@ -1,8 +1,0 @@
-Faithful 32x optional, unchanged texture pack
-Copyright Faithful Resource Pack contributors
-Current Faithful License, Version 4 (31 July 2026):
-https://faithfulpack.net/license
-Official project distribution permissions link to that license.
-The original archive, including its unmodified Version 3 notice, is retained.
-Project: https://modrinth.com/resourcepack/faithful-32x
-Website: https://faithfulpack.net/
