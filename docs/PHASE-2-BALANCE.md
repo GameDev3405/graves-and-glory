@@ -66,7 +66,7 @@ rounds=20 decided=20 won=18 lost=1 drawn=1
 gate gilded_normal vs graveborn_normal win=92.5% fail
 ```
 
-The baseline is outside the 40 to 60 band. Task 3 has no gate, so nothing was tuned; the Gilded batch (plan Task 6, Step 8) gates `gilded_normal` against `graveborn_normal` again, and the Graveborn batch (Task 7, Step 9) gates `graveborn_normal` against the current best. It is 2.5 points below the first baseline's 95%, which was measured with the husk's +2 armour on the Gilded side; one round moves the figure by 2.5 points, so removing that armour did not by itself close the gap.
+The baseline is outside the 40 to 60 band. Task 3 has no gate, so nothing was tuned; the Gilded batch (plan Task 6, Step 8) gates `gilded_normal` against `graveborn_normal` again, and the Graveborn batch (Task 7, Step 9) gates `graveborn_normal` against the current best. It is 2.5 points below the first baseline's 95%, which was measured with the husk's +2 armour on the Gilded side. The difference is one win turned into a draw (half a round of 20), well inside the noise of 20 rounds, so removing that armour did not by itself close the gap.
 
 What the numbers say (from the two runs' `results.csv` and `gold.csv`; the last gold sample of a round is at 270 s):
 
