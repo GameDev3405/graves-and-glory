@@ -69,7 +69,10 @@ from Houses spec 2.7; anything unmentioned stays as 2.7 has it.
    "Tall +N" adds N px at the top; "Wide N" (head and shoulders, or crew and
    engine) and "Beast N" (head and forequarters, yaw 35) are N px across. One
    window serves the 36 px roster and 160 px reveal frames. Portrait models
-   have no team: linen #CFC6B0 panels, no pennant, a House view.
+   wear no match side and no pennant: the company's cloth on campaign and
+   camp pages (the Hollow's navy), the House's colour on a House page
+   (controller, 2026-10-18 late, from Kort's live-portrait ruling; the linen
+   #CFC6B0 reading is retired).
 
 ## 1. Gilded Order
 
