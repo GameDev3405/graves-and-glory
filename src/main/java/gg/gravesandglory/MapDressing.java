@@ -69,7 +69,7 @@ final class MapDressing {
             var f=Spec.FACTIONS[t];int fwd=t==0?1:-1,bx=f.spawnX(),bz=f.spawnZ();Block team=cloth(t),dark=t==0?Blocks.POLISHED_ANDESITE:Blocks.POLISHED_BLACKSTONE;
             // Command dais: flush stone where the commander arrives, a brazier ring behind it.
             // Parade ground: inside the palisade every road is laid in stone, edged in trim, so the camp reads as one place.
-            for(int u=-19;u<=25;u++)for(int v=-63;v<=63;v++){int x=bx+u*fwd,z=bz+v;double rd=CampaignMaps.roadDistance(x,z);if(rd>=0.5||onStructure(x,z,0))continue;
+            for(int u=-19;u<=25;u++)for(int v=-63;v<=63;v++){int x=bx+u*fwd,z=bz+v;double rd=CampaignMaps.roadDistance(x,z);if(rd>=0.5||built(x,z))continue;
                 put(x,h(x,z),z,rd>-1?trim:hash(x,z)%7==0?Blocks.CRACKED_STONE_BRICKS:pave);}
             Block inlay=t==0?Blocks.CYAN_GLAZED_TERRACOTTA:Blocks.PURPLE_GLAZED_TERRACOTTA;
             for(int dx=-4;dx<=4;dx++)for(int dz=-4;dz<=4;dz++){int x=bx+dx,z=bz+dz,m=Math.max(Math.abs(dx),Math.abs(dz));
@@ -78,9 +78,9 @@ final class MapDressing {
             // Both stand off the parade road, stepped outward until clear, so the march out stays open.
             for(int dz:new int[]{-6,6}){int z=clearZ(bx-fwd*6,bz+dz,Integer.signum(dz));if(z==NO_ROOM)continue;banner(bx-fwd*6,z,9,team,fwd);
                 int fz=clearZ(bx-fwd*6,z+Integer.signum(dz)*2,Integer.signum(dz)),x=bx-fwd*6;if(fz!=NO_ROOM)for(int a=1;a<=2;a++)put(x,h(x,fz)+a,fz,a==1?trim:map==3?Blocks.SOUL_CAMPFIRE:Blocks.CAMPFIRE);}
-            // Muster lanes: trampled earth where each squad forms, gravel files between them.
-            for(int u=0;u<=24;u++)for(int z=bz-40;z<=bz+40;z++){int x=bx+u*fwd;if(CampaignMaps.road(x,z)||Math.abs(u)<=3&&Math.abs(z-bz)<=3)continue;
-                int lane=Math.floorMod(z-bz+44,22);Block b=lane==0?Blocks.GRAVEL:lane<=2||lane>=20?null:hash(x,z)%4==0?Blocks.COARSE_DIRT:hash(x,z)%4==1?Blocks.DIRT_PATH:null;
+            // Muster lanes: trampled earth where each squad forms, gravel files between them. Not on a road and not on or against a building (the stores and the barracks stand on the muster ground), and full blocks only (a dirt path block is lower than its neighbours).
+            for(int u=0;u<=24;u++)for(int z=bz-40;z<=bz+40;z++){int x=bx+u*fwd;if(CampaignMaps.road(x,z)||Math.abs(u)<=3&&Math.abs(z-bz)<=3||onStructure(x,z,1))continue;
+                int lane=Math.floorMod(z-bz+44,22);Block b=lane==0?Blocks.GRAVEL:lane<=2||lane>=20?null:hash(x,z)%4<2?Blocks.COARSE_DIRT:null;
                 if(b!=null)put(x,h(x,z),z,b);}
             // Lane standards behind each squad lane, so a commander can read the line from the dais.
             for(int i=0;i<4;i++){int z=bz+(int)((i-1.5)*22);z=clearZ(bx-fwd*3,z,z>bz?1:-1);if(z!=NO_ROOM)banner(bx-fwd*3,z,6+i%2,team,fwd);}
