@@ -18,7 +18,8 @@ Core loop today:
 1. Branded title menu -> walled camp courtyard (Quartermaster, Recruiter,
    Archivist, Steward, War Gates). R opens the war council.
 2. Arrange 20 deployment slots from unlocked troop types; pick a commander class
-   (Vanguard / Marksman / Arcanist, flat % buffs to one troop role).
+   (Champion / Reaver / Warden / Marshal / Warlock / Quartermaster: a passive each
+   and an active on the ability key H).
 3. Stand on a ready pad (map vote, countdown, bot fill) or make a private room
    by code with a friend party (up to 4).
 4. Battle on one of five 700x500 maps: hold objectives to 300 points, 15-minute

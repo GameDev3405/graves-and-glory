@@ -647,10 +647,13 @@ public final class Phase2Checks implements ClientModInitializer {
     static TickCost tickCost(GravesAndGlory.Battle b,List<String> banners){return new TickCost(b,banners);}
     /**
      * Task 4: the six commander classes. Each class is set through the real class:(id) packet, then a 1v1 skirmish shows its passive
-     * from its sheet row (p2-class-passives); the ability key and the HUD tile with no active registered (p2-ability-key); an active's
-     * start, run, end and cooldown with a probe registered in Commander.ACTIVES (p2-ability-cycle); and the camp class tab
-     * (p2-class-picker), with the banner editor's dimmed cards beside it. Stages run on the server tick; the client sends the
-     * commands, presses the key, opens the screens and takes the screenshots the stages ask for.
+     * from its sheet row (p2-class-passives, the Reaver's through a whole respawn); the commander's own blows through Battle.allowDamage,
+     * struck for real (p2-commander-blows); the ability key and the HUD tile with no active registered (p2-ability-key); an active's
+     * start, run, end and cooldown with a probe registered in Commander.ACTIVES (p2-ability-cycle), with the group panels clear of
+     * vanilla's hearts (p2-hud-hearts); the probe stopped by its commander leaving and taking his seat back (p2-ability-seat) and by a
+     * round start and the lobby (p2-ability-stops); a commander seated fresh in a running round under his own class (p2-fresh-seat);
+     * and the camp class tab (p2-class-picker), with the banner editor's dimmed cards beside it. Stages run on the server tick; the
+     * client sends the commands, presses the key, opens the screens and takes the screenshots the stages ask for.
      */
     static final class Commanders implements Suite,ServerWatch {
         /** A stand-in active: counts its calls and accepts every start. */
@@ -672,6 +675,12 @@ public final class Phase2Checks implements ClientModInitializer {
         int clientWait,tileState,tileWait,pick,pickWait,openWait;
         long goldMark=-1,markAt;int incomeDelta=-1;
         Probe probe;boolean keyServerOk;String keyServerWhy="";
+        // the HUD's group panels against vanilla's hearts, read on the client during the cycle
+        volatile int hudRight=-1;volatile double hudHearts;volatile String hudFrame="";
+        // the seat: the squad he left and the cooldown it held
+        GravesAndGlory.Squad seat;long seatReadyAt;boolean seatOk;String seatWhy="";
+        // the fresh seat: the squad he had before, and the bot seats of that round
+        GravesAndGlory.Squad freshOld;long freshBots=-1;
 
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
         long since(GravesAndGlory.Battle b){return b.time-stageAt;}
@@ -691,6 +700,103 @@ public final class Phase2Checks implements ClientModInitializer {
         static Combat.HitLog hit(GravesAndGlory.Battle b,GravesAndGlory.Unit attacker,net.minecraft.entity.LivingEntity target,String kind){var mark=Combat.LAST.peekLast();Combat.resolve(b,attacker,target,1f,kind,true);var h=Combat.LAST.peekLast();return h==mark?null:h;}
         void passive(boolean ok,String id,String why){passivesOk&=ok;passiveWhy.append(id).append(ok?" ok: ":" FAILED: ").append(why).append("; ");report("p2-class-passives-"+id,ok,why);}
 
+        /** A stand-in player for the foe's commander. Fabric's FakePlayer is immune to all damage; this one takes blows like a player. */
+        static final class Target extends net.fabricmc.fabric.api.entity.FakePlayer {
+            Target(net.minecraft.server.world.ServerWorld world,com.mojang.authlib.GameProfile profile){super(world,profile);}
+            @Override public boolean isInvulnerableTo(DamageSource source){return false;}
+        }
+        /** The amounts Battle.allowDamage re-issues on the watched entity (its calls made while scalingDamage is set), recorded by a second ALLOW_DAMAGE listener, registered once. */
+        static final List<Float> reissued=new ArrayList<>();static net.minecraft.entity.LivingEntity watched;static boolean listening;
+        static void listen(){
+            if(listening)return;listening=true;
+            net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity,source,amount)->{var b=GravesAndGlory.battle;if(entity==watched&&b!=null&&b.scalingDamage)reissued.add(amount);return true;});
+        }
+        /** One blow: what it struck, the health it lost, the amounts allowDamage re-issued for it and the armour it had (set aside, so 0). */
+        record Blow(String what,float lost,List<Float> amounts,int armour){
+            /** It lost this much, and allowDamage re-issued it once at that amount, or (reissue null) not at all. */
+            boolean is(double lost,Double reissue){return armour==0&&Math.abs(this.lost-lost)<1e-3&&(reissue==null?amounts.isEmpty():amounts.size()==1&&Math.abs(amounts.get(0)-reissue)<1e-3);}
+            @Override public String toString(){return what+" lost "+lost+(amounts.isEmpty()?" (nothing re-issued)":" (re-issued "+amounts+")")+(armour==0?"":" with armour "+armour);}
+        }
+        /**
+         * A real blow of 10 from the commander on the entity: the player attack damage source that PlayerEntity.attack strikes with, through
+         * the entity's own damage. The blow lands whole (full health, no raised shield, no hurt cooldown, and the armour attributes its gear
+         * gives set aside), so the health it loses is what landed. Everything is put back after.
+         */
+        static Blow strike(GravesAndGlory.Battle b,ServerPlayerEntity p,net.minecraft.entity.LivingEntity target,String what){
+            var aside=new ArrayList<Map.Entry<net.minecraft.entity.attribute.EntityAttributeInstance,net.minecraft.entity.attribute.EntityAttributeModifier>>();
+            for(var kind:List.of(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ARMOR,net.minecraft.entity.attribute.EntityAttributes.GENERIC_ARMOR_TOUGHNESS)){
+                var a=target.getAttributeInstance(kind);if(a==null)continue;for(var m:new ArrayList<>(a.getModifiers())){a.removeModifier(m.getId());aside.add(Map.entry(a,m));}
+            }
+            target.clearActiveItem();target.setHealth(target.getMaxHealth());target.timeUntilRegen=0;target.hurtTime=0;
+            float before=target.getHealth();int armour=target.getArmor();reissued.clear();watched=target;
+            try{target.damage(b.world.getDamageSources().playerAttack(p),10f);}finally{watched=null;}
+            float lost=before-target.getHealth();var amounts=List.copyOf(reissued);
+            for(var e:aside)e.getKey().addTemporaryModifier(e.getValue());
+            target.setHealth(target.getMaxHealth());target.setVelocity(Vec3d.ZERO);target.timeUntilRegen=0;
+            return new Blow(what,lost,amounts,armour);
+        }
+        /** The player manager's own map of the players online (private; this is its Yarn name, which the dev client runs with). */
+        @SuppressWarnings("unchecked")
+        static Map<UUID,ServerPlayerEntity> playerMap(net.minecraft.server.PlayerManager m){
+            try{var f=net.minecraft.server.PlayerManager.class.getDeclaredField("playerMap");f.setAccessible(true);return (Map<UUID,ServerPlayerEntity>)f.get(m);}
+            catch(ReflectiveOperationException e){throw new IllegalStateException("PlayerManager.playerMap",e);}
+        }
+        /** A new player cannot be hurt for 60 ticks (joinInvulnerabilityTicks, private; the tick a FakePlayer skips counts it down): end that now. */
+        static void vulnerable(ServerPlayerEntity p){
+            try{var f=ServerPlayerEntity.class.getDeclaredField("joinInvulnerabilityTicks");f.setAccessible(true);f.setInt(p,0);}
+            catch(ReflectiveOperationException e){throw new IllegalStateException("ServerPlayerEntity.joinInvulnerabilityTicks",e);}
+        }
+        /**
+         * p2-commander-blows: the commander's own blows through Battle.allowDamage, struck for real (strike) and read as the health each
+         * entity lost, with the one call allowDamage re-issues for a scaled blow. A foe troop takes 10 x damageScale (6) unmarked and
+         * x(1 + value1) more under his Mark Prey (7.8). A foe troop that its own side's Stand Fast covers takes x(1 - value1) within the
+         * Stand Fast class's radius of that side's commander (4.5) and 6 beyond it. The foe commander takes 10 unmarked (the plain path,
+         * nothing re-issued) and 13 marked, with abilityData holding his UUID as a player mark should. The foe's commander is a Target in
+         * the seat of the foe army's bot, which turns human and takes the Stand Fast class for these blows only, and the player manager
+         * lists him while they land so that Commander.player finds him. All of it runs inside this server tick and is put back after.
+         */
+        void blows(GravesAndGlory.Battle b,ServerPlayerEntity p,GravesAndGlory.Squad own,Spec.ClassesRow warden,GravesAndGlory.Unit foe){
+            listen();
+            var keeper=Commander.byActive("stand_fast");double scale=Spec.COMBATDISCIPLINE[0].damageScale(),mark=1+warden.value1(),cover=keeper==null?Double.NaN:1-keeper.value1();
+            List<Blow> got=new ArrayList<>();boolean ok=warden.active().equals("mark_prey")&&keeper!=null;String why="";
+            own.abilityUntil=0;own.abilityData=null;var plain=strike(b,p,foe.mob,"a foe troop");
+            own.abilityUntil=b.time+100;own.abilityData=foe.mob;var hunted=strike(b,p,foe.mob,"that troop under his Mark Prey");
+            own.abilityUntil=0;own.abilityData=null;
+            ok&=plain.is(10*scale,10*scale)&&hunted.is(10*scale*mark,10*scale*mark);got.add(plain);got.add(hunted);
+            if(keeper!=null){
+                var enemy=foe.squad;var other=unit(b,enemy,u->u!=foe);var troop=other==null?foe:other;Vec3d at=troop.mob.getPos();
+                var them=new Target(b.world,new com.mojang.authlib.GameProfile(enemy.owner,"FoeCommander"));vulnerable(them);
+                var players=playerMap(b.server.getPlayerManager());
+                boolean wasBot=enemy.bot;String wasClass=enemy.commander;long wasUntil=enemy.abilityUntil;Object wasData=enemy.abilityData;
+                players.put(them.getUuid(),them);
+                try{
+                    enemy.bot=false;enemy.commander=keeper.id();enemy.abilityUntil=b.time+100;
+                    them.refreshPositionAndAngles(at.x+keeper.radius()/2,at.y,at.z,0,0);boolean found=Commander.player(b,enemy)==them;
+                    var inside=strike(b,p,troop.mob,"a foe troop "+keeper.radius()/2+" blocks from its commander under his Stand Fast");
+                    them.refreshPositionAndAngles(at.x+keeper.radius()+8,at.y,at.z,0,0);
+                    var outside=strike(b,p,troop.mob,"that troop "+(keeper.radius()+8)+" blocks from him");
+                    enemy.abilityUntil=0;them.refreshPositionAndAngles(at.x+2,at.y,at.z,0,0);
+                    own.abilityUntil=b.time+100;own.abilityData=null;var pvp=strike(b,p,them,"the foe commander");
+                    own.abilityData=them.getUuid();var marked=strike(b,p,them,"the foe commander under his Mark Prey");
+                    ok&=found&&inside.is(10*scale*cover,10*scale*cover)&&outside.is(10*scale,10*scale)&&pvp.is(10,null)&&marked.is(10*mark,10*mark);
+                    got.add(inside);got.add(outside);got.add(pvp);got.add(marked);if(!found)why="; Commander.player did not find the foe commander";
+                }finally{
+                    players.remove(them.getUuid());own.abilityUntil=0;own.abilityData=null;
+                    enemy.bot=wasBot;enemy.commander=wasClass;enemy.abilityUntil=wasUntil;enemy.abilityData=wasData;
+                }
+            }
+            report("p2-commander-blows",ok,"his blows of 10 as "+own.commander+" (damageScale "+scale+", Mark Prey x"+mark+", Stand Fast x"+cover+"): "+got+why);
+        }
+        /** A round of two seats a side with bot fill off and the commander alone on Dawn, so his side has an empty seat and no bot holds one. Returns false until it has started. */
+        static boolean openRound(GravesAndGlory.Battle b,ServerPlayerEntity p){
+            var c=b.campaign;if(b.running)c.returnLobby();
+            if(c.map!=0){c.switchMap(0);return false;}
+            if(!b.ready||!b.squads.containsKey(p.getUuid()))return false;
+            c.closeParty();c.partyLeader=p.getUuid();c.party.add(p.getUuid());c.practice=false;c.size=2;c.fill=false;
+            for(var s:b.squads.values())if(!s.bot){s.seated=s.owner.equals(p.getUuid());if(s.seated)s.team=0;}
+            b.startRound();c.introUntil=b.time;return true;
+        }
+
         public void cleanup(MinecraftClient c){
             server(c,b->{for(var e:saved.entrySet()){if(e.getValue()==null)Commander.ACTIVES.remove(e.getKey());else Commander.ACTIVES.put(e.getKey(),e.getValue());}saved.clear();
                 if(b.running)b.campaign.returnLobby();var p=sp(b);if(p!=null)b.campaign.handle(p,"class:"+Spec.CLASSES[0].id());});
@@ -702,6 +808,10 @@ public final class Phase2Checks implements ClientModInitializer {
             if(wantShot!=null&&!shotTaken&&++shotDelay>=12){shot(c,wantShot);shotTaken=true;}
             if(wantPress&&GravesAndGloryClient.battleActive()&&c.currentScreen==null){wantPress=false;net.minecraft.client.option.KeyBinding.onKeyPressed(net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper.getBoundKeyOf(GravesAndGloryClient.ability));System.out.println("[p2] pressed the ability key");}
             if(stage==5&&GravesAndGloryClient.respawn>0)respawnSeen=Math.max(respawnSeen,GravesAndGloryClient.respawn);
+            if((stage==34||stage==35)&&hudRight<0&&GravesAndGloryClient.battleActive()&&CommandMode.groupsRight>0){ // vanilla draws the hearts and armour from GUI x width / 2 - 91
+                var win=c.getWindow();int sw=win.getScaledWidth(),sh=win.getScaledHeight();float scale=Math.min(1,sw/640f);
+                hudHearts=(sw/2-91)/scale;hudFrame=Math.round(sw/scale)+"x"+Math.round(sh/scale)+" (window "+win.getFramebufferWidth()+"x"+win.getFramebufferHeight()+", GUI scale "+win.getScaleFactor()+")";hudRight=CommandMode.groupsRight;
+            }
             if(stage==6&&!clientDone)barracksLines();
             if(stage==22&&!clientDone)tile();
             if(stage==34||stage==35||stage==36){var d=GravesAndGloryClient.abilityDrawn;if(d.size()==3){if(d.get(2).startsWith("ACTIVE ")&&!activeSeen){activeSeen=true;requestShot("commander-tile-active");}if(d.get(2).startsWith("READY IN "))readyInSeen=true;}}
@@ -808,11 +918,12 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(knight==null||bow==null||foe==null){passive(false,id,"the skirmish has no knight, archer or enemy");ci++;next(b,1);return;}
                     double reach=Abilities.range(b,bow),knightReach=Abilities.range(b,knight);var shot=hit(b,bow,foe.mob,"arrow");var blow=hit(b,knight,foe.mob,"melee");
                     own.abilityUntil=b.time+100;own.abilityData=foe.mob; // Mark Prey's share, as if it ran with this foe marked: on the mark only, for his troops and for himself
-                    var marked=hit(b,bow,foe.mob,"arrow");double self=Commander.playerFactor(b,own,foe.mob);var other=unit(b,foe.squad,u->u!=foe);var unmarked=other==null?null:hit(b,bow,other.mob,"arrow");
+                    var marked=hit(b,bow,foe.mob,"arrow");var other=unit(b,foe.squad,u->u!=foe);var unmarked=other==null?null:hit(b,bow,other.mob,"arrow");
                     own.abilityUntil=0;own.abilityData=null;
                     boolean ok=near(reach,24)&&near(reach,bow.spec.range()+c.passiveValue2())&&near(knightReach,knight.spec.range())&&near(factor(shot),1.10)&&near(factor(blow),1)
-                        &&near(factor(marked),(1+c.passiveValue())*(1+c.value1()))&&near(self,1+c.value1())&&(other==null||near(factor(unmarked),1+c.passiveValue()))&&lobbyAttackGone;
-                    passive(ok,id,"an archer's reach "+reach+" (sheet "+bow.spec.range()+", want 24), a knight's "+knightReach+"; the archer's shot x"+factor(shot)+" (want 1.1), the knight's blow x"+factor(blow)+"; with Mark Prey running on the foe the archer x"+factor(marked)+" (want 1.43), his own blow x"+self+" (want 1.3), another foe x"+factor(unmarked)+"; the Reaver's +2 attack left in the lobby="+lobbyAttackGone);
+                        &&near(factor(marked),(1+c.passiveValue())*(1+c.value1()))&&(other==null||near(factor(unmarked),1+c.passiveValue()))&&lobbyAttackGone;
+                    passive(ok,id,"an archer's reach "+reach+" (sheet "+bow.spec.range()+", want 24), a knight's "+knightReach+"; the archer's shot x"+factor(shot)+" (want 1.1), the knight's blow x"+factor(blow)+"; with Mark Prey running on the foe the archer x"+factor(marked)+" (want 1.43), another foe x"+factor(unmarked)+"; the Reaver's +2 attack left in the lobby="+lobbyAttackGone);
+                    blows(b,p,own,c,foe);
                     ci++;next(b,1);
                 }
                 case "marshal"->{
@@ -829,8 +940,9 @@ public final class Phase2Checks implements ClientModInitializer {
                     field(b,own,banner("knight*12,archer*6,mage,^"));var mage=Campaign.troop("mage");var knight=Campaign.troop("knight");
                     b.manage(p,own,"disband:mage");own.gold=100;b.manage(p,own,"train:mage");var queued=own.training.isEmpty()?null:own.training.getLast();int spent=100-own.gold;
                     b.manage(p,own,"cancel-training");int back=own.gold;
-                    serverOk=mage.magic()&&mage.cost()==70&&spent==56&&queued!=null&&queued.spec()==mage&&queued.paid()==56&&back==100&&Commander.cost(own,mage)==56&&Commander.cost(own,knight)==knight.cost();
-                    serverWhy="the Sunweaver (sheet "+mage.cost()+" gold, magic="+mage.magic()+") cost him "+spent+" (want 56), its queue entry holds "+(queued==null?-1:queued.paid())+" and cancel-training brings his gold back to "+back+" (want 100); a knight costs "+Commander.cost(own,knight);
+                    var free=new GravesAndGlory.Training(mage,b.time+1000);own.training.addLast(free);b.manage(p,own,"cancel-training");int afterFree=own.gold; // the short form is a free troop: its cancel pays nothing back
+                    serverOk=mage.magic()&&mage.cost()==70&&spent==56&&queued!=null&&queued.spec()==mage&&queued.paid()==56&&back==100&&Commander.cost(own,mage)==56&&Commander.cost(own,knight)==knight.cost()&&free.paid()==0&&afterFree==back;
+                    serverWhy="the Sunweaver (sheet "+mage.cost()+" gold, magic="+mage.magic()+") cost him "+spent+" (want 56), its queue entry holds "+(queued==null?-1:queued.paid())+" and cancel-training brings his gold back to "+back+" (want 100); a knight costs "+Commander.cost(own,knight)+"; a free queue entry holds "+free.paid()+" and its cancel leaves his gold at "+afterFree;
                     expectActive=c.active();clientDone=false;clientWait=0;next(b,6);
                 }
                 case "quartermaster"->{
@@ -859,7 +971,12 @@ public final class Phase2Checks implements ClientModInitializer {
                     else if(since(b)>200){passive(false,id,"class:"+id+" never reached the profile (it says "+profile(b).commander+")");ci++;next(b,1);}}
                 case 3->{var p=sp(b);if(p==null||!Phase1Checks.skirmish(b,p,0,1,"normal"))return;next(b,4);}
                 case 4->{if(since(b)>=10)classCheck(b);}
-                case 5->{if(since(b)<40)return;passive(reaverOk&&respawnSeen==9,"reaver",reaverWhy+"; the client's countdown read "+respawnSeen+" s");ci++;next(b,1);}
+                case 5->{ // the Reaver waits out his 9 s, and the respawn equips him again: his +2 attack comes back with it
+                    var p=sp(b);if(p==null)return;boolean back=!b.respawns.containsKey(player);if(!back&&since(b)<400)return;
+                    var attack=p.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ATTACK_DAMAGE);var mod=attack==null?null:attack.getModifier(Commander.ATTACK);
+                    boolean again=back&&since(b)>=180&&since(b)<=182&&!p.isSpectator()&&mod!=null&&near(mod.getValue(),2)&&near(p.getMaxHealth(),20)&&Commander.player(b,b.squads.get(player))==p;
+                    passive(reaverOk&&again&&respawnSeen==9,"reaver",reaverWhy+"; the client's countdown read "+respawnSeen+" s; he was back "+(back?"after "+since(b)+" ticks":"never")+" (want 180) as "+(p.isSpectator()?"a spectator":"a commander")+" with attack modifier "+(mod==null?"none":"+"+mod.getValue())+" and max health "+p.getMaxHealth());
+                    ci++;next(b,1);}
                 case 6->{if(!clientDone){if(since(b)>400){clientOk=false;clientWhy="the client never checked";clientDone=true;}return;}
                     clientDone=false;passive(serverOk&&clientOk,order.get(ci),serverWhy+"; "+clientWhy);ci++;next(b,1);}
                 case 7->{ // the Quartermaster's gold over a real income tick
@@ -883,7 +1000,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     clientDone=false;report("p2-ability-key",keyOk&&keyServerOk&&clientOk,keyWhy+"; "+keyServerWhy+"; "+tileWhy);next(b,30);}
                 case 30->{ // p2-ability-cycle: the class whose active is shortest, with a probe registered for it
                     if(b.running)b.campaign.returnLobby();cycleClass=Arrays.stream(Spec.CLASSES).min(Comparator.comparingInt(Spec.ClassesRow::durationTicks)).orElseThrow();command(b,"class:"+cycleClass.id(),31);}
-                case 31->{if(since(b)<20)return;if(profile(b).commander.equals(cycleClass.id()))next(b,32);else if(since(b)>200){report("p2-ability-cycle",false,"class:"+cycleClass.id()+" never reached the profile");next(b,40);}}
+                case 31->{if(since(b)<20)return;if(profile(b).commander.equals(cycleClass.id()))next(b,32);else if(since(b)>200){report("p2-ability-cycle",false,"class:"+cycleClass.id()+" never reached the profile");next(b,50);}}
                 case 32->{var p=sp(b);if(p==null||!Phase1Checks.skirmish(b,p,0,1,"normal"))return;next(b,33);}
                 case 33->{if(since(b)<10)return;probe=new Probe();saved.putIfAbsent(cycleClass.active(),Commander.ACTIVES.get(cycleClass.active()));Commander.ACTIVES.put(cycleClass.active(),probe);
                     b.campaign.notices.remove(player);expectActive=cycleClass.active();activeSeen=false;readyInSeen=false;wantPress=true;next(b,34);}
@@ -891,7 +1008,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(probe.starts>0){long t0=probe.startedAt;
                         cycleOk=probe.starts==1&&own.abilityReadyAt==t0+cycleClass.cooldownTicks()&&own.abilityUntil==t0+cycleClass.durationTicks()&&"probe".equals(own.abilityData)&&Commander.running(b,own);
                         cycleWhy=cycleClass.id()+"'s "+cycleClass.active()+" started at "+t0+": ready again at +"+(own.abilityReadyAt-t0)+" (want "+cycleClass.cooldownTicks()+"), runs to +"+(own.abilityUntil-t0)+" (want "+cycleClass.durationTicks()+")";next(b,35);}
-                    else if(since(b)>300){report("p2-ability-cycle",false,"the probe never started (notice \""+b.campaign.notices.getOrDefault(player,"")+"\")");next(b,40);}}
+                    else if(since(b)>300){report("p2-ability-cycle",false,"the probe never started (notice \""+b.campaign.notices.getOrDefault(player,"")+"\")");next(b,50);}}
                 case 35->{var own=b.squads.get(player);if(b.time<probe.startedAt+cycleClass.durationTicks()+3)return;
                     boolean ended=probe.ends==1&&own.abilityUntil==0&&own.abilityData==null&&!Commander.running(b,own)&&probe.ticks>=cycleClass.durationTicks()-3&&probe.ticks<=cycleClass.durationTicks();
                     cycleOk&=ended;cycleWhy+="; it ticked "+probe.ticks+" times and ended "+probe.ends+" time(s), abilityData cleared="+(own.abilityData==null);
@@ -900,7 +1017,51 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean refused=probe.starts==1&&notice.startsWith(want)&&notice.endsWith(" s.")&&own.abilityReadyAt==probe.startedAt+cycleClass.cooldownTicks();
                     cycleOk&=refused&&activeSeen&&readyInSeen;
                     report("p2-ability-cycle",cycleOk,cycleWhy+"; a second press on cooldown: notice \""+notice+"\", starts "+probe.starts+"; the tile showed ACTIVE="+activeSeen+" and READY IN="+readyInSeen);
-                    for(var e:saved.entrySet()){if(e.getValue()==null)Commander.ACTIVES.remove(e.getKey());else Commander.ACTIVES.put(e.getKey(),e.getValue());}saved.clear();next(b,40);}
+                    report("p2-hud-hearts",hudRight>0&&hudRight<hudHearts&&hudRight>=Math.min(218,hudHearts-8),"in the HUD frame "+hudFrame+" the group panels end at x "+hudRight+" and vanilla's hearts and armour start at x "+hudHearts+" (see commander-tile-active)");
+                    next(b,37);}
+                case 37->{ // p2-ability-seat: the probe stops when its commander leaves; the stand-in keeps the seat's cooldown, and so does he when he takes the seat back
+                    var p=sp(b);var own=b.squads.get(player);if(p==null||own==null)return;
+                    probe=new Probe();Commander.ACTIVES.put(cycleClass.active(),probe);own.abilityReadyAt=0;b.command(p,"ability");
+                    if(probe.starts!=1||!Commander.running(b,own)){report("p2-ability-seat",false,"the probe did not start (starts "+probe.starts+")");next(b,39);return;}
+                    long t0=probe.startedAt;seat=own;seatReadyAt=own.abilityReadyAt;
+                    b.leave(player);UUID stand=b.campaign.vacated.get(player);
+                    seatOk=probe.ends==1&&own.abilityUntil==0&&own.abilityData==null&&own.abilityReadyAt==t0+cycleClass.cooldownTicks()&&own.bot&&stand!=null&&own.owner.equals(stand)&&b.squads.get(stand)==own&&!b.squads.containsKey(player);
+                    seatWhy="he left while "+cycleClass.active()+" ran: it ended "+probe.ends+" time(s), abilityData "+own.abilityData+", a stand-in took the seat="+(own.bot&&own.owner.equals(stand))+" and keeps its cooldown to +"+(own.abilityReadyAt-t0)+" (want "+cycleClass.cooldownTicks()+")";
+                    own.abilityUntil=b.time+cycleClass.durationTicks();own.abilityData="probe"; // as if the stand-in ran the class active, so the takeover has one to stop
+                    next(b,38);}
+                case 38->{ // the next battle tick welcomes him again and he takes his reserved seat back: the takeover
+                    var own=b.squads.get(player);
+                    if(own==null){if(since(b)>100){report("p2-ability-seat",false,seatWhy+"; he never got his seat back");next(b,39);}return;}
+                    boolean back=own==seat&&!own.bot&&own.seated&&probe.ends==2&&own.abilityUntil==0&&own.abilityData==null&&own.abilityReadyAt==seatReadyAt&&!b.campaign.vacated.containsKey(player)&&own.commander.equals(profile(b).commander);
+                    b.campaign.notices.remove(player);var p=sp(b);if(p!=null)b.command(p,"ability");String notice=b.campaign.notices.getOrDefault(player,"");
+                    boolean refused=probe.starts==1&&notice.startsWith(Commander.activeName(cycleClass.active())+" is ready in ");
+                    report("p2-ability-seat",seatOk&&back&&refused,seatWhy+"; he took the same seat back="+(own==seat)+" after "+since(b)+" tick(s): the stand-in's running active ended there (ends "+probe.ends+", want 2), abilityData "+own.abilityData+", the cooldown kept="+(own.abilityReadyAt==seatReadyAt)+"; his press: \""+notice+"\" (starts "+probe.starts+")");
+                    next(b,39);}
+                case 39->{ // p2-ability-stops: a round start and the lobby end a running active once, clear its data and reset its cooldown
+                    var p=sp(b);var own=b.squads.get(player);if(p==null||own==null)return;
+                    boolean ok=true;StringBuilder why=new StringBuilder();
+                    for(String path:List.of("startRound","returnLobby")){
+                        probe=new Probe();Commander.ACTIVES.put(cycleClass.active(),probe);own.abilityReadyAt=0;b.campaign.introUntil=b.time;b.command(p,"ability");
+                        boolean ran=probe.starts==1&&Commander.running(b,own)&&own.abilityReadyAt>b.time;
+                        if(path.equals("startRound")){b.startRound();b.campaign.introUntil=b.time;}else b.campaign.returnLobby();
+                        boolean stopped=probe.ends==1&&own.abilityUntil==0&&own.abilityData==null&&own.abilityReadyAt==0&&!Commander.running(b,own);
+                        ok&=ran&&stopped;why.append(path).append(" while ").append(cycleClass.active()).append(" ran (it started=").append(ran).append("): it ended ").append(probe.ends).append(" time(s), abilityData ").append(own.abilityData).append(", abilityReadyAt ").append(own.abilityReadyAt).append("; ");
+                    }
+                    report("p2-ability-stops",ok,why.toString());
+                    for(var e:saved.entrySet()){if(e.getValue()==null)Commander.ACTIVES.remove(e.getKey());else Commander.ACTIVES.put(e.getKey(),e.getValue());}saved.clear();next(b,50);}
+                case 50->{ // p2-fresh-seat: a commander seated fresh in a running round (bot fill off, an empty seat on his side) fights under his own class, here the Reaver
+                    if(b.running)b.campaign.returnLobby();command(b,"class:reaver",51);}
+                case 51->{if(since(b)<20)return;if(profile(b).commander.equals("reaver"))next(b,52);else if(since(b)>200){report("p2-fresh-seat",false,"class:reaver never reached the profile (it says "+profile(b).commander+")");next(b,40);}}
+                case 52->{var p=sp(b);if(p==null||!openRound(b,p))return;next(b,53);}
+                case 53->{if(since(b)<10)return; // his squad goes with no stand-in, as if he connected now for the first time this round
+                    var old=b.squads.remove(player);freshOld=old;b.welcomed.remove(player);b.respawns.remove(player);b.campaign.vacated.remove(player);
+                    b.units.removeIf(u->{if(u.squad==old){u.mob.discard();return true;}return false;});freshBots=b.squads.values().stream().filter(s->s.bot&&s.seated).count();next(b,54);}
+                case 54->{var s=b.squads.get(player);var p=sp(b);
+                    if(s==null||p==null){if(since(b)>100){report("p2-fresh-seat",false,"he was never seated again");b.campaign.returnLobby();next(b,40);}return;}
+                    var attack=p.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ATTACK_DAMAGE);var mod=attack==null?null:attack.getModifier(Commander.ATTACK);
+                    boolean ok=freshBots==0&&s!=freshOld&&s.seated&&!s.bot&&s.commander.equals("reaver")&&mod!=null&&near(mod.getValue(),2)&&near(p.getMaxHealth(),20)&&Commander.respawnSeconds(s)==9;
+                    report("p2-fresh-seat",ok,"bot fill off, two seats a side, "+freshBots+" bot seats: he joined into a new seat="+(s!=freshOld)+" (seated "+s.seated+") as "+s.commander+" (his class is reaver): attack modifier "+(mod==null?"none":"+"+mod.getValue())+", max health "+p.getMaxHealth()+" (a Champion has 24), respawn "+Commander.respawnSeconds(s)+" s");
+                    b.campaign.returnLobby();next(b,40);}
                 case 40->{if(b.running)b.campaign.returnLobby();pick=0;pickWait=0;pickerOk=false;pickerWhy="";pickerDone=false;next(b,41);}
                 case 41->{if(!pickerDone){if(since(b)>1200){report("p2-class-picker",false,"timed out: "+pickerWhy);next(b,99);}return;}
                     boolean confirmed=profile(b).commander.equals("warlock");report("p2-class-picker",pickerOk&&confirmed,pickerWhy+"; the profile now says "+profile(b).commander);next(b,99);}

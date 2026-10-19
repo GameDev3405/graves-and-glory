@@ -2236,7 +2236,7 @@
       "passiveValue": 0.1,
       "passiveValue2": 2.0,
       "passiveRadius": 0.0,
-      "activeText": "Mark a foe within 40 blocks: it glows and takes 30% more damage from your side for 12 s.",
+      "activeText": "Mark a foe within 40 blocks: it glows; your troops and you deal 30% more to it for 12 s.",
       "passiveText": "Your ranged troops deal 10% more damage and reach 2 blocks further."
     },
     {

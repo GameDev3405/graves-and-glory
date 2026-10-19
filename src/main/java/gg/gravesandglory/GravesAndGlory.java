@@ -153,8 +153,8 @@ public final class GravesAndGlory implements ModInitializer {
         String order,formation;Vec3d target;float yaw;int enemy=-1;long issued;
         Assignment(String o,String f,Vec3d t,float y){order=o;formation=f;target=t;yaw=y;}
     }
-    /** A troop in a squad's training queue: when it is done, and the gold paid for it (the class cost, Commander.cost), which a cancel refunds. */
-    public record Training(Spec.TroopsRow spec,long finished,int paid) {public Training(Spec.TroopsRow spec,long finished){this(spec,finished,spec.cost());}}
+    /** A troop in a squad's training queue: when it is done, and the gold paid for it (the class cost, Commander.cost), which a cancel or a full army refunds. The short form is a free troop: nothing paid, nothing refunded. */
+    public record Training(Spec.TroopsRow spec,long finished,int paid) {public Training(Spec.TroopsRow spec,long finished){this(spec,finished,0);}}
     public static final class Unit {
         MobEntity mob;
         Squad squad;
@@ -354,10 +354,13 @@ public final class GravesAndGlory implements ModInitializer {
                 s=replacement;squads.remove(s.owner);campaign.botRespawns.remove(s.owner);campaign.botRetreating.remove(s.owner);
                 campaign.vacated.values().remove(s.owner);s.owner=p.getUuid();s.bot=false;s.seated=true;
                 // The seat keeps the bot's living army and its queue, but from now on it trains and reinforces from the joiner's own banner, and fights under his class.
+                // The active's cooldown belongs to the squad, not to whoever commands it: it stays with the seat, so taking a seat over (its owner coming back, or
+                // anyone else) never refreshes an active. Only a running active stops here, before the class changes; leave already stopped the owner's.
                 Commander.stop(this,s);s.banner=campaign.banner(s);s.commander=campaign.profile(s.owner).commander;
             }else{
                 s=new Squad(p.getUuid(),team,base(team));s.seated=decision.seated();
-                if(s.seated){s.banner=campaign.banner(s);reinforce(s);}
+                // A fresh seat mid-round fights under its owner's class, as round setup (Campaign.prepareRound) and a takeover give it.
+                if(s.seated){s.commander=campaign.profile(s.owner).commander;s.banner=campaign.banner(s);reinforce(s);}
             }
             squads.put(s.owner,s);welcomed.add(s.owner);
             p.changeGameMode(GameMode.ADVENTURE);equipPlayer(p);

@@ -102,16 +102,22 @@ public final class CommandMode {
         if(side!=null){DarkUi.teamMark(g,team,16,y+4);g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth(side.name().toUpperCase(java.util.Locale.ROOT)+" / HOUSES",190),28,y+4,GravesAndGloryClient.MUTED);}
         int x=16;for(var house:Spec.HOUSES){int tier=tiers.getOrDefault(house.id(),0);if(tier<=0)continue;DarkUi.houseMark(g,house.id(),tier,x,y+17);x+=DarkUi.houseMarkWidth(tier)+12;}
     }
+    /** Where vanilla draws the hearts and the armour row (GUI x width / 2 - 91), in the HUD frame of width w (the GUI scaled by min(1, width / 640)). */
+    static int statusBarsLeft(int w){int sw=MinecraftClient.getInstance().getWindow().getScaledWidth();return (int)Math.floor((sw/2-91)*(w/(double)sw));}
+    /** The right edge the group panels were last drawn to, in the HUD frame (read by the checks). */
+    static int groupsRight;
     static void hud(DrawContext g,int w,int h){
         var c=MinecraftClient.getInstance();int y=h-150;
         houseStrip(g,y-42);
+        // The group panels end left of vanilla's hearts and armour, which a frame narrower than 640 brings under them: 210 wide when there is room, about 170 in a 640x360 frame.
+        int right=Math.min(218,statusBarsLeft(w)-4),width=right-8,bar=width-16;groupsRight=right;
         for(Group group:groups){boolean chosen=selected.equals("all")||selected.equals(group.id());
             boolean hit=flashing(group.id());
-            GravesAndGloryClient.panel(g,8,y,210,28);if(hit)g.drawBorder(8,y,210,28,DANGER);if(chosen)g.fill(8,y,10,y+28,GravesAndGloryClient.GOLD);
-            g.fill(16,y+24,210,y+27,0xff2a3236);g.fill(16,y+24,16+Math.round(194*Math.max(0,Math.min(1,group.health()))),y+27,hit?DANGER:GravesAndGloryClient.GOLD);
-            g.drawTextWithShadow(c.textRenderer,(chosen?"> ":"  ")+label(group.id())+" / "+group.count()+" / "+Math.round(group.health()*100)+"%",16,y+4,GravesAndGloryClient.WHITE);
+            GravesAndGloryClient.panel(g,8,y,width,28);if(hit)g.drawBorder(8,y,width,28,DANGER);if(chosen)g.fill(8,y,10,y+28,GravesAndGloryClient.GOLD);
+            g.fill(16,y+24,16+bar,y+27,0xff2a3236);g.fill(16,y+24,16+Math.round(bar*Math.max(0,Math.min(1,group.health()))),y+27,hit?DANGER:GravesAndGloryClient.GOLD);
+            g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth((chosen?"> ":"  ")+label(group.id())+" / "+group.count()+" / "+Math.round(group.health()*100)+"%",width-12),16,y+4,GravesAndGloryClient.WHITE);
             if(group.routing())g.drawTextWithShadow(c.textRenderer,"ROUTING",16,y+16,DANGER);
-            else g.drawTextWithShadow(c.textRenderer,label(group.order())+(group.fighting()?" / FIGHTING":""),16,y+16,group.fighting()?0xffffaa66:GravesAndGloryClient.MUTED);y+=30;
+            else g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth(label(group.order())+(group.fighting()?" / FIGHTING":""),width-12),16,y+16,group.fighting()?0xffffaa66:GravesAndGloryClient.MUTED);y+=30;
         }
         if(active()){
             GravesAndGloryClient.panel(g,w/2-180,52,360,40);
