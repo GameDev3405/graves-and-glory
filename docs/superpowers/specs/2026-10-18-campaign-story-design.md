@@ -381,7 +381,7 @@ Every `card` line has a `voice` id. A voice line is an `.ogg` under `assets/grav
 
 ## 8. Writing the copy
 
-Rulings from the copy, 2026-10-18 late: Tomas is "her brother" through chapter 1 and Maud says his name in chapter 2 (page 8 already spends its name on Edric); the bonus-missed reaction line plays only on a win without the bonus; plant 3 (Ashka as the heir) sits in her second choice card, a tent card the player may never open, which is acceptable because plants 1 and 2 carry the twist; `c1_king_after` stages Tomas's capture without a card; page 4's leaf is "The Gate" and page 8's "The Field of Kings"; battle 6's feed lines are "The King's host is broken." and "The King's host holds." The copy is at `docs/copy/chapter-1.md`.
+Rulings from the copy, 2026-10-18 late: Tomas is "her brother" until Kingsfield, speaks once as that in `c1_king_before`, and Maud says his name in `c1_king_after` after Edric's, so page 8 is the one page with two new names (Kort overturned the copy's call to wait for chapter 2); the bonus-missed reaction line plays only on a win without the bonus; plant 3 (Ashka as the heir) sits in her second choice card, a tent card the player may never open, which is acceptable because plants 1 and 2 carry the twist; `c1_king_after` stages Tomas's capture without a card; page 4's leaf is "The Gate" and page 8's "The Field of Kings"; battle 6's feed lines are "The King's host is broken." and "The King's host holds." The copy is at `docs/copy/chapter-1.md`.
 
 Volume for chapter 1, sized so Kort can read it in one sitting:
 
@@ -456,7 +456,7 @@ Aldric is in every chapter as a letter and in chapters 3 to 5 in person. Vael, O
 - A `storybook` suite: the book opens on the current page; read, next and sealed states draw correctly for three progress fixtures; a before-the-battle scene hands to its battle; a sealed scene does nothing; skip is refused on first reading and allowed on replay; the wounded portrait greys.
 - A `companions` suite: a companion falls and is untargetable; the next battle's slot is empty and greyed; the wounded line plays; Wren rises once and is "resting"; Tomas at 1 HP kneels; a reaction line plays for a fall, a rout and a bonus, in priority order; `losses` substitutes the real count.
 - A `story-voice` check: every `voice` id in the scene files is either in `sounds.json` or in a listed "silent" set, and no id is in both.
-- A `story-names` check (the familial rule, section 4.8): a listed set of proper nouns (cast, places, the Horn, the crown) is counted per storybook page across scene files and sheets; a page introduces at most one noun not seen on an earlier page, and the realm names never appear in a `card` or `caption`.
+- A `story-names` check (the familial rule, section 4.8): a listed set of proper nouns (cast, places, the Horn, the crown) is counted per storybook page across scene files and sheets; a page introduces at most one noun not seen on an earlier page (chapter 1 page 8 is allowed two, Edric and Tomas, by Kort's ruling), and the realm names never appear in a `card` or `caption`.
 - Art gates: every book leaf, thumbnail, portrait and panel is graded against the UI rubric before Kort sees it, as the mockups were.
 - Kort's gate: he plays chapter 1 start to finish in one sitting with the scenes on, and says, for each companion, what they wanted, and who the Hollow King was. If he cannot for any one of them, that part is rewritten before the chapter ships.
 

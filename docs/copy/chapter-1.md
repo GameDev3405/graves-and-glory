@@ -237,7 +237,7 @@ Written from story s5 to s8, with Kort's familial rule and the names Danta Hollo
 | Dunmar Coalbright | d | "The gate-warden" until Maud names him in `c1_letter`, then "Dunmar" | Dunmar | Slow, every word placed. (story s8) |
 | Ashka of the Thornwood | a | "The hunter" until Maud names her in `c1_council`, then "Ashka" | Ashka | Quick and warm. (story s8) |
 | Pell | p | "The Archivist", always; he does not give his name in chapter 1 | Pell | Precise, old. (story s8) |
-| Ser Tomas Harrow | t | "Her brother"; nobody says his name in chapter 1 | Tomas | Certain. (story s8) |
+| Ser Tomas Harrow | t | "Her brother" in `c1_king_before`; Maud names him in `c1_king_after` card 6 (Kort, 2026-10-18 late) | Tomas | Certain. (story s8) |
 | Edric Vane, the Hollow King | k | "The Hollow King" | the Hollow King helmed; Edric's face once the helm is off | Kind, which is the horror of it. (story s8) |
 | Edric alive | e | none (a book caption) | none | Young and certain. (story s8) |
 | The Record | r | none (book captions) | none | Not in story s8. Suggested: plain and unhurried, a reader, not a player. |
@@ -265,9 +265,9 @@ Where each name lands, one new name a page. Counted as the familial rule counts:
 | 5 | Dunmar | Maud, `c1_letter` card 5 |
 | 6 | none | the Admiral is a role |
 | 7 | Ashka | Maud, `c1_council` card 4 |
-| 8 | Edric | Maud, `c1_king_after` card 2 |
+| 8 | Edric, and Tomas | Maud, `c1_king_after` cards 2 and 6; the one page with two new names, Kort's call |
 
-Tomas is "my brother" and "their sergeant" in chapter 1. His name would be page 8's second new name, so it waits for chapter 2. Pell stays "the Archivist"; he may give his name himself, once, later.
+Tomas is "my brother" and "their sergeant" until Kingsfield. He speaks once, as "Her brother", in `c1_king_before`, and Maud says his name in `c1_king_after` card 6, after Edric's: page 8 is the one page that spends two new names (Kort overturned the copy's silence choice 9, 2026-10-18 late). Pell stays "the Archivist"; he may give his name himself, once, later.
 
 Nicknames, set once and kept in every line after:
 
@@ -601,8 +601,8 @@ Staging, before card 1: `if match killed:gb_hollowking` he is already down on th
 | 3 | Maud | `c1_m34` | You said you would carry it until there was a hand. Then you put it on. | His line from `c1_fall`. (16) |
 | 4 | Maud | `c1_m35` | Twelve years, and you do not know my face. That is all right. I know yours. | (16) |
 | 5 | Wren | `c1_w16` | I saw him lift it. The first morning. I was on the ground and I saw him lift it. | Story s6's line. (19) |
-| 6a | Maud | `c1_m36` | Your banner struck him, Third. Bind my brother, and do not kill him. I have counted enough. | `if match killed:gb_hollowking`. (17) |
-| 6b | Maud | `c1_m37` | Bind my brother, and do not kill him. I have counted enough. | `else`. |
+| 6a | Maud | `c1_m36` | Your banner struck him, Third. Bind my brother, and do not kill him. His name is Tomas. I have counted enough. | `if match killed:gb_hollowking`. Page 8's second new name, Kort's call. (17) |
+| 6b | Maud | `c1_m37` | Bind my brother, and do not kill him. His name is Tomas. I have counted enough. | `else`. Page 8's second new name, Kort's call. |
 
 Then the end-of-match report, as Phase 4 says: the epilogue (spec, verbatim) "Kingsfield holds. When the field was searched, the Hollow King's crown was gone.", the Writ card, and the "Choose your Legendary" button (spec, verbatim). The book's last scene waits behind it.
 
@@ -926,7 +926,9 @@ Where the story design and the briefs are silent, this copy chose. The draft thi
 6. `c1_shrine_2` is row 1 of Wren's memory, and the shrine's own rows start at 2, one per battle after that scene. A straight run with no replays reaches row 3 or 4 before `c1_crown`; the six are all heard only by a commander who replays or loses.
 7. Item cards inside scenes (the writ, the writ-copy, the roll, the shroud) need a card with no portrait; `card item:<id>` is proposed, since the command list has none.
 8. The dying raider speaks with no portrait and the voice initial x; the brief's list of initials has none for him.
-9. Her brother speaks once, in `c1_king_before`, so his portrait has a line, and his name waits for chapter 2 under the one-name-a-page rule. Maud's "your banner" line rides on her last card of `c1_king_after`, so the scene stays at six cards.
+9. Her brother speaks once, in `c1_king_before`, so his portrait has a line, and his name waits for chapter 2 under the one-name-a-page rule. Maud's "your banner" line rides on her last card of `c1_king_after`, so the scene stays at six cards. **Overturned by Kort, 2026-10-18 late:** Tomas is named on page 8, the page he first speaks; Maud says it in `c1_king_after` card 6, and page 8 is the one page allowed two new names.
 10. The child's name on the mound is a role, "FOR THE CHILD WE SENT NORTH", by the familial rule. Plant 3, which story s6 does not place, is the cloak in the snow in Ashka's second choice card.
 11. The grave roll's names are bynames, and the Archivist does not give his name in chapter 1, both by the familial rule.
 12. The echo sits at the first fire Wren shares, on page 3. The leaves of pages 4 and 8 are titled "The Gate" and "The Field of Kings", and battle 6's feed says "the King's host", so neither a map name nor "the Hollow host" reaches a leaf or the feed.
+
+Kort's verdict, 2026-10-18 late (click-through): 1 to 5, 7, 8, 10 to 12 kept; 6 superseded by the spec's rule that Wren's memory advances on every return to camp after a chapter battle, confirmed, so all six are heard in a straight run before `c1_crown`; 9 overturned as noted above.
