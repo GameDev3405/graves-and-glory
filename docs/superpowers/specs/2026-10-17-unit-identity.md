@@ -11,6 +11,8 @@ from Houses spec 2.7; anything unmentioned stays as 2.7 has it.
 
 ## 0. Rules
 
+**Kort, 2026-10-18 late: new characters, not recolours.** Every troop is a new character: its own geometry on the shared biped or beast skeleton (horns, antlers, hoods, pauldrons, capes, quivers, exposed bone, crests, lanterns), its own body proportions by House and troop (broad and low, gaunt and tall, hunched), its own hand-drawn skin per stage with a glow layer where earned, and its own weapon model. Only the invisible skeleton is shared, so one animation set drives everyone. The pipeline builds this from a shared part library the skin tool stitches into any troop's model, plus per-troop parts. A troop that could be mistaken for a recoloured vanilla mob, or for another troop by silhouette alone, fails the lookalike check and goes back; geometry counts, not only colour. Every skin and portrait is graded against `work/ui-concepts/GRADING-RUBRIC.md` at 9 or better before Kort sees a House.
+
 1. **Layout.** Headers give House, group, rarity, evolve line and sheet id.
    Look runs: silhouette; palette; armour and weapon; head and face; **mark**,
    readable at 30 blocks (4 px or more, or a change of outline); **tell**, an
