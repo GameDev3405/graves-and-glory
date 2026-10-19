@@ -20,7 +20,8 @@
       "gg.gravesandglory.CampRedesignChecks",
       "gg.gravesandglory.CampNetworkChecks",
       "gg.gravesandglory.Phase1Checks",
-      "gg.gravesandglory.TitleDemos"
+      "gg.gravesandglory.TitleDemos",
+      "gg.gravesandglory.StoryStills"
     ]
   },
   "mixins": [
