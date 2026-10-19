@@ -837,7 +837,7 @@ public final class Phase1Checks implements ClientModInitializer {
             if(stage==6&&c.currentScreen!=null)c.setScreen(null); // the barracks lesson opens the barracks screen
             if(stage==6&&first.over&&++first.wait==40){ // 40 ticks for the lesson end and the new gold to reach the client
                 reportStart();clientGoldAfter=CampaignClient.profile.gold;int shots=0,whole=0;for(int i=0;i<4;i++){if(lessonShot[i])shots++;if(lessonWhole[i])whole++;}
-                String use=c.options.useKey.getBoundKeyLocalizedText().getString();boolean named=GravesAndGloryClient.lessonText(3).contains(use); // lesson 4 names the use key as bound (drawn whole above)
+                String use=HintText.chip(c.options.useKey.getBoundKeyLocalizedText().getString());boolean named=GravesAndGloryClient.lessonText(3).contains(use); // lesson 4 names the use key as bound, as its chip (RMB for the right button, UI polish M6; drawn whole above)
                 report("p1-tutorial-lessons",first.taught()&&shots==4&&whole==4&&named,first.why()+"; "+shots+" of 4 lesson screenshots; "+whole+" of 4 lessons drawn whole inside the panel ("+copyWhy+"); lesson 4 names the use key \""+use+"\": "+named);
                 server(c,b->next(b,7));
             }
