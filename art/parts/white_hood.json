@@ -1,0 +1,10 @@
+{
+"part":"white_hood",
+"note":"The Sunweaver's white cowl, deep and round, the old face set back in it. Block 40x19.",
+"bone":"head",
+"team":false,
+"tag":"helm",
+"boxes":[
+{"origin":[-5,-9,-5],"size":[10,9,10],"uv":[0,0],"note":"the deep cowl, 1 px proud; the face opening is cut out of its front"}
+]
+}

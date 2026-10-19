@@ -79,6 +79,7 @@ public final class GravesAndGlory implements ModInitializer {
             return battle.allowDamage(entity,source,amount);
         });
         ServerLivingEntityEvents.AFTER_DEATH.register((entity,source)->{
+            Battle.leaveSide(entity);
             if(battle==null)return;
             Entity attacker=source.getAttacker();
             for(Unit victim:battle.units)if(victim.mob==entity){
@@ -228,6 +229,39 @@ public final class GravesAndGlory implements ModInitializer {
         public int[] sides={0,1};
         /** The side row a team flies: its colour, name and glyph. */
         public Spec.FactionsRow side(int team){int row=team==0||team==1?sides[team]:-1;return Spec.FACTIONS[row>=0&&row<Spec.FACTIONS.length?row:Math.max(0,Math.min(1,team))];}
+        /** The scoreboard team of a side: gg_<factions id>. Its members are troops' UUIDs; the client reads it to pick the troop's team cloth (TroopModels.resolve). */
+        static String sideTeam(Spec.FactionsRow side){return "gg_"+side.id();}
+        /** Puts a troop on the scoreboard team of the side its team flies (gg_<side id>), creating the team on first use. */
+        public void joinSide(MobEntity mob,int team){
+            var board=server.getScoreboard();String name=sideTeam(side(team));
+            net.minecraft.scoreboard.Team t=board.getTeam(name);if(t==null)t=board.addTeam(name);
+            board.addPlayerToTeam(mob.getEntityName(),t);
+        }
+        /** Takes a troop off its side's team (at death and wherever a troop is discarded); anything not on a gg_ team is left alone. */
+        public static void leaveSide(Entity e){
+            var board=e.getWorld().getScoreboard();var t=board.getPlayerTeam(e.getEntityName());
+            if(t!=null&&t.getName().startsWith("gg_"))board.removePlayerFromTeam(e.getEntityName(),t);
+        }
+        /** Empties the four side teams (startRound, Campaign.returnLobby and switchMap). */
+        public void clearSides(){
+            var board=server.getScoreboard();
+            for(var f:Spec.FACTIONS){var t=board.getTeam(sideTeam(f));if(t!=null)for(String member:new ArrayList<>(t.getPlayerList()))board.removePlayerFromTeam(member,t);}
+        }
+        /**
+         * The field of a portrait's shield (ArmyCards.portrait): grey, a dye no side flies and no troops.shield layer uses
+         * (tools/preflight.py reads it here and refuses a clash), so every layer shows on a card.
+         */
+        public static final String PORTRAIT_FIELD="gray";
+        /**
+         * The troop's painted shield (unit identity rule 7): unbreakable, its BlockEntityTag Base the given dye (the side's
+         * factions.dye in battle, PORTRAIT_FIELD on portraits) and its Patterns the troops.shield layers, <dye>:<pattern> each.
+         */
+        public static ItemStack shield(Spec.TroopsRow t,String dye){
+            ItemStack s=unbreakable(Items.SHIELD);NbtCompound tag=new NbtCompound();tag.putInt("Base",DyeColor.byName(dye,DyeColor.WHITE).getId());
+            net.minecraft.nbt.NbtList patterns=new net.minecraft.nbt.NbtList();
+            if(!t.shield().equals("none"))for(String layer:t.shield().split(",")){String[] p=layer.trim().split(":");NbtCompound one=new NbtCompound();one.putString("Pattern",p[1]);one.putInt("Color",DyeColor.byName(p[0],DyeColor.WHITE).getId());patterns.add(one);}
+            tag.put("Patterns",patterns);BlockItem.setBlockEntityNbt(s,net.minecraft.block.entity.BlockEntityType.BANNER,tag);return s;
+        }
         /** Seconds each team held each point this round, [team][point]; startRound sizes it from points (five on Kingsfield). */
         int[][] pointSeconds=new int[2][0];
         final Set<UUID> welcomed=new HashSet<>();
@@ -369,13 +403,13 @@ public final class GravesAndGlory implements ModInitializer {
             else if(running)campaign.participants.remove(s.owner);
 
         }
-        void clearOldUnits(){List<Entity> stale=new ArrayList<>();for(Entity e:world.iterateEntities())if(e.getCommandTags().contains("gravesandglory")||e.getCommandTags().contains("bannerbound")||e.getCommandTags().contains(Projectiles.TAG))stale.add(e);for(Entity e:stale)e.discard();}
+        void clearOldUnits(){List<Entity> stale=new ArrayList<>();for(Entity e:world.iterateEntities())if(e.getCommandTags().contains("gravesandglory")||e.getCommandTags().contains("bannerbound")||e.getCommandTags().contains(Projectiles.TAG))stale.add(e);for(Entity e:stale){leaveSide(e);e.discard();}}
         void leave(UUID owner){
             campaign.left(owner);
             Squad s=squads.remove(owner);welcomed.remove(owner);respawns.remove(owner);if(s!=null)Commander.stop(this,s);
             // Mid-battle, a bot commands the army until its owner rejoins, so the team is not left a commander short.
             if(s!=null&&running&&s.seated&&!s.bot){UUID stand=UUID.randomUUID();s.owner=stand;s.bot=true;s.tier=campaign.difficulty;s.order="attack";squads.put(stand,s);campaign.vacated.put(owner,stand);return;}
-            units.removeIf(u->{if(u.squad==s){u.mob.discard();return true;}return false;});
+            units.removeIf(u->{if(u.squad==s){leaveSide(u.mob);u.mob.discard();return true;}return false;});
         }
         static Vec3d base(int t){var f=Spec.FACTIONS[t];return new Vec3d(f.spawnX(),Arena.height(f.spawnX(),f.spawnZ())+1,f.spawnZ());}
         void relocate(ServerPlayerEntity p,double x,double y,double z,float yaw,float pitch){p.fallDistance=0;p.setVelocity(Vec3d.ZERO);p.teleport(world,x,y,z,yaw,pitch);p.fallDistance=0;p.velocityModified=true;}
@@ -477,7 +511,7 @@ public final class GravesAndGlory implements ModInitializer {
             String id=cmd.substring(cmd.indexOf(':')+1);
             var spec=Campaign.troop(id);if(spec==null)return;
             if(cmd.startsWith("disband:")){
-                for(int i=units.size()-1;i>=0;i--){Unit u=units.get(i);if(u.squad==s&&u.spec==spec&&u.mob.isAlive()){u.mob.discard();units.remove(i);s.gold+=Spec.ECONOMY[0].disbandRefund();Houses.recompute(s);return;}}
+                for(int i=units.size()-1;i>=0;i--){Unit u=units.get(i);if(u.squad==s&&u.spec==spec&&u.mob.isAlive()){leaveSide(u.mob);u.mob.discard();units.remove(i);s.gold+=Spec.ECONOMY[0].disbandRefund();Houses.recompute(s);return;}}
                 return;
             }
             // A troop trains only while its living and queued units are below its count in the squad's banner, and slot weights stay within rules.squadSize.
@@ -536,6 +570,7 @@ public final class GravesAndGlory implements ModInitializer {
         void startRound(){
             Projectiles.clear(this);
             campaign.prepareRound();
+            clearSides();
             Arrays.fill(scores,0);pointSeconds=new int[2][points.size()];
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
             respawns.clear();
@@ -569,7 +604,7 @@ public final class GravesAndGlory implements ModInitializer {
             mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED).setBaseValue(spec.speed());
             mob.getAttributeInstance(EntityAttributes.GENERIC_FOLLOW_RANGE).setBaseValue(Spec.NAVIGATION[0].searchRange());
             mob.setPathfindingPenalty(PathNodeType.WATER,(float)Spec.NAVIGATION[0].waterPenalty());
-            if(ArmyMobs.tags(spec).contains("shield"))mob.equipStack(EquipmentSlot.OFFHAND,unbreakable(Items.SHIELD));
+            if(ArmyMobs.tags(spec).contains("shield"))mob.equipStack(EquipmentSlot.OFFHAND,shield(spec,side(s.team).dye()));
             mob.equipStack(EquipmentSlot.MAINHAND,unbreakable(Registries.ITEM.get(new Identifier(spec.weapon()))));
             mob.equipStack(EquipmentSlot.HEAD,unbreakable(Registries.ITEM.get(new Identifier(spec.helmet()))));
             ItemStack chest=unbreakable(Registries.ITEM.get(new Identifier(spec.chest())));
@@ -579,7 +614,7 @@ public final class GravesAndGlory implements ModInitializer {
             // The name colour is the team tag, not the side colour: CommandMode.nameTeam reads it on the client to tell friend from foe (both teams can field the same House). Recolour names by side only together with that reader.
             int stage=campaign.stage(s,spec);
             mob.setCustomName(Text.literal(ArmyMobs.stageName(spec,stage)).formatted(s.team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE));
-            mob.setCustomNameVisible(false);world.spawnEntity(mob);
+            mob.setCustomNameVisible(false);world.spawnEntity(mob);joinSide(mob,s.team);
             Unit u=new Unit(mob,s,spec,slot);u.stage=stage;units.add(u);Houses.recompute(s);return u;
         }
         final Set<Long> unitChunks=new HashSet<>();
@@ -715,7 +750,7 @@ public final class GravesAndGlory implements ModInitializer {
                 }else if(time-testAt>1000){Diagnostics.report("point-captured",false,"troops did not take point");testStage=4;}
             }else if(testStage==3&&time-testAt>100){
                 Diagnostics.report("combat-resolved",!testVictim.mob.isAlive()||testVictim.mob.getHealth()<testVictimHealth,"enemy took no damage");
-                for(Unit u:units)if(u.squad!=testSquad)u.mob.discard();
+                for(Unit u:units)if(u.squad!=testSquad){leaveSide(u.mob);u.mob.discard();}
                 units.removeIf(u->u.squad!=testSquad);
                 reinforce(testSquad);testSquad.order="hold";
                 for(int i=0;i<3;i++){
@@ -781,7 +816,7 @@ public final class GravesAndGlory implements ModInitializer {
         }
         void prepareBridgeTest(){var b=Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList().get(testBridgeIndex);prepareNavigation(b.x()-b.width()/2.0-14,b.z(),new Vec3d(b.x()+b.width()/2.0+16,65,b.z()),-90);}
         void prepareVisualSquads(boolean fight){
-            for(Unit u:units)u.mob.discard();units.clear();
+            for(Unit u:units){leaveSide(u.mob);u.mob.discard();}units.clear();
             testSquad.training.clear();testSquad.order=fight?"attack":"hold";testSquad.target=fight?new Vec3d(15,65,3):new Vec3d(-74,65,0);testSquad.yaw=-90;
             spawnVisualSquad(testSquad,fight?-22:-74,3);
             if(fight){Squad enemy=new Squad(UUID.randomUUID(),1-testSquad.team,new Vec3d(-20,65,3));enemy.order="attack";enemy.yaw=90;spawnVisualSquad(enemy,22,3);}

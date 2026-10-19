@@ -1,0 +1,13 @@
+{
+"part":"white_quiver",
+"note":"The Order Archer's white-fletched quiver, slung across the back from the hips to over the left shoulder, where the left hand draws (the mark: fletching over the shoulder). Posed by search (work/p2b/quiversearch.py) to clear the pennant brackets and pole, the arms, and the hood as the head turns 30 degrees either way; on the slight archer's body, with the body scale cancelled by the entry. Block 24x15.",
+"bone":"body",
+"team":false,
+"tag":"",
+"pivot":[1.1111,-1,3.7222],
+"rotation":[0,0,32],
+"boxes":[
+{"origin":[-1.5,-12,-1.5],"size":[3,12,3],"uv":[0,0],"note":"the quiver, white leather, its mouth bound"},
+{"origin":[-1.5,-15,-1.5],"size":[3,3,3],"uv":[12,0],"note":"the white fletching, cut between the feathers"}
+]
+}

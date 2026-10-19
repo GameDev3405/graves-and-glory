@@ -1,0 +1,12 @@
+{
+"part":"gilt_sash",
+"note":"The Order Longbow's gilt sash round the waist, its tail hanging at the right hip. Block 30x7.",
+"bone":"body",
+"team":false,
+"tag":"",
+"scale":[1.0,1.25,1.25],
+"boxes":[
+{"origin":[-4,-2,-2],"size":[8,2,4],"uv":[0,0],"note":"the sash round the waist over the jerkin"},
+{"origin":[-3.5,-0.5,-2.75],"size":[2,5,1],"uv":[24,0],"note":"its knotted tail at the right hip"}
+]
+}
