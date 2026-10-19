@@ -586,7 +586,7 @@ public final class Phase3Checks implements ClientModInitializer {
      *  (it writes without neighbour shape updates); p3-arena-shapes passes when no glass pane of the structures is left without a connection. All three see the chunks that are loaded,
      *  and the shapes check counts glass panes only (fences and walls are not looked at).
      *  Task 2, fix round 1, per map: p3-arena-river-map<N> passes when no block stands above the water of a river column that the build of that map does not account for, which is what
-     *  the map built before it leaves behind (river). */
+     *  the map built before it leaves behind (river); p3-arena-rails-map<N> passes when every bridge rail stands where there is water and every run of stone wall ends on a post (rails). */
     static final class Rebuild implements Suite {
         static final int[] MAPS={0,1,2,3,4};
         int index,stage,waited;volatile boolean switched,counted;volatile String before="",after="";volatile int firstSpill=-1,spill=-1,paneCount=-1,paneLone=-1;
@@ -612,7 +612,7 @@ public final class Phase3Checks implements ClientModInitializer {
                 default->{}
             }
         }
-        /** On the server thread, with the map that stands (the at-th of MAPS): the item and pane counts of the soak check after maps 0 and 1, then the river of this map. */
+        /** On the server thread, with the map that stands (the at-th of MAPS): the item and pane counts of the soak check after maps 0 and 1, then the river and the rails of this map. */
         void measure(GravesAndGlory.Battle x,int n,int at){
             if(at==0){before=items(x);firstSpill=Arena.discarded;}
             if(at==1){after=items(x);spill=Arena.discarded;var pn=panes(x);paneCount=pn[0];paneLone=pn[1];}
@@ -620,6 +620,8 @@ public final class Phase3Checks implements ClientModInitializer {
             report("p3-arena-river-map"+n,r.left()==0,"river columns "+r.columns()+", built on by this map "+r.builtOn()+", looked at "+r.looked()+" (of them "+r.flat()+" with the ground at "+Arena.Y+" or above): "+r.left()+" blocks above the water that this map does not account for"+(r.left()==0?"":", first: "+r.sample()));
             try{Path file=MinecraftClient.getInstance().runDirectory.toPath().resolve("screenshots/p3-arena-river-map"+n+".txt");Files.createDirectories(file.getParent());Files.writeString(file,r.detail());}
             catch(Exception e){report("p3-arena-river-map"+n+"-file",false,e.toString());}
+            var ra=rails(x);
+            report("p3-arena-rails-map"+n,ra[0]>0&&ra[1]==0&&ra[2]==0,"bridge rail cells "+ra[0]+", on dry ground or on a building floor "+ra[1]+", ends of stone wall runs without a post "+ra[2]);
         }
         record River(int columns,int builtOn,int looked,int flat,int left,String sample,String detail){}
         /** The river columns of the map that stands (the build range, every z), minus the places the finish stage of the map builds above the water on purpose (builtOn). In each of the others the
@@ -662,6 +664,27 @@ public final class Phase3Checks implements ClientModInitializer {
                 if(x>=Math.min(from,to)&&x<=Math.max(from,to)&&Math.abs(z-pz)<=1)return true;
             }
             return false;
+        }
+        /** The bridge rails of the map that stands: {rail cells, those on dry ground or on a building floor, ends of stone wall runs without a post}. A rail cell is a spruce_fence (wood deck) or a stone_brick_wall
+         *  (stone deck) one above the deck on the row north or south of it. It stands on dry ground when no river column lies within one column of it, and on a floor when it lies inside the footprint of
+         *  a structure that is not a bridge (the courtyard of Ironhold is paved over the river). A run of walls ends where the next cell east or west is no wall, and the end needs the post (UP). Server thread. */
+        static int[] rails(GravesAndGlory.Battle b){
+            var w=b.world;int cells=0,dry=0,open=0;
+            for(var s:Spec.STRUCTURES){
+                if(!s.kind().equals("bridge")||s.palette().equals("ford"))continue;
+                int x0=s.x()-s.width()/2,z0=s.z()-s.depth()/2,y=s.elevation()+1;
+                for(int row:new int[]{z0-1,z0+s.depth()})for(int px=x0;px<x0+s.width();px++){
+                    var st=w.getBlockState(new BlockPos(px,y,row));
+                    boolean wall=st.getBlock() instanceof net.minecraft.block.WallBlock;
+                    if(!wall&&!st.isOf(Blocks.SPRUCE_FENCE))continue;
+                    cells++;
+                    boolean water=Arena.river(px-1,row)||Arena.river(px,row)||Arena.river(px+1,row),floor=false;
+                    for(var o:Spec.STRUCTURES)if(!o.kind().equals("bridge")&&Walkability.inside(o,px,row))floor=true;
+                    if(!water||floor)dry++;
+                    if(wall&&!st.get(net.minecraft.block.WallBlock.UP)&&!(w.getBlockState(new BlockPos(px-1,y,row)).getBlock() instanceof net.minecraft.block.WallBlock&&w.getBlockState(new BlockPos(px+1,y,row)).getBlock() instanceof net.minecraft.block.WallBlock))open++;
+                }
+            }
+            return new int[]{cells,dry,open};
         }
         /** The glass panes inside the footprints of the structures: {all, those touching nothing}. A pane that touches nothing renders as a post, which is what a build without shape updates leaves behind. Server thread. */
         static int[] panes(GravesAndGlory.Battle b){
