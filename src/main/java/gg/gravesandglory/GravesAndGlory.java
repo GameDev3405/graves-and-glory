@@ -490,8 +490,6 @@ public final class GravesAndGlory implements ModInitializer {
             return new Deploy(new Vec3d(x,Arena.ground(gx,gz)+1,z),anchor);
         }
         Vec3d deployPoint(Squad s,int slot){return deploy(s,slot).at();}
-        /** The deploy notice after "<troop> trained: " (a null anchor means the barracks). */
-        String deployNote(Squad s,Capture anchor){return anchor==null?"deploying from barracks":"deploying at "+anchor.spec.name();}
         void startRound(){
             Projectiles.clear(this);FeedEvents.clear();
             campaign.prepareRound();

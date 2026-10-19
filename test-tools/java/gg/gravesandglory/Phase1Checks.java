@@ -494,9 +494,10 @@ public final class Phase1Checks implements ClientModInitializer {
                     report(PROBES[probe],control&&fromBase<=30,"point an anchor before the change="+control+"; knight appeared "+String.format("%.1f",fromBase)+" blocks from the barracks spot and "+String.format("%.1f",fromPoint)+" from the point (owner "+point.owner+", contested "+point.contested+")");
                     drop(b);probe++;next(b,7);
                 }
-                case 8->{ // p1-forward-message: the deploy notice names the point, or the barracks
-                    ideal(b);String at=anchor==null?"":b.deployNote(own,anchor),home=b.deployNote(own,null);
-                    report("p1-forward-message",anchor==point&&at.contains(point.spec.name())&&home.contains("barracks"),"anchored note \""+at+"\", barracks note \""+home+"\"");
+                case 8->{ // p1-forward-message: the deploy decision names the point, or the barracks. Since UI Task 3 the player's deploy
+                    // notice is the feed's "Dawn Knight deploying" line (p1-ui-feed-deploy), so the old notice text, deployNote, is retired (UI polish M15)
+                    boolean anchorNow=ideal(b);var fwd=b.deploy(own,0);b.forwardReinforcement=false;var home=b.deploy(own,0);b.forwardReinforcement=true;Vec3d base=GravesAndGlory.Battle.base(0);
+                    report("p1-forward-message",anchorNow&&anchor==point&&fwd.anchor()==point&&home.anchor()==null&&flat(home.at(),base.x,base.z)<=10,"the anchored spawn's decision named "+(anchor==null?"no point":anchor.spec.name())+" (the middle point is "+point.spec.name()+"); with the point held again a slot-0 decision deploys at "+(fwd.anchor()==null?"the barracks":fwd.anchor().spec.name())+", and with forward reinforcement off at "+(home.anchor()==null?"the barracks":home.anchor().spec.name())+", "+String.format("%.1f",flat(home.at(),base.x,base.z))+" blocks from the barracks spot; the player reads the feed's \""+FeedLines.deploying(1,knight.name())+"\" line");
                     // p1-forward-held, nothing faked: a lone Dawn knight on a neutral point captures it through captureTick, which stamps ownedSince
                     point.owner=-1;point.challenger=-1;point.progress=0;point.contested=false;point.ownedSince=0;Arena.flag(b.world,point.spec,-1);
                     var holder=new GravesAndGlory.Squad(UUID.randomUUID(),0,new Vec3d(point.spec.x(),65,point.spec.z()));holder.order="hold";holder.yaw=-90;
