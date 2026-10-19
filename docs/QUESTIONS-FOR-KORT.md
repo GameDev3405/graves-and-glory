@@ -247,7 +247,7 @@ Defect found, not blocking: every arena rebuild over an existing arena spills hu
 
 **Kort, 2026-10-19:** the storybook stills now being staged are pipeline placeholders (no resource packs, shaders on, old troop look); they settle the staging pipeline and the layout so the real set shoot is easy once the own characters (Phase 2 Task 5) and the built maps (Phase 3) exist. Final storybook art and all media wait for that.
 
-**Phase 4 plan, 2026-10-19:** written (commit 1bcbcef, 27 tasks, being extended with a named-characters task). One item parked for Kort: where the camp guide blurb shows (neither spec places it). Rulings made by me on the plan's other 36 assumptions are in the plan.
+**Phase 4 plan, 2026-10-19:** written (commit 1bcbcef, 27 tasks), then extended with Task 19, the named cast (own faces and skins on the troop rigs; Pell on the camp librarian villager; the King's helm comes off to show Edric), 28 tasks. The camp guide blurb is Maud's one-time card (round nineteen), placed by the planner at the first return to camp after a campaign battle, since the copy fixes Maud's first line at the start of camp; controller accepted. Rulings made by me on the plan's other 36 assumptions are in the plan.
 
 **Kort, 2026-10-19, nineteenth round:** the in-game War Table home passes as the look the other pages copy. He asked why the Kingsfield Crossroads card had no painted map: only Rivergate's map was ever painted (the mock's), other maps showed point seals on bare vellum. Ruled into UI plan Task 7: painted map cards for all five maps, graded. Camp guide blurb: Maud says it, one short card at the war table on the first camp arrival, never again (Phase 4 plan).
 
