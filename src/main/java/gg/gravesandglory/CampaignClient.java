@@ -13,7 +13,11 @@ import java.nio.file.*;
 
 /** Portable local collection and a temporary, skippable camera introduction. */
 public final class CampaignClient {
-    static Campaign.Profile profile=new Campaign.Profile();
+    static Profile profile=new Profile();
+    /** The side row ids the two teams fly (from the snapshot "sides"): team 0 first. */
+    static String[] sides={"gold","violet"};
+    /** The banner this commander fields (snapshot "banner"): the battle banner while seated in a running battle, else the profile banner. */
+    static java.util.List<String> banner=RosterMath.starterBanner();
     static JsonArray players=new JsonArray();
     static JsonObject social=new JsonObject(),progression=new JsonObject();
     static JsonObject result=new JsonObject();static String shownResult="";
@@ -38,11 +42,13 @@ public final class CampaignClient {
     static ArmorStandEntity camera;static Perspective previous;static int cameraTicks;
     static Path collection(MinecraftClient c){return c.runDirectory.toPath().resolve((Diagnostics.active()?"gravesandglory/test-collections/":"gravesandglory/collections/")+c.getSession().getUuid()+".json");}
     static void sendProfile(MinecraftClient c){
-        try{Path path=collection(c);String json=Files.exists(path)?Files.readString(path):Campaign.JSON.toJson(new Campaign.Profile());if(json.length()<16000&&ClientPlayNetworking.canSend(GravesAndGlory.PROFILE)){var packet=PacketByteBufs.create();packet.writeString(json);ClientPlayNetworking.send(GravesAndGlory.PROFILE,packet);}}catch(Exception ignored){}
+        try{Path path=collection(c);String json=Files.exists(path)?Files.readString(path):Campaign.JSON.toJson(new Profile());if(json.length()<16000&&ClientPlayNetworking.canSend(GravesAndGlory.PROFILE)){var packet=PacketByteBufs.create();packet.writeString(json);ClientPlayNetworking.send(GravesAndGlory.PROFILE,packet);}}catch(Exception ignored){}
 
     }
     static void accept(MinecraftClient c,String json,boolean running){
-        try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();if(!j.has("profile"))return; /* "{}": the server could not fit this snapshot; keep the last camp state */var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Campaign.Profile.class);if(received&&nextProfile.unlocked.size()>profile.unlocked.size()){for(var unit:Spec.TROOPS)if(nextProfile.unlocked.contains(unit.id())&&!profile.unlocked.contains(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}nextProfile.sanitize();profile=nextProfile;received=true;social=j.has("social")?j.getAsJsonObject("social"):new JsonObject();progression=j.has("progression")?j.getAsJsonObject("progression"):new JsonObject();if(j.has("progression"))profile.progression=Campaign.JSON.fromJson(progression,Progression.State.class);players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
+        try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();if(!j.has("profile"))return; /* "{}": the server could not fit this snapshot; keep the last camp state */var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Profile.class);if(received&&nextProfile.owned!=null&&nextProfile.owned.size()>profile.owned.size()){for(var unit:Spec.TROOPS)if(nextProfile.owned.containsKey(unit.id())&&!profile.owned.containsKey(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}nextProfile.sanitize();profile=nextProfile;received=true;
+            if(j.has("sides")){var s=j.getAsJsonArray("sides");if(s.size()==2)sides=new String[]{s.get(0).getAsString(),s.get(1).getAsString()};}
+            if(j.has("banner")){var list=new java.util.ArrayList<String>();for(var e:j.getAsJsonArray("banner"))list.add(e.getAsString());banner=list;}social=j.has("social")?j.getAsJsonObject("social"):new JsonObject();progression=j.has("progression")?j.getAsJsonObject("progression"):new JsonObject();if(j.has("progression"))profile.progression=Campaign.JSON.fromJson(progression,Progression.State.class);players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
             JsonObject keyed=new JsonObject();for(var entry:party.entrySet())if(!entry.getKey().equals("inviteSeconds"))keyed.add(entry.getKey(),entry.getValue());partyKey=keyed.toString();
             JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;battle=j.has("battle")?j.getAsJsonObject("battle"):new JsonObject();fill=j.get("fill").getAsBoolean();difficulty=j.has("difficulty")?j.get("difficulty").getAsString():"normal";mode=j.get("mode").getAsString();notice=j.get("notice").getAsString();headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
             int next=j.get("map").getAsInt();if(next!=map||Spec.FACTIONS[0].spawnX()!=-283){map=next;if(c.getServer()==null)CampaignMaps.select(map);GravesAndGloryClient.invalidateMap(c);}

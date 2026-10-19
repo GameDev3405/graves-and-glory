@@ -60,7 +60,7 @@ public final class Phase1Checks implements ClientModInitializer {
     }
 
     @Override public void onInitializeClient(){
-        String list=System.getProperty("gravesandglory.phase1Checks","");if(list.isBlank())return;
+        String list=System.getProperty("gravesandglory.phase1Checks","");if(list.isBlank()||!System.getProperty("gravesandglory.phase2Checks","").isEmpty())return;
         for(String name:list.split(","))if(!name.isBlank())queue.add(name.trim());
         ServerTickEvents.END_SERVER_TICK.register(s->{if(current instanceof ServerWatch w&&GravesAndGlory.battle!=null)try{w.serverTick(GravesAndGlory.battle);}catch(Exception e){report("p1-"+currentName+"-exception",false,e.toString());e.printStackTrace();}});
         ClientTickEvents.END_CLIENT_TICK.register(c->{
@@ -185,7 +185,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(duskShot==null){for(var s:b.shots)if(s.shooter()==chosen&&s.kind().equals("arrow")){duskShot=s;flashesBefore=BattleEffects.flashes;freeze(chosen);}
                         if(duskShot==null&&late(b,400)){duskWhy="the Dusk archer never fired";freeze(chosen);next(b,8);}break;}
                     if(b.time>=duskShot.lands()){
-                        duskOk=BattleEffects.flashes>flashesBefore&&BattleEffects.lastFlashColor==Spec.FACTIONS[1].color();
+                        duskOk=BattleEffects.flashes>flashesBefore&&BattleEffects.lastFlashColor==b.side(1).color();
                         duskWhy="Dusk arrow flashes +"+(BattleEffects.flashes-flashesBefore)+" colour "+Integer.toHexString(BattleEffects.lastFlashColor);next(b,8);
                     }
                 }
@@ -196,8 +196,8 @@ public final class Phase1Checks implements ClientModInitializer {
                     chosen.mob.refreshPositionAndAngles(foe.mob.getX()-1.5,foe.mob.getY(),foe.mob.getZ(),-90,0);chosen.nextAttack=0;flashesBefore=BattleEffects.flashes;next(b,9);
                 }
                 case 9->{
-                    if(BattleEffects.flashes>flashesBefore){freeze(chosen);boolean dawnOk=BattleEffects.lastFlashColor==Spec.FACTIONS[0].color();
-                        report("p1-impact-team-colour",duskOk&&dawnOk,duskWhy+"; Dawn melee colour "+Integer.toHexString(BattleEffects.lastFlashColor)+" (Dusk "+Integer.toHexString(Spec.FACTIONS[1].color())+", Dawn "+Integer.toHexString(Spec.FACTIONS[0].color())+")");next(b,10);}
+                    if(BattleEffects.flashes>flashesBefore){freeze(chosen);boolean dawnOk=BattleEffects.lastFlashColor==b.side(0).color();
+                        report("p1-impact-team-colour",duskOk&&dawnOk,duskWhy+"; Dawn melee colour "+Integer.toHexString(BattleEffects.lastFlashColor)+" (Dusk "+Integer.toHexString(b.side(1).color())+", Dawn "+Integer.toHexString(b.side(0).color())+")");next(b,10);}
                     else if(late(b,400)){freeze(chosen);report("p1-impact-team-colour",false,duskWhy+"; the Dawn soldier never struck");next(b,10);}
                 }
                 case 11->{ // a shot whose target vanishes, then a round that ends with a shot in the air
@@ -294,7 +294,9 @@ public final class Phase1Checks implements ClientModInitializer {
                     for(var u:b.units)if(u.squad==own&&!u.spec.group().equals("infantry")){Vec3d at=b.formation(u);place(b,u,at.x,at.z,-90);freeze(u);}
                     freshInfantry(b);
                     enemy=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(FX+6,65,FZ));enemy.order="hold";enemy.yaw=90;int slot=0;
-                    for(var spec:Spec.TROOPS)if(spec.faction().equals(Spec.FACTIONS[1].id()))for(int n=0;n<spec.count();n++,slot++)freeze(b.spawn(enemy,spec,slot,new Vec3d(FX+6,65,FZ)));
+                    // Phase 1's Dusk default line (12 Risen, 6 Bone Archers, 2 Gravecallers), spawned directly so the fixture stays the one Phase 1 measured.
+                    String[] duskLine={"revenant","bonebow","hexer"};int[] duskCounts={12,6,2};
+                    for(int k=0;k<duskLine.length;k++)for(int n=0;n<duskCounts[k];n++,slot++)freeze(b.spawn(enemy,troop(duskLine[k]),slot,new Vec3d(FX+6,65,FZ)));
                     enemyFront(b);
                     camera(b,FX-20,FZ+9,5,-105,18);
                     System.out.println("[p1] morale fixture at "+(int)FX+", "+(int)FZ+": "+knights(b).size()+" knights, fullHealth="+own.fullHealth+", "+b.units.stream().filter(u->u.squad==enemy).count()+" Dusk troops, map "+b.campaign.map);
@@ -528,8 +530,9 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 82->{
                     // the Task 2 review fix: a group made only of trained troops still gets a health ceiling
-                    support=Arrays.stream(Spec.TROOPS).filter(t->t.faction().equals(Spec.FACTIONS[0].id())&&t.group().equals("support")).findFirst().orElseThrow();
-                    for(var u:b.units)if(u.squad==own&&u.spec.group().equals("support"))u.mob.discard();b.units.removeIf(u->!u.mob.isAlive()||u.mob.isRemoved());
+                    support=troop("mage"); // the Gilded Order's support troop (Phase 2: troops belong to Houses, not sides)
+                    // Phase 1's Dawn line ended with two support troops in slots 18 and 19; the starter banner has none there, so those two slots are freed for the trained ones.
+                    for(var u:b.units)if(u.squad==own&&(u.spec.group().equals("support")||u.slot>=18))u.mob.discard();b.units.removeIf(u->!u.mob.isAlive()||u.mob.isRemoved());
                     own.fullHealth.remove("support");own.training.addLast(new GravesAndGlory.Training(support,b.time));next(b,9);
                 }
                 case 9->{if(supporters(b)==1){fullOne=fullHealth();own.training.addLast(new GravesAndGlory.Training(support,b.time));next(b,10);}else if(since(b)>100){fail(b,"p1-trained-fullhealth","the first support troop never appeared");}}
@@ -571,14 +574,15 @@ public final class Phase1Checks implements ClientModInitializer {
             for(var memory:b.sightings.values())memory.clear();
             for(var p:b.points){p.owner=-1;p.contested=false;p.progress=0;p.challenger=-1;}
         }
-        /** A synthetic bot army (not in b.squads, so only the fixture decides for it): the lineup of the team's starting troops, frozen, in rows behind (cx,cz). */
+        /** A synthetic bot army (not in b.squads, so only the fixture decides for it): the team's Normal bot banner (Phase 2: gilded_normal for team 0, graveborn_normal for team 1), frozen, each unit at its banner position, in rows behind (cx,cz). */
         GravesAndGlory.Squad army(GravesAndGlory.Battle b,int team,String tier,double cx,double cz){
             var s=new GravesAndGlory.Squad(UUID.randomUUID(),team,new Vec3d(cx,top(b,cx,cz),cz));
-            s.bot=true;s.tier=tier;s.lane=1;s.order="hold";s.yaw=team==0?-90:90;int slot=0;
-            for(var spec:Spec.TROOPS)if(spec.faction().equals(Spec.FACTIONS[team].id())&&spec.count()>0)
-                for(int n=0;n<spec.count();n++,slot++)freeze(b.spawn(s,spec,slot,new Vec3d(cx,top(b,cx,cz),cz)));
+            s.bot=true;s.tier=tier;s.lane=1;s.order="hold";s.yaw=team==0?-90:90;s.banner=Campaign.bannerRow(team==0?"gilded_normal":"graveborn_normal");
+            for(int slot=0;slot<s.banner.size();slot++){var spec=Campaign.troop(s.banner.get(slot));if(spec!=null)freeze(b.spawn(s,spec,slot,new Vec3d(cx,top(b,cx,cz),cz)));}
             place(b,s,cx,cz);return s;
         }
+        /** Shield troops (abilities mechanic shield: the Order Squire and the Templar of gilded_normal) of a squad, alive. */
+        static List<GravesAndGlory.Unit> shields(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return b.units.stream().filter(u->u.squad==s&&u.tags.contains("shield")&&u.mob.isAlive()).toList();}
         /** Stands the army's rows behind the front rank at (cx,cz), facing the enemy. */
         void place(GravesAndGlory.Battle b,GravesAndGlory.Squad s,double cx,double cz){
             int back=s.team==0?-1:1;
@@ -711,15 +715,15 @@ public final class Phase1Checks implements ClientModInitializer {
                 }}
                 case 12->{
                     if(since(b)>=40&&!shotAsked){shotAsked=true;
-                        long up=b.units.stream().filter(u->u.squad==hard&&u.spec.id().equals("knight")&&u.mob.isUsingItem()).count(),knights=b.units.stream().filter(u->u.squad==hard&&u.spec.id().equals("knight")&&u.mob.isAlive()).count();
+                        long up=shields(b,hard).stream().filter(u->u.mob.isUsingItem()).count(),knights=shields(b,hard).size();
                         Vec3d at=centre(b,hard);
-                        report("p1-bots-shieldwall",shieldFormation&&up>=6,"Hard infantry formation shieldwall (Normal left it alone)="+shieldFormation+"; "+up+" of "+knights+" knights using their shield "+since(b)+" ticks later; six Dusk archers "+String.format("%.0f",gap)+" blocks in front of the front rank when ordered ("+String.format("%.0f",Math.abs(foes.get(0).mob.getX()-at.x))+" from the army centre now), no Dusk melee");
+                        report("p1-bots-shieldwall",shieldFormation&&up>=6,"Hard infantry formation shieldwall (Normal left it alone)="+shieldFormation+"; "+up+" of "+knights+" shield troops using their shield "+since(b)+" ticks later; six Dusk archers "+String.format("%.0f",gap)+" blocks in front of the front rank when ordered ("+String.format("%.0f",Math.abs(foes.get(0).mob.getX()-at.x))+" from the army centre now), no Dusk melee");
                         wantShot="bots-shieldwall";
                     }
                     if(shotAsked&&wantShot==null)next(b,13); // the archers stay, so the wall keeps bracing for p1-bots-blight
                 }
                 case 13->{ // p1-bots-blight: a frontal blow on a knight braced in shieldwall is blocked; a Gravecaller burst on the same wall is not
-                    var knights=b.units.stream().filter(u->u.squad==hard&&u.spec.id().equals("knight")&&u.mob.isAlive()).toList();
+                    var knights=shields(b,hard);
                     if(hexer==null){
                         var braced=knights.stream().filter(u->u.mob.isBlocking()).toList();
                         if(braced.size()<2){report("p1-bots-blight",false,"only "+braced.size()+" knights braced");for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,14);return;}
@@ -751,9 +755,9 @@ public final class Phase1Checks implements ClientModInitializer {
                     b.campaign.botDecide(hard,b.campaign.tier(hard));int hornsNear=BattleEffects.horns.getOrDefault("charge",0);
                     report("p1-bots-charge-timing",farOrder.equals("attack")&&midOrder.equals("attack")&&seenMid==8&&hornsMid==hornsFar&&hard.order.equals("charge")&&seenNear==8&&hornsNear>hornsMid,"Hard army with eight Dusk revenants 60 blocks off ("+seenFar+" remembered): order "+farOrder+"; 28 blocks off ("+seenMid+" remembered, outside the 18-block gate): order "+midOrder+"; 15 blocks off ("+seenNear+" remembered): order "+hard.order+"; charge horns "+hornsFar+" -> "+hornsMid+" -> "+hornsNear);
                     for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();
-                    for(var u:b.units)if(u.squad==hard&&u.slot>=3)u.mob.discard(); // three left of twenty: the army retreats
-                    hard.yaw=0;b.campaign.botDecide(hard,b.campaign.tier(hard));
-                    report("p1-bots-retreat-facing",hard.order.equals("retreat")&&hard.yaw==-90,"Hard army cut down to three: order "+hard.order+", facing "+hard.yaw+" (Dawn faces -90 after every decision, retreat included)");
+                    for(var u:b.units)if(u.squad==hard&&u.slot>=3)u.mob.discard(); // its first three banner slots left (two troops of nineteen): the army retreats
+                    hard.yaw=0;b.campaign.botDecide(hard,b.campaign.tier(hard));long left=b.units.stream().filter(u->u.squad==hard&&u.mob.isAlive()).count();
+                    report("p1-bots-retreat-facing",hard.order.equals("retreat")&&hard.yaw==-90,"Hard army cut down to "+left+" of "+RosterMath.units(hard.banner,RosterMath.Catalog.fromSpec())+": order "+hard.order+", facing "+hard.yaw+" (Dawn faces -90 after every decision, retreat included)");
                     next(b,99);
                 }
                 default->{}
@@ -766,7 +770,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  on a replay; a victory marks the battle cleared and turns its primary camp button into a normal one; a pad match never teaches.
      *  Commands run on the server tick; the client records the lessons it shows, reads the camp buttons and takes the screenshots. */
     static final class TutorialChecks implements Suite,ServerWatch {
-        static final int ROLL=Spec.CAMPAIGN[0].rollCost(),START_TICKS=900;
+        static final int ROLL=Spec.RECRUITMENT[0].rollCost(),START_TICKS=900; // the barracks lesson pays one recruitment roll
         /** One run of the four lessons: the server lesson after each command and the profile gold around the barracks lesson (server thread), the lessons the client showed (client thread). */
         static final class Run {
             final List<Integer> steps=Collections.synchronizedList(new ArrayList<>());volatile int goldBefore=-1,goldAfter=-1;volatile String commands="";volatile boolean over;
@@ -785,7 +789,7 @@ public final class Phase1Checks implements ClientModInitializer {
         long since(GravesAndGlory.Battle b){return b.time-stageAt;}
         ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
         int gold(GravesAndGlory.Battle b){return b.campaign.profile(player).gold;}
-        void fresh(GravesAndGlory.Battle b){b.campaign.profiles.put(player,new Campaign.Profile());b.campaign.save(player);}
+        void fresh(GravesAndGlory.Battle b){b.campaign.profiles.put(player,new Profile());b.campaign.save(player);}
         /** The command of lesson n, as the keys send it: R then Move (a tactical move), B (a tactical formation), G (a tactical attack on open ground ahead), the barracks lectern. Dawn faces +x. */
         void lesson(GravesAndGlory.Battle b,Run r,int n){
             var p=sp(b);Vec3d at=p.getPos();
@@ -970,7 +974,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 while(st.matchGrants.size()<256)st.matchGrants.add(UUID.randomUUID().toString());
                 for(int i=0;i<3;i++)st.claims.add("daily:"+i);st.claims.add("weekly");for(int t=1;t<=Progression.TIERS;t++)st.claims.add(Progression.SEASON+":"+t);st.titles.addAll(Arrays.asList(Progression.TITLES));
                 var four=crowded(realReport);c.results.put(player,four);String worst=c.snapshot(p);
-                var saved=Campaign.JSON.fromJson(Campaign.JSON.toJson(c.profile(player)),Campaign.Profile.class).progression;var again=Progression.match(saved,st.matchGrants.iterator().next(),true,true);
+                var saved=Campaign.JSON.fromJson(Campaign.JSON.toJson(c.profile(player)),Profile.class).progression;var again=Progression.match(saved,st.matchGrants.iterator().next(),true,true);
                 String key=Progression.State.MATCH_GRANTS;boolean named=Campaign.JSON.toJsonTree(st).getAsJsonObject().has(key);
                 boolean pretty=worst.contains("\n"),ids=worst.contains(key)||st.matchGrants.stream().anyMatch(worst::contains),kept=parse(worst).getAsJsonObject("result").has("id");
                 report("p1-report-snapshot",worst.length()<=Campaign.SNAPSHOT_LIMIT&&pretty&&kept&&named&&!ids&&saved.matchGrants.size()==256&&again.xp()==0,

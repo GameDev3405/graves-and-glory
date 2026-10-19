@@ -19,6 +19,7 @@ allprojects {
    systemProperty 'gravesandglory.frontChecks', System.getenv('GRAVES_ROADMAP_FRONT_CHECKS') ?: 'false'
    systemProperty 'gravesandglory.frontHost', System.getenv('GRAVES_ROADMAP_FRONT_HOST') ?: 'false'
    systemProperty 'gravesandglory.phase1Checks', System.getenv('GRAVES_PHASE1_CHECKS') ?: ''
+   systemProperty 'gravesandglory.phase2Checks', System.getenv('GRAVES_PHASE2_CHECKS') ?: ''
   }
  }
 }

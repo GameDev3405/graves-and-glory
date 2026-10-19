@@ -1,0 +1,228 @@
+package gg.gravesandglory;
+
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.attribute.EntityAttributeModifier;
+import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.server.network.ServerPlayerEntity;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * The commander engine (spec section 5): six classes from the classes sheet, each with one active ability on the ability key and one
+ * passive. Every number comes from the class row. The code knows only the effect kinds, named by the sheet's passive column (champion,
+ * reaver, warden, marshal, warlock, quartermaster) and active column (stand_fast, bloodrush, mark_prey, rally_horn, grave_bloom,
+ * forward_supply); tools/preflight.py keeps both columns to those closed lists. What an active does is registered in ACTIVES by the
+ * House tasks. An active nobody registered refuses with NOT_READY and starts no cooldown.
+ */
+public final class Commander {
+    private Commander() {}
+
+    /**
+     * One active ability. start returns false to refuse (no target in reach, say) and then no cooldown starts. tick runs every server
+     * tick while the ability lasts (the row's durationTicks). end runs once when it stops: at expiry, at round start, in the lobby, and
+     * when its commander leaves or his seat changes hands. Per-use state lives in Squad.abilityData, which is cleared after end.
+     * Conventions the effects below read: Mark Prey keeps the marked entity (the LivingEntity or its UUID) in abilityData; Stand Fast's
+     * damage share is takenFactor's (its active adds the RoutGuard and Resistance I).
+     */
+    public interface Active {
+        boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, Spec.ClassesRow c);
+        void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.ClassesRow c);
+        void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s);
+    }
+
+    /** The active abilities this build carries, by the classes sheet's active id; the House tasks fill it at mod init. */
+    public static final Map<String, Active> ACTIVES = new ConcurrentHashMap<>();
+
+    /** The notice for an active this build has no behaviour for yet. */
+    public static final String NOT_READY = "This command is not ready in this build.";
+
+    /** Fixed ids of the two attribute modifiers applyPlayer manages, so a new one always replaces the old. */
+    static final UUID HEALTH = UUID.fromString("e01516bb-07f8-49b1-86c4-873d30106609"), ATTACK = UUID.fromString("8352fccf-a081-4a35-a122-2f5e5de6e1de");
+
+    /** The class row a squad fights under: its commander id, or the sheet's first class for an unknown id. */
+    public static Spec.ClassesRow row(GravesAndGlory.Squad s) { return row(s == null ? "" : s.commander); }
+
+    /** The class row by id, or the sheet's first class for an unknown id. */
+    public static Spec.ClassesRow row(String id) {
+        for (var c : Spec.CLASSES) if (c.id().equals(id)) return c;
+        return Spec.CLASSES[0];
+    }
+
+    /** The class whose active ability this is, or null (the state packet names the active, not the class). */
+    public static Spec.ClassesRow byActive(String active) {
+        for (var c : Spec.CLASSES) if (c.active().equals(active)) return c;
+        return null;
+    }
+
+    /** An active id as the HUD tile and the class cards name it: stand_fast reads Stand Fast, bloodrush Bloodrush. */
+    public static String activeName(String id) {
+        StringBuilder out = new StringBuilder();
+        for (String word : id.split("_")) {
+            if (word.isEmpty()) continue;
+            if (out.length() > 0) out.append(" ");
+            out.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return out.toString();
+    }
+
+    /** Whether the class's group covers this troop: its own group, or every troop for the group all. */
+    static boolean covers(Spec.ClassesRow c, Spec.TroopsRow t) { return c.group().equals("all") || c.group().equals(t.group()); }
+
+    /** The commander in the field for a squad: its seated human owner, online in the battle world, alive, not a spectator and not waiting to respawn. Null for a bot. */
+    public static ServerPlayerEntity player(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
+        if (s == null || s.bot || !s.seated || b.respawns.containsKey(s.owner)) return null;
+        var p = b.server.getPlayerManager().getPlayer(s.owner);
+        return p == null || !p.isAlive() || p.isSpectator() || p.getWorld() != b.world ? null : p;
+    }
+
+    /** Whether the squad's active ability runs now. */
+    public static boolean running(GravesAndGlory.Battle b, GravesAndGlory.Squad s) { return s != null && b.time < s.abilityUntil; }
+
+    /** Whether the squad's active ability is this one and runs now. */
+    static boolean running(GravesAndGlory.Battle b, GravesAndGlory.Squad s, String active) { return running(b, s) && row(s).active().equals(active); }
+
+    /**
+     * The ability key (the "ability" command). Refused without a word while the commander is unseated, a bot, dead or waiting to
+     * respawn, or the round is not running (its entrance included). An active this build has no behaviour for gives NOT_READY; one on
+     * cooldown says when it is ready. Otherwise its start runs and, if it accepts, the cooldown and the duration begin now.
+     */
+    public static void activate(GravesAndGlory.Battle b, ServerPlayerEntity p) {
+        var s = b.squads.get(p.getUuid());
+        if (s == null || !b.running || b.time < b.campaign.introUntil || player(b, s) != p) return;
+        var c = row(s);
+        Active active = ACTIVES.get(c.active());
+        if (active == null) { b.campaign.notice(p.getUuid(), NOT_READY); return; }
+        if (b.time < s.abilityReadyAt) { b.campaign.notice(p.getUuid(), activeName(c.active()) + " is ready in " + (s.abilityReadyAt - b.time + 19) / 20 + " s."); return; }
+        if (running(b, s) || !active.start(b, p, s, c)) return;
+        s.abilityReadyAt = b.time + c.cooldownTicks();
+        s.abilityUntil = b.time + c.durationTicks();
+    }
+
+    /** Runs each squad's active ability for its duration and stops it on time. Battle.tick calls it every tick of a running round after the entrance. */
+    public static void tick(GravesAndGlory.Battle b) {
+        for (var s : new ArrayList<>(b.squads.values())) {
+            if (s.abilityUntil <= 0) continue;
+            var c = row(s);
+            Active active = ACTIVES.get(c.active());
+            if (b.time >= s.abilityUntil || active == null) stop(b, s);
+            else active.tick(b, s, c);
+        }
+    }
+
+    /** Stops a squad's running active now (its end runs once) and clears abilityData. The cooldown stands. */
+    public static void stop(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
+        if (s == null) return;
+        boolean was = s.abilityUntil > 0;
+        s.abilityUntil = 0;
+        Active active = ACTIVES.get(row(s).active());
+        try { if (was && active != null) active.end(b, s); }
+        finally { s.abilityData = null; }
+    }
+
+    /** A fresh round or the lobby: the active stops and the cooldown is clear. */
+    public static void reset(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
+        stop(b, s);
+        if (s != null) s.abilityReadyAt = 0;
+    }
+
+    /** Ticks until the squad's active may start again: 0 when ready, -1 when this build has no behaviour for its class active. The state packet sends it. */
+    public static int readyIn(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
+        if (s == null) return 0;
+        if (!ACTIVES.containsKey(row(s).active())) return -1;
+        return (int) Math.max(0, s.abilityReadyAt - b.time);
+    }
+
+    /** Ticks the squad's active still runs; 0 when it is not running. */
+    public static int activeFor(GravesAndGlory.Battle b, GravesAndGlory.Squad s) { return s == null ? 0 : (int) Math.max(0, s.abilityUntil - b.time); }
+
+    /**
+     * The commander share of a troop's blow, on the attacker's side (Combat.resolve): the Champion's infantry within passiveRadius of
+     * him x(1 + passiveValue2), the Warden's ranged troops x(1 + passiveValue), and x(1 + value1) on the entity his running Mark Prey marked.
+     */
+    public static double factor(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target) {
+        var s = attacker.squad;
+        var c = row(s);
+        double f = 1;
+        if (c.passive().equals("champion") && covers(c, attacker.spec)) {
+            var p = player(b, s);
+            if (p != null && GravesAndGlory.Battle.horizontalDistance(p.getPos(), attacker.mob.getPos()) <= c.passiveRadius() * c.passiveRadius()) f *= 1 + c.passiveValue2();
+        }
+        if (c.passive().equals("warden") && covers(c, attacker.spec)) f *= 1 + c.passiveValue();
+        return f * marked(b, s, target);
+    }
+
+    /** Mark Prey's share: x(1 + value1) when the squad's running mark_prey marked this entity (abilityData holds it or its UUID), else 1. */
+    static double marked(GravesAndGlory.Battle b, GravesAndGlory.Squad s, LivingEntity target) {
+        if (target == null || !running(b, s, "mark_prey")) return 1;
+        Object mark = s.abilityData;
+        return mark == target || target.getUuid().equals(mark) ? 1 + row(s).value1() : 1;
+    }
+
+    /** The commander share on the receiving side: x(1 - value1) for a troop whose squad's Stand Fast runs while it stands within radius of its commander, else 1. */
+    public static double takenFactor(GravesAndGlory.Battle b, LivingEntity target) {
+        var u = Combat.unitOf(b, target);
+        if (u == null || !running(b, u.squad, "stand_fast")) return 1;
+        var c = row(u.squad);
+        var p = player(b, u.squad);
+        return p != null && GravesAndGlory.Battle.horizontalDistance(p.getPos(), u.mob.getPos()) <= c.radius() * c.radius() ? 1 - c.value1() : 1;
+    }
+
+    /** The commander share of a blow a commander strikes himself (Battle.allowDamage): his own Mark Prey on its mark, and the target side's Stand Fast. */
+    public static double playerFactor(GravesAndGlory.Battle b, GravesAndGlory.Squad attacker, LivingEntity target) { return marked(b, attacker, target) * takenFactor(b, target); }
+
+    /** The Warden's extra reach for a troop of his group (passiveValue2 blocks); 0 otherwise. Abilities.range adds it. */
+    public static double rangeBonus(GravesAndGlory.Squad s, GravesAndGlory.Unit u) {
+        var c = row(s);
+        return c.passive().equals("warden") && covers(c, u.spec) ? c.passiveValue2() : 0;
+    }
+
+    /** The share of the sheet training time a troop takes: the Marshal's 1 - passiveValue, else 1. */
+    public static double trainingFactor(GravesAndGlory.Squad s) { return trainingFactor(row(s)); }
+    static double trainingFactor(Spec.ClassesRow c) { return c.passive().equals("marshal") ? 1 - c.passiveValue() : 1; }
+
+    /** The share of the sheet cost a troop costs in battle: the Warlock's 1 - passiveValue on magic troops, else 1. */
+    public static double costFactor(GravesAndGlory.Squad s, Spec.TroopsRow t) { return costFactor(row(s), t); }
+    static double costFactor(Spec.ClassesRow c, Spec.TroopsRow t) { return c.passive().equals("warlock") && t.magic() ? 1 - c.passiveValue() : 1; }
+
+    /** The round gold a troop costs this squad: the sheet cost times costFactor, rounded. */
+    public static int cost(GravesAndGlory.Squad s, Spec.TroopsRow t) { return cost(row(s), t); }
+    /** The same for a class row (the barracks screen, from the class the state packet names). */
+    public static int cost(Spec.ClassesRow c, Spec.TroopsRow t) { return BattleMath.classCost(t.cost(), costFactor(c, t)); }
+
+    /** Ticks a troop trains for this squad: the sheet seconds times 20 times trainingFactor, rounded. */
+    public static long trainingTicks(GravesAndGlory.Squad s, Spec.TroopsRow t) { return trainingTicks(row(s), t); }
+    /** The same for a class row. */
+    public static long trainingTicks(Spec.ClassesRow c, Spec.TroopsRow t) { return BattleMath.trainingTicks(t.trainingSeconds(), trainingFactor(c)); }
+
+    /** The Quartermaster's extra round gold per held point per income tick (passiveValue, rounded); 0 otherwise. */
+    public static int pointGoldBonus(GravesAndGlory.Squad s) {
+        var c = row(s);
+        return c.passive().equals("quartermaster") ? (int) Math.round(c.passiveValue()) : 0;
+    }
+
+    /** Seconds a fallen commander waits to return: the Reaver's passiveValue2, else rules.respawnSeconds. */
+    public static int respawnSeconds(GravesAndGlory.Squad s) {
+        var c = row(s);
+        return c.passive().equals("reaver") ? (int) Math.round(c.passiveValue2()) : GravesAndGlory.R.respawnSeconds();
+    }
+
+    /**
+     * The Champion's extra health and the Reaver's extra attack on the commander himself, as temporary attribute modifiers (never
+     * saved with the player). The old ones always go first; then a seated human squad's class adds its own. A null or unseated squad
+     * (the lobby, a class change in camp) leaves none. Health above the new maximum is cut back to it.
+     */
+    public static void applyPlayer(ServerPlayerEntity p, GravesAndGlory.Squad s) {
+        var health = p.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH);
+        var attack = p.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE);
+        if (health != null) health.removeModifier(HEALTH);
+        if (attack != null) attack.removeModifier(ATTACK);
+        if (s != null && s.seated && !s.bot) {
+            var c = row(s);
+            if (health != null && c.passive().equals("champion") && c.passiveValue() != 0)
+                health.addTemporaryModifier(new EntityAttributeModifier(HEALTH, "Graves and Glory commander health", c.passiveValue(), EntityAttributeModifier.Operation.ADDITION));
+            if (attack != null && c.passive().equals("reaver") && c.passiveValue() != 0)
+                attack.addTemporaryModifier(new EntityAttributeModifier(ATTACK, "Graves and Glory commander attack", c.passiveValue(), EntityAttributeModifier.Operation.ADDITION));
+        }
+        if (p.getHealth() > p.getMaxHealth()) p.setHealth(p.getMaxHealth());
+    }
+}

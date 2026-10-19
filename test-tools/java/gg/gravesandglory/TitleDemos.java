@@ -272,9 +272,10 @@ public final class TitleDemos implements Phase1Checks.Suite,Phase1Checks.ServerW
             for(int k=0;k<armies.size();k++){var s=armies.get(k);double off=(k-(armies.size()-1)/2.0)*8.5;int slot=0;
                 s.bot=false;s.assignments.clear();s.order="attack";s.formation="block";s.target=new Vec3d(bx,by,bz);
                 s.yaw=(float)Math.toDegrees(Math.atan2(side*ax,-side*az));s.routedAt.clear();s.steadyUntil.clear();
-                for(var spec:Spec.TROOPS)if(spec.faction().equals(Spec.FACTIONS[t].id())&&spec.count()>0)for(int n=0;n<spec.count();n++,slot++){
+                // Phase 2: each side musters the easy bot banner of its default House (Gilded for team 0, Graveborn for team 1), twenty units.
+                for(String id:Campaign.bannerRow(t==0?"gilded_easy":"graveborn_easy")){var spec=Campaign.troop(id);if(spec==null)continue;
                     double depth=STAGE_DISTANCE+(slot/5)*1.8,across=off+(slot%5-2)*1.7,x=bx+side*ax*depth+qx*across,z=bz+side*az*depth+qz*across;
-                    b.spawn(s,spec,slot,new Vec3d(x,Arena.ground((int)Math.floor(x),(int)Math.floor(z))+1,z));
+                    b.spawn(s,spec,slot,new Vec3d(x,Arena.ground((int)Math.floor(x),(int)Math.floor(z))+1,z));slot++;
                 }
                 for(String group:Morale.GROUPS)Morale.fielded(b,s,group);
             }

@@ -1,6 +1,8 @@
 package gg.gravesandglory;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /** Pure match statistics shared by the server and the bot simulation. No Minecraft types, so the standalone check compiles it. */
 public final class MatchStats {
@@ -15,6 +17,8 @@ public final class MatchStats {
         public int lost;
         /** Seconds with a troop or the commander inside any objective's radius; one per second however many points. */
         public int objectiveSeconds;
+        /** Seconds each House's trait was at tier I or higher for this army this round, by House id (Houses.tick adds one a second). */
+        public final Map<String, Integer> traitSeconds = new LinkedHashMap<>();
     }
     /** Share of matches won, 0 when no match was played. */
     public static double winRate(int wins, int matches) {

@@ -39,6 +39,11 @@ public final class Campaign {
     /** The shortened forms each commander's camp snapshot has been sent in: each form is logged once, until he leaves. */
     final Map<UUID,Set<String>> snapshotForms=new HashMap<>();
     String headline="";
+    /** The draw behind a recruitment roll: the world's random by default; a harness swaps in a fixed one to land a roll on a chosen troop. */
+    java.util.random.RandomGenerator rollRng=new java.util.random.RandomGenerator(){
+        @Override public long nextLong(){return b.world.random.nextLong();}
+        @Override public int nextInt(int bound){return b.world.random.nextInt(bound);}
+    };
     /** Bot difficulty for the next round: the id of a Spec.BOTCOMMAND row (easy, normal, hard). There is one battle per server, so one setting covers it. */
     String difficulty="normal";
     /** The Long March battle being fought (a Spec.CAMPAIGNBATTLES row), or null in practice, pad matches and rooms. Cleared in returnLobby. */
@@ -52,33 +57,6 @@ public final class Campaign {
     int padCountdown=-1;boolean padMapRolled;
     /** Custom lobby: one at a time. Its leader sets mode, map and bot fill, and starts the match. Invites expire after 60 seconds. */
     UUID partyLeader;final LinkedHashSet<UUID> party=new LinkedHashSet<>();final Map<UUID,UUID> invites=new HashMap<>();final Map<UUID,Long> inviteUntil=new HashMap<>();
-    public static class Profile {
-        /** The JSON key of progression. Campaign.forClient finds the nested state by it to strip the match ids; a rename of the field that leaves this behind sends them again, which p1-report-snapshot catches. */
-        static final String PROGRESSION="progression";
-        Progression.State progression=new Progression.State();
-        int gold=0,matches=0,wins=0;String commander="vanguard";boolean tutorialDone;
-        /** The Long March: the highest campaignBattles order this commander has won (0 before battle 1). */
-        int campaignCleared;
-        Set<String> unlocked=new LinkedHashSet<>();Map<String,Integer> army=new LinkedHashMap<>();
-        Map<String,List<String>> deployment=new HashMap<>();
-        public Profile(){for(var t:Spec.TROOPS)if(t.count()>0){unlocked.add(t.id());army.put(t.id(),t.count());}}
-        int count(int team){return Arrays.stream(Spec.TROOPS).filter(t->t.faction().equals(Spec.FACTIONS[team].id())).mapToInt(t->army.getOrDefault(t.id(),0)).sum();}
-        List<String> lineup(int team){
-            if(deployment==null)deployment=new HashMap<>();String faction=Spec.FACTIONS[team].id();List<String> line=deployment.get(faction);Map<String,Integer> actual=new HashMap<>();
-            if(line!=null)for(String id:line)if(!id.equals("empty"))actual.merge(id,1,Integer::sum);
-            boolean valid=line!=null&&line.size()==20;for(var t:Spec.TROOPS)if(t.faction().equals(faction)&&actual.getOrDefault(t.id(),0)!=army.getOrDefault(t.id(),0))valid=false;
-            if(!valid){line=new ArrayList<>();for(var t:Spec.TROOPS)if(t.faction().equals(faction))for(int i=0;i<army.getOrDefault(t.id(),0)&&line.size()<20;i++)line.add(t.id());while(line.size()<20)line.add("empty");deployment.put(faction,line);}return line;
-        }
-        void sanitize(){
-            if(progression==null)progression=new Progression.State();progression.sanitize();
-            if(unlocked==null)unlocked=new LinkedHashSet<>();if(army==null)army=new LinkedHashMap<>();
-            unlocked.removeIf(id->Arrays.stream(Spec.TROOPS).noneMatch(t->t.id().equals(id)));
-            for(var t:Spec.TROOPS)if(t.count()>0)unlocked.add(t.id());
-            gold=Math.max(0,Math.min(1000000,gold));matches=Math.max(0,matches);wins=Math.max(0,Math.min(matches,wins));campaignCleared=Math.max(0,campaignCleared);
-            if(Arrays.stream(Spec.CLASSES).noneMatch(c->c.id().equals(commander)))commander="vanguard";
-            for(int team=0;team<2;team++){int total=0;for(var t:Spec.TROOPS)if(t.faction().equals(Spec.FACTIONS[team].id())){int n=unlocked.contains(t.id())?Math.max(0,Math.min(20,army.getOrDefault(t.id(),0))):0;n=Math.min(n,20-total);army.put(t.id(),n);total+=n;}}
-        }
-    }
     Path layoutFile(){return b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-layout.json");}
     Campaign(GravesAndGlory.Battle battle){
         b=battle;Path save=b.server.getSavePath(WorldSavePath.ROOT);
@@ -92,8 +70,10 @@ public final class Campaign {
         } catch(java.io.IOException migration) { throw new IllegalStateException("Could not upgrade legacy commander data; original files were kept",migration); }
         try{JsonObject marker=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();if(marker.get("layout").getAsString().equals("campaign-2"))map=marker.get("map").getAsInt();}catch(Exception ignored){}CampaignMaps.select(map);
     }
-    Profile profile(UUID id){return profiles.computeIfAbsent(id,key->{Path file=directory.resolve(key+".json");if(!Files.exists(file))return new Profile();
-        try{Profile p=JSON.fromJson(Files.readString(file),Profile.class);if(p==null)throw new IllegalStateException("Empty profile");p.sanitize();return p;}
+    /** A commander's collection, read once: a schema-1 file is upgraded in place first (spec 6.3; its original bytes stay as <uuid>.v1.json), then the profile is sanitized. A new commander owns the 10 Commons and flies the starter banner. */
+    Profile profile(UUID id){return profiles.computeIfAbsent(id,key->{Path file=directory.resolve(key+".json");if(!Files.exists(file)){Profile fresh=new Profile();fresh.sanitize();return fresh;}
+        try{Profile p=ProfileMigration.upgradeFile(file,text->JSON.fromJson(text,ProfileMigration.V1.class),JSON::toJson,RosterMath.Catalog.fromSpec());
+            if(p==null)p=JSON.fromJson(Files.readString(file),Profile.class);if(p==null)throw new IllegalStateException("Empty profile");p.sanitize();return p;}
         catch(Exception e){throw new IllegalStateException("Commander profile could not be read. Original and .bak preserved: "+key,e);}});}
     boolean cached(){try{JsonObject j=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();return j.get("layout").getAsString().equals("campaign-2")&&j.get("map").getAsInt()==map;}catch(Exception e){return false;}}
     void built(){try{Files.writeString(b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-layout.json"),"{\"layout\":\"campaign-2\",\"map\":"+map+"}");}catch(Exception e){System.err.println("[Graves and Glory] Map cache marker could not be saved.");}}
@@ -106,9 +86,10 @@ public final class Campaign {
         // It is imported once, on a first visit to a single-player or LAN world with no record yet, so
         // existing collections carry over; dedicated servers never accept one.
         UUID id=p.getUuid();boolean allowed=importAllowed.remove(id)&&!b.server.isDedicated();
-        try{Profile portable=JSON.fromJson(json,Profile.class);portable.sanitize();
+        try{var v1=JSON.fromJson(json,ProfileMigration.V1.class); // a portable copy from before Houses is upgraded the same way as a server file
+            Profile portable=v1!=null&&v1.schema<2?ProfileMigration.toV2(v1,RosterMath.Catalog.fromSpec()):JSON.fromJson(json,Profile.class);portable.sanitize();
             if(allowed){profiles.put(id,portable);save(id);}
-            else{Profile stored=profile(id);if(portable.gold>stored.gold||!stored.unlocked.containsAll(portable.unlocked))System.out.println("[Graves and Glory] Ignored the collection sent by "+p.getName().getString()+"; the server's saved collection is kept.");}
+            else{Profile stored=profile(id);if(portable.gold>stored.gold||!stored.owned.keySet().containsAll(portable.owned.keySet()))System.out.println("[Graves and Glory] Ignored the collection sent by "+p.getName().getString()+"; the server's saved collection is kept.");}
         }catch(Exception ignored){}
         collectionsReady.add(id);
     }
@@ -119,8 +100,9 @@ public final class Campaign {
         if(!(b.running&&participants.contains(p.getUuid())))joinedAt.put(p.getUuid(),b.time);var squad=b.squads.get(p.getUuid());
         if(b.running&&squad!=null&&squad.seated)b.toBase(p,squad.team);else toLobby(p);
         notice(p.getUuid(),b.running&&(squad==null||!squad.seated)?"Battle in progress. Wait in camp for the next round. R opens your war council.":"Welcome to Graves and Glory. R opens your war council.");}
-    void toLobby(ServerPlayerEntity p){b.relocate(p,0,66,CampaignMaps.LOBBY_Z+20,180,8);p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
+    void toLobby(ServerPlayerEntity p){b.relocate(p,0,66,CampaignMaps.LOBBY_Z+20,180,8);p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();Commander.applyPlayer(p,null);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
+        for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
         b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;Projectiles.clear(b);
         for(var u:b.units)u.mob.discard();b.units.clear();
         b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();
@@ -151,7 +133,7 @@ public final class Campaign {
         if(b.running){
             var current=b.squads.get(p.getUuid());
             boolean global=cmd.startsWith("map:")||cmd.startsWith("mode:")||cmd.equals("fill")||cmd.equals("start")||cmd.startsWith("difficulty:");
-            boolean personal=cmd.equals("roll")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("class:");
+            boolean personal=cmd.equals("roll")||cmd.startsWith("roll:")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("colour:")||cmd.startsWith("class:");
             if(global||personal&&current!=null&&current.seated){notice(p.getUuid(),"Active battle choices are locked until the match ends.");return true;}
         }
         if(cmd.startsWith("difficulty:")){
@@ -160,33 +142,24 @@ public final class Campaign {
             difficulty=id;notice(p.getUuid(),"Bots: "+id.substring(0,1).toUpperCase()+id.substring(1)+".");return true;
         }
         Profile pr=profile(p.getUuid());var squad=b.squads.get(p.getUuid());if(squad==null)return false;
-        if(cmd.equals("roll")){
-            var locked=Arrays.stream(Spec.TROOPS).filter(t->!pr.unlocked.contains(t.id())).toList();
-            if(locked.isEmpty()){notice(p.getUuid(),"Your collection is complete!");return true;}
-            if(pr.gold<Spec.CAMPAIGN[0].rollCost()){notice(p.getUuid(),"A unit roll costs 100 gold. Earn gold by completing battles.");return true;}
-            var reward=locked.get(b.world.random.nextInt(locked.size()));pr.gold-=Spec.CAMPAIGN[0].rollCost();pr.unlocked.add(reward.id());if(!save(p.getUuid())){pr.unlocked.remove(reward.id());pr.gold+=Spec.CAMPAIGN[0].rollCost();return true;}
-            notice(p.getUuid(),"Unlocked permanently: "+reward.name()+"!");p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","unit_reveal")),.7f,1f);return true;
-        }
-        if(cmd.startsWith("unlock:")){
-            var pick=Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(cmd.substring(7))).findFirst().orElse(null);
-            if(pick==null)return true;if(pr.unlocked.contains(pick.id())){notice(p.getUuid(),pick.name()+" is already in your collection.");return true;}
-            if(pr.gold<Spec.CAMPAIGN[0].rollCost()){notice(p.getUuid(),"Unlocking a troop costs "+Spec.CAMPAIGN[0].rollCost()+" gold. Earn gold by completing battles.");return true;}
-            pr.gold-=Spec.CAMPAIGN[0].rollCost();pr.unlocked.add(pick.id());if(!save(p.getUuid())){pr.unlocked.remove(pick.id());pr.gold+=Spec.CAMPAIGN[0].rollCost();return true;}
-            notice(p.getUuid(),"Unlocked permanently: "+pick.name()+"!");p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","unit_reveal")),.7f,1f);return true;
-        }
-        if(cmd.startsWith("class:")){String id=cmd.substring(6);if(Arrays.stream(Spec.CLASSES).anyMatch(c->c.id().equals(id))){pr.commander=id;squad.commander=id;save(p.getUuid());}return true;}
-        if(cmd.startsWith("slot:")){
+        if(cmd.equals("roll")||cmd.startsWith("roll:")){roll(p,pr,cmd.equals("roll")?RosterMath.rollHouse(pr.banner):cmd.substring(5));return true;}
+        if(cmd.startsWith("unlock:")||cmd.startsWith("army:")){notice(p.getUuid(),"Troops now join by recruitment rolls at the camp shrine.");return true;}
+        if(cmd.startsWith("class:")){String id=cmd.substring(6);if(Arrays.stream(Spec.CLASSES).anyMatch(c->c.id().equals(id))){pr.commander=id;squad.commander=id;Commander.applyPlayer(p,squad);save(p.getUuid());}return true;}
+        if(cmd.startsWith("slot:")){ // slot:<i>:<troop id or empty>: the banner is rebuilt with repack, so markers follow their Epic or Legendary
             String[] parts=cmd.split(":");if(parts.length!=3)return true;int slot;try{slot=Integer.parseInt(parts[1]);}catch(Exception e){return true;}
-            if(slot<0||slot>=20)return true;String id=parts[2];var type=Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(id)&&t.faction().equals(Spec.FACTIONS[squad.team].id())).findFirst().orElse(null);
-            if(!id.equals("empty")&&(type==null||!unlocked(squad,id)))return true;
-            var line=pr.lineup(squad.team);line.set(slot,id);for(var t:Spec.TROOPS)if(t.faction().equals(Spec.FACTIONS[squad.team].id()))pr.army.put(t.id(),(int)line.stream().filter(t.id()::equals).count());save(p.getUuid());return true;
+            var catalog=RosterMath.Catalog.fromSpec();String id=parts[2];var type=troop(id);
+            if(slot<0||slot>=pr.banner.size()||type==null&&!id.equals(RosterMath.EMPTY))return true;
+            if(type!=null&&!pr.owned.containsKey(id)){notice(p.getUuid(),type.name()+" is not in your collection. Recruit it first.");return true;}
+            if(type!=null&&!RosterMath.fieldableHouses().contains(type.house())){notice(p.getUuid(),type.name()+" cannot be fielded yet: "+RosterMath.houseName(type.house())+" has not joined the war.");return true;}
+            List<String> entries=new ArrayList<>(pr.banner);entries.set(slot,id);
+            List<String> before=pr.banner,next=RosterMath.fieldable(RosterMath.repack(entries,catalog,pr.owned.keySet()),catalog,RosterMath.fieldableHouses());
+            if(type!=null&&Collections.frequency(next,id)<Collections.frequency(entries,id))notice(p.getUuid(),"No room for "+type.name()+": a banner holds 2 Epics (2 slots each) and 1 Legendary (4).");
+            pr.banner=next;if(!save(p.getUuid()))pr.banner=before;return true;
         }
-        if(cmd.startsWith("army:")){
-            String[] parts=cmd.split(":");if(parts.length!=3)return true;
-            var spec=Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(parts[1])&&t.faction().equals(Spec.FACTIONS[squad.team].id())).findFirst().orElse(null);
-            if(spec==null||!pr.unlocked.contains(spec.id())&&!practice)return true;
-            int delta=parts[2].equals("add")?1:parts[2].equals("remove")?-1:0,n=pr.army.getOrDefault(spec.id(),0);
-            if(delta<0&&n>0||delta>0&&pr.count(squad.team)<20){var line=pr.lineup(squad.team);if(delta>0){int slot=line.indexOf("empty");if(slot>=0)line.set(slot,spec.id());}else{int slot=line.lastIndexOf(spec.id());if(slot>=0)line.set(slot,"empty");}pr.army.put(spec.id(),n+delta);save(p.getUuid());}return true;
+        if(cmd.startsWith("colour:")){ // the side row this commander asks to fly (spec 1.1); chooseSides settles it as the round is prepared
+            String side=cmd.substring(7);var row=Arrays.stream(Spec.FACTIONS).filter(f->f.id().equals(side)).findFirst().orElse(null);if(row==null)return true;
+            String before=pr.bannerColour;pr.bannerColour=side;if(!save(p.getUuid())){pr.bannerColour=before;return true;}
+            notice(p.getUuid(),"You fly the "+row.name()+", unless the other team flies it first.");return true;
         }
         if(cmd.startsWith("mode:")){
             if(!leader(p))return true;
@@ -205,7 +178,7 @@ public final class Campaign {
             if(!leader(p)){notice(p.getUuid(),"Only the custom lobby leader starts the match.");return true;}
             if(!fill&&!practice&&party.size()!=size*2){notice(p.getUuid(),"Waiting for commanders. Enable bot fill to play now.");return true;}
             if(practice&&party.size()>1){notice(p.getUuid(),"Practice is for one commander.");return true;}
-            for(UUID id:party){var s=b.squads.get(id);if(s!=null&&profile(id).count(s.team)==0){notice(p.getUuid(),"Every commander needs at least one troop selected.");return true;}}
+            for(UUID id:party){var s=b.squads.get(id);if(s!=null&&bannerUnits(id)==0){notice(p.getUuid(),"Every commander needs at least one troop in their banner.");return true;}}
             for(UUID id:party){var s=b.squads.get(id);if(s!=null)s.seated=true;}
             activeBattle=null;b.startRound();return true;
         }
@@ -225,22 +198,104 @@ public final class Campaign {
         for(var squad:b.squads.values())if(!squad.bot){squad.seated=squad.owner.equals(p.getUuid());if(squad.seated)squad.team=0;}
         activeBattle=row;b.startRound();
     }
-    void balance(){int[] n={0,0};for(var s:b.squads.values())if(!s.bot&&s.seated){if(!practice&&n[s.team]>=size)s.team=1-s.team;n[s.team]++;}}
+    void balance(){for(var seat:balanced(seats(s->s.seated),practice,size))b.squads.get(seat.owner()).team=seat.team();}
+    /** A commander's seat as balance and the side pick read it: who, on which team. */
+    record Seat(UUID owner,int team){}
+    /** The commanders (bots left out) whose squads pass the filter, in b.squads order, the order balance and the side pick read, each on his squad's team. */
+    List<Seat> seats(java.util.function.Predicate<GravesAndGlory.Squad> in){List<Seat> out=new ArrayList<>();for(var s:b.squads.values())if(!s.bot&&in.test(s))out.add(new Seat(s.owner,s.team));return out;}
+    /** balance's rule: in order, outside practice, a commander whose team already holds size commanders goes to the other team. */
+    static List<Seat> balanced(List<Seat> seats,boolean practice,int size){
+        int[] n={0,0};List<Seat> out=new ArrayList<>();
+        for(var s:seats){int team=s.team();if(!practice&&n[team]>=size)team=1-team;n[team]++;out.add(new Seat(s.owner(),team));}
+        return out;
+    }
     void prepareRound(){
         onPad.clear();padCountdown=-1;padMapRolled=false;tutorial.clear();
         b.squads.values().removeIf(s->s.bot);balance();
         for(var u:b.units)u.mob.discard();b.units.clear();botRespawns.clear();botRetreating.clear();vacated.clear();
         for(int team=0;team<2;team++){final int t=team;int humans=(int)b.squads.values().stream().filter(s->s.team==t&&s.seated).count();
             int target=practice?(team==0?1:1):size;
-            if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,GravesAndGlory.Battle.base(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():difficulty;s.commander=Spec.CLASSES[i%3].id();s.lane=i%3;b.squads.put(id,s);}
+            if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,GravesAndGlory.Battle.base(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():difficulty;s.commander=Spec.CLASSES[i%Spec.CLASSES.length].id();s.lane=i%3;b.squads.put(id,s);}
         }
         participants.clear();for(var s:b.squads.values())if(!s.bot&&s.seated){participants.add(s.owner);results.remove(s.owner);joinedAt.put(s.owner,b.time);s.commander=profile(s.owner).commander;}
+        for(var s:b.squads.values())if(s.seated)s.banner=banner(s);
+        chooseSides();
         serial++;matchId=UUID.randomUUID().toString();introUntil=b.time+120;headline="";
     }
-    int amount(GravesAndGlory.Squad s,Spec.TroopsRow t){return s.bot?t.count():unlocked(s,t.id())?profile(s.owner).army.getOrDefault(t.id(),0):0;}
-    boolean unlocked(GravesAndGlory.Squad s,String id){return s.bot||practice||profile(s.owner).unlocked.contains(id);}
-    double damage(GravesAndGlory.Unit u){return switch(u.squad.commander){case "vanguard"->u.spec.group().equals("infantry")?1.10:1;case "marksman"->u.spec.group().equals("ranged")?1.15:1;case "arcanist"->u.spec.group().equals("support")?1.20:1;default->1;};}
-    double health(GravesAndGlory.Squad s,Spec.TroopsRow t){return s.commander.equals("vanguard")&&t.group().equals("infantry")||s.commander.equals("arcanist")&&t.group().equals("support")?1.2:1;}
+    /** A troop row by id, or null for empty, ^ or an unknown id. */
+    static Spec.TroopsRow troop(String id){for(var t:Spec.TROOPS)if(t.id().equals(id))return t;return null;}
+    /** A botBanners row as a banner list, or the starter banner when the sheet has no such row. */
+    static List<String> bannerRow(String id){for(var row:Spec.BOTBANNERS)if(row.id().equals(id))return new ArrayList<>(Arrays.asList(row.slots().split(",")));return RosterMath.starterBanner();}
+    /** The banner a squad fields this round: a bot's from botBanner, a commander's own banner with the units of Houses that cannot be fielded yet left empty. */
+    List<String> banner(GravesAndGlory.Squad s){
+        if(s.bot)return botBanner(s);
+        return RosterMath.fieldable(profile(s.owner).banner,RosterMath.Catalog.fromSpec(),RosterMath.fieldableHouses());
+    }
+    /** A bot's banner (the botBanners sheet, spec 6.1): of the botBanners rows for its tier whose troops all belong to fieldable Houses, the one at lane % rows; Normal rows for a tier with none, the starter banner if no row fits. */
+    List<String> botBanner(GravesAndGlory.Squad s){
+        var rows=fieldableBotBanners(s.tier);if(rows.isEmpty())rows=fieldableBotBanners("normal");
+        if(rows.isEmpty())return RosterMath.starterBanner();
+        return new ArrayList<>(Arrays.asList(rows.get(Math.floorMod(s.lane,rows.size())).slots().split(",")));
+    }
+    /** The botBanners rows of a tier, in sheet order, whose every troop belongs to a fieldable House (houses.fieldable). */
+    static List<Spec.BotBannersRow> fieldableBotBanners(String tier){
+        var catalog=RosterMath.Catalog.fromSpec();var fieldable=RosterMath.fieldableHouses();List<Spec.BotBannersRow> out=new ArrayList<>();
+        for(var row:Spec.BOTBANNERS)if(row.difficulty().equals(tier)&&Arrays.stream(row.slots().split(",")).allMatch(id->id.equals(RosterMath.MARKER)||id.equals(RosterMath.EMPTY)||fieldable.contains(catalog.houseOf(id))))out.add(row);
+        return out;
+    }
+    /** Units in the banner a commander would field now; 0 means he has no army to bring. */
+    int bannerUnits(UUID id){var catalog=RosterMath.Catalog.fromSpec();return RosterMath.units(RosterMath.fieldable(profile(id).banner,catalog,RosterMath.fieldableHouses()),catalog);}
+    /** The progression multiplier of a commander's owned troop (spec 4.4): its star bonus plus its evolution stage bonus, capped at 1 + recruitment.capPct. Bots, and troops the commander does not own, fight at 1. */
+    double progression(GravesAndGlory.Squad s,Spec.TroopsRow t,boolean health){
+        if(s.bot)return 1;var o=profile(s.owner).owned.get(t.id());if(o==null)return 1;
+        var rarity=RosterMath.rarityRow(t.rarity());double stage=0;
+        if(o.stage>=2)for(var e:Spec.EVOLUTIONS)if(e.troop().equals(t.evolveLine())&&e.stage()==o.stage)stage=health?e.healthPct():e.damagePct();
+        return RosterMath.progressionMultiplier(rarity==null?0:RosterMath.starPct(o.stars,rarity),stage,Spec.RECRUITMENT[0].capPct());
+    }
+    /** The evolution stage (1 to 3) a commander's owned troop fights at; 1 for a bot, for a troop he does not own and for one with no evolve line. */
+    int stage(GravesAndGlory.Squad s,Spec.TroopsRow t){
+        if(s.bot)return 1;var o=profile(s.owner).owned.get(t.id());return o==null?1:Math.max(1,Math.min(3,o.stage));
+    }
+    double damage(GravesAndGlory.Unit u){return progression(u.squad,u.spec,false);}
+    double health(GravesAndGlory.Squad s,Spec.TroopsRow t){return progression(s,t,true);}
+    /** Sets the side row each team flies this round (Battle.sides) from the seated commanders; see sidesFor. */
+    void chooseSides(){b.sides=sidesFor(seats(s->s.seated));}
+    /**
+     * The side rows two teams fly (spec 1.1): team 0 takes its first commander's bannerColour; team 1 its first commander's
+     * colour unless team 0 already flies it; a team still without a row (all bots, or the colour was taken) takes the first
+     * row, in sheet order, that the other team does not fly. Indexes into Spec.FACTIONS.
+     */
+    int[] sidesFor(List<Seat> seats){
+        int[] picked={-1,-1};
+        for(int team=0;team<2;team++)for(var s:seats)if(s.team()==team){int row=sideIndex(profile(s.owner()).bannerColour);if(row>=0&&(team==0||row!=picked[0]))picked[team]=row;break;}
+        for(int team=0;team<2;team++)if(picked[team]<0)for(int row=0;row<Spec.FACTIONS.length;row++)if(row!=picked[1-team]){picked[team]=row;break;}
+        return picked;
+    }
+    static int sideIndex(String id){for(int i=0;i<Spec.FACTIONS.length;i++)if(Spec.FACTIONS[i].id().equals(id))return i;return -1;}
+    /**
+     * One recruitment roll from a House's pool (spec 4.2) for recruitment.rollCost gold: its Commons, Rares and Epic at the
+     * rarities.rollWeight odds, the Epic forced at recruitment.epicPity. A new troop joins the collection; a duplicate counts
+     * toward its next star, and past the last star it is dismantled into that House's shards. A failed save undoes it all.
+     */
+    void roll(ServerPlayerEntity p,Profile pr,String house){
+        var row=Arrays.stream(Spec.HOUSES).filter(h->h.id().equals(house)).findFirst().orElse(null);if(row==null)return;
+        int cost=Spec.RECRUITMENT[0].rollCost();
+        if(pr.gold<cost){notice(p.getUuid(),"A recruitment roll costs "+cost+" gold. Earn gold by completing battles.");return;}
+        List<String> commons=new ArrayList<>(),rares=new ArrayList<>();String epic=null;
+        for(var t:Spec.TROOPS)if(t.house().equals(house)){if(t.rarity().equals("common"))commons.add(t.id());else if(t.rarity().equals("rare"))rares.add(t.id());else if(t.rarity().equals("epic"))epic=t.id();}
+        var common=RosterMath.rarityRow("common");var rare=RosterMath.rarityRow("rare");var epicRow=RosterMath.rarityRow("epic");
+        if(commons.isEmpty()||rares.isEmpty()||epic==null||common==null||rare==null||epicRow==null)return;
+        String before=JSON.toJson(pr);
+        var drawn=RosterMath.roll(commons,rares,epic,common.rollWeight(),rare.rollWeight(),epicRow.rollWeight(),pr.pity.getOrDefault(house,0),Spec.RECRUITMENT[0].epicPity(),rollRng);
+        pr.gold-=cost;pr.pity.put(house,drawn.pityAfter());
+        var t=troop(drawn.troop());var owned=pr.owned.get(t.id());String result;
+        if(owned==null){pr.owned.put(t.id(),new Profile.Owned());result="Joined your collection: "+t.name()+"!";}
+        else{int stars=owned.stars,shards=RosterMath.addCopy(owned,RosterMath.rarityRow(t.rarity()));
+            if(shards>0){pr.shards.merge(house,shards,Integer::sum);result=t.name()+" is at full stars: +"+shards+" "+row.name()+" shards.";}
+            else result=owned.stars>stars?t.name()+" rises to star "+owned.stars+"!":"Another "+t.name()+": copy "+owned.copies+" toward the next star.";}
+        if(!save(p.getUuid())){profiles.put(p.getUuid(),JSON.fromJson(before,Profile.class));return;}
+        notice(p.getUuid(),result);p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","unit_reveal")),.7f,1f);
+    }
     void finish(int winner){
         if(!b.running)return;
         lastWinner=winner;
@@ -251,7 +306,7 @@ public final class Campaign {
             boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());results.put(id,report);
             if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}notice(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":""));
         }
-        b.message=(winner<0?"Draw":Spec.FACTIONS[winner].name()+" wins")+"! Back to the war council.";headline=b.message;
+        b.message=(winner<0?"Draw":b.side(winner).name()+" wins")+"! Back to the war council.";headline=b.message;
         for(var p:b.server.getPlayerManager().getPlayerList())if(participants.contains(p.getUuid()))p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","victory")),.8f,1);
         returnLobby();
     }
@@ -295,9 +350,13 @@ public final class Campaign {
             if(economy){
                 long living=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).count();
                 if(living==0){long until=botRespawns.computeIfAbsent(s.owner,k->b.time+240);if(b.time<until)continue;}else botRespawns.remove(s.owner);
-                for(var type:Spec.TROOPS)if(type.faction().equals(Spec.FACTIONS[s.team].id())&&type.count()>0){
+                // Buy toward the banner: each troop up to its count there, while fielded and queued slot weights fit rules.squadSize.
+                Map<String,Integer> wanted=new LinkedHashMap<>();for(String id:s.banner)if(troop(id)!=null)wanted.merge(id,1,Integer::sum);
+                int weight=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).mapToInt(u->u.spec.slotWeight()).sum()+s.training.stream().mapToInt(q->q.spec().slotWeight()).sum();
+                for(var want:wanted.entrySet()){var type=troop(want.getKey());
                     long have=b.units.stream().filter(u->u.squad==s&&u.spec==type&&u.mob.isAlive()).count()+s.training.stream().filter(q->q.spec()==type).count();
-                    while(have<type.count()&&s.gold>=type.cost()&&living+s.training.size()<20){s.gold-=type.cost();long previous=s.training.isEmpty()?b.time:s.training.getLast().finished();s.training.addLast(new GravesAndGlory.Training(type,Math.max(b.time,previous)+type.trainingSeconds()*20L));have++;}
+                    int price=Commander.cost(s,type); // the bot's class price (a Warlock's magic troops cost less)
+                    while(have<want.getValue()&&s.gold>=price&&weight+type.slotWeight()<=GravesAndGlory.R.squadSize()){s.gold-=price;long previous=s.training.isEmpty()?b.time:s.training.getLast().finished();s.training.addLast(new GravesAndGlory.Training(type,Math.max(b.time,previous)+Commander.trainingTicks(s,type),price));weight+=type.slotWeight();have++;}
                 }
             }
             if(decide)botDecide(s,tier);
@@ -323,7 +382,7 @@ public final class Campaign {
         Map<UUID,GravesAndGlory.Unit> foes=new HashMap<>();for(var u:b.units)if(u.squad.team!=s.team&&u.mob.isAlive())foes.put(u.mob.getUuid(),u);
         Map<UUID,GravesAndGlory.Battle.Sight> seen=new HashMap<>();for(var entry:b.sightings.getOrDefault(s.team,Map.of()).entrySet())if(foes.containsKey(entry.getKey()))seen.put(entry.getKey(),entry.getValue());
         int count=b.points.size();GravesAndGlory.Capture choice;
-        int full=Arrays.stream(Spec.TROOPS).filter(t->t.faction().equals(Spec.FACTIONS[s.team].id())).mapToInt(Spec.TroopsRow::count).sum();
+        int full=RosterMath.units(s.banner,RosterMath.Catalog.fromSpec()); // the units its banner lists, an Epic or a Legendary once
         if(living<=full*tier.retreatShare())botRetreating.add(s.owner);
         else if(living>=full*tier.rallyShare())botRetreating.remove(s.owner);
         int hold=tier.flankLeastDefended()?garrisonPoint(s,center,tier):-1;
@@ -357,7 +416,7 @@ public final class Campaign {
         s.yaw=s.team==0?-90:90;
         if(!retreating&&tier.shieldwallVsArchers()){
             // Brace the shield troops when remembered archers are in range and nothing has closed to melee. Only troops with a shield can brace.
-            boolean shields=mine.stream().anyMatch(u->u.spec.group().equals("infantry")&&u.spec.ability().equals("shield"));
+            boolean shields=mine.stream().anyMatch(u->u.spec.group().equals("infantry")&&u.tags.contains("shield"));
             int ranged=0,melee=0;
             for(var entry:seen.entrySet()){var enemy=foes.get(entry.getKey());
                 double d=Math.hypot(entry.getValue().x()-center.x,entry.getValue().z()-center.z);
@@ -392,13 +451,13 @@ public final class Campaign {
         if(!b.running||activeBattle==null||!activeBattle.lessons()||!participants.contains(id))return -1;
         int step=tutorial.getOrDefault(id,0);return step>3?-1:step;
     }
-    /** Advances the lesson when the commander does what it asks. The last one pays for the first troop unlock, once per commander (tutorialDone). */
+    /** Advances the lesson when the commander does what it asks. The last one pays for a first recruitment roll, once per commander (tutorialDone). */
     void tutorialDid(ServerPlayerEntity p,int step){
         UUID id=p.getUuid();if(tutorialStep(id)!=step)return;
         tutorial.put(id,step+1);if(step<3)return;
         Profile pr=profile(id);if(pr.tutorialDone){notice(id,"Training complete. The reward is paid once.");return;}
-        pr.tutorialDone=true;pr.gold+=Spec.CAMPAIGN[0].rollCost();save(id);
-        notice(id,"Training complete: +"+Spec.CAMPAIGN[0].rollCost()+" gold, enough to unlock a troop of your choice after the battle.");
+        pr.tutorialDone=true;pr.gold+=Spec.RECRUITMENT[0].rollCost();save(id);
+        notice(id,"Training complete: +"+Spec.RECRUITMENT[0].rollCost()+" gold, enough for one recruitment roll after the battle.");
     }
     /** Quick-match size from who is ready: half the commanders rounded up, at least the larger side, 2v2 to 4v4. A lone commander gets 3v3. */
     int padSize(){
@@ -416,7 +475,7 @@ public final class Campaign {
             UUID id=entry.getKey();if(!seen.add(id))continue;Set<UUID> group=social.group(id);seen.addAll(group);int team=entry.getValue();
             if(group.stream().anyMatch(m->!Objects.equals(standing.get(m),team))){notice(id,"Bring your whole party onto the same pad, or use a private room.");continue;}
             if(count[team]+group.size()>4){notice(id,"Your whole party will not fit on this side.");continue;}
-            if(group.stream().anyMatch(m->profile(m).count(team)==0)){notice(id,"Every party member needs a troop selected for this faction.");continue;}
+            if(group.stream().anyMatch(m->bannerUnits(m)==0)){notice(id,"Every party member needs at least one troop in their banner.");continue;}
             for(UUID m:group){accepted.put(m,team);var squad=b.squads.get(m);if(squad!=null)squad.team=team;}count[team]+=group.size();
         }
         boolean changed=!onPad.equals(accepted);onPad.clear();onPad.putAll(accepted);mapVotes.keySet().retainAll(onPad.keySet());
@@ -487,8 +546,29 @@ public final class Campaign {
         partyJson.addProperty("inviteSeconds",until==null?0:(int)Math.max(0,(until-b.time+19)/20));partyJson.addProperty("inviter",inviter==null?"":name(inviter));
         JsonArray online=new JsonArray();if(partyLeader!=null)for(var other:b.server.getPlayerManager().getPlayerList())if(!party.contains(other.getUuid())&&b.squads.containsKey(other.getUuid()))online.add(other.getGameProfile().getName());
         partyJson.add("online",online);j.add("party",partyJson);j.add("result",results.getOrDefault(p.getUuid(),new JsonObject()));
-        JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",s.team);row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));return fitted(j,p.getUuid());
+        // In the lobby a row carries the team the viewer's next round gives that commander (nextSeats), or -1 when he would not enter with the viewer, so the list's marks read like the side preview; in battle, the squad's team.
+        Map<UUID,Integer> nextTeams=new HashMap<>();if(!b.running)for(var seat:nextSeats(p.getUuid()))nextTeams.put(seat.owner(),seat.team());
+        JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",b.running?s.team:nextTeams.getOrDefault(s.owner,-1));row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("sides",sidesJson(p.getUuid()));j.add("banner",bannerJson(p.getUuid()));j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));return fitted(j,p.getUuid());
     }
+    /**
+     * The seats the viewer's next round would have, for the lobby's side preview. While a start is under way they are the seated
+     * commanders, exactly what chooseSides reads. Between rounds nobody is seated, so they are the commanders the viewer's start
+     * would seat, balanced as prepareRound balances them: his pad group on its pads, his room on its teams, his custom lobby on
+     * their teams, or he alone on team 0, as a solo battle seats him. A commander in the lobby who will not enter with him does
+     * not set his preview.
+     */
+    List<Seat> nextSeats(UUID viewer){
+        var seated=seats(s->s.seated);if(!seated.isEmpty())return seated;
+        if(onPad.containsKey(viewer))return balanced(seats(s->onPad.containsKey(s.owner)).stream().map(s->new Seat(s.owner(),onPad.get(s.owner()))).toList(),false,padSize());
+        var room=social.room(viewer);
+        if(room!=null)return balanced(seats(s->room.members.contains(s.owner)).stream().map(s->new Seat(s.owner(),room.teams.getOrDefault(s.owner(),s.team()))).toList(),false,room.size);
+        if(party.contains(viewer))return balanced(seats(s->party.contains(s.owner)),practice,size);
+        return List.of(new Seat(viewer,0));
+    }
+    /** The side ids the two teams fly, for the viewer's snapshot: this round's while a battle runs, else chooseSides' pick over the seats his next round would have (nextSeats). */
+    JsonArray sidesJson(UUID viewer){int[] rows=b.running?b.sides:sidesFor(nextSeats(viewer));JsonArray out=new JsonArray();for(int t=0;t<2;t++)out.add(Spec.FACTIONS[rows[t]].id());return out;}
+    /** The banner a commander fields: his battle banner while he is seated in a running battle, else his profile banner. */
+    JsonArray bannerJson(UUID id){var s=b.squads.get(id);List<String> shown=b.running&&s!=null&&s.seated?s.banner:profile(id).banner;JsonArray out=new JsonArray();for(String entry:shown)out.add(entry);return out;}
     /** The client's copy of a profile: match ids stay on the server. They only stop one match paying twice, and 256 of them (94 characters a match across both copies) would outgrow SNAPSHOT_LIMIT. */
     static JsonObject forClient(Profile p){JsonObject j=JSON.toJsonTree(p).getAsJsonObject();var s=j.getAsJsonObject(Profile.PROGRESSION);if(s!=null)s.remove(Progression.State.MATCH_GRANTS);return j;}
     static JsonObject forClient(Progression.State s){JsonObject j=JSON.toJsonTree(s).getAsJsonObject();j.remove(Progression.State.MATCH_GRANTS);return j;}
@@ -523,7 +603,7 @@ public final class Campaign {
             case "start"->{if(!preparingRoom.isEmpty()&&!preparingRoom.equals(social.room(id)==null?"":social.room(id).code))yield "Another room is preparing a battlefield. Your room is saved.";String failure=social.startFailure(id,b.running);if(!failure.isEmpty())yield failure;
                 var room=social.room(id);if(!b.ready)yield "Preparing the battlefield. Please wait.";
                 if(room.map!=map){preparingRoom=room.code;switchMap(room.map);yield "Preparing your chosen map. Your ready group will enter automatically; unready to cancel.";}
-                boolean empty=room.members.stream().anyMatch(m->profile(m).count(room.teams.get(m))==0);if(empty)yield "Every commander needs at least one troop in their selected faction.";
+                boolean empty=room.members.stream().anyMatch(m->bannerUnits(m)==0);if(empty)yield "Every commander needs at least one troop in their banner.";
                 size=room.size;fill=room.fill;practice=false;activeRoom=room.code;activeBattle=null;
                 for(var squad:b.squads.values())if(!squad.bot){squad.seated=room.members.contains(squad.owner);if(squad.seated)squad.team=room.teams.get(squad.owner);}
                 social.begin(room);b.startRound();yield "Your room is entering battle together.";}
@@ -550,7 +630,7 @@ public final class Campaign {
         if(!save(id)){profiles.put(id,JSON.fromJson(before,Profile.class));result="Reward was not applied because saving failed. Try again after checking disk space.";}
         notice(id,result);return true;
     }
-    JsonObject progressSnapshot(UUID id){Profile p=profile(id);Progression.reset(p.progression,Progression.today());JsonObject j=forClient(p.progression);j.addProperty("tier",Progression.tier(p.progression));j.addProperty("chapter",Progression.chapter(p.progression,p.unlocked.size(),Spec.TROOPS.length));return j;}
+    JsonObject progressSnapshot(UUID id){Profile p=profile(id);Progression.reset(p.progression,Progression.today());JsonObject j=forClient(p.progression);j.addProperty("tier",Progression.tier(p.progression));var roster=RosterMath.launchRoster();j.addProperty("chapter",Progression.chapter(p.progression,(int)roster.stream().filter(p.owned::containsKey).count(),roster.size()));return j;}
     void progressEvent(UUID id,boolean capture){if(!participants.contains(id))return;var squad=b.squads.get(id);if(squad==null||!squad.seated)return;
         var state=profile(id).progression;Progression.reset(state,Progression.today());if(capture)state.dailyCaptures++;else state.dailyOrders++;}
 }

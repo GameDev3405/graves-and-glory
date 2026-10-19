@@ -36,7 +36,7 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier IMPACT = new Identifier("gravesandglory", "impact_v1");
     public static final Identifier PING = new Identifier("gravesandglory", "ping_v1");
     public static final Identifier TACTICAL = new Identifier("gravesandglory", "tactical_v1");
-    public static final Identifier STATE = new Identifier("gravesandglory", "state_v6");
+    public static final Identifier STATE = new Identifier("gravesandglory", "state_v8");
     public static final Identifier OPEN_BARRACKS = new Identifier("gravesandglory", "barracks_v1");
     public static final Identifier PARTY = new Identifier("gravesandglory", "party_v1");
     public static Battle battle;
@@ -55,7 +55,7 @@ public final class GravesAndGlory implements ModInitializer {
         ServerEntityEvents.ENTITY_LOAD.register((entity,world)->{
             if(battle!=null&&!CampWorld.generation.isEmpty()&&entity.getCommandTags().contains(CampWorld.TAG)&&!entity.getCommandTags().contains("camp-generation:"+CampWorld.generation))entity.discard();
             if(entity.getCommandTags().contains("gravesandglory-lobby")||entity.getCommandTags().contains("bannerbound-lobby"))entity.discard();
-            if(battle!=null&&world==battle.world&&(entity.getCommandTags().contains("gravesandglory")||entity.getCommandTags().contains("bannerbound"))&&!(entity instanceof ArmyHusk)&&!(entity instanceof ArmySkeleton)&&!(entity instanceof ArmyWither))entity.discard();
+            if(battle!=null&&world==battle.world&&(entity.getCommandTags().contains("gravesandglory")||entity.getCommandTags().contains("bannerbound"))&&!ArmyMobs.isTroop(entity))entity.discard();
             // A shot's arrow saved mid-flight comes back from disk as a real, clipping arrow. This event also fires for a new spawn, so only a tagged arrow that no queued shot owns is discarded (Projectiles.fire queues the shot before it spawns the arrow). Any world.
             if(entity.getCommandTags().contains(Projectiles.TAG)&&!Projectiles.owns(battle,entity))entity.discard();
         });
@@ -86,7 +86,7 @@ public final class GravesAndGlory implements ModInitializer {
                 for(Unit u:battle.units)if(u.mob==attacker)winner=u.squad;
                 // A shot that lands after its archer fell still credits the archer's army, and so does a death soon after an enemy's blow; a fall, lava, cramming or /kill long after one is nobody's kill.
                 if(winner==null&&BattleMath.creditWindowOpen(battle.time,victim.lastHitAt,Projectiles.CREDIT_WINDOW_TICKS))winner=victim.lastHitBy;
-                victim.squad.stats.lost++;
+                victim.squad.stats.lost++;Houses.recompute(victim.squad);
                 if(winner!=null&&winner.team!=victim.squad.team){winner.earn(Spec.ECONOMY[0].killGold());winner.stats.kills++;}
             }
         });
@@ -122,8 +122,10 @@ public final class GravesAndGlory implements ModInitializer {
     public static final class Squad {
         UUID owner;
         int team;
-        String order="follow", formation="block", commander="vanguard";
+        String order="follow", formation="block", commander="champion";
         boolean bot, seated=true; int lane;
+        /** The banner this squad fields this round (rules.squadSize entries: troop ids, ^ for a slot of the unit before it, empty), set by Campaign.prepareRound. */
+        List<String> banner=new ArrayList<>();
         /** A bot's difficulty: the id of its Spec.BOTCOMMAND row. Set from Campaign.difficulty when the round is prepared. */
         String tier="normal";
         Vec3d target;
@@ -139,13 +141,20 @@ public final class GravesAndGlory implements ModInitializer {
         /** Morale per group: when a rout began (present only while routing), rout immunity after a regroup, and the group's full lineup health this round. */
         final Map<String,Long> routedAt=new HashMap<>(),steadyUntil=new HashMap<>();
         final Map<String,Double> fullHealth=new HashMap<>();
+        /** Battle time (ticks) each group's order last became Charge (Battle.chargeHorn): the counter table's charge impact reads it. */
+        final Map<String,Long> chargedAt=new HashMap<>();
+        /** House id to trait tier (1 to 3) for the Houses this army's living troops reach, from their slot weights; Houses.recompute keeps it. */
+        final Map<String,Integer> traits=new LinkedHashMap<>();
+        /** The commander ability (Commander): the battle time its cooldown ends, the time its run ends (0: not running), and what the running active keeps. */
+        long abilityReadyAt,abilityUntil;Object abilityData;
         Squad(UUID owner,int team,Vec3d pos) {this.owner=owner;this.team=team;target=pos;}
     }
     public static final class Assignment {
         String order,formation;Vec3d target;float yaw;int enemy=-1;long issued;
         Assignment(String o,String f,Vec3d t,float y){order=o;formation=f;target=t;yaw=y;}
     }
-    public record Training(Spec.TroopsRow spec,long finished) {}
+    /** A troop in a squad's training queue: when it is done, and the gold paid for it (the class cost, Commander.cost), which a cancel or a full army refunds. The short form is a free troop: nothing paid, nothing refunded. */
+    public record Training(Spec.TroopsRow spec,long finished,int paid) {public Training(Spec.TroopsRow spec,long finished){this(spec,finished,0);}}
     public static final class Unit {
         MobEntity mob;
         Squad squad;
@@ -160,7 +169,21 @@ public final class GravesAndGlory implements ModInitializer {
         Squad lastHitBy;
         /** Battle time (ticks) of that blow: a death with no attacker credits lastHitBy only within Projectiles.CREDIT_WINDOW_TICKS of it. */
         long lastHitAt;
-        Unit(MobEntity m,Squad s,Spec.TroopsRow t,int slot){mob=m;squad=s;spec=t;this.slot=slot;lastPosition=m.getPos();deployed=m.getPos();}
+        /** The tags this troop brings to the counter table (ArmyMobs.tags), a copy a House task may add to. */
+        Set<String> tags;
+        /** The evolution stage (1 to 3) its custom name and stats show; 1 for a bot and for a troop its commander does not own. */
+        int stage=1;
+        /** A troop raised for the round only (Grave Bloom Risen): it never counts toward the slot check or earns mastery, and expiresAt (battle ticks) ends it. */
+        boolean temporary;long expiresAt;
+        /** Battle time until which the troop is stunned (a slam, a bear's roar). */
+        long stunnedUntil;
+        /** True once a Graveborn troop has risen again; it rises once. */
+        boolean rose;
+        /** Blocks walked since this troop's last attack, for Pounce. */
+        double travelSinceAttack;
+        /** Battle time of this troop's last charge-impact hit: the impact is the first hit of a fresh Charge (the combatDiscipline chargeImpactTicks window). */
+        long chargeHitAt=-1;
+        Unit(MobEntity m,Squad s,Spec.TroopsRow t,int slot){mob=m;squad=s;spec=t;this.slot=slot;lastPosition=m.getPos();deployed=m.getPos();tags=new HashSet<>(ArmyMobs.tags(t));}
     }
     public static final class Capture {
         Spec.PointsRow spec;
@@ -169,21 +192,26 @@ public final class GravesAndGlory implements ModInitializer {
         long ownedSince;
         Capture(Spec.PointsRow spec){this.spec=spec;}
     }
-    public static final class ArmyHusk extends HuskEntity {
+    public static final class ArmyHusk extends HuskEntity implements ArmyMob {
         public ArmyHusk(World world){super(EntityType.HUSK,world);}
         @Override public boolean shouldSave(){return false;}
         @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
+        /** Never burns in daylight and never turns into a Zombie in water: a troop stays the troop its sheet row says. */
+        @Override protected boolean isAffectedByDaylight(){return false;}
+        @Override protected boolean canConvertInWater(){return false;}
     }
-    public static final class ArmySkeleton extends SkeletonEntity {
+    public static final class ArmySkeleton extends SkeletonEntity implements ArmyMob {
         public ArmySkeleton(World world){super(EntityType.SKELETON,world);}
         @Override public boolean shouldSave(){return false;}
         @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
+        @Override protected boolean isAffectedByDaylight(){return false;}
         @Override public void updateAttackType() {}
     }
-    public static final class ArmyWither extends WitherSkeletonEntity {
+    public static final class ArmyWither extends WitherSkeletonEntity implements ArmyMob {
         public ArmyWither(World world){super(EntityType.WITHER_SKELETON,world);}
         @Override public boolean shouldSave(){return false;}
         @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
+        @Override protected boolean isAffectedByDaylight(){return false;}
         @Override public void updateAttackType() {}
     }
     public static final class Battle {
@@ -196,6 +224,10 @@ public final class GravesAndGlory implements ModInitializer {
         public final List<Projectiles.Shot> shots=new ArrayList<>();
         final Map<UUID,Long> respawns=new HashMap<>();
         final int[] scores={0,0};
+        /** The side row each team flies this round, as indexes into Spec.FACTIONS (spec 1.1); Campaign.chooseSides sets it as the round is prepared. Positions still come from rows 0 and 1 by team. */
+        public int[] sides={0,1};
+        /** The side row a team flies: its colour, name and glyph. */
+        public Spec.FactionsRow side(int team){int row=team==0||team==1?sides[team]:-1;return Spec.FACTIONS[row>=0&&row<Spec.FACTIONS.length?row:Math.max(0,Math.min(1,team))];}
         /** Seconds each team held each point this round, [team][point]; startRound sizes it from points (five on Kingsfield). */
         int[][] pointSeconds=new int[2][0];
         final Set<UUID> welcomed=new HashSet<>();
@@ -225,7 +257,7 @@ public final class GravesAndGlory implements ModInitializer {
         final Set<String> testedFormations=new HashSet<>();
         final Set<String> testedOrders=new HashSet<>();
         final Set<UUID> testOwners=new HashSet<>();
-        int trainingGold,trainingMageBefore;
+        int trainingGold,trainingSwapBefore;
         int testBridgeIndex,hillClimbY;
         boolean bridgesPassed=true;
         public Battle(MinecraftServer server){
@@ -284,8 +316,8 @@ public final class GravesAndGlory implements ModInitializer {
             campaign.tick();
             updateUnitChunks();
             if(running&&time>=campaign.introUntil){
-                Projectiles.tick(this);
-                if(time%20==0)Morale.tick(this);
+                Projectiles.tick(this);Commander.tick(this);
+                if(time%20==0){Morale.tick(this);Houses.tick(this);}
                 for(Unit u:new ArrayList<>(units))unitTick(u);
                 if(time%20==0)captureTick();
                 if(time%R.scoreInterval()==0){
@@ -296,12 +328,12 @@ public final class GravesAndGlory implements ModInitializer {
                     }
                 }
                 if(R.automaticReinforcements()&&time%20==0)for(Squad s:new ArrayList<>(squads.values())){if(!s.seated)continue;
-                    if(time>=s.reinforceAt && units.stream().filter(u->u.squad==s).count()<R.squadSize()){
+                    if(time>=s.reinforceAt && units.stream().filter(u->u.squad==s).mapToInt(u->u.spec.slotWeight()).sum()<R.squadSize()){
                         s.reinforceAt=time+R.reinforceSeconds()*20L;reinforce(s);
                     }
                 }
                 if(time%(Spec.ECONOMY[0].incomeSeconds()*20)==0)for(Squad s:squads.values()){if(!s.seated)continue;
-                    s.earn((int)(Spec.ECONOMY[0].passiveGold()+Math.min(Spec.ECONOMY[0].objectiveIncomeCap(),points.stream().filter(p->p.owner==s.team).count()*Spec.ECONOMY[0].pointGold())));
+                    s.earn(income(s));
                 }
             }
             if(running&&time-roundStarted>=roundSeconds*20L)campaign.finish(scores[0]==scores[1]?-1:scores[0]>scores[1]?0:1);
@@ -321,9 +353,14 @@ public final class GravesAndGlory implements ModInitializer {
             if(replacement!=null){
                 s=replacement;squads.remove(s.owner);campaign.botRespawns.remove(s.owner);campaign.botRetreating.remove(s.owner);
                 campaign.vacated.values().remove(s.owner);s.owner=p.getUuid();s.bot=false;s.seated=true;
+                // The seat keeps the bot's living army and its queue, but from now on it trains and reinforces from the joiner's own banner, and fights under his class.
+                // The active's cooldown belongs to the squad, not to whoever commands it: it stays with the seat, so taking a seat over (its owner coming back, or
+                // anyone else) never refreshes an active. Only a running active stops here, before the class changes; leave already stopped the owner's.
+                Commander.stop(this,s);s.banner=campaign.banner(s);s.commander=campaign.profile(s.owner).commander;
             }else{
                 s=new Squad(p.getUuid(),team,base(team));s.seated=decision.seated();
-                if(s.seated)reinforce(s);
+                // A fresh seat mid-round fights under its owner's class, as round setup (Campaign.prepareRound) and a takeover give it.
+                if(s.seated){s.commander=campaign.profile(s.owner).commander;s.banner=campaign.banner(s);reinforce(s);}
             }
             squads.put(s.owner,s);welcomed.add(s.owner);
             p.changeGameMode(GameMode.ADVENTURE);equipPlayer(p);
@@ -335,7 +372,7 @@ public final class GravesAndGlory implements ModInitializer {
         void clearOldUnits(){List<Entity> stale=new ArrayList<>();for(Entity e:world.iterateEntities())if(e.getCommandTags().contains("gravesandglory")||e.getCommandTags().contains("bannerbound")||e.getCommandTags().contains(Projectiles.TAG))stale.add(e);for(Entity e:stale)e.discard();}
         void leave(UUID owner){
             campaign.left(owner);
-            Squad s=squads.remove(owner);welcomed.remove(owner);respawns.remove(owner);
+            Squad s=squads.remove(owner);welcomed.remove(owner);respawns.remove(owner);if(s!=null)Commander.stop(this,s);
             // Mid-battle, a bot commands the army until its owner rejoins, so the team is not left a commander short.
             if(s!=null&&running&&s.seated&&!s.bot){UUID stand=UUID.randomUUID();s.owner=stand;s.bot=true;s.tier=campaign.difficulty;s.order="attack";squads.put(stand,s);campaign.vacated.put(owner,stand);return;}
             units.removeIf(u->{if(u.squad==s){u.mob.discard();return true;}return false;});
@@ -350,15 +387,16 @@ public final class GravesAndGlory implements ModInitializer {
                 Item item=switch(slot){case HEAD->Items.IRON_HELMET;case CHEST->Items.IRON_CHESTPLATE;case LEGS->Items.IRON_LEGGINGS;default->Items.IRON_BOOTS;};
                 p.equipStack(slot,unbreakable(item));
             }
-            p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);
+            Commander.applyPlayer(p,squads.get(p.getUuid()));p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);
         }
-        static ItemStack unbreakable(Item item){ItemStack s=new ItemStack(item);s.getOrCreateNbt().putBoolean("Unbreakable",true);return s;}
+        static ItemStack unbreakable(Item item){if(item==Items.AIR)return ItemStack.EMPTY;ItemStack s=new ItemStack(item);s.getOrCreateNbt().putBoolean("Unbreakable",true);return s;}
         public void command(ServerPlayerEntity p,String cmd){
             if(cmd.startsWith("social:")){campaign.socialCommand(p,cmd);return;}
             if(cmd.startsWith("progress:")){campaign.progressCommand(p,cmd);return;}
             Squad s=squads.get(p.getUuid());if(s==null||!ready||respawns.containsKey(s.owner))return;
             if(campaign.handle(p,cmd))return;
             if(running&&!s.seated)return;
+            if(cmd.equals("ability")){Commander.activate(this,p);return;}
             if(cmd.equals("barracks")){openBarracks(p);return;}
             if(cmd.startsWith("train:")||cmd.startsWith("disband:")||cmd.equals("cancel-training")){manage(p,s,cmd);return;}
             if(time-s.lastOrder<R.commandCooldownTicks())return;s.lastOrder=time;
@@ -389,6 +427,7 @@ public final class GravesAndGlory implements ModInitializer {
         Assignment storedAssignment(Squad s,String group){return s.assignments.getOrDefault(group,new Assignment(s.order,s.formation,s.target,s.yaw));}
         /** Sounds the charge horn at the centre of the named group(s) that are not routing. */
         void chargeHorn(Squad s,String group){
+            for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id())))s.chargedAt.put(g.id(),time);
             Vec3d sum=Vec3d.ZERO;int n=0;for(Unit u:units)if(u.squad==s&&u.mob.isAlive()&&(group.equals("all")||u.spec.group().equals(group))&&!Morale.routing(s,u.spec.group())){sum=sum.add(u.mob.getPos());n++;}
             BattleEffects.horn(this,s,n==0?s.target:sum.multiply(1.0/n),"charge");
         }
@@ -434,26 +473,34 @@ public final class GravesAndGlory implements ModInitializer {
         void openBarracks(ServerPlayerEntity p){if(running)campaign.tutorialDid(p,3);if(ServerPlayNetworking.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,OPEN_BARRACKS,PacketByteBufs.create());}
         void manage(ServerPlayerEntity p,Squad s,String cmd){
             if(!atBarracks(p,s)){p.sendMessage(Text.literal("Return to your faction's barracks to train or disband troops."),true);return;}
-            if(cmd.equals("cancel-training")){for(Training t:s.training)s.gold+=t.spec().cost();s.training.clear();return;}
+            if(cmd.equals("cancel-training")){for(Training t:s.training)s.gold+=t.paid();s.training.clear();return;}
             String id=cmd.substring(cmd.indexOf(':')+1);
-            var spec=Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(id)&&t.faction().equals(Spec.FACTIONS[s.team].id())).findFirst().orElse(null);
-            if(spec==null||!campaign.unlocked(s,spec.id()))return;
+            var spec=Campaign.troop(id);if(spec==null)return;
             if(cmd.startsWith("disband:")){
-                for(int i=units.size()-1;i>=0;i--){Unit u=units.get(i);if(u.squad==s&&u.spec==spec&&u.mob.isAlive()){u.mob.discard();units.remove(i);s.gold+=Spec.ECONOMY[0].disbandRefund();return;}}
+                for(int i=units.size()-1;i>=0;i--){Unit u=units.get(i);if(u.squad==s&&u.spec==spec&&u.mob.isAlive()){u.mob.discard();units.remove(i);s.gold+=Spec.ECONOMY[0].disbandRefund();Houses.recompute(s);return;}}
                 return;
             }
-            long alive=units.stream().filter(u->u.squad==s&&u.mob.isAlive()).count();
-            if(alive+s.training.size()>=R.squadSize()){p.sendMessage(Text.literal("Army full: disband a troop to make room for a different unit."),true);return;}
-            if(s.gold<spec.cost()){p.sendMessage(Text.literal("Not enough gold. Battle supplies arrive over time; holding points increases them."),true);return;}
+            // A troop trains only while its living and queued units are below its count in the squad's banner, and slot weights stay within rules.squadSize.
+            int listed=Collections.frequency(s.banner,spec.id());
+            if(listed==0){p.sendMessage(Text.literal(spec.name()+" is not in your banner. Only your banner's troops train here."),true);return;}
+            long fielded=units.stream().filter(u->u.squad==s&&u.spec==spec&&u.mob.isAlive()).count()+s.training.stream().filter(t->t.spec()==spec).count();
+            if(fielded>=listed){p.sendMessage(Text.literal("All "+listed+" "+spec.name()+" of your banner are fielded or in training."),true);return;}
+            int weight=units.stream().filter(u->u.squad==s&&u.mob.isAlive()).mapToInt(u->u.spec.slotWeight()).sum()+s.training.stream().mapToInt(t->t.spec().slotWeight()).sum();
+            if(weight+spec.slotWeight()>R.squadSize()){p.sendMessage(Text.literal("Army full: disband a troop to make room for a different unit."),true);return;}
+            int price=Commander.cost(s,spec);
+            if(s.gold<price){p.sendMessage(Text.literal("Not enough gold. Battle supplies arrive over time; holding points increases them."),true);return;}
             if(s.training.size()>=Spec.ECONOMY[0].maxQueue())return;
-            s.gold-=spec.cost();long previous=s.training.isEmpty()?time:s.training.getLast().finished();
-            s.training.addLast(new Training(spec,Math.max(time,previous)+spec.trainingSeconds()*20L));
+            s.gold-=price;long previous=s.training.isEmpty()?time:s.training.getLast().finished();
+            s.training.addLast(new Training(spec,Math.max(time,previous)+Commander.trainingTicks(s,spec),price));
         }
+        /** Round gold a squad earns per income tick: the passive gold plus its team's held points (BattleMath.pointIncome, with the Quartermaster's bonus per point). */
+        int income(Squad s){var E=Spec.ECONOMY[0];return E.passiveGold()+BattleMath.pointIncome(points.stream().filter(p->p.owner==s.team).count(),E.pointGold(),Commander.pointGoldBonus(s),E.objectiveIncomeCap());}
         void trainingTick(){
             for(Squad s:squads.values())while(!s.training.isEmpty()&&s.training.getFirst().finished()<=time){
                 Training t=s.training.removeFirst();Set<Integer> used=new HashSet<>();for(Unit u:units)if(u.squad==s&&u.mob.isAlive())used.add(u.slot);
-                int slot=0;while(used.contains(slot))slot++;
-                if(slot>=R.squadSize()){s.gold+=t.spec().cost();continue;}
+                int slot=-1;for(int i=0;i<s.banner.size()&&i<R.squadSize();i++)if(s.banner.get(i).equals(t.spec().id())&&!used.contains(i)){slot=i;break;} // its own banner slot, so it forms where the banner puts it
+                if(slot<0){slot=0;while(used.contains(slot))slot++;}
+                if(slot>=R.squadSize()){s.gold+=t.paid();continue;}
                 var at=deploy(s,slot);spawn(s,t.spec(),slot,at.at());Morale.fielded(this,s,t.spec().group());
                 var player=server.getPlayerManager().getPlayer(s.owner);if(player!=null)player.sendMessage(Text.literal(t.spec().name()+" trained: "+deployNote(s,at.anchor())),true);
             }
@@ -493,7 +540,7 @@ public final class GravesAndGlory implements ModInitializer {
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
             respawns.clear();
             for(Squad s:squads.values()){
-                if(!s.seated)continue;s.assignments.clear();s.training.clear();s.routedAt.clear();s.steadyUntil.clear();s.fullHealth.clear();s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
+                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.training.clear();s.routedAt.clear();s.steadyUntil.clear();s.fullHealth.clear();s.chargedAt.clear();s.traits.clear();s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
                 var player=server.getPlayerManager().getPlayer(s.owner);
                 if(player!=null){toBase(player,s.team);player.changeGameMode(GameMode.ADVENTURE);equipPlayer(player);}
                 reinforce(s);
@@ -504,33 +551,36 @@ public final class GravesAndGlory implements ModInitializer {
             Set<Integer> occupied=new HashSet<>();for(Unit u:units)if(u.squad==s&&u.mob.isAlive())occupied.add(u.slot);
             int slot=0,index=0,count=1;for(Squad other:squads.values()){if(other==s)break;if(other.seated&&other.team==s.team)index++;}
             for(Squad other:squads.values())if(other!=s&&other.seated&&other.team==s.team)count++; // this team's armies, this one included (a joining squad is not in squads yet)
-            List<String> line;if(s.bot){line=new ArrayList<>();for(var t:Spec.TROOPS)if(t.faction().equals(Spec.FACTIONS[s.team].id()))for(int n=0;n<t.count();n++)line.add(t.id());}else line=campaign.profile(s.owner).lineup(s.team);
+            List<String> line=s.banner; // from Campaign.prepareRound: the slot index is the position, and empty and ^ slots stay empty
             Morale.lineup(this,s,line);
-            for(String id:line){final String type=id;int position=slot++;if(position>=R.squadSize()||occupied.contains(position)||id.equals("empty")||!campaign.unlocked(s,id))continue;
-                var spec=Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(type)).findFirst().orElse(null);if(spec==null)continue;
+            for(String id:line){int position=slot++;if(position>=R.squadSize()||occupied.contains(position))continue;
+                var spec=Campaign.troop(id);if(spec==null)continue;
                 double side=s.team==0?1:-1,x=base(s.team).x+side*(20-position/5*3),z=base(s.team).z+side*((index-(count-1)/2.0)*22+(position%5-2)*2.5); // rows centred on the base for any army count; Dusk's mirror Dawn's, so army i forms on the side of its lane point (BattleMath.laneTarget)
                 spawn(s,spec,position,new Vec3d(x,Arena.ground((int)x,(int)z)+1,z));
             }
+            Houses.recompute(s);
         }
 
         Unit spawn(Squad s,Spec.TroopsRow spec,int slot,Vec3d pos){
-            MobEntity mob=switch(spec.entity()){case "skeleton"->new ArmySkeleton(world);case "wither_skeleton"->new ArmyWither(world);default->new ArmyHusk(world);};
+            MobEntity mob=ArmyMobs.create(spec.entity(),world);
             mob.refreshPositionAndAngles(pos.x,pos.y,pos.z,s.team==0?-90:90,0);
             mob.setPersistent();mob.addCommandTag("gravesandglory");
             mob.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(spec.health()*campaign.health(s,spec));mob.setHealth((float)(spec.health()*campaign.health(s,spec)));
             mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED).setBaseValue(spec.speed());
             mob.getAttributeInstance(EntityAttributes.GENERIC_FOLLOW_RANGE).setBaseValue(Spec.NAVIGATION[0].searchRange());
             mob.setPathfindingPenalty(PathNodeType.WATER,(float)Spec.NAVIGATION[0].waterPenalty());
-            if(spec.ability().equals("shield"))mob.equipStack(EquipmentSlot.OFFHAND,unbreakable(Items.SHIELD));
+            if(ArmyMobs.tags(spec).contains("shield"))mob.equipStack(EquipmentSlot.OFFHAND,unbreakable(Items.SHIELD));
             mob.equipStack(EquipmentSlot.MAINHAND,unbreakable(Registries.ITEM.get(new Identifier(spec.weapon()))));
             mob.equipStack(EquipmentSlot.HEAD,unbreakable(Registries.ITEM.get(new Identifier(spec.helmet()))));
             ItemStack chest=unbreakable(Registries.ITEM.get(new Identifier(spec.chest())));
-            if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,Spec.FACTIONS[s.team].color());
+            if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,side(s.team).color());
             mob.equipStack(EquipmentSlot.CHEST,chest);
             for(EquipmentSlot eq:EquipmentSlot.values())mob.setEquipmentDropChance(eq,0);
-            mob.setCustomName(Text.literal(spec.name()).formatted(s.team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE));
+            // The name colour is the team tag, not the side colour: CommandMode.nameTeam reads it on the client to tell friend from foe (both teams can field the same House). Recolour names by side only together with that reader.
+            int stage=campaign.stage(s,spec);
+            mob.setCustomName(Text.literal(ArmyMobs.stageName(spec,stage)).formatted(s.team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE));
             mob.setCustomNameVisible(false);world.spawnEntity(mob);
-            Unit u=new Unit(mob,s,spec,slot);units.add(u);return u;
+            Unit u=new Unit(mob,s,spec,slot);u.stage=stage;units.add(u);Houses.recompute(s);return u;
         }
         final Set<Long> unitChunks=new HashSet<>();
         void updateUnitChunks(){
@@ -558,7 +608,7 @@ public final class GravesAndGlory implements ModInitializer {
                 if(p.progress>=p.spec.captureSeconds()){
                     p.owner=team;p.ownedSince=time;p.challenger=-1;p.progress=0;Arena.flag(world,p.spec,team);
                     for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList()){var squad=squads.get(pl.getUuid());if(squad!=null&&squad.seated&&squad.team==team&&horizontalDistance(pl.getPos(),center)<p.spec.radius()*p.spec.radius())campaign.progressEvent(pl.getUuid(),true);}
-                    for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList())if(squads.containsKey(pl.getUuid())&&squads.get(pl.getUuid()).seated)pl.sendMessage(Text.literal(Spec.FACTIONS[team].name()+" captured "+p.spec.name()).formatted(team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE),true);
+                    for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList())if(squads.containsKey(pl.getUuid())&&squads.get(pl.getUuid()).seated)pl.sendMessage(Text.literal(side(team).name()+" captured "+p.spec.name()).setStyle(net.minecraft.text.Style.EMPTY.withColor(side(team).color())),true);
                 }
             }
             for(Squad s:onPoint)s.stats.objectiveSeconds++;
@@ -580,13 +630,15 @@ public final class GravesAndGlory implements ModInitializer {
             if(team<0)return true;
             if(!running)return false;
             if(!R.friendlyFire()&&attackTeam==team)return false;
-            if(!scalingDamage&&attacker instanceof ServerPlayerEntity&&!(entity instanceof ServerPlayerEntity)){
-                scalingDamage=true;try{entity.damage(source,(float)(amount*Spec.COMBATDISCIPLINE[0].damageScale()));}finally{scalingDamage=false;}return false;
+            // A commander's own blow: a troop takes it at combatDiscipline.damageScale, and the commander effects (his Mark Prey, the target side's Stand Fast) multiply in.
+            if(!scalingDamage&&attacker instanceof ServerPlayerEntity){
+                double scale=(entity instanceof ServerPlayerEntity?1:Spec.COMBATDISCIPLINE[0].damageScale())*Commander.playerFactor(this,attackerSquad,entity);
+                if(scale!=1){scalingDamage=true;try{entity.damage(source,(float)(amount*scale));}finally{scalingDamage=false;}return false;}
             }
             if(entity instanceof ServerPlayerEntity p&&p.getHealth()<=amount){
                 if(Diagnostics.active())System.out.println("[Graves and Glory damage] respawn cause="+source.getType().msgId()+" amount="+amount+" hp="+p.getHealth()+" pos="+p.getPos()+" fall="+p.fallDistance);
                 p.setHealth(p.getMaxHealth());toBase(p,team);p.changeGameMode(GameMode.SPECTATOR);
-                respawns.put(p.getUuid(),time+R.respawnSeconds()*20L);return false;
+                respawns.put(p.getUuid(),time+Commander.respawnSeconds(victimSquad)*20L);return false;
             }
             Squad hitter=attackerSquad;for(Unit u:units)if(u.mob==attacker)hitter=u.squad;
             if(hitter!=null)for(Unit u:units)if(u.mob==entity){u.lastHitBy=hitter;u.lastHitAt=time;break;}
@@ -619,18 +671,22 @@ public final class GravesAndGlory implements ModInitializer {
                 b.writeInt(friendly.size());
                 for(Unit u:friendly){b.writeFloat((float)u.mob.getX());b.writeFloat((float)u.mob.getZ());b.writeBoolean(u.mob.getTarget()!=null);b.writeBoolean(u.squad==s);b.writeString(u.spec.name());}
                 b.writeInt(3);
-                for(var g:Spec.GROUPS)if(!g.id().equals("all")){
-                    var members=units.stream().filter(u->u.squad==s&&u.spec.group().equals(g.id())&&u.mob.isAlive()).toList();
-                    Assignment a=s==null?new Assignment("follow","block",Vec3d.ZERO,0):storedAssignment(s,g.id());
-                    b.writeString(g.id());b.writeInt(members.size());b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getHealth()/u.mob.getMaxHealth()).average().orElse(0));
+                for(String group:Morale.GROUPS){ // the three morale groups: the client reads exactly 3 (cavalry and siege wait for their troops)
+                    var members=units.stream().filter(u->u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive()).toList();
+                    Assignment a=s==null?new Assignment("follow","block",Vec3d.ZERO,0):storedAssignment(s,group);
+                    b.writeString(group);b.writeInt(members.size());b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getHealth()/u.mob.getMaxHealth()).average().orElse(0));
                     b.writeString(a.order);b.writeString(a.formation);b.writeFloat((float)a.target.x);b.writeFloat((float)a.target.z);b.writeFloat(a.yaw);
                     b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getX()).average().orElse(a.target.x));b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getZ()).average().orElse(a.target.z));
-                    b.writeBoolean(members.stream().anyMatch(u->u.mob.getTarget()!=null));b.writeBoolean(s!=null&&Morale.routing(s,g.id()));
+                    b.writeBoolean(members.stream().anyMatch(u->u.mob.getTarget()!=null));b.writeBoolean(s!=null&&Morale.routing(s,group));
                 }
                 var visiblePings=pings.stream().filter(v->s!=null&&v.team==s.team&&v.until>time).toList();b.writeInt(visiblePings.size());for(var ping:visiblePings){b.writeString(ping.kind);b.writeFloat((float)ping.x);b.writeFloat((float)ping.z);}
                 b.writeInt(running?(int)Math.max(0,roundSeconds-(time-roundStarted)/20):roundSeconds);
                 var memory=s==null?Map.<UUID,Sight>of():sightings.getOrDefault(s.team,Map.of());b.writeInt(memory.size());for(var sight:memory.values()){b.writeFloat(sight.x);b.writeFloat(sight.z);b.writeInt((int)(time-sight.seen));}
                 b.writeString(campaign.snapshot(p));
+                // state_v8, after the Phase 1 fields: the side id each team flies, this army's House tiers (count, then House and tier), and the commander ability of a seated squad (its class's active id, ticks until ready, ticks left active; ready is -1 while this build has no behaviour for that active, and the fields are "", 0, 0 for anyone unseated).
+                b.writeString(side(0).id());b.writeString(side(1).id());
+                Map<String,Integer> tiers=s==null?Map.of():s.traits;b.writeByte(tiers.size());for(var tier:tiers.entrySet()){b.writeString(tier.getKey());b.writeByte(tier.getValue());}
+                boolean commanding=s!=null&&s.seated;b.writeString(commanding?Commander.row(s).active():"");b.writeInt(commanding?Commander.readyIn(this,s):0);b.writeInt(commanding?Commander.activeFor(this,s):0);
                 ServerPlayNetworking.send(p,STATE,b);
             }
         }
@@ -653,7 +709,7 @@ public final class GravesAndGlory implements ModInitializer {
                     Diagnostics.report("point-captured",true,null);
                     Squad enemy=new Squad(UUID.randomUUID(),1-testSquad.team,testSquad.target.add(6,0,0));
                     enemy.order="hold";
-                    var spec=Arrays.stream(Spec.TROOPS).filter(t->t.faction().equals(Spec.FACTIONS[enemy.team].id())).findFirst().orElseThrow();
+                    var spec=Campaign.troop(enemy.team==0?"knight":"revenant");
                     testVictim=spawn(enemy,spec,0,testSquad.target.add(4,0,0));testVictimHealth=testVictim.mob.getHealth();
                     testSquad.order="attack";testStage=3;testAt=time;
                 }else if(time-testAt>1000){Diagnostics.report("point-captured",false,"troops did not take point");testStage=4;}
@@ -667,7 +723,8 @@ public final class GravesAndGlory implements ModInitializer {
                     Squad synthetic=new Squad(UUID.randomUUID(),team,base(team).add(0,0,i==0?28:(i-1)*35-20));
                     synthetic.order="hold";testOwners.add(synthetic.owner);
                     int slot=0;
-                    for(var spec:Spec.TROOPS)if(spec.faction().equals(Spec.FACTIONS[team].id()))for(int n=0;n<spec.count();n++,slot++)spawn(synthetic,spec,slot,synthetic.target.add((slot%5-2)*2,0,slot/5*2));
+                    synthetic.banner=Campaign.bannerRow(team==0?"gilded_easy":"graveborn_easy");
+                    for(String id:synthetic.banner){var spec=Campaign.troop(id);if(spec!=null)spawn(synthetic,spec,slot,synthetic.target.add((slot%5-2)*2,0,slot/5*2));slot++;}
                 }
                 testStage=4;testAt=time;
             }else if(testStage==4&&time-testAt>100){
@@ -692,11 +749,12 @@ public final class GravesAndGlory implements ModInitializer {
                     Diagnostics.report("hill-navigation",climbed==20,"only "+climbed+" of twenty troops climbed to y>="+hillClimbY+" on the ridge");
                     var p=server.getPlayerManager().getPlayer(testSquad.owner);var f=Spec.FACTIONS[testSquad.team];
                     p.teleport(world,f.barracksX(),65,f.barracksZ(),0,0);
-                    String melee=Spec.TROOPS[testSquad.team==0?0:3].id(),mage=Spec.TROOPS[testSquad.team==0?2:5].id();
-                    trainingMageBefore=(int)units.stream().filter(u->u.squad==testSquad&&u.spec.id().equals(mage)&&u.mob.isAlive()).count();
-                    trainingGold=testSquad.gold;manage(p,testSquad,"disband:"+melee);manage(p,testSquad,"train:"+mage);
-                    int after=testSquad.gold;manage(p,testSquad,"train:"+mage);
-                    boolean paid=after==trainingGold-Spec.TROOPS[testSquad.team==0?2:5].cost()&&testSquad.gold==after&&testSquad.training.size()==1;
+                    // Disband one troop of the banner's first type and train it back; the second train is refused, as its banner count is filled again.
+                    String swap=testSquad.banner.stream().filter(id->Campaign.troop(id)!=null).findFirst().orElse("knight");
+                    trainingSwapBefore=(int)units.stream().filter(u->u.squad==testSquad&&u.spec.id().equals(swap)&&u.mob.isAlive()).count();
+                    trainingGold=testSquad.gold;manage(p,testSquad,"disband:"+swap);manage(p,testSquad,"train:"+swap);
+                    int after=testSquad.gold;manage(p,testSquad,"train:"+swap);
+                    boolean paid=after==trainingGold-Commander.cost(testSquad,Campaign.troop(swap))&&testSquad.gold==after&&testSquad.training.size()==1;
                     if(!paid)Diagnostics.report("barracks-management",false,"gold or capacity was not enforced");
                     Unit own=units.stream().filter(u->u.squad==testSquad&&u.mob.isAlive()).findFirst().orElseThrow();
                     float hp=own.mob.getHealth();boolean damage=own.mob.damage(world.getDamageSources().mobAttack(own.mob),8);
@@ -704,9 +762,9 @@ public final class GravesAndGlory implements ModInitializer {
                     testStage=7;testAt=time;
                 }
             }else if(testStage==7&&testSquad.training.isEmpty()&&time-testAt>120){
-                String mage=Spec.TROOPS[testSquad.team==0?2:5].id();
-                long alive=units.stream().filter(u->u.squad==testSquad&&u.mob.isAlive()).count(),mages=units.stream().filter(u->u.squad==testSquad&&u.spec.id().equals(mage)&&u.mob.isAlive()).count();
-                Diagnostics.report("barracks-management",alive==20&&mages==trainingMageBefore+1,"trained replacement or roster swap did not complete");
+                String swap=testSquad.banner.stream().filter(id->Campaign.troop(id)!=null).findFirst().orElse("knight");
+                long alive=units.stream().filter(u->u.squad==testSquad&&u.mob.isAlive()).count(),swapped=units.stream().filter(u->u.squad==testSquad&&u.spec.id().equals(swap)&&u.mob.isAlive()).count();
+                Diagnostics.report("barracks-management",alive==20&&swapped==trainingSwapBefore,"the disbanded troop was not trained back into the army");
                 testStage=8;
             }
         }
@@ -729,9 +787,8 @@ public final class GravesAndGlory implements ModInitializer {
             if(fight){Squad enemy=new Squad(UUID.randomUUID(),1-testSquad.team,new Vec3d(-20,65,3));enemy.order="attack";enemy.yaw=90;spawnVisualSquad(enemy,22,3);}
         }
         void spawnVisualSquad(Squad s,int x,int z){
-            int slot=0;for(var spec:Spec.TROOPS)if(spec.faction().equals(Spec.FACTIONS[s.team].id()))for(int n=0;n<spec.count();n++,slot++){
-                int px=x+(slot%5-2)*2,pz=z+(slot/5-2)*2;spawn(s,spec,slot,new Vec3d(px,Arena.ground(px,pz)+1,pz));
-            }
+            if(s.banner.isEmpty())s.banner=Campaign.bannerRow(s.team==0?"gilded_easy":"graveborn_easy");
+            int slot=0;for(String id:s.banner){var spec=Campaign.troop(id);int px=x+(slot%5-2)*2,pz=z+(slot/5-2)*2;if(spec!=null)spawn(s,spec,slot,new Vec3d(px,Arena.ground(px,pz)+1,pz));slot++;}
         }
     }
 }

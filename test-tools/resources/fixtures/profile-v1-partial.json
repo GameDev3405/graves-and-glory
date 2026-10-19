@@ -1,0 +1,69 @@
+{
+  "progression": {
+    "schema": 1,
+    "xp": 140,
+    "totalBattles": 3,
+    "totalWins": 1,
+    "weeklyBattles": 3,
+    "day": "2026-10-16",
+    "week": "2026-10-12",
+    "title": "Recruit",
+    "rerolled": false,
+    "dailyBattles": 3,
+    "dailyCaptures": 2,
+    "dailyOrders": 5,
+    "claims": [],
+    "titles": [
+      "Recruit"
+    ],
+    "matchGrants": []
+  },
+  "gold": 420,
+  "matches": 3,
+  "wins": 1,
+  "commander": "marksman",
+  "tutorialDone": true,
+  "campaignCleared": 1,
+  "unlocked": [
+    "knight",
+    "archer",
+    "mage",
+    "revenant",
+    "bonebow",
+    "hexer",
+    "sentinel",
+    "wraith"
+  ],
+  "army": {
+    "knight": 12,
+    "archer": 6,
+    "mage": 2,
+    "revenant": 12,
+    "bonebow": 6,
+    "hexer": 2
+  },
+  "deployment": {
+    "dawn": [
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "archer",
+      "archer",
+      "archer",
+      "archer",
+      "archer",
+      "archer",
+      "mage",
+      "mage"
+    ]
+  }
+}

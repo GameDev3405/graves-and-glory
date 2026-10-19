@@ -70,6 +70,11 @@ public final class BattleMathCheck {
             && MatchStats.mvp(List.of(idle,holder)) == 1 && MatchStats.mvp(List.of(idle,killer)) == 1, "mvp by kills then objective time; a kill alone or a point alone crowns; a dead tie at nothing crowns nobody");
         int[][] ps=new int[2][2]; MatchStats.teamPointSeconds(ps,new int[]{-1,1,0,2}); MatchStats.teamPointSeconds(new int[2][0],new int[]{0,1});
         check(ps[0][0] == 0 && ps[0][1] == 0 && ps[1][0] == 0 && ps[1][1] == 1, "point seconds skip an unheld point, an unknown team and a point past the rows");
+        for (int points = 0; points <= 5; points++) check(BattleMath.pointIncome(points, 3, 0, 9) == Math.min(9, points * 3), "point income with no class bonus is the Phase 1 rule min(cap, held x pointGold), " + points + " held");
+        check(BattleMath.pointIncome(1, 3, 2, 9) == 5 && BattleMath.pointIncome(2, 3, 2, 9) == 10 && BattleMath.pointIncome(3, 3, 2, 9) == 15 && BattleMath.pointIncome(5, 3, 2, 9) == 15, "the Quartermaster's +2: one held point pays 5, and the cap still stands for three points (15)");
+        check(BattleMath.pointIncome(0, 3, 2, 9) == 0 && BattleMath.pointIncome(4, 0, 2, 9) == 8 && BattleMath.pointIncome(9, 0, 2, 9) == 9, "nothing held pays nothing; a sheet with no point gold keeps its plain cap");
+        check(BattleMath.classCost(70, 1 - 0.2) == 56 && BattleMath.classCost(22, 1) == 22 && BattleMath.classCost(45, 0.8) == 36 && BattleMath.classCost(25, 0.9) == 23, "the Warlock's 20% off: a 70-gold Sunweaver costs 56; costs round half up");
+        check(BattleMath.trainingTicks(4.0, 1 - 0.2) == 64 && BattleMath.trainingTicks(4.0, 1) == 80 && BattleMath.trainingTicks(3.5, 0.8) == 56 && BattleMath.trainingTicks(9.0, 0.8) == 144, "the Marshal's drill: a knight's 80 ticks become 64");
         System.out.println("BattleMathCheck: " + checks + " checks passed");
     }
 }

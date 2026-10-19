@@ -15,8 +15,8 @@ final class Tactics {
     /** Between beats a shield troop re-reads the distance to the enemy it chose on its beat, so a block knight lowers its shield on the tick
      *  that enemy steps into sword reach (BattleMath.raiseShield). With no live target it keeps the beat's decision until the next beat. */
     static void brace(GravesAndGlory.Battle battle,GravesAndGlory.Unit u){
-        var t=u.lockedTarget;if(!u.spec.ability().equals("shield")||t==null||!t.isAlive())return;
-        var a=battle.assignment(u);boolean shield=BattleMath.raiseShield(a.formation,a.order,u.mob.squaredDistanceTo(t),u.spec.range()*u.spec.range(),true);
+        var t=u.lockedTarget;if(!u.tags.contains("shield")||t==null||!t.isAlive())return;
+        var a=battle.assignment(u);double reach=Abilities.range(battle,u);boolean shield=BattleMath.raiseShield(a.formation,a.order,u.mob.squaredDistanceTo(t),reach*reach,true);
         if(shield&&!u.mob.isUsingItem())u.mob.setCurrentHand(Hand.OFF_HAND);else if(!shield&&u.mob.isUsingItem())u.mob.stopUsingItem();
     }
     static void tick(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,long time){
@@ -42,42 +42,31 @@ final class Tactics {
         }
         if(enemy!=u.lockedTarget){u.lockedTarget=enemy;u.lockUntil=time+Spec.COMBATDISCIPLINE[0].targetMemoryTicks();}
         mob.setTarget(enemy);mob.setAttacking(enemy!=null);
-        boolean shield=u.spec.ability().equals("shield")&&BattleMath.raiseShield(a.formation,a.order,nearest,u.spec.range()*u.spec.range(),enemy!=null); // block: up on the approach, down to swing once the enemy is in reach; shieldwall: the full brace
+        double reach=Abilities.range(battle,u);boolean ranged=u.spec.ranged();
+        boolean shield=u.tags.contains("shield")&&BattleMath.raiseShield(a.formation,a.order,nearest,reach*reach,enemy!=null); // block: up on the approach, down to swing once the enemy is in reach; shieldwall: the full brace
         if(shield&&!mob.isUsingItem())mob.setCurrentHand(Hand.OFF_HAND);else if(!shield&&mob.isUsingItem())mob.stopUsingItem();
-        if(u.spec.ability().equals("mend")&&time>=u.abilityAt){
-            var ally=battle.units.stream().filter(v->v.squad.team==s.team&&v.mob.isAlive()&&v.mob.getHealth()<v.mob.getMaxHealth()&&v.mob.squaredDistanceTo(mob)<Spec.COMBATDISCIPLINE[0].healRadius()*Spec.COMBATDISCIPLINE[0].healRadius()&&mob.canSee(v.mob)).min(java.util.Comparator.comparingDouble(v->v.mob.getHealth()/v.mob.getMaxHealth())).orElse(null);
-            if(ally!=null){Projectiles.fire(battle,u,ally.mob,"mend",(float)(Spec.COMBATDISCIPLINE[0].healAmount()*battle.campaign.damage(u)));u.abilityAt=time+Spec.COMBATDISCIPLINE[0].abilityCooldownTicks();}
-        }
-        if(u.spellCenter!=null){
-            double radius=Spec.COMBATDISCIPLINE[0].spellRadius();for(int i=0;i<12;i++){double angle=i*Math.PI/6;battle.world.spawnParticles(ParticleTypes.WITCH,u.spellCenter.x+Math.cos(angle)*radius,u.spellCenter.y+.2,u.spellCenter.z+Math.sin(angle)*radius,1,0,0,0,0);}
-            if(time>=u.windupUntil){for(var v:battle.units)if(v.squad.team!=s.team&&v.mob.isAlive()&&v.mob.squaredDistanceTo(u.spellCenter)<radius*radius){v.mob.damage(battle.world.getDamageSources().indirectMagic(mob,mob),(float)(u.spec.damage()*battle.campaign.damage(u)));v.mob.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.SLOWNESS,40,0));}u.spellCenter=null;} // blight ignores shields: indirect magic is in bypasses_shield (and bypasses_armor), and keeps the Gravecaller as the attacker for kill credit
-        }
+        Abilities.tick(battle,u,enemy,time); // mend heals and a caster's spell bursts on the beat
         if(enemy!=null){
             mob.getLookControl().lookAt(enemy,40,40);
             boolean visible=mob.canSee(enemy);
-            if(nearest<=u.spec.range()*u.spec.range()&&visible){
-                if(u.spec.range()>3&&nearest<N.rangedRetreatDistance()*N.rangedRetreatDistance()&&!a.order.equals("hold")){
+            if(nearest<=reach*reach&&visible){
+                if(ranged&&nearest<N.rangedRetreatDistance()*N.rangedRetreatDistance()&&!a.order.equals("hold")){
                     Vec3d away=mob.getPos().subtract(enemy.getPos()).multiply(1,0,1).normalize();
                     walk(battle,u,mob.getPos().add(away.multiply(5)),time,1.05);
                 }else mob.getNavigation().stop();
                 if(time>=u.nextAttack){
-                    int cooldown=s.commander.equals("marksman")&&u.spec.group().equals("ranged")?Math.round(u.spec.cooldown()/1.1f):u.spec.cooldown();u.nextAttack=u.nextAttack<time-10?time+cooldown:u.nextAttack+cooldown;mob.swingHand(Hand.MAIN_HAND);
+                    int cooldown=u.spec.cooldown();u.nextAttack=u.nextAttack<time-10?time+cooldown:u.nextAttack+cooldown;mob.swingHand(Hand.MAIN_HAND);
                     BattleEffects.strike(battle,u,enemy);
-                    if(u.spec.ability().equals("blight")){if(time>=u.abilityAt){u.spellCenter=enemy.getPos();u.windupUntil=time+Spec.COMBATDISCIPLINE[0].spellWindupTicks();u.abilityAt=time+Spec.COMBATDISCIPLINE[0].abilityCooldownTicks();Projectiles.bolt(battle,u,u.spellCenter);}}
-                    else if(!u.spec.ability().equals("mend")){
-                        float amount=(float)(u.spec.damage()*battle.campaign.damage(u));
-                        // The hit is decided now; a ranged hit lands when its visible arrow arrives.
-                        if(u.spec.range()>3)Projectiles.fire(battle,u,enemy,"arrow",amount);else enemy.damage(battle.world.getDamageSources().mobAttack(mob),amount);
-                    }
-                    if(u.spec.range()>3){
+                    Abilities.attack(battle,u,enemy,time);
+                    if(ranged){
                         battle.world.playSound(null,mob.getBlockPos(),u.spec.magic()?SoundEvents.ENTITY_EVOKER_CAST_SPELL:SoundEvents.ENTITY_ARROW_SHOOT,SoundCategory.HOSTILE,.25f,1.1f);
                     }
                 }
             }else if(!a.order.equals("hold")||GravesAndGlory.Battle.horizontalDistance(enemy.getPos(),a.target)<order.engageRadius()*order.engageRadius()){
                 Vec3d goal=enemy.getPos();
-                if(u.spec.range()>3&&!visible){Vec3d toward=enemy.getPos().subtract(mob.getPos()).multiply(1,0,1).normalize();double sign=u.slot%2==0?1:-1;goal=mob.getPos().add(-toward.z*sign*Spec.COMBATDISCIPLINE[0].rangedObstructionStep(),0,toward.x*sign*Spec.COMBATDISCIPLINE[0].rangedObstructionStep());}
-                if(u.spec.range()<=3){double angle=u.slot*2.399963;goal=goal.add(Math.cos(angle)*1.6,0,Math.sin(angle)*1.6);}
-                if(u.spec.range()>3&&visible&&nearest>u.spec.range()*u.spec.range())goal=goal.add(mob.getPos().subtract(goal).multiply(1,0,1).normalize().multiply(u.spec.range()*N.rangedStandoff()));
+                if(ranged&&!visible){Vec3d toward=enemy.getPos().subtract(mob.getPos()).multiply(1,0,1).normalize();double sign=u.slot%2==0?1:-1;goal=mob.getPos().add(-toward.z*sign*Spec.COMBATDISCIPLINE[0].rangedObstructionStep(),0,toward.x*sign*Spec.COMBATDISCIPLINE[0].rangedObstructionStep());}
+                if(!ranged){double angle=u.slot*2.399963;goal=goal.add(Math.cos(angle)*1.6,0,Math.sin(angle)*1.6);}
+                if(ranged&&visible&&nearest>reach*reach)goal=goal.add(mob.getPos().subtract(goal).multiply(1,0,1).normalize().multiply(reach*N.rangedStandoff()));
                 walk(battle,u,goal,time,order.moveMultiplier());
             }else mob.getNavigation().stop();
         }else{

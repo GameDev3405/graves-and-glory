@@ -50,6 +50,13 @@ public final class CommandMode {
         var b=PacketByteBufs.create();b.writeString(group);b.writeString(action);b.writeString(form);b.writeDouble(dest.x);b.writeDouble(dest.z);b.writeFloat(yaw);b.writeInt(target);ClientPlayNetworking.send(GravesAndGlory.TACTICAL,b);
         feedback=label(group)+": "+label(action)+" order sent";feedbackUntil=System.currentTimeMillis()+3000;
     }
+    /** The team a unit fights for, read from its name colour (team 0 aqua, team 1 light purple; see GravesAndGlory.spawn), or -1. */
+    static int nameTeam(net.minecraft.entity.Entity e){
+        var name=e.getCustomName();var colour=name==null?null:name.getStyle().getColor();if(colour==null)return -1;
+        if(colour.getRgb()==net.minecraft.util.Formatting.AQUA.getColorValue())return 0;
+        if(colour.getRgb()==net.minecraft.util.Formatting.LIGHT_PURPLE.getColorValue())return 1;
+        return -1;
+    }
     static void tick(MinecraftClient c){
         preview.clear();if(!GravesAndGloryClient.battleActive()){cancel();return;}if(!active()||c.player==null||c.world==null||c.currentScreen!=null)return;
         if(!facingSet)facing=c.player.getYaw();
@@ -58,7 +65,8 @@ public final class CommandMode {
         Vec3d eye=c.player.getEyePos(),look=c.player.getRotationVec(1);double best=destination==null?64:eye.distanceTo(destination);
         for(var e:c.world.getEntities())if(e instanceof LivingEntity living&&e!=c.player&&e.isAlive()&&e.hasCustomName()&&c.player.canSee(e)){
             Vec3d v=e.getPos().add(0,1,0).subtract(eye);double along=v.dotProduct(look);
-            boolean foe=false;for(var troop:Spec.TROOPS)if(troop.name().equals(e.getCustomName().getString())&&GravesAndGloryClient.team>=0&&!troop.faction().equals(Spec.FACTIONS[GravesAndGloryClient.team].id()))foe=true;
+            // Both teams can field the same House, so the side comes from the name colour the server gives every unit.
+            boolean foe=false;int side=nameTeam(e);if(ArmyMobs.named(e.getCustomName().getString())!=null&&GravesAndGloryClient.team>=0&&side>=0&&side!=GravesAndGloryClient.team)foe=true;
             if(foe&&along>0&&along<best&&v.subtract(look.multiply(along)).length()<1.3){best=along;enemy=e.getId();destination=e.getPos();}
         }
         if(destination==null||Math.abs(destination.x)>GravesAndGlory.R.arenaHalfX()-10||Math.abs(destination.z)>GravesAndGlory.R.arenaHalfZ()-10){destination=null;return;}
@@ -82,15 +90,34 @@ public final class CommandMode {
         for(Vec3d p:preview)net.minecraft.client.render.WorldRenderer.drawBox(matrices,lines,new net.minecraft.util.math.Box(p.x-.32,p.y,p.z-.32,p.x+.32,p.y+.09,p.z+.32),1,.82f,.4f,1);
         matrices.pop();
     }
+    /**
+     * The House strip over the group panels: the side the army flies as its glyph and full name (Gold Banner, never the bare word that also
+     * names the currency), then each House the army has a trait tier in as its 16x16 glyph and a Roman numeral. Nothing is drawn without a tier.
+     */
+    static void houseStrip(DrawContext g,int y){
+        var c=MinecraftClient.getInstance();var tiers=GravesAndGloryClient.houses;
+        if(tiers.isEmpty())return;
+        int team=GravesAndGloryClient.team;var side=DarkUi.side(team); // DarkUi.side reads the live battle state, like every other team mark
+        GravesAndGloryClient.panel(g,8,y,210,38);
+        if(side!=null){DarkUi.teamMark(g,team,16,y+4);g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth(side.name().toUpperCase(java.util.Locale.ROOT)+" / HOUSES",190),28,y+4,GravesAndGloryClient.MUTED);}
+        int x=16;for(var house:Spec.HOUSES){int tier=tiers.getOrDefault(house.id(),0);if(tier<=0)continue;DarkUi.houseMark(g,house.id(),tier,x,y+17);x+=DarkUi.houseMarkWidth(tier)+12;}
+    }
+    /** Where vanilla draws the hearts and the armour row (GUI x width / 2 - 91), in the HUD frame of width w (the GUI scaled by min(1, width / 640)). */
+    static int statusBarsLeft(int w){int sw=MinecraftClient.getInstance().getWindow().getScaledWidth();return (int)Math.floor((sw/2-91)*(w/(double)sw));}
+    /** The right edge the group panels were last drawn to, in the HUD frame (read by the checks). */
+    static int groupsRight;
     static void hud(DrawContext g,int w,int h){
         var c=MinecraftClient.getInstance();int y=h-150;
+        houseStrip(g,y-42);
+        // The group panels end left of vanilla's hearts and armour, which a frame narrower than 640 brings under them: 210 wide when there is room, about 170 in a 640x360 frame.
+        int right=Math.min(218,statusBarsLeft(w)-4),width=right-8,bar=width-16;groupsRight=right;
         for(Group group:groups){boolean chosen=selected.equals("all")||selected.equals(group.id());
             boolean hit=flashing(group.id());
-            GravesAndGloryClient.panel(g,8,y,210,28);if(hit)g.drawBorder(8,y,210,28,DANGER);if(chosen)g.fill(8,y,10,y+28,GravesAndGloryClient.GOLD);
-            g.fill(16,y+24,210,y+27,0xff2a3236);g.fill(16,y+24,16+Math.round(194*Math.max(0,Math.min(1,group.health()))),y+27,hit?DANGER:GravesAndGloryClient.GOLD);
-            g.drawTextWithShadow(c.textRenderer,(chosen?"> ":"  ")+label(group.id())+" / "+group.count()+" / "+Math.round(group.health()*100)+"%",16,y+4,GravesAndGloryClient.WHITE);
+            GravesAndGloryClient.panel(g,8,y,width,28);if(hit)g.drawBorder(8,y,width,28,DANGER);if(chosen)g.fill(8,y,10,y+28,GravesAndGloryClient.GOLD);
+            g.fill(16,y+24,16+bar,y+27,0xff2a3236);g.fill(16,y+24,16+Math.round(bar*Math.max(0,Math.min(1,group.health()))),y+27,hit?DANGER:GravesAndGloryClient.GOLD);
+            g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth((chosen?"> ":"  ")+label(group.id())+" / "+group.count()+" / "+Math.round(group.health()*100)+"%",width-12),16,y+4,GravesAndGloryClient.WHITE);
             if(group.routing())g.drawTextWithShadow(c.textRenderer,"ROUTING",16,y+16,DANGER);
-            else g.drawTextWithShadow(c.textRenderer,label(group.order())+(group.fighting()?" / FIGHTING":""),16,y+16,group.fighting()?0xffffaa66:GravesAndGloryClient.MUTED);y+=30;
+            else g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth(label(group.order())+(group.fighting()?" / FIGHTING":""),width-12),16,y+16,group.fighting()?0xffffaa66:GravesAndGloryClient.MUTED);y+=30;
         }
         if(active()){
             GravesAndGloryClient.panel(g,w/2-180,52,360,40);

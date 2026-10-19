@@ -127,4 +127,18 @@ public final class BattleMath {
         if (formation.equals("shieldwall")) return true;
         return formation.equals("block") && nearestSq > reachSq && nearestSq < 6 * 6;
     }
+    /**
+     * Round gold from held points per income tick: held times (pointGold + bonus), capped at objectiveIncomeCap scaled by the same
+     * ratio, so the cap still stands for the same number of points (the Quartermaster's bonus: 3 a point becomes 5, and the cap of 9,
+     * three points, becomes 15). With bonus 0 it is the Phase 1 rule min(cap, held x pointGold).
+     */
+    public static int pointIncome(long held, int pointGold, int bonus, int cap) {
+        int per = pointGold + bonus;
+        long limit = pointGold > 0 ? (long) cap * per / pointGold : cap;
+        return (int) Math.max(0, Math.min(limit, held * per));
+    }
+    /** A troop's round cost under a class factor (the Warlock's magic discount): the sheet cost times the factor, rounded half up. */
+    public static int classCost(int cost, double factor) { return (int) Math.round(cost * factor); }
+    /** Ticks a troop trains under a class factor (the Marshal's drill): the sheet seconds times 20 times the factor, rounded. */
+    public static long trainingTicks(double seconds, double factor) { return Math.round(seconds * 20 * factor); }
 }

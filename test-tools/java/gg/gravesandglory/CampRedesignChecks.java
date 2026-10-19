@@ -8,7 +8,7 @@ import java.util.*;
 
 /** Isolated real-client checks for the camp redesign. Never included in releases. */
 public final class CampRedesignChecks implements ClientModInitializer {
- int tick,front;boolean started;volatile boolean failed;
+ int tick,front;boolean started;volatile boolean failed;java.util.random.RandomGenerator liveRoll;volatile int dupCopies,dupGold,shardsBefore;
  void check(String id,boolean pass){MeltyTest.report("camp-"+id,pass,id);System.out.println("[camp-check] "+id+"="+pass);if(!pass)failed=true;}
  void server(MinecraftClient c,java.util.function.Consumer<GravesAndGlory.Battle> fn){c.getServer().execute(()->{try{fn.accept(GravesAndGlory.battle);}catch(Exception e){check("exception",false);e.printStackTrace();}});}
  void shot(MinecraftClient c,String name){ScreenshotRecorder.saveScreenshot(c.runDirectory,"camp-"+name+".png",c.getFramebuffer(),t->{});}
@@ -17,14 +17,24 @@ public final class CampRedesignChecks implements ClientModInitializer {
   ClientTickEvents.END_CLIENT_TICK.register(c->{try{
    if(c.getOverlay()!=null)return;if(!started){if(c.currentScreen instanceof FrontMenuScreen&&++front==40){started=true;GravesAndGloryClient.startCamp(c,false);}return;}
    if(c.player==null||c.getServer()==null||!GravesAndGloryClient.ready)return;tick++;
-   if(tick==20)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());b.campaign.returnLobby();b.campaign.profiles.put(p.getUuid(),new Campaign.Profile());b.campaign.profile(p.getUuid()).gold=300;b.campaign.collectionsReady.add(p.getUuid());b.campaign.importAllowed.remove(p.getUuid());b.campaign.save(p.getUuid());
+   if(tick==20)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());b.campaign.returnLobby();b.campaign.profiles.put(p.getUuid(),new Profile());b.campaign.profile(p.getUuid()).gold=300;b.campaign.collectionsReady.add(p.getUuid());b.campaign.importAllowed.remove(p.getUuid());b.campaign.save(p.getUuid());
     long npcs=0;for(var e:b.world.iterateEntities())if(e.getCommandTags().contains(CampWorld.TAG)&&e instanceof net.minecraft.entity.passive.VillagerEntity)npcs++;
     check("four-interactive-stewards",npcs==4);check("no-camp-weapons",p.getInventory().isEmpty());});
    if(tick==45){c.setScreen(null);check("battle-hud-off",GravesAndGloryClient.inCamp()&&!GravesAndGloryClient.battleActive());CommandMode.begin("attack");check("orders-disabled-in-camp",!CommandMode.active());}
    if(tick==70)shot(c,"courtyard");
    if(tick==80)c.setScreen(new CampScreen("home"));if(tick==95)shot(c,"guide");
-   if(tick==100)CampScreen.open("recruit");if(tick==115)shot(c,"recruitment");if(tick==120)press(c,"RECRUIT RANDOM");
-   if(tick==150){check("server-confirmed-recruit",CampaignClient.profile.gold==200&&CampaignClient.profile.unlocked.size()==7);shot(c,"reward-reveal");}
+   if(tick==100)CampScreen.open("recruit");if(tick==115)shot(c,"recruitment");if(tick==118)server(c,b->{liveRoll=b.campaign.rollRng;b.campaign.rollRng=Phase2Checks.Engine.fixed(86);}); /* a fixed draw: the Gilded pool at 86 is its first Rare, a troop the fresh collection lacks, so the roll always opens the reveal panel (a duplicate does not) */ if(tick==120)press(c,"ROLL ");
+   if(tick==150){var pr=CampaignClient.profile;check("server-confirmed-recruit",pr.gold==200&&pr.owned.values().stream().mapToInt(o->o.copies).sum()+pr.shards.values().stream().mapToInt(Integer::intValue).sum()==Profile.commons().size()+1); /* one roll: a new troop */shot(c,"reward-reveal");server(c,b->{if(liveRoll!=null)b.campaign.rollRng=liveRoll;});}
+   /* An owned troop drawn again through the recruit page: fixed(0) draws the Gilded pool's first Common, the Order Squire every fresh collection owns. The duplicate raises it to star 2; at full stars the next copy turns into Gilded shards. */
+   if(tick==152)server(c,b->{var pr=b.campaign.profile(c.player.getUuid());var o=pr.owned.get("knight");dupCopies=o==null?-1:o.copies;dupGold=pr.gold;b.campaign.rollRng=Phase2Checks.Engine.fixed(0);});
+   if(tick==155)press(c,"ROLL ");
+   if(tick==165)server(c,b->{var id=c.player.getUuid();var pr=b.campaign.profile(id);var o=pr.owned.get("knight");
+    check("duplicate-roll",dupCopies==1&&o!=null&&o.copies==2&&o.stars==2&&pr.gold==dupGold-Spec.RECRUITMENT[0].rollCost()&&b.campaign.notices.getOrDefault(id,"").contains("rises to star 2"));
+    if(o!=null){o.stars=RosterMath.maxStars();o.copies=4;}shardsBefore=pr.shards.getOrDefault("gilded",0);dupGold=pr.gold;b.campaign.save(id);b.campaign.rollRng=Phase2Checks.Engine.fixed(0);});
+   if(tick==168)press(c,"ROLL ");
+   if(tick==172)server(c,b->{var id=c.player.getUuid();var pr=b.campaign.profile(id);var o=pr.owned.get("knight");
+    check("shard-roll",o!=null&&o.copies==4&&o.stars==RosterMath.maxStars()&&pr.shards.getOrDefault("gilded",0)==shardsBefore+RosterMath.rarityRow("common").dismantleShards()&&pr.gold==dupGold-Spec.RECRUITMENT[0].rollCost()&&b.campaign.notices.getOrDefault(id,"").contains("full stars"));
+    if(liveRoll!=null)b.campaign.rollRng=liveRoll;});
    if(tick==175){CampScreen.open("friends");press(c,"CREATE PARTY");}
    if(tick==200){check("party-packet",CampaignClient.social.get("party").getAsBoolean());shot(c,"friends");press(c,"CREATE PRIVATE ROOM");}
    if(tick==225){server(c,b->{var r=b.campaign.social.room(c.player.getUuid());if(r!=null)r.map=b.campaign.map;});CampScreen.open("room");check("room-packet",!CampaignClient.social.get("room").getAsString().isEmpty());}
@@ -46,7 +56,7 @@ public final class CampRedesignChecks implements ClientModInitializer {
    if(tick==710){shot(c,"small-guide");CampScreen.open("recruit");}
    if(tick==730){shot(c,"small-recruitment");CampScreen.open("results");check("short-match-no-rewards-report",CampaignClient.result.get("gold").getAsInt()==0&&CampaignClient.result.get("xp").getAsInt()==0);}
    if(tick==740)shot(c,"small-results");
-   if(tick==750){check("suite",!failed);c.setScreen(new CampScreen("home"));server(c,b->{var path=b.server.getSavePath(net.minecraft.util.WorldSavePath.ROOT).resolve("gravesandglory-parties.json");try{var saved=Campaign.JSON.fromJson(java.nio.file.Files.readString(path),SocialHub.class);saved.restore();check("party-readback",saved.party(c.player.getUuid())!=null);var profile=Campaign.JSON.fromJson(java.nio.file.Files.readString(b.campaign.directory.resolve(c.player.getUuid()+".json")),Campaign.Profile.class);check("profile-readback",profile.progression.claims.contains("daily:0")&&profile.progression.xp>=225);}catch(Exception e){check("readback",false);}});}
+   if(tick==750){check("suite",!failed);c.setScreen(new CampScreen("home"));server(c,b->{var path=b.server.getSavePath(net.minecraft.util.WorldSavePath.ROOT).resolve("gravesandglory-parties.json");try{var saved=Campaign.JSON.fromJson(java.nio.file.Files.readString(path),SocialHub.class);saved.restore();check("party-readback",saved.party(c.player.getUuid())!=null);var profile=Campaign.JSON.fromJson(java.nio.file.Files.readString(b.campaign.directory.resolve(c.player.getUuid()+".json")),Profile.class);check("profile-readback",profile.progression.claims.contains("daily:0")&&profile.progression.xp>=225);}catch(Exception e){check("readback",false);}});}
    if(tick==780){c.setScreen(null);server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());b.relocate(p,22,66,CampaignMaps.LOBBY_Z-7,-145,5);GravesAndGlory.openCamp(p,"recruit");});}
    if(tick==800){check("station-network-route",c.currentScreen instanceof CampScreen screen&&screen.page.equals("recruit"));c.setScreen(null);}
    if(tick==820)shot(c,"recruiter-station");
