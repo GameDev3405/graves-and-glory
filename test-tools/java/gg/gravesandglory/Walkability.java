@@ -8,12 +8,12 @@ import net.minecraft.util.math.BlockPos;
  * The walk scan, shared by MapTour and Phase3Checks (harness only, never in the player jar). It visits every road cell, every bridge deck cell
  * (the planks) and every capture-ring cell of the arena. A cell is blocked when a block with a collision shape stands at Arena.ground+1 or +2,
  * where a knight's feet and head go. Each blocked cell is counted once, in this order:
- * road (on a deck; or on a road, outside every footprint and ring), base (inside the footprint of a team camp: the gate, the barracks and the stores of dawn and dusk; a barracks-kind building on the battlefield, the warehouse or the garrison, is a building),
+ * road (on a deck; or on a road cell outside every footprint, inside a ring or not), base (inside the footprint of a team camp: the gate, the barracks and the stores of dawn and dusk; a barracks-kind building on the battlefield, the warehouse or the garrison, is a building),
  * building (inside any other footprint, bridges excepted) and through (a building cell that a road of width 4 or more covers while neither end
- * of that road lies inside that footprint: a house lane ends at its house, a through road does not), point (inside a capture ring).
+ * of that road lies inside that footprint: a house lane ends at its house, a through road does not), point (a capture ring cell that is not a road cell).
  * A through cell counts in building and in through; detail names it "through". detail has one "kind x z block" line per blocked cell.
- * The one exception on a deck is the pole of a capture point's flag, the oak_fence at the exact centre of a point (Arena.flag builds and recolours it): it is point dressing wherever it stands,
- * one cell a knight walks around, so it counts as point and not as road.
+ * The one exception is the pole of a capture point's flag, the oak_fence at the exact centre of a point (Arena.flag builds and recolours it): wherever it stands, on a deck or at the end of the road that runs
+ * into the point, it is point dressing, one cell a knight walks around, so it counts as point and not as road. Nothing else on a road cell inside a ring is excused.
  * A deck is the planks only: columns x..x+width-1 and rows z..z+depth-1 from x=s.x()-width/2, z=s.z()-depth/2. Arena.ground also counts the
  * row z+depth and the column x+width as bridge, but nothing is built on them as a deck.
  */
@@ -34,11 +34,11 @@ final class Walkability {
             for(int y=g+1;y<=g+2&&hit==null;y++){var pos=new BlockPos(x,y,z);var st=b.world.getBlockState(pos);if(!st.getCollisionShape(b.world,pos).isEmpty())hit=Registries.BLOCK.getId(st.getBlock()).getPath();}
             if(hit==null)continue;
             String kind="road";
-            if(deck&&flagPole(x,z,hit))kind="point";
-            if(!deck){
+            if(flagPole(x,z,hit))kind="point";
+            else if(!deck){
                 boolean inBase=false,inBuilding=false,inThrough=false;
                 for(var s:Spec.STRUCTURES){if(s.kind().equals("bridge")||!inside(s,x,z))continue;if(baseLike(s))inBase=true;else{inBuilding=true;inThrough|=through(x,z,s);}}
-                kind=inBase?"base":inThrough?"through":inBuilding?"building":ring?"point":"road";
+                kind=inBase?"base":inThrough?"through":inBuilding?"building":ring&&!Arena.road(x,z)?"point":"road";
             }
             switch(kind){case "road"->road++;case "through"->{building++;through++;}case "building"->building++;case "base"->base++;default->point++;}
             all.append(kind).append(' ').append(x).append(' ').append(z).append(' ').append(hit).append('\n');

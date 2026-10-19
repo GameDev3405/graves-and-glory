@@ -485,7 +485,7 @@ public final class Phase3Checks implements ClientModInitializer {
     }
 
     /** Task 2: the roads, on all five maps. Per map: the walk scan (p3-walk-map<N> passes with no blocked road, deck or through-road cell; all six counts are in
-     *  its line), the hits in screenshots/p3-walk-map<N>-blocked.txt, and two photographs of each of the three decks: deck-map<N>-bridge-<k> from the camera the plan gives
+     *  its line), p3-walk-rule-map<N> (the rules of the classification, tried on single cells with a stone put on them), the hits in screenshots/p3-walk-map<N>-blocked.txt, and two photographs of each of the three decks: deck-map<N>-bridge-<k> from the camera the plan gives
      *  (a ring obelisk can stand in front of it) and deck-map<N>-bridge-<k>-high from thirty-four blocks above and out on the south side, over any obelisk. Then the route harness sends twenty knights over
      *  every crossing of the five maps, and p3-routes-map<N> passes when all three crossings of the map had 20 of 20 across.
      *  Suite walk is the same without the photographs and the routes: the scan of the five maps and nothing else, which is the quick way to measure a change to Walkability. */
@@ -526,14 +526,48 @@ public final class Phase3Checks implements ClientModInitializer {
         }
         @Override public void cleanup(MinecraftClient c){server(c,b->b.campaign.leash=true);}
 
-        /** The scan of the map that stands, reported and written beside the screenshots. */
+        /** The classification rules, then the scan of the map that stands, reported and written beside the screenshots. */
         void scan(GravesAndGlory.Battle b,int n){
+            rule(b,n);
             long start=System.nanoTime();var s=Walkability.scan(b);
             report("p3-walk-map"+n,s.road()==0&&s.through()==0,"cells="+s.cells()+" road="+s.road()+" through="+s.through()+" building="+s.building()+" base="+s.base()+" point="+s.point());
             try{Path file=MinecraftClient.getInstance().runDirectory.toPath().resolve("screenshots/p3-walk-map"+n+"-blocked.txt");Files.createDirectories(file.getParent());Files.writeString(file,s.detail());}
             catch(Exception e){report("p3-walk-map"+n+"-file",false,e.toString());}
             System.out.println("[p3] note walk map "+n+" scanned in "+(System.nanoTime()-start)/1000000+" ms");
             scanned=true;
+        }
+        /** The classification rules of Walkability, tried on single cells of the map that stands with a stone put on them and taken away again (p3-walk-rule-map<N>): a cell inside a capture ring that is also
+         *  a road cell counts as road (the one exception is the pole of a flag at the exact centre of a point, which counts as point), a ring cell off the roads counts as point, a road cell outside the rings counts as road. */
+        static void rule(GravesAndGlory.Battle b,int n){
+            int[] onRoad=null,offRoad=null,outside=null;
+            for(var p:Spec.POINTS)for(int dx=-10;dx<=10;dx++)for(int dz=-10;dz<=10;dz++){
+                int x=p.x()+dx,z=p.z()+dz;
+                if((dx==0&&dz==0)||!plain(b,x,z))continue;
+                if(Arena.road(x,z)){if(onRoad==null)onRoad=new int[]{x,z};}else if(offRoad==null)offRoad=new int[]{x,z};
+            }
+            int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ();
+            for(int x=-hx;x<=hx&&outside==null;x++)for(int z=-hz;z<=hz&&outside==null;z++)if(Arena.road(x,z)&&!Walkability.inRing(x,z)&&plain(b,x,z))outside=new int[]{x,z};
+            if(onRoad==null||offRoad==null||outside==null){report("p3-walk-rule-map"+n,false,"no cell to try: a ring cell on a road "+(onRoad!=null)+", a ring cell off the roads "+(offRoad!=null)+", a road cell outside the rings "+(outside!=null));return;}
+            var a=trial(b,onRoad[0],onRoad[1]);var c=trial(b,offRoad[0],offRoad[1]);var d=trial(b,outside[0],outside[1]);
+            int poles=0,fine=0;
+            for(var p:Spec.POINTS){var s=Walkability.scan(b,new BlockBox(p.x(),0,p.z(),p.x(),0,p.z()));poles++;if(s.road()==0&&s.through()==0)fine++;}
+            boolean ok=a.road()==1&&a.point()==0&&c.point()==1&&c.road()==0&&d.road()==1&&fine==poles;
+            report("p3-walk-rule-map"+n,ok,"a stone on a ring cell that is also a road cell ("+onRoad[0]+","+onRoad[1]+"): road "+a.road()+" point "+a.point()+" (want road 1); on a ring cell off the roads ("+offRoad[0]+","+offRoad[1]+"): point "+c.point()+" road "+c.road()+" (want point 1); on a road cell outside the rings ("+outside[0]+","+outside[1]+"): road "+d.road()+" (want 1); the centre cell of "+fine+" of "+poles+" points is not road");
+        }
+        /** A cell the scan visits and finds clear: dry, not a deck plank, outside every footprint, nothing with a collision shape at ground+1 or +2. */
+        static boolean plain(GravesAndGlory.Battle b,int x,int z){
+            if(Arena.river(x,z)||Walkability.onDeck(x,z))return false;
+            for(var s:Spec.STRUCTURES)if(!s.kind().equals("bridge")&&Walkability.inside(s,x,z))return false;
+            int g=Arena.ground(x,z);
+            for(int y=g+1;y<=g+2;y++){var pos=new BlockPos(x,y,z);if(!b.world.getBlockState(pos).getCollisionShape(b.world,pos).isEmpty())return false;}
+            return true;
+        }
+        /** The scan of one cell with a stone at ground+1, and the old block put back. */
+        static Walkability.Scan trial(GravesAndGlory.Battle b,int x,int z){
+            var pos=new BlockPos(x,Arena.ground(x,z)+1,z);var old=b.world.getBlockState(pos);
+            b.world.setBlockState(pos,Blocks.STONE.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
+            try{return Walkability.scan(b,new BlockBox(x,pos.getY(),z,x,pos.getY(),z));}
+            finally{b.world.setBlockState(pos,old,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);}
         }
         /** On the server thread, as the dev control calls it: one step of the route harness, and its verdict per map once it is done. */
         void pump(GravesAndGlory.Battle b){
