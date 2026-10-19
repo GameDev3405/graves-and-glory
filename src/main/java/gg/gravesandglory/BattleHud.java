@@ -18,7 +18,8 @@ import java.util.*;
  *  All but the ability slot is drawn on the UiCanvas; the slot sits in vanilla GUI space at the player's GUI Scale, next to the
  *  hotbar. Colour never carries a meaning alone (spec 6.1): seals carry their owner's emblem, a routing card its stamp and grey
  *  card, a fallen one its word. The event feed hangs at the right edge; the hint layer (altLayer) puts every key row on the cards
- *  and the hint slip above them. What the last frame drew is kept for checks: cards(), seals(), rects(), texts() and hintRows(). */
+ *  and the hint slip above them. What the last frame drew is kept for checks: cards(), seals(), rects(), texts(), hintRows() and
+ *  hintEnds(). */
 public final class BattleHud {
     private BattleHud() {}
 
@@ -46,11 +47,13 @@ public final class BattleHud {
     private static final Map<String,int[]> rectsDrawn=new LinkedHashMap<>();
     private static final Map<String,String> textsDrawn=new LinkedHashMap<>();
     private static final List<List<String>> hintRowsDrawn=new ArrayList<>();
+    private static final List<Integer> hintEndsDrawn=new ArrayList<>();
     private static final List<CardDraw> cards=Collections.unmodifiableList(cardsDrawn);
     private static final List<SealDraw> seals=Collections.unmodifiableList(sealsDrawn);
     private static final Map<String,int[]> rects=Collections.unmodifiableMap(rectsDrawn);
     private static final Map<String,String> texts=Collections.unmodifiableMap(textsDrawn);
     private static final List<List<String>> hintRows=Collections.unmodifiableList(hintRowsDrawn);
+    private static final List<Integer> hintEnds=Collections.unmodifiableList(hintEndsDrawn);
     /** Set when a frame named a texture the atlas lacks: the HUD stays off, and the client up, until the next resource reload. */
     private static boolean stopped;
     // The lesson copy last wrapped, its style and its lines.
@@ -68,6 +71,9 @@ public final class BattleHud {
     public static Map<String,String> texts(){return texts;}
     /** The chip and word texts of each row the hint slip last drew, in order; empty while the hint layer is down. */
     public static List<List<String>> hintRows(){return hintRows;}
+    /** The canvas x where each row of the hint slip ends (its last chip or word), as the last frame drew it; empty while the hint
+     *  layer is down. */
+    public static List<Integer> hintEnds(){return hintEnds;}
     /** The hint layer is up: the hints key held, the round's first HINT_LAYER_MS, or an order being aimed. Every living card then
      *  carries its key row, and the hint slip above the cards names the other keys. */
     public static boolean altLayer(){
@@ -75,7 +81,7 @@ public final class BattleHud {
         return k!=null&&k.isPressed()||Util.getMeasuringTimeMs()-roundShownMs<HINT_LAYER_MS||CommandMode.active();
     }
     /** A frame without the ledger (camp, a battle's entrance, a menu over the HUD): nothing reads as drawn. */
-    static void clear(){cardsDrawn.clear();sealsDrawn.clear();rectsDrawn.clear();textsDrawn.clear();hintRowsDrawn.clear();}
+    static void clear(){cardsDrawn.clear();sealsDrawn.clear();rectsDrawn.clear();textsDrawn.clear();hintRowsDrawn.clear();hintEndsDrawn.clear();}
 
     /** At every resource reload (fonts and the atlas can change there): wrap the lesson again, and try the HUD again after a texture
      *  stop. GravesAndGloryClient registers it. */
@@ -169,22 +175,29 @@ public final class BattleHud {
         if(alt)hintSlip(g,font,first,r);
     }
 
+    /** How far a hint-slip row may run: from 10 px into the slip to 8 px inside the right edge of its paper, which the slip's PNG
+     *  paints from x 2 to 172. */
+    static final int HINT_ROW_W=154;
+
     /** The hint slip, its box 48 px above firstTop: row one names Map and Commands (Confirm and Cancel while an order is aimed), row
-     *  two the facing keys and the hints key. Each key is an ink chip naming the player's binding, a mouse button as LMB, RMB or MMB. */
+     *  two the facing keys and the hints key. Each key is an ink chip naming the player's binding, a mouse button as LMB, RMB or MMB.
+     *  Where long names would run a row past the paper, they give way alike (UiMath.fitKeys): nothing runs past it. */
     static void hintSlip(DrawContext g,TextRenderer font,int firstTop,Map<String,int[]> r){
         int x=24,y=firstTop-48;boolean aiming=CommandMode.active();
         UiTex.draw(g,"hud/notice-slip",x,y);
         String[][] ids={aiming?new String[]{"confirm","cancel"}:new String[]{"map","menu"},{"rotate_left","rotate_right","hints"}};
         String[][] words={aiming?new String[]{"Confirm","Cancel"}:new String[]{"Map","Commands"},{null,"Turn","Hints"}};
         for(int row=0;row<2;row++){
-            List<String> drawn=new ArrayList<>();int kx=x+10,ky=y+(row==0?7:22);
-            for(int k=0;k<ids[row].length;k++){
-                String key=HintText.chip(GravesAndGloryClient.hint(ids[row][k]));int kw=UiMath.chipWidth(font.getWidth(key));
-                UiTex.three(g,"hud/key-chip",kx,ky,kw);g.drawText(font,key,kx+2,ky+2,DarkUi.CHIP_TEXT,false);drawn.add(key);kx+=kw+2;
+            List<String> keys=new ArrayList<>();for(String id:ids[row])keys.add(HintText.chip(GravesAndGloryClient.hint(id)));
+            keys=UiMath.fitKeys(keys,Arrays.asList(words[row]),HINT_ROW_W,font::getWidth);
+            List<String> drawn=new ArrayList<>();int kx=x+10,ky=y+(row==0?7:22),end=kx;
+            for(int k=0;k<keys.size();k++){
+                String key=keys.get(k);int kw=UiMath.chipWidth(font.getWidth(key));
+                UiTex.three(g,"hud/key-chip",kx,ky,kw);g.drawText(font,key,kx+2,ky+2,DarkUi.CHIP_TEXT,false);drawn.add(key);end=kx+kw;kx+=kw+2;
                 String word=words[row][k];
-                if(word!=null){g.drawText(font,word,kx,ky+2,DarkUi.SEPIA,false);drawn.add(word);kx+=font.getWidth(word)+8;}
+                if(word!=null){g.drawText(font,word,kx,ky+2,DarkUi.SEPIA,false);drawn.add(word);end=kx+font.getWidth(word);kx+=font.getWidth(word)+8;}
             }
-            hintRowsDrawn.add(List.copyOf(drawn));
+            hintRowsDrawn.add(List.copyOf(drawn));hintEndsDrawn.add(end);
         }
         r.put("hints",new int[]{x,y,176,40});
     }

@@ -16,6 +16,14 @@ public final class UiMathCheck {
         check(UiMath.trim("abcdefghijklmnopqrstuvwxyz",60,six).equals("abcdefg...") && UiMath.trim("short",60,six).equals("short"), "trim with an ellipsis");
         check(UiMath.brassKeyWidth(18,3)==27 && UiMath.brassKeyWidth(28,5)==37 && UiMath.brassKeyWidth(6,1)==13 && UiMath.brassKeyWidth(80,12)==48, "brass keys: Esc 27, Enter 37, B 13, cap 48");
         check(UiMath.chipWidth(6)==10 && UiMath.chipWidth(18)==22, "ink chips: G 10, LMB 22");
+        java.util.function.ToIntFunction<String> mc = s -> s.chars().map(ch -> ch==' '||ch=='t'||ch=='['||ch==']' ? 4 : ch=='.'||ch=='i' ? 2 : ch=='l' ? 3 : ch=='f'||ch=='k' ? 5 : 6).sum(); // Minecraft's font, near enough
+        check(UiMath.trimKey("Left Alt",40,mc).equals("Left Alt") && UiMath.trimKey("Right Shift",36,mc).equals("R...Shift") && UiMath.trimKey("Keypad 4",30,mc).equals("Key...4") && UiMath.trimKey("Backspace",30,mc).equals("Back...") && UiMath.trimKey("Right Shift",32,mc).equals("Right..."), "key names keep their last word after the dots, else their start");
+        java.util.List<String> turn = java.util.Arrays.asList(null,"Turn","Hints"), map = java.util.List.of("Map","Commands");
+        check(UiMath.fitKeys(java.util.List.of("[","]","Left Alt"),turn,154,mc).equals(java.util.List.of("[","]","Left Alt")) && UiMath.fitKeys(java.util.List.of("Not bound","K"),map,154,mc).equals(java.util.List.of("Not bound","K")) && UiMath.hintRowWidth(java.util.List.of("Not bound","K"),map,mc)==142, "hint rows that fit are left alone");
+        var keypad = UiMath.fitKeys(java.util.List.of("Keypad 4","Keypad 6","Left Alt"),turn,154,mc);
+        check(UiMath.hintRowWidth(java.util.List.of("Keypad 4","Keypad 6","Left Alt"),turn,mc)==204 && keypad.equals(java.util.List.of("Ke...4","Ke...6","L...Alt")) && UiMath.hintRowWidth(keypad,turn,mc)<=154, "the keypad's turn keys fit the slip and stay apart");
+        var shift = UiMath.fitKeys(java.util.List.of("Not bound","Right Shift"),map,154,mc);
+        check(shift.equals(java.util.List.of("Not b...","R...Shift")) && UiMath.hintRowWidth(shift,map,mc)==153, "two long names on row one fit the slip");
         check(UiMath.contrast(0xffeee9df,0xff1f2427)>=4.5 && UiMath.contrast(0xffe47a64,0xff1f2427)>=4.5, "ivory and alarm text on the iron plate");
         check(Math.abs(UiMath.contrast(0xff000000,0xffffffff)-21.0)<0.01, "WCAG ratio");
         check(UiMath.sealCentre(0,3,960)==452 && UiMath.sealCentre(2,3,960)==508 && UiMath.sealCentre(0,5,960)==424 && UiMath.sealCentre(4,5,960)==536, "seals on a 28 px pitch, centred");

@@ -1544,8 +1544,10 @@ public final class Phase1Checks implements ClientModInitializer {
         static void still(GravesAndGlory.Unit u){freeze(u);u.mob.setAiDisabled(true);}
         /** Client ticks since this stage began (the first step that called this in it). */
         int since(int tick){if(mark!=stage){mark=stage;waitFrom=tick;}return tick-waitFrom;}
-        /** The menu and map keys back on their defaults (R and M). */
-        static void defaults(){GravesAndGloryClient.menu.setBoundKey(GravesAndGloryClient.menu.getDefaultKey());GravesAndGloryClient.mapKey.setBoundKey(GravesAndGloryClient.mapKey.getDefaultKey());net.minecraft.client.option.KeyBinding.updateKeysByCode();}
+        /** The menu, map and turn keys back on their defaults (R, M, [ and ]). */
+        static void defaults(){for(var k:new net.minecraft.client.option.KeyBinding[]{GravesAndGloryClient.menu,GravesAndGloryClient.mapKey,GravesAndGloryClient.rotateLeft,GravesAndGloryClient.rotateRight})k.setBoundKey(k.getDefaultKey());net.minecraft.client.option.KeyBinding.updateKeysByCode();}
+        /** A chip shows the name, or a trim of it (UiMath.trimKey): a start of the name, the dots, then an end of it. */
+        static boolean trimOf(String chip,String name){int d=chip.indexOf("...");return chip.equals(name)||d>=0&&name.startsWith(chip.substring(0,d))&&name.endsWith(chip.substring(d+3));}
         /** Back to the camp (the client must see running false), then round r on its map; 20 ticks after the client shows it, stage next. */
         void restart(MinecraftClient c,int r,int next){round=r;after=next;stage=-900;server(c,b->{if(b.running)b.campaign.returnLobby();stage=900;});}
 
@@ -1666,6 +1668,22 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(tick>=seen+2){var rows=BattleHud.hintRows();List<String> first=rows.isEmpty()?List.of():List.copyOf(rows.get(0));boolean aimed=CommandMode.active();
                         boolean aimOk=aimed&&first.equals(AIM_ROW);CommandMode.cancel();defaults();
                         report("p1-ui-hints-rebound",campOk&&battleOk&&rowsOk&&aimOk,campWhy+"; "+battleWhy+"; "+rowsWhy+"; aiming (active "+aimed+") row 1 "+first+"; then the menu and map keys went back to "+GravesAndGloryClient.hint("menu")+" and "+GravesAndGloryClient.hint("map"));
+                        seen=tick;stage=23;}
+                }
+                case 23->{ // p1-ui-hints-long (UI polish M4): two long names on each row of the hint slip, which must still end on its paper
+                    var keysym=net.minecraft.client.util.InputUtil.Type.KEYSYM;
+                    GravesAndGloryClient.menu.setBoundKey(keysym.createFromCode(GLFW.GLFW_KEY_RIGHT_SHIFT));GravesAndGloryClient.mapKey.setBoundKey(net.minecraft.client.util.InputUtil.UNKNOWN_KEY);
+                    GravesAndGloryClient.rotateLeft.setBoundKey(keysym.createFromCode(GLFW.GLFW_KEY_KP_4));GravesAndGloryClient.rotateRight.setBoundKey(keysym.createFromCode(GLFW.GLFW_KEY_KP_6));
+                    net.minecraft.client.option.KeyBinding.updateKeysByCode();seen=tick;stage=24;}
+                case 24->{
+                    if(tick>=seen+2){var rows=List.copyOf(BattleHud.hintRows());var ends=List.copyOf(BattleHud.hintEnds());int[] slip=BattleHud.rects().get("hints");
+                        boolean shape=rows.size()==2&&ends.size()==2&&slip!=null&&rows.get(0).size()==4&&rows.get(1).size()==5;
+                        boolean on=shape&&ends.get(0)<=slip[0]+164&&ends.get(1)<=slip[0]+164; // the slip PNG's paper ends at x 172: 8 px kept clear, as on the left
+                        boolean named=shape&&trimOf(rows.get(0).get(0),"Not bound")&&rows.get(0).get(1).equals("Map")&&trimOf(rows.get(0).get(2),"Right Shift")&&rows.get(0).get(3).equals("Commands")
+                            &&trimOf(rows.get(1).get(0),"Keypad 4")&&trimOf(rows.get(1).get(1),"Keypad 6")&&rows.get(1).get(2).equals("Turn")&&trimOf(rows.get(1).get(3),"Left Alt")&&rows.get(1).get(4).equals("Hints");
+                        boolean apart=shape&&rows.get(1).get(0).endsWith("4")&&rows.get(1).get(1).endsWith("6")&&rows.get(0).get(2).endsWith("Shift")&&String.join("",rows.get(0)).contains("...")&&String.join("",rows.get(1)).contains("...");
+                        shot(c,"ui-hud-hints-long");defaults();
+                        report("p1-ui-hints-long",on&&named&&apart,"with Map unbound, Commands on Right Shift and Turn on Keypad 4 and 6, the slip at "+UiHudChecks.box(slip)+" drew the rows "+rows+", ending at canvas x "+ends+" (the paper's text edge at "+(slip==null?"?":String.valueOf(slip[0]+164))+"); then the keys went back to "+GravesAndGloryClient.hint("menu")+", "+GravesAndGloryClient.hint("map")+", "+GravesAndGloryClient.hint("rotate_left")+" and "+GravesAndGloryClient.hint("rotate_right"));
                         seen=tick;stage=14;}
                 }
                 case 14->{ // p1-ui-alt-layer: in the first 60 s every card is tall
