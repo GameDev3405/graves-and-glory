@@ -7,8 +7,7 @@
     "CommandInputMixin",
     "BipedAnimationMixin",
     "EntranceCameraMixin",
-    "CinematicHudMixin",
-    "ModelAngleCompatibilityMixin"
+    "CinematicHudMixin"
   ],
   "injectors": {
     "defaultRequire": 1
