@@ -1140,8 +1140,10 @@ public final class Phase1Checks implements ClientModInitializer {
         /** Width, height, GUI scale, 1 for a borderless window (the 1080 windows: see window(c,w,h,gui,bare)), then the chat lines
          *  p1-ui-chat-lift wants there, unfocused and focused (UI polish M1, worked out by hand): vanilla's 10 and 20 where the chat
          *  stops short of the screen's centre, else what fits between the chat's bottom and 4 px below vanilla's 15 px crosshair at
-         *  the centre (1 at 854x480 GUI 2, 4 at 1280x720 GUI 3, 2 at 1920x1080 GUI 4). */
-        static final int[][] WINDOWS={{960,540,1,0,10,20},{854,480,2,0,1,1},{1280,720,3,0,4,4},{1920,1080,2,1,10,20},{1920,1080,4,1,2,2}};
+         *  the centre (1 at 854x480 GUI 2, 4 at 1280x720 GUI 3, 2 at 1920x1080 GUI 4). At 1366x768 GUI 2 (UI polish M2) the chat
+         *  stops just short of the crosshair (GUI x 332 of 334) but reaches the respawn card, which ends at GUI y 186: 10 lines fit
+         *  below it, open or closed. */
+        static final int[][] WINDOWS={{960,540,1,0,10,20},{854,480,2,0,1,1},{1280,720,3,0,4,4},{1920,1080,2,1,10,20},{1920,1080,4,1,2,2},{1366,768,2,0,10,10}};
         // Written by both threads. A negative stage is a hand-off: the client waits for the server task it sent to set the next stage.
         volatile int stage;volatile UUID player;
         volatile boolean hungerOn,hungerDone,routSupport,keepRespawn,fiveReady;volatile int hungerSets,hungerOk;volatile String hungerWrong="",fixture="";
@@ -1253,7 +1255,7 @@ public final class Phase1Checks implements ClientModInitializer {
         public void step(MinecraftClient c,int tick){
             if(tick>9000&&!finished){report("p1-ui-hud-timeout",false,"stuck in stage "+stage);end(c);return;}
             if(keepLesson)CampaignClient.tutorial=lessonStep;
-            if(Math.abs(stage)>=2&&stage<99&&c.currentScreen!=null)c.setScreen(null);
+            if(Math.abs(stage)>=2&&stage<99&&stage!=46&&c.currentScreen!=null)c.setScreen(null); // stage 46 holds the chat open
             switch(stage){
                 case 0->{
                     if(tick<20)return;c.setScreen(null);var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();
@@ -1337,9 +1339,18 @@ public final class Phase1Checks implements ClientModInitializer {
                     boolean full=r.containsKey("lesson")&&r.containsKey("respawn")&&r.containsKey("ability")&&r.containsKey("spine")&&BattleHud.cards().size()==3&&score!=null&&score[0]==UiCanvas.width()/2-128;
                     if(full||tick-waitFrom>100){
                         if(full)measure(c,s,r);else{smallOk=false;smallWhy+=(smallWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": no frame with every element in 100 ticks (drew "+r.keySet()+")";}
-                        if(win==0)shot(c,"ui-hud-chat");if(win==1)shot(c,"ui-hud-small");if(win==2)shot(c,"ui-hud-1280");if(win==3)shot(c,"ui-hud-1080-gui2");if(win==4)shot(c,"ui-hud-1080-gui4");
-                        win++;stage=win<WINDOWS.length?41:43;
+                        if(win==0)shot(c,"ui-hud-chat");if(win==1)shot(c,"ui-hud-small");if(win==2)shot(c,"ui-hud-1280");if(win==3)shot(c,"ui-hud-1080-gui2");if(win==4)shot(c,"ui-hud-1080-gui4");if(win==5)shot(c,"ui-hud-1366");
+                        win++;stage=win<WINDOWS.length?41:45;
                     }
+                }
+                case 45->{ // p1-ui-chat-respawn (UI polish M2): at 1366x768 GUI 2, the last window, the open chat stops below the respawn card
+                    var chat=c.inGameHud.getChatHud();chat.clear(false);for(int i=1;i<=25;i++)chat.addMessage(net.minecraft.text.Text.literal("Chat check line "+i));
+                    c.setScreen(new net.minecraft.client.gui.screen.ChatScreen(""));waitFrom=tick;stage=46;}
+                case 46->{
+                    if(tick-waitFrom>=3){var w=c.getWindow();var hud=c.inGameHud.getChatHud();int[] dr=ChatPlacement.drawn,card=BattleHud.rects().get("respawn"),chat=dr==null?null:canvas(c,dr[0],dr[1],dr[2],dr[3]);
+                        boolean open=c.currentScreen instanceof net.minecraft.client.gui.screen.ChatScreen;int shown=hud.getVisibleLineCount();shot(c,"ui-hud-chat-open");
+                        report("p1-ui-chat-respawn",open&&card!=null&&chat!=null&&shown==10&&ChatPlacement.drawnLines==10&&!meets(chat,card),"with the chat open (true: "+open+") at "+w.getFramebufferWidth()+"x"+w.getFramebufferHeight()+" GUI "+(int)w.getScaleFactor()+" and 25 lines in it, it shows "+shown+" lines (wanted 10 of vanilla's 20) and drew "+ChatPlacement.drawnLines+" at canvas "+box(chat)+" (GUI "+box(dr)+"); the respawn card at "+box(card));
+                        c.setScreen(null);stage=43;}
                 }
                 case 43->{keepLesson=false;keepRespawn=false;CampaignClient.tutorial=-1;report("p1-ui-small-window",smallOk,smallWhy);report("p1-ui-chat-lift",chatOk&&campLift==0,"in camp the chat moved "+campLift+" GUI px; "+chatWhy);window(c,960,540,1);
                     chatScale=c.options.getChatScale().getValue();c.options.getChatScale().setValue(0.6);
@@ -1465,8 +1476,8 @@ public final class Phase1Checks implements ClientModInitializer {
             int[] chat=dr==null?null:canvas(c,dr[0],dr[1],dr[2],dr[3]);String first=r.keySet().stream().filter(k->k.startsWith("card-")).min(Comparator.comparingInt(k->r.get(k)[1])).orElse(null);
             int shown=hud.getVisibleLineCount(),focused=ChatPlacement.lines(net.minecraft.client.gui.hud.ChatHud.getHeight(c.options.getChatHeightFocused().getValue())/lh,sw,sh,hud.getChatScale(),lh,hud.getWidth());
             boolean clear=dr!=null&&(dr[0]+dr[2]<=cross[0]||dr[1]>=cross[1]+cross[3]);
-            boolean apart=chat!=null&&top>=0&&chat[1]+chat[3]<=top&&ChatPlacement.drawnLines==Math.min(2,s[4])&&shown==s[4]&&focused==s[5]&&clear&&first!=null&&!meets(chat,r.get(first));chatOk&=apart;
-            chatWhy+=(chatWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": chat scale "+hud.getChatScale()+", lifted "+ChatPlacement.lift(sh)+" GUI px, "+ChatPlacement.drawnLines+" lines drawn at canvas "+box(chat)+" (GUI "+box(dr)+"), the column's top at "+top+" and "+first+" "+box(first==null?null:r.get(first))+", the crosshair at GUI "+box(cross)+(clear?" clear":" COVERED")+"; it shows "+shown+" lines unfocused, "+focused+" focused (wanted "+s[4]+" and "+s[5]+")"+(apart?"":", WRONG");
+            boolean apart=chat!=null&&top>=0&&chat[1]+chat[3]<=top&&ChatPlacement.drawnLines==Math.min(2,s[4])&&shown==s[4]&&focused==s[5]&&clear&&first!=null&&!meets(chat,r.get(first))&&!meets(chat,r.get("respawn"));chatOk&=apart;
+            chatWhy+=(chatWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": chat scale "+hud.getChatScale()+", lifted "+ChatPlacement.lift(sh)+" GUI px, "+ChatPlacement.drawnLines+" lines drawn at canvas "+box(chat)+" (GUI "+box(dr)+"), the column's top at "+top+" and "+first+" "+box(first==null?null:r.get(first))+", the crosshair at GUI "+box(cross)+(clear?" clear":" COVERED")+", the respawn card at "+box(r.get("respawn"))+"; it shows "+shown+" lines unfocused, "+focused+" focused (wanted "+s[4]+" and "+s[5]+")"+(apart?"":", WRONG");
             smallWhy+=(smallWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": canvas "+cw+"x"+ch+" (k "+UiCanvas.k()+"), "+r.size()+" rects, cards "+BattleHud.cards().stream().map(d->d.group()+" "+d.y()).toList()+", ability "+box(r.get("ability"))+", lesson "+box(r.get("lesson"))+", respawn "+box(r.get("respawn"))+", spine "+box(r.get("spine"))+", hotbar "+box(hotbar)+", hearts "+box(hearts)+(bad.isEmpty()?", every rect inside and apart":", WRONG: "+String.join("; ",bad.subList(0,Math.min(6,bad.size()))));
         }
 
@@ -1485,6 +1496,7 @@ public final class Phase1Checks implements ClientModInitializer {
         void end(MinecraftClient c){
             finished=true;keepLesson=false;keepRespawn=false;routSupport=false;hungerOn=false;watchHunger=false;watchBuild=false;CommandMode.selected="all";
             if(chatScale>=0){c.options.getChatScale().setValue(chatScale);chatScale=-1;}
+            if(c.currentScreen instanceof net.minecraft.client.gui.screen.ChatScreen)c.setScreen(null);
             UUID id=player;server(c,b->{b.testAbility=null;if(id!=null)b.respawns.remove(id);});
             if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;
         }

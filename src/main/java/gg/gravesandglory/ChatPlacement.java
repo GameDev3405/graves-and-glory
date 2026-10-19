@@ -6,8 +6,8 @@ import java.util.Map;
 /** Vanilla chat above the battle HUD's left column (Kort's answer on chat placement: above the group cards, small but readable).
  *  While the battle HUD is drawn, the chat's bottom sits GAP GUI px above the column's top: the iron spine above the top card, or
  *  the hint slip while it shows. The chat keeps vanilla's scale, width and line count; only where the lifted column would reach the
- *  score bar, a boss, a seal, the aimed point's name, the lesson card or the crosshair above it does it show fewer lines, never
- *  smaller text. In camp, and whenever the battle HUD is not drawn, nothing moves. The battle HUD draws after the chat in a frame,
+ *  score bar, a boss, a seal, the aimed point's name, the lesson card, the respawn card or the crosshair above it does it show
+ *  fewer lines, never smaller text. In camp, and whenever the battle HUD is not drawn, nothing moves. The battle HUD draws after the chat in a frame,
  *  so the chat follows the layout of the frame before. ChatHudMixin applies it. */
 public final class ChatPlacement {
     private ChatPlacement() {}
@@ -57,8 +57,8 @@ public final class ChatPlacement {
     public static double right(int width, double scale) { float f = (float) scale; return (Math.ceil(width / f) + 12) * f; }
 
     /** The lines the lifted chat shows: vanilla's, or as many as fit between its bottom and the lowest of the score bar, the
-     *  bosses, the seals, the aimed point's name, the lesson card and the crosshair over the chat's width, GAP clear; at least one.
-     *  The crosshair counts whether the chat is open or not, so the chat's top stays below it. */
+     *  bosses, the seals, the aimed point's name, the lesson card, the respawn card (while the commander is down) and the crosshair
+     *  over the chat's width, GAP clear; at least one. They count whether the chat is open or not, so its top stays below them. */
     public static int lines(int vanilla, int scaledWidth, int scaledHeight, double scale, int lineHeight, int width) {
         int lift = lift(scaledHeight);
         if (lift <= 0) return vanilla;
@@ -67,7 +67,7 @@ public final class ChatPlacement {
         for (var e : BattleHud.rects().entrySet()) {
             String k = e.getKey();
             int[] a = e.getValue();
-            boolean over = k.equals("score") || k.endsWith("-boss") || k.startsWith("seal-") || k.equals("aim-name") || k.equals("lesson");
+            boolean over = k.equals("score") || k.endsWith("-boss") || k.startsWith("seal-") || k.equals("aim-name") || k.equals("lesson") || k.equals("respawn");
             if (over && a[0] * f < right) above = Math.max(above, (int) Math.ceil((a[1] + a[3]) * f));
         }
         if (right > (scaledWidth - CROSSHAIR) / 2) above = Math.max(above, (scaledHeight - CROSSHAIR) / 2 + CROSSHAIR);
