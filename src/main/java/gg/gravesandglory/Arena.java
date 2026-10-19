@@ -70,11 +70,17 @@ public final class Arena {
     }
     /** How far a road climbs to a raised capture point (Kingsfield's outposts): from the floor of the arena at the end of this distance beyond the plateau of the point up to the elevation of the point at the edge of the plateau. */
     static final double CLIMB=48;
-    /** The height a road is laid at: the floor of the arena, and for a road that runs to a raised point, the elevation of the point on its plateau (radius+2 round the centre) and the climb up to it. A road that ends at such a point therefore meets
-     *  the ground of the point, where it used to cut a trench ten blocks deep through the plateau and leave the ring, the pad and the flag hanging in the air over it. */
+    /** The height a road is laid at: the floor of the arena, except for a road that ends on a raised capture point (the flank roads of Kingsfield's outposts): near it the elevation of the point on its plateau (radius+2 round the centre) and the climb up to it.
+     *  A road that ends at such a point therefore meets the ground of the point, where it used to cut a trench ten blocks deep through the plateau and leave the ring, the pad and the flag hanging in the air over it. The road nearest to the cell decides,
+     *  so a road that only passes within reach of an outpost (the ford roads, the lateral road, the spurs of the towers) stays level. */
     static double roadLevel(int x,int z){
         double level=Y;
-        for(var p:Spec.POINTS)if(p.elevation()>Y){
+        boolean raised=false;for(var p:Spec.POINTS)raised|=p.elevation()>Y;
+        if(!raised)return level;
+        CampaignMaps.Road near=null;double best=Double.MAX_VALUE;
+        for(var r:CampaignMaps.roads){double d=CampaignMaps.distance(x,z,r)-r.width();if(d<best){best=d;near=r;}}
+        if(near==null)return level;
+        for(var p:Spec.POINTS)if(p.elevation()>Y&&(near.ax()==p.x()&&near.az()==p.z()||near.bx()==p.x()&&near.bz()==p.z())){
             double t=MathHelper.clamp(1-(Math.hypot(x-p.x(),z-p.z())-(p.radius()+2))/CLIMB,0,1);t=t*t*(3-2*t);
             level=Math.max(level,Y+(p.elevation()-Y)*t);
         }
