@@ -3,6 +3,56 @@ root = pathlib.Path(__file__).resolve().parents[1]
 data = json.loads((root/'sheets/design.json').read_text())
 errors=[]
 cells=0
+# Structure files (Phase 3): gzip NBT with DataVersion 3465, odd width and depth up to 48, height up to 32, a studio script of the same id, ids <group>/<name> in [a-z0-9_/].
+import gzip, re, struct
+STRUCTURE_DATA_VERSION=3465
+def nbt_skip(buf, pos, tag):
+    """Position after the payload of one tag of the given type, without reading its value."""
+    if tag==1: return pos+1
+    if tag==2: return pos+2
+    if tag in (3,5): return pos+4
+    if tag in (4,6): return pos+8
+    if tag==7: return pos+4+struct.unpack_from('>i',buf,pos)[0]
+    if tag==8: return pos+2+struct.unpack_from('>H',buf,pos)[0]
+    if tag==9:
+        item=buf[pos]; count=struct.unpack_from('>i',buf,pos+1)[0]; pos+=5
+        for _ in range(count): pos=nbt_skip(buf,pos,item)
+        return pos
+    if tag==10:
+        while buf[pos]!=0:
+            name=struct.unpack_from('>H',buf,pos+1)[0]; pos=nbt_skip(buf,pos+3+name,buf[pos])
+        return pos+1
+    if tag==11: return pos+4+4*struct.unpack_from('>i',buf,pos)[0]
+    if tag==12: return pos+4+8*struct.unpack_from('>i',buf,pos)[0]
+    raise ValueError(f'unknown NBT tag {tag}')
+def structure_header(path):
+    """(DataVersion, size) of a gzip structure file: walks the root compound and skips every other tag. A value that is missing or of another type is None."""
+    buf=gzip.decompress(path.read_bytes())
+    if buf[0]!=10: raise ValueError('the root tag is not a compound')
+    pos=3+struct.unpack_from('>H',buf,1)[0]; version=None; size=None
+    while buf[pos]!=0:
+        tag=buf[pos]; length=struct.unpack_from('>H',buf,pos+1)[0]; name=buf[pos+3:pos+3+length].decode('utf-8'); pos+=3+length
+        if name=='DataVersion' and tag==3: version=struct.unpack_from('>i',buf,pos)[0]
+        elif name=='size' and tag==9 and buf[pos]==3 and struct.unpack_from('>i',buf,pos+1)[0]==3: size=struct.unpack_from('>3i',buf,pos+5)
+        pos=nbt_skip(buf,pos,tag)
+    return version,size
+studio_scripts='test-tools/resources/data/gravesandglory_studio/functions'
+for folder in ('src/main/resources/data/gravesandglory/structures','test-tools/resources/data/gravesandglory/structures'):
+    if not (root/folder).is_dir(): continue
+    for nbt in sorted((root/folder).rglob('*.nbt')):
+        sid=nbt.relative_to(root/folder).with_suffix('').as_posix()
+        if not re.fullmatch(r'[a-z0-9_]+(/[a-z0-9_]+)+',sid): errors.append(f'structure {sid}: the id must be <group>/<name> in [a-z0-9_/]')
+        if not (root/studio_scripts/(sid+'.mcfunction')).is_file(): errors.append(f'structure {sid}: no script {studio_scripts}/{sid}.mcfunction')
+        try: version,size=structure_header(nbt)
+        except Exception as e: errors.append(f'structure {sid}: cannot read the NBT ({e})'); continue
+        if version!=STRUCTURE_DATA_VERSION: errors.append(f'structure {sid}: DataVersion {version}, expected {STRUCTURE_DATA_VERSION}')
+        if size is None: errors.append(f'structure {sid}: size is not a list of three ints'); continue
+        width,height,depth=size
+        if width%2==0: errors.append(f'structure {sid}: width {width} is even, it must be odd')
+        if depth%2==0: errors.append(f'structure {sid}: depth {depth} is even, it must be odd')
+        if width>48: errors.append(f'structure {sid}: width {width} is more than 48')
+        if depth>48: errors.append(f'structure {sid}: depth {depth} is more than 48')
+        if height>32: errors.append(f'structure {sid}: height {height} is more than 32')
 for sheet, rows in data.items():
     if not rows: errors.append(f'{sheet}: empty sheet'); continue
     columns=set(rows[0])

@@ -12,17 +12,17 @@ import java.util.*;
  * It sets up its own conditions, so a result describes the route and nothing else: a round with no AI commander,
  * one army of twenty knights, and troops placed only after the round intro is over. Whatever came before
  * (the suite's solo battle, the previous map) is sent back to camp first, so no later camp return undoes a placement.
- * Maps come from control.json {"action":"routes","maps":[0,1]}; with no list the four river maps 0-3 are toured.
- * Kingsfield (map 4) is left out of the default: switching to it from a running client currently throws in
- * GravesAndGloryClient.map (its HUD indexes the three-entry objective arrays with five points) and ends the run.
+ * Maps come from control.json {"action":"routes","maps":[0,1]}; with no list all five maps 0-4 are toured.
+ * Kingsfield (map 4) used to be left out: switching to it from a running client threw in GravesAndGloryClient.map (its HUD indexed the
+ * three-entry objective arrays with five points); that was fixed in 6ecbfb0. crossed counts the 20/20 crossings per map (three when a map passes).
  */
 final class MapRouteChecks {
-    final MinecraftClient client;final int[] maps;
+    final MinecraftClient client;final int[] maps;final Map<Integer,Integer> crossed=new HashMap<>();
     int index,bridge,phase,retries,crossings;long at;boolean all=true,done;
     Profile backup;GravesAndGlory.Squad squad;boolean practice,fill;int size;
     MapRouteChecks(MinecraftClient c,int[] requested){
         client=c;
-        maps=requested!=null&&requested.length>0?requested:new int[]{0,1,2,3};
+        maps=requested!=null&&requested.length>0?requested:new int[]{0,1,2,3,4};
     }
     static List<Spec.StructuresRow> bridges(){return Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList();}
     void tick(){
@@ -66,7 +66,7 @@ final class MapRouteChecks {
         var crossingList=bridges();var route=crossingList.get(bridge);
         long passed=b.units.stream().filter(u->u.squad==squad&&u.mob.isAlive()&&u.mob.getX()>route.x()+route.width()/2.0+4&&u.mob.getY()>63).count();
         if(passed==20||b.time-at>1200){
-            boolean pass=passed==20;all&=pass;crossings++;String name="map-"+map+"-bridge-"+bridge;MeltyTest.report(name,pass,"crossed "+passed+"/20");System.out.println("[Graves and Glory routes] "+name+" "+passed+"/20; elapsed="+(b.time-at)/20.0+"s");
+            boolean pass=passed==20;all&=pass;crossings++;if(pass)crossed.merge(map,1,Integer::sum);String name="map-"+map+"-bridge-"+bridge;MeltyTest.report(name,pass,"crossed "+passed+"/20");System.out.println("[Graves and Glory routes] "+name+" "+passed+"/20; elapsed="+(b.time-at)/20.0+"s");
             int currentMap=map,currentBridge=bridge;client.execute(()->ScreenshotRecorder.saveScreenshot(client.runDirectory,"route-map-"+currentMap+"-bridge-"+currentBridge+".png",client.getFramebuffer(),text->{}));
             bridge++;if(bridge<crossingList.size()){prepare(b,p);return;}
             nextMap(b,p);

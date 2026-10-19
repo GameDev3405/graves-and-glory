@@ -18,6 +18,11 @@ allprojects {
    systemProperty 'gravesandglory.campChecks', System.getenv('GRAVES_CAMP_CHECKS') ?: 'false'
    systemProperty 'gravesandglory.frontChecks', System.getenv('GRAVES_ROADMAP_FRONT_CHECKS') ?: 'false'
    systemProperty 'gravesandglory.frontHost', System.getenv('GRAVES_ROADMAP_FRONT_HOST') ?: 'false'
+   systemProperty 'gravesandglory.phase3Checks', System.getenv('GRAVES_PHASE3_CHECKS') ?: ''
+   systemProperty 'gravesandglory.phase3Maps', System.getenv('GRAVES_PHASE3_MAPS') ?: '0,1,2,3,4'
+   systemProperty 'gravesandglory.studioPieces', System.getenv('GRAVES_STUDIO_PIECES') ?: ''
+   systemProperty 'gravesandglory.studioMode', System.getenv('GRAVES_STUDIO_MODE') ?: 'verify'
+   systemProperty 'gravesandglory.studioOut', System.getenv('GRAVES_STUDIO_OUT') ?: testRoot + '/studio-out'
    systemProperty 'gravesandglory.phase1Checks', System.getenv('GRAVES_PHASE1_CHECKS') ?: ''
    systemProperty 'gravesandglory.phase2Checks', System.getenv('GRAVES_PHASE2_CHECKS') ?: ''
   }

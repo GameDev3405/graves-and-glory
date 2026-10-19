@@ -68,15 +68,15 @@ public final class Campaign {
             LegacyDataMigration.profiles(save.resolve(Diagnostics.active()?"bannerbound-test-profiles":"bannerbound-profiles"),directory);
             LegacyDataMigration.copyMissing(save.resolve("bannerbound-layout.json"),layoutFile());
         } catch(java.io.IOException migration) { throw new IllegalStateException("Could not upgrade legacy commander data; original files were kept",migration); }
-        try{JsonObject marker=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();if(marker.get("layout").getAsString().equals("campaign-2"))map=marker.get("map").getAsInt();}catch(Exception ignored){}CampaignMaps.select(map);
+        try{JsonObject marker=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();if(marker.get("layout").getAsString().equals("campaign-3"))map=marker.get("map").getAsInt();}catch(Exception ignored){}CampaignMaps.select(map);
     }
     /** A commander's collection, read once: a schema-1 file is upgraded in place first (spec 6.3; its original bytes stay as <uuid>.v1.json), then the profile is sanitized. A new commander owns the 10 Commons and flies the starter banner. */
     Profile profile(UUID id){return profiles.computeIfAbsent(id,key->{Path file=directory.resolve(key+".json");if(!Files.exists(file)){Profile fresh=new Profile();fresh.sanitize();return fresh;}
         try{Profile p=ProfileMigration.upgradeFile(file,text->JSON.fromJson(text,ProfileMigration.V1.class),JSON::toJson,RosterMath.Catalog.fromSpec());
             if(p==null)p=JSON.fromJson(Files.readString(file),Profile.class);if(p==null)throw new IllegalStateException("Empty profile");p.sanitize();return p;}
         catch(Exception e){throw new IllegalStateException("Commander profile could not be read. Original and .bak preserved: "+key,e);}});}
-    boolean cached(){try{JsonObject j=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();return j.get("layout").getAsString().equals("campaign-2")&&j.get("map").getAsInt()==map;}catch(Exception e){return false;}}
-    void built(){try{Files.writeString(b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-layout.json"),"{\"layout\":\"campaign-2\",\"map\":"+map+"}");}catch(Exception e){System.err.println("[Graves and Glory] Map cache marker could not be saved.");}}
+    boolean cached(){try{JsonObject j=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();return j.get("layout").getAsString().equals("campaign-3")&&j.get("map").getAsInt()==map;}catch(Exception e){return false;}}
+    void built(){try{Files.writeString(b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-layout.json"),"{\"layout\":\"campaign-3\",\"map\":"+map+"}");}catch(Exception e){System.err.println("[Graves and Glory] Map cache marker could not be saved.");}}
     boolean save(UUID id){try{Files.createDirectories(directory);Path path=directory.resolve(id+".json"),tmp=directory.resolve(id+".tmp");Files.writeString(tmp,JSON.toJson(profile(id)));if(Files.exists(path))Files.copy(path,path.resolveSibling(path.getFileName()+".bak"),StandardCopyOption.REPLACE_EXISTING);
             try{Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}catch(AtomicMoveNotSupportedException e){Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING);}return true;
         }catch(Exception e){System.err.println("[Graves and Glory] Could not save commander collection: "+e.getClass().getSimpleName());notice(id,"Collection could not be saved; check disk space.");return false;}}
@@ -325,6 +325,8 @@ public final class Campaign {
         for(int i=0;i<b.points.size();i++){JsonObject row=new JsonObject();row.addProperty("name",b.points.get(i).spec.name());row.addProperty("dawn",i<held[0].length?held[0][i]:0);row.addProperty("dusk",i<held[1].length?held[1][i]:0);rows.add(row);}
         return rows;
     }
+    /** Harness cameras: while false, the lobby leashes here and in the build tick leave every player where he stands. Always true in play. */
+    boolean leash=true;
     void tick(){
         if(pendingBattle!=null&&b.ready){ // the map of a campaign battle is built: it starts unless something changed meanwhile
             var row=pendingBattle;UUID id=pendingCommander;pendingBattle=null;pendingCommander=null;
@@ -339,9 +341,9 @@ public final class Campaign {
                 else for(UUID member:pending.members)notice(member,"Map prepared. Match cancelled because readiness or room membership changed.");}
         }
         if(b.time%20==0)social.presence(new HashSet<>(b.server.getPlayerManager().getPlayerList().stream().map(ServerPlayerEntity::getUuid).toList()),System.currentTimeMillis());
-        if(!b.running){for(var p:b.server.getPlayerManager().getPlayerList())if(Math.abs(p.getX())>40||Math.abs(p.getZ()-CampaignMaps.LOBBY_Z)>30||p.getY()<63)toLobby(p);if(b.time%20==0)expireInvites();if(b.time%10==0)padTick();return;}
+        if(!b.running){for(var p:b.server.getPlayerManager().getPlayerList())if(leash&&(Math.abs(p.getX())>40||Math.abs(p.getZ()-CampaignMaps.LOBBY_Z)>30||p.getY()<63))toLobby(p);if(b.time%20==0)expireInvites();if(b.time%10==0)padTick();return;}
         // Unseated lobby players wait in the hall while a match runs.
-        if(b.time%20==0)for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if((s==null||!s.seated)&&(Math.abs(p.getX())>40||Math.abs(p.getZ()-CampaignMaps.LOBBY_Z)>30||p.getY()<63))toLobby(p);}
+        if(b.time%20==0)for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(leash&&(s==null||!s.seated)&&(Math.abs(p.getX())>40||Math.abs(p.getZ()-CampaignMaps.LOBBY_Z)>30||p.getY()<63))toLobby(p);}
         if(b.time<introUntil){for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(s!=null&&s.seated&&p.squaredDistanceTo(GravesAndGlory.Battle.base(s.team))>2)b.toBase(p,s.team);}return;}
         boolean economy=b.time%100==0;
         for(var s:b.squads.values())if(s.bot){

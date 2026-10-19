@@ -36,6 +36,7 @@ def validate_player_jar(path, expected):
         if json.loads(jar.read('gravesandglory-build.json')) != expected:
             raise RuntimeError('JAR was built from different source; rebuild before packaging')
         forbidden = ('MeltyTest', 'CampaignChecks', 'CampaignDevControl', 'MapRouteChecks',
+                     'Phase3Checks', 'StructureStudio', 'Walkability', 'gravesandglory_studio', 'p3_marker',
                      'VisualChecks', 'RevisionChecks', 'LocalProbe', 'LegacyDataMigrationCheck',
                      'CompatibilityChecks', 'CompatibilityPolicyCheck', 'FrontMenuChecks', 'AdmissionPolicyCheck', 'CampRulesCheck', 'CampRedesignChecks', 'CampNetworkChecks', 'MapTour', 'Phase1Checks', 'BattleMathCheck', 'BotSimulation', 'Phase2Checks', 'HousesCheck', 'ProfileMigrationCheck', 'TitleDemo',
                      'gg/gravesandglory/testing/', 'META-INF/services/gg.gravesandglory.Diagnostics$Probe')

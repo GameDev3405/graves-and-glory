@@ -30,17 +30,21 @@ public final class CampaignMaps {
             int z=zs[i],rx=(int)riverX(z),px=rx+(flanks?0:i==0?-29:i==2?29:0);
             points[flanks?i*2:i]=new Spec.PointsRow(""+(char)('A'+(flanks?i*2:i)),names[i],px,z,17,8,64);
             structures.add(s("crossing_"+i,"bridge",rx,z,44,i==1?24:16,2,i==0?"wood":i==2?"ford":"stone",64));
-            for(int side:new int[]{-1,1}){road(side*290,0,side*205,z,5);road(side*205,z,rx+side*28,z,5);}
+            for(int side:new int[]{-1,1}){
+                var bend=fanBend(side,z);
+                if(bend==null)road(side*290,0,side*205,z,5);else{road(side*290,0,bend[0],bend[1],5);road(bend[0],bend[1],side*205,z,5);}
+                road(side*205,z,rx+side*28,z,5);
+            }
             road(rx-29,z,rx+29,z,6);
             if(i==0){
                 structures.add(s("mill","mill",rx-18,z-28,12,12,8,"wood",64));
                 structures.add(s("farm","farm",rx-90,z-25,26,18,1,"wood",64));
-                structures.add(s("market","market",rx-65,z+25,18,8,5,"dawn",64));
-                for(int k=0;k<4;k++){int hx=rx-75-(k%2)*26,hz=z-4+(k/2)*31;structures.add(s("house_"+k,"house",hx,hz,14,12,9,"wood",64));road(hx,hz,rx-29,z,3);}
+                structures.add(s("market","market",rx-50,z+33,18,8,5,"dawn",64));
+                for(int k=0;k<4;k++){int hx=rx-75-(k%2)*26,hz=z+12+(k/2)*15;structures.add(s("house_"+k,"house",hx,hz,14,12,9,"wood",64));road(hx,hz,rx-29,z,3);}
                 road(rx-90,z-25,rx-29,z,3);road(rx-18,z-28,rx-29,z,3);
             } else if(i==1){
                 if(selected==1){structures.add(s("ironhold","ruin",0,27,58,42,20,"stone",64));structures.add(s("breach","breach",-37,0,6,50,10,"stone",64));}
-                else {structures.add(s("customs","house",rx-58,30,18,14,10,"wood",64));structures.add(s("warehouse","barracks",rx+60,-30,24,18,10,"stone",64));}
+                else {boolean kings=selected==4;structures.add(s("customs","house",kings?-45:rx-58,kings?47:30,18,14,10,"wood",64));structures.add(s("warehouse","barracks",kings?45:rx+60,kings?-47:-30,24,18,10,"stone",64));}
             } else structures.add(s("shrine","shrine",rx+59,z-18,22,18,13,"dusk",64));
         }
         for(int side:new int[]{-1,1}){
@@ -59,13 +63,13 @@ public final class CampaignMaps {
         if(selected==1){
             structures.removeIf(st->st.kind().equals("farm")||st.kind().equals("mill")||st.kind().equals("shrine"));
             structures.add(s("supply_barn","house",-105,-160,24,18,11,"wood",64));
-            structures.add(s("garrison","barracks",65,135,30,22,13,"stone",64));
+            structures.add(s("garrison","barracks",65,147,30,22,13,"stone",64));
             for(int side:new int[]{-1,1})for(int z:new int[]{-62,62})structures.add(s("curtain_"+side+"_"+z,"breach",side*72,z,5,68,13,"stone",64));
         }else if(selected==2){
             structures.removeIf(st->st.kind().equals("farm")||st.kind().equals("mill")||st.kind().equals("market"));
             structures.add(s("caravan_lodge","house",-80,-178,26,18,12,"wood",64));
             structures.add(s("pass_refuge","house",62,34,20,16,12,"wood",64));
-            structures.add(s("signal_tower","watchtower",57,166,14,14,19,"stone",64));
+            structures.add(s("signal_tower","watchtower",62,170,14,14,19,"stone",64));
             road(-80,-178,-20,-155,4);road(62,34,25,0,4);
         }else if(flanks){
             points[1]=new Spec.PointsRow("B","West Outpost",-130,100,17,8,74);
@@ -91,6 +95,9 @@ public final class CampaignMaps {
         // Rows 0 and 1 hold the team positions; each keeps its side identity (id, name, colour, glyph).
         for(int t=0;t<2;t++){var f=Spec.FACTIONS[t];Spec.FACTIONS[t]=new Spec.FactionsRow(f.id(),f.name(),f.color(),f.glyph(),f.dye(),t==0?-283:283,0,t==0?-286:286,t==0?32:-32);}
     }
+    /** The fan road from the muster point of a camp (side*290, 0) to a lane head (side*205, z) bends once on the side where the barracks of the camp stand (the Dawn barracks are south of the muster point, the Dusk barracks north of it), at (side*266, -side*12),
+     *  so that the road passes the end of the hall 5 blocks off. It used to run straight and into the wall of the barracks. Null: the road is straight. */
+    static int[] fanBend(int side,int z){return Integer.signum(z)==-side?new int[]{side*266,-side*12}:null;}
     static Spec.StructuresRow s(String id,String kind,int x,int z,int w,int d,int h,String palette,int y){return new Spec.StructuresRow(id,kind,x,z,w,d,h,palette,y);}
     static void road(int a,int b,int c,int d,int width){building.add(new Road(a,b,c,d,width));}
     static double distance(double x,double z,Road r){double dx=r.bx-r.ax,dz=r.bz-r.az,t=Math.max(0,Math.min(1,((x-r.ax)*dx+(z-r.az)*dz)/(dx*dx+dz*dz)));return Math.hypot(x-r.ax-t*dx,z-r.az-t*dz);}

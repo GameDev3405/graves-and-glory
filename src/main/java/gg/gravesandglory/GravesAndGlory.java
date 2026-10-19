@@ -321,7 +321,7 @@ public final class GravesAndGlory implements ModInitializer {
                 // while their floor is constructed, before admitting them to the round.
                 for(ServerPlayerEntity p:server.getPlayerManager().getPlayerList()){
                     p.changeGameMode(GameMode.ADVENTURE);
-                    if(p.getZ()>-275||p.getY()<63)campaign.toLobby(p);
+                    if(campaign.leash&&(p.getZ()>-275||p.getY()<63))campaign.toLobby(p);
                 }
                 if(time%20==0)clearOldUnits();
                 int total=(2*R.worldHalfX()+1)*(2*R.worldHalfZ()+1);
