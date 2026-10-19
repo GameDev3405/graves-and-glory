@@ -45,10 +45,23 @@ public final class Arena {
         // Bridge decks and their approaches must be walkable even where a hill
         // meets the river. Clear/flatten the entire deck and blend broad ramps.
         for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")){double dx=Math.max(0,Math.abs(x-s.x())-s.width()/2.0-1),dz=Math.max(0,Math.abs(z-s.z())-s.depth()/2.0-1);h=blend(h,s.elevation(),Math.hypot(dx,dz),0,12);}
-        if(CampaignMaps.roadDistance(x,z)<8)h=blend(h,Y,CampaignMaps.roadDistance(x,z),0,8);
+        double rd=CampaignMaps.roadDistance(x,z);
+        if(rd<8)h=blend(h,roadLevel(x,z),rd,0,8);
         double border=Math.max(Math.abs(x)-GravesAndGlory.R.arenaHalfX()+14,Math.abs(z)-GravesAndGlory.R.arenaHalfZ()+12);
         if(border>0)h+=Math.min(Spec.TERRAINSTYLE[0].boundaryRise(),border*.4)*(.65+.35*Math.sin(x*.055+z*.043));
         return (int)Math.round(h);
+    }
+    /** How far a road climbs to a raised capture point (Kingsfield's outposts): from the floor of the arena at the end of this distance beyond the plateau of the point up to the elevation of the point at the edge of the plateau. */
+    static final double CLIMB=48;
+    /** The height a road is laid at: the floor of the arena, and for a road that runs to a raised point, the elevation of the point on its plateau (radius+2 round the centre) and the climb up to it. A road that ends at such a point therefore meets
+     *  the ground of the point, where it used to cut a trench ten blocks deep through the plateau and leave the ring, the pad and the flag hanging in the air over it. */
+    static double roadLevel(int x,int z){
+        double level=Y;
+        for(var p:Spec.POINTS)if(p.elevation()>Y){
+            double t=MathHelper.clamp(1-(Math.hypot(x-p.x(),z-p.z())-(p.radius()+2))/CLIMB,0,1);t=t*t*(3-2*t);
+            level=Math.max(level,Y+(p.elevation()-Y)*t);
+        }
+        return level;
     }
     public static int ground(int x,int z){for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")&&Math.abs(x-s.x())<=s.width()/2&&Math.abs(z-s.z())<=s.depth()/2)return s.elevation();return river(x,z)?Y-3:height(x,z);}
     public static int mapColor(int x,int z){
