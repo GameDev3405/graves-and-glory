@@ -50,6 +50,7 @@ public final class Phase3Checks implements ClientModInitializer {
         SUITES.put("pipeline",Pipeline::new);
         SUITES.put("studio",StudioChecks::new);
         SUITES.put("routes",Routes::new);
+        SUITES.put("walk",()->new Routes(true));
         SUITES.put("arena",Rebuild::new);
     }
     static final ArrayDeque<String> queue=new ArrayDeque<>();
@@ -486,9 +487,14 @@ public final class Phase3Checks implements ClientModInitializer {
     /** Task 2: the roads, on all five maps. Per map: the walk scan (p3-walk-map<N> passes with no blocked road, deck or through-road cell; all six counts are in
      *  its line), the hits in screenshots/p3-walk-map<N>-blocked.txt, and two photographs of each of the three decks: deck-map<N>-bridge-<k> from the camera the plan gives
      *  (a ring obelisk can stand in front of it) and deck-map<N>-bridge-<k>-high from thirty-four blocks above and out on the south side, over any obelisk. Then the route harness sends twenty knights over
-     *  every crossing of the five maps, and p3-routes-map<N> passes when all three crossings of the map had 20 of 20 across. */
+     *  every crossing of the five maps, and p3-routes-map<N> passes when all three crossings of the map had 20 of 20 across.
+     *  Suite walk is the same without the photographs and the routes: the scan of the five maps and nothing else, which is the quick way to measure a change to Walkability. */
     static final class Routes implements Suite {
         static final int[] MAPS={0,1,2,3,4};
+        /** True in suite walk: the scan of the five maps and nothing else (no photographs, no routes), the quick way to measure a change to Walkability. */
+        final boolean scanOnly;
+        Routes(){this(false);}
+        Routes(boolean scanOnly){this.scanOnly=scanOnly;}
         int map,bridge,stage,waited;MapRouteChecks routes; // bridge counts photographs: two per crossing
         volatile boolean switched,scanned,finished;
         /** Active ticks only: nothing steps while the client is told the arena is not ready, so the builds are not in it. Worst case 15 crossings that all time out is about 20000. */
@@ -501,9 +507,9 @@ public final class Phase3Checks implements ClientModInitializer {
                 case 1->{
                     var b=GravesAndGlory.battle;
                     if(switched&&b!=null&&b.ready&&b.campaign.map==n&&CampaignMaps.selected==n){stage=2;server(c,x->scan(x,n));}
-                    else if(++waited>3000){report("p3-walk-map"+n,false,"the arena of map "+n+" was not ready after "+waited+" ticks");map++;stage=map<MAPS.length?0:4;}
+                    else if(++waited>3000){report("p3-walk-map"+n,false,"the arena of map "+n+" was not ready after "+waited+" ticks");map++;stage=map<MAPS.length?0:scanOnly?6:4;}
                 }
-                case 2->{if(scanned){bridge=0;stage=3;}}
+                case 2->{if(scanned){if(scanOnly){map++;stage=map<MAPS.length?0:6;}else{bridge=0;stage=3;}}}
                 case 3->{
                     var bridges=MapRouteChecks.bridges();
                     if(bridge>=bridges.size()*2){map++;stage=map<MAPS.length?0:4;}
@@ -514,6 +520,7 @@ public final class Phase3Checks implements ClientModInitializer {
                 }
                 case 4->{routes=new MapRouteChecks(c,MAPS);stage=5;}
                 case 5->{if(tick%10==0)server(c,this::pump);if(finished)finish(c,"routes");}
+                case 6->{finish(c,"walk");stage=7;}
                 default->{}
             }
         }

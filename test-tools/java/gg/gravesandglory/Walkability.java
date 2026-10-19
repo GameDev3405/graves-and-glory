@@ -8,7 +8,7 @@ import net.minecraft.util.math.BlockPos;
  * The walk scan, shared by MapTour and Phase3Checks (harness only, never in the player jar). It visits every road cell, every bridge deck cell
  * (the planks) and every capture-ring cell of the arena. A cell is blocked when a block with a collision shape stands at Arena.ground+1 or +2,
  * where a knight's feet and head go. Each blocked cell is counted once, in this order:
- * road (on a deck; or on a road, outside every footprint and ring), base (inside the footprint of a base, a barracks or a "..._stores" structure),
+ * road (on a deck; or on a road, outside every footprint and ring), base (inside the footprint of a team camp: the gate, the barracks and the stores of dawn and dusk; a barracks-kind building on the battlefield, the warehouse or the garrison, is a building),
  * building (inside any other footprint, bridges excepted) and through (a building cell that a road of width 4 or more covers while neither end
  * of that road lies inside that footprint: a house lane ends at its house, a through road does not), point (inside a capture ring).
  * A through cell counts in building and in through; detail names it "through". detail has one "kind x z block" line per blocked cell.
@@ -60,7 +60,8 @@ final class Walkability {
     static boolean inRing(int x,int z){for(var p:Spec.POINTS)if((x-p.x())*(x-p.x())+(z-p.z())*(z-p.z())<=p.radius()*p.radius())return true;return false;}
     /** The footprint test MapDressing.onStructure uses with no margin. */
     static boolean inside(Spec.StructuresRow s,int x,int z){return Math.abs(x-s.x())<=s.width()/2&&Math.abs(z-s.z())<=s.depth()/2;}
-    static boolean baseLike(Spec.StructuresRow s){return s.kind().equals("base")||s.kind().equals("barracks")||s.id().endsWith("_stores");}
+    /** A structure of a team camp (CampaignMaps.select): the gate, the barracks and the stores of dawn and dusk. The warehouse and the garrison are barracks-kind buildings on the battlefield, and not base. */
+    static boolean baseLike(Spec.StructuresRow s){return s.id().matches("(dawn|dusk)_(gate|barracks|stores)");}
     /** A road of width 4 or more covers the cell and neither end of it is inside the footprint of s. */
     static boolean through(int x,int z,Spec.StructuresRow s){
         for(var r:CampaignMaps.roads)if(r.width()>=4&&CampaignMaps.distance(x,z,r)<r.width()&&!inside(s,r.ax(),r.az())&&!inside(s,r.bx(),r.bz()))return true;
