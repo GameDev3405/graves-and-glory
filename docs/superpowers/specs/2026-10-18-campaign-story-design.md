@@ -1,6 +1,6 @@
 # Campaign story design: The Long March
 
-Status: draft v2 for Kort, 2026-10-18 late. v1 was written the same evening and Kort answered it: the Hollow King is not King Osric; Wren blew the Horn; companions join one by one; Tomas lives; the company is the Writborne; scenes cannot be skipped the first time; voice is decided later (write dialog and captions now). Kort also asked for love interests, sorrow and despair, a plot twist, a cliffhanger at the end of every chapter, and depth: everything planned, everything with a purpose, expandable for later chapters. He approved the storybook frame: the book lies on the war table, the wind opens it to the player's page, each page holds two to four scenes, each chapter holds some number of pages, the player plays the next scene or flips back to replay old ones, and a scene hands straight to its match. He asked that the storybook be given real art and detail; the web demo was a flow mockup only.
+Status: v2 approved by Kort, 2026-10-18 late (section 13 answered: Ashka is the heir and the love interest; Maud leaves with Tomas; the saga ends on the player's choice in chapter 5, complete in itself but open to a sixth chapter; the choice chits stay; the Stone's words stay readable). v1 was written the same evening and Kort answered it: the Hollow King is not King Osric; Wren blew the Horn; companions join one by one; Tomas lives; the company is the Writborne; scenes cannot be skipped the first time; voice is decided later (write dialog and captions now). Kort also asked for love interests, sorrow and despair, a plot twist, a cliffhanger at the end of every chapter, and depth: everything planned, everything with a purpose, expandable for later chapters. He approved the storybook frame: the book lies on the war table, the wind opens it to the player's page, each page holds two to four scenes, each chapter holds some number of pages, the player plays the next scene or flips back to replay old ones, and a scene hands straight to its match. He asked that the storybook be given real art and detail; the web demo was a flow mockup only.
 
 Kort's direction, in his words: grim with heroic aspects, dramatic and emotional; players must get attached to the characters and really understand them; the campaign is the story side of the game, and commanding an army with friends on a server is the memory-making side.
 
@@ -394,7 +394,7 @@ Each chapter meets one House on its own ground, answers one question, turns on o
 - **Question answered.** Pell's word. The player, or Pell, finally reads the Stone against the copy: *one hand*, not *a living hand*. The rule never needed a living king. It needed the hand that called them: the hand on the Horn. Aldric's crowning of Ashka on the mounds does nothing, and he knows it on the mound-top, and says nothing.
 - **Twist.** Wren has known since the last page of chapter 1. She took the crown to the sea not to drown it but to find the Horn, which Vael kept. She has it. She is the hand. She is dead, and the rule never said living.
 - **The ending, the saga's one real choice.** Wren on the first king's mound with the Horn, as she was. If she blows it, the dead go home: the kings, the hosts, Edric, Hesper, every Graveborn the player recruited at the shrine, and Wren. If she does not, the Barrowlands keep their dead and their captain keeps her. The player decides, and the game remembers, and chapter 5 ends either way on a quiet field at dawn with the standard planted on the mound.
-- **Cliffhanger.** There is none. The saga ends. A sixth chapter, if Kort wants one, starts from whichever field he chooses.
+- **The close.** No cliffhanger. The saga ends whole: the standard planted, the company accounted for, every companion's want answered one way or the other. The last page is a page of the roll of the dead in Pell's hand, with the player's name written at the bottom as captain, and under it a blank line. That blank line is the door a sixth chapter walks through (Kort: complete, but able to be added onto). The field the dead left, or the field they kept, is the ground a chapter 6 would start from.
 
 Aldric is in every chapter as a letter and in chapters 3 to 5 in person. Vael, Old Horn and Brassjaw are each met on their own ground, and each is recruitable by writ after their chapter, as the Houses spec allows.
 
@@ -431,13 +431,13 @@ Aldric is in every chapter as a letter and in chapters 3 to 5 in person. Vael, O
 4. Voice is recorded after the copy is locked and the scenes play silently in the game, so the timing is known. Who voices whom is Kort's call later.
 5. Chapter 2's design starts after Kort's chapter 1 gate.
 
-## 13. Questions for Kort
+## 13. Questions for Kort (answered 2026-10-18 late)
 
-1. **Ashka is the heir** (chapter 3's twist) and the player's slow love interest. Both, one, or neither.
-2. **Maud leaves with Tomas** at the end of chapter 2 and comes back on the wrong side in chapter 3. Yes or no.
-3. **The saga ends on the player's choice** (chapter 5: Wren blows the Horn or does not), with no chapter 6 planned. Yes, or plan a sixth.
-4. **Choice chits** for Ashka's cards (two replies, warm or plain) are the only choice UI in chapter 1. Fine, or no choices at all until later.
-5. **The Stone's real words are visible in the game from chapter 1** for a player who reads carefully. Fine, or hide it until chapter 5.
+1. **Ashka is the heir** (chapter 3's twist) and the player's slow love interest. Both, one, or neither. **Kort: both.**
+2. **Maud leaves with Tomas** at the end of chapter 2 and comes back on the wrong side in chapter 3. Yes or no. **Kort: yes.**
+3. **The saga ends on the player's choice** (chapter 5: Wren blows the Horn or does not), with no chapter 6 planned. Yes, or plan a sixth. **Kort: end it there, make it feel complete, but leave it able to be added onto.**
+4. **Choice chits** for Ashka's cards (two replies, warm or plain) are the only choice UI in chapter 1. Fine, or no choices at all until later. **Kort: fine.**
+5. **The Stone's real words are visible in the game from chapter 1** for a player who reads carefully. Fine, or hide it until chapter 5. **Kort: fine.**
 
 ---
 
