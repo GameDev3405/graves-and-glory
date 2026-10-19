@@ -121,6 +121,17 @@ The five Legendaries answer writs because every one of them is bound to the crow
 
 Places are the shipped maps. The Writborne is the company and the player's title (the Writborne, or captain). People: one or two syllables for the living, plain English roots, no apostrophes; the dead keep the names they had. Legendaries keep their spec names.
 
+**The familial rule (Kort, 2026-10-18 late, approved).** The player should carry people, not a gazetteer. In dialog and captions:
+
+- One new proper noun per page at most. A page that introduces a name says everything else on it by role or by relationship.
+- Names belong to those who stand beside the player: the four companions, Tomas, and Edric Vane. Everyone else is a role: the old king, the Marshal, the Archivist (Pell gives his name once, himself), the first captain, the Admiral, "the child they sent north". Hesper is named once, by Dunmar; otherwise "his wife".
+- No realm or region names in a character's mouth: "the land", "the mounds", "the crown", "the Horn", "the standard", "the paper with your name on it", "the river", "the coast", "the wood", "the hold", "the field of kings". The map names stay in match cards and the battle table; a native may say their own place once. "Barrowlands", "Barrow Crown" and "Barrow Horn" are the bible's words, for this document and the chapter titles, not the copy's.
+- Each companion is introduced by relationship before by name: what they are to the player or to each other in their first line, and the name lands a beat later from someone else's mouth.
+- After every battle, a fire scene: the company talking to each other, with recurring nicknames for each other and the player that the copy fixes once and keeps.
+- The Houses keep their names; they are the game's words. The company name is one word everywhere, so a rename is one replacement.
+
+The `story-voice` check counts proper nouns per page against this rule (section 11).
+
 ## 5. The cast
 
 Four companions, met along the road in House order, one voice from the dead, one keeper of the record, and one enemy the player knows by name. Each companion has a want, a wound, a love, a battle where their story turns, and a hook for a later chapter. Each is a real unit in the player's banner from the battle they join, with a fixed troop type from the Houses spec so the harness can place and count them.
@@ -420,6 +431,7 @@ Aldric is in every chapter as a letter and in chapters 3 to 5 in person. Vael, O
 - A `storybook` suite: the book opens on the current page; read, next and sealed states draw correctly for three progress fixtures; a before-the-battle scene hands to its battle; a sealed scene does nothing; skip is refused on first reading and allowed on replay; the wounded portrait greys.
 - A `companions` suite: a companion falls and is untargetable; the next battle's slot is empty and greyed; the wounded line plays; Wren rises once and is "resting"; Tomas at 1 HP kneels; a reaction line plays for a fall, a rout and a bonus, in priority order; `losses` substitutes the real count.
 - A `story-voice` check: every `voice` id in the scene files is either in `sounds.json` or in a listed "silent" set, and no id is in both.
+- A `story-names` check (the familial rule, section 4.8): a listed set of proper nouns (cast, places, the Horn, the crown) is counted per storybook page across scene files and sheets; a page introduces at most one noun not seen on an earlier page, and the realm names never appear in a `card` or `caption`.
 - Art gates: every book leaf, thumbnail, portrait and panel is graded against the UI rubric before Kort sees it, as the mockups were.
 - Kort's gate: he plays chapter 1 start to finish in one sitting with the scenes on, and says, for each companion, what they wanted, and who the Hollow King was. If he cannot for any one of them, that part is rewritten before the chapter ships.
 
