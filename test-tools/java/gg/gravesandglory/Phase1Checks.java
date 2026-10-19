@@ -1578,6 +1578,12 @@ public final class Phase1Checks implements ClientModInitializer {
 
         ServerPlayerEntity sp(GravesAndGlory.Battle b){return player==null?null:b.server.getPlayerManager().getPlayer(player);}
         static List<EventFeed.Line> lines(){return EventFeed.lines(net.minecraft.util.Util.getMeasuringTimeMs());}
+        /** The camp sign as this client draws it: the text display whose text starts WELCOME TO BANNER CAMP (CampWorld's home sign);
+         *  null while the client has none. */
+        static net.minecraft.text.Text campSign(MinecraftClient c){
+            if(c.world!=null)for(var e:c.world.getEntities())if(e instanceof net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity d&&d.getData()!=null&&d.getData().text().getString().startsWith("WELCOME TO BANNER CAMP"))return d.getData().text();
+            return null;
+        }
         static long count(String kind,int team,String text){return lines().stream().filter(l->l.kind().equals(kind)&&l.team()==team&&l.text().equals(text)).count();}
         static String feed(){return lines().stream().map(l->l.kind()+"/"+l.team()+" '"+l.text()+"'").toList().toString();}
         static boolean bannerLine(){return lines().stream().anyMatch(l->l.kind().equals("down")||l.kind().equals("up"));}
@@ -1672,14 +1678,23 @@ public final class Phase1Checks implements ClientModInitializer {
             if(tick>24000&&!finished){report("p1-ui-feed-timeout",false,"stuck in stage "+stage+" (round "+round+")");end(c);return;}
             if(stage!=0&&stage!=19&&!finished&&c.currentScreen!=null)c.setScreen(null);
             switch(stage){
-                case 0->{ // p1-ui-hints-rebound: the menu key on K, the map key unbound
+                case 0->{ // p1-ui-hints-rebound: the menu key on K, the map key unbound; first back to the camp, for its sign (stage 3)
                     if(tick<20)return;c.setScreen(null);var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();
-                    CommandMode.selected="all";window(c,960,540,1);
+                    CommandMode.selected="all";window(c,960,540,1);stage=-3;server(c,b->{if(b.running)b.campaign.returnLobby();stage=3;});}
+                case 3->{
+                    var sign=campSign(c);if(sign==null&&since(tick)<=400)return; // the client gets the sign with the camp's chunks
                     // p1-ui-hints-mouse (UI polish M6): a mouse button reads LMB, RMB or MMB outside the hint layer too: the camp sign, a
                     // notice and the lessons, with Commands on the middle button and Use on the right one (its default)
                     GravesAndGloryClient.menu.setBoundKey(net.minecraft.client.util.InputUtil.Type.MOUSE.createFromCode(GLFW.GLFW_MOUSE_BUTTON_MIDDLE));net.minecraft.client.option.KeyBinding.updateKeysByCode();
                     String mouseCamp=GravesAndGloryClient.campHint(),mouseNotice=HintText.expand(NOTICE,GravesAndGloryClient::hint),lessonOne=GravesAndGloryClient.lessonText(0),lessonFour=GravesAndGloryClient.lessonText(3);
                     report("p1-ui-hints-mouse",mouseCamp.startsWith("MMB / Camp guide")&&mouseCamp.contains(" RMB on a station")&&mouseNotice.equals("MMB opens your war council.")&&lessonOne.startsWith("Press MMB, ")&&lessonFour.startsWith("Press RMB at "),"campHint() '"+mouseCamp+"'; the notice '"+NOTICE+"' reads '"+mouseNotice+"'; lesson 1 '"+lessonOne+"'; lesson 4 '"+lessonFour+"'");
+                    // p1-ui-keybind-chips (UI polish round 2): the keybind texts the server sends (Campaign.keyText) name a key as the feed
+                    // does, a mouse button as LMB, RMB or MMB (KeybindTextMixin): the camp sign as this client draws it, a notice as the
+                    // action bar shows it, and the use key's own keybind text against the feed's name for it
+                    String signText=sign==null?"none":sign.getString(),signWant="WELCOME TO BANNER CAMP / "+GravesAndGloryClient.hint("menu")+" opens your camp guide",feedUse=GravesAndGloryClient.hint("use");
+                    boolean keyed=sign!=null&&sign.getSiblings().stream().anyMatch(t->t.getContent() instanceof net.minecraft.text.KeybindTextContent kb&&kb.getKey().equals("key.gravesandglory.menu"));
+                    String bar=Campaign.keyText(NOTICE).getString(),use=net.minecraft.text.Text.keybind(HintText.bindingKey("use")).getString();
+                    report("p1-ui-keybind-chips",keyed&&signText.equals(signWant)&&signWant.contains(" MMB ")&&bar.equals(mouseNotice)&&use.equals(feedUse)&&use.equals("RMB"),"with Commands on the middle button the camp sign"+(keyed?", a keybind text,":" (no keybind text in it)")+" reads '"+signText+"' (the feed's names make '"+signWant+"'); the notice '"+NOTICE+"' reads '"+bar+"' on the action bar and '"+mouseNotice+"' in the feed; the use key's keybind text reads '"+use+"', the feed's name for it '"+feedUse+"'");
                     GravesAndGloryClient.menu.setBoundKey(net.minecraft.client.util.InputUtil.Type.KEYSYM.createFromCode(GLFW.GLFW_KEY_K));
                     GravesAndGloryClient.mapKey.setBoundKey(net.minecraft.client.util.InputUtil.UNKNOWN_KEY);net.minecraft.client.option.KeyBinding.updateKeysByCode();
                     String camp=GravesAndGloryClient.campHint();campOk=camp.contains("K");campWhy="campHint() '"+camp+"'";

@@ -116,7 +116,8 @@ public final class Campaign {
      *  {key:(id)} shows the player's own binding. */
     void notice(UUID id,String text){notices.put(id,text);var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)p.sendMessage(keyText(text),true);}
     /** A {key:(id)} template as chat text: each text as it is, each id as Text.keybind of its binding (HintText.bindingKey), so
-     *  every client shows its own key, or its "Not bound". */
+     *  every client shows its own key, or its "Not bound", named as its feed names it (KeybindTextMixin: a mouse button as LMB,
+     *  RMB or MMB). */
     public static Text keyText(String template){
         var parts=HintText.tokens(template);var out=Text.literal(parts.get(0));
         for(int i=1;i<parts.size();i+=2)out.append(Text.keybind(HintText.bindingKey(parts.get(i)))).append(parts.get(i+1));

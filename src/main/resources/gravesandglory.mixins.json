@@ -11,7 +11,8 @@
     "ModelAngleCompatibilityMixin",
     "HungerHudMixin",
     "ChatHudMixin",
-    "ChatHudAccessor"
+    "ChatHudAccessor",
+    "KeybindTextMixin"
   ],
   "injectors": {
     "defaultRequire": 1

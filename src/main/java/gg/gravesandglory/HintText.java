@@ -58,4 +58,10 @@ public final class HintText {
             default -> "key.gravesandglory." + id;
         };
     }
+
+    /** Whether a binding is one bindingKey names (key.attack, key.use or the mod's own key.gravesandglory.(id)), whose keybind
+     *  texts KeybindTextMixin names as the chips do. */
+    public static boolean hinted(String bindingKey) {
+        return bindingKey.equals("key.attack") || bindingKey.equals("key.use") || bindingKey.startsWith("key.gravesandglory.");
+    }
 }
