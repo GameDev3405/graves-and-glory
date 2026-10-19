@@ -31,6 +31,9 @@ final class MapDressing {
     /** A muster lane: the strip in front of each spawn where squads appear (GravesAndGlory spawn layout). */
     static boolean muster(int x,int z){for(int t=0;t<2;t++){var f=Spec.FACTIONS[t];int u=(x-f.spawnX())*(t==0?1:-1);if(u>=-2&&u<=24&&Math.abs(z-f.spawnZ())<=40)return true;}return false;}
     static boolean onStructure(int x,int z,int margin){for(var s:Spec.STRUCTURES)if(Math.abs(x-s.x())<=s.width()/2+margin&&Math.abs(z-s.z())<=s.depth()/2+margin)return true;return false;}
+    /** Within two columns of the water of the river (its half-width is 6, and 9 on Hollowwood, the wide river): nothing is set down there. The test is against the real river, so the outermost column of Hollowwood's does not pass. */
+    static boolean nearRiver(int map,int x,int z){return Math.abs(x-Arena.riverX(z))<(map==3?11:8);}
+    boolean nearRiver(int x,int z){return nearRiver(map,x,z);}
     static boolean nearTree(int x,int z){for(var s:Spec.SCENERY)if(Math.abs(x-s.x())<=s.width()/2+1&&Math.abs(z-s.z())<=s.width()/2+1)return true;return false;}
     /** Open ground a prop may stand on: off roads (with a shoulder), river, bridges, structures, muster lanes and trees, and level. */
     boolean free(int x,int z,double shoulder){
@@ -118,20 +121,20 @@ final class MapDressing {
             // Capture edge: a flush band of dark stone exactly on the radius, so the line you must cross is on the ground.
             Block edge=map==2?Blocks.BLUE_ICE:map==3?Blocks.POLISHED_BLACKSTONE_BRICKS:Blocks.POLISHED_BLACKSTONE;
             for(int dx=-r-1;dx<=r+1;dx++)for(int dz=-r-1;dz<=r+1;dz++){double d=Math.hypot(dx,dz);int x=p.x()+dx,z=p.z()+dz;
-                if(d<r-.5||d>=r+.5||Math.abs(x-Arena.riverX(z))<8||onStructure(x,z,0))continue;put(x,h(x,z),z,edge);}
+                if(d<r-.5||d>=r+.5||nearRiver(x,z)||onStructure(x,z,0))continue;put(x,h(x,z),z,edge);}
             // Boundary posts: lanterns just outside the ring show the capture edge at night.
             for(int k=0;k<20;k++){double a=k*Math.PI/10;int x=p.x()+(int)Math.round(Math.cos(a)*(r+1.5)),z=p.z()+(int)Math.round(Math.sin(a)*(r+1.5));
-                if(CampaignMaps.roadDistance(x,z)<1||Math.abs(x-Arena.riverX(z))<8||onStructure(x,z,0)||muster(x,z))continue;int y=h(x,z);put(x,y+1,z,coverTop);put(x,y+2,z,lamp);}
+                if(CampaignMaps.roadDistance(x,z)<1||nearRiver(x,z)||onStructure(x,z,0)||muster(x,z))continue;int y=h(x,z);put(x,y+1,z,coverTop);put(x,y+2,z,lamp);}
             // Cover: six breast-high walls between the roads, so defenders have something to hold.
             for(int k=0;k<6;k++){double a=Math.PI/6+k*Math.PI/3,tx=-Math.sin(a),tz=Math.cos(a);int cx=p.x()+(int)Math.round(Math.cos(a)*11),cz=p.z()+(int)Math.round(Math.sin(a)*11);
                 List<int[]> cells=new ArrayList<>();boolean ok=true;
-                for(int s=-2;s<=2;s++){int x=cx+(int)Math.round(tx*s),z=cz+(int)Math.round(tz*s);if(CampaignMaps.roadDistance(x,z)<1.5||Math.abs(x-Arena.riverX(z))<8||onStructure(x,z,1)||Math.abs(h(x,z)-p.elevation())>1)ok=false;cells.add(new int[]{x,z});}
+                for(int s=-2;s<=2;s++){int x=cx+(int)Math.round(tx*s),z=cz+(int)Math.round(tz*s);if(CampaignMaps.roadDistance(x,z)<1.5||nearRiver(x,z)||onStructure(x,z,1)||Math.abs(h(x,z)-p.elevation())>1)ok=false;cells.add(new int[]{x,z});}
                 if(!ok)continue;for(int[] c:cells){int y=h(c[0],c[1]);put(c[0],y+1,c[1],cover);put(c[0],y+2,c[1],coverTop);}
                 int bx=cx-(int)Math.round(Math.cos(a)*2),bz=cz-(int)Math.round(Math.sin(a)*2);
-                if(CampaignMaps.roadDistance(bx,bz)>=1.5&&Math.abs(bx-Arena.riverX(bz))>=8&&!onStructure(bx,bz,1))put(bx,h(bx,bz)+1,bz,k%2==0?Blocks.BARREL:Blocks.HAY_BLOCK);}
+                if(CampaignMaps.roadDistance(bx,bz)>=1.5&&!nearRiver(bx,bz)&&!onStructure(bx,bz,1))put(bx,h(bx,bz)+1,bz,k%2==0?Blocks.BARREL:Blocks.HAY_BLOCK);}
             // Braziers on the four diagonals, raised so no one walks into the fire.
             for(int k=0;k<4;k++){double a=Math.PI/4+k*Math.PI/2;int x=p.x()+(int)Math.round(Math.cos(a)*15),z=p.z()+(int)Math.round(Math.sin(a)*15);
-                if(CampaignMaps.roadDistance(x,z)<1.5||Math.abs(x-Arena.riverX(z))<8||onStructure(x,z,1))continue;int y=h(x,z);put(x,y+1,z,trim);put(x,y+2,z,trim);put(x,y+3,z,map==3?Blocks.SOUL_CAMPFIRE:Blocks.CAMPFIRE);}
+                if(CampaignMaps.roadDistance(x,z)<1.5||nearRiver(x,z)||onStructure(x,z,1))continue;int y=h(x,z);put(x,y+1,z,trim);put(x,y+2,z,trim);put(x,y+3,z,map==3?Blocks.SOUL_CAMPFIRE:Blocks.CAMPFIRE);}
             // Approach cover: past the ring, clumps of crates and a short wall where attackers stage before the push.
             for(int k=0;k<8;k++){double a=Math.PI/8+k*Math.PI/4;int cx=p.x()+(int)Math.round(Math.cos(a)*(r+9)),cz=p.z()+(int)Math.round(Math.sin(a)*(r+9));
                 if(!area(cx-1,cz-1,cx+1,cz+1))continue;int y=h(cx,cz);double tx=-Math.sin(a),tz=Math.cos(a);
@@ -205,7 +208,7 @@ final class MapDressing {
                 for(var r:CampaignMaps.roads){double dx=r.bx()-r.ax(),dz=r.bz()-r.az(),len=Math.hypot(dx,dz);for(double s=0;s<=len;s++){int x=(int)Math.round(r.ax()+dx*s/len),z=(int)Math.round(r.az()+dz*s/len);
                     if(Math.abs(x-Arena.riverX(z))<40&&Math.abs(x-Arena.riverX(z))>=10&&!onStructure(x,z,0))for(int o=-1;o<=1;o++){int px=x+(int)Math.round(-dz/len*o),pz=z+(int)Math.round(dx/len*o);put(px,h(px,pz),pz,Blocks.SPRUCE_PLANKS);}}}
                 for(var s:Spec.SCENERY)if(hash(s.x(),s.z())%3==0){int x=s.x()+3,z=s.z()+1;if(free(x,z,2))put(x,h(x,z)+1,z,hash(x,z)%2==0?Blocks.RED_MUSHROOM:Blocks.BROWN_MUSHROOM);}
-                for(var p:Spec.POINTS)if(p.id().equals("C"))for(int k=0;k<8;k++){double a=k*Math.PI/4;int x=p.x()+(int)Math.round(Math.cos(a)*6),z=p.z()+(int)Math.round(Math.sin(a)*6);if(CampaignMaps.roadDistance(x,z)>=1&&Math.abs(x-Arena.riverX(z))>=8)put(x,h(x,z)+1,z,Blocks.AMETHYST_CLUSTER);}
+                for(var p:Spec.POINTS)if(p.id().equals("C"))for(int k=0;k<8;k++){double a=k*Math.PI/4;int x=p.x()+(int)Math.round(Math.cos(a)*6),z=p.z()+(int)Math.round(Math.sin(a)*6);if(CampaignMaps.roadDistance(x,z)>=1&&!nearRiver(x,z))put(x,h(x,z)+1,z,Blocks.AMETHYST_CLUSTER);}
             }
             case 4->{ // Kingsfield: farmland crossroads. Hedgerows along the fields, a windmill above the north ford.
                 for(int side:new int[]{-1,1})for(int x=60;x<=190;x++){int wx=side*x;for(int z:new int[]{-side*40,side*170}){if(!free(wx,z,2)||inPoint(wx,z,3)||x%22<4)continue;int y=h(wx,z);set(wx,y+1,z,Blocks.OAK_LEAVES.getDefaultState().with(LeavesBlock.PERSISTENT,true));set(wx,y+2,z,Blocks.OAK_LEAVES.getDefaultState().with(LeavesBlock.PERSISTENT,true));}}
