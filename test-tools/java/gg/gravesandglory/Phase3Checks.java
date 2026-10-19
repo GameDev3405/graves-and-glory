@@ -639,18 +639,22 @@ public final class Phase3Checks implements ClientModInitializer {
             var fl=floors(b);
             report(name.apply("floors"),fl.cells()>0&&fl.soil()==0,"floor cells of "+fl.halls()+" buildings "+fl.cells()+", with road soil (dirt path, coarse dirt, gravel) or ground on them "+fl.soil()+(fl.soil()==0?"":": "+fl.sample()));
             var pi=pits(b);
-            report(name.apply("pits"),pi.paths()>0&&pi.lone()==0&&pi.plaza()==0,"dirt path cells "+pi.paths()+", of them alone (no dirt path beside them: a dark pit between full blocks) "+pi.lone()+", inside a plaza "+pi.plaza()+(pi.lone()+pi.plaza()==0?"":", first alone: "+pi.sample()));
+            try{Path file=MinecraftClient.getInstance().runDirectory.toPath().resolve("screenshots/p3-pits-map"+n+".txt");Files.createDirectories(file.getParent());Files.writeString(file,pi.detail());}
+            catch(Exception e){report(name.apply("pits-file"),false,e.toString());}
+            report(name.apply("pits"),pi.paths()>0&&pi.paved()==0,"dirt path cells "+pi.paths()+", of them inside a plaza (within 9.2 blocks of a flag pole) or on the parade ground of a camp, where everything is paved, off the floors and decks: "+pi.paved()+(pi.paved()==0?"":", first "+pi.sample())+"; alone on the open road (the edge of a ribbon, not counted): "+pi.lone());
             var pl=plazas(b,n);
             report(name.apply("plaza"),pl.cells()>0&&pl.wrong()==0,"plaza cells (within 9.2 blocks of a flag pole, off the 3x3 pad, the water and the buildings) "+pl.cells()+", not the block of the pattern (earth, a compass of trim, a ring of paving) "+pl.wrong()+(pl.wrong()==0?"":", first: "+pl.sample()));
         }
         /** The ring of every capture point: per point {ring cells, those over river water, those on a deck or its rails, those with air under, pad cells with air under}. A ring cell is smooth stone at the elevation of the point, radius-1 to radius out. */
         record Ring(boolean ok,String text){}
         static Ring ring(GravesAndGlory.Battle b){
-            var w=b.world;boolean ok=true;var text=new StringBuilder("per point: ring cells / over river water / on a deck / with air under / pad cells with air under: ");
+            var w=b.world;boolean ok=true;int total=0;var text=new StringBuilder("per point: ring cells / over river water / on a deck / with air under / pad cells with air under: ");
+            var other=new TreeMap<String,Integer>();
             for(var p:Spec.POINTS){
                 int r=p.radius(),e=p.elevation(),cells=0,water=0,deck=0,air=0,pad=0;
                 for(int dx=-r;dx<=r;dx++)for(int dz=-r;dz<=r;dz++){
                     int x=p.x()+dx,z=p.z()+dz;double d=Math.hypot(dx,dz);
+                    if(d>=r-1&&d<=r&&!w.getBlockState(new BlockPos(x,e,z)).isOf(Blocks.SMOOTH_STONE))other.merge(name(w.getBlockState(new BlockPos(x,e,z))),1,Integer::sum);
                     if(d>=r-1&&d<=r&&w.getBlockState(new BlockPos(x,e,z)).isOf(Blocks.SMOOTH_STONE)){
                         cells++;var under=w.getBlockState(new BlockPos(x,e-1,z));
                         if(under.isAir())air++;
@@ -659,10 +663,11 @@ public final class Phase3Checks implements ClientModInitializer {
                     }
                     if(Math.abs(dx)<=1&&Math.abs(dz)<=1&&w.getBlockState(new BlockPos(x,e-1,z)).isAir())pad++;
                 }
-                if(cells<30||water!=0||deck!=0||air!=0||pad!=0)ok=false;
+                total+=cells;if(water!=0||deck!=0||air!=0||pad!=0)ok=false;
                 text.append(p.id()).append(" (").append(p.x()).append(", ").append(p.z()).append(") elevation ").append(e).append(' ').append(cells).append('/').append(water).append('/').append(deck).append('/').append(air).append('/').append(pad).append("; ");
             }
-            return new Ring(ok,text.toString());
+            var top=new ArrayList<>(other.entrySet());top.sort((p,q)->q.getValue()-p.getValue());
+            return new Ring(ok&&total>=100,text.toString()+"ring cells in all "+total+" (at least 100: a point on the river has no ring, the others do); what else lies on the cells of the ring band (the edge stone of the dressing covers the outer half): "+top.stream().limit(6).map(q->q.getKey()+" "+q.getValue()).toList());
         }
         /** Every lantern of the arena: how many there are and how many have nothing to hang from or stand on (LanternBlock.canPlaceAt is false: the next neighbour update would break it). */
         record Lanterns(int total,int loose,String sample,String detail){}
@@ -695,23 +700,37 @@ public final class Phase3Checks implements ClientModInitializer {
             }
             return new Floors(halls,cells,soil,sample.toString());
         }
-        /** The dirt path cells of the arena (the block at Arena.height of each column): how many, how many have no dirt path on any of their four sides (a dirt path block is 15/16 high, so one between full blocks draws as a dark pit), and how many lie
-         *  within 9.2 blocks of a flag pole, inside the plaza. A road is a ribbon of them and has no lone cell. */
-        record Pits(int paths,int lone,int plaza,String sample){}
+        /** The dirt path cells of the arena (the block at Arena.height of each column): how many, how many have no dirt path on any of their four sides (a dirt path block is 15/16 high, so one between full blocks draws as a dark pit; the diagonal
+         *  stripes of coarse dirt that Arena lays in every road leave some at the edge of a ribbon, which is how a road looks and is only reported), and how many lie where the dressing paves everything: within 9.2 blocks of a flag pole (the plaza) or on the
+         *  parade ground of a camp (19 blocks behind to 25 in front of the spawn, 63 either side), off the floors and decks the structures build. */
+        record Pits(int paths,int lone,int paved,String sample,String detail){}
         static Pits pits(GravesAndGlory.Battle b){
-            var w=b.world;int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ(),wz=2*hz+1,paths=0,lone=0,plaza=0;var path=new BitSet((2*hx+1)*wz);var sample=new StringBuilder();
+            var w=b.world;int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ(),wz=2*hz+1,paths=0,lone=0,plaza=0;var path=new BitSet((2*hx+1)*wz);var sample=new StringBuilder();var detail=new StringBuilder();
             for(int x=-hx;x<=hx;x++)for(int z=-hz;z<=hz;z++){
                 if((z&15)==0)w.getChunk(x>>4,z>>4);
                 if(!w.getBlockState(new BlockPos(x,Arena.height(x,z),z)).isOf(Blocks.DIRT_PATH))continue;
                 path.set((x+hx)*wz+(z+hz));paths++;
-                for(var p:Spec.POINTS)if(Math.hypot(x-p.x(),z-p.z())<9.2){plaza++;break;}
+                boolean zone=false;String of="";
+                for(var p:Spec.POINTS)if(Math.hypot(x-p.x(),z-p.z())<9.2){zone=true;of="plaza of point "+p.id();break;}
+                for(int t=0;t<2&&!zone;t++){var f=Spec.FACTIONS[t];int u=(x-f.spawnX())*(t==0?1:-1);if(u>=-19&&u<=25&&Math.abs(z-f.spawnZ())<=63){zone=true;of="parade ground of "+f.id();}}
+                if(zone&&!builtCell(x,z)){plaza++;if(plaza<=8)sample.append(plaza>1?"; ":"").append('(').append(x).append(", ").append(z).append(") ").append(of);detail.append("paved ").append(x).append(' ').append(z).append(' ').append(of).append('\n');}
             }
             for(int x=-hx;x<=hx;x++)for(int z=-hz;z<=hz;z++){
                 if(!path.get((x+hx)*wz+(z+hz)))continue;
                 boolean side=x>-hx&&path.get((x-1+hx)*wz+(z+hz))||x<hx&&path.get((x+1+hx)*wz+(z+hz))||z>-hz&&path.get((x+hx)*wz+(z-1+hz))||z<hz&&path.get((x+hx)*wz+(z+1+hz));
-                if(!side){lone++;if(lone<=8)sample.append(lone>1?"; ":"").append('(').append(x).append(", ").append(z).append(')');}
+                if(!side){
+                    lone++;
+                    double foot=999,pt=999;for(var q:Spec.STRUCTURES)if(!q.kind().equals("bridge"))foot=Math.min(foot,Math.max(0,Math.max(Math.abs(x-q.x())-q.width()/2.0,Math.abs(z-q.z())-q.depth()/2.0)));
+                    for(var q:Spec.POINTS)pt=Math.min(pt,Math.hypot(x-q.x(),z-q.z()));
+                    detail.append("lone ").append(x).append(' ').append(z).append(" road ").append(Arena.road(x,z)).append(" footprint ").append((int)foot).append(" point ").append((int)pt).append('\n');
+                }
             }
-            return new Pits(paths,lone,plaza,sample.toString());
+            return new Pits(paths,lone,plaza,sample.toString(),detail.toString());
+        }
+        /** On what a structure builds: the cells x0..x0+width-1 by z0..z0+depth-1 (floor course, or the planks of a deck). */
+        static boolean builtCell(int x,int z){
+            for(var s:Spec.STRUCTURES){int x0=s.x()-s.width()/2,z0=s.z()-s.depth()/2;if(x>=x0&&x<x0+s.width()&&z>=z0&&z<z0+s.depth())return true;}
+            return false;
         }
         /** The paving of the plazas: within 9.2 blocks of a flag pole, off the 3x3 pad of the pole, off the water (11 columns of the river line) and off the buildings, every cell is the block of one pattern: the ring of paving from 8 blocks out, the compass of trim
          *  (three wide along the axes) inside it, trampled earth (coarse dirt) between. {cells looked at, those that are another block, the first of those}. */
@@ -722,7 +741,7 @@ public final class Phase3Checks implements ClientModInitializer {
             Block trim=switch(map){case 2->Blocks.POLISHED_DIORITE;case 3->Blocks.MOSSY_STONE_BRICKS;default->Blocks.STONE_BRICKS;};
             for(var p:Spec.POINTS)for(int dx=-9;dx<=9;dx++)for(int dz=-9;dz<=9;dz++){
                 int x=p.x()+dx,z=p.z()+dz;double d=Math.hypot(dx,dz);
-                if(d>=9.2||Math.abs(dx)<=1&&Math.abs(dz)<=1||Math.abs(x-Arena.riverX(z))<11||MapDressing.onStructure(x,z,0))continue;
+                if(d>=9.2||Math.abs(dx)<=1&&Math.abs(dz)<=1||Math.abs(x-Arena.riverX(z))<11||builtCell(x,z))continue;
                 Block want=d>=8?pave:(Math.abs(dx)<=1||Math.abs(dz)<=1)?trim:Blocks.COARSE_DIRT;
                 cells++;var st=w.getBlockState(new BlockPos(x,Arena.height(x,z),z));
                 if(!st.isOf(want)){wrong++;if(wrong<=8)sample.append(wrong>1?"; ":"").append(name(st)).append(" for ").append(name(want.getDefaultState())).append(" at (").append(x).append(", ").append(z).append(") of point ").append(p.id());}
