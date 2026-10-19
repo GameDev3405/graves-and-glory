@@ -839,14 +839,14 @@ public final class Phase3Checks implements ClientModInitializer {
      *  first spur of each kind (houses and farm and mill, one tower of each camp); where a lane had a stuck window, the place from 16 and from 6 blocks before it (stuck-); the water where the ring band of a point on a deck crossed it, seen from the north
      *  edge of the deck (band-); the four ends of the two rails of each deck and the two edges of the strip of a ford (rail-); the two corners of the bank at the middle crossing where a post and the edge stone of the dressing once stood in the
      *  river (posts-); the two places 16 and 6 blocks before the wall of a camp barracks that the straight fan road used to run into, and the lanes that bend past it (wall-, lane<k>-barracks-); the inside of each barracks hall looking up at its
-     *  lantern (hall-); the plaza floor of the first two points on dry land (plaza-); the view up at each raised outpost from the road and from the plateau (outpost-); each kind of floating piece from where a walker can see it (float-);
+     *  lantern (hall-); the plaza floor of the first two points on dry land (plaza-); the view up at each raised outpost from the road and from the plateau (outpost-) and the road up to it from where the climb begins (ramp-); each kind of floating piece from where a walker can see it (float-);
      *  each building no road leads to (building-); and the two longest sight lines of the map at render distance 28 (sight-).
      *  Checks: p3-wt<N>-leg-<id> passes when the walker reached the end of the lane and no 2-second window of walking gained less than 3 blocks (a window that did is a stuck window, counted per lane; the walker then hops, and if that does not help
      *  is put on past the obstacle, on the road and not on a roof); p3-wt<N>-stuck is the total for the map; auto-jumps (a step up the walker had to hop), windows under 6 blocks and the y range of each lane are in the notes. p3-wt<N>-foreign
      *  passes when no column of the arena has a top block that belongs to another map; p3-wt<N>-river is the river check of the arena suite run again on the map as it stands; p3-wt<N>-floating passes when every solid block of the arena touches,
      *  by a face, an edge or a corner, a chain of solid blocks that reaches the floor. The rest of the scans (bands over water, hanging ring and pad, blocks standing in the river, the profile of every lane, the sight lines, every floating piece)
      *  are notes in screenshots/p3-wt<N>-notes.txt.
-     *  GRAVES_WALK_ONLY (or a file walk-only.txt in the run folder) lists name fragments: only the lanes and picture groups whose name contains one of them are done (camp, lane1, flank, link, spur0, band, rail, posts, wall, hall, plaza, outpost, float, building, sight). */
+     *  GRAVES_WALK_ONLY (or a file walk-only.txt in the run folder) lists name fragments: only the lanes and picture groups whose name contains one of them are done (camp, lane1, flank, link, spur0, band, rail, posts, wall, hall, plaza, outpost, ramp, float, building, sight). */
     static final class Walkthrough implements Suite {
         static final net.minecraft.world.Heightmap.Type FEET=net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES;
         record Stop(String name,double arc,double tx,double ty,double tz){}
@@ -1283,6 +1283,12 @@ public final class Phase3Checks implements ClientModInitializer {
                 if(top!=null)jobs.add(new ShotJob("outpost-"+p.id()+"-top",top[0],top[1],p.x()+0.5,p.elevation()+0.5,p.z()+0.5,12,"point "+p.id()+": from the plateau, 12 to 17 blocks out, at the centre"));
                 double[] near=plateau(p,5.5,9.0,6);
                 if(near!=null)jobs.add(new ShotJob("outpost-"+p.id()+"-near",near[0],near[1],p.x()+0.5,p.elevation()+1.5,p.z()+0.5,12,"point "+p.id()+": from the shoulder of the plateau, 6 to 9 blocks out, at the pad"));
+            }
+            if(want("ramp"))for(var p:Spec.POINTS)if(p.elevation()>Arena.Y){ // the way up to a raised point, from where the climb begins (19 blocks of plateau and 48 of climb out), looking at the pole
+                Leg on=null;for(var l:legs)if(on==null&&l.nearest(p.x(),p.z())[1]<=3.5)on=l;
+                if(on==null)continue;
+                double[] a=on.at(Math.max(0.5,on.arcOf(p.x(),p.z())-58.0));
+                jobs.add(new ShotJob("ramp-"+p.id(),a[0],a[1],p.x()+0.5,p.elevation()+3.0,p.z()+0.5,12,"point "+p.id()+": the road up to the outpost from 58 blocks out, where the climb begins, looking at the pole"));
             }
             if(want("float")){
                 int shots=0;var done=new HashSet<String>();
