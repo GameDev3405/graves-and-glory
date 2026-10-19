@@ -57,11 +57,14 @@ final class ArmyCards {
             if(selected||active&&(isHovered()||isFocused()))g.drawBorder(x+1,y+1,width-2,height-2,DarkUi.GOLD);
             var h=house(spec);int col=0x33000000|(h==null?0x4c9391:h.accent()&0xffffff);g.fillGradient(x+4,y+4,x+width-4,y+55,col,0x00181820); // the House accent
             var e=portrait(spec);if(e!=null){e.age=c.player==null?0:c.player.age;InventoryScreen.drawEntity(g,x+width/2,y+52,size(e,22),20,0,e);}
+            g.getMatrices().push();g.getMatrices().translate(0,0,100); // as CampScreen.card: the model is drawn at z 50 and writes depth, so an inactive card's dim sits at z 100 and the card's text at z 150
             if(!active)g.fill(x+3,y+3,x+width-3,y+height-3,0x99111119);
+            g.getMatrices().translate(0,0,50);
             g.drawCenteredTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth(spec.name(),width-8),x+width/2,y+57,active?DarkUi.PAPER:DarkUi.MUTED);
             boolean note=!fieldable(spec)||spec.slotWeight()>1;String state=!fieldable(spec)?"NOT FIELDABLE":spec.slotWeight()>1?spec.slotWeight()+" SLOTS":CommandMode.label(spec.group());
             g.drawCenteredTextWithShadow(c.textRenderer,state,x+width/2,y+68,note?DarkUi.GOLD:DarkUi.MUTED);
             g.drawTextWithShadow(c.textRenderer,""+Collections.frequency(CampaignClient.profile.banner,spec.id()),x+width-13,y+7,DarkUi.GOLD);
+            g.getMatrices().pop();
         }
     }
     static final class Deployment extends ButtonWidget {

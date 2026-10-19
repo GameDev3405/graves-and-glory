@@ -93,8 +93,20 @@ for h in houses.values():
     for r,n in HOUSE_SHAPE.items():
         have=sum(1 for t in mine if rarityOf.get(t)==r)
         if have>n or (h['fieldable'] and have!=n): errors.append(f'houses/{h["id"]}: {have} {r} troops; a House has at most {n}, and a fieldable House exactly {n}')
+CLASS_ACTIVES=('stand_fast','bloodrush','mark_prey','rally_horn','grave_bloom','forward_supply')
+CLASS_PASSIVES=('champion','reaver','warden','marshal','warlock','quartermaster')
 for c in data['classes']:
     if c['group'] not in groups: errors.append(f'classes/{c["id"]}: group {c["group"]} does not resolve')
+    if c['track'] not in ('hero','general'): errors.append(f'classes/{c["id"]}: track must be hero or general')
+    if c['active'] not in CLASS_ACTIVES: errors.append(f'classes/{c["id"]}: active {c["active"]} is not one of {", ".join(CLASS_ACTIVES)} (Commander.ACTIVES keys)')
+    if c['passive'] not in CLASS_PASSIVES: errors.append(f'classes/{c["id"]}: passive {c["passive"]} is not one of {", ".join(CLASS_PASSIVES)} (the effect kinds Commander reads)')
+    if c['cooldownTicks']<c['durationTicks']: errors.append(f'classes/{c["id"]}: cooldownTicks must be at least durationTicks')
+    for col in ('activeText','passiveText'):
+        if len(c[col])>90: errors.append(f'classes/{c["id"]}: {col} is {len(c[col])} characters, over 90')
+    if c['bonus']!=c['passiveText']: errors.append(f'classes/{c["id"]}: bonus must equal passiveText')
+for col in ('active','passive'):
+    seen=[c[col] for c in data['classes']]
+    if len(set(seen))!=len(seen): errors.append(f'classes: every class needs its own {col}')
 thresholds={}
 for h in houses:
     tiers=sorted((t for t in data['houseTraits'] if t['house']==h),key=lambda t:t['tier'])

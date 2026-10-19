@@ -82,8 +82,8 @@ public final class Combat {
         return amount;
     }
 
-    /** The commander classes' share of the factor (Champion's infantry aura, Warden's archers, Mark Prey, Stand Fast). 1 until the commander framework lands. */
-    static double commanderFactor(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target) { return 1; }
+    /** The commander classes' share of the factor: the attacker side's (Champion's infantry aura, Warden's archers, Mark Prey) times the target side's (Stand Fast). */
+    static double commanderFactor(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target) { return Commander.factor(b, attacker, target) * Commander.takenFactor(b, target); }
 
     /** The Unit of this battle that is the entity, or null for a player or any other entity. */
     static GravesAndGlory.Unit unitOf(GravesAndGlory.Battle b, net.minecraft.entity.Entity e) {

@@ -32,7 +32,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static boolean ready,running,nearBarracks;
     static int dawn,dusk,team=-1,count,respawn,gold,queued,trainingSeconds;
     static String message="Preparing battlefield",order="follow",formation="block";
-    /** state_v8: the side id each team flies, this army's House trait tiers (tier I or higher), and the commander ability (id, ticks until ready, ticks left active; the commander task fills them). */
+    /** state_v8: the side id each team flies, this army's House trait tiers (tier I or higher), and the commander ability (its active id, ticks until ready or -1 when this build has no behaviour for it, ticks left active; "" while unseated). */
     static String[] sideIds={"",""};static Map<String,Integer> houses=Map.of();static String commanderActive="";static int commanderReady,commanderFor;
     static boolean[] contested={false,false,false};
     record Sight(float x,float z,int age){}
@@ -40,7 +40,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static int[] owners={-1,-1,-1},progress={0,0,0},challengers={-1,-1,-1},roster=new int[Spec.TROOPS.length],pending=new int[Spec.TROOPS.length];
     static List<Marker> markers=List.of();
     record Marker(float x,float z,boolean fighting,boolean own,String name){}
-    static KeyBinding menu,attack,follow,cycle,mapKey,rotateLeft,rotateRight,confirmOrder,cancelOrder;
+    static KeyBinding menu,attack,follow,cycle,mapKey,rotateLeft,rotateRight,confirmOrder,cancelOrder,ability;
     static Path runtime;
     static String join="",error="";
     static boolean attempted,opened,joined,shareCamp,launcherContext,connectingInvitation;
@@ -63,6 +63,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         });
         menu=key("menu",GLFW.GLFW_KEY_R);attack=key("attack",GLFW.GLFW_KEY_G);follow=key("follow",GLFW.GLFW_KEY_V);cycle=key("formation",GLFW.GLFW_KEY_B);mapKey=key("map",GLFW.GLFW_KEY_M);
         rotateLeft=key("rotate_left",GLFW.GLFW_KEY_LEFT_BRACKET);rotateRight=key("rotate_right",GLFW.GLFW_KEY_RIGHT_BRACKET);
+        ability=key("ability",GLFW.GLFW_KEY_H); // the commander ability (Commander.activate); G is the attack order
         confirmOrder=KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory.confirm",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_ENTER,"category.gravesandglory"));
         cancelOrder=KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory.cancel",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_BACKSPACE,"category.gravesandglory"));
         String local=System.getenv("LOCALAPPDATA");runtime=Path.of(System.getProperty("gravesandglory.runtime",local==null?"gravesandglory-runtime":local+"/gravesandglory"));
@@ -97,6 +98,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             if(client.player!=null){
                 worldTicks++;if(ready&&worldTicks%20==0)client.getToastManager().clear();prepareMap(client);CampaignClient.tick(client);Diagnostics.tick(client);
                 while(menu.wasPressed()){CampaignClient.end(client);CommandMode.cancel();client.setScreen(battleActive()?new CommandScreen():new CampScreen("home"));}
+                while(ability.wasPressed())if(battleActive())send("ability");
                 while(attack.wasPressed())CommandMode.begin("attack");while(follow.wasPressed())CommandMode.issue("all","follow",CommandMode.formation,client.player.getPos(),client.player.getYaw(),-1);
                 while(rotateLeft.wasPressed()){CommandMode.facingSet=true;CommandMode.facing-=Spec.COMMANDINTERFACE[0].facingStep();}
                 while(rotateRight.wasPressed()){CommandMode.facingSet=true;CommandMode.facing+=Spec.COMMANDINTERFACE[0].facingStep();}
@@ -111,6 +113,13 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(CommandMode::renderWorld);
     }
     static KeyBinding key(String name,int key){return KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory."+name,InputUtil.Type.KEYSYM,key,"category.gravesandglory"));}
+    /** The player's own key for an action, as a hint names it: key.attack for hit, key.use for use, key.gravesandglory.(id) for the mod's own
+     *  (menu, attack, follow, formation, map, rotate_left, rotate_right, confirm, cancel, ability); "Not bound" when it is unbound or unknown. */
+    public static String hint(String id){
+        String name=switch(id){case "hit"->"key.attack";case "use"->"key.use";default->"key.gravesandglory."+id;};
+        for(KeyBinding k:MinecraftClient.getInstance().options.allKeys)if(k.getTranslationKey().equals(name))return k.isUnbound()?"Not bound":k.getBoundKeyLocalizedText().getString();
+        return "Not bound";
+    }
     static void say(String line){try{Files.writeString(runtime.resolve("melty.log"),line+"\n",StandardOpenOption.CREATE,StandardOpenOption.APPEND);}catch(Exception ignored){}}
     static void send(String action){if(ClientPlayNetworking.canSend(GravesAndGlory.ORDER)){PacketByteBuf b=PacketByteBufs.create();b.writeString(action);ClientPlayNetworking.send(GravesAndGlory.ORDER,b);}}
     static void connectOrHost(MinecraftClient c){
@@ -185,6 +194,26 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         if(CampaignClient.padCountdown>0)g.drawCenteredTextWithShadow(c.textRenderer,"War gates: "+CampaignClient.padCountdown+"s / Step off to cancel",w/2,24,DarkUi.GOLD);
         else if(CampaignClient.waiting)g.drawCenteredTextWithShadow(c.textRenderer,"A battle is underway / Your camp remains open",w/2,24,DarkUi.MUTED);
     }
+    /** What the ability tile drew in the last frame (the key chip, the active's name, the state line), so a check can read it. */
+    static List<String> abilityDrawn=List.of();
+    /** The commander ability tile over the minimap, in three rows: the class active's name; READY, ACTIVE with the seconds left, READY IN
+     *  the seconds left, or NOT IN THIS BUILD; and the ability key beside a bar that fills as the cooldown runs out and drains while the
+     *  ability runs. The name and the state each have the tile's full width, so the longest name fits whatever the key is called. */
+    static void abilityTile(DrawContext g,net.minecraft.client.font.TextRenderer font,int w,int h){
+        if(commanderActive.isEmpty()){abilityDrawn=List.of();return;}
+        var row=Commander.byActive(commanderActive);int x=w-116,y=h-150;panel(g,x,y,108,46);
+        String name=font.trimToWidth(Commander.activeName(commanderActive).toUpperCase(Locale.ROOT),96);g.drawTextWithShadow(font,name,x+6,y+6,WHITE);
+        String state;int color;float fill;
+        if(commanderReady<0){state="NOT IN THIS BUILD";color=MUTED;fill=0;}
+        else if(commanderFor>0){state="ACTIVE "+(commanderFor+19)/20+" s";color=GOLD;fill=row==null||row.durationTicks()<=0?1:Math.min(1,commanderFor/(float)row.durationTicks());}
+        else if(commanderReady>0){state="READY IN "+(commanderReady+19)/20+" s";color=MUTED;fill=row==null||row.cooldownTicks()<=0?0:1-Math.min(1,commanderReady/(float)row.cooldownTicks());}
+        else{state="READY";color=GOLD;fill=1;}
+        state=font.trimToWidth(state,96);g.drawTextWithShadow(font,state,x+6,y+18,color);
+        String key=hint("ability");int kw=Math.min(44,font.getWidth(key)+8);String chip=font.trimToWidth(key,kw-4);
+        g.fill(x+6,y+30,x+6+kw,y+42,0xff2a2418);g.drawBorder(x+6,y+30,kw,12,GOLD);g.drawCenteredTextWithShadow(font,chip,x+6+kw/2,y+32,GOLD);
+        int bar=x+6+kw+5;g.fill(bar,y+35,x+102,y+37,0xff2a3236);g.fill(bar,y+35,bar+Math.round((x+102-bar)*fill),y+37,color);
+        abilityDrawn=List.of(chip,name,state);
+    }
     static void renderHud(DrawContext g,float delta){
         var c=MinecraftClient.getInstance();if(c.player==null||c.currentScreen instanceof ArmyScreen||Diagnostics.active()&&Diagnostics.hideHud())return;
         float scale=Math.min(1,c.getWindow().getScaledWidth()/640f);g.getMatrices().push();g.getMatrices().scale(scale,scale,1);
@@ -198,7 +227,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         if(!running)g.drawCenteredTextWithShadow(font,menu.getBoundKeyLocalizedText().getString()+": war council / collection / maps",w/2,48,WHITE);
         // Key hints sit under the score panel, clear of the hotbar; hidden while an order is being aimed.
         else{if(!CommandMode.active()){g.drawCenteredTextWithShadow(font,keyHints(),w/2,48,MUTED);lesson(g,font,w);}if(respawn>0){panel(g,w/2-100,h/2-40,200,26);g.drawCenteredTextWithShadow(font,"Respawn in "+respawn+" s",w/2,h/2-32,GOLD);}}
-        panel(g,w-116,h-100,108,92);g.drawTextWithShadow(font,"M / BATTLEFIELD",w-109,h-92,MUTED);map(g,w-110,h-79,96,68,false);CampaignClient.hud(g,w,h);g.getMatrices().pop();
+        panel(g,w-116,h-100,108,92);g.drawTextWithShadow(font,"M / BATTLEFIELD",w-109,h-92,MUTED);map(g,w-110,h-79,96,68,false);abilityTile(g,font,w,h);CampaignClient.hud(g,w,h);g.getMatrices().pop();
     }
     static final class FantasyButton extends ButtonWidget {
         boolean primary;

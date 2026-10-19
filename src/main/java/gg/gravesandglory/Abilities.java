@@ -86,8 +86,8 @@ final class Abilities {
     /** What a landed hit sets off on its attacker's ability (pierce, cleave, slows, slams, pounce). dealt is the amount applied. Combat.resolve skips it for a secondary hit. A no-op until the Houses that use it. */
     static void onHit(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity target, float dealt, String kind) {}
 
-    /** The reach of a troop's attack in blocks: its sheet range. Commander and trait range bonuses (siege under Entrench) will add here. */
-    static double range(GravesAndGlory.Battle b, GravesAndGlory.Unit u) { return u.spec.range(); }
+    /** The reach of a troop's attack in blocks: its sheet range plus its commander's bonus (the Warden's ranged troops). Trait range bonuses (siege under Entrench) will add here. */
+    static double range(GravesAndGlory.Battle b, GravesAndGlory.Unit u) { return u.spec.range() + Commander.rangeBonus(u.squad, u); }
 
     /** The aura share of the factor (Oath Banner and Howl for the attacker's side, Dread for the foe's). 1 until the Houses that have auras. */
     static double auraFactor(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target) { return 1; }

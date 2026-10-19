@@ -2180,7 +2180,7 @@
       "id": "champion",
       "name": "Champion",
       "group": "infantry",
-      "bonus": "Hero who holds the line: nearby troops stand fast.",
+      "bonus": "+4 max health for you; your infantry within 10 blocks deal 10% more damage.",
       "track": "hero",
       "active": "stand_fast",
       "cooldownTicks": 1800,
@@ -2194,14 +2194,14 @@
       "passiveValue": 4.0,
       "passiveValue2": 0.1,
       "passiveRadius": 10.0,
-      "activeText": "Nearby troops cannot rout and take 25% less damage for 8 s.",
-      "passiveText": "+2 hearts; nearby infantry +10% damage."
+      "activeText": "Your troops within 12 cannot rout and take 25% less damage for 8 s; you gain Resistance I.",
+      "passiveText": "+4 max health for you; your infantry within 10 blocks deal 10% more damage."
     },
     {
       "id": "reaver",
       "name": "Reaver",
       "group": "infantry",
-      "bonus": "Hero who leads the charge and lives on what he kills.",
+      "bonus": "+2 attack damage for you; you respawn in 9 s instead of 12.",
       "track": "hero",
       "active": "bloodrush",
       "cooldownTicks": 1500,
@@ -2215,14 +2215,14 @@
       "passiveValue": 2.0,
       "passiveValue2": 9.0,
       "passiveRadius": 0.0,
-      "activeText": "Speed II and 30% lifesteal for 10 s; each kill refunds a fallen troop, up to 3.",
-      "passiveText": "+2 attack damage; you respawn in 9 s instead of 12."
+      "activeText": "Speed II and 30% lifesteal for 10 s; each troop you kill returns a fallen one, up to 3.",
+      "passiveText": "+2 attack damage for you; you respawn in 9 s instead of 12."
     },
     {
       "id": "warden",
       "name": "Warden",
       "group": "ranged",
-      "bonus": "Hero who marks the prey for the archers.",
+      "bonus": "Your ranged troops deal 10% more damage and reach 2 blocks further.",
       "track": "hero",
       "active": "mark_prey",
       "cooldownTicks": 1200,
@@ -2236,14 +2236,14 @@
       "passiveValue": 0.1,
       "passiveValue2": 2.0,
       "passiveRadius": 0.0,
-      "activeText": "Mark an enemy within 40 blocks: it glows and takes 30% more damage for 12 s.",
+      "activeText": "Mark a foe within 40 blocks: it glows and takes 30% more damage from your side for 12 s.",
       "passiveText": "Your ranged troops deal 10% more damage and reach 2 blocks further."
     },
     {
       "id": "marshal",
       "name": "Marshal",
       "group": "all",
-      "bonus": "General who rallies the army and drills it faster.",
+      "bonus": "Your troops train in 20% less time.",
       "track": "general",
       "active": "rally_horn",
       "cooldownTicks": 2400,
@@ -2257,14 +2257,14 @@
       "passiveValue": 0.2,
       "passiveValue2": 0.0,
       "passiveRadius": 0.0,
-      "activeText": "Rally every routing group to you: 20 s steadier and 10% faster for 15 s.",
-      "passiveText": "Your troops train 20% faster."
+      "activeText": "Routing groups rally and every group marches to you: 20 s steadier, 10% faster for 15 s.",
+      "passiveText": "Your troops train in 20% less time."
     },
     {
       "id": "warlock",
       "name": "Warlock",
       "group": "support",
-      "bonus": "General who raises the fallen and pays less for magic.",
+      "bonus": "Your magic troops cost 20% less gold in battle.",
       "track": "general",
       "active": "grave_bloom",
       "cooldownTicks": 2400,
@@ -2278,14 +2278,14 @@
       "passiveValue": 0.2,
       "passiveValue2": 0.0,
       "passiveRadius": 0.0,
-      "activeText": "Up to 6 troops that fell within 8 blocks in 20 s rise as Risen for 30 s.",
-      "passiveText": "Your magic troops cost 20% less gold."
+      "activeText": "Up to 6 troops that fell within 8 blocks in the last 20 s rise as your Risen for 30 s.",
+      "passiveText": "Your magic troops cost 20% less gold in battle."
     },
     {
       "id": "quartermaster",
       "name": "Quartermaster",
       "group": "all",
-      "bonus": "General who supplies the front and earns more from points.",
+      "bonus": "Each point you hold pays 2 more gold every income tick: 5 instead of 3.",
       "track": "general",
       "active": "forward_supply",
       "cooldownTicks": 3000,
@@ -2299,8 +2299,8 @@
       "passiveValue": 2.0,
       "passiveValue2": 0.0,
       "passiveRadius": 0.0,
-      "activeText": "Plant a 40-health supply banner 30+ blocks from base: troops deploy there for 60 s.",
-      "passiveText": "+2 gold per held point each income tick."
+      "activeText": "Plant a 40-health supply banner 30+ from base: troops deploy there for 60 s while safe.",
+      "passiveText": "Each point you hold pays 2 more gold every income tick: 5 instead of 3."
     }
   ],
   "campaign": [
