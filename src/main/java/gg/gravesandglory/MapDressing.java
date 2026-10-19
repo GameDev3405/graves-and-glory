@@ -33,6 +33,8 @@ final class MapDressing {
     /** A muster lane: the strip in front of each spawn where squads appear (GravesAndGlory spawn layout). */
     static boolean muster(int x,int z){for(int t=0;t<2;t++){var f=Spec.FACTIONS[t];int u=(x-f.spawnX())*(t==0?1:-1);if(u>=-2&&u<=24&&Math.abs(z-f.spawnZ())<=40)return true;}return false;}
     static boolean onStructure(int x,int z,int margin){for(var s:Spec.STRUCTURES)if(Math.abs(x-s.x())<=s.width()/2+margin&&Math.abs(z-s.z())<=s.depth()/2+margin)return true;return false;}
+    /** On what a structure builds: the x0..x0+width-1 by z0..z0+depth-1 of its floor course or deck planks (onStructure with no margin also counts the row and the column beyond them, which are ground). */
+    static boolean built(int x,int z){for(var s:Spec.STRUCTURES){int x0=s.x()-s.width()/2,z0=s.z()-s.depth()/2;if(x>=x0&&x<x0+s.width()&&z>=z0&&z<z0+s.depth())return true;}return false;}
     /** Within two columns of the water of the river (its half-width is 6, and 9 on Hollowwood, the wide river): nothing is set down there. The test is against the real river, so the outermost column of Hollowwood's does not pass. */
     static boolean nearRiver(int map,int x,int z){return Math.abs(x-Arena.riverX(z))<(map==3?11:8);}
     boolean nearRiver(int x,int z){return nearRiver(map,x,z);}
@@ -115,11 +117,11 @@ final class MapDressing {
     void points(){
         for(var p:Spec.POINTS){
             int r=p.radius();
-            // Plaza floor: a compass of paving inside the capture ring, trampled earth between.
-            for(int dx=-r+1;dx<r;dx++)for(int dz=-r+1;dz<r;dz++){int x=p.x()+dx,z=p.z()+dz;double d=Math.hypot(dx,dz);
-                if(d>=r-1||Math.abs(x-Arena.riverX(z))<8||onStructure(x,z,0)||d<2.2)continue;int y=h(x,z);
-                Block b=d>=8&&d<9.2?pave:(Math.abs(dx)<=1||Math.abs(dz)<=1)&&d<8?trim:hash(x,z)%6==0?Blocks.COARSE_DIRT:hash(x,z)%9==0?Blocks.GRAVEL:null;
-                if(b!=null)put(x,y,z,b);}
+            // Plaza floor, one pattern on every plaza: within 9.2 blocks of the pole trampled earth, a compass of trim three wide along the axes, a ring of paving from 8 blocks out (the 3x3 pad under the pole is Arena's).
+            // Nothing is scattered, and no road surface is left among the paving: a dirt path block is lower than its neighbours and reads as a pit.
+            for(int dx=-9;dx<=9;dx++)for(int dz=-9;dz<=9;dz++){int x=p.x()+dx,z=p.z()+dz;double d=Math.hypot(dx,dz);
+                if(d>=9.2||Math.abs(dx)<=1&&Math.abs(dz)<=1||nearRiver(x,z)||built(x,z))continue;
+                put(x,h(x,z),z,d>=8?pave:(Math.abs(dx)<=1||Math.abs(dz)<=1)?trim:Blocks.COARSE_DIRT);}
             // Capture edge: a flush band of dark stone exactly on the radius, so the line you must cross is on the ground.
             Block edge=map==2?Blocks.BLUE_ICE:map==3?Blocks.POLISHED_BLACKSTONE_BRICKS:Blocks.POLISHED_BLACKSTONE;
             if(Arena.ringLaid(p))for(int dx=-r-1;dx<=r+1;dx++)for(int dz=-r-1;dz<=r+1;dz++){double d=Math.hypot(dx,dz);int x=p.x()+dx,z=p.z()+dz;
@@ -208,7 +210,7 @@ final class MapDressing {
             case 3->{ // Hollowwood: a logging forest. Log stacks by the camp, boardwalks through the bog, mushrooms under the pines.
                 for(int k=0;k<6;k++)logStack(-120+k*48,k%2==0?-60:60);
                 for(var r:CampaignMaps.roads){double dx=r.bx()-r.ax(),dz=r.bz()-r.az(),len=Math.hypot(dx,dz);for(double s=0;s<=len;s++){int x=(int)Math.round(r.ax()+dx*s/len),z=(int)Math.round(r.az()+dz*s/len);
-                    if(Math.abs(x-Arena.riverX(z))<40&&Math.abs(x-Arena.riverX(z))>=10&&!onStructure(x,z,0))for(int o=-1;o<=1;o++){int px=x+(int)Math.round(-dz/len*o),pz=z+(int)Math.round(dx/len*o);put(px,h(px,pz),pz,Blocks.SPRUCE_PLANKS);}}}
+                    if(Math.abs(x-Arena.riverX(z))<40&&Math.abs(x-Arena.riverX(z))>=10&&!onStructure(x,z,0))for(int o=-1;o<=1;o++){int px=x+(int)Math.round(-dz/len*o),pz=z+(int)Math.round(dx/len*o);if(!inPoint(px,pz,1))put(px,h(px,pz),pz,Blocks.SPRUCE_PLANKS);}}}
                 for(var s:Spec.SCENERY)if(hash(s.x(),s.z())%3==0){int x=s.x()+3,z=s.z()+1;if(free(x,z,2))put(x,h(x,z)+1,z,hash(x,z)%2==0?Blocks.RED_MUSHROOM:Blocks.BROWN_MUSHROOM);}
                 for(var p:Spec.POINTS)if(p.id().equals("C"))for(int k=0;k<8;k++){double a=k*Math.PI/4;int x=p.x()+(int)Math.round(Math.cos(a)*6),z=p.z()+(int)Math.round(Math.sin(a)*6);if(CampaignMaps.roadDistance(x,z)>=1&&!nearRiver(x,z))put(x,h(x,z)+1,z,Blocks.AMETHYST_CLUSTER);}
             }
