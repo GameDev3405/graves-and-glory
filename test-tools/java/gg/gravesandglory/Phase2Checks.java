@@ -711,12 +711,41 @@ public final class Phase2Checks implements ClientModInitializer {
         void clearPosted(GravesAndGlory.Battle b){for(var u:posted){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();}b.units.removeAll(posted);posted.clear();pins.clear();}
         /** Client: the client-side entity of a server mob (the integrated server shares entity ids). */
         static Entity client(MinecraftClient c,MobEntity m){return c.world==null?null:c.world.getEntityById(m.getId());}
-        /** Client: sky light 15 on this client where the troops stand (lineup, studio and both wings of the floor) and the terrain
-         *  rebuilt, so a shot shows the noon platform and not an unlit one whose light updates are still on their way. */
+        /** Client: sky light 15 on this client at the feet and eyes of where troops stand (lineup, studio and both wings of the
+         *  floor) and at every posted troop's eyes (the light its model is drawn with), and the terrain rebuilt, so a shot shows the
+         *  noon platform and not one whose light updates are still on their way. */
         boolean lit(MinecraftClient c){
             if(c.world==null||c.worldRenderer==null||site==null)return false;
-            for(int[] d:new int[][]{{0,0},{-6,0},{6,0},{0,-3},{0,6},{-6,12},{0,12},{6,12}})if(c.world.getLightLevel(net.minecraft.world.LightType.SKY,site.add(d[0],0,d[1]))<15)return false;
+            var sky=net.minecraft.world.LightType.SKY;
+            for(int[] d:LIT_AT)for(int y=0;y<=1;y++)if(c.world.getLightLevel(sky,site.add(d[0],y,d[1]))<15)return false;
+            List<GravesAndGlory.Unit> units;try{units=new ArrayList<>(posted);}catch(ConcurrentModificationException e){return false;}
+            for(var u:units){var e=client(c,u.mob);if(e!=null&&c.world.getLightLevel(sky,BlockPos.ofFloored(e.getEyePos()))<15)return false;}
             return c.worldRenderer.isTerrainRenderComplete();
+        }
+        /** Client: the last frame's ground, the bottom sixth of the screen, is in daylight: mean green 70 or more (lit grass is about
+         *  100, the unlit platform of a bad frame about 10). This frame is the one shot() saves in the same tick. */
+        static boolean groundLit(MinecraftClient c){
+            try(var img=ScreenshotRecorder.takeScreenshot(c.getFramebuffer())){
+                int w=img.getWidth(),h=img.getHeight(),n=0;long g=0;
+                for(int y=h*5/6;y<h;y+=4)for(int x=0;x<w;x+=8){g+=(img.getColor(x,y)>>8)&255;n++;}
+                return n>0&&g/n>=70;
+            }
+        }
+        static final int[][] LIT_AT={{0,0},{-6,0},{6,0},{0,-3},{0,6},{-6,12},{0,12},{6,12}};
+        int litWait,litAgain;
+        /** Client: whether a world shot may be taken this tick. A freshly laid platform can go dark on the client after it was lit
+         *  (a light update from the server's engine half way through the floor), so every shot checks again, the light data and the
+         *  frame itself. While the stage is unlit the caller holds its step; once it is lit again it settles 10 ticks before the
+         *  shot. After 1200 ticks it shoots anyway and the suite fails on p2-<suite>-light. */
+        boolean shotReady(MinecraftClient c,String shot){
+            boolean on=lit(c)&&groundLit(c);
+            if(on&&litWait==0)return true;
+            if(on){if(++litAgain<10)return false;System.out.println("[p2-light] "+shot+": lit after holding "+litWait+" ticks");litWait=0;litAgain=0;return true;}
+            litAgain=0;
+            if(litWait++==0){StringBuilder sb=new StringBuilder();if(c.world!=null&&site!=null)for(int[] d:LIT_AT)sb.append(d[0]).append(",").append(d[1]).append("=").append(c.world.getLightLevel(net.minecraft.world.LightType.SKY,site.add(d[0],1,d[1]))).append(" ");
+                System.out.println("[p2-light] "+shot+": holding, eye-level sky light "+sb.toString().trim()+", terrain built="+(c.worldRenderer!=null&&c.worldRenderer.isTerrainRenderComplete())+", ground lit="+groundLit(c));}
+            if(litWait<1200)return false;
+            report("p2-"+name()+"-light",false,shot+" taken unlit after 1200 ticks of waiting for sky light 15 where the troops stand");litWait=0;return true;
         }
 
         public void serverTick(GravesAndGlory.Battle b){
@@ -780,11 +809,11 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 0->{if(ready&&posted.size()==4&&entities(c)!=null&&lit(c)){c.options.hudHidden=true;wait=0;cs=1;}}
                 case 1->{wait++;if(wait==40)drawsBefore=TroopRenderer.troopDraws;if(wait==60){checks(c);cs=2;wait=0;}}
                 case 2->{wait++;
-                    if(wait==1)shot(c,"spike-name-skin");
+                    if(wait==1){if(shotReady(c,"spike-name-skin"))shot(c,"spike-name-skin");else wait--;}
                     if(wait==5)server(c,b->camera(b,-3,1.8,2.2,180,6));
-                    if(wait==45)shot(c,"spike-name-model");
+                    if(wait==45){if(shotReady(c,"spike-name-model"))shot(c,"spike-name-model");else wait--;}
                     if(wait==50)server(c,b->{for(var u:posted)move(u.mob,u.mob.getX()-site.getX()-.5,0,210);camera(b,0,1.9,6,180,8);});
-                    if(wait==95){shot(c,"spike-team-pennant");cs=3;wait=0;}}
+                    if(wait==95){if(shotReady(c,"spike-team-pennant")){shot(c,"spike-team-pennant");cs=3;wait=0;}else wait--;}}
                 case 3->{wait++;
                     if(wait==1)portrait(c);
                     if(wait==30){shot(c,"spike-portrait");}
@@ -853,7 +882,7 @@ public final class Phase2Checks implements ClientModInitializer {
     static final class GildedArt extends Stage {
         static final List<String> SIX=List.of("knight","archer","sentinel","longbow","mage","gl_marshal");
         final Map<String,GravesAndGlory.Unit> golds=new LinkedHashMap<>(),violets=new LinkedHashMap<>();
-        final List<GravesAndGlory.Unit> stages=new ArrayList<>();int ci;
+        final List<GravesAndGlory.Unit> stages=new ArrayList<>();int ci;boolean closeOk=true;final StringBuilder closeWhy=new StringBuilder();
         String name(){return "gilded-art";}
         /** The studio: 12 blocks south of the lineup; a troop there faces north, turned 30 degrees, the camera 4 blocks north of it looking south. */
         static final double STUDIO=12;
@@ -867,15 +896,15 @@ public final class Phase2Checks implements ClientModInitializer {
             if(tick>12000){report("p2-gilded-timeout",false,"stuck at client step "+cs+", server stage "+stage);end(c);return;}
             switch(cs){
                 case 0->{if(ready&&posted.size()==12&&posted.stream().allMatch(u->{var e=client(c,u.mob);return e!=null&&e.getCustomName()!=null;})&&lit(c)){c.options.hudHidden=true;wait=0;cs=1;}}
-                case 1->{wait++;if(wait==60){lineup(c);shot(c,"gilded-lineup");cs=2;wait=0;ci=0;}}
+                case 1->{wait++;if(wait==60){if(shotReady(c,"gilded-lineup")){lineup(c);shot(c,"gilded-lineup");cs=2;wait=0;ci=0;}else wait--;}}
                 case 2->{wait++; // one gold troop at a time in the studio, then the knight at stage 3
                     String troop=ci<6?SIX.get(ci):"knight";
                     if(wait==1){final int k=ci;server(c,b->{var u=golds.get(troop);move(u.mob,0,STUDIO,180+30);if(k==6)stage(u,3);camera(b,0,1.45,STUDIO-4,0,6);});}
-                    if(wait==45){shot(c,ci<6?"gilded-"+troop:"gilded-knight-s3");}
-                    if(wait==50){final int k=ci;server(c,b->{var u=golds.get(troop);if(k==6)stage(u,1);move(u.mob,-6.25+SIX.indexOf(troop)*2.5,0,0);});ci++;wait=0;if(ci>6){cs=3;}}}
+                    if(wait==45){String n=ci<6?"gilded-"+troop:"gilded-knight-s3";if(shotReady(c,n)){close(c,troop,ci<6?1:3);shot(c,n);}else wait--;}
+                    if(wait==50){final int k=ci;server(c,b->{var u=golds.get(troop);if(k==6)stage(u,1);move(u.mob,-6.25+SIX.indexOf(troop)*2.5,0,0);});ci++;wait=0;if(ci>6){report("p2-gilded-close",closeOk,"each close-up's troop resolves to its own model at the stage shot, on gold, 4 blocks from the camera: "+closeWhy.toString().trim());cs=3;}}}
                 case 3->{wait++; // the knight's stages side by side in the studio, stage 1 on the left (the camera looks south: +x is its left)
                     if(wait==1)server(c,b->{for(int s=1;s<=3;s++){var u=post(b,gold,"knight",(2-s)*2.0,STUDIO,180+20);stage(u,s);stages.add(u);}camera(b,0,1.6,STUDIO-5,0,8);});
-                    if(wait==50){stagesCheck(c);shot(c,"gilded-stages");}
+                    if(wait==50){if(shotReady(c,"gilded-stages")){stagesCheck(c);shot(c,"gilded-stages");}else wait--;}
                     if(wait==55){kit(c);cs=4;wait=0;}}
                 case 4->{wait++; // the recruit page's Gilded tab, every Gilded troop owned so no card is dimmed
                     if(wait==1)server(c,b->{b.campaign.returnLobby();var pr=b.campaign.profile(player);for(String id:SIX)pr.owned.putIfAbsent(id,new Profile.Owned());pins.clear();posted.clear();});
@@ -893,6 +922,13 @@ public final class Phase2Checks implements ClientModInitializer {
             for(var u:posted){var e=client(c,u.mob);var l=e==null?null:TroopModels.resolve(e);boolean good=l!=null&&l.troop().id().equals(u.spec.id())&&l.stage()==1&&TroopModels.model(u.spec.id())!=null&&l.side()!=null;
                 ok&=good;why.append(u.spec.id()).append("/").append(l==null?"null":l.side()).append(good?"":" (BAD)").append(" ");}
             report("p2-gilded-lineup",ok,"each Gilded troop resolves to its own model at stage 1 on its side: "+why.toString().trim());
+        }
+        /** A close-up (p2-gilded-close): the troop in the studio resolves to its own model at the stage shot, on gold, 4 blocks from the camera. */
+        void close(MinecraftClient c,String troop,int stage){
+            var e=client(c,golds.get(troop).mob);var l=e==null?null:TroopModels.resolve(e);
+            double d=e==null||c.player==null?-1:Math.hypot(e.getX()-c.player.getX(),e.getZ()-c.player.getZ());
+            boolean good=l!=null&&l.troop().id().equals(troop)&&l.stage()==stage&&"gold".equals(l.side())&&TroopModels.model(troop)!=null&&Math.abs(d-4)<0.25;closeOk&=good;
+            closeWhy.append(troop).append(" stage ").append(l==null?"-":String.valueOf(l.stage())).append(" side ").append(l==null?"-":l.side()).append(String.format(Locale.ROOT," at %.2f blocks",d)).append(good?"":" (BAD)").append("; ");
         }
         void stagesCheck(MinecraftClient c){
             var m=TroopModels.model("knight");boolean ok=m!=null&&m.bones().contains("crest_plume");StringBuilder why=new StringBuilder();
