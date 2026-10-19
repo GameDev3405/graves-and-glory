@@ -1152,12 +1152,14 @@ public final class Phase1Checks implements ClientModInitializer {
         static final List<BattleHud.CardDraw> CARDS=List.of(new BattleHud.CardDraw("infantry","FLASH",false,24,348,176,48),new BattleHud.CardDraw("ranged","SELECTED",true,24,404,176,62),new BattleHud.CardDraw("support","ROUTING",false,24,474,176,48));
         static final List<BattleHud.SealDraw> SEALS=List.of(new BattleHud.SealDraw("hud/seal-dawn",439,41),new BattleHud.SealDraw("hud/seal-contested",467,40),new BattleHud.SealDraw("hud/seal-dusk",495,41));
         /** Width, height, GUI scale, 1 for a borderless window (the 1080 windows: see window(c,w,h,gui,bare)), then the chat lines
-         *  p1-ui-chat-lift wants there, unfocused and focused (UI polish M1, worked out by hand): vanilla's 10 and 20 where the chat
-         *  stops short of the screen's centre, else what fits between the chat's bottom and 4 px below vanilla's 15 px crosshair at
-         *  the centre (1 at 854x480 GUI 2, 4 at 1280x720 GUI 3, 2 at 1920x1080 GUI 4). At 1366x768 GUI 2 (UI polish M2) the chat
-         *  stops just short of the crosshair (GUI x 332 of 334) but reaches the respawn card, which ends at GUI y 186: 10 lines fit
-         *  below it, open or closed. */
-        static final int[][] WINDOWS={{960,540,1,0,10,20},{854,480,2,0,1,1},{1280,720,3,0,4,4},{1920,1080,2,1,10,20},{1920,1080,4,1,2,2},{1366,768,2,0,10,10}};
+         *  p1-ui-chat-lift wants there with the lesson and respawn cards up, closed and open (worked out by hand). Closed (UI polish
+         *  M1): vanilla's 10 where the chat stops short of the screen's centre, else what fits between the chat's bottom and 4 px
+         *  below vanilla's 15 px crosshair at the centre (1 at 854x480 GUI 2, 4 at 1280x720 GUI 3, 2 at 1920x1080 GUI 4). Open (UI
+         *  polish round 2) the crosshair no longer counts: vanilla's 20, or what fits 4 px below the respawn card where the chat
+         *  reaches it (2, 5 and 3 at those three sizes, where the card ends at GUI y 114, 116 and 129). At 1366x768 GUI 2 (UI polish
+         *  M2) the chat stops just short of the crosshair (GUI x 332 of 334) but reaches the respawn card, which ends at GUI y 186:
+         *  10 lines fit below it, open or closed. */
+        static final int[][] WINDOWS={{960,540,1,0,10,20},{854,480,2,0,1,2},{1280,720,3,0,4,5},{1920,1080,2,1,10,20},{1920,1080,4,1,2,3},{1366,768,2,0,10,10}};
         // Written by both threads. A negative stage is a hand-off: the client waits for the server task it sent to set the next stage.
         volatile int stage;volatile UUID player;
         volatile boolean hungerOn,hungerDone,routSupport,keepRespawn,fiveReady;volatile int hungerSets,hungerOk;volatile String hungerWrong="",fixture="";
@@ -1168,7 +1170,7 @@ public final class Phase1Checks implements ClientModInitializer {
         // server thread
         long hungerStart=-1;final List<GravesAndGlory.Unit> pair=new ArrayList<>();
         // client thread
-        int oldW,oldH,oldGui,waitFrom,seen,flashAt,askAt,abilitySeen=-1,framesAt,win;
+        int oldW,oldH,oldGui,waitFrom,seen,flashAt,askAt,abilitySeen=-1,framesAt,win,closedLines;
         boolean finished,keepLesson,sealsOk,smallOk=true,abilityOk,edgeOk;String sealsWhy="",smallWhy="",abilityWhy="",edgeWhy="";List<BattleHud.CardDraw> two=List.of();
         // p1-ui-chat-lift (controller addition A, client thread): the chat above the left column in battle, in place in camp; the
         // chat text size p1-ui-chat-edge changed, to put back (-1: unchanged)
@@ -1275,7 +1277,7 @@ public final class Phase1Checks implements ClientModInitializer {
         public void step(MinecraftClient c,int tick){
             if(tick>9000&&!finished){report("p1-ui-hud-timeout",false,"stuck in stage "+stage);end(c);return;}
             if(keepLesson)CampaignClient.tutorial=lessonStep;
-            if(Math.abs(stage)>=2&&stage<99&&stage!=46&&c.currentScreen!=null)c.setScreen(null); // stage 46 holds the chat open
+            if(Math.abs(stage)>=2&&stage<99&&stage!=46&&stage!=47&&stage!=49&&c.currentScreen!=null)c.setScreen(null); // stages 46, 47 and 49 hold the chat open
             switch(stage){
                 case 0->{
                     if(tick<20)return;c.setScreen(null);var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();
@@ -1362,9 +1364,12 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(full||tick-waitFrom>100){
                         if(full)measure(c,s,r);else{smallOk=false;smallWhy+=(smallWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": no frame with every element in 100 ticks (drew "+r.keySet()+")";}
                         if(win==0)shot(c,"ui-hud-chat");if(win==1)shot(c,"ui-hud-small");if(win==2)shot(c,"ui-hud-1280");if(win==3)shot(c,"ui-hud-1080-gui2");if(win==4)shot(c,"ui-hud-1080-gui4");if(win==5)shot(c,"ui-hud-1366");
-                        win++;stage=win<WINDOWS.length?41:45;
+                        // then the chat open at this size (UI polish round 2), 25 lines in it: stage 47 measures it
+                        var chat=c.inGameHud.getChatHud();chat.clear(false);for(int i=1;i<=25;i++)chat.addMessage(net.minecraft.text.Text.literal("Chat check line "+i));
+                        c.setScreen(new net.minecraft.client.gui.screen.ChatScreen(""));waitFrom=tick;stage=47;
                     }
                 }
+                case 47->{if(tick-waitFrom>=3){measureOpen(c,WINDOWS[win],BattleHud.rects());c.setScreen(null);win++;stage=win<WINDOWS.length?41:45;}}
                 case 45->{ // p1-ui-chat-respawn (UI polish M2): at 1366x768 GUI 2, the last window, the open chat stops below the respawn card
                     var chat=c.inGameHud.getChatHud();chat.clear(false);for(int i=1;i<=25;i++)chat.addMessage(net.minecraft.text.Text.literal("Chat check line "+i));
                     c.setScreen(new net.minecraft.client.gui.screen.ChatScreen(""));waitFrom=tick;stage=46;}
@@ -1372,6 +1377,21 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(tick-waitFrom>=3){var w=c.getWindow();var hud=c.inGameHud.getChatHud();int[] dr=ChatPlacement.drawn,card=BattleHud.rects().get("respawn"),chat=dr==null?null:canvas(c,dr[0],dr[1],dr[2],dr[3]);
                         boolean open=c.currentScreen instanceof net.minecraft.client.gui.screen.ChatScreen;int shown=hud.getVisibleLineCount();shot(c,"ui-hud-chat-open");
                         report("p1-ui-chat-respawn",open&&card!=null&&chat!=null&&shown==10&&ChatPlacement.drawnLines==10&&!meets(chat,card),"with the chat open (true: "+open+") at "+w.getFramebufferWidth()+"x"+w.getFramebufferHeight()+" GUI "+(int)w.getScaleFactor()+" and 25 lines in it, it shows "+shown+" lines (wanted 10 of vanilla's 20) and drew "+ChatPlacement.drawnLines+" at canvas "+box(chat)+" (GUI "+box(dr)+"); the respawn card at "+box(card));
+                        c.setScreen(null);keepRespawn=false;window(c,1280,720,3);waitFrom=tick;stage=-46;server(c,b->{b.respawns.remove(player);stage=48;});}
+                }
+                case 48->{ // p1-ui-chat-open (UI polish round 2): typing with the commander up at 1280x720 GUI 3, the crosshair over the chat
+                    var r=BattleHud.rects();var fb=c.getWindow();
+                    if(minimized(c)){window(c,1280,720,3);return;}
+                    boolean sized=fb.getFramebufferWidth()==1280&&fb.getFramebufferHeight()==720&&(int)fb.getScaleFactor()==3;
+                    if(sized&&r.containsKey("lesson")&&r.containsKey("spine")&&!r.containsKey("respawn")||tick-waitFrom>200){
+                        var chat=c.inGameHud.getChatHud();closedLines=chat.getVisibleLineCount();chat.clear(false);for(int i=1;i<=25;i++)chat.addMessage(net.minecraft.text.Text.literal("Chat check line "+i));
+                        c.setScreen(new net.minecraft.client.gui.screen.ChatScreen(""));waitFrom=tick;stage=49;}
+                }
+                case 49->{
+                    if(tick-waitFrom>=3){var w=c.getWindow();var hud=c.inGameHud.getChatHud();var r=BattleHud.rects();int sw=w.getScaledWidth(),sh=w.getScaledHeight(),shown=hud.getVisibleLineCount();
+                        int[] dr=ChatPlacement.drawn,cross={(sw-15)/2,(sh-15)/2,15,15},chat=dr==null?null:canvas(c,dr[0],dr[1],dr[2],dr[3]);boolean open=c.currentScreen instanceof net.minecraft.client.gui.screen.ChatScreen,over=meets(dr,cross);
+                        List<String> hit=new ArrayList<>();if(chat!=null)for(var e:r.entrySet())if(meets(chat,e.getValue()))hit.add(e.getKey());shot(c,"ui-hud-chat-typing");
+                        report("p1-ui-chat-open",open&&chat!=null&&r.containsKey("lesson")&&!r.containsKey("respawn")&&closedLines==4&&shown==13&&ChatPlacement.drawnLines==13&&hit.isEmpty()&&over,"at "+w.getFramebufferWidth()+"x"+w.getFramebufferHeight()+" GUI "+(int)w.getScaleFactor()+" with the commander up (a respawn card: "+r.containsKey("respawn")+") and the lesson card at "+box(r.get("lesson"))+", the closed chat showed "+closedLines+" lines (wanted 4, the crosshair above it); open (true: "+open+") with 25 lines in it, it shows "+shown+" and drew "+ChatPlacement.drawnLines+" at GUI "+box(dr)+" (wanted 13, the lesson card above it)"+(hit.isEmpty()?", apart from every element of the HUD":", meeting "+hit)+", "+(over?"over":"clear of")+" the crosshair at GUI "+box(cross));
                         c.setScreen(null);stage=43;}
                 }
                 case 43->{keepLesson=false;keepRespawn=false;CampaignClient.tutorial=-1;report("p1-ui-small-window",smallOk,smallWhy);report("p1-ui-chat-lift",chatOk&&campLift==0,"in camp the chat moved "+campLift+" GUI px; "+chatWhy);window(c,960,540,1);
@@ -1493,14 +1513,24 @@ public final class Phase1Checks implements ClientModInitializer {
             for(var e:r.entrySet()){if(meets(e.getValue(),hotbar))bad.add(e.getKey()+" meets the hotbar");if(meets(e.getValue(),hearts))bad.add(e.getKey()+" meets the hearts");}
             smallOk&=bad.isEmpty();
             // p1-ui-chat-lift: the chat's lines above the left column (ChatPlacement), its top below vanilla's crosshair wherever it
-            // reaches the screen's centre (UI polish M1), and the lines it shows, unfocused and focused, the window's wanted counts
-            var hud=c.inGameHud.getChatHud();int top=ChatPlacement.columnTop(r),lh=((gg.gravesandglory.mixin.ChatHudAccessor)hud).gravesandglory$getLineHeight();int[] dr=ChatPlacement.drawn,cross={(sw-15)/2,(sh-15)/2,15,15};
+            // reaches the screen's centre (UI polish M1), and the lines it shows closed, the window's wanted count (measureOpen: open)
+            var hud=c.inGameHud.getChatHud();int top=ChatPlacement.columnTop(r);int[] dr=ChatPlacement.drawn,cross={(sw-15)/2,(sh-15)/2,15,15};
             int[] chat=dr==null?null:canvas(c,dr[0],dr[1],dr[2],dr[3]);String first=r.keySet().stream().filter(k->k.startsWith("card-")).min(Comparator.comparingInt(k->r.get(k)[1])).orElse(null);
-            int shown=hud.getVisibleLineCount(),focused=ChatPlacement.lines(net.minecraft.client.gui.hud.ChatHud.getHeight(c.options.getChatHeightFocused().getValue())/lh,sw,sh,hud.getChatScale(),lh,hud.getWidth());
+            int shown=hud.getVisibleLineCount();
             boolean clear=dr!=null&&(dr[0]+dr[2]<=cross[0]||dr[1]>=cross[1]+cross[3]);
-            boolean apart=chat!=null&&top>=0&&chat[1]+chat[3]<=top&&ChatPlacement.drawnLines==Math.min(2,s[4])&&shown==s[4]&&focused==s[5]&&clear&&first!=null&&!meets(chat,r.get(first))&&!meets(chat,r.get("respawn"));chatOk&=apart;
-            chatWhy+=(chatWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": chat scale "+hud.getChatScale()+", lifted "+ChatPlacement.lift(sh)+" GUI px, "+ChatPlacement.drawnLines+" lines drawn at canvas "+box(chat)+" (GUI "+box(dr)+"), the column's top at "+top+" and "+first+" "+box(first==null?null:r.get(first))+", the crosshair at GUI "+box(cross)+(clear?" clear":" COVERED")+", the respawn card at "+box(r.get("respawn"))+"; it shows "+shown+" lines unfocused, "+focused+" focused (wanted "+s[4]+" and "+s[5]+")"+(apart?"":", WRONG");
+            boolean apart=chat!=null&&top>=0&&chat[1]+chat[3]<=top&&ChatPlacement.drawnLines==Math.min(2,s[4])&&shown==s[4]&&clear&&first!=null&&!meets(chat,r.get(first))&&!meets(chat,r.get("respawn"));chatOk&=apart;
+            chatWhy+=(chatWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": chat scale "+hud.getChatScale()+", lifted "+ChatPlacement.lift(sh)+" GUI px, "+ChatPlacement.drawnLines+" lines drawn at canvas "+box(chat)+" (GUI "+box(dr)+"), the column's top at "+top+" and "+first+" "+box(first==null?null:r.get(first))+", the crosshair at GUI "+box(cross)+(clear?" clear":" COVERED")+", the respawn card at "+box(r.get("respawn"))+"; closed it shows "+shown+" lines (wanted "+s[4]+")"+(apart?"":", WRONG");
             smallWhy+=(smallWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": canvas "+cw+"x"+ch+" (k "+UiCanvas.k()+"), "+r.size()+" rects, cards "+BattleHud.cards().stream().map(d->d.group()+" "+d.y()).toList()+", ability "+box(r.get("ability"))+", lesson "+box(r.get("lesson"))+", respawn "+box(r.get("respawn"))+", spine "+box(r.get("spine"))+", hotbar "+box(hotbar)+", hearts "+box(hearts)+(bad.isEmpty()?", every rect inside and apart":", WRONG: "+String.join("; ",bad.subList(0,Math.min(6,bad.size()))));
+        }
+
+        /** p1-ui-chat-lift at one window with the chat open (UI polish round 2): it shows and draws the window's open count, apart
+         *  from every element of the HUD; over the crosshair is allowed, and the log says which. */
+        void measureOpen(MinecraftClient c,int[] s,Map<String,int[]> r){
+            var w=c.getWindow();var hud=c.inGameHud.getChatHud();int sw=w.getScaledWidth(),sh=w.getScaledHeight(),lh=((gg.gravesandglory.mixin.ChatHudAccessor)hud).gravesandglory$getLineHeight(),shown=hud.getVisibleLineCount();
+            int vanilla=net.minecraft.client.gui.hud.ChatHud.getHeight(c.options.getChatHeightFocused().getValue())/lh;int[] dr=ChatPlacement.drawn,cross={(sw-15)/2,(sh-15)/2,15,15},chat=dr==null?null:canvas(c,dr[0],dr[1],dr[2],dr[3]);
+            boolean open=c.currentScreen instanceof net.minecraft.client.gui.screen.ChatScreen;List<String> hit=new ArrayList<>();if(chat!=null)for(var e:r.entrySet())if(meets(chat,e.getValue()))hit.add(e.getKey());
+            boolean ok=open&&chat!=null&&shown==s[5]&&ChatPlacement.drawnLines==s[5]&&hit.isEmpty();chatOk&=ok;
+            chatWhy+=(chatWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+" open"+(open?"":" (NOT open)")+": "+shown+" of vanilla's "+vanilla+" lines shown and "+ChatPlacement.drawnLines+" drawn at GUI "+box(dr)+" (wanted "+s[5]+")"+(hit.isEmpty()?", apart from every element of the HUD":", meeting "+hit)+", "+(meets(dr,cross)?"over":"clear of")+" the crosshair"+(ok?"":", WRONG");
         }
 
         /** The real atlas JSON with one texture left out. */

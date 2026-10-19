@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** The chat above the battle HUD's left column (ChatPlacement): its bottom lifted, in the drawing and in the mouse's hit tests
- *  alike, and its line count cut where the lifted column would reach the HUD above it or the crosshair. Its scale and width stay
+ *  alike, and its line count cut where the lifted column would reach the HUD above it or, while the chat is closed, the crosshair. Its scale and width stay
  *  vanilla's. Each frame's line backgrounds are recorded for checks. */
 @Mixin(ChatHud.class)
 abstract class ChatHudMixin {
@@ -30,9 +30,9 @@ abstract class ChatHudMixin {
 
     @ModifyReturnValue(method = "getVisibleLineCount", at = @At("RETURN"))
     private int gravesandglory$lines(int lines) {
-        int lineHeight = ((ChatHudAccessor) (Object) this).gravesandglory$getLineHeight();
+        var self = (ChatHudAccessor) (Object) this;
         var window = client.getWindow();
-        return ChatPlacement.lines(lines, window.getScaledWidth(), window.getScaledHeight(), getChatScale(), lineHeight, getWidth());
+        return ChatPlacement.lines(lines, window.getScaledWidth(), window.getScaledHeight(), getChatScale(), self.gravesandglory$getLineHeight(), getWidth(), self.gravesandglory$isChatFocused());
     }
 
     @Inject(method = "render", at = @At("HEAD"))
