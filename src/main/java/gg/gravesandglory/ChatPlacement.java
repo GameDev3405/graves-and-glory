@@ -48,12 +48,17 @@ public final class ChatPlacement {
         return Math.max(0, scaledHeight - VANILLA_BOTTOM - bottom);
     }
 
+    /** The GUI x where the chat's line backgrounds end. ChatHud.render draws each line ceil(width / scale) wide in its own space,
+     *  from 4 px left of that to 8 px right, scaled by scale and moved 4 px right: from GUI x 0 to (ceil(width / scale) + 12) x
+     *  scale, which is about width + 12 x scale. */
+    public static double right(int width, double scale) { float f = (float) scale; return (Math.ceil(width / f) + 12) * f; }
+
     /** The lines the lifted chat shows: vanilla's, or as many as fit between its bottom and the lowest of the score bar, the
      *  bosses, the seals, the aimed point's name and the lesson card over the chat's width, GAP clear; at least one. */
     public static int lines(int vanilla, int scaledHeight, double scale, int lineHeight, int width) {
         int lift = lift(scaledHeight);
         if (lift <= 0) return vanilla;
-        double f = gui(), right = (width + 12) * scale; // the line backgrounds run from GUI x 0 to (width + 12) x scale
+        double f = gui(), right = right(width, scale);
         int above = 0;
         for (var e : BattleHud.rects().entrySet()) {
             String k = e.getKey();

@@ -1151,8 +1151,9 @@ public final class Phase1Checks implements ClientModInitializer {
         // client thread
         int oldW,oldH,oldGui,waitFrom,seen,flashAt,askAt,abilitySeen=-1,framesAt,win;
         boolean finished,keepLesson,sealsOk,smallOk=true,abilityOk,edgeOk;String sealsWhy="",smallWhy="",abilityWhy="",edgeWhy="";List<BattleHud.CardDraw> two=List.of();
-        // p1-ui-chat-lift (controller addition A, client thread): the chat above the left column in battle, in place in camp
-        int campLift=-1;boolean chatOk=true;String chatWhy="";
+        // p1-ui-chat-lift (controller addition A, client thread): the chat above the left column in battle, in place in camp; the
+        // chat text size p1-ui-chat-edge changed, to put back (-1: unchanged)
+        int campLift=-1;boolean chatOk=true;String chatWhy="";double chatScale=-1;
         // client thread, every HUD frame: the food draws the mixin skipped in that frame, watched during the hunger run and while the
         // five-seal battlefield builds
         int lastSkipped,hungerFrames,hungerFull,hungerLow,buildFrames,buildFull,buildLow,buildCloses;boolean watchHunger,watchBuild;String hungerOdd="",buildOdd="";
@@ -1337,7 +1338,14 @@ public final class Phase1Checks implements ClientModInitializer {
                         win++;stage=win<WINDOWS.length?41:43;
                     }
                 }
-                case 43->{keepLesson=false;keepRespawn=false;CampaignClient.tutorial=-1;report("p1-ui-small-window",smallOk,smallWhy);report("p1-ui-chat-lift",chatOk&&campLift==0,"in camp the chat moved "+campLift+" GUI px; "+chatWhy);window(c,960,540,1);stage=-43;server(c,b->{b.respawns.remove(player);b.testAbility=null;stage=50;});}
+                case 43->{keepLesson=false;keepRespawn=false;CampaignClient.tutorial=-1;report("p1-ui-small-window",smallOk,smallWhy);report("p1-ui-chat-lift",chatOk&&campLift==0,"in camp the chat moved "+campLift+" GUI px; "+chatWhy);window(c,960,540,1);
+                    chatScale=c.options.getChatScale().getValue();c.options.getChatScale().setValue(0.6);
+                    var chat=c.inGameHud.getChatHud();chat.clear(false);chat.addMessage(net.minecraft.text.Text.literal("Chat check: hold the ford"));chat.addMessage(net.minecraft.text.Text.literal("Chat check: archers to the ridge"));waitFrom=tick;stage=44;}
+                case 44->{ // p1-ui-chat-edge (UI polish M5): at 60% chat text size the cut's right edge is where vanilla ends the lines it draws
+                    if(tick-waitFrom>=5){var hud=c.inGameHud.getChatHud();int[] dr=ChatPlacement.drawn;double scale=hud.getChatScale(),right=ChatPlacement.right(hud.getWidth(),scale);
+                        report("p1-ui-chat-edge",dr!=null&&Math.abs(scale-0.6)<1e-6&&Math.abs(dr[0]+dr[2]-right)<1,"at chat text size "+scale+" and width "+hud.getWidth()+" the line backgrounds were drawn to GUI x "+(dr==null?"none":String.valueOf(dr[0]+dr[2]))+"; ChatPlacement.right gives "+String.format(Locale.ROOT,"%.2f",right)+" (the old (width + 12) x scale was "+String.format(Locale.ROOT,"%.2f",(hud.getWidth()+12)*scale)+")");
+                        c.options.getChatScale().setValue(chatScale);chatScale=-1;stage=-44;server(c,b->{b.respawns.remove(player);b.testAbility=null;stage=50;});}
+                }
                 case 50->{waitFrom=tick;stage=-50;server(c,b->{kill(b,b.squads.get(player),"support",9);stage=51;});}
                 case 51->{ // p1-ui-cards-edge
                     var sup=BattleHud.cards().stream().filter(d->d.group().equals("support")).findFirst().orElse(null);String count=BattleHud.texts().get("count-support");
@@ -1471,6 +1479,7 @@ public final class Phase1Checks implements ClientModInitializer {
         /** Puts the window, the selection and every forced value back; p1-ui-hud-suite follows once the window has settled. */
         void end(MinecraftClient c){
             finished=true;keepLesson=false;keepRespawn=false;routSupport=false;hungerOn=false;watchHunger=false;watchBuild=false;CommandMode.selected="all";
+            if(chatScale>=0){c.options.getChatScale().setValue(chatScale);chatScale=-1;}
             UUID id=player;server(c,b->{b.testAbility=null;if(id!=null)b.respawns.remove(id);});
             if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;
         }
