@@ -928,8 +928,10 @@ public final class Phase2Checks implements ClientModInitializer {
      */
     static final class Spike extends Stage {
         MobEntity husk;long drawsBefore;
+        /** Each posted troop's draw count (TroopRenderer.drawn) when p2-spike-renderer starts counting. */
+        final int[] drawsAt=new int[4];
         /** The death second and the spawn frame: the Squire killed in front of the camera, the one spawned off its team, and their frames. */
-        volatile GravesAndGlory.Unit dying,born;Frame deathFrame,spawnFrame;int killedAt,bornAt=-1,bornSeen=-1,bornDrawn=-1;
+        volatile GravesAndGlory.Unit dying,born;Frame deathFrame,spawnFrame;int killedAt,deathStall,bornAt=-1,bornSeen=-1,bornDrawn=-1;
         /** Ticks from the spawn to the team: the body has turned its back to the camera by then (BodyControl), within the hold. */
         static final int TEAM_LATE=30;
         String name(){return "spike";}
@@ -949,7 +951,9 @@ public final class Phase2Checks implements ClientModInitializer {
             switch(cs){
                 case 0->{if(ready&&posted.size()==4&&entities(c)!=null&&lit(c)){c.options.hudHidden=true;wait=0;cs=1;}
                     else if(++wait%600==0)System.out.println("[p2-wait] spike step 0 after "+wait+" ticks: ready="+ready+", posted "+posted.size()+" of 4, on this client="+(entities(c)!=null)+"; "+litWhy(c));}
-                case 1->{wait++;if(wait==40)drawsBefore=TroopRenderer.troopDraws;if(wait==60){checks(c);cs=2;wait=0;}}
+                case 1->{wait++;
+                    if(wait==40){drawsBefore=TroopRenderer.troopDraws;var es=entities(c);for(int i=0;i<4;i++){var d=es==null?null:TroopRenderer.drawn(es.get(i));drawsAt[i]=d==null?0:d.count;}}
+                    if(wait==60){checks(c);cs=2;wait=0;}}
                 case 2->{wait++;
                     if(wait==1){if(shotReady(c,"spike-name-skin"))shot(c,"spike-name-skin");else wait--;}
                     if(wait==5)server(c,b->camera(b,-3,1.8,2.2,180,6));
@@ -959,7 +963,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 5->{wait++; // the death second: a gold Squire, its back to the camera 4 blocks off, is killed; a frame of its death second is caught
                     if(wait==1)server(c,b->{dying=post(b,gold,"knight",0,2.5,180);camera(b,0,1.75,6.5,180,4);});
                     if(wait==40){var e=dying==null?null:client(c,dying.mob);var l=e==null?null:TroopModels.resolve(e);
-                        if(e==null||TroopRenderer.drawn(e)==null||l==null||!"gold".equals(l.side())||!shotReady(c,"spike-death"))wait--;
+                        if(e==null||TroopRenderer.drawn(e)==null||l==null||!"gold".equals(l.side())||!shotReady(c,"spike-death")){if(++deathStall<300)wait--;else{deathCheck(c);cs=6;wait=0;}}
                         else{deathFrame=Frame.watch(e.getId(),x->x instanceof net.minecraft.entity.LivingEntity le&&le.deathTime>=6&&x.getScoreboardTeam()==null);killedAt=tick;
                             server(c,b->dying.mob.kill());}}
                     if(wait>40&&(deathFrame.done||tick-killedAt>=60)){deathCheck(c);cs=6;wait=0;}}
@@ -974,7 +978,7 @@ public final class Phase2Checks implements ClientModInitializer {
                         if(w>TEAM_LATE&&(spawnFrame.done||w>=TEAM_LATE+70)){spawnCheck(c);cs=3;wait=0;}}}
                 case 3->{wait++;
                     if(wait==1)portrait(c);
-                    if(wait==30){shot(c,"spike-portrait");}
+                    if(wait==30){portraitCheck(c);shot(c,"spike-portrait");}
                     if(wait==35){c.setScreen(null);server(c,this::clean);cs=4;}}
                 case 4->{if(serverDone)end(c);}
                 default->{}
@@ -985,13 +989,15 @@ public final class Phase2Checks implements ClientModInitializer {
             String[] names={"Order Squire","Templar","Order Squire","Templar"},troops={"knight","sentinel","knight","sentinel"},sides={"gold","gold","violet","violet"};
             boolean renderer=true,named=true;StringBuilder rw=new StringBuilder(),nw=new StringBuilder();
             for(int i=0;i<4;i++){var e=es.get(i);var r=dispatcher.getRenderer(e);var l=TroopModels.resolve(e);
-                boolean good=r instanceof TroopRenderer<?>&&l!=null&&TroopModels.model(l.troop().id())!=null;renderer&=good;
-                rw.append(e.getCustomName().getString()).append(" -> ").append(r.getClass().getSimpleName()).append(l==null?", no look":", model "+l.troop().id()).append(good?"":" (BAD)").append("; ");
+                var d=TroopRenderer.drawn(e);int drew=d==null?0:d.count-drawsAt[i];var last=d==null?null:d.last;
+                boolean good=r instanceof TroopRenderer<?>&&drew>=10&&last!=null&&last.look().troop().id().equals(troops[i])&&sides[i].equals(last.cloth())&&TroopModels.model(troops[i])!=null;renderer&=good;
+                rw.append(e.getCustomName().getString()).append(" -> ").append(r.getClass().getSimpleName()).append(", ").append(drew).append(" draws through its own model in the last 20 ticks")
+                    .append(last==null?"":", the last as "+last.look().troop().id()+" in "+last.cloth()).append(good?"":" (BAD: want 10 or more, as "+troops[i]+" in "+sides[i]+")").append("; ");
                 boolean n=e.getCustomName().getString().equals(names[i])&&l!=null&&l.troop().id().equals(troops[i])&&l.stage()==1&&!l.veteran()&&sides[i].equals(l.side());named&=n;
                 nw.append("\"").append(e.getCustomName().getString()).append("\" -> ").append(l==null?"null":l.troop().id()+" stage "+l.stage()+" side "+l.side()).append(n?"":" (want "+names[i]+", "+troops[i]+" stage 1 side "+sides[i]+")").append("; ");}
-            var h=es.get(4);var hr=dispatcher.getRenderer(h);boolean huskOk=hr instanceof TroopRenderer<?> tr&&TroopModels.resolve(h)==null&&tr.vanilla() instanceof net.minecraft.client.render.entity.HuskEntityRenderer;
-            long draws=TroopRenderer.troopDraws-drawsBefore;renderer&=huskOk&&draws>=60;
-            report("p2-spike-renderer",renderer,rw+"the unnamed husk: "+hr.getClass().getSimpleName()+", resolve null and vanilla() a HuskEntityRenderer="+huskOk+"; "+draws+" draws through a troop's own model in the last 20 ticks (want 60 or more)");
+            var h=es.get(4);var hr=dispatcher.getRenderer(h);boolean huskOk=hr instanceof TroopRenderer<?> tr&&TroopModels.resolve(h)==null&&tr.vanilla() instanceof net.minecraft.client.render.entity.HuskEntityRenderer&&TroopRenderer.drawn(h)==null;
+            long draws=TroopRenderer.troopDraws-drawsBefore;renderer&=huskOk;
+            report("p2-spike-renderer",renderer,rw+"the unnamed husk: "+hr.getClass().getSimpleName()+", resolve null, vanilla() a HuskEntityRenderer and never drawn through a troop model="+huskOk+"; "+draws+" troop-model draws in all in those 20 ticks");
             report("p2-spike-names",named,nw.toString());
             server(c,b->{var board=b.server.getScoreboard();boolean ok=true;StringBuilder why=new StringBuilder();
                 for(int i=0;i<4;i++){var u=posted.get(i);var t=board.getPlayerTeam(u.mob.getEntityName());boolean on=t!=null&&t.getName().equals("gg_"+sides[i]);ok&=on;why.append(u.spec.id()).append(" (team ").append(u.squad.team).append(") on ").append(t==null?"no team":t.getName()).append(on?"":" (want gg_"+sides[i]+")").append("; ");}
@@ -1007,13 +1013,24 @@ public final class Phase2Checks implements ClientModInitializer {
             else report("p2-spike-feet",false,"no knight or sentinel model");
             List<String> bad=new ArrayList<>();int lines=0;
             try{for(String line:Files.readAllLines(c.runDirectory.toPath().resolve("logs/latest.log"),java.nio.charset.StandardCharsets.ISO_8859_1)){lines++;if(line.contains("[troop-models]")||line.contains("Failed to load model")&&line.contains("gravesandglory:troop/"))bad.add(line.trim());}}catch(IOException e){bad.add(e.toString());}
-            report("p2-spike-load",bad.isEmpty()&&lines>0,lines+" lines of latest.log read; "+(bad.isEmpty()?"no [troop-models] line and no Failed to load model naming gravesandglory:troop/":bad.size()+" bad, first: "+bad.get(0))+"; models loaded: "+TroopModels.ids()+", rigs "+TroopModels.RIGS.values().stream().distinct().filter(r->TroopModels.rig(r)!=null).toList());
+            // Every rig, weapon and troop that index.json lists has loaded: a client whose loader never ran logs nothing either.
+            List<String> missing=new ArrayList<>();String listed;
+            try{var ix=TroopModelLoader.index(TroopModelLoader.read(c.getResourceManager(),"index.json"));
+                for(String r:ix.rigs())if(TroopModels.rig(r)==null)missing.add("rig/"+r);
+                for(String w:ix.weapons())if(TroopModels.weapon(w)==null)missing.add("weapon/"+w);
+                for(String t:ix.troops())if(TroopModels.model(t)==null)missing.add(t);
+                if(ix.troops().isEmpty())missing.add("(index.json lists no troop)");
+                listed=ix.rigs().size()+" rigs, "+ix.weapons().size()+" weapons and "+ix.troops().size()+" troops";}
+            catch(Exception e){missing.add("index.json: "+e);listed="nothing";}
+            report("p2-spike-load",bad.isEmpty()&&lines>0&&missing.isEmpty(),lines+" lines of latest.log read; "+(bad.isEmpty()?"no [troop-models] line and no Failed to load model naming gravesandglory:troop/":bad.size()+" bad, first: "+bad.get(0))
+                +"; index.json lists "+listed+", "+(missing.isEmpty()?"all loaded":"not loaded: "+missing)+"; models loaded: "+TroopModels.ids());
             loaderCheck(c);
         }
         /** p2-spike-death: the frame caught in the death second shows the Squire in gold, chest panel and flag, though this client has it on no team. */
         void deathCheck(MinecraftClient c){
             var f=deathFrame;var m=TroopModels.model("knight");int gold=Frame.colour("gold");
-            if(f==null||!f.done||m==null){report("p2-spike-death",false,"no frame of the Squire's death second, off its team on this client, was drawn within 60 ticks of the kill"+(m==null?" (no knight model)":""));return;}
+            if(f==null){var e=dying==null?null:client(c,dying.mob);report("p2-spike-death",false,"the Squire was never drawn through its own model on its side in 300 ticks, so it was not killed: on this client="+(e!=null)+", drawn="+(e!=null&&TroopRenderer.drawn(e)!=null)+", look "+(e==null?"-":TroopModels.resolve(e))+(m==null?" (no knight model)":""));return;}
+            if(!f.done||m==null){report("p2-spike-death",false,"no frame of the Squire's death second, off its team on this client, was drawn within 60 ticks of the kill"+(m==null?" (no knight model)":""));return;}
             var d=f.draw;List<String> bones=d==null?List.of():m.shownBones(d.bones());
             int[] panel=f.face(m,"chest_panel",0),flag=f.face(m,"pennant",1,8);double ps=f.sideShare(panel,gold),fs=f.sideShare(flag,gold);
             boolean ok=d!=null&&f.deathTime>=6&&"gold".equals(d.look().side())&&"gold".equals(d.cloth())&&bones.contains("chest_panel")&&bones.contains("pennant")&&ps>=0.5&&fs>=0.3;
@@ -1060,17 +1077,25 @@ public final class Phase2Checks implements ClientModInitializer {
             catch(IllegalArgumentException e){why.append(what).append(": \"").append(e.getMessage()).append("\"; ");}
             catch(Exception e){bad.add(what);why.append(what).append(": ").append(e).append(", not a refusal with a reason (BAD); ");}
         }
+        MobEntity portraitMob;int portraitDraws;
+        /** Opens the portrait probe on the Squire's and the Templar's stage 1 portraits, drawn as the cards draw them. */
         void portrait(MinecraftClient c){
-            var spec=ArmyCards.spec("sentinel");var e=ArmyCards.portrait(spec,1);var l=e==null?null:TroopModels.resolve(e);
+            var e=ArmyCards.portrait(ArmyCards.spec("sentinel"),1);portraitMob=e;var d=e==null?null:TroopRenderer.drawn(e);portraitDraws=d==null?0:d.count;
+            c.setScreen(new PortraitProbe(List.of(ArmyCards.portrait(ArmyCards.spec("knight"),1),e)));
+        }
+        /** p2-spike-portrait, once the probe has drawn for 29 ticks: what the renderer drew for the Templar's portrait (no side, the company's cloth, the tabard and no pennant), and its shield. */
+        void portraitCheck(MinecraftClient c){
+            var spec=ArmyCards.spec("sentinel");var e=portraitMob;var l=e==null?null:TroopModels.resolve(e);
             boolean look=l!=null&&l.troop()==spec&&l.stage()==1&&l.side()==null&&e.getCustomName().getString().equals("Templar")&&e.getScoreboardTeam()==null;
-            String cloth=l==null?"(none)":TroopModels.clothOf(e,l);var tex=TroopModels.cloth("company".equals(cloth)?cloth:null);
-            boolean company="company".equals(cloth)&&c.getResourceManager().getResource(tex).isPresent();
-            var m=TroopModels.model("sentinel");boolean noPennant=false;if(m!=null&&l!=null){m.prepare(l,false,false);noPennant=!m.teamShown("pennant")&&m.teamShown("long_tabard");}
-            var tag=net.minecraft.item.BlockItem.getBlockEntityNbt(e.getOffHandStack());
+            var d=e==null?null:TroopRenderer.drawn(e);int n=d==null?0:d.count-portraitDraws;var last=d==null?null:d.last;var m=TroopModels.model("sentinel");
+            List<String> shown=last==null||m==null?List.of():m.shownBones(last.bones());var tex=TroopModels.cloth("company");
+            boolean company=last!=null&&last.look().side()==null&&"company".equals(last.cloth())&&c.getResourceManager().getResource(tex).isPresent();
+            boolean noPennant=n>=5&&shown.contains("long_tabard")&&!shown.contains("pennant");
+            var tag=e==null?null:net.minecraft.item.BlockItem.getBlockEntityNbt(e.getOffHandStack());
             boolean shield=tag!=null&&tag.getInt("Base")==net.minecraft.util.DyeColor.GRAY.getId()&&tag.getList("Patterns",10).size()==1&&tag.getList("Patterns",10).getCompound(0).getString("Pattern").equals("sc");
             report("p2-spike-portrait",look&&company&&noPennant&&shield,"ArmyCards.portrait(sentinel, 1): named \""+(e==null?"":e.getCustomName().getString())+"\", resolves "+(l==null?"null":l.troop().id()+" stage "+l.stage()+" side "+l.side())+", no scoreboard team="+look
-                +"; cloth "+cloth+" ("+tex+" present="+company+"; Kort's portrait ruling replaced linen with the company's navy); the pennant hidden and the tabard drawn="+noPennant+"; shield "+(tag==null?"none":tag)+" (grey field, white straight cross)="+shield);
-            c.setScreen(new PortraitProbe(List.of(ArmyCards.portrait(ArmyCards.spec("knight"),1),e)));
+                +"; drawn "+n+" times by the probe (want 5 or more), the last in cloth "+(last==null?"-":last.cloth())+" ("+tex+"; Kort's portrait ruling replaced linen with the company's navy)="+company
+                +"; the last draw showed the tabard and no pennant="+noPennant+" "+shown+"; shield "+(tag==null?"none":tag)+" (grey field, white straight cross)="+shield);
         }
         void clean(GravesAndGlory.Battle b){
             var board=b.server.getScoreboard();boolean ok=true;StringBuilder why=new StringBuilder("killed: ");
@@ -1092,6 +1117,9 @@ public final class Phase2Checks implements ClientModInitializer {
         static final List<String> SIX=List.of("knight","archer","sentinel","longbow","mage","gl_marshal");
         final Map<String,GravesAndGlory.Unit> golds=new LinkedHashMap<>(),violets=new LinkedHashMap<>();
         final List<GravesAndGlory.Unit> stages=new ArrayList<>();int ci;boolean closeOk=true;final StringBuilder closeWhy=new StringBuilder();Frame cullFrame;float cullPitch;
+        /** The sides shot's four knights (gold, violet, crimson, teal) and the cards' portraits' draw counts before the Gilded tab drew. */
+        final List<GravesAndGlory.Unit> sided=new ArrayList<>();final Map<String,Integer> cardDraws=new HashMap<>();
+        static final List<String> FOUR=List.of("gold","violet","crimson","teal");
         /**
          * The cull shot's camera: 1.1 blocks in front of Aldric, the eye 2.6 blocks up, between the top of his vanilla box (the
          * husk's 1.95 grown by half a block: 2.45) and the top of his standard's cloth (2.79); it looks up until the view's
@@ -1118,7 +1146,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     String troop=ci<6?SIX.get(ci):"knight";
                     if(wait==1){final int k=ci;server(c,b->{var u=golds.get(troop);move(u.mob,0,STUDIO,180+30);if(k==6)stage(u,3);camera(b,0,1.45,STUDIO-4,0,6);});}
                     if(wait==45){String n=ci<6?"gilded-"+troop:"gilded-knight-s3";if(shotReady(c,n)){close(c,troop,ci<6?1:3);shot(c,n);}else wait--;}
-                    if(wait==50){final int k=ci;server(c,b->{var u=golds.get(troop);if(k==6)stage(u,1);move(u.mob,-6.25+SIX.indexOf(troop)*2.5,0,0);});ci++;wait=0;if(ci>6){report("p2-gilded-close",closeOk,"each close-up's troop resolves to its own model at the stage shot, on gold, 4 blocks from the camera: "+closeWhy.toString().trim());cs=3;}}}
+                    if(wait==50){final int k=ci;server(c,b->{var u=golds.get(troop);if(k==6)stage(u,1);move(u.mob,-6.25+SIX.indexOf(troop)*2.5,0,0);});ci++;wait=0;if(ci>6){report("p2-gilded-close",closeOk,"each close-up's troop was last drawn through its own model at the stage shot, in gold, 4 blocks from the camera: "+closeWhy.toString().trim());cs=3;}}}
                 case 3->{wait++; // the knight's stages side by side in the studio, stage 1 on the left (the camera looks south: +x is its left)
                     if(wait==1)server(c,b->{for(int s=1;s<=3;s++){var u=post(b,gold,"knight",(2-s)*2.0,STUDIO,180+20);stage(u,s);stages.add(u);}camera(b,0,1.6,STUDIO-5,0,8);});
                     if(wait==50){if(shotReady(c,"gilded-stages")){stagesCheck(c);shot(c,"gilded-stages");}else wait--;}
@@ -1129,29 +1157,42 @@ public final class Phase2Checks implements ClientModInitializer {
                             move(golds.get("gl_marshal").mob,0,STUDIO,180);camera(b,0,CULL_EYE,STUDIO-1.1,0,pitch);});}
                     if(wait==40){var e=client(c,golds.get("gl_marshal").mob);Vec3d at=at(0,STUDIO);
                         if(e==null||e.squaredDistanceTo(at)>0.01||!lit(c))wait--;else cullFrame=Frame.watch(e.getId(),x->x.squaredDistanceTo(at)<0.01);}
-                    if(wait>40&&(cullFrame.done||wait>=80)){cullCheck(c);fovScale(c,-1);server(c,b->move(golds.get("gl_marshal").mob,-6.25+SIX.indexOf("gl_marshal")*2.5,0,0));cs=4;wait=0;}}
+                    if(wait>40&&(cullFrame.done||wait>=80)){cullCheck(c);fovScale(c,-1);server(c,b->move(golds.get("gl_marshal").mob,-6.25+SIX.indexOf("gl_marshal")*2.5,0,0));cs=6;wait=0;}}
+                case 6->{wait++; // one troop on all four sides (finding 11): four Squires in the studio, gold, violet, crimson and teal from the left, 4 blocks off
+                    if(wait==1)server(c,b->{var board=b.server.getScoreboard();
+                        for(int i=0;i<4;i++){var u=post(b,i==1?violet:gold,"knight",(1.5-i)*1.6,STUDIO,180+20);sided.add(u);
+                            if(i>=2){String team="gg_"+FOUR.get(i);var t=board.getTeam(team);if(t==null)t=board.addTeam(team);board.addPlayerToTeam(u.mob.getEntityName(),t);}}
+                        camera(b,0,1.45,STUDIO-4,0,6);});
+                    if(wait==50){if(sided.size()==4&&shotReady(c,"gilded-sides")){sidesCheck(c);shot(c,"gilded-sides");}else wait--;}
+                    if(wait==55){server(c,b->{for(var u:sided){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();pins.removeIf(p->p.mob()==u.mob);b.units.remove(u);posted.remove(u);}});cs=4;wait=0;}}
                 case 4->{wait++; // the recruit page's Gilded tab, every Gilded troop owned so no card is dimmed
                     if(wait==1)server(c,b->{b.campaign.returnLobby();var pr=b.campaign.profile(player);for(String id:SIX)pr.owned.putIfAbsent(id,new Profile.Owned());pins.clear();posted.clear();});
                     if(wait==40){CampaignClient.revealUntil=0;CampaignClient.notice="";c.setScreen(new CampScreen("recruit"));}
-                    if(wait==45&&c.currentScreen instanceof CampScreen s)s.pickHouse("gilded");
+                    if(wait==45&&c.currentScreen instanceof CampScreen s){s.pickHouse("gilded");
+                        for(String id:SIX){var e=ArmyCards.portrait(ArmyCards.spec(id));var d=e==null?null:TroopRenderer.drawn(e);cardDraws.put(id,d==null?0:d.count);}}
                     if(wait==80){boolean six=c.currentScreen instanceof CampScreen s&&s.house.equals("gilded")&&CampScreen.cards("gilded",CampaignClient.profile).stream().allMatch(CampScreen.Card::owned);
-                        boolean models=SIX.stream().allMatch(id->{var e=ArmyCards.portrait(ArmyCards.spec(id));var l=e==null?null:TroopModels.resolve(e);return l!=null&&l.side()==null&&"company".equals(TroopModels.clothOf(e,l));});
-                        report("p2-gilded-cards",six&&models,"the recruit page on the Gilded tab with all six owned="+six+"; every card's portrait resolves to its own model, no side, in the company's cloth="+models);shot(c,"gilded-cards");}
+                        boolean models=true;StringBuilder why=new StringBuilder();
+                        for(String id:SIX){var e=ArmyCards.portrait(ArmyCards.spec(id));var d=e==null?null:TroopRenderer.drawn(e);var last=d==null?null:d.last;var m=TroopModels.model(id);
+                            int n=d==null?0:d.count-cardDraws.getOrDefault(id,0);List<String> shown=last==null||m==null?List.of():m.shownBones(last.bones());
+                            boolean good=n>=5&&last!=null&&last.look().troop().id().equals(id)&&last.look().side()==null&&"company".equals(last.cloth())&&!shown.contains("pennant")&&!shown.contains("standard");models&=good;
+                            why.append(id).append(" drawn ").append(n).append(" times").append(last==null?"":" in "+last.cloth()).append(good?"":" (BAD)").append("; ");}
+                        report("p2-gilded-cards",six&&models,"the recruit page on the Gilded tab with all six owned="+six+"; in the 35 ticks after the tab opened, each card's portrait was drawn through its own model, no side, in the company's cloth and with no flag (want 5 draws or more): "+why.toString().trim());shot(c,"gilded-cards");}
                     if(wait==90){c.setScreen(null);serverDone=true;end(c);}}
                 default->{}
             }
         }
         void lineup(MinecraftClient c){
             boolean ok=true;StringBuilder why=new StringBuilder();
-            for(var u:posted){var e=client(c,u.mob);var l=e==null?null:TroopModels.resolve(e);boolean good=l!=null&&l.troop().id().equals(u.spec.id())&&l.stage()==1&&TroopModels.model(u.spec.id())!=null&&l.side()!=null;
-                ok&=good;why.append(u.spec.id()).append("/").append(l==null?"null":l.side()).append(good?"":" (BAD)").append(" ");}
-            report("p2-gilded-lineup",ok,"each Gilded troop resolves to its own model at stage 1 on its side: "+why.toString().trim());
+            for(var u:posted){var e=client(c,u.mob);var d=e==null?null:TroopRenderer.drawn(e);var l=d==null?null:d.last.look();String side=u.squad==gold?"gold":"violet";
+                boolean good=l!=null&&l.troop().id().equals(u.spec.id())&&l.stage()==1&&side.equals(l.side())&&side.equals(d.last.cloth())&&TroopModels.model(u.spec.id())!=null;
+                ok&=good;why.append(u.spec.id()).append("/").append(l==null?"not drawn":d.last.cloth()).append(good?"":" (BAD)").append(" ");}
+            report("p2-gilded-lineup",ok,"each Gilded troop's last draw is its own model at stage 1 in its side's cloth: "+why.toString().trim());
         }
         /** A close-up (p2-gilded-close): the troop in the studio resolves to its own model at the stage shot, on gold, 4 blocks from the camera. */
         void close(MinecraftClient c,String troop,int stage){
-            var e=client(c,golds.get(troop).mob);var l=e==null?null:TroopModels.resolve(e);
+            var e=client(c,golds.get(troop).mob);var dr=e==null?null:TroopRenderer.drawn(e);var l=dr==null?null:dr.last.look();
             double d=e==null||c.player==null?-1:Math.hypot(e.getX()-c.player.getX(),e.getZ()-c.player.getZ());
-            boolean good=l!=null&&l.troop().id().equals(troop)&&l.stage()==stage&&"gold".equals(l.side())&&TroopModels.model(troop)!=null&&Math.abs(d-4)<0.25;closeOk&=good;
+            boolean good=l!=null&&l.troop().id().equals(troop)&&l.stage()==stage&&"gold".equals(l.side())&&"gold".equals(dr.last.cloth())&&TroopModels.model(troop)!=null&&Math.abs(d-4)<0.25;closeOk&=good;
             closeWhy.append(troop).append(" stage ").append(l==null?"-":String.valueOf(l.stage())).append(" side ").append(l==null?"-":l.side()).append(String.format(Locale.ROOT," at %.2f blocks",d)).append(good?"":" (BAD)").append("; ");
         }
         /** p2-gilded-cull: with only the top of Aldric's standard in view, at the bottom of the frame, he is drawn (the vanilla box test would drop him), the standard's cloth on the frame in gold. */
@@ -1166,11 +1207,20 @@ public final class Phase2Checks implements ClientModInitializer {
                 f.cam.x,f.cam.y,f.cam.z,cullPitch,half,f.pos.x,f.pos.y,f.pos.z,f.vanillaSees,f.draw==null?"-":f.draw.cloth(),bones.contains("standard"),Arrays.toString(cloth),on,f.image.getWidth(),f.image.getHeight(),share*100));
             f.close();
         }
+        /** p2-gilded-sides: the four Squires were last drawn each in its own side's cloth, with its flag. */
+        void sidesCheck(MinecraftClient c){
+            var m=TroopModels.model("knight");boolean ok=m!=null;StringBuilder why=new StringBuilder();
+            for(int i=0;i<4;i++){var e=client(c,sided.get(i).mob);var d=e==null?null:TroopRenderer.drawn(e);var last=d==null?null:d.last;
+                List<String> shown=last==null||m==null?List.of():m.shownBones(last.bones());
+                boolean good=last!=null&&FOUR.get(i).equals(last.look().side())&&FOUR.get(i).equals(last.cloth())&&shown.contains("pennant")&&shown.contains("chest_panel");ok&=good;
+                why.append(FOUR.get(i)).append(": ").append(last==null?"not drawn":"drawn in "+last.cloth()+", flag "+(shown.contains("pennant")?"shown":"hidden")).append(good?"":" (BAD)").append("; ");}
+            report("p2-gilded-sides",ok,"one Squire on each side, left to right on the frame: "+why.toString().trim());
+        }
         void stagesCheck(MinecraftClient c){
             var m=TroopModels.model("knight");boolean ok=m!=null&&m.bones().contains("crest_plume");StringBuilder why=new StringBuilder();
-            for(var u:stages){var e=client(c,u.mob);var l=e==null?null:TroopModels.resolve(e);if(l==null||m==null){ok=false;why.append("no look; ");continue;}
-                m.prepare(l,false,false);boolean plume=m.bone("crest_plume")!=null&&m.bone("crest_plume").visible;boolean want=l.stage()==3;ok&=plume==want&&l.stage()==u.stage;
-                why.append("\"").append(e.getCustomName().getString()).append("\" stage ").append(l.stage()).append(" plume ").append(plume?"shown":"hidden").append(plume==want?"":" (BAD)").append("; ");}
+            for(var u:stages){var e=client(c,u.mob);var d=e==null?null:TroopRenderer.drawn(e);var l=d==null?null:d.last.look();if(l==null||m==null){ok=false;why.append("not drawn; ");continue;}
+                boolean plume=m.shownBones(d.last.bones()).contains("crest_plume");boolean want=l.stage()==3;ok&=plume==want&&l.stage()==u.stage;
+                why.append("\"").append(e.getCustomName().getString()).append("\" drawn at stage ").append(l.stage()).append(", plume ").append(plume?"drawn":"not drawn").append(plume==want&&l.stage()==u.stage?"":" (BAD)").append("; ");}
             report("p2-gilded-stages",ok,why.toString());
         }
         void kit(MinecraftClient c){

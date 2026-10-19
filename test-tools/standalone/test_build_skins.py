@@ -363,5 +363,133 @@ class BuildSkinsChecks(unittest.TestCase):
             self.assertIn('pixel (3, 2)', said)
 
 
+    def test_rig_tree(self):
+        """A rig keeps its skeleton's tree, not only its bone names (finding 5): the renderer and Task 5b's clips rely on it."""
+        def moved(rig, bone, parent):
+            rig = copy.deepcopy(rig)
+            next(b for b in rig['bones'] if b['name'] == bone)['parent'] = parent
+            return rig
+        for rig, bone, parent, want in ((BIPED, 'head', 'root', 'body'), (BIPED, 'right_hand', 'body', 'right_arm'),
+                                        (HOUND, 'head', 'body', 'chest')):
+            with self.subTest(rig=rig['rig'], bone=bone), tempfile.TemporaryDirectory() as tmp:
+                rigs = [moved(rig, bone, parent) if r is rig else r for r in (BIPED, HOUND)]
+                said = self.fails(export_assets, fixture(tmp, rigs=rigs))
+                self.assertIn('rig %s' % rig['rig'], said)
+                self.assertIn('%s has parent %s' % (bone, parent), said)
+                self.assertIn('hangs it from %s' % want, said)
+
+    def test_team_anchor(self):
+        """A part hung from a team part fails: neither pass of the renderer could draw it (finding 5)."""
+        parts = dict(PARTS)
+        parts['badge'] = {'part': 'badge', 'bone': 'pennant', 'team': False, 'tag': '', 'boxes': [box([0, 0, 0], [1, 1, 1], [0, 0])]}
+        parts['streamer'] = {'part': 'streamer', 'bone': 'pennant', 'team': True, 'tag': '',
+                             'boxes': [box([0, 0, 0], [1, 2, 1], [10, 10])]}
+        for extra in ({'part': 'badge', 'uv': [48, 0]}, {'part': 'streamer'}):
+            troops = self.with_knight(parts=TROOPS['knight']['parts'] + [extra])
+            with self.subTest(part=extra['part']), tempfile.TemporaryDirectory() as tmp:
+                said = self.fails(export_assets, fixture(tmp, troops=troops, parts=parts))
+                self.assertIn('knight: part %s hangs from the team part pennant' % extra['part'], said)
+        with tempfile.TemporaryDirectory() as tmp:
+            self.export(fixture(tmp, parts=parts))   # the parts themselves are fine while no troop hangs them there
+
+    def test_template(self):
+        """--template paints every skin box face flat: one hue per bone, the top lighter and the bottom darker than the
+        front, nothing where no skin box lies and nothing for a team part, whose UVs are on the cloth sheet."""
+        with tempfile.TemporaryDirectory() as tmp:
+            cat = build_skins.load(fixture(tmp))
+            im = build_skins.template(cat, 'knight').convert('RGBA')
+        self.assertEqual(im.size, (64, 64))
+        body, head = build_skins.HUES[0], build_skins.HUES[1]   # root has no box, so body takes the first hue
+
+        def shade(rgb, k):
+            return tuple(max(0, min(255, int(c * k))) for c in rgb) + (255,)
+        self.assertEqual(im.getpixel((24, 26)), shade(body, 1.0))     # body north (front), uv 16,16 size 8x12x4
+        self.assertEqual(im.getpixel((24, 18)), shade(body, 1.25))    # body top
+        self.assertEqual(im.getpixel((31, 18)), shade(body, 0.55))    # body bottom
+        self.assertEqual(im.getpixel((38, 26)), shade(body, 0.7))     # body south (back)
+        self.assertEqual(im.getpixel((12, 12)), shade(head, 1.0))     # head north
+        self.assertNotEqual(shade(body, 1.0), shade(head, 1.0))
+        self.assertEqual(im.getpixel((2, 0))[3], 0)    # the pennant's top face lies here on the cloth sheet: not painted
+        self.assertEqual(im.getpixel((63, 63))[3], 0)  # no box
+        cap = im.getpixel((44, 9))                     # the cap part at uv 32,0 (size 8x2x8): its north face, y 8..9
+        self.assertEqual(cap[3], 255)
+        self.assertNotIn(cap, (shade(body, 1.0), shade(head, 1.0)))
+
+    def test_exported_pixels(self):
+        """The exported skin, outer, glow and weapon PNGs carry the sources' pixels; a transparent texel leaves with no
+        colour, since the glow pass adds RGB."""
+        marks = [((3, 2), (90, 60, 40, 255)), ((40, 20), (20, 20, 24, 255)), ((5, 5), (210, 30, 30, 0))]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            skin(root / 'art/troops/knight_s1.png', extra=marks)
+            skin(root / 'art/troops/knight_o.png', paint=(0, 0, 0, 0), extra=[((8, 8), (120, 110, 100, 255))])
+            glow(root / 'art/troops/mage_e.png', 4)
+            skin(root / 'art/weapons/sword.png', (16, 16), (124, 133, 145, 255), extra=[((7, 1), (230, 230, 240, 255))])
+            self.export(root)
+            out = root / ASSETS / 'textures/entity/troop'
+            with Image.open(out / 'knight_s1.png') as im:
+                s1 = im.convert('RGBA')
+            with Image.open(out / 'knight_o.png') as im:
+                outer = im.convert('RGBA')
+            with Image.open(out / 'mage_e.png') as im:
+                lit = im.convert('RGBA')
+            with Image.open(out / 'weapon/sword.png') as im:
+                sword = im.convert('RGBA')
+            knight = json.loads((root / ASSETS / 'models/troop/knight.json').read_text(encoding='utf-8'))
+        self.assertEqual(s1.size, (64, 64))
+        self.assertEqual(s1.getpixel((3, 2)), (90, 60, 40, 255))
+        self.assertEqual(s1.getpixel((40, 20)), (20, 20, 24, 255))
+        self.assertEqual(s1.getpixel((5, 5)), (0, 0, 0, 0))
+        self.assertEqual(s1.getpixel((30, 30)), (200, 196, 186, 255))
+        self.assertEqual(outer.getpixel((8, 8)), (120, 110, 100, 255))
+        self.assertEqual(outer.getpixel((9, 8)), (0, 0, 0, 0))
+        self.assertTrue(knight['outer'].endswith('/knight_o.png'), knight['outer'])
+        self.assertEqual([(x, y) for y in range(64) for x in range(64) if lit.getpixel((x, y))[3]], [(0, 0), (1, 0), (2, 0), (3, 0)])
+        self.assertEqual(lit.getpixel((2, 0)), (255, 240, 200, 255))
+        self.assertEqual(sword.size, (16, 16))
+        self.assertEqual(sword.getpixel((7, 1)), (230, 230, 240, 255))
+        self.assertEqual(sword.getpixel((0, 15)), (124, 133, 145, 255))
+
+    def test_sheet_rules(self):
+        """A box outside the sheet, a skin of the wrong size and a skin for a stage the line lacks each fail, naming the troop."""
+        mage = copy.deepcopy(TROOPS)
+        mage['mage']['skins'] = {'1': 'mage_s1.png', '2': 'mage_s2.png'}
+        cases = [
+            ('knight', 'outside the 64x64 sheet',
+             self.with_knight(parts=[{'part': 'cap', 'uv': [50, 0]}, {'part': 'skirt', 'uv': [0, 32]}, {'part': 'pennant'}]), False),
+            ('knight', 'knight_s1.png is 32x32, not the troop size 64x64', TROOPS, True),
+            ('knight', 'a skin for stage 4, which the evolution line lacks',
+             self.with_knight(skins={'1': 'knight_s1.png', '4': 'knight_s4.png'}), False),
+            ('mage', 'a skin for stage 2, which the evolution line lacks', mage, False),
+        ]
+        for troop, want, troops, small in cases:
+            with self.subTest(want=want), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp, troops=troops)
+                if small:
+                    skin(root / 'art/troops/knight_s1.png', size=(32, 32))
+                said = self.fails(export_assets, root)
+                self.assertIn(want, said)
+                self.assertIn(troop, said)
+
+    def test_part_scale(self):
+        """A part takes its anchor bone's scale times its own (the part file's scale, then the troop's for it)."""
+        parts = copy.deepcopy(PARTS)
+        parts['cap']['scale'] = [1.25, 1, 1]
+        troops = self.with_knight(bones={'head': {'scale': 1.1}},
+                                  parts=[{'part': 'cap', 'uv': [32, 0], 'scale': 1.2}, {'part': 'skirt', 'uv': [0, 32]}, {'part': 'pennant'}])
+        with tempfile.TemporaryDirectory() as tmp:
+            cat = build_skins.load(fixture(tmp, troops=troops, parts=parts))
+            model = build_skins.bake(cat, 'knight')
+        cap = find(model, 'cap')['boxes'][0]
+        k = (1.1 * 1.25 * 1.2, 1.1 * 1.2, 1.1 * 1.2)
+        for i, (origin, size) in enumerate(zip([-4, -9, -4], [8, 2, 8])):
+            grow = size * (k[i] - 1) / 2
+            self.assertAlmostEqual(cap['dilation'][i], grow, places=4)
+            self.assertAlmostEqual(cap['origin'][i], k[i] * origin + grow, places=4)
+        self.assertEqual(cap['size'], [8, 2, 8])
+        head = find(model, 'head')['boxes'][0]
+        self.assertAlmostEqual(head['dilation'][0], 8 * 0.1 / 2, places=4)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

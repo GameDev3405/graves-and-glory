@@ -59,11 +59,18 @@ FORMAT = 1
 RIGS = {'husk': 'biped', 'zombie': 'biped', 'skeleton': 'biped', 'stray': 'biped', 'wither_skeleton': 'biped',
         'drowned': 'biped', 'zombified_piglin': 'biped', 'vindicator': 'biped', 'pillager': 'biped', 'evoker': 'biped',
         'wolf': 'hound', 'polar_bear': 'hound', 'ravager': 'hound', 'spider': 'spider', 'iron_golem': 'colossus'}
-BIPED_BONES = ('root', 'body', 'head', 'right_arm', 'right_hand', 'left_arm', 'left_hand', 'arms_folded', 'right_leg', 'left_leg')
+# Each skeleton's bones as (bone, parent), parents first: the trees of the brief's source formats. The renderer finds
+# the hand and team bones by their paths from the root, and Task 5b's clips turn bones by name, so a rig keeps the tree.
+BIPED_BONES = (('root', ''), ('body', 'root'), ('head', 'body'), ('right_arm', 'body'), ('right_hand', 'right_arm'),
+               ('left_arm', 'body'), ('left_hand', 'left_arm'), ('arms_folded', 'body'), ('right_leg', 'root'),
+               ('left_leg', 'root'))
 RIG_BONES = {
     'biped': BIPED_BONES,
-    'hound': ('root', 'body', 'chest', 'head', 'jaw', 'front_left_leg', 'front_right_leg', 'tail', 'back_left_leg', 'back_right_leg'),
-    'spider': ('root', 'thorax', 'head', 'fangs', 'abdomen') + tuple('%s_leg_%d' % (s, n) for s in ('left', 'right') for n in (1, 2, 3, 4)),
+    'hound': (('root', ''), ('body', 'root'), ('chest', 'body'), ('head', 'chest'), ('jaw', 'head'),
+              ('front_left_leg', 'chest'), ('front_right_leg', 'chest'), ('tail', 'body'), ('back_left_leg', 'root'),
+              ('back_right_leg', 'root')),
+    'spider': (('root', ''), ('thorax', 'root'), ('head', 'thorax'), ('fangs', 'head'), ('abdomen', 'thorax'))
+              + tuple(('%s_leg_%d' % (s, n), 'thorax') for s in ('left', 'right') for n in (1, 2, 3, 4)),
     'colossus': BIPED_BONES,
 }
 LEGS = {'right_leg', 'left_leg', 'front_left_leg', 'front_right_leg', 'back_left_leg', 'back_right_leg'} | \
@@ -265,8 +272,13 @@ def check_rig(cat, name):
             vec(b['rotation'], 3, '%s %s rotation' % (what, n))
         check_boxes(b.get('boxes', []), '%s %s' % (what, n))
         seen.append(n)
-    if sorted(seen) != sorted(RIG_BONES[name]) or seen[0] != 'root':
-        fail('%s: the bones must be %s, root first' % (what, ', '.join(RIG_BONES[name])))
+    tree = dict(RIG_BONES[name])
+    if sorted(seen) != sorted(tree) or seen[0] != 'root':
+        fail('%s: the bones must be %s, root first' % (what, ', '.join(tree)))
+    for b in bones:
+        if b['parent'] != tree[b['name']]:
+            fail('%s: %s has parent %s, but the %s skeleton hangs it from %s' % (what, b['name'], b['parent'] or '""', name,
+                                                                                 tree[b['name']] or '""'))
     hands = rig.get('hands')
     if not isinstance(hands, dict) or set(hands) != {'right', 'left'} or any(hands[k] not in seen for k in hands):
         fail(what + ': hands must name a bone for right and for left')
@@ -367,6 +379,10 @@ def bake_bones(rig, what, overrides=None, parts=(), hunch=0.0, folded=True, stag
         anchor = entry.get('bone', part['bone'])
         if anchor not in bones:
             fail('%s: part %s hangs from unknown bone %s' % (what, name, anchor))
+        if bones[anchor]['team']:
+            fail('%s: part %s hangs from the team part %s, which the renderer cannot draw: the skin pass hides a team part '
+                 'with everything under it, and the cloth pass skips a part whose parent is hidden; hang it from %s'
+                 % (what, name, anchor, bones[anchor]['parent']))
         if part['team']:
             origin_uv = [0, 0]
         else:

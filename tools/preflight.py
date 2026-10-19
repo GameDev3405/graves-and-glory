@@ -123,6 +123,22 @@ for t in data['troops']:
         if not t[slot].startswith('minecraft:'): errors.append(f'{name}: {slot} {t[slot]} must be a minecraft: item id (minecraft:air for none)')
     tags=t['tags'].split(',')
     if 'none' in tags and len(tags)>1: errors.append(f'{name}: tags is none or a comma list of tags, never both')
+# A troop is drawn from its custom name (TroopModels.resolve through ArmyMobs.named, where a later troop row wins and a troop
+# name beats a stage name), and " (Veteran)" on it marks the Veteran skin: so no name may stand for two troops, two stages of
+# one line, or a stage and its own troop, and none may end in " (Veteran)".
+VETERAN=' (Veteran)'
+nameOwners={}
+for t in data['troops']: nameOwners.setdefault(t['name'],{}).setdefault(t['id'],[]).append(f'troops/{t["id"]}')
+for e in data['evolutions']:
+    for t in data['troops']:
+        if t['evolveLine']==e['troop']: nameOwners.setdefault(e['name'],{}).setdefault(t['id'],[]).append(f'evolutions/{e["id"]}')
+for nm,owners in nameOwners.items():
+    where=', '.join(w for ws in owners.values() for w in ws)
+    if nm.endswith(VETERAN): errors.append(f'{where}: the name "{nm}" ends in "{VETERAN.strip()}", which marks a Veteran skin')
+    if len(owners)>1: errors.append(f'{where}: the name "{nm}" stands for {len(owners)} troops ({", ".join(owners)}); a troop is drawn from its name, so one would draw as the other')
+    else:
+        for troop,ws in owners.items():
+            if len(ws)>1: errors.append(f'{where}: the name "{nm}" is two stages of {troop}; its stage could not be told from it')
 for h in houses.values():
     if h['glyph']!=f'gravesandglory:textures/gui/house/{h["id"]}.png': errors.append(f'houses/{h["id"]}: glyph must be gravesandglory:textures/gui/house/{h["id"]}.png')
     elif not (root/'src/main/resources/assets/gravesandglory'/h['glyph'].partition(':')[2]).is_file(): errors.append(f'houses/{h["id"]}: missing glyph texture {h["glyph"]}')
