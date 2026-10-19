@@ -8,7 +8,7 @@ import java.util.*;
 
 /** Isolated real-client checks for the camp redesign. Never included in releases. */
 public final class CampRedesignChecks implements ClientModInitializer {
- int tick,front;boolean started;volatile boolean failed;
+ int tick,front;boolean started;volatile boolean failed;java.util.random.RandomGenerator liveRoll;
  void check(String id,boolean pass){MeltyTest.report("camp-"+id,pass,id);System.out.println("[camp-check] "+id+"="+pass);if(!pass)failed=true;}
  void server(MinecraftClient c,java.util.function.Consumer<GravesAndGlory.Battle> fn){c.getServer().execute(()->{try{fn.accept(GravesAndGlory.battle);}catch(Exception e){check("exception",false);e.printStackTrace();}});}
  void shot(MinecraftClient c,String name){ScreenshotRecorder.saveScreenshot(c.runDirectory,"camp-"+name+".png",c.getFramebuffer(),t->{});}
@@ -23,8 +23,8 @@ public final class CampRedesignChecks implements ClientModInitializer {
    if(tick==45){c.setScreen(null);check("battle-hud-off",GravesAndGloryClient.inCamp()&&!GravesAndGloryClient.battleActive());CommandMode.begin("attack");check("orders-disabled-in-camp",!CommandMode.active());}
    if(tick==70)shot(c,"courtyard");
    if(tick==80)c.setScreen(new CampScreen("home"));if(tick==95)shot(c,"guide");
-   if(tick==100)CampScreen.open("recruit");if(tick==115)shot(c,"recruitment");if(tick==120)press(c,"ROLL ");
-   if(tick==150){var pr=CampaignClient.profile;check("server-confirmed-recruit",pr.gold==200&&pr.owned.values().stream().mapToInt(o->o.copies).sum()+pr.shards.values().stream().mapToInt(Integer::intValue).sum()==Profile.commons().size()+1); /* one roll: a new troop or one more copy */shot(c,"reward-reveal");}
+   if(tick==100)CampScreen.open("recruit");if(tick==115)shot(c,"recruitment");if(tick==118)server(c,b->{liveRoll=b.campaign.rollRng;b.campaign.rollRng=Phase2Checks.Engine.fixed(86);}); /* a fixed draw: the Gilded pool at 86 is its first Rare, a troop the fresh collection lacks, so the roll always opens the reveal panel (a duplicate does not) */ if(tick==120)press(c,"ROLL ");
+   if(tick==150){var pr=CampaignClient.profile;check("server-confirmed-recruit",pr.gold==200&&pr.owned.values().stream().mapToInt(o->o.copies).sum()+pr.shards.values().stream().mapToInt(Integer::intValue).sum()==Profile.commons().size()+1); /* one roll: a new troop */shot(c,"reward-reveal");server(c,b->{if(liveRoll!=null)b.campaign.rollRng=liveRoll;});}
    if(tick==175){CampScreen.open("friends");press(c,"CREATE PARTY");}
    if(tick==200){check("party-packet",CampaignClient.social.get("party").getAsBoolean());shot(c,"friends");press(c,"CREATE PRIVATE ROOM");}
    if(tick==225){server(c,b->{var r=b.campaign.social.room(c.player.getUuid());if(r!=null)r.map=b.campaign.map;});CampScreen.open("room");check("room-packet",!CampaignClient.social.get("room").getAsString().isEmpty());}

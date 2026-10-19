@@ -9,8 +9,9 @@ second, so the seat (Dawn's or Dusk's base) cancels out. The banners come from t
 BotSimulation writes (-PsimBanner0 and -PsimBanner1).
 
 P is the percentage of decided rounds <bannerId> won; a draw counts half a win and an aborted round (a round that stopped
-without Campaign.finish) is left out, and named after the verdict as " aborted=N". The gate passes when 40 <= P <= 60,
-P as printed (rounded to one decimal, a trailing .0 dropped). Output, on one line:
+without Campaign.finish) is left out, and named on a line of its own, "aborted=N", just before the gate line (printed only when
+N is above 0). The gate passes when 40 <= P <= 60, P as printed (rounded to one decimal, a trailing .0 dropped). The gate line,
+the last line printed, is exactly:
 
     gate <a> vs <b> win=<P>% pass|fail
 
@@ -107,7 +108,9 @@ def main(argv):
         print(f'rounds={decided + aborted} decided={decided} won={won} lost={lost} drawn={drawn}')
     percent = round(100.0 * (won + 0.5 * drawn) / decided, 1)
     passed = PASS_MIN <= percent <= PASS_MAX
-    print(f'gate {banner} vs {opponent} win={percent:g}% {"pass" if passed else "fail"}' + (f' aborted={aborted}' if aborted else ''))
+    if aborted:
+        print(f'aborted={aborted}')
+    print(f'gate {banner} vs {opponent} win={percent:g}% {"pass" if passed else "fail"}')
     return 0 if passed else 1
 
 

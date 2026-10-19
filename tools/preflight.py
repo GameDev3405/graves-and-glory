@@ -131,6 +131,7 @@ for c in data['counters']:
     if c['multiplier']<=0: errors.append(f'counters/{c["id"]}: multiplier must be above 0')
 cd=data['combatDiscipline'][0]
 if not 0<cd['multiplierMin']<=1<=cd['multiplierMax']: errors.append('combatDiscipline: the counter clamp must hold 1 (0 < multiplierMin <= 1 <= multiplierMax)')
+if cd['chargeImpactTicks']<1: errors.append('combatDiscipline: chargeImpactTicks (the counters row C5 window) must be at least 1')
 if len(data['recruitment'])!=1: errors.append('recruitment: exactly one row')
 if any(data['campaign'][0].get(k,-1)<0 for k in ('completionShards','victoryShards','completionRenown','victoryRenown')): errors.append('campaign: completionShards, victoryShards, completionRenown and victoryRenown must be 0 or more')
 cap=data['recruitment'][0]['capPct']

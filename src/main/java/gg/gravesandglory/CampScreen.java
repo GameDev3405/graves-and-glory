@@ -115,7 +115,9 @@ final class CampScreen extends ArmyScreen {
         var row=ArmyCards.house(troop);g.fillGradient(x+3,y+3,x+w-3,y+h-3,0x33000000|(row==null?0x4c9391:row.accent()&0xffffff),0x00181820);
         var portrait=ArmyCards.portrait(troop);float wide=portrait==null?0:portrait.getWidth()*1.25f; // a wide model (a spider's legs) is drawn smaller so it stays inside its card
         DarkUi.model(g,troop,x+34,y+h-12,wide>1.5f?(int)(28*1.5f/wide):28);
+        g.getMatrices().push();g.getMatrices().translate(0,0,100); // the model is drawn at z 50 and writes depth, so what must show over it is nearer: the dim of a card the commander lacks at z 100, the card's text at z 150
         if(!card.owned())g.fill(x+3,y+3,x+w-3,y+h-3,0x99111119);
+        g.getMatrices().translate(0,0,50);
         int tx=x+70,room=w-76;
         // A long name (a Legendary's title) wraps onto a second line, and everything under it moves down a line.
         var title=textRenderer.wrapLines(Text.literal(ArmyMobs.stageName(troop,card.owned()?card.stage():1)),room);int more=title.size()>1?10:0;
@@ -129,6 +131,7 @@ final class CampScreen extends ArmyScreen {
             line(g,"LOCKED",tx,y+44+more,DarkUi.PAPER,room);
             line(g,troop.rarity().equals("legendary")||weight(troop)<=0?"Comes from a Pact":String.format(java.util.Locale.ROOT,"%.1f",100.0*weight(troop)/Math.max(1,poolTotal))+"% a roll",tx,y+58+more,DarkUi.MUTED,room);
         }
+        g.getMatrices().pop();
     }
     /** One House's tab on the recruit page: its glyph and name, the chosen one edged in brass. */
     final class HouseTab extends ButtonWidget {
@@ -179,7 +182,7 @@ final class CampScreen extends ArmyScreen {
             line(g,"Local matches only. Internet matchmaking is on hold.",x,333,DarkUi.MUTED,w);
         }else if(page.equals("recruit")){
             var pool=pool(house);int total=0;for(var t:pool)total+=weight(t);
-            line(g,"Draws from the "+RosterMath.houseName(house)+" pool: "+odds(pool,"common",total)+" Commons / "+odds(pool,"rare",total)+" Rares / "+odds(pool,"epic",total)+" Epic / a duplicate raises stars",x,99,DarkUi.MUTED,w);
+            line(g,"Draws from the "+RosterMath.houseName(house)+" pool: "+odds(pool,"common",total)+" Commons / "+odds(pool,"rare",total)+" Rares / "+odds(pool,"epic",total)+" Epic / a duplicate raises stars",x,102,DarkUi.MUTED,w);
             var cards=cards(house,p);int cardWidth=w/3-10,cardHeight=96;
             for(int i=0;i<cards.size();i++)card(g,cards.get(i),x+(i%3)*(w/3),152+(i/3)*(cardHeight+8),cardWidth,cardHeight,total);
             line(g,pityLine()+(ArmyCards.house(pool.get(0))!=null&&!ArmyCards.house(pool.get(0)).fieldable()?"  /  "+RosterMath.houseName(house)+" cannot take the field yet":""),x,height-96,DarkUi.GOLD,w);
@@ -222,7 +225,7 @@ final class CampScreen extends ArmyScreen {
             line(g,"Vote while on a ready pad. Most votes wins; ties use map order.",x,133,DarkUi.MUTED,w);
         }
         line(g,CampaignClient.notice,x,height-42,DarkUi.GOLD,w);super.render(g,(int)(mx/scale),(int)(my/scale),delta);
-        if(page.equals("recruit")&&CampaignClient.revealUntil>System.currentTimeMillis()){DarkUi.frame(g,x+30,180,w-60,100);line(g,"RECRUITMENT CONFIRMED",x+50,201,DarkUi.GOLD,w-100);line(g,CampaignClient.revealUnit+" has joined your collection.",x+50,226,DarkUi.PAPER,w-100);line(g,"Place it in your banner in the war council / Skip reveal above to continue",x+50,251,DarkUi.MUTED,w-100);}
+        if(page.equals("recruit")&&CampaignClient.revealUntil>System.currentTimeMillis()){g.getMatrices().push();g.getMatrices().translate(0,0,300);DarkUi.frame(g,x+30,180,w-60,100);line(g,"RECRUITMENT CONFIRMED",x+50,201,DarkUi.GOLD,w-100);line(g,CampaignClient.revealUnit+" has joined your collection.",x+50,226,DarkUi.PAPER,w-100);line(g,"Place it in your banner in the war council / Skip reveal above to continue",x+50,251,DarkUi.MUTED,w-100);g.getMatrices().pop();}
         g.getMatrices().pop();
     }
     @Override public boolean mouseClicked(double x,double y,int button){return super.mouseClicked(x/scale,y/scale,button);}

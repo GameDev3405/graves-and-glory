@@ -9,10 +9,17 @@ import net.minecraft.util.Identifier;
 final class DarkUi {
     static final int GOLD=0xffc8a56b, EDGE=0xff414b50, PAPER=0xffeee9df, MUTED=0xffafb9bc;
     static final Identifier TITLE=new Identifier("gravesandglory","title");
-    /** The side row a team flies (CampaignClient.sides, from the camp snapshot); null for no team. */
+    /** The factions row with this id; null for an id the sheet lacks. */
+    private static Spec.FactionsRow faction(String id){for(var f:Spec.FACTIONS)if(f.id().equals(id))return f;return null;}
+    /**
+     * The side row a team flies; null for no team. While a battle runs the live state names it (GravesAndGloryClient.sideIds, state_v8);
+     * in the camp, and for an id the sheet lacks, the camp snapshot does (CampaignClient.sides, which in the lobby previews the next round's sides).
+     */
     static Spec.FactionsRow side(int team){
-        if(team!=0&&team!=1)return null;String id=CampaignClient.sides[team];
-        for(var f:Spec.FACTIONS)if(f.id().equals(id))return f;return Spec.FACTIONS[team];
+        if(team!=0&&team!=1)return null;
+        Spec.FactionsRow row=GravesAndGloryClient.battleActive()?faction(GravesAndGloryClient.sideIds[team]):null;
+        if(row==null)row=faction(CampaignClient.sides[team]);
+        return row!=null?row:Spec.FACTIONS[team];
     }
     /** A team's side colour, opaque; muted for no team. Always paired with its glyph (teamMark), never alone. */
     static int teamColor(int team){var f=side(team);return f==null?MUTED:0xff000000|f.color();}

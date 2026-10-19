@@ -582,7 +582,7 @@ public final class Phase1Checks implements ClientModInitializer {
             place(b,s,cx,cz);return s;
         }
         /** Shield troops (abilities mechanic shield: the Order Squire and the Templar of gilded_normal) of a squad, alive. */
-        static List<GravesAndGlory.Unit> shields(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return b.units.stream().filter(u->u.squad==s&&Tactics.mechanic(u.spec).equals("shield")&&u.mob.isAlive()).toList();}
+        static List<GravesAndGlory.Unit> shields(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return b.units.stream().filter(u->u.squad==s&&u.tags.contains("shield")&&u.mob.isAlive()).toList();}
         /** Stands the army's rows behind the front rank at (cx,cz), facing the enemy. */
         void place(GravesAndGlory.Battle b,GravesAndGlory.Squad s,double cx,double cz){
             int back=s.team==0?-1:1;

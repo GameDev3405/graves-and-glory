@@ -97,7 +97,7 @@ class RecruitmentScreen extends ArmyScreen {
             DarkUi.label(g,"Health",rx,143,MUTED);DarkUi.label(g,""+t.health(),rx+rw-26,143,WHITE);
             DarkUi.label(g,"Damage",rx,163,MUTED);DarkUi.label(g,""+t.damage(),rx+rw-26,163,WHITE);
             DarkUi.label(g,"Fielded / in banner",rx,183,MUTED);DarkUi.label(g,roster[selected]+" / "+listed(t),rx+rw-34,183,WHITE);
-            String ability=switch(Tactics.mechanic(t)){case "shield"->"Shield / frontline protection";case "mend"->"Mend / restores allied health";case "blight"->"Blight / offensive magic";default->t.group().equals("ranged")?"Ranged / attacks from distance":"Melee / frontline fighter";};
+            String ability=switch(Abilities.row(t).mechanic()){case "shield"->"Shield / frontline protection";case "mend"->"Mend / restores allied health";case "blight"->"Blight / offensive magic";default->t.group().equals("ranged")?"Ranged / attacks from distance":"Melee / frontline fighter";};
             DarkUi.label(g,ability,rx,206,MUTED);
             int yy=height-141;for(var line:textRenderer.wrapLines(DarkUi.body(unavailable(t)),rw)){g.drawText(textRenderer,line,rx,yy,recruit.active?MUTED:GOLD,false);yy+=11;}
         }

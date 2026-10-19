@@ -352,7 +352,7 @@ public final class Phase2Checks implements ClientModInitializer {
     /**
      * Task 3: the combat engine. ArmyMobs and their daylight and water rules, the troop damage type with Combat.resolve (counter rows and the
      * shield bypass), the abilities shell (mend, blight), the House strip of the HUD, the House roll, the recruit page's House tabs and the tick
-     * cost of eight armies (152 troops). Stages run on the server tick; the client sends the command, opens the screens and takes the screenshots the stages ask for.
+     * cost of eight armies (160 troops). Stages run on the server tick; the client sends the command, opens the screens and takes the screenshots the stages ask for.
      */
     static final class Engine implements Suite,ServerWatch {
         record Pin(GravesAndGlory.Unit u,Vec3d at,float yaw){}
@@ -361,7 +361,7 @@ public final class Phase2Checks implements ClientModInitializer {
         // daylight and water: a stone platform and a sealed tank in the open sky
         BlockPos site;final List<MobEntity> army=new ArrayList<>();MobEntity vanillaSkeleton,vanillaWither,armyHusk,vanillaHusk;
         boolean armyBurned,controlBurned,controlWitherBurned;int submerged;
-        // the HUD strip: the client drives stages 5 and 6 and the server reports at 7
+        // the HUD strip: the client drives stage 5 and the server reports at 7
         int hudState,hudWait;volatile boolean hudOk;volatile String hudWhy="";
         // the combat fixture on a sky platform above Dawn's base
         GravesAndGlory.Squad dawn,dusk;GravesAndGlory.Unit knight,bowFront,bowBack,melee,hitter,victim,mage,ally,caster,tA,tB,tC;
@@ -417,7 +417,6 @@ public final class Phase2Checks implements ClientModInitializer {
             Set<String> out=new LinkedHashSet<>();for(var t:Spec.TROOPS)if(t.house().equals(house)&&t.rarity().equals("common"))out.add(t.id());if(house.equals("gilded"))out.add("sentinel");return out;
         }
         public void cleanup(MinecraftClient c){
-            GravesAndGloryClient.houseStripOverride=null;
             server(c,b->{clearFixture();unforce(b);if(cost!=null)cost.handBack();if(rngSaved!=null)b.campaign.rollRng=rngSaved;if(b.running)b.campaign.returnLobby();});
         }
 
@@ -426,7 +425,6 @@ public final class Phase2Checks implements ClientModInitializer {
             String cmd=send;if(cmd!=null){send=null;GravesAndGloryClient.send(cmd);System.out.println("[p2] sent "+cmd);}
             if(wantShot!=null&&!shotTaken&&++shotDelay>=12){shot(c,wantShot);shotTaken=true;}
             if(stage==5)hud(c);
-            if(stage==6)hudHouses(c);
             if(stage==51)recruit(c);
             if(stage==99&&!finished){finished=true;c.setScreen(null);finish(c,"engine");}
             if(tick>14000&&!finished){finished=true;report("p2-engine-timeout",false,"stuck in stage "+stage);finish(c,"engine");}
@@ -441,12 +439,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 for(var row:Spec.HOUSES){boolean there=c.getResourceManager().getResource(new Identifier(row.glyph())).isPresent();all&=there;files.append(row.id()).append(there?" ok ":" MISSING ");}
                 hudOk=shown&&all;hudWhy="the client's strip holds "+h+" (in battle, no screen, gilded III="+shown+"); the five glyph files: "+files.toString().trim();requestShot("engine-hud");
             }
-            if(hudState==1&&wantShot!=null&&shotTaken){wantShot=null;hudState=2;server(c,b->next(b,6));}
-        }
-        /** Stage 6: the strip holds all five Houses at once (a held override), so the screenshot engine-hud-houses shows every icon. */
-        void hudHouses(MinecraftClient c){
-            if(hudState==2){hudState=3;var all=new LinkedHashMap<String,Integer>();all.put("gilded",3);all.put("graveborn",2);all.put("wildmoot",1);all.put("ironclad",3);all.put("tidecallers",2);GravesAndGloryClient.houseStripOverride=all;requestShot("engine-hud-houses");}
-            if(hudState==3&&wantShot!=null&&shotTaken){wantShot=null;hudState=4;GravesAndGloryClient.houseStripOverride=null;server(c,b->next(b,7));}
+            if(hudState==1&&wantShot!=null&&shotTaken){wantShot=null;hudState=2;server(c,b->next(b,7));}
         }
         /** Stage 51: the camp page `recruit` with its five House tabs, on the profile the v1 fixture migrated to; every tab is screenshotted (the brief names the first three). */
         void recruit(MinecraftClient c){
@@ -485,19 +478,22 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 1->{ // p2-armymobs
                     var w=b.world;boolean ok=true;StringBuilder why=new StringBuilder();
                     Map<String,EntityType<?>> types=Map.<String,EntityType<?>>of("husk",EntityType.HUSK,"skeleton",EntityType.SKELETON,"wither_skeleton",EntityType.WITHER_SKELETON);
+                    var armor=net.minecraft.entity.attribute.EntityAttributes.GENERIC_ARMOR;
                     for(String id:List.of("husk","skeleton","wither_skeleton")){
                         MobEntity m=ArmyMobs.create(id,w);String goals,targets;
                         try{goals=goalNames(m,"goalSelector").toString();targets=goalNames(m,"targetSelector").toString();}catch(ReflectiveOperationException e){goals=targets="unreadable: "+e;}
-                        boolean good=m instanceof ArmyMob&&ArmyMobs.isTroop(m)&&m.getType()==types.get(id)&&goals.equals("[SwimGoal]")&&targets.equals("[]");
-                        ok&=good;why.append(id).append(" -> ").append(m.getClass().getSimpleName()).append(", goals ").append(goals).append(", targets ").append(targets).append(good?"":" (BAD)").append("; ");
+                        double base=m.getAttributeBaseValue(armor);boolean good=m instanceof ArmyMob&&ArmyMobs.isTroop(m)&&m.getType()==types.get(id)&&goals.equals("[SwimGoal]")&&targets.equals("[]")&&base==0;
+                        ok&=good;why.append(id).append(" -> ").append(m.getClass().getSimpleName()).append(", goals ").append(goals).append(", targets ").append(targets).append(", base armour ").append(base).append(good?"":" (BAD)").append("; ");
                     }
                     boolean threw=false;String thrown="";try{ArmyMobs.create("wolf",w);}catch(IllegalStateException e){threw=true;thrown=e.getMessage();}
                     var wolf=ArmyMobs.portrait("wolf",w);boolean portrait=wolf instanceof net.minecraft.entity.passive.WolfEntity&&!(wolf instanceof ArmyMob)&&!ArmyMobs.isTroop(wolf);
+                    double vanillaArmour=new HuskEntity(EntityType.HUSK,w).getAttributeBaseValue(armor);boolean control=vanillaArmour==2; // the control: a vanilla husk does carry the +2 that create() clears
+                    boolean unknown=ArmyMobs.portrait("p2_no_such_mob",w) instanceof HuskEntity&&ArmyMobs.portrait("arrow",w) instanceof HuskEntity&&ArmyMobs.portrait("Not An Id",w) instanceof HuskEntity;
                     ArmyMobs.register("p2_probe",GravesAndGlory.ArmyHusk::new);boolean registered=ArmyMobs.create("p2_probe",w) instanceof GravesAndGlory.ArmyHusk;ArmyMobs.FACTORIES.remove("p2_probe");
                     boolean gone=false;try{ArmyMobs.create("p2_probe",w);}catch(IllegalStateException e){gone=true;}
                     boolean names=ArmyMobs.named("Order Squire")==Campaign.troop("knight")&&ArmyMobs.named("Knight-Captain")==Campaign.troop("knight")&&ArmyMobs.named("Nobody")==null&&ArmyMobs.stageName(Campaign.troop("knight"),1).equals("Order Squire")&&ArmyMobs.stageName(Campaign.troop("knight"),2).equals("Knight")&&ArmyMobs.stageName(Campaign.troop("mage"),2).equals("Sunweaver");
-                    ok&=threw&&portrait&&registered&&gone&&names;
-                    report("p2-armymobs",ok,why+"create(wolf) throws IllegalStateException="+threw+" (\""+thrown+"\"); portrait(wolf) is a plain wolf="+portrait+"; register(p2_probe) then create gives an ArmyHusk="+registered+", gone after removal="+gone+"; stage names resolve (Order Squire, Knight, Knight-Captain; a troop without a line keeps its name)="+names);
+                    ok&=threw&&portrait&&registered&&gone&&names&&control&&unknown;
+                    report("p2-armymobs",ok,why+"create(wolf) throws IllegalStateException="+threw+" (\""+thrown+"\"); portrait(wolf) is a plain wolf="+portrait+"; register(p2_probe) then create gives an ArmyHusk="+registered+", gone after removal="+gone+"; stage names resolve (Order Squire, Knight, Knight-Captain; a troop without a line keeps its name)="+names+"; a vanilla Husk's base armour is "+vanillaArmour+" and create() clears it to 0 (above), so a troop's armour is its worn gear="+control+"; portrait of an id the game lacks, of an id that is no mob (arrow) and of a malformed id each draws a husk, not the registry's pig="+unknown);
                     next(b,2);
                 }
                 case 2->{ // a stone platform and a sealed tank in the open sky, at noon
@@ -564,10 +560,11 @@ public final class Phase2Checks implements ClientModInitializer {
                     move(melee,0,-2.5,0);knight.mob.setHealth(knight.mob.getMaxHealth());mark=Combat.LAST.peekLast();
                     Combat.resolve(b,melee,knight.mob,5f,"melee",false);meleeBack=Combat.LAST.peekLast()!=mark?Combat.LAST.peekLast():null;
                     boolean f=front!=null&&near(front.counters(),0.35)&&front.rows().equals(List.of("C1"))&&frontLost>0&&frontLost<=3.5f+1e-3&&front.target()==knight.mob.getId()&&front.attacker()==bowFront.mob.getId()&&front.base()==10f&&near(front.traits(),1)&&near(front.auras(),1)&&near(front.commander(),1)&&near(front.total(),0.35);
-                    boolean k=back!=null&&near(back.counters(),1.0)&&back.rows().isEmpty()&&backLost>frontLost&&near(back.total(),1.0);
+                    boolean k=back!=null&&near(back.counters(),1.0)&&back.rows().isEmpty()&&backLost>frontLost&&near(back.total(),1.0)&&Math.abs(backLost-8.8f)<0.02f;
+                    boolean gear=knight.mob.getArmor()==8&&knight.mob.getAttributeBaseValue(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ARMOR)==0;
                     boolean l=lowered!=null&&near(lowered.counters(),0.75)&&lowered.rows().equals(List.of("C2"))&&loweredLost>frontLost;
                     boolean m1=meleeFront!=null&&near(meleeFront.counters(),0.6)&&meleeFront.rows().equals(List.of("C3")),m2=meleeBack!=null&&near(meleeBack.counters(),1.15)&&meleeBack.rows().equals(List.of("C16"));
-                    report("p2-shield-counter",f&&k&&l&&m1&&m2,"raised shield, Bone Archer arrow from the front: "+show(front)+", lost "+frontLost+" of "+10*0.35+" (the shield did not stop it)="+f+"; from behind: "+show(back)+", lost "+backLost+"="+k+"; shield lowered, front: "+show(lowered)+", lost "+loweredLost+"="+l+"; melee into the raised shield, front: "+show(meleeFront)+"="+m1+"; melee from behind: "+show(meleeBack)+"="+m2);
+                    report("p2-shield-counter",f&&k&&l&&m1&&m2&&gear,"raised shield, Bone Archer arrow from the front: "+show(front)+", lost "+frontLost+" of "+10*0.35+" (the shield did not stop it)="+f+"; from behind: "+show(back)+", lost "+backLost+" (want 8.8: base 10 under armour 8)="+k+"; shield lowered, front: "+show(lowered)+", lost "+loweredLost+"="+l+"; melee into the raised shield, front: "+show(meleeFront)+"="+m1+"; melee from behind: "+show(meleeBack)+"="+m2+"; the Squire's armour is "+knight.mob.getArmor()+" (iron helmet and chestplate = 8) on a husk base of "+knight.mob.getAttributeBaseValue(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ARMOR)+"="+gear);
                     next(b,17);
                 }
                 case 17->{if(since(b)<25)return; // p2-damage-type, part 2: a blow from the real attack code (Tactics through Abilities) takes the same path
@@ -629,9 +626,9 @@ public final class Phase2Checks implements ClientModInitializer {
                     }catch(IOException e){report("p2-recruit-tabs",false,e.toString());next(b,60);return;}
                     next(b,51);
                 }
-                case 60->{ // p2-tick-cost: eight bot armies, 152 troops (19 each)
+                case 60->{ // p2-tick-cost: eight bot armies, 160 troops (20 each)
                     var p=sp(b);if(p==null)return;
-                    if(cost==null)cost=tickCost(b,List.of("gilded_normal","gilded_normal","gilded_normal","gilded_normal","graveborn_normal","graveborn_normal","graveborn_normal","graveborn_normal"));
+                    if(cost==null)cost=tickCost(b,List.of("gilded_easy","gilded_easy","gilded_easy","gilded_easy","graveborn_easy","graveborn_easy","graveborn_easy","graveborn_easy"));
                     if(cost.step(p)){
                         report("p2-tick-cost",cost.last<40,"server tick "+String.format(Locale.ROOT,"%.2f",cost.last)+" ms (600-tick mean "+String.format(Locale.ROOT,"%.2f",cost.avg)+" ms) with "+cost.troops+" troops at the start and "+b.units.size()+" at the end ("+cost.note+")");
                         cost.handBack();b.campaign.returnLobby();next(b,99);
@@ -644,7 +641,7 @@ public final class Phase2Checks implements ClientModInitializer {
 
     /**
      * The reusable tick-cost fixture (every House task runs it with its own banners): the commander's army and seven bot armies (four a side,
-     * 152 troops under the normal bot banners, 19 each) fight around the centre point for 600 ticks, each army under the next banner of the list (Dawn's armies
+     * 160 troops under the easy bot banners, 20 each; the normal banners field 19, their Epic takes two slots) fight around the centre point for 600 ticks, each army under the next banner of the list (Dawn's armies
      * first; a short list repeats), and the server's tick time is read each tick. Call step on every server tick until it returns true.
      */
     static TickCost tickCost(GravesAndGlory.Battle b,List<String> banners){return new TickCost(b,banners);}

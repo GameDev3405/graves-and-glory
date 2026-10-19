@@ -2016,7 +2016,8 @@
       "projectileMaxTicks": 14,
       "impactParticles": 8,
       "multiplierMin": 0.25,
-      "multiplierMax": 2.5
+      "multiplierMax": 2.5,
+      "chargeImpactTicks": 60
     }
   ],
   "recruitmentView": [

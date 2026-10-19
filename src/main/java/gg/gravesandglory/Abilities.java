@@ -8,7 +8,8 @@ import java.util.Comparator;
 
 /**
  * Troop abilities (spec 2, the abilities sheet). A troop's ability id names a row; the row's mechanic decides what it does. The shield is a tag
- * the shield logic and the counters table read; mend and blight behave here; every other mechanic is a no-op until the task of its House.
+ * the shield logic and the counters table read; mend and blight behave here; the stances (steady, ambush, brace) act through the counters table;
+ * every other mechanic is a no-op until the task of its House.
  * Every number comes from the row, with the combatDiscipline defaults where a row says 0.
  */
 final class Abilities {

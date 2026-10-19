@@ -13,14 +13,13 @@ import java.util.*;
  * All troop damage (spec section 3). resolve multiplies the matching counters rows, the House traits, the auras and the commander
  * effects into one factor, clamps it to [combatDiscipline.multiplierMin, multiplierMax] and hurts the target with the damage type
  * gravesandglory:troop, which is tagged bypasses_shield: a raised shield takes no part in the vanilla block, the counters table is the
- * only shield maths. Armour still applies. Every number comes from the counters, houseTraits, abilities and combatDiscipline sheets.
+ * only shield maths. Armour still applies. Every number comes from the counters, houseTraits, abilities and combatDiscipline sheets,
+ * the charge-impact window of counters row C5 included (combatDiscipline.chargeImpactTicks).
  */
 public final class Combat {
     private Combat() {}
     /** The damage type of every troop blow (data/gravesandglory/damage_type/troop.json). */
     public static final RegistryKey<DamageType> TROOP = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, new Identifier("gravesandglory", "troop"));
-    /** Ticks after a group's order becomes Charge during which a troop's first melee hit is the charge impact (counters row C5). */
-    public static final int IMPACT_TICKS = 60;
     /** How many hits LAST keeps. */
     static final int LOG_SIZE = 64;
 
@@ -62,7 +61,7 @@ public final class Combat {
         String order = b.assignment(attacker).order;
         boolean charging = melee && order.equals("charge"), holding = order.equals("hold");
         Long charged = attacker.squad.chargedAt.get(attacker.spec.group());
-        boolean impact = charging && charged != null && b.time - charged <= IMPACT_TICKS && attacker.chargeHitAt < charged;
+        boolean impact = charging && charged != null && b.time - charged <= D.chargeImpactTicks() && attacker.chargeHitAt < charged;
         double bearing = BattleMath.relativeBearing(target.getYaw(), attacker.mob.getX() - target.getX(), attacker.mob.getZ() - target.getZ());
         boolean raised = victim != null && victim.tags.contains("shield") && victim.mob.isUsingItem() && victim.mob.getActiveItem().isOf(Items.SHIELD);
         boolean noSky = from.contains("ambush") && !b.world.isSkyVisible(attacker.mob.getBlockPos());

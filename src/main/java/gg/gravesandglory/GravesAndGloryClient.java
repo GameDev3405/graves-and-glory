@@ -34,8 +34,6 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static String message="Preparing battlefield",order="follow",formation="block";
     /** state_v8: the side id each team flies, this army's House trait tiers (tier I or higher), and the commander ability (id, ticks until ready, ticks left active; the commander task fills them). */
     static String[] sideIds={"",""};static Map<String,Integer> houses=Map.of();static String commanderActive="";static int commanderReady,commanderFor;
-    /** A harness holds a House strip here so a screenshot can show every House at once; null in play. */
-    static volatile Map<String,Integer> houseStripOverride;
     static boolean[] contested={false,false,false};
     record Sight(float x,float z,int age){}
     static List<Sight> sightings=List.of();

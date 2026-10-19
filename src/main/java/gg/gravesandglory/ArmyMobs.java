@@ -2,10 +2,10 @@ package gg.gravesandglory;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.attribute.EntityAttributeInstance;
+import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.mob.HuskEntity;
 import net.minecraft.entity.mob.MobEntity;
-import net.minecraft.entity.mob.SkeletonEntity;
-import net.minecraft.entity.mob.WitherSkeletonEntity;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
@@ -30,26 +30,31 @@ public final class ArmyMobs {
     /** Registers (or replaces) the factory of a sheet entity id. */
     public static void register(String entity, Function<World, MobEntity> factory) { FACTORIES.put(entity, factory); }
 
-    /** A new troop mob for a sheet entity id. An id nobody registered is a bug in the sheet or a House that is not built yet, so it throws. */
+    /**
+     * A new troop mob for a sheet entity id. An id nobody registered is a bug in the sheet or a House that is not built yet, so it throws.
+     * The mob's own built-in armour is cleared: a troop's armour is its worn gear and nothing else (spec 1.3, "HP is the health column, before
+     * worn armour"). Vanilla gives the whole zombie family a base armour of 2 (the husk, the drowned) and the skeletons none, so left alone a
+     * mob type would decide how hard a House is to hurt, in no sheet and out of reach of a gate's tuning. A House that wants heavier troops
+     * says so in the troops sheet, with gear.
+     */
     public static MobEntity create(String entity, World w) {
         Function<World, MobEntity> factory = FACTORIES.get(entity);
         if (factory == null) throw new IllegalStateException("No army mob is registered for the troop entity '" + entity + "'");
-        return factory.apply(w);
+        MobEntity mob = factory.apply(w);
+        EntityAttributeInstance armour = mob.getAttributeInstance(EntityAttributes.GENERIC_ARMOR);
+        if (armour != null) armour.setBaseValue(0);
+        return mob;
     }
 
     /**
      * A mob for a portrait (the recruitment cards, the barracks): the vanilla mob of the sheet's entity id, never an Army* class, so a
      * card draws any troop of any House before its House can take the field. An id the game does not know, or that is not a mob, draws a husk.
+     * The registry is a defaulted one (an unknown id would answer with a pig), so the id is looked up with containsId first.
      */
     public static MobEntity portrait(String entity, World w) {
-        switch (entity) {
-            case "husk": return new HuskEntity(EntityType.HUSK, w);
-            case "skeleton": return new SkeletonEntity(EntityType.SKELETON, w);
-            case "wither_skeleton": return new WitherSkeletonEntity(EntityType.WITHER_SKELETON, w);
-            default:
-                Entity made = Registries.ENTITY_TYPE.get(new Identifier(entity)).create(w);
-                return made instanceof MobEntity mob ? mob : new HuskEntity(EntityType.HUSK, w);
-        }
+        Identifier id = Identifier.tryParse(entity);
+        if (id != null && Registries.ENTITY_TYPE.containsId(id) && Registries.ENTITY_TYPE.get(id).create(w) instanceof MobEntity mob) return mob;
+        return new HuskEntity(EntityType.HUSK, w);
     }
 
     /** Whether the entity is a troop of the army (an ArmyMob). */

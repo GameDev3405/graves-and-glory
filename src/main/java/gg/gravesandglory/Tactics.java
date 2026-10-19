@@ -12,9 +12,6 @@ import java.util.*;
 /** Server-authoritative targeting, separation, bridge routing and local path recovery. */
 final class Tactics {
     static final Spec.NavigationRow N=Spec.NAVIGATION[0];
-    static final Map<String,String> MECHANICS=new java.util.concurrent.ConcurrentHashMap<>();
-    /** The abilities-sheet mechanic of a troop's ability (shield, mend, blight...); none for an id the sheet lacks. */
-    static String mechanic(Spec.TroopsRow t){return MECHANICS.computeIfAbsent(t.ability(),id->{for(var a:Spec.ABILITIES)if(a.id().equals(id))return a.mechanic();return "none";});}
     /** Between beats a shield troop re-reads the distance to the enemy it chose on its beat, so a block knight lowers its shield on the tick
      *  that enemy steps into sword reach (BattleMath.raiseShield). With no live target it keeps the beat's decision until the next beat. */
     static void brace(GravesAndGlory.Battle battle,GravesAndGlory.Unit u){

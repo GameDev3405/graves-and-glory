@@ -177,7 +177,7 @@ public final class HousesCheck {
         check(eq(counters(hit("melee,sunder","shield",130,true)),1.4*1.15) && CounterMath.applied(hit("melee,sunder","shield",130,true),Spec.COUNTERS).equals(List.of("C14","C16")), "separate groups multiply");
         check(CounterMath.applied(impact("melee,beast,cavalry","ranged"),Spec.COUNTERS).equals(List.of("C5")) && CounterMath.applied(hit("arrow,armour_bolt","shield",10,true),Spec.COUNTERS).equals(List.of("C15")) && CounterMath.applied(hit("arrow","any",10,false),Spec.COUNTERS).isEmpty(), "applied names the row that wins each group");
         check(total(0.1,1,1,1,.25,2.5)==0.25 && total(2,1.5,1,1,.25,2.5)==2.5 && eq(total(1.4,0.85,1,0.75,.25,2.5),0.8925), "clamp");
-        check(Spec.COMBATDISCIPLINE[0].multiplierMin()==0.25 && Spec.COMBATDISCIPLINE[0].multiplierMax()==2.5, "combatDiscipline holds the clamp");
+        check(Spec.COMBATDISCIPLINE[0].multiplierMin()==0.25 && Spec.COMBATDISCIPLINE[0].multiplierMax()==2.5 && Spec.COMBATDISCIPLINE[0].chargeImpactTicks()==60, "combatDiscipline holds the clamp and the charge-impact window");
         // traits
         check(traitTier(5,T)==0 && traitTier(6,T)==1 && traitTier(10,T)==2 && traitTier(14,T)==3 && traitTier(20,T)==3, "tiers 6/10/14");
         check(houseSlots(SPEC_EXAMPLE_BANNER,cat).equals(Map.of("gilded",15,"graveborn",5)), "spec 6.2 banner: Gilded 15, Graveborn 5");

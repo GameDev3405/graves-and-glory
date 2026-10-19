@@ -178,7 +178,7 @@ public final class GravesAndGlory implements ModInitializer {
         boolean rose;
         /** Blocks walked since this troop's last attack, for Pounce. */
         double travelSinceAttack;
-        /** Battle time of this troop's last charge-impact hit: the impact is the first hit of a fresh Charge (Combat.IMPACT_TICKS). */
+        /** Battle time of this troop's last charge-impact hit: the impact is the first hit of a fresh Charge (the combatDiscipline chargeImpactTicks window). */
         long chargeHitAt=-1;
         Unit(MobEntity m,Squad s,Spec.TroopsRow t,int slot){mob=m;squad=s;spec=t;this.slot=slot;lastPosition=m.getPos();deployed=m.getPos();tags=new HashSet<>(ArmyMobs.tags(t));}
     }
@@ -193,7 +193,7 @@ public final class GravesAndGlory implements ModInitializer {
         public ArmyHusk(World world){super(EntityType.HUSK,world);}
         @Override public boolean shouldSave(){return false;}
         @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
-        /** Never burns in daylight and never turns into a Drowned in water: a troop stays the troop its sheet row says. */
+        /** Never burns in daylight and never turns into a Zombie in water: a troop stays the troop its sheet row says. */
         @Override protected boolean isAffectedByDaylight(){return false;}
         @Override protected boolean canConvertInWater(){return false;}
     }

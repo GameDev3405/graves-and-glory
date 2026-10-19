@@ -95,13 +95,11 @@ public final class CommandMode {
      * names the currency), then each House the army has a trait tier in as its 16x16 glyph and a Roman numeral. Nothing is drawn without a tier.
      */
     static void houseStrip(DrawContext g,int y){
-        var c=MinecraftClient.getInstance();var tiers=GravesAndGloryClient.houseStripOverride!=null?GravesAndGloryClient.houseStripOverride:GravesAndGloryClient.houses;
+        var c=MinecraftClient.getInstance();var tiers=GravesAndGloryClient.houses;
         if(tiers.isEmpty())return;
-        int team=GravesAndGloryClient.team;Spec.FactionsRow side=null; // the live state names the side first; the camp snapshot is the fallback
-        if(team==0||team==1)for(var f:Spec.FACTIONS)if(f.id().equals(GravesAndGloryClient.sideIds[team]))side=f;
-        if(side==null)side=DarkUi.side(team);
+        int team=GravesAndGloryClient.team;var side=DarkUi.side(team); // DarkUi.side reads the live battle state, like every other team mark
         GravesAndGloryClient.panel(g,8,y,210,38);
-        if(side!=null){DarkUi.sideMark(g,side,16,y+4);g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth(side.name().toUpperCase(java.util.Locale.ROOT)+" / HOUSES",190),28,y+4,GravesAndGloryClient.MUTED);}
+        if(side!=null){DarkUi.teamMark(g,team,16,y+4);g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth(side.name().toUpperCase(java.util.Locale.ROOT)+" / HOUSES",190),28,y+4,GravesAndGloryClient.MUTED);}
         int x=16;for(var house:Spec.HOUSES){int tier=tiers.getOrDefault(house.id(),0);if(tier<=0)continue;DarkUi.houseMark(g,house.id(),tier,x,y+17);x+=DarkUi.houseMarkWidth(tier)+12;}
     }
     static void hud(DrawContext g,int w,int h){
