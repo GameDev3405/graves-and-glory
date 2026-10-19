@@ -126,14 +126,15 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static KeyBinding key(String name,int key){return KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory."+name,InputUtil.Type.KEYSYM,key,"category.gravesandglory"));}
     /** The player's own key for an action, as a hint shows it: the binding HintText.bindingKey names (key.attack for confirm and
      *  hit, key.use for cancel and use, key.gravesandglory.(id) for the rest: menu, attack, follow, formation, map, rotate_left,
-     *  rotate_right, ability, hints); "Not bound" when that binding is unbound or unknown. */
+     *  rotate_right, ability, hints), a mouse button as LMB, RMB or MMB (HintText.chip), so every hint names it alike: chips, the
+     *  lessons, the camp sign and the notices; "Not bound" when that binding is unbound or unknown. */
     public static String hint(String id){
         String name=HintText.bindingKey(id);
-        for(KeyBinding k:MinecraftClient.getInstance().options.allKeys)if(k.getTranslationKey().equals(name))return k.isUnbound()?"Not bound":k.getBoundKeyLocalizedText().getString();
+        for(KeyBinding k:MinecraftClient.getInstance().options.allKeys)if(k.getTranslationKey().equals(name))return k.isUnbound()?"Not bound":HintText.chip(k.getBoundKeyLocalizedText().getString());
         return "Not bound";
     }
     /** The camp's bottom hint, naming the player's own menu and use keys (a mouse button as LMB, RMB or MMB). */
-    public static String campHint(){return hint("menu")+" / Camp guide    "+HintText.chip(hint("use"))+" on a station to interact";}
+    public static String campHint(){return hint("menu")+" / Camp guide    "+hint("use")+" on a station to interact";}
     static void say(String line){try{Files.writeString(runtime.resolve("melty.log"),line+"\n",StandardOpenOption.CREATE,StandardOpenOption.APPEND);}catch(Exception ignored){}}
     static void send(String action){if(ClientPlayNetworking.canSend(GravesAndGlory.ORDER)){PacketByteBuf b=PacketByteBufs.create();b.writeString(action);ClientPlayNetworking.send(GravesAndGlory.ORDER,b);}}
     static void connectOrHost(MinecraftClient c){
@@ -273,7 +274,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             for(Marker m:markers){double px=x+(m.x()+350)*w/700,pz=y+(m.z()+250)*h/500;if(Math.hypot(mx-px,my-pz)<6){selected=m;return true;}}return super.mouseClicked(mx,my,b);}
         @Override public void render(DrawContext g,int mx,int my,float delta){g.fill(0,0,width,height,DarkUi.SCRIM);g.drawCenteredTextWithShadow(textRenderer,"BATTLEFIELD / FRIENDLY FORCES",width/2,12,DarkUi.GOLD);panel(g,x-4,y-4,w+8,h+8);map(g,x,y,w,h,true);key(g,width/2,y+h+12);if(selected!=null)g.drawCenteredTextWithShadow(textRenderer,selected.name()+" / "+(selected.own()?"Your troop":"Allied troop")+(selected.fighting()?" / IN COMBAT":" / moving or holding"),width/2,y+h+24,DarkUi.IVORY);super.render(g,mx,my,delta);}
         /** The map's controls, named by the player's own bindings (a mouse button as LMB, RMB or MMB). */
-        public static String legend(){return HintText.chip(hint("hit"))+" a group to select / "+HintText.chip(hint("use"))+" to move";}
+        public static String legend(){return hint("hit")+" a group to select / "+hint("use")+" to move";}
         /** The legend, then on the same line the key to the troop marks in the map's own glyphs (a dot for yours, a ring for allies,
          *  an x for enemy sightings), centred on cx with its top at y. */
         void key(DrawContext g,int cx,int y){

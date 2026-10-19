@@ -1629,6 +1629,11 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 0->{ // p1-ui-hints-rebound: the menu key on K, the map key unbound
                     if(tick<20)return;c.setScreen(null);var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();
                     CommandMode.selected="all";window(c,960,540,1);
+                    // p1-ui-hints-mouse (UI polish M6): a mouse button reads LMB, RMB or MMB outside the hint layer too: the camp sign, a
+                    // notice and the lessons, with Commands on the middle button and Use on the right one (its default)
+                    GravesAndGloryClient.menu.setBoundKey(net.minecraft.client.util.InputUtil.Type.MOUSE.createFromCode(GLFW.GLFW_MOUSE_BUTTON_MIDDLE));net.minecraft.client.option.KeyBinding.updateKeysByCode();
+                    String mouseCamp=GravesAndGloryClient.campHint(),mouseNotice=HintText.expand(NOTICE,GravesAndGloryClient::hint),lessonOne=GravesAndGloryClient.lessonText(0),lessonFour=GravesAndGloryClient.lessonText(3);
+                    report("p1-ui-hints-mouse",mouseCamp.startsWith("MMB / Camp guide")&&mouseCamp.contains(" RMB on a station")&&mouseNotice.equals("MMB opens your war council.")&&lessonOne.startsWith("Press MMB, ")&&lessonFour.startsWith("Press RMB at "),"campHint() '"+mouseCamp+"'; the notice '"+NOTICE+"' reads '"+mouseNotice+"'; lesson 1 '"+lessonOne+"'; lesson 4 '"+lessonFour+"'");
                     GravesAndGloryClient.menu.setBoundKey(net.minecraft.client.util.InputUtil.Type.KEYSYM.createFromCode(GLFW.GLFW_KEY_K));
                     GravesAndGloryClient.mapKey.setBoundKey(net.minecraft.client.util.InputUtil.UNKNOWN_KEY);net.minecraft.client.option.KeyBinding.updateKeysByCode();
                     String camp=GravesAndGloryClient.campHint();campOk=camp.contains("K");campWhy="campHint() '"+camp+"'";

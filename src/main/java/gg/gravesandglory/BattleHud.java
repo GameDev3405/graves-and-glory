@@ -188,7 +188,7 @@ public final class BattleHud {
         String[][] ids={aiming?new String[]{"confirm","cancel"}:new String[]{"map","menu"},{"rotate_left","rotate_right","hints"}};
         String[][] words={aiming?new String[]{"Confirm","Cancel"}:new String[]{"Map","Commands"},{null,"Turn","Hints"}};
         for(int row=0;row<2;row++){
-            List<String> keys=new ArrayList<>();for(String id:ids[row])keys.add(HintText.chip(GravesAndGloryClient.hint(id)));
+            List<String> keys=new ArrayList<>();for(String id:ids[row])keys.add(GravesAndGloryClient.hint(id));
             keys=UiMath.fitKeys(keys,Arrays.asList(words[row]),HINT_ROW_W,font::getWidth);
             List<String> drawn=new ArrayList<>();int kx=x+10,ky=y+(row==0?7:22),end=kx;
             for(int k=0;k<keys.size();k++){
