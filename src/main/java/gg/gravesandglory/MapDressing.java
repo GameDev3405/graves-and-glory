@@ -21,7 +21,7 @@ final class MapDressing {
         trim=switch(map){case 2->Blocks.POLISHED_DIORITE;case 3->Blocks.MOSSY_STONE_BRICKS;default->Blocks.STONE_BRICKS;};
         plank=map>=2&&map<=3?Blocks.SPRUCE_PLANKS:Blocks.OAK_PLANKS;log=map>=2&&map<=3?Blocks.SPRUCE_LOG:Blocks.OAK_LOG;
     }
-    static void dress(ServerWorld w){var d=new MapDressing(w);d.camps();d.points();d.bridgeheads();d.redoubts();d.setPieces();d.roadLamps();}
+    static void dress(ServerWorld w){var d=new MapDressing(w);d.camps();d.points();d.bridgeheads();d.redoubts();d.setPieces();d.roadLamps();d.worn();}
 
     // ---- placement rules -------------------------------------------------
     static int hash(int x,int z){return Math.floorMod(x*734287+z*912931+x*z*17,100003);}
@@ -34,7 +34,15 @@ final class MapDressing {
     static boolean muster(int x,int z){for(int t=0;t<2;t++){var f=Spec.FACTIONS[t];int u=(x-f.spawnX())*(t==0?1:-1);if(u>=-2&&u<=24&&Math.abs(z-f.spawnZ())<=40)return true;}return false;}
     static boolean onStructure(int x,int z,int margin){for(var s:Spec.STRUCTURES)if(Math.abs(x-s.x())<=s.width()/2+margin&&Math.abs(z-s.z())<=s.depth()/2+margin)return true;return false;}
     /** On what a structure builds: the x0..x0+width-1 by z0..z0+depth-1 of its floor course or deck planks (onStructure with no margin also counts the row and the column beyond them, which are ground). */
-    static boolean built(int x,int z){for(var s:Spec.STRUCTURES){int x0=s.x()-s.width()/2,z0=s.z()-s.depth()/2;if(x>=x0&&x<x0+s.width()&&z>=z0&&z<z0+s.depth())return true;}return false;}
+    static boolean built(int x,int z){return nearBuilt(x,z,0);}
+    /** Within margin blocks of what a structure builds (the floor course of a building, the planks of a deck). A ford builds only where it stands in the river (8 columns of its line): its approaches are the ground and the road. */
+    static boolean nearBuilt(int x,int z,int margin){
+        for(var s:Spec.STRUCTURES){int x0=s.x()-s.width()/2,z0=s.z()-s.depth()/2;
+            if(x<x0-margin||x>=x0+s.width()+margin||z<z0-margin||z>=z0+s.depth()+margin)continue;
+            if(s.palette().equals("ford")&&Math.abs(x-Arena.riverX(z))>8+margin)continue;
+            return true;}
+        return false;
+    }
     /** Within two columns of the water of the river (its half-width is 6, and 9 on Hollowwood, the wide river): nothing is set down there. The test is against the real river, so the outermost column of Hollowwood's does not pass. */
     static boolean nearRiver(int map,int x,int z){return Math.abs(x-Arena.riverX(z))<(map==3?11:8);}
     boolean nearRiver(int x,int z){return nearRiver(map,x,z);}
@@ -78,10 +86,7 @@ final class MapDressing {
             // Both stand off the parade road, stepped outward until clear, so the march out stays open.
             for(int dz:new int[]{-6,6}){int z=clearZ(bx-fwd*6,bz+dz,Integer.signum(dz));if(z==NO_ROOM)continue;banner(bx-fwd*6,z,9,team,fwd);
                 int fz=clearZ(bx-fwd*6,z+Integer.signum(dz)*2,Integer.signum(dz)),x=bx-fwd*6;if(fz!=NO_ROOM)for(int a=1;a<=2;a++)put(x,h(x,fz)+a,fz,a==1?trim:map==3?Blocks.SOUL_CAMPFIRE:Blocks.CAMPFIRE);}
-            // Muster lanes: trampled earth where each squad forms, gravel files between them. Not on a road and not on or against a building (the stores and the barracks stand on the muster ground), and full blocks only (a dirt path block is lower than its neighbours).
-            for(int u=0;u<=24;u++)for(int z=bz-40;z<=bz+40;z++){int x=bx+u*fwd;if(CampaignMaps.road(x,z)||Math.abs(u)<=3&&Math.abs(z-bz)<=3||onStructure(x,z,1))continue;
-                int lane=Math.floorMod(z-bz+44,22);Block b=lane==0?Blocks.GRAVEL:lane<=2||lane>=20?null:hash(x,z)%4<2?Blocks.COARSE_DIRT:null;
-                if(b!=null)put(x,h(x,z),z,b);}
+            // The muster ground is the grass between the paved roads and nothing is scattered on it (a squad finds its lane by the standards below); trampled earth is laid by worn(), as one pattern, last.
             // Lane standards behind each squad lane, so a commander can read the line from the dais.
             for(int i=0;i<4;i++){int z=bz+(int)((i-1.5)*22);z=clearZ(bx-fwd*3,z,z>bz?1:-1);if(z!=NO_ROOM)banner(bx-fwd*3,z,6+i%2,team,fwd);}
             // Palisade: side walls and a back wall to the gatehouse; the front stays open to march out.
@@ -126,8 +131,8 @@ final class MapDressing {
             Block edge=map==2?Blocks.BLUE_ICE:map==3?Blocks.POLISHED_BLACKSTONE_BRICKS:Blocks.POLISHED_BLACKSTONE;
             if(Arena.ringLaid(p))for(int dx=-r-1;dx<=r+1;dx++)for(int dz=-r-1;dz<=r+1;dz++){double d=Math.hypot(dx,dz);int x=p.x()+dx,z=p.z()+dz;
                 if(d<r-.5||d>=r+.5||nearRiver(x,z)||onStructure(x,z,0))continue;put(x,h(x,z),z,edge);}
-            // Boundary posts: lanterns just outside the ring show the capture edge at night.
-            for(int k=0;k<20;k++){double a=k*Math.PI/10;int x=p.x()+(int)Math.round(Math.cos(a)*(r+1.5)),z=p.z()+(int)Math.round(Math.sin(a)*(r+1.5));
+            // Boundary posts: lanterns just outside the ring (past the worn strip that lies one block outside its edge stone) show the capture edge at night.
+            for(int k=0;k<20;k++){double a=k*Math.PI/10;int x=p.x()+(int)Math.round(Math.cos(a)*(r+3.0)),z=p.z()+(int)Math.round(Math.sin(a)*(r+3.0));
                 if(CampaignMaps.roadDistance(x,z)<1||nearRiver(x,z)||onStructure(x,z,0)||muster(x,z))continue;int y=h(x,z);put(x,y+1,z,coverTop);put(x,y+2,z,lamp);}
             // Cover: six breast-high walls between the roads, so defenders have something to hold.
             for(int k=0;k<6;k++){double a=Math.PI/6+k*Math.PI/3,tx=-Math.sin(a),tz=Math.cos(a);int cx=p.x()+(int)Math.round(Math.cos(a)*11),cz=p.z()+(int)Math.round(Math.sin(a)*11);
@@ -188,6 +193,66 @@ final class MapDressing {
         for(var r:CampaignMaps.roads){double dx=r.bx()-r.ax(),dz=r.bz()-r.az(),len=Math.hypot(dx,dz);if(len<12)continue;double nx=-dz/len,nz=dx/len;
             for(double s=8,k=0;s<len-4;s+=16,k++){double side=k%2==0?1:-1,off=r.width()+2;int x=(int)Math.round(r.ax()+dx*s/len+nx*off*side),z=(int)Math.round(r.az()+dz*s/len+nz*off*side);
                 if(lampNear(x,z,9)||!free(x,z,1)||inPoint(x,z,2))continue;lampPost(x,z);}}
+    }
+
+    // ---- trampled earth: one pattern, laid last ---------------------------
+    /** Dirt path cells the guard of worn() turned back to ground in the last build: a cell with no dirt path on any of its four sides draws as a pit between full blocks, the passes are meant to leave none (the arena checks read this). */
+    static volatile int despeckled;
+    /** The cells worn() laid in the last build: {x, z}. */
+    final List<int[]> laid=new ArrayList<>();
+    /** The parade ground of a camp, which the camp paves: from 19 blocks behind the dais to 25 in front of it, 63 either side. */
+    static boolean parade(int x,int z){for(int t=0;t<2;t++){var f=Spec.FACTIONS[t];int u=(x-f.spawnX())*(t==0?1:-1);if(u>=-19&&u<=25&&Math.abs(z-f.spawnZ())<=63)return true;}return false;}
+    /** Ground a worn strip may be laid on: the plain ground of the map with air or a plant above it (nothing solid stands on it), off the water, off the floors of buildings and the planks of decks and one block of margin round them (nothing is trampled against a wall), off the parade grounds. */
+    boolean wearable(int x,int z){
+        if(nearRiver(x,z)||nearBuilt(x,z,1)||parade(x,z))return false;
+        int y=h(x,z);
+        if(!w.getBlockState(new BlockPos(x,y,z)).isOf(Arena.natural(y)))return false;
+        var up=w.getBlockState(new BlockPos(x,y+1,z));
+        return up.isAir()||up.getBlock() instanceof PlantBlock||up.isOf(Blocks.SNOW);
+    }
+    void lay(int x,int z){int y=h(x,z);if(!w.getBlockState(new BlockPos(x,y+1,z)).isAir())put(x,y+1,z,Blocks.AIR);put(x,y,z,Blocks.DIRT_PATH);laid.add(new int[]{x,z});}
+    boolean path(int x,int z){return w.getBlockState(new BlockPos(x,h(x,z),z)).isOf(Blocks.DIRT_PATH);}
+    /** A cell the worn band follows: not a road cell itself, and touching on a side a road cell that is still dirt path (where the road is paved, planked or built over, the band has nothing to follow). */
+    boolean follows(int x,int z){
+        if(CampaignMaps.road(x,z))return false;
+        return CampaignMaps.road(x-1,z)&&path(x-1,z)||CampaignMaps.road(x+1,z)&&path(x+1,z)||CampaignMaps.road(x,z-1)&&path(x,z-1)||CampaignMaps.road(x,z+1)&&path(x,z+1);
+    }
+    /** A cell of the worn ring of a point whose edge stone ends at radius in: outside it and touching it, eight ways (a ring that touched it four ways only would be cut into single cells on a diagonal). */
+    static boolean ringCell(int dx,int dz,double in){
+        if(Math.hypot(dx,dz)<in)return false;
+        for(int ex=-1;ex<=1;ex++)for(int ez=-1;ez<=1;ez++)if(Math.hypot(dx+ex,dz+ez)<in)return true;
+        return false;
+    }
+    /** The cell of the stone ring (radius out from the point) that lies on the same radius as the cell (dx, dz) of its worn ring. */
+    static int[] bandOf(Spec.PointsRow p,int dx,int dz){double d=Math.hypot(dx,dz);return new int[]{p.x()+(int)Math.round(dx*p.radius()/d),p.z()+(int)Math.round(dz*p.radius()/d)};}
+    /** Trampled earth is one pattern and nothing else: a worn band one block wide along every road edge (the cells that touch a road cell on a side) and a ring one block wide just outside the edge stone of every point whose stone ring is laid, both of dirt path
+     *  on plain ground. Both are continuous: a cell of the band touches the road it follows, the ring touches the edge stone eight ways and so every cell of it touches a dirt path cell on a side, and a last guard puts back as ground any dirt path cell that is
+     *  still alone. Nothing is scattered and nothing lies against a wall, on the water, on a deck or on a parade ground; a cell that holds anything but plain ground (paving, the stone ring, a prop's foot) is left as it is. */
+    void worn(){
+        laid.clear();despeckled=0;
+        int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ(),wz=2*hz+1;
+        var road=new BitSet((2*hx+1)*wz);
+        for(int x=-hx;x<=hx;x++)for(int z=-hz;z<=hz;z++)if(CampaignMaps.road(x,z))road.set((x+hx)*wz+(z+hz));
+        for(int x=-hx+1;x<hx;x++)for(int z=-hz+1;z<hz;z++){
+            if(road.get((x+hx)*wz+(z+hz)))continue;
+            if(!(road.get((x-1+hx)*wz+(z+hz))||road.get((x+1+hx)*wz+(z+hz))||road.get((x+hx)*wz+(z-1+hz))||road.get((x+hx)*wz+(z+1+hz))))continue;
+            if(follows(x,z)&&wearable(x,z))lay(x,z);
+        }
+        for(var p:Spec.POINTS){
+            if(!Arena.ringLaid(p))continue;
+            int r=p.radius();double in=r+.5;
+            for(int dx=-r-4;dx<=r+4;dx++)for(int dz=-r-4;dz<=r+4;dz++){
+                if(!ringCell(dx,dz,in))continue;
+                var b=bandOf(p,dx,dz);
+                if(Arena.wetBank(b[0],b[1])||Arena.deckCell(b[0],b[1]))continue; // the stone ring is cut here
+                if(wearable(p.x()+dx,p.z()+dz))lay(p.x()+dx,p.z()+dz);
+            }
+        }
+        var cand=new ArrayList<int[]>(laid);
+        for(int x=-hx;x<=hx;x++)for(int z=-hz;z<=hz;z++)if(road.get((x+hx)*wz+(z+hz)))cand.add(new int[]{x,z});
+        var put=new StringBuilder();
+        for(var c:cand)if(path(c[0],c[1])&&!path(c[0]-1,c[1])&&!path(c[0]+1,c[1])&&!path(c[0],c[1]-1)&&!path(c[0],c[1]+1)){int y=h(c[0],c[1]);put(c[0],y,c[1],Arena.natural(y));if(++despeckled<=12)put.append(" (").append(c[0]).append(", ").append(c[1]).append(')');}
+        System.out.println("[Graves and Glory] Worn earth: "+laid.size()+" cells laid (band and rings), "+despeckled+" lone cells put back as ground"+(despeckled==0?"":":"+put));
     }
 
     // ---- set pieces: what each battlefield is about -----------------------
