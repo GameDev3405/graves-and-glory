@@ -82,6 +82,12 @@ public final class BattleHud {
     }
     /** A frame without the ledger (camp, a battle's entrance, a menu over the HUD): nothing reads as drawn. */
     static void clear(){cardsDrawn.clear();sealsDrawn.clear();rectsDrawn.clear();textsDrawn.clear();hintRowsDrawn.clear();hintEndsDrawn.clear();}
+    /** A disconnect (GravesAndGloryClient's handler, on the client thread): the last battle's records go with it, since no HUD frame
+     *  runs without a world to clear them, and ChatPlacement.lift reads rects() before the next world's first frame. That is what
+     *  the frame drew, the lesson wrap and the lines drawn from it, and the hint layer's round clock. */
+    static void reset(){clear();wrappedCopy=null;wrappedStyle=null;wrappedLines=List.of();wrappedJoined="";roundShownMs=0;GravesAndGloryClient.lessonDrawn=List.of();}
+    /** The lesson copy the cached wrap was made for; null after a reset or a resource reload. */
+    static String wrappedFor(){return wrappedCopy;}
 
     /** At every resource reload (fonts and the atlas can change there): wrap the lesson again, and try the HUD again after a texture
      *  stop. GravesAndGloryClient registers it. */

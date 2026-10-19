@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.client.MinecraftClient;
@@ -32,7 +33,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  while the client's ready is false, when step() does not run. clientTick runs every client tick, ready or not. */
     public interface HudWatch { void hudFrame(MinecraftClient c); default void clientTick(MinecraftClient c){} }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front,hold;static boolean started; // hold: client ticks the current suite waits (Phase1Checks.window)
@@ -1803,6 +1804,59 @@ public final class Phase1Checks implements ClientModInitializer {
             if(GravesAndGloryClient.hints!=null)net.minecraft.client.option.KeyBinding.setKeyPressed(hintsKey(),false);
             if(c.currentScreen instanceof GravesAndGloryClient.MapScreen)c.setScreen(null);
             if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;
+        }
+    }
+
+    /** UI polish M11, the last suite listed (it leaves the world): a disconnect empties what the battle HUD keeps between frames. A
+     *  practice round on map 0 shows a feed line, the hint slip, the cards and the pinned lesson 4 with an attack order aimed; then the
+     *  client leaves as the pause menu's Save and Quit does. No HUD frame runs without a world, so 20 ticks after it is gone the records
+     *  must already be empty: what the last frame drew, the feed, the aimed order, the cards' groups and flashes, the lesson wrap and
+     *  its lines, and the hint layer's clock, with the chat lift back at 0. */
+    static final class UiLeaveChecks implements Suite,ServerWatch,HudWatch {
+        volatile boolean want,fixed;volatile UUID player;volatile String thread="";
+        // client thread
+        int stage,waitFrom,waited,left;String before="";
+        UiLeaveChecks(){ClientPlayConnectionEvents.DISCONNECT.register((h,c)->{if(current==this)thread=Thread.currentThread().getName();});} // which thread the event fires on
+        public void serverTick(GravesAndGlory.Battle b){if(want){var p=player==null?null:b.server.getPlayerManager().getPlayer(player);if(p!=null&&skirmish(b,p,0,1,"normal")){want=false;fixed=true;}}}
+        public void hudFrame(MinecraftClient c){}
+        /** What the battle HUD keeps between frames. */
+        static String records(MinecraftClient c){
+            return "rects "+BattleHud.rects().keySet()+", "+BattleHud.texts().size()+" texts, "+BattleHud.cards().size()+" cards, "+BattleHud.seals().size()+" seals, hint rows "+BattleHud.hintRows()+", "+EventFeed.lines(net.minecraft.util.Util.getMeasuringTimeMs()).size()+" feed lines, order aimed "+CommandMode.active()+" (at "+CommandMode.destination+"), "+CommandMode.groups.size()+" groups, "+CommandMode.flashUntil.size()+" flashes, lesson wrap "+(BattleHud.wrappedFor()!=null)+", "+GravesAndGloryClient.lessonDrawn.size()+" lesson lines, round clock "+BattleHud.roundShownMs+", chat lift "+ChatPlacement.lift(c.getWindow().getScaledHeight());
+        }
+        static boolean empty(MinecraftClient c){
+            return BattleHud.rects().isEmpty()&&BattleHud.texts().isEmpty()&&BattleHud.cards().isEmpty()&&BattleHud.seals().isEmpty()&&BattleHud.hintRows().isEmpty()&&BattleHud.hintEnds().isEmpty()&&EventFeed.lines(net.minecraft.util.Util.getMeasuringTimeMs()).isEmpty()
+                &&!CommandMode.active()&&CommandMode.destination==null&&CommandMode.groups.isEmpty()&&CommandMode.flashUntil.isEmpty()&&BattleHud.wrappedFor()==null&&GravesAndGloryClient.lessonDrawn.isEmpty()&&BattleHud.roundShownMs==0&&ChatPlacement.lift(c.getWindow().getScaledHeight())==0;
+        }
+        public void step(MinecraftClient c,int tick){
+            if(stage<3)CampaignClient.tutorial=3; // lesson 4 pinned, so the lesson card draws
+            if(stage>0&&stage<3&&tick-waitFrom>3000){report("p1-ui-leave-clear",false,"no round with its lesson and an aimed order 3000 ticks in (stage "+stage+"): "+records(c));stage=9;finish(c,"ui-leave");return;}
+            switch(stage){
+                case 0->{
+                    if(tick<20)return;
+                    if(!queue.isEmpty()){report("p1-ui-leave-clear",false,"ui-leave leaves the world, so it must be the last suite listed; still queued: "+queue);stage=9;finish(c,"ui-leave");return;}
+                    c.setScreen(null);player=c.player.getUuid();want=true;waitFrom=tick;stage=1;
+                }
+                case 1->{ // the round on screen with its lesson card: a feed line, then an attack order aimed
+                    if(c.currentScreen!=null)c.setScreen(null);
+                    if(fixed&&GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()&&BattleHud.rects().containsKey("lesson")){EventFeed.push("notice",GravesAndGloryClient.team,"Leaving the field",net.minecraft.util.Util.getMeasuringTimeMs());CommandMode.begin("attack");stage=2;}
+                }
+                case 2->{ // every record held at once, then the pause menu's Save and Quit (GameMenuScreen.disconnect), outside the tick
+                    var r=BattleHud.rects();
+                    if(CommandMode.active()&&r.containsKey("feed")&&r.containsKey("hints")&&r.containsKey("lesson")&&!BattleHud.cards().isEmpty()&&BattleHud.wrappedFor()!=null&&!GravesAndGloryClient.lessonDrawn.isEmpty()){
+                        before=records(c);stage=3;
+                        c.send(()->{if(c.world!=null)c.world.disconnect();c.disconnect(new net.minecraft.client.gui.screen.MessageScreen(net.minecraft.text.Text.translatable("menu.savingLevel")));c.setScreen(new net.minecraft.client.gui.screen.TitleScreen());});
+                    }
+                }
+                default->{}
+            }
+        }
+        /** Runs with no world too, where step() does not: 20 ticks after the world and the server are gone, the records must be empty. */
+        @Override public void clientTick(MinecraftClient c){
+            if(stage!=3)return;
+            if(c.world==null&&c.getServer()==null)left++;
+            if(left<20&&++waited<=1200)return;
+            report("p1-ui-leave-clear",left>=20&&!thread.isEmpty()&&empty(c),"before the Save and Quit: "+before+"; the disconnect event fired on the thread '"+thread+"'; "+(left>=20?"20 client ticks with no world later: ":"the world was not gone 1200 ticks after the Save and Quit: ")+records(c));
+            stage=9;finish(c,"ui-leave");
         }
     }
 }

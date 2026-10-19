@@ -51,6 +51,9 @@ public final class CommandMode {
     static void changeFormation(String id){formation=id;var c=MinecraftClient.getInstance();if(c.player!=null)issue(selected,"formation",id,c.player.getPos(),c.player.getYaw(),-1);}
     static void begin(String order){if(!GravesAndGloryClient.battleActive())return;pending=order;facingSet=false;MinecraftClient.getInstance().setScreen(null);}
     public static boolean cancel(){if(!active())return false;pending="";destination=null;return true;}
+    /** A disconnect: no order stays aimed, and the cards' groups and loss flashes go, so the next server's first snapshot is compared
+     *  with nothing (noteGroups would flash a card for the old battle's losses). */
+    static void reset(){cancel();preview.clear();enemy=-1;groups=java.util.List.of();flashUntil.clear();flashFrom.clear();}
     public static boolean confirm(){
         if(!active())return false;
         if(destination==null){refuse("Aim at reachable terrain");return true;}
