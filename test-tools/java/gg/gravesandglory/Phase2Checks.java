@@ -38,7 +38,7 @@ public final class Phase2Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every server tick, for checks that wait on the battle. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("spike",Spike::new);}
+    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -842,6 +842,79 @@ public final class Phase2Checks implements ClientModInitializer {
             for(var f:Spec.FACTIONS){var t=board.getTeam("gg_"+f.id());int n=t==null?0:t.getPlayerList().size();ok&=n==0;why.append("gg_").append(f.id()).append(t==null?" absent":" "+n+" members").append("; ");}
             report("p2-teams-clean",ok,why.toString());
             husk.discard();unforce(b);serverDone=true;
+        }
+    }
+
+    /**
+     * Task 5 Step 12: the Gilded proof set in game. The six Gilded troops in a row for each team at stage 1, then each gold
+     * troop alone in the studio (4 blocks, turned 30 degrees), the knight's three stages, the kit (weapons, glow, shields)
+     * and the recruit page's Gilded tab.
+     */
+    static final class GildedArt extends Stage {
+        static final List<String> SIX=List.of("knight","archer","sentinel","longbow","mage","gl_marshal");
+        final Map<String,GravesAndGlory.Unit> golds=new LinkedHashMap<>(),violets=new LinkedHashMap<>();
+        final List<GravesAndGlory.Unit> stages=new ArrayList<>();int ci;
+        String name(){return "gilded-art";}
+        /** The studio: 12 blocks south of the lineup; a troop there faces north, turned 30 degrees, the camera 4 blocks north of it looking south. */
+        static final double STUDIO=12;
+        void cast(GravesAndGlory.Battle b){
+            for(int i=0;i<6;i++){golds.put(SIX.get(i),post(b,gold,SIX.get(i),-6.25+i*2.5,0,0));violets.put(SIX.get(i),post(b,violet,SIX.get(i),-5+i*2.5,-3,0));}
+            camera(b,0,2.6,9.5,180,9);
+        }
+        public void step(MinecraftClient c,int tick){
+            if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;stage=1;});}
+            if(finished)return;
+            if(tick>12000){report("p2-gilded-timeout",false,"stuck at client step "+cs+", server stage "+stage);end(c);return;}
+            switch(cs){
+                case 0->{if(ready&&posted.size()==12&&posted.stream().allMatch(u->{var e=client(c,u.mob);return e!=null&&e.getCustomName()!=null;})&&lit(c)){c.options.hudHidden=true;wait=0;cs=1;}}
+                case 1->{wait++;if(wait==60){lineup(c);shot(c,"gilded-lineup");cs=2;wait=0;ci=0;}}
+                case 2->{wait++; // one gold troop at a time in the studio, then the knight at stage 3
+                    String troop=ci<6?SIX.get(ci):"knight";
+                    if(wait==1){final int k=ci;server(c,b->{var u=golds.get(troop);move(u.mob,0,STUDIO,180+30);if(k==6)stage(u,3);camera(b,0,1.45,STUDIO-4,0,6);});}
+                    if(wait==45){shot(c,ci<6?"gilded-"+troop:"gilded-knight-s3");}
+                    if(wait==50){final int k=ci;server(c,b->{var u=golds.get(troop);if(k==6)stage(u,1);move(u.mob,-6.25+SIX.indexOf(troop)*2.5,0,0);});ci++;wait=0;if(ci>6){cs=3;}}}
+                case 3->{wait++; // the knight's stages side by side in the studio, stage 1 on the left (the camera looks south: +x is its left)
+                    if(wait==1)server(c,b->{for(int s=1;s<=3;s++){var u=post(b,gold,"knight",(2-s)*2.0,STUDIO,180+20);stage(u,s);stages.add(u);}camera(b,0,1.6,STUDIO-5,0,8);});
+                    if(wait==50){stagesCheck(c);shot(c,"gilded-stages");}
+                    if(wait==55){kit(c);cs=4;wait=0;}}
+                case 4->{wait++; // the recruit page's Gilded tab, every Gilded troop owned so no card is dimmed
+                    if(wait==1)server(c,b->{b.campaign.returnLobby();var pr=b.campaign.profile(player);for(String id:SIX)pr.owned.putIfAbsent(id,new Profile.Owned());pins.clear();posted.clear();});
+                    if(wait==40){CampaignClient.revealUntil=0;CampaignClient.notice="";c.setScreen(new CampScreen("recruit"));}
+                    if(wait==45&&c.currentScreen instanceof CampScreen s)s.pickHouse("gilded");
+                    if(wait==80){boolean six=c.currentScreen instanceof CampScreen s&&s.house.equals("gilded")&&CampScreen.cards("gilded",CampaignClient.profile).stream().allMatch(CampScreen.Card::owned);
+                        boolean models=SIX.stream().allMatch(id->{var e=ArmyCards.portrait(ArmyCards.spec(id));var l=e==null?null:TroopModels.resolve(e);return l!=null&&l.side()==null&&"company".equals(TroopModels.clothOf(e,l));});
+                        report("p2-gilded-cards",six&&models,"the recruit page on the Gilded tab with all six owned="+six+"; every card's portrait resolves to its own model, no side, in the company's cloth="+models);shot(c,"gilded-cards");}
+                    if(wait==90){c.setScreen(null);serverDone=true;end(c);}}
+                default->{}
+            }
+        }
+        void lineup(MinecraftClient c){
+            boolean ok=true;StringBuilder why=new StringBuilder();
+            for(var u:posted){var e=client(c,u.mob);var l=e==null?null:TroopModels.resolve(e);boolean good=l!=null&&l.troop().id().equals(u.spec.id())&&l.stage()==1&&TroopModels.model(u.spec.id())!=null&&l.side()!=null;
+                ok&=good;why.append(u.spec.id()).append("/").append(l==null?"null":l.side()).append(good?"":" (BAD)").append(" ");}
+            report("p2-gilded-lineup",ok,"each Gilded troop resolves to its own model at stage 1 on its side: "+why.toString().trim());
+        }
+        void stagesCheck(MinecraftClient c){
+            var m=TroopModels.model("knight");boolean ok=m!=null&&m.bones().contains("crest_plume");StringBuilder why=new StringBuilder();
+            for(var u:stages){var e=client(c,u.mob);var l=e==null?null:TroopModels.resolve(e);if(l==null||m==null){ok=false;why.append("no look; ");continue;}
+                m.prepare(l,false,false);boolean plume=m.bone("crest_plume")!=null&&m.bone("crest_plume").visible;boolean want=l.stage()==3;ok&=plume==want&&l.stage()==u.stage;
+                why.append("\"").append(e.getCustomName().getString()).append("\" stage ").append(l.stage()).append(" plume ").append(plume?"shown":"hidden").append(plume==want?"":" (BAD)").append("; ");}
+            report("p2-gilded-stages",ok,why.toString());
+        }
+        void kit(MinecraftClient c){
+            boolean ok=true;StringBuilder why=new StringBuilder();
+            for(String id:SIX){var m=TroopModels.model(id);var w=m==null?null:TroopModels.weapon(m.weaponId());boolean good=w!=null&&c.getResourceManager().getResource(w.texture()).isPresent();ok&=good;why.append(id).append(" weapon ").append(m==null?"no model":m.weaponId()).append(good?"":" (BAD)").append("; ");}
+            var mage=client(c,golds.get("mage").mob);var ml=mage==null?null:TroopModels.resolve(mage);var glow=ml==null?null:TroopModels.glow(ml);
+            boolean lit=glow!=null&&c.getResourceManager().getResource(glow).isPresent();ok&=lit;why.append("the Sunweaver's glow ").append(glow).append(lit?"":" (BAD)").append("; ");
+            final boolean client=ok;final String clientWhy=why.toString();
+            server(c,b->{boolean shields=true;StringBuilder sw=new StringBuilder();
+                for(var u:posted){if(!List.of("knight","sentinel","gl_marshal").contains(u.spec.id())||stages.contains(u))continue;
+                    var tag=net.minecraft.item.BlockItem.getBlockEntityNbt(u.mob.getOffHandStack());String dye=b.side(u.squad.team).dye();
+                    StringBuilder want=new StringBuilder();for(String layer:u.spec.shield().split(","))want.append(layer).append(",");
+                    StringBuilder got=new StringBuilder();if(tag!=null){var list=tag.getList("Patterns",10);for(int i=0;i<list.size();i++){var p=list.getCompound(i);got.append(net.minecraft.util.DyeColor.byId(p.getInt("Color")).getName()).append(":").append(p.getString("Pattern")).append(",");}}
+                    boolean good=u.mob.getOffHandStack().isOf(net.minecraft.item.Items.SHIELD)&&tag!=null&&tag.getInt("Base")==net.minecraft.util.DyeColor.byName(dye,null).getId()&&got.toString().equals(want.toString());shields&=good;
+                    sw.append(u.spec.id()).append(" ").append(b.side(u.squad.team).id()).append(": base ").append(tag==null?"none":net.minecraft.util.DyeColor.byId(tag.getInt("Base")).getName()).append(" (want ").append(dye).append("), patterns ").append(got).append(" (want ").append(want).append(")").append(good?"":" (BAD)").append("; ");}
+                report("p2-gilded-kit",client&&shields,clientWhy+sw);});
         }
     }
 }
