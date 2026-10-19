@@ -1695,20 +1695,24 @@ public final class Phase1Checks implements ClientModInitializer {
                         report("p1-ui-hints-rebound",campOk&&battleOk&&rowsOk&&aimOk,campWhy+"; "+battleWhy+"; "+rowsWhy+"; aiming (active "+aimed+") row 1 "+first+"; then the menu and map keys went back to "+GravesAndGloryClient.hint("menu")+" and "+GravesAndGloryClient.hint("map"));
                         seen=tick;stage=23;}
                 }
-                case 23->{ // p1-ui-hints-long (UI polish M4): two long names on each row of the hint slip, which must still end on its paper
+                case 23->{ // p1-ui-hints-long (UI polish M4): two long names on each row of the hint slip, which must still end on its paper.
+                    // The turn keys go on Page Up and Page Down, two long names with one start, as the review's Keypad 4 and 6 would be; in
+                    // game those read 4 and 6 (GLFW names a printable key by its character) and fit (run ui-polish1-201624). The row cannot
+                    // keep every last word whole (UiMathCheck: P...Up, Pag..., L...Alt), so the two turn chips need only differ
                     var keysym=net.minecraft.client.util.InputUtil.Type.KEYSYM;
                     GravesAndGloryClient.menu.setBoundKey(keysym.createFromCode(GLFW.GLFW_KEY_RIGHT_SHIFT));GravesAndGloryClient.mapKey.setBoundKey(net.minecraft.client.util.InputUtil.UNKNOWN_KEY);
-                    GravesAndGloryClient.rotateLeft.setBoundKey(keysym.createFromCode(GLFW.GLFW_KEY_KP_4));GravesAndGloryClient.rotateRight.setBoundKey(keysym.createFromCode(GLFW.GLFW_KEY_KP_6));
+                    GravesAndGloryClient.rotateLeft.setBoundKey(keysym.createFromCode(GLFW.GLFW_KEY_PAGE_UP));GravesAndGloryClient.rotateRight.setBoundKey(keysym.createFromCode(GLFW.GLFW_KEY_PAGE_DOWN));
                     net.minecraft.client.option.KeyBinding.updateKeysByCode();seen=tick;stage=24;}
                 case 24->{
                     if(tick>=seen+2){var rows=List.copyOf(BattleHud.hintRows());var ends=List.copyOf(BattleHud.hintEnds());int[] slip=BattleHud.rects().get("hints");
                         boolean shape=rows.size()==2&&ends.size()==2&&slip!=null&&rows.get(0).size()==4&&rows.get(1).size()==5;
                         boolean on=shape&&ends.get(0)<=slip[0]+164&&ends.get(1)<=slip[0]+164; // the slip PNG's paper ends at x 172: 8 px kept clear, as on the left
-                        boolean named=shape&&trimOf(rows.get(0).get(0),"Not bound")&&rows.get(0).get(1).equals("Map")&&trimOf(rows.get(0).get(2),"Right Shift")&&rows.get(0).get(3).equals("Commands")
-                            &&trimOf(rows.get(1).get(0),"Keypad 4")&&trimOf(rows.get(1).get(1),"Keypad 6")&&rows.get(1).get(2).equals("Turn")&&trimOf(rows.get(1).get(3),"Left Alt")&&rows.get(1).get(4).equals("Hints");
-                        boolean apart=shape&&rows.get(1).get(0).endsWith("4")&&rows.get(1).get(1).endsWith("6")&&rows.get(0).get(2).endsWith("Shift")&&String.join("",rows.get(0)).contains("...")&&String.join("",rows.get(1)).contains("...");
+                        String shift=GravesAndGloryClient.menu.getBoundKeyLocalizedText().getString(),up=GravesAndGloryClient.rotateLeft.getBoundKeyLocalizedText().getString(),down=GravesAndGloryClient.rotateRight.getBoundKeyLocalizedText().getString();
+                        boolean named=shape&&shift.equals("Right Shift")&&up.equals("Page Up")&&down.equals("Page Down")&&trimOf(rows.get(0).get(0),"Not bound")&&rows.get(0).get(1).equals("Map")&&trimOf(rows.get(0).get(2),shift)&&rows.get(0).get(3).equals("Commands")
+                            &&trimOf(rows.get(1).get(0),up)&&trimOf(rows.get(1).get(1),down)&&rows.get(1).get(2).equals("Turn")&&trimOf(rows.get(1).get(3),"Left Alt")&&rows.get(1).get(4).equals("Hints");
+                        boolean apart=shape&&!rows.get(1).get(0).equals(rows.get(1).get(1))&&rows.get(0).get(2).endsWith("Shift")&&String.join("",rows.get(0)).contains("...")&&String.join("",rows.get(1)).contains("...");
                         shot(c,"ui-hud-hints-long");defaults();
-                        report("p1-ui-hints-long",on&&named&&apart,"with Map unbound, Commands on Right Shift and Turn on Keypad 4 and 6, the slip at "+UiHudChecks.box(slip)+" drew the rows "+rows+", ending at canvas x "+ends+" (the paper's text edge at "+(slip==null?"?":String.valueOf(slip[0]+164))+"); then the keys went back to "+GravesAndGloryClient.hint("menu")+", "+GravesAndGloryClient.hint("map")+", "+GravesAndGloryClient.hint("rotate_left")+" and "+GravesAndGloryClient.hint("rotate_right"));
+                        report("p1-ui-hints-long",on&&named&&apart,"with Map unbound, Commands on "+shift+" and Turn on "+up+" and "+down+", the slip at "+UiHudChecks.box(slip)+" drew the rows "+rows+", ending at canvas x "+ends+" (the paper's text edge at "+(slip==null?"?":String.valueOf(slip[0]+164))+"); then the keys went back to "+GravesAndGloryClient.hint("menu")+", "+GravesAndGloryClient.hint("map")+", "+GravesAndGloryClient.hint("rotate_left")+" and "+GravesAndGloryClient.hint("rotate_right"));
                         seen=tick;stage=14;}
                 }
                 case 14->{ // p1-ui-alt-layer: in the first 60 s every card is tall

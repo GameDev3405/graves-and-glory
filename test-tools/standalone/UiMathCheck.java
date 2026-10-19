@@ -25,6 +25,8 @@ public final class UiMathCheck {
         check(UiMath.hintRowWidth(java.util.List.of("Keypad 4","Keypad 6","Left Alt"),turn,mc)==204 && keypad.equals(java.util.List.of("Ke...4","Ke...6","L...Alt")) && UiMath.hintRowWidth(keypad,turn,mc)<=154, "the keypad's turn keys fit the slip and stay apart");
         var shift = UiMath.fitKeys(java.util.List.of("Not bound","Right Shift"),map,154,mc);
         check(shift.equals(java.util.List.of("Not b...","R...Shift")) && UiMath.hintRowWidth(shift,map,mc)==153, "two long names on row one fit the slip");
+        var page = UiMath.fitKeys(java.util.List.of("Page Up","Page Down","Left Alt"),turn,154,mc); // keypad keys read 4 and 6 in game: these are long
+        check(UiMath.hintRowWidth(java.util.List.of("Page Up","Page Down","Left Alt"),turn,mc)==204 && page.equals(java.util.List.of("P...Up","Pag...","L...Alt")) && UiMath.hintRowWidth(page,turn,mc)==147, "the turn keys on Page Up and Page Down fit the slip");
         check(UiMath.contrast(0xffeee9df,0xff1f2427)>=4.5 && UiMath.contrast(0xffe47a64,0xff1f2427)>=4.5, "ivory and alarm text on the iron plate");
         check(Math.abs(UiMath.contrast(0xff000000,0xffffffff)-21.0)<0.01, "WCAG ratio");
         check(UiMath.sealCentre(0,3,960)==452 && UiMath.sealCentre(2,3,960)==508 && UiMath.sealCentre(0,5,960)==424 && UiMath.sealCentre(4,5,960)==536, "seals on a 28 px pitch, centred");
