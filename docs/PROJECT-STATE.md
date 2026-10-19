@@ -67,6 +67,7 @@ bundled until then.
 
 ## 3. Version and git state
 
+- `gradle.properties` mod_version = 0.5.0-preview1 on branch `preview-0.5` (throwaway merge of phase-2-houses, phase-2-models, phase-3-built-world and ui-plan for a play test, 2026-10-19, not for release; see `docs/PREVIEW-0.5.md`).
 - `gradle.properties` mod_version = 0.4.0 on branch `phase-1-solo-core` (the
   Phase 1 solo rework candidate, committed locally 2026-10-18, not merged, not
   pushed); `master` stays at 0.3.7 (`e78b81b`).
