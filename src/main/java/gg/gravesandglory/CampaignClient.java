@@ -27,9 +27,15 @@ public final class CampaignClient {
     /** The Long March number (sheet order) of the battle being fought; 1 when none is known. */
     static int battleOrder(){for(var row:Spec.CAMPAIGNBATTLES)if(row.id().equals(text(battle,"id")))return row.order();return 1;}
     static boolean lead,fill=true;static String mode="2",notice="",headline="",partyKey="";
+    /** The server's count of notices sent to this player, as last sent in the snapshot: it rises with each notice, even one that repeats the last text. */
+    static int noticeSerial;
     /** The server-wide bot difficulty (a Spec.BOTCOMMAND id), as last sent in the snapshot. */
     static String difficulty="normal";
-    static String botsLabel(){return "Bots: "+difficulty.substring(0,1).toUpperCase()+difficulty.substring(1);}
+    static String botsLabel(){return "Bots: "+tierName(difficulty);}
+    /** A bot tier's display name: its Spec.BOTCOMMAND id with a capital ("normal" reads "Normal"). */
+    static String tierName(String id){return id.isEmpty()?id:id.substring(0,1).toUpperCase(java.util.Locale.ROOT)+id.substring(1);}
+    /** The order sheet the War Table home raises, "practice", "skirmish" or "campaign"; kept for the session (UI plan Task 5). */
+    static String homeMode="skirmish";
     /** The tier a press of the Bots button asks for: the next row of the sheet, wrapping round. */
     static String nextDifficulty(){for(int i=0;i<Spec.BOTCOMMAND.length;i++)if(Spec.BOTCOMMAND[i].id().equals(difficulty))return Spec.BOTCOMMAND[(i+1)%Spec.BOTCOMMAND.length].id();return Spec.BOTCOMMAND[0].id();}
     static JsonObject party=emptyParty();static int padCountdown,padDawn,padDusk,padSize=2,tutorial=-1;
@@ -50,7 +56,7 @@ public final class CampaignClient {
             if(j.has("sides")){var s=j.getAsJsonArray("sides");if(s.size()==2)sides=new String[]{s.get(0).getAsString(),s.get(1).getAsString()};}
             if(j.has("banner")){var list=new java.util.ArrayList<String>();for(var e:j.getAsJsonArray("banner"))list.add(e.getAsString());banner=list;}social=j.has("social")?j.getAsJsonObject("social"):new JsonObject();progression=j.has("progression")?j.getAsJsonObject("progression"):new JsonObject();if(j.has("progression"))profile.progression=Campaign.JSON.fromJson(progression,Progression.State.class);players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
             JsonObject keyed=new JsonObject();for(var entry:party.entrySet())if(!entry.getKey().equals("inviteSeconds"))keyed.add(entry.getKey(),entry.getValue());partyKey=keyed.toString();
-            JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;battle=j.has("battle")?j.getAsJsonObject("battle"):new JsonObject();fill=j.get("fill").getAsBoolean();difficulty=j.has("difficulty")?j.get("difficulty").getAsString():"normal";mode=j.get("mode").getAsString();notice=j.get("notice").getAsString();headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
+            JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;battle=j.has("battle")?j.getAsJsonObject("battle"):new JsonObject();fill=j.get("fill").getAsBoolean();difficulty=j.has("difficulty")?j.get("difficulty").getAsString():"normal";mode=j.get("mode").getAsString();notice=j.get("notice").getAsString();noticeSerial=j.has("noticeSerial")?j.get("noticeSerial").getAsInt():0;headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
             int next=j.get("map").getAsInt();if(next!=map||Spec.FACTIONS[0].spawnX()!=-283){map=next;if(c.getServer()==null)CampaignMaps.select(map);GravesAndGloryClient.invalidateMap(c);}
             waiting=j.has("waiting")&&j.get("waiting").getAsBoolean();
             int round=j.get("serial").getAsInt();intro=j.get("intro").getAsInt();
@@ -96,12 +102,12 @@ public final class CampaignClient {
 
     static void end(MinecraftClient c){if(camera!=null){frameReport();c.setCameraEntity(c.player);c.options.hudHidden=previousHud;if(previous!=null)c.options.setPerspective(previous);camera=null;}}
     public static void hud(DrawContext g,int w,int h){
-        if(camera==null)return;var c=MinecraftClient.getInstance();int bar=Math.max(18,h/10);g.fill(0,0,w,bar,0xff080c13);g.fill(0,h-bar,w,h,0xff080c13);
+        if(camera==null)return;var c=MinecraftClient.getInstance();int bar=Math.max(18,h/10);g.fill(0,0,w,bar,DarkUi.LETTERBOX);g.fill(0,h-bar,w,h,DarkUi.LETTERBOX);
         boolean march=battle.has("name");
-        g.drawCenteredTextWithShadow(c.textRenderer,Spec.MAPS[map].name().toUpperCase()+"  /  "+(march?"THE LONG MARCH":mode.equals("ai")?"PRACTICE":mode+" v "+mode),w/2,bar+12,GravesAndGloryClient.GOLD);
+        g.drawCenteredTextWithShadow(c.textRenderer,Spec.MAPS[map].name().toUpperCase()+"  /  "+(march?"THE LONG MARCH":mode.equals("ai")?"PRACTICE":mode+" v "+mode),w/2,bar+12,DarkUi.GOLD);
         if(march)briefing(g,c.textRenderer,w,h-bar-34);
-        g.drawCenteredTextWithShadow(c.textRenderer,"YOUR BANNER. YOUR ARMY.",w/2,h-bar-24,GravesAndGloryClient.WHITE);
-        g.drawCenteredTextWithShadow(c.textRenderer,GravesAndGloryClient.menu.getBoundKeyLocalizedText().getString()+" or Escape to skip entrance",w/2,h-bar+6,GravesAndGloryClient.MUTED);
+        g.drawCenteredTextWithShadow(c.textRenderer,"YOUR BANNER. YOUR ARMY.",w/2,h-bar-24,DarkUi.IVORY);
+        g.drawCenteredTextWithShadow(c.textRenderer,HintText.expand("{key:menu} or Escape to skip entrance",GravesAndGloryClient::hint),w/2,h-bar+6,DarkUi.MUTED);
     }
     /** The briefing card of a campaign battle during its entrance: the battle name, the order of the day and why it matters, ending at y=bottom. */
     static void briefing(DrawContext g,net.minecraft.client.font.TextRenderer font,int w,int bottom){

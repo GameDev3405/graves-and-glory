@@ -16,6 +16,8 @@ public final class CampaignMaps {
     /** Ready pads: a four-block square on the lobby floor. Dawn is on the west, Dusk on the east. */
     static final int PAD_Z=LOBBY_Z-14;
     static boolean onPad(int team,double x,double y,double z){double min=team==0?-11:8;return x>=min&&x<min+4&&z>=PAD_Z&&z<PAD_Z+4&&y>64&&y<68;}
+    /** The middle of a team's ready pad, the square onPad tests: where Ride to the war gates sets a commander down. */
+    static net.minecraft.util.math.Vec3d padCentre(int team){return new net.minecraft.util.math.Vec3d(team==0?-9:10,65,PAD_Z+2);}
     record Road(int ax,int az,int bx,int bz,int width){}
     static List<Road> roads=new ArrayList<>(),building=roads;
     public static synchronized void select(int index){

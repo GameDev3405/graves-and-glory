@@ -16,19 +16,20 @@ public final class Morale {
 
     public static boolean routing(GravesAndGlory.Squad s,String group){return s.routedAt.containsKey(group);}
 
-    /** Full health per group from the squad's lineup; only ever raised during a round. */
+    /** Full health and full head count per group from the squad's lineup; only ever raised during a round. */
     static void lineup(GravesAndGlory.Battle b,GravesAndGlory.Squad s,List<String> line){
-        Map<String,Double> full=new HashMap<>();int position=0;
+        Map<String,Double> full=new HashMap<>();Map<String,Integer> heads=new HashMap<>();int position=0;
         for(String id:line){if(position++>=GravesAndGlory.R.squadSize()||id.equals(RosterMath.EMPTY)||id.equals(RosterMath.MARKER))continue;
             var spec=Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(id)).findFirst().orElse(null);if(spec==null)continue;
-            full.merge(spec.group(),spec.health()*b.campaign.health(s,spec),Double::sum);}
+            full.merge(spec.group(),spec.health()*b.campaign.health(s,spec),Double::sum);heads.merge(spec.group(),1,Integer::sum);}
         for(var e:full.entrySet())s.fullHealth.merge(e.getKey(),e.getValue(),Math::max);
+        for(var e:heads.entrySet())s.fullCount.merge(e.getKey(),e.getValue(),Math::max);
     }
 
     /** A troop joined mid-round: the group's ceiling rises to the health actually fielded (so a trained-only group can still rout), and never falls. */
     static void fielded(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String group){
-        double health=0;for(var u:b.units)if(u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive())health+=u.spec.health()*b.campaign.health(s,u.spec);
-        s.fullHealth.merge(group,health,Math::max);
+        double health=0;int heads=0;for(var u:b.units)if(u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive()){health+=u.spec.health()*b.campaign.health(s,u.spec);heads++;}
+        s.fullHealth.merge(group,health,Math::max);s.fullCount.merge(group,heads,Math::max);
     }
 
     /** Runs every 20 ticks while the round is live. */
@@ -51,16 +52,18 @@ public final class Morale {
                 if(!BattleMath.shouldRout(strength,flanked(b,s,group,members,centre),M.routShare(),M.flankedRoutShare()))continue;
                 boolean held=false;for(var guard:GUARDS)if(guard.holds(b,s,group)){held=true;break;}
                 if(held)continue;
-                s.routedAt.put(group,b.time);
+                s.routedAt.put(group,b.time);FeedEvents.rout(b,s,group,true);
                 // Break contact at once: drop targets and paths so the group turns for home this tick.
                 for(var u:members){u.lockedTarget=null;u.spellCenter=null;u.mob.setTarget(null);u.mob.getNavigation().stop();u.nextPath=0;u.stuckTicks=0;}
                 BattleEffects.horn(b,s,centre,"rout");
             }
         }
     }
-    /** Ends a rout now (or steadies a group that is not routing): immunity starts and the rally horn sounds. */
+    /** Ends a rout now (or steadies a group that is not routing): immunity starts and the rally horn sounds. Only a group that was
+     *  routing tells its owner's feed it regrouped. */
     public static void rally(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String group){
-        s.routedAt.remove(group);s.steadyUntil.put(group,b.time+M.regroupImmunitySeconds()*20L);
+        boolean was=routing(s,group);
+        s.routedAt.remove(group);s.steadyUntil.put(group,b.time+M.regroupImmunitySeconds()*20L);if(was)FeedEvents.rout(b,s,group,false);
         for(var u:b.units)if(u.squad==s&&u.spec.group().equals(group)){u.nextPath=0;u.stuckTicks=0;}
         List<GravesAndGlory.Unit> members=new ArrayList<>();for(var u:b.units)if(u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive())members.add(u);
         BattleEffects.horn(b,s,members.isEmpty()?s.target:centre(members),"rally");

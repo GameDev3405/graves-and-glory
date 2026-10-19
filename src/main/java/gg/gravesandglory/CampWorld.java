@@ -48,7 +48,7 @@ final class CampWorld {
             label(w,left+1.5,69,CampaignMaps.PAD_Z-1,(team==0?"DAWN":"DUSK")+" / Stand here to ready","match");
         }
         label(w,0,72,z-22,"WAR GATES / Local matches / Bots fill empty seats","match");
-        label(w,0,68,z+23,"WELCOME TO BANNER CAMP / R opens your camp guide","home");
+        label(w,0,68,z+23,Campaign.keyText("WELCOME TO BANNER CAMP / {key:menu} opens your camp guide"),"home"); // each player reads their own key
         for(int x:new int[]{-19,19})for(int dz:new int[]{8,22}){Arena.put(w,x,65,z+dz,Blocks.FLOWERING_AZALEA);Arena.put(w,x+1,65,z+dz,Blocks.AZALEA);}
         dress(w,z);
     }
@@ -115,9 +115,10 @@ final class CampWorld {
             for(int dx:new int[]{0,3})for(int dz:new int[]{0,3})Arena.put(w,left+dx,64,CampaignMaps.PAD_Z+dz,Blocks.SEA_LANTERN);
         }
     }
-    static void label(ServerWorld w,double x,double y,double z,String name,String station){
+    static void label(ServerWorld w,double x,double y,double z,String name,String station){label(w,x,y,z,Text.literal(name),station);}
+    static void label(ServerWorld w,double x,double y,double z,Text name,String station){
         var label=EntityType.TEXT_DISPLAY.create(w);if(label==null)return;
-        var nbt=label.writeNbt(new net.minecraft.nbt.NbtCompound());nbt.putString("text",Text.Serializer.toJson(Text.literal(name).formatted(net.minecraft.util.Formatting.GOLD)));
+        var nbt=label.writeNbt(new net.minecraft.nbt.NbtCompound());nbt.putString("text",Text.Serializer.toJson(name.copy().formatted(net.minecraft.util.Formatting.GOLD)));
         nbt.putString("billboard","center");nbt.putInt("background",0xb0192227);nbt.putBoolean("shadow",true);nbt.putInt("line_width",220);nbt.putFloat("view_range",2f);
         var transform=new net.minecraft.nbt.NbtCompound();var scale=new net.minecraft.nbt.NbtList();for(int i=0;i<3;i++)scale.add(net.minecraft.nbt.NbtFloat.of(1.7f));transform.put("scale",scale);var translation=new net.minecraft.nbt.NbtList();for(int i=0;i<3;i++)translation.add(net.minecraft.nbt.NbtFloat.of(0));transform.put("translation",translation);
         for(String key:new String[]{"left_rotation","right_rotation"}){var rotation=new net.minecraft.nbt.NbtList();for(int i=0;i<4;i++)rotation.add(net.minecraft.nbt.NbtFloat.of(i==3?1:0));transform.put(key,rotation);}nbt.put("transformation",transform);

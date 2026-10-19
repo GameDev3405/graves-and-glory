@@ -23,15 +23,15 @@ public final class CampRedesignChecks implements ClientModInitializer {
    if(tick==45){c.setScreen(null);check("battle-hud-off",GravesAndGloryClient.inCamp()&&!GravesAndGloryClient.battleActive());CommandMode.begin("attack");check("orders-disabled-in-camp",!CommandMode.active());}
    if(tick==70)shot(c,"courtyard");
    if(tick==80)c.setScreen(new CampScreen("home"));if(tick==95)shot(c,"guide");
-   if(tick==100)CampScreen.open("recruit");if(tick==115)shot(c,"recruitment");if(tick==118)server(c,b->{liveRoll=b.campaign.rollRng;b.campaign.rollRng=Phase2Checks.Engine.fixed(86);}); /* a fixed draw: the Gilded pool at 86 is its first Rare, a troop the fresh collection lacks, so the roll always opens the reveal panel (a duplicate does not) */ if(tick==120)press(c,"ROLL ");
+   if(tick==100)CampScreen.open("recruit");if(tick==115)shot(c,"recruitment");if(tick==118)server(c,b->{liveRoll=b.campaign.rollRng;b.campaign.rollRng=Phase2Checks.Engine.fixed(86);}); /* a fixed draw: the Gilded pool at 86 is its first Rare, a troop the fresh collection lacks, so the roll always opens the reveal panel (a duplicate does not) */ if(tick==120)press(c,"Enlist"); /* the War Table recruit page's plate (UI plan Task 6) */
    if(tick==150){var pr=CampaignClient.profile;check("server-confirmed-recruit",pr.gold==200&&pr.owned.values().stream().mapToInt(o->o.copies).sum()+pr.shards.values().stream().mapToInt(Integer::intValue).sum()==Profile.commons().size()+1); /* one roll: a new troop */shot(c,"reward-reveal");server(c,b->{if(liveRoll!=null)b.campaign.rollRng=liveRoll;});}
    /* An owned troop drawn again through the recruit page: fixed(0) draws the Gilded pool's first Common, the Order Squire every fresh collection owns. The duplicate raises it to star 2; at full stars the next copy turns into Gilded shards. */
    if(tick==152)server(c,b->{var pr=b.campaign.profile(c.player.getUuid());var o=pr.owned.get("knight");dupCopies=o==null?-1:o.copies;dupGold=pr.gold;b.campaign.rollRng=Phase2Checks.Engine.fixed(0);});
-   if(tick==155)press(c,"ROLL ");
+   if(tick==155)server(c,b->b.campaign.handle(b.server.getPlayerManager().getPlayer(c.player.getUuid()),"roll:gilded")); /* the page's Enlist only offers troops not yet recruited, so a duplicate roll goes to the server as the plate would send it */
    if(tick==165)server(c,b->{var id=c.player.getUuid();var pr=b.campaign.profile(id);var o=pr.owned.get("knight");
     check("duplicate-roll",dupCopies==1&&o!=null&&o.copies==2&&o.stars==2&&pr.gold==dupGold-Spec.RECRUITMENT[0].rollCost()&&b.campaign.notices.getOrDefault(id,"").contains("rises to star 2"));
     if(o!=null){o.stars=RosterMath.maxStars();o.copies=4;}shardsBefore=pr.shards.getOrDefault("gilded",0);dupGold=pr.gold;b.campaign.save(id);b.campaign.rollRng=Phase2Checks.Engine.fixed(0);});
-   if(tick==168)press(c,"ROLL ");
+   if(tick==168)server(c,b->b.campaign.handle(b.server.getPlayerManager().getPlayer(c.player.getUuid()),"roll:gilded")); /* the page's Enlist only offers troops not yet recruited, so a duplicate roll goes to the server as the plate would send it */
    if(tick==172)server(c,b->{var id=c.player.getUuid();var pr=b.campaign.profile(id);var o=pr.owned.get("knight");
     check("shard-roll",o!=null&&o.copies==4&&o.stars==RosterMath.maxStars()&&pr.shards.getOrDefault("gilded",0)==shardsBefore+RosterMath.rarityRow("common").dismantleShards()&&pr.gold==dupGold-Spec.RECRUITMENT[0].rollCost()&&b.campaign.notices.getOrDefault(id,"").contains("full stars"));
     if(liveRoll!=null)b.campaign.rollRng=liveRoll;});
