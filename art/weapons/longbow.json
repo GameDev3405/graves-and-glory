@@ -1,17 +1,175 @@
 {
-"weapon":"longbow",
-"note":"The Order Longbow's yew longbow, 38 px: a shallow D, horn nocks, a leather grip; upright in the right hand, its top 6 px past the head and its foot just off the ground (the mark).",
-"size":[64,64],
-"grip":{"offset":[0,0,-2.5],"rotation":[0,0,0]},
-"boxes":[
-{"origin":[-0.5,-2,-0.5],"size":[1,4,1],"uv":[0,0],"note":"the leather grip"},
-{"origin":[-0.5,-12,-0.5],"size":[1,10,1],"uv":[4,0],"note":"the stave over the grip"},
-{"origin":[-1.5,-18,-0.5],"size":[1,6,1],"uv":[8,0],"note":"upper limb"},
-{"origin":[-1.5,2,-0.5],"size":[1,6,1],"uv":[12,0],"note":"lower limb"},
-{"origin":[-2.5,-22,-0.5],"size":[1,4,1],"uv":[16,0],"note":"upper limb, bending"},
-{"origin":[-2.5,8,-0.5],"size":[1,4,1],"uv":[20,0],"note":"lower limb, bending"},
-{"origin":[-3.5,-24,-0.5],"size":[1,2,1],"uv":[24,0],"note":"upper horn nock"},
-{"origin":[-3.5,12,-0.5],"size":[1,2,1],"uv":[28,0],"note":"lower horn nock"},
-{"origin":[-4.5,-23,0],"size":[1,36,0],"uv":[32,0],"note":"string"}
-]
+ "weapon": "longbow",
+ "note": "The Order Longbow's yew longbow, 38 px: a shallow D of yew with a lit edge, horn nocks, a leather grip and a taut string; upright in the right hand, its top 6 px past the head and its foot just off the ground (the mark).",
+ "size": [
+  64,
+  64
+ ],
+ "grip": {
+  "offset": [
+   0,
+   0,
+   -2.5
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ]
+ },
+ "boxes": [
+  {
+   "origin": [
+    -0.5,
+    -2,
+    -0.5
+   ],
+   "size": [
+    1,
+    4,
+    1
+   ],
+   "uv": [
+    0,
+    0
+   ],
+   "note": "the leather grip"
+  },
+  {
+   "origin": [
+    -0.5,
+    -12,
+    -0.5
+   ],
+   "size": [
+    1,
+    10,
+    1
+   ],
+   "uv": [
+    4,
+    0
+   ],
+   "note": "the stave over the grip"
+  },
+  {
+   "origin": [
+    -1.5,
+    -18,
+    -0.5
+   ],
+   "size": [
+    1,
+    6,
+    1
+   ],
+   "uv": [
+    8,
+    0
+   ],
+   "note": "upper limb"
+  },
+  {
+   "origin": [
+    -1.5,
+    2,
+    -0.5
+   ],
+   "size": [
+    1,
+    6,
+    1
+   ],
+   "uv": [
+    12,
+    0
+   ],
+   "note": "lower limb"
+  },
+  {
+   "origin": [
+    -2.5,
+    -22,
+    -0.5
+   ],
+   "size": [
+    1,
+    4,
+    1
+   ],
+   "uv": [
+    16,
+    0
+   ],
+   "note": "upper limb, bending"
+  },
+  {
+   "origin": [
+    -2.5,
+    8,
+    -0.5
+   ],
+   "size": [
+    1,
+    4,
+    1
+   ],
+   "uv": [
+    20,
+    0
+   ],
+   "note": "lower limb, bending"
+  },
+  {
+   "origin": [
+    -3.5,
+    -24,
+    -0.5
+   ],
+   "size": [
+    1,
+    2,
+    1
+   ],
+   "uv": [
+    24,
+    0
+   ],
+   "note": "upper horn nock"
+  },
+  {
+   "origin": [
+    -3.5,
+    12,
+    -0.5
+   ],
+   "size": [
+    1,
+    2,
+    1
+   ],
+   "uv": [
+    28,
+    0
+   ],
+   "note": "lower horn nock"
+  },
+  {
+   "origin": [
+    -4.5,
+    -23,
+    0
+   ],
+   "size": [
+    1,
+    36,
+    0
+   ],
+   "uv": [
+    32,
+    0
+   ],
+   "note": "string"
+  }
+ ]
 }

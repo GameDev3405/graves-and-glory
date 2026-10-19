@@ -1,13 +1,107 @@
 {
-"weapon":"arming_sword",
-"note":"The Squire's arming sword: a 10 px blade and point, gilt guard and pommel.",
-"size":[32,32],
-"grip":{"offset":[0,0,-0.5],"rotation":[45,0,0]},
-"boxes":[
-{"origin":[-0.5,-12.5,-1.0],"size":[1,10,2],"uv":[0,0],"note":"blade"},
-{"origin":[-0.5,-13.5,-0.5],"size":[1,1,1],"uv":[6,0],"note":"point"},
-{"origin":[-0.5,-2.5,-3.0],"size":[1,1,6],"uv":[0,12],"note":"crossguard"},
-{"origin":[-0.5,-1.5,-0.5],"size":[1,4,1],"uv":[14,12],"note":"grip, wound"},
-{"origin":[-0.5,2.5,-1.0],"size":[1,1,2],"uv":[18,12],"note":"pommel"}
-]
+ "weapon": "arming_sword",
+ "note": "The Squire's arming sword: a 10 px blade two texels wide, a tapered point, a gilt crossguard, a leather-wound grip and a gilt pommel.",
+ "size": [
+  32,
+  32
+ ],
+ "grip": {
+  "offset": [
+   0,
+   0,
+   -0.5
+  ],
+  "rotation": [
+   45,
+   0,
+   0
+  ]
+ },
+ "boxes": [
+  {
+   "origin": [
+    -1,
+    -12.5,
+    -1.0
+   ],
+   "size": [
+    2,
+    10,
+    2
+   ],
+   "uv": [
+    0,
+    0
+   ],
+   "note": "blade"
+  },
+  {
+   "origin": [
+    -1,
+    -13.5,
+    -0.5
+   ],
+   "size": [
+    2,
+    1,
+    1
+   ],
+   "uv": [
+    8,
+    0
+   ],
+   "note": "point"
+  },
+  {
+   "origin": [
+    -1,
+    -2.5,
+    -3.0
+   ],
+   "size": [
+    2,
+    1,
+    6
+   ],
+   "uv": [
+    0,
+    12
+   ],
+   "note": "crossguard"
+  },
+  {
+   "origin": [
+    -1,
+    -1.5,
+    -0.5
+   ],
+   "size": [
+    2,
+    4,
+    1
+   ],
+   "uv": [
+    16,
+    12
+   ],
+   "note": "grip, wound"
+  },
+  {
+   "origin": [
+    -1,
+    2.5,
+    -1.0
+   ],
+   "size": [
+    2,
+    1,
+    2
+   ],
+   "uv": [
+    16,
+    18
+   ],
+   "note": "pommel"
+  }
+ ]
 }

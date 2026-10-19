@@ -1,13 +1,107 @@
 {
-"weapon":"longsword",
-"note":"The Templar's longsword: a 13 px blade, a wide guard and a hand-and-a-half grip.",
-"size":[32,32],
-"grip":{"offset":[0,0,-0.5],"rotation":[45,0,0]},
-"boxes":[
-{"origin":[-0.5,-15.5,-1.0],"size":[1,13,2],"uv":[0,0],"note":"blade"},
-{"origin":[-0.5,-16.5,-0.5],"size":[1,1,1],"uv":[6,0],"note":"point"},
-{"origin":[-0.5,-2.5,-4.0],"size":[1,1,8],"uv":[0,15],"note":"crossguard"},
-{"origin":[-0.5,-1.5,-0.5],"size":[1,6,1],"uv":[18,15],"note":"grip, wound"},
-{"origin":[-0.5,4.5,-1.0],"size":[1,2,2],"uv":[22,15],"note":"pommel"}
-]
+ "weapon": "longsword",
+ "note": "The Templar's longsword: a 13 px blade two texels wide with a tapered point, a wide gilt guard, a hand-and-a-half grip and a gilt pommel.",
+ "size": [
+  32,
+  32
+ ],
+ "grip": {
+  "offset": [
+   0,
+   0,
+   -0.5
+  ],
+  "rotation": [
+   45,
+   0,
+   0
+  ]
+ },
+ "boxes": [
+  {
+   "origin": [
+    -1,
+    -15.5,
+    -1.0
+   ],
+   "size": [
+    2,
+    13,
+    2
+   ],
+   "uv": [
+    0,
+    0
+   ],
+   "note": "blade"
+  },
+  {
+   "origin": [
+    -1,
+    -16.5,
+    -0.5
+   ],
+   "size": [
+    2,
+    1,
+    1
+   ],
+   "uv": [
+    8,
+    0
+   ],
+   "note": "point"
+  },
+  {
+   "origin": [
+    -1,
+    -2.5,
+    -4.0
+   ],
+   "size": [
+    2,
+    1,
+    8
+   ],
+   "uv": [
+    0,
+    15
+   ],
+   "note": "crossguard"
+  },
+  {
+   "origin": [
+    -1,
+    -1.5,
+    -0.5
+   ],
+   "size": [
+    2,
+    6,
+    1
+   ],
+   "uv": [
+    24,
+    15
+   ],
+   "note": "grip, wound"
+  },
+  {
+   "origin": [
+    -1,
+    4.5,
+    -1.0
+   ],
+   "size": [
+    2,
+    2,
+    2
+   ],
+   "uv": [
+    16,
+    24
+   ],
+   "note": "pommel"
+  }
+ ]
 }
