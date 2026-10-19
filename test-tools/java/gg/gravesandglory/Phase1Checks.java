@@ -1173,6 +1173,12 @@ public final class Phase1Checks implements ClientModInitializer {
             if(a.startsWith("card-")&&b.equals("spine")||b.startsWith("card-")&&a.equals("spine"))return true;
             return a.endsWith("-boss")&&b.equals("score")||b.endsWith("-boss")&&a.equals("score");
         }
+        /** Every pair of a frame's rects that touch, but those allowed() lets touch. */
+        static List<String> touching(Map<String,int[]> r){
+            List<String> bad=new ArrayList<>();var keys=new ArrayList<>(r.keySet());
+            for(int i=0;i<keys.size();i++)for(int j=i+1;j<keys.size();j++)if(!allowed(keys.get(i),keys.get(j))&&meets(r.get(keys.get(i)),r.get(keys.get(j))))bad.add(keys.get(i)+" "+box(r.get(keys.get(i)))+" meets "+keys.get(j)+" "+box(r.get(keys.get(j))));
+            return bad;
+        }
         /** A GUI box in canvas px, rounded outward. */
         static int[] canvas(MinecraftClient c,int x,int y,int w,int h){
             double f=c.getWindow().getScaleFactor()/UiCanvas.k();
@@ -1389,16 +1395,17 @@ public final class Phase1Checks implements ClientModInitializer {
                         report("p1-ui-seals",sealsOk&&all,sealsWhy+"; every owner -1: "+ss);seen=0;stage=62;}
                     else if(seen==0&&tick-waitFrom>200){report("p1-ui-seals",false,sealsWhy+"; the client never showed every point neutral and uncontested");stage=62;}
                 }
-                // p1-ui-aim-name (controller addition C): a move aimed into point B hangs B's name below its seal, at canvas y 62
+                // p1-ui-aim-name (controller addition C): a move aimed into point B hangs B's name below its seal, at canvas y 68 where the
+                // seal rects end (UI polish M3: it was 62, over the seals' feet), and every rect of that frame is apart, the name's too
                 case 62->{waitFrom=tick;stage=-62;server(c,b->{var p=sp(b);var spot=b.points.get(1).spec;double x=spot.x()-6;if(p!=null)b.relocate(p,x,top(b,x,spot.z()),spot.z(),-90,35);stage=63;});}
                 case 63->{if(tick-waitFrom>=10){CommandMode.begin("move");seen=0;waitFrom=tick;stage=64;}}
                 case 64->{
                     if(seen==0&&CommandMode.aimPoint()==1)seen=tick;
                     if(seen>0&&tick>=seen+3){
                         var font=c.textRenderer;String want=Spec.POINTS[1].name(),got=BattleHud.texts().get("aim-name");int[] r=BattleHud.rects().get("aim-name");
-                        int[] wantR={BattleHud.centred(font,want,UiMath.sealCentre(1,GravesAndGloryClient.owners.length,UiCanvas.width())),62,font.getWidth(want)+1,9};
-                        shot(c,"ui-hud-aim");
-                        report("p1-ui-aim-name",want.equals(got)&&Arrays.equals(r,wantR)&&CommandMode.aimPoint()==1,"a move aimed at "+CommandMode.destination+" (point "+Spec.POINTS[1].id()+") drew the name '"+got+"' at "+box(r)+" (wanted '"+want+"' at "+box(wantR)+"); seal-1 "+box(BattleHud.rects().get("seal-1")));
+                        int[] wantR={BattleHud.centred(font,want,UiMath.sealCentre(1,GravesAndGloryClient.owners.length,UiCanvas.width())),68,font.getWidth(want)+1,9};
+                        var touch=touching(BattleHud.rects());shot(c,"ui-hud-aim");
+                        report("p1-ui-aim-name",want.equals(got)&&Arrays.equals(r,wantR)&&CommandMode.aimPoint()==1&&touch.isEmpty(),"a move aimed at "+CommandMode.destination+" (point "+Spec.POINTS[1].id()+") drew the name '"+got+"' at "+box(r)+" (wanted '"+want+"' at "+box(wantR)+"); seals "+box(BattleHud.rects().get("seal-0"))+", "+box(BattleHud.rects().get("seal-1"))+", "+box(BattleHud.rects().get("seal-2"))+"; of the frame's "+BattleHud.rects().size()+" rects ("+String.join(", ",BattleHud.rects().keySet())+") "+(touch.isEmpty()?"none touch":"these touch: "+String.join("; ",touch)));
                         CommandMode.cancel();seen=0;stage=70;
                     }else if(seen==0&&tick-waitFrom>100){report("p1-ui-aim-name",false,"the aim never came into point "+Spec.POINTS[1].id()+" in 100 ticks (aimPoint "+CommandMode.aimPoint()+", aimed at "+CommandMode.destination+")");CommandMode.cancel();stage=70;}
                 }
@@ -1465,8 +1472,7 @@ public final class Phase1Checks implements ClientModInitializer {
             var w=c.getWindow();int cw=UiCanvas.width(),ch=UiCanvas.height(),sw=w.getScaledWidth(),sh=w.getScaledHeight();List<String> bad=new ArrayList<>();
             if(w.getFramebufferWidth()!=s[0]||w.getFramebufferHeight()!=s[1]||(int)w.getScaleFactor()!=s[2])bad.add("the window is "+w.getFramebufferWidth()+"x"+w.getFramebufferHeight()+" at GUI "+(int)w.getScaleFactor());
             for(var e:r.entrySet())if(!inside(e.getValue(),cw,ch))bad.add(e.getKey()+" "+box(e.getValue())+" leaves the canvas");
-            var keys=new ArrayList<>(r.keySet());
-            for(int i=0;i<keys.size();i++)for(int j=i+1;j<keys.size();j++)if(!allowed(keys.get(i),keys.get(j))&&meets(r.get(keys.get(i)),r.get(keys.get(j))))bad.add(keys.get(i)+" "+box(r.get(keys.get(i)))+" meets "+keys.get(j)+" "+box(r.get(keys.get(j))));
+            bad.addAll(touching(r));
             int[] hotbar=canvas(c,sw/2-91,sh-22,182,22),hearts=canvas(c,sw/2-91,sh-39,81,9);
             for(var e:r.entrySet()){if(meets(e.getValue(),hotbar))bad.add(e.getKey()+" meets the hotbar");if(meets(e.getValue(),hearts))bad.add(e.getKey()+" meets the hearts");}
             smallOk&=bad.isEmpty();

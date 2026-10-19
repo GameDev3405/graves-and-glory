@@ -128,6 +128,10 @@ public final class BattleHud {
         tx.put("score-dawn",dawn);tx.put("clock",clock);tx.put("score-dusk",dusk);
     }
 
+    /** The top of the aimed point's name: the seal rects' foot (each seal's box runs from its chain's top at 37 down 31 px), so the
+     *  name clears every seal. */
+    static final int AIM_NAME_Y=68;
+
     /** The points hang from the bar on a 28 px pitch: chain, seal (its owner's, or split while contested) and letter; while an order
      *  is aimed into a point's radius, that point's name hangs below its seal. */
     static void seals(DrawContext g,TextRenderer font,int w,Map<String,int[]> r,List<SealDraw> sd,Map<String,String> tx){
@@ -142,7 +146,7 @@ public final class BattleHud {
             else{sprite="hud/seal-neutral";UiTex.draw(g,"hud/seal-neutral",sc-13,y);}
             String id=i<pts.length?pts[i].id():String.valueOf((char)('A'+i));
             g.drawText(font,id,centred(font,id,sc),contested?49:50,DarkUi.IVORY,true);
-            if(aim==i&&i<pts.length){String name=pts[i].name();int nx=centred(font,name,sc);g.drawText(font,name,nx,62,DarkUi.IVORY,true);tx.put("aim-name",name);r.put("aim-name",new int[]{nx,62,font.getWidth(name)+1,9});}
+            if(aim==i&&i<pts.length){String name=pts[i].name();int nx=centred(font,name,sc);g.drawText(font,name,nx,AIM_NAME_Y,DarkUi.IVORY,true);tx.put("aim-name",name);r.put("aim-name",new int[]{nx,AIM_NAME_Y,font.getWidth(name)+1,9});}
             sd.add(new SealDraw(sprite,sc-13,y));r.put("seal-"+i,new int[]{sc-13,37,27,31});
         }
     }
