@@ -62,6 +62,11 @@ public final class UiMathCheck {
         check(FeedLines.style("deploy",0,0).glyph().equals("hud/fgv-sun") && FeedLines.style("notice",1,1).glyph().equals("hud/fgv-moon") && FeedLines.style("bogus",0,0).equals(FeedLines.style("notice",0,0)), "own emblem; unknown kinds are notices");
         for(String kind:new String[]{"point","loss","kill","down","rout","deploy"}) for(int t=0;t<2;t++) check(UiMath.contrast(FeedLines.style(kind,t,0).argb(),0xffdccb9f)>=4.5, "feed ink "+kind+" holds 4.5:1 on the slip");
         check(UiMath.feedAlpha(0)==1f && UiMath.feedAlpha(6000)==1f && Math.abs(UiMath.feedAlpha(7000)-0.5f)<1e-6 && UiMath.feedAlpha(8000)==0f && UiMath.feedAlpha(9000)==0f, "8 s life, 2 s fade");
+        check(UiMath.portraitSize(40,0)==32 && UiMath.portraitSize(160,0)==128 && UiMath.portraitSize(40,2)==29 && UiMath.portraitSize(160,2)==116, "2 px and 8 px per model pixel; Tall +2");
+        check(UiMath.portraitFeet(40,0)==72 && UiMath.portraitFeet(160,0)==288 && UiMath.portraitFeet(40,2)==69, "feet below the window: 36 model px from the top");
+        check(UiMath.plateLabelX(126)==57 && UiMath.plateLabelX(150)==57 && UiMath.plateLabelX(100)==70, "plate label clears the Enter key");
+        check(UiMath.sheetRise(0,0f)==0f && UiMath.sheetRise(3,0f)==1f && UiMath.sheetRise(40,0.5f)==1f && UiMath.sheetRise(1,0.5f)>0.5f && UiMath.sheetRise(1,0.5f)<UiMath.sheetRise(2,0f) && Math.abs(UiMath.sheetRise(1,0.5f)-0.875f)<1e-6, "the focused sheet rises over 3 ticks (150 ms), easing out");
+        check(UiMath.sealStamp(0,0.9f)==0f && UiMath.sealStamp(1,0f)==0f && UiMath.sealStamp(2,0f)==0.25f && UiMath.sealStamp(3,0f)==1f && UiMath.sealStamp(9,0.5f)==1f, "the seal stamps in the rise's last 2 ticks (100 ms), easing in");
         System.out.println("UiMathCheck: " + checks + " checks passed");
     }
 }

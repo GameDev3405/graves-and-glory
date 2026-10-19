@@ -61,3 +61,8 @@ Kort pictures up to a thousand concurrent players a year out and wants the serve
 - Three primary buttons on the camp home (THE LONG MARCH / BATTLE 1, OPEN RECRUITMENT, PARTY WITH FRIENDS); whether the other two step down while battle 1 is unwon is left for the UI pass.
 - MVP exact tie on equal non-zero kills and seconds crowns each viewer's own first row (2026-10-18, Phase 1 Task 7); a viewer-independent tiebreak (owner id) if it is ever noticed.
 - Banner mode: supply-wagon escort variant (2026-10-18, Phase 4 spec question 1). Kort: parked for now, to be revisited after the carry variant ships.
+
+## War Table home leftovers (2026-10-18, UI Task 5)
+- A canvas smaller than the 960x540 page (the default 854x480 window) crops the War Table page: the party column and the Camp plaque sit 3 px from the left edge and the field card loses its last pixel column; the candle and the inkwell are left off there rather than cut. A compact layout for such canvases is left for later.
+- The home has no Visuals & sound entry; the camp guide and the side list of the camp pages not yet on the War Table keep it. Where it lives on the table is left for the page tasks.
+- Suite order: ui-hud reads the camp chat lift at its tick 20 without first going back to camp, so a suite that ends mid-round (bots) run straight before it fails p1-ui-chat-lift (run ui-home-235258: "in camp the chat moved 44 GUI px"). The registered order never does that; making ui-hud return to camp first is left for the harness.

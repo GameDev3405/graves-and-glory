@@ -147,6 +147,11 @@ public final class Campaign {
             String refused=soloRefusal(p.getUuid(),"Practice is solo. Use a private room to play with your party.");if(!refused.isEmpty()){notice(p.getUuid(),refused);return true;}
             soloStart(p,null);return true;
         }
+        if(cmd.equals("camp:gates")){ // Ride to the war gates: onto the middle of the ready pad of the team the commander's squad is on
+            if(b.running){notice(p.getUuid(),"Wait until the current battle finishes.");return true;}
+            var squad=b.squads.get(p.getUuid());Vec3d at=CampaignMaps.padCentre(squad==null?0:squad.team);
+            b.relocate(p,at.x,at.y,at.z,180,8);return true;
+        }
         if(cmd.startsWith("campaign:")){ // a Long March battle: solo, on its own map, which is built first if another map stands
             var row=Arrays.stream(Spec.CAMPAIGNBATTLES).filter(r->r.id().equals(cmd.substring(9))).findFirst().orElse(null);
             if(row==null)return true;

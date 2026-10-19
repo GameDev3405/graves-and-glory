@@ -9,6 +9,7 @@ import v4a_table, v4a_paper, v4a_hud, v4a_recruit, v4a_ink, v4a_map, v4a_furn, v
 from v4pal import IRON
 from v4a_hud import seal, track, spine, ledger_card, hp_fill, feed_glyph_ink, BRASSR
 import kit_extra
+import kit_props
 
 MOCK = dict(v4art.ASSETS)
 for _mod in (v4a_table, v4a_paper, v4a_hud, v4a_recruit, v4a_ink, v4a_map, v4a_furn, v4a_portrait, v4a_recruit2):
@@ -85,9 +86,11 @@ add('hud/lesson-card', kit_extra.lesson_card, kind='three-v', t=20, b=24, ox=1, 
 add('hud/respawn-card', lambda: ledger_card(200, 28, 'lo', IRON, seed=16), ox=1, oy=1)
 
 # ================================================================ table/
-# the 1280 x 720 tables, the mock's avoid boxes shifted by (160, 90) as the 960 x 540 page is centred on them
-add('table/oak-table', lambda: v4art.oak_table(W=1280, H=720, avoid=[(200, 270, 520, 462)]))
-add('table/oak-table-recruit', lambda: v4art.oak_table(W=1280, H=720, avoid=[(824, 434, 1064, 586)]))
+# the 1280 x 720 tables, one stretch of oak per War Table page from the page's own seed (kit_props.TABLE_SEEDS; Kort,
+# 2026-10-18 late): home's is the round 4 mock's (seed 11), recruit's has its reserved seed; plank layout, knots and
+# nail heads only, never a brass fitting (no butterfly key, no mending plate)
+add('table/oak-table', lambda: kit_props.table('home'))
+add('table/oak-table-recruit', lambda: kit_props.table('recruit'))
 mock('table', 'rail', kind='three-h', l=0, r=0)
 for _w in (96, 104, 112, 120):     # plates 6 px in from each edge; the PNG adds 1 px of shadow right, 2 below
     mock('table', 'plaque-%d' % _w, kind='nine', l=6, t=6, r=7, b=8)
@@ -101,8 +104,14 @@ for _w in range(13, 49):
 for _n in ('frame-back-48', 'frame-back-empty-48', 'frame-rim-48', 'frame-back-160', 'frame-ornate-184', 'invite-plus',
            'ready-check', 'order-lo', 'order-lo2', 'order-hi', 'ribbon-teal', 'wax-crown', 'ink-practice',
            'ink-skirmish', 'ink-campaign', 'field-card', 'tack', 'map-rivergate', 'map-seal', 'quill',
-           'btn-brass-240x40', 'prop-maproll', 'prop-glow', 'prop-candle', 'prop-inkwell'):
+           'btn-brass-240x40', 'prop-maproll'):
     mock('table', _n)
+# the props at the kit's pixel scale, about 2.5 times the mock's (Kort, 2026-10-18 late): the candle's flame flickers
+# on 4 frames, the quill twitches on 3, the glow is the candle's light on the oak, the glint crosses the Ride plate
+add('table/prop-candle', kit_props.candle, kind='sheet', frames=4)
+add('table/prop-inkwell', kit_props.inkwell, kind='sheet', frames=3)
+add('table/prop-glow', kit_props.glow)
+add('table/plate-glint', kit_props.plate_glint)
 add('table/btn-iron-240x40', lambda: kit_extra.btn_iron(MOCK['btn-brass-240x40']()))
 
 # ================================================================ recruit/

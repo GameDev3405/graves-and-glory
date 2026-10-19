@@ -12,7 +12,7 @@ public class UiButton extends ButtonWidget {
     /** Paints the button in canvas pixels (called between UiCanvas.begin and end); hot means hovered or focused. */
     public interface Painter { void paint(DrawContext g, int x, int y, int w, int h, boolean hot); }
 
-    final int cx, cy, cw, ch;
+    int cx, cy, cw, ch;
     final Painter painter;
 
     public UiButton(int x, int y, int w, int h, Text label, PressAction onPress, UiButton.Painter painter) {
@@ -23,6 +23,12 @@ public class UiButton extends ButtonWidget {
 
     /** {x, y, w, h} in canvas pixels. */
     public int[] canvasBox() { return new int[]{cx, cy, cw, ch}; }
+
+    /** Moves the canvas box (a War Table order sheet grows when it is raised) and recomputes the GUI bounds. */
+    public void moveTo(int x, int y, int w, int h) {
+        cx = x; cy = y; cw = w; ch = h;
+        relayout();
+    }
 
     /** Recomputes the GUI bounds from the canvas box at the current window size and GUI scale. */
     public void relayout() {

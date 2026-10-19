@@ -215,6 +215,44 @@ public final class UiMath {
         return left >= FEED_FADE_MS ? 1f : left / (float) FEED_FADE_MS;
     }
 
+    /** A live portrait's model size (InventoryScreen.drawEntity's size, px per block) in a square window `window` px wide: the
+     *  window shows 20 model px, from 4 above the head to 8 below the shoulders, plus `tall` rows for a Tall +N troop (unit
+     *  identity rule 8): 2 px per model px in a 40 px window, 8 in a 160 px one. */
+    public static int portraitSize(int window, int tall) {
+        return (int) Math.round(16.0 * window / (20.0 + tall));
+    }
+
+    /** Where a live portrait's feet go, px below the window's top: the 32 model px of a player plus the 4 above the head, at
+     *  portraitSize's scale, so the head sits 4 model px under the window's top. */
+    public static int portraitFeet(int window, int tall) {
+        return (int) Math.round((36.0 + tall) * window / (20.0 + tall));
+    }
+
+    /** The x of the label on the 240 px Ride plate, from the plate's left: centred on the plate while that keeps it clear of the
+     *  Enter key (which ends at x 51), else from x 57. */
+    public static int plateLabelX(int textW) {
+        return textW <= 126 ? 120 - textW / 2 : 57;
+    }
+
+    /** The War Table's order sheets hand the focus over in SHEET_TICKS client ticks (150 ms, UI spec 4.2). */
+    public static final int SHEET_TICKS = 3;
+
+    /** How far the focused order sheet has risen from flat (0) to raised (1), `ticksSinceFocus` whole client ticks plus `partial`
+     *  of one after the focus reached it: an ease-out over SHEET_TICKS ticks. The sheet that lost the focus eases flat on the same
+     *  curve (1 less this). */
+    public static float sheetRise(long ticksSinceFocus, float partial) {
+        double t = Math.max(0.0, Math.min(1.0, (ticksSinceFocus + (double) partial) / SHEET_TICKS));
+        double u = 1.0 - t;
+        return (float) (1.0 - u * u * u);
+    }
+
+    /** The wax seal stamping down on the risen sheet: 0 until the last 2 ticks of the rise, then 0 to 1, falling faster as it
+     *  goes (an ease-in, so it lands with a hit). */
+    public static float sealStamp(long ticksSinceFocus, float partial) {
+        double t = Math.max(0.0, Math.min(1.0, (ticksSinceFocus + (double) partial - (SHEET_TICKS - 2)) / 2.0));
+        return (float) (t * t);
+    }
+
     /** The cooldown sweep's pixel class at (x,y) of a size x size square with `remain` (0..1) of the time left:
      *  0 clear, 1 veil over the part of the turn still to come (clockwise from twelve), 2 the bright leading edge,
      *  3 the start line at twelve. A port of the cooldown painter in tools/ui_art/v4a_hud.py. */

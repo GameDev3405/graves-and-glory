@@ -25,7 +25,11 @@ public final class CampaignClient {
     static boolean lead,fill=true;static String mode="2",notice="",headline="",partyKey="";
     /** The server-wide bot difficulty (a Spec.BOTCOMMAND id), as last sent in the snapshot. */
     static String difficulty="normal";
-    static String botsLabel(){return "Bots: "+difficulty.substring(0,1).toUpperCase()+difficulty.substring(1);}
+    static String botsLabel(){return "Bots: "+tierName(difficulty);}
+    /** A bot tier's display name: its Spec.BOTCOMMAND id with a capital ("normal" reads "Normal"). */
+    static String tierName(String id){return id.isEmpty()?id:id.substring(0,1).toUpperCase(java.util.Locale.ROOT)+id.substring(1);}
+    /** The order sheet the War Table home raises, "practice", "skirmish" or "campaign"; kept for the session (UI plan Task 5). */
+    static String homeMode="skirmish";
     /** The tier a press of the Bots button asks for: the next row of the sheet, wrapping round. */
     static String nextDifficulty(){for(int i=0;i<Spec.BOTCOMMAND.length;i++)if(Spec.BOTCOMMAND[i].id().equals(difficulty))return Spec.BOTCOMMAND[(i+1)%Spec.BOTCOMMAND.length].id();return Spec.BOTCOMMAND[0].id();}
     static JsonObject party=emptyParty();static int padCountdown,padDawn,padDusk,padSize=2,tutorial=-1;
