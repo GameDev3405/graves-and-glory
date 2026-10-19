@@ -63,11 +63,20 @@ public final class Phase1Checks implements ClientModInitializer {
     public static void window(MinecraftClient c,int w,int h,int gui){window(c,w,h,gui,false);}
     /** As window(c,w,h,gui), but borderless at the top left of the screen when bare is set. With its title bar a 1920x1080 window
      *  does not fit a 1920x1080 desktop: Windows clamps it to 1920x1061 (fix round 1, run ui-fix1-155207), where the canvas is k 1.
-     *  A window set without bare gets its title bar back. */
+     *  A window set without bare gets its title bar back. A minimized window keeps its old framebuffer whatever size it is set to
+     *  (run ui-polish1-200436: someone at the PC minimized it), so it is shown again first, without taking the focus. */
     public static void window(MinecraftClient c,int w,int h,int gui,boolean bare){
-        var win=c.getWindow();GLFW.glfwSetWindowAttrib(win.getHandle(),GLFW.GLFW_DECORATED,bare?GLFW.GLFW_FALSE:GLFW.GLFW_TRUE);
+        var win=c.getWindow();unminimize(c);GLFW.glfwSetWindowAttrib(win.getHandle(),GLFW.GLFW_DECORATED,bare?GLFW.GLFW_FALSE:GLFW.GLFW_TRUE);
         win.setWindowedSize(w,h);if(bare)GLFW.glfwSetWindowPos(win.getHandle(),0,0);
         c.options.getGuiScale().setValue(gui);c.onResolutionChanged();hold=5;
+    }
+    static boolean minimized(MinecraftClient c){return GLFW.glfwGetWindowAttrib(c.getWindow().getHandle(),GLFW.GLFW_ICONIFIED)==GLFW.GLFW_TRUE;}
+    /** Shows a minimized window at its last size and place; on Windows without activating it, so no one's keys or mouse go to it. */
+    static void unminimize(MinecraftClient c){
+        if(!minimized(c))return;long handle=c.getWindow().getHandle();
+        if(org.lwjgl.system.Platform.get()==org.lwjgl.system.Platform.WINDOWS)org.lwjgl.system.windows.User32.ShowWindow(org.lwjgl.glfw.GLFWNativeWin32.glfwGetWin32Window(handle),org.lwjgl.system.windows.User32.SW_SHOWNOACTIVATE);
+        else GLFW.glfwRestoreWindow(handle);
+        System.out.println("[p1] window: shown again after it was minimized (no focus taken), for "+currentName);
     }
 
     @Override public void onInitializeClient(){
@@ -77,6 +86,9 @@ public final class Phase1Checks implements ClientModInitializer {
         HudRenderCallback.EVENT.register((g,delta)->{if(current instanceof HudWatch w)try{w.hudFrame(MinecraftClient.getInstance());}catch(Exception e){report("p1-"+currentName+"-exception",false,e.toString());e.printStackTrace();}});
         ClientTickEvents.END_CLIENT_TICK.register(c->{
             c.options.pauseOnLostFocus=false; // an unfocused test window must not pause the integrated server
+            // a stray Escape from someone at the PC opens the pause menu, which pauses the integrated server and can stall a suite
+            // that is waiting on it; once the window has lost the focus, the menu closes (no suite opens it)
+            if(c.currentScreen instanceof net.minecraft.client.gui.screen.GameMenuScreen&&!c.isWindowFocused()){c.setScreen(null);System.out.println("[p1] closed a pause menu left open in the unfocused window, during "+currentName);}
             if(c.getOverlay()!=null)return;
             if(!started){if(c.currentScreen instanceof FrontMenuScreen&&++front==40){started=true;GravesAndGloryClient.startCamp(c,false);}return;}
             if(current instanceof HudWatch w)try{w.clientTick(c);}catch(Exception e){report("p1-"+currentName+"-exception",false,e.toString());e.printStackTrace();}
@@ -1343,8 +1355,10 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 41->{var s=WINDOWS[win];window(c,s[0],s[1],s[2],s[3]==1);waitFrom=tick;stage=42;
                     var chat=c.inGameHud.getChatHud();chat.clear(false);chat.addMessage(net.minecraft.text.Text.literal("Chat check: hold the ford"));chat.addMessage(net.minecraft.text.Text.literal("Chat check: archers to the ridge"));}
                 case 42->{ // p1-ui-small-window, one window size
-                    var r=BattleHud.rects();var s=WINDOWS[win];var score=r.get("score");
-                    boolean full=r.containsKey("lesson")&&r.containsKey("respawn")&&r.containsKey("ability")&&r.containsKey("spine")&&BattleHud.cards().size()==3&&score!=null&&score[0]==UiCanvas.width()/2-128;
+                    var r=BattleHud.rects();var s=WINDOWS[win];var score=r.get("score");var fb=c.getWindow();
+                    if(minimized(c)){window(c,s[0],s[1],s[2],s[3]==1);return;} // minimized since the size was set: show it again, then measure
+                    boolean sized=fb.getFramebufferWidth()==s[0]&&fb.getFramebufferHeight()==s[1]&&(int)fb.getScaleFactor()==s[2];
+                    boolean full=sized&&r.containsKey("lesson")&&r.containsKey("respawn")&&r.containsKey("ability")&&r.containsKey("spine")&&BattleHud.cards().size()==3&&score!=null&&score[0]==UiCanvas.width()/2-128;
                     if(full||tick-waitFrom>100){
                         if(full)measure(c,s,r);else{smallOk=false;smallWhy+=(smallWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": no frame with every element in 100 ticks (drew "+r.keySet()+")";}
                         if(win==0)shot(c,"ui-hud-chat");if(win==1)shot(c,"ui-hud-small");if(win==2)shot(c,"ui-hud-1280");if(win==3)shot(c,"ui-hud-1080-gui2");if(win==4)shot(c,"ui-hud-1080-gui4");if(win==5)shot(c,"ui-hud-1366");
