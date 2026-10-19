@@ -1827,8 +1827,8 @@ public final class Phase1Checks implements ClientModInitializer {
     }
 
     /** UI polish M11, the last suite listed (it leaves the world): a disconnect empties what the battle HUD keeps between frames. A
-     *  practice round on map 0 shows a feed line, the hint slip, the cards and the pinned lesson 4 with an attack order aimed; then the
-     *  client leaves as the pause menu's Save and Quit does. No HUD frame runs without a world, so 20 ticks after it is gone the records
+     *  practice round on map 0 draws the pinned lesson 4, then a feed line, the hint slip and the cards with an attack order aimed (the
+     *  card hides while an order is aimed; its wrap and lines stay); then the client leaves as the pause menu's Save and Quit does. No HUD frame runs without a world, so 20 ticks after it is gone the records
      *  must already be empty: what the last frame drew, the feed, the aimed order, the cards' groups and flashes, the lesson wrap and
      *  its lines, and the hint layer's clock, with the chat lift back at 0. */
     static final class UiLeaveChecks implements Suite,ServerWatch,HudWatch {
@@ -1859,9 +1859,10 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(c.currentScreen!=null)c.setScreen(null);
                     if(fixed&&GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()&&BattleHud.rects().containsKey("lesson")){EventFeed.push("notice",GravesAndGloryClient.team,"Leaving the field",net.minecraft.util.Util.getMeasuringTimeMs());CommandMode.begin("attack");stage=2;}
                 }
-                case 2->{ // every record held at once, then the pause menu's Save and Quit (GameMenuScreen.disconnect), outside the tick
+                case 2->{ // every record held at once (the lesson card hides while an order is aimed, its wrap and lines stay), then the pause
+                    // menu's Save and Quit (GameMenuScreen.disconnect), outside the tick
                     var r=BattleHud.rects();
-                    if(CommandMode.active()&&r.containsKey("feed")&&r.containsKey("hints")&&r.containsKey("lesson")&&!BattleHud.cards().isEmpty()&&BattleHud.wrappedFor()!=null&&!GravesAndGloryClient.lessonDrawn.isEmpty()){
+                    if(CommandMode.active()&&r.containsKey("feed")&&r.containsKey("hints")&&!BattleHud.cards().isEmpty()&&BattleHud.wrappedFor()!=null&&!GravesAndGloryClient.lessonDrawn.isEmpty()){
                         before=records(c);stage=3;
                         c.send(()->{if(c.world!=null)c.world.disconnect();c.disconnect(new net.minecraft.client.gui.screen.MessageScreen(net.minecraft.text.Text.translatable("menu.savingLevel")));c.setScreen(new net.minecraft.client.gui.screen.TitleScreen());});
                     }
