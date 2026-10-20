@@ -80,23 +80,29 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
      * passive. A click picks it; CONFIRM CLASS sends the pick. Gold marks the pick.
      */
     final class ClassCard extends ButtonWidget {
-        static final int ACTIVE_LINES=3,PASSIVE_LINES=2;
+        static final int ACTIVE_LINES=3,PASSIVE_LINES=3;
         final Spec.ClassesRow c;
         /** Text lines the card had no room for in the last frame; the checks want none. */
         int clipped;
+        boolean headerFits;
         ClassCard(Spec.ClassesRow c,int x,int y,int w,int h){super(x,y,w,h,Text.literal(c.name()),b->{pendingClass=c.id();clearAndInit();},DEFAULT_NARRATION_SUPPLIER);this.c=c;}
         @Override public void renderButton(DrawContext g,int mx,int my,float delta){
             int x=getX(),y=getY(),w=width,h=height,room=w-20;boolean selected=pendingClass.equals(c.id());
             panel(g,x,y,w,h);
             if(selected){g.fill(x,y,x+w,y+3,GOLD);g.drawBorder(x,y,w,h,GOLD);}else if(isHovered()||isFocused())g.drawBorder(x,y,w,h,MUTED);
-            DarkUi.title(g,c.name().toUpperCase(Locale.ROOT),x+10,y+6,WHITE);
             String group=Arrays.stream(Spec.GROUPS).filter(r->r.id().equals(c.group())).map(r->r.label()).findFirst().orElse(c.group()).toUpperCase(Locale.ROOT);
-            int gw=textRenderer.getWidth(DarkUi.body(group));DarkUi.label(g,group,x+w-10-gw,y+9,selected?GOLD:MUTED);
+            int gw=textRenderer.getWidth(DarkUi.body(group)),nameRoom=Math.max(1,room-gw-8);
+            var title=DarkUi.heading(c.name().toUpperCase(Locale.ROOT));int titleWidth=textRenderer.getWidth(title);
+            float titleScale=Math.min(1.35f,nameRoom/(float)Math.max(1,titleWidth));
+            g.getMatrices().push();g.getMatrices().translate(x+10,y+6,0);g.getMatrices().scale(titleScale,titleScale,1);
+            g.drawText(textRenderer,title,0,0,WHITE,false);g.getMatrices().pop();
+            headerFits=Math.ceil(titleWidth*titleScale)<=nameRoom;
+            DarkUi.label(g,group,x+w-10-gw,y+9,selected?GOLD:MUTED);
             String cooldown=c.cooldownTicks()/20+" s cooldown";int cdw=textRenderer.getWidth(DarkUi.body(cooldown));
             DarkUi.label(g,cooldown,x+w-10-cdw,y+23,MUTED);text(g,Commander.activeName(c.active()).toUpperCase(Locale.ROOT),x+10,y+23,room-cdw-6,GOLD);
             clipped=0;int ty=y+34;var lines=textRenderer.wrapLines(DarkUi.body(c.activeText()),room);
             for(int i=0;i<lines.size();i++){if(i>=ACTIVE_LINES){clipped++;continue;}g.drawText(textRenderer,lines.get(i),x+10,ty,WHITE,false);ty+=10;}
-            int py=y+34+10*ACTIVE_LINES+2;DarkUi.label(g,"PASSIVE",x+10,py,MUTED);int pw=textRenderer.getWidth(DarkUi.body("PASSIVE"))+6;DarkUi.rule(g,x+10+pw,py+5,room-pw);
+            int py=y+34+10*ACTIVE_LINES;DarkUi.label(g,"PASSIVE",x+10,py,MUTED);int pw=textRenderer.getWidth(DarkUi.body("PASSIVE"))+6;DarkUi.rule(g,x+10+pw,py+5,room-pw);
             ty=py+11;lines=textRenderer.wrapLines(DarkUi.body(c.passiveText()),room);
             for(int i=0;i<lines.size();i++){if(i>=PASSIVE_LINES||ty+9>y+h){clipped++;continue;}g.drawText(textRenderer,lines.get(i),x+10,ty,WHITE,false);ty+=10;}
         }

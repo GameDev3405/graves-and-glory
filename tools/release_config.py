@@ -38,7 +38,7 @@ def validate_player_jar(path, expected):
         forbidden = ('MeltyTest', 'CampaignChecks', 'CampaignDevControl', 'MapRouteChecks',
                      'Phase3Checks', 'StructureStudio', 'Walkability', 'gravesandglory_studio', 'p3_marker',
                      'VisualChecks', 'RevisionChecks', 'LocalProbe', 'LegacyDataMigrationCheck',
-                     'CompatibilityChecks', 'CompatibilityPolicyCheck', 'FrontMenuChecks', 'AdmissionPolicyCheck', 'CampRulesCheck', 'CampRedesignChecks', 'CampNetworkChecks', 'MapTour', 'Phase1Checks', 'BattleMathCheck', 'BotSimulation', 'UiMathCheck', 'UiKitSheet', 'Phase2Checks', 'Ui05RecruitChecks', 'HousesCheck', 'ProfileMigrationCheck', 'TitleDemo',
+                     'CompatibilityChecks', 'CompatibilityPolicyCheck', 'FrontMenuChecks', 'AdmissionPolicyCheck', 'CampRulesCheck', 'CampRedesignChecks', 'CampNetworkChecks', 'MapTour', 'Phase1Checks', 'BattleMathCheck', 'BotSimulation', 'UiMathCheck', 'UiKitSheet', 'Phase2Checks', 'Ui05RecruitChecks', 'UiBanner05Checks', 'HousesCheck', 'ProfileMigrationCheck', 'TitleDemo',
                      'gg/gravesandglory/testing/', 'META-INF/services/gg.gravesandglory.Diagnostics$Probe')
         for name in jar.namelist():
             if any(token in name for token in forbidden):

@@ -1,0 +1,78 @@
+GRAVES AND GLORY - ISOLATED BANNER 0.5 INTEGRATION
+2026-10-20 | Codex | review candidate only
+
+START / AUTHORIZATION
+Kort approved continuing Banner reconciliation, keeping main/Claude work unchanged and logging work for review.
+Independent clone with --no-hardlinks of prior candidate997395b1a13e90e780fa45d38346b43350340ef5.
+Checkout C:/Users/kortt/Documents/Codex/gg-banner05-20261020
+Branch codex/banner05-integration-20261020. Origin removed. No merge/push/install.
+Original preview/UI files and prior isolated candidates are read-only references. Existing preservation manifests will be rechecked.
+
+PLAN (before implementation)
+1. Audit old Task7 Banner against current server: old army:add/remove/profile.lineup is obsolete. Preserve slot:<index>:<id>, colour:<side>, v2 owned/weighted slots and repack.
+2. Add a separate WarTableBanner class and narrow CampScreen routing. Reuse existing textures/type/portraits; do not copy obsolete gameplay or alter sheets/server/class rules.
+3. Display all five House collections; only owned and fieldable troops can be armed. Show all20 slots including ^ continuation markers, Epic/Legendary weights and limits, pending pick and clear tool.
+4. Keep class selection in existing six-card screen; expose direct route from Banner. Keep legacy army editor accessible as a fallback.
+5. Test real mouse and keyboard, weighted placements/limits, clearing continuation, colour snapshots, unowned/unfieldable restrictions, compact/large layouts and prior recruitment regression.
+6. Build, verify no harness in JAR, compare original hashes, commit candidate, export patch/source/screenshots/logs.
+
+DESIGN DECISIONS
+- Existing server repacks the entire banner after each slot edit; the client must show the authoritative snapshot and not pretend to preserve gaps.
+- A ^ marker belongs to its preceding weighted troop. Clearing a continuation must target that troop's starting slot; replacing a continuation is disabled to avoid accidentally retaining the owner plus adding another troop.
+- New Banner uses established recruit paper, frames and House cloths. No new/replaced art assets.
+- Commander active/passive/cooldown cards remain in CampaignLobbyScreen, not compressed into a narrow sidebar.
+
+EXECUTION
+- Created new independent clone from997395b and removed origin.
+- Added WarTableBanner with existing paper/frames/House cloths, read-only snapshot rendering and existing server slot/colour commands. No assets added.
+- Home/Recruit Banner controls route into new Banner. Existing army editor remains under Army & equipment. Commander class opens existing six-card selector; Esc returns to Banner.
+- The new page uses actual owned collection, fieldability, slot weights and rarity limits. ^ cells show continuation and narration names their origin. Clear resolves a marker to its owner; replacement of a marker stays inactive.
+- CampScreen adds only Banner lifecycle/render/key handling. Other camp pages keep their existing implementations.
+- compileJava and compileLocalTestTools passed.
+- Added UiBanner05Checks, registered as ui05-banner, and forbidden it in player JAR validation. Updated prior ui05-recruit's one intentional routing assertion (B now opens War Table Banner).
+- Started ui05-banner + ui05-recruit with separate run/runtime/profile paths. Copied only a stopped disposable test world's save to avoid rebuilding terrain; never read or used a player save.
+- UI style checker still reports the same12 existing findings; no added findings. Release-integrity2 fixtures pass.
+
+FIRST GAME RUN
+work/banner-v2: Banner interactions and recruitment passed, but full aggregate review found two class-card checks failing (2 passive lines clipped at effective640x360: 854x480 GUI2 and1280x720 GUI3), plus Banner suite failure.70 pass markers,3 fail markers. An earlier progress statement incorrectly said both suites passed; corrected to Kort immediately after aggregate review.
+Visual review found the single-character continuation/empty glyphs too hard to see on the dark frame. Replaced with drawn arrows + owner-slot labels and explicit plus marks, on a foreground layer. Added a marker-label check and will rerun. Added hover/focus outlines for House/roster controls.
+The initial fixture added owned troops and briefly triggered the existing reveal overlay on first class screenshot. Adjusted test to wait for that genuine overlay to finish before capture (no production reveal behavior changed).
+Existing class selector title/group labels can crowd on Quartermaster at compact scale; class headers were initially retained unchanged. The dedicated tests count unclipped active/passive body lines, not every header glyph.
+
+COMPACT CLASS PREREQUISITE
+- Existing selector allowed only2 passive lines and wasted2px between active text and Passive heading. In isolated CampaignLobbyScreen only: permit3 passive lines and remove that2px gap. At minimum104px card height, the third passive line now ends exactly at the card bottom. No class mechanics, text, confirmation or command changes. Original file remains untouched.
+- A repeat run (work/banner-final) was already in flight when aggregate review exposed the old compact class failure; retain it as intermediate evidence, then rerun both suites against the spacing fix.
+- The same class screenshot showed Quartermaster name/group header collision. Isolated selector now measures the name and uniformly scales it only when necessary to leave an8px gap before the group label, preserving both full labels. Wide cards retain the prior1.35 scale. Added header-fit observation to the class-card check.
+- Marker arrows and owner labels visually verified in intermediate screenshot.
+
+REPRODUCTION
+Java17.0.19.10-hotspot; Gradle8.8; offline; disposable integrated server.
+Environment GRAVES_ROADMAP_TEST_ROOT=<isolated-root>; GRAVES_PHASE1_CHECKS=ui05-banner,ui05-recruit
+runClient --offline -PcampaignChecks --init-script test-tools/isolated-checks.gradle --args="--gameDir <isolated-root>/run" --console=plain
+Pure checks: javac --release17 Spec,CounterMath,RosterMath,Profile,Progression,UiMath,HintText,FeedLines + HousesCheck,UiMathCheck; run those two check classes.132 and65 passed.
+Release-integrity Python fixtures:2 passed. UI style: same12 baseline findings, no new findings.
+
+FILES / REVIEW REASONS
+WarTableBanner.java: new presentation/controller; existing server commands only. Read authoritative20-slot snapshot and collection; explicitly handle weighted continuation ownership. Established textures reused unchanged.
+CampScreen.java: new Banner lifecycle/render/key delegation.
+WarTableHome.java / WarTableRecruit.java: Banner routes now open the new page; Recruit B shortcut follows same route.
+CampaignLobbyScreen.java: small compact class readability fix discovered by actual checks: third passive line and2px gap adjustment, title width fitted to preserve group label. Confirmation/abilities unchanged.
+UiBanner05Checks.java: new isolated functional/layout suite.
+Ui05RecruitChecks.java: one intentionally changed Banner-route assertion.
+Phase1Checks.java: register new suite. release_config.py: forbid test class in player JAR.
+
+STILL OUTSIDE THIS PASS
+Remaining Task7 Contracts/Chapter/Friends/Field presentation reconciliation with0.5. Evolution, mastery accrual, shard spending, Pacts/renown/Oath need server-backed handlers before actionable controls. Title/storybook polish and12 pre-existing style findings remain. No new gameplay, rewards, sheet values, schemas, model assets or network protocols.
+
+FINAL ACCEPTANCE
+work/banner-acceptance completed normally in1m30s, closed its own game client.74 pass markers, zero failures.
+Banner: 854x480 GUI2,960x480 GUI1,960x540 GUI1,1280x720 GUI3,1920x974 GUI2. Every drawn text/seat and visible widget inside canvas; six class headers/body lines fit; class Esc returns.
+Real server: Epic2-slot/2-unit limit; Legendary4-slot/1-unit limit; continuation clear targets owner; marker replacement blocked; unowned/unfieldable picks disabled; cross-House mix valid; colour saved; Marshal confirmed; legacy editor accessible; Recruit B and Banner Esc route correctly. Focused Clear accepts Enter.
+Marker arrows/owner labels and compact class screenshot visually inspected.
+Recruitment regression: all five Houses at three sizes; paid Epic/pity reset, full-star duplicate shards, zero-gold refusal, stage model/details, compact home all passed.
+Intermediate runs retained: banner-v2 had70 pass/3 fail; banner-final71 pass/3 fail (same compact class issue, before its fix). Final acceptance supersedes them.
+Preservation: all596 preview source hashes and510 Claude UI source hashes unchanged. Both previous isolated candidates retain clean status at374a4d3 and997395b. No remotes, no merge/push/install/release.
+
+FINAL BUILD
+build --offline -x test passed in12s. Player JAR identity and harness exclusion passed. Test tools compiled successfully as part of acceptance. JAR used for verification only; no installation or release.
+Source identity: eba7429ec3a7c362f2aaf1493ccf69aba99fe566f85da1bdb2fb389bf9c4a4d6

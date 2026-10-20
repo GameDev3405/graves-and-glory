@@ -74,7 +74,7 @@ final class Ui05RecruitChecks implements Phase1Checks.Suite {
         if(stage==9){
             if(CampaignClient.profile.gold!=0||tick-at<15)return;
             var r=screen(c).recruit;int sent=WarTableRecruit.sent().size();click(c,r.button("enlist"));report("insufficient-gold",!r.canEnlist()&&WarTableRecruit.sent().size()==sent,"disabled roll emits no command");
-            Phase1Checks.UiRecruitChecks.tap(c,GLFW.GLFW_KEY_B);report("banner-route",c.currentScreen instanceof GravesAndGloryClient.LobbyScreen,"B opens existing v2 army editor");
+            Phase1Checks.UiRecruitChecks.tap(c,GLFW.GLFW_KEY_B);report("banner-route",c.currentScreen instanceof CampScreen banner&&banner.banner!=null,"B opens v2 War Table Banner");
             Phase1Checks.window(c,854,480,2);CampScreen.open("recruit");
             var id=c.player.getUuid();Phase1Checks.server(c,b->b.campaign.handle(b.server.getPlayerManager().getPlayer(id),"roll:gilded"));at=tick;stage=10;
         }

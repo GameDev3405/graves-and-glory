@@ -153,7 +153,7 @@ final class WarTableHome {
         builtFriends = friendsBadge();
         add("camp", WarTable.plaque(56, 96, "icon-camp", "Camp", "Esc", 61, 0, b -> screen.close()));
         add("recruit", WarTable.plaque(184, 112, "icon-recruit", "Recruit", null, 0, 0, b -> screen.page("recruit")));
-        add("banner", WarTable.plaque(304, 112, "icon-banner", "Banner", null, 0, 0, b -> CampScreen.open("army")));
+        add("banner", WarTable.plaque(304, 112, "icon-banner", "Banner", null, 0, 0, b -> screen.page("banner")));
         add("contracts", WarTable.plaque(424, 112, "icon-contracts", "Contracts", null, 0, contractsBadge(), b -> screen.page("contracts")));
         add("chapter", WarTable.plaque(544, 112, "icon-chapter", "Chapter", null, 0, 0, b -> screen.page("chapter")));
         add("friends", WarTable.plaque(664, 112, "icon-friends", "Friends", null, 0, builtFriends, b -> screen.page("friends")));

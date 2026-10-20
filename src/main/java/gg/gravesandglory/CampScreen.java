@@ -19,6 +19,7 @@ final class CampScreen extends ArmyScreen {
     WarTableHome home;
     /** The War Table recruit page (page recruit), kept while the page is open; leaving the page drops it, so a later visit opens on the first House. */
     WarTableRecruit recruit;
+    WarTableBanner banner;
     /** The keys whose press the recruit page took, not released since. Minecraft hands a screen each repeat of a held key as another keyPressed: those go no further, on whatever page the press left the table at (a held Esc that went home must not then close it), until keyReleased lets the key through again. */
     final Set<Integer> held=new HashSet<>();
     CampScreen(String page){super("Banner camp");this.page=page;}
@@ -31,11 +32,12 @@ final class CampScreen extends ArmyScreen {
     /** Sends cmd to the server unless a command went less than 300 ms ago; returns whether it went. */
     boolean action(String cmd){if(System.currentTimeMillis()-requestAt<300)return false;requestAt=System.currentTimeMillis();send(cmd);return true;}
     /** Until UI Task 7 builds the field picker, page field (the home's Change) is the map voting page, with the bots' tier. */
-    void page(String next){page=next.equals("field")?"match":next;offset=0;if(!page.equals("recruit"))recruit=null;clearAndInit();}
+    void page(String next){page=next.equals("field")?"match":next;offset=0;if(!page.equals("recruit"))recruit=null;if(!page.equals("banner"))banner=null;clearAndInit();}
     void rebuild(){clearAndInit();}
     UiButton add(UiButton b){return addDrawableChild(b);}
     String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready;}
     @Override protected void init(){
+        if(page.equals("banner")){scale=1;key=state();code=null;if(banner==null)banner=new WarTableBanner(this);banner.init();return;}
         if(page.equals("home")){scale=1;key=state();code=null;if(home==null)home=new WarTableHome(this);home.init();return;} // the War Table draws in canvas pixels
         if(page.equals("recruit")){scale=1;key=state();code=null;if(recruit==null)recruit=new WarTableRecruit(this);recruit.init();return;}
         scale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/760f,client.getWindow().getScaledHeight()/460f));width=(int)(client.getWindow().getScaledWidth()/scale);height=(int)(client.getWindow().getScaledHeight()/scale);key=state();code=null;
@@ -82,7 +84,7 @@ final class CampScreen extends ArmyScreen {
             button("Play with friends in a room",x,350,w,b->page("room"));
         }
     }
-    @Override public void tick(){if(home!=null&&page.equals("home"))home.tick();if(recruit!=null&&page.equals("recruit"))recruit.tick();if(!key.equals(state())&&!(code!=null&&code.isFocused()))clearAndInit();if(running&&!CampaignClient.waiting)close();}
+    @Override public void tick(){if(banner!=null&&page.equals("banner"))banner.tick();if(home!=null&&page.equals("home"))home.tick();if(recruit!=null&&page.equals("recruit"))recruit.tick();if(!key.equals(state())&&!(code!=null&&code.isFocused()))clearAndInit();if(running&&!CampaignClient.waiting)close();}
     /** The troops one recruitment roll in this House can give: its Commons, Rares and Epic in sheet order (Legendaries come from Pacts). */
     static List<Spec.TroopsRow> pool(String house){return Arrays.stream(Spec.TROOPS).filter(t->t.house().equals(house)&&!t.rarity().equals("legendary")).toList();}
     static int weight(Spec.TroopsRow t){var r=RosterMath.rarityRow(t.rarity());return r==null?0:r.rollWeight();}
@@ -166,6 +168,7 @@ final class CampScreen extends ArmyScreen {
         return y;
     }
     @Override public void render(DrawContext g,int mx,int my,float delta){
+        if(page.equals("banner")&&banner!=null){banner.render(g);super.render(g,mx,my,delta);return;}
         if(page.equals("home")&&home!=null){home.render(g);super.render(g,mx,my,delta);return;}
         if(page.equals("recruit")&&recruit!=null){recruit.render(g);super.render(g,mx,my,delta);recruit.overlay(g);return;} // the Odds note lies over the widgets
         g.getMatrices().push();g.getMatrices().scale(scale,scale,1);DarkUi.background(g,width,height);DarkUi.crest(g,20,16,26,false);DarkUi.title(g,"BANNER CAMP",58,19,DarkUi.GOLD);
@@ -218,7 +221,7 @@ final class CampScreen extends ArmyScreen {
     @Override public boolean mouseScrolled(double x,double y,double amount){if(page.equals("recruit")&&recruit!=null)return recruit.scrolled(amount);return super.mouseScrolled(x/scale,y/scale,amount);}
     @Override public boolean mouseReleased(double x,double y,int button){return super.mouseReleased(x/scale,y/scale,button);}
     @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){return super.mouseDragged(x/scale,y/scale,button,dx/scale,dy/scale);}
-    @Override public boolean keyPressed(int key,int scan,int mods){if(held.contains(key))return true;if(page.equals("home")&&home!=null&&home.keyPressed(key))return true;if(page.equals("recruit")&&recruit!=null&&recruit.keyPressed(key)){held.add(key);return true;}if(code!=null&&code.isFocused()&&key!=256)return code.keyPressed(key,scan,mods);if(key==77)return true;return super.keyPressed(key,scan,mods);}
+    @Override public boolean keyPressed(int key,int scan,int mods){if(held.contains(key))return true;if(page.equals("banner")&&banner!=null&&banner.keyPressed(key)){held.add(key);return true;}if(page.equals("home")&&home!=null&&home.keyPressed(key))return true;if(page.equals("recruit")&&recruit!=null&&recruit.keyPressed(key)){held.add(key);return true;}if(code!=null&&code.isFocused()&&key!=256)return code.keyPressed(key,scan,mods);if(key==77)return true;return super.keyPressed(key,scan,mods);}
     /** A held key's release lets its presses through again (see held). */
     @Override public boolean keyReleased(int key,int scan,int mods){if(held.remove(key))return true;return super.keyReleased(key,scan,mods);}
     @Override public void mouseMoved(double x,double y){if(page.equals("home")&&home!=null)home.mouseMoved(x,y);super.mouseMoved(x/scale,y/scale);}
