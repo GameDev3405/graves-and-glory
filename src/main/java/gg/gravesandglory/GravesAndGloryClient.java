@@ -39,6 +39,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static final int GOLD=DarkUi.GOLD,INK=0xf019171d,MUTED=DarkUi.MUTED,WHITE=DarkUi.IVORY;
     /** state_v8: the side id each team flies, this army's House trait tiers (tier I or higher), and the commander ability (its active id, ticks until ready or -1 when this build has no behaviour for it, ticks left active; "" while unseated). */
     static String[] sideIds={"",""};static Map<String,Integer> houses=Map.of();static String commanderActive="";static int commanderReady,commanderFor;
+    /** What the HUD slot said in the last frame (key, active name, state), so a check can read it; empty when no slot is drawn. */
+    static List<String> abilityDrawn=List.of();
     /** The commander ability the HUD slot shows ("none": no slot), with the ticks left and in all of its cooldown. */
     static String abilityId="none";static int abilityRemaining,abilityTotal;
     static boolean[] contested={false,false,false};

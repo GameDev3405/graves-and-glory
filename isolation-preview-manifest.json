@@ -1,0 +1,2390 @@
+{
+  "source": "C:\\Users\\kortt\\Melty\\bannerbound-preview",
+  "head": "38deb85f1e62701dae61a7b0370f68e5db253256",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "sha256": "fd9f7c2165a6797396b9de3a6c90c49581bd600ac0195490ce63dd145cab3314"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "386775eca21cb1c5edb365fb9ed5c6d0753f1750054822de08db0833e336eb43"
+    },
+    {
+      "path": "HOW-TO-EDIT.md",
+      "sha256": "0100c07eb38d3edc000f91cbad58e88e3762fd84ddc2cd9004ebb631c5f91850"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "f8259115429f1800cd672501addfaab94563425d9e9ee737450700350c0dcccc"
+    },
+    {
+      "path": "README.md",
+      "sha256": "5946e5723d1a55a67a7148e5f1d091c9df34c8c354fe066b5f829941f4bd2876"
+    },
+    {
+      "path": "UPDATE_PLAN.md",
+      "sha256": "8bb468c48f6e7f8417fee09515a9f0354d9efbbcdb3cc1b7f5083b34c6a4a1cd"
+    },
+    {
+      "path": "art/parts/cape.json",
+      "sha256": "f1c286c60459a00f689d8131cdb310e61a06bda3deb6f025ef0707ad3e5fad27"
+    },
+    {
+      "path": "art/parts/cape_skirt.json",
+      "sha256": "d205dadbed06b7df1b88b308fede11cdb2b3f2742f0d8470246b6b6cf9dcdc89"
+    },
+    {
+      "path": "art/parts/chest_panel.json",
+      "sha256": "9e43f71ce41d14c82b3620994a9255f048c6aaef4268d4a4cda1365c0170cd3d"
+    },
+    {
+      "path": "art/parts/crest_plume.json",
+      "sha256": "44342e115c5b4b3253371ae20b1ddca998d85b810cfb2e4d83fa501668274fe1"
+    },
+    {
+      "path": "art/parts/felt_cap.json",
+      "sha256": "2173394d9f00825b2c5f830410f90f515231454934bd223f92822cf0d982c6ee"
+    },
+    {
+      "path": "art/parts/gilt_sash.json",
+      "sha256": "4c04aed1f044e3b298a8d96bd354079d3debe327a756ad2812553cc4cb973ae4"
+    },
+    {
+      "path": "art/parts/great_helm.json",
+      "sha256": "628b77cb94f9adebb358e03771c2b743d70f00a2d2cec95442fd701022f0a1ca"
+    },
+    {
+      "path": "art/parts/iron_cap.json",
+      "sha256": "3366ce330ab7baab4f4c39161e8a8028b97c48a75adf5f8f3f60a12839ff8eaa"
+    },
+    {
+      "path": "art/parts/jerkin.json",
+      "sha256": "50eb659e712925cd36e7a94ac47d4442fd5db176a27f680c2ebdb369cbf9fdb7"
+    },
+    {
+      "path": "art/parts/laurel_helm.json",
+      "sha256": "c25b6eeda649d92dc3dfb4069a5dada5e0fbed20c77948102fc62e99b7de43c2"
+    },
+    {
+      "path": "art/parts/linen_hood.json",
+      "sha256": "19a0ef2fd401d93fbae0f755abb6efe841ed642d49987b5a8b6cfdc6d93f185e"
+    },
+    {
+      "path": "art/parts/long_feather.json",
+      "sha256": "a1224c9abbd6baf0ebec0e5abe369665ca6894f26df4c139c83c6915d307996b"
+    },
+    {
+      "path": "art/parts/long_tabard.json",
+      "sha256": "906bbda2357a5b93b9724eba8d6eb7b9ad0a3fca4b621621784a6cd388439c75"
+    },
+    {
+      "path": "art/parts/pennant.json",
+      "sha256": "9247259954ae6c6b1c92c816f80549346551559b559b3fd26e3fddc8a50e1fa7"
+    },
+    {
+      "path": "art/parts/robe_skirt.json",
+      "sha256": "5ac843b5d4d8169de1bd0b9e604cc97e852287e0063c3396f9d2f3f536cd956a"
+    },
+    {
+      "path": "art/parts/signal_horn.json",
+      "sha256": "0eb6cb3677aba18dd6f453eb0ab32c05bc84b644b20637f5816ff8c390593a70"
+    },
+    {
+      "path": "art/parts/standard.json",
+      "sha256": "8402a78998553e387bbf02995bf2fd7f49a62c766232f94870b9905b45ce5928"
+    },
+    {
+      "path": "art/parts/sun_brooch.json",
+      "sha256": "1b8670b9476232c0b88a14f01584768bc77f3e094521709ca94a79cf890fa75d"
+    },
+    {
+      "path": "art/parts/surcoat_skirt.json",
+      "sha256": "3e1f10c18544779c2f0f3585ecc39ce0f33fde9a3175d6d865c33f5b18b5937d"
+    },
+    {
+      "path": "art/parts/tabard_skirt.json",
+      "sha256": "51abefc3a1387e8840e0779ec2e8f2138c95fca528cf7734e8891219d4184335"
+    },
+    {
+      "path": "art/parts/tall_quiver.json",
+      "sha256": "f73202c095e266a9badf91851590b2b7fa7f23e9652b52d1669adb1c39dd59c1"
+    },
+    {
+      "path": "art/parts/vestment.json",
+      "sha256": "b4186e4c5c7bbd8e47fa754ad5cee8621aaa7a4d7ec676eeee9c2071dd7a0172"
+    },
+    {
+      "path": "art/parts/white_hood.json",
+      "sha256": "d22d2236cb99994096043b41909514976233a5acbafa7147bd8fe06d393955e6"
+    },
+    {
+      "path": "art/parts/white_quiver.json",
+      "sha256": "d3168528b1a1e12c508570b31750a574f54a84fc8fe051487d5aedddc1dec345"
+    },
+    {
+      "path": "art/rigs/biped.json",
+      "sha256": "390d62f59ce695909004858fd70f9c913cbbf2af445e03ca19e557d6f399a5ff"
+    },
+    {
+      "path": "art/rigs/colossus.json",
+      "sha256": "f6479a292c2c76b0f6848264daf234fc41b64b2565c9e9ca2f71b5c0829d897f"
+    },
+    {
+      "path": "art/rigs/hound.json",
+      "sha256": "f28095fd1445a712895e0fe197312462ab73ea503b584cd544534121cdf2aeab"
+    },
+    {
+      "path": "art/rigs/spider.json",
+      "sha256": "9f061fc10f7c0f700a2dd7b53c7987b27d46e953de76b5f8e85e5372b8def19f"
+    },
+    {
+      "path": "art/team/glyph_moon.png",
+      "sha256": "86217bfa593ec441b7d67ff98c67d13ad68f41fa42e1818e4e822e18c56aa0c3"
+    },
+    {
+      "path": "art/team/glyph_star.png",
+      "sha256": "f9f0e1be7bd8792f0c7f64436dc915437eb5f8dcfda105f333c60e0a63204fac"
+    },
+    {
+      "path": "art/team/glyph_sun.png",
+      "sha256": "831b52fe76432021b6448c0294998fa152a27e6586c3fbec7973ce0362d07cbd"
+    },
+    {
+      "path": "art/team/glyph_wave.png",
+      "sha256": "6713cc3f6173bce1a393a8cf5dd4b005c7e7d8c393ced1d8181b8d4364c90989"
+    },
+    {
+      "path": "art/team/team_cloth.png",
+      "sha256": "51f6d69cc94f7826950ec1ef99bccd87d790aff5c1ea3b278447153d135b719f"
+    },
+    {
+      "path": "art/troops/archer.json",
+      "sha256": "20c998cd40399ca67310e5bd77f3c0402ef45f618ee72fcead3d85fc1584939b"
+    },
+    {
+      "path": "art/troops/archer_s1.png",
+      "sha256": "474a9037bfbef28c1f9d57a17a9cfacd8c1cce716882fe72a503cafb8f082c61"
+    },
+    {
+      "path": "art/troops/archer_s2.png",
+      "sha256": "3bc6bc1e810e02a20fc75e71da02883a894c6e9aa6c9b46b4e87fee8ad567c85"
+    },
+    {
+      "path": "art/troops/archer_s3.png",
+      "sha256": "530c7a1695839b9e65c0d1f935587c9cd023d378b03cea27333d8c951ba81a01"
+    },
+    {
+      "path": "art/troops/gl_marshal.json",
+      "sha256": "02e85ff79acde390841c8d0e85a07c09e000df825b5d82d2ee326bf366a24c13"
+    },
+    {
+      "path": "art/troops/gl_marshal_s1.png",
+      "sha256": "c77ae02570305d1a15227c9b2abe9e5820289d5251c8443e2fded809eb1e8c6e"
+    },
+    {
+      "path": "art/troops/knight.json",
+      "sha256": "4cb1fac0014d89e2eb7410c7fbdc7c17ae7bf38477e5b4659d787dee97ce4e37"
+    },
+    {
+      "path": "art/troops/knight_s1.png",
+      "sha256": "eff82947e222b6773178ea7262dd947cea8d2d526637ec77be79231169bb7350"
+    },
+    {
+      "path": "art/troops/knight_s2.png",
+      "sha256": "cecd3b7c76f08363a56d3c4b3d663c08feb3487d52bf188510edcd30c0cceb52"
+    },
+    {
+      "path": "art/troops/knight_s3.png",
+      "sha256": "45015a826d8f2a36910bc28f7b3f4fcf3cd298926779faed02dafd1e11d97d8b"
+    },
+    {
+      "path": "art/troops/longbow.json",
+      "sha256": "d5f2d72ad432343ce46bfb063ce47c24c3366651087ef86d732fcaab20d75a0a"
+    },
+    {
+      "path": "art/troops/longbow_s1.png",
+      "sha256": "497c70a9230305f7ab619e59b4f61a680fb196c6a7787c005833a2cc901d2bfe"
+    },
+    {
+      "path": "art/troops/longbow_s2.png",
+      "sha256": "f5c509a17d86fba9d1e4f47a84b1b07c14907abb8ed2271b5a4b06cb7e57ef45"
+    },
+    {
+      "path": "art/troops/longbow_s3.png",
+      "sha256": "58407c1b2a2fdba2418e6521e16337994ac0b758c748f9d7585a2d19f9415862"
+    },
+    {
+      "path": "art/troops/mage.json",
+      "sha256": "976eab62cb8210bef40549ef8e9ab56800407f053e7be0d53fd5f122480927e3"
+    },
+    {
+      "path": "art/troops/mage_e.png",
+      "sha256": "cfa90eb4913706c1a410afa517d887bab25575f5335deb6e72e13a71acfca9ce"
+    },
+    {
+      "path": "art/troops/mage_s1.png",
+      "sha256": "33e5c0d1ad480f6fab33d0985fc8ca25bab80243d8712f3d8d10cceef9ec52d8"
+    },
+    {
+      "path": "art/troops/sentinel.json",
+      "sha256": "4267ddf42cea325753b8fd8a1dd03abbddad688619dcc2d4210a4df07685c0e3"
+    },
+    {
+      "path": "art/troops/sentinel_s1.png",
+      "sha256": "b99692f4a6b0083f6f939a07cd88c0c8b696a1b1b7ad624f759288d76da41dc8"
+    },
+    {
+      "path": "art/troops/sentinel_s2.png",
+      "sha256": "cc09f39abaedee001899aaea6f976362a05c53ef44e2d89899ff0172cdb09b9b"
+    },
+    {
+      "path": "art/troops/sentinel_s3.png",
+      "sha256": "5903255c08e59bf7f70ab1c4cb991f5af54a3080e812da536dfc1bb52c12a28a"
+    },
+    {
+      "path": "art/weapons/arming_sword.json",
+      "sha256": "8f0645f63cda93d7aa4adeed1dca0cd285152e0217232c37d0db93ebbfe6570f"
+    },
+    {
+      "path": "art/weapons/arming_sword.png",
+      "sha256": "63d3dcac1cb47618ecac9a1e1d8dab578776c57cc7a0403d22c72f566533ad27"
+    },
+    {
+      "path": "art/weapons/longbow.json",
+      "sha256": "eb5296a40a2fae7d523d3a4765200cb8841f6e3220b61cf47a58a563788e860f"
+    },
+    {
+      "path": "art/weapons/longbow.png",
+      "sha256": "34f44f713a2de84cb1e25fb4d7a026a5d91089b5064fa74bcd5a7747ec1992a2"
+    },
+    {
+      "path": "art/weapons/longsword.json",
+      "sha256": "9f207af186804ae59862e3207b5d2cb5a1f675031f04dff2fc5204fd3d5aa29a"
+    },
+    {
+      "path": "art/weapons/longsword.png",
+      "sha256": "cb5437be6afbe25d15439d4ce83e46368d935ec58ce3c569adcbee3e5a861d8d"
+    },
+    {
+      "path": "art/weapons/marshal_sword.json",
+      "sha256": "eb7391b169ed563f8d3f7d5b9e9d3b25360d195cb1902d4fe7fc019d1e8e60b2"
+    },
+    {
+      "path": "art/weapons/marshal_sword.png",
+      "sha256": "28eea610c27d5e994830d72e1146aebc94c60fde8da4be30e27f10727ea4f991"
+    },
+    {
+      "path": "art/weapons/order_bow.json",
+      "sha256": "b1e7cb763b91e96c7bca5da1efa95eabb3965646fbe5a2529467a641f42a541b"
+    },
+    {
+      "path": "art/weapons/order_bow.png",
+      "sha256": "53fab13dd190cb6e6bcd59e4983ac3a4935f75047f439b3b11814756074a72d1"
+    },
+    {
+      "path": "art/weapons/sun_staff.json",
+      "sha256": "fc730627de6ab1a35543d37f3d50e2154e7cb0e0315a6898b6d8c7375d3ff509"
+    },
+    {
+      "path": "art/weapons/sun_staff.png",
+      "sha256": "e901975a8d3a77dd3c7748eb904b22e316eeae818d0b45d6695a76b0dfb0f07e"
+    },
+    {
+      "path": "art/weapons/sun_staff_e.png",
+      "sha256": "f4498ddd2cae8b2225c670416d45888ea9e05c2639a81c8a2c1c9bd027595274"
+    },
+    {
+      "path": "build.gradle",
+      "sha256": "157a01aacba9f0de36e66701697317e1bcad0e0e000e7df352e8b00c53240759"
+    },
+    {
+      "path": "dependencies/author-permissions.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "dependencies/manifest.json",
+      "sha256": "cf94b4f95b44eaebcb7d18b7a61cb4e5a828797eefdbed8c1fb2ccb236de89ad"
+    },
+    {
+      "path": "dependencies/nested-full-sources.json",
+      "sha256": "754d4d87ab8242f205c3776d1856b88ff2e46b6619b003ae46af9e40f29633c3"
+    },
+    {
+      "path": "dependencies/nested-source-manifest.json",
+      "sha256": "a1c69e0505d95759beb284e473dc5add8a8a3bdc805062c2a55c67f95b201fd5"
+    },
+    {
+      "path": "dependencies/notices/AGPL-3.0.txt",
+      "sha256": "e0eedba615d5cd1b986afb6c5b3a4b1ae33713e7e9dc74d19daec5e3221f9d2e"
+    },
+    {
+      "path": "dependencies/notices/ANTLR-BSD.txt",
+      "sha256": "8f33d11a53aff76f7d72b0348e35e725e9708aef4bce0a6dcd1708a38d670466"
+    },
+    {
+      "path": "dependencies/notices/GPL-3.0.txt",
+      "sha256": "230184f60bae2feaf244f10a8bac053c8ff33a183bcc365b4d8b876d2b7f4809"
+    },
+    {
+      "path": "dependencies/notices/LGPL-3.0.txt",
+      "sha256": "7d3a95e5e06978064ed3f8e2b7c8f845e7fd8a405294727cc708f94cb83b8059"
+    },
+    {
+      "path": "dependencies/platform-lock.json",
+      "sha256": "d136347471e851470f50ed5e1b302e217590cd9677b1f7c4544d58e0058d2975"
+    },
+    {
+      "path": "dependencies/source-manifest.json",
+      "sha256": "66adfac158607ebdc967e8a2d87ace2156a4f9cd000132c3c851fd68df6f76f7"
+    },
+    {
+      "path": "docs/LOBBY-AND-SERVER-RESEARCH.md",
+      "sha256": "d14c7215a92d251a90a461ee5428414c0d1dd86e7561d52a25ce5008cd9bb0ee"
+    },
+    {
+      "path": "docs/PARKED.md",
+      "sha256": "bc13509e230ef3265c904d0037ee402b722b91817b4fa26835f2557ef5975559"
+    },
+    {
+      "path": "docs/PHASE-1-PLAYTEST.md",
+      "sha256": "3ad4fe2a6ab0ade35ac5ce0b85afee2ce01f73d7256e3b0c3af037cd1f88f2f2"
+    },
+    {
+      "path": "docs/PHASE-2-BALANCE.md",
+      "sha256": "34328f9971c423768b377b09cbaef7dcc8890a4ac237bb8d8d233240ca446cd4"
+    },
+    {
+      "path": "docs/PROJECT-STATE.md",
+      "sha256": "3acadae743a1071a5183aa39dfc8521b66eb84bbd1e7eb76fee8ae649ba3a126"
+    },
+    {
+      "path": "docs/QUESTIONS-FOR-KORT.md",
+      "sha256": "9ac6b50e4f26f4b9823e114254474aecf448efaf8d198b6ecbd9b364dacd1972"
+    },
+    {
+      "path": "docs/RELEASE-0.3.1.txt",
+      "sha256": "d9df210c60c8c316c5b1b8316006e2aebca8cdee5df8a02729c2d98eaac8565d"
+    },
+    {
+      "path": "docs/RELEASE-0.3.2.txt",
+      "sha256": "e5c8508bc7266807b5e5fd1975b508d64b43cec7d01ee1ef4d5c9bb9667a8dcd"
+    },
+    {
+      "path": "docs/RELEASE-0.3.3.txt",
+      "sha256": "fb2c9e046c795880a314dcb5bd6edbc5739946dcfbbac3180e3e07cfadcf71ad"
+    },
+    {
+      "path": "docs/RELEASE-0.3.4.txt",
+      "sha256": "dc7b4408a3f06748bec7c51787910337522be8db7134ade8e957494568b202dc"
+    },
+    {
+      "path": "docs/RELEASE-0.3.5.txt",
+      "sha256": "e9d2b736ee49034477c905d9817d9b590a1300c8934550adf837d065d0e7d89b"
+    },
+    {
+      "path": "docs/RELEASE-0.3.6.txt",
+      "sha256": "dfb36f9e3083f4e009e2e919e6c40a715059a98fc5e8e4a037032745e1a3442e"
+    },
+    {
+      "path": "docs/RELEASE-0.3.7.txt",
+      "sha256": "127fe3716d137171ec7e2aafd133a8cc0fd4330af7fb7d44857eeb00f2b2b2b0"
+    },
+    {
+      "path": "docs/RELEASE-0.4.0.txt",
+      "sha256": "7a4438b96df273759734ad9f73077edaddb6b353a1c89afff3c114ba5743efb7"
+    },
+    {
+      "path": "docs/UI_REDESIGN.md",
+      "sha256": "83e13ae320a370ee0278f30c586a38e3b7f05f3925e71ef5fa59ca2d30075059"
+    },
+    {
+      "path": "docs/VISION-AND-ROADMAP.md",
+      "sha256": "975774778cd9e2fe1584e5cd8cd8aa5c998eca83c305d366444208f7dd30ab0b"
+    },
+    {
+      "path": "docs/copy/chapter-1.md",
+      "sha256": "a1831a6842725a8c1daee945e97a57a03db56fee06c25424c3a92820b209f94f"
+    },
+    {
+      "path": "docs/media/SHOTLIST.md",
+      "sha256": "9d39f4a4df01d2b74cfdc43518eb067f5b4a38293ac5f8638b0e61ef6b3cf029"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-17-phase-1-solo-core.md",
+      "sha256": "d4aedb4731ea55a8a0f6bd8a8973dee3f2dac878784099a5c500c079b82b8206"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-17-phase-2-houses.md",
+      "sha256": "ec1f2d8a119cf4a9cae6c30a539bd837410b90a4f29afc43f239c43f09d0e219"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-17-phase-3-built-world.md",
+      "sha256": "c41423c94be5a37ebdb9422076661bc91ff3385b02cd05e0b39e2223cf8b0c5b"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-18-phase-4-modes-campaign.md",
+      "sha256": "ca03664034e8f9971e3c02cf366a01430954a4a3a812e9fd8163d74240c77147"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-18-ui-plan.md",
+      "sha256": "a3a84ab671409530e873cdec08916901aaa80cbbefdad6453184fcc09550c003"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-17-built-world-design.md",
+      "sha256": "7ba9a00c56171cefa6d87fef64c2ad33d1bc556e10f86c87e2d68d6631d370f9"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-17-houses-design.md",
+      "sha256": "31d1c2ada0e034579f1e4da4b93ff9c0d9f5bcfdd0632325c303d09cbfea5f2c"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-17-unit-identity.md",
+      "sha256": "4ec4a900b1165537df2436cda0e89321f87db897a6666c7ed68c5feacd36490d"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-18-campaign-story-design.md",
+      "sha256": "ceba4bd0da624123cfc0bf94c6ae845a119d1c7caf81a579b5f9ccad6a101c77"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-18-phase-4-modes-campaign-design.md",
+      "sha256": "5fe8e0e79546ce5d0af18949755a4146fb61a095a392c15df2e39183efae70ab"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-18-ui-design.md",
+      "sha256": "e96ecd4aa945873575513679779c19dcb8ee9399166375ca783d023b1047f9fd"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-18-unit-ai-design.md",
+      "sha256": "234b7bd4013a14768d70723961520e4978551a20906134941643cf2f06d493af"
+    },
+    {
+      "path": "gradle.properties",
+      "sha256": "b6b5852d6bcf7ddee8768ff029cfc104073dfddec9056d24d4d52ac8588d0cf7"
+    },
+    {
+      "path": "melty.json",
+      "sha256": "1c06379f08841475113ec4daf9f3ac9a147a0d0691b61159d9bc4d71ac57d55f"
+    },
+    {
+      "path": "settings.gradle",
+      "sha256": "60168a535e06df3c4cc30c1b1a52f6e1bb7a425d84978cd382590a6c98d73086"
+    },
+    {
+      "path": "sheets/design.json",
+      "sha256": "d637aea06d9e9a65553f91d3e35c83665650645de8c2bdeadfa64d8b37fa5520"
+    },
+    {
+      "path": "sheets/preflight.json",
+      "sha256": "809f35dadd593771befa5f651805163e185c15cd0664505e0b01121dc6b953ed"
+    },
+    {
+      "path": "sheets/verification.json",
+      "sha256": "8786958573657a542fb650607e769e4a6e4c5554ac2781b734285bbe26bf3aed"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/Abilities.java",
+      "sha256": "9f40bc0e66494c60e653879f3cf762e562e2961d2e7689c64febd6fb15b4a4f4"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/AdmissionPolicy.java",
+      "sha256": "afe0b625ae907647886f91f4553fdee394509b0bd29c4693049926efdb1f79ba"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/Arena.java",
+      "sha256": "b0de0536eef0c05bf0844540eac1d548f89cdd5c3e537370ba1af0bb41ddab5a"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/ArmyCards.java",
+      "sha256": "faa872bd3b89f0069b7a7bf3a78cd954dc0523de3ae2863bd069c1342daeee42"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/ArmyMob.java",
+      "sha256": "5f8f11af70870379e174656051a3d22d5d1ad93889ed99113f9741adbfccfd68"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/ArmyMobs.java",
+      "sha256": "6b34c4b22ebf9331da38c34c2c1533c7868cadb90bc8b82125aec821acf8b191"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/BattleEffects.java",
+      "sha256": "feb168407bb75c6971e5789fd4cccb3818f4c4e78fe582ab79beb4462b345df2"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/BattleHud.java",
+      "sha256": "2777b6e4e3175bbf08809192e546a0dc9be64eac0b269fcf988c3d99cc78df43"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/BattleMath.java",
+      "sha256": "260d8e9043d8de3d13f8866a8ac02caebb49417a5d5407ae06fa35d9f22b07da"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/CampScreen.java",
+      "sha256": "1e4221c19f91a1bca6e63cef24ef3a7599f54f9e9dac2159a2a12c746cba65b5"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/CampWorld.java",
+      "sha256": "e8a5816c0775760f0cb0e422a66af95ae541197a4191fd110e4dae2040ecb9ae"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/Campaign.java",
+      "sha256": "47e3c1c08acd18d461a2945e679d9f787d9c65d2d422fcc14b1d1810b7d11f90"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/CampaignClient.java",
+      "sha256": "3c49993f880bbcd76eb13ea601c63416ed49bb83abfddce50a98615f9e6007e4"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/CampaignLobbyScreen.java",
+      "sha256": "ab3a60586b271749dc808e16958cc5c343e41c10bd1232caac1d21b4c339bdf0"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/CampaignMaps.java",
+      "sha256": "5bb20aa64c3684643e55156911021af5ae2f5893a896c2c29429bb74517c24e7"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/ChatPlacement.java",
+      "sha256": "51da1539d040a7c25d092733cad62eae8bba8f6c45552bc94a192fcbc683963c"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/Combat.java",
+      "sha256": "b9fc4357cc52c8352c7bd709ed2b22cd0fb00fa14e280705801ab4e72aa9fcce"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/CommandMode.java",
+      "sha256": "065af9930159eb7c229c2969919ddfbd4663f9b8ae15e64c21c26fb4dc50941b"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/Commander.java",
+      "sha256": "44e548d593feb503bcf091d2841f0aa1296e0c5f168d9dfc521dd3cce7e7bd1f"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/CompatibilityPolicy.java",
+      "sha256": "17d97abe65d8a229749a4a3184cd17e3ebe2097191543940daca0d975450bf0c"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/CounterMath.java",
+      "sha256": "75dad3bef038c04d76fd685c9eea394a198286006d6be4b64b07454bb607b36a"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/DarkUi.java",
+      "sha256": "c42f05bfb50ba776d7fd5bacb924bd8b61eae4bcebb196f6d62cdf6de3d27bd2"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/Diagnostics.java",
+      "sha256": "70136049f62a8bc180a79ad27c28d19e652207bf048b65c8e5ec68716c8f4a24"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/EventFeed.java",
+      "sha256": "aff5e8c07b804c7dbe85cbb95a86903edc25e3e20d1fc8f037378a5be259d4ce"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/FeedEvents.java",
+      "sha256": "2025a22b2b303ce26ce999a330e9ab0a7991af44ffa6a6fb454777534f33eaa5"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/FeedLines.java",
+      "sha256": "b707c5e0d5b65d7f47da80f06e7e7c5eb45ff82e57ca1a431199044108fa3549"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/FrontMenuScreen.java",
+      "sha256": "2d11a3077ab079813130ca27076ab7d3bbe0dad3e5320bf95c57f2a15dbb3708"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/GravesAndGlory.java",
+      "sha256": "281353b877721891e6bfbeb87c134681b8984b5ed59372da5f8fd0522ca6d56a"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/GravesAndGloryClient.java",
+      "sha256": "0b3f3ce0af1bfc595d3ad50abb1e8350b648e4df4af685ef54e14c1a714e4231"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/HintText.java",
+      "sha256": "81d882723aebcc7aaf70d7ff0448dfb18760ca3182ff02c13f10cd29c966bba0"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/Houses.java",
+      "sha256": "3ec740f8ae42f205ea309175ef91c902ffb7736152bd9690a8c4630d75584628"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/LegacyDataMigration.java",
+      "sha256": "b91fd7c1b8145d67c6c44acb37f93032d1fe3c7d266eddcd1a24c67ad622a685"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/MapDressing.java",
+      "sha256": "7705bbb7811a6048127508e10a0ebe5d62f11828a11cbd177cc6adf52089aea1"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/MatchStats.java",
+      "sha256": "af0de2b560f246735f4aef37b0d7befef626c56c2e596fc8fba21f89dc0870f6"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/Morale.java",
+      "sha256": "d1810bf3d2f0cc4b49eeb2cb0f82382778143a84932c2da205e0a1cacf45ffb1"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/PackControls.java",
+      "sha256": "0752cb27a00b14a79de86e1d0032f98125a87e224e70cc3e83c080f1582d4423"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/Portrait.java",
+      "sha256": "cd6064ad7c4c7dc5b828905ee9712123761e1c9bbfa4d4f1ef0f617519ddb3c1"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/Presentation.java",
+      "sha256": "5b49e2ee58d3f0b62ff09af70c6ab0509fb31fefe572148430b4d451db5dcd38"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/PresentationScreen.java",
+      "sha256": "5e7da8e23b1449ce10daafb75755ae2f38efa195fb8a084d91e218b88894d43e"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/Profile.java",
+      "sha256": "6f2296ef1581c569846ef94820eed2d407101f49b0386521081ccefced937315"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/ProfileMigration.java",
+      "sha256": "2ffa1eefbe4731ab1e50e02d3e45232faba9b5b91f0c91e0d1f06d778efe4872"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/Progression.java",
+      "sha256": "43c9c87d83dc8c1345f5fc201f0462a69fd6f490f46387265ded2f3300c269e5"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/Projectiles.java",
+      "sha256": "ac8ed6e1f9b832085d81a6716118834d63ae47482a4be56257d7f834afb27eea"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/RecruitView.java",
+      "sha256": "f86c9bcf96f70c939c1b888008aa230e706270647270df2980bcbd7569165ee5"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/RecruitmentScreen.java",
+      "sha256": "b5246a6875461428ab390699b36cd0063039325d56fa701444b9f04c211585d0"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/RosterMath.java",
+      "sha256": "9c908b2613136fdd49bbb7317a75b8b61a483463d537976dc10ef6345370152d"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/SocialHub.java",
+      "sha256": "4940c5e2c195d3b1bd5b53ed2cc61629cd0045bf8f081fc45e87f534dae428fa"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/Spec.java",
+      "sha256": "bc4e3d10ae802e2357d4e54a3183a39dc047f7006bd8bed59737a73c07a5450a"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/Structures.java",
+      "sha256": "c81886af0951d44434d86ba86eb08272f4322b6cac9be5c9bece5b6193d7034e"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/Tactics.java",
+      "sha256": "191ac3efeaaa31b2bd187b8c190d99f8770402869987bb88874b784038365c46"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/TroopFeatures.java",
+      "sha256": "5484f2dd306aee5bce2cdc3a9cbbab04a7a2578114347f27d80627491a45925a"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/TroopModel.java",
+      "sha256": "98be6e3ccced9af45bccbeeac801bbae635b59f5e04137cb72a36d9b9485efff"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/TroopModelLoader.java",
+      "sha256": "ef76948e6e900f195b5a23c22fd2f5fa3410f4f0b75bf5565dd1962d93e5dc01"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/TroopModels.java",
+      "sha256": "11fa357f8e54dfbb1e2a861ae8cc15a536c8fe6d2138213e36e705f8f81c7a44"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/TroopRenderer.java",
+      "sha256": "fbed5760ddccda9987e5afd6443e3568243887a4cb8d8250fbfe8fdeeb84788e"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/TroopRenderers.java",
+      "sha256": "7dd28e84c0814d9dd1a2fd0f555906b780f94307658581c808262212a2e87d57"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/UiButton.java",
+      "sha256": "46b2b5720d7d401d82f5aa809ad96738d54fb52d592e3e5fa789e4d97416cc62"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/UiCanvas.java",
+      "sha256": "0eeb5c57b96dd1e39d0fb2060c51fa56ea9abd5204d45fe5681c21eac5093d7a"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/UiMath.java",
+      "sha256": "ed202e97e387c693852d829e70a2e8321a9fb5661ad9ad95662c541c2c004dc8"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/UiTex.java",
+      "sha256": "101dee29fbc2d45c0d3dbffe2f6c2c60e30bda092b5f9547431fca4eb5c8d007"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/VersionGate.java",
+      "sha256": "6c3a4e7d91d3f2fa590e996a4eb97836717f802ad29c4c837f34e87082b57113"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/WarTable.java",
+      "sha256": "19e4c673c95e61fa12159b6e1d419cb1ac649a42cc158c2ba539e1e2040fb012"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/WarTableHome.java",
+      "sha256": "a5c1218341e468afd8b84e1817f00ee2119bb47994d430b7efbf0bf5ff763169"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/WarTableRecruit.java",
+      "sha256": "1cf05e995db604c84f9eceaafbc8ccb9ca567ade70830a48d787b5460e8a6f0c"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/mixin/BipedAnimationMixin.java",
+      "sha256": "854ec56171d59ce49436d2032a75e5a57da298625a99327db7fc21c76a7e458f"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/mixin/ChatHudAccessor.java",
+      "sha256": "0f27c6c462aeb7f478870842256b7f902b0badc5fa4f78f955d7a6e1ee52a71a"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/mixin/ChatHudMixin.java",
+      "sha256": "128d21a9460aba7275b798b5171236b3472bf803b50b0ad41afce79e2d189c15"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/mixin/CinematicHudMixin.java",
+      "sha256": "4522f879b15048a6c33daae6e715a08a44a4c6f82f47c92711ee25fdad946b04"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/mixin/CommandInputMixin.java",
+      "sha256": "7120f9d1ec1a9ca7c408227cc8f0871ecc8465551b65d843e87cfa192297a095"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/mixin/ContactFeedbackMixin.java",
+      "sha256": "c1079ef519979c5b17d7928a03bd24f951b96b8c8bcebb3eaad38fd041a7d7e4"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/mixin/EntranceCameraMixin.java",
+      "sha256": "5447bda3ac8419605303e0cc4d170e9db77b2bc55621a260c0f11a122cdd41f6"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/mixin/EntranceOverlayMixin.java",
+      "sha256": "37c69d958a77713e411d1181831bfe729536f6fcfa70ea5e95a230e37faa9e26"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/mixin/HungerHudMixin.java",
+      "sha256": "6ec8e70a95f510c4e28418bb8ef9ae3743573abfa1ab1ec6f8501e3d7c53544e"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/mixin/KeybindTextMixin.java",
+      "sha256": "fbfa22ed698001104fc34fac385baebca73a3ac44b29b60115b7a9758629247a"
+    },
+    {
+      "path": "src/main/java/gg/gravesandglory/mixin/LivingEntityRendererAccessor.java",
+      "sha256": "c892579d3ac9fb44a718778b11b647eb53108fbb1473a33805454bbe1b5383f0"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/font/body.json",
+      "sha256": "df68fb1e85422d1d9d6ffbb99c1e6195b1276eaa18ca6a700652491238c6685d"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/font/focal.json",
+      "sha256": "000831abd3fe9f4d0962e9fe845794fa569b0be25a6e51317b5b84cb70cd4a21"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/font/lato.ttf",
+      "sha256": "d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/font/marcellus.ttf",
+      "sha256": "1cf0cd10b17d35e852729962cc1ffaffed94514895972458345e2df34abb2f81"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/font/ofl-lato.txt",
+      "sha256": "14b8609fd8281cb961730de7d3b2964dcc6e0e395e759b1422e52e39a0fdc6b2"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/font/ofl-marcellus.txt",
+      "sha256": "b4acba1325a4cdf2460c63aa48bd719cc8e1907535bdbad4421379c4d971d1d4"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/font/title.json",
+      "sha256": "c6f8bfd76ca89df44e71507dc6099334650f8cfdd8d4a3a07d4792b8713a5617"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/lang/en_us.json",
+      "sha256": "a4652fdc60fe709c106f5430c794eb4e10f636a9c0bb2fd36dbeb4cbb74868b0"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/archer.json",
+      "sha256": "47a7f2a49cfe4d92181522768e3e22f1bb366139560bd4edbbd83cfabcd1ae66"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/gl_marshal.json",
+      "sha256": "feed6bd8e8d05463f1b78917c54dbb29f8d9af9e9b5a0768266016413087e446"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/index.json",
+      "sha256": "d476c8ec1e20da72a29933650f6a738bc445a6ac4094277654bd2eaadbfd3dbc"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/knight.json",
+      "sha256": "73b2f4e1683e13e35584722cacdc6f98b8c4701d28492aa5a1408a0b97826268"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/longbow.json",
+      "sha256": "65e14af98e45c740b88f922e8958d2978e01d1759e1e985c2416bb1c1c904f54"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/mage.json",
+      "sha256": "86c5f8905619a1107e86017b5b956138886e431f1d1767c65e19ab3c7a532214"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/rig/biped.json",
+      "sha256": "a5909cc7505e547dc1fea7c3619c900291dd5ef41b18d723863cf6a7f4c0351e"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/rig/colossus.json",
+      "sha256": "bb52784b81342b61a84da2085c3045b48397f95bc0a42c120879906e3b7d2ea8"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/rig/hound.json",
+      "sha256": "a5b98edcb4d8f00a881065fa77d7e4a3984c7b39d4c8e74bb68c92040a321505"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/rig/spider.json",
+      "sha256": "932d79cfa9b2ec255e070f7427d07db937330abfa4b53b5bd8ddc00a4d086c11"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/sentinel.json",
+      "sha256": "e844bb86f776418670c5fd4718c2ca6db49f3a84b8c5f283afffe176ba8472d2"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/weapon/arming_sword.json",
+      "sha256": "06d3459e5d850af3de652bdc155eefff050853806f4866f979a0564cf862fd27"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/weapon/longbow.json",
+      "sha256": "a6eae07f9b6e729692a1e3436a9fe071b6350d0a53065040dfcbc282d1b53ac2"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/weapon/longsword.json",
+      "sha256": "63edca253b51c7064c9488cb4aa7d31b1abec7fc3ac378edcbcf903c37555073"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/weapon/marshal_sword.json",
+      "sha256": "a3e53b1c512bf3a77bf1d4af1f67e970516f7b777b090282b2cfe4f0ff77684b"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/weapon/order_bow.json",
+      "sha256": "906bbd39ec62e9c4127073b19970c455aa7bd49e2621d6de5346254eb6243509"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/models/troop/weapon/sun_staff.json",
+      "sha256": "020bfd0c6b1aa4e6ad9c01c17ba977aa3a80240084b4c0437502dc9e6547cf34"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/sounds.json",
+      "sha256": "5252f466eb1721b75b4f343fcad3e5f9978d88b4ddfbd786543c1e0d6cc16fd1"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/sounds/battle_intro.ogg",
+      "sha256": "9da33c0f36598a2fd990aae3724f5f0184f4dcfea8eaee941c6deca8354313d5"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/sounds/horn_charge.ogg",
+      "sha256": "baefc88619402ff651241adad2ef5eb60547c33881f791653f8f6b2967dfb5e9"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/sounds/horn_rally.ogg",
+      "sha256": "5a9c33977a5fd584e841bd89d8c9cc1baa9fa66f12e3afcf5ff6108a1f74756c"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/sounds/horn_rout.ogg",
+      "sha256": "074ddd313cdb2ec0d46d184b24afc19fef9fe7ca898cd8c27b98ea50ce738168"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/sounds/unit_reveal.ogg",
+      "sha256": "7dc0ec04bf5d29160dd0b3cf7b9f6f2b6257b09b49f864cddf50f6fec429afc2"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/sounds/victory.ogg",
+      "sha256": "7f58f3723560b030e6f03229731a1fa94ea9cd54dd4ea6b2d34ca29765ba04d4"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/dawn_guard.png",
+      "sha256": "c73548f2fad933da3da72f18a3f0e0bd9c49291d25bc574b2bcaf848605f1b23"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/archer_s1.png",
+      "sha256": "474a9037bfbef28c1f9d57a17a9cfacd8c1cce716882fe72a503cafb8f082c61"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/archer_s2.png",
+      "sha256": "3bc6bc1e810e02a20fc75e71da02883a894c6e9aa6c9b46b4e87fee8ad567c85"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/archer_s3.png",
+      "sha256": "530c7a1695839b9e65c0d1f935587c9cd023d378b03cea27333d8c951ba81a01"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/gl_marshal_s1.png",
+      "sha256": "c77ae02570305d1a15227c9b2abe9e5820289d5251c8443e2fded809eb1e8c6e"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/knight_s1.png",
+      "sha256": "eff82947e222b6773178ea7262dd947cea8d2d526637ec77be79231169bb7350"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/knight_s2.png",
+      "sha256": "cecd3b7c76f08363a56d3c4b3d663c08feb3487d52bf188510edcd30c0cceb52"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/knight_s3.png",
+      "sha256": "45015a826d8f2a36910bc28f7b3f4fcf3cd298926779faed02dafd1e11d97d8b"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/longbow_s1.png",
+      "sha256": "497c70a9230305f7ab619e59b4f61a680fb196c6a7787c005833a2cc901d2bfe"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/longbow_s2.png",
+      "sha256": "f5c509a17d86fba9d1e4f47a84b1b07c14907abb8ed2271b5a4b06cb7e57ef45"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/longbow_s3.png",
+      "sha256": "58407c1b2a2fdba2418e6521e16337994ac0b758c748f9d7585a2d19f9415862"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/mage_e.png",
+      "sha256": "cfa90eb4913706c1a410afa517d887bab25575f5335deb6e72e13a71acfca9ce"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/mage_s1.png",
+      "sha256": "33e5c0d1ad480f6fab33d0985fc8ca25bab80243d8712f3d8d10cceef9ec52d8"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/sentinel_s1.png",
+      "sha256": "b99692f4a6b0083f6f939a07cd88c0c8b696a1b1b7ad624f759288d76da41dc8"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/sentinel_s2.png",
+      "sha256": "cc09f39abaedee001899aaea6f976362a05c53ef44e2d89899ff0172cdb09b9b"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/sentinel_s3.png",
+      "sha256": "5903255c08e59bf7f70ab1c4cb991f5af54a3080e812da536dfc1bb52c12a28a"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/team_cloth_company.png",
+      "sha256": "0202576cd948207c62e8732e6bfa722d0abaeb8f373e01efd00997a6a2cdc994"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/team_cloth_crimson.png",
+      "sha256": "b966a24f9486e1b8fcf56df90fd5abddd047dfa48893358bca536597a574fc8f"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/team_cloth_gold.png",
+      "sha256": "71a6f0efb4d1df9b3847b33f3a3032db10618abe8141197804416e65592c7996"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/team_cloth_linen.png",
+      "sha256": "a918ff8faba9bd5ede72bcce865de8a5f5d80b46093149e52f3be7f39acad197"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/team_cloth_teal.png",
+      "sha256": "28c00e784c7574787655e4542d909c1889f443a88de0d2336fa686d72ddfb489"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/team_cloth_violet.png",
+      "sha256": "fd8752816931d536fd08da5bf6492118f4de08e48c21e3c0f317f564b836af8d"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/weapon/arming_sword.png",
+      "sha256": "63d3dcac1cb47618ecac9a1e1d8dab578776c57cc7a0403d22c72f566533ad27"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/weapon/longbow.png",
+      "sha256": "34f44f713a2de84cb1e25fb4d7a026a5d91089b5064fa74bcd5a7747ec1992a2"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/weapon/longsword.png",
+      "sha256": "cb5437be6afbe25d15439d4ce83e46368d935ec58ce3c569adcbee3e5a861d8d"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/weapon/marshal_sword.png",
+      "sha256": "28eea610c27d5e994830d72e1146aebc94c60fde8da4be30e27f10727ea4f991"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/weapon/order_bow.png",
+      "sha256": "53fab13dd190cb6e6bcd59e4983ac3a4935f75047f439b3b11814756074a72d1"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/weapon/sun_staff.png",
+      "sha256": "e901975a8d3a77dd3c7748eb904b22e316eeae818d0b45d6695a76b0dfb0f07e"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/entity/troop/weapon/sun_staff_e.png",
+      "sha256": "f4498ddd2cae8b2225c670416d45888ea9e05c2639a81c8a2c1c9bd027595274"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/atlas.json",
+      "sha256": "cfe1e7426a9da15a6aeceb12ee49dd517d597d83aa9fc63258d28fc9eb0894d8"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/house/gilded.png",
+      "sha256": "a5943b3ebea46f40697b84c2c5d827a7a0fbcc2bb84fa511392700e75a6770cd"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/house/graveborn.png",
+      "sha256": "267e12337c752005b76c7ec62b5f5bddfab1afbd3a09955596aa642d7614b8b4"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/house/ironclad.png",
+      "sha256": "a19960a56e1592ea85a3317b035a679322424c61ccd851ed529ee66dc66cae63"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/house/tidecallers.png",
+      "sha256": "8b83916ec1c49c2d9131cf2c4bae4d205150ca143e31dc851735500144f193c3"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/house/wildmoot.png",
+      "sha256": "9063ab076d3c6c588787a3f38e229f52222eb38cbbfc556a16df7ae2d76d1fd3"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/ability-slot.png",
+      "sha256": "fd33ad7db75e44aeac791e96980c541bf570f6fc2069740edaa61543f0a8d7d3"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/boss-dawn.png",
+      "sha256": "15c3e01ef832baed3117dd02b78dd17b3f1f4d1981db217ec416b1959fa6baf0"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/boss-dusk.png",
+      "sha256": "1fbefc54d1bc41a313200ce4ac402d63117732b7bf7349435e1abcfa39f60080"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/card-flash-62.png",
+      "sha256": "58f9709bcf943a9ce28f3d94f74a74916a87301ebb6bc5455292224f41844c82"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/card-flash.png",
+      "sha256": "78ca50dfd97555b6cb06b3a5762359f29ec0818f36558f6d040b7c1610617b28"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/card-plain-62.png",
+      "sha256": "ec16a03dae2fa7901453561555564eb6859246986b6424180d39e52a0d88706a"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/card-plain.png",
+      "sha256": "e522102cfda0a4862ea81781068f15d0d3d3b318d66b516689e4f58d818ebf59"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/card-rout-62.png",
+      "sha256": "412f8a6355f7705d0309791c2dcce160b2f5933f12d9f73dc2f06b0fc2bdc54f"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/card-rout.png",
+      "sha256": "20792d494c6fb819e111734995d2877c6a65ee4c0ee80cc839895a5c5d6f4989"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/card-sel-48.png",
+      "sha256": "25ec3ec72bf0076fff13eb77d73a1ad275f651fb688b59a0fdb297b1adb20a2d"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/card-sel.png",
+      "sha256": "3d2cf4148de55cf625c211687bf9fcaba8be0f7bb702f911ee6c9099c56caae2"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/chain.png",
+      "sha256": "08cd16ae7b2a15e1182208b0446b4b804c06217e341aa17a409ed26c1c1adba8"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/feed-slip.png",
+      "sha256": "7987104cd8daff3d79bbc18da4d5093efbb1a8c67d2e30dc011eadc24da90a04"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/fgv-banner-down.png",
+      "sha256": "31a3acc19c78503f523c35ca749f3d1c89a756181d6d90c928ff39ff3624e6a1"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/fgv-banner-up.png",
+      "sha256": "3865985725ae339f762fc744e9f4fa954fed4d52cf5f329fcace4c13fcfe70a1"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/fgv-moon.png",
+      "sha256": "0d62c45d1b936d635298c13794bf547a7112094c408514cff46fb68d362393ac"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/fgv-rout.png",
+      "sha256": "ad7849643006d613952bbc50435285c9ce4821a1bcd9eff60658de46e8513d2f"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/fgv-seal-dawn.png",
+      "sha256": "8b68bd4664a4e565ac9c2b6e4cd3addaa8a3a4bf4b018371e448548f21a412a7"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/fgv-seal-dusk.png",
+      "sha256": "be4f7af4a56c5feb1551e703619cbed82f8743bae1b9347a8ca345fbd9f54bcb"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/fgv-seal-x-dawn.png",
+      "sha256": "42320e231b103ebb47fbbd2b4b67a0b9e6972c718dd429b51e067aa932e36d9c"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/fgv-seal-x-dusk.png",
+      "sha256": "cd0e4860e2bc2a562863667fe9e5b57e656364aa4121bf388bb3ae20b901754f"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/fgv-skull-grey.png",
+      "sha256": "fabcf2e6b7840622a8ddf86d563435c94ab5b510f663e889c425d831cb95a19c"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/fgv-skull.png",
+      "sha256": "5bafd246f0c4a1714b9dd4e84f608a0926d2146e6ec028d35b8c0bd8065256bb"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/fgv-sun.png",
+      "sha256": "6e4ce42e80da29df5941e67351368d6b2cf0f4ef9122872beb7b6a5daf622533"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-attack-faded.png",
+      "sha256": "e12208d6b7febe3e8d5028a1629ee218744b0c04ee5c03bcba6fc8567ce8b74b"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-attack.png",
+      "sha256": "500cd9cf8b3997e90fc8ce6043a725d7a3fc70b1a9cc0755dcc658fd9506321c"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-charge-faded.png",
+      "sha256": "18296dd5ad99878e9d486034d969cb508ba87541ab3932c1ced02d1d74ae86f4"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-charge.png",
+      "sha256": "1dcd36056ca57e681914a346eb529fc26b048bc95c290e0b09054a51213de42b"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-compact-faded.png",
+      "sha256": "52ed143baa83a55396f1d844481cf6e1df61d1c9c31f3c489b803f781d0c6fee"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-compact.png",
+      "sha256": "1ad8e25e7e43b1179d3ee7cdcc261cfd5a120db2d56eabd7d6252865ebfdd00d"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-cycle-faded.png",
+      "sha256": "4010aedc4014f4652ee03cb1cc3290fce9df7676624164066845ff1c01282706"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-cycle.png",
+      "sha256": "cf873f81dbc73ffd5e9e4ba489997afc9fa3982089cb0dd7cee694808ed5809f"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-fight-faded.png",
+      "sha256": "54201d8663134250e5474651d8765e9a2270b75a77a9c31f6bc15e1effb54625"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-fight-red.png",
+      "sha256": "432a1d33ee9ee513b131a8231e06b57c5bbb2eeea96ccd79b3a45b94287e9d15"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-fight.png",
+      "sha256": "d515970172955783ba93766daeb3f598fbbd13175a8fa112510545b4353059a4"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-follow-faded.png",
+      "sha256": "225c537c4f0c7cc71bd8712a501cc61f48869eeac2dd56b09bfa92a8a5aeb38e"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-follow.png",
+      "sha256": "7ed69770a1a9d5b01616125e0c9f545e3f6122fc90d8f5d6f0ad0c6921a9ce22"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-hold-faded.png",
+      "sha256": "c57c5349346e42f20be55692e93d41de0bf33af2e071718b9942f9d7d284a2a9"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-hold.png",
+      "sha256": "fa04da2eab587e05b1c69f0be4412a9db548b22d83aed678921527a62fe17c44"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-line-faded.png",
+      "sha256": "d4ad70c3cf6742d2b99556e15747df8411e73494ff5878332a0d57eaf284aea4"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-line.png",
+      "sha256": "1d6b7970af62d907737d3f00a236e6a02f9d72236e2f43d030e818851b9d6a40"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-loose-faded.png",
+      "sha256": "4a1ae0d2daf0b6323bdb5ecf02f7fbb078d78cb667c49b7f30b15922ef31ca3a"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-loose.png",
+      "sha256": "0fd64caef1492516d59ab96cb2367f60c372b679a27c18b29ffe61226fd25b8b"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-move-faded.png",
+      "sha256": "bf41242ffc78a2232cfabf893163c5993e1ccd35960e0b2f7253e71be1973a76"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-move.png",
+      "sha256": "9fb5ea0f6dd0c51372451d86b351ef66ef61958a32edac32eb9197f680a6ea68"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-retreat-faded.png",
+      "sha256": "9a5e66d1ce33d2f6d482d2826797bf25a4e62c617afaa4cf4170deb11a85368b"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-retreat.png",
+      "sha256": "d738ab96aa29b2a2adeb87f05beda87bcfa712dfb321d2492b6bc30eb31d9c7a"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-shieldwall-faded.png",
+      "sha256": "e8643d1817ea99f8fbe8820d2740b946d42b3854b763dae6decc6b51e14c838b"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-shieldwall.png",
+      "sha256": "d6ae7603abc07697f51efe588a2344ea4b23bde4595460be654e5cfb2787697c"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-wedge-faded.png",
+      "sha256": "c46cb3b8f5b172def2c7d0b4472f64ae0dc978c7f35a1c4dd63970350b76e0f7"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/g-wedge.png",
+      "sha256": "0e2d26d74fc78288ab19ea580f2c1a52416082addad1a2c993c89358ad54c5c7"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/hook-brass.png",
+      "sha256": "71df926e617b9bd275e93357d09997b1a19c3847df54d04425004a65fc44d175"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/hook.png",
+      "sha256": "e666955a841008ea2326054dafa4723d1acb47f74567348aba06fc37ab04d249"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/horn.png",
+      "sha256": "d49c3d389041273ffa90780dc44d946eb9a1a6d017a7bdcb068338c1868c0ae6"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/hp-channel-grey.png",
+      "sha256": "0fcff32addff99637eab337fda7cf8ea0d9118256f0a51354b6fd64be4485a5e"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/hp-channel.png",
+      "sha256": "0fcff32addff99637eab337fda7cf8ea0d9118256f0a51354b6fd64be4485a5e"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/hp-full-dawn.png",
+      "sha256": "8fd7af5e274ddada3975412a7cd261543040e6143c19f46a8df7dbce571b2df5"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/hp-full-dusk.png",
+      "sha256": "222be70fe0ea6cea70abed4730909faec2d75d50e1b808baa1b6d63abbfc47c8"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/hp-lost.png",
+      "sha256": "82e28ab81a5a99e17154bf54bfdf2140323fccee2bcc9bb2ad73d7570edfbe8c"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/hp-rout.png",
+      "sha256": "99586112500a81584863b10ca260536f912df0dc1640f342d02e23e06754024f"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/key-brass-plate.png",
+      "sha256": "d4b7b930ce5e75314f03226236a0161d3aace26ab3b0d539546e93e0eaef8b3f"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/key-chip.png",
+      "sha256": "99a44c3371ed9f021c79cbbce8bccb61c06dd704b127f2b3dc784dbf2b50cd0f"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/lesson-card.png",
+      "sha256": "5f151052d0a4638b0ef4d9390a34cb8ffc76b25fbd7047c6ea0fdb3b3600e0aa"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/notice-slip.png",
+      "sha256": "c5cacc8d2695a244442515b502ef775edbd6b0b6469789f8ed6e87d65c78663c"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/respawn-card.png",
+      "sha256": "3c17d3a33e05bef7adc4996c8ad2ade416268527d890e373fad0fe9e8c2f2401"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/score-card.png",
+      "sha256": "851bdd7df90afc72b4bf1b61eacb01ffe1383481b03519b57d51db2876e9039f"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/seal-contested.png",
+      "sha256": "28b3c5a742245a088895341dc2a2bc70c4ba8c5dbee25e382aa0062034fd9a0d"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/seal-dawn.png",
+      "sha256": "25526ef96f160036f780c38b4f3b74d84587fe9034a01a84f0dba987945f4922"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/seal-dusk.png",
+      "sha256": "8b1098ff607c3f882b6f8f7087f89aa57f4baf9ca8d416449e549f8721abfbdc"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/seal-neutral.png",
+      "sha256": "f725430ba72efad5ced814210ff738e1c77c2b8132b077821b5ce7ed681f0e2d"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/spine.png",
+      "sha256": "35ed46da8b07396f0a17fa5e4d3ae029a5deaf3b019394f740f40bf6e48d5a33"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/stamp-rout.png",
+      "sha256": "ef4ff44f49db0687c1eba63756c24007e38f85cb49abc84f9ca1c54a5f7b18b0"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/track-dawn-fill.png",
+      "sha256": "b11e3fdda885fafa55db98852883659b9391839133e75e664eddbf7083bb0324"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/track-dusk-fill.png",
+      "sha256": "9d6020d4b4415b4223f01b49359c618502a240f0b7033f0ea7664ba4761d6a7b"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/hud/track-empty.png",
+      "sha256": "148582d19771c0f3dc6bf24671c9eb8f21b4ceb8ab82b6e8a993a56431411d20"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/banner-gilded-on.png",
+      "sha256": "9db27eb3804cfadeff01bedaf568575e018b3490c4f1fd436adbb96fdc11f2ae"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/banner-gilded.png",
+      "sha256": "3ebce46880a6751b963fe36d3a59f083862e0bd30039da070a39bb5f11a9e0a0"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/banner-graveborn-on.png",
+      "sha256": "49fddd523d677ca97d1dbca0e7da2697613a40814aa2e5b2b32315f1d3a8719b"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/banner-graveborn.png",
+      "sha256": "6c9f2a0f38bdd2a8b04e8b81e9c6216a1cf23f47b47be14feb7818fac091786e"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/banner-ironclad-on.png",
+      "sha256": "faabb2f8171aaccd3b7bf042bcc5db395418303a9f83458b31990e16d2508c80"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/banner-ironclad.png",
+      "sha256": "b57b3c8df4370e7c0d4d68d1bc97e282fdfe231017bd45ed202040a493cd749f"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/banner-rod.png",
+      "sha256": "f116d081757d633f053bb4736aaba3f419cc5b2b21167eaeb93c9938e60ef153"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/banner-tidecallers-on.png",
+      "sha256": "afe43af75ff0da37050516fd019cd82958f7137991a144e51beabcda9ac96eed"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/banner-tidecallers.png",
+      "sha256": "073f4d7dd9270593348e8358f01a8f8cc96dac66a2dcbeccaba2363a081d1f5f"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/banner-wildmoot-on.png",
+      "sha256": "066a71362ea4df0bdd2038d165a97ec5b468608f00f59326dd1a70aa8fd941f3"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/banner-wildmoot.png",
+      "sha256": "de15fbd017a15edf8c55f956038aa0b3b443cfa6ea8b1f0c768809da4a07846a"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/coin-m.png",
+      "sha256": "b5ee23aa07a120ea7bb89c6169d27c3b62050b39ebffb23e2ee0ee7cc3af31e8"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/die.png",
+      "sha256": "f8ba162ab8a4f60a8c6851123c90b73d317fb5876e7250081b266c70f777cc7b"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/letter-bundle.png",
+      "sha256": "6d14bb0518b7f1771b6834bb889d6d97daed206f7d319bb6956f0b9d699e795d"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/letter-hi.png",
+      "sha256": "829fedcc6fd23155e8f8a3400566ff39b6146f0420ba587bff32e33614acab00"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/muster-roll.png",
+      "sha256": "f3a210efcaaa7c40551bc7f447ea7266483e5fdf9bbcda6a2ca91b3f197ad125"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/odds-note.png",
+      "sha256": "0367dd4c9d6c09aa84d87ceb2b9a97f7fa2ee49c291e48bc511b9c9e7f3bcbc8"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/padlock-brass.png",
+      "sha256": "b6bb6812c0989e4a951fe648c3b083e518787cf82cd01f0d3649400059e85b8b"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/pouch.png",
+      "sha256": "86304bc0608a953969c5cc8529e903992b88f9ac0c92d70d157be81c3eeeaeab"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/row-mark.png",
+      "sha256": "b11b27028c906208788b91ae3739fe1e839f12a926b2d65de7b8c2c2503f89ab"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/rule-208.png",
+      "sha256": "5507640c4a30cfd78538ee2499a9046f07cfc167c96314dbdaa399a7b7e7b468"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/sparkle.png",
+      "sha256": "1661645929ca8333f3c2ddd84ce3ab633143312ed3169e2dc441ea93c9b2ec8d"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/star-l-empty.png",
+      "sha256": "0f8ea3c7e13b90155f1cde2e938f4273c4eb99ec7e9d59c22b7d90a9dfd8d84e"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/star-l.png",
+      "sha256": "6c808ab65de9c978489788ffa0469bc79908fe7834ab49ba17cfa5c1d5850dcd"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/star-s-empty.png",
+      "sha256": "7fb1d474e85773169649e89042cd36339b6d766a554dea3dda21362eef9006d9"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/star-s.png",
+      "sha256": "7fdf64d6980f6f6b9176d52c92efd388094da4ea0af4a611d5d4d0cf395b4566"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/wax-broken.png",
+      "sha256": "744af8cf43bfa419783def9c7bb3dd283a4956eebae8a0d3a24d3589c2871426"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/recruit/wax-star.png",
+      "sha256": "63bc29be063bc92f129e98e98b3999eb87e3ea68cb0abe324303aac233ed54f5"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/btn-brass-240x40.png",
+      "sha256": "4fe67b400c08297db16a0154fa583e6837fac392379d8597f531b7bd4827ab77"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/btn-iron-240x40.png",
+      "sha256": "ee824a3d2ea0bc40577432dfb1c93029755f34e52235f8ff65faf1d454162d14"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/btn-vellum-64x24.png",
+      "sha256": "679092ad6257617b45bd027911158a75b3bac5119934f9444ca4ef93576efc61"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/btn-vellum-80x24.png",
+      "sha256": "31334806e3b3a1b3c709e47a8146b9036809dfc3b7af5158d364f38227a5444f"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/btn-vellum-88x24.png",
+      "sha256": "088f04dada226a6cb9fd1aa5108afc3967f08582bb3e063aecb96b920b92ad40"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/field-card.png",
+      "sha256": "0fba0e45fab4db72a4213b74a056fa614b142a50a723f75538f784ef62574159"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/frame-back-160.png",
+      "sha256": "60c09b6234874fd269e0b9330aa0a7b051ab62f4007b70f2b4b8d956482d8a04"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/frame-back-48.png",
+      "sha256": "fea0dbb005e60a71c5968a3716b69d624e51b0d000152f7a212d430caa5b9d8b"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/frame-back-empty-48.png",
+      "sha256": "f41f6a05a2e6892180c8c286fd68e44c7ab46a4afe13910bb4a29664d0e043d1"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/frame-ornate-184.png",
+      "sha256": "f538819f527f1940120843005324889aae1ba674041d3ca28edeee505faff9d4"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/frame-rim-48.png",
+      "sha256": "8e2e9b0bb41d914c4c8e93fd4fa4a218494828a0e3647cfc0e42707df4be32f7"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/icon-banner.png",
+      "sha256": "2fda286e6087acd6699e98d104d348de1f7314c9bb1efa989d86e225984512e1"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/icon-camp.png",
+      "sha256": "1d472055d4ae2f6fe96bae2363a010ecd593316ebea9382214725e1b48e09e05"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/icon-chapter.png",
+      "sha256": "78632bbebecf9977d6794410fc86db564d6774bb7b9c3ddc364f0ebfe67d330c"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/icon-contracts.png",
+      "sha256": "7c2ece813791b292afb74874eef3f13129a1f39966ab1e420f79f8f23790b5eb"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/icon-friends.png",
+      "sha256": "a093f7739ad00f43b20976e4f1bd5601bfe49999715add056cf00ccb2cfe783a"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/icon-recruit.png",
+      "sha256": "520a34ef8d8eea4f74b253bd046092dce478b9db6605bbdc7be5a6b730370f97"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/icon-table.png",
+      "sha256": "3a264e8501256550e8bfc4ebf746dc36cce8e3f5ac6588dea993fa6a150d46a0"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/ink-campaign.png",
+      "sha256": "d5e9bc4cc9b9833645b32dc3554e5b358435f98375004bbbcdeb88ecf1ce007c"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/ink-practice.png",
+      "sha256": "98ba633fe42ed355f99bee3f50f0ec3b97ca71926772c6fe734bd7021f65bb5e"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/ink-skirmish.png",
+      "sha256": "de7e7d2b8863bf371592fc7af5a1a9af2128bb156d16e654eae9c83244572e2e"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/invite-plus.png",
+      "sha256": "e6a96f7bdf37ce9557b457aeeb63df4942c5caee4190acd223114c2d225c253c"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-13.png",
+      "sha256": "16c8555c9786985b3b776a595dda692de96242d3af45e977f4340eaded830bd7"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-14.png",
+      "sha256": "504ab560ba1d83786d8c975d4c6ae0f3d68707114538bb75ba9271ed92389d65"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-15.png",
+      "sha256": "1752451fb3a1258cf094c7010dc37d3501f365c67ce34aefcc1d84967d21f557"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-16.png",
+      "sha256": "a623ce9a854a8e28907df3e6a9cbded3d712dd9bb3873b329fe441d539e26e26"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-17.png",
+      "sha256": "72f23d04bc3bea2da576197e9cd88017c7f1a3b3ca34a8db34c4f2552ffc4b9e"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-18.png",
+      "sha256": "bc97502daa8127bd2bea7b9cf9cd7b2aca2d127cbf26c3b384bf7aa261cc1a42"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-19.png",
+      "sha256": "d50506a33b733ac63813cc1976ba768c3e902ca91ca498925a17994097b06295"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-20.png",
+      "sha256": "a9e77e67d538dc229658414bd274731bd91261d7bc485a9e810cc31671e9bb17"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-21.png",
+      "sha256": "a95446f7f539d6117d5a098a0a453f26bf9fb4916a1910583bdb7a5ee82ba81c"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-22.png",
+      "sha256": "c1db39705db403cbf5f3a2645698f1eeee7c87b7e8abac1301ade86cc0109da3"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-23.png",
+      "sha256": "bb9f6c4e3e524aa345653f0b40585be205dedab3eb7e5d71eeea8ee8a0091e5d"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-24.png",
+      "sha256": "43408074a474ca51d59e7b0c15b58e56c577c8061eb03ab85009cfcb73976302"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-25.png",
+      "sha256": "a08b1fd42b6a72241027ab0e3ca30526384b587b859b9482b291fce6e9c7a99c"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-26.png",
+      "sha256": "5147d0b2350399ae1ab32cc2b07a6d4a982fd3d74ed523076c5cb33d68b6b38c"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-27.png",
+      "sha256": "be6304d29daf03cc4c6fd355675f2da7c6c60fc562fe52e0067344a07dd4748a"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-28.png",
+      "sha256": "e41a924c23c826287c8afe9cbd04df229b0b44d62d3b53b9233a063178ad8ffe"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-29.png",
+      "sha256": "6bad60a3a0c48dc06788843ab24140a2603393b412357a866c2363d3f83ab3ba"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-30.png",
+      "sha256": "6006b2145c64e5e33a80b55b77d50ffcfc4a112e8e4ad3b828984d71144ec7b6"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-31.png",
+      "sha256": "e160f65af97a574aa00e318ca6bc865fd82d4470587e5dd0ace7f6c691272107"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-32.png",
+      "sha256": "183316776b408a34cedfc25e5675ea11d6e7c67c4ffc96da1ebf1dd765dd62cf"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-33.png",
+      "sha256": "9b03d546f3d09e5eb42c806f5b5854ab50c80aa5d26a0442f1ddc3f735229fdb"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-34.png",
+      "sha256": "d2bd4f8bd4871774b9a8858f500d64c33a6f294ed1b61bd6b55792f4089be669"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-35.png",
+      "sha256": "6939f26d044646bb4e1078742cd6c549f4d3f0af0cdd28ea7f63accec5502747"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-36.png",
+      "sha256": "82dec4a2fca44453c9ba87972e15b84c71f87d6f526008f9c17537f647898fcb"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-37.png",
+      "sha256": "f8b5134d14de8829dfc50bc050cf2359e585e6b39622df3c816cb2d102abf0af"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-38.png",
+      "sha256": "7ba224e237611ea75ea7c05a4e8c4b4c6303143240786396236225c79d6b75a9"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-39.png",
+      "sha256": "3a1e4fd05a3c8e55f05ee8575c7ea0bc62467cb533d389b958e7375765ca3998"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-40.png",
+      "sha256": "e085e1c8c74cffa751ed5664d0d0fa1b7f23660610282eaabd8b2425b4ad5717"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-41.png",
+      "sha256": "d81a0b5e960b1ea31095e4c04d47816210bbf8260e017787c1a83e2706c78ef3"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-42.png",
+      "sha256": "0dd5acbf57931be5799136483d532f352db65c5599f392299219a51e543450b8"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-43.png",
+      "sha256": "c26e03eba8aed2aaa4f4fa5eb93154ec00ff493e88ec9dc44b9f86eed9dd9f39"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-44.png",
+      "sha256": "e2a58a10e0608a9b6b5ce77b7e507734196d640ea289bb6bcdd2772f0ae13383"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-45.png",
+      "sha256": "e12d920f2b66e4ddb20e3f7e51ba52f7abe05189a4e223d386283adbc111956f"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-46.png",
+      "sha256": "9d17d02bc0d50b44c93ada814760b9265c5f3dea8d701e952723b4383b58b30b"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-47.png",
+      "sha256": "04b269a5148be680aa66e48cbcf5333869c04244ea83c125dc0e707664355f16"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/key-brass-48.png",
+      "sha256": "385ec39d900af295d9edb7e971c5b5c48fd01a7f0c712b24f6954dfd7d2a6393"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/map-rivergate.png",
+      "sha256": "126995a7149be621543203b5d93f6a82ae4101081812d0aa27be32512a0d3c55"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/map-seal.png",
+      "sha256": "a81da9d0e6f1ae16149d838b4bf7666e14bd0d4e24e0b87e11be74757f682993"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/oak-table-recruit.png",
+      "sha256": "bc0f6dc92048dc81b8be1187ed122bd4865f3f3cb9b1f0a2deeadd352447542e"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/oak-table.png",
+      "sha256": "114d64722e0f35dc77748d0553d11ea905ac067007c24289aafba8953c522189"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/order-hi.png",
+      "sha256": "08ad109afa0e3db8224a3841118d96c3a3e5bbd4559bfd250db5e18f91dde308"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/order-lo.png",
+      "sha256": "291ddd0f4f69d4591ad00652de3d01bea0021d24e77037cf6a25abb0cd585504"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/order-lo2.png",
+      "sha256": "69968dd6e85ea2af0f2ea6a25ac216d377c254d7501a19057d51f12d40434cb4"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/plaque-104.png",
+      "sha256": "0cc4da7995504ff163f70e9246a6020536a6b4dbfd4054258824175f4ac3b1fe"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/plaque-112.png",
+      "sha256": "3e338bd56f6b10cba9635bced81896347e5d729774bb3cd3ed8a2f316cbed199"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/plaque-120.png",
+      "sha256": "f58dba9b1554467bfa8a19932baec1974cf58e3716b6a7c2ea6855fbfefa99b6"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/plaque-96.png",
+      "sha256": "d569c11588bda50d2fda856feb98ca9ae8dad7cf79ee55cf8f2954f95df0ffff"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/plate-glint.png",
+      "sha256": "e89e5391c3bf39e5e2d8d417d13a3176f62b94a8dc07d7ed72acc219a5a8a0c8"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/prop-candle.png",
+      "sha256": "3e58b40384bd814b65f6f2caa5079fe12c4d6dc519dc5f60f6768f9032d56057"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/prop-glow.png",
+      "sha256": "48db6cf8c081a8627d42b2f952f19c8e9142f9dcba64bcee0096c562cd03fa47"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/prop-inkwell.png",
+      "sha256": "fa526504ff0ead8ebc579a500059f7b4a84af4523236abdb6e4e599df0805f43"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/prop-maproll.png",
+      "sha256": "d40c6d9daca5b5b433d00b5784b4d0704a3a0316129512c3bd984bd00864a8e9"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/quill.png",
+      "sha256": "bd7fa225f33195ae2b12eaa5ba366b7015d99cac52b4a322ed31852fc736f2dd"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/rail.png",
+      "sha256": "280e29a3653072bb8536c293f5a438d0575f68e595720a28e92f5a7139f571c4"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/ready-check.png",
+      "sha256": "ae50af046d80edb6b68c0999b62cf98447d993eb8a397146aa98dafd5040c115"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/ribbon-teal.png",
+      "sha256": "8f43386cc07de217264d6b997233e1b8af8f3df6c179f2b1042b8abbe86ef03d"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/tack.png",
+      "sha256": "0be00ef83599cf3f75391b4c91b1dd5993f1c8165eac76ff65599bc7446cf90c"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/wax-badge.png",
+      "sha256": "756d380d7720dca1c25919388cdeddf0c1c696c64e9641880f9bf95d359fbf20"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/gui/table/wax-crown.png",
+      "sha256": "e52f4573ba79b5fa6d798d09407e7aeb9f6860a7dfb6921b6cdd0fa0f9213f69"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/ui/map-0.png",
+      "sha256": "b303373a74eea85cb1dd52af713ba66f8f549857ba9da684ac64048c8176567d"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/ui/map-1.png",
+      "sha256": "0d95a8912930bd56a3a71b30dbbb236c76492052e8fed350166f7a2f386cb257"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/ui/map-2.png",
+      "sha256": "28c76a6d6a0582a88910480667bde38fef0d42808eed3f9a35fe03d6a6236620"
+    },
+    {
+      "path": "src/main/resources/assets/gravesandglory/textures/ui/map-3.png",
+      "sha256": "74cfd217da1da0cfccd6d858f628e8b0fef09ed9b7c1e764603440d4f6ebf69e"
+    },
+    {
+      "path": "src/main/resources/data/gravesandglory/damage_type/troop.json",
+      "sha256": "4ab9ce4b7852a82e207aff9d157f78f954a08ef64c1c6c78dcf75236198e6bc3"
+    },
+    {
+      "path": "src/main/resources/data/minecraft/tags/damage_type/bypasses_shield.json",
+      "sha256": "cb0d6ceef5a81baa94f5ccfd1ba35af204cbd266b4a06dd0eae478c3fd1d4a3a"
+    },
+    {
+      "path": "src/main/resources/fabric.mod.json",
+      "sha256": "eed4cec7debec958d3fd70fbbffba35cb67e49acf94c11f48de862aa4240ce3d"
+    },
+    {
+      "path": "src/main/resources/gravesandglory.mixins.json",
+      "sha256": "016a17846eeedb4c259ae4b5b72b685cbc753095c673ab04784608055f53dc98"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/gravesandglory/textures/entity/armor_overlay.png",
+      "sha256": "2f90bb4ad3ea204b7f4e3700f51e70c448d50c95daf18238624ea70b35aa8da9"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/diamond_axe.json",
+      "sha256": "c59c60222de64187164e43d46145d8d00d7e3f6b4afe61c6d4992ed30ad0c3b1"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/diamond_hoe.json",
+      "sha256": "cd9829902b95cac42e7ebb3a76bc9cd51545c6f2605fa1753d109f3e0deac3b3"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/diamond_pickaxe.json",
+      "sha256": "5b021caf0717770ee32ace87484ebb133ca66c0d2f8cc130c1c919c42d97e2e7"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/diamond_shovel.json",
+      "sha256": "52ea5c2c7be94b5e02f344798c26a54fa2581d4ed8ff717071c7c21076ce0283"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/diamond_sword.json",
+      "sha256": "58e28dcd7c3310f720f640b8c927d28e05c20fa473b4c4230c13e8332895d852"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/golden_axe.json",
+      "sha256": "eba71295b41fa437a94a9f11ee1bba16afe3c50c13fabdcd7e4d32187e1b7859"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/golden_hoe.json",
+      "sha256": "a0dcb4bbfe4c371094e9c94e13d928eed65615df21415f4f792152977d5d080c"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/golden_pickaxe.json",
+      "sha256": "8c938e119146ef38421f860f57ffafdf894fe24c5f125ba7b6124277182bd894"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/golden_shovel.json",
+      "sha256": "ad454b28763c7d0e27c7d070ee8254a030f6e87a1d6c85a3a4a5a9afda2e41c5"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/golden_sword.json",
+      "sha256": "b2c3a64d37294242ca6c8ead6f3bc8bfa7a0688b83dfe98b7333149dcb67d51d"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/iron_axe.json",
+      "sha256": "4a344519a32e98eced4f41b43a6d9a1d7ede3eb4c6085b73a03c4fbd2b123ed4"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/iron_hoe.json",
+      "sha256": "4cc060be99fc8c2d55a5179c3c9b1787e69177aeb3cecd88531661a27481db76"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/iron_pickaxe.json",
+      "sha256": "82f6f9ea9bd512e08bbb097521ce2ca5c8190e3bf61470749229a7dbd5d58ef9"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/iron_shovel.json",
+      "sha256": "13eca6bac79abbe8b5297e55aec40aa402b61b92df083c3e12c6270d3331a300"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/iron_sword.json",
+      "sha256": "4cbbdcc549b8853de897f4da6c7859e5d12956046548c51071f0cc9ba361290d"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/netherite_axe.json",
+      "sha256": "377bb921f5d7d65a674e66da598f389f5f39d0154652d03a3b4f851d00c249ec"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/netherite_hoe.json",
+      "sha256": "d52205add10adce829acd762b0e79b3aa7bc1763fab75dc85567e9090d20fa32"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/netherite_pickaxe.json",
+      "sha256": "93469aff7e48f7e0c8c64ec8ba2c6dbbb42584a62d008deb77c6f816c2842619"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/netherite_shovel.json",
+      "sha256": "a43fda3b988a0d005560dcd8989f0b1ba04da9a1635a4ba2aa3702cfab8606d5"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/netherite_sword.json",
+      "sha256": "5613f57b1d0a8a2475e4d6136bd1e271810ecf121278713786231c171d68f2e7"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/stone_axe.json",
+      "sha256": "3f61a74c44c3e0c170c2179754623392a931f016a5f27aa618c1cf2db762947a"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/stone_hoe.json",
+      "sha256": "efa962d9da0f308610a1497d4a3919fe6a443e8a00a168fff7625b27cf9b88c5"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/stone_pickaxe.json",
+      "sha256": "3341968b76a7c440c16ceb5fab47f9e57c803b8d20cfee9bbecce22fad4a0e69"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/stone_shovel.json",
+      "sha256": "7a4f3abe2ea5916556ee307039c959c706d9b60b6b6902e44ce0578addf633ba"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/stone_sword.json",
+      "sha256": "1195e9706a1221f1e5e93e2d2e4d47d5547c412d174fe81eb14af3fe1b47e868"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/wooden_axe.json",
+      "sha256": "ad055f0a87522b3ee1d38643894a190f836dafad36c03faaf5df4c5454031958"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/wooden_hoe.json",
+      "sha256": "96ccbd54e9bc6efbe8589d30f11e821e188a591a808b08d26263bd0ee562bc66"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/wooden_pickaxe.json",
+      "sha256": "138abb2a170a4abaf6de72f96cd4b0b3bfda190698c01da3a049245555950158"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/wooden_shovel.json",
+      "sha256": "294f30a23b5f1be63d4101247d4b3d01ca19e8ef2b8274bed8166d3b07b6470f"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/models/item/wooden_sword.json",
+      "sha256": "bd355367e3385584baf11ed02b2fab27951654270bfc04292659ec968491f909"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/optifine/cem/husk.jem",
+      "sha256": "d9f73556b2187e0927053556c48784625cb945460f43bdaed30ee2aba07920dc"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/optifine/cem/player.jem",
+      "sha256": "8a55fc4f16d217d9549e7e317e0d0f1b29714b156ea0accf865ae4d06bc58e7e"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/optifine/cem/player_slim.jem",
+      "sha256": "b12711b1c5eb4a0b08afd6c4e6d5ccd1cd505411856c8fedd5e034b80712fdfc"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/optifine/cem/skeleton.jem",
+      "sha256": "4aff8c402af59249a960bc6973fe857d2d124fda61083ba49940fd74f8f9e138"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/assets/minecraft/optifine/cem/wither_skeleton.jem",
+      "sha256": "4aff8c402af59249a960bc6973fe857d2d124fda61083ba49940fd74f8f9e138"
+    },
+    {
+      "path": "src/main/resources/resourcepacks/armory/pack.mcmeta",
+      "sha256": "a973167fad40ed022148ca3d427016d13e51e7787c36983d8f909848ee2e9feb"
+    },
+    {
+      "path": "test-tools/isolated-checks.gradle",
+      "sha256": "756c84d2d4993aca091cf61b9d35a6c6ae0b99954dde768562c9d48be8d5d911"
+    },
+    {
+      "path": "test-tools/isolated-server.gradle",
+      "sha256": "6f10fcd1beb566eea26b9c38880771e910f1e977883c8f826e458ff69ccb7891"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/BotSimulation.java",
+      "sha256": "826697ede231ca166707fcef000445d13fb483538cf710ec87b9ccf60012412d"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/CampNetworkChecks.java",
+      "sha256": "0883b3f0ff35deda2821e66d1739c8f7b19a7a90fcdad9234dafe3d7342ebde8"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/CampRedesignChecks.java",
+      "sha256": "08c205d514209f662b78377f80a3d52e02849bed6026610feae6e7aa43a7487c"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/CampaignChecks.java",
+      "sha256": "301410e54914dbfa894affb1dd6a751c8031b12bec7516db2db4ff04b3736a0c"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/CampaignDevControl.java",
+      "sha256": "da3d37d4ce92b15bc45a15fa10f7257a5cacc849ac20b6f657d64402c893d51d"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/CommandPlaytest.java",
+      "sha256": "cc89a13f318436ccae8f81fa08818b66035f3bf878dd98910bd25e563192188c"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/CompatibilityChecks.java",
+      "sha256": "6df50066b0fd0488a290eefb3698923cbd2e1f3d28fe19b380d7e1cc48648d83"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/FrontMenuChecks.java",
+      "sha256": "e6bc06ea26b8beb796a105c9fa123e478b240a40f71f1592e0613d89f86121e1"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/LocalProbe.java",
+      "sha256": "bb3f1250b3dde88b6f50ef3c71b36da13d651d0f1e6ca07ef3887cedb1587adb"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/MapRouteChecks.java",
+      "sha256": "18e795caf1144fe1a08dcecd600655f67aa7d1fa1d80540f0f98c6042ca77416"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/MapTour.java",
+      "sha256": "0db3b4d8c94be04249b61443c63b5db57853392da39e1ef9b58718c72f4e91fa"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/MeltyTest.java",
+      "sha256": "5b732a147cc4c0bd6d375418ffd300610bd40a90c7e05ac0335f0afa5aec4b71"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/Phase1Checks.java",
+      "sha256": "a187df167236f56836f20dacd1f580e995b2e764df406ea0459562775728f7bf"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/Phase2Checks.java",
+      "sha256": "e3df0603664d2fead2e6f6d461514041ba2a672ab1c7377a3bc8f58fe7ff325a"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/Phase3Checks.java",
+      "sha256": "fd78d3741bf5e1a9ff83caadbf49f099fd39c73434806d6e3e241d429f32547a"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/RevisionChecks.java",
+      "sha256": "38d8e5c8930624a1ca11d8232dda4f204d562e3e39a20a15ed3f97fae6930f76"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/SelfTestHost.java",
+      "sha256": "ab4f6894a58a8874888e988b5557ccbbe81f022adafe57ceead3d67c64961760"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/StoryStills.java",
+      "sha256": "7700f6e91f1c1df3c9e4e4430710aa3e59a53c4180561bff1132f52689ea02ee"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/StructureStudio.java",
+      "sha256": "ae6b8fe67574d300112d71b7caa7fb5531066c405d84ea5454bc2edaa66c442d"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/TitleDemos.java",
+      "sha256": "ac4517ee1e51612b115d77a9ee457ea28d32e969c75535c75cee3c789e229ef1"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/UiKitSheet.java",
+      "sha256": "8de9a5ffd1652f1c174f8c57b507a6c3848d1efa9a2fe1d5c999d1ca2563f2dd"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/VisualChecks.java",
+      "sha256": "982296dd6af5308538b8a44acafc302a46ba161e4d7a4079fd685928afb41a17"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/Walkability.java",
+      "sha256": "c4d590c29e7e4470863db2180e151509eee7713fe8e57c37b081dfc0a0a3f045"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/testing/LocalIntegration.java",
+      "sha256": "8e8812ed2e71683163d2b85522500256fe8bf29f3975682fc3418d2e5cae2c8b"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/testing/LocalVisualInspection.java",
+      "sha256": "09df82dcd71638ba2c21e9162b4956e48c43c29a9cb9a4c0d1ffa53d965f4269"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/testing/mixin/StoryStillsPoseMixin.java",
+      "sha256": "54411151c75c6a18a9d286ec11d7879d22bfa70dfc9fcc921e93d2f32e474fe4"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/testing/mixin/TitleDemoCameraMixin.java",
+      "sha256": "7dedb87fa2ddf034fb7837cb1b49b99a2c67a69b67df874ff35be2ba7ccfb0fa"
+    },
+    {
+      "path": "test-tools/java/gg/gravesandglory/testing/mixin/TitleDemoPoseMixin.java",
+      "sha256": "5c10073662177d15a27052385ca7b195ad071de345581306fbfc47f324690f97"
+    },
+    {
+      "path": "test-tools/resources/META-INF/services/gg.gravesandglory.Diagnostics$Probe",
+      "sha256": "5cafa13158675fb2dc2699e9ed9b4eaa0f4fd9f38ee824be85ec8faa39e5f3a5"
+    },
+    {
+      "path": "test-tools/resources/data/gravesandglory/structures/test/p3_marker.nbt",
+      "sha256": "ef51eefe20d3e55dab9df8c7abfb842e3d6c109c971b891130389cd78a92dd29"
+    },
+    {
+      "path": "test-tools/resources/data/gravesandglory_studio/functions/test/p3_marker.mcfunction",
+      "sha256": "59e28c8083991e1ecff08de6b3999194f42d9cc00b02e30b4828aa191c80522c"
+    },
+    {
+      "path": "test-tools/resources/fabric.mod.json",
+      "sha256": "d787a597edf74f526ab33b7b319eded90bddaf5d0bf718e4902de96c61b4e02e"
+    },
+    {
+      "path": "test-tools/resources/fixtures/profile-v1-partial.json",
+      "sha256": "16552df03212557cd13e8ec8df55acaca134d41dd3063ff30f455065aa1c7c13"
+    },
+    {
+      "path": "test-tools/resources/gravesandglory_test_tools.mixins.json",
+      "sha256": "1ac8ae4d5e351db412ed89706f9e29a885bc0520080b6875e501b9901fce7b48"
+    },
+    {
+      "path": "test-tools/saved-world/blocks_dump.py",
+      "sha256": "eee4e7bf267d69b9b259b621ed237c47601c32a93bd4ab87d524b55ef6f6bc19"
+    },
+    {
+      "path": "test-tools/saved-world/items_census.py",
+      "sha256": "d1b8056cade12cdea51ed325be79a506a3fb4cc013c3ff8b255e72a58d561ddf"
+    },
+    {
+      "path": "test-tools/saved-world/nbt_entities.py",
+      "sha256": "8e931969c42642d54f027326c0a5327baba7fa4ec7b25476429395bb87fef71d"
+    },
+    {
+      "path": "test-tools/saved-world/state_census.py",
+      "sha256": "ef16fb0f2b4a20ea12da25c39752f10f56c72efc4d26afc15c4f872d89d07144"
+    },
+    {
+      "path": "test-tools/saved-world/world_diff.py",
+      "sha256": "b9267fe9b3a4a99f61a64c1984aeac92f90bfe99263ff7bab3aade5551bf9994"
+    },
+    {
+      "path": "test-tools/standalone/AdmissionPolicyCheck.java",
+      "sha256": "a732fd940c0b889b50eedfa97217ad6a6d9be703462aa3ff6e32efe97c6f1fb1"
+    },
+    {
+      "path": "test-tools/standalone/BattleMathCheck.java",
+      "sha256": "28f9fe374cb10d09eb6ca3498163925cc13a3f2223652c14ccf9d0e3cd25fda8"
+    },
+    {
+      "path": "test-tools/standalone/CampRulesCheck.java",
+      "sha256": "d474756617d98f32d2c47dfa34eaf0e7bab4d56d1ee73b991b751a235af84d7d"
+    },
+    {
+      "path": "test-tools/standalone/CompatibilityPolicyCheck.java",
+      "sha256": "c57307ee0b8b7c8b05d62d49d4bed4075baa443b65ddbc2d9630e7f4b77ffdd5"
+    },
+    {
+      "path": "test-tools/standalone/HousesCheck.java",
+      "sha256": "2ba4c454d4e823ba3df8cc5f38748e8a480b6421c6814186b6d29c8995ac8d40"
+    },
+    {
+      "path": "test-tools/standalone/LegacyDataMigrationCheck.java",
+      "sha256": "e3735219f38c6a7bc65f7e27392c19466c3a2d930613d0223ba1cc617a4bea0f"
+    },
+    {
+      "path": "test-tools/standalone/ProfileMigrationCheck.java",
+      "sha256": "c995de5cc11741b84963a747344235f50b2d092ad3ab5a56812b7c4e681fa915"
+    },
+    {
+      "path": "test-tools/standalone/UiMathCheck.java",
+      "sha256": "473ae1b04d4eceac7ec694a87565772d805c95021f7bc1eb340191ac0edbb6c5"
+    },
+    {
+      "path": "test-tools/standalone/server_status_probe.py",
+      "sha256": "160bf8244193fd83e4d25f614306fa2934cd70eda5923bb4194e911dabebaa23"
+    },
+    {
+      "path": "test-tools/standalone/test_build_skins.py",
+      "sha256": "b553a9a28089e0dddcc90f1613df16d190a264207b987f267cee83c5b2bc19f5"
+    },
+    {
+      "path": "test-tools/standalone/test_modrinth_export.py",
+      "sha256": "111b53eb8b66630c6906f51a7aa07d30937de40bb5084d91f352e66054afbd7c"
+    },
+    {
+      "path": "test-tools/standalone/test_release_integrity.py",
+      "sha256": "9216ed5ebc637254c5102e7079f685cddcd11bc47d42568a527de04ffadfe0b2"
+    },
+    {
+      "path": "test-tools/standalone/test_ui_standard.py",
+      "sha256": "65c6ec03db51e5f7712c4d80457b410ee85f34473d6c5eeb9b5a7e1c14834516"
+    },
+    {
+      "path": "tools/add_combat_roles.py",
+      "sha256": "1260ccb33c76a62fae1743eda0663cf74a32d46a7031285e5464eccce116aaaf"
+    },
+    {
+      "path": "tools/add_deployment.py",
+      "sha256": "ba1f01aba8fd67d3f8644e7a20faec8b539efaa9d0ff58220fbb3035968b69d2"
+    },
+    {
+      "path": "tools/add_scouting.py",
+      "sha256": "c94756b17c0f2c8275376f9f84e06c2de57b8fa61494eb005cef2935e6f4cfab"
+    },
+    {
+      "path": "tools/add_tactical_feedback.py",
+      "sha256": "cb2f78023bd187e76c4dc16bcef802c08e8722cfb597b2ed1d49989adba40d63"
+    },
+    {
+      "path": "tools/balance_gate.py",
+      "sha256": "a16bf77437ce207753dd1fe1dbec9d5ac50eeaa537ec9ac29f50147d2a60042e"
+    },
+    {
+      "path": "tools/build_identity.py",
+      "sha256": "bdb03b37a9b4585024a1f0af9f678ea6e872e9da62fdda2487ebd09eac98fff5"
+    },
+    {
+      "path": "tools/build_skins.py",
+      "sha256": "1a24459c69b80abcc3809136c8099b7558aff127e33b568bcbc96d8134cf8760"
+    },
+    {
+      "path": "tools/build_ui_art.py",
+      "sha256": "3e86af35aee924fc75560108a642a1d2657d24ced030fd4cba4f3ede0c14f4dd"
+    },
+    {
+      "path": "tools/create_battle_audio.py",
+      "sha256": "f5798587f574dce54b77e707c85cdcfdf5da14158d2d1f92548b912b7a8077c7"
+    },
+    {
+      "path": "tools/create_guard_texture.py",
+      "sha256": "c2cec84fb599d425ab00fb5c290f8c87f545cf88ffc55ec4972156bdaed0cd79"
+    },
+    {
+      "path": "tools/dependency_inventory.py",
+      "sha256": "893f8efc2f3136e5fbd67c07b96b3589e04b3a4ad0fb50205d0fc025a4a54ac9"
+    },
+    {
+      "path": "tools/diagnose-libraries.gradle",
+      "sha256": "543753be06fc748eefc16e8fbc8f7322fc98867f209bcf9aed6778ee791818fb"
+    },
+    {
+      "path": "tools/expand_design.py",
+      "sha256": "a38e570acb1966e74d3e1417fa0ae8d4d873e4f9e8716895d7e036d5f7cf07ab"
+    },
+    {
+      "path": "tools/export_modrinth.py",
+      "sha256": "a056c3c60238a72246ffae13589c69e6d471e37c5f118e7403c6e0290b4f31d0"
+    },
+    {
+      "path": "tools/export_server.py",
+      "sha256": "853ad61de92594eee600b0947d8e1e074be442fb8849319753c0f153e4adeb0f"
+    },
+    {
+      "path": "tools/implement_command_ui.py",
+      "sha256": "a0972674484de3a876bbf2f99f553d19d46ae1df50198c9b5c5c0d755fb0b60a"
+    },
+    {
+      "path": "tools/implement_experience.py",
+      "sha256": "b2f5e844869383cac0f5e767974fdc6d6b4a958f86bbd07b1a4aea3400732443"
+    },
+    {
+      "path": "tools/implement_groups.py",
+      "sha256": "566a81f515290f43840f7cf023a5ff495b60c8989386da293acb848ad3a48efa"
+    },
+    {
+      "path": "tools/integrate_campaign_client.py",
+      "sha256": "7120e178230cb0123526ed46e6bb4cb4584910a5ee1f44646e24b85ce9dc3b2b"
+    },
+    {
+      "path": "tools/launch_playtest_clients.py",
+      "sha256": "5fefcce3cd29440a7ffd3fd4f2f7595791828a1e225066fba4c2ad394b8a678f"
+    },
+    {
+      "path": "tools/launch_second_client.py",
+      "sha256": "4a57efe4e0445841881c8ed26b4336654ce8df43f9a49dd561e6c0d810d2e6b3"
+    },
+    {
+      "path": "tools/package.py",
+      "sha256": "1fa02d271d78c4642a7970034001f3db162e1bb3a62720f2734e2180c9456809"
+    },
+    {
+      "path": "tools/preflight.py",
+      "sha256": "6214bf3335bf5c650894e31523347c84b86b093758d7d9a8356f6fa5a7b4e15b"
+    },
+    {
+      "path": "tools/prepare_polish.py",
+      "sha256": "2c7aec38a70550b33d5e29b68e25c0c4ee95cee57b667af07519c3cc0a14211b"
+    },
+    {
+      "path": "tools/prepare_preview_checks.py",
+      "sha256": "610b44cbb6c75a848016c7f1e275da08d1babd252c3cc0982f266855b26f29d9"
+    },
+    {
+      "path": "tools/redesign_barracks.py",
+      "sha256": "0c4a4189e730e79d01327422426a8dcb8c33839f136bd80d0c7d1a578a88cfec"
+    },
+    {
+      "path": "tools/refine_campaign.py",
+      "sha256": "4feebe0d4094e194afd18845b2bcbdbc0fa594873959163e47b42dff87af50f3"
+    },
+    {
+      "path": "tools/refine_landmarks.py",
+      "sha256": "a6a6496cf9759ea3e049b15b329fb948ccfab1eb160d9107187401b0cd23cd73"
+    },
+    {
+      "path": "tools/refine_map_identity.py",
+      "sha256": "4cd9cb43d8067fbe963a7733d4d7bef84237254ef2408450e8cb14f2633f7196"
+    },
+    {
+      "path": "tools/release_config.py",
+      "sha256": "31e0eaca022184351d0ab12a481a91e7174a395c98570942abc0b1fc2a6a5400"
+    },
+    {
+      "path": "tools/review_modrinth.py",
+      "sha256": "3d3870e87d866ad26a80dc93bd8def46125bc6b72ffdc5b2e9c82faf10a7d9ad"
+    },
+    {
+      "path": "tools/revise_command_design.py",
+      "sha256": "d540dd5b9c7b78c7e911e98e644680d60247c721d5a3d5438f29363b37fa3d54"
+    },
+    {
+      "path": "tools/revise_experience_design.py",
+      "sha256": "3ac343b2f8835e9e610b1ad15e68d8cec4d98f93dee1013e01f4d6b0fc5a1f75"
+    },
+    {
+      "path": "tools/ui_art/kit_extra.py",
+      "sha256": "b72f9473c50a3ba4a449281a7ff8dee16669ca4c6282cb706202ebc2fb99d91c"
+    },
+    {
+      "path": "tools/ui_art/kit_props.py",
+      "sha256": "3c2d6d95509ea80373849cd1762ed48bea83e511c524ab725fc0f6dc26586e38"
+    },
+    {
+      "path": "tools/ui_art/manifest.py",
+      "sha256": "3c550bc96b317964fac242464e513c420cb0954ee619fe217be18bf8ef2e9a13"
+    },
+    {
+      "path": "tools/ui_art/v4a_furn.py",
+      "sha256": "832224498425f0b8dec650aed894813f3f5bdabeef4026bf0e2084b264b74443"
+    },
+    {
+      "path": "tools/ui_art/v4a_hud.py",
+      "sha256": "6d8f81a43c591089ce1586bf75c4c35736356c7cd523ab3ccb295c88c56ea9b6"
+    },
+    {
+      "path": "tools/ui_art/v4a_ink.py",
+      "sha256": "68199c271e356a8b53d3e72dedb9bf947f58700e0a2b1ac37c4177c758ee7595"
+    },
+    {
+      "path": "tools/ui_art/v4a_map.py",
+      "sha256": "e8cab8420102dbb268103ac2c68eecf7c0a3b06a57085c5f9cc116f3f15c636b"
+    },
+    {
+      "path": "tools/ui_art/v4a_paper.py",
+      "sha256": "ec23b91c90b80e28a2a3c85b7c9fbed2ae0ee79a14be07c2747491a07ef93470"
+    },
+    {
+      "path": "tools/ui_art/v4a_portrait.py",
+      "sha256": "f3c29a522b8fdd442e7c00bc2bb9e6059d4f39945c2b3b4826087cfa8816fbf8"
+    },
+    {
+      "path": "tools/ui_art/v4a_recruit.py",
+      "sha256": "5c71e79db247ae8014f661b0a341992666eb54a79d33c67e7dcdcc4ce6a0fd1a"
+    },
+    {
+      "path": "tools/ui_art/v4a_recruit2.py",
+      "sha256": "2d29365b3475b04187e26c44444af19a512b318191099ef5ea65391b8d214925"
+    },
+    {
+      "path": "tools/ui_art/v4a_table.py",
+      "sha256": "4f9ac51af7e36bedab0eb7a17345359a0702295e1487a50fa9b3646e5e0d9f71"
+    },
+    {
+      "path": "tools/ui_art/v4art.py",
+      "sha256": "3cce1257f5e05329c9400f86d30feebb4d96ddae2bac4034ae575d4592bb291c"
+    },
+    {
+      "path": "tools/ui_art/v4lib.py",
+      "sha256": "77d4397472c3675dbf3473feb3dc49ddd41c48bc10e4fc87987414e8fdb38cd2"
+    },
+    {
+      "path": "tools/ui_art/v4pal.py",
+      "sha256": "63a02236453d026d63ae677f866499b763acba1f1dfa81eded5fddcf35e4a4cb"
+    },
+    {
+      "path": "tools/upload_to_melty_storage.py",
+      "sha256": "b01c4c301414e2973669d8ccde2850d3b2c6302ddbfcd1f9b0781b9eac981d1c"
+    },
+    {
+      "path": "tools/verify_modrinth.py",
+      "sha256": "1b516f494c2ec23840d24a5a1700420be156ecfe8091979ccbf6d6eeb76d267f"
+    },
+    {
+      "path": "tools/verify_package.py",
+      "sha256": "c964484f34476ac822fcd74126c8d7280b576523ae4026dc6ad742d8d6f809f0"
+    }
+  ]
+}
