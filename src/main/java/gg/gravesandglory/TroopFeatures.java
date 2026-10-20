@@ -13,12 +13,14 @@ import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
+import org.joml.Quaternionf;
 import java.util.List;
 
 /**
  * The layers TroopRenderer draws over a troop's skin: the outer layer, the team cloth, the glow, the weapon model and the
  * painted off-hand shield. Each draws only for the troop TroopRenderer is drawing (its Look is set), and none for an
- * invisible troop; the weapon and the shield also wait while the arms are folded.
+ * invisible troop; the weapon and the shield also wait while the arms are folded. Each reports to TroopRenderer what it
+ * bound and drew (the harness reads the draws as observed, never re-derived).
  */
 final class TroopFeatures {
     private TroopFeatures() {}
@@ -46,7 +48,8 @@ final class TroopFeatures {
         @Override public void render(MatrixStack m,VertexConsumerProvider v,int light,T e,float limbAngle,float limbDistance,float tickDelta,float age,float headYaw,float headPitch){
             var l=r.look;if(l==null||e.isInvisible())return;
             Identifier cloth=TroopModels.cloth(TroopModels.clothOf(e,l));
-            getContextModel().renderCloth(m,v.getBuffer(RenderLayer.getEntityCutout(cloth)),light,LivingEntityRenderer.getOverlay(e,0f));
+            long drawn=getContextModel().renderCloth(m,v.getBuffer(RenderLayer.getEntityCutout(cloth)),light,LivingEntityRenderer.getOverlay(e,0f));
+            r.clothSheet=cloth;r.clothMask=drawn;
         }
     }
 
@@ -68,13 +71,16 @@ final class TroopFeatures {
             m.push();for(ModelPart p:path)p.rotate(m);
             w.part().render(m,v.getBuffer(RenderLayer.getEntityCutout(w.texture())),light,LivingEntityRenderer.getOverlay(e,0f));
             if(w.glow()!=null)w.part().render(m,v.getBuffer(RenderLayer.getEyes(w.glow())),FULL_BRIGHT,OverlayTexture.DEFAULT_UV);
-            m.pop();
+            m.pop();r.weaponDrawn=true;
         }
     }
 
     /**
-     * The off-hand shield, in the hand opposite the weapon, through HeldItemRenderer so its painted patterns and the vanilla
-     * blocking model show; held as vanilla's HeldItemFeatureRenderer holds it (2 px down and 2 px forward of the hand bone).
+     * The off-hand shield, in the hand opposite the weapon, through HeldItemRenderer so its painted patterns show. It is
+     * carried face out at all times: from the hand frame vanilla's HeldItemFeatureRenderer uses (2 px down and 2 px forward of
+     * the hand bone), the vanilla shield_blocking model's third-person left-hand transform (mirrored for a shield in the right
+     * hand), drawn with no display transform of its own. So the face covers the troop's front at rest (the shield arm carries
+     * it 45 degrees forward) and on guard, never edge-on as vanilla's lowered hold reads from the side.
      */
     static final class Shield<T extends MobEntity> extends FeatureRenderer<T,TroopModel<T>> {
         final TroopRenderer<T> r;final HeldItemRenderer held;Shield(TroopRenderer<T> r,HeldItemRenderer held){super(r);this.r=r;this.held=held;}
@@ -84,8 +90,10 @@ final class TroopFeatures {
             boolean left=!"left".equals(model.hand());List<ModelPart> path=model.handPath(left?"left":"right");if(!shown(path))return;
             m.push();for(ModelPart p:path)p.rotate(m);
             m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-90f));m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f));m.translate(0f,0.125f,-0.125f);
-            held.renderItem(e,stack,left?ModelTransformationMode.THIRD_PERSON_LEFT_HAND:ModelTransformationMode.THIRD_PERSON_RIGHT_HAND,left,m,v,light);
-            m.pop();
+            float side=left?-1:1;m.translate(side*13.51f/16f,3f/16f,5f/16f);
+            m.multiply(new Quaternionf().rotationXYZ(45*TroopModel.RAD,side*135*TroopModel.RAD,0));
+            held.renderItem(e,stack,ModelTransformationMode.NONE,left,m,v,light);
+            m.pop();r.shieldDrawn=true;
         }
     }
 }

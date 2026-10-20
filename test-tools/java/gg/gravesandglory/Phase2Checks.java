@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.model.ModelPart;
+import net.minecraft.client.render.entity.animation.Animation;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.util.ScreenshotRecorder;
 import net.minecraft.client.util.math.MatrixStack;
@@ -48,7 +49,7 @@ public final class Phase2Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every server tick, for checks that wait on the battle. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);}
+    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("anim",Anim::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -93,7 +94,7 @@ public final class Phase2Checks implements ClientModInitializer {
     @Override public void onInitializeClient(){
         String list=System.getProperty("gravesandglory.phase2Checks","");if(list.isBlank())return;
         for(String name:list.split(","))if(!name.isBlank())queue.add(name.trim());
-        Frame.register();
+        Frame.register();RenderCost.register();
         ServerTickEvents.END_SERVER_TICK.register(s->{if(current instanceof ServerWatch w&&GravesAndGlory.battle!=null)try{w.serverTick(GravesAndGlory.battle);}catch(Exception e){report("p2-"+currentName+"-exception",false,e.toString());e.printStackTrace();}});
         ClientTickEvents.END_CLIENT_TICK.register(c->{
             c.options.pauseOnLostFocus=false; // an unfocused test window must not pause the integrated server
@@ -364,7 +365,7 @@ public final class Phase2Checks implements ClientModInitializer {
     /**
      * Task 3: the combat engine. ArmyMobs and their daylight and water rules, the troop damage type with Combat.resolve (counter rows and the
      * shield bypass), the abilities shell (mend, blight), the House strip of the HUD, the House roll, the recruit page's House tabs and the tick
-     * cost of eight armies (152 troops). Stages run on the server tick; the client sends the command, opens the screens and takes the screenshots the stages ask for.
+     * cost of eight armies (160 troops). Stages run on the server tick; the client sends the command, opens the screens and takes the screenshots the stages ask for.
      */
     static final class Engine implements Suite,ServerWatch {
         record Pin(GravesAndGlory.Unit u,Vec3d at,float yaw){}
@@ -430,7 +431,7 @@ public final class Phase2Checks implements ClientModInitializer {
         }
         public void cleanup(MinecraftClient c){
             GravesAndGloryClient.houseStripOverride=null;
-            server(c,b->{clearFixture();unforce(b);if(cost!=null)cost.handBack();if(rngSaved!=null)b.campaign.rollRng=rngSaved;if(b.running)b.campaign.returnLobby();});
+            RenderCost.on=false;server(c,b->{clearFixture();unforce(b);if(cost!=null)cost.handBack();if(rngSaved!=null)b.campaign.rollRng=rngSaved;if(b.running)b.campaign.returnLobby();});
         }
 
         public void step(MinecraftClient c,int tick){
@@ -641,11 +642,12 @@ public final class Phase2Checks implements ClientModInitializer {
                     }catch(IOException e){report("p2-recruit-tabs",false,e.toString());next(b,60);return;}
                     next(b,51);
                 }
-                case 60->{ // p2-tick-cost: eight bot armies, 152 troops (19 each)
+                case 60->{ // p2-tick-cost: eight bot armies, 160 troops (20 each); p2-render-cost: the client's world render over the same 600 ticks
                     var p=sp(b);if(p==null)return;
-                    if(cost==null)cost=tickCost(b,List.of("gilded_normal","gilded_normal","gilded_normal","gilded_normal","graveborn_normal","graveborn_normal","graveborn_normal","graveborn_normal"));
+                    if(cost==null)cost=tickCost(b,List.of("gilded_easy","gilded_easy","gilded_easy","gilded_easy","graveborn_easy","graveborn_easy","graveborn_easy","graveborn_easy"));
                     if(cost.step(p)){
                         report("p2-tick-cost",cost.last<40,"server tick "+String.format(Locale.ROOT,"%.2f",cost.last)+" ms (600-tick mean "+String.format(Locale.ROOT,"%.2f",cost.avg)+" ms) with "+cost.troops+" troops at the start and "+b.units.size()+" at the end ("+cost.note+")");
+                        report("p2-render-cost",cost.frames>0&&cost.troopDraws>0,"report only (Task 5 review minor 1): "+cost.render);
                         cost.handBack();b.campaign.returnLobby();next(b,99);
                     }
                 }
@@ -656,12 +658,15 @@ public final class Phase2Checks implements ClientModInitializer {
 
     /**
      * The reusable tick-cost fixture (every House task runs it with its own banners): the commander's army and seven bot armies (four a side,
-     * 152 troops under the normal bot banners, 19 each) fight around the centre point for 600 ticks, each army under the next banner of the list (Dawn's armies
-     * first; a short list repeats), and the server's tick time is read each tick. Call step on every server tick until it returns true.
+     * 160 troops under the easy bot banners, 20 each; the normal banners field 19, their Epic takes two slots) fight around the centre point for 600 ticks, each army under the next banner of the list (Dawn's armies
+     * first; a short list repeats), and the server's tick time is read each tick. Call step on every server tick until it returns true. Over the
+     * same 600 ticks RenderCost times the client's world render with the battle in view (render, frames and troopDraws once done).
      */
     static TickCost tickCost(GravesAndGlory.Battle b,List<String> banners){return new TickCost(b,banners);}
     static final class TickCost {
         final GravesAndGlory.Battle b;final List<String> banners;GravesAndGlory.Squad own;boolean begun;long start;double sum,avg;int samples,troops;float last;String note="";
+        /** RenderCost's figures for the window, once step has returned true. */
+        long frames,troopDraws;String render="";
         TickCost(GravesAndGlory.Battle b,List<String> banners){this.b=b;this.banners=banners;}
         /** The commander takes his army back (it fought as a bot); the next returnLobby would drop the seat. */
         void handBack(){if(own!=null)own.bot=false;}
@@ -676,13 +681,35 @@ public final class Phase2Checks implements ClientModInitializer {
                 for(var u:b.units){int t=u.squad.team,i=n[t]++;double x=centre.x()+(t==0?-12:12)+(t==0?-1:1)*(i/10)*1.5,z=centre.z()+(i%10-4.5)*1.5;u.mob.refreshPositionAndAngles(x,Phase1Checks.top(b,x,z),z,t==0?-90:90,0);}
                 for(var s:armies){s.order="attack";s.target=new Vec3d(centre.x(),65,centre.z());s.reinforceAt=Long.MAX_VALUE;}
                 p.changeGameMode(net.minecraft.world.GameMode.SPECTATOR);b.relocate(p,centre.x(),Math.max(63,Arena.ground(centre.x(),centre.z()))+15,centre.z()+24,180,30);
-                troops=b.units.size();begun=true;start=b.time;note=armies.size()+" armies around "+centre.id()+" under "+banners;
+                troops=b.units.size();begun=true;start=b.time;note=armies.size()+" armies around "+centre.id()+" under "+banners;RenderCost.start();
                 System.out.println("[p2] tick-cost fixture: "+armies.size()+" armies, "+troops+" troops around "+centre.id()+" under "+banners);
                 return false;
             }
             sum+=b.server.getTickTime();samples++;
             if(b.time-start<600)return false;
-            avg=sum/samples;last=b.server.getTickTime();System.out.println("[p2] tick-cost avg="+String.format(Locale.ROOT,"%.2f",avg));return true;
+            avg=sum/samples;last=b.server.getTickTime();System.out.println("[p2] tick-cost avg="+String.format(Locale.ROOT,"%.2f",avg));
+            RenderCost.on=false;frames=RenderCost.frames;troopDraws=RenderCost.draws;render=RenderCost.summary();System.out.println("[p2] render-cost "+render);return true;
+        }
+    }
+    /**
+     * Task 5 review minor 1: the client's cost of drawing a battle. While on, the time from WorldRenderEvents.START to END of
+     * every frame (the whole world: terrain, entities, particles), the troop-model draws in it (TroopRenderer.troopDraws) and the
+     * entities drawn (WorldRenderer's entity count). Set from the server thread, counted on the render thread.
+     */
+    static final class RenderCost {
+        static volatile boolean on;static volatile long frames,sumNs,worstNs,draws,entities;static long begin,drawsAt;
+        static void register(){
+            WorldRenderEvents.START.register(ctx->{if(on){begin=System.nanoTime();drawsAt=TroopRenderer.troopDraws;}});
+            WorldRenderEvents.END.register(ctx->{if(!on||begin==0)return;long ns=System.nanoTime()-begin;begin=0;
+                frames++;sumNs+=ns;worstNs=Math.max(worstNs,ns);draws+=TroopRenderer.troopDraws-drawsAt;entities+=rendered(MinecraftClient.getInstance());});
+        }
+        /** The entities the last frame drew ("E: drawn/loaded" of the F3 screen). */
+        static int rendered(MinecraftClient c){try{String t=c.worldRenderer.getEntitiesDebugString();int a=t.indexOf("E: ")+3;return Integer.parseInt(t.substring(a,t.indexOf('/',a)).trim());}catch(RuntimeException e){return 0;}}
+        static void start(){frames=sumNs=worstNs=draws=entities=0;begin=0;on=true;}
+        static String summary(){
+            long n=Math.max(1,frames);
+            return String.format(Locale.ROOT,"world render %.2f ms mean, %.2f ms worst over %d frames (%d fps at the end); per frame %.1f troop-model draws and %.1f entities drawn",
+                sumNs/1e6/n,worstNs/1e6,frames,MinecraftClient.getInstance().getCurrentFps(),draws/(double)n,entities/(double)n);
         }
     }
     /**
@@ -696,6 +723,8 @@ public final class Phase2Checks implements ClientModInitializer {
         BlockPos site;final Set<net.minecraft.util.math.ChunkPos> forced=new HashSet<>();final List<Pin> pins=new ArrayList<>();
         GravesAndGlory.Squad gold,violet;final List<GravesAndGlory.Unit> posted=new ArrayList<>();
         int cs,wait;boolean finished;
+        /** The posted troops never attack or raise a shield (Task 5b: their clips would play; the art suites show them at rest). */
+        boolean calm=true;
         abstract String name();
         /** Posts the stage's troops (server thread); the battle is running, gold against violet, the floor laid. */
         abstract void cast(GravesAndGlory.Battle b);
@@ -753,6 +782,33 @@ public final class Phase2Checks implements ClientModInitializer {
             }
         }
         static final int[][] LIT_AT={{0,0},{-6,0},{6,0},{0,-3},{0,6},{-6,12},{0,12},{6,12}};
+        int darkFor,awayFor,recoveries;Vec3d back;float backYaw,backPitch;
+        /**
+         * Client: lit(c) for a suite's first step, with the recovery the Task 5 review asked for (minor 5). Sky light 0 at every
+         * LIT_AT point for 600 ticks with the terrain built means this client never got the platform's light, and waiting does not
+         * mend that: the spectator goes 400 blocks east (out of view distance, inside the arena) and back to the camera 40 ticks
+         * later, so the client takes the platform's chunks and their light again. "[p2-light]" lines mark a recovered run.
+         */
+        boolean litStart(MinecraftClient c){
+            if(awayFor>0){
+                if(++awayFor>=40){awayFor=0;darkFor=0;server(c,b->{var p=sp(b);if(p!=null&&back!=null)b.relocate(p,back.x,back.y,back.z,backYaw,backPitch);});
+                    System.out.println("[p2-light] "+name()+": back at the platform after 40 ticks away; waiting for its light again");}
+                return false;
+            }
+            if(lit(c)){darkFor=0;return true;}
+            if(c.world!=null&&site!=null&&c.worldRenderer!=null&&c.worldRenderer.isTerrainRenderComplete()&&allDark(c)){
+                if(++darkFor>=600){awayFor=1;darkFor=0;recoveries++;
+                    server(c,b->{var p=sp(b);if(p==null)return;back=p.getPos();backYaw=p.getYaw();backPitch=p.getPitch();b.relocate(p,site.getX()+400.5,site.getY()+4,site.getZ()+.5,backYaw,backPitch);});
+                    System.out.println("[p2-light] "+name()+": sky light 0 at every floor point for 600 ticks with the terrain built; the spectator goes 400 blocks away and back to take the platform's chunks again (recovery "+recoveries+")");}
+            }else darkFor=0;
+            return false;
+        }
+        /** Client: sky light 0 at both layers of every LIT_AT point. */
+        boolean allDark(MinecraftClient c){
+            var sky=net.minecraft.world.LightType.SKY;
+            for(int[] d:LIT_AT)for(int y=0;y<=1;y++)if(c.world.getLightLevel(sky,site.add(d[0],y,d[1]))>0)return false;
+            return true;
+        }
         int litWait,litAgain;
         /** Client: whether a world shot may be taken this tick. A freshly laid platform can go dark on the client after it was lit
          *  (a light update from the server's engine half way through the floor), so every shot checks again, the light data and the
@@ -770,7 +826,7 @@ public final class Phase2Checks implements ClientModInitializer {
         }
 
         public void serverTick(GravesAndGlory.Battle b){
-            for(var p:pins)if(p.mob().isAlive())pin(p.mob(),p.at(),p.yaw());
+            for(var p:pins)if(p.mob().isAlive()){pin(p.mob(),p.at(),p.yaw());if(calm){p.mob().setAttacking(false);if(p.mob().isUsingItem())p.mob().stopUsingItem();}}
             if(stage==1){var p=sp(b);if(p==null||!Phase1Checks.skirmish(b,p,b.campaign.map,1,"normal"))return;stage=2;}
             else if(stage==2){
                 var p=sp(b);if(p==null)return;Projectiles.clear(b);
@@ -817,13 +873,14 @@ public final class Phase2Checks implements ClientModInitializer {
     /**
      * A frame caught as it was drawn: the first frame, once armed, in which TroopRenderer drew the watched world entity (by
      * network id: the integrated server shares them) while the condition holds. The end of that frame keeps the framebuffer,
-     * the camera and the matrices the world was drawn with, the entity's pose as drawn, the renderer's record of that draw, and
-     * whether the vanilla renderer's frustum test would have drawn the entity in that frame.
+     * the camera and the matrices the world was drawn with, the entity's pose as drawn (its body yaw and its bones'
+     * TroopModel.snapshot: the model is shared, so face puts the snapshot back before it measures), the renderer's record of
+     * that draw, and whether the vanilla renderer's frustum test would have drawn the entity in that frame.
      */
     static final class Frame {
         static final List<Frame> ALL=new java.util.concurrent.CopyOnWriteArrayList<>();
         final int id;final boolean fresh;final java.util.function.Predicate<Entity> when;volatile boolean done;int before;Set<Entity> known=Set.of();
-        NativeImage image;Matrix4f proj,view;Vec3d cam,pos;float bodyYaw;int deathTime;TroopRenderer.Draw draw;boolean vanillaSees;Entity entity;
+        NativeImage image;Matrix4f proj,view;Vec3d cam,pos;float bodyYaw;int deathTime;TroopRenderer.Draw draw;boolean vanillaSees;Entity entity;float[] pose;
         Frame(int id,boolean fresh,java.util.function.Predicate<Entity> when){this.id=id;this.fresh=fresh;this.when=when;}
         static Frame watch(int id,java.util.function.Predicate<Entity> when){Frame f=new Frame(id,false,when);ALL.add(f);return f;}
         static Frame watch(int id){return watch(id,e->true);}
@@ -849,7 +906,7 @@ public final class Phase2Checks implements ClientModInitializer {
             proj=new Matrix4f(ctx.projectionMatrix());view=new Matrix4f(ctx.matrixStack().peek().getPositionMatrix());cam=ctx.camera().getPos();
             pos=e.getLerpedPos(t);entity=e;bodyYaw=e.getYaw();
             if(e instanceof net.minecraft.entity.LivingEntity le){bodyYaw=net.minecraft.util.math.MathHelper.lerpAngleDegrees(t,le.prevBodyYaw,le.bodyYaw);deathTime=le.deathTime;}
-            draw=d.last;
+            draw=d.last;pose=d.pose==null?null:d.pose.clone();
             var r=c.getEntityRenderDispatcher().getRenderer(e);
             vanillaSees=r instanceof TroopRenderer<?> tr&&ctx.frustum()!=null&&((net.minecraft.client.render.entity.EntityRenderer<Entity>)(Object)tr.vanilla()).shouldRender(e,ctx.frustum(),cam.x,cam.y,cam.z);
             done=true;ALL.remove(this);
@@ -863,6 +920,7 @@ public final class Phase2Checks implements ClientModInitializer {
          */
         int[] face(TroopModel<?> m,String bone,int box,int inset){
             List<ModelPart> path=m.path(bone);if(path.isEmpty()||image==null)return null;
+            m.applyPose(pose);
             MatrixStack ms=new MatrixStack();
             ms.translate((float)(pos.x-cam.x),(float)(pos.y-cam.y),(float)(pos.z-cam.z));
             ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f-bodyYaw));ms.scale(-1,-1,1);ms.translate(0,-1.501f,0);
@@ -932,6 +990,8 @@ public final class Phase2Checks implements ClientModInitializer {
         final int[] drawsAt=new int[4];
         /** The death second and the spawn frame: the Squire killed in front of the camera, the one spawned off its team, and their frames. */
         volatile GravesAndGlory.Unit dying,born;Frame deathFrame,spawnFrame;int killedAt,deathStall,bornAt=-1,bornSeen=-1,bornDrawn=-1;
+        /** The end of the hold (Task 5 review minor 4): a Squire spawned off its team, which never comes, and when this client first had it and first drew it. */
+        volatile GravesAndGlory.Unit linen;int linenSeen=-1,linenDrawn=-1;
         /** Ticks from the spawn to the team: the body has turned its back to the camera by then (BodyControl), within the hold. */
         static final int TEAM_LATE=30;
         String name(){return "spike";}
@@ -949,7 +1009,8 @@ public final class Phase2Checks implements ClientModInitializer {
             if(finished)return;
             if(tick>6000){report("p2-spike-timeout",false,"stuck at client step "+cs+", server stage "+stage);end(c);return;}
             switch(cs){
-                case 0->{if(ready&&posted.size()==4&&entities(c)!=null&&lit(c)){c.options.hudHidden=true;wait=0;cs=1;}
+                case 0->{boolean lit=litStart(c); // first: while the spectator is away the troops are off this client
+                    if(lit&&ready&&posted.size()==4&&entities(c)!=null){c.options.hudHidden=true;wait=0;cs=1;}
                     else if(++wait%600==0)System.out.println("[p2-wait] spike step 0 after "+wait+" ticks: ready="+ready+", posted "+posted.size()+" of 4, on this client="+(entities(c)!=null)+"; "+litWhy(c));}
                 case 1->{wait++;
                     if(wait==40){drawsBefore=TroopRenderer.troopDraws;var es=entities(c);for(int i=0;i<4;i++){var d=es==null?null:TroopRenderer.drawn(es.get(i));drawsAt[i]=d==null?0:d.count;}}
@@ -975,7 +1036,13 @@ public final class Phase2Checks implements ClientModInitializer {
                     else{int w=wait-bornAt;var be=born==null?null:client(c,born.mob);
                         if(be!=null&&bornSeen<0)bornSeen=w;if(be!=null&&bornDrawn<0&&TroopRenderer.drawn(be)!=null)bornDrawn=w;
                         if(w==TEAM_LATE)server(c,b->{if(born!=null)b.joinSide(born.mob,0);});
-                        if(w>TEAM_LATE&&(spawnFrame.done||w>=TEAM_LATE+70)){spawnCheck(c);cs=3;wait=0;}}}
+                        if(w>TEAM_LATE&&(spawnFrame.done||w>=TEAM_LATE+70)){spawnCheck(c);cs=7;wait=0;}}}
+                case 7->{wait++; // the end of the hold: a gold Squire spawned off its team, which never comes, is first drawn HOLD_TICKS after this client had it, in linen
+                    if(wait==1)server(c,b->{if(born!=null){pins.removeIf(p->p.mob()==born.mob);posted.remove(born);b.units.remove(born);GravesAndGlory.Battle.leaveSide(born.mob);born.mob.discard();}
+                        linen=post(b,gold,"knight",0,2.5,180);GravesAndGlory.Battle.leaveSide(linen.mob);});
+                    else{var le=linen==null?null:client(c,linen.mob);
+                        if(le!=null&&linenSeen<0)linenSeen=wait;if(le!=null&&linenDrawn<0&&TroopRenderer.drawn(le)!=null)linenDrawn=wait;
+                        if(linenDrawn>=0&&wait>=linenDrawn+5||wait>=200){linenCheck(c);cs=3;wait=0;}}}
                 case 3->{wait++;
                     if(wait==1)portrait(c);
                     if(wait==30){portraitCheck(c);shot(c,"spike-portrait");}
@@ -1013,14 +1080,17 @@ public final class Phase2Checks implements ClientModInitializer {
             else report("p2-spike-feet",false,"no knight or sentinel model");
             List<String> bad=new ArrayList<>();int lines=0;
             try{for(String line:Files.readAllLines(c.runDirectory.toPath().resolve("logs/latest.log"),java.nio.charset.StandardCharsets.ISO_8859_1)){lines++;if(line.contains("[troop-models]")||line.contains("Failed to load model")&&line.contains("gravesandglory:troop/"))bad.add(line.trim());}}catch(IOException e){bad.add(e.toString());}
-            // Every rig, weapon and troop that index.json lists has loaded: a client whose loader never ran logs nothing either.
+            // Every rig, weapon and troop that index.json lists has loaded: a client whose loader never ran logs nothing either. The
+            // lists are read here with plain JSON, not with the loader's own index() (Task 5 review minor 2), and none may be empty.
             List<String> missing=new ArrayList<>();String listed;
-            try{var ix=TroopModelLoader.index(TroopModelLoader.read(c.getResourceManager(),"index.json"));
-                for(String r:ix.rigs())if(TroopModels.rig(r)==null)missing.add("rig/"+r);
-                for(String w:ix.weapons())if(TroopModels.weapon(w)==null)missing.add("weapon/"+w);
-                for(String t:ix.troops())if(TroopModels.model(t)==null)missing.add(t);
-                if(ix.troops().isEmpty())missing.add("(index.json lists no troop)");
-                listed=ix.rigs().size()+" rigs, "+ix.weapons().size()+" weapons and "+ix.troops().size()+" troops";}
+            try{JsonObject ix;try(var in=c.getResourceManager().getResource(new Identifier("gravesandglory","models/troop/index.json")).orElseThrow().getReader()){ix=JsonParser.parseReader(in).getAsJsonObject();}
+                Map<String,List<String>> lists=new LinkedHashMap<>();
+                for(String key:List.of("rigs","weapons","troops")){List<String> names=new ArrayList<>();if(ix.has(key))for(var el:ix.getAsJsonArray(key))names.add(el.getAsString());lists.put(key,names);
+                    if(names.isEmpty())missing.add("(index.json lists no "+key+")");}
+                for(String r:lists.get("rigs"))if(TroopModels.rig(r)==null)missing.add("rig/"+r);
+                for(String w:lists.get("weapons"))if(TroopModels.weapon(w)==null)missing.add("weapon/"+w);
+                for(String t:lists.get("troops"))if(TroopModels.model(t)==null)missing.add(t);
+                listed=lists.get("rigs").size()+" rigs, "+lists.get("weapons").size()+" weapons and "+lists.get("troops").size()+" troops";}
             catch(Exception e){missing.add("index.json: "+e);listed="nothing";}
             report("p2-spike-load",bad.isEmpty()&&lines>0&&missing.isEmpty(),lines+" lines of latest.log read; "+(bad.isEmpty()?"no [troop-models] line and no Failed to load model naming gravesandglory:troop/":bad.size()+" bad, first: "+bad.get(0))
                 +"; index.json lists "+listed+", "+(missing.isEmpty()?"all loaded":"not loaded: "+missing)+"; models loaded: "+TroopModels.ids());
@@ -1052,6 +1122,14 @@ public final class Phase2Checks implements ClientModInitializer {
             report("p2-spike-spawn",ok,String.format(Locale.ROOT,"spawned off its team once the dead Squire had gone, the team sent %d ticks later: on this client %d ticks after the spawn, first drawn at %d (want %d or later: held until its side came), with side %s, cloth %s (null is linen), pennant shown=%s; in that first frame its back to the camera (body yaw %.0f, want 180 within 20), the chest panel %.0f%% gold, the flag %.0f%% (want 50 and 30 or more)",
                 TEAM_LATE,bornSeen,bornDrawn,TEAM_LATE,first.look().side(),first.cloth(),bones.contains("pennant"),f.bodyYaw,ps*100,fs*100));
             f.close();
+        }
+        /** p2-spike-linen: a Squire whose team never reaches this client waits undrawn HOLD_TICKS (40), within a few, then draws in linen. */
+        void linenCheck(MinecraftClient c){
+            var e=linen==null?null:client(c,linen.mob);var d=e==null?null:TroopRenderer.drawn(e);var first=d==null?null:d.first;int held=linenSeen<0||linenDrawn<0?-1:linenDrawn-linenSeen;
+            boolean sheet=first!=null&&first.clothSheet()!=null&&first.clothSheet().equals(TroopModels.cloth(null));
+            boolean ok=first!=null&&first.look().side()==null&&first.cloth()==null&&sheet&&e.getScoreboardTeam()==null&&held>=TroopModels.HOLD_TICKS-3&&held<=TroopModels.HOLD_TICKS+5;
+            report("p2-spike-linen",ok,String.format(Locale.ROOT,"spawned off its team and never given one: on this client at tick %d of the step, first drawn at %d, so held %d ticks (want %d, from %d to %d); the first draw with side %s, cloth sheet %s (want %s), on no team=%s",
+                linenSeen,linenDrawn,held,TroopModels.HOLD_TICKS,TroopModels.HOLD_TICKS-3,TroopModels.HOLD_TICKS+5,first==null?"-":first.look().side(),first==null?"-":first.clothSheet(),TroopModels.cloth(null),e!=null&&e.getScoreboardTeam()==null));
         }
         /** p2-spike-loader: TroopModelLoader refuses broken files with a reason (each would leave its troop vanilla, or every troop for index.json), and takes a box without dilation. */
         void loaderCheck(MinecraftClient c){
@@ -1127,6 +1205,8 @@ public final class Phase2Checks implements ClientModInitializer {
         int ci;boolean closeOk=true;final StringBuilder closeWhy=new StringBuilder();Frame cullFrame;float cullPitch;
         /** The sides shot's four knights (gold, violet, crimson, teal) and the cards' portraits' draw counts before the Gilded tab drew. */
         final List<GravesAndGlory.Unit> sided=new ArrayList<>();final Map<String,Integer> cardDraws=new HashMap<>();
+        /** The side change (Task 5 review minor 4): the suite tick the crimson Squire was first drawn (on gold) and the tick it moved to crimson. */
+        int firstGold=-1,movedAt=-1;
         static final List<String> FOUR=List.of("gold","violet","crimson","teal");
         /**
          * The cull shot's camera: 1.1 blocks in front of Aldric, the eye 2.6 blocks up, between the top of his vanilla box (the
@@ -1147,7 +1227,8 @@ public final class Phase2Checks implements ClientModInitializer {
             if(finished)return;
             if(tick>12000){report("p2-gilded-timeout",false,"stuck at client step "+cs+", server stage "+stage);end(c);return;}
             switch(cs){
-                case 0->{if(ready&&posted.size()==12&&posted.stream().allMatch(u->{var e=client(c,u.mob);return e!=null&&e.getCustomName()!=null;})&&lit(c)){c.options.hudHidden=true;wait=0;cs=1;}
+                case 0->{boolean lit=litStart(c); // first: while the spectator is away the troops are off this client
+                    if(lit&&ready&&posted.size()==12&&posted.stream().allMatch(u->{var e=client(c,u.mob);return e!=null&&e.getCustomName()!=null;})){c.options.hudHidden=true;wait=0;cs=1;}
                     else if(++wait%600==0)System.out.println("[p2-wait] gilded-art step 0 after "+wait+" ticks: ready="+ready+", posted "+posted.size()+" of 12; "+litWhy(c));}
                 case 1->{wait++;if(wait==60){if(shotReady(c,"gilded-lineup")){lineup(c);shot(c,"gilded-lineup");cs=2;wait=0;ci=0;}else wait--;}}
                 case 2->{wait++; // one gold troop at a time in the studio at stage 1, then the later stages (LATER)
@@ -1167,13 +1248,14 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(wait==40){var e=client(c,golds.get("gl_marshal").mob);Vec3d at=at(0,STUDIO);
                         if(e==null||e.squaredDistanceTo(at)>0.01||!lit(c))wait--;else cullFrame=Frame.watch(e.getId(),x->x.squaredDistanceTo(at)<0.01);}
                     if(wait>40&&(cullFrame.done||wait>=80)){cullCheck(c);fovScale(c,-1);server(c,b->move(golds.get("gl_marshal").mob,-6.25+SIX.indexOf("gl_marshal")*2.5,0,0));cs=6;wait=0;}}
-                case 6->{wait++; // one troop on all four sides (finding 11): four Squires in the studio, gold, violet, crimson and teal from the left, 4 blocks off
-                    if(wait==1)server(c,b->{var board=b.server.getScoreboard();
-                        for(int i=0;i<4;i++){var u=post(b,i==1?violet:gold,"knight",(1.5-i)*1.6,STUDIO,180+20);sided.add(u);
-                            if(i>=2){String team="gg_"+FOUR.get(i);var t=board.getTeam(team);if(t==null)t=board.addTeam(team);board.addPlayerToTeam(u.mob.getEntityName(),t);
-                                for(var f:Spec.FACTIONS)if(f.id().equals(FOUR.get(i)))u.mob.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(u.spec,f.dye()));}}
+                case 6->{wait++; // one troop on all four sides (finding 11): four Squires in the studio, gold, violet, crimson and teal from the left, 4 blocks off;
+                    // the crimson one is posted on gold and moved to crimson 20 ticks after this client first drew it (a side change on a troop already drawn)
+                    if(wait==1)server(c,b->{
+                        for(int i=0;i<4;i++){var u=post(b,i==1?violet:gold,"knight",(1.5-i)*1.6,STUDIO,180+20);sided.add(u);if(i==3)toSide(b,u,FOUR.get(i));}
                         camera(b,0,1.45,STUDIO-4,0,6);});
-                    if(wait==50){if(sided.size()==4&&shotReady(c,"gilded-sides")){sidesCheck(c);shot(c,"gilded-sides");}else wait--;}
+                    if(wait>1&&firstGold<0&&sided.size()==4){var e=client(c,sided.get(2).mob);var d=e==null?null:TroopRenderer.drawn(e);if(d!=null&&d.count>0)firstGold=tick;}
+                    if(firstGold>=0&&movedAt<0&&tick-firstGold>=20){movedAt=tick;server(c,b->toSide(b,sided.get(2),FOUR.get(2)));}
+                    if(wait==50){if(sided.size()==4&&movedAt>=0&&tick-movedAt>=20&&shotReady(c,"gilded-sides")){sidesCheck(c);shot(c,"gilded-sides");}else wait--;}
                     if(wait==55){server(c,b->{for(var u:sided){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();pins.removeIf(p->p.mob()==u.mob);b.units.remove(u);posted.remove(u);}});cs=4;wait=0;}}
                 case 4->{wait++; // the recruit page's Gilded tab, every Gilded troop owned so no card is dimmed
                     if(wait==1)server(c,b->{b.campaign.returnLobby();var pr=b.campaign.profile(player);for(String id:SIX)pr.owned.putIfAbsent(id,new Profile.Owned());pins.clear();posted.clear();});
@@ -1220,13 +1302,20 @@ public final class Phase2Checks implements ClientModInitializer {
                 f.cam.x,f.cam.y,f.cam.z,cullPitch,half,f.pos.x,f.pos.y,f.pos.z,f.vanillaSees,f.draw==null?"-":f.draw.cloth(),bones.contains("standard"),Arrays.toString(cloth),on,f.image.getWidth(),f.image.getHeight(),share*100));
             f.close();
         }
-        /** p2-gilded-sides: the four Squires were last drawn each in its own side's cloth, with its flag. */
+        /** Moves a posted troop to a side's gg_ team, with that side's painted shield. */
+        static void toSide(GravesAndGlory.Battle b,GravesAndGlory.Unit u,String side){
+            var board=b.server.getScoreboard();String team="gg_"+side;var t=board.getTeam(team);if(t==null)t=board.addTeam(team);board.addPlayerToTeam(u.mob.getEntityName(),t);
+            for(var f:Spec.FACTIONS)if(f.id().equals(side))u.mob.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(u.spec,f.dye()));
+        }
+        /** p2-gilded-sides: the four Squires were last drawn each in its own side's cloth, with its flag; the crimson one was first drawn in gold, before its move. */
         void sidesCheck(MinecraftClient c){
             var m=TroopModels.model("knight");boolean ok=m!=null;StringBuilder why=new StringBuilder();
-            for(int i=0;i<4;i++){var e=client(c,sided.get(i).mob);var d=e==null?null:TroopRenderer.drawn(e);var last=d==null?null:d.last;
+            for(int i=0;i<4;i++){var e=client(c,sided.get(i).mob);var d=e==null?null:TroopRenderer.drawn(e);var last=d==null?null:d.last;var first=d==null?null:d.first;
                 List<String> shown=last==null||m==null?List.of():m.shownBones(last.bones());
-                boolean good=last!=null&&FOUR.get(i).equals(last.look().side())&&FOUR.get(i).equals(last.cloth())&&shown.contains("pennant")&&shown.contains("chest_panel");ok&=good;
-                why.append(FOUR.get(i)).append(": ").append(last==null?"not drawn":"drawn in "+last.cloth()+", flag "+(shown.contains("pennant")?"shown":"hidden")).append(good?"":" (BAD)").append("; ");}
+                boolean good=last!=null&&FOUR.get(i).equals(last.look().side())&&FOUR.get(i).equals(last.cloth())&&shown.contains("pennant")&&shown.contains("chest_panel");
+                if(i==2)good&=first!=null&&"gold".equals(first.look().side())&&"gold".equals(first.cloth())&&movedAt>=0;ok&=good;
+                why.append(FOUR.get(i)).append(": ").append(last==null?"not drawn":"drawn in "+last.cloth()+", flag "+(shown.contains("pennant")?"shown":"hidden"))
+                    .append(i==2?" (first drawn in "+(first==null?"-":first.cloth())+" at suite tick "+firstGold+", moved to crimson at "+movedAt+")":"").append(good?"":" (BAD)").append("; ");}
             report("p2-gilded-sides",ok,"one Squire on each side, left to right on the frame: "+why.toString().trim());
         }
         /** One line of p2-gilded-stages: each of its three troops was last drawn at its own stage, in that stage's skin, with the line's stage 3 parts at stage 3 only. */
@@ -1236,7 +1325,9 @@ public final class Phase2Checks implements ClientModInitializer {
             for(var u:lines.get(line)){var e=client(c,u.mob);var d=e==null?null:TroopRenderer.drawn(e);var l=d==null?null:d.last.look();
                 if(l==null||m==null){ok=false;stagesWhy.append("stage ").append(u.stage).append(" not drawn (BAD); ");continue;}
                 List<String> shown=m.shownBones(d.last.bones());long on=parts.stream().filter(shown::contains).count();
-                var skin=TroopModels.skin(l);boolean skinOk=skin!=null&&skin.getPath().endsWith("/"+line+"_s"+u.stage+".png")&&c.getResourceManager().getResource(skin).isPresent();
+                // the skin the draw bound (TroopRenderer.getTexture, observed), against the file the line and the stage name (Task 5 review minor 2)
+                var skin=d.last.skin();var want=new Identifier("gravesandglory","textures/entity/troop/"+u.spec.id()+"_s"+u.stage+".png");
+                boolean skinOk=want.equals(skin)&&c.getResourceManager().getResource(skin).isPresent();
                 boolean good=l.stage()==u.stage&&(l.stage()==3?on==parts.size():on==0)&&skinOk;ok&=good;
                 stagesWhy.append("\"").append(e.getCustomName().getString()).append("\" drawn at stage ").append(l.stage()).append(" in ").append(skin==null?"no skin":skin.getPath().substring(skin.getPath().lastIndexOf('/')+1))
                     .append(", ").append(String.join("+",parts)).append(" ").append(on==parts.size()?"drawn":on==0?"not drawn":on+" of "+parts.size()+" drawn").append(good?"":" (BAD)").append("; ");}
@@ -1256,6 +1347,339 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean good=u.mob.getOffHandStack().isOf(net.minecraft.item.Items.SHIELD)&&tag!=null&&tag.getInt("Base")==net.minecraft.util.DyeColor.byName(dye,null).getId()&&got.toString().equals(want.toString());shields&=good;
                     sw.append(u.spec.id()).append(" ").append(b.side(u.squad.team).id()).append(": base ").append(tag==null?"none":net.minecraft.util.DyeColor.byId(tag.getInt("Base")).getName()).append(" (want ").append(dye).append("), patterns ").append(got).append(" (want ").append(want).append(")").append(good?"":" (BAD)").append("; ");}
                 report("p2-gilded-kit",client&&shields,clientWhy+sw);});
+        }
+    }
+
+    /**
+     * Task 5b: the rig animation sets. The four rigs' clip tables (p2-anim-cover, -change and -return), the clip choice
+     * (-choose), the stance sync over stance_v1 (-stance), a scene pose (-scene), a killed knight's death (-death) and the fold
+     * (-fold) on gold knights on the platform, the 18 clips on a gold knight frozen through TroopAnimator.forced
+     * (anim-biped-<clip>), and the contact sheet's frames (anim-sheet-*, SheetProbe).
+     */
+    static final class Anim extends Stage {
+        static final List<String> RIGS=List.of("biped","hound","spider","colossus");
+        String name(){return "anim";}
+        /** The shot knight (in the studio), the scene knight and the one killed (in the lineup), and the stance drill: its own squad (gold), three knights and the one spawned into it. */
+        volatile GravesAndGlory.Unit shotKnight,sceneKnight,victim,late;volatile GravesAndGlory.Squad drill;final List<GravesAndGlory.Unit> group=new java.util.concurrent.CopyOnWriteArrayList<>();
+        int si,since,clip,frame;
+        void cast(GravesAndGlory.Battle b){
+            gold.order="follow"; // stance "": the scene knight's base is idle
+            var d=new GravesAndGlory.Squad(UUID.randomUUID(),0,GravesAndGlory.Battle.base(0));d.order="follow";drill=d;
+            shotKnight=post(b,gold,"knight",0,12,230);sceneKnight=post(b,gold,"knight",-2.5,0,180);victim=post(b,gold,"knight",2.5,0,180);
+            for(int i=0;i<3;i++)group.add(post(b,d,"knight",-7+i*1.5,5,180));
+            camera(b,0,1.6,-6,0,8);
+        }
+        public void step(MinecraftClient c,int tick){
+            if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;stage=1;});}
+            if(finished)return;
+            if(tick>9000){report("p2-anim-timeout",false,"stuck at client step "+cs+" ("+si+"), server stage "+stage);end(c);return;}
+            switch(cs){
+                case 0->{boolean lit=litStart(c); // first: while the spectator is away the troops are off this client
+                    if(lit&&ready&&posted.size()==6&&posted.stream().allMatch(u->client(c,u.mob)!=null)){c.options.hudHidden=true;wait=0;cs=1;}
+                    else if(++wait%600==0)System.out.println("[p2-wait] anim step 0 after "+wait+" ticks: ready="+ready+", posted "+posted.size()+" of 6; "+litWhy(c));}
+                case 1->{if(++wait==20){cover();change();returns();choose();cs=2;wait=0;si=0;}}
+                case 2->stance(c,tick);
+                case 3->scene(c,tick);
+                case 4->death(c,tick);
+                case 5->{fold(c);cs=6;wait=0;clip=0;server(c,b->camera(b,0,1.45,12-5,0,6));}
+                case 6->{wait++; // the 18 clips on the shot knight, each frozen at its shot time (a loop at a quarter, a once clip at its peak, a hold at its end)
+                    String n=TroopClips.NAMES.get(clip);var e=client(c,shotKnight.mob);
+                    if(wait==1&&e!=null)TroopAnimator.forced.put(e.getId(),new TroopAnimator.Forced(n,TroopClips.shotTime(n)));
+                    if(wait==8){if(shotReady(c,"anim-biped-"+n)){shot(c,"anim-biped-"+n);clip++;wait=0;if(clip==TroopClips.NAMES.size()){if(e!=null)TroopAnimator.forced.remove(e.getId());cs=7;}}else wait--;}}
+                case 7->sheet(c);
+                case 8->{if(++wait==5){serverDone=true;end(c);}}
+                default->{}
+            }
+        }
+        public void cleanup(MinecraftClient c){TroopAnimator.forced.clear();super.cleanup(c);}
+
+        // ---- the clip tables ----
+        /** A bare rig's bones (TroopModel.snapshot) after one clip at one time on its rest pose; null plays nothing. */
+        static float[] sample(TroopModel<?> m,Animation a,float seconds){
+            m.getPart().traverse().forEach(ModelPart::resetTransform);if(a!=null)TroopAnimator.animate(m,a,seconds,1f);return m.snapshot(null);
+        }
+        /** The largest rotation (degrees, any bone and axis) between two snapshots. */
+        static double maxRot(float[] a,float[] b){
+            if(a==null||b==null||a.length!=b.length)return 999;double max=0;
+            for(int i=0;i<a.length;i+=6)for(int k=3;k<6;k++)max=Math.max(max,Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(Math.toDegrees(a[i+k]-b[i+k]))));
+            return max;
+        }
+        /** The largest offset (model pixels, any bone and axis) between two snapshots. */
+        static double maxPos(float[] a,float[] b){
+            if(a==null||b==null||a.length!=b.length)return 999;double max=0;
+            for(int i=0;i<a.length;i+=6)for(int k=0;k<3;k++)max=Math.max(max,Math.abs(a[i+k]-b[i+k]));
+            return max;
+        }
+        /** The clip at its last keyframe: a loop played as a once clip, so its end is not wrapped to its start. */
+        static Animation unwrapped(Animation a){return new Animation(a.lengthInSeconds(),false,a.boneAnimations());}
+        void cover(){
+            boolean ok=true;StringBuilder why=new StringBuilder();
+            for(String rig:RIGS){var m=TroopModels.rig(rig);var clips=TroopClips.of(rig);
+                List<String> missing=new ArrayList<>(),strays=new ArrayList<>(),scale=new ArrayList<>();
+                for(String n:TroopClips.NAMES)if(!clips.containsKey(n))missing.add(n);
+                for(var set:List.of(clips,TroopClips.mirrored(rig)))for(var e:set.entrySet())for(var bone:e.getValue().boneAnimations().entrySet()){
+                    if(m==null||!m.bones().contains(bone.getKey()))strays.add(e.getKey()+"/"+bone.getKey());
+                    for(var t:bone.getValue())if(t.target()==net.minecraft.client.render.entity.animation.Transformation.Targets.SCALE)scale.add(e.getKey()+"/"+bone.getKey());}
+                boolean good=m!=null&&clips.size()==TroopClips.NAMES.size()&&missing.isEmpty()&&strays.isEmpty()&&scale.isEmpty();ok&=good;
+                why.append(rig).append(": ").append(m==null?"no rig model, ":"").append(clips.size()).append(" clips").append(missing.isEmpty()?"":", missing "+missing)
+                    .append(strays.isEmpty()?", every bone they name (mirrored too) is in the rig":", bones not in the rig "+strays).append(scale.isEmpty()?", no SCALE":", SCALE in "+scale).append(good?"":" (BAD)").append("; ");}
+            report("p2-anim-cover",ok,why.toString().trim());
+        }
+        /** p2-anim-change: sampled every 50 ms, every clip moves some bone 10 degrees from rest (idle: 1.5 degrees or 0.3 px). */
+        void change(){
+            boolean ok=true;StringBuilder why=new StringBuilder();
+            for(String rig:RIGS){var m=TroopModels.rig(rig);if(m==null){ok=false;why.append(rig).append(": no rig model (BAD); ");continue;}
+                float[] rest=sample(m,null,0);List<String> weak=new ArrayList<>();double least=999;String leastClip="";
+                for(String n:TroopClips.NAMES){var a=TroopClips.of(rig).get(n);if(a==null){weak.add(n+" (none)");continue;}
+                    double rot=0,pos=0;for(float t=0;t<=a.lengthInSeconds()+1e-4f;t+=.05f){float[] p=sample(m,a,t);rot=Math.max(rot,maxRot(p,rest));pos=Math.max(pos,maxPos(p,rest));}
+                    boolean good=n.equals("idle")?rot>=1.5||pos>=0.3:rot>=10;
+                    if(!good)weak.add(String.format(Locale.ROOT,"%s %.1f deg %.2f px",n,rot,pos));
+                    if(!n.equals("idle")&&rot<least){least=rot;leastClip=n;}
+                    if(n.equals("idle"))why.append(rig).append(String.format(Locale.ROOT,": idle %.1f deg %.2f px",rot,pos));}
+                ok&=weak.isEmpty();why.append(String.format(Locale.ROOT,", the least of the rest %s %.0f deg",leastClip,least)).append(weak.isEmpty()?"":", too still: "+weak+" (BAD)").append("; ");}
+            report("p2-anim-change",ok,why.toString().trim());
+        }
+        /** p2-anim-return: a loop ends on its first frame, a once clip at rest, and a hold clip, cleared, leaves the rig at rest after BLEND_TICKS (all within 1 degree; offsets within 0.1 px). */
+        void returns(){
+            boolean ok=true;StringBuilder why=new StringBuilder();
+            for(String rig:RIGS){var m=TroopModels.rig(rig);if(m==null){ok=false;why.append(rig).append(": no rig model (BAD); ");continue;}
+                float[] rest=sample(m,null,0);List<String> bad=new ArrayList<>();double worst=0;String worstClip="";
+                for(String n:TroopClips.NAMES){var a=TroopClips.of(rig).get(n);if(a==null)continue;var kind=TroopClips.KINDS.get(n);double rot,pos;
+                    if(kind==TroopClips.Kind.LOOP){var u=unwrapped(a);float[] first=sample(m,u,0),end=sample(m,u,a.lengthInSeconds());rot=maxRot(end,first);pos=maxPos(end,first);}
+                    else if(kind==TroopClips.Kind.ONCE){float[] end=sample(m,a,a.lengthInSeconds());rot=maxRot(end,rest);pos=maxPos(end,rest);}
+                    else{float[] after=cleared(m,rig,n);rot=maxRot(after,rest);pos=maxPos(after,rest);}
+                    if(rot>1||pos>0.1)bad.add(String.format(Locale.ROOT,"%s %.2f deg %.2f px",n,rot,pos));
+                    if(rot>worst){worst=rot;worstClip=n;}}
+                ok&=bad.isEmpty();why.append(rig).append(String.format(Locale.ROOT,": the worst %s %.2f deg",worstClip,worst)).append(bad.isEmpty()?"":", off: "+bad+" (BAD)").append("; ");}
+            report("p2-anim-return",ok,why.toString().trim()+" (loops: end against the first frame; once: end against rest; holds: played to the end, cleared, then "+TroopAnimator.BLEND_TICKS+" ticks)");
+        }
+        /** A hold clip played to its end on a bare rig through a State (as a scene pose, death, or the shield raised), then cleared: the bones BLEND_TICKS later. */
+        static float[] cleared(TroopModel<?> m,String rig,String clip){
+            var s=new TroopAnimator.State(1);boolean dead=clip.equals("death"),shield=clip.equals("shield_up");String scene=dead||shield?null:clip;
+            var on=view(rig,dead,false,false,false,false,shield,false,"",scene,null);var off=view(rig,false,false,false,false,false,false,false,"",null,null);
+            int end=(int)Math.ceil(TroopClips.LENGTHS.get(clip)*20)+TroopAnimator.BLEND_TICKS+2,age=0;
+            for(;age<=end;age++)TroopAnimator.simulate(m,s,on,age,true);
+            for(int k=0;k<=TroopAnimator.BLEND_TICKS;k++,age++)TroopAnimator.simulate(m,s,off,age,true);
+            return m.snapshot(null);
+        }
+        /** A View: rig, dead, swing start, hurt start, attacking, ranged, shield up, rearing, stance, scene pose, last pose (no magic, no spell, standing). */
+        static TroopAnimator.View view(String rig,boolean dead,boolean swing,boolean hurt,boolean attacking,boolean ranged,boolean shield,boolean rearing,String stance,String scene,String last){
+            return new TroopAnimator.View(rig,dead,swing,hurt,attacking,ranged,false,false,shield,rearing,0f,stance,scene,last);
+        }
+        static TroopAnimator.View with(TroopAnimator.View v,boolean magic,boolean spell,float limbDistance){
+            return new TroopAnimator.View(v.rig(),v.dead(),v.swingStart(),v.hurtStart(),v.attacking(),v.ranged(),magic,spell,v.shieldUp(),v.rearing(),limbDistance,v.stance(),v.scenePose(),v.lastPose());
+        }
+        /** p2-anim-choose: TroopAnimator.choose on synthetic Views, and a State restarting bow_draw on a shot. */
+        void choose(){
+            List<String> bad=new ArrayList<>();int n=0;
+            var all=with(view("biped",true,true,true,true,true,true,true,"brace","kneel","sit"),true,true,1f);
+            n++;expect(bad,"dead over everything",all,"death",null,null,false,false);
+            n++;expect(bad,"scene kneel over every overlay",view("biped",false,true,true,true,false,true,true,"","kneel",null),"kneel",null,null,false,false);
+            n++;expect(bad,"scene fallen",view("biped",false,false,false,false,false,false,false,"","fallen",null),"fall",null,null,false,false);
+            n++;expect(bad,"stand after kneel",view("biped",false,false,false,false,false,false,false,"","stand","kneel"),"kneel",null,null,true,false);
+            n++;expect(bad,"stand after fallen",view("biped",false,false,false,false,false,false,false,"","stand","fallen"),"stand",null,null,false,false);
+            n++;expect(bad,"scene sword_up",view("biped",false,false,false,false,false,false,false,"","sword_up",null),"raise",null,null,false,false);
+            n++;expect(bad,"helm_off after kneel keeps kneel",view("biped",false,false,false,false,false,false,false,"","helm_off","kneel"),"kneel",null,null,false,false);
+            n++;expect(bad,"a melee swing start",view("biped",false,true,false,true,false,false,false,"",null,null),"idle","walk","attack",false,true);
+            n++;expect(bad,"ranged and attacking",view("biped",false,false,false,true,true,false,false,"",null,null),"idle","walk","bow_draw",false,true);
+            n++;expect(bad,"ranged, attacking, a shot (swing start)",view("biped",false,true,false,true,true,false,false,"",null,null),"idle","walk","bow_draw",false,true);
+            n++;expect(bad,"magic and attacking",with(view("biped",false,false,false,true,true,false,false,"",null,null),true,false,0),"idle","walk","cast",false,true);
+            n++;expect(bad,"spellcasting",with(view("biped",false,false,false,false,false,false,false,"",null,null),false,true,0),"idle","walk","cast",false,true);
+            n++;expect(bad,"off-hand use",view("biped",false,false,false,false,false,true,false,"",null,null),"idle","walk","shield_up",false,true);
+            n++;expect(bad,"a bear's warning",view("hound",false,false,false,false,false,false,true,"",null,null),"idle","walk","raise",false,true);
+            n++;expect(bad,"a hurt start",view("biped",false,false,true,false,false,false,false,"",null,null),"idle","walk","hit",false,true);
+            for(String[] st:new String[][]{{"run","run","idle"},{"fall_back","fall_back","idle"},{"","walk","idle"},{"brace","walk","brace"},{"hold","walk","hold"}}){
+                n++;expect(bad,"stance \""+st[0]+"\"",with(view("biped",false,false,false,false,false,false,false,st[0],null,null),false,false,.5f),st[2],st[1],null,false,true);}
+            // bow_draw restarts on each shot: the live track starts again at the swing
+            var s=new TroopAnimator.State(1);var aim=view("biped",false,false,false,true,true,false,false,"",null,null),shot=view("biped",false,true,false,true,true,false,false,"",null,null);
+            s.update(TroopAnimator.choose(aim),aim,0);s.update(TroopAnimator.choose(aim),aim,5);float first=s.overlays.get("bow_draw").live().start;
+            s.update(TroopAnimator.choose(shot),shot,10);float again=s.overlays.get("bow_draw").live().start;
+            n++;if(first!=0||again!=10||s.overlays.containsKey("attack")&&s.overlays.get("attack").live()!=null)bad.add("bow_draw started at "+first+" and at "+again+" after a shot at 10 (want 0 and 10, and no attack)");
+            report("p2-anim-choose",bad.isEmpty(),n+" cases"+(bad.isEmpty()?", all as the rules say (dead, scene poses, overlays, stances, head look)":"; wrong: "+bad));
+        }
+        static void expect(List<String> bad,String what,TroopAnimator.View v,String still,String move,String overlay,boolean reverse,boolean look){
+            if(v==null){bad.add(what+": no view");return;}
+            var c=TroopAnimator.choose(v);
+            if(!Objects.equals(c.still(),still)||!Objects.equals(c.move(),move)||!Objects.equals(c.overlay(),overlay)||c.reverse()!=reverse||c.headLook()!=look)
+                bad.add(what+": got "+c+", want "+new TroopAnimator.Choice(still,move,overlay,reverse,look));
+        }
+
+        // ---- the stance sync ----
+        /** One stance step: the drill's order, formation and rout, and the stance its three knights must then read on this client within 20 ticks. */
+        record StanceStep(String what,String order,String formation,boolean rout,String want){}
+        static final List<StanceStep> STANCE_STEPS=List.of(new StanceStep("hold in shieldwall","hold","shieldwall",false,"brace"),new StanceStep("charge","charge","line",false,"run"),
+            new StanceStep("follow","follow","line",false,""),new StanceStep("hold in line, the group routing","hold","line",true,"run"),new StanceStep("hold in line","hold","line",false,"hold"));
+        boolean stanceOk=true;final StringBuilder stanceWhy=new StringBuilder();int lateSeen=-1,trackingBefore,beatBefore;String lateStance="-";
+        void stance(MinecraftClient c,int tick){
+            wait++;
+            if(si<STANCE_STEPS.size()){
+                var st=STANCE_STEPS.get(si);
+                if(wait==1){since=tick;server(c,b->{var d=drill;d.order=st.order();d.formation=st.formation();String g=group.get(0).spec.group();if(st.rout())d.routedAt.put(g,b.time);else d.routedAt.remove(g);});return;}
+                boolean all=true;for(var u:group){var e=client(c,u.mob);all&=e!=null&&TroopAnimator.STANCES.getOrDefault(e.getId(),"").equals(st.want());}
+                if(all||tick-since>40){boolean good=all&&tick-since<=20;stanceOk&=good;
+                    stanceWhy.append(st.what()).append(": ").append(all?"\""+st.want()+"\" read for all three "+(tick-since)+" ticks after the order":"not all read \""+st.want()+"\" in 40 ticks: "+reads(c)).append(good?"":" (BAD: want 20 ticks or fewer)").append("; ");
+                    si++;wait=0;}
+                return;
+            }
+            // a knight spawned into the group on hold in line: its first tick on this client reads hold, sent when the player started tracking it
+            if(wait==1){trackingBefore=Tactics.trackingSends;beatBefore=Tactics.stanceSends;since=tick;server(c,b->late=post(b,drill,"knight",-2.5,5,180));return;}
+            var e=late==null?null:client(c,late.mob);
+            if(e!=null&&lateSeen<0){lateSeen=tick-since;lateStance=TroopAnimator.STANCES.getOrDefault(e.getId(),"");}
+            if(lateSeen>=0||tick-since>60){
+                int sends=Tactics.trackingSends-trackingBefore;boolean good=lateSeen>=0&&"hold".equals(lateStance)&&sends>=1;stanceOk&=good;
+                stanceWhy.append("a knight spawned into the group on hold in line: on this client ").append(lateSeen<0?"never":lateSeen+" ticks after the spawn").append(", reading \"").append(lateStance)
+                    .append("\" on that first tick (want hold); ").append(sends).append(" START_TRACKING stance sends (want 1 or more), ").append(Tactics.stanceSends-beatBefore).append(" beat sends meanwhile").append(good?"":" (BAD)");
+                report("p2-anim-stance",stanceOk,stanceWhy.toString().trim());
+                server(c,b->{var d=drill;d.order="follow";d.routedAt.clear();camera(b,0,1.6,-6,0,8);});cs=3;wait=0;si=0;}
+        }
+        String reads(MinecraftClient c){StringBuilder sb=new StringBuilder();for(var u:group){var e=client(c,u.mob);sb.append(e==null?"absent":"\""+TroopAnimator.STANCES.getOrDefault(e.getId(),"")+"\"").append(" ");}return sb.toString().trim();}
+
+        // ---- a scene pose ----
+        int sceneAt=-1;boolean kneelOk,helmOk,backOk;String kneelWhy="",helmWhy="",backWhy="";
+        /** The knight's bones at a clip's last frame alone (no base, no carries: a pose holds every bone it names, the others are at rest). */
+        static float[] clipEnd(TroopModel<?> m,String clip){
+            m.getPart().traverse().forEach(ModelPart::resetTransform);var a=TroopAnimator.clip(m,clip,TroopAnimator.bow(TroopAnimator.row(m)));
+            if(a!=null)TroopAnimator.animate(m,a,a.lengthInSeconds(),1f);TroopAnimator.rootScale(m);return m.snapshot(null);
+        }
+        void scene(MinecraftClient c,int tick){
+            wait++;var e=client(c,sceneKnight.mob);var m=TroopModels.model("knight");var d=e==null?null:TroopRenderer.drawn(e);
+            if(e==null||m==null||d==null||d.pose==null){if(wait>200){report("p2-anim-scene",false,"the scene knight was never drawn on this client");cs=4;wait=0;}return;}
+            int id=e.getId();
+            if(sceneAt<0){if(!shotReady(c,"anim-scene"))return;TroopAnimator.setScenePose(id,"kneel");sceneAt=tick;return;}
+            int t=tick-sceneAt;
+            if(t==13){double off=maxRot(d.pose,clipEnd(m,"kneel")),pos=maxPos(d.pose,clipEnd(m,"kneel"));kneelOk=off<=1;
+                kneelWhy=String.format(Locale.ROOT,"kneel, 0.65 s after setScenePose: %.2f deg and %.2f px from kneel's last frame (want 1 deg or less)",off,pos);shot(c,"anim-scene-kneel");TroopAnimator.setScenePose(id,"helm_off");}
+            if(t==19){double off=maxRot(d.pose,clipEnd(m,"kneel"));List<String> shown=m.shownBones(d.last.bones());helmOk=off<=1&&m.bones().contains("iron_cap")&&!shown.contains("iron_cap");
+                helmWhy=String.format(Locale.ROOT,"then helm_off: still %.2f deg from kneel's last frame, iron_cap %s",off,shown.contains("iron_cap")?"drawn (BAD)":"hidden")+(m.bones().contains("iron_cap")?"":" (the knight has no iron_cap: BAD)");
+                shot(c,"anim-scene-helm");TroopAnimator.setScenePose(id,null);}
+            if(t==19+TroopAnimator.BLEND_TICKS+2){float[] in=d.inputs.clone(),drawn=d.pose.clone();float[] want=TroopAnimator.reference(m,(MobEntity)e,in[1],in[2],in[0],in[3],in[4]);
+                double off=maxRot(drawn,want);List<String> shown=m.shownBones(d.last.bones());backOk=off<=1&&shown.contains("iron_cap");
+                backWhy=String.format(Locale.ROOT,"then null: %d ticks later %.2f deg from the idle pose a fresh State gives at the same age and look (want 1 or less), iron_cap %s",TroopAnimator.BLEND_TICKS+2,off,shown.contains("iron_cap")?"back":"still hidden (BAD)");
+                report("p2-anim-scene",kneelOk&&helmOk&&backOk,kneelWhy+"; "+helmWhy+"; "+backWhy);cs=4;wait=0;}
+        }
+
+        // ---- a death ----
+        int killAt=-1,drawsAtKill,deadSamples,lastDeathTime;float minRoot=999;Entity dying;
+        void death(MinecraftClient c,int tick){
+            wait++;var m=TroopModels.model("knight");
+            if(killAt<0){var e=client(c,victim.mob);var d=e==null?null:TroopRenderer.drawn(e);
+                if(d==null||m==null){if(wait>200){deathReport(m,null);cs=5;wait=0;}return;}
+                dying=e;drawsAtKill=d.count;killAt=tick;server(c,b->victim.mob.kill());return;}
+            var d=TroopRenderer.drawn(dying);int root=m.boneOrder().indexOf("root");
+            if(d!=null&&d.pose!=null&&root>=0&&dying instanceof net.minecraft.entity.LivingEntity le&&(le.deathTime>0||!le.isAlive())){deadSamples++;lastDeathTime=le.deathTime;minRoot=Math.min(minRoot,(float)Math.toDegrees(d.pose[root*6+3]));}
+            if(client(c,victim.mob)==null||tick-killAt>80){deathReport(m,d);cs=5;wait=0;}
+        }
+        /** p2-anim-death: every rig's death ends by 0.9 s and holds; the killed knight fell through its own clip (its root pitched back to -90) and never tilted (TroopRenderer's measured tilt). */
+        void deathReport(TroopModel<?> m,TroopRenderer.Drawn d){
+            boolean clips=true;StringBuilder cw=new StringBuilder();
+            for(String rig:RIGS){var a=TroopClips.of(rig).get("death");boolean g=a!=null&&a.lengthInSeconds()<=.9f+1e-4f&&!a.looping()&&TroopClips.KINDS.get("death")==TroopClips.Kind.HOLD;clips&=g;
+                cw.append(rig).append(" ").append(a==null?"none":String.format(Locale.ROOT,"%.2f s",a.lengthInSeconds())).append(g?"":" (BAD)").append(", ");}
+            int draws=d==null?0:d.count-drawsAtKill;float tilt=d==null?999:d.maxTilt;
+            boolean ok=clips&&d!=null&&draws>=10&&deadSamples>=10&&tilt<1&&minRoot<=-85;
+            report("p2-anim-death",ok,String.format(Locale.ROOT,"death clips: %s(want 0.9 s or less, a hold); the killed knight: %d draws after the kill, %d ticks sampled dead up to deathTime %d, its root pitched to %.1f deg (want -85 or less: the clip's fall), the most tilt of any of its draws after setupTransforms %.2f deg (want under 1: no vanilla death tilt)",
+                cw,draws,deadSamples,lastDeathTime,minRoot,tilt));
+        }
+
+        // ---- the fold ----
+        /** p2-anim-fold: prepare(look, true, false) on the knight shows arms_folded and hides both arms, and with them what the hands hold (the Weapon and Shield layers wait on folded and on the hand's path); the fold rule unfolds an attacking troop. */
+        void fold(MinecraftClient c){
+            var e=client(c,shotKnight.mob);var m=TroopModels.model("knight");var l=e==null?null:TroopModels.resolve(e);
+            if(m==null||l==null){report("p2-anim-fold",false,"no knight model or no look for the shot knight");return;}
+            String off="left".equals(m.hand())?"right":"left";
+            m.prepare(l,true,false);List<String> shown=m.shownBones(m.shownMask());
+            boolean arms=shown.contains("arms_folded")&&!shown.contains("right_arm")&&!shown.contains("left_arm");
+            boolean held=m.folded&&!TroopFeatures.shown(m.handPath(m.hand()))&&!TroopFeatures.shown(m.handPath(off));
+            m.prepare(l,false,false);List<String> open=m.shownBones(m.shownMask());
+            boolean unfolded=!m.folded&&open.contains("right_arm")&&open.contains("left_arm")&&!open.contains("arms_folded")&&TroopFeatures.shown(m.handPath(m.hand()));
+            boolean rule=TroopAnimator.folds("folded",false,false)&&!TroopAnimator.folds("folded",true,false)&&!TroopAnimator.folds("folded",false,true)&&!TroopAnimator.folds("hang",false,false);
+            boolean live=!TroopAnimator.folds(m,(MobEntity)e);
+            report("p2-anim-fold",arms&&held&&unfolded&&rule&&live,"prepare(look, true, false) on the knight: shown "+shown+", arms_folded shown and both arms hidden="+arms
+                +", folded and both hand paths hidden (no weapon, no shield)="+held+"; prepare(look, false, false): both arms back, arms_folded hidden="+unfolded
+                +"; the rule: folded idle folds, attacking unfolds, an arm held by a clip unfolds, hang never folds="+rule+"; the live knight (idleArms "+m.idleArms()+") not folded="+live);
+        }
+
+        // ---- the contact sheet's frames ----
+        SheetProbe probe;
+        void sheet(MinecraftClient c){
+            wait++;
+            if(probe==null){probe=new SheetProbe();c.setScreen(probe);frame=0;wait=0;return;}
+            if(frame>=SheetProbe.FRAMES.size()){c.setScreen(null);cs=8;wait=0;return;}
+            var f=SheetProbe.FRAMES.get(frame);
+            if(wait==1)probe.frame=f;
+            if(wait==5){shot(c,"anim-sheet-"+f.name());frame++;wait=0;}
+        }
+    }
+
+    /**
+     * Task 5b's contact sheet frames: one figure alone on a flat key colour (KEY), its feet at the same point of the screen for
+     * every frame, so contact5b.py can crop a rig's frames to one box and scale them alike. A bare rig draws in the build_skins
+     * template's hues (one hue per bone with boxes, in file order; the faces shaded by the GUI entity light) and plays its clip
+     * directly; the Order Squire draws as a portrait mob in gold cloth with a gold shield, its clip through TroopAnimator.forced,
+     * so it shows its carries (the shield arm) as in the world. Every figure is turned YAW and seen TILT degrees from above.
+     */
+    static final class SheetProbe extends net.minecraft.client.gui.screen.Screen {
+        static final int KEY=0xFFFF00FF;static final float YAW=230,TILT=-15;
+        static final int[][] HUES={{196,92,84},{84,140,196},{104,180,96},{200,164,72},{150,100,190},{70,170,170},{210,120,50},{120,120,200},{180,90,150},{110,160,60},{90,110,130},{200,200,110}};
+        record Frame(String name,String rig,String clip,float seconds){}
+        static final List<Frame> FRAMES;
+        static{
+            List<Frame> f=new ArrayList<>();
+            for(String rig:Anim.RIGS){f.add(new Frame(rig+"-rest",rig,"idle",0));f.add(new Frame(rig+"-walk",rig,"walk",.25f));f.add(new Frame(rig+"-attack",rig,"attack",TroopClips.PEAKS.get("attack")));
+                f.add(new Frame(rig+"-guard",rig,"shield_up",TroopClips.LENGTHS.get("shield_up")));f.add(new Frame(rig+"-death",rig,"death",TroopClips.LENGTHS.get("death")));}
+            for(int i=0;i<8;i++)f.add(new Frame("walk-"+i,"biped","walk",i/8f));
+            FRAMES=List.copyOf(f);
+        }
+        static final Identifier WHITE=new Identifier("gravesandglory","probe/white");
+        /** The Squire (the biped row and its 4x rest and guard) and the Templar Commander (sentinel stage 3: the walk strip, its cape halves on the legs). */
+        volatile Frame frame;MobEntity squire,templar;final Map<String,List<String>> boxedBones=new HashMap<>();
+        SheetProbe(){super(net.minecraft.text.Text.literal("Clips"));}
+        @Override protected void init(){
+            var c=MinecraftClient.getInstance();
+            if(c.getTextureManager().getOrDefault(WHITE,null)==null){var img=new NativeImage(16,16,false);img.fillRect(0,0,16,16,0xFFFFFFFF);c.getTextureManager().registerTexture(WHITE,new net.minecraft.client.texture.NativeImageBackedTexture(img));}
+            if(squire==null&&c.world!=null){squire=figure(c,"knight",1);templar=figure(c,"sentinel",3);}
+        }
+        /** A gold troop of one stage, dressed as the portraits are: its name, the painted shield and its weapon. */
+        static MobEntity figure(MinecraftClient c,String troop,int stage){
+            var spec=ArmyCards.spec(troop);MobEntity m=ArmyMobs.portrait(spec.entity(),c.world);m.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.stageName(spec,stage)));
+            String dye="yellow";for(var fa:Spec.FACTIONS)if(fa.id().equals("gold"))dye=fa.dye();
+            if(!spec.shield().equals("none"))m.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(spec,dye));
+            m.equipStack(EquipmentSlot.MAINHAND,new ItemStack(net.minecraft.registry.Registries.ITEM.get(new Identifier(spec.weapon()))));
+            TroopModels.dress(m,"gold");return m;
+        }
+        @Override public boolean shouldPause(){return false;}
+        static org.joml.Quaternionf view(){return new org.joml.Quaternionf().rotateZ((float)Math.PI).mul(new org.joml.Quaternionf().rotateX(TILT*TroopModel.RAD));}
+        /** GUI units per block for a figure: its rig's rest height drawn about 200 framebuffer pixels tall. */
+        static int size(String rig){
+            var m=TroopModels.rig(rig);double h=m==null?32:Math.max(8,m.restBounds().maxY-m.restBounds().minY);
+            return (int)Math.round(200/MinecraftClient.getInstance().getWindow().getScaleFactor()/(h/16));
+        }
+        @Override public void render(net.minecraft.client.gui.DrawContext g,int mx,int my,float delta){
+            g.fill(0,0,width,height,KEY);var f=frame;if(f==null)return;
+            int x=width/2,y=height*4/5;
+            if(f.rig().equals("biped")){
+                MobEntity who=f.name().startsWith("walk-")?templar:squire;if(who==null)return;
+                who.bodyYaw=who.prevBodyYaw=YAW;who.headYaw=who.prevHeadYaw=YAW;who.setYaw(YAW);who.prevYaw=YAW;who.setPitch(0);who.prevPitch=0;
+                TroopAnimator.forced.put(who.getId(),new TroopAnimator.Forced(f.clip(),f.seconds()));
+                net.minecraft.client.gui.screen.ingame.InventoryScreen.drawEntity(g,x,y,size("biped"),view(),null,who);
+            }else drawRig(g,TroopModels.rig(f.rig()),f.clip(),f.seconds(),x,y,size(f.rig()));
+        }
+        /** The bones of a rig that have boxes, in file order (the template's hue order). */
+        List<String> boxed(TroopModel<?> m){
+            return boxedBones.computeIfAbsent(m.rig,r->{List<String> out=new ArrayList<>();for(String name:m.bones()){int[] n={0};m.bone(name).forEachCuboid(new MatrixStack(),(e,path,i,q)->{if(path.isEmpty())n[0]++;});if(n[0]>0)out.add(name);}return out;});
+        }
+        void drawRig(net.minecraft.client.gui.DrawContext g,TroopModel<?> m,String clip,float seconds,int x,int y,int size){
+            if(m==null)return;var top=m.getPart();List<String> bones=boxed(m);
+            top.traverse().forEach(p->{p.resetTransform();p.hidden=true;});
+            var a=TroopClips.of(m.rig).get(clip);if(a!=null)TroopAnimator.animate(m,a,seconds,1f);
+            ModelPart fold=m.bone("arms_folded");boolean was=fold!=null&&fold.visible;if(fold!=null)fold.visible=false;
+            MatrixStack ms=g.getMatrices();ms.push();ms.translate(x,y,50);ms.multiplyPositionMatrix(new Matrix4f().scaling(size,size,-size));ms.multiply(view());
+            ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f-YAW));ms.scale(-1,-1,1);ms.translate(0,-1.501f,0);
+            net.minecraft.client.render.DiffuseLighting.method_34742();
+            var vc=g.getVertexConsumers().getBuffer(net.minecraft.client.render.RenderLayer.getEntityCutoutNoCull(WHITE));
+            for(int i=0;i<bones.size();i++){ModelPart p=m.bone(bones.get(i));int[] h=HUES[i%HUES.length];
+                p.hidden=false;top.render(ms,vc,0xF000F0,net.minecraft.client.render.OverlayTexture.DEFAULT_UV,h[0]/255f,h[1]/255f,h[2]/255f,1f);p.hidden=true;}
+            g.draw();net.minecraft.client.render.DiffuseLighting.enableGuiDepthLighting();ms.pop();
+            top.traverse().forEach(p->{p.hidden=false;p.resetTransform();});if(fold!=null)fold.visible=was;
         }
     }
 }

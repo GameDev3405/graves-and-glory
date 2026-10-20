@@ -490,6 +490,17 @@ class BuildSkinsChecks(unittest.TestCase):
         head = find(model, 'head')['boxes'][0]
         self.assertAlmostEqual(head['dilation'][0], 8 * 0.1 / 2, places=4)
 
+    def test_bone_cap(self):
+        """A troop may have 64 bones, and a 65th fails naming the troop (Task 5 review, finding 3): TroopModel records the
+        bones a draw shows as the bits of one long, and the client refuses a bigger model, which then draws vanilla."""
+        def flags(n):
+            return self.with_knight(parts=TROOPS['knight']['parts'] + [{'part': 'pennant', 'name': 'pennant_%d' % i} for i in range(n)])
+        with tempfile.TemporaryDirectory() as tmp:
+            cat = build_skins.load(fixture(tmp, troops=flags(51)))
+            self.assertEqual(len(build_skins.bake(cat, 'knight')['bones']), build_skins.MAX_BONES)
+        with tempfile.TemporaryDirectory() as tmp:
+            said = self.fails(export_assets, fixture(tmp, troops=flags(52)))
+        self.assertIn('knight: 65 bones, more than 64', said)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
