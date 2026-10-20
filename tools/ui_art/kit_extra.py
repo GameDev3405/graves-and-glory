@@ -4,8 +4,9 @@ glyphs wedge and loose are 9 x 9 ink grids in the GLYPHS style (with the mock's 
 seal is the contested seal's square plate without the swords; the Dusk health fill is hp_fill in the Dusk ramp;
 the crescent feed glyph is an FG grid inked as the notices are; the iron Enlist plate is the brass plate in iron;
 the recruit page's Odds note is a light parchment pinned by two tacks (UI plan Task 6)."""
+import math
 from v4lib import Spr, rgba
-from v4pal import IRON, BRASS, VIOL
+from v4pal import IRON, BRASS, VIOL, OAK, VEL, WAX, TEAL
 from v4a_hud import glyph, INK, PAPER, FEEDV_GLYPH, SHADOW, iron_shade, ledger_card
 from v4a_paper import parchment, tack
 
@@ -131,3 +132,105 @@ def odds_note():
     note.blit(pin, 6, 4)
     note.blit(pin, 240 - 13, 4)
     return note
+
+
+# ================================================================ table/ pages (UI plan Task 7)
+# the sheets and notes the War Table pages lay on the oak, each parchment(w, h, kind='lo') pinned at its top corners
+# as the field card is; by name: (width, height, seed). The three contract notes are three sheets, so the row of
+# them does not repeat one stain three times
+SHEETS = {
+    'table/sheet-banner': (400, 368, 3),
+    'table/note-contract': (200, 96, 5),
+    'table/note-contract-b': (200, 96, 6),
+    'table/note-contract-c': (200, 96, 8),
+    'table/note-weekly': (304, 96, 7),
+    'table/note-friends': (360, 300, 9),
+    'table/note-room': (228, 368, 11),
+    'table/sheet-field': (520, 320, 13),
+}
+
+
+def pinned(w, h, seed):
+    """a War Table page's sheet: parchment(w, h, kind='lo') with its shadow, two tacks placed as the field card's. Its
+    ageing creeps in from the rim and leaves the middle clean (mottle='edge', fibres 0.7, as the muster roll's paper):
+    the default spotted mottle lays broad dark blotches across a sheet this size, under the text"""
+    note, _ = parchment(w, h, kind='lo', seed=seed, mottle='edge', fibres=0.7)
+    pin = tack()
+    note.blit(pin, 6, 4)
+    note.blit(pin, w - 13, 4)
+    return note
+
+
+def _line(S, x0, y0, x1, y1, c):
+    n = max(abs(x1 - x0), abs(y1 - y0))
+    for i in range(n + 1):
+        S.set(round(x0 + (x1 - x0) * i / n), round(y0 + (y1 - y0) * i / n), c)
+
+
+def class_vanguard():
+    """the Vanguard on its plaque, 14 x 14 in the rail icons' manner: a heater shield, its face lit on the left,
+    a brass boss in the middle"""
+    S = Spr(14, 14)
+    face = {(x, y) for y in range(1, 13) for x in range(1, 13)
+            if abs(x - 6.5) <= 5.5 - max(0, y - 6) * 0.95}
+    for (x, y) in face:
+        edge = any((x + a, y + b) not in face for a, b in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+        if edge:
+            S.set(x, y, OAK[0])
+        else:
+            S.set(x, y, VEL[7] if x < 5 else (VEL[6] if x < 7 else (VEL[4] if x < 10 else VEL[3])))
+    for (x, y, c) in ((6, 5, BRASS[7]), (7, 5, BRASS[5]), (6, 6, BRASS[5]), (7, 6, BRASS[2]), (5, 5, BRASS[3]),
+                      (8, 6, BRASS[2]), (6, 4, BRASS[4]), (7, 7, BRASS[2]), (6, 7, BRASS[3]), (5, 6, BRASS[4]),
+                      (8, 5, BRASS[3]), (7, 4, BRASS[4])):
+        S.set(x, y, c)
+    return S
+
+
+def class_marksman():
+    """the Marksman: a bow drawn, its arc bulging to the upper left, the string across, an arrow on it pointing out
+    past the arc, its fletching red"""
+    S = Spr(14, 14)
+    cx, cy, r = 12.0, 12.0, 10.0
+    arc = set()
+    for k in range(0, 91):
+        a = math.radians(180 + k)
+        arc.add((round(cx + r * math.cos(a)), round(cy + r * math.sin(a))))
+    for (x, y) in arc:
+        for (a, b) in ((1, 0), (0, 1), (-1, 0), (0, -1)):
+            if (x + a, y + b) not in arc and 0 <= x + a < 14 and 0 <= y + b < 14:
+                S.set(x + a, y + b, OAK[0])
+    for (x, y) in arc:
+        S.set(x, y, VEL[6] if x + y < 10 else (VEL[4] if x + y < 16 else VEL[3]))
+    _line(S, 2, 12, 12, 2, VEL[2])
+    _line(S, 11, 11, 3, 3, BRASS[4])
+    for (x, y, c) in ((2, 2, IRON[7]), (3, 2, IRON[5]), (2, 3, IRON[5]), (1, 1, IRON[8]),
+                      (11, 12, WAX[4]), (12, 11, WAX[4]), (12, 12, WAX[2]), (10, 11, WAX[5]), (11, 10, WAX[5])):
+        S.set(x, y, c)
+    return S
+
+
+ARCANIST = ['.........kkk..',
+            '........kThTk.',
+            '.......kThtTTk',
+            '.......kTtTTsk',
+            '.......kkTTssk',
+            '......kWkkssk.',
+            '.....kWDk.kk..',
+            '....kWDk......',
+            '...kWDk.......',
+            '..kWDk........',
+            '.kWDk.........',
+            'kWDk..........',
+            'kDk...........',
+            '.k............']
+
+
+def class_arcanist():
+    """the Arcanist: a staff held up at a slant, a teal light in its head"""
+    S = Spr(14, 14)
+    S.grid(0, 0, ARCANIST, {'k': OAK[0], 'W': VEL[5], 'D': VEL[3], 'T': TEAL[3], 't': TEAL[4], 'h': TEAL[5],
+                            's': TEAL[1]})
+    return S
+
+
+CLASS_ICONS = {'vanguard': class_vanguard, 'marksman': class_marksman, 'arcanist': class_arcanist}

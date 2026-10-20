@@ -125,7 +125,7 @@ final class WarTableRecruit {
         int[] o = WarTable.origin();
         int ox = o[0], oy = o[1];
         add("back", WarTable.backPlaque(b -> back()));
-        add("banner", WarTable.plaque(800, 104, "icon-banner", "Banner", "B", 79, 0, b -> CampScreen.open("army")));
+        add("banner", WarTable.plaque(800, 104, "icon-banner", "Banner", "B", 79, 0, b -> screen.page("banner")));
         for (var h : RecruitView.houses())
             add("house-" + h.id(), new UiButton(0, BANNER_Y, BANNER_W, BANNER_H, Text.literal(h.name()), b -> chooseHouse(h.id()), (g, x, y, w, bh, hot) -> paintBanner(g, h, x, y, w, bh)));
         for (int i = 0; i < ROWS; i++) {
@@ -263,7 +263,7 @@ final class WarTableRecruit {
             if (target != null && target.visible && target.active) press(target);
             return true;
         }
-        if (key == GLFW.GLFW_KEY_B) { CampScreen.open("army"); return true; }
+        if (key == GLFW.GLFW_KEY_B) { screen.page("banner"); return true; }
         return false;
     }
 

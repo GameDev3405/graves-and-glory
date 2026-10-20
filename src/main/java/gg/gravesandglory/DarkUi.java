@@ -20,6 +20,9 @@ final class DarkUi {
     // the shadow under tags, and the cooldown sweep's veil, leading edge and twelve o'clock line.
     static final int PLATE_INK=0xff1e1509, KEY_INK=0xff3a2a12, RAIL_KEY=0xfff0d9a0, ABILITY_KEY=0xff2e1f0c, TAG_SHADOW=0xff120d16;
     static final int SWEEP_VEIL=0xcd15191c, SWEEP_EDGE=0xe6dfbd77, SWEEP_LINE=0xc8b08a4a;
+    // The Chapter track's inks (work/ui-concepts/track, approved 2026-10-18): the Oath row's names on its sepia plaques and their
+    // second lines, and "Enter" on the dull Claim plate's key.
+    static final int SEPIA_L=0xffc4b28a, SEPIA_LINE=0xffb9a77f, DULL_KEY=0xffb3ad9f;
     // The battlefield map's inks: the dark pin under a point's mark, a group's pin, the contested ring, anything fighting, the
     // friendly troop marks, fresh and remembered enemy sightings, pings and the player.
     static final int MAP_PIN=0xcc101722, MAP_GROUP=0xff111923, CONTEST=0xffffaa55, WARN=0xffff9955, MAP_TROOP=0xfff5e2a8, MAP_ENEMY=0xffff6860, MAP_STALE=0xffa2a5aa, PING=0xffffcc55, MAP_YOU=0xffffffff;

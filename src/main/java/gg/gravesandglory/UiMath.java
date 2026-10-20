@@ -315,6 +315,36 @@ public final class UiMath {
         return new Wheel(next, end ? 0 : rest);
     }
 
+    /** A count with thousands separators, as the Chapter page writes its XP ("2,870"). */
+    public static String thousands(int n) {
+        return String.format(java.util.Locale.ROOT, "%,d", n);
+    }
+
+    /** The Chapter track's first tier shown (UI plan Task 7, hero rule H1): the tier before the lowest one not yet claimed, so the
+     *  last claim stays in view at the left and the track slides one plaque with each claim; never before tier 1, never past the
+     *  last `shown` tiers of `tiers`. */
+    public static int trackFirst(int lowestUnclaimed, int tiers, int shown) {
+        return Math.max(1, Math.min(tiers - shown + 1, lowestUnclaimed - 1));
+    }
+
+    /** The track's first tier after the arrows turn `pages` pages of `shown` tiers (negative: back), within the same ends. */
+    public static int trackPage(int first, int pages, int tiers, int shown) {
+        return Math.max(1, Math.min(tiers - shown + 1, first + pages * shown));
+    }
+
+    /** The hero's tier: the first tier on a multiple of `every` (a title in Phase 1) past the track's right end, so the hero never
+     *  repeats a plaque; the last tier once the track shows it. */
+    public static int heroTier(int first, int shown, int tiers, int every) {
+        int t = ((first + shown - 1) / every + 1) * every;
+        return Math.min(tiers, t);
+    }
+
+    /** Columns of the XP rail's channel poured for `xp` of a chapter of `tiers` tiers at `perTier` XP each, rounded. */
+    public static int xpPoured(int xp, int perTier, int tiers, int columns) {
+        double full = (double) perTier * tiers;
+        return (int) Math.round(columns * Math.max(0, Math.min(full, xp)) / full);
+    }
+
     /** The cooldown sweep's pixel class at (x,y) of a size x size square with `remain` (0..1) of the time left:
      *  0 clear, 1 veil over the part of the turn still to come (clockwise from twelve), 2 the bright leading edge,
      *  3 the start line at twelve. A port of the cooldown painter in tools/ui_art/v4a_hud.py. */
