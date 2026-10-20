@@ -33,7 +33,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  while the client's ready is false, when step() does not run. clientTick runs every client tick, ready or not. */
     public interface HudWatch { void hudFrame(MinecraftClient c); default void clientTick(MinecraftClient c){} }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-continuation",UiContinuationChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front,hold;static boolean started; // hold: client ticks the current suite waits (Phase1Checks.window)
@@ -2724,7 +2724,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==0){c.setScreen(null);CampScreen.open("home");sub=0;return;}
                     if(k==5){click(c,UiHomeChecks.box(c,"practice"));if(screen(c)!=null)screen(c).action("social:room");why="Practice raised ("+CampaignClient.homeMode+"), a private room asked for";return;}
                     if(k<5)return;
-                    if(sub==0){if(serverRoom&&!WarTablePages.value("room").isEmpty()&&k>=20){sub=1;subAt=tick;}else if(k>200){report("p1-ui-page-held-home",false,why+"; no room 200 ticks on WRONG");stage=13;}return;}
+                    if(sub==0){if(serverRoom&&!WarTablePages.value("room").isEmpty()&&k>=20){sub=1;subAt=tick+1;}else if(k>200){report("p1-ui-page-held-home",false,why+"; no room 200 ticks on WRONG");stage=13;}return;}
                     int j=at(tick);
                     if(sub==1&&j==0){boolean practice=s!=null&&s.home!=null&&s.home.focused==0&&"practice".equals(CampaignClient.homeMode);ok=practice;why+="; in room "+WarTablePages.value("room")+", Practice "+(practice?"raised":"WRONG: not raised");
                         serial=CampaignClient.noticeSerial;UiRecruitChecks.press(c,GLFW.GLFW_KEY_ENTER);return;}
@@ -2757,11 +2757,11 @@ public final class Phase1Checks implements ClientModInitializer {
                     boolean armed=roll.get(1).equals(p.armed)&&WarTablePages.troopName(roll.get(1)).equals(text("armed"))&&Arrays.equals(mark,new int[]{o[0]+52,o[1]+196,234,58});
                     ok&=armed;why+="; row 1 armed "+p.armed+" (the band reads \""+text("armed")+"\", the mark at "+str(mark)+")"+(armed?"":" WRONG");
                     click(c,box(c,"seat-0"));next(tick);}
-                case 2->{if(roll.get(1).equals(line.get(0))&&k>=3){boolean pass=("slot:0:"+roll.get(1)).equals(lastSent())&&roll.get(1).equals(text("seat-0"));ok&=pass;
+                case 2->{if(roll.get(1).equals(line.get(0))&&roll.get(1).equals(text("seat-0"))&&k>=3){boolean pass=("slot:0:"+roll.get(1)).equals(lastSent())&&roll.get(1).equals(text("seat-0"));ok&=pass;
                         why+="; seat 0 clicked: sent "+lastSent()+", the snapshot's seat 0 is "+line.get(0)+", drawn "+text("seat-0")+(pass?"":" WRONG");next(tick);}
                     else if(k>100){ok=false;why+="; seat 0 clicked: sent "+lastSent()+", the snapshot's seat 0 still "+line.get(0)+" 100 ticks on WRONG";next(tick);}}
                 case 3->{if(k<8)return;rightClick(c,box(c,"seat-19"));next(tick);}
-                case 4->{if(WarTablePages.EMPTY.equals(line.get(19))&&k>=3){boolean pass="slot:19:empty".equals(lastSent())&&WarTablePages.EMPTY.equals(text("seat-19"));ok&=pass;
+                case 4->{if(WarTablePages.EMPTY.equals(line.get(19))&&WarTablePages.EMPTY.equals(text("seat-19"))&&k>=3){boolean pass="slot:19:empty".equals(lastSent())&&WarTablePages.EMPTY.equals(text("seat-19"));ok&=pass;
                         why+="; the other button on seat 19: sent "+lastSent()+", the snapshot's seat 19 is "+line.get(19)+", drawn "+text("seat-19")+(pass?"":" WRONG");next(tick);}
                     else if(k>100){ok=false;why+="; the other button on seat 19: sent "+lastSent()+", seat 19 still "+line.get(19)+" WRONG";next(tick);}}
                 case 5->{if(k<8)return;click(c,box(c,"row-"+Math.max(0,roll.indexOf(at0))));click(c,box(c,"seat-0"));next(tick);}
@@ -2785,7 +2785,7 @@ public final class Phase1Checks implements ClientModInitializer {
                         +"; the third contract \""+text("contract-2")+"\", Reroll "+(fresh?"taking a press":"WRONG: dull (\""+text("reroll-hint")+"\")");
                     serial=CampaignClient.noticeSerial;before=text("contract-2");click(c,box(c,"reroll"));next(tick);}
                 case 1->{boolean changed=!Objects.equals(before,text("contract-2")),noticed=CampaignClient.noticeSerial!=serial;
-                    if(noticed&&k>=3&&(changed||REROLL_REFUSALS.contains(CampaignClient.notice))){String n=text("notice");
+                    if(noticed&&k>=3&&text("notice")!=null&&(changed||REROLL_REFUSALS.contains(CampaignClient.notice))){String n=text("notice");
                         boolean pass="progress:reroll".equals(lastSent())&&(changed?"Issue 10 tactical orders".equals(text("contract-2"))&&REROLLED.equals(n)&&reroll!=null&&!reroll.active&&"Rerolled today".equals(text("reroll-hint")):REROLL_REFUSALS.contains(n));
                         ok&=pass;why+="; Reroll sent "+lastSent()+": the third contract reads \""+text("contract-2")+"\", the notice line \""+n+"\", Reroll "+(reroll!=null&&reroll.active?"still taking a press":"dull")+" (\""+text("reroll-hint")+"\")"+(pass?"":" WRONG");stage=4;}
                     else if(k>100){ok=false;why+="; Reroll sent "+lastSent()+": no change and no refusal 100 ticks on (the third contract \""+text("contract-2")+"\", the notice \""+CampaignClient.notice+"\") WRONG";stage=4;}}
@@ -2834,10 +2834,10 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 7->{if(k<8)return;click(c,box(c,"earlier"));next(tick);}
                 case 8->{if(k<3)return;boolean shown="1".equals(text("first"))&&button(c,"title-5")!=null&&button(c,"title-10")!=null;ok&=shown;why+="; back to tier 1: the claimed titles' plaques "+(shown?"take a press":"WRONG: missing");
                     click(c,box(c,"title-10"));next(tick);}
-                case 9->{if("Pathfinder".equals(pr.title)&&k>=3){boolean worn="Pathfinder / worn".equals(text("roll-10"))&&"progress:title:Pathfinder".equals(lastSent());ok&=worn;why+="; Pathfinder's plaque sent "+lastSent()+", now \""+text("roll-10")+"\""+(worn?"":" WRONG");next(tick);}
+                case 9->{if("Pathfinder".equals(pr.title)&&"Pathfinder / worn".equals(text("roll-10"))&&k>=3){boolean worn="Pathfinder / worn".equals(text("roll-10"))&&"progress:title:Pathfinder".equals(lastSent());ok&=worn;why+="; Pathfinder's plaque sent "+lastSent()+", now \""+text("roll-10")+"\""+(worn?"":" WRONG");next(tick);}
                     else if(k>100){ok=false;why+="; Pathfinder's plaque sent "+lastSent()+": the title is still "+pr.title+" WRONG";stage=4;}}
                 case 10->{if(k<8)return;click(c,box(c,"title-10"));next(tick);}
-                case 11->{if("Recruit".equals(pr.title)&&k>=3){boolean off="Pathfinder / title".equals(text("roll-10"))&&"progress:title:Recruit".equals(lastSent());ok&=off;why+=", pressed again it sent "+lastSent()+" and reads \""+text("roll-10")+"\""+(off?"":" WRONG");stage=4;}
+                case 11->{if("Recruit".equals(pr.title)&&"Pathfinder / title".equals(text("roll-10"))&&k>=3){boolean off="Pathfinder / title".equals(text("roll-10"))&&"progress:title:Recruit".equals(lastSent());ok&=off;why+=", pressed again it sent "+lastSent()+" and reads \""+text("roll-10")+"\""+(off?"":" WRONG");stage=4;}
                     else if(k>100){ok=false;why+="; pressed again: the title is still "+pr.title+" WRONG";stage=4;}}
                 default->stage=4;
             }
@@ -2856,7 +2856,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     UiRecruitChecks.tap(c,GLFW.GLFW_KEY_ESCAPE);var s=screen(c);boolean stays=!p.typing&&s!=null&&s.page.equals("friends");boolean pass=full&&back&&stays;ok&=pass;
                     why+="; \"3456\" more: \""+whole+"\" with Join "+(full?"taking a press":"dull")+"; Backspace: \""+p.code+"\"; Esc: "+(stays?"the writing ends on the page":"WRONG: "+(s==null?"the table closed":s.page+", writing "+p.typing))+(pass?"":" WRONG");next(tick);}
                 case 3->{if(k<2)return;var create=button(c,"create");boolean shown=create!=null&&create.visible&&create.active&&"Create party".equals(text("create"));ok&=shown;why+="; Create party "+(shown?"shown":"WRONG: missing");click(c,box(c,"create"));next(tick);}
-                case 4->{if(WarTablePages.flag("party")&&k>=3){var leave=button(c,"leave");boolean pass="social:create".equals(lastSent())&&leave!=null&&leave.visible&&"Leave party".equals(text("leave"))&&button(c,"disband")!=null&&button(c,"create")==null
+                case 4->{if(WarTablePages.flag("party")&&k>=3&&button(c,"disband")!=null&&button(c,"create")==null&&"Leave party".equals(text("leave"))&&String.valueOf(text("party-line")).startsWith("Led by ")){var leave=button(c,"leave");boolean pass="social:create".equals(lastSent())&&leave!=null&&leave.visible&&"Leave party".equals(text("leave"))&&button(c,"disband")!=null&&button(c,"create")==null
                         &&WarTablePages.me().equals(text("member-0"))&&String.valueOf(text("party-line")).startsWith("Led by ");ok&=pass;
                         why+="; Create party sent "+lastSent()+": party "+WarTablePages.flag("party")+", seat 0 "+text("member-0")+", \""+text("party-line")+"\", Leave party "+(leave!=null?"shown":"missing")+(pass?"":" WRONG");next(tick);}
                     else if(k>100){ok=false;why+="; Create party sent "+lastSent()+": no party 100 ticks on WRONG";stage=4;}}
@@ -2888,11 +2888,11 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(i+1<Spec.MAPS.length)click(c,box(c,"map-"+(i+1)));else next(tick);}
                 case 2->{boolean normal="Normal".equals(text("bots-current"))&&"normal".equals(serverDifficulty);ok&=normal;why+="; bots "+text("bots-current")+" (the server's "+serverDifficulty+")"+(normal?"":" WRONG");
                     click(c,box(c,"bots-hard"));next(tick);}
-                case 3->{if("hard".equals(serverDifficulty)&&"hard".equals(CampaignClient.difficulty)&&k>=3){boolean pass="difficulty:hard".equals(lastSent())&&"Hard".equals(text("bots-current"));ok&=pass;
+                case 3->{if("hard".equals(serverDifficulty)&&"hard".equals(CampaignClient.difficulty)&&"Hard".equals(text("bots-current"))&&k>=3){boolean pass="difficulty:hard".equals(lastSent())&&"Hard".equals(text("bots-current"));ok&=pass;
                         why+="; Hard sent "+lastSent()+": the server's bots "+serverDifficulty+", the page reads "+text("bots-current")+(pass?"":" WRONG");next(tick);}
                     else if(k>100){ok=false;why+="; Hard sent "+lastSent()+": the server's bots still "+serverDifficulty+" WRONG";next(tick);}}
                 case 4->{if(k<8)return;click(c,box(c,"bots-normal"));next(tick);}
-                case 5->{if("normal".equals(serverDifficulty)&&"normal".equals(CampaignClient.difficulty)&&k>=3){boolean pass="difficulty:normal".equals(lastSent())&&"Normal".equals(text("bots-current"));ok&=pass;
+                case 5->{if("normal".equals(serverDifficulty)&&"normal".equals(CampaignClient.difficulty)&&"Normal".equals(text("bots-current"))&&k>=3){boolean pass="difficulty:normal".equals(lastSent())&&"Normal".equals(text("bots-current"));ok&=pass;
                         why+="; Normal sent "+lastSent()+": back to "+serverDifficulty+", the page reads "+text("bots-current")+(pass?"":" WRONG");stage=4;}
                     else if(k>100){ok=false;why+="; Normal sent "+lastSent()+": the server's bots still "+serverDifficulty+" WRONG";stage=4;}}
                 default->stage=4;

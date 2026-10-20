@@ -1,0 +1,70 @@
+UI continuation — isolated review candidate, October 20, 2026
+
+This checkout continues Claude's unfinished UI Task 7. It is independent of every
+original Melty checkout and has no Git remote. Nothing is merged or installed.
+
+Location: C:\Users\kortt\Documents\Codex\gg-ui-20261020
+Branch: codex/ui-continuation-20261020
+Preserved baseline commit: aa1ba55
+Reference source: C:\Users\kortt\Melty\bannerbound-ui
+
+The baseline includes Claude's locally uncommitted Task 7 work: Banner, Contracts,
+Chapter/reward track, Friends/private rooms and Field/map picker, their painters,
+textures and harness. Those pages were already substantially implemented; this
+continuation does not claim that artwork or implementation as new work.
+
+Production changes
+Only WarTablePages.java changes. At the 854x480 minimum window, notices previously
+started at y=474 (Chapter y=470) and extended below the bottom edge. Live feedback
+now occupies the heading band below the rail. The heading returns after feedback
+fades. Page headings clear the rail, and the Chapter's Oath explanation stays inside
+the short viewport. The normal 960x540 and larger layouts retain their positions.
+No gameplay, server rules, progression rewards, packets, home/recruitment screen
+code, HUD code, title code, art or existing assets are changed by this continuation.
+
+Verification support
+The original ui-pages checks sometimes asserted the old rendered frame immediately
+after a new server snapshot arrived. They now wait, with the same bounded timeout,
+for the expected rendered seat, notice, party controls, title or bot label before
+asserting the action. Assertions are retained. The held-home check also skipped its
+first press because step zero was never reached; its tick scheduling is corrected.
+UiContinuationChecks adds the five pages at 854x480, 1280x720 and 1920x974, real
+server feedback, actual canvas dimensions, control bounds/overlap, and restoration
+of the heading after the notice fades. Its class is added to the player-JAR leak
+reject list. It lives only in test-tools.
+
+Scope and remaining work
+This is a UI branch candidate, not a finished 0.5.0 modpack or server deployment.
+The Houses/models/world branches and their integration remain separate. The title
+scene and storybook require the later approved media/cast/world work. Known home
+and recruit compact-layout leftovers are documented in Claude's PARKED.md; their
+finished code is preserved here under Kort's constraint. A decision to change those
+completed screens should be a separate explicitly scoped continuation.
+
+Review and integration
+Compare this branch with aa1ba55 to see only the continuation. Existing source and
+saved games are never a test fixture: all test worlds/settings/evidence are in this
+checkout's work directory. The source hashes in isolation-source-manifest.json can
+be checked against the original UI checkout. No automatic patch application,
+merge, deployment, publishing or launcher installation is provided or performed.
+
+
+Final verification
+- UI page functionality: PASS (pages-final; no failed markers).
+- Compact layouts: 16 checks plus suite PASS (15 page/size cases and heading restoration).
+- Existing UI suites: art, HUD, feed, home and recruitment PASS.
+- Core suites: combat, morale, reinforcement, bots, tutorial and report PASS.
+- Pure UI mathematics: 70 checks PASS.
+- Art exporter: 256 textures verified; in-game atlas/pixel checks PASS.
+- UI style check: clean.
+- Offline production build: PASS.
+- Player JAR: source identity matches; no development harness classes.
+- Release integrity fixtures: 2 tests PASS.
+- Original source: 510 files rehashed; zero changes.
+
+Earlier failed runs are retained under validation for audit. Baseline compact tests
+proved the clipping before the fix. Early ui-pages failures read pre-redraw frames;
+the final page-only run uses bounded waits for actual drawn state and passes every
+assertion. The primary acceptance run retains its superseded Friends test failure;
+its compact matrix and all six core suites pass, and the corrected Friends test
+passes in pages-final. No evidence files were erased or rewritten to hide failures.

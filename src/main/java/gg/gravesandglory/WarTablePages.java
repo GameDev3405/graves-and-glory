@@ -408,17 +408,25 @@ final class WarTablePages {
         texturesDrawn.put("here", "table/plaque-112-here");
     }
 
-    /** The page's focal title, IVORY with its shadow, centred on the page at TITLE_Y; none on the Chapter (its chapter block). */
+    /** The page's focal title, IVORY with its shadow, centred on the page at TITLE_Y, below the rail even on short canvases; none on the Chapter. */
     void title(DrawContext g, int ox, int oy) {
-        if (page.equals("chapter")) return;
+        if (page.equals("chapter") || compactNotice()) return;
         var font = font();
         String words = TITLES.get(page);
         var t = DarkUi.focal(words);
-        int w = font.getWidth(t), x = ox + TITLE_X - w / 2, y = oy + TITLE_Y;
+        int w = font.getWidth(t), x = ox + TITLE_X - w / 2;
+        int y = Math.max(oy + TITLE_Y, UiTex.entry("table/rail").h() + 8);
         g.drawText(font, t, x, y, DarkUi.IVORY, true);
         rectsDrawn.put("title", new int[]{x, y, w, 16});
         textsDrawn.put("title", words);
         colorsDrawn.put("title", DarkUi.IVORY);
+    }
+
+    /** At the minimum window size the footer is below the viewport. Use the heading's free band for live feedback instead;
+     *  the heading returns when the notice fades. This applies only to Task 7 pages, leaving home and recruitment unchanged. */
+    boolean compactNotice() {
+        return UiCanvas.height() < 540 && !noticeText.isEmpty()
+            && ticks - noticeAt < WarTableHome.NOTICE_TICKS + WarTableHome.NOTICE_FADE_TICKS;
     }
 
     /** The server's notice (a refusal, a claim's reward, a saved vote) in IVORY, on two lines when one is too short, shown
@@ -432,7 +440,9 @@ final class WarTablePages {
         var lines = UiMath.lines(HintText.expand(noticeText, GravesAndGloryClient::hint), right ? CHAPTER_NOTICE_W : NOTICE_W, NOTICE_LINES, s -> font.getWidth(DarkUi.body(s)));
         if (lines.isEmpty()) return;
         int alpha = Math.max(4, Math.round(fade * 255)), ink = (alpha << 24) | (DarkUi.IVORY & 0xffffff);
-        int left = Integer.MAX_VALUE, end = Integer.MIN_VALUE, top = oy + (right ? CHAPTER_NOTICE_Y : NOTICE_Y);
+        int left = Integer.MAX_VALUE, end = Integer.MIN_VALUE;
+        int top = compactNotice() ? Math.max(UiTex.entry("table/rail").h() + 2, oy + (right ? 80 : TITLE_Y))
+            : oy + (right ? CHAPTER_NOTICE_Y : NOTICE_Y);
         for (int i = 0; i < lines.size(); i++) {
             var t = DarkUi.body(lines.get(i));
             int w = font.getWidth(t), x = right ? ox + CHAPTER_NOTICE_R - w : ox + 480 - w / 2;
@@ -821,7 +831,7 @@ final class WarTablePages {
         g.drawText(font, "not sworn", ox + 56, oy + OATH_TOP + 44, DarkUi.MUTED, false);
         UiTex.draw(g, "chapter/track-rod", ox + X0 - 6, oy + ROD_Y);
         track(g, ox, oy, first, tier);
-        text(g, "unsworn", DarkUi.body(UNSWORN), UNSWORN, ox + X0, oy + OATH_TOP + 92, DarkUi.MUTED);
+        text(g, "unsworn", DarkUi.body(UNSWORN), UNSWORN, ox + X0, Math.min(oy + OATH_TOP + 92, UiCanvas.height() - 14), DarkUi.MUTED);
         textsDrawn.put("tier", String.valueOf(tier));
         textsDrawn.put("first", String.valueOf(first));
     }
@@ -962,9 +972,12 @@ final class WarTablePages {
      *  is a widget, paintClaim). */
     void block(DrawContext g, int ox, int oy, int tier, Progression.State p) {
         var font = font();
-        g.drawText(font, "Chapter 1", ox + 480, oy + 80, DarkUi.MUTED, false);
-        g.drawText(font, DarkUi.heading("The Founders"), ox + 480, oy + 92, DarkUi.BRASS, false);
-        textsDrawn.put("chapter", "Chapter 1 / The Founders");
+        if (!compactNotice()) {
+            int headingY = Math.max(oy + 80, UiTex.entry("table/rail").h() + 4);
+            g.drawText(font, "Chapter 1", ox + 480, headingY, DarkUi.MUTED, false);
+            g.drawText(font, DarkUi.heading("The Founders"), ox + 480, headingY + 12, DarkUi.BRASS, false);
+            textsDrawn.put("chapter", "Chapter 1 / The Founders");
+        }
         rectsDrawn.put("seal", UiTex.draw(g, "chapter/seal-tier-big", ox + 480, oy + 144));
         String n = String.valueOf(tier);
         g.drawText(font, n, ox + 502 - font.getWidth(n) / 2, oy + 162, DarkUi.CHIP_TEXT, false);
