@@ -71,6 +71,16 @@ final class WarTableHome {
     /** The Ride plate's label is trimmed to this width (UiMath.plateLabelX keeps it clear of the Enter key). */
     static final int RIDE_LABEL_W = 175;
 
+    /** Compact pages keep native-size paper, packing the sheets with 8 px gutters instead of cropping the field card. */
+    static boolean compact() { return UiCanvas.width() < 960; }
+    static int fieldX() { return compact() ? 720 : FIELD_X; }
+    int sheetCentre(int index) {
+        if (!compact()) return CENTRES[index];
+        int left = 216;
+        for (int i = 0; i < index; i++) left += (i == focused ? 176 : 152) + 8;
+        return left + (index == focused ? 88 : 76);
+    }
+
     /** A party member as the home seats them. */
     record Member(String name, boolean online, boolean me) {}
     /** A portrait drawn by the last frame: the member's name, the window's centre x and the feet y in canvas px, the model size,
@@ -155,10 +165,10 @@ final class WarTableHome {
             sheets[i] = add(MODES[i], new UiButton(0, 0, 1, 1, Text.literal(NAMES[i]), b -> focus(index), (g, x, y, w, h, hot) -> {}));
         }
         placeSheets();
-        add("change", new UiButton(ox + FIELD_X + 44, oy + FIELD_Y + 152, 80, 24, Text.literal("Change"), b -> screen.page("field"), this::paintChange));
+        add("change", new UiButton(ox + fieldX() + 44, oy + FIELD_Y + 152, 80, 24, Text.literal("Change"), b -> screen.page("field"), this::paintChange));
         ride = add("ride", new UiButton(ox + 360, oy + 388, 240, 40, Text.literal(rideLabel()), b -> ride(), this::paintRide));
         ride.active = !GravesAndGloryClient.running;
-        if (CampaignClient.result.has("id")) add("last", new UiButton(ox + FIELD_X + 40, oy + 392, 88, 24, Text.literal("Last battle"), b -> screen.page("results"), this::paintLast));
+        if (CampaignClient.result.has("id")) add("last", new UiButton(ox + fieldX() + 40, oy + 392, 88, 24, Text.literal("Last battle"), b -> screen.page("results"), this::paintLast));
     }
 
     /** The focused sheet's widget takes its raised box and the others their flat boxes, at once (the drawing animates). */
@@ -166,7 +176,7 @@ final class WarTableHome {
         int[] o = WarTable.origin();
         for (int i = 0; i < 3; i++) {
             if (sheets[i] == null) continue;
-            int c = CENTRES[i];
+            int c = sheetCentre(i);
             if (i == focused) sheets[i].moveTo(o[0] + c - 88, o[1] + 188, 176, 160);
             else sheets[i].moveTo(o[0] + c - 76, o[1] + 200, 152, 136);
         }
@@ -295,7 +305,7 @@ final class WarTableHome {
             rectsDrawn.putAll(WarTable.drawn()); // floor, table, maproll and rail, as drawChrome drew them
             props(g, ox, oy, now);
             party(g, ox, oy);
-            field(g, ox + FIELD_X, oy + FIELD_Y);
+            field(g, ox + fieldX(), oy + FIELD_Y);
             g.draw();
             Integer[] order = {0, 1, 2};
             float[] r = {rise(0, now), rise(1, now), rise(2, now)};
@@ -421,8 +431,12 @@ final class WarTableHome {
      *  and the seal once the stamp begins. */
     void sheet(DrawContext g, int i, int ox, int oy, float r, double now) {
         var font = MinecraftClient.getInstance().textRenderer;
-        int c = CENTRES[i];
+        int c = sheetCentre(i);
         float fx = lerp(c - 76, c - 88, r) + ox, fy = lerp(200, 188, r) + oy, fw = lerp(152, 176, r), fh = lerp(136, 160, r);
+        if (compact()) {
+            fx = ox + 216;
+            for (int k = 0; k < i; k++) fx += lerp(152, 176, rise(k, now)) + 8;
+        }
         int bx = Math.round(fx), by = Math.round(fy), bw = Math.round(fw), bh = Math.round(fh);
         String flat = i == 2 ? "table/order-lo2" : "table/order-lo";
         if (r <= 0) UiTex.draw(g, flat, bx, by);

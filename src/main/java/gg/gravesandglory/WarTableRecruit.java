@@ -40,6 +40,12 @@ final class WarTableRecruit {
     static final int NOTICE_Y = 504, NOTICE_STEP = 13, NOTICE_W = 328, NOTICE_LINES = 2;
     static final String NO_DUPLICATES = "No duplicates: every letter is a new troop.";
 
+    /** Compact columns retain their native pixel art; five-pixel gutters fit both papers and the ladder inside the viewport. */
+    static boolean compact() { return UiCanvas.width() < 960; }
+    static int rollX() { return ROLL_X + (compact() ? 24 : 0); }
+    static int letterX() { return LETTER_X + (compact() ? 12 : 0); }
+    static int ladderShift() { return compact() ? -9 : 0; }
+
     /** A portrait the last frame drew: the troop, where (row-(i) or letter) and what Portrait.draw passed to drawEntity. */
     record PortraitDraw(String troop, String where, Portrait.Drawn drawn) {}
     /** A roll row the last frame drew: its place on the page (0 the top row shown), the troop, the name as drawn, the name's
@@ -130,11 +136,11 @@ final class WarTableRecruit {
             add("house-" + h.id(), new UiButton(0, BANNER_Y, BANNER_W, BANNER_H, Text.literal(h.name()), b -> chooseHouse(h.id()), (g, x, y, w, bh, hot) -> paintBanner(g, h, x, y, w, bh)));
         for (int i = 0; i < ROWS; i++) {
             final int index = i;
-            add("row-" + i, new UiButton(ox + ROLL_X, oy + ROW_TOP + ROW_H * i, ROLL_W, ROW_H, Text.literal(""), b -> pick(index), (g, x, y, w, h, hot) -> {}));
+            add("row-" + i, new UiButton(ox + rollX(), oy + ROW_TOP + ROW_H * i, ROLL_W, ROW_H, Text.literal(""), b -> pick(index), (g, x, y, w, h, hot) -> {}));
         }
-        choose = add("choose", new UiButton(ox + LETTER_X + CHOOSE_X, oy + LETTER_Y + CHOOSE_Y, 88, 24, Text.literal("Choose"), b -> chooseTroop(), this::paintChoose));
-        enlist = add("enlist", new UiButton(ox + ENLIST_X, oy + ENLIST_Y, 240, 40, Text.literal("Enlist"), b -> enlist(), this::paintEnlist));
-        add("odds", new UiButton(ox + ODDS_X, oy + ODDS_Y, 64, 24, Text.literal("Odds"), b -> odds = !odds, this::paintOdds));
+        choose = add("choose", new UiButton(ox + letterX() + CHOOSE_X, oy + LETTER_Y + CHOOSE_Y, 88, 24, Text.literal("Choose"), b -> chooseTroop(), this::paintChoose));
+        enlist = add("enlist", new UiButton(ox + ENLIST_X + ladderShift(), oy + ENLIST_Y, 240, 40, Text.literal("Enlist"), b -> enlist(), this::paintEnlist));
+        add("odds", new UiButton(ox + ODDS_X + ladderShift(), oy + ODDS_Y, 64, 24, Text.literal("Odds"), b -> odds = !odds, this::paintOdds));
         refresh();
     }
 
@@ -325,9 +331,9 @@ final class WarTableRecruit {
             texturesDrawn.put("table", WarTable.drawnTable());
             rod(g, ox);
             var roll = RecruitView.roll(house);
-            roll(g, roll, ox + ROLL_X, oy + ROLL_Y, oy);
-            letter(g, row(roll, selected), ox + LETTER_X, oy + LETTER_Y);
-            ladder(g, ox, oy);
+            roll(g, roll, ox + rollX(), oy + ROLL_Y, oy);
+            letter(g, row(roll, selected), ox + letterX(), oy + LETTER_Y);
+            ladder(g, ox + ladderShift(), oy);
             notice(g, ox, oy);
         } finally {
             UiCanvas.end(g);
@@ -500,12 +506,21 @@ final class WarTableRecruit {
         if (noticeText.isEmpty() || age >= WarTableHome.NOTICE_TICKS + WarTableHome.NOTICE_FADE_TICKS) return;
         var font = MinecraftClient.getInstance().textRenderer;
         float fade = age < WarTableHome.NOTICE_TICKS ? 1 : 1 - (age - WarTableHome.NOTICE_TICKS) / (float) WarTableHome.NOTICE_FADE_TICKS;
-        var lines = UiMath.lines(HintText.expand(noticeText, GravesAndGloryClient::hint), NOTICE_W, NOTICE_LINES, s -> font.getWidth(DarkUi.body(s)));
+        boolean header = compact() || UiCanvas.height() < 540;
+        int rightEdge = UiCanvas.width() - 12;
+        int headerLeft = Math.max(UiCanvas.width() - 302, ox + rodX(RecruitView.houses().size()) + BANNER_STEP * RecruitView.houses().size() + 16);
+        int wrap = header ? Math.max(1, rightEdge - headerLeft) : NOTICE_W;
+        var lines = UiMath.lines(HintText.expand(noticeText, GravesAndGloryClient::hint), wrap, NOTICE_LINES, s -> font.getWidth(DarkUi.body(s)));
         if (lines.isEmpty()) return;
         int alpha = Math.max(4, Math.round(fade * 255)), ink = (alpha << 24) | (DarkUi.IVORY & 0xffffff);
-        int left = Integer.MAX_VALUE, right = Integer.MIN_VALUE, top = oy + NOTICE_Y;
+        int left = Integer.MAX_VALUE, right = Integer.MIN_VALUE, top = header ? UiTex.entry("table/rail").h() + 2 : oy + NOTICE_Y;
         for (int i = 0; i < lines.size(); i++) {
-            int x = WarTableHome.centred(g, DarkUi.body(lines.get(i)), ox + AXIS, top + NOTICE_STEP * i, ink);
+            int x;
+            if (header) {
+                var text = DarkUi.body(lines.get(i));
+                x = rightEdge - font.getWidth(text);
+                g.drawText(font, text, x, top + NOTICE_STEP * i, ink, false);
+            } else x = WarTableHome.centred(g, DarkUi.body(lines.get(i)), ox + AXIS, top + NOTICE_STEP * i, ink);
             left = Math.min(left, x);
             right = Math.max(right, x + font.getWidth(DarkUi.body(lines.get(i))));
         }

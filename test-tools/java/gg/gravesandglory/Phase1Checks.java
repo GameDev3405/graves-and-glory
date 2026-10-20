@@ -33,7 +33,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  while the client's ready is false, when step() does not run. clientTick runs every client tick, ready or not. */
     public interface HudWatch { void hudFrame(MinecraftClient c); default void clientTick(MinecraftClient c){} }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-continuation",UiContinuationChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-continuation",UiContinuationChecks::new);SUITES.put("ui-compact",UiHomeRecruitCompactChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front,hold;static boolean started; // hold: client ticks the current suite waits (Phase1Checks.window)
@@ -2113,11 +2113,11 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==42){int w=UiCanvas.width(),h=UiCanvas.height();var b=boxes(c);List<String> out=new ArrayList<>(),over=new ArrayList<>();var keys=new ArrayList<>(b.keySet());
                         for(int i=0;i<keys.size();i++){if(!inside(b.get(keys.get(i)),w,h))out.add(keys.get(i)+" "+str(b.get(keys.get(i))));for(int j=i+1;j<keys.size();j++)if(overlap(b.get(keys.get(i)),b.get(keys.get(j))))over.add(keys.get(i)+"/"+keys.get(j));}
                         var r=WarTableHome.rects();boolean cut=r.containsKey("candle")||r.containsKey("inkwell")||r.containsKey("glow"); // the props would cross the edge: left off
-                        // the field card at x 752 of the page lands on canvas 699 to 866 of 854: its last 13 columns, its shadow and its right tack are off the canvas (accepted for this task; docs/PARKED.md, Task 8: a compact layout)
-                        int[] field=r.get("field");boolean cropped=Arrays.equals(field,new int[]{699,158,168,188})&&field[0]+field[2]-w==13;
-                        scalesOk&=home(c)!=null&&w==854&&h==480&&b.size()>=12&&out.isEmpty()&&over.isEmpty()&&!cut&&cropped;
+                        // Compact packing puts the complete field card, shadow and right tack inside the first-launch canvas.
+                        int[] field=r.get("field");boolean fitted=Arrays.equals(field,new int[]{667,158,168,188})&&field[0]+172<=w-12;
+                        scalesOk&=home(c)!=null&&w==854&&h==480&&b.size()>=12&&out.isEmpty()&&over.isEmpty()&&!cut&&fitted;
                         scalesWhy+="; 854x480 GUI 2: canvas "+w+"x"+h+", origin "+Arrays.toString(WarTable.origin())+", "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+", props "+(cut?"drawn across the edge: candle "+str(r.get("candle"))+", inkwell "+str(r.get("inkwell")):"left off (they would cross the 12 px edge)")
-                            +", field card "+str(field)+(field==null?"":" runs "+(field[0]+field[2]-w)+" columns past the right edge")+" (pinned: 13)";shot(c,"ui-home-small");return;}
+                            +", field card "+str(field)+(field==null?"":" has "+(w-field[0]-field[2])+" px right clearance")+" (full card and shadow fit)";shot(c,"ui-home-small");return;}
                     if(k==44){window(c,1920,1080,2,true);return;}
                     if(k==64){int[] o=WarTable.origin();boolean same=Arrays.equals(box(c,"ride"),LAYOUT[10])&&Arrays.equals(box(c,"camp"),LAYOUT[0]);
                         scalesOk&=home(c)!=null&&UiCanvas.k()==2&&UiCanvas.width()==960&&UiCanvas.height()==540&&o[0]==0&&o[1]==0&&same;
@@ -2533,22 +2533,20 @@ public final class Phase1Checks implements ClientModInitializer {
                 default->{}
             }
         }
-        /** 854x480 GUI 2, the first-launch window: a canvas smaller than the page, which stays centred and is cropped (Task 5's
-         *  ruling; a compact layout is Task 8's). Pins what lands where: every widget inside the canvas, none overlapping, and of what
-         *  the page drew only two things cross the canvas edge: the muster roll's art (its rods' left 12 columns) and the row mark's
-         *  (its left column). */
+        /** 854x480 GUI 2: compact columns keep every widget, both papers and the selected row mark inside the canvas,
+         *  with unchanged native-size art and no overlapping controls. The normal-size expectations stay unchanged. */
         String small(MinecraftClient c){
             int w=UiCanvas.width(),h=UiCanvas.height();int[] o=WarTable.origin();var b=boxes(c);var r=WarTableRecruit.rects();
             List<String> out=new ArrayList<>(),over=new ArrayList<>(),cut=new ArrayList<>();var keys=new ArrayList<>(b.keySet());Set<String> cutKeys=new LinkedHashSet<>();
             for(int i=0;i<keys.size();i++){if(!UiHomeChecks.inside(b.get(keys.get(i)),w,h))out.add(keys.get(i)+" "+str(b.get(keys.get(i))));for(int j=i+1;j<keys.size();j++)if(UiHomeChecks.overlap(b.get(keys.get(i)),b.get(keys.get(j))))over.add(keys.get(i)+"/"+keys.get(j));}
             for(var e:r.entrySet())if(!Set.of("floor","table","rail").contains(e.getKey())&&!UiHomeChecks.inside(e.getValue(),w,h)){cut.add(e.getKey()+" "+str(e.getValue()));cutKeys.add(e.getKey());}
             int[] roll=r.get("roll"),mark=r.get("mark"),enlist=box(c,"enlist");
-            boolean ok=page(c)!=null&&w==854&&h==480&&UiCanvas.k()==1&&o[0]==-53&&o[1]==-30&&b.size()==13&&out.isEmpty()&&over.isEmpty()&&cutKeys.equals(Set.of("roll","mark"))
-                &&Arrays.equals(roll,new int[]{-12,94,270,372})&&Arrays.equals(mark,new int[]{-1,278,234,58})&&Arrays.equals(enlist,new int[]{611,324,240,40})&&Arrays.equals(r.get("bundle"),new int[]{611,94,240,218})&&Arrays.equals(r.get("letter"),new int[]{275,94,310,376})&&Arrays.equals(box(c,"choose"),new int[]{383,410,88,24})
-                &&Arrays.equals(box(c,"back"),new int[]{3,12,120,28})&&Arrays.equals(box(c,"banner"),new int[]{747,12,104,28})&&Arrays.equals(box(c,"odds"),new int[]{699,438,64,24})&&hotNone();
+            boolean ok=page(c)!=null&&w==854&&h==480&&UiCanvas.k()==1&&o[0]==-53&&o[1]==-30&&b.size()==13&&out.isEmpty()&&over.isEmpty()&&cutKeys.isEmpty()
+                &&Arrays.equals(roll,new int[]{12,94,270,372})&&Arrays.equals(mark,new int[]{23,278,234,58})&&Arrays.equals(enlist,new int[]{602,324,240,40})&&Arrays.equals(r.get("bundle"),new int[]{602,94,240,218})&&Arrays.equals(r.get("letter"),new int[]{287,94,310,376})&&Arrays.equals(box(c,"choose"),new int[]{395,410,88,24})
+                &&Arrays.equals(box(c,"back"),new int[]{3,12,120,28})&&Arrays.equals(box(c,"banner"),new int[]{747,12,104,28})&&Arrays.equals(box(c,"odds"),new int[]{690,438,64,24})&&hotNone();
             scalesOk&=ok;
             return "854x480 GUI 2: canvas "+w+"x"+h+" (k "+UiCanvas.k()+"), origin "+o[0]+","+o[1]+", "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+"; drawn across the canvas edge "+cut
-                +" (pinned: the roll's art, 12 columns off the left, and the row mark's, 1); roll "+str(roll)+", mark "+str(mark)+", choose "+str(box(c,"choose"))+", letter "+str(r.get("letter"))+" (its foot "+(r.get("letter")==null?"?":h-r.get("letter")[1]-r.get("letter")[3])+" px above the canvas's), bundle "+str(r.get("bundle"))
+                +" (compact papers and row mark fit); roll "+str(roll)+", mark "+str(mark)+", choose "+str(box(c,"choose"))+", letter "+str(r.get("letter"))+" (its foot "+(r.get("letter")==null?"?":h-r.get("letter")[1]-r.get("letter")[3])+" px above the canvas's), bundle "+str(r.get("bundle"))
                 +", enlist "+str(enlist)+(enlist==null?"":" ("+(w-enlist[0]-enlist[2])+" px from the right edge)")+", odds "+str(box(c,"odds"))+(box(c,"odds")==null?"":" (its foot "+(h-box(c,"odds")[1]-box(c,"odds")[3])+" px above the canvas's)")+", back "+str(box(c,"back"))+", banner "+str(box(c,"banner"))+(ok?"":" WRONG");
         }
         /** 1920x974 GUI 1, a maximized window on a 1080p screen: a canvas larger than the table. The page stays centred on the planks,

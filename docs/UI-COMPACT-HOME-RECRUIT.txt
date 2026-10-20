@@ -1,0 +1,47 @@
+Compact home and recruitment UI continuation — October 20, 2026
+
+Independent checkout: C:\Users\kortt\Documents\Codex\gg-ui-20261020
+Branch: codex/ui-compact-home-recruit-20261020
+Base: bb984a64974f3f4aeabc670970685dc7ee52aba2 (the prior reviewed UI candidate).
+The prior branch and review bundle are preserved. No originals were edited.
+
+Changes
+- Below a 960-pixel canvas width, home packs the three order sheets at native art
+  size with eight-pixel control gutters. The field card, Change and Last battle
+  move together. At 854x480 the full map card and its shadow fit inside the window.
+- Recruitment keeps the native papers and portraits, tightening column gutters
+  so the muster roll's rods and row mark no longer crop at the left edge. Widget
+  hit boxes move with their artwork. Enlist, Choose and Odds keep their callbacks.
+- In compact or short windows, recruitment feedback occupies the free header
+  space to the right of the House banners, clear of the rail and content. The
+  ordinary footer feedback and original positions remain at 960x540 and larger.
+- No art, game data, server logic, recruitment prices, rewards, packets or prior
+  WarTablePages implementation changes. Only two production Java files change.
+
+Verification
+- Five real-client suites PASS: ui-compact, ui-home, ui-recruit, ui-pages and
+  ui-continuation. No failed markers in either run exported with this report.
+- Matrix: 854x480 GUI 2, 920x500 GUI 2, 960x480 GUI 1, 960x540 GUI 1 and
+  1280x720 GUI 3. Every home selection fits; real clicks select a troop, open Odds
+  and dismiss only Odds with Escape; server feedback remains visible.
+- Extra stress pass: 30 consecutive focus changes at each of the two compact
+  sizes; animated sheets and shadows remain clear of the map card.
+- Existing recruitment tests cover purchases, insufficient gold, exhausted
+  recruitment, held keys and resizing. Previous page flows still pass.
+- Pure UI mathematics: 70 checks pass. UI style check clean. Offline player build
+  and source-identity/harness exclusion check pass; release-integrity fixtures pass.
+- All 510 hashed original source files match. The prior bb984a6 branch is intact.
+
+Scope
+This is a local UI source candidate. The five-House 0.5.0 integration, Oath systems,
+final title scene and campaign storybook remain separate work. Current recruitment
+checks use this branch's two-House data. Nothing is merged, pushed, installed,
+deployed or published. The source retains the baseline version 0.4.0 and is not a
+new complete modpack release.
+
+Review files
+HOME-BEFORE-AFTER.png and RECRUIT-BEFORE-AFTER.png are actual game captures of the
+preserved earlier layout and the compact candidate; player names/selections can
+differ between disposable runs. Screenshots are not painted mockups.
+COMPACT-UI.patch targets bb984a6. UI-ISOLATED-SOURCE.zip includes the complete
+candidate source. The earlier review files outside compact-ui are unchanged.
