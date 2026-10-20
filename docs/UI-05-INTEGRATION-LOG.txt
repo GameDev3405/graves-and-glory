@@ -1,0 +1,81 @@
+GRAVES AND GLORY - ISOLATED 0.5 UI INTEGRATION
+2026-10-20 | Codex | review candidate only
+
+AUTHORIZATION AND PRESERVATION
+Kort requested continuing the UI, keeping all work separate and logging what/why for Claude. Isolated game tests were explicitly authorized earlier. No merge, push, installation or edits in original checkouts.
+Independent checkout: C:/Users/kortt/Documents/Codex/gg-ui05-20261020
+Branch: codex/ui05-recruit-integration-20261020
+Base: preview-0.5 38deb85f1e62701dae61a7b0370f68e5db253256
+Exact local preview snapshot: 49f0820 (includes BattleHud.java, GravesAndGloryClient.java and RecruitView.java WIP).
+596 original files hashed in isolation-preview-manifest.json before any candidate edits.
+No remotes in independent copy. Prior UI branches and outputs remain separate.
+
+PLAN (before implementation)
+1. Audit preview UI against implemented server commands and sheet-driven roster.
+2. Port the previously tested compact home/recruit geometry only; preserve preview Banner routing to its v2 army editor.
+3. Align recruitment explanations/actions with server: duplicate rolls, weighted odds, pity, collection state, no unsupported chosen purchase.
+4. Display existing profile data without creating new evolution, mastery, shard spending, Oath or reward rules.
+5. Add isolated real-client checks across all five Houses and compact/normal sizes, exercise real roll and refusal paths; build and verify player JAR excludes tools.
+6. Publish a patch, source archive, screenshots, commands/results and preservation check for Claude.
+
+AUDIT / REASONS
+Campaign.handle explicitly refuses unlock:<troop>, but WarTableRecruit offers Choose. Remove that unsupported action in this candidate.
+Campaign.roll draws with replacement using RosterMath.roll: each Common weight43, each Rare6, Epic2 in current sheets; duplicates add stars, then House shards at full stars. Existing UI promises no duplicates and uniform chances: replace with actual sheet-derived explanations.
+Roll cost is Spec.RECRUITMENT[0].rollCost(), while RecruitView reads older CAMPAIGN.rollCost(): use the same source as server.
+All five Houses have pools; only Gilded/Graveborn are fieldable. Recruitment must distinguish collection access from battle availability.
+Profile v2 carries stars/stage/copies/mastery/shards, but planned spend/evolve/mastery/Oath routes are absent from Campaign.handle. Show state only; record dependencies for later implementation.
+Preview retains its Phase2 Banner editor, class selection and commander HUD. Do not overwrite those with older UI-plan equivalents.
+Phase2 branch is ahead in gameplay; do not merge its unrelated mechanics for a UI task.
+
+EXECUTION LOG
+- Created independent clone with --no-hardlinks, overlaid all nonignored preview files byte-for-byte, saved manifest, committed baseline, removed origin.
+- Confirmed prior compact patch applies cleanly to preview home/recruit; preview-only Banner mouse/key routes lie outside patch hunks and will be retained.
+
+- Ported only WarTableHome/WarTableRecruit compact hunks from aa1ba55..374a4d3. The preview Banner plaque and B key still open army (LobbyScreen v2).
+- RecruitView: same recruitment price source as server, weighted per-troop odds derived from rarities, House pity, duplicates/shards explanation, stage name and existing collection details. Legendary excluded even if already owned.
+- WarTableRecruit: no chosen-purchase widget/command; stage-correct portrait, collection details in former Choose space; replaced false uniform/no-duplicate odds note.
+- No sheet, profile schema, server command, combat, model asset, class or reward rule changes.
+- Legacy Phase1 ui-recruit assertions describe the obsolete two-faction purchase model; kept compiling but not counted as v2 acceptance. New dedicated suite will exercise actual preview contracts.
+
+- First compile failed in existing preview CommandMode.houseStrip: missing DrawContext import. Added only that import in candidate; no method behavior changed. Original compile log retained work/compile.log.
+
+- The preview test tools also failed compilation: legacy CampaignChecks/Phase1 UiRecruit checks still reference removed Profile.unlocked, army, faction and nested Campaign.Profile. Adapted those references to v2 types for compilation, and legacy army-composition fixture to banner slots. Those legacy behavioral assertions are NOT claimed as passing or as v2 acceptance; ui05-recruit is the dedicated replacement acceptance suite. Compiler failures retained in work/compile-tests-2.log.
+
+VALIDATION SO FAR
+- compileJava + compileLocalTestTools: passed after prerequisite fixes.
+- HousesCheck: 132 checks passed (catalog, weighted rolls, stars, banner slots, fieldability).
+- UiMathCheck: 65 checks passed against preview version. Earlier 0.4 UI branch has its own newer 70-check version; not overwritten here.
+- test_release_integrity.py: 2 fixtures passed.
+- test_ui_standard.py: 12 findings, all reproduced from exact baseline 49f0820: nine literal colors in CampScreen, two literals/helpers and missing team mark in GravesAndGloryClient. No added findings. Kept those original UI files unchanged; not reported as a clean style pass.
+
+WHAT REMAINS AFTER THIS PASS
+A. Reconcile Task7 WarTablePages/Banner from the older isolated UI branch with the preview v2 army editor. Preserve weighted Epic/Legendary slots, ownership, side selection and six-class selection. Do not copy the Phase1 editor wholesale.
+B. Verify six class cards/HUD at compact sizes (preview already has active/passive text and cooldowns in CampaignLobbyScreen). No need to rebuild an existing class framework.
+C. Evolution/shard spending/mastery accrual/Legendary Pacts/renown/chapter Oath: sheet/profile fields exist, but no corresponding command handlers in this preview; requires server work and save/rollback tests before actionable UI. This candidate only displays existing state.
+D. Title/storybook polish and the 12 existing style findings.
+E. Gameplay House batches and newer Phase2 mechanics remain Claude's separate work; this UI candidate does not merge those.
+
+REPRODUCTION
+Java: Eclipse Adoptium 17.0.19.10-hotspot. Gradle8.8, offline, no daemon persistence.
+compileLocalTestTools --offline --console=plain
+runClient --offline -PcampaignChecks --init-script test-tools/isolated-checks.gradle --args="--gameDir <isolated-root>/run" --console=plain
+Environment: GRAVES_ROADMAP_TEST_ROOT=<isolated-root>, GRAVES_PHASE1_CHECKS=ui05-recruit.
+The harness creates disposable profiles under its own run/runtime paths, changes window/GUI sizes, and stops its own client. No player save or instance is used.
+
+FINAL GAME RESULTS
+work/recruit-v2 completed normally and its own client closed. 42 pass markers, zero failures (38 feature checks + suite marker + 3 environment/load markers).
+- All five Houses at 854x480 GUI2, 960x540 GUI1, 1280x720 GUI3: pool, fieldability labels, visible widgets inside canvas, no unsupported Choose, exact untruncated weighted Odds.
+- Actual server request: guaranteed Epic recruited, 2000 -> 1900 gold, pity reset.
+- Profile fixture: stage2 Knight / mastery1, stage-correct live portrait and visible data. This fixture does not imply a working evolution/mastery earning path.
+- Actual full-star Epic duplicate: 1900 -> 1800 gold, shards7 ->15, copies remain4.
+- Zero-gold widget emits no roll; direct server refusal appears without overlapping the five-banner rail at854x480.
+- B key opens original v2 army editor. Compact home stays inside canvas.
+- Screenshots visually inspected for odds, saved stage and compact refusal; full feedback cost remains readable (long explanatory tail truncates at compact width).
+- After game run, only comment cleanup and unused constants removed.
+
+PRESERVATION CHECK
+All596 original preview files match their starting byte hashes. All510 original Claude UI files still match the earlier manifest. Previous independent compact UI checkout remains clean at374a4d3bef25bea3f8de4cea2fb71b7622bb8655. No remotes in candidate.
+
+FINAL BUILD
+build compileLocalTestTools --offline -x test: passed in19s. Player JAR source identity and harness exclusion passed. JAR built only for validation; not installed or included as a release.
+Candidate source identity: d1be554ddf02fb9bc3657bda00d772ddb77d4adaffef884f0970879b0e04868e

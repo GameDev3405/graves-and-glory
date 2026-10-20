@@ -2,17 +2,15 @@ package gg.gravesandglory;
 
 import java.util.*;
 
-/** What the War Table recruit page shows, read from the camp state (UI plan Task 6): the Houses on the rod, each House's muster
- *  roll, how many letters are left and what a letter costs. Phase 1 has two Houses (the factions), no rarity, stars, locks or
- *  pity; Phase 2 replaces these bodies, and nothing else reads rarity, stars or pity. */
+/** Read-only adapter from the v2 collection and recruitment sheets to the War Table. */
 final class RecruitView {
     private RecruitView() {}
 
-    /** A House on the rod: its id (a Spec.FACTIONS id in Phase 1), its name and the cloth its banner is woven in
+    /** A House on the rod: its House id, its name and the cloth its banner is woven in
      *  (recruit/banner-<cloth>). */
     record House(String id, String name, String cloth) {}
     /** A troop on a House's roll: its id and name, its group's label ("Infantry"), whether the commander has recruited it, its stars
-     *  (0 to 3; 0 draws none), its rarity ("" draws none) and whether it is locked (not to be drawn yet). */
+     *  (0 to 3; 0 draws none), its rarity ("" draws none) and whether it is locked (a Legendary not yet owned). */
     record Row(String troopId, String name, String group, boolean owned, int stars, String rarity, boolean locked) {}
 
     /** The Houses in rod order: the five Houses of the sheet (Spec.HOUSES), each woven in the cloth of its own id. */
@@ -23,13 +21,13 @@ final class RecruitView {
     }
 
     /** The House's troops in Spec.TROOPS order, each with the commander's stars in it (Phase 2 merge: read from the v2 collection).
-     *  A Legendary is locked until owned: it comes from a Pact, not from a letter. */
+     *  A Legendary is locked until owned and never comes from a letter. Pact granting is not implemented in this preview. */
     static List<Row> roll(String houseId) {
         List<Row> out = new ArrayList<>();
         for (var t : Spec.TROOPS)
             if (t.house().equals(houseId)) {
                 var o = CampaignClient.profile.owned.get(t.id());
-                out.add(new Row(t.id(), t.name(), group(t.group()), o != null, o == null ? 0 : o.stars, t.rarity(), o == null && t.rarity().equals("legendary")));
+                out.add(new Row(t.id(), name(t.id()), group(t.group()), o != null, o == null ? 0 : o.stars, t.rarity(), o == null && t.rarity().equals("legendary")));
             }
         return out;
     }
@@ -46,13 +44,50 @@ final class RecruitView {
     /** The House's troops a letter can bring: every one but the Legendary, a duplicate raising stars (Phase 2). */
     static int newLeft(String houseId) {
         int n = 0;
-        for (var r : roll(houseId)) if (!r.locked()) n++;
+        for (var r : roll(houseId)) if (!r.rarity().equals("legendary")) n++;
         return n;
     }
 
     /** The gold a letter costs (Enlist). */
-    static int cost() { return Spec.CAMPAIGN[0].rollCost(); }
+    static int cost() { return Spec.RECRUITMENT[0].rollCost(); }
 
-    /** The gold the letter's Choose costs, for a troop picked by name. */
-    static int chooseCost() { return Spec.RECRUITMENT[0].chosenCost(); }
+    /** A troop's collection display name, matching the stage used by its portrait. */
+    static String name(String troop) {
+        var t = ArmyCards.spec(troop);
+        var o = CampaignClient.profile.owned.get(troop);
+        return t == null ? troop : ArmyMobs.stageName(t, o == null ? 1 : o.stage);
+    }
+
+    static boolean fieldable(String house) { return RosterMath.fieldableHouses().contains(house); }
+
+    /** Actual weighted pool, including owned troops. The Epic pity overrides these base chances. */
+    static List<String> odds(String house) {
+        int total = 0;
+        for (var r : roll(house)) {
+            var rarity = RosterMath.rarityRow(r.rarity());
+            if (rarity != null) total += rarity.rollWeight();
+        }
+        List<String> lines = new ArrayList<>();
+        if (pityLeft(house) == 1) lines.add("Next letter: guaranteed Epic");
+        for (var rarity : Spec.RARITIES) {
+            if (rarity.rollWeight() <= 0) continue;
+            int count = 0;
+            for (var r : roll(house)) if (r.rarity().equals(rarity.id())) count++;
+            if (count > 0 && total > 0) lines.add(CommandMode.label(rarity.id()) + " (each): " + String.format(Locale.ROOT, "%.1f%%", 100.0 * rarity.rollWeight() / total));
+        }
+        if (pityLeft(house) != 1) lines.add("Epic within " + pityLeft(house) + " letters");
+        lines.add("Duplicates raise stars");
+        lines.add("Full-star copies give shards");
+        lines.add("Legendaries are not rolled");
+        return lines;
+    }
+
+    /** Existing saved state only: no mutation or unimplemented progression actions. */
+    static List<String> details(Row row, String house) {
+        var o = CampaignClient.profile.owned.get(row.troopId());
+        String state = o == null ? (row.locked() ? "Legendary: not in letters" : "Not yet recruited")
+                : "Stage " + o.stage + " / Mastery " + o.mastery + " / Copies " + o.copies;
+        String availability = fieldable(house) ? "House ready for battle" : "Collection only: not fieldable yet";
+        return List.of(state, availability, "House shards: " + CampaignClient.profile.shards.getOrDefault(house, 0));
+    }
 }
