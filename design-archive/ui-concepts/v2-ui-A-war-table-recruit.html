@@ -1,0 +1,95 @@
+<!doctype html>
+<html class="v2"><head><meta charset="utf-8"><title>v2 UI A: War Table, recruit</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* War Table recruit, second pass. Read left to right: the roll you have, the letter you just opened, the stack
+   of sealed letters you draw from next. The opened letter is the only bright object; see DESIGN-RULES.md. */
+.rail{left:168px;top:14px;width:624px;height:3px;background:var(--brass);box-shadow:0 1px 0 #6e5226}
+.fin{position:absolute;top:12px;width:5px;height:7px;background:var(--brass-hi);box-shadow:inset -1px -1px 0 #8c7246,0 1px 0 #2a1b10}
+.tab{position:absolute;top:17px;width:112px;height:32px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.12)}
+.tab.on{height:40px}
+.tab>.pt{position:absolute;height:2px;background:inherit}
+.tab .g{position:absolute;left:52px;top:7px}
+.tab .n{position:absolute;left:0;width:112px;top:17px;text-align:center}
+.tab.on .g{top:9px}.tab.on .n{top:21px}
+.rr{position:absolute;left:8px;width:224px;height:56px}
+.rr.on{background:#ead9ad;box-shadow:inset 3px 0 0 #8a6420}
+.pf{position:absolute;left:8px;top:10px;width:36px;height:36px;background:#c9b78c;box-shadow:inset 0 0 0 1px #6b5a3a}
+.pf>.px{position:absolute;left:2px;top:2px}
+.rn{position:absolute;left:56px;top:15px}
+.rs{position:absolute;left:56px;top:34px;height:6px}
+.sep{position:absolute;left:16px;width:208px;height:1px;background:#c4b088}
+.frame{position:absolute;left:72px;top:32px;width:160px;height:160px;background:#7a5a24;box-shadow:inset 0 0 0 1px #2a2219,inset 0 0 0 2px #c8a56b,inset 0 0 0 3px #2a2219,inset 0 0 28px rgba(0,0,0,.4)}
+.env{position:absolute;width:112px;height:72px;box-shadow:inset 0 0 0 1px #6b5a3a,0 2px 0 rgba(0,0,0,.45)}
+.enlist{left:664px;width:240px;height:40px;background:#bb9858;box-shadow:inset 0 0 0 1px #e0c27a,inset 0 -3px 0 #8c7246,0 3px 0 rgba(0,0,0,.5);color:#1e1509}
+</style></head>
+<body>
+<div class="scrim" data-bleed></div>
+
+<!-- the five Houses hang from the tent rail; the chosen cloth hangs longer -->
+<div class="a rail" data-name="rail"></div><i class="fin" style="left:164px"></i><i class="fin" style="left:791px"></i>
+<div class="tab on" data-ctl data-name="tab Gilded" style="left:180px;background:#d8b45a"><i class="pt" style="left:8px;top:40px;width:96px"></i><i class="pt" style="left:24px;top:42px;width:64px"></i><i class="pt" style="left:40px;top:44px;width:32px"></i>
+  <i class="px g" data-art="gilded" data-pal="i=#4a3412"></i><span class="n h11" style="color:#2a2219">Gilded Order</span></div>
+<div class="tab" data-ctl data-name="tab Graveborn" style="left:300px;background:#3e5240"><i class="pt" style="left:8px;top:32px;width:96px"></i><i class="pt" style="left:24px;top:34px;width:64px"></i><i class="pt" style="left:40px;top:36px;width:32px"></i>
+  <i class="px g" data-art="graveborn" data-pal="i=#d8d2c0"></i><span class="n h11" style="color:#eee9df">Graveborn</span></div>
+<div class="tab" data-ctl data-name="tab Wildmoot" style="left:420px;background:#6e3a1f"><i class="pt" style="left:8px;top:32px;width:96px"></i><i class="pt" style="left:24px;top:34px;width:64px"></i><i class="pt" style="left:40px;top:36px;width:32px"></i>
+  <i class="px g" data-art="wildmoot" data-pal="i=#eccb8a"></i><span class="n h11" style="color:#eee9df">Wildmoot</span></div>
+<div class="tab" data-ctl data-name="tab Ironclad" style="left:540px;background:#4a5257"><i class="pt" style="left:8px;top:32px;width:96px"></i><i class="pt" style="left:24px;top:34px;width:64px"></i><i class="pt" style="left:40px;top:36px;width:32px"></i>
+  <i class="px g" data-art="ironclad" data-pal="i=#e0c28a"></i><span class="n h11" style="color:#eee9df">Ironclad</span></div>
+<div class="tab" data-ctl data-name="tab Tidecallers" style="left:660px;background:#2b4f73"><i class="pt" style="left:8px;top:32px;width:96px"></i><i class="pt" style="left:24px;top:34px;width:64px"></i><i class="pt" style="left:40px;top:36px;width:32px"></i>
+  <i class="px g" data-art="tidecallers" data-pal="i=#bfe6e0"></i><span class="n h11" style="color:#eee9df">Tidecallers</span></div>
+
+<!-- the way back, and the one other place this screen leads to -->
+<div class="wbtn" data-ctl data-name="back" style="left:24px;top:20px"><span class="key"><mc-text color="#afb9bc">Esc</mc-text></span><span class="h11">War table</span></div>
+<div class="wbtn" data-ctl data-name="banner" data-rx="936" style="top:20px"><span class="key"><mc-text color="#afb9bc">B</mc-text></span><span class="h11">Banner</span></div>
+
+<!-- the table -->
+<div class="oak" data-bleed style="left:0;top:76px;width:960px;height:464px"></div>
+
+<!-- the roll: the six troops of the House, portrait, name, stars -->
+<div class="roll" data-panel data-name="muster roll" style="left:56px;top:124px;width:240px;height:368px">
+  <div class="rr" style="top:16px"><div class="pf"><i class="px" data-art="p_squire" data-scale="2"></i></div><span class="rn h11">Order Squire</span><span class="rs a"><i class="px a" data-art="star" data-pal="i=#8a6420"></i><i class="px a" data-art="star" data-pal="i=#8a6420" style="left:10px"></i><i class="px a" data-art="dot3" data-pal="i=#a08a5c" style="left:22px;top:1px"></i></span></div>
+  <i class="sep" style="top:72px"></i>
+  <div class="rr" style="top:72px"><div class="pf"><i class="px" data-art="p_archer" data-scale="2"></i></div><span class="rn h11">Order Archer</span><span class="rs a"><i class="px a" data-art="star" data-pal="i=#8a6420"></i><i class="px a" data-art="dot3" data-pal="i=#a08a5c" style="left:12px;top:1px"></i><i class="px a" data-art="dot3" data-pal="i=#a08a5c" style="left:22px;top:1px"></i></span></div>
+  <i class="sep" style="top:128px"></i>
+  <div class="rr on" style="top:128px"><div class="pf"><i class="px" data-art="p_templar" data-scale="2"></i></div><span class="rn h11">Templar</span><span class="rs a"><i class="px a" data-art="star" data-pal="i=#8a6420"></i><i class="px a" data-art="star" data-pal="i=#8a6420" style="left:10px"></i><i class="px a" data-art="dot3" data-pal="i=#a08a5c" style="left:22px;top:1px"></i></span></div>
+  <i class="sep" style="top:184px"></i>
+  <div class="rr" style="top:184px"><div class="pf"><i class="px" data-art="p_longbow" data-scale="2"></i></div><span class="rn h11">Order Longbow</span><span class="rs a"><i class="px a" data-art="star" data-pal="i=#8a6420"></i><i class="px a" data-art="dot3" data-pal="i=#a08a5c" style="left:12px;top:1px"></i><i class="px a" data-art="dot3" data-pal="i=#a08a5c" style="left:22px;top:1px"></i></span></div>
+  <i class="sep" style="top:240px"></i>
+  <div class="rr" style="top:240px"><div class="pf"><i class="px" data-art="p_sunweaver" data-scale="2" data-sil="#a8946a"></i></div><span class="rn h11" style="color:#5c4a32">Sunweaver</span><span class="rs a"><i class="px a" data-art="dot3" data-pal="i=#a08a5c" style="left:2px;top:1px"></i><i class="px a" data-art="dot3" data-pal="i=#a08a5c" style="left:12px;top:1px"></i><i class="px a" data-art="dot3" data-pal="i=#a08a5c" style="left:22px;top:1px"></i></span></div>
+  <i class="sep" style="top:296px"></i>
+  <div class="rr" style="top:296px"><div class="pf"><i class="px" data-art="p_marshal" data-scale="2" data-sil="#a8946a"></i><i class="px" data-art="lock" data-scale="2" data-pal="i=#5c4a32" style="left:12px;top:12px"></i></div><span class="rn h11" style="color:#5c4a32">Lord Marshal Aldric</span></div>
+</div>
+
+<!-- the opened letter: the one bright object on the table -->
+<div class="letter" data-panel data-name="reveal letter" style="left:328px;top:124px;width:304px;height:368px">
+  <div class="frame"><i class="px a" data-art="p_templar" data-scale="8" style="left:16px;top:16px"></i></div>
+  <span class="a t16" data-cx="152" style="top:212px">Templar</span>
+  <span class="a b11 nw" data-cx="152" style="top:236px;color:#5c4a32">Rare infantry</span>
+  <div class="a" data-cx="152" style="top:258px;width:74px;height:38px" data-name="stars">
+    <i class="px a" data-art="star" data-scale="2" data-pal="i=#8a6420" style="left:0;top:13px"></i>
+    <i class="px a" data-art="wax19" data-scale="2" style="left:22px;top:0"></i>
+    <i class="px a" data-art="star" data-scale="2" data-pal="i=#f2d488" style="left:34px;top:13px"></i>
+    <i class="px a" data-art="dot3" data-scale="2" data-pal="i=#a08a5c" style="left:68px;top:16px"></i>
+  </div>
+  <span class="a b11 nw" data-cx="152" style="top:316px">Second star: +3% health and damage</span>
+</div>
+<i class="px a" data-art="wax15b" data-scale="2" style="left:465px;top:109px" data-name="broken seal"></i>
+
+<!-- the stack of sealed letters, the purse, the one primary action, the Epic counter -->
+<div class="a" style="left:728px;top:182px;width:120px;height:80px" data-name="letter stack">
+  <div class="env" style="left:8px;top:8px;background:#b5a27a"></div>
+  <div class="env" style="left:4px;top:4px;background:#cbb88f"></div>
+  <div class="env" style="left:0;top:0;background:#e2d4ae"><i class="px a" data-art="flap112" data-pal="k=#8f7a52" style="left:0;top:0"></i><i class="px a" data-art="wax15" style="left:49px;top:29px"></i></div>
+</div>
+<div class="a flex" data-cx="784" style="top:294px;gap:6px" data-name="gold"><i class="px" data-art="coin" data-scale="2"></i><mc-text color="#eee9df" shadow>300</mc-text></div>
+<div class="a enlist" data-ctl data-name="enlist" style="top:322px">
+  <span class="a key" style="left:8px;top:13px"><mc-text color="#3a2a12">Enter</mc-text></span>
+  <span class="a h11" data-cx="120" style="top:14px">Enlist</span>
+  <span class="a flex" data-rx="232" style="top:16px;gap:4px"><i class="px" data-art="coin" data-pal="b=#6e5226,i=#f0d9a0"></i><mc-text color="#1e1509">100</mc-text></span>
+</div>
+<span class="a b11 nw" data-cx="784" style="top:374px;color:#afb9bc">Epic within 28 letters</span>
+<div class="wbtn" data-ctl data-name="odds" data-cx="784" style="top:398px"><span class="h11">Odds</span></div>
+
+<script src="mc.js"></script><script src="art.js"></script><script src="v2.js"></script><script src="check.js"></script>
+</body></html>

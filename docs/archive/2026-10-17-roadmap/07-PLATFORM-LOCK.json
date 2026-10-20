@@ -1,0 +1,901 @@
+[
+  {
+    "slug": "iris",
+    "projectId": "YL57xq9U",
+    "versionId": "s5eFLITc",
+    "version": "1.7.6+1.20.1",
+    "fileName": "iris-1.7.6+mc1.20.1.jar",
+    "localPath": "dependencies/mods/iris-1.7.6+mc1.20.1.jar",
+    "fileSize": 2726899,
+    "hashes": {
+      "sha1": "880c0b9ce38bb4997645793407c1801df83f4233",
+      "sha512": "f1337b0441c31269bd3bfcb28647d521326a83e73128c1ac8d065615f8a5a4ca1e8c96a468b356584236ece5b164ec8d8a52b1878064f4e391ecf4f32885e301"
+    },
+    "sha256": "9eb15e563e0c9ae6eff15b7863f8432dd290cf9f724c7373e9b15b14aa829ed5",
+    "downloads": [
+      "https://cdn.modrinth.com/data/YL57xq9U/versions/s5eFLITc/iris-1.7.6%2Bmc1.20.1.jar"
+    ],
+    "kind": "mod",
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "LGPL-3.0-only",
+      "name": "GNU Lesser General Public License v3.0 only",
+      "url": null
+    },
+    "projectUrl": "https://modrinth.com/mod/iris",
+    "sourceUrl": "https://github.com/IrisShaders/Iris",
+    "gameVersions": [
+      "1.20.1"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "sodium",
+    "projectId": "AANobbMI",
+    "versionId": "OihdIimA",
+    "version": "mc1.20.1-0.5.13-fabric",
+    "fileName": "sodium-fabric-0.5.13+mc1.20.1.jar",
+    "localPath": "dependencies/mods/sodium-fabric-0.5.13+mc1.20.1.jar",
+    "fileSize": 971552,
+    "hashes": {
+      "sha512": "81c64f9c2d3402dfa43ee54d8f5a054f5243bfb08984e3addcab9fe885073c79c43c1c8c41e8f30b625d26a656f82a8e5f370bbbbf222ff1c08f4b324edb7ea4",
+      "sha1": "bcdbf37d9494e405cba210d7a80ed58e756297b5"
+    },
+    "sha256": "688c26029ce69f0b1f7cf936866656ca6723228ac46c4aef5b5f793b1e6abd22",
+    "downloads": [
+      "https://cdn.modrinth.com/data/AANobbMI/versions/OihdIimA/sodium-fabric-0.5.13%2Bmc1.20.1.jar"
+    ],
+    "kind": "mod",
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "LicenseRef-Polyform-Shield-1.0.0",
+      "name": "",
+      "url": "https://github.com/CaffeineMC/sodium/blob/dev/LICENSE.md"
+    },
+    "projectUrl": "https://modrinth.com/mod/sodium",
+    "sourceUrl": "https://github.com/CaffeineMC/sodium",
+    "gameVersions": [
+      "1.20.1"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "lithium",
+    "projectId": "gvQqBUqZ",
+    "versionId": "iEcXOkz4",
+    "version": "mc1.20.1-0.11.4-fabric",
+    "fileName": "lithium-fabric-mc1.20.1-0.11.4.jar",
+    "localPath": "dependencies/mods/lithium-fabric-mc1.20.1-0.11.4.jar",
+    "fileSize": 691483,
+    "hashes": {
+      "sha512": "31938b7e849609892ffa1710e41f2e163d11876f824452540658c4b53cd13c666dbdad8d200989461932bd9952814c5943e64252530c72bdd5d8641775151500",
+      "sha1": "048227ed60a3005cf9fa55880dfe0cf20b0ba680"
+    },
+    "sha256": "76133efe92aea907cf75562d9e26517deb170e2580e1ecd4979da2c8902de782",
+    "downloads": [
+      "https://cdn.modrinth.com/data/gvQqBUqZ/versions/iEcXOkz4/lithium-fabric-mc1.20.1-0.11.4.jar"
+    ],
+    "kind": "mod",
+    "env": {
+      "client": "required",
+      "server": "required"
+    },
+    "license": {
+      "id": "LGPL-3.0-only",
+      "name": "GNU Lesser General Public License v3.0 only",
+      "url": null
+    },
+    "projectUrl": "https://modrinth.com/mod/lithium",
+    "sourceUrl": "https://github.com/caffeinemc/lithium-fabric",
+    "gameVersions": [
+      "1.20.1"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "ferrite-core",
+    "projectId": "uXXizFIs",
+    "versionId": "unerR5MN",
+    "version": "6.0.1",
+    "fileName": "ferritecore-6.0.1-fabric.jar",
+    "localPath": "dependencies/mods/ferritecore-6.0.1-fabric.jar",
+    "fileSize": 125197,
+    "hashes": {
+      "sha512": "9b7dc686bfa7937815d88c7bbc6908857cd6646b05e7a96ddbdcada328a385bd4ba056532cd1d7df9d2d7f4265fd48bd49ff683f217f6d4e817177b87f6bc457",
+      "sha1": "8fa3b84fc5860dbc30fdf8cced02af68dffcf3fa"
+    },
+    "sha256": "c7ba1118a05b2da900d1c369fbe1017a3e3ec3cafe5e51398b851279b9becf24",
+    "downloads": [
+      "https://cdn.modrinth.com/data/uXXizFIs/versions/unerR5MN/ferritecore-6.0.1-fabric.jar"
+    ],
+    "kind": "mod",
+    "env": {
+      "client": "required",
+      "server": "required"
+    },
+    "license": {
+      "id": "MIT",
+      "name": "MIT License",
+      "url": null
+    },
+    "projectUrl": "https://modrinth.com/mod/ferrite-core",
+    "sourceUrl": "https://github.com/malte0811/FerriteCore",
+    "gameVersions": [
+      "1.20",
+      "1.20.1",
+      "1.20.2"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "immediatelyfast",
+    "projectId": "5ZwdcRci",
+    "versionId": "iwYUrQJO",
+    "version": "1.5.5+1.20.4-fabric",
+    "fileName": "ImmediatelyFast-Fabric-1.5.5+1.20.4.jar",
+    "localPath": "dependencies/mods/ImmediatelyFast-Fabric-1.5.5+1.20.4.jar",
+    "fileSize": 348818,
+    "hashes": {
+      "sha512": "8733e4f1fcd64581979f93f2580ae9f530e64ba21e90b2a46d4c1bdcb802e5a53a49a160e4dae06ec9e4d7829ea34715c9c9e1c2bfd7238b4de7fccfbc482ffd",
+      "sha1": "9f0110b60dc752ca093f2fc10a72d221b6dc8ac3"
+    },
+    "sha256": "5eea426af467564618e017e8f3a62f1c5c4224ab32a0a1726313de130a2d783d",
+    "downloads": [
+      "https://cdn.modrinth.com/data/5ZwdcRci/versions/iwYUrQJO/ImmediatelyFast-Fabric-1.5.5%2B1.20.4.jar"
+    ],
+    "kind": "mod",
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "LGPL-3.0-or-later",
+      "name": "GNU Lesser General Public License v3.0 or later",
+      "url": null
+    },
+    "projectUrl": "https://modrinth.com/mod/immediatelyfast",
+    "sourceUrl": "https://github.com/RaphiMC/ImmediatelyFast",
+    "gameVersions": [
+      "1.20",
+      "1.20.1",
+      "1.20.2",
+      "1.20.3",
+      "1.20.4"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "modernfix",
+    "projectId": "nmDcB62a",
+    "versionId": "rPmgLeZC",
+    "version": "5.25.2+mc1.20.1",
+    "fileName": "modernfix-fabric-5.25.2+mc1.20.1.jar",
+    "localPath": "dependencies/mods/modernfix-fabric-5.25.2+mc1.20.1.jar",
+    "fileSize": 545175,
+    "hashes": {
+      "sha512": "878e39d182767ffd08ad6a3539fae780739129db133abe02b9b73dc3df6e1ac9ddbe509620356b0aae5e7bfbed535d0e18741703334317a16fefef820269da2d",
+      "sha1": "be03b9eb570c1e9df7593e68623f0fecbd039460"
+    },
+    "sha256": "5c1f852046e62a17056bb6b571164e61644076c5eb9029c92b31e337cc62c0d9",
+    "downloads": [
+      "https://cdn.modrinth.com/data/nmDcB62a/versions/rPmgLeZC/modernfix-fabric-5.25.2%2Bmc1.20.1.jar"
+    ],
+    "kind": "mod",
+    "env": {
+      "client": "required",
+      "server": "required"
+    },
+    "license": {
+      "id": "LGPL-3.0-only",
+      "name": "GNU Lesser General Public License v3.0 only",
+      "url": null
+    },
+    "projectUrl": "https://modrinth.com/mod/modernfix",
+    "sourceUrl": "https://github.com/embeddedt/ModernFix",
+    "gameVersions": [
+      "1.20.1"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "entity-model-features",
+    "projectId": "4I1XuqiY",
+    "versionId": "kIXaZJr8",
+    "version": "3.3.12-fabric-1.20.1",
+    "fileName": "entity_model_features-3.3.12-1.20.1-fabric.jar",
+    "localPath": "dependencies/mods/entity_model_features-3.3.12-1.20.1-fabric.jar",
+    "fileSize": 652640,
+    "hashes": {
+      "sha1": "e26f59d1fc5a2015e99d09e148640664fec70470",
+      "sha512": "5782ea103b3d6791564b3022760bae57aa2dc017b6f4d4a28e493bae1ea3fa1232c19a8a9614df604d3fe0a871540dd76d4f9150c2186047961ed520c9c041ce"
+    },
+    "sha256": "0a2e4cf5a1c15e4ff726d1ebee3ed4f177f00cb27a2aee687193a4a4dfc071d1",
+    "downloads": [
+      "https://cdn.modrinth.com/data/4I1XuqiY/versions/kIXaZJr8/entity_model_features-3.3.12-1.20.1-fabric.jar"
+    ],
+    "kind": "mod",
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "LGPL-3.0-only",
+      "name": "GNU Lesser General Public License v3.0 only",
+      "url": null
+    },
+    "projectUrl": "https://modrinth.com/mod/entity-model-features",
+    "sourceUrl": "https://github.com/Traben-0/Entity_Model_Features",
+    "gameVersions": [
+      "1.20",
+      "1.20.1"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "entitytexturefeatures",
+    "projectId": "BVzZfTc1",
+    "versionId": "kWWzrS7Z",
+    "version": "7.2.6-fabric-1.20.1",
+    "fileName": "entity_texture_features-7.2.6-1.20.1-fabric.jar",
+    "localPath": "dependencies/mods/entity_texture_features-7.2.6-1.20.1-fabric.jar",
+    "fileSize": 808025,
+    "hashes": {
+      "sha512": "0070d561237b874d00c92e7907e594cba690c725fa8eea8b1f77c40de88af0f13f3dd4e6a22fd8aaf60dcef1f005fdb4c77cd7c601fd5c80cd13a1ed4d39f431",
+      "sha1": "bf685607e3cdfd0c3f39fcba2821ab91bced2ec2"
+    },
+    "sha256": "839e95070dd232222b8a7782b57351f5a20e01c2b0e6c0c2b9bfaddb59fa96e4",
+    "downloads": [
+      "https://cdn.modrinth.com/data/BVzZfTc1/versions/kWWzrS7Z/entity_texture_features-7.2.6-1.20.1-fabric.jar"
+    ],
+    "kind": "mod",
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "LGPL-3.0-only",
+      "name": "GNU Lesser General Public License v3.0 only",
+      "url": null
+    },
+    "projectUrl": "https://modrinth.com/mod/entitytexturefeatures",
+    "sourceUrl": "https://github.com/Traben-0/Entity_Texture_Features",
+    "gameVersions": [
+      "1.20",
+      "1.20.1"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "presence-footsteps",
+    "projectId": "rcTfTZr3",
+    "versionId": "k0t6DSmw",
+    "version": "1.10.1+1.20.1",
+    "fileName": "PresenceFootsteps-1.10.1+1.20.1.jar",
+    "localPath": "dependencies/mods/PresenceFootsteps-1.10.1+1.20.1.jar",
+    "fileSize": 5664952,
+    "hashes": {
+      "sha1": "8f88195dea52509564fabc3dfac966b09290d905",
+      "sha512": "c306f96496aadc30abcaac0bd35e22f870e974fe532eaf1f2b66bfd5e7e5e7f6276d58b393bcd6521e8ea74b38a52b54246e2cd0344d9acf8ed4cb233f9a1e1d"
+    },
+    "sha256": "70f354e5ecd8993908601fcdfcb4e98f7b81f42192287282a5b86712e9a6be95",
+    "downloads": [
+      "https://cdn.modrinth.com/data/rcTfTZr3/versions/k0t6DSmw/PresenceFootsteps-1.10.1%2B1.20.1.jar"
+    ],
+    "kind": "mod",
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "LicenseRef-Polyform-Shield-1.0",
+      "name": "",
+      "url": "https://polyformproject.org/licenses/shield/1.0.0"
+    },
+    "projectUrl": "https://modrinth.com/mod/presence-footsteps",
+    "sourceUrl": "https://github.com/Sollace/Presence-Footsteps",
+    "gameVersions": [
+      "1.20",
+      "1.20.1"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "fresh-animations",
+    "projectId": "50dA9Sha",
+    "versionId": "xN57JJts",
+    "version": "1.10.4",
+    "fileName": "FreshAnimations_v1.10.4.zip",
+    "localPath": "dependencies/resourcepacks/FreshAnimations_v1.10.4.zip",
+    "fileSize": 850941,
+    "hashes": {
+      "sha512": "41258f9bea1a773d823f9a014d0c08206e9e7b339bc538e1538211fff28fadd06878a836d292cbb636ed6829cd2801a509368ae3eb3ad4bedf42190a0d5f7a90",
+      "sha1": "73db740a6868e043c5e615c036fca2c912615b6e"
+    },
+    "sha256": "8e44b29560d2e7d952c0a4f77f0451e6dcb048f827189bffc712b446be8de7f2",
+    "downloads": [
+      "https://cdn.modrinth.com/data/50dA9Sha/versions/xN57JJts/FreshAnimations_v1.10.4.zip"
+    ],
+    "kind": "resourcepack",
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "LicenseRef-See-Terms-of-Use-in-Description",
+      "name": "",
+      "url": null
+    },
+    "projectUrl": "https://modrinth.com/resourcepack/fresh-animations",
+    "sourceUrl": null,
+    "gameVersions": [
+      "1.20",
+      "1.20.1",
+      "1.20.2",
+      "1.20.3",
+      "1.20.4",
+      "1.20.5",
+      "1.20.6",
+      "1.21",
+      "1.21.1",
+      "1.21.2",
+      "1.21.3",
+      "1.21.4",
+      "1.21.5",
+      "1.21.6",
+      "1.21.7",
+      "1.21.8",
+      "1.21.9",
+      "1.21.10",
+      "1.21.11"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "complementary-reimagined",
+    "projectId": "HVnmMxH1",
+    "versionId": "sAAjYvFB",
+    "version": "r5.5.1",
+    "fileName": "ComplementaryReimagined_r5.5.1.zip",
+    "localPath": "dependencies/shaders/ComplementaryReimagined_r5.5.1.zip",
+    "fileSize": 456328,
+    "hashes": {
+      "sha512": "e3168c3e8b9a59e70dbc7dd27931d8b245e5b16b093c87f1dccd01edc3a8be0fb14153fe8175e822ea6463ac0d715de377d186455580915c6f9d98c02b39194f",
+      "sha1": "c9f1724fbe77e1d36afab9612b4aaac693bc84e4"
+    },
+    "sha256": "20897248a5fe91b33bf7fd4b75959c30aa2003df195297979a410ee37d3bb62f",
+    "downloads": [
+      "https://cdn.modrinth.com/data/HVnmMxH1/versions/sAAjYvFB/ComplementaryReimagined_r5.5.1.zip"
+    ],
+    "kind": "shader",
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "LicenseRef-Custom",
+      "name": "",
+      "url": "https://github.com/ComplementaryDevelopment/ComplementaryReimagined/blob/main/License.txt"
+    },
+    "projectUrl": "https://modrinth.com/shader/complementary-reimagined",
+    "sourceUrl": "https://github.com/ComplementaryDevelopment/ComplementaryReimagined",
+    "gameVersions": [
+      "1.8.9",
+      "1.9",
+      "1.9.1",
+      "1.9.2",
+      "1.9.3",
+      "1.9.4",
+      "1.10",
+      "1.10.1",
+      "1.10.2",
+      "1.11",
+      "1.11.1",
+      "1.11.2",
+      "1.12",
+      "1.12.1",
+      "1.12.2",
+      "1.13",
+      "1.13.1",
+      "1.13.2",
+      "1.14",
+      "1.14.1",
+      "1.14.2",
+      "1.14.3",
+      "1.14.4",
+      "1.15",
+      "1.15.1",
+      "1.15.2",
+      "1.16",
+      "1.16.1",
+      "1.16.2",
+      "1.16.3",
+      "1.16.4",
+      "1.16.5",
+      "1.17",
+      "1.17.1",
+      "1.18",
+      "1.18.1",
+      "1.18.2",
+      "1.19",
+      "1.19.1",
+      "1.19.2",
+      "1.19.3",
+      "1.19.4",
+      "1.20",
+      "1.20.1",
+      "1.20.2",
+      "1.20.3",
+      "1.20.4",
+      "1.20.5",
+      "1.20.6",
+      "1.21",
+      "1.21.1",
+      "1.21.2",
+      "1.21.3",
+      "1.21.4",
+      "1.21.5",
+      "1.21.6",
+      "1.21.7",
+      "1.21.8",
+      "1.21.9"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "complementary-unbound",
+    "projectId": "R6NEzAwj",
+    "versionId": "1ng9gVp7",
+    "version": "r5.5.1",
+    "fileName": "ComplementaryUnbound_r5.5.1.zip",
+    "localPath": "dependencies/shaders/ComplementaryUnbound_r5.5.1.zip",
+    "fileSize": 456332,
+    "hashes": {
+      "sha512": "a79d536ad610741d3ac25faeb4f32a7fff6d25b89529b5a4919d72b9f9f817a15680a734e5ccb50efd77737ff215089adb93d7a3c02b439c25b9dab988e41c36",
+      "sha1": "52fdb332e6de592cceb8f85f2dc756eb78afab01"
+    },
+    "sha256": "61d133b24b6a92e46a3d7df791bb2ff163bbba10eed59df979b9bd727c24fbaf",
+    "downloads": [
+      "https://cdn.modrinth.com/data/R6NEzAwj/versions/1ng9gVp7/ComplementaryUnbound_r5.5.1.zip"
+    ],
+    "kind": "shader",
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "LicenseRef-Custom",
+      "name": "",
+      "url": "https://github.com/ComplementaryDevelopment/ComplementaryShadersV4/blob/main/License.txt"
+    },
+    "projectUrl": "https://modrinth.com/shader/complementary-unbound",
+    "sourceUrl": "https://github.com/ComplementaryDevelopment/ComplementaryReimagined",
+    "gameVersions": [
+      "1.8.9",
+      "1.9",
+      "1.9.1",
+      "1.9.2",
+      "1.9.3",
+      "1.9.4",
+      "1.10",
+      "1.10.1",
+      "1.10.2",
+      "1.11",
+      "1.11.1",
+      "1.11.2",
+      "1.12",
+      "1.12.1",
+      "1.12.2",
+      "1.13",
+      "1.13.1",
+      "1.13.2",
+      "1.14",
+      "1.14.1",
+      "1.14.2",
+      "1.14.3",
+      "1.14.4",
+      "1.15",
+      "1.15.1",
+      "1.15.2",
+      "1.16",
+      "1.16.1",
+      "1.16.2",
+      "1.16.3",
+      "1.16.4",
+      "1.16.5",
+      "1.17",
+      "1.17.1",
+      "1.18",
+      "1.18.1",
+      "1.18.2",
+      "1.19",
+      "1.19.1",
+      "1.19.2",
+      "1.19.3",
+      "1.19.4",
+      "1.20",
+      "1.20.1",
+      "1.20.2",
+      "1.20.3",
+      "1.20.4",
+      "1.20.5",
+      "1.20.6",
+      "1.21",
+      "1.21.1",
+      "1.21.2",
+      "1.21.3",
+      "1.21.4",
+      "1.21.5",
+      "1.21.6",
+      "1.21.7",
+      "1.21.8",
+      "1.21.9"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "makeup-ultra-fast-shaders",
+    "projectId": "izsIPI7a",
+    "versionId": "pgb0JjoN",
+    "version": "9.5g",
+    "fileName": "MakeUp-UltraFast-9.5g.zip",
+    "localPath": "dependencies/shaders/MakeUp-UltraFast-9.5g.zip",
+    "fileSize": 405096,
+    "hashes": {
+      "sha1": "57938ae6e1c83a2758b2e5dab80061d5002e88e7",
+      "sha512": "90a2f75eb073eaae5fe65f2ea5f8d656c122760c07ff75306728df4b162c42f88be531f026d174e035fea153f0ac5e227e8885d8b199335d3beadb6a58f79239"
+    },
+    "sha256": "0036da17e0c7158e1c669593e6322d53fce3f5a42fb5124b935e9e21a5719db8",
+    "downloads": [
+      "https://cdn.modrinth.com/data/izsIPI7a/versions/pgb0JjoN/MakeUp-UltraFast-9.5g.zip"
+    ],
+    "kind": "shader",
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "LGPL-3.0-or-later",
+      "name": "GNU Lesser General Public License v3.0 or later",
+      "url": null
+    },
+    "projectUrl": "https://modrinth.com/shader/makeup-ultra-fast-shaders",
+    "sourceUrl": "https://github.com/javiergcim/MakeUpUltraFast",
+    "gameVersions": [
+      "1.12.2",
+      "1.13",
+      "1.13.1",
+      "1.13.2",
+      "1.14",
+      "1.14.1",
+      "1.14.2",
+      "1.14.3",
+      "1.14.4",
+      "1.15",
+      "1.15.1",
+      "1.15.2",
+      "1.16",
+      "1.16.1",
+      "1.16.2",
+      "1.16.3",
+      "1.16.4",
+      "1.16.5",
+      "1.17",
+      "1.17.1",
+      "1.18",
+      "1.18.1",
+      "1.18.2",
+      "1.19",
+      "1.19.1",
+      "1.19.2",
+      "1.19.3",
+      "1.19.4",
+      "1.20",
+      "1.20.1",
+      "1.20.2",
+      "1.20.3",
+      "1.20.4",
+      "1.20.5",
+      "1.20.6",
+      "1.21",
+      "1.21.1",
+      "1.21.2",
+      "1.21.3",
+      "1.21.4",
+      "1.21.5",
+      "1.21.6",
+      "1.21.7",
+      "1.21.8",
+      "1.21.9",
+      "1.21.10",
+      "1.21.11",
+      "26.1",
+      "26.1.1",
+      "26.1.2",
+      "26.2",
+      "26.3"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "faithful-32x",
+    "projectId": "w0TnApzs",
+    "versionId": "VgTWEXF2",
+    "version": "1.20.1-june-2026",
+    "fileName": "Faithful 32x - 1.20.1.zip",
+    "localPath": "dependencies/resourcepacks/Faithful 32x - 1.20.1.zip",
+    "fileSize": 11088963,
+    "hashes": {
+      "sha512": "924fa489a4e5877541e28bd51ef1839fca887e7deab5857ca3d6c18dd831b684918556b28072516f29f22039374043e6de4eefa697bc3979d3c568d090fd5862",
+      "sha1": "7084d82b48844f7c1b625e157463c4d7b87a82d3"
+    },
+    "sha256": "1d97e2e2d2a13e883fec748893055b2ae14bed20d0f704f9282270805c44e412",
+    "downloads": [
+      "https://cdn.modrinth.com/data/w0TnApzs/versions/VgTWEXF2/Faithful%2032x%20-%201.20.1.zip"
+    ],
+    "kind": "resourcepack",
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "LicenseRef-Faithful-License",
+      "name": "",
+      "url": "https://faithfulpack.net/license"
+    },
+    "projectUrl": "https://modrinth.com/resourcepack/faithful-32x",
+    "sourceUrl": "https://github.com/Faithful-Resource-Pack/Faithful-Java-32x",
+    "gameVersions": [
+      "1.20",
+      "1.20.1"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "excal",
+    "projectId": "hJAzl1Bs",
+    "versionId": "huFceXOe",
+    "version": "1.21.10",
+    "fileName": "Excalibur_V1.21.10.zip",
+    "localPath": "dependencies/resourcepacks/Excalibur_V1.21.10.zip",
+    "fileSize": 19552296,
+    "hashes": {
+      "sha1": "64d9a2745ce42928dce791936631b20da36ffa27",
+      "sha512": "1a93aa24af3858f4c44ce02aba982c664f95dcce91b8afcb5580bac42dcc189e39792009dc090014db468b5b979651a3460db3e4f49bb82ec74f482e83d993cf"
+    },
+    "sha256": "d6e724b9f86a87bb3e969456102f1f102e1415ce07ed68662565471c588630bd",
+    "downloads": [
+      "https://cdn.modrinth.com/data/hJAzl1Bs/versions/huFceXOe/Excalibur_V1.21.10.zip"
+    ],
+    "kind": "resourcepack",
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "LicenseRef-All-Rights-Reserved",
+      "name": "",
+      "url": null
+    },
+    "projectUrl": "https://modrinth.com/resourcepack/excal",
+    "sourceUrl": null,
+    "gameVersions": [
+      "1.21",
+      "1.21.1",
+      "1.21.2",
+      "1.21.3",
+      "1.21.4",
+      "1.21.5",
+      "1.21.6",
+      "1.21.7",
+      "1.21.8",
+      "1.21.9",
+      "1.21.10"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "clarent",
+    "projectId": "asD9taD4",
+    "versionId": "ee7f56hx",
+    "version": "12110_1201_v3",
+    "fileName": "Clarent_12110_1201_v3.zip",
+    "localPath": "dependencies/resourcepacks/Clarent_12110_1201_v3.zip",
+    "fileSize": 2581625,
+    "hashes": {
+      "sha512": "837be429c3af1142e5484caef733ebcee9122882e5dc195857bace6fb9967acac5d8dc79d9108db2c33e928aceef3971f3ecbb1be645d68cc71c12727ed5290f",
+      "sha1": "adf68e8e794e5410eaf41ac454610da6ee9a0da0"
+    },
+    "sha256": "c9bd883e2bd6bf0218ceb1a527c5ea593a5c4872d89e886580ea4df136a6cd6f",
+    "downloads": [
+      "https://cdn.modrinth.com/data/asD9taD4/versions/ee7f56hx/Clarent_12110_1201_v3.zip"
+    ],
+    "kind": "resourcepack",
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "LicenseRef-All-Rights-Reserved",
+      "name": "",
+      "url": null
+    },
+    "projectUrl": "https://modrinth.com/resourcepack/clarent",
+    "sourceUrl": null,
+    "gameVersions": [
+      "1.20",
+      "1.20.1"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "excalibur-fresh-animations",
+    "projectId": "yiTthr0O",
+    "versionId": "FzKDA24C",
+    "version": "1.10.4_3",
+    "fileName": "EFA_1.10.4 Hotfix 3.zip",
+    "localPath": "dependencies/resourcepacks/EFA_1.10.4 Hotfix 3.zip",
+    "fileSize": 1805045,
+    "hashes": {
+      "sha512": "820a2c37329ee78ece58ba2f334723271150d34b40e4a1db96f2c0af94f2d4fe7a74ae31abb7cfc7782f82ae4f6fc869d1788ac0e4d13440215f1b6db38a3d05",
+      "sha1": "fea61bf23409605025b77bed01d14dc441f12ab2"
+    },
+    "sha256": "81b40431358b190c8c1105614d85b28e22849ee0ef50b7929038d05da16ec5c0",
+    "downloads": [
+      "https://cdn.modrinth.com/data/yiTthr0O/versions/FzKDA24C/EFA_1.10.4%20Hotfix%203.zip"
+    ],
+    "kind": "resourcepack",
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "LicenseRef-All-Rights-Reserved",
+      "name": "",
+      "url": null
+    },
+    "projectUrl": "https://modrinth.com/resourcepack/excalibur-fresh-animations",
+    "sourceUrl": null,
+    "gameVersions": [
+      "1.20",
+      "1.20.1",
+      "23w31a",
+      "23w32a",
+      "23w33a",
+      "23w35a",
+      "1.20.2-pre1",
+      "1.20.2",
+      "23w42a",
+      "23w43a",
+      "23w43b",
+      "23w44a",
+      "23w45a",
+      "23w46a",
+      "1.20.3",
+      "1.20.4",
+      "24w03a",
+      "24w03b",
+      "24w04a",
+      "24w05a",
+      "24w05b",
+      "24w06a",
+      "24w07a",
+      "24w09a",
+      "24w10a",
+      "24w11a",
+      "24w12a",
+      "24w13a",
+      "24w14potato",
+      "24w14a",
+      "1.20.5-pre1",
+      "1.20.5-pre2",
+      "1.20.5-pre3",
+      "1.20.5",
+      "1.20.6",
+      "24w18a",
+      "24w19a",
+      "24w19b",
+      "24w20a",
+      "1.21",
+      "1.21.1",
+      "24w33a",
+      "24w34a",
+      "24w35a",
+      "24w36a",
+      "24w37a",
+      "24w38a",
+      "24w39a",
+      "24w40a",
+      "1.21.2-pre1",
+      "1.21.2-pre2",
+      "1.21.2",
+      "1.21.3",
+      "24w44a",
+      "24w45a",
+      "24w46a",
+      "1.21.4",
+      "1.21.5",
+      "1.21.6",
+      "1.21.7",
+      "1.21.8",
+      "1.21.9",
+      "1.21.10",
+      "1.21.11"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  },
+  {
+    "slug": "fabric-api",
+    "projectId": "P7dR8mSH",
+    "versionId": "P7uGFii0",
+    "version": "0.92.2+1.20.1",
+    "fileName": "fabric-api-0.92.2+1.20.1.jar",
+    "localPath": "C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\net.fabricmc.fabric-api\\fabric-api\\0.92.2+1.20.1\\625ee015ee426d9b677382a7bb661383d89c0807\\fabric-api-0.92.2+1.20.1.jar",
+    "fileSize": 2107289,
+    "hashes": {
+      "sha1": "625ee015ee426d9b677382a7bb661383d89c0807",
+      "sha512": "a9b461e9e28871002072337adc69e829f5a59c05a39ffe1f6a27df7daff392ac25c8e5a6c01ff340b3eef99cecc42b21c012766a7c87446ca442f9ea1b04aca6"
+    },
+    "sha256": "4500f844c45573d039d68d3963c9885aa9de7712670216e0ad3e5df16c6770fc",
+    "downloads": [
+      "https://cdn.modrinth.com/data/P7dR8mSH/versions/P7uGFii0/fabric-api-0.92.2%2B1.20.1.jar"
+    ],
+    "kind": "mod",
+    "env": {
+      "client": "required",
+      "server": "required"
+    },
+    "license": {
+      "id": "Apache-2.0",
+      "name": "Apache License 2.0",
+      "url": null
+    },
+    "projectUrl": "https://modrinth.com/mod/fabric-api",
+    "sourceUrl": "https://github.com/FabricMC/fabric-api",
+    "gameVersions": [
+      "1.20.1"
+    ],
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null
+  }
+]

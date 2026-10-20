@@ -1,0 +1,11 @@
+/* v3: the chosen family (War Table screens, Iron Ledger HUD). Sprites come from v3/, painted by v3art.py
+   at GUI scale 1; text stays live (Minecraft glyphs, Marcellus, Lato) so the lint and contrast checks run.
+   Pages carry class="v2 v3": the v2 type scale, grid and lint rules all still apply. */
+.v3 .s{position:absolute;display:block;image-rendering:pixelated}
+.v3 .box{position:absolute}
+.v3 .ink{color:#2a2219}
+.v3 .sepia{color:#5c4a32}
+.v3 .brass{color:#c8a56b}
+.v3 .ivory{color:#eee9df}
+.v3 .muted{color:#afb9bc}
+.v3 .keycap{position:absolute;height:14px;padding:0 4px;display:inline-flex;align-items:center;box-shadow:inset 0 0 0 1px currentColor}

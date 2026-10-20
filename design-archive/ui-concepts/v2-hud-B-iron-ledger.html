@@ -1,0 +1,101 @@
+<!doctype html>
+<html class="v2"><head><meta charset="utf-8"><title>v2 HUD B: Iron Ledger</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* Iron Ledger, second pass. Everything sits on the 4 px grid; see DESIGN-RULES.md. */
+.strip{top:12px;height:24px;padding:0 8px;display:flex;align-items:center;gap:6px}
+.badge{position:relative;width:15px;height:15px}
+.track{position:relative;width:40px;height:3px;background:#1c2023;box-shadow:0 0 0 1px #0d1012}
+.track>i{position:absolute;top:0;bottom:0}
+.cord{position:absolute;top:36px;width:1px;height:4px;background:#0d1012}
+.spine{left:12px;top:392px;width:6px;height:136px}
+.hook{position:absolute;left:18px;width:4px;height:4px;background:#30353a;box-shadow:inset 0 -1px 0 #1c2023,0 1px 0 #0d1012}
+.card{left:22px;width:148px;height:40px}
+.card.flash{box-shadow:inset 0 0 0 1px var(--alarm),inset 0 0 0 2px #f6e9e4,inset 0 -3px 0 var(--vel-lo),0 2px 0 rgba(0,0,0,.45),0 0 0 1px var(--alarm)}
+.card.sel{box-shadow:inset 0 0 0 1px #6e5226,inset 0 0 0 2px var(--brass),inset 0 -3px 0 var(--vel-lo),0 2px 0 rgba(0,0,0,.45),0 0 0 1px var(--brass)}
+.hook.sel{background:var(--brass);box-shadow:inset 0 -1px 0 #8c7246,0 1px 0 #0d1012}
+.card.routed{background:var(--vel-lo);box-shadow:inset 0 -2px 0 #b3a173,0 2px 0 rgba(0,0,0,.45)}
+.hp{position:absolute;left:8px;top:27px;width:64px;height:3px;background:var(--vel-lo);box-shadow:0 0 0 1px var(--vel-edge)}
+.hp>i{position:absolute;top:0;bottom:0}
+.stamp{background:var(--vel);height:16px;box-shadow:inset 0 0 0 1px var(--alarm-ink),inset 0 0 0 2px var(--vel),inset 0 0 0 3px var(--alarm-ink)}
+.abil{left:584px;top:504px;width:56px;height:24px}
+.cool{position:absolute;left:1px;top:1px;width:23px;height:9px;background:rgba(13,16,18,.72)}
+.notice{top:456px;height:28px;padding:0 8px;display:flex;align-items:center;gap:6px}
+</style></head>
+<body>
+<!-- vanilla HUD, drawn from the game's sprite sheets so the mock respects its footprint -->
+<div data-vanilla>
+  <div class="hotbar" style="top:518px"><div class="sel" style="top:-1px"></div></div>
+  <div class="xpbar"><i style="width:56px"></i></div>
+  <div id="hearts"></div><div id="food"></div>
+  <div class="crosshair"></div>
+</div>
+
+<!-- score strip: the race on one iron bar, the three points hang below it as seals -->
+<div class="ironv2 strip" data-panel data-name="score strip" data-cx="480">
+  <div class="badge"><i class="px a" data-art="disc15"></i><i class="px a" data-art="sun" data-pal="i=#101417" style="left:4px;top:4px"></i></div>
+  <mc-text color="#eee9df" shadow>148</mc-text>
+  <div class="track"><i style="left:0;width:20px;background:var(--dawn)"></i></div>
+  <mc-text color="#eee9df" shadow>7:42</mc-text>
+  <div class="track"><i style="right:0;width:16px;background:var(--dusk)"></i></div>
+  <mc-text color="#eee9df" shadow>121</mc-text>
+  <div class="badge"><i class="px a" data-art="diamond15"></i><i class="px a" data-art="crescent" data-pal="i=#101417" style="left:4px;top:4px"></i></div>
+</div>
+<div class="cord" style="left:456px"></div><div class="cord" style="left:480px"></div><div class="cord" style="left:504px"></div>
+<div class="a" style="left:449px;top:40px" data-name="seal A"><i class="px" data-art="disc15"></i><mc-text class="a" style="left:5px;top:4px" color="#101417">A</mc-text></div>
+<div class="a" style="left:474px;top:41px" data-name="seal B"><i class="px" data-art="hatch13"></i><mc-text class="a" style="left:4px;top:3px" color="#101417" data-under-ok>B</mc-text></div>
+<div class="a" style="left:497px;top:40px" data-name="seal C"><i class="px" data-art="diamond15"></i><mc-text class="a" style="left:5px;top:4px" color="#101417">C</mc-text></div>
+
+<!-- group standards: three vellum cards hung on an iron spine (the focal point) -->
+<div class="ironv2 spine" data-name="spine"><i class="rivet" style="left:2px;top:3px"></i><i class="rivet" style="left:2px;top:129px"></i></div>
+<i class="hook" style="top:418px"></i><i class="hook sel" style="top:462px" data-name="selected hook"></i>
+
+<div class="sheet card flash" style="top:400px" data-panel data-name="infantry card">
+  <span class="a h11" style="left:8px;top:7px">Infantry</span>
+  <mc-text class="a" data-rx="140" style="top:10px" color="#5c4a32">FIGHTING</mc-text>
+  <div class="hp"><i style="left:0;width:40px;background:var(--dawn-ink)"></i><i style="left:40px;width:6px;background:var(--alarm)"></i></div>
+  <i class="px a" data-art="o_attack" data-pal="k=#2a2219" style="left:84px;top:25px"></i>
+  <i class="px a" data-art="f_shieldwall" data-pal="k=#2a2219" style="left:96px;top:25px"></i>
+  <mc-text class="a" data-rx="140" style="top:24px" color="#2a2219">9/12</mc-text>
+</div>
+<div class="sheet card sel" style="top:444px" data-panel data-name="ranged card (selected)">
+  <span class="a h11" style="left:8px;top:7px">Ranged</span>
+  <mc-text class="a" data-rx="140" style="top:10px" color="#5c4a32">STEADY</mc-text>
+  <div class="hp"><i style="left:0;width:64px;background:var(--dawn-ink)"></i></div>
+  <i class="px a" data-art="o_hold" data-pal="k=#2a2219" style="left:84px;top:25px"></i>
+  <i class="px a" data-art="f_line" data-pal="k=#2a2219" style="left:96px;top:25px"></i>
+  <mc-text class="a" data-rx="140" style="top:24px" color="#2a2219">6/6</mc-text>
+</div>
+<div class="sheet card routed" style="top:488px" data-panel data-name="support card">
+  <span class="a h11" style="left:8px;top:7px;color:#4a3b27">Support</span>
+  <div class="a stamp" style="left:84px;top:4px;width:56px" data-ctl data-name="rout stamp">
+    <mc-text class="a" style="left:8px;top:4px" color="#8a2a1a">ROUTING</mc-text>
+  </div>
+  <div class="hp"><i style="left:0;width:26px;background:#6b5638"></i></div>
+  <i class="px a" data-art="o_follow" data-pal="k=#5c4a32" style="left:84px;top:25px"></i>
+  <i class="px a" data-art="f_compact" data-pal="k=#5c4a32" style="left:96px;top:25px"></i>
+  <mc-text class="a" data-rx="140" style="top:24px" color="#8a2a1a">1/2</mc-text>
+</div>
+
+<!-- Rally Horn: icon tile plus the seconds left; the dark wipe reads as "not ready" -->
+<div class="ironv2 abil" data-panel data-name="ability">
+  <div class="a" style="left:24px;top:1px;width:1px;height:22px;background:#0d1012"></div>
+  <i class="px a" data-art="horn15" style="left:4px;top:5px"></i>
+  <div class="cool"></div>
+  <mc-text class="a" style="left:34px;top:8px" color="#eee9df" shadow>48</mc-text>
+</div>
+
+<!-- one notice line, fades after four seconds -->
+<div class="ironv2 notice" data-panel data-name="notice" data-cx="480">
+  <i class="px" data-art="sun" data-pal="i=#5fb3ad"></i>
+  <span class="b11 nw">Dawn Knight trained: deploying at Mill Hamlet</span>
+</div>
+
+<script>
+/* vanilla hearts (17 of 20 health) and food (full), positions as InGameHud draws them at 960x540 */
+(function(){let h='',f='';for(let i=0;i<10;i++){const cls=i<8?'':i===8?' half':' empty';h+=`<span class="heart${i===8?' half':''}" style="left:${389+i*8}px;top:501px">${i<9?'<i></i>':''}</span>`;
+f+=`<span class="food" style="left:${562-i*8}px;top:501px"><i></i></span>`;}
+document.getElementById('hearts').innerHTML=h;document.getElementById('food').innerHTML=f;})();
+</script>
+<script src="mc.js"></script><script src="art.js"></script><script src="v2.js"></script><script src="check.js"></script>
+</body></html>

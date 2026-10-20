@@ -1,0 +1,88 @@
+<!doctype html><html><head><meta charset="utf-8"><title>UI C: Hall of Banners, recruit</title>
+<link rel="stylesheet" href="common.css">
+<style>
+.scrim{background:rgba(6,8,10,.9)}
+.hall{position:absolute;inset:0;background:radial-gradient(ellipse at 20% 40%,rgba(200,165,107,.12),transparent 55%)}
+.beam{position:absolute;left:0;right:0;top:0;height:8px;background:#2a1b0f;box-shadow:0 1px 0 #5a3f25,0 3px 0 #0d0a06}
+.hb{position:absolute;top:8px;width:92px;height:48px;border:1px solid var(--ink);clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),50% 100%,0 calc(100% - 8px));text-align:center;opacity:.8}
+.hb .g{position:absolute;left:38px;top:6px}
+.hb .n{position:absolute;left:0;right:0;top:26px;font-family:Marcellus;font-size:9px;letter-spacing:1px}
+.big{position:absolute;left:30px;top:8px;width:240px;height:500px;background:#f1e6c0;border:1px solid var(--ink);clip-path:polygon(0 0,100% 0,100% calc(100% - 30px),50% 100%,0 calc(100% - 30px));color:#5a4420}
+.big .border{position:absolute;left:10px;right:10px;top:10px;bottom:44px;border:2px solid var(--brass)}
+.big .weave{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(90,68,32,.08) 3px 4px)}
+.sh{position:absolute;width:118px;height:132px;background:#1f262a;border:1px solid var(--edge);clip-path:polygon(0 0,100% 0,100% 72%,50% 100%,0 72%);text-align:center}
+.sh::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:rgba(255,255,255,.18)}
+.sh .port{position:absolute;left:34px;top:12px;width:50px;height:50px;background:#2a3236;border:1px solid #394246}
+.sh .n{position:absolute;left:0;right:0;top:66px;font-family:Marcellus;font-size:11px;color:var(--ivory)}
+.sh .r{position:absolute;left:0;right:0;top:80px;font-family:Lato;font-size:9px;color:var(--muted)}
+.sh .c{position:absolute;left:0;right:0;top:92px}
+.sh .st{position:absolute;left:0;right:0;top:104px}
+.sh.new{background:#2e2a1f;box-shadow:inset 0 0 0 2px var(--brass)}
+.sh.locked{opacity:.6}
+.herald{position:absolute;left:300px;top:70px;width:200px;height:300px;background:#f1e6c0;border:2px solid var(--brass);box-shadow:inset 0 0 0 1px #8f7a52,0 0 30px rgba(200,165,107,.3)}
+.ray{position:absolute;left:400px;top:220px;width:0;height:0}
+</style></head><body>
+<div class="scrim"></div><div class="hall"></div><div class="beam"></div>
+
+<!-- Gilded unfurled full height; the other four stay furled on the beam -->
+<div class="big">
+  <div class="weave"></div><div class="border"></div>
+  <i class="px" data-art="gilded" data-scale="6" data-pal="i=#c8a56b" style="position:absolute;left:96px;top:30px"></i>
+  <div class="abs" style="left:0;right:0;top:86px;text-align:center"><span class="title" style="font-size:18px">GILDED ORDER</span></div>
+  <div class="abs" style="left:0;right:0;top:108px;text-align:center"><span class="lato" style="font-size:10px;color:#8a6a2a">the oath that holds the line</span></div>
+  <div class="abs" style="left:24px;right:24px;top:132px;height:1px;background:#c8a56b"></div>
+  <div class="abs" style="left:24px;right:24px;top:142px"><span class="lato" style="font-size:10px;line-height:13px;display:block">Knights, templars and longbowmen sworn to the last living crown. Plate, kite shields, plumes. They cost the most and give the least ground.</span></div>
+  <div class="abs" style="left:24px;top:200px"><span class="title" style="font-size:12px">BULWARK</span></div>
+  <div class="abs" style="left:24px;right:24px;top:216px"><span class="lato" style="font-size:9px;line-height:12px;display:block">6 slots: shields -15% ranged, nearby groups hold within 5.<br>10 slots: -30%, radius 8.<br>14 slots: -45%, radius 12.</span></div>
+  <div class="abs" style="left:24px;top:268px"><span class="lato" style="font-size:10px;color:#8a2b1f">You field 8: Bulwark I. Two more for II.</span></div>
+  <div class="abs" style="left:24px;right:24px;top:288px;height:1px;background:#c8a56b"></div>
+  <div class="abs" style="left:24px;top:298px"><span class="title" style="font-size:12px">SHARDS</span> <span class="lato" style="font-size:11px;margin-left:8px">14</span></div>
+  <div class="abs" style="left:24px;top:314px"><span class="lato" style="font-size:9px;color:#8a6a2a">Evolve Order Squire to Knight: 12</span></div>
+  <div class="abs" style="left:24px;top:338px"><span class="title" style="font-size:12px">THE POOL</span></div>
+  <div class="abs" style="left:24px;top:354px"><span class="lato" style="font-size:9px;line-height:12px;display:block">Common 60% &middot; Rare 28%<br>Epic 10% &middot; Legendary 2%<br>Epic or better within 7 letters</span></div>
+  <div class="btn primary" style="position:absolute;left:30px;top:404px;width:180px;height:28px;font-family:Marcellus;font-size:13px">ENLIST <span style="font-family:Lato;font-weight:bold;margin:0 6px">100</span> GOLD</div>
+  <div class="abs" style="left:0;right:0;top:438px;text-align:center"><span class="lato" style="font-size:9px;color:#8a6a2a">Enter &middot; ten letters: Shift+Enter</span></div>
+</div>
+<div class="hb" style="left:300px;background:#3f4a3a;color:#d8d2c0"><i class="px g" data-art="graveborn" data-scale="2" data-pal="i=#d8d2c0"></i><div class="n">GRAVEBORN</div></div>
+<div class="hb" style="left:400px;background:#8a4a2a;color:#f1dcb0"><i class="px g" data-art="wildmoot" data-scale="2" data-pal="i=#d19a3a"></i><div class="n">WILDMOOT</div></div>
+<div class="hb" style="left:500px;background:#2b2b2e;color:#e8c98a"><i class="px g" data-art="ironclad" data-scale="2" data-pal="i=#c08a3e"></i><div class="n">IRONCLAD</div></div>
+<div class="hb" style="left:600px;background:#1d2f4a;color:#bfe0dc"><i class="px g" data-art="tidecallers" data-scale="2" data-pal="i=#6fc7b8"></i><div class="n">TIDECALLERS</div></div>
+<div class="abs row" style="left:720px;top:14px;gap:10px"><span class="row"><i class="px" data-art="coin"></i><mc-text color="#c8a56b" shadow>300 gold</mc-text></span><mc-text color="#afb9bc">Collection 11 / 30</mc-text></div>
+<div class="abs" style="left:720px;top:30px"><mc-text color="#afb9bc">1-5: House  /  Esc: hall</mc-text></div>
+
+<!-- the herald's card: the reveal -->
+<div class="herald">
+  <div class="abs" style="left:0;right:0;top:0;height:20px;background:#8a2b1f;color:#f1e6c0;font-family:Marcellus;font-size:11px;line-height:20px;text-align:center;letter-spacing:1px">DUPLICATE &middot; SECOND STAR</div>
+  <div class="abs" style="left:8px;top:28px"><i class="px" data-art="gilded" data-scale="2" data-pal="i=#c8a56b"></i></div>
+  <div class="abs" style="right:8px;top:28px"><i class="px" data-art="gilded" data-scale="2" data-pal="i=#c8a56b"></i></div>
+  <div class="abs" style="left:40px;top:30px;width:120px;height:120px;background:#e3d5ad;border:1px solid #8f7a52"><i class="px" data-art="bust" data-scale="11" data-pal="i=#efe4c8" style="position:absolute;left:16px;top:18px"></i></div>
+  <div class="abs" style="left:0;right:0;top:158px;text-align:center"><span class="title" style="font-size:20px;color:#2a2219">TEMPLAR</span></div>
+  <div class="abs" style="left:0;right:0;top:182px;text-align:center"><span class="lato" style="font-size:9px;color:#8a2b1f">Epic &middot; shield infantry &middot; 2 banner slots</span></div>
+  <div class="abs" style="left:0;right:0;top:200px;text-align:center"><i class="px" data-art="star" data-scale="3" data-pal="i=#b48d4e"></i> <i class="px" data-art="star" data-scale="3" data-pal="i=#b48d4e" style="outline:1px solid #8a2b1f;outline-offset:2px"></i> <i class="px" data-art="star" data-scale="3" data-pal="i=#cdbb92"></i></div>
+  <div class="abs" style="left:0;right:0;top:232px;text-align:center"><span class="lato" style="font-size:10px;color:#2a2219">+4% health, +4% damage, +6 shards</span></div>
+  <div class="abs" style="left:0;right:0;top:248px;text-align:center"><span class="lato" style="font-size:9px;color:#6b5a3a">Counters arrows and charges. Weak to shield-breakers.</span></div>
+  <div class="abs" style="left:0;right:0;top:276px;text-align:center"><span class="lato" style="font-size:9px;color:#8a2b1f">Space: next letter &middot; Tab: skip</span></div>
+</div>
+<div class="abs" style="left:300px;top:382px"><mc-text color="#afb9bc">Opened this sitting: 3</mc-text></div><div class="abs" style="left:300px;top:394px"><mc-text color="#afb9bc">Archer, Squire, Templar</mc-text></div>
+
+<!-- the House's troops as shields on the wall -->
+<div class="abs" style="left:540px;top:70px"><span class="title" style="font-size:12px;color:var(--ivory)">THE ORDER'S ROLL</span></div>
+<div class="abs" style="left:540px;top:86px"><mc-text color="#afb9bc">5 of 6 recruited</mc-text></div>
+<div class="sh" style="left:540px;top:102px"><div class="port"><i class="px" data-art="bust" data-scale="5" data-pal="i=#8a7a5a" style="position:absolute;left:4px;top:6px"></i></div><div class="n">ORDER SQUIRE</div><div class="r">Common &middot; shield</div><div class="c"><mc-text color="#eee9df">x3</mc-text></div><div class="st"><i class="px" data-art="star" data-pal="i=#c8a56b"></i><i class="px" data-art="star" data-pal="i=#c8a56b"></i><i class="px" data-art="star" data-pal="i=#414b50"></i></div></div>
+<div class="sh" style="left:672px;top:102px"><div class="port"><i class="px" data-art="bust" data-scale="5" data-pal="i=#7a7a62" style="position:absolute;left:4px;top:6px"></i></div><div class="n">ORDER ARCHER</div><div class="r">Common &middot; ranged</div><div class="c"><mc-text color="#eee9df">x2</mc-text></div><div class="st"><i class="px" data-art="star" data-pal="i=#c8a56b"></i><i class="px" data-art="star" data-pal="i=#414b50"></i><i class="px" data-art="star" data-pal="i=#414b50"></i></div></div>
+<div class="sh new" style="left:804px;top:102px"><div class="port"><i class="px" data-art="bust" data-scale="5" data-pal="i=#e8dcc0" style="position:absolute;left:4px;top:6px"></i></div><div class="n">TEMPLAR</div><div class="r" style="color:#d9a05b">Epic &middot; shield &middot; 2 slots</div><div class="c"><mc-text color="#c8a56b">x1  rank 2</mc-text></div><div class="st"><i class="px" data-art="star" data-pal="i=#c8a56b"></i><i class="px" data-art="star" data-pal="i=#c8a56b"></i><i class="px" data-art="star" data-pal="i=#414b50"></i></div></div>
+<div class="sh" style="left:540px;top:246px"><div class="port"><i class="px" data-art="bust" data-scale="5" data-pal="i=#8a6a45" style="position:absolute;left:4px;top:6px"></i></div><div class="n">ORDER LONGBOW</div><div class="r">Rare &middot; ranged</div><div class="c"><mc-text color="#eee9df">x1</mc-text></div><div class="st"><i class="px" data-art="star" data-pal="i=#c8a56b"></i><i class="px" data-art="star" data-pal="i=#414b50"></i><i class="px" data-art="star" data-pal="i=#414b50"></i></div></div>
+<div class="sh" style="left:672px;top:246px"><div class="port"><i class="px" data-art="bust" data-scale="5" data-pal="i=#d9c47a" style="position:absolute;left:4px;top:6px"></i></div><div class="n">SUNWEAVER</div><div class="r">Rare &middot; support, mend</div><div class="c"><mc-text color="#eee9df">x1</mc-text></div><div class="st"><i class="px" data-art="star" data-pal="i=#c8a56b"></i><i class="px" data-art="star" data-pal="i=#414b50"></i><i class="px" data-art="star" data-pal="i=#414b50"></i></div></div>
+<div class="sh locked" style="left:804px;top:246px"><div class="port"><i class="px" data-art="lock" data-scale="2" data-pal="i=#414b50" style="position:absolute;left:18px;top:18px"></i></div><div class="n" style="color:var(--muted)">LORD MARSHAL</div><div class="r" style="color:#d9a05b">Legendary &middot; 4 slots</div><div class="c"><mc-text color="#afb9bc">not yet</mc-text></div></div>
+<div class="abs" style="left:540px;top:392px"><mc-text color="#afb9bc">Click a shield to read it. Drag it onto your banner: B.</mc-text></div>
+<div class="abs" style="left:540px;top:410px;width:380px;height:1px;background:#394246"></div>
+<div class="abs" style="left:540px;top:420px"><span class="title" style="font-size:12px;color:var(--ivory)">YOUR BANNER</span> <mc-text color="#afb9bc">  14 / 20  /  Gilded 8  /  Graveborn 6</mc-text></div>
+<div class="abs" style="left:540px;top:438px;display:grid;grid-template-columns:repeat(20,18px);gap:1px">
+  <b style="width:17px;height:17px;background:#f1e6c0"></b><b style="width:17px;height:17px;background:#f1e6c0"></b><b style="width:17px;height:17px;background:#f1e6c0"></b><b style="width:17px;height:17px;background:#f1e6c0"></b><b style="width:17px;height:17px;background:#f1e6c0"></b><b style="width:17px;height:17px;background:#f1e6c0"></b><b style="width:17px;height:17px;background:#f1e6c0"></b><b style="width:17px;height:17px;background:#f1e6c0;outline:2px solid var(--brass);outline-offset:-2px"></b>
+  <b style="width:17px;height:17px;background:#3f4a3a"></b><b style="width:17px;height:17px;background:#3f4a3a"></b><b style="width:17px;height:17px;background:#3f4a3a"></b><b style="width:17px;height:17px;background:#3f4a3a"></b><b style="width:17px;height:17px;background:#3f4a3a"></b><b style="width:17px;height:17px;background:#3f4a3a"></b>
+  <b style="width:17px;height:17px;border:1px dashed #394246"></b><b style="width:17px;height:17px;border:1px dashed #394246"></b><b style="width:17px;height:17px;border:1px dashed #394246"></b><b style="width:17px;height:17px;border:1px dashed #394246"></b><b style="width:17px;height:17px;border:1px dashed #394246"></b><b style="width:17px;height:17px;border:1px dashed #394246"></b>
+</div>
+<div class="abs" style="left:540px;top:462px"><mc-text color="#c8a56b">Bulwark I  /  Rise Again I  /  2 more Gilded for Bulwark II</mc-text></div>
+<div class="abs row" style="left:300px;top:524px;gap:6px"><span class="key">Enter</span><mc-text color="#afb9bc">Enlist</mc-text><span class="key">1-5</span><mc-text color="#afb9bc">House</mc-text><span class="key">B</span><mc-text color="#afb9bc">Banner</mc-text><span class="key">Esc</span><mc-text color="#afb9bc">Hall</mc-text></div>
+<script src="mc.js"></script><script src="art.js"></script>
+</body></html>

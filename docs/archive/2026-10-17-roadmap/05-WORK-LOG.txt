@@ -1,0 +1,363 @@
+GRAVES AND GLORY — IMPLEMENTATION WORK LOG
+All timestamps use America/Chicago. Started October 17, 2026.
+
+SESSION 1 — RELEASE FOUNDATION (IN PROGRESS)
+Scope: checklist milestone 1, beginning with backup and version/build integrity.
+
+01:10 — Backup created before implementation changes.
+344 files verified against SHA-256 values after reading them back from ZIP.
+Uncompressed size: 330,520,046 bytes.
+Backup: C:\Users\kortt\Documents\Codex\2026-10-17\i-w\work\backups\20261017-011030\before-checklist-work.zip
+ZIP SHA-256: 3416a98ef7a719d3806ecedf8c199a55f8639251d7f3d06a827225222943a0b5
+Covers source, sheets, tools, test harness, dependencies, current/old release
+archives, documents, discovered project saves/collections/configuration and
+matching named data in the standard Minecraft instance where present.
+Session locks excluded: they are transient, not restorable player data.
+An earlier incomplete backup attempt hit a session lock and was superseded
+by the verified archive above. Keep both until normal backup housekeeping.
+Java/Minecraft processes are running and were not touched. The snapshot is
+file-verified, but running-world consistency is not established; take another
+backup after a normal game shutdown before deploying a save migration.
+
+Reinspection: source now includes some legacy profile fallback code added since
+the original audit. Preserve existing changes. Current release ZIP still needs
+reconciliation with source; hard-coded package/version references need removal.
+
+Status conventions: [x] requires evidence; [~] means work remains; [!] states
+a concrete external dependency. Existing gameplay tests are not fresh tests.
+
+01:11–01:18 — Implementation checkpoint.
+- Established local Git repository. Baseline commit acb5056 preserves existing
+  source; implementation commit 4b9c4ae records the release-foundation changes.
+- Selected 0.3.1; gradle.properties is the single version source for Gradle,
+  expanded mod metadata and package naming. Recipe version is checked.
+- Embedded source fingerprint and stale-JAR rejection. Package construction
+  uses a staging ZIP and preserves existing archives until successful.
+- Extended legacy migration to copy missing collection/settings/profile files,
+  preserve originals/current data, and copy an unlocked legacy world before use.
+- Added world-name compatibility and legacy troop/display cleanup.
+- Fixed stale UI geometry documentation and added explicit candidate limitations.
+- Moved packaging permission evidence into tracked dependencies.
+- First build found a missing sourcesJar dependency on the fingerprint task;
+  fixed it. Corrected Gradle build completed successfully in 11 seconds.
+- 13 standalone filesystem migration checks passed.
+- Release-integrity fixture tests passed, including rejection of stale sources,
+  wrong mod ID/version, missing entrypoint and development-harness leaks.
+- Final archive: dist/graves-and-glory-0.3.1.zip; 68,963,290 bytes; all 77 entries
+  verified against per-file SHA-256, plus the exact dependency pins.
+  Archive SHA-256: a42efffa6d14518a3f380bbcf5311a6bb34a4a1c7e2293c6fa492579fb2926bc
+  Source SHA-256: 5b0be866946975821a1757e6b81e40e615f53355c01725602113c9300bda6840
+- Existing development test harness compiles. Exported 18-file dependency
+  inventory; CurseForge IDs/approval and remaining platform mappings are open.
+- Saved logs under logs/. No uploads, submissions or publication performed.
+
+01:19 — User explicitly authorized a separate game test window.
+Started an isolated development instance at work/game-checks/first/run with its
+own saves, collection, runtime settings, control file and checks output. The
+existing game process is untouched. Full existing graphics stack supplied.
+Updated obsolete test fixtures to open the now-required custom room before
+starting practice/team-mode matches; this is a test-only change.
+Game verification is still running; do not read build success as gameplay pass.
+
+01:21 — Fresh-instance game regression completed with zero failed checks.
+Verified physical lobby, ready-pad admission/step-off, custom-room creation and
+invite permissions/expiry/accept/decline, paid unlock, disk-backed profile, army
+composition, practice, commander bonuses, cinematic camera, bot movement, actual
+combat, tactical packets, reward fixture, class confirmation, team capacities,
+160 simulated troops, barracks UI/queue/cancel, paid bot replacement, contact
+feedback and friendly-fire filtering. Match-duration checks use an explicit
+elapsed-time fixture; 4v4 uses bots, not eight Internet humans.
+Inspected the saved final-lobby screenshot. This is functional verification,
+not approval of the final visual design. Own test instance closed gracefully
+through its isolated control file; the user's pre-existing client is untouched.
+
+01:22 — Started legacy-upgrade game fixture in another isolated instance.
+Copied the closed disposable world's actual Minecraft region data, changed its
+NBT LevelName to Bannerbound, restored legacy directory/marker names, and seeded
+legacy collection/profile data with 350 gold, seven matches and three wins.
+This is a controlled upgrade fixture, not a migration of the user's live save.
+The next run checks both the upgrade and the normal battle regression.
+
+01:23 — Upgrade fixture loaded successfully and preserved the entire seeded
+profile, copied world, legacy host profiles, map marker and visual preference
+file. Its full battle checks also passed, but an old test assumed every reopen
+should select Excalibur. This failed because the first run had actually selected
+Minecraft textures (index 0). The failure is retained in legacy-initial logs.
+Investigation found two issues:
+1. First-launch armory initialization preempted the documented Excalibur default.
+   Fixed Presentation.prepareResources to choose defaults before initialization
+   completes, while retaining existing selections.
+2. The restart test hard-coded Excalibur instead of checking the saved selection.
+   Updated it to accept the fixture's explicit expected texture index.
+Added a startup-only check for the fresh Excalibur default; then rerun the upgraded
+instance expecting its intentionally retained Minecraft choice (index 0).
+The earlier 0.3.1 archive was copied to work/release-candidates before replacing
+it later; the final candidate must have a new source fingerprint/archive hash.
+
+01:26 — Final session verification complete.
+- Fresh-default startup passes: Excalibur index 2 selected with required packs.
+- Reopened the already-upgraded fixture on the corrected main source: 40 checks
+  pass with no failed lines, including full profile equality and retained
+  Minecraft texture choice (index 0), followed by the full battle regression.
+- Fresh baseline run: 35 checks pass. Startup-only run: three checks pass.
+  These counts include suite/load markers and overlapping regression checks.
+- Closed only our own test windows through isolated test controls; original
+  game process was not sent any close/restart/input action.
+- The final build completed successfully; final package verifies all 77 entries.
+FINAL candidate: graves-and-glory-0.3.1.zip
+FINAL size: 68963698 bytes
+FINAL archive SHA-256: 151a3f5ed68657da81ac9bb01350b9f1e74d99f44a96f085ff3ed59b214a08da
+FINAL source SHA-256: f6ef9feaa4e99cf8dfbc0637cf81fca59e82d3d260ed08d2750c5439342bfb6f
+Earlier archive hashes in this chronological log are superseded locally.
+The pre-texture-fix candidate remains in work/release-candidates for comparison.
+
+CHECKLIST STATUS
+Eight tasks complete: 1.02, 1.03, 1.04, 1.05, 1.07, 1.09, 1.11, 1.12.
+Milestone 1 is not complete. Remaining work includes a shutdown-consistent copy
+of the user's live save before deployment (1.01), clear incompatible-client
+rejection (1.06), full dependency/permission checks (1.08), production/launcher
+installation (1.10/1.19), platform mapping and exports (1.13–1.18).
+
+NEW TRACKED ISSUE
+The existing Excalibur/backport combination logs invalid rotations in campfire
+and decorative-item models on Minecraft 1.20.1. Original third-party archives
+were not edited. Recorded under 2.19 and in candidate documentation.
+
+No publication, platform account changes, uploads, server deployment or purchases
+were performed. Home-server specs remain pending; this does not block current
+release and launcher preparation.
+
+HOSTING REQUIREMENTS UPDATE — OCTOBER 17, 2026
+User supplied i7-10700K, 96 GB DDR4, Windows 11 and Starlink router/Internet.
+Recorded as user-reported specs; do not infer they describe this workstation.
+Tasks 3.H01/3.H02 are in progress; resource/storage and measured-network checks
+remain open. Official Starlink support documents default IPv4 CGNAT and lack of
+port forwarding on its router. Prioritize evaluating an outbound TCP relay/public
+edge while retaining home simulation. Exact plan, IP policy, measured upload,
+latency and route remain unverified. Sources and alternatives are in file 04.
+This update changes the plan only; no networking or deployment changes were made.
+
+SESSION 2 — RELEASE COMPATIBILITY AND PLATFORM PREPARATION
+October 17, 2026, morning (America/Chicago). Candidate advanced to 0.3.2.
+- Implemented login-stage version/protocol/main-source-build checking using the
+  Fabric login query API. Missing, wrong and malformed responses are refused
+  before world admission. This is compatibility checking, not anti-cheat/auth.
+- Six standalone policy checks pass. Actual isolated Minecraft missing-handshake
+  and old-version fixtures show the required version/build and update instruction.
+- Verified all 18 pinned third-party files against official Modrinth SHA-1 and
+  SHA-512 records. All actual mods list Fabric 1.20.1 support. Platform lock added.
+- Found Excalibur 1.21.11 paired with Clarent's 1.21.10 support target. Selected
+  the author's unchanged 1.21.10 archive and verified its official hash; embedded
+  license bytes match. Old archive is retained outside the release allowlist.
+- Added a narrow client-only parser backport for finite fractional, unrescaled
+  model angles within [-45,45]. No third-party artwork/model file was modified.
+- Full graphics-stack matching client joins and logs zero invalid-rotation or
+  failed-model messages. Initial regression failed its obsolete two-human pad
+  assumption: the working copy acquired a solo 3v3 pad change at 09:29. This
+  source edit was not made by this implementation session and is being preserved.
+  Updated the fixture to check solo countdown, cancellation and an actual 3v3
+  start. Retain initial failed logs; rerun before claiming a full suite pass.
+- Added local Modrinth exporter and path/hash/environment validation. Format
+  preparation is not a launcher import or platform moderation result.
+
+SESSION 2 — COMPLETED VERIFICATION AND LOCAL CANDIDATES
+- Final matching-client game run: 39 passing markers/checks, zero failures.
+  Covers release admission, saved collection/look, solo pad countdown/cancellation,
+  actual solo 3v3 with five bots, army editing, paid rolling, combat, rewards,
+  orders, barracks and exact team capacities. Includes load/suite markers; this
+  is not 39 independent human playtests. Full graphics stack is installed.
+- Matching full-stack console contains zero "Invalid rotation" and zero
+  "Failed to load model" messages. Preset appearance testing remains open.
+- Missing-handshake and old-version negative runs both pass; actual disconnect
+  screen inspected and saved. Six standalone compatibility policy checks pass.
+  Malformed-packet and same-version/wrong-build logic exists; their actual game
+  fixtures were not run in this session (policy checks cover wrong build).
+- Build succeeds offline. Final ZIP verifies all 77 entries, dependency pins,
+  main-source identity, entrypoints and absence of development harness classes.
+- Fixed the verifier's Windows cp1252 decode failure by reading the dependency
+  manifest explicitly as UTF-8; reran successfully. A protected nested-class
+  literal compile attempt was corrected to the string mixin target before final
+  compilation and game verification. Initial failed pad fixture logs retained.
+- Modrinth .mrpack contains 18 official pinned downloads verified against SHA-1
+  and SHA-512; only four dependency downloads are required on a server. Own
+  mod is an override. Export readback checks exact input bytes, safe paths,
+  environment flags, identity, notices and an explicit archive allowlist.
+  Five format/integrity tests and two release-integrity tests pass.
+- Server template binds localhost and keeps online-mode=true. This is preparation;
+  a dedicated server was not started, and public reachability was not changed.
+- Closed only our isolated test client through its own quit control. No close,
+  restart or input command targeted the user's existing game processes.
+
+Final local 0.3.2 artifacts (copies in release-candidates/):
+ZIP: 68,538,812 bytes
+SHA-256: afd6c36821b5e0a27fc3e96049ab2120b658e09551453c6ca4e87b3de5cadd68
+MRPACK: 21,957,065 bytes
+SHA-256: 59e61f3900b8300f9d65150c42b67f37d9e06bd157c095809d78dcb51e493882
+Main-source fingerprint:
+38f61d6fc8936c7e05423d41a8f1a9ed550ab0095c43f0bcf8824c4b86f46e9c
+Earlier session-2 intermediate archive hashes are superseded.
+
+CHECKLIST: 1.06 and 1.16 now complete within their stated scope (ten checked
+items total). 1.18 is partial: export separation is verified, headless runtime
+remains unverified. Milestone 1 stays open. CurseForge IDs/export, launcher import,
+standalone branded menu and dedicated-server initialization are next priorities.
+No publishing, uploads, platform submissions, purchases or deployment performed.
+The solo pad edit in Campaign.java was present from another working-copy writer;
+it is included in the tested candidate and preserved outside this session's commit.
+
+Git checkpoint: commit uses the same Codex <codex@local.invalid> identity as the existing local baseline, via per-command settings only. No global Git identity changed. Campaign.java remains an unstaged external edit, preserved. See the repository log for the 0.3.2 checkpoint.
+
+SESSION 3 — BRANDED MENU AND DEDICATED SERVER, 0.3.3
+October 17, 2026, morning (America/Chicago).
+
+- Added original title menu: private camp/practice, friends hosting, saved-server
+  browser, settings, credits and quit. Version/build visible; public service
+  marked not launched and disabled. Title no longer creates a world or joins
+  automatically. Leaving a world restores the menu. Existing accessibility
+  onboarding remains intact. Melty invitation/runtime integration is optional.
+- Practice stays private. Explicit hosting opens LAN and prints its address in
+  chat. Remote Internet access remains separate infrastructure work.
+- Server kit: own JAR + Fabric API, Lithium, FerriteCore, ModernFix, notices,
+  configuration, hash-pinned download helper and guarded start script. Defaults:
+  localhost, online-mode=true, eight players, RCON off, 2/8 GB initial/max heap.
+  No Java/Minecraft binaries, EULA acceptance, saves or credentials shipped.
+  Correct flat-generator layers remove the empty-generator startup error.
+  Saved internal world-name activation requirement documented explicitly.
+
+GAME VERIFICATION AND CORRECTIONS
+- Initial menu fixture used close() incorrectly on the vanilla server browser;
+  changed it to the actual Cancel widget. Initial logs retained.
+- Initial headless dev test showed Loom overwrites JavaExec workingDir during
+  exec(). It used the pre-existing run-server development fixture and its old
+  wildcard/default-port configuration for roughly fifteen seconds. Stopped it
+  normally. Both isolated init scripts now set Loom runDir itself; corrected
+  tests use disposable folders and explicit localhost ports.
+- First private full run: 47 passing markers/checks. First host restart fixture
+  failed collection equality: the extra solo test round mutated a backup object
+  after an early snapshot. Corrected test code to restore deep copies and write
+  the fixture snapshot after all rounds. Failure logs retained.
+- Corrected friends-host run: 47 passes, zero failures. Final exact-source
+  private restart: 50 passes, zero failures, including full saved-profile
+  equality, clean lobby, saved look, no automatic world entry, settings/credits,
+  server browser, small layout, private practice, gameplay and return to menu.
+  Counts include load/suite markers and overlap; not human playtest counts.
+
+PRODUCTION SERVER VERIFICATION
+- Official Fabric launcher 1.1.2 / Loader 0.16.14 / Minecraft 1.20.1 installed
+  separately. Exported remapped JAR + four dependencies load without dev tools
+  or client graphics mods. Existing accepted local-test EULA reused unchanged
+  for tests only; never included in exports.
+- Cold start and restart succeed with Java 21 and 3 GB heap. Actual lobby floor
+  and custom-room lectern block checks pass. Layout cache exists. Status query
+  returns protocol 763 / Minecraft 1.20.1 / eight-player capacity. Both runs
+  saved/stopped normally; no authenticated remote player joined.
+- Cold generation emits tick-lag warnings under concurrent tests. Cached restart
+  reports 8.373 seconds total load. Lithium/ModernFix overlap warning remains;
+  startup succeeds. No capacity or Internet claims for the separate home PC.
+- Download helper verifies official launcher SHA-256; start helper refuses to
+  proceed without EULA agreement. Both checked. Server kit readback: 67 entries.
+- Player ZIP: 77 entries verified. MRPACK: 18 pinned downloads verified.
+  Five format checks and two release-integrity tests pass; harness excluded.
+
+LAUNCHER TEST — AWAITING USER REVIEW
+Prism 11.1.1 parsed the MRPACK and extracted overrides, then paused at its
+"Easy There!" local/unpublished-mod trust warning. Left it for user review.
+The computer-use skill requires confirmation before accepting third-party
+warnings; an async question was sent. No real launcher game session is claimed.
+Modal element lookup was unreliable; keyboard navigation and documented
+--import reached the warning. No account/security settings changed.
+
+LOCAL ARTIFACTS (copies in release-candidates/)
+Source: 72ded74dd5cdd809c6e04f0d6594c8d45d7ffef0f29cb9a7e66e60751ee8aa5a
+ZIP: 68,543,409 bytes
+SHA256 a4d971f4b6c6c23da524ea17ef90c70d83a1dd3f95feb447b9f1d727669eeda4
+MRPACK: 21,961,748 bytes
+SHA256 3319483c9022d4774249f6146506cdcf0bd177caaa148c9281aaf104d875da8d
+SERVER ZIP: 25,199,228 bytes
+SHA256 de962867caafd4c0df4b1b70e03ec34ab3ea51e207bc8bc9368a16e64f0d3a9e
+
+CHECKLIST: 1.18, 2.03, 2.04, 2.06 and 3.01 checked (15 total). 1.17/1.19 partial.
+Next: launcher verification after user review, supported CurseForge export,
+then branded loading/connection screens and the remaining lobby flow.
+No publishing, uploads, purchases, home deployment or router/firewall changes.
+Existing player game processes received no input. External Campaign.java edit
+is preserved outside this session's Git checkpoint.
+Git checkpoint: b0ab583. External Campaign.java diff preserved separately in logs/session-03/external-campaign-change.patch.
+
+SESSION 4 — REAL PRISM INSTALL / KEYBOARD FIX, 0.3.4
+User confirmed approving Prism's local-mod warning. Clean 0.3.3 import completed;
+all 18 actual downloads match pinned SHA-512 and the exact original JAR matches.
+Launched normally, completed accessibility onboarding and reached the branded
+menu/fresh camp without Melty runtime files or development tools.
+
+Actual R key exposed a missed default conflict: Iris also used R for shader
+reload. Development UI fixtures had opened screens directly. Fixed in 0.3.4:
+if both original bindings still conflict, move Iris reload to F8 (unbound if F8
+is occupied), preserving custom bindings and saving the resolved configuration.
+
+Closed the test client normally and updated only that disposable Prism instance
+to the exact 0.3.4 JAR, preserving its original JAR disabled. Real R now opens
+war council. Checked army inventory/models, twenty-slot default army, custom-room
+creation, practice selection, actual battle start/camera and living 12/6/2 army,
+then normal save/return-to-menu/Quit. Screenshots and logs in logs/session-04.
+This is clean 0.3.3 import plus a local original-mod-only 0.3.4 upgrade, not an
+official platform update or a completed human match/reward validation.
+
+Saved R/F8 bindings verified. Effective progression/army match client/server
+files. Raw JSON differs only in materialized default deployment: the client
+inventory creates its array, while the server file derives the identical default
+from army counts. No custom slot was edited here. Full custom-profile persistence
+is covered by the dev regression; the raw/effective comparison is saved honestly.
+
+Final exact-source development restart/regression: 52 passes, zero failures,
+including conflict resolution and custom-key preservation. Actual Prism client
+logs zero invalid rotations/failed models. Player ZIP, MRPACK and server kit
+rebuilt/read back. Exact 0.3.4 production-server startup/status/save/stop passes;
+five format tests and two release-integrity tests pass. Only own test windows
+and server were closed; existing player game untouched.
+
+LATEST CANDIDATES (release-candidates/)
+Source SHA256 6d9266eeb87c808f6766f91b21234bb3bf29c45a21fb173de59c67e76133d648
+ZIP SHA256 ac8938c6b46269aa18e22760cff5b0f41bd17cb190801f16b7002f7163552c31
+MRPACK SHA256 d11d0fbd7084678c8ac78f93e3d32a0a084fdee0036b428290fd7818f8b79f1f
+SERVER ZIP SHA256 bdf64159657743c6300e8a76c057c715782fb5bf329c90ca281b23f6b1a3db30
+
+Prism is no longer awaiting approval. Tested instance remains named
+graves-and-glory-0.3.3 in Prism, now with gameplay JAR 0.3.4. Existing instances
+were not modified. Official Modrinth App/CurseForge installation, full human
+Internet matches, branded loading screens and public hosting remain open.
+No publishing, uploads, purchases, router/firewall or home deployment changes.
+
+SESSION 5 — CAMP WAITING CANDIDATE, October 17, 2026
+Continued from checklist in new chat go-x20. Local candidate 0.3.5.
+- Full battles retain arrivals as unseated camp visitors instead of disconnecting.
+- Admission policy preserves team capacity, excludes waiting visitors from seat
+  counts, replaces bot armies in place and handles returning reservations.
+  Practice visitors cannot take its AI opponent or the absent host's army.
+- Waiting visitors stay outside intro teleports/camera, damage, captures,
+  scouting contributions, army spawn offsets, tutorial and reward membership.
+  R opens the council and it remains open during the ongoing match.
+- Camp boundary enforcement only relocates visitors outside the boundary;
+  walking inside camp no longer resets them to spawn each second.
+- Exported server templates allow 16 connections (8 battle seats plus visitors).
+  Existing server configurations were not changed. No measured load claim.
+- Offline build + harness compilation pass (one existing mixin warning).
+  746 pure Java admission assertions pass; seven Python export/integrity tests
+  pass. ZIP 77 entries, MRPACK 18 download pins, server kit 67 entries verified.
+- Live join/walk/R/reconnect/next-round verification NOT RUN. 3.15 remains
+  partial. Latest in-game verification remains 0.3.4. No launch/install/publication.
+- Evidence and deliverables: C:/Users/kortt/Documents/Codex/2026-10-17/go-x20/outputs
+
+0.3.6 CAMP / FRIENDS / PROGRESSION — October 17, 2026
+Implemented courtyard/stations, camp-only HUD, recruitment, persistent parties,
+private rooms, ready pads/voting and a 30-tier Founders chapter with contracts.
+Isolated real-client final run passes camp, purchases, room/results/rematch,
+save-failure rollback, changed-map auto-start, pad countdown and cancellation.
+Two real loopback clients pass invite/accept, whole-party team entry, disconnect,
+reserved-army reclaim, results, rematch and saved two-member party readback.
+35 policy scenarios, 746 admission assertions and 7 Python integrity tests pass.
+Build succeeds; ZIP 77 entries, MRPACK 18 downloads, server ZIP 67 entries verified.
+No test harness included in shipped JAR. No launcher installation or publication.
+Public hosting/connectivity remains deferred. Passwords, spectators, simultaneous
+matches, official accounts/economy and remaining roadmap items are still open.
+Evidence: go-x20/outputs/VERIFICATION-0.3.6.json; progression design and screenshots.

@@ -1,0 +1,89 @@
+{
+ "v2-hud-B-iron-ledger": {
+  "words": 23,
+  "sizes": [
+   8,
+   11
+  ],
+  "issues": [],
+  "lowContrast": []
+ },
+ "v2-ui-A-war-table-recruit": {
+  "words": 40,
+  "sizes": [
+   8,
+   11,
+   16
+  ],
+  "issues": [],
+  "lowContrast": []
+ },
+ "v2-ui-B-field-ledger-recruit": {
+  "words": 45,
+  "sizes": [
+   8,
+   11,
+   16
+  ],
+  "issues": [],
+  "lowContrast": []
+ },
+ "v2-ui-C-hall-of-banners-home": {
+  "words": 33,
+  "sizes": [
+   8,
+   11,
+   16
+  ],
+  "issues": [],
+  "lowContrast": []
+ },
+ "v2-ui-C-hall-of-banners-recruit": {
+  "words": 39,
+  "sizes": [
+   8,
+   11,
+   16
+  ],
+  "issues": [],
+  "lowContrast": []
+ },
+ "v2-ui-A-war-table-home": {
+  "words": 36,
+  "sizes": [
+   8,
+   11,
+   16
+  ],
+  "issues": [],
+  "lowContrast": []
+ },
+ "v2-ui-B-field-ledger-home": {
+  "words": 37,
+  "sizes": [
+   8,
+   11,
+   16
+  ],
+  "issues": [],
+  "lowContrast": []
+ },
+ "v2-hud-A-marshals-glass": {
+  "words": 24,
+  "sizes": [
+   8,
+   11
+  ],
+  "issues": [],
+  "lowContrast": []
+ },
+ "v2-hud-C-banner-line": {
+  "words": 23,
+  "sizes": [
+   8,
+   11
+  ],
+  "issues": [],
+  "lowContrast": []
+ }
+}

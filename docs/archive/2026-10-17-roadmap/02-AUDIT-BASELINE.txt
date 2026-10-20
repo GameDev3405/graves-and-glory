@@ -1,0 +1,96 @@
+GRAVES AND GLORY — AUDIT BASELINE
+Audit date: October 17, 2026
+
+SCOPE AND LIMITS
+Reviewed local source, built JAR, packaged ZIP, documentation and existing
+test evidence. No new game session was launched. Existing test results are
+historical evidence, not verification of every newly requested feature.
+The currently published remote release was not independently checked.
+
+PROJECT
+C:\Users\kortt\Melty\bannerbound
+Minecraft 1.20.1; Fabric Loader 0.16.14; Fabric API 0.92.2+1.20.1; Java 17.
+Current source and archive are both labelled 0.3.0.
+
+CONFIRMED PACKAGE DIFFERENCE
+dist/graves-and-glory-0.3.0.zip:
+- Modified October 16, 2026, 11:06 PM in the local filesystem display.
+- SHA-256: 16bea39ede8a42b6fd660e070616b8a50f85cff2c5d706cd594a3bdfbfef7b77
+- Contains mods/graves-and-glory-0.3.0.jar, whose internal mod ID remains
+  bannerbound, with gg.bannerbound entrypoints.
+- Campaign class lacks the newer ready-pad/custom-room invitation markers.
+- Uses bannerbound collection/profile paths and the Bannerbound world path.
+- The inspected inner JAR did not contain the named CampaignChecks,
+  DevControl, MapRouteChecks, MeltyTest, RevisionChecks or VisualChecks classes.
+
+build/libs/graves-and-glory-0.3.0.jar:
+- Modified October 17, 2026, approximately 12:45 AM.
+- Internal mod ID gravesandglory, with gg.gravesandglory entrypoints.
+- Contains the newer ready-pad and custom-room invitation implementation.
+- Uses gravesandglory collection/profile paths and the Graves and Glory world.
+
+The source matches the newer identity. No migration implementation was found
+in the inspected main source. Revalidate file identities before starting work:
+other development may have continued after this audit.
+
+EXISTING FOUNDATIONS
+- Walkable lobby with recruitment hall, armoury, troop displays and war table.
+- Twenty-unit deployment editing and permanent troop-type unlocks.
+- Twelve troop types: six starters and six initially locked.
+- Roll cost 100 collection gold; chooses uniformly among remaining locked
+  troop types, with no duplicates. Fully unlocked collection stops troop rolls.
+- Regular match completion 80 gold, plus 40 for victory; practice 40 gold.
+  Current minimum qualifying duration is three minutes.
+- Three commander classes with bonuses to matching troop roles.
+- Four battlefields, three objectives each, tactical orders, formations,
+  scouting/map pings, barracks training and bot commanders.
+- Practice and 1v1 through 4v4 mode foundations; up to 160 troops.
+- Existing shaders, texture choices, EMF/ETF, animations and equipment geometry.
+- Skippable cinematic entrance and combat feedback.
+
+NEWER SOURCE FEATURES — NEED RELEASE/BEHAVIOR VERIFICATION
+- Two faction ready pads, up to two humans per side.
+- Ten-second countdown after at least two admitted humans are ready.
+- Quick match forces size=2 and bot fill; map selection is random.
+- Stepping off cancels the countdown.
+- One custom room at a time, with invitations expiring after sixty seconds.
+- Custom leader controls map/mode/bot fill and start.
+
+GAPS AND LIMITATIONS
+- No daily/weekly contract system or battle pass found.
+- No map voting; custom maps are leader-selected, quick maps random.
+- No public matchmaking or central official progression service found.
+- Current custom room is not a persistent public-queue party.
+- Returning to the lobby closes the custom room.
+- An open custom room disables ready pads globally on that server.
+- Battle state and map selection are shared rather than isolated per room.
+- Full-match admission can disconnect a new visitor with text suggesting
+  waiting in a lobby, instead of actually admitting them to a waiting area.
+- Current client startup automatically hosts/joins after the vanilla title
+  screen rather than providing the requested branded public/friends menu.
+- Dedicated server development wiring exists, but no separately delivered,
+  verified public-server product was established in this audit.
+- The current server activates battles for a save named Graves and Glory;
+  dedicated-server configuration must account for that requirement.
+
+PROGRESSION TRUST BOUNDARY
+Campaign.importProfile accepts a portable client profile when its match count
+is at least the stored profile's count. Sanitizing values does not establish
+that they were legitimately earned. This is suitable only for the existing
+trusted friends-hosted model, not official public progression.
+
+CONTENT/ECONOMY CONSTRAINT
+Six troop unlocks cost 600 gold total. Additional daily income would complete
+the present collection quickly. Expand the reward/content plan before using
+frequent rolls as the main long-term reason to return.
+
+EXISTING TEST EVIDENCE
+Local evidence reports passes for collection/combat, team modes, rewards,
+barracks, bot replacement, contact feedback and other development checks.
+These do not establish public matchmaking, persistent parties, secure economy,
+daily reset behavior or a full eight-human Internet match.
+
+DOCUMENTATION WARNING
+Some UI documentation describes older geometry/implementation details.
+Reconcile documentation against the final package instead of treating every
+existing description as current, verified behavior.

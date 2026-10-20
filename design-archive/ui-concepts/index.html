@@ -1,0 +1,291 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Graves and Glory UI concepts</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+@font-face{font-family:Marcellus;src:url(fonts/marcellus.ttf)}@font-face{font-family:Lato;src:url(fonts/lato.ttf)}
+:root{--bg:#101518;--panel:#1a2125;--edge:#394246;--brass:#c8a56b;--ivory:#eee9df;--muted:#afb9bc;--dawn:#5fb3ad;--dusk:#a07cc2}
+body{margin:0;background:var(--bg);color:var(--ivory);font:15px/1.5 Lato,system-ui,sans-serif}
+header{padding:40px 24px 16px;max-width:1500px;margin:0 auto}
+h1{font:400 34px Marcellus,serif;color:var(--brass);margin:0 0 6px}
+h2{font:400 24px Marcellus,serif;color:var(--brass);margin:48px 0 8px;border-bottom:2px solid var(--brass);padding-bottom:6px}
+h3{font:400 20px Marcellus,serif;margin:0 0 2px}
+h4{font:400 16px Marcellus,serif;color:var(--muted);margin:14px 0 6px}
+p{max-width:900px;margin:6px 0}
+main{max-width:1500px;margin:0 auto;padding:0 24px 80px}
+.opt{margin:22px 0 38px;background:var(--panel);border:1px solid var(--edge);padding:16px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0 4px}
+figure{margin:0}
+figure img{width:100%;height:auto;display:block;border:1px solid #0d1113}
+figcaption{font-size:13px;color:var(--muted);padding:4px 2px 0}
+figcaption b{color:var(--ivory);font-weight:400}
+figure.v2 figcaption b{color:var(--brass)}
+figure.v3 figcaption b{color:var(--dawn)}
+.v3row{border-color:var(--dawn)}
+figure.v4 figcaption b{color:var(--brass)}
+.v4row{border-color:var(--brass)}
+.feel{color:var(--muted);font-style:italic;margin:0 0 10px}
+.cols{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:20px;margin-top:10px}
+ul{margin:6px 0 10px 18px;padding:0}li{margin:3px 0}
+.cost{padding:8px 10px;border-left:3px solid var(--brass);background:#20292d;font-size:14px;align-self:start}
+.cost b{color:var(--brass)}
+.rec{background:#20292d;border:1px solid var(--brass);padding:18px 20px;margin-top:26px}
+.rec h3{color:var(--brass)}
+.mix{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.tag{display:inline-block;font-size:12px;padding:1px 7px;border:1px solid var(--edge);color:var(--muted);margin-right:4px}
+.sum{display:inline-block;margin-top:6px;padding:8px 12px;border:1px solid var(--brass);background:#20292d}
+.sum b{color:var(--brass);font-weight:400}
+a{color:var(--dawn)}
+@media(max-width:1000px){.pair,.cols,.mix{grid-template-columns:1fr}}
+</style></head><body>
+<header>
+<h1>Graves and Glory: UI and HUD concepts</h1>
+<p>Three battle-HUD directions and three camp-UI directions, each rendered over a real screenshot at 1920x1080 with every element sized for GUI scale 2 (one authored pixel = two screen pixels; Minecraft's own glyphs; Lato 11 and Marcellus rasterised at 1x as the game does). The HTML next to each PNG is the design source; <code>render.py</code> rebuilds them. Details and asset lists are in <code>CONCEPTS.md</code>.</p>
+<p>Each screen is shown twice: the first pass (v1, left) and the second pass (v2, right) made after Kort's review ("letters overlap, words hidden, too much text"). The defects are listed in <a href="AUDIT.md">AUDIT.md</a>; the rules v2 follows are in <a href="DESIGN-RULES.md">DESIGN-RULES.md</a>.</p>
+<p>Third pass (v3, top of the page): Kort picked the War Table for the camp and the Iron Ledger group cards for the HUD. v3 polishes only those three screens, with every texture hand-shaded as pixel art at GUI scale 1 (<code>v3art.py</code>) and the text still live.</p>
+<p class="sum">Second pass: <b>166 defects to 0</b> across the nine screens, <b>1812 words to 300</b>, three type sizes (16 / 11 / 8), nothing within 12 px of the edge, every text run 4.5:1 or better.</p>
+<p>Fourth pass (v4, top of the page): Kort asked for two to three times the detail. v4 repaints every surface at full pixel density (<code>v4art.py</code>), adds the mode subtitles and the HUD battle feed, and shows each portrait as the live model framed by the unit identity spec. v4.1 makes the feed a leaf of the same ledger and replaces the flat map corner on the home screen with a rolled map.</p>
+<p class="sum">Third pass: <b>0 lint defects</b> and <b>no text run under 4.5:1</b> on all three v3 screens; 36, 36 and 40 words; type sizes 11 and 8 on the HUD, 16, 11 and 8 on the camp screens.</p>
+<p class="sum">Fourth pass: <b>0 lint defects</b> and <b>no text run under 4.5:1</b> on all three v4.1 screens; 45, 48 and 40 words; the same type sizes.</p>
+<p><span class="tag">mid-fight moment</span> Rivergate Valley, 7:42 left, Dawn 148 / Dusk 121 to 300. Infantry 9/12 fighting and just took a loss (flash). Ranged holding in Line, selected. Support 1/2 routing. Rally Horn on cooldown, 48 s. Notice: Dawn Knight trained, deploying at Mill Hamlet.</p>
+</header>
+<main>
+
+<h2>Fourth pass: the same three screens at two to three times the detail</h2>
+<p>Left: the v3 screen Kort graded ("getting better but not quite there yet"). Right: v4. Every surface is repainted at full pixel density (five to six tones per material, edge wear, highlights), the mode cards carry a quieter line under each name, the HUD gains a battle feed, and the v3 deductions are fixed. Portraits now show the live model exactly as the unit identity spec frames it.</p>
+
+<section class="opt v4row" id="v4-detail">
+  <h3>Detail at native size</h3>
+  <p class="feel">Four crops taken 1:1 from the 1920 x 1080 renders: one GUI pixel is two by two screen pixels, as the game shows it at GUI scale 2.</p>
+  <figure class="v4"><img src="v4-detail-crops.png" alt="Four 1:1 crops: the Rivergate map card, a wax seal in relief, an iron corner, the Skirmish drawing"><figcaption><b>v4</b> · map card, wax seal, iron corner, mode drawing</figcaption></figure>
+</section>
+
+<section class="opt v4row" id="v4-hud">
+  <h3>Iron Ledger HUD</h3>
+  <p class="feel">The same iron and vellum object, now with a battle feed at the right edge.</p>
+  <div class="pair">
+    <figure class="v3"><img src="v3-hud-iron-ledger.png" alt="Iron Ledger HUD, third pass"><figcaption><b>v3</b> · graded</figcaption></figure>
+    <figure class="v4"><img src="v4-hud-iron-ledger.png" alt="Iron Ledger HUD, fourth pass"><figcaption><b>v4.1</b> · 0 defects · 45 words</figcaption></figure>
+  </div>
+  <ul>
+    <li>v4.1: the battle feed is a leaf of the same ledger. It is a narrow vellum slip at the right edge, at mid-height, with the inked edge of the cards, ruled between its entries and down a margin. Its right edge is bound in a strip of riveted iron, the feed&#39;s own spine, mirroring the one the cards hang from, and its free top corner carries one riveted bracket like theirs. The newest line is at the bottom, five lines are in play, and each fades after about eight seconds. The mock shows five, the oldest fading out.</li>
+    <li>Every kind of line has its own colour and its own glyph, so colour never works alone. On the vellum each is written in a dark ink of its hue, as the cards write theirs: a point we take (teal, seal), a point we lose (violet, struck seal), our losses (red, skull), enemy losses (grey, skull), a commander down (brass, fallen banner), a commander back (brass, raised banner), a rout or regroup (grey, stamp), and reinforcements and notices (ink, sun).</li>
+    <li>The feed replaces the notice slip, so the left stack is shorter. Words now appear only on the selected card: Ranged keeps its glyphs, words and keys, while Infantry and Support show their order and formation as glyphs alone.</li>
+    <li>The iron is hammered, in six tones with scratches, pits, rust and a cold specular on the top bevel. The book-corner brackets are riveted, with engraved arms and pierced lobes. The enamel bosses and seals are turned in fine rings behind beaded iron.</li>
+  </ul>
+</section>
+
+<section class="opt v4row" id="v4-home">
+  <h3>War Table, home</h3>
+  <p class="feel">The whole screen is the table, and the empty oak now has a reason.</p>
+  <div class="pair">
+    <figure class="v3"><img src="v3-ui-war-table-home.png" alt="War Table home, third pass"><figcaption><b>v3</b> · graded</figcaption></figure>
+    <figure class="v4"><img src="v4-ui-war-table-home.png" alt="War Table home, fourth pass"><figcaption><b>v4.1</b> · 0 defects · 48 words</figcaption></figure>
+  </div>
+  <ul>
+    <li>The three orders are full ink illustrations with hatching: a practice dummy with its target, two crossed longswords behind a quartered heater shield, and the keep on its hill. A quieter line in the small size sits under each name: train against bots, one battle, your rules, and the story, battle by battle.</li>
+    <li>The Rivergate map is drawn at full density, with contoured hills, fields, roads, the river with its banks and bridges, buildings, stands of trees and a compass. Its A, B and C seals are in relief.</li>
+    <li>The rail is quarter-sawn oak with ray flecks and an ogee moulding, inlaid with brass engraved as a twisted cable. The plaques sit on slotted screws, each turned its own way, and the Ride plate has an engraved border that sweeps round each of its screws.</li>
+    <li>The edges of the table now hold a few quiet objects: the campaign map rolled and tied with a faded red ribbon, its far end pushed under the rail and the curl of the sheet showing at its near end (v4.1, in place of the flat map corner), a candle with its light falling on the oak, and the inkwell and quill.</li>
+    <li>The seats show each player's live model, posed as the spec poses portraits.</li>
+  </ul>
+</section>
+
+<section class="opt v4row" id="v4-recruit">
+  <h3>War Table, recruit</h3>
+  <p class="feel">Read left to right: the roll you have, the letter you just opened, the letters still sealed. Enlist now sits right under the letters.</p>
+  <div class="pair">
+    <figure class="v3"><img src="v3-ui-war-table-recruit.png" alt="War Table recruit, third pass"><figcaption><b>v3</b> · graded</figcaption></figure>
+    <figure class="v4"><img src="v4-ui-war-table-recruit.png" alt="War Table recruit, fourth pass"><figcaption><b>v4</b> · 0 defects · 40 words</figcaption></figure>
+  </div>
+  <ul>
+    <li>The right column is one ladder on x 784, with 12 px between rungs: the sealed letters, Enlist right under them, the purse it spends from, the Epic count, then Odds. It ends on 492, as the other two columns do.</li>
+    <li>Every portrait is the live model as the unit identity spec frames it: yaw 30, chest-up, 20 model px. The roll uses 40 px windows, so one model pixel is 2 GUI pixels. The reveal shows the skin at 8 GUI pixels per texel, exactly as the game will draw it. Sunweaver and Lord Marshal Aldric show as silhouettes.</li>
+    <li>The House cloths are woven, with a twill in half steps, a sheen on the folds and fringes of two lengths. The rod has six tones and specular glints. The twine round the letters is twisted, and the envelopes are creased.</li>
+  </ul>
+</section>
+
+<h2>Third pass: War Table and Iron Ledger</h2>
+<p>Left: the v2 screen Kort graded. Right: v3. Portrait frames are windows for the game's live model render (drawEntity, scissored); the pixel busts inside them are placeholders until the unit identity pass delivers each unit's look. Hunger is gone from the HUD and nothing takes its place yet.</p>
+
+<section class="opt v3row" id="v3-hud">
+  <h3>Iron Ledger HUD</h3>
+  <p class="feel">One object in one material: vellum ledger cards bound in hammered iron.</p>
+  <div class="pair">
+    <figure class="v2"><img src="v2-hud-B-iron-ledger.png" alt="HUD B, second pass"><figcaption><b>v2</b> · graded 8.5</figcaption></figure>
+    <figure class="v3"><img src="v3-hud-iron-ledger.png" alt="Iron Ledger HUD, third pass"><figcaption><b>v3</b> · 0 defects · 36 words</figcaption></figure>
+  </div>
+  <ul>
+    <li>The score bar is a ledger card clamped by two riveted iron bands, held between the Dawn boss (round, gold sun) and the Dusk boss (diamond, silver crescent). The three points hang from it on chains as enamelled seals.</li>
+    <li>Contested B is a square split teal and violet with two swords crossed behind it, so it reads as a fight without the colours.</li>
+    <li>Every group card names its order and formation beside the glyph (Attack, Shieldwall; Hold, Line; Follow, Compact). The selected card is brass-bound and carries the order keys G, V and B.</li>
+    <li>A loss puts a red rule round the card and turns the lost stretch of the bar red. A rout greys the card, stamps ROUTING and reddens the count.</li>
+    <li>The Rally Horn sits in an iron slot with a vellum window. A dark sweep covers the time still to run, the seconds sit on an iron tab beside it, and the H key is on a brass plate.</li>
+    <li>The notice is a slip clipped to the top of the spine, out of the middle of the view. Vanilla hearts, XP bar and hotbar stay; there is no hunger row.</li>
+  </ul>
+</section>
+
+<section class="opt v3row" id="v3-home">
+  <h3>War Table, home</h3>
+  <p class="feel">The whole screen is the table.</p>
+  <div class="pair">
+    <figure class="v2"><img src="v2-ui-A-war-table-home.png" alt="UI A home, second pass"><figcaption><b>v2</b> · graded 9</figcaption></figure>
+    <figure class="v3"><img src="v3-ui-war-table-home.png" alt="War Table home, third pass"><figcaption><b>v3</b> · 0 defects · 36 words</figcaption></figure>
+  </div>
+  <ul>
+    <li>The sky band is gone: the top of the screen is the table's back rail, and the camp's sections are brass-edged oak plaques bolted to it, each with a hand-drawn icon. Counts are wax drops.</li>
+    <li>Change is now a vellum button with a quill, in the same parchment family as the orders.</li>
+    <li>Oak planks with grain, knots and nails; orders on aged parchment with folds, deckled edges and ink drawings; the chosen order is sealed in wax with a teal ribbon; the field card holds an inked map of Rivergate Valley.</li>
+  </ul>
+</section>
+
+<section class="opt v3row" id="v3-recruit">
+  <h3>War Table, recruit</h3>
+  <p class="feel">Read left to right: the roll you have, the letter you just opened, the letters still sealed.</p>
+  <div class="pair">
+    <figure class="v2"><img src="v2-ui-A-war-table-recruit.png" alt="UI A recruit, second pass"><figcaption><b>v2</b> · graded 9</figcaption></figure>
+    <figure class="v3"><img src="v3-ui-war-table-recruit.png" alt="War Table recruit, third pass"><figcaption><b>v3</b> · 0 defects · 40 words</figcaption></figure>
+  </div>
+  <ul>
+    <li>The right column is one centred axis: the sealed letters, the Epic counter, Odds, the purse, then Enlist with its cost. The three columns share one top and one bottom.</li>
+    <li>The star seal moved off the star row to the foot of the letter, so the tier reads as two stars of three.</li>
+    <li>The five Houses are woven banners with embroidered devices, hanging from a brass rod on the rail. The chosen House hangs longer and brighter.</li>
+    <li>The muster roll is a scroll on walnut rollers. The reveal is a 160 px live-render window in a cast, rope-banded frame, and the broken House seal lies above the letter.</li>
+  </ul>
+</section>
+
+<h2>Battle HUD</h2>
+
+<section class="opt" id="hud-a">
+  <h3>A. Marshal's Glass</h3>
+  <p class="feel">The field seen through a spyglass: numbers and strokes on smoked glass, no frames.</p>
+  <div class="pair">
+    <figure><img src="hud-A-marshals-glass.png" alt="HUD A, first pass"><figcaption><b>v1</b> · 15 defects · 75 words</figcaption></figure>
+    <figure class="v2"><img src="v2-hud-A-marshals-glass.png" alt="HUD A, second pass"><figcaption><b>v2</b> · 0 defects · 24 words</figcaption></figure>
+  </div>
+  <div class="cols">
+    <ul>
+      <li>One glass strip on top: the score race on one line (each side runs toward the timer; the posts are 300), then a bearing line where the points ride as seals: a ring for Dawn, a diamond for Dusk, a hatched square when contested.</li>
+      <li>The line: one glass band, one row per group: standard, name, one pip per troop (its height is that troop's health), count, order and formation glyphs, one state word.</li>
+      <li>A loss is a red row and a pip snapping white; a rout drops the group's standard and says ROUTING; the Rally Horn tile goes grey and counts down. The centre and right edge stay with the battle.</li>
+    </ul>
+    <div class="cost"><b>Cost:</b> about 12 small textures (glass 9-slice, seals in three states, pip, standard upright and fallen, horn, 6 order and 5 formation glyphs). Code: bearings from player yaw, pip rows. Smallest surface of the three.</div>
+  </div>
+</section>
+
+<section class="opt" id="hud-b">
+  <h3>B. Iron Ledger</h3>
+  <p class="feel">A quartermaster's ledger bolted to the screen: iron, vellum, wax.</p>
+  <div class="pair">
+    <figure><img src="hud-B-iron-ledger.png" alt="HUD B, first pass"><figcaption><b>v1</b> · 24 defects · 90 words</figcaption></figure>
+    <figure class="v2"><img src="v2-hud-B-iron-ledger.png" alt="HUD B, second pass"><figcaption><b>v2</b> · 0 defects · 23 words</figcaption></figure>
+  </div>
+  <div class="cols">
+    <ul>
+      <li>One iron score bar (team crest, score, two tracks, timer) with the three points hung below on cords as wax seals; a contested seal is hatched in both colours.</li>
+      <li>Group cards are vellum slips on an iron spine: name, state word, ink health bar, order and formation glyphs, count. A loss reddens the frame, the selected card wears brass, a rout is a ROUTING stamp on a darker slip.</li>
+      <li>One dispatch notice above the hotbar; the ability is an iron tile with the horn and the seconds left. Map, gold and the training queue are one key away.</li>
+    </ul>
+    <div class="cost"><b>Cost:</b> about 20 textures (iron and vellum 9-slices, rivets, seals in three states, crests, stamp, horn tile). Code: card layout and stamp timing. Closest to today's charcoal-and-brass camp.</div>
+  </div>
+</section>
+
+<section class="opt" id="hud-c">
+  <h3>C. Banner Line</h3>
+  <p class="feel">Your groups are standards planted in the ground in front of you.</p>
+  <div class="pair">
+    <figure><img src="hud-C-banner-line.png" alt="HUD C, first pass"><figcaption><b>v1</b> · 15 defects · 76 words</figcaption></figure>
+    <figure class="v2"><img src="v2-hud-C-banner-line.png" alt="HUD C, second pass"><figcaption><b>v2</b> · 0 defects · 23 words</figcaption></figure>
+  </div>
+  <div class="cols">
+    <ul>
+      <li>Two great banners hang from a rail and are dyed down toward 300; the three point seals hang between them and the timer sits on a plate at the centre.</li>
+      <li>Each group is a standard: one stripe per troop, cloth width for health, the order as finial, the formation as the base tile, the House glyph woven in. The words sit on one dark band underneath, so no pole crosses a label.</li>
+      <li>A loss tears a white stripe and reddens the label; a rout leans the pole, the cloth hangs limp and a horn sounds beside it; the commander's own standard is the ability, its cloth dyed as the horn recharges.</li>
+    </ul>
+    <div class="cost"><b>Cost:</b> about 25 textures (pole, finials, cloth per team and House, lean frames, formation tiles, great banners, rail, commander standard). Code: cloth sizing from count and health, lean animation. A new convention for the tutorial to teach.</div>
+  </div>
+</section>
+
+<h2>Camp and menus</h2>
+
+<section class="opt" id="ui-a">
+  <h3>A. War Table</h3>
+  <p class="feel">The commander's tent, seen from above the table: oak, parchment, ink, brass.</p>
+  <h4>Home</h4>
+  <div class="pair">
+    <figure><img src="ui-A-war-table-home.png" alt="UI A home, first pass"><figcaption><b>v1</b> · 19 defects · 286 words</figcaption></figure>
+    <figure class="v2"><img src="v2-ui-A-war-table-home.png" alt="UI A home, second pass"><figcaption><b>v2</b> · 0 defects · 36 words</figcaption></figure>
+  </div>
+  <h4>Recruit</h4>
+  <div class="pair">
+    <figure><img src="ui-A-war-table-recruit.png" alt="UI A recruit, first pass"><figcaption><b>v1</b> · 22 defects · 274 words</figcaption></figure>
+    <figure class="v2"><img src="v2-ui-A-war-table-recruit.png" alt="UI A recruit, second pass"><figcaption><b>v2</b> · 0 defects · 40 words</figcaption></figure>
+  </div>
+  <div class="cols">
+    <ul>
+      <li>Home: the party as lead tokens, three written orders with the chosen one sealed and lifted, the inked field card with its rules and Change, one Ride button. The rest of the camp hangs on the tent rail with count badges.</li>
+      <li>Recruit: the muster roll (portrait, name, stars), then the letter of enlistment as the focal point with the second star stamped in wax, then the purse: gold, Enlist with its cost, the Epic counter, Odds.</li>
+      <li>Palette change argued by section 9 of the vision: the camp has a war table, so the UI is that table. The warmest of the three.</li>
+    </ul>
+    <div class="cost"><b>Cost:</b> about 25 textures (oak tile, parchment 9-slices, five House tabs, token base, wax seals, envelope, brass button) and a new layout for every camp page. Highest.</div>
+  </div>
+</section>
+
+<section class="opt" id="ui-b">
+  <h3>B. Field Ledger</h3>
+  <p class="feel">The charcoal we have, given a spine.</p>
+  <h4>Home</h4>
+  <div class="pair">
+    <figure><img src="ui-B-field-ledger-home.png" alt="UI B home, first pass"><figcaption><b>v1</b> · 16 defects · 322 words</figcaption></figure>
+    <figure class="v2"><img src="v2-ui-B-field-ledger-home.png" alt="UI B home, second pass"><figcaption><b>v2</b> · 0 defects · 37 words</figcaption></figure>
+  </div>
+  <h4>Recruit</h4>
+  <div class="pair">
+    <figure><img src="ui-B-field-ledger-recruit.png" alt="UI B recruit, first pass"><figcaption><b>v1</b> · 20 defects · 268 words</figcaption></figure>
+    <figure class="v2"><img src="v2-ui-B-field-ledger-recruit.png" alt="UI B recruit, second pass"><figcaption><b>v2</b> · 0 defects · 45 words</figcaption></figure>
+  </div>
+  <div class="cols">
+    <ul>
+      <li>Keeps DarkUi's charcoal, ivory and brass and the Marcellus headings; adds a spine of brass index tabs with count badges.</li>
+      <li>Home: three fight plates where the chosen one is the only light surface, the field panel with its rules and Change, the party, one Ride button.</li>
+      <li>Recruit: House tabs with colour underlines, six portrait cards with stars, a cream reveal card, Enlist with its cost under it.</li>
+    </ul>
+    <div class="cost"><b>Cost:</b> about 12 textures (panel and tab 9-slices, portrait frame, card, star, seals). Mostly a re-layout of the current screens. Lowest.</div>
+  </div>
+</section>
+
+<section class="opt" id="ui-c">
+  <h3>C. Hall of Banners</h3>
+  <p class="feel">Heraldry is the interface.</p>
+  <h4>Home</h4>
+  <div class="pair">
+    <figure><img src="ui-C-hall-of-banners-home.png" alt="UI C home, first pass"><figcaption><b>v1</b> · 17 defects · 145 words</figcaption></figure>
+    <figure class="v2"><img src="v2-ui-C-hall-of-banners-home.png" alt="UI C home, second pass"><figcaption><b>v2</b> · 0 defects · 33 words</figcaption></figure>
+  </div>
+  <h4>Recruit</h4>
+  <div class="pair">
+    <figure><img src="ui-C-hall-of-banners-recruit.png" alt="UI C recruit, first pass"><figcaption><b>v1</b> · 18 defects · 276 words</figcaption></figure>
+    <figure class="v2"><img src="v2-ui-C-hall-of-banners-recruit.png" alt="UI C recruit, second pass"><figcaption><b>v2</b> · 0 defects · 39 words</figcaption></figure>
+  </div>
+  <div class="cols">
+    <ul>
+      <li>Home: the sections hang as pennants from the hall beam; the party's banners hang on a rod; the three fights are shields on the wall with the chosen one lit; the field is a banner with its rules.</li>
+      <li>Recruit: the House's troops as shields, the chosen House unfurled full height around the recruit it gave, the purse on the right.</li>
+      <li>Boldest identity and the one that will look best in a trailer; also the one most likely to fight the live 3D camp behind it.</li>
+    </ul>
+    <div class="cost"><b>Cost:</b> about 20 large textures (beam, House tabs and full banners, party banners, fight and roster shields) and a new screen system. High.</div>
+  </div>
+</section>
+
+<div class="rec">
+  <h3>Recommendation</h3>
+  <div class="mix">
+    <div>
+      <p><b>HUD: C, Banner Line</b>, with A's bearing line as an option for the top band. Readable drama is pillar one: a line that breaks should look like a line breaking, and a leaning standard with a horn does that before the player reads a word. House glyphs on the cloth serve pillar two every second of the fight. Keep B's vellum for the end-of-match report.</p>
+    </div>
+    <div>
+      <p><b>UI: B, Field Ledger</b>, dressed with A's objects. The camp is being rebuilt as a real war camp with recruiter tents, so a second flat table on top of it fights the world; B keeps the existing tokens and Marcellus headings and ships in weeks. Borrow the letter of enlistment, the stamped star for duplicates and the inked map seals as the field picker. Keep the Hall's hanging-party idea for the room screen.</p>
+    </div>
+  </div>
+  <p>Everything above is authored on a 1 px grid and holds at GUI scale 3 on 1440p because panels are 9-slices and text is the game's own glyphs.</p>
+</div>
+</main></body></html>

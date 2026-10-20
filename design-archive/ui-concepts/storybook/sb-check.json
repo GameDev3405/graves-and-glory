@@ -1,0 +1,50 @@
+{
+ "storybook-01-closed": {
+  "words": 14,
+  "sizes": [
+   13,
+   16,
+   24
+  ],
+  "issues": [],
+  "lowContrast": []
+ },
+ "storybook-03-panel-scene": {
+  "words": 32,
+  "sizes": [
+   13,
+   16
+  ],
+  "issues": [],
+  "lowContrast": []
+ },
+ "storybook-04-stage-scene": {
+  "words": 22,
+  "sizes": [
+   13,
+   16
+  ],
+  "issues": [],
+  "lowContrast": []
+ },
+ "storybook-05-march-card": {
+  "words": 26,
+  "sizes": [
+   13,
+   16,
+   24
+  ],
+  "issues": [],
+  "lowContrast": []
+ },
+ "storybook-02-spread": {
+  "words": 101,
+  "sizes": [
+   13,
+   16,
+   24
+  ],
+  "issues": [],
+  "lowContrast": []
+ }
+}

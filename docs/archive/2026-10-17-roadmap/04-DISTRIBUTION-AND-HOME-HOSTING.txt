@@ -1,0 +1,129 @@
+GRAVES AND GLORY — DISTRIBUTION AND HOME HOSTING
+Added October 17, 2026 following the user's requested distribution/hosting plan.
+
+FEASIBILITY
+Publishing on both CurseForge and Modrinth and running the official game
+servers on the user's home PC is technically feasible. Listing approval,
+third-party inclusion and actual concurrent-match capacity still require work.
+96 GB RAM is a useful resource, but does not establish CPU performance, Internet
+reachability, upload capacity, availability or the number of simultaneous battles.
+
+USER DECISIONS RECORDED
+- Target both CurseForge and Modrinth for the modpack.
+- Prefer the user's home server PC with 96 GB RAM for official hosting.
+- Preserve the requested public matches, private rooms and persistent parties.
+- Do not assume this request cancels existing Melty distribution.
+- This planning update does not deploy the server or publish any files.
+
+DISTRIBUTION MODEL
+Maintain one source and exact versioned content/dependency inventory. Export
+platform-specific packages from that baseline rather than maintaining two games.
+Prefer separate original-mod projects on both platforms so the pack can reference
+the Graves and Glory mod as a normal hosted dependency. That is a preferred
+distribution approach, not a claim that both platforms require this arrangement.
+
+CurseForge: Use the supported modpack export workflow with manifest.json and
+overrides. Reference hosted mods through the manifest. Unhosted mods need an
+approved inclusion route; do not assume a permissive license alone bypasses
+CurseForge review. Recheck exact shader/resource-pack inclusion as well.
+https://support.curseforge.com/support/solutions/articles/9000198500-exporting-a-modpack-for-curseforge-project-submission
+https://support.curseforge.com/support/solutions/articles/9000197279
+
+Modrinth: Upload a .mrpack containing modrinth.index.json, dependencies,
+downloadable-file hashes and environment metadata. The format supports overrides,
+client-overrides and server-overrides. Check allowed download hosts and rights
+for every included file; do not put CurseForge download URLs into its index.
+https://support.modrinth.com/en/articles/8802351-modrinth-modpack-format-mrpack
+https://support.modrinth.com/en/articles/8802250-modpacks-on-modrinth
+
+Players install the pack in their chosen launcher, then connect to the same
+official server network. Their launcher choice must not determine their team,
+party, profile or progression. A matching modpack version still matters.
+The current Melty archive is not a ready-made upload for either platform.
+
+REMOVE LAUNCHER ASSUMPTIONS
+The game must start and offer public/friends/practice actions without Melty.
+Supply Fabric/Java requirements through each supported launcher/package route.
+Remove mandatory dependencies on Melty join files and runtime conventions.
+Exclude client-only visuals from headless server installations. Never distribute
+server credentials, private keys, operator lists or personal player/world data.
+
+HOME HOSTING — PROPOSED INITIAL DEPLOYMENT
+One home PC can run several isolated processes if hardware measurements allow:
+- A public entry point/proxy when the network grows beyond one server.
+- A lobby and party/queue coordination service.
+- One match server initially, then additional match servers if measured capacity
+  supports them; private matches can use the same pool of isolated match servers.
+- Official profile/reward storage and backups.
+These do not each require a separate physical machine. Start small.
+
+USER-REPORTED SERVER SPECS — OCTOBER 17, 2026
+- CPU: Intel Core i7-10700K.
+- RAM: 96 GB DDR4.
+- Operating system: Windows 11.
+- Internet/router: Starlink; user reports high speeds.
+- These are user-provided specifications, not measurements of this workstation.
+
+ASSESSMENT
+This is a plausible host for an initial lobby and battle beta. Start with one
+full match and measure CPU/tick time, available resources and network performance
+before promising concurrent player or match counts.
+
+STARLINK NETWORK CONSTRAINT
+Starlink documents CGNAT as its default IPv4 policy, blocking inbound ports.
+It also states that its own router does not support port forwarding. The user's
+actual service plan and IP policy have not been inspected.
+First evaluate an outbound TCP relay to a public entry point, keeping Minecraft
+simulation on the home PC. Compare latency, stability, cost and address handling.
+A public-IP option plus a suitable third-party router is an alternative if
+available. A replacement router alone does not remove ISP CGNAT. IPv6 may be
+another route, but cannot be assumed reachable by every prospective player.
+Sources checked October 17, 2026:
+https://starlink.com/en-jo/support/article/ac09301b-cef6-a125-c251-856196a77f92
+https://starlink.com/en-bd/support/article/e3e6bb65-2bbc-1c8a-0c42-74b4776a64f8
+
+WHAT MUST BE CHECKED
+- Available CPU/RAM and performance under the existing workload.
+- Administration method and SSD/storage capacity.
+- Available RAM after existing services and the operating system.
+- Wired network connection, measured upload speed and evening latency/stability.
+- Public inbound connectivity, public IPv4/CGNAT, double NAT and router access.
+- ISP conditions, power reliability and planned uptime.
+
+NETWORK OPTIONS
+With reachable public addressing and router control, forward only the intended
+Minecraft TCP entry point. Use a hostname and dynamic DNS if the address changes.
+If CGNAT prevents inbound connections, investigate an ISP public-address option
+or a TCP-capable relay/VPS edge; choose only after measuring latency and costs.
+A proxy running on the same home connection does not itself hide/protect that
+connection against denial-of-service traffic. Public scale may justify an external
+protected edge while keeping actual match simulation on the home PC.
+
+For a Velocity deployment, protect backend ports and configure identity forwarding;
+modern forwarding does not replace a firewall. Do not expose the database or
+administration panel publicly merely to make the game reachable.
+https://docs.papermc.io/velocity/security/
+
+CAPACITY AND OPERATIONS
+Do not assign all 96 GB to a single Java process. Give each process an appropriate
+heap based on measurements and reserve memory for the OS, storage/cache and
+other workloads. More RAM does not make troop AI/pathfinding execute faster.
+Measure server tick duration, CPU, memory, upload and client frame times in a
+full eight-human/160-troop match before promising any concurrent player limit.
+Run additional simultaneous matches as a separate capacity test.
+Use automatic startup, graceful restarts, monitoring, off-machine backups and a
+restore test. Home power/Internet outages will take the service offline unless
+separate redundancy is added. Begin with a controlled friends beta.
+
+CHECKLIST CHANGES
+Milestone 1: Added platform inventory, exports, standalone launching and tests.
+Milestone 3: Added home-hardware, networking, process-budget and uptime tasks
+before dedicated server implementation.
+Milestone 5: Made home hosting the default deployment target; added release
+preparation/moderation and live verification for both platforms.
+
+NEXT INFORMATION NEEDED
+Remaining inputs: measured upload speed and latency/stability, Starlink plan/IP
+policy, storage type/capacity and existing workloads. CPU, RAM and OS are recorded
+above and should not be requested again. No server/router configuration was
+changed by this planning update.

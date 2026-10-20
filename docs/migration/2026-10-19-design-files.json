@@ -1,0 +1,3717 @@
+[
+  {
+    "path": "design-archive/ui-concepts/art.js",
+    "sha256": "c0345689ba0260be768460a64518633ba203e57750756ccd62d9aca3d39bef54",
+    "bytes": 16860
+  },
+  {
+    "path": "design-archive/ui-concepts/AUDIT.md",
+    "sha256": "f67b359fe980b7b8f75cf25024833936e10fa949c95facd652eb8d7bae5a0651",
+    "bytes": 20238
+  },
+  {
+    "path": "design-archive/ui-concepts/bgfix.py",
+    "sha256": "65c2948143e35c7602ee6cd2d13e10ca1f885daa59765a691a1962d00288187a",
+    "bytes": 4197
+  },
+  {
+    "path": "design-archive/ui-concepts/check.js",
+    "sha256": "7cbcbf46628d0d66d421747f354bd3742d1e8c4f1758ded5293d9263abae0d0d",
+    "bytes": 11333
+  },
+  {
+    "path": "design-archive/ui-concepts/common.css",
+    "sha256": "211e0b74dd6a086aa6052e9d4dd7189103cb83ba7bb596d82b28e538b5c8293d",
+    "bytes": 9411
+  },
+  {
+    "path": "design-archive/ui-concepts/CONCEPTS.md",
+    "sha256": "d19485d8ab3c228ddff962ab45be46cfc2c958ec9d3e9cec056754bafb6811e0",
+    "bytes": 25278
+  },
+  {
+    "path": "design-archive/ui-concepts/DESIGN-RULES.md",
+    "sha256": "352f11a1e268e5436531c1f5461b005b21450350f66fc9240f88333b601ea7d8",
+    "bytes": 5100
+  },
+  {
+    "path": "design-archive/ui-concepts/GRADES-v2.md",
+    "sha256": "4fe3f4abf9b2a2ad5b31b0f7980bc3d7736953ae12b4ea5d82dfe9219ef5cfb7",
+    "bytes": 12380
+  },
+  {
+    "path": "design-archive/ui-concepts/GRADING-RUBRIC.md",
+    "sha256": "ba4e0ab26f0902f26eb63c6ac23e6775dc372504a1874875b98c7ebe6e3995d9",
+    "bytes": 1810
+  },
+  {
+    "path": "design-archive/ui-concepts/hud-A-marshals-glass.html",
+    "sha256": "8f6635bcff6857448d1070f7f8ce6e71c9ea97f07732264b29c01fc561199830",
+    "bytes": 9625
+  },
+  {
+    "path": "design-archive/ui-concepts/hud-A-marshals-glass.png",
+    "sha256": "1bbe3977496a7b1a02ead2856096240a6cc4e02406221ac701123a7e3dcdd5bb",
+    "bytes": 1877956
+  },
+  {
+    "path": "design-archive/ui-concepts/hud-B-iron-ledger.html",
+    "sha256": "960c3bdca6290ec456722987b3597777dbe6642646475e9a070c2cdffa8fadbf",
+    "bytes": 10837
+  },
+  {
+    "path": "design-archive/ui-concepts/hud-B-iron-ledger.png",
+    "sha256": "556ef925178adca3a84ea9befdbcfba5c857ed6db67cacfdb3306c9c186cbf16",
+    "bytes": 1713854
+  },
+  {
+    "path": "design-archive/ui-concepts/hud-C-banner-line.html",
+    "sha256": "5eb9f4fcffd660df4e872b7ed961167877da8fb5b66f1f7024b87664b06c9384",
+    "bytes": 13460
+  },
+  {
+    "path": "design-archive/ui-concepts/hud-C-banner-line.png",
+    "sha256": "5f7298f29bfecc285932e661fbd36b3f838be9c20de69a0062803377a1960836",
+    "bytes": 1864193
+  },
+  {
+    "path": "design-archive/ui-concepts/index.html",
+    "sha256": "fe3f31db80ab6f48d227807b8afa6984caacaae1fc33cb4944861e10b14302b9",
+    "bytes": 25499
+  },
+  {
+    "path": "design-archive/ui-concepts/mc.js",
+    "sha256": "c3598a7d2f3a53cb667dc5252c1f6a224df06e9a3b5421eaea54c6755556cc9f",
+    "bytes": 5617
+  },
+  {
+    "path": "design-archive/ui-concepts/render.py",
+    "sha256": "a043b3d1e6cfaf1320eb8928e52b7da8806c61204010a254cf363d6c3bf60949",
+    "bytes": 7292
+  },
+  {
+    "path": "design-archive/ui-concepts/ui-A-war-table-home.html",
+    "sha256": "1207f1c8f1c17aad2b36e6b8f7618d89b641a24e0ac5555fcf4b8a4b42731c39",
+    "bytes": 15145
+  },
+  {
+    "path": "design-archive/ui-concepts/ui-A-war-table-home.png",
+    "sha256": "867c7a59b7190e27a83626060b09654e9eb06b0d38ee129204057747c72f49c2",
+    "bytes": 155812
+  },
+  {
+    "path": "design-archive/ui-concepts/ui-A-war-table-recruit.html",
+    "sha256": "4fb3723e6e74c47fe9f45900ce7c282ca58340ac37bc2ca2ec17513dc6701ab4",
+    "bytes": 14950
+  },
+  {
+    "path": "design-archive/ui-concepts/ui-A-war-table-recruit.png",
+    "sha256": "9993e32ec00acdccd5f455c90802c11bff0c5e1ca19f5df0eff1332429a1034f",
+    "bytes": 152789
+  },
+  {
+    "path": "design-archive/ui-concepts/ui-B-field-ledger-home.html",
+    "sha256": "7e4f62dc3fdc344a6a0c420ce302accfbe08b6cbbfc8717fdcca6c9ca03b4471",
+    "bytes": 16193
+  },
+  {
+    "path": "design-archive/ui-concepts/ui-B-field-ledger-home.png",
+    "sha256": "cb823502e33e7916486afcab2e63125ea6ff2f594e4d8dc545d21dc27a5bbb57",
+    "bytes": 401346
+  },
+  {
+    "path": "design-archive/ui-concepts/ui-B-field-ledger-recruit.html",
+    "sha256": "523527662f5ac902e5fed236544044a8fa5618aaf27c88fa72cac74e0f6e040f",
+    "bytes": 13620
+  },
+  {
+    "path": "design-archive/ui-concepts/ui-B-field-ledger-recruit.png",
+    "sha256": "c1d5be568cebc0a5df4669426c70c1b62ad0daadc95929f6acc8fcc32d263c16",
+    "bytes": 429018
+  },
+  {
+    "path": "design-archive/ui-concepts/ui-C-hall-of-banners-home.html",
+    "sha256": "6aed006e4788bc95568b4e75dbba1769820d4ffdb4a7846b872e6b104c15336d",
+    "bytes": 12600
+  },
+  {
+    "path": "design-archive/ui-concepts/ui-C-hall-of-banners-home.png",
+    "sha256": "4e282616fe086709e8911f252196578e4519fd69ee22f72158b523468b6671e5",
+    "bytes": 631396
+  },
+  {
+    "path": "design-archive/ui-concepts/ui-C-hall-of-banners-recruit.html",
+    "sha256": "3dfe41a79cf5759858b57270aa3c87202877f30c7961036702c9558f33fb9f10",
+    "bytes": 13998
+  },
+  {
+    "path": "design-archive/ui-concepts/ui-C-hall-of-banners-recruit.png",
+    "sha256": "c057f502a9f5493bf40909dbee00e855976be6f863510bd07f4644ba552edebf",
+    "bytes": 532986
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-check.json",
+    "sha256": "c6a716ba7641bd5a84dd778c18af8a4e3a2cd4a27b8c60ae80c0b00753b26bab",
+    "bytes": 1182
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-hud-A-marshals-glass.html",
+    "sha256": "21366099dd98b41301a7ff100c00fc099ccc4b36ea85cc344eb37cae0d7909a3",
+    "bytes": 8149
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-hud-A-marshals-glass.png",
+    "sha256": "eb15b5f8d331f20122b92acf171d99c25fe3d45c027605954d63b90af4dd1258",
+    "bytes": 1855004
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-hud-B-iron-ledger.html",
+    "sha256": "18403887483b4961942f2318a49e3e19f4ebacb6dded517984673be3cb29e5e7",
+    "bytes": 7343
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-hud-B-iron-ledger.png",
+    "sha256": "b12a41b2b4125964aaa3e47306e7e74ac49e18a4a2538c2aadda3c0d11d647b1",
+    "bytes": 1809548
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-hud-C-banner-line.html",
+    "sha256": "6e65681e78dabe8a0c8a8905bd2e8eed11a3b6a720aef0248ba549a19786593b",
+    "bytes": 9645
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-hud-C-banner-line.png",
+    "sha256": "9711ec68cbd284e31e8ea4d6da2c7e45a9ec181a4e8d6cabe64f881df7affcd6",
+    "bytes": 1831612
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-ui-A-war-table-home.html",
+    "sha256": "a97f1559dc97f3b3bdf7ae8ac2e781463bdd797e863d103be269fd0af43ce14b",
+    "bytes": 7160
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-ui-A-war-table-home.png",
+    "sha256": "16476cf0674f545caff5560cf4eb235191824567f2c9e60dc936266971c2a95a",
+    "bytes": 66249
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-ui-A-war-table-recruit.html",
+    "sha256": "bc7245f297069176210e156b91d0b06dcffd24fa475015a49f699d572a06c03d",
+    "bytes": 10024
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-ui-A-war-table-recruit.png",
+    "sha256": "87b635a5b6939066b44cd82a64c51459cb1dcc745f0b47dc3b863d039e3c85cc",
+    "bytes": 75697
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-ui-B-field-ledger-home.html",
+    "sha256": "f3c4131eb86a4addb0950cf7eeee16299525f3fe8736f5365427030df6ae418d",
+    "bytes": 6666
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-ui-B-field-ledger-home.png",
+    "sha256": "3a13b619b4380859a6254c9607762a6a19f4ca20864f77913ec9f1157804548b",
+    "bytes": 609603
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-ui-B-field-ledger-recruit.html",
+    "sha256": "175c63cb0b919e191bbf6dde2a5cbc55a477fa1511d1a6e4ea7205f9c6207632",
+    "bytes": 9372
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-ui-B-field-ledger-recruit.png",
+    "sha256": "07c6f620ed3b25944d353b5fd1b57272cd472c82e9690a456f3a12292294c476",
+    "bytes": 426810
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-ui-C-hall-of-banners-home.html",
+    "sha256": "1dac9e2edbaa58a65bdf38163b423844f859b48523d433f1383cc4dc45f1db21",
+    "bytes": 8642
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-ui-C-hall-of-banners-home.png",
+    "sha256": "c2c1b91e34aabc460c24f87a4f9ed5f638d2ee290fdf1bc2e77709968df6f7c2",
+    "bytes": 737929
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-ui-C-hall-of-banners-recruit.html",
+    "sha256": "d6d04bba8a7dc103d9d9abb420c6630f51896b4f7cefe8bcf15f15c889eadd4c",
+    "bytes": 8929
+  },
+  {
+    "path": "design-archive/ui-concepts/v2-ui-C-hall-of-banners-recruit.png",
+    "sha256": "df62bdad8ad8649540b56fa6ddc97a2b3a0207d5b88c1e8c09a84581c29b9b6e",
+    "bytes": 793127
+  },
+  {
+    "path": "design-archive/ui-concepts/v2.js",
+    "sha256": "b6e443baf06b21341ad71b414478a50522342644081fdf5a121f0f1097be597c",
+    "bytes": 1141
+  },
+  {
+    "path": "design-archive/ui-concepts/v3-check.json",
+    "sha256": "cdc89631f619cfa83c6b354200103f81995cf38d530c45cc316c5778f7958284",
+    "bytes": 383
+  },
+  {
+    "path": "design-archive/ui-concepts/v3-hud-iron-ledger.html",
+    "sha256": "029a6760b6be0f4fc5995deb5a1bf809c006f2ddf8ab5ce2f2a49ccf364c0fa1",
+    "bytes": 8870
+  },
+  {
+    "path": "design-archive/ui-concepts/v3-hud-iron-ledger.png",
+    "sha256": "e5757a6b467b57fb85f0897478be0d5f3647231d138947bf8f032ca3ae286f2f",
+    "bytes": 1826453
+  },
+  {
+    "path": "design-archive/ui-concepts/v3-ui-war-table-home.html",
+    "sha256": "a32fe781471a121e7c95ec51dfa8863dcbb757f66a01732673fad890091764a0",
+    "bytes": 7924
+  },
+  {
+    "path": "design-archive/ui-concepts/v3-ui-war-table-home.png",
+    "sha256": "18f818ec91700c087b56d6ee293fb6d6674961a7483d7e425bd0e230399adf29",
+    "bytes": 100819
+  },
+  {
+    "path": "design-archive/ui-concepts/v3-ui-war-table-recruit.html",
+    "sha256": "d5a40d3debd9716600ae704a91555db10f58363a2e14799914478d607f912145",
+    "bytes": 10797
+  },
+  {
+    "path": "design-archive/ui-concepts/v3-ui-war-table-recruit.png",
+    "sha256": "71811b0ecb80aa39050f131480071a821407a1558d7da4d73f9b48d95bfeca28",
+    "bytes": 114605
+  },
+  {
+    "path": "design-archive/ui-concepts/v3.css",
+    "sha256": "6ffe206cff52bf0467cba6b025fbb5bd2ee1c16e8b26ca7cfae7184d9fae7025",
+    "bytes": 661
+  },
+  {
+    "path": "design-archive/ui-concepts/v3art.py",
+    "sha256": "5f28eeda0be6005724459ab972b7ea300922c6ae5494791fe3bc80250b8718ef",
+    "bytes": 8107
+  },
+  {
+    "path": "design-archive/ui-concepts/v3a_hud.py",
+    "sha256": "8702732da9abb571e7b1b2f0e74c3ed342be76b8d8662f649f5c6c63eb18f29f",
+    "bytes": 25552
+  },
+  {
+    "path": "design-archive/ui-concepts/v3a_paper.py",
+    "sha256": "d12cbad1171977c6267fe96e7969a9ad54b9853f4e3e65001bd0974dec31abb0",
+    "bytes": 29338
+  },
+  {
+    "path": "design-archive/ui-concepts/v3a_recruit.py",
+    "sha256": "9df4ad04718aab7ebca549e59ce23b3fde9687f3ab92737297ab5dba3be45843",
+    "bytes": 29270
+  },
+  {
+    "path": "design-archive/ui-concepts/v3a_table.py",
+    "sha256": "1cd93e91ca028305340caafd71cb2b5c2e1069c093392268d5d30b11c110193c",
+    "bytes": 17495
+  },
+  {
+    "path": "design-archive/ui-concepts/v3crop.py",
+    "sha256": "5dae495a3be34073c326f207f140b0f1bde0a9bab59c06dce857535dec091b24",
+    "bytes": 717
+  },
+  {
+    "path": "design-archive/ui-concepts/v3lib.py",
+    "sha256": "efcd7c58cd2c758585be4abe08e48109cff8e684d5e1b9359eab95fda615bde2",
+    "bytes": 8976
+  },
+  {
+    "path": "design-archive/ui-concepts/v3pal.py",
+    "sha256": "a8f534e67bc24079ac76f096b5a89876da9a2eb032b4315bec4a9cf87955aa4b",
+    "bytes": 933
+  },
+  {
+    "path": "design-archive/ui-concepts/v3sheet.py",
+    "sha256": "2f0f7f009abdec98802d7f42f708bee106b0da23b25c4b898abdb4adf28dfa8c",
+    "bytes": 1051
+  },
+  {
+    "path": "design-archive/ui-concepts/v4-check.json",
+    "sha256": "bbe1978915fc6b63a0671bb24ddc98f47df9eefc20b4a17cc8b8b8d81fa932fe",
+    "bytes": 383
+  },
+  {
+    "path": "design-archive/ui-concepts/v4-detail-crops.png",
+    "sha256": "1a45ad391d0f1bff911bbf750e42ef07fdef105fee64a0cb43a9c2b6e3b06e5d",
+    "bytes": 72713
+  },
+  {
+    "path": "design-archive/ui-concepts/v4-hud-iron-ledger.html",
+    "sha256": "ce89f8e4ecf769fab935700e9bb8874bfa07832d06fa9faa3ca71dbe7eba39c1",
+    "bytes": 10565
+  },
+  {
+    "path": "design-archive/ui-concepts/v4-hud-iron-ledger.png",
+    "sha256": "98fd193f98483604350ff3b2c9cabc2e22f3f214d5ad614e5b9d5164bbe2bcce",
+    "bytes": 1767690
+  },
+  {
+    "path": "design-archive/ui-concepts/v4-ui-war-table-home.html",
+    "sha256": "0956a013066e5bf14896bf332e2e15e2d86dc438200592d45b249b8b59995d07",
+    "bytes": 9687
+  },
+  {
+    "path": "design-archive/ui-concepts/v4-ui-war-table-home.png",
+    "sha256": "f143bf963963d01f070d734794c2408ed3885f79a2f935908c25e6f422c6e121",
+    "bytes": 160381
+  },
+  {
+    "path": "design-archive/ui-concepts/v4-ui-war-table-recruit.html",
+    "sha256": "d63f8945e095c5c990191610e9f62c41923f1052a98ba401570028d04b2f67b3",
+    "bytes": 11258
+  },
+  {
+    "path": "design-archive/ui-concepts/v4-ui-war-table-recruit.png",
+    "sha256": "187545e8370d6f729a374e4f5d855c492b18e58f252bcc1ad3ec28cb18632730",
+    "bytes": 176184
+  },
+  {
+    "path": "design-archive/ui-concepts/v4art.py",
+    "sha256": "2508c68e51e246d1f780428b6d9cbb38245c28c7f8547a59bd9574676a59cb86",
+    "bytes": 12485
+  },
+  {
+    "path": "design-archive/ui-concepts/v4a_furn.py",
+    "sha256": "0d3e9397ce19d5f544fa62dc35aa4879286a31cd146d0558352b0247f87541e0",
+    "bytes": 42501
+  },
+  {
+    "path": "design-archive/ui-concepts/v4a_hud.py",
+    "sha256": "a3ef432e66d1309e0da73869df676428a33b44b7abeaae674824c480172facfe",
+    "bytes": 40144
+  },
+  {
+    "path": "design-archive/ui-concepts/v4a_ink.py",
+    "sha256": "ba94569f43d564c0e957a3a47ed6003750332cd7ca566958c1dc5a0acab3988a",
+    "bytes": 26713
+  },
+  {
+    "path": "design-archive/ui-concepts/v4a_map.py",
+    "sha256": "fe7f11ab0999af6e1f0f1417ddd80e8628739ce0e9c36c69ea476b106b385463",
+    "bytes": 20281
+  },
+  {
+    "path": "design-archive/ui-concepts/v4a_paper.py",
+    "sha256": "05c5e587480272c11510c27c61022f880306b7c12e1ee49418ff39208cb9d1c7",
+    "bytes": 35960
+  },
+  {
+    "path": "design-archive/ui-concepts/v4a_portrait.py",
+    "sha256": "f3c29a522b8fdd442e7c00bc2bb9e6059d4f39945c2b3b4826087cfa8816fbf8",
+    "bytes": 25911
+  },
+  {
+    "path": "design-archive/ui-concepts/v4a_recruit.py",
+    "sha256": "5c71e79db247ae8014f661b0a341992666eb54a79d33c67e7dcdcc4ce6a0fd1a",
+    "bytes": 28552
+  },
+  {
+    "path": "design-archive/ui-concepts/v4a_recruit2.py",
+    "sha256": "2d29365b3475b04187e26c44444af19a512b318191099ef5ea65391b8d214925",
+    "bytes": 9039
+  },
+  {
+    "path": "design-archive/ui-concepts/v4a_table.py",
+    "sha256": "4f9ac51af7e36bedab0eb7a17345359a0702295e1487a50fa9b3646e5e0d9f71",
+    "bytes": 17065
+  },
+  {
+    "path": "design-archive/ui-concepts/v4crop.py",
+    "sha256": "0d0049c04b30bda7b3daa06f7bfc0a067b8b2de1140482c67e19b7363af6e735",
+    "bytes": 717
+  },
+  {
+    "path": "design-archive/ui-concepts/v4detail.py",
+    "sha256": "3160d9275326079fb05afb48344c4f86c82529c4ce94f6a18c8dbad96fc04cf8",
+    "bytes": 1908
+  },
+  {
+    "path": "design-archive/ui-concepts/v4lib.py",
+    "sha256": "77d4397472c3675dbf3473feb3dc49ddd41c48bc10e4fc87987414e8fdb38cd2",
+    "bytes": 8746
+  },
+  {
+    "path": "design-archive/ui-concepts/v4pal.py",
+    "sha256": "63a02236453d026d63ae677f866499b763acba1f1dfa81eded5fddcf35e4a4cb",
+    "bytes": 921
+  },
+  {
+    "path": "design-archive/ui-concepts/v4sheet.py",
+    "sha256": "aae0a82eb6b9ab1090849c010679e30c1d7663940d3ef6ef1bfc3fdd5f7317ba",
+    "bytes": 1051
+  },
+  {
+    "path": "design-archive/ui-concepts/assets/ascii.png",
+    "sha256": "2006121b1ecdbb304811db1e15ee4a65c7f61c938737dbea2c3038ab7f205b77",
+    "bytes": 1494
+  },
+  {
+    "path": "design-archive/ui-concepts/assets/icons.png",
+    "sha256": "8d720587f99e2c3d495706ea72249e9b2cc1d1cc9bcd75d4367613e71b898d28",
+    "bytes": 8081
+  },
+  {
+    "path": "design-archive/ui-concepts/assets/widgets.png",
+    "sha256": "26a3d4b8a23b75fdb7a0c5e8b7835ce8bdf98873a81695dde9f7010845edfe8b",
+    "bytes": 15444
+  },
+  {
+    "path": "design-archive/ui-concepts/bg/camp-battle-hud.png",
+    "sha256": "43e9ca7aa3a5071eaf9b4ab0cb8bd05d6820d6b28c3587a757f13731f36ebf51",
+    "bytes": 423115
+  },
+  {
+    "path": "design-archive/ui-concepts/bg/camp-clean.png",
+    "sha256": "d6e77d4b1ac560d5597d0f6e2d22c25985aadcca4b61b795775d044b07fe78e0",
+    "bytes": 1524164
+  },
+  {
+    "path": "design-archive/ui-concepts/bg/camp-courtyard.png",
+    "sha256": "49399f2ecdb6172a09a6521aa8dba1644bb05ee733ffd6fc4b6acaf2ad7f81b1",
+    "bytes": 597344
+  },
+  {
+    "path": "design-archive/ui-concepts/bg/camp-v2.png",
+    "sha256": "8d8ef1de8a9ded8cdaa7bb3acc21769e838d947d838cc826b0dfc37b00e594ac",
+    "bytes": 1537949
+  },
+  {
+    "path": "design-archive/ui-concepts/bg/fight-clean.png",
+    "sha256": "7946e55072e086aef47da6674a4c86bbfd88ff99a73bf661f5522eab845f5506",
+    "bytes": 1844384
+  },
+  {
+    "path": "design-archive/ui-concepts/bg/fight-v2.png",
+    "sha256": "dc9ddb65ef98c71a682c07f051e5c8ef07e40b3b4fdd71980681ba6c11c35ce3",
+    "bytes": 1849297
+  },
+  {
+    "path": "design-archive/ui-concepts/bg/p1-bots-shieldwall.png",
+    "sha256": "b07d260a690c3199ae7b74d0f0ba33361d3f861b8e4c68b9958f696c7af5ae9d",
+    "bytes": 756851
+  },
+  {
+    "path": "design-archive/ui-concepts/bg/p1-combat-hud-flash.png",
+    "sha256": "1fdb434ee7c32d764c3579960811f2cb9ae47ef9746a70c742c01f3ac0e57e66",
+    "bytes": 733997
+  },
+  {
+    "path": "design-archive/ui-concepts/bg/p1-combat-volley.png",
+    "sha256": "5d67153ea4a39920b6e7c14475391b75ae0ebb32fd4e55591dcb698f5273ed34",
+    "bytes": 719483
+  },
+  {
+    "path": "design-archive/ui-concepts/bg/p1-morale-rout.png",
+    "sha256": "be7437c07ee1ce12d381424a4b6fdf254ba528179f94cbe6b24f17c20c9f905d",
+    "bytes": 971238
+  },
+  {
+    "path": "design-archive/ui-concepts/bg/rout-clean.png",
+    "sha256": "662a6b490be90fd0615665e4aab0c00226322c09fd3d3f4144237ec4bfdaf7df",
+    "bytes": 1765122
+  },
+  {
+    "path": "design-archive/ui-concepts/fonts/lato.ttf",
+    "sha256": "d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+    "bytes": 656568
+  },
+  {
+    "path": "design-archive/ui-concepts/fonts/marcellus.ttf",
+    "sha256": "1cf0cd10b17d35e852729962cc1ffaffed94514895972458345e2df34abb2f81",
+    "bytes": 46004
+  },
+  {
+    "path": "design-archive/ui-concepts/reference/REFERENCE.md",
+    "sha256": "59e6dc143fc1e621f01ba07e77105f3a87ce5b4e5207229b30693ee81dfafbff",
+    "bytes": 1783
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/NOTES.md",
+    "sha256": "cabc87d73cd2298595b551ca6c868b194cf2cf26da40daf3c0673c8c27aff0e1",
+    "bytes": 30894
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/round2-sheet.png",
+    "sha256": "6e7b437366ef47a0f1806793b9a2f4766097158d7f6e415715dff83b2e7956e2",
+    "bytes": 840554
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/sb-check.json",
+    "sha256": "158fecfcd5bfe8d9749fa54f787460af72897442092922296369e2a3073ab489",
+    "bytes": 647
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/sb.css",
+    "sha256": "0533da645d68cbc8d7bbe68e47608391d16b46d5b6ee009c9b088659aa690711",
+    "bytes": 1130
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/sb_book.py",
+    "sha256": "aa4b41c9cfa1ee13212ee9b9c874e523648d852a5c4544a0a7e855986d8ad4c0",
+    "bytes": 36034
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/sb_common.py",
+    "sha256": "d7b2e8f84fce45ca95006ddfc2d5eb378eed96334cf90042421fb1a59ccb2cd8",
+    "bytes": 1170
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/sb_portraits.py",
+    "sha256": "4967af7331b3ee51400251bd8a0329ae1889383f503ca1d8d0499d4a5f0de9f8",
+    "bytes": 16789
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/sb_props.py",
+    "sha256": "f5eda1eb4b45e0188bcd0e082961e514ef62cf0a335ed911e8811eeb218ecdd8",
+    "bytes": 20331
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/sb_render.py",
+    "sha256": "7d1e41efc2a88c84e9eee225868a9a10b3471ed52093d7a10514e336924d526c",
+    "bytes": 2621
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/sb_river.py",
+    "sha256": "43e76466f4d3d6b74f92a13d0159098154f62cf85e18ffd850cd89d0ff0a86b7",
+    "bytes": 41454
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/sb_scenes.py",
+    "sha256": "62fe2100fde90097c39639e4def521647512d63d16017ca64ca8a39e0e72b97f",
+    "bytes": 34244
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/sb_table.py",
+    "sha256": "29a43076c2dc119e1f4e93695a02a9ac20328148c4618fc195a0e3cf59543e1e",
+    "bytes": 31140
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/sb_ui.py",
+    "sha256": "e9d4933b5d8a5cb3d22c49f85882e44211795a42bedf5b8e925cebb7ff2c6957",
+    "bytes": 29412
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/sb_world.py",
+    "sha256": "ce7a62010cbb51213521286708951c20c65ff4142eb43896ba7d00f5b7baac57",
+    "bytes": 19727
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/storybook-01-closed.html",
+    "sha256": "625c51545a15f8f8be3ebbf97b85ff70aa9b977fc367c9bc5971a78ea984a743",
+    "bytes": 4003
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/storybook-01-closed.png",
+    "sha256": "f6d583d62fa62726ab55c25ad593976a997d31fbdf4a2e49e6c8a7d150598d37",
+    "bytes": 341931
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/storybook-02-spread.html",
+    "sha256": "759071c448b95211e34b6a57199217551306e46a6b4c4e9a209626e08ea3e877",
+    "bytes": 7960
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/storybook-02-spread.png",
+    "sha256": "5152370c4ce361d6876938b053e6c30c507988e6b6175929a01ac11ef3d6106f",
+    "bytes": 411090
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/storybook-03-panel-scene.html",
+    "sha256": "71998ca15ae263a3760fbb2bf632c50d1834ad32ff8438d70374ff1e9219347c",
+    "bytes": 2920
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/storybook-03-panel-scene.png",
+    "sha256": "71a3a747a933814a4d9ee327e3c506ef337041b1b983c86b1bf39d887a208b9b",
+    "bytes": 1530419
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/storybook-04-stage-scene.html",
+    "sha256": "e990c08cf5c65de0de83c0b564199bfa61dfb0173d5218e2e58acdfa20ba520a",
+    "bytes": 3084
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/storybook-04-stage-scene.png",
+    "sha256": "5a2c0d651cac3ac7b8929e9360fa1e54fac386934573b9b7c12fb220aae1539f",
+    "bytes": 1511805
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/storybook-05-march-card.html",
+    "sha256": "2d8288f0ed2f1f5f6ab32171b61041782da7f3ad5ee82627ad6ea8291f3c0da1",
+    "bytes": 3724
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/storybook-05-march-card.png",
+    "sha256": "d06d8eeb211c7bda0cfc0c1d95902306ca3eb23060082d2059521b90a9785bd1",
+    "bytes": 1222051
+  },
+  {
+    "path": "design-archive/ui-concepts/title/blocky.py",
+    "sha256": "1aa1d149da3eb066d35dbfd6f02f35d029fc2963a80624218eb1f9cc4ff72339",
+    "bytes": 39939
+  },
+  {
+    "path": "design-archive/ui-concepts/title/build_pages.py",
+    "sha256": "af42b21b077b1545d573a099b66ab821ca574b91c4a3568bede4994ee775b459",
+    "bytes": 4079
+  },
+  {
+    "path": "design-archive/ui-concepts/title/pixel.py",
+    "sha256": "2d2050d6005a278705ff0397f90b61b5ad2d8b4538fe2e82815c01318e373dba",
+    "bytes": 3682
+  },
+  {
+    "path": "design-archive/ui-concepts/title/preview.py",
+    "sha256": "bb5816880fd6e13d4ad3edf502f41182526a727bad85e5408cc3a7b0aac7337b",
+    "bytes": 2811
+  },
+  {
+    "path": "design-archive/ui-concepts/title/preview_ui.py",
+    "sha256": "8beb8fb84bc306eba885ee01f211bcd98eb5ff90beaf062dacaf6551b11b98bc",
+    "bytes": 1289
+  },
+  {
+    "path": "design-archive/ui-concepts/title/render_title.py",
+    "sha256": "443f91411f336ce85942460505fd12b40a7fcc9e224adbd635cc7d51b030882f",
+    "bytes": 4646
+  },
+  {
+    "path": "design-archive/ui-concepts/title/title-banner-frames.png",
+    "sha256": "7e434be956b4a55ba95855913231ef25a5858b442ee12bcd1254ba528035de92",
+    "bytes": 187375
+  },
+  {
+    "path": "design-archive/ui-concepts/title/title-check.json",
+    "sha256": "0f748019f13ed905d33ffb5a8600a8a116a80ad4503e6cfc28543f5a8408beea",
+    "bytes": 3831
+  },
+  {
+    "path": "design-archive/ui-concepts/title/title-hill-day.html",
+    "sha256": "70de3d2a9ff5817d8a06872eb177f7e51032fa14ec9c8e3f704eec5a621f73ae",
+    "bytes": 2102
+  },
+  {
+    "path": "design-archive/ui-concepts/title/title-hill-day.png",
+    "sha256": "7a188d682b0840a0aef468222db4f606ed89f547961ab7a5f0a98a0d32355149",
+    "bytes": 1221506
+  },
+  {
+    "path": "design-archive/ui-concepts/title/title-hill-hover.html",
+    "sha256": "9b369ce226367253c5d32a5939a4ad4896a9e0bc27cb7d4e3a95d007d5d5840f",
+    "bytes": 2404
+  },
+  {
+    "path": "design-archive/ui-concepts/title/title-hill-hover.png",
+    "sha256": "10bad355653436dc480ba565e7f688bd9b357ce00c94b7d4117b0948f3c9f9f0",
+    "bytes": 1221986
+  },
+  {
+    "path": "design-archive/ui-concepts/title/title-hill-night.html",
+    "sha256": "4fb7dfdab5344594723863243492d67c6f8ba6b73b02b0bd229c2dde79a86eb4",
+    "bytes": 2117
+  },
+  {
+    "path": "design-archive/ui-concepts/title/title-hill-night.png",
+    "sha256": "29fd02d198f0bdccf763d633cf74f9e0c5c774d3b90b8b001c2ecebd72834ed5",
+    "bytes": 1089988
+  },
+  {
+    "path": "design-archive/ui-concepts/title/title.css",
+    "sha256": "b51a8983ff315ce9cc3bc767048be44e4ad8bf07c963b9cf6ae5cd61d4a6784b",
+    "bytes": 9438
+  },
+  {
+    "path": "design-archive/ui-concepts/title/TITLE.md",
+    "sha256": "b9192d0d342a2638ffcc05cceefd2b63cb627c0691dc68368220238ff061e6fa",
+    "bytes": 23231
+  },
+  {
+    "path": "design-archive/ui-concepts/title/title_bg.py",
+    "sha256": "f26a980613260a2660301455a182c09e79ffcd3e91b227822fcbd73642da6336",
+    "bytes": 15840
+  },
+  {
+    "path": "design-archive/ui-concepts/title/title_commander.py",
+    "sha256": "0cb47f112001e095965de59d2262a5dacce6f41492ca03cd6e223781954e11b4",
+    "bytes": 17239
+  },
+  {
+    "path": "design-archive/ui-concepts/title/title_hill.py",
+    "sha256": "dbf6ed62cabf45c0266ce284e97e26bf8c4f18973f7391535f122c461e6e18ee",
+    "bytes": 20509
+  },
+  {
+    "path": "design-archive/ui-concepts/title/title_ui.py",
+    "sha256": "9c340f53a4c0aedfe28f1fd852b0a4008d69fb7c056dd9439e0b9204c8cc2924",
+    "bytes": 14552
+  },
+  {
+    "path": "design-archive/ui-concepts/track/build.py",
+    "sha256": "36ea16f2f50e226220fabe1f32a00a4eba074c97c576ec59284d5d17ac2acc03",
+    "bytes": 581
+  },
+  {
+    "path": "design-archive/ui-concepts/track/NOTES.md",
+    "sha256": "aeb2961e4f990786f31dc81a2ea6043034b3c3d0e6c5a98f9c67f957fdb5dfe2",
+    "bytes": 14381
+  },
+  {
+    "path": "design-archive/ui-concepts/track/pages.py",
+    "sha256": "755bea977e63d2c4411ff2f5c5d571519357c09bdac0ad8e36d98328f270410d",
+    "bytes": 18421
+  },
+  {
+    "path": "design-archive/ui-concepts/track/track-01-sworn.png",
+    "sha256": "91b399541d554df8ed6ac52789e5991c5e1b3b7b9acc7da74f393da996b707d7",
+    "bytes": 166860
+  },
+  {
+    "path": "design-archive/ui-concepts/track/track-02-unsworn.png",
+    "sha256": "fd8b0efa747349b54bde718673fec2bc586a7c0b67ed239042fcd6c80ef5d6c3",
+    "bytes": 160310
+  },
+  {
+    "path": "design-archive/ui-concepts/track/track-03-claim.png",
+    "sha256": "1a546d02e8d3793d302b9b90a428594c0719164d9016492539b4f6f7d1fa13ae",
+    "bytes": 169601
+  },
+  {
+    "path": "design-archive/ui-concepts/track/trackart.py",
+    "sha256": "0ec3d92c23f4be8e66f1a80becbfdd1fd1c24e77df1b541da96db7ec490c87f2",
+    "bytes": 11962
+  },
+  {
+    "path": "design-archive/ui-concepts/track/trackart2.py",
+    "sha256": "b8682776dedfdc1242ce335e1ca0e973d20e80c6024f9b68992285cdbd351641",
+    "bytes": 15920
+  },
+  {
+    "path": "design-archive/ui-concepts/track/trackart3.py",
+    "sha256": "9dc27928cd9d49942fcac0acf94aeed2458a9189107d6e885c7f51c9df30a034",
+    "bytes": 10991
+  },
+  {
+    "path": "design-archive/ui-concepts/track/trackart4.py",
+    "sha256": "1443c9d07bfcfacfabfdb0e8986797f56c721e5df5450754e00cbdb5295f2d9c",
+    "bytes": 15016
+  },
+  {
+    "path": "design-archive/ui-concepts/track/trackart5.py",
+    "sha256": "4e7458c85a58d12678e503b679a1b41662c10d9970f3a959557373729d08df81",
+    "bytes": 26649
+  },
+  {
+    "path": "design-archive/ui-concepts/track/v4-track-01-sworn.html",
+    "sha256": "9b301ba6bae6ac6ce4c5a43beec09c121ee636885f4107bc54e162295f82faa6",
+    "bytes": 23681
+  },
+  {
+    "path": "design-archive/ui-concepts/track/v4-track-02-unsworn.html",
+    "sha256": "9626649f48604e20ffab9cdcd7d2ccd2ebfa3122a8edbbf3ae85562ec485cdd2",
+    "bytes": 23028
+  },
+  {
+    "path": "design-archive/ui-concepts/track/v4-track-03-claim.html",
+    "sha256": "da6146e6bd63410b43bbc0742e37de80274f97fda8537bb8d753a7ddc34f3dbf",
+    "bytes": 23611
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/ability-slot.png",
+    "sha256": "e4a4b49add71692398379e22dba45c2d16a13a86763916017fd013f3f28f7a9b",
+    "bytes": 679
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/banner-gilded-on.png",
+    "sha256": "dacf5a2b2426f05e09b7b357f242b288591899cc3b1b7feeb0c7b7d8847f4968",
+    "bytes": 1117
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/banner-gilded.png",
+    "sha256": "2a0b26deea0ac497ddb73bc986e8d2d0a6092d24a8196dd83bf3a2a076129230",
+    "bytes": 1070
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/banner-graveborn.png",
+    "sha256": "dda7756528f24855dab488dd7dabc709f6e507047f3e815181f6976b1466be9b",
+    "bytes": 1137
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/banner-ironclad.png",
+    "sha256": "74bb0d26fcc9a326ec25e90fd46a112c5a3a5593685fd08a21861ded850ee6a9",
+    "bytes": 1113
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/banner-rod.png",
+    "sha256": "ae83106bc90b6d161a3b0fdb992da42d3b83ed0ce1a345138376e0310b21ab5e",
+    "bytes": 326
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/banner-tidecallers.png",
+    "sha256": "3dc232533f76d2d1a921aa6fbf459acb6cb5fe0952771938afd8405c7aac8ca8",
+    "bytes": 1134
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/banner-wildmoot.png",
+    "sha256": "d9a7d12a821d2495a5aa86182c87c8268043a29a6ea215c6cd333996243fffa2",
+    "bytes": 1163
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/boss-dawn.png",
+    "sha256": "dcef1b00ac4bb481595e00da65f3a7fc3d9a2e74373c96c7aee6467b871f46b8",
+    "bytes": 774
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/boss-dusk.png",
+    "sha256": "0331bc8d738aa7d57381f0a0b1b2467ed3c6be858d4148a6a4e78917fa8b1f33",
+    "bytes": 631
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/btn-brass-240x40.png",
+    "sha256": "72163af99a837079322e45845a019f6c390523b1a3004402abbca9fd02bb2e15",
+    "bytes": 824
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/btn-vellum-64x20.png",
+    "sha256": "9bf69f3d13601c6e4b1068e2044bb0645c1768c0b8684ae1d5d28322780e3ff6",
+    "bytes": 253
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/btn-vellum-64x24.png",
+    "sha256": "cdadd55004802b18b026e046d602b846c22db191565758da5e919e27aaa3e0b8",
+    "bytes": 266
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/btn-vellum-72x20.png",
+    "sha256": "baaa1c12a4948372ae44bd7b833f528ee0855ed361e9374ad4bfdb255232718e",
+    "bytes": 258
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/btn-vellum-80x20.png",
+    "sha256": "cc6f2bc28e1cf8ce2fca545eb004eb1a7954da9951f6acaf99a218c73d5051eb",
+    "bytes": 253
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/btn-vellum-80x24.png",
+    "sha256": "a2d1e43c60a319489f72b742b28d199eda7ab19ea3d7e1fdbff9229c46e2d840",
+    "bytes": 271
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/card-flash.png",
+    "sha256": "11bf0f4a477fea32397d36b30072fa5d0079e7bfc5edc5d2608dee45635c2f7c",
+    "bytes": 1642
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/card-plain.png",
+    "sha256": "a55397939359685bbefd4c105fa9a429ef630b6abc3732ff5abb2048ab3f4e5a",
+    "bytes": 1550
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/card-rout.png",
+    "sha256": "e43f08de51a0b52822d03cb0be6f61f04940ba5267a09813c58c73d0762c9245",
+    "bytes": 1568
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/card-sel.png",
+    "sha256": "61773400d911d9226e8a9719ae70a2e99d8708b340db402c9061e9124af982b4",
+    "bytes": 1761
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/chain.png",
+    "sha256": "08cd16ae7b2a15e1182208b0446b4b804c06217e341aa17a409ed26c1c1adba8",
+    "bytes": 113
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/coin-m.png",
+    "sha256": "b5ee23aa07a120ea7bb89c6169d27c3b62050b39ebffb23e2ee0ee7cc3af31e8",
+    "bytes": 145
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/coin-s.png",
+    "sha256": "8c7d35646a7a68648ac80e128806c9d90ab97c9015f59c18c268cbb1bd71020e",
+    "bytes": 116
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/coin-stack.png",
+    "sha256": "718c39f490e3c96df52c65c3dfea77f6e5b4ff1b95bfd86f88465fc5f2144097",
+    "bytes": 397
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/cooldown.png",
+    "sha256": "71bdc516917df909a47dab3e12d90f0496174209377462eb030b8853bb4bef89",
+    "bytes": 139
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/die.png",
+    "sha256": "f8ba162ab8a4f60a8c6851123c90b73d317fb5876e7250081b266c70f777cc7b",
+    "bytes": 151
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/field-card.png",
+    "sha256": "7941082c6cf3ee9d695ff4918217056b234365d4f15cbe8d4ff26f921bd95c0b",
+    "bytes": 3312
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/frame-back-160.png",
+    "sha256": "3a7aa8ab759ccf6d22260589d9fea86be52be84dfe9a83cf6e91102bccfe7429",
+    "bytes": 2634
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/frame-back-168.png",
+    "sha256": "5f32d8e43217f92ad32a28536eb28c722d248462ccc479eaa7c6ed7871a11bda",
+    "bytes": 2559
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/frame-back-40.png",
+    "sha256": "dff215038ab1f634ab34f20b3c534d40b284398a9f5a2a28c9cace20a001f356",
+    "bytes": 377
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/frame-back-44.png",
+    "sha256": "2f0ad20f22c87d2de91ad8da6ae923fd06f0d08107c98df136634c41b8ac9c88",
+    "bytes": 408
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/frame-back-48.png",
+    "sha256": "76e8350d1d57636d702e9cf6b9ff66c77869f4c53dd4db0e77bb120143215042",
+    "bytes": 450
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/frame-back-empty-44.png",
+    "sha256": "1933e152c5d799bfc2cd5e6c4ccce3e080091b1580a599c3b36b0bb5a1069e3a",
+    "bytes": 401
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/frame-ornate-184.png",
+    "sha256": "f538819f527f1940120843005324889aae1ba674041d3ca28edeee505faff9d4",
+    "bytes": 2308
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/frame-rim-168.png",
+    "sha256": "c1b3df565cd7c08deb42f7cbce94d726c9ac913b1da59bf0abd800986c2d420a",
+    "bytes": 835
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/frame-rim-40.png",
+    "sha256": "3c1eb143cb972891c0bcd901b782ae0995cbc36c3351be27d3d91f5dd1e4db82",
+    "bytes": 381
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/frame-rim-44.png",
+    "sha256": "5bec87fda627ea3c3c6fb516fa59f9a89094f0cc4094936dab71a057263c230d",
+    "bytes": 388
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/frame-rim-48.png",
+    "sha256": "3128c23b900e892aafdcc751e87a851d457c0490c22b6baba5ea77e65d33764c",
+    "bytes": 400
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/g-attack.png",
+    "sha256": "500cd9cf8b3997e90fc8ce6043a725d7a3fc70b1a9cc0755dcc658fd9506321c",
+    "bytes": 121
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/g-compact-faded.png",
+    "sha256": "52ed143baa83a55396f1d844481cf6e1df61d1c9c31f3c489b803f781d0c6fee",
+    "bytes": 85
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/g-compact.png",
+    "sha256": "1ad8e25e7e43b1179d3ee7cdcc261cfd5a120db2d56eabd7d6252865ebfdd00d",
+    "bytes": 85
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/g-cycle.png",
+    "sha256": "cf873f81dbc73ffd5e9e4ba489997afc9fa3982089cb0dd7cee694808ed5809f",
+    "bytes": 114
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/g-fight-red.png",
+    "sha256": "432a1d33ee9ee513b131a8231e06b57c5bbb2eeea96ccd79b3a45b94287e9d15",
+    "bytes": 118
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/g-fight.png",
+    "sha256": "d515970172955783ba93766daeb3f598fbbd13175a8fa112510545b4353059a4",
+    "bytes": 118
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/g-follow-faded.png",
+    "sha256": "225c537c4f0c7cc71bd8712a501cc61f48869eeac2dd56b09bfa92a8a5aeb38e",
+    "bytes": 109
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/g-follow.png",
+    "sha256": "7ed69770a1a9d5b01616125e0c9f545e3f6122fc90d8f5d6f0ad0c6921a9ce22",
+    "bytes": 109
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/g-hold.png",
+    "sha256": "fa04da2eab587e05b1c69f0be4412a9db548b22d83aed678921527a62fe17c44",
+    "bytes": 128
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/g-line.png",
+    "sha256": "1d6b7970af62d907737d3f00a236e6a02f9d72236e2f43d030e818851b9d6a40",
+    "bytes": 86
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/g-shieldwall.png",
+    "sha256": "d6ae7603abc07697f51efe588a2344ea4b23bde4595460be654e5cfb2787697c",
+    "bytes": 106
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/hook-brass.png",
+    "sha256": "71df926e617b9bd275e93357d09997b1a19c3847df54d04425004a65fc44d175",
+    "bytes": 139
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/hook.png",
+    "sha256": "e666955a841008ea2326054dafa4723d1acb47f74567348aba06fc37ab04d249",
+    "bytes": 139
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/horn.png",
+    "sha256": "d49c3d389041273ffa90780dc44d946eb9a1a6d017a7bdcb068338c1868c0ae6",
+    "bytes": 444
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/hp-channel.png",
+    "sha256": "0fcff32addff99637eab337fda7cf8ea0d9118256f0a51354b6fd64be4485a5e",
+    "bytes": 115
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/hp-inf-lost.png",
+    "sha256": "99b096017117e26cd54a0cb7fa6001f12c5d2d023f8993b02a7757091901cbc0",
+    "bytes": 87
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/hp-inf.png",
+    "sha256": "4f22fedfb2b35ac0f87f0719992d4ca5c1da51fdd4069975cd3f9184943233bd",
+    "bytes": 98
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/hp-ran.png",
+    "sha256": "8fd7af5e274ddada3975412a7cd261543040e6143c19f46a8df7dbce571b2df5",
+    "bytes": 101
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/hp-sup.png",
+    "sha256": "5b346cd8973f39c76addd58f5c1634883730545f2b3cba0e696669b4ad5c8a22",
+    "bytes": 92
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/icon-banner.png",
+    "sha256": "2fda286e6087acd6699e98d104d348de1f7314c9bb1efa989d86e225984512e1",
+    "bytes": 216
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/icon-camp.png",
+    "sha256": "1d472055d4ae2f6fe96bae2363a010ecd593316ebea9382214725e1b48e09e05",
+    "bytes": 194
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/icon-chapter.png",
+    "sha256": "78632bbebecf9977d6794410fc86db564d6774bb7b9c3ddc364f0ebfe67d330c",
+    "bytes": 230
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/icon-contracts.png",
+    "sha256": "7c2ece813791b292afb74874eef3f13129a1f39966ab1e420f79f8f23790b5eb",
+    "bytes": 217
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/icon-friends.png",
+    "sha256": "a093f7739ad00f43b20976e4f1bd5601bfe49999715add056cf00ccb2cfe783a",
+    "bytes": 160
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/icon-recruit.png",
+    "sha256": "520a34ef8d8eea4f74b253bd046092dce478b9db6605bbdc7be5a6b730370f97",
+    "bytes": 197
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/icon-table.png",
+    "sha256": "3a264e8501256550e8bfc4ebf746dc36cce8e3f5ac6588dea993fa6a150d46a0",
+    "bytes": 198
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/ink-campaign.png",
+    "sha256": "4291aeec0fa6e379ba35f37af4fb84fca281fe47ad5169900f6e7dbe9afa9f2d",
+    "bytes": 540
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/ink-practice.png",
+    "sha256": "18efd9d5546973c82128dd59a9018b088f9d00f8fb23d23a9aa4322137c7fa44",
+    "bytes": 621
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/ink-skirmish.png",
+    "sha256": "f5dc58a3cf2a634597ad9230f547af859b3ff4ad891fd8761cc9e05e80afbdc0",
+    "bytes": 882
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/invite-plus.png",
+    "sha256": "3dfa74604604ffb4cce7fb626119c0562e95ac2905776f1df4a6cb33eb0f1c23",
+    "bytes": 125
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-13.png",
+    "sha256": "85c0a5b3c3ccf012fc6be3535af63e739b7a8fba1ff59e775b25a8fbbf863eaa",
+    "bytes": 122
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-14.png",
+    "sha256": "2e1941f8339ae499c98b3796eac65c8aa726dad8969c471f061c7e1b9f9df94b",
+    "bytes": 122
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-15.png",
+    "sha256": "90bcdab9a45dd1c95d1169596aaad0e11548dc04c10936c91b810029d60fe649",
+    "bytes": 122
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-16.png",
+    "sha256": "d038cfa6defb878f27a3f2a4d57c9ee112cc4151cd30ad91e21f14e37d19f7af",
+    "bytes": 124
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-17.png",
+    "sha256": "4e77a0935e3029d10b1e0d9127d082756beb98c9520a7629d9a26d095acc1ab7",
+    "bytes": 127
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-18.png",
+    "sha256": "37e50e261b456c9bcf8acc0a9d2632e007b4438c4a1c0a9dbab2cfcdac4f08eb",
+    "bytes": 127
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-19.png",
+    "sha256": "70517a8df0eb2a71a429ccbd3c945eb8061ee61c98a53ba0d5509effe13f5236",
+    "bytes": 129
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-20.png",
+    "sha256": "d58b12a0f4e8e91b8b0e7841408ff8eb0659d78fcad5c03fb2997863c5406af6",
+    "bytes": 130
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-21.png",
+    "sha256": "aadbf074a192ff96cd0b0cd0f4477ca00f5cd842f009446c91a3cfc629512a2e",
+    "bytes": 130
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-22.png",
+    "sha256": "b04e028ff52d2870945a861be64602a30d96b6f45ccfa0cd11b2f6df4fe092bc",
+    "bytes": 128
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-23.png",
+    "sha256": "96621adbe563985ca88df2499804afb938d92fc617b2250717a9c5ed4312cb19",
+    "bytes": 128
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-24.png",
+    "sha256": "e38d8de13a8196995530a8648e50aa4a67c5ce34b311eede4b93915cfc929f2e",
+    "bytes": 128
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-25.png",
+    "sha256": "39064a81792d2e6ea4292a0821ed014a4b18a74a8496a611edd341ec0a0259b6",
+    "bytes": 128
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-26.png",
+    "sha256": "9f570d89014c6e737d4e6daf852dff47addf1daac3d14de9b0e4287bb8dc8349",
+    "bytes": 133
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-27.png",
+    "sha256": "32953d2d1d468240adcc7dd861a07921192342e18d699fed1db8e115d3924a45",
+    "bytes": 133
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-28.png",
+    "sha256": "facdd0f5f5362320161bdb40345bc5ade4fddc6b42db3594d6faee392d567982",
+    "bytes": 133
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-29.png",
+    "sha256": "2aa3e755442fb04914efeed0e2b00f492df5a7a34dcfecbfc0089247f152da09",
+    "bytes": 134
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-30.png",
+    "sha256": "0617944c37dc3aa3ed80eeb17396be187096bcf83b555f38076a7f170c0c1c53",
+    "bytes": 134
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-31.png",
+    "sha256": "46b76872125ca5460277b44c01ee029f43b0cdc0caad5682d84046cb4803e015",
+    "bytes": 134
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-32.png",
+    "sha256": "7b5dbccfc6719b77cbad3a1c9b71a64ab763ec4ed33b928f5130a95616c74dd3",
+    "bytes": 134
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-33.png",
+    "sha256": "970d61e4322b9494c46d4be86ed3ede23602d1de4fec7ae1b2179b96cb38e00a",
+    "bytes": 151
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-34.png",
+    "sha256": "69bde89d117fad04f050d7a3cd182c55bae709edb3bb6f41840c2e1b1b12bdda",
+    "bytes": 150
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-35.png",
+    "sha256": "8dd95936f6500728c29cd1b136d6f90a72030aae8de0929fb76cee2d36fa456a",
+    "bytes": 152
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-36.png",
+    "sha256": "360e01910394f8fd721d28ea59b87836e07a58022ccf7e89d36b948832d23e4e",
+    "bytes": 149
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-37.png",
+    "sha256": "ada7c85e7f34215b915658f364f09c8fa49edce939799121c36757e1672a9a5a",
+    "bytes": 150
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-38.png",
+    "sha256": "77846dfa8b6077ce2f6ad831bb73f14712819dd5c2f8966dedcc3db98c64b45a",
+    "bytes": 146
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-39.png",
+    "sha256": "35c23d1a4b12730188d56d84fd951ae6e254e052bb23d9dbd442b52871f201c1",
+    "bytes": 146
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-40.png",
+    "sha256": "363c3179ab6b7c100a90245a7aa04ac6d7d62d13b138593b58d810bd6a650404",
+    "bytes": 147
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-41.png",
+    "sha256": "297366e7a768428f10415b1031aeeda2214ee5cfe991b52b7a0dde56704cd10a",
+    "bytes": 150
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-42.png",
+    "sha256": "c481f090cb7336800059b111a2e47a4648477e62ea2a64bdfd1a5060a3809db4",
+    "bytes": 149
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-43.png",
+    "sha256": "a510b82c732f7b946da3c6ddf1bfbb753fb1c2ac23e7f9fdb0699898ba359519",
+    "bytes": 149
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-44.png",
+    "sha256": "58974271788e2c46eea26455d2dc6c9f45a8067f3e4da1693e7800f654621307",
+    "bytes": 149
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-45.png",
+    "sha256": "2045bdd4275d4578ea3619995b041a817468b21ab6a5f5965e5b9ff32bcaeb9d",
+    "bytes": 149
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-46.png",
+    "sha256": "2ea43a60e92530918d0ab82034b2e76967cf2d7ebd0f56c83fc92af11de97d75",
+    "bytes": 146
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-47.png",
+    "sha256": "d188a4d9d1fc574119fe05bbf9c128396bb13d99f145c9a05c8bf60be0b62e25",
+    "bytes": 146
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-48.png",
+    "sha256": "38c09cfc2528dd69812f50a4ab8520b53008b83eb49b9667a7e4edf8d69b2d6f",
+    "bytes": 146
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-brass-plate.png",
+    "sha256": "d4b7b930ce5e75314f03226236a0161d3aace26ab3b0d539546e93e0eaef8b3f",
+    "bytes": 147
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-chip.png",
+    "sha256": "99a44c3371ed9f021c79cbbce8bccb61c06dd704b127f2b3dc784dbf2b50cd0f",
+    "bytes": 131
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/key-ink.png",
+    "sha256": "2ff1737f334cbed516a2a4309a29c738d9d344660e8c4f6b5192a62e66ae6f81",
+    "bytes": 110
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/letter-bundle.png",
+    "sha256": "92a8d14f2a0255658a2d479a0a33a01ea300a68aa5300ffa76319d2d787a09b6",
+    "bytes": 6916
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/letter-hi.png",
+    "sha256": "e430ec8fadb22065caed87aec2b1bad97c066d9285da044cd3e53ce775db017e",
+    "bytes": 6602
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/map-disc.png",
+    "sha256": "b7702831458c3d22071c606fbb294ff1ef16c6d4b09f015936e9226dd3c1a341",
+    "bytes": 171
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/map-rivergate.png",
+    "sha256": "956d112f968977086ffa89c1b80e4cf84434ee4bd02cea1615df5a16f9adbfc0",
+    "bytes": 2887
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/muster-roll.png",
+    "sha256": "8cc61226b12b8775b3fe7a6c4e696950248d7d6d692267a0da9ccd086c822ee8",
+    "bytes": 6071
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/notice-slip.png",
+    "sha256": "96440432552e69d8e81b9121d8768913a4e3e36bf2aa4697586a6e218fd1f3ff",
+    "bytes": 1491
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/oak-table-recruit.png",
+    "sha256": "64324891f89495c6c097ee4898e0854d1b3e2219c0469b07303adc8e758f4ad7",
+    "bytes": 46556
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/oak-table.png",
+    "sha256": "5e565931825f08ff4fb93300b20891a8b8d56af538b7b27b3d0804e14fa01ba2",
+    "bytes": 47159
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/order-hi.png",
+    "sha256": "e1ad3eaa86bdca13fbb42733f8eef33c067b4af49300a32e96cc2c38fdaa2945",
+    "bytes": 3109
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/order-lo.png",
+    "sha256": "470e775dd4edb80f8f1ac162df0e01c6c50858786173b413cf8526cc0117ea93",
+    "bytes": 2473
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/order-lo2.png",
+    "sha256": "fad95fdfc0b0239468c4d210b77c9c962ce7a64c0863cd91e7ea78ddc3d49d5a",
+    "bytes": 2360
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/padlock-brass.png",
+    "sha256": "b6bb6812c0989e4a951fe648c3b083e518787cf82cd01f0d3649400059e85b8b",
+    "bytes": 181
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/padlock.png",
+    "sha256": "980126247af9bbfed2042ac14fa8f8f54d2bf1ccb931d490f66f7d66c425915c",
+    "bytes": 130
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/plaque-104.png",
+    "sha256": "772c7da4ac3099fd2a32f9bde3a0d5a5e31107981474486da9f1a7475e25ef9c",
+    "bytes": 593
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/plaque-112.png",
+    "sha256": "f485e93419040d967b3ac70f645c8d6eeda4ceb1987aa5dd772ce7d1525c1d45",
+    "bytes": 661
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/plaque-120.png",
+    "sha256": "9aa132f52c7de8c6017e6c8d55f76984b19f7350065c1118a49c2c1348f472bf",
+    "bytes": 631
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/plaque-80.png",
+    "sha256": "ff68682b501326e9540405bc0874a9f568be8b0786d953b305d2474c421389b3",
+    "bytes": 529
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/plaque-88.png",
+    "sha256": "8e5d6403b89ce80d4e7d398dc55ab30c627b07d3331a5dd5baadf8b97112e771",
+    "bytes": 564
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/plaque-96.png",
+    "sha256": "7be3e2eb35767d2d66ad74751ec5a1d33d8da458a58024d2ed0d25f168569f46",
+    "bytes": 590
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/pouch.png",
+    "sha256": "86304bc0608a953969c5cc8529e903992b88f9ac0c92d70d157be81c3eeeaeab",
+    "bytes": 693
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/quill.png",
+    "sha256": "bd7fa225f33195ae2b12eaa5ba366b7015d99cac52b4a322ed31852fc736f2dd",
+    "bytes": 138
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/rail.png",
+    "sha256": "f2653db2e407950b531d37069904a76bed89b3bf859ad8d2226503f74ed2cfa9",
+    "bytes": 1929
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/ready-check.png",
+    "sha256": "ae50af046d80edb6b68c0999b62cf98447d993eb8a397146aa98dafd5040c115",
+    "bytes": 129
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/ribbon-teal.png",
+    "sha256": "8f43386cc07de217264d6b997233e1b8af8f3df6c179f2b1042b8abbe86ef03d",
+    "bytes": 261
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/row-mark.png",
+    "sha256": "4d790ad210f86f71b46b4c3199e0469647e2aaf0de8576de3482381dc84a4f59",
+    "bytes": 464
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/rule-208.png",
+    "sha256": "5507640c4a30cfd78538ee2499a9046f07cfc167c96314dbdaa399a7b7e7b468",
+    "bytes": 101
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/score-card.png",
+    "sha256": "5feea0858a3c033ce00278414dbe4d399b50acbff9c3304f844a68c93ad5d200",
+    "bytes": 1203
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/seal-A.png",
+    "sha256": "950daf8c47ef8c840f555bb600881198833f7ae56d1c994468d3d9a89d22d9f9",
+    "bytes": 443
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/seal-B.png",
+    "sha256": "c8a7db09b7a6fc50f5eba80c3a26dbad9b4e28e965694d44c910d3ddc7961304",
+    "bytes": 510
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/seal-C.png",
+    "sha256": "a3ddccc9a230feaec94726a65c46fa49f2113fde1a3887d6c277ac23b7678062",
+    "bytes": 405
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/sparkle.png",
+    "sha256": "1661645929ca8333f3c2ddd84ce3ab633143312ed3169e2dc441ea93c9b2ec8d",
+    "bytes": 143
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/spine.png",
+    "sha256": "a5105ce490f2cd83a80706e24a82fdc0d75ec7b1c18279fb792a9bee8ced750f",
+    "bytes": 673
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/stamp-rout.png",
+    "sha256": "ef4ff44f49db0687c1eba63756c24007e38f85cb49abc84f9ca1c54a5f7b18b0",
+    "bytes": 222
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/star-l-empty.png",
+    "sha256": "0f8ea3c7e13b90155f1cde2e938f4273c4eb99ec7e9d59c22b7d90a9dfd8d84e",
+    "bytes": 188
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/star-l.png",
+    "sha256": "6c808ab65de9c978489788ffa0469bc79908fe7834ab49ba17cfa5c1d5850dcd",
+    "bytes": 249
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/star-s-empty.png",
+    "sha256": "7fb1d474e85773169649e89042cd36339b6d766a554dea3dda21362eef9006d9",
+    "bytes": 152
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/star-s.png",
+    "sha256": "7fdf64d6980f6f6b9176d52c92efd388094da4ea0af4a611d5d4d0cf395b4566",
+    "bytes": 197
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/sun-ink.png",
+    "sha256": "8efbe238f71002d9719aa5819722593ed98e2091181e214219d94984972a6a09",
+    "bytes": 123
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/tack.png",
+    "sha256": "0be00ef83599cf3f75391b4c91b1dd5993f1c8165eac76ff65599bc7446cf90c",
+    "bytes": 129
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/track-dawn.png",
+    "sha256": "c33543ee018d5452022d75c251be91875182443918f9b951ab34034cc82bcf9c",
+    "bytes": 145
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/track-dusk.png",
+    "sha256": "64cdcf7e05e2162f557ae95cd945647e82d642976a095a59e487dfe19fc08794",
+    "bytes": 148
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/wax-badge.png",
+    "sha256": "8c925c9c7eb2a46fc9019d2a26052bcfdf1b3801e3cc23966ea6f1958849478f",
+    "bytes": 197
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/wax-broken.png",
+    "sha256": "8c03e8da8d86f068855f3f5e65b54568dc0b1724afcdd453d1e5937fbf931d92",
+    "bytes": 723
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/wax-crown.png",
+    "sha256": "53964c71e34f96b13b9e6f607e6acd63671e609fdf5ae43f5476cb3e16c8c1b5",
+    "bytes": 696
+  },
+  {
+    "path": "design-archive/ui-concepts/v3/wax-star.png",
+    "sha256": "2d3c2b483c9189fc3e6d7659500e09457e319063f8a390959167b3ec16571c1d",
+    "bytes": 679
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/ability-slot.png",
+    "sha256": "fd33ad7db75e44aeac791e96980c541bf570f6fc2069740edaa61543f0a8d7d3",
+    "bytes": 833
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/banner-gilded-on.png",
+    "sha256": "9db27eb3804cfadeff01bedaf568575e018b3490c4f1fd436adbb96fdc11f2ae",
+    "bytes": 2457
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/banner-gilded.png",
+    "sha256": "3ebce46880a6751b963fe36d3a59f083862e0bd30039da070a39bb5f11a9e0a0",
+    "bytes": 2294
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/banner-graveborn-on.png",
+    "sha256": "49fddd523d677ca97d1dbca0e7da2697613a40814aa2e5b2b32315f1d3a8719b",
+    "bytes": 2562
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/banner-graveborn.png",
+    "sha256": "6c9f2a0f38bdd2a8b04e8b81e9c6216a1cf23f47b47be14feb7818fac091786e",
+    "bytes": 2396
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/banner-ironclad-on.png",
+    "sha256": "faabb2f8171aaccd3b7bf042bcc5db395418303a9f83458b31990e16d2508c80",
+    "bytes": 2516
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/banner-ironclad.png",
+    "sha256": "b57b3c8df4370e7c0d4d68d1bc97e282fdfe231017bd45ed202040a493cd749f",
+    "bytes": 2350
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/banner-rod.png",
+    "sha256": "f116d081757d633f053bb4736aaba3f419cc5b2b21167eaeb93c9938e60ef153",
+    "bytes": 473
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/banner-tidecallers-on.png",
+    "sha256": "afe43af75ff0da37050516fd019cd82958f7137991a144e51beabcda9ac96eed",
+    "bytes": 2612
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/banner-tidecallers.png",
+    "sha256": "073f4d7dd9270593348e8358f01a8f8cc96dac66a2dcbeccaba2363a081d1f5f",
+    "bytes": 2389
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/banner-wildmoot-on.png",
+    "sha256": "066a71362ea4df0bdd2038d165a97ec5b468608f00f59326dd1a70aa8fd941f3",
+    "bytes": 2520
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/banner-wildmoot.png",
+    "sha256": "de15fbd017a15edf8c55f956038aa0b3b443cfa6ea8b1f0c768809da4a07846a",
+    "bytes": 2405
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/boss-dawn.png",
+    "sha256": "15c3e01ef832baed3117dd02b78dd17b3f1f4d1981db217ec416b1959fa6baf0",
+    "bytes": 890
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/boss-dusk.png",
+    "sha256": "1fbefc54d1bc41a313200ce4ac402d63117732b7bf7349435e1abcfa39f60080",
+    "bytes": 726
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/btn-brass-240x40.png",
+    "sha256": "4fe67b400c08297db16a0154fa583e6837fac392379d8597f531b7bd4827ab77",
+    "bytes": 1714
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/btn-vellum-64x20.png",
+    "sha256": "9bf69f3d13601c6e4b1068e2044bb0645c1768c0b8684ae1d5d28322780e3ff6",
+    "bytes": 253
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/btn-vellum-64x24.png",
+    "sha256": "679092ad6257617b45bd027911158a75b3bac5119934f9444ca4ef93576efc61",
+    "bytes": 649
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/btn-vellum-72x20.png",
+    "sha256": "baaa1c12a4948372ae44bd7b833f528ee0855ed361e9374ad4bfdb255232718e",
+    "bytes": 258
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/btn-vellum-72x24.png",
+    "sha256": "dcc3816d27f62c70f61a6f7fc92886c3b9218ad38f325a2bc716013a6beca6dc",
+    "bytes": 671
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/btn-vellum-80x20.png",
+    "sha256": "cc6f2bc28e1cf8ce2fca545eb004eb1a7954da9951f6acaf99a218c73d5051eb",
+    "bytes": 253
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/btn-vellum-80x24.png",
+    "sha256": "31334806e3b3a1b3c709e47a8146b9036809dfc3b7af5158d364f38227a5444f",
+    "bytes": 659
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/btn-vellum-88x24.png",
+    "sha256": "088f04dada226a6cb9fd1aa5108afc3967f08582bb3e063aecb96b920b92ad40",
+    "bytes": 705
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/card-flash.png",
+    "sha256": "78ca50dfd97555b6cb06b3a5762359f29ec0818f36558f6d040b7c1610617b28",
+    "bytes": 2352
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/card-plain.png",
+    "sha256": "e522102cfda0a4862ea81781068f15d0d3d3b318d66b516689e4f58d818ebf59",
+    "bytes": 2227
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/card-rout.png",
+    "sha256": "20792d494c6fb819e111734995d2877c6a65ee4c0ee80cc839895a5c5d6f4989",
+    "bytes": 2322
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/card-sel.png",
+    "sha256": "3d2cf4148de55cf625c211687bf9fcaba8be0f7bb702f911ee6c9099c56caae2",
+    "bytes": 2556
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/chain.png",
+    "sha256": "08cd16ae7b2a15e1182208b0446b4b804c06217e341aa17a409ed26c1c1adba8",
+    "bytes": 113
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/coin-m.png",
+    "sha256": "b5ee23aa07a120ea7bb89c6169d27c3b62050b39ebffb23e2ee0ee7cc3af31e8",
+    "bytes": 145
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/coin-s.png",
+    "sha256": "8c7d35646a7a68648ac80e128806c9d90ab97c9015f59c18c268cbb1bd71020e",
+    "bytes": 116
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/coin-stack.png",
+    "sha256": "718c39f490e3c96df52c65c3dfea77f6e5b4ff1b95bfd86f88465fc5f2144097",
+    "bytes": 397
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/cooldown.png",
+    "sha256": "71bdc516917df909a47dab3e12d90f0496174209377462eb030b8853bb4bef89",
+    "bytes": 139
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/die.png",
+    "sha256": "f8ba162ab8a4f60a8c6851123c90b73d317fb5876e7250081b266c70f777cc7b",
+    "bytes": 151
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/feed-slip.png",
+    "sha256": "7987104cd8daff3d79bbc18da4d5093efbb1a8c67d2e30dc011eadc24da90a04",
+    "bytes": 2577
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/feed-strip.png",
+    "sha256": "bccadb1b95a3198ea5fde66d0963a0d51e643207387297dc8d540a1a4ecb9810",
+    "bytes": 3296
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/fg-banner-down.png",
+    "sha256": "c3e57a11bbf447220a4c432965cfe00b66409f1ac9daec1c05cf0afd07a5a163",
+    "bytes": 123
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/fg-banner-up.png",
+    "sha256": "abee5a32acf72e4f4ec428ed1a714938726d4a97f7d10aaa71bb78336105b5e7",
+    "bytes": 118
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/fg-rout.png",
+    "sha256": "7cc63a7933580678fea4f4ce7a55118a26194c0576a304078fefb774a83f5955",
+    "bytes": 103
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/fg-seal-x.png",
+    "sha256": "457f3e801564a93c1eccc8673cbac8c4e063cc60245266fa81712ad81d29ea77",
+    "bytes": 174
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/fg-seal.png",
+    "sha256": "dff621f118ca81cc79bbd2360e8b14aaa14e9e7486e2eebd339a3c025d1feee3",
+    "bytes": 156
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/fg-skull-grey.png",
+    "sha256": "e9dc22ce0955bd931b0ee98984dccb58d8249b84a01a2947af6a7ecce70015c9",
+    "bytes": 153
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/fg-skull.png",
+    "sha256": "608ef005f06dd19cd4c6907214a5e2c68cdc32fcb33163f386373a57264e8bc2",
+    "bytes": 159
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/fg-sun.png",
+    "sha256": "29961bc1a663732575fbe73a3482ccab72853c3d6ae1a7d53f8dde1231b973b4",
+    "bytes": 121
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/fgv-banner-down.png",
+    "sha256": "31a3acc19c78503f523c35ca749f3d1c89a756181d6d90c928ff39ff3624e6a1",
+    "bytes": 123
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/fgv-banner-up.png",
+    "sha256": "3865985725ae339f762fc744e9f4fa954fed4d52cf5f329fcace4c13fcfe70a1",
+    "bytes": 126
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/fgv-rout.png",
+    "sha256": "ad7849643006d613952bbc50435285c9ce4821a1bcd9eff60658de46e8513d2f",
+    "bytes": 103
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/fgv-seal-x.png",
+    "sha256": "cd0e4860e2bc2a562863667fe9e5b57e656364aa4121bf388bb3ae20b901754f",
+    "bytes": 150
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/fgv-seal.png",
+    "sha256": "8b68bd4664a4e565ac9c2b6e4cd3addaa8a3a4bf4b018371e448548f21a412a7",
+    "bytes": 161
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/fgv-skull-grey.png",
+    "sha256": "fabcf2e6b7840622a8ddf86d563435c94ab5b510f663e889c425d831cb95a19c",
+    "bytes": 145
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/fgv-skull.png",
+    "sha256": "5bafd246f0c4a1714b9dd4e84f608a0926d2146e6ec028d35b8c0bd8065256bb",
+    "bytes": 145
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/fgv-sun.png",
+    "sha256": "6e4ce42e80da29df5941e67351368d6b2cf0f4ef9122872beb7b6a5daf622533",
+    "bytes": 117
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/field-card.png",
+    "sha256": "0fba0e45fab4db72a4213b74a056fa614b142a50a723f75538f784ef62574159",
+    "bytes": 5684
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/frame-back-160.png",
+    "sha256": "60c09b6234874fd269e0b9330aa0a7b051ab62f4007b70f2b4b8d956482d8a04",
+    "bytes": 3319
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/frame-back-168.png",
+    "sha256": "6ccc73ed4345068bd82be74d3cb1711bedee75b7c79b1e248e36529cb579bdad",
+    "bytes": 3402
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/frame-back-40.png",
+    "sha256": "d0c675e07b24366bf3686448e5c5d96db273c94a31f7bdeb6643d5473a2c6dfe",
+    "bytes": 404
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/frame-back-44.png",
+    "sha256": "8574d113369c73bcf9125a65aac3b6d53ba22cbc5fc4475ec945e6f555c6a4e0",
+    "bytes": 446
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/frame-back-48.png",
+    "sha256": "fea0dbb005e60a71c5968a3716b69d624e51b0d000152f7a212d430caa5b9d8b",
+    "bytes": 493
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/frame-back-empty-44.png",
+    "sha256": "7c5e7111dfa9cf8709cc3195a27d621d07a26161a6cdecd9c7ebe97136c20a1b",
+    "bytes": 379
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/frame-back-empty-48.png",
+    "sha256": "f41f6a05a2e6892180c8c286fd68e44c7ab46a4afe13910bb4a29664d0e043d1",
+    "bytes": 438
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/frame-ornate-184.png",
+    "sha256": "f538819f527f1940120843005324889aae1ba674041d3ca28edeee505faff9d4",
+    "bytes": 2308
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/frame-rim-168.png",
+    "sha256": "502d86833bcbd07be13db0eed01525aa515a67da9ecea21d3febe5d54f6cb300",
+    "bytes": 1152
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/frame-rim-40.png",
+    "sha256": "df84af142b85c27cf70ff9abb6d5472af283cbe09c562e3da5d9a6203dd349c2",
+    "bytes": 457
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/frame-rim-44.png",
+    "sha256": "3520685ac215c8c119a053234cdb41ceb031793cd3a25bf09e71cd4ace371c29",
+    "bytes": 492
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/frame-rim-48.png",
+    "sha256": "8e2e9b0bb41d914c4c8e93fd4fa4a218494828a0e3647cfc0e42707df4be32f7",
+    "bytes": 503
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-attack-faded.png",
+    "sha256": "e12208d6b7febe3e8d5028a1629ee218744b0c04ee5c03bcba6fc8567ce8b74b",
+    "bytes": 135
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-attack.png",
+    "sha256": "500cd9cf8b3997e90fc8ce6043a725d7a3fc70b1a9cc0755dcc658fd9506321c",
+    "bytes": 121
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-compact-faded.png",
+    "sha256": "52ed143baa83a55396f1d844481cf6e1df61d1c9c31f3c489b803f781d0c6fee",
+    "bytes": 85
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-compact.png",
+    "sha256": "1ad8e25e7e43b1179d3ee7cdcc261cfd5a120db2d56eabd7d6252865ebfdd00d",
+    "bytes": 85
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-cycle-faded.png",
+    "sha256": "4010aedc4014f4652ee03cb1cc3290fce9df7676624164066845ff1c01282706",
+    "bytes": 114
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-cycle.png",
+    "sha256": "cf873f81dbc73ffd5e9e4ba489997afc9fa3982089cb0dd7cee694808ed5809f",
+    "bytes": 114
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-fight-faded.png",
+    "sha256": "54201d8663134250e5474651d8765e9a2270b75a77a9c31f6bc15e1effb54625",
+    "bytes": 118
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-fight-red.png",
+    "sha256": "432a1d33ee9ee513b131a8231e06b57c5bbb2eeea96ccd79b3a45b94287e9d15",
+    "bytes": 118
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-fight.png",
+    "sha256": "d515970172955783ba93766daeb3f598fbbd13175a8fa112510545b4353059a4",
+    "bytes": 118
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-follow-faded.png",
+    "sha256": "225c537c4f0c7cc71bd8712a501cc61f48869eeac2dd56b09bfa92a8a5aeb38e",
+    "bytes": 109
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-follow.png",
+    "sha256": "7ed69770a1a9d5b01616125e0c9f545e3f6122fc90d8f5d6f0ad0c6921a9ce22",
+    "bytes": 109
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-hold-faded.png",
+    "sha256": "c57c5349346e42f20be55692e93d41de0bf33af2e071718b9942f9d7d284a2a9",
+    "bytes": 125
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-hold.png",
+    "sha256": "fa04da2eab587e05b1c69f0be4412a9db548b22d83aed678921527a62fe17c44",
+    "bytes": 128
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-line-faded.png",
+    "sha256": "d4ad70c3cf6742d2b99556e15747df8411e73494ff5878332a0d57eaf284aea4",
+    "bytes": 86
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-line.png",
+    "sha256": "1d6b7970af62d907737d3f00a236e6a02f9d72236e2f43d030e818851b9d6a40",
+    "bytes": 86
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-shieldwall-faded.png",
+    "sha256": "e8643d1817ea99f8fbe8820d2740b946d42b3854b763dae6decc6b51e14c838b",
+    "bytes": 106
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/g-shieldwall.png",
+    "sha256": "d6ae7603abc07697f51efe588a2344ea4b23bde4595460be654e5cfb2787697c",
+    "bytes": 106
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/hook-brass.png",
+    "sha256": "71df926e617b9bd275e93357d09997b1a19c3847df54d04425004a65fc44d175",
+    "bytes": 139
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/hook.png",
+    "sha256": "e666955a841008ea2326054dafa4723d1acb47f74567348aba06fc37ab04d249",
+    "bytes": 139
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/horn.png",
+    "sha256": "d49c3d389041273ffa90780dc44d946eb9a1a6d017a7bdcb068338c1868c0ae6",
+    "bytes": 444
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/hp-channel-grey.png",
+    "sha256": "0fcff32addff99637eab337fda7cf8ea0d9118256f0a51354b6fd64be4485a5e",
+    "bytes": 115
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/hp-channel.png",
+    "sha256": "0fcff32addff99637eab337fda7cf8ea0d9118256f0a51354b6fd64be4485a5e",
+    "bytes": 115
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/hp-inf-lost.png",
+    "sha256": "99b096017117e26cd54a0cb7fa6001f12c5d2d023f8993b02a7757091901cbc0",
+    "bytes": 87
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/hp-inf.png",
+    "sha256": "4f22fedfb2b35ac0f87f0719992d4ca5c1da51fdd4069975cd3f9184943233bd",
+    "bytes": 98
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/hp-ran.png",
+    "sha256": "8fd7af5e274ddada3975412a7cd261543040e6143c19f46a8df7dbce571b2df5",
+    "bytes": 101
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/hp-sup.png",
+    "sha256": "5b346cd8973f39c76addd58f5c1634883730545f2b3cba0e696669b4ad5c8a22",
+    "bytes": 92
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/icon-banner.png",
+    "sha256": "2fda286e6087acd6699e98d104d348de1f7314c9bb1efa989d86e225984512e1",
+    "bytes": 216
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/icon-camp.png",
+    "sha256": "1d472055d4ae2f6fe96bae2363a010ecd593316ebea9382214725e1b48e09e05",
+    "bytes": 194
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/icon-chapter.png",
+    "sha256": "78632bbebecf9977d6794410fc86db564d6774bb7b9c3ddc364f0ebfe67d330c",
+    "bytes": 230
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/icon-contracts.png",
+    "sha256": "7c2ece813791b292afb74874eef3f13129a1f39966ab1e420f79f8f23790b5eb",
+    "bytes": 217
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/icon-friends.png",
+    "sha256": "a093f7739ad00f43b20976e4f1bd5601bfe49999715add056cf00ccb2cfe783a",
+    "bytes": 160
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/icon-recruit.png",
+    "sha256": "520a34ef8d8eea4f74b253bd046092dce478b9db6605bbdc7be5a6b730370f97",
+    "bytes": 197
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/icon-table.png",
+    "sha256": "3a264e8501256550e8bfc4ebf746dc36cce8e3f5ac6588dea993fa6a150d46a0",
+    "bytes": 198
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/ink-campaign.png",
+    "sha256": "d5e9bc4cc9b9833645b32dc3554e5b358435f98375004bbbcdeb88ecf1ce007c",
+    "bytes": 1842
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/ink-practice.png",
+    "sha256": "98ba633fe42ed355f99bee3f50f0ec3b97ca71926772c6fe734bd7021f65bb5e",
+    "bytes": 1485
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/ink-skirmish.png",
+    "sha256": "de7e7d2b8863bf371592fc7af5a1a9af2128bb156d16e654eae9c83244572e2e",
+    "bytes": 1363
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/invite-plus.png",
+    "sha256": "e6a96f7bdf37ce9557b457aeeb63df4942c5caee4190acd223114c2d225c253c",
+    "bytes": 145
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-13.png",
+    "sha256": "16c8555c9786985b3b776a595dda692de96242d3af45e977f4340eaded830bd7",
+    "bytes": 150
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-14.png",
+    "sha256": "504ab560ba1d83786d8c975d4c6ae0f3d68707114538bb75ba9271ed92389d65",
+    "bytes": 148
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-15.png",
+    "sha256": "1752451fb3a1258cf094c7010dc37d3501f365c67ce34aefcc1d84967d21f557",
+    "bytes": 148
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-16.png",
+    "sha256": "a623ce9a854a8e28907df3e6a9cbded3d712dd9bb3873b329fe441d539e26e26",
+    "bytes": 151
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-17.png",
+    "sha256": "72f23d04bc3bea2da576197e9cd88017c7f1a3b3ca34a8db34c4f2552ffc4b9e",
+    "bytes": 152
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-18.png",
+    "sha256": "bc97502daa8127bd2bea7b9cf9cd7b2aca2d127cbf26c3b384bf7aa261cc1a42",
+    "bytes": 153
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-19.png",
+    "sha256": "d50506a33b733ac63813cc1976ba768c3e902ca91ca498925a17994097b06295",
+    "bytes": 155
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-20.png",
+    "sha256": "a9e77e67d538dc229658414bd274731bd91261d7bc485a9e810cc31671e9bb17",
+    "bytes": 155
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-21.png",
+    "sha256": "a95446f7f539d6117d5a098a0a453f26bf9fb4916a1910583bdb7a5ee82ba81c",
+    "bytes": 155
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-22.png",
+    "sha256": "c1db39705db403cbf5f3a2645698f1eeee7c87b7e8abac1301ade86cc0109da3",
+    "bytes": 153
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-23.png",
+    "sha256": "bb9f6c4e3e524aa345653f0b40585be205dedab3eb7e5d71eeea8ee8a0091e5d",
+    "bytes": 154
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-24.png",
+    "sha256": "43408074a474ca51d59e7b0c15b58e56c577c8061eb03ab85009cfcb73976302",
+    "bytes": 154
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-25.png",
+    "sha256": "a08b1fd42b6a72241027ab0e3ca30526384b587b859b9482b291fce6e9c7a99c",
+    "bytes": 154
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-26.png",
+    "sha256": "5147d0b2350399ae1ab32cc2b07a6d4a982fd3d74ed523076c5cb33d68b6b38c",
+    "bytes": 159
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-27.png",
+    "sha256": "be6304d29daf03cc4c6fd355675f2da7c6c60fc562fe52e0067344a07dd4748a",
+    "bytes": 159
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-28.png",
+    "sha256": "e41a924c23c826287c8afe9cbd04df229b0b44d62d3b53b9233a063178ad8ffe",
+    "bytes": 159
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-29.png",
+    "sha256": "6bad60a3a0c48dc06788843ab24140a2603393b412357a866c2363d3f83ab3ba",
+    "bytes": 159
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-30.png",
+    "sha256": "6006b2145c64e5e33a80b55b77d50ffcfc4a112e8e4ad3b828984d71144ec7b6",
+    "bytes": 159
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-31.png",
+    "sha256": "e160f65af97a574aa00e318ca6bc865fd82d4470587e5dd0ace7f6c691272107",
+    "bytes": 160
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-32.png",
+    "sha256": "183316776b408a34cedfc25e5675ea11d6e7c67c4ffc96da1ebf1dd765dd62cf",
+    "bytes": 159
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-33.png",
+    "sha256": "9b03d546f3d09e5eb42c806f5b5854ab50c80aa5d26a0442f1ddc3f735229fdb",
+    "bytes": 181
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-34.png",
+    "sha256": "d2bd4f8bd4871774b9a8858f500d64c33a6f294ed1b61bd6b55792f4089be669",
+    "bytes": 179
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-35.png",
+    "sha256": "6939f26d044646bb4e1078742cd6c549f4d3f0af0cdd28ea7f63accec5502747",
+    "bytes": 179
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-36.png",
+    "sha256": "82dec4a2fca44453c9ba87972e15b84c71f87d6f526008f9c17537f647898fcb",
+    "bytes": 179
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-37.png",
+    "sha256": "f8b5134d14de8829dfc50bc050cf2359e585e6b39622df3c816cb2d102abf0af",
+    "bytes": 183
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-38.png",
+    "sha256": "7ba224e237611ea75ea7c05a4e8c4b4c6303143240786396236225c79d6b75a9",
+    "bytes": 180
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-39.png",
+    "sha256": "3a1e4fd05a3c8e55f05ee8575c7ea0bc62467cb533d389b958e7375765ca3998",
+    "bytes": 180
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-40.png",
+    "sha256": "e085e1c8c74cffa751ed5664d0d0fa1b7f23660610282eaabd8b2425b4ad5717",
+    "bytes": 180
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-41.png",
+    "sha256": "d81a0b5e960b1ea31095e4c04d47816210bbf8260e017787c1a83e2706c78ef3",
+    "bytes": 180
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-42.png",
+    "sha256": "0dd5acbf57931be5799136483d532f352db65c5599f392299219a51e543450b8",
+    "bytes": 180
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-43.png",
+    "sha256": "c26e03eba8aed2aaa4f4fa5eb93154ec00ff493e88ec9dc44b9f86eed9dd9f39",
+    "bytes": 180
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-44.png",
+    "sha256": "e2a58a10e0608a9b6b5ce77b7e507734196d640ea289bb6bcdd2772f0ae13383",
+    "bytes": 180
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-45.png",
+    "sha256": "e12d920f2b66e4ddb20e3f7e51ba52f7abe05189a4e223d386283adbc111956f",
+    "bytes": 180
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-46.png",
+    "sha256": "9d17d02bc0d50b44c93ada814760b9265c5f3dea8d701e952723b4383b58b30b",
+    "bytes": 180
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-47.png",
+    "sha256": "04b269a5148be680aa66e48cbcf5333869c04244ea83c125dc0e707664355f16",
+    "bytes": 180
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-48.png",
+    "sha256": "385ec39d900af295d9edb7e971c5b5c48fd01a7f0c712b24f6954dfd7d2a6393",
+    "bytes": 180
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-brass-plate.png",
+    "sha256": "d4b7b930ce5e75314f03226236a0161d3aace26ab3b0d539546e93e0eaef8b3f",
+    "bytes": 147
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-chip.png",
+    "sha256": "99a44c3371ed9f021c79cbbce8bccb61c06dd704b127f2b3dc784dbf2b50cd0f",
+    "bytes": 131
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/key-ink.png",
+    "sha256": "2ff1737f334cbed516a2a4309a29c738d9d344660e8c4f6b5192a62e66ae6f81",
+    "bytes": 110
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/letter-bundle.png",
+    "sha256": "6d14bb0518b7f1771b6834bb889d6d97daed206f7d319bb6956f0b9d699e795d",
+    "bytes": 10391
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/letter-hi.png",
+    "sha256": "829fedcc6fd23155e8f8a3400566ff39b6146f0420ba587bff32e33614acab00",
+    "bytes": 12976
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/map-disc.png",
+    "sha256": "b7702831458c3d22071c606fbb294ff1ef16c6d4b09f015936e9226dd3c1a341",
+    "bytes": 171
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/map-rivergate.png",
+    "sha256": "126995a7149be621543203b5d93f6a82ae4101081812d0aa27be32512a0d3c55",
+    "bytes": 4667
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/map-seal.png",
+    "sha256": "a81da9d0e6f1ae16149d838b4bf7666e14bd0d4e24e0b87e11be74757f682993",
+    "bytes": 370
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/muster-roll.png",
+    "sha256": "f3a210efcaaa7c40551bc7f447ea7266483e5fdf9bbcda6a2ca91b3f197ad125",
+    "bytes": 10689
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/notice-slip.png",
+    "sha256": "c5cacc8d2695a244442515b502ef775edbd6b0b6469789f8ed6e87d65c78663c",
+    "bytes": 2347
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/oak-table-recruit.png",
+    "sha256": "3863216c805eb9472a989660e843ae091d1550ca647a3f04e516a2cd5894f418",
+    "bytes": 73846
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/oak-table.png",
+    "sha256": "cf417d7590315df98330670331e0d4bfeec32332dfee5c2d4e3fe2bb0ec60583",
+    "bytes": 72286
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/order-hi.png",
+    "sha256": "08ad109afa0e3db8224a3841118d96c3a3e5bbd4559bfd250db5e18f91dde308",
+    "bytes": 5286
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/order-lo.png",
+    "sha256": "291ddd0f4f69d4591ad00652de3d01bea0021d24e77037cf6a25abb0cd585504",
+    "bytes": 4650
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/order-lo2.png",
+    "sha256": "69968dd6e85ea2af0f2ea6a25ac216d377c254d7501a19057d51f12d40434cb4",
+    "bytes": 4394
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/padlock-brass.png",
+    "sha256": "b6bb6812c0989e4a951fe648c3b083e518787cf82cd01f0d3649400059e85b8b",
+    "bytes": 181
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/padlock.png",
+    "sha256": "980126247af9bbfed2042ac14fa8f8f54d2bf1ccb931d490f66f7d66c425915c",
+    "bytes": 130
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/plaque-104.png",
+    "sha256": "0cc4da7995504ff163f70e9246a6020536a6b4dbfd4054258824175f4ac3b1fe",
+    "bytes": 915
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/plaque-112.png",
+    "sha256": "3e338bd56f6b10cba9635bced81896347e5d729774bb3cd3ed8a2f316cbed199",
+    "bytes": 993
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/plaque-120.png",
+    "sha256": "f58dba9b1554467bfa8a19932baec1974cf58e3716b6a7c2ea6855fbfefa99b6",
+    "bytes": 937
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/plaque-80.png",
+    "sha256": "d4a17720f8a6a65b62301ba0f6ff83ce530ceed9aa09c767cde3f1a521baf3bd",
+    "bytes": 809
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/plaque-88.png",
+    "sha256": "77db9a616572916d766b16ebc0a7cb9bd54d0b033b33288bc4c9744892d7d1e3",
+    "bytes": 877
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/plaque-96.png",
+    "sha256": "d569c11588bda50d2fda856feb98ca9ae8dad7cf79ee55cf8f2954f95df0ffff",
+    "bytes": 861
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/pouch.png",
+    "sha256": "86304bc0608a953969c5cc8529e903992b88f9ac0c92d70d157be81c3eeeaeab",
+    "bytes": 693
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/prop-candle.png",
+    "sha256": "718096160efa5bba2cf241df3adf27dd7b6068159f0456c0dd61f1ba0088f687",
+    "bytes": 769
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/prop-coins.png",
+    "sha256": "90b1a73e4da5caa46603be20e9ec3afc502a19c92c119df5cb5a13a2ed5b49fe",
+    "bytes": 247
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/prop-glow.png",
+    "sha256": "bac65d33ac551ca241d68db16c544206e7e47c72e1b808d2a8e33bcb278b615d",
+    "bytes": 1503
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/prop-inkwell.png",
+    "sha256": "e2d40d90a961b130e867884074bb376c4afcae333dd498acfb6b74e90ae6915d",
+    "bytes": 686
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/prop-maproll.png",
+    "sha256": "d40c6d9daca5b5b433d00b5784b4d0704a3a0316129512c3bd984bd00864a8e9",
+    "bytes": 2049
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/prop-mapsheet.png",
+    "sha256": "831489dca3de2cf8ccd0e35e6dad20efc27fe876ec3ec37538ae1fb08e59f084",
+    "bytes": 11373
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/pt-ansel-40.png",
+    "sha256": "ba6438d851a493c50f044e7a4c110fdeab91bc735e438bbd6887283329cf6ff2",
+    "bytes": 911
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/pt-archer-40.png",
+    "sha256": "2b05d7fb57df50346b8f2bc8349be7cdcfc5a082bc587a107a60dfb1316458aa",
+    "bytes": 914
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/pt-kort-40.png",
+    "sha256": "ec434db561211dccda411655a9a09b2bdfba01fac5d14ceba84949e87c958619",
+    "bytes": 992
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/pt-longbow-40.png",
+    "sha256": "e9bd8d9310cf0a4f65abe74e8ebb9ab84e6556edb2c0c81364b67111cf908b7f",
+    "bytes": 882
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/pt-marshal-40.png",
+    "sha256": "5f1b6567520270c63fd12e8985614f8c4083f4960a03bd619b3022a7f7628e60",
+    "bytes": 238
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/pt-squire-40.png",
+    "sha256": "79d445795972aaa69dc935505a1868a820c0a2dbc5102e56528c433d53903d4c",
+    "bytes": 810
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/pt-sunweaver-40.png",
+    "sha256": "3e3484912bd20679f9b8b60e45a823283250efd543c5a0e3b99d7cf6ac985621",
+    "bytes": 258
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/pt-templar-160.png",
+    "sha256": "f79dc276485807130c0a20982d1fc905bf0b67141f669616ef06e3f032e18bdd",
+    "bytes": 2041
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/pt-templar-40.png",
+    "sha256": "2c995602fc1234a0c98ead6a223606d7061ac48f0b389f461c8dd4cb04e38538",
+    "bytes": 822
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/quill.png",
+    "sha256": "bd7fa225f33195ae2b12eaa5ba366b7015d99cac52b4a322ed31852fc736f2dd",
+    "bytes": 138
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/rail.png",
+    "sha256": "280e29a3653072bb8536c293f5a438d0575f68e595720a28e92f5a7139f571c4",
+    "bytes": 3965
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/ready-check.png",
+    "sha256": "ae50af046d80edb6b68c0999b62cf98447d993eb8a397146aa98dafd5040c115",
+    "bytes": 129
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/ribbon-teal.png",
+    "sha256": "8f43386cc07de217264d6b997233e1b8af8f3df6c179f2b1042b8abbe86ef03d",
+    "bytes": 261
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/row-mark.png",
+    "sha256": "b11b27028c906208788b91ae3739fe1e839f12a926b2d65de7b8c2c2503f89ab",
+    "bytes": 464
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/rule-208.png",
+    "sha256": "5507640c4a30cfd78538ee2499a9046f07cfc167c96314dbdaa399a7b7e7b468",
+    "bytes": 101
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/score-card.png",
+    "sha256": "851bdd7df90afc72b4bf1b61eacb01ffe1383481b03519b57d51db2876e9039f",
+    "bytes": 1452
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/seal-A.png",
+    "sha256": "25526ef96f160036f780c38b4f3b74d84587fe9034a01a84f0dba987945f4922",
+    "bytes": 511
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/seal-B.png",
+    "sha256": "28b3c5a742245a088895341dc2a2bc70c4ba8c5dbee25e382aa0062034fd9a0d",
+    "bytes": 614
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/seal-C.png",
+    "sha256": "8b1098ff607c3f882b6f8f7087f89aa57f4baf9ca8d416449e549f8721abfbdc",
+    "bytes": 515
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/sparkle.png",
+    "sha256": "1661645929ca8333f3c2ddd84ce3ab633143312ed3169e2dc441ea93c9b2ec8d",
+    "bytes": 143
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/spine-180.png",
+    "sha256": "b468b6d5f292bc2630dd68750a5d2c41132098805f89bcbf493bd1637db0ff54",
+    "bytes": 555
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/spine.png",
+    "sha256": "6a73b100ba9580c3cf1e84ad4eb78a8393a5788ff50b42a4c36def1e5f5b29e4",
+    "bytes": 679
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/stamp-rout.png",
+    "sha256": "ef4ff44f49db0687c1eba63756c24007e38f85cb49abc84f9ca1c54a5f7b18b0",
+    "bytes": 222
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/star-l-empty.png",
+    "sha256": "0f8ea3c7e13b90155f1cde2e938f4273c4eb99ec7e9d59c22b7d90a9dfd8d84e",
+    "bytes": 188
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/star-l.png",
+    "sha256": "6c808ab65de9c978489788ffa0469bc79908fe7834ab49ba17cfa5c1d5850dcd",
+    "bytes": 249
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/star-s-empty.png",
+    "sha256": "7fb1d474e85773169649e89042cd36339b6d766a554dea3dda21362eef9006d9",
+    "bytes": 152
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/star-s.png",
+    "sha256": "7fdf64d6980f6f6b9176d52c92efd388094da4ea0af4a611d5d4d0cf395b4566",
+    "bytes": 197
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/sun-ink.png",
+    "sha256": "8efbe238f71002d9719aa5819722593ed98e2091181e214219d94984972a6a09",
+    "bytes": 123
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/tack.png",
+    "sha256": "0be00ef83599cf3f75391b4c91b1dd5993f1c8165eac76ff65599bc7446cf90c",
+    "bytes": 129
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/track-dawn.png",
+    "sha256": "c33543ee018d5452022d75c251be91875182443918f9b951ab34034cc82bcf9c",
+    "bytes": 145
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/track-dusk.png",
+    "sha256": "64cdcf7e05e2162f557ae95cd945647e82d642976a095a59e487dfe19fc08794",
+    "bytes": 148
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/v4.1-map-rivergate.png",
+    "sha256": "abcc28e1cbf4b22d02de33ef21e86e3bd257c900ba278c497fb747c3f87eb5d7",
+    "bytes": 6194
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/v4.1-ui-war-table-home.html.txt",
+    "sha256": "5afb4b8e6e10db6491215ba80e01b335988a47275dfed9bada5614af81763851",
+    "bytes": 9473
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/v4.1-ui-war-table-home.png",
+    "sha256": "9f0b385909c69d438e16235c919922df41fedca5942c41afb8860c64548b6cd1",
+    "bytes": 162560
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/v4.1-v4a_map.py.txt",
+    "sha256": "f2a1987f3d677c6e321fadc9ebd8f713d313e57d2346e0be177ae65547df1bd7",
+    "bytes": 17110
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/wax-badge.png",
+    "sha256": "756d380d7720dca1c25919388cdeddf0c1c696c64e9641880f9bf95d359fbf20",
+    "bytes": 216
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/wax-broken.png",
+    "sha256": "744af8cf43bfa419783def9c7bb3dd283a4956eebae8a0d3a24d3589c2871426",
+    "bytes": 852
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/wax-crown.png",
+    "sha256": "e52f4573ba79b5fa6d798d09407e7aeb9f6860a7dfb6921b6cdd0fa0f9213f69",
+    "bytes": 840
+  },
+  {
+    "path": "design-archive/ui-concepts/v4/wax-star.png",
+    "sha256": "63bc29be063bc92f129e98e98b3999eb87e3ea68cb0abe324303aac233ed54f5",
+    "bytes": 814
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/bar-bot.png",
+    "sha256": "657e3c298b1934e13aab532bdbd55ad0fc60ea9d55956376643af53934bc6977",
+    "bytes": 8453
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/bar-top.png",
+    "sha256": "0bb773b2f4ccba9da32a9cc261d5edcd64b34e35628ef3ac91d6dcebf873a649",
+    "bytes": 8383
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/book-closed.png",
+    "sha256": "bd02bdafc71e27cbd2104fc667129874e306cbf0cf9cd8509662af78aa6b1773",
+    "bytes": 68566
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/book-open.png",
+    "sha256": "236cfe0a132ce0f524bc18f8d23a32a9ab8a9a4703da41f5e030578fb3d93324",
+    "bytes": 102668
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/candle-big.png",
+    "sha256": "ddfdafe66739b810110c1275d509c0051a13f7af84f9474656ef35317b16c27d",
+    "bytes": 3568
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/candle-calm.png",
+    "sha256": "379c2d3b920769f4a403a54bed5ae047185304bf524f7a414d29e22e158e149b",
+    "bytes": 3375
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/candle-wind.png",
+    "sha256": "2ab7cb9eef1c1fd4ade72916decc68266cee991a8edafbd7388b043e03da69a7",
+    "bytes": 906
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/cap-t.png",
+    "sha256": "d8e428246c0707774ec28a9b625c2abf219f85d5f483e960e14e246eed154197",
+    "bytes": 724
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/caption-strip.png",
+    "sha256": "430704ccdc2d2f42718cb63572a2f7d226a305a2eeb676557b1a84c1eacbfc9d",
+    "bytes": 6815
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/card-400x394.png",
+    "sha256": "591fed49b20cd726cfab575d5bb03efc9b5996d2032aaf5b23885f61cb130a43",
+    "bytes": 17587
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/card-404x104.png",
+    "sha256": "989af3ee36225c3dae95738c3b32c07106ad6440b64f6645412ae15fbaea9bc8",
+    "bytes": 6675
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/clasp-closed.png",
+    "sha256": "2566f17fb08647638b898eae99b5dfe94e5eb304fa43ecce104f503e64049c44",
+    "bytes": 197
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/clasp-open.png",
+    "sha256": "93b53860713abe7acd50909e52af9eba771cdb0176c6a71febcb68be7e31ff8f",
+    "bytes": 180
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/glow-big.png",
+    "sha256": "45d4985f20838270376f17fa2d9d06f474f8d9b2941c67c28185fc2bfd6aa0f5",
+    "bytes": 4261
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/glow-candle.png",
+    "sha256": "08e4ee3d5b5437516e9acd9705fea3de9d309d72818a10a49773783337a82098",
+    "bytes": 20691
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/glow-next.png",
+    "sha256": "d94bab640c76e0952d6d739dee57b5ff098aeb8915a212a9832ecd01deb5e3d8",
+    "bytes": 893
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/glyph-dom.png",
+    "sha256": "95a313e92b92640b7b098406920133f84b76fe6b3be7c070a70c5e4b1409134d",
+    "bytes": 157
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/icon-page.png",
+    "sha256": "857e46a3673ffe5ada3ae85663a25a91a7fec1cf6549494771ddaa2dc92e6492",
+    "bytes": 160
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/inkwell-big.png",
+    "sha256": "d3c25f5e87bf76b589d0dd5bc578a5b556f85f12be5ab16d8011cfbccff09e89",
+    "bytes": 2566
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/kb-44x18.png",
+    "sha256": "4fbea7006933d5c1fcb472fc262096ca4ac7df79fedc5fe60b178f76aebf0e53",
+    "bytes": 170
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/key-30x20.png",
+    "sha256": "8d24468f2d1187e18b1362ba626f764ed00b3bd1127e915a5e83f695306c4514",
+    "bytes": 174
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/key-32x20.png",
+    "sha256": "22655d5b1a235298391fc77e207ca130221855f8e6d40b43cb4c2ad9e3bf497b",
+    "bytes": 170
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/key-44x20.png",
+    "sha256": "4f2f0fd7f420daf3c6335578644a2df866611e3b4bfe36a3ebc85b25cbd55151",
+    "bytes": 195
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/key-left.png",
+    "sha256": "6d154ec660597b8c1f5b253435587f38053896d6b77d36ec4cea84149ccd3dae",
+    "bytes": 219
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/kv-30x18.png",
+    "sha256": "5e31ef933bb38bb173d48d06b56af7277ff32fe4cd62530bf7b36258fc26c429",
+    "bytes": 136
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/kvg-30x18.png",
+    "sha256": "30e79c29b68d2a32419a4a4f2f37459f50dce4d2f22d585784b617ebe1fba057",
+    "bytes": 136
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/leaf-flat.png",
+    "sha256": "6c0a985808aef19936441d382d539904e704ed22ad1878b36ce692c698af0561",
+    "bytes": 564
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/leaf-tumbling.png",
+    "sha256": "c603ff524c2808b71d090b09bc55495e55dd2058ea99bf45a419718c0ca1715b",
+    "bytes": 471
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/mini-46-grey.png",
+    "sha256": "31da32e0a2dba236b437460d4324a8011e57410a50191f637759d0a22a83c885",
+    "bytes": 421
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/mini-46.png",
+    "sha256": "7633238d712c2c6de2d9f5f9d1c53c050cc8d1aeedb335c67f88c1c1084c7de6",
+    "bytes": 436
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/mini-66.png",
+    "sha256": "ffd626c5684b7da3f097d7e2e7afc724a1fdad92c12a38d35975273443c24d57",
+    "bytes": 509
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/moon.png",
+    "sha256": "a8b8a5b97f764a25f1e0925cf4a85ce2be05534867a4f7d920c93046b4b8586a",
+    "bytes": 177
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/motes-01.png",
+    "sha256": "b9be5748df6ea715997b46e3d11955c43ada6294ee3a126a9732975a088c94d7",
+    "bytes": 2791
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/mouse-use.png",
+    "sha256": "d97ec0f47a9cf3bd29d39079b942bb51c84e822b1d000c1d56b89fa768ab9c5b",
+    "bytes": 129
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/over-01.png",
+    "sha256": "8b24f89a979198c26271482d7586516a85415311fdedb7d3b7bda88454b8033e",
+    "bytes": 17617
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/over-02.png",
+    "sha256": "d7bd3b197a95e1b0251d91d36387cbd9bef601ff302eceaffd2ec5289d935da2",
+    "bytes": 26880
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/pips-5-2.png",
+    "sha256": "d9b7ac4bdeaa68dd1ba38a0e076e48714f1a8563df13474bf9cada663cd3d6b1",
+    "bytes": 239
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/plaque-144x32.png",
+    "sha256": "eea38d8d0f0d77dae5475f434f000039504d613f5e27826faf4878326ec0935c",
+    "bytes": 1152
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/plaque-152x32.png",
+    "sha256": "b7192e9a790e641f0233f6f8e0bb5e3e29a253e813dba9ab27030a70e949c0d2",
+    "bytes": 1186
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/plate-next.png",
+    "sha256": "cb6c192fac88ba1bff415f8374d5b8b3e63c9d9b597f4f8aefdce21f501d38ea",
+    "bytes": 4782
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/plate-read.png",
+    "sha256": "c53a67c65e858b5905bf1b7fcf57c44291aaee54c94799a52a34cc8e70ba9f17",
+    "bytes": 19269
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/plate-sealed.png",
+    "sha256": "123b7c86a978383fa3d8d5390c2b9b1b4eb8c2e48cd84289971025675b0e4a89",
+    "bytes": 13751
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/pt-ashka-40-grey.png",
+    "sha256": "797239aaff157a4619f4ae066e7b1b239d27340d8cc819b09156c05d2c03f7d8",
+    "bytes": 913
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/pt-ashka-40.png",
+    "sha256": "2b4f3e02f82f728f119bf83b298b4a389e99cf676c04b4da928fc3c01ab3d6b6",
+    "bytes": 1005
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/pt-dunmar-40-grey.png",
+    "sha256": "43e1d2d93f73fd48a50932850ea22d6fc64d9210b3906783a7bedb7909fe576a",
+    "bytes": 850
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/pt-dunmar-40.png",
+    "sha256": "b70835f04762c15424c48086ef7fed4927e3694d9b0c552a0c1e620e5e5584bf",
+    "bytes": 933
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/pt-maud-40-grey.png",
+    "sha256": "8f5dd37ad4147f9c5855dd39d287906de089932e8c183c93b066c60a86d89256",
+    "bytes": 827
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/pt-maud-40.png",
+    "sha256": "a8f8507be76b44cafa5d2410097e04ca9cf2b1ddd033b29a5389a3ba494fb5e4",
+    "bytes": 941
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/pt-maud-60.png",
+    "sha256": "cef2970be849f86e97afe79f7078c9503698b2a5e90240a61e256cddb66c5270",
+    "bytes": 1209
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/pt-maud-80.png",
+    "sha256": "a32e71499a2b35090287a16ab3fc959bf5e7119e6beeced0776cd58f509196bf",
+    "bytes": 1388
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/pt-wren-40-grey.png",
+    "sha256": "011d9bfb077217ca361203e47c7ad8c1d909888c38cd5cba5475418ded627fd1",
+    "bytes": 724
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/pt-wren-40.png",
+    "sha256": "900831629fbb0c0393bb343e3c466db0d0e8010ceb15e6f10805795cdb9fa0ee",
+    "bytes": 792
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/quill-tick.png",
+    "sha256": "7afa4d1f980b89fd6a85391b112b4c9b7362deba861c72ec5bdcf41c1c12849a",
+    "bytes": 136
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/rail-sb.png",
+    "sha256": "2546a1665632033d4d6a55cb05b6c54a613e07e1c140ae34bea8287982818fe9",
+    "bytes": 4075
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/ribbon-01.png",
+    "sha256": "22b8c87a632eb4013aa37fd0d78e7d6591ef9e1010cd3b40e271e6d88c1949dd",
+    "bytes": 1030
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/ribbon-02.png",
+    "sha256": "313c2ce167f40d8651b17399c06baefab35f27643355a8da4f19c4da62ed287f",
+    "bytes": 1337
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/rule-orn.png",
+    "sha256": "59cefd741a0cef1ea7feaec403883f04ad5f72a221e83d03ed67268b40bb8121",
+    "bytes": 152
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/rule-row.png",
+    "sha256": "5367c7ac1534b8e0013180ce84abb60a9eefc2cd1bfffe7dcddcce2ffa6df433",
+    "bytes": 100
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/seal-hollow.png",
+    "sha256": "b9315c7e9577d8904a57f9477e099e8a3ef6a823d87cb4c52cd2d6482b9a9e90",
+    "bytes": 1260
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/shade-01.png",
+    "sha256": "a65e50df03c27e64225c2fec235a3ce794706721762e92a548376d6f88fa414a",
+    "bytes": 4906
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/shade-02.png",
+    "sha256": "891b019a6e2c08b30f4f6a26420604e92a2f3386c9652d84d7c6bc80803828c1",
+    "bytes": 4619
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/tab-brass-112x28.png",
+    "sha256": "0b19fd3351d32f8c309179e1682df3566fa5c4d5fd6a9f0b0cba47a8062ba0c5",
+    "bytes": 630
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/table-sb-closed.png",
+    "sha256": "0919d2e19e182f649380767118182aa225190e7ea30ca5ced0a0640ee65e1a7c",
+    "bytes": 74434
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/table-sb-march.png",
+    "sha256": "650b0d667a976883110f5eb12965977dc690c545d67c96b18cdc2b4e07b45c05",
+    "bytes": 72912
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/table-sb-open.png",
+    "sha256": "24945cb5ca5ace1e437009a41137cd409a09620ae342a2a21ee1555249c1026a",
+    "bytes": 78070
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/tag-140x28.png",
+    "sha256": "1756ceb0d226cb8f262d1fcc7e4061c60146c68017cbde2b36fbf6d17428db4a",
+    "bytes": 1088
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/tag-164x28.png",
+    "sha256": "92232f8c2bc2b1ae327659db33a6315f3a58966266cdd60ee7daaf1eaaf1a401",
+    "bytes": 1153
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/tag-204x28.png",
+    "sha256": "f47e7eaafcb38ec863c6b7997ff08b9108cf0c40543dac250d935cf2a80845aa",
+    "bytes": 1370
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/th-battle.png",
+    "sha256": "9b1410be426296761160ac64763662396ec1b4b3b3e6892bc6c48c835fc79301",
+    "bytes": 4528
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/th-north.png",
+    "sha256": "0248083af82897e3ef4773e6bb8814f3b75ff9cc1647973bc3ffc7338224968e",
+    "bytes": 18817
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/th-order.png",
+    "sha256": "35ed636c60007f9cf220e3b151f96a2e614af5328c167941f97403bbd451b070",
+    "bytes": 20406
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/voice-mark.png",
+    "sha256": "168e894b4f98720a3bb1789d162d56e73b4fdf4068f6121e49d749cb7965764b",
+    "bytes": 141
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/stills/fall-03-mound-night-alt1.png",
+    "sha256": "f20e5540fe644541d759b49f87318eef7c53e5008d63781c5ff7966c39da7c8b",
+    "bytes": 2594765
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/stills/fall-03-mound-night-alt2.png",
+    "sha256": "733718bfcea6d2788dee79344307561b421f08f9927add4136c225927b0f0af1",
+    "bytes": 2554653
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/stills/fall-03-mound-night.png",
+    "sha256": "3c4ce6e306bba39bf499c468716db66d3bff25ab007e03ae0b8dad908828dd7b",
+    "bytes": 2707016
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/stills/north-crossing-dusk-alt1.png",
+    "sha256": "0305763e96083afb0bc62c08693fc0dc48043c665b588a0c20d2601826d4a700",
+    "bytes": 2812680
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/stills/north-crossing-dusk-alt2.png",
+    "sha256": "24a8360164ab272818e94bf50a90eb11bb15f06057257946e2641b1dc869a3ef",
+    "bytes": 2844268
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/stills/north-crossing-dusk.png",
+    "sha256": "ff7e30761cc636924e8d58bfe6831ee712355a30a61614b013de52e8eb407597",
+    "bytes": 2894551
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/stills/plate-order-crossings-alt1.png",
+    "sha256": "4ec7c3f0717972460787ae5549c6b465e58c58b8b5aaddd3df941066d4813560",
+    "bytes": 3015671
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/stills/plate-order-crossings-alt2.png",
+    "sha256": "aff3d64d232bb30eaf64e040d6e2911f362a6cdc3fff238fedd9304791a30dbe",
+    "bytes": 3089100
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/stills/plate-order-crossings.png",
+    "sha256": "4170e5b2e47400e571d3b19595f0ef944d39f8bfbdf4056b51bee51b55b5319b",
+    "bytes": 3050415
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/stills/STAGING.md",
+    "sha256": "2e87a81435fb24296d3b460a235ed584565abfa66ac2eeb106261d98dad7798a",
+    "bytes": 57863
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/stills/training-field-day-alt1.png",
+    "sha256": "514302576439c1098755eed80804c08635e23b4d96ce82f4160205f0de579f64",
+    "bytes": 3089483
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/stills/training-field-day-alt2.png",
+    "sha256": "5689cc4419b60db418433269d3eaad59eef1bcc305fd96d4e41ebfa54a4d123f",
+    "bytes": 3102644
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/stills/training-field-day.png",
+    "sha256": "229ed01c330fee40862b48e3e3649893ae19551930da61e496fe5a357f15b889",
+    "bytes": 3084624
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/retired/panel-kings.png",
+    "sha256": "0bce096acf8c035024bd19fa8a262406b13ec05b73bd20ab2eed710a2be47a5b",
+    "bytes": 213558
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/retired/stage-crossing.png",
+    "sha256": "ffc5b1d3427429819e62eab316099e8aee7f9043f5ec0d8d08a5e5d8e69cedb5",
+    "bytes": 269923
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/retired/stage-crossings-day.png",
+    "sha256": "54480fea83d92bafb98910c1781bd64b6e4d1e62fcea2eeb0a5992d957a26db2",
+    "bytes": 223253
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/retired/th-day.png",
+    "sha256": "ceccf6f28bd32a7f0705b57e9de86c0fb72c6af5e6a81840af26d943c797e757",
+    "bytes": 12326
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/art/retired/th-dusk.png",
+    "sha256": "448b0a7e0667d1690457707e9eaa5d57efb935a61dd052329e00e10aeb5aa1b7",
+    "bytes": 13322
+  },
+  {
+    "path": "design-archive/ui-concepts/storybook/stills/options/fall-03-mound-night-roundmoon.png",
+    "sha256": "d6a0bf7718c32900a29977bdf81d0942f89c5b11dc0ced24d065a1a08cddb705",
+    "bytes": 2697010
+  },
+  {
+    "path": "design-archive/ui-concepts/title/bg/pano-day.png",
+    "sha256": "23938900850a0a90ddb018e108a51ca4d387c1a9aea6b426b401c2384fa58366",
+    "bytes": 2047226
+  },
+  {
+    "path": "design-archive/ui-concepts/title/bg/pano-night.png",
+    "sha256": "44945c30d36a194abb0a6fda2bee9da9f423c615d90748a43cb1df8aaaef3777",
+    "bytes": 1657004
+  },
+  {
+    "path": "design-archive/ui-concepts/title/demos/demo-1.png",
+    "sha256": "aafa94e84f7e41e6b1453d273c7f1cb2fc2b9fd59b5c08c80b56f74f437bec7c",
+    "bytes": 3347778
+  },
+  {
+    "path": "design-archive/ui-concepts/title/demos/demo-2.png",
+    "sha256": "79b25e88d1356f807cecf8b5739f35bf540e275290332e2b214b017005fb0653",
+    "bytes": 3287955
+  },
+  {
+    "path": "design-archive/ui-concepts/title/demos/demo-3.png",
+    "sha256": "59b2368ffa560670b21562597233afe958cdc1785fc9c017c5800a62fac15919",
+    "bytes": 3918463
+  },
+  {
+    "path": "design-archive/ui-concepts/title/demos/demo-4.png",
+    "sha256": "8bcbdb579ebfe070a26f6bf0a081db32efa488d19ea401e190e8498bd81cc011",
+    "bytes": 3502807
+  },
+  {
+    "path": "design-archive/ui-concepts/title/demos/demo-5.png",
+    "sha256": "9d83b84a988e0631e399c2d61f11c69e6a6ba88a6f24ae555cb88fb4feb5c805",
+    "bytes": 2977446
+  },
+  {
+    "path": "design-archive/ui-concepts/title/demos/demo-6.png",
+    "sha256": "262a8ec33e91c7ed8c0d5b7d4efe90224f41f9873b2427e3cda53b3b8296b721",
+    "bytes": 3616552
+  },
+  {
+    "path": "design-archive/ui-concepts/title/demos/DEMOS.md",
+    "sha256": "cd2009e0100e63bfd26f03581893f3e7594665bf56ecca63de2a1ce9ef9dcd52",
+    "bytes": 3162
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/commander-at.json",
+    "sha256": "e2d2d2efba1c9646e5e92a0c6b2f0d893211dc837078dc1a7dbc7c7ada15dd9a",
+    "bytes": 10
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/commander-day-0.png",
+    "sha256": "5ccfd7e88d5ac3ed9ef0bc8cf06006376f631feecf5fb07d7920dd604964412c",
+    "bytes": 4286
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/commander-day-1.png",
+    "sha256": "6786d6f595da037bd4a71b88e87a26e511a23fa1e85bd03e2709ddab1f663fe3",
+    "bytes": 4265
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/commander-day-2.png",
+    "sha256": "dd9297408f3123aea21c41989053e2cca3371cd3ec169562b6cd162fbf44cee7",
+    "bytes": 4280
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/commander-day-3.png",
+    "sha256": "60582649f23246f9544006a268e7acd019150ee64b1fd672e679546ae113c696",
+    "bytes": 4273
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/commander-night-0.png",
+    "sha256": "f57b0247900faa4e14065a429fd1e65afca53796785b457d698ceea940b7c8e1",
+    "bytes": 4249
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/commander-night-1.png",
+    "sha256": "e71ffea7010e093a6605a4d8f7553263f96939ff23616c839d2359c394f4b058",
+    "bytes": 4231
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/commander-night-2.png",
+    "sha256": "a8cc8647cf892e4ac33e44fc8ebbb3e8b373f976f2c2db843aa9642c5a68aaec",
+    "bytes": 4251
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/commander-night-3.png",
+    "sha256": "4085d8f2f817248b654ac948512be83a7140e764ed787782d143b62bcae5fac9",
+    "bytes": 4246
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/embers-day.png",
+    "sha256": "39604cc8d5ad6ee545b7fc4134caa8ed9f938aae37d4c09b8fbce9ee94ded072",
+    "bytes": 2724
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/embers-night.png",
+    "sha256": "fff181fc04a62b95e604eba6893a946b92616fd1424f679628fe1493c4758b7f",
+    "bytes": 2834
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/hill-day.png",
+    "sha256": "29e431ca41b7d91efdd55a8437d982fd287fd17189737284ef41e2e2e2afbac2",
+    "bytes": 51155
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/hill-night.png",
+    "sha256": "73cac3dd3feb3bc313e96d88d365883580e2431c8f2e772b1e01397886035f5c",
+    "bytes": 50577
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/horn.png",
+    "sha256": "aa1eb31d3eb9ece2a01e08b0ed0f6a9dac663a88171d6ec7af05ca4f645346c3",
+    "bytes": 294
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/lockup.png",
+    "sha256": "fd50a1b5cd3d1ce570f9970f93a76e1d1cbf43b0fb86fe9f6c40051728b211b3",
+    "bytes": 3431
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/marker.png",
+    "sha256": "10dee3188791068d6ed7b4711fca342a42964d650c7acd439e4db0e105a9c3b4",
+    "bytes": 189
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/volley-day.png",
+    "sha256": "03e26e61fae52b1dd996c8445aec4b7fbd5ffd99e3d8549c11a582467fdeec59",
+    "bytes": 2885
+  },
+  {
+    "path": "design-archive/ui-concepts/title/sprites/volley-night.png",
+    "sha256": "eef5b0c610e040903fdc9410d3cfa7add8fcb1d60c60ade708ab49022cefeac4",
+    "bytes": 2929
+  },
+  {
+    "path": "design-archive/ui-concepts/title/src/frame-b-clash.png",
+    "sha256": "8383b86e69d62820e75bfb16fc0b11ee01bd6e39d5e9cece2644b0a14704e5cd",
+    "bytes": 2124508
+  },
+  {
+    "path": "design-archive/ui-concepts/title/v2/title-banner-frames.png",
+    "sha256": "1ce2a447871d9ea911c22c218e2a0684f4675edf80dc9cc455ea3f386df6104b",
+    "bytes": 177456
+  },
+  {
+    "path": "design-archive/ui-concepts/title/v2/title-hill-day.png",
+    "sha256": "adf71ebc10c7e0ef22104b9aa2e6c0d6b4b38204651b9be378f6e3db26bd9bd7",
+    "bytes": 1334395
+  },
+  {
+    "path": "design-archive/ui-concepts/title/v2/title-hill-hover.png",
+    "sha256": "7b2b997c401d9a8f3dd241e85867d22f60d7925698a543c21be465de9ddd6d15",
+    "bytes": 1334681
+  },
+  {
+    "path": "design-archive/ui-concepts/title/v2/title-hill-night.png",
+    "sha256": "3205221b2b6f5243eef29a3b27dc9efe6597c42d926e6b5c9c2158143fcd7521",
+    "bytes": 1184538
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/arrow-left.png",
+    "sha256": "561b20f557a3ae7d4663dd0d7e8b5d4bc6e96ce7c76b62daf836d8d5ecf9a80c",
+    "bytes": 403
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/arrow-right.png",
+    "sha256": "b07ef833024ae4d8f88a73f2026e62f04f425c885b08f38604708323e766e433",
+    "bytes": 397
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/btn-dull-240x40.png",
+    "sha256": "81cdb79d09e246b4ae448c5cdbe34820fa3a38d5a8159718d1b2b3f1af0dddf4",
+    "bytes": 1617
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/chain-10.png",
+    "sha256": "e6b7ab98babccbddb0b200ccb8c7bafd5ebcae966de584ac496554c659ddd0c2",
+    "bytes": 186
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/chain-18.png",
+    "sha256": "c407ea17c51f9c1b98774ec7b7b5219ccad83927f50d56c5eb2a210e1aab91c0",
+    "bytes": 181
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/chain-6.png",
+    "sha256": "360763c7f2fb1cfbf944ea8c780e6832108b046a33e45a26f4e41cb2bdfc2644",
+    "bytes": 150
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/chain-dull-10.png",
+    "sha256": "0bf9b619e130fbdc80b185322b5e4bbc4f1c677dbc50cffc5cd9e0c0e01efb56",
+    "bytes": 188
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/chain-dull-18.png",
+    "sha256": "2d03ccc86170e0157d02e80cd8af9899e79608a3e065a321a251dd67dfae32f8",
+    "bytes": 191
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/chain-sepia-10.png",
+    "sha256": "177b7f0a80cdf6eef25da8437f96607ef251ed16c93e735e5702d73b7d4755f1",
+    "bytes": 179
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/cloth-gold-160.png",
+    "sha256": "dbce03e7a4e25578b200aa64bd803ef23de2c8f7111e7818b1afc17d20891d01",
+    "bytes": 6975
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/hasp.png",
+    "sha256": "797a4b8b5dda3dd02bbf01a77f455f17f7709978a23b2847d616ab1c6d6ead1c",
+    "bytes": 589
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/hero-letter.png",
+    "sha256": "083335a4632dac6f4e7a0f1d4cea9cb93e746735f16bbdff989ba34263e61d39",
+    "bytes": 9195
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-coins.png",
+    "sha256": "397cd925a3635d4d53868126bd993bb9e8d9e07558346745c2cf790d2554d0ce",
+    "bytes": 648
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-letter.png",
+    "sha256": "0aa38b19790fdb013063b68329355437cba0cd938e9a889ddb5131bde6a144dd",
+    "bytes": 628
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-o-cloak-sepia.png",
+    "sha256": "3603d8326f46bc7f046ef2e2878bab35057bc78aa99168304c8ffed448520179",
+    "bytes": 543
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-o-cloak.png",
+    "sha256": "0893d59453c78f0003d8a8e835915b94fc724fe48eea0b9585cb8bef470335aa",
+    "bytes": 583
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-o-cloth-sepia.png",
+    "sha256": "26c93ef1bf3b079f7fc1015d1c033d67c72a5f3356de6d1309c2baaa72f126ff",
+    "bytes": 521
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-o-cloth.png",
+    "sha256": "3f2512cd5e283d2ddea78ad26f1174513db58459e718aa030b1e461435f20717",
+    "bytes": 558
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-o-frame-sepia.png",
+    "sha256": "ae41cf1c86f17f33d1a7a7fb506f1f53400472ec65591d7914476ea909182c8e",
+    "bytes": 787
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-o-frame.png",
+    "sha256": "3878f026b034ded99d1a18d6ed469e07e54359d8fc62bedec96cf1be1b026a41",
+    "bytes": 1064
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-o-pennant-bend-sepia.png",
+    "sha256": "8dd4fa1ba561c14e7cc684aa32bceb94490547b57e52c004f12c54bc047d0ff9",
+    "bytes": 441
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-o-pennant-bend.png",
+    "sha256": "e9a41404e22c17f1f1660e5c44a3df3f6c1b523b26e8952cfdc2d02a67649232",
+    "bytes": 487
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-o-pennant-cross-sepia.png",
+    "sha256": "d97e479dc05d093282a16c240e08fe41a7d93e0b9b1e3899e7c8926ad022241f",
+    "bytes": 480
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-o-pennant-cross.png",
+    "sha256": "8c997d499c42fec6797f96fe8e0645780cdea5af9779c82aedf5e1a061b702ba",
+    "bytes": 535
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-o-pennant-pale-sepia.png",
+    "sha256": "46f59c12cf6ccbd7825e04d9c7879a624dbaeffc060617e7ce7a8009cae49a4f",
+    "bytes": 414
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-o-pennant-pale.png",
+    "sha256": "223fddb1172f6bb867231cea7b7712afafa21143a7ec6de59e1297ed3abd8440",
+    "bytes": 443
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-o-shards-sepia.png",
+    "sha256": "75c3f973ec9ea7c7255ae2050b7b3e047511cae3cdf78c86218e6dd6b48c361d",
+    "bytes": 825
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-o-shards.png",
+    "sha256": "3f93c017e02d662a49aa89d80e0e656f5ba503967588999a57fdea92773497f5",
+    "bytes": 875
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-o-tabard-sepia.png",
+    "sha256": "c463237de4c69520ac6eb3814367ee8262d90f8490a3c18b7cc9cb312bdb2b24",
+    "bytes": 472
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-o-tabard.png",
+    "sha256": "817092426fb34bf2adca036a7bc2572399149b703f358f251c1003ba4ab030f2",
+    "bytes": 574
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-shards-plain.png",
+    "sha256": "bdedfc54a9a49fcbe7458cbc0a7748f35c5eef331d0285d2f02c5cf760481f08",
+    "bytes": 613
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-shards.png",
+    "sha256": "e2b716d534c18972d5eacbd9ea98fb13bc7655ef51bfd25bcc2eb0fe6f86e1af",
+    "bytes": 621
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/ic-title.png",
+    "sha256": "724cefef74c7ab8f3b60ed43cd3d05a173408cca6ea6f38710ed12399260046f",
+    "bytes": 468
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/key-dull-37.png",
+    "sha256": "b72f30da72669cf38a6cfad47d7d77add0a486d20aa2f1c23fde931ce630d305",
+    "bytes": 169
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/oak-table-track.png",
+    "sha256": "cdc3c462b26b23a1041268a01c624a3c5c28e3db945157f3de95742a80de3cd0",
+    "bytes": 72422
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/pennant-160.png",
+    "sha256": "cb9cd647bc427b1366977cab68da21ae81881e9c08975f6b1dabbdf780ccc5cb",
+    "bytes": 3576
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/pin-tier.png",
+    "sha256": "d1b3c381651bcbcb7b56d934db496d2997236c5fba04f1e7101e1984d2db6c47",
+    "bytes": 384
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/plaque-112-here.png",
+    "sha256": "c5f31409febaf28b941a6f7b5ceeb997a2439c318b2db410d161adfd437de133",
+    "bytes": 1004
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/plaque-tier-b.png",
+    "sha256": "dca4e57cdd4e91eb51bb1e0df80e3d32375edc995532d1fdce4b0a9add204cee",
+    "bytes": 1583
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/plaque-tier-dull-b.png",
+    "sha256": "84198b9a54fa21c3e18d8d202d4f9c3762793e57e1a99ddb99b4614bd67830a8",
+    "bytes": 1703
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/plaque-tier-dull.png",
+    "sha256": "ffa6f2f2c338d8f652d372551ca551a34e29ebaa8f73978ec6ee773b1c9857fa",
+    "bytes": 1678
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/plaque-tier-raised.png",
+    "sha256": "28cf7c269b98b7110ad3cd1476187bf950dc8e41b1b69a7a141b49a53b5c09b9",
+    "bytes": 1705
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/plaque-tier-sepia.png",
+    "sha256": "90a97f9864defcb1f5d63c08dc2c12e8733a3a096bf38ceed5f4dff94c29f36a",
+    "bytes": 926
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/plaque-tier.png",
+    "sha256": "8c8a47fd359acbd37174a9ec16ab98f4e652bf00fcfe1c60a003463ba37f3e22",
+    "bytes": 1516
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/prop-candle-2x.png",
+    "sha256": "3df76d8a733784767300f7e7e2631c9f95b01f4e97781b4333fbdc7013ddbc27",
+    "bytes": 3275
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/prop-glow-2x.png",
+    "sha256": "870212f88cba4baaf80be0ad908bbd04225f4468bb225e63d61001d3587e7993",
+    "bytes": 6789
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/prop-inkwell-2x.png",
+    "sha256": "56eecae819deddf18ac082973b47d0c302ecd72189223561d1e3decb877b05fa",
+    "bytes": 1704
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/pt-longbow-160.png",
+    "sha256": "c3a043ee429a1d3e2f4adf09fc563e3dd08839a86d2486780535b57047d6303e",
+    "bytes": 2239
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/seal-chevron.png",
+    "sha256": "76bf7e6e3dcdf09adbbcf450973e89bb234d9ddf60e692c353489c8402861073",
+    "bytes": 767
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/seal-rare.png",
+    "sha256": "38d988478d42474a3ca0ceb31f886e5fa1df992849f82fb1b110ea880ab8a379",
+    "bytes": 703
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/seal-sword.png",
+    "sha256": "1c25f36b5f395c44b12eb05af73292fd59f12938751f9ee06dc78efc66da63a6",
+    "bytes": 722
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/seal-tier-big.png",
+    "sha256": "331191d601167026b2432e1e75c223a89a45ddaf6262b7abc5c78dab3b41d9d9",
+    "bytes": 918
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/stamp-hollow-b.png",
+    "sha256": "1cc23e59b05e827f3bb63ff7974f61a8b5c787cb4dd6a256c8e0f3dba1b83b7d",
+    "bytes": 658
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/stamp-hollow-fresh.png",
+    "sha256": "b7912403e47c6d2b3aa22530222f07dbcb24ac232ba570507344dced8162cef0",
+    "bytes": 729
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/stamp-hollow.png",
+    "sha256": "917f7e81521582428996e93687c802f92798c2b38b63c2b080505e9e6e7dd398",
+    "bytes": 664
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/tag-tier.png",
+    "sha256": "7c8b48626b2595639345cbef8a626e5009ed88ee414489d8096c152a220f47ca",
+    "bytes": 247
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/track-rod.png",
+    "sha256": "2a6034c7997c9cae0d88651bfa85fabfe9a4302bdb209101f8a65f12f6b0d737",
+    "bytes": 517
+  },
+  {
+    "path": "design-archive/ui-concepts/track/art/xp-rail.png",
+    "sha256": "dbd9d35f1e8b8e6d2dd28374fe27d8df11fbeec00431f22faef2d77115fc7166",
+    "bytes": 1412
+  },
+  {
+    "path": "design-archive/tour/a1-map0-top.png",
+    "sha256": "f1b604d4b5073639cd138d889698d91676ff6f9556e0cf9a19e2e885a05c0a57",
+    "bytes": 34492
+  },
+  {
+    "path": "design-archive/tour/a1-map0.jpg",
+    "sha256": "6ff3dc29a2ccbf992e4a7e8131c894e73c922aab1c60c22e25735517cbed9fbc",
+    "bytes": 266660
+  },
+  {
+    "path": "design-archive/tour/a1-map1-top.png",
+    "sha256": "e78e2d72ac5b5ddd9fa3b12d3980ac1e98c626f61c1c6888c10f929695dbf1fe",
+    "bytes": 34284
+  },
+  {
+    "path": "design-archive/tour/a1-map1.jpg",
+    "sha256": "07bb5df24deecd599aa4814be042ae90a252e2d9bc13c94ef3e71a99d5bda0e4",
+    "bytes": 277549
+  },
+  {
+    "path": "design-archive/tour/a1-map2-top.png",
+    "sha256": "e4d8682e97f89c7a7228d6a90710c62b92e6b486be1e1a886d594680eb5f9897",
+    "bytes": 38868
+  },
+  {
+    "path": "design-archive/tour/a1-map2.jpg",
+    "sha256": "0e87fca803199dccde597e620e9babfc7507152bcae4d32c4a0ceb82889524d1",
+    "bytes": 268750
+  },
+  {
+    "path": "design-archive/tour/a1-map3-top.png",
+    "sha256": "5cb81b9d1cf761e5c1dc01b7696830e7be71ba9cbb5fd8058ddd9a66ef02afc5",
+    "bytes": 33639
+  },
+  {
+    "path": "design-archive/tour/a1-map3.jpg",
+    "sha256": "8398e90adeee3d30154affc67b4239de3299b115307bbf8207db929b95fef3e4",
+    "bytes": 240624
+  },
+  {
+    "path": "design-archive/tour/a1-map4-top.png",
+    "sha256": "21647bd6bf2b9bb7fd18fa18e19673282f3ce11667686a190ac53ed3d589bd66",
+    "bytes": 36468
+  },
+  {
+    "path": "design-archive/tour/a1-map4.jpg",
+    "sha256": "a19b86ac6d0a00465df472e567a0c3a4979c4ecd7c27a0d838664dd14565218d",
+    "bytes": 357387
+  },
+  {
+    "path": "design-archive/tour/b2-map0-top.png",
+    "sha256": "f1b604d4b5073639cd138d889698d91676ff6f9556e0cf9a19e2e885a05c0a57",
+    "bytes": 34492
+  },
+  {
+    "path": "design-archive/tour/b2-map0.jpg",
+    "sha256": "92e65e84c24fda15d3d818c4c9351d0aed4000ed012718396c2d82aa24344197",
+    "bytes": 273191
+  },
+  {
+    "path": "design-archive/tour/b2-map1-top.png",
+    "sha256": "e78e2d72ac5b5ddd9fa3b12d3980ac1e98c626f61c1c6888c10f929695dbf1fe",
+    "bytes": 34284
+  },
+  {
+    "path": "design-archive/tour/b2-map1.jpg",
+    "sha256": "a81cc6222518fa42a94359fdadb2e352973416c5f87d6504b833ab4bf61db4b3",
+    "bytes": 281936
+  },
+  {
+    "path": "design-archive/tour/b2-map2-top.png",
+    "sha256": "e4d8682e97f89c7a7228d6a90710c62b92e6b486be1e1a886d594680eb5f9897",
+    "bytes": 38868
+  },
+  {
+    "path": "design-archive/tour/b2-map2.jpg",
+    "sha256": "4da91c09c6e29c42bb8a7bd7f4f26f4a10522fe8cda5bd4f1bf3132f58bf48ae",
+    "bytes": 266265
+  },
+  {
+    "path": "design-archive/tour/b2-map3-top.png",
+    "sha256": "5cb81b9d1cf761e5c1dc01b7696830e7be71ba9cbb5fd8058ddd9a66ef02afc5",
+    "bytes": 33639
+  },
+  {
+    "path": "design-archive/tour/b2-map3.jpg",
+    "sha256": "6749ab6a6f26b788778f315f721d0d72a9e563f3d5160f9d9fc31a55f9ed4100",
+    "bytes": 245106
+  },
+  {
+    "path": "design-archive/tour/b2-map4-top.png",
+    "sha256": "21647bd6bf2b9bb7fd18fa18e19673282f3ce11667686a190ac53ed3d589bd66",
+    "bytes": 36468
+  },
+  {
+    "path": "design-archive/tour/b2-map4.jpg",
+    "sha256": "99a47c4701afca9b7b366cd41939739ed952812afa55950e6543e97bf8a38cc9",
+    "bytes": 362358
+  },
+  {
+    "path": "design-archive/tour/b4-map0-top.png",
+    "sha256": "f1b604d4b5073639cd138d889698d91676ff6f9556e0cf9a19e2e885a05c0a57",
+    "bytes": 34492
+  },
+  {
+    "path": "design-archive/tour/b4-map0.jpg",
+    "sha256": "bf03c96c8ffc40d0966c9c8913f1ae6123d104f25448652cb5642a21e703c556",
+    "bytes": 272462
+  },
+  {
+    "path": "design-archive/tour/b4-map1-top.png",
+    "sha256": "e78e2d72ac5b5ddd9fa3b12d3980ac1e98c626f61c1c6888c10f929695dbf1fe",
+    "bytes": 34284
+  },
+  {
+    "path": "design-archive/tour/b4-map1.jpg",
+    "sha256": "da23bd159f442f12c5517caeeb4d8363786318b44f3e4241e4c878cc27bd05ba",
+    "bytes": 281263
+  },
+  {
+    "path": "design-archive/tour/b4-map2-top.png",
+    "sha256": "e4d8682e97f89c7a7228d6a90710c62b92e6b486be1e1a886d594680eb5f9897",
+    "bytes": 38868
+  },
+  {
+    "path": "design-archive/tour/b4-map2.jpg",
+    "sha256": "d94aa433aa5d93d0d09a408e34820f400229361db84df04329cf61319310548f",
+    "bytes": 264958
+  },
+  {
+    "path": "design-archive/tour/b4-map3-top.png",
+    "sha256": "5cb81b9d1cf761e5c1dc01b7696830e7be71ba9cbb5fd8058ddd9a66ef02afc5",
+    "bytes": 33639
+  },
+  {
+    "path": "design-archive/tour/b4-map3.jpg",
+    "sha256": "0ed8c7e757628959ba0af17bdc751cac6b213dd2b8161d068426f0c244650d61",
+    "bytes": 244650
+  },
+  {
+    "path": "design-archive/tour/b4-map4-top.png",
+    "sha256": "21647bd6bf2b9bb7fd18fa18e19673282f3ce11667686a190ac53ed3d589bd66",
+    "bytes": 36468
+  },
+  {
+    "path": "design-archive/tour/b4-map4.jpg",
+    "sha256": "1615ae1fd3ccb68373d9d3951849ca6e294c232237db9fd07f86e5c86a468a5c",
+    "bytes": 361494
+  },
+  {
+    "path": "design-archive/tour/before-map0-top.png",
+    "sha256": "f1b604d4b5073639cd138d889698d91676ff6f9556e0cf9a19e2e885a05c0a57",
+    "bytes": 34492
+  },
+  {
+    "path": "design-archive/tour/before-map0.jpg",
+    "sha256": "5a04f15ce181b3a9f237b531ab6e41db8c8bd8391b466f7fb237ca242ff4351e",
+    "bytes": 240080
+  },
+  {
+    "path": "design-archive/tour/before-map1-top.png",
+    "sha256": "e78e2d72ac5b5ddd9fa3b12d3980ac1e98c626f61c1c6888c10f929695dbf1fe",
+    "bytes": 34284
+  },
+  {
+    "path": "design-archive/tour/before-map1.jpg",
+    "sha256": "7bf12f98c2cf5a2f85f8fb367dd09081ba24937cb2139d95aad052b6d6616b07",
+    "bytes": 250623
+  },
+  {
+    "path": "design-archive/tour/before-map2-top.png",
+    "sha256": "e4d8682e97f89c7a7228d6a90710c62b92e6b486be1e1a886d594680eb5f9897",
+    "bytes": 38868
+  },
+  {
+    "path": "design-archive/tour/before-map2.jpg",
+    "sha256": "85603940684976deb2225610683f050d6c3607fbbcde618fe08036b888e9ce94",
+    "bytes": 251136
+  },
+  {
+    "path": "design-archive/tour/before-map3-top.png",
+    "sha256": "5cb81b9d1cf761e5c1dc01b7696830e7be71ba9cbb5fd8058ddd9a66ef02afc5",
+    "bytes": 33639
+  },
+  {
+    "path": "design-archive/tour/before-map3.jpg",
+    "sha256": "9e86ef97a7d86488877bb8b0fbed6a12ff5c52b9ddec68405f161f9b696aaa36",
+    "bytes": 222582
+  },
+  {
+    "path": "design-archive/tour/before-map4-top.png",
+    "sha256": "21647bd6bf2b9bb7fd18fa18e19673282f3ce11667686a190ac53ed3d589bd66",
+    "bytes": 36468
+  },
+  {
+    "path": "design-archive/tour/before-map4.jpg",
+    "sha256": "7c013f3a4835602be29c5c400e97d2b6f9d3943cb0c460171c653616dda92778",
+    "bytes": 336598
+  }
+]

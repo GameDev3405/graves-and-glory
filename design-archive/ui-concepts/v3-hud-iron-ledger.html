@@ -1,0 +1,131 @@
+<!doctype html>
+<html class="v2 v3"><head><meta charset="utf-8"><title>v3 HUD: Iron Ledger</title>
+<link rel="stylesheet" href="common.css"><link rel="stylesheet" href="v3.css">
+<style>
+/* Iron Ledger, third pass. One object in one material: vellum ledger cards bound with hammered iron.
+   The score bar is a long ledger card held between two enamel bosses, the three point seals hang from it on
+   chains; the notice is a slip clipped to the top of the iron spine; the group standards hang from the spine
+   on hooks; the ability is an iron-framed slot. Hunger is gone and nothing takes its place yet. */
+.card .h11{position:absolute;left:10px;top:7px}
+.card .st{position:absolute;top:7px;align-items:flex-start;gap:3px}
+.card .st img{image-rendering:pixelated;margin-top:2px}
+.card .ch{left:10px;top:22px}
+.card .hp{left:11px;top:23px}
+.card .ct{top:21px}
+.card .g1{left:10px;top:30px}
+.card .w1{left:22px;top:31px}
+.card .g2{left:72px;top:30px}
+.card .w2{left:84px;top:31px}
+.card .kc{top:44px}
+.card .kl,.card .kw{top:46px}
+</style></head>
+<body>
+<!-- vanilla HUD, drawn from the game's sprite sheets: hearts, XP bar, hotbar, crosshair (no hunger) -->
+<div data-vanilla>
+  <div class="hotbar" style="top:518px"><div class="sel" style="top:-1px"></div></div>
+  <div class="xpbar"><i style="width:56px"></i></div>
+  <div id="hearts"></div>
+  <div class="crosshair"></div>
+</div>
+
+<!-- the score bar: a ledger card between the Dawn boss (round, sun) and the Dusk boss (diamond, crescent) -->
+<img class="s" src="v3/score-card.png" style="left:351px;top:12px" data-under-ok alt="">
+<div class="box" data-panel data-name="score bar" style="left:352px;top:13px;width:256px;height:24px">
+  <div class="a flex" data-cx="128" style="top:8px;gap:6px">
+    <mc-text color="#2a2219">148</mc-text>
+    <img src="v3/track-dawn.png" style="image-rendering:pixelated" data-under-ok alt="">
+    <mc-text color="#2a2219">7:42</mc-text>
+    <img src="v3/track-dusk.png" style="image-rendering:pixelated" data-under-ok alt="">
+    <mc-text color="#2a2219">121</mc-text>
+  </div>
+</div>
+<img class="s" src="v3/boss-dawn.png" style="left:340px;top:12px" alt="" data-name="Dawn boss">
+<img class="s" src="v3/boss-dusk.png" style="left:595px;top:12px" alt="" data-name="Dusk boss">
+
+<!-- the three points hang from the bar: A held by Dawn, B contested (split, swords crossed), C held by Dusk -->
+<img class="s" src="v3/chain.png" style="left:450px;top:37px" alt="">
+<img class="s" src="v3/chain.png" style="left:478px;top:37px" alt="">
+<img class="s" src="v3/chain.png" style="left:506px;top:37px" alt="">
+<img class="s" src="v3/seal-A.png" style="left:439px;top:41px" data-under-ok alt="" data-name="seal A">
+<img class="s" src="v3/seal-B.png" style="left:467px;top:40px" data-under-ok alt="" data-name="seal B contested">
+<img class="s" src="v3/seal-C.png" style="left:495px;top:41px" data-under-ok alt="" data-name="seal C">
+<mc-text class="a" data-cx="452" style="top:50px" color="#eee9df" shadow>A</mc-text>
+<mc-text class="a" data-cx="480" style="top:49px" color="#eee9df" shadow>B</mc-text>
+<mc-text class="a" data-cx="508" style="top:50px" color="#eee9df" shadow>C</mc-text>
+
+<!-- the iron spine the ledger hangs from -->
+<img class="s" src="v3/spine.png" style="left:12px;top:296px" alt="" data-name="spine">
+
+<!-- one notice, a slip clipped to the top of the spine; it fades after four seconds -->
+<img class="s" src="v3/notice-slip.png" style="left:23px;top:299px" data-under-ok alt="">
+<img class="s" src="v3/hook.png" style="left:17px;top:303px" alt="">
+<div class="box" data-panel data-name="notice" style="left:24px;top:300px;width:176px;height:40px">
+  <img class="s" src="v3/sun-ink.png" style="left:10px;top:9px" alt="">
+  <span class="a h11 ink" style="left:24px;top:6px">Dawn Knight trained</span>
+  <span class="a b11 nw sepia" style="left:24px;top:19px">deploying at Mill Hamlet</span>
+</div>
+
+<!-- Infantry: fighting, and it just lost a man (red rule round the card, the lost stretch of the bar white) -->
+<img class="s" src="v3/card-flash.png" style="left:22px;top:346px" data-under-ok alt="">
+<img class="s" src="v3/hook.png" style="left:17px;top:351px" alt="">
+<div class="box card" data-panel data-name="infantry card" style="left:24px;top:348px;width:176px;height:48px">
+  <span class="h11 ink">Infantry</span>
+  <span class="flex st" data-rx="166"><img src="v3/g-fight.png" alt=""><span class="b11 ink">Fighting</span></span>
+  <img class="s ch" src="v3/hp-channel.png" alt="">
+  <img class="s hp" src="v3/hp-inf.png" alt="">
+  <img class="s" src="v3/hp-inf-lost.png" style="left:79px;top:23px" alt="" data-name="lost">
+  <mc-text class="a ct" data-rx="166" color="#2a2219">9/12</mc-text>
+  <img class="s g1" src="v3/g-attack.png" alt=""><mc-text class="a w1" color="#2a2219">Attack</mc-text>
+  <img class="s g2" src="v3/g-shieldwall.png" alt=""><mc-text class="a w2" color="#2a2219">Shieldwall</mc-text>
+</div>
+
+<!-- Ranged: the selected group, brass-bound; it carries the order keys, since orders go to the selected group -->
+<img class="s" src="v3/card-sel.png" style="left:23px;top:403px" data-under-ok alt="">
+<img class="s" src="v3/hook-brass.png" style="left:17px;top:407px" alt="" data-name="selected hook">
+<div class="box card" data-panel data-name="ranged card (selected)" style="left:24px;top:404px;width:176px;height:62px">
+  <span class="h11 ink">Ranged</span>
+  <span class="a b11 nw sepia" data-rx="166" style="top:7px">Steady</span>
+  <img class="s ch" src="v3/hp-channel.png" alt="">
+  <img class="s hp" src="v3/hp-ran.png" alt="">
+  <mc-text class="a ct" data-rx="166" color="#2a2219">6/6</mc-text>
+  <img class="s g1" src="v3/g-hold.png" alt=""><mc-text class="a w1" color="#2a2219">Hold</mc-text>
+  <img class="s g2" src="v3/g-line.png" alt=""><mc-text class="a w2" color="#2a2219">Line</mc-text>
+  <img class="s kc" src="v3/key-chip.png" style="left:10px" alt="" data-under-ok><mc-text class="a kl" style="left:12px" color="#f1e7cb">G</mc-text>
+  <mc-text class="a kw" style="left:22px" color="#5c4a32">Attack</mc-text>
+  <img class="s kc" src="v3/key-chip.png" style="left:58px" alt="" data-under-ok><mc-text class="a kl" style="left:60px" color="#f1e7cb">V</mc-text>
+  <mc-text class="a kw" style="left:70px" color="#5c4a32">Follow</mc-text>
+  <img class="s kc" src="v3/key-chip.png" style="left:105px" alt="" data-under-ok><mc-text class="a kl" style="left:107px" color="#f1e7cb">B</mc-text>
+  <mc-text class="a kw" style="left:117px" color="#5c4a32">Formation</mc-text>
+</div>
+
+<!-- Support: routing. The card has gone grey, the stamp says so, the count turns red, the orders fade -->
+<img class="s" src="v3/card-rout.png" style="left:23px;top:473px" data-under-ok alt="">
+<img class="s" src="v3/hook.png" style="left:17px;top:477px" alt="">
+<div class="box card" data-panel data-name="support card" style="left:24px;top:474px;width:176px;height:48px">
+  <span class="h11 ink">Support</span>
+  <img class="s" src="v3/stamp-rout.png" style="left:108px;top:4px" data-under-ok alt="" data-name="rout stamp">
+  <mc-text class="a" data-cx="135" style="top:8px" color="#5e140b">ROUTING</mc-text>
+  <img class="s ch" src="v3/hp-channel.png" alt="">
+  <img class="s hp" src="v3/hp-sup.png" alt="">
+  <mc-text class="a ct" data-rx="166" color="#5e140b">1/2</mc-text>
+  <img class="s g1" src="v3/g-follow-faded.png" alt=""><mc-text class="a w1" color="#3d3124">Follow</mc-text>
+  <img class="s g2" src="v3/g-compact-faded.png" alt=""><mc-text class="a w2" color="#3d3124">Compact</mc-text>
+</div>
+
+<!-- the Marshal's Rally Horn: an iron slot, the H key on a brass plate, the sweep shows the 48 s still to go -->
+<div class="box" data-ctl data-name="ability" style="left:584px;top:493px;width:50px;height:32px">
+  <img class="s" src="v3/ability-slot.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s" src="v3/horn.png" style="left:5px;top:6px" data-under-ok alt="">
+  <img class="s" src="v3/cooldown.png" style="left:4px;top:4px" data-under-ok alt="" data-name="cooldown sweep">
+  <img class="s" src="v3/key-brass-plate.png" style="left:1px;top:1px" data-under-ok alt="">
+  <mc-text class="a" style="left:4px;top:4px" color="#2e1f0c">H</mc-text>
+  <mc-text class="a" data-cx="39" style="top:12px" color="#eee9df" shadow>48</mc-text>
+</div>
+
+<script>
+/* vanilla hearts (17 of 20 health), positions as InGameHud draws them at 960x540; no hunger row */
+(function(){let h='';for(let i=0;i<10;i++){h+=`<span class="heart${i===8?' half':''}" style="left:${389+i*8}px;top:501px">${i<9?'<i></i>':''}</span>`;}
+document.getElementById('hearts').innerHTML=h;})();
+</script>
+<script src="mc.js"></script><script src="art.js"></script><script src="v2.js"></script><script src="check.js"></script>
+</body></html>

@@ -1,0 +1,127 @@
+<!doctype html>
+<html class="v2"><head><meta charset="utf-8"><title>v2 HUD C: Banner Line</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* Banner Line, second pass. Your groups are standards planted in front of you: cloth height is men
+   (one stripe per troop), cloth width is health, the finial is the order, the base tile the formation.
+   Words live on one dark cloth band under the standards, so no pole ever crosses a label. */
+.cloth2{position:absolute;background:rgba(26,33,37,.92);box-shadow:inset 0 1px 0 #8c7246,0 2px 0 rgba(0,0,0,.4)}
+.plate{position:absolute;background:#1a2125;box-shadow:inset 0 0 0 1px #0d1113,inset 0 -2px 0 #11171a}
+.lbl{position:absolute;top:8px}
+.cnt{position:absolute;top:10px}
+.stw{position:absolute;top:26px}
+.bar2{position:absolute;left:0;top:0;height:2px}
+.notice{top:456px;height:28px;padding:0 12px;display:flex;align-items:center;gap:6px}
+</style></head>
+<body>
+<!-- vanilla HUD, drawn from the game's sprite sheets so the mock respects its footprint -->
+<div data-vanilla>
+  <div class="hotbar" style="top:518px"><div class="sel" style="top:-1px"></div></div>
+  <div class="xpbar"><i style="width:56px"></i></div>
+  <div id="hearts"></div><div id="food"></div>
+  <div class="crosshair"></div>
+</div>
+
+<!-- the race: two great banners hang from one rail and are dyed down toward 300; the points hang between them -->
+<div id="top"></div>
+<div class="plate" data-ctl data-name="timer" style="left:462px;top:12px;width:36px;height:16px"><mc-text class="a" data-cx="18" style="top:4px" color="#eee9df" shadow>7:42</mc-text></div>
+<div class="plate" data-ctl data-name="dawn score" style="left:380px;top:19px;width:28px;height:16px"><mc-text class="a" data-cx="14" style="top:4px" color="#eee9df" shadow>148</mc-text></div>
+<div class="plate" data-ctl data-name="dusk score" style="left:552px;top:19px;width:28px;height:16px"><mc-text class="a" data-cx="14" style="top:4px" color="#eee9df" shadow>121</mc-text></div>
+<div class="a" style="left:433px;top:30px" data-name="seal A"><i class="px" data-art="disc15" data-under-ok></i><mc-text class="a" style="left:5px;top:4px" color="#101417">A</mc-text></div>
+<div class="a" style="left:474px;top:31px" data-name="seal B"><i class="px" data-art="hatch13" data-under-ok></i><mc-text class="a" style="left:4px;top:3px" color="#101417">B</mc-text></div>
+<div class="a" style="left:513px;top:30px" data-name="seal C"><i class="px" data-art="diamond15" data-under-ok></i><mc-text class="a" style="left:5px;top:4px" color="#101417">C</mc-text></div>
+
+<!-- the standards (the focal point), drawn by the script below -->
+<div id="line"></div>
+
+<!-- one dark cloth band carries the words, a column under each standard -->
+<div class="cloth2" data-panel data-name="standards band" style="left:12px;top:486px;width:264px;height:42px">
+  <div class="a" data-under-ok data-name="loss flash" style="left:0;top:0;width:88px;height:42px;background:rgba(217,99,76,.32)"></div>
+  <i class="bar2" style="left:0;width:88px;background:#d9634c"></i>
+  <i class="bar2" style="left:88px;width:88px;background:#c8a56b"></i>
+  <span class="lbl h11" style="left:8px">Infantry</span>
+  <mc-text class="cnt" data-rx="80" color="#eee9df" shadow>9/12</mc-text>
+  <mc-text class="stw" style="left:8px" color="#eee9df" shadow>FIGHTING</mc-text>
+  <span class="lbl h11" style="left:96px;color:#dfbd77">Ranged</span>
+  <mc-text class="cnt" data-rx="168" color="#eee9df" shadow>6/6</mc-text>
+  <mc-text class="stw" style="left:96px" color="#afb9bc" shadow>STEADY</mc-text>
+  <span class="lbl h11" style="left:184px;color:#afb9bc">Support</span>
+  <mc-text class="cnt" data-rx="256" color="#f08c76" shadow>1/2</mc-text>
+  <mc-text class="stw" style="left:184px" color="#f08c76" shadow>ROUTING</mc-text>
+</div>
+
+<!-- the commander's own standard is the ability: its cloth is dyed down as the Rally Horn recharges -->
+<div id="cmd"></div>
+<div class="plate" data-ctl data-name="ability seconds" style="left:604px;top:499px;width:24px;height:16px"><mc-text class="a" data-cx="12" style="top:4px" color="#eee9df" shadow>48</mc-text></div>
+
+<!-- one notice line, fades after four seconds -->
+<div class="cloth2 notice" data-panel data-name="notice" data-cx="480">
+  <i class="px" data-art="sun" data-pal="i=#5fb3ad"></i>
+  <span class="b11 nw">Dawn Knight trained: deploying at Mill Hamlet</span>
+</div>
+
+<script>
+/* vanilla hearts (17 of 20 health) and food (full), positions as InGameHud draws them at 960x540 */
+(function(){let h='',f='';for(let i=0;i<10;i++){h+=`<span class="heart${i===8?' half':''}" style="left:${389+i*8}px;top:501px">${i<9?'<i></i>':''}</span>`;
+f+=`<span class="food" style="left:${562-i*8}px;top:501px"><i></i></span>`;}
+document.getElementById('hearts').innerHTML=h;document.getElementById('food').innerHTML=f;})();
+
+/* every shape below is whole-pixel rectangles: a sprite sheet and 9-slices in the game */
+const R=(x,y,w,h,c)=>`<b style="position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;background:${c}"></b>`;
+const G=(art,x,y,pal,extra)=>`<i class="px a" data-art="${art}" ${pal?`data-pal="${pal}"`:''} ${extra||''} style="left:${x}px;top:${y}px"></i>`;
+const INK='#0d1113',POLE='#5a3d26',POLE2='#3a281a',BR='#c8a56b',BRH='#dfbd77',BRL='#8c7246',UNDYED='#2a3439';
+
+/* --- top: the rail, two great banners (header plate, cloth dyed from the bar down, swallowtail), cords to the seals --- */
+(function(){let h='';
+  h+=R(363,15,234,5,INK)+R(364,16,232,3,BR)+R(364,16,232,1,BRH)+R(364,18,232,1,BRL);           /* rail */
+  h+=R(359,14,6,7,INK)+R(360,15,4,5,BRH)+R(595,14,6,7,INK)+R(596,15,4,5,BRH);                     /* end caps */
+  function great(x,score,col,emb,embPal){const W=28,L=20,dyed=Math.round(L*score/300);let g='';
+    g+=R(x-1,34,W+2,L+2,INK);                                                                       /* outline */
+    g+=R(x,35,W,L,UNDYED)+R(x,35,W,dyed,col);                                                       /* cloth, dyed part */
+    [[0,12],[1,8],[2,4]].forEach(([r,cut])=>{g+=R(x-1,35+L+r,cut+1,1,INK)+R(x,35+L+r,cut,1,UNDYED)+R(x+W-cut,35+L+r,cut+1,1,INK)+R(x+W-cut,35+L+r,cut,1,UNDYED);});
+    g+=G(emb,x+10,36,embPal);                                                                       /* House-free team mark */
+    return g;}
+  h+=great(380,148,'#5fb3ad','sun','i=#eee9df');
+  h+=great(552,121,'#a07cc2','crescent','i=#eee9df');
+  h+=R(440,19,1,11,INK)+R(480,28,1,3,INK)+R(520,19,1,11,INK);                                     /* cords */
+  document.getElementById('top').innerHTML=h;})();
+
+/* --- the line: upright standards and one routed standard --- */
+(function(){let h='';
+  function upright(x,men,w,order,form,c1,c2){
+    h+=R(x-1,433,2,41,POLE)+R(x,433,1,41,POLE2);                                                   /* pole */
+    h+=G(order,x-4,425,'k='+BRH,'data-outline="'+INK+'"');                                          /* finial = order */
+    h+=R(x-21,435,42,4,INK)+R(x-20,436,40,2,BR)+R(x-20,436,40,1,BRH);                               /* crossbar */
+    const n=men.length,left=x-w/2;h+=R(left-1,439,w+2,2*n+1,INK);
+    men.forEach((m,i)=>{h+=R(left,439+2*i,w,2,m==='t'?'#f4f2ea':(i%2?c2:c1));});                     /* one stripe per troop */
+    h+=G('gilded',x-4,439+Math.max(1,Math.floor((2*(n-(men.includes('t')?1:0))-7)/2)),'i=#9ad8d1');  /* the House woven in */
+    h+=R(x-6,474,11,11,INK)+R(x-5,475,9,9,'#1a2125')+G(form,x-4,476,'k=#eee9df');                    /* base tile = formation */
+  }
+  upright(56,[1,1,1,1,1,1,1,1,1,'t'],26,'o_attack','f_shieldwall','#5fb3ad','#4a9690');
+  upright(144,[1,1,1,1,1,1],40,'o_hold','f_line','#5fb3ad','#4a9690');
+  /* routed: the pole leans (one pixel right for every two up), the cloth hangs small, dull and torn, the horn sounds */
+  const bx=232;let tx=bx,ty=474;
+  for(let k=0;k<30;k++){const px=bx+Math.floor(k/2),py=473-k;h+=R(px-1,py,2,1,POLE);tx=px;ty=py;}
+  const barY=i=>ty+1+Math.floor(i/2);
+  for(let i=-10;i<=9;i++){const y=barY(i),len=(i%3===0?3:4);
+    h+=R(tx+i,y+1,1,len+1,INK);                                                                       /* cloth outline */
+    h+=R(tx+i,y+1,1,2,'#6f8a88')+R(tx+i,y+3,1,len-2,'#4a5559');}                                      /* one dull troop, one torn rag */
+  for(let i=-11;i<=10;i++){h+=R(tx+i,barY(i)-1,1,1,INK)+R(tx+i,barY(i),1,1,BR);}                     /* the tilted bar */
+  h+=G('o_follow',tx-3,ty-9,'k=#8a9397','data-outline="'+INK+'"');
+  h+=R(bx-6,474,11,11,INK)+R(bx-5,475,9,9,'#1a2125')+G('f_compact',bx-4,476,'k=#afb9bc');
+  h+=G('horn15',bx-40,ty-6,'b=#e8735c,H=#f6a592,N=#a8402e','data-outline="'+INK+'"');
+  [[0,0],[1,1],[1,2],[1,3],[0,4]].forEach(([dx,dy])=>{h+=R(bx-23+dx,ty-6+dy,1,1,'#e8735c');});          /* the horn rings */
+  [[0,-2],[1,-1],[2,0],[2,1],[2,2],[2,3],[1,4],[0,5]].forEach(([dx,dy])=>{h+=R(bx-20+dx,ty-6+dy,1,1,'#e8735c');});
+  document.getElementById('line').innerHTML=h;})();
+
+/* --- the commander's standard: horn finial greyed, cloth dyed 20% (12 of 60 s back) --- */
+(function(){let h='';const x=589;
+  h+=R(x-1,494,2,34,POLE)+R(x,494,1,34,POLE2);
+  h+=G('horn',x-4,487,'b=#8a9397','data-outline="'+INK+'"');
+  h+=R(x-11,494,22,4,INK)+R(x-10,495,20,2,BR)+R(x-10,495,20,1,BRH);
+  h+=R(x-9,498,18,19,INK)+R(x-8,498,16,18,UNDYED)+R(x-8,498,16,4,'#d8b45a');
+  h+=G('gilded',x-4,505,'i=#4d4330');
+  document.getElementById('cmd').innerHTML=h;})();
+</script>
+<script src="mc.js"></script><script src="art.js"></script><script src="v2.js"></script><script src="check.js"></script>
+</body></html>

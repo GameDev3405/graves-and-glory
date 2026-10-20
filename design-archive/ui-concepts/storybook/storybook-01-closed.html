@@ -1,0 +1,54 @@
+<!doctype html>
+<html class="v2 v3 sb"><head><meta charset="utf-8"><title>Storybook 01: the book, closed</title>
+<link rel="stylesheet" href="../common.css"><link rel="stylesheet" href="../v3.css"><link rel="stylesheet" href="sb.css">
+<style>
+/* The March plaque opens the War Table with the book on it, closed. A beat, then the wind takes the cover.
+   The book is the only thing lit: a morocco binding near black, brass corners, the title in gilt, the Hollow
+   mark pressed into a red seal at the heart of a gilt medallion, the numeral and the name of this part in a
+   cartouche below. The wind already has the lower corner of the board up: a sliver of the first leaf shows
+   under it, the candle leans away from the book, dust runs off the fore-edge, the ribbon lifts. */
+</style></head>
+<body>
+<!-- the storybook's own stretch of the table (planks, knots, nails; nothing brass set into the planks), the rail cut
+     from another board; the candle's light on the oak, then the shadows it throws -->
+<img class="s" src="art/table-sb-closed.png" style="left:0;top:0" data-bleed alt="">
+<img class="s" src="art/rail-sb.png" style="left:0;top:0" data-bleed alt="">
+<img class="s" src="art/glow-candle.png" style="left:-45px;top:-104px" data-bleed data-overlay-ok alt="" data-name="candle light">
+<img class="s" src="art/shade-01.png" style="left:0;top:0" data-bleed data-overlay-ok alt="" data-name="shadows on the oak">
+
+<!-- the way back: the rail keeps one plaque -->
+<div class="plq" data-ctl data-name="back to the table" style="left:56px;width:144px">
+  <img class="s" src="art/plaque-144x32.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s" src="../v4/icon-table.png" style="left:9px;top:9px" alt="">
+  <span class="a m13 ivory" style="left:29px;top:8px">War Table</span>
+  <img class="s" src="art/key-32x20.png" style="left:102px;top:6px" data-under-ok alt="">
+  <span class="kt" data-cx="118" style="top:9px;color:#f0d9a0">Esc</span>
+</div>
+
+<!-- the book -->
+<img class="s" src="art/book-closed.png" style="left:330px;top:80px" alt="" data-name="book" id="book" data-under-ok>
+<img class="s" src="art/over-01.png" style="left:0;top:0" data-bleed data-overlay-ok alt="" data-name="candle light on the book">
+<span class="a t24 gilt" data-cx="486" style="top:129px">The Long March</span>
+<img class="s" src="art/seal-hollow.png" style="left:461px;top:239px" alt="" data-name="seal">
+<span class="a t24 gilt" data-cx="486" style="top:327px">I</span>
+<span class="a t16 gilt" data-cx="486" style="top:365px">The Road North</span>
+<img class="s" src="art/ribbon-01.png" style="left:474px;top:464px" alt="" data-name="ribbon">
+
+<!-- the candle by the book's corner, its flame laid over by the wind; the inkwell and quill (both at the kit's
+     pixel scale, about 2.5 times the home screen's) -->
+<img class="s" src="art/candle-big.png" style="left:198px;top:82px" alt="" data-name="candle">
+<img class="s" src="art/inkwell-big.png" style="left:700px;top:330px" alt="" data-name="inkwell">
+<!-- the wind that opens the book: dry leaves blown in through the tent flap, dust running off to the left -->
+<img class="s" src="art/leaf-flat.png" style="left:842px;top:160px" alt="" data-name="leaf on the oak">
+<img class="s" src="art/leaf-tumbling.png" style="left:740px;top:232px" alt="" data-name="leaf in the air">
+<img class="s" src="art/motes-01.png" style="left:0;top:0" data-bleed data-overlay-ok alt="">
+
+<!-- the one action: the wind opens the book after a beat; Enter opens it now -->
+<div class="box" data-ctl data-name="open" style="left:400px;top:503px;width:160px;height:24px">
+  <img class="s" src="art/key-44x20.png" style="left:4px;top:2px" data-under-ok alt="">
+  <span class="kt" data-cx="26" style="top:5px;color:#f0d9a0">Enter</span>
+  <span class="a m13 ivory" style="left:58px;top:4px">Open the book</span>
+</div>
+
+<script src="../mc.js"></script><script src="../art.js"></script><script src="../v2.js"></script><script src="../check.js"></script>
+</body></html>

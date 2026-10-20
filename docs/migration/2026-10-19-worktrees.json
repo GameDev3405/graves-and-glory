@@ -1,0 +1,75 @@
+[
+  {
+    "path": "C:\\Users\\kortt\\Melty\\bannerbound",
+    "head": "dde5a56b73f3f12381881bd60408ea9d15d69f3c",
+    "branch": "phase-1-solo-core",
+    "dirty": false,
+    "status": ""
+  },
+  {
+    "path": "C:\\Users\\kortt\\Documents\\gg-hx",
+    "head": "987186ea8a138dfdc47680a743f0213d9a881f92",
+    "branch": "heraldic-units",
+    "dirty": false,
+    "status": ""
+  },
+  {
+    "path": "C:\\Users\\kortt\\Melty\\bannerbound-p2",
+    "head": "6264f6a1e2d0f1a5af75ec54a11bff5f24a4199a",
+    "branch": "phase-2-houses",
+    "dirty": false,
+    "status": ""
+  },
+  {
+    "path": "C:\\Users\\kortt\\Melty\\bannerbound-p2b",
+    "head": "2bf40df0d62fd745c24e73a14f4c60dc67cb25a3",
+    "branch": "phase-2-models",
+    "dirty": true,
+    "status": " M src/main/java/gg/gravesandglory/GravesAndGlory.java\n M src/main/java/gg/gravesandglory/GravesAndGloryClient.java\n M src/main/java/gg/gravesandglory/Tactics.java\n M src/main/java/gg/gravesandglory/TroopFeatures.java\n M src/main/java/gg/gravesandglory/TroopModel.java\n M src/main/java/gg/gravesandglory/TroopModelLoader.java\n M src/main/java/gg/gravesandglory/TroopRenderer.java\nD  src/main/java/gg/gravesandglory/mixin/BipedAnimationMixin.java\n M src/main/resources/gravesandglory.mixins.json\n M test-tools/java/gg/gravesandglory/Phase2Checks.java\n M test-tools/standalone/test_build_skins.py\n M tools/build_skins.py\n?? src/main/java/gg/gravesandglory/BipedClips.java\n?? src/main/java/gg/gravesandglory/ColossusClips.java\n?? src/main/java/gg/gravesandglory/HoundClips.java\n?? src/main/java/gg/gravesandglory/SpiderClips.java\n?? src/main/java/gg/gravesandglory/TroopAnimator.java\n?? src/main/java/gg/gravesandglory/TroopClips.java\n",
+    "snapshot": "snapshot/2026-10-19/bannerbound-p2b",
+    "snapshot_commit": "01623c6b8e09c160e41b7732dc407d6063c4d63e"
+  },
+  {
+    "path": "C:\\Users\\kortt\\Melty\\bannerbound-p3",
+    "head": "7f9d076ef47b4dc298bd4a0ef9094881406f1093",
+    "branch": "phase-3-built-world",
+    "dirty": true,
+    "status": " M sheets/preflight.json\n M src/main/java/gg/gravesandglory/Spec.java\n M test-tools/java/gg/gravesandglory/Phase3Checks.java\n",
+    "snapshot": "snapshot/2026-10-19/bannerbound-p3",
+    "snapshot_commit": "161b7354cc8f424a087da2f49d9e2b17d7dc3ede"
+  },
+  {
+    "path": "C:\\Users\\kortt\\Melty\\bannerbound-preview",
+    "head": "38deb85f1e62701dae61a7b0370f68e5db253256",
+    "branch": "preview-0.5",
+    "dirty": true,
+    "status": " M src/main/java/gg/gravesandglory/BattleHud.java\n M src/main/java/gg/gravesandglory/GravesAndGloryClient.java\n M src/main/java/gg/gravesandglory/RecruitView.java\n",
+    "snapshot": "snapshot/2026-10-19/bannerbound-preview",
+    "snapshot_commit": "c9782e71d97fa9ef2e4626ed700bf0b6e27f9aac"
+  },
+  {
+    "path": "C:\\Users\\kortt\\Melty\\bannerbound-runs",
+    "head": "886461661fae47e32b2ec68a72cad1b0412e0f2f",
+    "branch": "detached",
+    "dirty": false,
+    "status": ""
+  },
+  {
+    "path": "C:\\Users\\kortt\\Melty\\bannerbound-test",
+    "head": "04bec2dcae5e0fc934fcd794a0abcecc76bb4beb",
+    "branch": "detached",
+    "dirty": true,
+    "status": " M sheets/preflight.json\n M src/main/java/gg/gravesandglory/Spec.java\n",
+    "snapshot": "snapshot/2026-10-19/bannerbound-test",
+    "snapshot_commit": "95d92502f830c6eed48eb77201dc2238c33f931f"
+  },
+  {
+    "path": "C:\\Users\\kortt\\Melty\\bannerbound-ui",
+    "head": "ebd3d98db968378176d0433a35bc43ca56bce6d8",
+    "branch": "ui-plan",
+    "dirty": true,
+    "status": " M sheets/preflight.json\n M src/main/java/gg/gravesandglory/CampScreen.java\n M src/main/java/gg/gravesandglory/CampaignClient.java\n M src/main/java/gg/gravesandglory/DarkUi.java\n M src/main/java/gg/gravesandglory/Spec.java\n M src/main/java/gg/gravesandglory/UiMath.java\n M src/main/java/gg/gravesandglory/WarTableHome.java\n M src/main/java/gg/gravesandglory/WarTableRecruit.java\n M src/main/resources/assets/gravesandglory/textures/gui/atlas.json\n M src/main/resources/assets/gravesandglory/textures/gui/table/map-rivergate.png\n M test-tools/java/gg/gravesandglory/CampRedesignChecks.java\n M test-tools/java/gg/gravesandglory/Phase1Checks.java\n M test-tools/standalone/UiMathCheck.java\n M tools/ui_art/kit_extra.py\n M tools/ui_art/kit_props.py\n M tools/ui_art/manifest.py\n?? src/main/java/gg/gravesandglory/WarTablePages.java\n?? src/main/resources/assets/gravesandglory/textures/gui/chapter/\n?? src/main/resources/assets/gravesandglory/textures/gui/table/btn-dull-240x40.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/icon-class-arcanist.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/icon-class-marksman.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/icon-class-vanguard.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/key-dull-37.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/map-frostmarch.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/map-hollowwood.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/map-ironhold.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/map-kingsfield.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/note-contract-b.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/note-contract-c.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/note-contract.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/note-friends.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/note-room.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/note-weekly.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/oak-table-banner.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/oak-table-chapter.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/oak-table-contracts.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/oak-table-field.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/oak-table-friends.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/plaque-112-here.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/plaque-120-here.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/sheet-banner.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/sheet-field.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/stamp-hollow-b.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/stamp-hollow-fresh.png\n?? src/main/resources/assets/gravesandglory/textures/gui/table/stamp-hollow.png\n?? tools/ui_art/kit_maps.py\n?? tools/ui_art/kit_track.py\n",
+    "snapshot": "snapshot/2026-10-19/bannerbound-ui",
+    "snapshot_commit": "40a2a9c3a6b1c129de785c54fee2a7830e6517b7"
+  }
+]

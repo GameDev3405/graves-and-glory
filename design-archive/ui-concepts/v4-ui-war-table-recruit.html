@@ -1,0 +1,160 @@
+<!doctype html>
+<html class="v2 v3"><head><meta charset="utf-8"><title>v4 UI: War Table, recruit</title>
+<link rel="stylesheet" href="common.css"><link rel="stylesheet" href="v3.css">
+<style>
+/* War Table recruit, fourth pass. The same table and rail as home at the new density: the House cloths
+   woven, the rod in six tones, the twine twisted, the seals in relief. Every portrait is the live model as
+   the unit identity spec frames it (yaw 30, chest-up, 20 model px): 2 px per model px on the roll, 8 on the
+   reveal, so the reveal shows the skin as the game will. Read left to right: the roll you have, the letter
+   you just opened (the one bright object), the letters still sealed. The right column is one ladder on one
+   axis (x 784), 12 px between rungs: the letters, Enlist right under them, the purse it spends, the Epic
+   count, the Odds. Three columns share one top (124) and one bottom (492). */
+.plq{position:absolute;top:12px;height:28px}
+.plq .ic{left:8px;top:7px}
+.plq .h11{position:absolute;left:28px;top:8px}
+.bnr{position:absolute;top:13px;width:104px;height:50px}
+.bnr.on{height:60px}
+.bnr .h11{top:27px}
+.rw{position:absolute;left:0;width:240px;height:56px}
+.rw .h11{position:absolute;left:60px;top:12px}
+.rw .st{top:30px}
+</style></head>
+<body>
+<img class="s" src="v4/oak-table-recruit.png" style="left:0;top:0" data-bleed alt="">
+<img class="s" src="v4/rail.png" style="left:0;top:0" data-bleed alt="">
+
+<!-- the way back and the banner builder sit on the rail, as on the home screen -->
+<div class="plq" data-ctl data-name="back" style="left:56px;width:120px">
+  <img class="s" src="v4/plaque-120.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s ic" src="v4/icon-table.png" alt="">
+  <span class="h11 ivory">War table</span>
+  <img class="s" src="v4/key-brass-27.png" style="left:85px;top:7px" data-under-ok alt="">
+  <mc-text class="a" style="left:89px;top:10px" color="#f0d9a0">Esc</mc-text>
+</div>
+<div class="plq" data-ctl data-name="banner" style="left:800px;width:104px">
+  <img class="s" src="v4/plaque-104.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s ic" src="v4/icon-banner.png" alt="">
+  <span class="h11 ivory">Banner</span>
+  <img class="s" src="v4/key-brass-13.png" style="left:79px;top:7px" data-under-ok alt="">
+  <mc-text class="a" style="left:83px;top:10px" color="#f0d9a0">B</mc-text>
+</div>
+
+<!-- the five Houses: woven cloth on a brass rod; the chosen one hangs longer and brighter -->
+<img class="s" src="v4/banner-rod.png" style="left:196px;top:12px" alt="" data-name="rod">
+<div class="bnr on" data-ctl data-name="tab Gilded" style="left:204px">
+  <img class="s" src="v4/banner-gilded-on.png" style="left:0;top:0" data-under-ok alt="">
+  <span class="a h11 ink" data-cx="52">Gilded Order</span></div>
+<div class="bnr" data-ctl data-name="tab Graveborn" style="left:316px">
+  <img class="s" src="v4/banner-graveborn.png" style="left:0;top:0" data-under-ok alt="">
+  <span class="a h11 ivory" data-cx="52">Graveborn</span></div>
+<div class="bnr" data-ctl data-name="tab Wildmoot" style="left:428px">
+  <img class="s" src="v4/banner-wildmoot.png" style="left:0;top:0" data-under-ok alt="">
+  <span class="a h11 ivory" data-cx="52">Wildmoot</span></div>
+<div class="bnr" data-ctl data-name="tab Ironclad" style="left:540px">
+  <img class="s" src="v4/banner-ironclad.png" style="left:0;top:0" data-under-ok alt="">
+  <span class="a h11 ivory" data-cx="52">Ironclad</span></div>
+<div class="bnr" data-ctl data-name="tab Tidecallers" style="left:652px">
+  <img class="s" src="v4/banner-tidecallers.png" style="left:0;top:0" data-under-ok alt="">
+  <span class="a h11 ivory" data-cx="52">Tidecallers</span></div>
+
+<!-- the roll: the six troops of the House. Each window is the live model (drawEntity, scissored), framed as
+     the unit identity spec frames portraits; a troop not yet drawn shows as its silhouette -->
+<img class="s" src="v4/muster-roll.png" style="left:41px;top:124px" data-under-ok alt="">
+<img class="s" src="v4/row-mark.png" style="left:52px;top:252px" data-under-ok alt="" data-name="selected row">
+<div class="box" data-panel data-name="muster roll" style="left:56px;top:124px;width:240px;height:368px">
+  <img class="s" src="v4/rule-208.png" style="left:16px;top:72px" data-under-ok alt="">
+  <img class="s" src="v4/rule-208.png" style="left:16px;top:184px" data-under-ok alt="">
+  <img class="s" src="v4/rule-208.png" style="left:16px;top:240px" data-under-ok alt="">
+  <img class="s" src="v4/rule-208.png" style="left:16px;top:296px" data-under-ok alt="">
+
+
+  <div class="rw" style="top:16px" data-name="squire">
+    <img class="s" src="v4/frame-back-48.png" style="left:8px;top:8px" alt="">
+    <img class="s" src="v4/pt-squire-40.png" style="left:8px;top:8px" alt="" data-name="live model">
+    <img class="s" src="v4/frame-rim-48.png" style="left:4px;top:4px" alt="">
+    <span class="h11 ink">Order Squire</span>
+    <img class="s st" src="v4/star-s.png" style="left:60px" alt=""><img class="s st" src="v4/star-s.png" style="left:72px" alt=""><img class="s st" src="v4/star-s-empty.png" style="left:84px" alt="">
+  </div>
+
+  <div class="rw" style="top:72px" data-name="archer">
+    <img class="s" src="v4/frame-back-48.png" style="left:8px;top:8px" alt="">
+    <img class="s" src="v4/pt-archer-40.png" style="left:8px;top:8px" alt="" data-name="live model">
+    <img class="s" src="v4/frame-rim-48.png" style="left:4px;top:4px" alt="">
+    <span class="h11 ink">Order Archer</span>
+    <img class="s st" src="v4/star-s.png" style="left:60px" alt=""><img class="s st" src="v4/star-s-empty.png" style="left:72px" alt=""><img class="s st" src="v4/star-s-empty.png" style="left:84px" alt="">
+  </div>
+
+  <div class="rw" style="top:128px" data-name="templar (selected)">
+    <img class="s" src="v4/frame-back-48.png" style="left:8px;top:8px" alt="">
+    <img class="s" src="v4/pt-templar-40.png" style="left:8px;top:8px" alt="" data-name="live model">
+    <img class="s" src="v4/frame-rim-48.png" style="left:4px;top:4px" alt="">
+    <span class="h11 ink">Templar</span>
+    <img class="s st" src="v4/star-s.png" style="left:60px" alt=""><img class="s st" src="v4/star-s.png" style="left:72px" alt=""><img class="s st" src="v4/star-s-empty.png" style="left:84px" alt="">
+  </div>
+
+  <div class="rw" style="top:184px" data-name="longbow">
+    <img class="s" src="v4/frame-back-48.png" style="left:8px;top:8px" alt="">
+    <img class="s" src="v4/pt-longbow-40.png" style="left:8px;top:8px" alt="" data-name="live model">
+    <img class="s" src="v4/frame-rim-48.png" style="left:4px;top:4px" alt="">
+    <span class="h11 ink">Order Longbow</span>
+    <img class="s st" src="v4/star-s.png" style="left:60px" alt=""><img class="s st" src="v4/star-s-empty.png" style="left:72px" alt=""><img class="s st" src="v4/star-s-empty.png" style="left:84px" alt="">
+  </div>
+
+  <div class="rw" style="top:240px" data-name="sunweaver (not yet drawn)">
+    <img class="s" src="v4/frame-back-48.png" style="left:8px;top:8px" alt="">
+    <img class="s" src="v4/pt-sunweaver-40.png" style="left:8px;top:8px" alt="" data-name="live model">
+    <img class="s" src="v4/frame-rim-48.png" style="left:4px;top:4px" alt="">
+    <span class="h11 sepia">Sunweaver</span>
+    <img class="s st" src="v4/star-s-empty.png" style="left:60px" alt=""><img class="s st" src="v4/star-s-empty.png" style="left:72px" alt=""><img class="s st" src="v4/star-s-empty.png" style="left:84px" alt="">
+  </div>
+
+  <div class="rw" style="top:296px" data-name="marshal (locked)">
+    <img class="s" src="v4/frame-back-48.png" style="left:8px;top:8px" alt="">
+    <img class="s" src="v4/pt-marshal-40.png" style="left:8px;top:8px" alt="" data-name="live model">
+    <img class="s" src="v4/frame-rim-48.png" style="left:4px;top:4px" alt="">
+    <img class="s" src="v4/padlock-brass.png" style="left:23px;top:22px" alt="">
+    <span class="h11 sepia" style="top:20px">Lord Marshal Aldric</span>
+  </div>
+</div>
+
+<!-- the opened letter: the one bright object on the table. The House seal it came under lies broken at the top;
+     the window is the live model at 8 px per model px; the star seal stamps the new star at the foot -->
+<img class="s" src="v4/letter-hi.png" style="left:328px;top:124px" data-under-ok alt="">
+<div class="box" data-panel data-name="reveal letter" style="left:328px;top:124px;width:304px;height:368px">
+  <img class="s" src="v4/frame-back-160.png" style="left:72px;top:40px" alt="">
+  <img class="s" src="v4/pt-templar-160.png" style="left:72px;top:40px" alt="" data-name="live model">
+  <img class="s" src="v4/frame-ornate-184.png" style="left:60px;top:28px" alt="" data-name="reveal frame">
+  <span class="a t16 ink" data-cx="152" style="top:224px">Templar</span>
+  <span class="a b11 nw sepia" data-cx="152" style="top:246px">Rare infantry</span>
+  <img class="s" src="v4/star-l.png" style="left:127px;top:268px" alt="">
+  <img class="s" src="v4/sparkle.png" style="left:144px;top:266px" alt="">
+  <img class="s" src="v4/star-l.png" style="left:146px;top:268px" alt="">
+  <img class="s" src="v4/star-l-empty.png" style="left:165px;top:268px" alt="">
+  <span class="a b11 nw ink" data-cx="152" style="top:292px">Second star: +3% health and damage</span>
+  <img class="s" src="v4/wax-star.png" style="left:136px;top:314px" alt="" data-name="star seal">
+</div>
+<img class="s" src="v4/wax-broken.png" style="left:463px;top:108px" alt="" data-name="broken seal">
+
+<!-- the right column, one ladder on one axis (x 784), 12 px rungs: the sealed letters, Enlist right under
+     them, the purse it spends from, how near the next Epic is, and the odds -->
+<img class="s" src="v4/letter-bundle.png" style="left:664px;top:124px" alt="" data-name="sealed letters">
+<div class="box" data-ctl data-name="enlist" style="left:664px;top:354px;width:240px;height:40px">
+  <img class="s" src="v4/btn-brass-240x40.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s" src="v4/key-brass-37.png" style="left:14px;top:13px" data-under-ok alt="">
+  <mc-text class="a" style="left:18px;top:16px" color="#3a2a12">Enter</mc-text>
+  <span class="a h11" data-cx="120" style="top:14px;color:#1e1509">Enlist</span>
+  <span class="a flex" data-rx="224" style="top:16px;gap:3px" data-name="cost"><img src="v4/coin-m.png" style="image-rendering:pixelated" data-under-ok alt=""><mc-text color="#1e1509">100</mc-text></span>
+</div>
+<div class="box" data-name="purse" style="left:758px;top:406px;width:52px;height:26px">
+  <img class="s" src="v4/pouch.png" style="left:0;top:0" alt="">
+  <mc-text class="a" style="left:34px;top:10px" color="#eee9df" shadow>300</mc-text>
+</div>
+<span class="a b11 nw muted" data-cx="784" style="top:442px">Epic within 28 letters</span>
+<div class="box" data-ctl data-name="odds" style="left:752px;top:468px;width:64px;height:24px">
+  <img class="s" src="v4/btn-vellum-64x24.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s" src="v4/die.png" style="left:12px;top:7px" data-under-ok alt="">
+  <span class="a h11 ink" style="left:26px;top:6px">Odds</span>
+</div>
+
+<script src="mc.js"></script><script src="art.js"></script><script src="v2.js"></script><script src="check.js"></script>
+</body></html>

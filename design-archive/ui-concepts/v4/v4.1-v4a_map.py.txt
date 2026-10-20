@@ -1,0 +1,370 @@
+"""v4 Rivergate map inset and its relief seals, at full density: a piano-key neatline, contoured hills with
+hachures, the river with banks, shallows, ripples and reeds, a planked bridge, double-ruled roads, strip fields
+with furrows, the mill with its wheel, the hamlet, the crossing, the shrine, forest clusters and a compass rose.
+Every material carries five or six tones; the light comes from the top left."""
+import math, random
+from v4lib import Spr, Noise, rgba
+from v4pal import INK, WAX
+from v4a_paper import parchment
+from v4a_ink import disc, ell, rect, seg, thick, edge, depth, poly, N4
+
+ASSETS = {}
+WATER = ['#46625f', '#5f7f7c', '#7c9c97', '#98b4ad', '#b5cbc2', '#d3e1d6']      # deep line .. ripple light
+LEAF = ['#3e3d25', '#585735', '#76744a', '#949160', '#b0ac78', '#cbc694']        # outline .. lit crown
+FIELD = ['#9c9563', '#b2ab78', '#c6bf8d', '#d7d0a2']
+ROOF = ['#3f2418', '#5f3523', '#814a31', '#a2654a', '#bf8565']
+STONE = ['#4a4436', '#6c6553', '#8e8771', '#b1aa92', '#d0c9b0']
+ROAD = '#e7dcbc'
+MAP_W, MAP_H = 136, 80
+SEALS = {'A': (7, 7), 'B': (86, 55), 'C': (86, 7)}     # top-left of each 17 x 17 seal inside the map
+X0, X1, Y0, Y1 = 6, MAP_W - 7, 6, MAP_H - 7
+
+
+def inside(x, y):
+    return X0 <= x <= X1 and Y0 <= y <= Y1
+
+
+def neatline(S, W, H):
+    """a fine outer rule, a band of piano keys, a heavier inner rule, solid corner squares"""
+    for x in range(1, W - 1):
+        S.set(x, 1, INK[3]); S.set(x, H - 2, INK[3])
+        if 5 <= x <= W - 6:
+            S.set(x, 5, INK[1]); S.set(x, H - 6, INK[1])
+        if ((x - 2) // 6) % 2 == 0 and 2 <= x <= W - 3:
+            for y in (2, 3, H - 4, H - 3):
+                S.set(x, y, INK[2])
+    for y in range(1, H - 1):
+        S.set(1, y, INK[3]); S.set(W - 2, y, INK[3])
+        if 5 <= y <= H - 6:
+            S.set(5, y, INK[1]); S.set(W - 6, y, INK[1])
+        if ((y - 2) // 6) % 2 == 0 and 2 <= y <= H - 3:
+            for x in (2, 3, W - 4, W - 3):
+                S.set(x, y, INK[2])
+    for (cx_, cy_) in ((2, 2), (W - 4, 2), (2, H - 4), (W - 4, H - 4)):
+        for (a, b) in ((0, 0), (1, 0), (0, 1), (1, 1)):
+            S.set(cx_ + a, cy_ + b, INK[0])
+
+
+def river_y(x):
+    pts = [(X0, 45), (20, 47), (34, 50), (50, 53), (66, 52), (78, 49), (92, 43), (106, 37), (118, 33), (X1, 30)]
+    for (a, b), (c, d) in zip(pts, pts[1:]):
+        if a <= x <= c:
+            t = (x - a) / (c - a); t = (1 - math.cos(t * math.pi)) / 2
+            return b + (d - b) * t
+    return pts[-1][1] if x > X1 else pts[0][1]
+
+
+def river_half(x):
+    return 3.0 + 0.7 * math.sin(x / 8.0)
+
+
+def stream_x(y):
+    return 38 + 2.2 * math.sin(y / 5.0)
+
+
+def hills(S):
+    """contour rings, smooth and nested, darkening toward the summit; a pale wash on the flank away from the
+    light; hachures running downhill between the rings on that flank"""
+    nz = Noise(31, 5)
+    for (hx, hy, rx, ry, rings) in ((110, 20, 21, 12, 4), (68, 11, 11, 4.5, 2)):
+        for (x, y) in ell(hx, hy, rx, ry):
+            if inside(x, y) and ((x - hx) / rx * 0.6 + (y - hy) / ry * 0.8) > 0.25:
+                S.set(x, y, '#e3d6b4')
+        ringpts = []
+        for k in range(rings):
+            f = 1.0 - k / (rings + 0.3)
+            n = int(2 * math.pi * rx * f * 2)
+            pts = []
+            for i in range(n):
+                a = 2 * math.pi * i / n
+                r = 1 + (nz(30 + math.cos(a) * 8, 30 + math.sin(a) * 8 + k * 17) - 0.5) * 0.12
+                pts.append((hx + math.cos(a) * rx * f * r, hy + math.sin(a) * ry * f * r, a))
+            ringpts.append(pts)
+            col = (INK[5], INK[4], INK[4], INK[3])[min(3, k + (4 - rings))]
+            for (x0, y0, _), (x1, y1, _) in zip(pts, pts[1:] + pts[:1]):
+                for (x, y) in seg(x0, y0, x1, y1):
+                    if inside(x, y):
+                        S.set(x, y, col)
+        for k in range(rings - 1):
+            outer, inner = ringpts[k], ringpts[k + 1]
+            for i in range(0, len(outer), 4):
+                x0, y0, a = outer[i]
+                if not (-0.4 < a < 2.4):
+                    continue
+                j = min(range(len(inner)), key=lambda q: abs(inner[q][2] - a))
+                x1, y1, _ = inner[j]
+                for (x, y) in seg(x0 + (x1 - x0) * 0.25, y0 + (y1 - y0) * 0.25, x0 + (x1 - x0) * 0.7, y0 + (y1 - y0) * 0.7):
+                    if inside(x, y):
+                        S.set(x, y, INK[4])
+
+
+def river(S):
+    """the river and the mill stream: a pale shallows band under the lit north bank, deeper water toward the
+    shaded south bank, broken ripple lines with the flow; banks inked, the south bank heavier; reeds"""
+    water = set()
+    for x in range(X0, X1 + 1):
+        yc, h = river_y(x), river_half(x)
+        for y in range(math.floor(yc - h), math.ceil(yc + h) + 1):
+            if abs(y - yc) <= h and inside(x, y):
+                water.add((x, y))
+    for y in range(Y0, 60):
+        xc = stream_x(y)
+        if y > river_y(xc):
+            break
+        for x in range(math.floor(xc - 1.4), math.ceil(xc + 1.4) + 1):
+            if abs(x - xc) <= 1.4 and inside(x, y):
+                water.add((x, y))
+    for (x, y) in water:
+        up, dn, lf, rt = (x, y - 1) in water, (x, y + 1) in water, (x - 1, y) in water, (x + 1, y) in water
+        if not up or not lf:
+            c = WATER[4]
+        elif not dn or not rt:
+            c = WATER[1]
+        elif not (x, y + 2) in water or not (x + 2, y) in water:
+            c = WATER[2]
+        else:
+            c = WATER[3]
+        S.set(x, y, c)
+    for (x, y) in water:
+        for (a, b, c) in ((0, -1, INK[3]), (-1, 0, INK[3]), (0, 1, INK[1]), (1, 0, INK[1])):
+            k = (x + a, y + b)
+            if k not in water and inside(*k):
+                S.set(k[0], k[1], c)
+        if (x, y - 2) not in water and (x, y - 1) not in water and inside(x, y - 2) and (x * 3) % 5 == 0:
+            S.set(x, y - 2, '#f4ead0')
+        if (x, y + 2) not in water and (x, y + 1) not in water and inside(x, y + 2):
+            S.set(x, y + 2, '#d6c69c' if x % 3 else '#c9b88c')
+    # ripples: broken light lines in mid-stream with a darker trough under each
+    for x in range(X0 + 2, X1 - 2):
+        yc = river_y(x)
+        if (x // 3) % 3 == 0 and (x, round(yc - 0.6)) in water:
+            S.set(x, round(yc - 0.6), WATER[5])
+            if (x, round(yc + 0.4)) in water:
+                S.set(x, round(yc + 0.4), WATER[2])
+    # reeds along the banks in small clumps
+    for rx_ in (12, 15, 47, 51, 95, 99, 123):
+        top = math.floor(river_y(rx_) - river_half(rx_)) - 1
+        for (a, hgt) in ((0, 3), (1, 2), (2, 3)):
+            for t in range(hgt):
+                if inside(rx_ + a, top - t):
+                    S.set(rx_ + a, top - t, LEAF[1] if t else LEAF[0])
+    return water
+
+
+WOOD = ['#3f2a1b', '#5f4029', '#7f5935', '#9f7445', '#bd9058']
+
+
+def fields(S):
+    """strip fields: each strip its own crop tone with furrows ruled along it, a dotted hedge round the block"""
+    for (fx, fy, fw, fh, n, vert) in ((58, 9, 22, 13, 3, False), (45, 35, 17, 9, 3, True)):
+        for y in range(fy, fy + fh):
+            for x in range(fx, fx + fw):
+                k = ((x - fx) * n // fw) if vert else ((y - fy) * n // fh)
+                tone = FIELD[1 + k % 3]
+                furrow = ((x - fx) % 2 == 0) if vert else ((y - fy) % 2 == 0)
+                S.set(x, y, FIELD[0] if (furrow and k % 3 != 2) else tone)
+        for x in range(fx - 1, fx + fw + 1):
+            for y in (fy - 1, fy + fh):
+                S.set(x, y, LEAF[2] if x % 2 else LEAF[0])
+        for y in range(fy - 1, fy + fh + 1):
+            for x in (fx - 1, fx + fw):
+                S.set(x, y, LEAF[2] if y % 2 else LEAF[0])
+
+
+def roads(S, water):
+    """double-ruled roads: a pale bed between two inked edges, cart ruts dotted down the middle"""
+    paths = [[(78, Y1 + 2), (78, 66), (77, 60), (78, 55)],
+             [(78, 45), (78, 40)],
+             [(78, 40), (70, 38), (58, 35), (48, 32), (41, 30), (33, 27)],
+             [(78, 40), (86, 36), (91, 32), (95, 28), (100, 25), (106, 21)]]
+    bed = set()
+    for path in paths:
+        for (x0, y0), (x1, y1) in zip(path, path[1:]):
+            bed |= thick(x0, y0, x1, y1, 0.8)
+    bed = {q for q in bed if inside(*q) and q not in water}
+    for (x, y) in bed:
+        S.set(x, y, ROAD)
+    for (x, y) in bed:
+        for (a, b) in N4:
+            k = (x + a, y + b)
+            if k not in bed and k not in water and inside(*k):
+                S.set(k[0], k[1], INK[3])
+    for path in paths:
+        for i, (x, y) in enumerate(p for (a0, b0), (a1, b1) in zip(path, path[1:]) for p in seg(a0, b0, a1, b1)):
+            if (x, y) in bed and i % 3 == 0:
+                S.set(x, y, '#cdbd94')
+    return bed
+
+
+def bridges(S, water):
+    """the crossing: a planked bridge on posts, rails both sides, its shadow on the water; and a plank
+    footbridge where the mill road fords the stream"""
+    x0, x1 = 76, 80
+    ys = [y for y in range(25, 65) if (78, y) in water]
+    y0, y1 = min(ys) - 2, max(ys) + 2
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            S.set(x, y, WOOD[4] if x == x0 else (WOOD[2] if x == x1 else (WOOD[1] if y % 2 == 0 else WOOD[3])))
+        S.set(x0 - 1, y, INK[1]); S.set(x1 + 1, y, INK[0])
+    for y in range(y0, y1 + 1, 3):
+        S.set(x0 - 2, y, INK[1]); S.set(x1 + 2, y, INK[0])
+    for y in range(y0 + 2, y1 - 1):
+        if (x1 + 2, y) in water:
+            S.set(x1 + 2, y, WATER[0])
+        if (x1 + 3, y) in water and y % 2:
+            S.set(x1 + 3, y, WATER[1])
+    for (x, y) in ((35, 27), (36, 27), (37, 27), (38, 27), (35, 28), (36, 28), (37, 28), (38, 28)):
+        S.set(x, y, WOOD[3] if y == 27 else WOOD[1])
+    S.set(34, 27, INK[1]); S.set(39, 28, INK[1])
+
+
+HOUSE = ['...oo...', '..oLDo..', '.oLLDDo.', 'oLLLDDDo', '.owwwso.', '.owdwso.', '.oooooo.']
+HUT = ['..oo..', '.oLDo.', 'oLLDDo', '.owso.', '.odso.', '.oooo.']
+MILL = ['....oooo....', '...oLLDDo...', '..oLLLDDDo..', '.oLLLLDDDDo.', 'oooooooooooo',
+        '.owwwwwwsso.', '.owddwnwsso.', '.owddwwwsso.', '.oooooooooo.']
+SHRINE = ['......o......', '....ooLoo....', '..ooLLLLDoo..', 'ooLLLLLLDDDoo', 'ooooooooooooo',
+          'ocsicsicsicso', 'ocsicsicsicso', 'ocsicsicsicso', 'ocsicsicsicso', 'obbbbbbbbbbbo', 'ooooooooooooo']
+TREE = ['.oooo.', 'oHLLMo', 'oLLMDo', 'oMMDDo', '.oDDo.', '..tt..']
+TREE2 = ['.ooo.', 'oHLMo', 'oLMDo', '.oDo.', '..t..']
+BPAL = {'o': INK[1], 'L': ROOF[3], 'D': ROOF[1], 'w': STONE[4], 's': STONE[2], 'd': INK[1], 'n': INK[2],
+        'c': STONE[4], 'i': INK[2], 'b': STONE[3]}
+TPAL = {'o': LEAF[0], 'H': LEAF[5], 'L': LEAF[4], 'M': LEAF[3], 'D': LEAF[2], 't': INK[2]}
+
+
+def _solid(rows, i, j):
+    return 0 <= j < len(rows) and 0 <= i < len(rows[j]) and rows[j][i] not in '. '
+
+
+def place(S, x, y, rows, pal, shadow=True, taken=None):
+    """stamp a building or tree, with a soft shadow falling to the lower right"""
+    if shadow:
+        for j, r in enumerate(rows):
+            for i, ch in enumerate(r):
+                if ch not in '. ' and not _solid(rows, i + 1, j + 1) and inside(x + i + 1, y + j + 1):
+                    S.over(x + i + 1, y + j + 1, INK[2], 80)
+    S.grid(x, y, rows, pal)
+    if taken is not None:
+        taken |= {(x + i, y + j) for j, r in enumerate(rows) for i, ch in enumerate(r) if ch not in '. '}
+
+
+def wheel(S, cx, cy, r=3.6):
+    """the mill wheel: a rim with paddles, spokes to the hub, lit on its upper left, spray below"""
+    for (x, y) in disc(cx, cy, r + 0.6):
+        S.set(x, y, WATER[3])
+    rim = disc(cx, cy, r) - disc(cx, cy, r - 1.2)
+    for (x, y) in rim:
+        S.set(x, y, WOOD[4] if (x - cx) + (y - cy) < -1 else (WOOD[1] if (x - cx) + (y - cy) > 1 else WOOD[2]))
+    for k in range(8):
+        a = k * math.pi / 4 + 0.2
+        for (x, y) in seg(cx, cy, cx + math.cos(a) * (r - 0.6), cy + math.sin(a) * (r - 0.6)):
+            S.set(x, y, WOOD[1])
+        S.set(round(cx + math.cos(a) * (r + 0.9)), round(cy + math.sin(a) * (r + 0.9)), INK[1])
+    S.set(round(cx - 0.5), round(cy - 0.5), INK[0])
+    for (x, y) in ((round(cx) - 2, round(cy + r) + 2), (round(cx), round(cy + r) + 2), (round(cx) + 2, round(cy + r) + 1)):
+        S.set(x, y, WATER[5])
+
+
+def forest(S, cx, cy, rx, ry, n, seed, avoid):
+    """a cluster of trees, back to front, crowns overlapping into a canopy"""
+    rnd = random.Random(seed)
+    pts = []
+    for _ in range(n * 30):
+        if len(pts) >= n:
+            break
+        a = rnd.uniform(0, 2 * math.pi); r = math.sqrt(rnd.random())
+        x, y = round(cx + math.cos(a) * rx * r), round(cy + math.sin(a) * ry * r)
+        if all((x - px) ** 2 + ((y - py) * 1.3) ** 2 > 12 for (px, py) in pts):
+            pts.append((x, y))
+    for (x, y) in sorted(pts, key=lambda q: q[1]):
+        t = TREE if rnd.random() < 0.6 else TREE2
+        foot = {(x + i, y + j) for j in range(len(t)) for i in range(len(t[0]))}
+        if all(inside(*q) for q in foot) and not (foot & avoid):
+            place(S, x, y, t, TPAL)
+
+
+def compass(S, cx, cy):
+    """a compass rose: four long points, each half inked and half bare, four short diagonal points, a ring,
+    a small trident on north"""
+    for (x, y) in disc(cx, cy, 3.2) - disc(cx, cy, 2.2):
+        S.set(x, y, INK[4])
+    for (dx, dy) in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+        for t in range(1, 6):
+            S.set(cx + dx * t, cy + dy * t, INK[1])
+            if t < 4:
+                side = (dy, -dx) if (dx, dy) in ((0, -1), (0, 1)) else (-dy, dx)
+                S.set(cx + dx * t + side[0], cy + dy * t + side[1], INK[1] if (dx + dy) < 0 or dx > 0 else INK[4])
+    for (dx, dy) in ((1, 1), (1, -1), (-1, 1), (-1, -1)):
+        for t in (2, 3):
+            S.set(cx + dx * t, cy + dy * t, INK[3])
+    S.set(cx, cy, INK[0])
+    S.set(cx - 1, cy - 6, INK[2]); S.set(cx + 1, cy - 6, INK[2]); S.set(cx, cy - 7, INK[1])
+
+
+def relief_seal(seed=1, size=15):
+    """a wax seal pressed onto the map: an irregular poured lip, a raised rim ring, a sunk flat centre where
+    the letter sits, lit from the top left with a glint, a soft shadow on the paper"""
+    s = Spr(size + 2, size + 2)
+    c = (size - 1) / 2.0
+
+    def rr(a):
+        return c + 0.3 + 0.45 * math.sin(a * 3 + seed) + 0.3 * math.sin(a * 5 + seed * 2.1)
+    blob = {(x, y) for y in range(size) for x in range(size) if math.hypot(x - c, y - c) <= rr(math.atan2(y - c, x - c))}
+    for (x, y) in blob:
+        for (dx, dy, al) in ((1, 1, 120), (2, 2, 55), (2, 1, 55)):
+            k = (x + dx, y + dy)
+            if k not in blob and s.get(*k)[3] < al:
+                s.set(k[0], k[1], rgba(INK[0], al))
+    for (x, y) in blob:
+        d = math.hypot(x - c, y - c)
+        e = rr(math.atan2(y - c, x - c))
+        lit = ((x - c) * -0.71 + (y - c) * -0.71) / max(d, 0.5)       # +1 faces the light
+        if d > e - 1.1:
+            col = WAX[3] if lit > 0.35 else (WAX[0] if lit < -0.35 else WAX[1])
+        elif d > 4.9:
+            col = WAX[4] if lit > 0.55 else (WAX[3] if lit > 0.1 else (WAX[2] if lit > -0.45 else WAX[1]))
+        elif d > 4.0:
+            col = WAX[0] if lit > 0.2 else (WAX[3] if lit < -0.35 else WAX[1])
+        else:
+            col = WAX[1] if (x * 7 + y * 3) % 11 else WAX[2]
+        s.set(x, y, col)
+    for (x, y) in ((round(c - 4), round(c - 3)), (round(c - 3), round(c - 4))):
+        s.set(x, y, WAX[5])
+    s.set(round(c - 4), round(c - 4), WAX[6])
+    return s
+
+
+def rivergate_map(seed=21):
+    W, H = MAP_W, MAP_H
+    S, paper = parchment(W, H, kind='map', seed=seed, shadow=(1, 1), deckle=False, rim=2, stains=0, fibres=0.6,
+                         foxing=0.5, tears=False)
+    neatline(S, W, H)
+    hills(S)
+    water = river(S)
+    fields(S)
+    bed = roads(S, water)
+    bridges(S, water)
+    taken = set(bed) | set(water)
+    place(S, 21, 17, MILL, BPAL, taken=taken)
+    wheel(S, 34.5, 22.5)
+    for (x, y, b) in ((43, 11, HOUSE), (51, 14, HUT), (44, 20, HUT), (51, 22, HOUSE), (64, 41, HOUSE), (66, 57, HOUSE), (68, 65, HUT)):
+        place(S, x, y, b, BPAL, taken=taken)
+    place(S, 104, 9, SHRINE, BPAL | {'L': STONE[3], 'D': STONE[1]}, taken=taken)
+    for (sx, sy) in SEALS.values():
+        taken |= rect(sx, sy, 15, 15)
+    taken |= rect(8, 28, 13, 13) | rect(58, 9, 22, 13) | rect(45, 35, 17, 9)
+    forest(S, 24, 64, 17, 7, 22, 3, taken)
+    forest(S, 114, 60, 14, 9, 18, 5, taken)
+    forest(S, 122, 43, 7, 3, 4, 7, taken)
+    forest(S, 92, 20, 6, 6, 5, 9, taken)
+    for (x, y) in ((60, 29), (70, 31), (88, 45), (100, 47), (56, 44), (18, 43), (30, 40)):
+        foot = rect(x, y, 5, 5)
+        if not (foot & taken) and all(inside(*q) for q in foot):
+            place(S, x, y, TREE2, TPAL, taken=taken)
+    compass(S, 14, 34)
+    for (sx, sy) in SEALS.values():
+        S.blit(relief_seal(sx + sy), sx, sy)
+    return S
+
+
+ASSETS['map-rivergate'] = rivergate_map
+ASSETS['map-seal'] = relief_seal

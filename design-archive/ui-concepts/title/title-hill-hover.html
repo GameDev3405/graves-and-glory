@@ -1,0 +1,34 @@
+<!doctype html>
+<html class="v2"><head><meta charset="utf-8"><title>Title: The Hill (golden hour, Play with friends hovered)</title>
+<link rel="stylesheet" href="title.css">
+<style>
+/* The Hill. Behind the page: one real battlefield frame (shader-on, golden hour) as the static panorama.
+   On the page, back to front: the volley, the hill (crag, plateau, tents, tree, path), the commander, the embers (pixel sprites at GUI
+   scale 1, each its own parallax layer), then the lockup, the tagline and the menu, which is plain text
+   on the shadowed crag face with a brass spearhead on the line under the cursor (Battle Brothers fashion). */
+img.s{position:absolute;image-rendering:pixelated}
+.tag{position:absolute;top:88px;color:var(--ivory);text-shadow:1px 1px 0 #120d16}
+.mi{position:absolute;left:36px;padding:4px 4px 6px;color:var(--ivory)}
+.mi.on{color:var(--brass-hi)}
+</style></head>
+<body>
+<img class="s" src="sprites/volley-day.png" style="left:0;top:0" data-bleed alt="">
+<img class="s" src="sprites/hill-day.png" style="left:0;top:240px" data-bleed alt="">
+<img class="s" src="sprites/commander-day-0.png" style="left:588px;top:110px" data-bleed alt="">
+<img class="s" src="sprites/embers-day.png" style="left:0;top:0" data-bleed alt="">
+
+<img class="s" src="sprites/lockup.png" style="left:240px;top:24px" alt="Graves and Glory">
+<div class="tag h11" data-cx="480">Collect an army. Command the battlefield.</div>
+
+<img class="s" src="sprites/marker.png" style="left:20px;top:430px" alt="">
+<div class="mi t16" data-ctl data-name="ride" style="top:396px">Ride to camp</div>
+<div class="mi h11 on" data-ctl data-name="friends" style="top:424px">Play with friends</div>
+<div class="mi h11" data-ctl data-name="settings" style="top:448px">Settings</div>
+<div class="mi h11" data-ctl data-name="credits" style="top:472px">Credits</div>
+<div class="mi h11" data-ctl data-name="quit" style="top:496px">Quit</div>
+<img class="s" id="horn" src="sprites/horn.png" style="left:0;top:426px" alt="">
+<script>window.v2after=[function(){var r=document.querySelector('[data-name=friends]').getBoundingClientRect();
+document.getElementById('horn').style.left=Math.round(r.right+4)+'px';}];</script>
+<mc-text class="a" data-rx="944" style="top:504px" color="#afb9bc">v0.4.0 / be102e8b</mc-text>
+<script src="../mc.js"></script><script src="../v2.js"></script><script src="../check.js"></script>
+</body></html>

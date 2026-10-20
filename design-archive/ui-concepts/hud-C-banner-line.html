@@ -1,0 +1,128 @@
+<!doctype html><html><head><meta charset="utf-8"><title>HUD C: Banner Line</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* Diegetic: your groups are standards planted at the bottom of the screen. Height = men, width = health. */
+.std{position:absolute;bottom:0;width:70px;height:150px;transform-origin:50% 100%}
+.std .pole{position:absolute;left:10px;bottom:0;width:2px;top:0;background:#6b4a2c;box-shadow:1px 0 0 #2a1b0f,-1px 0 0 #8a6a45}
+.std .fin{position:absolute;left:6px;top:-9px}
+.std .cloth{position:absolute;left:12px;top:4px;border:1px solid var(--ink);background:var(--dawn)}
+.std .cloth .rows{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.18) 2px 3px)}
+.std .cloth .dead{position:absolute;left:-1px;right:-1px;bottom:-1px;border:1px dashed rgba(238,233,223,.5);border-top:0}
+.std .cloth .tear{position:absolute;right:-1px;top:0;bottom:0;width:6px;background:transparent}
+.std .glyph{position:absolute;left:5px;top:5px}
+.std.fight .cloth{outline:1px solid var(--fight);outline-offset:1px}
+.std .cloth .lost{position:absolute;left:0;right:0;height:3px;background:#fff;box-shadow:0 0 0 1px var(--danger)}
+.std .form{position:absolute;left:14px;top:52px;width:16px;height:9px;border:1px solid rgba(238,233,223,.5)}
+.std .form b{position:absolute;width:2px;height:2px;background:var(--ivory)}
+.label{position:absolute;left:0;white-space:nowrap}
+.field{position:absolute;left:240px;top:8px;width:480px;height:14px;background:rgba(26,33,37,.9);border:1px solid var(--edge);box-shadow:0 2px 0 rgba(0,0,0,.4)}
+.great{position:absolute;top:0;width:40px;height:62px;border:1px solid var(--ink);clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),50% 100%,0 calc(100% - 8px))}
+.great .fill{position:absolute;left:0;right:0;bottom:0}
+.great mc-text{position:absolute}
+.shield{position:absolute;top:22px;width:22px;height:24px;border:1px solid var(--ink);clip-path:polygon(0 0,100% 0,100% 60%,50% 100%,0 60%);transform:translateX(-50%)}
+.shield::before{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:rgba(255,255,255,.35)}
+.shield mc-text{position:absolute;left:8px;top:5px}
+.shield .cap{position:absolute;left:3px;right:3px;top:17px;height:2px;background:#101417}
+.shield .cap>i{position:absolute;left:0;top:0;bottom:0;background:var(--dawn)}
+.hang{position:absolute;top:14px;width:1px;height:9px;background:var(--brass)}
+.sash{position:absolute;left:0;width:960px;text-align:center}
+.sash span{display:inline-block;background:var(--ivory);color:#2a2219;padding:2px 10px;border:1px solid #6b5a3a;clip-path:polygon(4px 0,calc(100% - 4px) 0,100% 50%,calc(100% - 4px) 100%,4px 100%,0 50%)}
+.boss{position:absolute;left:846px;top:428px;width:104px;height:104px;border-radius:50%;background:#1a2125;border:3px solid #6b5a3a;box-shadow:inset 0 0 0 2px var(--brass),0 0 0 1px var(--ink)}
+.boss .m{position:absolute;border-radius:50%;inset:6px;overflow:hidden;background:#20282c}
+.boss .river{position:absolute;left:0;right:0;top:48px;height:4px;background:#3f6477}
+.boss .road{position:absolute;background:#4a4335}
+.ring{position:absolute;border:2px solid var(--danger);border-radius:50%;border-color:var(--danger) transparent transparent transparent}
+</style></head><body>
+<div class="crosshair"></div>
+<div class="hotbar"><div class="sel"></div></div>
+
+<!-- top: the field strip, two great banners, three hanging shields, the bell -->
+<div class="field"></div>
+<div class="great" style="left:232px;background:var(--dawn2)"><div class="fill" style="height:49%;background:var(--dawn)"></div><i class="px" data-art="sun" data-pal="i=#eee9df" style="position:absolute;left:16px;top:6px"></i><mc-text color="#eee9df" shadow style="left:9px;top:20px">148</mc-text><mc-text color="#eee9df" style="left:6px;top:36px">DAWN</mc-text></div>
+<div class="great" style="left:688px;background:var(--dusk2)"><div class="fill" style="height:40%;background:var(--dusk)"></div><i class="px" data-art="crescent" data-pal="i=#eee9df" style="position:absolute;left:16px;top:6px"></i><mc-text color="#eee9df" shadow style="left:9px;top:20px">121</mc-text><mc-text color="#eee9df" style="left:7px;top:36px">DUSK</mc-text></div>
+<div class="abs" style="left:286px;top:11px"><mc-text color="#5fb3ad">to 300</mc-text></div>
+<div class="abs" style="left:640px;top:11px"><mc-text color="#a07cc2">to 300</mc-text></div>
+<i class="px" data-art="bell" data-pal="i=#c8a56b,b=#eee9df" style="position:absolute;left:462px;top:11px"></i>
+<div class="abs" style="left:472px;top:11px"><mc-text color="#eee9df" shadow>7:42</mc-text></div>
+<div class="hang" style="left:360px"></div><div class="hang" style="left:480px;top:23px;height:5px"></div><div class="hang" style="left:600px"></div>
+<div class="shield" style="left:360px;background:var(--dawn)"><mc-text color="#101417">A</mc-text><div class="cap"><i style="width:100%"></i></div></div>
+<div class="shield hatch" data-c1="#5fb3ad" data-c2="#a07cc2" style="left:480px;top:28px"><mc-text color="#101417">B</mc-text><div class="cap"><i style="width:55%;background:#5fb3ad"></i></div></div>
+<div class="shield" style="left:600px;background:var(--dusk)"><mc-text color="#101417">C</mc-text><div class="cap"><i style="width:100%;background:#a07cc2"></i></div></div>
+<div class="abs" style="left:330px;top:48px;width:60px;text-align:center"><mc-text color="#5fb3ad" shadow>Old Village</mc-text></div>
+<div class="abs" style="left:430px;top:54px;width:100px;text-align:center"><mc-text color="#ffaa66" shadow>Shattered Keep</mc-text></div>
+<div class="abs" style="left:430px;top:66px;width:100px;text-align:center"><mc-text color="#afb9bc" shadow>contested 55%</mc-text></div>
+<div class="abs" style="left:570px;top:48px;width:60px;text-align:center"><mc-text color="#a07cc2" shadow>River Shrine</mc-text></div>
+
+<!-- notice sash -->
+<div class="sash" style="top:100px"><span class="lato">Dawn Knight trained: deploying at Trade Crossing</span></div>
+
+<!-- top left: purse on a nail, training pennants -->
+<div class="abs" style="left:14px;top:6px;width:1px;height:6px;background:var(--brass)"></div>
+<i class="px" data-art="purse" style="position:absolute;left:12px;top:12px"></i>
+<div class="abs" style="left:22px;top:13px"><mc-text color="#c8a56b" shadow>85</mc-text></div>
+<div class="abs row" style="left:12px;top:26px"><i class="px" data-art="pennant" data-pal="i=#5fb3ad,k=#8a6a45"></i><mc-text color="#eee9df" shadow>Dawn Knight 0:12</mc-text><mc-text color="#afb9bc" shadow>Trade Crossing</mc-text></div>
+<div class="abs row" style="left:12px;top:38px"><i class="px" data-art="pennant" data-pal="i=#2e6b68,k=#8a6a45"></i><mc-text color="#afb9bc" shadow>Dawn Longbow queued</mc-text></div>
+
+<!-- the line: three standards. Cloth height = men (5 px each), cloth width = health. -->
+<div class="std fight" style="left:14px;height:150px;width:96px">
+  <div class="pole"></div><i class="px fin" data-art="sword" data-pal="i=#eee9df,k=#c8a56b"></i>
+  <div class="cloth" style="width:40px;height:45px"><div class="rows" style="background:repeating-linear-gradient(0deg,transparent 0 4px,rgba(0,0,0,.2) 4px 5px)"></div><i class="px glyph" data-art="sun" data-pal="i=#eee9df"></i><div class="lost" style="top:35px"></div></div>
+  <div style="position:absolute;left:12px;top:50px;width:40px;height:15px;border:1px dashed rgba(238,233,223,.5);border-top:0"></div>
+  <div class="form" style="top:70px"><b style="left:2px;top:2px"></b><b style="left:5px;top:2px"></b><b style="left:8px;top:2px"></b><b style="left:11px;top:2px"></b><b style="left:2px;top:5px"></b><b style="left:5px;top:5px"></b><b style="left:8px;top:5px"></b><b style="left:11px;top:5px"></b></div>
+  <div class="label" style="top:100px"><mc-text color="#eee9df" shadow>INFANTRY 9/12</mc-text></div>
+  <div class="label" style="top:110px"><mc-text color="#ffaa66" shadow>Attack</mc-text> <mc-text color="#afb9bc" shadow>Shieldwall</mc-text></div>
+  <div class="label" style="top:120px"><mc-text color="#ffaa66" shadow>FIGHTING</mc-text></div>
+</div>
+<div class="std" style="left:116px;height:150px;width:96px">
+  <div class="pole"></div><i class="px fin" data-art="hold" data-pal="i=#eee9df,b=#c8a56b"></i>
+  <div class="cloth" style="width:62px;height:30px"><div class="rows" style="background:repeating-linear-gradient(0deg,transparent 0 4px,rgba(0,0,0,.2) 4px 5px)"></div><i class="px glyph" data-art="sun" data-pal="i=#eee9df"></i></div>
+  <div class="form" style="top:70px"><b style="left:1px;top:3px"></b><b style="left:4px;top:3px"></b><b style="left:7px;top:3px"></b><b style="left:10px;top:3px"></b><b style="left:13px;top:3px"></b></div>
+  <div class="label" style="top:100px"><mc-text color="#eee9df" shadow>RANGED 6/6</mc-text></div>
+  <div class="label" style="top:110px"><mc-text color="#afb9bc" shadow>Hold</mc-text> <mc-text color="#afb9bc" shadow>Line</mc-text></div>
+</div>
+<div class="std" style="left:218px;height:150px;width:96px;transform:rotate(-26deg)">
+  <div class="pole" style="background:#4a3522"></div><i class="px fin" data-art="follow" data-pal="i=#afb9bc"></i>
+  <div class="cloth" style="width:26px;height:6px;background:#7a4a44"></div>
+  <div style="position:absolute;left:12px;top:11px;width:26px;height:5px;border:1px dashed rgba(217,99,76,.7);border-top:0"></div>
+</div>
+<div class="abs" style="left:222px;top:490px"><mc-text color="#d9634c" shadow>SUPPORT 1/2</mc-text></div>
+<div class="abs" style="left:222px;top:500px"><mc-text color="#d9634c" shadow>ROUTING</mc-text></div>
+<div class="abs" style="left:222px;top:510px"><mc-text color="#afb9bc" shadow>regroups in 9 s</mc-text></div>
+<!-- horn echo rings off the fallen standard -->
+<i class="px" data-art="horn" data-pal="b=#d9634c" style="position:absolute;left:262px;top:402px"></i>
+<div class="ring" style="left:254px;top:396px;width:24px;height:24px;transform:rotate(40deg)"></div>
+<div class="ring" style="left:248px;top:390px;width:36px;height:36px;transform:rotate(40deg)"></div>
+<div class="abs" style="left:290px;top:404px"><mc-text color="#d9634c" shadow>horn: the line breaks</mc-text></div>
+
+<!-- formations legend tile and key hints -->
+<div class="abs row" style="left:600px;top:526px;gap:6px">
+  <mc-text color="#c8a56b" shadow>G</mc-text><mc-text color="#afb9bc" shadow>Attack</mc-text>
+  <mc-text color="#c8a56b" shadow>V</mc-text><mc-text color="#afb9bc" shadow>Follow</mc-text>
+  <mc-text color="#c8a56b" shadow>B</mc-text><mc-text color="#afb9bc" shadow>Formation</mc-text>
+  <mc-text color="#c8a56b" shadow>M</mc-text><mc-text color="#afb9bc" shadow>Map</mc-text>
+  <mc-text color="#c8a56b" shadow>R</mc-text><mc-text color="#afb9bc" shadow>Council</mc-text>
+</div>
+
+<!-- commander's own standard: the ability. Cloth climbs the pole as the cooldown runs. -->
+<div class="abs" style="left:582px;top:446px;width:2px;height:72px;background:#6b4a2c;box-shadow:1px 0 0 #2a1b0f,-1px 0 0 #8a6a45"></div>
+<i class="px" data-art="horn" data-pal="b=#c8a56b" style="position:absolute;left:578px;top:437px"></i>
+<div class="abs" style="left:584px;top:470px;width:22px;height:44px;background:var(--brass);border:1px solid #6b5a3a;clip-path:polygon(0 0,100% 0,100% 100%,50% calc(100% - 6px),0 100%)"><i class="px" data-art="horn" data-pal="b=#3a2817" style="position:absolute;left:6px;top:14px"></i></div>
+<div class="abs" style="left:584px;top:470px;width:22px;height:18px;background:rgba(16,20,23,.85);border-bottom:1px solid var(--ivory)"><div class="abs" style="left:5px;top:4px"><mc-text color="#eee9df" shadow>48</mc-text></div></div>
+<div class="abs" style="left:610px;top:472px"><mc-text color="#eee9df" shadow>H</mc-text></div>
+<div class="abs" style="left:610px;top:482px"><mc-text color="#afb9bc" shadow>Rally Horn</mc-text></div>
+<div class="abs" style="left:610px;top:492px"><mc-text color="#c8a56b" shadow>MARSHAL</mc-text></div>
+
+<!-- shield-boss minimap -->
+<div class="boss"><div class="m">
+  <div class="river"></div>
+  <div class="road" style="left:20px;top:10px;width:2px;height:74px"></div><div class="road" style="left:46px;top:10px;width:2px;height:74px"></div><div class="road" style="left:72px;top:10px;width:2px;height:74px"></div>
+  <div class="shield" style="left:21px;top:14px;width:14px;height:15px;background:var(--dawn)"><mc-text color="#101417" style="left:4px;top:2px">A</mc-text></div>
+  <div class="shield hatch" data-c1="#5fb3ad" data-c2="#a07cc2" style="left:47px;top:58px;width:14px;height:15px"><mc-text color="#101417" style="left:4px;top:2px">B</mc-text></div>
+  <div class="shield" style="left:73px;top:14px;width:14px;height:15px;background:var(--dusk)"><mc-text color="#101417" style="left:4px;top:2px">C</mc-text></div>
+  <div class="abs" style="left:38px;top:42px;width:3px;height:3px;background:var(--dawn)"></div><div class="abs" style="left:43px;top:44px;width:3px;height:3px;background:var(--dawn)"></div><div class="abs" style="left:34px;top:47px;width:3px;height:3px;background:var(--dawn)"></div>
+  <div class="abs" style="left:58px;top:66px;width:3px;height:3px;background:var(--danger)"></div>
+  <i class="px" data-art="north" data-pal="i=#c8a56b" style="position:absolute;left:46px;top:40px;transform:rotate(20deg)"></i>
+</div></div>
+<div class="abs" style="left:870px;top:418px"><mc-text color="#afb9bc" shadow>M  BATTLEFIELD</mc-text></div>
+<script src="mc.js"></script><script src="art.js"></script>
+</body></html>

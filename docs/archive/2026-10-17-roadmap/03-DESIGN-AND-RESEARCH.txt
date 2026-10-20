@@ -1,0 +1,118 @@
+GRAVES AND GLORY — DESIGN NOTES AND RESEARCH
+Research date: October 17, 2026
+All proposed numbers and additions below are starting designs to test.
+
+TARGET PLAYER LOOP
+Launch branded game -> enter war camp -> meet party -> arrange army -> choose
+public/private play -> ready/vote -> battle together -> see rewards -> return
+together -> claim contracts/pass rewards -> recruit and improve army choices.
+
+WAR CAMP STATIONS
+War gates: public modes, queue status, party readiness and ready pads.
+Army pavilion: troop collection, comparisons and saved twenty-slot armies.
+Recruitment shrine: roll cost, available rewards/odds and skippable reveal.
+Contract board: daily/weekly progress, rerolls, claims and reset timers.
+Season monument: pass tiers, reward previews and claims.
+War table: private rooms, teams, maps and voting.
+Training yard: troop trials, controls tutorial and practice objectives.
+Every routine action should also have a quick menu route.
+
+SOCIAL MODEL
+A Party is a persistent group of friends that stays on one team in public play.
+A Custom Room contains all participants in a private match, including enemies
+and spectators. Do not use one temporary room object for both purposes.
+Keep parties together during reservations, transfers, matches and returns.
+Reject modes that cannot fit the party rather than splitting members.
+
+PUBLIC ARCHITECTURE PROPOSAL
+Branded client -> lobby server -> party/queue coordination -> match allocation
+-> isolated Fabric match server -> server-confirmed results -> lobby together.
+Official progression is shared across official servers and owned by the
+service. A proxy routes connections; it does not supply matchmaking itself.
+Begin with a small number of public queues to avoid fragmenting the population.
+Keep every supported mode available in custom rooms.
+
+REWARD DESIGN PROPOSAL
+- Three daily contracts and one free reroll.
+- Weekly contracts and catch-up progress for less frequent players.
+- Prototype daily reward: 25 gold per contract plus 25 for all three = 100.
+- Initially free battle pass of approximately thirty tiers; tune the workload.
+- Match and quest XP feed one visible pass progress track.
+- Permanent mastery rewards and account levels provide longer-term goals.
+- Rewards: recruitment currency, banners, titles, commander/troop appearances,
+  emotes, profile decorations and loading artwork.
+- Preserve duplicate-free troop unlocking; add cosmetic collection goals and
+  an explicit completed-collection reward state.
+- Keep unlocked troops as tactical options with tradeoffs. Do not use rarity
+  as a simple permanent power multiplier.
+- Automatically deliver earned unclaimed season rewards.
+- Define official/private/practice eligibility before enabling public rewards.
+
+QUEST EXAMPLES
+Complete qualifying battles; contest/capture objectives; heal allies; use
+different troop roles. Count verified participation and avoid incentives to
+ignore the team objective. Do not require an unowned rare troop.
+
+CONTENT PRIORITIES
+Interactive tutorial and training yard; distinct troop roles; mastery and
+cosmetic identity; one escort or attack/defend mode; cooperative challenge;
+rotating weekend event; useful post-match statistics and play-again action.
+Tune the four current maps before prioritizing more large maps.
+
+PRESENTATION TOOLS
+FancyMenu supports menu customization and lists Fabric/1.20.1 compatibility.
+https://modrinth.com/mod/fancymenu
+
+Drippy Loading Screen is the FancyMenu startup/loading splash addon and lists
+Fabric/1.20.1 compatibility. It is separate from joining/world loading screens.
+https://modrinth.com/mod/drippy-loading-screen
+https://docs.fancymenu.net/docs/en-US/loading-screen
+https://docs.fancymenu.net/docs/en-US/dummy-screen-instances
+
+FancyMenu's incompatibility list includes a reported EMF crash. This is a
+reason to test the exact pinned combination, not proof every version conflicts.
+Fallback: author the branded front end in the existing custom mod.
+https://docs.fancymenu.net/docs/incompatibility-list
+
+QUEST FRAMEWORK ALTERNATIVE
+FTB Quests has a Fabric 1.20.1 release. Adopting it still requires integration
+with this game's match events and currency. Preferred direction from the
+audit: custom contracts using the existing UI and a shared reward/event system.
+https://www.curseforge.com/minecraft/mc-mods/ftb-quests-fabric/files/8078537
+
+SERVER ROUTING
+Velocity documents Fabric support with FabricProxy-Lite for modern player
+identity forwarding. Evaluate CrossStitch if the particular mod extensions
+require it. Parties, queues and match allocation remain separate work.
+https://docs.papermc.io/velocity/server-compatibility/
+Backend access must be restricted; forwarding alone does not replace that.
+https://docs.papermc.io/velocity/security/
+
+PERFORMANCE TOOL
+spark profiles CPU, memory and server health. Use appropriate Fabric builds
+and capture server measurements as well as client FPS/frame times.
+https://modrinth.com/mod/spark
+
+CURRENT GAME-SYSTEM REFERENCES
+Brawl Stars' 2026 notes connect daily play, quests, events and reward drops.
+Useful lesson: offer several connected progression goals and a coherent event
+presentation. This is inspiration, not proof the same economy fits our game.
+https://supercell.com/en/games/brawlstars/blog/release-notes/release-notes-june-2026/
+
+TFT's 2026 event pass combines a themed track with collectible reward currencies.
+Useful lesson: show clear progress and desirable cosmetic destinations.
+https://teamfighttactics.leagueoflegends.com/en-ph/news/game-updates/lunar-revel-2026-cosmetics-and-more/
+
+TFT's Cyber City pass describes a claim-all option and visible pass rewards.
+Useful lesson: reduce reward-management friction between matches.
+https://teamfighttactics.leagueoflegends.com/en-us/news/game-updates/cyber-city-cosmetics/
+
+IMPLEMENTATION GUARDRAILS
+Research candidates are not installed, tested or cleared for every distribution
+method merely by being listed here. Check the pinned file's dependencies,
+compatibility and distribution terms before packaging it.
+Retain the existing shader/texture/animation foundation while verifying changes.
+Do not assume this roadmap introduces paid rolls or a paid battle pass.
+Hosting scale, exact season duration and final economy numbers remain design
+and testing decisions; no unsupported delivery-time or hosting-cost estimate
+is part of this roadmap.

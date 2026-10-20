@@ -1,0 +1,209 @@
+{
+ "title-hill-day": {
+  "words": 17,
+  "sizes": [
+   8,
+   11,
+   16
+  ],
+  "issues": [],
+  "lowContrast": [],
+  "minContrast": 6.04,
+  "contrast": [
+   {
+    "text": "v0.4.0 / be102e8b",
+    "color": "#afb9bc",
+    "bg": "#291714",
+    "ratio": 8.55,
+    "kind": "mc",
+    "size": 8
+   },
+   {
+    "text": "Collect an army. Command the battlefield.",
+    "color": "rgb(238, 233, 223)",
+    "bg": "#704c5b",
+    "ratio": 6.04,
+    "kind": "ttf",
+    "size": 11
+   },
+   {
+    "text": "Ride to camp",
+    "color": "rgb(223, 189, 119)",
+    "bg": "#291714",
+    "ratio": 9.52,
+    "kind": "ttf",
+    "size": 16
+   },
+   {
+    "text": "Play with friends",
+    "color": "rgb(238, 233, 223)",
+    "bg": "#292535",
+    "ratio": 12.31,
+    "kind": "ttf",
+    "size": 11
+   },
+   {
+    "text": "Settings",
+    "color": "rgb(238, 233, 223)",
+    "bg": "#292535",
+    "ratio": 12.31,
+    "kind": "ttf",
+    "size": 11
+   },
+   {
+    "text": "Credits",
+    "color": "rgb(238, 233, 223)",
+    "bg": "#292535",
+    "ratio": 12.31,
+    "kind": "ttf",
+    "size": 11
+   },
+   {
+    "text": "Quit",
+    "color": "rgb(238, 233, 223)",
+    "bg": "#292535",
+    "ratio": 12.31,
+    "kind": "ttf",
+    "size": 11
+   }
+  ]
+ },
+ "title-hill-night": {
+  "words": 17,
+  "sizes": [
+   8,
+   11,
+   16
+  ],
+  "issues": [],
+  "lowContrast": [],
+  "minContrast": 9.66,
+  "contrast": [
+   {
+    "text": "v0.4.0 / be102e8b",
+    "color": "#afb9bc",
+    "bg": "#130c0c",
+    "ratio": 9.66,
+    "kind": "mc",
+    "size": 8
+   },
+   {
+    "text": "Collect an army. Command the battlefield.",
+    "color": "rgb(238, 233, 223)",
+    "bg": "#372757",
+    "ratio": 10.91,
+    "kind": "ttf",
+    "size": 11
+   },
+   {
+    "text": "Ride to camp",
+    "color": "rgb(223, 189, 119)",
+    "bg": "#130c0c",
+    "ratio": 10.76,
+    "kind": "ttf",
+    "size": 16
+   },
+   {
+    "text": "Play with friends",
+    "color": "rgb(238, 233, 223)",
+    "bg": "#131526",
+    "ratio": 14.92,
+    "kind": "ttf",
+    "size": 11
+   },
+   {
+    "text": "Settings",
+    "color": "rgb(238, 233, 223)",
+    "bg": "#131526",
+    "ratio": 14.92,
+    "kind": "ttf",
+    "size": 11
+   },
+   {
+    "text": "Credits",
+    "color": "rgb(238, 233, 223)",
+    "bg": "#131526",
+    "ratio": 14.92,
+    "kind": "ttf",
+    "size": 11
+   },
+   {
+    "text": "Quit",
+    "color": "rgb(238, 233, 223)",
+    "bg": "#131526",
+    "ratio": 14.92,
+    "kind": "ttf",
+    "size": 11
+   }
+  ]
+ },
+ "title-hill-hover": {
+  "words": 17,
+  "sizes": [
+   8,
+   11,
+   16
+  ],
+  "issues": [],
+  "lowContrast": [],
+  "minContrast": 6.04,
+  "contrast": [
+   {
+    "text": "v0.4.0 / be102e8b",
+    "color": "#afb9bc",
+    "bg": "#291714",
+    "ratio": 8.55,
+    "kind": "mc",
+    "size": 8
+   },
+   {
+    "text": "Collect an army. Command the battlefield.",
+    "color": "rgb(238, 233, 223)",
+    "bg": "#704c5b",
+    "ratio": 6.04,
+    "kind": "ttf",
+    "size": 11
+   },
+   {
+    "text": "Ride to camp",
+    "color": "rgb(238, 233, 223)",
+    "bg": "#291714",
+    "ratio": 14.15,
+    "kind": "ttf",
+    "size": 16
+   },
+   {
+    "text": "Play with friends",
+    "color": "rgb(223, 189, 119)",
+    "bg": "#292535",
+    "ratio": 8.28,
+    "kind": "ttf",
+    "size": 11
+   },
+   {
+    "text": "Settings",
+    "color": "rgb(238, 233, 223)",
+    "bg": "#292535",
+    "ratio": 12.31,
+    "kind": "ttf",
+    "size": 11
+   },
+   {
+    "text": "Credits",
+    "color": "rgb(238, 233, 223)",
+    "bg": "#292535",
+    "ratio": 12.31,
+    "kind": "ttf",
+    "size": 11
+   },
+   {
+    "text": "Quit",
+    "color": "rgb(238, 233, 223)",
+    "bg": "#292535",
+    "ratio": 12.31,
+    "kind": "ttf",
+    "size": 11
+   }
+  ]
+ }
+}

@@ -1,0 +1,113 @@
+<!doctype html>
+<html class="v2 v3 sb"><head><meta charset="utf-8"><title>Storybook 02: the open spread</title>
+<link rel="stylesheet" href="../common.css"><link rel="stylesheet" href="../v3.css"><link rel="stylesheet" href="sb.css">
+<style>
+/* The wind has done its work: the book lies open at the current page (the first with an unread scene), on its
+   own stretch of the table, the candle and the inkwell standing to its right so the light pools on the right
+   leaf, where the next thing to do is. Left leaf: the running head, the page's title, its passage under a drop
+   capital, the company with their wants (on page 2, Maud alone). Right leaf: the page's three scenes as plates
+   tipped into the leaf, read, next and sealed. The left leaf's lower corner is lifted (the way back to page 1);
+   the right leaf's lies flat, and the deep block of leaves behind it is tied with a cord and sealed. The ribbon
+   lies in the fold.
+   Moving: the next plate's gold breathes (2 s in, 2 s out, two steps of the glow); the candle flame flickers in
+   still air; the lifted corner rises a pixel under the mouse. */
+.sb .want{white-space:nowrap}
+.sb .pass{text-align:left}
+.sb .pass img{float:left;margin:1px 6px 0 0;image-rendering:pixelated}
+.sb .faded{color:#6b5a3a}
+/* the candle's light lies over the leaves and everything tipped into them; the type and the props stand above it */
+.sb .a,.sb .kt{z-index:3}
+.sb .lit{z-index:2}
+.sb .prop{z-index:3}
+</style></head>
+<body>
+<!-- the open book's stretch of the table (planks, knots, nails; nothing brass set into the planks), the rail cut
+     from another board; the candle's light on the oak, then the shadows it throws -->
+<img class="s" src="art/table-sb-open.png" style="left:0;top:0" data-bleed alt="">
+<img class="s" src="art/rail-sb.png" style="left:0;top:0" data-bleed alt="">
+<img class="s" src="art/glow-candle.png" style="left:578px;top:-130px" data-bleed data-overlay-ok alt="" data-name="candle light">
+<img class="s" src="art/shade-02.png" style="left:0;top:0" data-bleed data-overlay-ok alt="" data-name="shadows on the oak">
+
+<!-- the rail: the way back to the table, and the way back a page (the arrow keys and the wheel turn pages too) -->
+<div class="plq" data-ctl data-name="back to the table" style="left:56px;width:144px">
+  <img class="s" src="art/plaque-144x32.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s" src="../v4/icon-table.png" style="left:9px;top:9px" alt="">
+  <span class="a m13 ivory" style="left:29px;top:8px">War Table</span>
+  <img class="s" src="art/key-32x20.png" style="left:102px;top:6px" data-under-ok alt="">
+  <span class="kt" data-cx="118" style="top:9px;color:#f0d9a0">Esc</span>
+</div>
+<div class="plq" data-ctl data-name="back a page" style="left:212px;width:152px">
+  <img class="s" src="art/plaque-152x32.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s" src="art/icon-page.png" style="left:9px;top:9px" alt="">
+  <span class="a m13 ivory" style="left:29px;top:8px">Back a page</span>
+  <img class="s" src="art/key-left.png" style="left:112px;top:6px" alt="" data-name="left arrow key">
+</div>
+
+<!-- the book, open -->
+<img class="s" src="art/book-open.png" style="left:36px;top:72px" alt="" data-name="book" id="book" data-under-ok>
+
+<!-- ============ the left leaf: what this page is, and who is on the road -->
+<span class="a m13 sepia caps" data-cx="230" style="top:89px">I · The Road North</span>
+<span class="a t24 ink" data-cx="230" style="top:118px">The River Road</span>
+<div class="a b13 ink pass" style="left:66px;top:154px;width:328px"><img src="art/cap-t.png" alt="T" data-name="drop capital">hree crossings carry the road west over the river, and the Order holds all three. Not the Order that keeps the oath: the other half, who swore it to the crown and follow the crown wherever it walks. They wear the same colours. Some of them were taught by the same sergeant.</div>
+
+<!-- the company, each under the label their cards use, with the want the Record gives them. On page 2 that is
+     Maud alone (Wren joins on page 3): the rows under hers are not drawn until someone fills them, 52 px apart
+     (NOTES.md keeps the four-row layout; page 7 onward fills it) -->
+<div class="box" data-name="Maud" style="left:66px;top:272px;width:328px;height:46px">
+  <img class="s" src="art/mini-46.png" style="left:0;top:0" alt="">
+  <img class="s" src="art/pt-maud-40.png" style="left:3px;top:3px" alt="">
+  <span class="a t16 ink" style="left:52px;top:5px">Maud</span>
+  <span class="a b13 sepia want" style="left:52px;top:25px">A living hand for the crown, so the dead can rest.</span>
+</div>
+
+<!-- ============ the right leaf: the page's scenes, in the order they play -->
+<span class="a m13 sepia caps" data-cx="614" style="top:89px">Page 2</span>
+<img class="s" src="art/rule-row.png" style="left:452px;top:228px" alt="">
+<img class="s" src="art/rule-row.png" style="left:452px;top:356px" alt="">
+<img class="s" src="art/glow-next.png" style="left:439px;top:237px" data-under-ok alt="" data-name="next glow">
+
+<!-- read: replays on a click -->
+<div class="box" data-ctl data-name="read scene" style="left:448px;top:118px;width:332px;height:92px">
+  <img class="s" src="art/plate-read.png" style="left:4px;top:4px" alt="">
+  <span class="a m13 sepia caps" style="left:156px;top:14px">Stage</span>
+  <span class="a t16 ink" style="left:156px;top:32px">Order on the Crossings</span>
+  <img class="s" src="art/quill-tick.png" style="left:156px;top:61px" alt="" data-name="read mark">
+  <span class="a b13 sepia" style="left:173px;top:59px">Read</span>
+</div>
+
+<!-- next: lit, and the one thing to do on this screen -->
+<div class="box" data-ctl data-name="next scene" style="left:448px;top:246px;width:332px;height:92px">
+  <img class="s" src="art/plate-next.png" style="left:4px;top:4px" alt="">
+  <span class="a m13 sepia caps" style="left:156px;top:14px">Battle</span>
+  <span class="a t16 ink" style="left:156px;top:32px">The Training Field</span>
+  <div class="box" data-ctl data-name="play" style="left:156px;top:56px;width:114px;height:31px">
+    <img class="s" src="art/tab-brass-112x28.png" style="left:0;top:0" data-under-ok alt="">
+    <img class="s" src="art/kb-44x18.png" style="left:12px;top:5px" data-under-ok alt="">
+    <span class="kt" data-cx="34" style="top:8px;color:#2a1d0c">Enter</span>
+    <span class="a t16" data-cx="80" style="top:5px;color:#1e1509">Play</span>
+  </div>
+</div>
+
+<!-- sealed: does nothing until the battle is won -->
+<div class="box" data-name="sealed scene" style="left:448px;top:374px;width:332px;height:92px">
+  <img class="s" src="art/plate-sealed.png" style="left:4px;top:4px" alt="">
+  <span class="a m13 faded caps" style="left:156px;top:14px">Stage</span>
+  <span class="a t16 faded" style="left:156px;top:32px">The North Crossing</span>
+  <span class="a b13 faded" style="left:156px;top:58px">Sealed until the battle is won.</span>
+</div>
+
+<!-- the ribbon in the fold, out over the tail and onto the oak -->
+<img class="s" src="art/ribbon-02.png" style="left:420px;top:80px" alt="" data-name="ribbon" data-under-ok>
+
+<!-- the candle's light on the book (above the leaves and their plates, under the type) -->
+<img class="s lit" src="art/over-02.png" style="left:0;top:0" data-bleed data-overlay-ok alt="" data-name="candle light on the book">
+
+<!-- the candle in still air now, and the inkwell with its quill, at the kit's pixel scale -->
+<img class="s prop" src="art/candle-calm.png" style="left:816px;top:56px" alt="" data-name="candle">
+<img class="s prop" src="art/inkwell-big.png" style="left:798px;top:338px" alt="" data-name="inkwell">
+<!-- one of the leaves the wind brought in, settled on the oak -->
+<img class="s prop" src="art/leaf-flat.png" style="left:846px;top:262px" alt="" data-name="leaf on the oak">
+
+<script src="../mc.js"></script><script src="../art.js"></script><script src="../v2.js"></script><script src="../check.js"></script>
+</body></html>

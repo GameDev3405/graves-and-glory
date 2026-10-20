@@ -1,0 +1,20 @@
+/* The storybook: the book type and colours on top of the War Table kit (v2 grid and lint, v3 sprites).
+   Type: three sizes on any one screen and never below 13 GUI px:
+     24 Marcellus  the one focal title (the cover, the page title, the card title)
+     16 Marcellus  names and headings
+     13 Lato       body, labels, key caps; 13 Marcellus capitals for the scene kinds and running heads
+   Colour: oak, leather, brass, vellum, one blood red (wax and ribbon). On dark: ivory, brass, gilt. On vellum:
+   ink and sepia. */
+.sb .t24{font:24px/26px Marcellus,serif;white-space:nowrap}
+.sb .t16{font:16px/18px Marcellus,serif;white-space:nowrap}
+.sb .m13{font:13px/16px Marcellus,serif;white-space:nowrap}
+.sb .b13{font:13px/17px Lato,sans-serif}
+.sb .caps{text-transform:uppercase;letter-spacing:1px}
+.sb .gilt{color:#dfbd77;text-shadow:-1px -1px 0 #0b0809,1px 1px 0 #4f3d30}
+.sb .ivory{color:#eee9df}
+.sb .brass{color:#c8a56b}
+.sb .ink{color:#2a2219}
+.sb .sepia{color:#5c4a32}
+.sb .wax{color:#8a2b1f}
+.sb .kt{position:absolute;font:13px/13px Lato,sans-serif;white-space:nowrap}
+.sb .plq{position:absolute;top:12px;height:32px}

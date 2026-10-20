@@ -1,0 +1,31 @@
+{
+ "v3-ui-war-table-home": {
+  "words": 36,
+  "sizes": [
+   8,
+   11,
+   16
+  ],
+  "issues": [],
+  "lowContrast": []
+ },
+ "v3-ui-war-table-recruit": {
+  "words": 40,
+  "sizes": [
+   8,
+   11,
+   16
+  ],
+  "issues": [],
+  "lowContrast": []
+ },
+ "v3-hud-iron-ledger": {
+  "words": 36,
+  "sizes": [
+   8,
+   11
+  ],
+  "issues": [],
+  "lowContrast": []
+ }
+}

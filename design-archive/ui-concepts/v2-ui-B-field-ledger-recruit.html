@@ -1,0 +1,87 @@
+<!doctype html>
+<html class="v2"><head><meta charset="utf-8"><title>v2 UI B: Field Ledger, recruit</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* Field Ledger recruit, second pass. The ledger's spine carries the sections as brass index tabs; the page
+   holds the House tabs, the six portrait cards and the reveal card, which is the only light surface. */
+.spine{left:0;top:0;width:144px;height:540px;background:#12171a;box-shadow:inset -1px 0 0 #394246}
+.nav{position:absolute;left:16px;width:120px;height:24px}
+.nav .px{position:absolute;left:8px;top:8px}
+.nav .h11{position:absolute;left:28px;top:6px;color:var(--muted)}
+.nav mc-text{position:absolute;top:8px}
+.nav.on{width:136px;background:var(--brass);box-shadow:inset 0 -2px 0 var(--brass-lo),0 2px 0 rgba(0,0,0,.45)}
+.nav.on .h11{color:#171d20}
+.ht{position:absolute;top:24px;width:112px;height:24px}
+.ht .px{position:absolute;left:8px;top:8px}
+.ht .h11{position:absolute;left:24px;top:6px;color:var(--muted)}
+.ht>b{position:absolute;left:0;bottom:0;width:112px;height:1px}
+.ht.on .h11{color:var(--ivory)}
+.ht.on>b{height:3px}
+.card{position:absolute;width:128px;height:152px}
+.card.sel{box-shadow:inset 0 0 0 1px var(--brass),inset 0 0 0 2px #0d1113,0 2px 0 rgba(0,0,0,.4)}
+.card .pf{position:absolute;left:24px;top:16px;width:80px;height:80px;background:#20292d;box-shadow:inset 0 0 0 1px #394246}
+.card .pf>.px{position:absolute;left:8px;top:8px}
+.card .rs{position:absolute;top:126px;height:6px}
+.rev{left:600px;top:76px;width:320px;height:312px;background:#efe4c8;color:var(--ink2);box-shadow:inset 0 6px 0 var(--gilded),inset 0 0 0 1px #8f7a52,0 0 0 1px #0d1113,0 3px 0 rgba(0,0,0,.5)}
+.rev .pf{position:absolute;left:88px;top:24px;width:144px;height:144px;background:#7a5a24;box-shadow:inset 0 0 0 1px #2a2219,inset 0 0 28px rgba(0,0,0,.4)}
+.enl{left:600px;top:404px;width:320px;height:40px;background:#bb9858;box-shadow:inset 0 0 0 1px var(--brass-hi),inset 0 -3px 0 #8c7246,0 3px 0 rgba(0,0,0,.5);color:#171d20}
+</style></head>
+<body>
+<div class="scrim" data-bleed></div>
+
+<!-- the ledger's spine: one brass index tab per section, counts as badges -->
+<div class="a spine" data-bleed></div>
+<div class="nav" data-ctl style="top:24px"><i class="px" data-art="swords" data-pal="i=#afb9bc"></i><span class="h11">Fight</span></div>
+<div class="nav on" data-ctl style="top:52px"><i class="px" data-art="letter" data-pal="p=#171d20,k=#bb9858"></i><span class="h11">Recruit</span></div>
+<div class="nav" data-ctl style="top:80px"><i class="px" data-art="pennant" data-pal="i=#afb9bc,k=#afb9bc"></i><span class="h11">Banner</span></div>
+<div class="nav" data-ctl style="top:108px"><i class="px" data-art="seal" data-pal="b=#afb9bc,i=#12171a"></i><span class="h11">Contracts</span><mc-text data-rx="112" color="#c8a56b">2</mc-text></div>
+<div class="nav" data-ctl style="top:136px"><i class="px" data-art="star" data-pal="i=#afb9bc"></i><span class="h11">Chapter</span></div>
+<div class="nav" data-ctl style="top:164px"><i class="px" data-art="friend" data-pal="i=#afb9bc"></i><span class="h11">Friends</span><mc-text data-rx="112" color="#c8a56b">1</mc-text></div>
+<div class="btns flex" data-ctl data-name="close" style="left:24px;top:496px;height:24px;padding:0 8px;gap:6px"><span class="key"><mc-text color="#afb9bc">Esc</mc-text></span><span class="h11">Camp</span></div>
+
+<!-- House tabs: glyph, name, the House colour as an underline -->
+<div class="ht on" data-ctl style="left:168px"><i class="px" data-art="gilded" data-pal="i=#d8b45a"></i><span class="h11">Gilded Order</span><b style="background:#d8b45a"></b></div>
+<div class="ht" data-ctl style="left:288px"><i class="px" data-art="graveborn" data-pal="i=#afb9bc"></i><span class="h11">Graveborn</span><b style="background:#6f8a6a"></b></div>
+<div class="ht" data-ctl style="left:408px"><i class="px" data-art="wildmoot" data-pal="i=#afb9bc"></i><span class="h11">Wildmoot</span><b style="background:#b0643a"></b></div>
+<div class="ht" data-ctl style="left:528px"><i class="px" data-art="ironclad" data-pal="i=#afb9bc"></i><span class="h11">Ironclad</span><b style="background:#8a949a"></b></div>
+<div class="ht" data-ctl style="left:648px"><i class="px" data-art="tidecallers" data-pal="i=#afb9bc"></i><span class="h11">Tidecallers</span><b style="background:#4f86b8"></b></div>
+<div class="a flex" data-rx="920" style="top:28px;gap:6px" data-name="gold"><i class="px" data-art="coin"></i><mc-text color="#eee9df" shadow>300</mc-text></div>
+
+<!-- the House's six troops: portrait, name, stars -->
+<div class="panel card" data-panel style="left:168px;top:76px"><div class="pf"><i class="px" data-art="p_squire" data-scale="4"></i></div><span class="a h11" data-cx="64" style="top:106px">Order Squire</span>
+  <span class="rs" data-cx="64" style="width:27px"><i class="px a" data-art="star" data-pal="i=#c8a56b"></i><i class="px a" data-art="star" data-pal="i=#c8a56b" style="left:10px"></i><i class="px a" data-art="dot3" data-pal="i=#5a6468" style="left:22px;top:1px"></i></span></div>
+<div class="panel card" data-panel style="left:304px;top:76px"><div class="pf"><i class="px" data-art="p_archer" data-scale="4"></i></div><span class="a h11" data-cx="64" style="top:106px">Order Archer</span>
+  <span class="rs" data-cx="64" style="width:27px"><i class="px a" data-art="star" data-pal="i=#c8a56b"></i><i class="px a" data-art="dot3" data-pal="i=#5a6468" style="left:12px;top:1px"></i><i class="px a" data-art="dot3" data-pal="i=#5a6468" style="left:22px;top:1px"></i></span></div>
+<div class="panel card sel" data-panel style="left:440px;top:76px"><div class="pf"><i class="px" data-art="p_templar" data-scale="4"></i></div><span class="a h11" data-cx="64" style="top:106px">Templar</span>
+  <span class="rs" data-cx="64" style="width:27px"><i class="px a" data-art="star" data-pal="i=#c8a56b"></i><i class="px a" data-art="star" data-pal="i=#c8a56b" style="left:10px"></i><i class="px a" data-art="dot3" data-pal="i=#5a6468" style="left:22px;top:1px"></i></span></div>
+<div class="panel card" data-panel style="left:168px;top:236px"><div class="pf"><i class="px" data-art="p_longbow" data-scale="4"></i></div><span class="a h11" data-cx="64" style="top:106px">Order Longbow</span>
+  <span class="rs" data-cx="64" style="width:27px"><i class="px a" data-art="star" data-pal="i=#c8a56b"></i><i class="px a" data-art="dot3" data-pal="i=#5a6468" style="left:12px;top:1px"></i><i class="px a" data-art="dot3" data-pal="i=#5a6468" style="left:22px;top:1px"></i></span></div>
+<div class="panel card" data-panel style="left:304px;top:236px"><div class="pf"><i class="px" data-art="p_sunweaver" data-scale="4" data-sil="#2c373c"></i></div><span class="a h11" data-cx="64" style="top:106px;color:#afb9bc">Sunweaver</span>
+  <span class="rs" data-cx="64" style="width:27px"><i class="px a" data-art="dot3" data-pal="i=#5a6468" style="left:2px;top:1px"></i><i class="px a" data-art="dot3" data-pal="i=#5a6468" style="left:12px;top:1px"></i><i class="px a" data-art="dot3" data-pal="i=#5a6468" style="left:22px;top:1px"></i></span></div>
+<div class="panel card" data-panel style="left:440px;top:236px"><div class="pf"><i class="px" data-art="p_marshal" data-scale="4" data-sil="#2c373c"></i><i class="px" data-art="lock" data-scale="2" data-pal="i=#afb9bc" style="left:34px;top:34px"></i></div><span class="a h11" data-cx="64" style="top:106px;color:#afb9bc">Lord Marshal Aldric</span></div>
+
+<!-- the reveal card: the screen's one light surface -->
+<div class="a rev" data-panel data-name="reveal card">
+  <div class="pf"><i class="px a" data-art="p_templar" data-scale="8" style="left:8px;top:8px"></i></div>
+  <span class="a t16" data-cx="160" style="top:186px">Templar</span>
+  <span class="a b11 nw" data-cx="160" style="top:208px;color:#5c4a32">Rare infantry</span>
+  <div class="a" data-cx="160" style="top:232px;width:62px;height:22px" data-name="stars">
+    <i class="px a" data-art="star" data-scale="2" data-pal="i=#8a6420" style="left:0;top:5px"></i>
+    <i class="px a" data-art="spark" data-scale="2" data-pal="i=#b08436" style="left:22px;top:0"></i>
+    <i class="px a" data-art="star" data-scale="2" data-pal="i=#c08a2a" style="left:26px;top:5px"></i>
+    <i class="px a" data-art="dot3" data-scale="2" data-pal="i=#a08a5c" style="left:56px;top:8px"></i>
+  </div>
+  <span class="a b11 nw" data-cx="160" style="top:274px">Second star: +3% health and damage</span>
+</div>
+
+<!-- the one primary action, with the Epic counter and the odds one click away -->
+<div class="a enl" data-ctl data-name="enlist">
+  <span class="a key" style="left:8px;top:13px"><mc-text color="#2a2219">Enter</mc-text></span>
+  <span class="a h11" data-cx="160" style="top:14px">Enlist</span>
+  <span class="a flex" data-rx="312" style="top:16px;gap:4px"><i class="px" data-art="coin" data-pal="b=#6e5226,i=#f0d9a0"></i><mc-text color="#171d20">100</mc-text></span>
+</div>
+<span class="a b11 nw" style="left:168px;top:418px;color:#afb9bc" data-name="epic counter">Epic within 28 letters</span>
+<div class="btns flex" data-ctl data-name="odds" style="left:300px;top:412px;height:24px;padding:0 8px"><span class="h11">Odds</span></div>
+
+<script src="mc.js"></script><script src="art.js"></script><script src="v2.js"></script><script src="check.js"></script>
+</body></html>

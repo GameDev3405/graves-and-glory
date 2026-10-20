@@ -1,0 +1,115 @@
+<!doctype html><html><head><meta charset="utf-8"><title>HUD A: Marshal's Glass</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* No panels. Thin ivory strokes, numerals, shapes. The world stays the picture. */
+.stroke{position:absolute;background:rgba(238,233,223,.55)}
+.compass{position:absolute;left:300px;top:8px;width:360px;height:18px}
+.compass .base{position:absolute;left:0;right:0;bottom:0;height:1px;background:rgba(238,233,223,.75);box-shadow:0 1px 0 rgba(0,0,0,.55)}
+.compass .tick{position:absolute;bottom:1px;width:1px;height:3px;background:rgba(238,233,223,.75);box-shadow:1px 0 0 rgba(0,0,0,.45)}
+.compass .tick.big{height:5px}
+.compass .lbl{position:absolute;bottom:7px;transform:translateX(-50%)}
+.marker{position:absolute;bottom:2px;width:11px;height:13px;transform:translateX(-50%)}
+.marker b{position:absolute;left:0;top:0;width:11px;height:9px;border:1px solid var(--ink)}
+.marker b::after{content:"";position:absolute;left:1px;right:1px;top:8px;height:3px;background:inherit;clip-path:polygon(0 0,100% 0,50% 100%)}
+.marker mc-text{position:absolute;left:2px;top:0}
+.ally{position:absolute;bottom:2px;width:3px;height:3px;background:var(--dawn);transform:translateX(-50%)}
+.enemyseen{position:absolute;bottom:2px;width:3px;height:3px;background:var(--dusk);transform:translateX(-50%)}
+.tug{position:absolute;left:300px;top:31px;width:360px;height:4px;background:rgba(16,20,23,.55)}
+.tug .l{position:absolute;left:0;top:0;bottom:0;background:var(--dawn)}
+.tug .r{position:absolute;right:0;top:0;bottom:0;background:var(--dusk)}
+.tug .mid{position:absolute;left:179px;top:-2px;width:2px;height:8px;background:var(--ivory)}
+.grp{position:absolute;left:12px;width:250px;height:22px}
+.grp .name{position:absolute;left:12px;top:0}
+.grp .num{position:absolute;left:84px;top:0}
+.grp .pips{position:absolute;left:150px;top:2px}
+.grp .sub{position:absolute;left:12px;top:11px}
+.grp .ico{position:absolute;left:0;top:1px}
+.grp.flash{outline:1px solid var(--danger);outline-offset:2px;background:rgba(217,99,76,.14)}
+.grp.rout{outline:1px dashed var(--danger);outline-offset:2px}
+.tile{position:absolute;left:467px;top:487px;width:26px;height:26px;border:1px solid var(--ivory);background:rgba(16,20,23,.6)}
+.tile .shutter{position:absolute;left:0;right:0;top:0;height:11px;background:rgba(16,20,23,.9);border-bottom:1px solid var(--brass)}
+.arc{position:absolute;border:2px solid var(--danger);border-color:var(--danger) transparent transparent transparent;border-radius:50%}
+</style></head><body>
+<div class="crosshair"></div>
+<div class="hotbar"><div class="sel"></div></div>
+
+<!-- compass strip: bearing to points and allies; the minimap is on demand (M) -->
+<div class="compass">
+  <div class="base"></div>
+  <div class="tick big" style="left:0"></div><div class="tick" style="left:45px"></div><div class="tick big" style="left:90px"></div><div class="tick" style="left:135px"></div><div class="tick big" style="left:180px"></div><div class="tick" style="left:225px"></div><div class="tick big" style="left:270px"></div><div class="tick" style="left:315px"></div><div class="tick big" style="left:359px"></div>
+  <div class="lbl" style="left:90px"><mc-text color="#afb9bc" shadow>NW</mc-text></div>
+  <div class="lbl" style="left:180px"><mc-text color="#eee9df" shadow>N</mc-text></div>
+  <div class="lbl" style="left:270px"><mc-text color="#afb9bc" shadow>NE</mc-text></div>
+  <div class="marker" style="left:112px"><b style="background:var(--dawn)"></b><mc-text color="#101417">A</mc-text></div>
+  <div class="marker" style="left:214px"><b class="hatch" data-c1="#5fb3ad" data-c2="#a07cc2"></b><mc-text color="#101417">B</mc-text></div>
+  <div class="marker" style="left:318px"><b style="background:var(--dusk)"></b><mc-text color="#101417">C</mc-text></div>
+  <div class="ally" style="left:160px"></div><div class="ally" style="left:166px"></div><div class="ally" style="left:171px"></div><div class="ally" style="left:206px"></div>
+  <div class="enemyseen" style="left:228px"></div><div class="enemyseen" style="left:233px"></div>
+</div>
+<!-- the tug: each team's bar grows toward the centre; the centre is 300 -->
+<div class="tug"><div class="l" style="width:89px"></div><div class="r" style="width:73px"></div><div class="mid"></div></div>
+<div class="abs" style="left:232px;top:29px"><mc-text color="#5fb3ad" shadow>DAWN 148</mc-text></div>
+<div class="abs" style="left:668px;top:29px"><mc-text color="#a07cc2" shadow>121 DUSK</mc-text></div>
+<div class="abs" style="left:468px;top:39px"><mc-text color="#eee9df" shadow>7:42</mc-text></div>
+<div class="abs" style="left:300px;top:40px"><mc-text color="#5fb3ad">A Old Village</mc-text></div>
+<div class="abs" style="left:0;top:50px;width:960px;text-align:center"><mc-text color="#ffaa66">B Shattered Keep  contested</mc-text></div>
+<div class="abs" style="left:592px;top:40px"><mc-text color="#a07cc2">C River Shrine</mc-text></div>
+
+<!-- gold and the training queue, top left -->
+<div class="abs row" style="left:12px;top:8px"><i class="px" data-art="coin"></i><mc-text color="#c8a56b" shadow>85</mc-text></div>
+<div class="abs row" style="left:12px;top:20px"><i class="px" data-art="pennant" data-pal="i=#5fb3ad,k=#eee9df"></i><mc-text color="#eee9df" shadow>Dawn Knight  0:12</mc-text><mc-text color="#afb9bc" shadow>at Trade Crossing</mc-text></div>
+<div class="abs row" style="left:12px;top:32px"><i class="px" data-art="pennant" data-pal="i=#2e6b68,k=#afb9bc"></i><mc-text color="#afb9bc" shadow>Dawn Longbow  queued</mc-text></div>
+
+<!-- horn echo: a rout is an event you hear, so it also lands at the screen edge -->
+<div class="abs" style="left:12px;top:396px;width:120px;height:22px">
+  <i class="px" data-art="horn" data-pal="b=#d9634c" style="position:absolute;left:2px;top:7px"></i>
+  <div class="arc" style="left:0;top:2px;width:20px;height:20px;transform:rotate(45deg)"></div>
+  <div class="arc" style="left:-4px;top:-2px;width:28px;height:28px;transform:rotate(45deg)"></div>
+  <div class="abs" style="left:30px;top:3px"><mc-text color="#d9634c" shadow>Support breaks</mc-text></div>
+  <div class="abs" style="left:30px;top:13px"><mc-text color="#afb9bc" shadow>regroup at the shrine</mc-text></div>
+</div>
+
+<!-- the line: one row per group, one pip per troop -->
+<div class="grp flash" style="top:432px">
+  <i class="px ico" data-art="sword"></i>
+  <div class="name"><mc-text color="#eee9df" shadow>INFANTRY</mc-text></div>
+  <div class="num"><mc-text color="#eee9df" shadow>9/12</mc-text></div>
+  <span class="pips" data-n="12" data-alive="9" data-lost="1" data-col="#5fb3ad" data-dead="#3a4347" data-flash="#ffffff"></span>
+  <div class="sub row"><mc-text color="#ffaa66">Attack</mc-text><mc-text color="#afb9bc" shadow>Shieldwall</mc-text><mc-text color="#ffaa66" shadow>FIGHTING</mc-text></div>
+  <div class="abs" style="left:150px;top:12px;width:48px" ><div class="bar"><i style="width:64%;background:#5fb3ad"></i></div></div>
+</div>
+<div class="grp" style="top:458px">
+  <i class="px ico" data-art="bow"></i>
+  <div class="name"><mc-text color="#eee9df" shadow>RANGED</mc-text></div>
+  <div class="num"><mc-text color="#eee9df" shadow>6/6</mc-text></div>
+  <span class="pips" data-n="6" data-alive="6" data-col="#5fb3ad"></span>
+  <div class="sub row"><mc-text color="#afb9bc" shadow>Hold</mc-text><mc-text color="#afb9bc" shadow>Line</mc-text></div>
+  <div class="abs" style="left:150px;top:12px;width:24px"><div class="bar"><i style="width:100%;background:#5fb3ad"></i></div></div>
+</div>
+<div class="grp rout" style="top:484px">
+  <i class="px ico" data-art="pennant" data-pal="i=#d9634c,k=#d9634c" style="transform:rotate(35deg);transform-origin:0 100%"></i>
+  <div class="name"><mc-text color="#afb9bc" shadow>SUPPORT</mc-text></div>
+  <div class="num"><mc-text color="#d9634c" shadow>1/2</mc-text></div>
+  <span class="pips" data-n="2" data-alive="1" data-col="#d9634c" data-dead="#3a4347"></span>
+  <div class="sub row"><mc-text color="#d9634c" shadow>ROUTING</mc-text><mc-text color="#afb9bc" shadow>regroups in 9 s</mc-text></div>
+</div>
+
+<!-- commander ability: Marshal's Rally Horn on cooldown -->
+<div class="tile"><i class="px" data-art="horn" data-pal="b=#eee9df" style="position:absolute;left:9px;top:11px"></i><div class="shutter"></div><div class="abs" style="left:7px;top:1px"><mc-text color="#eee9df" shadow>48</mc-text></div></div>
+<div class="abs" style="left:497px;top:490px"><mc-text color="#eee9df" shadow>H</mc-text></div>
+<div class="abs" style="left:497px;top:501px"><mc-text color="#afb9bc" shadow>Rally Horn</mc-text></div>
+<div class="abs" style="left:420px;top:496px"><mc-text color="#c8a56b">MARSHAL</mc-text></div>
+
+<!-- notice line -->
+<div class="abs row" style="left:0;top:462px;width:960px;justify-content:center"><i class="px" data-art="pennant" data-pal="i=#c8a56b,k=#c8a56b"></i><mc-text color="#eee9df" shadow>Dawn Knight trained: deploying at Trade Crossing</mc-text></div>
+
+<!-- key hints: actual binding names, small, bottom right -->
+<div class="abs row" style="right:12px;top:524px;gap:6px">
+  <span class="key">G</span><mc-text color="#afb9bc" shadow>Attack</mc-text>
+  <span class="key">V</span><mc-text color="#afb9bc" shadow>Follow</mc-text>
+  <span class="key">B</span><mc-text color="#afb9bc" shadow>Formation</mc-text>
+  <span class="key">M</span><mc-text color="#afb9bc" shadow>Map</mc-text>
+  <span class="key">R</span><mc-text color="#afb9bc" shadow>Council</mc-text>
+</div>
+<script src="mc.js"></script><script src="art.js"></script>
+</body></html>

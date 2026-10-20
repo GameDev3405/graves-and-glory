@@ -1,0 +1,52 @@
+<!doctype html>
+<html class="v2 v3 sb"><head><meta charset="utf-8"><title>Storybook 05: the march card, The Training Field</title>
+<link rel="stylesheet" href="../common.css"><link rel="stylesheet" href="../v3.css"><link rel="stylesheet" href="sb.css">
+<style>
+/* Between a scene and its match. The scene has just closed and the camera holds on its last frame, in-game
+   footage (stills/training-field-day.png, the render's background): the east road into the crossings in the
+   morning, the company's soldiers marching in the right third, the lantern posts in the left, the centre third
+   left to the road so the card covers nothing that matters. The letterbox stays, and the march card comes up
+   over the held frame: a leaf of the book's vellum with the battle's name, the spec's reason under it, the War
+   Table's own Rivergate map, the field's three facts, the company, and one brass action. Esc goes back to the
+   book. */
+</style></head>
+<body>
+<img class="s" src="art/bar-top.png" style="left:0;top:0" data-bleed data-overlay-ok alt="" data-name="letterbox, top">
+<img class="s" src="art/bar-bot.png" style="left:0;top:492px" data-bleed data-overlay-ok alt="" data-name="letterbox, bottom">
+
+<div class="box" data-panel data-name="march card" style="left:280px;top:73px;width:400px;height:394px">
+  <img class="s" src="art/card-400x394.png" style="left:0;top:0" data-under-ok alt="">
+  <span class="a t24 ink" data-cx="200" style="top:22px">The Training Field</span>
+  <span class="a b13 sepia" data-cx="200" style="top:54px;white-space:nowrap">The road west must open before the march begins.</span>
+  <img class="s" src="art/rule-orn.png" style="left:140px;top:78px" alt="">
+
+  <!-- the field: the War Table's own map of it, and its three facts -->
+  <img class="s" src="../v4/map-rivergate.png" style="left:30px;top:94px" data-under-ok alt="" data-name="Rivergate map">
+  <span class="a t16 ink" style="left:188px;top:102px">Rivergate Valley</span>
+  <span class="a b13 ink" style="left:188px;top:128px">Domination</span>
+  <span class="a b13 ink" style="left:188px;top:148px">Easy</span>
+
+  <!-- the company: who marches. On page 2, Maud alone (Wren joins on page 3); the row stays centred as it grows,
+       the minis 70 px apart (NOTES.md) -->
+  <span class="a m13 sepia caps" data-cx="200" style="top:194px">The company</span>
+  <img class="s" src="art/mini-46.png" style="left:177px;top:216px" data-under-ok alt="">
+  <img class="s" src="art/pt-maud-40.png" style="left:180px;top:219px" data-under-ok alt="" data-name="Maud">
+  <span class="a b13 ink" data-cx="200" style="top:266px">Maud</span>
+
+  <!-- the one action, and the way back -->
+  <div class="box" data-ctl data-name="march" style="left:80px;top:298px;width:240px;height:40px">
+    <img class="s" src="../v4/btn-brass-240x40.png" style="left:0;top:0" data-under-ok alt="">
+    <img class="s" src="art/kb-44x18.png" style="left:14px;top:11px" data-under-ok alt="">
+    <span class="kt" data-cx="36" style="top:14px;color:#2a1d0c">Enter</span>
+    <span class="a t16" data-cx="134" style="top:11px;color:#1e1509">March</span>
+  </div>
+  <div class="box" data-ctl data-name="back to the book" style="left:118px;top:350px;width:164px;height:28px">
+    <img class="s" src="art/tag-164x28.png" style="left:0;top:0" data-under-ok alt="">
+    <img class="s" src="art/kv-30x18.png" style="left:10px;top:5px" data-under-ok alt="">
+    <span class="kt" data-cx="25" style="top:8px;color:#2a2219">Esc</span>
+    <span class="a m13 ink" style="left:48px;top:6px">Back to the book</span>
+  </div>
+</div>
+
+<script src="../mc.js"></script><script src="../art.js"></script><script src="../v2.js"></script><script src="../check.js"></script>
+</body></html>

@@ -1,0 +1,115 @@
+<!doctype html>
+<html class="v2 v3"><head><meta charset="utf-8"><title>v3 UI: War Table, home</title>
+<link rel="stylesheet" href="common.css"><link rel="stylesheet" href="v3.css">
+<style>
+/* War Table home, third pass. The whole screen is the table: its back rail carries the way back and the
+   rest of the camp; three written orders lie on the oak, the chosen one sealed, lifted and ribboned;
+   who rides on the left in portrait frames (live model renders), where you ride on the pinned map. */
+.plq{position:absolute;top:12px;height:28px}
+.plq .ic{left:8px;top:7px}
+.plq .h11{position:absolute;left:28px;top:8px}
+.plq .bd{top:9px}
+.who{position:absolute;left:56px;width:44px;height:44px}
+.who .h11{position:absolute;left:56px;top:10px;white-space:nowrap}
+.who .ok{left:56px;top:27px}
+</style></head>
+<body>
+<img class="s" src="v3/oak-table.png" style="left:0;top:0" data-bleed alt="">
+<img class="s" src="v3/rail.png" style="left:0;top:0" data-bleed alt="">
+
+<!-- the back rail: the way back on the left, the rest of the camp in the middle, counts as wax drops -->
+<div class="plq" data-ctl data-name="camp" style="left:56px;width:96px">
+  <img class="s" src="v3/plaque-96.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s ic" src="v3/icon-camp.png" alt="">
+  <span class="h11 ivory">Camp</span>
+  <img class="s" src="v3/key-brass-27.png" style="left:61px;top:7px" data-under-ok alt="" id="esc-key">
+  <mc-text class="a" style="left:65px;top:10px" color="#f0d9a0">Esc</mc-text>
+</div>
+<div class="plq" data-ctl data-name="recruit" style="left:184px;width:112px">
+  <img class="s" src="v3/plaque-112.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s ic" src="v3/icon-recruit.png" alt=""><span class="h11 ivory">Recruit</span></div>
+<div class="plq" data-ctl data-name="banner" style="left:304px;width:112px">
+  <img class="s" src="v3/plaque-112.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s ic" src="v3/icon-banner.png" alt=""><span class="h11 ivory">Banner</span></div>
+<div class="plq" data-ctl data-name="contracts" style="left:424px;width:112px">
+  <img class="s" src="v3/plaque-112.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s ic" src="v3/icon-contracts.png" alt=""><span class="h11 ivory">Contracts</span>
+  <img class="s bd" src="v3/wax-badge.png" style="left:93px;top:8px" data-under-ok alt=""><mc-text class="a" style="left:96px;top:10px" color="#f1e7cb">2</mc-text></div>
+<div class="plq" data-ctl data-name="chapter" style="left:544px;width:112px">
+  <img class="s" src="v3/plaque-112.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s ic" src="v3/icon-chapter.png" alt=""><span class="h11 ivory">Chapter</span></div>
+<div class="plq" data-ctl data-name="friends" style="left:664px;width:112px">
+  <img class="s" src="v3/plaque-112.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s ic" src="v3/icon-friends.png" alt=""><span class="h11 ivory">Friends</span>
+  <img class="s bd" src="v3/wax-badge.png" style="left:93px;top:8px" data-under-ok alt=""><mc-text class="a" style="left:96px;top:10px" color="#f1e7cb">1</mc-text></div>
+
+<!-- who rides: each seat is a frame the game fills with that player's own model (drawEntity, scissored);
+     the pixel busts here are placeholders -->
+<span class="a h11 brass" style="left:56px;top:188px">Party</span>
+<div class="who" data-name="you" style="top:208px">
+  <img class="s" src="v3/frame-back-44.png" style="left:4px;top:4px" alt="">
+  <i class="px a" data-art="p_squire" data-scale="2" style="left:6px;top:8px"></i>
+  <img class="s" src="v3/frame-rim-44.png" style="left:0;top:0" alt="">
+  <span class="h11 ivory">Kort</span><img class="s ok" src="v3/ready-check.png" alt="">
+</div>
+<div class="who" data-name="friend" style="top:260px">
+  <img class="s" src="v3/frame-back-44.png" style="left:4px;top:4px" alt="">
+  <i class="px a" data-art="p_archer" data-scale="2" style="left:6px;top:8px"></i>
+  <img class="s" src="v3/frame-rim-44.png" style="left:0;top:0" alt="">
+  <span class="h11 ivory">Ansel</span><img class="s ok" src="v3/ready-check.png" alt="">
+</div>
+<div class="who" data-name="invite" style="top:312px">
+  <img class="s" src="v3/frame-back-empty-44.png" style="left:4px;top:4px" alt="">
+  <img class="s" src="v3/frame-rim-44.png" style="left:0;top:0" alt="">
+  <img class="s" src="v3/invite-plus.png" style="left:18px;top:18px" alt="">
+  <span class="h11 muted" style="top:16px">Invite</span>
+</div>
+
+<!-- what you fight: three written orders; the chosen one is sealed, ribboned and lifted -->
+<img class="s" src="v3/order-lo.png" style="left:232px;top:200px" data-under-ok alt="">
+<div class="box" data-panel data-name="practice" style="left:232px;top:200px;width:144px;height:136px">
+  <img class="s" src="v3/ink-practice.png" style="left:44px;top:18px" data-under-ok alt="">
+  <span class="a h11 sepia" data-cx="72" style="top:96px">Practice</span>
+</div>
+<img class="s" src="v3/order-hi.png" style="left:392px;top:188px" data-under-ok alt="">
+<img class="s" src="v3/ribbon-teal.png" style="left:470px;top:192px" data-under-ok alt="">
+<div class="box" data-panel data-name="skirmish" style="left:392px;top:188px;width:176px;height:160px">
+  <img class="s" src="v3/ink-skirmish.png" style="left:56px;top:36px" data-under-ok alt="">
+  <span class="a t16 ink" data-cx="88" style="top:116px">Skirmish</span>
+</div>
+<img class="s" src="v3/wax-crown.png" style="left:463px;top:171px" alt="" data-name="seal">
+<img class="s" src="v3/order-lo2.png" style="left:584px;top:200px" data-under-ok alt="">
+<div class="box" data-panel data-name="campaign" style="left:584px;top:200px;width:144px;height:136px">
+  <img class="s" src="v3/ink-campaign.png" style="left:42px;top:22px" data-under-ok alt="">
+  <span class="a h11 sepia" data-cx="72" style="top:96px">Campaign</span>
+</div>
+
+<!-- where: the chosen field, pinned to the table -->
+<img class="s" src="v3/field-card.png" style="left:736px;top:188px" data-under-ok alt="">
+<div class="box" data-panel data-name="field" style="left:736px;top:188px;width:168px;height:188px">
+  <img class="s" src="v3/tack.png" style="left:6px;top:4px" alt="">
+  <img class="s" src="v3/tack.png" style="left:155px;top:4px" alt="">
+  <span class="a h11 ink" data-cx="84" style="top:12px">Rivergate Valley</span>
+  <img class="s" src="v3/map-rivergate.png" style="left:16px;top:30px" data-under-ok alt="" id="map">
+  <mc-text class="a" style="left:29px;top:39px" color="#f1e7cb">A</mc-text>
+  <mc-text class="a" style="left:92px;top:94px" color="#f1e7cb">B</mc-text>
+  <mc-text class="a" style="left:112px;top:38px" color="#f1e7cb">C</mc-text>
+  <span class="a b11 nw sepia" data-cx="84" style="top:120px">Domination to 300</span>
+  <span class="a b11 nw sepia" data-cx="84" style="top:132px">2 v 2, Normal bots</span>
+  <div class="box" data-ctl data-name="change field" style="left:44px;top:152px;width:80px;height:24px">
+    <img class="s" src="v3/btn-vellum-80x24.png" style="left:0;top:0" data-under-ok alt="">
+    <img class="s" src="v3/quill.png" style="left:8px;top:6px" data-under-ok alt="">
+    <span class="a h11 ink" style="left:24px;top:6px">Change</span>
+  </div>
+</div>
+
+<!-- the one primary action -->
+<div class="box" data-ctl data-name="ride" style="left:360px;top:388px;width:240px;height:40px">
+  <img class="s" src="v3/btn-brass-240x40.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s" src="v3/key-brass-37.png" style="left:12px;top:13px" data-under-ok alt="">
+  <mc-text class="a" style="left:16px;top:16px" color="#3a2a12">Enter</mc-text>
+  <span class="a h11" data-cx="120" style="top:14px;color:#1e1509">Ride to the war gates</span>
+</div>
+
+<script src="mc.js"></script><script src="art.js"></script><script src="v2.js"></script><script src="check.js"></script>
+</body></html>

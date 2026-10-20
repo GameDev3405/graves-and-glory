@@ -1,0 +1,297 @@
+GRAVES AND GLORY — MASTER CHECKLIST
+Ordered by priority and implementation dependencies. Created October 17, 2026.
+
+Status: Implementation started October 17, 2026. See 05-WORK-LOG.txt and logs/
+for evidence. Checked tasks reflect their stated scope; milestone completion
+still requires installation, upgrade and gameplay verification.
+
+MILESTONE 1 — RELIABLE BUILD, PACKAGE AND SAVES
+Priority: Critical. Complete before distributing another build.
+
+[~] 1.01 Back up source, saves, collections, recipes and the current release ZIP.
+[x] 1.02 Establish version control for the working source and build scripts.
+[x] 1.03 Choose the next version and identify the exact source/build to release.
+[x] 1.04 Resolve Bannerbound versus Graves and Glory identifiers consistently:
+         mod ID, entrypoints, network channels, resource paths and launch recipe.
+[x] 1.05 Implement migration of old collections, world saves and relevant settings;
+         preserve originals and make repeated migration safe. Implementation and
+         13 filesystem checks pass; real-world upgrade is tracked under 1.10.
+[x] 1.06 Confirm old clients receive a clear incompatibility/update message.
+[x] 1.07 Build a clean archive from the selected source; remove test harnesses
+         from the player package and record its hash and build identity.
+[~] 1.08 Check all dependencies, resource packs, notices and recipe mappings.
+[x] 1.09 Update README, UI documentation, edit instructions and release notes
+         to describe the actual packaged implementation.
+[~] 1.10 Verify clean installation and upgrading an existing Bannerbound save.
+[x] 1.11 Verify collection, loadout and settings persistence after restart.
+         Isolated game restart preserves the full seeded profile and saved look.
+[x] 1.12 Run the existing appropriate regression checks on this exact build.
+         0.3.1: fresh 35, startup 3, upgrade/restart 40 pass.
+         0.3.2: full matching-client regression 39 passes; actual missing/old
+         login responses refused. See logs/session-02 for exact scope.
+         0.3.3: final private restart 50 passes; friends-host run 47 passes.
+         Production headless startup/restart and lobby/status checks pass.
+         0.3.4: exact-source dev restart/regression 52 passes; actual Prism
+         menu/camp/inventory/practice flow and R shortcut verified.
+         These are development-client checks; launcher installs remain under 1.10/1.19.
+[~] 1.13 Build an inventory of exact third-party files, licenses and their
+         CurseForge/Modrinth project and version IDs or approved inclusion route.
+[ ] 1.14 Prepare the original Graves and Glory mod for distribution on both
+         platforms, preferably as its own dependency project on each platform.
+[ ] 1.15 Create the CurseForge modpack through its supported export workflow:
+         manifest references, overrides, credits and approved external content.
+[x] 1.16 Create a Modrinth .mrpack with modrinth.index.json, pinned versions,
+         hashes, allowed download URLs and client/server environment flags.
+         18 official downloads verified, ZIP/index read back; launcher import
+         remains separately tracked under 1.19.
+[~] 1.17 Make both launcher installations work without Melty: remove mandatory
+         reliance on its join files, environment variables or runtime provisioning;
+         provide a normal title/menu route to the official server and local play.
+         0.3.3 native menu, private camp, friends host and server browser
+         work in actual Prism import/upgrade runs. Official CurseForge/Modrinth
+         App installation remains separately unverified.
+[x] 1.18 Verify client-only shaders/rendering mods are excluded from dedicated
+         server installs and that no secrets or personal saves enter exports.
+         Production headless runtime uses own mod + four dependencies; all
+         kit entries are allowlisted/read back. No saves or EULA are shipped.
+[~] 1.19 Test clean CurseForge and Modrinth launcher installs and upgrades;
+         ensure both produce matching gameplay/network versions and content.
+
+DONE WHEN: A fresh install and an upgrade run the same identified build,
+existing progress survives, and the archive matches its documentation.
+Candidate: 0.3.5 built and archive-verified locally; ZIP, .mrpack and server kit prepared.
+0.3.5 has build/policy/package checks only; latest live game evidence is 0.3.4.
+See the work log for exact tested artifacts and remaining installation work.
+Milestone remains open; current game runs and platform installation work continue.
+
+MILESTONE 2 — COMPLETE BRANDED LOBBY-TO-BATTLE FLOW
+Priority: High. Establish the experience every player sees.
+
+[ ] 2.01 Define one visual style: logo, typography, icons, colors, materials,
+         sound cues, selection states, spacing and motion.
+[ ] 2.02 Prototype FancyMenu/Drippy with the exact existing graphics stack;
+         investigate the reported EMF conflict before adopting them.
+[x] 2.03 Select the tested menu approach; use custom mod screens if necessary.
+         Native original screens selected and tested with the full graphics
+         stack. FancyMenu/Drippy are not needed for this entry menu.
+[x] 2.04 Replace automatic hosting from the title screen with a branded menu:
+         Play Public, Play with Friends, Practice, Settings and Credits.
+[ ] 2.05 Add startup/resource-loading presentation and separate world/server
+         connection screens with useful status, retry and cancellation.
+[x] 2.06 Display game version and server availability; make unavailable public
+         features clear until milestone 5 is ready.
+         Version/build visible; public service marked not launched/disabled.
+         Add live availability checks when a service is configured later.
+[x] 2.07 Refine the walkable camp layout, spawn orientation, signs, lighting,
+         ambience, NPC/station identity and navigation.
+[x] 2.08 Give each camp station a distinct action: war gates, army pavilion,
+         recruitment shrine, contract board, season monument and war table.
+[x] 2.09 Provide menu shortcuts to the same station functions. Quest/pass
+         stations become fully functional with milestone 4.
+[~] 2.10 Upgrade ready pads with mode selection, occupancy, visible countdown,
+         step-off cancellation and clear requirements. Verify existing code.
+[~] 2.11 Remove the current global conflict between custom rooms and pads;
+         model their states independently, with server isolation in milestone 3.
+[~] 2.12 Add map voting: eligible maps, previews, one vote per player,
+         vote changes, timer, tie resolution and disconnect handling.
+[x] 2.13 Keep leader-selected maps available in custom rooms.
+[ ] 2.14 Upgrade army management: saved presets, role filters, comparisons,
+         twenty-slot deployment editing and clear empty/locked states.
+[ ] 2.15 Improve troop previews, role descriptions, strengths and counters.
+[x] 2.16 Improve rolling presentation: cost, reward pool, current odds,
+         server-confirmed reward, skippable reveal and completed-collection state.
+[ ] 2.17 Add an interactive tutorial and training yard for orders, formations,
+         capture points, reinforcements and trying troops.
+[~] 2.18 Check keyboard navigation, readable UI scales, contrast, narration,
+         reduced motion and small-window layouts.
+[~] 2.19 Verify each bundled shader/texture/animation preset and troop geometry;
+         resolve model overrides and retain a reliable low-effects option.
+         0.3.2 matching full-stack test logs zero invalid-rotation/failed-model
+         messages after Excalibur alignment and a narrow parser backport.
+         Verification of every preset and appearance remains open.
+[~] 2.20 Verify launch -> lobby -> army -> map -> battle -> results -> lobby.
+
+DONE WHEN: The complete local/friends flow is understandable, consistent and
+repeatable, with no dead-end screens or unverified package-only differences.
+Build/evidence: ____________________  Completed: ____________________
+
+MILESTONE 3 — DEDICATED SERVERS, PRIVATE ROOMS AND REAL PARTIES
+Priority: High. Required for the requested public social experience.
+
+[~] 3.H01 Inventory the home server: user reports i7-10700K, 96 GB DDR4,
+          Windows 11. Storage, available resources, workloads and access remain open.
+[~] 3.H02 Measure upload bandwidth, latency and stability on Starlink; check
+          service plan/IP policy and CGNAT. Official support documents default
+          CGNAT and no port forwarding on the stock Starlink router.
+[ ] 3.H03 Evaluate an outbound TCP relay/public edge for Starlink first;
+          alternatively verify public-IP availability and suitable router support.
+          Keep simulation at home and test from outside the home network.
+[ ] 3.H04 Plan a stable server hostname, LAN address and firewall exposure;
+          expose only the intended game entry point and restrict admin/backend ports.
+[ ] 3.H05 Plan always-on operation, startup after reboot, graceful maintenance,
+          monitoring and automatic backups with a restore test.
+[ ] 3.H06 Allocate memory per process from measurements, reserving RAM for the
+          OS and existing services. Do not give one Minecraft process all 96 GB.
+[ ] 3.H07 Start with a small deployment on that PC; measure one full match
+          before choosing simultaneous match count. CPU/tick time is a capacity gate.
+[x] 3.01 Create a dedicated Fabric server package and documented configuration.
+         Production Fabric launch of the exported original JAR + four dependencies
+         passes startup, lobby block checks, status query, save and restart.
+         Internal world-name requirement is documented in SERVER-README.txt.
+[~] 3.02 Define match states: waiting, ready check, voting, preparing,
+         loading, playing, results, returning and cleanup/failure.
+[~] 3.03 Separate shared lobby activity from match activity. Begin with one
+         match per server process if that is the simplest reliable isolation.
+[~] 3.04 Prepare/cache battlefields so selecting maps does not rebuild the
+         shared lobby's active battlefield and stall unrelated players.
+[x] 3.05 Separate persistent Party records from temporary Custom Room records.
+[x] 3.06 Add party creation, invites, accept/decline, leave, kick, disband,
+         leader transfer, presence and invite expiration.
+[x] 3.07 Keep parties alive across results, rematches and returns to the lobby.
+[x] 3.08 Validate party size against mode capacity; never silently split friends.
+[x] 3.09 Define party readiness, leader queue control and cancellation behavior.
+[~] 3.10 Add private room codes, optional passwords and access controls.
+[x] 3.11 Add manual team selection, host controls, map/mode settings,
+         bot-fill rules and per-player ready checks to custom rooms.
+[~] 3.12 Support 1vAI, 1v1, 2v2, 3v3 and 4v4 with clear capacity rules.
+[~] 3.13 Add spectators and rematch controls with appropriate match permissions.
+[~] 3.14 Add reconnect reservations, temporary-disconnect behavior, bot takeover
+         rules, leader-loss handling and clear join-failure recovery.
+[~] 3.15 Fix full-match admission so visitors can remain in a waiting lobby
+         instead of being told to wait there while being disconnected.
+         0.3.5 source implemented; 746 admission-policy assertions and offline
+         build pass. Camp isolation, R council access and 16-connection server
+         templates added. Live full-match join/reconnect/next-round checks pending.
+[ ] 3.16 Prototype routing with Velocity/FabricProxy-Lite if using multiple
+         servers; validate mod packets, identity forwarding and transitions.
+[ ] 3.17 Restrict backend access and validate authenticated player identity.
+[~] 3.18 Define the official network versus local friends-hosted experience,
+         including progression boundaries and offline behavior.
+[~] 3.19 Verify two independent rooms/activities cannot block or alter each other.
+[x] 3.20 Verify an entire party reaches the same match/team and returns together.
+
+DONE WHEN: Friends can play friends privately, and a persistent party can be
+reserved as one team for a public match without losing members in transitions.
+Build/evidence: ____________________  Completed: ____________________
+
+MILESTONE 4 — SECURE PROGRESSION, QUESTS AND BATTLE PASS
+Priority: High. Complete official reward integrity before public rewards.
+
+[~] 4.01 Make official profiles server-owned: gold, unlocks, quests, XP,
+         pass claims, mastery and account progression.
+[~] 4.02 Disable trusted local-profile imports on official servers; define
+         migration and keep local/private progression clearly separated.
+[~] 4.03 Add profile schema versions, backups and safe upgrades.
+[~] 4.04 Add a reward ledger with unique match/claim identifiers so retries,
+         reconnects and crashes cannot duplicate a grant or a purchase.
+[~] 4.05 Define reward eligibility, participation checks, bot-match treatment,
+         private-match farming rules and disconnect treatment.
+[~] 4.06 Emit verified battle events for completion, victory, objective play,
+         healing, troop use and other legitimate quest/mastery actions.
+[~] 4.07 Design content-driven quest, season and reward definitions.
+[~] 4.08 Implement three daily contracts, one free reroll and reset timer.
+[~] 4.09 Implement weekly contracts, catch-up progress and server-owned resets.
+[x] 4.10 Keep quests achievable with owned troops and aligned with team success.
+[x] 4.11 Implement quest progress UI, claims and contract-board interaction.
+[~] 4.12 Model the combined economy before locking rewards; prototype a daily
+         total of 100 gold alongside existing match income and roll cost.
+[x] 4.13 Preserve guaranteed-new troop unlocks; define cosmetic rewards and
+         meaningful behavior once all troop types are unlocked.
+[~] 4.14 Plan additional balanced troop content before accelerating unlocks;
+         the present six locked types cannot sustain a long collection loop.
+[x] 4.15 Implement a free first-season pass, initially targeting about thirty
+         tiers, with match/quest XP, previews and reliable reward claims.
+[~] 4.16 Add weekly catch-up progress and automatic delivery of earned,
+         unclaimed season rewards. Define season transition behavior.
+[x] 4.17 Build pass UI and connect the season monument in the lobby.
+[~] 4.18 Add account levels, troop mastery, banners, titles and profile cosmetics.
+[~] 4.19 Add a results screen combining match gold, quest progress, pass XP,
+         mastery, objective contribution, healing and army losses.
+[~] 4.20 Test reset boundaries, time changes, repeated claims, disconnects,
+         restarts, storage failures and season transitions.
+
+DONE WHEN: Players earn and retain the correct rewards across sessions, every
+grant is explainable, and local edits cannot alter official progression.
+Build/evidence: ____________________  Completed: ____________________
+
+MILESTONE 5 — PUBLIC MATCHMAKING AND INTERNET BETA
+Priority: Required before calling the game publicly multiplayer-ready.
+
+[ ] 5.01 Validate the preferred 96 GB home-hosted deployment under remote load;
+         determine safe player/match limits and operational costs. Use paid
+         relay/edge/hosting additions only if justified and approved by the user.
+[ ] 5.02 Implement public queue admission, cancellation and status feedback.
+[ ] 5.03 Match whole parties to one team; validate capacity, latency and
+         sensible party-size/skill balance without breaking up friends.
+[ ] 5.04 Allocate match servers, reserve seats, route players and recover
+         gracefully if a server fails during loading or play.
+[ ] 5.05 Choose a small initial set of active public queues; keep all team
+         sizes available privately and label any public bot-fill policy.
+[ ] 5.06 Add ready checks, loading timeouts and missing-player handling.
+[ ] 5.07 Return parties together after results and offer Play Again Together.
+[ ] 5.08 Add moderation: mute/block/report, admin tools, access restrictions
+         and relevant audit logs.
+[ ] 5.09 Add network/build compatibility checks and useful connection errors.
+[ ] 5.10 Profile server CPU, memory, tick duration and network load alongside
+         client frame times; use spark where appropriate.
+[ ] 5.11 Run an eight-human Internet match with up to 160 troops.
+[ ] 5.12 Test mixed solo/party queues, reconnects, full matches, leader exits,
+         multiple rooms, rematches and server restarts.
+[ ] 5.13 Measure map travel, first contact, chokepoints, spawn safety and
+         team/faction balance; fix demonstrated problems.
+[ ] 5.14 Verify monitoring, backups, recovery and rollback procedures.
+[ ] 5.15 Produce and test CurseForge, Modrinth and dedicated-server releases
+         from one version, plus the existing Melty artifact if retained.
+[ ] 5.16 Review results with the user and follow the existing publication hold;
+         publish only after the required explicit confirmation. Prepare both
+         platform listings, artwork, screenshots, credits and release notes first.
+[ ] 5.17 Submit approved platform projects/files for moderation, resolve any
+         platform-specific issues and track the actual public versions separately.
+[ ] 5.18 Verify players installing from each public listing can reach the home
+         server, pass version checks, keep parties together and retain rewards.
+
+DONE WHEN: Real remote players can join, stay together, finish matches, claim
+rewards and requeue reliably, with measured operating/performance limits.
+Build/evidence: ____________________  Completed: ____________________
+
+MILESTONE 6 — FIRST SEASON AND SUSTAINABLE NEW CONTENT
+Priority: Expand after the core loop and public service are dependable.
+
+[ ] 6.01 Define a season theme and achievable content schedule.
+[ ] 6.02 Add new troop roles in small balanced batches: anti-armour infantry,
+         protective support and siege specialists are initial candidates.
+[ ] 6.03 Give each new troop readable visuals, counters, previews and tutorial
+         information; rarity alone must not imply superior combat strength.
+[ ] 6.04 Add mastery cosmetics, commander appearances, army banners, emotes,
+         profile decorations and loading artwork.
+[ ] 6.05 Add one new objective mode: evaluate escort versus attack/defend.
+[ ] 6.06 Add one cooperative challenge for parties and quiet queue periods.
+[ ] 6.07 Add a rotating weekend modifier and a community progress event.
+[ ] 6.08 Evaluate more maps only after tuning the existing four battlefields.
+[ ] 6.09 Review progression completion rates, queue health, match balance and
+         player feedback before expanding rewards or adding more queues.
+[ ] 6.10 Evaluate ranked play/leaderboards only after population, balance and
+         official progression integrity justify them.
+[ ] 6.11 Review first-season results and write the next prioritized backlog.
+
+DONE WHEN: The season adds worthwhile tactical/content variety and attainable
+rewards without overwhelming development capacity or weakening match quality.
+Build/evidence: ____________________  Completed: ____________________
+
+0.3.6 LOCAL CAMP / FRIENDS / PROGRESSION SCOPE
+Completed marks above cover the local/friends implementation, not a public service.
+New courtyard and four NPC stations; shared menu routes; camp-only HUD; recruitment
+with shown pool/odds and server-confirmed reveal. Normal and small-window views checked.
+Two real local clients passed invite/accept, same-team battle, disconnect/reclaim,
+return, rematch and party disk readback. 35 social/progression rule scenarios pass.
+Parties persist; rooms are temporary across server restart. One match per server.
+Codes shipped; passwords, spectators and cross-server accounts remain open.
+Three dailies, reroll, weekly, free 30-tier chapter and title rewards shipped.
+4.08 shows the reset schedule, not a live countdown. 4.09/4.16 catch-up and automatic
+season delivery remain open. 4.07 extension plan exists; external content-driven
+chapter definitions remain open. 4.18 ships titles only, not mastery or other cosmetics.
+Atomic backup saves, claim deduplication and failure rollback tested; official economy
+and crash/restart stress validation remain open. 3.15 live full-capacity waiting test
+remains open; reconnect tested in a two-client room. Public hosting explicitly deferred.
+See go-x20/outputs/PROGRESSION-AND-SOCIAL-DESIGN.txt and 0.3.6 verification report.
+

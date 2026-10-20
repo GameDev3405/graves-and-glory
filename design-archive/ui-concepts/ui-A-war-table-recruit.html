@@ -1,0 +1,96 @@
+<!doctype html><html><head><meta charset="utf-8"><title>UI A: War Table, muster roll</title>
+<link rel="stylesheet" href="common.css">
+<style>
+body{background:var(--oak2)}
+.table{position:absolute;inset:0;background:repeating-linear-gradient(0deg,#3a2817 0 7px,#34231400 7px 8px),repeating-linear-gradient(90deg,#00000000 0 180px,#2a1b0f 180px 182px),#3a2817}
+.vignette{position:absolute;inset:0;box-shadow:inset 0 0 90px 30px rgba(0,0,0,.65)}
+.rail{position:absolute;left:0;right:0;top:0;height:6px;background:#2a1b0f;box-shadow:0 1px 0 #5a3f25}
+.hb{position:absolute;top:6px;width:120px;height:52px;border:1px solid var(--ink);clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),50% 100%,0 calc(100% - 8px));text-align:center}
+.hb.sel{height:74px}
+.hb .g{position:absolute;left:52px;top:10px}
+.hb .n{position:absolute;left:0;right:0;top:30px;font-family:Marcellus;font-size:12px}
+.hb.sel .n{top:40px}
+.hb .s{display:none;position:absolute;left:0;right:0;top:44px;font-family:Lato;font-size:9px;opacity:.85}
+.hb.sel .s{display:block;top:54px}
+.roll{position:absolute;left:40px;top:96px;width:540px;height:426px;background:#dccb9f;border:1px solid #6b5a3a;box-shadow:inset 0 0 0 2px #e9dbb6,inset 0 0 40px rgba(110,80,40,.4),3px 4px 0 rgba(0,0,0,.5)}
+.ink{color:#2a2219;font-family:Lato;font-size:11px}
+.inkt{color:#2a2219;font-family:Marcellus;font-size:13px}
+.card{position:absolute;width:160px;height:96px;background:#efe4c8;border:1px solid #8f7a52;box-shadow:2px 2px 0 rgba(0,0,0,.35)}
+.card .port{position:absolute;left:8px;top:8px;width:40px;height:44px;background:#cdbb92;border:1px solid #8f7a52}
+.card .nm{position:absolute;left:56px;top:8px;font-family:Marcellus;font-size:12px;color:#2a2219;white-space:nowrap}
+.card .rar{position:absolute;left:56px;top:22px;font-family:Lato;font-size:9px;white-space:nowrap}
+.card .cnt{position:absolute;left:56px;top:36px}
+.card .stars{position:absolute;left:56px;top:50px}
+.card .foot{position:absolute;left:8px;right:8px;top:62px;border-top:1px solid #b9a67a;padding-top:3px;font-family:Lato;font-size:9px;color:#6b5a3a;white-space:nowrap}
+.card.new{outline:2px solid var(--brass)}
+.card.locked{background:#d6c7a4}
+.card.locked .port{background:repeating-linear-gradient(45deg,#cdbb92 0 2px,#bfae86 2px 4px)}
+.letter{position:absolute;left:620px;top:96px;width:300px;height:200px;background:#efe4c8;border:1px solid #8f7a52;box-shadow:3px 4px 0 rgba(0,0,0,.5)}
+.letter::before{content:"";position:absolute;left:0;right:0;top:0;height:60px;background:linear-gradient(135deg,transparent 48%,#8f7a52 48%,#8f7a52 50%,transparent 50%) left/50% 100% no-repeat,linear-gradient(45deg,transparent 48%,#8f7a52 48%,#8f7a52 50%,transparent 50%) right/50% 100% no-repeat}
+.wax{position:absolute;width:24px;height:24px;border-radius:50%;background:#8a2b1f;box-shadow:inset 0 0 0 3px #a9392b,inset 0 0 0 4px #7a2418,2px 2px 0 rgba(0,0,0,.5)}
+.reveal{position:absolute;left:620px;top:316px;width:300px;height:206px;background:#efe4c8;border:1px solid #8f7a52;box-shadow:3px 4px 0 rgba(0,0,0,.5)}
+.reveal .rib{position:absolute;left:-6px;top:14px;height:16px;padding:0 10px;background:#8a2b1f;color:#f1e6c0;font-family:Marcellus;font-size:11px;line-height:16px;box-shadow:2px 2px 0 rgba(0,0,0,.4)}
+.bigstar{position:absolute}
+.bbtn{position:absolute;height:26px;padding:0 14px;display:flex;align-items:center;background:#b48d4e;border:1px solid #e0c27a;box-shadow:inset 0 1px 0 #f0d896,inset 0 -2px 0 #7d5e2a,2px 3px 0 rgba(0,0,0,.5);color:#1e150a;font-family:Marcellus;font-size:13px;letter-spacing:1px}
+</style></head><body>
+<div class="table"></div><div class="vignette"></div><div class="rail"></div>
+
+<!-- five House banners hang from the rail; the chosen one hangs lower -->
+<div class="hb sel" style="left:64px;background:#f1e6c0;color:#5a4420"><i class="px g" data-art="gilded" data-scale="2" data-pal="i=#c8a56b"></i><div class="n">GILDED ORDER</div><div class="s">the oath that holds the line</div></div>
+<div class="hb" style="left:224px;background:#3f4a3a;color:#d8d2c0"><i class="px g" data-art="graveborn" data-scale="2" data-pal="i=#d8d2c0"></i><div class="n">GRAVEBORN</div><div class="s">the dead who answered</div></div>
+<div class="hb" style="left:384px;background:#8a4a2a;color:#f1dcb0"><i class="px g" data-art="wildmoot" data-scale="2" data-pal="i=#d19a3a"></i><div class="n">WILDMOOT</div><div class="s">the woods have teeth</div></div>
+<div class="hb" style="left:544px;background:#2b2b2e;color:#e8c98a"><i class="px g" data-art="ironclad" data-scale="2" data-pal="i=#c08a3e"></i><div class="n">IRONCLAD</div><div class="s">the hold remembers</div></div>
+<div class="hb" style="left:704px;background:#1d2f4a;color:#bfe0dc"><i class="px g" data-art="tidecallers" data-scale="2" data-pal="i=#6fc7b8"></i><div class="n">TIDECALLERS</div><div class="s">the sea wants the land</div></div>
+<div class="abs" style="left:840px;top:12px"><mc-text color="#c8a56b" shadow scale="2">300</mc-text></div>
+<div class="abs" style="left:840px;top:34px"><mc-text color="#afb9bc">gold</mc-text></div>
+<div class="abs" style="left:840px;top:46px"><mc-text color="#c8a56b">14 Gilded shards</mc-text></div>
+
+<!-- the muster roll of the chosen House -->
+<div class="roll">
+  <div class="abs inkt" style="left:18px;top:14px;font-size:15px">MUSTER ROLL OF THE GILDED ORDER</div>
+  <div class="abs ink" style="left:18px;top:32px;font-size:9px;color:#6b5a3a">Knights, templars and longbowmen sworn to the last living crown. Expensive, armoured, holds ground.</div>
+  <div class="abs ink" style="left:18px;top:44px;font-size:9px;color:#8a2b1f">Bulwark: 6 slots -15% ranged damage, 10 slots -30%, 14 slots -45%. Shield troops. Nearby groups do not rout.</div>
+  <div class="card" style="left:18px;top:64px"><div class="port"><i class="px" data-art="bust" data-scale="4" data-pal="i=#8a7a5a" style="position:absolute;left:4px;top:6px"></i></div><div class="nm">Order Squire</div><div class="rar" style="color:#6b5a3a">Common &middot; shield infantry</div><div class="cnt"><mc-text color="#2a2219">x3  in banner</mc-text></div><div class="stars"><i class="px" data-art="star" data-pal="i=#b48d4e"></i><i class="px" data-art="star" data-pal="i=#b48d4e"></i><i class="px" data-art="star" data-pal="i=#cdbb92"></i></div><div class="foot">Evolve to Knight: 12 shards</div></div>
+  <div class="card" style="left:190px;top:64px"><div class="port"><i class="px" data-art="bust" data-scale="4" data-pal="i=#7a7a62" style="position:absolute;left:4px;top:6px"></i></div><div class="nm">Order Archer</div><div class="rar" style="color:#6b5a3a">Common &middot; ranged</div><div class="cnt"><mc-text color="#2a2219">x2  in banner</mc-text></div><div class="stars"><i class="px" data-art="star" data-pal="i=#b48d4e"></i><i class="px" data-art="star" data-pal="i=#cdbb92"></i><i class="px" data-art="star" data-pal="i=#cdbb92"></i></div><div class="foot">Evolve to Longbow: 12 shards</div></div>
+  <div class="card new" style="left:362px;top:64px"><div class="port"><i class="px" data-art="bust" data-scale="4" data-pal="i=#e8dcc0" style="position:absolute;left:4px;top:6px"></i></div><div class="nm">Templar</div><div class="rar" style="color:#8a2b1f">Epic &middot; shield &middot; 2 slots</div><div class="cnt"><mc-text color="#2a2219">x1  rank 2</mc-text></div><div class="stars"><i class="px" data-art="star" data-pal="i=#b48d4e"></i><i class="px" data-art="star" data-pal="i=#b48d4e"></i><i class="px" data-art="star" data-pal="i=#cdbb92"></i></div><div class="foot" style="color:#8a2b1f">Just ranked up: duplicate</div></div>
+  <div class="card" style="left:18px;top:172px"><div class="port"><i class="px" data-art="bust" data-scale="4" data-pal="i=#8a6a45" style="position:absolute;left:4px;top:6px"></i></div><div class="nm">Order Longbow</div><div class="rar" style="color:#6b5a3a">Rare &middot; ranged</div><div class="cnt"><mc-text color="#2a2219">x1  in banner</mc-text></div><div class="stars"><i class="px" data-art="star" data-pal="i=#b48d4e"></i><i class="px" data-art="star" data-pal="i=#cdbb92"></i><i class="px" data-art="star" data-pal="i=#cdbb92"></i></div><div class="foot">Counters: beasts, loose lines</div></div>
+  <div class="card" style="left:190px;top:172px"><div class="port"><i class="px" data-art="bust" data-scale="4" data-pal="i=#d9c47a" style="position:absolute;left:4px;top:6px"></i></div><div class="nm">Sunweaver</div><div class="rar" style="color:#6b5a3a">Rare &middot; support &middot; mend</div><div class="cnt"><mc-text color="#2a2219">x1  in banner</mc-text></div><div class="stars"><i class="px" data-art="star" data-pal="i=#b48d4e"></i><i class="px" data-art="star" data-pal="i=#cdbb92"></i><i class="px" data-art="star" data-pal="i=#cdbb92"></i></div><div class="foot">Mastery 2: +2% mend</div></div>
+  <div class="card locked" style="left:362px;top:172px"><div class="port"><i class="px" data-art="lock" data-scale="2" data-pal="i=#8f7a52" style="position:absolute;left:14px;top:14px"></i></div><div class="nm" style="color:#6b5a3a">Lord Marshal Aldric</div><div class="rar" style="color:#8a2b1f">Legendary &middot; 4 slots</div><div class="cnt"><mc-text color="#6b5a3a">not yet recruited</mc-text></div><div class="foot">Plants a banner that rallies</div></div>
+  <div class="abs" style="left:18px;top:286px;width:504px;height:1px;background:#b9a67a"></div>
+  <div class="abs inkt" style="left:18px;top:296px">YOUR BANNER &middot; <span style="font-family:Lato">14 of 20</span> slots</div>
+  <div class="abs" style="left:18px;top:316px;display:grid;grid-template-columns:repeat(20,22px);gap:2px">
+    <b style="width:20px;height:20px;background:#f1e6c0;border:1px solid #8f7a52"></b><b style="width:20px;height:20px;background:#f1e6c0;border:1px solid #8f7a52"></b><b style="width:20px;height:20px;background:#f1e6c0;border:1px solid #8f7a52"></b><b style="width:20px;height:20px;background:#f1e6c0;border:1px solid #8f7a52"></b><b style="width:20px;height:20px;background:#f1e6c0;border:1px solid #8f7a52"></b><b style="width:20px;height:20px;background:#f1e6c0;border:1px solid #8f7a52"></b><b style="width:20px;height:20px;background:#f1e6c0;border:1px solid #8f7a52"></b><b style="width:20px;height:20px;background:#f1e6c0;border:1px solid #8f7a52"></b>
+    <b style="width:20px;height:20px;background:#3f4a3a;border:1px solid #8f7a52"></b><b style="width:20px;height:20px;background:#3f4a3a;border:1px solid #8f7a52"></b><b style="width:20px;height:20px;background:#3f4a3a;border:1px solid #8f7a52"></b><b style="width:20px;height:20px;background:#3f4a3a;border:1px solid #8f7a52"></b><b style="width:20px;height:20px;background:#3f4a3a;border:1px solid #8f7a52"></b><b style="width:20px;height:20px;background:#3f4a3a;border:1px solid #8f7a52"></b>
+    <b style="width:20px;height:20px;border:1px dashed #8f7a52"></b><b style="width:20px;height:20px;border:1px dashed #8f7a52"></b><b style="width:20px;height:20px;border:1px dashed #8f7a52"></b><b style="width:20px;height:20px;border:1px dashed #8f7a52"></b><b style="width:20px;height:20px;border:1px dashed #8f7a52"></b><b style="width:20px;height:20px;border:1px dashed #8f7a52"></b>
+  </div>
+  <div class="abs ink" style="left:18px;top:342px;font-size:9px;color:#6b5a3a">8 Gilded (Bulwark I) &middot; 6 Graveborn (Rise Again I) &middot; 6 empty. Drag a card onto the banner; markers set the front line.</div>
+  <div class="abs" style="left:18px;top:366px;display:flex;gap:8px"><span class="btn brass" style="height:18px;font-size:10px">OPEN BANNER BUILDER  B</span><span class="btn brass" style="height:18px;font-size:10px">GRAVEBORN ROLL  2</span><span class="btn brass" style="height:18px;font-size:10px">ALL HOUSES  1</span></div>
+  <div class="abs ink" style="left:18px;top:398px;font-size:9px;color:#6b5a3a">Recruitment pool, Gilded: Common 60% &middot; Rare 28% &middot; Epic 10% &middot; Legendary 2% &middot; an Epic or better is guaranteed within 7 more letters.</div>
+</div>
+
+<!-- the enlistment letter: the roll button -->
+<div class="letter">
+  <div class="wax" style="left:138px;top:48px"></div>
+  <div class="abs inkt" style="left:0;right:0;top:86px;text-align:center;font-size:14px">LETTER OF ENLISTMENT</div>
+  <div class="abs ink" style="left:0;right:0;top:106px;text-align:center;font-size:9px;color:#6b5a3a">Break the seal to call one recruit of the Gilded Order</div>
+  <div class="bbtn" style="left:70px;top:130px">ENLIST&nbsp;&nbsp;<span style="font-family:Lato;font-weight:bold">100</span>&nbsp;GOLD</div>
+  <div class="abs ink" style="left:0;right:0;top:166px;text-align:center;font-size:9px;color:#6b5a3a">Duplicates become rank stars (max 3) and 6 shards. Enter: enlist &middot; Esc: back</div>
+</div>
+
+<!-- the reveal: last letter opened -->
+<div class="reveal">
+  <div class="rib">DUPLICATE &middot; RANK UP</div>
+  <div class="abs" style="left:18px;top:40px;width:70px;height:84px;background:#f1e6c0;border:2px solid var(--brass);box-shadow:inset 0 0 0 1px #8f7a52"><i class="px" data-art="bust" data-scale="6" data-pal="i=#e8dcc0" style="position:absolute;left:10px;top:10px"></i><i class="px" data-art="gilded" data-pal="i=#c8a56b" style="position:absolute;left:4px;top:4px"></i></div>
+  <div class="abs inkt" style="left:100px;top:40px;font-size:16px">TEMPLAR</div>
+  <div class="abs ink" style="left:100px;top:60px;font-size:9px;color:#8a2b1f">Epic &middot; infantry &middot; shield &middot; 2 banner slots</div>
+  <div class="abs" style="left:100px;top:76px"><i class="px" data-art="star" data-scale="2" data-pal="i=#b48d4e"></i> <i class="px" data-art="star" data-scale="2" data-pal="i=#b48d4e" style="outline:1px solid #8a2b1f;outline-offset:2px"></i> <i class="px" data-art="star" data-scale="2" data-pal="i=#cdbb92"></i></div>
+  <div class="abs ink" style="left:100px;top:98px;font-size:9px;color:#2a2219">Second star stamped: +4% health, +4% damage.</div>
+  <div class="abs ink" style="left:100px;top:110px;font-size:9px;color:#2a2219">+6 Gilded shards (now 14).</div>
+  <div class="abs" style="left:18px;top:136px;width:264px;height:1px;background:#b9a67a"></div>
+  <div class="abs ink" style="left:18px;top:144px;font-size:9px;color:#6b5a3a">Full plate, gold cross, great helm crest. Takes -15% ranged damage under Bulwark.</div>
+  <div class="abs ink" style="left:18px;top:170px;font-size:10px;color:#2a2219">Counters: arrows, charges.  Weak to: shield-breakers, mortar.</div>
+  <div class="abs" style="left:18px;top:186px"><span class="lato" style="color:#8a2b1f;font-size:9px">Space: next letter &middot; Tab: skip reveal</span></div>
+</div>
+<div class="abs row" style="left:16px;top:526px;gap:6px"><span class="key">Esc</span><mc-text color="#afb9bc">War table</mc-text><span class="key">1-5</span><mc-text color="#afb9bc">House</mc-text><span class="key">Enter</span><mc-text color="#afb9bc">Enlist</mc-text></div>
+<script src="mc.js"></script><script src="art.js"></script>
+</body></html>

@@ -1,0 +1,31 @@
+{
+ "v4-hud-iron-ledger": {
+  "words": 45,
+  "sizes": [
+   8,
+   11
+  ],
+  "issues": [],
+  "lowContrast": []
+ },
+ "v4-ui-war-table-home": {
+  "words": 48,
+  "sizes": [
+   8,
+   11,
+   16
+  ],
+  "issues": [],
+  "lowContrast": []
+ },
+ "v4-ui-war-table-recruit": {
+  "words": 40,
+  "sizes": [
+   8,
+   11,
+   16
+  ],
+  "issues": [],
+  "lowContrast": []
+ }
+}

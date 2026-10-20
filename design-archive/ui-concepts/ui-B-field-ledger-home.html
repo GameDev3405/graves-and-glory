@@ -1,0 +1,115 @@
+<!doctype html><html><head><meta charset="utf-8"><title>UI B: Field Ledger, war table</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* Charcoal kept, hierarchy added: a spine of brass index tabs, three big plates, one real banner card. */
+.scrim{background:rgba(10,13,16,.84)}
+.top{position:absolute;left:0;right:0;top:0;height:40px;background:#171d20;border-bottom:1px solid #394246}
+.spine{position:absolute;left:0;top:40px;bottom:0;width:136px;background:#14191c;border-right:1px solid #394246}
+.tab{position:absolute;left:8px;width:128px;height:24px;display:flex;align-items:center;gap:6px;padding-left:8px;color:var(--muted);font-family:Lato;font-size:11px}
+.tab.sel{background:#1f2a2e;color:var(--ivory);border-left:3px solid var(--brass);padding-left:5px;width:131px}
+.tab .px{opacity:.9}
+.plate{position:absolute;top:70px;width:176px;height:160px;background:rgba(26,33,37,.96);border:1px solid var(--edge);box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 -1px 0 #0d1113}
+.plate .h{position:absolute;left:12px;top:46px;font-family:Marcellus;font-size:16px;color:var(--ivory)}
+.plate .s{position:absolute;left:12px;right:12px;top:66px;font-family:Lato;font-size:10px;color:var(--muted);line-height:13px}
+.plate .g{position:absolute;left:12px;top:12px}
+.plate.sel{border-color:var(--brass);box-shadow:inset 0 0 0 1px var(--brass)}
+.plate .foot{position:absolute;left:12px;right:12px;bottom:10px}
+.chip{display:inline-block;height:16px;padding:0 6px;border:1px solid var(--edge);color:var(--ivory);font:10px/14px Lato;margin-right:3px;background:#20292d}
+.chip.on{border-color:var(--brass);color:var(--brass)}
+.card{position:absolute;background:rgba(26,33,37,.96);border:1px solid var(--edge)}
+.card .h{position:absolute;left:10px;top:8px;font-family:Marcellus;font-size:13px;color:var(--brass)}
+.seat{position:absolute;width:30px;height:26px;border:1px solid var(--edge);background:#20292d}
+.seat.map{clip-path:none}
+.slot{width:18px;height:18px;border:1px solid #394246;display:flex;align-items:center;justify-content:center}
+</style></head><body>
+<div class="scrim"></div>
+<div class="top">
+  <div class="abs" style="left:14px;top:9px"><i class="px" data-art="gilded" data-scale="2" data-pal="i=#c8a56b"></i></div>
+  <div class="abs title" style="left:40px;top:10px;font-size:16px;color:var(--brass)">WAR TABLE</div>
+  <div class="abs" style="left:150px;top:16px"><mc-text color="#afb9bc">Banner camp  /  Rivergate ridge</mc-text></div>
+  <div class="abs row" style="right:14px;top:9px;gap:12px">
+    <span class="row"><i class="px" data-art="coin"></i><mc-text color="#c8a56b" shadow scale="2">300</mc-text></span>
+    <span class="row"><i class="px" data-art="gilded" data-pal="i=#c8a56b"></i><mc-text color="#eee9df">14</mc-text><i class="px" data-art="graveborn" data-pal="i=#bfd6b0"></i><mc-text color="#eee9df">3</mc-text></span>
+    <mc-text color="#afb9bc">Founder  /  tier 3</mc-text>
+  </div>
+</div>
+<div class="spine">
+  <div class="tab sel" style="top:12px"><i class="px" data-art="cross" data-pal="k=#c8a56b"></i>War table</div>
+  <div class="tab" style="top:38px"><i class="px" data-art="letter" data-pal="p=#afb9bc,k=#101417"></i>Recruit</div>
+  <div class="tab" style="top:64px"><i class="px" data-art="pennant" data-pal="i=#afb9bc,k=#afb9bc"></i>Banner</div>
+  <div class="tab" style="top:90px"><i class="px" data-art="seal" data-pal="b=#afb9bc,i=#101417"></i>Contracts <span style="margin-left:auto;margin-right:8px;color:var(--brass)">2</span></div>
+  <div class="tab" style="top:116px"><i class="px" data-art="star" data-pal="i=#afb9bc"></i>Chapter</div>
+  <div class="tab" style="top:142px"><i class="px" data-art="friend" data-pal="i=#afb9bc"></i>Friends <span style="margin-left:auto;margin-right:8px;color:var(--brass)">2</span></div>
+  <div class="tab" style="top:168px"><i class="px" data-art="key" data-pal="i=#afb9bc"></i>Room K7F2</div>
+  <div class="tab" style="top:194px"><i class="px" data-art="candle" data-pal="b=#afb9bc,o=#ffaa66,i=#eee9df"></i>Guide</div>
+  <div class="abs" style="left:8px;top:230px;width:120px;height:1px;background:#394246"></div>
+  <div class="tab" style="top:238px"><i class="px" data-art="swords" data-pal="i=#afb9bc"></i>Last battle</div>
+  <div class="tab" style="top:264px"><i class="px" data-art="bell" data-pal="i=#afb9bc,b=#afb9bc"></i>Visuals &amp; sound</div>
+  <div class="tab" style="top:456px"><mc-text color="#afb9bc">Esc  Return to camp</mc-text></div>
+</div>
+
+<div class="abs title" style="left:156px;top:52px;font-size:12px;color:var(--muted)">CHOOSE A FIGHT</div>
+<div class="plate" style="left:156px"><i class="px g" data-art="dummy" data-scale="3" data-pal="i=#afb9bc,b=#8a6a45"></i><div class="h">PRACTICE</div><div class="s">Orders, formations, capture and reinforcements against training bots. Lesson 2 of 4 waiting.</div><div class="foot"><span class="chip">Rivergate</span><span class="chip">Easy bots</span></div></div>
+<div class="plate sel" style="left:344px"><i class="px g" data-art="swords" data-scale="3" data-pal="i=#c8a56b"></i><div class="h">SKIRMISH</div><div class="s">One battle, your banner, bots or friends. Rewards gold, shards and contract progress.</div><div class="foot"><span class="chip on">Domination</span><span class="chip">Siege</span><span class="chip on">Normal</span><span class="chip">2 v 2</span></div></div>
+<div class="plate" style="left:532px"><i class="px g" data-art="signpost" data-scale="3" data-pal="b=#8a6a45,i=#eee9df"></i><div class="h">CAMPAIGN</div><div class="s">Chapter 1, The Broken Crossing. Battle 2 of 6: hold the mill until the Graveborn tire.</div><div class="foot"><span class="chip on">Continue</span><span class="chip">Replay 1</span></div></div>
+
+<div class="abs title" style="left:156px;top:242px;font-size:12px;color:var(--muted)">FIELD</div>
+<div class="abs" style="left:156px;top:258px;display:flex;gap:6px">
+  <div class="card" style="position:relative;width:104px;height:54px;border-color:var(--brass)"><i class="px" data-art="mill" data-scale="2" data-pal="k=#c8a56b" style="position:absolute;left:8px;top:8px"></i><div class="abs" style="left:30px;top:8px"><mc-text color="#eee9df" shadow>Rivergate</mc-text></div><div class="abs" style="left:30px;top:20px"><mc-text color="#afb9bc">Valley</mc-text></div><div class="abs" style="left:8px;top:38px"><span class="lato" style="font-size:9px;color:var(--muted)">river town, 3 points</span></div></div>
+  <div class="card" style="position:relative;width:104px;height:54px"><i class="px" data-art="keep" data-scale="2" data-pal="k=#afb9bc" style="position:absolute;left:8px;top:8px"></i><div class="abs" style="left:30px;top:8px"><mc-text color="#eee9df" shadow>Ironhold</mc-text></div><div class="abs" style="left:30px;top:20px"><mc-text color="#afb9bc">Siege</mc-text></div><div class="abs" style="left:8px;top:38px"><span class="lato" style="font-size:9px;color:var(--muted)">fortress, 3 points</span></div></div>
+  <div class="card" style="position:relative;width:104px;height:54px"><i class="px" data-art="mountain" data-scale="2" data-pal="k=#afb9bc,i=#1a2125" style="position:absolute;left:8px;top:8px"></i><div class="abs" style="left:30px;top:8px"><mc-text color="#eee9df" shadow>Frostmarch</mc-text></div><div class="abs" style="left:30px;top:20px"><mc-text color="#afb9bc">Pass</mc-text></div><div class="abs" style="left:8px;top:38px"><span class="lato" style="font-size:9px;color:var(--muted)">snow, 3 points</span></div></div>
+  <div class="card" style="position:relative;width:104px;height:54px"><i class="px" data-art="tree" data-scale="2" data-pal="k=#afb9bc" style="position:absolute;left:8px;top:8px"></i><div class="abs" style="left:30px;top:8px"><mc-text color="#eee9df" shadow>Hollowwood</mc-text></div><div class="abs" style="left:30px;top:20px"><mc-text color="#afb9bc">Reach</mc-text></div><div class="abs" style="left:8px;top:38px"><span class="lato" style="font-size:9px;color:var(--muted)">forest, 3 points</span></div></div>
+  <div class="card" style="position:relative;width:104px;height:54px"><i class="px" data-art="cross" data-scale="2" data-pal="k=#afb9bc" style="position:absolute;left:8px;top:8px"></i><div class="abs" style="left:30px;top:8px"><mc-text color="#eee9df" shadow>Kingsfield</mc-text></div><div class="abs" style="left:30px;top:20px"><mc-text color="#afb9bc">Crossroads</mc-text></div><div class="abs" style="left:8px;top:38px"><span class="lato" style="font-size:9px;color:var(--muted)">plains, 5 points</span></div></div>
+</div>
+
+<div class="abs title" style="left:156px;top:326px;font-size:12px;color:var(--muted)">CONTRACTS AND CHAPTER</div>
+<div class="card" style="left:156px;top:342px;width:270px;height:96px">
+  <div class="abs" style="left:10px;top:8px"><mc-text color="#eee9df" shadow>Hold Old Village for 3 minutes</mc-text></div><div class="abs" style="left:10px;top:20px"><div class="bar" style="width:180px"><i style="width:66%;background:var(--brass)"></i></div></div><div class="abs" style="left:200px;top:18px"><mc-text color="#afb9bc">2/3  40 gold</mc-text></div>
+  <div class="abs" style="left:10px;top:34px"><mc-text color="#eee9df" shadow>Win with 8 Gilded in the banner</mc-text></div><div class="abs" style="left:10px;top:46px"><div class="bar" style="width:180px"><i style="width:100%;background:var(--brass)"></i></div></div><div class="abs" style="left:200px;top:44px"><mc-text color="#c8a56b" shadow>CLAIM  +12</mc-text></div>
+  <div class="abs" style="left:10px;top:60px"><mc-text color="#eee9df" shadow>Rout 3 enemy groups</mc-text></div><div class="abs" style="left:10px;top:72px"><div class="bar" style="width:180px"><i style="width:33%;background:var(--brass)"></i></div></div><div class="abs" style="left:200px;top:70px"><mc-text color="#afb9bc">1/3  30 gold</mc-text></div>
+</div>
+<div class="card" style="left:436px;top:342px;width:272px;height:96px">
+  <div class="h">FOUNDERS CHAPTER</div>
+  <div class="abs" style="left:10px;top:28px"><mc-text color="#eee9df" shadow>Tier 3 of 30</mc-text></div>
+  <div class="abs" style="left:10px;top:42px;width:252px"><div class="bar" style="height:5px"><i style="width:30%;background:var(--brass)"></i></div></div>
+  <div class="abs" style="left:10px;top:54px"><mc-text color="#afb9bc">110 XP to tier 4: Order Archer skin, 25 gold</mc-text></div>
+  <div class="abs" style="left:10px;top:70px"><span class="btn brass" style="height:16px;font-size:10px">CLAIM TIER 3</span></div>
+</div>
+
+<!-- right column: the banner is the player's expression, so it gets the tallest card -->
+<div class="card" style="left:724px;top:52px;width:222px;height:200px">
+  <div class="h">YOUR BANNER</div><div class="abs" style="right:10px;top:10px"><mc-text color="#eee9df" shadow>14 / 20</mc-text></div>
+  <div class="abs" style="left:10px;top:30px;display:grid;grid-template-columns:repeat(5,20px);gap:2px">
+    <div class="slot" style="background:#f1e6c0"><i class="px" data-art="gilded" data-pal="i=#8a6a2a"></i></div><div class="slot" style="background:#f1e6c0"><i class="px" data-art="gilded" data-pal="i=#8a6a2a"></i></div><div class="slot" style="background:#f1e6c0"><i class="px" data-art="gilded" data-pal="i=#8a6a2a"></i></div><div class="slot" style="background:#f1e6c0"><i class="px" data-art="gilded" data-pal="i=#8a6a2a"></i></div><div class="slot" style="background:#f1e6c0"><i class="px" data-art="gilded" data-pal="i=#8a6a2a"></i></div>
+    <div class="slot" style="background:#f1e6c0"><i class="px" data-art="gilded" data-pal="i=#8a6a2a"></i></div><div class="slot" style="background:#f1e6c0"><i class="px" data-art="gilded" data-pal="i=#8a6a2a"></i></div><div class="slot" style="background:#f1e6c0;border-color:var(--brass)"><i class="px" data-art="gilded" data-pal="i=#8a6a2a"></i></div><div class="slot" style="background:#3f4a3a"><i class="px" data-art="graveborn" data-pal="i=#d8d2c0"></i></div><div class="slot" style="background:#3f4a3a"><i class="px" data-art="graveborn" data-pal="i=#d8d2c0"></i></div>
+    <div class="slot" style="background:#3f4a3a"><i class="px" data-art="graveborn" data-pal="i=#d8d2c0"></i></div><div class="slot" style="background:#3f4a3a"><i class="px" data-art="graveborn" data-pal="i=#d8d2c0"></i></div><div class="slot" style="background:#3f4a3a"><i class="px" data-art="graveborn" data-pal="i=#d8d2c0"></i></div><div class="slot" style="background:#3f4a3a"><i class="px" data-art="graveborn" data-pal="i=#d8d2c0"></i></div><div class="slot"></div>
+    <div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div>
+  </div>
+  <div class="abs" style="left:124px;top:32px"><mc-text color="#eee9df" shadow>Gilded 8</mc-text></div><div class="abs" style="left:124px;top:44px"><mc-text color="#c8a56b">Bulwark I</mc-text></div>
+  <div class="abs" style="left:124px;top:62px"><mc-text color="#eee9df" shadow>Graveborn 6</mc-text></div><div class="abs" style="left:124px;top:74px"><mc-text color="#bfd6b0">Rise Again I</mc-text></div>
+  <div class="abs" style="left:124px;top:92px"><mc-text color="#afb9bc">2 more Gilded:</mc-text></div><div class="abs" style="left:124px;top:102px"><mc-text color="#afb9bc">Bulwark II</mc-text></div>
+  <div class="abs" style="left:10px;top:124px"><mc-text color="#afb9bc">Front: 3 Squire, 2 Templar, 3 Risen</mc-text></div>
+  <div class="abs" style="left:10px;top:136px"><mc-text color="#afb9bc">Commander: Marshal, Rally Horn</mc-text></div>
+  <div class="abs" style="left:10px;top:160px"><span class="btn brass" style="height:18px;font-size:10px">BANNER BUILDER  B</span></div>
+</div>
+<div class="card" style="left:724px;top:262px;width:222px;height:70px">
+  <div class="h">PARTY</div>
+  <div class="abs row" style="left:10px;top:28px"><i class="px" data-art="friend" data-pal="i=#5fb3ad"></i><mc-text color="#eee9df" shadow>Kort</mc-text><mc-text color="#c8a56b">lead</mc-text></div>
+  <div class="abs row" style="left:10px;top:40px"><i class="px" data-art="friend" data-pal="i=#5fb3ad"></i><mc-text color="#eee9df" shadow>Ansel</mc-text><mc-text color="#5fb3ad">READY</mc-text></div>
+  <div class="abs row" style="left:10px;top:52px"><i class="px" data-art="friend" data-pal="i=#414b50"></i><mc-text color="#afb9bc">Mira, in camp</mc-text><span class="btn" style="height:12px;font-size:9px;padding:0 4px">Invite</span></div>
+</div>
+<div class="card" style="left:724px;top:342px;width:222px;height:96px">
+  <div class="h">ROOM K7F2</div><div class="abs" style="right:10px;top:10px"><mc-text color="#afb9bc">you host</mc-text></div>
+  <div class="abs" style="left:10px;top:28px"><mc-text color="#5fb3ad" shadow>DAWN</mc-text><mc-text color="#afb9bc">  Kort, Ansel</mc-text></div>
+  <div class="abs" style="left:10px;top:40px"><mc-text color="#a07cc2" shadow>DUSK</mc-text><mc-text color="#afb9bc">  2 bots, Normal</mc-text></div>
+  <div class="abs" style="left:10px;top:58px"><span class="chip on">2 v 2</span><span class="chip">3 v 3</span><span class="chip on">Bots fill</span></div>
+  <div class="abs" style="left:10px;top:78px"><mc-text color="#afb9bc">Code copied to clipboard</mc-text></div>
+</div>
+
+<div class="abs" style="left:156px;top:452px;width:790px;height:1px;background:#394246"></div>
+<div class="abs" style="left:156px;top:462px"><mc-text color="#eee9df" shadow>Rivergate Valley  /  Domination to 300  /  Normal bots  /  2 v 2  /  party of 2</mc-text></div>
+<div class="btn primary" style="position:absolute;left:156px;top:480px;width:380px;height:30px;font-family:Marcellus;font-size:14px;letter-spacing:1px">ENTER THE WAR GATES</div>
+<div class="abs" style="left:548px;top:490px"><mc-text color="#afb9bc">Stand with your party at the gates to ready; step off to cancel.</mc-text></div>
+<div class="abs row" style="left:156px;top:520px;gap:6px"><span class="key">Enter</span><mc-text color="#afb9bc">Fight</mc-text><span class="key">Tab</span><mc-text color="#afb9bc">Next tab</mc-text><span class="key">M</span><mc-text color="#afb9bc">Map</mc-text><span class="key">Esc</span><mc-text color="#afb9bc">Camp</mc-text></div>
+<script src="mc.js"></script><script src="art.js"></script>
+</body></html>

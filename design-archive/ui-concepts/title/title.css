@@ -1,0 +1,101 @@
+/* Authored at GUI scale 1 (960x540). render.py doubles it. Fonts: Minecraft bitmap via <mc-text>, Lato 11 body, Marcellus titles. */
+@font-face{font-family:Lato;src:url(../fonts/lato.ttf)}
+@font-face{font-family:Marcellus;src:url(../fonts/marcellus.ttf)}
+:root{
+  --ink:#101417;--charcoal:#1a2125;--charcoal2:#171d20;--edge:#414b50;--edge2:#2a3236;
+  --brass:#c8a56b;--brass2:#dfbd77;--brass3:#8c7246;--ivory:#eee9df;--muted:#afb9bc;--danger:#d9634c;--fight:#ffaa66;
+  --dawn:#5fb3ad;--dawn2:#2e6b68;--dusk:#a07cc2;--dusk2:#5a3f73;
+  --vellum:#e6d9b8;--vellum2:#cdbb92;--vellum3:#8f7a52;--iron:#30353a;--iron2:#1c2023;--iron3:#5a6166;
+  --oak:#3a2817;--oak2:#2a1b0f;--oak3:#5a3f25;
+}
+html,body{margin:0;width:960px;height:540px;overflow:hidden;background:transparent;font-family:Lato,sans-serif;font-size:11px;color:var(--ivory);position:relative}
+*{box-sizing:border-box}
+.abs{position:absolute}
+.lato{font-family:Lato,sans-serif;font-size:11px;line-height:1}
+.title{font-family:Marcellus,serif;letter-spacing:0}
+.row{display:flex;align-items:center;gap:4px}
+/* charcoal panel: the current language, sharpened */
+.charcoal{background:rgba(26,33,37,.93);border:1px solid var(--edge);box-shadow:inset 0 1px 0 rgba(255,255,255,.04),inset 0 -1px 0 #0d1113}
+/* vellum sheet with deckled bottom */
+.vellum{background:var(--vellum);color:#2a2219;border:1px solid var(--vellum3);box-shadow:inset 0 0 0 1px #f3ead2,inset 0 -3px 0 var(--vellum2),2px 3px 0 rgba(0,0,0,.45)}
+.vellum.torn{clip-path:polygon(0 0,100% 0,100% calc(100% - 3px),calc(100% - 6px) 100%,calc(100% - 12px) calc(100% - 3px),calc(100% - 20px) 100%,calc(100% - 28px) calc(100% - 2px),calc(100% - 40px) 100%,calc(100% - 52px) calc(100% - 3px),calc(100% - 64px) 100%,calc(100% - 78px) calc(100% - 2px),calc(100% - 90px) 100%,calc(100% - 104px) calc(100% - 3px),60% 100%,50% calc(100% - 2px),40% 100%,30% calc(100% - 3px),22% 100%,14% calc(100% - 2px),8% 100%,3% calc(100% - 3px),0 100%)}
+/* iron bar with rivets */
+.iron{background:var(--iron);border:1px solid #0d1012;box-shadow:inset 0 1px 0 var(--iron3),inset 1px 0 0 #454b50,inset 0 -2px 0 var(--iron2),0 2px 0 rgba(0,0,0,.5)}
+.iron::before,.iron::after{content:"";position:absolute;width:2px;height:2px;background:#8a9397;box-shadow:1px 1px 0 #0d1012}
+.iron::before{left:3px;top:3px}.iron::after{right:4px;top:3px}
+/* oak table surface */
+.oak{background:repeating-linear-gradient(0deg,var(--oak) 0 5px,#33231400 5px 6px),var(--oak);box-shadow:inset 0 0 0 2px var(--oak2)}
+/* cloth banner */
+.cloth{position:relative;border:1px solid var(--ink)}
+.cloth .fringe{position:absolute;left:0;right:0;bottom:-4px;height:4px;background:repeating-linear-gradient(90deg,currentColor 0 2px,transparent 2px 4px)}
+/* bars */
+.bar{position:relative;height:3px;background:#2a3236}
+.bar>i{position:absolute;left:0;top:0;bottom:0}
+/* brass button */
+.btn{display:inline-flex;align-items:center;justify-content:center;height:20px;padding:0 10px;border:1px solid #455156;background:#252f34;color:var(--ivory);font-family:Lato;font-size:11px;line-height:1}
+.btn.primary{background:#bb9858;border-color:#dfbd77;color:#171d20}
+.btn.brass{background:#2a2420;border:1px solid var(--brass);color:var(--brass);box-shadow:inset 0 0 0 1px #1a1512}
+.rule{height:1px;background:var(--edge)}
+.brassrule{height:2px;background:var(--brass);box-shadow:0 1px 0 var(--brass3)}
+/* key cap */
+.key{display:inline-block;min-width:11px;height:11px;padding:0 2px;border:1px solid var(--muted);color:var(--ivory);font:9px/9px Lato;text-align:center;background:#1a2125}
+/* hotbar from the vanilla sheet so the HUDs are honest about what they sit next to */
+.hotbar{position:absolute;left:389px;top:517px;width:182px;height:22px;background:url(../assets/widgets.png) 0 0 no-repeat;image-rendering:pixelated}
+.hotbar .sel{position:absolute;left:-1px;top:-1px;width:24px;height:24px;background:url(../assets/widgets.png) 0 -22px no-repeat;image-rendering:pixelated}
+.crosshair{position:absolute;left:472px;top:262px;width:15px;height:15px;background:url(../assets/icons.png) 0 0 no-repeat;image-rendering:pixelated;mix-blend-mode:difference}
+.scrim{position:absolute;inset:0;background:rgba(10,13,16,.78)}
+
+/* =====================================================================================
+   v2 system (second pass). Only pages with <html class="v2"> use anything below.
+   Type scale, three sizes:  16 Marcellus (one focal name)  /  11 Lato body, Marcellus names
+                             /  8 Minecraft 1x (<mc-text>) for numbers, labels, chips, keys.
+   Grid: 4 px unit; panels pad 8; nothing within 12 px of the screen edge.
+   Colour roles: surfaces charcoal / iron / vellum / oak; text ivory, muted, brass on dark,
+   ink and sepia on vellum; House and team colours as accents only; alarm red with a shape.
+   ===================================================================================== */
+html.v2{
+  --ivory:#eee9df;--muted:#afb9bc;--brass:#c8a56b;--brass-hi:#dfbd77;--brass-lo:#8c7246;
+  --char:#1a2125;--char-a:rgba(26,33,37,.94);--edge:#414b50;--edge-lo:#0d1113;
+  --iron:#30353a;--iron-hi:#5a6166;--iron-lo:#1c2023;
+  --vel:#e6d9b8;--vel-lo:#cdbb92;--vel-edge:#8f7a52;--vel-hi:#f3ead2;--ink2:#2a2219;--sepia:#5c4a32;
+  --dawn:#5fb3ad;--dawn-ink:#1f5653;--dusk:#a07cc2;--dusk-text:#b99ad6;--dusk-ink:#563a73;
+  --alarm:#d9634c;--alarm-text:#e47a64;--alarm-ink:#8a2a1a;
+  --gilded:#d8b45a;--graveborn:#6f8a6a;--wildmoot:#b0643a;--ironclad:#8a949a;--tidecallers:#4f86b8;
+}
+html.v2 body{font:11px/12px Lato,sans-serif;color:var(--ivory)}
+.v2 .t16{font:16px/16px Marcellus,serif;white-space:nowrap}
+.v2 .h11{font:11px/12px Marcellus,serif;white-space:nowrap}
+.v2 .b11{font:11px/12px Lato,sans-serif}
+.v2 .nw{white-space:nowrap}
+.v2 mc-text{display:block;line-height:0;height:8px}  /* box = cap height + shadow; descenders hang below */
+.v2 .a{position:absolute}
+.v2 .flex{display:flex;align-items:center}
+/* surfaces */
+/* frames are inset shadows, not CSS borders, so a child at left:8px sits 8 px from the outer edge */
+.v2 .panel{position:absolute;background:var(--char-a);box-shadow:inset 0 0 0 1px var(--edge),inset 0 2px 0 rgba(255,255,255,.05),0 2px 0 rgba(0,0,0,.4)}
+.v2 .sheet{position:absolute;background:var(--vel);color:var(--ink2);box-shadow:inset 0 0 0 1px var(--vel-edge),inset 0 0 0 2px var(--vel-hi),inset 0 -3px 0 var(--vel-lo),0 2px 0 rgba(0,0,0,.45)}
+.v2 .ironv2{position:absolute;background:var(--iron);box-shadow:inset 0 0 0 1px #0d1012,inset 0 2px 0 var(--iron-hi),inset 0 -3px 0 var(--iron-lo),0 2px 0 rgba(0,0,0,.5)}
+.v2 .rivet{position:absolute;width:2px;height:2px;background:#8a9397;box-shadow:1px 1px 0 #0d1012}
+.v2 .hair{position:absolute;height:1px;background:var(--edge)}
+.v2 .hair.vel{background:var(--vel-lo)}
+/* controls */
+.v2 .btnp{position:absolute;background:#bb9858;border:1px solid var(--brass-hi);box-shadow:inset 0 -2px 0 #8c7246,0 2px 0 rgba(0,0,0,.45);color:#171d20}
+.v2 .btns{position:absolute;background:#252f34;border:1px solid #556166;box-shadow:inset 0 -2px 0 #171d20;color:var(--ivory)}
+.v2 .kc{position:absolute;border:1px solid currentColor;border-radius:0}
+.v2 .chip{position:absolute;border:1px solid var(--edge)}
+/* vanilla HUD, drawn from the real sprite sheets so every mock respects its footprint */
+.v2 .vh{position:absolute;image-rendering:pixelated}
+.v2 .heart,.v2 .food{position:absolute;width:9px;height:9px;background:url(../assets/icons.png) -16px 0 no-repeat;image-rendering:pixelated}
+.v2 .heart>i,.v2 .food>i{position:absolute;left:0;top:0;width:9px;height:9px;background:url(../assets/icons.png) -52px 0 no-repeat;image-rendering:pixelated}
+.v2 .heart.half>i{background-position:-61px 0}
+.v2 .food{background-position:-16px -27px}.v2 .food>i{background-position:-52px -27px}.v2 .food.half>i{background-position:-61px -27px}
+.v2 .xpbar{position:absolute;left:389px;top:511px;width:182px;height:5px;background:url(../assets/icons.png) 0 -64px no-repeat;image-rendering:pixelated}
+.v2 .xpbar>i{position:absolute;left:0;top:0;height:5px;background:url(../assets/icons.png) 0 -69px no-repeat;image-rendering:pixelated}
+/* menus: the game's own dimmed world behind every screen (Screen.renderBackground, 0xC0101010 to 0xD0101010) */
+.v2 .scrim{position:absolute;left:0;top:0;width:960px;height:540px;background:linear-gradient(rgba(16,16,16,.75),rgba(16,16,16,.82))}
+/* War Table (A): dark oak planks, an aged roll, a bright letter, dark-oak buttons */
+.v2 .oak{position:absolute;background:repeating-linear-gradient(180deg,transparent 0 23px,#2a1b10 23px 24px),repeating-linear-gradient(180deg,rgba(255,255,255,.03) 0 1px,transparent 1px 6px),#47301f;box-shadow:inset 0 2px 0 #6b4a30,inset 0 3px 0 #2a1b10}
+.v2 .roll{position:absolute;background:#dccb9f;color:var(--ink2);box-shadow:inset 0 0 0 1px #6b5a3a,inset 0 0 0 2px #ead9ad,inset 0 -3px 0 #c4b088,0 3px 0 rgba(0,0,0,.45)}
+.v2 .letter{position:absolute;background:#f0e6cc;color:var(--ink2);box-shadow:inset 0 0 0 1px #8f7a52,inset 0 0 0 2px #fbf4e2,inset 0 -3px 0 #d8c9a2,0 3px 0 rgba(0,0,0,.5)}
+.v2 .wbtn{position:absolute;height:20px;padding:0 8px;display:flex;align-items:center;gap:6px;background:#2e1f14;box-shadow:inset 0 0 0 1px #6b4a30,inset 0 -2px 0 #1c120b,0 2px 0 rgba(0,0,0,.45);color:var(--ivory)}
+.v2 .key{height:14px;min-width:0;padding:0 4px;display:inline-flex;align-items:center;background:none;border:0;color:inherit;box-shadow:inset 0 0 0 1px currentColor}  /* 3 px air above and below the 8 px glyphs */

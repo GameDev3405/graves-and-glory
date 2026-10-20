@@ -1,0 +1,81 @@
+<!doctype html>
+<html class="v2"><head><meta charset="utf-8"><title>v2 UI A: War Table, home</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* War Table home, second pass. Three written orders lie on the table; the chosen one is sealed and lifted.
+   Who rides stands on the left as lead tokens, where you ride is the field map on the right, then one button. */
+.rail{left:168px;top:14px;width:624px;height:3px;background:var(--brass);box-shadow:0 1px 0 #6e5226}
+.fin{position:absolute;top:12px;width:5px;height:7px;background:var(--brass-hi);box-shadow:inset -1px -1px 0 #8c7246,0 1px 0 #2a1b10}
+.plq{position:absolute;top:17px;width:112px;height:24px;background:#2e1f14;box-shadow:inset 0 0 0 1px #6b4a30,inset 0 -2px 0 #1c120b,0 2px 0 rgba(0,0,0,.45)}
+.plq .px{position:absolute;left:10px;top:8px}
+.plq .h11{position:absolute;left:24px;top:6px}
+.plq mc-text{position:absolute;top:8px}
+.ord{position:absolute;color:var(--ink2)}
+.ord.lo{background:#d6c49a;box-shadow:inset 0 0 0 1px #6b5a3a,inset 0 0 0 2px #e2d3ab,inset 0 -3px 0 #bba97f,0 3px 0 rgba(0,0,0,.45)}
+.ord.hi{background:#f0e6cc;box-shadow:inset 0 0 0 1px #8f7a52,inset 0 0 0 2px #fbf4e2,inset 0 -3px 0 #d8c9a2,0 0 0 1px #2a1b10,0 5px 0 rgba(0,0,0,.5)}
+.tok{position:absolute;width:144px;height:40px}
+.tok .px.d{position:absolute;left:0;top:4px}
+.tok .px.s{position:absolute;left:4px;top:8px}
+.tok .h11{position:absolute;left:40px;top:9px}
+.tok .ck{position:absolute;left:40px;top:24px}
+.mapc{left:744px;top:152px;width:160px;height:184px;background:#d6c49a;color:var(--ink2);box-shadow:inset 0 0 0 1px #6b5a3a,inset 0 0 0 2px #e2d3ab,inset 0 -3px 0 #bba97f,0 3px 0 rgba(0,0,0,.45)}
+.ink-map{position:absolute;left:16px;top:32px;width:128px;height:64px;background:#e2d3ab;box-shadow:inset 0 0 0 1px #a8946a}
+.ride{left:360px;top:368px;width:240px;height:40px;background:#bb9858;box-shadow:inset 0 0 0 1px #e0c27a,inset 0 -3px 0 #8c7246,0 3px 0 rgba(0,0,0,.5);color:#1e1509}
+</style></head>
+<body>
+<div class="scrim" data-bleed></div>
+
+<!-- the rest of the camp hangs on the tent rail, one click away; counts as badges -->
+<div class="a rail" data-name="rail"></div><i class="fin" style="left:164px"></i><i class="fin" style="left:791px"></i>
+<div class="plq" data-ctl style="left:180px"><i class="px" data-art="letter" data-pal="p=#afb9bc,k=#2e1f14"></i><span class="h11">Recruit</span></div>
+<div class="plq" data-ctl style="left:300px"><i class="px" data-art="pennant" data-pal="i=#afb9bc,k=#afb9bc"></i><span class="h11">Banner</span></div>
+<div class="plq" data-ctl style="left:420px"><i class="px" data-art="seal" data-pal="b=#afb9bc,i=#2e1f14"></i><span class="h11">Contracts</span><mc-text data-rx="104" color="#c8a56b">2</mc-text></div>
+<div class="plq" data-ctl style="left:540px"><i class="px" data-art="star" data-pal="i=#afb9bc"></i><span class="h11">Chapter</span></div>
+<div class="plq" data-ctl style="left:660px"><i class="px" data-art="friend" data-pal="i=#afb9bc"></i><span class="h11">Friends</span><mc-text data-rx="104" color="#c8a56b">1</mc-text></div>
+<div class="wbtn" data-ctl data-name="close" style="left:24px;top:18px;height:24px"><span class="key"><mc-text color="#afb9bc">Esc</mc-text></span><span class="h11">Camp</span></div>
+
+<!-- the table -->
+<div class="oak" data-bleed style="left:0;top:76px;width:960px;height:464px"></div>
+
+<!-- who rides: lead tokens -->
+<span class="a h11" style="left:56px;top:148px;color:#c8a56b">Party</span>
+<div class="tok" data-ctl data-name="you" style="left:56px;top:168px"><i class="px d" data-art="disc15" data-scale="2" data-pal="f=#7c868b,h=#aeb6ba,s=#4c5459"></i><i class="px s" data-art="sun" data-scale="2" data-pal="i=#eee9df"></i><span class="h11">Kort</span><i class="px ck" data-art="check" data-scale="2" data-pal="i=#8fd3a0"></i></div>
+<div class="tok" data-ctl data-name="friend" style="left:56px;top:216px"><i class="px d" data-art="disc15" data-scale="2" data-pal="f=#7c868b,h=#aeb6ba,s=#4c5459"></i><i class="px s" data-art="sun" data-scale="2" data-pal="i=#eee9df"></i><span class="h11">Ansel</span><i class="px ck" data-art="check" data-scale="2" data-pal="i=#8fd3a0"></i></div>
+<div class="tok" data-ctl data-name="invite" style="left:56px;top:264px"><i class="px d" data-art="disc15" data-scale="2" data-pal="f=#3a281a,h=#4a3221,s=#2a1b10,k=#6b4a30"></i><i class="px s" data-art="cross" data-scale="2" data-pal="k=#afb9bc" style="left:7px;top:9px"></i><span class="h11" style="color:#afb9bc">Invite</span></div>
+
+<!-- what you fight: three written orders; the chosen one is sealed and lifted -->
+<div class="ord lo" data-ctl data-name="practice" style="left:232px;top:176px;width:144px;height:136px">
+  <i class="px a" data-art="dummy" data-scale="4" data-pal="i=#5c4a32,b=#8a6420" style="left:56px;top:32px"></i>
+  <span class="a h11" data-cx="72" style="top:88px;color:#5c4a32">Practice</span></div>
+<div class="ord hi" data-ctl data-name="skirmish" style="left:392px;top:160px;width:176px;height:168px">
+  <i class="px a" data-art="swords" data-scale="5" data-pal="i=#2a2219" style="left:68px;top:44px"></i>
+  <span class="a t16" data-cx="88" style="top:108px">Skirmish</span></div>
+<i class="px a" data-art="wax15" data-scale="2" style="left:465px;top:145px" data-name="seal"></i>
+<div class="ord lo" data-ctl data-name="campaign" style="left:584px;top:176px;width:144px;height:136px">
+  <i class="px a" data-art="keep" data-scale="4" data-pal="k=#5c4a32" style="left:56px;top:36px"></i>
+  <span class="a h11" data-cx="72" style="top:88px;color:#5c4a32">Campaign</span></div>
+
+<!-- where: the chosen field, inked -->
+<div class="a mapc" data-panel data-name="field">
+  <span class="a h11" data-cx="80" style="top:12px">Rivergate Valley</span>
+  <div class="ink-map" id="map" data-under-ok></div>
+  <span class="a b11 nw" data-cx="80" style="top:112px;color:#5c4a32">Domination to 300</span>
+  <span class="a b11 nw" data-cx="80" style="top:128px;color:#5c4a32">2 v 2, Normal bots</span>
+  <div class="wbtn" data-ctl data-name="change field" data-cx="80" style="top:148px;height:24px"><span class="h11">Change</span></div>
+</div>
+
+<!-- the one primary action -->
+<div class="a ride" data-ctl data-name="ride">
+  <span class="a key" style="left:8px;top:13px"><mc-text color="#3a2a12">Enter</mc-text></span>
+  <span class="a h11" data-cx="120" style="top:14px">Ride to the war gates</span>
+</div>
+
+<script>
+/* the inked field: a river of 2 px steps and the three points as plain seals (no names: that is the battle's job) */
+(function(){const m=document.getElementById('map');let h='';
+  for(let x=4;x<124;x+=2){const y=Math.round(30+10*Math.sin((x-4)/18));h+=`<b style="position:absolute;left:${x}px;top:${y}px;width:2px;height:2px;background:#4a6a8a"></b>`;}
+  [[22,14],[60,38],[100,12]].forEach(([x,y],i)=>{h+=`<i class="px a" data-art="seal13" data-pal="f=#6b5a3a,h=#8f7a52,s=#4a3b27,k=#2a2219" style="left:${x}px;top:${y}px"></i><mc-text class="a" color="#f0e6cc" style="left:${x+4}px;top:${y+3}px">${'ABC'[i]}</mc-text>`;});
+  m.innerHTML=h;})();
+</script>
+<script src="mc.js"></script><script src="art.js"></script><script src="v2.js"></script><script src="check.js"></script>
+</body></html>

@@ -1,0 +1,53 @@
+GRAVES AND GLORY — DEVELOPMENT ROADMAP
+Created: October 17, 2026
+
+Open 01-MASTER-CHECKLIST.txt first. Work from top to bottom.
+
+FILES
+01-MASTER-CHECKLIST.txt — Prioritized implementation and release checklist.
+02-AUDIT-BASELINE.txt — What was found in the current project and package.
+03-DESIGN-AND-RESEARCH.txt — Proposed feature details, economy and source links.
+04-DISTRIBUTION-AND-HOME-HOSTING.txt — CurseForge/Modrinth and home-server plan.
+05-WORK-LOG.txt — Dated implementation progress, verification and limitations.
+06-DEPENDENCY-INVENTORY.json — Original 0.3.1 dependency inventory.
+07-PLATFORM-LOCK.json — Updated 0.3.2 official Modrinth IDs, hashes and environments.
+release-candidates/ — Local test candidates; not published or launcher-verified.
+logs/ — Saved verification output.
+
+HOW TO TRACK WORK
+[ ] Not finished
+[~] In progress
+[x] Completed and verified
+[!] Blocked — add the reason and the next action
+
+Keep tasks unchecked until their completion condition is demonstrated. Code
+existing in source does not prove that it is packaged, working or published.
+Record evidence and the actual build version when completing a milestone.
+If work reveals a new dependency, add it before the affected task.
+
+Current position: Local 0.3.4 fixes the real-launcher R/Iris key conflict.
+Prism clean-imported 0.3.3, then ran the original-mod-only 0.3.4 upgrade through
+menu, camp, army inventory, custom room and an actual practice battle. Saved
+and quit normally. Exact-source dev regression: 52 passes, zero failures.
+0.3.4 production dedicated server startup/status/save/stop also pass.
+Candidates/server kit are in release-candidates/. See logs/session-04/.
+Fifteen items remain checked; milestones stay open. Official Modrinth App and
+CurseForge installation, loading screens and public hosting remain unfinished.
+No publication or home deployment performed.
+
+Current project: C:\Users\kortt\Melty\bannerbound
+Current game name: Graves and Glory
+Distribution targets: CurseForge and Modrinth. Existing Melty support is not
+cancelled by this addition; the standalone launcher flow must work independently.
+Preferred official host (user-reported): i7-10700K, 96 GB DDR4, Windows 11,
+Starlink Internet/router. Storage and measured network performance remain open.
+Plan for Starlink inbound restrictions; see file 04 for hosting route options.
+Audit baseline: Local source/build and distributable both labelled 0.3.0,
+but their contents differ. See 02-AUDIT-BASELINE.txt.
+
+The sequence is dependency-aware: make releases reliable; complete the local
+lobby flow; establish social/server infrastructure; secure progression; then
+open public testing and ship the first season.
+
+Release checkpoint: This checklist does not authorize publishing, paid hosting
+or purchases. Follow the user's existing release instructions when ready.

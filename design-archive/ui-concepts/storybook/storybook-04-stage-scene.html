@@ -1,0 +1,44 @@
+<!doctype html>
+<html class="v2 v3 sb"><head><meta charset="utf-8"><title>Storybook 04: a stage scene, The North Crossing</title>
+<link rel="stylesheet" href="../common.css"><link rel="stylesheet" href="../v3.css"><link rel="stylesheet" href="sb.css">
+<style>
+/* A stage scene plays: c1_b1_after, card 4 of 4. The set is in-game footage (stills/north-crossing-dusk.png,
+   the render's background): the north crossing at dusk, the company's fire, Maud with the turncoat's
+   pact-copy, held between two letterbox bars of the book's dark morocco, each tooled with one line of dark
+   gilt. The line is typed on the kit's vellum card beside the speaker's miniature; the voice mark says it is
+   spoken; the card ends with the one action. A first reading cannot be skipped. */
+.sb .line{white-space:nowrap;line-height:17px}
+</style></head>
+<body>
+<img class="s" src="art/bar-top.png" style="left:0;top:0" data-bleed data-overlay-ok alt="" data-name="letterbox, top">
+<img class="s" src="art/bar-bot.png" style="left:0;top:492px" data-bleed data-overlay-ok alt="" data-name="letterbox, bottom">
+
+<!-- the scene's name on the top bar -->
+<span class="a t16 gilt" style="left:24px;top:15px">The North Crossing</span>
+
+<!-- the skip key, greyed under the clasp of a first reading -->
+<div class="box" data-ctl data-name="skip, locked" style="left:743px;top:12px;width:204px;height:28px">
+  <img class="s" src="art/tag-204x28.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s" src="art/clasp-closed.png" style="left:10px;top:9px" alt="">
+  <span class="a m13 ink" style="left:32px;top:6px">First reading</span>
+  <img class="s" src="art/kvg-30x18.png" style="left:128px;top:5px" data-under-ok alt="">
+  <span class="kt" data-cx="143" style="top:8px;color:#6b5a3a">Esc</span>
+  <span class="a m13" style="left:164px;top:6px;color:#6b5a3a">Skip</span>
+</div>
+
+<!-- the dialog card: the speaker's miniature, her name and the voice mark, the line typed, the one action -->
+<div class="box" data-panel data-name="dialog card" style="left:278px;top:376px;width:404px;height:104px">
+  <img class="s" src="art/card-404x104.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s" src="art/mini-66.png" style="left:14px;top:19px" data-under-ok alt="">
+  <img class="s" src="art/pt-maud-60.png" style="left:17px;top:22px" data-under-ok alt="" data-name="Maud">
+  <span class="a t16 ink" style="left:96px;top:14px">Maud</span>
+  <img class="s" src="art/voice-mark.png" style="left:147px;top:16px" alt="" data-name="voiced">
+  <div class="a b13 ink line" style="left:96px;top:39px">Leave that with me.<br>It is nothing you need tonight.<br>Eat something, Third.</div>
+  <div class="box" data-ctl data-name="continue" style="left:298px;top:72px;width:92px;height:20px">
+    <img class="s" src="art/mouse-use.png" style="left:8px;top:4px" alt="">
+    <span class="a m13 sepia" style="left:26px;top:2px">Continue</span>
+  </div>
+</div>
+
+<script src="../mc.js"></script><script src="../art.js"></script><script src="../v2.js"></script><script src="../check.js"></script>
+</body></html>

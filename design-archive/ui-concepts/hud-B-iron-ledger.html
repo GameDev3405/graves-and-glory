@@ -1,0 +1,117 @@
+<!doctype html><html><head><meta charset="utf-8"><title>HUD B: Iron Ledger</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* Heavy, tactile: iron bars bolted to the screen edge, vellum slips and wax seals on them. */
+.ink{color:#2a2219}
+.card{position:absolute;left:10px;width:280px;height:40px;background:var(--vellum);border:1px solid var(--vellum3);box-shadow:inset 0 0 0 1px #f3ead2,inset 0 -2px 0 var(--vellum2),2px 2px 0 rgba(0,0,0,.5)}
+.card .slot{position:absolute;left:-6px;top:4px;width:4px;height:28px;background:#0d1012;box-shadow:inset 1px 0 0 #454b50}
+.card .nm{position:absolute;left:8px;top:4px;font-family:Marcellus;font-size:13px;color:#2a2219}
+.card .cnt{position:absolute;right:8px;top:3px}
+.card .ord{position:absolute;left:8px;top:19px}
+.card .ink.bar{position:absolute;left:8px;right:8px;top:33px;height:3px;background:#cdbb92}
+.card .ink.bar>i{background:#2a2219}
+.card .ticks{position:absolute;left:8px;right:8px;top:31px;height:2px;background:repeating-linear-gradient(90deg,transparent 0 21px,#8f7a52 21px 22px)}
+.card.flash{outline:2px solid var(--danger);box-shadow:inset 0 0 0 1px #f3ead2,inset 0 -2px 0 var(--vellum2),0 0 0 4px rgba(217,99,76,.25)}
+.blot{position:absolute;width:10px;height:7px;background:#5c1f16;border-radius:50% 40% 60% 50%}
+.stamp{position:absolute;padding:1px 4px;border:2px double #b3271b;color:#b3271b;font-family:Marcellus;font-size:14px;letter-spacing:1px;transform:rotate(-9deg);background:rgba(230,217,184,.3)}
+.sealc{position:absolute;width:12px;height:12px;border-radius:50%;border:1px solid #2a2219;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.sealc mc-text{position:absolute;left:3px;top:2px}
+.plaque{position:absolute;background:#2b2f33;border:1px solid #0d1012;box-shadow:inset 0 1px 0 #5a6166,inset 0 -1px 0 #16191c}
+.tag{position:absolute;background:var(--vellum);border:1px solid var(--vellum3);color:#2a2219;padding:2px 4px;box-shadow:1px 1px 0 rgba(0,0,0,.45)}
+.crest{position:absolute;width:22px;height:26px;border:1px solid var(--ink);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.crest::after{content:"";position:absolute;left:-1px;right:-1px;bottom:-9px;height:9px;background:inherit;clip-path:polygon(0 0,100% 0,50% 100%);border-bottom:1px solid var(--ink)}
+.mapv{position:absolute;left:822px;top:426px;width:128px;height:100px}
+.mapv .water{position:absolute;left:0;right:0;top:56px;height:6px;background:#6f8fa8;clip-path:polygon(0 30%,20% 0,40% 40%,60% 10%,80% 50%,100% 20%,100% 100%,80% 80%,60% 100%,40% 70%,20% 100%,0 80%)}
+</style></head><body>
+<div class="crosshair"></div>
+<div class="hotbar"><div class="sel"></div></div>
+
+<!-- top: iron bar, vellum score strip, two crests, hourglass, seals -->
+<div class="iron abs" style="left:276px;top:0;width:408px;height:9px"></div>
+<div class="vellum torn abs" style="left:290px;top:6px;width:380px;height:60px"></div>
+<div class="crest" style="left:300px;top:12px;background:var(--dawn)"><i class="px" data-art="sun" data-pal="i=#eee9df" style="position:absolute;left:7px;top:5px"></i></div>
+<div class="crest" style="left:636px;top:12px;background:var(--dusk)"><i class="px" data-art="crescent" data-pal="i=#eee9df" style="position:absolute;left:7px;top:5px"></i></div>
+<div class="abs" style="left:330px;top:10px"><mc-text color="#2a2219" scale="2">148</mc-text></div>
+<div class="abs" style="left:332px;top:30px"><span class="lato" style="color:#6b5a3a">DAWN</span></div>
+<div class="abs" style="left:590px;top:10px"><mc-text color="#2a2219" scale="2">121</mc-text></div>
+<div class="abs" style="left:604px;top:30px"><span class="lato" style="color:#6b5a3a">DUSK</span></div>
+<div class="plaque" style="left:452px;top:8px;width:56px;height:24px"><i class="px" data-art="hourglass" style="position:absolute;left:4px;top:8px"></i><div class="abs" style="left:17px;top:7px"><mc-text color="#eee9df" shadow>7:42</mc-text></div></div>
+<div class="abs" style="left:455px;top:33px"><span class="lato" style="color:#6b5a3a;font-size:9px">first to 300</span></div>
+<!-- the three seals -->
+<div class="sealc" style="left:318px;top:46px;background:var(--dawn)"><mc-text color="#101417">A</mc-text></div>
+<div class="abs" style="left:333px;top:49px"><span class="lato" style="color:#2a2219;font-size:9px">Old Village</span></div>
+<div class="sealc hatch" data-c1="#5fb3ad" data-c2="#a07cc2" style="left:420px;top:46px"><mc-text color="#101417">B</mc-text></div>
+<div class="abs" style="left:435px;top:49px"><span class="lato" style="color:#8a2b1f;font-size:9px">Shattered Keep, contested</span></div>
+<div class="sealc" style="left:566px;top:46px;background:var(--dusk)"><mc-text color="#101417">C</mc-text></div>
+<div class="abs" style="left:581px;top:49px"><span class="lato" style="color:#2a2219;font-size:9px">River Shrine</span></div>
+
+<!-- gold plaque and training tags, top left -->
+<div class="plaque" style="left:8px;top:8px;width:96px;height:20px"><i class="px" data-art="purse" style="position:absolute;left:5px;top:6px"></i><div class="abs" style="left:18px;top:5px"><mc-text color="#c8a56b" shadow>85 gold</mc-text></div></div>
+<div class="tag" style="left:8px;top:30px"><span class="lato" style="font-size:9px">Dawn Knight 0:12, to Trade Crossing</span></div>
+<div class="tag" style="left:8px;top:46px;background:#cdbb92"><span class="lato" style="font-size:9px;color:#6b5a3a">Dawn Longbow, queued</span></div>
+
+<!-- bottom left: the ledger plate -->
+<div class="iron abs" style="left:0;top:392px;width:300px;height:148px"></div>
+<div class="abs row" style="left:10px;top:397px"><i class="px" data-art="horn" data-pal="b=#d9634c"></i><mc-text color="#d9634c" shadow>SUPPORT ROUTS</mc-text><mc-text color="#afb9bc">horn sounded, regroup 9 s</mc-text></div>
+<div class="card flash" style="top:408px">
+  <div class="slot"></div><div class="nm">INFANTRY</div>
+  <div class="cnt"><mc-text color="#2a2219">9 / 12</mc-text></div>
+  <div class="ord"><span class="lato" style="color:#6b5a3a">ATTACK &middot; SHIELDWALL</span> <span class="lato" style="color:#b3271b">FIGHTING</span></div>
+  <div class="ink bar"><i style="width:64%"></i></div><div class="ticks"></div>
+  <div class="blot" style="left:226px;top:8px"></div><div class="blot" style="left:238px;top:14px;width:5px;height:4px"></div>
+</div>
+<div class="card" style="top:452px">
+  <div class="slot"></div><div class="nm">RANGED</div>
+  <div class="cnt"><mc-text color="#2a2219">6 / 6</mc-text></div>
+  <div class="ord"><span class="lato" style="color:#6b5a3a">HOLD &middot; LINE</span></div>
+  <div class="ink bar"><i style="width:100%"></i></div><div class="ticks"></div>
+</div>
+<div class="card" style="top:496px;background:#d8c9a4">
+  <div class="slot"></div><div class="nm" style="color:#6b5a3a">SUPPORT</div>
+  <div class="cnt"><mc-text color="#b3271b">1 / 2</mc-text></div>
+  <div class="ord"><span class="lato" style="color:#6b5a3a">FOLLOW &middot; COMPACT</span></div>
+  <div class="ink bar"><i style="width:40%;background:#8a2b1f"></i></div>
+  <div class="stamp" style="left:150px;top:4px">ROUTED</div>
+</div>
+
+<!-- bottom right: vellum map corner with brass rose -->
+<div class="iron abs" style="left:812px;top:416px;width:148px;height:124px"></div>
+<div class="vellum torn abs mapv">
+  <div class="water"></div>
+  <div class="abs" style="left:30px;top:10px;width:1px;height:80px;background:#8f7a52"></div>
+  <div class="abs" style="left:64px;top:10px;width:1px;height:80px;background:#8f7a52"></div>
+  <div class="abs" style="left:98px;top:10px;width:1px;height:80px;background:#8f7a52"></div>
+  <div class="sealc" style="left:24px;top:22px;background:var(--dawn)"><mc-text color="#101417">A</mc-text></div>
+  <div class="sealc hatch" data-c1="#5fb3ad" data-c2="#a07cc2" style="left:58px;top:60px"><mc-text color="#101417">B</mc-text></div>
+  <div class="sealc" style="left:92px;top:22px;background:var(--dusk)"><mc-text color="#101417">C</mc-text></div>
+  <div class="abs" style="left:48px;top:48px;width:3px;height:3px;background:var(--dawn)"></div><div class="abs" style="left:53px;top:50px;width:3px;height:3px;background:var(--dawn)"></div><div class="abs" style="left:44px;top:53px;width:3px;height:3px;background:var(--dawn)"></div>
+  <div class="abs" style="left:70px;top:72px;width:3px;height:3px;background:var(--danger)"></div>
+  <i class="px" data-art="north" data-pal="i=#c8a56b" style="position:absolute;left:112px;top:4px"></i>
+  <i class="px" data-art="north" data-pal="i=#2a2219" style="position:absolute;left:58px;top:44px;transform:rotate(20deg)"></i>
+</div>
+<div class="plaque" style="left:822px;top:418px;width:70px;height:12px"><div class="abs" style="left:4px;top:2px"><mc-text color="#afb9bc">M  BATTLEFIELD</mc-text></div></div>
+
+<!-- ability seal in an iron frame, bottom centre -->
+<div class="iron abs" style="left:300px;top:522px;width:512px;height:18px"></div>
+<div class="plaque" style="left:460px;top:476px;width:40px;height:44px"></div>
+<div class="abs" style="left:465px;top:483px;width:30px;height:30px;border-radius:50%;background:var(--brass);border:1px solid #6b5a3a;box-shadow:inset 0 0 0 2px #dfbd77"><i class="px" data-art="horn" data-pal="b=#3a2817" style="position:absolute;left:10px;top:11px"></i></div>
+<div class="abs" style="left:461px;top:477px;width:38px;height:16px;background:rgba(16,20,23,.86);border-bottom:1px solid var(--brass)"><div class="abs" style="left:13px;top:3px"><mc-text color="#eee9df" shadow>48</mc-text></div></div>
+<div class="tag" style="left:504px;top:486px"><span class="lato" style="font-size:9px">H &middot; RALLY HORN</span></div>
+<div class="tag" style="left:412px;top:486px;background:#cdbb92"><span class="lato" style="font-size:9px;color:#6b5a3a">MARSHAL</span></div>
+
+<!-- dispatch ribbon notice -->
+<div class="vellum abs" style="left:330px;top:456px;width:300px;height:16px"></div>
+<i class="px" data-art="seal" data-pal="b=#8a2b1f,i=#e6d9b8" style="position:absolute;left:322px;top:457px"></i>
+<div class="abs" style="left:338px;top:459px"><span class="lato" style="color:#2a2219;font-size:10px">Dawn Knight trained: deploying at Trade Crossing</span></div>
+
+<!-- key hints on the iron bar -->
+<div class="abs row" style="left:312px;top:526px;gap:6px">
+  <mc-text color="#c8a56b">G</mc-text><mc-text color="#afb9bc">Attack</mc-text>
+  <mc-text color="#c8a56b">V</mc-text><mc-text color="#afb9bc">Follow</mc-text>
+  <mc-text color="#c8a56b">B</mc-text><mc-text color="#afb9bc">Formation</mc-text>
+  <mc-text color="#c8a56b">M</mc-text><mc-text color="#afb9bc">Map</mc-text>
+  <mc-text color="#c8a56b">R</mc-text><mc-text color="#afb9bc">Council</mc-text>
+  <mc-text color="#c8a56b">H</mc-text><mc-text color="#afb9bc">Rally Horn</mc-text>
+</div>
+<script src="mc.js"></script><script src="art.js"></script>
+</body></html>

@@ -1,0 +1,43 @@
+<!doctype html>
+<html class="v2 v3 sb"><head><meta charset="utf-8"><title>Storybook 03: a book scene, panel 3 of The Fall</title>
+<link rel="stylesheet" href="../common.css"><link rel="stylesheet" href="../v3.css"><link rel="stylesheet" href="sb.css">
+<style>
+/* A book scene plays: c1_fall, panel 3. The panel is in-game footage (stills/fall-03-mound-night.png, the
+   render's background): the set built and lit in the world and shot through the game camera, the first king's
+   mound under the full moon with the climber on its top, the Tide at its foot, the Order's guard and standard
+   in the near field. Nothing is painted on it. The caption is typed on a strip of the book's vellum in the
+   title type, the Record's voice; its first letter rubricated, the screen's one red. A first reading cannot be
+   skipped: the skip key is greyed under a shut clasp, and says why. */
+.sb .cap{white-space:normal;line-height:22px}
+</style></head>
+<body>
+
+<!-- where the scene stands: its name and the panel pips -->
+<span class="a t16 gilt" style="left:24px;top:18px">The Fall</span>
+<img class="s" src="art/pips-5-2.png" style="left:24px;top:42px" alt="" data-name="pips: panel 3 of 5">
+
+<!-- the skip key, greyed under the clasp of a first reading -->
+<div class="box" data-ctl data-name="skip, locked" style="left:743px;top:14px;width:204px;height:28px">
+  <img class="s" src="art/tag-204x28.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s" src="art/clasp-closed.png" style="left:10px;top:9px" alt="">
+  <span class="a m13 ink" style="left:32px;top:6px">First reading</span>
+  <img class="s" src="art/kvg-30x18.png" style="left:128px;top:5px" data-under-ok alt="">
+  <span class="kt" data-cx="143" style="top:8px;color:#6b5a3a">Esc</span>
+  <span class="a m13" style="left:164px;top:6px;color:#6b5a3a">Skip</span>
+</div>
+
+<!-- the caption, typed on the vellum strip -->
+<div class="box" data-panel data-name="caption" style="left:180px;top:438px;width:600px;height:74px">
+  <img class="s" src="art/caption-strip.png" style="left:0;top:0" data-under-ok alt="">
+  <div class="a t16 ink cap" style="left:22px;top:15px;width:556px"><span class="wax">D</span>ay three. The guard could not reach the highest mound through the Tide. Someone small climbed it alone, with something held in both hands.</div>
+</div>
+
+<!-- the one action: the use key goes on (and hurries the typing) -->
+<div class="box" data-ctl data-name="continue" style="left:807px;top:484px;width:140px;height:28px">
+  <img class="s" src="art/tag-140x28.png" style="left:0;top:0" data-under-ok alt="">
+  <img class="s" src="art/mouse-use.png" style="left:14px;top:8px" alt="">
+  <span class="a m13 ink" style="left:34px;top:6px">Continue</span>
+</div>
+
+<script src="../mc.js"></script><script src="../art.js"></script><script src="../v2.js"></script><script src="../check.js"></script>
+</body></html>

@@ -1,0 +1,114 @@
+<!doctype html>
+<html class="v2"><head><meta charset="utf-8"><title>v2 HUD A: Marshal's Glass</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* Marshal's Glass, second pass. The field seen through a spyglass: thin strokes and numerals on smoked
+   glass, no frames. The glass ends step out in 2 px so the bands sit in the world, not on it. */
+.lens{position:absolute;background:linear-gradient(90deg,rgba(14,18,22,.24) 0 2px,rgba(14,18,22,.44) 2px 4px,rgba(14,18,22,.62) 4px 6px,rgba(14,18,22,.84) 6px calc(100% - 6px),rgba(14,18,22,.62) calc(100% - 6px) calc(100% - 4px),rgba(14,18,22,.44) calc(100% - 4px) calc(100% - 2px),rgba(14,18,22,.24) calc(100% - 2px))}
+.lens.side{background:linear-gradient(90deg,rgba(14,18,22,.84) 0 calc(100% - 6px),rgba(14,18,22,.62) calc(100% - 6px) calc(100% - 4px),rgba(14,18,22,.44) calc(100% - 4px) calc(100% - 2px),rgba(14,18,22,.24) calc(100% - 2px))}
+.lens.tile{background:rgba(14,18,22,.84)}
+.score{top:20px;height:8px;display:flex;align-items:flex-start}
+.tug{position:relative;width:72px;height:5px;margin-top:2px}
+.tug>.ln{position:absolute;left:0;top:2px;width:72px;height:1px;background:#6f777b}
+.tug>.fill{position:absolute;top:1px;height:3px}
+.tug>.post{position:absolute;top:0;width:1px;height:5px;background:#eee9df}
+.bear{position:absolute;top:40px;height:1px;background:#a8916a}
+.tick{position:absolute;top:38px;width:1px;height:5px;background:#a8916a}
+.grp{position:absolute;left:12px;width:254px;height:24px}
+.grp>.px.std{position:absolute;left:11px;top:4px}
+.grp>.px.std.down{left:14px;top:2px}
+.grp>.h11{position:absolute;left:36px;top:5px}
+.grp>.pips{position:absolute;left:88px;top:8px;height:8px}
+.grp>.pips>b{position:absolute;bottom:0;width:3px}
+.grp>.cnt{position:absolute;left:144px;top:8px}
+.grp>.o{position:absolute;left:176px;top:8px}
+.grp>.f{position:absolute;left:186px;top:8px}
+.grp>.st{position:absolute;left:202px;top:8px}
+.grp>.mark{position:absolute;left:0;top:0;width:2px;height:24px}
+.notice{top:456px;height:28px;padding:0 14px;display:flex;align-items:center;gap:6px}
+</style></head>
+<body>
+<!-- vanilla HUD, drawn from the game's sprite sheets so the mock respects its footprint -->
+<div data-vanilla>
+  <div class="hotbar" style="top:518px"><div class="sel" style="top:-1px"></div></div>
+  <div class="xpbar"><i style="width:56px"></i></div>
+  <div id="hearts"></div><div id="food"></div>
+  <div class="crosshair"></div>
+</div>
+
+<!-- the glass: the race on one line (each side runs toward the timer; the posts are 300), then the bearing line -->
+<div class="lens" data-panel data-name="glass" style="left:344px;top:12px;width:272px;height:44px"></div>
+<div class="a score" data-cx="480" data-name="score">
+  <i class="px" data-art="sun" data-pal="i=#5fb3ad"></i>
+  <mc-text color="#eee9df" shadow style="margin-left:4px">148</mc-text>
+  <div class="tug" style="margin-left:8px"><i class="ln"></i><i class="fill" style="left:0;width:36px;background:#5fb3ad"></i><i class="post" style="right:0"></i></div>
+  <mc-text color="#eee9df" shadow style="margin-left:6px">7:42</mc-text>
+  <div class="tug" style="margin-left:6px"><i class="ln"></i><i class="fill" style="right:0;width:29px;background:#a07cc2"></i><i class="post" style="left:0"></i></div>
+  <mc-text color="#eee9df" shadow style="margin-left:8px">121</mc-text>
+  <i class="px" data-art="crescent" data-pal="i=#b99ad6" style="margin-left:4px"></i>
+</div>
+<!-- bearings: the centre of the line is where you look; ticks every 45 degrees, N named; the points ride the line as seals -->
+<i class="bear" style="left:352px;width:137px" data-name="bearing line"></i><i class="bear" style="left:502px;width:106px"></i>
+<i class="tick" style="left:360px"></i><i class="tick" style="left:428px"></i><i class="tick" style="left:562px"></i>
+<mc-text class="a" color="#eee9df" shadow style="left:493px;top:37px">N</mc-text>
+<div class="a" style="left:398px;top:33px" data-name="seal A"><i class="px" data-art="ring15" data-under-ok></i><mc-text class="a" style="left:5px;top:4px" color="#eee9df" shadow>A</mc-text></div>
+<div class="a" style="left:525px;top:33px" data-name="seal B"><i class="px" data-art="sq15h" data-under-ok></i><mc-text class="a" style="left:5px;top:4px" color="#eee9df" shadow>B</mc-text></div>
+<div class="a" style="left:584px;top:32px" data-name="seal C"><i class="px" data-art="dia17" data-under-ok></i><mc-text class="a" style="left:6px;top:5px" color="#eee9df" shadow>C</mc-text></div>
+
+<!-- the line: one row per group, one pip per troop (a pip's height is that troop's health) -->
+<div class="lens side" data-panel data-name="the line" style="left:12px;top:440px;width:260px;height:88px"></div>
+<div class="a" data-under-ok data-name="loss flash" style="left:12px;top:448px;width:254px;height:24px;background:rgba(217,99,76,.34)"></div>
+<div class="grp" style="top:448px" data-name="infantry">
+  <i class="mark" style="background:#d9634c"></i>
+  <i class="px std" data-art="std13"></i>
+  <span class="h11">Infantry</span>
+  <span class="pips" id="p-inf"></span>
+  <mc-text class="cnt" color="#eee9df" shadow>9/12</mc-text>
+  <i class="px o" data-art="o_attack" data-pal="k=#c9c4ba"></i><i class="px f" data-art="f_shieldwall" data-pal="k=#c9c4ba"></i>
+  <mc-text class="st" color="#eee9df" shadow>FIGHTING</mc-text>
+</div>
+<div class="grp" style="top:472px" data-name="ranged (selected)">
+  <i class="mark" style="background:#c8a56b"></i>
+  <i class="px std" data-art="std13"></i>
+  <span class="h11" style="color:#dfbd77">Ranged</span>
+  <span class="pips" id="p-rng"></span>
+  <mc-text class="cnt" color="#eee9df" shadow>6/6</mc-text>
+  <i class="px o" data-art="o_hold" data-pal="k=#c9c4ba"></i><i class="px f" data-art="f_line" data-pal="k=#c9c4ba"></i>
+  <mc-text class="st" color="#afb9bc" shadow>STEADY</mc-text>
+</div>
+<div class="grp" style="top:496px" data-name="support (routing)">
+  <i class="px std down" data-art="std13f"></i>
+  <span class="h11" style="color:#afb9bc">Support</span>
+  <span class="pips" id="p-sup"></span>
+  <mc-text class="cnt" color="#f08c76" shadow>1/2</mc-text>
+  <i class="px o" data-art="o_follow" data-pal="k=#8a9397"></i><i class="px f" data-art="f_compact" data-pal="k=#8a9397"></i>
+  <mc-text class="st" color="#f08c76" shadow>ROUTING</mc-text>
+</div>
+
+<!-- Rally Horn on cooldown: the horn goes grey and the numeral counts down; ready, it is brass and the numeral goes -->
+<div class="lens tile" data-panel data-name="ability" style="left:584px;top:504px;width:52px;height:24px">
+  <i class="px a" data-art="horn15" data-pal="b=#5d6569,H=#8a9397,N=#3c4347" style="left:6px;top:6px"></i>
+  <mc-text class="a" style="left:30px;top:8px" color="#eee9df" shadow>48</mc-text>
+</div>
+
+<!-- one notice line, fades after four seconds -->
+<div class="lens notice" data-panel data-name="notice" data-cx="480">
+  <i class="px" data-art="sun" data-pal="i=#5fb3ad"></i>
+  <span class="b11 nw">Dawn Knight trained: deploying at Mill Hamlet</span>
+</div>
+
+<script>
+/* vanilla hearts (17 of 20 health) and food (full), positions as InGameHud draws them at 960x540 */
+(function(){let h='',f='';for(let i=0;i<10;i++){h+=`<span class="heart${i===8?' half':''}" style="left:${389+i*8}px;top:501px">${i<9?'<i></i>':''}</span>`;
+f+=`<span class="food" style="left:${562-i*8}px;top:501px"><i></i></span>`;}
+document.getElementById('hearts').innerHTML=h;document.getElementById('food').innerHTML=f;})();
+/* pips: h = health in pixels (8 full), 'x' just lost (white), 0 dead (a 1 px stub) */
+function pips(id,list,col){const el=document.getElementById(id);el.innerHTML=list.map((h,i)=>{
+  const c=h==='x'?'#ffffff':h===0?'#5a6468':col;const hh=h==='x'?8:h===0?1:h;
+  return `<b style="left:${i*4}px;height:${hh}px;background:${c}"></b>`;}).join('');el.style.width=(list.length*4-1)+'px';}
+pips('p-inf',[8,8,7,8,6,8,8,5,8,'x',0,0],'#5fb3ad');
+pips('p-rng',[8,8,8,8,8,8],'#5fb3ad');
+pips('p-sup',[5,0],'#7d9896');
+</script>
+<script src="mc.js"></script><script src="art.js"></script><script src="v2.js"></script><script src="check.js"></script>
+</body></html>

@@ -1,3 +1,5 @@
+> **Project navigation:** [Start here — branches, plans, artwork and work in progress](docs/migration/START-HERE.md). This private repository preserves parallel development; `main` is the 0.4.0 base, not a merge of every feature.
+
 
 
 # Graves and Glory 0.4.0

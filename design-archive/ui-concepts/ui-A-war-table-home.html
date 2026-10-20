@@ -1,0 +1,120 @@
+<!doctype html><html><head><meta charset="utf-8"><title>UI A: War Table, home</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* The home screen is the commander's table seen from above: a map, lead tokens, letters, seals, a purse. */
+body{background:var(--oak2)}
+.table{position:absolute;inset:0;background:repeating-linear-gradient(0deg,#3a2817 0 7px,#34231400 7px 8px),repeating-linear-gradient(90deg,#00000000 0 180px,#2a1b0f 180px 182px),#3a2817}
+.vignette{position:absolute;inset:0;box-shadow:inset 0 0 90px 30px rgba(0,0,0,.65)}
+.map{position:absolute;left:60px;top:28px;width:560px;height:484px;background:#dccb9f;border:1px solid #6b5a3a;box-shadow:inset 0 0 0 2px #e9dbb6,inset 0 0 40px rgba(110,80,40,.45),3px 4px 0 rgba(0,0,0,.5)}
+.map .grid{position:absolute;inset:14px;border:1px solid #b9a67a}
+.map .grid::after{content:"";position:absolute;inset:3px;border:1px solid #b9a67a}
+.ink{color:#2a2219;font-family:Lato;font-size:11px}
+.inkt{color:#2a2219;font-family:Marcellus;font-size:13px}
+.river{position:absolute;height:2px;background:#4a6a8a}
+.road{position:absolute;height:1px;background:#7a6a4a;border-bottom:1px dotted #5a4a30}
+.place{position:absolute;width:120px}
+.place .name{position:absolute;left:14px;top:0;white-space:nowrap}
+.place .sub{position:absolute;left:14px;top:13px;white-space:nowrap;color:#6b5a3a;font-size:9px;font-family:Lato}
+.token{position:absolute;width:40px;height:44px;text-align:center}
+.token .base{position:absolute;left:8px;top:16px;width:24px;height:8px;border-radius:50%;background:#5a5f66;box-shadow:inset 0 -2px 0 #2f3338}
+.token .fig{position:absolute;left:16px;top:8px}
+.token.sel .base{box-shadow:inset 0 -2px 0 #2f3338,0 0 0 2px var(--brass)}
+.token .lbl{position:absolute;left:-10px;right:-10px;top:34px}
+.tag{position:absolute;background:var(--vellum);border:1px solid var(--vellum3);color:#2a2219;padding:3px 5px;box-shadow:2px 2px 0 rgba(0,0,0,.45)}
+.tag .h{font-family:Marcellus;font-size:12px}
+.tag .s{font-family:Lato;font-size:9px;color:#6b5a3a}
+.letter{position:absolute;width:120px;height:34px;background:#efe4c8;border:1px solid #8f7a52;box-shadow:2px 2px 0 rgba(0,0,0,.45)}
+.letter::before{content:"";position:absolute;left:0;right:0;top:0;height:14px;background:linear-gradient(135deg,transparent 48%,#8f7a52 48%,#8f7a52 52%,transparent 52%) left/50% 100% no-repeat,linear-gradient(45deg,transparent 48%,#8f7a52 48%,#8f7a52 52%,transparent 52%) right/50% 100% no-repeat}
+.seal{position:absolute;width:16px;height:16px;border-radius:50%;background:#8a2b1f;box-shadow:inset 0 0 0 2px #a9392b,1px 1px 0 rgba(0,0,0,.5)}
+.ribbon{position:absolute;height:10px;background:#6b2a3a;border:1px solid #2a1018}
+.ribbon>i{position:absolute;left:0;top:0;bottom:0;background:var(--brass)}
+.stand{position:absolute;width:3px;background:#8a6a45;box-shadow:1px 0 0 #2a1b0f}
+.bbtn{position:absolute;height:26px;padding:0 14px;display:flex;align-items:center;background:#b48d4e;border:1px solid #e0c27a;box-shadow:inset 0 1px 0 #f0d896,inset 0 -2px 0 #7d5e2a,2px 3px 0 rgba(0,0,0,.5);color:#1e150a;font-family:Marcellus;font-size:13px;letter-spacing:1px}
+</style></head><body>
+<div class="table"></div>
+<div class="vignette"></div>
+<div class="abs" style="left:16px;top:8px"><span style="font-family:Marcellus;font-size:16px;color:var(--ivory)">WAR TABLE</span></div>
+<div class="abs" style="left:16px;top:28px"><mc-text color="#afb9bc">Founder  Â/  Chapter 1</mc-text></div>
+
+<!-- the map, pinned with tacks -->
+<div class="map">
+  <div class="grid"></div>
+  <div class="abs inkt" style="left:22px;top:20px;font-size:15px">THE MARCH OF GRAVES</div>
+  <div class="abs ink" style="left:22px;top:38px;color:#6b5a3a;font-size:9px">Five fields. Pick one with the Skirmish token.</div>
+  <div class="river" style="left:60px;top:150px;width:240px;transform:rotate(-8deg)"></div>
+  <div class="river" style="left:290px;top:118px;width:160px;transform:rotate(14deg)"></div>
+  <div class="river" style="left:380px;top:300px;width:120px;transform:rotate(60deg)"></div>
+  <div class="road" style="left:120px;top:140px;width:300px;transform:rotate(22deg)"></div>
+  <div class="road" style="left:150px;top:330px;width:330px"></div>
+  <div class="road" style="left:300px;top:150px;width:260px;transform:rotate(80deg);transform-origin:0 0"></div>
+  <div class="abs" style="left:430px;top:250px"><i class="px" data-art="tree" data-pal="k=#5a4a30"></i><i class="px" data-art="tree" data-pal="k=#5a4a30"></i><i class="px" data-art="tree" data-pal="k=#5a4a30"></i></div>
+  <div class="abs" style="left:445px;top:262px"><i class="px" data-art="tree" data-pal="k=#5a4a30"></i><i class="px" data-art="tree" data-pal="k=#5a4a30"></i></div>
+  <div class="abs" style="left:470px;top:310px"><i class="px" data-art="tree" data-pal="k=#5a4a30"></i><i class="px" data-art="tree" data-pal="k=#5a4a30"></i><i class="px" data-art="tree" data-pal="k=#5a4a30"></i><i class="px" data-art="tree" data-pal="k=#5a4a30"></i></div>
+  <div class="abs" style="left:60px;top:250px"><i class="px" data-art="mountain" data-pal="k=#5a4a30,i=#dccb9f"></i><i class="px" data-art="mountain" data-pal="k=#5a4a30,i=#dccb9f"></i><i class="px" data-art="mountain" data-pal="k=#5a4a30,i=#dccb9f"></i><i class="px" data-art="mountain" data-pal="k=#5a4a30,i=#dccb9f"></i><i class="px" data-art="mountain" data-pal="k=#5a4a30,i=#dccb9f"></i></div>
+  <div class="abs" style="left:40px;top:262px"><i class="px" data-art="mountain" data-pal="k=#5a4a30,i=#dccb9f"></i><i class="px" data-art="mountain" data-pal="k=#5a4a30,i=#dccb9f"></i><i class="px" data-art="mountain" data-pal="k=#5a4a30,i=#dccb9f"></i></div>
+  <div class="abs" style="left:70px;top:330px"><i class="px" data-art="mountain" data-pal="k=#5a4a30,i=#dccb9f"></i><i class="px" data-art="mountain" data-pal="k=#5a4a30,i=#dccb9f"></i></div>
+  <div class="abs" style="left:300px;top:430px;width:200px;height:40px;background:repeating-linear-gradient(90deg,#b9a67a 0 1px,transparent 1px 6px);opacity:.6"></div>
+  <div class="abs" style="left:14px;top:420px;width:260px;height:50px;background:repeating-linear-gradient(0deg,#b9a67a 0 1px,transparent 1px 5px);clip-path:polygon(0 100%,0 40%,20% 60%,40% 30%,60% 55%,80% 20%,100% 50%,100% 100%)"></div>
+  <div class="abs ink" style="left:30px;top:455px;font-size:9px;color:#6b5a3a">the Drowned Coast</div>
+  <div class="abs" style="left:370px;top:200px"><i class="px" data-art="shrine" data-pal="k=#5a4a30"></i></div><div class="abs ink" style="left:382px;top:200px;font-size:9px;color:#6b5a3a">Hilltop Shrine</div>
+  <div class="abs" style="left:250px;top:160px"><i class="px" data-art="ford" data-pal="k=#4a6a8a"></i></div><div class="abs ink" style="left:262px;top:156px;font-size:9px;color:#6b5a3a">Trade Crossing</div>
+  <!-- places -->
+  <div class="place" style="left:200px;top:196px"><i class="px" data-art="mill" data-pal="k=#2a2219" style="position:absolute;left:0;top:0"></i><div class="name inkt">Rivergate Valley</div><div class="sub">river town, three crossings</div></div>
+  <div class="place" style="left:400px;top:88px"><i class="px" data-art="keep" data-pal="k=#2a2219" style="position:absolute;left:0;top:0"></i><div class="name inkt">Ironhold Siege</div><div class="sub">breached fortress, supply roads</div></div>
+  <div class="place" style="left:110px;top:290px"><i class="px" data-art="mountain" data-pal="k=#2a2219,i=#dccb9f" style="position:absolute;left:0;top:0"></i><div class="name inkt">Frostmarch Pass</div><div class="sub">snow, sheltered camps</div></div>
+  <div class="place" style="left:410px;top:280px"><i class="px" data-art="tree" data-pal="k=#2a2219" style="position:absolute;left:0;top:0"></i><div class="name inkt">Hollowwood Reach</div><div class="sub">old causeways, marsh</div></div>
+  <div class="place" style="left:270px;top:400px"><i class="px" data-art="cross" data-pal="k=#2a2219" style="position:absolute;left:0;top:0"></i><div class="name inkt">Kingsfield Crossroads</div><div class="sub">five points, two flanks</div></div>
+  <!-- the skirmish pin sits on Rivergate -->
+  <i class="px" data-art="pin" data-scale="2" style="position:absolute;left:188px;top:184px"></i>
+  <div class="tag" style="left:214px;top:226px;width:150px"><div class="h">RIVERGATE VALLEY</div><div class="s">Domination to 300 &middot; Normal bots &middot; 2 v 2</div><div class="s" style="color:#8a2b1f">Right-click a field to pick it. B: mode, N: bots</div></div>
+  <!-- play tokens on the map's margin -->
+  <div class="abs" style="left:22px;top:60px;width:230px;height:1px;background:#b9a67a"></div>
+  <div class="token" style="left:16px;top:64px"><div class="base"></div><i class="px fig" data-art="dummy" data-scale="2" data-pal="i=#8a6a45,b=#2a2219" style="left:12px;top:4px"></i><div class="lbl inkt" style="font-size:10px">PRACTICE</div></div>
+  <div class="token sel" style="left:86px;top:64px"><div class="base"></div><i class="px fig" data-art="swords" data-scale="2" data-pal="i=#2a2219" style="left:12px;top:4px"></i><div class="lbl inkt" style="font-size:10px">SKIRMISH</div></div>
+  <div class="token" style="left:156px;top:64px"><div class="base"></div><i class="px fig" data-art="signpost" data-scale="2" data-pal="b=#8a6a45,i=#dccb9f" style="left:12px;top:4px"></i><div class="lbl inkt" style="font-size:10px">CAMPAIGN</div></div>
+  <div class="abs ink" style="left:20px;top:112px;font-size:9px;color:#6b5a3a">Campaign: chapter 1, The Broken Crossing, battle 2 of 6</div>
+  <!-- compass rose -->
+  <i class="px" data-art="north" data-pal="i=#2a2219" data-scale="2" style="position:absolute;left:510px;top:420px"></i>
+  <div class="abs ink" style="left:506px;top:450px;font-size:9px">N</div>
+</div>
+<i class="px" data-art="tack" style="position:absolute;left:64px;top:32px"></i><i class="px" data-art="tack" style="position:absolute;left:612px;top:32px"></i><i class="px" data-art="tack" style="position:absolute;left:64px;top:504px"></i><i class="px" data-art="tack" style="position:absolute;left:612px;top:504px"></i>
+
+<!-- objects on the right of the table -->
+<i class="px" data-art="purse" data-scale="2" style="position:absolute;left:650px;top:30px"></i>
+<div class="abs" style="left:672px;top:34px"><mc-text color="#c8a56b" shadow scale="2">300</mc-text></div>
+<div class="abs" style="left:672px;top:56px"><mc-text color="#afb9bc">gold  Â/  Gilded shards 14  Â/  Graveborn shards 3</mc-text></div>
+
+<div class="letter" style="left:650px;top:84px"><div class="abs ink" style="left:6px;top:17px;font-size:9px">Ansel: ready at the gates</div></div>
+<div class="letter" style="left:660px;top:92px;transform:rotate(3deg)"><div class="abs ink" style="left:6px;top:17px;font-size:9px">Mira: back after supper</div></div>
+<div class="tag" style="left:790px;top:86px;width:150px"><div class="h">DISPATCHES</div><div class="s">Party: you (lead), Ansel</div><div class="s">Friends in camp: Ansel, Mira &middot; 1 invitation</div></div>
+
+<div class="seal" style="left:656px;top:152px"></div><div class="seal" style="left:664px;top:158px"></div><div class="seal" style="left:672px;top:150px;background:#4a6b3a;box-shadow:inset 0 0 0 2px #5f8a4a,1px 1px 0 rgba(0,0,0,.5)"></div>
+<div class="tag" style="left:700px;top:146px;width:240px"><div class="h">CONTRACTS <span class="s" style="color:#8a2b1f">2 ready to claim</span></div><div class="s">Hold Old Village for 3 minutes &middot; 2/3 &middot; 40 gold</div><div class="s">Win with 8 Gilded in the banner &middot; done &middot; 12 shards</div></div>
+
+<div class="ribbon" style="left:650px;top:206px;width:290px"><i style="width:30%"></i></div>
+<div class="abs" style="left:650px;top:218px"><mc-text color="#eee9df" shadow>FOUNDERS CHAPTER</mc-text></div>
+<div class="abs" style="left:770px;top:218px"><mc-text color="#c8a56b" shadow>Tier 3 of 30  Â/  next: Order Archer skin, 110 XP</mc-text></div>
+
+<!-- the banner stand -->
+<div class="stand" style="left:664px;top:244px;height:120px"></div>
+<div class="cloth" style="position:absolute;left:668px;top:248px;width:70px;height:88px;background:var(--dawn2);color:var(--dawn2);clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),50% 100%,0 calc(100% - 10px))">
+  <div style="position:absolute;left:6px;top:6px;display:grid;grid-template-columns:repeat(4,12px);gap:2px">
+    <i class="px" data-art="gilded" data-pal="i=#f1e6c0"></i><i class="px" data-art="gilded" data-pal="i=#f1e6c0"></i><i class="px" data-art="gilded" data-pal="i=#f1e6c0"></i><i class="px" data-art="gilded" data-pal="i=#f1e6c0"></i>
+    <i class="px" data-art="gilded" data-pal="i=#f1e6c0"></i><i class="px" data-art="gilded" data-pal="i=#f1e6c0"></i><i class="px" data-art="gilded" data-pal="i=#f1e6c0"></i><i class="px" data-art="gilded" data-pal="i=#f1e6c0"></i>
+    <i class="px" data-art="graveborn" data-pal="i=#bfd6b0"></i><i class="px" data-art="graveborn" data-pal="i=#bfd6b0"></i><i class="px" data-art="graveborn" data-pal="i=#bfd6b0"></i><i class="px" data-art="graveborn" data-pal="i=#bfd6b0"></i>
+    <i class="px" data-art="graveborn" data-pal="i=#bfd6b0"></i><i class="px" data-art="graveborn" data-pal="i=#bfd6b0"></i><i style="width:8px;height:6px;border:1px dashed rgba(238,233,223,.4)"></i><i style="width:8px;height:6px;border:1px dashed rgba(238,233,223,.4)"></i>
+    <i style="width:8px;height:6px;border:1px dashed rgba(238,233,223,.4)"></i><i style="width:8px;height:6px;border:1px dashed rgba(238,233,223,.4)"></i><i style="width:8px;height:6px;border:1px dashed rgba(238,233,223,.4)"></i><i style="width:8px;height:6px;border:1px dashed rgba(238,233,223,.4)"></i>
+  </div>
+</div>
+<div class="tag" style="left:750px;top:252px;width:190px"><div class="h">YOUR BANNER &middot; 14 / 20</div><div class="s">Gilded Order 8 slots &middot; Bulwark I active</div><div class="s">Graveborn 6 slots &middot; Rise Again I active</div><div class="s" style="color:#8a2b1f">Open the banner builder: B</div></div>
+<div class="tag" style="left:750px;top:310px;width:190px"><div class="h">ROOM K7F2</div><div class="s">2 of 4 ready &middot; you and Ansel on Dawn &middot; bots fill</div></div>
+
+<i class="px" data-art="candle" data-scale="2" style="position:absolute;left:660px;top:384px"></i>
+<div class="tag" style="left:700px;top:386px;width:120px"><div class="h">CAMP GUIDE</div><div class="s">Lesson 2 of 4: formations</div></div>
+<div class="tag" style="left:830px;top:386px;width:110px"><div class="h">LAST BATTLE</div><div class="s">Victory, Rivergate, +120 gold</div></div>
+
+<div class="bbtn" style="left:700px;top:468px">RIDE TO THE WAR GATES</div>
+<div class="abs" style="left:700px;top:500px"><mc-text color="#afb9bc">Stand with your party at the gates to ready.</mc-text></div>
+<div class="abs row" style="left:16px;top:522px;gap:6px"><span class="key">Esc</span><mc-text color="#afb9bc">Back to camp</mc-text><span class="key">R</span><mc-text color="#afb9bc">Recruit</mc-text><span class="key">B</span><mc-text color="#afb9bc">Banner</mc-text><span class="key">F</span><mc-text color="#afb9bc">Friends</mc-text></div>
+<script src="mc.js"></script><script src="art.js"></script>
+</body></html>

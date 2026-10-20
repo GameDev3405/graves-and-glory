@@ -1,0 +1,77 @@
+<!doctype html>
+<html class="v2"><head><meta charset="utf-8"><title>v2 UI B: Field Ledger, home</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* Field Ledger home, second pass. The spine carries the sections; the page is a two-row ledger:
+   the fight choice on top (the chosen plate is the one light surface), then where and who, and one button. */
+.spine{left:0;top:0;width:144px;height:540px;background:#12171a;box-shadow:inset -1px 0 0 #394246}
+.nav{position:absolute;left:16px;width:120px;height:24px}
+.nav .px{position:absolute;left:8px;top:8px}
+.nav .h11{position:absolute;left:28px;top:6px;color:var(--muted)}
+.nav mc-text{position:absolute;top:8px}
+.nav.on{width:136px;background:var(--brass);box-shadow:inset 0 -2px 0 var(--brass-lo),0 2px 0 rgba(0,0,0,.45)}
+.nav.on .h11{color:#171d20}
+.plate{position:absolute;top:96px;width:232px;height:152px}
+.plate.on{background:#efe4c8;color:var(--ink2);box-shadow:inset 0 0 0 1px #8f7a52,0 0 0 1px var(--brass),0 0 0 2px #0d1113,0 3px 0 rgba(0,0,0,.5)}
+.hd{position:absolute;left:0;top:0;font:11px/12px Marcellus,serif;color:var(--brass)}
+.mini{position:absolute;left:16px;top:16px;width:128px;height:64px;background:#20292d;box-shadow:inset 0 0 0 1px #394246}
+.tok{position:absolute;top:0;width:96px;height:40px}
+.tok .px.d{position:absolute;left:0;top:4px}
+.tok .px.s{position:absolute;left:4px;top:8px}
+.tok .h11{position:absolute;left:38px;top:8px}
+.tok .ck{position:absolute;left:38px;top:24px}
+.ride{left:544px;top:352px;width:352px;height:40px;background:#bb9858;box-shadow:inset 0 0 0 1px var(--brass-hi),inset 0 -3px 0 #8c7246,0 3px 0 rgba(0,0,0,.5);color:#171d20}
+</style></head>
+<body>
+<div class="scrim" data-bleed></div>
+
+<!-- the ledger's spine: one brass index tab per section, counts as badges -->
+<div class="a spine" data-bleed></div>
+<div class="nav on" data-ctl style="top:24px"><i class="px" data-art="swords" data-pal="i=#171d20"></i><span class="h11">Fight</span></div>
+<div class="nav" data-ctl style="top:52px"><i class="px" data-art="letter" data-pal="p=#afb9bc,k=#12171a"></i><span class="h11">Recruit</span></div>
+<div class="nav" data-ctl style="top:80px"><i class="px" data-art="pennant" data-pal="i=#afb9bc,k=#afb9bc"></i><span class="h11">Banner</span></div>
+<div class="nav" data-ctl style="top:108px"><i class="px" data-art="seal" data-pal="b=#afb9bc,i=#12171a"></i><span class="h11">Contracts</span><mc-text data-rx="112" color="#c8a56b">2</mc-text></div>
+<div class="nav" data-ctl style="top:136px"><i class="px" data-art="star" data-pal="i=#afb9bc"></i><span class="h11">Chapter</span></div>
+<div class="nav" data-ctl style="top:164px"><i class="px" data-art="friend" data-pal="i=#afb9bc"></i><span class="h11">Friends</span><mc-text data-rx="112" color="#c8a56b">1</mc-text></div>
+<div class="btns flex" data-ctl data-name="close" style="left:24px;top:496px;height:24px;padding:0 8px;gap:6px"><span class="key"><mc-text color="#afb9bc">Esc</mc-text></span><span class="h11">Camp</span></div>
+
+<!-- what you fight: three plates; the chosen one is the page's light surface -->
+<div class="panel plate" data-ctl data-name="practice" style="left:168px">
+  <i class="px a" data-art="dummy" data-scale="4" data-pal="i=#afb9bc,b=#8c7246" style="left:100px;top:48px"></i>
+  <span class="a h11" data-cx="116" style="top:92px;color:#afb9bc">Practice</span></div>
+<div class="plate on" data-ctl data-name="skirmish" style="left:416px">
+  <i class="px a" data-art="swords" data-scale="5" data-pal="i=#2a2219" style="left:96px;top:42px"></i>
+  <span class="a t16" data-cx="116" style="top:93px">Skirmish</span></div>
+<div class="panel plate" data-ctl data-name="campaign" style="left:664px">
+  <i class="px a" data-art="keep" data-scale="4" data-pal="k=#afb9bc" style="left:100px;top:52px"></i>
+  <span class="a h11" data-cx="116" style="top:92px;color:#afb9bc">Campaign</span></div>
+
+<!-- where: the chosen field -->
+<div class="panel" data-panel data-name="field" style="left:168px;top:272px;width:352px;height:120px">
+  <div class="mini" id="map" data-under-ok></div>
+  <span class="a h11" style="left:160px;top:16px">Rivergate Valley</span>
+  <span class="a b11 nw" style="left:160px;top:36px;color:#afb9bc">Domination to 300</span>
+  <span class="a b11 nw" style="left:160px;top:52px;color:#afb9bc">2 v 2, Normal bots</span>
+  <div class="btns flex" data-ctl data-name="change field" style="left:160px;top:80px;height:24px;padding:0 8px"><span class="h11">Change</span></div>
+</div>
+
+<!-- who rides, and the one primary action -->
+<span class="a hd" style="left:544px;top:276px">Party</span>
+<div class="a" style="left:544px;top:296px;width:352px;height:40px" data-name="party">
+  <div class="tok" data-ctl data-name="you" style="left:0"><i class="px d" data-art="disc15" data-scale="2" data-pal="f=#2e6b68,h=#5fb3ad,s=#1f5653"></i><i class="px s" data-art="sun" data-scale="2" data-pal="i=#eee9df"></i><span class="h11">Kort</span><i class="px ck" data-art="check" data-scale="2" data-pal="i=#8fd3a0"></i></div>
+  <div class="tok" data-ctl data-name="friend" style="left:112px"><i class="px d" data-art="disc15" data-scale="2" data-pal="f=#2e6b68,h=#5fb3ad,s=#1f5653"></i><i class="px s" data-art="sun" data-scale="2" data-pal="i=#eee9df"></i><span class="h11">Ansel</span><i class="px ck" data-art="check" data-scale="2" data-pal="i=#8fd3a0"></i></div>
+  <div class="tok" data-ctl data-name="invite" style="left:224px"><i class="px d" data-art="disc15" data-scale="2" data-pal="f=#20292d,h=#2c373c,s=#171d20,k=#556166"></i><i class="px s" data-art="cross" data-scale="2" data-pal="k=#afb9bc" style="left:7px;top:9px"></i><span class="h11" style="color:#afb9bc">Invite</span></div>
+</div>
+<div class="a ride" data-ctl data-name="ride">
+  <span class="a key" style="left:8px;top:13px"><mc-text color="#2a2219">Enter</mc-text></span>
+  <span class="a h11" data-cx="176" style="top:14px">Ride to the war gates</span>
+</div>
+
+<script>
+(function(){const m=document.getElementById('map');let h='';
+  for(let x=4;x<124;x+=2){const y=Math.round(30+10*Math.sin((x-4)/18));h+=`<b style="position:absolute;left:${x}px;top:${y}px;width:2px;height:2px;background:#4f86b8"></b>`;}
+  [[22,14],[60,38],[100,12]].forEach(([x,y],i)=>{h+=`<i class="px a" data-art="seal13" data-pal="f=#4c5459,h=#6b757a,s=#363e42" style="left:${x}px;top:${y}px"></i><mc-text class="a" color="#eee9df" style="left:${x+4}px;top:${y+3}px">${'ABC'[i]}</mc-text>`;});
+  m.innerHTML=h;})();
+</script>
+<script src="mc.js"></script><script src="art.js"></script><script src="v2.js"></script><script src="check.js"></script>
+</body></html>
