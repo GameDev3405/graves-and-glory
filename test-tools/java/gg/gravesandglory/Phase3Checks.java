@@ -689,7 +689,7 @@ public final class Phase3Checks implements ClientModInitializer {
             return new Lanterns(total,loose,sample.toString(),detail.toString());
         }
         /** The floor course of every building that has one (the cells x0..x0+width-1 by z0..z0+depth-1 that Arena.structure lays at the elevation of the building): how many cells, and how many hold road soil
-         *  or ground (dirt path, coarse dirt, gravel, dirt, grass, podzol, snow block), which the muster lanes of the camps wrote over them. */
+         *  or ground (dirt path, coarse dirt, gravel, dirt, grass, podzol, snow block), which the muster lanes of the camps once wrote over them (that pass is gone; the check keeps the floors clear of any road soil). */
         record Floors(int halls,int cells,int soil,String sample){}
         static Floors floors(GravesAndGlory.Battle b){
             var w=b.world;int halls=0,cells=0,soil=0;var sample=new StringBuilder();
@@ -704,9 +704,9 @@ public final class Phase3Checks implements ClientModInitializer {
             }
             return new Floors(halls,cells,soil,sample.toString());
         }
-        /** The dirt path cells of the arena (the block at Arena.height of each column): how many, how many have no dirt path on any of their four sides (a dirt path block is 15/16 high, so one between full blocks draws as a dark pit; the diagonal
-         *  stripes of coarse dirt that Arena lays in every road leave some at the edge of a ribbon, which is how a road looks and is only reported), and how many lie where the dressing paves everything: within 9.2 blocks of a flag pole (the plaza) or on the
-         *  parade ground of a camp (19 blocks behind to 25 in front of the spawn, 63 either side), off the floors and decks the structures build. */
+        /** The dirt path cells of the arena (the block at Arena.height of each column): how many, how many have no dirt path on any of their four sides (a dirt path block is 15/16 high, so one between full blocks draws as a dark pit; the roads are
+         *  one surface and MapDressing.worn() leaves none, so the check asserts 0), how many lie where the dressing paves everything: within 9.2 blocks of a flag pole (the plaza) or on the parade ground of a camp (19 blocks behind to 25 in front of the
+         *  spawn, 63 either side), off the floors and decks the structures build, and how many blocks of coarse dirt or gravel lie on the ground outside the plazas and off the river (earth: trampled earth is dirt path only, so 0). */
         record Pits(int paths,int lone,int paved,int earth,String sample,String earthSample,String detail){}
         static Pits pits(GravesAndGlory.Battle b){
             var w=b.world;int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ(),wz=2*hz+1,paths=0,lone=0,plaza=0,earth=0;var path=new BitSet((2*hx+1)*wz);var sample=new StringBuilder();var earthSample=new StringBuilder();var detail=new StringBuilder();
