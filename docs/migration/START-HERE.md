@@ -31,8 +31,11 @@ This private GitHub repository preserves the local Minecraft modpack project and
 
 ## Branch inventory at capture
 
+The `archive/2026-10-19/bannerbound-runs` branch preserves the clean detached test-run checkout.
+
 | Branch | Commit |
 | --- | --- |
+| `archive/2026-10-19/bannerbound-runs` | `8864616` |
 | `heraldic-units` | `987186ea8a13` |
 | `master` | `e78b81b2fb3e` |
 | `phase-1-solo-core` | `dde5a56b73f3` |
