@@ -10,6 +10,8 @@ from v4pal import IRON
 from v4a_hud import seal, track, spine, ledger_card, hp_fill, feed_glyph_ink, BRASSR
 import kit_extra
 import kit_props
+import kit_track
+import kit_maps
 
 MOCK = dict(v4art.ASSETS)
 for _mod in (v4a_table, v4a_paper, v4a_hud, v4a_recruit, v4a_ink, v4a_map, v4a_furn, v4a_portrait, v4a_recruit2):
@@ -103,7 +105,7 @@ for _w in range(13, 49):
     mock('table', 'key-brass-%d' % _w)
 for _n in ('frame-back-48', 'frame-back-empty-48', 'frame-rim-48', 'frame-back-160', 'frame-ornate-184', 'invite-plus',
            'ready-check', 'order-lo', 'order-lo2', 'order-hi', 'ribbon-teal', 'wax-crown', 'ink-practice',
-           'ink-skirmish', 'ink-campaign', 'field-card', 'tack', 'map-rivergate', 'map-seal', 'quill',
+           'ink-skirmish', 'ink-campaign', 'field-card', 'tack', 'map-seal', 'quill',
            'btn-brass-240x40', 'prop-maproll'):
     mock('table', _n)
 # the props at the kit's pixel scale, about 2.5 times the mock's (Kort, 2026-10-18 late): the candle's flame flickers
@@ -113,6 +115,24 @@ add('table/prop-inkwell', kit_props.inkwell, kind='sheet', frames=3)
 add('table/prop-glow', kit_props.glow)
 add('table/plate-glint', kit_props.plate_glint)
 add('table/btn-iron-240x40', lambda: kit_extra.btn_iron(MOCK['btn-brass-240x40']()))
+
+# the War Table pages of UI plan Task 7: each page's own oak (kit_props.TABLE_SEEDS), the sheets and notes they pin to
+# it (kit_extra.SHEETS), the commander classes' icons for the Banner page's plaques, the Chapter's reward track as
+# Kort approved it (kit_track, from work/ui-concepts/track), the open page's rail plaques, and a painted card for every
+# map (kit_maps: Rivergate's is the mock's card with its seals lettered, the others painted from their layouts)
+for _p in ('banner', 'contracts', 'chapter', 'friends', 'field'):
+    add('table/oak-table-' + _p, (lambda p: lambda: kit_props.table(p))(_p))
+for _n, (_w, _h, _s) in kit_extra.SHEETS.items():
+    add(_n, (lambda w, h, s: lambda: kit_extra.pinned(w, h, s))(_w, _h, _s))
+for _c, _paint in kit_extra.CLASS_ICONS.items():
+    add('table/icon-class-' + _c, _paint)
+for _n, _paint in kit_track.TRACK.items():
+    if _n.startswith('table/plaque-'):        # the open page's plaque slices as the plaque it stands in for
+        add(_n, _paint, kind='nine', l=6, t=6, r=7, b=8)
+    else:
+        add(_n, _paint)
+for _n, _paint in kit_maps.MAPS.items():
+    add(_n, _paint)
 
 # ================================================================ recruit/
 mock('recruit', 'banner-rod', kind='three-h', l=9, r=9)

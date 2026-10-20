@@ -36,6 +36,13 @@ TABLE_SEEDS = {'home': 11, 'recruit': 23, 'banner': 37, 'contracts': 43, 'chapte
 TABLE_AVOID = {
     'home': [(200, 270, 520, 462)],          # the party, as the round 4 mock kept it (home's planks are the mock's)
     'recruit': [(824, 434, 1064, 586)],      # the ladder under the letters
+    # UI plan Task 7, in table px (a page's px plus (160, 90)): the title, the notice line and each page's words on
+    # the bare oak, kept clear of knots
+    'banner': [(520, 166, 760, 194), (910, 200, 1064, 420), (420, 586, 860, 616)],
+    'contracts': [(520, 166, 760, 194), (580, 330, 900, 372), (440, 486, 840, 520), (420, 586, 860, 616)],
+    'chapter': [(636, 162, 1064, 290), (212, 382, 284, 558), (292, 584, 720, 610)],   # track/NOTES.md
+    'friends': [(520, 166, 760, 194), (212, 206, 448, 540), (456, 520, 824, 556), (420, 586, 860, 616)],
+    'field': [(520, 166, 760, 194), (420, 586, 860, 616)],
 }
 
 

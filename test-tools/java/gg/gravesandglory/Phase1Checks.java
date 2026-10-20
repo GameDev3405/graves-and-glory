@@ -33,7 +33,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  while the client's ready is false, when step() does not run. clientTick runs every client tick, ready or not. */
     public interface HudWatch { void hudFrame(MinecraftClient c); default void clientTick(MinecraftClient c){} }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front,hold;static boolean started; // hold: client ticks the current suite waits (Phase1Checks.window)
@@ -621,15 +621,15 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 else if(lobbyAt>=0&&tick==lobbyAt+30){c.setScreen(null);lobbyAt=-2;server(c,b->next(b,3));}
             }
-            if(stage==4){ // the camp's match page after difficulty:hard (the Bots button left the home with UI Task 5), then a real press of the Bots button
-                if(homeAt==-1){homeAt=tick;CampScreen.open("match");}
+            if(stage==4){ // the War Table's Field page after difficulty:hard (UI Task 7: the tiers are three tags, the current one lit), then a real press of Easy
+                if(homeAt==-1){homeAt=tick;CampScreen.open("field");}
                 else if(tick==homeAt+25){
-                    var bots=button(c.currentScreen,"Bots: ");
-                    homeOk=c.currentScreen instanceof CampScreen&&bots!=null&&bots.getMessage().getString().equals("Bots: Hard")&&bots.active;
-                    homeWhy=bots==null?"no Bots button on the camp's match page":"\""+bots.getMessage().getString()+"\", active="+bots.active;
+                    var s=c.currentScreen instanceof CampScreen cs&&cs.page.equals("field")?cs.pages:null;var easy=s==null?null:s.button("bots-easy");
+                    homeOk=s!=null&&"Hard".equals(WarTablePages.texts().get("bots-current"))&&easy!=null&&easy.active;
+                    homeWhy=s==null?"no Field page":"the bots read \""+WarTablePages.texts().get("bots-current")+"\", Easy "+(easy!=null&&easy.active?"taking a press":"dull");
                     wantShot="bots-difficulty";
                 }
-                else if(tick==homeAt+30){var bots=button(c.currentScreen,"Bots: ");if(bots!=null)bots.onPress();homeAt=-2;server(c,b->next(b,5));}
+                else if(tick==homeAt+30){var s=c.currentScreen instanceof CampScreen cs&&cs.page.equals("field")?cs.pages:null;var easy=s==null?null:s.button("bots-easy");if(easy!=null)easy.onPress();homeAt=-2;server(c,b->next(b,5));}
             }
             if(stage>=6&&c.currentScreen!=null)c.setScreen(null);
             if(stage==99&&!finished&&wantShot==null){finished=true;finish(c,"bots");}
@@ -659,7 +659,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     tiersWhy=bots.size()+" bots with tiers "+bots.stream().map(s->s.tier).toList()+" (running="+b.running+", "+c.size+"v"+c.size+")";
                     b.command(sp(b),"difficulty:easy");refusedOk=c.difficulty.equals("hard");
                     for(var s:bots)firstTarget.put(s.owner,s.target);
-                    report("p1-bots-tiers",lobbyOk&&commandOk&&homeOk&&buttonOk&&tiersOk&&refusedOk,"lobby: "+lobbyWhy+"; difficulty:hard set it="+commandOk+"; camp match page: "+homeWhy+"; button press reached the server="+buttonOk+"; solo pad 3v3: "+tiersWhy+"; difficulty:easy refused while running (still "+c.difficulty+")="+refusedOk);
+                    report("p1-bots-tiers",lobbyOk&&commandOk&&homeOk&&buttonOk&&tiersOk&&refusedOk,"lobby: "+lobbyWhy+"; difficulty:hard set it="+commandOk+"; the Field page: "+homeWhy+"; button press reached the server="+buttonOk+"; solo pad 3v3: "+tiersWhy+"; difficulty:easy refused while running (still "+c.difficulty+")="+refusedOk);
                     next(b,7);
                 }
                 case 7->{ // Hard decides on its 60-tick beat: each bot's first order change lands on a multiple of 60
@@ -797,8 +797,9 @@ public final class Phase1Checks implements ClientModInitializer {
         }
         /** The War Table home's Ride plate as the last frame drew it while the Campaign sheet is raised (UI Task 5), or null. */
         static String march(MinecraftClient c){return c.currentScreen instanceof CampScreen s&&s.page.equals("home")&&s.home!=null&&s.home.focused==2?WarTableHome.texts().get("ride"):null;}
-        /** Right twice, as the keys send it: the War Table raises the Campaign sheet, whichever sheet was up. */
-        static void raiseCampaign(MinecraftClient c){if(c.currentScreen!=null)for(int i=0;i<2;i++)c.currentScreen.keyPressed(GLFW.GLFW_KEY_RIGHT,0,0);}
+        /** Right tapped twice, as the keys send it (pressed and let go: the table hears a held key once): the War Table raises the
+         *  Campaign sheet, whichever sheet was up. */
+        static void raiseCampaign(MinecraftClient c){for(int i=0;i<2;i++){if(c.currentScreen!=null)c.currentScreen.keyPressed(GLFW.GLFW_KEY_RIGHT,0,0);if(c.currentScreen!=null)c.currentScreen.keyReleased(GLFW.GLFW_KEY_RIGHT,0,0);}}
         static String describe(String ride){return ride==null?"no War Table home with the Campaign sheet raised":"the Campaign sheet raised, the Ride plate reads \""+ride+"\"";}
         /** Reported once: at the briefing screenshot, or when the lessons are reported if no entrance was seen. */
         void reportStart(){
@@ -1907,7 +1908,8 @@ public final class Phase1Checks implements ClientModInitializer {
         static void move(MinecraftClient c,int[] b){if(b!=null&&c.currentScreen!=null)c.currentScreen.mouseMoved(gui(c,b[0]+b[2]/2.0),gui(c,b[1]+b[3]/2.0));}
         /** A left click in the middle of a canvas box, the pointer moving there first. */
         static void click(MinecraftClient c,int[] b){if(b==null||c.currentScreen==null)return;double x=gui(c,b[0]+b[2]/2.0),y=gui(c,b[1]+b[3]/2.0);var s=c.currentScreen;s.mouseMoved(x,y);s.mouseClicked(x,y,0);s.mouseReleased(x,y,0);}
-        static void key(MinecraftClient c,int key){if(c.currentScreen!=null)c.currentScreen.keyPressed(key,0,0);}
+        /** A key pressed and let go, as a tap reaches the screen (the table hears a held key once). */
+        static void key(MinecraftClient c,int key){if(c.currentScreen!=null)c.currentScreen.keyPressed(key,0,0);if(c.currentScreen!=null)c.currentScreen.keyReleased(key,0,0);}
         static String str(int[] b){return b==null?"none":Arrays.toString(b);}
         static boolean overlap(int[] a,int[] b){return a[0]<b[0]+b[2]&&b[0]<a[0]+a[2]&&a[1]<b[1]+b[3]&&b[1]<a[1]+a[3];}
         static boolean inside(int[] a,int w,int h){return a[0]>=0&&a[1]>=0&&a[0]+a[2]<=w&&a[1]+a[3]<=h;}
@@ -2052,10 +2054,10 @@ public final class Phase1Checks implements ClientModInitializer {
                         for(int[] q:px){int x=px0[s]+q[0],y=py0[s]+q[1];pixels++;if(x<12||y<12||x>=w-12||y>=h-12)edge++;
                             for(int i=0;i<content.size();i++){int[] b=content.get(i);if(x>=b[0]&&y>=b[1]&&x<b[0]+b[2]&&y<b[1]+b[3]){under++;if(first.isEmpty())first=names.get(i)+" at "+x+","+y;}}}
                         if(edge>0||under>0)bad.append("; ").append(sheet[s]).append(" frame ").append(f).append(": ").append(edge).append(" px within 12 px of the edge, ").append(under).append(" under content").append(first.isEmpty()?"":" (first "+first+")");}
-                    boolean wood=WarTable.tableTexture("home").equals("table/oak-table")&&WarTable.tableTexture("recruit").equals("table/oak-table-recruit")&&WarTable.tableTexture("chapter").equals("table/oak-table")&&WarTable.tableTexture("table/oak-table-recruit").equals("table/oak-table-recruit")&&WarTable.tableTexture("table/oak-table").equals("table/oak-table")&&WarTable.tableTexture("nonesuch").equals("table/oak-table");
+                    boolean wood=WarTable.tableTexture("home").equals("table/oak-table")&&WarTable.tableTexture("recruit").equals("table/oak-table-recruit")&&WarTable.tableTexture("results").equals("table/oak-table")&&WarTable.tableTexture("chapter").equals("table/oak-table-chapter")&&WarTable.tableTexture("table/oak-table-recruit").equals("table/oak-table-recruit")&&WarTable.tableTexture("table/oak-table").equals("table/oak-table")&&WarTable.tableTexture("nonesuch").equals("table/oak-table");
                     var r=WarTableHome.rects();boolean drawn=r.containsKey("glow")&&r.containsKey("candle")&&r.containsKey("inkwell");
                     report("p1-ui-home-props",bad.length()==0&&pixels>0&&wood&&drawn,pixels+" solid prop pixels (the candle's 4 frames, the inkwell's 3) against the 12 px edge and "+content.size()+" content boxes (a full party of four, every sheet flat and raised, the field card, Ride, Last battle, the notice line, the rail, every widget)"+(bad.length()==0?": all clear":bad)
-                        +"; the wood: home "+WarTable.tableTexture("home")+", recruit "+WarTable.tableTexture("recruit")+" (or by name "+WarTable.tableTexture("table/oak-table-recruit")+"), chapter (not painted yet) "+WarTable.tableTexture("chapter")+", an unknown page "+WarTable.tableTexture("nonesuch")+"; drawn: glow "+str(r.get("glow"))+", candle "+str(r.get("candle"))+", inkwell "+str(r.get("inkwell")));
+                        +"; the wood: home "+WarTable.tableTexture("home")+", recruit "+WarTable.tableTexture("recruit")+" (or by name "+WarTable.tableTexture("table/oak-table-recruit")+"), results (not painted yet) "+WarTable.tableTexture("results")+", chapter "+WarTable.tableTexture("chapter")+", an unknown page "+WarTable.tableTexture("nonesuch")+"; drawn: glow "+str(r.get("glow"))+", candle "+str(r.get("candle"))+", inkwell "+str(r.get("inkwell")));
                     stage=14;
                 }
                 case 14->{ // p1-ui-home-notice: a refusal sent again shows again; a notice already waiting when the table opens stays hidden
@@ -2505,9 +2507,9 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==13){var p=page(c);boolean back=p!=null&&p.house.equals("dawn");keysOk&=back;keysWhy+="; home's Recruit plaque "+(back?"reopened the page on Dawn":"WRONG: "+(p==null?"no page":p.house));click(c,box(c,"back"));return;}
                     if(k==16){var s=screen(c);boolean home=s!=null&&s.page.equals("home");keysOk&=home;keysWhy+="; the back plaque "+(home?"went home":"WRONG: "+(s==null?"the table closed":s.page));click(c,UiHomeChecks.box(c,"recruit"));return;}
                     if(k==19){boolean again=page(c)!=null;keysOk&=again;if(!again)keysWhy+="; WRONG: home's Recruit plaque did not reopen the page";click(c,box(c,"banner"));return;}
-                    if(k==22){boolean lobby=c.currentScreen instanceof GravesAndGloryClient.LobbyScreen;keysOk&=lobby;keysWhy+="; reopened, the Banner plaque "+(lobby?"opened the banner screen":"WRONG: "+c.currentScreen);CampScreen.open("recruit");return;}
+                    if(k==22){var s=screen(c);boolean banner=s!=null&&s.page.equals("banner")&&s.pages!=null;keysOk&=banner;keysWhy+="; reopened, the Banner plaque "+(banner?"opened the Banner page":"WRONG: "+(s==null?c.currentScreen:s.page));CampScreen.open("recruit");return;}
                     if(k==25){boolean again=page(c)!=null;keysOk&=again;if(!again)keysWhy+="; WRONG: the page did not open again";press(c,GLFW.GLFW_KEY_B);return;}
-                    if(k==27){boolean lobby=c.currentScreen instanceof GravesAndGloryClient.LobbyScreen;keysOk&=lobby;keysWhy+="; reopened, B "+(lobby?"opened the banner screen":"WRONG: "+c.currentScreen);release(c,GLFW.GLFW_KEY_B);
+                    if(k==27){var s=screen(c);boolean banner=s!=null&&s.page.equals("banner")&&s.pages!=null;keysOk&=banner;keysWhy+="; reopened, B "+(banner?"opened the Banner page":"WRONG: "+(s==null?c.currentScreen:s.page));release(c,GLFW.GLFW_KEY_B);
                         report("p1-ui-recruit-keys",keysOk,keysWhy);CampScreen.open("recruit");stage=10;}
                 }
                 case 10->{ // p1-ui-recruit-scales: the page as the layout step saw it (a fresh commander with 300 gold, Dawn Sentinel on the letter)
@@ -2570,6 +2572,335 @@ public final class Phase1Checks implements ClientModInitializer {
         }
         /** Closes the table and puts the window back as the suite found it; p1-ui-recruit-suite follows. */
         void end(MinecraftClient c){finished=true;c.setScreen(null);if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;}
+    }
+
+    /** UI plan Task 7: the War Table's other pages (WarTablePages) on a fresh commander with 300 gold, at 960x540 GUI 1 (canvas
+     *  960x540, origin 0,0) unless a step says otherwise. Each of Banner, Contracts, Chapter, Friends and the Field opens from home's
+     *  plaque (Change for the field); then its layout (layout: every visible widget and every piece of art 12 px inside the page, the
+     *  widgets clear of each other and all the War Table's own, the back plaque and the rail as home has it with the open page's
+     *  plaque lit, the page's own oak, its focal title or, on the Chapter, its chapter block), a screenshot (ui-page-<name>), one
+     *  real action through the server, the page again at 1920x1080 GUI 2 for grading (ui-page-<name>-1080, the same layout) and the
+     *  back plaque home: one p1-ui-page-<name> each. Then Task 6's carried items: Tab's focus survives a rebuild, a direct one and
+     *  one on a change of the camp state (p1-ui-page-focus); the menu key already down when the table opens does not close it until
+     *  it is let go (p1-ui-page-held-open); a held Enter on home rides once (p1-ui-page-held-home). Keys, clicks and the pointer
+     *  reach the screen as UiRecruitChecks sends them. */
+    static final class UiPagesChecks implements Suite,ServerWatch {
+        static final String[] PAGES={"banner","contracts","chapter","friends","field"};
+        static final String REROLLED="Third contract changed to tactical orders. One free reroll per day.";
+        static final Set<String> REROLL_REFUSALS=Set.of("Your free daily reroll is already used.","That contract is already claimed.");
+        // the server thread writes these, the client thread reads them
+        volatile int stage;volatile UUID player;volatile boolean serverRoom;volatile String serverDifficulty="";
+        // client thread only
+        int mark=-1,waitFrom,oldW,oldH,oldGui,index,sub,subAt,serial,serial1,serial2,menuCode=-1,gold=-1,landedAt=-1;boolean finished,ok=true,slid;
+        String why="",before="",focusName="";List<String> roll=List.of();String at0="",at19="";CampScreen table;
+        final Set<Integer> rollSeen=new TreeSet<>(),oathSeen=new TreeSet<>();
+
+        public void serverTick(GravesAndGlory.Battle b){var id=player;serverRoom=id!=null&&b.campaign.social.room(id)!=null;serverDifficulty=b.campaign.difficulty;}
+        int since(int tick){if(mark!=stage){mark=stage;waitFrom=tick;}return tick-waitFrom;}
+        /** Moves a page's action on a step; at(tick) counts the ticks since. */
+        void next(int tick){sub++;subAt=tick;}
+        int at(int tick){return tick-subAt;}
+        static CampScreen screen(MinecraftClient c){return c.currentScreen instanceof CampScreen s?s:null;}
+        static WarTablePages pages(MinecraftClient c){var s=screen(c);return s!=null&&s.pages!=null&&s.pages.page.equals(s.page)?s.pages:null;}
+        static UiButton button(MinecraftClient c,String name){var p=pages(c);return p==null?null:p.button(name);}
+        static int[] box(MinecraftClient c,String name){var b=button(c,name);return b==null||!b.visible?null:b.canvasBox();}
+        /** The page's visible widgets' canvas boxes by name, in Tab order. */
+        static Map<String,int[]> boxes(MinecraftClient c){Map<String,int[]> m=new LinkedHashMap<>();var p=pages(c);if(p!=null)for(var e:p.buttons.entrySet())if(e.getValue().visible)m.put(e.getKey(),e.getValue().canvasBox());return m;}
+        static String str(int[] b){return UiHomeChecks.str(b);}
+        static String text(String k){return WarTablePages.texts().get(k);}
+        static int[] rect(String k){return WarTablePages.rects().get(k);}
+        static String tex(String k){return WarTablePages.textures().get(k);}
+        static String lastSent(){var s=WarTablePages.sent();return s.isEmpty()?"none":s.get(s.size()-1);}
+        static void click(MinecraftClient c,int[] b){UiRecruitChecks.click(c,b);}
+        /** A click with the other mouse button in the middle of a canvas box, as Mouse sends it. */
+        static void rightClick(MinecraftClient c,int[] b){
+            if(b==null||c.currentScreen==null)return;c.setNavigationType(net.minecraft.client.gui.navigation.GuiNavigationType.MOUSE);
+            double x=UiHomeChecks.gui(c,b[0]+b[2]/2.0),y=UiHomeChecks.gui(c,b[1]+b[3]/2.0);var s=c.currentScreen;s.mouseMoved(x,y);s.mouseClicked(x,y,1);s.mouseReleased(x,y,1);
+        }
+        /** Characters as Keyboard.onChar hands them to the screen. */
+        static void type(MinecraftClient c,String s){for(char ch:s.toCharArray())if(c.currentScreen!=null)c.currentScreen.charTyped(ch,0);}
+        /** Inside the canvas and 12 px from each of its edges. */
+        static boolean within(int[] a){return a!=null&&a[0]>=12&&a[1]>=12&&a[0]+a[2]<=UiCanvas.width()-12&&a[1]+a[3]<=UiCanvas.height()-12;}
+        /** The name of the page's widget the screen's focus is on, or "none". */
+        static String focused(MinecraftClient c){var s=screen(c);var p=pages(c);if(s==null||p==null)return "none";for(var e:p.buttons.entrySet())if(e.getValue()==s.getFocused())return e.getKey();return "none";}
+        /** Adds the tiers the last frame drew on each of the track's rows. */
+        void tiersDrawn(){for(var k:WarTablePages.rects().keySet()){if(k.startsWith("roll-"))rollSeen.add(Integer.parseInt(k.substring(5)));if(k.startsWith("oath-"))oathSeen.add(Integer.parseInt(k.substring(5)));}}
+
+        /** The page as the last frame drew it: every visible widget and every piece of art (not the floor, the table or the rail)
+         *  inside the page 12 px from its edges, the widgets clear of each other and all of them the War Table's own (no vanilla
+         *  button); the back plaque where every page has it, the rail's camp plaques where home has them, the open page's drawn lit
+         *  in its place (none lit on the field, which has no plaque); the page's own oak; its focal title in IVORY centred on 480 at
+         *  84, or on the Chapter none (its chapter block names it). Returns the line for the report; clears ok when wrong. */
+        String layout(MinecraftClient c,String name){
+            var s=screen(c);int[] o=WarTable.origin();var b=boxes(c);
+            List<String> out=new ArrayList<>(),over=new ArrayList<>(),art=new ArrayList<>();var keys=new ArrayList<>(b.keySet());
+            for(int i=0;i<keys.size();i++){int[] a=b.get(keys.get(i));if(!within(a))out.add(keys.get(i)+" "+str(a));
+                for(int j=i+1;j<keys.size();j++)if(UiHomeChecks.overlap(a,b.get(keys.get(j))))over.add(keys.get(i)+"/"+keys.get(j));}
+            for(var e:WarTablePages.rects().entrySet())if(!Set.of("floor","table","rail").contains(e.getKey())&&!within(e.getValue()))art.add(e.getKey()+" "+str(e.getValue()));
+            boolean ours=s!=null&&s.children().stream().allMatch(e->e instanceof UiButton);
+            boolean back=Arrays.equals(b.get("back"),new int[]{o[0]+56,12,120,28});
+            boolean rail=true;StringBuilder railWhy=new StringBuilder();
+            for(int i=0;i<WarTablePages.RAIL.length;i++){String r=WarTablePages.RAIL[i];int[] want={o[0]+WarTablePages.RAIL_X[i],12,112,28};
+                boolean at=r.equals(name)?!b.containsKey(r)&&Arrays.equals(rect("here"),want)&&"table/plaque-112-here".equals(tex("here")):Arrays.equals(b.get(r),want);
+                rail&=at;if(!at)railWhy.append(' ').append(r);}
+            if(!Arrays.asList(WarTablePages.RAIL).contains(name)&&rect("here")!=null){rail=false;railWhy.append(" a plaque lit");}
+            String table=WarTable.drawnTable();boolean wood=table.equals("table/oak-table-"+name);
+            String title=text("title");int[] tr=rect("title");
+            boolean titled=name.equals("chapter")?title==null&&"Chapter 1 / The Founders".equals(text("chapter"))
+                :WarTablePages.TITLES.get(name).equals(title)&&tr!=null&&Math.abs(tr[0]+tr[2]/2-(o[0]+480))<=1&&tr[1]==o[1]+84&&Integer.valueOf(DarkUi.IVORY).equals(WarTablePages.colors().get("title"));
+            boolean pass=pages(c)!=null&&b.size()>=5&&out.isEmpty()&&over.isEmpty()&&art.isEmpty()&&ours&&back&&rail&&wood&&titled;
+            ok&=pass;
+            return "canvas "+UiCanvas.width()+"x"+UiCanvas.height()+" (k "+UiCanvas.k()+"): "+b.size()+" widgets, within 12 px of the edge "+out+", overlapping "+over+", art within 12 px of the edge "+art
+                +(ours?", every widget the War Table's own":", a vanilla widget among them")+", back "+str(b.get("back"))+", the rail "+(rail?"as home's, this page's plaque lit":"WRONG:"+railWhy)
+                +", the oak "+table+", "+(name.equals("chapter")?"the chapter block \""+text("chapter")+"\"":"the title \""+title+"\" at "+str(tr))+(pass?"":" WRONG");
+        }
+
+        public void step(MinecraftClient c,int tick){
+            if(tick>12000&&!finished){report("p1-ui-pages-timeout",false,"stuck in stage "+stage+" (page "+(index<PAGES.length?PAGES[index]:"none")+", step "+sub+"): "+why);end(c);return;}
+            switch(stage){
+                case 0->{ // a fresh commander with 300 gold at camp, in no party or room, the bots on Normal; the window at 960x540 GUI 1
+                    if(tick<20)return;var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();player=c.player.getUuid();
+                    c.setScreen(null);CampaignClient.homeMode="skirmish";window(c,960,540,1);stage=-1;
+                    server(c,b->{if(b.running)b.campaign.returnLobby();var id=player;b.campaign.social.leaveRoom(id);b.campaign.social.leaveParty(id);b.campaign.closeParty();b.campaign.difficulty="normal";
+                        var p=new Campaign.Profile();p.gold=300;b.campaign.profiles.put(id,p);b.campaign.save(id);stage=1;});
+                }
+                case 1->{ // the snapshot brings the fresh profile, no party and no room
+                    var p=CampaignClient.profile;boolean fresh=p.gold==300&&p.unlocked.equals(new Campaign.Profile().unlocked)&&p.progression.xp==0&&!WarTablePages.flag("party")&&WarTablePages.value("room").isEmpty()&&"normal".equals(CampaignClient.difficulty);
+                    if(GravesAndGloryClient.running||!fresh){if(since(tick)>300){report("p1-ui-pages-setup",false,"no fresh profile with 300 gold, out of party and room, bots on Normal 300 ticks on: gold "+p.gold+", unlocked "+p.unlocked+", party "+WarTablePages.flag("party")+", room \""+WarTablePages.value("room")+"\", bots "+CampaignClient.difficulty);end(c);}return;}
+                    index=0;stage=2;
+                }
+                case 2->{ // the page from home's plaque (Change for the field), its layout and ui-page-<name>
+                    int k=since(tick);String name=PAGES[index];
+                    if(k==0){ok=true;why="";sub=0;CampScreen.open("home");return;}
+                    if(k==10){click(c,UiHomeChecks.box(c,name.equals("field")?"change":name));return;}
+                    if(k==20){UiRecruitChecks.park(c);return;}
+                    if(k==22){var s=screen(c);boolean opened=s!=null&&s.page.equals(name)&&pages(c)!=null;ok&=opened;
+                        why="home's "+(name.equals("field")?"Change":"plaque")+" opened "+(s==null?"nothing":s.page)+(opened?"":" WRONG");
+                        if(!opened){stage=4;return;}
+                        why+="; 960x540 GUI 1, "+layout(c,name);shot(c,"ui-page-"+name);sub=0;subAt=tick;stage=3;}
+                }
+                case 3->{ // the page's action
+                    if(pages(c)==null){ok=false;why+="; the page closed during its action (step "+sub+") WRONG";stage=4;return;}
+                    switch(PAGES[index]){case "banner"->banner(c,tick);case "contracts"->contracts(c,tick);case "chapter"->chapter(c,tick);case "friends"->friends(c,tick);default->field(c,tick);}
+                }
+                case 4->{ // the page at 1920x1080 GUI 2 (k 2) for grading, then 960x540 again and the back plaque home
+                    int k=since(tick);String name=PAGES[index];
+                    if(k==0){window(c,1920,1080,2,true);return;}
+                    if(k==20){UiRecruitChecks.park(c);return;}
+                    if(k==22){if(pages(c)!=null){why+="; 1920x1080 GUI 2, "+layout(c,name);shot(c,"ui-page-"+name+"-1080");}return;}
+                    if(k==24){window(c,960,540,1);return;}
+                    if(k==40){UiRecruitChecks.park(c);click(c,box(c,"back"));return;}
+                    if(k==44){var s=screen(c);boolean home=s!=null&&s.page.equals("home")&&s.home!=null;ok&=home;why+="; the back plaque went "+(home?"home":"WRONG: "+(s==null?"the table closed":s.page));
+                        report("p1-ui-page-"+name,ok,why);index++;stage=index<PAGES.length?2:10;}
+                }
+                case 10->{ // p1-ui-page-focus: Tab to Remove on the Banner's row 0; a rebuild, then a change of the camp state, leave the focus there
+                    int k=since(tick);var s=screen(c);
+                    if(k==0){CampScreen.open("banner");return;}
+                    if(k==5){UiRecruitChecks.park(c);for(int i=0;i<16&&!focused(c).equals("remove-0");i++)UiRecruitChecks.tap(c,GLFW.GLFW_KEY_TAB);focusName=focused(c);
+                        why="Tab to "+focusName;if(s!=null)s.rebuild();String again=focused(c);ok=focusName.equals("remove-0")&&again.equals(focusName);why+=", a rebuild: "+again+(ok?"":" WRONG");return;}
+                    if(k==7){boolean hot=WarTablePages.underlined().contains(focusName);ok&=hot;why+=", drawn underlined "+WarTablePages.underlined()+(hot?"":" WRONG");gold=CampaignClient.profile.gold;
+                        server(c,b->{b.campaign.profile(player).gold+=1;b.campaign.save(player);});return;}
+                    if(k>7&&gold>=0&&CampaignClient.profile.gold!=gold){gold=-1;landedAt=tick;return;}
+                    if(landedAt>0&&tick==landedAt+3){String again=focused(c);var b=s==null||s.pages==null?null:s.pages.button(focusName);boolean kept=again.equals(focusName)&&b!=null&&b.isFocused();ok&=kept;
+                        why+="; the gold changed on the server (the camp state: a rebuild): the focus on "+again+(kept?"":" WRONG");landedAt=-1;
+                        report("p1-ui-page-focus",ok,why);stage=11;return;}
+                    if(k>200){report("p1-ui-page-focus",false,why+"; no change of the camp state reached the client WRONG");landedAt=-1;stage=11;}
+                }
+                case 11->{ // p1-ui-page-held-open: the table opened with the menu key down (as the key that opened it is); its repeats leave it open, a press after the release closes it
+                    int k=since(tick);
+                    if(k==0){c.setScreen(null);return;}
+                    if(k==2){var bound=net.minecraft.client.util.InputUtil.fromTranslationKey(GravesAndGloryClient.menu.getBoundKeyTranslationKey());int code=bound.getCode();menuCode=code;
+                        if(bound.getCategory()!=net.minecraft.client.util.InputUtil.Type.KEYSYM||code<0){report("p1-ui-page-held-open",false,"the menu key is not a key on the keyboard: "+bound.getTranslationKey());stage=12;return;}
+                        var saved=CampScreen.keyDown;try{CampScreen.keyDown=key->key==code;c.setScreen(new CampScreen("home"));}finally{CampScreen.keyDown=saved;}
+                        table=screen(c);boolean seeded=table!=null&&table.held.contains(code);ok=seeded;why="the menu key ("+bound.getLocalizedText().getString()+") down as the table opened: held "+(table==null?"?":table.held)+(seeded?"":" WRONG");
+                        UiRecruitChecks.press(c,code);return;}
+                    if(k==4){boolean open=c.currentScreen==table;ok&=open;why+="; its repeat "+(open?"left the table open":"WRONG: closed it");UiRecruitChecks.press(c,menuCode);return;}
+                    if(k==6){boolean open=c.currentScreen==table;ok&=open;why+=", a second repeat "+(open?"too":"WRONG: closed it");UiRecruitChecks.release(c,menuCode);UiRecruitChecks.press(c,menuCode);return;}
+                    if(k==8){boolean shut=c.currentScreen!=table;ok&=shut;why+="; let go and pressed again: "+(shut?"the table closed":"WRONG: still open");UiRecruitChecks.release(c,menuCode);
+                        report("p1-ui-page-held-open",ok,why);stage=12;}
+                }
+                case 12->{ // p1-ui-page-held-home: in a private room with Practice raised, a held Enter rides once (one refusal), a press after the release rides again
+                    int k=since(tick);var s=screen(c);
+                    if(k==0){c.setScreen(null);CampScreen.open("home");sub=0;return;}
+                    if(k==5){click(c,UiHomeChecks.box(c,"practice"));if(screen(c)!=null)screen(c).action("social:room");why="Practice raised ("+CampaignClient.homeMode+"), a private room asked for";return;}
+                    if(k<5)return;
+                    if(sub==0){if(serverRoom&&!WarTablePages.value("room").isEmpty()&&k>=20){sub=1;subAt=tick;}else if(k>200){report("p1-ui-page-held-home",false,why+"; no room 200 ticks on WRONG");stage=13;}return;}
+                    int j=at(tick);
+                    if(sub==1&&j==0){boolean practice=s!=null&&s.home!=null&&s.home.focused==0&&"practice".equals(CampaignClient.homeMode);ok=practice;why+="; in room "+WarTablePages.value("room")+", Practice "+(practice?"raised":"WRONG: not raised");
+                        serial=CampaignClient.noticeSerial;UiRecruitChecks.press(c,GLFW.GLFW_KEY_ENTER);return;}
+                    if(sub==1&&j==20){serial1=CampaignClient.noticeSerial;boolean once=serial1!=serial&&UiHomeChecks.PRACTICE_SOLO.equals(WarTableHome.texts().get("notice"));ok&=once;
+                        why+="; Enter: the notice serial "+serial+" to "+serial1+" (\""+WarTableHome.texts().get("notice")+"\")"+(once?"":" WRONG");UiRecruitChecks.press(c,GLFW.GLFW_KEY_ENTER);return;}
+                    if(sub==1&&j==40){serial2=CampaignClient.noticeSerial;boolean none=serial2==serial1;ok&=none;why+="; its repeat a second later: the serial "+serial2+(none?" (nothing sent)":" WRONG: it rode again");
+                        UiRecruitChecks.release(c,GLFW.GLFW_KEY_ENTER);UiRecruitChecks.press(c,GLFW.GLFW_KEY_ENTER);return;}
+                    if(sub==1&&j==60){int last=CampaignClient.noticeSerial;boolean again=last!=serial2;ok&=again;why+="; let go and pressed again: the serial "+last+(again?" (it rode)":" WRONG: nothing sent");
+                        UiRecruitChecks.release(c,GLFW.GLFW_KEY_ENTER);click(c,UiHomeChecks.box(c,"skirmish"));GravesAndGloryClient.send("social:exit");sub=2;subAt=tick;return;}
+                    if(sub==2){if(!serverRoom&&WarTablePages.value("room").isEmpty()){why+="; the room left";report("p1-ui-page-held-home",ok,why);stage=13;}
+                        else if(j>200){report("p1-ui-page-held-home",false,why+"; the room was not left WRONG");stage=13;}}
+                }
+                case 13->end(c);
+                case 99->{stage=100;finish(c,"ui-pages");}
+                default->{}
+            }
+        }
+
+        /** Banner: a click on row 1 arms its troop and a click on seat 0 sends slot:0:<it>, which the snapshot brings back and the seat
+         *  draws; the other button on seat 19 sends slot:19:empty; then both seats are put back as they were. */
+        void banner(MinecraftClient c,int tick){
+            int k=at(tick),t=WarTablePages.team();int[] o=WarTable.origin();var line=CampaignClient.profile.lineup(t);var p=pages(c);
+            switch(sub){
+                case 0->{roll=new ArrayList<>();for(var r:WarTablePages.owned())roll.add(r.troopId());at0=line.get(0);at19=line.get(19);
+                    var add=button(c,"add-0");var remove=button(c,"remove-0");
+                    boolean start=roll.size()>=3&&at0.equals(roll.get(0))&&!at19.equals(WarTablePages.EMPTY)&&add!=null&&!add.active&&remove!=null&&remove.active&&(CampaignClient.profile.count(t)+" of 20 seats filled").equals(text("seated"))&&"12 seats".equals(text("count-0"));
+                    ok&=start;why+="; the roll "+roll+", seat 0 "+at0+", seat 19 "+at19+", \""+text("seated")+"\", row 0 \""+text("count-0")+"\" with Add "+(add!=null&&add.active?"taking a press":"dull")+" and Remove "+(remove!=null&&remove.active?"taking a press":"dull")+(start?"":" WRONG");
+                    click(c,box(c,"row-1"));next(tick);}
+                case 1->{if(k<2)return;int[] mark=rect("mark");
+                    boolean armed=roll.get(1).equals(p.armed)&&WarTablePages.troopName(roll.get(1)).equals(text("armed"))&&Arrays.equals(mark,new int[]{o[0]+52,o[1]+196,234,58});
+                    ok&=armed;why+="; row 1 armed "+p.armed+" (the band reads \""+text("armed")+"\", the mark at "+str(mark)+")"+(armed?"":" WRONG");
+                    click(c,box(c,"seat-0"));next(tick);}
+                case 2->{if(roll.get(1).equals(line.get(0))&&k>=3){boolean pass=("slot:0:"+roll.get(1)).equals(lastSent())&&roll.get(1).equals(text("seat-0"));ok&=pass;
+                        why+="; seat 0 clicked: sent "+lastSent()+", the snapshot's seat 0 is "+line.get(0)+", drawn "+text("seat-0")+(pass?"":" WRONG");next(tick);}
+                    else if(k>100){ok=false;why+="; seat 0 clicked: sent "+lastSent()+", the snapshot's seat 0 still "+line.get(0)+" 100 ticks on WRONG";next(tick);}}
+                case 3->{if(k<8)return;rightClick(c,box(c,"seat-19"));next(tick);}
+                case 4->{if(WarTablePages.EMPTY.equals(line.get(19))&&k>=3){boolean pass="slot:19:empty".equals(lastSent())&&WarTablePages.EMPTY.equals(text("seat-19"));ok&=pass;
+                        why+="; the other button on seat 19: sent "+lastSent()+", the snapshot's seat 19 is "+line.get(19)+", drawn "+text("seat-19")+(pass?"":" WRONG");next(tick);}
+                    else if(k>100){ok=false;why+="; the other button on seat 19: sent "+lastSent()+", seat 19 still "+line.get(19)+" WRONG";next(tick);}}
+                case 5->{if(k<8)return;click(c,box(c,"row-"+Math.max(0,roll.indexOf(at0))));click(c,box(c,"seat-0"));next(tick);}
+                case 6->{if(at0.equals(line.get(0)))next(tick);else if(k>100){ok=false;why+="; seat 0 not put back ("+line.get(0)+") WRONG";next(tick);}}
+                case 7->{if(k<8)return;click(c,box(c,"row-"+Math.max(0,roll.indexOf(at19))));click(c,box(c,"seat-19"));next(tick);}
+                case 8->{if(at19.equals(line.get(19))){why+="; seats 0 and 19 put back ("+line.get(0)+", "+line.get(19)+")";stage=4;}
+                    else if(k>100){ok=false;why+="; seat 19 not put back ("+line.get(19)+") WRONG";stage=4;}}
+                default->stage=4;
+            }
+        }
+
+        /** Contracts: the three dailies and the weekly where the page puts them; Reroll changes the third contract (or meets the
+         *  server's refusal on the notice line) and then takes no press. */
+        void contracts(MinecraftClient c,int tick){
+            int k=at(tick);int[] o=WarTable.origin();var reroll=button(c,"reroll");
+            switch(sub){
+                case 0->{boolean placed=Arrays.equals(rect("weekly"),new int[]{o[0]+328,o[1]+300,308,101})&&Arrays.equals(box(c,"reroll"),new int[]{o[0]+436,o[1]+252,88,24});
+                    for(int i=0;i<3;i++)placed&=Arrays.equals(rect("note-"+i),new int[]{o[0]+140+240*i,o[1]+140,204,101});
+                    boolean fresh=reroll!=null&&reroll.active&&"Swap the third contract, once a day".equals(text("reroll-hint"));
+                    ok&=placed&&fresh;why+="; notes "+str(rect("note-0"))+", "+str(rect("note-1"))+", "+str(rect("note-2"))+", weekly "+str(rect("weekly"))+", Reroll "+str(box(c,"reroll"))+(placed?"":" WRONG")
+                        +"; the third contract \""+text("contract-2")+"\", Reroll "+(fresh?"taking a press":"WRONG: dull (\""+text("reroll-hint")+"\")");
+                    serial=CampaignClient.noticeSerial;before=text("contract-2");click(c,box(c,"reroll"));next(tick);}
+                case 1->{boolean changed=!Objects.equals(before,text("contract-2")),noticed=CampaignClient.noticeSerial!=serial;
+                    if(noticed&&k>=3&&(changed||REROLL_REFUSALS.contains(CampaignClient.notice))){String n=text("notice");
+                        boolean pass="progress:reroll".equals(lastSent())&&(changed?"Issue 10 tactical orders".equals(text("contract-2"))&&REROLLED.equals(n)&&reroll!=null&&!reroll.active&&"Rerolled today".equals(text("reroll-hint")):REROLL_REFUSALS.contains(n));
+                        ok&=pass;why+="; Reroll sent "+lastSent()+": the third contract reads \""+text("contract-2")+"\", the notice line \""+n+"\", Reroll "+(reroll!=null&&reroll.active?"still taking a press":"dull")+" (\""+text("reroll-hint")+"\")"+(pass?"":" WRONG");stage=4;}
+                    else if(k>100){ok=false;why+="; Reroll sent "+lastSent()+": no change and no refusal 100 ticks on (the third contract \""+text("contract-2")+"\", the notice \""+CampaignClient.notice+"\") WRONG";stage=4;}}
+                default->stage=4;
+            }
+        }
+
+        /** Chapter: on the fresh commander the Claim plate is dull and the track starts at tier 1; with tier 11 reached and tiers 1 to
+         *  10 claimed the plate is bright, the track starts at tier 10 and the plaques stand as the approved track has them; the
+         *  arrows show every tier of the chapter on both rows (from 1, 11 and 21); Enter claims tier 11: the plate dulls, the claim's
+         *  stamp is the wet one and the track slides one plaque on, tier 11 (still the current tier) lifted at its left end as the
+         *  approved track's claim state has it. Then a claimed title is worn from its plaque and taken off. */
+        void chapter(MinecraftClient c,int tick){
+            int k=at(tick);int[] o=WarTable.origin();var claim=button(c,"claim");var pr=CampaignClient.profile.progression;
+            switch(sub){
+                case 0->{boolean dull=claim!=null&&!claim.active&&"table/btn-dull-240x40".equals(tex("claim"))&&"1".equals(text("first"))&&"0".equals(text("tier"))&&"15".equals(text("hero"));
+                    ok&=dull;why+="; fresh: tier "+text("tier")+", the track from "+text("first")+", the hero tier "+text("hero")+" ("+text("hero-name")+"), Claim "+tex("claim")+(claim!=null&&claim.active?" taking a press":"")+(dull?"":" WRONG");
+                    rollSeen.clear();oathSeen.clear();slid=false;landedAt=-1;
+                    server(c,b->{var s=b.campaign.profile(player).progression;s.xp=2870;for(int t=1;t<=10;t++)s.claims.add(Progression.SEASON+":"+t);s.titles.add("Scout");s.titles.add("Pathfinder");b.campaign.save(player);});
+                    next(tick);}
+                case 1->{if(pr.xp==2870&&pr.claims.contains(Progression.SEASON+":10"))next(tick);else if(k>100){ok=false;why+="; tier 11 never reached the client WRONG";stage=4;}}
+                case 2->{if(k<3)return;tiersDrawn();
+                    boolean bright=claim!=null&&claim.active&&"table/btn-brass-240x40".equals(tex("claim"))&&"10".equals(text("first"))&&"11".equals(text("tier"))&&"20".equals(text("hero"))&&"Vanguard".equals(text("hero-name"))
+                        &&"Reached at 5,000 XP".equals(text("hero-state"))&&"2,870 / 7,500 XP".equals(text("xp"))&&"130 XP to tier 12".equals(text("to-next"));
+                    boolean plaques=Arrays.equals(rect("roll-10"),new int[]{o[0]+136,o[1]+320,68,80})&&Arrays.equals(rect("roll-11"),new int[]{o[0]+212,o[1]+312,68,88})&&Arrays.equals(rect("oath-12"),new int[]{o[0]+288,o[1]+408,68,80})
+                        &&"chapter/plaque-tier-b".equals(tex("roll-10"))&&"chapter/plaque-tier-raised".equals(tex("roll-11"))&&"chapter/plaque-tier-dull-b".equals(tex("roll-12"))&&"table/stamp-hollow-b".equals(tex("stamp-10"))
+                        &&"Pathfinder / title".equals(text("roll-10"))&&"Gold / 25".equals(text("roll-11"))&&"Tabard / livery".equals(text("oath-11"))&&"Portrait / frame".equals(text("oath-10"))&&button(c,"title-10")!=null;
+                    ok&=bright&&plaques;why+="; tier 11 reached, 1 to 10 claimed: Claim "+tex("claim")+(claim!=null&&claim.active?" taking a press":" dull")+", the track from "+text("first")+", the hero tier "+text("hero")+" "+text("hero-name")+" (\""+text("hero-state")+"\"), \""+text("xp")+"\", \""+text("to-next")+"\""+(bright?"":" WRONG")
+                        +"; roll-10 "+str(rect("roll-10"))+" "+tex("roll-10")+" \""+text("roll-10")+"\" stamped "+tex("stamp-10")+", roll-11 "+str(rect("roll-11"))+" "+tex("roll-11")+" \""+text("roll-11")+"\", roll-12 "+tex("roll-12")+", oath-11 \""+text("oath-11")+"\", oath-12 "+str(rect("oath-12"))+(plaques?"":" WRONG");
+                    click(c,box(c,"earlier"));next(tick);}
+                case 3->{if(k<3)return;tiersDrawn();var earlier=button(c,"earlier");boolean at="1".equals(text("first"))&&earlier!=null&&!earlier.active&&"chapter/arrow-left-dim".equals(tex("earlier"));
+                    ok&=at;why+="; the left arrow: from "+text("first")+" (the arrow "+tex("earlier")+")"+(at?"":" WRONG");click(c,box(c,"later"));next(tick);}
+                case 4->{if(k<3)return;tiersDrawn();boolean at="11".equals(text("first"));ok&=at;why+=", the right arrow: from "+text("first")+(at?"":" WRONG");click(c,box(c,"later"));next(tick);}
+                case 5->{if(k<3)return;tiersDrawn();var later=button(c,"later");boolean at="21".equals(text("first"))&&later!=null&&!later.active&&"chapter/arrow-right-dim".equals(tex("later"));
+                    Set<Integer> all=new TreeSet<>();for(int t=1;t<=Progression.TIERS;t++)all.add(t);boolean every=rollSeen.equals(all)&&oathSeen.equals(all);
+                    ok&=at&&every;why+=", again: from "+text("first")+" (the arrow "+tex("later")+")"+(at?"":" WRONG")+"; tiers drawn on the Roll "+rollSeen.size()+" and on the Oath "+oathSeen.size()+" of "+Progression.TIERS+(every?"":" WRONG: "+rollSeen+" / "+oathSeen);
+                    shot(c,"ui-page-chapter-end");UiRecruitChecks.tap(c,GLFW.GLFW_KEY_ENTER);next(tick);}
+                case 6->{int[] r11=rect("roll-11");if("11".equals(text("first"))&&r11!=null&&r11[0]>o[0]+136)slid=true;
+                    if(landedAt<0&&pr.claims.contains(Progression.SEASON+":11"))landedAt=tick;
+                    if(landedAt>0&&tick>=landedAt+12){
+                        boolean pass="progress:founders:11".equals(lastSent())&&slid&&"11".equals(text("first"))&&Arrays.equals(rect("roll-11"),new int[]{o[0]+136,o[1]+312,68,88})&&claim!=null&&!claim.active&&"table/btn-dull-240x40".equals(tex("claim"))
+                            &&"table/stamp-hollow-fresh".equals(tex("stamp-11"))&&"Claimed reward: +25 gold / +0 XP".equals(text("notice"));
+                        ok&=pass;why+="; Enter sent "+lastSent()+": the track "+(slid?"slid one plaque":"did not slide")+" to start at "+text("first")+" (roll-11 at "+str(rect("roll-11"))+"), Claim "+tex("claim")+", tier 11 stamped "+tex("stamp-11")+", the notice \""+text("notice")+"\""+(pass?"":" WRONG");
+                        landedAt=-1;next(tick);}
+                    else if(k>120){ok=false;why+="; Enter sent "+lastSent()+": the claim never landed WRONG";stage=4;}}
+                case 7->{if(k<8)return;click(c,box(c,"earlier"));next(tick);}
+                case 8->{if(k<3)return;boolean shown="1".equals(text("first"))&&button(c,"title-5")!=null&&button(c,"title-10")!=null;ok&=shown;why+="; back to tier 1: the claimed titles' plaques "+(shown?"take a press":"WRONG: missing");
+                    click(c,box(c,"title-10"));next(tick);}
+                case 9->{if("Pathfinder".equals(pr.title)&&k>=3){boolean worn="Pathfinder / worn".equals(text("roll-10"))&&"progress:title:Pathfinder".equals(lastSent());ok&=worn;why+="; Pathfinder's plaque sent "+lastSent()+", now \""+text("roll-10")+"\""+(worn?"":" WRONG");next(tick);}
+                    else if(k>100){ok=false;why+="; Pathfinder's plaque sent "+lastSent()+": the title is still "+pr.title+" WRONG";stage=4;}}
+                case 10->{if(k<8)return;click(c,box(c,"title-10"));next(tick);}
+                case 11->{if("Recruit".equals(pr.title)&&k>=3){boolean off="Pathfinder / title".equals(text("roll-10"))&&"progress:title:Recruit".equals(lastSent());ok&=off;why+=", pressed again it sent "+lastSent()+" and reads \""+text("roll-10")+"\""+(off?"":" WRONG");stage=4;}
+                    else if(k>100){ok=false;why+="; pressed again: the title is still "+pr.title+" WRONG";stage=4;}}
+                default->stage=4;
+            }
+        }
+
+        /** Friends: the room code's line takes letters and digits (upper case, eight at most; Join with party only for a whole code),
+         *  Backspace, and Esc ends the writing without leaving the page; Create party makes a party and Leave party leaves it, as the
+         *  snapshot shows; a private room lays its tags out clear of each other (ui-page-friends-room); Leave room leaves it. */
+        void friends(MinecraftClient c,int tick){
+            int k=at(tick);var p=pages(c);var join=button(c,"room-join");
+            switch(sub){
+                case 0->{click(c,box(c,"code"));type(c,"ab-c1 2");next(tick);}
+                case 1->{if(k<2)return;boolean partial=p.typing&&"ABC12".equals(p.code)&&join!=null&&!join.active&&"ABC12".equals(text("room-code"));
+                    ok&=partial;why+="; the code's line clicked and \"ab-c1 2\" typed: \""+p.code+"\" (writing "+p.typing+"), Join with party "+(join!=null&&join.active?"taking a press":"dull")+(partial?"":" WRONG");type(c,"3456");next(tick);}
+                case 2->{if(k<2)return;String whole=p.code;boolean full="ABC12345".equals(whole)&&join!=null&&join.active;UiRecruitChecks.tap(c,GLFW.GLFW_KEY_BACKSPACE);boolean back="ABC1234".equals(p.code);
+                    UiRecruitChecks.tap(c,GLFW.GLFW_KEY_ESCAPE);var s=screen(c);boolean stays=!p.typing&&s!=null&&s.page.equals("friends");boolean pass=full&&back&&stays;ok&=pass;
+                    why+="; \"3456\" more: \""+whole+"\" with Join "+(full?"taking a press":"dull")+"; Backspace: \""+p.code+"\"; Esc: "+(stays?"the writing ends on the page":"WRONG: "+(s==null?"the table closed":s.page+", writing "+p.typing))+(pass?"":" WRONG");next(tick);}
+                case 3->{if(k<2)return;var create=button(c,"create");boolean shown=create!=null&&create.visible&&create.active&&"Create party".equals(text("create"));ok&=shown;why+="; Create party "+(shown?"shown":"WRONG: missing");click(c,box(c,"create"));next(tick);}
+                case 4->{if(WarTablePages.flag("party")&&k>=3){var leave=button(c,"leave");boolean pass="social:create".equals(lastSent())&&leave!=null&&leave.visible&&"Leave party".equals(text("leave"))&&button(c,"disband")!=null&&button(c,"create")==null
+                        &&WarTablePages.me().equals(text("member-0"))&&String.valueOf(text("party-line")).startsWith("Led by ");ok&=pass;
+                        why+="; Create party sent "+lastSent()+": party "+WarTablePages.flag("party")+", seat 0 "+text("member-0")+", \""+text("party-line")+"\", Leave party "+(leave!=null?"shown":"missing")+(pass?"":" WRONG");next(tick);}
+                    else if(k>100){ok=false;why+="; Create party sent "+lastSent()+": no party 100 ticks on WRONG";stage=4;}}
+                case 5->{if(k<8)return;click(c,box(c,"leave"));next(tick);}
+                case 6->{if(!WarTablePages.flag("party")&&k>=3){boolean pass="social:leave".equals(lastSent())&&button(c,"create")!=null;ok&=pass;why+="; Leave party sent "+lastSent()+": party "+WarTablePages.flag("party")+", Create party "+(button(c,"create")!=null?"back":"missing")+(pass?"":" WRONG");next(tick);}
+                    else if(k>100){ok=false;why+="; Leave party sent "+lastSent()+": still in a party WRONG";stage=4;}}
+                case 7->{if(k<8)return;click(c,box(c,"room-create"));next(tick);}
+                case 8->{if(!WarTablePages.value("room").isEmpty()&&k>=3)next(tick);else if(k>100){ok=false;why+="; Create private room sent "+lastSent()+": no room WRONG";stage=4;}}
+                case 9->{if(k<3)return;UiRecruitChecks.park(c);next(tick);}
+                case 10->{if(k<2)return;boolean code=WarTablePages.value("room").equals(text("code"));ok&=code;why+="; Create private room sent "+lastSent()+": in room "+text("code")+(code?"":" WRONG")+", "+layout(c,"friends");shot(c,"ui-page-friends-room");next(tick);}
+                case 11->{if(k<8)return;click(c,box(c,"room-leave"));next(tick);}
+                case 12->{if(WarTablePages.value("room").isEmpty()&&!serverRoom){why+="; Leave room sent "+lastSent()+": out of the room";stage=4;}
+                    else if(k>100){ok=false;why+="; Leave room sent "+lastSent()+": still in the room WRONG";stage=4;}}
+                default->stage=4;
+            }
+        }
+
+        /** The field: off the war gates every row is sepia and every Vote dull under the line that says where to stand; each row shows
+         *  its map's painted card; Hard sets the server's bots to hard, Normal puts them back. */
+        void field(MinecraftClient c,int tick){
+            int k=at(tick);int[] o=WarTable.origin();
+            switch(sub){
+                case 0->{boolean off=CampaignClient.padMine<0&&"Stand on the war gates to vote".equals(text("status"))&&Integer.valueOf(DarkUi.SEPIA).equals(WarTablePages.colors().get("status"));
+                    for(int i=0;i<Spec.MAPS.length;i++){var v=button(c,"vote-"+i);off&=v!=null&&!v.active&&Spec.MAPS[i].name().equals(text("map-"+i))&&Integer.valueOf(DarkUi.SEPIA).equals(WarTablePages.colors().get("map-"+i));}
+                    ok&=off;why+="; off the war gates: \""+text("status")+"\""+(off?", every row sepia and every Vote dull":" WRONG");click(c,box(c,"map-0"));next(tick);}
+                case 1->{if(k<2||k%2!=0)return;int i=k/2-1;String want="table/map-"+Spec.MAPS[i].id();
+                    boolean card=want.equals(tex("card"))&&Spec.MAPS[i].name().equals(text("card-name"))&&Arrays.equals(rect("card"),new int[]{o[0]+544,o[1]+148,139,83});
+                    ok&=card;why+=(i==0?"; each row's card: ":", ")+tex("card")+(card?"":" WRONG (want "+want+" at "+str(rect("card"))+")");
+                    if(i+1<Spec.MAPS.length)click(c,box(c,"map-"+(i+1)));else next(tick);}
+                case 2->{boolean normal="Normal".equals(text("bots-current"))&&"normal".equals(serverDifficulty);ok&=normal;why+="; bots "+text("bots-current")+" (the server's "+serverDifficulty+")"+(normal?"":" WRONG");
+                    click(c,box(c,"bots-hard"));next(tick);}
+                case 3->{if("hard".equals(serverDifficulty)&&"hard".equals(CampaignClient.difficulty)&&k>=3){boolean pass="difficulty:hard".equals(lastSent())&&"Hard".equals(text("bots-current"));ok&=pass;
+                        why+="; Hard sent "+lastSent()+": the server's bots "+serverDifficulty+", the page reads "+text("bots-current")+(pass?"":" WRONG");next(tick);}
+                    else if(k>100){ok=false;why+="; Hard sent "+lastSent()+": the server's bots still "+serverDifficulty+" WRONG";next(tick);}}
+                case 4->{if(k<8)return;click(c,box(c,"bots-normal"));next(tick);}
+                case 5->{if("normal".equals(serverDifficulty)&&"normal".equals(CampaignClient.difficulty)&&k>=3){boolean pass="difficulty:normal".equals(lastSent())&&"Normal".equals(text("bots-current"));ok&=pass;
+                        why+="; Normal sent "+lastSent()+": back to "+serverDifficulty+", the page reads "+text("bots-current")+(pass?"":" WRONG");stage=4;}
+                    else if(k>100){ok=false;why+="; Normal sent "+lastSent()+": the server's bots still "+serverDifficulty+" WRONG";stage=4;}}
+                default->stage=4;
+            }
+        }
+
+        /** Closes the table, puts the session's sheet back on Skirmish and the window as the suite found it; p1-ui-pages-suite follows. */
+        void end(MinecraftClient c){finished=true;c.setScreen(null);CampaignClient.homeMode="skirmish";if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;}
     }
 
     /** UI polish M11, the last suite listed (it leaves the world): a disconnect empties what the battle HUD keeps between frames. A

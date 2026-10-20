@@ -25,12 +25,12 @@ public final class CampRedesignChecks implements ClientModInitializer {
    if(tick==80)c.setScreen(new CampScreen("home"));if(tick==95)shot(c,"guide");
    if(tick==100)CampScreen.open("recruit");if(tick==115)shot(c,"recruitment");if(tick==120)press(c,"Enlist"); // the War Table recruit page's plate (UI plan Task 6)
    if(tick==150){check("server-confirmed-recruit",CampaignClient.profile.gold==200&&CampaignClient.profile.unlocked.size()==7);shot(c,"reward-reveal");}
-   if(tick==175){CampScreen.open("friends");press(c,"CREATE PARTY");}
-   if(tick==200){check("party-packet",CampaignClient.social.get("party").getAsBoolean());shot(c,"friends");press(c,"CREATE PRIVATE ROOM");}
+   if(tick==175){CampScreen.open("friends");press(c,"Create party");}
+   if(tick==200){check("party-packet",CampaignClient.social.get("party").getAsBoolean());shot(c,"friends");press(c,"Create private room");}
    if(tick==225){server(c,b->{var r=b.campaign.social.room(c.player.getUuid());if(r!=null)r.map=b.campaign.map;});CampScreen.open("room");check("room-packet",!CampaignClient.social.get("room").getAsString().isEmpty());}
    if(tick==245)shot(c,"room");
-   if(tick==260){press(c,"Toggle ready");}
-   if(tick==280){press(c,"START TOGETHER");}
+   if(tick==260){press(c,"Ready");}
+   if(tick==280){press(c,"Start together");}
    if(tick==310){check("room-started",GravesAndGloryClient.battleActive());server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());check("room-seat",b.squads.get(p.getUuid()).seated&&!b.campaign.activeRoom.isEmpty());check("room-bot-count",b.squads.values().stream().filter(s->s.seated).count()==4);});}
    if(tick==440)shot(c,"battle-hud");
    if(tick==460)server(c,b->{var id=c.player.getUuid();b.roundStarted=b.time-181*20;b.campaign.joinedAt.put(id,b.roundStarted);b.campaign.finish(b.squads.get(id).team);check("party-survives-results",b.campaign.social.party(id)!=null);check("room-survives-results",b.campaign.social.room(id)!=null&&!b.campaign.social.room(id).playing);check("progress-earned",b.campaign.profile(id).progression.xp==150);});
@@ -39,8 +39,8 @@ public final class CampRedesignChecks implements ClientModInitializer {
    if(tick==510){shot(c,"contracts");press(c,"Claim");}
    if(tick==535){check("daily-claim",CampaignClient.profile.progression.claims.contains("daily:0"));int gold=CampaignClient.profile.gold;press(c,"Claim");server(c,b->check("claim-ledger",b.campaign.profile(c.player.getUuid()).gold==gold));}
    if(tick==560)CampScreen.open("chapter");if(tick==580)shot(c,"chapter");
-   if(tick==600){CampScreen.open("room");press(c,"Toggle ready");}
-   if(tick==625){press(c,"START TOGETHER");}
+   if(tick==600){CampScreen.open("room");press(c,"Ready");}
+   if(tick==625){press(c,"Start together");}
    if(tick==655){check("rematch-with-same-room",GravesAndGloryClient.battleActive());server(c,b->b.campaign.finish(-1));}
    if(tick==680){org.lwjgl.glfw.GLFW.glfwSetWindowSize(c.getWindow().getHandle(),854,480);CampScreen.open("home");}
    if(tick==710){shot(c,"small-guide");CampScreen.open("recruit");}
