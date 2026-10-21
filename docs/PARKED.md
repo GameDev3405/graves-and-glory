@@ -63,6 +63,23 @@ Kort pictures up to a thousand concurrent players a year out and wants the serve
 - MVP exact tie on equal non-zero kills and seconds crowns each viewer's own first row (2026-10-18, Phase 1 Task 7); a viewer-independent tiebreak (owner id) if it is ever noticed.
 - Banner mode: supply-wagon escort variant (2026-10-18, Phase 4 spec question 1). Kort: parked for now, to be revisited after the carry variant ships.
 
+## Growth design leftovers (2026-10-19, the growth plan)
+
+Parked by `docs/superpowers/specs/2026-10-19-growth-design.md`; none of these is a promise, and none is deleted from the record.
+
+- Roguelite campaign runs (a chapter replayed with random houses and conditions; a run ends on a loss).
+- A persistent conquest world (the Warfront is a scoreboard, not a simulated map).
+- Commander mounts (still waiting for the formation and AI work to settle).
+- Naval battles and river fleets (the Tidecallers' water ground is the hook if it is ever wanted).
+- A player map editor or map sharing (the Phase 3 studio stays a dev tool).
+- A trading-card meta for troops and cosmetics.
+- Ranked PvP and matchmaking (Phase 6 at the earliest).
+- Boss rules for the Hollow King (chapter 2 at the earliest; chapter 1 keeps him a Legendary troop).
+- The supply-wagon Banner variant (still parked after the carry ships).
+- The audit's "veteran squads keeping rank across a match": sergeants are the cross-match layer and a different thing; the in-match ranking stays parked.
+- Conditions per map with their own weights (0.6 uses one global weight table; per-map weights wait until the map set grows).
+- A second HUD for the standard (it is a seal and an HP number on the existing ledger, not a new bar).
+
 ## Media shoot: stills, trailer, gameplay footage (2026-10-18, parked by Kort)
 
 - Full shot list in `docs/media/SHOTLIST.md` (sets A to E: Steve watching with empty hands, face close-ups near and far, walking away, ten scenarios, trailer clips, gameplay footage, intro and outro plates). Kort: hold until units and maps are designed and polished. Resume after Phase 2 Task 5 (skins) and Phase 3 (built world). The title-screen pick from the six demos is deferred to the same point; the staging harness (TitleDemos + mixins) is committed.
