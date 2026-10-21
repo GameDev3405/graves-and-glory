@@ -32,6 +32,10 @@ Kort connected GitHub on 2026-10-20: `origin` is `https://github.com/GameDev3405
 - Code-only graphs, built locally with no LLM (`GRAPHIFY_BACKEND=none graphify extract . --code-only`, then `graphify cluster-only . --no-label`), exist in `bannerbound`, `-p2`, `-p2b`, `-p3`, `-ui` and `-preview` under `graphify-out/` (ignored through `.git/info/exclude`). The p2b and ui graphs include their dirty partial work.
 - Use: `graphify query "<q>" --graph <worktree>/graphify-out/graph.json`, `graphify path A B`, `graphify explain X`. Refresh with `graphify update .` after code changes. Keep `GRAPHIFY_BACKEND=none` for builds: the docs pass and community naming would spend Claude tokens, and Kort has not ruled on that (questions file).
 
+## Added skills (2026-10-21)
+
+Kort asked for skills from mattpocock/skills (5beb35b) and nextlevelbuilder/ui-ux-pro-max-skill (56ea9cf). Installed into this checkout's git-ignored `.claude/skills/`: `to-questionnaire`, `writing-for-agents`, `domain-modeling`, `improve-codebase-architecture`, `codebase-design`, and the core `ui-ux-pro-max` skill only (its SKILL.md paths point at this checkout). Left out on purpose: Matt's tdd, code-review, diagnosing-bugs, implement, to-spec, to-tickets, handoff and grill skills (they duplicate superpowers or this HANDOFF process, or interview Kort mid-work) and the TypeScript ones; UI UX Pro Max's banner-design, brand, design, design-system, slides and ui-styling (web and marketing work; banner-design would misfire on this game's banners). `CLAUDE.md` says how the design skill may be used.
+
 ## Worktrees and branches
 
 | Worktree | Branch | HEAD | State |
