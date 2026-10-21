@@ -49,7 +49,7 @@ public final class Phase2Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every server tick, for checks that wait on the battle. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("anim",Anim::new);}
+    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("anim",Anim::new);SUITES.put("turn",Turn::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -1657,6 +1657,176 @@ public final class Phase2Checks implements ClientModInitializer {
             if(wait==1)probe.frame=f;
             if(wait==5){shot(c,"anim-sheet-"+f.name());frame++;wait=0;}
         }
+    }
+
+    /**
+     * Turnaround shots of the troop art, for seeing how the weapons sit in the troops' hands (GRAVES_PHASE2_CHECKS=turn; shots, not
+     * checks). The gold archer, longbow and knight at stage 1, one at a time at the platform's centre facing north (the others parked
+     * PARK blocks up), in daylight, no HUD, frozen through TroopAnimator.forced. The camera, at chest height DIST blocks away, goes round
+     * the troop (angle 0 in front, 90 on its right, the weapon-hand side, 180 behind, 270 on its left) in idle (rest), bow_draw at a quarter
+     * and at half its length (the knight: attack at its peak) and walk at a quarter; then the two bowmen's weapon hand close up from the
+     * front, the right side and above in idle; then each troop with its weapon hidden, at 0 and 90 degrees. Shots are
+     * p2-turn-TROOP-POSE-ANGLE.png. The weapon's axes and extents in the troop's own right, up and front axes (px) are logged as
+     * "[p2-turn-fact]" lines. The one check, p2-turn-shots: every shot taken lit, in gold, with the camera where it was set and the pose
+     * drawn as forced.
+     */
+    static final class Turn extends Stage {
+        static final List<String> TROOPS=List.of("archer","longbow","knight");
+        static final double DIST=3,EYE=1.2,CLOSE=2.0,PARK=14;
+        /** While set, no entity is the one under the crosshair when the world draws (a targeted troop shows its name tag, which the shots must not have). */
+        static volatile boolean noTarget;static boolean hooked;
+        static final float YAW=180;
+        static final int[] ANGLES={0,45,90,135,180,225,270,315};
+        /** One shot: its file name, the troop, the pose's label, the clip and second forced on it, the angle round it, a close view of the weapon hand (front, side or above; null for the body) and whether the weapon is hidden. */
+        record Shot(String name,String troop,String pose,String clip,float at,int angle,String hand,boolean bare){}
+        final List<Shot> shots=new ArrayList<>();
+        final Map<String,GravesAndGlory.Unit> units=new LinkedHashMap<>();
+        int si,held,steady,lastCount,settle;String on="";double[] cam;final List<String> bad=new ArrayList<>();
+        String name(){return "turn";}
+        Turn(){
+            if(!hooked){hooked=true;WorldRenderEvents.START.register(ctx->{if(noTarget)MinecraftClient.getInstance().targetedEntity=null;});}
+            noTarget=true;
+            for(String t:TROOPS){
+                boolean bow=!t.equals("knight");List<Object[]> poses=new ArrayList<>();
+                poses.add(new Object[]{"idle","idle",0f});
+                if(bow){float len=TroopClips.LENGTHS.get("bow_draw");poses.add(new Object[]{"draw25","bow_draw",len/4});poses.add(new Object[]{"draw50","bow_draw",len/2});}
+                else poses.add(new Object[]{"attack","attack",TroopClips.shotTime("attack")});
+                poses.add(new Object[]{"walk25","walk",TroopClips.LENGTHS.get("walk")/4});
+                for(Object[] p:poses)for(int a:ANGLES)shots.add(new Shot("turn-"+t+"-"+p[0]+"-"+a,t,(String)p[0],(String)p[1],(Float)p[2],a,null,false));
+                if(bow)for(String v:List.of("front","side","above"))shots.add(new Shot("turn-"+t+"-hand-"+v,t,"hand-"+v,"idle",0f,0,v,false));
+                for(int a:new int[]{0,90})shots.add(new Shot("turn-"+t+"-bare-"+a,t,"bare","idle",0f,a,null,true));
+            }
+        }
+        void cast(GravesAndGlory.Battle b){
+            for(int i=0;i<TROOPS.size();i++){var u=post(b,gold,TROOPS.get(i),0,0,YAW);units.put(TROOPS.get(i),u);place(u,i,false);}
+            camera(b,0,EYE,DIST,0,0);
+        }
+        /** Server: a troop at the platform's centre facing north, or parked high over the floor out of every view (index i keeps the parked ones apart). */
+        void place(GravesAndGlory.Unit u,int i,boolean up){
+            Vec3d where=up?at(0,0):at(5*(i-1),0).add(0,PARK,0);
+            pins.removeIf(p->p.mob()==u.mob);pins.add(new Pin(u.mob,where,YAW));pin(u.mob,where,YAW);
+        }
+        public void step(MinecraftClient c,int tick){
+            if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;stage=1;});}
+            if(finished)return;
+            if(tick>12000){report("p2-turn-timeout",false,"stuck at shot "+si+" of "+shots.size()+", client step "+cs+", server stage "+stage);end(c);return;}
+            switch(cs){
+                case 0->{boolean lit=litStart(c);
+                    if(lit&&ready&&posted.size()==TROOPS.size()&&posted.stream().allMatch(u->client(c,u.mob)!=null)){facts();c.options.hudHidden=true;wait=0;cs=1;}
+                    else if(++wait%600==0)System.out.println("[p2-wait] turn step 0 after "+wait+" ticks: ready="+ready+", posted "+posted.size()+" of "+TROOPS.size()+"; "+litWhy(c));}
+                case 1->shoot(c);
+                case 2->{if(++wait==5){report("p2-turn-shots",bad.isEmpty(),shots.size()+" shots"+(bad.isEmpty()?", each taken lit, in gold, with the camera where it was set (0.05 blocks, 1 degree) and the pose drawn as forced (1 degree)":", not as asked: "+bad));serverDone=true;end(c);}}
+                default->{}
+            }
+        }
+        public void cleanup(MinecraftClient c){noTarget=false;TroopAnimator.forced.clear();weapons(null);super.cleanup(c);}
+        /** Client: every troop's weapon model drawn, but the named troop's (the part is the shared weapon's: TroopModel.prepare leaves it alone). */
+        static void weapons(String hide){for(String t:TROOPS){var m=TroopModels.model(t);var w=m==null?null:TroopModels.weapon(m.weaponId());if(w!=null)w.part().visible=!t.equals(hide);}}
+        boolean shield(String troop){return !units.get(troop).mob.getOffHandStack().isEmpty();}
+
+        /** Client: one shot's turn. */
+        void shoot(MinecraftClient c){
+            if(si>=shots.size()){TroopAnimator.forced.clear();weapons(null);cs=2;wait=0;return;}
+            Shot s=shots.get(si);var e=client(c,units.get(s.troop()).mob);var m=TroopModels.model(s.troop());
+            if(e==null||m==null){if(++held>400){bad.add(s.name()+": no client entity or model");si++;held=0;wait=0;}return;}
+            wait++;
+            if(wait==1){
+                boolean change=!s.troop().equals(on);
+                if(change){on=s.troop();server(c,b->{for(int i=0;i<TROOPS.size();i++)place(units.get(TROOPS.get(i)),i,TROOPS.get(i).equals(s.troop()));});}
+                TroopAnimator.forced.clear();TroopAnimator.forced.put(e.getId(),new TroopAnimator.Forced(s.clip(),s.at()));weapons(s.bare()?s.troop():null);
+                cam=view(s,m);final double[] v=cam;server(c,b->camera(b,v[0],v[1],v[2],(float)v[3],(float)v[4]));
+                settle=change?15:0;steady=0;held=0;return;
+            }
+            if(wait<6+settle)return;
+            var d=TroopRenderer.drawn(e);boolean drawn=d!=null&&d.pose!=null&&d.last!=null&&d.count>lastCount;lastCount=d==null?0:d.count;
+            boolean gilt=drawn&&"gold".equals(d.last.cloth());
+            float[] want=pose(m,s,shield(s.troop()));boolean posed=drawn&&Anim.maxRot(d.pose,want)<=1&&Anim.maxPos(d.pose,want)<=0.1;
+            var p=c.player;boolean there=Math.abs(p.getX()-(site.getX()+.5+cam[0]))<.05&&Math.abs(p.getEyeY()-(site.getY()+cam[1]))<.05&&Math.abs(p.getZ()-(site.getZ()+.5+cam[2]))<.05
+                &&Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(p.getYaw()-(float)cam[3]))<1&&Math.abs(p.getPitch()-cam[4])<1;
+            steady=gilt&&posed&&there?steady+1:0;held++;
+            if(steady>=3||held>300){
+                if(!shotReady(c,s.name()))return;
+                if(steady<3)bad.add(s.name()+": taken anyway after 300 ticks (drawn "+drawn+", in gold "+gilt+", pose "+posed+", camera "+there+")");
+                shot(c,s.name());si++;wait=0;steady=0;held=0;
+            }
+        }
+        /** The bones of a model forced to a shot's clip and second, then back to rest. */
+        static float[] pose(TroopModel<?> m,Shot s,boolean shield){
+            m.getPart().traverse().forEach(ModelPart::resetTransform);TroopAnimator.applyForced(m,new TroopAnimator.Forced(s.clip(),s.at()),TroopAnimator.row(m),shield);
+            float[] out=m.snapshot(null);m.getPart().traverse().forEach(ModelPart::resetTransform);return out;
+        }
+        static double yawOf(double dx,double dz){return Math.toDegrees(Math.atan2(-dx,dz));}
+        /** The camera of a shot: {dx, eye, dz, yaw, pitch}, from the platform's centre where the troop stands and the layer it stands on. */
+        double[] view(Shot s,TroopModel<?> m){
+            double y=Math.toRadians(YAW),fx=-Math.sin(y),fz=Math.cos(y),rx=-Math.cos(y),rz=-Math.sin(y); // the troop's front and right on the ground
+            if(s.hand()==null){
+                double a=Math.toRadians(s.angle()),ux=Math.cos(a)*fx+Math.sin(a)*rx,uz=Math.cos(a)*fz+Math.sin(a)*rz;
+                return new double[]{DIST*ux,EYE,DIST*uz,yawOf(-ux,-uz),0};
+            }
+            double[] g=grip(m,new TroopAnimator.Forced(s.clip(),s.at()),shield(s.troop())); // the weapon's grip, blocks from the feet in world axes
+            return switch(s.hand()){
+                case "front"->new double[]{g[0]+CLOSE*fx,g[1],g[2]+CLOSE*fz,yawOf(-fx,-fz),0};
+                case "side"->new double[]{g[0]+CLOSE*rx,g[1],g[2]+CLOSE*rz,yawOf(-rx,-rz),0};
+                default->new double[]{g[0],g[1]+CLOSE,g[2],YAW,90};
+            };
+        }
+        /** The renderer's matrix at the entity: its body yaw, the vanilla flip and the 1.501 lift (TroopRenderer.setupTransforms, LivingEntityRenderer.render). */
+        static MatrixStack base(){MatrixStack ms=new MatrixStack();ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f-YAW));ms.scale(-1,-1,1);ms.translate(0,-1.501f,0);return ms;}
+        /** A world offset from the feet in the troop's own axes {right, up, front}, times scale (16 turns blocks to px). */
+        static double[] own(Vector4f v,double scale){double y=Math.toRadians(YAW);return new double[]{(-v.x*Math.cos(y)-v.z*Math.sin(y))*scale,v.y*scale,(-v.x*Math.sin(y)+v.z*Math.cos(y))*scale};}
+        /** Where the weapon part's origin (its grip offset) lies in a pose: world axes, blocks from the feet. */
+        static double[] grip(TroopModel<?> m,TroopAnimator.Forced f,boolean shield){
+            m.getPart().traverse().forEach(ModelPart::resetTransform);TroopAnimator.applyForced(m,f,TroopAnimator.row(m),shield);
+            var wp=TroopModels.weapon(m.weaponId()).part().getChild("weapon");MatrixStack ms=base();for(ModelPart p:m.handPath(m.hand()))p.rotate(ms);
+            Vector4f v=new Vector4f(wp.pivotX/16f,wp.pivotY/16f,wp.pivotZ/16f,1f);ms.peek().getPositionMatrix().transform(v);
+            m.getPart().traverse().forEach(ModelPart::resetTransform);return new double[]{v.x,v.y,v.z};
+        }
+
+        // ---- the facts ----
+        static String f3(double[] v){return String.format(Locale.ROOT,"(R %.2f, U %.2f, F %.2f)",v[0],v[1],v[2]);}
+        static double[] minus(double[] a,double[] b){return new double[]{a[0]-b[0],a[1]-b[1],a[2]-b[2]};}
+        /** "[p2-turn-fact]" lines: for each troop's poses at angle 0, the weapon hand, the grip, the weapon's axes and boxes and the off hand, in px in the troop's own axes. */
+        void facts(){
+            for(String t:TROOPS){
+                var m=TroopModels.model(t);var w=m==null?null:TroopModels.weapon(m.weaponId());
+                if(m==null||w==null||TroopAnimator.row(m)==null){System.out.println("[p2-turn-fact] "+t+": no model, weapon or row");continue;}
+                for(Shot s:shots)if(s.hand()==null&&!s.bare()&&s.troop().equals(t)&&s.angle()==0)try{fact(m,w,s);}catch(RuntimeException x){System.out.println("[p2-turn-fact] "+s.name()+": "+x);}
+            }
+            for(String t:TROOPS){var m=TroopModels.model(t);if(m!=null)m.getPart().traverse().forEach(ModelPart::resetTransform);}
+        }
+        void fact(TroopModel<?> m,TroopModels.Weapon w,Shot s){
+            m.getPart().traverse().forEach(ModelPart::resetTransform);TroopAnimator.applyForced(m,new TroopAnimator.Forced(s.clip(),s.at()),TroopAnimator.row(m),shield(s.troop()));
+            String hand=m.hand(),off="left".equals(hand)?"right":"left";List<ModelPart> path=m.handPath(hand);
+            MatrixStack ms=base();for(ModelPart p:path)p.rotate(ms);double[] h=own(pt(ms,0,0,0),16);
+            MatrixStack mo=base();for(ModelPart p:m.handPath(off))p.rotate(mo);double[] o=own(pt(mo,0,0,0),16);
+            // the arm that holds it: its box, relative to the hand's pivot
+            List<double[]> arm=new ArrayList<>();if(path.size()>=2){MatrixStack ma=base();for(int k=0;k<path.size()-2;k++)path.get(k).rotate(ma);
+                path.get(path.size()-2).forEachCuboid(ma,(entry,p,i,q)->{if(p.isEmpty())arm.add(boxOf(entry,q));});}
+            // the weapon: axes of its frame and each box, relative to the hand's pivot
+            MatrixStack mw=base();for(ModelPart p:path)p.rotate(mw);w.part().rotate(mw);
+            List<double[]> boxes=new ArrayList<>();double[][] axes=new double[3][];
+            w.part().getChild("weapon").forEachCuboid(mw,(entry,p,i,q)->{if(!p.isEmpty())return;
+                if(axes[0]==null)for(int k=0;k<3;k++){Vector4f a=new Vector4f(k==0?1:0,k==1?1:0,k==2?1:0,0);entry.getPositionMatrix().transform(a);axes[k]=own(a,1);}
+                boxes.add(boxOf(entry,q));});
+            StringBuilder sb=new StringBuilder("[p2-turn-fact] "+s.troop()+" "+s.pose()+" ("+s.clip()+" at "+String.format(Locale.ROOT,"%.2f",s.at())+" s), px in the troop's own axes (R right, U up, F front), weapon "+m.weaponId()+": ");
+            sb.append("hand bone "+m.handBone(hand)+" pivot from the feet ").append(f3(h)).append("; off hand ").append(m.handBone(off)).append(" pivot from the weapon hand ").append(f3(minus(o,h)));
+            if(!arm.isEmpty())sb.append("; arm box from the hand pivot R ").append(rng(arm.get(0),0,h)).append(" U ").append(rng(arm.get(0),1,h)).append(" F ").append(rng(arm.get(0),2,h));
+            sb.append("; weapon frame axes +x ").append(f3(axes[0])).append(" +y ").append(f3(axes[1])).append(" +z ").append(f3(axes[2]));
+            double[] all=null;for(double[] b:boxes){if(all==null)all=b.clone();else for(int k=0;k<3;k++){all[k]=Math.min(all[k],b[k]);all[k+3]=Math.max(all[k+3],b[k+3]);}}
+            if(all!=null)sb.append("; weapon extent from the hand pivot R ").append(rng(all,0,h)).append(" U ").append(rng(all,1,h)).append(" F ").append(rng(all,2,h));
+            for(int i:new int[]{0,boxes.size()-1})if(i>=0&&i<boxes.size())sb.append("; box ").append(i).append(i==0?" (grip)":" (string)").append(" from the hand pivot R ").append(rng(boxes.get(i),0,h)).append(" U ").append(rng(boxes.get(i),1,h)).append(" F ").append(rng(boxes.get(i),2,h));
+            System.out.println(sb);
+        }
+        static Vector4f pt(MatrixStack ms,double x,double y,double z){Vector4f v=new Vector4f((float)(x/16),(float)(y/16),(float)(z/16),1f);ms.peek().getPositionMatrix().transform(v);return v;}
+        /** A cuboid's extent in the troop's own axes, px from the feet: {minR, minU, minF, maxR, maxU, maxF}. */
+        static double[] boxOf(MatrixStack.Entry entry,ModelPart.Cuboid q){
+            double[] r=null;
+            for(float x:new float[]{q.minX,q.maxX})for(float y:new float[]{q.minY,q.maxY})for(float z:new float[]{q.minZ,q.maxZ}){
+                Vector4f v=new Vector4f(x/16f,y/16f,z/16f,1f);entry.getPositionMatrix().transform(v);double[] c=own(v,16);
+                if(r==null)r=new double[]{c[0],c[1],c[2],c[0],c[1],c[2]};else for(int k=0;k<3;k++){r[k]=Math.min(r[k],c[k]);r[k+3]=Math.max(r[k+3],c[k]);}}
+            return r;
+        }
+        static String rng(double[] b,int k,double[] h){return String.format(Locale.ROOT,"%.2f..%.2f",b[k]-h[k],b[k+3]-h[k]);}
     }
 
     /**
