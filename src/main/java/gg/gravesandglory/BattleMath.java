@@ -40,6 +40,14 @@ public final class BattleMath {
     public static boolean shouldRout(double strength, boolean flanked, double routShare, double flankedRoutShare) {
         return strength <= routShare || flanked && strength <= flankedRoutShare;
     }
+    /**
+     * The share of its strength a group breaks at (Graveborn): fearlessShare when at least `needed` of its living members are fearless
+     * (fearless wins over dread), else dreadShare while an enemy dread troop stands in reach, else the sheet's base share.
+     */
+    public static double routShare(double base, int fearless, int members, double needed, double fearlessShare, boolean dreaded, double dreadShare) {
+        if (members > 0 && fearless > 0 && fearless >= needed * members) return fearlessShare;
+        return dreaded ? dreadShare : base;
+    }
     /** Index of the anchor nearest the target (tx,tz), or -1 when no anchor is strictly nearer to the target than the base (bx,bz). */
     public static int nearestAnchor(double tx, double tz, double bx, double bz, double[] ax, double[] az) {
         int best = -1;

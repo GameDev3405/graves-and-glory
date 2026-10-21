@@ -75,6 +75,14 @@ public final class BattleMathCheck {
         check(BattleMath.pointIncome(0, 3, 2, 9) == 0 && BattleMath.pointIncome(4, 0, 2, 9) == 8 && BattleMath.pointIncome(9, 0, 2, 9) == 9, "nothing held pays nothing; a sheet with no point gold keeps its plain cap");
         check(BattleMath.classCost(70, 1 - 0.2) == 56 && BattleMath.classCost(22, 1) == 22 && BattleMath.classCost(45, 0.8) == 36 && BattleMath.classCost(25, 0.9) == 23, "the Warlock's 20% off: a 70-gold Sunweaver costs 56; costs round half up");
         check(BattleMath.trainingTicks(4.0, 1 - 0.2) == 64 && BattleMath.trainingTicks(4.0, 1) == 80 && BattleMath.trainingTicks(3.5, 0.8) == 56 && BattleMath.trainingTicks(9.0, 0.8) == 144, "the Marshal's drill: a knight's 80 ticks become 64");
+        // Graveborn: the share of strength a group breaks at (fearless 12%, dread 40%, the sheet's 25% otherwise; fearless wins over dread)
+        check(BattleMath.routShare(.25, 5, 10, .5, .12, false, .4) == .12 && BattleMath.routShare(.25, 10, 10, .5, .12, false, .4) == .12, "a group at least half fearless breaks at the fearless share (5 of 10, 10 of 10)");
+        check(BattleMath.routShare(.25, 4, 10, .5, .12, false, .4) == .25 && BattleMath.routShare(.25, 0, 10, .5, .12, false, .4) == .25 && BattleMath.routShare(.25, 1, 3, .5, .12, false, .4) == .25 && BattleMath.routShare(.25, 2, 3, .5, .12, false, .4) == .12, "under half fearless it keeps the sheet's share (4 of 10, none, 1 of 3), over half does not (2 of 3)");
+        check(BattleMath.routShare(.25, 0, 10, .5, .12, true, .4) == .4 && BattleMath.routShare(.25, 4, 10, .5, .12, true, .4) == .4, "a dread troop in reach raises the share to the dread share for a group that is not half fearless");
+        check(BattleMath.routShare(.25, 10, 10, .5, .12, true, .4) == .12 && BattleMath.routShare(.25, 5, 10, .5, .12, true, .4) == .12, "fearless wins over dread");
+        check(BattleMath.routShare(.25, 0, 0, .5, .12, false, .4) == .25 && BattleMath.routShare(.25, 0, 0, .5, .12, true, .4) == .4, "a group with no living member is not fearless");
+        check(BattleMath.shouldRout(.15, false, BattleMath.routShare(.25, 10, 10, .5, .12, false, .4), .6) == false && BattleMath.shouldRout(.10, false, BattleMath.routShare(.25, 10, 10, .5, .12, false, .4), .6) && BattleMath.shouldRout(.15, false, BattleMath.routShare(.25, 0, 10, .5, .12, false, .4), .6), "ten Risen at 15% hold and break at 10%; a knight group at 15% breaks");
+        check(BattleMath.shouldRout(.35, false, BattleMath.routShare(.25, 0, 10, .5, .12, true, .4), .6) && !BattleMath.shouldRout(.35, false, BattleMath.routShare(.25, 10, 10, .5, .12, true, .4), .6), "a group at 35% breaks beside dread, the fearless one does not");
         System.out.println("BattleMathCheck: " + checks + " checks passed");
     }
 }

@@ -8,6 +8,7 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.RaycastContext;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -16,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * passive. Every number comes from the class row. The code knows only the effect kinds, named by the sheet's passive column (champion,
  * reaver, warden, marshal, warlock, quartermaster) and active column (stand_fast, bloodrush, mark_prey, rally_horn, grave_bloom,
  * forward_supply); tools/preflight.py keeps both columns to those closed lists. What an active does is registered in ACTIVES by the
- * House tasks (register): Stand Fast and Rally Horn so far. An active nobody registered refuses with NOT_READY and starts no cooldown.
+ * House tasks (register): Stand Fast, Rally Horn and Grave Bloom so far. An active nobody registered refuses with NOT_READY and starts no cooldown.
  */
 public final class Commander {
     private Commander() {}
@@ -46,10 +47,11 @@ public final class Commander {
     /** The fixed id of the Rally Horn's speed modifier on its army's troops. */
     static final UUID RALLY = UUID.fromString("8382ceb7-bd85-41fd-b662-34b5f1d36d95");
 
-    /** Puts this build's actives into ACTIVES (mod init): the Champion's Stand Fast and the Marshal's Rally Horn. */
+    /** Puts this build's actives into ACTIVES (mod init): the Champion's Stand Fast, the Marshal's Rally Horn and the Warlock's Grave Bloom. */
     static void register() {
         ACTIVES.put("stand_fast", new StandFast());
         ACTIVES.put("rally_horn", new RallyHorn());
+        ACTIVES.put("grave_bloom", new GraveBloom());
     }
 
     /** Stand Fast's rout guard: while the army's stand_fast runs, a group whose centre stands within the row's radius of its commander cannot rout. */
@@ -101,7 +103,7 @@ public final class Commander {
             if (GravesAndGlory.Battle.inArena(to.x, to.z) && !GravesAndGlory.Battle.wet(to.x, to.z)) {
                 Vec3d spot = GravesAndGlory.Battle.groundAt(to.x, to.z);
                 for (var g : Spec.GROUPS) if (!g.id().equals("all")) b.issue(s, g.id(), "move", b.storedAssignment(s, g.id()).formation, spot, p.getYaw(), -1);
-            }
+            } else b.campaign.notice(s.owner, "Choose dry ground or a crossing.");
             hasten(b, s, c);
             b.world.spawnParticles(ParticleTypes.HAPPY_VILLAGER, to.x, to.y + 1, to.z, 20, 1, .6, 1, 0);
             return true;
@@ -119,6 +121,56 @@ public final class Commander {
                     speed.addTemporaryModifier(new EntityAttributeModifier(RALLY, "Graves and Glory rally horn", c.value1(), EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
             }
         }
+    }
+
+    /** The troop Grave Bloom raises, by its troops sheet id: a Risen. */
+    static final String RISEN = "revenant";
+
+    /**
+     * The Warlock's Grave Bloom: the point he looks at (a raycast of the row's range, the end of it when he looks at nothing) raises up to
+     * value2 of the troops of either side that fell within radius of it in the last value3 ticks (Battle.deaths), the ones nearest that point
+     * first, as Risen of his own army. Each is a temporary troop (it never counts toward the slot check, a House tier, morale, mastery or the
+     * report's losses) in a slot past the army's own, at value1 of its health where the fallen one lay, and is discarded after the row's
+     * durationTicks (Houses.expire, and Houses.reset at a round's end). A fallen troop rises only once: it leaves the log. With none in reach the
+     * cast is refused with a notice and no cooldown.
+     */
+    static final class GraveBloom implements Active {
+        @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, Spec.ClassesRow c) {
+            Vec3d aim = aim(p, c.range());
+            double reach = c.radius() * c.radius();
+            List<GravesAndGlory.Death> fallen = b.deaths.stream()
+                .filter(d -> b.time - d.time() <= c.value3() && GravesAndGlory.Battle.horizontalDistance(d.at(), aim) <= reach)
+                .sorted(Comparator.comparingDouble(d -> GravesAndGlory.Battle.horizontalDistance(d.at(), aim)))
+                .limit(Math.round(c.value2())).toList();
+            if (fallen.isEmpty()) { b.campaign.notice(s.owner, "No fallen troops there."); return false; }
+            var spec = Campaign.troop(RISEN);
+            Set<Integer> used = new HashSet<>();
+            for (var u : b.units) if (u.squad == s) used.add(u.slot);
+            int slot = GravesAndGlory.R.squadSize();
+            for (var d : fallen) {
+                while (used.contains(slot)) slot++;
+                used.add(slot);
+                var u = b.spawn(s, spec, slot, d.at());
+                u.temporary = true;
+                u.expiresAt = b.time + c.durationTicks();
+                u.mob.setHealth((float) (c.value1() * u.mob.getMaxHealth()));
+                BattleEffects.soul(b, d.at());
+                b.deaths.remove(d);
+            }
+            Houses.recompute(s);
+            return true;
+        }
+        /**
+         * The point a commander looks at within range blocks: where his view ray first meets a block, else the end of the ray. It is worked out
+         * from the player's yaw and pitch as they stand now; the entity's own raycast reads a rotation that lags a teleport by a tick.
+         */
+        static Vec3d aim(ServerPlayerEntity p, double range) {
+            Vec3d eye = p.getEyePos(), end = eye.add(p.getRotationVector().multiply(range));
+            return p.getWorld().raycast(new RaycastContext(eye, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, p)).getPos();
+        }
+        @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.ClassesRow c) {}
+        /** The Risen it raised are not its to take back: each goes at its own expiresAt, and every one goes with the round. */
+        @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {}
     }
 
     /** The class row a squad fights under: its commander id, or the sheet's first class for an unknown id. */

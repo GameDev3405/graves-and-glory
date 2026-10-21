@@ -1,13 +1,16 @@
 package gg.gravesandglory;
 
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.registry.tag.DamageTypeTags;
 import net.minecraft.util.math.Vec3d;
 import java.util.*;
 
 /**
  * House traits (spec 1.3). A squad's trait tier in a House comes from the slot weights of its living troops of that House against the
  * houseTraits sheet's slot thresholds; the tiers feed the HUD strip, the trait seconds of the battle report and, in each House's task, the
- * trait multipliers. The pure maths is RosterMath and CounterMath. Gilded Bulwark is in: traitFactor's ranged share and BULWARK_GUARD.
+ * trait multipliers. The pure maths is RosterMath and CounterMath. Gilded Bulwark is in: traitFactor's ranged share and BULWARK_GUARD. Graveborn Rise Again
+ * is in: allowDeath, the death log Grave Bloom raises from, and the expiry of the temporary troops it makes.
  */
 final class Houses {
     private Houses() {}
@@ -71,6 +74,64 @@ final class Houses {
         }
         return false;
     };
+
+    /** Harness hook: true makes every Rise Again roll succeed, false makes it fail, null leaves it to the dice. */
+    static Boolean forceRise;
+
+    /** One Rise Again roll: succeeds when a roll in [0, 1) falls below the tier's value. The harness hook decides instead while it is set. */
+    static boolean rolls(GravesAndGlory.Battle b, Spec.HouseTraitsRow t) { return forceRise != null ? forceRise : b.world.random.nextDouble() < t.value(); }
+
+    /**
+     * Rise Again (ServerLivingEntityEvents.ALLOW_DEATH, which runs as a blow takes a troop's health to 0): a troop whose own House's trait at its
+     * army's tier is rise_again (Graveborn) may rise instead of dying, once, when a roll falls below the tier's value. It does not for a Legendary,
+     * a temporary troop (Grave Bloom's), one that already rose, damage that bypasses invulnerability (the void, /kill) or an army below tier I.
+     * A rise sets its health to value2 of its maximum, marks it rose, stuns it for the row's durationTicks (Tactics skips its attacks) and returns
+     * false, which skips vanilla's death and AFTER_DEATH: so the army loses nothing, the enemy earns no kill and the death log gains no entry.
+     */
+    static boolean allowDeath(LivingEntity e, DamageSource src) {
+        var b = GravesAndGlory.battle;
+        if (b == null) return true;
+        var u = Combat.unitOf(b, e);
+        if (u == null || u.temporary || u.rose || u.spec.rarity().equals("legendary") || src.isIn(DamageTypeTags.BYPASSES_INVULNERABILITY)) return true;
+        var t = CounterMath.trait(Spec.HOUSETRAITS, u.spec.house(), u.squad.traits.getOrDefault(u.spec.house(), 0));
+        if (t == null || !t.mechanic().equals("rise_again") || !rolls(b, t)) return true;
+        u.rose = true;
+        u.stunnedUntil = b.time + t.durationTicks();
+        e.setHealth((float) (t.value2() * e.getMaxHealth()));
+        BattleEffects.soul(b, e.getPos());
+        return false;
+    }
+
+    /** How many ticks the death log keeps an entry: the Warlock's value3 (the classes row whose active is Grave Bloom), 0 when no class carries it. */
+    static long deathWindow() { var c = Commander.byActive("grave_bloom"); return c == null ? 0 : Math.round(c.value3()); }
+
+    /** Logs a troop that really died (AFTER_DEATH), where it fell, and drops what is older than the window. Grave Bloom raises from this log. */
+    static void logDeath(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
+        b.deaths.add(new GravesAndGlory.Death(u.mob.getPos(), b.time, u.spec.id(), u.squad.team));
+        prune(b);
+    }
+
+    /** Drops the log's entries older than deathWindow. */
+    static void prune(GravesAndGlory.Battle b) { long window = deathWindow(); b.deaths.removeIf(d -> b.time - d.time() > window); }
+
+    /** Every tick of a running round: the death log is pruned and a temporary troop whose time is up is discarded. */
+    static void expire(GravesAndGlory.Battle b) {
+        prune(b);
+        for (var u : new ArrayList<>(b.units)) if (u.temporary && b.time >= u.expiresAt) discard(b, u);
+    }
+
+    /** Takes a troop out of the battle: its side-team membership, its entity and its place in b.units. */
+    static void discard(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
+        GravesAndGlory.Battle.leaveSide(u.mob);
+        u.mob.discard();
+        b.units.remove(u);
+    }
+
+    /** Every temporary troop is discarded and the death log emptied: startRound, returnLobby and switchMap call it, so nothing a round raised or logged outlives it. */
+    static void reset(GravesAndGlory.Battle b) {
+        for (var u : new ArrayList<>(b.units)) if (u.temporary) discard(b, u);
+        b.deaths.clear();
+    }
 
     /** Once a second while a round runs: refreshes every seated squad's tiers and adds a second to the trait seconds of each House at tier I or higher. */
     static void tick(GravesAndGlory.Battle b) {

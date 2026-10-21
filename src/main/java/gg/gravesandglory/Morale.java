@@ -27,7 +27,7 @@ public final class Morale {
 
     /** A troop joined mid-round: the group's ceiling rises to the health actually fielded (so a trained-only group can still rout), and never falls. */
     static void fielded(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String group){
-        double health=0;for(var u:b.units)if(u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive())health+=u.spec.health()*b.campaign.health(s,u.spec);
+        double health=0;for(var u:b.units)if(u.squad==s&&!u.temporary&&u.spec.group().equals(group)&&u.mob.isAlive())health+=u.spec.health()*b.campaign.health(s,u.spec);
         s.fullHealth.merge(group,health,Math::max);
     }
 
@@ -35,7 +35,7 @@ public final class Morale {
     public static void tick(GravesAndGlory.Battle b){
         for(var s:new ArrayList<>(b.squads.values())){if(!s.seated)continue;
             for(String group:GROUPS){
-                List<GravesAndGlory.Unit> members=new ArrayList<>();for(var u:b.units)if(u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive())members.add(u);
+                List<GravesAndGlory.Unit> members=members(b,s,group);
                 if(members.isEmpty()){s.routedAt.remove(group);continue;}
                 Vec3d centre=centre(members);
                 if(routing(s,group)){
@@ -48,7 +48,7 @@ public final class Morale {
                 if(b.time<s.steadyUntil.getOrDefault(group,0L)||!enemyWithin(b,s.team,centre,M.engageCheckRadius()))continue;
                 double living=0;for(var u:members)living+=u.mob.getHealth();
                 double strength=BattleMath.strength(living,s.fullHealth.getOrDefault(group,0.0));
-                if(!BattleMath.shouldRout(strength,flanked(b,s,group,members,centre),M.routShare(),M.flankedRoutShare()))continue;
+                if(!BattleMath.shouldRout(strength,flanked(b,s,group,members,centre),routShareFor(b,s,group),M.flankedRoutShare()))continue;
                 boolean held=false;for(var guard:GUARDS)if(guard.holds(b,s,group)){held=true;break;}
                 if(held)continue;
                 s.routedAt.put(group,b.time);
@@ -62,8 +62,30 @@ public final class Morale {
     public static void rally(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String group){
         s.routedAt.remove(group);s.steadyUntil.put(group,b.time+M.regroupImmunitySeconds()*20L);
         for(var u:b.units)if(u.squad==s&&u.spec.group().equals(group)){u.nextPath=0;u.stuckTicks=0;}
-        List<GravesAndGlory.Unit> members=new ArrayList<>();for(var u:b.units)if(u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive())members.add(u);
+        List<GravesAndGlory.Unit> members=members(b,s,group);
         BattleEffects.horn(b,s,members.isEmpty()?s.target:centre(members),"rally");
+    }
+    /** The army's living troops of a group that count toward its morale: a temporary troop (Grave Bloom's) is not one of them. */
+    static List<GravesAndGlory.Unit> members(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String group){
+        List<GravesAndGlory.Unit> out=new ArrayList<>();for(var u:b.units)if(u.squad==s&&!u.temporary&&u.spec.group().equals(group)&&u.mob.isAlive())out.add(u);return out;
+    }
+    /**
+     * The strength share at which a group of this army breaks (Graveborn). The sheet's morale share, except: the fearless row's amount when at
+     * least its amount2 of the group's living troops carry fearless, else the dread row's amount2 while the group's centre stands within the
+     * row's radius of a living enemy dread troop; so fearless wins over dread. A group with no living member keeps the sheet's share.
+     * The pure rule is BattleMath.routShare. Tick calls this in place of the sheet's share; the Guards and the flanked share are untouched.
+     */
+    public static double routShareFor(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String group){
+        var members=members(b,s,group);if(members.isEmpty())return M.routShare();
+        var fearless=Abilities.fearlessRow();int carrying=0;
+        if(fearless!=null)for(var u:members)if(Abilities.carriesFearless(u))carrying++;
+        Vec3d centre=centre(members);boolean dreaded=false;double dread=0;
+        for(var e:b.units){
+            if(e.squad.team==s.team||!e.mob.isAlive())continue;
+            var row=Abilities.dreadRow(e);
+            if(row!=null&&GravesAndGlory.Battle.horizontalDistance(e.mob.getPos(),centre)<=row.radius()*row.radius()){dreaded=true;dread=Math.max(dread,row.amount2());}
+        }
+        return BattleMath.routShare(M.routShare(),carrying,members.size(),fearless==null?1:fearless.amount2(),fearless==null?0:fearless.amount(),dreaded,dread);
     }
     static Vec3d centre(List<GravesAndGlory.Unit> members){Vec3d sum=Vec3d.ZERO;for(var u:members)sum=sum.add(u.mob.getPos());return sum.multiply(1.0/members.size());}
     /** Any living enemy troop or seated, non-spectating enemy commander within radius (horizontal). */

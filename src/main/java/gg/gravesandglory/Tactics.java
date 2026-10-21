@@ -54,7 +54,7 @@ final class Tactics {
                     Vec3d away=mob.getPos().subtract(enemy.getPos()).multiply(1,0,1).normalize();
                     walk(battle,u,mob.getPos().add(away.multiply(5)),time,1.05);
                 }else mob.getNavigation().stop();
-                if(time>=u.nextAttack){
+                if(time>=u.nextAttack&&time>=u.stunnedUntil){
                     int cooldown=u.spec.cooldown();u.nextAttack=u.nextAttack<time-10?time+cooldown:u.nextAttack+cooldown;mob.swingHand(Hand.MAIN_HAND);
                     BattleEffects.strike(battle,u,enemy);
                     Abilities.attack(battle,u,enemy,time);

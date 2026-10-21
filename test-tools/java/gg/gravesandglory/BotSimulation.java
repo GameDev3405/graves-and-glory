@@ -78,7 +78,7 @@ public final class BotSimulation implements ModInitializer {
         var c=b.campaign;c.size=size;c.fill=true;c.practice=false;c.difficulty=dawnTier;b.roundSeconds=roundSeconds;c.lastWinner=ABORTED;
         b.startRound();
         armies.clear();for(var s:b.squads.values())if(s.bot){if(s.team==1)s.tier=duskTier;armies.add(s);}
-        field(b);
+        field(b);seen.clear();
         playing=true;
     }
     /** Phase 2: once each seat's tier is set, every bot army fields one bot banner row for its tier (Spec.BOTBANNERS), replacing the
@@ -91,8 +91,20 @@ public final class BotSimulation implements ModInitializer {
             String id=bannerChoice[s.team]!=null?bannerChoice[s.team]:house+"_"+s.tier;fielded[s.team]=id;
             s.banner=Campaign.bannerRow(id);s.fullHealth.clear();b.reinforce(s);}
     }
+    /** Where each troop stood at the last sample, for the stuck count (cleared at each round start). */
+    final Map<UUID,net.minecraft.util.math.Vec3d> seen=new HashMap<>();
+    /** The sample's health line on the console: living troops, how many are on fire, and how many stood still for the whole sample (30 s) with no target, no rout and an order other than Hold: a troop that cannot walk, or one that burns, shows here. */
+    void health(GravesAndGlory.Battle b,long second){
+        int living=0,burning=0,stuck=0;Map<UUID,net.minecraft.util.math.Vec3d> now=new HashMap<>();
+        for(var u:b.units){if(!u.mob.isAlive())continue;living++;if(u.mob.isOnFire()||u.mob.getFireTicks()>0)burning++;
+            var was=seen.get(u.mob.getUuid());if(was!=null&&u.mob.getTarget()==null&&u.mob.squaredDistanceTo(was)<1.0&&!Morale.routing(u.squad,u.spec.group())&&!b.assignment(u).order.equals("hold"))stuck++;
+            now.put(u.mob.getUuid(),u.mob.getPos());}
+        seen.clear();seen.putAll(now);
+        System.out.println("[botsim] health match="+(match+1)+" second="+second+" living="+living+" burning="+burning+" stuck="+stuck);
+    }
     /** One gold.csv row per team: gold earned so far, gold in hand and living troops. */
     void sample(GravesAndGlory.Battle b,long second){
+        health(b,second);
         StringBuilder rows=new StringBuilder();
         for(int team=0;team<2;team++){final int t=team;int earned=0,bank=0;for(var s:armies)if(s.team==t){earned+=s.stats.goldEarned;bank+=s.gold;}
             long living=b.units.stream().filter(u->u.squad.team==t&&u.mob.isAlive()).count();

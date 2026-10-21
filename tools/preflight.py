@@ -41,7 +41,8 @@ for row in data.get('commandInterface',[]):
 VANILLA_TEXTURES=('textures/entity/bear/polarbear.png','textures/entity/illager/evoker.png','textures/entity/illager/pillager.png',
     'textures/entity/illager/ravager.png','textures/entity/illager/vindicator.png','textures/entity/iron_golem/iron_golem.png',
     'textures/entity/piglin/zombified_piglin.png','textures/entity/skeleton/skeleton.png','textures/entity/skeleton/wither_skeleton.png',
-    'textures/entity/spider/spider.png','textures/entity/wolf/wolf.png','textures/entity/zombie/drowned.png')
+    'textures/entity/skeleton/stray.png','textures/entity/spider/spider.png','textures/entity/wolf/wolf.png','textures/entity/zombie/drowned.png',
+    'textures/entity/zombie/zombie.png')
 mcVersion=re.search(r"minecraft 'com\.mojang:minecraft:([^']+)'",(root/'build.gradle').read_text()) if (root/'build.gradle').is_file() else None
 mcVersion=mcVersion.group(1) if mcVersion else None
 clientJar=pathlib.Path(os.environ.get('GRADLE_USER_HOME') or pathlib.Path.home()/'.gradle')/'caches/fabric-loom'/(mcVersion or '-')/'minecraft-client.jar'

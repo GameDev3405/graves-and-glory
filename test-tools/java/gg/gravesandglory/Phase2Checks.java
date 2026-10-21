@@ -25,6 +25,7 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.mob.HuskEntity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.entity.mob.SkeletonEntity;
+import net.minecraft.entity.mob.StrayEntity;
 import net.minecraft.entity.mob.WitherSkeletonEntity;
 import net.minecraft.entity.mob.ZombieEntity;
 import net.minecraft.item.DyeableItem;
@@ -48,7 +49,7 @@ public final class Phase2Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every server tick, for checks that wait on the battle. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);}
+    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("graveborn",Graveborn::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -1582,6 +1583,491 @@ public final class Phase2Checks implements ClientModInitializer {
                         report("p2-gilded-tick-cost",cost.last<40,"server tick "+String.format(Locale.ROOT,"%.2f",cost.last)+" ms (600-tick mean "+String.format(Locale.ROOT,"%.2f",cost.avg)+" ms) with "+cost.troops+" troops at the start and "+b.units.size()+" at the end, "+b.banners.size()+" Oath Banners standing ("+cost.note+")");
                         audit(b,"before the final returnLobby",false);
                         report("p2-gilded-teams-clean",audits>=6&&unloadWasOnTeam&&staleSeen.isEmpty(),audits+" audits after the suite's direct removals (a troop removed as a chunk unload removes it, which vanilla does not clear: was on its team="+unloadWasOnTeam+"; stageFixture empties every team; drop, clearFixture, the showcase's clear-out and the end of the tick-cost run each leave only living troops on a team): "+(staleSeen.isEmpty()?"no side team kept a member that was not a living troop":"STALE "+staleSeen)+" ["+String.join("; ",auditNotes)+"]");
+                        cost.handBack();b.campaign.returnLobby();next(b,99);
+                    }
+                }
+                default->{}
+            }
+        }
+    }
+
+    /**
+     * Task 7 (batch 2): the Graveborn mechanics. The two new mobs (burn, water, goals), cleave, frost shot, the Gravecaller's blight,
+     * the fearless and dread rout shares, Rise Again (once, not Legendaries, not temporary troops, the chance by tier), the Warlock's
+     * Grave Bloom with its death log, the cleanup of temporary Risen at the end of a round and at a map switch, and the tick cost. The
+     * fixture is Gilded's: a stone platform in the sky above Dawn's base, two ad hoc armies and the commander's own (a Warlock);
+     * troops are posted frozen and pinned, and every kill goes through the real damage path (Combat.resolve, or damage with no
+     * attacker), so Rise Again's ALLOW_DEATH hook and the AFTER_DEATH death log run as they do in a round.
+     */
+    static final class Graveborn implements Suite,ServerWatch {
+        record Pin(GravesAndGlory.Unit u,Vec3d at,float yaw){}
+        volatile int stage;volatile UUID player;volatile String wantShot;volatile boolean shotTaken,finished;
+        long stageAt,t0;int shotDelay,shotAfter=12;String classBefore;
+        BlockPos site;final List<GravesAndGlory.Unit> fixture=new ArrayList<>(),group=new ArrayList<>();final List<Pin> pins=new ArrayList<>();
+        final Set<net.minecraft.util.math.ChunkPos> forced=new HashSet<>();
+        GravesAndGlory.Squad own,dawn,dusk;GravesAndGlory.Unit hk,hexer,stalker,reaper;
+        // side teams: one audit after each place the suite removes or raises troops
+        int audits;final Map<String,String> staleSeen=new LinkedHashMap<>();final List<String> auditNotes=new ArrayList<>();
+        // p2-graveborn-mobs
+        BlockPos tank;final List<MobEntity> army=new ArrayList<>();MobEntity vanillaZombie,vanillaStray,armyInTank,vanillaInTank;
+        boolean mobsOk,armyBurned,controlBurned,strayControlBurned;int submerged;String mobsWhy="";
+        // the blight and the frost shot
+        Projectiles.Shot shot;GravesAndGlory.Unit centre,inside,outside;long burst=-1;
+        // the rout shares
+        boolean moraleOk,early,heldAt15,routedAt10;String moraleWhy="";long routedAfter=-1;
+        // Rise Again
+        GravesAndGlory.Unit risen,riseK1,riseControl,riseK2;float hpK1,hpK2;boolean riseOk,heldStun,controlHit,afterStun;String riseWhy="";int soulsBefore;
+        // Grave Bloom
+        Vec3d aim;final List<GravesAndGlory.Unit> bloom=new ArrayList<>(),corpses=new ArrayList<>();boolean bloomOk;String bloomWhy="";boolean shown;int deathsAfter;
+        // the cleanup and the tick cost
+        TickCost cost;boolean pathsOk,inserted;String pathsWhy="";GravesAndGlory.Unit loose;int toMap;Vec3d lobbySpot;
+
+        void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
+        long since(GravesAndGlory.Battle b){return b.time-stageAt;}
+        ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
+        Profile profile(GravesAndGlory.Battle b){return b.campaign.profile(player);}
+        void requestShot(String name,int after){shotTaken=false;shotDelay=0;shotAfter=after;wantShot=name;}
+        static boolean near(double a,double b){return Math.abs(a-b)<1e-9;}
+        static String fmt(double v){return String.format(Locale.ROOT,"%.2f",v);}
+        static String show(Combat.HitLog h){return Engine.show(h);}
+        static double distance(Vec3d a,Vec3d c){return Math.sqrt(GravesAndGlory.Battle.horizontalDistance(a,c));}
+        static long temporaries(GravesAndGlory.Battle b){return b.units.stream().filter(u->u.temporary).count();}
+        /** A troop of the army on the platform at (dx, dz) from its centre with its AI off, held there each tick by the pins; a frozen troop never attacks or casts. */
+        GravesAndGlory.Unit post(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String troop,double dx,double dz,float yaw,boolean freeze){
+            Vec3d at=new Vec3d(site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz);
+            var u=b.spawn(s,Campaign.troop(troop),30+fixture.size(),at);u.mob.setAiDisabled(true);if(freeze)Phase1Checks.freeze(u);
+            fixture.add(u);pins.add(new Pin(u,at,yaw));u.deployed=at;Engine.apply(u,at,yaw);return u;
+        }
+        void move(GravesAndGlory.Unit u,double dx,double dz,float yaw){Vec3d at=new Vec3d(site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz);pins.removeIf(p->p.u()==u);pins.add(new Pin(u,at,yaw));u.deployed=at;Engine.apply(u,at,yaw);}
+        /** The troop's armour off, so the health it loses is the amount applied. */
+        static GravesAndGlory.Unit bare(GravesAndGlory.Unit u){for(var slot:List.of(EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET))u.mob.equipStack(slot,ItemStack.EMPTY);return u;}
+        /** A real blow of this size from the attacker's troop, past the victim's hurt cooldown, through Combat.resolve (so the ALLOW_DEATH hook and AFTER_DEATH run if it kills). */
+        static float strike(GravesAndGlory.Battle b,GravesAndGlory.Unit attacker,GravesAndGlory.Unit victim,float base){victim.mob.timeUntilRegen=0;victim.mob.hurtTime=0;return Combat.resolve(b,attacker,victim.mob,base,"melee",false);}
+        /** A fall with no attacker, past the hurt cooldown: the plain damage path (no kill credit). */
+        static void fall(GravesAndGlory.Battle b,GravesAndGlory.Unit victim){victim.mob.timeUntilRegen=0;victim.mob.hurtTime=0;victim.mob.damage(b.world.getDamageSources().generic(),1000f);}
+        void platform(GravesAndGlory.Battle b,BlockPos c,int half,net.minecraft.block.BlockState floor){
+            for(int x=-half;x<=half;x++)for(int z=-half;z<=half;z++){b.world.setBlockState(c.add(x,-1,z),floor);for(int y=0;y<=6;y++)b.world.setBlockState(c.add(x,y,z),Blocks.AIR.getDefaultState());}
+        }
+        void force(GravesAndGlory.Battle b,BlockPos from,BlockPos to){
+            for(int cx=from.getX()>>4;cx<=to.getX()>>4;cx++)for(int cz=from.getZ()>>4;cz<=to.getZ()>>4;cz++){b.world.setChunkForced(cx,cz,true);b.world.getChunk(cx,cz);forced.add(new net.minecraft.util.math.ChunkPos(cx,cz));}
+        }
+        void unforce(GravesAndGlory.Battle b){for(var p:forced)b.world.setChunkForced(p.x,p.z,false);forced.clear();}
+        void drop(GravesAndGlory.Battle b,GravesAndGlory.Unit u){u.mob.discard();b.units.remove(u);fixture.remove(u);group.remove(u);pins.removeIf(p->p.u()==u);audit(b,"drop",false);}
+        void dropAll(GravesAndGlory.Battle b,List<GravesAndGlory.Unit> us,String where){for(var u:new ArrayList<>(us)){u.mob.discard();b.units.remove(u);fixture.remove(u);pins.removeIf(p->p.u()==u);}us.clear();audit(b,where,false);}
+        void clearFixture(GravesAndGlory.Battle b,String where){for(var u:fixture)u.mob.discard();b.units.removeAll(fixture);fixture.clear();group.clear();pins.clear();bloom.clear();corpses.clear();audit(b,where,false);}
+        /** After a removal or a raising: no gg_ side team keeps a member that is not a living troop of b.units (and with `none` standing, none keeps any). */
+        void audit(GravesAndGlory.Battle b,String where,boolean none){
+            var stale=staleSides(b);var all=sideMembers(b);audits++;
+            for(String m:none?all:stale)staleSeen.putIfAbsent(m,where);
+            if(auditNotes.size()<24)auditNotes.add(where+" "+all.size()+" on a team"+(stale.isEmpty()?"":", "+stale.size()+" stale"));
+        }
+        void hold(){for(var p:pins)if(p.u().mob.isAlive())Engine.apply(p.u(),p.at(),p.yaw());}
+        /** The army's stored state back to nothing: no rout, no steadiness, no health ceiling, no orders. */
+        static void reset(GravesAndGlory.Squad s){s.routedAt.clear();s.steadyUntil.clear();s.fullHealth.clear();s.assignments.clear();}
+        /** Sets every living troop of the list to this share of its health, and the army's ceiling for the group so its strength is that share. */
+        void weaken(GravesAndGlory.Squad s,String grp,List<GravesAndGlory.Unit> us,double share){
+            double living=0;for(var u:us)if(u.mob.isAlive()){u.mob.setHealth((float)(u.mob.getMaxHealth()*share));living+=u.mob.getHealth();}
+            s.fullHealth.put(grp,living/share);
+        }
+        /** Every army's troops leave and none come back; a stone sky platform 40 blocks east of Dawn's base; two ad hoc armies (bots, so no profile is read) beside the commander's own, which keeps his seat and his class. */
+        void stageFixture(GravesAndGlory.Battle b){
+            Projectiles.clear(b);Abilities.clearBanners(b);clearFixture(b,"clearFixture");
+            for(var s:b.squads.values()){s.reinforceAt=Long.MAX_VALUE;s.training.clear();if(s.bot)b.campaign.botRespawns.put(s.owner,Long.MAX_VALUE);}
+            for(var u:b.units)u.mob.discard();b.units.clear();audit(b,"stageFixture",true);b.deaths.clear();
+            var base=GravesAndGlory.Battle.base(0);site=new BlockPos((int)base.x+40,140,(int)base.z);force(b,site.add(-13,0,-13),site.add(13,0,13));platform(b,site,12,Blocks.STONE.getDefaultState());
+            own=b.squads.get(player);reset(own);
+            dawn=new GravesAndGlory.Squad(UUID.randomUUID(),0,base);dawn.order="hold";dawn.bot=true;dusk=new GravesAndGlory.Squad(UUID.randomUUID(),1,base);dusk.order="hold";dusk.bot=true;
+        }
+        /** The commander on the platform, west of its centre, facing east and looking down at the ground 12 blocks ahead; aim is where the Bloom's raycast lands. */
+        void stand(GravesAndGlory.Battle b,ServerPlayerEntity p,float yaw){
+            p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);b.relocate(p,site.getX()+.5-10,site.getY(),site.getZ()+.5,yaw,(float)Math.toDegrees(Math.atan2(1.62,12)));
+            aim=Commander.GraveBloom.aim(p,Commander.row(own).range());
+        }
+        /** A fallen troop of this army at an offset from the aim: posted where it falls, then dead by a fall with no attacker. */
+        GravesAndGlory.Unit corpse(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String troop,double distance,double degrees){
+            double r=Math.toRadians(degrees);var u=post(b,s,troop,aim.x-site.getX()-.5+Math.cos(r)*distance,aim.z-site.getZ()-.5+Math.sin(r)*distance,0,true);fall(b,u);corpses.add(u);return u;
+        }
+
+        public void cleanup(MinecraftClient c){
+            server(c,b->{Houses.forceRise=null;clearFixture(b,"cleanup");if(site!=null)platform(b,site,12,Blocks.AIR.getDefaultState());unforce(b);if(cost!=null)cost.handBack();
+                for(var m:army)m.discard();army.clear();for(var m:new MobEntity[]{vanillaZombie,vanillaStray,armyInTank,vanillaInTank})if(m!=null)m.discard();
+                if(b.running)b.campaign.returnLobby();var p=sp(b);if(p!=null&&classBefore!=null)b.campaign.handle(p,"class:"+classBefore);});
+        }
+
+        public void step(MinecraftClient c,int tick){
+            if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;next(b,1);});}
+            if(wantShot!=null&&!shotTaken&&++shotDelay>=shotAfter){shot(c,wantShot);shotTaken=true;}
+            if(stage==99&&!finished){finished=true;c.setScreen(null);finish(c,"graveborn");}
+            if(tick>30000&&!finished){finished=true;report("p2-graveborn-timeout",false,"stuck in stage "+stage);finish(c,"graveborn");}
+        }
+
+        public void serverTick(GravesAndGlory.Battle b){
+            if(player==null||stage>=99)return;
+            try{stages(b);}catch(RuntimeException e){report("p2-graveborn-exception",false,"stage "+stage+": "+e);e.printStackTrace();next(b,99);}
+        }
+        void stages(GravesAndGlory.Battle b){
+            hold();
+            switch(stage){
+                case 1->{ // p2-graveborn-mobs, the sheet and the classes: the entities the sheet names are the ones registered, and they carry only a SwimGoal
+                    var w=b.world;boolean ok=true;StringBuilder why=new StringBuilder();
+                    var armor=net.minecraft.entity.attribute.EntityAttributes.GENERIC_ARMOR;
+                    Map<String,EntityType<?>> types=Map.<String,EntityType<?>>of("zombie",EntityType.ZOMBIE,"stray",EntityType.STRAY);
+                    Map<String,Class<?>> classes=Map.<String,Class<?>>of("zombie",GravesAndGlory.ArmyZombie.class,"stray",GravesAndGlory.ArmyStray.class);
+                    for(var line:List.of("revenant:zombie","stalker:stray")){
+                        String troop=line.substring(0,line.indexOf(':')),entity=line.substring(line.indexOf(':')+1);var row=Campaign.troop(troop);
+                        boolean sheet=row.entity().equals(entity);MobEntity m=null;String goals,targets,made;
+                        try{m=ArmyMobs.create(row.entity(),w);made=m.getClass().getSimpleName();goals=Engine.goalNames(m,"goalSelector").toString();targets=Engine.goalNames(m,"targetSelector").toString();}
+                        catch(ReflectiveOperationException|RuntimeException e){goals=targets="unreadable";made=e.toString();}
+                        boolean good=sheet&&m!=null&&classes.get(entity).isInstance(m)&&ArmyMobs.isTroop(m)&&m.getType()==types.get(entity)&&goals.equals("[SwimGoal]")&&targets.equals("[]")&&m.getAttributeBaseValue(armor)==0;
+                        ok&=good;why.append(troop).append(" (sheet entity ").append(row.entity()).append(", want ").append(entity).append(") -> ").append(made).append(", goals ").append(goals).append(", targets ").append(targets).append(good?"":" (BAD)").append("; ");
+                    }
+                    mobsOk=ok;mobsWhy=why.toString();next(b,2);
+                }
+                case 2->{ // a stone platform and a sealed tank in the open sky, at noon (Engine's fixture, for the new mobs)
+                    var p=sp(b);if(p==null)return;
+                    MobEntity[] list;MobEntity inTank;
+                    try{list=new MobEntity[]{ArmyMobs.create("zombie",b.world),ArmyMobs.create("stray",b.world),new ZombieEntity(EntityType.ZOMBIE,b.world),new StrayEntity(EntityType.STRAY,b.world)};inTank=ArmyMobs.create("zombie",b.world);}
+                    catch(RuntimeException e){report("p2-graveborn-mobs",false,mobsWhy+"an Army zombie or stray could not be made: "+e.getMessage());site=null;next(b,4);return;}
+                    site=new BlockPos(p.getBlockX()+14,150,p.getBlockZ()+14);tank=site.add(14,0,0);
+                    b.world.setTimeOfDay(6000);force(b,site.add(-6,0,-6),tank.add(6,0,6));
+                    platform(b,site,6,Blocks.STONE.getDefaultState());
+                    for(int x=-1;x<=5;x++)for(int y=-1;y<=3;y++)for(int z=-1;z<=3;z++){boolean in=x>=0&&x<=4&&y>=0&&y<=2&&z>=0&&z<=2;b.world.setBlockState(tank.add(x,y,z),in?Blocks.WATER.getDefaultState():Blocks.STONE.getDefaultState());}
+                    army.clear();
+                    for(int i=0;i<4;i++){var m=list[i];m.refreshPositionAndAngles(site.getX()+.5-3+i*2,site.getY(),site.getZ()+.5,0,0);m.equipStack(EquipmentSlot.HEAD,ItemStack.EMPTY);m.setPersistent();m.setAiDisabled(true);b.world.spawnEntity(m);if(i<2)army.add(m);}
+                    vanillaZombie=list[2];vanillaStray=list[3];
+                    armyInTank=inTank;armyInTank.refreshPositionAndAngles(tank.getX()+1.5,tank.getY(),tank.getZ()+1.5,0,0);armyInTank.setPersistent();b.world.spawnEntity(armyInTank);
+                    vanillaInTank=new ZombieEntity(EntityType.ZOMBIE,b.world);vanillaInTank.refreshPositionAndAngles(tank.getX()+3.5,tank.getY(),tank.getZ()+1.5,0,0);vanillaInTank.setPersistent();b.world.spawnEntity(vanillaInTank);
+                    armyBurned=controlBurned=strayControlBurned=false;submerged=0;next(b,3);
+                }
+                case 3->{ // no burning after 200 ticks, no conversion after 700
+                    long t=since(b);
+                    if(t<=200){for(var m:army)if(m.getFireTicks()>0||m.isOnFire())armyBurned=true;if(vanillaZombie.getFireTicks()>0)controlBurned=true;if(vanillaStray.getFireTicks()>0)strayControlBurned=true;}
+                    if(armyInTank.isSubmergedIn(net.minecraft.registry.tag.FluidTags.WATER))submerged++;
+                    if(t>=700){
+                        boolean day=b.world.isDay();
+                        boolean still=armyInTank instanceof GravesAndGlory.ArmyZombie&&armyInTank.isAlive()&&!armyInTank.isRemoved(),armyConverting=((ZombieEntity)armyInTank).isConvertingInWater(),vanillaConverting=((ZombieEntity)vanillaInTank).isConvertingInWater();
+                        boolean ok=mobsOk&&!armyBurned&&controlBurned&&day&&still&&!armyConverting&&submerged>=690&&vanillaConverting;
+                        report("p2-graveborn-mobs",ok,mobsWhy+"at noon (time "+b.world.getTimeOfDay()+", day="+day+") under an open sky the Army zombie and stray were never on fire in 200 ticks="+!armyBurned+" while the vanilla zombie beside them caught fire="+controlBurned+" (the vanilla stray set fire ticks="+strayControlBurned+"); the ArmyZombie under water for "+submerged+" of 700 ticks is still an ArmyZombie="+still+" and is not converting="+!armyConverting+"; the vanilla Zombie in the same tank is converting after 600 ticks="+vanillaConverting);
+                        for(var m:army)m.discard();army.clear();vanillaZombie.discard();vanillaStray.discard();armyInTank.discard();vanillaInTank.discard();
+                        for(int x=-1;x<=5;x++)for(int y=-1;y<=3;y++)for(int z=-1;z<=3;z++)b.world.setBlockState(tank.add(x,y,z),Blocks.AIR.getDefaultState());
+                        platform(b,site,6,Blocks.AIR.getDefaultState());unforce(b);site=null;next(b,4);
+                    }
+                }
+                case 4->{ // the commander is a Warlock for the rest of the suite
+                    var p=sp(b);if(p==null)return;if(b.running){b.campaign.returnLobby();return;}
+                    classBefore=profile(b).commander;b.campaign.handle(p,"class:warlock");
+                    if(!profile(b).commander.equals("warlock")){report("p2-graveborn-class",false,"class:warlock never reached the profile (it says "+profile(b).commander+")");next(b,99);return;}
+                    next(b,5);
+                }
+                case 5->{var p=sp(b);if(p==null||!Phase1Checks.skirmish(b,p,0,1,"normal"))return;next(b,6);}
+                case 6->{if(since(b)<10)return;stageFixture(b);Houses.forceRise=Boolean.FALSE;next(b,10);}
+                case 10->{ // p2-cleave: a Grave Reaper hits a bare Risen with a second Risen 1.5 beside it, a third 1.8 away and a fourth 3.2 away
+                    reaper=post(b,dawn,"reaper",0,-3,0,true);var first=bare(post(b,dusk,"revenant",0,0,180,true));var nearOne=bare(post(b,dusk,"revenant",1.5,0,180,true));var second=bare(post(b,dusk,"revenant",-1.8,0.3,180,true));var far=bare(post(b,dusk,"revenant",3.2,0,180,true));
+                    var row=Abilities.row(reaper.spec);boolean sheet=row.id().equals("cleave_reaper")&&row.mechanic().equals("cleave")&&near(row.radius(),2)&&near(row.amount(),0.57);
+                    StringBuilder why=new StringBuilder();boolean ok=sheet;
+                    var mark=Combat.LAST.peekLast();float h1=first.mob.getHealth(),hn=nearOne.mob.getHealth(),hs=second.mob.getHealth(),hf=far.mob.getHealth();
+                    float base=(float)Abilities.baseHit(b,reaper);strike(b,reaper,first,base);
+                    var onFirst=Gilded.hitOn(first.mob,mark);var onNear=Gilded.hitOn(nearOne.mob,mark);var onSecond=Gilded.hitOn(second.mob,mark);var onFar=Gilded.hitOn(far.mob,mark);
+                    float lf=h1-first.mob.getHealth(),ln=hn-nearOne.mob.getHealth(),ls=hs-second.mob.getHealth(),lfar=hf-far.mob.getHealth();
+                    boolean run1=onFirst!=null&&lf>0&&onNear!=null&&Math.abs(onNear.base()-onFirst.base()*0.57)<1e-4&&near(onNear.total(),onFirst.total())&&Math.abs(ln-lf*0.57f)<1e-3&&onSecond==null&&ls==0&&onFar==null&&lfar==0;
+                    ok&=run1;why.append("a Grave Reaper's blow (").append(row.id()).append(", radius ").append(row.radius()).append(", share ").append(row.amount()).append(")="+sheet+" hit the first Risen ").append(show(onFirst)).append(", it lost ").append(lf).append("; the Risen 1.5 beside it ").append(show(onNear)).append(", it lost ").append(ln).append(" (want 0.57 of the first); the one 1.8 off lost ").append(ls).append(onSecond==null?" (no hit logged)":" ("+show(onSecond)+")").append(" and the one 3.2 off lost ").append(lfar).append(" (only the nearest other enemy is struck)="+run1+"; ");
+                    // run 2: the nearest is gone, the next one is struck; run 3: nobody within 2, nobody struck
+                    drop(b,nearOne);mark=Combat.LAST.peekLast();h1=first.mob.getHealth();hs=second.mob.getHealth();hf=far.mob.getHealth();strike(b,reaper,first,base);
+                    onFirst=Gilded.hitOn(first.mob,mark);onSecond=Gilded.hitOn(second.mob,mark);onFar=Gilded.hitOn(far.mob,mark);lf=h1-first.mob.getHealth();ls=hs-second.mob.getHealth();lfar=hf-far.mob.getHealth();
+                    boolean run2=onFirst!=null&&lf>0&&onSecond!=null&&Math.abs(ls-lf*0.57f)<1e-3&&onFar==null&&lfar==0;ok&=run2;
+                    why.append("with the nearest gone the Risen 1.8 off took ").append(ls).append(" of the ").append(lf).append(" the first took (want 0.57 of it) and the one 3.2 off ").append(lfar).append("="+run2+"; ");
+                    drop(b,second);mark=Combat.LAST.peekLast();h1=first.mob.getHealth();hf=far.mob.getHealth();strike(b,reaper,first,base);
+                    onFar=Gilded.hitOn(far.mob,mark);lf=h1-first.mob.getHealth();lfar=hf-far.mob.getHealth();boolean run3=lf>0&&onFar==null&&lfar==0;ok&=run3;
+                    why.append("with nobody within 2 of the target the Risen 3.2 off lost ").append(lfar).append("="+run3);
+                    report("p2-cleave",ok,why.toString());clearFixture(b,"cleave");next(b,11);
+                }
+                case 11->{ // p2-frostshot: a Barrow Stalker's arrow at a bare Risen 10 blocks off
+                    stalker=post(b,dawn,"stalker",0,-10,0,true);risen=bare(post(b,dusk,"revenant",0,0,180,true));
+                    Projectiles.fire(b,stalker,risen.mob,"arrow",(float)Abilities.baseHit(b,stalker));shot=b.shots.get(b.shots.size()-1);next(b,12);
+                }
+                case 12->{if(b.time<shot.lands()+2)return;
+                    var row=Abilities.row(stalker.spec);var eff=risen.mob.getStatusEffect(StatusEffects.SLOWNESS);
+                    boolean sheet=row.id().equals("frostshot")&&row.mechanic().equals("onhit_slow")&&row.statusTicks()==40&&row.statusLevel()==0;
+                    boolean landed=eff!=null&&eff.getAmplifier()==0&&eff.getDuration()>=36&&eff.getDuration()<=40;
+                    String s1=eff==null?"no Slowness":"Slowness "+(eff.getAmplifier()+1)+" for "+eff.getDuration()+" ticks";
+                    // an arrow that lands on a troop already slowed for longer keeps the longer time; on a shorter one it sets the new time
+                    float base=(float)Abilities.baseHit(b,stalker);
+                    risen.mob.removeStatusEffect(StatusEffects.SLOWNESS);risen.mob.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(StatusEffects.SLOWNESS,120,0));
+                    risen.mob.timeUntilRegen=0;Combat.resolve(b,stalker,risen.mob,base,"arrow",false);var longer=risen.mob.getStatusEffect(StatusEffects.SLOWNESS);
+                    boolean keeps=longer!=null&&longer.getAmplifier()==0&&longer.getDuration()>=118&&longer.getDuration()<=120;
+                    risen.mob.removeStatusEffect(StatusEffects.SLOWNESS);risen.mob.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(StatusEffects.SLOWNESS,10,0));
+                    risen.mob.timeUntilRegen=0;Combat.resolve(b,stalker,risen.mob,base,"arrow",false);var shorter=risen.mob.getStatusEffect(StatusEffects.SLOWNESS);
+                    boolean sets=shorter!=null&&shorter.getDuration()>=38&&shorter.getDuration()<=40;
+                    // a secondary hit (a cleave or a pierce) does not run the on-hit slow again
+                    risen.mob.removeStatusEffect(StatusEffects.SLOWNESS);risen.mob.timeUntilRegen=0;Combat.resolve(b,stalker,risen.mob,base,"arrow",true);boolean none=!risen.mob.hasStatusEffect(StatusEffects.SLOWNESS);
+                    report("p2-frostshot",sheet&&landed&&keeps&&sets&&none,"the Barrow Stalker's "+row.id()+" ("+row.mechanic()+", "+row.statusTicks()+" ticks, level "+row.statusLevel()+")="+sheet+"; the arrow as it landed left "+s1+" on the Risen (want Slowness 1 for about 40)="+landed+"; a second arrow on a Risen slowed for 120 left "+(longer==null?"none":longer.getDuration()+" ticks")+" (the longer time kept)="+keeps+", on one slowed for 10 left "+(shorter==null?"none":shorter.getDuration()+" ticks")+" (the new 40)="+sets+"; a secondary hit applied none="+none);
+                    clearFixture(b,"frostshot");next(b,13);
+                }
+                case 13->{ // p2-blight-gravecaller: a Gravecaller 8 blocks from a Risen; a second Risen 2.0 from the first and a third 3.0 from it
+                    hexer=post(b,dawn,"hexer",0,-8,0,true);centre=bare(post(b,dusk,"revenant",0,0,180,true));inside=bare(post(b,dusk,"revenant",2.0,0,180,true));outside=bare(post(b,dusk,"revenant",-3.0,0,180,true));
+                    hexer.abilityAt=0;t0=b.time;burst=-1;Abilities.attack(b,hexer,centre.mob,b.time);next(b,14);
+                }
+                case 14->{ // each tick as Tactics does on its beat: the ring marks the centre; the burst lands when the windup ends
+                    var row=Abilities.row(hexer.spec);long t=b.time-t0;
+                    if(hexer.spellCenter!=null){Abilities.tick(b,hexer,centre.mob,b.time);if(hexer.spellCenter==null)burst=t;}
+                    if(burst>=0||t>60){
+                        var eC=centre.mob.getStatusEffect(StatusEffects.SLOWNESS);var eI=inside.mob.getStatusEffect(StatusEffects.SLOWNESS);
+                        boolean sheet=row.id().equals("blight_gravecaller")&&row.mechanic().equals("blight")&&near(row.radius(),2.5)&&row.windupTicks()==20&&row.statusTicks()==40&&row.statusLevel()==0&&row.cooldownTicks()==100;
+                        boolean hitC=centre.mob.getHealth()<centre.mob.getMaxHealth()&&eC!=null&&eC.getAmplifier()==0&&eC.getDuration()>=36&&eC.getDuration()<=40;
+                        boolean hitI=inside.mob.getHealth()<inside.mob.getMaxHealth()&&eI!=null&&eI.getAmplifier()==0;
+                        boolean miss=outside.mob.getHealth()==outside.mob.getMaxHealth()&&!outside.mob.hasStatusEffect(StatusEffects.SLOWNESS);
+                        boolean timing=burst==row.windupTicks()&&hexer.abilityAt==t0+row.cooldownTicks();
+                        report("p2-blight-gravecaller",sheet&&hitC&&hitI&&miss&&timing,"the Gravecaller's "+row.id()+" (radius "+row.radius()+", windup "+row.windupTicks()+", cooldown "+row.cooldownTicks()+", slow "+row.statusTicks()+" ticks level "+row.statusLevel()+")="+sheet+"; the burst came "+burst+" ticks after the cast (want "+row.windupTicks()+"), its next cast set for +"+(hexer.abilityAt-t0)+" (want "+row.cooldownTicks()+")="+timing+"; the Risen at the centre lost "+fmt(centre.mob.getMaxHealth()-centre.mob.getHealth())+" and has "+(eC==null?"no Slowness":"Slowness "+(eC.getAmplifier()+1)+" for "+eC.getDuration())+"="+hitC+", the one 2.0 off lost "+fmt(inside.mob.getMaxHealth()-inside.mob.getHealth())+"="+hitI+", the one 3.0 off lost "+fmt(outside.mob.getMaxHealth()-outside.mob.getHealth())+" (untouched="+miss+")");
+                        clearFixture(b,"blight");next(b,20);
+                    }
+                }
+                case 20->{ // p2-fearless-share: ten Risen of the commander's own army, a mix of five Risen and five Squires, and a mix of four and six; Dusk troops in sight
+                    reset(own);group.clear();
+                    for(int i=0;i<10;i++)group.add(post(b,own,"revenant",-6+(i%5)*1.5,-5+(i/5)*1.5,-90,true));
+                    for(int i=0;i<5;i++){post(b,dawn,"revenant",-6+i*1.5,8,-90,true);post(b,dawn,"knight",-6+i*1.5,9.5,-90,true);}
+                    for(int i=0;i<4;i++)post(b,dusk,"revenant",8+i*1.5,-2,90,true);for(int i=0;i<6;i++)post(b,dusk,"knight",8+i*1.5,0,90,true);
+                    Houses.recompute(own);Houses.recompute(dawn);Houses.recompute(dusk);
+                    var fearless=Abilities.fearlessRow();double ten=Morale.routShareFor(b,own,"infantry"),half=Morale.routShareFor(b,dawn,"infantry"),four=Morale.routShareFor(b,dusk,"infantry"),none=Morale.routShareFor(b,own,"ranged");
+                    boolean sheet=fearless!=null&&near(fearless.amount(),0.12)&&near(fearless.amount2(),0.5)&&near(Spec.MORALE[0].routShare(),0.25);
+                    moraleOk=sheet&&near(ten,0.12)&&near(half,0.12)&&near(four,0.25)&&near(none,0.25);
+                    moraleWhy="the sheet's fearless row ("+(fearless==null?"none":fearless.id()+" "+fearless.amount()+" at "+fearless.amount2())+") and morale share "+Spec.MORALE[0].routShare()+"="+sheet+"; the share a group breaks at: ten Risen "+ten+", five Risen and five Squires "+half+" (want 0.12 for both), four Risen and six Squires "+four+", no troop at all "+none+" (want the sheet's 0.25); ";
+                    early=false;weaken(own,"infantry",group,0.15);t0=b.time;next(b,21);
+                }
+                case 21->{ // ten Risen at 15% do not break in 45 ticks; at 10% they do
+                    if(Morale.routing(own,"infantry"))early=true;
+                    if(since(b)<45)return;
+                    heldAt15=!early&&near(BattleMath.strength(group.stream().mapToDouble(u->u.mob.getHealth()).sum(),own.fullHealth.get("infantry")),0.15);
+                    weaken(own,"infantry",group,0.10);t0=b.time;routedAfter=-1;next(b,22);
+                }
+                case 22->{
+                    if(Morale.routing(own,"infantry")){routedAfter=b.time-t0;}
+                    if(routedAfter<0&&since(b)<=60)return;
+                    routedAt10=routedAfter>=0;
+                    moraleWhy+="ten Risen at 15% strength did not rout in 45 ticks="+heldAt15+" and routed at 10% "+(routedAfter<0?"never":routedAfter+" ticks later")+"="+routedAt10+"; ";
+                    dropAll(b,group,"fearless");reset(own);Houses.recompute(own);
+                    for(int i=0;i<10;i++)group.add(post(b,own,"knight",-6+(i%5)*1.5,-5+(i/5)*1.5,-90,true));
+                    Houses.recompute(own);weaken(own,"infantry",group,0.15);t0=b.time;routedAfter=-1;next(b,23);
+                }
+                case 23->{ // a knight group at 15% breaks
+                    if(Morale.routing(own,"infantry"))routedAfter=b.time-t0;
+                    if(routedAfter<0&&since(b)<=60)return;
+                    boolean knights=routedAfter>=0&&near(Morale.routShareFor(b,own,"infantry"),0.25);
+                    moraleWhy+="a group of ten Order Squires at 15% routed "+(routedAfter<0?"never":routedAfter+" ticks later")+"="+knights;
+                    report("p2-fearless-share",moraleOk&&heldAt15&&routedAt10&&knights,moraleWhy);
+                    clearFixture(b,"fearless");reset(own);next(b,30);
+                }
+                case 30->{ // p2-dread: four Order Squires of the own army at 35% strength, a Dusk Risen in sight and the Hollow King 24 blocks away
+                    reset(own);group.clear();
+                    for(int i=0;i<4;i++)group.add(post(b,own,"knight",-6+i*1.5,0,-90,true));
+                    post(b,dusk,"revenant",6,3,90,true);hk=post(b,dusk,"gb_hollowking",20,0,90,true);Houses.recompute(own);
+                    var far=Commanders.hit(b,group.get(3),fixture.get(4).mob,"melee");
+                    boolean sheet=Abilities.dreadRow(hk)!=null&&near(Abilities.dreadRow(hk).amount(),0.15)&&near(Abilities.dreadRow(hk).amount2(),0.4)&&near(Abilities.dreadRow(hk).radius(),10);
+                    moraleOk=sheet&&Gilded.auras(far,1.0)&&near(Morale.routShareFor(b,own,"infantry"),0.25);
+                    moraleWhy="the Hollow King's ability "+hk.spec.ability()+" ("+(Abilities.dreadRow(hk)==null?"not a dread row":"amount "+Abilities.dreadRow(hk).amount()+", rout "+Abilities.dreadRow(hk).amount2()+", radius "+Abilities.dreadRow(hk).radius())+")="+sheet+"; with him 24 blocks off a Squire's blow has auras "+Gilded.au(far)+" and the group breaks at "+fmt(Morale.routShareFor(b,own,"infantry"))+" (want 1.0 and 0.25); ";
+                    early=false;weaken(own,"infantry",group,0.35);t0=b.time;next(b,31);
+                }
+                case 31->{ // 35% without the Hollow King: no rout in 45 ticks; then he steps to 9.25 from their centre
+                    if(Morale.routing(own,"infantry"))early=true;
+                    if(since(b)<45)return;
+                    heldAt15=!early;moraleWhy+="four Squires at 35% with no Hollow King within 10 did not rout in 45 ticks="+heldAt15+"; ";
+                    move(hk,5.5,0,90);
+                    // his dread on every blow of the enemy's troops that stands within 10 of him; the largest of several, and a banner's share multiplies in
+                    var inReach=Commanders.hit(b,group.get(3),fixture.get(4).mob,"melee");var outReach=Commanders.hit(b,group.get(0),fixture.get(4).mob,"melee");var his=Commanders.hit(b,fixture.get(4),group.get(3).mob,"melee");
+                    var second=post(b,dusk,"gb_hollowking",6,-3,90,true);var two=Commanders.hit(b,group.get(3),fixture.get(4).mob,"melee");drop(b,second);
+                    var banner=new Abilities.Banner(own,group.get(3).mob.getPos(),b.time+300,12,0.1,null,null);b.banners.add(banner);var withBanner=Commanders.hit(b,group.get(3),fixture.get(4).mob,"melee");b.banners.remove(banner);
+                    boolean auras=Gilded.auras(inReach,0.85)&&Gilded.auras(outReach,1.0)&&Gilded.auras(his,1.0)&&Gilded.auras(two,0.85)&&Math.abs(withBanner.auras()-1.1*0.85)<1e-9;
+                    boolean share=near(Morale.routShareFor(b,own,"infantry"),0.4);
+                    moraleOk&=auras&&share;
+                    moraleWhy+="with the Hollow King at 7.0 from one Squire and 11.5 from another: a blow by the near one has auras "+Gilded.au(inReach)+" (want 0.85), by the far one "+Gilded.au(outReach)+" (1.0), by a Dusk Risen beside the King "+Gilded.au(his)+" (his own side, 1.0), with a second King in reach "+Gilded.au(two)+" (not stacked, 0.85), with an Oath Banner too "+(withBanner==null?"none":String.valueOf(withBanner.auras()))+" (1.1 x 0.85)="+auras+"; the group's share is now "+fmt(Morale.routShareFor(b,own,"infantry"))+" (want 0.40)="+share+"; ";
+                    weaken(own,"infantry",group,0.35);routedAfter=-1;t0=b.time;next(b,32);
+                }
+                case 32->{ // the Squires at 35% break within the dread; then ten Risen at 35% in the same place do not
+                    if(Morale.routing(own,"infantry"))routedAfter=b.time-t0;
+                    if(routedAfter<0&&since(b)<=60)return;
+                    routedAt10=routedAfter>=0;moraleWhy+="the same Squires with him 9.25 from their centre routed "+(routedAfter<0?"never":routedAfter+" ticks later")+"="+routedAt10+"; ";
+                    dropAll(b,group,"dread");reset(own);Houses.recompute(own);
+                    for(int i=0;i<10;i++)group.add(post(b,own,"revenant",-6+(i%5)*1.5,-1+(i/5)*1.5,-90,true));
+                    Houses.recompute(own);weaken(own,"infantry",group,0.35);early=false;t0=b.time;next(b,33);
+                }
+                case 33->{ // fearless wins over dread
+                    if(Morale.routing(own,"infantry"))early=true;
+                    if(since(b)<45)return;
+                    boolean wins=!early&&near(Morale.routShareFor(b,own,"infantry"),0.12);
+                    moraleWhy+="ten Risen at 35% beside him did not rout in 45 ticks and break at "+fmt(Morale.routShareFor(b,own,"infantry"))+" (fearless wins, 0.12)="+wins;
+                    report("p2-dread",moraleOk&&heldAt15&&routedAt10&&wins,moraleWhy);
+                    clearFixture(b,"dread");reset(own);next(b,40);
+                }
+                case 40->{ // p2-rise-again: a Risen of a Graveborn army (six Risen: tier I) at 1 health, struck dead by an Order Squire
+                    reset(own);Houses.forceRise=Boolean.TRUE;dusk.order="attack";dusk.target=new Vec3d(site.getX()+.5,site.getY(),site.getZ()+.5);dawn.order="attack";
+                    risen=post(b,dusk,"revenant",-8,-4,0,true);for(int i=0;i<5;i++)post(b,dusk,"revenant",-10+i*1.5,10,0,true);Houses.recompute(dusk);
+                    riseK1=post(b,dawn,"knight",-8,-2.5,180,true);
+                    var pl=sp(b);if(pl!=null){pl.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);b.relocate(pl,site.getX()+.5-12,site.getY(),site.getZ()+.5-4,-90f,10f);} // set down ten ticks before the blow: a particle packet reaches only the players within 32 blocks of it, and the client's camera trails a teleport, so a packet that arrives as the player lands is dropped
+                    t0=b.time;next(b,44);
+                }
+                case 44->{if(b.time-t0<10)return;
+                    var trait=CounterMath.trait(Spec.HOUSETRAITS,"graveborn",dusk.traits.getOrDefault("graveborn",0));
+                    risen.mob.setHealth(1f);soulsBefore=BattleEffects.souls;long died=b.time;int killsBefore=dawn.stats.kills,goldBefore=dawn.stats.goldEarned;
+                    strike(b,riseK1,risen,50f);
+                    boolean alive=risen.mob.isAlive()&&b.units.contains(risen);float want=(float)(trait==null?-1:trait.value2()*risen.mob.getMaxHealth());
+                    boolean stats=risen.rose&&risen.stunnedUntil==died+20&&Math.abs(risen.mob.getHealth()-want)<0.01&&BattleEffects.souls==soulsBefore+1&&dusk.stats.lost==0&&dawn.stats.kills==killsBefore&&dawn.stats.goldEarned==goldBefore&&b.deaths.isEmpty();
+                    audit(b,"rise",false);boolean team=sideMembers(b).stream().anyMatch(m->m.endsWith(risen.mob.getEntityName()));
+                    boolean sheet=trait!=null&&trait.mechanic().equals("rise_again")&&near(trait.value(),0.11)&&near(trait.value2(),0.3)&&trait.durationTicks()==20&&dusk.traits.getOrDefault("graveborn",0)==1;
+                    riseOk=alive&&stats&&team&&sheet;
+                    riseWhy="a Graveborn army at tier "+dusk.traits+" (row "+(trait==null?"none":trait.id()+": chance "+trait.value()+", back at "+trait.value2()+" of its health, stunned "+trait.durationTicks()+" ticks")+")="+sheet+"; a Risen at 1 health struck dead by an Order Squire with the roll forced: alive and still in the army="+alive+", health "+fmt(risen.mob.getHealth())+" of "+fmt(risen.mob.getMaxHealth())+" (want "+fmt(want)+"), rose="+risen.rose+", stunned until +"+(risen.stunnedUntil-died)+" (want 20), soul effects +"+(BattleEffects.souls-soulsBefore)+", the army lost "+dusk.stats.lost+" troops and the Squire's army earned "+(dawn.stats.kills-killsBefore)+" kills and "+(dawn.stats.goldEarned-goldBefore)+" gold (all 0: it did not die), the death log holds "+b.deaths.size()+" (want 0)="+stats+", still on its side's team="+team+"; ";
+                    // it is ready to strike again at once; a control Risen beside a second Squire is let loose now, and shows the setup lets a Risen strike inside the window
+                    requestShot("graveborn-rise",4);
+                    risen.nextAttack=0;riseControl=post(b,dusk,"revenant",8,-4,0,false);riseK2=post(b,dawn,"knight",8,-2.5,180,true);
+                    hpK1=riseK1.mob.getHealth();hpK2=riseK2.mob.getHealth();t0=died;heldStun=true;controlHit=false;afterStun=false;next(b,41);
+                }
+                case 41->{ // no attack in its 20 ticks of stun, an attack once they are over; the control strikes inside them
+                    long t=b.time-t0;
+                    if(t<20&&riseK1.mob.getHealth()<hpK1)heldStun=false;
+                    if(t<=19&&riseK2.mob.getHealth()<hpK2)controlHit=true;
+                    if(t>=45){
+                        afterStun=riseK1.mob.getHealth()<hpK1;
+                        riseOk&=heldStun&&controlHit&&afterStun;
+                        riseWhy+="the stunned Risen beside a Squire (health "+fmt(hpK1)+") made no attack in its 20 ticks="+heldStun+" and had struck by +45="+afterStun+" (the Squire has "+fmt(riseK1.mob.getHealth())+"); an unstunned Risen beside another Squire struck inside those ticks="+controlHit+" (it has "+fmt(riseK2.mob.getHealth())+" of "+fmt(hpK2)+"); ";
+                        next(b,42);
+                    }
+                }
+                case 42->{ // killed again it dies; and the exceptions, each with the roll forced
+                    risen.mob.setHealth(1f);int lostBefore=dusk.stats.lost,killsBefore=dawn.stats.kills,goldBefore=dawn.stats.goldEarned;Vec3d at=risen.mob.getPos();
+                    strike(b,riseK1,risen,50f);
+                    var d=b.deaths.size()==1?b.deaths.get(0):null;
+                    boolean dies=!risen.mob.isAlive()&&risen.rose&&dusk.stats.lost==lostBefore+1&&dawn.stats.kills==killsBefore+1&&dawn.stats.goldEarned==goldBefore+Spec.ECONOMY[0].killGold()&&d!=null&&d.troop().equals("revenant")&&d.team()==1&&d.time()==b.time&&distance(d.at(),at)<1;
+                    audit(b,"second death",false);
+                    riseWhy+="killed again with the roll still forced it dies="+dies+" (the army lost "+(dusk.stats.lost-lostBefore)+", the Squire's army earned "+(dawn.stats.kills-killsBefore)+" kill and "+(dawn.stats.goldEarned-goldBefore)+" gold, the death log holds "+b.deaths.size()+(d==null?"":": "+d.troop()+" of team "+d.team()+" at "+fmt(distance(d.at(),at))+" from where it fell")+"); ";
+                    var legend=post(b,dusk,"gb_hollowking",0,4,0,true);legend.mob.setHealth(1f);strike(b,riseK1,legend,500f);boolean legendDies=!legend.mob.isAlive()&&!legend.rose;
+                    var temp=post(b,dusk,"revenant",2,4,0,true);temp.temporary=true;temp.expiresAt=b.time+1000;Houses.recompute(dusk);temp.mob.setHealth(1f);int lostTemp=dusk.stats.lost,logTemp=b.deaths.size(),killsTemp=dawn.stats.kills;strike(b,riseK1,temp,500f);
+                    boolean tempDies=!temp.mob.isAlive()&&!temp.rose&&dusk.stats.lost==lostTemp&&b.deaths.size()==logTemp&&dawn.stats.kills==killsTemp;
+                    var plain=post(b,dusk,"knight",4,4,0,true);plain.mob.setHealth(1f);strike(b,riseK1,plain,500f);boolean plainDies=!plain.mob.isAlive()&&!plain.rose;
+                    var untiered=post(b,dusk,"revenant",6,4,0,true);dusk.traits.clear();untiered.mob.setHealth(1f);strike(b,riseK1,untiered,500f);boolean tierDies=!untiered.mob.isAlive()&&!untiered.rose;Houses.recompute(dusk);
+                    var voided=post(b,dusk,"revenant",8,4,0,true);voided.mob.setHealth(1f);voided.mob.timeUntilRegen=0;voided.mob.kill();boolean killDies=!voided.mob.isAlive()&&!voided.rose;
+                    Houses.forceRise=Boolean.FALSE;var unlucky=post(b,dusk,"revenant",10,4,0,true);unlucky.mob.setHealth(1f);strike(b,riseK1,unlucky,500f);boolean rollDies=!unlucky.mob.isAlive()&&!unlucky.rose;Houses.forceRise=Boolean.TRUE;
+                    List<String> log=b.deaths.stream().map(GravesAndGlory.Death::troop).toList();
+                    boolean logOk=log.equals(List.of("revenant","gb_hollowking","knight","revenant","revenant","revenant"));
+                    audit(b,"exceptions",false);
+                    riseOk&=dies&&legendDies&&tempDies&&plainDies&&tierDies&&killDies&&rollDies&&logOk;
+                    riseWhy+="the Hollow King (Legendary) dies="+legendDies+"; a temporary Risen dies, with no loss, no kill and no death logged="+tempDies+"; an Order Squire of the army (Gilded, no Rise Again) dies="+plainDies+"; a Risen of an army with no Graveborn tier dies="+tierDies+"; one killed outright (the kill command, the void) dies="+killDies+"; a roll that fails dies="+rollDies+"; the death log reads "+log+" (want the troops that really fell, not the temporary one)="+logOk+"; soul effects over all: +"+(BattleEffects.souls-soulsBefore)+" (want 1)";
+                    riseOk&=BattleEffects.souls==soulsBefore+1&&shotTaken;riseWhy+="; the picture graveborn-rise was taken="+shotTaken;wantShot=null;
+                    report("p2-rise-again",riseOk,riseWhy);
+                    clearFixture(b,"rise");next(b,43);
+                }
+                case 43->{ // p2-rise-chance: the roll's share by tier (20000 rolls each), and the whole hook at tier III (800 falls of one Risen)
+                    Houses.forceRise=null;StringBuilder why=new StringBuilder();boolean ok=true;
+                    double[] want={0.11,0.28,0.45};
+                    for(int tier=1;tier<=3;tier++){
+                        var t=CounterMath.trait(Spec.HOUSETRAITS,"graveborn",tier);int n=20000,hits=0;for(int i=0;i<n;i++)if(Houses.rolls(b,t))hits++;
+                        double share=hits/(double)n;boolean row=t!=null&&t.mechanic().equals("rise_again")&&near(t.value(),want[tier-1])&&near(t.value2(),0.3)&&t.durationTicks()==20;boolean good=row&&Math.abs(share-want[tier-1])<0.02;ok&=good;
+                        why.append("tier ").append(tier).append(": row chance ").append(t==null?"none":t.value()).append(", ").append(hits).append(" of ").append(n).append(" rolls rose (").append(fmt(share*100)).append("%, want ").append(fmt(want[tier-1]*100)).append("%)").append(good?"":" (BAD)").append("; ");
+                    }
+                    var one=post(b,dusk,"revenant",0,0,0,true);var src=b.world.getDamageSources().generic();int rises=0;dusk.traits.put("graveborn",3);
+                    for(int i=0;i<800;i++){one.rose=false;one.stunnedUntil=0;one.mob.setHealth(1f);if(!Houses.allowDeath(one.mob,src))rises++;}
+                    dusk.traits.clear();int untiered=0;for(int i=0;i<800;i++){one.rose=false;one.mob.setHealth(1f);if(!Houses.allowDeath(one.mob,src))untiered++;}
+                    boolean hook=Math.abs(rises/800.0-0.4)<0.08&&untiered==0;ok&=hook;Houses.recompute(dusk);
+                    why.append("through the hook at tier III ").append(rises).append(" of 800 falls rose (want about 320); with no tier ").append(untiered).append(" of 800 did (want 0)=").append(hook);
+                    report("p2-rise-chance",ok,why.toString());clearFixture(b,"rise-chance");Houses.forceRise=Boolean.FALSE;next(b,50);
+                }
+                case 50->{ // p2-grave-bloom: the Warlock on the platform; eight troops of both sides fall around a point 12 blocks ahead of him, and a stale entry sits in the log
+                    var p=sp(b);if(p==null)return;reset(own);Commander.reset(b,own);own.order="hold";own.assignments.clear();
+                    stand(b,p,-90f);
+                    boolean onFloor=Math.abs(aim.x-(site.getX()+.5+2))<1.2&&Math.abs(aim.z-(site.getZ()+.5))<1.2&&Math.abs(aim.y-site.getY())<.5;
+                    post(b,own,"revenant",-9,6,-90,true);post(b,own,"revenant",-9,7.5,-90,true);Houses.recompute(own); // two troops of his own that stay: the slot count has something to count
+                    b.deaths.clear();b.deaths.add(new GravesAndGlory.Death(aim,b.time-401,"revenant",1));int staleBefore=b.deaths.size();
+                    double[] distances={0,1.2,2.4,3.6,4.8,6.0,7.2,9.5};double[] degrees={20,100,190,260,330,60,140,180};
+                    for(int i=0;i<8;i++)corpse(b,i%2==0?dusk:dawn,i%2==0?"revenant":"knight",distances[i],degrees[i]);
+                    boolean pruned=b.deaths.size()==8&&b.deaths.stream().allMatch(d->b.time-d.time()<=400);
+                    audit(b,"corpses",false);
+                    bloomWhy="the commander looks 12 blocks ahead at the floor and the raycast lands at "+fmt(aim.x-site.getX()-.5)+", "+fmt(aim.z-site.getZ()-.5)+" from the platform's centre (want 2, 0)="+onFloor+"; a log entry 401 ticks old was pruned by the next death, and eight fell (seven inside 8 blocks of the aim, one 9.5 off): the log holds "+b.deaths.size()+" ("+staleBefore+" before them)="+pruned+"; ";
+                    bloomOk=onFloor&&pruned;
+                    // first a cast at nothing: looking west off the platform
+                    var c=Commander.row(own);stand(b,p,90f);final Vec3d westAim=aim;float westYaw=p.getYaw();long nearWest=b.deaths.stream().filter(d->distance(d.at(),westAim)<=c.radius()).count();long ready=own.abilityReadyAt;int logBefore=b.deaths.size();
+                    b.campaign.notices.remove(player);b.command(p,"ability");
+                    boolean refused=own.abilityUntil==0&&own.abilityReadyAt==ready&&temporaries(b)==0&&b.deaths.size()==logBefore&&"No fallen troops there.".equals(b.campaign.notices.get(player));
+                    bloomOk&=refused;bloomWhy+="a cast with no fallen troop within 8 of where he looks (west, off the platform: he looks at "+fmt(westAim.x-site.getX()-.5)+", "+fmt(westAim.z-site.getZ()-.5)+" from the centre, yaw "+fmt(westYaw)+", "+nearWest+" log entries within 8 of it) was refused with the notice \""+b.campaign.notices.get(player)+"\", no cooldown, no troop and no log change="+refused+"; ";
+                    stand(b,p,-90f);next(b,51);
+                }
+                case 51->{ // the cast
+                    var p=sp(b);p.sendMessage(net.minecraft.text.Text.empty(),true);var c=Commander.row(own);t0=b.time;soulsBefore=BattleEffects.souls;int fieldedBefore=(int)b.fielded(own).count();
+                    b.command(p,"ability");
+                    var made=b.units.stream().filter(u->u.temporary&&u.squad==own).toList();bloom.clear();bloom.addAll(made);
+                    boolean row=c.id().equals("warlock")&&c.active().equals("grave_bloom")&&c.cooldownTicks()==2400&&c.durationTicks()==600&&near(c.radius(),8)&&near(c.range(),30)&&near(c.value1(),0.6)&&near(c.value2(),6)&&near(c.value3(),400);
+                    boolean timing=own.abilityUntil==t0+c.durationTicks()&&own.abilityReadyAt==t0+c.cooldownTicks()&&Commander.readyIn(b,own)==2400&&Commander.running(b,own,"grave_bloom");
+                    boolean six=made.size()==6&&made.stream().map(u->u.slot).distinct().count()==6&&made.stream().allMatch(u->u.slot>=GravesAndGlory.R.squadSize());
+                    boolean shape=made.stream().allMatch(u->u.spec.id().equals("revenant")&&u.mob instanceof GravesAndGlory.ArmyZombie&&u.expiresAt==t0+600&&Math.abs(u.mob.getHealth()-0.6*u.mob.getMaxHealth())<0.01&&u.mob.isAlive());
+                    var names=sideMembers(b);boolean teams=made.stream().allMatch(u->names.stream().anyMatch(m->m.startsWith(b.side(own.team).id()+":")&&m.endsWith(u.mob.getEntityName())));
+                    boolean where=true;StringBuilder spots=new StringBuilder();for(var u:made){double best=1e9;for(var k:corpses)if(distance(u.mob.getPos(),k.mob.getPos())<best)best=distance(u.mob.getPos(),k.mob.getPos());where&=best<1.0;spots.append(fmt(distance(u.mob.getPos(),aim))).append(' ');}
+                    boolean counted=b.fielded(own).count()==fieldedBefore&&fieldedBefore==2&&!own.traits.containsKey("graveborn");
+                    deathsAfter=b.deaths.size();boolean log=deathsAfter==2&&b.deaths.stream().noneMatch(d->distance(d.at(),aim)<=c.radius()&&distance(d.at(),aim)<6.5);
+                    boolean souls=BattleEffects.souls>=soulsBefore+6;
+                    audit(b,"bloom raise",false);
+                    for(var u:made){u.mob.setAiDisabled(true);fixture.add(u);pins.add(new Pin(u,u.mob.getPos(),-90));}
+                    bloomOk&=row&&timing&&six&&shape&&teams&&where&&counted&&log&&souls;
+                    bloomWhy+="the cast: Warlock row "+c.id()+"/"+c.active()+" (cooldown "+c.cooldownTicks()+", lasts "+c.durationTicks()+", radius "+c.radius()+", range "+c.range()+", "+c.value1()+" of health, up to "+c.value2()+", log "+c.value3()+" ticks)="+row+"; runs to +"+(own.abilityUntil-t0)+", ready again at +"+(own.abilityReadyAt-t0)+"="+timing+"; "+made.size()+" temporary Risen stand in his army (slots "+made.stream().map(u->u.slot).sorted().toList()+", want six, all 20 or higher)="+six+", each a revenant in an ArmyZombie, gone at +"+(made.isEmpty()?"-":String.valueOf(made.get(0).expiresAt-t0))+" (want 600), at 60% of its health="+shape+", on its side's team="+teams+", where a corpse lay (distances from the aim "+spots+")="+where+"; his army still counts "+b.fielded(own).count()+" troops for its slots (want 2) and no Graveborn tier "+own.traits+"="+counted+"; the log kept the two not raised ("+deathsAfter+")="+log+"; soul effects +"+(BattleEffects.souls-soulsBefore)+"="+souls+"; ";
+                    requestShot("graveborn-bloom",12);next(b,52);
+                }
+                case 52->{ // 600 ticks: they stand to the end and are gone with it
+                    long t=b.time-t0;
+                    if(t==300)audit(b,"bloom midway",false);
+                    if(t==598){long alive=bloom.stream().filter(u->u.mob.isAlive()&&!u.mob.isRemoved()).count();boolean stand=alive==6&&temporaries(b)==6;bloomOk&=stand;bloomWhy+="at +598 "+alive+" of them still stand="+stand+"; ";}
+                    if(t>=602){
+                        long left=bloom.stream().filter(u->u.mob.isAlive()&&!u.mob.isRemoved()).count();audit(b,"bloom expiry",false);
+                        boolean gone=left==0&&temporaries(b)==0&&bloom.stream().noneMatch(u->b.units.contains(u))&&own.abilityUntil==0;
+                        bloomOk&=gone&&shotTaken;
+                        report("p2-grave-bloom",bloomOk,bloomWhy+"at +"+t+" "+left+" are left and "+temporaries(b)+" temporary troops stand in the battle, his active has ended="+(own.abilityUntil==0)+" (all gone="+gone+"); the picture graveborn-bloom was taken="+shotTaken);
+                        wantShot=null;next(b,53);
+                    }
+                }
+                case 53->{ // p2-bloom-cleanup: two temporary Risen, one risen Graveborn and a real loss; then the round ends
+                    var p=sp(b);if(p==null)return;clearFixture(b,"bloom");reset(own);Commander.reset(b,own);Houses.forceRise=Boolean.FALSE;
+                    for(int i=0;i<6;i++)group.add(post(b,own,"revenant",-9+i*1.5,-6,-90,true));Houses.recompute(own); // six Risen of his own: tier I, so one of them can rise
+                    stand(b,p,-90f);corpse(b,dusk,"revenant",0,0);corpse(b,dusk,"knight",2,90);
+                    var scout=post(b,dusk,"knight",9,9,180,true);
+                    b.command(p,"ability");
+                    var temps=b.units.stream().filter(u->u.temporary).toList();bloom.clear();bloom.addAll(temps);
+                    Houses.forceRise=Boolean.TRUE;var lucky=group.get(0);lucky.mob.setHealth(1f);strike(b,scout,lucky,500f);boolean rose=lucky.mob.isAlive()&&lucky.rose&&!lucky.temporary;
+                    Houses.forceRise=Boolean.FALSE;var lost=group.get(1);lost.mob.setHealth(1f);strike(b,scout,lost,500f);
+                    var spent=temps.isEmpty()?null:temps.get(0);if(spent!=null)fall(b,spent);
+                    int standing=(int)b.units.stream().filter(u->u.temporary&&u.mob.isAlive()).count();
+                    var row=own.stats.lost;var report=b.campaign.reportSquads(own);int reported=-1;for(var e:report)if(e.getAsJsonObject().get("you").getAsBoolean())reported=e.getAsJsonObject().get("lost").getAsInt();
+                    boolean before=temps.size()==2&&rose&&own.stats.lost==1&&reported==1&&standing==1&&!b.deaths.isEmpty()&&b.deaths.stream().noneMatch(d->d.team()==own.team&&d.troop().equals("revenant")&&d.time()!=b.time&&false);
+                    audit(b,"cleanup setup",false);
+                    // the round ends
+                    List<GravesAndGlory.Unit> everyone=new ArrayList<>(b.units);
+                    b.campaign.finish(-1);
+                    var result=b.campaign.results.get(player);int lostInReport=-1;if(result!=null&&result.has("squads"))for(var e:result.getAsJsonArray("squads"))if(e.getAsJsonObject().get("you").getAsBoolean())lostInReport=e.getAsJsonObject().get("lost").getAsInt();
+                    boolean allGone=!b.running&&b.units.isEmpty()&&temporaries(b)==0&&everyone.stream().allMatch(u->u.mob.isRemoved())&&b.deaths.isEmpty();
+                    audit(b,"after finish",true);boolean noTeams=sideMembers(b).isEmpty();
+                    report("p2-bloom-cleanup",before&&allGone&&noTeams&&lostInReport==1,"before the round ends: two temporary Risen were raised ("+temps.size()+"), a Risen of his own rose="+rose+", one real loss and one temporary one fell: the army's lost is "+own.stats.lost+" and the report's row says "+reported+" (want 1), "+standing+" temporary troop still stands (want 1), the death log holds "+b.deaths.size()+" (the real loss)="+before+"; after campaign.finish(-1): "+everyone.size()+" troops were in the battle and now the battle holds "+b.units.size()+" ("+temporaries(b)+" temporary), every one of their entities is removed="+everyone.stream().allMatch(u->u.mob.isRemoved())+", the death log holds "+b.deaths.size()+", the round is over="+!b.running+", the final report says lost "+lostInReport+" (want 1), the four gg_ teams hold "+sideMembers(b).size()+" members="+noTeams);
+                    fixture.clear();pins.clear();group.clear();corpses.clear();bloom.clear();next(b,54);
+                }
+                case 54->{ // p2-bloom-cleanup-paths, the map switch: in the lobby, a temporary Risen is loose and a death is logged; the arena changes
+                    if(b.running)return;var p=sp(b);if(p==null)return;
+                    if(site!=null){platform(b,site,12,Blocks.AIR.getDefaultState());unforce(b);}
+                    lobbySpot=p.getPos();toMap=b.campaign.map==1?2:1;
+                    loose=b.spawn(own,Campaign.troop("revenant"),20,lobbySpot);loose.temporary=true;loose.expiresAt=b.time+1000;Houses.recompute(own);b.deaths.add(new GravesAndGlory.Death(lobbySpot,b.time,"revenant",1));
+                    boolean had=temporaries(b)==1&&b.deaths.size()==1;
+                    b.campaign.switchMap(toMap);
+                    pathsOk=had&&temporaries(b)==0&&b.deaths.isEmpty()&&loose.mob.isRemoved()&&!b.units.contains(loose);
+                    pathsWhy="switchMap to map "+toMap+" with one temporary Risen loose and one death logged: "+temporaries(b)+" temporary troops and "+b.deaths.size()+" deaths after it, the loose one's entity is removed="+loose.mob.isRemoved()+" (had both before="+had+")="+pathsOk+"; ";
+                    audit(b,"switchMap",false);inserted=false;next(b,55);
+                }
+                case 55->{ // the round start: the same two again, then a new round begins
+                    var p=sp(b);if(p==null||!b.ready)return;
+                    if(!inserted){loose=b.spawn(own,Campaign.troop("revenant"),20,p.getPos());loose.temporary=true;loose.expiresAt=b.time+1000;Houses.recompute(own);b.deaths.add(new GravesAndGlory.Death(p.getPos(),b.time,"revenant",1));inserted=true;}
+                    if(!Phase1Checks.skirmish(b,p,toMap,1,"normal"))return;
+                    boolean started=b.running&&temporaries(b)==0&&b.deaths.isEmpty()&&loose.mob.isRemoved();
+                    pathsWhy+="startRound with the same two: "+temporaries(b)+" temporary troops and "+b.deaths.size()+" deaths after it, the loose one's entity is removed="+loose.mob.isRemoved()+"="+started;
+                    audit(b,"startRound",false);
+                    report("p2-bloom-cleanup-paths",pathsOk&&started,pathsWhy);next(b,60);
+                }
+                case 60->{ // p2-graveborn-tick-cost: eight bot armies under the hard Graveborn banner, Rise Again rolling for real
+                    var p=sp(b);if(p==null)return;Houses.forceRise=null;
+                    if(cost==null)cost=tickCost(b,List.of("graveborn_hard","graveborn_hard","graveborn_hard","graveborn_hard","graveborn_hard","graveborn_hard","graveborn_hard","graveborn_hard"));
+                    if(cost.step(p)){
+                        report("p2-graveborn-tick-cost",cost.last<40,"server tick "+String.format(Locale.ROOT,"%.2f",cost.last)+" ms (600-tick mean "+String.format(Locale.ROOT,"%.2f",cost.avg)+" ms) with "+cost.troops+" troops at the start and "+b.units.size()+" at the end, "+b.deaths.size()+" deaths in the log, "+temporaries(b)+" temporary troops ("+cost.note+")");
+                        audit(b,"before the final returnLobby",false);
+                        report("p2-graveborn-teams-clean",audits>=14&&staleSeen.isEmpty(),audits+" audits after the suite's raisings, deaths and removals (stageFixture and the end of the round expect every team empty): "+(staleSeen.isEmpty()?"no gg_ team ever held a member that was not a living troop":"STALE "+staleSeen)+"; "+auditNotes);
                         cost.handBack();b.campaign.returnLobby();next(b,99);
                     }
                 }

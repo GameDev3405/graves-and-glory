@@ -40,6 +40,21 @@ final class Abilities {
         return none;
     }
 
+    /** The sheet's fearless row (mechanic fearless): amount is the strength share a fearless group breaks at, amount2 the share of the group that must carry it. Null when the sheet has none. */
+    static Spec.AbilitiesRow fearlessRow() {
+        for (var a : Spec.ABILITIES) if (a.mechanic().equals("fearless")) return a;
+        return null;
+    }
+
+    /** Whether the troop carries the fearless ability (a Risen does). */
+    static boolean carriesFearless(GravesAndGlory.Unit u) { return row(u.spec).mechanic().equals("fearless"); }
+
+    /** The troop's ability row when it is a dread aura (mechanic aura, trigger passive, aimed at enemies: the Hollow King's), else null. */
+    static Spec.AbilitiesRow dreadRow(GravesAndGlory.Unit u) {
+        var row = row(u.spec);
+        return row.mechanic().equals("aura") && row.trigger().equals("passive") && row.target().equals("enemies") ? row : null;
+    }
+
     /** The beat's cast and aura triggers for a troop: a mender heals, a caster's spell bursts when its windup ends. enemy is the troop's current target, or null. */
     static void tick(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity enemy, long time) {
         var row = row(u.spec);
@@ -106,15 +121,28 @@ final class Abilities {
 
     /**
      * What a landed hit sets off on its attacker's ability: pierce hits the nearest other enemy within the row's radius behind the target for the
-     * row's amount (secondary). dealt is the amount applied. Combat.resolve skips it for a secondary hit. Cleave, the slows, slams and pounce
-     * wait for the tasks of their Houses.
+     * row's amount (secondary); cleave hits the nearest other enemy within the row's radius of the target, any side of it, for the row's amount
+     * (secondary); an onhit_slow row slows the target (slow). dealt is the amount applied. Combat.resolve skips it for a secondary hit. The
+     * slams and pounce wait for the tasks of their Houses.
      */
     static void onHit(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity target, float dealt, String kind) {
         var row = row(u.spec);
         switch (row.mechanic()) {
             case "pierce" -> secondary(b, u, target, row.radius(), row.amount(), true, kind);
+            case "cleave" -> secondary(b, u, target, row.radius(), row.amount(), false, kind);
+            case "onhit_slow" -> { if (target.isAlive()) slow(target, row); }
             default -> {}
         }
+    }
+
+    /**
+     * The row's slow on a target: Slowness at the row's statusLevel for its statusTicks, unless the target already has that level or more for
+     * longer (the longer one stands). The rows' own cooldowns and knockback (Ensnare, Harpoon) belong to the tasks of their Houses.
+     */
+    static void slow(LivingEntity target, Spec.AbilitiesRow row) {
+        var have = target.getStatusEffect(StatusEffects.SLOWNESS);
+        if (have != null && have.getAmplifier() >= row.statusLevel() && have.getDuration() >= row.statusTicks()) return;
+        target.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, row.statusTicks(), row.statusLevel()));
     }
 
     /**
@@ -158,12 +186,19 @@ final class Abilities {
 
     /**
      * The aura share of the factor: x(1 + amount) for an attacker of the planting army standing within the radius of its standing banner
-     * (the Oath Banner), the largest one only when banners overlap. Howl (the attacker's side) and Dread (the foe's) join in the tasks of their Houses.
+     * (the Oath Banner), the largest one only when banners overlap, times x(1 - amount) while a living enemy troop with a dread row (the Hollow
+     * King) stands within its radius, the strongest one only. Howl (the attacker's side) joins in the task of its House.
      */
     static double auraFactor(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target) {
         double f = 1;
         for (var banner : b.banners) if (covers(b, banner, attacker.squad, attacker.mob.getPos())) f = Math.max(f, 1 + banner.amount());
-        return f;
+        double dread = 1;
+        for (var e : b.units) {
+            if (e.squad.team == attacker.squad.team || !e.mob.isAlive()) continue;
+            var row = dreadRow(e);
+            if (row != null && GravesAndGlory.Battle.horizontalDistance(e.mob.getPos(), attacker.mob.getPos()) <= row.radius() * row.radius()) dread = Math.min(dread, 1 - row.amount());
+        }
+        return f * dread;
     }
 
     /**
@@ -266,12 +301,15 @@ final class Abilities {
     /** Ring particles on a banner's edge (a presentation number). */
     static final int RING = 32;
 
-    /** Every tick of a running round: a banner falls once its time is up (its block goes back); while it stands it rallies its army's routing groups in its radius and shows its particles, every 10 ticks. */
+    /** The banner's beat in ticks: how often a standing banner rallies its army's routing groups and shows its particles (a presentation number; the radius and the rout guard are the row's). */
+    static final int BEAT = 10;
+
+    /** Every tick of a running round: a banner falls once its time is up (its block goes back); while it stands it rallies its army's routing groups in its radius and shows its particles, every BEAT ticks. */
     static void bannerTick(GravesAndGlory.Battle b) {
         if (b.banners.isEmpty()) return;
         for (var banner : new ArrayList<>(b.banners)) {
             if (b.time >= banner.until()) { lower(b, banner); b.banners.remove(banner); continue; }
-            if (b.time % 10 == 0) { rally(b, banner); show(b, banner); }
+            if (b.time % BEAT == 0) { rally(b, banner); show(b, banner); }
         }
     }
 
