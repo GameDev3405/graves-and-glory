@@ -7,6 +7,7 @@ allprojects {
    def testRoot = System.getenv('GRAVES_ROADMAP_TEST_ROOT')
    if (!testRoot) throw new GradleException('GRAVES_ROADMAP_TEST_ROOT is required')
    workingDir file(testRoot + '/run')
+   if (System.getenv('GRAVES_PRIVATE_NATIVES')) systemProperty 'org.lwjgl.librarypath', System.getenv('GRAVES_PRIVATE_NATIVES')
    jvmArgs = jvmArgs.findAll { !it.startsWith('-Dgravesandglory.localChecks=') && !it.startsWith('-Dgravesandglory.runtime=') }
    systemProperty 'gravesandglory.localChecks', testRoot + '/evidence/local-checks.txt'
    systemProperty 'gravesandglory.runtime', testRoot + '/runtime'

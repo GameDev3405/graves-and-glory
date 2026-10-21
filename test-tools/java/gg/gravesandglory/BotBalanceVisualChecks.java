@@ -9,13 +9,13 @@ import java.util.*;
 final class BotBalanceVisualChecks implements Phase1Checks.Suite,Phase1Checks.ServerWatch {
  static final int[] MAPS={0,4};
  volatile int stage,mapIndex,clientTicks,requestedAt;volatile String requested="";volatile boolean captured,mapView;
- UUID player;int shot;long start;boolean configured;
+ UUID player;String clientRequest="";int shot;long start;boolean configured;
  final Map<UUID,Vec3d> last=new HashMap<>();
  public void step(MinecraftClient c,int tick){
   clientTicks=tick;if(!configured){configured=true;player=c.player.getUuid();Phase1Checks.window(c,1280,720,2);c.options.getMaxFps().setValue(40);c.options.pauseOnLostFocus=false;c.setScreen(null);stage=1;}
   if(tick>7000){Phase1Checks.report("bot-visual-timeout",false,"stage "+stage+", map "+mapIndex);Phase1Checks.finish(c,"bots-visual");return;}
   if(!requested.isEmpty()&&!captured){
-   if(tick==requestedAt+1)c.setScreen(mapView?new GravesAndGloryClient.MapScreen(null):null);
+   if(!requested.equals(clientRequest)){clientRequest=requested;requestedAt=tick;c.setScreen(mapView?new GravesAndGloryClient.MapScreen(null):null);}
    if(tick-requestedAt>=12){Phase1Checks.shot(c,"bots-"+requested);captured=true;}
   }
   if(stage==4){Phase1Checks.finish(c,"bots-visual");stage=5;}
@@ -45,7 +45,7 @@ final class BotBalanceVisualChecks implements Phase1Checks.Suite,Phase1Checks.Se
     float yaw=BotPlannerYaw(look.x-x,look.z-z),pitch=(float)Math.toDegrees(Math.atan2(y+p.getStandingEyeHeight()-look.y,Math.hypot(x-look.x,z-look.z)));
     b.relocate(p,x,y,z,yaw,pitch);
    }
-   requested="map"+MAPS[mapIndex]+"-"+((shot+1)*30)+"s-"+(mapView?"map":"scene");requestedAt=clientTicks;captured=false;return;
+   captured=false;requested="map"+MAPS[mapIndex]+"-"+((shot+1)*30)+"s-"+(mapView?"map":"scene");return;
   }
   if(shot>=3&&elapsed>=1880){Phase1Checks.report("bot-visual-map"+MAPS[mapIndex],b.scores[0]+b.scores[1]>0&&b.units.size()>0,"normal20TPS battle seen at30,60,90s, scores "+Arrays.toString(b.scores)+", living "+b.units.size());
    var own=b.squads.get(player);if(own!=null)own.bot=false;b.campaign.returnLobby();b.campaign.leash=true;last.clear();

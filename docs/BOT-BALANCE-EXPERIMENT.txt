@@ -32,3 +32,6 @@ IMPLEMENTATION V1
 - All tiers now count local team sightings for charges, removing Easy/Normal global count; yaw faces target/nearby seen threat instead of fixed east/west.
 - Baseline tools frozen at30cc1c9 in separate gg-botsbase-20261020. Baseline production equals0f31071; headless pacing only changes wall-clock sleep when botSim explicitly set, clamp5..50ms. Visual clients always remain20TPS.
 - Started seat-swapped Hard/Normal baseline, same gilded_normal19-unit banner on both sides,3 armies per side,5 maps,300-second simulation rounds.
+
+VISUAL TEST STARTUP
+Baseline visual client started. Candidate initial visual launch failed during native library loading (lwjgl_stb.dll, before battle), not in AI. Retained failed log; retry uses private copies of cached/pinned LWJGL3.3.1 Windows x64 DLLs and an optional unshipped launch property, leaving shared runtime files untouched.
