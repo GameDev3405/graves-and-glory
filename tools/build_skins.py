@@ -93,6 +93,9 @@ GLYPH = (0xF3, 0xEF, 0xE4)   # the pennant glyph's white, the white of the charg
 GLOW_CAP = {'epic': 16, 'legendary': 16}   # any other rarity: 6
 TINT_SATURATION, TINT_VALUE, TINT_HUE = 0.45, 0.60, 45.0
 ONE = (1.0, 1.0, 1.0)
+# The bones a model may have: TroopModel records the bones a draw shows as the bits of one long (TroopModel.MAX_BONES),
+# and the client refuses a bigger model, which then draws vanilla.
+MAX_BONES = 64
 
 
 def fail(why):
@@ -599,6 +602,9 @@ def bake(cat: Catalog, troop: str) -> dict:
         parts.append((e, p))
     stages = cat.stages[troop]
     bones = bake_bones(rig, troop, src.get('bones'), parts, float(hunch), idle == 'folded', stages)
+    if len(bones) > MAX_BONES:
+        fail('%s: %d bones, more than %d (the client records the bones a draw shows as the bits of one long and '
+             'refuses a bigger model)' % (troop, len(bones), MAX_BONES))
     skin_boxes = [(b['name'], x['uv'], x['size']) for b in bones if not b['team'] for x in b['boxes']]
     check_layout(skin_boxes, size, troop)
     team_boxes = [(b['part'], x['uv'], x['size']) for b in bones if b['team'] for x in b['boxes']]

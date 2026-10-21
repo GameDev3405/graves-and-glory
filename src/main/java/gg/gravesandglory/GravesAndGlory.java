@@ -39,6 +39,8 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier STATE = new Identifier("gravesandglory", "state_v8");
     public static final Identifier OPEN_BARRACKS = new Identifier("gravesandglory", "barracks_v1");
     public static final Identifier PARTY = new Identifier("gravesandglory", "party_v1");
+    /** A troop's stance (Tactics.STANCES), server to client: a varInt entity id and a byte index. */
+    public static final Identifier STANCE = new Identifier("gravesandglory", "stance_v1");
     public static Battle battle;
     public static final Spec.RulesRow R = Spec.RULES[0];
     @Override public void onInitialize() {
@@ -60,6 +62,15 @@ public final class GravesAndGlory implements ModInitializer {
             if(entity.getCommandTags().contains(Projectiles.TAG)&&!Projectiles.owns(battle,entity))entity.discard();
         });
         ServerTickEvents.END_SERVER_TICK.register(server -> { if(battle!=null) battle.tick(); });
+        // A player who starts tracking a troop learns its stance (stance_v1), ahead of the entity's spawn packet (Fabric fires the event first;
+        // the client keeps the stance for an id it does not have yet). START_TRACKING fires inside spawnEntity, so a troop Battle.spawn is
+        // placing is found through Battle.spawning (it joins units after).
+        EntityTrackingEvents.START_TRACKING.register((entity,player)->{
+            if(battle==null||!ArmyMobs.isTroop(entity))return;
+            Unit u=battle.spawning!=null&&battle.spawning.mob==entity?battle.spawning:null;
+            if(u==null)for(Unit x:battle.units)if(x.mob==entity){u=x;break;}
+            if(u!=null&&!u.stance.isEmpty())Tactics.trackingSends+=Tactics.sendStance(u,List.of(player));
+        });
         ServerPlayNetworking.registerGlobalReceiver(ORDER, (server, player, handler, buf, responder) -> {
             String command=buf.readString(128);
             server.execute(() -> { if(battle!=null) battle.command(player,command); });
@@ -181,6 +192,8 @@ public final class GravesAndGlory implements ModInitializer {
         double travelSinceAttack;
         /** Battle time of this troop's last charge-impact hit: the impact is the first hit of a fresh Charge (Combat.IMPACT_TICKS). */
         long chargeHitAt=-1;
+        /** The stance its clients show (Tactics.STANCES, from its order on its beat; stance_v1 carries it); "" for none. */
+        String stance="";
         Unit(MobEntity m,Squad s,Spec.TroopsRow t,int slot){mob=m;squad=s;spec=t;this.slot=slot;lastPosition=m.getPos();deployed=m.getPos();tags=new HashSet<>(ArmyMobs.tags(t));}
     }
     public static final class Capture {
@@ -218,6 +231,8 @@ public final class GravesAndGlory implements ModInitializer {
         public final ServerWorld world;
         public final LinkedHashMap<UUID,Squad> squads=new LinkedHashMap<>();
         public final List<Unit> units=new ArrayList<>();
+        /** The unit spawn is placing, while spawnEntity runs (the stance_v1 tracking send finds it here); null otherwise. */
+        Unit spawning;
         public final List<Capture> points=new ArrayList<>();
         public final List<Projectiles.Shot> shots=new ArrayList<>();
         final Map<UUID,Long> respawns=new HashMap<>();
@@ -604,8 +619,11 @@ public final class GravesAndGlory implements ModInitializer {
             // The name colour is the team tag, not the side colour: CommandMode.nameTeam reads it on the client to tell friend from foe (both teams can field the same House). Recolour names by side only together with that reader.
             int stage=campaign.stage(s,spec);
             mob.setCustomName(Text.literal(ArmyMobs.stageName(spec,stage)).formatted(s.team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE));
-            mob.setCustomNameVisible(false);world.spawnEntity(mob);joinSide(mob,s.team);
-            Unit u=new Unit(mob,s,spec,slot);u.stage=stage;units.add(u);Houses.recompute(s);return u;
+            mob.setCustomNameVisible(false);
+            Unit u=new Unit(mob,s,spec,slot);u.stage=stage;u.stance=Tactics.stance(this,u);
+            spawning=u;try{world.spawnEntity(mob);}finally{spawning=null;} // the players in range start tracking it here (its stance goes with that)
+            joinSide(mob,s.team);
+            units.add(u);Houses.recompute(s);return u;
         }
         final Set<Long> unitChunks=new HashSet<>();
         void updateUnitChunks(){

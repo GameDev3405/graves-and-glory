@@ -58,7 +58,8 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
             need(!team||missingCloth==null,"the cloth sheet "+missingCloth+" is missing");
             float outer=rig.get("outer").getAsFloat();
             ModelPart twin=str(j,"outer").isEmpty()?null:build(j,outer,true).createModel();
-            troops.put(troop,new TroopModel<>(j,parse(j).createModel(),hands(rig),twin,grips.getOrDefault(weapon,List.of())));
+            TroopModel<?> model=new TroopModel<>(j,parse(j).createModel(),hands(rig),twin,grips.getOrDefault(weapon,List.of()));
+            model.rig(rigs.get(str(j,"rig")));troops.put(troop,model);
         }catch(Exception e){log(troop+".json",e);}
         TroopModels.publish(troops,rigs,weapons);
     }
