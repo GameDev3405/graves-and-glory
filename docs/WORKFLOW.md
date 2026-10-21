@@ -23,7 +23,7 @@ Read this first, then `docs/HANDOFF.md`. These rules come from Kort (2026-10-21)
 
 ## Orchestrator habits
 
-1. **Two agents at most at a time.** Finish one plan before starting another. When the cap hits, running agents die and their partial work is wasted.
+1. **Four agents at most at a time.** Keep the number of plans in flight small. When the cap hits, running agents die and their partial work is wasted.
 2. **Delegate, don't do.** The orchestrator routes, reads reports and rules. It doesn't write code or read big diffs itself.
 3. **Files, not pastes.** Briefs, reports and review packages live under `.superpowers/sdd/<plan>/`. Agents return a short status, not the full report.
 4. **Reviews scaled to risk.** Sonnet reviews ordinary tasks. Opus or Fable only for large or risky diffs.
