@@ -273,23 +273,6 @@ public. Each phase ends with a Kort playtest and a screenshot-verified build.
 - CurseForge listing, public server, matchmaking, moderation. The Codex
   checklist milestones 5 and 6 cover this and stay parked until Phase 5 holds.
 
-### The 0.6 to 1.0 releases (2026-10-19, the growth design)
-`docs/superpowers/specs/2026-10-19-growth-design.md` extends this roadmap from
-0.5.0 to 1.0.0. It keeps the pillars, the workflow and Phase 5's friends gate,
-and it moves that gate to 0.8 so two solo-depth releases land first:
-
-- 0.6.0 The Field: conditions (six fields), the standard, the immersion pass.
-- 0.7.0 The Roll: sergeants and the Roll of the Dead, the barrow debt, chapter 2.
-- 0.8.0 The Muster: Phase 5 friends as written, plus rivals, leaderboards and
-  spectator.
-- 0.9.0 The Long War: oaths and House chapters, feats, the Warfront, the
-  chronicle card and photo mode.
-- 1.0.0: Phase 6 as written, seasons, public listing.
-
-The thesis: the game is not short of content, it is short of memory. Nothing in
-the growth design starts before the 0.5.0 merge; the eight merge-safe hooks in
-the 0.6 plan are the only early work. Cut ideas from it are in `docs/PARKED.md`.
-
 ## 12. How work gets done
 
 - One orchestrator session (this one) owns the plan, the repo and the gates.
