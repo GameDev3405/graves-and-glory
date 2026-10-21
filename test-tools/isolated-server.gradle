@@ -6,6 +6,9 @@ allprojects {
   project.extensions.getByName('loom').runs.getByName('server').runDir = project.relativePath(file(testRoot))
   tasks.matching { it.name == 'runServer' }.configureEach {
    standardInput = System.in
+   systemProperty "gravesandglory.simTickMillis", System.getenv("GRAVES_BOTSIM_TICK_MS") ?: "50"
+   systemProperty "gravesandglory.balanceLabel", System.getenv("GRAVES_BALANCE_LABEL") ?: "baseline"
+   systemProperty "gravesandglory.balanceCadence", System.getenv("GRAVES_BALANCE_CADENCE") ?: ""
   }
  }
 }

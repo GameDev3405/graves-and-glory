@@ -8,7 +8,8 @@
     "main": [
       "gg.gravesandglory.testing.LocalIntegration",
       "gg.gravesandglory.StructureStudio",
-      "gg.gravesandglory.BotSimulation"
+      "gg.gravesandglory.BotSimulation",
+      "gg.gravesandglory.BalanceTelemetry"
     ],
     "client": [
       "gg.gravesandglory.testing.LocalVisualInspection",

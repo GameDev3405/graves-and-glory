@@ -1,0 +1,27 @@
+GRAVES AND GLORY - ISOLATED BOT BALANCE EXPERIMENT
+2026-10-20 | Codex | no merge/push/install
+
+USER SCOPE
+Kort requested brainstorming, implementation, tests, actual visual verification and an honest report of successes/failures, with current work untouched.
+Independent --no-hardlinks clone C:/Users/kortt/Documents/Codex/gg-bots-20261020, branch codex/bot-balance-20261020, no remotes. Base0f31071381855e010b5f87206d3859855d6104ab, the previous isolated preview/world/UI candidate. Original Claude branches remain unchanged. Before hashes/status of six original checkouts in work/original-manifests.json.
+
+AUDIT
+Historical Phase1: side wins65-85%, Hard9/20 vsNormal, Easy13/20 vsNormal. Charge-ratio and retreat-only tests did not explain it; decision cadence untested. Hard least-defended flanking caused long wandering/poor three-point play and was disabled.
+Phase2 House gate: Gilded100% vsGraveborn after Gilded abilities, while Graveborn abilities are unfinished. That is a separate incomplete-content problem, not an intelligence result.
+Current bot logic: Easy/Normal charge calculations count every enemy on the map; Hard uses sightings. All tiers pick objectives mostly by direct distance plus fixed lane/owned penalties; Hard flank option is off. All armies face fixed east/west. No map-aware team assignment or sticky defense plan.
+Approved unit-AI spec calls for equal-banner intelligence measurements, no stat cheats, team knowledge and a thinking council. This task is a bounded objective-planning improvement, not the full Soldier/Sergeant/NavGrid rewrite.
+
+BRAINSTORM / TEST ORDER
+A. Cadence alone: test before assuming faster decisions create stronger bots; frequent retargeting may be worse.
+B. Restore least-defended flanking: historical failures make this a poor default; preserve as rejected prior evidence rather than spend another full sweep on it.
+C. Team objective allocation: route-aware costs via existing crossings, avoid assigning every army the same point, protect secured points and suppress pointless target churn.
+D. Consistent local enemy knowledge and threat-facing: remove the global-enemy-count mismatch in charge decisions; face actual destination/seen threat.
+E. Change troop damage/health/gold to force win rates: rejected, confounds unfinished Houses and violates approved AI design.
+
+PLAN
+1. Freeze original manifests and build a baseline testing copy.
+2. Instrument identical-banner, seat-swapped full-match tests on rebuilt maps. Record per-map score, orders/targets, objective presence, travel/idle and tick cost.
+3. Exercise candidate planner with meaningful standalone decision fixtures, then real matches. Use wall-clock acceleration only in unshipped headless tools; fixed simulation ticks/physics unchanged, also check normal20TPS visual cases.
+4. Compare cadence-only vs baseline and candidate; retain every failure/run.
+5. Capture real client battle scenes and tactical views, verify orders match visible behavior, and check regressions/performance/release exclusion.
+6. Export source/patch/results/visuals/log; verify all original hashes again. No changes to current work or player saves.
