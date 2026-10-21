@@ -1,6 +1,6 @@
 # Handoff: Graves and Glory, 2026-10-21
 
-For a fresh Claude Code session taking over as controller. Read this, then the ledgers it names. Everything below is true as of the morning of 2026-10-21; the weekly usage cap reset at noon that day.
+For a fresh Claude Code session taking over as controller. Read this, then the ledgers it names. Everything below is true as of the afternoon of 2026-10-21 (preview session closed); the weekly usage cap reset at noon that day.
 
 ## Who and how
 
@@ -29,7 +29,7 @@ Kort connected GitHub on 2026-10-20: `origin` is `https://github.com/GameDev3405
 ## graphify (code map, added 2026-10-21)
 
 - Kort asked for graphify (Graphify-Labs/graphify, Apache-2.0). CLI `graphify` 0.9.93 installed with `uv tool install graphifyy==0.9.93` (`~/.local/bin`). The project skill and two PreToolUse hooks (`graphify hook-guard`) live in the git-ignored `.claude/` of this checkout; `CLAUDE.md` holds its rules; `.graphifyignore` leaves out `design-archive/`.
-- Code-only graphs, built locally with no LLM (`GRAPHIFY_BACKEND=none graphify extract . --code-only`, then `graphify cluster-only . --no-label`), exist in `bannerbound`, `-p2`, `-p2b`, `-p3` and `-ui` under `graphify-out/` (ignored through `.git/info/exclude`). The p2b and ui graphs include their dirty partial work.
+- Code-only graphs, built locally with no LLM (`GRAPHIFY_BACKEND=none graphify extract . --code-only`, then `graphify cluster-only . --no-label`), exist in `bannerbound`, `-p2`, `-p2b`, `-p3`, `-ui` and `-preview` under `graphify-out/` (ignored through `.git/info/exclude`). The p2b and ui graphs include their dirty partial work.
 - Use: `graphify query "<q>" --graph <worktree>/graphify-out/graph.json`, `graphify path A B`, `graphify explain X`. Refresh with `graphify update .` after code changes. Keep `GRAPHIFY_BACKEND=none` for builds: the docs pass and community naming would spend Claude tokens, and Kort has not ruled on that (questions file).
 
 ## Worktrees and branches
@@ -41,7 +41,7 @@ Kort connected GitHub on 2026-10-20: `origin` is `https://github.com/GameDev3405
 | `bannerbound-p2b` | `phase-2-models` | 2bf40df | 18 uncommitted files: Task 5b (animation clips) half-written by an agent cut off by the cap |
 | `bannerbound-p3` | `phase-3-built-world` | 7f9d076 | 3 uncommitted files: fix round 3 (trampled earth) in progress when cut off |
 | `bannerbound-ui` | `ui-plan` | ebd3d98 | 47 uncommitted files: Task 7 half-written by an agent cut off by the cap |
-| `bannerbound-preview` | `preview-0.5` | 38deb85 | the merge of all four branches is committed; 3 uncommitted files (BattleHud, GravesAndGloryClient, RecruitView) from the agent fixing compile errors; not yet compiled, tested or packaged |
+| `bannerbound-preview` | `preview-0.5` | 552a8c6 | clean; 0.5.0-preview1 built, verified and sent to Kort (see Last state). Throwaway. |
 | `bannerbound-runs`, `bannerbound-test` | detached | | archives, leave alone |
 
 Uncommitted work in p2b, p3 and ui belongs to agents that were resumable by id in the old session; in a new session those ids are gone. Treat the dirty files as partial work: read the diff, decide whether to keep it as the start of a fresh dispatch or `git stash` it with a name, and say which in the ledger.
@@ -70,26 +70,15 @@ Ledgers: `.superpowers/sdd/2026-10-17-phase-2-houses/progress.md`, `.../2026-10-
 
 **Growth / 0.6.0** (`docs/superpowers/specs/2026-10-19-growth-design.md`, `docs/superpowers/plans/2026-10-19-0.6.0-the-field.md`): added by another session on 2026-10-19 after this controller's last work. Nothing in it starts before the 0.5.0 merge, except the eight merge-safe hooks the plan lists. Its open calls are at the end of the questions file.
 
-## Last state before this session closed (2026-10-21, after the cap reset)
+## Last state (2026-10-21, afternoon session)
 
-Kort stopped all work to start a new session. Every agent was stopped cleanly; no game client is running. What changed in the final hour:
-- `preview-0.5` now compiles: commit f45392c "finish merge compile fixes (BattleHud, GravesAndGloryClient, RecruitView, CommandMode)", worktree clean. The agent was about to run the self-test; steps 2 to 4 below are still to do.
-- `.superpowers/sdd/2026-10-17-phase-2-houses/task-5-review-2.md` may be a partial file: the Opus reviewer was stopped mid-write. Check whether it carries both verdicts; if not, re-dispatch with the same brief.
-- The Phase 2 Task 6 review was stopped before it wrote anything: re-dispatch (package `review-786bb2b..6264f6a.diff`).
-- Phase 3 fix round 3 and UI Task 7 were restarted from their partial diffs and stopped within minutes; their worktrees hold the same partial work as before (p3: a small Phase3Checks edit; ui: 47 files). Re-dispatch both as fresh implementers reading the dirty diff first.
-- Phase 2 Task 5b (clips) was not restarted; p2b holds its partial work (18 files, six new *Clips/TroopAnimator classes). Brief at `task-5b-brief.md`.
+This session finished the preview build and installed graphify; nothing else moved. No agent and no game client is running.
+- **Preview 0.5.0-preview1 is done and sent to Kort.** `preview-0.5` at 552a8c6, worktree clean: f3fae2e (test tools compile against the merged Profile API), d37fe0a (merge of `phase-2-houses` 6264f6a, Task 6 batch 1, so H works for Champion and Marshal; Task 5's GildedArt check id is now `p2-gilded-art-timeout`), 552a8c6 (`docs/PREVIEW-0.5.md`, `docs/RELEASE-0.5.0-preview1.txt`). Self-test 11/11; Phase 2 engine, commander and gilded suites 32/35 (`p2-recruit-tabs` and `p2-hud-hearts` are stale against the UI branch; `p2-class-picker` is a real cut line on the Quartermaster card). `verify_package.py` PASS; `dist/graves-and-glory-0.5.0-preview1.mrpack` 22,821,222 bytes, sha256 37857e08...d39be. Not yet tried in Prism. Ledger and rulings: `.superpowers/sdd/preview-0.5/progress.md`.
+- The fixes in f3fae2e and d37fe0a (CampaignChecks tick-80 block, Phase1Checks renames, the shield column, the check id) are merge notes for the real base merge; the pinned dependency jars were copied into the preview worktree (git-ignored).
+- `task-5-review-2.md` (Phase 2) may still be partial, and the Task 6 review is still owed; both packages exist. The three cut-off implementers (Phase 3 fix round 3, UI Task 7, Phase 2 Task 5b) still hold their partial work in p3, ui and p2b.
+- Kort will send notes from playing the preview; fold them into the plans they touch.
 
-## The preview build Kort is waiting for
-
-Kort asked on 2026-10-19 for a playable build of everything committed so far, to take notes on while the cap was out. A Sonnet agent merged `phase-2-houses` (786bb2b), `phase-2-models` (2bf40df), `phase-3-built-world` and `ui-plan` (ebd3d98) into `preview-0.5` (worktree `bannerbound-preview`), deleted ModelAngleCompatibilityMixin, set mod_version `0.5.0-preview1`, and was fixing merge compile errors in BattleHud, GravesAndGloryClient and RecruitView when the cap hit. Finish it first:
-
-1. In `bannerbound-preview`, read the three dirty files' diffs, finish the compile (`"$G" --offline build`), fixing only merge-caused errors (the UI branch's HintText `hint(String)` and BattleHud ability slot win over Phase 2's; one ability key registration; state packet fields are the union).
-2. Run the self-test suite once; note failures that belong to unfinished branch work as rough edges, do not fix them.
-3. `python tools/package.py`, `python tools/export_modrinth.py`, `python tools/verify_package.py` produce `dist/graves-and-glory-0.5.0-preview1.mrpack` and `.zip`. Nothing is published.
-4. Write `docs/PREVIEW-0.5.md` (install like 0.4.0 via Prism; what is new: Gilded troops with own models and stage art, six commander classes, five built maps, War Table home and recruit; known rough edges), commit on `preview-0.5` only, and send Kort the mrpack with SendUserFile.
-5. The merge notes gathered for it are at `.superpowers/sdd/preview-0.5-merge-notes.md`. The preview branch is throwaway; the real base merge happens later, on `phase-1-solo-core`, with the same notes.
-
-## After the preview, in order
+## Next, in order
 
 1. Re-dispatch the two cut-off reviews (Phase 2 Task 6, Phase 2 Task 5 review 2) on Opus; packages exist.
 2. Resume the three cut-off implementers as fresh dispatches with their briefs and the dirty diffs as a starting point: Phase 3 fix round 3 (Sonnet), UI Task 7 (Opus), Phase 2 Task 5b (Opus).
