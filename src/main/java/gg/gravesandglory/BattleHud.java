@@ -395,7 +395,7 @@ public final class BattleHud {
             if(GravesAndGloryClient.commanderFor>0){left=GravesAndGloryClient.commanderFor;total=cls==null?0:cls.durationTicks();}
             else if(GravesAndGloryClient.commanderReady>0){left=GravesAndGloryClient.commanderReady;total=cls==null?0:cls.cooldownTicks();}
             else{left=0;total=0;}
-        }else{id=GravesAndGloryClient.abilityId;left=GravesAndGloryClient.abilityRemaining;total=GravesAndGloryClient.abilityTotal;if(id.equals("none"))return;}
+        }else{id=GravesAndGloryClient.abilityId;left=GravesAndGloryClient.abilityRemaining;total=GravesAndGloryClient.abilityTotal;if(id.equals("none")){GravesAndGloryClient.abilityDrawn=List.of();return;}}
         var w=c.getWindow();int x=w.getScaledWidth()/2+104,y=w.getScaledHeight()-47;
         UiTex.draw(g,"hud/ability-slot",x,y);
         UiTex.draw(g,"hud/horn",x+5,y+6); // every ability shows the horn until Phase 2 gives each its picture
@@ -407,6 +407,11 @@ public final class BattleHud {
         double f=w.getScaleFactor()/UiCanvas.k();
         int x0=(int)Math.floor(x*f+1e-9),y0=(int)Math.floor(y*f+1e-9),x1=(int)Math.ceil((x+50)*f-1e-9),y1=(int)Math.ceil((y+32)*f-1e-9);
         r.put("ability",new int[]{x0,y0,x1-x0,y1-y0});tx.put("ability",id);tx.put("ability-seconds",secs);tx.put("ability-key",key);
+        // What the slot says in words, for the Phase 2 checks: the key, the class active's name, and READY / READY IN n s / ACTIVE n s / NOT IN THIS BUILD.
+        if(!GravesAndGloryClient.commanderActive.isEmpty()){
+            String state=GravesAndGloryClient.commanderReady<0?"NOT IN THIS BUILD":GravesAndGloryClient.commanderFor>0?"ACTIVE "+(GravesAndGloryClient.commanderFor+19)/20+" s":GravesAndGloryClient.commanderReady>0?"READY IN "+(GravesAndGloryClient.commanderReady+19)/20+" s":"READY";
+            GravesAndGloryClient.abilityDrawn=List.of(key,Commander.activeName(GravesAndGloryClient.commanderActive).toUpperCase(java.util.Locale.ROOT),state);
+        }else GravesAndGloryClient.abilityDrawn=List.of();
     }
 
     /** The 24 px cooldown sweep at (x, y) by UiMath.sweep, filled one run of a row at a time. */
