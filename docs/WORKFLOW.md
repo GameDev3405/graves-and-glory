@@ -7,7 +7,7 @@ Read this first, then `docs/HANDOFF.md`. These rules come from Kort (2026-10-21)
 | Role | Model | Effort |
 |---|---|---|
 | Orchestrator (this session) | Opus 5.5 | extra high |
-| Implementation, testers, packaging, doc edits, small reviews, re-reviews | Sonnet 5.5 | medium (high for tricky integration) |
+| Implementation, testers, packaging, doc edits, small reviews, re-reviews | Sonnet 5.5 | extra high (medium only for simple, easy tasks) |
 | Hard problems: combat design, model pipeline, a task stuck after 2 fix rounds, large risky reviews | Fable 5.1 | high |
 
 - No Haiku. No Codex.
