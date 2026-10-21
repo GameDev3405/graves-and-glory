@@ -1,8 +1,8 @@
 {
 "weapon":"longbow",
-"note":"The Order Longbow's yew longbow, 38 px: a shallow D, horn nocks, a leather grip; upright in the right hand, its top 6 px past the head and its foot just off the ground (the mark).",
+"note":"The Order Longbow's yew longbow, 38 px: a shallow D, horn nocks, a leather grip; upright in the left hand with the grip through the middle of the fist, its top 6 px past the head and its foot just off the ground (the mark).",
 "size":[64,64],
-"grip":{"offset":[0,0,-2.5],"rotation":[0,0,0]},
+"grip":{"offset":[0,0,0],"rotation":[0,0,0]},
 "boxes":[
 {"origin":[-0.5,-2,-0.5],"size":[1,4,1],"uv":[0,0],"note":"the leather grip"},
 {"origin":[-0.5,-12,-0.5],"size":[1,10,1],"uv":[4,0],"note":"the stave over the grip"},

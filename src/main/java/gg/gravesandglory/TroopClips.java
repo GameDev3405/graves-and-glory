@@ -38,6 +38,12 @@ public final class TroopClips {
     }
     /** When a once clip peaks: the attack's contact, the hit's recoil, the stand half risen (still shots show it there). */
     public static final Map<String,Float> PEAKS=Map.of("attack",.25f,"hit",.08f,"stand",.4f);
+    /**
+     * Each rig's bow_draw landmarks in seconds: the full draw (the pose held between shots) and the loose (the frame a shot shows, the
+     * moment of the arrow). The rest of the clip is the loose settling back to the nock; the draw hold ends at the draw. A hound or
+     * a spider has no string: its draw is the crouch or the rear, its loose the spring.
+     */
+    public static final Map<String,float[]> BOW_TIMES=Map.of("biped",new float[]{.65f,.8f},"hound",new float[]{.9f,.9f},"spider",new float[]{.9f,.9f},"colossus",new float[]{.8f,.8f});
 
     /** A rig's clips by name: biped, hound, spider or colossus; empty for any other rig. */
     public static Map<String,Animation> of(String rig){
@@ -61,9 +67,10 @@ public final class TroopClips {
     }
     /** A bone's name on the other side: right and left swapped (front_right_leg is front_left_leg). */
     static String side(String bone){return bone.replace("right","~").replace("left","right").replace("~","left");}
-    /** The time a still shot shows a clip at, in seconds: a loop at a quarter of its length, a once clip at its peak, a hold clip at its end. */
+    /** The time a still shot shows a clip at, in seconds: a loop at a quarter of its length (bow_draw at its full draw), a once clip at its peak, a hold clip at its end. */
     public static float shotTime(String clip){
         Kind k=KINDS.get(clip);float len=LENGTHS.get(clip);
+        if(clip.equals("bow_draw"))return BOW_TIMES.get("biped")[0]; // the full draw: the pose a bowman holds
         return k==Kind.LOOP?len/4:k==Kind.ONCE?PEAKS.getOrDefault(clip,len/2):len;
     }
 

@@ -20,8 +20,8 @@ final class Tactics {
     static String mechanic(Spec.TroopsRow t){return MECHANICS.computeIfAbsent(t.ability(),id->{for(var a:Spec.ABILITIES)if(a.id().equals(id))return a.mechanic();return "none";});}
     /** The stances a troop shows its clients (stance_v1 sends the index): none, hold, brace, fall_back and run. */
     static final List<String> STANCES=List.of("","hold","brace","fall_back","run");
-    /** stance_v1 packets sent: on a change at a unit's beat, and to a player who starts tracking a troop (the harness reads them). */
-    static volatile int stanceSends,trackingSends;
+    /** stance_v1 packets sent: on a change at a unit's beat, to a player who starts tracking a troop, and to a player whose client registers the channel late (the harness reads them). */
+    static volatile int stanceSends,trackingSends,registerSends;
     /** The stance a unit's order gives it (Phase 2 Task 5b; the unit AI phase's stances sheet maps its own rows here later). */
     static String stance(GravesAndGlory.Battle b,GravesAndGlory.Unit u){return stance(b.assignment(u),u);}
     static String stance(GravesAndGlory.Assignment a,GravesAndGlory.Unit u){
@@ -39,6 +39,12 @@ final class Tactics {
             if(!ServerPlayNetworking.canSend(p,GravesAndGlory.STANCE))continue;
             var buf=PacketByteBufs.create();buf.writeVarInt(u.mob.getId());buf.writeByte(index);ServerPlayNetworking.send(p,GravesAndGlory.STANCE,buf);sent++;
         }
+        return sent;
+    }
+    /** Sends a player the stance of every troop it tracks that has one: for a player whose client registered stance_v1 after its trackers started. Returns how many it sent. */
+    static int sendTracked(GravesAndGlory.Battle b,ServerPlayerEntity p){
+        int sent=0;
+        for(GravesAndGlory.Unit u:b.units)if(!u.stance.isEmpty()&&PlayerLookup.tracking(u.mob).contains(p))sent+=sendStance(u,List.of(p));
         return sent;
     }
     /** Between beats a shield troop re-reads the distance to the enemy it chose on its beat, so a block knight lowers its shield on the tick

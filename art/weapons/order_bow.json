@@ -1,8 +1,8 @@
 {
 "weapon":"order_bow",
-"note":"The Order Archer's bow, 22 px: a short recurve in dark wood, gilt tips, the grip wound in linen; upright in the right hand, the string outward.",
+"note":"The Order Archer's bow, 22 px: a short recurve in dark wood, gilt tips, the grip wound in linen; upright in the left hand with the grip through the middle of the fist, the string to the back at rest and to the archer at the draw.",
 "size":[32,32],
-"grip":{"offset":[0,0,-2.5],"rotation":[0,0,0]},
+"grip":{"offset":[0,0,0],"rotation":[0,0,0]},
 "boxes":[
 {"origin":[-0.5,-3,-0.5],"size":[1,6,1],"uv":[0,0],"note":"the grip, wound in linen"},
 {"origin":[-1.5,-7,-0.5],"size":[1,4,1],"uv":[4,0],"note":"upper limb"},

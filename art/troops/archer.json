@@ -1,6 +1,6 @@
 {
 "troop":"archer",
-"note":"Order Archer > Order Bowman > Sergeant-Archer (unit identity 1): husk, biped, slight; the pointed linen hood over a shadowed face, a linen gambeson, the team jerkin, the white-fletched quiver across the back and the pennant; stage 3 signal horn. The Order bow upright in the right hand.",
+"note":"Order Archer > Order Bowman > Sergeant-Archer (unit identity 1): husk, biped, slight; the pointed linen hood over a shadowed face, a linen gambeson, the team jerkin, the white-fletched quiver across the back and the pennant; stage 3 signal horn. The Order bow upright in the left hand, drawn with the right.",
 "rig":"biped",
 "size":[128,64],
 "bones":{"body":{"scale":[0.9,1,0.9]},"right_arm":{"scale":[0.9,1,0.9]},"left_arm":{"scale":[0.9,1,0.9]}},
@@ -14,6 +14,6 @@
 ],
 "skins":{"1":"archer_s1.png","2":"archer_s2.png","3":"archer_s3.png"},
 "weapon":"order_bow",
-"hand":"right",
+"hand":"left",
 "portrait":"standard"
 }

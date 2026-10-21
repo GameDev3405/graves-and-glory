@@ -33,10 +33,11 @@ public final class BipedClips {
             .rot("right_arm",0,0,0,0, .25f,-15,0,0, .55f,-40,0,15, .8f,-5,0,35, .9f,-5,0,35)
             .rot("left_arm",0,0,0,0, .25f,-10,0,0, .55f,-30,0,-18, .8f,-5,0,-40, .9f,-5,0,-40))
         .put(new Clip("shield_up").rot("left_arm",0,0,0,0, .2f,-60,30,0))
-        // The bow in the left hand, the body turned side-on (the left shoulder to the target); the right hand nocks at the
-        // string, draws out to the cheek and looses at 0.8 s.
-        .put(new Clip("bow_draw").hold("left_arm",-90,-20,0).hold("body",0,20,0).hold("head",0,-20,0)
-            .rot("right_arm",0,-90,-30,0, .15f,-90,-35,0, .65f,-95,20,0, .8f,-80,30,0, 1.2f,-90,-30,0))
+        // The bow in the left hand, held out in front with the arm turned in 30 and the body turned 25 the other way (the bow
+        // points straight ahead, as the arrow goes); the right arm reaches across to the string (its hand within 2 px of the
+        // string line at the draw: p2-anim-bow), draws at 0.65 s, which is held between shots, and looses at 0.8 s: the arm flung back.
+        .put(new Clip("bow_draw").hold("left_arm",-90,30,0).hold("body",0,-25,0).hold("head",0,25,0)
+            .rot("right_arm",0,-85,-62,0, .15f,-90,-66,0, .65f,-95,-70,0, .8f,-80,-105,0, 1.2f,-85,-62,0))
         .put(new Clip("cast").hold("right_arm",0,0,125).hold("left_arm",0,0,-125)
             .wave("right_arm",0,0,10,0,1).wave("left_arm",0,0,10,0,1))
         .put(new Clip("kneel").pos("root",0,0,0,0, .3f,0,-2,0, .6f,0,-4,0)

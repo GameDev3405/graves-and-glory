@@ -1373,10 +1373,12 @@ public final class Phase2Checks implements ClientModInitializer {
     }
 
     /**
-     * Task 5b: the rig animation sets. The four rigs' clip tables (p2-anim-cover, -change and -return), the clip choice
-     * (-choose), the stance sync over stance_v1 (-stance), a scene pose (-scene), a killed knight's death (-death) and the fold
-     * (-fold) on gold knights on the platform, the 18 clips on a gold knight frozen through TroopAnimator.forced
-     * (anim-biped-<clip>), and the contact sheet's frames (anim-sheet-*, SheetProbe).
+     * Task 5b: the rig animation sets. The four rigs' clip tables (p2-anim-cover, -change, -return and -keys), the clip choice
+     * and what a State plays from it (-choose), the loose on a shot (-loose), the blend on a once clip's peak (-blend), the bow in
+     * the left hand (-bow), the carries shared by the frame and a forced clip (-carries), the stance sync over stance_v1 with its
+     * late registration (-stance), a scene pose (-scene), a killed knight's death (-death) and the fold (-fold) on gold knights on
+     * the platform, the 18 clips on a gold knight frozen through TroopAnimator.forced (anim-biped-<clip>), and the contact sheet's
+     * frames (anim-sheet-*, SheetProbe: the 18 clips on the bare biped, the other rigs' stills, the walk and cape strips).
      */
     static final class Anim extends Stage {
         static final List<String> RIGS=List.of("biped","hound","spider","colossus");
@@ -1399,7 +1401,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 0->{boolean lit=litStart(c); // first: while the spectator is away the troops are off this client
                     if(lit&&ready&&posted.size()==6&&posted.stream().allMatch(u->client(c,u.mob)!=null)){c.options.hudHidden=true;wait=0;cs=1;}
                     else if(++wait%600==0)System.out.println("[p2-wait] anim step 0 after "+wait+" ticks: ready="+ready+", posted "+posted.size()+" of 6; "+litWhy(c));}
-                case 1->{if(++wait==20){cover();change();returns();choose();cull();cs=2;wait=0;si=0;}}
+                case 1->{if(++wait==20){cover();change();returns();keys();choose();loose();blend();bow();carries();cull();cs=2;wait=0;si=0;}}
                 case 2->stance(c,tick);
                 case 3->scene(c,tick);
                 case 4->death(c,tick);
@@ -1517,7 +1519,11 @@ public final class Phase2Checks implements ClientModInitializer {
             report("p2-anim-cull",ok&&models>0,models+" troop models, 18 clips each through the carries, "+samples+" poses every 50 ms: the cull reach has "+String.format(Locale.ROOT,"%.2f",-worst)
                 +" blocks to spare at its tightest ("+worstAt+"; a negative figure is outside it)"+(out.isEmpty()?"":"; outside it (BAD): "+out)+(models>0?"":" (no troop model loaded: BAD)"));
         }
-        /** p2-anim-choose: TroopAnimator.choose on synthetic Views, and a State restarting bow_draw on a shot. */
+        /**
+         * p2-anim-choose: TroopAnimator.plan on synthetic Views, and what a fresh State then plays from that Plan. choose reports the plan's
+         * first overlay; State.update plays all of them, so each case reads both: the Choice, and the live tracks (pose, still, move and the
+         * overlays) the State holds after it. A scene pose or death plays no overlay, with or without a clip of its own.
+         */
         void choose(){
             List<String> bad=new ArrayList<>();int n=0;
             var all=with(view("biped",true,true,true,true,true,true,true,"brace","kneel","sit"),true,true,1f);
@@ -1528,28 +1534,215 @@ public final class Phase2Checks implements ClientModInitializer {
             n++;expect(bad,"stand after fallen",view("biped",false,false,false,false,false,false,false,"","stand","fallen"),"stand",null,null,false,false);
             n++;expect(bad,"scene sword_up",view("biped",false,false,false,false,false,false,false,"","sword_up",null),"raise",null,null,false,false);
             n++;expect(bad,"helm_off after kneel keeps kneel",view("biped",false,false,false,false,false,false,false,"","helm_off","kneel"),"kneel",null,null,false,false);
-            n++;expect(bad,"a melee swing start",view("biped",false,true,false,true,false,false,false,"",null,null),"idle","walk","attack",false,true);
-            n++;expect(bad,"ranged and attacking",view("biped",false,false,false,true,true,false,false,"",null,null),"idle","walk","bow_draw",false,true);
-            n++;expect(bad,"ranged, attacking, a shot (swing start)",view("biped",false,true,false,true,true,false,false,"",null,null),"idle","walk","bow_draw",false,true);
-            n++;expect(bad,"magic and attacking",with(view("biped",false,false,false,true,true,false,false,"",null,null),true,false,0),"idle","walk","cast",false,true);
-            n++;expect(bad,"spellcasting",with(view("biped",false,false,false,false,false,false,false,"",null,null),false,true,0),"idle","walk","cast",false,true);
-            n++;expect(bad,"off-hand use",view("biped",false,false,false,false,false,true,false,"",null,null),"idle","walk","shield_up",false,true);
-            n++;expect(bad,"a bear's warning",view("hound",false,false,false,false,false,false,true,"",null,null),"idle","walk","raise",false,true);
-            n++;expect(bad,"a hurt start",view("biped",false,false,true,false,false,false,false,"",null,null),"idle","walk","hit",false,true);
+            // a scene pose with no clip of its own plays the base and no overlay (a swing, a hurt and a raised shield all read, and none plays)
+            n++;expect(bad,"helm_off with nothing before it, swinging, hurt, shield up",view("biped",false,true,true,true,false,true,false,"","helm_off",null),"idle","walk",null,false,false);
+            n++;expect(bad,"stand with nothing to reverse, swinging",view("biped",false,true,false,true,false,false,false,"","stand",null),"idle","walk",null,false,false);
+            n++;expect(bad,"a melee swing start",view("biped",false,true,false,true,false,false,false,"",null,null),"idle","walk","attack",false,true,"attack");
+            n++;expect(bad,"melee: swing, hurt and shield up together",view("biped",false,true,true,true,false,true,false,"",null,null),"idle","walk","attack",false,true,"attack","hit","shield_up");
+            n++;expect(bad,"ranged and attacking",view("biped",false,false,false,true,true,false,false,"",null,null),"idle","walk","bow_draw",false,true,"bow_draw");
+            n++;expect(bad,"ranged, attacking, a shot (swing start): bow_draw, never attack",view("biped",false,true,false,true,true,false,false,"",null,null),"idle","walk","bow_draw",false,true,"bow_draw");
+            n++;expect(bad,"ranged, hurt while drawing",view("biped",false,false,true,true,true,false,false,"",null,null),"idle","walk","bow_draw",false,true,"bow_draw","hit");
+            n++;expect(bad,"magic and attacking",with(view("biped",false,false,false,true,true,false,false,"",null,null),true,false,0),"idle","walk","cast",false,true,"cast");
+            n++;expect(bad,"spellcasting",with(view("biped",false,false,false,false,false,false,false,"",null,null),false,true,0),"idle","walk","cast",false,true,"cast");
+            n++;expect(bad,"off-hand use",view("biped",false,false,false,false,false,true,false,"",null,null),"idle","walk","shield_up",false,true,"shield_up");
+            n++;expect(bad,"a bear's warning",view("hound",false,false,false,false,false,false,true,"",null,null),"idle","walk","raise",false,true,"raise");
+            n++;expect(bad,"a bear's warning, hurt",view("hound",false,false,true,false,false,false,true,"",null,null),"idle","walk","raise",false,true,"hit","raise");
+            n++;expect(bad,"a hurt start",view("biped",false,false,true,false,false,false,false,"",null,null),"idle","walk","hit",false,true,"hit");
+            n++;expect(bad,"nothing happening",view("biped",false,false,false,false,false,false,false,"",null,null),"idle","walk",null,false,true);
             for(String[] st:new String[][]{{"run","run","idle"},{"fall_back","fall_back","idle"},{"","walk","idle"},{"brace","walk","brace"},{"hold","walk","hold"}}){
                 n++;expect(bad,"stance \""+st[0]+"\"",with(view("biped",false,false,false,false,false,false,false,st[0],null,null),false,false,.5f),st[2],st[1],null,false,true);}
-            // bow_draw restarts on each shot: the live track starts again at the swing
-            var s=new TroopAnimator.State(1);var aim=view("biped",false,false,false,true,true,false,false,"",null,null);var shot=view("biped",false,true,false,true,true,false,false,"",null,null);
-            s.update(TroopAnimator.choose(aim),aim,0);s.update(TroopAnimator.choose(aim),aim,5);float first=s.overlays.get("bow_draw").live().start;
-            s.update(TroopAnimator.choose(shot),shot,10);float again=s.overlays.get("bow_draw").live().start;
-            n++;if(first!=0||again!=10||s.overlays.containsKey("attack")&&s.overlays.get("attack").live()!=null)bad.add("bow_draw started at "+first+" and at "+again+" after a shot at 10 (want 0 and 10, and no attack)");
-            report("p2-anim-choose",bad.isEmpty(),n+" cases"+(bad.isEmpty()?", all as the rules say (dead, scene poses, overlays, stances, head look)":"; wrong: "+bad));
+            // an overlay playing when a pose begins stops: a swing, then a kneel pose a tick later, leaves no weight BLEND_TICKS on
+            var s=new TroopAnimator.State(1);var swing=view("biped",false,true,false,true,false,false,false,"",null,null);var kneel=view("biped",false,false,false,false,false,false,false,"","kneel",null);
+            s.update(TroopAnimator.plan(swing),10);s.update(TroopAnimator.plan(kneel),11);
+            n++;if(s.overlayWeight("attack",11+TroopAnimator.BLEND_TICKS)>0)bad.add("an attack playing when a kneel pose began still has weight "+s.overlayWeight("attack",11+TroopAnimator.BLEND_TICKS)+" "+TroopAnimator.BLEND_TICKS+" ticks later (want 0)");
+            report("p2-anim-choose",bad.isEmpty(),n+" cases"+(bad.isEmpty()?", all as the rules say (dead, scene poses with and without a clip, overlays, stances, head look), each read both as the Choice and as what a State plays from the same Plan":"; wrong: "+bad));
         }
-        static void expect(List<String> bad,String what,TroopAnimator.View v,String still,String move,String overlay,boolean reverse,boolean look){
+        /** One case: the Choice of the View's plan, and the live tracks of a fresh State given that plan (pose, still, move, overlays sorted): the overlays named by live, none by default. */
+        static void expect(List<String> bad,String what,TroopAnimator.View v,String still,String move,String overlay,boolean reverse,boolean look,String... live){
             if(v==null){bad.add(what+": no view");return;}
-            var c=TroopAnimator.choose(v);
+            var plan=TroopAnimator.plan(v);var c=TroopAnimator.choose(v);
+            if(!c.equals(plan.choice()))bad.add(what+": choose "+c+" is not the plan's choice "+plan.choice());
             if(!Objects.equals(c.still(),still)||!Objects.equals(c.move(),move)||!Objects.equals(c.overlay(),overlay)||c.reverse()!=reverse||c.headLook()!=look)
                 bad.add(what+": got "+c+", want "+new TroopAnimator.Choice(still,move,overlay,reverse,look));
+            var s=new TroopAnimator.State(1);s.update(plan,10);
+            List<String> on=new ArrayList<>(List.of(live));Collections.sort(on);
+            String want=move==null?"pose "+still+(reverse?" reversed":"")+", still -, move -, overlays []":"pose -, still "+still+", move "+move+", overlays "+on;
+            if(!s.playing(10).equals(want))bad.add(what+": the State plays ["+s.playing(10)+"], want ["+want+"]");
+        }
+        /** p2-anim-loose: on each rig a shot shows bow_draw's loose on the frame it starts, plays it out, and holds the full draw until the next shot; a draw with no shot holds the full draw. */
+        void loose(){
+            boolean ok=true;StringBuilder why=new StringBuilder();
+            for(String rig:RIGS){
+                var m=TroopModels.rig(rig);var clip=TroopClips.of(rig).get("bow_draw");if(m==null||clip==null){ok=false;why.append(rig).append(": no rig or clip (BAD); ");continue;}
+                float draw=TroopClips.BOW_TIMES.get(rig)[0],loose=TroopClips.BOW_TIMES.get(rig)[1];
+                var aim=view(rig,false,false,false,true,true,false,false,"",null,null);var shot=view(rig,false,true,false,true,true,false,false,"",null,null);
+                var s=new TroopAnimator.State(1);List<String> bad=new ArrayList<>();
+                int age=0;for(;age<30;age++)TroopAnimator.simulate(m,s,aim,age,true); // drawing, no shot yet
+                float seen=s.overlaySeconds(m,"bow_draw",29);float[] wantDraw=sample(m,clip,draw);
+                TroopAnimator.simulate(m,s,aim,29,true);double offDraw=maxRot(m.snapshot(null),wantDraw);
+                if(Math.abs(seen-draw)>.01||offDraw>1)bad.add(String.format(Locale.ROOT,"1.45 s into a draw it shows %.2f s of the clip (want the full draw, %.2f s), %.1f deg off",seen,draw,offDraw));
+                for(int round=0;round<2;round++){
+                    int at=age;TroopAnimator.simulate(m,s,shot,at,true);TroopAnimator.simulate(m,s,aim,at+1,true);
+                    float t1=s.overlaySeconds(m,"bow_draw",at+1);float[] p1=m.snapshot(null),w1=sample(m,clip,loose+.05f);
+                    if(Math.abs(t1-(loose+.05f))>.01||maxRot(p1,w1)>1||maxPos(p1,w1)>.1)bad.add(String.format(Locale.ROOT,"shot %d: one tick after the arrow it shows %.2f s of the clip (want the loose, %.2f s, plus a tick), %.1f deg off",round+1,t1,loose,maxRot(p1,w1)));
+                    for(age=at+2;age<at+42;age++)TroopAnimator.simulate(m,s,aim,age,true); // the troop's next shot comes a cooldown (40 ticks) on
+                    float t2=s.overlaySeconds(m,"bow_draw",age-1);float[] p2=m.snapshot(null);
+                    if(Math.abs(t2-draw)>.01||maxRot(p2,wantDraw)>1)bad.add(String.format(Locale.ROOT,"shot %d: 40 ticks on it shows %.2f s of the clip (want the full draw held, %.2f s), %.1f deg off",round+1,t2,draw,maxRot(p2,wantDraw)));
+                }
+                ok&=bad.isEmpty();why.append(rig).append(String.format(Locale.ROOT,": full draw %.2f s, loose %.2f s",draw,loose)).append(bad.isEmpty()?", the shot shows the loose, and 40 ticks on the draw is held":", "+bad+" (BAD)").append("; ");
+            }
+            report("p2-anim-loose",ok,why.toString().trim());
+        }
+        /** p2-anim-blend: a once overlay shows its peak in full when it gets there (a live hit at 0.08 s, an attack at its 0.12 s wind-up and its 0.25 s contact): the blend in does not cut it (2 degrees or px, the idle's breathing under the clip counted). */
+        void blend(){
+            boolean ok=true;StringBuilder why=new StringBuilder();
+            for(String rig:RIGS){
+                var m=TroopModels.rig(rig);if(m==null){ok=false;why.append(rig).append(": no rig model (BAD); ");continue;}
+                var calm=view(rig,false,false,false,false,false,false,false,"",null,null);var hurt=view(rig,false,false,true,false,false,false,false,"",null,null);var swing=view(rig,false,true,false,true,false,false,false,"",null,null);
+                List<String> bad=new ArrayList<>();double worst=0;var hit=TroopClips.of(rig).get("hit");var attack=TroopClips.of(rig).get("attack");
+                var s=new TroopAnimator.State(2);for(int a=0;a<10;a++)TroopAnimator.simulate(m,s,calm,a,true);
+                TroopAnimator.simulate(m,s,hurt,10,true);TroopAnimator.simulate(m,s,calm,10+.08f*20,true);
+                double off=maxRot(m.snapshot(null),sample(m,hit,.08f));worst=Math.max(worst,off);if(off>2)bad.add(String.format(Locale.ROOT,"hit at 0.08 s %.1f deg off the clip",off));
+                var t=new TroopAnimator.State(3);for(int a=0;a<10;a++)TroopAnimator.simulate(m,t,calm,a,true);
+                TroopAnimator.simulate(m,t,swing,10,true);
+                for(float sec:new float[]{.12f,.25f}){TroopAnimator.simulate(m,t,calm,10+sec*20,true);float[] got=m.snapshot(null),want=sample(m,attack,sec);
+                    double o=Math.max(maxRot(got,want),maxPos(got,want));worst=Math.max(worst,o);
+                    if(o>2)bad.add(String.format(Locale.ROOT,"attack at %.2f s %.1f off the clip",sec,o));}
+                ok&=bad.isEmpty();why.append(rig).append(String.format(Locale.ROOT,": the worst %.2f",worst)).append(bad.isEmpty()?"":", "+bad+" (BAD)").append("; ");
+            }
+            report("p2-anim-blend",ok,why.toString().trim()+" (a fresh play of hit or attack on its peak against the clip itself, bare rig, degrees or px; want 2 or less: the idle breathing under the clip is in the frame, a blend that cuts the peak is 7 or more off)");
+        }
+        // ---- one key extreme per clip per rig (Task 5b review, minor 1) ----
+        /** One key of a clip: the rig, the clip, a bone, a channel (p pitch, y yaw, r roll in degrees; x, u up, z offsets in px), the second it is read at and the value there. */
+        record Key(String rig,String clip,String bone,char chan,float at,float value){}
+        static Key key(String rig,String clip,String bone,char chan,float at,float value){return new Key(rig,clip,bone,chan,at,value);}
+        /** The table's headline number of each clip, read off the brief's clip table (angles in degrees, offsets in px, y up); a wrong sign, arm, rig or clip fails it. */
+        static final List<Key> KEYS=List.of(
+            key("biped","idle","body",'p',1.5f,1.5f),key("biped","walk","right_leg",'p',.25f,-30),key("biped","run","right_leg",'p',.15f,-50),key("biped","attack","right_arm",'p',.12f,-110),
+            key("biped","hit","body",'p',.08f,-10),key("biped","death","root",'p',.8f,-90),key("biped","shield_up","left_arm",'p',.2f,-60),key("biped","bow_draw","left_arm",'p',.3f,-90),
+            key("biped","bow_draw","right_arm",'y',.65f,-70),key("biped","cast","right_arm",'r',.25f,125),key("biped","kneel","right_leg",'p',.6f,48),key("biped","point","right_arm",'p',.4f,-90),
+            key("biped","sit","right_leg",'p',.6f,-90),key("biped","raise","right_arm",'p',.5f,-170),key("biped","fall","root",'p',.8f,90),key("biped","stand","root",'p',.3f,45),
+            key("biped","brace","right_arm",'p',1,-70),key("biped","hold","right_arm",'p',1,-30),key("biped","fall_back","right_leg",'p',.25f,25),
+            key("hound","idle","tail",'y',.375f,10),key("hound","walk","front_left_leg",'p',.25f,25),key("hound","run","front_left_leg",'p',.15f,-40),key("hound","attack","jaw",'p',.15f,30),
+            key("hound","hit","head",'y',.08f,15),key("hound","death","root",'r',.7f,90),key("hound","shield_up","head",'p',.2f,20),key("hound","bow_draw","chest",'u',.3f,-2),
+            key("hound","cast","head",'p',0,-50),key("hound","kneel","front_left_leg",'p',.6f,-60),key("hound","point","tail",'p',.4f,50),key("hound","sit","body",'p',.6f,-35),
+            key("hound","raise","body",'p',.5f,-45),key("hound","fall","root",'r',.8f,-90),key("hound","stand","root",'r',.3f,-45),key("hound","brace","front_left_leg",'p',1,-15),
+            key("hound","hold","head",'p',0,-12),key("hound","fall_back","front_left_leg",'p',.25f,-20),
+            key("spider","idle","abdomen",'u',.75f,-.3f),key("spider","walk","left_leg_1",'y',.25f,20),key("spider","run","left_leg_1",'y',.15f,35),key("spider","attack","left_leg_1",'r',.15f,-40),
+            key("spider","hit","left_leg_1",'r',.08f,-15),key("spider","death","left_leg_1",'r',.9f,-60),key("spider","shield_up","left_leg_1",'r',.2f,-30),key("spider","bow_draw","left_leg_1",'r',.3f,-50),
+            key("spider","cast","left_leg_1",'r',.5f,-40),key("spider","kneel","left_leg_1",'r',.6f,-30),key("spider","point","left_leg_1",'r',.4f,-60),key("spider","sit","left_leg_1",'y',.6f,30),
+            key("spider","raise","left_leg_1",'r',.5f,-70),key("spider","fall","left_leg_1",'r',.8f,-60),key("spider","stand","left_leg_1",'r',0,-60),key("spider","brace","root",'u',1,-2),
+            key("spider","hold","left_leg_1",'y',1,12),key("spider","fall_back","left_leg_1",'y',.25f,-20),
+            key("colossus","idle","right_arm",'r',1.5f,3),key("colossus","walk","right_leg",'p',.25f,-25),key("colossus","run","right_leg",'p',.15f,-40),key("colossus","attack","right_arm",'p',.12f,-120),
+            key("colossus","hit","body",'p',.08f,-12),key("colossus","death","root",'p',.85f,90),key("colossus","shield_up","right_arm",'p',.2f,-75),key("colossus","bow_draw","right_arm",'p',.8f,-80),
+            key("colossus","cast","right_arm",'p',.5f,-100),key("colossus","kneel","right_leg",'p',.6f,60),key("colossus","point","right_arm",'p',.4f,-90),key("colossus","sit","right_leg",'p',.6f,-90),
+            key("colossus","raise","right_arm",'p',.5f,-170),key("colossus","fall","root",'p',.8f,90),key("colossus","stand","root",'p',.3f,45),key("colossus","brace","right_arm",'p',1,-20),
+            key("colossus","hold","right_arm",'p',1,-12),key("colossus","fall_back","right_leg",'p',.25f,20));
+        /** The same, read on the mirrored clip (the left-handed troop's): the arm swaps sides and its yaw changes sign. */
+        static final List<Key> MIRRORED_KEYS=List.of(
+            key("biped","attack","left_arm",'p',.12f,-110),key("biped","shield_up","right_arm",'y',.2f,-30),key("biped","point","left_arm",'y',.4f,-8),key("colossus","shield_up","left_arm",'y',.2f,50));
+        /** One channel of one bone in a clip at a second, as a delta from rest: degrees for p, y, r; px for x, z and u (u is up: the pivot's y is down). */
+        static double keyValue(TroopModel<?> m,Animation a,Key k){
+            float[] rest=sample(m,null,0),at=sample(m,a,k.at()+.0005f);int i=m.boneOrder().indexOf(k.bone());if(i<0)return Double.NaN;
+            return switch(k.chan()){
+                case 'x'->at[i*6]-rest[i*6];case 'u'->-(at[i*6+1]-rest[i*6+1]);case 'z'->at[i*6+2]-rest[i*6+2];
+                case 'p'->Math.toDegrees(at[i*6+3]-rest[i*6+3]);case 'y'->Math.toDegrees(at[i*6+4]-rest[i*6+4]);default->Math.toDegrees(at[i*6+5]-rest[i*6+5]);};
+        }
+        /** p2-anim-keys: one headline extreme per clip per rig, as (bone, channel, second, value) read off the clip itself (2 degrees, 0.2 px), and four on the mirrored clips; and every clip of every rig is in the table. */
+        void keys(){
+            List<String> bad=new ArrayList<>();int n=0;Set<String> covered=new HashSet<>();
+            for(var set:List.of(KEYS,MIRRORED_KEYS))for(Key k:set){
+                boolean mirrored=set==MIRRORED_KEYS;var m=TroopModels.rig(k.rig());var a=m==null?null:(mirrored?TroopClips.mirrored(k.rig()):TroopClips.of(k.rig())).get(k.clip());
+                if(a==null){bad.add(k.rig()+" "+k.clip()+": no rig or clip");continue;}
+                n++;if(!mirrored)covered.add(k.rig()+"/"+k.clip());
+                double got=keyValue(m,a,k),tol="xuz".indexOf(k.chan())>=0?.2:2;
+                if(Double.isNaN(got)||Math.abs(got-k.value())>tol)bad.add(String.format(Locale.ROOT,"%s%s %s %s %c at %.2f s: %.2f, want %.2f",k.rig(),mirrored?" mirrored":"",k.clip(),k.bone(),k.chan(),k.at(),got,k.value()));
+            }
+            for(String rig:RIGS)for(String c:TroopClips.NAMES)if(!covered.contains(rig+"/"+c))bad.add(rig+" "+c+": not in the table");
+            report("p2-anim-keys",bad.isEmpty()&&n>0,n+" keys ("+KEYS.size()+" on the plain clips, 18 on each rig, and "+MIRRORED_KEYS.size()+" mirrored), each read off the clip within 2 degrees or 0.2 px"+(bad.isEmpty()?"":"; wrong: "+bad));
+        }
+        // ---- the bow in its hand (Task 5b fix round 1) ----
+        /** A bow troop's pose measured in the troop's own axes (px right, up, front from the feet): the arm's box, the grip box's centre, the bow's up axis, the string's ends and the other hand's pivot. */
+        record BowPose(double[] arm,double[] grip,double[] up,double[][] string,double[] other){}
+        /** The bone chain and weapon boxes of a bow troop forced to one clip and second (no shield), as Turn.fact reads them. */
+        static BowPose bowPose(TroopModel<?> m,String clip,float seconds){
+            m.getPart().traverse().forEach(ModelPart::resetTransform);TroopAnimator.applyForced(m,new TroopAnimator.Forced(clip,seconds),TroopAnimator.row(m),false);
+            var w=TroopModels.weapon(m.weaponId());String hand=m.hand(),off="left".equals(hand)?"right":"left";List<ModelPart> path=m.handPath(hand);
+            List<double[]> arm=new ArrayList<>();MatrixStack ma=Turn.base();for(int k=0;k<path.size()-2;k++)path.get(k).rotate(ma);
+            path.get(path.size()-2).forEachCuboid(ma,(entry,p,i,q)->{if(p.isEmpty())arm.add(Turn.boxOf(entry,q));});
+            MatrixStack mw=Turn.base();for(ModelPart p:path)p.rotate(mw);w.part().rotate(mw);
+            List<double[]> boxes=new ArrayList<>();double[][] ends=new double[2][];double[][] up={null};
+            w.part().getChild("weapon").forEachCuboid(mw,(entry,p,i,q)->{if(!p.isEmpty())return;
+                boxes.add(Turn.boxOf(entry,q));
+                if(up[0]==null){Vector4f a=new Vector4f(0,1,0,0);entry.getPositionMatrix().transform(a);up[0]=Turn.own(a,1);}
+                float x=(q.minX+q.maxX)/2,z=(q.minZ+q.maxZ)/2; // the last box is the string: a flat quad, its middle line from its low y to its high y
+                for(int e=0;e<2;e++){Vector4f v=new Vector4f(x/16f,(e==0?q.minY:q.maxY)/16f,z/16f,1f);entry.getPositionMatrix().transform(v);ends[e]=Turn.own(v,16);}});
+            MatrixStack mo=Turn.base();for(ModelPart p:m.handPath(off))p.rotate(mo);double[] other=Turn.own(Turn.pt(mo,0,0,0),16);
+            m.getPart().traverse().forEach(ModelPart::resetTransform);
+            return new BowPose(arm.isEmpty()?null:arm.get(0),boxes.isEmpty()?null:boxes.get(0),up[0],ends,other);
+        }
+        /** The distance from a point to a segment, px. */
+        static double toSegment(double[] p,double[] a,double[] b){
+            double[] d={b[0]-a[0],b[1]-a[1],b[2]-a[2]};double len2=d[0]*d[0]+d[1]*d[1]+d[2]*d[2];
+            double t=len2==0?0:Math.max(0,Math.min(1,((p[0]-a[0])*d[0]+(p[1]-a[1])*d[1]+(p[2]-a[2])*d[2])/len2));
+            double dx=p[0]-(a[0]+t*d[0]),dy=p[1]-(a[1]+t*d[1]),dz=p[2]-(a[2]+t*d[2]);return Math.sqrt(dx*dx+dy*dy+dz*dz);
+        }
+        /**
+         * p2-anim-bow: every bow troop (ranged, not magic) holds its bow in the left hand, the drawing hand being the right. At rest (idle at 0 s,
+         * the arm hanging, the hand turned by the bow carry) the grip box's centre lies inside the fist (the arm box's lowest 4 px) and within
+         * 1 px of its axis, and the bow stands upright (its up axis within 8 degrees of vertical). At the full draw (bow_draw at the rig's draw
+         * time) the right hand's pivot is within 2 px of the string's line.
+         */
+        void bow(){
+            boolean ok=true;StringBuilder why=new StringBuilder();int troops=0;
+            for(String id:new TreeSet<>(TroopModels.ids())){
+                var m=TroopModels.model(id);var row=m==null?null:TroopAnimator.row(m);if(row==null||!TroopAnimator.bow(row))continue;troops++;List<String> bad=new ArrayList<>();
+                if(!"left".equals(m.hand()))bad.add("the bow is in the "+m.hand()+" hand (want left: the bow arm, the right hand draws)");
+                var rest=bowPose(m,"idle",0);var draw=bowPose(m,"bow_draw",TroopClips.BOW_TIMES.get(m.rig)[0]);
+                String restWhy="";
+                if(rest.arm()==null||rest.grip()==null||rest.up()==null)bad.add("no arm box or weapon boxes");
+                else{
+                    double[] fist={rest.arm()[0],rest.arm()[1],rest.arm()[2],rest.arm()[3],rest.arm()[1]+4,rest.arm()[5]}; // the arm's box from its lower end up 4 px
+                    double[] c={(rest.grip()[0]+rest.grip()[3])/2,(rest.grip()[1]+rest.grip()[4])/2,(rest.grip()[2]+rest.grip()[5])/2};
+                    double midR=(fist[0]+fist[3])/2,midF=(fist[2]+fist[5])/2;
+                    boolean inside=c[0]>=fist[0]&&c[0]<=fist[3]&&c[1]>=fist[1]&&c[1]<=fist[4]&&c[2]>=fist[2]&&c[2]<=fist[5];
+                    boolean axis=Math.abs(c[0]-midR)<=1&&Math.abs(c[2]-midF)<=1;
+                    double upright=Math.abs(rest.up()[1]);
+                    restWhy=String.format(Locale.ROOT,"at rest the grip's centre is (R %.1f, U %.1f, F %.1f) in the fist (R %.1f..%.1f, U %.1f..%.1f, F %.1f..%.1f), %.1f px off its axis, the bow's up axis %.2f of vertical",c[0],c[1],c[2],fist[0],fist[3],fist[1],fist[4],fist[2],fist[5],Math.hypot(c[0]-midR,c[2]-midF),upright);
+                    if(!inside)bad.add("the grip is outside the fist");if(!axis)bad.add("the grip is more than 1 px off the fist's axis");if(upright<Math.cos(Math.toRadians(8)))bad.add("the bow is not upright at rest");
+                }
+                double gap=draw.string()[0]==null?999:toSegment(draw.other(),draw.string()[0],draw.string()[1]);
+                if(gap>2)bad.add(String.format(Locale.ROOT,"at the full draw the right hand is %.1f px from the string (want 2 or less)",gap));
+                ok&=bad.isEmpty();why.append(id).append(": bow in the ").append(m.hand()).append(" hand; ").append(restWhy).append(String.format(Locale.ROOT,"; at the full draw (%.2f s) the right hand is %.2f px from the string line (want 2 or less)",TroopClips.BOW_TIMES.get(m.rig)[0],gap)).append(bad.isEmpty()?"":", "+bad+" (BAD)").append("; ");
+            }
+            report("p2-anim-bow",ok&&troops>0,troops+" bow troops: "+why.toString().trim()+(troops>0?"":" (no bow troop loaded: BAD)"));
+        }
+
+        /**
+         * p2-anim-carries (Task 5b review, minor 3): the carries are one rule for the frame and for a forced clip. For each troop model the frame's pose at
+         * age 0 (a fresh State, the shield in the off hand for a troop that has one) equals the forced clip's, in degrees and px: idle, the hold stance's
+         * hold, and, for the troop's own overlay, attack (melee), bow_draw (a bow) or cast (magic). Idle at 0 s is the rest pose, so the carries (the shield
+         * arm 45 degrees forward, the bow's turn, the arms forward) are what the two paths must agree on.
+         */
+        void carries(){
+            boolean ok=true;StringBuilder why=new StringBuilder();int models=0,cases=0;double worst=0;List<String> bad=new ArrayList<>();
+            for(String id:new TreeSet<>(TroopModels.ids())){
+                var m=TroopModels.model(id);var row=m==null?null:TroopAnimator.row(m);if(row==null)continue;models++;boolean shield=!row.shield().equals("none");
+                List<String[]> list=new ArrayList<>();list.add(new String[]{"","idle","-"});list.add(new String[]{"hold","hold","-"});
+                list.add(row.ranged()?(row.magic()?new String[]{"","cast","cast"}:new String[]{"","bow_draw","bow_draw"}):new String[]{"","attack","attack"});
+                for(String[] c:list){
+                    cases++;boolean attacking=c[2].equals("bow_draw")||c[2].equals("cast"),swing=c[2].equals("attack");
+                    var v=new TroopAnimator.View(m.rig,false,swing,false,attacking,row.ranged(),row.magic(),false,false,false,0f,c[0],null,null);
+                    var s=new TroopAnimator.State(0);s.update(TroopAnimator.plan(v),0);
+                    m.getPart().traverse().forEach(ModelPart::resetTransform);TroopAnimator.apply(m,s,row,shield,0,0,0,0,0);float[] frame=m.snapshot(null);
+                    m.getPart().traverse().forEach(ModelPart::resetTransform);TroopAnimator.applyForced(m,new TroopAnimator.Forced(c[1],0),row,shield);float[] forced=m.snapshot(null);
+                    double off=Math.max(maxRot(frame,forced),maxPos(frame,forced));worst=Math.max(worst,off);
+                    if(off>.5)bad.add(String.format(Locale.ROOT,"%s %s: the frame is %.1f off the forced clip",id,c[1],off));
+                }
+                m.getPart().traverse().forEach(ModelPart::resetTransform);
+            }
+            ok=bad.isEmpty()&&models>0;
+            report("p2-anim-carries",ok,models+" troop models, "+cases+" cases (idle, hold and the troop's own overlay): the frame's pose at age 0 is within "+String.format(Locale.ROOT,"%.2f",worst)+" (degrees or px) of the forced clip's (want 0.5 or less)"+(bad.isEmpty()?"":"; wrong: "+bad));
         }
 
         // ---- the stance sync ----
@@ -1569,6 +1762,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     si++;wait=0;}
                 return;
             }
+            if(regPhase>0){register(c,tick);return;}
             // a knight spawned into the group on hold in line: its first tick on this client reads hold, sent when the player started tracking it
             if(wait==1){trackingBefore=Tactics.trackingSends;beatBefore=Tactics.stanceSends;since=tick;server(c,b->late=post(b,drill,"knight",-2.5,5,180));return;}
             var e=late==null?null:client(c,late.mob);
@@ -1577,8 +1771,22 @@ public final class Phase2Checks implements ClientModInitializer {
                 int sends=Tactics.trackingSends-trackingBefore;boolean good=lateSeen>=0&&"hold".equals(lateStance)&&sends>=1;stanceOk&=good;
                 stanceWhy.append("a knight spawned into the group on hold in line: on this client ").append(lateSeen<0?"never":lateSeen+" ticks after the spawn").append(", reading \"").append(lateStance)
                     .append("\" on that first tick (want hold); ").append(sends).append(" START_TRACKING stance sends (want 1 or more), ").append(Tactics.stanceSends-beatBefore).append(" beat sends meanwhile").append(good?"":" (BAD)");
+                regPhase=1;wait=0;}
+        }
+        /** A player whose client registers stance_v1 late (Task 5b review, minor 4): this client's stances are cleared, the REGISTER event runs for it, and the four knights of the drill must read hold again. */
+        int regPhase,regBefore,regSince;
+        void register(MinecraftClient c,int tick){
+            if(regPhase==1){TroopAnimator.STANCES.clear();regBefore=Tactics.registerSends;regSince=tick;UUID id=c.player.getUuid();
+                server(c,b->{var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)net.fabricmc.fabric.api.networking.v1.S2CPlayChannelEvents.REGISTER.invoker().onChannelRegister(p.networkHandler,net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.getSender(p),b.server,List.of(GravesAndGlory.STANCE));});
+                regPhase=2;return;}
+            List<GravesAndGlory.Unit> four=new ArrayList<>(group);if(late!=null)four.add(late);boolean all=true;
+            for(var u:four){var e=client(c,u.mob);all&=e!=null&&TroopAnimator.STANCES.getOrDefault(e.getId(),"").equals("hold");}
+            if(all||tick-regSince>40){
+                int sends=Tactics.registerSends-regBefore;boolean good=all&&sends>=four.size();stanceOk&=good;
+                stanceWhy.append("; a client registering stance_v1 late (its stances cleared, then the REGISTER event run for this player): ").append(sends).append(" stance sends (want ").append(four.size()).append(" or more), the four knights read hold again ")
+                    .append(all?(tick-regSince)+" ticks later":"never (40 ticks)").append(good?"":" (BAD)");
                 report("p2-anim-stance",stanceOk,stanceWhy.toString().trim());
-                server(c,b->{var d=drill;d.order="follow";d.routedAt.clear();camera(b,0,1.6,-6,0,8);});cs=3;wait=0;si=0;}
+                server(c,b->{var d=drill;d.order="follow";d.routedAt.clear();camera(b,0,1.6,-6,0,8);});cs=3;wait=0;si=0;regPhase=0;}
         }
         String reads(MinecraftClient c){StringBuilder sb=new StringBuilder();for(var u:group){var e=client(c,u.mob);sb.append(e==null?"absent":"\""+TroopAnimator.STANCES.getOrDefault(e.getId(),"")+"\"").append(" ");}return sb.toString().trim();}
 
@@ -1663,8 +1871,8 @@ public final class Phase2Checks implements ClientModInitializer {
      * Turnaround shots of the troop art, for seeing how the weapons sit in the troops' hands (GRAVES_PHASE2_CHECKS=turn; shots, not
      * checks). The gold archer, longbow and knight at stage 1, one at a time at the platform's centre facing north (the others parked
      * PARK blocks up), in daylight, no HUD, frozen through TroopAnimator.forced. The camera, at chest height DIST blocks away, goes round
-     * the troop (angle 0 in front, 90 on its right, the weapon-hand side, 180 behind, 270 on its left) in idle (rest), bow_draw at a quarter
-     * and at half its length (the knight: attack at its peak) and walk at a quarter; then the two bowmen's weapon hand close up from the
+     * the troop (angle 0 in front, 90 on its right, the weapon-hand side, 180 behind, 270 on its left) in idle (rest), bow_draw at its full
+     * draw and at its loose (the knight: attack at its peak) and walk at a quarter; then the two bowmen's weapon hand close up from the
      * front, the right side and above in idle; then each troop with its weapon hidden, at 0 and 90 degrees. Shots are
      * p2-turn-TROOP-POSE-ANGLE.png. The weapon's axes and extents in the troop's own right, up and front axes (px) are logged as
      * "[p2-turn-fact]" lines. The one check, p2-turn-shots: every shot taken lit, in gold, with the camera where it was set and the pose
@@ -1689,7 +1897,7 @@ public final class Phase2Checks implements ClientModInitializer {
             for(String t:TROOPS){
                 boolean bow=!t.equals("knight");List<Object[]> poses=new ArrayList<>();
                 poses.add(new Object[]{"idle","idle",0f});
-                if(bow){float len=TroopClips.LENGTHS.get("bow_draw");poses.add(new Object[]{"draw25","bow_draw",len/4});poses.add(new Object[]{"draw50","bow_draw",len/2});}
+                if(bow){poses.add(new Object[]{"draw","bow_draw",TroopClips.BOW_TIMES.get("biped")[0]});poses.add(new Object[]{"loose","bow_draw",TroopClips.BOW_TIMES.get("biped")[1]});}
                 else poses.add(new Object[]{"attack","attack",TroopClips.shotTime("attack")});
                 poses.add(new Object[]{"walk25","walk",TroopClips.LENGTHS.get("walk")/4});
                 for(Object[] p:poses)for(int a:ANGLES)shots.add(new Shot("turn-"+t+"-"+p[0]+"-"+a,t,(String)p[0],(String)p[1],(Float)p[2],a,null,false));
@@ -1839,14 +2047,16 @@ public final class Phase2Checks implements ClientModInitializer {
     static final class SheetProbe extends net.minecraft.client.gui.screen.Screen {
         static final int KEY=0xFFFF00FF;static final float YAW=230,TILT=-15;
         static final int[][] HUES={{196,92,84},{84,140,196},{104,180,96},{200,164,72},{150,100,190},{70,170,170},{210,120,50},{120,120,200},{180,90,150},{110,160,60},{90,110,130},{200,200,110}};
-        record Frame(String name,String rig,String clip,float seconds){}
+        /** One frame of the sheet; bare draws the rig alone in its template hues (the biped too), the animation judged without a weapon, a shield or any part. */
+        record Frame(String name,String rig,String clip,float seconds,boolean bare){}
         static final List<Frame> FRAMES;
         static{
             List<Frame> f=new ArrayList<>();
-            for(String rig:Anim.RIGS){f.add(new Frame(rig+"-rest",rig,"idle",0));f.add(new Frame(rig+"-walk",rig,"walk",.25f));f.add(new Frame(rig+"-attack",rig,"attack",TroopClips.PEAKS.get("attack")));
-                f.add(new Frame(rig+"-guard",rig,"shield_up",TroopClips.LENGTHS.get("shield_up")));f.add(new Frame(rig+"-death",rig,"death",TroopClips.LENGTHS.get("death")));}
-            for(int i=0;i<8;i++)f.add(new Frame("walk-"+i,"biped","walk",i/8f));
-            for(int i=0;i<8;i++)f.add(new Frame("cape-"+i,"biped","walk",i/8f)); // the same stride from behind: the cape halves on the legs (Task 5 review, note 5)
+            for(String rig:Anim.RIGS){f.add(new Frame(rig+"-rest",rig,"idle",0,false));f.add(new Frame(rig+"-walk",rig,"walk",.25f,false));f.add(new Frame(rig+"-attack",rig,"attack",TroopClips.PEAKS.get("attack"),false));
+                f.add(new Frame(rig+"-guard",rig,"shield_up",TroopClips.LENGTHS.get("shield_up"),false));f.add(new Frame(rig+"-death",rig,"death",TroopClips.LENGTHS.get("death"),false));}
+            for(int i=0;i<8;i++)f.add(new Frame("walk-"+i,"biped","walk",i/8f,false));
+            for(int i=0;i<8;i++)f.add(new Frame("cape-"+i,"biped","walk",i/8f,false)); // the same stride from behind: the cape halves on the legs (Task 5 review, note 5)
+            for(String n:TroopClips.NAMES)f.add(new Frame("bare-"+n,"biped",n,TroopClips.shotTime(n),true)); // the 18 clips on the bare biped (Kort: animation is judged on a bare biped)
             FRAMES=List.copyOf(f);
         }
         static final Identifier WHITE=new Identifier("gravesandglory","probe/white");
@@ -1876,7 +2086,7 @@ public final class Phase2Checks implements ClientModInitializer {
         @Override public void render(net.minecraft.client.gui.DrawContext g,int mx,int my,float delta){
             g.fill(0,0,width,height,KEY);var f=frame;if(f==null)return;
             int x=width/2,y=height*4/5;
-            if(f.rig().equals("biped")){
+            if(f.rig().equals("biped")&&!f.bare()){
                 boolean cape=f.name().startsWith("cape-");MobEntity who=f.name().startsWith("walk-")||cape?templar:squire;if(who==null)return;
                 float yaw=cape?YAW+180:YAW; // the cape frames show the Templar from behind
                 who.bodyYaw=who.prevBodyYaw=yaw;who.headYaw=who.prevHeadYaw=yaw;who.setYaw(yaw);who.prevYaw=yaw;who.setPitch(0);who.prevPitch=0;

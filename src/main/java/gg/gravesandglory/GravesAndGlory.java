@@ -71,6 +71,13 @@ public final class GravesAndGlory implements ModInitializer {
             if(u==null)for(Unit x:battle.units)if(x.mob==entity){u=x;break;}
             if(u!=null&&!u.stance.isEmpty())Tactics.trackingSends+=Tactics.sendStance(u,List.of(player));
         });
+        // A player whose client registers stance_v1 only after the troops around it began to be tracked (a guest joining a battle in progress: its trackers
+        // start when it enters the world, before its client says which channels it takes, so canSend was false for those sends) gets the stance of every troop it tracks.
+        S2CPlayChannelEvents.REGISTER.register((handler,sender,server,channels)->{
+            if(!channels.contains(STANCE))return;
+            ServerPlayerEntity joined=handler.player;
+            server.execute(()->{if(battle!=null)Tactics.registerSends+=Tactics.sendTracked(battle,joined);});
+        });
         ServerPlayNetworking.registerGlobalReceiver(ORDER, (server, player, handler, buf, responder) -> {
             String command=buf.readString(128);
             server.execute(() -> { if(battle!=null) battle.command(player,command); });
