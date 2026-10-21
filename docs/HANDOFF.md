@@ -11,6 +11,10 @@ For a fresh Claude Code session taking over as controller. Read this, then the l
 - **Token rules (Kort, 2026-10-19):** agent count is unlimited; everything else is lean. Message a parked agent only with work, batched. Art briefs: render, lint, one self-review, report. Opus max only for design, combat, model pipeline and large reviews; Sonnet for re-reviews, testers, doc and ledger edits, suite runs, small-diff reviews, mechanical builds; medium effort for mechanical agents. No Haiku. Whole briefs up front.
 - **Process:** superpowers subagent-driven development. Briefs, reports, review packages and ledgers live under `.superpowers/sdd/<plan>/` in the main worktree (git-ignored). Package a review with `{ git log --oneline A..B; git diff --stat A..B; git diff -U10 A..B; } > review-A..B.diff`. Opus task review, fix rounds by resuming the implementer (SendMessage to its id), Sonnet scoped re-review. Every decision goes into `progress.md` as `Ruling: what — why — cost if wrong`. The Write hook sometimes refuses agents' report files; then the controller writes the report from the hand-back.
 
+## GitHub
+
+Kort connected GitHub on 2026-10-20: `origin` is `https://github.com/GameDev3405/graves-and-glory.git`, `gh` is logged in as GameDev3405. Every work branch (phase-1-solo-core, phase-2-houses, phase-2-models, phase-3-built-world, ui-plan, preview-0.5) already has a remote copy, pushed by another session; `main` sits two commits behind phase-1-solo-core. Other sessions also pushed `codex/*` integration branches (banner, bot balance, UI compact) on 2026-10-20; read them before the base merge, do not assume they are reviewed. The standing rule holds: the controller never pushes, merges to main or publishes unless Kort says so in chat; when he does, push by branch name with `git push origin <branch>`.
+
 ## Rules of the repo
 
 - Minecraft 1.20.1, Fabric 0.16.14, Fabric API 0.92.2, Loom 1.7.4, Java 17 at `C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot`, Gradle 8.8 offline: `G=$(ls -d ~/.gradle/wrapper/dists/gradle-8.8-bin/*/gradle-8.8/bin/gradle | head -1)`.
