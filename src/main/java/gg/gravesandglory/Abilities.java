@@ -1,15 +1,32 @@
 package gg.gravesandglory;
 
+import net.minecraft.block.BannerBlock;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.TallPlantBlock;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.DyeColor;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.RotationPropertyHelper;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.Heightmap;
+import org.joml.Vector3f;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 
 /**
  * Troop abilities (spec 2, the abilities sheet). A troop's ability id names a row; the row's mechanic decides what it does. The shield is a tag
- * the shield logic and the counters table read; mend and blight behave here; the stances (steady, ambush, brace) act through the counters table;
- * every other mechanic is a no-op until the task of its House.
+ * the shield logic and the counters table read; mend and blight behave here; the stances (steady, ambush, brace) act through the counters table
+ * (the ability id is one of the troop's tags, and Combat.resolve sets the attacker group's effective order); pierce hits a second enemy behind
+ * the target (secondary); the Oath Banner aura plants a Banner (Battle.banners) that lends its team's troops damage (auraFactor), keeps its
+ * groups from routing (OATH_GUARD) and rallies them. Every other mechanic is a no-op until the task of its House.
  * Every number comes from the row, with the combatDiscipline defaults where a row says 0.
  */
 final class Abilities {
@@ -29,7 +46,8 @@ final class Abilities {
         switch (row.mechanic()) {
             case "mend" -> mend(b, u, row, time);
             case "blight" -> burst(b, u, row, time);
-            default -> {} // the stances (steady, ambush, brace) act through the counters table and auras through auraFactor; every other mechanic waits for the task of its House
+            case "aura" -> aura(b, u, row, time);
+            default -> {} // the stances (steady, ambush, brace) act through the counters table; every other mechanic waits for the task of its House
         }
     }
 
@@ -83,14 +101,220 @@ final class Abilities {
         }
     }
 
-    /** What a landed hit sets off on its attacker's ability (pierce, cleave, slows, slams, pounce). dealt is the amount applied. Combat.resolve skips it for a secondary hit. A no-op until the Houses that use it. */
-    static void onHit(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity target, float dealt, String kind) {}
+    /**
+     * What a landed hit sets off on its attacker's ability: pierce hits the nearest other enemy within the row's radius behind the target for the
+     * row's amount (secondary). dealt is the amount applied. Combat.resolve skips it for a secondary hit. Cleave, the slows, slams and pounce
+     * wait for the tasks of their Houses.
+     */
+    static void onHit(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity target, float dealt, String kind) {
+        var row = row(u.spec);
+        switch (row.mechanic()) {
+            case "pierce" -> secondary(b, u, target, row.radius(), row.amount(), true, kind);
+            default -> {}
+        }
+    }
+
+    /**
+     * A second target for pierce and cleave: the nearest other living enemy (a troop, or a seated enemy commander in the field) within radius
+     * of the primary target. With behind, only one beyond the target on the shot line: inside the cone of half-angle
+     * 180 - morale.flankArcDegrees around the direction from the attacker through the target, the flank arc's "behind" that counters row C16
+     * and morale read. It takes share x the attacker's base hit (its sheet damage times its progression) through Combat.resolve as a
+     * secondary hit, so its own counters, traits, auras and commander factors apply once and no on-hit ability runs again. Returns the
+     * amount applied, 0 when there was no second target or it took nothing.
+     */
+    static float secondary(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity primary, double radius, double share, boolean behind, String kind) {
+        Vec3d at = primary.getPos();
+        double dx = at.x - u.mob.getX(), dz = at.z - u.mob.getZ(), length = Math.hypot(dx, dz), cone = Math.cos(Math.toRadians(180 - CounterMath.flankDegrees()));
+        List<LivingEntity> enemies = new ArrayList<>();
+        for (var v : b.units) if (v.squad.team != u.squad.team && v.mob.isAlive()) enemies.add(v.mob);
+        for (ServerPlayerEntity p : b.server.getPlayerManager().getPlayerList()) {
+            var other = b.squads.get(p.getUuid());
+            if (other != null && other.seated && other.team != u.squad.team && p.isAlive() && !p.isSpectator() && p.getWorld() == b.world) enemies.add(p);
+        }
+        LivingEntity best = null;
+        double nearest = radius * radius;
+        for (var e : enemies) {
+            if (e == primary) continue;
+            double d = e.squaredDistanceTo(primary);
+            if (d > nearest) continue;
+            if (behind) {
+                double vx = e.getX() - at.x, vz = e.getZ() - at.z, v = Math.hypot(vx, vz);
+                if (length < 1e-9 || v < 1e-9 || (vx * dx + vz * dz) / (v * length) <= cone) continue;
+            }
+            best = e;
+            nearest = d;
+        }
+        if (best == null) return 0;
+        float applied = Combat.resolve(b, u, best, (float) (share * u.spec.damage() * b.campaign.damage(u)), kind, true);
+        if (applied > 0) BattleEffects.flash(b, new Vec3d(best.getX(), best.getBodyY(.6), best.getZ()), u.squad.team);
+        return applied;
+    }
 
     /** The reach of a troop's attack in blocks: its sheet range plus its commander's bonus (the Warden's ranged troops). Trait range bonuses (siege under Entrench) will add here. */
     static double range(GravesAndGlory.Battle b, GravesAndGlory.Unit u) { return u.spec.range() + Commander.rangeBonus(u.squad, u); }
 
-    /** The aura share of the factor (Oath Banner and Howl for the attacker's side, Dread for the foe's). 1 until the Houses that have auras. */
-    static double auraFactor(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target) { return 1; }
+    /**
+     * The aura share of the factor: x(1 + amount) for an attacker standing within the radius of a standing banner of its team (the Oath
+     * Banner), the largest one only when banners overlap. Howl (the attacker's side) and Dread (the foe's) join in the tasks of their Houses.
+     */
+    static double auraFactor(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target) {
+        double f = 1;
+        for (var banner : b.banners) if (covers(b, banner, attacker.squad.team, attacker.mob.getPos())) f = Math.max(f, 1 + banner.amount());
+        return f;
+    }
+
+    /**
+     * A planted banner (the Lord Marshal's Oath Banner): the team it serves, where it stands, the battle time it falls, the radius of its aura
+     * and guard, and the damage share it adds (the row's amount). block is the banner block it set, null when no spot was free, and was the
+     * block state that block replaced, put back when it falls. Battle.banners keeps the standing ones.
+     */
+    public record Banner(int team, Vec3d at, long until, double radius, double amount, BlockPos block, BlockState was) {
+        /** A banner with no damage share and no block. */
+        public Banner(int team, Vec3d at, long until, double radius) { this(team, at, until, radius, 0, null, null); }
+    }
+
+    /** Whether the banner stands now and serves this team at this spot (horizontal distance, as Morale measures). */
+    static boolean covers(GravesAndGlory.Battle b, Banner banner, int team, Vec3d at) {
+        return banner.team() == team && b.time < banner.until() && GravesAndGlory.Battle.horizontalDistance(at, banner.at()) <= banner.radius() * banner.radius();
+    }
+
+    /** The Oath Banner's rout guard: a group whose centre stands within the radius of a standing banner of its team cannot rout. */
+    static final Morale.RoutGuard OATH_GUARD = (b, s, group) -> {
+        if (b.banners.isEmpty()) return false;
+        Vec3d centre = centre(b, s, group);
+        if (centre == null) return false;
+        for (var banner : b.banners) if (covers(b, banner, s.team, centre)) return true;
+        return false;
+    };
+
+    /** The centre of a squad's group (its living members, as Morale.centre takes it), or null when none of them lives. The rout guards measure from here. */
+    static Vec3d centre(GravesAndGlory.Battle b, GravesAndGlory.Squad s, String group) {
+        List<GravesAndGlory.Unit> members = new ArrayList<>();
+        for (var u : b.units) if (u.squad == s && u.spec.group().equals(group) && u.mob.isAlive()) members.add(u);
+        return members.isEmpty() ? null : Morale.centre(members);
+    }
+
+    /**
+     * An aura troop's beat. The Oath Banner (trigger hold) plants when the troop's group order, the stored one its commander gave, has turned
+     * to Hold since its last beat and its cooldown is ready; the order it finds on its first beat is only remembered, so a round that starts
+     * on Hold plants nothing. Howl and Dread wait for the tasks of their Houses.
+     */
+    static void aura(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
+        if (!row.trigger().equals("hold")) return;
+        String order = b.storedAssignment(u.squad, u.spec.group()).order, was = u.seenOrder;
+        u.seenOrder = order;
+        if (was != null && !was.equals(order) && order.equals("hold") && time >= u.abilityAt) plant(b, u, row, time);
+    }
+
+    /**
+     * Plants the Oath Banner: a standing banner block in the nearest dye to its team's colour, one step behind the troop against its group's
+     * facing (or where it stands; no block when neither spot is free), that stands for the row's durationTicks with the row's radius and
+     * amount. The rally horn sounds, every routing group of the team inside the radius rallies at once, and the cooldown starts now.
+     */
+    static void plant(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
+        u.abilityAt = time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
+        float yaw = b.storedAssignment(u.squad, u.spec.group()).yaw;
+        BlockPos block = spot(b, u, yaw);
+        BlockState was = null;
+        Vec3d at = u.mob.getPos();
+        if (block != null) {
+            was = b.world.getBlockState(block);
+            b.world.setBlockState(block, BannerBlock.getForColor(dye(b.side(u.squad.team).color())).getDefaultState().with(BannerBlock.ROTATION, RotationPropertyHelper.fromYaw(yaw)));
+            at = new Vec3d(block.getX() + .5, block.getY(), block.getZ() + .5);
+        }
+        var banner = new Banner(u.squad.team, at, time + row.durationTicks(), row.radius(), row.amount(), block, was);
+        b.banners.add(banner);
+        b.world.spawnParticles(ParticleTypes.HAPPY_VILLAGER, at.x, at.y + 1, at.z, 16, .5, .8, .5, 0);
+        BattleEffects.horn(b, u.squad, at, "rally");
+        rally(b, banner);
+    }
+
+    /** One step behind the troop, against the facing yaw, then the spot it stands on: the first that is open (air, or a plant that is not two blocks tall), with air above, firm ground below, within 1.5 blocks of its feet and no other banner. Null when neither is. */
+    static BlockPos spot(GravesAndGlory.Battle b, GravesAndGlory.Unit u, float yaw) {
+        double r = Math.toRadians(yaw);
+        Vec3d feet = u.mob.getPos();
+        for (Vec3d at : List.of(feet.add(Math.sin(r) * 1.5, 0, -Math.cos(r) * 1.5), feet)) {
+            int x = (int) Math.floor(at.x), z = (int) Math.floor(at.z), y = b.world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
+            BlockPos p = new BlockPos(x, y, z);
+            if (Math.abs(y - feet.y) > 1.5 || b.banners.stream().anyMatch(banner -> p.equals(banner.block()))) continue;
+            BlockState state = b.world.getBlockState(p);
+            boolean open = state.isAir() || state.isReplaceable() && state.getFluidState().isEmpty() && !(state.getBlock() instanceof TallPlantBlock);
+            if (open && b.world.getBlockState(p.up()).isAir() && b.world.getBlockState(p.down()).isSideSolidFullSquare(b.world, p.down(), Direction.UP)) return p;
+        }
+        return null;
+    }
+
+    /** The dye nearest an RGB colour (a banner block has only the sixteen). */
+    static DyeColor dye(int rgb) {
+        float r = (rgb >> 16 & 255) / 255f, g = (rgb >> 8 & 255) / 255f, blue = (rgb & 255) / 255f;
+        DyeColor best = DyeColor.WHITE;
+        double nearest = Double.MAX_VALUE;
+        for (var d : DyeColor.values()) {
+            float[] c = d.getColorComponents();
+            double e = (c[0] - r) * (c[0] - r) + (c[1] - g) * (c[1] - g) + (c[2] - blue) * (c[2] - blue);
+            if (e < nearest) { nearest = e; best = d; }
+        }
+        return best;
+    }
+
+    /** Ring particles on a banner's edge (a presentation number). */
+    static final int RING = 32;
+
+    /** Every tick of a running round: a banner falls once its time is up (its block goes back); while it stands it rallies its team's routing groups in its radius and shows its particles, every 10 ticks. */
+    static void bannerTick(GravesAndGlory.Battle b) {
+        if (b.banners.isEmpty()) return;
+        for (var banner : new ArrayList<>(b.banners)) {
+            if (b.time >= banner.until()) { lower(b, banner); b.banners.remove(banner); continue; }
+            if (b.time % 10 == 0) { rally(b, banner); show(b, banner); }
+        }
+    }
+
+    /** Morale.rally for every routing group of the banner's team (seated armies) whose centre stands in its radius, with a burst of rally particles at the group. */
+    static void rally(GravesAndGlory.Battle b, Banner banner) {
+        for (var s : new ArrayList<>(b.squads.values())) {
+            if (s.team != banner.team() || !s.seated) continue;
+            for (String group : Morale.GROUPS) {
+                if (!Morale.routing(s, group)) continue;
+                Vec3d centre = centre(b, s, group);
+                if (centre == null || !covers(b, banner, s.team, centre)) continue;
+                Morale.rally(b, s, group);
+                b.world.spawnParticles(ParticleTypes.HAPPY_VILLAGER, centre.x, centre.y + 1, centre.z, 12, 1, .5, 1, 0);
+            }
+        }
+    }
+
+    /** The banner's look while it stands: a ring of its team's colour on the ground at the edge of its radius, and sparks and colour rising at its head. */
+    static void show(GravesAndGlory.Battle b, Banner banner) {
+        int rgb = b.side(banner.team()).color();
+        ring(b, banner.at(), banner.radius(), rgb);
+        Vec3d at = banner.at();
+        b.world.spawnParticles(ParticleTypes.END_ROD, at.x, at.y + 2.1, at.z, 3, .3, .2, .3, .02);
+        b.world.spawnParticles(dust(rgb), at.x, at.y + 1.2, at.z, 4, .3, .6, .3, 0);
+    }
+
+    /** A ring of RING dust particles in a colour on the ground at radius around a spot: the reach of a banner or of a commander's active. */
+    static void ring(GravesAndGlory.Battle b, Vec3d at, double radius, int rgb) {
+        var dust = dust(rgb);
+        for (int i = 0; i < RING; i++) {
+            double angle = i * 2 * Math.PI / RING, x = at.x + Math.cos(angle) * radius, z = at.z + Math.sin(angle) * radius;
+            b.world.spawnParticles(dust, x, b.world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(x), (int) Math.floor(z)) + .2, z, 1, 0, 0, 0, 0);
+        }
+    }
+
+    /** Dust particles in an RGB colour. */
+    static DustParticleEffect dust(int rgb) { return new DustParticleEffect(new Vector3f((rgb >> 16 & 255) / 255f, (rgb >> 8 & 255) / 255f, (rgb & 255) / 255f), 1.2f); }
+
+    /** Takes a banner's block down: the block it replaced goes back, if the banner block still stands there. */
+    static void lower(GravesAndGlory.Battle b, Banner banner) {
+        if (banner.block() != null && b.world.getBlockState(banner.block()).getBlock() instanceof BannerBlock)
+            b.world.setBlockState(banner.block(), banner.was() == null ? Blocks.AIR.getDefaultState() : banner.was());
+    }
+
+    /** Every banner falls now (startRound, returnLobby, switchMap, and the server stopping). */
+    static void clearBanners(GravesAndGlory.Battle b) {
+        for (var banner : b.banners) lower(b, banner);
+        b.banners.clear();
+    }
 
     /** Whether a shooter or its target stands in a Mist cloud (counters row C17). No clouds exist until the Tidecallers. */
     static boolean inMist(GravesAndGlory.Battle b, LivingEntity shooter, LivingEntity target) { return false; }

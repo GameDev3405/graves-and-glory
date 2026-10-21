@@ -27,9 +27,66 @@ The gate prints `gate <a> vs <b> win=<P>% pass|fail` (exit status 0 pass, 1 fail
 
 ## Current best pure banner
 
-`gilded_normal` (92.5% against `graveborn_normal` in the Task 3 baseline after fix round 1; `graveborn_normal` 7.5%). The first Task 3 baseline (`gilded_normal` 95%) was measured with the husk's +2 armour on the Gilded side and is superseded by it. Update this line whenever a logged gate gives another pure normal banner a higher win rate.
+`gilded_normal` (100% against `graveborn_normal` in the Task 6 gate, report-only; 92.5% in the Task 3 baseline after fix round 1, where `graveborn_normal` had 7.5%). The first Task 3 baseline (`gilded_normal` 95%) was measured with the husk's +2 armour on the Gilded side and is superseded by it. Update this line whenever a logged gate gives another pure normal banner a higher win rate.
 
 ## Results
+
+### Phase 2 Task 6 gate: `gilded_normal` vs `graveborn_normal` (2026-10-19, report-only)
+
+Code: the Task 6 tree on `786bb2b` (the Gilded batch commit). What reaches this fight:
+
+- The Order Longbow's pierce: each arrow also hits the nearest enemy within 2 blocks behind its target for half the shot.
+- Gilded Bulwark. `gilded_normal`'s 20 Gilded slots reach tier III:
+  - its 10 shield bearers take x0.55 from arrows, bolts and blight;
+  - a group within 12 blocks of a Gilded troop of another group of its army does not rout.
+- The Stand Fast and Oath Banner rout guards are registered too, but they act only while their active or banner stands.
+
+What does not reach it:
+
+- The Oath Banner: `gilded_normal` has no Lord Marshal.
+- The Champion's and the Marshal's actives: bots never use actives.
+
+Report-only, by the controller's ruling in progress.md ("Task 6 gates after Tasks 4 and 7 land"): nothing was tuned.
+
+Process 1 (port 25601, `gilded_normal` on team 0, `graveborn_normal` on team 1), server up 07:59:41 to 08:54:56. Every round ran its full 300 s.
+
+```
+[botsim] matches=10 dawn(normal)=10 dusk(normal)=0 draws=0 dawnWin=100% meanGoldEarnedAtEnd dawn=1755 dusk=1238 banner0=gilded_normal banner1=graveborn_normal
+```
+
+Process 2 (port 25602, `graveborn_normal` on team 0, `gilded_normal` on team 1), server up 08:00:08 to 08:56:14.
+
+```
+[botsim] matches=10 dawn(normal)=0 dusk(normal)=10 draws=0 dawnWin=0% meanGoldEarnedAtEnd dawn=1240 dusk=1763 banner0=graveborn_normal banner1=gilded_normal
+```
+
+Gate (`python tools/balance_gate.py <root1>/botsim/results.csv <root2>/botsim/results.csv gilded_normal --detail`; the roots are `work/p2/task6-sim1-075914` and `work/p2/task6-sim2-075935`):
+
+```
+work/p2/task6-sim1-075914/botsim/results.csv: gilded_normal on dawn: won=10 lost=0 drawn=0 aborted=0
+work/p2/task6-sim2-075935/botsim/results.csv: gilded_normal on dusk: won=10 lost=0 drawn=0 aborted=0
+  map 0 (dawn): won=2 lost=0 drawn=0 aborted=0
+  map 1 (dawn): won=2 lost=0 drawn=0 aborted=0
+  map 2 (dawn): won=2 lost=0 drawn=0 aborted=0
+  map 3 (dawn): won=2 lost=0 drawn=0 aborted=0
+  map 4 (dawn): won=2 lost=0 drawn=0 aborted=0
+  map 0 (dusk): won=2 lost=0 drawn=0 aborted=0
+  map 1 (dusk): won=2 lost=0 drawn=0 aborted=0
+  map 2 (dusk): won=2 lost=0 drawn=0 aborted=0
+  map 3 (dusk): won=2 lost=0 drawn=0 aborted=0
+  map 4 (dusk): won=2 lost=0 drawn=0 aborted=0
+rounds=20 decided=20 won=20 lost=0 drawn=0
+gate gilded_normal vs graveborn_normal win=100% fail
+```
+
+The gate fails at 100%, outside the 40 to 60 band. That is 7.5 points above the Task 3 baseline after fix round 1 (92.5%): that baseline's one loss and one draw are wins here, one and a half rounds of 20. It stays report-only until the Graveborn batch (Task 7) lands; Graveborn still fights without its own mechanics.
+
+What the numbers say (from the two runs' `results.csv` and `gold.csv`; the last gold sample of a round is at 270 s):
+
+- `gilded_normal` won 20 of 20, 10 from each seat. Every close round was on map 4: 100 to 95 and 108 to 83 from Dawn's seat, 100 to 93 and 101 to 100 from Dusk's. On maps 0 to 3 the margin was 58 to 103 points.
+- Mean final score 114.0 to 42.6 (Task 3 after fix round 1: 100.8 to 47.8). Mean gold earned 1549 to 1071 (1470 to 1118).
+- Troops still alive at the 270 s sample, out of 57: Gilded 48.5 (from 47.1), Graveborn 50.0 (from 49.9). Pierce and Bulwark barely moved who survives, so the gap is still about holding points, not kills.
+- Graveborn's fearless, cleave, frostshot, Rise Again and Dread arrive with Task 7. Its live damage here is the Bone Archers' and Barrow Stalkers' arrows and the Gravecaller's blight, which is exactly what Bulwark cuts on the ten Gilded shield bearers.
 
 ### Phase 2 Task 3 baseline after fix round 1: `gilded_normal` vs `graveborn_normal` (2026-10-19, no gate)
 
@@ -118,4 +175,4 @@ What the numbers say (from the two runs' `results.csv` and `gold.csv`; the last 
 
 ## Tuning log
 
-None yet: Phase 2 Task 3 changes no sheet numbers.
+None yet: Phase 2 Tasks 3 and 6 change no sheet numbers (the Task 6 gate is report-only by ruling).

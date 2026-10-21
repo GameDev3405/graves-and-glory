@@ -24,7 +24,11 @@ public final class BattleEffects {
     public static void horn(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Vec3d at,String kind){
         var heard=lastHorn.computeIfAbsent(s,k->new java.util.HashMap<>());Long last=heard.get(kind);
         if(last!=null&&b.time-last<Spec.MORALE[0].hornCooldownSeconds()*20L)return;
-        heard.put(kind,b.time);
+        hornNow(b,s,at,kind);
+    }
+    /** The same horn past its cooldown (the Marshal's Rally Horn always sounds); it restarts the cooldown, so the rallies it calls add no second horn. */
+    public static void hornNow(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Vec3d at,String kind){
+        lastHorn.computeIfAbsent(s,k->new java.util.HashMap<>()).put(kind,b.time);
         var sound=net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","horn_"+kind));if(sound==null)return;
         b.world.playSound(null,at.x,at.y,at.z,sound,SoundCategory.HOSTILE,(float)Spec.MORALE[0].hornVolume(),s.team==1?.85f:1f);
         horns.merge(kind,1,Integer::sum);

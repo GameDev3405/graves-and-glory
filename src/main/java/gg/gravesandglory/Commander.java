@@ -3,7 +3,11 @@ package gg.gravesandglory;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.math.Vec3d;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -12,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * passive. Every number comes from the class row. The code knows only the effect kinds, named by the sheet's passive column (champion,
  * reaver, warden, marshal, warlock, quartermaster) and active column (stand_fast, bloodrush, mark_prey, rally_horn, grave_bloom,
  * forward_supply); tools/preflight.py keeps both columns to those closed lists. What an active does is registered in ACTIVES by the
- * House tasks. An active nobody registered refuses with NOT_READY and starts no cooldown.
+ * House tasks (register): Stand Fast and Rally Horn so far. An active nobody registered refuses with NOT_READY and starts no cooldown.
  */
 public final class Commander {
     private Commander() {}
@@ -38,6 +42,82 @@ public final class Commander {
 
     /** Fixed ids of the two attribute modifiers applyPlayer manages, so a new one always replaces the old. */
     static final UUID HEALTH = UUID.fromString("e01516bb-07f8-49b1-86c4-873d30106609"), ATTACK = UUID.fromString("8352fccf-a081-4a35-a122-2f5e5de6e1de");
+
+    /** The fixed id of the Rally Horn's speed modifier on its army's troops. */
+    static final UUID RALLY = UUID.fromString("8382ceb7-bd85-41fd-b662-34b5f1d36d95");
+
+    /** Puts this build's actives into ACTIVES (mod init): the Champion's Stand Fast and the Marshal's Rally Horn. */
+    static void register() {
+        ACTIVES.put("stand_fast", new StandFast());
+        ACTIVES.put("rally_horn", new RallyHorn());
+    }
+
+    /** Stand Fast's rout guard: while the army's stand_fast runs, a group whose centre stands within the row's radius of its commander cannot rout. */
+    public static final Morale.RoutGuard STAND_FAST_GUARD = (b, s, group) -> {
+        if (!running(b, s, "stand_fast")) return false;
+        var p = player(b, s);
+        if (p == null) return false;
+        Vec3d centre = Abilities.centre(b, s, group);
+        var c = row(s);
+        return centre != null && GravesAndGlory.Battle.horizontalDistance(p.getPos(), centre) <= c.radius() * c.radius();
+    };
+
+    /**
+     * The Champion's Stand Fast: for durationTicks his troops within radius cannot rout (STAND_FAST_GUARD) and take 1 - value1 (takenFactor),
+     * and he has Resistance I. A ring in his side's colour marks the radius around him while it runs. It always starts.
+     */
+    static final class StandFast implements Active {
+        @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, Spec.ClassesRow c) {
+            p.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, c.durationTicks(), 0));
+            Abilities.ring(b, p.getPos(), c.radius(), b.side(s.team).color());
+            return true;
+        }
+        @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.ClassesRow c) {
+            var p = player(b, s);
+            if (p != null && b.time % 10 == 0) Abilities.ring(b, p.getPos(), c.radius(), b.side(s.team).color());
+        }
+        /** The Resistance goes with it (it would run out now anyway at expiry; at round start, the lobby or a leave it goes early). */
+        @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
+            var p = b.server.getPlayerManager().getPlayer(s.owner);
+            if (p != null) p.removeStatusEffect(StatusEffects.RESISTANCE);
+        }
+    }
+
+    /**
+     * The Marshal's Rally Horn: the rally horn sounds at once (past its cooldown); every routing group of his army rallies (Morale.rally);
+     * every group takes a Move order to where he stands; every group's regroup immunity (steadyUntil) runs value2 ticks longer, counted from
+     * now once it has run out; and his troops move x(1 + value1) faster for durationTicks, troops that join meanwhile too. It always starts.
+     */
+    static final class RallyHorn implements Active {
+        @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, Spec.ClassesRow c) {
+            Vec3d to = p.getPos();
+            BattleEffects.hornNow(b, s, to, "rally");
+            for (String group : Morale.GROUPS) {
+                if (Morale.routing(s, group)) Morale.rally(b, s, group);
+                s.steadyUntil.put(group, Math.max(s.steadyUntil.getOrDefault(group, 0L), b.time) + Math.round(c.value2()));
+                var move = new GravesAndGlory.Assignment("move", b.storedAssignment(s, group).formation, to, p.getYaw());
+                move.issued = b.time;
+                s.assignments.put(group, move);
+            }
+            for (var u : b.units) if (u.squad == s) { u.lockedTarget = null; u.spellCenter = null; u.mob.setTarget(null); u.mob.getNavigation().stop(); u.nextPath = 0; u.stuckTicks = 0; }
+            hasten(b, s, c);
+            b.world.spawnParticles(ParticleTypes.HAPPY_VILLAGER, to.x, to.y + 1, to.z, 20, 1, .6, 1, 0);
+            return true;
+        }
+        @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.ClassesRow c) { hasten(b, s, c); }
+        @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
+            for (var u : b.units) if (u.squad == s) { var speed = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED); if (speed != null) speed.removeModifier(RALLY); }
+        }
+        /** The speed modifier on every living troop of the army that lacks it. */
+        static void hasten(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.ClassesRow c) {
+            for (var u : b.units) {
+                if (u.squad != s || !u.mob.isAlive()) continue;
+                var speed = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+                if (speed != null && speed.getModifier(RALLY) == null)
+                    speed.addTemporaryModifier(new EntityAttributeModifier(RALLY, "Graves and Glory rally horn", c.value1(), EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+            }
+        }
+    }
 
     /** The class row a squad fights under: its commander id, or the sheet's first class for an unknown id. */
     public static Spec.ClassesRow row(GravesAndGlory.Squad s) { return row(s == null ? "" : s.commander); }
