@@ -25,3 +25,10 @@ PLAN
 4. Compare cadence-only vs baseline and candidate; retain every failure/run.
 5. Capture real client battle scenes and tactical views, verify orders match visible behavior, and check regressions/performance/release exclusion.
 6. Export source/patch/results/visuals/log; verify all original hashes again. No changes to current work or player saves.
+
+IMPLEMENTATION V1
+- BotPlanner pure bounded global assignment (at most4 armies,5 points), route estimate via both bridge mouths, consistent mirrored tie-breaking, owned-point bias and target stickiness. Policy numbers live in new botPlanning sheet, Hard only.
+- Campaign computes one friendly team plan per decision tick; humans/nonparticipating allies only count as guards where standing. Retreating armies excluded. No human orders overwritten.
+- All tiers now count local team sightings for charges, removing Easy/Normal global count; yaw faces target/nearby seen threat instead of fixed east/west.
+- Baseline tools frozen at30cc1c9 in separate gg-botsbase-20261020. Baseline production equals0f31071; headless pacing only changes wall-clock sleep when botSim explicitly set, clamp5..50ms. Visual clients always remain20TPS.
+- Started seat-swapped Hard/Normal baseline, same gilded_normal19-unit banner on both sides,3 armies per side,5 maps,300-second simulation rounds.

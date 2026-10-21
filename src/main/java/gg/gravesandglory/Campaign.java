@@ -393,8 +393,34 @@ public final class Campaign {
     static final double MELEE_THREAT_RANGE=8;
     /** A remembered enemy counts as near a point, or near an army, within this many times the point's radius or the tier's charge distance. */
     static final double NEAR_RADIUS_FACTOR=2;
+    private long botPlanAt=-1;
+    private final Map<Integer,Map<UUID,Integer>> botPlans=new HashMap<>();
+    /** One shared assignment per team/decision tick. Friendly humans and other tiers cover only where they actually stand. */
+    int plannedPoint(GravesAndGlory.Squad me,Spec.BotCommandRow tier){
+        var policy=Arrays.stream(Spec.BOTPLANNING).filter(p->p.tier().equals(tier.id())).findFirst().orElse(null);if(policy==null)return -1;
+        if(botPlanAt!=b.time){botPlans.clear();botPlanAt=b.time;}
+        if(!botPlans.containsKey(me.team)){
+            List<GravesAndGlory.Squad> armies=new ArrayList<>();List<Vec3d> centres=new ArrayList<>();boolean[] covered=new boolean[b.points.size()];
+            for(var army:b.squads.values())if(army.team==me.team&&army.seated){
+                var units=b.units.stream().filter(u->u.squad==army&&u.mob.isAlive()).toList();if(units.isEmpty())continue;Vec3d c=Morale.centre(units);
+                if(army.bot&&army.tier.equals(tier.id())){
+                    int full=RosterMath.units(army.banner,RosterMath.Catalog.fromSpec());
+                    if(units.size()<=full*tier.retreatShare()||botRetreating.contains(army.owner)&&units.size()<full*tier.rallyShare())continue;
+                    armies.add(army);centres.add(c);
+                }else for(int j=0;j<b.points.size();j++){var p=b.points.get(j);if(Math.hypot(c.x-p.spec.x(),c.z-p.spec.z())<=p.spec.radius())covered[j]=true;}
+            }
+            int[] owners=new int[b.points.size()],previous=new int[armies.size()];Arrays.fill(previous,-1);double[][] travel=new double[armies.size()][b.points.size()];
+            double[][] bridges=Arrays.stream(Spec.STRUCTURES).filter(v->v.kind().equals("bridge")).map(v->new double[]{v.x(),v.z(),v.width()}).toArray(double[][]::new);
+            for(int j=0;j<b.points.size();j++){var p=b.points.get(j);owners[j]=p.owner;
+                for(int i=0;i<armies.size();i++){var c=centres.get(i);travel[i][j]=BotPlanner.travel(c.x,c.z,p.spec.x(),p.spec.z(),Arena.riverX(c.z),Arena.riverX(p.spec.z()),bridges,Spec.NAVIGATION[0].bridgeEntryInset());
+                    if(Math.hypot(armies.get(i).target.x-p.spec.x(),armies.get(i).target.z-p.spec.z())<1)previous[i]=j;}}
+            int[] targets=BotPlanner.assign(travel,owners,covered,previous,me.team,new BotPlanner.Policy(policy.duplicatePenalty(),policy.holdBias(),policy.stickiness()));
+            Map<UUID,Integer> plan=new HashMap<>();for(int i=0;i<targets.length;i++)plan.put(armies.get(i).owner,targets[i]);botPlans.put(me.team,plan);
+        }
+        return botPlans.get(me.team).getOrDefault(me.owner,-1);
+    }
     /** One command decision for a bot army, run at its tier's cadence: retreat or rally, pick the point to take, set the order, sound the charge horn.
-     *  Easy and Normal read the whole battlefield; Hard reads only what its team has seen (b.sightings), and holds the points it owns before it flanks (garrisonPoint). */
+     *  All tiers use team sightings for threats. Configured tiers share route-aware objective assignments; other tiers keep their lane picker. */
     void botDecide(GravesAndGlory.Squad s,Spec.BotCommandRow tier){
         var mine=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).toList();
         long living=mine.size();if(living==0)return;
@@ -406,8 +432,10 @@ public final class Campaign {
         int full=RosterMath.units(s.banner,RosterMath.Catalog.fromSpec()); // the units its banner lists, an Epic or a Legendary once
         if(living<=full*tier.retreatShare())botRetreating.add(s.owner);
         else if(living>=full*tier.rallyShare())botRetreating.remove(s.owner);
+        int planned=plannedPoint(s,tier);
         int hold=tier.flankLeastDefended()?garrisonPoint(s,center,tier):-1;
-        if(hold>=0)choice=b.points.get(hold);
+        if(planned>=0)choice=b.points.get(planned);
+        else if(hold>=0)choice=b.points.get(hold);
         else if(tier.flankLeastDefended()){
             // Every point of the current map counts (Kingsfield has five); a point is defended by the enemies this team last saw near it.
             double[] px=new double[count],pz=new double[count];int[] owner=new int[count],defenders=new int[count];
@@ -419,22 +447,21 @@ public final class Campaign {
             choice=b.points.get(lane);double best=Double.MAX_VALUE;
             for(int i=0;i<count;i++){var p=b.points.get(i);double value=Math.hypot(center.x-p.spec.x(),center.z-p.spec.z())+(p.owner==s.team?140:0)+(i==lane?0:90)-(p.contested?55:0);if(value<best){best=value;choice=p;}}
         }
-        long enemies=foes.size();
+        // All tiers use the same team sightings, rather than giving Easy/Normal a global enemy count.
         boolean couldCharge=b.startsCharge(s,"all"),retreating=botRetreating.contains(s.owner);
         s.assignments.clear();
         if(retreating){s.order="retreat";s.formation="loose";s.target=GravesAndGlory.Battle.base(s.team);}
         else{
             s.order=choice.owner==s.team?"hold":"attack";s.formation=living<8?"loose":"block";s.target=new Vec3d(choice.spec.x(),choice.spec.elevation()+1,choice.spec.z());
             if(s.order.equals("attack")){
-                if(tier.chargeDistance()>0){
-                    // Timed charge: judged on the enemies this team has seen, counted near the army, and only once the nearest is in range.
-                    double nearest=Double.MAX_VALUE;long near=0;
-                    for(var sight:seen.values()){double d=Math.hypot(sight.x()-center.x,sight.z()-center.z);nearest=Math.min(nearest,d);if(d<=NEAR_RADIUS_FACTOR*tier.chargeDistance())near++;}
-                    if(near>0&&BattleMath.timedCharge(nearest,living,near,tier.chargeRatio(),tier.chargeDistance()))s.order="charge";
-                }else if(enemies>0&&BattleMath.timedCharge(0,living,enemies,tier.chargeRatio(),0))s.order="charge";
+                double nearest=Double.MAX_VALUE;long near=0;double localRange=tier.chargeDistance()>0?NEAR_RADIUS_FACTOR*tier.chargeDistance():tier.archerThreatRange();
+                for(var sight:seen.values()){double d=Math.hypot(sight.x()-center.x,sight.z()-center.z);nearest=Math.min(nearest,d);if(d<=localRange)near++;}
+                if(near>0&&BattleMath.timedCharge(nearest,living,near,tier.chargeRatio(),tier.chargeDistance()))s.order="charge";
             }
         }
-        s.yaw=s.team==0?-90:90;
+        Vec3d face=s.target;double nearestFace=tier.archerThreatRange();
+        for(var sight:seen.values()){double d=Math.hypot(sight.x()-center.x,sight.z()-center.z);if(d<nearestFace){nearestFace=d;face=new Vec3d(sight.x(),center.y,sight.z());}}
+        s.yaw=BotPlanner.yaw(face.x-center.x,face.z-center.z,s.yaw);
         if(!retreating&&tier.shieldwallVsArchers()){
             // Brace the shield troops when remembered archers are in range and nothing has closed to melee. Only troops with a shield can brace.
             boolean shields=mine.stream().anyMatch(u->u.spec.group().equals("infantry")&&u.tags.contains("shield"));

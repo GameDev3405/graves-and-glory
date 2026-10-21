@@ -3965,5 +3965,14 @@
       "difficulty": "hard",
       "slots": "wm_oldhorn,^,^,^,wm_hound,wm_hound,wm_hunter,wm_hunter,wm_stalker,wm_tusk,mage,^,knight,knight,knight,knight,archer,archer,sentinel,longbow"
     }
+  ],
+  "botPlanning": [
+    {
+      "id": "hard_objectives",
+      "tier": "hard",
+      "duplicatePenalty": 180.0,
+      "holdBias": 45.0,
+      "stickiness": 24.0
+    }
   ]
 }
