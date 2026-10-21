@@ -64,6 +64,15 @@ Ledgers: `.superpowers/sdd/2026-10-17-phase-2-houses/progress.md`, `.../2026-10-
 
 **Growth / 0.6.0** (`docs/superpowers/specs/2026-10-19-growth-design.md`, `docs/superpowers/plans/2026-10-19-0.6.0-the-field.md`): added by another session on 2026-10-19 after this controller's last work. Nothing in it starts before the 0.5.0 merge, except the eight merge-safe hooks the plan lists. Its open calls are at the end of the questions file.
 
+## Last state before this session closed (2026-10-21, after the cap reset)
+
+Kort stopped all work to start a new session. Every agent was stopped cleanly; no game client is running. What changed in the final hour:
+- `preview-0.5` now compiles: commit f45392c "finish merge compile fixes (BattleHud, GravesAndGloryClient, RecruitView, CommandMode)", worktree clean. The agent was about to run the self-test; steps 2 to 4 below are still to do.
+- `.superpowers/sdd/2026-10-17-phase-2-houses/task-5-review-2.md` may be a partial file: the Opus reviewer was stopped mid-write. Check whether it carries both verdicts; if not, re-dispatch with the same brief.
+- The Phase 2 Task 6 review was stopped before it wrote anything: re-dispatch (package `review-786bb2b..6264f6a.diff`).
+- Phase 3 fix round 3 and UI Task 7 were restarted from their partial diffs and stopped within minutes; their worktrees hold the same partial work as before (p3: a small Phase3Checks edit; ui: 47 files). Re-dispatch both as fresh implementers reading the dirty diff first.
+- Phase 2 Task 5b (clips) was not restarted; p2b holds its partial work (18 files, six new *Clips/TroopAnimator classes). Brief at `task-5b-brief.md`.
+
 ## The preview build Kort is waiting for
 
 Kort asked on 2026-10-19 for a playable build of everything committed so far, to take notes on while the cap was out. A Sonnet agent merged `phase-2-houses` (786bb2b), `phase-2-models` (2bf40df), `phase-3-built-world` and `ui-plan` (ebd3d98) into `preview-0.5` (worktree `bannerbound-preview`), deleted ModelAngleCompatibilityMixin, set mod_version `0.5.0-preview1`, and was fixing merge compile errors in BattleHud, GravesAndGloryClient and RecruitView when the cap hit. Finish it first:
