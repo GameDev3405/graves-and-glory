@@ -1,0 +1,18 @@
+Graves and Glory 0.5.0 preview 1 — throwaway preview build
+October 21, 2026
+
+A playable build of everything committed so far, for Kort to play and take
+notes on. It is not the real 0.5.0 and nothing in it is published. Read
+docs/PREVIEW-0.5.md for the install steps and the rough edges.
+
+New: Gilded Order troops with their own models and stage art, six commander
+classes (Champion, Reaver, Warden, Marshal, Warlock, Quartermaster) with the
+H ability key, working Stand Fast and Rally Horn, five built maps, and the
+War Table camp home and recruit page.
+
+Known: four class abilities are not wired yet, the recruit page's Choose
+button is refused, only Gilded has its own art, balance is untouched, and
+windows under 960 by 540 crop the new pages.
+
+Checked in the development client only: the battle self-test passes 11 of 11.
+This build has not been installed into a launcher.
