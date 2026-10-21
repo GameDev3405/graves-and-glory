@@ -1,0 +1,10 @@
+{
+"part":"surcoat_skirt",
+"note":"The skirt of a white surcoat, hip-length. Block 28x9.",
+"bone":"body",
+"team":false,
+"tag":"",
+"boxes":[
+{"origin":[-4.5,0,-2.5],"size":[9,4,5],"uv":[0,0],"note":"hip-length skirt, 0.5 px proud of the legs"}
+]
+}

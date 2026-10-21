@@ -55,12 +55,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         catch (java.io.IOException migration) { error="Could not migrate old collection/settings. Your originals are unchanged. Check storage and permissions."; }
         Presentation.load();
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.IMPACT,(client,handler,buf,responder)->{float strength=buf.readFloat();client.execute(()->{Presentation.receivedImpacts++;Presentation.impact(strength);});});
-        net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry.register(net.minecraft.entity.EntityType.HUSK,context->new net.minecraft.client.render.entity.HuskEntityRenderer(context){
-            @Override public Identifier getTexture(net.minecraft.entity.mob.ZombieEntity entity){
-                if(entity.getCustomName()!=null){var t=ArmyMobs.named(entity.getCustomName().getString());if(t!=null&&t.house().equals("gilded"))return new Identifier(t.texture());} // a troop's name or its evolved stage name
-                return super.getTexture(entity);
-            }
-        });
+        // The troops' own models (Phase 2 Task 5): one renderer per sheet entity type, the models reloaded with the resources.
+        TroopRenderers.register();
+        net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.CLIENT_RESOURCES).registerReloadListener(new TroopModelLoader());
         menu=key("menu",GLFW.GLFW_KEY_R);attack=key("attack",GLFW.GLFW_KEY_G);follow=key("follow",GLFW.GLFW_KEY_V);cycle=key("formation",GLFW.GLFW_KEY_B);mapKey=key("map",GLFW.GLFW_KEY_M);
         rotateLeft=key("rotate_left",GLFW.GLFW_KEY_LEFT_BRACKET);rotateRight=key("rotate_right",GLFW.GLFW_KEY_RIGHT_BRACKET);
         ability=key("ability",GLFW.GLFW_KEY_H); // the commander ability (Commander.activate); G is the attack order

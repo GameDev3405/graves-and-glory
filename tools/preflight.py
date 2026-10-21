@@ -56,6 +56,44 @@ for r in data['troops']:
         if path not in VANILLA_TEXTURES: errors.append(f'troops/{r["id"]}: texture {r["texture"]} is not in VANILLA_TEXTURES (tools/preflight.py), the vanilla paths checked against the {mcVersion} client jar')
         elif vanilla is not None and 'assets/minecraft/'+path not in vanilla: errors.append(f'troops/{r["id"]}: texture {r["texture"]} is not in the Minecraft {mcVersion} client jar ({clientJar})')
     else: errors.append(f'troops/{r["id"]}: texture {r["texture"]} must be a gravesandglory: or a minecraft: path')
+# Troop looks (Phase 2 Task 5, unit identity rules 2 and 7): the painted shield is the one vanilla item a troop draws,
+# its patterns from troops.shield on the side's factions.dye; each art/troops/<id>.json is a troop's own model source, and
+# tools/build_skins.py lists every model it built in models/troop/index.json.
+DYES=('white','orange','magenta','light_blue','yellow','lime','pink','gray','light_gray','cyan','purple','blue','brown','green','red','black')
+BANNER_PATTERNS=('b','bl','br','tl','tr','bs','ts','ls','rs','cs','ms','drs','dls','ss','cr','sc','bt','tt','bts','tts','ld','rd','lud','rud',
+    'mc','mr','vh','hh','vhr','hhb','bo','cbo','gra','gru','bri','glb','cre','sku','flo','moj','pig')
+for f in sides:
+    if f['dye'] not in DYES: errors.append(f'factions/{f["id"]}: dye {f["dye"]} is not a vanilla dye ({", ".join(DYES)})')
+# A shield's field is its side's factions.dye in battle and GravesAndGlory.Battle.PORTRAIT_FIELD on a portrait (read from the
+# source here, so the two cannot drift). A layer in the colour of a field vanishes on that field, and two sides with one
+# dye fly the same shields, so every field dye is a side's own and no layer takes one.
+battleSource=root/'src/main/java/gg/gravesandglory/GravesAndGlory.java'
+portraitField=re.search(r'PORTRAIT_FIELD\s*=\s*"([a-z_]+)"',battleSource.read_text(encoding='utf-8')) if battleSource.is_file() else None
+portraitField=portraitField.group(1) if portraitField else None
+fields={}
+for f in sides:
+    if f['dye'] in fields: errors.append(f'factions/{f["id"]}: dye {f["dye"]} is also {fields[f["dye"]]}; every side needs its own shield field')
+    fields.setdefault(f['dye'],f'factions/{f["id"]} dye')
+if portraitField is None: errors.append('GravesAndGlory.java: no PORTRAIT_FIELD="<dye>", the shield field of a portrait')
+elif portraitField not in DYES: errors.append(f'GravesAndGlory.java: PORTRAIT_FIELD {portraitField} is not a vanilla dye')
+elif portraitField in fields: errors.append(f'GravesAndGlory.java: PORTRAIT_FIELD {portraitField} is {fields[portraitField]}, so a portrait would fly that side')
+else: fields[portraitField]='the portrait field (GravesAndGlory.Battle.PORTRAIT_FIELD)'
+for r in data['troops']:
+    shielded='shield' in r['tags'].split(',')
+    if (r['shield']=='none')==shielded: errors.append(f'troops/{r["id"]}: shield must be none exactly when tags lacks shield, not {r["shield"]}')
+    elif r['shield']!='none':
+        for layer in r['shield'].split(','):
+            dye,_,code=layer.partition(':')
+            if dye not in DYES or code not in BANNER_PATTERNS: errors.append(f'troops/{r["id"]}: shield layer {layer} must be <vanilla dye>:<banner pattern code>')
+            elif dye in fields: errors.append(f'troops/{r["id"]}: shield layer {layer} is the colour of {fields[dye]}, and vanishes on that field')
+artTroops=sorted(p.stem for p in (root/'art/troops').glob('*.json')) if (root/'art/troops').is_dir() else []
+for t in artTroops:
+    if t not in troops: errors.append(f'art/troops/{t}.json: {t} is not a troops id')
+troopIndex=root/'src/main/resources/assets/gravesandglory/models/troop/index.json'
+if artTroops or troopIndex.is_file():
+    try: listedTroops=json.loads(troopIndex.read_text(encoding='utf-8')).get('troops')
+    except (OSError,ValueError): listedTroops=None
+    if listedTroops!=artTroops: errors.append(f'models/troop/index.json: troops {listedTroops} must be exactly the art/troops ids {artTroops}; run python tools/build_skins.py')
 for r in data['ui']:
     if r['id']=='command':
         formationIds={f['id'] for f in data['formations']}
@@ -85,6 +123,22 @@ for t in data['troops']:
         if not t[slot].startswith('minecraft:'): errors.append(f'{name}: {slot} {t[slot]} must be a minecraft: item id (minecraft:air for none)')
     tags=t['tags'].split(',')
     if 'none' in tags and len(tags)>1: errors.append(f'{name}: tags is none or a comma list of tags, never both')
+# A troop is drawn from its custom name (TroopModels.resolve through ArmyMobs.named, where a later troop row wins and a troop
+# name beats a stage name), and " (Veteran)" on it marks the Veteran skin: so no name may stand for two troops, two stages of
+# one line, or a stage and its own troop, and none may end in " (Veteran)".
+VETERAN=' (Veteran)'
+nameOwners={}
+for t in data['troops']: nameOwners.setdefault(t['name'],{}).setdefault(t['id'],[]).append(f'troops/{t["id"]}')
+for e in data['evolutions']:
+    for t in data['troops']:
+        if t['evolveLine']==e['troop']: nameOwners.setdefault(e['name'],{}).setdefault(t['id'],[]).append(f'evolutions/{e["id"]}')
+for nm,owners in nameOwners.items():
+    where=', '.join(w for ws in owners.values() for w in ws)
+    if nm.endswith(VETERAN): errors.append(f'{where}: the name "{nm}" ends in "{VETERAN.strip()}", which marks a Veteran skin')
+    if len(owners)>1: errors.append(f'{where}: the name "{nm}" stands for {len(owners)} troops ({", ".join(owners)}); a troop is drawn from its name, so one would draw as the other')
+    else:
+        for troop,ws in owners.items():
+            if len(ws)>1: errors.append(f'{where}: the name "{nm}" is two stages of {troop}; its stage could not be told from it')
 for h in houses.values():
     if h['glyph']!=f'gravesandglory:textures/gui/house/{h["id"]}.png': errors.append(f'houses/{h["id"]}: glyph must be gravesandglory:textures/gui/house/{h["id"]}.png')
     elif not (root/'src/main/resources/assets/gravesandglory'/h['glyph'].partition(':')[2]).is_file(): errors.append(f'houses/{h["id"]}: missing glyph texture {h["glyph"]}')

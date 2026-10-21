@@ -1,0 +1,13 @@
+{
+"part":"linen_hood",
+"note":"The Order Archer's linen hood with its point (the mark): the face opening cut out of the front so the face sits in its shadow, the point stepping up and back from the crown. Block 56x18.",
+"bone":"head",
+"team":false,
+"tag":"helm",
+"boxes":[
+{"origin":[-4.5,-9,-4.5],"size":[9,9,9],"uv":[0,0],"note":"the hood, 0.5 px proud; the face opening is cut out of its front"},
+{"origin":[-2.5,-11,-0.5],"size":[5,2,5],"uv":[36,0],"note":"the point rising from the crown"},
+{"origin":[-1.5,-13,1.5],"size":[3,2,3],"uv":[36,7],"note":"the point narrowing back"},
+{"origin":[-0.5,-15,3.5],"size":[1,2,1],"uv":[48,7],"note":"its tip"}
+]
+}

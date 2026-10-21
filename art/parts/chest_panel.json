@@ -1,0 +1,11 @@
+{
+"part":"chest_panel",
+"note":"The 4 px team pale down a white surcoat, front and back, chest to hem, belted in gilt (the company look: work/ui-concepts/storybook/NOTES.md, the squires' surcoat panel).",
+"bone":"body",
+"team":true,
+"tag":"",
+"boxes":[
+{"origin":[-2,-10,-2.5],"size":[4,10,5],"uv":[18,0],"note":"the 4 px panel from the chest to the hips, 0.5 px proud front and back; the gilt belt crosses it on its row 6"},
+{"origin":[-2,0,-3],"size":[4,4,6],"uv":[18,15],"note":"its run down the surcoat skirt, 0.5 px proud of it"}
+]
+}
