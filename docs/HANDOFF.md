@@ -26,6 +26,12 @@ Kort connected GitHub on 2026-10-20: `origin` is `https://github.com/GameDev3405
 - Storybook and media are real in-game footage staged through the harness (`StoryStills`), shaders on; nothing painted. Current stills are pipeline placeholders until the named cast (Phase 4 Task 19) and the Phase 3 maps exist.
 - No brass fittings on table wood in the UI (no butterfly keys, mending plates, straps); chrome rails, plaques, frames, seals and the candle holder are fine.
 
+## graphify (code map, added 2026-10-21)
+
+- Kort asked for graphify (Graphify-Labs/graphify, Apache-2.0). CLI `graphify` 0.9.93 installed with `uv tool install graphifyy==0.9.93` (`~/.local/bin`). The project skill and two PreToolUse hooks (`graphify hook-guard`) live in the git-ignored `.claude/` of this checkout; `CLAUDE.md` holds its rules; `.graphifyignore` leaves out `design-archive/`.
+- Code-only graphs, built locally with no LLM (`GRAPHIFY_BACKEND=none graphify extract . --code-only`, then `graphify cluster-only . --no-label`), exist in `bannerbound`, `-p2`, `-p2b`, `-p3` and `-ui` under `graphify-out/` (ignored through `.git/info/exclude`). The p2b and ui graphs include their dirty partial work.
+- Use: `graphify query "<q>" --graph <worktree>/graphify-out/graph.json`, `graphify path A B`, `graphify explain X`. Refresh with `graphify update .` after code changes. Keep `GRAPHIFY_BACKEND=none` for builds: the docs pass and community naming would spend Claude tokens, and Kort has not ruled on that (questions file).
+
 ## Worktrees and branches
 
 | Worktree | Branch | HEAD | State |
@@ -92,4 +98,4 @@ Kort asked on 2026-10-19 for a playable build of everything committed so far, to
 
 ## Open for Kort
 
-Nothing in the questions file is unanswered except the growth design's six calls (end of `docs/QUESTIONS-FOR-KORT.md`), which another session queued. Present them only when he asks.
+Nothing in the questions file is unanswered except the growth design's six calls (end of `docs/QUESTIONS-FOR-KORT.md`), which another session queued, and round 22 (whether graphify maps the docs). Present them only when he asks.

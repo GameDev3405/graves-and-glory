@@ -31,6 +31,7 @@ Read this first, then `docs/HANDOFF.md`. These rules come from Kort (2026-10-21)
 6. **Art grading.** Player-facing art still needs 9 on the rubric. Internal-only assets (test stills, harness renders) pass at 8.5. One self-review per art brief.
 7. **Batch messages to parked agents.** Message one only when there's work for it.
 8. **Questions go to `docs/QUESTIONS-FOR-KORT.md`.** Don't stop work to ask. Kort answers as multiple choice when he asks what needs his attention.
+9. **Graph before grep.** Code questions start with `graphify query "<question>"` (or `path` / `explain`) against that worktree's `graphify-out/graph.json`, then read only the lines it points to. Every brief that explores code carries this rule and the graph path. After code changes an agent runs `graphify update .` (local, free).
 
 ## Unchanged rules
 
