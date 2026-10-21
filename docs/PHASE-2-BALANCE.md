@@ -33,7 +33,7 @@ The gate prints `gate <a> vs <b> win=<P>% pass|fail` (exit status 0 pass, 1 fail
 
 ### Phase 2 Task 6 gate: `gilded_normal` vs `graveborn_normal` (2026-10-19, report-only)
 
-Code: the Task 6 tree on `786bb2b` (the Gilded batch commit). What reaches this fight:
+Code: the Task 6 tree (committed as `6264f6a`), on `786bb2b`. What reaches this fight:
 
 - The Order Longbow's pierce: each arrow also hits the nearest enemy within 2 blocks behind its target for half the shot.
 - Gilded Bulwark. `gilded_normal`'s 20 Gilded slots reach tier III:

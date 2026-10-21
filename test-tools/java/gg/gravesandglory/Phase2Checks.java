@@ -1263,7 +1263,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 12->{if(since(b)<25)return; // the arrow as Abilities.attack looses it: the sheet damage times the progression
                     for(var u:List.of(first,behind,beside))if(u.mob.isAlive()){u.mob.setHealth(u.mob.getMaxHealth());u.mob.timeUntilRegen=0;u.mob.hurtTime=0;}
                     hpFirst=first.mob.getHealth();hpBehind=behind.mob.isAlive()?behind.mob.getHealth():0;hpBeside=beside.mob.getHealth();
-                    mark=Combat.LAST.peekLast();Projectiles.fire(b,bow,first.mob,"arrow",(float)(bow.spec.damage()*b.campaign.damage(bow)));shot=b.shots.get(b.shots.size()-1);next(b,13);
+                    mark=Combat.LAST.peekLast();Projectiles.fire(b,bow,first.mob,"arrow",(float)Abilities.baseHit(b,bow));shot=b.shots.get(b.shots.size()-1);next(b,13);
                 }
                 case 13->{if(b.time<shot.lands()+2)return;
                     var onFirst=hitOn(first.mob,mark);var onBehind=behind.mob.isAlive()?hitOn(behind.mob,mark):null;var onBeside=hitOn(beside.mob,mark);
@@ -1407,8 +1407,33 @@ public final class Phase2Checks implements ClientModInitializer {
                         oathOk&=ok;
                         oathWhy+="; Move then Hold at +100 and +115 planted "+early+" more banners before +600; the weakened Sunweaver 10.6 off held while the banner stood="+supportHeld+"; at +301 the banner had fallen="+fell+" and its block was air again="+blockBack+"; the Sunweaver routed at +"+supportRouted+" (want just after +300); Move and Hold at +605 and +620 planted the next banner at +"+secondAt+"="+ok;
                         report("p2-gilded-oath",oathOk,oathWhy);
-                        clearFixture(b);Abilities.clearBanners(b);reset(own);next(b,50);
+                        clearFixture(b);Abilities.clearBanners(b);reset(own);next(b,35);
                     }
+                }
+                case 35->{ // p2-gilded-oath-plant and p2-gilded-oath-squad: a fresh banner planted by a direct call, so nothing but the plant itself has run (the Battle tick, which holds the 10-tick scan, has not)
+                    Abilities.clearBanners(b);reset(own);dawn.routedAt.clear();
+                    marshal=post(b,own,"gl_marshal",0,0,0,true);marshal.abilityAt=0;marshal.seenOrder=null;
+                    var ownKnight=post(b,own,"knight",3,1,0,true);var ownArcher=post(b,own,"archer",4,3,0,true);var ownFar=post(b,own,"mage",-14,0,0,true);
+                    var allyKnight=post(b,dawn,"knight",2,-2,0,true);var allyArcher=post(b,dawn,"archer",-4,4,0,true);var foeR=post(b,dusk,"revenant",3,3,180,true);
+                    own.routedAt.put("ranged",b.time);own.routedAt.put("support",b.time);dawn.routedAt.put("ranged",b.time);
+                    b.squads.put(dawn.owner,dawn); // the allied army (same team, another squad) is a seated army of the round for this one call, as the old team-wide scan would have found it
+                    try{
+                        var row=Abilities.row(marshal.spec);Abilities.plant(b,marshal,row,b.time);
+                        var banner=b.banners.isEmpty()?null:b.banners.get(0);
+                        boolean stands=b.banners.size()==1&&banner.squad()==own&&banner.team()==own.team;
+                        double dArcher=banner==null?-1:distance(banner.at(),ownArcher.mob),dFar=banner==null?-1:distance(banner.at(),ownFar.mob),dAllyK=banner==null?-1:distance(banner.at(),allyKnight.mob),dAllyA=banner==null?-1:distance(banner.at(),allyArcher.mob);
+                        boolean placed=stands&&dArcher<=12&&dFar>12&&dAllyK<=12&&dAllyA<=12;
+                        boolean rallied=!Morale.routing(own,"ranged"),farHeld=Morale.routing(own,"support");
+                        report("p2-gilded-oath-plant",placed&&rallied&&farHeld,"on the plant tick, before any scan: one banner of his own army stands="+stands+"; the routing Order Archer "+fmt(dArcher)+" from it (radius 12) was rallied="+rallied+"; the routing Sunweaver "+fmt(dFar)+" from it still routes="+farHeld);
+                        Abilities.rally(b,banner); // the scan's pass, run by hand: it must not reach the allied army either
+                        var mine=Commanders.hit(b,ownKnight,foeR.mob,"melee");var ally=Commanders.hit(b,allyKnight,foeR.mob,"melee");
+                        boolean aura=auras(mine,1.10)&&auras(ally,1.0);
+                        boolean guard=Abilities.OATH_GUARD.holds(b,own,"infantry")&&!Abilities.OATH_GUARD.holds(b,dawn,"infantry")&&!Abilities.OATH_GUARD.holds(b,dawn,"ranged");
+                        boolean allyRouts=Morale.routing(dawn,"ranged");
+                        report("p2-gilded-oath-squad",own.team==dawn.team&&placed&&aura&&guard&&allyRouts,"an allied army of the same team (team "+dawn.team+" and his "+own.team+") with a Squire "+fmt(dAllyK)+" and an Order Archer "+fmt(dAllyA)+" from the banner (inside 12): auras his Squire "+au(mine)+" (want 1.1), the ally's Squire "+au(ally)+" (want 1.0)="+aura
+                            +"; guard on his infantry "+Abilities.OATH_GUARD.holds(b,own,"infantry")+", on the ally's infantry "+Abilities.OATH_GUARD.holds(b,dawn,"infantry")+" and ranged "+Abilities.OATH_GUARD.holds(b,dawn,"ranged")+" (want true, false, false)="+guard+"; the ally's routing archers were not rallied by the plant or by the scan="+allyRouts);
+                    }finally{b.squads.remove(dawn.owner);dawn.routedAt.clear();own.routedAt.clear();}
+                    clearFixture(b);Abilities.clearBanners(b);reset(own);next(b,50);
                 }
                 case 50->{ // p2-champion-standfast: the Champion on the platform; four Risen of his own army (Graveborn, so no Bulwark) 6.8 blocks from him, a Bone Archer of his 14.1 away, two frozen Risen of Dusk
                     var p=sp(b);if(p==null)return;reset(own);own.banner=banner("revenant*4,bonebow");
@@ -1462,8 +1487,10 @@ public final class Phase2Checks implements ClientModInitializer {
                     var p=sp(b);var c=Commander.row(own);own.steadyUntil.clear();own.routedAt.put("ranged",b.time);
                     hornsBefore=BattleEffects.horns.getOrDefault("rally",0);startDistance=meanDistance(p);firstActive="";readyFirst="";readyLater="";activeCooldownSeconds=-1;
                     t0=b.time;b.command(p,"ability");
-                    Vec3d to=p.getPos();boolean moves=true;StringBuilder orders=new StringBuilder();
-                    for(String g:Morale.GROUPS){var a=own.assignments.get(g);boolean m=a!=null&&a.order.equals("move")&&a.target.squaredDistanceTo(to)<1e-6;moves&=m;orders.append(g).append(' ').append(a==null?"none":a.order+" to "+fmt(a.target.x)+", "+fmt(a.target.z)).append(m?"":" (BAD)").append("; ");}
+                    // the order path's spot: where he stands, one block above the ground there (he stands on the platform at y 140, far above it)
+                    Vec3d to=p.getPos();Vec3d spot=new Vec3d(to.x,Arena.ground((int)to.x,(int)to.z)+1,to.z);boolean moves=true,snapped=Math.abs(to.y-spot.y)>20;StringBuilder orders=new StringBuilder();
+                    for(var gr:Spec.GROUPS){if(gr.id().equals("all"))continue;String g=gr.id();var a=own.assignments.get(g);boolean m=a!=null&&a.order.equals("move")&&a.target.squaredDistanceTo(spot)<1e-6&&a.issued==t0;moves&=m;orders.append(g).append(' ').append(a==null?"none":a.order+" to "+fmt(a.target.x)+", "+fmt(a.target.y)+", "+fmt(a.target.z)).append(m?"":" (BAD)").append("; ");}
+                    moves&=snapped;
                     boolean steady=own.steadyUntil.getOrDefault("ranged",-1L)==t0+800&&own.steadyUntil.getOrDefault("infantry",-1L)==t0+400&&own.steadyUntil.getOrDefault("support",-1L)==t0+400;
                     int speedy=0,troops=0;StringBuilder speeds=new StringBuilder();
                     for(var u:fixture)if(u.mob.isAlive()){troops++;var a=u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);var m=a==null?null:a.getModifier(Commander.RALLY);
@@ -1473,7 +1500,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean started=c.id().equals("marshal")&&Commander.running(b,own,"rally_horn")&&own.abilityUntil==t0+c.durationTicks()&&Commander.readyIn(b,own)==2400&&c.cooldownTicks()==2400&&c.durationTicks()==300;
                     boolean rallied=!Morale.routing(own,"ranged");
                     activeOk=started&&rallied&&moves&&steady&&speedy==troops&&troops==6&&horns==1;
-                    activeWhy="the ability command as "+own.commander+": rally_horn runs="+Commander.running(b,own,"rally_horn")+" to +"+(own.abilityUntil-t0)+" (want 300), readyIn "+Commander.readyIn(b,own)+" (want 2400, 120 s)="+started+"; the routing Order Archers rallied="+rallied+"; orders: "+orders+"="+moves
+                    activeWhy="the ability command as "+own.commander+": rally_horn runs="+Commander.running(b,own,"rally_horn")+" to +"+(own.abilityUntil-t0)+" (want 300), readyIn "+Commander.readyIn(b,own)+" (want 2400, 120 s)="+started+"; the routing Order Archers rallied="+rallied+"; orders for every group (the ground at his feet, y "+fmt(spot.y)+", not his own y "+fmt(to.y)+"="+snapped+"): "+orders+"="+moves
                         +"; steadyUntil "+own.steadyUntil+" at t0 "+t0+" (want ranged +800: rallied +400 then +400; the others +400)="+steady+"; speed: "+speeds+speedy+" of "+troops+" troops x(1 + "+c.value1()+"); rally horns +"+horns+" (want 1: the rally it calls adds none)";
                     tileWatch=1;late=null;lateHastened=false;next(b,65);
                 }
@@ -1487,8 +1514,28 @@ public final class Phase2Checks implements ClientModInitializer {
                         tileWatch=0;int active=seconds(firstActive),cool=activeCooldownSeconds,ready1=seconds(readyFirst),ready2=seconds(readyLater);
                         boolean tile=active==15&&cool==120&&ready1>=103&&ready1<=105&&ready2>=0&&ready2<ready1;
                         report("p2-marshal-rallyhorn",activeOk&&tile,activeWhy+"; the HUD tile first read \""+firstActive+"\" with the cooldown at "+cool+" s (want ACTIVE 15 s and 120 s), then \""+readyFirst+"\" and 2 s later \""+readyLater+"\" (counting down)="+tile);
-                        clearFixture(b);reset(own);next(b,70);
+                        reset(own);next(b,66);
                     }
+                }
+                case 66->{ // p2-marshal-rallyhorn-spots: the horn's Move takes the order path's spot rules: while he stands in river water or inside the arena's 10-block edge margin no group is moved, and the rest of the horn still happens
+                    var p=sp(b);
+                    Vec3d river=null;for(int z=20;z<200&&river==null;z++){int x=(int)Math.round(CampaignMaps.riverX(z));if(Arena.river(x,z)&&Arena.ground(x,z)<64)river=new Vec3d(x+.5,Arena.ground(x,z)+1,z+.5);}
+                    Vec3d[] where={river,new Vec3d(.5,100,GravesAndGlory.R.arenaHalfZ()-5)};String[] name={"in river water","inside the edge margin"};
+                    boolean ok=river!=null&&!GravesAndGlory.Battle.inArena(where[1].x,where[1].z)&&GravesAndGlory.Battle.wet(where[0]==null?0:where[0].x,where[0]==null?0:where[0].z);StringBuilder why=new StringBuilder();
+                    for(int i=0;i<2&&where[i]!=null;i++){
+                        Map<String,GravesAndGlory.Assignment> before=new HashMap<>(own.assignments);
+                        b.relocate(p,where[i].x,where[i].y,where[i].z,0,0);
+                        Commander.reset(b,own);own.routedAt.put("ranged",b.time);own.steadyUntil.clear();long t=b.time;
+                        b.command(p,"ability");
+                        boolean unmoved=true;for(var gr:Spec.GROUPS)if(!gr.id().equals("all"))unmoved&=own.assignments.get(gr.id())==before.get(gr.id());
+                        boolean horn=Commander.running(b,own,"rally_horn")&&!Morale.routing(own,"ranged")&&own.steadyUntil.getOrDefault("ranged",-1L)==t+800&&own.steadyUntil.getOrDefault("infantry",-1L)==t+400;
+                        int speedy=0,troops=0;for(var u:fixture)if(u.mob.isAlive()){troops++;var a=u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);if(a!=null&&a.getModifier(Commander.RALLY)!=null)speedy++;}
+                        ok&=unmoved&&horn&&speedy==troops&&troops>0;
+                        why.append("he stands ").append(name[i]).append(" at ").append(fmt(where[i].x)).append(", ").append(fmt(where[i].z)).append(": no group got a new order=").append(unmoved).append("; the horn still ran, rallied the archers and set the steadiness=").append(horn).append("; the speed reached ").append(speedy).append(" of ").append(troops).append(" troops; ");
+                    }
+                    Commander.reset(b,own);b.relocate(p,site.getX()-8.5,site.getY(),site.getZ()+.5,90,20);
+                    report("p2-marshal-rallyhorn-spots",ok,"(river spot "+(river==null?"none found":fmt(river.x)+", "+fmt(river.z)+", ground "+Arena.ground((int)river.x,(int)river.z))+") "+why);
+                    clearFixture(b);reset(own);next(b,70);
                 }
                 case 70->{ // p2-gilded-showcase: his army under the hard Gilded banner on map 0
                     tileWatch=0;var p=sp(b);if(p==null)return;if(site!=null){platform(b,site,12,Blocks.AIR.getDefaultState());unforce(b);site=null;}

@@ -25,7 +25,7 @@ import java.util.List;
  * Troop abilities (spec 2, the abilities sheet). A troop's ability id names a row; the row's mechanic decides what it does. The shield is a tag
  * the shield logic and the counters table read; mend and blight behave here; the stances (steady, ambush, brace) act through the counters table
  * (the ability id is one of the troop's tags, and Combat.resolve sets the attacker group's effective order); pierce hits a second enemy behind
- * the target (secondary); the Oath Banner aura plants a Banner (Battle.banners) that lends its team's troops damage (auraFactor), keeps its
+ * the target (secondary); the Oath Banner aura plants a Banner (Battle.banners) that lends its planter's army damage (auraFactor), keeps its
  * groups from routing (OATH_GUARD) and rallies them. Every other mechanic is a no-op until the task of its House.
  * Every number comes from the row, with the combatDiscipline defaults where a row says 0.
  */
@@ -94,12 +94,15 @@ final class Abilities {
             }
             case "mend" -> {}
             default -> {
-                float amount = (float) (u.spec.damage() * b.campaign.damage(u));
+                float amount = (float) baseHit(b, u);
                 // The hit is decided now; a ranged hit lands when its visible arrow arrives.
                 if (u.spec.ranged()) Projectiles.fire(b, u, enemy, "arrow", amount); else Combat.resolve(b, u, enemy, amount, "melee", false);
             }
         }
     }
+
+    /** A troop's base hit: its sheet damage times its army's progression (and every later damage bonus that belongs to the hit itself), before counters, auras and factors. attack and secondary both start here. */
+    static double baseHit(GravesAndGlory.Battle b, GravesAndGlory.Unit u) { return u.spec.damage() * b.campaign.damage(u); }
 
     /**
      * What a landed hit sets off on its attacker's ability: pierce hits the nearest other enemy within the row's radius behind the target for the
@@ -145,7 +148,7 @@ final class Abilities {
             nearest = d;
         }
         if (best == null) return 0;
-        float applied = Combat.resolve(b, u, best, (float) (share * u.spec.damage() * b.campaign.damage(u)), kind, true);
+        float applied = Combat.resolve(b, u, best, (float) (share * baseHit(b, u)), kind, true);
         if (applied > 0) BattleEffects.flash(b, new Vec3d(best.getX(), best.getBodyY(.6), best.getZ()), u.squad.team);
         return applied;
     }
@@ -154,36 +157,39 @@ final class Abilities {
     static double range(GravesAndGlory.Battle b, GravesAndGlory.Unit u) { return u.spec.range() + Commander.rangeBonus(u.squad, u); }
 
     /**
-     * The aura share of the factor: x(1 + amount) for an attacker standing within the radius of a standing banner of its team (the Oath
-     * Banner), the largest one only when banners overlap. Howl (the attacker's side) and Dread (the foe's) join in the tasks of their Houses.
+     * The aura share of the factor: x(1 + amount) for an attacker of the planting army standing within the radius of its standing banner
+     * (the Oath Banner), the largest one only when banners overlap. Howl (the attacker's side) and Dread (the foe's) join in the tasks of their Houses.
      */
     static double auraFactor(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target) {
         double f = 1;
-        for (var banner : b.banners) if (covers(b, banner, attacker.squad.team, attacker.mob.getPos())) f = Math.max(f, 1 + banner.amount());
+        for (var banner : b.banners) if (covers(b, banner, attacker.squad, attacker.mob.getPos())) f = Math.max(f, 1 + banner.amount());
         return f;
     }
 
     /**
-     * A planted banner (the Lord Marshal's Oath Banner): the team it serves, where it stands, the battle time it falls, the radius of its aura
-     * and guard, and the damage share it adds (the row's amount). block is the banner block it set, null when no spot was free, and was the
-     * block state that block replaced, put back when it falls. Battle.banners keeps the standing ones.
+     * A planted banner (the Lord Marshal's Oath Banner): the army (squad) whose troop planted it, and so the only one it serves (its aura, guard
+     * and rally, as Bulwark and Stand Fast serve their own army: an allied army of the same team gets none), where it stands, the battle time it
+     * falls, the radius of its aura and guard, and the damage share it adds (the row's amount). block is the banner block it set, null when no
+     * spot was free, and was the block state that block replaced, put back when it falls. Battle.banners keeps the standing ones.
      */
-    public record Banner(int team, Vec3d at, long until, double radius, double amount, BlockPos block, BlockState was) {
+    public record Banner(GravesAndGlory.Squad squad, Vec3d at, long until, double radius, double amount, BlockPos block, BlockState was) {
         /** A banner with no damage share and no block. */
-        public Banner(int team, Vec3d at, long until, double radius) { this(team, at, until, radius, 0, null, null); }
+        public Banner(GravesAndGlory.Squad squad, Vec3d at, long until, double radius) { this(squad, at, until, radius, 0, null, null); }
+        /** The team its army fights for. */
+        public int team() { return squad.team; }
     }
 
-    /** Whether the banner stands now and serves this team at this spot (horizontal distance, as Morale measures). */
-    static boolean covers(GravesAndGlory.Battle b, Banner banner, int team, Vec3d at) {
-        return banner.team() == team && b.time < banner.until() && GravesAndGlory.Battle.horizontalDistance(at, banner.at()) <= banner.radius() * banner.radius();
+    /** Whether the banner stands now and serves this army at this spot (horizontal distance, as Morale measures). */
+    static boolean covers(GravesAndGlory.Battle b, Banner banner, GravesAndGlory.Squad s, Vec3d at) {
+        return banner.squad() == s && b.time < banner.until() && GravesAndGlory.Battle.horizontalDistance(at, banner.at()) <= banner.radius() * banner.radius();
     }
 
-    /** The Oath Banner's rout guard: a group whose centre stands within the radius of a standing banner of its team cannot rout. */
+    /** The Oath Banner's rout guard: a group of the army that planted a standing banner, whose centre stands within its radius, cannot rout. */
     static final Morale.RoutGuard OATH_GUARD = (b, s, group) -> {
         if (b.banners.isEmpty()) return false;
         Vec3d centre = centre(b, s, group);
         if (centre == null) return false;
-        for (var banner : b.banners) if (covers(b, banner, s.team, centre)) return true;
+        for (var banner : b.banners) if (covers(b, banner, s, centre)) return true;
         return false;
     };
 
@@ -209,7 +215,7 @@ final class Abilities {
     /**
      * Plants the Oath Banner: a standing banner block in the nearest dye to its team's colour, one step behind the troop against its group's
      * facing (or where it stands; no block when neither spot is free), that stands for the row's durationTicks with the row's radius and
-     * amount. The rally horn sounds, every routing group of the team inside the radius rallies at once, and the cooldown starts now.
+     * amount. The rally horn sounds, every routing group of its own army inside the radius rallies at once, and the cooldown starts now.
      */
     static void plant(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
         u.abilityAt = time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
@@ -222,7 +228,7 @@ final class Abilities {
             b.world.setBlockState(block, BannerBlock.getForColor(dye(b.side(u.squad.team).color())).getDefaultState().with(BannerBlock.ROTATION, RotationPropertyHelper.fromYaw(yaw)));
             at = new Vec3d(block.getX() + .5, block.getY(), block.getZ() + .5);
         }
-        var banner = new Banner(u.squad.team, at, time + row.durationTicks(), row.radius(), row.amount(), block, was);
+        var banner = new Banner(u.squad, at, time + row.durationTicks(), row.radius(), row.amount(), block, was);
         b.banners.add(banner);
         b.world.spawnParticles(ParticleTypes.HAPPY_VILLAGER, at.x, at.y + 1, at.z, 16, .5, .8, .5, 0);
         BattleEffects.horn(b, u.squad, at, "rally");
@@ -260,7 +266,7 @@ final class Abilities {
     /** Ring particles on a banner's edge (a presentation number). */
     static final int RING = 32;
 
-    /** Every tick of a running round: a banner falls once its time is up (its block goes back); while it stands it rallies its team's routing groups in its radius and shows its particles, every 10 ticks. */
+    /** Every tick of a running round: a banner falls once its time is up (its block goes back); while it stands it rallies its army's routing groups in its radius and shows its particles, every 10 ticks. */
     static void bannerTick(GravesAndGlory.Battle b) {
         if (b.banners.isEmpty()) return;
         for (var banner : new ArrayList<>(b.banners)) {
@@ -269,17 +275,16 @@ final class Abilities {
         }
     }
 
-    /** Morale.rally for every routing group of the banner's team (seated armies) whose centre stands in its radius, with a burst of rally particles at the group. */
+    /** Morale.rally for every routing group of the banner's own army (while it is seated) whose centre stands in its radius, with a burst of rally particles at the group. The plant rallies once at once; the scan repeats it while the banner stands. */
     static void rally(GravesAndGlory.Battle b, Banner banner) {
-        for (var s : new ArrayList<>(b.squads.values())) {
-            if (s.team != banner.team() || !s.seated) continue;
-            for (String group : Morale.GROUPS) {
-                if (!Morale.routing(s, group)) continue;
-                Vec3d centre = centre(b, s, group);
-                if (centre == null || !covers(b, banner, s.team, centre)) continue;
-                Morale.rally(b, s, group);
-                b.world.spawnParticles(ParticleTypes.HAPPY_VILLAGER, centre.x, centre.y + 1, centre.z, 12, 1, .5, 1, 0);
-            }
+        var s = banner.squad();
+        if (!s.seated) return;
+        for (String group : Morale.GROUPS) {
+            if (!Morale.routing(s, group)) continue;
+            Vec3d centre = centre(b, s, group);
+            if (centre == null || !covers(b, banner, s, centre)) continue;
+            Morale.rally(b, s, group);
+            b.world.spawnParticles(ParticleTypes.HAPPY_VILLAGER, centre.x, centre.y + 1, centre.z, 12, 1, .5, 1, 0);
         }
     }
 

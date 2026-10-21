@@ -290,7 +290,7 @@ public final class GravesAndGlory implements ModInitializer {
         final List<Ping> pings=new ArrayList<>();final Map<UUID,Long> lastPing=new HashMap<>();
         void ping(ServerPlayerEntity p,String kind,double x,double z){
             Squad s=squads.get(p.getUuid());var spec=Arrays.stream(Spec.PINGS).filter(v->v.id().equals(kind)).findFirst().orElse(null);
-            if(s==null||!s.seated||!running||spec==null||!Double.isFinite(x)||!Double.isFinite(z)||Math.abs(x)>R.arenaHalfX()-10||Math.abs(z)>R.arenaHalfZ()-10||time-lastPing.getOrDefault(s.owner,-100L)<spec.cooldownSeconds()*20)return;
+            if(s==null||!s.seated||!running||spec==null||!inArena(x,z)||time-lastPing.getOrDefault(s.owner,-100L)<spec.cooldownSeconds()*20)return;
             lastPing.put(s.owner,time);pings.removeIf(v->v.owner.equals(s.owner)||v.until<time);pings.add(new Ping(s.owner,s.team,kind,x,z,time+spec.seconds()*20));
         }
         public volatile int testStage=0;
@@ -477,6 +477,23 @@ public final class GravesAndGlory implements ModInitializer {
             BattleEffects.horn(this,s,n==0?s.target:sum.multiply(1.0/n),"charge");
         }
         boolean startsCharge(Squad s,String group){return Arrays.stream(Morale.GROUPS).anyMatch(g->(group.equals("all")||group.equals(g))&&!Morale.routing(s,g)&&!storedAssignment(s,g).order.equals("charge"));}
+        /** An order's spot lies inside the arena: finite, and at least 10 blocks off its edge. */
+        static boolean inArena(double x,double z){return Double.isFinite(x)&&Double.isFinite(z)&&Math.abs(x)<=R.arenaHalfX()-10&&Math.abs(z)<=R.arenaHalfZ()-10;}
+        /** River water below the crossings: no order sends a group there (a bridge or a ford is ground at 64 or above). */
+        static boolean wet(double x,double z){return Arena.river((int)x,(int)z)&&Arena.ground((int)x,(int)z)<64;}
+        /** The point an order to (x, z) sends a group to: the ground there, one block up, whatever height whoever gave it stands at. */
+        static Vec3d groundAt(double x,double z){return new Vec3d(x,Arena.ground((int)x,(int)z)+1,z);}
+        /**
+         * The one place a group order takes effect, for a player's order (tactical) and the Marshal's Rally Horn alike: each named group (a group id, or "all")
+         * stores a fresh Assignment of this order (never shared, since a later formation change edits one group's), and those groups' troops drop their target,
+         * spell centre and path so they turn at once. The caller has vetted the spot (inArena, wet, groundAt) and, for a player, the command cooldown.
+         */
+        void issue(Squad s,String group,String action,String formation,Vec3d dest,float yaw,int enemyId){
+            for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id()))){
+                Assignment a=new Assignment(action,formation,dest,yaw);a.enemy=enemyId;a.issued=time;s.assignments.put(g.id(),a);
+            }
+            for(Unit u:units)if(u.squad==s&&(group.equals("all")||u.spec.group().equals(group))){u.lockedTarget=null;u.spellCenter=null;u.mob.setTarget(null);u.mob.getNavigation().stop();u.nextPath=0;u.stuckTicks=0;}
+        }
         public void tactical(ServerPlayerEntity p,String group,String action,String formation,double x,double z,float yaw,int enemyId){
             Squad s=squads.get(p.getUuid());
             if(s==null||!ready||!running||!s.seated||time<campaign.introUntil||respawns.containsKey(s.owner)||time-s.lastOrder<R.commandCooldownTicks())return;
@@ -486,19 +503,16 @@ public final class GravesAndGlory implements ModInitializer {
                 s.lastOrder=time;campaign.tutorialDid(p,1);return;
             }
             var order=Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(action)).findFirst().orElse(null);
-            if(order==null||!Double.isFinite(x)||!Double.isFinite(z)||!Float.isFinite(yaw)||Math.abs(x)>R.arenaHalfX()-10||Math.abs(z)>R.arenaHalfZ()-10)return;
+            if(order==null||!Float.isFinite(yaw)||!inArena(x,z))return;
             if(!action.equals("attack")&&!action.equals("charge"))enemyId=-1;
             Entity enemy=world.getEntityById(enemyId);
             if(enemyId>=0&&(enemy==null||!enemy.isAlive()||teamOf(enemy)<0||teamOf(enemy)==s.team||!p.canSee(enemy))){p.sendMessage(Text.literal("Target lost. Aim again or issue an attack-move."),true);return;}
             if(action.equals("charge")&&enemy==null){p.sendMessage(Text.literal("Charge needs a visible enemy. Use Attack to advance to terrain."),true);return;}
-            if(Arena.river((int)x,(int)z)&&Arena.ground((int)x,(int)z)<64){p.sendMessage(Text.literal("Choose dry ground or a crossing."),true);return;}
-            s.lastOrder=time;Vec3d dest=new Vec3d(x,Arena.ground((int)x,(int)z)+1,z);boolean charging=action.equals("charge")&&startsCharge(s,group);
+            if(wet(x,z)){p.sendMessage(Text.literal("Choose dry ground or a crossing."),true);return;}
+            s.lastOrder=time;Vec3d dest=groundAt(x,z);boolean charging=action.equals("charge")&&startsCharge(s,group);
             if(action.equals("follow"))dest=p.getPos();
-            for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id()))){
-                Assignment a=new Assignment(action,formation,dest,yaw);a.enemy=enemyId;a.issued=time;s.assignments.put(g.id(),a);
-            }
+            issue(s,group,action,formation,dest,yaw,enemyId);
             if(charging)chargeHorn(s,group);
-            for(Unit u:units)if(u.squad==s&&(group.equals("all")||u.spec.group().equals(group))){u.lockedTarget=null;u.spellCenter=null;u.mob.setTarget(null);u.mob.getNavigation().stop();u.nextPath=0;u.stuckTicks=0;}
             campaign.tutorialDid(p,action.equals("attack")||action.equals("charge")?2:0);campaign.progressEvent(p.getUuid(),false);
             p.playSound(action.equals("retreat")?SoundEvents.BLOCK_NOTE_BLOCK_BELL.value():SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(),.6f,action.equals("charge")?.7f:1.1f);
             p.sendMessage(Text.literal(group+" / "+action+" / "+(int)x+", "+(int)z),true);

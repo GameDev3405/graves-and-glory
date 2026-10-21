@@ -85,8 +85,10 @@ public final class Commander {
 
     /**
      * The Marshal's Rally Horn: the rally horn sounds at once (past its cooldown); every routing group of his army rallies (Morale.rally);
-     * every group takes a Move order to where he stands; every group's regroup immunity (steadyUntil) runs value2 ticks longer, counted from
-     * now once it has run out; and his troops move x(1 + value1) faster for durationTicks, troops that join meanwhile too. It always starts.
+     * every group takes a Move order to where he stands, through the order path a player's order takes (Battle.issue), so the spot keeps the
+     * same rules: the ground there, and no Move at all while he stands in river water or inside the arena's 10-block edge margin; every
+     * group's regroup immunity (steadyUntil) runs value2 ticks longer, counted from now once it has run out; and his troops move
+     * x(1 + value1) faster for durationTicks, troops that join meanwhile too. It always starts.
      */
     static final class RallyHorn implements Active {
         @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, Spec.ClassesRow c) {
@@ -95,11 +97,11 @@ public final class Commander {
             for (String group : Morale.GROUPS) {
                 if (Morale.routing(s, group)) Morale.rally(b, s, group);
                 s.steadyUntil.put(group, Math.max(s.steadyUntil.getOrDefault(group, 0L), b.time) + Math.round(c.value2()));
-                var move = new GravesAndGlory.Assignment("move", b.storedAssignment(s, group).formation, to, p.getYaw());
-                move.issued = b.time;
-                s.assignments.put(group, move);
             }
-            for (var u : b.units) if (u.squad == s) { u.lockedTarget = null; u.spellCenter = null; u.mob.setTarget(null); u.mob.getNavigation().stop(); u.nextPath = 0; u.stuckTicks = 0; }
+            if (GravesAndGlory.Battle.inArena(to.x, to.z) && !GravesAndGlory.Battle.wet(to.x, to.z)) {
+                Vec3d spot = GravesAndGlory.Battle.groundAt(to.x, to.z);
+                for (var g : Spec.GROUPS) if (!g.id().equals("all")) b.issue(s, g.id(), "move", b.storedAssignment(s, g.id()).formation, spot, p.getYaw(), -1);
+            }
             hasten(b, s, c);
             b.world.spawnParticles(ParticleTypes.HAPPY_VILLAGER, to.x, to.y + 1, to.z, 20, 1, .6, 1, 0);
             return true;
