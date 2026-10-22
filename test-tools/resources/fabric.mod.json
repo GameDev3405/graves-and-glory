@@ -45,7 +45,8 @@
       "gg.gravesandglory.CommandUiChecks",
       "gg.gravesandglory.FeedbackMate",
       "gg.gravesandglory.TitleDemos",
-      "gg.gravesandglory.StoryStills"
+      "gg.gravesandglory.StoryStills",
+      "gg.gravesandglory.MediaShoot"
     ]
   },
   "mixins": [

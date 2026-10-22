@@ -11,7 +11,11 @@
     "TitleDemoPoseMixin",
     "StoryStillsPoseMixin",
     "MotionRigPoseMixin",
-    "ParticleCountMixin"
+    "ParticleCountMixin",
+    "FilmCameraMixin",
+    "FilmFovMixin",
+    "FilmFrameMixin",
+    "FilmHudMixin"
   ],
   "injectors": {
     "defaultRequire": 0
