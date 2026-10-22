@@ -27,9 +27,70 @@ The gate prints `gate <a> vs <b> win=<P>% pass|fail` (exit status 0 pass, 1 fail
 
 ## Current best pure banner
 
-`gilded_normal` (85% against `graveborn_normal` in the Task 7 gate, with the Graveborn mechanics built and at the spec numbers; 100% in the Task 6 gate, report-only, before them; 92.5% in the Task 3 baseline after fix round 1, where `graveborn_normal` had 7.5%). The first Task 3 baseline (`gilded_normal` 95%) was measured with the husk's +2 armour on the Gilded side and is superseded by it. Update this line whenever a logged gate gives another pure normal banner a higher win rate.
+`gilded_normal` (85% against `graveborn_normal` in the Task 7 gate, with the Graveborn mechanics built and at the spec numbers; 100% in the Task 6 gate, report-only, before them; 92.5% in the Task 3 baseline after fix round 1, where `graveborn_normal` had 7.5%). The first Task 3 baseline (`gilded_normal` 95%) was measured with the husk's +2 armour on the Gilded side and is superseded by it. Update this line whenever a logged gate gives another pure normal banner a higher win rate. (The Task 8 gate gave `ironclad_normal` 45% against `gilded_normal`, so Gilded stays the bar.)
 
 ## Results
+
+### Phase 2 Task 8 gate: `ironclad_normal` vs `gilded_normal` (2026-10-21, report-only, 45% at the spec numbers: inside the band)
+
+Code: the Task 8 tree (committed as `f0febad`), on `842d2c7`. The gate is report-only by ruling (the gates of Tasks 8 to 10 do not block until the balance pass), so nothing was tuned; it would have passed anyway. What reaches this fight:
+
+- The `ironclad_normal` banner: an Ironhold Mortar (2 slots), 6 Hearthguards, 4 Arbalists, 4 Shieldbreakers and 4 Ballista Crew, 20 slots, which is tier III of Entrench (14 slots).
+- Entrench: a troop that has stood still for 60 ticks takes 20% less damage (40% less on a point its team holds), and a still Mortar or Ballista Crew shoots 30% further (the Ballista Crew's 34 becomes 44.2, the Mortar's 36 becomes 46.8).
+- The siege troops engage at their reach rather than at the order's radius (24 on attack, 10 on hold), and the Mortar casts nothing at an enemy within 10 blocks and walks away from one.
+- The counters of the siege and the Ironclad weapons against the Gilded line: the Shieldbreaker's sunder x1.4 against a raised shield (C14), the Arbalist's armour bolt x0.7 against one (C15), siege against large x1.3 and against small x0.6 (C12, C13).
+- Wide bodies in formation (Brassjaw's cell) and the siege troops standing behind the archers.
+
+What does not reach it: Brassjaw (the hard banner only), the Quartermaster's Forward Supply (bots never use actives) and the structure counters (no structure stands in a bot match).
+
+The gate rule is 20 matches and 40 <= P <= 60; all 20 ran. Process 1 (port 25621, `ironclad_normal` on team 0) and process 2 (port 25622, `gilded_normal` on team 0) each held its own server root; every round was a full 300 s; servers up 20:59 to 21:55. The `[botsim] health` lines (90 samples a process) show no burning troop in any of the 180, and at most 2 troops that stood still for 30 s with no target, no rout and no Hold order in 178 of them; two samples had more (process 1: match 2 at 210 s with 5 and match 7 at 210 s with 4), each followed 30 s later by one with none or fewer.
+
+```
+[botsim] matches=10 dawn(normal)=3 dusk(normal)=7 draws=0 dawnWin=30% meanGoldEarnedAtEnd dawn=1424 dusk=1512 banner0=ironclad_normal banner1=gilded_normal
+[botsim] matches=10 dawn(normal)=4 dusk(normal)=6 draws=0 dawnWin=40% meanGoldEarnedAtEnd dawn=1481 dusk=1500 banner0=gilded_normal banner1=ironclad_normal
+```
+
+Gate (`python tools/balance_gate.py <root1>/botsim/results.csv <root2>/botsim/results.csv ironclad_normal --detail`; the roots are `work/p2/t8-sim1-205946` and `work/p2/t8-sim2-210007`):
+
+```
+work/p2/t8-sim1-205946/botsim/results.csv: ironclad_normal on dawn: won=3 lost=7 drawn=0 aborted=0
+work/p2/t8-sim2-210007/botsim/results.csv: ironclad_normal on dusk: won=6 lost=4 drawn=0 aborted=0
+  map 0 (dawn): won=1 lost=1 drawn=0 aborted=0
+  map 1 (dawn): won=1 lost=1 drawn=0 aborted=0
+  map 2 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 3 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 4 (dawn): won=1 lost=1 drawn=0 aborted=0
+  map 0 (dusk): won=1 lost=1 drawn=0 aborted=0
+  map 1 (dusk): won=0 lost=2 drawn=0 aborted=0
+  map 2 (dusk): won=2 lost=0 drawn=0 aborted=0
+  map 3 (dusk): won=1 lost=1 drawn=0 aborted=0
+  map 4 (dusk): won=2 lost=0 drawn=0 aborted=0
+rounds=20 decided=20 won=9 lost=11 drawn=0
+gate ironclad_normal vs gilded_normal win=45% pass
+```
+
+What the numbers say (the last gold sample of a round is at 270 s):
+
+- `ironclad_normal` won 9 of 20 (3 of 10 from Dawn's seat, 6 of 10 from Dusk's). Across both processes the Dusk seat won 13 of the 20 matches whichever House sat in it, so in this pairing the seat matters more than the banner; the gate's ten matches per seat cancel it.
+- Mean final score 70.8 to 80.2; mean gold earned 1225 to 1366; troops alive at 270 s 55.2 to 44.5 of 57. Ironclad loses the objective race and wins the attrition: it ends each round with 10 more troops than Gilded and the lower score.
+- By the second, the mean of the 20 rounds (gold earned, troops alive; Ironclad first):
+
+```
+30 gold IC/GL 72 72 living IC/GL 57.0 57.0 n 20
+60 gold IC/GL 162 162 living IC/GL 57.0 57.0 n 20
+90 gold IC/GL 257 273 living IC/GL 57.0 57.0 n 20
+120 gold IC/GL 360 464 living IC/GL 56.8 55.6 n 20
+150 gold IC/GL 475 692 living IC/GL 51.8 48.6 n 20
+180 gold IC/GL 617 907 living IC/GL 50.8 42.7 n 20
+210 gold IC/GL 788 1095 living IC/GL 54.2 42.1 n 20
+240 gold IC/GL 994 1241 living IC/GL 56.4 44.7 n 20
+270 gold IC/GL 1225 1366 living IC/GL 55.2 44.5 n 20
+```
+
+  Gold is level to 90 s (257 to 273) and Gilded leads from 120 s (360 to 464, 475 to 692 at 150 s, 617 to 907 at 180 s); Ironclad is ahead on troops from 150 s (51.8 to 48.6) and the lead widens to 50.8 against 42.7 at 180 s and 54.2 against 42.1 at 210 s. Why Ironclad earns less gold while losing fewer troops (slower troops reaching the points, or fewer kills paid) is not measured here.
+- By count the banners are close (`ironclad_normal` is 20 slots with the Mortar's two; `gilded_normal` 19 troops with 552 hit points and 10 shield bearers).
+
+Result: the gate passes at the spec numbers (P = 45%). `gilded_normal` stays the current best pure banner (85% against `graveborn_normal` in Task 7).
 
 ### Phase 2 Task 7 gate: `graveborn_normal` vs `gilded_normal` (2026-10-21, fails; two tuning rounds, stopped)
 
@@ -272,7 +333,7 @@ What the numbers say (from the two runs' `results.csv` and `gold.csv`; the last 
 
 ## Tuning log
 
-Phase 2 Tasks 3 and 6 changed no sheet numbers (the Task 6 gate is report-only by ruling). Task 7 changed these Graveborn rows in `sheets/design.json`, each within 15% of its spec value; the percentages are against the spec value, and a whole-number column (health, damage, cooldown) moves in whole numbers.
+Phase 2 Tasks 3, 6 and 8 changed no sheet numbers (the Task 6 and Task 8 gates are report-only by ruling; the Task 8 gate passed at the spec numbers, 45%). Task 7 changed these Graveborn rows in `sheets/design.json`, each within 15% of its spec value; the percentages are against the spec value, and a whole-number column (health, damage, cooldown) moves in whole numbers.
 
 Round 1 (2026-10-21), the five troops of `graveborn_normal`:
 
