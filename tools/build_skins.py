@@ -1,8 +1,9 @@
 """Builds the troops' own models and skins (Phase 2 Task 5) from art/ into src/main/resources/assets/gravesandglory/:
 models/troop/<troop>.json, rig/<rig>.json, weapon/<id>.json and index.json (every troop, rig, weapon and output), and
-textures/entity/troop/<troop>_s<stage>.png, _veteran, _e (glow), _o (outer layer), weapon/<id>.png (and _e), and one
-team_cloth_<side>.png per factions row plus team_cloth_linen.png (no side) and team_cloth_company.png (the company's navy,
-which portraits wear: unit identity rule 8 as Kort ruled it, Needs Kort 11).
+textures/entity/troop/<troop>_s<stage>.png (the source skin with its relief layer pasted over it), _veteran, _e (glow),
+_o (outer layer), weapon/<id>.png (the frames packed left to right, and _e), and one team_cloth_<side>.png per factions row
+plus team_cloth_linen.png (no side) and team_cloth_company.png (the company's navy, which portraits wear: unit identity
+rule 8 as Kort ruled it, Needs Kort 11).
 
   python tools/build_skins.py                     export everything, and remove the outputs the previous index.json
                                                   listed that are no longer built (never a file no index listed)
@@ -11,7 +12,10 @@ which portraits wear: unit identity rule 8 as Kort ruled it, Needs Kort 11).
                                                   bytes), anything else byte for byte; exit 1 naming the first
                                                   difference
   python tools/build_skins.py --template <troop>  write work/troops/<troop>_template.png: every skin box face of the
-                                                  troop in a flat colour, the sheet to paint over
+                                                  troop in a flat colour, the sheet to paint over, and
+                                                  <troop>_relief_template.png: where relief may stand (design 7)
+  python tools/build_skins.py --turn <shots> <out>  build the turnaround sheets turn-<troop>.png and turn-all.png from
+                                                  the suite turn's shots p2-turn-<troop>-<pose>-<angle>.png
 
 Sources (sizes in model pixels, y down, the ground at y 24, angles in degrees; a "note" key is allowed anywhere):
   art/rigs/<rig>.json      rig, size [w,h], outer (the outer twin's dilation), hands {right, left} (bone names), bones[]
@@ -21,11 +25,16 @@ Sources (sizes in model pixels, y down, the ground at y 24, angles in degrees; a
                            anchor's frame), scale? (the part's own, times the troop's for it), boxes[]. Box UVs are
                            relative to the troop's uv for the part, except that a team part's UVs are absolute on the
                            cloth sheet.
-  art/weapons/<id>.json    weapon, size, boxes[], grip {offset, rotation} (the weapon's place in the hand bone's frame),
-                           with <id>.png and, for a lit weapon, <id>_e.png.
+  art/weapons/<id>.json    weapon, thickness (1 to 3 px), grip {pixel [x, y], offset?, rotation?} (the grip pixel's centre
+                           sits on the hand bone's pivot; offset and rotation place the sprite in its frame), pull? (three
+                           times in seconds of bow_draw) with nocks (the string's middle in sprite px, a pair a frame).
+                           The art is <id>.png (rest), <id>_pull_0..2.png with pull, and for a lit weapon <id>_e.png: the
+                           build extrudes the sprites (design 2 of the troop depth design).
   art/troops/<troop>.json  troop, rig, size?, bones {<name>: {pivot?, boxes?, scale?}}, hunch? (biped), idleArms?,
                            parts[] of {part, name?, bone?, uv, offset?, rotation?, scale?, stages?}, skins {<stage>: file},
                            veteran?, glow?, glowFrom?, outer?, weapon (an id or none), hand, portrait.
+  art/troops/<troop>_s<stage>_r.png  the relief layer of that skin, and <troop>_veteran_r.png beside a veteran skin: the
+                           troop's size, alpha 0 or 255, an opaque texel stands one texel proud of its face (design 3).
   art/team/team_cloth.png  the greyscale cloth template; its three greys take the side colour x1.0, x0.8 and x0.6, every
                            other pixel keeps its paint. art/team/glyph_<glyph>.png: full-sheet masks, stamped in white.
 
@@ -54,7 +63,7 @@ ASSETS = 'src/main/resources/assets/gravesandglory'
 MODELS = 'models/troop'
 TEXTURES = 'textures/entity/troop'
 NAMESPACE = 'gravesandglory'
-FORMAT = 1
+FORMAT = 2
 # The rig of each sheet entity (TroopModels.RIGS in the client).
 RIGS = {'husk': 'biped', 'zombie': 'biped', 'skeleton': 'biped', 'stray': 'biped', 'wither_skeleton': 'biped',
         'drowned': 'biped', 'zombified_piglin': 'biped', 'vindicator': 'biped', 'pillager': 'biped', 'evoker': 'biped',
@@ -82,7 +91,7 @@ TROOP_KEYS = {'troop', 'rig', 'size', 'bones', 'hunch', 'idleArms', 'parts', 'sk
               'outer', 'weapon', 'hand', 'portrait', 'note'}
 ENTRY_KEYS = {'part', 'name', 'bone', 'uv', 'offset', 'rotation', 'scale', 'stages', 'note'}
 PART_KEYS = {'part', 'bone', 'team', 'tag', 'pivot', 'rotation', 'scale', 'boxes', 'note'}
-WEAPON_KEYS = {'weapon', 'size', 'boxes', 'grip', 'note'}
+WEAPON_KEYS = {'weapon', 'thickness', 'grip', 'pull', 'nocks', 'note'}
 RIG_KEYS = {'rig', 'size', 'outer', 'hands', 'bones', 'note'}
 IDLE_ARMS = ('hang', 'forward', 'folded')
 PORTRAIT = re.compile(r'(standard|tall \d+|wide \d+|beast \d+( yaw -?\d+)?)')
@@ -96,6 +105,20 @@ ONE = (1.0, 1.0, 1.0)
 # The bones a model may have: TroopModel records the bones a draw shows as the bits of one long (TroopModel.MAX_BONES),
 # and the client refuses a bigger model, which then draws vanilla.
 MAX_BONES = 64
+# Troop depth (Task 5d): the caps are presentation constants, kept here and not in sheets.
+RELIEF_CAP = 256     # relief quads in one stage, all bones together
+RELIEF_SHARE = 0.20  # the most of one face's texels a relief may raise
+WEAPON_CAP = 128     # quads in one weapon frame
+FRAME_MAX = 48       # the longest side of a weapon frame, px
+PULL_FRAMES = 3      # pull_0 to pull_2 of a draw weapon, after the rest frame
+PULL_MAX = 1.2       # a pull time lies between 0 and the longest bow_draw clip, in seconds
+SLIVER = 0.25        # a side face reads its texel through a UV band 2 x SLIVER across, at the texel's centre
+THICKNESS = (1, 2, 3)
+# Minecraft's Direction order in model space (0 down is -y, y runs down the model), the axis of each, and the quad rule.
+NORMALS = ((0, -1, 0), (0, 1, 0), (0, 0, -1), (0, 0, 1), (-1, 0, 0), (1, 0, 0))
+AXIS = (1, 1, 2, 2, 0, 0)
+RELIEF_TINT = 0.4              # the relief template shows an allowed face's hue at this strength over white
+RELIEF_RED = (214, 48, 48)     # and hatches a forbidden texel in this
 
 
 def fail(why):
@@ -532,39 +555,695 @@ def dumps(obj):
     return ('{\n' + ',\n'.join(lines) + '\n}\n').encode('utf-8')
 
 
+def quad_corners(d, lo, hi):
+    """The four corners of an axis-aligned quad, counter-clockwise seen from the side its normal points to: corner 2 is
+    corner 1 + corner 3 - corner 0, and the cross product of (corner 1 - corner 0) and (corner 3 - corner 0) points along
+    the normal. lo and hi are equal on the direction's axis. TroopMesh.corners in the client is the same rule."""
+    a = AXIS[d]
+    p, q = (a + 1) % 3, (a + 2) % 3
+
+    def at(pp, qq):
+        c = [0.0, 0.0, 0.0]
+        c[a], c[p], c[q] = lo[a], pp, qq
+        return c
+    if NORMALS[d][a] > 0:
+        return [at(lo[p], lo[q]), at(hi[p], lo[q]), at(hi[p], hi[q]), at(lo[p], hi[q])]
+    return [at(lo[p], lo[q]), at(lo[p], hi[q]), at(hi[p], hi[q]), at(hi[p], lo[q])]
+
+
+def make_quad(d, lo, hi, tex):
+    """One quad as the model JSON keeps it (13 numbers): the direction, the min and max corners and the texels of corners
+    0, 1 and 3. tex maps a corner (x, y, z) to its texel (u, v)."""
+    c = quad_corners(d, lo, hi)
+    out = [d] + [num(v) for v in lo] + [num(v) for v in hi]
+    for i in (0, 1, 3):
+        out += [num(v) for v in tex(c[i])]
+    return out
+
+
+def runs(flags):
+    """The (start, end) of every run of true flags, end exclusive."""
+    out, start = [], None
+    for i, f in enumerate(list(flags) + [False]):
+        if f and start is None:
+            start = i
+        elif not f and start is not None:
+            out.append((start, i))
+            start = None
+    return out
+
+
+def sprite_mesh(frame: Image.Image, thickness: int, grip: tuple, column: int) -> list:
+    """The quads of one weapon frame (design 2): its two big faces first (north, then south), each the whole frame, then a
+    side face along every run of edges between an opaque pixel and transparency or the border, thickness deep and centred
+    on z = 0. The grip pixel's centre is (0, 0, 0); x runs right, y down, one sprite pixel is one model pixel. The UVs
+    are those of the frame's column in the packed sheet; a side face reads its edge pixel through a band half a texel
+    across at the pixel's centre and the full run along."""
+    w, h = frame.size
+    px = frame.load()
+    gx, gy, t = grip[0] + 0.5, grip[1] + 0.5, thickness / 2
+    x0, x1, y0, y1 = -gx, w - gx, -gy, h - gy
+    u0 = column * w
+
+    def solid(x, y):
+        return 0 <= x < w and 0 <= y < h and px[x, y][3] > 0
+
+    def whole(c):
+        return u0 + c[0] + gx, c[1] + gy
+    quads = [make_quad(2, (x0, y0, -t), (x1, y1, -t), whole), make_quad(3, (x0, y0, t), (x1, y1, t), whole)]
+    for d, dy in ((0, -1), (1, 1)):   # the edges that face up (-y) and down (+y), row by row
+        for y in range(h):
+            for a, b in runs([solid(x, y) and not solid(x, y + dy) for x in range(w)]):
+                plane = (y if d == 0 else y + 1) - gy
+                quads.append(make_quad(d, (a - gx, plane, -t), (b - gx, plane, t),
+                                       lambda c, y=y: (u0 + c[0] + gx, y + 0.5 + (SLIVER if c[2] > 0 else -SLIVER))))
+    for d, dx in ((4, -1), (5, 1)):   # the edges that face left (-x) and right (+x), column by column
+        for x in range(w):
+            for a, b in runs([solid(x, y) and not solid(x + dx, y) for y in range(h)]):
+                plane = (x if d == 4 else x + 1) - gx
+                quads.append(make_quad(d, (plane, a - gy, -t), (plane, b - gy, t),
+                                       lambda c, x=x: (u0 + x + 0.5 + (SLIVER if c[2] > 0 else -SLIVER), c[1] + gy)))
+    return quads
+
+
 def weapon_outputs(cat, wid):
+    """The files of one weapon (design 2): its model with the frames' quads, the packed texture and the packed glow. Returns
+    (files, lit glow pixels, [(weapon, frame, quads)])."""
     w = cat.weapons[wid]
     what = 'weapon ' + wid
+    if 'boxes' in w or 'size' in w:
+        fail('%s: boxes and size are gone (format 2): a weapon is a sprite, art/weapons/%s.png, that the build extrudes; give '
+             'it a thickness and a grip pixel' % (what, wid))
     keys(w, WEAPON_KEYS, what)
-    size = vec(w.get('size'), 2, what + ' size', ints=True, minimum=1)
-    boxes = check_boxes(w.get('boxes'), what)
-    if not boxes:
-        fail(what + ': no boxes')
-    check_layout([(wid, b['uv'], b['size']) for b in boxes], size, what)
+    thickness = w.get('thickness')
+    if isinstance(thickness, bool) or thickness not in THICKNESS:
+        fail('%s: thickness must be 1, 2 or 3 (px of depth), not %s' % (what, thickness))
     grip = w.get('grip')
-    keys(grip, {'offset', 'rotation', 'note'}, what + ' grip')
+    keys(grip, {'pixel', 'offset', 'rotation', 'note'}, what + ' grip')
+    pixel = vec(grip.get('pixel'), 2, what + ' grip pixel', ints=True, minimum=0)
+    offset = vec(grip.get('offset', [0, 0, 0]), 3, what + ' grip offset')
+    rotation = vec(grip.get('rotation', [0, 0, 0]), 3, what + ' grip rotation')
+    pull = w.get('pull')
     folder = cat.root / 'art/weapons'
-    if not (folder / (wid + '.png')).is_file():
-        fail('%s: %s.png is missing from art/weapons' % (what, wid))
-    tex = read_png(folder / (wid + '.png'), what)
-    if list(tex.size) != size:
-        fail('%s: %s.png is %dx%d, not the weapon size %dx%d' % (what, wid, tex.size[0], tex.size[1], size[0], size[1]))
-    tint(tex, '%s: %s.png' % (what, wid), cat.factions)
+    if pull is None:
+        names, files = ['rest'], [wid + '.png']
+        stray = sorted(p.name for p in folder.glob('%s_pull_*.png' % wid))
+        if stray:
+            fail('%s: %s without a pull key (the three times of bow_draw)' % (what, stray[0]))
+    else:
+        pull = vec(pull, PULL_FRAMES, what + ' pull')
+        if any(b <= a for a, b in zip(pull, pull[1:])):
+            fail('%s: pull %s does not rise strictly' % (what, [num(p) for p in pull]))
+        if pull[0] < 0 or pull[-1] > PULL_MAX:
+            fail('%s: pull %s must lie between 0 and %s seconds' % (what, [num(p) for p in pull], num(PULL_MAX)))
+        names = ['rest'] + ['pull_%d' % i for i in range(PULL_FRAMES)]
+        files = [wid + '.png'] + ['%s_pull_%d.png' % (wid, i) for i in range(PULL_FRAMES)]
+    frames = []
+    for name, f in zip(names, files):
+        if not (folder / f).is_file():
+            fail('%s: %s is missing from art/weapons' % (what, f))
+        im = read_png(folder / f, what)
+        if im.width > FRAME_MAX or im.height > FRAME_MAX:
+            fail('%s: %s is %dx%d, over the %d px a frame may be' % (what, f, im.width, im.height, FRAME_MAX))
+        if frames and im.size != frames[0].size:
+            fail('%s: %s is %dx%d, not the rest frame size %dx%d' % (what, f, im.width, im.height, frames[0].width, frames[0].height))
+        tint(im, '%s: %s' % (what, f), cat.factions)
+        frames.append(im)
+    fw, fh = frames[0].size
+    if pixel[0] >= fw or pixel[1] >= fh:
+        fail('%s: grip pixel %s is outside the frame, %dx%d' % (what, pixel, fw, fh))
+    for name, im in zip(names, frames):
+        if im.getpixel(tuple(pixel))[3] == 0:
+            fail('%s: grip pixel %s is on a transparent pixel of frame %s' % (what, pixel, name))
+    nocks = w.get('nocks')
+    if pull is None:
+        if nocks is not None:
+            fail('%s: nocks without a pull key: nothing to nock' % what)
+    else:
+        if not isinstance(nocks, list) or len(nocks) != len(frames):
+            fail('%s: nocks must hold one [x, y] a frame (%d), the middle of the string in sprite px' % (what, len(frames)))
+        nocks = [vec(n, 2, '%s nock' % what) for n in nocks]
     glow = None
     if (folder / (wid + '_e.png')).is_file():
+        if pull is not None:
+            fail('%s: %s_e.png beside pull: a draw weapon has no glow' % (what, wid))
         glow = read_png(folder / (wid + '_e.png'), what)
-        if glow.size != tex.size:
-            fail('%s: %s_e.png is not the weapon size' % (what, wid))
-    model = {'format': FORMAT, 'weapon': wid, 'size': size,
-             'grip': {'offset': [num(c) for c in vec(grip.get('offset'), 3, what + ' grip offset')],
-                      'rotation': [num(c) for c in vec(grip.get('rotation'), 3, what + ' grip rotation')]},
-             'boxes': [{'origin': [num(c) for c in b['origin']], 'size': b['size'], 'uv': b['uv'], 'mirror': b['mirror'],
-                        'dilation': [0, 0, 0]} for b in boxes],
+        if glow.size != frames[0].size:
+            fail('%s: %s_e.png is not the frame size' % (what, wid))
+    gx, gy = pixel[0] + 0.5, pixel[1] + 0.5
+    out_frames, stats = [], []
+    for i, (name, im) in enumerate(zip(names, frames)):
+        quads = sprite_mesh(im, thickness, pixel, i)
+        if len(quads) > WEAPON_CAP:
+            fail('%s: frame %s has %d quads, over the %d quads a frame may have' % (what, name, len(quads), WEAPON_CAP))
+        nock = None if nocks is None else [num(nocks[i][0] - gx), num(nocks[i][1] - gy), 0]
+        out_frames.append({'name': name, 'nock': nock, 'quads': quads})
+        stats.append((wid, name, len(quads)))
+    sheet = Image.new('RGBA', (fw * len(frames), fh), (0, 0, 0, 0))
+    for i, im in enumerate(frames):
+        sheet.paste(im, (i * fw, 0))
+    model = {'format': FORMAT, 'weapon': wid, 'size': [sheet.width, fh], 'thickness': thickness,
+             'grip': {'offset': [num(c) for c in offset], 'rotation': [num(c) for c in rotation]},
+             'pull': [num(p) for p in pull] if pull is not None else [], 'frames': out_frames,
              'texture': texture_id('weapon/%s.png' % wid), 'glow': texture_id('weapon/%s_e.png' % wid) if glow else ''}
-    out = {'%s/weapon/%s.json' % (MODELS, wid): dumps(model), '%s/weapon/%s.png' % (TEXTURES, wid): png_bytes(tex)}
+    out = {'%s/weapon/%s.json' % (MODELS, wid): dumps(model), '%s/weapon/%s.png' % (TEXTURES, wid): png_bytes(sheet)}
     if glow:
-        out['%s/weapon/%s_e.png' % (TEXTURES, wid)] = png_bytes(glow)
-    return out, (lit(glow) if glow else 0)
+        lit_sheet = Image.new('RGBA', sheet.size, (0, 0, 0, 0))
+        lit_sheet.paste(glow, (0, 0))
+        out['%s/weapon/%s_e.png' % (TEXTURES, wid)] = png_bytes(lit_sheet)
+    return out, (lit(glow) if glow else 0), stats
+
+
+# ---- the relief layer (Task 5d, design 3 and 7) ----
+
+DIRECTION_NAMES = ('top', 'bottom', 'north', 'south', 'west', 'east')   # by Direction index: 0 down is -y, the model's top
+OVERLAP_EPS = 1e-3   # px of penetration an overlap must exceed: boxes that only touch do not overlap
+
+
+def dot3(a, b):
+    return sum(a[i] * b[i] for i in range(3))
+
+
+def cross3(a, b):
+    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+
+
+class Face:
+    """One face of a ModelPart.Cuboid as the 1.20.1 constructor lays it out: its geometric normal d, the texel rectangle it
+    reads, and the affine map between its plane and the texels. The position p0 + a * e1 + b * e3 reads the texel
+    (u2 + a * du, v1 + b * dv), the vanilla vertices 0, 1 and 3 and their UVs."""
+
+    def __init__(self, d, rect, verts, uvs):
+        self.d, self.rect = d, rect
+        self.p0 = list(verts[0])
+        self.e1 = [verts[1][i] - verts[0][i] for i in range(3)]
+        self.e3 = [verts[3][i] - verts[0][i] for i in range(3)]
+        self.u2, self.v1 = uvs[0]
+        self.du, self.dv = uvs[1][0] - uvs[0][0], uvs[3][1] - uvs[0][1]
+        self.ax = tuple(max(range(3), key=lambda i: abs(e[i])) for e in (self.e1, self.e3))   # the model axes u and v run along
+
+    def tex(self, pos):
+        """The texel coordinates of a position, projected on the face's plane (the normal's coordinate does not matter)."""
+        rel = [pos[i] - self.p0[i] for i in range(3)]
+        a, b = dot3(rel, self.e1) / dot3(self.e1, self.e1), dot3(rel, self.e3) / dot3(self.e3, self.e3)
+        return self.u2 + a * self.du, self.v1 + b * self.dv
+
+    def at(self, u, v):
+        """The position on the face's plane that reads texel coordinates (u, v)."""
+        a, b = (u - self.u2) / self.du, (v - self.v1) / self.dv
+        return [self.p0[i] + a * self.e1[i] + b * self.e3[i] for i in range(3)]
+
+
+def cuboid_faces(box):
+    """The faces of a baked box by geometric normal, transcribed from ModelPart.Cuboid (1.20.1 yarn): the eight vertices, the
+    UV rectangles and the quad lists, a mirrored box swapping its x vertices and flipping its normals' x."""
+    (u, v), (sx, sy, sz) = box['uv'], box['size']
+    o, dl = box['origin'], box['dilation']
+    x, y, z = o[0] - dl[0], o[1] - dl[1], o[2] - dl[2]
+    j, k, l = o[0] + sx + dl[0], o[1] + sy + dl[1], o[2] + sz + dl[2]
+    if box['mirror']:
+        x, j = j, x
+    vert = {1: (x, y, z), 2: (j, y, z), 3: (j, k, z), 4: (x, k, z), 5: (x, y, l), 6: (j, y, l), 7: (j, k, l), 8: (x, k, l)}
+    n, o2, p, q, r = u + sz, u + sz + sx, u + sz + 2 * sx, u + 2 * sz + sx, u + 2 * sz + 2 * sx
+    t, w = v + sz, v + sz + sy
+    out = {}
+    for d, names, u1, v1, u2, v2 in ((0, (6, 5, 1, 2), n, v, o2, t), (1, (3, 4, 8, 7), o2, t, p, v),
+                                     (4, (1, 5, 8, 4), u, t, n, w), (2, (2, 1, 4, 3), n, t, o2, w),
+                                     (5, (6, 2, 3, 7), o2, t, q, w), (3, (5, 6, 7, 8), q, t, r, w)):
+        if box['mirror'] and d in (4, 5):
+            d ^= 1
+        out[d] = Face(d, (min(u1, u2), min(v1, v2), max(u1, u2), max(v1, v2)), [vert[i] for i in names],
+                      [(u2, v1), (u1, v1), (u1, v2), (u2, v2)])
+    return out
+
+
+def face_rects(box):
+    """The texel rectangle of each of the box's faces that has an area, by geometric normal."""
+    return {d: f.rect for d, f in cuboid_faces(box).items() if f.rect[2] > f.rect[0] and f.rect[3] > f.rect[1]}
+
+
+def box_extent(box):
+    return ([box['origin'][i] - box['dilation'][i] for i in range(3)],
+            [box['origin'][i] + box['size'][i] + box['dilation'][i] for i in range(3)])
+
+
+def obb(rt, lo, hi):
+    """An axis-aligned box of a bone's frame as an oriented box in model space: (centre, half sizes, axes, radius)."""
+    r, t = rt
+    c = [(lo[i] + hi[i]) / 2 for i in range(3)]
+    half = [(hi[i] - lo[i]) / 2 for i in range(3)]
+    return ([t[i] + sum(r[i][k] * c[k] for k in range(3)) for i in range(3)], half,
+            [[r[i][k] for i in range(3)] for k in range(3)], math.sqrt(sum(h * h for h in half)))
+
+
+def obb_overlap(a, b, eps=OVERLAP_EPS):
+    """Whether two oriented boxes penetrate each other by more than eps along every axis (separating axis test)."""
+    ca, ha, aa, ra = a
+    cb, hb, ab, rb = b
+    d = [cb[i] - ca[i] for i in range(3)]
+    if dot3(d, d) >= (ra + rb) ** 2:
+        return False
+    axes = list(aa) + list(ab)
+    for u in aa:
+        for v in ab:
+            c = cross3(u, v)
+            n = math.sqrt(dot3(c, c))
+            if n > 1e-6:
+                axes.append([x / n for x in c])
+    for axis in axes:
+        reach = sum(ha[i] * abs(dot3(axis, aa[i])) for i in range(3)) + sum(hb[i] * abs(dot3(axis, ab[i])) for i in range(3))
+        if abs(dot3(axis, d)) >= reach - eps:
+            return False
+    return True
+
+
+class Boxes:
+    """Every box of a model as an oriented box in model space at rest, for the voxel overlap test. A box of a part that can
+    hide (a helm part, or one limited to some stages) is no obstacle: the relief shows when the part hides."""
+
+    def __init__(self, model):
+        self.rt = world(model['bones'])
+        self.items = []
+        for b in model['bones']:
+            hide = b['tag'] == 'helm' or bool(b['stages'])
+            for i, box in enumerate(b['boxes']):
+                self.items.append((b['name'], i, hide, obb(self.rt[b['name']], *box_extent(box))))
+
+    def hit(self, bone, index, lo, hi):
+        """The (bone, box index) that a cell box of box `index` of `bone` overlaps at rest, or None."""
+        me = obb(self.rt[bone], lo, hi)
+        for name, i, hide, other in self.items:
+            if not hide and (name, i) != (bone, index) and obb_overlap(me, other):
+                return name, i
+        return None
+
+
+class Grid:
+    """The occupancy grid of one box (design 3, steps 2 and 3): (w+2) x (h+2) x (d+2) cells in texel units, the box inside
+    and the voxels of its raised texels in the one-cell shell around it. A cell is as big as one texel on the box, so
+    on a scaled box it is as many px as the scale."""
+
+    def __init__(self, box):
+        self.box, self.n = box, box['size']
+        self.lo = box_extent(box)[0]
+        self.cell = [(box['size'][i] + 2 * box['dilation'][i]) / box['size'][i] for i in range(3)]
+        self.faces = cuboid_faces(box)
+        self.voxels = {}   # shell cell -> (face d, tx, ty): the raised texel standing there
+        self.edges, self.corners = {}, set()
+
+    def cell_of(self, face, tx, ty):
+        """The shell cell the voxel of texel (tx, ty) of a face stands in."""
+        pos = face.at(tx + 0.5, ty + 0.5)
+        c = [1 + math.floor((pos[i] - self.lo[i]) / self.cell[i]) for i in range(3)]
+        a = AXIS[face.d]
+        c[a] = 0 if NORMALS[face.d][a] < 0 else self.n[a] + 1
+        return tuple(c)
+
+    def cell_box(self, c):
+        lo = [self.lo[i] + (c[i] - 1) * self.cell[i] for i in range(3)]
+        return lo, [lo[i] + self.cell[i] for i in range(3)]
+
+    def shell_axes(self, c):
+        return [i for i in range(3) if c[i] in (0, self.n[i] + 1)]
+
+    def inward(self, c, axis):
+        c = list(c)
+        c[axis] = 1 if c[axis] == 0 else self.n[axis]
+        return tuple(c)
+
+    def inside(self, c):
+        return all(1 <= c[i] <= self.n[i] for i in range(3))
+
+    def filled(self, c):
+        return self.inside(c) or c in self.voxels or c in self.edges or c in self.corners
+
+    def fill(self):
+        """Edge and corner cells (design 3, step 3): an edge cell fills when the two face cells beside it are raised, a
+        corner cell when its three edge cells are filled. A band that wraps a box edge is then one solid."""
+        n = self.n
+        for e in range(3):
+            a, b = (e + 1) % 3, (e + 2) % 3
+            for sa in (0, n[a] + 1):
+                for sb in (0, n[b] + 1):
+                    for i in range(1, n[e] + 1):
+                        c = [0, 0, 0]
+                        c[e], c[a], c[b] = i, sa, sb
+                        c = tuple(c)
+                        if self.inward(c, a) in self.voxels and self.inward(c, b) in self.voxels:
+                            self.edges[c] = True
+        for sx in (0, n[0] + 1):
+            for sy in (0, n[1] + 1):
+                for sz in (0, n[2] + 1):
+                    c = (sx, sy, sz)
+                    if all(self.inward(c, ax) in self.edges for ax in range(3)):
+                        self.corners.add(c)
+
+    def source(self, c, d):
+        """The face voxel whose texel a free face (direction d) of shell cell c shows: the cell itself for a face voxel,
+        else the voxel beside it on the face the free face continues, with every other shell coordinate moved inward."""
+        if c in self.voxels:
+            return c
+        shell = self.shell_axes(c)
+        keep = AXIS[d] if AXIS[d] in shell else shell[0]
+        s = c
+        for ax in shell:
+            if ax != keep:
+                s = self.inward(s, ax)
+        return s
+
+    def anchor(self, c):
+        """The raised texel (face d, tx, ty) a shell cell is named after: its own, or that of a voxel beside an edge or corner cell."""
+        if c in self.voxels:
+            return self.voxels[c]
+        s = c
+        for ax in self.shell_axes(c)[1:]:
+            s = self.inward(s, ax)
+        return self.voxels[s]
+
+    def cells(self):
+        return sorted(set(self.voxels) | set(self.edges) | self.corners)
+
+
+def sliver_tex(face, texel, axes, run, lo, hi):
+    """The texel map of a side or corner quad: along its run axis (an in-plane axis of the face it reads, or None) the
+    texels run straight; across, half a texel at the centre of the source texel, SLIVER either side. Every axis of the
+    quad takes one texture axis, so no quad has a UV of zero area (the tangent Iris builds from it stays finite)."""
+    tex_axis = {}
+    for m in axes:
+        if m in face.ax:
+            tex_axis[m] = face.ax.index(m)
+    for m in axes:
+        if m not in tex_axis:
+            tex_axis[m] = ({0, 1} - set(tex_axis.values())).pop()
+    centre = (texel[0] + 0.5, texel[1] + 0.5)
+
+    def tex(pos):
+        uv = [0.0, 0.0]
+        for m in axes:
+            if m == run:
+                uv[tex_axis[m]] = face.tex(pos)[tex_axis[m]]
+            else:
+                uv[tex_axis[m]] = centre[tex_axis[m]] + (SLIVER if pos[m] > (lo[m] + hi[m]) / 2 else -SLIVER)
+        return uv[0], uv[1]
+    return tex
+
+
+def top_quads(g):
+    """The faces on top of the voxels, merged per face into maximal rectangles of raised texels (greedy, along u then v);
+    each quad's UV is the straight continuation of its texels."""
+    quads = []
+    for d in sorted(g.faces):
+        f = g.faces[d]
+        texels = {(x, y) for dd, x, y in g.voxels.values() if dd == d}
+        left = set(texels)
+        a = AXIS[d]
+        plane = g.lo[a] - g.cell[a] if NORMALS[d][a] < 0 else g.lo[a] + g.n[a] * g.cell[a] + g.cell[a]
+        for y, x in sorted((y, x) for x, y in texels):
+            if (x, y) not in left:
+                continue
+            x1 = x
+            while (x1 + 1, y) in left:
+                x1 += 1
+            y1 = y
+            while all((xx, y1 + 1) in left for xx in range(x, x1 + 1)):
+                y1 += 1
+            left -= {(xx, yy) for xx in range(x, x1 + 1) for yy in range(y, y1 + 1)}
+            p, q = f.at(x, y), f.at(x1 + 1, y1 + 1)
+            lo, hi = [min(p[i], q[i]) for i in range(3)], [max(p[i], q[i]) for i in range(3)]
+            lo[a] = hi[a] = plane
+            quads.append(make_quad(d, lo, hi, f.tex))
+    return quads
+
+
+def side_quads(g):
+    """The free faces of the shell cells that are not the top of a face voxel: the sides of voxels, and the outer faces
+    and caps of edge and corner cells. Faces against the box or another filled cell are never drawn. Faces on one line
+    that continue each other's texels merge into runs (along a voxel's face, along an edge)."""
+    groups = {}
+    for c in g.cells():
+        for d in range(6):
+            a = AXIS[d]
+            nb = list(c)
+            nb[a] += NORMALS[d][a]
+            if g.filled(tuple(nb)) or (c in g.voxels and g.voxels[c][0] == d):
+                continue
+            s = g.source(c, d)
+            ds, tx, ty = g.voxels[s]
+            face = g.faces[ds]
+            shell = g.shell_axes(c)
+            if c in g.voxels:
+                run = next(i for i in range(3) if i not in (a, AXIS[ds]))
+            elif a in shell:
+                run = next((i for i in range(3) if i not in shell), None)
+            else:
+                run = None
+            lo_a, hi_a = g.cell_box(c)
+            plane = hi_a[a] if NORMALS[d][a] > 0 else lo_a[a]
+            if run is None:
+                key = (d, c)
+            else:
+                across = (tx, ty)[1 - face.ax.index(run)]
+                key = (d, tuple(None if i == run else c[i] for i in range(3)), ds, run, across)
+            groups.setdefault(key, []).append((c, run, plane, ds, (tx, ty)))
+    quads = []
+    for key, members in groups.items():
+        members.sort(key=lambda m: m[0])
+        # split a group into stretches of consecutive cells along the run axis
+        stretches = [[members[0]]]
+        for m in members[1:]:
+            run = m[1]
+            if run is not None and m[0][run] == stretches[-1][-1][0][run] + 1:
+                stretches[-1].append(m)
+            else:
+                stretches.append([m])
+        for st in stretches:
+            first, last = st[0], st[-1]
+            c, run, plane, ds, texel = first
+            d = key[0]
+            a = AXIS[d]
+            lo, hi = [0.0] * 3, [0.0] * 3
+            lo_f, hi_f = g.cell_box(c)
+            lo_l, hi_l = g.cell_box(last[0])
+            for i in range(3):
+                lo[i], hi[i] = lo_f[i], hi_f[i]
+            if run is not None:
+                lo[run], hi[run] = lo_f[run], hi_l[run]
+            lo[a] = hi[a] = plane
+            axes = [(a + 1) % 3, (a + 2) % 3]
+            quads.append(make_quad(d, lo, hi, sliver_tex(g.faces[ds], texel, axes, run, lo, hi)))
+    return quads
+
+
+def relief_name(troop, key):
+    return '%s_%s_r.png' % (troop, 'veteran' if key == 'veteran' else 's' + key)
+
+
+def side_image(cat, troop, file, size):
+    """The glow or outer file of a troop, which its relief must not cover, checked for the troop's size."""
+    im = read_png(cat.root / 'art/troops' / file, troop)
+    if list(im.size) != list(size):
+        fail('%s: %s is %dx%d, not the troop size %dx%d' % (troop, file, im.width, im.height, size[0], size[1]))
+    return im.load()
+
+
+def relief_mesh(cat: Catalog, model: dict, relief: Image.Image, troop: str, key: str) -> dict:
+    """The relief quads of one skin of a troop by bone name (design 3), every rule of the design checked: the relief is the
+    troop's size with alpha 0 or 255 only; no raised texel has a team hue, lies on a lit glow texel or under an opaque
+    outer texel, lies on no skin box face or on a box with no depth; at most RELIEF_SHARE of a face is raised; and no
+    voxel overlaps another box at rest (a box of a part that can hide excepted)."""
+    what = '%s: %s' % (troop, relief_name(troop, key))
+    size = model['size']
+    if list(relief.size) != list(size):
+        fail('%s is %dx%d, not the troop size %dx%d' % (what, relief.width, relief.height, size[0], size[1]))
+    data = relief.load()
+    raised = []
+    for y in range(relief.height):
+        for x in range(relief.width):
+            a = data[x, y][3]
+            if a not in (0, 255):
+                fail('%s pixel (%d, %d) has alpha %d: a relief texel is opaque or empty' % (what, x, y, a))
+            if a:
+                raised.append((x, y))
+    tint(relief, what, cat.factions)
+    own, extra = troop_files(cat, troop)
+    glow = side_image(cat, troop, extra['glow'], size) if extra['glow'] else None
+    outer = side_image(cat, troop, extra['outer'], size) if extra['outer'] else None
+    owner = {}
+    for b in model['bones']:
+        if b['team']:
+            continue
+        for i, box in enumerate(b['boxes']):
+            for d, (x0, y0, x1, y1) in face_rects(box).items():
+                for y in range(y0, y1):
+                    for x in range(x0, x1):
+                        owner[(x, y)] = (b, i, d)
+    grids, count = {}, {}
+    for x, y in raised:
+        if glow is not None and glow[x, y][3]:
+            fail('%s pixel (%d, %d) sits on a lit glow texel: the voxel would hide it' % (what, x, y))
+        if outer is not None and outer[x, y][3]:
+            fail('%s pixel (%d, %d) is under an opaque texel of the outer layer' % (what, x, y))
+        hit = owner.get((x, y))
+        if hit is None:
+            fail('%s pixel (%d, %d) lies on no skin box face' % (what, x, y))
+        b, i, d = hit
+        if 0 in b['boxes'][i]['size']:
+            fail('%s pixel (%d, %d) lies on box %d of bone %s, which has no depth' % (what, x, y, i, b['name']))
+        g = grids.setdefault((b['name'], i), Grid(b['boxes'][i]))
+        g.voxels[g.cell_of(g.faces[d], x, y)] = (d, x, y)
+        count[(b['name'], i, d)] = count.get((b['name'], i, d), 0) + 1
+    for (name, i, d), n in sorted(count.items()):
+        x0, y0, x1, y1 = grids[(name, i)].faces[d].rect
+        if n > RELIEF_SHARE * (x1 - x0) * (y1 - y0):
+            fail('%s: %d of the %d texels of the %s face of box %d of bone %s are raised, more than %d%% of the face'
+                 % (what, n, (x1 - x0) * (y1 - y0), DIRECTION_NAMES[d], i, name, round(RELIEF_SHARE * 100)))
+    boxes = Boxes(model)
+    out = {}
+    for b in model['bones']:
+        quads = []
+        for i in range(len(b['boxes'])):
+            g = grids.get((b['name'], i))
+            if g is None:
+                continue
+            g.fill()
+            for c in g.cells():
+                over = boxes.hit(b['name'], i, *g.cell_box(c))
+                if over:
+                    _, tx, ty = g.anchor(c)
+                    fail('%s pixel (%d, %d) makes a voxel that overlaps box %d of bone %s at rest'
+                         % (what, tx, ty, over[1], over[0]))
+            quads += top_quads(g) + side_quads(g)
+        if quads:
+            out[b['name']] = quads
+    return out
+
+
+def composite(skin: Image.Image, relief: Image.Image) -> Image.Image:
+    """The shipped stage skin: the source skin with every opaque relief texel pasted over it."""
+    out = skin.convert('RGBA').copy()
+    px, rp = out.load(), relief.convert('RGBA').load()
+    for y in range(out.height):
+        for x in range(out.width):
+            if rp[x, y][3] == 255:
+                px[x, y] = rp[x, y]
+    return out
+
+
+def relief_sources(cat, troop, own, extra):
+    """{key: file} of the troop's relief files: none, or one for every own skin (the stages' keys and veteran)."""
+    folder = cat.root / 'art/troops'
+    want = {str(s): relief_name(troop, str(s)) for s in sorted(own)}
+    if extra['veteran']:
+        want['veteran'] = relief_name(troop, 'veteran')
+    stray = re.compile(r'%s_(s\d+|veteran)_r\.png' % re.escape(troop))
+    for path in sorted(folder.glob('*_r.png')):
+        if stray.fullmatch(path.name) and path.name not in want.values():
+            fail('%s: %s belongs to no own skin of the troop' % (troop, path.name))
+    present = {k: f for k, f in want.items() if (folder / f).is_file()}
+    if present and len(present) != len(want):
+        fail('%s: %s is missing: once one skin has a relief layer, every own skin needs one'
+             % (troop, next(f for k, f in want.items() if k not in present)))
+    return present
+
+
+def relief_template(cat: Catalog, troop: str) -> Image.Image:
+    """Where relief may stand (design 7): every skin box face in its bone's hue at RELIEF_TINT over white, and a texel whose
+    voxel would overlap another box at rest (a joint, an inner face, a face under a team part or a part that never hides)
+    or lies on a box with no depth hatched in RELIEF_RED."""
+    model = bake(cat, troop)
+    boxes = Boxes(model)
+    im = Image.new('RGBA', tuple(model['size']), (0, 0, 0, 0))
+    px = im.load()
+    names = {'top': 0, 'bottom': 1, 'north': 2, 'south': 3, 'west': 4, 'east': 5}
+    for n, b in enumerate(x for x in model['bones'] if not x['team'] and x['boxes']):
+        base = HUES[n % len(HUES)]
+        for i, box in enumerate(b['boxes']):
+            flat = 0 in box['size']
+            g = None if flat else Grid(box)
+            for name, (x0, y0, x1, y1) in faces(box['uv'], box['size']).items():
+                d = names[name] ^ (1 if box['mirror'] and name in ('west', 'east') else 0)
+                shaded = [max(0, min(255, int(c * FACE_SHADE[name]))) for c in base]
+                colour = tuple(int(c * RELIEF_TINT + 255 * (1 - RELIEF_TINT)) for c in shaded) + (255,)
+                for y in range(y0, y1):
+                    for x in range(x0, x1):
+                        no = flat or boxes.hit(b['name'], i, *g.cell_box(g.cell_of(g.faces[d], x, y)))
+                        px[x, y] = RELIEF_RED + (255,) if no and (x + y) % 3 == 0 else colour
+    return im
+
+
+# ---- the turnaround sheets (--turn) ----
+
+TURN_SHOT = re.compile(r'p2-turn-(?P<troop>[a-z0-9_]+)-(?P<pose>[a-z0-9_]+)-(?P<angle>\d+)\.png')
+TURN_ANGLES = (0, 45, 90, 135, 180, 225, 270, 315)
+TURN_POSES = ('idle', 'draw', 'loose', 'attack', 'walk25', 'flat', 'bare')   # the order the suite takes them in
+TURN_NAMES = {'idle': 'idle (rest)', 'draw': 'full draw', 'loose': 'loose', 'attack': 'attack peak', 'walk25': 'walk 1/4',
+              'flat': 'flat (relief off)', 'bare': 'NO WEAPON'}
+TURN_CROP = (430, 20, 850, 650)   # a 2:3 window round the troop of a 1280x720 shot, feet near the lower edge
+TURN_CELL = (120, 180)            # a cell's picture; the sheet is 8 of them, 960 px, and a label strip below each
+TURN_LABEL = 26
+TURN_BG, TURN_GAP = (24, 22, 28), (72, 72, 80)
+
+
+def turn_font(name, size):
+    from PIL import ImageFont
+    try:
+        return ImageFont.truetype('C:/Windows/Fonts/%s.ttf' % name, size)
+    except OSError:
+        return ImageFont.load_default()
+
+
+def turn_cell(path, line1, line2):
+    from PIL import ImageDraw
+    cw, ch = TURN_CELL
+    cell = Image.new('RGB', (cw, ch + TURN_LABEL), TURN_BG)
+    draw = ImageDraw.Draw(cell)
+    if path is None:
+        cell.paste(Image.new('RGB', TURN_CELL, TURN_GAP), (0, 0))
+        draw.text((4, 4), 'no shot', fill=(210, 150, 150), font=turn_font('consola', 11))
+    else:
+        with Image.open(path) as shot:
+            cell.paste(shot.convert('RGB').crop(TURN_CROP).resize(TURN_CELL, Image.LANCZOS), (0, 0))
+    draw.text((3, ch + 1), line1, fill=(235, 235, 235), font=turn_font('consolab', 11))
+    draw.text((3, ch + 13), line2, fill=(200, 190, 140), font=turn_font('consola', 11))
+    return cell
+
+
+def turn_sheet(rows, path):
+    from PIL import ImageDraw
+    cw, ch = TURN_CELL[0], TURN_CELL[1] + TURN_LABEL
+    sheet = Image.new('RGB', (len(TURN_ANGLES) * cw, len(rows) * ch), TURN_BG)
+    draw = ImageDraw.Draw(sheet)
+    for r, row in enumerate(rows):
+        for c, cell in enumerate(row):
+            sheet.paste(cell, (c * cw, r * ch))
+            draw.rectangle([c * cw, r * ch, (c + 1) * cw - 1, (r + 1) * ch - 1], outline=(60, 58, 70))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(path)
+    print('build_skins: %s %dx%d' % (path.name, sheet.width, sheet.height))
+    return path
+
+
+def turn_sheets(shots: Path, out: Path) -> list:
+    """The turnaround sheets of the suite turn's shots p2-turn-<troop>-<pose>-<angle>.png: turn-<troop>.png for each
+    troop (a row a pose in the order of TURN_POSES, a column an angle 0 to 315, a missing shot a grey cell) and turn-all.png
+    (a row a troop, its idle at the eight angles). Every cell is labelled with the troop, the pose and the angle."""
+    shots, out = Path(shots), Path(out)
+    found = {}
+    for path in sorted(shots.glob('p2-turn-*.png')):
+        m = TURN_SHOT.fullmatch(path.name)
+        if m:
+            found.setdefault(m['troop'], {}).setdefault(m['pose'], {})[int(m['angle'])] = path
+    if not found:
+        fail('%s holds no p2-turn-<troop>-<pose>-<angle>.png shot' % shots)
+    made = []
+    for troop in sorted(found):
+        poses = sorted(found[troop], key=lambda p: (TURN_POSES.index(p) if p in TURN_POSES else len(TURN_POSES), p))
+        rows = [[turn_cell(found[troop][pose].get(a), '%s %s' % (troop, TURN_NAMES.get(pose, pose)), 'angle %d' % a)
+                 for a in TURN_ANGLES] for pose in poses]
+        made.append(turn_sheet(rows, out / ('turn-%s.png' % troop)))
+    rows = [[turn_cell(found[t].get('idle', {}).get(a), '%s idle' % t, 'angle %d' % a) for a in TURN_ANGLES] for t in sorted(found)]
+    made.append(turn_sheet(rows, out / 'turn-all.png'))
+    return made
 
 
 def bake(cat: Catalog, troop: str) -> dict:
@@ -639,11 +1318,18 @@ def bake(cat: Catalog, troop: str) -> dict:
 
 
 def troop_outputs(cat, troop, weapon_lit):
+    """The files of one troop: its model, with the relief meshes of its skins, and the skins, each the source skin with its
+    relief layer pasted over it. Returns (files, [(troop, key, relief quads)])."""
     model = bake(cat, troop)
     own, extra = troop_files(cat, troop)
     folder = cat.root / 'art/troops'
     size = model['size']
-    out = {'%s/%s.json' % (MODELS, troop): dumps(model)}
+    out = {}
+    reliefs = relief_sources(cat, troop, own, extra)
+    key_of = {own[s]: str(s) for s in own}
+    if extra['veteran']:
+        key_of[extra['veteran']] = 'veteran'
+    by_bone, stats = {}, []
     for f in [own[s] for s in sorted(own)] + [extra['veteran'], extra['outer'], extra['glow']]:
         if not f:
             continue
@@ -652,13 +1338,28 @@ def troop_outputs(cat, troop, weapon_lit):
             fail('%s: %s is %dx%d, not the troop size %dx%d' % (troop, f, im.size[0], im.size[1], size[0], size[1]))
         if f != extra['glow']:
             tint(im, '%s: %s' % (troop, f), cat.factions)
+        key = key_of.get(f)
+        if key in reliefs:
+            relief = read_png(folder / reliefs[key], troop)
+            meshes = relief_mesh(cat, model, relief, troop, key)
+            total = sum(len(q) for q in meshes.values())
+            if total > RELIEF_CAP:
+                fail('%s: %s has %d relief quads, over the %d quads a stage may have' % (troop, reliefs[key], total, RELIEF_CAP))
+            for bone, quads in meshes.items():
+                by_bone.setdefault(bone, {})[key] = quads
+            stats.append((troop, key, total))
+            im = composite(im, relief)
         out['%s/%s' % (TEXTURES, f)] = png_bytes(im)
+    for b in model['bones']:
+        if b['name'] in by_bone:
+            b['relief'] = {k: by_bone[b['name']][k] for k in sorted(by_bone[b['name']], key=lambda k: (k == 'veteran', k))}
+    out['%s/%s.json' % (MODELS, troop)] = dumps(model)
     cap = GLOW_CAP.get(cat.sheet[troop]['rarity'], 6)
     n = (lit(read_png(folder / extra['glow'], troop)) if extra['glow'] else 0) + weapon_lit.get(model['weapon'], 0)
     if n > cap:
-        fail('%s: %d lit pixels in its glow and its weapon\'s glow together, over the %s cap of %d'
+        fail("%s: %d lit pixels in its glow and its weapon's glow together, over the %s cap of %d"
              % (troop, n, cat.sheet[troop]['rarity'], cap))
-    return out
+    return out, stats
 
 
 def cloth(cat: Catalog, side) -> Image.Image:
@@ -700,13 +1401,16 @@ def cloth(cat: Catalog, side) -> Image.Image:
 
 
 def build(cat):
-    """Every output as {path under the assets root: bytes}, plus the index."""
+    """Every output as {path under the assets root: bytes}, plus the index, the number of cloths and the relief stages and
+    weapon frames built as (owner, name, quads) rows."""
     files = {}
     weapon_lit = {}
+    stats = {'relief': [], 'weapons': []}
     for wid in sorted(cat.weapons):
-        out, n = weapon_outputs(cat, wid)
+        out, n, frames = weapon_outputs(cat, wid)
         files.update(out)
         weapon_lit[wid] = n
+        stats['weapons'] += frames
     for rid in sorted(cat.rigs):
         rig = cat.rigs[rid]
         bones = bake_bones(rig, 'rig ' + rid)
@@ -714,14 +1418,22 @@ def build(cat):
             {'format': FORMAT, 'rig': rid, 'size': rig['size'], 'outer': num(rig['outer']), 'hands': rig['hands'],
              'bones': [clean_bone(b, rig['size']) for b in bones]})
     for tid in sorted(cat.troops):
-        files.update(troop_outputs(cat, tid, weapon_lit))
+        out, relief = troop_outputs(cat, tid, weapon_lit)
+        files.update(out)
+        stats['relief'] += relief
     sides = list(cat.factions)
     for side in sides + [None, 'company']:
         files['%s/team_cloth_%s.png' % (TEXTURES, side or 'linen')] = png_bytes(cloth(cat, side))
     index = {'format': FORMAT, 'troops': sorted(cat.troops), 'rigs': sorted(cat.rigs), 'weapons': sorted(cat.weapons),
              'outputs': sorted(files)}
     files['%s/index.json' % MODELS] = dumps(index)
-    return files, index, len(sides) + 2
+    return files, index, len(sides) + 2, stats
+
+
+def most(rows):
+    """(quads, 'owner name') of the biggest of (owner, name, quads) rows, the first of equals; (0, '-') for none."""
+    top = max(rows, key=lambda r: r[2], default=None)
+    return (0, '-') if top is None else (top[2], '%s %s' % (top[0], top[1]))
 
 
 def listed(index_file):
@@ -744,7 +1456,7 @@ def export(root: Path, out: Path) -> dict:
     makes, and returns the new index."""
     root, out = Path(root), Path(out)
     cat = load(root)
-    files, index, cloths = build(cat)
+    files, index, cloths, stats = build(cat)
     before = listed(out / MODELS / 'index.json')
     for rel, data in files.items():
         path = out / rel
@@ -760,6 +1472,9 @@ def export(root: Path, out: Path) -> dict:
     if strays:
         print('build_skins: left %d file(s) that no index listed, first %s; --verify fails until they go' % (len(strays), strays[0]))
     print('build_skins: %d troops, %d rigs, %d weapons, %d cloths' % (len(cat.troops), len(cat.rigs), len(cat.weapons), cloths))
+    print('build_skins: relief %d stages, %d quads (most %d, %s); weapons %d frames, %d quads (most %d, %s)' % (
+        (len(stats['relief']), sum(n for _, _, n in stats['relief'])) + most(stats['relief']) +
+        (len(stats['weapons']), sum(n for _, _, n in stats['weapons'])) + most(stats['weapons'])))
     try:
         shown = out.resolve().relative_to(root.resolve()).as_posix()
     except ValueError:
@@ -864,11 +1579,14 @@ def main(args):
         return verify(ROOT)
     if len(args) == 2 and args[0] == '--template':
         cat = load(ROOT)
-        im = template(cat, args[1])
-        dest = ROOT / 'work/troops' / (args[1] + '_template.png')
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        im.save(dest)
-        print('build_skins: template %s' % dest.relative_to(ROOT).as_posix())
+        for im, name in ((template(cat, args[1]), '_template.png'), (relief_template(cat, args[1]), '_relief_template.png')):
+            dest = ROOT / 'work/troops' / (args[1] + name)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            im.save(dest)
+            print('build_skins: template %s' % dest.relative_to(ROOT).as_posix())
+        return 0
+    if len(args) == 3 and args[0] == '--turn':
+        turn_sheets(Path(args[1]), Path(args[2]))
         return 0
     if not args:
         export(ROOT, ROOT / ASSETS)

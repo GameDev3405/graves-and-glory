@@ -40,6 +40,11 @@ public final class TroopAnimator {
     public static final int BLEND_TICKS=3;
     /** Ticks a once overlay (attack, hit) takes to blend in, and a restarted bow_draw to leave the draw for the loose: its peak (hit at 0.08 s, the attack's wind-up at 0.12 s) must show in full. */
     static final int SNAP_TICKS=1;
+    /**
+     * The turn of a bow in its hand at rest, degrees of yaw (troop depth design section 2: 45, so a flat sprite's curve reads at 71
+     * percent from the front and from the side; the hand still turns the bow upright into the plane of the shot at the draw).
+     */
+    public static final float BOW_REST_YAW=45;
     /** The stance the server last sent for each troop entity id (Tactics.STANCES); no entry is "". */
     public static final Map<Integer,String> STANCES=new ConcurrentHashMap<>();
     /** Harness hook: one clip frozen at one time (seconds) on an entity, in its own role (base, overlay or pose), without the head look. */
@@ -209,6 +214,16 @@ public final class TroopAnimator {
     /** The time a play of an overlay shows at an age: bow_draw holds at its full draw between shots, any other clip runs from its start. */
     static float seconds(String rig,String name,Track t,float age){return name.equals("bow_draw")?bowSeconds(rig,t.offset,t.elapsed(age)):t.seconds(age);}
 
+    /**
+     * The time the live bow_draw play of an entity shows, seconds into the clip, or -1 when nothing draws (a clip forced on it that
+     * is not bow_draw counts as nothing). Weapon.frameAt picks the bow's pull frame from it.
+     */
+    public static float drawSeconds(MobEntity e,TroopModel<?> m,float age){
+        Forced f=forced.get(e.getId());
+        if(f!=null)return f.clip().equals("bow_draw")?f.seconds():-1f;
+        State s=STATES.get(e);return s==null?-1f:s.overlaySeconds(m,"bow_draw",age);
+    }
+
     /** A clip as this troop plays it: mirrored for a bow in the right hand (bow_draw holds it in the left), and the handed clips for a weapon in the left. */
     static Animation clip(TroopModel<?> m,String clip,boolean bow){
         boolean left="left".equals(m.hand()),mirror=clip.equals("bow_draw")?bow&&!left:left&&HANDED.contains(clip);
@@ -274,12 +289,13 @@ public final class TroopAnimator {
     }
     /**
      * A bow in its hand: its handle through the middle of the fist (the weapon's grip offset is zero), the hand turned so that at rest the bow hangs
-     * upright with its string to the troop's back, and while it draws (the arm raised to the front) upright with the string to the archer.
+     * upright at BOW_REST_YAW to the troop's front with its string to the back and inward, and while it draws (the arm raised to the front) upright
+     * with the string to the archer.
      * The same turn for either hand: the handle is on the hand's axis, so no side goes out.
      */
     static void twist(TroopModel<?> m,boolean left,float draw){
         ModelPart h=m.bone(m.handBone(left?"left":"right"));if(h==null)return;
-        h.pitch+=90*draw*RAD;h.yaw+=90*(1-draw)*RAD;h.roll+=90*draw*RAD;
+        h.pitch+=90*draw*RAD;h.yaw+=BOW_REST_YAW*(1-draw)*RAD;h.roll+=90*draw*RAD;
     }
     /** A taller troop (its root above the rig's) scales the root's offsets by its height over the rig's, so its falls land on the ground. */
     static void rootScale(TroopModel<?> m){

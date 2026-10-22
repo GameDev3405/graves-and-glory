@@ -62,11 +62,23 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     private double[] normalCull,posedCull;
     /** The inputs of the last setAngles: age, limb angle, limb distance, head yaw and head pitch (the harness reads them). */
     final float[] lastInputs=new float[5];
+    /** The relief layer (troop depth design, section 3): per key ("1", "2", "3" or "veteran") the mesh of each skin bone that has one, in file order. */
+    private final Map<String,Map<String,TroopMesh>> relief;
+    /** Per key, the bones the relief walk visits: the ones with a mesh and their ancestors. */
+    private final Map<String,Set<String>> reliefWalk;
+    /** Each bone's children in file order, "" holding the roots. */
+    private final Map<String,List<String>> kids=new HashMap<>();
+    /** The most relief quads a skin may have; the build fails above it and so does the load. */
+    static final int MAX_RELIEF_QUADS=256;
+    /** The key the next render draws relief for (armRelief), spent by that one pass; null for none. */
+    private String armed;
+    /** What the last render did with the arm: whether it was spent, and the quads it drew (TroopRenderer.record reads them). */
+    boolean reliefSpent;int reliefDrawn;
 
     private TroopModel(){
         super(RenderLayer::getEntityCutout);top=new ModelPart(List.of(),Map.of());troop=rig=hand=idleArms=portrait=weapon="";
         veteran=glow=outer=null;glowFrom=1;teamOn=new boolean[0];hands=Map.of();rest=new Box(0,0,0,0,0,0);outerTop=null;
-        cullRadius=cullBottom=cullTop=0;teamBits=0;weaponPoints=List.of();
+        cullRadius=cullBottom=cullTop=0;teamBits=0;weaponPoints=List.of();relief=Map.of();reliefWalk=Map.of();
     }
     /** An empty placeholder: TroopRenderer is built before TroopModelLoader may have loaded anything. */
     static <T extends MobEntity> TroopModel<T> empty(){return new TroopModel<>();}
@@ -89,8 +101,15 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         Map<String,double[][]> rot=new HashMap<>();Map<String,double[]> at=new HashMap<>();Map<String,List<double[]>> corners=new HashMap<>();
         double[] lo={Double.MAX_VALUE,Double.MAX_VALUE,Double.MAX_VALUE},hi={-Double.MAX_VALUE,-Double.MAX_VALUE,-Double.MAX_VALUE};
         Set<String> restHidden=new HashSet<>();
+        int[] size=json.has("size")?new int[]{json.getAsJsonArray("size").get(0).getAsInt(),json.getAsJsonArray("size").get(1).getAsInt()}:new int[]{64,64};
+        Map<String,Map<String,TroopMesh>> rel=new TreeMap<>();
         for(JsonElement el:bones){
             JsonObject b=el.getAsJsonObject();String name=str(b,"name"),parent=str(b,"parent");
+            kids.computeIfAbsent(parent,k->new ArrayList<>()).add(name);
+            if(b.has("relief"))for(var re:b.getAsJsonObject("relief").entrySet()){
+                TroopMesh mesh=TroopMesh.parse(re.getValue().getAsJsonArray(),size[0],size[1]);
+                if(mesh.quads()>0)rel.computeIfAbsent(re.getKey(),k->new LinkedHashMap<>()).put(name,mesh);
+            }
             Set<Integer> stages=new TreeSet<>();if(b.has("stages"))for(var s:b.getAsJsonArray("stages"))stages.add(s.getAsInt());
             Bone bone=new Bone(name,parent,str(b,"part"),b.has("team")&&b.get("team").getAsBoolean(),str(b,"tag"),Collections.unmodifiableSet(stages));
             ModelPart p=parent.isEmpty()?top.getChild(name):parts.get(parent).getChild(name);
@@ -137,6 +156,17 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         for(double[] s:spheres){radius=Math.max(radius,Math.hypot(s[0],s[2])+s[3]);high=Math.min(high,s[1]-s[3]);low=Math.max(low,s[1]+s[3]);}
         boolean any=low>-Double.MAX_VALUE;
         cullRadius=any?radius/16+.25:1;cullTop=any?1.501-high/16+.25:2;cullBottom=any?1.501-low/16-.25:0;
+        Map<String,Set<String>> walk=new TreeMap<>();
+        for(var k:rel.entrySet()){
+            String key=k.getKey();int total=0;
+            if(key.equals("veteran")){if(veteran==null)throw new IllegalArgumentException("relief for the Veteran skin, which the troop does not have");}
+            else{if(!key.matches("[1-9][0-9]*")||!skins.containsKey(Integer.parseInt(key)))throw new IllegalArgumentException("relief for key "+key+", which is no skin of the troop");}
+            Set<String> visit=new HashSet<>();
+            for(var m:k.getValue().entrySet()){total+=m.getValue().quads();for(String n=m.getKey();!n.isEmpty()&&visit.add(n);n=info.get(n).parent());}
+            if(total>MAX_RELIEF_QUADS)throw new IllegalArgumentException("relief "+key+" has "+total+" quads, more than "+MAX_RELIEF_QUADS);
+            walk.put(key,visit);
+        }
+        relief=rel;reliefWalk=walk;
     }
     private double reachOf(String bone,double[] from,Map<String,List<double[]>> corners){
         double r=0;for(var b:info.values())if(b.name().equals(bone)||descends(b.name(),bone))for(double[] w:corners.get(b.name()))r=Math.max(r,dist(from,w));return r;
@@ -218,6 +248,45 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     }
     /** How much taller than its rig this troop stands: TroopAnimator scales the root's offsets by it, so its falls land on the ground. */
     public float rootScale(){return rootK;}
+    // ---- the relief layer (troop depth design, sections 3 and 4) ----
+    /** The relief mesh of a bone for a key; empty when the bone has none. */
+    public TroopMesh relief(String bone,String key){var m=relief.get(key);var mesh=m==null?null:m.get(bone);return mesh==null?TroopMesh.EMPTY:mesh;}
+    /** The keys this model has relief for, one per own skin: "1", "2", "3" and "veteran". */
+    public Set<String> reliefKeys(){return Collections.unmodifiableSet(relief.keySet());}
+    /** The quads of a key over all its bones. */
+    public int reliefQuads(String key){var m=relief.get(key);int n=0;if(m!=null)for(TroopMesh t:m.values())n+=t.quads();return n;}
+    /** The relief key of the skin a Look binds ("veteran", or the stage whose skin file draws); null when the model has no relief for it. */
+    public String reliefKey(TroopModels.Look l){
+        if(relief.isEmpty()||l==null)return null;
+        String key=l.veteran()&&veteran!=null?"veteran":String.valueOf(skinStage(l.stage()));
+        return relief.containsKey(key)?key:null;
+    }
+    /** Arms the next render to draw the relief of a key after the skin (null disarms). One render spends it. */
+    public void armRelief(String key){armed=key;reliefSpent=false;reliefDrawn=0;}
+    /**
+     * Draws the relief of a key through each shown bone into the consumer: the bones in file order through the matrix stack as
+     * ModelPart.render walks them (each part's rotate; a part that is not visible takes its whole subtree with it; a part that is
+     * hidden skips only its own mesh). Returns the quads drawn.
+     */
+    int renderRelief(String key,MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){
+        Map<String,TroopMesh> meshes=relief.get(key);Set<String> walk=reliefWalk.get(key);if(meshes==null||walk==null||!top.visible)return 0;
+        m.push();top.rotate(m);int n=0;
+        for(String root:kids.getOrDefault("",List.of()))if(walk.contains(root))n+=walkRelief(root,meshes,walk,m,vc,light,overlay,r,g,b,a);
+        m.pop();return n;
+    }
+    private int walkRelief(String name,Map<String,TroopMesh> meshes,Set<String> walk,MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){
+        ModelPart p=parts.get(name);if(!p.visible)return 0;
+        m.push();p.rotate(m);int n=0;TroopMesh mesh=meshes.get(name);
+        if(mesh!=null&&!p.hidden){mesh.render(m.peek(),vc,light,overlay,r,g,b,a);n+=mesh.quads();}
+        for(String child:kids.getOrDefault(name,List.of()))if(walk.contains(child))n+=walkRelief(child,meshes,walk,m,vc,light,overlay,r,g,b,a);
+        m.pop();return n;
+    }
+    /** The skin pass, then the relief of the key the draw armed: the same consumer, light, overlay and tint, so the relief is one more layer of the skin. */
+    @Override public void render(MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){
+        super.render(m,vc,light,overlay,r,g,b,a);
+        String key=armed;armed=null;
+        if(key!=null){reliefDrawn=renderRelief(key,m,vc,light,overlay,r,g,b,a);reliefSpent=true;}
+    }
     /** Every bone's pose (pivot x, y and z, pitch, yaw and roll) in file order, 6 floats a bone; into reuse when it fits. */
     public float[] snapshot(float[] reuse){
         float[] out=reuse!=null&&reuse.length==parts.size()*6?reuse:new float[parts.size()*6];int i=0;
@@ -231,6 +300,8 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     }
     /** The bone names in file order (a snapshot's order). */
     public List<String> boneOrder(){return List.copyOf(parts.keySet());}
+    /** The stage whose skin file draws at a stage: the highest not above it, else the lowest. */
+    int skinStage(int stage){Integer out=null;for(int k:skins.keySet())if(k<=stage||out==null)out=k;return out==null?1:out;}
     Identifier skin(int stage){Identifier out=null;for(var e:skins.entrySet())if(e.getKey()<=stage||out==null)out=e.getValue();return out;}
     String hand(){return hand;}
     String idleArms(){return idleArms;}

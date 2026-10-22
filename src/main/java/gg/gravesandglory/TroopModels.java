@@ -5,6 +5,7 @@ import net.minecraft.client.model.ModelPart;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Vec3d;
 import java.util.*;
 
 /**
@@ -21,8 +22,44 @@ public final class TroopModels {
      * longer in its colours, with its flag), else null.
      */
     public record Look(Spec.TroopsRow troop, int stage, boolean veteran, String side) {}
-    /** A weapon model: its part (the grip already placed in the hand bone's frame), its texture and its glow (null for none). */
-    public record Weapon(ModelPart part, Identifier texture, Identifier glow) {}
+    /**
+     * A weapon model (troop depth design, section 2): its id, the meshes of its frames (rest first, then pull_0 to pull_2 of a
+     * draw weapon), the times of the pulls in seconds of bow_draw (empty without a pull), the grip that places the sprite in the
+     * hand bone's frame (the centre of the grip pixel is the sprite's origin), the nock of each frame (the middle of the string in
+     * the weapon frame, model px; empty without a pull), its texture and its glow (null for none).
+     */
+    public record Weapon(String id, java.util.List<TroopMesh> frames, float[] pull, net.minecraft.client.model.ModelTransform grip, java.util.List<Vec3d> nocks, Identifier texture, Identifier glow) {
+        /**
+         * The frame a draw shows: the rest frame (0) when the weapon has no pull, below pull[0], from the loose on, and when nothing
+         * draws (seconds -1); otherwise the last pull whose start has passed, counted from frame 1.
+         */
+        public static int frameAt(float[] pull, float seconds, float loose) {
+            if (pull == null || pull.length == 0 || seconds < pull[0] || seconds >= loose) return 0;
+            int k = 0;
+            for (int i = 0; i < pull.length; i++) if (seconds >= pull[i]) k = i;
+            return k + 1;
+        }
+        /** Moves the stack from the hand bone's frame to the sprite's: the grip's offset, then its turn, as ModelPart.rotate does. */
+        public void grip(net.minecraft.client.util.math.MatrixStack m) {
+            m.translate(grip.pivotX / 16f, grip.pivotY / 16f, grip.pivotZ / 16f);
+            if (grip.pitch != 0f || grip.yaw != 0f || grip.roll != 0f) m.multiply(new org.joml.Quaternionf().rotationZYX(grip.roll, grip.yaw, grip.pitch));
+        }
+        /** The corners of every frame's bounds in the hand bone's frame (the grip applied), model px: the cull box takes the weapon's reach from them. */
+        public java.util.List<double[]> points() {
+            double[][] rot = TroopModel.rotation(new double[]{Math.toDegrees(grip.pitch), Math.toDegrees(grip.yaw), Math.toDegrees(grip.roll)});
+            java.util.List<double[]> out = new java.util.ArrayList<>();
+            for (TroopMesh f : frames) {
+                if (f.quads() == 0) continue;
+                float[] b = f.bounds();
+                for (int c = 0; c < 8; c++) {
+                    double[] corner = {(c & 1) == 0 ? b[0] : b[3], (c & 2) == 0 ? b[1] : b[4], (c & 4) == 0 ? b[2] : b[5]};
+                    double[] q = TroopModel.apply(rot, corner);
+                    out.add(new double[]{q[0] + grip.pivotX, q[1] + grip.pivotY, q[2] + grip.pivotZ});
+                }
+            }
+            return out;
+        }
+    }
     /** The rig of each sheet entity (tools/build_skins.py RIGS). */
     public static final Map<String,String> RIGS = Map.ofEntries(
         Map.entry("husk","biped"),Map.entry("zombie","biped"),Map.entry("skeleton","biped"),Map.entry("stray","biped"),
@@ -92,6 +129,8 @@ public final class TroopModels {
     /** The raw portrait framing of a troop: standard, tall N, wide N or beast N [yaw D]; null without a model. */
     public static String framing(String troop){var m=troops.get(troop);return m==null?null:m.portrait;}
 
+    /** Whether the mob wears a dress (an ArmyCards portrait). */
+    static boolean dressed(Entity e){return DRESS.containsKey(e);}
     /** Puts a team-less mob in a cloth other than linen (ArmyCards: the company's, "company"); null takes it off again. */
     static void dress(Entity e,String cloth){if(cloth==null)DRESS.remove(e);else DRESS.put(e,cloth);}
     /** The cloth key a Look draws its team parts in: its side, else the mob's dress, else null (linen). */

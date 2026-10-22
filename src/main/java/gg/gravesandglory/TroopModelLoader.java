@@ -9,6 +9,7 @@ import net.minecraft.client.model.*;
 import net.minecraft.resource.ResourceManager;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.Reader;
@@ -23,7 +24,9 @@ import java.util.*;
  */
 public final class TroopModelLoader implements SimpleSynchronousResourceReloadListener {
     static final String FOLDER="models/troop/";
-    static final int FORMAT=1;
+    static final int FORMAT=2;
+    /** The most quads one weapon frame may have (the build fails above it, and so does the load). */
+    static final int MAX_WEAPON_QUADS=128;
     static final Logger LOG=LoggerFactory.getLogger("gravesandglory");
     @Override public Identifier getFabricId(){return new Identifier(TroopModels.NAMESPACE,"troop_models");}
 
@@ -32,7 +35,7 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
 
     @Override public void reload(ResourceManager manager){
         Map<String,TroopModel<?>> troops=new LinkedHashMap<>(),rigs=new LinkedHashMap<>();Map<String,TroopModels.Weapon> weapons=new LinkedHashMap<>();
-        Map<String,JsonObject> rigFiles=new HashMap<>();Map<String,List<double[]>> grips=new HashMap<>();
+        Map<String,JsonObject> rigFiles=new HashMap<>();
         Index index;
         try{index=index(read(manager,"index.json"));}catch(Exception e){log("index.json",e);TroopModels.publish(troops,rigs,weapons);return;}
         for(String rig:index.rigs())try{
@@ -41,9 +44,9 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
         }catch(Exception e){log("rig/"+rig+".json",e);}
         for(String weapon:index.weapons())try{
             JsonObject j=read(manager,"weapon/"+weapon+".json");need(weapon.equals(str(j,"weapon")),"its weapon is "+str(j,"weapon")+", not "+weapon);
-            String glow=str(j,"glow");Identifier texture=new Identifier(str(j,"texture")),lit=glow.isEmpty()?null:new Identifier(glow);
-            texture(manager,texture);if(lit!=null)texture(manager,lit);
-            weapons.put(weapon,new TroopModels.Weapon(parseWeapon(j).createModel(),texture,lit));grips.put(weapon,gripPoints(j));
+            TroopModels.Weapon w=parseWeapon(j);
+            texture(manager,w.texture());if(w.glow()!=null)texture(manager,w.glow());
+            weapons.put(weapon,w);
         }catch(Exception e){log("weapon/"+weapon+".json",e);}
         Set<String> cloths=new TreeSet<>();for(var f:Spec.FACTIONS)cloths.add(f.id());cloths.add("linen");cloths.add("company");
         String missingCloth=null;for(String c:cloths)if(manager.getResource(TroopModels.cloth("linen".equals(c)?null:c)).isEmpty()){missingCloth=TroopModels.cloth("linen".equals(c)?null:c).toString();break;}
@@ -58,7 +61,7 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
             need(!team||missingCloth==null,"the cloth sheet "+missingCloth+" is missing");
             float outer=rig.get("outer").getAsFloat();
             ModelPart twin=str(j,"outer").isEmpty()?null:build(j,outer,true).createModel();
-            TroopModel<?> model=new TroopModel<>(j,parse(j).createModel(),hands(rig),twin,grips.getOrDefault(weapon,List.of()));
+            TroopModel<?> model=new TroopModel<>(j,parse(j).createModel(),hands(rig),twin,weapon.equals("none")?List.of():weapons.get(weapon).points());
             model.rig(rigs.get(str(j,"rig")));troops.put(troop,model);
         }catch(Exception e){log(troop+".json",e);}
         TroopModels.publish(troops,rigs,weapons);
@@ -110,26 +113,37 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
         return TexturedModelData.of(data,size[0],size[1]);
     }
 
-    /** A weapon: one part, placed by its grip in the hand bone's frame, holding the weapon's boxes. */
-    static TexturedModelData parseWeapon(JsonObject w){
+    /**
+     * A weapon (format 2, troop depth design section 2): the meshes of its frames on the packed sheet (rest first, then one per
+     * pull), the pull times and each frame's nock, the grip that places the sprite in the hand bone's frame, its texture and glow.
+     */
+    static TroopModels.Weapon parseWeapon(JsonObject w){
         need(w.has("format")&&w.get("format").getAsInt()==FORMAT,"format is not "+FORMAT);
-        int[] size=ints(w,"size",2);JsonObject grip=w.getAsJsonObject("grip");need(grip!=null,"no grip");
-        float[] p=floats(grip,"offset",3),r=floats(grip,"rotation",3);
-        ModelPartBuilder builder=ModelPartBuilder.create();JsonArray boxes=w.getAsJsonArray("boxes");need(boxes!=null&&!boxes.isEmpty(),"no boxes");
-        for(JsonElement be:boxes){JsonObject x=be.getAsJsonObject();float[] o=floats(x,"origin",3),d=x.has("dilation")?floats(x,"dilation",3):new float[3];int[] s=ints(x,"size",3),uv=ints(x,"uv",2);
-            builder.uv(uv[0],uv[1]).mirrored(x.has("mirror")&&x.get("mirror").getAsBoolean()).cuboid(o[0],o[1],o[2],s[0],s[1],s[2],new Dilation(d[0],d[1],d[2]));}
-        ModelData data=new ModelData();
-        data.getRoot().addChild("weapon",builder,ModelTransform.of(p[0],p[1],p[2],r[0]*MathHelper.RADIANS_PER_DEGREE,r[1]*MathHelper.RADIANS_PER_DEGREE,r[2]*MathHelper.RADIANS_PER_DEGREE));
-        return TexturedModelData.of(data,size[0],size[1]);
-    }
-    /** The corners of a weapon's boxes in its hand bone's frame (the grip's offset and rotation applied), in model pixels. */
-    static List<double[]> gripPoints(JsonObject w){
-        JsonObject grip=w.getAsJsonObject("grip");float[] p=floats(grip,"offset",3),r=floats(grip,"rotation",3);double[][] rot=TroopModel.rotation(new double[]{r[0],r[1],r[2]});
-        List<double[]> out=new ArrayList<>();
-        for(JsonElement be:w.getAsJsonArray("boxes")){JsonObject x=be.getAsJsonObject();float[] o=floats(x,"origin",3),d=x.has("dilation")?floats(x,"dilation",3):new float[3];int[] s=ints(x,"size",3);
-            for(int c=0;c<8;c++){double[] corner={(c&1)==0?o[0]-d[0]:o[0]+s[0]+d[0],(c&2)==0?o[1]-d[1]:o[1]+s[1]+d[1],(c&4)==0?o[2]-d[2]:o[2]+s[2]+d[2]};
-                double[] q=TroopModel.apply(rot,corner);out.add(new double[]{q[0]+p[0],q[1]+p[1],q[2]+p[2]});}}
-        return out;
+        int[] size=ints(w,"size",2);need(size[0]>0&&size[1]>0,"size must be above 0");
+        JsonObject grip=w.getAsJsonObject("grip");need(grip!=null,"no grip");
+        float[] p=floats(grip,"offset",3),r=floats(grip,"rotation",3);String glow=str(w,"glow");
+        float[] pull=new float[0];
+        if(w.has("pull")){
+            need(w.get("pull").isJsonArray(),"pull must be a list of times");JsonArray a=w.getAsJsonArray("pull");pull=new float[a.size()];
+            for(int i=0;i<pull.length;i++){pull[i]=a.get(i).getAsFloat();need(pull[i]>=0&&pull[i]<=1.2f,"pull time "+pull[i]+" is not between 0 and 1.2 s");need(i==0||pull[i]>pull[i-1],"pull times must rise");}
+            need(pull.length==0||pull.length==3,"pull must hold none or three times");
+        }
+        JsonArray frames=w.getAsJsonArray("frames");need(frames!=null&&frames.size()==1+pull.length,"frames must hold the rest frame and one for each pull");
+        List<TroopMesh> meshes=new ArrayList<>();List<Vec3d> nocks=new ArrayList<>();
+        for(int i=0;i<frames.size();i++){
+            need(frames.get(i).isJsonObject(),"a frame that is not an object");JsonObject f=frames.get(i).getAsJsonObject();
+            String want=i==0?"rest":"pull_"+(i-1);need(want.equals(str(f,"name")),"frame "+i+" is "+str(f,"name")+", not "+want);
+            need(f.has("quads")&&f.get("quads").isJsonArray(),"frame "+want+" has no quads");
+            TroopMesh mesh=TroopMesh.parse(f.getAsJsonArray("quads"),size[0],size[1]);
+            need(mesh.quads()>=2&&mesh.quads()<=MAX_WEAPON_QUADS,"frame "+want+" has "+mesh.quads()+" quads, not 2 to "+MAX_WEAPON_QUADS);
+            meshes.add(mesh);
+            if(pull.length>0){
+                need(f.has("nock")&&f.get("nock").isJsonArray()&&f.getAsJsonArray("nock").size()==3,"frame "+want+" has no nock");
+                JsonArray n=f.getAsJsonArray("nock");nocks.add(new Vec3d(n.get(0).getAsDouble(),n.get(1).getAsDouble(),n.get(2).getAsDouble()));
+            }
+        }
+        return new TroopModels.Weapon(str(w,"weapon"),List.copyOf(meshes),pull,ModelTransform.of(p[0],p[1],p[2],r[0]*MathHelper.RADIANS_PER_DEGREE,r[1]*MathHelper.RADIANS_PER_DEGREE,r[2]*MathHelper.RADIANS_PER_DEGREE),
+            List.copyOf(nocks),new Identifier(str(w,"texture")),glow.isEmpty()?null:new Identifier(glow));
     }
 
     static JsonObject read(ResourceManager manager,String file)throws Exception{

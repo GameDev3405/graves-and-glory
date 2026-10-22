@@ -67,10 +67,10 @@ public final class TroopClips {
     }
     /** A bone's name on the other side: right and left swapped (front_right_leg is front_left_leg). */
     static String side(String bone){return bone.replace("right","~").replace("left","right").replace("~","left");}
-    /** The time a still shot shows a clip at, in seconds: a loop at a quarter of its length (bow_draw at its full draw), a once clip at its peak, a hold clip at its end. */
-    public static float shotTime(String clip){
+    /** The time a still shot of a rig shows a clip at, in seconds: a loop at a quarter of its length (bow_draw at the rig's full draw, BOW_TIMES), a once clip at its peak, a hold clip at its end. */
+    public static float shotTime(String rig,String clip){
         Kind k=KINDS.get(clip);float len=LENGTHS.get(clip);
-        if(clip.equals("bow_draw"))return BOW_TIMES.get("biped")[0]; // the full draw: the pose a bowman holds
+        if(clip.equals("bow_draw"))return BOW_TIMES.getOrDefault(rig,BOW_TIMES.get("biped"))[0]; // the full draw: the pose a bowman holds
         return k==Kind.LOOP?len/4:k==Kind.ONCE?PEAKS.getOrDefault(clip,len/2):len;
     }
 

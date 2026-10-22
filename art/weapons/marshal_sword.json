@@ -1,16 +1,22 @@
 {
-"weapon":"marshal_sword",
-"note":"Lord Marshal Aldric's sword: a broad 14 px blade with a fuller, a gilt guard with dropped quillons, a wound grip and a gilt wheel pommel.",
-"size":[32,32],
-"grip":{"offset":[0,0,-0.5],"rotation":[45,0,0]},
-"boxes":[
-{"origin":[-0.5,-16.5,-1.5],"size":[1,14,3],"uv":[0,0],"note":"blade"},
-{"origin":[-0.5,-17.5,-1],"size":[1,1,2],"uv":[8,0],"note":"shoulder of the point"},
-{"origin":[-0.5,-18.5,-0.5],"size":[1,1,1],"uv":[14,0],"note":"point"},
-{"origin":[-0.5,-2.5,-5.0],"size":[1,1,10],"uv":[0,18],"note":"crossguard"},
-{"origin":[-0.5,-1.5,-5],"size":[1,1,1],"uv":[24,18],"note":"right quillon drop"},
-{"origin":[-0.5,-1.5,4],"size":[1,1,1],"uv":[28,18],"note":"left quillon drop"},
-{"origin":[-0.5,-1.5,-0.5],"size":[1,5,1],"uv":[0,22],"note":"grip, wound"},
-{"origin":[-1.0,3.5,-1.0],"size":[2,2,2],"uv":[16,22],"note":"pommel"}
-]
+"weapon": "marshal_sword",
+"thickness": 1,
+"grip": {
+"pixel": [
+5,
+18
+],
+"offset": [
+0,
+0,
+-0.5
+],
+"rotation": [
+90,
+45,
+90
+],
+"note": "the grip pixel is the middle of the wound grip; the turn is the arming sword"
+},
+"note": "Lord Marshal Aldric's sword: a broad 3 px blade with a fuller, an 11 px gilt guard with dropped quillons, a wound grip and a gilt wheel pommel; 1 px thick."
 }

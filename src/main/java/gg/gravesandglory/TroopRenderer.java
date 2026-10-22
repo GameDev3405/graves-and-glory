@@ -34,9 +34,10 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
     /**
      * One draw of a troop, as observed while it drew: its Look, the skin the skin pass bound, the cloth sheet the Cloth layer
      * bound (null when it did not draw), the bones drawn (the skin bones shown and the team bones the Cloth layer drew, as
-     * TroopModel.shownBones reads them), and whether the weapon and the shield layers drew.
+     * TroopModel.shownBones reads them), whether the weapon and the shield layers drew, the relief key the skin pass drew after
+     * the skin (null for a flat draw) and the weapon frame drawn (-1 when no weapon drew).
      */
-    public record Draw(TroopModels.Look look,Identifier skin,Identifier clothSheet,long bones,boolean weapon,boolean shield){
+    public record Draw(TroopModels.Look look,Identifier skin,Identifier clothSheet,long bones,boolean weapon,boolean shield,String relief,int weaponFrame){
         /** The cloth key of the bound sheet (team_cloth_<key>.png): null for linen, "(none)" when no cloth drew. */
         public String cloth(){
             if(clothSheet==null)return "(none)";String path=clothSheet.getPath(),key=path.substring(path.lastIndexOf('/')+1);
@@ -48,12 +49,14 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
      * of the last draw; the tilt of the last draw and the most of any draw (degrees off upright after setupTransforms, which a
      * vanilla death tilt would show). Written on the render thread, read after a frame (the harness does).
      */
-    public static final class Drawn { public volatile int count;public volatile Draw first,last;public float[] pose,inputs=new float[5];public float tilt,maxTilt; }
+    public static final class Drawn { public volatile int count;public volatile Draw first,last;public float[] pose,inputs=new float[5];public float tilt,maxTilt;
+        /** The TroopDepth frame this troop's relief and weapon quads were last counted in (one count a frame, whatever passes drew it). */
+        int countedFrame; }
     private static final Map<Entity,Drawn> DRAWN=new MapMaker().weakKeys().makeMap();
     /** The draws of an entity through its own model, or null for one never drawn so. */
     public static Drawn drawn(Entity e){return DRAWN.get(e);}
     /** What the layers bound and drew in the current draw (TroopFeatures writes them), and the matrix it started with. */
-    Identifier boundSkin,clothSheet;long clothMask;boolean weaponDrawn,shieldDrawn;private float tilt;private final Matrix4f start=new Matrix4f(),delta=new Matrix4f();
+    Identifier boundSkin,clothSheet;long clothMask;boolean weaponDrawn,shieldDrawn;String reliefKey;int weaponFrame=-1,weaponQuads;private float tilt;private final Matrix4f start=new Matrix4f(),delta=new Matrix4f();
     private final Vector3f up=new Vector3f();
 
     /** Built with an empty placeholder model: entity renderers and TroopModelLoader reload in either order. */
@@ -72,15 +75,18 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
         model=m;look=l;
         // Folded arms (idleArms folded) open while the troop attacks or a clip holds an arm (unit identity rule 3); a helm_off scene pose hides the helm.
         m.prepare(l,TroopAnimator.folds(m,e),TroopAnimator.helmOff(e));
-        boundSkin=clothSheet=null;clothMask=0;weaponDrawn=shieldDrawn=false;tilt=0;start.set(matrices.peek().getPositionMatrix());
-        try{super.render(e,yaw,tickDelta,matrices,consumers,light);troopDraws++;record(e,l,m);}finally{look=null;}
+        boundSkin=clothSheet=null;clothMask=0;weaponDrawn=shieldDrawn=false;reliefKey=null;weaponFrame=-1;weaponQuads=0;tilt=0;start.set(matrices.peek().getPositionMatrix());
+        // Within reach of the camera (TroopDepth.near) the skin pass draws the relief of the skin it binds after the skin; the model spends the arm in that one pass.
+        String relief=TroopDepth.near(e)?m.reliefKey(l):null;m.armRelief(relief);
+        try{super.render(e,yaw,tickDelta,matrices,consumers,light);reliefKey=m.reliefSpent?relief:null;troopDraws++;record(e,l,m);}finally{m.armRelief(null);look=null;}
     }
     private void record(Entity e,TroopModels.Look l,TroopModel<?> m){
         Drawn d=DRAWN.computeIfAbsent(e,k->new Drawn());Draw last=d.last;long bones=m.skinMask()|clothMask;
         Draw now=last!=null&&last.look().equals(l)&&Objects.equals(last.skin(),boundSkin)&&Objects.equals(last.clothSheet(),clothSheet)&&last.bones()==bones
-            &&last.weapon()==weaponDrawn&&last.shield()==shieldDrawn?last:new Draw(l,boundSkin,clothSheet,bones,weaponDrawn,shieldDrawn);
+            &&last.weapon()==weaponDrawn&&last.shield()==shieldDrawn&&Objects.equals(last.relief(),reliefKey)&&last.weaponFrame()==weaponFrame?last:new Draw(l,boundSkin,clothSheet,bones,weaponDrawn,shieldDrawn,reliefKey,weaponFrame);
         d.pose=m.snapshot(d.pose);System.arraycopy(m.lastInputs,0,d.inputs,0,5);d.tilt=tilt;d.maxTilt=Math.max(d.maxTilt,tilt);
         if(d.count==0)d.first=now;d.last=now;d.count++;
+        if(d.countedFrame!=TroopDepth.frame()){d.countedFrame=TroopDepth.frame();TroopDepth.count(reliefKey==null?0:m.reliefDrawn,weaponQuads);}
     }
     @Override public Identifier getTexture(T e){
         TroopModels.Look l=look!=null?look:TroopModels.resolve(e);Identifier skin=l==null?null:TroopModels.skin(l);

@@ -27,6 +27,10 @@ final class TroopFeatures {
     static final int FULL_BRIGHT=0xF00000;
 
     /** Whether every part of the path is shown (a hidden arm hides what its hand holds). */
+    /** Harness only: the weapon ids whose models are not drawn (the turnaround's bare shots). */
+    static final java.util.Set<String> HIDDEN=java.util.concurrent.ConcurrentHashMap.newKeySet();
+    /** Harness only: the weapon glow passes drawn since the client started. */
+    static volatile long weaponGlowDraws;
     static boolean shown(List<ModelPart> path){if(path.isEmpty())return false;for(ModelPart p:path)if(!p.visible)return false;return true;}
 
     /** <troop>_o on the rig's boxes dilated by the rig's outer (drowned and strays), posed as the model is. */
@@ -67,11 +71,14 @@ final class TroopFeatures {
         final TroopRenderer<T> r;Weapon(TroopRenderer<T> r){super(r);this.r=r;}
         @Override public void render(MatrixStack m,VertexConsumerProvider v,int light,T e,float limbAngle,float limbDistance,float tickDelta,float age,float headYaw,float headPitch){
             TroopModel<T> model=getContextModel();if(r.look==null||e.isInvisible()||model.folded)return;
-            var w=TroopModels.weapon(model.weaponId());List<ModelPart> path=model.handPath(model.hand());if(w==null||!shown(path))return;
-            m.push();for(ModelPart p:path)p.rotate(m);
-            w.part().render(m,v.getBuffer(RenderLayer.getEntityCutout(w.texture())),light,LivingEntityRenderer.getOverlay(e,0f));
-            if(w.glow()!=null)w.part().render(m,v.getBuffer(RenderLayer.getEyes(w.glow())),FULL_BRIGHT,OverlayTexture.DEFAULT_UV);
-            m.pop();r.weaponDrawn=true;
+            var w=TroopModels.weapon(model.weaponId());List<ModelPart> path=model.handPath(model.hand());if(w==null||!shown(path)||HIDDEN.contains(w.id()))return;
+            // a draw weapon shows the pull frame its bow_draw time is at (the rest frame when nothing draws); with troop depth off only the sprite's two big faces draw
+            int frame=w.pull().length==0?0:TroopModels.Weapon.frameAt(w.pull(),TroopAnimator.drawSeconds(e,model,age),TroopClips.BOW_TIMES.getOrDefault(model.rig,TroopClips.BOW_TIMES.get("biped"))[1]);
+            var mesh=w.frames().get(Math.min(frame,w.frames().size()-1));int limit=TroopDepth.enabled?Integer.MAX_VALUE:2;
+            m.push();for(ModelPart p:path)p.rotate(m);w.grip(m);
+            int quads=mesh.render(m.peek(),v.getBuffer(RenderLayer.getEntityCutout(w.texture())),light,LivingEntityRenderer.getOverlay(e,0f),1f,1f,1f,1f,limit);
+            if(w.glow()!=null){quads+=mesh.render(m.peek(),v.getBuffer(RenderLayer.getEyes(w.glow())),FULL_BRIGHT,OverlayTexture.DEFAULT_UV,1f,1f,1f,1f,limit);weaponGlowDraws++;}
+            m.pop();r.weaponDrawn=true;r.weaponFrame=frame;r.weaponQuads=quads;
         }
     }
 
