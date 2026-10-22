@@ -1040,7 +1040,7 @@ House attacks (`HouseAttacks.VARIANTS`) replace the biped `attack` for the House
 | gilded | thrust from behind the shield: left arm held -40 from the first frame, right arm back to -60, then a thrust to -95 with body yaw 15 | 0.20 |
 | graveborn | overhead hack with a stoop: right arm -170 down to 0, body pitch 25 at the strike | 0.30 |
 | wildmoot | low lunging swipe: body pitch 30, right arm -60 sweeping from yaw 70 to -40 | 0.25 |
-| ironclad | two-handed shoulder chop: both arms -150 down to -60, the blade biting down (wrist about 75 to 80), body pitch 15 | 0.35 |
+| ironclad | two-handed shoulder chop: both arms -150 down to -60, the blade biting down (wrist 135; the rig's blade rests 45 degrees up in the hand), body pitch 15 | 0.35 |
 | tidecallers | wide sweeping lunge: right arm -80 sweeping from yaw 90 to -60, body yaw 25, left leg -20 | 0.30 |
 
 **Interfaces:**
