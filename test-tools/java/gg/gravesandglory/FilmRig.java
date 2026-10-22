@@ -40,6 +40,7 @@ public final class FilmRig {
     public static void start(Take t){
         var c=MinecraftClient.getInstance();
         frame=0;camFrame=-1;lift=0;times.clear();lastNanos=0;done=false;
+        if(c.options.getMaxFps().getValue()!=t.fps())c.options.getMaxFps().setValue(t.fps());
         if(t.video()!=null){try{rec=new Recorder(t.video(),c.getFramebuffer().textureWidth,c.getFramebuffer().textureHeight,t.fps());}catch(Exception e){System.out.println("[film] recorder failed: "+e);rec=null;}}
         take=t;
     }
