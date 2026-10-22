@@ -16,6 +16,9 @@ rule 8 as Kort ruled it, Needs Kort 11).
                                                   <troop>_relief_template.png: where relief may stand (design 7)
   python tools/build_skins.py --turn <shots> <out>  build the turnaround sheets turn-<troop>.png and turn-all.png from
                                                   the suite turn's shots p2-turn-<troop>-<pose>-<angle>.png
+  python tools/build_skins.py --contact <shots> <out.png>  build the tell contact sheet from the suite tells' shots
+                                                  p2-tells-<troop>.png: a row a House and a column a troop, in the houses
+                                                  order of sheets/design.json, a missing shot a grey cell
 
 Sources (sizes in model pixels, y down, the ground at y 24, angles in degrees; a "note" key is allowed anywhere):
   art/rigs/<rig>.json      rig, size [w,h], outer (the outer twin's dilation), hands {right, left} (bone names), bones[]
@@ -1247,6 +1250,62 @@ def turn_sheets(shots: Path, out: Path) -> list:
     return made
 
 
+# ---- the tell contact sheet (--contact) ----
+
+CONTACT_CELL = 200        # a cell's picture, a square, px
+CONTACT_LABEL = 22        # and the label strip below it
+CONTACT_GREY = TURN_GAP   # a missing shot's picture
+
+
+def contact_grid() -> list:
+    """The troops of the sheet's houses: a row a House in the houses order, a troop a column in the row's troops order."""
+    return [[t.strip() for t in h['troops'].split(',')] for h in read_json(ROOT / 'sheets/design.json').get('houses', [])]
+
+
+def contact_cell(path, troop):
+    """One troop's cell: its shot cropped square at the centre, or grey with no shot, and the troop's name under it."""
+    from PIL import ImageDraw
+    size = CONTACT_CELL
+    cell = Image.new('RGB', (size, size + CONTACT_LABEL), TURN_BG)
+    draw = ImageDraw.Draw(cell)
+    if path is None:
+        cell.paste(Image.new('RGB', (size, size), CONTACT_GREY), (0, 0))
+        draw.text((6, 6), 'no shot', fill=(210, 150, 150), font=turn_font('consola', 13))
+    else:
+        with Image.open(path) as shot:
+            shot = shot.convert('RGB')
+            side = min(shot.size)
+            left, top = (shot.width - side) // 2, (shot.height - side) // 2
+            cell.paste(shot.crop((left, top, left + side, top + side)).resize((size, size), Image.LANCZOS), (0, 0))
+    draw.text((6, size + 4), troop, fill=(235, 235, 235), font=turn_font('consolab', 13))
+    return cell
+
+
+def contact(shots: Path, out: Path) -> None:
+    """The tell contact sheet of the suite tells' shots p2-tells-<troop>.png: the Houses are the rows, in the houses order, the
+    troops the columns, in each row's troops order; a cell is the troop's shot cropped square at the centre and labelled with the
+    troop's name, and a missing shot leaves a labelled grey cell. Every cell is the same size."""
+    shots, out = Path(shots), Path(out)
+    grid = contact_grid()
+    if not grid:
+        fail('sheets/design.json has no houses row')
+    cols = max(len(row) for row in grid)
+    cw, ch = CONTACT_CELL, CONTACT_CELL + CONTACT_LABEL
+    sheet = Image.new('RGB', (cols * cw, len(grid) * ch), TURN_BG)
+    from PIL import ImageDraw
+    draw = ImageDraw.Draw(sheet)
+    found = 0
+    for r, row in enumerate(grid):
+        for c, troop in enumerate(row):
+            path = shots / ('p2-tells-%s.png' % troop)
+            found += path.is_file()
+            sheet.paste(contact_cell(path if path.is_file() else None, troop), (c * cw, r * ch))
+            draw.rectangle([c * cw, r * ch, (c + 1) * cw - 1, (r + 1) * ch - 1], outline=(60, 58, 70))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(out)
+    print('build_skins: %s %dx%d, %d of %d shots' % (out.name, sheet.width, sheet.height, found, sum(len(row) for row in grid)))
+
+
 def bake(cat: Catalog, troop: str) -> dict:
     """The generated model of one troop (models/troop/<troop>.json), every rule checked."""
     src = cat.troops.get(troop)
@@ -1588,6 +1647,9 @@ def main(args):
         return 0
     if len(args) == 3 and args[0] == '--turn':
         turn_sheets(Path(args[1]), Path(args[2]))
+        return 0
+    if len(args) == 3 and args[0] == '--contact':
+        contact(Path(args[1]), Path(args[2]))
         return 0
     if not args:
         export(ROOT, ROOT / ASSETS)

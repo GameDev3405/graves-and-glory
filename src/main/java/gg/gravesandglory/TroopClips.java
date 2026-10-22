@@ -83,6 +83,8 @@ public final class TroopClips {
         final String name;final float len;final Kind kind;final Transformation.Interpolation curve;
         private final Map<String,List<Transformation>> bones=new LinkedHashMap<>();
         Clip(String name){this(name,KINDS.get(name)==Kind.ONCE);}
+        /** A clip that is none of the 18 (an idle tell, TroopTells): it brings its own kind and length. */
+        Clip(String name,Kind kind,float len,boolean linear){this.name=name;this.kind=kind;this.len=len;curve=linear?Transformation.Interpolations.LINEAR:Transformation.Interpolations.CUBIC;}
         Clip(String name,boolean linear){
             this.name=name;kind=KINDS.get(name);Float l=LENGTHS.get(name);
             if(kind==null||l==null)throw new IllegalArgumentException("no clip "+name);

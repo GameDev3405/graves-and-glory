@@ -1016,6 +1016,65 @@ class BuildSkinsChecks(unittest.TestCase):
         self.assertEqual(everyone.getpixel((cell_w // 2, cell_h // 2)), (40, 40, 200))            # gl_marshal first (sorted)
         self.assertEqual(everyone.getpixel((cell_w // 2, cell_h + cell_h // 2)), (200, 40, 40))   # then the knight's idle row
 
+    def test_contact_sheet(self):
+        """--contact: a 6 x 5 grid of equal cells, a House a row and a troop a column in the sheet's houses order; a cell is the
+        troop's p2-tells-<troop>.png cropped square at the centre and labelled, a troop with no shot a labelled grey cell."""
+        def band(colour, side):
+            """A 1280x720 shot: colour in the central square, the side's colour outside it, so a crop that is not the central square shows it."""
+            im = Image.new('RGB', (1280, 720), side)
+            im.paste(Image.new('RGB', (720, 720), colour), (280, 0))
+            return im
+        with tempfile.TemporaryDirectory() as tmp:
+            shots, out = pathlib.Path(tmp) / 'shots', pathlib.Path(tmp) / 'out' / 'tells-contact.png'
+            shots.mkdir()
+            band((200, 40, 40), (250, 250, 250)).save(shots / 'p2-tells-knight.png')
+            band((40, 200, 40), (250, 250, 250)).save(shots / 'p2-tells-archer.png')
+            band((40, 40, 200), (250, 250, 250)).save(shots / 'p2-tells-revenant.png')
+            Image.new('RGB', (1280, 720), (9, 9, 9)).save(shots / 'p2-tells-attack-gilded.png')   # a House attack, no troop's tell: left out
+            with contextlib.redirect_stdout(io.StringIO()):
+                build_skins.contact(shots, out)
+            sheet = Image.open(out).convert('RGB')
+        self.assertEqual(sheet.width % 6, 0)
+        self.assertEqual(sheet.height % 5, 0)
+        cw, ch = sheet.width // 6, sheet.height // 5
+
+        def at(col, row, dx, dy):
+            return sheet.getpixel((col * cw + dx, row * ch + dy))
+
+        def lettered(col, row):
+            """Whether the cell's bottom strip holds label text (near-white pixels on the dark label ground)."""
+            return any(min(at(col, row, x, y)) > 180 for y in range(ch - build_skins.CONTACT_LABEL, ch) for x in range(cw))
+        filled = {(0, 0): (200, 40, 40), (1, 0): (40, 200, 40), (0, 1): (40, 40, 200)}   # knight, archer; revenant first of the second row
+        for col in range(6):
+            for row in range(5):
+                want = filled.get((col, row), build_skins.CONTACT_GREY)
+                self.assertEqual(at(col, row, cw // 2, cw // 2), want, 'cell %d,%d centre' % (col, row))
+                self.assertEqual(at(col, row, 1, 1), want, 'cell %d,%d top left: a square at the centre of the shot' % (col, row))
+                self.assertEqual(at(col, row, cw - 2, 1), want, 'cell %d,%d top right' % (col, row))
+                self.assertTrue(lettered(col, row), 'cell %d,%d has no label' % (col, row))
+        self.assertNotIn(build_skins.CONTACT_GREY, list(filled.values()))
+        self.assertEqual(sheet.getpixel((3, ch * 5 - 3)), sheet.getpixel((cw * 6 - 3, ch * 5 - 3)))   # the label ground is one colour all round
+
+    def test_contact_order(self):
+        """--contact walks sheets/design.json: the five Houses in the houses order, six troops each; a shot of the last troop of the last House lands in the last cell."""
+        houses = json.loads((build_skins.ROOT / 'sheets/design.json').read_text(encoding='utf-8'))['houses']
+        self.assertEqual(len(houses), 5)
+        self.assertEqual([len(h['troops'].split(',')) for h in houses], [6] * 5)
+        self.assertEqual(build_skins.contact_grid(), [h['troops'].split(',') for h in houses])
+        with tempfile.TemporaryDirectory() as tmp:
+            shots, out = pathlib.Path(tmp) / 'shots', pathlib.Path(tmp) / 'out.png'
+            shots.mkdir()
+            Image.new('RGB', (1280, 720), (200, 40, 40)).save(shots / ('p2-tells-%s.png' % houses[-1]['troops'].split(',')[-1]))
+            with contextlib.redirect_stdout(io.StringIO()):
+                build_skins.contact(shots, out)
+                cli = pathlib.Path(tmp) / 'cli' / 'sheet.png'
+                self.assertEqual(build_skins.main(['--contact', str(shots), str(cli)]), 0)   # the command line's way in
+            sheet = Image.open(out).convert('RGB')
+            self.assertEqual(list(Image.open(cli).convert('RGB').getdata()), list(sheet.getdata()))
+        cw, ch = sheet.width // 6, sheet.height // 5
+        self.assertEqual(sheet.getpixel((5 * cw + cw // 2, 4 * ch + cw // 2)), (200, 40, 40))
+        self.assertEqual(sheet.getpixel((4 * cw + cw // 2, 4 * ch + cw // 2)), build_skins.CONTACT_GREY)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

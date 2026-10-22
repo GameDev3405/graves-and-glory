@@ -23,7 +23,8 @@ import java.util.function.ToDoubleFunction;
  * its stance (the server's stance_v1 packet) and a scene's pose; pose blends them, every change over BLEND_TICKS, and keeps
  * per entity the clips playing (State, weak keys by identity). A frame, after TroopModel.setAngles resets every bone:
  * 1. the base: the still clip at 1 - m and the move clip at m (m = min(2.5 limbDistance, 1)), the move clip on the limb
- *    angle (100 ms per unit, as vanilla's animateMovement); a shield arm keeps a third of it;
+ *    angle (100 ms per unit, as vanilla's animateMovement); a shield arm keeps a third of it; then the idle tell, if one plays: it adds
+ *    to the base (TroopTells: it starts only while the troop stands still, with no overlay or scene pose, once every PERIOD_TICKS);
  * 2. a scene pose or death over the base, the whole body;
  * 3. the overlays, lowest first (hit, raise, shield_up, cast, bow_draw, attack): each first moves the bones it names toward
  *    rest by its weight, then plays on them; hit plays only on bones no other overlay holds;
@@ -31,6 +32,7 @@ import java.util.function.ToDoubleFunction;
  *    rest, string to the archer while it draws) and idleArms forward;
  * 5. a taller troop's root offsets scaled to its height (TroopModel.rootScale);
  * 6. the head look (yaw 30 either way, pitch 0 to 30 down), faded out while posed or dead.
+ * Every clip is looked up through TroopTells.clip: the troop's own override, else its House's attack variant, else its rig's.
  * A model without a troop (a bare rig) plays only what is forced on it.
  */
 public final class TroopAnimator {
@@ -47,8 +49,12 @@ public final class TroopAnimator {
     public static final float BOW_REST_YAW=45;
     /** The stance the server last sent for each troop entity id (Tactics.STANCES); no entry is "". */
     public static final Map<Integer,String> STANCES=new ConcurrentHashMap<>();
-    /** Harness hook: one clip frozen at one time (seconds) on an entity, in its own role (base, overlay or pose), without the head look. */
-    public record Forced(String clip,float seconds){}
+    /**
+     * Harness hook: one clip frozen at one time (seconds) on an entity, in its own role (base, overlay or pose), without the head look.
+     * "tell" is the troop's idle tell, which adds to the stance (the carries stay under it). House, when not null, is the House whose
+     * attack variant a forced "attack" plays in place of the troop's own (the harness shows the five variants on one knight).
+     */
+    public record Forced(String clip,float seconds,String house){public Forced(String clip,float seconds){this(clip,seconds,null);}}
     public static final Map<Integer,Forced> forced=new ConcurrentHashMap<>();
     /** The scene pose of each entity id (setScenePose). */
     private static final Map<Integer,String> SCENE=new ConcurrentHashMap<>();
@@ -58,8 +64,17 @@ public final class TroopAnimator {
     public record Choice(String still,String move,String overlay,boolean reverse,boolean headLook){}
     /** An overlay a frame wants: the clip, and whether this frame starts it afresh (a swing, a shot, a hurt start). */
     public record Overlay(String clip,boolean restart){}
-    /** What a frame plays, from a View: the clips (Choice), whether the troop is posed or dead (no overlays play, however its swing or hurt reads) and every overlay wanted, in priority order. */
-    public record Plan(String rig,Choice choice,boolean posed,List<Overlay> overlays){}
+    /**
+     * What a frame plays, from a View: the clips (Choice), whether the troop is posed or dead (no overlays play, however its swing or hurt reads),
+     * every overlay wanted, in priority order, and whether it stands still (idle: no pose, no overlay, not attacking, no stance, not moving),
+     * which is when its idle tell may start.
+     */
+    public record Plan(String rig,Choice choice,boolean posed,List<Overlay> overlays,boolean still){
+        /** The same plan with no tell to start (the harness's reference pose has only the base). */
+        Plan noTell(){return new Plan(rig,choice,posed,overlays,false);}
+    }
+    /** The limb distance under which a troop stands still (the walk is in at 5 percent here, which no eye catches). */
+    static final float STILL_LIMB=.02f;
     /** The poses stand plays backwards. */
     static final Set<String> REVERSIBLE=Set.of("kneel","sit","point","raise");
     static final List<String> BASE=List.of("idle","hold","brace","walk","run","fall_back"),OVERLAYS=List.of("hit","raise","shield_up","cast","bow_draw","attack"),
@@ -82,17 +97,18 @@ public final class TroopAnimator {
      * before it, stand with nothing to reverse, plays the base). Pure.
      */
     public static Plan plan(View v){
-        if(v.dead())return new Plan(v.rig(),new Choice("death",null,null,false,false),true,List.of());
+        if(v.dead())return new Plan(v.rig(),new Choice("death",null,null,false,false),true,List.of(),false);
         if(v.scenePose()!=null){
             String pose=v.scenePose(),clip;boolean reverse=false;
             if(pose.equals("stand")){String last=poseClip(v.lastPose());if("fallen".equals(v.lastPose()))clip="stand";else if(last!=null&&REVERSIBLE.contains(last)){clip=last;reverse=true;}else clip=null;}
             else if(pose.equals("helm_off"))clip=poseClip(v.lastPose());
             else clip=poseClip(pose);
-            if(clip!=null)return new Plan(v.rig(),new Choice(clip,null,null,reverse,false),true,List.of());
-            return new Plan(v.rig(),new Choice(still(v.stance()),move(v.stance()),null,false,false),true,List.of());
+            if(clip!=null)return new Plan(v.rig(),new Choice(clip,null,null,reverse,false),true,List.of(),false);
+            return new Plan(v.rig(),new Choice(still(v.stance()),move(v.stance()),null,false,false),true,List.of(),false);
         }
         List<Overlay> on=overlays(v);
-        return new Plan(v.rig(),new Choice(still(v.stance()),move(v.stance()),on.isEmpty()?null:on.get(0).clip(),false,true),false,on);
+        boolean standing=on.isEmpty()&&!v.attacking()&&(v.stance()==null||v.stance().isEmpty())&&v.limbDistance()<STILL_LIMB;
+        return new Plan(v.rig(),new Choice(still(v.stance()),move(v.stance()),on.isEmpty()?null:on.get(0).clip(),false,true),false,on,standing);
     }
     /** The clip a scene pose holds: fallen falls, the title demos' sword_up raises, a clip's name plays that clip; stand and helm_off hold none of their own. */
     static String poseClip(String pose){
@@ -157,11 +173,13 @@ public final class TroopAnimator {
     }
     /** One entity's clips, and what its last frame saw (the swing, the hurt time, the scene pose). A new State starts its clips fully in. */
     public static final class State {
-        final Channel still=new Channel(),move=new Channel(),pose=new Channel();final Map<String,Channel> overlays=new HashMap<>();
-        final Fade look=new Fade(1);final float phase;boolean fresh=true;
+        final Channel still=new Channel(),move=new Channel(),pose=new Channel(),tell=new Channel();final Map<String,Channel> overlays=new HashMap<>();
+        final Fade look=new Fade(1);final float phase;final int id;boolean fresh=true;
         boolean swinging;int swingTicks,hurt;String scene,lastPose;boolean armHeld;
-        /** The idle phase is offset by the entity id, so a line of troops does not breathe in step. */
-        public State(int id){phase=Math.floorMod(id*7919,3000);}
+        /** The tick the last tell started on (so a frame of the same tick does not start another). */
+        int tellTick=Integer.MIN_VALUE;
+        /** The idle phase is offset by the entity id, so a line of troops does not breathe in step; so is the tell (TroopTells.STAGGER_TICKS). */
+        public State(int id){this.id=id;phase=Math.floorMod(id*7919,3000);}
         Channel overlay(String name){return overlays.computeIfAbsent(name,k->new Channel());}
         /** Takes a frame's Plan: the whole-body clip or the base, and the overlays it wants (once clips restart, held ones start, restart on a shot, and stop when no longer wanted). */
         public void update(Plan p,float age){
@@ -180,7 +198,22 @@ public final class TroopAnimator {
                 if(TroopClips.KINDS.get(e.getKey())==TroopClips.Kind.ONCE)for(Track t:e.getValue().tracks)if(t.seconds(age)>=TroopClips.LENGTHS.get(e.getKey())-BLEND_TICKS/20f)t.fadeOut(age);
                 e.getValue().prune(age);
             }
-            still.prune(age);move.prune(age);pose.prune(age);fresh=false;
+            still.prune(age);move.prune(age);pose.prune(age);tell(p,age);fresh=false;
+        }
+        /**
+         * The idle tell (TroopTells): while the troop stands still, with no pose or overlay on it (none still fading out either), a tell
+         * starts on the first frame of each tick at which (tick + id % STAGGER_TICKS) % PERIOD_TICKS is 0. A tell that plays when the
+         * troop moves, strikes, is hurt or is posed fades out over BLEND_TICKS; one that ends keeps its last frame, which is at rest.
+         */
+        private void tell(Plan p,float age){
+            boolean quiet=p.still()&&pose.weight(age)<=0&&overlays.values().stream().allMatch(o->o.weight(age)<=0);
+            if(!quiet)tell.clear(age);
+            else{
+                int tick=(int)Math.floor(age);
+                if(tick!=tellTick&&Math.floorMod(tick+Math.floorMod(id,TroopTells.STAGGER_TICKS),TroopTells.PERIOD_TICKS)==0){tellTick=tick;tell.restart(TroopTells.TELL,age,age,0f,SNAP_TICKS);}
+            }
+            for(Track t:tell.tracks)if(t.live()&&t.seconds(age)>=TroopTells.MAX_SECONDS)t.fadeOut(age);
+            tell.prune(age);
         }
         /** A held overlay: starts when wanted, plays on while it is, fades out when it is not. A shot restarts bow_draw at its loose, from one tick's blend; any other restart starts at the clip's start. */
         private void hold(String rig,String name,Overlay w,float age,float in){
@@ -206,6 +239,10 @@ public final class TroopAnimator {
             Collections.sort(on);
             return "pose "+(po==null?"-":po.clip+(po.reverse?" reversed":""))+", still "+(s==null?"-":s.clip)+", move "+(mv==null?"-":mv.clip)+", overlays "+on;
         }
+        /** Harness: the age the live tell started at, or NaN when none plays. */
+        public float tellStart(){Track t=tell.live();return t==null?Float.NaN:t.start;}
+        /** Harness: the seconds into its clip the live tell shows at an age, or -1 when none plays. */
+        public float tellSeconds(float age){Track t=tell.live();return t==null?-1f:t.seconds(age);}
         /** Harness: the weight of an overlay at an age (0 when it is not playing). */
         public float overlayWeight(String name,float age){Channel o=overlays.get(name);return o==null?0f:o.weight(age);}
         /** Harness: the time (seconds into its clip) the live play of an overlay shows at an age, or -1. */
@@ -224,10 +261,16 @@ public final class TroopAnimator {
         State s=STATES.get(e);return s==null?-1f:s.overlaySeconds(m,"bow_draw",age);
     }
 
-    /** A clip as this troop plays it: mirrored for a bow in the right hand (bow_draw holds it in the left), and the handed clips for a weapon in the left. */
-    static Animation clip(TroopModel<?> m,String clip,boolean bow){
+    /**
+     * A clip as this troop plays it (TroopTells.clip: its own override, else its House's attack, else its rig's; "tell" is its tell): mirrored for a
+     * bow in the right hand (bow_draw holds it in the left), and the handed clips for a weapon in the left.
+     */
+    static Animation clip(TroopModel<?> m,String clip,boolean bow){return clip(m,clip,bow,null);}
+    /** clip, with house (when not null) in place of the troop's own House, for the attack variant (the harness's forced House attack). */
+    static Animation clip(TroopModel<?> m,String clip,boolean bow,String house){
         boolean left="left".equals(m.hand()),mirror=clip.equals("bow_draw")?bow&&!left:left&&HANDED.contains(clip);
-        return (mirror?TroopClips.mirrored(m.rig):TroopClips.of(m.rig)).get(clip);
+        Spec.TroopsRow row=house==null?row(m):null;
+        return TroopTells.clip(m.troop,house!=null?house:row==null?null:row.house(),m.rig,clip,mirror);
     }
     static void animate(TroopModel<?> m,Animation a,float seconds,float w){if(a!=null&&w>1e-4f)AnimationHelper.animate(m,a,(long)(seconds*1000f),w,TMP);}
     /** Moves a bone toward its rest: keep 0 puts it at rest, 1 leaves it. */
@@ -261,6 +304,7 @@ public final class TroopAnimator {
             for(Track t:s.still.tracks)animate(m,clip(m,t.clip,bow),(age*50f+s.phase)/1000f,t.weight(age)*(1-mv)*base);
             for(Track t:s.move.tracks)animate(m,clip(m,t.clip,bow),limbAngle/10f,t.weight(age)*mv*base);
             shieldBase(m,shieldArm);
+            for(Track t:s.tell.tracks)animate(m,clip(m,TroopTells.TELL,bow),t.seconds(age),t.weight(age)*(1-poseW));
         }
         for(Track t:s.pose.tracks){Animation a=clip(m,t.clip,bow);if(a==null)continue;float sec=t.seconds(age);if(t.reverse)sec=Math.max(0f,a.lengthInSeconds()-sec);animate(m,a,sec,t.weight(age));}
         float[] w=new float[OVERLAYS.size()];
@@ -332,11 +376,11 @@ public final class TroopAnimator {
     /** A forced clip at full weight in its own role: a base clip as the base (the shield arm keeping a third), an overlay or a pose on the bones it names; the carries (the frame's own) on the rest. */
     static void applyForced(TroopModel<?> m,Forced f,Spec.TroopsRow row,boolean shield){
         boolean bare=row==null,bow=bow(row),left="left".equals(m.hand());
-        Animation a=clip(m,f.clip(),bow);if(a==null)return;
+        Animation a=clip(m,f.clip(),bow,f.house());if(a==null)return;
         boolean base=BASE.contains(f.clip());
         animate(m,a,f.seconds(),1f);
         if(!bare){
-            Set<String> named=base?Set.of():a.boneAnimations().keySet();String shieldArm=shield?(left?"right_arm":"left_arm"):null;
+            Set<String> named=base||f.clip().equals(TroopTells.TELL)?Set.of():a.boneAnimations().keySet();String shieldArm=shield?(left?"right_arm":"left_arm"):null;
             if(base)shieldBase(m,shieldArm);
             carries(m,bow,left,shieldArm,f.clip().equals("bow_draw")?1f:0f,bone->named.contains(bone)?1:0);
         }
@@ -371,7 +415,7 @@ public final class TroopAnimator {
         m.getPart().traverse().forEach(ModelPart::resetTransform);
         Spec.TroopsRow row=row(m);if(row==null)return m.snapshot(null);State s=new State(e.getId());
         View v=new View(m.rig,false,false,false,e.isAttacking(),row.ranged(),row.magic(),false,false,false,limbDistance,STANCES.getOrDefault(e.getId(),""),null,null);
-        s.update(plan(v),age);apply(m,s,row,!e.getOffHandStack().isEmpty(),limbAngle,limbDistance,age,headYaw,headPitch);
+        s.update(plan(v).noTell(),age);apply(m,s,row,!e.getOffHandStack().isEmpty(),limbAngle,limbDistance,age,headYaw,headPitch);
         return m.snapshot(null);
     }
     /** Harness: one frame of a State on a model (bare: no base, carries or head look; else its troop's row), after resetting its bones. */

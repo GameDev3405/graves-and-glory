@@ -202,6 +202,8 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
             Map<String,Animation> plain=TroopClips.of(rig);
             if(!plain.isEmpty()){
                 for(String clip:TroopClips.NAMES)if(!WHOLE.contains(clip))sample(clip,n);
+                Spec.TroopsRow row=TroopAnimator.row(this);
+                for(Animation a:TroopTells.own(troop,row==null?null:row.house(),rig))sample(a,n); // its tell, overrides and House attack: none is a whole-body clip
                 double[] p=n.clone();for(String clip:WHOLE)sample(clip,p);
                 top.traverse().forEach(ModelPart::resetTransform);normalCull=n;posedCull=p;
             }else{normalCull=n;posedCull=n;}
@@ -210,14 +212,17 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     }
     /** The clips only a dead or posed troop plays. */
     private static final Set<String> WHOLE=Set.of("death","kneel","point","sit","fall","stand");
-    /** Grows a reach by one clip, plain and mirrored, every 50 ms: every box, the weapon at its hand and a shield's reach at the other. */
+    /** Grows a reach by one of the rig's clips, plain and mirrored. */
     private void sample(String clip,double[] reach){
         for(Map<String,Animation> set:List.of(TroopClips.of(rig),TroopClips.mirrored(rig))){
-            Animation a=set.get(clip);if(a==null)continue;
-            for(float t=0;t<=a.lengthInSeconds()+1e-4f;t+=.05f){
-                top.traverse().forEach(ModelPart::resetTransform);TroopAnimator.animate(this,a,t,1f);TroopAnimator.rootScale(this);
-                double[] e=extent();reach[0]=Math.max(reach[0],e[0]+.25);reach[2]=Math.max(reach[2],e[2]+.25);reach[1]=Math.min(reach[1],e[1]-.25);
-            }
+            Animation a=set.get(clip);if(a!=null)sample(a,reach);
+        }
+    }
+    /** Grows a reach by one clip, every 50 ms: every box, the weapon at its hand and a shield's reach at the other. */
+    private void sample(Animation a,double[] reach){
+        for(float t=0;t<=a.lengthInSeconds()+1e-4f;t+=.05f){
+            top.traverse().forEach(ModelPart::resetTransform);TroopAnimator.animate(this,a,t,1f);TroopAnimator.rootScale(this);
+            double[] e=extent();reach[0]=Math.max(reach[0],e[0]+.25);reach[2]=Math.max(reach[2],e[2]+.25);reach[1]=Math.min(reach[1],e[1]-.25);
         }
     }
     /**

@@ -11,6 +11,11 @@ import java.util.Map;
  */
 public final class BipedClips {
     private BipedClips() {}
+    /** The bow_draw clip (the comment at its put below), the bow arm rolled canted degrees: 0 for the plain draw, 25 for the Order Longbow's (TroopTells). */
+    static Clip draw(float canted){
+        return new Clip("bow_draw").hold("left_arm",-90,30,canted).hold("body",0,-25,0).hold("head",0,25,0)
+            .rot("right_arm",0,-85,-62,0, .15f,-90,-66,0, .65f,-95,-70,0, .8f,-80,-105,0, 1.2f,-85,-62,0);
+    }
     public static final Map<String,Animation> CLIPS=new TroopClips.Set18("biped")
         .put(new Clip("idle").rot("body",0,0,0,0, 1.5f,1.5f,0,0, 3,0,0,0).rot("head",0,0,0,0, 1.5f,-1,0,0, 3,0,0,0)
             .rot("right_arm",0,0,0,0, 1.5f,0,0,2, 3,0,0,0).rot("left_arm",0,0,0,0, 1.5f,0,0,-2, 3,0,0,0))
@@ -36,8 +41,7 @@ public final class BipedClips {
         // The bow in the left hand, held out in front with the arm turned in 30 and the body turned 25 the other way (the bow
         // points straight ahead, as the arrow goes); the right arm reaches across to the string (its hand within 2 px of the
         // string line at the draw: p2-anim-bow), draws at 0.65 s, which is held between shots, and looses at 0.8 s: the arm flung back.
-        .put(new Clip("bow_draw").hold("left_arm",-90,30,0).hold("body",0,-25,0).hold("head",0,25,0)
-            .rot("right_arm",0,-85,-62,0, .15f,-90,-66,0, .65f,-95,-70,0, .8f,-80,-105,0, 1.2f,-85,-62,0))
+        .put(draw(0))
         .put(new Clip("cast").hold("right_arm",0,0,125).hold("left_arm",0,0,-125)
             .wave("right_arm",0,0,10,0,1).wave("left_arm",0,0,10,0,1))
         .put(new Clip("kneel").pos("root",0,0,0,0, .3f,0,-2,0, .6f,0,-4,0)
