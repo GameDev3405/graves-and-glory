@@ -13,15 +13,32 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.math.*;
 import java.util.*;
 
-/** Server-authoritative targeting, separation, bridge routing and local path recovery. */
+/** Server-authoritative targeting, separation, bridge crossing and local path recovery. */
 final class Tactics {
     static final Spec.NavigationRow N=Spec.NAVIGATION[0];
     /** The stances a troop shows its clients (stance_v1 sends the index): none, hold, brace, fall_back and run. */
     static final List<String> STANCES=List.of("","hold","brace","fall_back","run");
     /** stance_v1 packets sent: on a change at a unit's beat, to a player who starts tracking a troop, and to a player whose client registers the channel late (the harness reads them). */
     static volatile int stanceSends,trackingSends,registerSends;
-    /** The stance a unit's order gives it (Phase 2 Task 5b; the unit AI phase's stances sheet maps its own rows here later). */
-    static String stance(GravesAndGlory.Battle b,GravesAndGlory.Unit u){return stance(b.assignment(u),u);}
+    /** The stance a unit's order gives it (Phase 2 Task 5b; the unit AI phase's stances sheet maps its own rows here later). An arrived Retreat or Move group (arrived) stands as on Hold. */
+    static String stance(GravesAndGlory.Battle b,GravesAndGlory.Unit u){var a=b.assignment(u);return stance(arrived(b,u,a)?held(a):a,u);}
+    /** Hold's order row, which an arrived Retreat or Move group fights by. */
+    static final Spec.OrdersRow HOLD=Arrays.stream(Spec.ORDERS).filter(o->o.id().equals("hold")).findFirst().orElse(Spec.ORDERS[0]);
+    /** The assignment as on Hold at the same spot, formation and facing: what an arrived group stands and fights by. */
+    static GravesAndGlory.Assignment held(GravesAndGlory.Assignment a){var h=new GravesAndGlory.Assignment("hold",a.formation,a.target,a.yaw);h.issued=a.issued;return h;}
+    /**
+     * Arrival (the no-routing design's section 6): a group under an order that engages nothing (Retreat, Move) has arrived once its centre (Morale.members:
+     * its living troops that are not temporary) stands within combatDiscipline.arriveRadius of its destination, and from then until its next order it
+     * fights as on Hold, from its slot and with Hold's engage radius. On the way it fights nothing, even when struck. A bot's Retreat to its base and
+     * Muster's Move orders arrive the same way. The unit AI plan's arrive column replaces this later.
+     */
+    static boolean arrived(GravesAndGlory.Battle b,GravesAndGlory.Unit u,GravesAndGlory.Assignment a){
+        var order=Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(a.order)).findFirst().orElse(Spec.ORDERS[0]);
+        if(order.engage())return false;
+        var members=Morale.members(b,u.squad,u.spec.group());if(members.isEmpty())return false;
+        double r=Spec.COMBATDISCIPLINE[0].arriveRadius();
+        return GravesAndGlory.Battle.horizontalDistance(Morale.centre(members),a.target)<=r*r;
+    }
     static String stance(GravesAndGlory.Assignment a,GravesAndGlory.Unit u){
         return switch(a.order){
             case "hold"->"shieldwall".equals(a.formation)||ArmyMobs.tags(u.spec).contains("spear")?"brace":"hold";
@@ -59,11 +76,12 @@ final class Tactics {
         var mob=u.mob;var s=u.squad;var a=battle.assignment(u);
         Houses.sample(battle,u); // Entrench: has it stood still since its last beat
         Houses.swim(battle,u); // Riptide: faster while it touches water or it rains
-        String stance=stance(a,u);if(!stance.equals(u.stance)){u.stance=stance;stanceSends+=sendStance(u,PlayerLookup.tracking(mob));}
+        boolean arrived=arrived(battle,u,a); // a Retreat or Move group at its destination fights as on Hold from its slot (arrived)
+        String stance=stance(arrived?held(a):a,u);if(!stance.equals(u.stance)){u.stance=stance;stanceSends+=sendStance(u,PlayerLookup.tracking(mob));}
         var owner=battle.server.getPlayerManager().getPlayer(s.owner);
         if(a.order.equals("follow")&&owner!=null&&!battle.respawns.containsKey(s.owner)){a.target=owner.getPos();a.yaw=owner.getYaw();}
-        var order=Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(a.order)).findFirst().orElse(Spec.ORDERS[0]);
-        boolean hold=a.order.equals("hold");
+        var order=arrived?HOLD:Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(a.order)).findFirst().orElse(Spec.ORDERS[0]);
+        boolean hold=a.order.equals("hold")||arrived;
         boolean holdSiege=hold&&u.tags.contains("siege"); // artillery on Hold shoots what is within its reach from where it stands and never walks toward a target, so it never walks out of Entrench
         double engage=holdSiege?Abilities.range(battle,u):engageRadius(battle,u,order.engageRadius()); // the order's radius, widened to the weapon's reach for a siege troop; on Hold the weapon's reach as it is now
         LivingEntity enemy=null,close=null;double nearest=engage*engage,closest=nearest; // enemy: the one it picks (never one inside its minimum range); close: the nearest of any, which a ranged troop backs off from

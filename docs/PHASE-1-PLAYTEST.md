@@ -24,9 +24,7 @@ Camp guide: set **Bots** to Normal. At the War Gates stand alone on the **DAWN**
 
 | You should see | Yes | No |
 |---|:-:|:-:|
-| Your own line routing at least once: cut below a quarter of its strength, or attacked from behind (more than 110 degrees off the line's facing) by three or more troops while at or below 60%. A horn sounds, its group card reads ROUTING and the troops run for home. | [ ] | [ ] |
-| It regrouping within 15 s, with the rally horn. | [ ] | [ ] |
-| An order you give the routing group (Hold, or Move somewhere) being what it does once it regroups. | [ ] | [ ] |
+| A line of yours held to its last stand without breaking: cut to a quarter of its strength with the enemy on it, its group card reads LAST STAND and the troops keep their order and their fight; no horn sounds in the field. Then you pulling a group out with Retreat: you alone hear the retreat cue, the group turns away and fights nothing on the way, and once it arrives it stands as on Hold. | [ ] | [ ] |
 | Bots that lose troops buying replacements with their gold and sending them back in. | [ ] | [ ] |
 | The match readable from the HUD without colour: each point with its holder in words (A: Dawn, B: Contested) and the score as DAWN 120 / 300. The sun and moon glyphs come with the UI plan, not in this build. | [ ] | [ ] |
 

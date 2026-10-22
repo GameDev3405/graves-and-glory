@@ -50,8 +50,7 @@ public final class GravesAndGlory implements ModInitializer {
         Diagnostics.start();
         VersionGate.registerServer();
         for(String cue:new String[]{"battle_intro","unit_reveal","victory","horn_charge","horn_rout","horn_rally"}){var id=new Identifier("gravesandglory",cue);net.minecraft.registry.Registry.register(Registries.SOUND_EVENT,id,SoundEvent.of(id));}
-        // The rout guards (Gilded Bulwark, the Champion's Stand Fast, the Lord Marshal's Oath Banner) and the commander actives, once.
-        for(var guard:List.of(Houses.BULWARK_GUARD,Commander.STAND_FAST_GUARD,Abilities.OATH_GUARD))Morale.GUARDS.addIfAbsent(guard);
+        // The commander actives, once. (The horn cues above are command feedback for the commanding player alone: no horn sounds in the field.)
         Commander.register();
         // A planted banner block must not outlive the battle in the save.
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {if(battle!=null)Abilities.clearBanners(battle);});
@@ -170,10 +169,10 @@ public final class GravesAndGlory implements ModInitializer {
         void earn(int amount){gold+=amount;stats.goldEarned+=amount;}
         final Map<String,Assignment> assignments=new HashMap<>();
         final ArrayDeque<Training> training=new ArrayDeque<>();
-        /** Morale per group: when a rout began (present only while routing), rout immunity after a regroup, and the group's full lineup health this round. */
-        final Map<String,Long> routedAt=new HashMap<>(),steadyUntil=new HashMap<>();
+        /** Per group: which groups stand their last stand now, when each was last told of it (Morale.tick), and the group's full lineup health this round. */
+        final Set<String> lastStand=new HashSet<>();final Map<String,Long> lastStandAt=new HashMap<>();
         final Map<String,Double> fullHealth=new HashMap<>();
-        /** Battle time (ticks) each group's order last became Charge (Battle.chargeHorn): the counter table's charge impact reads it. */
+        /** Battle time (ticks) each group's order last became Charge (Battle.markCharge): the counter table's charge impact reads it. */
         final Map<String,Long> chargedAt=new HashMap<>();
         /** House id to trait tier (1 to 3) for the Houses this army's living troops reach, from their slot weights; Houses.recompute keeps it. */
         final Map<String,Integer> traits=new LinkedHashMap<>();
@@ -368,7 +367,7 @@ public final class GravesAndGlory implements ModInitializer {
         @Override protected boolean isAffectedByDaylight(){return false;}
         @Override protected boolean canConvertInWater(){return false;}
     }
-    /** The Tidecallers Mist Caller: an evoker with only a SwimGoal, so it never summons fangs or vexes and never calls a sheep blue; its cloud is the mist ability (Abilities.cast). */
+    /** The Tidecallers Mist Caller: an evoker with only a SwimGoal, so it never summons fangs or vexes and never calls a sheep blue; its cloud is the mist ability (Abilities.cloud, begun in Abilities.attack). */
     public static final class ArmyEvoker extends EvokerEntity implements ArmyMob {
         public ArmyEvoker(World world){super(EntityType.EVOKER,world);}
         @Override public boolean shouldSave(){return false;}
@@ -645,7 +644,8 @@ public final class GravesAndGlory implements ModInitializer {
             }
             for(var order:Spec.ORDERS)if(cmd.equals(order.id())){
                 boolean charging=order.id().equals("charge")&&startsCharge(s,"all");
-                s.assignments.clear();s.order=order.id();s.yaw=p.getYaw();if(charging)chargeHorn(s,"all");
+                s.assignments.clear();s.order=order.id();s.yaw=p.getYaw();if(charging)markCharge(s,"all");
+                if(order.id().equals("charge")||order.id().equals("retreat"))BattleEffects.feedback(this,p,order.id()); // the command's feedback, to this player alone
                 campaign.tutorialDid(p,order.id().equals("attack")||order.id().equals("charge")?2:0);
                 if(Diagnostics.active()&&testedOrders.add(order.id())&&testedOrders.size()==Spec.ORDERS.length)Diagnostics.report("orders-commanded",true,null);
                 if(order.targeted()){
@@ -659,16 +659,13 @@ public final class GravesAndGlory implements ModInitializer {
                 return;
             }
         }
-        /** The order a group is under. A routing group runs for base; its stored order waits untouched for the regroup. */
-        Assignment assignment(Unit u){if(Morale.routing(u.squad,u.spec.group()))return new Assignment("retreat","loose",base(u.squad.team),u.squad.team==0?-90:90);return storedAssignment(u.squad,u.spec.group());}
+        /** The order a group is under: its stored one. No group ever leaves it on its own (the no-routing design); only its commander's next order changes it. */
+        Assignment assignment(Unit u){return storedAssignment(u.squad,u.spec.group());}
         Assignment storedAssignment(Squad s,String group){return s.assignments.getOrDefault(group,new Assignment(s.order,s.formation,s.target,s.yaw));}
-        /** Sounds the charge horn at the centre of the named group(s) that are not routing. */
-        void chargeHorn(Squad s,String group){
-            for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id())))s.chargedAt.put(g.id(),time);
-            Vec3d sum=Vec3d.ZERO;int n=0;for(Unit u:units)if(u.squad==s&&u.mob.isAlive()&&(group.equals("all")||u.spec.group().equals(group))&&!Morale.routing(s,u.spec.group())){sum=sum.add(u.mob.getPos());n++;}
-            BattleEffects.horn(this,s,n==0?s.target:sum.multiply(1.0/n),"charge");
-        }
-        boolean startsCharge(Squad s,String group){return Arrays.stream(Morale.GROUPS).anyMatch(g->(group.equals("all")||group.equals(g))&&!Morale.routing(s,g)&&!storedAssignment(s,g).order.equals("charge"));}
+        /** Stamps the charge of the named group(s) (Squad.chargedAt), which the counters table's charge impact (row C5) reads. Nothing sounds in the field: the commanding player alone hears his feedback (BattleEffects.feedback), on the order paths. */
+        void markCharge(Squad s,String group){for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id())))s.chargedAt.put(g.id(),time);}
+        /** Whether a Charge order on the named group(s) starts a charge: some named group is not charging already. */
+        boolean startsCharge(Squad s,String group){return Arrays.stream(Morale.GROUPS).anyMatch(g->(group.equals("all")||group.equals(g))&&!storedAssignment(s,g).order.equals("charge"));}
         /** An order's spot lies inside the arena: finite, and at least 10 blocks off its edge. */
         static boolean inArena(double x,double z){return Double.isFinite(x)&&Double.isFinite(z)&&Math.abs(x)<=R.arenaHalfX()-10&&Math.abs(z)<=R.arenaHalfZ()-10;}
         /** River water below the crossings: no order sends a group there (a bridge or a ford is ground at 64 or above). */
@@ -676,7 +673,7 @@ public final class GravesAndGlory implements ModInitializer {
         /** The point an order to (x, z) sends a group to: the ground there, one block up, whatever height whoever gave it stands at. */
         static Vec3d groundAt(double x,double z){return new Vec3d(x,Arena.ground((int)x,(int)z)+1,z);}
         /**
-         * The one place a group order takes effect, for a player's order (tactical) and the Marshal's Rally Horn alike: each named group (a group id, or "all")
+         * The one place a group order takes effect, for a player's order (tactical) and the Marshal's Muster alike: each named group (a group id, or "all")
          * stores a fresh Assignment of this order (never shared, since a later formation change edits one group's), and those groups' troops drop their target,
          * spell centre and path so they turn at once. The caller has vetted the spot (inArena, wet, groundAt) and, for a player, the command cooldown.
          */
@@ -704,15 +701,16 @@ public final class GravesAndGlory implements ModInitializer {
             s.lastOrder=time;Vec3d dest=groundAt(x,z);boolean charging=action.equals("charge")&&startsCharge(s,group);
             if(action.equals("follow"))dest=p.getPos();
             issue(s,group,action,formation,dest,yaw,enemyId);
-            if(charging)chargeHorn(s,group);
+            if(charging)markCharge(s,group);
             campaign.tutorialDid(p,action.equals("attack")||action.equals("charge")?2:0);campaign.progressEvent(p.getUuid(),false);
-            p.playSound(action.equals("retreat")?SoundEvents.BLOCK_NOTE_BLOCK_BELL.value():SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(),.6f,action.equals("charge")?.7f:1.1f);
+            // The command's feedback, to this player alone: Retreat's and Charge's own cues (once per kind per hornCooldownSeconds, else nothing), every other order the chime.
+            if(action.equals("retreat")||action.equals("charge"))BattleEffects.feedback(this,p,action);else p.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(),.6f,1.1f);
             p.sendMessage(Text.literal(group+" / "+action+" / "+(int)x+", "+(int)z),true);
         }
         /** The room a troop's body takes in a formation and the lane it takes on a bridge: its width and 0.3, at least 1.3 (BattleMath.spacing). */
         public static double spacing(Unit u){return BattleMath.spacing(u.mob.getWidth());}
         Vec3d formation(Unit u){
-            Assignment a=assignment(u);if(!u.squad.bot&&u.squad.order.equals("hold")&&!u.squad.assignments.containsKey(u.spec.group())&&!Morale.routing(u.squad,u.spec.group()))return u.deployed;var f=Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(a.formation)).findFirst().orElse(Spec.FORMATIONS[0]);
+            Assignment a=assignment(u);if(!u.squad.bot&&u.squad.order.equals("hold")&&!u.squad.assignments.containsKey(u.spec.group()))return u.deployed;var f=Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(a.formation)).findFirst().orElse(Spec.FORMATIONS[0]);
             int slot=0;double cell=f.spacing();
             for(Unit other:units)if(other.squad==u.squad&&other.spec.group().equals(u.spec.group())&&other.mob.isAlive()){if(other.slot<u.slot)slot++;cell=Math.max(cell,spacing(other));} // the cell is the widest body of the group, so a golem's neighbours do not overlap it
             boolean siege=u.spec.group().equals("siege"); // behind the archers: a mortar cannot fire at what stands within its minimum range
@@ -807,7 +805,7 @@ public final class GravesAndGlory implements ModInitializer {
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
             respawns.clear();
             for(Squad s:squads.values()){
-                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.training.clear();s.routedAt.clear();s.steadyUntil.clear();s.fullHealth.clear();s.chargedAt.clear();s.traits.clear();s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
+                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.chargedAt.clear();s.traits.clear();s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
                 var player=server.getPlayerManager().getPlayer(s.owner);
                 if(player!=null){toBase(player,s.team);player.changeGameMode(GameMode.ADVENTURE);equipPlayer(player);}
                 reinforce(s);
@@ -948,7 +946,7 @@ public final class GravesAndGlory implements ModInitializer {
                     b.writeString(group);b.writeInt(members.size());b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getHealth()/u.mob.getMaxHealth()).average().orElse(0));
                     b.writeString(a.order);b.writeString(a.formation);b.writeFloat((float)a.target.x);b.writeFloat((float)a.target.z);b.writeFloat(a.yaw);
                     b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getX()).average().orElse(a.target.x));b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getZ()).average().orElse(a.target.z));
-                    b.writeBoolean(members.stream().anyMatch(u->u.mob.getTarget()!=null));b.writeBoolean(s!=null&&Morale.routing(s,group));
+                    b.writeBoolean(members.stream().anyMatch(u->u.mob.getTarget()!=null));b.writeBoolean(s!=null&&Morale.lastStand(s,group)); // the last boolean was Phase 1's routing; state_v8's layout is unchanged
                 }
                 var visiblePings=pings.stream().filter(v->s!=null&&v.team==s.team&&v.until>time).toList();b.writeInt(visiblePings.size());for(var ping:visiblePings){b.writeString(ping.kind);b.writeFloat((float)ping.x);b.writeFloat((float)ping.z);}
                 b.writeInt(running?(int)Math.max(0,roundSeconds-(time-roundStarted)/20):roundSeconds);

@@ -2,7 +2,7 @@ package gg.gravesandglory;
 
 import java.util.List;
 
-/** Pure Phase 1 battle maths: projectile travel, HUD loss detection and rout maths. Never shipped. */
+/** Pure Phase 1 battle maths: projectile travel, HUD loss detection, the speed modifier and the wounded share. Never shipped. */
 public final class BattleMathCheck {
     static int checks;
     static void check(boolean pass, String message) {
@@ -21,10 +21,9 @@ public final class BattleMathCheck {
         check(BattleMath.tookLoss(1f, 12, 1f - 4f / 36f / 12f, 12), "one arrow on a full 12-knight group flashes");
         check(Math.abs(BattleMath.strength(60, 360) - 1/6.0) < 1e-9 && BattleMath.strength(400, 360) == 1 && BattleMath.strength(5, 0) == 1, "strength is health-weighted and clamped");
         check(BattleMath.relativeBearing(0, 0, 1) < 1 && Math.abs(BattleMath.relativeBearing(0, 0, -1) - 180) < 1 && Math.abs(BattleMath.relativeBearing(0, -1, 0) - 90) < 1, "yaw 0 faces +z");
-        double[] rx={0,.5,-.5}, rz={-5,-5,-5}, fx={0,.5,-.5}, fz={5,5,5};
-        check(BattleMath.flanked(0, rx, rz, 110, 3) && !BattleMath.flanked(0, fx, fz, 110, 3) && !BattleMath.flanked(0, new double[]{0,0}, new double[]{-5,-5}, 110, 3), "three rear attackers flank; front or two do not");
-        check(BattleMath.shouldRout(.2, false, .25, .6) && BattleMath.shouldRout(.5, true, .25, .6), "weak routs; flanked half-strength routs");
-        check(!BattleMath.shouldRout(.5, false, .25, .6) && !BattleMath.shouldRout(.9, true, .25, .6), "half-strength unflanked and flanked fresh hold");
+        // the no-routing design: one speed helper for Riptide, Muster and Howl (a real xN on land is the square root of the attribute, the swim speed is linear), and the wounded share the fearless stance reads
+        check(Math.abs(BattleMath.speedModifier(1.2,false)-(Math.sqrt(1.2)-1))<1e-12 && Math.abs(BattleMath.speedModifier(1.2,true)-0.2)<1e-12 && BattleMath.speedModifier(1,false)==0 && BattleMath.speedModifier(1,true)==0 && Math.abs(BattleMath.speedModifier(1.44,false)-0.2)<1e-12, "speedModifier: x1.2 on land is sqrt(1.2)-1, in water 0.2; x1 is 0");
+        check(BattleMath.wounded(6,20,.3) && !BattleMath.wounded(6.2f,20,.3) && BattleMath.wounded(5,20,.3) && !BattleMath.wounded(1,0,.3), "wounded: at or under 30% of max health, never with no max");
         double[] ax={0,-40}, az={0,-140};
         check(BattleMath.nearestAnchor(40, 0, -108, 0, ax, az) == 0, "centre point is nearer the front than base");
         check(BattleMath.nearestAnchor(-100, 0, -108, 0, ax, az) == -1, "base wins when the fight is at home");
@@ -76,14 +75,6 @@ public final class BattleMathCheck {
         check(BattleMath.pointIncome(0, 3, 2, 9) == 0 && BattleMath.pointIncome(4, 0, 2, 9) == 8 && BattleMath.pointIncome(9, 0, 2, 9) == 9, "nothing held pays nothing; a sheet with no point gold keeps its plain cap");
         check(BattleMath.classCost(70, 1 - 0.2) == 56 && BattleMath.classCost(22, 1) == 22 && BattleMath.classCost(45, 0.8) == 36 && BattleMath.classCost(25, 0.9) == 23, "the Warlock's 20% off: a 70-gold Sunweaver costs 56; costs round half up");
         check(BattleMath.trainingTicks(4.0, 1 - 0.2) == 64 && BattleMath.trainingTicks(4.0, 1) == 80 && BattleMath.trainingTicks(3.5, 0.8) == 56 && BattleMath.trainingTicks(9.0, 0.8) == 144, "the Marshal's drill: a knight's 80 ticks become 64");
-        // Graveborn: the share of strength a group breaks at (fearless 12%, dread 40%, the sheet's 25% otherwise; fearless wins over dread)
-        check(BattleMath.routShare(.25, 5, 10, .5, .12, false, .4) == .12 && BattleMath.routShare(.25, 10, 10, .5, .12, false, .4) == .12, "a group at least half fearless breaks at the fearless share (5 of 10, 10 of 10)");
-        check(BattleMath.routShare(.25, 4, 10, .5, .12, false, .4) == .25 && BattleMath.routShare(.25, 0, 10, .5, .12, false, .4) == .25 && BattleMath.routShare(.25, 1, 3, .5, .12, false, .4) == .25 && BattleMath.routShare(.25, 2, 3, .5, .12, false, .4) == .12, "under half fearless it keeps the sheet's share (4 of 10, none, 1 of 3), over half does not (2 of 3)");
-        check(BattleMath.routShare(.25, 0, 10, .5, .12, true, .4) == .4 && BattleMath.routShare(.25, 4, 10, .5, .12, true, .4) == .4, "a dread troop in reach raises the share to the dread share for a group that is not half fearless");
-        check(BattleMath.routShare(.25, 10, 10, .5, .12, true, .4) == .12 && BattleMath.routShare(.25, 5, 10, .5, .12, true, .4) == .12, "fearless wins over dread");
-        check(BattleMath.routShare(.25, 0, 0, .5, .12, false, .4) == .25 && BattleMath.routShare(.25, 0, 0, .5, .12, true, .4) == .4, "a group with no living member is not fearless");
-        check(BattleMath.shouldRout(.15, false, BattleMath.routShare(.25, 10, 10, .5, .12, false, .4), .6) == false && BattleMath.shouldRout(.10, false, BattleMath.routShare(.25, 10, 10, .5, .12, false, .4), .6) && BattleMath.shouldRout(.15, false, BattleMath.routShare(.25, 0, 10, .5, .12, false, .4), .6), "ten Risen at 15% hold and break at 10%; a knight group at 15% breaks");
-        check(BattleMath.shouldRout(.35, false, BattleMath.routShare(.25, 0, 10, .5, .12, true, .4), .6) && !BattleMath.shouldRout(.35, false, BattleMath.routShare(.25, 10, 10, .5, .12, true, .4), .6), "a group at 35% breaks beside dread, the fearless one does not");
         System.out.println("BattleMathCheck: " + checks + " checks passed");
     }
 }

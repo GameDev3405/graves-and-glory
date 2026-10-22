@@ -372,7 +372,7 @@ public final class Campaign {
     static final double MELEE_THREAT_RANGE=8;
     /** A remembered enemy counts as near a point, or near an army, within this many times the point's radius or the tier's charge distance. */
     static final double NEAR_RADIUS_FACTOR=2;
-    /** One command decision for a bot army, run at its tier's cadence: retreat or rally, pick the point to take, set the order, sound the charge horn.
+    /** One command decision for a bot army, run at its tier's cadence: retreat or rally, pick the point to take, set the order, stamp the charge (Battle.markCharge; a bot's command plays no sound).
      *  Easy and Normal read the whole battlefield; Hard reads only what its team has seen (b.sightings), and holds the points it owns before it flanks (garrisonPoint). */
     void botDecide(GravesAndGlory.Squad s,Spec.BotCommandRow tier){
         var mine=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).toList();
@@ -424,7 +424,7 @@ public final class Campaign {
                 else if(enemy.spec.group().equals("infantry")&&d<=MELEE_THREAT_RANGE)melee++;}
             if(BattleMath.shieldwallVsArchers(ranged,melee,tier.archerThreatCount(),shields))s.assignments.put("infantry",new GravesAndGlory.Assignment(s.order,"shieldwall",s.target,s.yaw));
         }
-        if(s.order.equals("charge")&&couldCharge)b.chargeHorn(s,"all");
+        if(s.order.equals("charge")&&couldCharge)b.markCharge(s,"all");
     }
     /** Hard holds what it has taken before it flanks. Gathers the team's armies for BattleMath.garrison, near meaning within
      *  NEAR_RADIUS_FACTOR*chargeDistance: its bot armies (alive and not retreating, in squad order; a fixture's army outside b.squads goes last)

@@ -16,10 +16,14 @@ public final class CounterMath {
      * (melee, arrow, shot, magic, nonsiege, ranged, charging, holding, structure); a row's "any" matches every hit.
      * bearing is BattleMath.relativeBearing(targetYaw, attacker - target): 0 straight in front of the target, 180 behind.
      * raised is the target's shield. chargeImpact (the first hit of a fresh Charge), charging and holding are the
-     * attacker's group order, noSky is whether the attacker cannot see the sky, and inMist is the shooter or the target
-     * standing in a Mist cloud.
+     * attacker's group order, noSky is whether the attacker cannot see the sky, inMist is the shooter or the target
+     * standing in a Mist cloud, covered is the target's flanks covered (Gilded Bulwark: Houses.covered) and area is a
+     * blow with no direction (blight, a shell, mist, the splash of a slam or a cleave on the others around the target).
      */
-    public record Hit(Set<String> attacker, Set<String> target, double bearing, boolean raised, boolean chargeImpact, boolean charging, boolean holding, boolean noSky, boolean inMist) {}
+    public record Hit(Set<String> attacker, Set<String> target, double bearing, boolean raised, boolean chargeImpact, boolean charging, boolean holding, boolean noSky, boolean inMist, boolean covered, boolean area) {
+        /** A hit with uncovered flanks and a direction (the Phase 1 shape). */
+        public Hit(Set<String> attacker, Set<String> target, double bearing, boolean raised, boolean chargeImpact, boolean charging, boolean holding, boolean noSky, boolean inMist) { this(attacker, target, bearing, raised, chargeImpact, charging, holding, noSky, inMist, false, false); }
+    }
 
     /** True when a counters row applies to a hit: its attacker tag, its target tag (a+b needs both) and its condition. */
     public static boolean matches(Spec.CountersRow r, Hit h) {
@@ -29,7 +33,7 @@ public final class CounterMath {
         for (String part : rule.split("\\+")) if (!part.equals("any") && !tags.contains(part)) return false;
         return true;
     }
-    /** The closed condition list (spec 6.1). Front is a bearing of FRONT_DEGREES or less; flank is more than morale.flankArcDegrees. */
+    /** The closed condition list (spec 6.1). Front is a bearing of FRONT_DEGREES or less; flank is more than combatDiscipline.flankArcDegrees, and never for a covered target or a blow with no direction (area). */
     static boolean condition(String condition, Hit h) {
         boolean front = h.bearing() <= FRONT_DEGREES;
         return switch (condition) {
@@ -37,7 +41,7 @@ public final class CounterMath {
             case "raised_front" -> h.raised() && front;
             case "lowered_front" -> !h.raised() && front;
             case "front" -> front;
-            case "flank" -> h.bearing() > flankDegrees();
+            case "flank" -> h.bearing() > flankDegrees() && !h.covered() && !h.area();
             case "charge_impact" -> h.chargeImpact();
             case "charge" -> h.charging();
             case "hold" -> h.holding();
@@ -46,8 +50,8 @@ public final class CounterMath {
             default -> false;
         };
     }
-    /** The Phase 1 flank arc (morale.flankArcDegrees, 110): counter row C16 and Pack Hunters flank exactly as morale does. */
-    static double flankDegrees() { return Spec.MORALE[0].flankArcDegrees(); }
+    /** The flank arc (combatDiscipline.flankArcDegrees, 110): counter rows C16 and C16s, Pack Hunters and the pierce cone read one number. */
+    static double flankDegrees() { return Spec.COMBATDISCIPLINE[0].flankArcDegrees(); }
 
     /** The counter multiplier for a hit: the product of the applied rows' multipliers, 1 when no row matches. */
     public static double counters(Hit h, Spec.CountersRow[] rows) {
@@ -108,7 +112,8 @@ public final class CounterMath {
 
     /**
      * Wildmoot Pack Hunters: an attack deals 1 + value when at least value2 own Wildmoot troops target the same enemy, or
-     * when the attacker strikes from the flank (a bearing beyond morale.flankArcDegrees). Both at once still give it once.
+     * when the attacker strikes from the flank (a bearing beyond combatDiscipline.flankArcDegrees; a covered target does not
+     * take it off, which keeps Wildmoot the best flankers). Both at once still give it once.
      */
     public static double packHunters(Spec.HouseTraitsRow t, int sameTarget, double bearing) {
         return is(t, "pack_hunters") && (sameTarget >= t.value2() || bearing > flankDegrees()) ? 1 + t.value() : 1;

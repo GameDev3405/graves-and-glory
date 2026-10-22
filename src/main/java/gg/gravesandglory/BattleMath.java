@@ -30,23 +30,18 @@ public final class BattleMath {
         double cos = (-Math.sin(yaw) * dx + Math.cos(yaw) * dz) / length;
         return Math.toDegrees(Math.acos(Math.max(-1, Math.min(1, cos))));
     }
-    /** Flanked when at least minAttackers of the given attacker offsets sit more than arcDeg off the group's facing. */
-    public static boolean flanked(double facingYawDeg, double[] dx, double[] dz, double arcDeg, int minAttackers) {
-        int behind = 0;
-        for (int i = 0; i < Math.min(dx.length, dz.length); i++) if (relativeBearing(facingYawDeg, dx[i], dz[i]) > arcDeg) behind++;
-        return behind >= minAttackers;
-    }
-    /** A group breaks when its strength falls to routShare, or to flankedRoutShare while flanked. */
-    public static boolean shouldRout(double strength, boolean flanked, double routShare, double flankedRoutShare) {
-        return strength <= routShare || flanked && strength <= flankedRoutShare;
-    }
     /**
-     * The share of its strength a group breaks at (Graveborn): fearlessShare when at least `needed` of its living members are fearless
-     * (fearless wins over dread), else dreadShare while an enemy dread troop stands in reach, else the sheet's base share.
+     * The attribute multiplier that makes a troop travel x travel ("+x% speed" on a sheet: 1 + x): the modifier value for a MULTIPLY_TOTAL on
+     * the movement speed. A swimmer's stroke is linear in the attribute, so in water it is travel - 1 as it stands; a land mob's walk is
+     * quadratic in it (the attribute sets the forward input, and the ground turns that input into an acceleration by the attribute again:
+     * measured, a +15% attribute walks 1.32 as far), so on land it is the square root of travel, less 1. Riptide, Muster and the Howl share it.
      */
-    public static double routShare(double base, int fearless, int members, double needed, double fearlessShare, boolean dreaded, double dreadShare) {
-        if (members > 0 && fearless > 0 && fearless >= needed * members) return fearlessShare;
-        return dreaded ? dreadShare : base;
+    public static double speedModifier(double travel, boolean swimming) {
+        return (swimming ? travel : Math.sqrt(Math.max(0, travel))) - 1;
+    }
+    /** Whether a troop is wounded for a sheet rule that reads "at or below share of its max health" (the fearless stance, Run them down): health at or below share x max, with a hair of tolerance for float health. */
+    public static boolean wounded(double health, double maxHealth, double share) {
+        return maxHealth > 0 && health <= share * maxHealth + 1e-6;
     }
     /** The room a body of this width takes in a formation and on a bridge: its width and 0.3, at least 1.3. A formation's cell is the widest such room in its group, at least the formation's own spacing; the server (Battle.formation) and the command preview (CommandMode) both read it. */
     public static double spacing(double width) { return Math.max(1.3, width + 0.3); }
