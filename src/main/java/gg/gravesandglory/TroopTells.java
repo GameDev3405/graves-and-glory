@@ -38,7 +38,7 @@ public final class TroopTells {
     public static final Map<String,Animation> TELLS;
     /** The mage's wrist turn during its tell, in degrees (the staff's head goes forward). */
     static final float MAGE_WRIST=75f;
-    /** The archer's hand takes this much of the carry's 45 degree rest yaw off in its tell (the draw's turn without its last 20 degrees), so the bow stands upright and still reads from the three-quarter front. */
+    /** The archer's hand takes this much of the carry's 45 degree rest yaw off in its tell (the draw's turn without its last 20 degrees), so the bow stands upright before the eye. The 20 degrees do not turn its face to the three-quarter front: the bow is edge-on from 315, so the archer's cell is shot from 270. */
     static final float ARCHER_YAW_OFF=TroopAnimator.BOW_REST_YAW-20f;
     /** The second of each tell at which every bone it moves is at its headline angle (the still shots read it there). */
     public static final Map<String,Float> PEAKS;

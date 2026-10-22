@@ -2425,7 +2425,7 @@
       "glyph": "gravesandglory:textures/gui/house/tidecallers.png",
       "troops": "tc_raider,tc_harpooner,tc_tideguard,tc_mist,tc_brute,tc_admiral",
       "title": "Tidesworn",
-      "fieldable": false
+      "fieldable": true
     }
   ],
   "houseTraits": [

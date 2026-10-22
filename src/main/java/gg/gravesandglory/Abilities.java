@@ -5,6 +5,8 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.TallPlantBlock;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.MovementType;
+import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.particle.DustParticleEffect;
@@ -30,6 +32,8 @@ import java.util.List;
  * the target (secondary); the Oath Banner aura plants a Banner (Battle.banners) that lends its planter's army damage (auraFactor), keeps its
  * groups from routing (OATH_GUARD) and rallies them. The slam (Brassjaw's) hits every other enemy within its radius of the target for the row's share, with knockback; the shell (the
  * Ironhold Mortar's) is a blight that cannot be cast at anything nearer than the row's minRange. Every other mechanic is a no-op until the task of its House.
+ * The Tidecallers' rows: the mist (a blight variant whose burst is a standing cloud, Battle.mists: it slows the enemies in it and counters row C17 halves the shots through it), the
+ * harpoon (an on-hit slow with a cooldown and a pull toward the shooter), the tentacle sweep (a slam on hit with a cooldown) and the undertow (a slam on a timer that pulls and hurts).
  * Every number comes from the row, with the combatDiscipline defaults where a row says 0.
  */
 final class Abilities {
@@ -68,6 +72,8 @@ final class Abilities {
             case "mend" -> mend(b, u, row, time);
             case "blight" -> burst(b, u, row, time);
             case "aura" -> aura(b, u, row, time);
+            case "mist" -> cloud(b, u, row, time);
+            case "slam" -> { if (row.trigger().equals("timer")) undertow(b, u, row, time); } // the Admiral's; a slam on hit acts in onHit
             default -> {} // the stances (steady, ambush, brace) act through the counters table; every other mechanic waits for the task of its House
         }
     }
@@ -108,7 +114,7 @@ final class Abilities {
     static void attack(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity enemy, long time) {
         var row = row(u.spec);
         switch (row.mechanic()) {
-            case "blight" -> {
+            case "blight", "mist" -> {
                 if (time < u.abilityAt || tooClose(u, u.mob.squaredDistanceTo(enemy))) return; // a shell is never lobbed at an enemy inside the row's minimum range
                 u.spellCenter = enemy.getPos();
                 u.windupUntil = time + (row.windupTicks() > 0 ? row.windupTicks() : D.spellWindupTicks());
@@ -120,7 +126,7 @@ final class Abilities {
                 float amount = (float) baseHit(b, u);
                 animate(b, u);
                 // The hit is decided now; a ranged hit lands when its visible arrow arrives.
-                if (u.spec.ranged()) Projectiles.fire(b, u, enemy, "arrow", amount); else Combat.resolve(b, u, enemy, amount, "melee", false);
+                if (u.spec.ranged()) Projectiles.fire(b, u, enemy, visual(u), amount); else Combat.resolve(b, u, enemy, amount, "melee", false);
             }
         }
     }
@@ -131,6 +137,15 @@ final class Abilities {
             b.world.sendEntityStatus(u.mob, (byte) 4);
             BattleEffects.attackStatuses++;
         }
+    }
+
+    /**
+     * The look of a ranged troop's shot, which Projectiles.fire takes as its kind: bolt for a magic troop, trident for a ranged troop whose weapon is the trident (the
+     * Harpooner), arrow for the rest. The hit is resolved as an arrow, or a bolt for magic, whatever the look.
+     */
+    static String visual(GravesAndGlory.Unit u) {
+        if (u.spec.magic()) return "bolt";
+        return u.spec.ranged() && u.spec.weapon().equals("minecraft:trident") ? "trident" : "arrow";
     }
 
     /** The troop's ability row's minRange: the nearest an enemy may be and still be cast at (the Mortar's shell, 10); 0 for a troop with none. */
@@ -153,10 +168,31 @@ final class Abilities {
         switch (row.mechanic()) {
             case "pierce" -> secondary(b, u, target, row.radius(), row.amount(), true, kind);
             case "cleave" -> secondary(b, u, target, row.radius(), row.amount(), false, kind);
-            case "onhit_slow" -> { if (target.isAlive()) slow(target, row); }
-            case "slam" -> slam(b, u, target, row);
+            case "onhit_slow" -> {
+                if (target.isAlive() && !Combat.structure(target) && offCooldown(b, u, row)) {
+                    slow(target, row);
+                    if (row.knockback() < 0) pull(target, u.mob.getPos(), -row.knockback()); // the Harpooner's: a negative knockback drags the target toward the shooter
+                }
+            }
+            case "slam" -> { if (row.trigger().equals("onhit")) slam(b, u, target, row); }
             default -> {}
         }
+        var riptide = Houses.riptide(u);
+        if (riptide != null && target.isAlive() && !Combat.structure(target)) slow(target, SLOWNESS_I, riptide.durationTicks()); // Riptide: every hit of a Tidecaller slows; with brine or a harpoon the longer duration stands
+    }
+
+    /** Slowness I is the amplifier 0 of Riptide's slow (the spec's fixed effect kind); the abilities rows carry their own statusLevel. */
+    static final int SLOWNESS_I = 0;
+
+    /**
+     * Whether an on-hit row may fire now. A row with a cooldown (the Harpoon's 60 ticks, Ensnare's 80) fires once and then waits it out, on the troop's own
+     * abilityAt; a row with none (brine, frostshot) always fires.
+     */
+    static boolean offCooldown(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row) {
+        if (row.cooldownTicks() <= 0) return true;
+        if (b.time < u.abilityAt) return false;
+        u.abilityAt = b.time + row.cooldownTicks();
+        return true;
     }
 
     /**
@@ -165,16 +201,20 @@ final class Abilities {
      * from the target's spot with the row's knockback (a structure is not moved).
      */
     static void slam(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity primary, Spec.AbilitiesRow row) {
+        if (row.cooldownTicks() > 0 && b.time < u.abilityAt) return; // the Brute's sweep: at most once per cooldown
         Vec3d at = primary.getPos();
+        int swept = 0;
         float base = (float) (row.amount() * baseHit(b, u));
         double reach = row.radius() * row.radius();
         for (var e : enemies(b, u.squad.team)) {
             if (e == primary || e.squaredDistanceTo(primary) > reach) continue;
             float applied = Combat.resolve(b, u, e, base, "slam", true);
             if (applied <= 0) continue;
+            swept++;
             BattleEffects.flash(b, new Vec3d(e.getX(), e.getBodyY(.6), e.getZ()), u.squad.team);
             if (e.isAlive() && !Combat.structure(e)) knock(e, at, u.mob.getPos(), row.knockback());
         }
+        if (swept > 0 && row.cooldownTicks() > 0) u.abilityAt = b.time + row.cooldownTicks(); // a sweep that struck nobody keeps its cooldown for the next hit
         b.world.spawnParticles(ParticleTypes.CLOUD, at.x, at.y + .2, at.z, 16, row.radius() / 2, .1, row.radius() / 2, .06);
         b.world.playSound(null, primary.getBlockPos(), SoundEvents.BLOCK_ANVIL_LAND, SoundCategory.HOSTILE, .35f, .7f);
     }
@@ -203,11 +243,38 @@ final class Abilities {
      * The row's slow on a target: Slowness at the row's statusLevel for its statusTicks, unless the target already has that level or more for
      * longer (the longer one stands). The rows' own cooldowns and knockback (Ensnare, Harpoon) belong to the tasks of their Houses.
      */
-    static void slow(LivingEntity target, Spec.AbilitiesRow row) {
+    static void slow(LivingEntity target, Spec.AbilitiesRow row) { slow(target, row.statusLevel(), row.statusTicks()); }
+
+    /** Slowness at an amplifier for some ticks, unless the target already has that level or more for as long or longer (the longer one stands: brine against Riptide, a harpoon against either). */
+    static void slow(LivingEntity target, int level, int ticks) {
         var have = target.getStatusEffect(StatusEffects.SLOWNESS);
-        if (have != null && have.getAmplifier() >= row.statusLevel() && have.getDuration() >= row.statusTicks()) return;
-        target.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, row.statusTicks(), row.statusLevel()));
+        if (have != null && have.getAmplifier() >= level && have.getDuration() >= ticks) return;
+        target.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, ticks, level));
     }
+
+    /** The nearest a pull brings a target to its puller: a body's width and a half, so nothing is dragged into the one that drags it. */
+    static final double PULL_STOP = 1.5;
+
+    /**
+     * Drags an entity toward a spot, along the ground, by up to blocks (less its knockback resistance, and never closer than PULL_STOP to the spot):
+     * the Harpoon's 1 block and the Undertow's 3. A troop is moved at once with a collision-checked step and its velocity is cleared, which also cancels
+     * the knockback the blow that pulled it gave (a sliding pull would be undone by it); a commander, whose position his client owns, gets the velocity that
+     * carries him about that far. A structure is never moved.
+     */
+    static void pull(LivingEntity e, Vec3d toward, double blocks) {
+        if (Combat.structure(e) || blocks <= 0) return;
+        double dx = toward.x - e.getX(), dz = toward.z - e.getZ(), distance = Math.hypot(dx, dz);
+        var resist = e.getAttributeInstance(EntityAttributes.GENERIC_KNOCKBACK_RESISTANCE);
+        double step = Math.min(blocks * (1 - (resist == null ? 0 : resist.getValue())), distance - PULL_STOP);
+        if (step < 0.05 || distance < 1e-6) return;
+        Vec3d by = new Vec3d(dx / distance * step, 0, dz / distance * step);
+        if (e instanceof ServerPlayerEntity) e.setVelocity(by.multiply(PLAYER_PULL));
+        else { e.move(MovementType.SELF, by); e.setVelocity(0, e.getVelocity().y, 0); }
+        e.velocityModified = true;
+    }
+
+    /** A walking body's horizontal velocity carries it about 2.2 times that far over the ticks that follow, on ordinary ground (the friction series 1 / (1 - 0.546)): what a commander's pull is scaled by. */
+    static final double PLAYER_PULL = 0.454;
 
     /**
      * A second target for pierce and cleave: the nearest other living enemy (a troop, or a seated enemy commander in the field) within radius
@@ -373,6 +440,7 @@ final class Abilities {
 
     /** Every tick of a running round: a banner falls once its time is up (its block goes back); while it stands it rallies its army's routing groups in its radius and shows its particles, every BEAT ticks. */
     static void bannerTick(GravesAndGlory.Battle b) {
+        mistTick(b);
         if (b.banners.isEmpty()) return;
         for (var banner : new ArrayList<>(b.banners)) {
             if (b.time >= banner.until()) { lower(b, banner); b.banners.remove(banner); continue; }
@@ -420,14 +488,103 @@ final class Abilities {
             b.world.setBlockState(banner.block(), banner.was() == null ? Blocks.AIR.getDefaultState() : banner.was());
     }
 
-    /** Every banner falls now, the Oath Banners and the Forward Supply banners (startRound, returnLobby, switchMap, and the server stopping). */
+    /** Every banner falls now, the Oath Banners and the Forward Supply banners, and every Mist cloud goes (startRound, returnLobby, switchMap, and the server stopping). */
     static void clearBanners(GravesAndGlory.Battle b) {
         for (var banner : b.banners) lower(b, banner);
         b.banners.clear();
         for (var st : new ArrayList<>(b.structures)) st.discard();
         b.structures.clear();
+        b.mists.clear();
     }
 
-    /** Whether a shooter or its target stands in a Mist cloud (counters row C17). No clouds exist until the Tidecallers. */
-    static boolean inMist(GravesAndGlory.Battle b, LivingEntity shooter, LivingEntity target) { return false; }
+    /**
+     * A Mist Caller's cloud (the mist row): the team that cast it, its centre, its radius and the battle time it thins away. It stands in Battle.mists.
+     * It is a ball (radius around the centre, up and down as well as across), so a troop on a bridge above it is not in it.
+     */
+    public record Mist(int team, Vec3d at, double radius, long until) {
+        /** Whether a point is in the cloud at this battle time. */
+        public boolean holds(Vec3d p, long time) {
+            double dx = p.x - at.x, dy = p.y - at.y, dz = p.z - at.z;
+            return time < until && dx * dx + dy * dy + dz * dz <= radius * radius;
+        }
+    }
+
+    /** The mist row (the sheet's first row whose mechanic is mist): the numbers the cloud's slow reads. Null when the sheet has none. */
+    static Spec.AbilitiesRow mistRow() {
+        for (var a : Spec.ABILITIES) if (a.mechanic().equals("mist")) return a;
+        return null;
+    }
+
+    /**
+     * A Mist Caller's beat: the cast began in attack (the target's spot is spellCenter, a bolt of mist flies to it) and the ring marks the cloud-to-be while the
+     * windup runs; when it ends the cloud stands there for the row's durationTicks, radius and all from the row. A stunned caster loses the cast.
+     */
+    static void cloud(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
+        if (u.spellCenter == null) return;
+        if (time < u.stunnedUntil) { u.spellCenter = null; return; }
+        double radius = row.radius() > 0 ? row.radius() : D.spellRadius();
+        for (int i = 0; i < 12; i++) { double angle = i * Math.PI / 6; b.world.spawnParticles(ParticleTypes.CLOUD, u.spellCenter.x + Math.cos(angle) * radius, u.spellCenter.y + .2, u.spellCenter.z + Math.sin(angle) * radius, 1, 0, 0, 0, 0); }
+        if (time < u.windupUntil) return;
+        b.mists.add(new Mist(u.squad.team, u.spellCenter, radius, time + row.durationTicks()));
+        b.world.playSound(null, BlockPos.ofFloored(u.spellCenter), SoundEvents.ENTITY_EVOKER_PREPARE_SUMMON, SoundCategory.HOSTILE, .6f, 1.3f);
+        u.spellCenter = null;
+    }
+
+    /** The cloud's look: sea-foam colour, drawn as a ring of its radius twice a second and as drifting cloud in it every beat. */
+    static final int FOAM = 0xCFF3E4;
+
+    /**
+     * Every tick of a running round: a cloud thins away when its time is up; while it stands, every BEAT ticks, each enemy troop and seated enemy
+     * commander in it is slowed again by the row's statusLevel for its statusTicks (so it holds while they stay and wears off a moment after they leave),
+     * and it shows its particles. The shots through it are halved by counters row C17 (Combat.resolve reads inMist), not here.
+     */
+    static void mistTick(GravesAndGlory.Battle b) {
+        if (b.mists.isEmpty()) return;
+        b.mists.removeIf(m -> b.time >= m.until());
+        if (b.time % BEAT != 0) return;
+        var row = mistRow();
+        for (var m : b.mists) {
+            b.world.spawnParticles(ParticleTypes.CLOUD, m.at().x, m.at().y + .6, m.at().z, 10, m.radius() / 2, .35, m.radius() / 2, .01);
+            if (b.time % (2 * BEAT) == 0) ring(b, m.at(), m.radius(), FOAM);
+            if (row == null) continue;
+            for (var e : enemies(b, m.team())) if (!Combat.structure(e) && m.holds(e.getPos().add(0, e.getHeight() / 2, 0), b.time)) slow(e, row);
+        }
+    }
+
+    /** Whether a point stands in a Mist cloud now (the shooter's or the target's middle, for counters row C17). */
+    static boolean inMist(GravesAndGlory.Battle b, Vec3d p) {
+        for (var m : b.mists) if (m.holds(p, b.time)) return true;
+        return false;
+    }
+
+    /** Whether a shooter or its target stands in a Mist cloud (counters row C17): a ranged hit fired from or into a cloud, from either side. */
+    static boolean inMist(GravesAndGlory.Battle b, LivingEntity shooter, LivingEntity target) {
+        if (b.mists.isEmpty()) return false;
+        return inMist(b, shooter.getPos().add(0, shooter.getHeight() / 2, 0)) || inMist(b, target.getPos().add(0, target.getHeight() / 2, 0));
+    }
+
+    /**
+     * The Admiral's undertow (the slam row on a timer): when its cooldown is ready and an enemy troop or commander stands within the row's radius, it drags
+     * each of them knockback blocks (negative: toward her) and they take the row's amount (times her army's progression) as a secondary slam hit, which
+     * their counters and traits shape, and Slowness at the row's statusLevel for its statusTicks. Nothing happens, and no cooldown is spent, with nobody near.
+     */
+    static void undertow(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
+        if (time < u.abilityAt || time < u.stunnedUntil) return;
+        double reach = row.radius() * row.radius();
+        List<LivingEntity> caught = new ArrayList<>();
+        for (var e : enemies(b, u.squad.team)) if (!Combat.structure(e) && e.squaredDistanceTo(u.mob) <= reach) caught.add(e);
+        if (caught.isEmpty()) return;
+        u.abilityAt = time + row.cooldownTicks();
+        float base = (float) (row.amount() * b.campaign.damage(u));
+        Vec3d at = u.mob.getPos();
+        for (var e : caught) {
+            Combat.resolve(b, u, e, base, "slam", true);
+            if (!e.isAlive()) continue;
+            if (row.statusTicks() > 0) slow(e, row);
+            pull(e, at, -row.knockback());
+            BattleEffects.flash(b, new Vec3d(e.getX(), e.getBodyY(.6), e.getZ()), u.squad.team);
+        }
+        b.world.spawnParticles(ParticleTypes.SPLASH, at.x, at.y + 1, at.z, 40, row.radius() / 3, .6, row.radius() / 3, .2);
+        b.world.playSound(null, u.mob.getBlockPos(), SoundEvents.ENTITY_DROWNED_AMBIENT_WATER, SoundCategory.HOSTILE, 1f, .6f);
+    }
 }

@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * passive. Every number comes from the class row. The code knows only the effect kinds, named by the sheet's passive column (champion,
  * reaver, warden, marshal, warlock, quartermaster) and active column (stand_fast, bloodrush, mark_prey, rally_horn, grave_bloom,
  * forward_supply); tools/preflight.py keeps both columns to those closed lists. What an active does is registered in ACTIVES by the
- * House tasks (register): Stand Fast, Rally Horn, Grave Bloom and Forward Supply so far. An active nobody registered refuses with NOT_READY and starts no cooldown.
+ * House tasks (register): Stand Fast, Rally Horn, Grave Bloom, Forward Supply and Mark Prey so far. An active nobody registered refuses with NOT_READY and starts no cooldown.
  */
 public final class Commander {
     private Commander() {}
@@ -47,12 +47,13 @@ public final class Commander {
     /** The fixed id of the Rally Horn's speed modifier on its army's troops. */
     static final UUID RALLY = UUID.fromString("8382ceb7-bd85-41fd-b662-34b5f1d36d95");
 
-    /** Puts this build's actives into ACTIVES (mod init): the Champion's Stand Fast, the Marshal's Rally Horn, the Warlock's Grave Bloom and the Quartermaster's Forward Supply. */
+    /** Puts this build's actives into ACTIVES (mod init): the Champion's Stand Fast, the Marshal's Rally Horn, the Warlock's Grave Bloom, the Quartermaster's Forward Supply and the Warden's Mark Prey. */
     static void register() {
         ACTIVES.put("stand_fast", new StandFast());
         ACTIVES.put("rally_horn", new RallyHorn());
         ACTIVES.put("grave_bloom", new GraveBloom());
         ACTIVES.put("forward_supply", new ForwardSupply());
+        ACTIVES.put("mark_prey", new MarkPrey());
     }
 
     /** Stand Fast's rout guard: while the army's stand_fast runs, a group whose centre stands within the row's radius of its commander cannot rout. */
@@ -207,6 +208,48 @@ public final class Commander {
         @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
             for (var st : new ArrayList<>(b.structures)) if (st.squad() == s) st.discard();
         }
+    }
+
+    /**
+     * The Warden's Mark Prey: the enemy troop or seated enemy commander his view ray meets first within the row's range (blocks in the way stop it)
+     * glows for the row's durationTicks, with the vanilla Glowing effect, so both sides see it (a glow for his own side only needs a client renderer
+     * that state_v8 does not carry: docs/PARKED.md), and takes x(1 + value1) from his troops and from himself (marked, which Combat.resolve and
+     * Battle.allowDamage read through abilityData). Refused, with a notice and no cooldown, when the ray meets no foe. The glow goes when the active ends.
+     */
+    static final class MarkPrey implements Active {
+        @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, Spec.ClassesRow c) {
+            LivingEntity prey = pick(b, p, s, c.range());
+            if (prey == null) { b.campaign.notice(s.owner, "No foe in sight."); return false; }
+            prey.addStatusEffect(new StatusEffectInstance(StatusEffects.GLOWING, c.durationTicks(), 0, false, false));
+            s.abilityData = prey;
+            Abilities.ring(b, prey.getPos(), 1.5, b.side(s.team).color());
+            return true;
+        }
+        @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.ClassesRow c) {}
+        /** The glow goes with the mark, at expiry, at a round start, in the lobby, and when its commander leaves or his seat changes hands. */
+        @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
+            if (s.abilityData instanceof LivingEntity prey && prey.isAlive()) prey.removeStatusEffect(StatusEffects.GLOWING);
+        }
+        /**
+         * The nearest enemy troop or seated enemy commander on the commander's view ray within range blocks, a hand's breadth of margin round its box, that no block
+         * stands in front of (the ray stops at the first collision shape); null when there is none. A supply banner is not prey.
+         */
+        static LivingEntity pick(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, double range) {
+            Vec3d eye = p.getEyePos(), end = eye.add(p.getRotationVector().multiply(range));
+            var wall = p.getWorld().raycast(new RaycastContext(eye, end, RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, p));
+            double nearest = wall.getType() == net.minecraft.util.hit.HitResult.Type.MISS ? range : eye.distanceTo(wall.getPos());
+            LivingEntity best = null;
+            for (var e : Abilities.enemies(b, s.team)) {
+                if (Combat.structure(e)) continue;
+                var hit = e.getBoundingBox().expand(MARGIN).raycast(eye, end);
+                if (hit.isEmpty()) continue;
+                double d = eye.distanceTo(hit.get());
+                if (d < nearest) { nearest = d; best = e; }
+            }
+            return best;
+        }
+        /** The margin round a foe's box the view ray may miss by and still pick it (blocks): a presentation number, so a mark lands on a troop the crosshair is on or beside. */
+        static final double MARGIN = 0.3;
     }
 
     /** The class row a squad fights under: its commander id, or the sheet's first class for an unknown id. */

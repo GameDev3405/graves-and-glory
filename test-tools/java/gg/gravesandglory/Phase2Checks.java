@@ -50,7 +50,7 @@ public final class Phase2Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every server tick, for checks that wait on the battle. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("graveborn",Graveborn::new);SUITES.put("ironclad",Ironclad::new);SUITES.put("anim",Anim::new);SUITES.put("turn",Turn::new);SUITES.put("tells",Tells::new);SUITES.put("depth",Depth::new);}
+    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("graveborn",Graveborn::new);SUITES.put("ironclad",Ironclad::new);SUITES.put("tidecallers",Tidecallers::new);SUITES.put("anim",Anim::new);SUITES.put("turn",Turn::new);SUITES.put("tells",Tells::new);SUITES.put("depth",Depth::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -2504,7 +2504,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     var fresh=b.units.stream().filter(u->u.squad==own).toList();var u=fresh.isEmpty()?null:fresh.get(0);
                     boolean home=u!=null&&distance(u.mob.getPos(),base0())<12&&distance(u.mob.getPos(),centre())>25;
                     supplyWhy.add("(a) an enemy Ballista Crew 9 blocks off shot the banner down "+(castTime<0?"never":castTime+" ticks")+" after it was planted, its block is air again="+down+"; the troop that finished training afterwards appeared "+(u==null?"never":fmt(distance(u.mob.getPos(),base0()))+" from his base and "+fmt(distance(u.mob.getPos(),centre()))+" from the platform")+" (want the barracks)="+home);
-                    boolean told=fallNotice.equals("Your supply banner has fallen. Troops muster at the barracks.");
+                    boolean told=fallNotice.equals("Your supply banner has fallen.");
                     boolean ended=fallUntil==0&&Math.abs(fallReady-(t0+3000))<=2&&!Commander.running(b,own,"forward_supply")&&Commander.activeFor(b,own)==0&&own.abilityData==null;
                     supplyWhy.add("when it fell its commander read \""+fallNotice+"\"="+told+" and his active ended with it (it ran to +"+fallUntil+" (0 is stopped), the HUD tile shows "+Commander.activeFor(b,own)+" ticks of it, the cooldown stands until +"+(fallReady-t0)+" of 3000)="+ended);
                     supplyOk=down&&home&&told&&ended;
@@ -2530,7 +2530,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 }
                 case 36->{if(since(b)<12)return;
                     boolean gone=b.structures.isEmpty()&&banner.isRemoved()&&b.world.getBlockState(bannerBlock).isAir()&&own.abilityUntil==0&&b.deploy(own,0).anchor()==null;
-                    boolean quiet=!"Your supply banner has fallen. Troops muster at the barracks.".equals(b.campaign.notices.get(player));
+                    boolean quiet=!"Your supply banner has fallen.".equals(b.campaign.notices.get(player));
                     supplyWhy.add("when the timer runs out the banner is taken down, its block restored and a troop deploys at the barracks="+gone+", and its commander is not told it fell (an expiry is no fall)="+quiet);supplyOk&=gone&&quiet;
                     Commander.reset(b,own);next(b,37);
                 }
@@ -2780,11 +2780,11 @@ public final class Phase2Checks implements ClientModInitializer {
                     banner=plant(b,p,0);if(banner==null){report("p2-supply-cleanup",false,"no banner could be planted");next(b,70);return;}
                     bannerBlock=banner.block;var first=banner;
                     Abilities.clearBanners(b); // the call returnLobby, startRound, switchMap and the server stopping each make
-                    boolean swept=first.isRemoved()&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir()&&!"Your supply banner has fallen. Troops muster at the barracks.".equals(b.campaign.notices.get(player));
+                    boolean swept=first.isRemoved()&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir()&&!"Your supply banner has fallen.".equals(b.campaign.notices.get(player));
                     Commander.reset(b,own);
                     banner=plant(b,p,0);if(banner==null){report("p2-supply-cleanup",false,"no banner could be planted (kill)");next(b,70);return;}
                     bannerBlock=banner.block;banner.kill(); // what /kill does to an armor stand
-                    boolean killed=banner.isRemoved()&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir()&&"Your supply banner has fallen. Troops muster at the barracks.".equals(b.campaign.notices.get(player))&&own.abilityUntil==0&&own.abilityReadyAt>b.time;
+                    boolean killed=banner.isRemoved()&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir()&&"Your supply banner has fallen.".equals(b.campaign.notices.get(player))&&own.abilityUntil==0&&own.abilityReadyAt>b.time;
                     supplyOk=swept&&killed;
                     supplyWhy.add("Abilities.clearBanners (the call a round start, a map switch, the lobby and a server stop each make) took a standing banner down, its block air again and nobody told it fell="+swept+"; a killed banner (what /kill does) left the list, its block air again, its commander told it fell and his active stopped (cooldown stands)="+killed);
                     next(b,72);
@@ -2823,6 +2823,595 @@ public final class Phase2Checks implements ClientModInitializer {
                 b.world.spawnParticles(p,Abilities.dust(0xE8B923),true,u.mob.getX()+Math.cos(a)*Abilities.range(b,u),y,u.mob.getZ()+Math.sin(a)*Abilities.range(b,u),1,0,0,0,0);
             }
             if(u2!=null&&u2.mob.isAlive())for(int i=0;i<48;i++){double a=i*2*Math.PI/48;b.world.spawnParticles(p,Abilities.dust(0xD94A3A),true,u2.mob.getX()+Math.cos(a)*10,y,u2.mob.getZ()+Math.sin(a)*10,1,0,0,0,0);}
+        }
+    }
+
+    /**
+     * Task 9 (batch 4, mechanics half): the Tidecallers. The three new mobs (goals only), the Mist Caller's cloud with its slow and counter C17, the Harpooner's pull with its
+     * flying trident, the Admiral's undertow, the Brute's sweep, brine against Riptide (the longer slow stands), Riptide's speed in water and in rain and its ford, a Brute across
+     * the bridge at tier 0, the Trident Guard's brace (C18c), the Warden's Mark Prey, the clouds' cleanup and the tick cost. The fixture is Gilded's: a stone platform in the sky above
+     * Dawn's base, two ad hoc armies and the commander's own (a Warden); troops are posted frozen and pinned, and every blow goes through the real damage path (Combat.resolve) so the
+     * on-hit abilities run as they do in a round. The showcase, the ford picture and the tick cost stay here; the lineup and stages pictures belong to the art half.
+     */
+    static final class Tidecallers extends Staged {
+        final Map<BlockPos,net.minecraft.block.BlockState> built=new LinkedHashMap<>();
+        GravesAndGlory.Unit u1,u2,u3,u4,u5,u6;final GravesAndGlory.Unit[] us=new GravesAndGlory.Unit[10],line=new GravesAndGlory.Unit[7];
+        Combat.HitLog mark;Abilities.Mist cloud;TickCost cost;
+        String mobsWhy="",why="";boolean mobsOk,ok;
+        // the live mobs
+        int fangs,vexes,wild,visuals,clouds,roars;float foeHp,foeHp2;
+        // the harpoon, the undertow and the sweep
+        Vec3d[] was=new Vec3d[10];double d0,d1,d2,d3;long cooldownEnd;float[] hp=new float[10];String pullWhy="",tideWhy="",sweepWhy="";boolean pullOk,tideOk,sweepOk,pullChecked;
+        // the mist
+        long castAt,cloudAt;String mistWhy="";boolean mistOk;
+        // the speed lanes
+        int phase;double xa,xb,wetTicks;String speedWhy="";boolean speedOk;double landRatio,rainRatio,waterRatio,landSpeed,waterSpeed;
+        // the river
+        double fordZ,fordX0;int inRiver;final Map<GravesAndGlory.Unit,double[]> crossed=new LinkedHashMap<>();final Set<GravesAndGlory.Unit> waded=new HashSet<>();boolean fordShot;String fordWhy="";
+        int bridgeIdx;boolean bridgesOk=true;final StringBuilder bridgeWhy=new StringBuilder();long crossedAt;double deckMin;int deckTicks;boolean wet;
+        // the Warden
+        String markWhy="";boolean markOk;long markAt;
+        // the showcase
+        boolean cloudUp,m1,m2,m3,m4;int swept;GravesAndGlory.Unit[] knights=new GravesAndGlory.Unit[7];
+
+        static boolean close(double a,double b){return Math.abs(a-b)<1e-3;}
+        static Vec3d base0(){return GravesAndGlory.Battle.base(0);}
+        /** The standing spot on real ground at (x, z). */
+        static Vec3d ground(GravesAndGlory.Battle b,double x,double z){return new Vec3d(x,Phase1Checks.top(b,x,z),z);}
+        /** A troop with its AI on (Tactics moves and swings it), on the platform at (dx, dy, dz) from its centre. */
+        GravesAndGlory.Unit liveAt(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String troop,double dx,double dy,double dz,float yaw){
+            Vec3d at=new Vec3d(site.getX()+.5+dx,site.getY()+dy,site.getZ()+.5+dz);
+            var u=b.spawn(s,Campaign.troop(troop),30+fixture.size(),at);u.mob.refreshPositionAndAngles(at.x,at.y,at.z,yaw,0);fixture.add(u);u.deployed=at;return u;
+        }
+        GravesAndGlory.Unit live(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String troop,double dx,double dz,float yaw){return liveAt(b,s,troop,dx,0,dz,yaw);}
+        void unpin(GravesAndGlory.Unit u){pins.removeIf(p->p.u()==u);}
+        /** A troop that cannot be killed by the stage in hand. */
+        static GravesAndGlory.Unit tough(GravesAndGlory.Unit u){u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(4000);u.mob.setHealth(4000f);return u;}
+        /** The order point of an army that puts the formation spot of its troop where it asks (a troop under a Move order walks to that spot). */
+        void standAt(GravesAndGlory.Battle b,GravesAndGlory.Squad s,GravesAndGlory.Unit u,Vec3d at,float yaw){
+            s.yaw=yaw;s.target=at;Vec3d off=b.formation(u).subtract(at);s.target=at.subtract(off);
+        }
+        Vec3d pos(double dx,double dy,double dz){return new Vec3d(site.getX()+.5+dx,site.getY()+dy,site.getZ()+.5+dz);}
+        /** A block of the stage's own (a lane, a wall); what stood there is put back by unbuild. */
+        void put(GravesAndGlory.Battle b,BlockPos at,net.minecraft.block.BlockState state){BlockPos k=at.toImmutable();built.putIfAbsent(k,b.world.getBlockState(k));b.world.setBlockState(k,state);}
+        void unbuild(GravesAndGlory.Battle b){for(var e:built.entrySet())b.world.setBlockState(e.getKey(),e.getValue());built.clear();}
+        /** The Slowness a living entity has: its duration at amplifier `level`, -1 with none, -2 at another amplifier. */
+        static int slowAt(net.minecraft.entity.LivingEntity e,int level){var s=e.getStatusEffect(StatusEffects.SLOWNESS);return s==null?-1:s.getAmplifier()==level?s.getDuration():-2;}
+        static String slowText(net.minecraft.entity.LivingEntity e){var s=e.getStatusEffect(StatusEffects.SLOWNESS);return s==null?"none":"Slowness "+(s.getAmplifier()+1)+" for "+s.getDuration();}
+        @Override void cleared(){Arrays.fill(us,null);Arrays.fill(line,null);Arrays.fill(was,null);}
+
+        /** One real hit of this kind from u on the victim, its hurt cooldown, slow and the troop's own cooldown cleared first; the Slowness it leaves (see slowAt). */
+        int read(GravesAndGlory.Battle b,GravesAndGlory.Unit u,GravesAndGlory.Unit victim,String kind){
+            victim.mob.removeStatusEffect(StatusEffects.SLOWNESS);victim.mob.timeUntilRegen=0;victim.mob.hurtTime=0;u.abilityAt=0;
+            Combat.resolve(b,u,victim.mob,3f,kind,false);return slowAt(victim.mob,0);
+        }
+        /** A shot of the Harpooner as it would loose it: the real attack, so the trident flies and lands from the queue. */
+        void loose(GravesAndGlory.Battle b,GravesAndGlory.Unit u,GravesAndGlory.Unit at){Abilities.attack(b,u,at.mob,b.time);}
+
+        /** A clear line across map 0's river 24 or more blocks from every bridge: its z, or NaN. Scored by what stands on it (trees, walls), then by nearness to a bridge (a shorter detour for a knight). */
+        double fordLine(GravesAndGlory.Battle b){
+            var bridges=Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList();
+            double best=Double.NaN,bestScore=1e18;
+            for(int z=-40;z<=60;z++){
+                double near=1e9;for(var br:bridges)near=Math.min(near,Math.abs(z-br.z())-br.depth()/2.0);
+                if(near<24)continue;
+                int rx=(int)Math.round(Arena.riverX(z)),blocked=0;
+                for(int x=rx-24;x<=rx+30;x+=2)for(int dz=-4;dz<=4;dz+=2){
+                    int zz=z+dz;if(Arena.river(x,zz))continue;
+                    if((int)Phase1Checks.top(b,x+.5,zz+.5)>Arena.ground(x,zz)+1)blocked++;
+                }
+                double score=blocked*1000+near;
+                if(score<bestScore){bestScore=score;best=z;}
+            }
+            return bestScore<3000?best:Double.NaN;
+        }
+        /** The distance from a crossing at z to the nearest bridge's edge. */
+        static double fromBridge(double z){
+            double near=1e9;for(var br:Spec.STRUCTURES)if(br.kind().equals("bridge"))near=Math.min(near,Math.abs(z-br.z())-br.depth()/2.0);
+            return near;
+        }
+
+        /** Two lanes across the platform for the speed check: Dawn's Raider (at the given Riptide tier) in the north lane, Dusk's (tier 0) in the south one, both under a Move order to the far end. */
+        void lanes(GravesAndGlory.Battle b,boolean water,int tier){
+            clearFixture(b,"lanes");unbuild(b);
+            if(water)for(int lane:new int[]{-4,4}){
+                for(int x=-12;x<=12;x++){
+                    boolean cap=Math.abs(x)==12;
+                    for(int r=-2;r<=2;r++){
+                        BlockPos col=new BlockPos(site.getX()+x,0,site.getZ()+lane+r);boolean wall=Math.abs(r)==2||cap;
+                        put(b,col.withY(site.getY()-3),Blocks.STONE.getDefaultState());
+                        put(b,col.withY(site.getY()-2),wall?Blocks.STONE.getDefaultState():Blocks.WATER.getDefaultState());
+                        if(!wall){put(b,col.withY(site.getY()-1),Blocks.WATER.getDefaultState());put(b,col.withY(site.getY()),Blocks.STONE.getDefaultState());} // a roof, so a swimmer's jump cannot lift it out of the water
+                    }
+                }
+            }
+            dawn.order="move";dusk.order="move";dawn.formation="block";dusk.formation="block";
+            double dy=water?-2:0;
+            u1=liveAt(b,dawn,"tc_raider",-10.5,dy,-4,-90);u2=liveAt(b,dusk,"tc_raider",-10.5,dy,4,-90);
+            dawn.traits.put("tidecallers",tier);dusk.traits.put("tidecallers",0);
+            standAt(b,dawn,u1,pos(10.5,0,-4),-90);standAt(b,dusk,u2,pos(10.5,0,4),-90);
+            wetTicks=0;
+        }
+        /** Each tick of a lane stage: how often the north Raider touched water; true at `window` ticks after the 12-tick start-up, with the two distances walked (xa, xb) set. */
+        boolean laneWatch(GravesAndGlory.Battle b,int window){
+            long t=since(b);
+            if(t==12){was[0]=u1.mob.getPos();was[1]=u2.mob.getPos();}
+            if(t>12&&u1.mob.isTouchingWater())wetTicks++;
+            if(t<12+window)return false;
+            xa=u1.mob.getX()-was[0].x;xb=u2.mob.getX()-was[1].x;return true;
+        }
+
+        public void cleanup(MinecraftClient c){
+            server(c,b->{Houses.forceRise=null;Abilities.clearBanners(b);Projectiles.clear(b);b.world.setRainGradient(0f);b.world.setWeather(6000,0,false,false);
+                clearFixture(b,"cleanup");unbuild(b);if(site!=null)platform(b,site,12,Blocks.AIR.getDefaultState());unforce(b);if(cost!=null)cost.handBack();
+                var p0=sp(b);if(p0!=null)p0.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);
+                if(b.running)b.campaign.returnLobby();var p=sp(b);if(p!=null&&classBefore!=null)b.campaign.handle(p,"class:"+classBefore);});
+        }
+
+        public void step(MinecraftClient c,int tick){
+            if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;next(b,1);});}
+            if(wantShot!=null&&!shotTaken&&++shotDelay>=shotAfter){shot(c,wantShot);shotTaken=true;}
+            if(stage==99&&!finished){finished=true;c.setScreen(null);finish(c,"tidecallers");}
+            if(tick>30000&&!finished){finished=true;report("p2-tidecallers-timeout",false,"stuck in stage "+stage);finish(c,"tidecallers");}
+        }
+
+        public void serverTick(GravesAndGlory.Battle b){
+            if(player==null||stage>=99)return;
+            try{stages(b);}catch(RuntimeException e){report("p2-tidecallers-exception",false,"stage "+stage+": "+e);e.printStackTrace();next(b,99);}
+        }
+        void stages(GravesAndGlory.Battle b){
+            hold();
+            switch(stage){
+                case 1->{ // p2-tidecallers-mobs, the sheet and the classes: the entities the sheet names are the ones registered, and they carry only a SwimGoal
+                    var w=b.world;boolean good2=true;StringBuilder s=new StringBuilder();var armor=net.minecraft.entity.attribute.EntityAttributes.GENERIC_ARMOR;
+                    Map<String,EntityType<?>> types=Map.<String,EntityType<?>>of("drowned",EntityType.DROWNED,"evoker",EntityType.EVOKER,"ravager",EntityType.RAVAGER);
+                    Map<String,Class<?>> classes=Map.<String,Class<?>>of("drowned",GravesAndGlory.ArmyDrowned.class,"evoker",GravesAndGlory.ArmyEvoker.class,"ravager",GravesAndGlory.ArmyRavager.class);
+                    for(var line:List.of("tc_raider:drowned","tc_harpooner:drowned","tc_tideguard:drowned","tc_mist:evoker","tc_brute:ravager","tc_admiral:drowned")){
+                        String troop=line.substring(0,line.indexOf(':')),entity=line.substring(line.indexOf(':')+1);var row=Campaign.troop(troop);
+                        boolean sheet=row!=null&&row.entity().equals(entity);MobEntity m=null;String goals,targets,made;
+                        try{m=ArmyMobs.create(row.entity(),w);made=m.getClass().getSimpleName();goals=Engine.goalNames(m,"goalSelector").toString();targets=Engine.goalNames(m,"targetSelector").toString();}
+                        catch(ReflectiveOperationException|RuntimeException e){goals=targets="unreadable";made=e.toString();}
+                        boolean good=sheet&&m!=null&&classes.get(entity).isInstance(m)&&ArmyMobs.isTroop(m)&&m.getType()==types.get(entity)&&goals.equals("[SwimGoal]")&&targets.equals("[]")&&m.getAttributeBaseValue(armor)==0;
+                        good2&=good;s.append(troop).append(" (sheet entity ").append(row==null?"-":row.entity()).append(", want ").append(entity).append(") -> ").append(made).append(", goals ").append(goals).append(", targets ").append(targets).append(good?"":" (BAD)").append("; ");
+                    }
+                    mobsOk=good2;mobsWhy=s.toString();next(b,4);
+                }
+                case 4->{ // the commander is a Warden for the rest of the suite
+                    var p=sp(b);if(p==null)return;if(b.running){b.campaign.returnLobby();return;}
+                    classBefore=profile(b).commander;b.campaign.handle(p,"class:warden");
+                    if(!profile(b).commander.equals("warden")){report("p2-tidecallers-class",false,"class:warden never reached the profile (it says "+profile(b).commander+")");next(b,99);return;}
+                    next(b,5);
+                }
+                case 5->{var p=sp(b);if(p==null||!Phase1Checks.skirmish(b,p,0,1,"normal"))return;next(b,6);}
+                case 6->{if(since(b)<10)return;stageFixture(b);next(b,10);}
+                case 10->{ // the live mobs: a Raider, a Harpooner, a Mist Caller, the Brute and the Admiral (AI on) against a pinned tough knight
+                    dawn.order="attack";dusk.order="hold";fangs=vexes=wild=visuals=clouds=roars=0;
+                    us[0]=tough(bare(post(b,dusk,"knight",7,0,180,true)));foeHp=us[0].mob.getHealth();dawn.target=us[0].mob.getPos();
+                    u1=live(b,dawn,"tc_raider",-6,-3,-90);u2=live(b,dawn,"tc_harpooner",-4,3,-90);u3=live(b,dawn,"tc_mist",-8,0,-90);u4=live(b,dawn,"tc_brute",-6,7,-90);u5=live(b,dawn,"tc_admiral",-6,-7,-90);
+                    next(b,11);
+                }
+                case 11->{ // 140 ticks: nothing a vanilla goal would do (fangs, vexes, a thrown trident, a roar or stun), and the Harpooner's flying trident and the Mist Caller's cloud are ours
+                    var box=new net.minecraft.util.math.Box(site).expand(40);
+                    fangs=Math.max(fangs,b.world.getEntitiesByType(EntityType.EVOKER_FANGS,box,e->true).size());
+                    vexes=Math.max(vexes,b.world.getEntitiesByType(EntityType.VEX,box,e->true).size());
+                    for(var t:b.world.getEntitiesByType(EntityType.TRIDENT,box,e->true)){if(Projectiles.owns(b,t))visuals++;else wild++;}
+                    clouds=Math.max(clouds,b.mists.size());
+                    if(u4.mob instanceof GravesAndGlory.ArmyRavager r)roars=Math.max(roars,Math.max(r.getRoarTick(),Math.max(r.getStunTick(),r.getAttackTick())));
+                    if(since(b)<140)return;
+                    boolean hit=us[0].mob.getHealth()<foeHp;
+                    report("p2-tidecallers-mobs",mobsOk&&fangs==0&&vexes==0&&wild==0&&roars==0&&hit&&visuals>0&&clouds>0,mobsWhy+"over 140 ticks with a Raider, a Harpooner, a Mist Caller, the Brute and the Admiral (AI on) against a pinned knight: evoker fangs seen at most "+fangs+" (want 0), vexes "+vexes+" (want 0), tridents in the air that no queued shot owns "+wild+" (want 0), the ravager's roar, stun or attack tick at most "+roars+" (want 0); the Harpooner's own flying trident was seen "+visuals+" times and the Mist Caller's cloud "+clouds+" (want both some); the knight lost "+fmt(foeHp-us[0].mob.getHealth())+" health (want some)="+hit);
+                    b.mists.clear();Projectiles.clear(b);clearFixture(b,"mobs");next(b,12);
+                }
+                case 12->{ // p2-brine-longest, tier by tier: a Raider (brine 20), a Harpooner (harpoon 30), the Brute (Riptide alone) and an Order Squire of the same army (nothing) hit a tough knight
+                    dawn.order="hold";dusk.order="hold";
+                    u1=post(b,dawn,"tc_raider",-3,-3,-90,true);u2=post(b,dawn,"tc_harpooner",-3,0,-90,true);u3=post(b,dawn,"tc_brute",-3,3,-90,true);u4=post(b,dawn,"knight",-3,6,-90,true);
+                    us[0]=tough(bare(post(b,dusk,"knight",0,0,180,true)));
+                    int[][] want={{20,30,-1,-1},{20,30,20,-1},{30,30,30,-1},{40,40,40,-1}};
+                    StringBuilder s=new StringBuilder();boolean good=true;
+                    var brine=Abilities.row(u1.spec);var harpoon=Abilities.row(u2.spec);
+                    boolean sheet=brine.mechanic().equals("onhit_slow")&&brine.statusTicks()==20&&brine.statusLevel()==0&&harpoon.mechanic().equals("onhit_slow")&&harpoon.statusTicks()==30&&harpoon.statusLevel()==0&&near(harpoon.knockback(),-1)&&harpoon.cooldownTicks()==60;
+                    for(int t=0;t<=3;t++){
+                        dawn.traits.put("tidecallers",t);var row=CounterMath.trait(Spec.HOUSETRAITS,"tidecallers",t);
+                        int[] got={read(b,u1,us[0],"melee"),read(b,u2,us[0],"arrow"),read(b,u3,us[0],"melee"),read(b,u4,us[0],"melee")};
+                        boolean fords=Houses.fords(u1)==(t>=2)&&!Houses.fords(u4);
+                        boolean row_=t==0?row==null:row!=null&&row.mechanic().equals("riptide")&&row.durationTicks()==20+10*(t-1);
+                        boolean tier=Arrays.equals(got,want[t])&&fords&&row_;good&=tier;
+                        s.append("tier ").append(t).append(": Raider ").append(got[0]).append(", Harpooner ").append(got[1]).append(", Brute ").append(got[2]).append(", Order Squire ").append(got[3]).append(" ticks of Slowness I (want ").append(Arrays.toString(want[t])).append("; -1 is none), fording=").append(Houses.fords(u1)).append(tier?"":" (BAD)").append("; ");
+                    }
+                    report("p2-brine-longest",sheet&&good,"brine "+brine.statusTicks()+" ticks, harpoon "+harpoon.statusTicks()+" ticks, cooldown "+harpoon.cooldownTicks()+", knockback "+harpoon.knockback()+" on the sheet="+sheet+"; "+s+"the longer of brine, harpoon and Riptide stands, and the Brute and the Squire (no brine) slow only by Riptide");
+                    dawn.traits.put("tidecallers",0);clearFixture(b,"brine");next(b,14);
+                }
+                case 14->{ // p2-harpoon-pull: three Harpooners loose for real; the first target is 8 off, the second 2.2 off, the third cannot be moved
+                    dawn.order="hold";dusk.order="hold";Projectiles.clear(b);
+                    u1=post(b,dawn,"tc_harpooner",-8,0,-90,true);u2=post(b,dawn,"tc_harpooner",-8,-6,-90,true);u3=post(b,dawn,"tc_harpooner",-8,6,-90,true);
+                    us[0]=bare(post(b,dusk,"knight",0,0,180,true));us[1]=bare(post(b,dusk,"knight",-5.8,-6,180,true));us[2]=bare(post(b,dusk,"knight",0,6,180,true));
+                    for(int i=0;i<3;i++){unpin(tough(us[i]));was[i]=us[i].mob.getPos();}
+                    us[2].mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_KNOCKBACK_RESISTANCE).setBaseValue(1.0);
+                    d0=distance(u1.mob.getPos(),was[0]);d1=distance(u2.mob.getPos(),was[1]);d2=distance(u3.mob.getPos(),was[2]);
+                    u4=post(b,dusk,"archer",-8,-10,90,true);u5=post(b,dusk,"mage",-8,10,90,true);us[6]=post(b,dawn,"tc_raider",-11,-11,-90,true);us[7]=post(b,dawn,"tc_tideguard",-11,11,-90,true);
+                    for(var u:List.of(u1,u2,u3))u.abilityAt=0;
+                    int before=b.shots.size();
+                    loose(b,u1,us[0]);loose(b,u2,us[1]);loose(b,u3,us[2]);
+                    boolean flying=b.shots.size()==before+3&&b.shots.stream().allMatch(sh->sh.visual() instanceof net.minecraft.entity.projectile.TridentEntity t&&t.getType()==EntityType.TRIDENT&&t.getOwner()==sh.shooter().mob);
+                    pullOk=flying;pullWhy="three Harpooners loosed: each shot in the queue is a flying trident owned by its Harpooner="+flying+" (the look: Harpooner "+Abilities.visual(u1)+", Order Archer "+Abilities.visual(u4)+", Sunweaver "+Abilities.visual(u5)+", Raider "+Abilities.visual(us[6])+" and Trident Guard "+Abilities.visual(us[7])+"; want trident, arrow, bolt, arrow, arrow)";
+                    pullOk&=Abilities.visual(u1).equals("trident")&&Abilities.visual(u4).equals("arrow")&&Abilities.visual(u5).equals("bolt")&&Abilities.visual(us[6]).equals("arrow")&&Abilities.visual(us[7]).equals("arrow");
+                    next(b,15);
+                }
+                case 15->{ // the first volley has landed: 1 block closer on the line, Slowness I for the harpoon's 30; not closer than 1.5; none for a target that resists all knockback
+                    if(!b.shots.isEmpty()){if(since(b)>200){report("p2-harpoon-pull",false,"the harpoon shots never landed");next(b,99);}return;}
+                    double m0=d0-distance(u1.mob.getPos(),us[0].mob.getPos()),m1=d1-distance(u2.mob.getPos(),us[1].mob.getPos()),m2=d2-distance(u3.mob.getPos(),us[2].mob.getPos());
+                    double side=Math.abs(us[0].mob.getZ()-was[0].z);int slow=slowAt(us[0].mob,0);
+                    boolean ent=b.world.getEntitiesByType(EntityType.TRIDENT,new net.minecraft.util.math.Box(site).expand(40),e->true).isEmpty();
+                    boolean one=m0>=0.8&&m0<=1.1&&side<0.1&&slow>=26&&slow<=30;
+                    boolean two=m1>0.3&&m1<=0.75&&distance(u2.mob.getPos(),us[1].mob.getPos())>=1.49;
+                    boolean three=Math.abs(m2)<0.05;
+                    boolean cd=u1.abilityAt>b.time&&u1.abilityAt<=b.time+60;
+                    pullOk&=one&&two&&three&&ent&&cd;
+                    pullWhy+="; after the first volley the target 8 off moved "+fmt(m0)+" toward its Harpooner along the line (want 0.8 to 1.1; sideways "+fmt(side)+") with "+slowText(us[0].mob)+" (want about 30 of Slowness I)="+one+"; the target 2.2 off moved "+fmt(m1)+" and stands "+fmt(distance(u2.mob.getPos(),us[1].mob.getPos()))+" off (want not nearer than 1.5)="+two+"; the target with knockback resistance 1 moved "+fmt(m2)+" (want 0)="+three+"; the trident entities are gone after landing="+ent+" and the Harpooner's cooldown runs to +"+(u1.abilityAt-b.time)+" (want up to 60)="+cd;
+                    cooldownEnd=u1.abilityAt;d3=distance(u1.mob.getPos(),us[0].mob.getPos());pullChecked=false;
+                    loose(b,u1,us[0]); // inside the cooldown: no pull, no new slow
+                    next(b,16);
+                }
+                case 16->{
+                    if(!b.shots.isEmpty())return;
+                    if(!pullChecked){ // once: the shot that was loosed inside the cooldown has landed
+                        pullChecked=true;
+                        double m=d3-distance(u1.mob.getPos(),us[0].mob.getPos());
+                        boolean none=m<0.2&&u1.abilityAt==cooldownEnd;
+                        pullOk&=none;pullWhy+="; a second shot inside the cooldown moved the target "+fmt(m)+" (want it not pulled: knockback pushes it away) and left the cooldown where it was="+none;
+                    }
+                    if(b.time<cooldownEnd)return;
+                    d3=distance(u1.mob.getPos(),us[0].mob.getPos());loose(b,u1,us[0]);next(b,17);
+                }
+                case 17->{ // after the cooldown it pulls again
+                    if(!b.shots.isEmpty())return;
+                    double m=d3-distance(u1.mob.getPos(),us[0].mob.getPos());boolean again=m>=0.8&&m<=1.1;
+                    report("p2-harpoon-pull",pullOk&&again,pullWhy+"; a shot after the cooldown pulled it "+fmt(m)+" (want 0.8 to 1.1)="+again);
+                    Projectiles.clear(b);clearFixture(b,"harpoon");next(b,18);
+                }
+                case 18->{ // p2-undertow: the Admiral, with only a knight out of reach (8.5 off) then two within it (3.0 and 6.2) beside an ally 4 off
+                    dawn.order="hold";dusk.order="hold";
+                    u1=post(b,dawn,"tc_admiral",0,0,-90,true);u1.abilityAt=0;
+                    var row=Abilities.row(u1.spec);
+                    boolean sheet=row.id().equals("undertow")&&row.mechanic().equals("slam")&&row.trigger().equals("timer")&&row.cooldownTicks()==200&&near(row.radius(),7)&&near(row.amount(),4)&&row.statusTicks()==60&&row.statusLevel()==1&&near(row.knockback(),-3);
+                    us[2]=tough(bare(post(b,dusk,"knight",-8.5,0,180,true)));unpin(us[2]);
+                    mark=Combat.LAST.peekLast();Abilities.tick(b,u1,null,b.time);
+                    boolean idle=u1.abilityAt==0&&Gilded.hitOn(us[2].mob,mark)==null&&us[2].mob.getHealth()==us[2].mob.getMaxHealth();
+                    us[0]=tough(bare(post(b,dusk,"knight",3,0,180,true)));us[1]=tough(bare(post(b,dusk,"knight",0,6.2,180,true)));u2=post(b,dawn,"knight",0,-4,0,true);
+                    for(var x:new GravesAndGlory.Unit[]{us[0],us[1],u2})unpin(x);
+                    for(int i=0;i<3;i++)was[i]=us[i].mob.getPos();Vec3d ally=u2.mob.getPos();
+                    mark=Combat.LAST.peekLast();t0=b.time;Abilities.tick(b,u1,null,b.time);
+                    var h0=Gilded.hitOn(us[0].mob,mark);var h1=Gilded.hitOn(us[1].mob,mark);var ha=Gilded.hitOn(u2.mob,mark);var hout=Gilded.hitOn(us[2].mob,mark);
+                    double g0=distance(u1.mob.getPos(),us[0].mob.getPos()),g1=distance(u1.mob.getPos(),us[1].mob.getPos());
+                    boolean hit=h0!=null&&h1!=null&&Math.abs(h0.base()-4*b.campaign.damage(u1))<1e-4&&Math.abs(h1.base()-4*b.campaign.damage(u1))<1e-4&&us[0].mob.getMaxHealth()-us[0].mob.getHealth()>=h0.base()*h0.total()-1e-2&&us[1].mob.getMaxHealth()-us[1].mob.getHealth()>=h1.base()*h1.total()-1e-2;
+                    boolean pulled=Math.abs(g0-1.5)<0.15&&Math.abs(g1-3.2)<0.15&&Math.abs(us[0].mob.getZ()-was[0].z)<0.1&&Math.abs(us[1].mob.getX()-was[1].x)<0.1;
+                    boolean slowed=slowAt(us[0].mob,1)==60&&slowAt(us[1].mob,1)==60;
+                    boolean untouched=ha==null&&hout==null&&u2.mob.getPos().equals(ally)&&us[2].mob.getPos().distanceTo(was[2])<1e-6&&slowAt(u2.mob,1)==-1&&slowAt(us[2].mob,1)==-1;
+                    boolean cd=u1.abilityAt==t0+200;
+                    tideOk=sheet&&idle&&hit&&pulled&&slowed&&untouched&&cd;
+                    tideWhy="the Admiral's row "+row.id()+" ("+row.mechanic()+" on a "+row.trigger()+", cooldown "+row.cooldownTicks()+", radius "+row.radius()+", amount "+row.amount()+", "+row.statusTicks()+" ticks of Slowness level "+(row.statusLevel()+1)+", knockback "+row.knockback()+")="+sheet+"; with only a knight 8.5 off it did nothing and spent no cooldown="+idle+"; with a knight 3.0 off and one 6.2 off the timer fired: they took "+show(h0)+" and "+show(h1)+" (base "+(h0==null?"-":fmt(h0.base()))+", want "+fmt(4*b.campaign.damage(u1))+")="+hit+", stand "+fmt(g0)+" and "+fmt(g1)+" off her now (want 1.5, the nearest a pull goes, and 3.2)="+pulled+", with "+slowText(us[0].mob)+" and "+slowText(us[1].mob)+" (want Slowness 2 for 60)="+slowed+"; the ally 4 off and the knight 8.5 off took no hit and did not move="+untouched+"; the next cast is at +"+(u1.abilityAt-t0)+" (want 200)="+cd;
+                    next(b,19);
+                }
+                case 19->{ // inside the cooldown nothing happens; once it is up it fires again
+                    boolean due=b.time>=u1.abilityAt;
+                    mark=Combat.LAST.peekLast();Abilities.tick(b,u1,null,b.time);
+                    var again=Gilded.hitOn(us[0].mob,mark);
+                    if(!due){tideOk&=again==null&&u1.abilityAt==t0+200;return;}
+                    boolean second=again!=null&&u1.abilityAt==b.time+200&&slowAt(us[0].mob,1)==60;
+                    report("p2-undertow",tideOk&&second,tideWhy+"; at +"+(b.time-t0)+" (the cooldown up) it fired again (a hit on the knight "+show(again)+", the next cast at +"+(u1.abilityAt-b.time)+" and every tick before that did nothing)="+second);
+                    clearFixture(b,"undertow");next(b,20);
+                }
+                case 20->{ // p2-sweep: the Brute's blow on a knight with three more within 3 of it (1.5, 1.8 and 2.0 off) and one 3.4 off; an ally beside it
+                    dawn.order="hold";dusk.order="hold";
+                    u1=post(b,dawn,"tc_brute",0,-3,0,true);u1.abilityAt=0;
+                    us[5]=tough(bare(post(b,dusk,"knight",-9,9,180,true))); // a lone knight: a sweep that strikes nobody keeps its cooldown
+                    var row=Abilities.row(u1.spec);
+                    boolean sheet=row.id().equals("tentacle_sweep")&&row.mechanic().equals("slam")&&row.trigger().equals("onhit")&&near(row.radius(),3)&&near(row.amount(),0.7)&&near(row.knockback(),1)&&row.cooldownTicks()==60;
+                    float base=(float)Abilities.baseHit(b,u1);strike(b,u1,us[5],base);
+                    boolean lone=u1.abilityAt==0;
+                    us[0]=tough(bare(post(b,dusk,"knight",0,0,180,true)));us[1]=tough(bare(post(b,dusk,"knight",1.5,0,180,true)));us[2]=tough(bare(post(b,dusk,"knight",-1.8,0.3,180,true)));us[3]=tough(bare(post(b,dusk,"knight",0.4,2.0,180,true)));us[4]=tough(bare(post(b,dusk,"knight",3.4,0,180,true)));
+                    u2=tough(post(b,dawn,"knight",0,1.0,0,true));
+                    for(int i=1;i<=3;i++)unpin(us[i]);
+                    for(int i=0;i<5;i++)hp[i]=us[i].mob.getHealth();float allyHp=u2.mob.getHealth();
+                    mark=Combat.LAST.peekLast();t0=b.time;strike(b,u1,us[0],base);
+                    var onFirst=Gilded.hitOn(us[0].mob,mark);float l0=hp[0]-us[0].mob.getHealth();StringBuilder s=new StringBuilder();boolean share=onFirst!=null&&l0>0;
+                    for(int i=1;i<=3;i++){
+                        var log=Gilded.hitOn(us[i].mob,mark);float li=hp[i]-us[i].mob.getHealth();
+                        Vec3d d=us[i].mob.getPos().subtract(us[0].mob.getPos()),v=us[i].mob.getVelocity();double speed=Math.hypot(v.x,v.z),dot=d.x*v.x+d.z*v.z;
+                        boolean good=log!=null&&Math.abs(log.base()-onFirst.base()*0.7)<1e-4&&Math.abs(li-0.7f*l0)<1e-3&&dot>0&&speed>0.5;
+                        share&=good;s.append("knight ").append(i).append(" ").append(fmt(distance(us[i].mob.getPos(),us[0].mob.getPos()))).append(" off lost ").append(fmt(li)).append(" (want ").append(fmt(0.7*l0)).append(") thrown away at ").append(fmt(speed)).append(good?"":" (BAD)").append("; ");
+                    }
+                    boolean outside=Gilded.hitOn(us[4].mob,mark)==null&&us[4].mob.getHealth()==hp[4]&&Gilded.hitOn(u2.mob,mark)==null&&u2.mob.getHealth()==allyHp;
+                    boolean cd=u1.abilityAt==t0+60;
+                    sweepOk=sheet&&lone&&share&&outside&&cd;
+                    sweepWhy="the Brute's row "+row.id()+" ("+row.mechanic()+" on "+row.trigger()+", radius "+row.radius()+", share "+row.amount()+", knockback "+row.knockback()+", cooldown "+row.cooldownTicks()+")="+sheet+"; its blow on a lone knight swept nobody and kept the cooldown ready="+lone+"; its blow on the first knight "+show(onFirst)+" (it lost "+fmt(l0)+"): "+s+"the knight 3.4 off and an ally 1.0 off took no hit="+outside+"; the next sweep is at +"+(u1.abilityAt-t0)+" (want 60)="+cd;
+                    for(int i=0;i<5;i++)hp[i]=us[i].mob.getHealth();
+                    next(b,21);
+                }
+                case 21->{ // inside the cooldown a blow sweeps nobody
+                    if(since(b)<6)return;
+                    for(int i=1;i<=3;i++)unpin(us[i]);
+                    mark=Combat.LAST.peekLast();strike(b,u1,us[0],(float)Abilities.baseHit(b,u1));
+                    boolean none=true;for(int i=1;i<=3;i++)none&=Gilded.hitOn(us[i].mob,mark)==null&&us[i].mob.getHealth()==hp[i];
+                    sweepOk&=none;sweepWhy+="; 6 ticks later another blow on the first knight swept nobody (no hit on the three, none lost health)="+none;
+                    next(b,22);
+                }
+                case 22->{ // once the 60 ticks are up it sweeps again
+                    if(b.time-t0<62)return;
+                    for(int i=1;i<=3;i++){hp[i]=us[i].mob.getHealth();us[i].mob.timeUntilRegen=0;}
+                    mark=Combat.LAST.peekLast();strike(b,u1,us[0],(float)Abilities.baseHit(b,u1));
+                    int hit=0;for(int i=1;i<=3;i++)if(Gilded.hitOn(us[i].mob,mark)!=null&&us[i].mob.getHealth()<hp[i])hit++;
+                    report("p2-sweep",sweepOk&&hit>=2,sweepWhy+"; at +"+(b.time-t0)+" it swept again and hurt "+hit+" of the three (want at least 2: the knights thrown out of the first ring may have left it)");
+                    clearFixture(b,"sweep");next(b,24);
+                }
+                case 24->{ // p2-mist-zone: the Mist Caller casts at a knight 14 off; a knight 2.5 from it, an ally knight and a Raider inside, a knight 5.5 off outside; archers inside and outside
+                    dawn.order="hold";dusk.order="attack";b.mists.clear();
+                    u1=post(b,dawn,"tc_mist",-9,0,-90,true);u1.abilityAt=0;
+                    us[0]=post(b,dusk,"knight",5,0,180,true);us[1]=post(b,dusk,"knight",7.5,0,180,true);us[2]=post(b,dusk,"knight",5,5.5,180,true);
+                    u2=post(b,dawn,"tc_raider",5,-1.5,-90,true);u3=post(b,dawn,"tc_raider",-2,-10,-90,true); // u2 inside, u3 outside
+                    us[3]=bare(post(b,dusk,"archer",5,3,90,true));us[4]=bare(post(b,dusk,"archer",5,-10,90,true));
+                    var row=Abilities.mistRow();
+                    boolean sheet=row!=null&&row.id().equals("mist")&&near(row.radius(),4)&&row.windupTicks()==20&&row.cooldownTicks()==160&&row.durationTicks()==100&&row.statusTicks()==20&&row.statusLevel()==0;
+                    t0=b.time;Abilities.attack(b,u1,us[0].mob,b.time);
+                    boolean began=u1.spellCenter!=null&&u1.windupUntil==t0+20&&u1.abilityAt==t0+160&&u1.spellCenter.distanceTo(us[0].mob.getPos())<1e-6;
+                    mistOk=sheet&&began;cloudAt=-1;cloud=null;m1=m2=m3=m4=false;
+                    mistWhy="the Mist Caller's row "+(row==null?"none":row.id()+" (radius "+row.radius()+", windup "+row.windupTicks()+", cooldown "+row.cooldownTicks()+", lasts "+row.durationTicks()+", slow "+row.statusTicks()+" ticks of level "+(row.statusLevel()+1)+")")+"="+sheet+"; the cast at a knight 14 off began with its windup to +20 and its next cast at +160="+began+"; ";
+                    next(b,25);
+                }
+                case 25->{ // each tick: the spell runs; the cloud stands when the windup ends; a beat later the slow, the counters; at the end the cloud thins away
+                    long t=b.time-t0;
+                    if(u1.spellCenter!=null)Abilities.tick(b,u1,us[0].mob,b.time);
+                    if(cloudAt<0&&!b.mists.isEmpty()){
+                        cloudAt=t;cloud=b.mists.get(0);
+                        boolean made=b.mists.size()==1&&cloud.team()==0&&near(cloud.radius(),4)&&cloud.until()==b.time+100&&t==20&&cloud.at().distanceTo(us[0].mob.getPos())<1e-6;
+                        mistOk&=made;mistWhy+="the cloud stood "+t+" ticks after the cast (want 20) at the knight's spot, team "+cloud.team()+", radius "+cloud.radius()+", gone at +"+(cloud.until()-t0)+" (want +120)="+made+"; ";
+                    }
+                    if(cloudAt<0){if(t>60){report("p2-mist-zone",false,mistWhy+"no cloud stood within 60 ticks");next(b,99);}return;}
+                    if(t>=cloudAt+12&&!m1){m1=true; // one beat has passed
+                        boolean slowed=slowAt(us[0].mob,0)>=1&&slowAt(us[0].mob,0)<=20&&slowAt(us[1].mob,0)>=1&&slowAt(us[3].mob,0)>=1;
+                        boolean spared=slowAt(us[2].mob,0)==-1&&slowAt(us[4].mob,0)==-1&&slowAt(u2.mob,0)==-1&&slowAt(u3.mob,0)==-1;
+                        mistOk&=slowed&&spared;
+                        mistWhy+="a beat later the enemies in the cloud (the knight at its centre, one 2.5 off, an archer 3 off) read "+slowText(us[0].mob)+", "+slowText(us[1].mob)+", "+slowText(us[3].mob)+" (want Slowness 1, at most 20 ticks)="+slowed+"; the knight 5.5 off, the archer 10 off and the two Raiders of the caster's own army read "+slowText(us[2].mob)+", "+slowText(us[4].mob)+", "+slowText(u2.mob)+", "+slowText(u3.mob)+" (want none)="+spared+"; ";
+                        Combat.HitLog in=Commanders.hit(b,us[3],u2.mob,"arrow"),into=Commanders.hit(b,us[4],u2.mob,"arrow"),out=Commanders.hit(b,us[4],u3.mob,"arrow"),melee=Commanders.hit(b,us[1],u2.mob,"melee"),bolt=Commanders.hit(b,us[3],u2.mob,"bolt");
+                        boolean counters=Gilded.is(in,0.5,"C17")&&Gilded.is(into,0.5,"C17")&&out!=null&&near(out.counters(),1.0)&&out.rows().isEmpty()&&melee!=null&&near(melee.counters(),1.0)&&!melee.rows().contains("C17")&&Gilded.is(bolt,0.5,"C17");
+                        mistOk&=counters;
+                        mistWhy+="inside the cloud an Order Archer's arrow "+show(in)+" (want 0.5, C17), one fired into it from outside "+show(into)+" (want 0.5, C17), a bolt from inside "+show(bolt)+" (want 0.5); an arrow with both ends outside "+show(out)+" (want 1.0, no row) and a blow in melee inside "+show(melee)+" (want no C17)="+counters+"; ";
+                    }
+                    if(t>=cloudAt+60&&!m2){m2=true; // the slow is held fresh
+                        boolean fresh=slowAt(us[0].mob,0)>=1;mistOk&=fresh;mistWhy+="halfway through, the knight at the centre still reads "+slowText(us[0].mob)+" (the cloud renews it each beat)="+fresh+"; ";
+                    }
+                    if(t>=cloudAt+101&&!m3){m3=true;
+                        boolean gone=b.mists.isEmpty();var after=Commanders.hit(b,us[3],u2.mob,"arrow");
+                        mistOk&=gone&&after!=null&&near(after.counters(),1.0)&&after.rows().isEmpty();
+                        mistWhy+="at +"+t+" the cloud is gone from Battle.mists="+gone+" and the same arrow reads "+show(after)+" (want 1.0, no row); ";
+                    }
+                    if(t>=cloudAt+130&&!m4){m4=true;
+                        boolean worn=slowAt(us[0].mob,0)==-1&&slowAt(us[1].mob,0)==-1;
+                        report("p2-mist-zone",mistOk&&worn,mistWhy+"30 ticks after it thinned away the slow is off them ("+slowText(us[0].mob)+")="+worn);
+                        clearFixture(b,"mist");b.mists.clear();dusk.order="hold";next(b,28);
+                    }
+                }
+                case 28->{ // p2-brace: a Trident Guard on Hold against a charging knight is C18c; not otherwise
+                    dawn.order="hold";dusk.order="charge";
+                    u1=post(b,dawn,"tc_tideguard",0,-2,0,true);u2=post(b,dawn,"tc_raider",1.5,-2,0,true);u3=post(b,dawn,"knight",-1.5,-2,0,true);
+                    us[0]=tough(bare(post(b,dusk,"tc_raider",0,0,180,true)));
+                    var row=Campaign.troop("tc_tideguard");boolean sheet=row.ability().equals("brace")&&u1.tags.contains("brace");
+                    var braced=Commanders.hit(b,u1,us[0].mob,"melee");
+                    var raider=Commanders.hit(b,u2,us[0].mob,"melee");var knight=Commanders.hit(b,u3,us[0].mob,"melee");
+                    dusk.order="hold";var calm=Commanders.hit(b,u1,us[0].mob,"melee");
+                    dusk.order="charge";dawn.order="attack";var moving=Commanders.hit(b,u1,us[0].mob,"melee");
+                    dawn.order="hold";dusk.order="hold";
+                    boolean ok1=sheet&&Gilded.is(braced,1.3,"C18c")&&raider!=null&&near(raider.counters(),1.0)&&raider.rows().isEmpty()&&knight!=null&&!knight.rows().contains("C18c")&&calm!=null&&near(calm.counters(),1.0)&&calm.rows().isEmpty()&&moving!=null&&near(moving.counters(),1.0)&&moving.rows().isEmpty();
+                    report("p2-brace",ok1,"the Trident Guard (ability "+row.ability()+", tags "+u1.tags+")="+sheet+": on Hold against a charging Raider "+show(braced)+" (want 1.3, C18c); a Raider of its army on Hold "+show(raider)+" and an Order Squire "+show(knight)+" (want no C18c); on Hold against a Raider that is not charging "+show(calm)+" (want 1.0, no row); under the attack order against a charging one "+show(moving)+" (want 1.0, no row)");
+                    clearFixture(b,"brace");next(b,50);
+                }
+                case 50->{ // p2-warden-mark: the Warden looks east along the platform at a knight 12 off; one 7 off his line, a wall between
+                    var p=sp(b);if(p==null)return;
+                    clearFixture(b,"mark");unbuild(b);reset(own);Commander.reset(b,own);own.training.clear();own.order="hold";dawn.order="hold";dusk.order="hold";
+                    var c=Commander.row(own);
+                    boolean sheet=c.id().equals("warden")&&c.active().equals("mark_prey")&&c.cooldownTicks()==1200&&c.durationTicks()==240&&near(c.range(),40)&&near(c.value1(),0.3);
+                    p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);b.relocate(p,site.getX()+.5-10,site.getY(),site.getZ()+.5,-90f,0f);
+                    us[0]=bare(post(b,dusk,"knight",2,0,90,true));us[1]=bare(post(b,dusk,"knight",2,7,90,true));
+                    u1=post(b,own,"knight",1.0,-2.5,-90,true);u2=post(b,dawn,"knight",1.0,-3.5,-90,true);u3=post(b,own,"knight",1.0,6.0,-90,true);
+                    markOk=sheet;markWhy="the Warden's row "+c.id()+"/"+c.active()+" (cooldown "+c.cooldownTicks()+", lasts "+c.durationTicks()+", range "+c.range()+", +"+c.value1()+")="+sheet+"; ";
+                    // behind a wall: refused, with a notice, and no cooldown
+                    int wx=site.getX()-5;for(int dz=-1;dz<=1;dz++)for(int y=0;y<=3;y++)put(b,new BlockPos(wx,site.getY()+y,site.getZ()+dz),Blocks.STONE.getDefaultState());
+                    long readyBefore=own.abilityReadyAt;b.campaign.notices.remove(player);b.command(p,"ability");
+                    String refused=b.campaign.notices.get(player);
+                    boolean wall=Commander.MarkPrey.pick(b,p,own,40)==null&&"No foe in sight.".equals(refused)&&!Commander.running(b,own,"mark_prey")&&own.abilityReadyAt==readyBefore&&own.abilityData==null;
+                    unbuild(b);Commander.reset(b,own);
+                    boolean reach=Commander.MarkPrey.pick(b,p,own,10)==null&&Commander.MarkPrey.pick(b,p,own,14)==us[0].mob&&Commander.MarkPrey.pick(b,p,own,40)==us[0].mob;
+                    markOk&=wall&&reach;
+                    markWhy+="with a stone wall between him and the knight the cast was refused with \""+refused+"\", no mark, no cooldown="+wall+"; the view ray picks the knight 12 off at a range of 14 and 40, nothing at 10, and not the one 7 off the line="+reach+"; ";
+                    markAt=b.time;b.campaign.notices.remove(player);b.command(p,"ability");
+                    var glow=us[0].mob.getStatusEffect(StatusEffects.GLOWING);
+                    boolean cast=Commander.running(b,own,"mark_prey")&&own.abilityData==us[0].mob&&glow!=null&&Math.abs(glow.getDuration()-240)<=2&&own.abilityUntil==markAt+240&&own.abilityReadyAt==markAt+1200&&!us[1].mob.hasStatusEffect(StatusEffects.GLOWING);
+                    var own1=Commanders.hit(b,u1,us[0].mob,"melee");var other=Commanders.hit(b,u2,us[0].mob,"melee");var wrong=Commanders.hit(b,u3,us[1].mob,"melee");
+                    double self=Commander.playerFactor(b,own,us[0].mob),selfOther=Commander.playerFactor(b,own,us[1].mob);
+                    boolean factors=own1!=null&&near(own1.commander(),1.3)&&other!=null&&near(other.commander(),1.0)&&wrong!=null&&near(wrong.commander(),1.0)&&near(self,1.3)&&near(selfOther,1.0);
+                    markOk&=cast&&factors;
+                    markWhy+="the cast marked the knight (the active runs to +"+(own.abilityUntil-markAt)+" and is ready again at +"+(own.abilityReadyAt-markAt)+", the knight glows "+(glow==null?"not":glow.getDuration()+" ticks")+", the other does not)="+cast+"; a blow from his own Order Squire on it has commander "+(own1==null?"none":String.valueOf(own1.commander()))+" (want 1.3), from another army's Order Squire "+(other==null?"none":String.valueOf(other.commander()))+" (want 1.0), his Order Squire on the knight off the line "+(wrong==null?"none":String.valueOf(wrong.commander()))+" (want 1.0), the Warden's own blow on it x"+fmt(self)+" (want 1.3) and on the other x"+fmt(selfOther)+"="+factors+"; ";
+                    next(b,51);
+                }
+                case 51->{ // 240 ticks on, the mark and its glow are gone
+                    if(b.time<markAt+242)return;
+                    var h=Commanders.hit(b,u1,us[0].mob,"melee");
+                    boolean over=!Commander.running(b,own,"mark_prey")&&!us[0].mob.hasStatusEffect(StatusEffects.GLOWING)&&h!=null&&near(h.commander(),1.0)&&own.abilityData==null;
+                    report("p2-warden-mark",markOk&&over,markWhy+"at +"+(b.time-markAt)+" the mark has ended: the glow is gone from the knight and a blow from his troop has commander "+(h==null?"none":String.valueOf(h.commander()))+" (want 1.0)="+over+" (the glow is the vanilla one, so both teams see it: a glow for the Warden's side only needs a client renderer that state_v8 does not carry, as docs/PARKED.md records)");
+                    Commander.reset(b,own);clearFixture(b,"mark done");next(b,30);
+                }
+                case 30->{ // p2-riptide-speed, (a): dry land, no rain: tier I against tier 0 (equal)
+                    b.world.setRainGradient(0f);b.world.setWeather(6000,0,false,false);speedWhy="";phase=0;speedOk=true;
+                    lanes(b,false,1);next(b,31);
+                }
+                case 31->{
+                    if(!laneWatch(b,60))return;
+                    landRatio=xa/xb;landSpeed=xb/60.0;boolean good=xb>3&&Math.abs(landRatio-1.0)<=0.05&&u1.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED).getModifier(Houses.RIPTIDE)==null;
+                    speedOk&=good;speedWhy+="on dry land (no rain, not in water) over 60 ticks a tier I Raider walked "+fmt(xa)+" blocks against "+fmt(xb)+" for a tier 0 one: ratio "+fmt(landRatio)+" (want 1.00 within 5%) and no Riptide modifier on it="+good+"; ";
+                    b.world.setRainGradient(1f);b.world.setWeather(0,6000,true,false);lanes(b,false,1);next(b,32);
+                }
+                case 32->{
+                    if(!laneWatch(b,60))return;
+                    var m=u1.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED).getModifier(Houses.RIPTIDE);
+                    rainRatio=xa/xb;boolean good=b.world.isRaining()&&xb>3&&Math.abs(rainRatio-1.15)<=0.0575&&m!=null&&near(m.getValue(),Math.sqrt(1.15)-1);
+                    speedOk&=good;speedWhy+="in the rain on dry land over 60 ticks a tier I Raider walked "+fmt(xa)+" against "+fmt(xb)+" for a tier 0 one (it is raining="+b.world.isRaining()+"; the modifier "+(m==null?"none":String.valueOf(m.getValue()))+", the square root of 1.15 less 1 because a land mob's walk is quadratic in its speed attribute): ratio "+fmt(rainRatio)+" (want 1.15 within 5%)="+good+"; ";
+                    b.world.setRainGradient(0f);b.world.setWeather(6000,0,false,false);lanes(b,true,1);next(b,33);
+                }
+                case 33->{
+                    if(!laneWatch(b,100))return;
+                    waterRatio=xa/xb;waterSpeed=xb/100.0;boolean wetNow=wetTicks>=90;
+                    var m=u1.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED).getModifier(Houses.RIPTIDE);
+                    boolean good=wetNow&&xb>1&&Math.abs(waterRatio-1.15)<=0.0575&&m!=null&&near(m.getValue(),0.15);
+                    speedOk&=good;speedWhy+="in water (the Raider touched it "+fmt(wetTicks)+" of 100 ticks) a tier I Raider swam "+fmt(xa)+" blocks in 100 ticks against "+fmt(xb)+" for a tier 0 one: ratio "+fmt(waterRatio)+" (want 1.15 within 5%)="+good+"; a tier 0 Raider covers "+fmt(landSpeed*20)+" blocks a second on land and "+fmt(waterSpeed*20)+" in water (vanilla water drag: a literal 15% faster than on land cannot hold, so Riptide is measured against the same troop without it); ";
+                    report("p2-riptide-speed",speedOk,speedWhy.trim());
+                    clearFixture(b,"lanes done");unbuild(b);b.world.setRainGradient(0f);b.world.setWeather(6000,0,false,false);dawn.traits.put("tidecallers",0);dawn.order="hold";dusk.order="hold";next(b,34);
+                }
+                case 34->{ // p2-brute-leaves: a wall of leaves across the platform with a gap at its south end; matches run with mobGriefing off, so the Brute cannot smash them and has to go round
+                    clearFixture(b,"leaves");unbuild(b);
+                    for(int z=-12;z<=8;z++)for(int y=0;y<=3;y++)put(b,new BlockPos(site.getX(),site.getY()+y,site.getZ()+z),Blocks.OAK_LEAVES.getDefaultState().with(net.minecraft.block.LeavesBlock.PERSISTENT,true));
+                    dawn.order="move";dawn.formation="block";dawn.traits.put("tidecallers",0);
+                    u1=liveAt(b,dawn,"tc_brute",-8,0,0,-90);standAt(b,dawn,u1,pos(8,0,0),-90);
+                    next(b,35);
+                }
+                case 35->{ // the Brute stands on the far side of the wall, round the gap, inside 600 ticks; its leaf penalty is the default (blocked), where a vanilla Ravager's is 0
+                    double penalty=u1.mob.getPathfindingPenalty(net.minecraft.entity.ai.pathing.PathNodeType.LEAVES);
+                    boolean across=u1.mob.getX()>site.getX()+.5+3&&u1.mob.getZ()>site.getZ()-1;
+                    if(!across&&since(b)<600)return;
+                    report("p2-brute-leaves",across&&penalty<0,"a Brute ordered 16 blocks across a wall of leaves (4 high, the platform's whole width but a 4 block gap at the south end) stood at x "+fmt(u1.mob.getX()-site.getX()-.5)+" z "+fmt(u1.mob.getZ()-site.getZ()-.5)+" after "+since(b)+" ticks (want x beyond 3: it went round the wall)="+across+"; its path penalty for leaves is "+penalty+" (want below 0: a vanilla Ravager's is 0, which sent it into the canopy and left it standing there)="+(penalty<0));
+                    clearFixture(b,"leaves done");unbuild(b);dawn.order="hold";next(b,55);
+                }
+                case 55->{ // the showcase: the commander's Tidecallers army on the platform, the Mist Caller's cloud over a line of seven archers, the Brute about to sweep a line of seven knights
+                    var p=sp(b);if(p==null)return;
+                    clearFixture(b,"showcase");unbuild(b);reset(own);Commander.reset(b,own);own.order="hold";dusk.order="attack";dawn.order="hold";b.mists.clear();
+                    u1=post(b,own,"tc_mist",-7,-7,-90,true);u1.abilityAt=0;
+                    post(b,own,"tc_harpooner",-10,-10,-90,true);post(b,own,"tc_harpooner",-10,-4,-90,true);post(b,own,"tc_harpooner",-11,-7,-90,true);
+                    post(b,own,"tc_tideguard",-3,-9.5,-90,true);post(b,own,"tc_tideguard",-3,-4.5,-90,true);
+                    post(b,own,"tc_raider",-5,-12,-90,true);post(b,own,"tc_raider",-5,-2,-90,true);
+                    post(b,own,"tc_admiral",-8,3,-90,true);
+                    u2=post(b,own,"tc_brute",1.5,6,-90,true);u2.abilityAt=0;
+                    for(int i=0;i<7;i++)line[i]=bare(post(b,dusk,"archer",7,-7-3.6+i*1.2,90,true));
+                    for(int i=0;i<7;i++)knights[i]=tough(bare(post(b,dusk,"knight",4,6-3.6+i*1.2,180,true)));
+                    Houses.recompute(own);
+                    p.changeGameMode(net.minecraft.world.GameMode.SPECTATOR);
+                    Vec3d cam=new Vec3d(site.getX()+.5-16,site.getY()+8.5,site.getZ()+.5+1),look=new Vec3d(site.getX()+.5+2,site.getY()+0.8,site.getZ()+.5+0.5);
+                    double dx=look.x-cam.x,dz=look.z-cam.z,dy=look.y-cam.y;
+                    b.relocate(p,cam.x,cam.y,cam.z,(float)(-Math.toDegrees(Math.atan2(dx,dz))),(float)(-Math.toDegrees(Math.atan2(dy,Math.hypot(dx,dz)))));
+                    t0=b.time;cloudAt=-1;Abilities.attack(b,u1,line[3].mob,b.time);cloudUp=false;swept=0;next(b,56);
+                }
+                case 56->{ // the cloud stands after 20 ticks; 12 ticks later the Brute sweeps the line
+                    long t=b.time-t0;
+                    if(u1.spellCenter!=null)Abilities.tick(b,u1,line[3].mob,b.time);
+                    if(cloudAt<0&&!b.mists.isEmpty()){cloudAt=t;cloud=b.mists.get(0);cloudUp=true;}
+                    if(cloudAt<0){if(t>60){report("p2-tidecallers-showcase",false,"no cloud stood within 60 ticks");next(b,99);}return;}
+                    if(t<cloudAt+12)return;
+                    int slowed=0;for(var a:line)if(slowAt(a.mob,0)>=1)slowed++;
+                    var inside=Commanders.hit(b,line[1],u2.mob,"arrow");boolean c17=Gilded.is(inside,0.5,"C17"); // an archer in the cloud, shooting out
+                    for(int i:new int[]{1,2,4,5})unpin(knights[i]);
+                    for(int i=0;i<7;i++)hp[i]=knights[i].mob.getHealth();
+                    mark=Combat.LAST.peekLast();Abilities.attack(b,u2,knights[3].mob,b.time);
+                    swept=0;for(int i:new int[]{1,2,4,5})if(knights[i].mob.getHealth()<hp[i])swept++;
+                    boolean outer=knights[0].mob.getHealth()==hp[0]&&knights[6].mob.getHealth()==hp[6];
+                    ok=cloudUp&&slowed==7&&c17&&swept==4&&outer&&knights[3].mob.getHealth()<hp[3];
+                    why="the Mist Caller's cloud stood "+cloudAt+" ticks after the cast over a line of seven Order Archers: "+slowed+" of them read Slowness (want 7); an archer's arrow from inside it "+show(inside)+" (want 0.5, C17)="+c17+"; the Brute's blow on the middle knight of a line of seven swept "+swept+" of the four within 3 of it (want 4) and neither end knight (untouched="+outer+") and the army fights as "+own.traits+" in its Houses";
+                    requestShot("tidecallers-showcase",5);next(b,57);
+                }
+                case 57->{ // the picture, with the cloud up and the knocked knights in the air
+                    if(!shotTaken&&since(b)<40)return;
+                    report("p2-tidecallers-showcase",ok&&shotTaken,why+"; the picture tidecallers-showcase was taken="+shotTaken);
+                    wantShot=null;b.mists.clear();var p=sp(b);if(p!=null)p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);clearFixture(b,"showcase done");next(b,40);
+                }
+                case 40->{ // p2-riptide-ford: map 0's river on a line 24+ blocks from every bridge; the commander's Tidecallers army (tidecallers_hard, tier III) and three Order Squires ordered across
+                    var p=sp(b);if(p==null)return;
+                    clearFixture(b,"ford");reset(own);Commander.reset(b,own);own.training.clear();
+                    force(b,new BlockPos(-45,0,-30),new BlockPos(45,0,50));
+                    fordZ=fordLine(b);
+                    if(Double.isNaN(fordZ)){report("p2-riptide-ford",false,"no clear line across the river 24 blocks from every bridge");next(b,44);return;}
+                    int rx=(int)Math.round(Arena.riverX(fordZ));fordX0=rx-6-14;
+                    field(b,own,banner("tidecallers_hard"));
+                    for(var u:b.units)if(u.squad==own){double px=fordX0+(u.slot%5)*1.5,pz=fordZ+(u.slot/5-1.5)*1.4;u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(px,Phase1Checks.top(b,px,pz),pz,-90f,0f);u.deployed=u.mob.getPos();u.lastPosition=u.mob.getPos();u.nextPath=0;u.stuckTicks=0;fixture.add(u);}
+                    for(int i=0;i<3;i++){double px=fordX0+8+(i%2)*1.5,pz=fordZ-3+i*3;var k=b.spawn(dawn,Campaign.troop("knight"),40+i,ground(b,px,pz));k.mob.refreshPositionAndAngles(px,Phase1Checks.top(b,px,pz),pz,-90f,0f);k.deployed=k.mob.getPos();k.lastPosition=k.mob.getPos();fixture.add(k);}
+                    Vec3d goal=new Vec3d(rx+22,65,fordZ);
+                    for(var s:List.of(own,dawn)){s.order="move";s.formation="block";s.target=goal;s.yaw=-90;}
+                    dusk.order="hold";crossed.clear();waded.clear();fordShot=false;inRiver=0;t0=b.time;
+                    p.changeGameMode(net.minecraft.world.GameMode.SPECTATOR);
+                    Vec3d cam=new Vec3d(rx-9,Phase1Checks.top(b,rx,fordZ)+12,fordZ-15),look=new Vec3d(rx,63,fordZ+1);
+                    double dx=look.x-cam.x,dz=look.z-cam.z,dy=look.y-cam.y;
+                    b.relocate(p,cam.x,cam.y,cam.z,(float)(-Math.toDegrees(Math.atan2(dx,dz))),(float)(-Math.toDegrees(Math.atan2(dy,Math.hypot(dx,dz)))));
+                    next(b,41);
+                }
+                case 41->{ // each tick: who has touched the water and where each crossed the river's middle line; the picture when three Raiders are in the water
+                    long t=since(b);inRiver=0;
+                    for(var u:fixture){
+                        if(!u.mob.isAlive())continue;double x=u.mob.getX(),z=u.mob.getZ();
+                        if(u.mob.isTouchingWater()){waded.add(u);if(u.spec.id().equals("tc_raider"))inRiver++;}
+                        if(!crossed.containsKey(u)&&x>=Arena.riverX(z)+1)crossed.put(u,new double[]{x,z,t});
+                    }
+                    if(!fordShot&&inRiver>=3){fordShot=true;requestShot("tidecallers-ford",3);}
+                    var raiders=fixture.stream().filter(u->u.spec.id().equals("tc_raider")).toList();var squires=fixture.stream().filter(u->u.spec.id().equals("knight")).toList();
+                    boolean raidersOver=raiders.stream().allMatch(crossed::containsKey),squiresOver=squires.stream().allMatch(crossed::containsKey);
+                    if(!(raidersOver&&squiresOver&&(shotTaken||!fordShot))&&t<1600)return;
+                    StringBuilder s=new StringBuilder();boolean good=!raiders.isEmpty()&&squires.size()==3&&own.traits.getOrDefault("tidecallers",0)==3;
+                    for(var u:raiders){var c=crossed.get(u);boolean g=c!=null&&fromBridge(c[1])>=20&&waded.contains(u);good&=g;s.append("Raider ").append(u.slot).append(c==null?" never crossed":" crossed at z "+fmt(c[1])+", "+fmt(fromBridge(c[1]))+" from the nearest bridge, at +"+(int)c[2]+(waded.contains(u)?" through the water":" DRY")).append(g?"":" (BAD)").append("; ");}
+                    for(var u:squires){var c=crossed.get(u);boolean g=c!=null&&fromBridge(c[1])<=4&&!waded.contains(u);good&=g;s.append("Order Squire ").append(u.slot).append(c==null?" never crossed":" crossed at z "+fmt(c[1])+", "+fmt(fromBridge(c[1]))+" from the nearest bridge, at +"+(int)c[2]+(waded.contains(u)?" THROUGH THE WATER":" dry")).append(g?"":" (BAD)").append("; ");}
+                    fordWhy="map 0's river on the line z "+fmt(fordZ)+" ("+fmt(fromBridge(fordZ))+" from the nearest bridge), the Tidecallers army (tidecallers_hard, Riptide tier "+own.traits.getOrDefault("tidecallers",0)+") and three Order Squires ordered across: "+s+"a Raider counts when it crossed 20 or more blocks from every bridge's edge through the water, an Order Squire when it crossed at a bridge without wetting its feet";
+                    report("p2-riptide-ford",good&&(shotTaken||!fordShot),fordWhy+(fordShot?"; the picture tidecallers-ford was taken="+shotTaken:"; no picture: fewer than 3 Raiders were in the water together"));
+                    wantShot=null;var p=sp(b);if(p!=null)p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);
+                    for(var u:new ArrayList<>(fixture))Houses.discard(b,u);fixture.clear();pins.clear();audit(b,"ford",false);next(b,44);
+                }
+                case 44->{ // p2-tidecallers-bridge: Dawn's army of three Raiders and the Brute (tier 0) at a bridge's west end, ordered across; each bridge of map 0 in turn
+                    var bridges=Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList();
+                    if(bridgeIdx>=bridges.size()){report("p2-tidecallers-bridge",bridgesOk,bridgeWhy.toString());next(b,70);return;}
+                    var br=bridges.get(bridgeIdx);clearFixture(b,"bridge");reset(own);Commander.reset(b,own);own.training.clear();
+                    field(b,own,banner("tc_raider*3,tc_brute"));
+                    double x0=br.x()-br.width()/2.0-14;
+                    force(b,new BlockPos((int)x0-4,0,br.z()-10),new BlockPos(br.x()+br.width()/2+24,0,br.z()+10));
+                    own.order="move";own.formation="block";own.target=new Vec3d(br.x()+br.width()/2.0+16,65,br.z());own.yaw=-90;
+                    for(var u:b.units)if(u.squad==own){double px=x0+(u.slot%5)*1.5,pz=br.z()+(u.slot/5-1.5)*1.4;u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(px,Arena.ground((int)px,(int)pz)+1,pz,-90f,0f);u.deployed=u.mob.getPos();u.lastPosition=u.mob.getPos();u.nextPath=0;u.stuckTicks=0;fixture.add(u);if(u.spec.id().equals("tc_brute"))u1=u;}
+                    crossedAt=-1;deckMin=1e9;deckTicks=0;wet=false;t0=b.time;next(b,45);
+                }
+                case 45->{
+                    var bridges=Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList();var br=bridges.get(bridgeIdx);
+                    double end=br.x()+br.width()/2.0-4;
+                    long across=fixture.stream().filter(u->u.squad==own&&u.mob.isAlive()&&u.mob.getX()>end&&u.mob.getY()>63).count();
+                    boolean big=u1!=null&&u1.mob.isAlive()&&u1.mob.getX()>end&&u1.mob.getY()>63;
+                    if(big&&crossedAt<0)crossedAt=b.time-t0;
+                    if(u1!=null&&u1.mob.isAlive()){
+                        if(u1.mob.isTouchingWater())wet=true;
+                        if(Math.abs(u1.mob.getX()-br.x())<=br.width()/2.0-1){deckMin=Math.min(deckMin,u1.mob.getY());deckTicks++;}
+                    }
+                    if(across==4||since(b)>=900){
+                        boolean deck=deckTicks>0&&deckMin>=br.elevation()+0.5&&!wet;
+                        boolean tier0=own.traits.getOrDefault("tidecallers",0)==0&&!Houses.fords(u1);
+                        boolean good=big&&across==4&&deck&&tier0&&crossedAt<=900;bridgesOk&=good;
+                        bridgeWhy.append(br.id()).append(" (").append(br.width()).append(" x ").append(br.depth()).append("): ").append(across).append("/4 across, the Brute ").append(big?"at +"+crossedAt+" ticks (want within 900)":"NOT across (at x "+(u1==null?"-":fmt(u1.mob.getX()))+", y "+(u1==null?"-":fmt(u1.mob.getY()))+")").append(", on the deck for ").append(deckTicks).append(" ticks at y ").append(deckTicks>0?fmt(deckMin):"-").append(" or higher (deck top ").append(br.elevation()+1).append("), in water ").append(wet).append(", tier 0 and not fording=").append(tier0).append(good?"":" (BAD)").append("; ");
+                        for(var u:new ArrayList<>(fixture))Houses.discard(b,u);fixture.clear();u1=null;audit(b,"bridge "+br.id(),false);
+                        bridgeIdx++;next(b,44);
+                    }
+                }
+                case 70->{ // clouds go with the round
+                    var p=sp(b);if(p==null)return;
+                    if(cost==null){
+                        clearFixture(b,"before cleanup");unbuild(b);
+                        b.mists.add(new Abilities.Mist(0,new Vec3d(site.getX()+.5,site.getY()+1,site.getZ()+.5),4,b.time+5000));
+                        boolean standing=b.mists.size()==1;Abilities.clearBanners(b);boolean swept=standing&&b.mists.isEmpty();
+                        b.mists.add(new Abilities.Mist(1,new Vec3d(site.getX()+.5,site.getY()+1,site.getZ()+.5),4,b.time+5000));
+                        b.campaign.returnLobby();boolean lobby=!b.running&&b.mists.isEmpty();
+                        report("p2-mist-cleanup",swept&&lobby,"a standing cloud was taken down by Abilities.clearBanners (the call a round start, a map switch, the lobby and a server stop each make)="+swept+"; a cloud standing when the round ends was gone after returnLobby (round running="+b.running+")="+lobby);
+                    }
+                    next(b,71);
+                }
+                case 71->{ // the tick cost: eight bot armies, four Tidecallers (hard) against four Gilded (hard)
+                    var p=sp(b);if(p==null)return;
+                    if(cost==null)cost=tickCost(b,List.of("tidecallers_hard","tidecallers_hard","tidecallers_hard","tidecallers_hard","gilded_hard","gilded_hard","gilded_hard","gilded_hard"));
+                    if(cost.step(p)){
+                        report("p2-tidecallers-tick-cost",cost.last<40,"server tick "+String.format(Locale.ROOT,"%.2f",cost.last)+" ms (600-tick mean "+String.format(Locale.ROOT,"%.2f",cost.avg)+" ms) with "+cost.troops+" troops at the start and "+b.units.size()+" at the end, "+b.mists.size()+" clouds standing ("+cost.note+")");
+                        audit(b,"before the final returnLobby",false);
+                        report("p2-tidecallers-teams-clean",audits>=20&&staleSeen.isEmpty(),audits+" audits after the suite's raisings, deaths and removals: "+(staleSeen.isEmpty()?"no gg_ team ever held a member that was not a living troop":"STALE "+staleSeen)+"; "+auditNotes);
+                        cost.handBack();b.campaign.returnLobby();next(b,99);
+                    }
+                }
+                default->{}
+            }
         }
     }
 
@@ -4339,8 +4928,9 @@ public final class Phase2Checks implements ClientModInitializer {
          * The tell table, bone by bone (a hunter's sniff and an arbalist's crank read at both ends): the brief's angles, but for the six of fix round 1, where the
          * brief's angle failed the Tell line's read: the shield arm adds to the 45 degree carry, so the knight's and the sentinel's -50 and -40 (the shield tipped flat
          * over the head) are -15 and a 1 px lift, the marshal's -110 (155 in all) is -65 (110 in all), the mage's wrist turns the staff forward (75), and the archer's
-         * bow arm is -85, its hand taking the draw's turn but for 20 degrees of the bow's rest yaw (hand yaw -25), so the bow stands upright before the eye and shows its face
-         * from the three-quarter front (the brief's -70 laid it along the forearm; all 45 degrees off left it edge-on there).
+         * bow arm is -85, its hand taking the draw's turn but for 20 degrees of the bow's rest yaw (hand yaw -25), so the bow stands upright before the eye. The 20 degrees do not
+         * turn its face to the three-quarter front: the bow is edge-on from 315, which is why the archer's cell is shot from 270 (the brief's -70 laid it along the forearm; all 45
+         * degrees off left it edge-on there as well).
          */
         static final List<TKey> TELL_KEYS=List.of(
             tk("knight","left_arm",'p',-15),tk("knight","left_arm",'u',1),tk("knight","head",'p',-5),

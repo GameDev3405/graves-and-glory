@@ -248,7 +248,7 @@ public final class GravesAndGlory implements ModInitializer {
         /** What its name tag says and the notice of a deploy at it names. */
         public static final String NAME="Forward Supply";
         /** What its commander reads when the banner is shot down or killed while his Forward Supply runs. */
-        public static final String FALLEN="Your supply banner has fallen. Troops muster at the barracks.";
+        public static final String FALLEN="Your supply banner has fallen.";
         Squad squad;float hp;net.minecraft.util.math.BlockPos block;net.minecraft.block.BlockState was;boolean felled;
         public ArmySupplyBanner(World world){super(EntityType.ARMOR_STAND,world);}
         /** The army that planted it, the side it serves, the health it has left. */
@@ -359,6 +359,36 @@ public final class GravesAndGlory implements ModInitializer {
         @Override public boolean shouldSave(){return false;}
         @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
     }
+    /** The Tidecallers Drowned Raider, Harpooner, Trident Guard and Admiral: a drowned with only a SwimGoal, so it never throws a trident on its own, never walks to the water or the shore, and Tactics alone moves and swings it. */
+    public static final class ArmyDrowned extends DrownedEntity implements ArmyMob {
+        public ArmyDrowned(World world){super(EntityType.DROWNED,world);}
+        @Override public boolean shouldSave(){return false;}
+        @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
+        /** Never burns in daylight and never turns into anything in water: a troop stays the troop its sheet row says. */
+        @Override protected boolean isAffectedByDaylight(){return false;}
+        @Override protected boolean canConvertInWater(){return false;}
+    }
+    /** The Tidecallers Mist Caller: an evoker with only a SwimGoal, so it never summons fangs or vexes and never calls a sheep blue; its cloud is the mist ability (Abilities.cast). */
+    public static final class ArmyEvoker extends EvokerEntity implements ArmyMob {
+        public ArmyEvoker(World world){super(EntityType.EVOKER,world);}
+        @Override public boolean shouldSave(){return false;}
+        @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
+    }
+    /** The Tidecallers Kraken-touched Brute: a ravager with only a SwimGoal, so it never roars, stuns itself or charges on its own; its tentacle sweep is the slam ability. Its own tick pulls its speed to 0.3 or 0.35, so the sheet's speed is put back after it. */
+    public static final class ArmyRavager extends RavagerEntity implements ArmyMob {
+        /**
+         * A vanilla Ravager paths through leaves (its constructor sets their penalty to 0) because it smashes them as it walks, which needs mobGriefing; a
+         * match has that rule off, so a Brute that walked into a canopy stood against it for the rest of the round. Leaves keep the default penalty (blocked).
+         */
+        public ArmyRavager(World world){super(EntityType.RAVAGER,world);setPathfindingPenalty(PathNodeType.LEAVES,PathNodeType.LEAVES.getDefaultPenalty());}
+        @Override public boolean shouldSave(){return false;}
+        @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
+        @Override public void tickMovement(){
+            var speed=getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);double sheet=speed.getBaseValue();
+            super.tickMovement();
+            speed.setBaseValue(sheet);
+        }
+    }
     /** A troop that fell: where, when (battle ticks), which troop (its sheet id) and for which team. Grave Bloom raises from Battle.deaths. */
     public record Death(Vec3d at,long time,String troop,int team) {}
     public static final class ArmyZombie extends ZombieEntity implements ArmyMob {
@@ -390,6 +420,8 @@ public final class GravesAndGlory implements ModInitializer {
         public final List<Abilities.Banner> banners=new ArrayList<>();
         /** The standing structures (the Quartermaster's Forward Supply banners): troops of the other side target them, and Abilities.clearBanners takes them down with the Oath Banners. ArmySupplyBanner.remove drops a banner from it however it goes. */
         public final List<ArmySupplyBanner> structures=new ArrayList<>();
+        /** The Mist Callers' standing clouds (Abilities.Mist): counters row C17 reads them through Abilities.inMist, Abilities.mistTick slows the enemies in them and drops the expired ones, and Abilities.clearBanners empties the list (startRound, the lobby, a map switch). */
+        public final List<Abilities.Mist> mists=new ArrayList<>();
         /** The troops that really died in the last Houses.deathWindow ticks (a Rise Again and a temporary troop leave no entry), in the order they fell. Grave Bloom raises from it; startRound, the lobby and a map switch empty it. */
         public final List<Death> deaths=new ArrayList<>();
         /** The living troops of an army that fill its slots: a temporary troop (Grave Bloom's) is not one of them. */

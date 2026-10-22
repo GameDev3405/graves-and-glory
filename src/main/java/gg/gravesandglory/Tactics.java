@@ -4,6 +4,7 @@ import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.*;
+import net.minecraft.entity.ai.pathing.PathNodeType;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.particle.ParticleTypes;
@@ -57,6 +58,7 @@ final class Tactics {
         if(time%10!=u.slot%10){brace(battle,u);return;} // the shield is decided every tick; everything else on the unit's 10-tick beat
         var mob=u.mob;var s=u.squad;var a=battle.assignment(u);
         Houses.sample(battle,u); // Entrench: has it stood still since its last beat
+        Houses.swim(battle,u); // Riptide: faster while it touches water or it rains
         String stance=stance(a,u);if(!stance.equals(u.stance)){u.stance=stance;stanceSends+=sendStance(u,PlayerLookup.tracking(mob));}
         var owner=battle.server.getPlayerManager().getPlayer(s.owner);
         if(a.order.equals("follow")&&owner!=null&&!battle.respawns.containsKey(s.owner)){a.target=owner.getPos();a.yaw=owner.getYaw();}
@@ -130,7 +132,9 @@ final class Tactics {
         Vec3d away=u.mob.getPos().subtract(from.getPos()).multiply(1,0,1).normalize();
         walk(battle,u,u.mob.getPos().add(away.multiply(5)),time,1.05);
     }
+    /** The way to a goal: across the river by the nearest bridge, unless the troop fords it (Riptide tier II and III), which goes straight at the goal. */
     static Vec3d route(GravesAndGlory.Unit u,Vec3d goal){
+        if(Houses.fords(u))return goal;
         Vec3d here=u.mob.getPos();
         double side=here.x-Arena.riverX(here.z),destination=goal.x-Arena.riverX(goal.z);
         if(Math.signum(side)!=Math.signum(destination)&&Math.abs(destination)>7){
@@ -152,6 +156,8 @@ final class Tactics {
     }
     static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed){
         MobEntity mob=u.mob;Vec3d goal=route(u,destination);
+        boolean wade=Houses.fords(u); // a fording troop's water path penalty is 0, and neither the river snap nor the waypoint search below keeps its waypoints out of the river
+        mob.setPathfindingPenalty(PathNodeType.WATER,wade?0f:(float)N.waterPenalty());
         int gx=(int)Math.floor(goal.x),gz=(int)Math.floor(goal.z),gy=Arena.ground(gx,gz)+1;
         if(GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal)<N.preciseRange()*N.preciseRange()&&Math.abs(mob.getY()-gy)<1.1&&!(Arena.river(gx,gz)&&Arena.ground(gx,gz)<64)&&battle.world.getBlockState(new BlockPos(gx,gy,gz)).isAir()&&battle.world.getBlockState(new BlockPos(gx,gy+1,gz)).isAir()){
             mob.getNavigation().stop();mob.getMoveControl().moveTo(goal.x,gy,goal.z,speed);return;
@@ -166,9 +172,9 @@ final class Tactics {
             if(mob.isOnGround())mob.getJumpControl().setActive();
         }
         int x=(int)Math.floor(goal.x),z=(int)Math.floor(goal.z),y=Arena.ground(x,z)+1;
-        if(Arena.river(x,z)&&Arena.ground(x,z)<64){x=(int)Arena.riverX(z)+(x>Arena.riverX(z)?11:-11);y=Arena.ground(x,z)+1;}
+        if(!wade&&Arena.river(x,z)&&Arena.ground(x,z)<64){x=(int)Arena.riverX(z)+(x>Arena.riverX(z)?11:-11);y=Arena.ground(x,z)+1;}
         // Keep local waypoints out of tree trunks, flagpoles and walls.
-        if(!battle.world.getBlockState(new BlockPos(x,y,z)).isAir()||!battle.world.getBlockState(new BlockPos(x,y+1,z)).isAir()){
+        if(!(wade&&Arena.river(x,z))&&(!battle.world.getBlockState(new BlockPos(x,y,z)).isAir()||!battle.world.getBlockState(new BlockPos(x,y+1,z)).isAir())){
             boolean found=false;
             for(int r=1;r<=5&&!found;r++)for(int dx=-r;dx<=r&&!found;dx++)for(int dz=-r;dz<=r;dz++){
                 int tx=x+dx,tz=z+dz,ty=Arena.ground(tx,tz)+1;

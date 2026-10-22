@@ -1,6 +1,8 @@
 package gg.gravesandglory;
 
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.attribute.EntityAttributeModifier;
+import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.registry.tag.DamageTypeTags;
 import net.minecraft.util.math.Vec3d;
@@ -10,7 +12,8 @@ import java.util.*;
  * House traits (spec 1.3). A squad's trait tier in a House comes from the slot weights of its living troops of that House against the
  * houseTraits sheet's slot thresholds; the tiers feed the HUD strip, the trait seconds of the battle report and, in each House's task, the
  * trait multipliers. The pure maths is RosterMath and CounterMath. Gilded Bulwark is in: traitFactor's ranged share and BULWARK_GUARD. Graveborn Rise Again
- * is in: allowDeath, the death log Grave Bloom raises from, and the expiry of the temporary troops it makes.
+ * is in: allowDeath, the death log Grave Bloom raises from, and the expiry of the temporary troops it makes. Ironclad Entrench is in (traitFactor, still). Tidecallers
+ * Riptide is in: the wet speed (swim), the slow every hit of theirs gives (Abilities.onHit) and the ford (fords, which Tactics reads).
  */
 final class Houses {
     private Houses() {}
@@ -65,6 +68,44 @@ final class Houses {
     static Spec.HouseTraitsRow entrench(GravesAndGlory.Unit u) {
         var t = CounterMath.trait(Spec.HOUSETRAITS, u.spec.house(), u.squad.traits.getOrDefault(u.spec.house(), 0));
         return t != null && t.mechanic().equals("entrench") ? t : null;
+    }
+
+    /** The troop's own House trait at its army's tier when that trait is Riptide (Tidecallers), else null. */
+    static Spec.HouseTraitsRow riptide(GravesAndGlory.Unit u) {
+        var t = CounterMath.trait(Spec.HOUSETRAITS, u.spec.house(), u.squad.traits.getOrDefault(u.spec.house(), 0));
+        return t != null && t.mechanic().equals("riptide") ? t : null;
+    }
+
+    /**
+     * Whether the troop fords the river: a Tidecallers troop whose army's Riptide tier says so (value2 is 1 on tiers II and III of the sheet). The tier is the
+     * one the army's living troops reach in battle (recompute), like every other House trait; a banner that falls to tier I as troops die stops fording.
+     * Tactics.route and walk skip the bridge detour and the river snap for such a troop, and its water path penalty is 0.
+     */
+    static boolean fords(GravesAndGlory.Unit u) {
+        var t = riptide(u);
+        return t != null && t.value2() >= 1;
+    }
+
+    /** The fixed id of Riptide's speed modifier on a Tidecallers troop. */
+    static final UUID RIPTIDE = UUID.fromString("5a0f6c1e-2b7d-4c43-9f1a-7e3d8b94c2a6");
+
+    /**
+     * Riptide's speed, on each of the troop's Tactics beats: the troop travels x(1 + value) of the army's tier while it touches water or it rains on the map, else
+     * as it did. It is a temporary multiplier on the movement speed (never saved), so it stacks with the Rally Horn's, and the beat adds it, changes it with the tier, or
+     * takes it off. What the multiplier must be on the attribute depends on the ground: a swimmer's stroke is linear in the movement speed, so in water the attribute
+     * takes 1 + value as it stands; a land mob's walk is quadratic in it (the speed asks for a forward input equal to the attribute, and the ground turns that input
+     * into an acceleration by the attribute again: measured, a +15% attribute walks 1.32 as far), so in the rain on land the attribute takes the square root of 1 + value
+     * and the troop walks the 15% the sheet says (a Raider keeps 3.6 blocks a second on land, and 0.7 in water, where vanilla drag makes every land mob slow).
+     */
+    static void swim(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
+        var speed = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+        if (speed == null) return;
+        double travel = CounterMath.riptideSpeed(riptide(u), u.mob.isTouchingWater() || b.world.isRaining());
+        double bonus = (u.mob.isTouchingWater() ? travel : Math.sqrt(travel)) - 1;
+        var have = speed.getModifier(RIPTIDE);
+        if (have != null && Math.abs(have.getValue() - bonus) < 1e-9) return;
+        if (have != null) speed.removeModifier(RIPTIDE);
+        if (bonus > 0) speed.addTemporaryModifier(new EntityAttributeModifier(RIPTIDE, "Graves and Glory riptide", bonus, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
     }
 
     /** The sheet's rest rule: its first Entrench row (the radius and the durationTicks are the same on every tier), or null when the sheet has none. Any troop's rest is measured by it, whatever its House. */
