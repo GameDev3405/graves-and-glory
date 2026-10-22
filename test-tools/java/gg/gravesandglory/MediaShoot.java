@@ -60,7 +60,8 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
         preset("ironhold",1,0,-1,false,IRON_HARD,GILDED_HARD,"iron"),
         preset("frostmarch",2,0,-1,false,IRON_HARD,TIDE_HARD,"iron"),
         preset("hollowwood",3,0,12350,false,GRAVE_HARD,GILDED_HARD,"netherite"),
-        preset("kingsfield",4,1,-1,false,GILDED_HARD,GRAVE_HARD,"gold"));}
+        preset("kingsfield",4,1,-1,false,GILDED_HARD,GRAVE_HARD,"gold"),
+        preset("media",0,2,-1,false,GILDED_HARD,GRAVE_HARD,"gold"));}
     record Shot(FilmRig.Take take,String stage){}
 
     // ---- state -------------------------------------------------------------------------------------------------
@@ -173,7 +174,8 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
     Vec3d M(){return new Vec3d(bx,by,bz);}
     Vec3d at(Vec3d o,double f,double r,double u){return o.add(new Vec3d(fx,0,fz).multiply(f)).add(new Vec3d(rx,0,rz).multiply(r)).add(0,u,0);}
     FilmRig.Take still(String name,double[] cam,FilmRig.Pose pose){return still(name,cam,pose,1.5);}
-    FilmRig.Take still(String name,double[] cam,FilmRig.Pose pose,double clearance){return new FilmRig.Take(name,FPS,24,3,FilmRig.hold(cam),pose,null,Map.of(1,name+".png"),Map.of(),clearance);}
+    FilmRig.Take still(String name,double[] cam,FilmRig.Pose pose,double clearance){return still(name,FilmRig.hold(cam),pose,clearance);}
+    FilmRig.Take still(String name,FilmRig.Path path,FilmRig.Pose pose,double clearance){return new FilmRig.Take(name,FPS,24,3,path,pose,null,Map.of(1,name+".png"),Map.of(),clearance);}
     /** A clip; release is the recorded frame where both armies are ordered to charge (-1: never); GRAVES_FILM_PREVIEW=N swaps the encode for a PNG every N frames. */
     FilmRig.Take clip(String name,double seconds,FilmRig.Path path,FilmRig.Pose pose,int release,double clearance){return clip(name,seconds,path,pose,release,clearance,Map.of());}
     FilmRig.Take clip(String name,double seconds,FilmRig.Path path,FilmRig.Pose pose,int release,double clearance,Map<Integer,Runnable> more){return clipAt(FPS,name,seconds,path,pose,release,clearance,more);}
@@ -213,6 +215,22 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
         if(shotWanted("s9"))out.add(new Shot(still(id+"-s9-vanguard",FilmRig.aim(at(M(),-g+7,2.5,1.5),at(S(),0,0,2.2),48),point,.5),"hold"));
         if(shotWanted("s10"))out.add(new Shot(still(id+"-s10-topdown",FilmRig.aim(at(M(),-6,0,64),at(M(),0,0,0),58),point,.5),"hold"));
         if(shotWanted("s11"))out.add(new Shot(still(id+"-s11-flank",FilmRig.aim(at(M(),-6,-56,7),at(M(),0,0,1.5),44),point,1.0),"hold"));
+        // muster stills: the two armies standing in formation before the horn (media shoot 3)
+        if(shotWanted("m1"))out.add(new Shot(still(id+"-m1-between",FilmRig.aim(at(M(),-1.5,0.5,1.35),at(M(),g+9,0,1.6),56),point,.3),"hold"));
+        if(shotWanted("m2"))out.add(new Shot(still(id+"-m2-ranks",FilmRig.aim(at(M(),-g-1,-11.5,0.9),at(M(),-g-L0*.75,1.5,1.5),38),point,.3),"hold"));
+        if(shotWanted("m3"))out.add(new Shot(still(id+"-m3-vanguardface",FilmRig.aim(at(M(),-g+4.5,1.8,1.45),at(M(),-g,-0.5,1.7),44),point,.3),"hold"));
+        if(shotWanted("m4"))out.add(new Shot(still(id+"-m4-enemyside",FilmRig.aim(at(M(),g+L1+7,-3,3.4),at(M(),g+L1*.4,0,1.6),52),point,.8),"hold"));
+        if(shotWanted("m5"))out.add(new Shot(still(id+"-m5-hero",t->FilmRig.aim(new Vec3d(hx+fx*4.2+rx*1.4,hy+1.55,hz+fz*4.2+rz*1.4),new Vec3d(hx,hy+1.75,hz),38),point,.5),"hold"));
+        if(shotWanted("m6"))out.add(new Shot(still(id+"-m6-highwide",FilmRig.aim(at(M(),-g-L0-14,-26,19),at(M(),-4,0,1.0),50),point,1.0),"hold"));
+        if(shotWanted("m7"))out.add(new Shot(still(id+"-m7-gap",FilmRig.aim(at(M(),-g-5,-14,5.5),at(M(),g,6,1.5),46),point,1.0),"hold"));
+        if(shotWanted("m8"))out.add(new Shot(still(id+"-m8-tailup",FilmRig.aim(at(M(),-g-L0-5,2,1.2),at(M(),-g-L0*.4,0,3.4),52),point,.3),"hold"));
+        if(shotWanted("m1b"))out.add(new Shot(still(id+"-m1b-between",FilmRig.aim(at(M(),-3.0,-4.2,1.4),at(M(),g+9,1,1.6),54),point,.3),"hold"));
+        if(shotWanted("m1c"))out.add(new Shot(still(id+"-m1c-between",FilmRig.aim(at(M(),-3.0,5.0,1.4),at(M(),g+9,-1,1.6),54),point,.3),"hold"));
+        if(shotWanted("m5b"))out.add(new Shot(still(id+"-m5b-hero",t->FilmRig.aim(new Vec3d(hx+fx*3.2-rx*3.0,hy+1.6,hz+fz*3.2-rz*3.0),new Vec3d(hx,hy+1.75,hz),40),point,.5),"hold"));
+        if(shotWanted("m5c"))out.add(new Shot(still(id+"-m5c-hero",t->FilmRig.aim(new Vec3d(hx-fx*3.4+rx*2.4,hy+1.2,hz-fz*3.4+rz*2.4),new Vec3d(hx+fx*3,hy+1.8,hz+fz*3),42),point,.5),"hold"));
+        if(shotWanted("m5d"))out.add(new Shot(still(id+"-m5d-hero",t->FilmRig.aim(new Vec3d(hx+fx*3.0+rx*3.2,hy+1.5,hz+fz*3.0+rz*3.2),new Vec3d(hx,hy+1.75,hz),40),point,.5),"hold"));
+        if(shotWanted("m3b"))out.add(new Shot(still(id+"-m3b-front",FilmRig.aim(at(M(),-g+6.5,-5.5,2.0),at(M(),-g-3,-1.5,1.6),46),point,.3),"hold"));
+        if(shotWanted("m3c"))out.add(new Shot(still(id+"-m3c-front",FilmRig.aim(at(M(),-g+5.5,5.5,2.0),at(M(),-g-3,2,1.6),46),point,.3),"hold"));
         boolean first=true;
         String[] stillKeys={"s1","s2","s3","s4","s5","s6","s7"};
         FilmRig.Take[] st={
@@ -262,7 +280,7 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
         if(!serverReady||!b.running)return;
         Vec3d m=M();
         for(var q:b.squads.values())if(q.seated){q.bot=false;q.assignments.clear();String o=q.team==0?posture0:posture1;q.order=o;q.formation=q.team==0?form0:form1;q.target=m;
-            for(String g:Morale.GROUPS){q.routedAt.remove(g);q.steadyUntil.put(g,b.time+40);}}
+            }
         var p=sp(b);if(p==null)return;
         heroOk=false;
         for(var u:b.units)if(u.squad.team==0&&u.mob.isAlive()&&u.spec.rarity().equals("legendary")){hx=u.mob.getX();hy=u.mob.getY();hz=u.mob.getZ();heroOk=true;break;}
@@ -348,7 +366,7 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
         for(int t=0;t<2;t++){int side=t==0?-1:1;
             for(var r:lineup(b,sc,t)){var s=r.squad();int slot=0;
                 s.bot=false;s.assignments.clear();s.order=posture;s.formation="line";s.target=new Vec3d(bx,by,bz);
-                s.yaw=(float)Math.toDegrees(Math.atan2(side*ax,-side*az));s.routedAt.clear();s.steadyUntil.clear();
+                s.yaw=(float)Math.toDegrees(Math.atan2(side*ax,-side*az));
                 for(var spec:r.troops()){
                     boolean hero=legendary(spec);int row=slot/sc.cols(),inRow=Math.min(sc.cols(),r.body()-row*sc.cols());
                     double depth=hero?r.start()-HEROLEAD:r.start()+row*sc.spacing(),across=hero?0:((slot%sc.cols())-(inRow-1)/2.0)*COLSP;
@@ -362,7 +380,7 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
         System.out.println("[film] muster ("+posture+"): "+b.units.size()+" troops, round running "+b.running);return true;};}
     /** The horn and the charge, from the client's frame events. */
     void release(){jobs.add(b->{posture0="charge";posture1="charge";
-        for(var q:b.squads.values())if(q.seated){boolean go=b.startsCharge(q,"all");q.order="charge";if(go)b.chargeHorn(q,"all");}
+        for(var q:b.squads.values())if(q.seated){boolean go=b.startsCharge(q,"all");q.order="charge";if(go)b.markCharge(q,"all");}
         return true;});}
     void lanterns(GravesAndGlory.Battle b){
         for(var p:b.points){var at=p.spec;for(int dx:new int[]{-3,3})for(int dz:new int[]{-3,3}){int x=at.x()+dx,z=at.z()+dz,y=Arena.ground(x,z)+1;
