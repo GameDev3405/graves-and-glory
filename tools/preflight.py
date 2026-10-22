@@ -185,6 +185,9 @@ for a in data['abilities']:
     if a['target'] not in ('enemies','allies'): errors.append(f'abilities/{a["id"]}: target must be enemies or allies')
     if a['mechanic']=='stance' and a['amount']!=0: errors.append(f'abilities/{a["id"]}: stance multipliers live only in counters, so amount must be 0.0')
     if len(a['text'])>90: errors.append(f'abilities/{a["id"]}: text is {len(a["text"])} characters, over 90')
+    if not isinstance(a['anchors'],bool): errors.append(f'abilities/{a["id"]}: anchors must be true or false')
+    elif a['anchors'] and (a['mechanic']!='aura' or a['target']!='allies'): errors.append(f'abilities/{a["id"]}: only an aura on allies can anchor (Abilities.anchored reads the Oath Banner)')
+    if a['mechanic']=='fearless' and not 0<a['amount2']<1: errors.append(f'abilities/{a["id"]}: a fearless row health share (amount2) must be between 0 and 1')
 CONDITIONS={'always','raised_front','lowered_front','front','charge_impact','charge','hold','flank','no_sky','in_mist'}
 # A counter tag is a dynamic tag, an ability id or a tag some troop carries in its tags column.
 troopTags={tag for t in data['troops'] for tag in t['tags'].split(',')}-{'none'}
@@ -199,6 +202,11 @@ for c in data['counters']:
 cd=data['combatDiscipline'][0]
 if not 0<cd['multiplierMin']<=1<=cd['multiplierMax']: errors.append('combatDiscipline: the counter clamp must hold 1 (0 < multiplierMin <= 1 <= multiplierMax)')
 if cd['chargeImpactTicks']<1: errors.append('combatDiscipline: chargeImpactTicks (the counters row C5 window) must be at least 1')
+# The columns that came over from the Phase 1 morale sheet when routing went (Task 8b): the flank arc, the last stand, the command feedback sounds, the wounded share and the arrival radius.
+for col,lo,hi in (('flankArcDegrees',0,180),('lastStandShare',0,1),('lastStandRadius',0,None),('hornCooldownSeconds',0,None),('hornVolume',0,None),('woundedShare',0,1),('lastStandFeedSeconds',1,None),('arriveRadius',0,None)):
+    if col not in cd: errors.append(f'combatDiscipline: missing {col}')
+    elif cd[col]<lo or hi is not None and cd[col]>hi or cd[col]==lo and col not in ('hornCooldownSeconds','lastStandFeedSeconds'): errors.append(f'combatDiscipline: {col} must be above {lo}'+(f' and at most {hi}' if hi is not None else ''))
+if 'morale' in data: errors.append('morale: the sheet went with routing (Task 8b); its surviving numbers live in combatDiscipline')
 if len(data['recruitment'])!=1: errors.append('recruitment: exactly one row')
 if any(data['campaign'][0].get(k,-1)<0 for k in ('completionShards','victoryShards','completionRenown','victoryRenown')): errors.append('campaign: completionShards, victoryShards, completionRenown and victoryRenown must be 0 or more')
 cap=data['recruitment'][0]['capPct']

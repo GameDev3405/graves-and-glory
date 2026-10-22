@@ -686,7 +686,7 @@
       "weapon": "minecraft:air",
       "helmet": "minecraft:air",
       "chest": "minecraft:air",
-      "tags": "fearless,large",
+      "tags": "large",
       "ability": "forge_slam",
       "evolveLine": "none",
       "slotWeight": 4,
@@ -2051,7 +2051,15 @@
       "impactParticles": 8,
       "multiplierMin": 0.25,
       "multiplierMax": 2.5,
-      "chargeImpactTicks": 60
+      "chargeImpactTicks": 60,
+      "flankArcDegrees": 110.0,
+      "lastStandShare": 0.25,
+      "lastStandRadius": 16.0,
+      "hornCooldownSeconds": 8,
+      "hornVolume": 1.6,
+      "woundedShare": 0.3,
+      "lastStandFeedSeconds": 30,
+      "arriveRadius": 4.0
     }
   ],
   "recruitmentView": [
@@ -2228,7 +2236,7 @@
       "passiveValue": 4.0,
       "passiveValue2": 0.1,
       "passiveRadius": 10.0,
-      "activeText": "Your troops within 12 cannot rout and take 25% less damage for 8 s; you gain Resistance I.",
+      "activeText": "Your troops within 12 take 25% less damage for 8 s; you gain Resistance I.",
       "passiveText": "+4 max health for you; your infantry within 10 blocks deal 10% more damage."
     },
     {
@@ -2284,14 +2292,14 @@
       "durationTicks": 300,
       "radius": 0.0,
       "range": 0.0,
-      "value1": 0.1,
-      "value2": 400.0,
+      "value1": 0.2,
+      "value2": 0.0,
       "value3": 0.0,
       "passive": "marshal",
       "passiveValue": 0.2,
       "passiveValue2": 0.0,
       "passiveRadius": 0.0,
-      "activeText": "Routing groups rally and every group marches to you: 20 s steadier, 10% faster for 15 s.",
+      "activeText": "Every group marches to you, 20% faster for 15 s.",
       "passiveText": "Your troops train in 20% less time."
     },
     {
@@ -2348,23 +2356,6 @@
       "victoryShards": 1,
       "completionRenown": 1,
       "victoryRenown": 1
-    }
-  ],
-  "morale": [
-    {
-      "id": "domination",
-      "routShare": 0.25,
-      "flankedRoutShare": 0.6,
-      "flankRadius": 8.0,
-      "flankArcDegrees": 110.0,
-      "flankMinAttackers": 3,
-      "engageCheckRadius": 16.0,
-      "routMinSeconds": 6,
-      "routMaxSeconds": 15,
-      "routSafeRadius": 12.0,
-      "regroupImmunitySeconds": 20,
-      "hornCooldownSeconds": 8,
-      "hornVolume": 1.6
     }
   ],
   "campaignBattles": [
@@ -2439,7 +2430,7 @@
       "value2": 0.0,
       "radius": 5.0,
       "durationTicks": 0,
-      "text": "Shield troops take 15% less ranged damage; groups within 5 of a Gilded troop do not rout."
+      "text": "Shield troops take 15% less ranged damage; your troops within 5 of a Gilded troop take no extra flank damage."
     },
     {
       "id": "gilded_2",
@@ -2451,7 +2442,7 @@
       "value2": 0.0,
       "radius": 8.0,
       "durationTicks": 0,
-      "text": "Shield troops take 30% less ranged damage; groups within 8 of a Gilded troop do not rout."
+      "text": "Shield troops take 30% less ranged damage; your troops within 8 of a Gilded troop take no extra flank damage."
     },
     {
       "id": "gilded_3",
@@ -2463,7 +2454,7 @@
       "value2": 0.0,
       "radius": 12.0,
       "durationTicks": 0,
-      "text": "Shield troops take 45% less ranged damage; groups within 12 of a Gilded troop do not rout."
+      "text": "Shield troops take 45% less ranged damage; your troops within 12 of a Gilded troop take no extra flank damage."
     },
     {
       "id": "graveborn_1",
@@ -2626,6 +2617,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "No special ability."
     },
     {
@@ -2643,6 +2635,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "Carries a shield: raised, it stops most arrows and blunts blows from the front."
     },
     {
@@ -2660,6 +2653,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "+20% damage while the group order is Hold."
     },
     {
@@ -2677,6 +2671,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "+25% damage while the shooter cannot see the sky, under trees or a roof."
     },
     {
@@ -2694,6 +2689,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "x1.3 damage against charging enemies while its own order is Hold."
     },
     {
@@ -2711,6 +2707,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "Against shield troops the shield multiplier is x0.7 instead of x0.35."
     },
     {
@@ -2728,6 +2725,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "Ignores the shield multiplier entirely and deals x1.4 to shield troops."
     },
     {
@@ -2745,6 +2743,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "Each shot also hits the nearest enemy within 2 blocks behind the target for 50%."
     },
     {
@@ -2762,6 +2761,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "allies",
+      "anchors": false,
       "text": "Heals 5 health on allies within 10 blocks, every 4 seconds."
     },
     {
@@ -2779,7 +2779,8 @@
       "durationTicks": 300,
       "minRange": 0.0,
       "target": "allies",
-      "text": "On Hold, plants a banner: groups within 12 cannot rout and deal +10% damage for 15 s."
+      "anchors": true,
+      "text": "On Hold, a 15 s banner: troops within 12 deal 10% more and cannot be moved or slowed."
     },
     {
       "id": "fearless",
@@ -2788,15 +2789,16 @@
       "cooldownTicks": 0,
       "radius": 0.0,
       "windupTicks": 0,
-      "amount": 0.12,
-      "amount2": 0.5,
+      "amount": 0.2,
+      "amount2": 0.3,
       "statusTicks": 0,
       "statusLevel": 0,
       "knockback": 0.0,
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
-      "text": "A group at least half fearless routs at 12% strength instead of 25%."
+      "anchors": false,
+      "text": "Below 30% health he deals 20% more damage."
     },
     {
       "id": "cleave_reaper",
@@ -2813,6 +2815,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "Each hit also strikes one other enemy within 2 blocks of the target for 57%."
     },
     {
@@ -2830,6 +2833,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "Hits apply Slowness I for 2 seconds."
     },
     {
@@ -2847,6 +2851,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "Calls down blight: after 1 s it strikes within 2.5 and slows for 2 s."
     },
     {
@@ -2857,14 +2862,15 @@
       "radius": 10.0,
       "windupTicks": 0,
       "amount": 0.15,
-      "amount2": 0.4,
+      "amount2": 0.0,
       "statusTicks": 0,
       "statusLevel": 0,
       "knockback": 0.0,
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
-      "text": "Enemies within 10 deal 15% less damage and rout at 40% strength instead of 25%."
+      "anchors": false,
+      "text": "Enemies within 10 deal 15% less damage."
     },
     {
       "id": "pounce",
@@ -2881,6 +2887,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "The first hit after closing 6 blocks without attacking deals x1.8 damage."
     },
     {
@@ -2898,6 +2905,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "Hits apply Slowness II for 1.5 s, at most every 4 s. Climbs walls."
     },
     {
@@ -2915,6 +2923,7 @@
       "durationTicks": 120,
       "minRange": 0.0,
       "target": "allies",
+      "anchors": false,
       "text": "Every 15 s, allies within 10 gain +15% damage and +15% speed for 6 s."
     },
     {
@@ -2932,6 +2941,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "On first contact in a Charge, deals 6 to every enemy within 3 and knocks them back."
     },
     {
@@ -2949,6 +2959,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "Each bolt also hits a second enemy within 4 blocks behind the target for 60%."
     },
     {
@@ -2966,6 +2977,7 @@
       "durationTicks": 0,
       "minRange": 10.0,
       "target": "enemies",
+      "anchors": false,
       "text": "Lobs a shell that bursts over 3.5 blocks after 1.5 s. Cannot fire closer than 10."
     },
     {
@@ -2983,6 +2995,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "Every hit also deals 60% to all other enemies within 2.5 and knocks them back."
     },
     {
@@ -3000,6 +3013,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "Hits apply Slowness I for 1 second."
     },
     {
@@ -3017,6 +3031,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "Hits pull the target 1 block closer and apply Slowness I for 1.5 s; every 3 s."
     },
     {
@@ -3034,6 +3049,7 @@
       "durationTicks": 100,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "Leaves mist of radius 4 for 5 s: enemies in it slow, and shots through it deal x0.5."
     },
     {
@@ -3051,6 +3067,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "Hits also sweep other enemies within 3 for 70% and knock them back, once per 3 s."
     },
     {
@@ -3068,6 +3085,7 @@
       "durationTicks": 0,
       "minRange": 0.0,
       "target": "enemies",
+      "anchors": false,
       "text": "Every 10 s, drags enemies within 7 three blocks in, deals 4 and applies Slowness II."
     }
   ],
@@ -3212,9 +3230,18 @@
       "attackerTag": "melee",
       "targetTag": "any",
       "condition": "flank",
+      "multiplier": 1.3,
+      "replaces": "none",
+      "text": "Blows from the flank or rear land much harder."
+    },
+    {
+      "id": "C16s",
+      "attackerTag": "shot",
+      "targetTag": "any",
+      "condition": "flank",
       "multiplier": 1.15,
       "replaces": "none",
-      "text": "Blows from the flank or rear land harder."
+      "text": "Shots into a flank or rear land harder."
     },
     {
       "id": "C17",
