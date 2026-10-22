@@ -36,13 +36,18 @@ final class CampWorld {
     /** In the world folder: the hash of what the terrain was built from. */
     static final String MARKER_FILE="gravesandglory-camp.json";
     /** Part of the hash: a change to the way the terrain is written makes every world rebuild it. */
-    static final String TERRAIN="terrain-1";
+    static final String TERRAIN="terrain-2";
     /** Where the plateau begins and where its bank starts at the foot (dz, from the origin of the camp): the bank rises over the 13 blocks between them. */
     static final int RIDGE_TOP_DZ=-51,RIDGE_FOOT_DZ=-38;
+    /** The southern rim: from RIM_FOOT_DZ (the end of the apron of the gates) the ground climbs RIM_SLOPE blocks per block, to RIM_RISE above the floor, and stays there to the last row of the rim (rimEnd).
+     *  It closes the south of the camp: behind the island the arena's north edge ends in a bare cut face (up to y 76 over the camp floor, a block of stone four blocks beyond the island), and the crest of the rim is higher than that face is. */
+    static final int RIM_FOOT_DZ=37,RIM_RISE=15;
+    static final double RIM_SLOPE=2.5;
     static String generation="";
-    /** Every line this class logged, oldest first (the harness reads them as well as the console). */
+    /** What this class logged, oldest first, at most LOG_KEEP lines (the harness reads them as well as the console). */
     static final List<String> LINES=new CopyOnWriteArrayList<>();
-    static void log(String line){System.out.println(line);LINES.add(line);}
+    static final int LOG_KEEP=300;
+    static void log(String line){System.out.println(line);LINES.add(line);while(LINES.size()>LOG_KEEP)LINES.remove(0);}
 
     record Spot(double x,double y,double z,float yaw,float pitch){}
 
@@ -120,7 +125,7 @@ final class CampWorld {
         crc.update(Arrays.toString(Spec.CAMP).getBytes(StandardCharsets.UTF_8));
         crc.update(Arrays.toString(Spec.CAMPPIECES).getBytes(StandardCharsets.UTF_8));
         for(var p:Spec.PIECES)if(p.id().startsWith("camp/"))crc.update(p.toString().getBytes(StandardCharsets.UTF_8));
-        crc.update(TERRAIN.getBytes(StandardCharsets.UTF_8));
+        crc.update((TERRAIN+"/"+rimEnd(Spec.CAMP[0])).getBytes(StandardCharsets.UTF_8));
         return Long.toHexString(crc.getValue());
     }
     static Path marker(ServerWorld w){return w.getServer().getSavePath(WorldSavePath.ROOT).resolve(MARKER_FILE);}
@@ -131,13 +136,17 @@ final class CampWorld {
         try{Files.writeString(marker(w),"{\"terrain\":\""+hash+"\"}");}catch(Exception e){System.err.println("[Graves and Glory] camp terrain marker could not be written: "+e);}
     }
 
-    /** The height of the island at (dx,dz) from the origin of the camp, before the pieces: the floor, the plateau and the bank to it, the slope behind the plateau, the flanks, the southern skirt, and outside the bowl a gentle swell. */
+    /** The last row (dz) the terrain writes: the south edge of the island, or the row before the first column of the arena when that is further south (the arena owns z from -worldHalfZ on, and the rim runs up to it
+     *  so that nothing but the rim is seen from the camp; the leash box of inCamp stays the island). */
+    static int rimEnd(Spec.CampRow c){return Math.max(c.islandMaxDz(),-GravesAndGlory.R.worldHalfZ()-1-c.originZ());}
+
+    /** The height of the island at (dx,dz) from the origin of the camp, before the pieces: the floor, the plateau and the bank to it, the slope behind the plateau, the flanks, the southern rim, and outside the bowl a gentle swell. */
     static int height(Spec.CampRow c,int dx,int dz){
         double rise=c.plateauY()-c.floorY(),h=c.floorY();
         if(dz<=RIDGE_TOP_DZ)h+=rise;else if(dz<RIDGE_FOOT_DZ)h+=rise*(RIDGE_FOOT_DZ-dz)/(double)(RIDGE_FOOT_DZ-RIDGE_TOP_DZ);
         if(dz<c.minDz())h+=Math.min(18,0.7*(c.minDz()-dz));
         if(Math.abs(dx)>c.maxDx())h+=Math.min(20,0.8*(Math.abs(dx)-c.maxDx()));
-        if(dz>c.maxDz())h-=Math.min(2,(dz-c.maxDz())*0.5);
+        if(dz>RIM_FOOT_DZ)h+=Math.min(RIM_RISE,RIM_SLOPE*(dz-RIM_FOOT_DZ));
         if(!inBowl(c,dx,dz))h+=2*Math.sin(dx*.21)*Math.cos(dz*.17);
         return (int)Math.round(h);
     }
@@ -146,9 +155,11 @@ final class CampWorld {
     /** The terrain: the height of every column of the island box, the rows of campPieces laid over it (a flatten row's footprint takes its floor y, a flatten=false footprint keeps the ground, and a cell within two of a flatten row's footprint takes the
      *  highest such floor), stone under dirt under grass (stone from y 80), the air above it up to the top of what stood there, then the spruces outside the bowl.
      *  Written with Arena's build flags (2 and 16): no shape update runs, so taking away the blocks of an older camp cannot break and spill what stood against them, and the terrain holds nothing a shape update would change
-     *  (stone, dirt, grass, air, spruce logs and persistent leaves). The pieces come after, through Structures.place, which does run them. */
+     *  (stone, dirt, grass, air, spruce logs and persistent leaves). The pieces come after, through Structures.place, which does run them.
+     *  The chunks it covers are loaded first, and that time is counted in the 6 s budget: without the preload the first build generated them one at a time between the block writes and took 7573 ms. If p3-camp-budget fails, look at the preload first.
+     *  The rows go from the island's north edge to rimEnd (the south rim, see RIM_FOOT_DZ); the trees stand outside the bowl and keep their crowns out of the arena's columns. */
     static void terrain(ServerWorld w){
-        var c=Spec.CAMP[0];int width=c.islandMaxDx()-c.islandMinDx()+1,depth=c.islandMaxDz()-c.islandMinDz()+1;
+        var c=Spec.CAMP[0];int width=c.islandMaxDx()-c.islandMinDx()+1,last=rimEnd(c),depth=last-c.islandMinDz()+1;
         int[] ground=new int[width*depth];
         var rows=Spec.CAMPPIECES;var boxes=new BlockBox[rows.length];for(int i=0;i<rows.length;i++)boxes[i]=box(rows[i]);
         for(int i=0;i<width;i++)for(int k=0;k<depth;k++){
@@ -162,7 +173,7 @@ final class CampWorld {
             ground[i*depth+k]=flat!=null?flat:inside?h:apron!=null?apron:h;
         }
         long t0=System.nanoTime();
-        for(int cx=(c.originX()+c.islandMinDx()-2)>>4;cx<=(c.originX()+c.islandMaxDx()+2)>>4;cx++)for(int cz=(c.originZ()+c.islandMinDz()-2)>>4;cz<=(c.originZ()+c.islandMaxDz()+2)>>4;cz++)w.getChunk(cx,cz);
+        for(int cx=(c.originX()+c.islandMinDx()-2)>>4;cx<=(c.originX()+c.islandMaxDx()+2)>>4;cx++)for(int cz=(c.originZ()+c.islandMinDz()-2)>>4;cz<=(c.originZ()+last+2)>>4;cz++)w.getChunk(cx,cz);
         long t1=System.nanoTime();
         boolean was=Arena.building;Arena.building=true;
         try{
@@ -179,7 +190,7 @@ final class CampWorld {
             long t2=System.nanoTime();
             for(int i=0;i<width;i++)for(int k=0;k<depth;k++){
                 int dx=c.islandMinDx()+i,dz=c.islandMinDz()+k,h=ground[i*depth+k];
-                if(!inBowl(c,dx,dz)&&h>64&&h<88&&Math.floorMod(dx*734287+dz*912931,23)==0)Arena.tree(w,c.originX()+dx,h+1,c.originZ()+dz,5,8+Math.floorMod(dx+dz,4),true);
+                if(!inBowl(c,dx,dz)&&dz<=last-2&&h>64&&h<88&&Math.floorMod(dx*734287+dz*912931,23)==0)Arena.tree(w,c.originX()+dx,h+1,c.originZ()+dz,5,8+Math.floorMod(dx+dz,4),true);
             }
             log("[Graves and Glory] camp terrain detail: chunks "+millis(t0,t1)+" ms, columns "+millis(t1,t2)+" ms, trees "+millis(t2,System.nanoTime())+" ms");
         }finally{Arena.building=was;}

@@ -629,15 +629,17 @@ public final class Phase3Checks implements ClientModInitializer {
 
     /** Task 3 (suite camp): the camp base as a commander meets it. One launch, in this order: spawn (p3-camp-spawn), then on the world as built p3-camp-built, p3-camp-budget, p3-camp-stations and the war table of map 0 (p3-camp-war-table, first
      *  part), p3-camp-shapes (extra: every fence, wall, pane and bar inside the pieces is settled, every vine of the files stands), p3-camp-pages (every page the stations name opens its screen), p3-camp-pads (both pads put the squad on their team),
-     *  p3-camp-leash (the three cases of the brief), the seven photographs (p3-camp-arrival.png and so on), the war table again after map 2 was built (second part), then a world made by an older build is planted
+     *  p3-camp-leash (the three cases of the brief), the nine photographs (p3-camp-arrival.png and so on: the brief's seven and two of the south rim), the war table again after map 2 was built (second part), then a world made by an older build is planted
      *  (the old pads, the gold seal, a brick of the old tower, and entities of the older tags), the terrain marker is deleted, and CampWorld.build runs again as it does on the first load of an old world (p3-camp-old-gone),
      *  and last a build that has nothing to rebuild (p3-camp-rebuild-idempotent: both CRC32 readings and the build itself are in one server callback, so no random tick can grow a vine between the two readings). */
     static final class Camp implements Suite {
         static final Spec.CampRow C=Spec.CAMP[0];
         static final List<String> PAGES=new ArrayList<>();
         static{for(var s:Spec.CAMPSTATIONS)if(!PAGES.contains(s.page()))PAGES.add(s.page());}
-        static final String[] VIEW_NAMES={"camp-arrival","camp-ridge","camp-aerial","camp-war-table","camp-gates-inside","camp-gates-outside","camp-archive"};
-        static final double[][] VIEWS={{0.5,67.6,-292.0,0.5,67,-330},{0.5,82,-361,0.5,64,-300},{0.5,110,-250,0.5,64,-320},{0.5,84,-361,0.5,78,-371},{0.5,67,-298,0.5,66,-276},{0.5,70,-271,0.5,67,-290},{30.5,68,-304,46,66,-304}};
+        static final String[] VIEW_NAMES={"camp-arrival","camp-ridge","camp-aerial","camp-war-table","camp-gates-inside","camp-gates-outside","camp-archive","camp-south-pads","camp-south-oblique"};
+        /** The first seven are the brief's, except camp-gates-outside, whose camera went from y 70 to y 71.5: the southern rim now stands up to y 69 at that spot (z -271), where the ground used to be 62, so the camera is one and a half blocks above the slope.
+         *  The last two (fix round 1) look at the south rim as a commander meets it: from the west pad area toward the south-west, and from the east of the bowl toward the south-west across the gatehouse. */
+        static final double[][] VIEWS={{0.5,67.6,-292.0,0.5,67,-330},{0.5,82,-361,0.5,64,-300},{0.5,110,-250,0.5,64,-320},{0.5,84,-361,0.5,78,-371},{0.5,67,-298,0.5,66,-276},{0.5,71.5,-271,0.5,67,-290},{30.5,68,-304,46,66,-304},{-9.5,66.6,-290.0,-36,76,-268},{30.5,66.6,-300.0,-30,76,-268}};
         int stage,waited,page,pad,leashCase,shotIndex;
         volatile boolean done;
         final StringBuilder pagesBad=new StringBuilder(),padsWhy=new StringBuilder(),leashWhy=new StringBuilder();
@@ -682,11 +684,11 @@ public final class Phase3Checks implements ClientModInitializer {
                     if(leashCase>=3){report("p3-camp-leash",leashOk,leashWhy.toString());stage=7;shotIndex=0;break;}
                     int k=leashCase;double[] at=k==0?new double[]{0.5,66,-250}:k==1?new double[]{-95.5,90,-310}:new double[]{0.5,60,-300};
                     if(waited==0){server(c,b->{b.campaign.leash=true;b.relocate(b.server.getPlayerManager().getPlayer(c.player.getUuid()),at[0],at[1],at[2],0,0);});waited=1;}
-                    else if(++waited==46){done=false;server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var s=CampWorld.spawn(b.campaign.profile(p.getUuid()));
+                    else if(++waited==41){done=false;server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var s=CampWorld.spawn(b.campaign.profile(p.getUuid()));
                         boolean atSpawn=Math.abs(p.getX()-s.x())<0.5&&Math.abs(p.getZ()-s.z())<0.5&&Math.abs(p.getY()-s.y())<1.5;boolean atPlace=Math.hypot(p.getX()-at[0],p.getZ()-at[2])<1.5;
                         boolean ok=k==1?atPlace&&!atSpawn:atSpawn;if(!ok)leashOk=false;
                         leashWhy.append("case ").append(k).append(" from (").append(at[0]).append(",").append(at[1]).append(",").append(at[2]).append("): now at (").append(String.format("%.1f,%.1f,%.1f",p.getX(),p.getY(),p.getZ())).append(k==1?") expected to stay":") expected back at spawn").append(ok?" ok; ":" WRONG; ");done=true;});}
-                    else if(waited>46&&done){leashCase++;waited=0;}
+                    else if(waited>41&&done){leashCase++;waited=0;}
                 }
                 case 7->{
                     if(shotIndex>=VIEWS.length){stage=8;waited=0;done=false;break;}
@@ -722,10 +724,14 @@ public final class Phase3Checks implements ClientModInitializer {
             }
             report("p3-camp-built",bad.length()==0,bad.length()==0?"all "+Spec.CAMPPIECES.length+" rows placed: "+info:bad.toString());
         }
-        /** p3-camp-budget: the terrain at most 6000 ms and the pieces at most 1500 ms, as the first build of the camp logged them. */
+        /** p3-camp-budget: the terrain at most 6000 ms and the pieces at most 1500 ms, as the first build of the camp logged them. It passes only on a measurement: a world that already holds the camp terrain
+         *  (a root that was run before) logs "camp terrain skipped", there is nothing to time, and the check fails and says so; run the suite on a fresh root.
+         *  If it flickers on a loaded machine, look at the chunk preload of CampWorld.terrain first (it is what took the first build from 7573 ms to about 1.5 s), not at the limit. */
         void budget(){
-            long terrain=millis("terrain"),pieces=millis("pieces");if(terrain<0&&skipped("terrain"))terrain=0;
-            report("p3-camp-budget",terrain>=0&&terrain<=6000&&pieces>=0&&pieces<=1500,"terrain "+terrain+" ms (limit 6000"+(terrain==0&&skipped("terrain")?", the terrain was skipped: the world had it":"")+"), pieces "+pieces+" ms (limit 1500)");
+            long terrain=millis("terrain"),pieces=millis("pieces");
+            String time="pieces "+pieces+" ms (limit 1500)";
+            if(terrain<0){report("p3-camp-budget",false,"not measured: "+(skipped("terrain")?"the world already had the camp terrain; run on a fresh root":"no camp terrain line was logged")+"; "+time);return;}
+            report("p3-camp-budget",terrain<=6000&&pieces>=0&&pieces<=1500,"terrain "+terrain+" ms (limit 6000), "+time);
         }
         /** p3-camp-stations: per campStations row the villager (within 0.5, tagged camp:page, NoAI, feet and head clear, a floor under him) and the label at y+3.7, and CampWorld.station at the row's block answers the page. */
         void stations(GravesAndGlory.Battle b){
@@ -804,7 +810,9 @@ public final class Phase3Checks implements ClientModInitializer {
         /** p3-camp-old-gone: what an older build left (entities of the three older tags, the concrete pads, the gold seal, a brick of the old tower) is planted, the terrain marker is deleted, and CampWorld.build runs as on the first load of such a world. */
         void oldGone(GravesAndGlory.Battle b){
             var w=b.world;int planted=0;
-            for(String tag:new String[]{"gravesandglory-camp-v3","gravesandglory-lobby","bannerbound-lobby"}){var e=EntityType.ARMOR_STAND.create(w);e.refreshPositionAndAngles(0.5+planted*3,65,-300.5,0,0);e.addCommandTag(tag);w.spawnEntity(e);planted++;}
+            // The tag goes on after spawnEntity: ENTITY_LOAD (GravesAndGlory) has run by then and discards nothing, so only people() of the build below can take these three away.
+            for(String tag:new String[]{"gravesandglory-camp-v3","gravesandglory-lobby","bannerbound-lobby"}){var e=EntityType.ARMOR_STAND.create(w);e.refreshPositionAndAngles(0.5+planted*3,65,-300.5,0,0);w.spawnEntity(e);e.addCommandTag(tag);planted++;}
+            int standing=0;for(var e:w.iterateEntities()){var t=e.getCommandTags();if(t.contains("gravesandglory-camp-v3")||t.contains("gravesandglory-lobby")||t.contains("bannerbound-lobby"))standing++;}
             int oz=C.originZ();
             for(int x:new int[]{-11,-10,-9,-8,8,9,10,11})for(int z=oz-14;z<=oz-11;z++)w.setBlockState(new BlockPos(x,64,z),Blocks.CYAN_CONCRETE.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
             w.setBlockState(new BlockPos(5,64,oz),Blocks.GOLD_BLOCK.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
@@ -816,7 +824,7 @@ public final class Phase3Checks implements ClientModInitializer {
             boolean gold=w.getBlockState(new BlockPos(5,64,oz)).isOf(Blocks.GOLD_BLOCK),brick=!w.getBlockState(new BlockPos(-39,70,-339)).isAir();
             int villagers=0;for(var e:w.iterateEntities())if(e.getCommandTags().contains(CampWorld.TAG)&&e instanceof net.minecraft.entity.passive.VillagerEntity)villagers++;
             int want=0;for(var s:Spec.CAMPSTATIONS)if(!s.npc().equals("-"))want++;
-            report("p3-camp-old-gone",deleted&&rebuilt&&stale==0&&concrete==0&&!gold&&!brick&&villagers==want,"planted "+planted+" old entities, 32 concrete cells, a gold block and a brick (marker deleted "+deleted+", terrain rebuilt "+rebuilt+"); afterwards entities of the older tags "+stale+", concrete cells "+concrete+", gold block "+gold+", brick of the old tower "+brick+", camp villagers "+villagers+" (want "+want+")");
+            report("p3-camp-old-gone",standing==planted&&deleted&&rebuilt&&stale==0&&concrete==0&&!gold&&!brick&&villagers==want,"planted "+planted+" old entities, "+standing+" of them standing before the build, 32 concrete cells, a gold block and a brick (marker deleted "+deleted+", terrain rebuilt "+rebuilt+"); afterwards entities of the older tags "+stale+", concrete cells "+concrete+", gold block "+gold+", brick of the old tower "+brick+", camp villagers "+villagers+" (want "+want+")");
         }
         /** p3-camp-rebuild-idempotent: a second build logs camp terrain skipped; the CRC32 of the bowl box and the count of TAG entities are the same before and after. Both readings and the build are one callback. */
         void idempotent(GravesAndGlory.Battle b){

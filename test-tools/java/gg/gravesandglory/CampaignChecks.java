@@ -48,7 +48,7 @@ public final class CampaignChecks implements ClientModInitializer {
                 if(tick==35){report("startup-suite",!failed,"Startup-only fixture complete");c.scheduleStop();}
                 return;
             }
-            if(tick==20){c.setScreen(new GravesAndGloryClient.LobbyScreen());server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());backup=Campaign.JSON.fromJson(Campaign.JSON.toJson(b.campaign.profile(p.getUuid())),Campaign.Profile.class);report("lobby-ready",p.getZ()<-275&&b.world.getBlockState(new BlockPos(0,64,CampaignMaps.LOBBY_Z)).isSolidBlock(b.world,new BlockPos(0,64,CampaignMaps.LOBBY_Z)),"Player stands in built war council");});}
+            if(tick==20){c.setScreen(new GravesAndGloryClient.LobbyScreen());server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());backup=Campaign.JSON.fromJson(Campaign.JSON.toJson(b.campaign.profile(p.getUuid())),Campaign.Profile.class);report("lobby-ready",CampWorld.inCamp(p.getX(),p.getY(),p.getZ())&&b.world.getBlockState(new BlockPos(0,64,CampaignMaps.LOBBY_Z)).isSolidBlock(b.world,new BlockPos(0,64,CampaignMaps.LOBBY_Z)),"Player stands in built war council");});}
             if(tick==25&&devRun()&&Files.exists(restartFile(c))){shot(c,"restart-lobby");server(c,b->{try{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var pr=b.campaign.profile(p.getUuid());var saved=Campaign.JSON.fromJson(Files.readString(restartFile(c)),Campaign.Profile.class);
                 report("restart-collection",Campaign.JSON.toJsonTree(pr).equals(Campaign.JSON.toJsonTree(saved)),"Entire collection, loadout and commander profile after reopen matches the saved profile");
                 if(Boolean.getBoolean("gravesandglory.migrationFixture")){

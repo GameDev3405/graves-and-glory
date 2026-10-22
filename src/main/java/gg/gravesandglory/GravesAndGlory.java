@@ -237,6 +237,7 @@ public final class GravesAndGlory implements ModInitializer {
             world.getGameRules().get(GameRules.DO_FIRE_TICK).set(false,server);
             world.getGameRules().get(GameRules.DO_MOB_GRIEFING).set(false,server);
             world.getGameRules().get(GameRules.DO_MOB_LOOT).set(false,server);
+            world.getGameRules().get(GameRules.DO_VINES_SPREAD).set(false,server); // the camp's stonework holds 53 vines; a random tick would grow them into the cells the pieces leave void
             world.getGameRules().get(GameRules.KEEP_INVENTORY).set(true,server);
             world.getGameRules().get(GameRules.ANNOUNCE_ADVANCEMENTS).set(false,server); // vanilla advancement lines do not belong in battle chat
             world.setTimeOfDay(3000);
