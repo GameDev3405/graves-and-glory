@@ -52,6 +52,7 @@ public final class Phase3Checks implements ClientModInitializer {
         SUITES.put("routes",Routes::new);
         SUITES.put("walk",()->new Routes(true));
         SUITES.put("arena",Rebuild::new);
+        SUITES.put("camp",Camp::new);
         SUITES.put("walkthrough",Walkthrough::new);
     }
     static final ArrayDeque<String> queue=new ArrayDeque<>();
@@ -623,6 +624,206 @@ public final class Phase3Checks implements ClientModInitializer {
             if(!routes.done)return;
             for(int n:MAPS){int got=routes.crossed.getOrDefault(n,0);report("p3-routes-map"+n,got==3,got+" of 3 crossings with 20 of 20 knights across");}
             finished=true;
+        }
+    }
+
+    /** Task 3 (suite camp): the camp base as a commander meets it. One launch, in this order: spawn (p3-camp-spawn), then on the world as built p3-camp-built, p3-camp-budget, p3-camp-stations and the war table of map 0 (p3-camp-war-table, first
+     *  part), p3-camp-shapes (extra: every fence, wall, pane and bar inside the pieces is settled, every vine of the files stands), p3-camp-pages (every page the stations name opens its screen), p3-camp-pads (both pads put the squad on their team),
+     *  p3-camp-leash (the three cases of the brief), the seven photographs (p3-camp-arrival.png and so on), the war table again after map 2 was built (second part), then a world made by an older build is planted
+     *  (the old pads, the gold seal, a brick of the old tower, and entities of the older tags), the terrain marker is deleted, and CampWorld.build runs again as it does on the first load of an old world (p3-camp-old-gone),
+     *  and last a build that has nothing to rebuild (p3-camp-rebuild-idempotent: both CRC32 readings and the build itself are in one server callback, so no random tick can grow a vine between the two readings). */
+    static final class Camp implements Suite {
+        static final Spec.CampRow C=Spec.CAMP[0];
+        static final List<String> PAGES=new ArrayList<>();
+        static{for(var s:Spec.CAMPSTATIONS)if(!PAGES.contains(s.page()))PAGES.add(s.page());}
+        static final String[] VIEW_NAMES={"camp-arrival","camp-ridge","camp-aerial","camp-war-table","camp-gates-inside","camp-gates-outside","camp-archive"};
+        static final double[][] VIEWS={{0.5,67.6,-292.0,0.5,67,-330},{0.5,82,-361,0.5,64,-300},{0.5,110,-250,0.5,64,-320},{0.5,84,-361,0.5,78,-371},{0.5,67,-298,0.5,66,-276},{0.5,70,-271,0.5,67,-290},{30.5,68,-304,46,66,-304}};
+        int stage,waited,page,pad,leashCase,shotIndex;
+        volatile boolean done;
+        final StringBuilder pagesBad=new StringBuilder(),padsWhy=new StringBuilder(),leashWhy=new StringBuilder();
+        boolean padsOk=true,leashOk=true;
+        @Override public int limit(){return 9000;}
+        @Override public void cleanup(MinecraftClient c){server(c,b->b.campaign.leash=true);}
+        static Spec.PiecesRow piece(String id){for(var p:Spec.PIECES)if(p.id().equals(id))return p;throw new IllegalStateException("no pieces row "+id);}
+        static BlockBox box(Spec.CampPiecesRow row){var p=piece(row.template());return Structures.footprint(new Vec3i(p.width(),p.height(),p.depth()),C.originX()+row.dx(),row.y(),C.originZ()+row.dz(),row.rotation());}
+        static boolean same(BlockBox a,BlockBox b){return a.getMinX()==b.getMinX()&&a.getMaxX()==b.getMaxX()&&a.getMinY()==b.getMinY()&&a.getMaxY()==b.getMaxY()&&a.getMinZ()==b.getMinZ()&&a.getMaxZ()==b.getMaxZ();}
+        static Vec3d pos(Spec.CampStationsRow s){return new Vec3d(C.originX()+s.x(),s.y(),C.originZ()+s.z());}
+        static long millis(String key){var m=java.util.regex.Pattern.compile("camp "+key+" (\\d+) ms");for(var l:new ArrayList<>(CampWorld.LINES)){var f=m.matcher(l);if(f.find())return Long.parseLong(f.group(1));}return -1;}
+        static boolean skipped(String key){for(var l:new ArrayList<>(CampWorld.LINES))if(l.contains("camp "+key+" skipped"))return true;return false;}
+
+        @Override public void step(MinecraftClient c,int tick){
+            if(tick<20)return;
+            switch(stage){
+                case 0->{done=false;UUID me=c.player.getUuid();server(c,b->{b.campaign.leash=true;spawn(b,me);done=true;});stage=1;waited=0;}
+                case 1->{if(done&&++waited>=20){done=false;server(c,b->{built(b);budget();stations(b);tableMap0(b);shapes(b);done=true;});stage=2;}}
+                case 2->{if(done){stage=3;page=0;waited=0;}}
+                case 3->{
+                    if(page>=PAGES.size()){report("p3-camp-pages",pagesBad.length()==0,pagesBad.length()==0?"every page opened its screen: "+String.join(", ",PAGES):pagesBad.toString());c.setScreen(null);stage=4;pad=0;waited=0;done=false;break;}
+                    String want=PAGES.get(page);
+                    if(waited==0){c.setScreen(null);server(c,b->GravesAndGlory.openCamp(b.server.getPlayerManager().getPlayer(c.player.getUuid()),want));waited=1;}
+                    else if(++waited>14){
+                        var s=c.currentScreen;boolean ok=want.equals("army")?s instanceof GravesAndGloryClient.LobbyScreen:s instanceof CampScreen cs&&cs.page.equals(want);
+                        if(!ok)pagesBad.append("openCamp(\"").append(want).append("\") opened ").append(s==null?"no screen":s.getClass().getSimpleName()+(s instanceof CampScreen cs2?" on page "+cs2.page:"")).append("; ");
+                        page++;waited=0;
+                    }
+                }
+                case 4->{
+                    if(pad>=2){
+                        report("p3-camp-pads",padsOk,padsWhy.toString());server(c,b->b.campaign.toLobby(b.server.getPlayerManager().getPlayer(c.player.getUuid())));stage=5;waited=0;break;}
+                    int team=pad;
+                    if(waited==0){server(c,b->{var v=CampaignMaps.padCenter(team);b.relocate(b.server.getPlayerManager().getPlayer(c.player.getUuid()),v.x,v.y,v.z,0,0);});waited=1;}
+                    else if(++waited==42){done=false;server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var on=b.campaign.onPad.get(p.getUuid());var sq=b.squads.get(p.getUuid());
+                        boolean ok=on!=null&&on==team&&sq!=null&&sq.team==team;if(!ok)padsOk=false;
+                        padsWhy.append("pad ").append(team).append(" at ").append(CampaignMaps.padCenter(team)).append(": on pad ").append(on).append(", squad team ").append(sq==null?"none":sq.team).append(ok?" ok; ":" WRONG; ");done=true;});}
+                    else if(waited>42&&done){pad++;waited=0;}
+                }
+                case 5->{if(++waited>=20){stage=6;leashCase=0;waited=0;}} // toLobby of the pads stage settles: the squad steps off, the countdown is gone
+                case 6->{
+                    if(leashCase>=3){report("p3-camp-leash",leashOk,leashWhy.toString());stage=7;shotIndex=0;break;}
+                    int k=leashCase;double[] at=k==0?new double[]{0.5,66,-250}:k==1?new double[]{-95.5,90,-310}:new double[]{0.5,60,-300};
+                    if(waited==0){server(c,b->{b.campaign.leash=true;b.relocate(b.server.getPlayerManager().getPlayer(c.player.getUuid()),at[0],at[1],at[2],0,0);});waited=1;}
+                    else if(++waited==46){done=false;server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var s=CampWorld.spawn(b.campaign.profile(p.getUuid()));
+                        boolean atSpawn=Math.abs(p.getX()-s.x())<0.5&&Math.abs(p.getZ()-s.z())<0.5&&Math.abs(p.getY()-s.y())<1.5;boolean atPlace=Math.hypot(p.getX()-at[0],p.getZ()-at[2])<1.5;
+                        boolean ok=k==1?atPlace&&!atSpawn:atSpawn;if(!ok)leashOk=false;
+                        leashWhy.append("case ").append(k).append(" from (").append(at[0]).append(",").append(at[1]).append(",").append(at[2]).append("): now at (").append(String.format("%.1f,%.1f,%.1f",p.getX(),p.getY(),p.getZ())).append(k==1?") expected to stay":") expected back at spawn").append(ok?" ok; ":" WRONG; ");done=true;});}
+                    else if(waited>46&&done){leashCase++;waited=0;}
+                }
+                case 7->{
+                    if(shotIndex>=VIEWS.length){stage=8;waited=0;done=false;break;}
+                    var v=VIEWS[shotIndex];if(view(c,VIEW_NAMES[shotIndex],v[0],v[1],v[2],v[3],v[4],v[5]))shotIndex++;
+                }
+                case 8->{ // map 2 (Frostmarch): built over, the war table follows
+                    if(waited==0){server(c,b->{b.campaign.leash=true;if(b.campaign.map!=2)b.campaign.switchMap(2);done=true;});waited=1;}
+                    else{var b=GravesAndGlory.battle;if(done&&b!=null&&b.ready&&b.campaign.map==2&&CampaignMaps.selected==2){done=false;server(c,x->{tableMap2(x);done=true;});stage=9;waited=0;}else if(++waited>3000){report("p3-camp-war-table",false,"map 2 was not ready after "+waited+" ticks");stage=9;done=true;}}
+                }
+                case 9->{if(done){done=false;server(c,b->{oldGone(b);done=true;});stage=10;}}
+                case 10->{if(done){done=false;server(c,b->{idempotent(b);done=true;});stage=11;}}
+                case 11->{if(done){finish(c,"camp");stage=12;}}
+                default->{}
+            }
+        }
+
+        /** p3-camp-spawn: after toLobby the player is within 0.1 of the camp spawn, on a block with a collision shape, with air at his feet and head. */
+        void spawn(GravesAndGlory.Battle b,UUID me){
+            var p=b.server.getPlayerManager().getPlayer(me);b.campaign.toLobby(p);
+            var feet=p.getBlockPos();var below=feet.down();var w=b.world;
+            boolean there=Math.abs(p.getX()-0.5)<0.1&&Math.abs(p.getY()-65)<0.1&&Math.abs(p.getZ()+291.5)<0.1&&Math.abs(p.getYaw()-180)<0.5;
+            boolean floor=!w.getBlockState(below).getCollisionShape(w,below).isEmpty(),air=w.getBlockState(feet).isAir()&&w.getBlockState(feet.up()).isAir();
+            report("p3-camp-spawn",there&&floor&&air,"at ("+p.getX()+","+p.getY()+","+p.getZ()+") yaw "+p.getYaw()+" (want 0.5,65,-291.5 yaw 180); block below "+name(w.getBlockState(below))+" has a collision shape "+floor+"; feet "+name(w.getBlockState(feet))+" and head "+name(w.getBlockState(feet.up()))+" are air "+air);
+        }
+        /** p3-camp-built: one Structures.LOG entry per campPieces row, the file there, blocks above 0. */
+        void built(GravesAndGlory.Battle b){
+            var bad=new StringBuilder();var info=new StringBuilder();
+            for(var row:Spec.CAMPPIECES){
+                var want=box(row);Structures.Placed hit=null;
+                for(var p:Structures.LOG)if(p.id().equals(row.template())&&same(p.box(),want))hit=p;
+                if(hit==null)bad.append(row.id()).append(" has no log entry for ").append(row.template()).append(" at ").append(want.getMinX()).append(",").append(want.getMinZ()).append("; ");
+                else{if(hit.missing())bad.append(row.id()).append(" is missing its file; ");else if(hit.blocks()<=0)bad.append(row.id()).append(" placed no blocks; ");info.append(row.id()).append(" ").append(hit.blocks()).append(" blocks ").append(hit.nanos()/1000000).append(" ms, ");}
+            }
+            report("p3-camp-built",bad.length()==0,bad.length()==0?"all "+Spec.CAMPPIECES.length+" rows placed: "+info:bad.toString());
+        }
+        /** p3-camp-budget: the terrain at most 6000 ms and the pieces at most 1500 ms, as the first build of the camp logged them. */
+        void budget(){
+            long terrain=millis("terrain"),pieces=millis("pieces");if(terrain<0&&skipped("terrain"))terrain=0;
+            report("p3-camp-budget",terrain>=0&&terrain<=6000&&pieces>=0&&pieces<=1500,"terrain "+terrain+" ms (limit 6000"+(terrain==0&&skipped("terrain")?", the terrain was skipped: the world had it":"")+"), pieces "+pieces+" ms (limit 1500)");
+        }
+        /** p3-camp-stations: per campStations row the villager (within 0.5, tagged camp:page, NoAI, feet and head clear, a floor under him) and the label at y+3.7, and CampWorld.station at the row's block answers the page. */
+        void stations(GravesAndGlory.Battle b){
+            var w=b.world;var bad=new StringBuilder();int npcs=0,labels=0;
+            for(var s:Spec.CAMPSTATIONS){
+                Vec3d at=pos(s);var cell=BlockPos.ofFloored(at);
+                if(!s.npc().equals("-")){
+                    var near=w.getEntitiesByClass(net.minecraft.entity.passive.VillagerEntity.class,new Box(at,at).expand(0.5),v->v.getPos().distanceTo(at)<=0.5);
+                    if(near.size()!=1)bad.append(s.id()).append(": ").append(near.size()).append(" villagers within 0.5 of ").append(at).append("; ");
+                    else{var v=near.get(0);npcs++;
+                        if(!v.getCommandTags().contains("camp:"+s.page())||!v.getCommandTags().contains(CampWorld.TAG))bad.append(s.id()).append(": tags ").append(v.getCommandTags()).append("; ");
+                        if(!v.isAiDisabled())bad.append(s.id()).append(": AI is on; ");
+                        boolean floor=!w.getBlockState(cell.down()).getCollisionShape(w,cell.down()).isEmpty(),clear=w.getBlockState(cell).getCollisionShape(w,cell).isEmpty()&&w.getBlockState(cell.up()).getCollisionShape(w,cell.up()).isEmpty();
+                        if(!floor||!clear)bad.append(s.id()).append(": not standing on a floor with feet and head clear at ").append(xyz(cell)).append("; ");}
+                }
+                Vec3d lab=at.add(0,3.7,0);
+                var shown=w.getEntitiesByClass(net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity.class,new Box(lab,lab).expand(0.5),d->d.getPos().distanceTo(lab)<=0.5);
+                if(shown.size()!=1)bad.append(s.id()).append(": ").append(shown.size()).append(" labels within 0.5 of ").append(lab).append("; ");
+                else{labels++;if(!shown.get(0).getCommandTags().contains("camp:"+s.page()))bad.append(s.id()).append(": label tags ").append(shown.get(0).getCommandTags()).append("; ");}
+                String got=CampWorld.station(cell);if(!s.page().equals(got))bad.append(s.id()).append(": CampWorld.station").append(xyz(cell)).append(" is ").append(got).append(" not ").append(s.page()).append("; ");
+            }
+            report("p3-camp-stations",bad.length()==0,bad.length()==0?npcs+" villagers and "+labels+" labels where the "+Spec.CAMPSTATIONS.length+" rows put them, and station() answers each page":bad.toString());
+        }
+        /** The war table of the map that stands: every cell holds tableCell(i,j). Returns the description of what is wrong, empty when right. */
+        static String tableState(ServerWorld w,boolean[] rows,int[] lit){
+            var bad=new StringBuilder();int wrong=0;
+            for(int i=0;i<15;i++)for(int j=0;j<9;j++){
+                var pos=new BlockPos(C.originX()+C.tableDx()+i,C.tableY(),C.originZ()+C.tableDz()+j);var got=w.getBlockState(pos);var want=CampWorld.tableCell(i,j);
+                if(got!=want){wrong++;if(wrong<=4)bad.append("cell ").append(i).append(",").append(j).append(" holds ").append(got).append(" not ").append(want).append("; ");}
+                if(got.isOf(Blocks.CYAN_CARPET)||got.isOf(Blocks.LIGHT_GRAY_CARPET))rows[j]=true;
+                if(got.isOf(Blocks.CANDLE)&&got.get(net.minecraft.block.CandleBlock.LIT))lit[0]++;
+            }
+            if(wrong>4)bad.append(wrong).append(" cells in all differ; ");
+            return bad.toString();
+        }
+        /** p3-camp-war-table, first part: map 0 stands (built at the start of the world) and every cell holds tableCell; cell (7,4) is the lit candle of point B and each row of the table has a river or a bridge. */
+        void tableMap0(GravesAndGlory.Battle b){
+            var rows=new boolean[9];var lit=new int[1];String bad=tableState(b.world,rows,lit);
+            var seven=b.world.getBlockState(new BlockPos(C.originX()+C.tableDx()+7,C.tableY(),C.originZ()+C.tableDz()+4));
+            boolean centre=seven.isOf(Blocks.CANDLE)&&seven.get(net.minecraft.block.CandleBlock.LIT);int rowsWith=0;for(int j=0;j<9;j++)if(j!=4&&rows[j])rowsWith++;
+            part1=bad.isEmpty()&&centre&&rowsWith==8&&CampaignMaps.selected==0&&lit[0]==3;
+            part1Why="map "+CampaignMaps.selected+": "+(bad.isEmpty()?"every cell holds tableCell":bad)+", cell (7,4) is "+seven+", rows other than row 4 (the candle of point B stands on the river there) with river or bridge "+rowsWith+" of 8, lit candles "+lit[0]+" (want 3: points A, B, C)";
+        }
+        boolean part1;String part1Why="";
+        /** p3-camp-war-table, second part: map 2 (Frostmarch) was built over the camp; every cell holds tableCell and none is green. */
+        void tableMap2(GravesAndGlory.Battle b){
+            var rows=new boolean[9];var lit=new int[1];String bad=tableState(b.world,rows,lit);int green=0;
+            for(int i=0;i<15;i++)for(int j=0;j<9;j++)if(b.world.getBlockState(new BlockPos(C.originX()+C.tableDx()+i,C.tableY(),C.originZ()+C.tableDz()+j)).isOf(Blocks.GREEN_CARPET))green++;
+            report("p3-camp-war-table",part1&&bad.isEmpty()&&green==0&&CampaignMaps.selected==2,part1Why+" | map "+CampaignMaps.selected+": "+(bad.isEmpty()?"every cell holds tableCell":bad)+", green carpets "+green+" (want 0), lit candles "+lit[0]);
+        }
+        /** p3-camp-shapes (extra): inside every piece box each fence, wall, pane and bar equals what the shape update of its neighbours gives, and each vine of the structure file stands. */
+        void shapes(GravesAndGlory.Battle b){
+            var w=b.world;int connecting=0,unsettled=0,vinesFile=0,vinesLost=0;var first=new StringBuilder();
+            for(var row:Spec.CAMPPIECES){
+                var box=box(row);var pos=new BlockPos.Mutable();
+                for(int x=box.getMinX();x<=box.getMaxX();x++)for(int y=box.getMinY();y<=box.getMaxY();y++)for(int z=box.getMinZ();z<=box.getMaxZ();z++){
+                    pos.set(x,y,z);var s=w.getBlockState(pos);var blk=s.getBlock();
+                    if(blk instanceof net.minecraft.block.HorizontalConnectingBlock||blk instanceof net.minecraft.block.WallBlock){connecting++;var n=Block.postProcessState(s,w,pos);if(n!=s&&!n.isAir()){unsettled++;if(first.length()<300)first.append(row.id()).append(" ").append(xyz(pos)).append(" ").append(s).append(" settles to ").append(n).append("; ");}}
+                }
+                var nbt=Structures.read(b.server,row.template());if(nbt.isEmpty()){vinesLost++;continue;}
+                var palette=nbt.get().getList("palette",NbtElement.COMPOUND_TYPE);var size=new Vec3i(piece(row.template()).width(),piece(row.template()).height(),piece(row.template()).depth());
+                for(var e:nbt.get().getList("blocks",NbtElement.COMPOUND_TYPE)){var cell=(NbtCompound)e;if(!palette.getCompound(cell.getInt("state")).getString("Name").equals("minecraft:vine"))continue;
+                    var at=cell.getList("pos",NbtElement.INT_TYPE);var world=Structures.toWorld(size,C.originX()+row.dx(),row.y(),C.originZ()+row.dz(),row.rotation(),at.getInt(0),at.getInt(1),at.getInt(2));
+                    vinesFile++;if(!w.getBlockState(world).isOf(Blocks.VINE)){vinesLost++;if(first.length()<300)first.append("vine of ").append(row.id()).append(" gone at ").append(xyz(world)).append("; ");}}
+            }
+            report("p3-camp-shapes",unsettled==0&&vinesLost==0&&connecting>0,connecting+" fence, wall, pane and bar blocks in the pieces, "+unsettled+" not settled; "+vinesFile+" vines in the files, "+vinesLost+" missing in the world"+(first.length()==0?"":": "+first));
+        }
+        static int tagged(ServerWorld w){int n=0;for(var e:w.iterateEntities())if(e.getCommandTags().contains(CampWorld.TAG))n++;return n;}
+        /** CRC32 of the block states in the bowl box, y 62 to 90. */
+        static long crc(ServerWorld w){
+            var crc=new java.util.zip.CRC32();var pos=new BlockPos.Mutable();byte[] four=new byte[4];
+            for(int x=C.originX()+C.minDx();x<=C.originX()+C.maxDx();x++)for(int z=C.originZ()+C.minDz();z<=C.originZ()+C.maxDz();z++)for(int y=62;y<=90;y++){
+                int id=Block.getRawIdFromState(w.getBlockState(pos.set(x,y,z)));four[0]=(byte)id;four[1]=(byte)(id>>8);four[2]=(byte)(id>>16);four[3]=(byte)(id>>24);crc.update(four);}
+            return crc.getValue();
+        }
+        /** p3-camp-old-gone: what an older build left (entities of the three older tags, the concrete pads, the gold seal, a brick of the old tower) is planted, the terrain marker is deleted, and CampWorld.build runs as on the first load of such a world. */
+        void oldGone(GravesAndGlory.Battle b){
+            var w=b.world;int planted=0;
+            for(String tag:new String[]{"gravesandglory-camp-v3","gravesandglory-lobby","bannerbound-lobby"}){var e=EntityType.ARMOR_STAND.create(w);e.refreshPositionAndAngles(0.5+planted*3,65,-300.5,0,0);e.addCommandTag(tag);w.spawnEntity(e);planted++;}
+            int oz=C.originZ();
+            for(int x:new int[]{-11,-10,-9,-8,8,9,10,11})for(int z=oz-14;z<=oz-11;z++)w.setBlockState(new BlockPos(x,64,z),Blocks.CYAN_CONCRETE.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
+            w.setBlockState(new BlockPos(5,64,oz),Blocks.GOLD_BLOCK.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
+            w.setBlockState(new BlockPos(-39,70,-339),Blocks.STONE_BRICKS.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
+            boolean deleted=false;try{deleted=Files.deleteIfExists(b.server.getSavePath(WorldSavePath.ROOT).resolve(CampWorld.MARKER_FILE));}catch(Exception e){report("p3-camp-old-gone",false,"cannot delete the terrain marker: "+e);return;}
+            int mark=CampWorld.LINES.size();CampWorld.build(w);boolean rebuilt=false;for(int i=mark;i<CampWorld.LINES.size();i++)if(CampWorld.LINES.get(i).contains("camp terrain ")&&!CampWorld.LINES.get(i).contains("skipped"))rebuilt=true;
+            int stale=0;for(var e:w.iterateEntities()){var t=e.getCommandTags();if(t.contains("gravesandglory-camp-v3")||t.contains("gravesandglory-lobby")||t.contains("bannerbound-lobby"))stale++;}
+            int concrete=0;for(int x:new int[]{-11,-10,-9,-8,8,9,10,11})for(int z=oz-14;z<=oz-11;z++)if(name(w.getBlockState(new BlockPos(x,64,z))).endsWith("concrete"))concrete++;
+            boolean gold=w.getBlockState(new BlockPos(5,64,oz)).isOf(Blocks.GOLD_BLOCK),brick=!w.getBlockState(new BlockPos(-39,70,-339)).isAir();
+            int villagers=0;for(var e:w.iterateEntities())if(e.getCommandTags().contains(CampWorld.TAG)&&e instanceof net.minecraft.entity.passive.VillagerEntity)villagers++;
+            int want=0;for(var s:Spec.CAMPSTATIONS)if(!s.npc().equals("-"))want++;
+            report("p3-camp-old-gone",deleted&&rebuilt&&stale==0&&concrete==0&&!gold&&!brick&&villagers==want,"planted "+planted+" old entities, 32 concrete cells, a gold block and a brick (marker deleted "+deleted+", terrain rebuilt "+rebuilt+"); afterwards entities of the older tags "+stale+", concrete cells "+concrete+", gold block "+gold+", brick of the old tower "+brick+", camp villagers "+villagers+" (want "+want+")");
+        }
+        /** p3-camp-rebuild-idempotent: a second build logs camp terrain skipped; the CRC32 of the bowl box and the count of TAG entities are the same before and after. Both readings and the build are one callback. */
+        void idempotent(GravesAndGlory.Battle b){
+            var w=b.world;int mark=CampWorld.LINES.size();
+            long before=crc(w);int n0=tagged(w);CampWorld.build(w);long after=crc(w);int n1=tagged(w);
+            boolean skip=false;for(int i=mark;i<CampWorld.LINES.size();i++)if(CampWorld.LINES.get(i).contains("camp terrain skipped"))skip=true;
+            report("p3-camp-rebuild-idempotent",skip&&before==after&&n0==n1&&n0>0,"second build logged terrain skipped "+skip+"; CRC32 of the bowl box (y 62..90) "+Long.toHexString(before)+" then "+Long.toHexString(after)+"; entities tagged "+CampWorld.TAG+" "+n0+" then "+n1+"; both readings and the build in one server callback");
         }
     }
 
