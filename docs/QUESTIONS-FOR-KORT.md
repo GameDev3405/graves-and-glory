@@ -365,4 +365,6 @@ Controller rulings, recorded rather than asked:
 2. Rivergate: bridge brawls on a great river, pastoral valley with a mill. Ironhold: a real siege, walled fortress on one side, intact looming keep. Frostmarch: ambush pass, narrow centre and open flanks, signal tower beacon plus cave refuge. Hollowwood: eerie haunted dense forest with giant sequoias, tight and brutal, dark spruce, mist, glowing shrines, dense edges and open lanes. Kingsfield: the big war map, royal estate country, fortified high-ground outposts and a watchtower network, fireworks as flares.
 3. Phase 3 finishes on today's layouts with these looks and roles; the layout redesign becomes its own spec afterwards (Kort's choice).
 
-**Open for Kort:** which maps are the fast ones and which the slow ones (guess: Rivergate and Kingsfield natural starter and big map, Ironhold slow, Frostmarch and Hollowwood fast); whether the map layout redesign gets its own spec next (recommended: yes, after Phase 3's walkthrough gate).
+**Kort, 2026-10-22 (later, in chat):** no map is made fast or slow on purpose; match length is whatever the terrain and layout give (this replaces the pace answer above).
+
+**Open for Kort:** whether the map layout redesign gets its own spec next (recommended: yes, after Phase 3's walkthrough gate).
