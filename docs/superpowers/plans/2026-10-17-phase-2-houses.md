@@ -2,13 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace Dawn and Dusk with five Houses of six troops each (30 troops, four rarities). Add House traits, a data-driven counter table, six commander classes, and the long chase: House rolls with pity, stars, evolutions, shards, renown, mastery and the re-authored Founders chapter. Every v1 profile migrates without loss.
+**Goal:** Replace Dawn and Dusk with five Houses of six troops each (30 troops, four rarities). Add House traits, a data-driven counter table, six commander classes, and the long chase: House rolls with pity, stars, shards, renown, mastery and the re-authored Founders chapter. Every v1 profile migrates without loss. Troops do not evolve between matches: soldiers level from kills during a match and the player buys weapon and armour tiers in battle, in a separate levels-and-gear plan (design `docs/superpowers/specs/2026-10-22-in-match-progression-design.md`) that is not part of Phase 2.
 
 **Architecture:** All new numbers live in new `sheets/design.json` sheets, read through the generated `Spec`. Every arithmetic rule sits in a pure class with no Minecraft imports (`RosterMath`, `CounterMath`, `Profile`, `ProfileMigration`, `Progression`), proved by javac-only standalone checks. Server code gets one entity factory (`ArmyMobs`), one damage path (`Combat.resolve`), one ability dispatcher (`Abilities`), one trait engine (`Houses`) and one commander engine (`Commander`). Each House lands as its own batch with its art, its mechanics, an in-game `Phase2Checks` suite with screenshots, and a bot-vs-bot balance gate.
 
 **Tech Stack:** Minecraft 1.20.1, Fabric Loader 0.16.14, Fabric API 0.92.2+1.20.1, Yarn 1.20.1+build.10, Loom 1.7.4, Java 17, Gradle 8.8 (offline), Python 3 (3.12 and Pillow for the art tools). Troop models, skins and animations are the mod's own; Entity Texture Features 7.2.6, Entity Model Features 3.3.12 and Fresh Animations 1.10.4 stay pinned in `dependencies/manifest.json` for the presentation modpack only (Needs Kort 13).
 
 **Spec:** `docs/superpowers/specs/2026-10-17-houses-design.md` (binding, all sections). Context: `docs/VISION-AND-ROADMAP.md` sections 4, 5 and 8; `HOW-TO-EDIT.md`; the Phase 1 plan `docs/superpowers/plans/2026-10-17-phase-1-solo-core.md`. Phase 1 is assumed merged, and this plan uses its names exactly.
+
+Updated 2026-10-22 for the in-match progression design (approved by Kort, round 26).
 
 ## Global Constraints
 
@@ -19,7 +21,7 @@
 - The working copy uses CRLF line endings. Edit dense one-line Java files in place; never re-save a whole file with different line endings or reformat it.
 - The ten surviving v1 troops keep their legacy ids. New troops use House prefixes (`gl_`, `gb_`, `wm_`, `ic_`, `tc_`). The `oracle` and `wraith` rows are removed.
 - Mob rule (spec section 0): no brain-AI mobs (piglin brute, hoglin, zoglin, warden, camel, sniffer, goat), no flying mobs, no guardians. Every `Army*` subclass keeps only `SwimGoal` and returns `false` from `shouldSave`. Every undead one also returns `false` from `isAffectedByDaylight()` and `canConvertInWater()`.
-- Hard progression cap: star bonus plus evolution bonus is at most +12% per stat over the sheet base, in every mode. Class effects and House traits are battle effects and sit outside the cap.
+- Hard progression cap: the star bonus is at most +12% per stat over the sheet base, in every mode (stars alone; there are no evolutions). Class effects and House traits, and in the levels-and-gear plan levels and gear, are battle effects and sit outside the cap.
 - The counter product is clamped to [0.25, 2.5] (`combatDiscipline.multiplierMin/Max`). Troop damage uses the damage type `gravesandglory:troop`, tagged `minecraft:bypasses_shield`; armour still applies.
 - Skins: 64x64 on the rig's UV layout (128 wide for the colossus and the large beasts), flat-shaded, 4 to 5 tones per material, hue-shifted. The team colour is the loudest read (tabard plus back pennant); Houses read by silhouette and material. Every unit's look (purpose, silhouette, palette, armour and weapon, mark, tell, build basis, portrait crop) is fixed by `docs/superpowers/specs/2026-10-17-unit-identity.md` (approved by Kort 2026-10-18); Tasks 5 to 10 build to that spec, and where it differs from Houses spec 2.7 the unit identity spec wins. Its five approved rules: no gold or diamond on troops; painted shields via one sheet column, and weapons as each troop's own model; Tusk Spear braces on Charge; one team-colour cloth per Legendary; troops pose only through their own rigs and clips (Tasks 5 and 5b), so no husk or boar-kin arm pose reaches the Gilded art. Skins are painted to `docs/ART-STYLE-GUIDE.md`; weapons are Blockbench cube models converted by `tools/build_skins.py`.
 - Balance gate per House batch: the House's `<house>_normal` bot banner against the current best pure normal banner. 20 matches (10 per side), Normal bots, maps 0 to 4. The combined win rate must be between 40% and 60%.
@@ -1117,13 +1119,14 @@ The design is `docs/superpowers/specs/2026-10-21-troop-depth-design.md`; it is b
 - Modify (art sources, painted to `docs/ART-STYLE-GUIDE.md`):
   - `art/weapons/<id>.bbmodel`, `<id>.png` (32 x 64), `<id>_m.png` and the trimmed `<id>.json` for the six (`arming_sword`, `order_bow`, `longsword`, `longbow`, `sun_staff`, `marshal_sword`), made in Blockbench to `docs/ART-STYLE-GUIDE.md`; `order_bow` and `longbow` with frame groups `pull_0..2`;
   - `sun_staff_e.png`, at the sheet's size;
-  - a relief layer `art/troops/<troop>_s<stage>_r.png` for every own skin of the Gilded six: knight, archer, sentinel and longbow at stages 1 to 3, and mage and gl_marshal at stage 1 (14 files), painted to the guide;
-  - the 14 stage skins `art/troops/<troop>_s<stage>.png` of the same six, repainted to the guide (Kort's ruling K2, 2026-10-21, questions round 25: about 28 sheets with the relief layers);
+  - weapons II and III for the same six: new models and sheets under the same rules as tier I (in-match progression design 4.4 and 11.3), each visibly grander than the last, taken from Kort's reference picks, `work/refs/picks.json` (built by `work/refs/merge_picks.py` from the review page, in the main checkout); the file naming is the art step's (open: see the in-match progression design);
+  - a relief layer `art/troops/<troop>_s<stage>_r.png` for every armour tier of the Gilded six: all six at tiers I to III (18 files; the stage number is the armour tier), painted to the guide;
+  - the 18 armour-tier skins `art/troops/<troop>_s<stage>.png` of the same six: the 14 existing stage skins become armour tiers I to III and are repainted to the guide (Kort's ruling K2, 2026-10-21, questions round 25: about 28 sheets with the relief layers), and the Epic and the Legendary (mage and gl_marshal) gain tiers II and III, each visibly grander than the last;
   - `art/troops/<troop>.bbmodel` for each of the six, made by `--to-bbmodel` (the JSON geometry keys are deleted in the same commit), and the `_m` maps of their skins and relief layers.
 - Generated by `build_skins.py` and committed:
   - every troop model (its bones gain `relief`);
   - every weapon model, and its texture with the frames packed;
-  - the stage skins, now each the source skin plus its relief;
+  - the armour-tier skins (the stage skins), now each the source skin plus its relief;
   - the `_n` and `_s` maps beside every troop skin and weapon sheet (art pipeline v2 section 6; Kort ruled to ship them, K3).
 - Modify: `test-tools/java/gg/gravesandglory/Phase2Checks.java`:
   - add suite `depth`;
@@ -1326,12 +1329,13 @@ The design is `docs/superpowers/specs/2026-10-21-troop-depth-design.md`; it is b
   - the six weapons as Blockbench models through the MCP plugin (art pipeline v2, section 7), painted to `ART-STYLE-GUIDE.md`, with `_m` maps; the bows' pull frames as groups;
   - the bows' pull frames, with their nocks;
   - the staff's glow;
-  - the 14 relief layers, as they are but painted to the guide;
-  - Kort's ruling (2026-10-21, questions round 25, K2): the Gilded six are repainted to the guide in this step, about 28 sheets: the 14 stage skins and the 14 relief layers;
+  - the 18 relief layers (all six at armour tiers I to III), painted to the guide;
+  - Kort's ruling (2026-10-21, questions round 25, K2): the Gilded six are repainted to the guide in this step, about 28 sheets: the 14 existing stage skins and the 14 existing relief layers;
+  - the gear tiers (in-match progression design 4.4 and 11.3): the stage skins become armour tiers I to III for all six, so mage and gl_marshal gain tiers II and III (4 more skins and 4 more relief layers, 36 sheets in all); make weapons II and III for every one of the six; each tier looks visibly grander than the last; take the look of each item from Kort's reference picks, `work/refs/picks.json` (built by `work/refs/merge_picks.py` from the review page, in the main checkout);
   - each Gilded troop converted with `python tools/build_skins.py --to-bbmodel <troop>`, before the repaint, with the JSON geometry keys deleted in the same commit;
   - the `_m` maps: the weapons' from the painter script, and the troop skins' and relief layers' generated through `art/ramps.json`.
 
-  Run `python tools/build_skins.py --template <troop>` before painting (it also writes the relief template), and `python tools/build_skins.py` after. Expected: the summary lines show weapons 12 frames from 6 bbmodels and 14 relief stages, no stage over 256 quads and no frame over 128. Gates: the conversion leaves the troop output byte-identical (`--verify`, before the repaint); the weapons get a new golden output, judged by eye on a side-by-side.
+  Run `python tools/build_skins.py --template <troop>` before painting (it also writes the relief template), and `python tools/build_skins.py` after. Expected: the summary lines show weapons 36 frames from 18 bbmodels (tiers I to III) and 18 relief stages, no stage over 256 quads and no frame over 128. Gates: the conversion leaves the troop output byte-identical (`--verify`, before the repaint); the weapons get a new golden output, judged by eye on a side-by-side.
 
   Then run `python tools/build_skins.py --verify`, `python test-tools/standalone/test_build_skins.py` and `python tools/preflight.py`. All pass.
 - [ ] **Step 9: Compile, then run suites `depth` and `spike,gilded-art,anim,turn,engine`; all pass.**
@@ -1356,6 +1360,7 @@ The design is `docs/superpowers/specs/2026-10-21-troop-depth-design.md`; it is b
   - Grade `turn-all.png`, the six `turn-<troop>.png` sheets and the `depth-*` screenshots against `work/ui-concepts/GRADING-RUBRIC.md` and the style guide's section 9 mapping (`docs/ART-STYLE-GUIDE.md`), at 9 or better.
   - Include the unit identity lookalike check: Squire against Templar, by silhouette alone.
   - Include the art rules of design 8: team cloth still the loudest read, the mark still the first read at 36 px, no zigzag at limb edges, and no clipping in the geared poses.
+  - Check that each armour tier and each weapon tier looks visibly grander than the last.
   - Anything below 9 goes back to Step 8.
 - [ ] **Step 12: Run `GRAPHIFY_BACKEND=none graphify update .`, then commit** `"Phase 2: troop depth, Blockbench weapons with pull frames and the Gilded relief layer"`. Hand `turn-all.png` and the depth screenshots to the orchestrator for Kort.
 
@@ -1489,13 +1494,18 @@ Art half (after Task 5d; see Halves):
   - `p2-graveborn-cards`: the recruit page's Graveborn tab, at the 36 px roster size and the 160 px reveal. Screenshot `graveborn-cards`.
 - [ ] **Step A2 (art): Run suite `graveborn-art`; expect failures** (no Graveborn models yet).
 - [ ] **Step A3 (art): Make the Graveborn art.** Use `docs/ART-STYLE-GUIDE.md` and the Blockbench workflow of art pipeline v2 section 7, spec 2.7 rows, unit identity sections 1 (Look and Build lines) and 8, and design 8.
-  - Make the troop `.bbmodel` source for the six on their sheet entities' rigs: a group per rig bone, box-UV skin cubes and `part:` groups checked against `art/parts/*.json`, converted through `tools/bbmodel.py` (art pipeline v2 section 2.2). The rig JSON stays the skeleton of record, and the troop `.json` keeps only its non-geometry keys. Then the stage skins, and the `_m` material map for every skin and weapon sheet (the weapons' from the painter script, the skins' generated through `art/ramps.json`).
-  - Make 14 relief layers: revenant, bonebow, reaper and stalker at stages 1 to 3; hexer and gb_hollowking at stage 1.
+  - Make the troop `.bbmodel` source for the six on their sheet entities' rigs: a group per rig bone, box-UV skin cubes and `part:` groups checked against `art/parts/*.json`, converted through `tools/bbmodel.py` (art pipeline v2 section 2.2). The rig JSON stays the skeleton of record, and the troop `.json` keeps only its non-geometry keys. Then the armour-tier skins (the stage skins are armour tiers I to III, and the Epic and the Legendary gain tiers II and III), and the `_m` material map for every skin and weapon sheet (the weapons' from the painter script, the skins' generated through `art/ramps.json`).
+  - Make 18 relief layers: all six troops at armour tiers I to III.
   - Make the glows in soul-light `#CFEFFF`: `revenant_e`, `reaper_e`, `hexer_e`, `gb_hollowking_e`, and `bonebow_e` from stage 3. Make the outer layer `stalker_o`.
   - Make the weapons in Blockbench:
     - `notched_sword`, `scythe` and `grave_sword`;
     - `bone_bow` and `frost_bow`, with pull frames and nocks;
     - `lantern`, lit.
+  - Make the gear tiers (in-match progression design 4.4 and 11.3):
+    - armour tiers I to III for all six: the stage skins become the tiers, the stage 3 parts key to armour tier III, and the Epic and the Legendary gain tiers II and III;
+    - weapons II and III for every troop: new models under the same rules as tier I, the bows with their pull frames and nocks;
+    - each tier looks visibly grander than the last;
+    - take the look of each item from Kort's reference picks, `work/refs/picks.json` (built by `work/refs/merge_picks.py` from the review page, in the main checkout).
 
   Run `python tools/build_skins.py --template <troop>` before painting. Afterwards, run `python tools/build_skins.py`, `--verify`, `python test-tools/standalone/test_build_skins.py` and `python tools/preflight.py`. All pass, with no stage over 256 relief quads and no frame over 128.
 - [ ] **Step A4 (art): Compile, then run suites `graveborn-art`, `graveborn` and `depth,gilded-art,anim`; all pass.**
@@ -1506,6 +1516,7 @@ Art half (after Task 5d; see Halves):
   - Grade the lineup, close-up, stages and cards screenshots, `graveborn-rise`, `graveborn-bloom`, the shader shots, `turn-all.png` and the six `turn-<troop>.png` sheets.
   - Run the unit identity section 7 lookalike checks: Bone Archer against Barrow Stalker; Reaper, Gravecaller and Hollow King; Risen against Drowned Raider (once Task 9's art exists); and Order Archer against Bone Archer.
   - Check the art rules of design 8.
+  - Check that each armour tier and each weapon tier looks visibly grander than the last.
   - Anything below 9 goes back to Step A3.
 - [ ] **Step A7 (art): Run `GRAPHIFY_BACKEND=none graphify update .`, then commit** `"Phase 2 batch 2 art: Graveborn models, skins, relief and Blockbench weapons"`. Hand `turn-all.png` and the lineup to the orchestrator for Kort.
 
@@ -1579,9 +1590,10 @@ Art half (after Task 5d; see Halves):
   - the troop `.bbmodel` source for the six (a group per rig bone and `part:` groups; art pipeline v2 section 2.2), as in Task 7 Step A3;
   - Brassjaw on the colossus rig (128x128);
   - the ballista frame, with `brass_crest` at stage 3, and the mortar barrel as root parts;
-  - 14 relief layers: ic_hearthguard, ic_arbalist, ic_breaker and ic_ballista at stages 1 to 3; ic_mortar and ic_colossus at stage 1;
+  - 18 relief layers: all six troops at armour tiers I to III;
   - ember `#E2702A` glows, only a few lit pixels each (team tint rule 1): `ic_breaker_e`, `ic_mortar_e` and `ic_colossus_e`;
   - weapons in Blockbench: `hearth_axe`, `great_axe`, and `arbalest`. The arbalest is held level, with pull frames that show the string cocked, and nocks;
+  - the gear tiers, as in Task 7 Step A3: armour tiers I to III for all six (the Epic and the Legendary gain tiers II and III) and weapons II and III for every troop, each tier visibly grander than the last, from Kort's reference picks, `work/refs/picks.json` (built by `work/refs/merge_picks.py` from the review page, in the main checkout). Brassjaw and the Mortar show the weapon tier as parts on the rig, keyed by weapon tier (design 4.4); the ballista frame is a root part of the Ballista Crew's skin, so its weapon tiers also come as parts (open: see the in-match progression design);
   - the `_m` material map for every skin and weapon sheet (as in Task 7 Step A3).
 
   The template, build, verify, tests and preflight run as in Task 7 Step A3.
@@ -1668,9 +1680,10 @@ Art half (after Task 5d; see Halves):
   - the troop `.bbmodel` source for the six (a group per rig bone and `part:` groups; art pipeline v2 section 2.2), as in Task 7 Step A3;
   - the Brute on the hound rig, with its own ravager boxes on a 128x128 sheet;
   - outer layers `tc_raider_o`, `tc_harpooner_o`, `tc_tideguard_o` and `tc_admiral_o`. No relief texel sits under an opaque outer texel; the build fails on one;
-  - 14 relief layers: tc_raider, tc_harpooner, tc_tideguard and tc_mist at stages 1 to 3; tc_brute and tc_admiral at stage 1;
+  - 18 relief layers: all six troops at armour tiers I to III;
   - sea-foam `#CFF3E4` glows: `tc_mist_e` and `tc_admiral_e`;
   - weapons in Blockbench: `cutlass`, `harpoon`, `coral_trident` (three prongs) and `admiral_trident`;
+  - the gear tiers, as in Task 7 Step A3: armour tiers I to III for all six (the Epic and the Legendary gain tiers II and III) and weapons II and III for every troop, each tier visibly grander than the last, from Kort's reference picks, `work/refs/picks.json` (built by `work/refs/merge_picks.py` from the review page, in the main checkout). The Mist Caller and the Brute show the weapon tier as parts on the rig, keyed by weapon tier (design 4.4);
   - the `_m` material map for every skin and weapon sheet (as in Task 7 Step A3).
 
   The template, build, verify, tests and preflight run as in Task 7 Step A3.
@@ -1754,12 +1767,13 @@ Art half (after Task 5d; see Halves):
   - the Moot Hound on the hound rig and the Web Stalker on the spider rig;
   - Old Horn on the hound rig, with his own bear boxes on a 128x64 sheet;
   - the boar-kin bipeds with their hunch;
-  - 14 relief layers: wm_hound, wm_hunter, wm_stalker and wm_tusk at stages 1 to 3; wm_seer and wm_oldhorn at stage 1;
+  - 18 relief layers: all six troops at armour tiers I to III;
   - clay `#C8B48A` glows: `wm_seer_e` and `wm_oldhorn_e`;
   - weapons in Blockbench:
     - `hide_bow`, with pull frames and nocks;
     - `boar_spear`, with the crossbar and clay tassel, so it never reads as a trident;
     - `bone_wand`;
+  - the gear tiers, as in Task 7 Step A3: armour tiers I to III for all six (the Epic and the Legendary gain tiers II and III) and weapons II and III for every troop, each tier visibly grander than the last, from Kort's reference picks, `work/refs/picks.json` (built by `work/refs/merge_picks.py` from the review page, in the main checkout). The Moot Hound, the Web Stalker and Old Horn show the weapon tier as parts on the rig, keyed by weapon tier (design 4.4);
   - the `_m` material map for every skin and weapon sheet (as in Task 7 Step A3).
 
   The template, build, verify, tests and preflight run as in Task 7 Step A3.
@@ -1786,6 +1800,7 @@ Art half (after Task 5d; see Halves):
 - Modify: `Campaign.java` (commands, `finish` rewards and ledger, pacts).
 - Modify: `MatchStats.java` (report rows) and `GravesAndGlory.java` (kill credit per troop type).
 - Modify: `test-tools/standalone/HousesCheck.java` and `Phase2Checks.java` (suite `chase`).
+- Modify: `sheets/design.json` and `tools/preflight.py`: the Mastery I reward is the title only (`mastery_1.reward` becomes `title:Veteran`); Common and Rare `starPct2`/`starPct3` become 0.06/0.12, so the +12% cap comes from stars alone (in-match progression design, sections 8 and 10); the star-plus-evolution cap rule becomes `starPct3 <= capPct`.
 - Modify: `docs/PARKED.md`: campaign bonus-objective shards wait for bonus objectives to exist.
 
 **Interfaces:**
@@ -1805,14 +1820,13 @@ Art half (after Task 5d; see Halves):
 - Contract rewards: the daily claim that completes all three gives +3 shards to its House. The weekly gives 150 gold, 300 XP and +10 shards.
 - Produces (server commands), each refunding on a failed save like `roll`:
   - `buy:<troop>`: a Common or Rare for `chosenCost`, as a new troop or a duplicate copy.
-  - `evolve:<troop>`: applies the next `evolutions` row, paying shards of the troop's House and gold, and checking `requiresMastery`.
   - `star:<troop>`: an Epic or Legendary star paid in shards.
   - `legendary:<house>:pact` and `legendary:<house>:shards` (the latter needs renown >= 30 and 50 shards).
   - `progress:<claim key>`.
 - `finish` additions, in the same save as gold:
   - shards and renown from `RosterMath.matchRewards(Houses.bannerTiers...)`;
   - per troop type: `kills`, credited to the killing unit's type via `lastHitBy` and the shooter's spec; and `survived`, +1 per type with a living non-temporary unit at the end;
-  - `mastery` from `masteryLevel`, granting the titles `"<Troop> Veteran"` and `"<Troop> Master"`, and the House title once all six troops reach Mastery I;
+  - `mastery` from `masteryLevel`, granting the titles `"<Troop> Veteran"` and `"<Troop> Master"` (Mastery I is the title only and unlocks nothing), and the House title once all six troops reach Mastery I;
   - a Pact when every `campaignBattles` row of a chapter is cleared and `writChapters` lacks that chapter.
 - The report JSON gains `"houses": [{"house","tier","traitSeconds","shards","renown"}]`, and the `CampScreen` results page lists them.
 
@@ -1823,13 +1837,13 @@ Art half (after Task 5d; see Halves):
   - Total gold over all 30 tiers is 300.
   - A state holding the old claim `founders:2` returns "Already claimed".
   - The third daily claim with `:ironclad` gives 3 shards; the first two give 0.
+  - The cap check is stars alone: Common and Rare `starPct3` is 0.12 and at most `capPct`.
 - [ ] **Step 2: Run; fail.**
 - [ ] **Step 3: Implement the `Progression` changes.**
 - [ ] **Step 4: Run; pass.**
 - [ ] **Step 5: Write suite `chase`:**
   - `p2-buy-chosen`: 300 gold buys sentinel; a second buy adds a copy and star 2.
-  - `p2-evolve`: knight stage 2 costs 10 gilded shards and 100 gold. Stage 3 is refused without Mastery I and allowed after setting 40 kills and 8 survived. A newly spawned knight's custom name is then `Knight-Captain`.
-  - `p2-cap`: a star 3, stage 3 knight spawns with max HP 32 x 1.12.
+  - `p2-cap`: a star 3 knight spawns with max HP 32 x 1.12, from stars alone.
   - `p2-star-shards`: an Epic reaches star 2 for 30 shards.
   - `p2-legendary-pact` and `p2-legendary-renown`.
   - `p2-match-rewards`: finish a won match with banner Gilded 14 / Graveborn 6. Expect shards +2/+1 and renown +2/+2; kills are recorded by type; temporary units are excluded.
@@ -1838,7 +1852,7 @@ Art half (after Task 5d; see Halves):
 - [ ] **Step 6: Run; expect failures.**
 - [ ] **Step 7: Implement the commands, rewards, ledger, pacts and report rows.**
 - [ ] **Step 8: Compile; run suite `chase` and the standalone checks; all pass.**
-- [ ] **Step 9: Commit** `"Phase 2: chosen buys, evolutions, stars, shards, renown, mastery and the re-authored Founders chapter"`.
+- [ ] **Step 9: Commit** `"Phase 2: chosen buys, stars, shards, renown, mastery and the re-authored Founders chapter"`.
 
 ---
 
@@ -1847,7 +1861,7 @@ Art half (after Task 5d; see Halves):
 **Files:**
 - Modify: `CampScreen.java`:
   - the `recruit` page gains the roll result card, chosen buy and Legendary unlock;
-  - a new `troop` page shows a card with stars, stage, mastery bars, and an evolve button with confirmation;
+  - a new `troop` page shows a card with stars, Mastery bars, the level names and the three ability lines (base, level 2, level 3); there is no evolve button. The level 2 and level 3 lines come from the `levelAbilities` data of the levels-and-gear plan (open: see the in-match progression design);
   - the `contracts` and `chapter` pages gain a House selector for claims.
 - Modify: `ArmyCards.java` (card counter lines and crossed-swords glyphs) and `CampaignClient.java`.
 - Modify: `sheets/design.json`:
@@ -1855,7 +1869,7 @@ Art half (after Task 5d; see Halves):
   - new NOT_SHIPPED sheet `economyModel`, one row: `matchesPerHour 4.0, winRate 0.5, hoursPerPlayDay 1.5, playDaysPerWeek 4, matchGold 80, winGold 40, dailyGold 100, weeklyGold 150, chapterGold 300, chapterRareValue 300, runs 20000`;
   - add `economyModel` to `NOT_SHIPPED` in `tools/preflight.py`.
 - Create: `tools/economy_model.py`: a Monte Carlo of spec 4.9 driven by the sheet; it prints and asserts.
-- Create: `art/troops/<troop>_veteran.png` (30, `docs/ART-STYLE-GUIDE.md`, brass-trimmed variants), regenerated by `build_skins.py`.
+- Create: `art/troops/<troop>_veteran.png` (30 brass trim overlays, `docs/ART-STYLE-GUIDE.md`, drawn over whichever armour tier is worn and not a fourth full skin; in-match progression design 4.4), regenerated by `build_skins.py`.
 - Modify: `Phase2Checks.java` (suite `screens`).
 
 **Interfaces:**
@@ -1866,19 +1880,18 @@ Art half (after Task 5d; see Halves):
   - per-House gold mean 2,920, within 3%;
   - five-House mean 14,700, P10 11,000, median 14,800 and P90 18,200, each within 3%.
 
-  It also prints the hours table of spec 4.9.
+  It also prints the hours table of spec 4.9. The model has no evolutions (in-match progression design, section 10): the roster asserts above do not change, and the "next goal" rows read "star 3 on a favourite" for hours 12 to 20 and "star 3 across a House, Mastery II and III" from hour 29.
 
 - [ ] **Step 1: Write suite `screens`:**
   - `p2-roll-card`: a forced duplicate roll of an owned Common at star 1 shows a DUPLICATE card with star 1 going to 2. Screenshot `chase-roll-dup`, mid-animation.
-  - `p2-evolve-screen`: the confirm dialog from stage 2 to 3 shows both stage names, the costs, and the stage 3 portrait with its extra part. Screenshot `chase-evolve`.
-  - `p2-troop-card`: the Templar card shows the beats and beaten-by lines, glyphs for C1 and C3, and the mastery bars. Screenshot `chase-troop-card`.
+  - `p2-troop-card`: the Templar card shows the beats and beaten-by lines, glyphs for C1 and C3, the stars, the Mastery bars, the level names and the three ability lines. Screenshot `chase-troop-card`.
   - `p2-claim-house`: a claim on the contracts page sends `progress:daily:2:<selected house>`.
-  - `p2-veteran-skin`: a Mastery II knight spawns as `Order Squire (Veteran)`. Screenshot `chase-veteran`.
+  - `p2-veteran-skin`: a Mastery II knight spawns as `Order Squire (Veteran)` and draws the veteran trim over an armour tier. Screenshot `chase-veteran`.
 - [ ] **Step 2: Run; expect failures.**
 - [ ] **Step 3: Implement the pages and card changes.**
-- [ ] **Step 4: Make the veteran skins and run `build_skins.py`.**
+- [ ] **Step 4: Make the veteran trim overlays and run `build_skins.py`.**
 - [ ] **Step 5: Add the `economyModel` sheet and `tools/economy_model.py`, then run it.** Expect all asserts to pass and the hours table to print.
-- [ ] **Step 6: Compile; run suites `screens` and `chase`; all pass.** The tester confirms the four screenshots. Commit `"Phase 2: recruitment, evolve and troop card screens, veteran skins, economy model"`.
+- [ ] **Step 6: Compile; run suites `screens` and `chase`; all pass.** The tester confirms the three screenshots. Commit `"Phase 2: recruitment and troop card screens, veteran trim, economy model"`.
 
 ---
 
@@ -1894,6 +1907,7 @@ Art half (after Task 5d; see Halves):
 
 **Interfaces:**
 - Consumes: every suite and check id above.
+- Levels and gear: this task's regression run and Kort's playtest gate cover levels and gear, once the in-match progression design's own plan has run. That plan is separate and not part of Phase 2; until it has run, Phase 2 has no levels or gear and sells no evolution, and 0.5.0 ships only after it and after every troop has its tier I to III art (design 4.4 and 11.4).
 
 - [ ] **Step 1: Write suite `migration`:**
   - `p2-migrate-fixtures`: each fixture, loaded through `profile()`, matches its `ProfileMigrationCheck` expectations, and `.v1.json` is present.
@@ -1906,14 +1920,14 @@ Art half (after Task 5d; see Halves):
   - then Phase 1 `combat,morale,reinforce,bots,tutorial,report,ui`;
   - then `-PcampaignChecks` without either variable.
 
-  Expected: every id passes.
+  Expected: every id passes. Once the levels-and-gear plan has run, its suites join this run.
 - [ ] **Step 4: Mixed vs pure sims:** `mix_gilded_graveborn_normal` vs `gilded_normal`, and `mix_ironclad_tidecallers_normal` vs `tidecallers_normal`, 20 matches each, run as for the gate. There is no gate: log both, and flag any result outside 40-60% in the playtest doc.
 - [ ] **Step 5: Standalone checks and packaging.** Run the three standalone checks, `test_ui_standard.py`, `test_build_skins.py`, `python tools/build_skins.py --verify` and the `HOW-TO-EDIT.md` section 9 checks. Then run `"$G" build --offline -x test` and `python tools/package.py`; the leak check must find no `Phase2Checks`, `HousesCheck`, `ProfileMigrationCheck` or `BotSimulation` in the jar. Output stays in local `dist/` only.
 - [ ] **Step 6: Write `docs/PHASE-2-PLAYTEST.md`** (one page). Setup: the 0.5.0 build, with his existing camp so he sees the migration.
   - Session 1: his migrated collection on the recruit page, and a few House rolls.
   - Session 2: a pure Gilded skirmish on Normal (shieldwall, Bulwark tile, Aldric's banner).
   - Session 3: a mixed banner of his choice vs Hard bots of a new House.
-  - Session 4: one evolve, and the report's House rows.
+  - Session 4: the report's House rows and, once the levels-and-gear plan has run, a match played for levels and gear.
 
   Each item gets a yes/no box. Free-text questions: "Did it feel good?", "Which House read worst on the field?", "Is the chase pace right?". Appendix: every gate line and the economy model table.
 - [ ] **Step 7: Update `PROJECT-STATE.md` and `HOW-TO-EDIT.md`, then commit** `"Phase 2: migration verified in game, regression, 0.5.0, playtest gate"`. Do not merge or push; hand the branch and `docs/PHASE-2-PLAYTEST.md` to the orchestrator.
