@@ -1675,5 +1675,267 @@
       "briefing": "Dusk raiders hold the river road. Take the crossings and teach your banner to follow you.",
       "reason": "The road west must open before the march begins."
     }
+  ],
+  "pieces": [
+    {
+      "id": "camp/ridge_stair",
+      "width": 13,
+      "depth": 13,
+      "height": 14,
+      "palette": "stone",
+      "purpose": "stair from the bowl to the ridge"
+    },
+    {
+      "id": "camp/command_tent",
+      "width": 25,
+      "depth": 15,
+      "height": 14,
+      "palette": "wood",
+      "purpose": "commander's tent and war table"
+    },
+    {
+      "id": "camp/war_gates",
+      "width": 37,
+      "depth": 11,
+      "height": 16,
+      "palette": "wood",
+      "purpose": "gate arch and the two ready pads"
+    },
+    {
+      "id": "camp/archive",
+      "width": 23,
+      "depth": 31,
+      "height": 14,
+      "palette": "stone",
+      "purpose": "Archivist and the Founders' Stone"
+    },
+    {
+      "id": "camp/parade",
+      "width": 41,
+      "depth": 33,
+      "height": 6,
+      "palette": "stone",
+      "purpose": "parade ground, standard, spawn plinth"
+    }
+  ],
+  "camp": [
+    {
+      "id": "camp-4",
+      "originX": 0,
+      "originZ": -310,
+      "floorY": 64,
+      "minDx": -60,
+      "maxDx": 60,
+      "minDz": -72,
+      "maxDz": 35,
+      "minY": 62,
+      "spawnDx": 0.5,
+      "spawnDz": 18.5,
+      "spawnY": 65.0,
+      "spawnYaw": 180.0,
+      "spawnPitch": 8.0,
+      "padDz": 26,
+      "pad0Dx": -11,
+      "pad1Dx": 8,
+      "islandMinDx": -96,
+      "islandMaxDx": 96,
+      "islandMinDz": -108,
+      "islandMaxDz": 40,
+      "islandBottomY": 44,
+      "plateauY": 76,
+      "tableDx": -7,
+      "tableDz": -65,
+      "tableY": 78
+    }
+  ],
+  "campPieces": [
+    {
+      "id": "ridge-west",
+      "template": "camp/ridge_stair",
+      "dx": -18,
+      "dz": -44,
+      "y": 64,
+      "rotation": 0,
+      "flatten": false,
+      "station": "-",
+      "slotX": -1,
+      "slotY": -1,
+      "slotZ": -1
+    },
+    {
+      "id": "ridge-east",
+      "template": "camp/ridge_stair",
+      "dx": 18,
+      "dz": -44,
+      "y": 64,
+      "rotation": 0,
+      "flatten": false,
+      "station": "-",
+      "slotX": -1,
+      "slotY": -1,
+      "slotZ": -1
+    },
+    {
+      "id": "command",
+      "template": "camp/command_tent",
+      "dx": 0,
+      "dz": -60,
+      "y": 76,
+      "rotation": 0,
+      "flatten": true,
+      "station": "army",
+      "slotX": -1,
+      "slotY": -1,
+      "slotZ": -1
+    },
+    {
+      "id": "parade",
+      "template": "camp/parade",
+      "dx": 0,
+      "dz": 8,
+      "y": 64,
+      "rotation": 0,
+      "flatten": true,
+      "station": "-",
+      "slotX": -1,
+      "slotY": -1,
+      "slotZ": -1
+    },
+    {
+      "id": "archive",
+      "template": "camp/archive",
+      "dx": 46,
+      "dz": 6,
+      "y": 64,
+      "rotation": 0,
+      "flatten": true,
+      "station": "-",
+      "slotX": -1,
+      "slotY": -1,
+      "slotZ": -1
+    },
+    {
+      "id": "gates",
+      "template": "camp/war_gates",
+      "dx": 0,
+      "dz": 30,
+      "y": 64,
+      "rotation": 0,
+      "flatten": true,
+      "station": "-",
+      "slotX": -1,
+      "slotY": -1,
+      "slotZ": -1
+    }
+  ],
+  "campStations": [
+    {
+      "id": "quartermaster",
+      "page": "army",
+      "npc": "armorer",
+      "x": 10.5,
+      "y": 77.0,
+      "z": -57.5,
+      "yaw": 90.0,
+      "halfX": 1,
+      "halfZ": 1,
+      "label": "Quartermaster / Army & shop"
+    },
+    {
+      "id": "archivist",
+      "page": "contracts",
+      "npc": "librarian",
+      "x": 44.5,
+      "y": 65.0,
+      "z": 0.5,
+      "yaw": 90.0,
+      "halfX": 1,
+      "halfZ": 1,
+      "label": "Archivist / Daily contracts"
+    },
+    {
+      "id": "founders",
+      "page": "chapter",
+      "npc": "-",
+      "x": 50.5,
+      "y": 65.0,
+      "z": 14.5,
+      "yaw": 0.0,
+      "halfX": 2,
+      "halfZ": 2,
+      "label": "FOUNDERS CHAPTER / 30 tiers"
+    },
+    {
+      "id": "steward",
+      "page": "friends",
+      "npc": "cartographer",
+      "x": 4.5,
+      "y": 65.0,
+      "z": 22.5,
+      "yaw": 180.0,
+      "halfX": 1,
+      "halfZ": 1,
+      "label": "Steward / Parties & rooms"
+    },
+    {
+      "id": "welcome",
+      "page": "home",
+      "npc": "-",
+      "x": 0.5,
+      "y": 65.0,
+      "z": 14.5,
+      "yaw": 0.0,
+      "halfX": 1,
+      "halfZ": 1,
+      "label": "WELCOME TO BANNER CAMP / {key:menu} opens your camp guide"
+    },
+    {
+      "id": "gate-west",
+      "page": "match",
+      "npc": "-",
+      "x": -9.0,
+      "y": 65.0,
+      "z": 28.0,
+      "yaw": 0.0,
+      "halfX": 2,
+      "halfZ": 2,
+      "label": "WEST GATE / Stand here to ready"
+    },
+    {
+      "id": "gate-east",
+      "page": "match",
+      "npc": "-",
+      "x": 10.0,
+      "y": 65.0,
+      "z": 28.0,
+      "yaw": 0.0,
+      "halfX": 2,
+      "halfZ": 2,
+      "label": "EAST GATE / Stand here to ready"
+    },
+    {
+      "id": "war-gates",
+      "page": "match",
+      "npc": "-",
+      "x": 0.5,
+      "y": 69.0,
+      "z": 25.5,
+      "yaw": 0.0,
+      "halfX": 3,
+      "halfZ": 1,
+      "label": "WAR GATES / Local matches / Bots fill empty seats"
+    },
+    {
+      "id": "recruiter",
+      "page": "recruit",
+      "npc": "cleric",
+      "x": 0.5,
+      "y": 65.0,
+      "z": -36.5,
+      "yaw": 0.0,
+      "halfX": 1,
+      "halfZ": 1,
+      "label": "Recruiter / New troops"
+    }
   ]
 }

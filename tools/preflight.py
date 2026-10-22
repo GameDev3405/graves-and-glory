@@ -92,6 +92,28 @@ for r in data['ui']:
         formationIds={f['id'] for f in data['formations']}
         for id in r['bottom'].split(','):
             if id not in formationIds: errors.append('UI formation reference missing: '+id)
+# Built world (Phase 3): the pieces sheet describes the structure files, campPieces places them, campStations names the people and boards of the camp.
+piece_rows={r['id']:r for r in data.get('pieces',[])}
+for r in piece_rows.values():
+    path=root/'src/main/resources/data/gravesandglory/structures'/(r['id']+'.nbt')
+    if not path.is_file(): errors.append(f'pieces/{r["id"]}: no structure file {path.relative_to(root).as_posix()}'); continue
+    try: version,size=structure_header(path)
+    except Exception as e: errors.append(f'pieces/{r["id"]}: cannot read the NBT ({e})'); continue
+    if size is None: errors.append(f'pieces/{r["id"]}: the file has no size'); continue
+    if tuple(size)!=(r['width'],r['height'],r['depth']): errors.append(f'pieces/{r["id"]}: the file is {size[0]} wide, {size[1]} high, {size[2]} deep but the row says {r["width"]}, {r["height"]}, {r["depth"]} (width, height, depth)')
+if len(data.get('camp',[]))!=1: errors.append('camp: the sheet needs exactly one row')
+for r in data.get('campPieces',[]):
+    where=f'campPieces/{r["id"]}'
+    template=piece_rows.get(r['template'])
+    if template is None: errors.append(f'{where}: template {r["template"]} is not a pieces id'); continue
+    if r['rotation'] not in (0,90,180,270): errors.append(f'{where}: rotation {r["rotation"]} is not 0, 90, 180 or 270')
+    if r['station']!='-' and not re.fullmatch(r'[a-z]+(:[a-z]+)?',r['station']): errors.append(f'{where}: station {r["station"]} is neither - nor [a-z]+(:[a-z]+)?')
+    slots=(r['slotX'],r['slotY'],r['slotZ'])
+    if slots!=(-1,-1,-1) and not (0<=slots[0]<template['width'] and 0<=slots[1]<template['height'] and 0<=slots[2]<template['depth']): errors.append(f'{where}: slot {slots} is neither -1,-1,-1 nor a cell inside the template ({template["width"]} wide, {template["height"]} high, {template["depth"]} deep)')
+for r in data.get('campStations',[]):
+    where=f'campStations/{r["id"]}'
+    if r['npc'] not in ('-','armorer','cleric','librarian','cartographer','weaponsmith'): errors.append(f'{where}: npc {r["npc"]} is not - or a villager profession of the camp')
+    if r['page'] not in ('home','contracts','chapter','match','recruit','friends','army','train'): errors.append(f'{where}: page {r["page"]} is not a camp page')
 if errors:
     print('\n'.join(errors)); sys.exit(1)
 def typ(v): return 'boolean' if isinstance(v,bool) else 'int' if isinstance(v,int) else 'double' if isinstance(v,float) else 'String'
