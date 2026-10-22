@@ -5,7 +5,10 @@
   "compatibilityLevel": "JAVA_17",
   "client": [
     "TitleDemoCameraMixin",
-    "TitleDemoPoseMixin"
+    "TitleDemoPoseMixin",
+    "FilmCameraMixin",
+    "FilmFovMixin",
+    "FilmFrameMixin","FilmHudMixin"
   ],
   "injectors": {
     "defaultRequire": 0
