@@ -19,7 +19,7 @@ import java.util.function.Function;
  */
 public final class ArmyMobs {
     private ArmyMobs() {}
-    /** Sheet entity id to the factory of the Army* mob that fights as it. Husk, skeleton, wither skeleton, zombie and stray are the Gilded and Graveborn mobs; each later House registers its own in its task. */
+    /** Sheet entity id to the factory of the Army* mob that fights as it. Husk, skeleton, wither skeleton, zombie and stray are the Gilded and Graveborn mobs, vindicator, pillager and iron golem the Ironclad's; each later House registers its own in its task. */
     static final Map<String, Function<World, MobEntity>> FACTORIES = new LinkedHashMap<>();
     static {
         register("husk", GravesAndGlory.ArmyHusk::new);
@@ -27,6 +27,9 @@ public final class ArmyMobs {
         register("wither_skeleton", GravesAndGlory.ArmyWither::new);
         register("zombie", GravesAndGlory.ArmyZombie::new);
         register("stray", GravesAndGlory.ArmyStray::new);
+        register("vindicator", GravesAndGlory.ArmyVindicator::new);
+        register("pillager", GravesAndGlory.ArmyPillager::new);
+        register("iron_golem", GravesAndGlory.ArmyGolem::new);
     }
 
     /** Registers (or replaces) the factory of a sheet entity id. */

@@ -10,6 +10,8 @@ import org.joml.Vector3f;
 public final class BattleEffects {
     /** Harness counters: how many impact flashes have played, the RGB of the latest, and how many souls have risen (soul). */
     public static int flashes,lastFlashColor,souls;
+    /** Harness counter: how many golem and ravager swings have sent entity status 4 (Abilities.animate). */
+    public static int attackStatuses;
     /** An impact puff in the hitting team's colour, so a crowded melee shows who is landing blows. */
     public static void flash(GravesAndGlory.Battle b,Vec3d at,int team){
         int rgb=b.side(team).color();

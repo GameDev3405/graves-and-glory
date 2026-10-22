@@ -49,7 +49,7 @@ public final class Phase2Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every server tick, for checks that wait on the battle. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("graveborn",Graveborn::new);}
+    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("graveborn",Graveborn::new);SUITES.put("ironclad",Ironclad::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -2129,6 +2129,595 @@ public final class Phase2Checks implements ClientModInitializer {
                 }
                 default->{}
             }
+        }
+    }
+
+    /**
+     * Task 8 (batch 3): the Ironclad mechanics. The three vanilla bodies (goals, raids, the crossbow pose), Sunder and Armour Bolt against a
+     * raised shield, the Ballista's pierce, the Mortar's minimum range (at a cast, and walking in the field), Brassjaw's slam, Entrench
+     * (still, on an owned point, by tier, in range), the siege counters against a supply banner and large and small targets, the
+     * Quartermaster's Forward Supply (placed, deploying there, refused near base, lost to an enemy, an enemy near or its timer), the golem's
+     * swing, the room a body takes (formation and bridge lanes), Brassjaw across the river on every bridge of map 0, and the tick cost. The
+     * fixture is Graveborn's: a stone platform in the sky 40 blocks east of Dawn's base, two ad hoc armies and the commander's own (a
+     * Quartermaster); troops are posted frozen and pinned. The field stages (the Mortar walking, the bridges) run on real ground.
+     */
+    static final class Ironclad implements Suite,ServerWatch {
+        record Pin(GravesAndGlory.Unit u,Vec3d at,float yaw){}
+        volatile int stage;volatile UUID player;volatile String wantShot;volatile boolean shotTaken,finished;
+        long stageAt,t0;int shotDelay,shotAfter=12;String classBefore;
+        BlockPos site,mainSite,pointSite;
+        final List<GravesAndGlory.Unit> fixture=new ArrayList<>(),shielded=new ArrayList<>();final List<Pin> pins=new ArrayList<>();
+        final Set<net.minecraft.util.math.ChunkPos> forced=new HashSet<>();final List<BlockPos> platforms=new ArrayList<>();
+        boolean raise;
+        GravesAndGlory.Squad own,dawn,dusk;
+        GravesAndGlory.Capture owned;int ownedWas=-1,ownedProgress,ownedChallenger=-1;long ownedSince;
+        int audits;final Map<String,String> staleSeen=new LinkedHashMap<>();final List<String> auditNotes=new ArrayList<>();
+        // scratch the stages share
+        GravesAndGlory.Unit u1,u2,u3,u4,u5,u6;final GravesAndGlory.Unit[] us=new GravesAndGlory.Unit[8],line=new GravesAndGlory.Unit[7];
+        Projectiles.Shot shot;Combat.HitLog mark;GravesAndGlory.ArmySupplyBanner banner;
+        String why="",mobsWhy="",minWhy="",entrenchWhy="";boolean ok,mobsOk,minOk,entrenchOk;
+        // the live Arbalist
+        int charging,raiding;float foeHp,foeHp2;
+        // the field stages
+        double gx,gy,gz,castDist,shotDist,retreatMax,startDist;int castsInside;boolean casting=false;long castTime;Vec3d holdAt;int bridgeIdx;boolean bridgesOk=true;final StringBuilder bridgeWhy=new StringBuilder();long crossedAt;
+        // the golem's swing, seen on the client
+        volatile int golemId=-1,swingSeen;volatile boolean watchSwing;int statuses0;
+        // the supply stages
+        final List<String> supplyWhy=new ArrayList<>();boolean supplyOk;BlockPos bannerBlock;int variant;Set<Integer> seen=new HashSet<>();
+        TickCost cost;
+
+        void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
+        long since(GravesAndGlory.Battle b){return b.time-stageAt;}
+        ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
+        Profile profile(GravesAndGlory.Battle b){return b.campaign.profile(player);}
+        void requestShot(String name,int after){shotTaken=false;shotDelay=0;shotAfter=after;wantShot=name;}
+        static boolean near(double a,double b){return Math.abs(a-b)<1e-9;}
+        static boolean close(double a,double b){return Math.abs(a-b)<1e-3;}
+        static String fmt(double v){return String.format(Locale.ROOT,"%.2f",v);}
+        static String show(Combat.HitLog h){return Engine.show(h);}
+        static double distance(Vec3d a,Vec3d c){return Math.sqrt(GravesAndGlory.Battle.horizontalDistance(a,c));}
+        static Vec3d base0(){return GravesAndGlory.Battle.base(0);}
+        Vec3d centre(){return new Vec3d(site.getX()+.5,site.getY(),site.getZ()+.5);}
+        /** The standing spot on real ground at (x, z). */
+        static Vec3d ground(GravesAndGlory.Battle b,double x,double z){return new Vec3d(x,Phase1Checks.top(b,x,z),z);}
+        /** A troop of the army on the platform at (dx, dz) from its centre with its AI off, held there each tick by the pins; a frozen troop never attacks or casts. */
+        GravesAndGlory.Unit post(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Spec.TroopsRow row,int slot,double dx,double dz,float yaw,boolean freeze){
+            Vec3d at=new Vec3d(site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz);
+            var u=b.spawn(s,row,slot,at);u.mob.setAiDisabled(true);if(freeze)Phase1Checks.freeze(u);
+            fixture.add(u);pins.add(new Pin(u,at,yaw));u.deployed=at;Engine.apply(u,at,yaw);return u;
+        }
+        GravesAndGlory.Unit post(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String troop,double dx,double dz,float yaw,boolean freeze){return post(b,s,Campaign.troop(troop),30+fixture.size(),dx,dz,yaw,freeze);}
+        GravesAndGlory.Unit post(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Spec.TroopsRow row,double dx,double dz,float yaw,boolean freeze){return post(b,s,row,30+fixture.size(),dx,dz,yaw,freeze);}
+        /** A troop with its AI on (Tactics moves and swings it), on the platform at (dx, dz). */
+        GravesAndGlory.Unit live(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String troop,double dx,double dz,float yaw){
+            Vec3d at=new Vec3d(site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz);
+            var u=b.spawn(s,Campaign.troop(troop),30+fixture.size(),at);u.mob.refreshPositionAndAngles(at.x,at.y,at.z,yaw,0);fixture.add(u);u.deployed=at;return u;
+        }
+        void move(GravesAndGlory.Unit u,double dx,double dz,float yaw){Vec3d at=new Vec3d(site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz);pins.removeIf(p->p.u()==u);pins.add(new Pin(u,at,yaw));u.deployed=at;Engine.apply(u,at,yaw);}
+        void unpin(GravesAndGlory.Unit u){pins.removeIf(p->p.u()==u);}
+        /** The troop's armour off, so the health it loses is the amount applied. */
+        static GravesAndGlory.Unit bare(GravesAndGlory.Unit u){for(var slot:List.of(EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET))u.mob.equipStack(slot,ItemStack.EMPTY);return u;}
+        /** A troop that cannot be killed by the stage in hand. */
+        static GravesAndGlory.Unit tough(GravesAndGlory.Unit u){u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(4000);u.mob.setHealth(4000f);return u;}
+        /** A real blow of this size from the attacker's troop, past the victim's hurt cooldown, through Combat.resolve (so the on-hit abilities run). */
+        static float strike(GravesAndGlory.Battle b,GravesAndGlory.Unit attacker,GravesAndGlory.Unit victim,float base){victim.mob.timeUntilRegen=0;victim.mob.hurtTime=0;return Combat.resolve(b,attacker,victim.mob,base,"melee",false);}
+        void platform(GravesAndGlory.Battle b,BlockPos c,int half,net.minecraft.block.BlockState floor){
+            for(int x=-half;x<=half;x++)for(int z=-half;z<=half;z++){b.world.setBlockState(c.add(x,-1,z),floor);for(int y=0;y<=6;y++)b.world.setBlockState(c.add(x,y,z),Blocks.AIR.getDefaultState());}
+        }
+        void force(GravesAndGlory.Battle b,BlockPos from,BlockPos to){
+            for(int cx=from.getX()>>4;cx<=to.getX()>>4;cx++)for(int cz=from.getZ()>>4;cz<=to.getZ()>>4;cz++){b.world.setChunkForced(cx,cz,true);b.world.getChunk(cx,cz);forced.add(new net.minecraft.util.math.ChunkPos(cx,cz));}
+        }
+        void unforce(GravesAndGlory.Battle b){for(var p:forced)b.world.setChunkForced(p.x,p.z,false);forced.clear();}
+        void clearFixture(GravesAndGlory.Battle b,String where){for(var u:fixture)u.mob.discard();b.units.removeAll(fixture);fixture.clear();shielded.clear();pins.clear();raise=false;Arrays.fill(us,null);Arrays.fill(line,null);audit(b,where,false);}
+        /** After a removal or a raising: no gg_ side team keeps a member that is not a living troop of b.units (and with `none` standing, none keeps any). */
+        void audit(GravesAndGlory.Battle b,String where,boolean none){
+            var stale=staleSides(b);var all=sideMembers(b);audits++;
+            for(String m:none?all:stale)staleSeen.putIfAbsent(m,where);
+            if(auditNotes.size()<24)auditNotes.add(where+" "+all.size()+" on a team"+(stale.isEmpty()?"":", "+stale.size()+" stale"));
+        }
+        void hold(){
+            for(var p:pins)if(p.u().mob.isAlive())Engine.apply(p.u(),p.at(),p.yaw());
+            for(var u:shielded)if(u.mob.isAlive()){if(raise&&!u.mob.isUsingItem())u.mob.setCurrentHand(net.minecraft.util.Hand.OFF_HAND);else if(!raise&&u.mob.isUsingItem())u.mob.stopUsingItem();}
+        }
+        static void reset(GravesAndGlory.Squad s){s.routedAt.clear();s.steadyUntil.clear();s.fullHealth.clear();s.assignments.clear();}
+        /** Every army's troops leave and none come back; a stone sky platform 40 blocks east of Dawn's base; two ad hoc armies (bots) beside the commander's own, which keeps his seat and his class. */
+        void stageFixture(GravesAndGlory.Battle b){
+            Projectiles.clear(b);Abilities.clearBanners(b);clearFixture(b,"clearFixture");
+            for(var s:b.squads.values()){s.reinforceAt=Long.MAX_VALUE;s.training.clear();if(s.bot)b.campaign.botRespawns.put(s.owner,Long.MAX_VALUE);}
+            for(var u:b.units)u.mob.discard();b.units.clear();audit(b,"stageFixture",true);b.deaths.clear();
+            var base=GravesAndGlory.Battle.base(0);site=new BlockPos((int)base.x+40,140,(int)base.z);mainSite=site;force(b,site.add(-13,0,-13),site.add(13,0,13));platform(b,site,12,Blocks.STONE.getDefaultState());platforms.add(site);
+            own=b.squads.get(player);reset(own);
+            dawn=new GravesAndGlory.Squad(UUID.randomUUID(),0,base);dawn.order="hold";dawn.bot=true;dusk=new GravesAndGlory.Squad(UUID.randomUUID(),1,base);dusk.order="hold";dusk.bot=true;
+        }
+        /** A level, open 36 x 17 patch of real ground west of the river (no step over a block, no water): its west end (x, standing y, z), or null. */
+        double[] flat(GravesAndGlory.Battle b){
+            for(int x=-240;x<=-40;x+=6)for(int z=-100;z<=100;z+=6){
+                int y0=(int)Phase1Checks.top(b,x,z);boolean open=true;
+                for(int dx=-4;dx<=32&&open;dx+=2)for(int dz=-8;dz<=8&&open;dz+=2){
+                    int y=(int)Phase1Checks.top(b,x+dx,z+dz);
+                    open=!Arena.river(x+dx,z+dz)&&Math.abs(y-y0)<=1&&b.world.getBlockState(new BlockPos(x+dx,y-1,z+dz)).isSolidBlock(b.world,new BlockPos(x+dx,y-1,z+dz));
+                }
+                if(open)return new double[]{x,y0,z};
+            }
+            return null;
+        }
+        /** Puts the commander on the platform (centre or the west edge), cancels the cooldown and plants the banner; null when it was refused. */
+        GravesAndGlory.ArmySupplyBanner plant(GravesAndGlory.Battle b,ServerPlayerEntity p,double dx){return plant(b,p,dx,0);}
+        GravesAndGlory.ArmySupplyBanner plant(GravesAndGlory.Battle b,ServerPlayerEntity p,double dx,double dz){
+            Commander.reset(b,own);p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);
+            b.relocate(p,site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz,-90f,0f);b.campaign.notices.remove(player);b.command(p,"ability");
+            return b.structures.isEmpty()?null:b.structures.get(b.structures.size()-1);
+        }
+
+        public void cleanup(MinecraftClient c){
+            server(c,b->{Abilities.clearBanners(b);clearFixture(b,"cleanup");for(var s:platforms)platform(b,s,12,Blocks.AIR.getDefaultState());platforms.clear();unforce(b);
+                if(owned!=null){owned.owner=ownedWas;owned.progress=ownedProgress;owned.challenger=ownedChallenger;owned.ownedSince=ownedSince;}
+                if(cost!=null)cost.handBack();
+                if(b.running)b.campaign.returnLobby();var p=sp(b);if(p!=null&&classBefore!=null)b.campaign.handle(p,"class:"+classBefore);});
+        }
+
+        public void step(MinecraftClient c,int tick){
+            if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;next(b,1);});}
+            if(watchSwing&&golemId>=0&&c.world!=null&&c.world.getEntityById(golemId) instanceof net.minecraft.entity.passive.IronGolemEntity g)swingSeen=Math.max(swingSeen,g.getAttackTicksLeft());
+            if(wantShot!=null&&!shotTaken&&++shotDelay>=shotAfter){shot(c,wantShot);shotTaken=true;}
+            if(stage==99&&!finished){finished=true;c.setScreen(null);finish(c,"ironclad");}
+            if(tick>16000&&!finished){finished=true;report("p2-ironclad-timeout",false,"stuck in stage "+stage);finish(c,"ironclad");}
+        }
+
+        public void serverTick(GravesAndGlory.Battle b){
+            if(player==null||stage>=99)return;
+            try{stages(b);}catch(RuntimeException e){report("p2-ironclad-exception",false,"stage "+stage+": "+e);e.printStackTrace();next(b,99);}
+        }
+        void stages(GravesAndGlory.Battle b){
+            hold();
+            switch(stage){
+                case 1->{ // p2-ironclad-mobs, the sheet and the classes: the entities the sheet names are the ones registered, and they carry only a SwimGoal
+                    var w=b.world;boolean good2=true;StringBuilder s=new StringBuilder();var armor=net.minecraft.entity.attribute.EntityAttributes.GENERIC_ARMOR;
+                    Map<String,EntityType<?>> types=Map.<String,EntityType<?>>of("vindicator",EntityType.VINDICATOR,"pillager",EntityType.PILLAGER,"iron_golem",EntityType.IRON_GOLEM);
+                    Map<String,Class<?>> classes=Map.<String,Class<?>>of("vindicator",GravesAndGlory.ArmyVindicator.class,"pillager",GravesAndGlory.ArmyPillager.class,"iron_golem",GravesAndGlory.ArmyGolem.class);
+                    for(var line:List.of("ic_hearthguard:vindicator","ic_breaker:vindicator","ic_arbalist:pillager","ic_ballista:pillager","ic_mortar:pillager","ic_colossus:iron_golem")){
+                        String troop=line.substring(0,line.indexOf(':')),entity=line.substring(line.indexOf(':')+1);var row=Campaign.troop(troop);
+                        boolean sheet=row!=null&&row.entity().equals(entity);MobEntity m=null;String goals,targets,made;
+                        try{m=ArmyMobs.create(row.entity(),w);made=m.getClass().getSimpleName();goals=Engine.goalNames(m,"goalSelector").toString();targets=Engine.goalNames(m,"targetSelector").toString();}
+                        catch(ReflectiveOperationException|RuntimeException e){goals=targets="unreadable";made=e.toString();}
+                        boolean raider=!(m instanceof net.minecraft.entity.raid.RaiderEntity r)||r.getRaid()==null&&!r.isCelebrating();
+                        boolean good=sheet&&m!=null&&classes.get(entity).isInstance(m)&&ArmyMobs.isTroop(m)&&m.getType()==types.get(entity)&&goals.equals("[SwimGoal]")&&targets.equals("[]")&&m.getAttributeBaseValue(armor)==0&&raider;
+                        good2&=good;s.append(troop).append(" (sheet entity ").append(row==null?"-":row.entity()).append(", want ").append(entity).append(") -> ").append(made).append(", goals ").append(goals).append(", targets ").append(targets).append(", no raid or celebration=").append(raider).append(good?"":" (BAD)").append("; ");
+                    }
+                    mobsOk=good2;mobsWhy=s.toString();next(b,4);
+                }
+                case 4->{ // the commander is a Quartermaster for the rest of the suite
+                    var p=sp(b);if(p==null)return;if(b.running){b.campaign.returnLobby();return;}
+                    classBefore=profile(b).commander;b.campaign.handle(p,"class:quartermaster");
+                    if(!profile(b).commander.equals("quartermaster")){report("p2-ironclad-class",false,"class:quartermaster never reached the profile (it says "+profile(b).commander+")");next(b,99);return;}
+                    next(b,5);
+                }
+                case 5->{var p=sp(b);if(p==null||!Phase1Checks.skirmish(b,p,0,1,"normal"))return;next(b,6);}
+                case 6->{if(since(b)<10)return;stageFixture(b);next(b,10);}
+                case 10->{ // the Arbalist, the Ballista Crew and the Mortar with their AI on, shooting a pinned bare knight; a Hearthguard, a Shieldbreaker and Brassjaw stand by
+                    dawn.order="attack";charging=0;raiding=0;
+                    us[0]=tough(bare(post(b,dusk,"knight",4,0,180,true)));foeHp=us[0].mob.getHealth();dawn.target=us[0].mob.getPos();
+                    u1=live(b,dawn,"ic_arbalist",-8,0,-90);u2=live(b,dawn,"ic_ballista",-8,-5,-90);u3=live(b,dawn,"ic_mortar",-8,5,-90);
+                    post(b,dawn,"ic_hearthguard",-2,-8,-90,true);post(b,dawn,"ic_breaker",-2,8,-90,true);post(b,dawn,"ic_colossus",-4,10,-90,true);
+                    next(b,11);
+                }
+                case 11->{ // 140 ticks: the pillagers never take the crossbow-charging pose, nothing raids or celebrates, and the shots land
+                    for(var u:fixture){
+                        if(u.mob instanceof net.minecraft.entity.mob.PillagerEntity pl&&pl.isCharging())charging++;
+                        if(u.mob instanceof net.minecraft.entity.raid.RaiderEntity r&&(r.getRaid()!=null||r.isCelebrating()))raiding++;
+                    }
+                    if(since(b)<140)return;
+                    int pillagers=(int)fixture.stream().filter(u->u.mob instanceof net.minecraft.entity.mob.PillagerEntity).count();
+                    boolean hit=us[0].mob.getHealth()<foeHp;
+                    report("p2-ironclad-mobs",mobsOk&&charging==0&&raiding==0&&hit&&pillagers==3,mobsWhy+"over 140 ticks with "+pillagers+" pillagers (an Arbalist, a Ballista Crew and a Mortar, AI on) shooting a pinned knight: the crossbow-charging pose was taken "+charging+" times (want 0), a raid or a celebration was seen "+raiding+" times (want 0), the knight lost "+fmt(foeHp-us[0].mob.getHealth())+" health (want some)="+hit);
+                    clearFixture(b,"mobs");next(b,12);
+                }
+                case 12->{ // p2-sunder and p2-armour-bolt: a raised Templar facing them
+                    dawn.order="hold";
+                    u1=post(b,dusk,"sentinel",0,0,180,true);shielded.add(u1);raise=true;
+                    u2=post(b,dawn,"ic_breaker",0,-2.5,0,true);u3=post(b,dawn,"ic_hearthguard",1.5,-2.5,0,true);
+                    u4=post(b,dawn,"ic_arbalist",0,-10,0,true);u5=post(b,dawn,"archer",-1.5,-10,0,true);
+                    u6=bare(post(b,dusk,"revenant",-6,0,180,true));us[0]=post(b,dawn,"ic_breaker",-6,-2.5,0,true);us[1]=post(b,dawn,"ic_arbalist",-6,-10,0,true);
+                    next(b,13);
+                }
+                case 13->{if(since(b)<10)return; // the shield has been up ten ticks
+                    boolean raised=u1.mob.isUsingItem();
+                    var sunder=Commanders.hit(b,u2,u1.mob,"melee");var plain=Commanders.hit(b,u3,u1.mob,"melee");var open=Commanders.hit(b,us[0],u6.mob,"melee");
+                    var bolt=Commanders.hit(b,u4,u1.mob,"arrow");var archer=Commanders.hit(b,u5,u1.mob,"arrow");var boltOpen=Commanders.hit(b,us[1],u6.mob,"arrow");
+                    boolean tags=u2.tags.contains("sunder")&&!u2.tags.contains("shield")&&u4.tags.contains("armour_bolt")&&u1.tags.contains("shield");
+                    boolean s=raised&&tags&&Gilded.is(sunder,1.4,"C14")&&Gilded.is(plain,0.6,"C3")&&open!=null&&near(open.counters(),1.0)&&open.rows().isEmpty();
+                    boolean a=raised&&Gilded.is(bolt,0.7,"C15")&&archer!=null&&archer.rows().contains("C1")&&archer.counters()<bolt.counters()&&boltOpen!=null&&near(boltOpen.counters(),1.0)&&boltOpen.rows().isEmpty();
+                    report("p2-sunder",s,"against a raised Templar (raised="+raised+", tags "+u1.tags+") from the front: a Shieldbreaker (tags "+u2.tags+") "+show(sunder)+" (want 1.4, C14); a Hearthguard "+show(plain)+" (want the shield's 0.6, C3); the Shieldbreaker on a Risen with no shield "+show(open)+" (want 1.0, no row)="+s);
+                    report("p2-armour-bolt",a,"against the same raised Templar: an Arbalist's bolt (tags "+u4.tags+") "+show(bolt)+" (want 0.7, C15); an Order Archer's arrow "+show(archer)+" (the shield's C1, which cuts it further than the bolt's 0.7); the Arbalist on the Risen "+show(boltOpen)+" (want 1.0, no row)="+a);
+                    clearFixture(b,"sunder");next(b,14);
+                }
+                case 14->{ // p2-ballista-pierce: a Ballista Crew shoots a bare knight; a second 2.5 behind it, a third 3.6 behind (not struck: only one), one 2.5 in front and one 6.5 behind
+                    u1=post(b,dawn,"ic_ballista",0,-10,0,true);
+                    us[0]=bare(post(b,dusk,"knight",0,0,180,true));us[1]=bare(post(b,dusk,"knight",0.4,2.5,180,true));us[2]=bare(post(b,dusk,"knight",-0.3,3.6,180,true));us[3]=bare(post(b,dusk,"knight",0,-2.5,180,true));us[4]=bare(post(b,dusk,"knight",0,6.5,180,true));
+                    mark=Combat.LAST.peekLast();Projectiles.fire(b,u1,us[0].mob,"arrow",(float)Abilities.baseHit(b,u1));shot=b.shots.get(b.shots.size()-1);next(b,15);
+                }
+                case 15->{if(b.time<shot.lands()+2)return;
+                    var row=Abilities.row(u1.spec);
+                    Combat.HitLog first=Gilded.hitOn(us[0].mob,mark),second=Gilded.hitOn(us[1].mob,mark),third=Gilded.hitOn(us[2].mob,mark),front=Gilded.hitOn(us[3].mob,mark),far=Gilded.hitOn(us[4].mob,mark);
+                    boolean sheet=row.id().equals("pierce_ballista")&&row.mechanic().equals("pierce")&&near(row.amount(),0.6)&&near(row.radius(),4)&&u1.tags.contains("siege");
+                    boolean landed=first!=null&&second!=null&&Math.abs(second.base()-0.6*first.base())<1e-4&&near(second.total(),first.total())&&third==null&&front==null&&far==null;
+                    boolean lost=us[1].mob.getHealth()<us[1].mob.getMaxHealth()&&us[2].mob.getHealth()==us[2].mob.getMaxHealth()&&us[3].mob.getHealth()==us[3].mob.getMaxHealth()&&us[4].mob.getHealth()==us[4].mob.getMaxHealth();
+                    float l0=us[0].mob.getMaxHealth()-us[0].mob.getHealth(),l1=us[1].mob.getMaxHealth()-us[1].mob.getHealth();
+                    boolean share=l0>0&&Math.abs(l1-0.6f*l0)<1e-3;
+                    report("p2-ballista-pierce",sheet&&landed&&lost&&share,"the Ballista Crew's row "+row.id()+" ("+row.mechanic()+", amount "+row.amount()+", radius "+row.radius()+")="+sheet+"; its bolt hit the first knight "+show(first)+" (it lost "+fmt(l0)+"); the knight 2.5 behind it took "+show(second)+" (it lost "+fmt(l1)+", want 0.6 of that)="+share+"; nothing was logged on the knight 3.6 behind ("+(third==null?"none":"HIT")+"), 2.5 in front ("+(front==null?"none":"HIT")+") or 6.5 behind ("+(far==null?"none":"HIT")+")="+(third==null&&front==null&&far==null)+"; only the second took health="+lost);
+                    clearFixture(b,"pierce");next(b,16);
+                }
+                case 16->{ // p2-mortar-minrange, at a cast: the Mortar 8 blocks from one knight and 19 from another; two bystanders by the far one
+                    u1=post(b,dawn,"ic_mortar",0,-8,0,true);u1.abilityAt=0;
+                    us[0]=bare(post(b,dusk,"knight",0,0,180,true));us[1]=bare(post(b,dusk,"knight",0,11,180,true));us[2]=bare(post(b,dusk,"knight",2.0,11,180,true));us[3]=bare(post(b,dusk,"knight",-4.2,11,180,true));
+                    var row=Abilities.row(u1.spec);
+                    boolean sheet=row.id().equals("shell")&&row.mechanic().equals("blight")&&near(row.minRange(),10)&&near(row.radius(),3.5)&&row.windupTicks()==30&&row.cooldownTicks()==100&&row.statusTicks()==0&&u1.tags.containsAll(List.of("siege","large"));
+                    Abilities.attack(b,u1,us[0].mob,b.time);
+                    boolean refused=u1.spellCenter==null&&u1.abilityAt==0&&b.shots.isEmpty();
+                    boolean edge=Abilities.tooClose(u1,9.9*9.9)&&!Abilities.tooClose(u1,10.0*10.0)&&!Abilities.tooClose(u1,10.1*10.1);
+                    t0=b.time;Abilities.attack(b,u1,us[1].mob,b.time);
+                    boolean cast=u1.spellCenter!=null&&u1.windupUntil==t0+30&&u1.abilityAt==t0+100;casting=cast;castTime=0;
+                    minOk=sheet&&refused&&edge&&cast;
+                    minWhy="the Mortar's row "+row.id()+" ("+row.mechanic()+", minimum range "+row.minRange()+", radius "+row.radius()+", windup "+row.windupTicks()+", cooldown "+row.cooldownTicks()+", slow "+row.statusTicks()+" ticks)="+sheet+"; asked to shell a knight 8 blocks off it did nothing (no spell, no cooldown spent)="+refused+"; the line falls between 9.9 (too close) and 10.0 (allowed)="+edge+"; asked to shell one 19 off it began a spell with a windup of 30 and its next cast at +100="+cast+"; ";
+                    next(b,17);
+                }
+                case 17->{ // the burst lands when the windup ends, hurts what stands within 3.5 and slows nobody
+                    long t=b.time-t0;
+                    if(casting&&u1.spellCenter!=null)Abilities.tick(b,u1,us[1].mob,b.time);
+                    if(casting&&u1.spellCenter==null){casting=false;castTime=t;}
+                    if(castTime>0||t>60){
+                        float far=us[1].mob.getMaxHealth()-us[1].mob.getHealth(),in=us[2].mob.getMaxHealth()-us[2].mob.getHealth(),out=us[3].mob.getMaxHealth()-us[3].mob.getHealth();
+                        boolean slow=us[1].mob.hasStatusEffect(StatusEffects.SLOWNESS)||us[2].mob.hasStatusEffect(StatusEffects.SLOWNESS);
+                        boolean burst=castTime==30&&far>0&&in>0&&out==0&&!slow&&us[0].mob.getHealth()==us[0].mob.getMaxHealth();
+                        minOk&=burst;minWhy+="the shell burst "+castTime+" ticks after the cast (want 30); the target lost "+fmt(far)+", the bystander 2.0 off "+fmt(in)+", the one 4.2 off "+fmt(out)+" (want some, some, 0), nobody slowed="+(!slow)+", the knight 8 blocks from the Mortar untouched="+(us[0].mob.getHealth()==us[0].mob.getMaxHealth())+"="+burst+"; ";
+                        castTime=0;clearFixture(b,"mortar cast");next(b,20);
+                    }
+                }
+                case 20->{ // p2-forge-slam: Brassjaw hits the first of five bare knights; three stand within 2.5 of it and one 3.2 off
+                    u1=post(b,dawn,"ic_colossus",0,-3,0,true);
+                    us[0]=bare(post(b,dusk,"knight",0,0,180,true));us[1]=bare(post(b,dusk,"knight",1.5,0,180,true));us[2]=bare(post(b,dusk,"knight",-1.8,0.3,180,true));us[3]=bare(post(b,dusk,"knight",0.4,2.0,180,true));us[4]=bare(post(b,dusk,"knight",3.2,0,180,true));
+                    for(int i=1;i<=3;i++)unpin(us[i]); // free to be thrown; the one 3.2 off stays pinned
+                    var row=Abilities.row(u1.spec);
+                    boolean sheet=row.id().equals("forge_slam")&&row.mechanic().equals("slam")&&near(row.amount(),0.6)&&near(row.radius(),2.5)&&near(row.knockback(),0.8)&&Abilities.carriesFearless(u1)&&u1.tags.containsAll(List.of("fearless","large"));
+                    float[] before=new float[5];for(int i=0;i<5;i++)before[i]=us[i].mob.getHealth();
+                    mark=Combat.LAST.peekLast();float base=(float)Abilities.baseHit(b,u1);strike(b,u1,us[0],base);
+                    float[] lost=new float[5];for(int i=0;i<5;i++)lost[i]=before[i]-us[i].mob.getHealth();
+                    var onFirst=Gilded.hitOn(us[0].mob,mark);
+                    boolean share=onFirst!=null&&lost[0]>0;StringBuilder s=new StringBuilder();
+                    for(int i=1;i<=3;i++){
+                        var log=Gilded.hitOn(us[i].mob,mark);int count=0;boolean after=mark==null;for(var h:Combat.LAST){if(h==mark){after=true;continue;}if(after&&h.target()==us[i].mob.getId())count++;}
+                        Vec3d d=us[i].mob.getPos().subtract(us[0].mob.getPos()),v=us[i].mob.getVelocity();double speed=Math.hypot(v.x,v.z),dot=d.x*v.x+d.z*v.z;
+                        boolean good=log!=null&&count==1&&Math.abs(log.base()-onFirst.base()*0.6)<1e-4&&Math.abs(lost[i]-0.6f*lost[0])<1e-3&&near(log.counters(),1.0)&&dot>0&&speed>0.5;
+                        share&=good;s.append("knight ").append(i).append(" ").append(fmt(distance(us[i].mob.getPos(),us[0].mob.getPos()))).append(" off lost ").append(fmt(lost[i])).append(" (want ").append(fmt(0.6*lost[0])).append(") in ").append(count).append(" hit, thrown away at ").append(fmt(speed)).append(good?"":" (BAD)").append("; ");
+                    }
+                    boolean outside=Gilded.hitOn(us[4].mob,mark)==null&&lost[4]==0&&Math.hypot(us[4].mob.getVelocity().x,us[4].mob.getVelocity().z)<0.05;
+                    report("p2-forge-slam",sheet&&share&&outside,"Brassjaw's row "+row.id()+" ("+row.mechanic()+", share "+row.amount()+", radius "+row.radius()+", knockback "+row.knockback()+"), carries fearless="+Abilities.carriesFearless(u1)+" and tags "+u1.tags+"="+sheet+"; his blow hit the first knight "+show(onFirst)+" (it lost "+fmt(lost[0])+"); "+s+"the knight 3.2 off took no hit, lost "+fmt(lost[4])+" and was not moved="+outside);
+                    clearFixture(b,"slam");next(b,22);
+                }
+                case 22->{ // p2-counters-siege: a supply banner of Dusk, a Ballista Crew, a Mortar and a knight of Dawn, Brassjaw and a small synthetic troop of Dusk
+                    banner=GravesAndGlory.ArmySupplyBanner.place(b,dusk,new Vec3d(site.getX()+.5+6,site.getY(),site.getZ()+.5-6),0f,40f);
+                    if(banner==null){report("p2-counters-siege",false,"no spot for the banner on the platform");next(b,30);return;}
+                    u1=post(b,dawn,"ic_ballista",0,-10,0,true);u2=post(b,dawn,"knight",-4,-6,0,true);u3=post(b,dusk,"ic_colossus",-6,6,180,true);
+                    u4=post(b,dawn,"ic_mortar",-4,-10,0,true);
+                    var small=Gilded.synthetic("p2_small","Moot Hound",false,"none","small");us[0]=post(b,dusk,small,-8,2,180,true);
+                    float hp0=banner.hp();var c10=Commanders.hit(b,u1,banner,"arrow");float hp1=banner.hp();var c11=Commanders.hit(b,u2,banner,"melee");float hp2=banner.hp();
+                    var c12=Commanders.hit(b,u1,u3.mob,"arrow");var c13=Commanders.hit(b,u1,us[0].mob,"arrow");var mortar=Commanders.hit(b,u4,banner,"blight");float hp3=banner.hp();
+                    boolean row=c10!=null&&c11!=null&&mortar!=null;
+                    boolean taken=row&&Math.abs((hp0-hp1)-c10.base()*c10.total())<1e-3&&Math.abs((hp1-hp2)-c11.base()*c11.total())<1e-3&&Math.abs((hp2-hp3)-mortar.base()*mortar.total())<1e-3;
+                    // a commander's own blow counts as a non-siege one; his own side's blow and fire do nothing
+                    var pl=sp(b);float hpP=banner.hp();boolean hurtP=banner.damage(b.world.getDamageSources().playerAttack(pl),8f);float hpP1=banner.hp();
+                    var mine=GravesAndGlory.ArmySupplyBanner.place(b,own,new Vec3d(site.getX()+.5-6,site.getY(),site.getZ()+.5-6),0f,40f);
+                    boolean ownRefused=mine!=null&&!mine.damage(b.world.getDamageSources().playerAttack(pl),8f)&&mine.hp()==40f&&!mine.damage(b.world.getDamageSources().generic(),100f)&&mine.hp()==40f&&!mine.damage(b.world.getDamageSources().onFire(),100f);
+                    if(mine!=null)mine.discard();
+                    boolean tagged=banner.getCommandTags().containsAll(List.of("gravesandglory","structure"))&&near(hp0,40)&&banner.isInvisible();
+                    boolean ok1=Gilded.is(c10,4.0,"C10")&&Gilded.is(c11,0.25,"C11")&&Gilded.is(c12,1.3,"C12")&&Gilded.is(c13,0.6,"C13")&&Gilded.is(mortar,4.0,"C10");
+                    boolean player=hurtP&&Math.abs((hpP-hpP1)-8f*0.25f)<1e-3;
+                    report("p2-counters-siege",ok1&&taken&&tagged&&player&&ownRefused,"against the supply banner (tags "+banner.getCommandTags()+", "+hp0+" health): a Ballista Crew's bolt "+show(c10)+" took "+fmt(hp0-hp1)+" (want 4.0, C10, the total clamped to the table's range); an Order Squire's blow "+show(c11)+" took "+fmt(hp1-hp2)+" (want 0.25, C11); a Mortar's shell "+show(mortar)+" took "+fmt(hp2-hp3)+" (C10); the commander's own blow of 8 took "+fmt(hpP-hpP1)+" (want 2.0, the non-siege 0.25)="+player+"; the amounts come off its health as the log says="+taken+"; its own side's blow, a fall and fire do nothing="+ownRefused+"; the Ballista Crew's bolt on Brassjaw (large) "+show(c12)+" (want 1.3, C12); on a small synthetic troop "+show(c13)+" (want 0.6, C13)");
+                    clearFixture(b,"siege counters");banner.discard();banner=null;next(b,23);
+                }
+                case 23->{ // a Mortar's shell bursts on a banner within its radius
+                    banner=GravesAndGlory.ArmySupplyBanner.place(b,dusk,new Vec3d(site.getX()+.5+6,site.getY(),site.getZ()+.5-3),0f,40f);
+                    u4=post(b,dawn,"ic_mortar",-4,-10,0,true);u4.abilityAt=0;us[0]=bare(post(b,dusk,"knight",6,-6,180,true));
+                    t0=b.time;castTime=0;Abilities.attack(b,u4,us[0].mob,b.time);casting=u4.spellCenter!=null;mark=Combat.LAST.peekLast();next(b,24);
+                }
+                case 24->{
+                    long t=b.time-t0;
+                    if(casting&&u4.spellCenter!=null)Abilities.tick(b,u4,us[0].mob,b.time);
+                    if(casting&&u4.spellCenter==null){casting=false;castTime=t;}
+                    if(castTime>0||t>60){
+                        var h=Gilded.hitOn(banner,mark);
+                        boolean hit=h!=null&&Gilded.is(h,4.0,"C10")&&banner.hp()<40f;
+                        report("p2-mortar-banner",hit&&castTime==30,"a Mortar's shell bursting 3.0 from a supply banner (burst "+castTime+" ticks after the cast, want 30) struck it "+show(h)+", it has "+fmt(banner.hp())+" of 40 left (want less)="+hit);
+                        clearFixture(b,"mortar banner");banner.discard();banner=null;next(b,30);
+                    }
+                }
+                case 30->{ // p2-supply-banner: the Quartermaster plants a banner 40 blocks from his base; a troop trained now deploys there
+                    var p=sp(b);if(p==null)return;
+                    clearFixture(b,"supply");reset(own);own.order="hold";own.target=new Vec3d(site.getX()+.5+60,70,site.getZ()+.5);own.training.clear();
+                    var c=Commander.row(own);t0=b.time;banner=plant(b,p,0);
+                    boolean row=c.id().equals("quartermaster")&&c.active().equals("forward_supply")&&c.cooldownTicks()==3000&&c.durationTicks()==1200&&near(c.radius(),12)&&near(c.range(),30)&&near(c.value1(),40);
+                    boolean placed=banner!=null&&b.structures.size()==1&&banner.squad()==own&&near(banner.hp(),40)&&banner.isAlive()&&banner.getCommandTags().containsAll(List.of("gravesandglory","structure"))&&banner.block!=null&&b.world.getBlockState(banner.block).getBlock() instanceof net.minecraft.block.BannerBlock&&own.abilityData==banner;
+                    double away=banner==null?-1:distance(banner.getPos(),base0());
+                    boolean timing=own.abilityUntil==t0+1200&&own.abilityReadyAt==t0+3000&&Commander.running(b,own,"forward_supply")&&Commander.readyIn(b,own)==3000;
+                    supplyOk=row&&placed&&away>=30&&away<=45&&timing;
+                    supplyWhy.clear();supplyWhy.add("the Quartermaster's row "+c.id()+"/"+c.active()+" (cooldown "+c.cooldownTicks()+", lasts "+c.durationTicks()+", radius "+c.radius()+", range "+c.range()+", "+c.value1()+" health)="+row+"; he stood "+fmt(distance(p.getPos(),base0()))+" from his base: a banner stands "+fmt(away)+" from it (want 30 or more), with "+(banner==null?"no health":fmt(banner.hp())+" health")+", the tags structure and gravesandglory, its block placed, held in his active's data="+placed+", the active runs to +"+(own.abilityUntil-t0)+" and is ready again at +"+(own.abilityReadyAt-t0)+"="+timing);
+                    if(banner==null){report("p2-supply-banner",false,supplyWhy.get(0));next(b,99);return;}
+                    bannerBlock=banner.block;
+                    own.training.addLast(new GravesAndGlory.Training(Campaign.troop("knight"),b.time));
+                    next(b,31);
+                }
+                case 31->{ // the troop trained appears at the banner, not the barracks
+                    var fresh=b.units.stream().filter(u->u.squad==own).toList();
+                    if(fresh.isEmpty()&&since(b)<40)return;
+                    var u=fresh.isEmpty()?null:fresh.get(0);
+                    var anchors=b.reinforcementAnchors(own.team);var anchor=anchors.isEmpty()?null:anchors.get(0);
+                    boolean at=u!=null&&distance(u.mob.getPos(),banner.getPos())<7&&distance(u.mob.getPos(),base0())>25;
+                    boolean note=anchor!=null&&anchor.equals(banner.anchor())&&b.deployNote(own,anchor).contains("Forward Supply")&&b.deployNote(own,null).contains("barracks");
+                    supplyOk&=at&&note&&anchors.size()==1;
+                    supplyWhy.add("an Order Squire trained with the banner up appeared "+(u==null?"never":fmt(distance(u.mob.getPos(),banner.getPos()))+" from the banner and "+fmt(distance(u.mob.getPos(),base0()))+" from his base")+" (want within 7 of the banner)="+at+"; the anchors are "+anchors.stream().map(GravesAndGlory.Anchor::name).toList()+", the notice reads \""+b.deployNote(own,anchor)+"\" (from the barracks: \""+b.deployNote(own,null)+"\")="+note);
+                    if(u!=null){u.mob.setAiDisabled(true);fixture.add(u);pins.add(new Pin(u,u.mob.getPos(),-90f));}
+                    // refused too near his base: from the platform's west edge
+                    var p=sp(b);Commander.reset(b,own);boolean gone=b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir();
+                    long ready=own.abilityReadyAt;
+                    b.relocate(p,site.getX()+.5-11.5,site.getY(),site.getZ()+.5,-90f,0f);b.campaign.notices.remove(player);b.command(p,"ability");
+                    String notice=b.campaign.notices.get(player);double edge=distance(p.getPos(),base0());
+                    boolean refused=edge<30&&b.structures.isEmpty()&&own.abilityUntil==0&&own.abilityReadyAt==ready&&("Too near your base. Plant it 30 or more blocks away.").equals(notice);
+                    supplyOk&=gone&&refused;
+                    supplyWhy.add("the active stopped by hand took the banner down and put its block back (air again)="+gone+"; from the platform's west edge, "+fmt(edge)+" from his base, the cast was refused with the notice \""+notice+"\", no banner, no cooldown, no duration="+refused);
+                    report("p2-supply-banner",supplyOk,String.join("; ",supplyWhy));
+                    clearFixture(b,"supply deploy");next(b,32);
+                }
+                case 32->{ // p2-supply-lost, (a): the banner is shot down by an enemy Ballista Crew before the troop finishes training
+                    var p=sp(b);if(p==null)return;supplyWhy.clear();
+                    clearFixture(b,"lost a");own.training.clear();
+                    banner=plant(b,p,0);if(banner==null){report("p2-supply-lost",false,"no banner could be planted");next(b,99);return;}
+                    bannerBlock=banner.block;own.training.addLast(new GravesAndGlory.Training(Campaign.troop("knight"),b.time+100));
+                    p.changeGameMode(net.minecraft.world.GameMode.SPECTATOR);b.relocate(p,site.getX()+.5,site.getY()+30,site.getZ()+.5,0f,0f); // a spectator is nobody's target
+                    dusk.order="attack";dusk.target=banner.getPos();u5=live(b,dusk,"ic_ballista",9,0,90);
+                    t0=b.time;castTime=-1;next(b,33);
+                }
+                case 33->{
+                    if(castTime<0&&banner.isRemoved())castTime=b.time-t0;
+                    if(since(b)<110)return; // the troop is finished at +100
+                    boolean down=castTime>=0&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir();
+                    var fresh=b.units.stream().filter(u->u.squad==own).toList();var u=fresh.isEmpty()?null:fresh.get(0);
+                    boolean home=u!=null&&distance(u.mob.getPos(),base0())<12&&distance(u.mob.getPos(),centre())>25;
+                    supplyWhy.add("(a) an enemy Ballista Crew 9 blocks off shot the banner down "+(castTime<0?"never":castTime+" ticks")+" after it was planted, its block is air again="+down+"; the troop that finished training afterwards appeared "+(u==null?"never":fmt(distance(u.mob.getPos(),base0()))+" from his base and "+fmt(distance(u.mob.getPos(),centre()))+" from the platform")+" (want the barracks)="+home);
+                    supplyOk=down&&home;
+                    if(u!=null)Houses.discard(b,u);
+                    clearFixture(b,"lost a done");own.training.clear();dusk.order="hold";next(b,34);
+                }
+                case 34->{ // (b): an enemy within 12 of the banner after the purchase, and one just beyond
+                    var p=sp(b);banner=plant(b,p,0);if(banner==null){report("p2-supply-lost",false,"no banner could be planted (b)");next(b,99);return;}
+                    p.changeGameMode(net.minecraft.world.GameMode.SPECTATOR);b.relocate(p,site.getX()+.5,site.getY()+30,site.getZ()+.5,0f,0f);
+                    var bp=banner.getPos();var away=new Vec3d(bp.x+14,site.getY(),bp.z+0.0);
+                    u1=post(b,dusk,"knight",away.x-site.getX()-.5,away.z-site.getZ()-.5,90,true);
+                    boolean beyond=b.reinforcementAnchors(0).size()==1&&b.deploy(own,0).anchor()!=null; // an enemy 14 off: still a safe banner
+                    move(u1,bp.x+8-site.getX()-.5,bp.z-site.getZ()-.5,90);
+                    boolean inside=b.reinforcementAnchors(0).isEmpty()&&b.deploy(own,0).anchor()==null&&distance(b.deploy(own,0).at(),base0())<12;
+                    supplyWhy.add("(b) an enemy knight 14 blocks from the banner leaves it a safe anchor (deploys there)="+beyond+"; at 8 blocks it is no anchor and a troop trained now deploys "+fmt(distance(b.deploy(own,0).at(),base0()))+" from his base, at the barracks="+inside);
+                    supplyOk&=beyond&&inside;
+                    clearFixture(b,"lost b");Commander.reset(b,own);next(b,35);
+                }
+                case 35->{ // (c): the timer runs out
+                    var p=sp(b);banner=plant(b,p,0);if(banner==null){report("p2-supply-lost",false,"no banner could be planted (c)");next(b,99);return;}
+                    bannerBlock=banner.block;boolean standing=b.deploy(own,0).anchor()!=null;own.abilityUntil=b.time+5;next(b,36);
+                    supplyWhy.add("(c) with the banner standing a troop deploys at it="+standing);supplyOk&=standing;
+                }
+                case 36->{if(since(b)<12)return;
+                    boolean gone=b.structures.isEmpty()&&banner.isRemoved()&&b.world.getBlockState(bannerBlock).isAir()&&own.abilityUntil==0&&b.deploy(own,0).anchor()==null;
+                    supplyWhy.add("when the timer runs out the banner is taken down, its block restored and a troop deploys at the barracks="+gone);supplyOk&=gone;
+                    report("p2-supply-lost",supplyOk,String.join("; ",supplyWhy));
+                    Commander.reset(b,own);var p=sp(b);if(p!=null)p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);next(b,40);
+                }
+                case 40->{ // p2-golem-swing: Brassjaw (AI on) swings at a knight 2.8 off, a Hearthguard beside him at another; the swings are entity status 4
+                    clearFixture(b,"swing");dawn.order="attack";var p=sp(b);if(p!=null){p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);b.relocate(p,site.getX()+.5-9,site.getY(),site.getZ()+.5+9,-45f,15f);}
+                    u1=live(b,dawn,"ic_colossus",0,0,0);us[0]=tough(bare(post(b,dusk,"knight",0,2.8,180,true)));
+                    u2=live(b,dawn,"ic_hearthguard",8,0,0);us[1]=tough(bare(post(b,dusk,"knight",8,2.4,180,true)));
+                    dawn.target=us[0].mob.getPos();foeHp=us[0].mob.getHealth();foeHp2=us[1].mob.getHealth();
+                    golemId=u1.mob.getId();swingSeen=0;watchSwing=true;statuses0=BattleEffects.attackStatuses;next(b,41);
+                }
+                case 41->{if(since(b)<130)return;
+                    int sent=BattleEffects.attackStatuses-statuses0;boolean hit=us[0].mob.getHealth()<foeHp,mate=us[1].mob.getHealth()<foeHp2;int seen=swingSeen;watchSwing=false;
+                    report("p2-golem-swing",sent>=2&&sent<=4&&hit&&mate&&seen>0,"in 130 ticks Brassjaw's swings sent "+sent+" entity-status-4 packets (want 2 to 4: one per swing, cooldown 36; a Hearthguard swinging beside him sends none), they cost the knight "+fmt(foeHp-us[0].mob.getHealth())+" health, the Hearthguard's cost its knight "+fmt(foeHp2-us[1].mob.getHealth())+"; the client saw the golem's attack animation run (attackTicksLeft up to "+seen+", want above 0)");
+                    golemId=-1;clearFixture(b,"swing done");next(b,45);
+                }
+                case 45->{ // p2-ironclad-spacing: the room a body takes, in formation and on a bridge lane
+                    reset(own);own.order="attack";own.formation="shieldwall";own.target=centre();own.yaw=-90;
+                    for(int i=0;i<4;i++)us[i]=post(b,own,Campaign.troop("ic_hearthguard"),i,-8,-4+i*2,-90,true);
+                    u1=post(b,own,Campaign.troop("ic_colossus"),4,-8,6,-90,true);u2=post(b,own,Campaign.troop("ic_arbalist"),5,-10,0,-90,true);
+                    double sg=GravesAndGlory.Battle.spacing(u1),sh=GravesAndGlory.Battle.spacing(us[0]),sa=GravesAndGlory.Battle.spacing(u2);
+                    double with=b.formation(us[0]).distanceTo(b.formation(us[1]));
+                    b.units.remove(u1);
+                    double without=b.formation(us[0]).distanceTo(b.formation(us[1]));
+                    b.units.add(u1);
+                    // the bridge lane offset (slot%5-2) x the body's room, for the slots of a Hearthguard and a golem
+                    Vec3d goal=new Vec3d(60,65,0);var rg=Tactics.route(u1,goal);var rh=Tactics.route(us[0],goal);
+                    var bridges=Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList();
+                    double lane1=(4%5-2)*sg,lane0=(0%5-2)*sh;
+                    boolean laneG=bridges.stream().anyMatch(br->Math.abs((rg.z-br.z())-lane1)<1e-4),laneH=bridges.stream().anyMatch(br->Math.abs((rh.z-br.z())-lane0)<1e-4);
+                    boolean ok2=close(sg,1.7)&&close(sh,1.3)&&close(sa,1.3)&&close(with,1.7)&&close(without,1.5)&&laneG&&laneH;
+                    report("p2-ironclad-spacing",ok2,"the room a body takes (width + 0.3, at least 1.3): Brassjaw "+fmt(sg)+" (want 1.70), a Hearthguard "+fmt(sh)+" and an Arbalist "+fmt(sa)+" (want 1.30); in a shieldwall (spacing 1.5) the neighbours of a group with Brassjaw in it stand "+fmt(with)+" apart (want 1.70) and without him "+fmt(without)+" (want 1.50); the bridge lane of his slot 4 is z "+fmt(rg.z)+" past the bridge's centre, offset "+fmt(lane1)+" (3.4; it was 2.6 with the fixed 1.3)="+laneG+", a Hearthguard's slot 0 "+fmt(rh.z)+", offset "+fmt(lane0)+"="+laneH);
+                    clearFixture(b,"spacing");own.formation="block";reset(own);next(b,50);
+                }
+                case 50->{ // p2-entrench, on a platform over the objective B: six Ironclad slots (tier I) of the commander's army, none of them has moved
+                    reset(own);Commander.reset(b,own);
+                    owned=b.points.stream().filter(c->c.spec.id().equals("B")).findFirst().orElse(b.points.get(0));
+                    ownedWas=owned.owner;ownedProgress=owned.progress;ownedChallenger=owned.challenger;ownedSince=owned.ownedSince;owned.owner=-1;
+                    pointSite=new BlockPos(owned.spec.x(),140,owned.spec.z());force(b,pointSite.add(-13,0,-13),pointSite.add(13,0,13));platform(b,pointSite,12,Blocks.STONE.getDefaultState());platforms.add(pointSite);site=pointSite;
+                    for(int i=0;i<4;i++)us[i]=post(b,own,"ic_hearthguard",-2+i*2,-3,-90,true);
+                    u1=post(b,own,"ic_ballista",-6,3,-90,true);u2=post(b,own,"ic_mortar",-6,-3,-90,true);u3=post(b,dusk,"knight",6,0,90,true);
+                    Houses.recompute(own);t0=b.time;
+                    int tier=own.traits.getOrDefault("ironclad",0);var row=CounterMath.trait(Spec.HOUSETRAITS,"ironclad",1);
+                    boolean sheet=row!=null&&row.mechanic().equals("entrench")&&near(row.value(),0.1)&&near(row.value2(),0.1)&&near(row.radius(),0.5)&&row.durationTicks()==60;
+                    var h0=Commanders.hit(b,u3,us[0].mob,"melee");
+                    entrenchOk=sheet&&tier==1&&!Houses.still(us[0])&&h0!=null&&near(h0.traits(),1.0)&&near(Abilities.range(b,u1),34.0);
+                    entrenchWhy="the Entrench row "+(row==null?"none":row.id()+": "+row.value()+" less damage, "+row.value2()+" more range, still within "+row.radius()+" for "+row.durationTicks()+" ticks")+"="+sheet+"; seven Ironclad slots are tier "+tier+"; at the start nothing has stood still: a blow on a Hearthguard has traits "+(h0==null?"none":String.valueOf(h0.traits()))+" (want 1.0), the Ballista Crew's range "+fmt(Abilities.range(b,u1))+" (want 34)="+entrenchOk+"; ";
+                    next(b,51);
+                }
+                case 51->{if(since(b)<80)return; // 80 ticks of standing still
+                    boolean still=Houses.still(us[0])&&Houses.still(u1)&&Houses.still(u2);
+                    var neutral=Commanders.hit(b,u3,us[0].mob,"melee");
+                    owned.owner=1;var theirs=Commanders.hit(b,u3,us[0].mob,"melee"); // an objective the enemy holds does not count
+                    owned.owner=0;var mine=Commanders.hit(b,u3,us[0].mob,"melee");var arrow=Commanders.hit(b,u3,us[0].mob,"arrow");
+                    double r1=Abilities.range(b,u1),r2=Abilities.range(b,u2),rg=Abilities.range(b,us[0]);
+                    var foeHit=Commanders.hit(b,us[0],u3.mob,"melee"); // the other House takes none
+                    boolean t1=still&&neutral!=null&&near(neutral.traits(),0.9)&&theirs!=null&&near(theirs.traits(),0.9)&&mine!=null&&near(mine.traits(),0.8)&&arrow!=null&&near(arrow.traits(),0.8);
+                    boolean range=Math.abs(r1-37.4)<1e-6&&Math.abs(r2-39.6)<1e-6&&near(rg,Campaign.troop("ic_hearthguard").range())&&foeHit!=null&&near(foeHit.traits(),1.0);
+                    // tiers II and III by the sheet (set directly: nothing recomputes between these lines)
+                    StringBuilder s=new StringBuilder();boolean tiers=true;
+                    for(int tr=2;tr<=3;tr++){
+                        var row=CounterMath.trait(Spec.HOUSETRAITS,"ironclad",tr);own.traits.put("ironclad",tr);
+                        owned.owner=-1;var a=Commanders.hit(b,u3,us[0].mob,"melee");owned.owner=0;var c2=Commanders.hit(b,u3,us[0].mob,"melee");double rr=Abilities.range(b,u1);
+                        boolean good=row!=null&&a!=null&&c2!=null&&near(a.traits(),1-row.value())&&near(c2.traits(),1-2*row.value())&&Math.abs(rr-34.0*(1+row.value2()))<1e-6;
+                        tiers&=good;s.append("tier ").append(tr).append(": traits ").append(a==null?"none":fmt(a.traits())).append(", on the objective ").append(c2==null?"none":fmt(c2.traits())).append(", Ballista range ").append(fmt(rr)).append(good?"":" (BAD)").append("; ");
+                    }
+                    Houses.recompute(own);
+                    entrenchOk&=t1&&range&&tiers;
+                    entrenchWhy+="after 80 ticks without moving (still="+still+"): a blow on a Hearthguard has traits "+show(neutral)+" (want 0.9); with the objective held by the enemy "+(theirs==null?"none":String.valueOf(theirs.traits()))+" (want 0.9); with it held by his side "+(mine==null?"none":String.valueOf(mine.traits()))+" (want 0.8), an arrow "+(arrow==null?"none":String.valueOf(arrow.traits()))+" (0.8)="+t1+"; the Ballista Crew's range is "+fmt(r1)+" (want 37.4) and the Mortar's "+fmt(r2)+" (39.6), a Hearthguard's stays "+fmt(rg)+", an Order Squire (Gilded) takes none="+(foeHit!=null&&near(foeHit.traits(),1.0))+"="+range+"; "+s;
+                    // now two of them step a block
+                    owned.owner=0;move(us[0],-2+1.0,-3,-90);move(u1,-6,3+1.0,-90);next(b,52);
+                }
+                case 52->{if(since(b)<12)return;
+                    var moved=Commanders.hit(b,u3,us[0].mob,"melee");var held=Commanders.hit(b,u3,us[1].mob,"melee");
+                    boolean ok3=!Houses.still(us[0])&&!Houses.still(u1)&&Houses.still(us[1])&&moved!=null&&near(moved.traits(),1.0)&&held!=null&&near(held.traits(),0.8)&&near(Abilities.range(b,u1),34.0)&&Math.abs(Abilities.range(b,u2)-39.6)<1e-6;
+                    entrenchOk&=ok3;
+                    report("p2-entrench",entrenchOk,entrenchWhy+"a Hearthguard and the Ballista Crew that stepped a block (on a held objective) 12 ticks ago: traits "+(moved==null?"none":String.valueOf(moved.traits()))+" (want 1.0), the Ballista Crew's range "+fmt(Abilities.range(b,u1))+" (want 34); a Hearthguard that did not move: "+(held==null?"none":String.valueOf(held.traits()))+" (0.8), the Mortar's range "+fmt(Abilities.range(b,u2))+" (39.6)="+ok3);
+                    next(b,53);
+                }
+                case 53->{ // the showcase: the commander's Ironclad army on the held objective, the Ballista Crew and the Mortar entrenched with their rings, a supply banner, Brassjaw about to hit a line
+                    var p=sp(b);if(p==null)return;
+                    clearFixture(b,"showcase");reset(own);own.order="hold";owned.owner=0;dusk.order="hold";
+                    for(int i=0;i<4;i++)us[i]=post(b,own,"ic_hearthguard",-1.5,-4.5+i*3,-90,true);
+                    post(b,own,"ic_arbalist",-4.5,-3,-90,true);post(b,own,"ic_arbalist",-4.5,3,-90,true);
+                    u1=post(b,own,"ic_ballista",-8,-4.5,-90,true);u2=post(b,own,"ic_mortar",-8,4.5,-90,true);u3=post(b,own,"ic_colossus",1.5,0,-90,true);
+                    for(int i=0;i<7;i++)line[i]=post(b,dusk,"knight",4.5,-3.6+i*1.2,90,true);
+                    Houses.recompute(own);
+                    banner=plant(b,p,-6,8); // planted where the commander stands, then he becomes the camera
+                    p.changeGameMode(net.minecraft.world.GameMode.SPECTATOR);
+                    Vec3d cam=new Vec3d(site.getX()+.5-13,site.getY()+6.5,site.getZ()+.5+14),look=new Vec3d(site.getX()+.5-2,site.getY()+1,site.getZ()+.5-0.5);
+                    double dx=look.x-cam.x,dz=look.z-cam.z,dy=look.y-cam.y;
+                    b.relocate(p,cam.x,cam.y,cam.z,(float)(-Math.toDegrees(Math.atan2(dx,dz))),(float)(-Math.toDegrees(Math.atan2(dy,Math.hypot(dx,dz)))));
+                    t0=b.time;next(b,54);
+                }
+                case 54->{ // 90 ticks for the Ballista Crew and the Mortar to settle, the rings drawn as they would be; then Brassjaw hits the line and the picture is taken
+                    var p=sp(b);if(since(b)%6==0)ring(b,p,u1);
+                    if(since(b)<90)return;
+                    boolean settled=Houses.still(u1)&&Houses.still(u2);
+                    for(int i:new int[]{1,2,4,5})unpin(line[i]); // the line is struck at its middle knight; the four within 2.5 of it are free to be thrown
+                    float[] hp=new float[7];Vec3d[] was=new Vec3d[7];for(int i=0;i<7;i++){hp[i]=line[i].mob.getHealth();was[i]=line[i].mob.getPos();}
+                    int sent0=BattleEffects.attackStatuses;mark=Combat.LAST.peekLast();Abilities.attack(b,u3,line[3].mob,b.time);int sent=BattleEffects.attackStatuses-sent0;
+                    int hurt=0;for(int i:new int[]{1,2,4,5})if(line[i].mob.getHealth()<hp[i])hurt++;
+                    boolean outer=line[0].mob.getHealth()==hp[0]&&line[6].mob.getHealth()==hp[6];
+                    double r1=Abilities.range(b,u1),r2=Abilities.range(b,u2);
+                    ok=settled&&hurt==4&&outer&&sent==1&&line[3].mob.getHealth()<hp[3]&&r1>34.0&&r2>36.0&&banner!=null&&banner.isAlive()&&owned.owner==0;
+                    why="the Ballista Crew and the Mortar stood still for 90 ticks (entrenched="+settled+") on the objective B held by his side: their ranges are "+fmt(r1)+" and "+fmt(r2)+" against the sheet's 34 and 36, drawn as the gold rings (white at the sheet's reach, red the Mortar's minimum of 10); the supply banner stands with "+(banner==null?"-":fmt(banner.hp()))+" health; Brassjaw's blow on the middle knight of a line of seven hurt "+hurt+" of the four within 2.5 of it (want 4) and neither end knight (untouched="+outer+") and sent "+sent+" swing packet (want 1)";
+                    requestShot("ironclad-showcase",4);next(b,55);
+                }
+                case 55->{ // the picture, with the knocked knights in the air
+                    var p=sp(b);if(since(b)%6==0)ring(b,p,u1);
+                    if(!shotTaken&&since(b)<40)return;
+                    report("p2-ironclad-showcase",ok&&shotTaken,why+"; the picture ironclad-showcase was taken="+shotTaken);
+                    wantShot=null;Commander.reset(b,own);next(b,60);
+                }
+                case 60->{ // p2-mortar-minrange, walking: real ground; a Mortar 8 blocks from a pinned knight, order attack
+                    var p=sp(b);if(p!=null)p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);
+                    clearFixture(b,"field");owned.owner=ownedWas;owned.progress=ownedProgress;owned.challenger=ownedChallenger;owned.ownedSince=ownedSince;Houses.recompute(own);
+                    var spot=flat(b);if(spot==null){minOk=false;minWhy+="no flat ground for the walking check";report("p2-mortar-minrange",false,minWhy);next(b,63);return;}
+                    gx=spot[0];gy=spot[1];gz=spot[2];force(b,new BlockPos((int)gx-4,0,(int)gz-9),new BlockPos((int)gx+34,0,(int)gz+9));
+                    Vec3d foeAt=ground(b,gx+12.5,gz+.5),mortarAt=ground(b,gx+4.5,gz+.5);
+                    var foe=b.spawn(dusk,Campaign.troop("knight"),40,foeAt);foe.mob.setAiDisabled(true);Phase1Checks.freeze(foe);tough(bare(foe));fixture.add(foe);pins.add(new Pin(foe,foeAt,90f));foe.deployed=foeAt;us[0]=foe;
+                    u1=b.spawn(dawn,Campaign.troop("ic_mortar"),32,mortarAt);u1.mob.refreshPositionAndAngles(mortarAt.x,mortarAt.y,mortarAt.z,-90f,0f);fixture.add(u1);u1.deployed=mortarAt;
+                    dawn.order="attack";dawn.target=foeAt;dusk.order="hold";
+                    startDist=distance(u1.mob.getPos(),foeAt);castDist=-1;castsInside=0;casting=false;retreatMax=startDist;castTime=-1;t0=b.time;next(b,61);
+                }
+                case 61->{ // each tick: the farthest it walked, and the distance at which each cast began
+                    double d=distance(u1.mob.getPos(),us[0].mob.getPos());retreatMax=Math.max(retreatMax,d);
+                    if(u1.spellCenter!=null&&!casting){casting=true;double dc=distance(u1.mob.getPos(),u1.spellCenter);if(castDist<0){castDist=dc;castTime=b.time-t0;}if(dc<10)castsInside++;}
+                    if(u1.spellCenter==null)casting=false;
+                    if(since(b)>=320||castDist>=0&&b.time-t0>=castTime+45){
+                        boolean walk=startDist>7.9&&startDist<8.1&&retreatMax>=10&&castDist>=10&&castsInside==0;
+                        minOk&=walk;minWhy+="on open ground (flat at "+(int)gx+", "+(int)gz+") a Mortar under the attack order, a pinned knight "+fmt(startDist)+" blocks off: it walked away to "+fmt(retreatMax)+" and its first cast began "+(castDist<0?"never":castTime+" ticks in, at "+fmt(castDist)+" blocks")+", casts begun inside 10: "+castsInside+" (want none)="+walk+"; ";
+                        // the same on hold: it stays, and it does not cast
+                        Vec3d back=ground(b,gx+4.5,gz+.5);u1.mob.getNavigation().stop();u1.mob.refreshPositionAndAngles(back.x,back.y,back.z,-90f,0f);u1.spellCenter=null;u1.abilityAt=0;u1.nextAttack=0;u1.lockedTarget=null;
+                        dawn.order="hold";holdAt=back;casting=false;castDist=-1;castsInside=0;next(b,62);
+                    }
+                }
+                case 62->{
+                    if(u1.spellCenter!=null)castsInside++;
+                    if(since(b)>=120){
+                        double moved=distance(u1.mob.getPos(),holdAt);boolean stay=castsInside==0&&moved<1.0;
+                        minOk&=stay;minWhy+="the same Mortar on hold, 8 blocks from the knight for 120 ticks: ticks with a spell begun "+castsInside+" (want 0), it moved "+fmt(moved)+" (want under 1)="+stay;
+                        report("p2-mortar-minrange",minOk,minWhy);clearFixture(b,"mortar field");next(b,66);
+                    }
+                }
+                case 66->{ // p2-siege-engage: a Mortar and a Ballista Crew under the attack order, one pinned knight 32 blocks off (past the order's radius of 24, inside their reach of 36 and 34)
+                    if(gy==0){report("p2-siege-engage",false,"no flat ground was found for the walking check");next(b,63);return;}
+                    Vec3d foeAt=ground(b,gx+29.5,gz+.5);
+                    var foe=b.spawn(dusk,Campaign.troop("knight"),40,foeAt);foe.mob.setAiDisabled(true);Phase1Checks.freeze(foe);tough(bare(foe));fixture.add(foe);pins.add(new Pin(foe,foeAt,90f));foe.deployed=foeAt;us[0]=foe;
+                    u1=b.spawn(dawn,Campaign.troop("ic_mortar"),32,ground(b,gx-2.5,gz-2.5));u2=b.spawn(dawn,Campaign.troop("ic_ballista"),33,ground(b,gx-2.5,gz+3.5));
+                    u3=b.spawn(dawn,Campaign.troop("ic_arbalist"),34,ground(b,gx-2.5,gz+.5));u3.mob.setAiDisabled(true);Phase1Checks.freeze(u3);
+                    for(var u:List.of(u1,u2,u3)){u.mob.refreshPositionAndAngles(u.mob.getX(),u.mob.getY(),u.mob.getZ(),-90f,0f);fixture.add(u);u.deployed=u.mob.getPos();}
+                    dawn.order="attack";dawn.target=foeAt;dusk.order="hold";
+                    boolean radii=near(Tactics.engageRadius(b,u1,24),36)&&near(Tactics.engageRadius(b,u2,24),34)&&near(Tactics.engageRadius(b,u3,24),24)&&near(Tactics.engageRadius(b,u1,10),36)&&near(Tactics.engageRadius(b,u3,10),10);
+                    minOk=radii;minWhy="the order radius a troop engages at (attack 24, hold 10 on the sheet): a Mortar "+fmt(Tactics.engageRadius(b,u1,24))+" and a Ballista Crew "+fmt(Tactics.engageRadius(b,u2,24))+" (their reach), an Arbalist "+fmt(Tactics.engageRadius(b,u3,24))+" (unchanged), the Mortar on hold "+fmt(Tactics.engageRadius(b,u1,10))+"="+radii+"; ";
+                    castDist=-1;shotDist=-1;foeHp=foe.mob.getHealth();next(b,67);
+                }
+                case 67->{ // 120 ticks: both fire from where they stand
+                    if(castDist<0&&u1.spellCenter!=null)castDist=distance(u1.mob.getPos(),us[0].mob.getPos());
+                    if(shotDist<0&&b.shots.stream().anyMatch(sh->sh.shooter()==u2))shotDist=distance(u2.mob.getPos(),us[0].mob.getPos());
+                    if(since(b)<120)return;
+                    boolean fired=castDist>=30&&shotDist>=30&&us[0].mob.getHealth()<foeHp;
+                    report("p2-siege-engage",minOk&&fired,minWhy+"the Mortar began a shell at the knight from "+(castDist<0?"never":fmt(castDist))+" blocks and the Ballista Crew loosed a bolt from "+(shotDist<0?"never":fmt(shotDist))+" (want 30 or more for both, the order's radius is 24); the knight lost "+fmt(foeHp-us[0].mob.getHealth())+" health (want some)="+fired);
+                    clearFixture(b,"siege engage");next(b,63);
+                }
+                case 63->{ // p2-ironclad-bridge: Dawn's army of four Hearthguards and Brassjaw (slot 4) at a bridge's west end, ordered across; each bridge of map 0 in turn
+                    var bridges=Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList();
+                    if(bridgeIdx>=bridges.size()){report("p2-ironclad-bridge",bridgesOk,bridgeWhy.toString());next(b,70);return;}
+                    var br=bridges.get(bridgeIdx);clearFixture(b,"bridge");reset(own);Commander.reset(b,own);
+                    field(b,own,banner("ic_hearthguard*4,ic_colossus"));
+                    double x0=br.x()-br.width()/2.0-14;
+                    force(b,new BlockPos((int)x0-4,0,br.z()-10),new BlockPos(br.x()+br.width()/2+24,0,br.z()+10));
+                    own.order="move";own.formation="block";own.target=new Vec3d(br.x()+br.width()/2.0+16,65,br.z());own.yaw=-90;
+                    for(var u:b.units)if(u.squad==own){double px=x0+(u.slot%5)*1.5,pz=br.z()+(u.slot/5-1.5)*1.4;u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(px,Arena.ground((int)px,(int)pz)+1,pz,-90f,0f);u.deployed=u.mob.getPos();u.lastPosition=u.mob.getPos();u.nextPath=0;u.stuckTicks=0;fixture.add(u);if(u.spec.id().equals("ic_colossus"))u1=u;}
+                    crossedAt=-1;t0=b.time;next(b,64);
+                }
+                case 64->{
+                    var bridges=Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList();var br=bridges.get(bridgeIdx);
+                    double end=br.x()+br.width()/2.0-4;
+                    long across=fixture.stream().filter(u->u.squad==own&&u.mob.isAlive()&&u.mob.getX()>end&&u.mob.getY()>63).count();
+                    boolean big=u1!=null&&u1.mob.isAlive()&&u1.mob.getX()>end&&u1.mob.getY()>63;
+                    if(big&&crossedAt<0)crossedAt=b.time-t0;
+                    if(across==5||since(b)>=900){
+                        boolean good=big&&across==5;bridgesOk&=good;
+                        bridgeWhy.append(br.id()).append(" (").append(br.width()).append(" x ").append(br.depth()).append("): ").append(across).append("/5 across, Brassjaw ").append(big?"at +"+crossedAt+" ticks":"NOT across (at x "+(u1==null?"-":fmt(u1.mob.getX()))+", y "+(u1==null?"-":fmt(u1.mob.getY()))+")").append(good?"":" (BAD)").append("; ");
+                        for(var u:new ArrayList<>(fixture))Houses.discard(b,u);fixture.clear();u1=null;audit(b,"bridge "+br.id(),false);
+                        bridgeIdx++;next(b,63);
+                    }
+                }
+                case 70->{ // p2-ironclad-tick-cost: eight bot armies, four Ironclad (hard) against four Gilded (hard)
+                    var p=sp(b);if(p==null)return;
+                    if(cost==null){clearFixture(b,"before cost");cost=tickCost(b,List.of("ironclad_hard","ironclad_hard","ironclad_hard","ironclad_hard","gilded_hard","gilded_hard","gilded_hard","gilded_hard"));}
+                    if(cost.step(p)){
+                        report("p2-ironclad-tick-cost",cost.last<40,"server tick "+String.format(Locale.ROOT,"%.2f",cost.last)+" ms (600-tick mean "+String.format(Locale.ROOT,"%.2f",cost.avg)+" ms) with "+cost.troops+" troops at the start and "+b.units.size()+" at the end, "+b.structures.size()+" structures ("+cost.note+")");
+                        audit(b,"before the final returnLobby",false);
+                        report("p2-ironclad-teams-clean",audits>=14&&staleSeen.isEmpty(),audits+" audits after the suite's raisings, deaths and removals: "+(staleSeen.isEmpty()?"no gg_ team ever held a member that was not a living troop":"STALE "+staleSeen)+"; "+auditNotes);
+                        cost.handBack();b.campaign.returnLobby();next(b,99);
+                    }
+                }
+                default->{}
+            }
+        }
+        /** The ballista's range as it is now, in white, and what it would be without Entrench in gold, flat at the platform's height, shown to the commander from any distance; the Mortar's minimum range in red. */
+        void ring(GravesAndGlory.Battle b,ServerPlayerEntity p,GravesAndGlory.Unit u){
+            if(p==null||u==null)return;
+            double y=site.getY()+.15;
+            for(int i=0;i<160;i++){
+                double a=i*2*Math.PI/160;
+                b.world.spawnParticles(p,Abilities.dust(0xF2F2F2),true,u.mob.getX()+Math.cos(a)*u.spec.range(),y,u.mob.getZ()+Math.sin(a)*u.spec.range(),1,0,0,0,0);
+                b.world.spawnParticles(p,Abilities.dust(0xE8B923),true,u.mob.getX()+Math.cos(a)*Abilities.range(b,u),y,u.mob.getZ()+Math.sin(a)*Abilities.range(b,u),1,0,0,0,0);
+            }
+            if(u2!=null&&u2.mob.isAlive())for(int i=0;i<48;i++){double a=i*2*Math.PI/48;b.world.spawnParticles(p,Abilities.dust(0xD94A3A),true,u2.mob.getX()+Math.cos(a)*10,y,u2.mob.getZ()+Math.sin(a)*10,1,0,0,0,0);}
         }
     }
 

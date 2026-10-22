@@ -48,14 +48,48 @@ final class Houses {
     /**
      * The trait share of the factor in Combat.resolve: the attacker's House traits and the target's. Gilded Bulwark is the target's: a troop
      * of a House whose Bulwark its squad reaches, with the shield tag, takes 1 - value from an arrow, bolt or blight (CounterMath.bulwark).
-     * The other Houses' traits join in their tasks.
+     * Ironclad Entrench is the target's too: a troop of Ironclad that stands still (still) takes 1 - value, and 1 - 2 x value inside the radius
+     * of a point its team owns (CounterMath.entrench). The other Houses' traits join in their tasks.
      */
     static double traitFactor(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target, String kind) {
         var victim = Combat.unitOf(b, target);
         if (victim == null) return 1;
         String house = victim.spec.house();
         var own = CounterMath.trait(Spec.HOUSETRAITS, house, victim.squad.traits.getOrDefault(house, 0));
-        return CounterMath.bulwark(own, victim.tags.contains("shield"), kind);
+        double factor = CounterMath.bulwark(own, victim.tags.contains("shield"), kind);
+        if (own != null && own.mechanic().equals("entrench")) factor *= CounterMath.entrench(own, still(victim), onOwnedPoint(b, victim));
+        return factor;
+    }
+
+    /** The troop's own House trait at its army's tier when that trait is Entrench, else null. */
+    static Spec.HouseTraitsRow entrench(GravesAndGlory.Unit u) {
+        var t = CounterMath.trait(Spec.HOUSETRAITS, u.spec.house(), u.squad.traits.getOrDefault(u.spec.house(), 0));
+        return t != null && t.mechanic().equals("entrench") ? t : null;
+    }
+
+    /**
+     * Whether the troop has moved less than the trait's radius over the trait's durationTicks (the Entrench rows: 0.5 blocks, 60 ticks), as
+     * sampled on its Tactics beats (sample). False for a troop whose House has no Entrench at its army's tier.
+     */
+    static boolean still(GravesAndGlory.Unit u) {
+        var b = GravesAndGlory.battle;
+        var t = entrench(u);
+        return b != null && t != null && u.stillAt != null && b.time - u.stillSince >= t.durationTicks();
+    }
+
+    /** One sample of a troop's rest, on each of its Tactics beats: it stands still from the spot it was last seen to have left by more than the Entrench radius. */
+    static void sample(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
+        Vec3d at = u.mob.getPos();
+        double radius = 0.5;
+        for (var t : Spec.HOUSETRAITS) if (t.mechanic().equals("entrench")) { radius = t.radius(); break; }
+        if (u.stillAt == null || at.squaredDistanceTo(u.stillAt) >= radius * radius) { u.stillAt = at; u.stillSince = b.time; }
+    }
+
+    /** Whether the troop stands within the capture radius of a point its team owns (horizontal distance, as the capture rule measures it). */
+    static boolean onOwnedPoint(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
+        for (var p : b.points)
+            if (p.owner == u.squad.team && GravesAndGlory.Battle.horizontalDistance(u.mob.getPos(), new Vec3d(p.spec.x(), u.mob.getY(), p.spec.z())) <= (double) p.spec.radius() * p.spec.radius()) return true;
+        return false;
     }
 
     /**

@@ -393,7 +393,7 @@ public final class Phase1Checks implements ClientModInitializer {
         volatile int stage;volatile String wantShot;volatile boolean finished;
         volatile UUID player;long stageAt;int shotDelay;
         final Spec.TroopsRow knight=troop("knight");
-        GravesAndGlory.Squad own;GravesAndGlory.Capture point,anchor;
+        GravesAndGlory.Squad own;GravesAndGlory.Capture point;GravesAndGlory.Anchor anchor;
         Set<GravesAndGlory.Unit> known=new HashSet<>();GravesAndGlory.Unit trained,foe;long appeared;Vec3d spawnAt;
         double before,after;boolean shotAsked,control,heldOk;int probe;
         GravesAndGlory.Unit garrison;long captured=-1;
@@ -426,7 +426,7 @@ public final class Phase1Checks implements ClientModInitializer {
         boolean ideal(GravesAndGlory.Battle b){
             b.forwardReinforcement=true;point.owner=0;point.ownedSince=b.time-E.forwardHoldSeconds()*20L-1;point.contested=false;
             if(foe!=null){foe.mob.discard();b.units.remove(foe);foe=null;}
-            return b.reinforcementAnchors(0).contains(point);
+            return b.reinforcementAnchors(0).contains(GravesAndGlory.Anchor.of(point));
         }
         void drop(GravesAndGlory.Battle b){if(trained!=null){trained.mob.discard();b.units.remove(trained);trained=null;}}
         /** One frozen Dusk revenant at (x,z) in an ad hoc hold squad, the enemy of the enemy probes; ideal() removes it. */
@@ -479,11 +479,11 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 6->{ // after: forward reinforcement on, the point held 10 s: the new knight appears at the point
                     if(!arrived(b)){if(since(b)>100)fail(b,"p1-reinforce-walk","the bought knight never appeared (after)");break;}
                     if(!shotAsked){shotAsked=true;anchor=b.deploy(own,trained.slot).anchor();wantShot="reinforce-forward";
-                        System.out.println("[p1] reinforce after: appeared at "+spawnAt+", "+String.format("%.1f",flat(spawnAt,point.spec.x(),point.spec.z()))+" blocks from the point centre, anchor "+(anchor==null?"none":anchor.spec.name()));}
+                        System.out.println("[p1] reinforce after: appeared at "+spawnAt+", "+String.format("%.1f",flat(spawnAt,point.spec.x(),point.spec.z()))+" blocks from the point centre, anchor "+(anchor==null?"none":anchor.name()));}
                     long t=walked(b);
                     if(t>=0||b.time-appeared>=TIMEOUT){after=(t>=0?t:TIMEOUT)/20.0;
                         System.out.println("[p1] reinforce-walk before="+String.format("%.1f",before)+"s after="+String.format("%.1f",after)+"s");
-                        report("p1-reinforce-walk",t>=0&&anchor==point&&after<before&&after<=20,"walk to the formation point "+String.format("%.1f",before)+" s from the barracks, "+String.format("%.1f",after)+" s from "+(anchor==null?"no anchor":anchor.spec.name())+" (needs after < before and <= 20 s)");
+                        report("p1-reinforce-walk",t>=0&&GravesAndGlory.Anchor.of(point).equals(anchor)&&after<before&&after<=20,"walk to the formation point "+String.format("%.1f",before)+" s from the barracks, "+String.format("%.1f",after)+" s from "+(anchor==null?"no anchor":anchor.name())+" (needs after < before and <= 20 s)");
                         drop(b);next(b,7);}
                 }
                 case 7->{ // one disturbance per probe on an otherwise ideal point; the troop must deploy at the barracks
@@ -510,7 +510,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 8->{ // p1-forward-message: the deploy notice names the point, or the barracks
                     ideal(b);String at=anchor==null?"":b.deployNote(own,anchor),home=b.deployNote(own,null);
-                    report("p1-forward-message",anchor==point&&at.contains(point.spec.name())&&home.contains("barracks"),"anchored note \""+at+"\", barracks note \""+home+"\"");
+                    report("p1-forward-message",GravesAndGlory.Anchor.of(point).equals(anchor)&&at.contains(point.spec.name())&&home.contains("barracks"),"anchored note \""+at+"\", barracks note \""+home+"\"");
                     // p1-forward-held, nothing faked: a lone Dawn knight on a neutral point captures it through captureTick, which stamps ownedSince
                     point.owner=-1;point.challenger=-1;point.progress=0;point.contested=false;point.ownedSince=0;Arena.flag(b.world,point.spec,-1);
                     var holder=new GravesAndGlory.Squad(UUID.randomUUID(),0,new Vec3d(point.spec.x(),65,point.spec.z()));holder.order="hold";holder.yaw=-90;
@@ -518,13 +518,13 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 81->{
                     if(captured<0){
-                        if(point.owner==0){captured=b.time;heldOk=point.ownedSince==b.time&&!b.reinforcementAnchors(0).contains(point);}
+                        if(point.owner==0){captured=b.time;heldOk=point.ownedSince==b.time&&!b.reinforcementAnchors(0).contains(GravesAndGlory.Anchor.of(point));}
                         else if(since(b)>400){report("p1-forward-held",false,"the garrison never captured the point in 400 ticks");disband(b,garrison);next(b,82);}
                         break;
                     }
                     long held=b.time-captured,need=E.forwardHoldSeconds()*20L;
-                    if(held==need-1)heldOk&=!b.reinforcementAnchors(0).contains(point);
-                    if(held==need){boolean anchorNow=b.reinforcementAnchors(0).contains(point);
+                    if(held==need-1)heldOk&=!b.reinforcementAnchors(0).contains(GravesAndGlory.Anchor.of(point));
+                    if(held==need){boolean anchorNow=b.reinforcementAnchors(0).contains(GravesAndGlory.Anchor.of(point));
                         report("p1-forward-held",heldOk&&anchorNow,"captured at tick "+captured+" (ownedSince "+point.ownedSince+"); not an anchor for the first "+need+" ticks="+heldOk+", an anchor at "+held+" ticks held="+anchorNow);
                         disband(b,garrison);next(b,82);}
                 }

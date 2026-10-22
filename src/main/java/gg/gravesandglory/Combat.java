@@ -52,6 +52,7 @@ public final class Combat {
         }
         if (!from.contains("siege")) from.add("nonsiege");
         Set<String> to = victim == null ? new HashSet<>() : new HashSet<>(victim.tags);
+        if (structure(target)) to.add("structure");
         if (victim != null) {
             String theirs = b.assignment(victim).order;
             if (theirs.equals("charge")) to.add("charging");
@@ -84,6 +85,14 @@ public final class Combat {
 
     /** The commander classes' share of the factor: the attacker side's (Champion's infantry aura, Warden's archers, Mark Prey) times the target side's (Stand Fast). */
     static double commanderFactor(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target) { return Commander.factor(b, attacker, target) * Commander.takenFactor(b, target); }
+
+    /** Whether the entity is a structure (it carries the command tag structure: the Forward Supply banner), which counters rows C10 and C11 read. */
+    static boolean structure(net.minecraft.entity.Entity e) { return e.getCommandTags().contains("structure"); }
+
+    /** The share of a commander's own blow that a structure takes: a non-siege blow on a structure, the sheet's C11. */
+    static double structureBlow() {
+        return CounterMath.counters(new CounterMath.Hit(Set.of("nonsiege", "melee"), Set.of("structure"), 0, false, false, false, false, false, false), Spec.COUNTERS);
+    }
 
     /** The Unit of this battle that is the entity, or null for a player or any other entity. */
     static GravesAndGlory.Unit unitOf(GravesAndGlory.Battle b, net.minecraft.entity.Entity e) {

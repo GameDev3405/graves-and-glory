@@ -57,6 +57,20 @@ public final class CommandMode {
         if(colour.getRgb()==net.minecraft.util.Formatting.LIGHT_PURPLE.getColorValue())return 1;
         return -1;
     }
+    /**
+     * The cell the server forms this group in (Battle.formation): the formation's spacing, or the room of the widest body among the army's troops of the group
+     * (BattleMath.spacing of the troop's mob width) when that is more. The state packet names each own troop, and a troop's sheet row names its mob.
+     */
+    static double cell(Group group,double formationSpacing){
+        double cell=formationSpacing;
+        for(var m:GravesAndGloryClient.markers){
+            if(!m.own())continue;
+            var spec=ArmyMobs.named(m.name());if(spec==null||!spec.group().equals(group.id()))continue;
+            var id=net.minecraft.util.Identifier.tryParse(spec.entity());
+            if(id!=null&&net.minecraft.registry.Registries.ENTITY_TYPE.containsId(id))cell=Math.max(cell,BattleMath.spacing(net.minecraft.registry.Registries.ENTITY_TYPE.get(id).getWidth()));
+        }
+        return cell;
+    }
     static void tick(MinecraftClient c){
         preview.clear();if(!GravesAndGloryClient.battleActive()){cancel();return;}if(!active()||c.player==null||c.world==null||c.currentScreen!=null)return;
         if(!facingSet)facing=c.player.getYaw();
@@ -74,10 +88,10 @@ public final class CommandMode {
         var dust=new DustParticleEffect(new Vector3f(.95f,.82f,.44f),1.15f);
         for(Group group:groups)if(selected.equals("all")||selected.equals(group.id())){
             int columns=Math.min(f.columns(),group.id().equals("support")?2:group.id().equals("ranged")?6:12);
-            double role=group.id().equals("support")?9:group.id().equals("ranged")?5:0;
+            double role=group.id().equals("support")?9:group.id().equals("ranged")?5:0,cell=cell(group,f.spacing());
             for(int i=0;i<group.count();i++){
-                double side=(i%columns-(columns-1)/2.0)*f.spacing(),back=role+(i/columns+1)*f.spacing();
-                if(f.wedge()){int rank=(int)Math.floor(Math.sqrt(i));side=(i-rank*rank-rank)*f.spacing();back=role+(rank+1)*f.spacing();}
+                double side=(i%columns-(columns-1)/2.0)*cell,back=role+(i/columns+1)*cell;
+                if(f.wedge()){int rank=(int)Math.floor(Math.sqrt(i));side=(i-rank*rank-rank)*cell;back=role+(rank+1)*cell;}
                 double angle=Math.toRadians(facing),x=destination.x+Math.cos(angle)*side+Math.sin(angle)*back,z=destination.z+Math.sin(angle)*side-Math.cos(angle)*back;
                 preview.add(new Vec3d(x,Arena.ground((int)x,(int)z)+1.05,z));
             }

@@ -2416,7 +2416,7 @@
       "glyph": "gravesandglory:textures/gui/house/ironclad.png",
       "troops": "ic_hearthguard,ic_arbalist,ic_breaker,ic_ballista,ic_mortar,ic_colossus",
       "title": "Hold-Kin",
-      "fieldable": false
+      "fieldable": true
     },
     {
       "id": "tidecallers",

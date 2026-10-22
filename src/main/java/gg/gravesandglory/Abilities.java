@@ -10,6 +10,8 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.DyeColor;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -26,7 +28,8 @@ import java.util.List;
  * the shield logic and the counters table read; mend and blight behave here; the stances (steady, ambush, brace) act through the counters table
  * (the ability id is one of the troop's tags, and Combat.resolve sets the attacker group's effective order); pierce hits a second enemy behind
  * the target (secondary); the Oath Banner aura plants a Banner (Battle.banners) that lends its planter's army damage (auraFactor), keeps its
- * groups from routing (OATH_GUARD) and rallies them. Every other mechanic is a no-op until the task of its House.
+ * groups from routing (OATH_GUARD) and rallies them. The slam (Brassjaw's) hits every other enemy within its radius of the target for the row's share, with knockback; the shell (the
+ * Ironhold Mortar's) is a blight that cannot be cast at anything nearer than the row's minRange. Every other mechanic is a no-op until the task of its House.
  * Every number comes from the row, with the combatDiscipline defaults where a row says 0.
  */
 final class Abilities {
@@ -46,8 +49,11 @@ final class Abilities {
         return null;
     }
 
-    /** Whether the troop carries the fearless ability (a Risen does). */
-    static boolean carriesFearless(GravesAndGlory.Unit u) { return row(u.spec).mechanic().equals("fearless"); }
+    /** Whether the troop is fearless: it carries the fearless ability (a Risen does) or the tag the sheet's fearless row is named by (Brassjaw's troops tag; the tag column reaches Unit.tags). */
+    static boolean carriesFearless(GravesAndGlory.Unit u) {
+        var f = fearlessRow();
+        return row(u.spec).mechanic().equals("fearless") || f != null && u.tags.contains(f.id());
+    }
 
     /** The troop's ability row when it is a dread aura (mechanic aura, trigger passive, aimed at enemies: the Hollow King's), else null. */
     static Spec.AbilitiesRow dreadRow(GravesAndGlory.Unit u) {
@@ -91,6 +97,7 @@ final class Abilities {
             Combat.resolve(b, u, v.mob, base, "blight", false);
             if (row.statusTicks() > 0 && v.mob.isAlive()) v.mob.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, row.statusTicks(), row.statusLevel()));
         }
+        for (var st : new java.util.ArrayList<>(b.structures)) if (st.team() != u.squad.team && st.isAlive() && st.squaredDistanceTo(u.spellCenter) < radius * radius) Combat.resolve(b, u, st, base, "blight", false); // a shell bursts on a supply banner too (counters row C10 for a siege troop)
         u.spellCenter = null;
     }
 
@@ -102,7 +109,7 @@ final class Abilities {
         var row = row(u.spec);
         switch (row.mechanic()) {
             case "blight" -> {
-                if (time < u.abilityAt) return;
+                if (time < u.abilityAt || tooClose(u, u.mob.squaredDistanceTo(enemy))) return; // a shell is never lobbed at an enemy inside the row's minimum range
                 u.spellCenter = enemy.getPos();
                 u.windupUntil = time + (row.windupTicks() > 0 ? row.windupTicks() : D.spellWindupTicks());
                 u.abilityAt = time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
@@ -111,11 +118,26 @@ final class Abilities {
             case "mend" -> {}
             default -> {
                 float amount = (float) baseHit(b, u);
+                animate(b, u);
                 // The hit is decided now; a ranged hit lands when its visible arrow arrives.
                 if (u.spec.ranged()) Projectiles.fire(b, u, enemy, "arrow", amount); else Combat.resolve(b, u, enemy, amount, "melee", false);
             }
         }
     }
+
+    /** The swing a golem or a ravager shows: the client plays it on entity status 4, which their own attack goal would send and a troop has no such goal. */
+    static void animate(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
+        if (u.mob instanceof net.minecraft.entity.passive.IronGolemEntity || u.mob instanceof net.minecraft.entity.mob.RavagerEntity) {
+            b.world.sendEntityStatus(u.mob, (byte) 4);
+            BattleEffects.attackStatuses++;
+        }
+    }
+
+    /** The troop's ability row's minRange: the nearest an enemy may be and still be cast at (the Mortar's shell, 10); 0 for a troop with none. */
+    static double minRange(GravesAndGlory.Unit u) { return row(u.spec).minRange(); }
+
+    /** Whether an enemy at this squared distance is inside the troop's minimum range. */
+    static boolean tooClose(GravesAndGlory.Unit u, double distanceSquared) { double min = minRange(u); return min > 0 && distanceSquared < min * min; }
 
     /** A troop's base hit: its sheet damage times its army's progression (and every later damage bonus that belongs to the hit itself), before counters, auras and factors. attack and secondary both start here. */
     static double baseHit(GravesAndGlory.Battle b, GravesAndGlory.Unit u) { return u.spec.damage() * b.campaign.damage(u); }
@@ -124,7 +146,7 @@ final class Abilities {
      * What a landed hit sets off on its attacker's ability: pierce hits the nearest other enemy within the row's radius behind the target for the
      * row's amount (secondary); cleave hits the nearest other enemy within the row's radius of the target, any side of it, for the row's amount
      * (secondary); an onhit_slow row slows the target (slow). dealt is the amount applied. Combat.resolve skips it for a secondary hit. The
-     * slams and pounce wait for the tasks of their Houses.
+     * pounce waits for the task of its House.
      */
     static void onHit(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity target, float dealt, String kind) {
         var row = row(u.spec);
@@ -132,8 +154,49 @@ final class Abilities {
             case "pierce" -> secondary(b, u, target, row.radius(), row.amount(), true, kind);
             case "cleave" -> secondary(b, u, target, row.radius(), row.amount(), false, kind);
             case "onhit_slow" -> { if (target.isAlive()) slow(target, row); }
+            case "slam" -> slam(b, u, target, row);
             default -> {}
         }
+    }
+
+    /**
+     * Brassjaw's slam: the row's amount of the attacker's base hit to every other enemy within the row's radius of the target (secondary hits, so their
+     * own counters, traits, auras and commander factors apply and no on-hit ability runs again), and each one that took it and lives is thrown back
+     * from the target's spot with the row's knockback (a structure is not moved).
+     */
+    static void slam(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity primary, Spec.AbilitiesRow row) {
+        Vec3d at = primary.getPos();
+        float base = (float) (row.amount() * baseHit(b, u));
+        double reach = row.radius() * row.radius();
+        for (var e : enemies(b, u.squad.team)) {
+            if (e == primary || e.squaredDistanceTo(primary) > reach) continue;
+            float applied = Combat.resolve(b, u, e, base, "slam", true);
+            if (applied <= 0) continue;
+            BattleEffects.flash(b, new Vec3d(e.getX(), e.getBodyY(.6), e.getZ()), u.squad.team);
+            if (e.isAlive() && !Combat.structure(e)) knock(e, at, u.mob.getPos(), row.knockback());
+        }
+        b.world.spawnParticles(ParticleTypes.CLOUD, at.x, at.y + .2, at.z, 16, row.radius() / 2, .1, row.radius() / 2, .06);
+        b.world.playSound(null, primary.getBlockPos(), SoundEvents.BLOCK_ANVIL_LAND, SoundCategory.HOSTILE, .35f, .7f);
+    }
+
+    /** Throws an entity away from a spot (the attacker's own, for one standing on it) with vanilla's knockback of that strength, which its knockback resistance reduces. */
+    static void knock(LivingEntity e, Vec3d from, Vec3d fallback, double strength) {
+        double dx = from.x - e.getX(), dz = from.z - e.getZ();
+        if (dx * dx + dz * dz < 1e-6) { dx = fallback.x - e.getX(); dz = fallback.z - e.getZ(); }
+        e.takeKnockback(strength, dx, dz);
+        e.velocityModified = true;
+    }
+
+    /** Every living enemy of a team that a blow can fall on: the other side's troops, its seated commanders in the field and its structures. */
+    static List<LivingEntity> enemies(GravesAndGlory.Battle b, int team) {
+        List<LivingEntity> out = new ArrayList<>();
+        for (var v : b.units) if (v.squad.team != team && v.mob.isAlive()) out.add(v.mob);
+        for (ServerPlayerEntity p : b.server.getPlayerManager().getPlayerList()) {
+            var other = b.squads.get(p.getUuid());
+            if (other != null && other.seated && other.team != team && p.isAlive() && !p.isSpectator() && p.getWorld() == b.world) out.add(p);
+        }
+        for (var st : b.structures) if (st.team() != team && st.isAlive()) out.add(st);
+        return out;
     }
 
     /**
@@ -157,12 +220,7 @@ final class Abilities {
     static float secondary(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity primary, double radius, double share, boolean behind, String kind) {
         Vec3d at = primary.getPos();
         double dx = at.x - u.mob.getX(), dz = at.z - u.mob.getZ(), length = Math.hypot(dx, dz), cone = Math.cos(Math.toRadians(180 - CounterMath.flankDegrees()));
-        List<LivingEntity> enemies = new ArrayList<>();
-        for (var v : b.units) if (v.squad.team != u.squad.team && v.mob.isAlive()) enemies.add(v.mob);
-        for (ServerPlayerEntity p : b.server.getPlayerManager().getPlayerList()) {
-            var other = b.squads.get(p.getUuid());
-            if (other != null && other.seated && other.team != u.squad.team && p.isAlive() && !p.isSpectator() && p.getWorld() == b.world) enemies.add(p);
-        }
+        List<LivingEntity> enemies = enemies(b, u.squad.team);
         LivingEntity best = null;
         double nearest = radius * radius;
         for (var e : enemies) {
@@ -182,8 +240,15 @@ final class Abilities {
         return applied;
     }
 
-    /** The reach of a troop's attack in blocks: its sheet range plus its commander's bonus (the Warden's ranged troops). Trait range bonuses (siege under Entrench) will add here. */
-    static double range(GravesAndGlory.Battle b, GravesAndGlory.Unit u) { return u.spec.range() + Commander.rangeBonus(u.squad, u); }
+    /**
+     * The reach of a troop's attack in blocks: its sheet range plus its commander's bonus (the Warden's ranged troops), times 1 + the Entrench
+     * tier's value2 for a siege-tag troop of Ironclad that stands entrenched (Houses.still).
+     */
+    static double range(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
+        double reach = u.spec.range() + Commander.rangeBonus(u.squad, u);
+        var entrench = Houses.entrench(u);
+        return entrench != null && u.tags.contains("siege") && Houses.still(u) ? reach * (1 + entrench.value2()) : reach;
+    }
 
     /**
      * The aura share of the factor: x(1 + amount) for an attacker of the planting army standing within the radius of its standing banner
@@ -271,13 +336,15 @@ final class Abilities {
     }
 
     /** One step behind the troop, against the facing yaw, then the spot it stands on: the first that is open (air, or a plant that is not two blocks tall), with air above, firm ground below, within 1.5 blocks of its feet and no other banner. Null when neither is. */
-    static BlockPos spot(GravesAndGlory.Battle b, GravesAndGlory.Unit u, float yaw) {
+    static BlockPos spot(GravesAndGlory.Battle b, GravesAndGlory.Unit u, float yaw) { return spot(b, u.mob.getPos(), yaw); }
+
+    /** The same for any pair of feet (a commander's, for the Forward Supply banner): a spot also keeps clear of the block of a standing supply banner. */
+    static BlockPos spot(GravesAndGlory.Battle b, Vec3d feet, float yaw) {
         double r = Math.toRadians(yaw);
-        Vec3d feet = u.mob.getPos();
         for (Vec3d at : List.of(feet.add(Math.sin(r) * 1.5, 0, -Math.cos(r) * 1.5), feet)) {
             int x = (int) Math.floor(at.x), z = (int) Math.floor(at.z), y = b.world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
             BlockPos p = new BlockPos(x, y, z);
-            if (Math.abs(y - feet.y) > 1.5 || b.banners.stream().anyMatch(banner -> p.equals(banner.block()))) continue;
+            if (Math.abs(y - feet.y) > 1.5 || b.banners.stream().anyMatch(banner -> p.equals(banner.block())) || b.structures.stream().anyMatch(st -> p.equals(st.block))) continue;
             BlockState state = b.world.getBlockState(p);
             boolean open = state.isAir() || state.isReplaceable() && state.getFluidState().isEmpty() && !(state.getBlock() instanceof TallPlantBlock);
             if (open && b.world.getBlockState(p.up()).isAir() && b.world.getBlockState(p.down()).isSideSolidFullSquare(b.world, p.down(), Direction.UP)) return p;
@@ -353,10 +420,12 @@ final class Abilities {
             b.world.setBlockState(banner.block(), banner.was() == null ? Blocks.AIR.getDefaultState() : banner.was());
     }
 
-    /** Every banner falls now (startRound, returnLobby, switchMap, and the server stopping). */
+    /** Every banner falls now, the Oath Banners and the Forward Supply banners (startRound, returnLobby, switchMap, and the server stopping). */
     static void clearBanners(GravesAndGlory.Battle b) {
         for (var banner : b.banners) lower(b, banner);
         b.banners.clear();
+        for (var st : new ArrayList<>(b.structures)) st.discard();
+        b.structures.clear();
     }
 
     /** Whether a shooter or its target stands in a Mist cloud (counters row C17). No clouds exist until the Tidecallers. */

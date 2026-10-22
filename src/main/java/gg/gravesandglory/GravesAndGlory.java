@@ -8,6 +8,9 @@ import net.fabricmc.fabric.api.networking.v1.*;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.minecraft.entity.*;
 import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.entity.passive.IronGolemEntity;
 import net.minecraft.entity.mob.*;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.*;
@@ -196,6 +199,8 @@ public final class GravesAndGlory implements ModInitializer {
         long chargeHitAt=-1;
         /** The group order an aura troop found on its last beat (Abilities.aura): the Oath Banner plants when it turns to Hold. Null before its first beat. */
         String seenOrder;
+        /** Where the troop stood when it last moved more than the Entrench radius, and the battle time (ticks) it has stood there since (Houses.sample, on each Tactics beat). Null before its first beat. */
+        Vec3d stillAt;long stillSince;
         Unit(MobEntity m,Squad s,Spec.TroopsRow t,int slot){mob=m;squad=s;spec=t;this.slot=slot;lastPosition=m.getPos();deployed=m.getPos();tags=new HashSet<>(ArmyMobs.tags(t));}
     }
     public static final class Capture {
@@ -204,6 +209,82 @@ public final class GravesAndGlory implements ModInitializer {
         /** Battle time (ticks) when the current owner took the point. */
         long ownedSince;
         Capture(Spec.PointsRow spec){this.spec=spec;}
+    }
+    /**
+     * A place new troops may deploy instead of the barracks (Battle.reinforcementAnchors): a held point (Anchor.of) or a standing Forward Supply
+     * banner (ArmySupplyBanner.anchor). team is the army side that may deploy there: the point's owner, the banner's planter.
+     */
+    public record Anchor(double x,double z,String name,int team){
+        public static Anchor of(Capture c){return new Anchor(c.spec.x(),c.spec.z(),c.spec.name(),c.owner);}
+    }
+    /**
+     * The Quartermaster's Forward Supply banner, the first structure: an invisible armour stand at a standing banner block in its side's dye. It is
+     * the target the counters rows C10 and C11 name (it carries the command tag "structure", which Combat reads) and it holds its health in hp. A
+     * blow's resolved amount comes off it (damage); at 0 it is discarded, and its block goes back with it however it is removed. Only the other side
+     * hurts it. While it stands it is one of Battle.structures and, with no enemy within the class's radius of it, an Anchor that reinforcements
+     * deploy at. It is never saved.
+     */
+    public static final class ArmySupplyBanner extends ArmorStandEntity implements ArmyMob {
+        /** What its name tag says and the notice of a deploy at it names. */
+        public static final String NAME="Forward Supply";
+        Squad squad;float hp;net.minecraft.util.math.BlockPos block;net.minecraft.block.BlockState was;
+        public ArmySupplyBanner(World world){super(EntityType.ARMOR_STAND,world);}
+        /** The army that planted it, the side it serves, the health it has left. */
+        public Squad squad(){return squad;}
+        public int team(){return squad==null?-1:squad.team;}
+        public float hp(){return hp;}
+        public Anchor anchor(){return new Anchor(getX(),getZ(),NAME,team());}
+        Text label(){return Text.literal(NAME+" "+(int)Math.ceil(hp)).formatted(team()==0?Formatting.AQUA:Formatting.LIGHT_PURPLE);}
+        @Override public boolean shouldSave(){return false;}
+        /** A player's use on it dresses nothing. */
+        @Override public ActionResult interactAt(PlayerEntity player,Vec3d hitPos,Hand hand){return ActionResult.FAIL;}
+        /**
+         * Takes the blow's amount off hp. Only a troop or a seated commander of the other side hurts it (fire, falling and the void do not); a
+         * commander's own blow counts as a non-siege blow on a structure (Combat.structureBlow, the sheet's C11). Returns whether it took the blow.
+         */
+        @Override public boolean damage(DamageSource source,float amount){
+            var b=battle;
+            if(b==null||getWorld().isClient||isRemoved()||squad==null||amount<=0||!b.running)return false;
+            Entity hitter=source.getAttacker();
+            int side=hitter==null?-1:b.teamOf(hitter);
+            if(side<0||side==squad.team)return false;
+            if(hitter instanceof ServerPlayerEntity)amount*=Combat.structureBlow();
+            hp-=amount;
+            var w=(ServerWorld)getWorld();
+            if(hp<=0){
+                w.spawnParticles(ParticleTypes.POOF,getX(),getY()+1,getZ(),12,.3,.6,.3,.04);
+                w.playSound(null,getBlockPos(),SoundEvents.BLOCK_WOOL_BREAK,SoundCategory.HOSTILE,1f,.8f);
+                discard();
+            }else{
+                w.spawnParticles(ParticleTypes.CRIT,getX(),getY()+1,getZ(),5,.25,.5,.25,.08);
+                w.playSound(null,getBlockPos(),SoundEvents.BLOCK_WOOL_HIT,SoundCategory.HOSTILE,.8f,1f);
+                setCustomName(label());
+            }
+            return true;
+        }
+        /** Off the battle's list and, when it is discarded or killed (not merely unloaded), the banner block back to what stood there. */
+        @Override public void remove(RemovalReason reason){
+            if(!isRemoved()){
+                if((reason==RemovalReason.DISCARDED||reason==RemovalReason.KILLED)&&block!=null&&getWorld().getBlockState(block).getBlock() instanceof net.minecraft.block.BannerBlock)
+                    getWorld().setBlockState(block,was==null?net.minecraft.block.Blocks.AIR.getDefaultState():was);
+                if(battle!=null)battle.structures.remove(this);
+            }
+            super.remove(reason);
+        }
+        /** Plants a banner of hp health for the army at the spot Abilities.spot finds by the feet (null when none is free): a banner block in its side's dye, with the stand on it. */
+        static ArmySupplyBanner place(Battle b,Squad s,Vec3d feet,float yaw,float hp){
+            net.minecraft.util.math.BlockPos spot=Abilities.spot(b,feet,yaw);
+            if(spot==null)return null;
+            var e=new ArmySupplyBanner(b.world);
+            e.squad=s;e.hp=hp;e.block=spot;e.was=b.world.getBlockState(spot);
+            b.world.setBlockState(spot,net.minecraft.block.BannerBlock.getForColor(Abilities.dye(b.side(s.team).color())).getDefaultState().with(net.minecraft.block.BannerBlock.ROTATION,RotationPropertyHelper.fromYaw(yaw)));
+            e.refreshPositionAndAngles(spot.getX()+.5,spot.getY(),spot.getZ()+.5,yaw,0);
+            e.setNoGravity(true);e.setInvisible(true);
+            e.addCommandTag("gravesandglory");e.addCommandTag("structure");
+            e.setCustomName(e.label());e.setCustomNameVisible(true);
+            b.world.spawnEntity(e);b.structures.add(e);
+            return e;
+        }
     }
     public static final class ArmyHusk extends HuskEntity implements ArmyMob {
         public ArmyHusk(World world){super(EntityType.HUSK,world);}
@@ -226,6 +307,24 @@ public final class GravesAndGlory implements ModInitializer {
         @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
         @Override protected boolean isAffectedByDaylight(){return false;}
         @Override public void updateAttackType() {}
+    }
+    /** The Ironclad Hearthguard and Shieldbreaker: an illager with only a SwimGoal, so it neither raids nor celebrates and Tactics alone moves and swings it. */
+    public static final class ArmyVindicator extends VindicatorEntity implements ArmyMob {
+        public ArmyVindicator(World world){super(EntityType.VINDICATOR,world);}
+        @Override public boolean shouldSave(){return false;}
+        @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
+    }
+    /** The Ironclad Arbalist, Ballista Crew and Mortar: a pillager with only a SwimGoal, so no crossbow goal ever puts it in the charging pose. */
+    public static final class ArmyPillager extends PillagerEntity implements ArmyMob {
+        public ArmyPillager(World world){super(EntityType.PILLAGER,world);}
+        @Override public boolean shouldSave(){return false;}
+        @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
+    }
+    /** Brassjaw, the Forge Colossus: an iron golem with only a SwimGoal (no village defence, no anger at players). Its swing is the status 4 the attack sends (Abilities.attack). */
+    public static final class ArmyGolem extends IronGolemEntity implements ArmyMob {
+        public ArmyGolem(World world){super(EntityType.IRON_GOLEM,world);}
+        @Override public boolean shouldSave(){return false;}
+        @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
     }
     /** A troop that fell: where, when (battle ticks), which troop (its sheet id) and for which team. Grave Bloom raises from Battle.deaths. */
     public record Death(Vec3d at,long time,String troop,int team) {}
@@ -254,6 +353,8 @@ public final class GravesAndGlory implements ModInitializer {
         public final List<Projectiles.Shot> shots=new ArrayList<>();
         /** The standing banners (the Oath Banner); Abilities.bannerTick takes them down on time, and startRound, the lobby and a map switch clear them. */
         public final List<Abilities.Banner> banners=new ArrayList<>();
+        /** The standing structures (the Quartermaster's Forward Supply banners): troops of the other side target them, and Abilities.clearBanners takes them down with the Oath Banners. ArmySupplyBanner.remove drops a banner from it however it goes. */
+        public final List<ArmySupplyBanner> structures=new ArrayList<>();
         /** The troops that really died in the last Houses.deathWindow ticks (a Rise Again and a temporary troop leave no entry), in the order they fell. Grave Bloom raises from it; startRound, the lobby and a map switch empty it. */
         public final List<Death> deaths=new ArrayList<>();
         /** The living troops of an army that fill its slots: a temporary troop (Grave Bloom's) is not one of them. */
@@ -541,13 +642,17 @@ public final class GravesAndGlory implements ModInitializer {
             p.playSound(action.equals("retreat")?SoundEvents.BLOCK_NOTE_BLOCK_BELL.value():SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(),.6f,action.equals("charge")?.7f:1.1f);
             p.sendMessage(Text.literal(group+" / "+action+" / "+(int)x+", "+(int)z),true);
         }
+        /** The room a troop's body takes in a formation and the lane it takes on a bridge: its width and 0.3, at least 1.3 (BattleMath.spacing). */
+        public static double spacing(Unit u){return BattleMath.spacing(u.mob.getWidth());}
         Vec3d formation(Unit u){
             Assignment a=assignment(u);if(!u.squad.bot&&u.squad.order.equals("hold")&&!u.squad.assignments.containsKey(u.spec.group())&&!Morale.routing(u.squad,u.spec.group()))return u.deployed;var f=Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(a.formation)).findFirst().orElse(Spec.FORMATIONS[0]);
-            int slot=0;for(Unit other:units)if(other.squad==u.squad&&other.spec.group().equals(u.spec.group())&&other.mob.isAlive()&&other.slot<u.slot)slot++;
-            double role=u.spec.group().equals("support")?9:u.spec.group().equals("ranged")?5:0;
-            int columns=Math.min(f.columns(),u.spec.group().equals("support")?2:u.spec.group().equals("ranged")?6:12);
-            double side=(slot%columns-(columns-1)/2.0)*f.spacing(),back=role+(slot/columns+1)*f.spacing();
-            if(f.wedge()){int rank=(int)Math.floor(Math.sqrt(slot));side=(slot-rank*rank-rank)*f.spacing();back=role+(rank+1)*f.spacing();}
+            int slot=0;double cell=f.spacing();
+            for(Unit other:units)if(other.squad==u.squad&&other.spec.group().equals(u.spec.group())&&other.mob.isAlive()){if(other.slot<u.slot)slot++;cell=Math.max(cell,spacing(other));} // the cell is the widest body of the group, so a golem's neighbours do not overlap it
+            boolean siege=u.spec.group().equals("siege"); // behind the archers: a mortar cannot fire at what stands within its minimum range
+            double role=u.spec.group().equals("support")?9:siege?7:u.spec.group().equals("ranged")?5:0;
+            int columns=Math.min(f.columns(),u.spec.group().equals("support")?2:siege||u.spec.group().equals("ranged")?6:12);
+            double side=(slot%columns-(columns-1)/2.0)*cell,back=role+(slot/columns+1)*cell;
+            if(f.wedge()){int rank=(int)Math.floor(Math.sqrt(slot));side=(slot-rank*rank-rank)*cell;back=role+(rank+1)*cell;}
             double angle=Math.toRadians(a.yaw);return a.target.add(Math.cos(angle)*side+Math.sin(angle)*back,0,Math.sin(angle)*side-Math.cos(angle)*back);
         }
         public boolean atBarracks(ServerPlayerEntity p,Squad s){
@@ -588,34 +693,45 @@ public final class GravesAndGlory implements ModInitializer {
                 var player=server.getPlayerManager().getPlayer(s.owner);if(player!=null)player.sendMessage(Text.literal(t.spec().name()+" trained: "+deployNote(s,at.anchor())),true);
             }
         }
-        /** Points this team has held long enough, uncontested and with no enemy near where the troops would appear: where new troops may deploy instead of the barracks. Phase 2 banners add their anchors here. */
-        List<Capture> reinforcementAnchors(int team){
-            var E=Spec.ECONOMY[0];List<Capture> anchors=new ArrayList<>();
-            for(Capture p:points)if(p.owner==team&&!p.contested&&time-p.ownedSince>=E.forwardHoldSeconds()*20L&&!Morale.enemyWithin(this,team,deployCentre(team,p),E.forwardSafeRadius()))anchors.add(p);
+        /**
+         * Where this team's new troops may deploy instead of the barracks: its held points (held forwardHoldSeconds, uncontested, no enemy near where the troops
+         * would appear) and its standing Forward Supply banners (no enemy within the Quartermaster's radius of the banner).
+         */
+        List<Anchor> reinforcementAnchors(int team){
+            var E=Spec.ECONOMY[0];List<Anchor> anchors=new ArrayList<>();
+            for(Capture p:points)if(p.owner==team&&!p.contested&&time-p.ownedSince>=E.forwardHoldSeconds()*20L&&!Morale.enemyWithin(this,team,deployCentre(team,p),E.forwardSafeRadius()))anchors.add(Anchor.of(p));
+            var supply=Commander.byActive("forward_supply");
+            if(supply!=null)for(var st:structures)if(st.team()==team&&st.isAlive()&&!Morale.enemyWithin(this,team,st.getPos(),supply.radius()))anchors.add(st.anchor());
             return anchors;
         }
         /** Where troops deployed at a held point appear: its centre moved forwardSpawnOffset toward the team's base; each slot then stands in its ring place around this spot. The safe radius is measured here, not at the point centre. */
-        Vec3d deployCentre(int team,Capture p){
-            Vec3d home=base(team),back=new Vec3d(home.x-p.spec.x(),0,home.z-p.spec.z());back=back.lengthSquared()<1e-6?Vec3d.ZERO:back.normalize().multiply(Spec.ECONOMY[0].forwardSpawnOffset());
-            double x=p.spec.x()+back.x,z=p.spec.z()+back.z;return new Vec3d(x,Arena.ground((int)Math.floor(x),(int)Math.floor(z))+1,z);
+        Vec3d deployCentre(int team,Capture p){return deployCentre(team,Anchor.of(p));}
+        /** The same for any anchor: a point's is moved toward the base, a supply banner's is the banner itself. */
+        Vec3d deployCentre(int team,Anchor a){
+            double x=a.x(),z=a.z();
+            if(points.stream().anyMatch(p->p.spec.x()==a.x()&&p.spec.z()==a.z())){
+                Vec3d home=base(team),back=new Vec3d(home.x-a.x(),0,home.z-a.z());back=back.lengthSquared()<1e-6?Vec3d.ZERO:back.normalize().multiply(Spec.ECONOMY[0].forwardSpawnOffset());
+                x+=back.x;z+=back.z;
+            }
+            return new Vec3d(x,Arena.ground((int)Math.floor(x),(int)Math.floor(z))+1,z);
         }
-        /** Where a troop trained now appears, and the held point it deploys at (null: the barracks). Chosen at spawn time, so a point that was lost, contested or approached since the purchase sends the troop home. */
-        record Deploy(Vec3d at,Capture anchor){}
+        /** Where a troop trained now appears, and the anchor it deploys at (null: the barracks). Chosen at spawn time, so a point or banner that was lost, contested or approached since the purchase sends the troop home. */
+        record Deploy(Vec3d at,Anchor anchor){}
         Deploy deploy(Squad s,int slot){
             Vec3d home=base(s.team),ring=new Vec3d((slot%5-2)*2,0,(slot/5-2)*2),barracks=home.add(ring);
             if(!forwardReinforcement)return new Deploy(barracks,null);
-            List<Capture> anchors=reinforcementAnchors(s.team);if(anchors.isEmpty())return new Deploy(barracks,null);
+            List<Anchor> anchors=reinforcementAnchors(s.team);if(anchors.isEmpty())return new Deploy(barracks,null);
             Vec3d target=storedAssignment(s,"infantry").target;double[] ax=new double[anchors.size()],az=new double[anchors.size()];
-            for(int i=0;i<ax.length;i++){ax[i]=anchors.get(i).spec.x();az[i]=anchors.get(i).spec.z();}
+            for(int i=0;i<ax.length;i++){ax[i]=anchors.get(i).x();az[i]=anchors.get(i).z();}
             int chosen=BattleMath.nearestAnchor(target.x,target.z,home.x,home.z,ax,az);if(chosen<0)return new Deploy(barracks,null);
-            Capture anchor=anchors.get(chosen);Vec3d centre=deployCentre(s.team,anchor);
+            Anchor anchor=anchors.get(chosen);Vec3d centre=deployCentre(s.team,anchor);
             double x=centre.x+ring.x,z=centre.z+ring.z;int gx=(int)Math.floor(x),gz=(int)Math.floor(z);
             if(Arena.river(gx,gz)&&Arena.ground(gx,gz)<64)return new Deploy(barracks,null);
             return new Deploy(new Vec3d(x,Arena.ground(gx,gz)+1,z),anchor);
         }
         Vec3d deployPoint(Squad s,int slot){return deploy(s,slot).at();}
         /** The deploy notice after "<troop> trained: " (a null anchor means the barracks). */
-        String deployNote(Squad s,Capture anchor){return anchor==null?"deploying from barracks":"deploying at "+anchor.spec.name();}
+        String deployNote(Squad s,Anchor anchor){return anchor==null?"deploying from barracks":"deploying at "+anchor.name();}
         void startRound(){
             Projectiles.clear(this);Abilities.clearBanners(this);Houses.reset(this);
             campaign.prepareRound();
@@ -670,6 +786,7 @@ public final class GravesAndGlory implements ModInitializer {
         void updateUnitChunks(){
             if(time%40!=0)return;Set<Long> wanted=new HashSet<>();
             if(running)for(Unit u:units)if(u.mob.isAlive()){int x=u.mob.getBlockX()>>4,z=u.mob.getBlockZ()>>4;for(int dx=-1;dx<=1;dx++)for(int dz=-1;dz<=1;dz++)wanted.add(net.minecraft.util.math.ChunkPos.toLong(x+dx,z+dz));}
+            if(running)for(var st:structures)if(st.isAlive()){int x=st.getBlockX()>>4,z=st.getBlockZ()>>4;for(int dx=-1;dx<=1;dx++)for(int dz=-1;dz<=1;dz++)wanted.add(net.minecraft.util.math.ChunkPos.toLong(x+dx,z+dz));}
             for(long key:wanted)if(!unitChunks.contains(key)){var p=new net.minecraft.util.math.ChunkPos(key);world.setChunkForced(p.x,p.z,true);}
             for(long key:unitChunks)if(!wanted.contains(key)){var p=new net.minecraft.util.math.ChunkPos(key);world.setChunkForced(p.x,p.z,false);}
             unitChunks.clear();unitChunks.addAll(wanted);

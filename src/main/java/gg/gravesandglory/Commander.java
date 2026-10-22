@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * passive. Every number comes from the class row. The code knows only the effect kinds, named by the sheet's passive column (champion,
  * reaver, warden, marshal, warlock, quartermaster) and active column (stand_fast, bloodrush, mark_prey, rally_horn, grave_bloom,
  * forward_supply); tools/preflight.py keeps both columns to those closed lists. What an active does is registered in ACTIVES by the
- * House tasks (register): Stand Fast, Rally Horn and Grave Bloom so far. An active nobody registered refuses with NOT_READY and starts no cooldown.
+ * House tasks (register): Stand Fast, Rally Horn, Grave Bloom and Forward Supply so far. An active nobody registered refuses with NOT_READY and starts no cooldown.
  */
 public final class Commander {
     private Commander() {}
@@ -47,11 +47,12 @@ public final class Commander {
     /** The fixed id of the Rally Horn's speed modifier on its army's troops. */
     static final UUID RALLY = UUID.fromString("8382ceb7-bd85-41fd-b662-34b5f1d36d95");
 
-    /** Puts this build's actives into ACTIVES (mod init): the Champion's Stand Fast, the Marshal's Rally Horn and the Warlock's Grave Bloom. */
+    /** Puts this build's actives into ACTIVES (mod init): the Champion's Stand Fast, the Marshal's Rally Horn, the Warlock's Grave Bloom and the Quartermaster's Forward Supply. */
     static void register() {
         ACTIVES.put("stand_fast", new StandFast());
         ACTIVES.put("rally_horn", new RallyHorn());
         ACTIVES.put("grave_bloom", new GraveBloom());
+        ACTIVES.put("forward_supply", new ForwardSupply());
     }
 
     /** Stand Fast's rout guard: while the army's stand_fast runs, a group whose centre stands within the row's radius of its commander cannot rout. */
@@ -171,6 +172,37 @@ public final class Commander {
         @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.ClassesRow c) {}
         /** The Risen it raised are not its to take back: each goes at its own expiresAt, and every one goes with the round. */
         @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {}
+    }
+
+    /**
+     * The Quartermaster's Forward Supply: a supply banner of value1 health (an ArmySupplyBanner) at the commander's feet, at least range blocks from
+     * his own base. While it stands, and no enemy is within radius of it, troops trained for his army deploy at it instead of the barracks
+     * (Battle.reinforcementAnchors); it stands for the row's durationTicks and goes when the active ends. Refused, with a notice and no cooldown,
+     * too near his base, outside the arena's margin or in river water, or where no banner will stand.
+     */
+    static final class ForwardSupply implements Active {
+        @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, Spec.ClassesRow c) {
+            Vec3d at = p.getPos();
+            if (GravesAndGlory.Battle.horizontalDistance(at, GravesAndGlory.Battle.base(s.team)) < c.range() * c.range()) {
+                b.campaign.notice(s.owner, "Too near your base. Plant it " + Math.round(c.range()) + " or more blocks away.");
+                return false;
+            }
+            if (!GravesAndGlory.Battle.inArena(at.x, at.z) || GravesAndGlory.Battle.wet(at.x, at.z)) {
+                b.campaign.notice(s.owner, "Choose dry ground inside the arena.");
+                return false;
+            }
+            var banner = GravesAndGlory.ArmySupplyBanner.place(b, s, at, p.getYaw(), (float) c.value1());
+            if (banner == null) { b.campaign.notice(s.owner, "No room for a banner here."); return false; }
+            s.abilityData = banner;
+            Abilities.ring(b, banner.getPos(), c.radius(), b.side(s.team).color());
+            b.world.spawnParticles(ParticleTypes.HAPPY_VILLAGER, banner.getX(), banner.getY() + 1, banner.getZ(), 16, .5, .8, .5, 0);
+            return true;
+        }
+        @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.ClassesRow c) {}
+        /** The banner goes with the active: at expiry, at a round start, in the lobby, and when its commander leaves or his seat changes hands. */
+        @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
+            for (var st : new ArrayList<>(b.structures)) if (st.squad() == s) st.discard();
+        }
     }
 
     /** The class row a squad fights under: its commander id, or the sheet's first class for an unknown id. */

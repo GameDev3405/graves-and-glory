@@ -29,6 +29,7 @@ public final class BattleMathCheck {
         check(BattleMath.nearestAnchor(40, 0, -108, 0, ax, az) == 0, "centre point is nearer the front than base");
         check(BattleMath.nearestAnchor(-100, 0, -108, 0, ax, az) == -1, "base wins when the fight is at home");
         check(BattleMath.nearestAnchor(40, 0, -108, 0, new double[0], new double[0]) == -1, "no anchors means base");
+        check(BattleMath.spacing(0.6) == 1.3 && Math.abs(BattleMath.spacing(1.4) - 1.7) < 1e-9 && Math.abs(BattleMath.spacing(1.95) - 2.25) < 1e-9, "spacing: a husk or illager takes 1.3, an iron golem 1.7, a ravager 2.25");
         double[] px={-44,0,44}, pz={-43,0,43}; int[] own={-1,-1,-1};
         check(BattleMath.leastDefended(0,0,px,pz,own,new int[]{0,9,0},1,25) != 1, "nine defenders push hard bots off the centre");
         check(BattleMath.leastDefended(0,0,px,pz,own,new int[]{0,0,0},1,25) == 1, "undefended nearest point wins");

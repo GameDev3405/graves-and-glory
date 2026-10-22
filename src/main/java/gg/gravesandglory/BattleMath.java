@@ -48,6 +48,8 @@ public final class BattleMath {
         if (members > 0 && fearless > 0 && fearless >= needed * members) return fearlessShare;
         return dreaded ? dreadShare : base;
     }
+    /** The room a body of this width takes in a formation and on a bridge: its width and 0.3, at least 1.3. A formation's cell is the widest such room in its group, at least the formation's own spacing; the server (Battle.formation) and the command preview (CommandMode) both read it. */
+    public static double spacing(double width) { return Math.max(1.3, width + 0.3); }
     /** Index of the anchor nearest the target (tx,tz), or -1 when no anchor is strictly nearer to the target than the base (bx,bz). */
     public static int nearestAnchor(double tx, double tz, double bx, double bz, double[] ax, double[] az) {
         int best = -1;
