@@ -357,3 +357,12 @@ Controller rulings, recorded rather than asked:
 2. Weapons pass at 8.5 from the grader, and Kort sees each House's weapon sheet before it ships. All other player-facing art keeps the 9 bar.
 
 **Kort, 2026-10-22, round 30 (the Marshal's horn under no routing):** the Marshal wears the belt war horn and lifts it in his idle gesture as dress only. It never plays a sound and gives no command, in line with the no-routing design's "no horns in the field" (round 29). The Task 5d repaint adds it.
+
+## Map identity, round 31 (2026-10-22)
+
+**Kort's answers, 2026-10-22, round 31** (21 questions asked in chat; full list in `.superpowers/sdd/2026-10-17-phase-3-built-world/kort-map-vision-2026-10-22.md`):
+1. Each map is picked for different tactics; layouts, looks and design should all differ, "a brand new map from each other"; fast and slow maps; grim and weathered tone; Rivergate is the first and default map.
+2. Rivergate: bridge brawls on a great river, pastoral valley with a mill. Ironhold: a real siege, walled fortress on one side, intact looming keep. Frostmarch: ambush pass, narrow centre and open flanks, signal tower beacon plus cave refuge. Hollowwood: eerie haunted dense forest with giant sequoias, tight and brutal, dark spruce, mist, glowing shrines, dense edges and open lanes. Kingsfield: the big war map, royal estate country, fortified high-ground outposts and a watchtower network, fireworks as flares.
+3. Phase 3 finishes on today's layouts with these looks and roles; the layout redesign becomes its own spec afterwards (Kort's choice).
+
+**Open for Kort:** which maps are the fast ones and which the slow ones (guess: Rivergate and Kingsfield natural starter and big map, Ironhold slow, Frostmarch and Hollowwood fast); whether the map layout redesign gets its own spec next (recommended: yes, after Phase 3's walkthrough gate).
