@@ -646,26 +646,167 @@ World values: `fm-lodge` cover (-75.5,66.6,-184.5) and sight (-67.5,72.6,-172.5)
 
 ---
 
+### Task 8b: Supply houses (five house pieces, spur roads, neutral flags)
+
+The buildings of the supply-houses spec (`docs/superpowers/specs/2026-10-22-supply-houses-design.md` sections 3, 7.1, 7.2, 10 and 12.1); its rules (sections 4 to 9 and 11) are their own plan after the base merge. In Phase 3 every house stands inert: a white neutral flag, unlit braziers, no capture and no services. The suite is `supply` and its ids are `p3-house-*`, one letter away from Task 4's `p3-houses-*` (the camp's House ring): grep with the full prefix and never report one for the other. Runs follow `docs/HANDOFF.md`: at most two harness clients at once, 30 minutes each.
+
+**Files:**
+- Modify: `sheets/design.json` (`pieces` +5, `landmarks` +18, `landmarkLines` +10; new sheet `supplyHouses`, 18 rows)
+- Modify: `tools/preflight.py` (rules for `supplyHouses` and for the house rows of `landmarks`)
+- Create: scripts `supply/{rivergate,ironhold,frostmarch,hollowwood,kingsfield}` under `test-tools/resources/data/gravesandglory_studio/functions/`, and their exports under `src/main/resources/data/gravesandglory/structures/supply/`
+- Modify: `src/main/java/gg/gravesandglory/CampaignMaps.java` (`select` lays the spur roads)
+- Modify: `src/main/java/gg/gravesandglory/Arena.java` (`roadLevel` climbs to a raised house; `flag(ServerWorld,int,int,int,int)`; `finishBuild` raises the house flags)
+- Modify: `src/main/java/gg/gravesandglory/Structures.java` (`hash` also reads the map's `supplyHouses` rows)
+- Modify: `src/main/java/gg/gravesandglory/Campaign.java` (layout `campaign-3` becomes `campaign-4` in the constructor, `cached()` and `built()`)
+- Modify: `test-tools/java/gg/gravesandglory/MapRouteChecks.java` (house mode)
+- Modify: `test-tools/java/gg/gravesandglory/Phase3Checks.java` (suite `supply`; the house entries in the reserved columns of `p3-lm-<id>-clear`; the walkthrough's house legs)
+
+**Sheets.** `pieces` (one footprint for all five, spec 7.1; nothing solid above local y 6, the template keeps y 7 and 8 for the flag column):
+
+| id | width | depth | height | palette | purpose |
+|---|---|---|---|---|---|
+| supply/rivergate | 31 | 37 | 9 | wood | supply house: granary and walled yard |
+| supply/ironhold | 31 | 37 | 9 | stone | supply house: armoury and walled yard |
+| supply/frostmarch | 31 | 37 | 9 | wood | supply house: ridge hut and walled yard |
+| supply/hollowwood | 31 | 37 | 9 | stone | supply house: woodstore and walled yard |
+| supply/kingsfield | 31 | 37 | 9 | stone | supply house: tithe barn and walled yard |
+
+`landmarks`. The positions are the spec's (3.2), except the Ironhold nw/se pair, moved 15 blocks west and east (inside spec 3.3's 20) because `ih-house-3` stands 7 blocks from the nw footprint at (-125,-72). The north houses face south (rotation 0) and the south houses north (180), so each storehouse stands on the high side of its ridge or hill and each front gate faces the middle lane. A pair (nw with se, sw with ne) shares the mean of its two terrain heights (spec 3.2, rounded half up: Ironhold sw/ne (78+75)/2 gives 77), and 80 on Frostmarch (spec 3.3). The 18 rows go in one block right after `rg-house-0`, which stays the first sheet row: Task 6's landmark pass in `Arena.height` blends the rows in sheet order, so every level piece near a house is blended after it and keeps its own flat, and no level piece stands close enough (12 blocks, 18 for a tower) for its shoulder to reach into a house (preflight, Step 4).
+
+| id | map | template | x | z | rotation | elevation | replaces | encloses |
+|---|---|---|---|---|---|---|---|---|
+| rg-supply-nw | 0 | supply/rivergate | -125 | -72 | 0 | 74 | - | - |
+| rg-supply-sw | 0 | supply/rivergate | -125 | 72 | 180 | 74 | - | - |
+| rg-supply-ne | 0 | supply/rivergate | 125 | -72 | 0 | 74 | - | - |
+| rg-supply-se | 0 | supply/rivergate | 125 | 72 | 180 | 74 | - | - |
+| ih-supply-nw | 1 | supply/ironhold | -140 | -72 | 0 | 76 | - | - |
+| ih-supply-sw | 1 | supply/ironhold | -125 | 72 | 180 | 77 | - | - |
+| ih-supply-ne | 1 | supply/ironhold | 125 | -72 | 0 | 77 | - | - |
+| ih-supply-se | 1 | supply/ironhold | 140 | 72 | 180 | 76 | - | - |
+| fm-supply-nw | 2 | supply/frostmarch | -125 | -72 | 0 | 80 | - | - |
+| fm-supply-sw | 2 | supply/frostmarch | -125 | 72 | 180 | 80 | - | - |
+| fm-supply-ne | 2 | supply/frostmarch | 125 | -72 | 0 | 80 | - | - |
+| fm-supply-se | 2 | supply/frostmarch | 125 | 72 | 180 | 80 | - | - |
+| hw-supply-nw | 3 | supply/hollowwood | -125 | -72 | 0 | 74 | - | - |
+| hw-supply-sw | 3 | supply/hollowwood | -125 | 72 | 180 | 74 | - | - |
+| hw-supply-ne | 3 | supply/hollowwood | 125 | -72 | 0 | 74 | - | - |
+| hw-supply-se | 3 | supply/hollowwood | 125 | 72 | 180 | 74 | - | - |
+| kf-supply-nw | 4 | supply/kingsfield | -125 | -72 | 0 | 76 | - | - |
+| kf-supply-se | 4 | supply/kingsfield | 125 | 72 | 180 | 76 | - | - |
+
+`landmarkLines` (the five pieces share one layout, so the local values repeat):
+
+| id | template | kind | fromX | fromY | fromZ | toX | toY | toZ |
+|---|---|---|---|---|---|---|---|---|
+| supply-rivergate-cover | supply/rivergate | cover | 24.5 | 2.6 | 34.5 | 24.5 | -1.0 | 48.5 |
+| supply-rivergate-sight | supply/rivergate | sight | 25.5 | 7.6 | 10.5 | 16.5 | -1.0 | 48.5 |
+| supply-ironhold-cover | supply/ironhold | cover | 24.5 | 2.6 | 34.5 | 24.5 | -1.0 | 48.5 |
+| supply-ironhold-sight | supply/ironhold | sight | 25.5 | 7.6 | 10.5 | 16.5 | -1.0 | 48.5 |
+| supply-frostmarch-cover | supply/frostmarch | cover | 24.5 | 2.6 | 34.5 | 24.5 | -1.0 | 48.5 |
+| supply-frostmarch-sight | supply/frostmarch | sight | 25.5 | 7.6 | 10.5 | 16.5 | -1.0 | 48.5 |
+| supply-hollowwood-cover | supply/hollowwood | cover | 24.5 | 2.6 | 34.5 | 24.5 | -1.0 | 48.5 |
+| supply-hollowwood-sight | supply/hollowwood | sight | 25.5 | 7.6 | 10.5 | 16.5 | -1.0 | 48.5 |
+| supply-kingsfield-cover | supply/kingsfield | cover | 24.5 | 2.6 | 34.5 | 24.5 | -1.0 | 48.5 |
+| supply-kingsfield-sight | supply/kingsfield | sight | 25.5 | 7.6 | 10.5 | 16.5 | -1.0 | 48.5 |
+
+World values the checks must reproduce, for a house at (x, z) with elevation E: rotation 0 gives cover (x+9.5,E+2.6,z+16.5) to (x+9.5,ground,z+30.5) and sight (x+10.5,E+7.6,z-7.5) to (x+1.5,ground,z+30.5); rotation 180 gives cover (x-8.5,E+2.6,z-15.5) to (x-8.5,ground,z-29.5) and sight (x-9.5,E+7.6,z+8.5) to (x-0.5,ground,z-29.5). So `rg-supply-nw` cover (-115.5,76.6,-55.5) to (-115.5,ground,-41.5) and sight (-114.5,81.6,-79.5) to (-123.5,ground,-41.5) on its spur; `ih-supply-se` cover (131.5,78.6,56.5) to (131.5,ground,42.5) and sight (130.5,83.6,80.5) to (139.5,ground,42.5).
+
+`supplyHouses` (columns `id, map, name, landmark, yardX, yardZ, spurX, spurZ, elevation`; ids and names from spec 3.4, each id equal to its `landmarks` row; the yard centre is the template's local (15,24), 6 blocks from the piece centre toward the front gate; the spur runs straight from the yard centre out of the front gate to the middle lane at z 0):
+
+| id | map | name | landmark | yardX | yardZ | spurX | spurZ | elevation |
+|---|---|---|---|---|---|---|---|---|
+| rg-supply-nw | 0 | Westmill Granary | rg-supply-nw | -125 | -66 | -125 | 0 | 74 |
+| rg-supply-sw | 0 | Westhill Barn | rg-supply-sw | -125 | 66 | -125 | 0 | 74 |
+| rg-supply-ne | 0 | Eastmill Granary | rg-supply-ne | 125 | -66 | 125 | 0 | 74 |
+| rg-supply-se | 0 | Easthill Barn | rg-supply-se | 125 | 66 | 125 | 0 | 74 |
+| ih-supply-nw | 1 | West Armoury | ih-supply-nw | -140 | -66 | -140 | 0 | 76 |
+| ih-supply-sw | 1 | West Quarters | ih-supply-sw | -125 | 66 | -125 | 0 | 77 |
+| ih-supply-ne | 1 | East Armoury | ih-supply-ne | 125 | -66 | 125 | 0 | 77 |
+| ih-supply-se | 1 | East Quarters | ih-supply-se | 140 | 66 | 140 | 0 | 76 |
+| fm-supply-nw | 2 | West Ridge Hut | fm-supply-nw | -125 | -66 | -125 | 0 | 80 |
+| fm-supply-sw | 2 | West Fur Store | fm-supply-sw | -125 | 66 | -125 | 0 | 80 |
+| fm-supply-ne | 2 | East Ridge Hut | fm-supply-ne | 125 | -66 | 125 | 0 | 80 |
+| fm-supply-se | 2 | East Fur Store | fm-supply-se | 125 | 66 | 125 | 0 | 80 |
+| hw-supply-nw | 3 | West Woodstore | hw-supply-nw | -125 | -66 | -125 | 0 | 74 |
+| hw-supply-sw | 3 | West Herb House | hw-supply-sw | -125 | 66 | -125 | 0 | 74 |
+| hw-supply-ne | 3 | East Woodstore | hw-supply-ne | 125 | -66 | 125 | 0 | 74 |
+| hw-supply-se | 3 | East Herb House | hw-supply-se | 125 | 66 | 125 | 0 | 74 |
+| kf-supply-nw | 4 | West Tithe Barn | kf-supply-nw | -125 | -66 | -125 | 0 | 76 |
+| kf-supply-se | 4 | East Tithe Barn | kf-supply-se | 125 | 66 | 125 | 0 | 76 |
+
+World footprints, for checks: rotations 0 and 180 keep 31 by 37, so a house at (x, z) covers x-15..x+15 by z-18..z+18: x -140..-110 or 110..140 (Ironhold nw -155..-125, se 125..155) by z -90..-54 (north) or 54..90 (south). Front gates at x-4..x+4 on z -54 or 54; spur road cells within 3 of x. Nearest point to each yard: nw A on maps 0 to 3 (117, 128, 125 and 112 blocks), C on Kingsfield (141); sw and ne B (141); se C (117, 128, 125 and 112; Kingsfield's C at 141).
+
+**Brief, the shared shape** (31x9x37, authored facing south; local coordinates from the minimum corner; the author's call beyond these):
+- The storehouse fills the back third, x 0..30 by z 0..11, its front wall along z 11 with a door to the yard. Nothing solid stands above local y 6, so the pole Java raises (its lantern at y 7) tops the roof line (spec 7.1).
+- The lookout: a platform on the storehouse roof, floor at y 5 over x 23..28, z 7..11 (feet 6), a parapet of bottom slabs at y 6 on its open sides, a ladder up from the yard at x 22, z 12, y 1..5; the eye point (25.5,7.6,10.5) stays clear.
+- The yard, x 0..30 by z 12..36, walled 2 high (y 1..2) along x 0, x 30 and z 36. The front gate in the south wall at x 11..19: 9 wide, wider than the spur road's 7-cell band, open to the sky. The gate posts at x 10 and 20 carry the two braziers, `campfire[lit=false]` at (10,3,36) and (20,3,36). The side gate in the east wall at z 22..26: 5 wide, clear from y 1 to 4.
+- The capture circle (spec 4): centre (15,0,24), radius 10, full blocks at y 0, the cells 9 to 10 blocks from the centre in a contrasting block so its edge reads; a 3x3 plinth at x 14..16, z 23..25, y 0. Structure void at y 1..8 where |x-15|<=3 and |z-24|<=3 (the flag column, as the outposts leave theirs). Nothing with a collision shape at y 1..2 within 10.5 of the centre, and clear ground from both gates to the circle (x 11..19 for z 35..36; z 22..26 for x 26..30).
+- Outside the circle: crates and barrels, a supply cart, a forge corner (anvil, grindstone, smithing table, a weapon rack of blocks: `place` ignores entities, so no item frames or armour stands) and a covered corner of cots (beds under a lean-to). The cell (24,1..2,34), the cover line's eye, stays air.
+- Every cell above y 0 that the piece does not build is written as `air`, except the flag column (structure void), so no grass, flower or dressing from the map's build survives in the yard or the gates (`p3-lm-<id>-clear`).
+- The lines: the cover line runs from behind the south wall through it at x 24; the sight line runs from the lookout over the yard on the +x side of the flag column and out through the front gate opening along the spur, and nothing rises into it.
+- Grim and weathered, Souls-like (Kort, 2026-10-22): sagging, uneven roof lines, patched and cracked walls, mixed worn materials, soot over the braziers; no clean box shapes. No cobwebs, powder snow or anything else that slows a walker in the yard, the gates or on the way up to the lookout.
+
+**Dressings** (one per map on the shared shape, spec 7.1):
+- `supply/rivergate` (Westmill and Eastmill Granary, Westhill and Easthill Barn): an oak frame on a cobble plinth under a hay roof, weathered spruce infill, mossy patches, coarse dirt and cobble in the yard.
+- `supply/ironhold` (West and East Armoury, West and East Quarters): stone brick with cracked and mossy courses, iron bars in the windows, a deepslate tile roof, chains; the forge corner at its fullest.
+- `supply/frostmarch` (West and East Ridge Hut, West and East Fur Store): dark spruce on a stone footing, snow on the roofs only, snow block and gravel in the yard; the north houses stand as a terrace cut into the ridge (spec 3.3).
+- `supply/hollowwood` (West and East Woodstore, West and East Herb House): mossy cobblestone and spruce logs, moss on the roof, rooted dirt and podzol at the wall foot, soul lanterns.
+- `supply/kingsfield` (West and East Tithe Barn): fieldstone (cobble, andesite, stone) under an oak tithe barn, wheat sheaves (hay bales) stacked in the yard, a gravel yard.
+
+**Interfaces:**
+- `supplyHouses` gives `Spec.SupplyHousesRow(String id,int map,String name,String landmark,int yardX,int yardZ,int spurX,int spurZ,int elevation)` and `Spec.SUPPLYHOUSES`, read by this task's code and by the rules plan (which adds its own `supply` sheet).
+- `CampaignMaps.select`, before `roads=building` (the woodland loop after it keeps 10 blocks off every road): `road(h.yardX(),h.yardZ(),h.spurX(),h.spurZ(),4)` for each `supplyHouses` row with `map()==selected`. The near end lies inside the footprint, so `Walkability` files the spur's cells inside the house as `building`, never `through`, and the 9-wide front gate is wider than the road's band: `Walkability` is unchanged.
+- `Arena.roadLevel(int x,int z)`: the point rule moves into `static double climb(double beyond,int elevation)` (`Y+(elevation-Y)*t*t*(3-2*t)` with `t=clamp(1-beyond/CLIMB,0,1)`) and `static boolean endsAt(CampaignMaps.Road r,int x,int z)`; a raised point keeps `beyond=hypot(x-p.x(),z-p.z())-(p.radius()+2)`. A raised house is a `supplyHouses` row of the selected map with `elevation()>Y` whose yard centre is an end of the nearest road: `beyond=hypot(dx,dz)` with `dx=max(0,|x-L.x()|-L.width()/2.0-2)` and the same for z, `L` its landmark row in `Spec.STRUCTURES` (the flat of Task 6's landmark pass). The early return when nothing is raised also counts the houses; the level is the largest of the floor and every climb; `CLIMB` stays 48.
+- `Arena.flag(ServerWorld w,int x,int y,int z,int team)`; `flag(w,p,team)` becomes `flag(w,p.x(),p.elevation(),p.z(),team)`. `finishBuild`, after the points loop: `flag(w,h.yardX(),h.elevation(),h.yardZ(),-1)` for each house of the selected map. `Arena.finish` runs before `Structures.queueLandmarks` and the piece leaves the flag column void, so the flag stands; the rules plan recolours it with the same call.
+- The braziers are the template's `campfire[lit=false]` at local (10,3,36) and (20,3,36), in the world `Structures.toWorld(size,x,elevation,z,rotation,10,3,36)` and `(...,20,3,36)`; nothing in this task changes them.
+- `Structures.hash(int map)` also reads the map's `supplyHouses` rows; the marker becomes `{"layout":"campaign-4","map":N,"landmarks":"<hash(N)>"}` (the road code changed), so every existing world rebuilds its map once.
+- Harness: the reserved columns that Task 6's `p3-lm-<id>-clear` skips gain, for the `supplyHouses` row whose `landmark` is the row's id, the cells with |x-yardX|<=3 and |z-yardZ|<=3 from elevation+1 to elevation+8 (the shape of an enclosed point's flag column); the check is otherwise unchanged.
+- Harness: `MapRouteChecks(MinecraftClient c,int[] maps,boolean houses)` (the two-argument constructor keeps the crossings) and `final Map<Integer,Integer> reached`. In house mode each map's goals, in sheet order of its `supplyHouses` rows, are `house-<id>-base`, from the spawn of the faction whose half holds the house (`Spec.FACTIONS[yardX<0?0:1]`, `spawnX`, `spawnZ`), and `house-<id>-point`, from 12 blocks from the centre of the point nearest the yard, toward the yard; the goal is the yard centre. Each map starts with `map-<n>-setup`, as the crossings do. `prepare` puts the twenty knights in a 5 by 4 block about the start (`standingCell`, no x limit), order `move`, formation `block`, target `(yardX+0.5,elevation+1,yardZ+0.5)`, squad yaw toward the yard, and the spectator 16 blocks from the yard toward the start, 18 up, looking at the yard (the units' own chunk tickets keep the march loaded). A goal passes when all 20 living knights stand within 10 blocks (horizontal) of the yard centre with `getY()>elevation+0.5`, within 3600 ticks; it reports `map-<n>-house-<id>-<base|point>` (`reached k/20` and the elapsed seconds), saves `route-map-<n>-house-<id>-<base|point>.png`, and a pass runs `reached.merge(map,1,Integer::sum)`. The closing line is `all-house-navigation`, so `all-map-navigation` keeps meaning the crossings.
+- Harness: in `Walkthrough.buildLegs`, a spur whose building is a house (the `landmark` of a `supplyHouses` row) becomes the leg `house-<id>`, walked from its lane end through the front gate to 4 blocks short of the yard centre, 2 blocks right of the centre line, with the pictures `house-<id>-spur` (2 blocks in, toward the gate), `house-<id>-gate` (10 blocks before the gate, toward the flag) and `house-<id>-yard` (at the end, past the flag at the storehouse); `GRAVES_WALK_ONLY=supply` selects them.
+- Consumes `Structures.toWorld/footprint/place/queueLandmarks/hash` (Tasks 1 and 6), Task 6's landmark rows, height pass and `p3-lm-*` checks, `Walkability.scan`, `MapRouteChecks` and the `walkthrough` suite (Task 2), `Phase3Checks.report/shot/view`.
+
+- [ ] **Step 1: Write the five scripts** (Opus 5.5 max, as Global Constraints assign piece scripts) to the shared brief and their dressings, each headed `# size 31 9 37`. Write `supply/rivergate` first and take it through Step 2 alone, so the shared shape is proven once before the other four reuse it.
+- [ ] **Step 2: Export them** (`GRAVES_STUDIO_PIECES=supply/rivergate,supply/ironhold,supply/frostmarch,supply/hollowwood,supply/kingsfield`). Expected five `pass p3-export-supply-<map>`. The tester states what each `p3-studio-supply-<map>.png` shows (storehouse and lookout, the walled yard with both gates and the ring of the circle, the map's materials, nothing above the flag's height); a piece that reads as a plain box or a generic shed goes back to Step 1. Copy the five files to `src/main/resources/data/gravesandglory/structures/supply/`.
+- [ ] **Step 3: Prove the climb on Kingsfield's outposts first** (Sonnet 5.5 max): move the point rule of `roadLevel` into `climb` and `endsAt` as in Interfaces, with no house branch yet. Compile; run `routes`. Expected the route check in full, with `pass p3-walk-map4` showing the same six counts as the last Task 8 run and `pass p3-routes-map4` (3 crossings): the outposts' roads climb as before.
+- [ ] **Step 4: Add the rows and their preflight rules.** `supplyHouses`: ids unique and of the form `<prefix>-supply-<nw|sw|ne|se>` with the map's prefix; `map` 0..4; `landmark` names a `landmarks` row of the same map whose template starts `supply/` and whose elevation equals the row's and whose rotation is 0 or 180; (yardX, yardZ) is that piece's local (15,24) in the world, so inside its footprint (x, z+6 at rotation 0; x, z-6 at 180); (spurX, spurZ) lies outside the footprint, within |x|<=350 and |z|<=250; names unique per map and at most 20 characters; four rows on each of maps 0 to 3 and two on map 4; every row has a partner on its map at (-yardX, -yardZ) with the same elevation and the spur end (-spurX, -spurZ). `landmarks` (gaps between footprints are the larger of the x and z gaps): the five `supply/` pieces have one size; no other footprint of the map lies within `12+2*(e-64)` blocks of a house's footprint, `e` the other row's elevation (its shoulder plus 2); every other row of the map whose footprint lies within `12+2*(E-64)` blocks of a house's footprint, `E` the house's elevation, comes after the house in the sheet. Expect `Preflight clean`. Then, one at a time: set `rg-supply-se`'s `yardZ` to 67 and expect an error naming `rg-supply-se`; move the 18 house rows to the end of the sheet and expect an error naming `rg-supply-nw` and `rg-house-2`. Restore both.
+- [ ] **Step 5: Write suite `supply`, the house mode of `MapRouteChecks`, the reserved columns and the walkthrough's house legs** (Sonnet 5.5 max). Suite `supply` covers the maps in `GRAVES_PHASE3_MAPS` (default all five); on each it switches and waits for `ready`, then per `supplyHouses` row of the map:
+  - `p3-house-<id>-neutral`: `oak_fence` at (yardX, elevation+1..elevation+6, yardZ), `sea_lantern` at elevation+7, `white_wool` at (yardX+1..yardX+3, elevation+4..elevation+5, yardZ); a `campfire` with `lit=false` at both brazier cells.
+  - `p3-house-<id>-yard`: every cell with (x-yardX)^2+(z-yardZ)^2<=100 has a collision shape at `elevation` and none at elevation+1 or +2, the pole cell excepted (flat and open); a flood fill over such cells inside the footprint, 4 neighbours, from beside the pole reaches the front gate opening (local z 36, x 11..19) and the side gate opening (local x 30, z 22..26), and the cell just outside each (local (15,0,37) and (31,0,24)) is such a cell too. `why` carries the bad cells and both results.
+  - `p3-house-<id>-spur`: along the spur's centre line, one cell per block from (spurX, spurZ) to the front gate's outer cell (local (15,0,37)), every cell is a road cell, nothing with a collision shape stands at `Arena.ground`+1 or +2, `Arena.ground` changes by at most 1 from one cell to the next, and it equals `elevation` at the gate. `why` carries the cell count, the largest step and the ground at both ends.
+  - Screenshots (`view`; local points go through `Structures.toWorld`, so their y is elevation plus the local y; where no y is given the eye is at `Arena.ground`+2.6): `<id>-spur` from the spur's lane end to the gate (local (15.5,3.0,36.5)); `<id>-gate` from local (15.5,47.5) to the yard centre at elevation+4; `<id>-yard` from local (15.5,2.6,33.5) to the storehouse front (local (15.5,3.0,11.5)); `<id>-lookout` from the sight line's start to its end; `<id>-point` from 12 blocks from the nearest point's centre toward the yard, to the yard centre at elevation+4.
+  - Then a `MapRouteChecks` in house mode over this one map, ticked until `done`: `p3-house-routes-map<N>` passes when `reached.get(N)` is twice the map's house rows (8 on maps 0 to 3, 4 on Kingsfield); `why` lists each goal's count.
+  Compile, then run `supply` with `GRAVES_PHASE3_MAPS=0` before Step 6: expected `fail p3-house-rg-supply-<nw|sw|ne|se>-neutral` (no flag) and `-spur` (no road) on all four; record the other results.
+- [ ] **Step 6: Implement** the spur roads in `select`, the house branch of `roadLevel`, `Arena.flag(w,x,y,z,team)` and the house flags in `finishBuild`, `hash` with the `supplyHouses` rows, and the `campaign-4` marker (Sonnet 5.5 max).
+- [ ] **Step 7: Compile; run**, a fresh root per launch:
+  - `landmarks` in three launches, `GRAVES_PHASE3_MAPS=0,4`, `1` and `2,3` (the groups of Tasks 6 to 8). Expected, over the three, every `p3-lm-*` id for all 98 rows (each house row with `-placed`, `-fits`, `-clear`, `-roads`, `-ring`, `-cover` and `-sight`) and the five budgets; in each launch both once-per-run ids and `pass p3-landmarks-suite`.
+  - `supply` once per map, `GRAVES_PHASE3_MAPS=0` to `4` (about 12 minutes for a map with four houses: eight marches of up to 3600 ticks; two maps would come close to the 30-minute limit). Expected, per map, `pass p3-house-<id>-neutral`, `-yard` and `-spur` for each of its houses, `pass p3-house-routes-map<N>`, the route harness's lines (`pass map-<n>-setup`, `pass map-<n>-house-<id>-base` and `-point` for each house, `pass all-house-navigation`) and `pass p3-supply-suite`. Note each launch's wall time; Task 9 keeps one map per launch.
+  - `routes`. Expected the route check in full: 15 crossings at 20/20 and `p3-walk-map<N>` with road 0 and through 0, so the spurs are clear.
+  The tester states what `lm-rg-supply-nw-ground`, `lm-ih-supply-nw-high`, `lm-fm-supply-nw-high` (the terrace cut into the ridge), `lm-kf-supply-nw-ground` and each map's overview show, and for one house per map the five views: the spur climbing to the gate with the white flag readable from the lane (about 60 blocks), the gate between its two unlit braziers, the yard with its ring and the flag above the roof line, the lookout over the spur, the house from its nearest point.
+- [ ] **Step 8: Commit** by path (the files above) with `git -c user.name=Claude -c user.email=noreply@anthropic.com commit -F <msg file under work/p1/>` and the `docs/HANDOFF.md` trailer: `"Phase 3: supply houses: five house pieces, spur roads up to their yards, neutral flags"`.
+- [ ] **Step 9: Walkthrough gate** (after the task review, a Sonnet 5.5 max tester): `walkthrough` with `GRAVES_WALK_ONLY=supply`, one map per launch (`GRAVES_PHASE3_MAPS=<N>`). Expected `pass p3-wt<N>-leg-house-<id>` for each house of the map, `pass` for `p3-wt<N>-stuck`, `-foreign`, `-river` and `-floating`, and `pass p3-walkthrough-suite`. The tester grades each map's houses 1 to 10 against `work/ui-concepts/GRADING-RUBRIC.md` adapted to world pieces, from the walkthrough pictures and the five `supply` views per house (spur, gate, yard, lookout, from the nearest point). Below 9 on any map is a fix round: a piece goes back to Step 1, or a pair moves up to 20 blocks with its half-turn symmetry kept (spec 3.3; on Frostmarch a terrace under 9 moves down-slope first), its rows and spur moving with it and Steps 4 and 7 run again. Each fix round commits by path as in Step 8. Nothing ships below 9.
+
+---
+
 ### Task 9: Final regression and Kort's screenshot gate
 
 **Files:**
 - Create: `docs/PHASE-3-SCREENSHOTS.md`
 - Modify: `docs/PROJECT-STATE.md`, `docs/PARKED.md` (append only)
 
-- [ ] **Step 1: Full Phase 3 run:** suites `pipeline,studio,camp,houses,yard,landmarks,routes` with `GRAVES_PHASE3_MAPS` unset. Expected every `p3-*` line `pass`, the seven suite lines, and `p3-fresh-<group>-<name>` for all 34 scripts (the marker, 11 camp pieces, 22 map pieces).
+- [ ] **Step 1: Full Phase 3 run,** in launches of at most 30 minutes, at most two harness clients at once (`docs/HANDOFF.md`), each with a fresh `GRAVES_ROADMAP_TEST_ROOT`: suites `pipeline,studio,camp,houses,yard` with `GRAVES_PHASE3_MAPS` unset; `landmarks` once per map (`GRAVES_PHASE3_MAPS=0`, then `1` to `4`); `supply` once per map (as in Task 8b, Step 7); `routes`. Expected every `p3-*` line `pass`, the eight suite lines (`landmarks` and `supply` in each of their launches), and `p3-fresh-<group>-<name>` for all 39 scripts (the marker, 11 camp pieces, 22 landmark pieces, 5 supply houses). After each launch, copy its `run/screenshots/*.png` into `work/p3/task9-shots/` and append its root to `work/p3/task9-roots.txt`. The sheets: `python -c "import json;d=json.load(open('sheets/design.json'));print({k:len(d[k]) for k in ('pieces','landmarks','landmarkLines','supplyHouses')},[sum(r['map']==m for r in d['landmarks']) for m in range(5)])"` prints `{'pieces': 38, 'landmarks': 98, 'landmarkLines': 22, 'supplyHouses': 18} [18, 25, 18, 19, 18]`.
 - [ ] **Step 2: Earlier suites:** `-PcampaignChecks` with no Phase 3 variable ends with `pass roadmap-suite`; `GRAVES_CAMP_CHECKS=true` passes; `GRAVES_PHASE1_CHECKS=combat,morale,reinforce,bots,tutorial,report,ui` passes; `-PselfTest` (same init script, its own test root) passes every id except those `docs/PROJECT-STATE.md` lists as stale. Each run uses a fresh `GRAVES_ROADMAP_TEST_ROOT`.
-- [ ] **Step 3: Release build, not uploaded:** `"$G" build --offline -x test`, then `python tools/package.py` (its `validate_player_jar` leak check passes; the zip stays in `dist/`); `J=$(ls build/libs/graves-and-glory-*.jar | grep -v -- -sources); unzip -l "$J" | grep -c "data/gravesandglory/structures/.*\.nbt"` prints `33` (the marker stays in the harness jar).
-- [ ] **Step 4: Contact sheets** from the Step 1 screenshots (frames scaled to 480x270; camp 5x4, each map 4x4):
+- [ ] **Step 3: Release build, not uploaded:** `"$G" build --offline -x test`, then `python tools/package.py` (its `validate_player_jar` leak check passes; the zip stays in `dist/`); `J=$(ls build/libs/graves-and-glory-*.jar | grep -v -- -sources); unzip -l "$J" | grep -c "data/gravesandglory/structures/.*\.nbt"` prints `38` (33 and the five supply houses; the marker stays in the harness jar).
+- [ ] **Step 4: Contact sheets** from the Step 1 screenshots in `work/p3/task9-shots/` (frames scaled to 480x270; camp 5x4; each map 5x4, with 13, 17, 15, 17 and 15 frames on maps 0 to 4; each map's houses 5x4, the five `supply` views of each house, 20 frames on maps 0 to 3 and 10 on Kingsfield):
 ```bash
-FF=/c/ffmpeg/ffmpeg-8.1-full_build/bin/ffmpeg; S="$GRAVES_ROADMAP_TEST_ROOT/run/screenshots"; O="$GRAVES_ROADMAP_TEST_ROOT/sheets"; mkdir -p "$O"
+FF=/c/ffmpeg/ffmpeg-8.1-full_build/bin/ffmpeg; S="$PWD/work/p3/task9-shots"; O="$PWD/work/p3/task9-sheets"; mkdir -p "$O"
 sheet(){ n=$1; t=$2; shift 2; for f in "$@"; do echo "file '$(cygpath -m "$f")'"; done > "$O/$n.txt"; "$FF" -y -f concat -safe 0 -i "$O/$n.txt" -vf "scale=480:270,tile=$t" -frames:v 1 "$O/$n.png"; }
 sheet camp 5x4 "$S"/p3-camp-*.png
-for m in 0:rg 1:ih 2:fm 3:hw 4:kf; do sheet "map${m%%:*}" 4x4 "$S/p3-lm-map${m%%:*}-overview.png" "$S"/p3-lm-${m##*:}-*.png; done
+for m in 0:rg 1:ih 2:fm 3:hw 4:kf; do sheet "map${m%%:*}" 5x4 "$S/p3-lm-map${m%%:*}-overview.png" "$S"/p3-lm-${m##*:}-*.png; sheet "houses${m%%:*}" 5x4 "$S"/p3-${m##*:}-supply-*.png; done
 ls "$O"/*.png
 ```
-Expected six sheets; the tester states what each shows.
-- [ ] **Step 5: Append to `docs/PARKED.md`:** "Bases' barracks and stores road clips (2026-10-17, Phase 3; Question 6, for Phase 4)"; "`ironhold/gate_intact` for Siege (Phase 4)"; "In-world banner cosmetics on the command tent's standard pole (Phase 3 non-goal)"; "Pixel House glyphs beside the CampDisplays labels (UI pass hook)".
-- [ ] **Step 6: Write `docs/PHASE-3-SCREENSHOTS.md`:** one section per sheet with its path and three yes/no boxes (reads as built, not generated; fits its House or map; nothing floats, clips or blocks a road), then Kort's walk-through: a fresh world arrives at the yard, START battle 1, back at camp, up the ridge to the war table, the five Houses, out through the War Gates, then one skirmish each on Ironhold and Kingsfield. The gate passes only on Kort's word.
+Expected eleven sheets; the tester states what each shows.
+- [ ] **Step 5: Append to `docs/PARKED.md`:** "Bases' barracks and stores road clips (2026-10-17, Phase 3; Question 6, for Phase 4)"; "`ironhold/gate_intact` for Siege (Phase 4)"; "In-world banner cosmetics on the command tent's standard pole (Phase 3 non-goal)"; "Pixel House glyphs beside the CampDisplays labels (UI pass hook)"; "Supply house rules (`docs/superpowers/specs/2026-10-22-supply-houses-design.md` sections 4 to 9 and 11): their own plan, written and run after the base merge, before 0.5.0; until then the houses are inert buildings with white (neutral) flags and unlit braziers (Phase 3 Task 8b)".
+- [ ] **Step 6: Write `docs/PHASE-3-SCREENSHOTS.md`:** one section per sheet with its path and three yes/no boxes (reads as built, not generated; fits its House or map; nothing floats, clips or blocks a road), each `houses<N>` section (spur, gate, yard, lookout, from the nearest point) with a note that its flags are white and its braziers out because the houses stay inert until the supply-house rules plan (Step 5); then Kort's walk-through: a fresh world arrives at the yard, START battle 1, back at camp, up the ridge to the war table, the five Houses, out through the War Gates, then one skirmish each on Ironhold and Kingsfield. The gate passes only on Kort's word.
 - [ ] **Step 7: Update `docs/PROJECT-STATE.md`:** Phase 3 built and waiting on the screenshot gate, with the test roots of Steps 1 and 2.
 - [ ] **Step 8: Commit** `"Phase 3: regression, contact sheets and the screenshot gate checklist"`. No merge, push or upload; `mod_version` stays the controller's call.
 
@@ -679,4 +820,4 @@ Expected six sheets; the tester states what each shows.
 
 **Names used across tasks:** `Structures.place/template/rotation/toWorld/footprint/queueLandmarks/step/clearQueue/queued/hash/salt/LOG` and `Placed`; `StructureStudio.build/save/export/fresh/dump/ORIGIN`; `Phase3Checks.report/shot/view`; `Walkability.scan/Scan`; `MapRouteChecks.crossed`; `Arena.clearDecks/tree`; `CampWorld.TAG/Spot/spawn/inCamp/where/station/warTable/tableCell/text/slot/yaw/displays/lessons/dummies`; `CampDisplays.lastDrawn/lastTexts`; `CampaignMaps.padCenter`; `Campaign.leash`; `Battle.placing`; sheets `pieces`, `landmarks`, `landmarkLines`, `camp`, `campPieces`, `campStations`, `campLessons`.
 
-**Counts:** 80 landmark rows (14, 21, 14, 15 and 16 on maps 0 to 4), 12 `landmarkLines` rows, 34 scripts (the marker, 11 camp, 22 map), 33 shipped structure files.
+**Counts:** 98 landmark rows (18, 25, 18, 19 and 18 on maps 0 to 4), 22 `landmarkLines` rows, 38 `pieces` rows, 18 `supplyHouses` rows, 39 scripts (the marker, 11 camp, 22 landmark, 5 supply houses), 38 shipped structure files.
