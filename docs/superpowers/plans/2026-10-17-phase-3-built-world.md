@@ -568,7 +568,7 @@ World values: `ih-gate` cover (-32.5,66.6,-15.5) to (-60.5,ground,-15.5), sight 
 - [ ] **Step 2: Export them**; the tester states what each studio shot shows; copy the files.
 - [ ] **Step 3: Add the rows.** Expect `Preflight clean`.
 - [ ] **Step 4: Delete the hay line** in `Arena.finish`: `if(CampaignMaps.selected==1)for(int row=0;row<4;row++)box(w,-109+row*4,65,-152,3,2,3,Blocks.HAY_BLOCK);`.
-- [ ] **Step 5: Compile; run `landmarks,routes` with `GRAVES_PHASE3_MAPS=1`.** Expected every `p3-lm-*` id for the 21 rows, the budget, both once-per-run ids, the suite line and the route check (`p3-routes-map1` shows 3 crossings). The tester states what `lm-ih-gate-ground` (passage between two towers), `lm-ih-keep-high`, `lm-ih-curtain-wn1-ground`, `lm-ih-supply-barn-ground` and `lm-map1-overview` show.
+- [ ] **Step 5: Compile; run `landmarks,routes` with `GRAVES_PHASE3_MAPS=1`.** Expected every `p3-lm-*` id for the 21 rows, the budget, both once-per-run ids, the suite line and the route check (`p3-routes-map1` shows 3 crossings). The tester states what `lm-ih-gate-ground` (passage between two towers), `lm-ih-keep-high`, `lm-ih-curtain-wn1-ground`, `lm-ih-hay-barn-ground` and `lm-map1-overview` show.
 - [ ] **Step 6: Commit** `"Phase 3: Ironhold landmarks: gate, keep, curtains, hay barn and garrison"`.
 
 ---
