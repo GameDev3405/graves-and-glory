@@ -27,9 +27,93 @@ The gate prints `gate <a> vs <b> win=<P>% pass|fail` (exit status 0 pass, 1 fail
 
 ## Current best pure banner
 
-`gilded_normal` (85% against `graveborn_normal` in the Task 7 gate, with the Graveborn mechanics built and at the spec numbers; 100% in the Task 6 gate, report-only, before them; 92.5% in the Task 3 baseline after fix round 1, where `graveborn_normal` had 7.5%). The first Task 3 baseline (`gilded_normal` 95%) was measured with the husk's +2 armour on the Gilded side and is superseded by it. Update this line whenever a logged gate gives another pure normal banner a higher win rate. (The Task 8 gate gave `ironclad_normal` 45% against `gilded_normal`, so Gilded stays the bar.)
+`gilded_normal` (82.5% against `graveborn_normal` in the Task 8b gate on the no-routing game, the baseline from here on; 52.5% in the balance fix of 2026-10-22 with routing; 85% in the Task 7 gate at the spec numbers; 100% in the Task 6 gate, report-only, before the Graveborn mechanics; 92.5% in the Task 3 baseline after fix round 1). The first Task 3 baseline (`gilded_normal` 95%) was measured with the husk's +2 armour on the Gilded side and is superseded by it. Update this line whenever a logged gate gives another pure normal banner a higher win rate. (`ironclad_normal` read 60% against `gilded_normal` in the Task 8b gate, 75% in the balance fix with routing and 45% in the Task 8 gate, so Gilded stays the bar.)
 
 ## Results
+
+### Phase 2 Task 8b gates: the no-routing game (2026-10-22; `graveborn_normal` vs `gilded_normal` 17.5%, fail, one tuning round below; `ironclad_normal` vs `gilded_normal` 60%, report-only, inside the band)
+
+Code: the Task 8b tree on `cdcf095` (the commits of this task), at the design's own numbers (`docs/superpowers/specs/2026-10-22-no-routing-design.md`, section 8). The controller's ruling for 8b: the `graveborn_normal` pairing must pass (40 <= P <= 60 over 20 decided matches; if not, one tuning round on the design's own numbers; if that still fails, stop and report), and the `ironclad_normal` pairing is report-only. (The design's section 10 names the gates the other way round; the ruling was followed.) Both reruns are the new baselines; the routing-game results stay below as the routing reference: `graveborn_normal` vs `gilded_normal` 47.5% (the balance fix of 2026-10-22, at the same troop rows as here) and `ironclad_normal` vs `gilded_normal` 75% (the same entry; 45% in the Task 8 gate before the Squire and Templar cuts).
+
+What reaches these fights that the routing game did not have: no group ever breaks (a beaten group fights on; a bot army still leaves a fight only by its own Retreat order at `retreatShare`, and now arrives at its base and holds there until `rallyShare`); flank blows x1.30 (C16, was 1.15) and flank shots x1.15 (C16s, new); Bulwark's rout guard became covered flanks (no flank row against a troop within 5, 8 or 12 of a Gilded troop of another group); `fearless` is +20% damage at or below 30% health (was a 12% rout share); `dread` keeps its damage cut only. No horn sounds in the field and nothing a bot does makes a sound.
+
+Both gates use the recipe unchanged (two processes of 10 matches, `-PsimDawn=normal -PsimDusk=normal -PsimMaps=0,1,2,3,4 -PsimRoundSeconds=300`, a fresh server root each, nothing else running). Ports 25651 and 25652 for gate 1 (roots `work/p2/t8b-sim1-143548` and `work/p2/t8b-sim2-143608`, servers up 14:36 to 15:31), 25653 and 25654 for gate 2 (`work/p2/t8b-sim3-153227` and `work/p2/t8b-sim4-153247`, 15:32 to 16:28); every round ran its full 300 s and none aborted. The `[botsim] health` lines (90 a process) show no burning troop in any of the 360 samples and at most 2 troops stuck for 30 s in 355 of them (gate 1: two samples with 4, both match 1 at 270 s; gate 2: three samples above 2).
+
+`BotSimulation` now writes the design's fight stats to `results.csv` (columns `dawnKills, duskKills, dawnWiped, duskWiped, dawnRetreats, duskRetreats, fights, meanFightSeconds`; `work/p2/t8b/fightstats.py` sums them): kills per side are the other side's `stats.lost` (a death by any cause); a group is wiped out when a bot army's group goes from living regular troops to none (temporaries excluded; a group refilled from the barracks can be wiped again); a retreat is the bot's own Retreat order (`Campaign.botRetreating`); a fight opens at the first blow logged while none is open and closes at the next wipe or retreat (or the round's end), so the mean fight length runs from first contact to one side's group wiped or retreating.
+
+#### Gate 1: `graveborn_normal` vs `gilded_normal` (must pass, 40 <= P <= 60)
+
+```
+work/p2/t8b-sim1-143548/botsim/results.csv: graveborn_normal on dawn: won=1 lost=9 drawn=0 aborted=0
+work/p2/t8b-sim2-143608/botsim/results.csv: graveborn_normal on dusk: won=2 lost=7 drawn=1 aborted=0
+  map 0 (dawn): won=1 lost=1 drawn=0 aborted=0
+  map 1 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 2 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 3 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 4 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 0 (dusk): won=1 lost=1 drawn=0 aborted=0
+  map 1 (dusk): won=0 lost=1 drawn=1 aborted=0
+  map 2 (dusk): won=0 lost=2 drawn=0 aborted=0
+  map 3 (dusk): won=0 lost=2 drawn=0 aborted=0
+  map 4 (dusk): won=1 lost=1 drawn=0 aborted=0
+rounds=20 decided=20 won=3 lost=16 drawn=1
+gate graveborn_normal vs gilded_normal win=17.5% fail
+```
+
+- `graveborn_normal` won 3 of 20 (1 of 10 from Dawn's seat, 2 of 10 from Dusk's), lost 16 and drew 1: P = 17.5%, fail. Against the routing baseline (47.5%) it moved 30 points down, back to where the Task 7 gate stood with routing at the spec numbers (15%) before the balance fix.
+- Mean final score 69.8 to 90.8 for Graveborn (a gap of -21.0; the balance fix read +7.0).
+- Fight stats (means over the 20 matches, seat-pooled): Graveborn killed 61.2 troops a match and lost 69.5; 3.65 of its groups were wiped out a match and it wiped 3.40 of Gilded's; the bots ordered 0.05 (Graveborn) and 0.50 (Gilded) retreats a match; 8.35 fights a match of 26.5 s mean length (the per-match means run 17.8 to 45.2 s). Kingsfield (map 4) fights are half the size (about 30 kills a side).
+- Why (a diagnosis from the mechanics, not an ablation): in a bot melee most blows land on someone's flank or rear. `gilded_normal` is tier III, so with its archers and longbows within 12 of the line nearly every Gilded troop is covered and takes no flank row, while every Graveborn troop takes x1.30 from a blow and x1.15 from a shot behind it. In the routing game C16 (1.15) applied to both sides alike and Bulwark's guard only stopped routs, which `gilded_normal` rarely did anyway; so the design hands Gilded a one-sided flank multiplier that the fearless damage bonus (a Risen at 30% is one or two blows from death) does not pay back.
+
+#### Gate 2: `ironclad_normal` vs `gilded_normal` (report-only)
+
+```
+work/p2/t8b-sim3-153227/botsim/results.csv: ironclad_normal on dawn: won=6 lost=4 drawn=0 aborted=0
+work/p2/t8b-sim4-153247/botsim/results.csv: ironclad_normal on dusk: won=6 lost=4 drawn=0 aborted=0
+  map 0 (dawn): won=2 lost=0 drawn=0 aborted=0
+  map 1 (dawn): won=1 lost=1 drawn=0 aborted=0
+  map 2 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 3 (dawn): won=1 lost=1 drawn=0 aborted=0
+  map 4 (dawn): won=2 lost=0 drawn=0 aborted=0
+  map 0 (dusk): won=1 lost=1 drawn=0 aborted=0
+  map 1 (dusk): won=2 lost=0 drawn=0 aborted=0
+  map 2 (dusk): won=1 lost=1 drawn=0 aborted=0
+  map 3 (dusk): won=0 lost=2 drawn=0 aborted=0
+  map 4 (dusk): won=2 lost=0 drawn=0 aborted=0
+rounds=20 decided=20 won=12 lost=8 drawn=0
+gate ironclad_normal vs gilded_normal win=60% pass
+```
+
+- `ironclad_normal` won 12 of 20 (6 of 10 from each seat), lost 8, no draws: P = 60%, inside the band on its upper edge. Against the routing baseline (75%) it moved 15 points down; the Task 8 gate with routing at the spec Gilded rows read 45%.
+- Mean final score 75.2 to 76.5 (a gap of -1.3).
+- Fight stats: Ironclad killed 75.6 a match and lost 39.1; it wiped 4.35 Gilded groups a match and lost 0.60 of its own; retreats 0.00 (Ironclad) and 0.15 (Gilded); 6.0 fights a match of 32.2 s mean length (15.3 to 70.3). Ironclad wins the killing two to one and the points by one match in twenty: the Gilded groups die on the point and refill from the barracks while the Ironclad line is slow to move onto it. With routing they ran from the point at 25% and Ironclad took it; fighting to the last stand is what moved this number down.
+
+#### Tuning round (ruling 1: the design's own numbers only, each within 15% of its value)
+
+Round 1 (2026-10-22), the one round the ruling allows, on top of the design's numbers. The levers that bear on this pairing moved and no other (the bots have no commander, so Stand Fast and Muster cannot matter; `graveborn_normal` fields no Hollow King, so dread cannot): C16 1.30 to 1.105 (-15%), C16s 1.15 to 1.05 (-8.7%: a shot into a flank must still land harder for its text to hold), the Bulwark cover radii 5, 8 and 12 to 4.25, 6.8 and 10.2 (-15%; the `gilded_1..3` texts said the new numbers), `fearless` amount 0.20 to 0.23 (+15%) and amount2 0.30 to 0.345 (+15%; text "Below 34.5% health he deals 23% more damage."). The direction: the flank rows are the one-sided edge (a tier III Gilded troop is covered, a Graveborn troop never), so both come down as far as the rule allows, the cover shrinks, and the dead hit harder and sooner. Ports 25655 and 25656, roots `work/p2/t8b-sim5-163529` and `work/p2/t8b-sim6-163549`, servers up 16:35 to 17:31; all 20 rounds ran their 300 s; no burning troop and no sample with more than 2 stuck troops in the 180.
+
+```
+work/p2/t8b-sim5-163529/botsim/results.csv: graveborn_normal on dawn: won=3 lost=7 drawn=0 aborted=0
+work/p2/t8b-sim6-163549/botsim/results.csv: graveborn_normal on dusk: won=3 lost=6 drawn=1 aborted=0
+  map 0 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 1 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 2 (dawn): won=2 lost=0 drawn=0 aborted=0
+  map 3 (dawn): won=1 lost=1 drawn=0 aborted=0
+  map 4 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 0 (dusk): won=0 lost=2 drawn=0 aborted=0
+  map 1 (dusk): won=1 lost=1 drawn=0 aborted=0
+  map 2 (dusk): won=1 lost=1 drawn=0 aborted=0
+  map 3 (dusk): won=0 lost=1 drawn=1 aborted=0
+  map 4 (dusk): won=1 lost=1 drawn=0 aborted=0
+rounds=20 decided=20 won=6 lost=13 drawn=1
+gate graveborn_normal vs gilded_normal win=32.5% fail
+```
+
+- `graveborn_normal` won 6 of 20 (3 from each seat), lost 13 and drew 1: P = 32.5%, fail. The round moved it 15 points up from 17.5% and left it 7.5 under the band. Mean final score 73.7 to 86.8 (a gap of -13.1, from -21.0).
+- Fight stats: Graveborn killed 64.3 a match and lost 66.5 (from 61.2 and 69.5); 3.55 of its groups were wiped out a match and it wiped 3.35 (from 3.65 and 3.40); retreats 0.00 (Graveborn) and 0.40 (Gilded); 8.15 fights a match of 26.9 s mean length (16.7 to 35.8).
+- Result: the tuning round fails. By the ruling it is not committed: the sheet stays at the design's numbers (`Spec.java` with it), and the pairing goes to Kort in `docs/QUESTIONS-FOR-KORT.md` with these numbers while Task 9 starts anyway (the design's stop rule). What the round says: the flank asymmetry is the largest single cause (shrinking it bought the 15 points) but not the whole of it; with C16 at 1.105 Gilded still wins two of three, so the rest is the no-routing game itself, where `fearless` was worth more as a 12% rout share against Gilded's 25% than as +20% at the edge of death, on top of the Bulwark ranged cut the balance fix already paid for. Closing it stays with Phase 2's balance pass, which may move the troop rows 8b's rule did not allow.
+
+How much longer and bloodier fights got against the routing game: the old logs cannot say. The routing-game `results.csv` had none of the fight-stat columns and `gold.csv` samples living troops per team every 30 s only (losses are not kills: reinforcements refill between samples), so the kill, wipe, retreat and fight-length numbers above are the first baseline for the next gates; Tasks 9 and 10 compare against them.
 
 ### Phase 2 balance fix: Gilded Squire 28 and Templar 40, `graveborn_normal` vs `gilded_normal` passes (2026-10-22, 47.5%; `ironclad_normal` vs `gilded_normal` reads 75%, report-only)
 
@@ -388,7 +472,7 @@ What the numbers say (from the two runs' `results.csv` and `gold.csv`; the last 
 
 ## Tuning log
 
-Phase 2 Tasks 3, 6 and 8 changed no sheet numbers (the Task 6 and Task 8 gates are report-only by ruling; the Task 8 gate passed at the spec numbers, 45%). Task 7 changed these Graveborn rows in `sheets/design.json`, each within 15% of its spec value; the percentages are against the spec value, and a whole-number column (health, damage, cooldown) moves in whole numbers.
+Phase 2 Tasks 3, 6 and 8 changed no sheet numbers (the Task 6 and Task 8 gates are report-only by ruling; the Task 8 gate passed at the spec numbers, 45%). Task 8b changed the rows its design names (section 8 of the no-routing design; its first commit lists them) and nothing else; its one tuning round is logged under its gate entry and was not committed (it read 32.5%, still under the band). Task 7 changed these Graveborn rows in `sheets/design.json`, each within 15% of its spec value; the percentages are against the spec value, and a whole-number column (health, damage, cooldown) moves in whole numbers.
 
 Round 1 (2026-10-21), the five troops of `graveborn_normal`:
 

@@ -175,3 +175,13 @@ Six real in-game captures (no AI art) at `work/ui-concepts/title/demos/` and on 
 ## Media shoot (2026-10-18, afternoon): PARKED by Kort the same day
 
 Kort liked all six title demos but asked for a reshoot with no sword: Steve standing and watching the battle, face close-ups near and far, walking-away shots, brainstormed scenarios, trailer film, gameplay footage, intro and outro plates. Then: "write all this down and put a hold on it until all the units are designed and polished, maps are designed and polished". Shot list kept at `docs/media/SHOTLIST.md`; the shoot agent was stopped before it produced anything. Resume after Phase 2 Task 5 and Phase 3. The title-screen pick is deferred to the same point.
+
+## Task 8b (no routing) gate: `graveborn_normal` vs `gilded_normal` fails (2026-10-22)
+
+The no-routing design's gate re-run (`docs/PHASE-2-BALANCE.md`, "Phase 2 Task 8b gates") reads 17.5% for `graveborn_normal` against `gilded_normal` at the design's numbers (3 won, 16 lost, 1 drawn of 20; 47.5% with routing after the balance fix, at the same troop rows) and 32.5% after the one tuning round the ruling allows (C16 1.105, C16s 1.05, the Bulwark cover radii 4.25/6.8/10.2, fearless +23% at or below 34.5% health: 6 won, 13 lost, 1 drawn). The tuning is not committed; the sheet stays at the design's numbers. `ironclad_normal` vs `gilded_normal` reads 60% (report-only; 75% with routing), inside the band. The cause, as far as the numbers say: covered flanks make nearly every troop of a tier III Gilded army immune to the flank rows while every Graveborn troop takes x1.30 from a blow behind it, a one-sided multiplier the routing game did not have; the tuning round's 15 points came from shrinking it, and the rest is the no-routing game itself (fearless as a 12% rout share was worth more against Gilded than +20% at the edge of death).
+
+Decision in the meantime (the design's stop rule): Task 9 starts on the design's numbers, and Phase 2's balance pass owns the pairing. Options, the recommended one first:
+
+1. **(recommended)** Leave the design's numbers and hand the pairing to the balance pass with this diagnosis. It may move the Graveborn troop rows (the Task 7 route, within 15% of spec) or the Gilded rows again; 8b's rule allowed neither.
+2. Narrow covered flanks: cover against shots only (C16s), so a Gilded line can still be flanked in melee; or cover only shield troops. A design change, so yours to call; 8b built the design as approved.
+3. Give the Commons the level-2 fearless now (+30% at or below 40% health). The progression design keeps those numbers for level 2, so it would need a new level-2 step.
