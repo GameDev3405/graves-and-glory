@@ -1,132 +1,244 @@
 package gg.gravesandglory;
 
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.CandleBlock;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.passive.VillagerEntity;
-import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.registry.Registries;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.WorldSavePath;
+import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.Vec3i;
+import net.minecraft.world.Heightmap;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.regex.Pattern;
+import java.util.zip.CRC32;
 
-/** The player's camp: a courtyard with identifiable, interactive destinations. */
+/** The player's camp: a terrain island (a bowl, a ridge, a plateau) written by Java, the authored pieces of campPieces placed on it from their structure files, the villagers and labels of campStations,
+ *  and the war table. Every coordinate comes from the camp, campPieces and campStations sheets; the pure functions (spawn, inCamp, where, station, text, tableCell) read nothing but the sheets and the map
+ *  that stands, so the client can call them too. */
 final class CampWorld {
-    static final String TAG="gravesandglory-camp-v3";
+    /** Camp entities carry this tag, camp-generation:<g> and camp:<page>; the entities of the older camps (gravesandglory-camp-v3 and the two lobby tags) are discarded on every load. */
+    static final String TAG="gravesandglory-camp-v4";
+    /** In the world folder: the hash of what the terrain was built from. */
+    static final String MARKER_FILE="gravesandglory-camp.json";
+    /** Part of the hash: a change to the way the terrain is written makes every world rebuild it. */
+    static final String TERRAIN="terrain-1";
+    /** Where the plateau begins and where its bank starts at the foot (dz, from the origin of the camp): the bank rises over the 13 blocks between them. */
+    static final int RIDGE_TOP_DZ=-51,RIDGE_FOOT_DZ=-38;
     static String generation="";
+    /** Every line this class logged, oldest first (the harness reads them as well as the console). */
+    static final List<String> LINES=new CopyOnWriteArrayList<>();
+    static void log(String line){System.out.println(line);LINES.add(line);}
+
+    record Spot(double x,double y,double z,float yaw,float pitch){}
+
+    // ---- the pure functions ----
+
+    /** Where a commander stands after toLobby: the camp spawn. Task 5 adds the first arrival, which is why the profile comes with it. */
+    static Spot spawn(Campaign.Profile p){var c=Spec.CAMP[0];return new Spot(c.originX()+c.spawnDx(),c.spawnY(),c.originZ()+c.spawnDz(),(float)c.spawnYaw(),(float)c.spawnPitch());}
+
+    /** Inside the island box (x and z, the far edge included as a block) and not below minY: where the leash lets a commander stay. */
+    static boolean inCamp(double x,double y,double z){
+        var c=Spec.CAMP[0];
+        return x>=c.originX()+c.islandMinDx()&&x<c.originX()+c.islandMaxDx()+1&&z>=c.originZ()+c.islandMinDz()&&z<c.originZ()+c.islandMaxDz()+1&&y>=c.minY();
+    }
+
+    /** The first campStations row with that page, else the centre of the first campPieces row whose station starts with it (at the height of a standing commander); null when there is none. */
+    static Vec3d where(String page){
+        var c=Spec.CAMP[0];
+        for(var s:Spec.CAMPSTATIONS)if(s.page().equals(page))return new Vec3d(c.originX()+s.x(),s.y(),c.originZ()+s.z());
+        for(var row:Spec.CAMPPIECES)if(!row.station().equals("-")&&row.station().startsWith(page)){var box=box(row);return new Vec3d((box.getMinX()+box.getMaxX()+1)/2.0,row.y()+1,(box.getMinZ()+box.getMaxZ()+1)/2.0);}
+        return null;
+    }
+
+    /** The page of the station a clicked block belongs to: a campStations box (|x-sx|<=halfX, |z-sz|<=halfZ, y-2 to y+4, the block taken by its centre), else a campPieces footprint whose station is not - (from one below the floor to 12 above it); null for none. */
+    static String station(BlockPos p){
+        var c=Spec.CAMP[0];double x=p.getX()+.5,z=p.getZ()+.5;
+        for(var s:Spec.CAMPSTATIONS)if(Math.abs(x-(c.originX()+s.x()))<=s.halfX()&&Math.abs(z-(c.originZ()+s.z()))<=s.halfZ()&&p.getY()>=s.y()-2&&p.getY()<=s.y()+4)return s.page();
+        for(var row:Spec.CAMPPIECES){
+            if(row.station().equals("-"))continue;var box=box(row);
+            if(p.getX()>=box.getMinX()&&p.getX()<=box.getMaxX()&&p.getZ()>=box.getMinZ()&&p.getZ()<=box.getMaxZ()&&p.getY()>=row.y()-1&&p.getY()<=row.y()+12)return row.station();
+        }
+        return null;
+    }
+
+    /** A label as Text: gold, {key:use} becomes the keybind key.use and {key:<id>} the keybind key.gravesandglory.<id>. */
+    static Text text(String label){
+        MutableText out=Text.empty();var m=Pattern.compile("\\{key:([a-z_]+)\\}").matcher(label);int from=0;
+        while(m.find()){
+            if(m.start()>from)out.append(Text.literal(label.substring(from,m.start())));
+            out.append(Text.keybind(m.group(1).equals("use")?"key.use":"key.gravesandglory."+m.group(1)));from=m.end();
+        }
+        if(from<label.length())out.append(Text.literal(label.substring(from)));
+        return out.formatted(Formatting.GOLD);
+    }
+
+    /** The footprint of a campPieces row: its piece (the pieces sheet gives the size) turned about its centre block. */
+    static BlockBox box(Spec.CampPiecesRow row){
+        var c=Spec.CAMP[0];var p=piece(row.template());
+        return Structures.footprint(new Vec3i(p.width(),p.height(),p.depth()),c.originX()+row.dx(),row.y(),c.originZ()+row.dz(),row.rotation());
+    }
+    static Spec.PiecesRow piece(String id){for(var p:Spec.PIECES)if(p.id().equals(id))return p;throw new IllegalStateException("no pieces row "+id);}
+
+    // ---- the build ----
+
+    /** The camp at world start (and in the harness): terrain when the world lacks the current hash, the pieces at every start, the people, the war table; the hash is written last. */
     static void build(ServerWorld w){
         generation=UUID.randomUUID().toString();
-        var old=new ArrayList<net.minecraft.entity.Entity>();for(var e:w.iterateEntities())if(e.getCommandTags().contains(TAG)||e.getCommandTags().contains("gravesandglory-lobby")||e.getCommandTags().contains("bannerbound-lobby"))old.add(e);old.forEach(net.minecraft.entity.Entity::discard);
-        int z=CampaignMaps.LOBBY_Z;
-        // Replace the old hall as well as its floor; do not touch the battlefield.
-        Arena.box(w,-42,65,z-32,85,19,65,Blocks.AIR);
-        Arena.box(w,-42,64,z-32,85,1,65,Blocks.MOSS_BLOCK);
-        for(int x=-41;x<=41;x++)for(int dz=-31;dz<=31;dz++){
-            if(Math.abs(x)<5||Math.abs(dz)<4||Math.abs(x)<17&&dz< -9||Math.abs(dz+9)<2||Math.abs(dz-15)<2)Arena.put(w,x,64,z+dz,((x+dz)&3)==0?Blocks.MOSSY_STONE_BRICKS:Blocks.STONE_BRICKS);
-            if(Math.abs(x)==41||Math.abs(dz)==31)Arena.box(w,x,65,z+dz,1,6,1,Blocks.STONE_BRICKS);
-            if((Math.abs(x)==41||Math.abs(dz)==31)&&Math.floorMod(x+dz,4)<2)Arena.put(w,x,71,z+dz,Blocks.CHISELED_STONE_BRICKS);
-        }
-        for(int x:new int[]{-39,39})for(int dz:new int[]{-29,29}){Arena.box(w,x-2,65,z+dz-2,5,10,5,Blocks.STONE_BRICKS);Arena.box(w,x-2,75,z+dz-2,5,1,5,Blocks.DEEPSLATE_TILES);Arena.put(w,x,76,z+dz,Blocks.LANTERN);}
-        for(int x:new int[]{-18,18}){Arena.box(w,x,65,z-25,1,10,1,Blocks.DARK_OAK_FENCE);Arena.box(w,x,72,z-25,4,4,1,x<0?Blocks.CYAN_WOOL:Blocks.PURPLE_WOOL);}
-        // Sunken central heraldic seal, clear of movement routes.
-        for(int x=-4;x<=4;x++)for(int dz=-4;dz<=4;dz++)if(Math.abs(x)+Math.abs(dz)<=5)Arena.put(w,x,64,z+dz,Math.abs(x)+Math.abs(dz)==5?Blocks.GOLD_BLOCK:Blocks.DEEPSLATE_TILES);
-        for(int x:new int[]{-37,37})for(int dz:new int[]{-26,-6,15,26}){Arena.box(w,x,65,z+dz,1,4,1,Blocks.DARK_OAK_FENCE);Arena.put(w,x,69,z+dz,Blocks.LANTERN);}
-        pavilion(w,-27,z-13,Blocks.CYAN_WOOL);pavilion(w,27,z-13,Blocks.PURPLE_WOOL);
-        pavilion(w,-27,z+15,Blocks.GREEN_WOOL);pavilion(w,27,z+15,Blocks.BLUE_WOOL);
-        Arena.put(w,-27,65,z-15,Blocks.SMITHING_TABLE);npc(w,-27,z-12,"Quartermaster / Army & shop","army");
-        Arena.put(w,27,65,z-15,Blocks.ENCHANTING_TABLE);npc(w,27,z-12,"Recruiter / New troops","recruit");
-        Arena.put(w,-27,65,z+12,Blocks.LECTERN);npc(w,-27,z+16,"Archivist / Daily contracts","contracts");
-        Arena.put(w,27,65,z+12,Blocks.CARTOGRAPHY_TABLE);npc(w,27,z+16,"Steward / Parties & rooms","friends");
-        Arena.box(w,-3,65,z+27,7,2,3,Blocks.POLISHED_BLACKSTONE_BRICKS);Arena.put(w,0,67,z+28,Blocks.GOLD_BLOCK);
-        label(w,0,69,z+27,"FOUNDERS CHAPTER / 30 tiers","chapter");
-        // Gate pads have raised frames, glowing inlays and overhead banners.
-        for(int team=0;team<2;team++){
-            int left=team==0?-11:8;
-            Arena.box(w,left-1,64,CampaignMaps.PAD_Z-1,6,1,6,Blocks.POLISHED_DEEPSLATE);
-            Arena.box(w,left,64,CampaignMaps.PAD_Z,4,1,4,team==0?Blocks.LIGHT_BLUE_CONCRETE:Blocks.PURPLE_CONCRETE);
-            for(int x:new int[]{left-2,left+5}){Arena.box(w,x,65,CampaignMaps.PAD_Z,1,5,1,Blocks.STONE_BRICKS);Arena.put(w,x,70,CampaignMaps.PAD_Z,Blocks.LANTERN);}
-            Arena.box(w,left-2,71,CampaignMaps.PAD_Z,8,1,1,Blocks.DARK_OAK_PLANKS);
-            label(w,left+1.5,69,CampaignMaps.PAD_Z-1,(team==0?"DAWN":"DUSK")+" / Stand here to ready","match");
-        }
-        label(w,0,72,z-22,"WAR GATES / Local matches / Bots fill empty seats","match");
-        label(w,0,68,z+23,"WELCOME TO BANNER CAMP / R opens your camp guide","home");
-        for(int x:new int[]{-19,19})for(int dz:new int[]{8,22}){Arena.put(w,x,65,z+dz,Blocks.FLOWERING_AZALEA);Arena.put(w,x+1,65,z+dz,Blocks.AZALEA);}
-        dress(w,z);
+        String hash=hash();
+        long started=System.nanoTime();
+        if(!built(w,hash)){terrain(w);log("[Graves and Glory] camp terrain "+millis(started)+" ms");}
+        else log("[Graves and Glory] camp terrain skipped");
+        started=System.nanoTime();
+        var c=Spec.CAMP[0];
+        for(var row:Spec.CAMPPIECES)Structures.place(w,row.template(),c.originX()+row.dx(),row.y(),c.originZ()+row.dz(),row.rotation());
+        log("[Graves and Glory] camp pieces "+millis(started)+" ms");
+        people(w);
+        warTable(w);
+        mark(w,hash);
     }
-    static void pavilion(ServerWorld w,int x,int z,net.minecraft.block.Block cloth){
-        Arena.box(w,x-8,64,z-7,17,1,15,Blocks.SPRUCE_PLANKS);
-        for(int dx:new int[]{-8,8})for(int dz:new int[]{-7,7})Arena.box(w,x+dx,65,z+dz,1,5,1,Blocks.STRIPPED_SPRUCE_LOG);
-        for(int step=0;step<5;step++){
-            int edge=9-step*2;Arena.box(w,x-edge,70+step,z-8,edge*2+1,1,17,cloth);
-            for(int dz:new int[]{-8,8})Arena.box(w,x-edge,70+step,z+dz,edge*2+1,1,1,Blocks.DARK_OAK_PLANKS);
-        }
-        Arena.box(w,x-9,69,z-8,19,1,1,Blocks.STRIPPED_SPRUCE_LOG);Arena.box(w,x-9,69,z+8,19,1,1,Blocks.STRIPPED_SPRUCE_LOG);
-        for(int dx:new int[]{-8,8}){Arena.box(w,x+dx,65,z-5,1,2,11,Blocks.SPRUCE_FENCE);Arena.put(w,x+dx,68,z,Blocks.CHAIN);}
-        for(int dx:new int[]{-7,7})Arena.put(w,x+dx,69,z,Blocks.LANTERN);
+    static long millis(long started){return (System.nanoTime()-started)/1000000;}
+    static long millis(long from,long to){return (to-from)/1000000;}
+
+    /** CRC32 of the camp and campPieces rows, the camp/ rows of pieces and the terrain version. */
+    static String hash(){
+        var crc=new CRC32();
+        crc.update(Arrays.toString(Spec.CAMP).getBytes(StandardCharsets.UTF_8));
+        crc.update(Arrays.toString(Spec.CAMPPIECES).getBytes(StandardCharsets.UTF_8));
+        for(var p:Spec.PIECES)if(p.id().startsWith("camp/"))crc.update(p.toString().getBytes(StandardCharsets.UTF_8));
+        crc.update(TERRAIN.getBytes(StandardCharsets.UTF_8));
+        return Long.toHexString(crc.getValue());
     }
-    static void npc(ServerWorld w,double x,double z,String name,String station){
-        VillagerEntity v=new VillagerEntity(EntityType.VILLAGER,w);v.refreshPositionAndAngles(x,65,z,x<0?-90:90,0);v.setAiDisabled(true);v.setInvulnerable(true);v.setSilent(true);v.setPersistent();
-        var profession=switch(station){case "army"->net.minecraft.village.VillagerProfession.ARMORER;case "recruit"->net.minecraft.village.VillagerProfession.CLERIC;case "contracts"->net.minecraft.village.VillagerProfession.LIBRARIAN;default->net.minecraft.village.VillagerProfession.CARTOGRAPHER;};
+    static Path marker(ServerWorld w){return w.getServer().getSavePath(WorldSavePath.ROOT).resolve(MARKER_FILE);}
+    static boolean built(ServerWorld w,String hash){
+        try{return com.google.gson.JsonParser.parseString(Files.readString(marker(w))).getAsJsonObject().get("terrain").getAsString().equals(hash);}catch(Exception e){return false;}
+    }
+    static void mark(ServerWorld w,String hash){
+        try{Files.writeString(marker(w),"{\"terrain\":\""+hash+"\"}");}catch(Exception e){System.err.println("[Graves and Glory] camp terrain marker could not be written: "+e);}
+    }
+
+    /** The height of the island at (dx,dz) from the origin of the camp, before the pieces: the floor, the plateau and the bank to it, the slope behind the plateau, the flanks, the southern skirt, and outside the bowl a gentle swell. */
+    static int height(Spec.CampRow c,int dx,int dz){
+        double rise=c.plateauY()-c.floorY(),h=c.floorY();
+        if(dz<=RIDGE_TOP_DZ)h+=rise;else if(dz<RIDGE_FOOT_DZ)h+=rise*(RIDGE_FOOT_DZ-dz)/(double)(RIDGE_FOOT_DZ-RIDGE_TOP_DZ);
+        if(dz<c.minDz())h+=Math.min(18,0.7*(c.minDz()-dz));
+        if(Math.abs(dx)>c.maxDx())h+=Math.min(20,0.8*(Math.abs(dx)-c.maxDx()));
+        if(dz>c.maxDz())h-=Math.min(2,(dz-c.maxDz())*0.5);
+        if(!inBowl(c,dx,dz))h+=2*Math.sin(dx*.21)*Math.cos(dz*.17);
+        return (int)Math.round(h);
+    }
+    static boolean inBowl(Spec.CampRow c,int dx,int dz){return dx>=c.minDx()&&dx<=c.maxDx()&&dz>=c.minDz()&&dz<=c.maxDz();}
+
+    /** The terrain: the height of every column of the island box, the rows of campPieces laid over it (a flatten row's footprint takes its floor y, a flatten=false footprint keeps the ground, and a cell within two of a flatten row's footprint takes the
+     *  highest such floor), stone under dirt under grass (stone from y 80), the air above it up to the top of what stood there, then the spruces outside the bowl.
+     *  Written with Arena's build flags (2 and 16): no shape update runs, so taking away the blocks of an older camp cannot break and spill what stood against them, and the terrain holds nothing a shape update would change
+     *  (stone, dirt, grass, air, spruce logs and persistent leaves). The pieces come after, through Structures.place, which does run them. */
+    static void terrain(ServerWorld w){
+        var c=Spec.CAMP[0];int width=c.islandMaxDx()-c.islandMinDx()+1,depth=c.islandMaxDz()-c.islandMinDz()+1;
+        int[] ground=new int[width*depth];
+        var rows=Spec.CAMPPIECES;var boxes=new BlockBox[rows.length];for(int i=0;i<rows.length;i++)boxes[i]=box(rows[i]);
+        for(int i=0;i<width;i++)for(int k=0;k<depth;k++){
+            int dx=c.islandMinDx()+i,dz=c.islandMinDz()+k,x=c.originX()+dx,z=c.originZ()+dz,h=height(c,dx,dz);
+            Integer flat=null,apron=null;boolean inside=false;
+            for(int r=0;r<rows.length;r++){
+                var b=boxes[r];
+                if(x>=b.getMinX()&&x<=b.getMaxX()&&z>=b.getMinZ()&&z<=b.getMaxZ()){inside=true;if(rows[r].flatten())flat=flat==null?rows[r].y():Math.max(flat,rows[r].y());}
+                else if(rows[r].flatten()&&x>=b.getMinX()-2&&x<=b.getMaxX()+2&&z>=b.getMinZ()-2&&z<=b.getMaxZ()+2)apron=apron==null?rows[r].y():Math.max(apron,rows[r].y());
+            }
+            ground[i*depth+k]=flat!=null?flat:inside?h:apron!=null?apron:h;
+        }
+        long t0=System.nanoTime();
+        for(int cx=(c.originX()+c.islandMinDx()-2)>>4;cx<=(c.originX()+c.islandMaxDx()+2)>>4;cx++)for(int cz=(c.originZ()+c.islandMinDz()-2)>>4;cz<=(c.originZ()+c.islandMaxDz()+2)>>4;cz++)w.getChunk(cx,cz);
+        long t1=System.nanoTime();
+        boolean was=Arena.building;Arena.building=true;
+        try{
+            int flags=Arena.flags();var pos=new BlockPos.Mutable();
+            for(int i=0;i<width;i++)for(int k=0;k<depth;k++){
+                int x=c.originX()+c.islandMinDx()+i,z=c.originZ()+c.islandMinDz()+k,h=ground[i*depth+k];
+                w.getChunk(x>>4,z>>4); // load it first: getTopY answers the world bottom for a chunk that is not loaded
+                int top=w.getTopY(Heightmap.Type.WORLD_SURFACE,x,z);
+                for(int y=top;y>h;y--)if(!w.getBlockState(pos.set(x,y,z)).isAir())w.setBlockState(pos,Blocks.AIR.getDefaultState(),flags); // from the top down: nothing is left standing on a block that has gone
+                for(int y=c.islandBottomY();y<h-1;y++)w.setBlockState(pos.set(x,y,z),Blocks.STONE.getDefaultState(),flags);
+                w.setBlockState(pos.set(x,h-1,z),Blocks.DIRT.getDefaultState(),flags);
+                w.setBlockState(pos.set(x,h,z),(h>=80?Blocks.STONE:Blocks.GRASS_BLOCK).getDefaultState(),flags);
+            }
+            long t2=System.nanoTime();
+            for(int i=0;i<width;i++)for(int k=0;k<depth;k++){
+                int dx=c.islandMinDx()+i,dz=c.islandMinDz()+k,h=ground[i*depth+k];
+                if(!inBowl(c,dx,dz)&&h>64&&h<88&&Math.floorMod(dx*734287+dz*912931,23)==0)Arena.tree(w,c.originX()+dx,h+1,c.originZ()+dz,5,8+Math.floorMod(dx+dz,4),true);
+            }
+            log("[Graves and Glory] camp terrain detail: chunks "+millis(t0,t1)+" ms, columns "+millis(t1,t2)+" ms, trees "+millis(t2,System.nanoTime())+" ms");
+        }finally{Arena.building=was;}
+    }
+
+    // ---- the people ----
+
+    /** Discards what the older camps and this one left (every tag in the discard list), then spawns the villager of each station row with an npc and the label of every row. */
+    static void people(ServerWorld w){
+        var old=new ArrayList<Entity>();
+        for(var e:w.iterateEntities()){var tags=e.getCommandTags();if(tags.contains(TAG)||tags.contains("gravesandglory-camp-v3")||tags.contains("gravesandglory-lobby")||tags.contains("bannerbound-lobby"))old.add(e);}
+        old.forEach(Entity::discard);
+        for(var s:Spec.CAMPSTATIONS){if(!s.npc().equals("-"))npc(w,s);label(w,s);}
+    }
+    static void npc(ServerWorld w,Spec.CampStationsRow s){
+        var c=Spec.CAMP[0];VillagerEntity v=new VillagerEntity(EntityType.VILLAGER,w);
+        v.refreshPositionAndAngles(c.originX()+s.x(),s.y(),c.originZ()+s.z(),(float)s.yaw(),0);v.setHeadYaw((float)s.yaw());v.setBodyYaw((float)s.yaw());
+        v.setAiDisabled(true);v.setInvulnerable(true);v.setSilent(true);v.setPersistent();
+        var profession=Registries.VILLAGER_PROFESSION.get(new Identifier("minecraft",s.npc()));
         v.setVillagerData(v.getVillagerData().withProfession(profession).withLevel(5));
-        v.setCustomName(Text.literal(name));v.setCustomNameVisible(false);v.addCommandTag(TAG);v.addCommandTag("camp-generation:"+generation);v.addCommandTag("camp:"+station);w.spawnEntity(v);label(w,x,68.7,z,name,station);
+        v.setCustomName(Text.literal(s.label().split(" / ")[0]));v.setCustomNameVisible(false);
+        v.addCommandTag(TAG);v.addCommandTag("camp-generation:"+generation);v.addCommandTag("camp:"+s.page());
+        w.spawnEntity(v);
     }
-    static void dress(ServerWorld w,int z){
-        // Carved wall buttresses and warm lamps make the courtyard readable after dusk.
-        for(int x=-32;x<=32;x+=8)for(int side:new int[]{-1,1}){
-            Arena.box(w,x,65,z+side*30,2,7,1,Blocks.POLISHED_ANDESITE);
-            Arena.put(w,x,68,z+side*29,Blocks.LANTERN);
-        }
-        for(int x:new int[]{-12,12}){
-            Arena.box(w,x-3,64,z+8,7,1,5,Blocks.POLISHED_ANDESITE);
-            Arena.box(w,x-2,65,z+9,5,1,3,Blocks.MOSS_BLOCK);
-            for(int dx:new int[]{-2,2})Arena.put(w,x+dx,66,z+10,Blocks.FLOWERING_AZALEA);
-            Arena.box(w,x,65,z+10,1,4,1,Blocks.OAK_LOG);
-            Arena.box(w,x-2,69,z+8,5,2,5,Blocks.AZALEA_LEAVES);
-            Arena.box(w,x-1,71,z+9,3,1,3,Blocks.FLOWERING_AZALEA_LEAVES);
-            Arena.box(w,x-2,65,z+16,5,1,1,Blocks.SPRUCE_SLAB);
-            for(int dx:new int[]{-3,3})Arena.put(w,x+dx,65,z+16,Blocks.SPRUCE_FENCE);
-        }
-        // Armory stock, a forge and displayed equipment; all outside the walking lane.
-        for(int x=-32;x<=-23;x+=3){Arena.put(w,x,65,z-19,Blocks.BARREL);Arena.put(w,x,66,z-19,Blocks.CHEST);}
-        Arena.box(w,-34,65,z-13,2,2,3,Blocks.POLISHED_BLACKSTONE_BRICKS);Arena.put(w,-34,67,z-12,Blocks.ANVIL);
-        for(int dx:new int[]{-3,3}){
-            var stand=EntityType.ARMOR_STAND.create(w);if(stand!=null){stand.refreshPositionAndAngles(-27+dx,65,z-17,0,0);stand.setInvulnerable(true);stand.setNoGravity(true);
-                stand.equipStack(net.minecraft.entity.EquipmentSlot.CHEST,new net.minecraft.item.ItemStack(net.minecraft.item.Items.IRON_CHESTPLATE));
-                stand.equipStack(net.minecraft.entity.EquipmentSlot.HEAD,new net.minecraft.item.ItemStack(net.minecraft.item.Items.IRON_HELMET));
-                stand.addCommandTag(TAG);stand.addCommandTag("camp-generation:"+generation);w.spawnEntity(stand);}
-        }
-        // Recruitment shrine has a crystal focus and a glowing floor ring.
-        for(int dx=-3;dx<=3;dx++)for(int dz=-3;dz<=3;dz++)if(Math.max(Math.abs(dx),Math.abs(dz))==3)Arena.put(w,27+dx,64,z-15+dz,Blocks.AMETHYST_BLOCK);
-        Arena.box(w,26,65,z-19,3,2,1,Blocks.CRYING_OBSIDIAN);Arena.put(w,27,67,z-19,Blocks.AMETHYST_CLUSTER);
-        for(int x:new int[]{23,31}){Arena.box(w,x,65,z-18,1,3,1,Blocks.POLISHED_BLACKSTONE_BRICKS);Arena.put(w,x,68,z-18,Blocks.SOUL_LANTERN);}
-        // Archive and strategy room furniture carry their roles into the world.
-        Arena.box(w,-33,65,z+20,13,3,1,Blocks.BOOKSHELF);
-        for(int x:new int[]{-31,-23}){Arena.put(w,x,65,z+17,Blocks.LECTERN);Arena.put(w,x,66,z+20,Blocks.LANTERN);}
-        Arena.box(w,23,65,z+20,9,1,2,Blocks.DARK_OAK_SLAB);
-        for(int x:new int[]{24,30}){Arena.put(w,x,66,z+20,Blocks.LANTERN);Arena.put(w,x,65,z+18,Blocks.SPRUCE_STAIRS);}
-        Arena.put(w,27,66,z+20,Blocks.CARTOGRAPHY_TABLE);
-        // Monument silhouette and enclosed light keep the spawn approach open.
-        for(int x:new int[]{-4,4}){Arena.box(w,x,65,z+28,1,5,1,Blocks.CHISELED_POLISHED_BLACKSTONE);Arena.put(w,x,70,z+28,Blocks.LANTERN);}
-        Arena.box(w,-2,68,z+29,5,3,1,Blocks.DEEPSLATE_TILES);Arena.put(w,0,71,z+29,Blocks.GOLD_BLOCK);
-        for(int team=0;team<2;team++){
-            int left=team==0?-11:8;var cloth=team==0?Blocks.CYAN_WOOL:Blocks.PURPLE_WOOL;
-            for(int x:new int[]{left-2,left+5}){Arena.box(w,x-1,64,CampaignMaps.PAD_Z-1,3,1,3,Blocks.CHISELED_STONE_BRICKS);Arena.put(w,x,68,CampaignMaps.PAD_Z-1,team==0?Blocks.LIGHT_BLUE_BANNER:Blocks.PURPLE_BANNER);}
-            Arena.box(w,left-1,72,CampaignMaps.PAD_Z,6,1,1,Blocks.POLISHED_ANDESITE);
-            Arena.box(w,left,73,CampaignMaps.PAD_Z,4,1,1,cloth);Arena.put(w,left+1,74,CampaignMaps.PAD_Z,Blocks.GOLD_BLOCK);
-            for(int dx:new int[]{0,3})for(int dz:new int[]{0,3})Arena.put(w,left+dx,64,CampaignMaps.PAD_Z+dz,Blocks.SEA_LANTERN);
-        }
-    }
-    static void label(ServerWorld w,double x,double y,double z,String name,String station){
-        var label=EntityType.TEXT_DISPLAY.create(w);if(label==null)return;
-        var nbt=label.writeNbt(new net.minecraft.nbt.NbtCompound());nbt.putString("text",Text.Serializer.toJson(Text.literal(name).formatted(net.minecraft.util.Formatting.GOLD)));
+    /** The floating text of a row, 3.7 blocks above its y: the same text display style as before, the text from text(). */
+    static void label(ServerWorld w,Spec.CampStationsRow s){
+        var c=Spec.CAMP[0];var label=EntityType.TEXT_DISPLAY.create(w);if(label==null)return;
+        var nbt=label.writeNbt(new net.minecraft.nbt.NbtCompound());nbt.putString("text",Text.Serializer.toJson(text(s.label())));
         nbt.putString("billboard","center");nbt.putInt("background",0xb0192227);nbt.putBoolean("shadow",true);nbt.putInt("line_width",220);nbt.putFloat("view_range",2f);
         var transform=new net.minecraft.nbt.NbtCompound();var scale=new net.minecraft.nbt.NbtList();for(int i=0;i<3;i++)scale.add(net.minecraft.nbt.NbtFloat.of(1.7f));transform.put("scale",scale);var translation=new net.minecraft.nbt.NbtList();for(int i=0;i<3;i++)translation.add(net.minecraft.nbt.NbtFloat.of(0));transform.put("translation",translation);
         for(String key:new String[]{"left_rotation","right_rotation"}){var rotation=new net.minecraft.nbt.NbtList();for(int i=0;i<4;i++)rotation.add(net.minecraft.nbt.NbtFloat.of(i==3?1:0));transform.put(key,rotation);}nbt.put("transformation",transform);
-        label.readNbt(nbt);label.refreshPositionAndAngles(x,y,z,0,0);label.addCommandTag(TAG);label.addCommandTag("camp-generation:"+generation);label.addCommandTag("camp:"+station);w.spawnEntity(label);
+        label.readNbt(nbt);label.refreshPositionAndAngles(c.originX()+s.x(),s.y()+3.7,c.originZ()+s.z(),0,0);
+        label.addCommandTag(TAG);label.addCommandTag("camp-generation:"+generation);label.addCommandTag("camp:"+s.page());w.spawnEntity(label);
     }
-    static String station(BlockPos p){int dz=p.getZ()-CampaignMaps.LOBBY_Z;
-        if(Math.abs(p.getX()+27)<=3&&Math.abs(dz+15)<=3)return "army";
-        if(Math.abs(p.getX()-27)<=3&&Math.abs(dz+15)<=3)return "recruit";
-        if(Math.abs(p.getX()+27)<=3&&Math.abs(dz-12)<=3)return "contracts";
-        if(Math.abs(p.getX()-27)<=3&&Math.abs(dz-12)<=3)return "friends";
-        if(Math.abs(p.getX())<=3&&dz>=26&&dz<=29)return "chapter";return "";}
+
+    // ---- the war table ----
+
+    /** Lays the carpets of the war table: cell (i,j) at (originX+tableDx+i, tableY, originZ+tableDz+j) shows the map that stands. Runs at the camp build and after every map build. */
+    static void warTable(ServerWorld w){
+        var c=Spec.CAMP[0];
+        for(int i=0;i<15;i++)for(int j=0;j<9;j++)w.setBlockState(new BlockPos(c.originX()+c.tableDx()+i,c.tableY(),c.originZ()+c.tableDz()+j),tableCell(i,j),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
+    }
+    /** What cell (i,j), i 0..14 and j 0..8, of the table shows: the arena x from -350+i*700/15 to -350+(i+1)*700/15 and z from -250+j*500/9 to -250+(j+1)*500/9, sampled 7 by 7. First match wins: a capture point in it, the lit candle;
+     *  any bridge sample, light gray; any river sample, cyan; 7 or more road samples, brown; 25 or more samples above y 79, gray; otherwise white on Frostmarch and green elsewhere. */
+    static BlockState tableCell(int i,int j){
+        double x0=-350+i*700.0/15,x1=-350+(i+1)*700.0/15,z0=-250+j*500.0/9,z1=-250+(j+1)*500.0/9;
+        for(var p:Spec.POINTS)if(p.x()>=x0&&p.x()<x1&&p.z()>=z0&&p.z()<z1)return Blocks.CANDLE.getDefaultState().with(CandleBlock.LIT,true);
+        boolean bridge=false,river=false;int road=0,high=0;
+        for(int a=0;a<7;a++)for(int b=0;b<7;b++){
+            double x=x0+(x1-x0)*(a+.5)/7,z=z0+(z1-z0)*(b+.5)/7;int bx=(int)Math.floor(x),bz=(int)Math.floor(z);
+            for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")&&Math.abs(x-s.x())<=s.width()/2.0&&Math.abs(z-s.z())<=s.depth()/2.0)bridge=true;
+            if(CampaignMaps.river(bx,bz))river=true;
+            if(CampaignMaps.road(bx,bz))road++;
+            if(Arena.height(bx,bz)>79)high++;
+        }
+        if(bridge)return Blocks.LIGHT_GRAY_CARPET.getDefaultState();
+        if(river)return Blocks.CYAN_CARPET.getDefaultState();
+        if(road>=7)return Blocks.BROWN_CARPET.getDefaultState();
+        if(high>=25)return Blocks.GRAY_CARPET.getDefaultState();
+        return (CampaignMaps.selected==2?Blocks.WHITE_CARPET:Blocks.GREEN_CARPET).getDefaultState();
+    }
 }

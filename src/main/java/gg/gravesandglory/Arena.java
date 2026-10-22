@@ -15,7 +15,7 @@ import java.util.TreeMap;
 public final class Arena {
     static final int Y=GravesAndGlory.R.floorY();
     /** True while the arena build (column, finish) runs: its blocks are written with flags 2|16 (force state), so no neighbour shape update runs and clearing a block cannot break
-     *  the plant, lantern or crop that stood on or against it and spill it as an item (column clears each column bottom to top). The lobby (CampWorld) shares put and box and keeps plain 2. */
+     *  the plant, lantern or crop that stood on or against it and spill it as an item (column clears each column bottom to top). CampWorld sets it too while it writes the terrain of the camp (and puts it back); its pieces go through Structures.place. */
     static boolean building;
     static int flags(){return building?Block.NOTIFY_LISTENERS|Block.FORCE_STATE:Block.NOTIFY_LISTENERS;}
     /** How many loose items the last finish found in the built area and discarded. */
@@ -129,16 +129,20 @@ public final class Arena {
             box(w,p.x()-1,p.elevation(),p.z()-1,3,1,3,Blocks.CHISELED_STONE_BRICKS);flag(w,p,-1);
         }
         for(var s:Spec.SCENERY){int y=height(s.x(),s.z())+1;if(s.kind().equals("tree")){
-            // Spruce grows as a cone, oak as a rounded crown; leaves are persistent so the woods never thin out mid-battle.
-            boolean spruce=s.palette().equals("spruce");Block log=spruce?Blocks.SPRUCE_LOG:Blocks.OAK_LOG;
-            BlockState leaf=(spruce?Blocks.SPRUCE_LEAVES:Blocks.OAK_LEAVES).getDefaultState().with(LeavesBlock.PERSISTENT,true);int r=s.width()/2,top=y+s.height();
-            if(spruce)for(int dy=0;dy<s.height()-1;dy++){int ly=y+2+dy;int rr=Math.max(0,(int)Math.round(r*(1-dy/(double)(s.height()-1))+(dy%2==0?0:-.6)));
-                for(int dx=-rr;dx<=rr;dx++)for(int dz=-rr;dz<=rr;dz++)if(dx*dx+dz*dz<=rr*rr+1&&!(dx==0&&dz==0))w.setBlockState(new BlockPos(s.x()+dx,ly,s.z()+dz),leaf,flags());}
-            else for(int dx=-r;dx<=r;dx++)for(int dy=-2;dy<=2;dy++)for(int dz=-r;dz<=r;dz++){double e=dx*dx/(double)(r*r)+dy*dy/4.5+dz*dz/(double)(r*r);if(e<=1.05&&Math.floorMod(dx*31+dy*17+dz*7+s.x(),11)!=0)w.setBlockState(new BlockPos(s.x()+dx,top-2+dy,s.z()+dz),leaf,flags());}
-            box(w,s.x(),y,s.z(),1,spruce?s.height():s.height()-1,1,log);if(spruce)w.setBlockState(new BlockPos(s.x(),top,s.z()),leaf,flags());
+            tree(w,s.x(),y,s.z(),s.width(),s.height(),s.palette().equals("spruce"));
         }else for(int dx=0;dx<s.width();dx++)for(int dz=0;dz<s.width();dz++)for(int dy=0;dy<s.height();dy++)if(dx+dz+dy<s.width()+s.height()-1)put(w,s.x()+dx,y+dy,s.z()+dz,(dx+dz)%3==0?Blocks.MOSSY_COBBLESTONE:Blocks.ANDESITE);}
         if(CampaignMaps.selected==1)for(int row=0;row<4;row++)box(w,-109+row*4,65,-152,3,2,3,Blocks.HAY_BLOCK);
         if(!Boolean.getBoolean("gravesandglory.noDressing"))MapDressing.dress(w); // off only in local A/B harness runs
+    }
+    /** One tree with its trunk standing on (x,y,z) (y is the first block above the ground): a spruce as a cone, an oak as a rounded crown; leaves are persistent so the woods never thin out mid-battle. width is the width of the crown, height the height of the trunk
+     *  (a spruce trunk reaches its tip). The scenery loop of the arena and the camp terrain (CampWorld) both plant their trees here; the blocks are written with flags(). */
+    static void tree(ServerWorld w,int x,int y,int z,int width,int height,boolean spruce){
+        Block log=spruce?Blocks.SPRUCE_LOG:Blocks.OAK_LOG;
+        BlockState leaf=(spruce?Blocks.SPRUCE_LEAVES:Blocks.OAK_LEAVES).getDefaultState().with(LeavesBlock.PERSISTENT,true);int r=width/2,top=y+height;
+        if(spruce)for(int dy=0;dy<height-1;dy++){int ly=y+2+dy;int rr=Math.max(0,(int)Math.round(r*(1-dy/(double)(height-1))+(dy%2==0?0:-.6)));
+            for(int dx=-rr;dx<=rr;dx++)for(int dz=-rr;dz<=rr;dz++)if(dx*dx+dz*dz<=rr*rr+1&&!(dx==0&&dz==0))w.setBlockState(new BlockPos(x+dx,ly,z+dz),leaf,flags());}
+        else for(int dx=-r;dx<=r;dx++)for(int dy=-2;dy<=2;dy++)for(int dz=-r;dz<=r;dz++){double e=dx*dx/(double)(r*r)+dy*dy/4.5+dz*dz/(double)(r*r);if(e<=1.05&&Math.floorMod(dx*31+dy*17+dz*7+x,11)!=0)w.setBlockState(new BlockPos(x+dx,top-2+dy,z+dz),leaf,flags());}
+        box(w,x,y,z,1,spruce?height:height-1,1,log);if(spruce)w.setBlockState(new BlockPos(x,top,z),leaf,flags());
     }
     /** Gives every fence, wall and pane the build placed the connections its neighbours imply, the state a placement with shape updates would have had, written without notifying anything around it. */
     static void settleShapes(ServerWorld w){
