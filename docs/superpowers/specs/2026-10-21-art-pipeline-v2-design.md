@@ -1,11 +1,11 @@
 # Art pipeline v2: Blockbench models, the style guide and LabPBR maps
 
-Draft 2, 2026-10-21, waiting on Kort's approval (questions round 25). Builds on the Task 5 pipeline (`tools/build_skins.py`, `TroopModelLoader`)
+Approved by Kort, 2026-10-21 (questions round 25). Builds on the Task 5 pipeline (`tools/build_skins.py`, `TroopModelLoader`)
 and the troop depth design (`2026-10-21-troop-depth-design.md`, "depth N" below means its section N). The spike that
 backs it is `bannerbound-p2b/work/p2b/spike-bb/` (side-by-side.png, the two `.bbmodel` files, `convert.py`), reported
 in `.superpowers/sdd/2026-10-17-phase-2-houses/art-v2-spike-report.md`. Nothing here is in the mod yet.
-Three items wait on Kort (K1 to K3, section 10) and are marked where they bite. The Controller has ruled on the rest;
-each ruling is marked "(Controller's call)".
+Kort ruled on K1 to K3 (section 10) on 2026-10-21 (questions round 25) and the rulings are marked where they bite. The Controller
+has ruled on the rest; each ruling is marked "(Controller's call)".
 
 ## 1. Intent
 
@@ -232,11 +232,10 @@ which `RP_MODE >= 2` defines. In the default mode the maps are ignored and the s
 So the maps show for players who set "RP Support: labPBR" in the shader's options, and for the harness run when
 `shaderpacks/ComplementaryReimagined_r5.5.1.zip.txt` holds `RP_MODE=3`. Nothing else is needed; no outside mod.
 
-**Waiting on Kort (questions round 25), K3: Complementary's mode.** Complementary only reads our `_n` / `_s` maps in labPBR mode (`RP_MODE=3`), and
-that mode turns off its built-in PBR (Integrated PBR+) for every vanilla block. The options: ship the maps and leave
-Complementary on its default, with the maps used only by players who switch; set the modpack's Complementary to
-labPBR; or skip the maps. Recommended: ship the maps and leave the default, since the maps are cheap and the world
-keeps its look.
+**Kort's ruling (2026-10-21, questions round 25), K3: Complementary's mode.** Complementary only reads our `_n` / `_s` maps in labPBR mode (`RP_MODE=3`), and
+that mode turns off its built-in PBR (Integrated PBR+) for every vanilla block. Kort ruled: ship the maps and leave the
+modpack's Complementary on its default mode, with the maps used only by players who switch. The other two options,
+setting the modpack's Complementary to labPBR and skipping the maps, were not taken.
 
 ## 7. Workflow
 
@@ -302,15 +301,14 @@ parents and rest rotation against the rig (section 2.2).
 5. **Task 5d, Step 8 (art):** replace "the six weapons as sprites, at the thicknesses of design 2" with "the six
    weapons as Blockbench models through the MCP plugin (art pipeline v2, section 7), painted to `ART-STYLE-GUIDE.md`,
    with `_m` maps; the bows' pull frames as groups". Keep the relief layers as they are, but painted to the guide.
-   **Waiting on Kort (questions round 25), K2:** repaint the Gilded six to the new guide in this step, about 28 sheets (skins, relief and stages), or
-   keep them as signed off and start the guide with the Ironclad. Recommended: repaint, since every House after Gilded
-   will be painted to the guide.
+   **Kort's ruling (2026-10-21, questions round 25), K2:** repaint the Gilded six to the new guide in this step, about 28 sheets (skins, relief and stages).
+   Every House after Gilded will be painted to the guide.
    Replace "(pixel-art skill; design 8 ...)" with "(`docs/ART-STYLE-GUIDE.md`; depth 8 for relief placement ...)".
 6. **Task 5d, Step 10:** add to the shader setup "`shaderpacks/ComplementaryReimagined_r5.5.1.zip.txt` with `RP_MODE=3`",
    and a screenshot `depth-shader-pbr` (the knight and the sword at 2 blocks) in which the tester confirms a specular
    glint on steel and gilt and none on cloth.
    The LabPBR proof is a harness run under `RP_MODE=3`, with and without `_s`, and a pixel diff over the weapon region; a
-   person glancing at it is not proof (Controller's call). The harness uses `RP_MODE=3` whatever Kort rules on K3.
+   person glancing at it is not proof (Controller's call). The harness uses `RP_MODE=3` whatever Kort ruled on K3.
 7. **Task 5d, Step 11:** grade against the rubric *and* the style guide's section 9 mapping.
 8. **Tasks 7 to 10, Halves paragraph:** "relief layers and sprite weapons" becomes "relief layers and Blockbench weapons
    (art pipeline v2)".
@@ -327,7 +325,7 @@ parents and rest rotation against the rig (section 2.2).
 15. **Task 12 (veteran skins, pixel-art skill):** "pixel-art skill" becomes "`docs/ART-STYLE-GUIDE.md`".
 16. **Global Constraints, Skins line:** append "painted to `docs/ART-STYLE-GUIDE.md`; weapons are Blockbench cube
     models converted by `tools/build_skins.py`".
-17. **Needs Kort:** append K1 to K3 of section 10 (waiting on Kort, questions round 25).
+17. **Needs Kort:** append K1 to K3 of section 10 as answered (Kort's rulings, 2026-10-21, questions round 25).
 
 **Deliverables (Controller's call).** Built and committed:
 - `tools/bbmodel.py`: `.bbmodel` to build quads for weapons and troops, and troops both ways (`--to-bbmodel` is troops
@@ -354,15 +352,17 @@ rules.
 | **R2. Frame cost.** Cube weapons draw about 40 quads more a troop than sprites. | `p2-depth-cost` gates on - flat at both cameras with the far versions on; the fallback order of section 8 (Controller's call). Expected inside budget. |
 | **R3. Blockbench drift.** A painter edits the embedded texture and not the PNG, or renames or reparents a rig bone. | `--verify` compares embedded and file; bone names, parents and rest rotation are checked against the rig JSON (section 2.2). |
 | **R4. The MCP plugin's quirks** (report): delete errors, PBR preview absent, permission prompts on file paths. | The workflow uses data URLs and the live resource read, never file paths; the quirks are listed for the next agent. |
-| **R5. LabPBR maps nobody sees.** Complementary's default mode ignores them. | Ship them anyway: generated, 1.5 MB, and the labPBR mode and other LabPBR packs (Bliss, Photon, Rethinking Voxels) read them. Document the setting in the presentation modpack notes. Which mode the modpack uses is K3 below. |
+| **R5. LabPBR maps nobody sees.** Complementary's default mode ignores them. | Ship them anyway: generated, 1.5 MB, and the labPBR mode and other LabPBR packs (Bliss, Photon, Rethinking Voxels) read them. Document the setting in the presentation modpack notes. Which mode the modpack uses is Kort's ruling K3, below. |
 | **R6. Texel density on thin cubes.** A 0.5 px blade edge gets a 1-texel patch, so its texels are twice as dense as the rest. | Allowed on edges and strings only; the guide's "never stretch" rule names the exception. |
 | **Q1. Which weapons stay sprites?** | None of the Gilded six. The PNG fallback stays for a House placeholder before its art half and for honest flat things (a thrown knife, a banner pole), decided per weapon in its Look line. |
-| **Q2. Should troop bodies move to `.bbmodel` in Phase 2, or only weapons?** | Weapons in Task 5d (now); troop bodies at each House's art half from Task 7 on, Gilded in Task 5d Step 8 as the proof (`--to-bbmodel` makes the troop files from today's JSON and PNGs, so no troop geometry is re-authored; the weapons are authored in Blockbench, and the Gilded sheets are repainted only if Kort says so, K2). The rig JSON stays. |
+| **Q2. Should troop bodies move to `.bbmodel` in Phase 2, or only weapons?** | Weapons in Task 5d (now); troop bodies at each House's art half from Task 7 on, Gilded in Task 5d Step 8 as the proof (`--to-bbmodel` makes the troop files from today's JSON and PNGs, so no troop geometry is re-authored; the weapons are authored in Blockbench, and the Gilded sheets are repainted, Kort's ruling K2). The rig JSON stays. |
 | **Q3. Blade brightness.** The guide paints polished metal's big faces at tone 4; the 5d sprites used lighter steel than the Look line's `#7C8591`. | Keep the Look line's steel, `#7C8591`, with polished faces one tone up (spike row 1 reads at six blocks). It fits the approved look, and lighter steel drifts toward the surcoat's enamel white (Controller's call). |
 | **Q4. Parts as `.bbmodel`.** | Parked; parts stay JSON and are checked against the troop's groups (section 2.3) (Controller's call). |
 | **Q5. Java Block format instead of Generic Model?** | Generic Model: the 1.20.1 Java Block format limits rotation to one axis in 22.5-degree steps and -16..32 units; the bow needs free angles. Display settings are not needed, since our renderer places the weapon. |
 | **Q6. Bow string draw.** How far the string and limbs move a frame. | Keep the spike's 0.75 px a frame and 4 degrees of limb flex; `p2-depth-bow-nock` tunes it (Controller's call). |
 | **Q7. Proof for what the suite cannot check.** | Python round-trip always. Blockbench load: load each generated `.bbmodel` through the MCP plugin wherever that works without a file dialog, using `create_project` plus data-URL textures as the spike did; where it does not, mark the file "unverified in Blockbench" and add a three-line check for Kort. LabPBR: a harness run under `RP_MODE=3`, with and without `_s`, and a pixel diff over the weapon region; a person glancing at it is not proof (Controller's call). |
-| **K1. Approve the design.** Weapons and troops become Blockbench models, with the style guide and LabPBR maps, for Task 5d's art step and the House art halves. | Waiting on Kort (questions round 25). Recommended: approve. |
-| **K2. Repaint the Gilded six to the new guide in Task 5d's art step**, about 28 sheets (skins, relief and stages), or keep them as signed off and start the guide with the Ironclad. | Waiting on Kort (questions round 25). Recommended: repaint. Kort says the units could look better, and every House after Gilded will be painted to the guide. |
-| **K3. Complementary's mode.** Complementary reads our maps only in labPBR mode, which turns off its built-in PBR for every vanilla block (section 6). | Waiting on Kort (questions round 25). Recommended: ship the maps and leave Complementary on its default; the maps are cheap and the world keeps its look. The other options are to set the modpack's Complementary to labPBR, or to skip the maps. |
+
+**Kort's rulings (2026-10-21, questions round 25).** These were open questions K1 to K3; all three are answered.
+- **K1. Approve the design.** Approved: weapons and troops become Blockbench models, with the style guide and LabPBR maps, for Task 5d's art step and the House art halves.
+- **K2. Repaint the Gilded six to the new guide in Task 5d's art step.** Repaint: about 28 sheets (skins, relief and stages). Kort says the units could look better, and every House after Gilded will be painted to the guide.
+- **K3. Complementary's mode.** Ship the LabPBR maps and keep the modpack's Complementary on its default mode (section 6). Complementary reads our maps only in labPBR mode, so only players who switch to it see them.
