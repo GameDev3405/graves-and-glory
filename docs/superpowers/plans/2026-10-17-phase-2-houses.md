@@ -23,7 +23,7 @@ Updated 2026-10-22 for the in-match progression design (approved by Kort, round 
 - Mob rule (spec section 0): no brain-AI mobs (piglin brute, hoglin, zoglin, warden, camel, sniffer, goat), no flying mobs, no guardians. Every `Army*` subclass keeps only `SwimGoal` and returns `false` from `shouldSave`. Every undead one also returns `false` from `isAffectedByDaylight()` and `canConvertInWater()`.
 - Hard progression cap: the star bonus is at most +12% per stat over the sheet base, in every mode (stars alone; there are no evolutions). Class effects and House traits, and in the levels-and-gear plan levels and gear, are battle effects and sit outside the cap.
 - The counter product is clamped to [0.25, 2.5] (`combatDiscipline.multiplierMin/Max`). Troop damage uses the damage type `gravesandglory:troop`, tagged `minecraft:bypasses_shield`; armour still applies.
-- Skins: 64x64 on the rig's UV layout (128 wide for the colossus and the large beasts), flat-shaded, 4 to 5 tones per material, hue-shifted. The team colour is the loudest read (tabard plus back pennant); Houses read by silhouette and material. Every unit's look (purpose, silhouette, palette, armour and weapon, mark, tell, build basis, portrait crop) is fixed by `docs/superpowers/specs/2026-10-17-unit-identity.md` (approved by Kort 2026-10-18); Tasks 5 to 10 build to that spec, and where it differs from Houses spec 2.7 the unit identity spec wins. Its five approved rules: no gold or diamond on troops; painted shields via one sheet column, and weapons as each troop's own model; Tusk Spear braces on Charge; one team-colour cloth per Legendary; troops pose only through their own rigs and clips (Tasks 5 and 5b), so no husk or boar-kin arm pose reaches the Gilded art. Skins are painted to `docs/ART-STYLE-GUIDE.md`; weapons are Blockbench cube models converted by `tools/build_skins.py`.
+- Skins: 64x64 on the rig's UV layout (128 wide for the colossus and the large beasts), flat-shaded, 4 to 5 tones per material, hue-shifted. The team colour is the loudest read (tabard plus back pennant); Houses read by silhouette and material. Every unit's look (purpose, silhouette, palette, armour and weapon, mark, tell, build basis, portrait crop) is fixed by `docs/superpowers/specs/2026-10-17-unit-identity.md` (approved by Kort 2026-10-18); Tasks 5 to 10 build to that spec, and where it differs from Houses spec 2.7 the unit identity spec wins. Its five approved rules: no gold or diamond on troops; painted shields via one sheet column, and weapons as each troop's own model; Tusk Spear braces on Charge; one team-colour cloth per Legendary; troops pose only through their own rigs and clips (Tasks 5 and 5b), so no husk or boar-kin arm pose reaches the Gilded art. Skins are painted to `docs/ART-STYLE-GUIDE.md`; weapons are Blockbench cube models converted by `tools/build_skins.py`, painted at 2 texels per model px on 64 x 128 sheets (skins and relief stay at 1 texel per model px, Kort's ruling, round 29).
 - Balance gate per House batch: the House's `<house>_normal` bot banner against the current best pure normal banner. 20 matches (10 per side), Normal bots, maps 0 to 4. The combined win rate must be between 40% and 60%.
 - Launch rules are unchanged from Phase 1: no launch while Kort is playing (run the process check first); use an isolated, disposable `GRAVES_ROADMAP_TEST_ROOT` or `GRAVES_ROADMAP_SERVER_ROOT` under the scratchpad; always pass `--offline`; `JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot"`.
 - Never publish, upload or push. Commit locally per task on branch `phase-2-houses`, cut from `main` after Phase 1 is merged.
@@ -1090,7 +1090,7 @@ House attacks (`HouseAttacks.VARIANTS`) replace the biped `attack` for the House
 **Runs before Task 5c** (controller, 2026-10-21). It runs on `phase-2-models`, after Task 5b's fix round. It comes first because 5d unblocks the art halves of Tasks 7 to 10, while 5c blocks nothing.
 
 The design is `docs/superpowers/specs/2026-10-21-troop-depth-design.md`; it is binding, and "design N" below means its section N. Where it describes sprite weapons (design 2, and the sprite art rules of design 8), `docs/superpowers/specs/2026-10-21-art-pipeline-v2-design.md` replaces it (that design's section 3). This task does three things, all in the mod's own code (no Skin Layers 3D, no new dependency):
-- weapons become hand-shaped cube models made in Blockbench (`.bbmodel`, art pipeline v2), and bows get pull frames as frame groups;
+- weapons become hand-shaped cube models made in Blockbench (`.bbmodel`, art pipeline v2), painted at 2 texels per model px (Kort's ruling, round 29), and bows get pull frames as frame groups;
 - each own skin gains a relief layer, whose opaque texels stand one texel proud within 24 blocks of the camera;
 - the Gilded six are converted.
 
@@ -1117,12 +1117,13 @@ The design is `docs/superpowers/specs/2026-10-21-troop-depth-design.md`; it is b
   - `TroopAnimator.java`: `drawSeconds` and `BOW_REST_YAW`;
   - `GravesAndGloryClient.java`: registers `TroopDepth.beginFrame` on `WorldRenderEvents.START`.
 - Modify (art sources, painted to `docs/ART-STYLE-GUIDE.md`):
-  - `art/weapons/<id>.bbmodel`, `<id>.png` (32 x 64), `<id>_m.png` and the trimmed `<id>.json` for the six (`arming_sword`, `order_bow`, `longsword`, `longbow`, `sun_staff`, `marshal_sword`), made in Blockbench to `docs/ART-STYLE-GUIDE.md`; `order_bow` and `longbow` with frame groups `pull_0..2`;
+  - `art/weapons/<id>.bbmodel`, `<id>.png` (64 x 128, 2 texels per model px), `<id>_m.png` and the trimmed `<id>.json` for the six (`arming_sword`, `order_bow`, `longsword`, `longbow`, `sun_staff`, `marshal_sword`), made in Blockbench to `docs/ART-STYLE-GUIDE.md`; `order_bow` and `longbow` with frame groups `pull_0..2`;
   - `sun_staff_e.png`, at the sheet's size;
   - weapons II and III for the same six: new models and sheets under the same rules as tier I (in-match progression design 4.4 and 11.3), each visibly grander than the last, taken from Kort's reference picks, `work/refs/picks.json` (built by `work/refs/merge_picks.py` from the review page, in the main checkout); the file naming is the art step's (open: see the in-match progression design);
   - a relief layer `art/troops/<troop>_s<stage>_r.png` for every armour tier of the Gilded six: all six at tiers I to III (18 files; the stage number is the armour tier), painted to the guide;
   - the 18 armour-tier skins `art/troops/<troop>_s<stage>.png` of the same six: the 14 existing stage skins become armour tiers I to III and are repainted to the guide (Kort's ruling K2, 2026-10-21, questions round 25: about 28 sheets with the relief layers), and the Epic and the Legendary (mage and gl_marshal) gain tiers II and III, each visibly grander than the last;
-  - `art/troops/<troop>.bbmodel` for each of the six, made by `--to-bbmodel` (the JSON geometry keys are deleted in the same commit), and the `_m` maps of their skins and relief layers.
+  - `art/troops/<troop>.bbmodel` for each of the six, made by `--to-bbmodel` (the JSON geometry keys are deleted in the same commit), and the `_m` maps of their skins and relief layers;
+  - the Marshal's belt war horn, a new part on `gl_marshal` (an `art/parts/` entry and its `part:` group in `art/troops/gl_marshal.bbmodel`; round 28, call 5).
 - Generated by `build_skins.py` and committed:
   - every troop model (its bones gain `relief`);
   - every weapon model, and its texture with the frames packed;
@@ -1162,9 +1163,12 @@ The design is `docs/superpowers/specs/2026-10-21-troop-depth-design.md`; it is b
     - makes a voxel that overlaps, at rest, any box but its own (boxes of parts that can hide are excepted).
   - More than 20% of a face's texels are raised, or a stage has more than 256 relief quads.
   - A `.bbmodel` (art pipeline v2 section 2.4):
-    - a weapon lacks a frame group (`rest`, and `pull_0` to `pull_2` for a draw weapon);
+    - a weapon lacks a frame group (`rest`, and `pull_0` to `pull_2` for a draw weapon; a hidden group counts);
     - a cube sits at the root;
     - a texture's UV size differs from its bitmap size;
+    - a weapon frame has two faces of different cubes on one plane that overlap and face the same way (coplanar, so they z-fight; back-to-back faces pass);
+    - a weapon frame is not one connected piece (an air gap; only the string may hang free, by up to 0.2 px);
+    - a weapon face's UV is not exactly twice its size (weapons are at 2 texels per model px; skins and relief stay at 1);
     - a troop has a bone group that is not in the rig.
   - A material map (art pipeline v2 section 6):
     - `_m` is not the colour sheet's size, an opaque colour texel has no key colour, or a transparent texel has one;
@@ -1230,8 +1234,9 @@ The design is `docs/superpowers/specs/2026-10-21-troop-depth-design.md`; it is b
 - [ ] **Step 1: Write the failing tests in `test_build_skins.py`**, on fixture sources:
   - `test_bbmodel_weapon`: the fixture `.bbmodel` of a rotated cube.
     - The quad corners, the winding and the y flip are as expected.
-    - The frame groups are read: `rest` alone, and `rest` with `pull_0` to `pull_2`.
+    - The frame groups are read: `rest` alone, and `rest` with `pull_0` to `pull_2`, hidden or visible.
     - The spike's sword gives 66 quads.
+  - `test_weapon_checks`: each of these exits 1, naming the weapon, the frame and the cubes or face: two cubes with a same-way coplanar face; a frame with an air gap; a face whose UV is not twice its size. Back-to-back faces, and a string hanging 0.2 px free of its nocks, pass.
   - `test_material_maps`: the `_m` key table gives the expected `_s` R and G, `_n` has no alpha of 0, and `_s` G never falls in 238 to 254.
   - `test_sprite_extrude`, on the PNG fallback path: a 4x4 fixture sprite holding an L of four opaque pixels, thickness 1, gripped at its corner pixel.
     - The first two quads cover the whole frame, facing north and south.
@@ -1326,8 +1331,14 @@ The design is `docs/superpowers/specs/2026-10-21-troop-depth-design.md`; it is b
   - Move `p2-anim-bow` and suite `turn` to the new `Weapon` record; the bare shots use `TroopFeatures.HIDDEN`.
   - `turn` reads `GRAVES_PHASE2_TURN`: a House id or a comma list of troops, default `gilded`. It adds `turn-<troop>-flat-0` and `turn-<troop>-flat-90`, shot with `enabled` false.
 - [ ] **Step 8: Make the Gilded depth art** (`docs/ART-STYLE-GUIDE.md`; depth 8 for relief placement; unit identity section 1 Look lines):
-  - the six weapons as Blockbench models through the MCP plugin (art pipeline v2, section 7), painted to `ART-STYLE-GUIDE.md`, with `_m` maps; the bows' pull frames as groups;
+  - the six weapons as Blockbench models through the MCP plugin (art pipeline v2, section 7), painted to `ART-STYLE-GUIDE.md` at 2 texels per model px on 64 x 128 sheets, with `_m` maps; the bows' pull frames as groups;
+  - the `arming_sword` and the `order_bow`, tiers I to III, start from the weapon look round (Kort's rounds 28 and 29). Its files are in `bannerbound-p2b/work/p2b/look-round/`, a git-ignored scratch folder in the p2b worktree: `arming_sword_t1` to `_t3` and `order_bow_t1` to `_t3` (each a `.bbmodel` and its 64 x 128 sheet), with the scripts `models.py`, `paint.py` and `bbmodel.py` that made them. Copy them in; do not model them again. The final independent grade of that round, 8 out of 10, is `.superpowers/sdd/2026-10-17-phase-2-houses/look-round-grade-trial.md`. Before they ship, fix its three open issues and bring the files to the style guide's three 2x rules (the hand zone in whole pixels, one-texel patterns one tone step from their face, every frame one connected piece):
+    - sword III floats 0.45 px off its grip: the grip ends at y 2.0 and the boss starts at y 2.5, which leaves a see-through notch at eye level. Start the boss at y 2.0, or give III the seat block that I and II have;
+    - bow III's chasing is a gilt-and-black ladder, the hardest contrast on any weapon. Put the non-stitch rows at the face tone or one tone down so it reads as gilt studs on wood, or make it one continuous gilt line with glints placed by hand;
+    - every painted pattern repeats on a fixed period (a glint every seventh row, a hammer mark every fifth, a stitch every second, wear on a mod-13 diagonal), so it reads as procedural texture. Place glints by the light (near the guard and the point's shoulder) and wear at the edges and the point, not on a grid;
+    - in the same pass, the grade's two low items: the dark bracket at the base of the point on II and III (paint that face at the point's face tone), and the 0.01 px margin between the pull-frame string halves (0.05 px is the house margin);
   - the bows' pull frames, with their nocks;
+  - the Marshal's belt war horn (round 28, call 5): a horn on `gl_marshal`'s belt that he lifts to his lips in his Tell (Task 5c's `gl_marshal` row), so the Tell reads as its Look line. It is a part on the troop (a `part:` group, art pipeline v2 section 2.2) painted to the guide in his Look-line materials. How it rides the arm (a belt part that the Tell carries to the left hand, or a left-hand part shown only in the Tell) is the art step's call; either way the geared turnaround shot of the Tell shows the horn at his lips with no clipping. It is dress and a gesture only: no command or ability is given through it (no-routing design, `docs/superpowers/specs/2026-10-22-no-routing-design.md` section 5.2);
   - the staff's glow;
   - the 18 relief layers (all six at armour tiers I to III), painted to the guide;
   - Kort's ruling (2026-10-21, questions round 25, K2): the Gilded six are repainted to the guide in this step, about 28 sheets: the 14 existing stage skins and the 14 existing relief layers;
@@ -1357,12 +1368,14 @@ The design is `docs/superpowers/specs/2026-10-21-troop-depth-design.md`; it is b
   - The harness uses `RP_MODE=3` whatever Kort ruled on K3 (2026-10-21, questions round 25): the LabPBR maps ship, and the modpack's Complementary stays on its default mode.
 - [ ] **Step 11: Turnaround and grade.**
   - Run suite `turn` with `GRAVES_PHASE2_TURN=gilded`, then `python tools/build_skins.py --turn <root>/run/screenshots work/troops/turn`. `work/` is local and gitignored.
-  - Grade `turn-all.png`, the six `turn-<troop>.png` sheets and the `depth-*` screenshots against `work/ui-concepts/GRADING-RUBRIC.md` and the style guide's section 9 mapping (`docs/ART-STYLE-GUIDE.md`), at 9 or better.
+  - Grade `turn-all.png`, the six `turn-<troop>.png` sheets and the `depth-*` screenshots against `work/ui-concepts/GRADING-RUBRIC.md` and the style guide's section 9 mapping (`docs/ART-STYLE-GUIDE.md`), at 9 or better. The weapons are the exception: they pass at 8.5 from the grader (Kort's ruling, round 29), and then Kort sees the Gilded weapon sheet. Skins, relief and the rest of the art stay at 9.
   - Include the unit identity lookalike check: Squire against Templar, by silhouette alone.
   - Include the art rules of design 8: team cloth still the loudest read, the mark still the first read at 36 px, no zigzag at limb edges, and no clipping in the geared poses.
   - Check that each armour tier and each weapon tier looks visibly grander than the last.
-  - Anything below 9 goes back to Step 8.
-- [ ] **Step 12: Run `GRAPHIFY_BACKEND=none graphify update .`, then commit** `"Phase 2: troop depth, Blockbench weapons with pull frames and the Gilded relief layer"`. Hand `turn-all.png` and the depth screenshots to the orchestrator for Kort.
+  - Check that the Marshal's Tell shows his horn at his lips.
+  - Make the weapon sheet: each of the six weapons' tiers I to III, enlarged and at game size, in the fist (the fist box painted at skin density), with the bows' pull frames, as the look round's sheet does.
+  - Anything below its bar (9, or 8.5 for a weapon) goes back to Step 8.
+- [ ] **Step 12: Run `GRAPHIFY_BACKEND=none graphify update .`, then commit** `"Phase 2: troop depth, Blockbench weapons with pull frames and the Gilded relief layer"`. Hand `turn-all.png`, the depth screenshots and the Gilded weapon sheet to the orchestrator for Kort, who looks at the weapon sheet before the weapons ship.
 
 ---
 
@@ -1427,7 +1440,7 @@ The design is `docs/superpowers/specs/2026-10-21-troop-depth-design.md`; it is b
 - **Art half**: Step 4, done as Steps A1 to A7.
   - It runs after Task 5d, on a branch that holds both Task 5d and this task's mechanics half (the orchestrator picks it). Step 3 switches the sheet entities, and `build_skins.py` checks each troop's rig against its sheet entity.
   - It is built to the troop depth design (`docs/superpowers/specs/2026-10-21-troop-depth-design.md`): relief layers and Blockbench weapons (art pipeline v2, `docs/superpowers/specs/2026-10-21-art-pipeline-v2-design.md`).
-  - It is graded at 9 on the lineup, close-ups, stages, cards, the House's screenshots shot again on its own models, a shader run, and the turnaround sheets.
+  - It is graded at 9 on the lineup, close-ups, stages, cards, the House's screenshots shot again on its own models, a shader run, and the turnaround sheets. The weapons are graded at 8.5, and then Kort sees the House's weapon sheet.
   - Animation is judged on the bare biped; art and clipping on geared turnaround shots.
 
 **Files:**
@@ -1497,7 +1510,7 @@ Art half (after Task 5d; see Halves):
   - Make the troop `.bbmodel` source for the six on their sheet entities' rigs: a group per rig bone, box-UV skin cubes and `part:` groups checked against `art/parts/*.json`, converted through `tools/bbmodel.py` (art pipeline v2 section 2.2). The rig JSON stays the skeleton of record, and the troop `.json` keeps only its non-geometry keys. Then the armour-tier skins (the stage skins are armour tiers I to III, and the Epic and the Legendary gain tiers II and III), and the `_m` material map for every skin and weapon sheet (the weapons' from the painter script, the skins' generated through `art/ramps.json`).
   - Make 18 relief layers: all six troops at armour tiers I to III.
   - Make the glows in soul-light `#CFEFFF`: `revenant_e`, `reaper_e`, `hexer_e`, `gb_hollowking_e`, and `bonebow_e` from stage 3. Make the outer layer `stalker_o`.
-  - Make the weapons in Blockbench:
+  - Make the weapons in Blockbench, at 2 texels per model px on 64 x 128 sheets and to the style guide's section 7 (the cube caps, the three 2x rules, the coplanar, air-gap and density checks of art pipeline v2 section 2.4):
     - `notched_sword`, `scythe` and `grave_sword`;
     - `bone_bow` and `frost_bow`, with pull frames and nocks;
     - `lantern`, lit.
@@ -1512,13 +1525,14 @@ Art half (after Task 5d; see Halves):
   - The tester describes each `graveborn-*` screenshot in one sentence. `graveborn-rise` and `graveborn-bloom` are now shot on the House's own models.
   - Run suite `graveborn-art` again with shaders on, set up as in Task 5d Step 10, with `RP_MODE=3`. `p2-depth-cost` is report-only there. The tester confirms the side faces are lit to their direction and the relief casts shadows.
 - [ ] **Step A5 (art): Turnaround.** Run suite `turn` with `GRAVES_PHASE2_TURN=graveborn`, then `python tools/build_skins.py --turn <root>/run/screenshots work/troops/turn`.
-- [ ] **Step A6 (art): Grade at 9 or better** against `work/ui-concepts/GRADING-RUBRIC.md` and the style guide's section 9 lines (`docs/ART-STYLE-GUIDE.md`).
+- [ ] **Step A6 (art): Grade at 9 or better** against `work/ui-concepts/GRADING-RUBRIC.md` and the style guide's section 9 lines (`docs/ART-STYLE-GUIDE.md`). The weapons are the exception: they pass at 8.5 from the grader (Kort's ruling, round 29), and then Kort sees the House's weapon sheet before it ships. Skins, relief and the rest of the art stay at 9.
   - Grade the lineup, close-up, stages and cards screenshots, `graveborn-rise`, `graveborn-bloom`, the shader shots, `turn-all.png` and the six `turn-<troop>.png` sheets.
+  - Make the House's weapon sheet, laid out as Task 5d Step 11's.
   - Run the unit identity section 7 lookalike checks: Bone Archer against Barrow Stalker; Reaper, Gravecaller and Hollow King; Risen against Drowned Raider (once Task 9's art exists); and Order Archer against Bone Archer.
   - Check the art rules of design 8.
   - Check that each armour tier and each weapon tier looks visibly grander than the last.
-  - Anything below 9 goes back to Step A3.
-- [ ] **Step A7 (art): Run `GRAPHIFY_BACKEND=none graphify update .`, then commit** `"Phase 2 batch 2 art: Graveborn models, skins, relief and Blockbench weapons"`. Hand `turn-all.png` and the lineup to the orchestrator for Kort.
+  - Anything below its bar (9, or 8.5 for a weapon) goes back to Step A3.
+- [ ] **Step A7 (art): Run `GRAPHIFY_BACKEND=none graphify update .`, then commit** `"Phase 2 batch 2 art: Graveborn models, skins, relief and Blockbench weapons"`. Hand `turn-all.png`, the lineup and the House's weapon sheet to the orchestrator for Kort.
 
 ---
 
@@ -1528,7 +1542,7 @@ Art half (after Task 5d; see Halves):
 - **Mechanics half**: the steps marked "(mechanics)". It runs now, on `phase-2-houses`, and commits at Step 10.
 - **Art half**: Step 4, done as Steps A1 to A7.
   - It runs after Task 5d, on a branch that holds both Task 5d and this task's mechanics half, which supplies the subclasses and their registration.
-  - It is built to the troop depth design and art pipeline v2 (Blockbench weapons), and graded at 9 with turnaround sheets.
+  - It is built to the troop depth design and art pipeline v2 (Blockbench weapons), and graded at 9 with turnaround sheets. The weapons are graded at 8.5, and then Kort sees the House's weapon sheet.
 
 **Files:**
 - Modify: `GravesAndGlory.java` (`ArmyVindicator`, `ArmyPillager`, `ArmyGolem`; the `Anchor` record; `reinforcementAnchors` and `deployNote` widened; formation spacing per entity width).
@@ -1592,7 +1606,7 @@ Art half (after Task 5d; see Halves):
   - the ballista frame, with `brass_crest` at stage 3, and the mortar barrel as root parts;
   - 18 relief layers: all six troops at armour tiers I to III;
   - ember `#E2702A` glows, only a few lit pixels each (team tint rule 1): `ic_breaker_e`, `ic_mortar_e` and `ic_colossus_e`;
-  - weapons in Blockbench: `hearth_axe`, `great_axe`, and `arbalest`. The arbalest is held level, with pull frames that show the string cocked, and nocks;
+  - weapons in Blockbench, at 2 texels per model px as in Task 7 Step A3: `hearth_axe`, `great_axe`, and `arbalest`. The arbalest is held level, with pull frames that show the string cocked, and nocks;
   - the gear tiers, as in Task 7 Step A3: armour tiers I to III for all six (the Epic and the Legendary gain tiers II and III) and weapons II and III for every troop, each tier visibly grander than the last, from Kort's reference picks, `work/refs/picks.json` (built by `work/refs/merge_picks.py` from the review page, in the main checkout). Brassjaw and the Mortar show the weapon tier as parts on the rig, keyed by weapon tier (design 4.4); the ballista frame is a root part of the Ballista Crew's skin, so its weapon tiers also come as parts (open: see the in-match progression design);
   - the `_m` material map for every skin and weapon sheet (as in Task 7 Step A3).
 
@@ -1601,9 +1615,9 @@ Art half (after Task 5d; see Halves):
   - The tester describes each `ironclad-*` screenshot, with `ironclad-showcase` now on the House's own models.
   - Then do the shader run as in Task 7 Step A4, with `RP_MODE=3` as in Task 5d Step 10.
 - [ ] **Step A5 (art): Turnaround with `GRAVES_PHASE2_TURN=ironclad`**, as in Task 7 Step A5. For Brassjaw, `turn` shoots the colossus rig's own idle, walk and attack clips. If it shoots biped clips only, extend it here.
-- [ ] **Step A6 (art): Grade at 9 or better**, as in Task 7 Step A6 (with the style guide's section 9 lines), including `ironclad-showcase`.
+- [ ] **Step A6 (art): Grade at 9 or better**, as in Task 7 Step A6 (with the style guide's section 9 lines), including `ironclad-showcase`. The weapons pass at 8.5, and then Kort sees the House's weapon sheet (laid out as Task 5d Step 11's); skins, relief and the rest of the art stay at 9.
   - Lookalike checks: Hearthguard against Shieldbreaker; Squire against Hearthguard; Mist Caller against Ironclad, and Old Horn, Brute and Brassjaw, once the other Houses' art exists.
-  - Anything below 9 goes back to Step A3.
+  - Anything below its bar (9, or 8.5 for a weapon) goes back to Step A3.
 - [ ] **Step A7 (art): Run `GRAPHIFY_BACKEND=none graphify update .`, then commit** `"Phase 2 batch 3 art: Ironclad models, skins, relief and Blockbench weapons"`.
 
 ---
@@ -1614,7 +1628,7 @@ Art half (after Task 5d; see Halves):
 - **Mechanics half**: the steps marked "(mechanics)". It runs now, on `phase-2-houses`, and commits at Step 10.
 - **Art half**: Step 4, done as Steps A1 to A7.
   - It runs after Task 5d, on a branch that holds both Task 5d and this task's mechanics half.
-  - It is built to the troop depth design and art pipeline v2 (Blockbench weapons), and graded at 9 with turnaround sheets.
+  - It is built to the troop depth design and art pipeline v2 (Blockbench weapons), and graded at 9 with turnaround sheets. The weapons are graded at 8.5, and then Kort sees the House's weapon sheet.
 
 **Files:**
 - Modify: `GravesAndGlory.java` (`ArmyDrowned`, `ArmyEvoker`, `ArmyRavager`).
@@ -1682,7 +1696,7 @@ Art half (after Task 5d; see Halves):
   - outer layers `tc_raider_o`, `tc_harpooner_o`, `tc_tideguard_o` and `tc_admiral_o`. No relief texel sits under an opaque outer texel; the build fails on one;
   - 18 relief layers: all six troops at armour tiers I to III;
   - sea-foam `#CFF3E4` glows: `tc_mist_e` and `tc_admiral_e`;
-  - weapons in Blockbench: `cutlass`, `harpoon`, `coral_trident` (three prongs) and `admiral_trident`;
+  - weapons in Blockbench, at 2 texels per model px as in Task 7 Step A3: `cutlass`, `harpoon`, `coral_trident` (three prongs) and `admiral_trident`;
   - the gear tiers, as in Task 7 Step A3: armour tiers I to III for all six (the Epic and the Legendary gain tiers II and III) and weapons II and III for every troop, each tier visibly grander than the last, from Kort's reference picks, `work/refs/picks.json` (built by `work/refs/merge_picks.py` from the review page, in the main checkout). The Mist Caller and the Brute show the weapon tier as parts on the rig, keyed by weapon tier (design 4.4);
   - the `_m` material map for every skin and weapon sheet (as in Task 7 Step A3).
 
@@ -1691,9 +1705,9 @@ Art half (after Task 5d; see Halves):
   - The tester describes each `tidecallers-*` screenshot, with the showcase and `tidecallers-ford` now on the House's own models.
   - Then do the shader run as in Task 7 Step A4, with `RP_MODE=3` as in Task 5d Step 10.
 - [ ] **Step A5 (art): Turnaround with `GRAVES_PHASE2_TURN=tidecallers`**, as in Task 7 Step A5. The Brute uses the hound rig's own clips.
-- [ ] **Step A6 (art): Grade at 9 or better**, as in Task 7 Step A6 (with the style guide's section 9 lines), including the showcase and the ford.
+- [ ] **Step A6 (art): Grade at 9 or better**, as in Task 7 Step A6 (with the style guide's section 9 lines), including the showcase and the ford. The weapons pass at 8.5, and then Kort sees the House's weapon sheet (laid out as Task 5d Step 11's); skins, relief and the rest of the art stay at 9.
   - Lookalike checks: Risen against Raider; Mist Caller against Ironclad; the robed casters; Tusk Spear against Trident Guard (once Task 10's art exists); Old Horn, Brute and Brassjaw.
-  - Anything below 9 goes back to Step A3.
+  - Anything below its bar (9, or 8.5 for a weapon) goes back to Step A3.
 - [ ] **Step A7 (art): Run `GRAPHIFY_BACKEND=none graphify update .`, then commit** `"Phase 2 batch 4 art: Tidecallers models, skins, relief and Blockbench weapons"`.
 
 ---
@@ -1704,7 +1718,7 @@ Art half (after Task 5d; see Halves):
 - **Mechanics half**: the steps marked "(mechanics)". It runs now, on `phase-2-houses`, and commits at Step 10.
 - **Art half**: Step 4, done as Steps A1 to A7.
   - It runs after Task 5d, on a branch that holds both Task 5d and this task's mechanics half.
-  - It is built to the troop depth design and art pipeline v2 (Blockbench weapons), and graded at 9 with turnaround sheets.
+  - It is built to the troop depth design and art pipeline v2 (Blockbench weapons), and graded at 9 with turnaround sheets. The weapons are graded at 8.5, and then Kort sees the House's weapon sheet.
 
 **Files:**
 - Modify: `GravesAndGlory.java`, adding four subclasses:
@@ -1769,7 +1783,7 @@ Art half (after Task 5d; see Halves):
   - the boar-kin bipeds with their hunch;
   - 18 relief layers: all six troops at armour tiers I to III;
   - clay `#C8B48A` glows: `wm_seer_e` and `wm_oldhorn_e`;
-  - weapons in Blockbench:
+  - weapons in Blockbench, at 2 texels per model px as in Task 7 Step A3:
     - `hide_bow`, with pull frames and nocks;
     - `boar_spear`, with the crossbar and clay tassel, so it never reads as a trident;
     - `bone_wand`;
@@ -1781,14 +1795,14 @@ Art half (after Task 5d; see Halves):
   - The tester describes each `wildmoot-*` screenshot, with the showcase, wall and flank shots now on the House's own models.
   - Then do the shader run as in Task 7 Step A4, with `RP_MODE=3` as in Task 5d Step 10.
 - [ ] **Step A5 (art): Turnaround with `GRAVES_PHASE2_TURN=wildmoot`**, as in Task 7 Step A5. The hound, spider and Old Horn use their rigs' own clips.
-- [ ] **Step A6 (art): Grade at 9 or better**, as in Task 7 Step A6 (with the style guide's section 9 lines), including the showcase, wall and flank shots.
+- [ ] **Step A6 (art): Grade at 9 or better**, as in Task 7 Step A6 (with the style guide's section 9 lines), including the showcase, wall and flank shots. The weapons pass at 8.5, and then Kort sees the House's weapon sheet (laid out as Task 5d Step 11's); skins, relief and the rest of the art stay at 9.
   - Lookalike checks:
     - Hide Hunter, Tusk Spear and Seer;
     - Tusk Spear against Trident Guard;
     - Old Horn, Brute and Brassjaw;
     - the Moot Hound and Web Stalker against a vanilla wolf and spider.
   - Antlers appear only in Wildmoot.
-  - Anything below 9 goes back to Step A3.
+  - Anything below its bar (9, or 8.5 for a weapon) goes back to Step A3.
 - [ ] **Step A7 (art): Run `GRAPHIFY_BACKEND=none graphify update .`, then commit** `"Phase 2 batch 5 art: Wildmoot models, skins, relief and Blockbench weapons"`.
 
 ---
@@ -1987,3 +2001,6 @@ Raised while planning:
 14. **Art pipeline v2: approve the design?** Weapons and troops become Blockbench models, with the style guide and LabPBR maps, for Task 5d's art step and the House art halves (`docs/superpowers/specs/2026-10-21-art-pipeline-v2-design.md`, K1). ANSWERED by Kort, 2026-10-21 (questions round 25): approved.
 15. **Repaint the Gilded six to the new guide?** Do it in Task 5d's art step (about 28 sheets: skins, relief and stages), or keep them as signed off and start the guide with the Ironclad (K2). ANSWERED by Kort, 2026-10-21 (questions round 25): repaint them in Task 5d's art step.
 16. **Complementary's mode.** Complementary reads our LabPBR maps only in labPBR mode, which turns off its built-in PBR for every vanilla block. Ship the maps and leave the modpack's Complementary on its default, set it to labPBR, or skip the maps (K3)? ANSWERED by Kort, 2026-10-21 (questions round 25): ship the maps and keep the modpack's Complementary on its default mode.
+17. **Weapon texel density.** Paint every weapon at 2 texels per model px, or stay at 1:1 (weapon look round, rounds 28 and 29)? ANSWERED by Kort, 2026-10-22: after a trial on the six look-round weapons, all 30 troops' weapons use 2 texels per model px on 64 x 128 sheets, with three rules (parts within 1 px of the hand in whole pixels, one-texel patterns one tone step from their face, every frame one connected piece). Skins and relief stay at 1:1. Also ruled in round 28: one-handed swords about 1.5 blocks long, 24.5 px at most; bow III's badge is dropped; sword III's sun is a boss no wider than the blade plus 1 px a side.
+18. **The weapon bar.** ANSWERED by Kort, 2026-10-22 (round 29): weapons pass at 8.5 from the grader, and Kort sees each House's weapon sheet before it ships. All other player-facing art keeps the 9 bar.
+19. **The Marshal's idle gesture** (round 28, call 5). His Tell is "horn to the lips", but his model carries no horn. ANSWERED by Kort, 2026-10-22: the Marshal gets a war horn on his belt, which he lifts in his Tell, added in Task 5d's Gilded repaint. The no-routing design (round 29) keeps horns out of every command, so the horn is dress and a gesture only.

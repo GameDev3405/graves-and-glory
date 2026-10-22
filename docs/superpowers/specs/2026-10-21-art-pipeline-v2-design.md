@@ -7,6 +7,9 @@ in `.superpowers/sdd/2026-10-17-phase-2-houses/art-v2-spike-report.md`. Nothing 
 Kort ruled on K1 to K3 (section 10) on 2026-10-21 (questions round 25) and the rulings are marked where they bite. The Controller
 has ruled on the rest; each ruling is marked "(Controller's call)".
 
+Updated 2026-10-22 with the weapon look round's outcome (Kort, questions rounds 28 and 29, K4 and K5 in section 10): weapons
+are painted at 2 texels per model px, with new cube caps, three new pipeline checks and a weapon bar of 8.5.
+
 ## 1. Intent
 
 Kort (2026-10-21) wants the troops and weapons to look better than they do, in the way the Soulrend modpack's weapons
@@ -15,8 +18,9 @@ Minecraft 3D texture rulebook in place of the top-down pixel-art skill, and LabP
 shader.
 
 **Goals**
-- Weapons are hand-shaped cube models (`.bbmodel`), painted by the style guide, converted by our build tool, drawn by
-  our own renderer. A sword has a ridge and a flared guard; a bow is a recurve whose limbs flex through the pull frames.
+- Weapons are hand-shaped cube models (`.bbmodel`), painted by the style guide at 2 texels per model px, converted by our
+  build tool, drawn by our own renderer. A sword has a tapered blade and a guard sized to the fist; a bow is a recurve
+  whose limbs flex through the pull frames.
 - Troop rigs and skins can be opened, edited and painted in Blockbench by Kort or by an agent through the MCP plugin,
   from the same source files the build reads.
 - One texture rulebook (`docs/ART-STYLE-GUIDE.md`) for troops, relief and weapons: ramps, light, face brightness,
@@ -47,11 +51,17 @@ at the origin, the big faces across z. The rule set the converter enforces:
   Every frame is complete on its own (the bow's grip is in every frame; Blockbench's duplicate keeps the UVs).
   Every weapon has a `rest` group. No hand-made silhouette cube is needed: the converter builds the weapon's far
   version from the `rest` group (section 3, section 8) (Controller's call).
+  In a `.bbmodel` only `rest` is visible on open: the `pull_*` groups are saved hidden (the group and each of its
+  elements), so Blockbench shows one bow, not four laid over each other. A hidden `pull_*` group is still a frame, and
+  the converter reads it whatever its visibility (the spike's `convert.py` already ignores the flag).
 - Cubes only. Rotation on any axis, about the cube's own origin. Groups may carry pivots and rotations; the converter
   composes them.
-- One colour texture, `<id>.png`, 32 x 64, linked by relative path and embedded; UV size equals the bitmap size, so a UV
-  unit is a texel. Every face has its own patch, 1 texel per model px (`sheet.face` in the spike's `paint.py` is the
-  allocator an agent uses; Kort paints in Blockbench's paint mode on the same patches).
+- One colour texture, `<id>.png`, 64 x 128, linked by relative path and embedded; UV size equals the bitmap size, so a UV
+  unit is a texel. Weapons are at 2x density (Kort's ruling, round 29): every face has its own patch, 2 texels per model
+  px, so a face's UV is exactly twice its size, fractional where the face is (a 1 x 2.2 px stave face takes a 2 x 4.4
+  texel rectangle, its patch rounded up to whole texels on the sheet). The `paint.py` of the weapon look round
+  (`bannerbound-p2b/work/p2b/look-round/`) is the allocator an agent uses; Kort paints in Blockbench's paint mode on the
+  same patches. Skins and relief stay at 1 texel per model px.
 - Beside it: `<id>_m.png` (the material map, section 6), and for a lit weapon `<id>_e.png`, both the sheet's size.
 - The project's `name` is the weapon id. The texture's `uv_width`/`uv_height` are the sheet size.
 - Grip and pull data move out of the model into `art/weapons/<id>.json`, which keeps only `weapon`, `thickness`
@@ -69,7 +79,8 @@ at the origin, the big faces across z. The rule set the converter enforces:
   informational for the loader; Iris finds them by suffix, section 6).
 
 The weapon frame is the sprite frame of depth 2 (x right, y down, z thickness): the converter turns Blockbench's y-up
-space by a half turn about x (`(x, y, z) -> (x, -y, -z)`), a proper rotation, so winding is kept and north becomes south.
+space by a half turn about x (`(x, y, z) -> (x, -y, -z)`), a proper rotation, so winding is kept and north becomes south
+(Blockbench's south, the front the style guide's face table names, is the game's north).
 The spike's `convert.py` is the proof: 66 quads for the sword, 72 to 78 for the bow frames, winding checked against the
 13-number form for every unrotated cube (60 of 60 agree).
 
@@ -132,7 +143,18 @@ textures with paths), `weapon_frames(model) -> {frame: [quad20]}`, `troop_bones(
 takes them`, `write(model, path)`. `build_skins.py` calls it from `weapon_outputs` and `bake`. It builds quads from a `.bbmodel` for weapons and troops, and
 troops go the other way too; `--to-bbmodel` is troops only (Controller's call). Tests in
 `test_build_skins.py` on fixture `.bbmodel` files: a rotated cube's corners, group composition, the y flip and
-winding, a missing frame group, a cube at the root, a texture with the wrong UV size, a bone that is not in the rig.
+winding, a missing frame group, a cube at the root, a texture with the wrong UV size, a bone that is not in the rig, two
+cubes with coplanar faces, a frame with an air gap, a face off the sheet's density.
+
+**Weapon checks from the look round.** Three more checks run on every weapon frame, each exiting 1 and naming the weapon,
+the frame and the cubes or face (each answers a defect that the look round's grader found by hand):
+- **No coplanar faces between different cubes in one frame.** Two faces on one plane whose footprints overlap and that
+  face the same way z-fight, so they fail, rotated cubes included. The margin is 0.05 px. Faces back to back (a cube's
+  end against the next cube's end, each hidden inside the other) are never drawn against each other and pass.
+- **No air gaps.** Every frame is one connected piece: its cubes touch or overlap into a single group (a separating-axes
+  test between cubes). Only the string may hang free, by up to 0.2 px of its nocks.
+- **Density.** Each face's UV exactly matches its size at the sheet's density: twice the face on a weapon sheet, with a
+  tolerance for float rounding only. No face is stretched.
 
 ## 3. Task 5d's depth design: what stays, changes, goes
 
@@ -153,17 +175,18 @@ Kort's ruling: keep the Task 5d code. Blockbench cubes replace sprite extrusion 
 
 The full guide is `docs/ART-STYLE-GUIDE.md`. In one breath: five tones per material from one hue-shifted ramp (shadows
 toward blue, lights toward warm yellow, 6 degrees a step, 22% value a step); one light from the top left; faces painted
-by direction (up 4, north and west 3, south 2, east 1, down 0; polished metal's big faces one up); one pattern per
-material (grain, sheen, gilt edge, weave or bands, leather pits, bone crack); the team tint rule as a ramp clamp; a
-never-list (no sixth tone, no gradients, no stretched texel, no highlight on a whole face). 1 texel per model px, on
-weapons as on skins. The spike's ramps for steel, gilt, wood, linen, leather and bowstring are in the guide.
+by direction (Blockbench's names: up 4, south 3, west 3, north 2, east 1, down 0; a blade's lit flat 4, shade flat 3,
+fuller 2); one pattern per material (grain, sheen, gilt edge, weave or bands, leather pits, bone crack); the team tint
+rule as a ramp clamp; a never-list (no sixth tone, no gradients, no stretched texel, no highlight on a whole face, no
+coplanar faces, no air gaps, no fixed-period patterns). 1 texel per model px on skins and relief, 2 on weapons. The
+spike's ramps for steel, gilt, wood, linen, leather and bowstring are in the guide, with stained wood.
 
 ## 5. Texture budgets
 
 | asset | size | notes |
 |---|---|---|
 | troop skin, relief, glow, outer | 64 x 64 (128 x 64 colossus, large beasts) | unchanged |
-| weapon colour sheet | 32 x 64 | 48 to 66 patches at 1 texel per px fit the Gilded six with room; a large weapon (a ballista bolt, a greatsword) may use 64 x 64 |
+| weapon colour sheet | 64 x 128 | 2 texels per model px (Kort's ruling, round 29); the look round's six weapons use 45 to 93 of the 128 rows; a large weapon (a ballista bolt, a greatsword) may use 128 x 128 |
 | `_n`, `_s` | the colour sheet's size | generated |
 | material map `_m` | the colour sheet's size | source, not shipped |
 
@@ -193,7 +216,7 @@ below with materials such as flesh, hair, eyes, verdigris, rust and kelp, with s
 | `#FF0000` | steel, polished | 185 | 230 (iron) | 0 |
 | `#AA0000` | iron, dull plate, mail | 110 | 230 | 0 |
 | `#FFAA00` | gilt, brass | 200 | 231 (gold) | 0 |
-| `#8B4513` | wood | 70 | 10 | 40 (porosity) |
+| `#8B4513` | wood, stained wood | 70 | 10 | 40 (porosity) |
 | `#FFFFFF` | linen, cloth, bowstring | 30 | 8 | 60 |
 | `#553322` | leather, hide | 60 | 10 | 30 |
 | `#EEEEDD` | bone | 90 | 12 | 20 |
@@ -240,8 +263,9 @@ setting the modpack's Complementary to labPBR and skipping the maps, were not ta
 ## 7. Workflow
 
 **An agent, through the MCP plugin** (`.superpowers/sdd/2026-10-17-phase-2-houses/bbmcp.py`, Blockbench open):
-1. Paint the sheets with the painter script under `tools/art/` (the spike's `paint.py` carried in: it allocates one
-   patch per face and paints by the style guide from a cube list with materials) or by hand with Pillow, by the guide.
+1. Paint the sheets with the painter script under `tools/art/` (the weapon look round's `paint.py`, grown from the spike's,
+   carried in: it allocates one patch per face at the sheet's density and paints by the style guide from a cube list with
+   materials) or by hand with Pillow, by the guide.
    The painter scripts are first-pass helpers: once a `.bbmodel` exists, it is the source, and Blockbench edits win
    (Controller's call).
 2. `create_project {name: <id>, format: free}`; `create_texture {name, width, height, uv_width, uv_height, data: <data URL>}`.
@@ -266,10 +290,15 @@ parents and rest rotation against the rig (section 2.2).
 
 ## 8. Budgets
 
-- **Weapon quads:** cap 128 a frame (depth 2, unchanged). Guide: 8 to 16 cubes a frame; at most 21. The Gilded
-  spike: sword 66, bow 72 to 78. The 5d sprites draw 16 (sword) and 22 to 46 (bow), so a cube weapon costs about 40
-  quads more a troop. At 152 troops that is about 7,000 quads, 0.1 to 0.3 ms by depth 5's vertex cost, on top of the relief's
-  5,000 to 9,600.
+- **Weapon quads:** cap 128 a frame (depth 2, unchanged).
+- **Cube caps (Controller's call; Kort's round 28 ruling on the look round):** tiers I and II at most 16 cubes a frame,
+  tier III at most 18, plus the string on a bow. The string stays out of the cap because the rig fixes it (one cube at
+  rest, two when drawn, so the drawn string makes a V at the nock). The cap limits authoring complexity; the cost check
+  still counts every drawn quad, the string's included (`p2-depth-cost` on the largest frame), and the 128-quad cap stays.
+  The look round's weapons: sword 84, 96 and 84 quads, bow 96 at rest and 102 a pull frame. The spike had sword 66 and bow
+  72 to 78. The 5d sprites draw 16 (sword) and 22 to 46 (bow), so a cube weapon costs about 50 to 80 quads more a troop.
+  At 152 troops that is about 11,000 quads, 0.15 to 0.5 ms by depth 5's vertex cost (the spike's estimate scaled by the
+  look round's counts; `p2-depth-cost` is the gate), on top of the relief's 5,000 to 9,600.
 - **Depth budget (Controller's call):** the depth budget stays, +1.0 ms at the ground camera and +0.3 ms at the commander camera,
   and now covers relief and weapons together.
 - **Fourth cut, in scope (Controller's call):** a weapon on a troop outside the near set (beyond `NEAR_BLOCKS` or past `NEAR_CAP`)
@@ -287,20 +316,23 @@ parents and rest rotation against the rig (section 2.2).
 
 1. **Task 5d, Files:** add "Create: `tools/bbmodel.py`, `art/ramps.json`, the painter scripts under `tools/art/`" (the full list is under the
    plan changes); under art sources replace "`art/weapons/{...}.json` and `.png`,
-   redrawn as sprites" with "`art/weapons/<id>.bbmodel`, `<id>.png` (32 x 64), `<id>_m.png` and the trimmed `<id>.json`
+   redrawn as sprites" with "`art/weapons/<id>.bbmodel`, `<id>.png` (64 x 128, 2 texels per model px), `<id>_m.png` and the trimmed `<id>.json`
    for the six, made in Blockbench to `docs/ART-STYLE-GUIDE.md`; `order_bow` and `longbow` with frame groups
    `pull_0..2`"; add "`docs/superpowers/specs/2026-10-21-art-pipeline-v2-design.md` binds the weapon source and the maps".
-2. **Task 5d, Rules:** `FORMAT = 3`; add the `.bbmodel` failure cases of section 2.4 and the map checks of section 6 to
-   the exit-1 list; keep `WEAPON_CAP = 128`; drop `FRAME_MAX` for cube weapons (keep it for the PNG fallback).
+2. **Task 5d, Rules:** `FORMAT = 3`; add the `.bbmodel` failure cases of section 2.4 (with its three weapon checks) and the
+   map checks of section 6 to the exit-1 list; keep `WEAPON_CAP = 128`; drop `FRAME_MAX` for cube weapons (keep it for
+   the PNG fallback).
 3. **Task 5d, Interfaces:** `TroopMesh.parse` takes 13- or 20-number quads; `sprite_mesh` keeps its signature and is
    the fallback; add `bbmodel.weapon_frames`, `bbmodel.read`, `bbmodel.write`; the summary line adds "weapons <f> frames
    from <n> bbmodels".
 4. **Task 5d, Step 1 tests:** add `test_bbmodel_weapon` (the fixture `.bbmodel` of a rotated cube: corners, winding,
    y flip, frame groups, 66 quads for the spike's sword), `test_material_maps` (the `_m` key table, `_n` alpha, `_s` G),
-   and move `test_sprite_extrude` to the fallback path.
+   `test_weapon_checks` (the three weapon checks of section 2.4: coplanar cubes, an air gap, a face off density; a hidden
+   `pull_*` group is still read), and move `test_sprite_extrude` to the fallback path.
 5. **Task 5d, Step 8 (art):** replace "the six weapons as sprites, at the thicknesses of design 2" with "the six
-   weapons as Blockbench models through the MCP plugin (art pipeline v2, section 7), painted to `ART-STYLE-GUIDE.md`,
-   with `_m` maps; the bows' pull frames as groups". Keep the relief layers as they are, but painted to the guide.
+   weapons as Blockbench models through the MCP plugin (art pipeline v2, section 7), painted to `ART-STYLE-GUIDE.md` at
+   2 texels per model px, with `_m` maps; the bows' pull frames as groups". The Squire's arming sword and the Archer's bow
+   start from the weapon look round's files. Keep the relief layers as they are, but painted to the guide.
    **Kort's ruling (2026-10-21, questions round 25), K2:** repaint the Gilded six to the new guide in this step, about 28 sheets (skins, relief and stages).
    Every House after Gilded will be painted to the guide.
    Replace "(pixel-art skill; design 8 ...)" with "(`docs/ART-STYLE-GUIDE.md`; depth 8 for relief placement ...)".
@@ -309,7 +341,8 @@ parents and rest rotation against the rig (section 2.2).
    glint on steel and gilt and none on cloth.
    The LabPBR proof is a harness run under `RP_MODE=3`, with and without `_s`, and a pixel diff over the weapon region; a
    person glancing at it is not proof (Controller's call). The harness uses `RP_MODE=3` whatever Kort ruled on K3.
-7. **Task 5d, Step 11:** grade against the rubric *and* the style guide's section 9 mapping.
+7. **Task 5d, Step 11:** grade against the rubric *and* the style guide's section 9 mapping; weapons pass at 8.5, then
+   Kort sees the Gilded weapon sheet (the weapon bar, under Gates below).
 8. **Tasks 7 to 10, Halves paragraph:** "relief layers and sprite weapons" becomes "relief layers and Blockbench weapons
    (art pipeline v2)".
 9. **Tasks 7 to 10, Files (art half):** "the sprite weapons and their pull frames" becomes "the weapons as `.bbmodel`
@@ -320,12 +353,15 @@ parents and rest rotation against the rig (section 2.2).
     workflow of art pipeline v2 section 7"; "Make the sprite weapons: ..." becomes "Make the weapons in Blockbench: ..."
     with the same ids; add "and the `_m` material map for every skin and weapon sheet".
 12. **Tasks 7 to 10, Step A4:** the shader run adds `RP_MODE=3` as in Task 5d Step 10.
-13. **Tasks 7 to 10, Step A6:** add the style guide's section 9 lines to the grade.
+13. **Tasks 7 to 10, Step A6:** add the style guide's section 9 lines to the grade; the weapon part passes at 8.5, then
+    Kort sees the House's weapon sheet (the weapon bar, under Gates below).
 14. **Task 7 to 10, Step A7 commit messages:** "relief and sprite weapons" becomes "relief and Blockbench weapons".
 15. **Task 12 (veteran skins, pixel-art skill):** "pixel-art skill" becomes "`docs/ART-STYLE-GUIDE.md`".
 16. **Global Constraints, Skins line:** append "painted to `docs/ART-STYLE-GUIDE.md`; weapons are Blockbench cube
-    models converted by `tools/build_skins.py`".
-17. **Needs Kort:** append K1 to K3 of section 10 as answered (Kort's rulings, 2026-10-21, questions round 25).
+    models converted by `tools/build_skins.py`, painted at 2 texels per model px on 64 x 128 sheets (skins and relief
+    stay at 1 texel per model px)".
+17. **Needs Kort:** append K1 to K3 of section 10 as answered (Kort's rulings, 2026-10-21, questions round 25), and K4 and
+    K5 (2026-10-22, questions rounds 28 and 29).
 
 **Deliverables (Controller's call).** Built and committed:
 - `tools/bbmodel.py`: `.bbmodel` to build quads for weapons and troops, and troops both ways (`--to-bbmodel` is troops
@@ -338,6 +374,10 @@ parents and rest rotation against the rig (section 2.2).
 
 Gates: byte-identical for troops; a new golden output for weapons, judged by eye on a side-by-side.
 
+**The weapon bar (Kort's ruling, round 29).** Weapons pass at 8.5 from the independent grader, plus Kort's own look at
+each House's weapon sheet before it ships. The grader of the 2x trial found 9 out of reach for weapon art at Minecraft
+scale. Everything else keeps 9: skins, relief, stages, cards and screenshots.
+
 **The builder decides alone (Controller's call):** the y-down to y-up pivot conversion, the thickness check against guard flares,
 the nock units, and the `format` bump in troop model files.
 
@@ -349,14 +389,14 @@ rules.
 | risk or question | recommended option |
 |---|---|
 | **R1. Rotated cubes under Complementary.** A turned cube's tangent comes from its UVs; a patch with no UV area breaks it (depth 6 rule 2). | Every face has its own patch of at least 1 x 1 texel (section 2.1), and `p2-depth-uv` asserts area > 0 on 20-number quads. Spike patches are all 1 x 1 or larger. |
-| **R2. Frame cost.** Cube weapons draw about 40 quads more a troop than sprites. | `p2-depth-cost` gates on - flat at both cameras with the far versions on; the fallback order of section 8 (Controller's call). Expected inside budget. |
+| **R2. Frame cost.** Cube weapons draw about 50 to 80 quads more a troop than sprites (section 8). | `p2-depth-cost` gates on - flat at both cameras with the far versions on; the fallback order of section 8 (Controller's call). Expected inside budget. |
 | **R3. Blockbench drift.** A painter edits the embedded texture and not the PNG, or renames or reparents a rig bone. | `--verify` compares embedded and file; bone names, parents and rest rotation are checked against the rig JSON (section 2.2). |
 | **R4. The MCP plugin's quirks** (report): delete errors, PBR preview absent, permission prompts on file paths. | The workflow uses data URLs and the live resource read, never file paths; the quirks are listed for the next agent. |
 | **R5. LabPBR maps nobody sees.** Complementary's default mode ignores them. | Ship them anyway: generated, 1.5 MB, and the labPBR mode and other LabPBR packs (Bliss, Photon, Rethinking Voxels) read them. Document the setting in the presentation modpack notes. Which mode the modpack uses is Kort's ruling K3, below. |
-| **R6. Texel density on thin cubes.** A 0.5 px blade edge gets a 1-texel patch, so its texels are twice as dense as the rest. | Allowed on edges and strings only; the guide's "never stretch" rule names the exception. |
+| **R6. Texel density on thin cubes.** A 0.5 px blade edge, rounded up to a whole texel, would be denser than the rest. | No exception: a face's UV is exactly its size at the sheet's density, fractional where the face is (a 0.5 px edge takes a 1-texel-wide rectangle at 2x), and the density check of section 2.4 fails any other face. |
 | **Q1. Which weapons stay sprites?** | None of the Gilded six. The PNG fallback stays for a House placeholder before its art half and for honest flat things (a thrown knife, a banner pole), decided per weapon in its Look line. |
 | **Q2. Should troop bodies move to `.bbmodel` in Phase 2, or only weapons?** | Weapons in Task 5d (now); troop bodies at each House's art half from Task 7 on, Gilded in Task 5d Step 8 as the proof (`--to-bbmodel` makes the troop files from today's JSON and PNGs, so no troop geometry is re-authored; the weapons are authored in Blockbench, and the Gilded sheets are repainted, Kort's ruling K2). The rig JSON stays. |
-| **Q3. Blade brightness.** The guide paints polished metal's big faces at tone 4; the 5d sprites used lighter steel than the Look line's `#7C8591`. | Keep the Look line's steel, `#7C8591`, with polished faces one tone up (spike row 1 reads at six blocks). It fits the approved look, and lighter steel drifts toward the surcoat's enamel white (Controller's call). |
+| **Q3. Blade brightness.** The guide paints a blade's lit flat at tone 4; the 5d sprites used lighter steel than the Look line's `#7C8591`. | Keep the Look line's steel, `#7C8591`, as tone 2, with a blade's lit flat at tone 4, its shade flat at 3 and its fuller at 2 (spike row 1 reads at six blocks; the look round's grader set the three tones). It fits the approved look, and lighter steel drifts toward the surcoat's enamel white (Controller's call). |
 | **Q4. Parts as `.bbmodel`.** | Parked; parts stay JSON and are checked against the troop's groups (section 2.3) (Controller's call). |
 | **Q5. Java Block format instead of Generic Model?** | Generic Model: the 1.20.1 Java Block format limits rotation to one axis in 22.5-degree steps and -16..32 units; the bow needs free angles. Display settings are not needed, since our renderer places the weapon. |
 | **Q6. Bow string draw.** How far the string and limbs move a frame. | Keep the spike's 0.75 px a frame and 4 degrees of limb flex; `p2-depth-bow-nock` tunes it (Controller's call). |
@@ -366,3 +406,11 @@ rules.
 - **K1. Approve the design.** Approved: weapons and troops become Blockbench models, with the style guide and LabPBR maps, for Task 5d's art step and the House art halves.
 - **K2. Repaint the Gilded six to the new guide in Task 5d's art step.** Repaint: about 28 sheets (skins, relief and stages). Kort says the units could look better, and every House after Gilded will be painted to the guide.
 - **K3. Complementary's mode.** Ship the LabPBR maps and keep the modpack's Complementary on its default mode (section 6). Complementary reads our maps only in labPBR mode, so only players who switch to it see them.
+
+**Kort's rulings (2026-10-22, questions rounds 28 and 29), from the weapon look round.**
+- **K4. Weapon texel density.** All 30 troops' weapons use 2 texels per model px, on 64 x 128 sheets (section 2.1); skins and
+  relief stay at 1:1. Three rules come with it: parts within 1 px of the hand are painted in whole pixels, one-texel
+  patterns sit only one tone step from their face, and a joint check makes every frame one connected piece (section 2.4).
+  Swords are about 1.5 blocks long, 24.5 px at most (round 28).
+- **K5. The weapon bar.** Weapons pass at 8.5 from the grader, and Kort sees each House's weapon sheet before it ships. All
+  other player-facing art keeps the 9 bar (section 9, Gates).
