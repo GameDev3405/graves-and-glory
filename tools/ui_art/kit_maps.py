@@ -317,28 +317,30 @@ REED = ['x.x', 'x.x', '.x.']
 
 
 def walls(S, x, y0, y1, cracks=(), gate=None, taken=None, west=True):
-    """a curtain wall running north to south, seen from above: a stone walk between ink lines, its merlons on the
-    side the attack comes from, its ends squared off. A crack is a breach a row wide with rubble spilt either side;
-    a gate is the gap the lane goes through, rubble beside it"""
+    """a curtain wall running north to south, seen from above: a stone walk two wide (lit on the west, shaded on the
+    east) between ink lines as the forts and the keep are drawn, its merlons in a softer ink on the side the attack
+    comes from, its ends squared off. A crack is a breach a row wide with rubble spilt either side; a gate is the gap
+    the lane goes through, rubble beside it"""
     for y in range(y0, y1 + 1):
         if y in cracks or (gate and gate[0] <= y <= gate[1]):
             continue
-        S.set(x - 1, y, INK[1]); S.set(x, y, STONE[4] if y % 3 else STONE[3]); S.set(x + 1, y, INK[1])
+        S.set(x - 1, y, INK[1]); S.set(x, y, STONE[4] if y % 3 else STONE[3]); S.set(x + 1, y, STONE[2])
+        S.set(x + 2, y, INK[1])
         if y % 2 == 0:
-            S.set(x - 2 if west else x + 2, y, INK[1])
+            S.set(x - 2 if west else x + 3, y, INK[3])
     ends = [y0 - 1, y1 + 1] + ([gate[0] - 1, gate[1] + 1] if gate else []) + [c + d for c in cracks for d in (-1, 1)]
     for y in ends:
         if y0 - 1 <= y <= y1 + 1:
-            for i in (-1, 0, 1):
+            for i in (-1, 0, 1, 2):
                 S.set(x + i, y, INK[1])
     for y in cracks:
-        S.set(x - 2, y, STONE[3]); S.set(x + 2, y, STONE[2])
+        S.set(x - 2, y, STONE[3]); S.set(x + 3, y, STONE[2])
     if gate:
-        for (i, j, c) in ((-3, gate[0], STONE[3]), (2, gate[0] + 1, STONE[2]), (-2, gate[1], STONE[2]),
-                          (3, gate[1] - 1, STONE[3])):
+        for (i, j, c) in ((-3, gate[0], STONE[3]), (3, gate[0] + 1, STONE[2]), (-2, gate[1], STONE[2]),
+                          (4, gate[1] - 1, STONE[3])):
             S.set(x + i, j, c)
     if taken is not None:
-        taken |= rect(x - 3, y0 - 2, 7, y1 - y0 + 5)
+        taken |= rect(x - 3, y0 - 2, 8, y1 - y0 + 5)
 
 
 def keep(S, x0, y0, x1, y1, taken, gaps=()):

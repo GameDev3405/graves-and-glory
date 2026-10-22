@@ -2593,7 +2593,7 @@ public final class Phase1Checks implements ClientModInitializer {
         // the server thread writes these, the client thread reads them
         volatile int stage;volatile UUID player;volatile boolean serverRoom;volatile String serverDifficulty="";
         // client thread only
-        int mark=-1,waitFrom,oldW,oldH,oldGui,index,sub,subAt,serial,serial1,serial2,menuCode=-1,gold=-1,landedAt=-1,origMap=-1,cardAsked=-1;boolean finished,ok=true,slid,scalesOk=true,cardsOk=true;
+        int mark=-1,waitFrom,oldW,oldH,oldGui,index,sub,subAt,serial,serial1,serial2,menuCode=-1,gold=-1,landedAt=-1,origMap=-1,cardAsked=-1,fieldRow;boolean finished,ok=true,slid,scalesOk=true,cardsOk=true;
         String why="",before="",focusName="",scalesWhy="",cardsWhy="";List<String> roll=List.of();String at0="",at19="";CampScreen table;
         final Set<Integer> rollSeen=new TreeSet<>(),oathSeen=new TreeSet<>();
 
@@ -2665,15 +2665,16 @@ public final class Phase1Checks implements ClientModInitializer {
             return "origin "+o[0]+","+o[1]+", table "+str(t)+(placed?"":" WRONG")+", "+scaled(c,name);
         }
         /** 854x480 GUI 2, the first-launch window: a canvas smaller than the page, which stays centred and is cropped (Task 5's ruling;
-         *  a compact layout is Task 8's). Every widget inside the canvas, none overlapping; what the page drew across the canvas edge
-         *  is listed (art and words only). */
+         *  a compact layout is Task 8's). Every widget inside the canvas, none overlapping; the page's title (where it has one) on the
+         *  planks under the rail, not under its moulding; what the page drew across the canvas edge is listed (art and words only). */
         String small(MinecraftClient c){
             int w=UiCanvas.width(),h=UiCanvas.height();int[] o=WarTable.origin();var b=boxes(c);
             List<String> out=new ArrayList<>(),over=new ArrayList<>(),cut=new ArrayList<>();var keys=new ArrayList<>(b.keySet());
             for(int i=0;i<keys.size();i++){if(!UiHomeChecks.inside(b.get(keys.get(i)),w,h))out.add(keys.get(i)+" "+str(b.get(keys.get(i))));for(int j=i+1;j<keys.size();j++)if(UiHomeChecks.overlap(b.get(keys.get(i)),b.get(keys.get(j))))over.add(keys.get(i)+"/"+keys.get(j));}
             for(var e:WarTablePages.rects().entrySet())if(!Set.of("floor","table","rail").contains(e.getKey())&&!UiHomeChecks.inside(e.getValue(),w,h))cut.add(e.getKey()+" "+str(e.getValue()));
-            boolean pass=pages(c)!=null&&w==854&&h==480&&UiCanvas.k()==1&&o[0]==-53&&o[1]==-30&&b.size()>=5&&out.isEmpty()&&over.isEmpty();scalesOk&=pass;
-            return "canvas "+w+"x"+h+" (k "+UiCanvas.k()+"), origin "+o[0]+","+o[1]+", "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+"; drawn across the canvas edge "+cut+(pass?"":" WRONG");
+            int[] title=rect("title"),rail=rect("rail");boolean titleClear=title==null||rail!=null&&title[1]>=rail[1]+rail[3];
+            boolean pass=pages(c)!=null&&w==854&&h==480&&UiCanvas.k()==1&&o[0]==-53&&o[1]==-30&&b.size()>=5&&out.isEmpty()&&over.isEmpty()&&titleClear;scalesOk&=pass;
+            return "canvas "+w+"x"+h+" (k "+UiCanvas.k()+"), origin "+o[0]+","+o[1]+", "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+", the title "+(title==null?"none (the chapter block)":str(title)+" under the rail "+str(rail)+(titleClear?"":" WRONG: under its moulding"))+"; drawn across the canvas edge "+cut+(pass?"":" WRONG");
         }
         /** 1920x974 GUI 1, a maximized window on a 1080p screen: a canvas larger than the table. The page stays centred on the planks,
          *  the floor shows round them with the table's shadow on it (read from the framebuffer as home's check reads it), the rail runs
@@ -2818,17 +2819,22 @@ public final class Phase1Checks implements ClientModInitializer {
                     boolean start=roll.size()>=3&&at0.equals(roll.get(0))&&!at19.equals(WarTablePages.EMPTY)&&add!=null&&!add.active&&remove!=null&&remove.active&&(CampaignClient.profile.count(t)+" of 20 seats filled").equals(text("seated"))&&"12 seats".equals(text("count-0"));
                     ok&=start;why+="; the roll "+roll+", seat 0 "+at0+", seat 19 "+at19+", \""+text("seated")+"\", row 0 \""+text("count-0")+"\" with Add "+(add!=null&&add.active?"taking a press":"dull")+" and Remove "+(remove!=null&&remove.active?"taking a press":"dull")+(start?"":" WRONG");
                     click(c,box(c,"row-1"));next(tick);}
-                case 1->{if(k<2)return;int[] mark=rect("mark");
+                // a step that reads the page as a frame drew it (its words, marks and art) waits for the frame: on a busy machine the client
+                // can run more than one tick before it draws, so the snapshot can land with the last frame still showing the old state.
+                // Each waits for the drawn state to catch up, or judges (and fails) once the wait is over
+                case 1->{int[] mark=rect("mark");if(k<2||!WarTablePages.troopName(roll.get(1)).equals(text("armed"))&&k<40)return;
                     boolean armed=roll.get(1).equals(p.armed)&&WarTablePages.troopName(roll.get(1)).equals(text("armed"))&&Arrays.equals(mark,new int[]{o[0]+52,o[1]+196,234,58});
                     ok&=armed;why+="; row 1 armed "+p.armed+" (the band reads \""+text("armed")+"\", the mark at "+str(mark)+")"+(armed?"":" WRONG");
-                    click(c,box(c,"seat-0"));next(tick);}
-                case 2->{if(roll.get(1).equals(line.get(0))&&k>=3){boolean pass=("slot:0:"+roll.get(1)).equals(lastSent())&&roll.get(1).equals(text("seat-0"));ok&=pass;
-                        why+="; seat 0 clicked: sent "+lastSent()+", the snapshot's seat 0 is "+line.get(0)+", drawn "+text("seat-0")+(pass?"":" WRONG");next(tick);}
-                    else if(k>100){ok=false;why+="; seat 0 clicked: sent "+lastSent()+", the snapshot's seat 0 still "+line.get(0)+" 100 ticks on WRONG";next(tick);}}
-                case 3->{if(k<8)return;rightClick(c,box(c,"seat-19"));next(tick);}
-                case 4->{if(WarTablePages.EMPTY.equals(line.get(19))&&k>=3){boolean pass="slot:19:empty".equals(lastSent())&&WarTablePages.EMPTY.equals(text("seat-19"));ok&=pass;
-                        why+="; the other button on seat 19: sent "+lastSent()+", the snapshot's seat 19 is "+line.get(19)+", drawn "+text("seat-19")+(pass?"":" WRONG");next(tick);}
-                    else if(k>100){ok=false;why+="; the other button on seat 19: sent "+lastSent()+", seat 19 still "+line.get(19)+" WRONG";next(tick);}}
+                    landedAt=-1;click(c,box(c,"seat-0"));next(tick);}
+                case 2->{boolean landed=roll.get(1).equals(line.get(0));if(landed&&landedAt<0)landedAt=tick;
+                    if(landed&&k>=3&&(roll.get(1).equals(text("seat-0"))||tick>=landedAt+20)){boolean pass=("slot:0:"+roll.get(1)).equals(lastSent())&&roll.get(1).equals(text("seat-0"));ok&=pass;
+                        why+="; seat 0 clicked: sent "+lastSent()+", the snapshot's seat 0 is "+line.get(0)+", drawn "+text("seat-0")+(pass?"":" WRONG");landedAt=-1;next(tick);}
+                    else if(!landed&&k>100){ok=false;why+="; seat 0 clicked: sent "+lastSent()+", the snapshot's seat 0 still "+line.get(0)+" 100 ticks on WRONG";landedAt=-1;next(tick);}}
+                case 3->{if(k<8)return;landedAt=-1;rightClick(c,box(c,"seat-19"));next(tick);}
+                case 4->{boolean landed=WarTablePages.EMPTY.equals(line.get(19));if(landed&&landedAt<0)landedAt=tick;
+                    if(landed&&k>=3&&(WarTablePages.EMPTY.equals(text("seat-19"))||tick>=landedAt+20)){boolean pass="slot:19:empty".equals(lastSent())&&WarTablePages.EMPTY.equals(text("seat-19"));ok&=pass;
+                        why+="; the other button on seat 19: sent "+lastSent()+", the snapshot's seat 19 is "+line.get(19)+", drawn "+text("seat-19")+(pass?"":" WRONG");landedAt=-1;next(tick);}
+                    else if(!landed&&k>100){ok=false;why+="; the other button on seat 19: sent "+lastSent()+", seat 19 still "+line.get(19)+" WRONG";landedAt=-1;next(tick);}}
                 case 5->{if(k<8)return;click(c,box(c,"row-"+Math.max(0,roll.indexOf(at0))));click(c,box(c,"seat-0"));next(tick);}
                 case 6->{if(at0.equals(line.get(0)))next(tick);else if(k>100){ok=false;why+="; seat 0 not put back ("+line.get(0)+") WRONG";next(tick);}}
                 case 7->{if(k<8)return;click(c,box(c,"row-"+Math.max(0,roll.indexOf(at19))));click(c,box(c,"seat-19"));next(tick);}
@@ -2848,12 +2854,13 @@ public final class Phase1Checks implements ClientModInitializer {
                     boolean fresh=reroll!=null&&reroll.active&&"Swap the third contract, once a day".equals(text("reroll-hint"));
                     ok&=placed&&fresh;why+="; notes "+str(rect("note-0"))+", "+str(rect("note-1"))+", "+str(rect("note-2"))+", weekly "+str(rect("weekly"))+", Reroll "+str(box(c,"reroll"))+(placed?"":" WRONG")
                         +"; the third contract \""+text("contract-2")+"\", Reroll "+(fresh?"taking a press":"WRONG: dull (\""+text("reroll-hint")+"\")");
-                    serial=CampaignClient.noticeSerial;before=text("contract-2");click(c,box(c,"reroll"));next(tick);}
-                case 1->{boolean changed=!Objects.equals(before,text("contract-2")),noticed=CampaignClient.noticeSerial!=serial;
-                    if(noticed&&k>=3&&(changed||REROLL_REFUSALS.contains(CampaignClient.notice))){String n=text("notice");
+                    serial=CampaignClient.noticeSerial;before=text("contract-2");landedAt=-1;click(c,box(c,"reroll"));next(tick);}
+                case 1->{boolean changed=!Objects.equals(before,text("contract-2")),noticed=CampaignClient.noticeSerial!=serial,landed=noticed&&(changed||REROLL_REFUSALS.contains(CampaignClient.notice));
+                    if(landed&&landedAt<0)landedAt=tick;String n=text("notice");
+                    if(landed&&k>=3&&(REROLLED.equals(n)||REROLL_REFUSALS.contains(n)||tick>=landedAt+20)){ // judged once a frame has drawn the notice line
                         boolean pass="progress:reroll".equals(lastSent())&&(changed?"Issue ten tactical orders".equals(text("contract-2"))&&REROLLED.equals(n)&&reroll!=null&&!reroll.active&&"Rerolled today".equals(text("reroll-hint")):REROLL_REFUSALS.contains(n));
-                        ok&=pass;why+="; Reroll sent "+lastSent()+": the third contract reads \""+text("contract-2")+"\", the notice line \""+n+"\", Reroll "+(reroll!=null&&reroll.active?"still taking a press":"dull")+" (\""+text("reroll-hint")+"\")"+(pass?"":" WRONG");stage=4;}
-                    else if(k>100){ok=false;why+="; Reroll sent "+lastSent()+": no change and no refusal 100 ticks on (the third contract \""+text("contract-2")+"\", the notice \""+CampaignClient.notice+"\") WRONG";stage=4;}}
+                        ok&=pass;why+="; Reroll sent "+lastSent()+": the third contract reads \""+text("contract-2")+"\", the notice line \""+n+"\", Reroll "+(reroll!=null&&reroll.active?"still taking a press":"dull")+" (\""+text("reroll-hint")+"\")"+(pass?"":" WRONG");landedAt=-1;stage=4;}
+                    else if(!landed&&k>100){ok=false;why+="; Reroll sent "+lastSent()+": no change and no refusal 100 ticks on (the third contract \""+text("contract-2")+"\", the notice \""+CampaignClient.notice+"\") WRONG";landedAt=-1;stage=4;}}
                 default->stage=4;
             }
         }
@@ -2874,17 +2881,18 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 1->{if(pr.xp==2870&&pr.claims.contains(Progression.SEASON+":10")){window(c,1920,1080,2,true);next(tick);}else if(k>100){ok=false;why+="; tier 11 never reached the client WRONG";stage=4;}} // the rest at k 2, as the approved mockups
                 case 2->{if(k==18)UiRecruitChecks.park(c);if(k<20)return;tiersDrawn();
                     boolean bright=claim!=null&&claim.active&&"table/btn-brass-240x40".equals(tex("claim"))&&"10".equals(text("first"))&&"11".equals(text("tier"))&&"20".equals(text("hero"))&&"Vanguard".equals(text("hero-name"))
-                        &&"Reached at 5,000 XP".equals(text("hero-state"))&&"2,870 / 7,500 XP".equals(text("xp"))&&"130 XP to tier 12".equals(text("to-next"));
+                        &&"Unlocks at 5,000 XP".equals(text("hero-state"))&&"2,870 / 7,500 XP".equals(text("xp"))&&"130 XP to tier 12".equals(text("to-next"));
                     boolean plaques=Arrays.equals(rect("roll-10"),new int[]{o[0]+136,o[1]+320,68,80})&&Arrays.equals(rect("roll-11"),new int[]{o[0]+212,o[1]+312,68,88})&&Arrays.equals(rect("oath-12"),new int[]{o[0]+288,o[1]+408,68,80})
                         &&"chapter/plaque-tier-b".equals(tex("roll-10"))&&"chapter/plaque-tier-raised".equals(tex("roll-11"))&&"chapter/plaque-tier-dull-b".equals(tex("roll-12"))&&"table/stamp-hollow-b".equals(tex("stamp-10"))
                         &&"Pathfinder / title".equals(text("roll-10"))&&"Gold / 25".equals(text("roll-11"))&&"Tabard / livery".equals(text("oath-11"))&&"Portrait / frame".equals(text("oath-10"))&&button(c,"title-10")!=null;
                     ok&=bright&&plaques;why+="; tier 11 reached, 1 to 10 claimed: Claim "+tex("claim")+(claim!=null&&claim.active?" taking a press":" dull")+", the track from "+text("first")+", the hero tier "+text("hero")+" "+text("hero-name")+" (\""+text("hero-state")+"\"), \""+text("xp")+"\", \""+text("to-next")+"\""+(bright?"":" WRONG")
                         +"; roll-10 "+str(rect("roll-10"))+" "+tex("roll-10")+" \""+text("roll-10")+"\" stamped "+tex("stamp-10")+", roll-11 "+str(rect("roll-11"))+" "+tex("roll-11")+" \""+text("roll-11")+"\", roll-12 "+tex("roll-12")+", oath-11 \""+text("oath-11")+"\", oath-12 "+str(rect("oath-12"))+(plaques?"":" WRONG");
                     shot(c,"ui-page-chapter-claimable");click(c,box(c,"earlier"));next(tick);}
-                case 3->{if(k<3)return;tiersDrawn();var earlier=button(c,"earlier");boolean at="1".equals(text("first"))&&earlier!=null&&!earlier.active&&"chapter/arrow-left-dim".equals(tex("earlier"));
+                // the arrows, the title plaques: each step reads the track as a frame drew it, so it waits for the frame (up to 40 ticks)
+                case 3->{if(k<3||!"1".equals(text("first"))&&k<40)return;tiersDrawn();var earlier=button(c,"earlier");boolean at="1".equals(text("first"))&&earlier!=null&&!earlier.active&&"chapter/arrow-left-dim".equals(tex("earlier"));
                     ok&=at;why+="; the left arrow: from "+text("first")+" (the arrow "+tex("earlier")+")"+(at?"":" WRONG");click(c,box(c,"later"));next(tick);}
-                case 4->{if(k<3)return;tiersDrawn();boolean at="11".equals(text("first"));ok&=at;why+=", the right arrow: from "+text("first")+(at?"":" WRONG");click(c,box(c,"later"));next(tick);}
-                case 5->{if(k<3)return;tiersDrawn();var later=button(c,"later");boolean at="21".equals(text("first"))&&later!=null&&!later.active&&"chapter/arrow-right-dim".equals(tex("later"));
+                case 4->{if(k<3||!"11".equals(text("first"))&&k<40)return;tiersDrawn();boolean at="11".equals(text("first"));ok&=at;why+=", the right arrow: from "+text("first")+(at?"":" WRONG");click(c,box(c,"later"));next(tick);}
+                case 5->{if(k<3||!"21".equals(text("first"))&&k<40)return;tiersDrawn();var later=button(c,"later");boolean at="21".equals(text("first"))&&later!=null&&!later.active&&"chapter/arrow-right-dim".equals(tex("later"));
                     Set<Integer> all=new TreeSet<>();for(int t=1;t<=Progression.TIERS;t++)all.add(t);boolean every=rollSeen.equals(all)&&oathSeen.equals(all);
                     ok&=at&&every;why+=", again: from "+text("first")+" (the arrow "+tex("later")+")"+(at?"":" WRONG")+"; tiers drawn on the Roll "+rollSeen.size()+" and on the Oath "+oathSeen.size()+" of "+Progression.TIERS+(every?"":" WRONG: "+rollSeen+" / "+oathSeen);
                     shot(c,"ui-page-chapter-end");UiRecruitChecks.tap(c,GLFW.GLFW_KEY_ENTER);next(tick);}
@@ -2897,13 +2905,15 @@ public final class Phase1Checks implements ClientModInitializer {
                         shot(c,"ui-page-chapter-claimed");landedAt=-1;next(tick);}
                     else if(k>120){ok=false;why+="; Enter sent "+lastSent()+": the claim never landed WRONG";stage=4;}}
                 case 7->{if(k<8)return;click(c,box(c,"earlier"));next(tick);}
-                case 8->{if(k<3)return;boolean shown="1".equals(text("first"))&&button(c,"title-5")!=null&&button(c,"title-10")!=null;ok&=shown;why+="; back to tier 1: the claimed titles' plaques "+(shown?"take a press":"WRONG: missing");
-                    click(c,box(c,"title-10"));next(tick);}
-                case 9->{if("Pathfinder".equals(pr.title)&&k>=3){boolean worn="Pathfinder / worn".equals(text("roll-10"))&&"progress:title:Pathfinder".equals(lastSent());ok&=worn;why+="; Pathfinder's plaque sent "+lastSent()+", now \""+text("roll-10")+"\""+(worn?"":" WRONG");next(tick);}
-                    else if(k>100){ok=false;why+="; Pathfinder's plaque sent "+lastSent()+": the title is still "+pr.title+" WRONG";stage=4;}}
-                case 10->{if(k<8)return;click(c,box(c,"title-10"));next(tick);}
-                case 11->{if("Recruit".equals(pr.title)&&k>=3){boolean off="Pathfinder / title".equals(text("roll-10"))&&"progress:title:Recruit".equals(lastSent());ok&=off;why+=", pressed again it sent "+lastSent()+" and reads \""+text("roll-10")+"\""+(off?"":" WRONG");stage=4;}
-                    else if(k>100){ok=false;why+="; pressed again: the title is still "+pr.title+" WRONG";stage=4;}}
+                case 8->{if(k<3||!"1".equals(text("first"))&&k<40)return;boolean shown="1".equals(text("first"))&&button(c,"title-5")!=null&&button(c,"title-10")!=null;ok&=shown;why+="; back to tier 1: the claimed titles' plaques "+(shown?"take a press":"WRONG: missing");
+                    landedAt=-1;click(c,box(c,"title-10"));next(tick);}
+                case 9->{boolean landed="Pathfinder".equals(pr.title);if(landed&&landedAt<0)landedAt=tick;
+                    if(landed&&k>=3&&("Pathfinder / worn".equals(text("roll-10"))||tick>=landedAt+20)){boolean worn="Pathfinder / worn".equals(text("roll-10"))&&"progress:title:Pathfinder".equals(lastSent());ok&=worn;why+="; Pathfinder's plaque sent "+lastSent()+", now \""+text("roll-10")+"\""+(worn?"":" WRONG");landedAt=-1;next(tick);}
+                    else if(!landed&&k>100){ok=false;why+="; Pathfinder's plaque sent "+lastSent()+": the title is still "+pr.title+" WRONG";landedAt=-1;stage=4;}}
+                case 10->{if(k<8)return;landedAt=-1;click(c,box(c,"title-10"));next(tick);}
+                case 11->{boolean landed="Recruit".equals(pr.title);if(landed&&landedAt<0)landedAt=tick;
+                    if(landed&&k>=3&&("Pathfinder / title".equals(text("roll-10"))||tick>=landedAt+20)){boolean off="Pathfinder / title".equals(text("roll-10"))&&"progress:title:Recruit".equals(lastSent());ok&=off;why+=", pressed again it sent "+lastSent()+" and reads \""+text("roll-10")+"\""+(off?"":" WRONG");landedAt=-1;stage=4;}
+                    else if(!landed&&k>100){ok=false;why+="; pressed again: the title is still "+pr.title+" WRONG";landedAt=-1;stage=4;}}
                 default->stage=4;
             }
         }
@@ -2915,7 +2925,8 @@ public final class Phase1Checks implements ClientModInitializer {
             int k=at(tick);var p=pages(c);var join=button(c,"room-join");
             switch(sub){
                 case 0->{click(c,box(c,"code"));type(c,"ab-c1 2");next(tick);}
-                case 1->{if(k<2)return;boolean partial=p.typing&&"ABC12".equals(p.code)&&join!=null&&!join.active&&"ABC12".equals(text("room-code"));
+                case 1->{if(k<2||!"ABC12".equals(text("room-code"))&&k<40)return; // read as a frame drew it: waits for the frame
+                    boolean partial=p.typing&&"ABC12".equals(p.code)&&join!=null&&!join.active&&"ABC12".equals(text("room-code"));
                     ok&=partial;why+="; the code's line clicked and \"ab-c1 2\" typed: \""+p.code+"\" (writing "+p.typing+"), Join with party "+(join!=null&&join.active?"taking a press":"dull")+(partial?"":" WRONG");type(c,"3456");next(tick);}
                 case 2->{if(k<2)return;String whole=p.code;boolean full="ABC12345".equals(whole)&&join!=null&&join.active;UiRecruitChecks.tap(c,GLFW.GLFW_KEY_BACKSPACE);boolean back="ABC1234".equals(p.code);
                     UiRecruitChecks.tap(c,GLFW.GLFW_KEY_ESCAPE);var s=screen(c);boolean stays=!p.typing&&s!=null&&s.page.equals("friends");boolean pass=full&&back&&stays;ok&=pass;
@@ -2937,7 +2948,8 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 7->{if(k<8)return;click(c,box(c,"room-create"));next(tick);}
                 case 8->{if(!WarTablePages.value("room").isEmpty()&&k>=3)next(tick);else if(k>100){ok=false;why+="; Create private room sent "+lastSent()+": no room WRONG";stage=4;}}
                 case 9->{if(k<3)return;UiRecruitChecks.park(c);next(tick);}
-                case 10->{if(k<2)return;boolean code=WarTablePages.value("room").equals(text("code"))&&"table/note-room".equals(tex("room"))&&"0 of 1 ready".equals(text("room-ready"))&&text("room-map")!=null;ok&=code;
+                case 10->{if(k<2||!(WarTablePages.value("room").equals(text("code"))&&"0 of 1 ready".equals(text("room-ready")))&&k<40)return; // read as a frame drew it
+                    boolean code=WarTablePages.value("room").equals(text("code"))&&"table/note-room".equals(tex("room"))&&"0 of 1 ready".equals(text("room-ready"))&&text("room-map")!=null;ok&=code;
                     why+="; Create private room sent "+lastSent()+": in room "+text("code")+" on "+tex("room")+", \""+text("room-ready")+"\", the map "+text("room-map")+(code?"":" WRONG")+", "+layout(c,"friends");shot(c,"ui-page-friends-room");next(tick);}
                 case 11->{if(k<8)return;click(c,box(c,"room-leave"));next(tick);}
                 case 12->{if(WarTablePages.value("room").isEmpty()&&!serverRoom){why+="; Leave room sent "+lastSent()+": out of the room";stage=4;}
@@ -2953,20 +2965,24 @@ public final class Phase1Checks implements ClientModInitializer {
             switch(sub){
                 case 0->{boolean off=CampaignClient.padMine<0&&"Stand on the war gates to vote".equals(text("status"))&&Integer.valueOf(DarkUi.SEPIA).equals(WarTablePages.colors().get("status"));
                     for(int i=0;i<Spec.MAPS.length;i++){var v=button(c,"vote-"+i);off&=v!=null&&!v.active&&Spec.MAPS[i].name().equals(text("map-"+i))&&Integer.valueOf(DarkUi.SEPIA).equals(WarTablePages.colors().get("map-"+i));}
-                    ok&=off;why+="; off the war gates: \""+text("status")+"\""+(off?", every row sepia and every Vote dull":" WRONG");click(c,box(c,"map-0"));next(tick);}
-                case 1->{if(k<2||k%2!=0)return;int i=k/2-1;String want="table/map-"+Spec.MAPS[i].id();
+                    ok&=off;why+="; off the war gates: \""+text("status")+"\""+(off?", every row sepia and every Vote dull":" WRONG");fieldRow=0;click(c,box(c,"map-0"));next(tick);}
+                case 1->{int i=fieldRow;String want="table/map-"+Spec.MAPS[i].id();if(k<2||!want.equals(tex("card"))&&k<40)return; // the card as a frame drew it: waits for the frame
                     boolean card=want.equals(tex("card"))&&Spec.MAPS[i].name().equals(text("card-name"))&&Arrays.equals(rect("card"),new int[]{o[0]+WarTablePages.CARD_X,o[1]+WarTablePages.CARD_Y,139,83});
                     ok&=card;why+=(i==0?"; each row's card: ":", ")+tex("card")+(card?"":" WRONG (want "+want+" at "+str(rect("card"))+")");
-                    if(i+1<Spec.MAPS.length)click(c,box(c,"map-"+(i+1)));else next(tick);}
+                    if(i+1<Spec.MAPS.length){fieldRow=i+1;click(c,box(c,"map-"+(i+1)));subAt=tick;}else next(tick);}
                 case 2->{boolean normal="Normal".equals(text("bots-current"))&&"normal".equals(serverDifficulty);ok&=normal;why+="; bots "+text("bots-current")+" (the server's "+serverDifficulty+")"+(normal?"":" WRONG");
-                    click(c,box(c,"bots-hard"));next(tick);}
-                case 3->{if("hard".equals(serverDifficulty)&&"hard".equals(CampaignClient.difficulty)&&k>=3){boolean pass="difficulty:hard".equals(lastSent())&&"Hard".equals(text("bots-current"));ok&=pass;
-                        why+="; Hard sent "+lastSent()+": the server's bots "+serverDifficulty+", the page reads "+text("bots-current")+(pass?"":" WRONG");next(tick);}
-                    else if(k>100){ok=false;why+="; Hard sent "+lastSent()+": the server's bots still "+serverDifficulty+" WRONG";next(tick);}}
-                case 4->{if(k<8)return;click(c,box(c,"bots-normal"));next(tick);}
-                case 5->{if("normal".equals(serverDifficulty)&&"normal".equals(CampaignClient.difficulty)&&k>=3){boolean pass="difficulty:normal".equals(lastSent())&&"Normal".equals(text("bots-current"));ok&=pass;
-                        why+="; Normal sent "+lastSent()+": back to "+serverDifficulty+", the page reads "+text("bots-current")+(pass?"":" WRONG");stage=4;}
-                    else if(k>100){ok=false;why+="; Normal sent "+lastSent()+": the server's bots still "+serverDifficulty+" WRONG";stage=4;}}
+                    landedAt=-1;click(c,box(c,"bots-hard"));next(tick);}
+                // the tier lands in the client's tick and the page records its words only when a frame draws it: judged once the drawn
+                // words have caught up, or 20 ticks after the landing (a page that never redraws the tier fails there)
+                case 3->{boolean landed="hard".equals(serverDifficulty)&&"hard".equals(CampaignClient.difficulty);if(landed&&landedAt<0)landedAt=tick;
+                    if(landed&&k>=3&&("Hard".equals(text("bots-current"))||tick>=landedAt+20)){boolean pass="difficulty:hard".equals(lastSent())&&"Hard".equals(text("bots-current"));ok&=pass;
+                        why+="; Hard sent "+lastSent()+": the server's bots "+serverDifficulty+", the page reads "+text("bots-current")+(pass?"":" WRONG");landedAt=-1;next(tick);}
+                    else if(!landed&&k>100){ok=false;why+="; Hard sent "+lastSent()+": the server's bots still "+serverDifficulty+" WRONG";landedAt=-1;next(tick);}}
+                case 4->{if(k<8)return;landedAt=-1;click(c,box(c,"bots-normal"));next(tick);}
+                case 5->{boolean landed="normal".equals(serverDifficulty)&&"normal".equals(CampaignClient.difficulty);if(landed&&landedAt<0)landedAt=tick;
+                    if(landed&&k>=3&&("Normal".equals(text("bots-current"))||tick>=landedAt+20)){boolean pass="difficulty:normal".equals(lastSent())&&"Normal".equals(text("bots-current"));ok&=pass;
+                        why+="; Normal sent "+lastSent()+": back to "+serverDifficulty+", the page reads "+text("bots-current")+(pass?"":" WRONG");landedAt=-1;stage=4;}
+                    else if(!landed&&k>100){ok=false;why+="; Normal sent "+lastSent()+": the server's bots still "+serverDifficulty+" WRONG";landedAt=-1;stage=4;}}
                 default->stage=4;
             }
         }

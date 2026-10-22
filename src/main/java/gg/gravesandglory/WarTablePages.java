@@ -93,9 +93,10 @@ final class WarTablePages {
 
     // Field: the sheet; on its left a row per map (its name, then Vote) and under them the war gates' line and the vote's rule;
     // on its right the card of the map in view with its name and description, and under them the bots' tier, its three tags
-    // centred under the card. Both columns start 32 px under the sheet's top and end some 40 px above its foot.
+    // centred under the card on the band of the war gates' lines. Both columns start 32 px under the sheet's top and end on
+    // that band, 40 px above its foot.
     static final int FIELD_X = 220, FIELD_Y = 124, MAP_X = 236, MAP_Y = 156, MAP_STEP = 44, MAP_W = 176, VOTE_X = 420, STATUS_Y = 380;
-    static final int CARD_X = 544, CARD_Y = 156, CARD_CX = 612, CARD_TEXT_W = 208, BOTS_HEAD_Y = 348, BOTS_Y = 366;
+    static final int CARD_X = 544, CARD_Y = 156, CARD_CX = 612, CARD_TEXT_W = 208, BOTS_HEAD_Y = 362, BOTS_Y = STATUS_Y;
     static final String[] TIER_IDS = {"easy", "normal", "hard"};
     static final int[] TIER_X = {504, 576, 656}, TIER_W = {64, 72, 64};
 
@@ -423,13 +424,15 @@ final class WarTablePages {
         texturesDrawn.put("here", "table/plaque-112-here");
     }
 
-    /** The page's focal title, IVORY with its shadow, centred on the page at TITLE_Y; none on the Chapter (its chapter block). */
+    /** The page's focal title, IVORY with its shadow, centred on the page at TITLE_Y; none on the Chapter (its chapter block). On a
+     *  canvas shorter than the page (854x480, which crops it) TITLE_Y would fall under the rail's moulding, so the title keeps to
+     *  the planks just under the rail. */
     void title(DrawContext g, int ox, int oy) {
         if (page.equals("chapter")) return;
         var font = font();
         String words = TITLES.get(page);
         var t = DarkUi.focal(words);
-        int w = font.getWidth(t), x = ox + TITLE_X - w / 2, y = oy + TITLE_Y;
+        int w = font.getWidth(t), x = ox + TITLE_X - w / 2, y = Math.max(oy + TITLE_Y, UiTex.entry("table/rail").h());
         g.drawText(font, t, x, y, DarkUi.IVORY, true);
         rectsDrawn.put("title", new int[]{x, y, w, 16});
         textsDrawn.put("title", words);
@@ -968,7 +971,7 @@ final class WarTablePages {
         UiTex.draw(g, "table/frame-ornate-184", x + 8, y + 8);
         String name = Progression.TITLES[t / EVERY - 1], kicker = "Tier " + t, kind = "Title, worn in camp";
         boolean got = claimed(t), worn = got && name.equals(progression().title);
-        String state = worn ? "Worn in camp" : got ? "Claimed" : t <= tier ? "Yours to claim" : "Reached at " + UiMath.thousands(t * Progression.XP_PER_TIER) + " XP";
+        String state = worn ? "Worn in camp" : got ? "Claimed" : t <= tier ? "Yours to claim" : "Unlocks at " + UiMath.thousands(t * Progression.XP_PER_TIER) + " XP";
         g.drawText(font, kicker, cx - font.getWidth(kicker) / 2, y + 34, DarkUi.SEPIA, false);
         WarTableHome.centred(g, DarkUi.focal(name), cx, y + 48, DarkUi.INK_TEXT);
         WarTableHome.centred(g, DarkUi.body(kind), cx, y + 70, DarkUi.SEPIA);
