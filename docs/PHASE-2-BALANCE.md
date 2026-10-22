@@ -27,9 +27,106 @@ The gate prints `gate <a> vs <b> win=<P>% pass|fail` (exit status 0 pass, 1 fail
 
 ## Current best pure banner
 
-`gilded_normal` (100% against `graveborn_normal` in the Task 6 gate, report-only; 92.5% in the Task 3 baseline after fix round 1, where `graveborn_normal` had 7.5%). The first Task 3 baseline (`gilded_normal` 95%) was measured with the husk's +2 armour on the Gilded side and is superseded by it. Update this line whenever a logged gate gives another pure normal banner a higher win rate.
+`gilded_normal` (85% against `graveborn_normal` in the Task 7 gate, with the Graveborn mechanics built and at the spec numbers; 100% in the Task 6 gate, report-only, before them; 92.5% in the Task 3 baseline after fix round 1, where `graveborn_normal` had 7.5%). The first Task 3 baseline (`gilded_normal` 95%) was measured with the husk's +2 armour on the Gilded side and is superseded by it. Update this line whenever a logged gate gives another pure normal banner a higher win rate.
 
 ## Results
+
+### Phase 2 Task 7 gate: `graveborn_normal` vs `gilded_normal` (2026-10-21, fails; two tuning rounds, stopped)
+
+Code: the Task 7 tree (committed as `3324fa3`), on `f52c15a`. The commit carries the round 2 numbers; round 0 ran the same mechanics at the spec numbers (the sheet rows differ only as the tuning log lists, and the soul-fire particles and a rally-horn centre that ignores temporary troops came after it; neither touches a fight). What reaches this fight that the Task 6 gate (before Task 7) did not have:
+
+- Rise Again. The 20 slots of `graveborn_normal` reach tier III (14 slots): each Graveborn troop that is not Legendary rises once, at 30% health and stunned for 20 ticks, with a 40% chance at spec (45% from round 2).
+- Fearless. The Risen and the Bonebow carry it: a group at least half fearless breaks at 12% strength instead of 25% (the infantry group is 6 Risen of 10, the ranged group 4 Bonebow of 8).
+- The Grave Reaper's cleave (half the blow to the nearest other enemy within 2) and the Barrow Stalker's frostshot (Slowness I for 2 s). The Gravecaller's blight was in already.
+- The Risen is a zombie and the Barrow Stalker a stray (Army mobs: no daylight burn, no water conversion).
+
+What does not reach it: the Hollow King's dread (the hard banner only) and Grave Bloom (bots never use actives).
+
+The gate rule is 20 matches and 40 <= P <= 60. Round 0 ran all 20 at the spec numbers. Rounds 1 and 2 were stopped after 14 decided rounds each (7 per seat, all lost): with 6 rounds left the best possible share is 6 of 20 = 30%, under the band, so the rest could not change the verdict. Each process held its own server root and port (25601, 25602); every round was a full 300 s. The `[botsim] health` lines (a sample every 30 s) show no burning troop in any of the 455 samples (180, 141 and 134 per round) and, in 454 of them, at most 2 troops that stood still for the 30 s with no target, no rout and no Hold order; one sample had 15 (round 1, match 5, 180 s, map 4) and the next one, 30 s later, had none.
+
+#### Round 0: the spec numbers (all 20 matches)
+
+Process 1 (port 25601, `graveborn_normal` on team 0) and process 2 (port 25602, `gilded_normal` on team 0), servers up 16:10 to 17:05:
+
+```
+[botsim] matches=10 dawn(normal)=3 dusk(normal)=7 draws=0 dawnWin=30% meanGoldEarnedAtEnd dawn=1306 dusk=1639 banner0=graveborn_normal banner1=gilded_normal
+[botsim] matches=10 dawn(normal)=10 dusk(normal)=0 draws=0 dawnWin=100% meanGoldEarnedAtEnd dawn=1686 dusk=1251 banner0=gilded_normal banner1=graveborn_normal
+```
+
+Gate (`python tools/balance_gate.py <root1>/botsim/results.csv <root2>/botsim/results.csv graveborn_normal --detail`; the roots are `work/p2/t7-sim1-160953` and `work/p2/t7-sim2-161013`):
+
+```
+work/p2/t7-sim1-160953/botsim/results.csv: graveborn_normal on dawn: won=3 lost=7 drawn=0 aborted=0
+work/p2/t7-sim2-161013/botsim/results.csv: graveborn_normal on dusk: won=0 lost=10 drawn=0 aborted=0
+  map 0 (dawn): won=1 lost=1 drawn=0 aborted=0
+  map 1 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 2 (dawn): won=1 lost=1 drawn=0 aborted=0
+  map 3 (dawn): won=1 lost=1 drawn=0 aborted=0
+  map 4 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 0 (dusk): won=0 lost=2 drawn=0 aborted=0
+  map 1 (dusk): won=0 lost=2 drawn=0 aborted=0
+  map 2 (dusk): won=0 lost=2 drawn=0 aborted=0
+  map 3 (dusk): won=0 lost=2 drawn=0 aborted=0
+  map 4 (dusk): won=0 lost=2 drawn=0 aborted=0
+rounds=20 decided=20 won=3 lost=17 drawn=0
+gate graveborn_normal vs gilded_normal win=15% fail
+```
+
+What the numbers say (the last gold sample of a round is at 270 s):
+
+- `graveborn_normal` won 3 of 20 (3 of 10 from Dawn's seat, 0 of 10 from Dusk's), so Gilded still leads from either seat; in the Task 6 gate Graveborn won none of 20, so the Graveborn mechanics moved it from 0% to 15%.
+- Mean final score 47.8 to 99.8 (Task 6: 45.7 to 105.0); mean gold earned 1107 to 1466; troops alive at 270 s 48.9 to 45.6 of 57.
+- By the second, the mean of the 20 rounds: gold is level to 120 s (402 to 409); at 150 s Graveborn has 46.7 troops left against Gilded's 52.5 and at 180 s 48.7 against 53.4; gold is 690 to 802 at 180 s and 957 to 1244 at 240 s. Gilded's losses pass Graveborn's only from 210 s (48.2 to 52.0 alive), when the points are already Gilded's. The gap is the first clash and the points it decides.
+- By count and hit points the two banners are close (`graveborn_normal` is 466 hit points in 19 troops, `gilded_normal` 552 hit points in 19 troops with 10 shield bearers). Which part of the first clash Graveborn loses is not measured here; the Gilded shield bearers (x0.55 from arrows and blight, counters C1 to C3 on the front) face 9 of Graveborn's 19 troops that fire arrows or blight, and the Gilded longbow (range 30) outranges every Graveborn archer. That is a reading of the sheet, not a result of the run.
+
+#### Round 1 (tuned, stopped at 14 decided rounds)
+
+The changes are in the tuning log. Roots `work/p2/t7-sim1-171824` and `work/p2/t7-sim2-171844`.
+
+```
+work/p2/t7-sim1-171824/botsim/results.csv: graveborn_normal on dawn: won=0 lost=7 drawn=0 aborted=0
+work/p2/t7-sim2-171844/botsim/results.csv: graveborn_normal on dusk: won=0 lost=7 drawn=0 aborted=0
+  map 0 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 1 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 2 (dawn): won=0 lost=1 drawn=0 aborted=0
+  map 3 (dawn): won=0 lost=1 drawn=0 aborted=0
+  map 4 (dawn): won=0 lost=1 drawn=0 aborted=0
+  map 0 (dusk): won=0 lost=2 drawn=0 aborted=0
+  map 1 (dusk): won=0 lost=2 drawn=0 aborted=0
+  map 2 (dusk): won=0 lost=1 drawn=0 aborted=0
+  map 3 (dusk): won=0 lost=1 drawn=0 aborted=0
+  map 4 (dusk): won=0 lost=1 drawn=0 aborted=0
+rounds=14 decided=14 won=0 lost=14 drawn=0
+gate graveborn_normal vs gilded_normal win=0% fail
+```
+
+- Mean final score 68.4 to 90.8; mean gold earned 1234 to 1435; troops alive at 270 s 52.0 to 43.0. At 120 s Graveborn is ahead on gold (503 to 384) and at 150 s it has 45.3 troops left against 55.1: it reaches the points first and still loses the first clash.
+
+#### Round 2 (tuned further, stopped at 14 decided rounds)
+
+Roots `work/p2/t7-sim1-181133` and `work/p2/t7-sim2-181153`.
+
+```
+work/p2/t7-sim1-181133/botsim/results.csv: graveborn_normal on dawn: won=0 lost=7 drawn=0 aborted=0
+work/p2/t7-sim2-181153/botsim/results.csv: graveborn_normal on dusk: won=0 lost=7 drawn=0 aborted=0
+  map 0 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 1 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 2 (dawn): won=0 lost=1 drawn=0 aborted=0
+  map 3 (dawn): won=0 lost=1 drawn=0 aborted=0
+  map 4 (dawn): won=0 lost=1 drawn=0 aborted=0
+  map 0 (dusk): won=0 lost=2 drawn=0 aborted=0
+  map 1 (dusk): won=0 lost=2 drawn=0 aborted=0
+  map 2 (dusk): won=0 lost=1 drawn=0 aborted=0
+  map 3 (dusk): won=0 lost=1 drawn=0 aborted=0
+  map 4 (dusk): won=0 lost=1 drawn=0 aborted=0
+rounds=14 decided=14 won=0 lost=14 drawn=0
+gate graveborn_normal vs gilded_normal win=0% fail
+```
+
+- Mean final score 71.8 to 87.8; mean gold earned 1255 to 1423; troops alive at 270 s 51.6 to 39.5; at 150 s 46.5 against 54.1 alive.
+- The gap in final score fell from 52 points (round 0) to 22 (round 1) and 16 (round 2), and Graveborn ends each round with more troops than Gilded, but it won no round of the 28 tuned ones. The closest rounds were on map 4: 97 to 101 with Graveborn on Dawn and 89 to 105 with it on Dusk.
+
+Result: the gate fails. Two tuning rounds within 15% of the spec numbers did not bring `graveborn_normal` into the band, so the tuning stops here (the plan's rule), and the Graveborn numbers stay as round 2 left them (the tuning log lists every spec value, so a revert is mechanical). The Task 7 report puts the options to Kort.
 
 ### Phase 2 Task 6 gate: `gilded_normal` vs `graveborn_normal` (2026-10-19, report-only)
 
@@ -175,4 +272,23 @@ What the numbers say (from the two runs' `results.csv` and `gold.csv`; the last 
 
 ## Tuning log
 
-None yet: Phase 2 Tasks 3 and 6 change no sheet numbers (the Task 6 gate is report-only by ruling).
+Phase 2 Tasks 3 and 6 changed no sheet numbers (the Task 6 gate is report-only by ruling). Task 7 changed these Graveborn rows in `sheets/design.json`, each within 15% of its spec value; the percentages are against the spec value, and a whole-number column (health, damage, cooldown) moves in whole numbers.
+
+Round 1 (2026-10-21), the five troops of `graveborn_normal`:
+
+- Risen (revenant): health 26 to 29 (+11.5%), cooldown 25 to 22 ticks (-12%), speed 0.25 to 0.28 (+12%).
+- Bonebow: health 18 to 20 (+11.1%), cooldown 40 to 35 (-12.5%), speed 0.27 to 0.30 (+11.1%).
+- Grave Reaper: health 34 to 39 (+14.7%), damage 8 to 9 (+12.5%), cooldown 30 to 26 (-13.3%), speed 0.30 to 0.33 (+10%).
+- Barrow Stalker: health 20 to 22 (+10%), cooldown 40 to 35 (-12.5%), speed 0.30 to 0.33 (+10%).
+- Gravecaller (hexer): health 22 to 25 (+13.6%), damage 7 to 8 (+14.3%), cooldown 55 to 48 (-12.7%), speed 0.27 to 0.30 (+11.1%).
+- Result: 0 of 14, mean final score 68.4 to 90.8 (round 0: 47.8 to 99.8).
+
+Round 2 (2026-10-21), on top of round 1:
+
+- Reach: Risen and Grave Reaper 2.8 to 3.0 (+7.1%; preflight keeps a melee reach at 3 or less), Bonebow 22 to 25 (+13.6%), Barrow Stalker 26 to 29 (+11.5%), Gravecaller 18 to 20 (+11.1%).
+- Training time: Risen and Bonebow 3.0 to 2.6 s (-13.3%), Grave Reaper and Barrow Stalker 6.0 to 5.2 s (-13.3%), Gravecaller 8.0 to 7.0 s (-12.5%).
+- Rise Again chance (`graveborn_1`, `graveborn_2`, `graveborn_3`): 10% to 11% (+10%), 25% to 28% (+12%), 40% to 45% (+12.5%); the row texts say the new numbers.
+- Cleave (`cleave_reaper`): 50% to 57% of the blow (+14%); the row text says it.
+- Result: 0 of 14, mean final score 71.8 to 87.8.
+
+Not changed: the Hollow King (not in the normal banner), costs, the fearless, dread, frostshot and blight rows, and the Gilded rows. The Task 7 tests that read a Graveborn number (the Rise Again chances and the cleave share) follow the tuned sheet.
