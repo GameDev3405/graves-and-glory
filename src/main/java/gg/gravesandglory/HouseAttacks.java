@@ -33,10 +33,11 @@ public final class HouseAttacks {
         // The low lunging swipe: the arm out at the right (yaw 70) and swept across to -40, the body down into the lunge.
         v.put("wildmoot",new Clip("attack").rot("right_arm",0,0,0,0, .1f,-60,70,0, .25f,-60,-40,0, .5f,0,0,0).rot("body",0,0,0,0, .25f,30,0,0, .5f,0,0,0)
             .rot("right_hand",0,0,0,0, .1f,0,0,0, .25f,105,0,0, .5f,0,0,0).build());
-        // The two-handed shoulder chop: both arms up to -150 and down to level at the waist (-60, the blade level: 105 at the wrist), the shoulders behind it. It stops
-        // there; the Graveborn hack goes through to the ground (fix round 1: at -20 the two ended alike, stooped with the blade at the feet).
+        // The two-handed shoulder chop: both arms up to -150 and down to the waist (-60), the blade biting down below level (135 at the wrist: the blade rests 45 degrees up
+        // from level in the hand, so level at -60 takes 105, wildmoot's swipe), the shoulders behind it. The Graveborn hack goes through to the ground (fix round 1: at -20 the
+        // two ended alike, stooped with the blade at the feet; round 2: at 105 the chop ended on wildmoot's level blade in the stills).
         v.put("ironclad",new Clip("attack").rot("right_arm",0,0,0,0, .2f,-150,0,0, .35f,-60,0,0, .5f,0,0,0).rot("left_arm",0,0,0,0, .2f,-150,0,0, .35f,-60,0,0, .5f,0,0,0)
-            .rot("body",0,0,0,0, .35f,15,0,0, .5f,0,0,0).rot("right_hand",0,0,0,0, .2f,0,0,0, .35f,105,0,0, .5f,0,0,0).build());
+            .rot("body",0,0,0,0, .35f,15,0,0, .5f,0,0,0).rot("right_hand",0,0,0,0, .2f,0,0,0, .35f,135,0,0, .5f,0,0,0).build());
         // The wide sweeping lunge: the arm from far out (yaw 90) across to -60, the body turning 25 with it, the left leg stepping out.
         v.put("tidecallers",new Clip("attack").rot("right_arm",0,0,0,0, .1f,-80,90,0, .3f,-80,-60,0, .5f,0,0,0).rot("body",0,0,0,0, .3f,0,25,0, .5f,0,0,0)
             .rot("left_leg",0,0,0,0, .3f,-20,0,0, .5f,0,0,0).rot("right_hand",0,0,0,0, .1f,0,0,0, .3f,125,0,0, .5f,0,0,0).build());

@@ -176,7 +176,7 @@ public final class TroopAnimator {
         final Channel still=new Channel(),move=new Channel(),pose=new Channel(),tell=new Channel();final Map<String,Channel> overlays=new HashMap<>();
         final Fade look=new Fade(1);final float phase;final int id;boolean fresh=true;
         boolean swinging;int swingTicks,hurt;String scene,lastPose;boolean armHeld;
-        /** The tick of the frame before: a tell starts when a period boundary lies between it and this frame's tick, so a hitch that skips the boundary's own tick does not skip the tell. */
+        /** The tick of the frame before: a tell starts when a period boundary lies between it and this frame's tick, so a hitch that skips the boundary's own tick does not skip the tell (across TroopTells.CATCH_UP_TICKS or fewer). */
         int lastTick=Integer.MIN_VALUE;
         /** The idle phase is offset by the entity id, so a line of troops does not breathe in step; so is the tell (TroopTells.STAGGER_TICKS). */
         public State(int id){this.id=id;phase=Math.floorMod(id*7919,3000);}
@@ -203,12 +203,13 @@ public final class TroopAnimator {
         /**
          * The idle tell (TroopTells): while the troop stands still, with no pose or overlay on it (none still fading out either), a tell
          * starts on the first frame at or after each tick at which (tick + id % STAGGER_TICKS) % PERIOD_TICKS is 0 (the first frame after the boundary
-         * when a hitch or a slow frame rate skipped its own tick). A tell that plays when the troop moves, strikes, is hurt or is posed fades out over
-         * BLEND_TICKS; one that ends keeps its last frame, which is at rest.
+         * when a hitch or a slow frame rate skipped its own tick, for a gap of TroopTells.CATCH_UP_TICKS or less between frames: a longer gap is a troop that was not
+         * drawn, which starts nothing on its first frame back and waits for its own next boundary, so troops coming back into view are not in step). A tell that plays when
+         * the troop moves, strikes, is hurt or is posed fades out over BLEND_TICKS; one that ends keeps its last frame, which is at rest.
          */
         private void tell(Plan p,float age){
             int tick=(int)Math.floor(age),shift=Math.floorMod(id,TroopTells.STAGGER_TICKS),before=lastTick==Integer.MIN_VALUE?tick-1:lastTick; // a first frame counts as the tick before it
-            boolean boundary=Math.floorDiv(tick+shift,TroopTells.PERIOD_TICKS)>Math.floorDiv(before+shift,TroopTells.PERIOD_TICKS);
+            boolean boundary=tick-before<=TroopTells.CATCH_UP_TICKS&&Math.floorDiv(tick+shift,TroopTells.PERIOD_TICKS)>Math.floorDiv(before+shift,TroopTells.PERIOD_TICKS);
             lastTick=tick;
             boolean quiet=p.still()&&pose.weight(age)<=0&&overlays.values().stream().allMatch(o->o.weight(age)<=0);
             if(!quiet)tell.clear(age);

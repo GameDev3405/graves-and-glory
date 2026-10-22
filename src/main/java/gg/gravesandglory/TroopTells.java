@@ -26,12 +26,20 @@ public final class TroopTells {
     public static final String TELL="tell";
     /** Ticks between one tell and the next of a troop, and the spread of the starts: an entity id mod STAGGER_TICKS shifts a troop's tell, so a line of troops does not move in step. */
     public static final int PERIOD_TICKS=160,STAGGER_TICKS=40;
+    /**
+     * The longest gap between two frames of a troop (ticks) across which a tell that fell due in it still starts, on the first frame after the boundary (a hitch, a frame rate under 20).
+     * A longer gap is a troop that was not drawn (culled off screen): it starts nothing on its first frame back and waits for its own next boundary, so a line of troops that comes back
+     * into view does not start in step.
+     */
+    public static final int CATCH_UP_TICKS=20;
     /** The shortest and longest a tell lasts, in seconds. */
     public static final float MIN_SECONDS=.8f,MAX_SECONDS=2f;
     /** Each troop's tell, by troop id (every Spec.TROOPS row has one). */
     public static final Map<String,Animation> TELLS;
     /** The mage's wrist turn during its tell, in degrees (the staff's head goes forward). */
     static final float MAGE_WRIST=75f;
+    /** The archer's hand takes this much of the carry's 45 degree rest yaw off in its tell (the draw's turn without its last 20 degrees), so the bow stands upright and still reads from the three-quarter front. */
+    static final float ARCHER_YAW_OFF=TroopAnimator.BOW_REST_YAW-20f;
     /** The second of each tell at which every bone it moves is at its headline angle (the still shots read it there). */
     public static final Map<String,Float> PEAKS;
     /** The clips of one troop in place of its rig's: troop id, then clip name. */
@@ -59,9 +67,9 @@ public final class TroopTells {
         // The shield arm already carries the shield 45 degrees forward, upright with its top at the chin (TroopAnimator.carries): the knight's and the sentinel's
         // tells add 15 degrees to that and lift the arm 1 px, so the shield rises about the chin instead of tipping over the head (fix round 1: -50 and -40 tipped it flat).
         tell(t,p,"knight",1.6f,.8f,c->{hold(c,"left_arm",.45f,1.15f,-15,0,0);lift(c,"left_arm",.45f,1.15f,1);hold(c,"head",.45f,1.15f,-5,0,0);});  // the shield to the chin
-        // The bow arm rises to -85 and its hand takes the draw's turn (pitch 90, roll 90, and the rest yaw the carry adds taken off), so the bow stands upright before the eye
-        // (fix round 1: at -70 with the hand at rest it lay along the forearm).
-        tell(t,p,"archer",1.8f,.75f,c->{hold(c,"left_arm",.5f,1f,-85,0,0);hold(c,"left_hand",.5f,1f,90,-TroopAnimator.BOW_REST_YAW,90);hold(c,"head",.5f,1f,-5,0,0);}); // the bow to the eye, and down
+        // The bow arm rises to -85 and its hand takes the draw's turn (pitch 90, roll 90, and 25 of the carry's 45 degrees of rest yaw taken off: 20 stay, so the bow stands upright
+        // before the eye and still shows its face from the three-quarter front; fix round 1: at -70 with the hand at rest it lay along the forearm, with all 45 off it was edge-on).
+        tell(t,p,"archer",1.8f,.75f,c->{hold(c,"left_arm",.5f,1f,-85,0,0);hold(c,"left_hand",.5f,1f,90,-ARCHER_YAW_OFF,90);hold(c,"head",.5f,1f,-5,0,0);}); // the bow to the eye, and down
         tell(t,p,"sentinel",1.4f,.65f,c->{hold(c,"left_arm",.5f,.8f,-15,0,0);lift(c,"left_arm",.5f,.8f,1);hold(c,"body",.5f,.8f,3,0,0);});       // the shield lifted, the feet set
         tell(t,p,"longbow",1.8f,.9f,c->hold(c,"left_arm",.5f,1.3f,-60,0,25));                                                     // sights with the bow canted
         // The staff stands upright in the hand, so the arm's lift alone tips its head back behind the hood: the wrist turns it forward (fix round 1).
