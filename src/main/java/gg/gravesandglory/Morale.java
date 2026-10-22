@@ -53,7 +53,7 @@ public final class Morale {
                 if(held)continue;
                 s.routedAt.put(group,b.time);
                 // Break contact at once: drop targets and paths so the group turns for home this tick.
-                for(var u:members){u.lockedTarget=null;u.spellCenter=null;u.mob.setTarget(null);u.mob.getNavigation().stop();u.nextPath=0;u.stuckTicks=0;}
+                for(var u:b.units)if(u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive()){u.lockedTarget=null;u.spellCenter=null;u.mob.setTarget(null);u.mob.getNavigation().stop();u.nextPath=0;u.stuckTicks=0;} // every living troop of the group, a temporary one too: it follows the group's orders
                 BattleEffects.horn(b,s,centre,"rout");
             }
         }
@@ -65,7 +65,7 @@ public final class Morale {
         List<GravesAndGlory.Unit> members=members(b,s,group);
         BattleEffects.horn(b,s,members.isEmpty()?s.target:centre(members),"rally");
     }
-    /** The army's living troops of a group that count toward its morale: a temporary troop (Grave Bloom's) is not one of them. */
+    /** The army's living troops of a group that count toward its morale: a temporary troop (Grave Bloom's) is not one of them. The rule for temporary troops: they share their group's orders and its rout (they retreat with it, break contact when it breaks, and rally with it) but not its morale numbers (its strength, its centre and its rout share). */
     static List<GravesAndGlory.Unit> members(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String group){
         List<GravesAndGlory.Unit> out=new ArrayList<>();for(var u:b.units)if(u.squad==s&&!u.temporary&&u.spec.group().equals(group)&&u.mob.isAlive())out.add(u);return out;
     }

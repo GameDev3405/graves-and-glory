@@ -1521,18 +1521,18 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 66->{ // p2-marshal-rallyhorn-spots: the horn's Move takes the order path's spot rules: while he stands in river water or inside the arena's 10-block edge margin no group is moved, and the rest of the horn still happens
                     var p=sp(b);
                     Vec3d river=null;for(int z=20;z<200&&river==null;z++){int x=(int)Math.round(CampaignMaps.riverX(z));if(Arena.river(x,z)&&Arena.ground(x,z)<64)river=new Vec3d(x+.5,Arena.ground(x,z)+1,z+.5);}
-                    Vec3d[] where={river,new Vec3d(.5,100,GravesAndGlory.R.arenaHalfZ()-5)};String[] name={"in river water","inside the edge margin"};
+                    Vec3d[] where={river,new Vec3d(.5,100,GravesAndGlory.R.arenaHalfZ()-5)};String[] name={"in river water","inside the edge margin"},words={"Choose dry ground or a crossing.","Too near the edge of the arena."};
                     boolean ok=river!=null&&!GravesAndGlory.Battle.inArena(where[1].x,where[1].z)&&GravesAndGlory.Battle.wet(where[0]==null?0:where[0].x,where[0]==null?0:where[0].z);StringBuilder why=new StringBuilder();
                     for(int i=0;i<2&&where[i]!=null;i++){
                         Map<String,GravesAndGlory.Assignment> before=new HashMap<>(own.assignments);
                         b.relocate(p,where[i].x,where[i].y,where[i].z,0,0);
                         Commander.reset(b,own);own.routedAt.put("ranged",b.time);own.steadyUntil.clear();long t=b.time;
-                        b.command(p,"ability");
+                        b.campaign.notices.remove(player);b.command(p,"ability");String said=b.campaign.notices.getOrDefault(player,"");
                         boolean unmoved=true;for(var gr:Spec.GROUPS)if(!gr.id().equals("all"))unmoved&=own.assignments.get(gr.id())==before.get(gr.id());
                         boolean horn=Commander.running(b,own,"rally_horn")&&!Morale.routing(own,"ranged")&&own.steadyUntil.getOrDefault("ranged",-1L)==t+800&&own.steadyUntil.getOrDefault("infantry",-1L)==t+400;
                         int speedy=0,troops=0;for(var u:fixture)if(u.mob.isAlive()){troops++;var a=u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);if(a!=null&&a.getModifier(Commander.RALLY)!=null)speedy++;}
-                        ok&=unmoved&&horn&&speedy==troops&&troops>0;
-                        why.append("he stands ").append(name[i]).append(" at ").append(fmt(where[i].x)).append(", ").append(fmt(where[i].z)).append(": no group got a new order=").append(unmoved).append("; the horn still ran, rallied the archers and set the steadiness=").append(horn).append("; the speed reached ").append(speedy).append(" of ").append(troops).append(" troops; ");
+                        boolean spoke=said.equals(words[i]);ok&=unmoved&&horn&&speedy==troops&&troops>0&&spoke;
+                        why.append("he stands ").append(name[i]).append(" at ").append(fmt(where[i].x)).append(", ").append(fmt(where[i].z)).append(": no group got a new order=").append(unmoved).append("; the horn still ran, rallied the archers and set the steadiness=").append(horn).append("; the speed reached ").append(speedy).append(" of ").append(troops).append(" troops; the notice read \"").append(said).append("\" (want \"").append(words[i]).append("\")=").append(spoke).append("; ");
                     }
                     Commander.reset(b,own);b.relocate(p,site.getX()-8.5,site.getY(),site.getZ()+.5,90,20);
                     report("p2-marshal-rallyhorn-spots",ok,"(river spot "+(river==null?"none found":fmt(river.x)+", "+fmt(river.z)+", ground "+Arena.ground((int)river.x,(int)river.z))+") "+why);
@@ -1619,6 +1619,8 @@ public final class Phase2Checks implements ClientModInitializer {
         GravesAndGlory.Unit risen,riseK1,riseControl,riseK2;float hpK1,hpK2;boolean riseOk,heldStun,controlHit,afterStun;String riseWhy="";int soulsBefore;
         // Grave Bloom
         Vec3d aim;final List<GravesAndGlory.Unit> bloom=new ArrayList<>(),corpses=new ArrayList<>();boolean bloomOk;String bloomWhy="";boolean shown;int deathsAfter;
+        // a stunned caster, and temporary troops in morale
+        final GravesAndGlory.Unit[] hexers=new GravesAndGlory.Unit[3],victims=new GravesAndGlory.Unit[3];float midHealth;boolean midSlow;String stunWhy="";boolean stunOk;final List<GravesAndGlory.Unit> temps=new ArrayList<>();
         // the cleanup and the tick cost
         TickCost cost;boolean pathsOk,inserted;String pathsWhy="";GravesAndGlory.Unit loose;int toMap;Vec3d lobbySpot;
 
@@ -1763,19 +1765,19 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 6->{if(since(b)<10)return;stageFixture(b);Houses.forceRise=Boolean.FALSE;next(b,10);}
                 case 10->{ // p2-cleave: a Grave Reaper hits a bare Risen with a second Risen 1.5 beside it, a third 1.8 away and a fourth 3.2 away
                     reaper=post(b,dawn,"reaper",0,-3,0,true);var first=bare(post(b,dusk,"revenant",0,0,180,true));var nearOne=bare(post(b,dusk,"revenant",1.5,0,180,true));var second=bare(post(b,dusk,"revenant",-1.8,0.3,180,true));var far=bare(post(b,dusk,"revenant",3.2,0,180,true));
-                    var row=Abilities.row(reaper.spec);boolean sheet=row.id().equals("cleave_reaper")&&row.mechanic().equals("cleave")&&near(row.radius(),2)&&near(row.amount(),0.57);
+                    var row=Abilities.row(reaper.spec);double share=row.amount();boolean sheet=row.id().equals("cleave_reaper")&&row.mechanic().equals("cleave")&&near(row.radius(),2)&&share>0&&share<1;
                     StringBuilder why=new StringBuilder();boolean ok=sheet;
                     var mark=Combat.LAST.peekLast();float h1=first.mob.getHealth(),hn=nearOne.mob.getHealth(),hs=second.mob.getHealth(),hf=far.mob.getHealth();
                     float base=(float)Abilities.baseHit(b,reaper);strike(b,reaper,first,base);
                     var onFirst=Gilded.hitOn(first.mob,mark);var onNear=Gilded.hitOn(nearOne.mob,mark);var onSecond=Gilded.hitOn(second.mob,mark);var onFar=Gilded.hitOn(far.mob,mark);
                     float lf=h1-first.mob.getHealth(),ln=hn-nearOne.mob.getHealth(),ls=hs-second.mob.getHealth(),lfar=hf-far.mob.getHealth();
-                    boolean run1=onFirst!=null&&lf>0&&onNear!=null&&Math.abs(onNear.base()-onFirst.base()*0.57)<1e-4&&near(onNear.total(),onFirst.total())&&Math.abs(ln-lf*0.57f)<1e-3&&onSecond==null&&ls==0&&onFar==null&&lfar==0;
-                    ok&=run1;why.append("a Grave Reaper's blow (").append(row.id()).append(", radius ").append(row.radius()).append(", share ").append(row.amount()).append(")="+sheet+" hit the first Risen ").append(show(onFirst)).append(", it lost ").append(lf).append("; the Risen 1.5 beside it ").append(show(onNear)).append(", it lost ").append(ln).append(" (want 0.57 of the first); the one 1.8 off lost ").append(ls).append(onSecond==null?" (no hit logged)":" ("+show(onSecond)+")").append(" and the one 3.2 off lost ").append(lfar).append(" (only the nearest other enemy is struck)="+run1+"; ");
+                    boolean run1=onFirst!=null&&lf>0&&onNear!=null&&Math.abs(onNear.base()-onFirst.base()*share)<1e-4&&near(onNear.total(),onFirst.total())&&Math.abs(ln-lf*(float)share)<1e-3&&onSecond==null&&ls==0&&onFar==null&&lfar==0;
+                    ok&=run1;why.append("a Grave Reaper's blow (").append(row.id()).append(", radius ").append(row.radius()).append(", share ").append(row.amount()).append(")="+sheet+" hit the first Risen ").append(show(onFirst)).append(", it lost ").append(lf).append("; the Risen 1.5 beside it ").append(show(onNear)).append(", it lost ").append(ln).append(" (want "+fmt(share)+" of the first); the one 1.8 off lost ").append(ls).append(onSecond==null?" (no hit logged)":" ("+show(onSecond)+")").append(" and the one 3.2 off lost ").append(lfar).append(" (only the nearest other enemy is struck)="+run1+"; ");
                     // run 2: the nearest is gone, the next one is struck; run 3: nobody within 2, nobody struck
                     drop(b,nearOne);mark=Combat.LAST.peekLast();h1=first.mob.getHealth();hs=second.mob.getHealth();hf=far.mob.getHealth();strike(b,reaper,first,base);
                     onFirst=Gilded.hitOn(first.mob,mark);onSecond=Gilded.hitOn(second.mob,mark);onFar=Gilded.hitOn(far.mob,mark);lf=h1-first.mob.getHealth();ls=hs-second.mob.getHealth();lfar=hf-far.mob.getHealth();
-                    boolean run2=onFirst!=null&&lf>0&&onSecond!=null&&Math.abs(ls-lf*0.57f)<1e-3&&onFar==null&&lfar==0;ok&=run2;
-                    why.append("with the nearest gone the Risen 1.8 off took ").append(ls).append(" of the ").append(lf).append(" the first took (want 0.57 of it) and the one 3.2 off ").append(lfar).append("="+run2+"; ");
+                    boolean run2=onFirst!=null&&lf>0&&onSecond!=null&&Math.abs(ls-lf*(float)share)<1e-3&&onFar==null&&lfar==0;ok&=run2;
+                    why.append("with the nearest gone the Risen 1.8 off took ").append(ls).append(" of the ").append(lf).append(" the first took (want "+fmt(share)+" of it) and the one 3.2 off ").append(lfar).append("="+run2+"; ");
                     drop(b,second);mark=Combat.LAST.peekLast();h1=first.mob.getHealth();hf=far.mob.getHealth();strike(b,reaper,first,base);
                     onFar=Gilded.hitOn(far.mob,mark);lf=h1-first.mob.getHealth();lfar=hf-far.mob.getHealth();boolean run3=lf>0&&onFar==null&&lfar==0;ok&=run3;
                     why.append("with nobody within 2 of the target the Risen 3.2 off lost ").append(lfar).append("="+run3);
@@ -1911,7 +1913,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean alive=risen.mob.isAlive()&&b.units.contains(risen);float want=(float)(trait==null?-1:trait.value2()*risen.mob.getMaxHealth());
                     boolean stats=risen.rose&&risen.stunnedUntil==died+20&&Math.abs(risen.mob.getHealth()-want)<0.01&&BattleEffects.souls==soulsBefore+1&&dusk.stats.lost==0&&dawn.stats.kills==killsBefore&&dawn.stats.goldEarned==goldBefore&&b.deaths.isEmpty();
                     audit(b,"rise",false);boolean team=sideMembers(b).stream().anyMatch(m->m.endsWith(risen.mob.getEntityName()));
-                    boolean sheet=trait!=null&&trait.mechanic().equals("rise_again")&&near(trait.value(),0.11)&&near(trait.value2(),0.3)&&trait.durationTicks()==20&&dusk.traits.getOrDefault("graveborn",0)==1;
+                    boolean sheet=trait!=null&&trait.mechanic().equals("rise_again")&&trait.value()>0&&trait.value()<1&&near(trait.value2(),0.3)&&trait.durationTicks()==20&&dusk.traits.getOrDefault("graveborn",0)==1;
                     riseOk=alive&&stats&&team&&sheet;
                     riseWhy="a Graveborn army at tier "+dusk.traits+" (row "+(trait==null?"none":trait.id()+": chance "+trait.value()+", back at "+trait.value2()+" of its health, stunned "+trait.durationTicks()+" ticks")+")="+sheet+"; a Risen at 1 health struck dead by an Order Squire with the roll forced: alive and still in the army="+alive+", health "+fmt(risen.mob.getHealth())+" of "+fmt(risen.mob.getMaxHealth())+" (want "+fmt(want)+"), rose="+risen.rose+", stunned until +"+(risen.stunnedUntil-died)+" (want 20), soul effects +"+(BattleEffects.souls-soulsBefore)+", the army lost "+dusk.stats.lost+" troops and the Squire's army earned "+(dawn.stats.kills-killsBefore)+" kills and "+(dawn.stats.goldEarned-goldBefore)+" gold (all 0: it did not die), the death log holds "+b.deaths.size()+" (want 0)="+stats+", still on its side's team="+team+"; ";
                     // it is ready to strike again at once; a control Risen beside a second Squire is let loose now, and shows the setup lets a Risen strike inside the window
@@ -1955,18 +1957,70 @@ public final class Phase2Checks implements ClientModInitializer {
                 }
                 case 43->{ // p2-rise-chance: the roll's share by tier (20000 rolls each), and the whole hook at tier III (800 falls of one Risen)
                     Houses.forceRise=null;StringBuilder why=new StringBuilder();boolean ok=true;
-                    double[] want={0.11,0.28,0.45};
+                    double[] want=new double[3];for(int tier=1;tier<=3;tier++){var row=CounterMath.trait(Spec.HOUSETRAITS,"graveborn",tier);want[tier-1]=row==null?-1:row.value();} // the sheet's chances, whatever a gate has tuned them to
                     for(int tier=1;tier<=3;tier++){
                         var t=CounterMath.trait(Spec.HOUSETRAITS,"graveborn",tier);int n=20000,hits=0;for(int i=0;i<n;i++)if(Houses.rolls(b,t))hits++;
-                        double share=hits/(double)n;boolean row=t!=null&&t.mechanic().equals("rise_again")&&near(t.value(),want[tier-1])&&near(t.value2(),0.3)&&t.durationTicks()==20;boolean good=row&&Math.abs(share-want[tier-1])<0.02;ok&=good;
+                        double share=hits/(double)n;boolean row=t!=null&&t.mechanic().equals("rise_again")&&near(t.value(),want[tier-1])&&want[tier-1]>0&&near(t.value2(),0.3)&&t.durationTicks()==20;boolean good=row&&Math.abs(share-want[tier-1])<0.02;ok&=good;
                         why.append("tier ").append(tier).append(": row chance ").append(t==null?"none":t.value()).append(", ").append(hits).append(" of ").append(n).append(" rolls rose (").append(fmt(share*100)).append("%, want ").append(fmt(want[tier-1]*100)).append("%)").append(good?"":" (BAD)").append("; ");
                     }
                     var one=post(b,dusk,"revenant",0,0,0,true);var src=b.world.getDamageSources().generic();int rises=0;dusk.traits.put("graveborn",3);
                     for(int i=0;i<800;i++){one.rose=false;one.stunnedUntil=0;one.mob.setHealth(1f);if(!Houses.allowDeath(one.mob,src))rises++;}
                     dusk.traits.clear();int untiered=0;for(int i=0;i<800;i++){one.rose=false;one.mob.setHealth(1f);if(!Houses.allowDeath(one.mob,src))untiered++;}
-                    boolean hook=Math.abs(rises/800.0-0.4)<0.08&&untiered==0;ok&=hook;Houses.recompute(dusk);
-                    why.append("through the hook at tier III ").append(rises).append(" of 800 falls rose (want about 320); with no tier ").append(untiered).append(" of 800 did (want 0)=").append(hook);
-                    report("p2-rise-chance",ok,why.toString());clearFixture(b,"rise-chance");Houses.forceRise=Boolean.FALSE;next(b,50);
+                    double chance=want[2],spread=Math.sqrt(chance*(1-chance)/800);boolean hook=Math.abs(rises/800.0-chance)<4*spread&&untiered==0;ok&=hook;Houses.recompute(dusk); // four standard deviations of 800 rolls (about 0.07 of them), so a fair roll fails about once in 16000 runs
+                    why.append("through the hook at tier III ").append(rises).append(" of 800 falls rose (want about ").append(Math.round(chance*800)).append(", within ").append(fmt(4*spread*800)).append("); with no tier ").append(untiered).append(" of 800 did (want 0)=").append(hook);
+                    report("p2-rise-chance",ok,why.toString());clearFixture(b,"rise-chance");Houses.forceRise=Boolean.FALSE;next(b,46);
+                }
+                case 46->{ // p2-stunned-caster: three Gravecallers of a Graveborn army each begin a blight at a bare Order Squire 8 blocks off; one is struck dead and rises (its stun), one is stunned directly, one is the control
+                    reset(own);dusk.order="hold";dawn.order="hold";Houses.forceRise=Boolean.TRUE;
+                    for(int i=0;i<6;i++)post(b,dusk,"revenant",-12+i*1.5,12,0,true);
+                    double[] xs={-10,0,10};
+                    for(int i=0;i<3;i++){hexers[i]=post(b,dusk,"hexer",xs[i],-8,0,true);victims[i]=bare(post(b,dawn,"knight",xs[i],0,180,true));}
+                    var killer=post(b,dawn,"knight",-10,-5,180,true);Houses.recompute(dusk);
+                    for(int i=0;i<3;i++){hexers[i].abilityAt=0;Abilities.attack(b,hexers[i],victims[i].mob,b.time);}
+                    boolean begun=true;for(var h:hexers)begun&=h.spellCenter!=null&&h.windupUntil==b.time+20;
+                    hexers[0].mob.setHealth(1f);strike(b,killer,hexers[0],500f);
+                    hexers[1].stunnedUntil=b.time+30;t0=b.time;
+                    boolean rose=hexers[0].rose&&hexers[0].mob.isAlive()&&hexers[0].stunnedUntil==t0+20&&hexers[0].spellCenter==null&&hexers[1].spellCenter!=null&&hexers[2].spellCenter!=null;
+                    stunOk=begun&&rose;
+                    stunWhy="all three Gravecallers began a blight with a windup of 20="+begun+"; one struck dead with the roll forced rose (rose="+hexers[0].rose+", stunned until +"+(hexers[0].stunnedUntil-t0)+"), and the spell it had begun is gone (spell centre "+(hexers[0].spellCenter==null?"none":"still set")+"), while the other two still hold theirs="+rose+"; ";
+                    next(b,47);
+                }
+                case 47->{ // each tick as Tactics does on its beat: the stunned ones land nothing; once its stun is over the risen one casts again; the control lands its blight
+                    long t=b.time-t0;
+                    for(int i=0;i<3;i++)Abilities.tick(b,hexers[i],victims[i].mob,b.time);
+                    if(t==24){midHealth=victims[0].mob.getHealth();midSlow=victims[0].mob.hasStatusEffect(StatusEffects.SLOWNESS);}
+                    if(t==25){hexers[0].abilityAt=0;Abilities.attack(b,hexers[0],victims[0].mob,b.time);}
+                    if(t>=55){
+                        var max=victims[0].mob.getMaxHealth();
+                        boolean cancelled=midHealth==max&&!midSlow&&victims[1].mob.getHealth()==max&&!victims[1].mob.hasStatusEffect(StatusEffects.SLOWNESS)&&hexers[1].spellCenter==null;
+                        boolean again=victims[0].mob.getHealth()<max;boolean control=victims[2].mob.getHealth()<max&&victims[2].mob.hasStatusEffect(StatusEffects.SLOWNESS);
+                        stunOk&=cancelled&&again&&control;
+                        stunWhy+="the risen one's target had "+fmt(midHealth)+" of "+fmt(max)+" at +24, after the cast's 20 ticks of windup (want full, no Slowness), and the directly stunned one's "+fmt(victims[1].mob.getHealth())+" at +55 with no Slowness and its spell dropped="+cancelled+"; the risen one cast again at +25, once its stun was over, and its target lost "+fmt(max-victims[0].mob.getHealth())+"="+again+"; the control Gravecaller's target lost "+fmt(max-victims[2].mob.getHealth())+" and is slowed="+control;
+                        report("p2-stunned-caster",stunOk,stunWhy);
+                        clearFixture(b,"stunned-caster");Houses.forceRise=Boolean.FALSE;next(b,48);
+                    }
+                }
+                case 48->{ // p2-temporary-morale: three temporary Risen with a target and a spell, ten Order Squires of the army at 10% strength with a Dusk Squire in sight
+                    reset(own);group.clear();temps.clear();Houses.forceRise=Boolean.FALSE;
+                    for(int i=0;i<10;i++)group.add(post(b,own,"knight",-6+(i%5)*1.5,-5+(i/5)*1.5,-90,true));
+                    for(int i=0;i<3;i++){var tmp=post(b,own,"revenant",-10+i*1.5,22,-90,true);tmp.temporary=true;tmp.expiresAt=b.time+2000;temps.add(tmp);}
+                    var foe=post(b,dusk,"knight",8,-4,90,true);Houses.recompute(own);
+                    var members=Morale.members(b,own,"infantry");Vec3d moraleCentre=Morale.centre(members),guardCentre=Abilities.centre(b,own,"infantry");
+                    boolean centres=members.size()==10&&guardCentre!=null&&guardCentre.squaredDistanceTo(moraleCentre)<1e-12;
+                    for(var tmp:temps){tmp.lockedTarget=foe.mob;tmp.lockUntil=b.time+1000;tmp.spellCenter=foe.mob.getPos();}
+                    group.get(0).lockedTarget=foe.mob;group.get(0).spellCenter=foe.mob.getPos();
+                    stunWhy="with three temporary Risen 22 blocks behind ten Squires the guards' centre ("+(guardCentre==null?"none":fmt(guardCentre.x-site.getX()-.5)+", "+fmt(guardCentre.z-site.getZ()-.5))+") is the centre morale counts ("+fmt(moraleCentre.x-site.getX()-.5)+", "+fmt(moraleCentre.z-site.getZ()-.5)+") of its "+members.size()+" members (want 10)="+centres+"; ";
+                    stunOk=centres;weaken(own,"infantry",group,0.10);t0=b.time;routedAfter=-1;next(b,49);
+                }
+                case 49->{ // the tick the group breaks: every troop of it, a temporary one too, has dropped its target and its spell and takes the retreat order
+                    if(Morale.routing(own,"infantry")||since(b)>80){
+                        boolean broke=Morale.routing(own,"infantry");
+                        boolean temporary=true;for(var tmp:temps)temporary&=tmp.lockedTarget==null&&tmp.spellCenter==null&&b.assignment(tmp).order.equals("retreat");
+                        boolean regular=group.get(0).lockedTarget==null&&group.get(0).spellCenter==null&&b.assignment(group.get(0)).order.equals("retreat");
+                        stunOk&=broke&&temporary&&regular;
+                        report("p2-temporary-morale",stunOk,stunWhy+"ten Squires at 10% strength broke "+(broke?(b.time-t0)+" ticks later":"never")+"="+broke+"; the three temporary Risen then had no target, no spell and the retreat order="+temporary+" (a Squire: "+regular+")");
+                        group.clear();temps.clear();clearFixture(b,"temporary morale");reset(own);Houses.recompute(own);next(b,50);
+                    }
                 }
                 case 50->{ // p2-grave-bloom: the Warlock on the platform; eight troops of both sides fall around a point 12 blocks ahead of him, and a stale entry sits in the log
                     var p=sp(b);if(p==null)return;reset(own);Commander.reset(b,own);own.order="hold";own.assignments.clear();
@@ -2025,12 +2079,14 @@ public final class Phase2Checks implements ClientModInitializer {
                     var scout=post(b,dusk,"knight",9,9,180,true);
                     b.command(p,"ability");
                     var temps=b.units.stream().filter(u->u.temporary).toList();bloom.clear();bloom.addAll(temps);
-                    Houses.forceRise=Boolean.TRUE;var lucky=group.get(0);lucky.mob.setHealth(1f);strike(b,scout,lucky,500f);boolean rose=lucky.mob.isAlive()&&lucky.rose&&!lucky.temporary;
-                    Houses.forceRise=Boolean.FALSE;var lost=group.get(1);lost.mob.setHealth(1f);strike(b,scout,lost,500f);
+                    Houses.forceRise=Boolean.TRUE;var lucky=group.get(0);final Vec3d luckyAt=lucky.mob.getPos();lucky.mob.setHealth(1f);strike(b,scout,lucky,500f);boolean rose=lucky.mob.isAlive()&&lucky.rose&&!lucky.temporary;
+                    Houses.forceRise=Boolean.FALSE;var lost=group.get(1);final Vec3d lostAt=lost.mob.getPos();lost.mob.setHealth(1f);strike(b,scout,lost,500f);
                     var spent=temps.isEmpty()?null:temps.get(0);if(spent!=null)fall(b,spent);
                     int standing=(int)b.units.stream().filter(u->u.temporary&&u.mob.isAlive()).count();
                     var row=own.stats.lost;var report=b.campaign.reportSquads(own);int reported=-1;for(var e:report)if(e.getAsJsonObject().get("you").getAsBoolean())reported=e.getAsJsonObject().get("lost").getAsInt();
-                    boolean before=temps.size()==2&&rose&&own.stats.lost==1&&reported==1&&standing==1&&!b.deaths.isEmpty()&&b.deaths.stream().noneMatch(d->d.team()==own.team&&d.troop().equals("revenant")&&d.time()!=b.time&&false);
+                    int loggedBefore=b.deaths.size();var entry=loggedBefore==1?b.deaths.get(0):null; // exactly one entry: the real loss, where it fell; none for the Risen that rose, the temporary one that crumbled, or the two Bloom raised
+                    boolean logged=entry!=null&&entry.team()==own.team&&entry.troop().equals("revenant")&&entry.time()==b.time&&distance(entry.at(),lostAt)<1&&distance(entry.at(),luckyAt)>1;
+                    boolean before=temps.size()==2&&rose&&own.stats.lost==1&&reported==1&&standing==1&&logged;
                     audit(b,"cleanup setup",false);
                     // the round ends
                     List<GravesAndGlory.Unit> everyone=new ArrayList<>(b.units);
@@ -2038,7 +2094,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     var result=b.campaign.results.get(player);int lostInReport=-1;if(result!=null&&result.has("squads"))for(var e:result.getAsJsonArray("squads"))if(e.getAsJsonObject().get("you").getAsBoolean())lostInReport=e.getAsJsonObject().get("lost").getAsInt();
                     boolean allGone=!b.running&&b.units.isEmpty()&&temporaries(b)==0&&everyone.stream().allMatch(u->u.mob.isRemoved())&&b.deaths.isEmpty();
                     audit(b,"after finish",true);boolean noTeams=sideMembers(b).isEmpty();
-                    report("p2-bloom-cleanup",before&&allGone&&noTeams&&lostInReport==1,"before the round ends: two temporary Risen were raised ("+temps.size()+"), a Risen of his own rose="+rose+", one real loss and one temporary one fell: the army's lost is "+own.stats.lost+" and the report's row says "+reported+" (want 1), "+standing+" temporary troop still stands (want 1), the death log holds "+b.deaths.size()+" (the real loss)="+before+"; after campaign.finish(-1): "+everyone.size()+" troops were in the battle and now the battle holds "+b.units.size()+" ("+temporaries(b)+" temporary), every one of their entities is removed="+everyone.stream().allMatch(u->u.mob.isRemoved())+", the death log holds "+b.deaths.size()+", the round is over="+!b.running+", the final report says lost "+lostInReport+" (want 1), the four gg_ teams hold "+sideMembers(b).size()+" members="+noTeams);
+                    report("p2-bloom-cleanup",before&&allGone&&noTeams&&lostInReport==1,"before the round ends: two temporary Risen were raised ("+temps.size()+"), a Risen of his own rose="+rose+", one real loss and one temporary one fell: the army's lost is "+own.stats.lost+" and the report's row says "+reported+" (want 1), "+standing+" temporary troop still stands (want 1), the death log held "+loggedBefore+(entry==null?" entries":" entry ("+entry.troop()+" of team "+entry.team()+", "+fmt(distance(entry.at(),lostAt))+" from where the real loss fell and "+fmt(distance(entry.at(),luckyAt))+" from the Risen that rose)")+" (want exactly one, the real loss)="+logged+", all of it together="+before+"; after campaign.finish(-1): "+everyone.size()+" troops were in the battle and now the battle holds "+b.units.size()+" ("+temporaries(b)+" temporary), every one of their entities is removed="+everyone.stream().allMatch(u->u.mob.isRemoved())+", the death log holds "+b.deaths.size()+" (want 0), the round is over="+!b.running+", the final report says lost "+lostInReport+" (want 1), the four gg_ teams hold "+sideMembers(b).size()+" members="+noTeams);
                     fixture.clear();pins.clear();group.clear();corpses.clear();bloom.clear();next(b,54);
                 }
                 case 54->{ // p2-bloom-cleanup-paths, the map switch: in the lobby, a temporary Risen is loose and a death is logged; the arena changes

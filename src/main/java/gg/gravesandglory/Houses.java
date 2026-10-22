@@ -85,7 +85,7 @@ final class Houses {
      * Rise Again (ServerLivingEntityEvents.ALLOW_DEATH, which runs as a blow takes a troop's health to 0): a troop whose own House's trait at its
      * army's tier is rise_again (Graveborn) may rise instead of dying, once, when a roll falls below the tier's value. It does not for a Legendary,
      * a temporary troop (Grave Bloom's), one that already rose, damage that bypasses invulnerability (the void, /kill) or an army below tier I.
-     * A rise sets its health to value2 of its maximum, marks it rose, stuns it for the row's durationTicks (Tactics skips its attacks) and returns
+     * A rise sets its health to value2 of its maximum, marks it rose, stuns it for the row's durationTicks (Tactics skips its attacks, and a spell it had begun is lost) and returns
      * false, which skips vanilla's death and AFTER_DEATH: so the army loses nothing, the enemy earns no kill and the death log gains no entry.
      */
     static boolean allowDeath(LivingEntity e, DamageSource src) {
@@ -97,6 +97,7 @@ final class Houses {
         if (t == null || !t.mechanic().equals("rise_again") || !rolls(b, t)) return true;
         u.rose = true;
         u.stunnedUntil = b.time + t.durationTicks();
+        u.spellCenter = null; // a stunned caster loses the spell it had begun
         e.setHealth((float) (t.value2() * e.getMaxHealth()));
         BattleEffects.soul(b, e.getPos());
         return false;

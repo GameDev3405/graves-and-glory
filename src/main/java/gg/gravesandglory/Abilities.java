@@ -82,6 +82,7 @@ final class Abilities {
     /** A caster's spell: the ring marks the centre while the windup runs; when it ends the burst hurts every enemy troop inside the radius and applies the row's status. */
     static void burst(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
         if (u.spellCenter == null) return;
+        if (time < u.stunnedUntil) { u.spellCenter = null; return; } // a stunned caster cannot land a spell it began before the stun
         double radius = row.radius() > 0 ? row.radius() : D.spellRadius();
         for (int i = 0; i < 12; i++) { double angle = i * Math.PI / 6; b.world.spawnParticles(ParticleTypes.WITCH, u.spellCenter.x + Math.cos(angle) * radius, u.spellCenter.y + .2, u.spellCenter.z + Math.sin(angle) * radius, 1, 0, 0, 0, 0); }
         if (time < u.windupUntil) return;
@@ -228,17 +229,16 @@ final class Abilities {
         return false;
     };
 
-    /** The centre of a squad's group (its living members, as Morale.centre takes it), or null when none of them lives. The rout guards measure from here. */
+    /** The centre of a squad's group, from the same members Morale counts (its living troops that are not temporary), or null when it has none. The rout guards measure from here, so a guard and the rout it holds off agree on where the group stands. */
     static Vec3d centre(GravesAndGlory.Battle b, GravesAndGlory.Squad s, String group) {
-        List<GravesAndGlory.Unit> members = new ArrayList<>();
-        for (var u : b.units) if (u.squad == s && u.spec.group().equals(group) && u.mob.isAlive()) members.add(u);
+        List<GravesAndGlory.Unit> members = Morale.members(b, s, group);
         return members.isEmpty() ? null : Morale.centre(members);
     }
 
     /**
      * An aura troop's beat. The Oath Banner (trigger hold) plants when the troop's group order, the stored one its commander gave, has turned
      * to Hold since its last beat and its cooldown is ready; the order it finds on its first beat is only remembered, so a round that starts
-     * on Hold plants nothing. Howl and Dread wait for the tasks of their Houses.
+     * on Hold plants nothing. Dread (trigger passive) is not planted on a beat: it acts through auraFactor and Morale.routShareFor. Howl (trigger timer) waits for the task of its House.
      */
     static void aura(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
         if (!row.trigger().equals("hold")) return;
