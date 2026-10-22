@@ -30,11 +30,12 @@ public final class TroopTells {
     public static final float MIN_SECONDS=.8f,MAX_SECONDS=2f;
     /** Each troop's tell, by troop id (every Spec.TROOPS row has one). */
     public static final Map<String,Animation> TELLS;
+    /** The mage's wrist turn during its tell, in degrees (the staff's head goes forward). */
+    static final float MAGE_WRIST=75f;
     /** The second of each tell at which every bone it moves is at its headline angle (the still shots read it there). */
     public static final Map<String,Float> PEAKS;
     /** The clips of one troop in place of its rig's: troop id, then clip name. */
     public static final Map<String,Map<String,Animation>> OVERRIDES;
-    private static final Map<String,Animation> MIRRORED_TELLS;
     private static final Map<String,Map<String,Animation>> MIRRORED_OVERRIDES;
     private static final Map<String,Animation> MIRRORED_VARIANTS;
 
@@ -47,18 +48,26 @@ public final class TroopTells {
     }
     /** A bone from rest to (pitch, yaw, roll) by second a, held there to b, and back at rest by the clip's end: four keys. */
     private static void hold(Clip c,String bone,float a,float b,float pitch,float yaw,float roll){c.rot(bone,0,0,0,0, a,pitch,yaw,roll, b,pitch,yaw,roll, c.len,0,0,0);}
+    /** A bone lifted px up (model pixels, y up) from rest by second a, held to b, and back at rest by the clip's end: four keys. */
+    private static void lift(Clip c,String bone,float a,float b,float px){c.pos(bone,0,0,0,0, a,0,px,0, b,0,px,0, c.len,0,0,0);}
     /** A bone from rest to (pitch, yaw, roll) by second a, and back at rest by the clip's end: three keys. */
     private static void to(Clip c,String bone,float a,float pitch,float yaw,float roll){c.rot(bone,0,0,0,0, a,pitch,yaw,roll, c.len,0,0,0);}
 
     static{
         Map<String,Animation> t=new LinkedHashMap<>();Map<String,Float> p=new LinkedHashMap<>();
         // Gilded
-        tell(t,p,"knight",1.6f,.8f,c->{hold(c,"left_arm",.45f,1.15f,-50,0,0);hold(c,"head",.45f,1.15f,-5,0,0);});                  // the shield to the chin
-        tell(t,p,"archer",1.8f,.75f,c->{hold(c,"left_arm",.5f,1f,-70,0,0);hold(c,"head",.5f,1f,-5,0,0);});                        // the bow to the eye, and down
-        tell(t,p,"sentinel",1.4f,.65f,c->{hold(c,"left_arm",.5f,.8f,-40,0,0);hold(c,"body",.5f,.8f,3,0,0);});                     // the shield lifted, the feet set
+        // The shield arm already carries the shield 45 degrees forward, upright with its top at the chin (TroopAnimator.carries): the knight's and the sentinel's
+        // tells add 15 degrees to that and lift the arm 1 px, so the shield rises about the chin instead of tipping over the head (fix round 1: -50 and -40 tipped it flat).
+        tell(t,p,"knight",1.6f,.8f,c->{hold(c,"left_arm",.45f,1.15f,-15,0,0);lift(c,"left_arm",.45f,1.15f,1);hold(c,"head",.45f,1.15f,-5,0,0);});  // the shield to the chin
+        // The bow arm rises to -85 and its hand takes the draw's turn (pitch 90, roll 90, and the rest yaw the carry adds taken off), so the bow stands upright before the eye
+        // (fix round 1: at -70 with the hand at rest it lay along the forearm).
+        tell(t,p,"archer",1.8f,.75f,c->{hold(c,"left_arm",.5f,1f,-85,0,0);hold(c,"left_hand",.5f,1f,90,-TroopAnimator.BOW_REST_YAW,90);hold(c,"head",.5f,1f,-5,0,0);}); // the bow to the eye, and down
+        tell(t,p,"sentinel",1.4f,.65f,c->{hold(c,"left_arm",.5f,.8f,-15,0,0);lift(c,"left_arm",.5f,.8f,1);hold(c,"body",.5f,.8f,3,0,0);});       // the shield lifted, the feet set
         tell(t,p,"longbow",1.8f,.9f,c->hold(c,"left_arm",.5f,1.3f,-60,0,25));                                                     // sights with the bow canted
-        tell(t,p,"mage",1.6f,.5f,c->{hold(c,"right_arm",.5f,1.1f,-40,0,0);c.rot("head",0,0,0,0, .5f,8,0,0, 1f,0,0,0);});          // the staff forward, a nod as it comes
-        tell(t,p,"gl_marshal",1.8f,.9f,c->{hold(c,"left_arm",.55f,1.25f,-110,0,0);hold(c,"head",.55f,1.25f,-15,0,0);});          // the horn to the lips
+        // The staff stands upright in the hand, so the arm's lift alone tips its head back behind the hood: the wrist turns it forward (fix round 1).
+        tell(t,p,"mage",1.6f,.5f,c->{hold(c,"right_arm",.5f,1.1f,-40,0,0);hold(c,"right_hand",.5f,1.1f,MAGE_WRIST,0,0);c.rot("head",0,0,0,0, .5f,8,0,0, 1f,0,0,0);}); // the staff forward, a nod as it comes
+        // The left arm adds 65 to the shield carry: 110 in all (fix round 1: the brief's -110 on top of the carry was 155 and threw the shield overhead).
+        tell(t,p,"gl_marshal",1.8f,.9f,c->{hold(c,"left_arm",.55f,1.25f,-65,0,0);hold(c,"head",.55f,1.25f,-15,0,0);});           // the horn to the lips
         // Graveborn
         tell(t,p,"revenant",1.4f,.5f,c->{hold(c,"head",.5f,1f,0,0,20);c.rot("right_arm",0,0,0,0, .5f,-10,0,0, .75f,0,0,0);});     // the head lolls, the arm twitches
         tell(t,p,"bonebow",1.4f,.7f,c->hold(c,"right_arm",.5f,.9f,0,-30,0));                                                      // eases the string
@@ -108,11 +117,10 @@ public final class TroopTells {
         o.put("tc_admiral",Map.of("attack",trident()));
         OVERRIDES=Collections.unmodifiableMap(o);
 
-        Map<String,Animation> mt=new LinkedHashMap<>();for(var e:TELLS.entrySet())mt.put(e.getKey(),TroopClips.mirror(e.getValue()));
         Map<String,Map<String,Animation>> mo=new LinkedHashMap<>();
         for(var e:OVERRIDES.entrySet()){Map<String,Animation> m=new LinkedHashMap<>();for(var c:e.getValue().entrySet())m.put(c.getKey(),TroopClips.mirror(c.getValue()));mo.put(e.getKey(),Collections.unmodifiableMap(m));}
         Map<String,Animation> mv=new LinkedHashMap<>();for(var e:HouseAttacks.VARIANTS.entrySet())mv.put(e.getKey(),TroopClips.mirror(e.getValue()));
-        MIRRORED_TELLS=Collections.unmodifiableMap(mt);MIRRORED_OVERRIDES=Collections.unmodifiableMap(mo);MIRRORED_VARIANTS=Collections.unmodifiableMap(mv);
+        MIRRORED_OVERRIDES=Collections.unmodifiableMap(mo);MIRRORED_VARIANTS=Collections.unmodifiableMap(mv);
     }
     /** The Trident Guard's attack, which the Admiral shares: the trident overhead at 0.12 s, thrust to level at the contact, the body leaning into it. */
     private static Animation trident(){
@@ -125,20 +133,20 @@ public final class TroopTells {
      * rig). troop may be "" and house null (a bare rig); null for a name the rig has no clip of.
      */
     public static Animation clip(String troop,String house,String rig,String clip){return clip(troop,house,rig,clip,false);}
-    /** clip, mirrored left for right (what a troop the other way round plays; the tell, which is no handed clip, is never asked for mirrored by the animator). */
+    /** clip, mirrored left for right (what a troop the other way round plays); a tell is no handed clip, so it is the same either way (it is written for the arm the troop's tell line names). */
     public static Animation clip(String troop,String house,String rig,String clip,boolean mirrored){
         String id=troop==null?"":troop;
-        if(clip.equals(TELL))return (mirrored?MIRRORED_TELLS:TELLS).get(id);
+        if(clip.equals(TELL))return TELLS.get(id);
         Animation own=(mirrored?MIRRORED_OVERRIDES:OVERRIDES).getOrDefault(id,Map.of()).get(clip);
         if(own!=null)return own;
         if(clip.equals("attack")&&"biped".equals(rig)&&house!=null){Animation v=(mirrored?MIRRORED_VARIANTS:HouseAttacks.VARIANTS).get(house);if(v!=null)return v;}
         return (mirrored?TroopClips.mirrored(rig):TroopClips.of(rig)).get(clip);
     }
-    /** The clips a troop plays that its rig's table does not hold, plain then mirrored: its tell, its overrides and its House's attack variant (a biped); TroopModel.cullReach samples them. */
+    /** The clips a troop plays that its rig's table does not hold: its tell, then its overrides and its House's attack variant (a biped), plain and mirrored; TroopModel.cullReach samples them. */
     static List<Animation> own(String troop,String house,String rig){
         List<Animation> out=new ArrayList<>();String id=troop==null?"":troop;
         for(boolean mirrored:new boolean[]{false,true}){
-            Animation t=(mirrored?MIRRORED_TELLS:TELLS).get(id);if(t!=null)out.add(t);
+            if(!mirrored){Animation t=TELLS.get(id);if(t!=null)out.add(t);}
             out.addAll((mirrored?MIRRORED_OVERRIDES:OVERRIDES).getOrDefault(id,Map.of()).values());
             Animation v=house!=null&&"biped".equals(rig)?(mirrored?MIRRORED_VARIANTS:HouseAttacks.VARIANTS).get(house):null;if(v!=null)out.add(v);
         }

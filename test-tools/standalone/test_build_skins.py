@@ -1017,12 +1017,14 @@ class BuildSkinsChecks(unittest.TestCase):
         self.assertEqual(everyone.getpixel((cell_w // 2, cell_h + cell_h // 2)), (200, 40, 40))   # then the knight's idle row
 
     def test_contact_sheet(self):
-        """--contact: a 6 x 5 grid of equal cells, a House a row and a troop a column in the sheet's houses order; a cell is the
-        troop's p2-tells-<troop>.png cropped square at the centre and labelled, a troop with no shot a labelled grey cell."""
+        """--contact: a 6 x 5 grid, a House a row and a troop a column in the sheet's houses order; a picture is the troop's
+        p2-tells-<troop>.png cropped to the central CONTACT_CROP square with the troop's name above it, a troop with no shot a grey picture; each
+        row is headed by its House's name; margins and gaps are plain ground (nothing within 12 px of the edge, nothing touching)."""
         def band(colour, side):
-            """A 1280x720 shot: colour in the central square, the side's colour outside it, so a crop that is not the central square shows it."""
+            """A 1280x720 shot: colour in the central CONTACT_CROP square, the side's colour outside it, so a crop that is not that square shows it."""
+            crop = build_skins.CONTACT_CROP
             im = Image.new('RGB', (1280, 720), side)
-            im.paste(Image.new('RGB', (720, 720), colour), (280, 0))
+            im.paste(Image.new('RGB', (crop, crop), colour), ((1280 - crop) // 2, (720 - crop) // 2))
             return im
         with tempfile.TemporaryDirectory() as tmp:
             shots, out = pathlib.Path(tmp) / 'shots', pathlib.Path(tmp) / 'out' / 'tells-contact.png'
@@ -1034,26 +1036,76 @@ class BuildSkinsChecks(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()):
                 build_skins.contact(shots, out)
             sheet = Image.open(out).convert('RGB')
-        self.assertEqual(sheet.width % 6, 0)
-        self.assertEqual(sheet.height % 5, 0)
-        cw, ch = sheet.width // 6, sheet.height // 5
+        cols, rows = 6, 5
+        self.assertEqual(sheet.size, build_skins.contact_size(cols, rows))
+        ground = build_skins.TURN_BG
+        houses = build_skins.contact_houses()
+        size = build_skins.CONTACT_CELL
 
-        def at(col, row, dx, dy):
-            return sheet.getpixel((col * cw + dx, row * ch + dy))
+        def picture(col, row, dx, dy):
+            left, top, _, _ = build_skins.contact_picture_box(col, row)
+            return sheet.getpixel((left + dx, top + dy))
 
-        def lettered(col, row):
-            """Whether the cell's bottom strip holds label text (near-white pixels on the dark label ground)."""
-            return any(min(at(col, row, x, y)) > 180 for y in range(ch - build_skins.CONTACT_LABEL, ch) for x in range(cw))
+        def lettered(box):
+            """Whether the box holds text (near-white pixels on the dark ground)."""
+            return any(min(sheet.getpixel((x, y))) > 180 for y in range(box[1], box[3]) for x in range(box[0], box[2]))
         filled = {(0, 0): (200, 40, 40), (1, 0): (40, 200, 40), (0, 1): (40, 40, 200)}   # knight, archer; revenant first of the second row
-        for col in range(6):
-            for row in range(5):
+        for col in range(cols):
+            for row in range(rows):
                 want = filled.get((col, row), build_skins.CONTACT_GREY)
-                self.assertEqual(at(col, row, cw // 2, cw // 2), want, 'cell %d,%d centre' % (col, row))
-                self.assertEqual(at(col, row, 1, 1), want, 'cell %d,%d top left: a square at the centre of the shot' % (col, row))
-                self.assertEqual(at(col, row, cw - 2, 1), want, 'cell %d,%d top right' % (col, row))
-                self.assertTrue(lettered(col, row), 'cell %d,%d has no label' % (col, row))
+                self.assertEqual(picture(col, row, size // 2, size // 4), want, 'picture %d,%d upper middle (the "no shot" text is at the centre)' % (col, row))
+                self.assertEqual(picture(col, row, 0, 0), want, 'picture %d,%d top left: a square at the centre of the shot' % (col, row))
+                self.assertEqual(picture(col, row, size - 1, 0), want, 'picture %d,%d top right' % (col, row))
+                self.assertEqual(picture(col, row, size - 1, size - 1), want, 'picture %d,%d bottom right' % (col, row))
+                label = build_skins.contact_label_box(col, row)
+                self.assertTrue(lettered(label), 'cell %d,%d has no label above its picture' % (col, row))
+                self.assertEqual(label[3], build_skins.contact_picture_box(col, row)[1], 'the label sits directly above its picture')
+                self.assertEqual(sheet.getpixel((label[2] - 1, label[1])), ground, 'cell %d,%d label strip is ground to its edge' % (col, row))
         self.assertNotIn(build_skins.CONTACT_GREY, list(filled.values()))
-        self.assertEqual(sheet.getpixel((3, ch * 5 - 3)), sheet.getpixel((cw * 6 - 3, ch * 5 - 3)))   # the label ground is one colour all round
+        for row in range(rows):
+            header = build_skins.contact_header_box(row, cols)
+            self.assertTrue(lettered(header), 'row %d has no House name' % row)
+            self.assertIn(houses[row]['accent'], {c for _, c in sheet.crop(header).getcolors(maxcolors=1 << 16)}, 'row %d shows its House accent' % row)
+        # nothing within 12 px of the edge; nothing touching: the gaps between pictures and between a row and the next House's header are plain ground
+        self.assertGreaterEqual(build_skins.CONTACT_MARGIN, 12)
+        w, h = sheet.size
+        m = 12
+        for edge in ((0, 0, w, m), (0, h - m, w, h), (0, 0, m, h), (w - m, 0, w, h)):
+            self.assertEqual(sheet.crop(edge).getcolors(), [((edge[2] - edge[0]) * (edge[3] - edge[1]), ground)], 'edge %s is ground' % (edge,))
+        for col in range(cols - 1):
+            a, b = build_skins.contact_picture_box(col, 0), build_skins.contact_picture_box(col + 1, 0)
+            gap = (a[2], a[1], b[0], a[3])
+            self.assertGreater(gap[2] - gap[0], 0)
+            self.assertEqual(sheet.crop(gap).getcolors(), [((gap[2] - gap[0]) * (gap[3] - gap[1]), ground)], 'gap after column %d' % col)
+        for row in range(rows - 1):
+            below = (0, build_skins.contact_picture_box(0, row)[3], w, build_skins.contact_header_box(row + 1, cols)[1])
+            self.assertGreater(below[3] - below[1], 0)
+            self.assertEqual(sheet.crop(below).getcolors(), [((below[2] - below[0]) * (below[3] - below[1]), ground)], 'gap under row %d' % row)
+
+    def test_contact_contrast(self):
+        """The text of the sheet reads at 4.5:1 or better (the grading rubric): the "no shot" on its grey picture, the House and troop names on the ground; measured on the
+        rendered pixels, not only on the colours chosen."""
+        self.assertAlmostEqual(build_skins.contrast((0, 0, 0), (255, 255, 255)), 21.0, places=6)   # the formula
+        self.assertAlmostEqual(build_skins.contrast((119, 119, 119), (255, 255, 255)), 4.48, places=2)
+        self.assertGreaterEqual(build_skins.contrast(build_skins.CONTACT_NO_SHOT, build_skins.CONTACT_GREY), 4.5)
+        self.assertGreaterEqual(build_skins.contrast(build_skins.CONTACT_TEXT, build_skins.TURN_BG), 4.5)
+        with tempfile.TemporaryDirectory() as tmp:
+            shots, out = pathlib.Path(tmp) / 'shots', pathlib.Path(tmp) / 'out.png'
+            shots.mkdir()
+            Image.new('RGB', (1280, 720), (200, 40, 40)).save(shots / 'p2-tells-knight.png')
+            with contextlib.redirect_stdout(io.StringIO()):
+                build_skins.contact(shots, out)
+            sheet = Image.open(out).convert('RGB')
+
+        def brightest(box, ground):
+            """The pixel of the box that contrasts most with the ground: the text at full strength."""
+            return max((c for _, c in sheet.crop(box).getcolors(maxcolors=1 << 16)), key=lambda c: build_skins.contrast(c, ground))
+        no_shot = brightest(build_skins.contact_picture_box(1, 0), build_skins.CONTACT_GREY)   # the second picture of the first row has no shot
+        self.assertGreaterEqual(build_skins.contrast(no_shot, build_skins.CONTACT_GREY), 4.5, 'no shot text %s' % (no_shot,))
+        self.assertNotEqual(no_shot, build_skins.CONTACT_GREY)
+        for box in (build_skins.contact_header_box(0, 6), build_skins.contact_label_box(0, 0)):
+            text = brightest(box, build_skins.TURN_BG)
+            self.assertGreaterEqual(build_skins.contrast(text, build_skins.TURN_BG), 4.5, 'text %s' % (text,))
 
     def test_contact_order(self):
         """--contact walks sheets/design.json: the five Houses in the houses order, six troops each; a shot of the last troop of the last House lands in the last cell."""
@@ -1061,6 +1113,7 @@ class BuildSkinsChecks(unittest.TestCase):
         self.assertEqual(len(houses), 5)
         self.assertEqual([len(h['troops'].split(',')) for h in houses], [6] * 5)
         self.assertEqual(build_skins.contact_grid(), [h['troops'].split(',') for h in houses])
+        self.assertEqual([h['name'] for h in build_skins.contact_houses()], [h['name'] for h in houses])
         with tempfile.TemporaryDirectory() as tmp:
             shots, out = pathlib.Path(tmp) / 'shots', pathlib.Path(tmp) / 'out.png'
             shots.mkdir()
@@ -1071,9 +1124,9 @@ class BuildSkinsChecks(unittest.TestCase):
                 self.assertEqual(build_skins.main(['--contact', str(shots), str(cli)]), 0)   # the command line's way in
             sheet = Image.open(out).convert('RGB')
             self.assertEqual(list(Image.open(cli).convert('RGB').getdata()), list(sheet.getdata()))
-        cw, ch = sheet.width // 6, sheet.height // 5
-        self.assertEqual(sheet.getpixel((5 * cw + cw // 2, 4 * ch + cw // 2)), (200, 40, 40))
-        self.assertEqual(sheet.getpixel((4 * cw + cw // 2, 4 * ch + cw // 2)), build_skins.CONTACT_GREY)
+        last, before = build_skins.contact_picture_box(5, 4), build_skins.contact_picture_box(4, 4)
+        self.assertEqual(sheet.getpixel(((last[0] + last[2]) // 2, last[1] + build_skins.CONTACT_CELL // 4)), (200, 40, 40))
+        self.assertEqual(sheet.getpixel(((before[0] + before[2]) // 2, before[1] + build_skins.CONTACT_CELL // 4)), build_skins.CONTACT_GREY)
 
 
 if __name__ == '__main__':

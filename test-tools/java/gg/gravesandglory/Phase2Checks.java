@@ -2982,11 +2982,17 @@ public final class Phase2Checks implements ClientModInitializer {
             }
             if(lit(c)){darkFor=0;return true;}
             if(c.world!=null&&site!=null&&c.worldRenderer!=null&&c.worldRenderer.isTerrainRenderComplete()&&allDark(c)){
-                if(++darkFor>=600){awayFor=1;darkFor=0;recoveries++;
-                    server(c,b->{var p=sp(b);if(p==null)return;back=p.getPos();backYaw=p.getYaw();backPitch=p.getPitch();b.relocate(p,site.getX()+400.5,site.getY()+4,site.getZ()+.5,backYaw,backPitch);});
+                if(++darkFor>=600){awayFor=1;darkFor=0;recoveries++;sendAway(c);
                     System.out.println("[p2-light] "+name()+": sky light 0 at every floor point for 600 ticks with the terrain built; the spectator goes 400 blocks away and back to take the platform's chunks again (recovery "+recoveries+")");}
             }else darkFor=0;
             return false;
+        }
+        /**
+         * Client: the relocation behind every recovery. Remembers where the spectator stands (back, backYaw, backPitch) and sends it 400 blocks east, out of view distance and inside
+         * the arena; the caller sets awayFor to 1 and litStart counts the 40 ticks and brings it back. Stage.litStart and the tells suite's recover both call this.
+         */
+        void sendAway(MinecraftClient c){
+            server(c,b->{var p=sp(b);if(p==null)return;back=p.getPos();backYaw=p.getYaw();backPitch=p.getPitch();b.relocate(p,site.getX()+400.5,site.getY()+4,site.getZ()+.5,backYaw,backPitch);});
         }
         /** Client: sky light 0 at both layers of every LIT_AT point. */
         boolean allDark(MinecraftClient c){
@@ -4213,20 +4219,27 @@ public final class Phase2Checks implements ClientModInitializer {
      * Task 5c: the troops' idle tells and the House attack flavour (suite tells). The tables (p2-tells-cover: every sheet troop has one tell,
      * in its rig's bones, 0.8 to 2.0 s, two to four keys a bone, ending at rest and moving something; p2-tells-keys: the brief's angle at
      * the tell's peak, bone by bone), the start rule on a State (p2-tells-period: two knights, ids apart mod 40, each start 160 ticks after
-     * the last, none while walking, attacking, braced, posed or dead; the frame at the peak is the forced tell), the lookup order
+     * the last, none while walking, attacking, braced, posed or dead; the frame at the peak is the forced tell; a State stepped 7 ticks at a time starts a tell on the first frame after each
+     * boundary), the lookup order
      * (p2-tells-lookup, through TroopTells.clip and through TroopAnimator.clip on the real models), the overrides (p2-tells-overrides) and the
-     * House attacks (p2-house-attacks: five variants of 0.5 to 0.6 s, each 10 degrees off the biped attack at its strike and ending at rest,
-     * the brief's angles bone by bone), the cull reach (p2-tells-cull: every troop model's tell, through the carries, inside it). Then the shots,
-     * all through TroopAnimator.forced on gold troops at the platform's centre, three-quarter front (the tells from the left, the attacks from the right): tells-TROOP for every
+     * House attacks (p2-house-attacks: five variants of 0.5 to 0.6 s, each 10 degrees off the biped attack at its strike and ending at rest, every pair of them with the gold knight's
+     * weapon tip 0.4 blocks apart or an arm bone 30 degrees apart at their strikes, the brief's angles bone by bone), the cull reach (p2-tells-cull: every troop model's tell, through the carries, inside it). Then the shots,
+     * all through TroopAnimator.forced on gold troops at the platform's centre, three-quarter front, the camera 3 blocks off so a hand raised overhead stays in the frame (the tells from the left,
+     * the attacks from the right): tells-TROOP for every
      * troop with a model at its tell's peak, tells-rest-TROOP the same troop at rest, and tells-attack-HOUSE for the five variants on a gold
      * knight at their strikes (p2-tells-shots: each taken lit, in gold, the camera where it was set and the pose drawn as forced).
      * tools/build_skins.py --contact turns the tells-TROOP shots into the contact sheet.
      */
     static final class Tells extends Stage {
-        static final double DIST=2.4,EYE=1.1,PARK=24;
+        static final double DIST=3.0,EYE=1.25,PARK=24;
         static final float YAW=180;
-        /** The angles round the troop the camera takes (0 in front, 90 on its right, 270 on its left): the tells from in front and to the left, where a shield or a bow arm lifts; the House attacks from in front and to the right, the sword arm's side (a gold knight's shield is on its left). */
+        /**
+         * The angles round the troop the camera takes (0 in front, 90 on its right, 270 on its left): the tells from in front and to the left, where a shield lifts; the archer's from its
+         * left side, where the raised bow shows in profile (from the front and left it is edge-on and reads as a stick); the House attacks from in front and to the right, the
+         * sword arm's side (a gold knight's shield is on its left).
+         */
         static final int TELL_ANGLE=315,ATTACK_ANGLE=45;
+        static final Map<String,Integer> TELL_ANGLES=Map.of("archer",270);
         /** One shot: its file name, the troop it is of, the clip forced on it and the angle round the troop the camera takes. */
         record Shot(String name,String troop,TroopAnimator.Forced forced,int angle){}
         final List<Shot> shots=new ArrayList<>();final List<String> ids=new ArrayList<>();
@@ -4237,8 +4250,9 @@ public final class Phase2Checks implements ClientModInitializer {
             Turn.hook();
             ids.addAll(new TreeSet<>(TroopModels.ids()));
             for(String t:ids){
-                shots.add(new Shot("tells-"+t,t,new TroopAnimator.Forced(TroopTells.TELL,TroopTells.PEAKS.get(t)),TELL_ANGLE));
-                shots.add(new Shot("tells-rest-"+t,t,new TroopAnimator.Forced("idle",0f),TELL_ANGLE));
+                int angle=TELL_ANGLES.getOrDefault(t,TELL_ANGLE);
+                shots.add(new Shot("tells-"+t,t,new TroopAnimator.Forced(TroopTells.TELL,TroopTells.PEAKS.get(t)),angle));
+                shots.add(new Shot("tells-rest-"+t,t,new TroopAnimator.Forced("idle",0f),angle));
             }
             if(ids.contains("knight"))for(var h:Spec.HOUSES)shots.add(new Shot("tells-attack-"+h.id(),"knight",new TroopAnimator.Forced("attack",HouseAttacks.STRIKE.get(h.id()),h.id()),ATTACK_ANGLE));
         }
@@ -4320,11 +4334,17 @@ public final class Phase2Checks implements ClientModInitializer {
         record TKey(String troop,String bone,char chan,float at,float value){}
         static TKey tk(String troop,String bone,char chan,float value){return new TKey(troop,bone,chan,-1f,value);}
         static TKey tk(String troop,String bone,char chan,float at,float value){return new TKey(troop,bone,chan,at,value);}
-        /** The brief's tell table, bone by bone (a hunter's sniff and an arbalist's crank read at both ends). */
+        /**
+         * The tell table, bone by bone (a hunter's sniff and an arbalist's crank read at both ends): the brief's angles, but for the six of fix round 1, where the
+         * brief's angle failed the Tell line's read: the shield arm adds to the 45 degree carry, so the knight's and the sentinel's -50 and -40 (the shield tipped flat
+         * over the head) are -15 and a 1 px lift, the marshal's -110 (155 in all) is -65 (110 in all), the mage's wrist turns the staff forward (75), and the archer's
+         * bow arm is -85, its hand taking the draw's turn so the bow stands upright before the eye (the brief's -70 laid it along the forearm).
+         */
         static final List<TKey> TELL_KEYS=List.of(
-            tk("knight","left_arm",'p',-50),tk("knight","head",'p',-5),tk("archer","left_arm",'p',-70),tk("archer","head",'p',-5),
-            tk("sentinel","left_arm",'p',-40),tk("sentinel","body",'p',3),tk("longbow","left_arm",'p',-60),tk("longbow","left_arm",'r',25),
-            tk("mage","right_arm",'p',-40),tk("mage","head",'p',8),tk("gl_marshal","left_arm",'p',-110),tk("gl_marshal","head",'p',-15),
+            tk("knight","left_arm",'p',-15),tk("knight","left_arm",'u',1),tk("knight","head",'p',-5),
+            tk("archer","left_arm",'p',-85),tk("archer","left_hand",'p',90),tk("archer","left_hand",'y',-TroopAnimator.BOW_REST_YAW),tk("archer","left_hand",'r',90),tk("archer","head",'p',-5),
+            tk("sentinel","left_arm",'p',-15),tk("sentinel","left_arm",'u',1),tk("sentinel","body",'p',3),tk("longbow","left_arm",'p',-60),tk("longbow","left_arm",'r',25),
+            tk("mage","right_arm",'p',-40),tk("mage","right_hand",'p',TroopTells.MAGE_WRIST),tk("mage","head",'p',8),tk("gl_marshal","left_arm",'p',-65),tk("gl_marshal","head",'p',-15),
             tk("revenant","head",'r',20),tk("revenant","right_arm",'p',-10),tk("bonebow","right_arm",'y',-30),
             tk("reaper","right_arm",'p',-60),tk("reaper","body",'y',10),tk("stalker","body",'p',5),tk("stalker","right_arm",'y',-10),tk("stalker","left_arm",'y',10),
             tk("hexer","right_arm",'p',-70),tk("gb_hollowking","head",'r',-15),tk("gb_hollowking","head",'p',-10),
@@ -4336,7 +4356,7 @@ public final class Phase2Checks implements ClientModInitializer {
             tk("ic_colossus","right_arm",'p',-30),tk("ic_colossus","left_arm",'p',-30),
             tk("tc_raider","body",'p',10),tk("tc_raider","right_arm",'p',-10),tk("tc_raider","left_arm",'p',-10),
             tk("tc_harpooner","right_arm",'p',-150),tk("tc_tideguard","right_arm",'p',-160),tk("tc_mist","arms_folded",'p',-15),tk("tc_brute","head",'p',20),tk("tc_admiral","right_arm",'p',-160));
-        /** p2-tells-keys: every angle of the brief's table, read off the tell at its peak (or the second given) within 2 degrees, each troop with at least one. */
+        /** p2-tells-keys: every angle of the table, read off the tell at its peak (or the second given) within 2 degrees (0.2 px), each troop with at least one. */
         void keys(){
             List<String> bad=new ArrayList<>();Set<String> covered=new HashSet<>();
             for(TKey k:TELL_KEYS){
@@ -4344,7 +4364,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 if(m==null||a==null){bad.add(k.troop()+": no rig or tell");continue;}
                 covered.add(k.troop());float at=k.at()<0?TroopTells.PEAKS.get(k.troop()):k.at();
                 double got=Anim.keyValue(m,a,Anim.key(rig,TroopTells.TELL,k.bone(),k.chan(),at,k.value()));
-                if(Double.isNaN(got)||Math.abs(got-k.value())>2)bad.add(String.format(Locale.ROOT,"%s %s %c at %.2f s: %.1f, want %.1f",k.troop(),k.bone(),k.chan(),at,got,k.value()));
+                if(Double.isNaN(got)||Math.abs(got-k.value())>(k.chan()=='u'?.2:2))bad.add(String.format(Locale.ROOT,"%s %s %c at %.2f s: %.1f, want %.1f",k.troop(),k.bone(),k.chan(),at,got,k.value()));
             }
             for(var t:Spec.TROOPS)if(!covered.contains(t.id()))bad.add(t.id()+": not in the table");
             report("p2-tells-keys",bad.isEmpty(),TELL_KEYS.size()+" angles over "+covered.size()+" troops, each read off the tell at its peak within 2 degrees"+(bad.isEmpty()?"":"; wrong: "+bad));
@@ -4401,19 +4421,36 @@ public final class Phase2Checks implements ClientModInitializer {
             for(int t=0;t<=14;t++){TroopAnimator.simulate(m,s,t<12?calm:Anim.with(calm,false,false,.5f),t,false);if(t==11)under=!Float.isNaN(s.tellStart());}
             if(!under)bad.add("id 40 had no tell under way at tick 11");
             if(!Float.isNaN(s.tellStart()))bad.add("a tell under way when the knight began to walk was still live 3 ticks later");
+            // a hitch: stepped 7 ticks at a time, the frame that crosses a boundary starts its tell, once (no boundary is skipped, none is started twice)
+            Map<Integer,List<Integer>> hitched=new LinkedHashMap<>();
+            for(int id:new int[]{5,40}){
+                var hs=new TroopAnimator.State(id);List<Integer> at=new ArrayList<>();float seen=Float.NaN;
+                for(int t=0;t<400;t+=7){TroopAnimator.simulate(m,hs,calm,t,false);float st=hs.tellStart();if(!Float.isNaN(st)&&(Float.isNaN(seen)||st!=seen))at.add((int)Math.floor(st));seen=st;}
+                List<Integer> want=id==5?List.of(161,315):List.of(0,161,322);
+                if(!at.equals(want))bad.add("id "+id+" stepped 7 ticks at a time started its tells on "+at+", want "+want+" (the first frame after each boundary)");
+                hitched.put(id,at);
+            }
             m.getPart().traverse().forEach(ModelPart::resetTransform);
-            report("p2-tells-period",bad.isEmpty(),"ids 5, 17, 45 and 40 over 400 ticks started their tells on "+starts+", each 160 ticks after the last, 5 and 45 together and 17 apart; "
+            report("p2-tells-period",bad.isEmpty(),"ids 5, 17, 45 and 40 over 400 ticks started their tells on "+starts+", each 160 ticks after the last, 5 and 45 together and 17 apart, and ids 5 and 40 stepped 7 ticks at a time on "+hitched+" (the first frame after each boundary, none skipped); "
                 +"the frame 16 ticks in is the forced tell at its peak within "+String.format(Locale.ROOT,"%.1f",sway)+" degrees; a knight "+String.join(", ",still.keySet())+" started none, and a tell under way gives way as it walks"+(bad.isEmpty()?"":"; wrong: "+bad));
         }
 
+        /** The lookup cases made so far; the report counts them. */
+        int cases;
         /** One lookup case: what it is, and the clip got against the clip wanted (the same object). */
-        static void same(List<String> bad,String what,Animation got,Animation want){if(got!=want||got==null)bad.add(what+": "+(got==null?"no clip":"not the clip wanted"));}
+        void same(List<String> bad,String what,Animation got,Animation want){cases++;if(got!=want||got==null)bad.add(what+": "+(got==null?"no clip":"not the clip wanted"));}
+        /** The bones a clip moves with right and left swapped. */
+        static Set<String> swapped(Animation a){
+            Set<String> out=new TreeSet<>();
+            for(String b:a.boneAnimations().keySet())out.add(b.startsWith("left_")?"right_"+b.substring(5):b.startsWith("right_")?"left_"+b.substring(6):b);
+            return out;
+        }
         /**
          * p2-tells-lookup: TroopTells.clip in its order, the troop's override, else the House's attack for a biped, else the rig's clip; and the same through TroopAnimator.clip on the
          * real models (the longbow's draw, the knight's attack and walk, the tell, which no troop plays mirrored).
          */
         void lookup(){
-            List<String> bad=new ArrayList<>();
+            List<String> bad=new ArrayList<>();cases=0;
             same(bad,"longbow bow_draw",TroopTells.clip("longbow","gilded","biped","bow_draw"),TroopTells.OVERRIDES.get("longbow").get("bow_draw"));
             same(bad,"knight attack (gilded)",TroopTells.clip("knight","gilded","biped","attack"),HouseAttacks.VARIANTS.get("gilded"));
             same(bad,"wm_hound attack (hound rig)",TroopTells.clip("wm_hound","wildmoot","hound","attack"),TroopClips.of("hound").get("attack"));
@@ -4429,8 +4466,14 @@ public final class Phase2Checks implements ClientModInitializer {
             same(bad,"sentinel walk (its plod)",TroopTells.clip("sentinel","gilded","biped","walk"),TroopTells.OVERRIDES.get("sentinel").get("walk"));
             same(bad,"sentinel attack (the Gilded variant: an override of walk leaves it be)",TroopTells.clip("sentinel","gilded","biped","attack"),HouseAttacks.VARIANTS.get("gilded"));
             same(bad,"knight tell",TroopTells.clip("knight","gilded","biped","tell"),TroopTells.TELLS.get("knight"));
-            same(bad,"mirrored longbow bow_draw",TroopTells.clip("longbow","gilded","biped","bow_draw",true),TroopTells.clip("longbow","gilded","biped","bow_draw",true)); // the same object twice: the mirrors are built once
-            if(TroopTells.clip("longbow","gilded","biped","bow_draw",true)==TroopTells.clip("longbow","gilded","biped","bow_draw",false))bad.add("the mirrored longbow draw is the plain one");
+            // the mirror, read against the plain clip: another clip, on the bones with right and left swapped, and built once
+            var draw=TroopTells.clip("longbow","gilded","biped","bow_draw"); var drawMirrored=TroopTells.clip("longbow","gilded","biped","bow_draw",true);cases++;
+            if(draw==null||drawMirrored==null)bad.add("the longbow has no bow_draw, plain or mirrored");
+            else{
+                if(drawMirrored==draw)bad.add("the mirrored longbow draw is the plain one");
+                if(!swapped(draw).equals(new TreeSet<>(drawMirrored.boneAnimations().keySet())))bad.add("the mirrored longbow draw moves "+new TreeSet<>(drawMirrored.boneAnimations().keySet())+", the plain one's bones swapped are "+swapped(draw));
+                if(TroopTells.clip("longbow","gilded","biped","bow_draw",true)!=drawMirrored)bad.add("the mirrored longbow draw is built again at each look-up");
+            }
             if(TroopTells.clip("no_such_troop","gilded","biped","tell")!=null)bad.add("a troop with no tell has one");
             if(TroopTells.clip("knight","gilded","biped","no_such_clip")!=null)bad.add("a clip that no rig has is not null");
             for(var h:Spec.HOUSES)if(!HouseAttacks.VARIANTS.containsKey(h.id()))bad.add("no attack for the House "+h.id());
@@ -4450,7 +4493,7 @@ public final class Phase2Checks implements ClientModInitializer {
             }
             var longbow=TroopModels.model("longbow");
             if(longbow!=null)same(bad,"longbow draw through the animator",TroopAnimator.clip(longbow,"bow_draw",true),TroopTells.OVERRIDES.get("longbow").get("bow_draw"));
-            report("p2-tells-lookup",bad.isEmpty(),"the order override, House attack (biped attack only), rig clip, on 20 cases through TroopTells.clip and on the real models through TroopAnimator.clip"+(bad.isEmpty()?"":"; wrong: "+bad));
+            report("p2-tells-lookup",bad.isEmpty(),"the order override, House attack (biped attack only), rig clip, on "+cases+" cases through TroopTells.clip and on the real models through TroopAnimator.clip, and the mirrored draw on the swapped bones"+(bad.isEmpty()?"":"; wrong: "+bad));
         }
 
         /** One headline value of an override: the troop, the clip, a bone, a channel (p, y, r in degrees; u up in px), the second it is read at and the value. */
@@ -4509,16 +4552,41 @@ public final class Phase2Checks implements ClientModInitializer {
         static AKey ak(String house,String bone,char chan,float value){return new AKey(house,bone,chan,-1f,value);}
         static AKey ak(String house,String bone,char chan,float at,float value){return new AKey(house,bone,chan,at,value);}
         static final List<AKey> ATTACK_KEYS=List.of(
-            ak("gilded","left_arm",'p',-40),ak("gilded","right_arm",'p',.1f,-60),ak("gilded","right_arm",'p',-95),ak("gilded","body",'y',15),
+            ak("gilded","left_arm",'p',-40),ak("gilded","left_arm",'p',0,-40),ak("gilded","right_arm",'p',.1f,-60),ak("gilded","right_arm",'p',-95),ak("gilded","body",'y',15),
             ak("graveborn","right_arm",'p',.15f,-170),ak("graveborn","right_arm",'p',0),ak("graveborn","body",'p',25),
             ak("wildmoot","body",'p',30),ak("wildmoot","right_arm",'p',-60),ak("wildmoot","right_arm",'y',.1f,70),ak("wildmoot","right_arm",'y',-40),
-            ak("ironclad","right_arm",'p',.2f,-150),ak("ironclad","left_arm",'p',.2f,-150),ak("ironclad","right_arm",'p',-20),ak("ironclad","left_arm",'p',-20),ak("ironclad","body",'p',15),
+            ak("ironclad","right_arm",'p',.2f,-150),ak("ironclad","left_arm",'p',.2f,-150),ak("ironclad","right_arm",'p',-60),ak("ironclad","left_arm",'p',-60),ak("ironclad","body",'p',15),
             ak("tidecallers","right_arm",'p',-80),ak("tidecallers","right_arm",'y',.1f,90),ak("tidecallers","right_arm",'y',-60),ak("tidecallers","body",'y',25),ak("tidecallers","left_leg",'p',-20),
             // the wrist that lays the blade on the target (not in the brief's table: the biped attack turns it 75 at its contact; the blade rests 45 degrees up from level, so level or down at the strike takes the arm's lift plus 45, less the cut)
-            ak("gilded","right_hand",'p',140),ak("graveborn","right_hand",'p',75),ak("wildmoot","right_hand",'p',105),ak("ironclad","right_hand",'p',95),ak("tidecallers","right_hand",'p',125));
+            ak("gilded","right_hand",'p',140),ak("graveborn","right_hand",'p',75),ak("wildmoot","right_hand",'p',105),ak("ironclad","right_hand",'p',105),ak("tidecallers","right_hand",'p',125));
+        /** Two variants strike alike unless their weapon tips are this far apart (blocks) or an arm bone differs this much (degrees) at their strikes. */
+        static final double MIN_TIP=.4,MIN_ARM=30;
+        static double dist(double[] a,double[] b){return Math.sqrt((a[0]-b[0])*(a[0]-b[0])+(a[1]-b[1])*(a[1]-b[1])+(a[2]-b[2])*(a[2]-b[2]));}
+        /** The largest rotation (degrees, any axis) of the two arm bones between two snapshots of a bare biped rig. */
+        static double armApart(TroopModel<?> m,float[] a,float[] b){
+            double max=0;
+            for(String bone:new String[]{"left_arm","right_arm"}){int i=m.boneOrder().indexOf(bone);if(i<0)return 999;
+                for(int k=3;k<6;k++)max=Math.max(max,Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(Math.toDegrees(a[i*6+k]-b[i*6+k]))));}
+            return max;
+        }
+        /**
+         * Where the weapon's tip lies at a second of a House's attack on the knight (the sword hand, the shield arm's carry on): the corner of the weapon frame's bounds farthest from the
+         * grip, in blocks from the feet in the troop's own axes {right, up, front}.
+         */
+        static double[] tip(TroopModel<?> k,String house,float seconds){
+            k.getPart().traverse().forEach(ModelPart::resetTransform);TroopAnimator.applyForced(k,new TroopAnimator.Forced("attack",seconds,house),TroopAnimator.row(k),true);
+            var w=TroopModels.weapon(k.weaponId());MatrixStack mw=Turn.base();for(ModelPart p:k.handPath(k.hand()))p.rotate(mw);w.grip(mw);
+            float[] bd=w.frames().get(0).bounds();double[] best=null;double far=-1;
+            for(int cc=0;cc<8;cc++){
+                float x=(cc&1)==0?bd[0]:bd[3],y=(cc&2)==0?bd[1]:bd[4],z=(cc&4)==0?bd[2]:bd[5];double d=x*x+y*y+z*z;
+                if(d>far){far=d;best=Turn.own(Turn.pt(mw,x,y,z),1);}
+            }
+            k.getPart().traverse().forEach(ModelPart::resetTransform);return best;
+        }
         /**
          * p2-house-attacks: one variant for each of the sheet's Houses; each lasts 0.5 to 0.6 s with its strike inside it, differs from the biped attack by 10 degrees on some bone at its
-         * strike, from each other variant by 10 degrees at the two strikes, and ends at rest within 1 degree; the brief's angles read off bone by bone.
+         * strike, and ends at rest within 1 degree; every pair of variants, each at its own strike, has the gold knight's weapon tip MIN_TIP blocks apart or an arm bone MIN_ARM degrees
+         * apart; the brief's angles read off bone by bone.
          */
         void attacks(){
             List<String> bad=new ArrayList<>();var m=TroopModels.rig("biped");
@@ -4538,9 +4606,20 @@ public final class Phase2Checks implements ClientModInitializer {
                 endsAtRest(a,bad,h);
                 double off=Anim.maxRot(Anim.sample(m,a,strike),Anim.sample(m,plain,strike));if(off<least){least=off;leastHouse=h;}
                 if(off<10)bad.add(h+" is only "+String.format(Locale.ROOT,"%.1f",off)+" degrees from the biped attack at its strike");
-                for(String o:houses)if(o.compareTo(h)<0&&HouseAttacks.VARIANTS.get(o)!=null){
-                    double apart=0;for(float t:new float[]{strike,HouseAttacks.STRIKE.get(o)})apart=Math.max(apart,Anim.maxRot(Anim.sample(m,a,t),Anim.sample(m,HouseAttacks.VARIANTS.get(o),t)));
-                    if(apart<10)bad.add(h+" and "+o+" are only "+String.format(Locale.ROOT,"%.1f",apart)+" degrees apart at their strikes");
+            }
+            // every pair of variants, each at its own strike: the weapon tip of a gold knight 0.4 blocks apart or more, or an arm bone 30 degrees apart or more (an any-bone 10 degrees let two
+            // chops through that ended on the same line)
+            var knight=TroopModels.model("knight");double closest=999;String closestPair="";double closestTip=0,closestArm=0;int pairs=0;
+            if(knight==null||knight.weaponId()==null||TroopModels.weapon(knight.weaponId())==null||TroopAnimator.row(knight)==null)bad.add("no knight model, weapon or row to measure the weapon tip on");
+            else{
+                List<String> hs=new ArrayList<>(houses);
+                for(int i=0;i<hs.size();i++)for(int j=i+1;j<hs.size();j++){
+                    String x=hs.get(i),y=hs.get(j);var ax=HouseAttacks.VARIANTS.get(x);var ay=HouseAttacks.VARIANTS.get(y);Float sx=HouseAttacks.STRIKE.get(x),sy=HouseAttacks.STRIKE.get(y);
+                    if(ax==null||ay==null||sx==null||sy==null)continue;
+                    pairs++;double tip=dist(tip(knight,x,sx),tip(knight,y,sy)),arm=armApart(m,Anim.sample(m,ax,sx),Anim.sample(m,ay,sy));
+                    System.out.println(String.format(Locale.ROOT,"[p2-house-pair] %s and %s at their strikes: weapon tips %.2f blocks apart, arms %.1f degrees apart",x,y,tip,arm));
+                    double score=Math.max(tip/MIN_TIP,arm/MIN_ARM);if(score<closest){closest=score;closestPair=x+" and "+y;closestTip=tip;closestArm=arm;}
+                    if(tip<MIN_TIP&&arm<MIN_ARM)bad.add(x+" and "+y+" strike alike: the weapon tips are "+String.format(Locale.ROOT,"%.2f",tip)+" blocks apart (want "+MIN_TIP+") and the arms "+String.format(Locale.ROOT,"%.1f",arm)+" degrees (want "+MIN_ARM+")");
                 }
             }
             for(AKey k:ATTACK_KEYS){
@@ -4550,7 +4629,8 @@ public final class Phase2Checks implements ClientModInitializer {
                 if(Double.isNaN(got)||Math.abs(got-k.value())>2)bad.add(String.format(Locale.ROOT,"%s %s %c at %.2f s: %.1f, want %.1f",k.house(),k.bone(),k.chan(),at,got,k.value()));
             }
             report("p2-house-attacks",bad.isEmpty(),houses.size()+" House attacks of "+HouseAttacks.VARIANTS.values().stream().map(a->String.valueOf(a.lengthInSeconds())).distinct().toList()+" s, each "+String.format(Locale.ROOT,"%.0f",least)+" degrees or more from the biped attack at its strike (the least, "+leastHouse
-                +"), 10 or more from every other House's, ending at rest within 1 degree, "+ATTACK_KEYS.size()+" angles read off within 2 degrees"+(bad.isEmpty()?"":"; wrong: "+bad));
+                +"), all "+pairs+" pairs of them with the weapon tip "+MIN_TIP+" blocks apart or an arm "+MIN_ARM+" degrees apart at their strikes (the closest, "+closestPair+": tip "
+                +String.format(Locale.ROOT,"%.2f",closestTip)+" blocks, arm "+String.format(Locale.ROOT,"%.0f",closestArm)+" degrees), ending at rest within 1 degree, "+ATTACK_KEYS.size()+" angles read off within 2 degrees"+(bad.isEmpty()?"":"; wrong: "+bad));
         }
 
         /** p2-tells-cull: each troop model's tell, every 50 ms through the carries (applyForced: the shield arm, the bow's turn, arms forward), stays inside the cull reach the frustum test keeps it by. */
@@ -4575,8 +4655,7 @@ public final class Phase2Checks implements ClientModInitializer {
          * platform's chunks and their light again), at most 3 times a run. litStart carries it out and brings the spectator back; the shot being taken starts again.
          */
         void recover(MinecraftClient c,String at,String why){
-            awayFor=1;darkFor=0;litWait=0;litAgain=0;unlit=0;recoveries++;
-            server(c,b->{var p=sp(b);if(p==null)return;back=p.getPos();backYaw=p.getYaw();backPitch=p.getPitch();b.relocate(p,site.getX()+400.5,site.getY()+4,site.getZ()+.5,backYaw,backPitch);});
+            awayFor=1;darkFor=0;litWait=0;litAgain=0;unlit=0;recoveries++;sendAway(c);
             System.out.println("[p2-light] tells "+at+": "+why+"; the spectator goes 400 blocks away and back (recovery "+recoveries+")");
         }
         /** Client: one shot's turn. */

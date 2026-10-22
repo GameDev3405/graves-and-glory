@@ -176,8 +176,8 @@ public final class TroopAnimator {
         final Channel still=new Channel(),move=new Channel(),pose=new Channel(),tell=new Channel();final Map<String,Channel> overlays=new HashMap<>();
         final Fade look=new Fade(1);final float phase;final int id;boolean fresh=true;
         boolean swinging;int swingTicks,hurt;String scene,lastPose;boolean armHeld;
-        /** The tick the last tell started on (so a frame of the same tick does not start another). */
-        int tellTick=Integer.MIN_VALUE;
+        /** The tick of the frame before: a tell starts when a period boundary lies between it and this frame's tick, so a hitch that skips the boundary's own tick does not skip the tell. */
+        int lastTick=Integer.MIN_VALUE;
         /** The idle phase is offset by the entity id, so a line of troops does not breathe in step; so is the tell (TroopTells.STAGGER_TICKS). */
         public State(int id){this.id=id;phase=Math.floorMod(id*7919,3000);}
         Channel overlay(String name){return overlays.computeIfAbsent(name,k->new Channel());}
@@ -202,16 +202,17 @@ public final class TroopAnimator {
         }
         /**
          * The idle tell (TroopTells): while the troop stands still, with no pose or overlay on it (none still fading out either), a tell
-         * starts on the first frame of each tick at which (tick + id % STAGGER_TICKS) % PERIOD_TICKS is 0. A tell that plays when the
-         * troop moves, strikes, is hurt or is posed fades out over BLEND_TICKS; one that ends keeps its last frame, which is at rest.
+         * starts on the first frame at or after each tick at which (tick + id % STAGGER_TICKS) % PERIOD_TICKS is 0 (the first frame after the boundary
+         * when a hitch or a slow frame rate skipped its own tick). A tell that plays when the troop moves, strikes, is hurt or is posed fades out over
+         * BLEND_TICKS; one that ends keeps its last frame, which is at rest.
          */
         private void tell(Plan p,float age){
+            int tick=(int)Math.floor(age),shift=Math.floorMod(id,TroopTells.STAGGER_TICKS),before=lastTick==Integer.MIN_VALUE?tick-1:lastTick; // a first frame counts as the tick before it
+            boolean boundary=Math.floorDiv(tick+shift,TroopTells.PERIOD_TICKS)>Math.floorDiv(before+shift,TroopTells.PERIOD_TICKS);
+            lastTick=tick;
             boolean quiet=p.still()&&pose.weight(age)<=0&&overlays.values().stream().allMatch(o->o.weight(age)<=0);
             if(!quiet)tell.clear(age);
-            else{
-                int tick=(int)Math.floor(age);
-                if(tick!=tellTick&&Math.floorMod(tick+Math.floorMod(id,TroopTells.STAGGER_TICKS),TroopTells.PERIOD_TICKS)==0){tellTick=tick;tell.restart(TroopTells.TELL,age,age,0f,SNAP_TICKS);}
-            }
+            else if(boundary)tell.restart(TroopTells.TELL,age,age,0f,SNAP_TICKS);
             for(Track t:tell.tracks)if(t.live()&&t.seconds(age)>=TroopTells.MAX_SECONDS)t.fadeOut(age);
             tell.prune(age);
         }

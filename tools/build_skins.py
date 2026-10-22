@@ -1251,59 +1251,115 @@ def turn_sheets(shots: Path, out: Path) -> list:
 
 
 # ---- the tell contact sheet (--contact) ----
+# The grading rubric's layout rules apply to it: a House named at the head of each row, the troop's name above its picture (never flush against
+# the picture of the row above), nothing within 12 px of the edge or touching its neighbour, and text at 4.5:1 or better on its ground.
 
-CONTACT_CELL = 200        # a cell's picture, a square, px
-CONTACT_LABEL = 22        # and the label strip below it
-CONTACT_GREY = TURN_GAP   # a missing shot's picture
+CONTACT_CELL = 200                    # a picture, a square, px
+CONTACT_LABEL = 22                    # the troop's name above its picture
+CONTACT_HEADER = 30                   # a House's name band at the head of its row
+CONTACT_MARGIN = 16                   # the sheet's edge to the first band or picture
+CONTACT_GAP = 12                      # between the pictures of a row
+CONTACT_ROW_GAP = 18                  # between a row's pictures and the next House's header
+CONTACT_BAND = CONTACT_HEADER + CONTACT_LABEL + CONTACT_CELL   # a row: header, labels, pictures
+CONTACT_CROP = 600                    # the square cut from the centre of a 1280x720 shot: the troop with its overhead gesture, and no more sky and grass than that
+CONTACT_GREY = (46, 44, 54)           # a missing shot's picture: quieter than a shot, so the shots carry the sheet
+CONTACT_NO_SHOT = (200, 200, 208)     # its "no shot" text: about 8:1 on the grey
+CONTACT_TEXT = (235, 235, 235)        # the House and troop names on the sheet's ground (TURN_BG): about 15:1
+
+
+def contrast(a: tuple, b: tuple) -> float:
+    """The WCAG contrast ratio of two RGB colours."""
+    def luminance(c):
+        lin = [v / 255 / 12.92 if v / 255 <= 0.04045 else ((v / 255 + 0.055) / 1.055) ** 2.4 for v in c[:3]]
+        return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+    hi, lo = sorted((luminance(a), luminance(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def contact_size(cols: int, rows: int) -> tuple:
+    """The sheet's width and height."""
+    return (2 * CONTACT_MARGIN + cols * CONTACT_CELL + (cols - 1) * CONTACT_GAP,
+            2 * CONTACT_MARGIN + rows * CONTACT_BAND + (rows - 1) * CONTACT_ROW_GAP)
+
+
+def contact_header_box(row: int, cols: int) -> tuple:
+    """(left, top, right, bottom) of a row's House band: the whole width inside the margins."""
+    top = CONTACT_MARGIN + row * (CONTACT_BAND + CONTACT_ROW_GAP)
+    return (CONTACT_MARGIN, top, contact_size(cols, 1)[0] - CONTACT_MARGIN, top + CONTACT_HEADER)
+
+
+def contact_label_box(col: int, row: int) -> tuple:
+    """(left, top, right, bottom) of the strip above a picture, where the troop's name is."""
+    left = CONTACT_MARGIN + col * (CONTACT_CELL + CONTACT_GAP)
+    top = CONTACT_MARGIN + row * (CONTACT_BAND + CONTACT_ROW_GAP) + CONTACT_HEADER
+    return (left, top, left + CONTACT_CELL, top + CONTACT_LABEL)
+
+
+def contact_picture_box(col: int, row: int) -> tuple:
+    """(left, top, right, bottom) of a picture, below its label."""
+    left, top, right, _ = contact_label_box(col, row)
+    return (left, top + CONTACT_LABEL, right, top + CONTACT_LABEL + CONTACT_CELL)
+
+
+def contact_houses() -> list:
+    """The sheet's rows, the Houses in the houses order: {'name', 'accent' (RGB), 'troops' (the row's troops in order)}."""
+    return [{'name': h['name'], 'accent': ((h['accent'] >> 16) & 255, (h['accent'] >> 8) & 255, h['accent'] & 255),
+             'troops': [t.strip() for t in h['troops'].split(',')]}
+            for h in read_json(ROOT / 'sheets/design.json').get('houses', [])]
 
 
 def contact_grid() -> list:
     """The troops of the sheet's houses: a row a House in the houses order, a troop a column in the row's troops order."""
-    return [[t.strip() for t in h['troops'].split(',')] for h in read_json(ROOT / 'sheets/design.json').get('houses', [])]
+    return [h['troops'] for h in contact_houses()]
 
 
-def contact_cell(path, troop):
-    """One troop's cell: its shot cropped square at the centre, or grey with no shot, and the troop's name under it."""
+def contact_picture(path):
+    """One troop's picture: its shot cropped to the CONTACT_CROP square at the centre, or grey with a centred "no shot" when there is none."""
     from PIL import ImageDraw
     size = CONTACT_CELL
-    cell = Image.new('RGB', (size, size + CONTACT_LABEL), TURN_BG)
-    draw = ImageDraw.Draw(cell)
     if path is None:
-        cell.paste(Image.new('RGB', (size, size), CONTACT_GREY), (0, 0))
-        draw.text((6, 6), 'no shot', fill=(210, 150, 150), font=turn_font('consola', 13))
-    else:
-        with Image.open(path) as shot:
-            shot = shot.convert('RGB')
-            side = min(shot.size)
-            left, top = (shot.width - side) // 2, (shot.height - side) // 2
-            cell.paste(shot.crop((left, top, left + side, top + side)).resize((size, size), Image.LANCZOS), (0, 0))
-    draw.text((6, size + 4), troop, fill=(235, 235, 235), font=turn_font('consolab', 13))
-    return cell
+        pic = Image.new('RGB', (size, size), CONTACT_GREY)
+        draw, font = ImageDraw.Draw(pic), turn_font('consola', 13)
+        box = draw.textbbox((0, 0), 'no shot', font=font)
+        draw.text(((size - (box[2] - box[0])) // 2 - box[0], (size - (box[3] - box[1])) // 2 - box[1]), 'no shot', fill=CONTACT_NO_SHOT, font=font)
+        return pic
+    with Image.open(path) as shot:
+        shot = shot.convert('RGB')
+        side = min(CONTACT_CROP, *shot.size)
+        left, top = (shot.width - side) // 2, (shot.height - side) // 2
+        return shot.crop((left, top, left + side, top + side)).resize((size, size), Image.LANCZOS)
 
 
 def contact(shots: Path, out: Path) -> None:
-    """The tell contact sheet of the suite tells' shots p2-tells-<troop>.png: the Houses are the rows, in the houses order, the
-    troops the columns, in each row's troops order; a cell is the troop's shot cropped square at the centre and labelled with the
-    troop's name, and a missing shot leaves a labelled grey cell. Every cell is the same size."""
-    shots, out = Path(shots), Path(out)
-    grid = contact_grid()
-    if not grid:
-        fail('sheets/design.json has no houses row')
-    cols = max(len(row) for row in grid)
-    cw, ch = CONTACT_CELL, CONTACT_CELL + CONTACT_LABEL
-    sheet = Image.new('RGB', (cols * cw, len(grid) * ch), TURN_BG)
+    """The tell contact sheet of the suite tells' shots p2-tells-<troop>.png: the Houses are the rows, in the houses order, each headed by
+    its name (the House's accent a small swatch beside it); the troops are the columns, in each row's troops order, a picture the troop's
+    shot cropped to the CONTACT_CROP square at the centre with the troop's name above it, and a missing shot leaves a quiet grey picture
+    saying "no shot". The pictures are all the same size, a gap apart, and the margins are 16 px (contact_size, contact_header_box,
+    contact_label_box and contact_picture_box say where everything is)."""
     from PIL import ImageDraw
+    shots, out = Path(shots), Path(out)
+    houses = contact_houses()
+    if not houses:
+        fail('sheets/design.json has no houses row')
+    cols = max(len(h['troops']) for h in houses)
+    sheet = Image.new('RGB', contact_size(cols, len(houses)), TURN_BG)
     draw = ImageDraw.Draw(sheet)
+    head, name = turn_font('consolab', 16), turn_font('consolab', 13)
+    ref_head, ref_name = draw.textbbox((0, 0), 'Hgy', font=head), draw.textbbox((0, 0), 'Hgy', font=name)   # one height for every name, so the baselines agree
     found = 0
-    for r, row in enumerate(grid):
-        for c, troop in enumerate(row):
+    for r, house in enumerate(houses):
+        left, top, _, bottom = contact_header_box(r, cols)
+        draw.rectangle([left, top + 5, left + 4, bottom - 6], fill=house['accent'])
+        draw.text((left + 14, top + (CONTACT_HEADER - (ref_head[3] - ref_head[1])) // 2 - ref_head[1]), house['name'], fill=CONTACT_TEXT, font=head)
+        for c, troop in enumerate(house['troops']):
             path = shots / ('p2-tells-%s.png' % troop)
             found += path.is_file()
-            sheet.paste(contact_cell(path if path.is_file() else None, troop), (c * cw, r * ch))
-            draw.rectangle([c * cw, r * ch, (c + 1) * cw - 1, (r + 1) * ch - 1], outline=(60, 58, 70))
+            lx, ly, _, _ = contact_label_box(c, r)
+            draw.text((lx, ly + (CONTACT_LABEL - (ref_name[3] - ref_name[1])) // 2 - ref_name[1]), troop, fill=CONTACT_TEXT, font=name)
+            sheet.paste(contact_picture(path if path.is_file() else None), contact_picture_box(c, r)[:2])
     out.parent.mkdir(parents=True, exist_ok=True)
     sheet.save(out)
-    print('build_skins: %s %dx%d, %d of %d shots' % (out.name, sheet.width, sheet.height, found, sum(len(row) for row in grid)))
+    print('build_skins: %s %dx%d, %d of %d shots' % (out.name, sheet.width, sheet.height, found, sum(len(h['troops']) for h in houses)))
 
 
 def bake(cat: Catalog, troop: str) -> dict:
