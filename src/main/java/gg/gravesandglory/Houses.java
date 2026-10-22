@@ -67,22 +67,28 @@ final class Houses {
         return t != null && t.mechanic().equals("entrench") ? t : null;
     }
 
+    /** The sheet's rest rule: its first Entrench row (the radius and the durationTicks are the same on every tier), or null when the sheet has none. Any troop's rest is measured by it, whatever its House. */
+    static Spec.HouseTraitsRow restRule() {
+        for (var t : Spec.HOUSETRAITS) if (t.mechanic().equals("entrench")) return t;
+        return null;
+    }
+
     /**
-     * Whether the troop has moved less than the trait's radius over the trait's durationTicks (the Entrench rows: 0.5 blocks, 60 ticks), as
-     * sampled on its Tactics beats (sample). False for a troop whose House has no Entrench at its army's tier.
+     * Whether the troop has moved less than the rest rule's radius over its durationTicks (0.5 blocks, 60 ticks on the sheet), as sampled on its
+     * Tactics beats (sample). True or false for any troop, whatever its House or its army's tier; false when the sheet has no rest rule.
      */
     static boolean still(GravesAndGlory.Unit u) {
         var b = GravesAndGlory.battle;
-        var t = entrench(u);
-        return b != null && t != null && u.stillAt != null && b.time - u.stillSince >= t.durationTicks();
+        var rule = restRule();
+        return b != null && rule != null && u.stillAt != null && b.time - u.stillSince >= rule.durationTicks();
     }
 
-    /** One sample of a troop's rest, on each of its Tactics beats: it stands still from the spot it was last seen to have left by more than the Entrench radius. */
+    /** One sample of a troop's rest, on each of its Tactics beats: it stands still from the spot it was last seen to have left by more than the rest rule's radius. Nothing without a rest rule. */
     static void sample(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
+        var rule = restRule();
+        if (rule == null) return;
         Vec3d at = u.mob.getPos();
-        double radius = 0.5;
-        for (var t : Spec.HOUSETRAITS) if (t.mechanic().equals("entrench")) { radius = t.radius(); break; }
-        if (u.stillAt == null || at.squaredDistanceTo(u.stillAt) >= radius * radius) { u.stillAt = at; u.stillSince = b.time; }
+        if (u.stillAt == null || at.squaredDistanceTo(u.stillAt) >= rule.radius() * rule.radius()) { u.stillAt = at; u.stillSince = b.time; }
     }
 
     /** Whether the troop stands within the capture radius of a point its team owns (horizontal distance, as the capture rule measures it). */

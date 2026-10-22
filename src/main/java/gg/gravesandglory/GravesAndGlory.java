@@ -227,7 +227,9 @@ public final class GravesAndGlory implements ModInitializer {
     public static final class ArmySupplyBanner extends ArmorStandEntity implements ArmyMob {
         /** What its name tag says and the notice of a deploy at it names. */
         public static final String NAME="Forward Supply";
-        Squad squad;float hp;net.minecraft.util.math.BlockPos block;net.minecraft.block.BlockState was;
+        /** What its commander reads when the banner is shot down or killed while his Forward Supply runs. */
+        public static final String FALLEN="Your supply banner has fallen. Troops muster at the barracks.";
+        Squad squad;float hp;net.minecraft.util.math.BlockPos block;net.minecraft.block.BlockState was;boolean felled;
         public ArmySupplyBanner(World world){super(EntityType.ARMOR_STAND,world);}
         /** The army that planted it, the side it serves, the health it has left. */
         public Squad squad(){return squad;}
@@ -252,6 +254,7 @@ public final class GravesAndGlory implements ModInitializer {
             hp-=amount;
             var w=(ServerWorld)getWorld();
             if(hp<=0){
+                felled=true;
                 w.spawnParticles(ParticleTypes.POOF,getX(),getY()+1,getZ(),12,.3,.6,.3,.04);
                 w.playSound(null,getBlockPos(),SoundEvents.BLOCK_WOOL_BREAK,SoundCategory.HOSTILE,1f,.8f);
                 discard();
@@ -262,19 +265,29 @@ public final class GravesAndGlory implements ModInitializer {
             }
             return true;
         }
-        /** Off the battle's list and, when it is discarded or killed (not merely unloaded), the banner block back to what stood there. */
+        /**
+         * Off the battle's list and, when it is discarded or killed (not merely unloaded), the banner block back to what stood there. When it was
+         * shot down or killed while it is the banner of its commander's running Forward Supply, he is told and the active ends (so the HUD stops
+         * reading it as up; the cooldown stands). Expiry, the lobby, a round start and a map switch discard it quietly.
+         */
         @Override public void remove(RemovalReason reason){
             if(!isRemoved()){
                 if((reason==RemovalReason.DISCARDED||reason==RemovalReason.KILLED)&&block!=null&&getWorld().getBlockState(block).getBlock() instanceof net.minecraft.block.BannerBlock)
                     getWorld().setBlockState(block,was==null?net.minecraft.block.Blocks.AIR.getDefaultState():was);
-                if(battle!=null)battle.structures.remove(this);
+                if(battle!=null){
+                    battle.structures.remove(this);
+                    if((felled||reason==RemovalReason.KILLED)&&squad!=null&&squad.abilityData==this){battle.campaign.notice(squad.owner,FALLEN);Commander.stop(battle,squad);}
+                }
             }
             super.remove(reason);
         }
         /** Plants a banner of hp health for the army at the spot Abilities.spot finds by the feet (null when none is free): a banner block in its side's dye, with the stand on it. */
         static ArmySupplyBanner place(Battle b,Squad s,Vec3d feet,float yaw,float hp){
             net.minecraft.util.math.BlockPos spot=Abilities.spot(b,feet,yaw);
-            if(spot==null)return null;
+            return spot==null?null:place(b,s,spot,yaw,hp);
+        }
+        /** The same on a spot already found (Abilities.spot): the banner block and the stand on it. */
+        static ArmySupplyBanner place(Battle b,Squad s,net.minecraft.util.math.BlockPos spot,float yaw,float hp){
             var e=new ArmySupplyBanner(b.world);
             e.squad=s;e.hp=hp;e.block=spot;e.was=b.world.getBlockState(spot);
             b.world.setBlockState(spot,net.minecraft.block.BannerBlock.getForColor(Abilities.dye(b.side(s.team).color())).getDefaultState().with(net.minecraft.block.BannerBlock.ROTATION,RotationPropertyHelper.fromYaw(yaw)));

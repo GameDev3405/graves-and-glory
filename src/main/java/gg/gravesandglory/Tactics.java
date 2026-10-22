@@ -28,27 +28,33 @@ final class Tactics {
         var owner=battle.server.getPlayerManager().getPlayer(s.owner);
         if(a.order.equals("follow")&&owner!=null&&!battle.respawns.containsKey(s.owner)){a.target=owner.getPos();a.yaw=owner.getYaw();}
         var order=Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(a.order)).findFirst().orElse(Spec.ORDERS[0]);
-        double engage=engageRadius(battle,u,order.engageRadius()); // the order's radius, widened to the weapon's reach for a siege troop
-        LivingEntity enemy=null;double nearest=engage*engage;
-        if(order.engage()&&u.lockedTarget!=null&&u.lockedTarget.isAlive()&&time<u.lockUntil&&mob.squaredDistanceTo(u.lockedTarget)<nearest*1.4&&(!a.order.equals("hold")||GravesAndGlory.Battle.horizontalDistance(u.lockedTarget.getPos(),a.target)<nearest))enemy=u.lockedTarget;
-        if(order.engage()&&a.enemy>=0&&battle.world.getEntityById(a.enemy) instanceof LivingEntity explicit&&explicit.isAlive()&&mob.canSee(explicit)){enemy=explicit;a.target=explicit.getPos();}
-        if(enemy!=null)nearest=mob.squaredDistanceTo(enemy);
+        boolean hold=a.order.equals("hold");
+        boolean holdSiege=hold&&u.tags.contains("siege"); // artillery on Hold shoots what is within its reach from where it stands and never walks toward a target, so it never walks out of Entrench
+        double engage=holdSiege?Abilities.range(battle,u):engageRadius(battle,u,order.engageRadius()); // the order's radius, widened to the weapon's reach for a siege troop; on Hold the weapon's reach as it is now
+        LivingEntity enemy=null,close=null;double nearest=engage*engage,closest=nearest; // enemy: the one it picks (never one inside its minimum range); close: the nearest of any, which a ranged troop backs off from
+        if(order.engage()&&u.lockedTarget!=null&&u.lockedTarget.isAlive()&&time<u.lockUntil&&mob.squaredDistanceTo(u.lockedTarget)<nearest*(holdSiege?1:1.4)&&!Abilities.tooClose(u,mob.squaredDistanceTo(u.lockedTarget))&&(!hold||holdSiege||GravesAndGlory.Battle.horizontalDistance(u.lockedTarget.getPos(),a.target)<nearest))enemy=u.lockedTarget;
+        if(order.engage()&&a.enemy>=0&&battle.world.getEntityById(a.enemy) instanceof LivingEntity explicit&&explicit.isAlive()&&mob.canSee(explicit)&&!Abilities.tooClose(u,mob.squaredDistanceTo(explicit))){enemy=explicit;a.target=explicit.getPos();}
+        if(enemy!=null){nearest=mob.squaredDistanceTo(enemy);close=enemy;closest=nearest;}
         boolean locked=enemy!=null;
         for(var other:battle.units)if(order.engage()&&!locked&&other.squad.team!=s.team&&other.mob.isAlive()){
             double d=mob.squaredDistanceTo(other.mob);
-            boolean inLeash=!a.order.equals("hold")||GravesAndGlory.Battle.horizontalDistance(other.mob.getPos(),a.target)<engage*engage;
-            if(d<nearest&&inLeash){enemy=other.mob;nearest=d;}
-        }
-        if(order.engage()&&!locked&&enemy==null)for(var st:battle.structures){ // a supply banner is a target when no troop or commander is: the army first, then its banner
-            if(st.team()==s.team||!st.isAlive())continue;
-            double d=mob.squaredDistanceTo(st);
-            boolean inLeash=!a.order.equals("hold")||GravesAndGlory.Battle.horizontalDistance(st.getPos(),a.target)<engage*engage;
-            if(d<nearest&&inLeash){enemy=st;nearest=d;}
+            boolean inLeash=!hold||holdSiege||GravesAndGlory.Battle.horizontalDistance(other.mob.getPos(),a.target)<engage*engage;
+            if(inLeash&&d<closest){close=other.mob;closest=d;}
+            if(inLeash&&d<nearest&&!Abilities.tooClose(u,d)){enemy=other.mob;nearest=d;}
         }
         for(ServerPlayerEntity p:battle.server.getPlayerManager().getPlayerList()){
-            var other=battle.squads.get(p.getUuid());if(order.engage()&&!locked&&other!=null&&other.team!=s.team&&!p.isSpectator()&&p.isAlive()&&(!a.order.equals("hold")||GravesAndGlory.Battle.horizontalDistance(p.getPos(),a.target)<engage*engage)){
-                double d=mob.squaredDistanceTo(p);if(d<nearest){enemy=p;nearest=d;}
+            var other=battle.squads.get(p.getUuid());if(order.engage()&&!locked&&other!=null&&other.team!=s.team&&!p.isSpectator()&&p.isAlive()&&(!hold||holdSiege||GravesAndGlory.Battle.horizontalDistance(p.getPos(),a.target)<engage*engage)){
+                double d=mob.squaredDistanceTo(p);
+                if(d<closest){close=p;closest=d;}
+                if(d<nearest&&!Abilities.tooClose(u,d)){enemy=p;nearest=d;}
             }
+        }
+        if(order.engage()&&!locked&&enemy==null)for(var st:battle.structures){ // a supply banner is a target when no troop or commander is: the army first, then its commander, then its banner
+            if(st.team()==s.team||!st.isAlive())continue;
+            double d=mob.squaredDistanceTo(st);
+            boolean inLeash=!hold||holdSiege||GravesAndGlory.Battle.horizontalDistance(st.getPos(),a.target)<engage*engage;
+            if(inLeash&&d<closest){close=st;closest=d;}
+            if(inLeash&&d<nearest&&!Abilities.tooClose(u,d)){enemy=st;nearest=d;}
         }
         if(enemy!=u.lockedTarget){u.lockedTarget=enemy;u.lockUntil=time+Spec.COMBATDISCIPLINE[0].targetMemoryTicks();}
         mob.setTarget(enemy);mob.setAttacking(enemy!=null);
@@ -56,15 +62,13 @@ final class Tactics {
         boolean shield=u.tags.contains("shield")&&BattleMath.raiseShield(a.formation,a.order,nearest,reach*reach,enemy!=null); // block: up on the approach, down to swing once the enemy is in reach; shieldwall: the full brace
         if(shield&&!mob.isUsingItem())mob.setCurrentHand(Hand.OFF_HAND);else if(!shield&&mob.isUsingItem())mob.stopUsingItem();
         Abilities.tick(battle,u,enemy,time); // mend heals and a caster's spell bursts on the beat
+        double flee=Math.max(N.rangedRetreatDistance(),Abilities.minRange(u)); // a ranged troop backs off from an enemy this near; one with a minimum range (the Mortar) from anything inside it
         if(enemy!=null){
             mob.getLookControl().lookAt(enemy,40,40);
             boolean visible=mob.canSee(enemy);
-            double flee=Math.max(N.rangedRetreatDistance(),Abilities.minRange(u)); // a ranged troop backs off from an enemy this near; one with a minimum range (the Mortar) from anything inside it
             if(nearest<=reach*reach&&visible){
-                if(ranged&&nearest<flee*flee&&!a.order.equals("hold")){
-                    Vec3d away=mob.getPos().subtract(enemy.getPos()).multiply(1,0,1).normalize();
-                    walk(battle,u,mob.getPos().add(away.multiply(5)),time,1.05);
-                }else mob.getNavigation().stop();
+                if(ranged&&close!=null&&closest<flee*flee&&!hold)backOff(battle,u,close,time);
+                else mob.getNavigation().stop();
                 if(time>=u.nextAttack&&time>=u.stunnedUntil&&!Abilities.tooClose(u,nearest)){
                     int cooldown=u.spec.cooldown();u.nextAttack=u.nextAttack<time-10?time+cooldown:u.nextAttack+cooldown;mob.swingHand(Hand.MAIN_HAND);
                     BattleEffects.strike(battle,u,enemy);
@@ -73,18 +77,25 @@ final class Tactics {
                         battle.world.playSound(null,mob.getBlockPos(),u.spec.magic()?SoundEvents.ENTITY_EVOKER_CAST_SPELL:SoundEvents.ENTITY_ARROW_SHOOT,SoundCategory.HOSTILE,.25f,1.1f);
                     }
                 }
-            }else if(!a.order.equals("hold")||GravesAndGlory.Battle.horizontalDistance(enemy.getPos(),a.target)<engage*engage){
+            }else if(!holdSiege&&(!hold||GravesAndGlory.Battle.horizontalDistance(enemy.getPos(),a.target)<engage*engage)){
                 Vec3d goal=enemy.getPos();
                 if(ranged&&!visible){Vec3d toward=enemy.getPos().subtract(mob.getPos()).multiply(1,0,1).normalize();double sign=u.slot%2==0?1:-1;goal=mob.getPos().add(-toward.z*sign*Spec.COMBATDISCIPLINE[0].rangedObstructionStep(),0,toward.x*sign*Spec.COMBATDISCIPLINE[0].rangedObstructionStep());}
                 if(!ranged){double angle=u.slot*2.399963;goal=goal.add(Math.cos(angle)*1.6,0,Math.sin(angle)*1.6);}
                 if(ranged&&visible&&nearest>reach*reach)goal=goal.add(mob.getPos().subtract(goal).multiply(1,0,1).normalize().multiply(reach*N.rangedStandoff()));
                 walk(battle,u,goal,time,order.moveMultiplier());
             }else mob.getNavigation().stop();
+        }else if(close!=null&&ranged){ // everything in its leash stands inside its minimum range: nothing to shoot; it backs off (unless it holds) and does not walk off to its formation
+            if(!hold&&closest<flee*flee)backOff(battle,u,close,time);else mob.getNavigation().stop();
         }else{
             Vec3d goal=battle.formation(u);
             if(GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal)>N.arrivalTolerance()*N.arrivalTolerance())walk(battle,u,goal,time,order.moveMultiplier());
             else{mob.getNavigation().stop();mob.setYaw(a.yaw);mob.setHeadYaw(a.yaw);mob.setBodyYaw(a.yaw);}
         }
+    }
+    /** Five blocks straight away from an enemy, at a hurried walk: how a ranged troop backs off from one too near. */
+    static void backOff(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,LivingEntity from,long time){
+        Vec3d away=u.mob.getPos().subtract(from.getPos()).multiply(1,0,1).normalize();
+        walk(battle,u,u.mob.getPos().add(away.multiply(5)),time,1.05);
     }
     static Vec3d route(GravesAndGlory.Unit u,Vec3d goal){
         Vec3d here=u.mob.getPos();

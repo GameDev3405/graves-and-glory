@@ -178,12 +178,15 @@ public final class Commander {
      * The Quartermaster's Forward Supply: a supply banner of value1 health (an ArmySupplyBanner) at the commander's feet, at least range blocks from
      * his own base. While it stands, and no enemy is within radius of it, troops trained for his army deploy at it instead of the barracks
      * (Battle.reinforcementAnchors); it stands for the row's durationTicks and goes when the active ends. Refused, with a notice and no cooldown,
-     * too near his base, outside the arena's margin or in river water, or where no banner will stand.
+     * too near his base (measured where the banner itself will stand, which can be a step behind his feet), outside the arena's margin or in river
+     * water, or where no banner will stand.
      */
     static final class ForwardSupply implements Active {
         @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, Spec.ClassesRow c) {
             Vec3d at = p.getPos();
-            if (GravesAndGlory.Battle.horizontalDistance(at, GravesAndGlory.Battle.base(s.team)) < c.range() * c.range()) {
+            var spot = Abilities.spot(b, at, p.getYaw());
+            Vec3d where = spot == null ? at : new Vec3d(spot.getX() + .5, at.y, spot.getZ() + .5); // the banner's own place: its stand is in the middle of its block
+            if (GravesAndGlory.Battle.horizontalDistance(where, GravesAndGlory.Battle.base(s.team)) < c.range() * c.range()) {
                 b.campaign.notice(s.owner, "Too near your base. Plant it " + Math.round(c.range()) + " or more blocks away.");
                 return false;
             }
@@ -191,7 +194,8 @@ public final class Commander {
                 b.campaign.notice(s.owner, "Choose dry ground inside the arena.");
                 return false;
             }
-            var banner = GravesAndGlory.ArmySupplyBanner.place(b, s, at, p.getYaw(), (float) c.value1());
+            if (spot == null) { b.campaign.notice(s.owner, "No room for a banner here."); return false; }
+            var banner = GravesAndGlory.ArmySupplyBanner.place(b, s, spot, p.getYaw(), (float) c.value1());
             if (banner == null) { b.campaign.notice(s.owner, "No room for a banner here."); return false; }
             s.abilityData = banner;
             Abilities.ring(b, banner.getPos(), c.radius(), b.side(s.team).color());

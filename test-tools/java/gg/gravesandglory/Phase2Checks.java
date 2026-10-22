@@ -1592,6 +1592,75 @@ public final class Phase2Checks implements ClientModInitializer {
     }
 
     /**
+     * The fixture the Graveborn and Ironclad suites share: the stage clock, a stone sky platform 40 blocks east of Dawn's base, pinned posts for
+     * troops, the side-team audit and the fixture's clean-up. A suite adds its own scratch and stages; cleared() and staged() are its hooks.
+     */
+    abstract static class Staged implements Suite,ServerWatch {
+        record Pin(GravesAndGlory.Unit u,Vec3d at,float yaw){}
+        volatile int stage;volatile UUID player;volatile String wantShot;volatile boolean shotTaken,finished;
+        long stageAt,t0;int shotDelay,shotAfter=12;String classBefore;
+        BlockPos site;final List<GravesAndGlory.Unit> fixture=new ArrayList<>();final List<Pin> pins=new ArrayList<>();
+        final Set<net.minecraft.util.math.ChunkPos> forced=new HashSet<>();
+        GravesAndGlory.Squad own,dawn,dusk;
+        // side teams: one audit after each place the suite removes or raises troops
+        int audits;final Map<String,String> staleSeen=new LinkedHashMap<>();final List<String> auditNotes=new ArrayList<>();
+
+        void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
+        long since(GravesAndGlory.Battle b){return b.time-stageAt;}
+        ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
+        Profile profile(GravesAndGlory.Battle b){return b.campaign.profile(player);}
+        void requestShot(String name,int after){shotTaken=false;shotDelay=0;shotAfter=after;wantShot=name;}
+        static boolean near(double a,double b){return Math.abs(a-b)<1e-9;}
+        static String fmt(double v){return String.format(Locale.ROOT,"%.2f",v);}
+        static String show(Combat.HitLog h){return Engine.show(h);}
+        static double distance(Vec3d a,Vec3d c){return Math.sqrt(GravesAndGlory.Battle.horizontalDistance(a,c));}
+        /** A troop of the army on the platform at (dx, dz) from its centre with its AI off, held there each tick by the pins; a frozen troop never attacks or casts. */
+        GravesAndGlory.Unit post(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Spec.TroopsRow row,int slot,double dx,double dz,float yaw,boolean freeze){
+            Vec3d at=new Vec3d(site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz);
+            var u=b.spawn(s,row,slot,at);u.mob.setAiDisabled(true);if(freeze)Phase1Checks.freeze(u);
+            fixture.add(u);pins.add(new Pin(u,at,yaw));u.deployed=at;Engine.apply(u,at,yaw);return u;
+        }
+        GravesAndGlory.Unit post(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String troop,double dx,double dz,float yaw,boolean freeze){return post(b,s,Campaign.troop(troop),30+fixture.size(),dx,dz,yaw,freeze);}
+        GravesAndGlory.Unit post(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Spec.TroopsRow row,double dx,double dz,float yaw,boolean freeze){return post(b,s,row,30+fixture.size(),dx,dz,yaw,freeze);}
+        void move(GravesAndGlory.Unit u,double dx,double dz,float yaw){Vec3d at=new Vec3d(site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz);pins.removeIf(p->p.u()==u);pins.add(new Pin(u,at,yaw));u.deployed=at;Engine.apply(u,at,yaw);}
+        /** The troop's armour off, so the health it loses is the amount applied. */
+        static GravesAndGlory.Unit bare(GravesAndGlory.Unit u){for(var slot:List.of(EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET))u.mob.equipStack(slot,ItemStack.EMPTY);return u;}
+        /** A real blow of this size from the attacker's troop, past the victim's hurt cooldown, through Combat.resolve (so the on-hit abilities and the ALLOW_DEATH hook run). */
+        static float strike(GravesAndGlory.Battle b,GravesAndGlory.Unit attacker,GravesAndGlory.Unit victim,float base){victim.mob.timeUntilRegen=0;victim.mob.hurtTime=0;return Combat.resolve(b,attacker,victim.mob,base,"melee",false);}
+        void platform(GravesAndGlory.Battle b,BlockPos c,int half,net.minecraft.block.BlockState floor){
+            for(int x=-half;x<=half;x++)for(int z=-half;z<=half;z++){b.world.setBlockState(c.add(x,-1,z),floor);for(int y=0;y<=6;y++)b.world.setBlockState(c.add(x,y,z),Blocks.AIR.getDefaultState());}
+        }
+        void force(GravesAndGlory.Battle b,BlockPos from,BlockPos to){
+            for(int cx=from.getX()>>4;cx<=to.getX()>>4;cx++)for(int cz=from.getZ()>>4;cz<=to.getZ()>>4;cz++){b.world.setChunkForced(cx,cz,true);b.world.getChunk(cx,cz);forced.add(new net.minecraft.util.math.ChunkPos(cx,cz));}
+        }
+        void unforce(GravesAndGlory.Battle b){for(var p:forced)b.world.setChunkForced(p.x,p.z,false);forced.clear();}
+        /** What a suite clears besides the fixture itself (its own lists and handles). */
+        void cleared(){}
+        void clearFixture(GravesAndGlory.Battle b,String where){for(var u:fixture)u.mob.discard();b.units.removeAll(fixture);fixture.clear();pins.clear();cleared();audit(b,where,false);}
+        /** After a removal or a raising: no gg_ side team keeps a member that is not a living troop of b.units (and with `none` standing, none keeps any). */
+        void audit(GravesAndGlory.Battle b,String where,boolean none){
+            var stale=staleSides(b);var all=sideMembers(b);audits++;
+            for(String m:none?all:stale)staleSeen.putIfAbsent(m,where);
+            if(auditNotes.size()<24)auditNotes.add(where+" "+all.size()+" on a team"+(stale.isEmpty()?"":", "+stale.size()+" stale"));
+        }
+        /** After each server tick: the pinned troops stand where the stage put them. */
+        void hold(){for(var p:pins)if(p.u().mob.isAlive())Engine.apply(p.u(),p.at(),p.yaw());}
+        /** The army's stored state back to nothing: no rout, no steadiness, no health ceiling, no orders. */
+        static void reset(GravesAndGlory.Squad s){s.routedAt.clear();s.steadyUntil.clear();s.fullHealth.clear();s.assignments.clear();}
+        /** What a suite does once the platform stands (before the armies are made). */
+        void staged(){}
+        /** Every army's troops leave and none come back; a stone sky platform 40 blocks east of Dawn's base; two ad hoc armies (bots, so no profile is read) beside the commander's own, which keeps his seat and his class. */
+        void stageFixture(GravesAndGlory.Battle b){
+            Projectiles.clear(b);Abilities.clearBanners(b);clearFixture(b,"clearFixture");
+            for(var s:b.squads.values()){s.reinforceAt=Long.MAX_VALUE;s.training.clear();if(s.bot)b.campaign.botRespawns.put(s.owner,Long.MAX_VALUE);}
+            for(var u:b.units)u.mob.discard();b.units.clear();audit(b,"stageFixture",true);b.deaths.clear();
+            var base=GravesAndGlory.Battle.base(0);site=new BlockPos((int)base.x+40,140,(int)base.z);force(b,site.add(-13,0,-13),site.add(13,0,13));platform(b,site,12,Blocks.STONE.getDefaultState());staged();
+            own=b.squads.get(player);reset(own);
+            dawn=new GravesAndGlory.Squad(UUID.randomUUID(),0,base);dawn.order="hold";dawn.bot=true;dusk=new GravesAndGlory.Squad(UUID.randomUUID(),1,base);dusk.order="hold";dusk.bot=true;
+        }
+    }
+
+    /**
      * Task 7 (batch 2): the Graveborn mechanics. The two new mobs (burn, water, goals), cleave, frost shot, the Gravecaller's blight,
      * the fearless and dread rout shares, Rise Again (once, not Legendaries, not temporary troops, the chance by tier), the Warlock's
      * Grave Bloom with its death log, the cleanup of temporary Risen at the end of a round and at a map switch, and the tick cost. The
@@ -1599,15 +1668,9 @@ public final class Phase2Checks implements ClientModInitializer {
      * troops are posted frozen and pinned, and every kill goes through the real damage path (Combat.resolve, or damage with no
      * attacker), so Rise Again's ALLOW_DEATH hook and the AFTER_DEATH death log run as they do in a round.
      */
-    static final class Graveborn implements Suite,ServerWatch {
-        record Pin(GravesAndGlory.Unit u,Vec3d at,float yaw){}
-        volatile int stage;volatile UUID player;volatile String wantShot;volatile boolean shotTaken,finished;
-        long stageAt,t0;int shotDelay,shotAfter=12;String classBefore;
-        BlockPos site;final List<GravesAndGlory.Unit> fixture=new ArrayList<>(),group=new ArrayList<>();final List<Pin> pins=new ArrayList<>();
-        final Set<net.minecraft.util.math.ChunkPos> forced=new HashSet<>();
-        GravesAndGlory.Squad own,dawn,dusk;GravesAndGlory.Unit hk,hexer,stalker,reaper;
-        // side teams: one audit after each place the suite removes or raises troops
-        int audits;final Map<String,String> staleSeen=new LinkedHashMap<>();final List<String> auditNotes=new ArrayList<>();
+    static final class Graveborn extends Staged {
+        final List<GravesAndGlory.Unit> group=new ArrayList<>();
+        GravesAndGlory.Unit hk,hexer,stalker,reaper;
         // p2-graveborn-mobs
         BlockPos tank;final List<MobEntity> army=new ArrayList<>();MobEntity vanillaZombie,vanillaStray,armyInTank,vanillaInTank;
         boolean mobsOk,armyBurned,controlBurned,strayControlBurned;int submerged;String mobsWhy="";
@@ -1624,61 +1687,16 @@ public final class Phase2Checks implements ClientModInitializer {
         // the cleanup and the tick cost
         TickCost cost;boolean pathsOk,inserted;String pathsWhy="";GravesAndGlory.Unit loose;int toMap;Vec3d lobbySpot;
 
-        void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
-        long since(GravesAndGlory.Battle b){return b.time-stageAt;}
-        ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
-        Profile profile(GravesAndGlory.Battle b){return b.campaign.profile(player);}
-        void requestShot(String name,int after){shotTaken=false;shotDelay=0;shotAfter=after;wantShot=name;}
-        static boolean near(double a,double b){return Math.abs(a-b)<1e-9;}
-        static String fmt(double v){return String.format(Locale.ROOT,"%.2f",v);}
-        static String show(Combat.HitLog h){return Engine.show(h);}
-        static double distance(Vec3d a,Vec3d c){return Math.sqrt(GravesAndGlory.Battle.horizontalDistance(a,c));}
         static long temporaries(GravesAndGlory.Battle b){return b.units.stream().filter(u->u.temporary).count();}
-        /** A troop of the army on the platform at (dx, dz) from its centre with its AI off, held there each tick by the pins; a frozen troop never attacks or casts. */
-        GravesAndGlory.Unit post(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String troop,double dx,double dz,float yaw,boolean freeze){
-            Vec3d at=new Vec3d(site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz);
-            var u=b.spawn(s,Campaign.troop(troop),30+fixture.size(),at);u.mob.setAiDisabled(true);if(freeze)Phase1Checks.freeze(u);
-            fixture.add(u);pins.add(new Pin(u,at,yaw));u.deployed=at;Engine.apply(u,at,yaw);return u;
-        }
-        void move(GravesAndGlory.Unit u,double dx,double dz,float yaw){Vec3d at=new Vec3d(site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz);pins.removeIf(p->p.u()==u);pins.add(new Pin(u,at,yaw));u.deployed=at;Engine.apply(u,at,yaw);}
-        /** The troop's armour off, so the health it loses is the amount applied. */
-        static GravesAndGlory.Unit bare(GravesAndGlory.Unit u){for(var slot:List.of(EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET))u.mob.equipStack(slot,ItemStack.EMPTY);return u;}
-        /** A real blow of this size from the attacker's troop, past the victim's hurt cooldown, through Combat.resolve (so the ALLOW_DEATH hook and AFTER_DEATH run if it kills). */
-        static float strike(GravesAndGlory.Battle b,GravesAndGlory.Unit attacker,GravesAndGlory.Unit victim,float base){victim.mob.timeUntilRegen=0;victim.mob.hurtTime=0;return Combat.resolve(b,attacker,victim.mob,base,"melee",false);}
         /** A fall with no attacker, past the hurt cooldown: the plain damage path (no kill credit). */
         static void fall(GravesAndGlory.Battle b,GravesAndGlory.Unit victim){victim.mob.timeUntilRegen=0;victim.mob.hurtTime=0;victim.mob.damage(b.world.getDamageSources().generic(),1000f);}
-        void platform(GravesAndGlory.Battle b,BlockPos c,int half,net.minecraft.block.BlockState floor){
-            for(int x=-half;x<=half;x++)for(int z=-half;z<=half;z++){b.world.setBlockState(c.add(x,-1,z),floor);for(int y=0;y<=6;y++)b.world.setBlockState(c.add(x,y,z),Blocks.AIR.getDefaultState());}
-        }
-        void force(GravesAndGlory.Battle b,BlockPos from,BlockPos to){
-            for(int cx=from.getX()>>4;cx<=to.getX()>>4;cx++)for(int cz=from.getZ()>>4;cz<=to.getZ()>>4;cz++){b.world.setChunkForced(cx,cz,true);b.world.getChunk(cx,cz);forced.add(new net.minecraft.util.math.ChunkPos(cx,cz));}
-        }
-        void unforce(GravesAndGlory.Battle b){for(var p:forced)b.world.setChunkForced(p.x,p.z,false);forced.clear();}
         void drop(GravesAndGlory.Battle b,GravesAndGlory.Unit u){u.mob.discard();b.units.remove(u);fixture.remove(u);group.remove(u);pins.removeIf(p->p.u()==u);audit(b,"drop",false);}
         void dropAll(GravesAndGlory.Battle b,List<GravesAndGlory.Unit> us,String where){for(var u:new ArrayList<>(us)){u.mob.discard();b.units.remove(u);fixture.remove(u);pins.removeIf(p->p.u()==u);}us.clear();audit(b,where,false);}
-        void clearFixture(GravesAndGlory.Battle b,String where){for(var u:fixture)u.mob.discard();b.units.removeAll(fixture);fixture.clear();group.clear();pins.clear();bloom.clear();corpses.clear();audit(b,where,false);}
-        /** After a removal or a raising: no gg_ side team keeps a member that is not a living troop of b.units (and with `none` standing, none keeps any). */
-        void audit(GravesAndGlory.Battle b,String where,boolean none){
-            var stale=staleSides(b);var all=sideMembers(b);audits++;
-            for(String m:none?all:stale)staleSeen.putIfAbsent(m,where);
-            if(auditNotes.size()<24)auditNotes.add(where+" "+all.size()+" on a team"+(stale.isEmpty()?"":", "+stale.size()+" stale"));
-        }
-        void hold(){for(var p:pins)if(p.u().mob.isAlive())Engine.apply(p.u(),p.at(),p.yaw());}
-        /** The army's stored state back to nothing: no rout, no steadiness, no health ceiling, no orders. */
-        static void reset(GravesAndGlory.Squad s){s.routedAt.clear();s.steadyUntil.clear();s.fullHealth.clear();s.assignments.clear();}
+        @Override void cleared(){group.clear();bloom.clear();corpses.clear();}
         /** Sets every living troop of the list to this share of its health, and the army's ceiling for the group so its strength is that share. */
         void weaken(GravesAndGlory.Squad s,String grp,List<GravesAndGlory.Unit> us,double share){
             double living=0;for(var u:us)if(u.mob.isAlive()){u.mob.setHealth((float)(u.mob.getMaxHealth()*share));living+=u.mob.getHealth();}
             s.fullHealth.put(grp,living/share);
-        }
-        /** Every army's troops leave and none come back; a stone sky platform 40 blocks east of Dawn's base; two ad hoc armies (bots, so no profile is read) beside the commander's own, which keeps his seat and his class. */
-        void stageFixture(GravesAndGlory.Battle b){
-            Projectiles.clear(b);Abilities.clearBanners(b);clearFixture(b,"clearFixture");
-            for(var s:b.squads.values()){s.reinforceAt=Long.MAX_VALUE;s.training.clear();if(s.bot)b.campaign.botRespawns.put(s.owner,Long.MAX_VALUE);}
-            for(var u:b.units)u.mob.discard();b.units.clear();audit(b,"stageFixture",true);b.deaths.clear();
-            var base=GravesAndGlory.Battle.base(0);site=new BlockPos((int)base.x+40,140,(int)base.z);force(b,site.add(-13,0,-13),site.add(13,0,13));platform(b,site,12,Blocks.STONE.getDefaultState());
-            own=b.squads.get(player);reset(own);
-            dawn=new GravesAndGlory.Squad(UUID.randomUUID(),0,base);dawn.order="hold";dawn.bot=true;dusk=new GravesAndGlory.Squad(UUID.randomUUID(),1,base);dusk.order="hold";dusk.bot=true;
         }
         /** The commander on the platform, west of its centre, facing east and looking down at the ground 12 blocks ahead; aim is where the Bloom's raycast lands. */
         void stand(GravesAndGlory.Battle b,ServerPlayerEntity p,float yaw){
@@ -2141,17 +2159,11 @@ public final class Phase2Checks implements ClientModInitializer {
      * fixture is Graveborn's: a stone platform in the sky 40 blocks east of Dawn's base, two ad hoc armies and the commander's own (a
      * Quartermaster); troops are posted frozen and pinned. The field stages (the Mortar walking, the bridges) run on real ground.
      */
-    static final class Ironclad implements Suite,ServerWatch {
-        record Pin(GravesAndGlory.Unit u,Vec3d at,float yaw){}
-        volatile int stage;volatile UUID player;volatile String wantShot;volatile boolean shotTaken,finished;
-        long stageAt,t0;int shotDelay,shotAfter=12;String classBefore;
-        BlockPos site,mainSite,pointSite;
-        final List<GravesAndGlory.Unit> fixture=new ArrayList<>(),shielded=new ArrayList<>();final List<Pin> pins=new ArrayList<>();
-        final Set<net.minecraft.util.math.ChunkPos> forced=new HashSet<>();final List<BlockPos> platforms=new ArrayList<>();
+    static final class Ironclad extends Staged {
+        BlockPos mainSite,pointSite;
+        final List<GravesAndGlory.Unit> shielded=new ArrayList<>();final List<BlockPos> platforms=new ArrayList<>();
         boolean raise;
-        GravesAndGlory.Squad own,dawn,dusk;
         GravesAndGlory.Capture owned;int ownedWas=-1,ownedProgress,ownedChallenger=-1;long ownedSince;
-        int audits;final Map<String,String> staleSeen=new LinkedHashMap<>();final List<String> auditNotes=new ArrayList<>();
         // scratch the stages share
         GravesAndGlory.Unit u1,u2,u3,u4,u5,u6;final GravesAndGlory.Unit[] us=new GravesAndGlory.Unit[8],line=new GravesAndGlory.Unit[7];
         Projectiles.Shot shot;Combat.HitLog mark;GravesAndGlory.ArmySupplyBanner banner;
@@ -2165,69 +2177,29 @@ public final class Phase2Checks implements ClientModInitializer {
         // the supply stages
         final List<String> supplyWhy=new ArrayList<>();boolean supplyOk;BlockPos bannerBlock;int variant;Set<Integer> seen=new HashSet<>();
         TickCost cost;
+        // fix round 1: the siege-hold and mortar-hold stages, the wall, the golem's crossing, the fall of a banner
+        final List<BlockPos> wall=new ArrayList<>();
+        double deckMin,drift;boolean wet,holdOk,siegeOk;int deckTicks,casts;String holdWhy="",siegeNote="",fallNotice="";long fallUntil=-1,fallReady=-1;
 
-        void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
-        long since(GravesAndGlory.Battle b){return b.time-stageAt;}
-        ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
-        Profile profile(GravesAndGlory.Battle b){return b.campaign.profile(player);}
-        void requestShot(String name,int after){shotTaken=false;shotDelay=0;shotAfter=after;wantShot=name;}
-        static boolean near(double a,double b){return Math.abs(a-b)<1e-9;}
         static boolean close(double a,double b){return Math.abs(a-b)<1e-3;}
-        static String fmt(double v){return String.format(Locale.ROOT,"%.2f",v);}
-        static String show(Combat.HitLog h){return Engine.show(h);}
-        static double distance(Vec3d a,Vec3d c){return Math.sqrt(GravesAndGlory.Battle.horizontalDistance(a,c));}
         static Vec3d base0(){return GravesAndGlory.Battle.base(0);}
         Vec3d centre(){return new Vec3d(site.getX()+.5,site.getY(),site.getZ()+.5);}
         /** The standing spot on real ground at (x, z). */
         static Vec3d ground(GravesAndGlory.Battle b,double x,double z){return new Vec3d(x,Phase1Checks.top(b,x,z),z);}
-        /** A troop of the army on the platform at (dx, dz) from its centre with its AI off, held there each tick by the pins; a frozen troop never attacks or casts. */
-        GravesAndGlory.Unit post(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Spec.TroopsRow row,int slot,double dx,double dz,float yaw,boolean freeze){
-            Vec3d at=new Vec3d(site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz);
-            var u=b.spawn(s,row,slot,at);u.mob.setAiDisabled(true);if(freeze)Phase1Checks.freeze(u);
-            fixture.add(u);pins.add(new Pin(u,at,yaw));u.deployed=at;Engine.apply(u,at,yaw);return u;
-        }
-        GravesAndGlory.Unit post(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String troop,double dx,double dz,float yaw,boolean freeze){return post(b,s,Campaign.troop(troop),30+fixture.size(),dx,dz,yaw,freeze);}
-        GravesAndGlory.Unit post(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Spec.TroopsRow row,double dx,double dz,float yaw,boolean freeze){return post(b,s,row,30+fixture.size(),dx,dz,yaw,freeze);}
         /** A troop with its AI on (Tactics moves and swings it), on the platform at (dx, dz). */
         GravesAndGlory.Unit live(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String troop,double dx,double dz,float yaw){
             Vec3d at=new Vec3d(site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz);
             var u=b.spawn(s,Campaign.troop(troop),30+fixture.size(),at);u.mob.refreshPositionAndAngles(at.x,at.y,at.z,yaw,0);fixture.add(u);u.deployed=at;return u;
         }
-        void move(GravesAndGlory.Unit u,double dx,double dz,float yaw){Vec3d at=new Vec3d(site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz);pins.removeIf(p->p.u()==u);pins.add(new Pin(u,at,yaw));u.deployed=at;Engine.apply(u,at,yaw);}
         void unpin(GravesAndGlory.Unit u){pins.removeIf(p->p.u()==u);}
-        /** The troop's armour off, so the health it loses is the amount applied. */
-        static GravesAndGlory.Unit bare(GravesAndGlory.Unit u){for(var slot:List.of(EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET))u.mob.equipStack(slot,ItemStack.EMPTY);return u;}
         /** A troop that cannot be killed by the stage in hand. */
         static GravesAndGlory.Unit tough(GravesAndGlory.Unit u){u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(4000);u.mob.setHealth(4000f);return u;}
-        /** A real blow of this size from the attacker's troop, past the victim's hurt cooldown, through Combat.resolve (so the on-hit abilities run). */
-        static float strike(GravesAndGlory.Battle b,GravesAndGlory.Unit attacker,GravesAndGlory.Unit victim,float base){victim.mob.timeUntilRegen=0;victim.mob.hurtTime=0;return Combat.resolve(b,attacker,victim.mob,base,"melee",false);}
-        void platform(GravesAndGlory.Battle b,BlockPos c,int half,net.minecraft.block.BlockState floor){
-            for(int x=-half;x<=half;x++)for(int z=-half;z<=half;z++){b.world.setBlockState(c.add(x,-1,z),floor);for(int y=0;y<=6;y++)b.world.setBlockState(c.add(x,y,z),Blocks.AIR.getDefaultState());}
-        }
-        void force(GravesAndGlory.Battle b,BlockPos from,BlockPos to){
-            for(int cx=from.getX()>>4;cx<=to.getX()>>4;cx++)for(int cz=from.getZ()>>4;cz<=to.getZ()>>4;cz++){b.world.setChunkForced(cx,cz,true);b.world.getChunk(cx,cz);forced.add(new net.minecraft.util.math.ChunkPos(cx,cz));}
-        }
-        void unforce(GravesAndGlory.Battle b){for(var p:forced)b.world.setChunkForced(p.x,p.z,false);forced.clear();}
-        void clearFixture(GravesAndGlory.Battle b,String where){for(var u:fixture)u.mob.discard();b.units.removeAll(fixture);fixture.clear();shielded.clear();pins.clear();raise=false;Arrays.fill(us,null);Arrays.fill(line,null);audit(b,where,false);}
-        /** After a removal or a raising: no gg_ side team keeps a member that is not a living troop of b.units (and with `none` standing, none keeps any). */
-        void audit(GravesAndGlory.Battle b,String where,boolean none){
-            var stale=staleSides(b);var all=sideMembers(b);audits++;
-            for(String m:none?all:stale)staleSeen.putIfAbsent(m,where);
-            if(auditNotes.size()<24)auditNotes.add(where+" "+all.size()+" on a team"+(stale.isEmpty()?"":", "+stale.size()+" stale"));
-        }
-        void hold(){
-            for(var p:pins)if(p.u().mob.isAlive())Engine.apply(p.u(),p.at(),p.yaw());
+        @Override void cleared(){shielded.clear();raise=false;Arrays.fill(us,null);Arrays.fill(line,null);}
+        @Override void staged(){mainSite=site;platforms.add(site);}
+        /** After each server tick: the pinned troops stand where the stage put them, and the troops in `shielded` hold their shields as `raise` says. */
+        @Override void hold(){
+            super.hold();
             for(var u:shielded)if(u.mob.isAlive()){if(raise&&!u.mob.isUsingItem())u.mob.setCurrentHand(net.minecraft.util.Hand.OFF_HAND);else if(!raise&&u.mob.isUsingItem())u.mob.stopUsingItem();}
-        }
-        static void reset(GravesAndGlory.Squad s){s.routedAt.clear();s.steadyUntil.clear();s.fullHealth.clear();s.assignments.clear();}
-        /** Every army's troops leave and none come back; a stone sky platform 40 blocks east of Dawn's base; two ad hoc armies (bots) beside the commander's own, which keeps his seat and his class. */
-        void stageFixture(GravesAndGlory.Battle b){
-            Projectiles.clear(b);Abilities.clearBanners(b);clearFixture(b,"clearFixture");
-            for(var s:b.squads.values()){s.reinforceAt=Long.MAX_VALUE;s.training.clear();if(s.bot)b.campaign.botRespawns.put(s.owner,Long.MAX_VALUE);}
-            for(var u:b.units)u.mob.discard();b.units.clear();audit(b,"stageFixture",true);b.deaths.clear();
-            var base=GravesAndGlory.Battle.base(0);site=new BlockPos((int)base.x+40,140,(int)base.z);mainSite=site;force(b,site.add(-13,0,-13),site.add(13,0,13));platform(b,site,12,Blocks.STONE.getDefaultState());platforms.add(site);
-            own=b.squads.get(player);reset(own);
-            dawn=new GravesAndGlory.Squad(UUID.randomUUID(),0,base);dawn.order="hold";dawn.bot=true;dusk=new GravesAndGlory.Squad(UUID.randomUUID(),1,base);dusk.order="hold";dusk.bot=true;
         }
         /** A level, open 36 x 17 patch of real ground west of the river (no step over a block, no water): its west end (x, standing y, z), or null. */
         double[] flat(GravesAndGlory.Battle b){
@@ -2248,9 +2220,45 @@ public final class Phase2Checks implements ClientModInitializer {
             b.relocate(p,site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz,-90f,0f);b.campaign.notices.remove(player);b.command(p,"ability");
             return b.structures.isEmpty()?null:b.structures.get(b.structures.size()-1);
         }
+        /** A bare, tough knight of Dusk, frozen and pinned on real ground at `at`. */
+        GravesAndGlory.Unit foe(GravesAndGlory.Battle b,Vec3d at,int slot){
+            var f=b.spawn(dusk,Campaign.troop("knight"),slot,at);f.mob.setAiDisabled(true);Phase1Checks.freeze(f);tough(bare(f));fixture.add(f);pins.add(new Pin(f,at,90f));f.deployed=at;return f;
+        }
+        /** The order point of an army that puts the formation spot of its troop where the troop stands (a bot army's troop with nothing to shoot walks to that spot). */
+        void standAt(GravesAndGlory.Battle b,GravesAndGlory.Squad s,GravesAndGlory.Unit u,Vec3d at,float yaw){
+            s.yaw=yaw;s.target=at;Vec3d off=b.formation(u).subtract(at);s.target=at.subtract(off);
+        }
+        /** A stone wall one block thick in block column x from block row z0 to z1, from the ground up five blocks. */
+        void wallUp(GravesAndGlory.Battle b,double x,double z0,double z1){
+            int bx=(int)Math.floor(x);
+            for(int z=(int)Math.floor(z0);z<=(int)Math.floor(z1);z++){int y0=(int)Phase1Checks.top(b,bx+.5,z+.5);for(int y=0;y<5;y++){var at=new BlockPos(bx,y0+y,z);b.world.setBlockState(at,Blocks.STONE.getDefaultState());wall.add(at);}}
+        }
+        void wallDown(GravesAndGlory.Battle b){for(var at:wall)b.world.setBlockState(at,Blocks.AIR.getDefaultState());wall.clear();}
+        /** A tier I Ironclad Ballista Crew on Hold at its post on the flat ground, a pinned knight 36 blocks east of it (past its 34, inside the 37.4 of a Ballista that has stood still), a stone wall between them when `walled`. */
+        void siegeHold(GravesAndGlory.Battle b,boolean walled){
+            dawn.order="hold";dusk.order="hold";
+            Vec3d post=ground(b,gx-3.5,gz+.5);
+            us[0]=foe(b,ground(b,gx+32.5,gz+.5),40);
+            u1=b.spawn(dawn,Campaign.troop("ic_ballista"),32,post);u1.mob.refreshPositionAndAngles(post.x,post.y,post.z,-90f,0f);fixture.add(u1);u1.deployed=post;
+            dawn.traits.put("ironclad",1); // after the spawn, which counts the army's Houses again
+            standAt(b,dawn,u1,post,-90f);
+            if(walled)wallUp(b,gx+14.5,gz-6,gz+7);
+            holdAt=post;drift=0;shotDist=-1;foeHp=us[0].mob.getHealth();
+        }
+        /** Each tick of a siege-hold stage: how far it strayed from its post and where its first bolt was loosed; true after 200 ticks, with siegeOk and siegeNote set. */
+        boolean siegeWatch(GravesAndGlory.Battle b){
+            drift=Math.max(drift,distance(u1.mob.getPos(),holdAt));
+            if(shotDist<0&&b.shots.stream().anyMatch(sh->sh.shooter()==u1))shotDist=distance(u1.mob.getPos(),us[0].mob.getPos());
+            if(since(b)<200)return false;
+            boolean walled=!wall.isEmpty(),entrenched=Houses.still(u1)&&Math.abs(Abilities.range(b,u1)-37.4)<1e-6,hit=us[0].mob.getHealth()<foeHp;
+            boolean fired=walled?shotDist<0&&!hit:shotDist>34.0&&hit;
+            siegeOk=drift<0.6&&entrenched&&fired;
+            siegeNote="over 200 ticks on Hold the Ballista Crew strayed at most "+fmt(drift)+" from its post (want under 0.6: it never walks to or from a target), it stood entrenched (still="+Houses.still(u1)+", range "+fmt(Abilities.range(b,u1))+", want 37.4), "+(walled?"it loosed "+(shotDist<0?"no bolt":"a bolt from "+fmt(shotDist))+" at the knight it cannot see and the knight lost "+fmt(foeHp-us[0].mob.getHealth())+" (want no bolt, nothing lost)":"its first bolt left "+(shotDist<0?"never":fmt(shotDist))+" blocks from the knight (want past 34, the range without Entrench) and the knight lost "+fmt(foeHp-us[0].mob.getHealth())+" (want some)")+"="+siegeOk;
+            return true;
+        }
 
         public void cleanup(MinecraftClient c){
-            server(c,b->{Abilities.clearBanners(b);clearFixture(b,"cleanup");for(var s:platforms)platform(b,s,12,Blocks.AIR.getDefaultState());platforms.clear();unforce(b);
+            server(c,b->{Abilities.clearBanners(b);wallDown(b);clearFixture(b,"cleanup");for(var s:platforms)platform(b,s,12,Blocks.AIR.getDefaultState());platforms.clear();unforce(b);
                 if(owned!=null){owned.owner=ownedWas;owned.progress=ownedProgress;owned.challenger=ownedChallenger;owned.ownedSince=ownedSince;}
                 if(cost!=null)cost.handBack();
                 if(b.running)b.campaign.returnLobby();var p=sp(b);if(p!=null&&classBefore!=null)b.campaign.handle(p,"class:"+classBefore);});
@@ -2464,6 +2472,16 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean refused=edge<30&&b.structures.isEmpty()&&own.abilityUntil==0&&own.abilityReadyAt==ready&&("Too near your base. Plant it 30 or more blocks away.").equals(notice);
                     supplyOk&=gone&&refused;
                     supplyWhy.add("the active stopped by hand took the banner down and put its block back (air again)="+gone+"; from the platform's west edge, "+fmt(edge)+" from his base, the cast was refused with the notice \""+notice+"\", no banner, no cooldown, no duration="+refused);
+                    // the rule is measured where the banner stands: a step behind his feet when he faces away from his base, a step beyond them when he faces it
+                    Commander.reset(b,own);b.relocate(p,base0().x+30.6,site.getY(),site.getZ()+.5,-90f,0f);b.campaign.notices.remove(player);b.command(p,"ability");
+                    double feetA=distance(p.getPos(),base0());String noticeA=b.campaign.notices.get(player);
+                    boolean stepBack=feetA>=30&&b.structures.isEmpty()&&own.abilityUntil==0&&own.abilityReadyAt==0&&("Too near your base. Plant it 30 or more blocks away.").equals(noticeA);
+                    Commander.reset(b,own);b.relocate(p,base0().x+29.4,site.getY(),site.getZ()+.5,90f,0f);b.campaign.notices.remove(player);b.command(p,"ability");
+                    var beyond=b.structures.isEmpty()?null:b.structures.get(0);double feetB=distance(p.getPos(),base0()),bannerB=beyond==null?-1:distance(beyond.getPos(),base0());
+                    boolean stepOn=feetB<30&&beyond!=null&&bannerB>=30&&own.abilityUntil>b.time;
+                    Commander.reset(b,own);
+                    supplyOk&=stepBack&&stepOn;
+                    supplyWhy.add("the 30 blocks are measured at the banner: standing "+fmt(feetA)+" from his base facing away (the banner would stand a step nearer) the cast was refused with \""+noticeA+"\", no banner, no cooldown="+stepBack+"; standing "+fmt(feetB)+" from it facing it (the banner stands a step beyond) a banner was planted "+(beyond==null?"never":fmt(bannerB)+" from his base")+"="+stepOn);
                     report("p2-supply-banner",supplyOk,String.join("; ",supplyWhy));
                     clearFixture(b,"supply deploy");next(b,32);
                 }
@@ -2477,13 +2495,16 @@ public final class Phase2Checks implements ClientModInitializer {
                     t0=b.time;castTime=-1;next(b,33);
                 }
                 case 33->{
-                    if(castTime<0&&banner.isRemoved())castTime=b.time-t0;
+                    if(castTime<0&&banner.isRemoved()){castTime=b.time-t0;fallNotice=b.campaign.notices.getOrDefault(player,"");fallUntil=own.abilityUntil;fallReady=own.abilityReadyAt;}
                     if(since(b)<110)return; // the troop is finished at +100
                     boolean down=castTime>=0&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir();
                     var fresh=b.units.stream().filter(u->u.squad==own).toList();var u=fresh.isEmpty()?null:fresh.get(0);
                     boolean home=u!=null&&distance(u.mob.getPos(),base0())<12&&distance(u.mob.getPos(),centre())>25;
                     supplyWhy.add("(a) an enemy Ballista Crew 9 blocks off shot the banner down "+(castTime<0?"never":castTime+" ticks")+" after it was planted, its block is air again="+down+"; the troop that finished training afterwards appeared "+(u==null?"never":fmt(distance(u.mob.getPos(),base0()))+" from his base and "+fmt(distance(u.mob.getPos(),centre()))+" from the platform")+" (want the barracks)="+home);
-                    supplyOk=down&&home;
+                    boolean told=fallNotice.equals("Your supply banner has fallen. Troops muster at the barracks.");
+                    boolean ended=fallUntil==0&&Math.abs(fallReady-(t0+3000))<=2&&!Commander.running(b,own,"forward_supply")&&Commander.activeFor(b,own)==0&&own.abilityData==null;
+                    supplyWhy.add("when it fell its commander read \""+fallNotice+"\"="+told+" and his active ended with it (it ran to +"+fallUntil+" (0 is stopped), the HUD tile shows "+Commander.activeFor(b,own)+" ticks of it, the cooldown stands until +"+(fallReady-t0)+" of 3000)="+ended);
+                    supplyOk=down&&home&&told&&ended;
                     if(u!=null)Houses.discard(b,u);
                     clearFixture(b,"lost a done");own.training.clear();dusk.order="hold";next(b,34);
                 }
@@ -2506,9 +2527,26 @@ public final class Phase2Checks implements ClientModInitializer {
                 }
                 case 36->{if(since(b)<12)return;
                     boolean gone=b.structures.isEmpty()&&banner.isRemoved()&&b.world.getBlockState(bannerBlock).isAir()&&own.abilityUntil==0&&b.deploy(own,0).anchor()==null;
-                    supplyWhy.add("when the timer runs out the banner is taken down, its block restored and a troop deploys at the barracks="+gone);supplyOk&=gone;
+                    boolean quiet=!"Your supply banner has fallen. Troops muster at the barracks.".equals(b.campaign.notices.get(player));
+                    supplyWhy.add("when the timer runs out the banner is taken down, its block restored and a troop deploys at the barracks="+gone+", and its commander is not told it fell (an expiry is no fall)="+quiet);supplyOk&=gone&&quiet;
+                    Commander.reset(b,own);next(b,37);
+                }
+                case 37->{ // (d): an enemy Ballista Crew with a supply banner 6.5 off and the commander 20 off takes the commander (the army first, then its commander, then its banner)
+                    var p=sp(b);if(p==null)return;
+                    clearFixture(b,"lost d");Commander.reset(b,own);own.training.clear();
+                    banner=plant(b,p,-3);if(banner==null){report("p2-supply-lost",false,"no banner could be planted (d)");next(b,99);return;}
+                    bannerBlock=banner.block;dusk.order="attack";dusk.target=centre();
+                    u1=post(b,dusk,"ic_ballista",-11,0,-90,true); // frozen: it chooses and does not shoot
+                    b.relocate(p,site.getX()+.5+9,site.getY(),site.getZ()+.5,90f,0f);
+                    next(b,38);
+                }
+                case 38->{if(since(b)<12)return; // a beat or more
+                    var p=sp(b);boolean commander=p!=null&&u1.lockedTarget==p;
+                    double toBanner=distance(u1.mob.getPos(),banner.getPos()),toCommander=p==null?-1:distance(u1.mob.getPos(),p.getPos());
+                    supplyWhy.add("(d) an enemy Ballista Crew with the banner "+fmt(toBanner)+" off and the commander "+fmt(toCommander)+" off took "+(u1.lockedTarget==null?"no target":u1.lockedTarget==p?"the commander":u1.lockedTarget==banner?"the banner":"something else")+" (want the commander)="+commander);
+                    supplyOk&=commander;
                     report("p2-supply-lost",supplyOk,String.join("; ",supplyWhy));
-                    Commander.reset(b,own);var p=sp(b);if(p!=null)p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);next(b,40);
+                    clearFixture(b,"lost d done");Commander.reset(b,own);dusk.order="hold";if(p!=null)p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);next(b,40);
                 }
                 case 40->{ // p2-golem-swing: Brassjaw (AI on) swings at a knight 2.8 off, a Hearthguard beside him at another; the swings are entity status 4
                     clearFixture(b,"swing");dawn.order="attack";var p=sp(b);if(p!=null){p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);b.relocate(p,site.getX()+.5-9,site.getY(),site.getZ()+.5+9,-45f,15f);}
@@ -2556,7 +2594,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     next(b,51);
                 }
                 case 51->{if(since(b)<80)return; // 80 ticks of standing still
-                    boolean still=Houses.still(us[0])&&Houses.still(u1)&&Houses.still(u2);
+                    boolean still=Houses.still(us[0])&&Houses.still(u1)&&Houses.still(u2),otherHouse=Houses.still(u3); // u3, a knight of Dusk (no Entrench), has stood as long
                     var neutral=Commanders.hit(b,u3,us[0].mob,"melee");
                     owned.owner=1;var theirs=Commanders.hit(b,u3,us[0].mob,"melee"); // an objective the enemy holds does not count
                     owned.owner=0;var mine=Commanders.hit(b,u3,us[0].mob,"melee");var arrow=Commanders.hit(b,u3,us[0].mob,"arrow");
@@ -2573,8 +2611,8 @@ public final class Phase2Checks implements ClientModInitializer {
                         tiers&=good;s.append("tier ").append(tr).append(": traits ").append(a==null?"none":fmt(a.traits())).append(", on the objective ").append(c2==null?"none":fmt(c2.traits())).append(", Ballista range ").append(fmt(rr)).append(good?"":" (BAD)").append("; ");
                     }
                     Houses.recompute(own);
-                    entrenchOk&=t1&&range&&tiers;
-                    entrenchWhy+="after 80 ticks without moving (still="+still+"): a blow on a Hearthguard has traits "+show(neutral)+" (want 0.9); with the objective held by the enemy "+(theirs==null?"none":String.valueOf(theirs.traits()))+" (want 0.9); with it held by his side "+(mine==null?"none":String.valueOf(mine.traits()))+" (want 0.8), an arrow "+(arrow==null?"none":String.valueOf(arrow.traits()))+" (0.8)="+t1+"; the Ballista Crew's range is "+fmt(r1)+" (want 37.4) and the Mortar's "+fmt(r2)+" (39.6), a Hearthguard's stays "+fmt(rg)+", an Order Squire (Gilded) takes none="+(foeHit!=null&&near(foeHit.traits(),1.0))+"="+range+"; "+s;
+                    entrenchOk&=t1&&range&&tiers&&otherHouse;
+                    entrenchWhy+="after 80 ticks without moving (still="+still+"): a blow on a Hearthguard has traits "+show(neutral)+" (want 0.9); with the objective held by the enemy "+(theirs==null?"none":String.valueOf(theirs.traits()))+" (want 0.9); with it held by his side "+(mine==null?"none":String.valueOf(mine.traits()))+" (want 0.8), an arrow "+(arrow==null?"none":String.valueOf(arrow.traits()))+" (0.8)="+t1+"; the Ballista Crew's range is "+fmt(r1)+" (want 37.4) and the Mortar's "+fmt(r2)+" (39.6), a Hearthguard's stays "+fmt(rg)+", an Order Squire (Gilded) takes none="+(foeHit!=null&&near(foeHit.traits(),1.0))+"="+range+"; a knight of the other House (no Entrench) that stood as long is still="+otherHouse+" (the rest rule is the sheet's, whatever the House); "+s;
                     // now two of them step a block
                     owned.owner=0;move(us[0],-2+1.0,-3,-90);move(u1,-6,3+1.0,-90);next(b,52);
                 }
@@ -2648,11 +2686,30 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(since(b)>=120){
                         double moved=distance(u1.mob.getPos(),holdAt);boolean stay=castsInside==0&&moved<1.0;
                         minOk&=stay;minWhy+="the same Mortar on hold, 8 blocks from the knight for 120 ticks: ticks with a spell begun "+castsInside+" (want 0), it moved "+fmt(moved)+" (want under 1)="+stay;
-                        report("p2-mortar-minrange",minOk,minWhy);clearFixture(b,"mortar field");next(b,66);
+                        report("p2-mortar-minrange",minOk,minWhy);clearFixture(b,"mortar field");next(b,65);
                     }
                 }
+                case 65->{ // p2-mortar-hold: a Mortar on Hold, one pinned knight 8 blocks off (inside its 10) and another 20 off; it shells the far one and never the near one
+                    if(gy==0){report("p2-mortar-hold",false,"no flat ground was found for the walking check");next(b,66);return;}
+                    dawn.order="hold";dusk.order="hold";
+                    Vec3d mortarAt=ground(b,gx+4.5,gz+.5);
+                    us[0]=foe(b,ground(b,gx+12.5,gz+.5),40);us[1]=foe(b,ground(b,gx+24.5,gz+.5),41);
+                    u1=b.spawn(dawn,Campaign.troop("ic_mortar"),32,mortarAt);u1.mob.refreshPositionAndAngles(mortarAt.x,mortarAt.y,mortarAt.z,-90f,0f);fixture.add(u1);u1.deployed=mortarAt;
+                    standAt(b,dawn,u1,mortarAt,-90f);
+                    holdAt=mortarAt;castDist=-1;castsInside=0;casts=0;casting=false;foeHp=us[1].mob.getHealth();foeHp2=us[0].mob.getHealth();
+                    next(b,68);
+                }
+                case 68->{ // 150 ticks: each spell it begins, and where it lands
+                    if(u1.spellCenter!=null&&!casting){casting=true;casts++;double dc=distance(u1.mob.getPos(),u1.spellCenter);if(castDist<0)castDist=dc;if(dc<10)castsInside++;}
+                    if(u1.spellCenter==null)casting=false;
+                    if(since(b)<150)return;
+                    float farLost=foeHp-us[1].mob.getHealth(),nearLost=foeHp2-us[0].mob.getHealth();double moved=distance(u1.mob.getPos(),holdAt);
+                    boolean good=casts>=1&&castsInside==0&&Math.abs(castDist-20)<1.0&&farLost>0&&nearLost==0&&moved<1.0;
+                    report("p2-mortar-hold",good,"a Mortar on Hold, a pinned knight "+fmt(distance(holdAt,us[0].mob.getPos()))+" blocks off it (inside its minimum of 10) and another "+fmt(distance(holdAt,us[1].mob.getPos()))+" off: in 150 ticks it began "+casts+" spells (want some), the first aimed "+(castDist<0?"nowhere":fmt(castDist)+" blocks away")+" (want the far knight, 20) and "+castsInside+" inside 10 (want 0); the far knight lost "+fmt(farLost)+" health (want some), the near one "+fmt(nearLost)+" (want 0); it moved "+fmt(moved)+" (want under 1)="+good);
+                    clearFixture(b,"mortar hold");next(b,66);
+                }
                 case 66->{ // p2-siege-engage: a Mortar and a Ballista Crew under the attack order, one pinned knight 32 blocks off (past the order's radius of 24, inside their reach of 36 and 34)
-                    if(gy==0){report("p2-siege-engage",false,"no flat ground was found for the walking check");next(b,63);return;}
+                    if(gy==0){report("p2-siege-engage",false,"no flat ground was found for the walking check");next(b,76);return;}
                     Vec3d foeAt=ground(b,gx+29.5,gz+.5);
                     var foe=b.spawn(dusk,Campaign.troop("knight"),40,foeAt);foe.mob.setAiDisabled(true);Phase1Checks.freeze(foe);tough(bare(foe));fixture.add(foe);pins.add(new Pin(foe,foeAt,90f));foe.deployed=foeAt;us[0]=foe;
                     u1=b.spawn(dawn,Campaign.troop("ic_mortar"),32,ground(b,gx-2.5,gz-2.5));u2=b.spawn(dawn,Campaign.troop("ic_ballista"),33,ground(b,gx-2.5,gz+3.5));
@@ -2669,18 +2726,18 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(since(b)<120)return;
                     boolean fired=castDist>=30&&shotDist>=30&&us[0].mob.getHealth()<foeHp;
                     report("p2-siege-engage",minOk&&fired,minWhy+"the Mortar began a shell at the knight from "+(castDist<0?"never":fmt(castDist))+" blocks and the Ballista Crew loosed a bolt from "+(shotDist<0?"never":fmt(shotDist))+" (want 30 or more for both, the order's radius is 24); the knight lost "+fmt(foeHp-us[0].mob.getHealth())+" health (want some)="+fired);
-                    clearFixture(b,"siege engage");next(b,63);
+                    clearFixture(b,"siege engage");next(b,76);
                 }
                 case 63->{ // p2-ironclad-bridge: Dawn's army of four Hearthguards and Brassjaw (slot 4) at a bridge's west end, ordered across; each bridge of map 0 in turn
                     var bridges=Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList();
-                    if(bridgeIdx>=bridges.size()){report("p2-ironclad-bridge",bridgesOk,bridgeWhy.toString());next(b,70);return;}
+                    if(bridgeIdx>=bridges.size()){report("p2-ironclad-bridge",bridgesOk,bridgeWhy.toString());next(b,71);return;}
                     var br=bridges.get(bridgeIdx);clearFixture(b,"bridge");reset(own);Commander.reset(b,own);
                     field(b,own,banner("ic_hearthguard*4,ic_colossus"));
                     double x0=br.x()-br.width()/2.0-14;
                     force(b,new BlockPos((int)x0-4,0,br.z()-10),new BlockPos(br.x()+br.width()/2+24,0,br.z()+10));
                     own.order="move";own.formation="block";own.target=new Vec3d(br.x()+br.width()/2.0+16,65,br.z());own.yaw=-90;
                     for(var u:b.units)if(u.squad==own){double px=x0+(u.slot%5)*1.5,pz=br.z()+(u.slot/5-1.5)*1.4;u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(px,Arena.ground((int)px,(int)pz)+1,pz,-90f,0f);u.deployed=u.mob.getPos();u.lastPosition=u.mob.getPos();u.nextPath=0;u.stuckTicks=0;fixture.add(u);if(u.spec.id().equals("ic_colossus"))u1=u;}
-                    crossedAt=-1;t0=b.time;next(b,64);
+                    crossedAt=-1;deckMin=1e9;deckTicks=0;wet=false;t0=b.time;next(b,64);
                 }
                 case 64->{
                     var bridges=Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList();var br=bridges.get(bridgeIdx);
@@ -2688,12 +2745,57 @@ public final class Phase2Checks implements ClientModInitializer {
                     long across=fixture.stream().filter(u->u.squad==own&&u.mob.isAlive()&&u.mob.getX()>end&&u.mob.getY()>63).count();
                     boolean big=u1!=null&&u1.mob.isAlive()&&u1.mob.getX()>end&&u1.mob.getY()>63;
                     if(big&&crossedAt<0)crossedAt=b.time-t0;
+                    if(u1!=null&&u1.mob.isAlive()){ // on the bridge itself: at deck height, never in the water
+                        if(u1.mob.isTouchingWater())wet=true;
+                        if(Math.abs(u1.mob.getX()-br.x())<=br.width()/2.0-1){deckMin=Math.min(deckMin,u1.mob.getY());deckTicks++;}
+                    }
                     if(across==5||since(b)>=900){
-                        boolean good=big&&across==5;bridgesOk&=good;
-                        bridgeWhy.append(br.id()).append(" (").append(br.width()).append(" x ").append(br.depth()).append("): ").append(across).append("/5 across, Brassjaw ").append(big?"at +"+crossedAt+" ticks":"NOT across (at x "+(u1==null?"-":fmt(u1.mob.getX()))+", y "+(u1==null?"-":fmt(u1.mob.getY()))+")").append(good?"":" (BAD)").append("; ");
+                        boolean deck=deckTicks>0&&deckMin>=br.elevation()+0.5&&!wet;
+                        boolean good=big&&across==5&&deck;bridgesOk&=good;
+                        bridgeWhy.append(br.id()).append(" (").append(br.width()).append(" x ").append(br.depth()).append("): ").append(across).append("/5 across, Brassjaw ").append(big?"at +"+crossedAt+" ticks":"NOT across (at x "+(u1==null?"-":fmt(u1.mob.getX()))+", y "+(u1==null?"-":fmt(u1.mob.getY()))+")").append(", on the deck for ").append(deckTicks).append(" ticks at y ").append(deckTicks>0?fmt(deckMin):"-").append(" or higher (deck top ").append(br.elevation()+1).append("), in water ").append(wet).append(deck?"":" (NOT ON THE DECK)").append(good?"":" (BAD)").append("; ");
                         for(var u:new ArrayList<>(fixture))Houses.discard(b,u);fixture.clear();u1=null;audit(b,"bridge "+br.id(),false);
                         bridgeIdx++;next(b,63);
                     }
+                }
+                case 76->{ // p2-siege-hold, (a): a clear field
+                    if(gy==0){report("p2-siege-hold",false,"no flat ground was found for the walking check");next(b,63);return;}
+                    siegeHold(b,false);next(b,77);
+                }
+                case 77->{ // 200 ticks: after 60 still it reaches the knight and fires from where it stands
+                    if(!siegeWatch(b))return;
+                    holdOk=siegeOk;holdWhy="(a) a clear field: "+siegeNote;
+                    clearFixture(b,"siege hold a");siegeHold(b,true);next(b,78);
+                }
+                case 78->{ // (b): a stone wall between them; it cannot see the knight and must not walk about to find a line
+                    if(!siegeWatch(b))return;
+                    report("p2-siege-hold",holdOk&&siegeOk,holdWhy+"; (b) a stone wall between them: "+siegeNote);
+                    wallDown(b);clearFixture(b,"siege hold b");next(b,63);
+                }
+                case 71->{ // p2-supply-cleanup, (a): the ways a standing banner goes that are not a shot: the sweep every round start, map switch and lobby makes, and a kill
+                    var p=sp(b);if(p==null)return;
+                    clearFixture(b,"cleanup paths");Commander.reset(b,own);own.training.clear();supplyWhy.clear();
+                    banner=plant(b,p,0);if(banner==null){report("p2-supply-cleanup",false,"no banner could be planted");next(b,70);return;}
+                    bannerBlock=banner.block;var first=banner;
+                    Abilities.clearBanners(b); // the call returnLobby, startRound, switchMap and the server stopping each make
+                    boolean swept=first.isRemoved()&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir()&&!"Your supply banner has fallen. Troops muster at the barracks.".equals(b.campaign.notices.get(player));
+                    Commander.reset(b,own);
+                    banner=plant(b,p,0);if(banner==null){report("p2-supply-cleanup",false,"no banner could be planted (kill)");next(b,70);return;}
+                    bannerBlock=banner.block;banner.kill(); // what /kill does to an armor stand
+                    boolean killed=banner.isRemoved()&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir()&&"Your supply banner has fallen. Troops muster at the barracks.".equals(b.campaign.notices.get(player))&&own.abilityUntil==0&&own.abilityReadyAt>b.time;
+                    supplyOk=swept&&killed;
+                    supplyWhy.add("Abilities.clearBanners (the call a round start, a map switch, the lobby and a server stop each make) took a standing banner down, its block air again and nobody told it fell="+swept+"; a killed banner (what /kill does) left the list, its block air again, its commander told it fell and his active stopped (cooldown stands)="+killed);
+                    next(b,72);
+                }
+                case 72->{ // (b): the round ends with a banner standing
+                    var p=sp(b);if(p==null)return;
+                    Commander.reset(b,own);banner=plant(b,p,0);
+                    if(banner==null){report("p2-supply-cleanup",false,"no banner could be planted (lobby)");next(b,70);return;}
+                    bannerBlock=banner.block;var planted=banner;
+                    b.campaign.returnLobby();
+                    boolean lobby=!b.running&&planted.isRemoved()&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir()&&own.abilityUntil==0&&own.abilityData==null;
+                    supplyWhy.add("returnLobby with a banner standing took it down, its block air again and ended the active (round running="+b.running+")="+lobby);
+                    report("p2-supply-cleanup",supplyOk&&lobby,String.join("; ",supplyWhy)+"; a round start and a map switch were not run with a banner standing: each begins with the Abilities.clearBanners call checked above");
+                    next(b,70);
                 }
                 case 70->{ // p2-ironclad-tick-cost: eight bot armies, four Ironclad (hard) against four Gilded (hard)
                     var p=sp(b);if(p==null)return;
