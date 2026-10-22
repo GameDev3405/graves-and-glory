@@ -107,7 +107,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
             JsonObject b=el.getAsJsonObject();String name=str(b,"name"),parent=str(b,"parent");
             kids.computeIfAbsent(parent,k->new ArrayList<>()).add(name);
             if(b.has("relief"))for(var re:b.getAsJsonObject("relief").entrySet()){
-                TroopMesh mesh=TroopMesh.parse(re.getValue().getAsJsonArray(),size[0],size[1]);
+                TroopMesh mesh;try{mesh=TroopMesh.parse(re.getValue().getAsJsonArray(),size[0],size[1]);}catch(IllegalArgumentException e){throw new IllegalArgumentException("bone "+name+" relief "+re.getKey()+": "+e.getMessage(),e);}
                 if(mesh.quads()>0)rel.computeIfAbsent(re.getKey(),k->new LinkedHashMap<>()).put(name,mesh);
             }
             Set<Integer> stages=new TreeSet<>();if(b.has("stages"))for(var s:b.getAsJsonArray("stages"))stages.add(s.getAsInt());
@@ -302,7 +302,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     public List<String> boneOrder(){return List.copyOf(parts.keySet());}
     /** The stage whose skin file draws at a stage: the highest not above it, else the lowest. */
     int skinStage(int stage){Integer out=null;for(int k:skins.keySet())if(k<=stage||out==null)out=k;return out==null?1:out;}
-    Identifier skin(int stage){Identifier out=null;for(var e:skins.entrySet())if(e.getKey()<=stage||out==null)out=e.getValue();return out;}
+    Identifier skin(int stage){return skins.get(skinStage(stage));}
     String hand(){return hand;}
     String idleArms(){return idleArms;}
     String weaponId(){return weapon;}

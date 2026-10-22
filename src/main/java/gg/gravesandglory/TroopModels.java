@@ -26,9 +26,16 @@ public final class TroopModels {
      * A weapon model (troop depth design, section 2): its id, the meshes of its frames (rest first, then pull_0 to pull_2 of a
      * draw weapon), the times of the pulls in seconds of bow_draw (empty without a pull), the grip that places the sprite in the
      * hand bone's frame (the centre of the grip pixel is the sprite's origin), the nock of each frame (the middle of the string in
-     * the weapon frame, model px; empty without a pull), its texture and its glow (null for none).
+     * the weapon frame, model px; empty without a pull), its texture and its glow (null for none). rot is the grip's turn as a quaternion,
+     * worked out once (null for no turn); build a Weapon without it and the constructor below fills it in.
      */
-    public record Weapon(String id, java.util.List<TroopMesh> frames, float[] pull, net.minecraft.client.model.ModelTransform grip, java.util.List<Vec3d> nocks, Identifier texture, Identifier glow) {
+    public record Weapon(String id, java.util.List<TroopMesh> frames, float[] pull, net.minecraft.client.model.ModelTransform grip, java.util.List<Vec3d> nocks, Identifier texture, Identifier glow, org.joml.Quaternionf rot) {
+        public Weapon(String id, java.util.List<TroopMesh> frames, float[] pull, net.minecraft.client.model.ModelTransform grip, java.util.List<Vec3d> nocks, Identifier texture, Identifier glow) {
+            this(id, frames, pull, grip, nocks, texture, glow, turn(grip));
+        }
+        private static org.joml.Quaternionf turn(net.minecraft.client.model.ModelTransform g) {
+            return g.pitch != 0f || g.yaw != 0f || g.roll != 0f ? new org.joml.Quaternionf().rotationZYX(g.roll, g.yaw, g.pitch) : null;
+        }
         /**
          * The frame a draw shows: the rest frame (0) when the weapon has no pull, below pull[0], from the loose on, and when nothing
          * draws (seconds -1); otherwise the last pull whose start has passed, counted from frame 1.
@@ -42,7 +49,7 @@ public final class TroopModels {
         /** Moves the stack from the hand bone's frame to the sprite's: the grip's offset, then its turn, as ModelPart.rotate does. */
         public void grip(net.minecraft.client.util.math.MatrixStack m) {
             m.translate(grip.pivotX / 16f, grip.pivotY / 16f, grip.pivotZ / 16f);
-            if (grip.pitch != 0f || grip.yaw != 0f || grip.roll != 0f) m.multiply(new org.joml.Quaternionf().rotationZYX(grip.roll, grip.yaw, grip.pitch));
+            if (rot != null) m.multiply(rot);
         }
         /** The corners of every frame's bounds in the hand bone's frame (the grip applied), model px: the cull box takes the weapon's reach from them. */
         public java.util.List<double[]> points() {

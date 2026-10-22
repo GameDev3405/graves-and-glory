@@ -26,11 +26,11 @@ final class TroopFeatures {
     private TroopFeatures() {}
     static final int FULL_BRIGHT=0xF00000;
 
-    /** Whether every part of the path is shown (a hidden arm hides what its hand holds). */
     /** Harness only: the weapon ids whose models are not drawn (the turnaround's bare shots). */
     static final java.util.Set<String> HIDDEN=java.util.concurrent.ConcurrentHashMap.newKeySet();
     /** Harness only: the weapon glow passes drawn since the client started. */
     static volatile long weaponGlowDraws;
+    /** Whether every part of the path is shown (a hidden arm hides what its hand holds). */
     static boolean shown(List<ModelPart> path){if(path.isEmpty())return false;for(ModelPart p:path)if(!p.visible)return false;return true;}
 
     /** <troop>_o on the rig's boxes dilated by the rig's outer (drowned and strays), posed as the model is. */
@@ -77,7 +77,8 @@ final class TroopFeatures {
             var mesh=w.frames().get(Math.min(frame,w.frames().size()-1));int limit=TroopDepth.enabled?Integer.MAX_VALUE:2;
             m.push();for(ModelPart p:path)p.rotate(m);w.grip(m);
             int quads=mesh.render(m.peek(),v.getBuffer(RenderLayer.getEntityCutout(w.texture())),light,LivingEntityRenderer.getOverlay(e,0f),1f,1f,1f,1f,limit);
-            if(w.glow()!=null){quads+=mesh.render(m.peek(),v.getBuffer(RenderLayer.getEyes(w.glow())),FULL_BRIGHT,OverlayTexture.DEFAULT_UV,1f,1f,1f,1f,limit);weaponGlowDraws++;}
+            // the glow pass draws the same mesh again through the eyes layer: weaponQuads counts the mesh once, weaponGlowDraws the extra passes
+            if(w.glow()!=null){mesh.render(m.peek(),v.getBuffer(RenderLayer.getEyes(w.glow())),FULL_BRIGHT,OverlayTexture.DEFAULT_UV,1f,1f,1f,1f,limit);weaponGlowDraws++;}
             m.pop();r.weaponDrawn=true;r.weaponFrame=frame;r.weaponQuads=quads;
         }
     }

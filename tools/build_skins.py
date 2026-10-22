@@ -1149,7 +1149,8 @@ def relief_sources(cat, troop, own, extra):
 def relief_template(cat: Catalog, troop: str) -> Image.Image:
     """Where relief may stand (design 7): every skin box face in its bone's hue at RELIEF_TINT over white, and a texel whose
     voxel would overlap another box at rest (a joint, an inner face, a face under a team part or a part that never hides)
-    or lies on a box with no depth hatched in RELIEF_RED."""
+    or lies on a box with no depth hatched in RELIEF_RED. Joint faces that only touch their parent at rest (a limb's top and
+    bottom faces) overlap nothing, so they are NOT hatched: keeping relief off them is still a by-eye rule (design 7)."""
     model = bake(cat, troop)
     boxes = Boxes(model)
     im = Image.new('RGBA', tuple(model['size']), (0, 0, 0, 0))

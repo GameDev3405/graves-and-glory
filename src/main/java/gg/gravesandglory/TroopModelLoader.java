@@ -134,8 +134,14 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
             need(frames.get(i).isJsonObject(),"a frame that is not an object");JsonObject f=frames.get(i).getAsJsonObject();
             String want=i==0?"rest":"pull_"+(i-1);need(want.equals(str(f,"name")),"frame "+i+" is "+str(f,"name")+", not "+want);
             need(f.has("quads")&&f.get("quads").isJsonArray(),"frame "+want+" has no quads");
-            TroopMesh mesh=TroopMesh.parse(f.getAsJsonArray("quads"),size[0],size[1]);
+            TroopMesh mesh;try{mesh=TroopMesh.parse(f.getAsJsonArray("quads"),size[0],size[1]);}catch(IllegalArgumentException e){throw new IllegalArgumentException("frame "+want+": "+e.getMessage(),e);}
             need(mesh.quads()>=2&&mesh.quads()<=MAX_WEAPON_QUADS,"frame "+want+" has "+mesh.quads()+" quads, not 2 to "+MAX_WEAPON_QUADS);
+            // the flat draw (troop depth off in the harness) keeps the first two quads, so they must be the two big faces: north then south, each spanning the frame in x and y
+            need(mesh.direction(0)==2&&mesh.direction(1)==3,"frame "+want+" must open with its two big faces (north, then south), not directions "+mesh.direction(0)+" and "+mesh.direction(1));
+            float[] bb=mesh.bounds();
+            for(int q=0;q<2;q++){float[] ps=mesh.positions(q);float x0=Float.MAX_VALUE,y0=Float.MAX_VALUE,x1=-Float.MAX_VALUE,y1=-Float.MAX_VALUE;
+                for(int k=0;k<4;k++){x0=Math.min(x0,ps[3*k]);x1=Math.max(x1,ps[3*k]);y0=Math.min(y0,ps[3*k+1]);y1=Math.max(y1,ps[3*k+1]);}
+                need(x0==bb[0]&&x1==bb[3]&&y0==bb[1]&&y1==bb[4],"frame "+want+": quad "+q+" does not span the frame (its x and y extent is not the mesh's)");}
             meshes.add(mesh);
             if(pull.length>0){
                 need(f.has("nock")&&f.get("nock").isJsonArray()&&f.getAsJsonArray("nock").size()==3,"frame "+want+" has no nock");
