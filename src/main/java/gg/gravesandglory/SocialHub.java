@@ -78,7 +78,7 @@ final class SocialHub {
         r.members.addAll(group);for(UUID m:group)r.teams.put(m,team);r.ready.clear();revision++;return "Joined room together. Choose a team and ready up.";}
     String leaveRoom(UUID id){Room r=room(id);if(r==null)return "No room to leave.";if(r.playing)return "Finish the match before leaving the room.";
         if(!lead(id))return "Your party leader leaves the room for the whole group.";
-        remove(r,group(id));revision++;return "Your group left the room; your party is still together.";}
+        remove(r,group(id));revision++;return party(id)==null?"You left the room.":"Your group left the room; your party is still together.";}
     void remove(Room r,Set<UUID> ids){r.members.removeAll(ids);r.teams.keySet().removeAll(ids);r.ready.clear();
         if(r.members.isEmpty())rooms.remove(r.code);else if(!r.members.contains(r.leader))r.leader=r.members.stream().filter(online::contains).findFirst().orElse(r.members.iterator().next());}
     String team(UUID id,int team){Room r=room(id);if(r==null||r.playing||team<0||team>1)return "Team selection is unavailable.";

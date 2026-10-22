@@ -83,7 +83,8 @@ final class WarTableRecruit {
     static List<RowDraw> rows() { return rows; }
     /** The widgets the last frame drew with their label underlined (hot: under the pointer, or holding the keyboard's focus). */
     static Set<String> underlined() { return underlined; }
-    /** Every command the page handed to the server (after CampScreen.action's throttle let it through), oldest first. */
+    /** The last WarTablePages.SENT_KEPT commands the page handed to the server (after CampScreen.action's throttle let it
+     *  through), oldest first. */
     static List<String> sent() { return sent; }
 
     final CampScreen screen;
@@ -187,7 +188,11 @@ final class WarTableRecruit {
     void back() { screen.page("home"); }
 
     /** Hands a command to the server through the screen's throttle; recorded when it goes. */
-    void send(String cmd) { if (screen.action(cmd)) sentCommands.add(cmd); }
+    void send(String cmd) {
+        if (!screen.action(cmd)) return;
+        if (sentCommands.size() >= WarTablePages.SENT_KEPT) sentCommands.remove(0);
+        sentCommands.add(cmd);
+    }
 
     void enlist() { if (canEnlist()) send("roll:" + house); }
 

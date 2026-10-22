@@ -2581,7 +2581,8 @@ public final class Phase1Checks implements ClientModInitializer {
      *  plaque lit, the page's own oak, its focal title or, on the Chapter, its chapter block), a screenshot (ui-page-<name>), one
      *  real action through the server, the page again at 1920x1080 GUI 2 for grading (ui-page-<name>-1080, the same layout) and the
      *  back plaque home: one p1-ui-page-<name> each (the Chapter's claimable and claimed states shot at k 2 as well, beside the
-     *  approved mockups). Then every page at 1280x720 GUI 3, 854x480 GUI 2 and 1920x974 GUI 1 (p1-ui-page-scales), and home's field
+     *  approved mockups, and so are the Contracts' claim and the Field's war gates). Then every page at 1280x720 GUI 3, 854x480
+     *  GUI 2 and 1920x974 GUI 1 (p1-ui-page-scales), and home's field
      *  card on each of the five maps at k 2 (p1-ui-page-cards). Then Task 6's carried items: Tab's focus survives a rebuild, a direct one and
      *  one on a change of the camp state (p1-ui-page-focus); the menu key already down when the table opens does not close it until
      *  it is let go (p1-ui-page-held-open); a held Enter on home rides once (p1-ui-page-held-home). Keys, clicks and the pointer
@@ -2590,14 +2591,21 @@ public final class Phase1Checks implements ClientModInitializer {
         static final String[] PAGES={"banner","contracts","chapter","friends","field"};
         static final String REROLLED="Third contract changed to tactical orders. One free reroll per day.";
         static final Set<String> REROLL_REFUSALS=Set.of("Your free daily reroll is already used.","That contract is already claimed.");
+        /** One of the server's reroll refusals. Null-safe (Set.of throws on null): a notice line no frame has drawn yet is none. */
+        static boolean refused(String notice){return notice!=null&&REROLL_REFUSALS.contains(notice);}
         // the server thread writes these, the client thread reads them
-        volatile int stage;volatile UUID player;volatile boolean serverRoom;volatile String serverDifficulty="";
+        volatile int stage,serverCountdown=-1;volatile UUID player;volatile boolean serverRoom,serverOnPad;volatile String serverDifficulty="";
         // client thread only
-        int mark=-1,waitFrom,oldW,oldH,oldGui,index,sub,subAt,serial,serial1,serial2,menuCode=-1,gold=-1,landedAt=-1,origMap=-1,cardAsked=-1,fieldRow;boolean finished,ok=true,slid,scalesOk=true,cardsOk=true;
+        int mark=-1,waitFrom,oldW,oldH,oldGui,index,sub,subAt,serial,serial1,serial2,menuCode=-1,gold=-1,landedAt=-1,origMap=-1,cardAsked=-1,fieldRow,goldBefore,xpBefore,pick;boolean finished,ok=true,slid,scalesOk=true,cardsOk=true;
         String why="",before="",focusName="",scalesWhy="",cardsWhy="";List<String> roll=List.of();String at0="",at19="";CampScreen table;
         final Set<Integer> rollSeen=new TreeSet<>(),oathSeen=new TreeSet<>();
 
-        public void serverTick(GravesAndGlory.Battle b){var id=player;serverRoom=id!=null&&b.campaign.social.room(id)!=null;serverDifficulty=b.campaign.difficulty;}
+        public void serverTick(GravesAndGlory.Battle b){var id=player;serverRoom=id!=null&&b.campaign.social.room(id)!=null;serverDifficulty=b.campaign.difficulty;
+            serverOnPad=id!=null&&b.campaign.onPad.containsKey(id);serverCountdown=b.campaign.padCountdown;}
+        /** The commander off the war gates, back where the camp puts its commanders. */
+        void stepOff(MinecraftClient c){server(c,b->{var p=b.server.getPlayerManager().getPlayer(player);if(p!=null)b.campaign.toLobby(p);});}
+        /** Box a lies inside box b. */
+        static boolean in(int[] a,int[] b){return a!=null&&b!=null&&a[0]>=b[0]&&a[1]>=b[1]&&a[0]+a[2]<=b[0]+b[2]&&a[1]+a[3]<=b[1]+b[3];}
         int since(int tick){if(mark!=stage){mark=stage;waitFrom=tick;}return tick-waitFrom;}
         /** Moves a page's action on a step; at(tick) counts the ticks since. */
         void next(int tick){sub++;subAt=tick;}
@@ -2818,6 +2826,10 @@ public final class Phase1Checks implements ClientModInitializer {
                     var add=button(c,"add-0");var remove=button(c,"remove-0");
                     boolean start=roll.size()>=3&&at0.equals(roll.get(0))&&!at19.equals(WarTablePages.EMPTY)&&add!=null&&!add.active&&remove!=null&&remove.active&&(CampaignClient.profile.count(t)+" of 20 seats filled").equals(text("seated"))&&"12 seats".equals(text("count-0"));
                     ok&=start;why+="; the roll "+roll+", seat 0 "+at0+", seat 19 "+at19+", \""+text("seated")+"\", row 0 \""+text("count-0")+"\" with Add "+(add!=null&&add.active?"taking a press":"dull")+" and Remove "+(remove!=null&&remove.active?"taking a press":"dull")+(start?"":" WRONG");
+                    // with places left on the roll, the hint sits in its last place, at the foot (finding 3 of the Task 7 review)
+                    int[] hr=rect("roll-hint");int last=o[1]+WarTablePages.ROW_TOP+WarTablePages.ROW_H*(WarTablePages.ROWS-1);
+                    boolean foot=roll.size()>=WarTablePages.ROWS||WarTablePages.ROLL_HINT.equals(text("roll-hint"))&&in(hr,rect("roll"))&&hr[1]>=last&&hr[1]+hr[3]<=last+WarTablePages.ROW_H;
+                    ok&=foot;why+="; the hint \""+text("roll-hint")+"\" at "+str(hr)+(foot?" in the roll's last place":" WRONG (the last place "+last+" to "+(last+WarTablePages.ROW_H)+", the roll "+str(rect("roll"))+")");
                     click(c,box(c,"row-1"));next(tick);}
                 // a step that reads the page as a frame drew it (its words, marks and art) waits for the frame: on a busy machine the client
                 // can run more than one tick before it draws, so the snapshot can land with the last frame still showing the old state.
@@ -2845,9 +2857,13 @@ public final class Phase1Checks implements ClientModInitializer {
         }
 
         /** Contracts: the three dailies and the weekly where the page puts them; Reroll changes the third contract (or meets the
-         *  server's refusal on the notice line) and then takes no press. */
+         *  server's refusal on the notice line) and then takes no press. Then, at 1920x1080 GUI 2, the first daily and the weekly
+         *  completed on the server: Claim shows on those two notes only, each inside its note and clear of its count
+         *  (ui-page-contracts-claim); each press lands in the snapshot, pays what the server's notice says and stamps its note in
+         *  place of Claim (ui-page-contracts-claimed). The contracts, the XP and the gold are put back as they were, so the Chapter
+         *  still meets a fresh commander. */
         void contracts(MinecraftClient c,int tick){
-            int k=at(tick);int[] o=WarTable.origin();var reroll=button(c,"reroll");
+            int k=at(tick);int[] o=WarTable.origin();var reroll=button(c,"reroll");var pr=CampaignClient.profile.progression;
             switch(sub){
                 case 0->{boolean placed=Arrays.equals(rect("weekly"),new int[]{o[0]+328,o[1]+300,308,101})&&Arrays.equals(box(c,"reroll"),new int[]{o[0]+436,o[1]+252,88,24});
                     for(int i=0;i<3;i++)placed&=Arrays.equals(rect("note-"+i),new int[]{o[0]+140+240*i,o[1]+140,204,101});
@@ -2855,12 +2871,50 @@ public final class Phase1Checks implements ClientModInitializer {
                     ok&=placed&&fresh;why+="; notes "+str(rect("note-0"))+", "+str(rect("note-1"))+", "+str(rect("note-2"))+", weekly "+str(rect("weekly"))+", Reroll "+str(box(c,"reroll"))+(placed?"":" WRONG")
                         +"; the third contract \""+text("contract-2")+"\", Reroll "+(fresh?"taking a press":"WRONG: dull (\""+text("reroll-hint")+"\")");
                     serial=CampaignClient.noticeSerial;before=text("contract-2");landedAt=-1;click(c,box(c,"reroll"));next(tick);}
-                case 1->{boolean changed=!Objects.equals(before,text("contract-2")),noticed=CampaignClient.noticeSerial!=serial,landed=noticed&&(changed||REROLL_REFUSALS.contains(CampaignClient.notice));
+                case 1->{boolean changed=!Objects.equals(before,text("contract-2")),noticed=CampaignClient.noticeSerial!=serial,landed=noticed&&(changed||refused(CampaignClient.notice));
                     if(landed&&landedAt<0)landedAt=tick;String n=text("notice");
-                    if(landed&&k>=3&&(REROLLED.equals(n)||REROLL_REFUSALS.contains(n)||tick>=landedAt+20)){ // judged once a frame has drawn the notice line
-                        boolean pass="progress:reroll".equals(lastSent())&&(changed?"Issue ten tactical orders".equals(text("contract-2"))&&REROLLED.equals(n)&&reroll!=null&&!reroll.active&&"Rerolled today".equals(text("reroll-hint")):REROLL_REFUSALS.contains(n));
-                        ok&=pass;why+="; Reroll sent "+lastSent()+": the third contract reads \""+text("contract-2")+"\", the notice line \""+n+"\", Reroll "+(reroll!=null&&reroll.active?"still taking a press":"dull")+" (\""+text("reroll-hint")+"\")"+(pass?"":" WRONG");landedAt=-1;stage=4;}
-                    else if(!landed&&k>100){ok=false;why+="; Reroll sent "+lastSent()+": no change and no refusal 100 ticks on (the third contract \""+text("contract-2")+"\", the notice \""+CampaignClient.notice+"\") WRONG";landedAt=-1;stage=4;}}
+                    if(landed&&k>=3&&(REROLLED.equals(n)||refused(n)||tick>=landedAt+20)){ // judged once a frame has drawn the notice line
+                        boolean pass="progress:reroll".equals(lastSent())&&(changed?"Issue ten tactical orders".equals(text("contract-2"))&&REROLLED.equals(n)&&reroll!=null&&!reroll.active&&"Rerolled today".equals(text("reroll-hint")):refused(n));
+                        ok&=pass;why+="; Reroll sent "+lastSent()+": the third contract reads \""+text("contract-2")+"\", the notice line \""+n+"\", Reroll "+(reroll!=null&&reroll.active?"still taking a press":"dull")+" (\""+text("reroll-hint")+"\")"+(pass?"":" WRONG");landedAt=-1;next(tick);}
+                    else if(!landed&&k>100){ok=false;why+="; Reroll sent "+lastSent()+": no change and no refusal 100 ticks on (the third contract \""+text("contract-2")+"\", the notice \""+CampaignClient.notice+"\") WRONG";landedAt=-1;next(tick);}}
+                case 2->{window(c,1920,1080,2,true);goldBefore=CampaignClient.profile.gold;xpBefore=pr.xp;landedAt=-1; // one battle today, six this week
+                    server(c,b->{var s=b.campaign.profile(player).progression;Progression.reset(s,Progression.today());s.dailyBattles=1;s.weeklyBattles=Progression.WEEKLY_BATTLES;b.campaign.save(player);});next(tick);}
+                case 3->{if(k==18)UiRecruitChecks.park(c);boolean landed=pr.dailyBattles==1&&pr.weeklyBattles==Progression.WEEKLY_BATTLES;if(landed&&landedAt<0)landedAt=tick;
+                    boolean drawn="Claim".equals(text("claim-0"))&&"Claim".equals(text("claim-weekly"));
+                    if(landed&&k>=20&&(drawn||tick>=landedAt+20)){ // judged once a frame has drawn both Claims
+                        int[] b0=box(c,"claim-0"),bw=box(c,"claim-weekly");var c0=button(c,"claim-0");var cw=button(c,"claim-weekly");
+                        boolean shown=drawn&&c0!=null&&c0.active&&cw!=null&&cw.active&&box(c,"claim-1")==null&&box(c,"claim-2")==null&&Integer.valueOf(DarkUi.INK_TEXT).equals(WarTablePages.colors().get("claim-0"));
+                        boolean placed=in(b0,rect("note-0"))&&in(bw,rect("weekly"))&&rect("progress-0")!=null&&rect("progress-weekly")!=null&&!UiHomeChecks.overlap(b0,rect("progress-0"))&&!UiHomeChecks.overlap(bw,rect("progress-weekly"));
+                        boolean counts="1 / 1".equals(text("progress-0"))&&"1 / 3".equals(text("progress-1"))&&"6 / 6".equals(text("progress-weekly"));
+                        boolean pass=shown&&placed&&counts;ok&=pass;
+                        why+="; one battle today and six this week set on the server: Claim on note 0 at "+str(b0)+" and on the weekly at "+str(bw)+", none on notes 1 and 2"+(shown?"":" WRONG")
+                            +"; inside their notes "+str(rect("note-0"))+" and "+str(rect("weekly"))+" and clear of their counts \""+text("progress-0")+"\" at "+str(rect("progress-0"))+" and \""+text("progress-weekly")+"\" at "+str(rect("progress-weekly"))+", note 1 \""+text("progress-1")+"\""+(placed&&counts?"":" WRONG")
+                            +"; 1920x1080 GUI 2, "+layout(c,"contracts");
+                        shot(c,"ui-page-contracts-claim");landedAt=-1;click(c,b0);next(tick);}
+                    else if(!landed&&k>100){ok=false;why+="; the finished contracts never reached the client (daily battles "+pr.dailyBattles+", weekly "+pr.weeklyBattles+") WRONG";sub=6;subAt=tick;}}
+                // each claim lands in the snapshot; the page draws the stamp and the server's notice a frame later: judged once drawn, or
+                // 20 ticks after the landing. Eight ticks at least between the presses, past CampScreen.action's 300 ms
+                case 4->{boolean landed=pr.claims.contains("daily:0");if(landed&&landedAt<0)landedAt=tick;String want="Claimed reward: +30 gold / +75 XP";
+                    boolean drawn="table/stamp-hollow".equals(tex("stamp-0"))&&"Claimed".equals(text("progress-0"))&&want.equals(text("notice"));
+                    if(landed&&k>=8&&(drawn||tick>=landedAt+20)){
+                        boolean pass="progress:daily:0".equals(lastSent())&&drawn&&box(c,"claim-0")==null&&in(rect("stamp-0"),rect("note-0"))&&want.equals(CampaignClient.notice)&&CampaignClient.profile.gold==goldBefore+30&&pr.xp==xpBefore+75;
+                        ok&=pass;why+="; Claim on note 0 sent "+lastSent()+": claims "+pr.claims+", the note reads \""+text("progress-0")+"\", stamped "+tex("stamp-0")+" at "+str(rect("stamp-0"))+", Claim "+(box(c,"claim-0")==null?"gone":"still shown")
+                            +", the notice line \""+text("notice")+"\", gold "+goldBefore+" to "+CampaignClient.profile.gold+", XP "+xpBefore+" to "+pr.xp+(pass?"":" WRONG");
+                        landedAt=-1;click(c,box(c,"claim-weekly"));next(tick);}
+                    else if(!landed&&k>100){ok=false;why+="; Claim on note 0 sent "+lastSent()+": the claim never landed (claims "+pr.claims+", the notice \""+CampaignClient.notice+"\") WRONG";sub=6;subAt=tick;}}
+                case 5->{boolean landed=pr.claims.contains("weekly");if(landed&&landedAt<0)landedAt=tick;String want="Claimed reward: +150 gold / +300 XP";
+                    boolean drawn="table/stamp-hollow".equals(tex("stamp-weekly"))&&"Claimed".equals(text("progress-weekly"))&&want.equals(text("notice"));
+                    if(landed&&k>=3&&(drawn||tick>=landedAt+20)){
+                        boolean pass="progress:weekly".equals(lastSent())&&drawn&&box(c,"claim-weekly")==null&&in(rect("stamp-weekly"),rect("weekly"))&&want.equals(CampaignClient.notice)&&CampaignClient.profile.gold==goldBefore+180&&pr.xp==xpBefore+375;
+                        ok&=pass;why+="; Claim on the weekly sent "+lastSent()+": the note reads \""+text("progress-weekly")+"\", stamped "+tex("stamp-weekly")+" at "+str(rect("stamp-weekly"))+", Claim "+(box(c,"claim-weekly")==null?"gone":"still shown")
+                            +", the notice line \""+text("notice")+"\", gold "+CampaignClient.profile.gold+", XP "+pr.xp+(pass?"":" WRONG");
+                        shot(c,"ui-page-contracts-claimed");landedAt=-1;next(tick);}
+                    else if(!landed&&k>100){ok=false;why+="; Claim on the weekly sent "+lastSent()+": the claim never landed (claims "+pr.claims+", the notice \""+CampaignClient.notice+"\") WRONG";next(tick);}}
+                case 6->{int g0=goldBefore,x0=xpBefore; // put back: no claims, no battles, the XP and the gold as they were
+                    server(c,b->{var pp=b.campaign.profile(player);var s=pp.progression;s.claims.remove("daily:0");s.claims.remove("weekly");s.dailyBattles=0;s.weeklyBattles=0;s.xp=x0;pp.gold=g0;b.campaign.save(player);});next(tick);}
+                case 7->{boolean back=!pr.claims.contains("daily:0")&&!pr.claims.contains("weekly")&&pr.dailyBattles==0&&pr.weeklyBattles==0&&pr.xp==xpBefore&&CampaignClient.profile.gold==goldBefore;
+                    if(back&&(text("notice")==null||k>=200)){why+="; put back: no claims, XP "+pr.xp+", gold "+CampaignClient.profile.gold;stage=4;} // the claims' notice faded, for the grading shot
+                    else if(!back&&k>100){ok=false;why+="; not put back: claims "+pr.claims+", XP "+pr.xp+", gold "+CampaignClient.profile.gold+" WRONG";stage=4;}}
                 default->stage=4;
             }
         }
@@ -2918,22 +2972,29 @@ public final class Phase1Checks implements ClientModInitializer {
             }
         }
 
-        /** Friends: the room code's line takes letters and digits (upper case, eight at most; Join with party only for a whole code),
-         *  Backspace, and Esc ends the writing without leaving the page; Create party makes a party and Leave party leaves it, as the
-         *  snapshot shows; a private room lays its tags out clear of each other (ui-page-friends-room); Leave room leaves it. */
+        /** Friends: the room code's line takes letters and digits (upper case, eight at most; Join with party only for a whole code,
+         *  and until then the line says how much is written, "5 of 8"), Backspace, and Esc ends the writing without leaving the
+         *  page; the party's rule stands beside the seats, and with nobody else in the camp the camp column says how friends reach
+         *  a camp; Create party makes a party and Leave party leaves it, as the snapshot shows; a private room lays its tags out
+         *  clear of each other (ui-page-friends-room); Leave room leaves it, and the server's notice speaks of no party. */
         void friends(MinecraftClient c,int tick){
             int k=at(tick);var p=pages(c);var join=button(c,"room-join");
             switch(sub){
                 case 0->{click(c,box(c,"code"));type(c,"ab-c1 2");next(tick);}
                 case 1->{if(k<2||!"ABC12".equals(text("room-code"))&&k<40)return; // read as a frame drew it: waits for the frame
-                    boolean partial=p.typing&&"ABC12".equals(p.code)&&join!=null&&!join.active&&"ABC12".equals(text("room-code"));
-                    ok&=partial;why+="; the code's line clicked and \"ab-c1 2\" typed: \""+p.code+"\" (writing "+p.typing+"), Join with party "+(join!=null&&join.active?"taking a press":"dull")+(partial?"":" WRONG");type(c,"3456");next(tick);}
-                case 2->{if(k<2)return;String whole=p.code;boolean full="ABC12345".equals(whole)&&join!=null&&join.active;UiRecruitChecks.tap(c,GLFW.GLFW_KEY_BACKSPACE);boolean back="ABC1234".equals(p.code);
+                    boolean partial=p.typing&&"ABC12".equals(p.code)&&join!=null&&!join.active&&"ABC12".equals(text("room-code"))&&"5 of 8".equals(text("code-count"));
+                    ok&=partial;why+="; the code's line clicked and \"ab-c1 2\" typed: \""+p.code+"\" (writing "+p.typing+"), the line's count \""+text("code-count")+"\", Join with party "+(join!=null&&join.active?"taking a press":"dull")+(partial?"":" WRONG");type(c,"3456");next(tick);}
+                case 2->{if(k<2||!"ABC12345".equals(text("room-code"))&&k<40)return;String whole=p.code;boolean full="ABC12345".equals(whole)&&join!=null&&join.active&&text("code-count")==null;UiRecruitChecks.tap(c,GLFW.GLFW_KEY_BACKSPACE);boolean back="ABC1234".equals(p.code);
                     UiRecruitChecks.tap(c,GLFW.GLFW_KEY_ESCAPE);var s=screen(c);boolean stays=!p.typing&&s!=null&&s.page.equals("friends");boolean pass=full&&back&&stays;ok&=pass;
-                    why+="; \"3456\" more: \""+whole+"\" with Join "+(full?"taking a press":"dull")+"; Backspace: \""+p.code+"\"; Esc: "+(stays?"the writing ends on the page":"WRONG: "+(s==null?"the table closed":s.page+", writing "+p.typing))+(pass?"":" WRONG");next(tick);}
-                case 3->{if(k<2)return;var create=button(c,"create");boolean shown=create!=null&&create.visible&&create.active&&"Create party".equals(text("create"));
-                    boolean open="Open seat".equals(text("open-1"))&&"Open seat".equals(text("open-3"))&&text("open-0")==null&&WarTablePages.me().equals(text("member-0"))&&"table/note-room-short".equals(tex("room"));ok&=shown&&open;
-                    why+="; Create party "+(shown?"shown":"WRONG: missing")+", seat 0 "+text("member-0")+" and seats 1 to 3 \""+text("open-1")+"\""+", the room's note "+tex("room")+(open?"":" WRONG");click(c,box(c,"create"));next(tick);}
+                    why+="; \"3456\" more: \""+whole+"\" with Join "+(join!=null&&join.active?"taking a press":"dull")+" and "+(text("code-count")==null?"no count":"the count \""+text("code-count")+"\"")+"; Backspace: \""+p.code+"\"; Esc: "+(stays?"the writing ends on the page":"WRONG: "+(s==null?"the table closed":s.page+", writing "+p.typing))+(pass?"":" WRONG");next(tick);}
+                case 3->{if(k<2||!"ABC1234".equals(text("room-code"))&&k<40)return;var create=button(c,"create");boolean shown=create!=null&&create.visible&&create.active&&"Create party".equals(text("create"));
+                    boolean open="Open seat".equals(text("open-1"))&&"Open seat".equals(text("open-3"))&&text("open-0")==null&&WarTablePages.me().equals(text("member-0"))&&"table/note-room-short".equals(tex("room"));
+                    boolean count="7 of 8".equals(text("code-count"))&&join!=null&&!join.active;
+                    boolean words=WarTablePages.PARTY_RULE.equals(text("party-rule"))&&text("party-line")==null&&in(rect("party-rule"),rect("party"))&&(c.getServer()!=null&&c.getServer().isRemote()?WarTablePages.CAMP_OPEN:WarTablePages.CAMP_HOW).equals(text("camp-how"));
+                    ok&=shown&&open&&count&&words;
+                    why+="; Create party "+(shown?"shown":"WRONG: missing")+", seat 0 "+text("member-0")+" and seats 1 to 3 \""+text("open-1")+"\""+", the room's note "+tex("room")+(open?"":" WRONG")
+                        +"; the code's line after Esc \""+text("room-code")+"\" counted \""+text("code-count")+"\" with Join "+(join!=null&&join.active?"taking a press":"dull")+(count?"":" WRONG")
+                        +"; beside the seats \""+text("party-rule")+"\" at "+str(rect("party-rule"))+", the camp column \""+text("camp-how")+"\""+(words?"":" WRONG");click(c,box(c,"create"));next(tick);}
                 case 4->{ // the party lands in the snapshot; the page rebuilds on it (Leave party a widget) and a frame draws it
                     var leave=button(c,"leave");
                     if(WarTablePages.flag("party")&&leave!=null&&"Leave party".equals(text("leave"))){
@@ -2951,17 +3012,25 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 10->{if(k<2||!(WarTablePages.value("room").equals(text("code"))&&"0 of 1 ready".equals(text("room-ready")))&&k<40)return; // read as a frame drew it
                     boolean code=WarTablePages.value("room").equals(text("code"))&&"table/note-room".equals(tex("room"))&&"0 of 1 ready".equals(text("room-ready"))&&text("room-map")!=null;ok&=code;
                     why+="; Create private room sent "+lastSent()+": in room "+text("code")+" on "+tex("room")+", \""+text("room-ready")+"\", the map "+text("room-map")+(code?"":" WRONG")+", "+layout(c,"friends");shot(c,"ui-page-friends-room");next(tick);}
-                case 11->{if(k<8)return;click(c,box(c,"room-leave"));next(tick);}
-                case 12->{if(WarTablePages.value("room").isEmpty()&&!serverRoom){why+="; Leave room sent "+lastSent()+": out of the room";stage=4;}
-                    else if(k>100){ok=false;why+="; Leave room sent "+lastSent()+": still in the room WRONG";stage=4;}}
+                case 11->{if(k<8)return;landedAt=-1;click(c,box(c,"room-leave"));next(tick);}
+                case 12->{boolean landed=WarTablePages.value("room").isEmpty()&&!serverRoom;if(landed&&landedAt<0)landedAt=tick;String want="You left the room."; // alone: no word of a party
+                    if(landed&&(want.equals(text("notice"))||tick>=landedAt+20)){boolean said=want.equals(text("notice"))&&"social:exit".equals(lastSent());ok&=said;
+                        why+="; Leave room sent "+lastSent()+": out of the room, the notice line \""+text("notice")+"\""+(said?"":" WRONG");landedAt=-1;stage=4;}
+                    else if(!landed&&k>100){ok=false;why+="; Leave room sent "+lastSent()+": still in the room WRONG";landedAt=-1;stage=4;}}
                 default->stage=4;
             }
         }
 
         /** The field: off the war gates every row is sepia and every Vote dull under the line that says where to stand; each row shows
-         *  its map's painted card; Hard sets the server's bots to hard, Normal puts them back. */
+         *  its map's painted card; Hard sets the server's bots to hard, Normal puts them back. Then, at 1920x1080 GUI 2, the
+         *  commander on the war gates (camp:gates, as home's Ride sends it): every row in ink and every Vote live under the gates'
+         *  count (ui-page-field-gates); Vote on the camp's map brings the server's "Vote saved: <map>" on the notice line and the
+         *  label Voted on that row alone (ui-page-field-voted); stepped off, the rows go back to sepia and dull. A lone commander on
+         *  the gates starts the countdown to a match: he steps off long before it runs out. */
         void field(MinecraftClient c,int tick){
             int k=at(tick);int[] o=WarTable.origin();
+            if((sub==8||sub==9)&&serverCountdown>0&&serverCountdown<=60){ok=false;why+="; the war gates' countdown down to "+serverCountdown+" ticks (step "+sub+"): stepped off before a match could start WRONG";
+                stepOff(c);landedAt=-1;sub=10;subAt=tick;return;}
             switch(sub){
                 case 0->{boolean off=CampaignClient.padMine<0&&"Stand on the war gates to vote".equals(text("status"))&&Integer.valueOf(DarkUi.SEPIA).equals(WarTablePages.colors().get("status"));
                     for(int i=0;i<Spec.MAPS.length;i++){var v=button(c,"vote-"+i);off&=v!=null&&!v.active&&Spec.MAPS[i].name().equals(text("map-"+i))&&Integer.valueOf(DarkUi.SEPIA).equals(WarTablePages.colors().get("map-"+i));}
@@ -2981,8 +3050,39 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 4->{if(k<8)return;landedAt=-1;click(c,box(c,"bots-normal"));next(tick);}
                 case 5->{boolean landed="normal".equals(serverDifficulty)&&"normal".equals(CampaignClient.difficulty);if(landed&&landedAt<0)landedAt=tick;
                     if(landed&&k>=3&&("Normal".equals(text("bots-current"))||tick>=landedAt+20)){boolean pass="difficulty:normal".equals(lastSent())&&"Normal".equals(text("bots-current"));ok&=pass;
-                        why+="; Normal sent "+lastSent()+": back to "+serverDifficulty+", the page reads "+text("bots-current")+(pass?"":" WRONG");landedAt=-1;stage=4;}
-                    else if(!landed&&k>100){ok=false;why+="; Normal sent "+lastSent()+": the server's bots still "+serverDifficulty+" WRONG";landedAt=-1;stage=4;}}
+                        why+="; Normal sent "+lastSent()+": back to "+serverDifficulty+", the page reads "+text("bots-current")+(pass?"":" WRONG");landedAt=-1;next(tick);}
+                    else if(!landed&&k>100){ok=false;why+="; Normal sent "+lastSent()+": the server's bots still "+serverDifficulty+" WRONG";landedAt=-1;next(tick);}}
+                case 6->{window(c,1920,1080,2,true);next(tick);}
+                case 7->{if(k==18)UiRecruitChecks.park(c);if(k<20)return;pick=Math.max(0,Math.min(Spec.MAPS.length-1,CampaignClient.map));GravesAndGloryClient.send("camp:gates");landedAt=-1;next(tick);}
+                // on the gates the server counts the commander (the snapshot's pads) and the page redraws a frame later: judged once a
+                // frame has drawn the gates' line and every row and Vote in ink (the snapshot can land in a frame drawn before the tick
+                // that makes the Votes live), or 20 ticks after the landing
+                case 8->{boolean landed=CampaignClient.padMine>=0&&serverOnPad;if(landed&&landedAt<0)landedAt=tick;String status=text("status");
+                    boolean inked=true;for(int i=0;i<Spec.MAPS.length;i++)inked&=Integer.valueOf(DarkUi.INK_TEXT).equals(WarTablePages.colors().get("vote-"+i))&&Integer.valueOf(DarkUi.INK_TEXT).equals(WarTablePages.colors().get("map-"+i));
+                    boolean drawn=status!=null&&status.startsWith("War gates: ")&&inked;
+                    if(landed&&k>=3&&(drawn||tick>=landedAt+20)){
+                        boolean live=drawn&&Integer.valueOf(DarkUi.INK_TEXT).equals(WarTablePages.colors().get("status"))&&status.contains((CampaignClient.padMine==0?"Dawn":"Dusk")+" 1 / ");
+                        List<String> votes=new ArrayList<>();
+                        for(int i=0;i<Spec.MAPS.length;i++){var v=button(c,"vote-"+i);boolean on=v!=null&&v.active&&"Vote".equals(text("vote-"+i));live&=on;votes.add(text("vote-"+i)+(on?" live":" dull"));}
+                        ok&=live;why+="; camp:gates sent: on the war gates (the snapshot's pad "+CampaignClient.padMine+", the server's "+serverOnPad+"), \""+status+"\""+(live?", every row in ink and every Vote live":" WRONG (rows and Votes drawn in ink "+inked+", the line's ink "+UiHomeChecks.hex(WarTablePages.colors().getOrDefault("status",0))+", "+votes+")")+"; 1920x1080 GUI 2, "+layout(c,"field");
+                        shot(c,"ui-page-field-gates");serial=CampaignClient.noticeSerial;landedAt=-1;click(c,box(c,"map-"+pick));click(c,box(c,"vote-"+pick));next(tick);}
+                    else if(!landed&&k>100){ok=false;why+="; camp:gates sent: the commander never stood on the war gates (the snapshot's pad "+CampaignClient.padMine+", the server's "+serverOnPad+") WRONG";stepOff(c);landedAt=-1;sub=10;subAt=tick;}}
+                case 9->{if(k==2)UiRecruitChecks.park(c);String name=Spec.MAPS[pick].name(),want=WarTablePages.VOTE_SAVED+name;
+                    boolean landed=CampaignClient.noticeSerial!=serial&&want.equals(CampaignClient.notice);if(landed&&landedAt<0)landedAt=tick;
+                    boolean drawn="Voted".equals(text("vote-"+pick))&&want.equals(text("notice"));
+                    if(landed&&k>=4&&(drawn||tick>=landedAt+20)){boolean others=true;for(int i=0;i<Spec.MAPS.length;i++)if(i!=pick)others&="Vote".equals(text("vote-"+i));
+                        boolean pass=("vote:"+pick).equals(lastSent())&&drawn&&others&&("table/map-"+Spec.MAPS[pick].id()).equals(tex("card"));ok&=pass;
+                        why+="; Vote on "+name+" sent "+lastSent()+": the notice line \""+text("notice")+"\", its row's label \""+text("vote-"+pick)+"\""+(others?", the others Vote":", WRONG: another row not Vote")+", the card "+tex("card")+(pass?"":" WRONG");
+                        shot(c,"ui-page-field-voted");stepOff(c);landedAt=-1;next(tick);}
+                    else if(!landed&&k>100){ok=false;why+="; Vote on "+name+" sent "+lastSent()+": no \""+want+"\" 100 ticks on (the notice \""+CampaignClient.notice+"\") WRONG";stepOff(c);landedAt=-1;next(tick);}}
+                case 10->{boolean off=CampaignClient.padMine<0&&!serverOnPad;if(off&&landedAt<0)landedAt=tick;
+                    boolean sepia=true;for(int i=0;i<Spec.MAPS.length;i++)sepia&=Integer.valueOf(DarkUi.SEPIA).equals(WarTablePages.colors().get("vote-"+i))&&Integer.valueOf(DarkUi.SEPIA).equals(WarTablePages.colors().get("map-"+i));
+                    boolean drawn="Stand on the war gates to vote".equals(text("status"))&&sepia;
+                    if(off&&k>=3&&(drawn||tick>=landedAt+20)){boolean dull=drawn&&Integer.valueOf(DarkUi.SEPIA).equals(WarTablePages.colors().get("status"));
+                        for(int i=0;i<Spec.MAPS.length;i++){var v=button(c,"vote-"+i);dull&=v!=null&&!v.active&&"Vote".equals(text("vote-"+i));}
+                        ok&=dull;why+="; stepped off (the server's pad "+serverOnPad+"): \""+text("status")+"\""+(dull?", every Vote dull and none Voted":" WRONG");landedAt=-1;next(tick);}
+                    else if(!off&&k>100){ok=false;why+="; stepped off: still on the war gates (the snapshot's pad "+CampaignClient.padMine+", the server's "+serverOnPad+") WRONG";landedAt=-1;stage=4;}}
+                case 11->{if(text("notice")==null||k>=200)stage=4;} // the vote's notice faded, for the grading shot
                 default->stage=4;
             }
         }

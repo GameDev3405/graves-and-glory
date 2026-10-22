@@ -379,7 +379,6 @@ final class WarTableHome {
     /** The field card: the map the Ride plate goes to (the next Long March battle's on the Campaign sheet), the rule and the
      *  sides, and Change (a widget, paintChange). */
     void field(DrawContext g, int x, int y) {
-        var font = MinecraftClient.getInstance().textRenderer;
         UiTex.draw(g, "table/field-card", x, y);
         UiTex.draw(g, "table/tack", x + 6, y + 4);
         UiTex.draw(g, "table/tack", x + 155, y + 4);
@@ -390,12 +389,8 @@ final class WarTableHome {
         if (UiTex.has(card)) {
             UiTex.draw(g, card, x + 16, y + 30);
             textsDrawn.put("field-card", card);
-        } else if (index == CampaignMaps.selected) { // a map with no card yet (a defect): a seal on each point, where it lies on the field
-            for (var p : Spec.POINTS) {
-                int px = x + 16 + (p.x() + 350) * 136 / 700, py = y + 30 + (p.z() + 250) * 80 / 500;
-                UiTex.draw(g, "table/map-seal", px - 8, py - 8);
-                g.drawText(font, p.id(), px - font.getWidth(p.id()) / 2 + 1, py - 3, DarkUi.CHIP_TEXT, false);
-            }
+        } else if (index == CampaignMaps.selected) { // a map with no card yet (a defect): the seals where its points lie
+            seals(g, x + 16, y + 30);
             textsDrawn.put("field-card", "seals");
         } else textsDrawn.put("field-card", "none");
         int n = switch (focused) { case 0 -> 1; case 2 -> next().size(); default -> CampaignClient.padSize; };
@@ -407,6 +402,17 @@ final class WarTableHome {
         textsDrawn.put("field-name", map.name());
         textsDrawn.put("field-rule", rule);
         textsDrawn.put("field-teams", teams);
+    }
+
+    /** The card of a map with no painted card (a defect), on home's field card and on the Field: a seal on each of the field's
+     *  points, lettered, where it lies on a 136 x 80 map whose top left is (x, y). Only the built map's points are known. */
+    static void seals(DrawContext g, int x, int y) {
+        var font = MinecraftClient.getInstance().textRenderer;
+        for (var p : Spec.POINTS) {
+            int px = x + (p.x() + 350) * 136 / 700, py = y + (p.z() + 250) * 80 / 500;
+            UiTex.draw(g, "table/map-seal", px - 8, py - 8);
+            g.drawText(font, p.id(), px - font.getWidth(p.id()) / 2 + 1, py - 3, DarkUi.CHIP_TEXT, false);
+        }
     }
 
     static int centred(DrawContext g, Text t, int cx, int top, int color) {

@@ -30,7 +30,10 @@ public final class CampRulesCheck {
   check(recovery.room(b)==null&&recovery.party(b).members.contains(a),"Expired room does not erase offline friend membership");
   recovery.presence(Set.of(a,b),now+120_011);recovery.createRoom(b);check(recovery.room(a)==recovery.room(b),"Returning friend can enter a new room with recovered party");
   recovery.ready(a);recovery.ready(b);recovery.transfer(b,a);check(recovery.room(a).leader.equals(b),"Party leadership does not steal independent room hosting");
-  recovery.leaveRoom(a);check(recovery.room(b)==null&&recovery.party(b).members.size()==2,"New party leader can leave room for the group");
+  String left=recovery.leaveRoom(a);check(recovery.room(b)==null&&recovery.party(b).members.size()==2,"New party leader can leave room for the group");
+  check(left.equals("Your group left the room; your party is still together."),"A party leaving its room hears that the party holds");
+  SocialHub solo=new SocialHub();UUID lone=id();solo.presence(Set.of(lone),now);solo.createRoom(lone);
+  check(solo.room(lone)!=null&&solo.leaveRoom(lone).equals("You left the room.")&&solo.room(lone)==null&&solo.party(lone)==null,"A commander alone leaves a room with no word of a party");
   Progression.State s=new Progression.State();LocalDate day=LocalDate.of(2026,10,17);Progression.reset(s,day);
   check(Progression.claim(s,"daily:0").gold()==0,"Unfinished contract cannot claim");
   Progression.match(s,"round-1",true,true);int xp=s.xp;Progression.match(s,"round-1",true,true);check(s.xp==xp&&s.dailyBattles==1,"Duplicate match cannot grant twice");
