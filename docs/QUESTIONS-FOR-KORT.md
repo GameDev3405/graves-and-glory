@@ -281,3 +281,10 @@ Defect found, not blocking: every arena rebuild over an existing arena spills hu
 (3) A Visuals on/off switch for troop depth: none for now, parked, because a near cap and a frame budget hold the cost (recommended); add the switch now.
 
 **Kort's answers, 2026-10-21 evening:** round 22: the graph stays code-only until the 0.5.0 merge. Round 23: the Gilded six and their stage art pass as they are. Round 24: (1) bows rest at 45 degrees; (2) bows 2 px thick; (3) add the Visuals on/off switch for troop depth now (in Task 5d, default On). Growth design: not approved by Kort, deleted at his word.
+
+## Art pipeline v2, round 25 (2026-10-21)
+
+**Kort, 2026-10-21 evening:** wants the troops and weapons to look better, Soulrend-style, all in-house; approved three directions: Blockbench as the workshop, a Minecraft 3D texture rulebook, and LabPBR maps. Blockbench 5.2.2 and its MCP plugin are set up for agents. The spike remade the Order bow and the arming sword in Blockbench (`bannerbound-p2b/work/p2b/spike-bb/side-by-side.png`, sent to Kort): sword 66 quads, bow 72 to 78, inside the 128 cap. Design draft: `docs/superpowers/specs/2026-10-21-art-pipeline-v2-design.md`; rulebook: `docs/ART-STYLE-GUIDE.md`. Three calls for Kort:
+(1) Approve the design: weapons and troops become Blockbench models, painted to the style guide, with LabPBR maps, starting in Task 5d's art step and carried through the House art halves (recommended); approve weapons only, troops stay as they are; not now.
+(2) The Gilded six: repaint them to the new style guide in Task 5d's art step, about 28 sheets (recommended: you said the units could look better, and every House after them is painted to the guide); keep them as signed off and start the guide with the Ironclad.
+(3) Complementary only shows our normal and specular maps in its labPBR mode, which turns off its built-in PBR for every vanilla block. Ship the maps and leave Complementary on its default, so only players who switch see them (recommended: cheap, and the world keeps its look); set the modpack's Complementary to labPBR; skip the maps.
