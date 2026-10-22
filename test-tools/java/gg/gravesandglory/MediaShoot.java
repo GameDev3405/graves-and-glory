@@ -45,31 +45,34 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
     static final int HILL_HEIGHT=6,SAFE=30;
     static final float[] POINT={-1.50f,0f,-0.12f};
     /** One staged battle: map, which objective it centres on, time of day, rain, each side's banners, how the lines face, how far the commander stands back. */
+    /** distance 0: the commander stands behind the tail of his own column. gap is the distance from the objective to each column's front rank, cols the troops abreast, spacing the rank spacing. */
     record Scene(String id,int map,int point,int time,boolean rain,String[] dawn,String[] dusk,boolean lateral,int distance,double gap,String posture0,String posture1,String armor,int size,int cols,double spacing){}
+    static final double COLSP=1.6,SQGAP=2.2,HEROLEAD=2.4;
     static final String[] GILDED_HARD={"gilded_hard","gilded_normal","gilded_easy"},GRAVE_HARD={"graveborn_hard","graveborn_normal","graveborn_easy"},
         IRON_HARD={"ironclad_hard","ironclad_normal","ironclad_easy"},TIDE_HARD={"tidecallers_hard","tidecallers_normal","tidecallers_easy"};
     /** The five battles of SHOOT-PLAN-2. dawn is the commander's army (he stands behind it), dusk the army across from it. */
     static Scene preset(String id,int map,int point,int time,boolean rain,String[] mine,String[] theirs,String armor){
-        return new Scene(id,map,point,envInt("GRAVES_FILM_TIME",time),rain,mine,theirs,false,envInt("GRAVES_FILM_DIST",44),envInt("GRAVES_FILM_GAP",16),"attack","attack",armor,envInt("GRAVES_FILM_SIZE",5),envInt("GRAVES_FILM_COLS",10),envInt("GRAVES_FILM_SPACING",175)/10.0);
+        return new Scene(id,map,point,envInt("GRAVES_FILM_TIME",time),rain,mine,theirs,false,envInt("GRAVES_FILM_DIST",0),envInt("GRAVES_FILM_GAP",12),"attack","attack",armor,envInt("GRAVES_FILM_SIZE",5),envInt("GRAVES_FILM_COLS",12),envInt("GRAVES_FILM_SPACING",18)/10.0);
     }
+    /** Map indexes are the Spec.MAPS order (0 Rivergate, 1 Ironhold, 2 Frostmarch, 3 Hollowwood, 4 Kingsfield); the objective of each is one the field scan found dry for two columns. */
     static List<Scene> presets(){return List.of(
-        preset("kingsfield",0,1,-1,false,GILDED_HARD,GRAVE_HARD,"gold"),
-        preset("ironhold",1,1,-1,false,IRON_HARD,GILDED_HARD,"iron"),
-        preset("rivergate",3,1,300,true,TIDE_HARD,GILDED_HARD,"diamond"),
-        preset("hollowwood",3,0,12750,false,GRAVE_HARD,GILDED_HARD,"netherite"),
-        preset("frostmarch",2,1,-1,false,IRON_HARD,TIDE_HARD,"iron"));}
+        preset("rivergate",0,2,300,true,TIDE_HARD,GILDED_HARD,"diamond"),
+        preset("ironhold",1,0,-1,false,IRON_HARD,GILDED_HARD,"iron"),
+        preset("frostmarch",2,0,-1,false,IRON_HARD,TIDE_HARD,"iron"),
+        preset("hollowwood",3,0,12350,false,GRAVE_HARD,GILDED_HARD,"netherite"),
+        preset("kingsfield",4,1,-1,false,GILDED_HARD,GRAVE_HARD,"gold"));}
     record Shot(FilmRig.Take take,String stage){}
 
     // ---- state -------------------------------------------------------------------------------------------------
     volatile UUID player;volatile boolean serverReady,finished;volatile int pointCount;
     volatile double bx,by,bz,sx,sy,sz,fx,fz,rx,rz;volatile float lookYaw,lookPitch;
-    volatile double hx,hy,hz;volatile boolean heroOk;volatile int swingEvery;
+    volatile double colL0,colL1,fieldCost;volatile int fieldWet;volatile double hx,hy,hz;volatile boolean heroOk;volatile int swingEvery;
     volatile String posture0="attack",posture1="attack",form0="line",form1="line";volatile boolean protect=true,standOk;
     final Map<BlockPos,BlockState> undo=new LinkedHashMap<>();
     final ConcurrentLinkedQueue<Step> jobs=new ConcurrentLinkedQueue<>();
     interface Step{boolean run(GravesAndGlory.Battle b);}
     int phase,wait,mapIdx,ptIdx,takeIdx,sceneIdx,curMap=-1;boolean steve,sized,stagedNow;Identifier steveTexture;List<Shot> shots=List.of();Scene scene;
-    final boolean plan=!MODE.equals("scout");final List<Scene> sceneList=presets().stream().filter(sc->wanted(sc.id())).toList();
+    final boolean plan=!(MODE.equals("scout")||MODE.equals("fields"));final List<Scene> sceneList=presets().stream().filter(sc->wanted(sc.id())).toList();
     final int[] MAPS=parseMaps();
     int[] parseMaps(){String s=System.getenv().getOrDefault("GRAVES_FILM_MAPS","0,1,2,3,4");return Arrays.stream(s.split(",")).mapToInt(Integer::parseInt).toArray();}
     ServerPlayerEntity sp(GravesAndGlory.Battle b){return player==null?null:b.server.getPlayerManager().getPlayer(player);}
@@ -165,7 +168,7 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
 
     // ---- scenes and shots ---------------------------------------------------------------------------------------
     /** time -1: the sun is put low on the commander's facing side, so the army is backlit from his hill. */
-    Scene sceneFor(int map,int point){return new Scene("m"+map+"p"+point,map,point,envInt("GRAVES_FILM_TIME",-1),false,GILDED_HARD,GRAVE_HARD,envInt("GRAVES_FILM_LATERAL",0)==1,envInt("GRAVES_FILM_DIST",44),envInt("GRAVES_FILM_GAP",16),"attack","attack",System.getenv().getOrDefault("GRAVES_FILM_ARMOR","netherite"),envInt("GRAVES_FILM_SIZE",5),envInt("GRAVES_FILM_COLS",10),envInt("GRAVES_FILM_SPACING",175)/10.0);}
+    Scene sceneFor(int map,int point){return new Scene("m"+map+"p"+point,map,point,envInt("GRAVES_FILM_TIME",-1),false,GILDED_HARD,GRAVE_HARD,envInt("GRAVES_FILM_LATERAL",0)==1,envInt("GRAVES_FILM_DIST",0),envInt("GRAVES_FILM_GAP",12),"attack","attack",System.getenv().getOrDefault("GRAVES_FILM_ARMOR","netherite"),envInt("GRAVES_FILM_SIZE",5),envInt("GRAVES_FILM_COLS",12),envInt("GRAVES_FILM_SPACING",18)/10.0);}
     Vec3d S(){return new Vec3d(sx,sy,sz);}
     Vec3d M(){return new Vec3d(bx,by,bz);}
     Vec3d at(Vec3d o,double f,double r,double u){return o.add(new Vec3d(fx,0,fz).multiply(f)).add(new Vec3d(rx,0,rz).multiply(r)).add(0,u,0);}
@@ -173,11 +176,13 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
     FilmRig.Take still(String name,double[] cam,FilmRig.Pose pose,double clearance){return new FilmRig.Take(name,FPS,24,3,FilmRig.hold(cam),pose,null,Map.of(1,name+".png"),Map.of(),clearance);}
     /** A clip; release is the recorded frame where both armies are ordered to charge (-1: never); GRAVES_FILM_PREVIEW=N swaps the encode for a PNG every N frames. */
     FilmRig.Take clip(String name,double seconds,FilmRig.Path path,FilmRig.Pose pose,int release,double clearance){return clip(name,seconds,path,pose,release,clearance,Map.of());}
-    FilmRig.Take clip(String name,double seconds,FilmRig.Path path,FilmRig.Pose pose,int release,double clearance,Map<Integer,Runnable> more){
-        int frames=(int)Math.round(seconds*FPS),pv=envInt("GRAVES_FILM_PREVIEW",0);boolean norec=System.getenv("GRAVES_FILM_NOREC")!=null||pv>0;
+    FilmRig.Take clip(String name,double seconds,FilmRig.Path path,FilmRig.Pose pose,int release,double clearance,Map<Integer,Runnable> more){return clipAt(FPS,name,seconds,path,pose,release,clearance,more);}
+    /** A clip captured at its own frame rate (the slow-motion take runs the game at 120 and is slowed to half speed when it is encoded). */
+    FilmRig.Take clipAt(int fps,String name,double seconds,FilmRig.Path path,FilmRig.Pose pose,int release,double clearance,Map<Integer,Runnable> more){
+        int frames=(int)Math.round(seconds*fps),pv=envInt("GRAVES_FILM_PREVIEW",0);boolean norec=System.getenv("GRAVES_FILM_NOREC")!=null||pv>0;
         Map<Integer,String> stills=new HashMap<>();if(pv>0)for(int f=0;f<frames;f+=pv)stills.put(f,String.format("%s-f%04d.png",name,f));
         Map<Integer,Runnable> events=new HashMap<>(more);if(release>=0)events.put(release,this::release);
-        return new FilmRig.Take(name,FPS,90,frames,path,pose,norec?null:new File(OUT+"/clips/"+name+".mp4"),stills,events,clearance);}
+        return new FilmRig.Take(name,fps,90*fps/FPS,frames,path,pose,norec?null:new File(OUT+"/clips/"+name+".mp4"),stills,events,clearance);}
     /** A chase camera on the Marshal-class hero of the commander's army: behind, beside and above him, looking down the field past him, smoothed so his steps do not shake it. */
     FilmRig.Path follow(double back,double side,double up,double ahead,double dropLook,double fov){return follow(back,side,up,ahead,dropLook,fov,0,0,0,0);}
     /** From riseFrom to riseTo seconds the camera climbs to endUp and slides to endBack, still looking at the hero. */
@@ -194,23 +199,29 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
         String id=sc.id();Vec3d m=M().add(0,1.5,0),eye=S().add(0,1.7,0);FilmRig.Pose point=t->POINT,sword=t->SWORD;
         double g=sc.gap(),face=Math.toDegrees(Math.atan2(-fx,fz));
         var out=new ArrayList<Shot>();
+        if(MODE.equals("fields"))return out;
         if(!plan){ // scouting: one of each candidate still
             for(var t:List.of(still(id+"-a-behind",FilmRig.aim(at(S(),-12,0.6,5.2),m,42),point),still(id+"-c-hero",FilmRig.aim(at(S(),9,0.4,0.2),eye.add(0,-.1,0),45),point),
                 still(id+"-d-enemy",FilmRig.aim(at(M(),g+9,-6,2.4),at(M(),-g,4,2.4),48),point),still(id+"-f-clash",FilmRig.aim(at(M(),-9,-4,2.0),m,50),point),
                 still(id+"-g-crane",FilmRig.aim(at(M(),-34,0,34),m,50),point),still(id+"-h-drone",FilmRig.aim(at(S(),-10,0,16),m,50),point)))out.add(new Shot(t,"none"));
             return out;
         }
-        // stills: the two lines before the clash, then the fight itself
+        // geometry: the objective is the origin of "at(M(),f,r,u)", f runs from the commander's army toward the enemy; our column fills f from -g to -tail0, theirs from g to tail1
+        double L0=colL0,L1=colL1,tail0=g+L0,tail1=g+L1;
+        // stills: the two columns before the clash, then the fight itself
         if(shotWanted("s8"))out.add(new Shot(still(id+"-s8-lines",FilmRig.aim(at(S(),-9,0,4.5),m,45),point),"hold"));
+        if(shotWanted("s9"))out.add(new Shot(still(id+"-s9-vanguard",FilmRig.aim(at(M(),-g+7,2.5,1.5),at(S(),0,0,2.2),48),point,.5),"hold"));
+        if(shotWanted("s10"))out.add(new Shot(still(id+"-s10-topdown",FilmRig.aim(at(M(),-6,0,64),at(M(),0,0,0),58),point,.5),"hold"));
+        if(shotWanted("s11"))out.add(new Shot(still(id+"-s11-flank",FilmRig.aim(at(M(),-6,-56,7),at(M(),0,0,1.5),44),point,1.0),"hold"));
         boolean first=true;
         String[] stillKeys={"s1","s2","s3","s4","s5","s6","s7"};
         FilmRig.Take[] st={
             still(id+"-s1-behind",FilmRig.aim(at(S(),-12,0.6,5.2),m,42),point),
             still(id+"-s2-shoulder",FilmRig.aim(at(S(),-4.2,1.5,2.3),m,48),point),
             still(id+"-s3-hero",FilmRig.aim(at(S(),4.0,0.4,-0.7),at(S(),0,0,1.7),46),sword,.5),
-            still(id+"-s4-enemy",FilmRig.aim(at(M(),g+9,-6,2.4),at(M(),-g,4,2.4),48),point),
+            still(id+"-s4-enemy",FilmRig.aim(at(M(),tail1+9,-5,4.2),at(M(),-g-L0*.35,1.5,1.5),50),point),
             still(id+"-s5-clash",FilmRig.aim(at(M(),-9,-4,2.0),m,50),point),
-            still(id+"-s6-crane",FilmRig.aim(at(M(),-34,0,34),m,50),point),
+            still(id+"-s6-crane",FilmRig.aim(at(M(),-(g+L0*.5)-26,-16,36),m,52),point),
             still(id+"-s7-drone",FilmRig.aim(at(S(),-10,0,16),m,50),point)};
         for(int i=0;i<st.length;i++)if(shotWanted(stillKeys[i])){out.add(new Shot(st[i],first?"clash":"none"));first=false;}
         // 180 degree panorama from the commander's eyes: stills every 15 degrees, stitched afterwards (tools in the scratchpad: stitch.py)
@@ -223,13 +234,24 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
             new Vec3d[]{at(S(),2.8,.7,1.6),at(S(),1.2,3.8,2.2),at(S(),-4.5,3.2,3.8),at(S(),-13,0,8.5)},
             new Vec3d[]{eye,at(S(),0,0,1.8),at(S(),12,0,1.2),m},new double[]{36,40,46,52}),armSeq,285,1.8),"hold"));
         if(shotWanted("c2"))out.add(new Shot(clip(id+"-c2-orbit",12,FilmRig.orbitEx(12,.2,S(),6.0,7.5,1.8,3.4,face-25,face+200,eye.add(0,-.2,0),at(S(),9,0,2.4),50,48),armQuick,280,1.8),"hold"));
+        // along the column over their heads, across the clash, then looking back at it
         if(shotWanted("c3"))out.add(new Shot(clip(id+"-c3-flyover",12,FilmRig.rail(12,.2,
-            new Vec3d[]{at(S(),-6,0,8),at(S(),12,3,9.5),at(M(),-g,-3,11),at(M(),0,0,12.5),at(M(),g+9,4,11)},
-            new Vec3d[]{at(M(),-g-6,0,1),at(M(),-g,0,1),at(M(),-3,0,1),at(M(),0,0,1.2),at(M(),-1,0,1.4)},new double[]{62,64,66,64,60}),point,45,1.8),"hold"));
+            new Vec3d[]{at(M(),-tail0-10,0,10),at(M(),-tail0*.55,1.5,8),at(M(),-g-2,-1,8.5),at(M(),6,-5,10),at(M(),24,-10,13)},
+            new Vec3d[]{at(M(),-tail0*.55,0,1),at(M(),-g,0,1),at(M(),0,0,1.2),at(M(),2,0,1.2),at(M(),-8,0,1.4)},new double[]{62,62,64,62,58}),point,200,1.8),"hold"));
         if(shotWanted("c4"))out.add(new Shot(clip(id+"-c4-dive",10,FilmRig.rail(10,.25,
-            new Vec3d[]{at(M(),-30,18,46),at(M(),-22,12,26),at(M(),-14,8,9),at(M(),-9,7,2.8)},new Vec3d[]{m,m,at(M(),-2,-3,1.8),at(M(),-1,-5,1.8)},new double[]{64,60,56,54}),point,0,1.8),"hold"));
+            new Vec3d[]{at(M(),-tail0-12,16,50),at(M(),-g-L0*.4,12,28),at(M(),-g-6,7,10),at(M(),-8,5,3.6)},new Vec3d[]{m,m,at(M(),-2,-3,1.8),at(M(),-1,-5,1.8)},new double[]{64,60,56,54}),point,0,1.8),"hold"));
         if(shotWanted("c5"))out.add(new Shot(clip(id+"-c5-follow",8,follow(-6.0,2.2,1.9,0,1.5,52,4.0,7.0,7.5,-3.5),point,20,1.2),"hold"));
         if(shotWanted("c6"))out.add(new Shot(clip(id+"-c6-pov",10,follow(-1.0,-1.8,1.65,14,1.2,72),point,0,1.0,Map.of(90,()->swingEvery=13,590,()->swingEvery=0)),"hold"));
+        // new shots: the map view, the glide over the army, the orbit of the clash, the tracking shot, the slow-motion clash, the reverse
+        if(shotWanted("c7"))out.add(new Shot(clip(id+"-c7-topdown",10,FilmRig.rail(10,.2,
+            new Vec3d[]{at(M(),-8,0,74),at(M(),-8,0,62),at(M(),-10,0,50)},new Vec3d[]{at(M(),0,0,0),at(M(),0,0,0),at(M(),0,0,0)},new double[]{62,60,56}),point,120,0.5),"hold"));
+        if(shotWanted("c8"))out.add(new Shot(clip(id+"-c8-glide",10,follow(18,0,7.5,16,1.0,62),point,30,1.2),"hold"));
+        if(shotWanted("c9"))out.add(new Shot(clip(id+"-c9-clashorbit",10,FilmRig.orbitEx(10,.15,M(),17,11,5.5,3.4,face+165,face-40,m,m,52,46),point,60,1.0),"hold"));
+        if(shotWanted("c10"))out.add(new Shot(clip(id+"-c10-sidetrack",8,follow(0,9,1.9,2,1.4,54),point,20,1.2),"hold"));
+        if(shotWanted("c11"))out.add(new Shot(clipAt(120,id+"-c11-slowmo",6.5,FilmRig.orbitEx(6.5,.2,M(),10,8,2.8,2.0,face+200,face+245,m,m,50,46),point,0,0.8,Map.of()),"hold"));
+        if(shotWanted("c12"))out.add(new Shot(clip(id+"-c12-reverse",12,FilmRig.rail(12,.2,
+            new Vec3d[]{at(M(),tail1+10,0,10),at(M(),tail1*.55,-1.5,8),at(M(),g+2,1,8.5),at(M(),-6,5,10),at(M(),-24,10,13)},
+            new Vec3d[]{at(M(),tail1*.55,0,1),at(M(),g,0,1),at(M(),0,0,1.2),at(M(),-2,0,1.2),at(M(),8,0,1.4)},new double[]{62,62,64,62,58}),point,200,1.8),"hold"));
         return out;
     }
 
@@ -278,8 +300,9 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
         undo.clear();serverReady=false;standOk=false;
         var pt=b.points.get(Math.min(sc.point(),b.points.size()-1)).spec;
         bx=pt.x()+.5;bz=pt.z()+.5;by=Arena.ground((int)Math.floor(bx),(int)Math.floor(bz))+1;
-        double facing=Double.NaN;int dist=sc.distance();
-        for(int attempt=0;attempt<3&&Double.isNaN(facing);attempt++){dist=sc.distance()+attempt*7;facing=chooseFacing(b,dist,attempt>0);}
+        colL0=columnLength(b,sc,0);colL1=columnLength(b,sc,1);
+        double facing=Double.NaN;int base=sc.distance()>0?sc.distance():(int)Math.ceil(sc.gap()+colL0+14),dist=base;
+        for(int attempt=0;attempt<3&&Double.isNaN(facing);attempt++){dist=base+attempt*7;facing=chooseFacing(b,sc,dist,attempt>0);}
         if(Double.isNaN(facing)){System.out.println("[film] "+sc.id()+": no dry hill site; skipped");return true;}
         double yaw=Math.toRadians(facing);
         fx=-Math.sin(yaw);fz=Math.cos(yaw);rx=-Math.cos(yaw);rz=-Math.sin(yaw);
@@ -294,21 +317,41 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
         if(sc.time()<0)b.world.setTimeOfDay(when);
         if(when>=13000&&when<=23000)lanterns(b);
         standOk=true;
-        System.out.println(String.format("[film] %s stand: facing %.1f dist %d summit %d at %.1f %.1f, fight at %.1f %.1f %.1f",sc.id(),facing,dist,top,sx,sz,bx,by,bz));
+        System.out.println(String.format("[film] %s stand: facing %.1f dist %d summit %d at %.1f %.1f, fight at %.1f %.1f %.1f, columns %.1f and %.1f long, field cost %.0f wet %d",sc.id(),facing,dist,top,sx,sz,bx,by,bz,colL0,colL1,fieldCost,fieldWet));
         return true;};}
+    /** One squad of a column: its troops front to back (hero, melee, ranged), the ranks they fill and where its front rank stands, measured from the objective. */
+    record Rank(GravesAndGlory.Squad squad,List<Spec.TroopsRow> troops,int rows,int body,double start){}
+    static boolean legendary(Spec.TroopsRow t){return t.rarity().equals("legendary");}
+    /** The squads of one army stacked one behind another along the line of the charge: the hero's squad leads, archers last. */
+    List<Rank> lineup(GravesAndGlory.Battle b,Scene sc,int team){
+        String[] banners=team==0?sc.dawn():sc.dusk();
+        var armies=b.squads.values().stream().filter(s->s.seated&&s.team==team).toList();
+        List<Rank> raw=new ArrayList<>();
+        for(int k=0;k<armies.size();k++){
+            List<Spec.TroopsRow> row=new ArrayList<>();
+            for(String id:Campaign.bannerRow(banners[k%banners.length])){var spec=Campaign.troop(id);if(spec!=null)row.add(spec);}
+            row.sort(Comparator.comparingInt(x->legendary(x)?0:x.ranged()?2:1));
+            int body=(int)row.stream().filter(x->!legendary(x)).count();
+            raw.add(new Rank(armies.get(k),row,Math.max(1,(body+sc.cols()-1)/sc.cols()),body,0));
+        }
+        raw.sort(Comparator.comparingDouble(r->(r.troops().stream().anyMatch(MediaShoot::legendary)?-1.0:0.0)+r.troops().stream().filter(Spec.TroopsRow::ranged).count()/(double)Math.max(1,r.troops().size())));
+        List<Rank> out=new ArrayList<>();double at=sc.gap();
+        for(var r:raw){out.add(new Rank(r.squad(),r.troops(),r.rows(),r.body(),at));at+=r.rows()*sc.spacing()+SQGAP;}
+        return out;
+    }
+    double columnLength(GravesAndGlory.Battle b,Scene sc,int team){var l=lineup(b,sc,team);if(l.isEmpty())return 0;var last=l.get(l.size()-1);return last.start()+last.rows()*sc.spacing()-sc.gap();}
     Step muster(Scene sc,String posture){return b->{
         if(!standOk)return true;
         Projectiles.clear(b);for(var u:b.units)u.mob.discard();b.units.clear();
-        double ax=sc.lateral()?rx:fx,az=sc.lateral()?rz:fz,qx=-az,qz=ax;
+        double ax=fx,az=fz,qx=-az,qz=ax;
         posture0=posture;posture1=posture;
-        for(int t=0;t<2;t++){final int team=t;
-            var armies=b.squads.values().stream().filter(s->s.seated&&s.team==team).toList();int side=t==0?-1:1;String[] banners=t==0?sc.dawn():sc.dusk();
-            for(int k=0;k<armies.size();k++){var s=armies.get(k);double off=(k-(armies.size()-1)/2.0)*sc.spacing()*sc.cols()/10.0*1.0;int slot=0;
+        for(int t=0;t<2;t++){int side=t==0?-1:1;
+            for(var r:lineup(b,sc,t)){var s=r.squad();int slot=0;
                 s.bot=false;s.assignments.clear();s.order=posture;s.formation="line";s.target=new Vec3d(bx,by,bz);
                 s.yaw=(float)Math.toDegrees(Math.atan2(side*ax,-side*az));s.routedAt.clear();s.steadyUntil.clear();
-                for(String id:Campaign.bannerRow(banners[k%banners.length])){var spec=Campaign.troop(id);if(spec==null)continue;
-                    boolean hero=spec.rarity().equals("legendary");
-                    double depth=sc.gap()+(hero?-2.4:(slot/sc.cols())*1.8),across=off+(hero?0:((slot%sc.cols())-(sc.cols()-1)/2.0)*1.55);
+                for(var spec:r.troops()){
+                    boolean hero=legendary(spec);int row=slot/sc.cols(),inRow=Math.min(sc.cols(),r.body()-row*sc.cols());
+                    double depth=hero?r.start()-HEROLEAD:r.start()+row*sc.spacing(),across=hero?0:((slot%sc.cols())-(inRow-1)/2.0)*COLSP;
                     double x=bx+side*ax*depth+qx*across,z=bz+side*az*depth+qz*across;
                     b.spawn(s,spec,slot,new Vec3d(x,Arena.ground((int)Math.floor(x),(int)Math.floor(z))+1,z));if(!hero)slot++;
                 }
@@ -327,17 +370,32 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
     }
 
     // ---- the hill (from TitleDemos, with the site chosen from the objective instead of a fixed table) ----------------
-    double chooseFacing(GravesAndGlory.Battle b,int dist,boolean relaxed){
-        double best=Double.NaN;int bestScore=Integer.MAX_VALUE;
+    double chooseFacing(GravesAndGlory.Battle b,Scene sc,int dist,boolean relaxed){
+        double best=Double.NaN;double bestScore=Double.MAX_VALUE;
         for(double yaw=0;yaw<360;yaw+=5){
             double t=Math.toRadians(yaw),ffx=-Math.sin(t),ffz=Math.cos(t);
             int px=(int)Math.floor(bx-ffx*dist),pz=(int)Math.floor(bz-ffz*dist);
             if(dry(px,pz,relaxed)!=null)continue;
             int blocked=obstructions(b,px+.5,Arena.ground(px,pz)+HILL_HEIGHT+3.7,pz+.5,ffx,ffz,bx,by+1.2,bz);
-            int score=blocked+2*rear(b,px,pz,ffx,ffz);
-            if(score<bestScore){bestScore=score;best=yaw;}
+            int[] f=field(b,sc,ffx,ffz,dist);
+            double score=blocked+2*rear(b,px,pz,ffx,ffz)+3.0*(f[0]*10+f[1]*2+f[2]);
+            if(score<bestScore){bestScore=score;best=yaw;fieldCost=f[0]*10+f[1]*2+f[2];fieldWet=f[0];}
         }
         return best;
+    }
+    /** What the two columns would stand and run on, from the commander's hill to the far end of the enemy column: {water cells, blocked cells (buildings, rocks, trees), steps of more than two blocks}. */
+    int[] field(GravesAndGlory.Battle b,Scene sc,double ffx,double ffz,int dist){
+        double half=sc.cols()*COLSP/2+3.5,far=sc.gap()+colL1+6;int wet=0,blocked=0,steep=0;
+        for(double f=-(dist-8);f<=far;f+=2){int last=Integer.MIN_VALUE;
+            for(double w=-half;w<=half;w+=2){
+                int x=(int)Math.floor(bx+ffx*f-ffz*w),z=(int)Math.floor(bz+ffz*f+ffx*w),g=Arena.ground(x,z);
+                if(GravesAndGlory.Battle.wet(x,z))wet++;
+                var st=b.world.getBlockState(new BlockPos(x,g+1,z));
+                if(!st.isAir()&&!st.isReplaceable()&&!st.isIn(BlockTags.FLOWERS)&&st.getFluidState().isEmpty())blocked++;
+                for(var s:Spec.STRUCTURES)if(!s.kind().equals("bridge")&&Math.abs(x-s.x())<=s.width()/2+2&&Math.abs(z-s.z())<=s.depth()/2+2){blocked+=2;break;}
+                if(last!=Integer.MIN_VALUE&&Math.abs(g-last)>2)steep++;
+                last=g;}}
+        return new int[]{wet,blocked,steep};
     }
     /** Solid blocks in the open box behind the commander's hill (buildings, cliffs): what the camera sees when it swings round to his face. */
     static int rear(GravesAndGlory.Battle b,int px,int pz,double ffx,double ffz){
@@ -367,7 +425,8 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
     void set(BlockPos pos,BlockState state,GravesAndGlory.Battle b){pos=pos.toImmutable();undo.putIfAbsent(pos,b.world.getBlockState(pos));b.world.setBlockState(pos,state,2);}
     void set(int x,int y,int z,Block block,GravesAndGlory.Battle b){set(new BlockPos(x,y,z),block.getDefaultState(),b);}
     void clearView(GravesAndGlory.Battle b){
-        for(int i=0;i<=90;i++){double t=i/90.0;for(int w=-10;w<=10;w++){int x=(int)Math.floor(sx+(bx-sx)*t+rx*w),z=(int)Math.floor(sz+(bz-sz)*t+rz*w);
+        double len=Math.hypot(bx-sx,bz-sz)+scene.gap()+colL1+6;
+        for(double f=0;f<=len;f+=.8){for(int w=-10;w<=10;w++){int x=(int)Math.floor(sx+fx*f+rx*w),z=(int)Math.floor(sz+fz*f+rz*w);
             for(int y=60;y<110;y++){var pos=new BlockPos(x,y,z);var st=b.world.getBlockState(pos);if(st.isIn(BlockTags.LOGS)||st.isIn(BlockTags.LEAVES))set(pos,Blocks.AIR.getDefaultState(),b);}}}
     }
     static long key(int x,int z){return((long)x<<32)^(z&0xffffffffL);}
