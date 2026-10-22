@@ -277,7 +277,8 @@ public final class Phase3Checks implements ClientModInitializer {
     }
 
     /** Task 1: the studio. GRAVES_STUDIO_MODE=verify (default) rebuilds every script (or GRAVES_STUDIO_PIECES, a comma list of GROUP/NAME) and compares it with the
-     *  shipped structure file; export builds each, writes GRAVES_STUDIO_OUT/GROUP/NAME.nbt and photographs the piece. Both end with the dump round trip of the marker. */
+     *  shipped structure file; export builds each, writes GRAVES_STUDIO_OUT/GROUP/NAME.nbt and photographs the piece twice (studio-GROUP-NAME from the south-east,
+     *  studio-GROUP-NAME-nw from the north-west). Both modes dump every piece back to a script and rebuild it (p3-dump-GROUP-NAME), and end with the dump round trip of the marker. */
     static final class StudioChecks implements Suite {
         static final String MARKER="test/p3_marker";
         volatile int stage;volatile UUID player;volatile boolean exporting;volatile List<String> pieces=List.of();volatile Vec3i size=new Vec3i(1,1,1);
@@ -293,7 +294,11 @@ public final class Phase3Checks implements ClientModInitializer {
                 }
                 case 3->{
                     int sx=size.getX(),sy=size.getY(),sz=size.getZ();double d=Math.max(sx,sz)+8;var o=StructureStudio.ORIGIN;
-                    if(view(c,"studio-"+slug(pieces.get(index)),o.getX()+sx/2.0+0.7*d,o.getY()+sy+0.4*d,o.getZ()+sz/2.0+0.7*d,o.getX()+sx/2.0,o.getY()+sy/3.0,o.getZ()+sz/2.0)){index++;stage=1;}
+                    if(view(c,"studio-"+slug(pieces.get(index)),o.getX()+sx/2.0+0.7*d,o.getY()+sy+0.4*d,o.getZ()+sz/2.0+0.7*d,o.getX()+sx/2.0,o.getY()+sy/3.0,o.getZ()+sz/2.0))stage=6;
+                }
+                case 6->{ // the north and west faces, which the first camera cannot see
+                    int sx=size.getX(),sy=size.getY(),sz=size.getZ();double d=Math.max(sx,sz)+8;var o=StructureStudio.ORIGIN;
+                    if(view(c,"studio-"+slug(pieces.get(index))+"-nw",o.getX()+sx/2.0-0.7*d,o.getY()+sy+0.4*d,o.getZ()+sz/2.0-0.7*d,o.getX()+sx/2.0,o.getY()+sy/3.0,o.getZ()+sz/2.0)){stage=7;server(c,b->{dumpTrip(b);index++;stage=1;});}
                 }
                 case 5->finish(c,"studio");
                 default->{}
@@ -325,8 +330,49 @@ public final class Phase3Checks implements ClientModInitializer {
                     String why=StructureStudio.stale(b.server,id);
                     report("p3-fresh-"+slug,why.isEmpty(),why.isEmpty()?"the script of "+id+" rebuilds to exactly the shipped structure file":why);
                 }catch(Exception e){report("p3-fresh-"+slug,false,e.getMessage()==null?e.toString():e.getMessage());}
+                dumpTrip(b);
             }
             index++;stage=1;
+        }
+        /** The piece's structure file (the export, or the shipped file in verify mode) dumped back to a script, that script built and saved again: the two must be
+         *  equal, block for block. Blocks whose state comes from their neighbours (fences, walls, panes, stair corners, hanging lanterns, vines) are counted in the
+         *  line, so a pass shows /studio dump keeps them. The dump is written to STUDIO_OUT/dumps/GROUP/NAME.mcfunction. A difference names each block. */
+        void dumpTrip(GravesAndGlory.Battle b){
+            String id=pieces.get(index),slug=slug(id);
+            try{
+                NbtCompound reference=exporting?NbtIo.readCompressed(StructureStudio.out().resolve(id+".nbt").toFile()):Structures.read(b.server,id).orElseThrow(()->new IllegalStateException("no structure file for "+id));
+                String script=StructureStudio.dump(b.world.getStructureTemplateManager().createTemplate(reference));
+                Path file=StructureStudio.out().resolve("dumps").resolve(id+".mcfunction");
+                Files.createDirectories(file.getParent());Files.writeString(file,script);
+                NbtCompound again=StructureStudio.save(b.server,id,StructureStudio.run(b.server,"dump of "+id,script));
+                Map<String,String> want=cells(reference),got=cells(again);var bad=new StringBuilder();int differ=0;
+                var keys=new TreeSet<String>(want.keySet());keys.addAll(got.keySet());
+                for(String at:keys)if(!Objects.equals(want.get(at),got.get(at))){if(++differ<=12)bad.append("at ").append(at).append(" the file has ").append(want.getOrDefault(at,"void")).append(" and the rebuilt dump ").append(got.getOrDefault(at,"void")).append("; ");}
+                boolean ok=differ==0&&again.equals(reference);
+                if(differ==0&&!ok)bad.append("every block agrees but the NBT differs: ").append(StructureStudio.difference(again,reference));
+                report("p3-dump-"+slug,ok,ok?"the dump of "+id+" ("+script.lines().count()+" lines) built and saved equals its structure file block for block: "+want.size()+" blocks, "+shaped(want)+"; dump at "+file:differ+" block(s) differ: "+bad);
+            }catch(Exception e){report("p3-dump-"+slug,false,e.getMessage()==null?e.toString():e.getMessage());}
+        }
+        /** Position to block state (and block entity data) for every block a saved structure holds. */
+        static Map<String,String> cells(NbtCompound nbt){
+            NbtList palette=nbt.getList("palette",NbtElement.COMPOUND_TYPE),blocks=nbt.getList("blocks",NbtElement.COMPOUND_TYPE);var out=new HashMap<String,String>();
+            for(int i=0;i<blocks.size();i++){
+                NbtCompound block=blocks.getCompound(i);NbtList at=block.getList("pos",NbtElement.INT_TYPE);
+                String state=StructureStudio.stateText(palette.getCompound(block.getInt("state")));
+                if(block.contains("nbt",NbtElement.COMPOUND_TYPE)){NbtCompound data=block.getCompound("nbt").copy();for(String k:new String[]{"x","y","z"})data.remove(k);state+=data;}
+                out.put("("+at.getInt(0)+","+at.getInt(1)+","+at.getInt(2)+")",state);
+            }
+            return out;
+        }
+        /** How many of the blocks have a state that their neighbours decide. */
+        static String shaped(Map<String,String> cells){
+            int fences=0,walls=0,panes=0,stairs=0,vines=0,hanging=0;
+            for(String s:cells.values()){
+                String name=s.contains("[")?s.substring(0,s.indexOf('[')):s.contains("{")?s.substring(0,s.indexOf('{')):s;
+                if(name.endsWith("_fence"))fences++;else if(name.endsWith("_wall"))walls++;else if(name.endsWith("_pane")||name.endsWith("iron_bars"))panes++;
+                else if(name.endsWith("_stairs"))stairs++;else if(name.equals("minecraft:vine"))vines++;else if(name.endsWith("lantern")&&s.contains("hanging=true"))hanging++;
+            }
+            return fences+" fences, "+walls+" walls, "+panes+" panes or bars, "+stairs+" stairs, "+vines+" vines, "+hanging+" hanging lanterns";
         }
         /** Dumps the marker template back to a script, builds that script, saves it, and compares with the shipped file (or, before the first export, with the fresh build of the script). */
         void roundtrip(GravesAndGlory.Battle b){
