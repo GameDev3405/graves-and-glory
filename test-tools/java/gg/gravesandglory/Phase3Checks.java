@@ -628,7 +628,7 @@ public final class Phase3Checks implements ClientModInitializer {
     }
 
     /** Task 3 (suite camp): the camp base as a commander meets it. One launch, in this order: spawn (p3-camp-spawn), then on the world as built p3-camp-built, p3-camp-budget, p3-camp-stations and the war table of map 0 (p3-camp-war-table, first
-     *  part), p3-camp-shapes (extra: every fence, wall, pane and bar inside the pieces is settled, every vine of the files stands), p3-camp-pages (every page the stations name opens its screen), p3-camp-pads (both pads put the squad on their team),
+     *  part), p3-camp-shapes (extra: every fence, wall, pane and bar inside the pieces is settled, every vine of the files stands, the game rule doVinesSpread is off), p3-camp-pages (every page the stations name opens its screen), p3-camp-pads (both pads put the squad on their team),
      *  p3-camp-leash (the three cases of the brief), the nine photographs (p3-camp-arrival.png and so on: the brief's seven and two of the south rim), the war table again after map 2 was built (second part), then a world made by an older build is planted
      *  (the old pads, the gold seal, a brick of the old tower, and entities of the older tags), the terrain marker is deleted, and CampWorld.build runs again as it does on the first load of an old world (p3-camp-old-gone),
      *  and last a build that has nothing to rebuild (p3-camp-rebuild-idempotent: both CRC32 readings and the build itself are in one server callback, so no random tick can grow a vine between the two readings). */
@@ -797,7 +797,8 @@ public final class Phase3Checks implements ClientModInitializer {
                     var at=cell.getList("pos",NbtElement.INT_TYPE);var world=Structures.toWorld(size,C.originX()+row.dx(),row.y(),C.originZ()+row.dz(),row.rotation(),at.getInt(0),at.getInt(1),at.getInt(2));
                     vinesFile++;if(!w.getBlockState(world).isOf(Blocks.VINE)){vinesLost++;if(first.length()<300)first.append("vine of ").append(row.id()).append(" gone at ").append(xyz(world)).append("; ");}}
             }
-            report("p3-camp-shapes",unsettled==0&&vinesLost==0&&connecting>0,connecting+" fence, wall, pane and bar blocks in the pieces, "+unsettled+" not settled; "+vinesFile+" vines in the files, "+vinesLost+" missing in the world"+(first.length()==0?"":": "+first));
+            boolean spreading=w.getGameRules().getBoolean(net.minecraft.world.GameRules.DO_VINES_SPREAD);
+            report("p3-camp-shapes",unsettled==0&&vinesLost==0&&connecting>0&&!spreading,connecting+" fence, wall, pane and bar blocks in the pieces, "+unsettled+" not settled; "+vinesFile+" vines in the files, "+vinesLost+" missing in the world; game rule doVinesSpread "+spreading+" (want false, so the vines do not grow into the cells the pieces leave void)"+(first.length()==0?"":": "+first));
         }
         static int tagged(ServerWorld w){int n=0;for(var e:w.iterateEntities())if(e.getCommandTags().contains(CampWorld.TAG))n++;return n;}
         /** CRC32 of the block states in the bowl box, y 62 to 90. */
