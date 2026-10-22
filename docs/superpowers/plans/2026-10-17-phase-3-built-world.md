@@ -8,13 +8,13 @@
 
 **Tech Stack:** Minecraft 1.20.1, Fabric Loader 0.16.14, Fabric API 0.92.2+1.20.1, Yarn 1.20.1+build.10, Loom 1.7.4, Java 17, Gradle 8.8 (offline), Python 3 (`tools/preflight.py`), ffmpeg (`C:\ffmpeg\ffmpeg-8.1-full_build\bin\ffmpeg`, contact sheets).
 
-**Spec:** `docs/superpowers/specs/2026-10-17-built-world-design.md`. `docs/VISION-AND-ROADMAP.md` section 3 (pillars) and section 12 (workflow) bind every task; sections 9, 11 (Phase 3) and 13 set the scope. Prerequisites: Phase 1 merged (`Profile.campaignCleared`, `campaign:march-1`, `Spec.CAMPAIGNBATTLES`); Phase 2 Task 3 merged before Task 4 (`ArmyMobs`, the `houses` sheet, the recruit page with House tabs). If Phase 2 Task 3 is not merged when Task 3 ends, do Task 5 before Task 4.
+**Spec:** `docs/superpowers/specs/2026-10-17-built-world-design.md`; later scope sources: `docs/superpowers/specs/2026-10-22-supply-houses-design.md` section 12.1 (Task 8b, supply houses) and Kort's map vision of 2026-10-22 (`kort-map-vision-2026-10-22.md` in the SDD workspace). `docs/VISION-AND-ROADMAP.md` section 3 (pillars) and section 12 (workflow) bind every task; sections 9, 11 (Phase 3) and 13 set the scope. Prerequisites: Phase 1 merged (`Profile.campaignCleared`, `campaign:march-1`, `Spec.CAMPAIGNBATTLES`); Phase 2 Task 3 merged before Task 4 (`ArmyMobs`, the `houses` sheet, the recruit page with House tabs). If Phase 2 Task 3 is not merged when Task 3 ends, do Task 5 before Task 4.
 
 ## Global Constraints
 
 - Minecraft 1.20.1 and Fabric only; no new dependencies; nothing is registered as worldgen.
 - Never hand-edit `Spec.java`. Change `sheets/design.json`, then `python tools/preflight.py` (it also runs on every `compileJava`). Every row of a sheet has the same columns and every cell is filled; a column is `double` only if its first row's value has a decimal point; an empty sheet is an error. So a sheet is added in the task that has its first rows, and a row that names a `.nbt` is added only after that file is exported.
-- Pillar 3 binds: authored detail lives only in structure files. Java builds terrain, the existing forests, point rings and flags, war-table carpets and entities; no new `Arena.box` decoration.
+- Pillar 3 binds: authored detail lives only in structure files. Java builds terrain, the existing forests, point rings and flags, the flags and brazier state of the supply houses (Task 8b), war-table carpets and entities; no new `Arena.box` decoration.
 - Pillar 5 binds: nothing is done until a running game shows it by log line and screenshot. The tester opens every named screenshot and states in one sentence what it shows; a screenshot that does not show the claim fails the step even if its check passed.
 - Section 12 binds, updated to Kort's 2026-10-17 model rule (Opus 5.5 and Sonnet 5.5 only, both at max effort; no Haiku): piece scripts and layout judgement go to Opus 5.5 max, Java to Sonnet 5.5 max, runs, screenshots and contact sheets to a Sonnet 5.5 max tester. Every build task (2 to 8) ends with its named screenshots and the `routes` suite.
 - The harness lives only in `test-tools/`. Add `Phase3Checks`, `StructureStudio`, `Walkability`, `gravesandglory_studio` and `p3_marker` to the `forbidden` tuple in `tools/release_config.py`.
@@ -286,7 +286,7 @@ The scripts are exported before the suite is written: a studio run needs a harne
 
 ### Task 4: House ring (four tents, the Graveborn graveyard shrine, banners, live troop displays)
 
-Needs Phase 2 Task 3 (`ArmyMobs`, the `houses` sheet, the recruit page with House tabs). The graveyard belongs here, not with the yard: it is the Graveborn recruit station and shares the display code.
+Needs Phase 2 Task 3 (`ArmyMobs`, the `houses` sheet, the recruit page with House tabs). Controller ruling 2026-10-22: those exist only on `phase-2-houses` and merging branches is Kort's call, so Task 4 runs after the base merge (or after Kort lets Phase 2 Task 3 into this branch); Tasks 5 to 9 do not wait for it. The graveyard belongs here, not with the yard: it is the Graveborn recruit station and shares the display code.
 
 **Files:**
 - Modify: `sheets/design.json` (`pieces` and `campPieces` gain five rows each; `campStations` loses `recruiter`)
@@ -331,7 +331,7 @@ World footprints, for checks: gilded x -31..-21, z -322..-310; wildmoot x -24..-
 **Interfaces:**
 - Produces `CampWorld.slot(Spec.CampPiecesRow row,int k) -> Vec3d` (pure, so the client can call it): `Structures.toWorld(size,originX+dx,y,originZ+dz,rotation,slotX+2k,slotY,slotZ)` plus (0.5,0,0.5), with `size` from the row's `pieces` entry (`width, height, depth`).
 - Produces `CampWorld.yaw(int rotation) -> float`: 0 gives 0, 90 gives 90, 180 gives 180, 270 gives -90 (a display faces its tent's front).
-- Produces `CampWorld.displays(ServerWorld w)`, run in the build's entity step: for each row whose station starts with `recruit:`, the House's `troops` split on `,`; troop `k` (its `Spec.TroopsRow t`) is `ArmyMobs.create(t.entity(),w)` (on `IllegalStateException`, `ArmyMobs.portrait`), equipped as `Battle.spawn` does (extract `ArmyMobs.equip(MobEntity,Spec.TroopsRow)` if that code is inline), NoAI, invulnerable, silent, persistent, custom name the troop `name` with `setCustomNameVisible(false)` (so ETF skins match), at `slot(row,k)` with `yaw(rotation)`, tags `TAG`, `camp-generation:<g>`, `camp:recruit:<house>`, `camp-display:<troop id>`. Tent labels "<HOUSE NAME> / Recruit" (name upper case) at local (6.5,11.5,10.5), the graveyard's at (11.5,7.5,21.5), through `toWorld`.
+- Produces `CampWorld.displays(ServerWorld w)`, run in the build's entity step: for each row whose station starts with `recruit:`, the House's `troops` split on `,`; troop `k` (its `Spec.TroopsRow t`) is `ArmyMobs.create(t.entity(),w)` (on `IllegalStateException`, `ArmyMobs.portrait`), equipped as `Battle.spawn` does (extract `ArmyMobs.equip(MobEntity,Spec.TroopsRow)` if that code is inline), NoAI, invulnerable, silent, persistent, custom name the troop `name` with `setCustomNameVisible(false)` (so the troop model and skin resolve from the name, as in battle), at `slot(row,k)` with `yaw(rotation)`, tags `TAG`, `camp-generation:<g>`, `camp:recruit:<house>`, `camp-display:<troop id>`. Tent labels "<HOUSE NAME> / Recruit" (name upper case) at local (6.5,11.5,10.5), the graveyard's at (11.5,7.5,21.5), through `toWorld`.
 - Produces `CampDisplays` (client): each frame, for display slots within 32 blocks of the camera, draws at `slot+(0,3.2,0)` the troop name over `<RARITY> / LOCKED`, `<RARITY> / 1 STAR` or `<RARITY> / <n> STARS` (RARITY is COMMON, RARE, EPIC or LEGENDARY), read from the client's copy of the profile's `owned` map (the one the recruit page cards read). Harness fields `int lastDrawn`, `List<String> lastTexts`.
 - Consumes `ArmyMobs.create/portrait`, `Spec.HOUSES`, `Spec.TROOPS`, the recruit page's House tabs.
 
@@ -374,7 +374,7 @@ World footprints, for checks: gilded x -31..-21, z -322..-310; wildmoot x -24..-
 | lesson-1 | -55.5 | 67.2 | -3.5 | LESSON 1 OF 4 / Press {key:menu}, choose a group and Move, then click the ground to send them. |
 | lesson-2 | -55.5 | 67.2 | 2.5 | LESSON 2 OF 4 / Press {key:formation} to change formation. Shieldwall holds a line; Wedge breaks one. |
 | lesson-3 | -55.5 | 67.2 | 8.5 | LESSON 3 OF 4 / Press {key:attack} and aim at an enemy or a point to send your army in. |
-| lesson-4 | -55.5 | 67.2 | 14.5 | LESSON 4 OF 4 / Recruit at your barracks lectern with {key:use}. Trained troops march out from the held point nearest the fight. |
+| lesson-4 | -55.5 | 67.2 | 14.5 | LESSON 4 OF 4 / Recruit at your barracks lectern with {key:use}. Trained troops join your army at the front. |
 
 **Yard brief** (23x31x8, facing south, open on the east): fenced coarse dirt and gravel; four backboards (dark oak planks) at local x 0, z 4..6, 10..12, 16..18 and 22..24, y 1..4, one behind each lesson; six dummy pads (smooth stone) along z 9 at x 4..14 step 2; weapon racks; a shade roof over x 16..20, z 13..17 for the Drillmaster.
 
@@ -492,7 +492,7 @@ World values the checks must reproduce: `rg-mill` cover (-25.5,66.6,-167.5) to (
 - [ ] **Step 4: Write suite `landmarks`** over the maps in `GRAVES_PHASE3_MAPS`; on each, switch and wait for `ready`, then per landmark row:
   - `p3-lm-<id>-placed`: in `LOG`, not missing; the replaced row is gone from `Spec.STRUCTURES`.
   - `p3-lm-<id>-fits`: `Placed.box` equals `footprint(size,x,elevation,z,rotation)` and lies inside |x|<=350, |z|<=250.
-  - `p3-lm-<id>-clear`: every structure-void template cell at local y 1 and up is air in the world, except an enclosed point's flag column.
+  - `p3-lm-<id>-clear`: every structure-void template cell at local y 1 and up is air in the world, except a reserved column: an enclosed point's flag column and, from Task 8b, the yard-centre column of a supply house (y 1 to 8).
   - `p3-lm-<id>-roads`: `Walkability.scan(b,box)` has `through==0` and no deck hit.
   - `p3-lm-<id>-ring`: no non-void template cell within 19 of a point the row does not enclose; for an enclosed point, the ring, centre and flag blocks are as the arena built them.
   - `p3-lm-<id>-gates` (rows that enclose a point): for each road with an endpoint at that point, every cell within 2 of its centreline, from radius 17.5 to the footprint edge, has no collision shape at ground+1 and +2.
@@ -507,11 +507,11 @@ World values the checks must reproduce: `rg-mill` cover (-25.5,66.6,-167.5) to (
 
 ---
 
-### Task 7: Ironhold landmarks (gate, keep, curtains, supply barn, garrison)
+### Task 7: Ironhold landmarks (gate, keep, curtains, hay barn, garrison)
 
 **Files:**
 - Modify: `sheets/design.json` (`pieces` +5, `landmarks` +21, `landmarkLines` +4)
-- Create: scripts `ironhold/{keep,gate,curtain,supply_barn,garrison}` and their exports
+- Create: scripts `ironhold/{keep,gate,curtain,hay_barn,garrison}` and their exports
 - Modify: `src/main/java/gg/gravesandglory/Arena.java` (delete the hay line in `finish`)
 
 **Sheets.** `pieces`:
@@ -521,7 +521,7 @@ World values the checks must reproduce: `rg-mill` cover (-25.5,66.6,-167.5) to (
 | ironhold/keep | 47 | 27 | 22 | stone | river keep south of B |
 | ironhold/gate | 7 | 51 | 14 | stone | west gate, 11-wide passage |
 | ironhold/curtain | 5 | 31 | 15 | stone | curtain section with end towers |
-| ironhold/supply_barn | 25 | 19 | 13 | wood | supply barn and hay yard |
+| ironhold/hay_barn | 25 | 19 | 13 | wood | hay barn and hay yard |
 | ironhold/garrison | 31 | 23 | 15 | stone | garrison barracks and yard |
 
 `landmarks` (map 1, elevation 64, encloses `-`; then the four `ih-` tower rows):
@@ -543,7 +543,7 @@ World values the checks must reproduce: `rg-mill` cover (-25.5,66.6,-167.5) to (
 | ih-curtain-en2 | ironhold/curtain | 72 | -81 | 180 | curtain_1_-62 |
 | ih-curtain-es1 | ironhold/curtain | 72 | 43 | 180 | curtain_1_62 |
 | ih-curtain-es2 | ironhold/curtain | 72 | 81 | 180 | curtain_1_62 |
-| ih-supply-barn | ironhold/supply_barn | -105 | -160 | 0 | supply_barn |
+| ih-hay-barn | ironhold/hay_barn | -105 | -160 | 0 | supply_barn |
 | ih-garrison | ironhold/garrison | 65 | 147 | 0 | garrison |
 
 `landmarkLines`:
@@ -561,7 +561,7 @@ World values: `ih-gate` cover (-32.5,66.6,-15.5) to (-60.5,ground,-15.5), sight 
 - `ironhold/gate` (outer face local x 0, the west): the passage at z 20..30 (world z -5..5), clear from y 1 to 6 across x 0..6; towers at z 13..19 and 31..37, 14 high, top floor at y 12 (feet 13), a parapet at y 13 whose west side is open at z 15..17 (north tower) and z 33..35 (south tower); walls 10 high along z 0..12 and 38..50; iron-bar portcullis above y 6 only. `ironhold/gate_intact` is reserved for Siege and not authored.
 - `ironhold/keep` (world x -23..23, z 21..47): the north wall along z 0..2, solid to y 6, a parapet on z 0 at y 7..8 with a crenel at x 14..15, the wall-walk on top (feet 7); 5-wide land gates through it at x 7..11 and 35..39 (world x -16..-12 and 12..16), y 1..4; the north and south walls cross the river on iron bars at x 18..28, y 0..1; a timber courtyard deck at y 0 over the river; the donjon on the east bank. It is not a bridge row and the route harness does not test it.
 - `ironhold/curtain` (outer face local x 0): a 12-high wall with a 2-wide wall-walk and crenels on the outer face; towers 15 high at z 0..4 and 26..30. Each side's two pieces leave the 7-wide sally gaps at world z -65..-59 and 59..65.
-- `ironhold/supply_barn`: a timber barn with hay bales inside and in a fenced yard (the old hay line's job); doors east and south.
+- `ironhold/hay_barn`: a timber barn with hay bales inside and in a fenced yard (the old hay line's job); doors east and south.
 - `ironhold/garrison`: a stone barracks block with a walled yard; doors toward its lane.
 
 - [ ] **Step 1: Write the five scripts** to the briefs.
@@ -569,7 +569,7 @@ World values: `ih-gate` cover (-32.5,66.6,-15.5) to (-60.5,ground,-15.5), sight 
 - [ ] **Step 3: Add the rows.** Expect `Preflight clean`.
 - [ ] **Step 4: Delete the hay line** in `Arena.finish`: `if(CampaignMaps.selected==1)for(int row=0;row<4;row++)box(w,-109+row*4,65,-152,3,2,3,Blocks.HAY_BLOCK);`.
 - [ ] **Step 5: Compile; run `landmarks,routes` with `GRAVES_PHASE3_MAPS=1`.** Expected every `p3-lm-*` id for the 21 rows, the budget, both once-per-run ids, the suite line and the route check (`p3-routes-map1` shows 3 crossings). The tester states what `lm-ih-gate-ground` (passage between two towers), `lm-ih-keep-high`, `lm-ih-curtain-wn1-ground`, `lm-ih-supply-barn-ground` and `lm-map1-overview` show.
-- [ ] **Step 6: Commit** `"Phase 3: Ironhold landmarks: gate, keep, curtains, supply barn and garrison"`.
+- [ ] **Step 6: Commit** `"Phase 3: Ironhold landmarks: gate, keep, curtains, hay barn and garrison"`.
 
 ---
 
