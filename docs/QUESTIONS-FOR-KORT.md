@@ -298,3 +298,34 @@ Defect found, not blocking: every arena rebuild over an existing arena spills hu
 **Kort, 2026-10-21 night, round 26 (in-match progression):** design approved as written: `docs/superpowers/specs/2026-10-22-in-match-progression-design.md` (his 13 answers in its section 13; supply houses get their own design next).
 
 **Kort, 2026-10-21 night, round 27 (supply houses):** design approved as written: `docs/superpowers/specs/2026-10-22-supply-houses-design.md` (his 15 answers in its section 14). He also asked that the in-match progression plan give its balance gate (progression 9.2) the same re-run-before-fail rule as supply houses 11.2, because 20 matches cannot tell a 10-point shift from chance; the progression spec itself is unchanged.
+
+## Weapon look round, round 28 (2026-10-22)
+
+**The look round:** the Order Squire's arming sword and the Order Archer's bow were remade at weapon tiers I to III from Kort's kept references, with a silhouette pass first and an independent grader (no self-score). It took two fix rounds:
+- round 0 scored 6.5;
+- fix round 1 scored 7;
+- fix round 2 scored 7.5 (swords 7.5, bows 7.5).
+
+Sheet: `bannerbound-p2b/work/p2b/look-round/look-round-sheet.png`, with the earlier rounds as `-r0` and `-r1` (sent to Kort). Grades: `.superpowers/sdd/2026-10-17-phase-2-houses/look-round-grade*.md`.
+- **What is clean now:** tiers I and II of both weapons read as clean Minecraft-mod weapons, and the tiers differ at a glance in the hand.
+- **What the grader found:** nothing yet has the Souls character of Kort's picks. At 1 texel per model pixel, a 2 px blade has room for only two colours across its width, so it cannot carry a sheen, an engraved fuller and edge wear. More rounds under today's rules top out at about 8 to 8.5.
+
+Four calls for Kort:
+(1) **Texel density for weapons.**
+- One trial round at 2 texels per model pixel on these six weapons, then decide on that sheet (recommended: the grader says it is the only route to 9; it costs nothing in frame time, and the risk is texels half the size of the skin's at the hand, which the trial will show).
+- Stay at 1:1 and sign weapons off at about 8, as an exception to the 9 bar.
+
+(2) **Sword III's sun and bow III's badge.**
+- Drop the bow badge, and shrink the sword sun to a boss no wider than the blade plus 1 px a side (recommended: at game size both read as a grey box, not a sun).
+- Keep both as they are.
+
+(3) **Weapon scale.**
+- One-handed swords about 1.5 blocks long, 24.5 px at most, as on the sheet (recommended: closer to Simply Swords and the Souls refs).
+- Back to about 1 block.
+
+(4) **A Blockbench check** before the other 28 troops are modelled. The agents' attempt to load the files in Blockbench was blocked by the permission system, so nobody has opened these six there. Kort opens `bannerbound-p2b/work/p2b/look-round/order_bow_t3.bbmodel` in Blockbench and checks that it shows `rest` and `pull_0` to `pull_2` with one 32 x 64 texture. Kort may also close the 17 old look-round and spike tabs without saving.
+
+Controller rulings, recorded rather than asked:
+- The style guide's weapon section becomes the look-round recipe once the look is approved.
+- The pipeline gains two checks: no coplanar faces between materials, and no air gaps between parts.
+- Tiers I and II are capped at 16 cubes and tier III at 18, with the frame-cost check rerun on these six.
