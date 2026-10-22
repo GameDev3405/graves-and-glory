@@ -89,7 +89,8 @@ final class WarTableHome {
      *  invite, practice, skirmish and campaign (the sheets as drawn this frame, between their flat and raised boxes), seal,
      *  ribbon, field, last, ride-label and notice. */
     static Map<String, int[]> rects() { return rects; }
-    /** Words drawn: seat-(i), field-name, field-rule, field-teams, ride (the plate's label as drawn) and notice. */
+    /** Words drawn: seat-(i), field-name, field-card (the map card's texture, "seals" for the bare card, "none"), field-rule,
+     *  field-teams, ride (the plate's label as drawn) and notice. */
     static Map<String, String> texts() { return texts; }
     static List<PortraitDraw> portraits() { return portraits; }
 
@@ -143,7 +144,7 @@ final class WarTableHome {
         builtFriends = friendsBadge();
         add("camp", WarTable.plaque(56, 96, "icon-camp", "Camp", "Esc", 61, 0, b -> screen.close()));
         add("recruit", WarTable.plaque(184, 112, "icon-recruit", "Recruit", null, 0, 0, b -> screen.page("recruit")));
-        add("banner", WarTable.plaque(304, 112, "icon-banner", "Banner", null, 0, 0, b -> CampScreen.open("army")));
+        add("banner", WarTable.plaque(304, 112, "icon-banner", "Banner", null, 0, 0, b -> screen.page("banner")));
         add("contracts", WarTable.plaque(424, 112, "icon-contracts", "Contracts", null, 0, contractsBadge(), b -> screen.page("contracts")));
         add("chapter", WarTable.plaque(544, 112, "icon-chapter", "Chapter", null, 0, 0, b -> screen.page("chapter")));
         add("friends", WarTable.plaque(664, 112, "icon-friends", "Friends", null, 0, builtFriends, b -> screen.page("friends")));
@@ -385,18 +386,18 @@ final class WarTableHome {
         int index = Math.max(0, Math.min(Spec.MAPS.length - 1, focused == 2 ? next().map() : CampaignClient.map));
         var map = Spec.MAPS[index];
         centred(g, DarkUi.heading(map.name()), x + 84, y + 12, DarkUi.INK_TEXT);
-        if (map.id().equals("rivergate")) { // the art's seals, lettered as the mock letters them
-            UiTex.draw(g, "table/map-rivergate", x + 16, y + 30);
-            g.drawText(font, "A", x + 63, y + 46, DarkUi.CHIP_TEXT, false);
-            g.drawText(font, "B", x + 81, y + 67, DarkUi.CHIP_TEXT, false);
-            g.drawText(font, "C", x + 100, y + 88, DarkUi.CHIP_TEXT, false);
-        } else if (index == CampaignMaps.selected) { // bare card: a seal on each point, centred where the point lies on the field
+        String card = "table/map-" + map.id(); // every map's painted card (tools/ui_art/kit_maps.py), its points lettered in the wax
+        if (UiTex.has(card)) {
+            UiTex.draw(g, card, x + 16, y + 30);
+            textsDrawn.put("field-card", card);
+        } else if (index == CampaignMaps.selected) { // a map with no card yet (a defect): a seal on each point, where it lies on the field
             for (var p : Spec.POINTS) {
                 int px = x + 16 + (p.x() + 350) * 136 / 700, py = y + 30 + (p.z() + 250) * 80 / 500;
                 UiTex.draw(g, "table/map-seal", px - 8, py - 8);
                 g.drawText(font, p.id(), px - font.getWidth(p.id()) / 2 + 1, py - 3, DarkUi.CHIP_TEXT, false);
             }
-        }
+            textsDrawn.put("field-card", "seals");
+        } else textsDrawn.put("field-card", "none");
         int n = switch (focused) { case 0 -> 1; case 2 -> next().size(); default -> CampaignClient.padSize; };
         String tier = CampaignClient.tierName(focused == 2 ? next().difficulty() : CampaignClient.difficulty);
         String rule = "Domination to " + GravesAndGlory.R.winScore(), teams = n + " v " + n + ", " + tier + (n == 1 ? " bot" : " bots");
