@@ -334,3 +334,12 @@ Controller rulings, recorded rather than asked:
 - The style guide's weapon section becomes the look-round recipe once the look is approved.
 - The pipeline gains two checks: no coplanar faces between materials, and no air gaps between parts.
 - Tiers I and II are capped at 16 cubes and tier III at 18, with the frame-cost check rerun on these six.
+
+**Kort, 2026-10-22, round 29 (no routing):** design approved as written: `docs/superpowers/specs/2026-10-22-no-routing-design.md` (his 11 answers in its section 15, including mid-review: no horns in the field, every command and task given from the screen, never by an item, weapon or horn; a Retreat he clicks may play a horn sound to him; Rally Horn is renamed Muster). Note: round 28 call (5) recommends a belt war horn for the Marshal as "his Rally Horn ability made visible"; that reason no longer holds under this ruling.
+
+**Kort's answers, 2026-10-22, round 28:**
+1. A trial round at 2 texels per model pixel runs on the six weapons, and Kort decides on that sheet.
+2. Bow III's badge is dropped, and sword III's sun shrinks to a boss no wider than the blade plus 1 px a side.
+3. One-handed swords are about 1.5 blocks long, 24.5 px at most.
+4. The Blockbench check is still open for Kort.
+5. The Marshal gets a war horn on his belt, which he lifts in his idle gesture. It is added in Task 5d's Gilded repaint.
