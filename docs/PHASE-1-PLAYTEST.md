@@ -14,7 +14,7 @@ Camp guide, **THE LONG MARCH / BATTLE 1**: you against one Easy bot on Rivergate
 | Four lessons, one at a time, each naming your own key: send a group with Move, change formation, attack, recruit at your barracks lectern. | [ ] | [ ] |
 | Arrows visibly in the air before they land, and puffs where they hit in the shooter's colour (cyan Dawn, purple Dusk). | [ ] | [ ] |
 | Your group card flashing when your troops take hits. | [ ] | [ ] |
-| At least one enemy group breaking and running, with a horn. | [ ] | [ ] |
+| Enemy groups fighting on to the last soldier or a Retreat order, none breaking and running, and no horn sounding in the field. | [ ] | [ ] |
 | Recruits marching out of Trade Crossing (B, the centre) instead of your base once it has been yours for 10 s with no enemy within 20 blocks; the action bar reads "... trained: deploying at Trade Crossing". | [ ] | [ ] |
 | The report after the battle: your kills, losses, gold and seconds on points. | [ ] | [ ] |
 
@@ -24,9 +24,7 @@ Camp guide: set **Bots** to Normal. At the War Gates stand alone on the **DAWN**
 
 | You should see | Yes | No |
 |---|:-:|:-:|
-| Your own line routing at least once: cut below a quarter of its strength, or attacked from behind (more than 110 degrees off the line's facing) by three or more troops while at or below 60%. A horn sounds, its group card reads ROUTING and the troops run for home. | [ ] | [ ] |
-| It regrouping within 15 s, with the rally horn. | [ ] | [ ] |
-| An order you give the routing group (Hold, or Move somewhere) being what it does once it regroups. | [ ] | [ ] |
+| A line of yours held to the last stand without breaking (its card reading LAST STAND), and you pulled a group out with Retreat. | [ ] | [ ] |
 | Bots that lose troops buying replacements with their gold and sending them back in. | [ ] | [ ] |
 | The match readable from the HUD without colour: each point with its holder in words (A: Dawn, B: Contested) and the score as DAWN 120 / 300. The sun and moon glyphs come with the UI plan, not in this build. | [ ] | [ ] |
 
@@ -37,7 +35,7 @@ Set **Bots** to Hard. Stand alone on the **DUSK** pad this time, so the enemy Ha
 | You should see | Yes | No |
 |---|:-:|:-:|
 | Dawn's Hard knights raising a shieldwall when three or more of your Bone Rangers are within 30 blocks of their army and none of your revenants is within 8. | [ ] | [ ] |
-| Hard charges starting close, within about 18 blocks, with the charge horn, not from across the map. | [ ] | [ ] |
+| Hard charges starting close, within about 18 blocks, as a group breaking into a run with no horn, not from across the map. | [ ] | [ ] |
 | The report naming an MVP (a crest and "MVP" on the best row). | [ ] | [ ] |
 
 ## Your verdict (write freely)

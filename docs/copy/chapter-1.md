@@ -135,7 +135,7 @@ The `howTo` (attack) lines are the spec's own, verbatim. The `howToDefend` lines
 | # | `howTo` (attack) | `howToDefend` |
 |---|---|---|
 | 1 | Take the Outer Yard. (20) | Hold the yard, then the gate, then the keep. (44) |
-| 2 | Break the gate; siege troops strike it four times harder. (57) | The walls steady your troops while the gate stands. (51) |
+| 2 | Break the gate; siege troops strike it four times harder. (57) | (new copy needed: the walls no longer steady troops, no-routing design 9.2; written in Phase 4's copy pass, through Kort. Was "The walls steady your troops while the gate stands.") |
 | 3 | Seize the keep before the clock runs out. (41) | When the clock runs out, Ironhold is yours. (43) |
 
 | Event | Glyph | Line |
@@ -619,13 +619,14 @@ Plays when the commander next opens the book or returns to camp, whichever is fi
 
 Sheet `storyLines`, played in camp after every campaign battle, replays included (story s7.5). How the camp picks them:
 
-- Facts, in priority order: 1 a companion fell; 2 the commander's group routed; 3 the bonus missed; 4 losses above a third of the banner; 5 the bonus earned. One line per fact, at most three a visit, highest priority first.
+- Facts, in priority order: 1 a companion fell; 2 a group of the commander's fell to its last soldier (was "the commander's group routed"; no-routing design 9.3); 3 the bonus missed; 4 losses above a third of the banner; 5 the bonus earned. One line per fact, at most three a visit, highest priority first.
 - A companion speaks only about a battle they were in. A companion who fell says their own fell line on the next visit. The line about that fall is said by the companion the table names, if they were in the battle and did not fall; otherwise it is skipped.
 - Every other fact goes to the companion who was in the battle, did not fall, and has spoken least this visit; ties go to the battle's order, given under each heading. With one companion present, she says them all.
 - The bonus missed plays only on a win without the bonus; a loss says it already.
 - Wren's fell line plays after one fall, when the script has stood her up. After a second fall she is resting, and a resting line plays in its place.
 - Losses: troops lost in the match above a third of the banner's slots. Maud's losses lines carry `{losses}` and are typed.
-- Triggers: `b<n>_fell`, `b<n>_fell:<name>` for the line about another's fall, `b<n>_rout`, `b<n>_bonus_lost`, `b<n>_losses`, `b<n>_bonus_kept`. Priority 1 to 5 as above. A companion in a replay of a battle fought before they joined uses the replay set.
+- Triggers: `b<n>_fell`, `b<n>_fell:<name>` for the line about another's fall, `b<n>_wiped` (was `b<n>_rout`), `b<n>_bonus_lost`, `b<n>_losses`, `b<n>_bonus_kept`. Priority 1 to 5 as above. A companion in a replay of a battle fought before they joined uses the replay set.
+- The `_rout` lines below (the 14 `b<n>_rout` lines and the 3 `replay_rout` lines) were written for the old fact and describe running, which no longer happens. They keep their ids and text until Phase 4's copy pass rewrites them to the new fact (a group left to its last soldier) and renames them `b<n>_wiped` and `replay_wiped`, through Kort's copy approval.
 
 ### Battle 1, The Training Field: Maud. Order: Maud.
 

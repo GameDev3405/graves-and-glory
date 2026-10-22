@@ -116,8 +116,8 @@ Gilded | support | Epic | no evolution | `mage` (today Sunweaver)
 
 ### Lord Marshal Aldric
 Gilded | infantry | Legendary | no evolution | `gl_marshal`
-- **Purpose.** The rally point: on Hold he plants a banner that for 15 s stops routs and adds 10% damage within 12. Beats rout-heavy enemies and dread; loses to slams and focused blight.
-- **Look.** Broad, under a standard. Enamel #D9D3C1, blackened steel #2E3236, gilt #96783A. White surcoat over blackened plate (was gilded), shield, longsword. Open helm with a gilt laurel (was a crown-helm); grey beard. **Mark:** his pennant as a standard: 6x10 team cloth, 12 px above the head (was a red cloak). **Tell:** plants it on Hold with a horn call.
+- **Purpose.** The anchor: on Hold he plants a banner that for 15 s adds 10% damage within 12, and its ground cannot be moved (no knockback, pull or slow). Beats slows, pulls and knockback; loses to slams and focused blight.
+- **Look.** Broad, under a standard. Enamel #D9D3C1, blackened steel #2E3236, gilt #96783A. White surcoat over blackened plate (was gilded), shield, longsword. Open helm with a gilt laurel (was a crown-helm); grey beard. **Mark:** his pennant as a standard: 6x10 team cloth, 12 px above the head (was a red cloak). **Tell:** plants it on Hold, lifting the war horn from his belt to his lips; the horn is dress only and never sounds (no-routing design 5.2, round 30).
 - **Build.** husk, biped rig, broad (scale body [1.15,1.05,1.1], arms 1.1); parts: laurel_helm (helm, open), surcoat_skirt; team: chest_panel, standard (his pennant: 6x10, 12 px above the head); skin gl_marshal_s1.png; weapon model marshal_sword; shield `white:sc,light_gray:bo`; items (stats only): chainmail_helmet (was golden), netherite_chestplate (was diamond), netherite_sword.
 - **Portrait.** Tall +4.
 
@@ -128,14 +128,14 @@ Glow is soul-light #CFEFFF (was soul-cyan).
 
 ### Risen
 Graveborn | infantry | Common | Risen > Revenant > Grave Knight | `revenant` (today Dusk Revenant)
-- **Purpose.** Cheap, slow, fearless bodies that hold ground by numbers. Beats other Commons on price and in routing fights; loses to cleave, slams, the Mortar and kiting archers.
+- **Purpose.** Cheap, slow, fearless bodies that hold ground by numbers. Beats other Commons on price and in long fights, hardest when nearly dead; loses to cleave, slams, the Mortar and kiting archers.
 - **Look.** Stooped, arms forward, hem in strips. Grave-moss #4F5A3C, rust #6B4A33, bone #C9C1A8. Rusted coif and hauberk, shredded team tabard, notched sword. Grey-green face, slack jaw. **Mark:** the stoop under the shredded tabard. **Tell:** the arms-forward shamble. Stage 3: rusted visor and half-cape (was a crown).
 - **Build.** zombie (`ArmyZombie`; today wither_skeleton), biped rig, stooped (hunch 15, idleArms forward); parts: rusted_coif (helm), ragged_hem; team: shredded_tabard, pennant; stage 3 +rusted_visor, half_cape; skins revenant_s1/s2/s3.png, glow revenant_e.png; weapon model notched_sword; items (stats only): chainmail_helmet, chainmail_chestplate, iron_sword.
 - **Portrait.** Standard, head dipped.
 
 ### Bone Archer
 Graveborn | ranged | Common | Bone Archer > Barrow Archer > Deadeye | `bonebow` (today Bone Ranger)
-- **Purpose.** The cheap, fearless bow line that keeps shooting while chased. Beats a focused Sunweaver and slow siege crews; loses to Hounds and Gilded shields.
+- **Purpose.** The cheap, fearless bow line that keeps shooting while chased and hits hardest when wounded. Beats a focused Sunweaver and slow siege crews; loses to Hounds and Gilded shields.
 - **Look.** Dark hood over stick legs. Bone #C9C1A8, grave-moss #4F5A3C, grave-iron #2B2826. Moss rag hood, team jerkin, bone quiver. Bare skull. **Mark:** a skull pauldron on the bow shoulder. **Tell:** the native skeleton draw. Stage 3: one lit eye socket (was a lantern).
 - **Build.** skeleton, biped rig, bone limbs (arm and leg boxes 2x12x2); parts: rag_hood (helm), bone_quiver, skull_pauldron (bow shoulder); team: jerkin, pennant; stage 3: glow bonebow_e.png from stage 3 (the lit eye socket); skins bonebow_s1/s2/s3.png; weapon model bone_bow; items (stats only): chainmail_helmet, leather_chestplate, bow.
 - **Portrait.** Standard.
@@ -163,7 +163,7 @@ Graveborn | support | Epic | no evolution | `hexer` (today Gravecaller)
 
 ### The Hollow King
 Graveborn | infantry | Legendary | no evolution | `gb_hollowking`
-- **Purpose.** The fear engine: enemies within 10 deal 15% less and their groups rout at 40%. Beats low-morale banners and Wildmoot packs; loses to the Lord Marshal's banner, Sunder and Brassjaw.
+- **Purpose.** The fear engine: enemies within 10 deal 15% less. Beats damage-heavy packs, above all Wildmoot's; loses to the Lord Marshal's banner, Sunder and Brassjaw.
 - **Look.** Tall, broad, cloak dragging. Grave-iron #2B2826, gilt #96783A, soul-light #CFEFFF. Black plate split over a soul-fire ribcage, broken crown, tattered team-cloth cloak, sword. Jaw bound in gilt wire. **Mark:** the lit ribcage under the crown. **Tell:** SOUL motes drifting at the aura's edge.
 - **Build.** wither_skeleton, biped rig, tall and broad (scale body [1.2,1.15,1.15], arms 1.1, legs [1.1,1.15,1.1]); parts: broken_crown, gilt_jaw_wire, split_plate, lit_ribcage; team: tattered_cloak (his one large cloth), pennant; skin gb_hollowking_s1.png, glow gb_hollowking_e.png; weapon model grave_sword; items (stats only): chainmail_helmet (was golden) as a coif, netherite_chestplate, netherite_sword.
 - **Portrait.** Tall +4.
@@ -175,7 +175,7 @@ metal. Warpaint is pale clay (was ochre).
 
 ### Moot Hound
 Wildmoot | cavalry | Common | Moot Hound > Dire Hound > Packleader | `wm_hound`
-- **Purpose.** The fastest unit, diving over open ground onto archers and casters. Beats archers, casters and routing troops; loses to spears, Frost Stalkers and a Templar wall.
+- **Purpose.** The fastest unit, diving over open ground onto archers and casters. Beats archers, casters and wounded troops; loses to spears, Frost Stalkers and a Templar wall.
 - **Look.** Low and long, head down. Russet #7A4127, bark #4A3626, clay #C8B48A. Shaggy coat, bone collar, team saddle-cloth with hide spikes. Dark muzzle. **Mark:** a clay stripe from nose to tail. **Tell:** a growl and a puff of clay dust on the pounce.
 - **Build.** wolf (`ArmyWolf`), hound rig, low and long (scale body [1,0.9,1.15], legs [1,0.9,1]); parts: bone_collar, hide_spikes; team: saddle_cloth, pennant (at the shoulders); stage 3 +antler_tufts; skins wm_hound_s1/s2/s3.png; no weapon; no items.
 - **Portrait.** Beast 16.
@@ -257,7 +257,7 @@ Ironclad | siege | Epic | no evolution | `ic_mortar`
 
 ### Brassjaw, the Forge Colossus
 Ironclad | infantry | Legendary | no evolution | `ic_colossus`
-- **Purpose.** The walking forge: every hit also slams all within 2.5 for 60%, and it never routs. Beats Commons and packed melee; loses to Shieldbreakers, Mortar focus fire and kiting archers.
+- **Purpose.** The walking forge: every hit also slams all within 2.5 for 60%. Beats Commons and packed melee; loses to Shieldbreakers, Mortar focus fire and kiting archers.
 - **Look.** 2.7 blocks, long arms, smokestacks from both shoulders. Brass #7F6232, soot iron #34373B, ember #E2702A (glow). Riveted plates, furnace-grille chest, brass jaw, team banner from belt to knee. Sunken head, ember eye slit. **Mark:** the twin smokestacks. **Tell:** arms swing up on each hit (golem status 4) and the stacks smoke.
 - **Build.** iron_golem (`ArmyGolem`), colossus rig (128x128), long arms (scale arms [1,1.1,1]); parts: smokestacks (both shoulders), furnace_grille, brass_jaw; team: belt_banner (belt to knee; his one large cloth), pennant; skin ic_colossus_s1.png, glow ic_colossus_e.png; no weapon; no items.
 - **Portrait.** Wide 28.
@@ -269,7 +269,7 @@ pale sea-foam #CFF3E4 (was teal).
 
 ### Drowned Raider
 Tidecallers | infantry | Common | Drowned Raider > Reef Raider > Tide Reaver | `tc_raider`
-- **Purpose.** The catcher: every hit slows, so runners cannot get away. Beats Hounds, runners and routing troops; loses to Templars, cleave and the Mortar.
+- **Purpose.** The catcher: every hit slows, so runners cannot get away. Beats Hounds, runners and retreating troops; loses to Templars, cleave and the Mortar.
 - **Look.** Forward lean, kelp streaming from both arms. Verdigris #4E7A6A, barnacle #CFCBBE, navy #1E2C44. Bare torso, torn team sash, cutlass. Bloated face, white eyes. **Mark:** the green turtle-shell helmet. **Tell:** the arms-forward lunge; BUBBLE on the slowed target. No coral (the Trident Guard's); stage 3: barnacles crust the shell (was a crown).
 - **Build.** drowned (`ArmyDrowned`), biped rig, forward lean (hunch 10, idleArms forward); parts: turtle_shell (helm), kelp_strands (both arms); team: torn_sash, pennant; stage 3 +shell_barnacles; skins tc_raider_s1/s2/s3.png, outer tc_raider_o.png; weapon model cutlass; items (stats only): turtle_helmet (was chainmail; same armour), no chest, iron_sword.
 - **Portrait.** Standard.

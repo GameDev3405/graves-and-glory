@@ -17,7 +17,7 @@ The campaign exists to make the player care. Skirmish and the server make memori
 Rules the story keeps:
 
 - **Grim, with heroism paid for.** The march is losing. The Road North is a retreat dressed as an advance. Every heroic beat costs someone something the player can see.
-- **The systems are the story.** Morale, routs, graves, the shrine where the dead are recruited, the standard the player carries: the story points at what the game already does instead of inventing things the fights do not earn.
+- **The systems are the story.** Last stands, graves, the shrine where the dead are recruited, the standard the player carries: the story points at what the game already does instead of inventing things the fights do not earn.
 - **Attachment through presence.** Companions are real units with names over their heads, they speak between battles, and they react to what actually happened. Nobody important is a cutscene-only character.
 - **Everything has a purpose.** Every name, place and object below is tied to a game system, a scene, or a later chapter. Nothing is set dressing.
 - **Expandable, and planned.** Chapter 1 answers one question (who the Hollow King is) and opens four (where the crown went, what the Tide wants, who the heir is, whether the graves can close). Chapters 2 to 5 are plotted so chapter 1's scenes are written toward them, and rereading chapter 1 after any reveal makes it better, not wrong.
@@ -348,7 +348,7 @@ The UI kit's vellum card with the speaker's live model rendered chest-up in a 32
 - In battle the companion is a normal unit of its type with the name over its head in the side colour, counted by the group it is in. Orders work on it like any troop.
 - **Falling.** At 0 HP a companion does not die. It goes to a `fallen` pose where it stood, is untargetable, and a feed line says who fell. After the battle the companion is `wounded` until the player next finishes the chapter's next unwon battle, win or lose: in every campaign battle launched meanwhile, replays included, its slot is empty and its portrait greyed in the book and on the table, and its camp lines are the wounded set. Replaying an old battle therefore does not heal anyone. Companions who joined later do appear in replays of earlier battles (the replay is the player's, not the story's). Reaction lines play after every campaign battle; before-scenes play once, on first reading; after-scenes play once, on the first win. Wren is stood up once per battle by the script after she falls and is "resting" after a second fall, never wounded, which her lines joke about.
 - **Only the script kills.** No companion dies in chapter 1. Tomas is script-protected at Kingsfield (section 7.8).
-- **Reaction lines.** After each battle the camp picks lines from what happened: a companion who fell, a rout of the player's group, a bonus earned or missed, losses above a threshold. One line per fact, at most three per visit, in a fixed priority. Written per companion per battle (section 8 sizes it).
+- **Reaction lines.** After each battle the camp picks lines from what happened: a companion who fell, a group of the player's wiped out, a bonus earned or missed, losses above a threshold. One line per fact, at most three per visit, in a fixed priority. Written per companion per battle (section 8 sizes it).
 
 ### 7.6 The shrine and Wren's memory
 
@@ -455,7 +455,7 @@ Aldric is in every chapter as a letter and in chapters 3 to 5 in person. Vael, O
 
 - A `scenes` suite plays every chapter 1 scene headless with the typing hurried, checks each `card` draws (text, speaker, rect), each `camera` reaches its end point, each `actor` is placed and posed, each `panel` places its set and reaches its camera point, and takes one screenshot per scene at its last card.
 - A `storybook` suite: the book opens on the current page; read, next and sealed states draw correctly for three progress fixtures; a before-the-battle scene hands to its battle; a sealed scene does nothing; skip is refused on first reading and allowed on replay; the wounded portrait greys.
-- A `companions` suite: a companion falls and is untargetable; the next battle's slot is empty and greyed; the wounded line plays; Wren rises once and is "resting"; Tomas at 1 HP kneels; a reaction line plays for a fall, a rout and a bonus, in priority order; `losses` substitutes the real count.
+- A `companions` suite: a companion falls and is untargetable; the next battle's slot is empty and greyed; the wounded line plays; Wren rises once and is "resting"; Tomas at 1 HP kneels; a reaction line plays for a fall, a wiped group and a bonus, in priority order; `losses` substitutes the real count.
 - A `story-voice` check: every `voice` id in the scene files is either in `sounds.json` or in a listed "silent" set, and no id is in both.
 - A `story-names` check (the familial rule, section 4.8): a listed set of proper nouns (cast, places, the Horn, the crown) is counted per storybook page across scene files and sheets; a page introduces at most one noun not seen on an earlier page (chapter 1 page 8 is allowed two, Edric and Tomas, by Kort's ruling), and the realm names never appear in a `card` or `caption`.
 - Art gates: every book leaf, thumbnail, portrait and staged set is graded against the UI rubric before Kort sees it, as the mockups were; a set is graded from its in-game frame.

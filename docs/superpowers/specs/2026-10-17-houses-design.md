@@ -6,7 +6,9 @@ Spec sources: vision sections 2, 3, 4, 5, 8 and 11 (Phase 2). Engine facts come
 from `Tactics.java`, `GravesAndGlory.java` (`Army*` subclasses, `Battle.spawn`),
 `ArmyCards.java`, `Campaign.java`, `Progression.java`, `sheets/design.json`,
 and the Phase 1 plan interfaces (`Morale.RoutGuard`, `Morale.GUARDS`,
-`Morale.rally`, `Battle.reinforcementAnchors`, `Projectiles.Shot`).
+`Morale.rally`, `Battle.reinforcementAnchors`, `Projectiles.Shot`). The first
+three are gone: the no-routing design (`2026-10-22-no-routing-design.md`)
+removed routing, and sections 1.2 to 2.5, 5, 6.1 and 7 below are edited to it.
 
 Decisions I made as builder are marked **[B]** and listed again in section 8
 so Kort can overturn them. Everything else follows a written Kort decision.
@@ -26,7 +28,7 @@ Each row is a fact read from the current code, not an assumption.
 | `ArmyCards.portrait`, `Battle.spawn` and the stale-entity cleanup each switch over the entity string. | Batch 0 replaces the three switches with one `ArmyMobs` factory (entity id to constructor) and an `ArmyMob` marker interface. After that, a new base mob costs one subclass plus one line. |
 | A squad has 20 slots (`rules.squadSize`). Lineups are stored per faction, and bot lineups come from the troop `count` column. | A banner becomes one 20-slot list that does not depend on the side. Bot banners get their own sheet. |
 | Class bonuses are hard-coded in `Campaign.damage/health` (vanguard, marksman, arcanist). | Commander numbers move into the `classes` sheet, and the code reads them from there. |
-| Phase 1 provides `Morale.GUARDS` (a RoutGuard list), `Morale.rally(b,s,group)`, `Battle.reinforcementAnchors(team) -> List<Capture>` and `Projectiles.Shot.kind` ("arrow", "bolt", "mend"). | Bulwark, Stand Fast and the Lord Marshal's banner register RoutGuards. Rally Horn and the banner plant call `Morale.rally`. Forward Supply needs the anchor list widened from `Capture` to a small `Anchor` record (x, z, name, team) **[B]**. Counter rows key off `Shot.kind`. |
+| Phase 1 provides `Battle.reinforcementAnchors(team) -> List<Capture>` and `Projectiles.Shot.kind` ("arrow", "bolt", "mend"). It also provided `Morale.GUARDS` (a RoutGuard list) and `Morale.rally(b,s,group)`; guards and `Morale.rally` are gone (no-routing design). | No House registers a guard or calls a rally. Bulwark is read by the `flank` condition (covered flanks), Stand Fast keeps only its damage cut, the Lord Marshal's banner anchors its troops, and Muster (the Marshal's active) only gives Move orders. Forward Supply needs the anchor list widened from `Capture` to a small `Anchor` record (x, z, name, team) **[B]**. Counter rows key off `Shot.kind`. |
 | Vanilla undead burn in daylight unless they wear a helmet, and zombies and husks convert in water after 600 ticks. | Every undead `Army*` subclass overrides `isAffectedByDaylight()` to return false and `canConvertInWater()` to return false. Husks turning into zombies in the river is a latent bug today; fix it in Batch 0. |
 
 ---
@@ -54,7 +56,7 @@ optional.
 their graves would not close, and the Graveborn are what climbed out:
 shamblers in rusted mail, bowmen of bare bone, wardens in black iron, and
 casters who still remember the funeral rites and use them backwards. They
-are cheap, there are many of them, and they do not run. Every battle they
+are cheap, there are many of them, and they fight hardest at the edge of the grave. Every battle they
 lose adds to their ranks somewhere else.
 - Silhouette: hunched or gaunt, ragged hems, no shields, a hanging lantern on
   casters. Bone white, grave-moss green, soul-cyan eye glow (emissive ETF layer).
@@ -108,7 +110,7 @@ The resulting choices are: pure (one trait at III), 14+6 (III + I),
 | House | Trait | Tier I (6 slots) | Tier II (10 slots) | Tier III (14 slots) |
 |---|---|---|---|---|
 | Graveborn | *Rise Again*: when a Graveborn troop would die, it may rise once at 30% max HP. It is stunned for 20 ticks (no attacks) and shows soul-fire particles. Once per troop life. Legendaries excluded. | 10% chance | 25% chance | 40% chance |
-| Gilded Order | *Bulwark*: Gilded troops with the `shield` tag take less ranged damage (any `Shot.kind` arrow or bolt, and blight), whether or not the shield is raised. A RoutGuard also holds any **own** group whose centre is within R blocks of a living Gilded troop. | -15% ranged, R 5 | -30% ranged, R 8 | -45% ranged, R 12 |
+| Gilded Order | *Bulwark*: Gilded troops with the `shield` tag take less ranged damage (any `Shot.kind` arrow or bolt, and blight), whether or not the shield is raised. Covered flanks: the flank bonus (C16, C16s) does not apply to an **own** troop while a living Gilded troop of another own group stands within R blocks of it. | -15% ranged, R 5 | -30% ranged, R 8 | -45% ranged, R 12 |
 | Wildmoot | *Pack Hunters*: a Wildmoot attack deals bonus damage when 3 or more own Wildmoot troops are targeting the same enemy, **or** when the attacker is more than 110 degrees off the target's facing (`BattleMath.relativeBearing`). Meeting both conditions gives the bonus once, not twice. | +10% | +20% | +30% |
 | Ironclad | *Entrench*: an Ironclad troop that has moved less than 0.5 blocks in the last 60 ticks takes less damage. Siege-tag troops also gain range while entrenched. Inside an owned objective's capture radius the damage reduction is doubled. | -10% taken, +10% siege range | -15% taken, +20% siege range | -20% taken, +30% siege range |
 | Tidecallers | *Riptide*: Tidecallers move faster in water or while it rains on the map, and their hits apply Slowness I. From tier II, Tidecallers ford the river: `Tactics.route` skips the bridge detour for them and their water path penalty is 0. | +15% speed, slow 20 ticks | +25% speed, slow 30 ticks, fording | +35% speed, slow 40 ticks, fording |
@@ -139,7 +141,7 @@ mechanic that does not exist in the code today. There are six new
 mechanics, each reused by several troops: `stance` (a conditional multiplier
 row in the counter table), `pierce/cleave` (a secondary target), `onhit_slow`,
 `pounce`, `aura` and `slam`. Two new engine hooks are also needed:
-`fearless` (a per-group rout share) and the `mist` zone (a persistent blight).
+`fearless` (a damage bonus at low health) and the `mist` zone (a persistent blight).
 
 ### 2.1 Gilded Order (maps to Dawn)
 
@@ -150,7 +152,7 @@ row in the counter table), `pierce/cleave` (a secondary target), `onhit_slow`,
 | `sentinel` | Templar | Rare | infantry | husk | 46 | 6 | 2.8 | 28 | 0.25 | 48 | 140 | `shield` (existing) |
 | `longbow` | Order Longbow | Rare | ranged | husk | 18 | 6 | 30 | 45 | 0.28 | 46 | 140 | `pierce`: each shot also hits the nearest enemy within 2 blocks behind the target for 50% (**NEW**) |
 | `mage` | Sunweaver | Epic | support | husk | 24 | 0 | 18 | 55 | 0.29 | 70 | 180 | `mend`: heals 5 HP, cooldown 80, radius 10 (existing mechanic, per-ability numbers) |
-| `gl_marshal` | Lord Marshal Aldric | Legendary | infantry | husk | 80 | 9 | 2.8 | 22 | 0.27 | 140 | 300 | `oath_banner`: on Hold, plants a banner (cooldown 600). For 300 ticks, own groups within 12 cannot rout (RoutGuard) and deal +10% damage, and any routing own group in radius is rallied (`Morale.rally`). (**NEW** aura) |
+| `gl_marshal` | Lord Marshal Aldric | Legendary | infantry | husk | 80 | 9 | 2.8 | 22 | 0.27 | 140 | 300 | `oath_banner`: on Hold, plants a banner (cooldown 600). For 300 ticks, own troops within 12 deal +10% damage and are anchored: they cannot be knocked back, pulled or slowed (a slow already on a troop is removed on entry; stuns, weaken and bleed still land). (**NEW** aura) |
 
 | id | Beats | Beaten by | Evolve line (stage 2 / stage 3 deltas, HP/Dmg %) |
 |---|---|---|---|
@@ -159,27 +161,27 @@ row in the counter table), `pierce/cleave` (a secondary target), `onhit_slow`,
 | `sentinel` | ranged of every kind, Hounds at a wall | Shieldbreaker, Mortar, Mist Caller | Templar / Templar Knight (+4/+2) / Templar Commander (+2/+1) |
 | `longbow` | packed lines (pierce), Ballista crews at range | Web Stalkers, Hounds, Mist | Longbow / Yeoman Longbow (+2/+4) / Master Longbow (+1/+2) |
 | `mage` | attrition fights, Rise Again stalls | Pounce, Harpooner pull, Mortar | no evolution (Epic) |
-| `gl_marshal` | rout-heavy enemies, Dread aura | Slam (Colossus, Old Horn), focused blight | no evolution (Legendary) |
+| `gl_marshal` | slows, pulls and knockback: Tidecallers and Ironclad slams | Slam (Colossus, Old Horn), focused blight | no evolution (Legendary) |
 
 ### 2.2 Graveborn (maps to Dusk)
 
 | id | Name | Rarity | Role | Mob | HP | Dmg | Range | CD | Speed | Cost | Train | Ability |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `revenant` | Risen | Common | infantry | zombie (**new subclass** `ArmyZombie`) | 26 | 4 | 2.8 | 25 | 0.25 | 14 | 60 | `fearless`: a group whose living members are 50% or more fearless routs at 12% strength instead of 25% (**NEW** hook) |
+| `revenant` | Risen | Common | infantry | zombie (**new subclass** `ArmyZombie`) | 26 | 4 | 2.8 | 25 | 0.25 | 14 | 60 | `fearless`: a fearless soldier at or below 30% of his max health deals +20% damage (**NEW** stance) |
 | `bonebow` | Bone Archer | Common | ranged | skeleton | 18 | 4 | 22 | 40 | 0.27 | 16 | 60 | `fearless` (as above) |
 | `reaper` | Grave Reaper | Rare | infantry | wither skeleton | 34 | 8 | 2.8 | 30 | 0.30 | 40 | 120 | `cleave`: each hit also strikes one other enemy within 2 blocks of the target for 50% (**NEW**, shares code with pierce) |
 | `stalker` | Barrow Stalker | Rare | ranged | stray (**new subclass** `ArmyStray`) | 20 | 5 | 26 | 40 | 0.30 | 40 | 120 | `frostshot`: hits apply Slowness I for 40 ticks (**NEW** onhit_slow) |
 | `hexer` | Gravecaller | Epic | support | wither skeleton | 22 | 7 | 18 | 55 | 0.27 | 60 | 160 | `blight`: radius 2.5, windup 20, cooldown 100, Slowness I for 40 ticks (existing) |
-| `gb_hollowking` | The Hollow King | Legendary | infantry | wither skeleton | 70 | 10 | 3.0 | 30 | 0.26 | 120 | 300 | `dread`: passive aura, radius 10. Enemy troops inside deal -15% damage, and enemy groups centred inside rout at 40% strength instead of 25% (**NEW** aura plus rout-share hook) |
+| `gb_hollowking` | The Hollow King | Legendary | infantry | wither skeleton | 70 | 10 | 3.0 | 30 | 0.26 | 120 | 300 | `dread`: passive aura, radius 10. Enemy troops inside deal -15% damage (**NEW** aura) |
 
 | id | Beats | Beaten by | Evolve line |
 |---|---|---|---|
-| `revenant` | other Commons by numbers and price, routing fights | Cleave, Slam, Mortar, Order Archers kiting | Risen / Revenant (+3/+3) / Grave Knight (+3/+3) |
+| `revenant` | other Commons by numbers and price, long grinding fights | Cleave, Slam, Mortar, Order Archers kiting | Risen / Revenant (+3/+3) / Grave Knight (+3/+3) |
 | `bonebow` | Sunweaver (focus fire), slow siege crews | Hounds, Gilded shields | Bone Archer / Barrow Archer (+2/+4) / Deadeye (+1/+2) |
 | `reaper` | Commons in crowds, Risen-vs-Risen mirrors | Templar (shield), Trident Guard brace | Grave Reaper / Harvester (+3/+3) / Lord of Scythes (+3/+3) |
 | `stalker` | Hounds and Web Stalkers (the slow kills pounce), cavalry-like | Templar, Mist Caller | Barrow Stalker / Frost Stalker (+2/+4) / Wight Stalker (+1/+2) |
 | `hexer` | shieldwalls, clumped Commons | Hounds, Harpooners, pierce | no evolution |
-| `gb_hollowking` | low-morale banners, Wildmoot packs | Lord Marshal banner, Sunder, Colossus | no evolution |
+| `gb_hollowking` | damage-heavy packs, above all Wildmoot's | Lord Marshal banner, Sunder, Colossus | no evolution |
 
 ### 2.3 Wildmoot (new)
 
@@ -194,7 +196,7 @@ row in the counter table), `pierce/cleave` (a secondary target), `onhit_slow`,
 
 | id | Beats | Beaten by | Evolve line |
 |---|---|---|---|
-| `wm_hound` | archers, casters, routing troops | spears (Tusk, Trident Guard), Frost Stalker, Templar wall | Moot Hound / Dire Hound (+3/+3) / Packleader (+3/+3) |
+| `wm_hound` | archers, casters, wounded troops | spears (Tusk, Trident Guard), Frost Stalker, Templar wall | Moot Hound / Dire Hound (+3/+3) / Packleader (+3/+3) |
 | `wm_hunter` | anything walking through woods | open-field archers, Hounds, Mortar | Hide Hunter / Thornstalker (+2/+4) / Elder Hunter (+1/+2) |
 | `wm_stalker` | ranged backlines, wall defenders (climbs) | spears, Frost Stalker, Sunweaver sustain | Web Stalker / Broodstalker (+3/+3) / Widowmaker (+3/+3) |
 | `wm_tusk` | cavalry-like (spear tag), charges | archers, Mortar, Cleave | Tusk Spear / Tuskguard (+4/+2) / Boar-Lord (+2/+1) |
@@ -210,7 +212,7 @@ row in the counter table), `pierce/cleave` (a secondary target), `onhit_slow`,
 | `ic_breaker` | Shieldbreaker | Rare | infantry | vindicator | 38 | 8 | 2.8 | 32 | 0.25 | 44 | 140 | `sunder`: ignores the shield multiplier entirely and deals x1.4 to `shield` targets (**NEW** stance row) |
 | `ic_ballista` | Ballista Crew | Rare | siege | pillager with an EMF ballista frame | 24 | 10 | 34 | 80 | 0.20 | 48 | 160 | `pierce`: also hits a second target within 4 blocks behind for 60% (**NEW**, shared) |
 | `ic_mortar` | Ironhold Mortar | Epic | siege | pillager with an EMF mortar barrel | 22 | 9 | 36 (minimum 10) | 100 | 0.18 | 70 | 200 | `shell`: blight variant, radius 3.5, windup 30, cooldown 100, no slow, cannot target anything closer than 10 (existing blight with per-ability numbers and a minimum range) |
-| `ic_colossus` | Brassjaw, the Forge Colossus | Legendary | infantry | iron golem (**new** `ArmyGolem`) | 120 | 12 | 3.0 | 36 | 0.22 | 150 | 340 | `forge_slam`: every hit also deals 60% to all other enemies within 2.5 with knockback 0.8; counts as `fearless` (**NEW** slam) |
+| `ic_colossus` | Brassjaw, the Forge Colossus | Legendary | infantry | iron golem (**new** `ArmyGolem`) | 120 | 12 | 3.0 | 36 | 0.22 | 150 | 340 | `forge_slam`: every hit also deals 60% to all other enemies within 2.5 with knockback 0.8 (**NEW** slam) |
 
 | id | Beats | Beaten by | Evolve line |
 |---|---|---|---|
@@ -234,7 +236,7 @@ row in the counter table), `pierce/cleave` (a secondary target), `onhit_slow`,
 
 | id | Beats | Beaten by | Evolve line |
 |---|---|---|---|
-| `tc_raider` | Hounds and runners (slow), routing troops | Templar, Cleave, Mortar | Drowned Raider / Reef Raider (+3/+3) / Tide Reaver (+3/+3) |
+| `tc_raider` | Hounds and runners (slow), retreating troops | Templar, Cleave, Mortar | Drowned Raider / Reef Raider (+3/+3) / Tide Reaver (+3/+3) |
 | `tc_harpooner` | casters and Ballista crews (pulls them out of cover) | longer-range archers, Gilded shields | Harpooner / Whaler (+2/+4) / Deep Harpooner (+1/+2) |
 | `tc_tideguard` | cavalry-like, Old Horn, Brute mirror | archers, Mortar, Shieldbreaker | Trident Guard / Reef Warden (+4/+2) / Tide-Sworn (+2/+1) |
 | `tc_mist` | archer and ballista lines | Hounds, Web Stalkers, Reaper | Mist Caller / Fogweaver (+3/+3) / Stormcaller (+3/+3) |
@@ -340,7 +342,8 @@ lives in the `counters` sheet, so balance passes edit data, not code.
 | C13 | Siege vs small and fast | `siege` | `small` tag (wolf, spider) | always | x0.6 |
 | C14 | Sunder | `sunder` ability | `shield` | replaces C1 to C3 | x1.4 |
 | C15 | Armour bolt | `armour_bolt` | `shield` | replaces C1 only | x0.7 |
-| C16 | Flank (all Houses) | any melee | any | attacker more than 110 degrees off the target's facing | x1.15 (Wildmoot Pack Hunters adds on top) |
+| C16 | Flank (all Houses) | any melee | any | attacker more than 110 degrees off the target's facing, and the target is not covered by Bulwark | x1.30 (no-routing design; was x1.15; Wildmoot Pack Hunters stacks on top) |
+| C16s | Flank shot | `shot` (arrow, bolt) | any | as C16 | x1.15 (no-routing design) |
 | C17 | Mist cover | ranged | any | shooter or target inside a Mist cloud | x0.5 |
 | C18 | Stance rows | `steady`, `ambush`, `brace` | as in section 2 | as in section 2 | x1.2 / x1.25 / x1.3 |
 
@@ -351,7 +354,7 @@ Tags per troop (sheet column `tags`, a comma list):
 - siege: ic_ballista, ic_mortar
 - large: all Epics except the casters, and all Legendaries
 - small: wm_hound, wm_stalker
-- fearless: revenant, bonebow, ic_colossus
+- fearless: revenant, bonebow
 
 Troop cards show the beats and beaten-by lines from section 2, with a
 crossed-swords glyph for each counter row that applies.
@@ -542,10 +545,10 @@ The numbers live in the `classes` sheet. Times are in ticks at 20 per second.
 
 | Class | Track | Active | Cooldown | Duration | Radius / range | Effect | Passive |
 |---|---|---|---|---|---|---|---|
-| Champion | hero | *Stand Fast* | 1800 (90 s) | 160 (8 s) | 12 around you | own troops in the radius cannot rout (RoutGuard) and take -25% damage; you get Resistance I | +4 max HP for you; own infantry within 10 of you deal +10% damage |
+| Champion | hero | *Stand Fast* | 1800 (90 s) | 160 (8 s) | 12 around you | own troops in the radius take -25% damage; you get Resistance I | +4 max HP for you; own infantry within 10 of you deal +10% damage |
 | Reaver | hero | *Bloodrush* | 1500 (75 s) | 200 (10 s) | self | Speed II and 30% lifesteal on your melee hits; each enemy troop you kill refunds one free reinforcement of your cheapest lost troop (max 3 per use) | +2 attack damage for you; respawn in 9 s instead of 12 |
 | Warden | hero | *Mark Prey* | 1200 (60 s) | 240 (12 s) | raycast 40 | the marked enemy (troop or commander) takes +30% damage from your troops and from you, and glows for your team | own ranged troops deal +10% damage and gain +2 range |
-| Marshal | general | *Rally Horn* | 2400 (120 s) | 300 (15 s) | all own groups | calls `Morale.rally` on every routing own group; every group gets a Move order to your position; regroup immunity (`steadyUntil`) is extended by 20 s; +10% speed for the duration; the rally horn plays | training time -20% |
+| Marshal | general | *Muster* (id `rally_horn`) | 2400 (120 s) | 300 (15 s) | all own groups | every group gets a Move order to your position; your troops move +20% for the duration (`value1` 0.2), troops that join meanwhile too; no horn sounds in the field (only you hear the rally sound, as command feedback) | training time -20% |
 | Warlock | general | *Grave Bloom* | 2400 (120 s) | 600 (30 s) | radius 8 at a point within 30 | raises up to 6 troops (from either side) that died inside the circle in the last 20 s as temporary Risen in your squad (60% HP, outside the 20-slot cap); they crumble after 30 s | own `magic` troops cost 20% less round gold |
 | Quartermaster | general | *Forward Supply* | 3000 (150 s) | 1200 (60 s) | at your feet, at least 30 from your own base | places a supply banner (a structure target with 40 HP). While it stands and no enemy is within 12, it is an `Anchor` in `reinforcementAnchors` | +2 round gold per held point per income tick (3 becomes 5) |
 
@@ -584,9 +587,9 @@ references checked. Types: S string, I int, D double, B bool.
 | slots | I | 10 |
 | mechanic | S | `bulwark` |
 | value | D | 0.30 (ranged reduction) |
-| radius | D | 8.0 (rout guard) |
+| radius | D | 8.0 (covered flanks) |
 | durationTicks | I | 0 |
-| text | S | `Shield troops take 30% less ranged damage; groups within 8 of a Gilded troop do not rout.` |
+| text | S | `Shield troops take 30% less ranged damage; your troops within 8 of a Gilded troop take no extra flank damage.` |
 
 **`troops`** (changed). Removed columns: `faction`, `count`. Added columns:
 
@@ -656,7 +659,7 @@ Kept columns:
 
 **`classes`** (changed)
 - Added columns: `track S, active S, cooldownTicks I, durationTicks I, radius D, range D, value1 D, value2 D, passive S, passiveValue D, activeText S, passiveText S`.
-- Example: `{"id":"champion","name":"Champion","group":"infantry","bonus":"...","track":"hero","active":"stand_fast","cooldownTicks":1800,"durationTicks":160,"radius":12.0,"range":0.0,"value1":0.25,"value2":0.0,"passive":"champion","passiveValue":4.0,"activeText":"Nearby troops cannot rout and take 25% less damage for 8 s.","passiveText":"+2 hearts; nearby infantry +10% damage."}`
+- Example: `{"id":"champion","name":"Champion","group":"infantry","bonus":"...","track":"hero","active":"stand_fast","cooldownTicks":1800,"durationTicks":160,"radius":12.0,"range":0.0,"value1":0.25,"value2":0.0,"passive":"champion","passiveValue":4.0,"activeText":"Your troops within 12 take 25% less damage for 8 s; you gain Resistance I.","passiveText":"+2 hearts; nearby infantry +10% damage."}`
 
 **`botBanners`** (new)
 - Columns: `id S, house S, difficulty S, slots S`.
@@ -761,9 +764,10 @@ Standalone check (no game launch), in `test-tools/standalone`:
 - `ArmyMobs` factory and 12 new `Army*` subclasses.
 - `Combat.resolve` and the troop damage type.
 - `Abilities`: one switch per mechanic, with data from the sheet.
-- `Houses`: trait tiers per squad computed at reinforce; RoutGuards
-  registered at battle start.
-- `Morale.routShareFor(squad, group)` hook for fearless and dread.
+- `Houses`: trait tiers per squad computed at reinforce, and `Houses.covered`
+  for the `flank` condition (Bulwark).
+- The `fearless` stance in `Combat.resolve`; `dread` is a damage aura only
+  (no morale hook).
 - `Anchor` record widening `reinforcementAnchors`.
 - Fabric `ServerLivingEntityEvents.ALLOW_DEATH` for Rise Again.
 - Death log for Grave Bloom.
@@ -788,8 +792,8 @@ and 60%.
 | Batch | Content | Screenshot must show |
 |---|---|---|
 | 0. Engine | Sheets and preflight rules; profile v2 and migration with its standalone check; `ArmyMobs` factory; `Combat.resolve` and the damage type; `ranged` column; abilities shell (existing shield, mend and blight moved onto it, no behaviour change); daylight and water-conversion overrides; sides decoupled from Houses; House glyph in the HUD. | The camp recruitment screen with House tabs on a migrated v1 profile: Gilded and Graveborn rows filled from the old collection, the three new Houses showing their two Commons, and the gold carried over. |
-| 1. Gilded Order (first; maps to Dawn) | 6 troops; ETF/EMF variants by name; team pennant via `teams=`; `stance`, `pierce` and `aura` mechanics; Bulwark RoutGuard; counter rows C1 to C6 and C14 to C16; Champion and Marshal classes; Gilded bot banners. | A Gilded shieldwall under Graveborn arrow fire with the HUD trait tile "Bulwark III", the Lord Marshal's planted banner with rally particles, and distinct Squire, Templar and Longbow silhouettes in one frame. |
-| 2. Graveborn (maps to Dusk) | `ArmyZombie`, `ArmyStray`; `cleave`, `onhit_slow`, `fearless`; the Hollow King's `dread` with `routShareFor`; Rise Again via ALLOW_DEATH; Warlock class with the death log. | A Risen standing back up with soul-fire particles mid-fight, and Grave Bloom raising temporary Risen inside its circle. |
+| 1. Gilded Order (first; maps to Dawn) | 6 troops; ETF/EMF variants by name; team pennant via `teams=`; `stance`, `pierce` and `aura` mechanics; Bulwark covered flanks; counter rows C1 to C6 and C14 to C16; Champion and Marshal classes; Gilded bot banners. | A Gilded shieldwall under Graveborn arrow fire with the HUD trait tile "Bulwark III", the Lord Marshal's planted banner with its particles, and distinct Squire, Templar and Longbow silhouettes in one frame. |
+| 2. Graveborn (maps to Dusk) | `ArmyZombie`, `ArmyStray`; `cleave`, `onhit_slow`, `fearless`; the Hollow King's `dread` (a damage cut); Rise Again via ALLOW_DEATH; Warlock class with the death log. | A Risen standing back up with soul-fire particles mid-fight, and Grave Bloom raising temporary Risen inside its circle. |
 | 3. Ironclad | `ArmyVindicator`, `ArmyPillager`, `ArmyGolem`; ballista and mortar root overlays; `slam`; the mortar's minimum range; Entrench; counter rows C10 to C13 (structures are stubbed until Phase 4, so the Forward Supply banner is the first structure target); Quartermaster with the `Anchor` record. | A ballista crew and a mortar entrenched on an objective with the range ring larger than base, Brassjaw's slam knocking back a line, and a Forward Supply banner deploying reinforcements. |
 | 4. Tidecallers | `ArmyDrowned`, `ArmyEvoker`, `ArmyRavager`; the `mist` zone, `harpoon` pull and `undertow`; Riptide speed, slow, and river fording in `Tactics.route`; trident projectile visual; Warden class. | Tidecallers fording the river next to a bridge while the enemy goes around, a mist cloud over an archer line, and the Brute's sweep. |
 | 5. Wildmoot (last; most new quadruped models) | `ArmyBoarkin`, `ArmyWolf`, `ArmySpider`, `ArmyBear`; `pounce`, `ambush` (sky check), `howl`; Pack Hunters with the flank bearing; Reaver class. | Moot Hounds hitting an archer line from the flank with the Pack Hunters damage numbers shown (debug overlay), a Web Stalker on a wall, and Old Horn trampling. |

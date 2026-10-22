@@ -12,6 +12,8 @@
 
 Updated 2026-10-22 for the in-match progression design (approved by Kort, round 26).
 
+Updated 2026-10-22 for the no-routing design (`docs/superpowers/specs/2026-10-22-no-routing-design.md`, approved by Kort): the new Task 8b, after Task 8 and before Task 9, removes routing, morale and horns in the field for every side and re-runs the Task 7 and Task 8 House gates. Tasks 6 to 8 stay as written (history, built); Task 8b changes what they built. Tasks 9 and 10 and Task 13's regression run on the no-routing game.
+
 ## Global Constraints
 
 - Minecraft 1.20.1 and Fabric only; no new dependencies. Troop models, skins and animations are the mod's own code and resources (Tasks 5 to 5d); nothing depends on EMF, ETF or Fresh Animations.
@@ -73,7 +75,7 @@ python tools/balance_gate.py <root1>/botsim/results.csv <root2>/botsim/results.c
 - Pass: `gate <a> vs <b> win=<P>% pass` with 40 <= P <= 60.
 - Append the two `[botsim]` lines and the gate line to `docs/PHASE-2-BALANCE.md`.
 - On a fail, tune only that House's rows, keeping each number within 15% of the spec value. Rerun, and log every change.
-- The "current best pure banner" is the pure normal banner with the highest gate win rate logged so far.
+- The "current best pure banner" is the pure normal banner with the highest gate win rate logged so far. After Task 8b the rates that count are the no-routing ones: re-read it from 8b's gate lines, and keep the routing-game rates in the log as history.
 
 ---
 
@@ -992,7 +994,7 @@ Tells (`TroopTells.TELLS`), each drawn from its troop's Tell line; angles in deg
 | sentinel | biped | shield lift and set feet: left arm -15 and 1 px up, body pitch 3 |
 | longbow | biped | sights with the bow canted: left arm -60, roll 25 |
 | mage | biped | staff forward: right arm -40, right hand pitch 75, head nod 8 |
-| gl_marshal | biped | horn to the lips: left arm -65 (-110 with the carry), head -15; the model has no horn yet (round 28 call 5) |
+| gl_marshal | biped | horn to the lips: left arm -65 (-110 with the carry), head -15; the model has no horn yet (round 28 call 5); silent dress, round 30: the horn never sounds and gives no command |
 | revenant | biped | head loll: head roll 20, right arm twitch -10 |
 | bonebow | biped | eases the string: right arm yaw -30 |
 | reaper | biped | rolls the scythe on the shoulder: right arm -60, body yaw 10 |
@@ -1622,6 +1624,106 @@ Art half (after Task 5d; see Halves):
 
 ---
 
+### Task 8b: No routing (troops never break; commands come from the screen)
+
+Task 8b renames Rally Horn to Muster in code and in the checks: `Commander.RallyHorn` becomes `Commander.Muster`, `p2-marshal-rallyhorn` and `p2-marshal-rallyhorn-spots` become `p2-marshal-muster` and `p2-marshal-muster-spots`, and the player-facing name and card text become Muster. The sheet id `rally_horn` stays (it keys the cooldown tile and, later, the ability's picture). Task 6 above stays as history under the old name.
+
+**Design and order.** `docs/superpowers/specs/2026-10-22-no-routing-design.md` (approved by Kort, 2026-10-22; "design N" below means its section N).
+- This task builds design sections 3, 4, 5.1 (on the Phase 1 HUD of this branch), 5.2, 7.2 to 7.5, 8, 11.1 and 11.2 (11.1 carries section 6's arrival rule), then runs the section 10 re-gates. Every number is the design's: a starting value, tuned only by the sims under design 10.
+- It runs after Task 8 closes, its fix rounds and any gate re-run its review asks for included, and before Task 9. If Task 9's mechanics half is already built when this starts, that half's Step 9 gate waits for this task and runs on the no-routing game.
+- All code is built on `phase-2-houses`. `phase-1-solo-core` gets it through the base merge, and nothing is edited on the base directly (design 11).
+- Not in this task: the feed line (`FeedLines`, `FeedEvents`) and the ability pictures, which live on `ui-plan`. They are the closing HUD task's (UI plan Task 9, after the base merge). The Phase 1 HUD on this branch draws no horn picture.
+
+**Files:**
+- Modify: `sheets/design.json`, `sheets/preflight.json` and `tools/preflight.py`: delete the `morale` sheet; `combatDiscipline`, `counters`, `houseTraits`, `abilities`, `classes` and `troops` change per design 8 (Step 4). `Spec.java` is regenerated, never hand-edited.
+- Modify: `Morale.java` (the builder may rename it, for example `Groups`): `tick` becomes the last-stand pass. `rally`, `RoutGuard`, `GUARDS`, `routing`, `flanked` and `routShareFor` go. `GROUPS`, `members`, `centre`, `enemyWithin`, `lineup` and `fielded` stay: the state packet, forward deploy, the supply banner and the bot garrison read them.
+- Modify: `BattleMath.java` (`shouldRout`, `routShare` and `flanked` go; `strength` and `relativeBearing` stay) and `CounterMath.java` (`flankDegrees` reads `combatDiscipline`; the `flank` condition reads `Hit.covered` and `Hit.area`; row C16s).
+- Modify: `GravesAndGlory.java`: `Squad` (`routedAt` and `steadyUntil` go; a last-stand set and the feedback stamps arrive), `Battle.assignment`, `formation`, `startsCharge` and `chargeHorn`, `sendState`, both order paths (`tactical` and the command-string path), the mod init (the three guards go) and the `startRound` resets.
+- Modify: `Tactics.java` (arrival), `Combat.java` (`Hit.covered`, `Hit.area`, the `fearless` stance), `Houses.java` (`covered` replaces `BULWARK_GUARD`), `Abilities.java` (`anchored` arrives; `OATH_GUARD`, `rally`, `fearlessRow` and `carriesFearless` go; `dreadRow` stays for `auraFactor`), `Commander.java` (Stand Fast, Muster), `BattleEffects.java` (world horns become command feedback) and `Campaign.java` (the bot's charge plays no sound; the `Morale.routing` reads go).
+- Modify: `CommandMode.java`: `Group.routing` becomes `Group.lastStand`, and the card word ROUTING becomes LAST STAND.
+- Modify: `test-tools/java/gg/gravesandglory/{Phase1Checks,Phase2Checks,TitleDemos,BotSimulation}.java` and `test-tools/standalone/{BattleMathCheck,HousesCheck}.java`.
+- Modify: `docs/PHASE-2-BALANCE.md`.
+
+**Interfaces:**
+- Consumes (built, and replaced here): `Houses.BULWARK_GUARD`, `Commander.STAND_FAST_GUARD`, `Abilities.OATH_GUARD`, `Abilities.rally`, `Commander.RallyHorn`, `Abilities.fearlessRow`, `carriesFearless`, `dreadRow`; Phase 1's `Morale`, `BattleEffects.horn` and `hornNow`, `Squad.chargedAt`, `Battle.issue`, `Battle.storedAssignment` and `Spec.ORDERS` (`engage`); `BattleMath.strength` and `relativeBearing`; the `Combat.resolve` counter table and the `Hit` record (`inMist`, `noSky`).
+- Produces:
+  - `Houses.covered(Battle b, Unit target) -> boolean`: true while a living Gilded troop of the target's army, from a different group, stands within the cover radius (`houseTraits.radius` of the army's Bulwark tier: 5, 8 or 12; no tier, no cover) of the target troop's own position, not its group's centre.
+  - `Hit.covered` (set in `Combat.resolve` from `Houses.covered`) and `Hit.area` (blight, shell, mist, and the splash of a slam or cleave on the others around the target). The `flank` condition holds when the bearing is over `combatDiscipline.flankArcDegrees` and neither flag is set. Pack Hunters reads the bearing alone.
+  - `Squad.lastStand` (`Set<String>` of group ids) and `Squad.lastStandAt` (`Map<String,Long>`, the feed throttle's stamp); `Morale.lastStand(Squad s, String group) -> boolean`; `Morale.lastStandLines`, a harness list of `(owner, group, time)` for each line the throttled hook sends or, until the closing HUD task, would send. Names are the builder's.
+  - `Abilities.anchored(Battle b, Unit u) -> boolean`: true while a standing Oath Banner of the unit's army has it inside the banner's radius. The shape is the builder's: one test, asked at every knockback, pull and slow apply point.
+  - `BattleEffects.feedback(ServerPlayerEntity p, String kind)`: plays `horn_<kind>` (`rout`, `charge`, `rally`; the ids keep their names) to that player alone, as the order click already plays (`ServerPlayerEntity.playSound`), at `combatDiscipline.hornVolume`, at most one per kind per player per `hornCooldownSeconds`. Harness list `BattleEffects.heard` of `(player, kind, time)`; the counter `BattleEffects.horns` now counts world horns and must stay 0.
+  - `Battle.markCharge(Squad s, String group)`: what `chargeHorn` did except its sound. It stamps `Squad.chargedAt` (the C5 charge-impact counter reads it), for every side, with no routing test.
+- Rules:
+  - **No group breaks (design 3).** No strength or flank test, no automatic Retreat, no dropped targets, no rally, no immunity window, and no morale number on the cards, in the state packet or in the report. A group keeps its order, formation and fight until every member is dead or its commander gives another order. Reinforcements join it and take its order; temporary troops (Grave Bloom's Risen) follow it. Every mode and every side, bots included. `Battle.assignment` always returns the stored assignment.
+  - **Flank blows (design 4).** C16 (melee) x1.30, was 1.15. New row C16s (`shot`: arrow and bolt) x1.15, with the same bearing. The arc is `combatDiscipline.flankArcDegrees` 110, one number for C16, C16s and Pack Hunters. Area damage gets no flank bonus; the blow on the struck target itself is a melee hit and takes C16 by its bearing, the splash on the others around it does not. A covered target takes neither C16 nor C16s; every other row still applies, Pack Hunters included. Shields still cover the front only. A retreating group has no exemption: the pursuers' blows from behind take C16.
+  - **Last stand (design 5.1).** Every 20 ticks, for the infantry, ranged and support groups of each army: strength (`BattleMath.strength`) at or below `lastStandShare` 0.25 with an enemy troop or commander within `lastStandRadius` 16 of the group's centre puts the group in `Squad.lastStand`; above it, or with no enemy near, takes it out. The troops do nothing different. The hook sends one line per group per `lastStandFeedSeconds` 30 to the owner only ("Infantry make a last stand"); no sound; the enemy's last stands are not shown.
+  - **Command feedback (design 5.2).** No horn plays in the world: not on a charge (bots included), a retreat, a last stand, a banner plant or Muster. A command the player gives from his screen (the R council, a key row, the ability slot) plays to him alone: Retreat `horn_rout`, Charge `horn_charge`, Muster `horn_rally`, every other order the existing UI click. At most one feedback sound of a kind per `hornCooldownSeconds` 8. Bots play none. The title screen's horn art and hover sound stay (menu art).
+  - **Arrival (design 6).** A group on Retreat or Move whose centre is within `combatDiscipline.arriveRadius` 4.0 of its destination fights as on Hold (from its slot, with Hold's `engageRadius`) until its next order. On the way it still fights nothing, even when struck. This covers a player's Retreat, Muster's Move orders and a bot army's Retreat to its base; the unit AI plan later replaces it with its full `arrive` column.
+  - **Bulwark (design 4.2):** the ranged cut for shield troops stays; the rout guard becomes covered flanks.
+  - **Oath Banner (design 7.2):** the trigger, the 300 ticks, radius 12, +10% damage (`auraFactor`) and the particles stay; the plant's horn and the rally go. Own troops inside are anchored: no knockback from any troop source (slams, `knockback` statuses such as the Heavy bolt), no pull (the harpoon, Admiral Vael's undertow), no Slowness (`onhit_slow` and `onhit_status` slows, Brine, Riptide, frostshot, blight, mist, ensnare). A slow already on a troop is removed when it enters the radius or the banner is planted, which the banner's periodic beat does. Stuns, `weaken` and `bleed` still land.
+  - **Stand Fast (design 7.3):** `takenFactor` x0.75 for 160 ticks, Resistance I and the ring stay; the guard goes.
+  - **Muster (was Rally Horn, design 7.3):** every group takes a Move order to the Marshal through the same order path and the same ground and river rules as built. His troops, and any that join meanwhile, move x1.20 for 300 ticks (`classes.marshal.value1` 0.2). No world horn, no rally call, no `steadyUntil` (`value2` 0). The Marshal alone hears `horn_rally`.
+  - **`fearless` (design 7.4):** a fearless soldier at or below `amount2` 0.30 of his own max health deals `amount` 0.20 more damage: a stance multiplier on his outgoing hits in `Combat.resolve`, as `steady` is. Per soldier, not per group. Grave Bloom's Risen carry it, and a troop that rises through Rise Again (30% health) is already fearless. Brassjaw loses the tag: `troops.ic_colossus.tags` becomes `large`.
+  - **`dread` (design 7.4):** only the damage cut, `auraFactor` x0.85 within 10; `amount2` becomes 0.
+
+- [ ] **Step 1: Baseline.** Compile both source sets, run `python tools/preflight.py` and the standalone checks, then run Phase 1 suites `combat,morale,reinforce,bots,tutorial,report` and Phase 2 suites `engine,gilded,graveborn,ironclad`. All pass before any edit; note each suite's check count. Fix nothing here.
+- [ ] **Step 2: Write the checks (design 11.1 and 11.2).**
+  - Phase 1 suite `morale` keeps its id, so every regression list that names it still works. Delete `p1-rout-weak`, `p1-flank-rout`, `p1-rout-ends`, `p1-rout-guard`, `p1-rout-order-kept`, `p1-morale-timeout` and `p1-hud-routing`, and write:
+    - `p1-no-rout`: a group cut to 10% strength with enemies around keeps its order, formation and fight for 300 ticks, and its assignment is unchanged. A Hold group shot from behind keeps holding its slot.
+    - `p1-flank-damage`: `Combat.LAST` shows counters 1.30 for a melee blow from past 110 degrees, 1.15 for an arrow or bolt from past 110 (C16s), and 1.0 from the front. A covered target (a Gilded troop of another group within the radius; the bonus returns just outside it; a Gilded troop of the target's own group does not cover it) takes 1.0 from the same blows. Area damage takes no bonus.
+    - `p1-last-stand`: with an enemy within 16, a group cut to 25% shows the state within 20 ticks, and the state clears when its strength rises above 25%. With no enemy within 16, a group at 10% never shows it. For a group hovering at the line the hook records one line per 30 s (600 ticks), and one more after 30 s.
+    - `p1-command-sound`: a player's Retreat plays `horn_rout` to him and to no other player; a second Retreat within 8 s plays nothing; his Charge plays `horn_charge`; another order plays the UI click. A bot's Retreat or Charge plays nothing. Over a full fixture round, including a Muster and an Oath Banner plant, `BattleEffects.horns` stays 0: no horn plays in the world.
+    - `p1-retreat-arrive`: a retreating group struck on the way does not fight back; once its centre is within 4 of its destination it fights an enemy that comes within Hold's radius. Muster's Move behaves the same at the Marshal.
+    - `p1-hud-last-stand`: the client group shows the last-stand state and its card says LAST STAND. Screenshot `hud-last-stand`.
+    - `p1-charge-horn` becomes the Charge feedback check: the commanding player hears `horn_charge`, nobody else does.
+  - Phase 2 checks rewritten to the new behaviour (ids kept, except Muster's):
+    - `p2-bulwark`: a struck troop near a Gilded troop of another group takes no flank bonus, one outside the radius takes it (radii 5, 8 and 12 by tier), and the 0.55 ranged cut still holds.
+    - `p2-champion-standfast`: the damage share x0.75, Resistance I for 160 ticks, no guard; the cooldown tile counts down from 90 s.
+    - `p2-marshal-muster` and `p2-marshal-muster-spots`: the Move orders and their ground and river rules as built; speed x1.20 for 300 ticks, joiners included; the cooldown tile counts down from 120 s; no horn in the world; the feedback sound reaches the Marshal alone.
+    - `p2-gilded-oath`, `p2-gilded-oath-plant` and `p2-gilded-oath-squad`: the trigger, one banner and the 600-tick cooldown as built, `auras == 1.10` inside 12, and the plant makes no sound. Inside the radius an own troop is not knocked back, pulled or slowed, a slow already on it is removed within 20 ticks, and a stun, `weaken` and `bleed` still land. Outside the radius all of them apply.
+    - `p2-fearless-share` (id kept): a fearless soldier at 30% health deals x1.20 and at 31% deals x1.0, by his own health; a knight at 30% deals x1.0; a Rise Again troop at 30% health deals x1.20.
+    - `p2-dread`: enemies within 10 of the Hollow King deal `auras == 0.85` and nothing else changes for them: a weakened enemy group beside him keeps its order.
+    - `p2-temporary-morale` (id kept): temporary troops follow their group's orders, including Retreat.
+    - `p2-gilded-showcase`: the screenshot keeps the banner and its particles.
+  - Standalone: `BattleMathCheck` loses its rout lines (`strength` and `relativeBearing` keep theirs). `HousesCheck` loses its `Spec.MORALE[0]` read and gains the sheet lines: no `morale` sheet; `combatDiscipline` carries `flankArcDegrees` 110.0, `lastStandShare` 0.25, `lastStandRadius` 16.0, `hornCooldownSeconds` 8, `hornVolume` 1.6, `woundedShare` 0.30, `lastStandFeedSeconds` 30 and `arriveRadius` 4.0; C16 is 1.30 and C16s is `shot`, `any`, `flank`, 1.15; `fearless` amount 0.20 and amount2 0.30; `dread` amount2 0; `marshal.value1` 0.2 and `value2` 0; `ic_colossus` carries `large` and not `fearless`. The pure `flank` condition is false for a covered target and for area damage, and true past 110 degrees otherwise.
+- [ ] **Step 3: Run; expect failures** (compile errors where a check names code that Steps 4 to 10 remove or add).
+- [ ] **Step 4: Sheets and preflight (design 8).**
+  - Delete the `morale` sheet. `combatDiscipline` gains `flankArcDegrees` 110.0, `lastStandShare` 0.25, `lastStandRadius` 16.0, `hornCooldownSeconds` 8, `hornVolume` 1.6, `woundedShare` 0.30, `lastStandFeedSeconds` 30 and `arriveRadius` 4.0. Gone with the sheet: `flankedRoutShare`, `flankRadius`, `flankMinAttackers`, `routMinSeconds`, `routMaxSeconds`, `routSafeRadius`, `regroupImmunitySeconds`.
+  - `counters`: C16 multiplier 1.30, text "Blows from the flank or rear land much harder."; new row C16s (`shot`, `any`, `flank`, 1.15, "Shots into a flank or rear land harder."). The `fearless` stance is a stance multiplier read in `Combat.resolve` (the same rule as `steady`), not a new counter row.
+  - `houseTraits` `gilded_1` to `gilded_3`: `radius` is now the cover radius (values unchanged); text "Shield troops take 15% less ranged damage; your troops within 5 of a Gilded troop take no extra flank damage." (30% and 8, 45% and 12).
+  - `abilities`: `fearless` amount 0.20, amount2 0.30, text "Below 30% health he deals 20% more damage."; `dread` amount2 0, text "Enemies within 10 deal 15% less damage."; `oath_banner` gets an anchor flag (the column is the builder's) and the text "On Hold, plants a banner for 15 s: your troops within 12 deal 10% more damage and cannot be knocked back, pulled or slowed."
+  - `classes`: `champion.activeText` "Your troops within 12 take 25% less damage for 8 s; you gain Resistance I."; `marshal.value1` 0.2, `value2` 0, `activeText` "Every group marches to you, 20% faster for 15 s."; the Marshal's display name is Muster, with `active` `rally_horn` unchanged.
+  - `troops`: `ic_colossus.tags` `large`.
+  - Preflight: the `morale` rules go; `combatDiscipline` must carry the moved columns; no `abilities` row uses a removed column; a `fearless` row's health share is between 0 and 1. Run `python tools/preflight.py`; expect `Preflight clean`.
+- [ ] **Step 5: Remove the Phase 1 rout code and add the last-stand pass (design 11.1).**
+  - `Morale.tick` becomes the pass of the Rules above. Delete `rally`, `RoutGuard`, `GUARDS`, `routing`, `flanked` and `routShareFor`; keep the rest of the class.
+  - `BattleMath`: delete `shouldRout`, `routShare` and `flanked`.
+  - `Squad`: delete `routedAt` and `steadyUntil` and their resets (`startRound`, `TitleDemos`); add `lastStand` and `lastStandAt`.
+  - `Battle.assignment` returns `storedAssignment`. `Battle.formation`, `startsCharge` and `chargeHorn` lose their routing checks; `chargeHorn` becomes `markCharge`.
+  - `Campaign` and `BotSimulation` (its idle count read `Morale.routing`) lose their reads. The mod init no longer registers `Houses.BULWARK_GUARD`, `Commander.STAND_FAST_GUARD` or `Abilities.OATH_GUARD`.
+  - `sendState`'s routing bit now carries the last-stand bit, so the layout need not change. The builder may bump the packet id (`GravesAndGlory.STATE`); if it does, the plan's `state_v8` text is stale and the closing HUD task reads the constant.
+- [ ] **Step 6: Flank blows and covered flanks.** `CounterMath.flankDegrees` reads `combatDiscipline.flankArcDegrees`; the `flank` condition reads `Hit.covered` and `Hit.area`; `Houses.covered` replaces `BULWARK_GUARD`; the slam and cleave splash set `Hit.area`; the blow on the struck target does not.
+- [ ] **Step 7: Command feedback; no world horns.**
+  - `BattleEffects.horn` and `hornNow` stop playing in the world; `feedback` replaces them.
+  - Both order paths call it for Retreat (`horn_rout`) and Charge (`horn_charge`), in place of the bell (Retreat) and the lowered chime (Charge) that `tactical` plays today; every other order keeps its chime.
+  - Muster calls it for the Marshal alone. `Campaign.botDecide`'s charge and every ability play nothing, including the Oath Banner's plant.
+  - `markCharge` keeps the C5 stamp for every side.
+- [ ] **Step 8: Retreat and Move arrive.** In `Tactics`, where target picking gates on `order.engage()`, a Retreat or Move group within `arriveRadius` of its destination takes the Hold branch (its slot and Hold's `engageRadius`) until its next order.
+- [ ] **Step 9: LAST STAND on the Phase 1 HUD.** `CommandMode.Group.routing` becomes `lastStand` and the card word becomes LAST STAND, drawn in the colour ROUTING used; the card keeps its live look. The throttled hook is wired to `Morale.lastStandLines`. The feed call waits for the closing HUD task.
+- [ ] **Step 10: Phase 2 abilities.** Stand Fast loses its guard. `Commander.RallyHorn` becomes `Commander.Muster` as the Rules say. Add `Abilities.anchored` and call it at every knockback, pull and Slowness apply point (slam, `onhit_slow`, blight, mist, Riptide in `Houses`, frostshot, ensnare, the harpoon pull, undertow, the Heavy bolt); the banner's beat clears Slowness from the troops inside and no longer rallies. `fearlessRow` and `carriesFearless` give way to the stance in `Combat.resolve`; `dreadRow` stays for `auraFactor`.
+- [ ] **Step 11: Compile; run Phase 1 suites `combat,morale,reinforce,bots,tutorial,report` and Phase 2 suites `engine,gilded,graveborn,ironclad`, then the standalone checks; all pass.**
+  - The tester states what `hud-last-stand` and `gilded-showcase` show.
+  - `grep -rnE "routedAt|routShare|RoutGuard|shouldRout|steadyUntil|Morale\.rally|Morale\.routing|MORALE\b|flankedRoutShare|regroupImmunity" src test-tools` finds nothing.
+  - `grep -rniE "\brout(s|ing|ed)?\b" src` finds no identifier or string; a comment that tells the history may remain.
+- [ ] **Step 12: Re-gates (design 10).** Two runs of the "Bot balance run" recipe above (20 matches, 300 s rounds, 10 per seat).
+  - **Gate:** `ironclad_normal` vs `gilded_normal` must stay inside 40 to 60%. If it leaves the band, run one tuning round on this design's own numbers only (C16, C16s, the Bulwark cover radius, `fearless`, `dread`, Stand Fast, Muster), each within 15% of its value in this task; rerun and log every change. The design's pass line stands as written. The log's latest Ironclad vs Gilded number is the post-fix one named below, so read the new run against both numbers and say in the log which part of the move is the no-routing change.
+  - **Report only:** `graveborn_normal` vs `gilded_normal` (it was failing when the design was written; closing it stays with Phase 2's balance pass). Per match, also report troops killed per side, groups wiped out, retreats each bot ordered, and the mean length of a fight (first contact to one side's group wiped or retreating), from the existing sim logs where they can carry it, and say which they could not.
+  - Log both runs in `docs/PHASE-2-BALANCE.md` beside the routing baselines, and keep Task 7's and Task 8's routing-game numbers as the reference: at the time of writing the log holds, for Ironclad vs Gilded, 45% at the spec numbers (0f068e3) and 75% report-only after the Gilded fix (d4273ee); for Graveborn vs Gilded, 15% at the spec numbers and 47.5% after that fix. 8b's runs are the new baselines, and "Current best pure banner" is re-read from them.
+  - **Stop rule:** after that one round, whatever still fails goes to Kort in `docs/QUESTIONS-FOR-KORT.md` with the numbers, and Task 9 starts anyway.
+- [ ] **Step 13: Run `GRAPHIFY_BACKEND=none graphify update .`, then commit** `"Phase 2 batch 3b: no routing, last stand, covered flanks, harder flank blows, command feedback"`, with both gate lines in the body. Do not merge or push.
+
+---
+
 ### Task 9: Tidecallers (batch 4)
 
 **Halves (controller, 2026-10-21).** This task splits as Task 7 does.
@@ -1657,6 +1759,7 @@ Art half (after Task 5d; see Halves):
   - Brace works through counter C18c.
   - Riptide: speed x(1+value) while `isTouchingWater()` or `world.isRaining()`. Riptide hits apply Slowness I for `durationTicks`; when brine also applies, the longer duration wins.
   - Warden Mark Prey: a raycast of 40 picks an enemy troop or commander, which takes x1.30 from the warden's troops and the warden for 240 ticks. The mark uses the vanilla `GLOWING` effect, so both teams see it. A team-only glow would need a client renderer, which `state_v8` does not support; see Spec gaps.
+  - Beats text (no-routing design 7.7): the Drowned Raider beats "Hounds, runners and retreating troops" (Houses spec 2.5 and unit identity; it read "routing troops"). A group ordered to Retreat fights nothing on the way, so the slowing Raider still catches it.
 
 - [ ] **Step 1 (mechanics): Write suite `tidecallers`:**
   - `p2-tidecallers-mobs`: goals only; the drowned never throws tridents on its own; the evoker never summons; the ravager never roars outside its sweep.
@@ -1676,7 +1779,7 @@ Art half (after Task 5d; see Halves):
 - [ ] **Step 6 (mechanics): Implement Riptide and fording.**
 - [ ] **Step 7 (mechanics): Implement `mark_prey`.**
 - [ ] **Step 8 (mechanics): Compile; run suite `tidecallers` plus `ironclad,gilded`; all pass.**
-- [ ] **Step 9 (mechanics): Balance gate:** `tidecallers_normal` vs the current best.
+- [ ] **Step 9 (mechanics): Balance gate:** `tidecallers_normal` vs the current best. It runs after Task 8b, on the no-routing game (no-routing design 10), against `ironclad_normal` and `gilded_normal`, report-only as Task 8's gate was, and is logged in `docs/PHASE-2-BALANCE.md` beside Task 8b's re-gate lines. This holds whether or not Steps 1 to 8 were built before Task 8b.
 - [ ] **Step 10 (mechanics): Commit** `"Phase 2 batch 4: Tidecallers, mist, Riptide fording, Warden Mark Prey"`.
 
 Art half (after Task 5d; see Halves):
@@ -1745,6 +1848,8 @@ Art half (after Task 5d; see Halves):
   - Howl: every 300 ticks, own troops within 10 get +15% damage (`auraFactor`) and +15% speed for 120 ticks.
   - Trample: on first contact while the group order is `charge`, deals 6 to every enemy within 3 with knockback 1.2; cooldown 200.
   - Pack Hunters uses `packHunters(...)`, with `sameTarget = targeters[target]` and the bearing from the target's facing.
+  - After Task 8b (no-routing design 4.1): counter C16 is x1.30, not x1.15, and Pack Hunters' own rear bonus stacks on top of it, so a hound from the rear shows counters 1.30 and traits 1.2, multiplied. Cover (Gilded Bulwark, design 4.2) voids C16 and C16s but not Pack Hunters, so a rear hit on a covered target shows counters 1.0 and traits 1.2.
+  - Beats text (no-routing design 7.6): the Moot Hound beats "archers, casters and wounded troops" (Houses spec 2.3 and unit identity; it read "routing troops").
 
 - [ ] **Step 1 (mechanics): Write suite `wildmoot`:**
   - `p2-wolf-stands`: moving and fighting for 600 ticks, the wolf is never sitting and never angry at players.
@@ -1763,7 +1868,7 @@ Art half (after Task 5d; see Halves):
 - [ ] **Step 6 (mechanics): Implement Pack Hunters and `targeters`.**
 - [ ] **Step 7 (mechanics): Implement `bloodrush`.**
 - [ ] **Step 8 (mechanics): Compile; run suite `wildmoot` plus `tidecallers,graveborn`; all pass.**
-- [ ] **Step 9 (mechanics): Balance gate:** `wildmoot_normal` vs the current best.
+- [ ] **Step 9 (mechanics): Balance gate:** `wildmoot_normal` vs the current best, on the no-routing game; re-read the current best from Task 8b's log.
 - [ ] **Step 10 (mechanics): Commit** `"Phase 2 batch 5: Wildmoot, Pack Hunters, Reaver Bloodrush"`.
 
 Art half (after Task 5d; see Halves):
@@ -1931,7 +2036,7 @@ Art half (after Task 5d; see Halves):
 - [ ] **Step 2: Run suite `migration` twice on one root** (the restart case); all pass.
 - [ ] **Step 3: Full regression, in this order:**
   - one launch with `GRAVES_PHASE2_CHECKS=banners,engine,commander,spike,gilded-art,anim,depth,tells,gilded,graveborn,graveborn-art,ironclad,ironclad-art,tidecallers,tidecallers-art,wildmoot,wildmoot-art,chase,screens,migration`;
-  - then Phase 1 `combat,morale,reinforce,bots,tutorial,report,ui`;
+  - then Phase 1 `combat,morale,reinforce,bots,tutorial,report,ui` (suite `morale` is now Task 8b's no-routing suite: `p1-no-rout`, `p1-flank-damage`, `p1-last-stand`, `p1-command-sound`, `p1-retreat-arrive`, `p1-hud-last-stand` and the Charge feedback check);
   - then `-PcampaignChecks` without either variable.
 
   Expected: every id passes. Once the levels-and-gear plan has run, its suites join this run.
@@ -1939,7 +2044,7 @@ Art half (after Task 5d; see Halves):
 - [ ] **Step 5: Standalone checks and packaging.** Run the three standalone checks, `test_ui_standard.py`, `test_build_skins.py`, `python tools/build_skins.py --verify` and the `HOW-TO-EDIT.md` section 9 checks. Then run `"$G" build --offline -x test` and `python tools/package.py`; the leak check must find no `Phase2Checks`, `HousesCheck`, `ProfileMigrationCheck` or `BotSimulation` in the jar. Output stays in local `dist/` only.
 - [ ] **Step 6: Write `docs/PHASE-2-PLAYTEST.md`** (one page). Setup: the 0.5.0 build, with his existing camp so he sees the migration.
   - Session 1: his migrated collection on the recruit page, and a few House rolls.
-  - Session 2: a pure Gilded skirmish on Normal (shieldwall, Bulwark tile, Aldric's banner).
+  - Session 2: a pure Gilded skirmish on Normal (shieldwall, Bulwark tile, Aldric's banner), in which a line of his holds to its last stand without breaking (the LAST STAND stamp shows) and he pulls a group out with Retreat (its horn answers to him alone).
   - Session 3: a mixed banner of his choice vs Hard bots of a new House.
   - Session 4: the report's House rows and, once the levels-and-gear plan has run, a match played for levels and gear.
 
@@ -1962,7 +2067,7 @@ Art half (after Task 5d; see Halves):
    - Dynamic tags (`melee`, `arrow`, `shot`, `magic`, `ranged`, `charging`, `holding`, `structure`, `nonsiege`, `any`) and `a+b` targets keep the condition list closed.
    - Stance multipliers live only in `counters`.
 8. **Trait tiers in battle count living troops' slots.** They are recomputed on spawn and death, so uptime means something. Rewards (shards, renown) use the banner's tiers. "Large" follows the spec literally: `ic_mortar` and `tc_brute` plus the five Legendaries.
-9. **Fearless beats dread** when both apply, since the Graveborn "do not run". Both change only the base rout share, not Phase 1's flanked share.
+9. **Fearless beats dread** when both apply, since the Graveborn "do not run". Both change only the base rout share, not Phase 1's flanked share. Superseded by Task 8b (no routing): `fearless` is a damage bonus at low health and `dread` keeps only its damage cut, so neither touches a rout share, and nothing routs.
 10. **Sides:** positions stay by team index (rows 0 and 1), and colours come from `Battle.side(team)`. The glyphs are sun, moon, star and wave. The gold accent int uses the hex `0xDFCE68` = 14667368; the spec's 14667624 is actually `0xDFCF68`.
 11. **Bot banners** follow a fixed pattern per difficulty: easy is Commons and Rares; normal adds an Epic; hard adds a Legendary. Bots have no stars (multiplier 1.0). Barracks training is limited to the banner's composition.
 12. **Migration details:**
@@ -2003,4 +2108,4 @@ Raised while planning:
 16. **Complementary's mode.** Complementary reads our LabPBR maps only in labPBR mode, which turns off its built-in PBR for every vanilla block. Ship the maps and leave the modpack's Complementary on its default, set it to labPBR, or skip the maps (K3)? ANSWERED by Kort, 2026-10-21 (questions round 25): ship the maps and keep the modpack's Complementary on its default mode.
 17. **Weapon texel density.** Paint every weapon at 2 texels per model px, or stay at 1:1 (weapon look round, rounds 28 and 29)? ANSWERED by Kort, 2026-10-22: after a trial on the six look-round weapons, all 30 troops' weapons use 2 texels per model px on 64 x 128 sheets, with three rules (parts within 1 px of the hand in whole pixels, one-texel patterns one tone step from their face, every frame one connected piece). Skins and relief stay at 1:1. Also ruled in round 28: one-handed swords about 1.5 blocks long, 24.5 px at most; bow III's badge is dropped; sword III's sun is a boss no wider than the blade plus 1 px a side.
 18. **The weapon bar.** ANSWERED by Kort, 2026-10-22 (round 29): weapons pass at 8.5 from the grader, and Kort sees each House's weapon sheet before it ships. All other player-facing art keeps the 9 bar.
-19. **The Marshal's idle gesture** (round 28, call 5). His Tell is "horn to the lips", but his model carries no horn. ANSWERED by Kort, 2026-10-22: the Marshal gets a war horn on his belt, which he lifts in his Tell, added in Task 5d's Gilded repaint. The no-routing design (round 29) keeps horns out of every command, so the horn is dress and a gesture only.
+19. **The Marshal's idle gesture** (round 28, call 5). His Tell is "horn to the lips", but his model carries no horn. ANSWERED by Kort, 2026-10-22: the Marshal gets a war horn on his belt, which he lifts in his Tell, added in Task 5d's Gilded repaint. The no-routing design (round 29) keeps horns out of every command, so the horn is dress and a gesture only. Kort, round 30 (2026-10-22): it is silent dress; the horn never plays a sound and gives no command.

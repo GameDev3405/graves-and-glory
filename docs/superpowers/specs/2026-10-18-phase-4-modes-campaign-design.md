@@ -2,7 +2,7 @@
 
 ## Questions for Kort
 
-1. Banner mode is "carry the enemy banner home", and the supply wagon escort, the vision's other Banner variant, goes to PARKED. [Yes; the carry reuses touch pickup and the rout override, while a wagon needs a moving vehicle and a road path on Rivergate]
+1. Banner mode is "carry the enemy banner home", and the supply wagon escort, the vision's other Banner variant, goes to PARKED. [Yes; the carry reuses touch pickup and the `exempt` flag, while a wagon needs a moving vehicle and a road path on Rivergate]
 2. Campaign battles 3 to 6 bring allied bot banners, the Ironclad from battle 3 and the Wildmoot as well in battle 6, so the chapter grows from 1 v 1 to 3 v 3. [Yes; battle 3 needs ballistas a new player does not own, and the growing host is the chapter's arc]
 3. Each campaign battle has one fixed difficulty, with no difficulty picker. [Yes; a picker triples the tuning and the bonus checks, and the banners carry the curve]
 4. Skirmish's "any banner" means you choose the enemy's House and always field your own banner. [Yes; Practice is where you try troops you do not own]
@@ -26,7 +26,7 @@ How it serves the pillars:
 ## 2. Goals, non-goals, anti-goals
 
 Goals
-1. Siege, Survival and Banner, each with a win condition, a clock, scoring, reinforcement and morale rules, bot play at all three tiers and a ledger bar.
+1. Siege, Survival and Banner, each with a win condition, a clock, scoring, reinforcement rules, bot play at all three tiers and a ledger bar.
 2. Skirmish: any mode on the maps that host it, any difficulty, any enemy House, your own banner, normal rewards.
 3. Campaign chapter 1, "The Road North": six battles in the Houses order, each with a briefing card, a reason, one bonus objective and a fixed difficulty. Finishing it grants the Houses spec's Legendary Pact.
 4. Campaign battles seat the player's own banner, honour the battle's allies and enemies, pay normal rewards and open in order.
@@ -60,7 +60,7 @@ Rules that bind this design:
 
 What the code assumes today, all of it Domination:
 - `Battle.tick` scores owned points every `scoreInterval` up to `winScore`; a time-out goes to the higher score, and a tie is a draw.
-- `Battle.base(t)`, the barracks and the respawn spot are fixed per team from `Spec.FACTIONS`. `Morale` sends routing groups to `base(team)` and reads one global row, `Spec.MORALE[0]`.
+- `Battle.base(t)`, the barracks and the respawn spot are fixed per team from `Spec.FACTIONS`. `Morale` sent routing groups to `base(team)` and read one global row, `Spec.MORALE[0]`; the no-routing design (`2026-10-22-no-routing-design.md`) removes both, and `base(team)` stays for respawn, lineup and deploy.
 - `Campaign.botDecide` picks a capture point and an order, with per-group assignments for shieldwalls. Nothing knows a gate, a wave or a banner.
 - `Tactics` targets enemy units and players. Phase 2 adds structure targets, `ArmySupplyBanner` and `Battle.structures`, with counter C10 at x4.0 for siege troops and C11 at x0.25 for the rest.
 - `campaign:<id>` starts any battle in any order, and `soloStart` seats it as practice: one bot, practice gold, every troop unlocked, `campaignBattles.size` ignored. `campaignCleared` is the highest order won.
@@ -75,12 +75,11 @@ Each mode answers the same questions, so the code routes them through one per-ro
 | Hook | Domination today | What a mode may change |
 |---|---|---|
 | Setup and teardown | points and flags | mode pieces, mode sites, flags taken down and put back |
-| Field base per team | the team base | where the lineup forms, players respawn, troops are bought and routing groups run |
+| Field base per team | the team base | where the lineup forms, players respawn, and troops are bought and deployed |
 | Anchors | points held 10 s with no enemy within 20 | which sites deploy bought troops |
 | Scoring | +1 per owned point per interval | its own counters |
 | End | 300, then the higher score or a draw | its own win, and who wins at time-out |
-| Morale | the `domination` row | its own `morale` row, plus guards for carriers and waves |
-| Bots | point choice | a target and per-group assignments; each tier's retreat, rally, charge and shieldwall logic stays |
+| Bots | point choice | a target and per-group assignments; each tier's retreat, rally (return), charge and shieldwall logic stays; they are orders |
 | Ledger | scores, tracks, clock, seals | what each of them shows |
 
 Shared rules:
@@ -113,7 +112,7 @@ Clock: 600 s (draft value) at the start plus the two bonuses, so with these draf
 Pieces and landmarks:
 - `ironhold/gate_intact`, reserved by Phase 3, is authored now: the `ironhold/gate` footprint with the portcullis down and the doors shut.
 - New piece `ironhold/ward`, a short Siege-only wall placed twice: from the gate wall's north end to the river bank, and from its south end to the keep. The passage becomes the only dry way east on the west bank. The wards go in at setup, come out at teardown and take no damage.
-- The gate tower tops at feet 13 and the keep's north wall-walk at feet 7 are defender ranged stations. The tower tops see the west field and the yard; the wall-walk sees the B deck. The donjon on the east bank is the defenders' field base for respawn, barracks and routs.
+- The gate tower tops at feet 13 and the keep's north wall-walk at feet 7 are defender ranged stations. The tower tops see the west field and the yard; the wall-walk sees the B deck. The donjon on the east bank is the defenders' field base for respawn, barracks and lineup.
 - The curtain line bounds the yard: its central opening is the front door and the sally gaps are the flanks.
 - Web Stalkers climb the gate and the wards, as Kort decided. Because the keep stays barred, climbing never skips a stage, so no overhangs are added and the Houses spec's overhang note is dropped. Tidecallers fording past a ward are their House's siege answer in the same way.
 - The Domination flags at A, B and C come down for the round.
@@ -122,10 +121,7 @@ Reinforcement and respawn:
 - Defenders deploy at the yard while it is an anchor, otherwise at the donjon. Defender players respawn at the donjon.
 - Attackers deploy at their base until the yard falls, then at the yard. Attacker players respawn at the last stage taken, or at base before that.
 
-Morale:
-- While the gate stands, a defender group whose centre is inside the walls routs at 15% strength (draft value) instead of 25%. Inside means within 14 blocks (draft value) of the gate or 25 blocks (draft value) of the keep's centre. Once the gate falls, the walls stop counting.
-- When several rout shares apply, the lowest wins; the Graveborn's `fearless` 12% is already lower.
-- Routing defenders run to the donjon, attackers to their last stage or their base. A routing group that a shut gate cuts off cannot get home, and its rout ends on its timer.
+Morale: none. Nobody breaks (no-routing design 9.2), so the walls rule (defender groups inside the walls break at 15%) is gone, with the `siege` morale row. Defenders keep the gate, the walls and the stations. If the Siege sims show defenders need help, the lever is a counter row (for example less damage taken inside the walls while the gate stands), tuned in Phase 4, not a morale rule.
 
 Bots add these plans to each tier's own logic:
 
@@ -147,7 +143,7 @@ Ledger:
 
 Sides: every human and allied bot defends on team 0, one to four banners. Team 1 is the wave director; it has no commander and buys nothing.
 
-The shrine is a capture ring in the court of `hw-moon-shrine`, the piece placed at x 76, z 127, with radius 10 (draft value), owned by the defenders. The court is also the defenders' field base: lineup, respawn, barracks and rout destination. New: the field barracks is marked by the team's banner on a pole like a point flag, with no new building. Point C at the crossing is not used.
+The shrine is a capture ring in the court of `hw-moon-shrine`, the piece placed at x 76, z 127, with radius 10 (draft value), owned by the defenders. The court is also the defenders' field base: lineup, respawn and barracks. New: the field barracks is marked by the team's banner on a pole like a point flag, with no new building. Point C at the crossing is not used.
 
 Waves:
 - A wave set is rows in `waves` and `waveGroups`. Each wave has a timer and wave gold; each group names a troop, a count and a rise site.
@@ -176,7 +172,7 @@ Gold: wave gold replaces passive and point income, both scaled to 0. Kill gold s
 
 Landmarks: four rise sites 50 to 90 blocks (draft value) from the court, on walkable ground, so each group is seen before it arrives: behind the ruined chapel to the north, the ford at the C crossing to the west, the deep wood to the east and the south track. The chapel's cover and sight lines look onto the C crossing, so a group posted there covers the ford's rising, while the north group comes out from behind the chapel itself. The round runs at night: the world clock goes to midnight at setup and back at teardown, and the shrine's soul lanterns light the court.
 
-Morale: the living use the Domination row and rout to the court, so a rout near the shrine is short. Every wave squad carries a RoutGuard for its whole life; the dead never break.
+Morale: none. Nobody breaks (no-routing design 9.2), so wave squads need no guard and nothing runs to the court.
 
 Bots:
 - Wave squads attack-move to the shrine and fight what they meet. They ignore `retreatShare` and charge by their tier's rules.
@@ -198,7 +194,7 @@ Stands and points:
 
 Rules:
 - Any enemy troop or commander within 1.5 blocks (draft value) of a banner, at its stand or on the ground, picks it up.
-- The carrier wears the banner on its head in the owner's colour, glows, never routs and cannot attack. It moves at x0.9 speed (draft value), and a commander cannot sprint while carrying.
+- The carrier wears the banner on its head in the owner's colour, glows and cannot attack (`exempt`: no group orders, no attacks). It moves at x0.9 speed (draft value), and a commander cannot sprint while carrying.
 - A troop carrier leaves its group's orders and walks to its own stand by `Tactics.route`; the rest of its group keeps its orders. A commander carrier goes where the player goes.
 - When a carrier dies, the banner drops where it fell. An enemy touch picks it up again, the owner's touch sends it home at once, and after 20 s untouched (draft value) it returns home.
 - A carrier within 3 blocks (draft value) of its own stand scores 1, and the banner returns home.
@@ -211,7 +207,7 @@ Landmarks:
 - The customs house and the warehouse cover both approaches to B, where escorts and chasers meet.
 - A carry is about 300 blocks and crosses the river once. Tidecallers at trait tier II ford anywhere, which is their Banner answer.
 
-Morale: the Domination row; only the carrier is guarded.
+Morale: none (no-routing design 9.2). The carrier keeps `exempt` (no group orders, no attacks) and its x0.9 speed; its group keeps fighting at any strength.
 
 Bots:
 - At each decision every bot banner holds a role: raider, which attacks the enemy stand or the dropped enemy banner; guard, which holds its own stand; or holder, which holds B.
@@ -343,7 +339,7 @@ New and changed sheets in sheets/design.json:
 
 | Sheet | Status | Columns |
 |---|---|---|
-| `modes` | new, 4 rows | id, name, maps, roundSeconds, winTarget, scoreInterval, passiveScale, pointScale, morale, timeout, ruleLine, howTo, howToDefend |
+| `modes` | new, 4 rows | id, name, maps, roundSeconds, winTarget, scoreInterval, passiveScale, pointScale, timeout, ruleLine, howTo, howToDefend |
 | `modeSites` | new | id, mode, map, kind, name, team, stage, x, y, z, radius, seconds, hp, piece |
 | `modeRules` | new, 1 row | siegeStageBonus, portcullisSeconds, breachShare, survivalPerBanner, riseWarning, maxDeadAlive, carrierSpeed, pickupRadius, standRadius, dropReturnSeconds |
 | `waves` | new | id, set, wave, seconds, gold |
@@ -352,26 +348,23 @@ New and changed sheets in sheets/design.json:
 | `chapters` | new, 1 row | id, name, pact, epilogue |
 | `campaignBattles` | changed, 6 rows | `size` goes; adds mode, house, allyBanners, enemyBanners, side, waveSet, bonus |
 | `botBanners` | one new row | `march1_turncoats` |
-| `morale` | new column and row | column wallRoutShare; row `siege` |
 | `botCommand` | new columns | useStations, raidShare, chaseRange, waveScale, waveTraitTier |
 | `rules` | changed | winScore, scoreInterval and roundSeconds move to `modes` |
 
 `modes` rows; passiveScale and pointScale multiply the economy sheet's passive and point gold:
 
-| id | maps | roundSeconds | winTarget | scoreInterval | passive, point | morale | timeout |
+| id | maps | roundSeconds | winTarget | scoreInterval | passive, point | timeout |
 |---|---|---|---|---|---|---|---|
-| domination | 0,1,2,3,4 | 900 | 300 | 80 | 1.0, 1.0 | domination | score |
-| siege | 1 | 600 (draft value) | 3, the stages | 0 | 1.0, 0.0 | siege | team1 |
-| survival | 3 | 0, set by the waves | 0, set by the waves | 0 | 0.0, 0.0 | domination | team0 |
-| banner | 0 | 720 (draft value) | 3 (draft value) | 0 | 1.0, 1.0 | domination | score |
+| domination | 0,1,2,3,4 | 900 | 300 | 80 | 1.0, 1.0 | score |
+| siege | 1 | 600 (draft value) | 3, the stages | 0 | 1.0, 0.0 | team1 |
+| survival | 3 | 0, set by the waves | 0, set by the waves | 0 | 0.0, 0.0 | team0 |
+| banner | 0 | 720 (draft value) | 3 (draft value) | 0 | 1.0, 1.0 | score |
 
-`ruleLine` holds one `{n}` filled with winTarget or the wave count: "Domination to {n}", "Siege: yard, gate, keep", "Survival: {n} waves", "Banner: first to {n}". `howTo` and `howToDefend` hold up to three lines split by "|". Siege's `howTo` reads "Take the Outer Yard. | Break the gate; siege troops strike it four times harder. | Seize the keep before the clock runs out." and its `howToDefend` reads "Hold the yard, then the gate, then the keep. | The walls steady your troops while the gate stands. | When the clock runs out, Ironhold is yours." The other modes repeat `howTo` in `howToDefend`.
+`ruleLine` holds one `{n}` filled with winTarget or the wave count: "Domination to {n}", "Siege: yard, gate, keep", "Survival: {n} waves", "Banner: first to {n}". `howTo` and `howToDefend` hold up to three lines split by "|". Siege's `howTo` reads "Take the Outer Yard. | Break the gate; siege troops strike it four times harder. | Seize the keep before the clock runs out." and its `howToDefend` reads "Hold the yard, then the gate, then the keep. | (new copy needed: the walls no longer steady troops; Phase 4's copy pass, through Kort) | When the clock runs out, Ironhold is yours." The other modes repeat `howTo` in `howToDefend`.
 
 `modeSites` kinds are `stage`, `gate`, `ward`, `base`, `station`, `walls`, `standoff`, `shrine`, `rise` and `stand`: the sites of sections 5 to 7, about twelve rows for Siege, six for Survival and three for Banner. The gate row carries the HP and the intact piece; ward rows carry their piece.
 
 `modeRules`, one row, with the values set in sections 5 to 7: siegeStageBonus 180, portcullisSeconds 10, breachShare 0.25, survivalPerBanner 0.5, riseWarning 5, maxDeadAlive 60, carrierSpeed 0.9, pickupRadius 1.5, standRadius 3.0, dropReturnSeconds 20 (all draft values).
-
-`morale`: wallRoutShare is 0.25 on the `domination` row, equal to its routShare, and 0.15 (draft value) on the new `siege` row, which otherwise copies `domination`.
 
 `botCommand` new columns, for easy, normal and hard: useStations false, true, true; raidShare 0.34, 0.5, 0.5; chaseRange 40, 80, 120; waveScale 0.75, 1.0, 1.25; waveTraitTier 0, 1, 2 (all draft values, as in sections 5 to 7).
 
@@ -433,9 +426,9 @@ Phase4Checks lives in test-tools/, runs with GRAVES_PHASE4_CHECKS=<suite>, follo
 | Suite | Checks |
 |---|---|
 | modes | a mode on a map it does not host is refused; the field card line comes from the sheet; the `battleMode` JSON per mode; Domination unchanged, with the Phase 1 suites passing |
-| siege | setup with wards, open gate and barred keep; the yard falls with the time bonus, the warning and `gate_intact` 10 s later, and a unit in the passage is moved out; a ballista strikes the gate at x4.0 and a knight at x0.25, and 0 HP opens the breach and the keep; keep taken goes to team 0 and time-out to team 1; wall morale at 15% inside, 25% outside and 25% after the breach; a Bone Archer reaches every station within 600 ticks (draft value); teardown and a simulated crash both restore the gate, wards and flags; screenshots of the shut gate under fire, the breach and the ledger |
-| survival | groups rise at their sites after the warning; counts for one and four banners and for Easy and Hard match the formula, and the alive cap holds; wave gold on clear and no passive income; the dead never rout; shrine taken is a loss, the last wave cleared or timed out is a win; the shrine barracks sells; night at setup and day after; `tickCost` at four banners logged beside a 4 v 4 Domination round; screenshots of a rising and the ledger |
-| banner | pickup by a troop and by a commander; the carrier glows, wears the banner, never routs, never attacks and moves at x0.9; drop on death, owner touch returns, and the 20 s return; scoring at your own stand, also with both banners out; 3 captures win and a tied time-out draws; a bot raider picks up and carries, and guards chase within `chaseRange`; screenshots |
+| siege | setup with wards, open gate and barred keep; the yard falls with the time bonus, the warning and `gate_intact` 10 s later, and a unit in the passage is moved out; a ballista strikes the gate at x4.0 and a knight at x0.25, and 0 HP opens the breach and the keep; keep taken goes to team 0 and time-out to team 1; a Bone Archer reaches every station within 600 ticks (draft value); teardown and a simulated crash both restore the gate, wards and flags; screenshots of the shut gate under fire, the breach and the ledger |
+| survival | groups rise at their sites after the warning; counts for one and four banners and for Easy and Hard match the formula, and the alive cap holds; wave gold on clear and no passive income; shrine taken is a loss, the last wave cleared or timed out is a win; the shrine barracks sells; night at setup and day after; `tickCost` at four banners logged beside a 4 v 4 Domination round; screenshots of a rising and the ledger |
+| banner | pickup by a troop and by a commander; the carrier glows, wears the banner, never attacks and moves at x0.9, and with its group cut to 10% strength it keeps walking to its stand while the group keeps fighting; drop on death, owner touch returns, and the 20 s return; scoring at your own stand, also with both banners out; 3 captures win and a tied time-out draws; a bot raider picks up and carries, and guards chase within `chaseRange`; screenshots |
 | skirmish | one solo start per mode with normal rewards; the enemy House picks the right `botBanners` row; Siege defend seats the player on team 1; Practice keeps practice gold |
 | march | `p4-march-1-start` to `p4-march-6-start` check map, mode, banners, tier, side and waves; each battle's bonus kind driven once to kept and once to lost; `p4-march-lock` refuses battle 3 before battle 2 is won; a replay pays normal gold and no bonus; battle 6 with all won grants the Pact once, and a replay grants nothing; the p1-tutorial suite still passes with the new enemy row |
 | save | the profile file on disk holds `battlesWon`, `bonusClaimed` and the gold before returnLobby runs, and a forced save failure rolls back all three; a relog shows them; a schema 2 fixture with campaignCleared 1 and writChapters 1 migrates to `battlesWon` march-1 with the Pact untouched and one backup |
@@ -468,7 +461,7 @@ Kort's gate: a tester subagent reviews the screenshot set first. Then Kort plays
 - Campaign battles stop running as practice: own banner, normal rewards, allies and enemies seated, an order lock, replays allowed, and a bonus paid once and only on a win.
 - Bonus objectives pay the Houses spec's 5 shards and 40 gold (draft value), because the vision lists bonus objectives as a gold source; the economy model is rerun.
 - Siege: the gate stands open during the yard stage and shuts when the yard falls; two ward walls; stages lock; time bonuses; no draws; no overhangs.
-- Survival: wave gold replaces passive and point income; the barracks sits at the shrine; the round runs at night; the dead never rout; it is built and tested for one to four banners.
+- Survival: wave gold replaces passive and point income; the barracks sits at the shrine; the round runs at night; it is built and tested for one to four banners.
 - Banner: stands at A and C, B is the only anchor, and scoring does not need your own banner at home.
 - The game mode is `battleMode` in code with a `battlemode:` command. Mode state rides in the snapshot JSON and the existing score and point fields, so state_v6 keeps its layout.
 - winScore, scoreInterval and roundSeconds move from `rules` to `modes`.

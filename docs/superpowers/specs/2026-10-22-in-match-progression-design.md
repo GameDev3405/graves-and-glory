@@ -259,7 +259,7 @@ Rules for the table:
 
 Each is small and is used by more than one troop where possible. Everything else in the table is an existing
 mechanic (`shield`, `stance`, `pierce`, `cleave`, `onhit_slow`, `pounce`, `aura`, `slam`, `fearless`, `mist`, `mend`,
-`blight`).
+`blight`). `fearless` has a new meaning under the no-routing design (7.4): a soldier at or below 30% of his max health deals +20% damage.
 
 | Id | What it is | Used by |
 |---|---|---|
@@ -269,13 +269,13 @@ mechanic (`shield`, `stance`, `pierce`, `cleave`, `onhit_slow`, `pounce`, `aura`
 | N4 `stun` on a single-target slam | A slam with radius 0: knocks back and stuns only the target (stuns exist today for slams). | Order Squire |
 | N5 `onkill_heal` | The soldier heals a share of his max health when he lands a killing blow. | Grave Reaper |
 | N6 `raise` | An enemy killed by this soldier's blight rises as a temporary Risen of his army for 15 s, at most 2 at a time. Reuses Grave Bloom's temporary troop code. | Gravecaller |
-| N7 `rise` | This soldier may rise once at a share of max health (the Rise Again path through `ALLOW_DEATH`), with its own chance, adding to the House trait's chance where both apply. A Legendary may take it although the trait excludes Legendaries. | Risen, Bone Archer, Hollow King |
+| N7 `rise` | This soldier may rise once at a share of max health (the Rise Again path through `ALLOW_DEATH`), with its own chance, adding to the House trait's chance where both apply. A Legendary may take it although the trait excludes Legendaries. | Hollow King |
 | N8 `mark` | Hits mark the target for a duration; a marked target takes extra damage from the army's troops. Reuses the Warden's Mark Prey state, without the glow. | Hide Hunter |
-| N9 stance condition `target_routing_or_slowed` | A new condition in the counter table's closed list. | Moot Hound |
+| N9 stance condition `target_slowed_or_wounded` | A new condition in the counter table's closed list: the target is slowed, or at or below 30% of its max health (`combatDiscipline.woundedShare`). | Moot Hound |
 | N10 tag `thickhide` | A new counter row C19: any shot (`arrow`, `bolt`) against `thickhide` x0.75. | Old Horn, Kraken-touched Brute |
-| N11 aura `rally` and `damageTaken` | An aura may also rally routing own groups in its radius (`Morale.rally`, as the Oath Banner does), or lower the damage own troops in its radius take. | Bloodhowl Seer, Brassjaw |
+| N11 aura `damageTaken` | An aura may lower the damage own troops in its radius take. | Brassjaw |
 | N12 zone `status` | A `mist` zone may carry a status instead of Slowness and may skip the ranged penalty. | Ironhold Mortar, Mist Caller |
-| N13 mend `cleanse` | A mend also removes `slow`, `weaken` and `bleed` from its target. | Sunweaver |
+| N13 mend `cleanse` | A mend, or the Seer's howl, also removes `slow`, `weaken` and `bleed` from its target or from own troops in its radius. | Sunweaver, Bloodhowl Seer |
 
 Statuses of the same kind on one target do not stack: the longer remaining duration wins (as Brine and Riptide do
 today).
@@ -290,7 +290,7 @@ Level 2 values are "today's value → level 2 value". Ticks: 20 a second.
 |---|---|---|
 | Order Squire (`shield`) | *Better guard*: his raised shield takes arrows x0.35 → x0.30 and melee x0.6 → x0.5 (C1 and C3 for this soldier). | *Shield bash* (N4): every 100 ticks, a hit knocks the target back 1.0 and stuns it for 20 ticks. |
 | Order Archer (`steady`) | *Steady*: +20% → +30% on Hold. | *Bodkin points*: against a raised shield his arrows take x0.6 instead of x0.35 (a C15-style row; the Arbalist's mechanic, another House). |
-| Templar (`shield`) | *Better guard*, as the Squire. | *Unbroken*: he counts as `fearless` for his group's rout share. |
+| Templar (`shield`) | *Better guard*, as the Squire. | *Unbroken*: at or below 30% of his max health he takes 20% less damage. |
 | Order Longbow (`pierce`) | *Pierce*: 50% → 70%, reach 2 → 3 blocks. | *Pinning shot* (N1): hits apply Slowness I for 30 ticks. |
 | Sunweaver (`mend`) | *Mend*: heal 5 → 7. | *Dawnlight* (N13): each mend also cleanses slow, weaken and bleed. |
 | Lord Marshal Aldric (`oath_banner`) | *Oath Banner*: 300 → 400 ticks, +10% → +15% damage. | *Marshal's sweep*: his blows cleave one other enemy within 2 for 50% (the Reaper's mechanic, another House). |
@@ -299,8 +299,8 @@ Level 2 values are "today's value → level 2 value". Ticks: 20 a second.
 
 | Troop | Level 2 | Level 3 |
 |---|---|---|
-| Risen (`fearless`) | *Deathless* (N7): his fearlessness deepens: a 15% chance to rise once at 30% health, added to Rise Again's chance. | *Rotten blade* (N1, N3): hits bleed for 80 ticks. |
-| Bone Archer (`fearless`) | *Deathless* (N7), as the Risen. | *Marrow arrows* (N1, N2): hits weaken for 40 ticks. |
+| Risen (`fearless`) | *Fearless* improved: the bonus +20% → +30% damage, and the health share 30% → 40% of max health. | *Rotten blade* (N1, N3): hits bleed for 80 ticks. |
+| Bone Archer (`fearless`) | *Fearless* improved, as the Risen. | *Marrow arrows* (N1, N2): hits weaken for 40 ticks. |
 | Grave Reaper (`cleave`) | *Cleave*: 57% → 77%. | *Reap* (N5): a killing blow heals him 25% of max health. |
 | Barrow Stalker (`frostshot`) | *Frostshot*: Slowness I 40 → 60 ticks. | *Ice lance*: shots pierce one enemy within 2 behind for 40% (the Longbow's mechanic, another House). |
 | Gravecaller (`blight`) | *Blight*: radius 2.5 → 3.0, slow 40 → 60 ticks. | *Death knell* (N6): enemies her blight kills rise as temporary Risen for her army, 15 s, at most 2. |
@@ -310,11 +310,11 @@ Level 2 values are "today's value → level 2 value". Ticks: 20 a second.
 
 | Troop | Level 2 | Level 3 |
 |---|---|---|
-| Moot Hound (`pounce`) | *Pounce*: x1.8 → x2.0, cooldown 100 → 80. | *Run them down* (N9): +30% damage against a routing or slowed target. |
+| Moot Hound (`pounce`) | *Pounce*: x1.8 → x2.0, cooldown 100 → 80. | *Run them down* (N9): +30% damage against a slowed or wounded target. |
 | Hide Hunter (`ambush`) | *Ambush*: +25% → +35%. | *Hunter's mark* (N8): hits mark the target for 60 ticks; marked targets take +10% from his army's troops. |
 | Web Stalker (`ensnare`) | *Ensnare*: Slowness II 30 → 50 ticks. | *Venom bite* (N1, N3): hits bleed for 80 ticks. |
 | Tusk Spear (`brace`) | *Brace*: x1.3 → x1.5. | *Long spear*: thrusts also hit one enemy within 2 behind the target for 40% (pierce on a melee troop). |
-| Bloodhowl Seer (`howl`) | *Howl*: +15% → +20% damage and speed, cooldown 300 → 240. | *Rallying howl* (N11): the howl also rallies routing own groups in its radius. |
+| Bloodhowl Seer (`howl`) | *Howl*: +15% → +20% damage and speed, cooldown 300 → 240. | *Rousing howl* (N13, the Sunweaver's cleanse; another House, allowed and noted): the howl also cleanses slow, weaken and bleed from own troops in its radius. |
 | Old Horn (`trample`) | *Trample*: 6 → 8 damage, cooldown 200 → 160. | *Thick hide* (N10): shots against him x0.75. |
 
 **Ironclad**
@@ -384,7 +384,7 @@ Column names and sheet shapes are the builder's, within these rules. Values are 
   row replaces the troop's base ability; the level-3 row is added.
 - **`abilities`**: 60 new rows (section 6), and the columns N1 to N13 need (a status, its flags). `onhit_slow` rows
   become `onhit_status`.
-- **`counters`**: C19 (`thickhide`), the condition `target_routing_or_slowed`, and the bodkin row.
+- **`counters`**: C19 (`thickhide`), the condition `target_slowed_or_wounded`, and the bodkin row.
 - **`botCommand`**: `gearMaxTier`, `gearReserveTroops`, `gearPriority` (section 9).
 - **`mastery`**: `mastery_1.reward` loses `evolve:3`.
 - **`recruitment.capPct`** stays 0.12 and now covers stars alone.

@@ -10,8 +10,8 @@ project is in `PROJECT-STATE.md`.
 You are a commander in a war-scarred fantasy land where the dead do not stay
 buried. Build a banner of troops from five rival Houses, fight through a solo
 campaign of hand-built battles, then bring that banner to your friends. Every
-battle is loud and readable: horns, charges, arrows in the air, lines that
-break and run. Progress is a long, earned chase: recruit, rank up, evolve,
+battle is loud and readable: charges, arrows in the air, lines that
+hold to the last. Progress is a long, earned chase: recruit, rank up, evolve,
 collect. Grim world, heroic moments. Minecraft 1.20.1, Fabric.
 
 ## 2. Decisions Kort made today
@@ -62,8 +62,8 @@ is gaming; park cut ideas, never delete them.
 ## 3. Design pillars (how to decide anything)
 
 1. **Readable drama.** If a player cannot tell who is winning a fight by
-   looking, the fight is wrong. Arrows fly, lines hold or break, horns mean
-   something.
+   looking, the fight is wrong. Arrows fly, lines hold or fall, and every order
+   is given from the screen.
 2. **Your banner is yours.** Army composition is the main expression. Houses,
    ranks, evolutions and cosmetics all show on the field.
 3. **Built, not generated.** The camp and every landmark are authored
@@ -85,14 +85,14 @@ task is a roster sheet Kort signs off.
 | House | Fantasy | Playstyle | Trait (3 / 5 / 7) | Base mobs |
 |---|---|---|---|---|
 | **Graveborn** | the risen dead, grave wardens, bone casters | cheap, numerous, slow, fearless | *Rise Again*: fallen Graveborn stand back up once at 30% HP (10% / 25% / 40% chance) | zombie, husk, skeleton, stray, phantom |
-| **Gilded Order** | knights, templars, crossbowmen, oathbound paladins | expensive, armoured, shields, holds ground | *Bulwark*: shield troops take less ranged damage and troops near a Gilded unit do not rout (15% / 30% / 45%) | zombie/husk with player-skin armour, skeleton crossbow, iron golem (paladin) |
+| **Gilded Order** | knights, templars, crossbowmen, oathbound paladins | expensive, armoured, shields, holds ground | *Bulwark*: shield troops take less ranged damage and troops near a Gilded unit cannot be flanked (15% / 30% / 45%) | zombie/husk with player-skin armour, skeleton crossbow, iron golem (paladin) |
 | **Wildmoot** | beast-folk hunters, wolves, hidebound archers, a horned alpha | fast, ambush from woods, weak in the open | *Pack Hunters*: bonus damage when three or more Wildmoot attack one target or strike from the flank | wolf, stray (hunter), spider (stalker), ravager (alpha) |
 | **Ironclad** | dwarven sappers, shield-breakers, ballistae, a mortar | slow, heavy, siege, strongest when still | *Entrench*: troops holding on an objective gain armour and the ballista range grows | piglin brute, zombified piglin, iron golem variant, custom ballista entity |
 | **Tidecallers** | drowned raiders, trident guards, mist callers, a kraken-touched brute | mobile along water, slow enemies, mist | *Riptide*: Tidecallers move faster in water and rain; enemies hit by them are slowed | drowned, guardian (as a caster), tridents |
 
 Rarity: Common (starter), Rare, Epic, Legendary. One Legendary per House is a
 named champion with a unique ability (for example the Gilded *Lord Marshal*
-plants a banner that rallies). Rarity sets cost and training time, not raw
+plants a banner that holds the line). Rarity sets cost and training time, not raw
 power per gold. Legendaries are strong but take a lot of a banner's budget.
 
 Evolve lines: three stages for Common and Rare units (Squire -> Knight ->
@@ -111,16 +111,16 @@ Two tracks, six classes at launch, one active ability each on a long cooldown
 plus one passive. The player picks a class in camp.
 
 Hero track (you fight):
-- **Champion**: sword and shield. Active *Stand Fast*: nearby troops stop
-  routing and gain armour for 8 s.
+- **Champion**: sword and shield. Active *Stand Fast*: nearby troops take
+  less damage for 8 s.
 - **Reaver**: two-hander, fast. Active *Bloodrush*: speed and lifesteal, and
   your kills refund a reinforcement.
 - **Warden**: spear and bow hybrid. Active *Mark Prey*: a target takes extra
   damage from all your troops.
 
 General track (you command):
-- **Marshal**: Active *Rally Horn*: all groups regroup on you and gain
-  morale; passive faster training.
+- **Marshal**: Active *Muster*: all groups march to you,
+  faster; passive faster training.
 - **Warlock**: Active *Grave Bloom*: raises fallen troops in an area as
   temporary Graveborn; passive casters cost less.
 - **Quartermaster**: Active *Forward Supply*: drops a supply banner that acts
@@ -134,8 +134,11 @@ Keep the command layer (R council, orders, formations, M map). Add the things
 that make fights readable and dramatic:
 
 - Visible projectiles with short travel, team-coloured impact flashes.
-- Morale: squads below 25% strength or flanked without a Gilded anchor rout
-  toward their base and regroup. Horns play on charge, rout and rally.
+- No routing: troops never break. A group fights where it is sent until it
+  falls or its commander pulls it out. Flank and rear blows land harder. A
+  group under a quarter strength shows LAST STAND. Every command is given from
+  the screen; no horns sound in the field, and a command you give may answer
+  with a horn sound to you.
 - Clear counters shown on troop cards: shields vs arrows, charge vs archers,
   spears vs beasts, siege vs structures.
 - End-of-match report: kills, time on objectives, gold, troops lost, House
@@ -231,7 +234,7 @@ public. Each phase ends with a Kort playtest and a screenshot-verified build.
 - Verify 0.3.7 in a real dev client: camp, pads, party, room, practice.
 
 ### Phase 1: the solo core feels right (3 to 4 weeks)
-- Combat readability: projectiles, impact flashes, morale and rout, horns.
+- Combat readability: projectiles, impact flashes (morale, rout and battle horns were built in Phase 1 and removed by the no-routing design).
 - Forward reinforcement from objectives; measure the walk.
 - Bot difficulty tiers; bot-vs-bot simulation harness for balance numbers.
 - Tutorial verified in game and rewritten as campaign battle 1.

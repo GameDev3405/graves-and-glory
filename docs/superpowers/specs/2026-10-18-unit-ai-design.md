@@ -1,5 +1,5 @@
 # The soldiers think: unit AI and enemy AI, design
-Status: approved by Kort, 2026-10-18 late, as written (click-through); plan to follow once Phase 3 lands.
+Status: approved by Kort, 2026-10-18 late, as written (click-through); plan to follow once Phase 3 lands. Updated 2026-10-22 for the no-routing design (`2026-10-22-no-routing-design.md`, approved by Kort): no group of any side breaks, so the rout parts of sections 3, 5, 7, 8, 10, 11 and 14 are replaced.
 
 Draft v1, 2026-10-18, approved as written (see Status); nothing here is planned or built yet. Invented numbers carry (proposal); unmarked numbers come from a sheet or an approved document. The controller's open calls are marked **controller's call**, drafting calls (call N); all are listed at the end for Kort to overturn.
 
@@ -19,7 +19,7 @@ Today falls short:
 
 Goals: obedience (zero violations); smooth movement (nobody stuck on the 15 crossings or the Ironhold gate); unity (each group, and an All order's whole army, moves as one body); a thinking enemy (a General per bot banner with a plan, a House doctrine and tells; a council per bot team that follows a human's pings); a tier ladder built on knowledge and reaction alone; player commands for everything the enemy does; proof (a scorecard and harness suites).
 
-Non-goals: combat numbers (damage, Phase 2's `counters`, traits, abilities, rout shares); Phase 4's mode plans (this phase gives them gates, sites and hooks); the bot economy; bot commander classes; mounts.
+Non-goals: combat numbers (damage, Phase 2's `counters`, traits, abilities); Phase 4's mode plans (this phase gives them gates, sites and hooks); the bot economy; bot commander classes; mounts.
 
 Anti-goals: difficulty that touches stats (health, damage, speed, gold, training, sight); a bot order the player cannot give, an order to one troop, or a faster order rate; omniscience at any tier; teleporting a stuck troop; a new dependency.
 
@@ -37,7 +37,7 @@ Anti-goals: difficulty that touches stats (health, damage, speed, gold, training
 | `Battle.tactical`, `command` | Two order paths; a river spot refused or pushed 12 blocks. | One `Orders.issue` for players, Generals and the harness; a river spot is moved, not refused. |
 | `Assignment`, `Unit`, `Squad` | Three stuck fields on `Unit`. | Stance and source; a stable slot and a progress window; Sergeants and, for bots, a General. |
 | `Army*` | `SwimGoal`; vanilla navigation. | `ArmyNavigation`; step height 1.0 (call 2). |
-| `Morale` | Three groups and home radius 10 in code; flank against the ordered yaw. | Groups and radius from sheets; flank against the real facing; routs walk the base field. |
+| `Morale` | Three groups and home radius 10 in code; flank against the ordered yaw. | Flank arc in `combatDiscipline`, read against the real facing (already so); no routs. |
 | `Campaign.botDecide` | One order per army; two constants in code. | `General` and `Council`; constants to sheets; bot buying unchanged. |
 | `Combat.resolve` | `holding` follows the Hold order. | It follows the Hold or Brace stance. |
 | Packets | `tactical_v1`; `state_v8` after Phase 2. | `tactical_v1` unchanged (its target may be a friend); the state packet takes the next id for a state word; new `path_v1`. |
@@ -56,7 +56,7 @@ Anti-goals: difficulty that touches stats (health, damage, speed, gold, training
 
 ## 5. Orders and stances
 
-An order sets a stance, kept until the next order; a soldier leaves his slot only within it. Only two things happen unasked: a group routs (Phase 1 morale; it resumes its order on regroup; question 1), and shields rise and menders heal.
+An order sets a stance, kept until the next order; a soldier leaves his slot only within it. Only one thing happens unasked: shields rise and menders heal. No group of any side ever breaks (question 1).
 
 `orders`, changed: `id S, label S, aim S, stance S, engage S, engageRadius I, moveMultiplier D, cohesion S, arrive S, meaning S`. `aim` (none, ground, enemy, friend, self) replaces `targeted`. `engage` replaces the boolean: `none` fights nothing, even when struck; `reach` fights from the slot; `guard` also meets enemies within `engageRadius` of the guarded troop or spot; `free` lets the Sergeant take a cluster within `engageRadius` of the anchor (call 6). `arrive` hold means the group holds where the order ends (call 7).
 
@@ -79,7 +79,7 @@ New rows and cells, and the distances below, are proposals.
 - **Controller's call:** a held troop struck from outside its circle turns to the attacker, shield first; ranged shoot back; nobody chases.
 - **Controller's call:** a charge breaks cohesion on purpose; the Sergeant re-forms when the cluster is beaten.
 - Follow faces your walking heading, not your view, re-anchoring after 3 blocks or a 30-degree turn held 1 s (call 8).
-- Flank swings 12 blocks wide and strikes the aimed group in morale's rear arc.
+- Flank swings 12 blocks wide and strikes the aimed group in the flank arc (C16's).
 - Screen stands 6 blocks before the aimed friend or spot, facing the nearest enemy within 30.
 - Fall back walks there at 0.8 pace, striking only what reaches it, then holds.
 - Focus: ranged shoot only the aimed troop, then its cluster.
@@ -120,7 +120,7 @@ Its planning loop:
 2. **Objectives:** points, crossings, a reserve spot, raids, ambushes and Phase 4 sites, scored for value, field time, seen risk (`defenderWeight`), the answers, the doctrine and the council.
 3. **Plan:** a short chain such as "to the ford mouth, attack C, hold C until a stronger cluster comes within 30, fall back over the ford". Before ground unseen beyond its memory, Normal and Hard scout first (cavalry, else ranged on Skirmish) while the body waits up to 15 s (proposal); scouts and reserves are whole groups (call 14).
 4. **Execute:** each order through `Orders.issue`, after its tell.
-5. **Watch:** contact, a threatened point, a rout or rally, a formation change, a flip, a ping, a step overdue by half: adjust or plan again.
+5. **Watch:** contact, a threatened point, an enemy group seen retreating, a group of its own at its last stand, a formation change, a flip, a ping, a step overdue by half: adjust or plan again.
 
 It garrisons a point it takes (`BattleMath.garrison`, the picker PARKED asks for) and gives ground group by group.
 
@@ -129,7 +129,7 @@ It garrisons a point it takes (`BattleMath.garrison`, the picker PARKED asks for
 | House | Line, advance | Gives ground | Crossing | Plan, Legendary |
 |---|---|---|---|---|
 | Gilded Order | Shieldwall, Compact; one group in reserve | at 35%, onto the reserve | any | holds a line across the enemy's road; the reserve meets a flank; Aldric's oath banner at the centre |
-| Graveborn | Compact, Wedge | never | any | presses the same objective after every rally, charges at 1.2 to 1, hunts the weakest cluster; the Hollow King's dread at the centre |
+| Graveborn | Compact, Wedge | never | any | presses the same objective after every regroup, charges at 1.2 to 1, hunts the weakest cluster; the Hollow King's dread at the centre |
 | Ironclad | Shieldwall at 0.75 pace | at 25% | any | 12-block bounds, then a 3 s halt for Entrench and the engines; Brassjaw at the centre |
 | Tidecallers | Loose, Wedge | at 40%, back over the water | fords, open water from tier II, never a bridge | raids the least-held point a ford reaches and leaves when a stronger cluster comes within 30; Vael against the enemy ranged |
 | Wildmoot | Loose | fades at 50% | any | waits in cover off the enemy's road; charges a cluster passing flank-on within 16; fades to cover after 8 s; Old Horn leads |
@@ -138,7 +138,7 @@ A Gilded banner without a spare group keeps no reserve (question 2).
 
 ## 8. The council
 
-One per bot team. It gives each General an objective by field time and fit (siege to gates, cavalry to raids, shield lines to holds), nearest pair first, and plans again on a flip, a rout, an emptied banner, a ping, or every 10 s (proposal). On Hard it runs plays: pincer (two crossings, timed to arrive within 5 s, proposal), anvil (one pins, one flanks), relief (to a garrison outnumbered two to one) and screen (shields before a siege or ranged banner). With a human on the team, his pings are the plan: Attack draws the nearest bot to him and another to his far flank; Defend, a bot holds there; Help, the nearest bot sends its best group; Moving claims the objective, so no bot doubles him. Bots never order a human's troops.
+One per bot team. It gives each General an objective by field time and fit (siege to gates, cavalry to raids, shield lines to holds), nearest pair first, and plans again on a flip, a group wiped out, an emptied banner, a ping, or every 10 s (proposal). On Hard it runs plays: pincer (two crossings, timed to arrive within 5 s, proposal), anvil (one pins, one flanks), relief (to a garrison outnumbered two to one) and screen (shields before a siege or ranged banner). With a human on the team, his pings are the plan: Attack draws the nearest bot to him and another to his far flank; Defend, a bot holds there; Help, the nearest bot sends its best group; Moving claims the objective, so no bot doubles him. Bots never order a human's troops.
 
 ## 9. Difficulty
 
@@ -164,13 +164,15 @@ No tier sees beyond its team's line of sight (call 16). Your troops react at Har
 
 | id | Trigger | Cue | Lead (ticks) |
 |---|---|---|---|
-| T1 | a charge | `horn_charge` (exists) | 40 |
-| T2 | a commitment | the scouts, seen first, then `horn_commit` | 200 |
+| T1 | a charge | a cue that is not a horn (the plan's choice; was `horn_charge`) | 40 |
+| T2 | a commitment | the scouts, seen first, then a cue that is not a horn (the plan's choice; was `horn_commit`) | 200 |
 | T3 | the Gilded reserve commits | `cue_reserve` | 40 |
 | T4 | an Ironclad bound | `cue_advance` | 20 |
 | T5 | a Tidecallers raid | `cue_raid` | 60 |
 | T6 | a Wildmoot ambush | `cue_ambush` | 30 |
 | T7 | a fall back | `cue_fallback` | 20 |
+
+No tell is a horn: Kort ruled horns out of the field (no-routing design 5.2). T1 and T2 were horns (`horn_charge`, `horn_commit`); the plan gives them cues that are not horns, something seen (raised weapons, a dust cloud) or troop sounds, and the T3 to T7 cues likewise avoid horns.
 
 `answers`, new (Phase 2 owns `counters`; call 17): `id S, seen S, range D, minCount I, answer S, groups S, text S`. The General answers only what it has seen and its tier reads. Proposals except A1, today's Hard rule:
 
@@ -187,7 +189,7 @@ No tier sees beyond its team's line of sight (call 16). Your troops react at Har
 
 ## 11. What the player sees
 
-Named here, designed with the UI work: card state words beside the UI spec's Fighting, Steady, Fallen and ROUTING (Marching, Holding, Braced, Skirmishing, Guarding, Re-forming, Blocked); aim prompts for the new aims; a path ribbon for 3 s (proposal) after confirm, from `path_v1` (call 18), naming the crossing ("Infantry / Attack / by the south ford"); feed lines for moved orders, blocked troops and heard tells; the new cues; a report line per enemy General; a harness-only `AiDebug` overlay.
+Named here, designed with the UI work: card state words beside the UI spec's Fighting, Steady, Fallen and LAST STAND (Marching, Holding, Braced, Skirmishing, Guarding, Re-forming, Blocked); aim prompts for the new aims; a path ribbon for 3 s (proposal) after confirm, from `path_v1` (call 18), naming the crossing ("Infantry / Attack / by the south ford"); feed lines for moved orders, blocked troops and heard tells; the new cues; a report line per enemy General; a harness-only `AiDebug` overlay.
 
 ## 12. Harness and scorecard
 
@@ -195,7 +197,7 @@ Named here, designed with the UI work: card state words beside the UI spec's Fig
 - `grid`: closed road, deck and ring cells match `Walkability.scan` (road 0, through 0); a pinned hash and picture per map.
 - `movement`: Phase 1's river and hill checks grown to all 15 crossings both ways (20 knights in Line, 20 of 20 within 1.3 times the field estimate, nobody blocked 3 s) and the Ironhold gate; a turn in place; a troop knocked into the river; the widest troops (ravager 1.95, golem 1.4) on every causeway.
 - `cohesion`: a march with one slowed troop; an All order's places; deaths moving only the ranks behind.
-- `obedience`: a fixture per order, including Hold shot from outside its circle, Follow while the commander looks around, 20 orders in 2 s and 120 s of provocation.
+- `obedience`: a fixture per order, including Hold shot from outside its circle, Follow while the commander looks around, 20 orders in 2 s, 120 s of provocation, and 120 s of losing (a group cut to 10%, a Hold group shot from behind): no troop of any side leaves its order unasked.
 - `general`: fixed sightings on Rivergate and Kingsfield: field-time choices, garrisons, answers only when seen, tells on time, each doctrine, the pincer, a followed ping, valid rows only.
 - `cost`: the budget at 60 and 160 troops.
 
@@ -231,7 +233,7 @@ Each task ends with its suite, screenshots a tester has opened, and the tick gat
 ## 14. Questions for Kort
 
 Recommended answers in brackets.
-1. **Rout on Hold.** Kort, 2026-10-18: **hold means never break.** A held group is exempt from the rout rules (the quarter-strength break and the strike-from-behind break) for as long as the order stands; when a member falls, the survivors close the gap in the formation as best they can (re-slot toward the centre of the line, the front rank refilled from the rear) and keep holding. The group card still shows morale as information, never as a break. The cost is that Hold is strong, which is the point: a line that holds because it was told to is the player's reward for choosing where to stand.
+1. **No order ever breaks.** Kort, 2026-10-18: **hold means never break.** Kort, 2026-10-21, made it general: no order ever breaks, for every side, and only the commander's next order moves a group out of its order. A group stays in its order and fight until every member is dead or it is told otherwise; when a member falls, the survivors close the gap in the formation as best they can (re-slot toward the centre of the line, the front rank refilled from the rear) and keep holding. A group at a quarter strength with an enemy near shows LAST STAND on its card as information; the troops do nothing different. The cost is that Hold is strong, which is the point: a line that holds because it was told to is the player's reward for choosing where to stand.
 2. **Detach.** Kort: **yes, once per group.** Detach splits a group into two halves that take orders separately; a second Detach on either half is refused. Rejoin is the reverse and is free. The General has the same order.
 3. **Tier and banner.** Controller's ruling: keep Phase 2's stronger Hard banners (an approved spec), and the AI scorecard measures the tier ladder with equal banners, so the brain's contribution is read on its own. The "never stats" rule binds the brain, not the roster.
 4. **How Hard should feel:** Kort: **a fight the player loses until they learn its tells and strategies.** The scorecard's target for Hard against a scripted "first-time" player is a loss; against the scripted "learned" player (one who answers the tells) it is an even fight.
