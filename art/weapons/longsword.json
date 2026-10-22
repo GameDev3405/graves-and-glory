@@ -1,13 +1,22 @@
 {
-"weapon":"longsword",
-"note":"The Templar's longsword: a 13 px blade, a wide guard and a hand-and-a-half grip.",
-"size":[32,32],
-"grip":{"offset":[0,0,-0.5],"rotation":[45,0,0]},
-"boxes":[
-{"origin":[-0.5,-15.5,-1.0],"size":[1,13,2],"uv":[0,0],"note":"blade"},
-{"origin":[-0.5,-16.5,-0.5],"size":[1,1,1],"uv":[6,0],"note":"point"},
-{"origin":[-0.5,-2.5,-4.0],"size":[1,1,8],"uv":[0,15],"note":"crossguard"},
-{"origin":[-0.5,-1.5,-0.5],"size":[1,6,1],"uv":[18,15],"note":"grip, wound"},
-{"origin":[-0.5,4.5,-1.0],"size":[1,2,2],"uv":[22,15],"note":"pommel"}
-]
+"weapon": "longsword",
+"thickness": 1,
+"grip": {
+"pixel": [
+3,
+16
+],
+"offset": [
+0,
+0,
+-0.5
+],
+"rotation": [
+90,
+45,
+90
+],
+"note": "the grip pixel is in the upper third of the hand-and-a-half grip; the turn is the arming sword"
+},
+"note": "The Templar's longsword: a 13 px blade, an 8 px guard with dropped ends and a hand-and-a-half grip; 1 px thick."
 }

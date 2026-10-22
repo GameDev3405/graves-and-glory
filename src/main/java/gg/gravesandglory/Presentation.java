@@ -8,6 +8,8 @@ import java.nio.file.*;
 /** Local visual preferences. Never changes the simulation, server clock or player camera mode. */
 public final class Presentation {
     static int impact=1;
+    /** Troop depth: the raised relief of near troops (TroopDepth). Off draws every troop flat; weapons keep their sprite meshes. Saved with the other presentation preferences. */
+    static volatile boolean troopDepth=true;
     static String notice="Choose a look. Your choice affects only your screen.";
     static boolean loaded,changing,packsInitialized,armoryPrepared,armoryInitialized;static int resourceState;
     static long hitAt,lastHit;static float hitStrength;static int receivedImpacts;
@@ -17,8 +19,8 @@ public final class Presentation {
     static final java.util.Set<String> MANAGED=java.util.Set.of(FRESH,FAITHFUL,EXCAL,OLD_EXCAL,CLARENT,PATCH,"gravesandglory:armory");
     static final String[] TEXTURES={"Minecraft + Fresh","Faithful 32x + Fresh","Excalibur + Fresh"};
     static Path file(){return MinecraftClient.getInstance().runDirectory.toPath().resolve("gravesandglory/presentation.json");}
-    static void load(){if(loaded)return;loaded=true;try{var j=JsonParser.parseString(Files.readString(file())).getAsJsonObject();impact=Math.max(0,Math.min(2,j.get("impact").getAsInt()));packsInitialized=j.has("packsInitialized")&&j.get("packsInitialized").getAsBoolean();armoryInitialized=j.has("armoryInitialized")&&j.get("armoryInitialized").getAsBoolean();}catch(Exception ignored){}}
-    static void save(){try{Files.createDirectories(file().getParent());Files.writeString(file(),"{\"impact\":"+impact+",\"packsInitialized\":"+packsInitialized+",\"armoryInitialized\":"+armoryInitialized+"}");}catch(Exception e){notice="Your visual preference could not be saved.";}}
+    static void load(){if(loaded)return;loaded=true;try{var j=JsonParser.parseString(Files.readString(file())).getAsJsonObject();impact=Math.max(0,Math.min(2,j.get("impact").getAsInt()));packsInitialized=j.has("packsInitialized")&&j.get("packsInitialized").getAsBoolean();armoryInitialized=j.has("armoryInitialized")&&j.get("armoryInitialized").getAsBoolean();troopDepth=!j.has("troopDepth")||j.get("troopDepth").getAsBoolean();}catch(Exception ignored){}}
+    static void save(){try{Files.createDirectories(file().getParent());Files.writeString(file(),"{\"impact\":"+impact+",\"packsInitialized\":"+packsInitialized+",\"armoryInitialized\":"+armoryInitialized+",\"troopDepth\":"+troopDepth+"}");}catch(Exception e){notice="Your visual preference could not be saved.";}}
     static boolean prepareResources(MinecraftClient c){
         if(resourceState==2)return true;if(resourceState==1)return false;
         if(packsInitialized&&armoryInitialized&&!c.getResourcePackManager().getEnabledNames().contains(OLD_EXCAL)){resourceState=2;return true;}

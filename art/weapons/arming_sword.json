@@ -1,13 +1,22 @@
 {
-"weapon":"arming_sword",
-"note":"The Squire's arming sword: a 10 px blade and point, gilt guard and pommel.",
-"size":[32,32],
-"grip":{"offset":[0,0,-0.5],"rotation":[45,0,0]},
-"boxes":[
-{"origin":[-0.5,-12.5,-1.0],"size":[1,10,2],"uv":[0,0],"note":"blade"},
-{"origin":[-0.5,-13.5,-0.5],"size":[1,1,1],"uv":[6,0],"note":"point"},
-{"origin":[-0.5,-2.5,-3.0],"size":[1,1,6],"uv":[0,12],"note":"crossguard"},
-{"origin":[-0.5,-1.5,-0.5],"size":[1,4,1],"uv":[14,12],"note":"grip, wound"},
-{"origin":[-0.5,2.5,-1.0],"size":[1,1,2],"uv":[18,12],"note":"pommel"}
-]
+"weapon": "arming_sword",
+"thickness": 1,
+"grip": {
+"pixel": [
+2,
+13
+],
+"offset": [
+0,
+0,
+-0.5
+],
+"rotation": [
+90,
+45,
+90
+],
+"note": "the grip pixel is the middle of the wound grip, through the fist; the sprite is turned flat to the side and tilted 45 degrees forward, as the box sword stood"
+},
+"note": "The Squire's arming sword: a 10 px blade and point, a 6 px gilt guard, a wound grip and a gilt pommel; 1 px thick."
 }

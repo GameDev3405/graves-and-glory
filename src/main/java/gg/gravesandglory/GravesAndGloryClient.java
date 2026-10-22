@@ -1,6 +1,7 @@
 package gg.gravesandglory;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.*;
@@ -70,6 +71,12 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.CAMP,(client,handler,buf,responder)->{String page=buf.readString(32);client.execute(()->CampScreen.open(page));});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.OPEN_BARRACKS,(client,handler,buf,responder)->client.execute(()->client.setScreen(running?new BarracksScreen():new LobbyScreen())));
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.PARTY,(client,handler,buf,responder)->client.execute(()->client.setScreen(new LobbyScreen(3))));
+        // A troop's stance (stance_v1): TroopAnimator picks its still and move clips by it. The packet a player gets on START_TRACKING comes before
+        // the entity's spawn packet (Fabric calls the event first), so the entry is kept for an id the world does not have yet; an unloaded entity's entry goes.
+        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.STANCE,(client,handler,buf,responder)->{int id=buf.readVarInt(),i=buf.readByte();client.execute(()->{
+            String stance=i>=0&&i<Tactics.STANCES.size()?Tactics.STANCES.get(i):"";
+            if(stance.isEmpty())TroopAnimator.STANCES.remove(id);else TroopAnimator.STANCES.put(id,stance);});});
+        ClientEntityEvents.ENTITY_UNLOAD.register((entity,world)->TroopAnimator.forget(entity.getId()));
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.STATE,(client,handler,buf,responder)->{
             boolean r=buf.readBoolean(),run=buf.readBoolean();int a=buf.readInt(),b=buf.readInt();String msg=buf.readString();int t=buf.readInt(),n=buf.readInt();String o=buf.readString(),f=buf.readString();int resp=buf.readInt();
             int points=buf.readInt();if(points<1||points>8)return;boolean[] contest=new boolean[points];int[] own=new int[points],pr=new int[points],ch=new int[points];for(int i=0;i<points;i++){buf.readString();own[i]=buf.readInt();pr[i]=buf.readInt();ch[i]=buf.readInt();contest[i]=buf.readBoolean();}
@@ -86,7 +93,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             client.execute(()->{sideIds=new String[]{sideA,sideB};houses=Collections.unmodifiableMap(tiers);commanderActive=ability;commanderReady=abilityReady;commanderFor=abilityFor;CampaignClient.accept(client,campaignJson,run);sightings=List.copyOf(sight);contested=contest;CommandMode.pings=java.util.List.copyOf(pings);CommandMode.seconds=seconds;CommandMode.noteGroups(CommandMode.groups,groups,net.minecraft.util.Util.getMeasuringTimeMs());CommandMode.groups=java.util.List.copyOf(groups);ready=r;running=run;dawn=a;dusk=b;message=msg;team=t;count=n;order=o;formation=f;respawn=resp;owners=own;progress=pr;challengers=ch;gold=g;nearBarracks=near;queued=q;trainingSeconds=eta;roster=owned;pending=waiting;markers=List.copyOf(friendly);});
         });
         ClientPlayConnectionEvents.JOIN.register((handler,sender,client)->{CampaignClient.sendProfile(client);if(connectingInvitation&&!joined){joined=true;say("Melty joined: "+join);}});
-        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);ready=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
+        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);TroopAnimator.clear();ready=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
             if(client.getOverlay()==null&&client.currentScreen instanceof TitleScreen){
                 if(!attempted){PackControls.prepare(client);if(!Presentation.prepareResources(client))return;attempted=true;}
@@ -108,6 +115,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         });
         HudRenderCallback.EVENT.register(GravesAndGloryClient::renderHud);
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(CommandMode::renderWorld);
+        // Troop depth: the frame's cutoff from the game camera, once, before any pass draws (Iris's shadow pass among them).
+        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->TroopDepth.beginFrame(ctx.camera().getPos(),ctx.world().getEntities()));
     }
     static KeyBinding key(String name,int key){return KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory."+name,InputUtil.Type.KEYSYM,key,"category.gravesandglory"));}
     /** The player's own key for an action, as a hint names it: key.attack for hit, key.use for use, key.gravesandglory.(id) for the mod's own

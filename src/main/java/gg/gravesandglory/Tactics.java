@@ -1,5 +1,8 @@
 package gg.gravesandglory;
 
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.*;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -12,6 +15,35 @@ import java.util.*;
 /** Server-authoritative targeting, separation, bridge routing and local path recovery. */
 final class Tactics {
     static final Spec.NavigationRow N=Spec.NAVIGATION[0];
+    /** The stances a troop shows its clients (stance_v1 sends the index): none, hold, brace, fall_back and run. */
+    static final List<String> STANCES=List.of("","hold","brace","fall_back","run");
+    /** stance_v1 packets sent: on a change at a unit's beat, to a player who starts tracking a troop, and to a player whose client registers the channel late (the harness reads them). */
+    static volatile int stanceSends,trackingSends,registerSends;
+    /** The stance a unit's order gives it (Phase 2 Task 5b; the unit AI phase's stances sheet maps its own rows here later). */
+    static String stance(GravesAndGlory.Battle b,GravesAndGlory.Unit u){return stance(b.assignment(u),u);}
+    static String stance(GravesAndGlory.Assignment a,GravesAndGlory.Unit u){
+        return switch(a.order){
+            case "hold"->"shieldwall".equals(a.formation)||ArmyMobs.tags(u.spec).contains("spear")?"brace":"hold";
+            case "fall_back"->"fall_back";
+            case "charge","retreat"->"run";
+            default->"";
+        };
+    }
+    /** Sends a unit's stance to each player that can take stance_v1: its entity id and the stance's index in STANCES. Returns how many it sent. */
+    static int sendStance(GravesAndGlory.Unit u,Collection<ServerPlayerEntity> players){
+        int index=Math.max(0,STANCES.indexOf(u.stance)),sent=0;
+        for(ServerPlayerEntity p:players){
+            if(!ServerPlayNetworking.canSend(p,GravesAndGlory.STANCE))continue;
+            var buf=PacketByteBufs.create();buf.writeVarInt(u.mob.getId());buf.writeByte(index);ServerPlayNetworking.send(p,GravesAndGlory.STANCE,buf);sent++;
+        }
+        return sent;
+    }
+    /** Sends a player the stance of every troop it tracks that has one: for a player whose client registered stance_v1 after its trackers started. Returns how many it sent. */
+    static int sendTracked(GravesAndGlory.Battle b,ServerPlayerEntity p){
+        int sent=0;
+        for(GravesAndGlory.Unit u:b.units)if(!u.stance.isEmpty()&&PlayerLookup.tracking(u.mob).contains(p))sent+=sendStance(u,List.of(p));
+        return sent;
+    }
     /** Between beats a shield troop re-reads the distance to the enemy it chose on its beat, so a block knight lowers its shield on the tick
      *  that enemy steps into sword reach (BattleMath.raiseShield). With no live target it keeps the beat's decision until the next beat. */
     static void brace(GravesAndGlory.Battle battle,GravesAndGlory.Unit u){
@@ -25,6 +57,7 @@ final class Tactics {
         if(time%10!=u.slot%10){brace(battle,u);return;} // the shield is decided every tick; everything else on the unit's 10-tick beat
         var mob=u.mob;var s=u.squad;var a=battle.assignment(u);
         Houses.sample(battle,u); // Entrench: has it stood still since its last beat
+        String stance=stance(a,u);if(!stance.equals(u.stance)){u.stance=stance;stanceSends+=sendStance(u,PlayerLookup.tracking(mob));}
         var owner=battle.server.getPlayerManager().getPlayer(s.owner);
         if(a.order.equals("follow")&&owner!=null&&!battle.respawns.containsKey(s.owner)){a.target=owner.getPos();a.yaw=owner.getYaw();}
         var order=Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(a.order)).findFirst().orElse(Spec.ORDERS[0]);

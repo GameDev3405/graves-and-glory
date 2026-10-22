@@ -1,18 +1,45 @@
 {
-"weapon":"order_bow",
-"note":"The Order Archer's bow, 22 px: a short recurve in dark wood, gilt tips, the grip wound in linen; upright in the right hand, the string outward.",
-"size":[32,32],
-"grip":{"offset":[0,0,-2.5],"rotation":[0,0,0]},
-"boxes":[
-{"origin":[-0.5,-3,-0.5],"size":[1,6,1],"uv":[0,0],"note":"the grip, wound in linen"},
-{"origin":[-1.5,-7,-0.5],"size":[1,4,1],"uv":[4,0],"note":"upper limb"},
-{"origin":[-1.5,3,-0.5],"size":[1,4,1],"uv":[8,0],"note":"lower limb"},
-{"origin":[-2.5,-10,-0.5],"size":[1,3,1],"uv":[12,0],"note":"upper limb, bending"},
-{"origin":[-2.5,7,-0.5],"size":[1,3,1],"uv":[16,0],"note":"lower limb, bending"},
-{"origin":[-3.5,-11,-0.5],"size":[1,1,1],"uv":[20,0],"note":"upper tip, gilt"},
-{"origin":[-3.5,10,-0.5],"size":[1,1,1],"uv":[24,0],"note":"lower tip, gilt"},
-{"origin":[-2.5,-12,-0.5],"size":[1,1,1],"uv":[28,0],"note":"upper recurve, flicked back"},
-{"origin":[-2.5,11,-0.5],"size":[1,1,1],"uv":[0,8],"note":"lower recurve, flicked back"},
-{"origin":[-4.5,-10,0],"size":[1,20,0],"uv":[4,8],"note":"string"}
+"weapon": "order_bow",
+"thickness": 2,
+"grip": {
+"pixel": [
+5,
+11
+],
+"offset": [
+0,
+0,
+0
+],
+"rotation": [
+0,
+0,
+0
+],
+"note": "the grip pixel is the left column of the 2 px wound grip, through the middle of the fist; the belly stands one pixel in front of it"
+},
+"pull": [
+0.15,
+0.32,
+0.48
+],
+"nocks": [
+[
+3.5,
+11.5
+],
+[
+2.5,
+11.5
+],
+[
+1.5,
+11.5
+],
+[
+0.5,
+11.5
 ]
+],
+"note": "The Order Archer's bow, 23 px: a short recurve in dark wood, gilt tips and collars, the grip wound in linen; the string to the left (back, toward the archer), drawn to the right hand's place 4 px behind the grip at the full draw."
 }

@@ -1,17 +1,45 @@
 {
-"weapon":"longbow",
-"note":"The Order Longbow's yew longbow, 38 px: a shallow D, horn nocks, a leather grip; upright in the right hand, its top 6 px past the head and its foot just off the ground (the mark).",
-"size":[64,64],
-"grip":{"offset":[0,0,-2.5],"rotation":[0,0,0]},
-"boxes":[
-{"origin":[-0.5,-2,-0.5],"size":[1,4,1],"uv":[0,0],"note":"the leather grip"},
-{"origin":[-0.5,-12,-0.5],"size":[1,10,1],"uv":[4,0],"note":"the stave over the grip"},
-{"origin":[-1.5,-18,-0.5],"size":[1,6,1],"uv":[8,0],"note":"upper limb"},
-{"origin":[-1.5,2,-0.5],"size":[1,6,1],"uv":[12,0],"note":"lower limb"},
-{"origin":[-2.5,-22,-0.5],"size":[1,4,1],"uv":[16,0],"note":"upper limb, bending"},
-{"origin":[-2.5,8,-0.5],"size":[1,4,1],"uv":[20,0],"note":"lower limb, bending"},
-{"origin":[-3.5,-24,-0.5],"size":[1,2,1],"uv":[24,0],"note":"upper horn nock"},
-{"origin":[-3.5,12,-0.5],"size":[1,2,1],"uv":[28,0],"note":"lower horn nock"},
-{"origin":[-4.5,-23,0],"size":[1,36,0],"uv":[32,0],"note":"string"}
+"weapon": "longbow",
+"thickness": 2,
+"grip": {
+"pixel": [
+5,
+24
+],
+"offset": [
+0,
+0,
+0
+],
+"rotation": [
+0,
+0,
+0
+],
+"note": "the grip pixel is the left column of the 2 px leather grip, through the middle of the fist; the top is 24 px above it, the foot 13 below, as the box longbow stood"
+},
+"pull": [
+0.15,
+0.32,
+0.48
+],
+"nocks": [
+[
+3.5,
+24.5
+],
+[
+2.5,
+24.5
+],
+[
+1.5,
+24.5
+],
+[
+0.5,
+24.5
 ]
+],
+"note": "The Order Longbow's yew longbow, 38 px: a shallow D, horn nocks, a leather grip; the string to the left, drawn to the right hand's place at the full draw."
 }

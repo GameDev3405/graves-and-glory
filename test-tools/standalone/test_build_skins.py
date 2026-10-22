@@ -1,8 +1,10 @@
-"""Checks tools/build_skins.py (Task 5) against fixture sources in a temp dir, without launching the game."""
+"""Checks tools/build_skins.py (Task 5, and Task 5d: sprite weapons, the relief layer, the turnaround sheets) against fixture
+sources in a temp dir, without launching the game."""
 import contextlib
 import copy
 import io
 import json
+import math
 import pathlib
 import re
 import sys
@@ -51,8 +53,7 @@ PARTS = {
     'helm': {'part': 'helm', 'bone': 'head', 'team': False, 'tag': 'helm', 'boxes': [box([-4, -9, -4], [8, 3, 8], [0, 0])]},
     'pennant': {'part': 'pennant', 'bone': 'body', 'team': True, 'tag': '', 'boxes': [box([-2, -26, 3], [4, 8, 1], [0, 0])]},
 }
-SWORD = {'weapon': 'sword', 'size': [16, 16], 'boxes': [box([-0.5, -10, -0.5], [1, 12, 1], [0, 0])],
-         'grip': {'offset': [0, 0, 0], 'rotation': [90, 0, 0]}}
+SWORD = {'weapon': 'sword', 'thickness': 1, 'grip': {'pixel': [3, 10], 'offset': [0, 0, 0], 'rotation': [90, 45, 90]}}
 TROOPS = {
     'knight': {'troop': 'knight', 'rig': 'biped', 'parts': [{'part': 'cap', 'uv': [32, 0]}, {'part': 'skirt', 'uv': [0, 32]}, {'part': 'pennant'}],
                'skins': {'1': 'knight_s1.png'}, 'weapon': 'sword', 'hand': 'right', 'portrait': 'standard'},
@@ -124,6 +125,116 @@ def fixture(root, troops=None, parts=None, rigs=None, sheet=None):
             mask.putpixel(xy, (255, 255, 255, 255))
         mask.save(root / 'art/team' / ('glyph_%s.png' % g))
     return root
+
+
+def sprite_image(size, pixels=None, colour=(124, 133, 145, 255)):
+    """A sprite frame: transparent, with these opaque pixels (every pixel when None)."""
+    im = Image.new('RGBA', size, (0, 0, 0, 0))
+    for xy in ([(x, y) for y in range(size[1]) for x in range(size[0])] if pixels is None else pixels):
+        im.putpixel(xy, colour)
+    return im
+
+
+def put_png(path, im):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    im.save(path)
+
+
+BOW = {'weapon': 'bow', 'thickness': 2, 'grip': {'pixel': [2, 4], 'offset': [0, 0, 0], 'rotation': [0, 0, 0]},
+       'pull': [0.15, 0.32, 0.48], 'nocks': [[1.5, 4.5], [1.0, 4.5], [0.5, 4.5], [0.0, 4.5]]}
+BOW_COLOURS = [(100 + 30 * i, 120, 140, 255) for i in range(4)]
+
+
+def put_bow(root, bow=None, **sizes):
+    """art/weapons/bow.json and its four 8x9 frames: a column of pixels (grip at (2, 4)), one colour a frame."""
+    write_json(root / 'art/weapons/bow.json', bow or BOW)
+    for i, name in enumerate(('bow', 'bow_pull_0', 'bow_pull_1', 'bow_pull_2')):
+        size = sizes.get(name, (8, 9))
+        put_png(root / 'art/weapons' / (name + '.png'), sprite_image(size, [(2, y) for y in range(min(9, size[1]))], BOW_COLOURS[i]))
+
+
+NORMALS = ((0, -1, 0), (0, 1, 0), (0, 0, -1), (0, 0, 1), (-1, 0, 0), (1, 0, 0))   # Minecraft's Direction order, in model space
+AXIS = (1, 1, 2, 2, 0, 0)   # the axis each Direction index lies on
+MINT = (120, 100, 80, 255)   # a relief colour no rule objects to
+RELIEF_PARTS = dict(PARTS,
+                    panel={'part': 'panel', 'bone': 'body', 'team': True, 'tag': '', 'boxes': [box([-3, -10, -3], [6, 6, 1], [0, 9])]},
+                    flap={'part': 'flap', 'bone': 'body', 'team': False, 'tag': '', 'boxes': [box([-2, 0, -2.5], [4, 4, 0], [0, 0])]},
+                    plain={'part': 'plain', 'bone': 'head', 'team': False, 'tag': '', 'boxes': [box([-4, -9, -4], [8, 2, 8], [0, 0])]})
+
+
+def relief_png(root, name, texels, size=(64, 64), colour=MINT):
+    """art/troops/<name>: transparent, with these texels raised (a texel may carry its own (x, y, colour))."""
+    im = Image.new('RGBA', size, (0, 0, 0, 0))
+    for t in texels:
+        im.putpixel(tuple(t[:2]), t[2] if len(t) > 2 else colour)
+    put_png(root / 'art/troops' / name, im)
+    return im
+
+
+def dot(a, b):
+    return sum(x * y for x, y in zip(a, b))
+
+
+def cross(a, b):
+    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+
+
+def sub(a, b):
+    return [x - y for x, y in zip(a, b)]
+
+
+def uv_corners(q):
+    """The UV of a quad's corners 0, 1, 2 and 3 (corner 2 is corner 1 + corner 3 - corner 0)."""
+    u0, u1, u3 = (q[7], q[8]), (q[9], q[10]), (q[11], q[12])
+    return [u0, u1, (u1[0] + u3[0] - u0[0], u1[1] + u3[1] - u0[1]), u3]
+
+
+def uv_area(q):
+    c = uv_corners(q)
+    return abs((c[1][0] - c[0][0]) * (c[3][1] - c[0][1]) - (c[1][1] - c[0][1]) * (c[3][0] - c[0][0]))
+
+
+def uv_box(q):
+    c = uv_corners(q)
+    return min(p[0] for p in c), min(p[1] for p in c), max(p[0] for p in c), max(p[1] for p in c)
+
+
+def vanilla_uv(box, normal, point):
+    """The UV (texels) that 1.20.1's ModelPart.Cuboid gives a point on the face whose geometric normal is `normal`: the
+    constructor's vertices, UV rectangles and quad lists transcribed as written, the mirror swap and the flipped x of
+    the normal included; the point is read as lying on that face's plane."""
+    (u, v), (sx, sy, sz) = box['uv'], box['size']
+    o, d = box['origin'], box['dilation']
+    x, y, z = o[0] - d[0], o[1] - d[1], o[2] - d[2]
+    j, k, l = o[0] + sx + d[0], o[1] + sy + d[1], o[2] + sz + d[2]
+    if box['mirror']:
+        x, j = j, x
+    vert = {1: (x, y, z), 2: (j, y, z), 3: (j, k, z), 4: (x, k, z), 5: (x, y, l), 6: (j, y, l), 7: (j, k, l), 8: (x, k, l)}
+    m, n, o2, p, q, r = u, u + sz, u + sz + sx, u + sz + sx + sx, u + sz + sx + sz, u + sz + sx + sz + sx
+    s, t, w = v, v + sz, v + sz + sy
+    sides = [([6, 5, 1, 2], n, s, o2, t, (0, -1, 0)), ([3, 4, 8, 7], o2, t, p, s, (0, 1, 0)), ([1, 5, 8, 4], m, t, n, w, (-1, 0, 0)),
+             ([2, 1, 4, 3], n, t, o2, w, (0, 0, -1)), ([6, 2, 3, 7], o2, t, q, w, (1, 0, 0)), ([5, 6, 7, 8], q, t, r, w, (0, 0, 1))]
+    for names, u1, v1, u2, v2, direction in sides:
+        if box['mirror']:
+            direction = (-direction[0], direction[1], direction[2])
+        if tuple(direction) != tuple(normal):
+            continue
+        pos = [vert[i] for i in names]
+        uvs = [(u2, v1), (u1, v1), (u1, v2), (u2, v2)]
+        e1, e3 = sub(pos[1], pos[0]), sub(pos[3], pos[0])
+        rel = sub(point, pos[0])
+        a, b = dot(rel, e1) / dot(e1, e1), dot(rel, e3) / dot(e3, e3)
+        return (uvs[0][0] + a * (uvs[1][0] - uvs[0][0]) + b * (uvs[3][0] - uvs[0][0]),
+                uvs[0][1] + a * (uvs[1][1] - uvs[0][1]) + b * (uvs[3][1] - uvs[0][1]))
+    raise AssertionError('no face with the normal %s' % (normal,))
+
+
+def mini_model(size=(4, 4, 4), origin=(-2, -2, -2), uv=(0, 0), mirror=False, dilation=(0, 0, 0), sheet=(32, 32)):
+    """A model of one bone with one box, as bake gives it (what relief_mesh reads)."""
+    box = {'origin': list(origin), 'size': list(size), 'uv': list(uv), 'mirror': mirror, 'dilation': list(dilation)}
+    bone = {'name': 'body', 'parent': '', 'part': '', 'team': False, 'tag': '', 'stages': [], 'sheet': list(sheet),
+            'pivot': [0, 0, 0], 'rotation': [0, 0, 0], 'boxes': [box]}
+    return {'size': list(sheet), 'bones': [bone], 'glowFrom': 1}, box
 
 
 def export_assets(root):
@@ -489,6 +600,421 @@ class BuildSkinsChecks(unittest.TestCase):
         self.assertEqual(cap['size'], [8, 2, 8])
         head = find(model, 'head')['boxes'][0]
         self.assertAlmostEqual(head['dilation'][0], 8 * 0.1 / 2, places=4)
+
+    def test_bone_cap(self):
+        """A troop may have 64 bones, and a 65th fails naming the troop (Task 5 review, finding 3): TroopModel records the
+        bones a draw shows as the bits of one long, and the client refuses a bigger model, which then draws vanilla."""
+        def flags(n):
+            return self.with_knight(parts=TROOPS['knight']['parts'] + [{'part': 'pennant', 'name': 'pennant_%d' % i} for i in range(n)])
+        with tempfile.TemporaryDirectory() as tmp:
+            cat = build_skins.load(fixture(tmp, troops=flags(51)))
+            self.assertEqual(len(build_skins.bake(cat, 'knight')['bones']), build_skins.MAX_BONES)
+        with tempfile.TemporaryDirectory() as tmp:
+            said = self.fails(export_assets, fixture(tmp, troops=flags(52)))
+        self.assertIn('knight: 65 bones, more than 64', said)
+
+    # ---- Task 5d: sprite weapons ----
+
+    def assert_quad(self, q, what=''):
+        """A quad as the client reads it: 13 numbers, a direction, equal min and max on its axis, corners counter-clockwise
+        from outside (their cross product along the normal, not just toward it), and UVs of area above 0."""
+        self.assertEqual(len(q), 13, what)
+        d = q[0]
+        self.assertIn(d, range(6), what)
+        lo, hi = q[1:4], q[4:7]
+        self.assertEqual(lo[AXIS[d]], hi[AXIS[d]], what)
+        for i in range(3):
+            self.assertLessEqual(lo[i], hi[i], what)
+        c = build_skins.quad_corners(d, lo, hi)
+        n = cross(sub(c[1], c[0]), sub(c[3], c[0]))
+        self.assertGreater(dot(n, NORMALS[d]), 0, what)
+        self.assertAlmostEqual(dot(n, NORMALS[d]), math.sqrt(dot(n, n)), places=6, msg=what)
+        self.assertGreater(uv_area(q), 0, what)
+
+    def test_sprite_extrude(self):
+        """An L of four pixels, thickness 1, gripped at its corner pixel: two big faces, then the six merged side runs."""
+        im = sprite_image((4, 4), [(0, 0), (0, 1), (0, 2), (1, 2)])
+        quads = build_skins.sprite_mesh(im, 1, (0, 2), 0)
+        self.assertEqual(len(quads), 8)
+        self.assertEqual([q[0] for q in quads[:2]], [2, 3])   # north then south
+        for q in quads[:2]:
+            self.assertEqual((q[1], q[2], q[4], q[5]), (-0.5, -2.5, 3.5, 1.5))   # the whole 4x4 frame about the grip pixel's centre
+        self.assertEqual((quads[0][3], quads[1][3]), (-0.5, 0.5))
+        runs = {(q[0], tuple(q[1:4]), tuple(q[4:7])) for q in quads[2:]}
+        self.assertEqual(runs, {
+            (4, (-0.5, -2.5, -0.5), (-0.5, 0.5, 0.5)),     # the left edge, rows 0 to 2
+            (0, (-0.5, -2.5, -0.5), (0.5, -2.5, 0.5)),     # the top of the pixel (0, 0)
+            (0, (0.5, -0.5, -0.5), (1.5, -0.5, 0.5)),      # the top of the foot
+            (1, (-0.5, 0.5, -0.5), (1.5, 0.5, 0.5)),       # the bottom, two pixels in one run
+            (5, (0.5, -2.5, -0.5), (0.5, -0.5, 0.5)),      # the right edge of the bar, rows 0 and 1
+            (5, (1.5, -0.5, -0.5), (1.5, 0.5, 0.5))})      # the right edge of the foot
+        self.assertEqual(len(runs), 6)
+        for q in quads:
+            self.assert_quad(q)
+
+    def test_sprite_grip_uv(self):
+        im = sprite_image((4, 4), [(0, 0), (0, 1), (0, 2), (1, 2)])
+        for t in (1, 2, 3):
+            with self.subTest(thickness=t):
+                quads = build_skins.sprite_mesh(im, t, (0, 2), 2)   # the third column of a packed sheet: u starts at 8
+                zs = sorted({q[3] for q in quads} | {q[6] for q in quads})
+                self.assertEqual((zs[0], zs[-1]), (-t / 2, t / 2))
+                bottom = next(q for q in quads[2:] if q[0] == 1)
+                self.assertEqual((bottom[1], bottom[2], bottom[4]), (-0.5, 0.5, 1.5))   # the grip pixel's centre is (0, 0, 0)
+                self.assertEqual(uv_box(quads[0]), (8, 0, 12, 4))
+                self.assertEqual(uv_box(quads[1]), (8, 0, 12, 4))
+                self.assertEqual(uv_box(bottom), (8, 2.25, 10, 2.75))
+                self.assertEqual(uv_box(next(q for q in quads[2:] if q[0] == 4)), (8.25, 0, 8.75, 3))
+                for q in quads:
+                    self.assert_quad(q)
+                for q in quads[2:]:
+                    u0, v0, u1, v1 = uv_box(q)
+                    if q[0] in (0, 1):   # a run along x: half a texel across, centred on the row; the run along
+                        self.assertAlmostEqual(v1 - v0, 0.5)
+                        self.assertAlmostEqual((v0 + v1) / 2 % 1, 0.5)
+                        self.assertAlmostEqual(u1 - u0, q[4] - q[1])
+                    else:
+                        self.assertAlmostEqual(u1 - u0, 0.5)
+                        self.assertAlmostEqual((u0 + u1) / 2 % 1, 0.5)
+                        self.assertAlmostEqual(v1 - v0, q[5] - q[2])
+
+    def test_pull_frames(self):
+        """A bow with three pull frames packs rest, pull_0, pull_1, pull_2 left to right, with a nock for each; a frame of
+        another size, a pull that does not rise or leaves 0..1.2, a glow beside it and wrong nocks each exit 1."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            put_bow(root)
+            index = self.export(root)
+            out = root / ASSETS
+            model = json.loads((out / 'models/troop/weapon/bow.json').read_text(encoding='utf-8'))
+            with Image.open(out / 'textures/entity/troop/weapon/bow.png') as im:
+                tex = im.convert('RGBA')
+        self.assertEqual(index['weapons'], ['bow', 'sword'])
+        self.assertEqual(model['format'], 2)
+        self.assertEqual((tex.size, model['size']), ((32, 9), [32, 9]))
+        self.assertEqual([f['name'] for f in model['frames']], ['rest', 'pull_0', 'pull_1', 'pull_2'])
+        self.assertEqual(model['pull'], [0.15, 0.32, 0.48])
+        self.assertEqual([f['nock'] for f in model['frames']], [[-1, 0, 0], [-1.5, 0, 0], [-2, 0, 0], [-2.5, 0, 0]])
+        self.assertEqual((model['thickness'], model['glow']), (2, ''))
+        for i, f in enumerate(model['frames']):
+            self.assertEqual(tex.getpixel((8 * i + 2, 4)), BOW_COLOURS[i])
+            self.assertEqual(tex.getpixel((8 * i + 3, 4))[3], 0)
+            self.assertTrue(f['quads'])
+            for q in f['quads']:
+                self.assert_quad(q)
+                u0, _, u1, _ = uv_box(q)
+                self.assertTrue(8 * i <= u0 and u1 <= 8 * i + 8, (f['name'], q))   # every quad reads its own column
+        cases = {
+            'bow_pull_1.png': lambda r: put_bow(r, bow_pull_1=(8, 10)),
+            'does not rise': lambda r: put_bow(r, dict(BOW, pull=[0.3, 0.3, 0.5])),
+            'between 0 and 1.2': lambda r: put_bow(r, dict(BOW, pull=[0.3, 0.5, 1.3])),
+            'bow_e.png': lambda r: (put_bow(r), put_png(r / 'art/weapons/bow_e.png', sprite_image((8, 9), [(2, 3)]))),
+            'nocks': lambda r: put_bow(r, dict(BOW, nocks=BOW['nocks'][:3])),
+            'lacks nocks': lambda r: put_bow(r, {k: v for k, v in BOW.items() if k != 'nocks'}),
+        }
+        for want, make in cases.items():
+            with self.subTest(want=want), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp)
+                make(root)
+                said = self.fails(export_assets, root)
+                self.assertIn('bow', said)
+                self.assertIn(want.replace('lacks nocks', 'nocks'), said)
+
+    def test_weapon_rules(self):
+        """Each of these exits 1, naming the weapon and the frame or file."""
+        def isolated(n):   # n pixels, none touching another: 4 side quads each
+            return [(2 * (i % 8), 2 * (i // 8)) for i in range(n)]
+
+        def sword(**changes):
+            return lambda r: write_json(r / 'art/weapons/sword.json', dict(SWORD, **changes))
+
+        def lone_grip(n):
+            def make(r):
+                write_json(r / 'art/weapons/sword.json', dict(SWORD, grip=dict(SWORD['grip'], pixel=[0, 0])))
+                put_png(r / 'art/weapons/sword.png', sprite_image((16, 16), isolated(n)))
+            return make
+
+        def wide(r):
+            write_json(r / 'art/weapons/sword.json', dict(SWORD, grip=dict(SWORD['grip'], pixel=[3, 5])))
+            put_png(r / 'art/weapons/sword.png', sprite_image((49, 10)))
+        cases = [
+            ('boxes', sword(boxes=[box([0, 0, 0], [1, 1, 1], [0, 0])])),
+            ('thickness', sword(thickness=4)),
+            ('thickness', sword(thickness=0)),
+            ('transparent', lambda r: put_png(r / 'art/weapons/sword.png', sprite_image(
+                (16, 16), [(x, y) for x in range(16) for y in range(16) if (x, y) != (3, 10)]))),
+            ('outside the frame', sword(grip=dict(SWORD['grip'], pixel=[16, 3]))),
+            ('49x10', wide),
+            ('130 quads', lone_grip(32)),
+        ]
+        for want, make in cases:
+            with self.subTest(want=want), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp)
+                make(root)
+                said = self.fails(export_assets, root)
+                self.assertIn('sword', said)
+                self.assertIn(want, said)
+        with tempfile.TemporaryDirectory() as tmp:   # 126 quads are within the 128 a frame may have
+            root = fixture(tmp)
+            lone_grip(31)(root)
+            self.export(root)
+            frame = json.loads((root / ASSETS / 'models/troop/weapon/sword.json').read_text(encoding='utf-8'))['frames'][0]
+            self.assertEqual(len(frame['quads']), 126)
+
+    # ---- Task 5d: the relief layer ----
+
+    def knight_with(self, parts=None, **changes):
+        troops = self.with_knight(**changes)
+        if parts:
+            troops['knight']['parts'] = TROOPS['knight']['parts'] + parts
+        return troops
+
+    def mesh(self, model, texels, colour=MINT, key='1'):
+        """relief_mesh on a hand-made one-box model: the quads of its only bone."""
+        im = Image.new('RGBA', tuple(model['size']), (0, 0, 0, 0))
+        for t in texels:
+            im.putpixel(tuple(t[:2]), t[2] if len(t) > 2 else colour)
+        with tempfile.TemporaryDirectory() as tmp:
+            cat = build_skins.load(fixture(tmp))
+            return build_skins.relief_mesh(cat, model, im, 'knight', key)
+
+    def test_relief_composite(self):
+        marks = [(22, 22, (90, 60, 40, 255)), (23, 22, (90, 60, 40, 255)), (24, 28, (30, 30, 36, 255))]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            src = relief_png(root, 'knight_s1_r.png', marks)
+            self.export(root)
+            index = json.loads((root / ASSETS / 'models/troop/index.json').read_text(encoding='utf-8'))
+            with Image.open(root / ASSETS / 'textures/entity/troop/knight_s1.png') as im:
+                shipped = im.convert('RGBA')
+            on_disk = sorted(p.name for p in (root / ASSETS / 'textures/entity/troop').glob('*.png'))
+            base = Image.open(root / 'art/troops/knight_s1.png').convert('RGBA')
+        want = base.copy()
+        for x, y, c in marks:
+            want.putpixel((x, y), c)
+        self.assertEqual(list(shipped.getdata()), list(want.getdata()))
+        self.assertEqual(list(build_skins.composite(base, src).getdata()), list(want.getdata()))
+        self.assertEqual(shipped.getpixel((22, 22)), (90, 60, 40, 255))
+        self.assertEqual(shipped.getpixel((25, 22)), (200, 196, 186, 255))   # a texel the relief leaves is the skin's own
+        self.assertFalse([n for n in on_disk if n.endswith('_r.png')], on_disk)
+        self.assertFalse([o for o in index['outputs'] if '_r.png' in o])
+
+    def test_relief_mesh(self):
+        """A 2x1 strip on the north face of a 4x4x4 box: one top quad and four side quads, one pixel deep (1.2 px on a box
+        scaled 1.2 on z); a quad's UV centre is the texel under it by the Cuboid rule, on a mirrored and a dilated box too."""
+        model, box = mini_model()
+        quads = self.mesh(model, [(5, 5), (6, 5)])['body']
+        self.assertEqual(len(quads), 5)
+        top = [q for q in quads if abs(uv_area(q) - 2) < 1e-6]   # the strip's own face covers 2 texels
+        self.assertEqual(len(top), 1)
+        self.assertEqual((top[0][0], top[0][1:7]), (2, [-1, -1, -3, 1, 0, -3]))
+        sides = [q for q in quads if q is not top[0]]
+        self.assertEqual(sorted(q[0] for q in sides), [0, 1, 4, 5])
+        for q in sides:
+            self.assertEqual((q[3], q[6]), (-3, -2))
+        for q in quads:
+            self.assert_quad(q)
+        scaled, _ = mini_model(origin=(-2, -2, -2.0), dilation=(0, 0, 0.4))   # z scaled 1.2: the box spans -2.4 to 2.4
+        quads = self.mesh(scaled, [(5, 5), (6, 5)])['body']
+        self.assertEqual(len(quads), 5)
+        for q in quads:
+            self.assertAlmostEqual(q[6] - q[3], 0.0 if q[0] == 2 else 1.2)
+            self.assertAlmostEqual(min(q[3], q[6]), -3.6)
+        texels = {'top': (5, 1), 'bottom': (9, 1), 'west': (1, 5), 'north': (5, 5), 'east': (9, 5), 'south': (13, 5)}
+        for mirror, dilation in ((False, (0, 0, 0)), (True, (0, 0, 0)), (False, (0.2, 0.1, 0.3)), (True, (0.2, 0.1, 0.3))):
+            with self.subTest(mirror=mirror, dilation=dilation):
+                model, box = mini_model(mirror=mirror, dilation=dilation)
+                quads = self.mesh(model, list(texels.values()))['body']
+                self.assertEqual(len(quads), 30)
+                tops = [q for q in quads if abs(uv_area(q) - 1) < 1e-6]
+                self.assertEqual(len(tops), 6)
+                centres = []
+                for q in tops:
+                    self.assert_quad(q)
+                    c = uv_corners(q)
+                    uv = ((c[0][0] + c[2][0]) / 2, (c[0][1] + c[2][1]) / 2)
+                    at = [(q[1 + i] + q[4 + i]) / 2 for i in range(3)]
+                    want = vanilla_uv(box, NORMALS[q[0]], at)
+                    self.assertAlmostEqual(uv[0], want[0], places=3)
+                    self.assertAlmostEqual(uv[1], want[1], places=3)
+                    centres.append((round(uv[0], 3), round(uv[1], 3)))
+                self.assertEqual(sorted(centres), sorted((x + 0.5, y + 0.5) for x, y in texels.values()))
+
+    def test_relief_corner(self):
+        """Raised texels of two faces beside one box edge fill the edge cell, so a band that wraps the edge is one solid:
+        no face between the voxels and the filled cell. One texel alone at the edge is a cube with 5 free faces."""
+        model, box = mini_model()
+        # north face column x = -2..-1 (texel 4) and west face z = -2..-1 (texel 3), both on row y = -1..0 (texel row 5)
+        both = self.mesh(model, [(4, 5), (3, 5)])['body']
+        # 3 cells (north voxel, west voxel, edge cell), 4 free faces each; no two of them merge
+        self.assertEqual(len(both), 12)
+        self.assertEqual(sorted(q[0] for q in both), [0, 0, 0, 1, 1, 1, 2, 2, 3, 4, 4, 5])
+        self.assertFalse([q for q in both if q[0] in (4, 5) and q[1] == -2], 'a face between the north voxel and the edge cell')
+        self.assertFalse([q for q in both if q[0] in (2, 3) and q[3] == -2], 'a face between the west voxel and the edge cell')
+        for q in both:
+            self.assert_quad(q)
+        self.assertEqual(len(self.mesh(model, [(4, 5), (2, 5)])['body']), 10)   # the west texel one in from the edge: two cubes
+        self.assertEqual(len(self.mesh(model, [(4, 5)])['body']), 5)
+        # a corner of three faces: 3 voxels, 3 edge cells and the corner cell, 3 free faces each
+        cluster = self.mesh(model, [(4, 4), (3, 4), (4, 3)])['body']
+        self.assertEqual(len(cluster), 21)
+        for q in cluster:
+            self.assert_quad(q)
+
+    def test_relief_rules(self):
+        flap = {'part': 'flap', 'uv': [56, 16]}
+        panel = {'part': 'panel'}
+        head_spots = [(x, y) for y in (8, 10, 12, 14) for x in (8, 10, 12, 14)]   # head north: 2 apart, no two touching
+        faces = [[(x + dx, y + dy) for x, y in head_spots] for dx, dy in ((0, 0), (16, 0), (-8, 0), (8, 0))]   # north, south, west, east
+        faces.append([(x, y) for y in (2, 4, 6) for x in (9, 11, 13)])   # the top, not its back row (the pennant) nor its edge columns (a band would wrap)
+        many = lambda n: [t for f in faces for t in f[:12]][:n]
+        rows = [(x, y) for y in (20, 21, 22) for x in range(20, 28)]
+
+        def glow_at(r):
+            im = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
+            im.putpixel((22, 22), (255, 240, 200, 255))
+            im.save(r / 'art/troops/knight_e.png')
+
+        def outer_at(r):
+            im = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
+            im.putpixel((22, 22), (120, 110, 100, 255))
+            im.save(r / 'art/troops/knight_o.png')
+        cases = [   # name, troops, parts, the relief texels, the colour, an extra setup, what the message names
+            ('off every face', None, None, [(63, 63)], MINT, None, ['no skin box face', '(63, 63)']),
+            ('no depth', self.knight_with([flap]), RELIEF_PARTS, [(57, 17)], MINT, None, ['no depth', '(57, 17)']),
+            ('team hue', None, None, [(22, 22)], (227, 179, 65, 255), None, ['gold side colour', '(22, 22)']),
+            ('glow', None, None, [(22, 22)], MINT, glow_at, ['glow', '(22, 22)']),
+            ('outer', None, None, [(22, 22)], MINT, outer_at, ['outer', '(22, 22)']),
+            ('arm inner face', None, None, [(49, 25)], MINT, None, ['overlaps', '(49, 25)']),
+            ('under the chest panel', self.knight_with([panel]), RELIEF_PARTS, [(24, 25)], MINT, None, ['overlaps', '(24, 25)']),
+            ('partial alpha', None, None, [(22, 22)], (120, 100, 80, 128), None, ['alpha', '(22, 22)']),
+            ('21% of a face', None, None, rows[:21], MINT, None, ['20%']),
+            ('257 quads', None, None, many(52), MINT, None, ['256 quads']),
+            ('under a part that never hides', self.with_knight(parts=[{'part': 'plain', 'uv': [32, 0]}, {'part': 'pennant'}]),
+             RELIEF_PARTS, [(10, 2)], MINT, None, ['overlaps', '(10, 2)']),
+        ]
+        for name, troops, parts, texels, colour, setup, wants in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp, troops=troops, parts=parts)
+                relief_png(root, 'knight_s1_r.png', texels, colour=colour)
+                if setup:
+                    setup(root)
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                self.assertIn('knight_s1_r.png', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with tempfile.TemporaryDirectory() as tmp:   # a second own skin without relief
+            root = fixture(tmp, troops=self.with_knight(skins={'1': 'knight_s1.png', '2': 'knight_s2.png'}))
+            relief_png(root, 'knight_s1_r.png', [(22, 22)])
+            said = self.fails(export_assets, root)
+            self.assertIn('knight', said)
+            self.assertIn('knight_s2_r.png', said)
+        with tempfile.TemporaryDirectory() as tmp:   # a relief of the wrong size
+            root = fixture(tmp)
+            relief_png(root, 'knight_s1_r.png', [(22, 22)], size=(32, 32))
+            said = self.fails(export_assets, root)
+            self.assertIn('knight_s1_r.png', said)
+            self.assertIn('32x32', said)
+        passing = [   # 19 of 96 texels, 255 quads, and a texel under a helm part (which can hide)
+            ('under 20%', None, None, rows[:19]),
+            ('255 quads', None, None, many(51)),
+            ('under a helm', {'sentinel': TROOPS['sentinel']}, None, [(10, 2)])]
+        for name, troops, parts, texels in passing:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                troop = 'sentinel' if troops else 'knight'
+                root = fixture(tmp, troops=troops, parts=parts)
+                relief_png(root, troop + '_s1_r.png', texels)
+                self.export(root)
+
+    def test_relief_keys(self):
+        """Bones with relief carry it keyed by the skin ("1", "2", "veteran"), only where they have quads; the top-level
+        keys stay Task 5's list and format is 2."""
+        troops = self.with_knight(skins={'1': 'knight_s1.png', '2': 'knight_s2.png'})
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp, troops=troops)
+            skin(root / 'art/troops/knight_veteran.png')
+            relief_png(root, 'knight_s1_r.png', [(22, 22)])
+            relief_png(root, 'knight_s2_r.png', [(22, 22), (23, 22), (10, 10)])   # the head too, at stage 2
+            relief_png(root, 'knight_veteran_r.png', [(24, 22)])
+            index = self.export(root)
+            model = json.loads((root / ASSETS / 'models/troop/knight.json').read_text(encoding='utf-8'))
+        self.assertEqual(model['format'], 2)
+        self.assertEqual(tuple(model), build_skins.MODEL_KEYS)
+        self.assertFalse(set(model) & set(build_skins.VANILLA_KEYS))
+        bones = {b['name']: b for b in model['bones']}
+        self.assertEqual(list(bones['body']['relief']), ['1', '2', 'veteran'])
+        self.assertEqual(list(bones['head']['relief']), ['2'])
+        for name, bone in bones.items():
+            if name not in ('body', 'head'):
+                self.assertNotIn('relief', bone, name)
+            for key, quads in bone.get('relief', {}).items():
+                self.assertTrue(quads, (name, key))
+                for q in quads:
+                    self.assert_quad(q)
+        self.assertEqual(len(bones['body']['relief']['1']), 5)
+        self.assertEqual(index['outputs'], sorted(index['outputs']))
+
+    def test_relief_template(self):
+        """--template's relief sheet: allowed faces in their hue at 40%, a texel whose voxel would overlap another box
+        hatched red, nothing where no skin box lies."""
+        with tempfile.TemporaryDirectory() as tmp:
+            cat = build_skins.load(fixture(tmp, troops=self.knight_with([{'part': 'panel'}]), parts=RELIEF_PARTS))
+            im = build_skins.relief_template(cat, 'knight').convert('RGBA')
+        self.assertEqual(im.size, (64, 64))
+        allowed = tuple(int(c * 0.4 + 255 * 0.6) for c in build_skins.HUES[0]) + (255,)   # the body, its front
+        red = build_skins.RELIEF_RED + (255,)
+        self.assertEqual(im.getpixel((22, 21)), allowed)
+        self.assertEqual(im.getpixel((63, 63))[3], 0)
+        panel = [im.getpixel((x, y)) for x in range(21, 27) for y in range(22, 28)]   # under the chest panel
+        self.assertIn(red, panel)
+        self.assertTrue(all(p == red or p[3] == 255 for p in panel))
+        inner = [im.getpixel((x, y)) for x in range(48, 52) for y in range(20, 32)]   # the right arm's face toward the body
+        self.assertGreaterEqual(inner.count(red), 12)
+        self.assertNotEqual(inner.count(red), len(inner))
+        self.assertNotIn(red, [im.getpixel((x, 21)) for x in range(20, 28)])
+
+    def test_summary_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            relief_png(root, 'knight_s1_r.png', [(22, 22)])
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                export_assets(root)
+        lines = out.getvalue().splitlines()
+        self.assertEqual(lines[0], 'build_skins: 3 troops, 2 rigs, 1 weapons, 6 cloths')
+        self.assertEqual(lines[1], 'build_skins: relief 1 stages, 5 quads (most 5, knight 1); weapons 1 frames, 6 quads (most 6, sword rest)')
+
+    def test_turn_sheets(self):
+        """--turn: one sheet a troop (a row a pose in shot order, a column an angle, the missing cells grey) and turn-all."""
+        with tempfile.TemporaryDirectory() as tmp:
+            shots, out = pathlib.Path(tmp) / 'shots', pathlib.Path(tmp) / 'out'
+            shots.mkdir()
+            for a in (0, 45, 90, 135, 180, 225, 270, 315):
+                Image.new('RGB', (1280, 720), (200, 40, 40)).save(shots / ('p2-turn-knight-idle-%d.png' % a))
+            Image.new('RGB', (1280, 720), (40, 200, 40)).save(shots / 'p2-turn-knight-walk25-0.png')
+            Image.new('RGB', (1280, 720), (40, 40, 200)).save(shots / 'p2-turn-gl_marshal-idle-0.png')
+            Image.new('RGB', (1280, 720), (9, 9, 9)).save(shots / 'p2-turn-knight-hand-front.png')   # not a body angle: left out
+            with contextlib.redirect_stdout(io.StringIO()):
+                made = build_skins.turn_sheets(shots, out)
+            self.assertEqual([p.name for p in made], ['turn-gl_marshal.png', 'turn-knight.png', 'turn-all.png'])
+            sheets = {p.name: Image.open(p).convert('RGB') for p in made}
+        knight = sheets['turn-knight.png']
+        self.assertEqual(knight.width, 960)
+        cell_w, cell_h = 120, knight.height // 2
+        self.assertEqual(knight.height % 2, 0)
+        self.assertEqual(knight.getpixel((cell_w // 2, cell_h // 2)), (200, 40, 40))             # idle, 0 degrees
+        self.assertEqual(knight.getpixel((7 * cell_w + cell_w // 2, cell_h // 2)), (200, 40, 40))  # idle, 315
+        self.assertEqual(knight.getpixel((cell_w // 2, cell_h + cell_h // 2)), (40, 200, 40))    # walk25, 0
+        grey = knight.getpixel((cell_w + cell_w // 2, cell_h + cell_h // 2))                     # walk25, 45: no shot
+        self.assertEqual(grey[0], grey[1])
+        self.assertNotIn(grey, ((200, 40, 40), (40, 200, 40)))
+        self.assertGreater(grey[0], 40)
+        self.assertEqual(sheets['turn-gl_marshal.png'].width, 960)
+        everyone = sheets['turn-all.png']
+        self.assertEqual((everyone.width, everyone.height), (960, 2 * (knight.height // 2)))      # one row a troop, two troops
+        self.assertEqual(everyone.getpixel((cell_w // 2, cell_h // 2)), (40, 40, 200))            # gl_marshal first (sorted)
+        self.assertEqual(everyone.getpixel((cell_w // 2, cell_h + cell_h // 2)), (200, 40, 40))   # then the knight's idle row
 
 
 if __name__ == '__main__':
