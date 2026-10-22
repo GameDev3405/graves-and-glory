@@ -166,6 +166,7 @@
 "table/note-weekly":{"w":308,"h":101,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "table/note-friends":{"w":364,"h":305,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "table/note-room":{"w":232,"h":373,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
+"table/note-room-short":{"w":232,"h":305,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "table/sheet-field":{"w":524,"h":325,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "table/icon-class-vanguard":{"w":14,"h":14,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "table/icon-class-marksman":{"w":14,"h":14,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},

@@ -2580,7 +2580,9 @@ public final class Phase1Checks implements ClientModInitializer {
      *  widgets clear of each other and all the War Table's own, the back plaque and the rail as home has it with the open page's
      *  plaque lit, the page's own oak, its focal title or, on the Chapter, its chapter block), a screenshot (ui-page-<name>), one
      *  real action through the server, the page again at 1920x1080 GUI 2 for grading (ui-page-<name>-1080, the same layout) and the
-     *  back plaque home: one p1-ui-page-<name> each. Then Task 6's carried items: Tab's focus survives a rebuild, a direct one and
+     *  back plaque home: one p1-ui-page-<name> each (the Chapter's claimable and claimed states shot at k 2 as well, beside the
+     *  approved mockups). Then every page at 1280x720 GUI 3, 854x480 GUI 2 and 1920x974 GUI 1 (p1-ui-page-scales), and home's field
+     *  card on each of the five maps at k 2 (p1-ui-page-cards). Then Task 6's carried items: Tab's focus survives a rebuild, a direct one and
      *  one on a change of the camp state (p1-ui-page-focus); the menu key already down when the table opens does not close it until
      *  it is let go (p1-ui-page-held-open); a held Enter on home rides once (p1-ui-page-held-home). Keys, clicks and the pointer
      *  reach the screen as UiRecruitChecks sends them. */
@@ -2591,8 +2593,8 @@ public final class Phase1Checks implements ClientModInitializer {
         // the server thread writes these, the client thread reads them
         volatile int stage;volatile UUID player;volatile boolean serverRoom;volatile String serverDifficulty="";
         // client thread only
-        int mark=-1,waitFrom,oldW,oldH,oldGui,index,sub,subAt,serial,serial1,serial2,menuCode=-1,gold=-1,landedAt=-1;boolean finished,ok=true,slid;
-        String why="",before="",focusName="";List<String> roll=List.of();String at0="",at19="";CampScreen table;
+        int mark=-1,waitFrom,oldW,oldH,oldGui,index,sub,subAt,serial,serial1,serial2,menuCode=-1,gold=-1,landedAt=-1,origMap=-1,cardAsked=-1;boolean finished,ok=true,slid,scalesOk=true,cardsOk=true;
+        String why="",before="",focusName="",scalesWhy="",cardsWhy="";List<String> roll=List.of();String at0="",at19="";CampScreen table;
         final Set<Integer> rollSeen=new TreeSet<>(),oathSeen=new TreeSet<>();
 
         public void serverTick(GravesAndGlory.Battle b){var id=player;serverRoom=id!=null&&b.campaign.social.room(id)!=null;serverDifficulty=b.campaign.difficulty;}
@@ -2654,6 +2656,38 @@ public final class Phase1Checks implements ClientModInitializer {
                 +(ours?", every widget the War Table's own":", a vanilla widget among them")+", back "+str(b.get("back"))+", the rail "+(rail?"as home's, this page's plaque lit":"WRONG:"+railWhy)
                 +", the oak "+table+", "+(name.equals("chapter")?"the chapter block \""+text("chapter")+"\"":"the title \""+title+"\" at "+str(tr))+(pass?"":" WRONG");
         }
+        /** layout(c,name) for the scales: its line, clearing scalesOk (not ok) when wrong. */
+        String scaled(MinecraftClient c,String name){boolean was=ok;ok=true;String line=layout(c,name);scalesOk&=ok;ok=was;return line;}
+        /** 1280x720 GUI 3: the page centred on a canvas of 1280x720 (origin 160,90), the table's planks covering it, and layout's rules. */
+        String mid(MinecraftClient c,String name){
+            int[] o=WarTable.origin(),t=rect("table");int w=UiCanvas.width(),h=UiCanvas.height();
+            boolean placed=pages(c)!=null&&w==1280&&h==720&&UiCanvas.k()==1&&o[0]==160&&o[1]==90&&t!=null&&t[0]<=0&&t[1]<=0&&t[0]+t[2]>=w&&t[1]+t[3]>=h;scalesOk&=placed;
+            return "origin "+o[0]+","+o[1]+", table "+str(t)+(placed?"":" WRONG")+", "+scaled(c,name);
+        }
+        /** 854x480 GUI 2, the first-launch window: a canvas smaller than the page, which stays centred and is cropped (Task 5's ruling;
+         *  a compact layout is Task 8's). Every widget inside the canvas, none overlapping; what the page drew across the canvas edge
+         *  is listed (art and words only). */
+        String small(MinecraftClient c){
+            int w=UiCanvas.width(),h=UiCanvas.height();int[] o=WarTable.origin();var b=boxes(c);
+            List<String> out=new ArrayList<>(),over=new ArrayList<>(),cut=new ArrayList<>();var keys=new ArrayList<>(b.keySet());
+            for(int i=0;i<keys.size();i++){if(!UiHomeChecks.inside(b.get(keys.get(i)),w,h))out.add(keys.get(i)+" "+str(b.get(keys.get(i))));for(int j=i+1;j<keys.size();j++)if(UiHomeChecks.overlap(b.get(keys.get(i)),b.get(keys.get(j))))over.add(keys.get(i)+"/"+keys.get(j));}
+            for(var e:WarTablePages.rects().entrySet())if(!Set.of("floor","table","rail").contains(e.getKey())&&!UiHomeChecks.inside(e.getValue(),w,h))cut.add(e.getKey()+" "+str(e.getValue()));
+            boolean pass=pages(c)!=null&&w==854&&h==480&&UiCanvas.k()==1&&o[0]==-53&&o[1]==-30&&b.size()>=5&&out.isEmpty()&&over.isEmpty();scalesOk&=pass;
+            return "canvas "+w+"x"+h+" (k "+UiCanvas.k()+"), origin "+o[0]+","+o[1]+", "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+"; drawn across the canvas edge "+cut+(pass?"":" WRONG");
+        }
+        /** 1920x974 GUI 1, a maximized window on a 1080p screen: a canvas larger than the table. The page stays centred on the planks,
+         *  the floor shows round them with the table's shadow on it (read from the framebuffer as home's check reads it), the rail runs
+         *  the width, and layout's rules hold. */
+        String big(MinecraftClient c,String name){
+            int cw=UiCanvas.width(),ch=UiCanvas.height(),k=UiCanvas.k();int[] o=WarTable.origin(),t=rect("table"),rail=rect("rail");
+            int tx=(cw-1280)/2,ty=(ch-720)/2,floor=DarkUi.FLOOR&0xffffff;
+            boolean placed=pages(c)!=null&&cw==1920&&ch==974&&k==1&&o[0]==480&&o[1]==217&&Arrays.equals(t,new int[]{tx,ty,1280,720})&&Arrays.equals(rect("floor"),new int[]{0,0,cw,ch})&&rail!=null&&rail[2]==cw;
+            int farLeft=UiHomeChecks.pixel(c,tx/2,ch/2),shadow1=UiHomeChecks.pixel(c,tx-1,ch/2),shadow4=UiHomeChecks.pixel(c,tx-4,ch/2),beyond=UiHomeChecks.pixel(c,tx-5,ch/2),plank=UiHomeChecks.pixel(c,tx+8,ch/2),below=UiHomeChecks.pixel(c,cw/2,ty+720),farBelow=UiHomeChecks.pixel(c,cw/2,ty+720+WarTable.SHADOW+1);
+            boolean floorOk=farLeft==floor&&beyond==floor&&UiHomeChecks.darker(shadow1,floor)&&shadow4!=floor&&UiHomeChecks.darker(below,floor)&&farBelow==floor&&plank!=floor&&plank!=shadow1;
+            scalesOk&=placed&&floorOk;
+            return "origin "+o[0]+","+o[1]+", table "+str(t)+" ("+tx+" px of floor left and right, "+ty+" above and below), rail "+str(rail)+(placed?"":" WRONG")+"; pixels: far left "+UiHomeChecks.hex(farLeft)+", shadow beside the planks "+UiHomeChecks.hex(shadow1)+" to "+UiHomeChecks.hex(shadow4)
+                +", floor again "+UiHomeChecks.hex(beyond)+", below the planks "+UiHomeChecks.hex(below)+" then "+UiHomeChecks.hex(farBelow)+", plank "+UiHomeChecks.hex(plank)+" (floor "+UiHomeChecks.hex(floor)+")"+(floorOk?"":" WRONG")+"; "+scaled(c,name);
+        }
 
         public void step(MinecraftClient c,int tick){
             if(tick>12000&&!finished){report("p1-ui-pages-timeout",false,"stuck in stage "+stage+" (page "+(index<PAGES.length?PAGES[index]:"none")+", step "+sub+"): "+why);end(c);return;}
@@ -2691,7 +2725,37 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==24){window(c,960,540,1);return;}
                     if(k==40){UiRecruitChecks.park(c);click(c,box(c,"back"));return;}
                     if(k==44){var s=screen(c);boolean home=s!=null&&s.page.equals("home")&&s.home!=null;ok&=home;why+="; the back plaque went "+(home?"home":"WRONG: "+(s==null?"the table closed":s.page));
-                        report("p1-ui-page-"+name,ok,why);index++;stage=index<PAGES.length?2:10;}
+                        report("p1-ui-page-"+name,ok,why);index++;stage=index<PAGES.length?2:5;}
+                }
+                case 5->{ // p1-ui-page-scales: each page at 1280x720 GUI 3 (canvas 1280x720), 854x480 GUI 2 (a canvas smaller than the page:
+                    // cropped, Task 5's ruling, a compact layout is Task 8's) and 1920x974 GUI 1 (larger than the table: the floor round the planks)
+                    int k=since(tick),p=k/80,j=k%80;
+                    if(p>=PAGES.length){if(j==0)window(c,960,540,1);if(j==20){report("p1-ui-page-scales",scalesOk,scalesWhy);stage=6;}return;}
+                    String name=PAGES[p];
+                    if(j==0){CampScreen.open(name);window(c,1280,720,3);return;}
+                    if(j==20||j==44||j==68){UiRecruitChecks.park(c);return;}
+                    if(j==22){scalesWhy+=(p==0?"":"; ")+name+" at 1280x720 GUI 3: "+mid(c,name);shot(c,"ui-page-"+name+"-720");return;}
+                    if(j==24){window(c,854,480,2);return;}
+                    if(j==46){scalesWhy+="; at 854x480 GUI 2: "+small(c);shot(c,"ui-page-"+name+"-854");return;}
+                    if(j==48){window(c,1920,974,1,true);return;}
+                    if(j==70){scalesWhy+="; at 1920x974 GUI 1: "+big(c,name);shot(c,"ui-page-"+name+"-1920x974");}
+                }
+                case 6->{ // p1-ui-page-cards: home's field card at 1920x1080 GUI 2 on each map in turn (ui-home-card-<id>), the server's map set as
+                    // the snapshot carries it and no map built (the card follows the snapshot's map); then the camp's map put back
+                    int k=since(tick);
+                    if(k==0){origMap=CampaignClient.map;cardAsked=-1;sub=0;CampScreen.open("home");window(c,1920,1080,2,true);return;}
+                    if(k<20)return;
+                    if(sub<Spec.MAPS.length){int i=sub;
+                        if(cardAsked!=i){cardAsked=i;subAt=tick;landedAt=-1;server(c,b->b.campaign.map=i);return;}
+                        if(landedAt<0&&CampaignClient.map==i)landedAt=tick;
+                        if(landedAt>0&&tick==landedAt+4)UiRecruitChecks.park(c);
+                        if(landedAt>0&&tick==landedAt+6){String want="table/map-"+Spec.MAPS[i].id(),got=WarTableHome.texts().get("field-card");boolean pass=screen(c)!=null&&screen(c).home!=null&&want.equals(got)&&Spec.MAPS[i].name().equals(WarTableHome.texts().get("field-name"));
+                            cardsOk&=pass;cardsWhy+=(i==0?"":", ")+Spec.MAPS[i].name()+": "+got+(pass?"":" WRONG (want "+want+")");shot(c,"ui-home-card-"+Spec.MAPS[i].id());landedAt=-1;sub++;}
+                        else if(landedAt<0&&at(tick)>100){cardsOk=false;cardsWhy+=(i==0?"":", ")+Spec.MAPS[i].name()+" never reached the client WRONG";sub++;}
+                        return;}
+                    if(cardAsked!=-2){cardAsked=-2;subAt=tick;int m=Math.max(0,origMap);server(c,b->b.campaign.map=m);return;}
+                    if(CampaignClient.map==Math.max(0,origMap)&&at(tick)>=3){window(c,960,540,1);report("p1-ui-page-cards",cardsOk,"home's field card at 1920x1080 GUI 2: "+cardsWhy+"; the camp's map put back ("+Spec.MAPS[Math.max(0,origMap)].name()+")");stage=10;}
+                    else if(at(tick)>100){window(c,960,540,1);report("p1-ui-page-cards",false,cardsWhy+"; the camp's map not put back WRONG");stage=10;}
                 }
                 case 10->{ // p1-ui-page-focus: Tab to Remove on the Banner's row 0; a rebuild, then a change of the camp state, leave the focus there
                     int k=since(tick);var s=screen(c);
@@ -2724,7 +2788,8 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==0){c.setScreen(null);CampScreen.open("home");sub=0;return;}
                     if(k==5){click(c,UiHomeChecks.box(c,"practice"));if(screen(c)!=null)screen(c).action("social:room");why="Practice raised ("+CampaignClient.homeMode+"), a private room asked for";return;}
                     if(k<5)return;
-                    if(sub==0){if(serverRoom&&!WarTablePages.value("room").isEmpty()&&k>=20){sub=1;subAt=tick;}else if(k>200){report("p1-ui-page-held-home",false,why+"; no room 200 ticks on WRONG");stage=13;}return;}
+                    if(sub==0){if(serverRoom&&!WarTablePages.value("room").isEmpty()&&k>=20){sub=1;subAt=tick;} // on to the first Enter, this tick
+                        else{if(k>200){report("p1-ui-page-held-home",false,why+"; no room 200 ticks on WRONG");stage=13;}return;}}
                     int j=at(tick);
                     if(sub==1&&j==0){boolean practice=s!=null&&s.home!=null&&s.home.focused==0&&"practice".equals(CampaignClient.homeMode);ok=practice;why+="; in room "+WarTablePages.value("room")+", Practice "+(practice?"raised":"WRONG: not raised");
                         serial=CampaignClient.noticeSerial;UiRecruitChecks.press(c,GLFW.GLFW_KEY_ENTER);return;}
@@ -2786,7 +2851,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     serial=CampaignClient.noticeSerial;before=text("contract-2");click(c,box(c,"reroll"));next(tick);}
                 case 1->{boolean changed=!Objects.equals(before,text("contract-2")),noticed=CampaignClient.noticeSerial!=serial;
                     if(noticed&&k>=3&&(changed||REROLL_REFUSALS.contains(CampaignClient.notice))){String n=text("notice");
-                        boolean pass="progress:reroll".equals(lastSent())&&(changed?"Issue 10 tactical orders".equals(text("contract-2"))&&REROLLED.equals(n)&&reroll!=null&&!reroll.active&&"Rerolled today".equals(text("reroll-hint")):REROLL_REFUSALS.contains(n));
+                        boolean pass="progress:reroll".equals(lastSent())&&(changed?"Issue ten tactical orders".equals(text("contract-2"))&&REROLLED.equals(n)&&reroll!=null&&!reroll.active&&"Rerolled today".equals(text("reroll-hint")):REROLL_REFUSALS.contains(n));
                         ok&=pass;why+="; Reroll sent "+lastSent()+": the third contract reads \""+text("contract-2")+"\", the notice line \""+n+"\", Reroll "+(reroll!=null&&reroll.active?"still taking a press":"dull")+" (\""+text("reroll-hint")+"\")"+(pass?"":" WRONG");stage=4;}
                     else if(k>100){ok=false;why+="; Reroll sent "+lastSent()+": no change and no refusal 100 ticks on (the third contract \""+text("contract-2")+"\", the notice \""+CampaignClient.notice+"\") WRONG";stage=4;}}
                 default->stage=4;
@@ -2806,8 +2871,8 @@ public final class Phase1Checks implements ClientModInitializer {
                     rollSeen.clear();oathSeen.clear();slid=false;landedAt=-1;
                     server(c,b->{var s=b.campaign.profile(player).progression;s.xp=2870;for(int t=1;t<=10;t++)s.claims.add(Progression.SEASON+":"+t);s.titles.add("Scout");s.titles.add("Pathfinder");b.campaign.save(player);});
                     next(tick);}
-                case 1->{if(pr.xp==2870&&pr.claims.contains(Progression.SEASON+":10"))next(tick);else if(k>100){ok=false;why+="; tier 11 never reached the client WRONG";stage=4;}}
-                case 2->{if(k<3)return;tiersDrawn();
+                case 1->{if(pr.xp==2870&&pr.claims.contains(Progression.SEASON+":10")){window(c,1920,1080,2,true);next(tick);}else if(k>100){ok=false;why+="; tier 11 never reached the client WRONG";stage=4;}} // the rest at k 2, as the approved mockups
+                case 2->{if(k==18)UiRecruitChecks.park(c);if(k<20)return;tiersDrawn();
                     boolean bright=claim!=null&&claim.active&&"table/btn-brass-240x40".equals(tex("claim"))&&"10".equals(text("first"))&&"11".equals(text("tier"))&&"20".equals(text("hero"))&&"Vanguard".equals(text("hero-name"))
                         &&"Reached at 5,000 XP".equals(text("hero-state"))&&"2,870 / 7,500 XP".equals(text("xp"))&&"130 XP to tier 12".equals(text("to-next"));
                     boolean plaques=Arrays.equals(rect("roll-10"),new int[]{o[0]+136,o[1]+320,68,80})&&Arrays.equals(rect("roll-11"),new int[]{o[0]+212,o[1]+312,68,88})&&Arrays.equals(rect("oath-12"),new int[]{o[0]+288,o[1]+408,68,80})
@@ -2815,7 +2880,7 @@ public final class Phase1Checks implements ClientModInitializer {
                         &&"Pathfinder / title".equals(text("roll-10"))&&"Gold / 25".equals(text("roll-11"))&&"Tabard / livery".equals(text("oath-11"))&&"Portrait / frame".equals(text("oath-10"))&&button(c,"title-10")!=null;
                     ok&=bright&&plaques;why+="; tier 11 reached, 1 to 10 claimed: Claim "+tex("claim")+(claim!=null&&claim.active?" taking a press":" dull")+", the track from "+text("first")+", the hero tier "+text("hero")+" "+text("hero-name")+" (\""+text("hero-state")+"\"), \""+text("xp")+"\", \""+text("to-next")+"\""+(bright?"":" WRONG")
                         +"; roll-10 "+str(rect("roll-10"))+" "+tex("roll-10")+" \""+text("roll-10")+"\" stamped "+tex("stamp-10")+", roll-11 "+str(rect("roll-11"))+" "+tex("roll-11")+" \""+text("roll-11")+"\", roll-12 "+tex("roll-12")+", oath-11 \""+text("oath-11")+"\", oath-12 "+str(rect("oath-12"))+(plaques?"":" WRONG");
-                    click(c,box(c,"earlier"));next(tick);}
+                    shot(c,"ui-page-chapter-claimable");click(c,box(c,"earlier"));next(tick);}
                 case 3->{if(k<3)return;tiersDrawn();var earlier=button(c,"earlier");boolean at="1".equals(text("first"))&&earlier!=null&&!earlier.active&&"chapter/arrow-left-dim".equals(tex("earlier"));
                     ok&=at;why+="; the left arrow: from "+text("first")+" (the arrow "+tex("earlier")+")"+(at?"":" WRONG");click(c,box(c,"later"));next(tick);}
                 case 4->{if(k<3)return;tiersDrawn();boolean at="11".equals(text("first"));ok&=at;why+=", the right arrow: from "+text("first")+(at?"":" WRONG");click(c,box(c,"later"));next(tick);}
@@ -2829,7 +2894,7 @@ public final class Phase1Checks implements ClientModInitializer {
                         boolean pass="progress:founders:11".equals(lastSent())&&slid&&"11".equals(text("first"))&&Arrays.equals(rect("roll-11"),new int[]{o[0]+136,o[1]+312,68,88})&&claim!=null&&!claim.active&&"table/btn-dull-240x40".equals(tex("claim"))
                             &&"table/stamp-hollow-fresh".equals(tex("stamp-11"))&&"Claimed reward: +25 gold / +0 XP".equals(text("notice"));
                         ok&=pass;why+="; Enter sent "+lastSent()+": the track "+(slid?"slid one plaque":"did not slide")+" to start at "+text("first")+" (roll-11 at "+str(rect("roll-11"))+"), Claim "+tex("claim")+", tier 11 stamped "+tex("stamp-11")+", the notice \""+text("notice")+"\""+(pass?"":" WRONG");
-                        landedAt=-1;next(tick);}
+                        shot(c,"ui-page-chapter-claimed");landedAt=-1;next(tick);}
                     else if(k>120){ok=false;why+="; Enter sent "+lastSent()+": the claim never landed WRONG";stage=4;}}
                 case 7->{if(k<8)return;click(c,box(c,"earlier"));next(tick);}
                 case 8->{if(k<3)return;boolean shown="1".equals(text("first"))&&button(c,"title-5")!=null&&button(c,"title-10")!=null;ok&=shown;why+="; back to tier 1: the claimed titles' plaques "+(shown?"take a press":"WRONG: missing");
@@ -2855,18 +2920,25 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 2->{if(k<2)return;String whole=p.code;boolean full="ABC12345".equals(whole)&&join!=null&&join.active;UiRecruitChecks.tap(c,GLFW.GLFW_KEY_BACKSPACE);boolean back="ABC1234".equals(p.code);
                     UiRecruitChecks.tap(c,GLFW.GLFW_KEY_ESCAPE);var s=screen(c);boolean stays=!p.typing&&s!=null&&s.page.equals("friends");boolean pass=full&&back&&stays;ok&=pass;
                     why+="; \"3456\" more: \""+whole+"\" with Join "+(full?"taking a press":"dull")+"; Backspace: \""+p.code+"\"; Esc: "+(stays?"the writing ends on the page":"WRONG: "+(s==null?"the table closed":s.page+", writing "+p.typing))+(pass?"":" WRONG");next(tick);}
-                case 3->{if(k<2)return;var create=button(c,"create");boolean shown=create!=null&&create.visible&&create.active&&"Create party".equals(text("create"));ok&=shown;why+="; Create party "+(shown?"shown":"WRONG: missing");click(c,box(c,"create"));next(tick);}
-                case 4->{if(WarTablePages.flag("party")&&k>=3){var leave=button(c,"leave");boolean pass="social:create".equals(lastSent())&&leave!=null&&leave.visible&&"Leave party".equals(text("leave"))&&button(c,"disband")!=null&&button(c,"create")==null
-                        &&WarTablePages.me().equals(text("member-0"))&&String.valueOf(text("party-line")).startsWith("Led by ");ok&=pass;
-                        why+="; Create party sent "+lastSent()+": party "+WarTablePages.flag("party")+", seat 0 "+text("member-0")+", \""+text("party-line")+"\", Leave party "+(leave!=null?"shown":"missing")+(pass?"":" WRONG");next(tick);}
-                    else if(k>100){ok=false;why+="; Create party sent "+lastSent()+": no party 100 ticks on WRONG";stage=4;}}
+                case 3->{if(k<2)return;var create=button(c,"create");boolean shown=create!=null&&create.visible&&create.active&&"Create party".equals(text("create"));
+                    boolean open="Open seat".equals(text("open-1"))&&"Open seat".equals(text("open-3"))&&text("open-0")==null&&WarTablePages.me().equals(text("member-0"))&&"table/note-room-short".equals(tex("room"));ok&=shown&&open;
+                    why+="; Create party "+(shown?"shown":"WRONG: missing")+", seat 0 "+text("member-0")+" and seats 1 to 3 \""+text("open-1")+"\""+", the room's note "+tex("room")+(open?"":" WRONG");click(c,box(c,"create"));next(tick);}
+                case 4->{ // the party lands in the snapshot; the page rebuilds on it (Leave party a widget) and a frame draws it
+                    var leave=button(c,"leave");
+                    if(WarTablePages.flag("party")&&leave!=null&&"Leave party".equals(text("leave"))){
+                        boolean sent="social:create".equals(lastSent()),tags=leave.visible&&button(c,"disband")!=null&&button(c,"create")==null,seat=WarTablePages.me().equals(text("member-0")),line=String.valueOf(text("party-line")).startsWith("Led by ");
+                        boolean pass=sent&&tags&&seat&&line;ok&=pass;
+                        why+="; Create party sent "+lastSent()+(sent?"":" WRONG")+": party "+WarTablePages.flag("party")+", Leave party and Disband party "+(tags?"shown, Create party gone":"WRONG: disband "+button(c,"disband")+", create "+button(c,"create"))
+                            +", seat 0 "+text("member-0")+(seat?"":" WRONG")+", \""+text("party-line")+"\""+(line?"":" WRONG");next(tick);}
+                    else if(k>100){ok=false;why+="; Create party sent "+lastSent()+": no party drawn 100 ticks on (party "+WarTablePages.flag("party")+", Leave party "+(leave==null?"missing":"\""+text("leave")+"\"")+") WRONG";stage=4;}}
                 case 5->{if(k<8)return;click(c,box(c,"leave"));next(tick);}
                 case 6->{if(!WarTablePages.flag("party")&&k>=3){boolean pass="social:leave".equals(lastSent())&&button(c,"create")!=null;ok&=pass;why+="; Leave party sent "+lastSent()+": party "+WarTablePages.flag("party")+", Create party "+(button(c,"create")!=null?"back":"missing")+(pass?"":" WRONG");next(tick);}
                     else if(k>100){ok=false;why+="; Leave party sent "+lastSent()+": still in a party WRONG";stage=4;}}
                 case 7->{if(k<8)return;click(c,box(c,"room-create"));next(tick);}
                 case 8->{if(!WarTablePages.value("room").isEmpty()&&k>=3)next(tick);else if(k>100){ok=false;why+="; Create private room sent "+lastSent()+": no room WRONG";stage=4;}}
                 case 9->{if(k<3)return;UiRecruitChecks.park(c);next(tick);}
-                case 10->{if(k<2)return;boolean code=WarTablePages.value("room").equals(text("code"));ok&=code;why+="; Create private room sent "+lastSent()+": in room "+text("code")+(code?"":" WRONG")+", "+layout(c,"friends");shot(c,"ui-page-friends-room");next(tick);}
+                case 10->{if(k<2)return;boolean code=WarTablePages.value("room").equals(text("code"))&&"table/note-room".equals(tex("room"))&&"0 of 1 ready".equals(text("room-ready"))&&text("room-map")!=null;ok&=code;
+                    why+="; Create private room sent "+lastSent()+": in room "+text("code")+" on "+tex("room")+", \""+text("room-ready")+"\", the map "+text("room-map")+(code?"":" WRONG")+", "+layout(c,"friends");shot(c,"ui-page-friends-room");next(tick);}
                 case 11->{if(k<8)return;click(c,box(c,"room-leave"));next(tick);}
                 case 12->{if(WarTablePages.value("room").isEmpty()&&!serverRoom){why+="; Leave room sent "+lastSent()+": out of the room";stage=4;}
                     else if(k>100){ok=false;why+="; Leave room sent "+lastSent()+": still in the room WRONG";stage=4;}}
@@ -2883,7 +2955,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     for(int i=0;i<Spec.MAPS.length;i++){var v=button(c,"vote-"+i);off&=v!=null&&!v.active&&Spec.MAPS[i].name().equals(text("map-"+i))&&Integer.valueOf(DarkUi.SEPIA).equals(WarTablePages.colors().get("map-"+i));}
                     ok&=off;why+="; off the war gates: \""+text("status")+"\""+(off?", every row sepia and every Vote dull":" WRONG");click(c,box(c,"map-0"));next(tick);}
                 case 1->{if(k<2||k%2!=0)return;int i=k/2-1;String want="table/map-"+Spec.MAPS[i].id();
-                    boolean card=want.equals(tex("card"))&&Spec.MAPS[i].name().equals(text("card-name"))&&Arrays.equals(rect("card"),new int[]{o[0]+544,o[1]+148,139,83});
+                    boolean card=want.equals(tex("card"))&&Spec.MAPS[i].name().equals(text("card-name"))&&Arrays.equals(rect("card"),new int[]{o[0]+WarTablePages.CARD_X,o[1]+WarTablePages.CARD_Y,139,83});
                     ok&=card;why+=(i==0?"; each row's card: ":", ")+tex("card")+(card?"":" WRONG (want "+want+" at "+str(rect("card"))+")");
                     if(i+1<Spec.MAPS.length)click(c,box(c,"map-"+(i+1)));else next(tick);}
                 case 2->{boolean normal="Normal".equals(text("bots-current"))&&"normal".equals(serverDifficulty);ok&=normal;why+="; bots "+text("bots-current")+" (the server's "+serverDifficulty+")"+(normal?"":" WRONG");

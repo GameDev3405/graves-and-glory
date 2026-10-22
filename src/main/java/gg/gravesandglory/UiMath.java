@@ -320,6 +320,25 @@ public final class UiMath {
         return String.format(java.util.Locale.ROOT, "%,d", n);
     }
 
+    private static final String[] SMALL = {"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+        "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"};
+    private static final java.util.regex.Pattern COUNT = java.util.regex.Pattern.compile("(?<![\\w.,])(\\d{1,2})(?![\\w%]|[.,]\\d)");
+
+    /** A heading's small counts (0 to 20) in words ("Complete 1 battle" reads "Complete one battle"): the heading face draws
+     *  old-style figures, its 1 and 0 close to an I and an O. A number joined to letters or to another number (a code, 1v1, 2.5,
+     *  1,000) stays as it is, and so does a larger count. */
+    public static String spellSmall(String s) {
+        var m = COUNT.matcher(s);
+        var out = new StringBuilder();
+        while (m.find()) {
+            int n = Integer.parseInt(m.group(1));
+            boolean word = n <= 20 && !(m.group(1).length() > 1 && m.group(1).charAt(0) == '0');
+            m.appendReplacement(out, word ? SMALL[n] : m.group(1));
+        }
+        m.appendTail(out);
+        return out.toString();
+    }
+
     /** The Chapter track's first tier shown (UI plan Task 7, hero rule H1): the tier before the lowest one not yet claimed, so the
      *  last claim stays in view at the left and the track slides one plaque with each claim; never before tier 1, never past the
      *  last `shown` tiers of `tiers`. */

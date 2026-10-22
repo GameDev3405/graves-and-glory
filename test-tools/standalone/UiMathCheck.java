@@ -83,6 +83,8 @@ public final class UiMathCheck {
         check(UiMath.trackPage(10,-1,30,10)==1 && UiMath.trackPage(10,1,30,10)==20 && UiMath.trackPage(20,1,30,10)==21 && UiMath.trackPage(1,-1,30,10)==1, "the arrows page the track by ten, within its ends");
         check(UiMath.heroTier(10,10,30,5)==20 && UiMath.heroTier(11,10,30,5)==25 && UiMath.heroTier(1,10,30,5)==15 && UiMath.heroTier(21,10,30,5)==30, "the hero is the first title past the track's right end, else the last tier");
         check(UiMath.xpPoured(2870,250,30,360)==138 && UiMath.xpPoured(0,250,30,360)==0 && UiMath.xpPoured(9000,250,30,360)==360 && UiMath.xpPoured(-5,250,30,360)==0, "the XP rail pours 138 of 360 columns for 2,870 of 7,500 XP, as the approved track");
+        check(UiMath.spellSmall("Complete 1 battle").equals("Complete one battle") && UiMath.spellSmall("Issue 10 tactical orders").equals("Issue ten tactical orders") && UiMath.spellSmall("Complete 6 battles this week").equals("Complete six battles this week")
+            && UiMath.spellSmall("Hold 3.").equals("Hold three.") && UiMath.spellSmall("Win 25 battles").equals("Win 25 battles") && UiMath.spellSmall("1v1 in room AB12CD34").equals("1v1 in room AB12CD34") && UiMath.spellSmall("2.5 or 1,000 or 05").equals("2.5 or 1,000 or 05"), "a heading spells its counts to twenty (its old-style 1 and 0 read as I and O); codes, 1v1, decimals and larger numbers stay");
         System.out.println("UiMathCheck: " + checks + " checks passed");
     }
 }

@@ -146,6 +146,7 @@ SHEETS = {
     'table/note-weekly': (304, 96, 7),
     'table/note-friends': (360, 300, 9),
     'table/note-room': (228, 368, 11),
+    'table/note-room-short': (228, 300, 12),
     'table/sheet-field': (520, 320, 13),
 }
 
