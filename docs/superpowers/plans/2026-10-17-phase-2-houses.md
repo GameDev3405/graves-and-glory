@@ -983,16 +983,16 @@ Assumption (Needs Kort 12): a scene pose moves into place over its clip's length
   - else the House's attack variant (biped `attack` only);
   - else the rig's clip.
 
-Tells (`TroopTells.TELLS`), each drawn from its troop's Tell line; angles in degrees:
+Tells (`TroopTells.TELLS`), each drawn from its troop's Tell line; angles in degrees, added on top of the troop's carry pose (Task 5c review, 2026-10-22: where an angle failed its Tell line, the line won and the angle below is the corrected one):
 
 | Troop | Rig | Idle gesture |
 |---|---|---|
-| knight | biped | shield to the chin: left arm -50, head -5 |
-| archer | biped | bow to the eye and down: left arm -70, head -5 |
-| sentinel | biped | shield lift and set feet: left arm -40, body pitch 3 |
+| knight | biped | shield to the chin: left arm -15 and 1 px up, head -5 |
+| archer | biped | bow to the eye and down: left arm -85, left hand pitch 90 and roll 90 with about 20 degrees of the rest yaw kept (bow upright), head -5 |
+| sentinel | biped | shield lift and set feet: left arm -15 and 1 px up, body pitch 3 |
 | longbow | biped | sights with the bow canted: left arm -60, roll 25 |
-| mage | biped | staff forward: right arm -40, head nod 8 |
-| gl_marshal | biped | horn to the lips: left arm -110, head -15 |
+| mage | biped | staff forward: right arm -40, right hand pitch 75, head nod 8 |
+| gl_marshal | biped | horn to the lips: left arm -65 (-110 with the carry), head -15; the model has no horn yet (round 28 call 5) |
 | revenant | biped | head loll: head roll 20, right arm twitch -10 |
 | bonebow | biped | eases the string: right arm yaw -30 |
 | reaper | biped | rolls the scythe on the shoulder: right arm -60, body yaw 10 |
@@ -1033,14 +1033,14 @@ Overrides (`TroopTells.OVERRIDES`), for the Tell lines that change a clip:
 | tc_tideguard | attack | trident overhead: right arm -170 thrusting to -100, body pitch 10 |
 | tc_admiral | attack | as the Trident Guard's |
 
-House attacks (`HouseAttacks.VARIANTS`) replace the biped `attack` for the House's biped troops; beasts and the colossus keep their rig's attack. Each lasts 0.5 to 0.6 s, with its strike time in `HouseAttacks.STRIKE`:
+House attacks (`HouseAttacks.VARIANTS`) replace the biped `attack` for the House's biped troops; beasts and the colossus keep their rig's attack. Each lasts 0.5 to 0.6 s, with its strike time in `HouseAttacks.STRIKE`. Each variant also keys the weapon wrist (`right_hand`) so the blade points along the strike, and `p2-house-attacks` requires every pair's weapon tips at the strike to be at least 0.4 blocks apart:
 
 | House | Variant | Strike s |
 |---|---|---|
-| gilded | thrust from behind the shield: left arm held -40, right arm back to -60, then a thrust to -95 with body yaw 15 | 0.20 |
+| gilded | thrust from behind the shield: left arm held -40 from the first frame, right arm back to -60, then a thrust to -95 with body yaw 15 | 0.20 |
 | graveborn | overhead hack with a stoop: right arm -170 down to 0, body pitch 25 at the strike | 0.30 |
 | wildmoot | low lunging swipe: body pitch 30, right arm -60 sweeping from yaw 70 to -40 | 0.25 |
-| ironclad | two-handed shoulder chop: both arms -150 down to -20, body pitch 15 | 0.35 |
+| ironclad | two-handed shoulder chop: both arms -150 down to -60, the blade biting down (wrist about 75 to 80), body pitch 15 | 0.35 |
 | tidecallers | wide sweeping lunge: right arm -80 sweeping from yaw 90 to -60, body yaw 25, left leg -20 | 0.30 |
 
 **Interfaces:**
