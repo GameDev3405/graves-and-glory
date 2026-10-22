@@ -343,3 +343,15 @@ Controller rulings, recorded rather than asked:
 3. One-handed swords are about 1.5 blocks long, 24.5 px at most.
 4. The Blockbench check is still open for Kort.
 5. The Marshal gets a war horn on his belt, which he lifts in his idle gesture. It is added in Task 5d's Gilded repaint.
+
+## Weapon texel trial, round 29 (2026-10-22)
+
+**The trial:** the six look-round weapons at 2 texels per model pixel, graded 8 out of 10, up from 7.5 (`look-round-grade-trial.md`).
+- Bow III's badge was dropped, and sword III's sun became a painted boss.
+- The bow files now open with only `rest` visible. Kort found all four frames showing at once in Blockbench.
+- No coplanar faces remain in any frame.
+- The grader now puts 9 out of reach for weapons at Minecraft scale; about 8.5 is the ceiling.
+
+**Kort's answers, 2026-10-22:**
+1. All 30 troops' weapons use 2 texels per model pixel. Three rules come with it: parts within 1 px of the hand are painted in whole pixels, one-texel patterns sit only one tone step from their face, and a joint check makes every frame one connected piece.
+2. Weapons pass at 8.5 from the grader, and Kort sees each House's weapon sheet before it ships. All other player-facing art keeps the 9 bar.
