@@ -310,7 +310,7 @@ Sheet: `bannerbound-p2b/work/p2b/look-round/look-round-sheet.png`, with the earl
 - **What is clean now:** tiers I and II of both weapons read as clean Minecraft-mod weapons, and the tiers differ at a glance in the hand.
 - **What the grader found:** nothing yet has the Souls character of Kort's picks. At 1 texel per model pixel, a 2 px blade has room for only two colours across its width, so it cannot carry a sheen, an engraved fuller and edge wear. More rounds under today's rules top out at about 8 to 8.5.
 
-Four calls for Kort:
+Five calls for Kort:
 (1) **Texel density for weapons.**
 - One trial round at 2 texels per model pixel on these six weapons, then decide on that sheet (recommended: the grader says it is the only route to 9; it costs nothing in frame time, and the risk is texels half the size of the skin's at the hand, which the trial will show).
 - Stay at 1:1 and sign weapons off at about 8, as an exception to the 9 bar.
@@ -324,6 +324,11 @@ Four calls for Kort:
 - Back to about 1 block.
 
 (4) **A Blockbench check** before the other 28 troops are modelled. The agents' attempt to load the files in Blockbench was blocked by the permission system, so nobody has opened these six there. Kort opens `bannerbound-p2b/work/p2b/look-round/order_bow_t3.bbmodel` in Blockbench and checks that it shows `rest` and `pull_0` to `pull_2` with one 32 x 64 texture. Kort may also close the 17 old look-round and spike tabs without saving.
+
+(5) **The Marshal's idle gesture.** His Tell line is "horn to the lips", but his model carries a shield and no horn, so the gesture (Task 5c) reads as "shield raised". Options:
+- Give the Marshal a war horn on his belt that he lifts in the gesture, added in Task 5d's Gilded repaint (recommended: it keeps the Tell line, and a horn is his Rally Horn ability made visible).
+- Change the gesture to a raised sword arm.
+- Accept "shield raised".
 
 Controller rulings, recorded rather than asked:
 - The style guide's weapon section becomes the look-round recipe once the look is approved.
