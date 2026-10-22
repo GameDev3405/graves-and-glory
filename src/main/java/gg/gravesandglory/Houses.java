@@ -11,7 +11,7 @@ import java.util.*;
 /**
  * House traits (spec 1.3). A squad's trait tier in a House comes from the slot weights of its living troops of that House against the
  * houseTraits sheet's slot thresholds; the tiers feed the HUD strip, the trait seconds of the battle report and, in each House's task, the
- * trait multipliers. The pure maths is RosterMath and CounterMath. Gilded Bulwark is in: traitFactor's ranged share and BULWARK_GUARD. Graveborn Rise Again
+ * trait multipliers. The pure maths is RosterMath and CounterMath. Gilded Bulwark is in: traitFactor's ranged share and the covered flanks (covered, which the counters table's flank condition reads). Graveborn Rise Again
  * is in: allowDeath, the death log Grave Bloom raises from, and the expiry of the temporary troops it makes. Ironclad Entrench is in (traitFactor, still). Tidecallers
  * Riptide is in: the wet speed (swim), the slow every hit of theirs gives (Abilities.onHit) and the ford (fords, which Tactics reads).
  */
@@ -91,17 +91,17 @@ final class Houses {
 
     /**
      * Riptide's speed, on each of the troop's Tactics beats: the troop travels x(1 + value) of the army's tier while it touches water or it rains on the map, else
-     * as it did. It is a temporary multiplier on the movement speed (never saved), so it stacks with the Rally Horn's, and the beat adds it, changes it with the tier, or
-     * takes it off. What the multiplier must be on the attribute depends on the ground: a swimmer's stroke is linear in the movement speed, so in water the attribute
-     * takes 1 + value as it stands; a land mob's walk is quadratic in it (the speed asks for a forward input equal to the attribute, and the ground turns that input
-     * into an acceleration by the attribute again: measured, a +15% attribute walks 1.32 as far), so in the rain on land the attribute takes the square root of 1 + value
-     * and the troop walks the 15% the sheet says (a Raider keeps 3.6 blocks a second on land, and 0.7 in water, where vanilla drag makes every land mob slow).
+     * as it did. It is a temporary multiplier on the movement speed (never saved), so it stacks with Muster's, and the beat adds it, changes it with the tier or the
+     * ground, or takes it off. What the multiplier must be on the attribute depends on the ground (BattleMath.speedModifier): a swimmer's stroke is linear in the
+     * movement speed, so in water the attribute takes 1 + value as it stands; a land mob's walk is quadratic in it, so in the rain on land the attribute takes the
+     * square root of 1 + value and the troop walks the 15% the sheet says (a Raider keeps 3.6 blocks a second on land, and 0.57 to 0.65 measured in water, where
+     * vanilla drag makes every land mob slow).
      */
     static void swim(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
         var speed = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
         if (speed == null) return;
         double travel = CounterMath.riptideSpeed(riptide(u), u.mob.isTouchingWater() || b.world.isRaining());
-        double bonus = (u.mob.isTouchingWater() ? travel : Math.sqrt(travel)) - 1;
+        double bonus = BattleMath.speedModifier(travel, u.mob.isTouchingWater());
         var have = speed.getModifier(RIPTIDE);
         if (have != null && Math.abs(have.getValue() - bonus) < 1e-9) return;
         if (have != null) speed.removeModifier(RIPTIDE);
@@ -140,21 +140,22 @@ final class Houses {
     }
 
     /**
-     * Gilded Bulwark's rout guard: a group cannot rout while its centre stands within the tier's radius of a living troop of its own army
-     * from the House whose Bulwark the army reaches, one outside the group itself (a group never holds itself).
+     * Gilded Bulwark's covered flanks: a troop takes no flank bonus (the counters table's flank condition, rows C16 and C16s) while a living
+     * troop of its own army from the House whose Bulwark the army reaches, one of another group (a group never covers itself: Gilded archers
+     * cover the line in front of them and Gilded knights the archers behind), stands within the tier's radius of it (5, 8 or 12). Measured
+     * from the struck troop itself, since the rule acts per blow. Pack Hunters' own flank bonus is not taken off.
      */
-    static final Morale.RoutGuard BULWARK_GUARD = (b, s, group) -> {
+    static boolean covered(GravesAndGlory.Battle b, GravesAndGlory.Unit target) {
+        var s = target.squad;
         for (var e : s.traits.entrySet()) {
             var t = CounterMath.trait(Spec.HOUSETRAITS, e.getKey(), e.getValue());
             if (t == null || !t.mechanic().equals("bulwark")) continue;
-            Vec3d centre = Abilities.centre(b, s, group);
-            if (centre == null) return false;
             for (var u : b.units)
-                if (u.squad == s && u.spec.house().equals(t.house()) && !u.spec.group().equals(group) && u.mob.isAlive()
-                    && GravesAndGlory.Battle.horizontalDistance(u.mob.getPos(), centre) <= t.radius() * t.radius()) return true;
+                if (u.squad == s && u != target && u.spec.house().equals(t.house()) && !u.spec.group().equals(target.spec.group()) && u.mob.isAlive()
+                    && GravesAndGlory.Battle.horizontalDistance(u.mob.getPos(), target.mob.getPos()) <= t.radius() * t.radius()) return true;
         }
         return false;
-    };
+    }
 
     /** Harness hook: true makes every Rise Again roll succeed, false makes it fail, null leaves it to the dice. */
     static Boolean forceRise;

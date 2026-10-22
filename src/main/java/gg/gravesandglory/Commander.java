@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * passive. Every number comes from the class row. The code knows only the effect kinds, named by the sheet's passive column (champion,
  * reaver, warden, marshal, warlock, quartermaster) and active column (stand_fast, bloodrush, mark_prey, rally_horn, grave_bloom,
  * forward_supply); tools/preflight.py keeps both columns to those closed lists. What an active does is registered in ACTIVES by the
- * House tasks (register): Stand Fast, Rally Horn, Grave Bloom, Forward Supply and Mark Prey so far. An active nobody registered refuses with NOT_READY and starts no cooldown.
+ * House tasks (register): Stand Fast, Muster (the sheet's rally_horn), Grave Bloom, Forward Supply and Mark Prey so far. An active nobody registered refuses with NOT_READY and starts no cooldown.
  */
 public final class Commander {
     private Commander() {}
@@ -27,7 +27,7 @@ public final class Commander {
      * tick while the ability lasts (the row's durationTicks). end runs once when it stops: at expiry, at round start, in the lobby, and
      * when its commander leaves or his seat changes hands. Per-use state lives in Squad.abilityData, which is cleared after end.
      * Conventions the effects below read: Mark Prey keeps the marked entity (the LivingEntity or its UUID) in abilityData; Stand Fast's
-     * damage share is takenFactor's (its active adds the RoutGuard and Resistance I).
+     * damage share is takenFactor's (its active adds the Resistance I and the ring).
      */
     public interface Active {
         boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, Spec.ClassesRow c);
@@ -44,31 +44,21 @@ public final class Commander {
     /** Fixed ids of the two attribute modifiers applyPlayer manages, so a new one always replaces the old. */
     static final UUID HEALTH = UUID.fromString("e01516bb-07f8-49b1-86c4-873d30106609"), ATTACK = UUID.fromString("8352fccf-a081-4a35-a122-2f5e5de6e1de");
 
-    /** The fixed id of the Rally Horn's speed modifier on its army's troops. */
+    /** The fixed id of Muster's speed modifier on its army's troops. */
     static final UUID RALLY = UUID.fromString("8382ceb7-bd85-41fd-b662-34b5f1d36d95");
 
-    /** Puts this build's actives into ACTIVES (mod init): the Champion's Stand Fast, the Marshal's Rally Horn, the Warlock's Grave Bloom, the Quartermaster's Forward Supply and the Warden's Mark Prey. */
+    /** Puts this build's actives into ACTIVES (mod init): the Champion's Stand Fast, the Marshal's Muster (the sheet's active id rally_horn), the Warlock's Grave Bloom, the Quartermaster's Forward Supply and the Warden's Mark Prey. */
     static void register() {
         ACTIVES.put("stand_fast", new StandFast());
-        ACTIVES.put("rally_horn", new RallyHorn());
+        ACTIVES.put("rally_horn", new Muster());
         ACTIVES.put("grave_bloom", new GraveBloom());
         ACTIVES.put("forward_supply", new ForwardSupply());
         ACTIVES.put("mark_prey", new MarkPrey());
     }
 
-    /** Stand Fast's rout guard: while the army's stand_fast runs, a group whose centre stands within the row's radius of its commander cannot rout. */
-    public static final Morale.RoutGuard STAND_FAST_GUARD = (b, s, group) -> {
-        if (!running(b, s, "stand_fast")) return false;
-        var p = player(b, s);
-        if (p == null) return false;
-        Vec3d centre = Abilities.centre(b, s, group);
-        var c = row(s);
-        return centre != null && GravesAndGlory.Battle.horizontalDistance(p.getPos(), centre) <= c.radius() * c.radius();
-    };
-
     /**
-     * The Champion's Stand Fast: for durationTicks his troops within radius cannot rout (STAND_FAST_GUARD) and take 1 - value1 (takenFactor),
-     * and he has Resistance I. A ring in his side's colour marks the radius around him while it runs. It always starts.
+     * The Champion's Stand Fast: for durationTicks his troops within radius take 1 - value1 (takenFactor), and he has Resistance I. A ring in
+     * his side's colour marks the radius around him while it runs. It always starts. (No group routs, so it holds nobody: the no-routing design.)
      */
     static final class StandFast implements Active {
         @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, Spec.ClassesRow c) {
@@ -88,20 +78,17 @@ public final class Commander {
     }
 
     /**
-     * The Marshal's Rally Horn: the rally horn sounds at once (past its cooldown); every routing group of his army rallies (Morale.rally);
-     * every group takes a Move order to where he stands, through the order path a player's order takes (Battle.issue), so the spot keeps the
-     * same rules: the ground there, and no Move at all while he stands in river water ("Choose dry ground or a crossing.") or inside the arena's 10-block edge margin ("Too near the edge of the arena."); every
-     * group's regroup immunity (steadyUntil) runs value2 ticks longer, counted from now once it has run out; and his troops move
-     * x(1 + value1) faster for durationTicks, troops that join meanwhile too. It always starts.
+     * The Marshal's Muster (the sheet's active rally_horn, the Phase 1 Rally Horn): no horn sounds in the field (his horn is silent dress; the
+     * commanding player alone hears the rally feedback, BattleEffects.feedback); every group takes a Move order to where he stands, through the
+     * order path a player's order takes (Battle.issue), so the spot keeps the same rules: the ground there, and no Move at all while he stands in
+     * river water ("Choose dry ground or a crossing.") or inside the arena's 10-block edge margin ("Too near the edge of the arena."); and his
+     * troops move x(1 + value1) faster for durationTicks, a real +value1 on their ground (BattleMath.speedModifier), troops that join meanwhile too.
+     * Once at him the groups fight as on Hold (Tactics.arrived). value2 is 0 and unused. It always starts.
      */
-    static final class RallyHorn implements Active {
+    static final class Muster implements Active {
         @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, Spec.ClassesRow c) {
             Vec3d to = p.getPos();
-            BattleEffects.hornNow(b, s, to, "rally");
-            for (String group : Morale.GROUPS) {
-                if (Morale.routing(s, group)) Morale.rally(b, s, group);
-                s.steadyUntil.put(group, Math.max(s.steadyUntil.getOrDefault(group, 0L), b.time) + Math.round(c.value2()));
-            }
+            BattleEffects.feedback(b, p, "rally");
             if (GravesAndGlory.Battle.inArena(to.x, to.z) && !GravesAndGlory.Battle.wet(to.x, to.z)) {
                 Vec3d spot = GravesAndGlory.Battle.groundAt(to.x, to.z);
                 for (var g : Spec.GROUPS) if (!g.id().equals("all")) b.issue(s, g.id(), "move", b.storedAssignment(s, g.id()).formation, spot, p.getYaw(), -1);
@@ -114,13 +101,17 @@ public final class Commander {
         @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
             for (var u : b.units) if (u.squad == s) { var speed = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED); if (speed != null) speed.removeModifier(RALLY); }
         }
-        /** The speed modifier on every living troop of the army that lacks it. */
+        /** The speed modifier on every living troop of the army: the attribute change that makes a real x(1 + value1) on its ground (BattleMath.speedModifier: the square root on land, as it stands in water), added where it lacks and replaced where the ground changed it. */
         static void hasten(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.ClassesRow c) {
             for (var u : b.units) {
                 if (u.squad != s || !u.mob.isAlive()) continue;
                 var speed = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
-                if (speed != null && speed.getModifier(RALLY) == null)
-                    speed.addTemporaryModifier(new EntityAttributeModifier(RALLY, "Graves and Glory rally horn", c.value1(), EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+                if (speed == null) continue;
+                double value = BattleMath.speedModifier(1 + c.value1(), u.mob.isTouchingWater());
+                var have = speed.getModifier(RALLY);
+                if (have != null && have.getValue() == value) continue;
+                if (have != null) speed.removeModifier(RALLY);
+                speed.addTemporaryModifier(new EntityAttributeModifier(RALLY, "Graves and Glory muster", value, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
             }
         }
     }
@@ -267,8 +258,9 @@ public final class Commander {
         return null;
     }
 
-    /** An active id as the HUD tile and the class cards name it: stand_fast reads Stand Fast, bloodrush Bloodrush. */
+    /** An active id as the HUD tile and the class cards name it: stand_fast reads Stand Fast, bloodrush Bloodrush; rally_horn reads Muster (the no-routing design renamed it; the sheet id stays). */
     public static String activeName(String id) {
+        if (id.equals("rally_horn")) return "Muster";
         StringBuilder out = new StringBuilder();
         for (String word : id.split("_")) {
             if (word.isEmpty()) continue;

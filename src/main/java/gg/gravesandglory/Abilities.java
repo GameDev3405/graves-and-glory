@@ -28,9 +28,10 @@ import java.util.List;
 /**
  * Troop abilities (spec 2, the abilities sheet). A troop's ability id names a row; the row's mechanic decides what it does. The shield is a tag
  * the shield logic and the counters table read; mend and blight behave here; the stances (steady, ambush, brace) act through the counters table
- * (the ability id is one of the troop's tags, and Combat.resolve sets the attacker group's effective order); pierce hits a second enemy behind
- * the target (secondary); the Oath Banner aura plants a Banner (Battle.banners) that lends its planter's army damage (auraFactor), keeps its
- * groups from routing (OATH_GUARD) and rallies them. The slam (Brassjaw's) hits every other enemy within its radius of the target for the row's share, with knockback; the shell (the
+ * (the ability id is one of the troop's tags, and Combat.resolve sets the attacker group's effective order); fearless is a stance Combat.resolve reads
+ * by the soldier's own health; pierce hits a second enemy behind the target (secondary); the Oath Banner aura plants a Banner (Battle.banners) that
+ * lends its planter's army damage (auraFactor) and anchors its troops inside (anchored: no knockback, pull or Slowness from any troop source, and a slow
+ * already on them is taken off). The slam (Brassjaw's) hits every other enemy within its radius of the target for the row's share, with knockback; the shell (the
  * Ironhold Mortar's) is a blight that cannot be cast at anything nearer than the row's minRange. Every other mechanic is a no-op until the task of its House.
  * The Tidecallers' rows: the mist (a blight variant whose burst is a standing cloud, Battle.mists: it slows the enemies in it and counters row C17 halves the shots through it), the
  * harpoon (an on-hit slow with a cooldown and a pull toward the shooter), the tentacle sweep (a slam on hit with a cooldown) and the undertow (a slam on a timer that pulls and hurts).
@@ -47,19 +48,7 @@ final class Abilities {
         return none;
     }
 
-    /** The sheet's fearless row (mechanic fearless): amount is the strength share a fearless group breaks at, amount2 the share of the group that must carry it. Null when the sheet has none. */
-    static Spec.AbilitiesRow fearlessRow() {
-        for (var a : Spec.ABILITIES) if (a.mechanic().equals("fearless")) return a;
-        return null;
-    }
-
-    /** Whether the troop is fearless: it carries the fearless ability (a Risen does) or the tag the sheet's fearless row is named by (Brassjaw's troops tag; the tag column reaches Unit.tags). */
-    static boolean carriesFearless(GravesAndGlory.Unit u) {
-        var f = fearlessRow();
-        return row(u.spec).mechanic().equals("fearless") || f != null && u.tags.contains(f.id());
-    }
-
-    /** The troop's ability row when it is a dread aura (mechanic aura, trigger passive, aimed at enemies: the Hollow King's), else null. */
+    /** The troop's ability row when it is a dread aura (mechanic aura, trigger passive, aimed at enemies: the Hollow King's), else null. auraFactor reads its amount. */
     static Spec.AbilitiesRow dreadRow(GravesAndGlory.Unit u) {
         var row = row(u.spec);
         return row.mechanic().equals("aura") && row.trigger().equals("passive") && row.target().equals("enemies") ? row : null;
@@ -101,7 +90,7 @@ final class Abilities {
         float base = (float) ((row.amount() > 0 ? row.amount() : u.spec.damage()) * b.campaign.damage(u));
         for (var v : new java.util.ArrayList<>(b.units)) if (v.squad.team != u.squad.team && v.mob.isAlive() && v.mob.squaredDistanceTo(u.spellCenter) < radius * radius) {
             Combat.resolve(b, u, v.mob, base, "blight", false);
-            if (row.statusTicks() > 0 && v.mob.isAlive()) v.mob.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, row.statusTicks(), row.statusLevel()));
+            if (row.statusTicks() > 0 && v.mob.isAlive() && !anchored(b, v)) v.mob.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, row.statusTicks(), row.statusLevel()));
         }
         for (var st : new java.util.ArrayList<>(b.structures)) if (st.team() != u.squad.team && st.isAlive() && st.squaredDistanceTo(u.spellCenter) < radius * radius) Combat.resolve(b, u, st, base, "blight", false); // a shell bursts on a supply banner too (counters row C10 for a siege troop)
         u.spellCenter = null;
@@ -170,15 +159,15 @@ final class Abilities {
             case "cleave" -> secondary(b, u, target, row.radius(), row.amount(), false, kind);
             case "onhit_slow" -> {
                 if (target.isAlive() && !Combat.structure(target) && offCooldown(b, u, row)) {
-                    slow(target, row);
-                    if (row.knockback() < 0) pull(target, u.mob.getPos(), -row.knockback()); // the Harpooner's: a negative knockback drags the target toward the shooter
+                    slow(b, target, row);
+                    if (row.knockback() < 0) pull(b, target, u.mob.getPos(), -row.knockback()); // the Harpooner's: a negative knockback drags the target toward the shooter
                 }
             }
             case "slam" -> { if (row.trigger().equals("onhit")) slam(b, u, target, row); }
             default -> {}
         }
         var riptide = Houses.riptide(u);
-        if (riptide != null && target.isAlive() && !Combat.structure(target)) slow(target, SLOWNESS_I, riptide.durationTicks()); // Riptide: every hit of a Tidecaller slows; with brine or a harpoon the longer duration stands
+        if (riptide != null && target.isAlive() && !Combat.structure(target)) slow(b, target, SLOWNESS_I, riptide.durationTicks()); // Riptide: every hit of a Tidecaller slows; with brine or a harpoon the longer duration stands
     }
 
     /** Slowness I is the amplifier 0 of Riptide's slow (the spec's fixed effect kind); the abilities rows carry their own statusLevel. */
@@ -212,15 +201,16 @@ final class Abilities {
             if (applied <= 0) continue;
             swept++;
             BattleEffects.flash(b, new Vec3d(e.getX(), e.getBodyY(.6), e.getZ()), u.squad.team);
-            if (e.isAlive() && !Combat.structure(e)) knock(e, at, u.mob.getPos(), row.knockback());
+            if (e.isAlive() && !Combat.structure(e)) knock(b, e, at, u.mob.getPos(), row.knockback());
         }
         if (swept > 0 && row.cooldownTicks() > 0) u.abilityAt = b.time + row.cooldownTicks(); // a sweep that struck nobody keeps its cooldown for the next hit
         b.world.spawnParticles(ParticleTypes.CLOUD, at.x, at.y + .2, at.z, 16, row.radius() / 2, .1, row.radius() / 2, .06);
         b.world.playSound(null, primary.getBlockPos(), SoundEvents.BLOCK_ANVIL_LAND, SoundCategory.HOSTILE, .35f, .7f);
     }
 
-    /** Throws an entity away from a spot (the attacker's own, for one standing on it) with vanilla's knockback of that strength, which its knockback resistance reduces. */
-    static void knock(LivingEntity e, Vec3d from, Vec3d fallback, double strength) {
+    /** Throws an entity away from a spot (the attacker's own, for one standing on it) with vanilla's knockback of that strength, which its knockback resistance reduces. An anchored troop is not moved. */
+    static void knock(GravesAndGlory.Battle b, LivingEntity e, Vec3d from, Vec3d fallback, double strength) {
+        if (anchored(b, e)) return;
         double dx = from.x - e.getX(), dz = from.z - e.getZ();
         if (dx * dx + dz * dz < 1e-6) { dx = fallback.x - e.getX(); dz = fallback.z - e.getZ(); }
         e.takeKnockback(strength, dx, dz);
@@ -241,12 +231,13 @@ final class Abilities {
 
     /**
      * The row's slow on a target: Slowness at the row's statusLevel for its statusTicks, unless the target already has that level or more for
-     * longer (the longer one stands). The rows' own cooldowns and knockback (Ensnare, Harpoon) belong to the tasks of their Houses.
+     * longer (the longer one stands). A row's own cooldown (Ensnare's, the Harpoon's) is offCooldown's, and the Harpoon's pull is onHit's (pull).
      */
-    static void slow(LivingEntity target, Spec.AbilitiesRow row) { slow(target, row.statusLevel(), row.statusTicks()); }
+    static void slow(GravesAndGlory.Battle b, LivingEntity target, Spec.AbilitiesRow row) { slow(b, target, row.statusLevel(), row.statusTicks()); }
 
-    /** Slowness at an amplifier for some ticks, unless the target already has that level or more for as long or longer (the longer one stands: brine against Riptide, a harpoon against either). */
-    static void slow(LivingEntity target, int level, int ticks) {
+    /** Slowness at an amplifier for some ticks, unless the target already has that level or more for as long or longer (the longer one stands: brine against Riptide, a harpoon against either). An anchored troop takes none. */
+    static void slow(GravesAndGlory.Battle b, LivingEntity target, int level, int ticks) {
+        if (anchored(b, target)) return;
         var have = target.getStatusEffect(StatusEffects.SLOWNESS);
         if (have != null && have.getAmplifier() >= level && have.getDuration() >= ticks) return;
         target.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, ticks, level));
@@ -257,12 +248,12 @@ final class Abilities {
 
     /**
      * Drags an entity toward a spot, along the ground, by up to blocks (less its knockback resistance, and never closer than PULL_STOP to the spot):
-     * the Harpoon's 1 block and the Undertow's 3. A troop is moved at once with a collision-checked step and its velocity is cleared, which also cancels
-     * the knockback the blow that pulled it gave (a sliding pull would be undone by it); a commander, whose position his client owns, gets the velocity that
-     * carries him about that far. A structure is never moved.
+     * the Harpoon's 1 block and the Undertow's 3. A troop is moved at once with a collision-checked step (a wall stops it where it meets it) and its velocity is
+     * cleared, which also cancels the knockback the blow that pulled it gave (a sliding pull would be undone by it); a commander, whose position his client owns,
+     * gets the velocity that carries him about that far. A structure is never moved, and nor is an anchored troop.
      */
-    static void pull(LivingEntity e, Vec3d toward, double blocks) {
-        if (Combat.structure(e) || blocks <= 0) return;
+    static void pull(GravesAndGlory.Battle b, LivingEntity e, Vec3d toward, double blocks) {
+        if (Combat.structure(e) || blocks <= 0 || anchored(b, e)) return;
         double dx = toward.x - e.getX(), dz = toward.z - e.getZ(), distance = Math.hypot(dx, dz);
         var resist = e.getAttributeInstance(EntityAttributes.GENERIC_KNOCKBACK_RESISTANCE);
         double step = Math.min(blocks * (1 - (resist == null ? 0 : resist.getValue())), distance - PULL_STOP);
@@ -279,8 +270,8 @@ final class Abilities {
     /**
      * A second target for pierce and cleave: the nearest other living enemy (a troop, or a seated enemy commander in the field) within radius
      * of the primary target. With behind, only one beyond the target on the shot line: inside the cone of half-angle
-     * 180 - morale.flankArcDegrees around the direction from the attacker through the target, the flank arc's "behind" that counters row C16
-     * and morale read. It takes share x the attacker's base hit (its sheet damage times its progression) through Combat.resolve as a
+     * 180 - combatDiscipline.flankArcDegrees around the direction from the attacker through the target, the flank arc's "behind" that counters
+     * row C16 reads. It takes share x the attacker's base hit (its sheet damage times its progression) through Combat.resolve as a
      * secondary hit, so its own counters, traits, auras and commander factors apply once and no on-hit ability runs again. Returns the
      * amount applied, 0 when there was no second target or it took nothing.
      */
@@ -335,14 +326,14 @@ final class Abilities {
     }
 
     /**
-     * A planted banner (the Lord Marshal's Oath Banner): the army (squad) whose troop planted it, and so the only one it serves (its aura, guard
-     * and rally, as Bulwark and Stand Fast serve their own army: an allied army of the same team gets none), where it stands, the battle time it
-     * falls, the radius of its aura and guard, and the damage share it adds (the row's amount). block is the banner block it set, null when no
-     * spot was free, and was the block state that block replaced, put back when it falls. Battle.banners keeps the standing ones.
+     * A planted banner (the Lord Marshal's Oath Banner): the army (squad) whose troop planted it, and so the only one it serves (its aura and its
+     * anchoring, as Bulwark and Stand Fast serve their own army: an allied army of the same team gets none), where it stands, the battle time it
+     * falls, the radius of its aura and anchoring, the damage share it adds (the row's amount) and whether it anchors (the row's anchors). block is
+     * the banner block it set, null when no spot was free, and was the block state that block replaced, put back when it falls. Battle.banners keeps the standing ones.
      */
-    public record Banner(GravesAndGlory.Squad squad, Vec3d at, long until, double radius, double amount, BlockPos block, BlockState was) {
-        /** A banner with no damage share and no block. */
-        public Banner(GravesAndGlory.Squad squad, Vec3d at, long until, double radius) { this(squad, at, until, radius, 0, null, null); }
+    public record Banner(GravesAndGlory.Squad squad, Vec3d at, long until, double radius, double amount, boolean anchors, BlockPos block, BlockState was) {
+        /** A banner with no damage share, no anchoring and no block. */
+        public Banner(GravesAndGlory.Squad squad, Vec3d at, long until, double radius) { this(squad, at, until, radius, 0, false, null, null); }
         /** The team its army fights for. */
         public int team() { return squad.team; }
     }
@@ -352,16 +343,25 @@ final class Abilities {
         return banner.squad() == s && b.time < banner.until() && GravesAndGlory.Battle.horizontalDistance(at, banner.at()) <= banner.radius() * banner.radius();
     }
 
-    /** The Oath Banner's rout guard: a group of the army that planted a standing banner, whose centre stands within its radius, cannot rout. */
-    static final Morale.RoutGuard OATH_GUARD = (b, s, group) -> {
+    /**
+     * Whether the troop is anchored: a standing banner of its own army that anchors (the Oath Banner) covers where it stands. An anchored troop is not
+     * knocked back, pulled or slowed by any troop source: the blow itself (Combat.resolve), a slam (knock), a harpoon or the undertow (pull), and every
+     * Slowness (slow, the blight's and the mist's). Stuns, weaken and bleed still land: immovable is about being moved.
+     */
+    static boolean anchored(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
         if (b.banners.isEmpty()) return false;
-        Vec3d centre = centre(b, s, group);
-        if (centre == null) return false;
-        for (var banner : b.banners) if (covers(b, banner, s, centre)) return true;
+        for (var banner : b.banners) if (banner.anchors() && covers(b, banner, u.squad, u.mob.getPos())) return true;
         return false;
-    };
+    }
 
-    /** The centre of a squad's group, from the same members Morale counts (its living troops that are not temporary), or null when it has none. The rout guards measure from here, so a guard and the rout it holds off agree on where the group stands. */
+    /** The same for any entity: a troop of the battle may be anchored; a commander, a structure or anything else never is. */
+    static boolean anchored(GravesAndGlory.Battle b, LivingEntity e) {
+        if (b.banners.isEmpty()) return false;
+        var u = Combat.unitOf(b, e);
+        return u != null && anchored(b, u);
+    }
+
+    /** The centre of a squad's group, from the same members Morale counts (its living troops that are not temporary), or null when it has none. */
     static Vec3d centre(GravesAndGlory.Battle b, GravesAndGlory.Squad s, String group) {
         List<GravesAndGlory.Unit> members = Morale.members(b, s, group);
         return members.isEmpty() ? null : Morale.centre(members);
@@ -370,7 +370,7 @@ final class Abilities {
     /**
      * An aura troop's beat. The Oath Banner (trigger hold) plants when the troop's group order, the stored one its commander gave, has turned
      * to Hold since its last beat and its cooldown is ready; the order it finds on its first beat is only remembered, so a round that starts
-     * on Hold plants nothing. Dread (trigger passive) is not planted on a beat: it acts through auraFactor and Morale.routShareFor. Howl (trigger timer) waits for the task of its House.
+     * on Hold plants nothing. Dread (trigger passive) is not planted on a beat: it acts through auraFactor. Howl (trigger timer) waits for the task of its House.
      */
     static void aura(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
         if (!row.trigger().equals("hold")) return;
@@ -382,7 +382,7 @@ final class Abilities {
     /**
      * Plants the Oath Banner: a standing banner block in the nearest dye to its team's colour, one step behind the troop against its group's
      * facing (or where it stands; no block when neither spot is free), that stands for the row's durationTicks with the row's radius and
-     * amount. The rally horn sounds, every routing group of its own army inside the radius rallies at once, and the cooldown starts now.
+     * amount, anchoring its army's troops inside (a slow already on one is taken off at once). No horn sounds (no horn is heard in the field), and the cooldown starts now.
      */
     static void plant(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
         u.abilityAt = time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
@@ -395,11 +395,10 @@ final class Abilities {
             b.world.setBlockState(block, BannerBlock.getForColor(dye(b.side(u.squad.team).color())).getDefaultState().with(BannerBlock.ROTATION, RotationPropertyHelper.fromYaw(yaw)));
             at = new Vec3d(block.getX() + .5, block.getY(), block.getZ() + .5);
         }
-        var banner = new Banner(u.squad, at, time + row.durationTicks(), row.radius(), row.amount(), block, was);
+        var banner = new Banner(u.squad, at, time + row.durationTicks(), row.radius(), row.amount(), row.anchors(), block, was);
         b.banners.add(banner);
         b.world.spawnParticles(ParticleTypes.HAPPY_VILLAGER, at.x, at.y + 1, at.z, 16, .5, .8, .5, 0);
-        BattleEffects.horn(b, u.squad, at, "rally");
-        rally(b, banner);
+        anchor(b, banner);
     }
 
     /** One step behind the troop, against the facing yaw, then the spot it stands on: the first that is open (air, or a plant that is not two blocks tall), with air above, firm ground below, within 1.5 blocks of its feet and no other banner. Null when neither is. */
@@ -435,29 +434,27 @@ final class Abilities {
     /** Ring particles on a banner's edge (a presentation number). */
     static final int RING = 32;
 
-    /** The banner's beat in ticks: how often a standing banner rallies its army's routing groups and shows its particles (a presentation number; the radius and the rout guard are the row's). */
+    /** The banner's beat in ticks: how often a standing banner takes the Slowness off its army's troops inside and shows its particles (a presentation number; the radius and the anchoring are the row's). */
     static final int BEAT = 10;
 
-    /** Every tick of a running round: a banner falls once its time is up (its block goes back); while it stands it rallies its army's routing groups in its radius and shows its particles, every BEAT ticks. */
+    /** Every tick of a running round: a banner falls once its time is up (its block goes back); while it stands it anchors its army's troops in its radius (a slow on one goes) and shows its particles, every BEAT ticks. */
     static void bannerTick(GravesAndGlory.Battle b) {
         mistTick(b);
         if (b.banners.isEmpty()) return;
         for (var banner : new ArrayList<>(b.banners)) {
             if (b.time >= banner.until()) { lower(b, banner); b.banners.remove(banner); continue; }
-            if (b.time % BEAT == 0) { rally(b, banner); show(b, banner); }
+            if (b.time % BEAT == 0) { anchor(b, banner); show(b, banner); }
         }
     }
 
-    /** Morale.rally for every routing group of the banner's own army (while it is seated) whose centre stands in its radius, with a burst of rally particles at the group. The plant rallies once at once; the scan repeats it while the banner stands. */
-    static void rally(GravesAndGlory.Battle b, Banner banner) {
+    /** The anchoring's sweep: the Slowness off every living troop of the banner's own army that stands in its radius, with a burst of particles at each. The plant sweeps once at once (a slow already on a troop goes); the beat repeats it while the banner stands, so a slowed troop that walks in is freed within BEAT ticks. Nothing for a banner that does not anchor. */
+    static void anchor(GravesAndGlory.Battle b, Banner banner) {
+        if (!banner.anchors()) return;
         var s = banner.squad();
-        if (!s.seated) return;
-        for (String group : Morale.GROUPS) {
-            if (!Morale.routing(s, group)) continue;
-            Vec3d centre = centre(b, s, group);
-            if (centre == null || !covers(b, banner, s, centre)) continue;
-            Morale.rally(b, s, group);
-            b.world.spawnParticles(ParticleTypes.HAPPY_VILLAGER, centre.x, centre.y + 1, centre.z, 12, 1, .5, 1, 0);
+        for (var u : b.units) {
+            if (u.squad != s || !u.mob.isAlive() || !u.mob.hasStatusEffect(StatusEffects.SLOWNESS) || !covers(b, banner, s, u.mob.getPos())) continue;
+            u.mob.removeStatusEffect(StatusEffects.SLOWNESS);
+            b.world.spawnParticles(ParticleTypes.HAPPY_VILLAGER, u.mob.getX(), u.mob.getY() + 1, u.mob.getZ(), 6, .4, .5, .4, 0);
         }
     }
 
@@ -547,7 +544,7 @@ final class Abilities {
             b.world.spawnParticles(ParticleTypes.CLOUD, m.at().x, m.at().y + .6, m.at().z, 10, m.radius() / 2, .35, m.radius() / 2, .01);
             if (b.time % (2 * BEAT) == 0) ring(b, m.at(), m.radius(), FOAM);
             if (row == null) continue;
-            for (var e : enemies(b, m.team())) if (!Combat.structure(e) && m.holds(e.getPos().add(0, e.getHeight() / 2, 0), b.time)) slow(e, row);
+            for (var e : enemies(b, m.team())) if (!Combat.structure(e) && m.holds(e.getPos().add(0, e.getHeight() / 2, 0), b.time)) slow(b, e, row);
         }
     }
 
@@ -580,8 +577,8 @@ final class Abilities {
         for (var e : caught) {
             Combat.resolve(b, u, e, base, "slam", true);
             if (!e.isAlive()) continue;
-            if (row.statusTicks() > 0) slow(e, row);
-            pull(e, at, -row.knockback());
+            if (row.statusTicks() > 0) slow(b, e, row);
+            pull(b, e, at, -row.knockback());
             BattleEffects.flash(b, new Vec3d(e.getX(), e.getBodyY(.6), e.getZ()), u.squad.team);
         }
         b.world.spawnParticles(ParticleTypes.SPLASH, at.x, at.y + 1, at.z, 40, row.radius() / 3, .6, row.radius() / 3, .2);

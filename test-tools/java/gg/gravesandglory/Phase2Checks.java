@@ -435,7 +435,7 @@ public final class Phase2Checks implements ClientModInitializer {
             for(var u:shielded)if(u.mob.isAlive()){if(raise&&!u.mob.isUsingItem())u.mob.setCurrentHand(net.minecraft.util.Hand.OFF_HAND);else if(!raise&&u.mob.isUsingItem())u.mob.stopUsingItem();}
         }
         static boolean near(double a,double b){return Math.abs(a-b)<1e-9;}
-        static String show(Combat.HitLog h){return h==null?"no hit":"counters "+h.counters()+" rows "+h.rows()+" base "+h.base()+" traits "+h.traits()+" auras "+h.auras()+" commander "+h.commander()+" total "+h.total();}
+        static String show(Combat.HitLog h){return h==null?"no hit":"counters "+h.counters()+" rows "+h.rows()+" stance "+h.stance()+" base "+h.base()+" traits "+h.traits()+" auras "+h.auras()+" commander "+h.commander()+" total "+h.total();}
         /** The newest logged hit on this troop, or null. */
         static Combat.HitLog hitOn(GravesAndGlory.Unit target){Combat.HitLog out=null;for(var h:Combat.LAST)if(h.target()==target.mob.getId())out=h;return out;}
         /** The troops a House shows as owned after the v1 fixture migrated: its Commons, plus the unlocked Templar. */
@@ -582,15 +582,16 @@ public final class Phase2Checks implements ClientModInitializer {
                     raise=true;melee=post(b,dusk,"revenant",0,2.5,180,true);knight.mob.setHealth(knight.mob.getMaxHealth());next(b,30);}
                 case 30->{if(since(b)<10)return; // the shield has been up ten ticks, more than vanilla's five before it counts as blocking
                     mark=Combat.LAST.peekLast();Combat.resolve(b,melee,knight.mob,5f,"melee",false);meleeFront=Combat.LAST.peekLast()!=mark?Combat.LAST.peekLast():null;next(b,16);}
-                case 16->{if(since(b)<25)return; // and from behind, where the flank row applies and the shield does not
+                case 16->{if(since(b)<25)return; // and from behind, where the flank row (C16 1.3) applies and the shield does not
                     move(melee,0,-2.5,0);knight.mob.setHealth(knight.mob.getMaxHealth());mark=Combat.LAST.peekLast();
                     Combat.resolve(b,melee,knight.mob,5f,"melee",false);meleeBack=Combat.LAST.peekLast()!=mark?Combat.LAST.peekLast():null;
                     boolean f=front!=null&&near(front.counters(),0.35)&&front.rows().equals(List.of("C1"))&&frontLost>0&&frontLost<=3.5f+1e-3&&front.target()==knight.mob.getId()&&front.attacker()==bowFront.mob.getId()&&front.base()==10f&&near(front.traits(),1)&&near(front.auras(),1)&&near(front.commander(),1)&&near(front.total(),0.35);
-                    boolean k=back!=null&&near(back.counters(),1.0)&&back.rows().isEmpty()&&backLost>frontLost&&near(back.total(),1.0)&&Math.abs(backLost-8.8f)<0.02f;
+                    float wantBack=11.5f*(1-Math.max(8/5f,8-11.5f/2)/25f); // vanilla armour 8 on 10 x 1.15 (C16s): 10.465
+                    boolean k=back!=null&&near(back.counters(),1.15)&&back.rows().equals(List.of("C16s"))&&backLost>frontLost&&near(back.total(),1.15)&&Math.abs(backLost-wantBack)<0.02f;
                     boolean gear=knight.mob.getArmor()==8&&knight.mob.getAttributeBaseValue(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ARMOR)==0;
                     boolean l=lowered!=null&&near(lowered.counters(),0.75)&&lowered.rows().equals(List.of("C2"))&&loweredLost>frontLost;
-                    boolean m1=meleeFront!=null&&near(meleeFront.counters(),0.6)&&meleeFront.rows().equals(List.of("C3")),m2=meleeBack!=null&&near(meleeBack.counters(),1.15)&&meleeBack.rows().equals(List.of("C16"));
-                    report("p2-shield-counter",f&&k&&l&&m1&&m2&&gear,"raised shield, Bone Archer arrow from the front: "+show(front)+", lost "+frontLost+" of "+10*0.35+" (the shield did not stop it)="+f+"; from behind: "+show(back)+", lost "+backLost+" (want 8.8: base 10 under armour 8)="+k+"; shield lowered, front: "+show(lowered)+", lost "+loweredLost+"="+l+"; melee into the raised shield, front: "+show(meleeFront)+"="+m1+"; melee from behind: "+show(meleeBack)+"="+m2+"; the Squire's armour is "+knight.mob.getArmor()+" (iron helmet and chestplate = 8) on a husk base of "+knight.mob.getAttributeBaseValue(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ARMOR)+"="+gear);
+                    boolean m1=meleeFront!=null&&near(meleeFront.counters(),0.6)&&meleeFront.rows().equals(List.of("C3")),m2=meleeBack!=null&&near(meleeBack.counters(),1.3)&&meleeBack.rows().equals(List.of("C16"));
+                    report("p2-shield-counter",f&&k&&l&&m1&&m2&&gear,"raised shield, Bone Archer arrow from the front: "+show(front)+", lost "+frontLost+" of "+10*0.35+" (the shield did not stop it)="+f+"; from behind: "+show(back)+", lost "+backLost+" (want "+wantBack+": base 10 x 1.15, C16s, under armour 8)="+k+"; shield lowered, front: "+show(lowered)+", lost "+loweredLost+"="+l+"; melee into the raised shield, front: "+show(meleeFront)+"="+m1+"; melee from behind: "+show(meleeBack)+" (want 1.3 C16)="+m2+"; the Squire's armour is "+knight.mob.getArmor()+" (iron helmet and chestplate = 8) on a husk base of "+knight.mob.getAttributeBaseValue(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ARMOR)+"="+gear);
                     next(b,17);
                 }
                 case 17->{if(since(b)<25)return; // p2-damage-type, part 2: a blow from the real attack code (Tactics through Abilities) takes the same path
@@ -726,6 +727,8 @@ public final class Phase2Checks implements ClientModInitializer {
         static void place(GravesAndGlory.Unit u,ServerPlayerEntity p,double dx){u.mob.refreshPositionAndAngles(p.getX()+dx,p.getY(),p.getZ(),0,0);}
         /** One resolved blow of base 1 (Combat.resolve, as a secondary hit so no on-hit ability runs) and the hit it logged, or null. */
         static Combat.HitLog hit(GravesAndGlory.Battle b,GravesAndGlory.Unit attacker,net.minecraft.entity.LivingEntity target,String kind){var mark=Combat.LAST.peekLast();Combat.resolve(b,attacker,target,1f,kind,true);var h=Combat.LAST.peekLast();return h==mark?null:h;}
+        /** The same as a primary blow (not a cleave's second target, which is area damage and takes no flank bonus), past the target's hurt cooldown: the on-hit abilities of the attacker run, so use it with troops that have none. */
+        static Combat.HitLog blow(GravesAndGlory.Battle b,GravesAndGlory.Unit attacker,net.minecraft.entity.LivingEntity target,String kind){target.timeUntilRegen=0;target.hurtTime=0;var mark=Combat.LAST.peekLast();Combat.resolve(b,attacker,target,1f,kind,false);var h=Combat.LAST.peekLast();return h==mark?null:h;}
         void passive(boolean ok,String id,String why){passivesOk&=ok;passiveWhy.append(id).append(ok?" ok: ":" FAILED: ").append(why).append("; ");report("p2-class-passives-"+id,ok,why);}
 
         /** A stand-in player for the foe's commander. Fabric's FakePlayer is immune to all damage; this one takes blows like a player. */
@@ -1103,10 +1106,11 @@ public final class Phase2Checks implements ClientModInitializer {
     /**
      * Task 6: the Gilded Order, batch 1. On a stone sky platform 40 blocks east of Dawn's base (off the base, so no group there is ever
      * home): Order Archers on Hold (p2-gilded-steady); the Order Longbow's pierce through a real arrow (p2-gilded-pierce); the Sunweaver's
-     * heal and cooldown (p2-gilded-mend); the batch's counter rows with synthetic husk rows (p2-counters-gilded); Bulwark's share and rout
-     * guard on the commander's own army at tiers III and I (p2-bulwark); and the Lord Marshal's Oath Banner through real orders
-     * (p2-gilded-oath). Then the Champion's Stand Fast and the Marshal's Rally Horn through the ability command, with the HUD tile read on
-     * the client (p2-champion-standfast, p2-marshal-rallyhorn); the showcase on map 0 (p2-gilded-showcase, screenshot gilded-showcase);
+     * heal and cooldown (p2-gilded-mend); the batch's counter rows with synthetic husk rows (p2-counters-gilded); Bulwark's share and
+     * covered flanks on the commander's own army at tiers III and I (p2-bulwark); and the Lord Marshal's Oath Banner, its aura and its
+     * anchoring, through real orders (p2-gilded-oath, p2-gilded-oath-plant, p2-gilded-oath-squad). Then the Champion's Stand Fast and the
+     * Marshal's Muster through the ability command, with the HUD tile read on
+     * the client (p2-champion-standfast, p2-marshal-muster, p2-marshal-muster-spots); the showcase on map 0 (p2-gilded-showcase, screenshot gilded-showcase);
      * and the tick cost under the hard Gilded and Graveborn banners (p2-gilded-tick-cost). Stages run on the server tick; the client sends
      * the class commands, watches the tile and the House strip and takes the screenshot.
      */
@@ -1128,11 +1132,11 @@ public final class Phase2Checks implements ClientModInitializer {
         // side teams: one audit after each place the suite discards troops directly (Unit.mob.discard() with no leaveSide of its own)
         int audits;boolean unloadWasOnTeam;final Map<String,String> staleSeen=new LinkedHashMap<>();final List<String> auditNotes=new ArrayList<>();
         // the Oath Banner
-        Abilities.Banner planted;final Set<Abilities.Banner> seen=new LinkedHashSet<>();long plantAt=-1,movedIn=-1,rallied=-1,supportRouted=-1,secondAt=-1;
-        boolean oathOk,supportHeld,fell,blockBack;String oathWhy="";int hornsBefore;
+        Abilities.Banner planted;final Set<Abilities.Banner> seen=new LinkedHashSet<>();long plantAt=-1,secondAt=-1,slowPutAt=-1;
+        boolean oathOk,fell,blockBack,beatCleared,unanchored,slowAfter;String oathWhy="";int heardBefore;
         // the actives, and the tile the client watches while tileWatch is 1
         volatile int tileWatch;volatile String firstActive="",readyFirst="",readyLater="";volatile int activeCooldownSeconds=-1;int readyFirstTick;
-        long t0,routAfter=-1;boolean activeOk,heldThrough,lateHastened;String activeWhy="";double startDistance;
+        long t0;boolean activeOk,lateHastened;String activeWhy="";double startDistance;
         // the showcase and the tick cost
         volatile boolean hudOk,clientOk;volatile String hudWhy="",clientWhy="";int arrowsAtShot;TickCost cost;
 
@@ -1200,7 +1204,7 @@ public final class Phase2Checks implements ClientModInitializer {
             for(var p:pins)if(p.u().mob.isAlive())Engine.apply(p.u(),p.at(),p.yaw());
             for(var u:shielded)if(u.mob.isAlive()){if(raise&&!u.mob.isUsingItem())u.mob.setCurrentHand(net.minecraft.util.Hand.OFF_HAND);else if(!raise&&u.mob.isUsingItem())u.mob.stopUsingItem();}
         }
-        static void reset(GravesAndGlory.Squad s){s.routedAt.clear();s.steadyUntil.clear();s.fullHealth.clear();s.assignments.clear();}
+        static void reset(GravesAndGlory.Squad s){s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.assignments.clear();}
         /** Every army's troops leave and none come back; a stone sky platform 40 blocks east of Dawn's base; two ad hoc armies (bots, so no profile is read) beside the commander's own, which keeps his seat and his class. */
         void stageFixture(GravesAndGlory.Battle b){
             Projectiles.clear(b);Abilities.clearBanners(b);clearFixture(b);
@@ -1251,12 +1255,12 @@ public final class Phase2Checks implements ClientModInitializer {
                     else if(since(b)>200){report("p2-gilded-class",false,"class:champion never reached the profile (it says "+profile(b).commander+")");next(b,99);}}
                 case 3->{var p=sp(b);if(p==null||!Phase1Checks.skirmish(b,p,0,1,"normal"))return;next(b,4);}
                 case 4->{if(since(b)<10)return;stageFixture(b);next(b,10);}
-                case 10->{ // p2-gilded-steady: an Order Archer's arrow at a Risen 12 blocks off, on Hold, on Attack, and routing with Hold stored
+                case 10->{ // p2-gilded-steady: an Order Archer's arrow at a Risen 12 blocks off, on Hold, on Attack, and under a Retreat order stored for its group
                     var archer=post(b,dawn,"archer",0,-6,0,true);var target=post(b,dusk,"revenant",0,6,180,true);
                     dawn.order="hold";var onHold=Commanders.hit(b,archer,target.mob,"arrow");dawn.order="attack";var onAttack=Commanders.hit(b,archer,target.mob,"arrow");
-                    dawn.order="hold";dawn.routedAt.put("ranged",b.time);var routing=Commanders.hit(b,archer,target.mob,"arrow");dawn.routedAt.clear();
-                    boolean ok=archer.tags.contains("steady")&&is(onHold,1.2,"C18a")&&onAttack!=null&&near(onAttack.counters(),1.0)&&onAttack.rows().isEmpty()&&routing!=null&&near(routing.counters(),1.0)&&routing.rows().isEmpty();
-                    report("p2-gilded-steady",ok,"an Order Archer (tags "+archer.tags+") at a Risen: on Hold "+show(onHold)+"; on Attack "+show(onAttack)+"; routing with Hold stored (its effective order is retreat) "+show(routing));
+                    dawn.order="hold";dawn.assignments.put("ranged",new GravesAndGlory.Assignment("retreat","loose",target.mob.getPos().add(0,0,30),0));var retreating=Commanders.hit(b,archer,target.mob,"arrow");dawn.assignments.clear();
+                    boolean ok=archer.tags.contains("steady")&&is(onHold,1.2,"C18a")&&onAttack!=null&&near(onAttack.counters(),1.0)&&onAttack.rows().isEmpty()&&retreating!=null&&near(retreating.counters(),1.0)&&retreating.rows().isEmpty();
+                    report("p2-gilded-steady",ok,"an Order Archer (tags "+archer.tags+") at a Risen: on Hold "+show(onHold)+"; on Attack "+show(onAttack)+"; under a Retreat order stored for its group while the army holds "+show(retreating));
                     clearFixture(b);next(b,11);
                 }
                 case 11->{ // p2-gilded-pierce: an Order Longbow 10 blocks in front of a Risen, a second Risen 1.5 behind it on the shot line and a third 1.5 beside it, all three bare (armour 0, so the health lost is the amount applied)
@@ -1314,18 +1318,18 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 17->{if(since(b)<10)return; // the shield has been up ten ticks
                     boolean raised=tShield.mob.isUsingItem();
                     var c3=Commanders.hit(b,aPlain,tShield.mob,"melee");var c4=Commanders.hit(b,aCaster,tShield.mob,"blight");var c14=Commanders.hit(b,aSunder,tShield.mob,"melee");var c15=Commanders.hit(b,aBolt,tShield.mob,"arrow");
-                    dawn.order="charge";b.chargeHorn(dawn,"infantry");var c5=Commanders.hit(b,aCharger,tArcher.mob,"melee");var c6=Commanders.hit(b,aCharger,tArcher.mob,"melee");dawn.order="hold";
-                    var c16=Commanders.hit(b,aRear,tRear.mob,"melee");
+                    dawn.order="charge";b.markCharge(dawn,"infantry");var c5=Commanders.hit(b,aCharger,tArcher.mob,"melee");var c6=Commanders.hit(b,aCharger,tArcher.mob,"melee");dawn.order="hold";
+                    var c16=Commanders.blow(b,aRear,tRear.mob,"melee");var c16area=Commanders.hit(b,aRear,tRear.mob,"melee");
                     boolean tags=aSunder.tags.containsAll(List.of("sunder","beast","cavalry"))&&!aSunder.tags.contains("shield")&&aBolt.tags.containsAll(List.of("armour_bolt","beast","cavalry"));
-                    boolean ok=raised&&tags&&is(c3,0.6,"C3")&&is(c4,1.0,"C4")&&is(c14,1.4,"C14")&&is(c15,0.7,"C15")&&is(c5,1.5,"C5")&&is(c6,1.2,"C6")&&is(c16,1.15,"C16");
-                    report("p2-counters-gilded",ok,"against the raised shield (raised="+raised+"), from the front: an Order Squire's blow "+show(c3)+"; a Gravecaller's blight "+show(c4)+"; the synthetic husk with sunder (tags "+aSunder.tags+") "+show(c14)+"; the synthetic husk with armour_bolt (tags "+aBolt.tags+"), an arrow "+show(c15)+"; an Order Squire's first blow on an Order Archer after the charge order "+show(c5)+", then "+show(c6)+"; its blow on a Risen from behind "+show(c16)+"; the synthetic rows' tags carry their ability and beast, cavalry="+tags);
+                    boolean ok=raised&&tags&&is(c3,0.6,"C3")&&is(c4,1.0,"C4")&&is(c14,1.4,"C14")&&is(c15,0.7,"C15")&&is(c5,1.5,"C5")&&is(c6,1.2,"C6")&&is(c16,1.3,"C16")&&c16area!=null&&near(c16area.counters(),1.0)&&c16area.rows().isEmpty();
+                    report("p2-counters-gilded",ok,"against the raised shield (raised="+raised+"), from the front: an Order Squire's blow "+show(c3)+"; a Gravecaller's blight "+show(c4)+"; the synthetic husk with sunder (tags "+aSunder.tags+") "+show(c14)+"; the synthetic husk with armour_bolt (tags "+aBolt.tags+"), an arrow "+show(c15)+"; an Order Squire's first blow on an Order Archer after the charge order "+show(c5)+", then "+show(c6)+"; its blow on a Risen from behind "+show(c16)+" (want 1.3 C16) and as a cleave's second target there "+show(c16area)+" (area: want 1.0); the synthetic rows' tags carry their ability and beast, cavalry="+tags);
                     clearFixture(b);next(b,20);
                 }
-                case 20->{ // p2-bulwark, tier III: the commander's own army, 14 Gilded slots: four Order Squires (its infantry), an Order Longbow 9.25 blocks from their centre, nine Order Archers 18 or more away; a frozen Bone Archer of Dusk
+                case 20->{ // p2-bulwark, tier III: the commander's own army, 14 Gilded slots: four Order Squires (its infantry, facing east), an Order Longbow 10 blocks from the first Squire, nine Order Archers 18 or more away; a frozen Bone Archer of Dusk in front of the Squires, a Risen and a Bone Archer of Dusk behind them
                     reset(own);own.banner=banner("knight*4,longbow,archer*9");
                     knights.clear();for(int i=0;i<4;i++)knights.add(post(b,own,"knight",-8+(i%2)*1.5,-0.75+(i/2)*1.5,-90,true));
                     guard=post(b,own,"longbow",2,0,-90,true);for(int i=0;i<9;i++)post(b,own,"archer",11,-8+i*2,-90,true);
-                    foe=post(b,dusk,"bonebow",-2,4,90,true);Houses.recompute(own);next(b,21);
+                    foe=post(b,dusk,"bonebow",-2,4,90,true);foe2=post(b,dusk,"revenant",-11,-0.75,-90,true);aRear=post(b,dusk,"bonebow",-12,0.75,-90,true);Houses.recompute(own);next(b,21);
                 }
                 case 21->{if(since(b)<5)return;
                     var k=knights.get(0);var arrow=Commanders.hit(b,foe,k.mob,"arrow");var bolt=Commanders.hit(b,foe,k.mob,"bolt");var blight=Commanders.hit(b,foe,k.mob,"blight");var melee=Commanders.hit(b,foe,k.mob,"melee");var bare=Commanders.hit(b,foe,guard.mob,"arrow");
@@ -1333,110 +1337,117 @@ public final class Phase2Checks implements ClientModInitializer {
                     int tier=own.traits.getOrDefault("gilded",0),bannerTier=Houses.bannerTiers(own).getOrDefault("gilded",0),slots=RosterMath.houseSlots(own.banner,RosterMath.Catalog.fromSpec()).getOrDefault("gilded",0);
                     bulwarkOk=share&&tier==3&&bannerTier==3&&slots==14;
                     bulwarkWhy="his banner holds "+slots+" Gilded slots (tier "+bannerTier+"), the living army is at tier "+tier+" "+own.traits+"; an Order Squire (shield) takes traits x"+tr(arrow)+" from an arrow, x"+tr(bolt)+" from a bolt, x"+tr(blight)+" from blight and x"+tr(melee)+" from melee, the Order Longbow (no shield) x"+tr(bare)+" from an arrow="+share;
-                    for(var u:knights)u.mob.setHealth(u.mob.getMaxHealth());
-                    own.fullHealth.put("infantry",living(b,own,"infantry")*10);own.fullHealth.put("ranged",living(b,own,"ranged"));heldIII=true;next(b,22);
-                }
-                case 22->{ // two morale checks or more: the weakened Squires hold while the Longbow stands within 12 of their centre
-                    if(Morale.routing(own,"infantry"))heldIII=false;
-                    if(since(b)<45)return;
-                    Vec3d c=Abilities.centre(b,own,"infantry");double d=distance(c,guard.mob),threat=distance(c,foe.mob);
-                    double strength=BattleMath.strength(living(b,own,"infantry"),own.fullHealth.get("infantry"));boolean guarded=Houses.BULWARK_GUARD.holds(b,own,"infantry");
-                    bulwarkOk&=heldIII&&guarded&&d<=12&&strength<Spec.MORALE[0].routShare();
-                    bulwarkWhy+="; the weakened Squires (strength "+fmt(strength)+", a Bone Archer "+fmt(threat)+" from their centre) did not rout in 45 ticks="+heldIII+" with the Longbow "+fmt(d)+" from their centre (BULWARK_GUARD holds="+guarded+")";
-                    // tier I: eight Order Archers leave (six Gilded slots stand); the Longbow moves to 8 blocks from the Squires' centre
+                    // covered flanks at tier III (radius 12): the Longbow 10 blocks from the Squire covers him, so blows from behind take neither C16 nor C16s (the traits share still applies)
+                    double d=distance(guard.mob,k.mob);boolean covered=Houses.covered(b,k);
+                    var mB=Commanders.blow(b,foe2,k.mob,"melee");var aB=Commanders.hit(b,aRear,k.mob,"arrow");
+                    double bearing=BattleMath.relativeBearing(k.mob.getYaw(),foe2.mob.getX()-k.mob.getX(),foe2.mob.getZ()-k.mob.getZ());
+                    boolean coveredIII=covered&&d<=12&&mB!=null&&near(mB.counters(),1.0)&&mB.rows().isEmpty()&&traits(mB,1.0)&&aB!=null&&near(aB.counters(),1.0)&&aB.rows().isEmpty()&&traits(aB,0.55);
+                    bulwarkOk&=coveredIII;
+                    bulwarkWhy+="; at tier III (radius 12) with the Longbow "+fmt(d)+" off the Squire is covered="+covered+": a Risen's blow from behind (bearing "+fmt(bearing)+") "+show(mB)+" and a Bone Archer's arrow from behind "+show(aB)+" (want counters 1.0 and no row for both; traits 1.0 and 0.55)="+coveredIII;
+                    // tier I: eight Order Archers leave (six Gilded slots stand); the Longbow stands 8 blocks from the Squire, outside the tier's radius of 5: the flank rows return; a Squire of his own group 1.5 off never covers him
                     int gone=0;for(var u:new ArrayList<>(fixture))if(u.spec.id().equals("archer")&&gone<8){drop(b,u);gone++;}
-                    Houses.recompute(own);move(guard,c.x-site.getX()-.5+8,c.z-site.getZ()-.5,-90);
-                    own.routedAt.clear();own.steadyUntil.clear();own.fullHealth.put("infantry",living(b,own,"infantry")*10);own.fullHealth.put("ranged",living(b,own,"ranged"));
-                    arrowI=Commanders.hit(b,foe,knights.get(0).mob,"arrow");next(b,23);
-                }
-                case 23->{
-                    if(!Morale.routing(own,"infantry")&&since(b)<=45)return;
-                    boolean routed=Morale.routing(own,"infantry");int tier=own.traits.getOrDefault("gilded",0);Vec3d c=Abilities.centre(b,own,"infantry");double d=distance(c,guard.mob);
-                    boolean ok=routed&&tier==1&&traits(arrowI,0.85)&&Math.abs(d-8)<0.3;
-                    bulwarkOk&=ok;
-                    bulwarkWhy+="; at tier I "+own.traits+" (radius 5) with the Longbow "+fmt(d)+" away the Squires routed="+routed+(routed?" "+since(b)+" ticks later":"")+"; a Squire takes x"+tr(arrowI)+" from an arrow (want 0.85)";
+                    Houses.recompute(own);move(guard,k.mob.getX()-site.getX()-.5+8,k.mob.getZ()-site.getZ()-.5,-90);
+                    tier=own.traits.getOrDefault("gilded",0);double d8=distance(guard.mob,k.mob);boolean open=!Houses.covered(b,k)&&!Houses.covered(b,knights.get(1));
+                    arrowI=Commanders.hit(b,aRear,k.mob,"arrow");var meleeI=Commanders.blow(b,foe2,k.mob,"melee");
+                    boolean openI=tier==1&&open&&Math.abs(d8-8)<0.3&&is(arrowI,1.15,"C16s")&&traits(arrowI,0.85)&&is(meleeI,1.3,"C16")&&traits(meleeI,1.0);
+                    bulwarkOk&=openI;
+                    bulwarkWhy+="; at tier I "+own.traits+" (radius 5) with the Longbow "+fmt(d8)+" off the Squire is covered="+!open+" (a Squire of his own group 1.5 off does not cover him): the arrow from behind "+show(arrowI)+" (want 1.15 C16s, traits 0.85) and the Risen's blow "+show(meleeI)+" (want 1.3 C16)="+openI;
+                    // the Longbow steps to 4 blocks: covered again inside the tier I radius
+                    move(guard,k.mob.getX()-site.getX()-.5+4,k.mob.getZ()-site.getZ()-.5,-90);
+                    double d4=distance(guard.mob,k.mob);boolean coveredI=Houses.covered(b,k);var arrowC=Commanders.hit(b,aRear,k.mob,"arrow");var meleeC=Commanders.blow(b,foe2,k.mob,"melee");
+                    boolean backI=coveredI&&Math.abs(d4-4)<0.3&&arrowC!=null&&near(arrowC.counters(),1.0)&&arrowC.rows().isEmpty()&&traits(arrowC,0.85)&&meleeC!=null&&near(meleeC.counters(),1.0)&&meleeC.rows().isEmpty();
+                    bulwarkOk&=backI;
+                    bulwarkWhy+="; with the Longbow "+fmt(d4)+" off covered="+coveredI+": the arrow "+show(arrowC)+" and the blow "+show(meleeC)+" (want 1.0, no row)="+backI;
                     report("p2-bulwark",bulwarkOk,bulwarkWhy);
                     clearFixture(b);reset(own);next(b,30);
                 }
-                case 30->{ // p2-gilded-oath: Lord Marshal Aldric (attacks off, ability on), an Order Squire 3.6 blocks from where his banner will stand and one 14.9 away, two Order Archers 14.8 away, a Sunweaver 10.6 away, and frozen Risen beside them
+                case 30->{ // p2-gilded-oath: Lord Marshal Aldric (attacks off, ability on), an Order Squire 3.2 blocks from where his banner will stand and one 15.6 away, a Sunweaver 10 away, frozen Risen of Dusk beside the near Squire and the far one; the near Squire carries a Slowness already
                     Abilities.clearBanners(b);reset(own);
                     marshal=post(b,own,"gl_marshal",0,0,0,true);marshal.abilityAt=0;marshal.seenOrder=null;
-                    near=post(b,own,"knight",3,1,0,true);far=post(b,own,"knight",-11,-11,0,true);
-                    runners.clear();runners.add(post(b,own,"archer",10,10,0,true));runners.add(post(b,own,"archer",11,9,0,true));
-                    support=post(b,own,"mage",-8,6,0,true);
-                    foe=post(b,dusk,"revenant",3,3,180,true);foe2=post(b,dusk,"revenant",-11,-9,180,true);post(b,dusk,"revenant",8,12,180,true);
-                    for(String g:Morale.GROUPS)own.fullHealth.put(g,living(b,own,g));own.fullHealth.put("ranged",living(b,own,"ranged")*10); // the archers are weak: they rout where no banner stands
+                    near=post(b,own,"knight",3,1,0,true);far=post(b,own,"knight",-11,-11,0,true);support=post(b,own,"mage",-8,6,0,true);
+                    foe=post(b,dusk,"revenant",3,3,180,true);foe2=post(b,dusk,"revenant",-11,-9,180,true);
+                    near.mob.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(StatusEffects.SLOWNESS,600,1));
                     order(b,"infantry","move","block",site.getX()+.5,site.getZ()+.5,0);
-                    seen.clear();planted=null;plantAt=-1;movedIn=-1;rallied=-1;supportRouted=-1;secondAt=-1;supportHeld=true;fell=false;blockBack=false;oathOk=true;oathWhy="";
+                    seen.clear();planted=null;plantAt=-1;secondAt=-1;fell=false;blockBack=false;beatCleared=false;unanchored=false;slowAfter=false;oathOk=true;oathWhy="";
                     next(b,31);
                 }
-                case 31->{ // his first beat saw Move; the weak archers rout away from any banner; then the infantry is ordered to Hold
-                    boolean routed=Morale.routing(own,"ranged");if(since(b)<20||!routed&&since(b)<=80)return;
-                    boolean none=b.banners.isEmpty();oathOk&=none&&routed&&"move".equals(marshal.seenOrder);
-                    oathWhy+="before the Hold order no banner stood="+none+" (Aldric's beats saw "+marshal.seenOrder+"), the weakened Order Archers routed="+routed+"; ";
-                    hornsBefore=BattleEffects.horns.getOrDefault("rally",0);order(b,"infantry","hold","block",site.getX()+.5,site.getZ()+.5,0);next(b,32);
+                case 31->{ // his first beat saw Move: no banner stands and the near Squire keeps his Slowness; then the infantry is ordered to Hold
+                    if(since(b)<=30)return;
+                    boolean none=b.banners.isEmpty(),slowed=near.mob.hasStatusEffect(StatusEffects.SLOWNESS);oathOk&=none&&slowed&&"move".equals(marshal.seenOrder);
+                    oathWhy+="before the Hold order no banner stood="+none+" (Aldric's beats saw "+marshal.seenOrder+") and the near Squire kept his Slowness="+slowed+"; ";
+                    heardBefore=BattleEffects.heard.size();order(b,"infantry","hold","block",site.getX()+.5,site.getZ()+.5,0);next(b,32);
                 }
-                case 32->{ // the banner, its aura and its guard
+                case 32->{ // the banner, its aura and its anchoring
                     if(b.banners.isEmpty()){if(since(b)>20){oathWhy+="no banner within 20 ticks of the Hold order";report("p2-gilded-oath",false,oathWhy);clearFixture(b);next(b,50);}return;}
                     planted=b.banners.get(0);seen.add(planted);var row=Abilities.row(marshal.spec);plantAt=planted.until()-row.durationTicks();
                     var state=planted.block()==null?null:b.world.getBlockState(planted.block());boolean block=state!=null&&state.getBlock() instanceof net.minecraft.block.BannerBlock;
-                    double fromHim=distance(planted.at(),marshal.mob);int horns=BattleEffects.horns.getOrDefault("rally",0)-hornsBefore;
-                    boolean shape=row.id().equals("oath_banner")&&planted.team()==own.team&&near(planted.radius(),12)&&near(planted.amount(),0.1)&&row.durationTicks()==300&&marshal.abilityAt==plantAt+row.cooldownTicks()&&row.cooldownTicks()==600&&fromHim<=2&&b.time-plantAt<=1&&since(b)<=11&&horns>=1;
+                    double fromHim=distance(planted.at(),marshal.mob);boolean quiet=BattleEffects.horns.isEmpty()&&BattleEffects.heard.size()==heardBefore;
+                    boolean shape=row.id().equals("oath_banner")&&row.anchors()&&planted.anchors()&&planted.team()==own.team&&near(planted.radius(),12)&&near(planted.amount(),0.1)&&row.durationTicks()==300&&marshal.abilityAt==plantAt+row.cooldownTicks()&&row.cooldownTicks()==600&&fromHim<=2&&b.time-plantAt<=1&&since(b)<=11&&quiet;
                     var inside=Commanders.hit(b,near,foe.mob,"melee");var himself=Commanders.hit(b,marshal,foe.mob,"melee");var beyond=Commanders.hit(b,far,foe2.mob,"melee");var theirs=Commanders.hit(b,foe,near.mob,"melee");
                     boolean aura=auras(inside,1.10)&&auras(himself,1.10)&&auras(beyond,1.0)&&auras(theirs,1.0);
                     oathOk&=shape&&block&&aura;
-                    oathWhy+="the Hold order planted a banner "+since(b)+" ticks later, "+fmt(fromHim)+" from Aldric (block "+(state==null?"none":state.getBlock().getName().getString())+"="+block+"), team "+planted.team()+", radius "+planted.radius()+", +"+planted.amount()+", standing "+(planted.until()-plantAt)+" ticks, his next plant at +"+(marshal.abilityAt-plantAt)+", rally horns +"+horns+"="+shape
+                    oathWhy+="the Hold order planted a banner "+since(b)+" ticks later, "+fmt(fromHim)+" from Aldric (block "+(state==null?"none":state.getBlock().getName().getString())+"="+block+"), team "+planted.team()+", radius "+planted.radius()+", +"+planted.amount()+", anchors="+planted.anchors()+", standing "+(planted.until()-plantAt)+" ticks, his next plant at +"+(marshal.abilityAt-plantAt)+", no horn and no feedback sound="+quiet+"="+shape
                         +"; auras on a blow by the Squire "+fmt(distance(planted.at(),near.mob))+" off "+au(inside)+", by Aldric "+au(himself)+", by the Squire "+fmt(distance(planted.at(),far.mob))+" off "+au(beyond)+", by a Dusk Risen inside "+au(theirs)+"="+aura;
-                    // the Sunweaver 10.6 off is weakened now, for the banner's guard; the routing archers walk into the radius
-                    own.fullHealth.put("support",living(b,own,"support")*10);own.steadyUntil.remove("support");
-                    move(runners.get(0),4,4,0);move(runners.get(1),5,3,0);movedIn=b.time;next(b,33);
+                    // the anchoring: the plant took the Slowness off the near Squire; inside the radius no slow, pull, knock or blow moves him; the Squire 15.6 off takes them all
+                    boolean cleared=!near.mob.hasStatusEffect(StatusEffects.SLOWNESS);
+                    boolean flags=Abilities.anchored(b,near)&&Abilities.anchored(b,marshal)&&Abilities.anchored(b,support)&&!Abilities.anchored(b,far);
+                    Abilities.slow(b,near.mob,1,100);boolean noSlow=!near.mob.hasStatusEffect(StatusEffects.SLOWNESS);
+                    Vec3d atN=near.mob.getPos();Abilities.pull(b,near.mob,foe.mob.getPos(),3);boolean noPull=near.mob.getPos().distanceTo(atN)<1e-6;
+                    Abilities.knock(b,near.mob,foe.mob.getPos(),foe.mob.getPos(),1.0);Vec3d vK=near.mob.getVelocity();boolean noKnock=Math.hypot(vK.x,vK.z)<1e-6;
+                    near.mob.timeUntilRegen=0;near.mob.hurtTime=0;Commanders.hit(b,foe,near.mob,"melee");Vec3d vB=near.mob.getVelocity();boolean noBlow=Math.hypot(vB.x,vB.z)<1e-6;
+                    Abilities.slow(b,far.mob,1,100);boolean farSlow=far.mob.hasStatusEffect(StatusEffects.SLOWNESS);far.mob.removeStatusEffect(StatusEffects.SLOWNESS);
+                    Vec3d atF=far.mob.getPos();Abilities.pull(b,far.mob,foe2.mob.getPos(),3);double farPulled=atF.distanceTo(far.mob.getPos());
+                    far.mob.timeUntilRegen=0;far.mob.hurtTime=0;Commanders.hit(b,foe2,far.mob,"melee");Vec3d vF=far.mob.getVelocity();boolean farBlown=Math.hypot(vF.x,vF.z)>1e-3;
+                    boolean anchoring=cleared&&flags&&noSlow&&noPull&&noKnock&&noBlow&&farSlow&&farPulled>0.3&&farBlown;
+                    oathOk&=anchoring;
+                    oathWhy+="; the plant took the near Squire's Slowness off="+cleared+"; anchored: him "+Abilities.anchored(b,near)+", Aldric "+Abilities.anchored(b,marshal)+", the Sunweaver 10 off "+Abilities.anchored(b,support)+", the Squire 15.6 off "+Abilities.anchored(b,far)+" (want true, true, true, false); inside: a slow sticks="+!noSlow+", a 3-block pull moved him "+fmt(near.mob.getPos().distanceTo(atN))+", a knock gave him "+fmt(Math.hypot(vK.x,vK.z))+" of velocity, a Risen's blow "+fmt(Math.hypot(vB.x,vB.z))+" (want none of them); outside: a slow sticks="+farSlow+", the pull moved him "+fmt(farPulled)+" and the blow knocked him="+farBlown+"="+anchoring;
+                    near.mob.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(StatusEffects.SLOWNESS,600,1));slowPutAt=b.time;next(b,33);
                 }
-                case 33->{ // the routing archers rally inside the radius
-                    if(Morale.routing(own,"support"))supportHeld=false;
-                    if(!Morale.routing(own,"ranged"))rallied=b.time-movedIn;else if(b.time-movedIn>40)rallied=999;
-                    if(rallied>=0){Vec3d c=Abilities.centre(b,own,"ranged");boolean ok=rallied<=20;oathOk&=ok;oathWhy+="; the routing Order Archers walked to "+fmt(distance(c,marshal.mob))+" from Aldric and regrouped "+(rallied==999?"never":rallied+" ticks later")+" (want 20 or fewer)="+ok;next(b,34);}
+                case 33->{ // the beat: a Slowness put on an anchored troop after the plant goes within BEAT ticks
+                    if(near.mob.hasStatusEffect(StatusEffects.SLOWNESS)){if(b.time-slowPutAt<=Abilities.BEAT+1)return;beatCleared=false;}else beatCleared=true;
+                    oathOk&=beatCleared;oathWhy+="; a Slowness put on the near Squire after the plant was off "+(b.time-slowPutAt)+" ticks later (want within the banner's "+Abilities.BEAT+"-tick beat)="+beatCleared;
+                    next(b,34);
                 }
-                case 34->{ // the cooldown: Move then Hold again at +100 plant nothing; the banner falls at +300 and the guard with it; Move and Hold after +600 plant again
+                case 34->{ // the cooldown: Move then Hold again at +100 plant nothing; the banner falls at +300 and the anchoring with it; Move and Hold after +600 plant again
                     for(var banner:b.banners)seen.add(banner);
                     long t=b.time-plantAt;
-                    if(t<300&&Morale.routing(own,"support"))supportHeld=false;
                     if(t==100||t==605)order(b,"infantry","move","block",site.getX()+.5,site.getZ()+.5,0);
                     if(t==115||t==620)order(b,"infantry","hold","block",site.getX()+.5,site.getZ()+.5,0);
-                    if(t==301){fell=b.banners.isEmpty();var state=planted.block()==null?null:b.world.getBlockState(planted.block());blockBack=state!=null&&state.isAir();}
-                    if(t>300&&supportRouted<0&&Morale.routing(own,"support"))supportRouted=t;
+                    if(t==301){fell=b.banners.isEmpty();var state=planted.block()==null?null:b.world.getBlockState(planted.block());blockBack=state!=null&&state.isAir();
+                        unanchored=!Abilities.anchored(b,near);Abilities.slow(b,near.mob,1,40);slowAfter=near.mob.hasStatusEffect(StatusEffects.SLOWNESS);near.mob.removeStatusEffect(StatusEffects.SLOWNESS);}
                     if(t>=620&&secondAt<0&&b.banners.size()==1&&b.banners.get(0)!=planted)secondAt=t;
                     if(secondAt>=0||t>660){
                         long early=seen.stream().filter(x->x!=planted&&x.until()-300<plantAt+600).count();
-                        boolean ok=early==0&&supportHeld&&fell&&blockBack&&supportRouted>300&&supportRouted<=345&&secondAt>=620&&secondAt<=632;
+                        boolean ok=early==0&&fell&&blockBack&&unanchored&&slowAfter&&secondAt>=620&&secondAt<=632;
                         oathOk&=ok;
-                        oathWhy+="; Move then Hold at +100 and +115 planted "+early+" more banners before +600; the weakened Sunweaver 10.6 off held while the banner stood="+supportHeld+"; at +301 the banner had fallen="+fell+" and its block was air again="+blockBack+"; the Sunweaver routed at +"+supportRouted+" (want just after +300); Move and Hold at +605 and +620 planted the next banner at +"+secondAt+"="+ok;
+                        oathWhy+="; Move then Hold at +100 and +115 planted "+early+" more banners before +600; at +301 the banner had fallen="+fell+", its block was air again="+blockBack+", the near Squire was anchored no more="+unanchored+" and a slow stuck to him="+slowAfter+"; Move and Hold at +605 and +620 planted the next banner at +"+secondAt+"="+ok;
                         report("p2-gilded-oath",oathOk,oathWhy);
                         clearFixture(b);Abilities.clearBanners(b);reset(own);next(b,35);
                     }
                 }
-                case 35->{ // p2-gilded-oath-plant and p2-gilded-oath-squad: a fresh banner planted by a direct call, so nothing but the plant itself has run (the Battle tick, which holds the 10-tick scan, has not)
-                    Abilities.clearBanners(b);reset(own);dawn.routedAt.clear();
+                case 35->{ // p2-gilded-oath-plant and p2-gilded-oath-squad: a fresh banner planted by a direct call, so nothing but the plant itself has run (the Battle tick, which holds the 10-tick beat, has not)
+                    Abilities.clearBanners(b);reset(own);
                     marshal=post(b,own,"gl_marshal",0,0,0,true);marshal.abilityAt=0;marshal.seenOrder=null;
                     var ownKnight=post(b,own,"knight",3,1,0,true);var ownArcher=post(b,own,"archer",4,3,0,true);var ownFar=post(b,own,"mage",-14,0,0,true);
                     var allyKnight=post(b,dawn,"knight",2,-2,0,true);var allyArcher=post(b,dawn,"archer",-4,4,0,true);var foeR=post(b,dusk,"revenant",3,3,180,true);
-                    own.routedAt.put("ranged",b.time);own.routedAt.put("support",b.time);dawn.routedAt.put("ranged",b.time);
-                    b.squads.put(dawn.owner,dawn); // the allied army (same team, another squad) is a seated army of the round for this one call, as the old team-wide scan would have found it
+                    for(var u:List.of(ownArcher,ownFar,allyKnight))u.mob.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(StatusEffects.SLOWNESS,600,0));
+                    b.squads.put(dawn.owner,dawn); // the allied army (same team, another squad) is a seated army of the round for this one call, as a team-wide rule would have found it
                     try{
                         var row=Abilities.row(marshal.spec);Abilities.plant(b,marshal,row,b.time);
                         var banner=b.banners.isEmpty()?null:b.banners.get(0);
-                        boolean stands=b.banners.size()==1&&banner.squad()==own&&banner.team()==own.team;
+                        boolean stands=b.banners.size()==1&&banner.squad()==own&&banner.team()==own.team&&banner.anchors();
                         double dArcher=banner==null?-1:distance(banner.at(),ownArcher.mob),dFar=banner==null?-1:distance(banner.at(),ownFar.mob),dAllyK=banner==null?-1:distance(banner.at(),allyKnight.mob),dAllyA=banner==null?-1:distance(banner.at(),allyArcher.mob);
                         boolean placed=stands&&dArcher<=12&&dFar>12&&dAllyK<=12&&dAllyA<=12;
-                        boolean rallied=!Morale.routing(own,"ranged"),farHeld=Morale.routing(own,"support");
-                        report("p2-gilded-oath-plant",placed&&rallied&&farHeld,"on the plant tick, before any scan: one banner of his own army stands="+stands+"; the routing Order Archer "+fmt(dArcher)+" from it (radius 12) was rallied="+rallied+"; the routing Sunweaver "+fmt(dFar)+" from it still routes="+farHeld);
-                        Abilities.rally(b,banner); // the scan's pass, run by hand: it must not reach the allied army either
+                        boolean freed=!ownArcher.mob.hasStatusEffect(StatusEffects.SLOWNESS),farKept=ownFar.mob.hasStatusEffect(StatusEffects.SLOWNESS);
+                        boolean flags=Abilities.anchored(b,ownArcher)&&!Abilities.anchored(b,ownFar);
+                        report("p2-gilded-oath-plant",placed&&freed&&farKept&&flags,"on the plant tick, before any beat: one banner of his own army stands and anchors="+stands+"; the slowed Order Archer "+fmt(dArcher)+" from it (radius 12) was freed of his Slowness="+freed+" and is anchored="+Abilities.anchored(b,ownArcher)+"; the slowed Sunweaver "+fmt(dFar)+" from it keeps it="+farKept+" and is anchored="+Abilities.anchored(b,ownFar)+" (want false)");
+                        Abilities.anchor(b,banner); // the beat's sweep, run by hand: it must not reach the allied army either
                         var mine=Commanders.hit(b,ownKnight,foeR.mob,"melee");var ally=Commanders.hit(b,allyKnight,foeR.mob,"melee");
                         boolean aura=auras(mine,1.10)&&auras(ally,1.0);
-                        boolean guard=Abilities.OATH_GUARD.holds(b,own,"infantry")&&!Abilities.OATH_GUARD.holds(b,dawn,"infantry")&&!Abilities.OATH_GUARD.holds(b,dawn,"ranged");
-                        boolean allyRouts=Morale.routing(dawn,"ranged");
-                        report("p2-gilded-oath-squad",own.team==dawn.team&&placed&&aura&&guard&&allyRouts,"an allied army of the same team (team "+dawn.team+" and his "+own.team+") with a Squire "+fmt(dAllyK)+" and an Order Archer "+fmt(dAllyA)+" from the banner (inside 12): auras his Squire "+au(mine)+" (want 1.1), the ally's Squire "+au(ally)+" (want 1.0)="+aura
-                            +"; guard on his infantry "+Abilities.OATH_GUARD.holds(b,own,"infantry")+", on the ally's infantry "+Abilities.OATH_GUARD.holds(b,dawn,"infantry")+" and ranged "+Abilities.OATH_GUARD.holds(b,dawn,"ranged")+" (want true, false, false)="+guard+"; the ally's routing archers were not rallied by the plant or by the scan="+allyRouts);
-                    }finally{b.squads.remove(dawn.owner);dawn.routedAt.clear();own.routedAt.clear();}
+                        boolean anchors=Abilities.anchored(b,ownKnight)&&!Abilities.anchored(b,allyKnight)&&!Abilities.anchored(b,allyArcher)&&allyKnight.mob.hasStatusEffect(StatusEffects.SLOWNESS);
+                        report("p2-gilded-oath-squad",own.team==dawn.team&&placed&&aura&&anchors,"an allied army of the same team (team "+dawn.team+" and his "+own.team+") with a Squire "+fmt(dAllyK)+" and an Order Archer "+fmt(dAllyA)+" from the banner (inside 12): auras his Squire "+au(mine)+" (want 1.1), the ally's Squire "+au(ally)+" (want 1.0)="+aura
+                            +"; anchored: his Squire "+Abilities.anchored(b,ownKnight)+", the ally's Squire "+Abilities.anchored(b,allyKnight)+" and archer "+Abilities.anchored(b,allyArcher)+" (want true, false, false), and the ally's slowed Squire kept his Slowness through the plant and the sweep="+allyKnight.mob.hasStatusEffect(StatusEffects.SLOWNESS)+"="+anchors);
+                    }finally{b.squads.remove(dawn.owner);}
                     clearFixture(b);Abilities.clearBanners(b);reset(own);next(b,50);
                 }
                 case 50->{ // p2-champion-standfast: the Champion on the platform; four Risen of his own army (Graveborn, so no Bulwark) 6.8 blocks from him, a Bone Archer of his 14.1 away, two frozen Risen of Dusk
@@ -1457,26 +1468,23 @@ public final class Phase2Checks implements ClientModInitializer {
                     activeOk=started&&taken;
                     activeWhy="the ability command as "+own.commander+": stand_fast runs="+Commander.running(b,own,"stand_fast")+" to +"+(own.abilityUntil-t0)+" (want 160), ready again at +"+(own.abilityReadyAt-t0)+" (readyIn "+Commander.readyIn(b,own)+", want 1800, 90 s), Resistance "+(res==null?"none":"level "+(res.getAmplifier()+1)+" for "+res.getDuration())+"="+started
                         +"; a Dusk blow on his Risen "+fmt(distance(p,knights.get(0).mob))+" from him "+show(inside)+", on his Bone Archer "+fmt(distance(p,outside.mob))+" away "+show(beyond)+"="+taken;
-                    own.fullHealth.put("infantry",living(b,own,"infantry")*10);own.steadyUntil.clear();heldThrough=true;routAfter=-1;tileWatch=1;next(b,52);
+                    tileWatch=1;next(b,52);
                 }
-                case 52->{ // the guard holds the weakened Risen through the 8 s; it ends with the active, and they rout
+                case 52->{ // it ends with the active (nothing holds anyone: no group routs); the tile counts down
                     long t=b.time-t0;var c=Commander.row(own);
-                    if(t<c.durationTicks()&&Morale.routing(own,"infantry"))heldThrough=false;
                     if(t==c.durationTicks()+1){var p=sp(b);boolean ended=own.abilityUntil==0&&!Commander.running(b,own)&&p!=null&&!p.hasStatusEffect(StatusEffects.RESISTANCE);activeOk&=ended;activeWhy+="; at +"+t+" it has ended and his Resistance is gone="+ended;}
-                    if(t>c.durationTicks()&&routAfter<0&&Morale.routing(own,"infantry"))routAfter=t-c.durationTicks();
-                    if(routAfter>=0&&!readyLater.isEmpty()||t>c.durationTicks()+400){
+                    if(t>c.durationTicks()+1&&!readyLater.isEmpty()||t>c.durationTicks()+400){
                         tileWatch=0;
                         int active=seconds(firstActive),cool=activeCooldownSeconds,ready1=seconds(readyFirst),ready2=seconds(readyLater);
                         boolean tile=active==8&&cool==90&&ready1>=80&&ready1<=82&&ready2>=0&&ready2<ready1;
-                        boolean guard=heldThrough&&routAfter>0&&routAfter<=45;
-                        report("p2-champion-standfast",activeOk&&guard&&tile,activeWhy+"; his weakened Risen held through it="+heldThrough+" and routed "+(routAfter<0?"never":routAfter+" ticks after it ended")+"="+guard+"; the HUD tile first read \""+firstActive+"\" with the cooldown at "+cool+" s (want ACTIVE 8 s and 90 s), then \""+readyFirst+"\" and 2 s later \""+readyLater+"\" (counting down)="+tile);
+                        report("p2-champion-standfast",activeOk&&tile,activeWhy+"; the HUD tile first read \""+firstActive+"\" with the cooldown at "+cool+" s (want ACTIVE 8 s and 90 s), then \""+readyFirst+"\" and 2 s later \""+readyLater+"\" (counting down)="+tile);
                         clearFixture(b);reset(own);next(b,60);
                     }
                 }
                 case 60->{tileWatch=0;if(b.running){b.campaign.returnLobby();return;}command(b,"class:marshal",61);}
                 case 61->{if(since(b)<20)return;var s=b.squads.get(player);
                     if(profile(b).commander.equals("marshal")&&s!=null&&s.commander.equals("marshal"))next(b,62);
-                    else if(since(b)>200){report("p2-marshal-rallyhorn",false,"class:marshal never reached the profile (it says "+profile(b).commander+")");next(b,70);}}
+                    else if(since(b)>200){report("p2-marshal-muster",false,"class:marshal never reached the profile (it says "+profile(b).commander+")");next(b,70);}}
                 case 62->{var p=sp(b);if(p==null||!Phase1Checks.skirmish(b,p,0,1,"normal"))return;next(b,63);}
                 case 63->{if(since(b)<10)return;stageFixture(b);
                     // he stands 9 blocks west of the platform's centre facing west, so the Move slots behind him (east) stay on the platform
@@ -1487,25 +1495,24 @@ public final class Phase2Checks implements ClientModInitializer {
                     for(String g:Morale.GROUPS)own.fullHealth.put(g,living(b,own,g));
                     next(b,64);
                 }
-                case 64->{if(since(b)<30)return; // settled on Hold; the Order Archers break (as Morale marks a rout) on the tick he sounds the horn
-                    var p=sp(b);var c=Commander.row(own);own.steadyUntil.clear();own.routedAt.put("ranged",b.time);
-                    hornsBefore=BattleEffects.horns.getOrDefault("rally",0);startDistance=meanDistance(p);firstActive="";readyFirst="";readyLater="";activeCooldownSeconds=-1;
+                case 64->{if(since(b)<30)return; // settled on Hold; he musters
+                    var p=sp(b);var c=Commander.row(own);
+                    heardBefore=BattleEffects.heard.size();startDistance=meanDistance(p);firstActive="";readyFirst="";readyLater="";activeCooldownSeconds=-1;
                     t0=b.time;b.command(p,"ability");
                     // the order path's spot: where he stands, one block above the ground there (he stands on the platform at y 140, far above it)
                     Vec3d to=p.getPos();Vec3d spot=new Vec3d(to.x,Arena.ground((int)to.x,(int)to.z)+1,to.z);boolean moves=true,snapped=Math.abs(to.y-spot.y)>20;StringBuilder orders=new StringBuilder();
                     for(var gr:Spec.GROUPS){if(gr.id().equals("all"))continue;String g=gr.id();var a=own.assignments.get(g);boolean m=a!=null&&a.order.equals("move")&&a.target.squaredDistanceTo(spot)<1e-6&&a.issued==t0;moves&=m;orders.append(g).append(' ').append(a==null?"none":a.order+" to "+fmt(a.target.x)+", "+fmt(a.target.y)+", "+fmt(a.target.z)).append(m?"":" (BAD)").append("; ");}
                     moves&=snapped;
-                    boolean steady=own.steadyUntil.getOrDefault("ranged",-1L)==t0+800&&own.steadyUntil.getOrDefault("infantry",-1L)==t0+400&&own.steadyUntil.getOrDefault("support",-1L)==t0+400;
-                    int speedy=0,troops=0;StringBuilder speeds=new StringBuilder();
+                    double want=BattleMath.speedModifier(1+c.value1(),false);int speedy=0,troops=0;StringBuilder speeds=new StringBuilder();
                     for(var u:fixture)if(u.mob.isAlive()){troops++;var a=u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);var m=a==null?null:a.getModifier(Commander.RALLY);
-                        boolean good=m!=null&&near(m.getValue(),c.value1())&&m.getOperation()==net.minecraft.entity.attribute.EntityAttributeModifier.Operation.MULTIPLY_TOTAL&&Math.abs(a.getValue()/a.getBaseValue()-(1+c.value1()))<1e-6;if(good)speedy++;
+                        boolean good=m!=null&&Math.abs(m.getValue()-want)<1e-9&&m.getOperation()==net.minecraft.entity.attribute.EntityAttributeModifier.Operation.MULTIPLY_TOTAL&&Math.abs(a.getValue()/a.getBaseValue()-Math.sqrt(1+c.value1()))<1e-6;if(good)speedy++;
                         speeds.append(u.spec.id()).append(' ').append(a==null?"-":fmt(a.getBaseValue())+" -> "+String.format(Locale.ROOT,"%.4f",a.getValue())).append(good?"":" (BAD)").append(", ");}
-                    int horns=BattleEffects.horns.getOrDefault("rally",0)-hornsBefore;
-                    boolean started=c.id().equals("marshal")&&Commander.running(b,own,"rally_horn")&&own.abilityUntil==t0+c.durationTicks()&&Commander.readyIn(b,own)==2400&&c.cooldownTicks()==2400&&c.durationTicks()==300;
-                    boolean rallied=!Morale.routing(own,"ranged");
-                    activeOk=started&&rallied&&moves&&steady&&speedy==troops&&troops==6&&horns==1;
-                    activeWhy="the ability command as "+own.commander+": rally_horn runs="+Commander.running(b,own,"rally_horn")+" to +"+(own.abilityUntil-t0)+" (want 300), readyIn "+Commander.readyIn(b,own)+" (want 2400, 120 s)="+started+"; the routing Order Archers rallied="+rallied+"; orders for every group (the ground at his feet, y "+fmt(spot.y)+", not his own y "+fmt(to.y)+"="+snapped+"): "+orders+"="+moves
-                        +"; steadyUntil "+own.steadyUntil+" at t0 "+t0+" (want ranged +800: rallied +400 then +400; the others +400)="+steady+"; speed: "+speeds+speedy+" of "+troops+" troops x(1 + "+c.value1()+"); rally horns +"+horns+" (want 1: the rally it calls adds none)";
+                    int heard=BattleEffects.heard.size()-heardBefore;var last=BattleEffects.heard.isEmpty()?null:BattleEffects.heard.get(BattleEffects.heard.size()-1);
+                    boolean sound=heard==1&&last!=null&&last.player().equals(player)&&last.kind().equals("rally")&&BattleEffects.horns.isEmpty();
+                    boolean started=c.id().equals("marshal")&&Commander.running(b,own,"rally_horn")&&own.abilityUntil==t0+c.durationTicks()&&Commander.readyIn(b,own)==2400&&c.cooldownTicks()==2400&&c.durationTicks()==300&&near(c.value1(),0.2)&&near(c.value2(),0)&&Commander.activeName(c.active()).equals("Muster");
+                    activeOk=started&&moves&&speedy==troops&&troops==6&&sound;
+                    activeWhy="the ability command as "+own.commander+": "+c.active()+" (named "+Commander.activeName(c.active())+", want Muster; value1 "+c.value1()+", value2 "+c.value2()+") runs="+Commander.running(b,own,"rally_horn")+" to +"+(own.abilityUntil-t0)+" (want 300), readyIn "+Commander.readyIn(b,own)+" (want 2400, 120 s)="+started+"; orders for every group (the ground at his feet, y "+fmt(spot.y)+", not his own y "+fmt(to.y)+"="+snapped+"): "+orders+"="+moves
+                        +"; speed: "+speeds+speedy+" of "+troops+" troops carry the modifier "+String.format(Locale.ROOT,"%.4f",want)+" (a real x"+(1+c.value1())+" on land: the square root, BattleMath.speedModifier); the Marshal alone heard the rally cue ("+heard+" sound(s), the last of kind "+(last==null?"none":last.kind())+") and no horn played in the world="+sound;
                     tileWatch=1;late=null;lateHastened=false;next(b,65);
                 }
                 case 65->{long t=b.time-t0;var c=Commander.row(own);
@@ -1517,11 +1524,11 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(t>c.durationTicks()+1&&!readyLater.isEmpty()||t>c.durationTicks()+400){
                         tileWatch=0;int active=seconds(firstActive),cool=activeCooldownSeconds,ready1=seconds(readyFirst),ready2=seconds(readyLater);
                         boolean tile=active==15&&cool==120&&ready1>=103&&ready1<=105&&ready2>=0&&ready2<ready1;
-                        report("p2-marshal-rallyhorn",activeOk&&tile,activeWhy+"; the HUD tile first read \""+firstActive+"\" with the cooldown at "+cool+" s (want ACTIVE 15 s and 120 s), then \""+readyFirst+"\" and 2 s later \""+readyLater+"\" (counting down)="+tile);
+                        report("p2-marshal-muster",activeOk&&tile,activeWhy+"; the HUD tile first read \""+firstActive+"\" with the cooldown at "+cool+" s (want ACTIVE 15 s and 120 s), then \""+readyFirst+"\" and 2 s later \""+readyLater+"\" (counting down)="+tile);
                         reset(own);next(b,66);
                     }
                 }
-                case 66->{ // p2-marshal-rallyhorn-spots: the horn's Move takes the order path's spot rules: while he stands in river water or inside the arena's 10-block edge margin no group is moved, and the rest of the horn still happens
+                case 66->{ // p2-marshal-muster-spots: Muster's Move takes the order path's spot rules: while he stands in river water or inside the arena's 10-block edge margin no group is moved, and the rest of the Muster still happens; the second Muster inside the cue's 8 s plays no second sound
                     var p=sp(b);
                     Vec3d river=null;for(int z=20;z<200&&river==null;z++){int x=(int)Math.round(CampaignMaps.riverX(z));if(Arena.river(x,z)&&Arena.ground(x,z)<64)river=new Vec3d(x+.5,Arena.ground(x,z)+1,z+.5);}
                     Vec3d[] where={river,new Vec3d(.5,100,GravesAndGlory.R.arenaHalfZ()-5)};String[] name={"in river water","inside the edge margin"},words={"Choose dry ground or a crossing.","Too near the edge of the arena."};
@@ -1529,16 +1536,17 @@ public final class Phase2Checks implements ClientModInitializer {
                     for(int i=0;i<2&&where[i]!=null;i++){
                         Map<String,GravesAndGlory.Assignment> before=new HashMap<>(own.assignments);
                         b.relocate(p,where[i].x,where[i].y,where[i].z,0,0);
-                        Commander.reset(b,own);own.routedAt.put("ranged",b.time);own.steadyUntil.clear();long t=b.time;
+                        Commander.reset(b,own);int heardAt=BattleEffects.heard.size();
                         b.campaign.notices.remove(player);b.command(p,"ability");String said=b.campaign.notices.getOrDefault(player,"");
                         boolean unmoved=true;for(var gr:Spec.GROUPS)if(!gr.id().equals("all"))unmoved&=own.assignments.get(gr.id())==before.get(gr.id());
-                        boolean horn=Commander.running(b,own,"rally_horn")&&!Morale.routing(own,"ranged")&&own.steadyUntil.getOrDefault("ranged",-1L)==t+800&&own.steadyUntil.getOrDefault("infantry",-1L)==t+400;
+                        boolean ran=Commander.running(b,own,"rally_horn");
                         int speedy=0,troops=0;for(var u:fixture)if(u.mob.isAlive()){troops++;var a=u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);if(a!=null&&a.getModifier(Commander.RALLY)!=null)speedy++;}
-                        boolean spoke=said.equals(words[i]);ok&=unmoved&&horn&&speedy==troops&&troops>0&&spoke;
-                        why.append("he stands ").append(name[i]).append(" at ").append(fmt(where[i].x)).append(", ").append(fmt(where[i].z)).append(": no group got a new order=").append(unmoved).append("; the horn still ran, rallied the archers and set the steadiness=").append(horn).append("; the speed reached ").append(speedy).append(" of ").append(troops).append(" troops; the notice read \"").append(said).append("\" (want \"").append(words[i]).append("\")=").append(spoke).append("; ");
+                        int added=BattleEffects.heard.size()-heardAt;boolean cue=i==0?added==1:added==0;
+                        boolean spoke=said.equals(words[i]);ok&=unmoved&&ran&&speedy==troops&&troops>0&&spoke&&cue&&BattleEffects.horns.isEmpty();
+                        why.append("he stands ").append(name[i]).append(" at ").append(fmt(where[i].x)).append(", ").append(fmt(where[i].z)).append(": no group got a new order=").append(unmoved).append("; the Muster still ran=").append(ran).append("; the speed reached ").append(speedy).append(" of ").append(troops).append(" troops; the notice read \"").append(said).append("\" (want \"").append(words[i]).append("\")=").append(spoke).append("; feedback sounds +").append(added).append(i==0?" (want 1)":" (want 0: inside the 8 s of the first)").append("=").append(cue).append("; ");
                     }
                     Commander.reset(b,own);b.relocate(p,site.getX()-8.5,site.getY(),site.getZ()+.5,90,20);
-                    report("p2-marshal-rallyhorn-spots",ok,"(river spot "+(river==null?"none found":fmt(river.x)+", "+fmt(river.z)+", ground "+Arena.ground((int)river.x,(int)river.z))+") "+why);
+                    report("p2-marshal-muster-spots",ok,"(river spot "+(river==null?"none found":fmt(river.x)+", "+fmt(river.z)+", ground "+Arena.ground((int)river.x,(int)river.z))+") "+why);
                     clearFixture(b);reset(own);next(b,70);
                 }
                 case 70->{ // p2-gilded-showcase: his army under the hard Gilded banner on map 0
@@ -1648,8 +1656,8 @@ public final class Phase2Checks implements ClientModInitializer {
         }
         /** After each server tick: the pinned troops stand where the stage put them. */
         void hold(){for(var p:pins)if(p.u().mob.isAlive())Engine.apply(p.u(),p.at(),p.yaw());}
-        /** The army's stored state back to nothing: no rout, no steadiness, no health ceiling, no orders. */
-        static void reset(GravesAndGlory.Squad s){s.routedAt.clear();s.steadyUntil.clear();s.fullHealth.clear();s.assignments.clear();}
+        /** The army's stored state back to nothing: no last stand, no health ceiling, no orders. */
+        static void reset(GravesAndGlory.Squad s){s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.assignments.clear();}
         /** What a suite does once the platform stands (before the armies are made). */
         void staged(){}
         /** Every army's troops leave and none come back; a stone sky platform 40 blocks east of Dawn's base; two ad hoc armies (bots, so no profile is read) beside the commander's own, which keeps his seat and his class. */
@@ -1665,7 +1673,7 @@ public final class Phase2Checks implements ClientModInitializer {
 
     /**
      * Task 7 (batch 2): the Graveborn mechanics. The two new mobs (burn, water, goals), cleave, frost shot, the Gravecaller's blight,
-     * the fearless and dread rout shares, Rise Again (once, not Legendaries, not temporary troops, the chance by tier), the Warlock's
+     * the fearless stance and the dread aura (no group routs: the no-routing design), Rise Again (once, not Legendaries, not temporary troops, the chance by tier), the Warlock's
      * Grave Bloom with its death log, the cleanup of temporary Risen at the end of a round and at a map switch, and the tick cost. The
      * fixture is Gilded's: a stone platform in the sky above Dawn's base, two ad hoc armies and the commander's own (a Warlock);
      * troops are posted frozen and pinned, and every kill goes through the real damage path (Combat.resolve, or damage with no
@@ -1679,8 +1687,8 @@ public final class Phase2Checks implements ClientModInitializer {
         boolean mobsOk,armyBurned,controlBurned,strayControlBurned;int submerged;String mobsWhy="";
         // the blight and the frost shot
         Projectiles.Shot shot;GravesAndGlory.Unit centre,inside,outside;long burst=-1;
-        // the rout shares
-        boolean moraleOk,early,heldAt15,routedAt10;String moraleWhy="";long routedAfter=-1;
+        // fearless and dread
+        boolean moraleOk,early,heldAt15;String moraleWhy="";long lastStandAfter=-1;
         // Rise Again
         GravesAndGlory.Unit risen,riseK1,riseControl,riseK2;float hpK1,hpK2;boolean riseOk,heldStun,controlHit,afterStun;String riseWhy="";int soulsBefore;
         // Grave Bloom
@@ -1844,80 +1852,50 @@ public final class Phase2Checks implements ClientModInitializer {
                         clearFixture(b,"blight");next(b,20);
                     }
                 }
-                case 20->{ // p2-fearless-share: ten Risen of the commander's own army, a mix of five Risen and five Squires, and a mix of four and six; Dusk troops in sight
+                case 20->{ // p2-fearless-share: the fearless stance, per soldier: a Risen at 30% of his health deals x1.2 and one at 31% x1.0; an Order Squire at 30% x1.0; a Bone Archer's arrow at 30% x1.2; Brassjaw at 30% x1.0 (no fearless tag)
                     reset(own);group.clear();
-                    for(int i=0;i<10;i++)group.add(post(b,own,"revenant",-6+(i%5)*1.5,-5+(i/5)*1.5,-90,true));
-                    for(int i=0;i<5;i++){post(b,dawn,"revenant",-6+i*1.5,8,-90,true);post(b,dawn,"knight",-6+i*1.5,9.5,-90,true);}
-                    for(int i=0;i<4;i++)post(b,dusk,"revenant",8+i*1.5,-2,90,true);for(int i=0;i<6;i++)post(b,dusk,"knight",8+i*1.5,0,90,true);
-                    Houses.recompute(own);Houses.recompute(dawn);Houses.recompute(dusk);
-                    var fearless=Abilities.fearlessRow();double ten=Morale.routShareFor(b,own,"infantry"),half=Morale.routShareFor(b,dawn,"infantry"),four=Morale.routShareFor(b,dusk,"infantry"),none=Morale.routShareFor(b,own,"ranged");
-                    boolean sheet=fearless!=null&&near(fearless.amount(),0.12)&&near(fearless.amount2(),0.5)&&near(Spec.MORALE[0].routShare(),0.25);
-                    moraleOk=sheet&&near(ten,0.12)&&near(half,0.12)&&near(four,0.25)&&near(none,0.25);
-                    moraleWhy="the sheet's fearless row ("+(fearless==null?"none":fearless.id()+" "+fearless.amount()+" at "+fearless.amount2())+") and morale share "+Spec.MORALE[0].routShare()+"="+sheet+"; the share a group breaks at: ten Risen "+ten+", five Risen and five Squires "+half+" (want 0.12 for both), four Risen and six Squires "+four+", no troop at all "+none+" (want the sheet's 0.25); ";
-                    early=false;weaken(own,"infantry",group,0.15);t0=b.time;next(b,21);
-                }
-                case 21->{ // ten Risen at 15% do not break in 45 ticks; at 10% they do
-                    if(Morale.routing(own,"infantry"))early=true;
-                    if(since(b)<45)return;
-                    heldAt15=!early&&near(BattleMath.strength(group.stream().mapToDouble(u->u.mob.getHealth()).sum(),own.fullHealth.get("infantry")),0.15);
-                    weaken(own,"infantry",group,0.10);t0=b.time;routedAfter=-1;next(b,22);
-                }
-                case 22->{
-                    if(Morale.routing(own,"infantry")){routedAfter=b.time-t0;}
-                    if(routedAfter<0&&since(b)<=60)return;
-                    routedAt10=routedAfter>=0;
-                    moraleWhy+="ten Risen at 15% strength did not rout in 45 ticks="+heldAt15+" and routed at 10% "+(routedAfter<0?"never":routedAfter+" ticks later")+"="+routedAt10+"; ";
-                    dropAll(b,group,"fearless");reset(own);Houses.recompute(own);
-                    for(int i=0;i<10;i++)group.add(post(b,own,"knight",-6+(i%5)*1.5,-5+(i/5)*1.5,-90,true));
-                    Houses.recompute(own);weaken(own,"infantry",group,0.15);t0=b.time;routedAfter=-1;next(b,23);
-                }
-                case 23->{ // a knight group at 15% breaks
-                    if(Morale.routing(own,"infantry"))routedAfter=b.time-t0;
-                    if(routedAfter<0&&since(b)<=60)return;
-                    boolean knights=routedAfter>=0&&near(Morale.routShareFor(b,own,"infantry"),0.25);
-                    moraleWhy+="a group of ten Order Squires at 15% routed "+(routedAfter<0?"never":routedAfter+" ticks later")+"="+knights;
-                    report("p2-fearless-share",moraleOk&&heldAt15&&routedAt10&&knights,moraleWhy);
+                    var low=post(b,own,"revenant",-6,-2,-90,true);var high=post(b,own,"revenant",-6,0,-90,true);var knight=post(b,own,"knight",-6,2,-90,true);var bow=post(b,own,"bonebow",-6,4,-90,true);var brass=post(b,own,"ic_colossus",-6,-5,-90,true);
+                    var target=post(b,dusk,"knight",6,0,90,true);Houses.recompute(own);
+                    var fearless=Abilities.row(low.spec);
+                    boolean sheet=fearless.mechanic().equals("fearless")&&near(fearless.amount(),0.2)&&near(fearless.amount2(),0.3)&&near(Spec.COMBATDISCIPLINE[0].woundedShare(),0.3)&&bow.tags.contains("fearless")&&Abilities.row(bow.spec).mechanic().equals("fearless")&&!brass.tags.contains("fearless")&&brass.tags.contains("large");
+                    low.mob.setHealth(low.mob.getMaxHealth()*0.3f);high.mob.setHealth(high.mob.getMaxHealth()*0.31f);knight.mob.setHealth(knight.mob.getMaxHealth()*0.3f);bow.mob.setHealth(bow.mob.getMaxHealth()*0.3f);brass.mob.setHealth(brass.mob.getMaxHealth()*0.3f);
+                    var hLow=Commanders.hit(b,low,target.mob,"melee");var hHigh=Commanders.hit(b,high,target.mob,"melee");var hKnight=Commanders.hit(b,knight,target.mob,"melee");var hBow=Commanders.hit(b,bow,target.mob,"arrow");var hBrass=Commanders.hit(b,brass,target.mob,"melee");
+                    low.mob.setHealth(low.mob.getMaxHealth());var hFull=Commanders.hit(b,low,target.mob,"melee");
+                    boolean stance=hLow!=null&&near(hLow.stance(),1.2)&&near(hLow.total(),1.2)&&hHigh!=null&&near(hHigh.stance(),1.0)&&hKnight!=null&&near(hKnight.stance(),1.0)&&hBow!=null&&near(hBow.stance(),1.2)&&hBrass!=null&&near(hBrass.stance(),1.0)&&hFull!=null&&near(hFull.stance(),1.0);
+                    report("p2-fearless-share",sheet&&stance,"the sheet's fearless row (amount "+fearless.amount()+" at amount2 "+fearless.amount2()+" of max health; combatDiscipline.woundedShare "+Spec.COMBATDISCIPLINE[0].woundedShare()+"), the Bone Archer carries it and Brassjaw does not (tags "+brass.tags+")="+sheet+"; blows on a Dusk Squire: a Risen at 30% "+show(hLow)+" (want stance 1.2, total 1.2: a troop that rose through Rise Again stands at this 30% and so is fearless at once), at 31% "+show(hHigh)+" (1.0), an Order Squire at 30% "+show(hKnight)+" (1.0), a Bone Archer's arrow at 30% "+show(hBow)+" (1.2), Brassjaw at 30% "+show(hBrass)+" (1.0), the Risen healed "+show(hFull)+" (1.0)="+stance);
                     clearFixture(b,"fearless");reset(own);next(b,30);
                 }
-                case 30->{ // p2-dread: four Order Squires of the own army at 35% strength, a Dusk Risen in sight and the Hollow King 24 blocks away
+                case 30->{ // p2-dread: four Order Squires of the own army, a Dusk Risen in sight and the Hollow King 24 blocks away, then 5.5 from the platform's centre
                     reset(own);group.clear();
                     for(int i=0;i<4;i++)group.add(post(b,own,"knight",-6+i*1.5,0,-90,true));
                     post(b,dusk,"revenant",6,3,90,true);hk=post(b,dusk,"gb_hollowking",20,0,90,true);Houses.recompute(own);
                     var far=Commanders.hit(b,group.get(3),fixture.get(4).mob,"melee");
-                    boolean sheet=Abilities.dreadRow(hk)!=null&&near(Abilities.dreadRow(hk).amount(),0.15)&&near(Abilities.dreadRow(hk).amount2(),0.4)&&near(Abilities.dreadRow(hk).radius(),10);
-                    moraleOk=sheet&&Gilded.auras(far,1.0)&&near(Morale.routShareFor(b,own,"infantry"),0.25);
-                    moraleWhy="the Hollow King's ability "+hk.spec.ability()+" ("+(Abilities.dreadRow(hk)==null?"not a dread row":"amount "+Abilities.dreadRow(hk).amount()+", rout "+Abilities.dreadRow(hk).amount2()+", radius "+Abilities.dreadRow(hk).radius())+")="+sheet+"; with him 24 blocks off a Squire's blow has auras "+Gilded.au(far)+" and the group breaks at "+fmt(Morale.routShareFor(b,own,"infantry"))+" (want 1.0 and 0.25); ";
-                    early=false;weaken(own,"infantry",group,0.35);t0=b.time;next(b,31);
-                }
-                case 31->{ // 35% without the Hollow King: no rout in 45 ticks; then he steps to 9.25 from their centre
-                    if(Morale.routing(own,"infantry"))early=true;
-                    if(since(b)<45)return;
-                    heldAt15=!early;moraleWhy+="four Squires at 35% with no Hollow King within 10 did not rout in 45 ticks="+heldAt15+"; ";
+                    var dread=Abilities.dreadRow(hk);
+                    boolean sheet=dread!=null&&near(dread.amount(),0.15)&&near(dread.amount2(),0)&&near(dread.radius(),10);
+                    moraleOk=sheet&&Gilded.auras(far,1.0);
+                    moraleWhy="the Hollow King's ability "+hk.spec.ability()+" ("+(dread==null?"not a dread row":"amount "+dread.amount()+", amount2 "+dread.amount2()+" (want 0: nothing routs), radius "+dread.radius())+")="+sheet+"; with him 24 blocks off a Squire's blow has auras "+Gilded.au(far)+" (want 1.0); ";
                     move(hk,5.5,0,90);
                     // his dread on every blow of the enemy's troops that stands within 10 of him; the largest of several, and a banner's share multiplies in
                     var inReach=Commanders.hit(b,group.get(3),fixture.get(4).mob,"melee");var outReach=Commanders.hit(b,group.get(0),fixture.get(4).mob,"melee");var his=Commanders.hit(b,fixture.get(4),group.get(3).mob,"melee");
                     var second=post(b,dusk,"gb_hollowking",6,-3,90,true);var two=Commanders.hit(b,group.get(3),fixture.get(4).mob,"melee");drop(b,second);
-                    var banner=new Abilities.Banner(own,group.get(3).mob.getPos(),b.time+300,12,0.1,null,null);b.banners.add(banner);var withBanner=Commanders.hit(b,group.get(3),fixture.get(4).mob,"melee");b.banners.remove(banner);
-                    boolean auras=Gilded.auras(inReach,0.85)&&Gilded.auras(outReach,1.0)&&Gilded.auras(his,1.0)&&Gilded.auras(two,0.85)&&Math.abs(withBanner.auras()-1.1*0.85)<1e-9;
-                    boolean share=near(Morale.routShareFor(b,own,"infantry"),0.4);
-                    moraleOk&=auras&&share;
-                    moraleWhy+="with the Hollow King at 7.0 from one Squire and 11.5 from another: a blow by the near one has auras "+Gilded.au(inReach)+" (want 0.85), by the far one "+Gilded.au(outReach)+" (1.0), by a Dusk Risen beside the King "+Gilded.au(his)+" (his own side, 1.0), with a second King in reach "+Gilded.au(two)+" (not stacked, 0.85), with an Oath Banner too "+(withBanner==null?"none":String.valueOf(withBanner.auras()))+" (1.1 x 0.85)="+auras+"; the group's share is now "+fmt(Morale.routShareFor(b,own,"infantry"))+" (want 0.40)="+share+"; ";
-                    weaken(own,"infantry",group,0.35);routedAfter=-1;t0=b.time;next(b,32);
+                    var banner=new Abilities.Banner(own,group.get(3).mob.getPos(),b.time+300,12,0.1,true,null,null);b.banners.add(banner);var withBanner=Commanders.hit(b,group.get(3),fixture.get(4).mob,"melee");b.banners.remove(banner);
+                    boolean auras=Gilded.auras(inReach,0.85)&&Gilded.auras(outReach,1.0)&&Gilded.auras(his,1.0)&&Gilded.auras(two,0.85)&&withBanner!=null&&Math.abs(withBanner.auras()-1.1*0.85)<1e-9;
+                    moraleOk&=auras;
+                    moraleWhy+="with the Hollow King at 7.0 from one Squire and 11.5 from another: a blow by the near one has auras "+Gilded.au(inReach)+" (want 0.85), by the far one "+Gilded.au(outReach)+" (1.0), by a Dusk Risen beside the King "+Gilded.au(his)+" (his own side, 1.0), with a second King in reach "+Gilded.au(two)+" (not stacked, 0.85), with an Oath Banner too "+(withBanner==null?"none":String.valueOf(withBanner.auras()))+" (1.1 x 0.85)="+auras+"; ";
+                    weaken(own,"infantry",group,0.35);early=false;t0=b.time;next(b,31);
                 }
-                case 32->{ // the Squires at 35% break within the dread; then ten Risen at 35% in the same place do not
-                    if(Morale.routing(own,"infantry"))routedAfter=b.time-t0;
-                    if(routedAfter<0&&since(b)<=60)return;
-                    routedAt10=routedAfter>=0;moraleWhy+="the same Squires with him 9.25 from their centre routed "+(routedAfter<0?"never":routedAfter+" ticks later")+"="+routedAt10+"; ";
-                    dropAll(b,group,"dread");reset(own);Houses.recompute(own);
-                    for(int i=0;i<10;i++)group.add(post(b,own,"revenant",-6+(i%5)*1.5,-1+(i/5)*1.5,-90,true));
-                    Houses.recompute(own);weaken(own,"infantry",group,0.35);early=false;t0=b.time;next(b,33);
-                }
-                case 33->{ // fearless wins over dread
-                    if(Morale.routing(own,"infantry"))early=true;
+                case 31->{ // the Squires at 35% beside him keep their order and stand no last stand in 45 ticks (the share is the sheet's 0.25, dread or not); then at 20% they do
+                    if(Morale.lastStand(own,"infantry"))early=true;
                     if(since(b)<45)return;
-                    boolean wins=!early&&near(Morale.routShareFor(b,own,"infantry"),0.12);
-                    moraleWhy+="ten Risen at 35% beside him did not rout in 45 ticks and break at "+fmt(Morale.routShareFor(b,own,"infantry"))+" (fearless wins, 0.12)="+wins;
-                    report("p2-dread",moraleOk&&heldAt15&&routedAt10&&wins,moraleWhy);
+                    heldAt15=!early&&b.assignment(group.get(0)).order.equals(own.order);
+                    moraleWhy+="four Squires at 35% strength with the King 9.25 from their centre kept their order ("+b.assignment(group.get(0)).order+") and stood no last stand in 45 ticks="+heldAt15+"; ";
+                    weaken(own,"infantry",group,0.20);t0=b.time;lastStandAfter=-1;next(b,32);
+                }
+                case 32->{
+                    if(lastStandAfter<0&&Morale.lastStand(own,"infantry"))lastStandAfter=b.time-t0;
+                    if(lastStandAfter<0&&since(b)<=60)return;
+                    boolean last=lastStandAfter>=0&&lastStandAfter<=40&&b.assignment(group.get(0)).order.equals(own.order);
+                    report("p2-dread",moraleOk&&heldAt15&&last,moraleWhy+"at 20% strength with Dusk within "+Spec.COMBATDISCIPLINE[0].lastStandRadius()+" they turned to their last stand "+(lastStandAfter<0?"never":lastStandAfter+" ticks later")+" (want 40 or fewer) with their order still "+b.assignment(group.get(0)).order+"="+last);
                     clearFixture(b,"dread");reset(own);next(b,40);
                 }
                 case 40->{ // p2-rise-again: a Risen of a Graveborn army (six Risen: tier I) at 1 health, struck dead by an Order Squire
@@ -2021,27 +1999,25 @@ public final class Phase2Checks implements ClientModInitializer {
                         clearFixture(b,"stunned-caster");Houses.forceRise=Boolean.FALSE;next(b,48);
                     }
                 }
-                case 48->{ // p2-temporary-morale: three temporary Risen with a target and a spell, ten Order Squires of the army at 10% strength with a Dusk Squire in sight
+                case 48->{ // p2-temporary-morale: three temporary Risen with a target and a spell, ten Order Squires of the army, a Dusk Squire in sight: the group is ordered to Retreat
                     reset(own);group.clear();temps.clear();Houses.forceRise=Boolean.FALSE;
                     for(int i=0;i<10;i++)group.add(post(b,own,"knight",-6+(i%5)*1.5,-5+(i/5)*1.5,-90,true));
                     for(int i=0;i<3;i++){var tmp=post(b,own,"revenant",-10+i*1.5,22,-90,true);tmp.temporary=true;tmp.expiresAt=b.time+2000;temps.add(tmp);}
                     var foe=post(b,dusk,"knight",8,-4,90,true);Houses.recompute(own);
-                    var members=Morale.members(b,own,"infantry");Vec3d moraleCentre=Morale.centre(members),guardCentre=Abilities.centre(b,own,"infantry");
-                    boolean centres=members.size()==10&&guardCentre!=null&&guardCentre.squaredDistanceTo(moraleCentre)<1e-12;
-                    for(var tmp:temps){tmp.lockedTarget=foe.mob;tmp.lockUntil=b.time+1000;tmp.spellCenter=foe.mob.getPos();}
-                    group.get(0).lockedTarget=foe.mob;group.get(0).spellCenter=foe.mob.getPos();
-                    stunWhy="with three temporary Risen 22 blocks behind ten Squires the guards' centre ("+(guardCentre==null?"none":fmt(guardCentre.x-site.getX()-.5)+", "+fmt(guardCentre.z-site.getZ()-.5))+") is the centre morale counts ("+fmt(moraleCentre.x-site.getX()-.5)+", "+fmt(moraleCentre.z-site.getZ()-.5)+") of its "+members.size()+" members (want 10)="+centres+"; ";
-                    stunOk=centres;weaken(own,"infantry",group,0.10);t0=b.time;routedAfter=-1;next(b,49);
+                    var members=Morale.members(b,own,"infantry");Vec3d moraleCentre=Morale.centre(members),groupCentre=Abilities.centre(b,own,"infantry");
+                    boolean centres=members.size()==10&&groupCentre!=null&&groupCentre.squaredDistanceTo(moraleCentre)<1e-12;
+                    for(var tmp:temps){tmp.lockedTarget=foe.mob;tmp.lockUntil=b.time+1000;tmp.spellCenter=foe.mob.getPos();tmp.mob.setTarget(foe.mob);}
+                    group.get(0).lockedTarget=foe.mob;group.get(0).spellCenter=foe.mob.getPos();group.get(0).mob.setTarget(foe.mob);
+                    stunWhy="with three temporary Risen 22 blocks behind ten Squires the group's centre ("+(groupCentre==null?"none":fmt(groupCentre.x-site.getX()-.5)+", "+fmt(groupCentre.z-site.getZ()-.5))+") is the centre Morale counts ("+fmt(moraleCentre.x-site.getX()-.5)+", "+fmt(moraleCentre.z-site.getZ()-.5)+") of its "+members.size()+" members (want 10: temporaries share the group's orders, not its numbers)="+centres+"; ";
+                    stunOk=centres;b.issue(own,"infantry","retreat","block",new Vec3d(site.getX()+.5-20,site.getY(),site.getZ()+.5),-90,-1);t0=b.time;next(b,49);
                 }
-                case 49->{ // the tick the group breaks: every troop of it, a temporary one too, has dropped its target and its spell and takes the retreat order
-                    if(Morale.routing(own,"infantry")||since(b)>80){
-                        boolean broke=Morale.routing(own,"infantry");
-                        boolean temporary=true;for(var tmp:temps)temporary&=tmp.lockedTarget==null&&tmp.spellCenter==null&&b.assignment(tmp).order.equals("retreat");
-                        boolean regular=group.get(0).lockedTarget==null&&group.get(0).spellCenter==null&&b.assignment(group.get(0)).order.equals("retreat");
-                        stunOk&=broke&&temporary&&regular;
-                        report("p2-temporary-morale",stunOk,stunWhy+"ten Squires at 10% strength broke "+(broke?(b.time-t0)+" ticks later":"never")+"="+broke+"; the three temporary Risen then had no target, no spell and the retreat order="+temporary+" (a Squire: "+regular+")");
-                        group.clear();temps.clear();clearFixture(b,"temporary morale");reset(own);Houses.recompute(own);next(b,50);
-                    }
+                case 49->{ // 20 ticks after the Retreat order every troop of the group, a temporary one too, has dropped its target and its spell and takes the order; nothing changes it on its own
+                    if(since(b)<20)return;
+                    boolean temporary=true;for(var tmp:temps)temporary&=tmp.lockedTarget==null&&tmp.spellCenter==null&&tmp.mob.getTarget()==null&&b.assignment(tmp).order.equals("retreat");
+                    boolean regular=group.get(0).lockedTarget==null&&group.get(0).spellCenter==null&&group.get(0).mob.getTarget()==null&&b.assignment(group.get(0)).order.equals("retreat");
+                    stunOk&=temporary&&regular;
+                    report("p2-temporary-morale",stunOk,stunWhy+"20 ticks after the Retreat order the three temporary Risen have no target, no spell and the retreat order="+temporary+" (a Squire: "+regular+")");
+                    group.clear();temps.clear();clearFixture(b,"temporary morale");reset(own);Houses.recompute(own);next(b,50);
                 }
                 case 50->{ // p2-grave-bloom: the Warlock on the platform; eight troops of both sides fall around a point 12 blocks ahead of him, and a stale entry sits in the log
                     var p=sp(b);if(p==null)return;reset(own);Commander.reset(b,own);own.order="hold";own.assignments.clear();
@@ -2389,7 +2365,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     us[0]=bare(post(b,dusk,"knight",0,0,180,true));us[1]=bare(post(b,dusk,"knight",1.5,0,180,true));us[2]=bare(post(b,dusk,"knight",-1.8,0.3,180,true));us[3]=bare(post(b,dusk,"knight",0.4,2.0,180,true));us[4]=bare(post(b,dusk,"knight",3.2,0,180,true));
                     for(int i=1;i<=3;i++)unpin(us[i]); // free to be thrown; the one 3.2 off stays pinned
                     var row=Abilities.row(u1.spec);
-                    boolean sheet=row.id().equals("forge_slam")&&row.mechanic().equals("slam")&&near(row.amount(),0.6)&&near(row.radius(),2.5)&&near(row.knockback(),0.8)&&Abilities.carriesFearless(u1)&&u1.tags.containsAll(List.of("fearless","large"));
+                    boolean sheet=row.id().equals("forge_slam")&&row.mechanic().equals("slam")&&near(row.amount(),0.6)&&near(row.radius(),2.5)&&near(row.knockback(),0.8)&&!u1.tags.contains("fearless")&&u1.tags.contains("large");
                     float[] before=new float[5];for(int i=0;i<5;i++)before[i]=us[i].mob.getHealth();
                     mark=Combat.LAST.peekLast();float base=(float)Abilities.baseHit(b,u1);strike(b,u1,us[0],base);
                     float[] lost=new float[5];for(int i=0;i<5;i++)lost[i]=before[i]-us[i].mob.getHealth();
@@ -2402,7 +2378,7 @@ public final class Phase2Checks implements ClientModInitializer {
                         share&=good;s.append("knight ").append(i).append(" ").append(fmt(distance(us[i].mob.getPos(),us[0].mob.getPos()))).append(" off lost ").append(fmt(lost[i])).append(" (want ").append(fmt(0.6*lost[0])).append(") in ").append(count).append(" hit, thrown away at ").append(fmt(speed)).append(good?"":" (BAD)").append("; ");
                     }
                     boolean outside=Gilded.hitOn(us[4].mob,mark)==null&&lost[4]==0&&Math.hypot(us[4].mob.getVelocity().x,us[4].mob.getVelocity().z)<0.05;
-                    report("p2-forge-slam",sheet&&share&&outside,"Brassjaw's row "+row.id()+" ("+row.mechanic()+", share "+row.amount()+", radius "+row.radius()+", knockback "+row.knockback()+"), carries fearless="+Abilities.carriesFearless(u1)+" and tags "+u1.tags+"="+sheet+"; his blow hit the first knight "+show(onFirst)+" (it lost "+fmt(lost[0])+"); "+s+"the knight 3.2 off took no hit, lost "+fmt(lost[4])+" and was not moved="+outside);
+                    report("p2-forge-slam",sheet&&share&&outside,"Brassjaw's row "+row.id()+" ("+row.mechanic()+", share "+row.amount()+", radius "+row.radius()+", knockback "+row.knockback()+"), tags "+u1.tags+" (large, and no fearless: the no-routing design)="+sheet+"; his blow hit the first knight "+show(onFirst)+" (it lost "+fmt(lost[0])+"); "+s+"the knight 3.2 off took no hit, lost "+fmt(lost[4])+" and was not moved="+outside);
                     clearFixture(b,"slam");next(b,22);
                 }
                 case 22->{ // p2-counters-siege: a supply banner of Dusk, a Ballista Crew, a Mortar and a knight of Dawn, Brassjaw and a small synthetic troop of Dusk
@@ -3099,7 +3075,19 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(!due){tideOk&=again==null&&u1.abilityAt==t0+200;return;}
                     boolean second=again!=null&&u1.abilityAt==b.time+200&&slowAt(us[0].mob,1)==60;
                     report("p2-undertow",tideOk&&second,tideWhy+"; at +"+(b.time-t0)+" (the cooldown up) it fired again (a hit on the knight "+show(again)+", the next cast at +"+(u1.abilityAt-b.time)+" and every tick before that did nothing)="+second);
-                    clearFixture(b,"undertow");next(b,20);
+                    clearFixture(b,"undertow");
+                    // p2-pull-wall (Task 9 review, minor 4): a pull into a wall stops at the wall. The Admiral again, a fresh knight 4.5 off and a stone wall 3 off between them (two blocks high): the undertow's 3-block pull leaves the knight against the wall, not in it
+                    u1=post(b,dawn,"tc_admiral",0,0,-90,true);u1.abilityAt=0;
+                    BlockPos wall=site.add(3,0,0);List<BlockPos> stones=List.of(wall,wall.up(),wall.north(),wall.north().up(),wall.south(),wall.south().up());
+                    for(var pos:stones)b.world.setBlockState(pos,Blocks.STONE.getDefaultState());
+                    var walled=tough(bare(post(b,dusk,"knight",4.5,0,180,true)));unpin(walled);Vec3d from=walled.mob.getPos();
+                    mark=Combat.LAST.peekLast();Abilities.tick(b,u1,null,b.time);
+                    var hw=Gilded.hitOn(walled.mob,mark);double moved=distance(from,walled.mob.getPos()),gap=distance(u1.mob.getPos(),walled.mob.getPos());
+                    boolean inWall=stones.stream().anyMatch(pos->walled.mob.getBoundingBox().intersects(new net.minecraft.util.math.Box(pos)));
+                    boolean stopped=hw!=null&&moved>=0.5&&moved<=0.75&&Math.abs(gap-3.8)<0.15&&!inWall&&Math.abs(walled.mob.getZ()-from.z)<0.1;
+                    report("p2-pull-wall",stopped,"a knight 4.5 from the Admiral with a stone wall 3 from her between them took the undertow "+show(hw)+" and was pulled "+fmt(moved)+" toward her (want 0.5 to 0.75: the 0.7 to the wall's face; a clear pull brings it to 1.5 of her): it stands "+fmt(gap)+" off (want 3.8), against the wall and not inside it="+!inWall+"="+stopped);
+                    for(var pos:stones)b.world.setBlockState(pos,Blocks.AIR.getDefaultState());
+                    clearFixture(b,"pull-wall");next(b,20);
                 }
                 case 20->{ // p2-sweep: the Brute's blow on a knight with three more within 3 of it (1.5, 1.8 and 2.0 off) and one 3.4 off; an ally beside it
                     dawn.order="hold";dusk.order="hold";
@@ -3347,14 +3335,17 @@ public final class Phase2Checks implements ClientModInitializer {
                         if(!crossed.containsKey(u)&&x>=Arena.riverX(z)+1)crossed.put(u,new double[]{x,z,t});
                     }
                     if(!fordShot&&inRiver>=3){fordShot=true;requestShot("tidecallers-ford",3);}
-                    var raiders=fixture.stream().filter(u->u.spec.id().equals("tc_raider")).toList();var squires=fixture.stream().filter(u->u.spec.id().equals("knight")).toList();
-                    boolean raidersOver=raiders.stream().allMatch(crossed::containsKey),squiresOver=squires.stream().allMatch(crossed::containsKey);
-                    if(!(raidersOver&&squiresOver&&(shotTaken||!fordShot))&&t<1600)return;
+                    var raiders=fixture.stream().filter(u->u.spec.id().equals("tc_raider")).toList();var squires=fixture.stream().filter(u->u.spec.id().equals("knight")).toList();var mists=fixture.stream().filter(u->u.spec.id().equals("tc_mist")).toList();
+                    boolean raidersOver=raiders.stream().allMatch(crossed::containsKey),squiresOver=squires.stream().allMatch(crossed::containsKey),mistsOver=mists.stream().allMatch(crossed::containsKey);
+                    if(!(raidersOver&&squiresOver&&mistsOver&&(shotTaken||!fordShot))&&t<1600)return;
                     StringBuilder s=new StringBuilder();boolean good=!raiders.isEmpty()&&squires.size()==3&&own.traits.getOrDefault("tidecallers",0)==3;
                     for(var u:raiders){var c=crossed.get(u);boolean g=c!=null&&fromBridge(c[1])>=20&&waded.contains(u);good&=g;s.append("Raider ").append(u.slot).append(c==null?" never crossed":" crossed at z "+fmt(c[1])+", "+fmt(fromBridge(c[1]))+" from the nearest bridge, at +"+(int)c[2]+(waded.contains(u)?" through the water":" DRY")).append(g?"":" (BAD)").append("; ");}
                     for(var u:squires){var c=crossed.get(u);boolean g=c!=null&&fromBridge(c[1])<=4&&!waded.contains(u);good&=g;s.append("Order Squire ").append(u.slot).append(c==null?" never crossed":" crossed at z "+fmt(c[1])+", "+fmt(fromBridge(c[1]))+" from the nearest bridge, at +"+(int)c[2]+(waded.contains(u)?" THROUGH THE WATER":" dry")).append(g?"":" (BAD)").append("; ");}
                     fordWhy="map 0's river on the line z "+fmt(fordZ)+" ("+fmt(fromBridge(fordZ))+" from the nearest bridge), the Tidecallers army (tidecallers_hard, Riptide tier "+own.traits.getOrDefault("tidecallers",0)+") and three Order Squires ordered across: "+s+"a Raider counts when it crossed 20 or more blocks from every bridge's edge through the water, an Order Squire when it crossed at a bridge without wetting its feet";
                     report("p2-riptide-ford",good&&(shotTaken||!fordShot),fordWhy+(fordShot?"; the picture tidecallers-ford was taken="+shotTaken:"; no picture: fewer than 3 Raiders were in the water together"));
+                    StringBuilder ms=new StringBuilder();boolean mistGood=!mists.isEmpty();
+                    for(var u:mists){var c=crossed.get(u);boolean g=c!=null&&fromBridge(c[1])>=20&&waded.contains(u);mistGood&=g;ms.append("Mist Caller ").append(u.slot).append(c==null?" never crossed":" crossed at z "+fmt(c[1])+", "+fmt(fromBridge(c[1]))+" from the nearest bridge, at +"+(int)c[2]+(waded.contains(u)?" through the water":" DRY")).append(g?"":" (BAD)").append("; ");}
+                    report("p2-mist-ford",mistGood,"(Task 9 review, minor 4) the army's "+mists.size()+" Mist Callers (evokers with only a SwimGoal) at Riptide tier "+own.traits.getOrDefault("tidecallers",0)+" ordered across with the Raiders: "+ms+"a Mist Caller counts when it crossed 20 or more blocks from every bridge's edge through the water");
                     wantShot=null;var p=sp(b);if(p!=null)p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);
                     for(var u:new ArrayList<>(fixture))Houses.discard(b,u);fixture.clear();pins.clear();audit(b,"ford",false);next(b,44);
                 }
@@ -4497,16 +4488,17 @@ public final class Phase2Checks implements ClientModInitializer {
         }
 
         // ---- the stance sync ----
-        /** One stance step: the drill's order, formation and rout, and the stance its three knights must then read on this client within 20 ticks. */
-        record StanceStep(String what,String order,String formation,boolean rout,String want){}
-        static final List<StanceStep> STANCE_STEPS=List.of(new StanceStep("hold in shieldwall","hold","shieldwall",false,"brace"),new StanceStep("charge","charge","line",false,"run"),
-            new StanceStep("follow","follow","line",false,""),new StanceStep("hold in line, the group routing","hold","line",true,"run"),new StanceStep("hold in line","hold","line",false,"hold"));
+        /** One stance step: the drill's order and formation, and the stance its three knights must then read on this client within 20 ticks. A Retreat's spot lies 40 blocks off, so the group has not arrived (Tactics.arrived) and runs. */
+        record StanceStep(String what,String order,String formation,String want){}
+        static final List<StanceStep> STANCE_STEPS=List.of(new StanceStep("hold in shieldwall","hold","shieldwall","brace"),new StanceStep("charge","charge","line","run"),
+            new StanceStep("follow","follow","line",""),new StanceStep("retreat in line","retreat","line","run"),new StanceStep("hold in line","hold","line","hold"));
+        Vec3d drillTarget;
         boolean stanceOk=true;final StringBuilder stanceWhy=new StringBuilder();int lateSeen=-1,trackingBefore,beatBefore;String lateStance="-";
         void stance(MinecraftClient c,int tick){
             wait++;
             if(si<STANCE_STEPS.size()){
                 var st=STANCE_STEPS.get(si);
-                if(wait==1){since=tick;server(c,b->{var d=drill;d.order=st.order();d.formation=st.formation();String g=group.get(0).spec.group();if(st.rout())d.routedAt.put(g,b.time);else d.routedAt.remove(g);});return;}
+                if(wait==1){since=tick;server(c,b->{var d=drill;if(drillTarget==null)drillTarget=d.target;d.order=st.order();d.formation=st.formation();d.target=st.order().equals("retreat")?drillTarget.add(40,0,0):drillTarget;});return;}
                 boolean all=true;for(var u:group){var e=client(c,u.mob);all&=e!=null&&TroopAnimator.STANCES.getOrDefault(e.getId(),"").equals(st.want());}
                 if(all||tick-since>40){boolean good=all&&tick-since<=20;stanceOk&=good;
                     stanceWhy.append(st.what()).append(": ").append(all?"\""+st.want()+"\" read for all three "+(tick-since)+" ticks after the order":"not all read \""+st.want()+"\" in 40 ticks: "+reads(c)).append(good?"":" (BAD: want 20 ticks or fewer)").append("; ");
@@ -4537,7 +4529,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 stanceWhy.append("; a client registering stance_v1 late (its stances cleared, then the REGISTER event run for this player): ").append(sends).append(" stance sends (want ").append(four.size()).append(" or more), the four knights read hold again ")
                     .append(all?(tick-regSince)+" ticks later":"never (40 ticks)").append(good?"":" (BAD)");
                 report("p2-anim-stance",stanceOk,stanceWhy.toString().trim());
-                server(c,b->{var d=drill;d.order="follow";d.routedAt.clear();camera(b,0,1.6,-6,0,8);});cs=3;wait=0;si=0;regPhase=0;}
+                server(c,b->{var d=drill;d.order="follow";if(drillTarget!=null)d.target=drillTarget;camera(b,0,1.6,-6,0,8);});cs=3;wait=0;si=0;regPhase=0;}
         }
         String reads(MinecraftClient c){StringBuilder sb=new StringBuilder();for(var u:group){var e=client(c,u.mob);sb.append(e==null?"absent":"\""+TroopAnimator.STANCES.getOrDefault(e.getId(),"")+"\"").append(" ");}return sb.toString().trim();}
 
