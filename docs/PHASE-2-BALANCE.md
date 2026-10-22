@@ -31,6 +31,61 @@ The gate prints `gate <a> vs <b> win=<P>% pass|fail` (exit status 0 pass, 1 fail
 
 ## Results
 
+### Phase 2 balance fix: Gilded Squire 28 and Templar 40, `graveborn_normal` vs `gilded_normal` passes (2026-10-22, 47.5%; `ironclad_normal` vs `gilded_normal` reads 75%, report-only)
+
+Code: `phase-2-houses` at `bed3fec` with the two Gilded rows of the tuning log below changed (the commit that carries this entry). The Task 7 gate had failed at 0 of 28 with the Graveborn numbers within 15% of spec, and the options went to the controller. The controller ruled that Gilded's rows may move, on the diagnosis of 2026-10-21 (`.superpowers/sdd/2026-10-17-phase-2-houses/balance-diagnosis.md` in the main checkout). Its cause, in short: a ranged troop shoots the nearest enemy, which is the enemy front, and the Gilded front is ten shield troops under Bulwark III, so 85% of Graveborn's arrows land on a Squire or a Templar at about 28% of their base damage (counters C1 or C2 times Bulwark x0.55, clamped at 0.25), while no Gilded arrow meets a shield. Graveborn loses the first clash and never recovers the points. Cutting the two Gilded infantry rows to the lowest whole numbers within the 15% limit is the smallest change that brought a 20-match gate into the band (46% pooled over 40 matches in the diagnosis); the Graveborn rows stay at the round 2 numbers.
+
+Both gates use the plan's recipe unchanged (two processes of 10 matches, `-PsimDawn=normal -PsimDusk=normal -PsimMaps=0,1,2,3,4 -PsimRoundSeconds=300`, a fresh server root each, nothing else running). Ports 25641 and 25642 for gate 1, 25643 and 25644 for gate 2; every round ran its full 300 s.
+
+#### Gate 1: `graveborn_normal` vs `gilded_normal` (blocking, 40 <= P <= 60)
+
+Roots `work/p2/bf/g1a-004759` (`graveborn_normal` on team 0) and `work/p2/bf/g1b-004810` (`gilded_normal` on team 0).
+
+```
+[botsim] matches=10 dawn(normal)=7 dusk(normal)=3 draws=0 dawnWin=70% meanGoldEarnedAtEnd dawn=1592 dusk=1445 banner0=graveborn_normal banner1=gilded_normal
+[botsim] matches=10 dawn(normal)=7 dusk(normal)=2 draws=1 dawnWin=70% meanGoldEarnedAtEnd dawn=1558 dusk=1512 banner0=gilded_normal banner1=graveborn_normal
+```
+
+```
+work/p2/bf/g1a-004759/botsim/results.csv: graveborn_normal on dawn: won=7 lost=3 drawn=0 aborted=0
+work/p2/bf/g1b-004810/botsim/results.csv: graveborn_normal on dusk: won=2 lost=7 drawn=1 aborted=0
+  map 0 (dawn): won=2 lost=0 drawn=0 aborted=0
+  map 1 (dawn): won=2 lost=0 drawn=0 aborted=0
+  map 2 (dawn): won=2 lost=0 drawn=0 aborted=0
+  map 3 (dawn): won=1 lost=1 drawn=0 aborted=0
+  map 4 (dawn): won=0 lost=2 drawn=0 aborted=0
+  map 0 (dusk): won=1 lost=1 drawn=0 aborted=0
+  map 1 (dusk): won=1 lost=1 drawn=0 aborted=0
+  map 2 (dusk): won=0 lost=1 drawn=1 aborted=0
+  map 3 (dusk): won=0 lost=2 drawn=0 aborted=0
+  map 4 (dusk): won=0 lost=2 drawn=0 aborted=0
+rounds=20 decided=20 won=9 lost=10 drawn=1
+gate graveborn_normal vs gilded_normal win=47.5% pass
+```
+
+- Mean final score 84.8 to 77.8 for Graveborn (a gap of +7.0): 90.9 to 69.6 with Graveborn on Dawn, 78.7 to 86.1 on Dusk. Graveborn won no map-4 round from either seat; the Dawn seat won 14 of the 20 rounds whichever House held it (the diagnosis' own confirming gate showed the Dusk seat winning 15 of 20), so the seat edge swings from run to run and only the seat-swapped total means anything.
+- The diagnosis' confirming gate of the same two rows read 47.5% as well (9 won, 10 lost, 1 drawn, gap -2); the two runs pool to 18 won, 20 lost, 2 drawn of 40.
+
+#### Gate 2: `ironclad_normal` vs `gilded_normal` (report-only)
+
+Roots `work/p2/bf/g2a-014428` (`ironclad_normal` on team 0) and `work/p2/bf/g2b-014429` (`gilded_normal` on team 0).
+
+```
+[botsim] matches=10 dawn(normal)=7 dusk(normal)=3 draws=0 dawnWin=70% meanGoldEarnedAtEnd dawn=1489 dusk=1431 banner0=ironclad_normal banner1=gilded_normal
+[botsim] matches=10 dawn(normal)=2 dusk(normal)=8 draws=0 dawnWin=20% meanGoldEarnedAtEnd dawn=1428 dusk=1553 banner0=gilded_normal banner1=ironclad_normal
+```
+
+```
+work/p2/bf/g2a-014428/botsim/results.csv: ironclad_normal on dawn: won=7 lost=3 drawn=0 aborted=0
+work/p2/bf/g2b-014429/botsim/results.csv: ironclad_normal on dusk: won=8 lost=2 drawn=0 aborted=0
+rounds=20 decided=20 won=15 lost=5 drawn=0
+gate ironclad_normal vs gilded_normal win=75% fail
+```
+
+- Mean final score 79.3 to 71.2 for Ironclad (a gap of +8.1): 74.8 to 71.4 on Dawn, 83.8 to 71.0 on Dusk. No tuning was done (report-only by ruling).
+- The Task 8 gate read 45% at the spec Gilded numbers. The same pairing now reads 75%: the Squire and Templar cuts (-12.5% and -13%) soften the Gilded front, which is what the Ironclad line (sunder x1.4 and armour bolt x0.7 against a raised shield, siege) attacks; that reading was not isolated by an ablation. With 20 matches the standard error is about 10 points, so the swing is real in direction and rough in size. The Ironclad batch's own balance pass has to start from this number, not from 45%.
+- Because `ironclad_normal` now beats `gilded_normal` by more than `gilded_normal` beats `graveborn_normal`, the "current best pure banner" above needs a decision from the controller; it is left as it stood.
+
 ### Phase 2 Task 8 gate: `ironclad_normal` vs `gilded_normal` (2026-10-21, report-only, 45% at the spec numbers: inside the band)
 
 Code: the Task 8 tree (committed as `f0febad`), on `842d2c7`. The gate is report-only by ruling (the gates of Tasks 8 to 10 do not block until the balance pass), so nothing was tuned; it would have passed anyway. What reaches this fight:
@@ -353,3 +408,11 @@ Round 2 (2026-10-21), on top of round 1:
 - Result: 0 of 14, mean final score 71.8 to 87.8.
 
 Not changed: the Hollow King (not in the normal banner), costs, the fearless, dread, frostshot and blight rows, and the Gilded rows. The Task 7 tests that read a Graveborn number (the Rise Again chances and the cleave share) follow the tuned sheet.
+
+Round 3 (2026-10-22), the Gilded rows, on top of round 2. Controller ruling: Gilded's rows may move. Cause: a ranged troop shoots the nearest enemy, which is the shield front, and Bulwark III (x0.55) on top of the shield counters leaves Graveborn's arrows about 28% of their base damage (diagnosis section 2, `.superpowers/sdd/2026-10-17-phase-2-houses/balance-diagnosis.md`). Each is a health cut to the lowest whole number within the 15% limit (27.2 and 39.1 are the floors):
+
+- Order Squire (`knight`): health 32 to 28 (-12.5%).
+- Templar (`sentinel`): health 46 to 40 (-13.0%).
+- Result: gate 1, `graveborn_normal` vs `gilded_normal`, 9 won, 10 lost, 1 drawn of 20, P = 47.5%, pass (mean final score 84.8 to 77.8). Gate 2, `ironclad_normal` vs `gilded_normal`, report-only, 15 of 20, P = 75% (45% before the cut).
+
+Not changed in round 3: every Graveborn row (they stay at the round 2 numbers), the other Gilded rows (the Order Archer, Order Longbow and Sunweaver health stay at spec; the diagnosis' five-row set that also cut them is the fallback if a later gate drifts under 40%), costs, counters and traits. No check hardcodes the Squire's or the Templar's health: `HousesCheck`, `BattleMathCheck` and `Phase2Checks` read the rows through `Campaign.troop(...)` and `Spec`, so none was changed.
