@@ -639,7 +639,9 @@ public final class UiMath {
     /** The chat over one frame of the battle HUD (rects in canvas px, f GUI px per canvas px) on a GUI sw x sh: a chat whose line
      *  backgrounds end at GUI x `right`, lineH GUI px a line, vanilla's count `vanilla`. Each element overChat names that the chat's
      *  width reaches is a span {top, bottom, box bottom} in GUI px, its PNG's edge and shadow included (inkAbove, inkBelow), and
-     *  so is vanilla's crosshair while the chat is closed (focused false). Null without a column: the chat keeps vanilla's place. */
+     *  so, while the chat is closed (focused false), are vanilla's crosshair and those of vanilla's bars its width reaches (the
+     *  hotbar, the selected slot, the offhand slot, the hearts, the armour row and the experience bar, UI Task 8c). Null without a
+     *  column: the chat keeps vanilla's place. */
     public static ChatSlot chatSlot(java.util.Map<String, int[]> rects, double f, int sw, int sh, double right, double lineH, int vanilla, boolean focused) {
         int top = columnTop(rects);
         if (top == NO_COLUMN) return null;
@@ -653,6 +655,9 @@ public final class UiMath {
             int y = (sh - CROSSHAIR) / 2;
             spans.add(new double[]{y, y + CROSSHAIR, y + CROSSHAIR});
         }
+        // Closed, its lowest line keeps off vanilla's bars under its width too (UI Task 8c): where the compact column leaves the
+        // chat at vanilla's own place, as at 1280x720 GUI 3, that line would sit on the armour row and the hearts.
+        if (!focused) for (int[] b : vanillaBars(sw, sh, 1, 1, false)) if (b[0] < right) spans.add(new double[]{b[1], b[1] + b[3], b[1] + b[3]});
         return chatSlot(vanilla, Math.min((int) Math.floor(top * f) - CHAT_GAP, sh - 40), spans, lineH);
     }
 

@@ -1174,7 +1174,7 @@ public final class Phase1Checks implements ClientModInitializer {
          *  leaving one line between it and the crosshair), else above it. Open, the crosshair does not count (UI polish round 2). At
          *  Standard and Large the chat is held to the same rules, not to numbers. Last, the HUD's scale under Task 8a (the footprint's
          *  baseline) and 1 for the brief's five footprint windows. */
-        static final int[][] WINDOWS={{960,540,1,0,1,1,1,10,20,10,20,10,20,10,20,1,0},{854,480,2,0,1,1,1,4,6,1,9,4,14,1,12,1,1},{1280,720,3,0,1,1,1,7,9,6,16,7,19,6,17,1,1},{1920,1080,2,1,2,3,3,10,20,10,20,10,20,10,20,2,1},{1920,1080,4,1,2,3,3,7,9,5,15,7,19,5,17,2,1},{1280,720,2,0,1,2,2,10,14,10,20,10,20,10,20,2,0},{1366,768,2,0,1,2,2,10,15,10,20,10,20,10,20,2,1}};
+        static final int[][] WINDOWS={{960,540,1,0,1,1,1,10,20,10,20,10,20,10,20,1,0},{854,480,2,0,1,1,1,4,6,1,9,4,14,1,12,1,1},{1280,720,3,0,1,1,1,6,9,6,16,6,19,6,17,1,1},{1920,1080,2,1,2,3,3,10,20,10,20,10,20,10,20,2,1},{1920,1080,4,1,2,3,3,7,9,5,15,7,19,5,17,2,1},{1280,720,2,0,1,2,2,10,14,10,20,10,20,10,20,2,0},{1366,768,2,0,1,2,2,10,15,10,20,10,20,10,20,2,1}};
         /** Each window's screenshot; pass B adds -hints, C -battle and D -battle-hints, and a size above Compact -standard or -large. */
         static final String[] SHOTS={"ui-hud-chat","ui-hud-small","ui-hud-1280","ui-hud-1080-gui2","ui-hud-1080-gui4","ui-hud-720-gui2","ui-hud-1366"},PASS_SHOT={"","-hints","-battle","-battle-hints"},SIZE_SHOT={"","-standard","-large"};
         /** The footprint's baseline (UI Task 8c, run ui-8c-base-211317): in the default battle state the HUD before this task drew two
@@ -1595,15 +1595,17 @@ public final class Phase1Checks implements ClientModInitializer {
             if(!bad.isEmpty())smallWhy+=(smallWhy.isEmpty()?"":"; ")+at+": WRONG: "+String.join("; ",bad.subList(0,Math.min(6,bad.size())));
             System.out.println("[p1] ui-hud frame "+at+": canvas "+cw+"x"+ch+" (HUD "+hk+"x, screens "+UiCanvas.k()+"x), "+r.size()+" rects, column "+BattleHud.cards().stream().map(d->d.group()+" "+d.y()+(d.tall()?" card":" chip")).toList()+", keys "+box(r.get("keys"))+", hints "+box(r.get("hints"))+", lesson "+box(r.get("lesson"))+", respawn "+box(r.get("respawn"))+", feed "+box(r.get("feed"))+", spine "+box(r.get("spine"))+", ability "+box(r.get("ability"))+", hotbar "+box(bars.get("the hotbar"))+", offhand "+box(bars.get("the offhand slot"))+", crosshair "+box(bars.get("the crosshair"))+(bad.isEmpty()?", every rect inside and apart":", WRONG: "+bad)+(off.isEmpty()?", as laid out":", NOT as laid out: "+off));
             // p1-ui-chat-lift: the chat's lines above the left column (ChatPlacement), on the screen, apart from every element of the
-            // HUD and, closed, from vanilla's crosshair (UI polish M1, Task 8a), and at Compact the lines it shows closed, the window's
+            // HUD and, closed, from vanilla's crosshair (UI polish M1, Task 8a) and vanilla's bars (UI Task 8c: the compact column can
+            // leave the chat at vanilla's own place, on the armour row at 1280x720 GUI 3), and at Compact the lines it shows closed, the window's
             // wanted count in this pass (measureOpen: open); twelve lines are in it, so it draws every line it shows
             var hud=c.inGameHud.getChatHud();int top=UiMath.columnTop(r);int[] dr=ChatPlacement.drawn,cross={(sw-15)/2,(sh-15)/2,15,15};
             int[] chat=dr==null?null:canvas(c,dr[0],dr[1],dr[2],dr[3]);int shown=hud.getVisibleLineCount(),want=size==UiMath.HUD_COMPACT?s[7+2*pass]:-1;
             List<String> hit=new ArrayList<>();if(chat!=null)for(var e:r.entrySet())if(meets(chat,e.getValue()))hit.add(e.getKey());
+            List<String> onBars=new ArrayList<>();if(chat!=null)for(var e:bars.entrySet())if(!e.getKey().equals("the crosshair")&&meets(chat,e.getValue()))onBars.add(e.getKey()); // UI Task 8c
             boolean clear=dr!=null&&!meets(dr,cross);
-            boolean apart=chat!=null&&dr[1]>=0&&top!=UiMath.NO_COLUMN&&chat[1]+chat[3]<=top&&ChatPlacement.drawnLines==shown&&(want<0?shown>=1:shown==want)&&clear&&hit.isEmpty();chatOk&=apart;
+            boolean apart=chat!=null&&dr[1]>=0&&top!=UiMath.NO_COLUMN&&chat[1]+chat[3]<=top&&ChatPlacement.drawnLines==shown&&(want<0?shown>=1:shown==want)&&clear&&hit.isEmpty()&&onBars.isEmpty();chatOk&=apart;
             chatLines.append(chatLines.length()==0?"":", ").append(s[0]).append("x").append(s[1]).append(" GUI ").append(s[2]).append(" ").append(HudSize.NAMES[size]).append(" ").append("ABCD".charAt(pass)).append(" ").append(shown).append(want<0||shown==want?"":" (want "+want+")");
-            if(!apart)chatWhy+=(chatWhy.isEmpty()?"":"; ")+at+" closed: chat scale "+hud.getChatScale()+", lifted "+ChatPlacement.lift(sh)+" GUI px, "+ChatPlacement.drawnLines+" lines drawn at canvas "+box(chat)+" (GUI "+box(dr)+"), the column's top at "+top+", the crosshair at GUI "+box(cross)+(clear?" clear":" COVERED")+(hit.isEmpty()?", apart from every element of the HUD":", meeting "+hit)+"; it shows "+shown+" lines"+(want<0?"":" (wanted "+want+")")+", WRONG";
+            if(!apart)chatWhy+=(chatWhy.isEmpty()?"":"; ")+at+" closed: chat scale "+hud.getChatScale()+", lifted "+ChatPlacement.lift(sh)+" GUI px, "+ChatPlacement.drawnLines+" lines drawn at canvas "+box(chat)+" (GUI "+box(dr)+"), the column's top at "+top+", the crosshair at GUI "+box(cross)+(clear?" clear":" COVERED")+(hit.isEmpty()?", apart from every element of the HUD":", meeting "+hit)+(onBars.isEmpty()?", off vanilla's bars":", on "+onBars)+"; it shows "+shown+" lines"+(want<0?"":" (wanted "+want+")")+", WRONG";
             // p1-ui-hud-footprint (UI Task 8c, item 5): the default battle state is pass C at Compact
             if(size==UiMath.HUD_COMPACT&&pass==2){
                 double share=UiMath.footprint(r,hk,s[0],s[1]),before=BASELINE_AREA*(double)s[15]*s[15]/((double)s[0]*s[1]);var band=UiMath.inBand(r,cw,ch);

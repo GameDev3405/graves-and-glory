@@ -8,7 +8,8 @@ import net.minecraft.client.gui.hud.ChatHud;
  *  While the battle HUD is drawn, the chat's bottom sits GAP GUI px above the column's top: the iron spine above the top card, or
  *  the hint slip while it shows. The chat keeps vanilla's scale, width and line count. Where its lowest line would cover the
  *  score bar, a boss, a seal, the aimed point's name, the lesson or respawn card, the feed or, while the chat is closed, the
- *  crosshair, it moves up past them; where the room above it is short, it shows fewer lines, never smaller text (UiMath.chatSlot).
+ *  crosshair or one of vanilla's bars (UI Task 8c: the compact column can leave the chat at vanilla's own place, on the armour
+ *  row), it moves up past them; where the room above it is short, it shows fewer lines, never smaller text (UiMath.chatSlot).
  *  Open, the player is typing: the chat may cross the crosshair then rather than drop to a line or two. In camp, and whenever the
  *  battle HUD is not drawn, nothing moves. The battle HUD draws after the chat in a frame, so the chat follows the layout of the
  *  frame before. ChatHudMixin applies it.
@@ -68,8 +69,8 @@ public final class ChatPlacement {
 
     /** The lines the lifted chat shows: vanilla's, or as many as fit between its bottom and the lowest of the score bar, the
      *  bosses, the seals, the aimed point's name, the lesson card, the respawn card (while the commander is down) and the feed
-     *  over the chat's width, GAP clear; at least one. The crosshair counts only while the chat is closed (focused false), since
-     *  one or two lines are too few to type by (UI polish round 2). */
+     *  over the chat's width, GAP clear; at least one. The crosshair and vanilla's bars count only while the chat is closed
+     *  (focused false), since one or two lines are too few to type by (UI polish round 2). */
     public static int lines(int vanilla, int scaledWidth, int scaledHeight, double scale, int lineHeight, int width, boolean focused) {
         UiMath.ChatSlot s = slot(vanilla, scaledWidth, scaledHeight, scale, lineHeight, width, focused);
         return s == null ? vanilla : s.lines();

@@ -155,9 +155,10 @@ public final class UiMathCheck {
         // The lifted chat over the Compact HUD, closed/open with vanilla's widest chat (right edge GUI 332, 9 px lines, 10 and 20 lines),
         // in the suite's four passes: A the lesson and respawn cards with the hint layer down, B the lesson with the hint layer up, C a
         // battle with neither (the default state), D a battle's first seconds (the hint layer up). 1280x720 GUI 3 in A worked by hand:
-        // the column's top at 616 puts the chat's bottom at GUI 201; closed, 7 lines fit above it and below the crosshair (127, 4 px
-        // clear), open 9 below the respawn card's shadow (GUI 111).
-        String[][] wantChat = {{"10/20","10/20","10/20","10/20"},{"4/6","1/9","4/14","1/12"},{"7/9","6/16","7/19","6/17"},{"10/20","10/20","10/20","10/20"},{"7/9","5/15","7/19","5/17"},{"10/14","10/20","10/20","10/20"},{"10/15","10/20","10/20","10/20"}};
+        // the column's top at 616 would put the chat's bottom at GUI 201, below vanilla's own 200, so it starts there; closed, it
+        // moves up past the hearts (201) and the armour row (191) to 187, and 6 lines fit above it and below the crosshair (127, 4 px
+        // clear); open, vanilla's bars do not count, and 9 fit below the respawn card's shadow (GUI 111).
+        String[][] wantChat = {{"10/20","10/20","10/20","10/20"},{"4/6","1/9","4/14","1/12"},{"6/9","6/16","6/19","6/17"},{"10/20","10/20","10/20","10/20"},{"7/9","5/15","7/19","5/17"},{"10/14","10/20","10/20","10/20"},{"10/15","10/20","10/20","10/20"}};
         String chats = ""; boolean chatsOk = true, clean = true;
         for (int i = 0; i < win.length; i++) for (int p = 0; p < 4; p++) {
             int[] s = win[i]; int k = UiMath.hudScale(s[0],s[1],s[2],UiMath.HUD_COMPACT);
@@ -168,6 +169,10 @@ public final class UiMathCheck {
         }
         check(chatsOk, "the lifted chat's lines over the Compact HUD in each pass at each window" + (chats.isEmpty() ? "" : ": " + chats));
         check(clean, "every Compact frame of the four passes at the suite's windows: every plate 12 px inside, none on another or on vanilla's bars, the lesson note beside the respawn card (it never has to give way at Compact)");
+        // The closed chat off vanilla's bars (UI Task 8c): at 1280x720 GUI 3 the compact column (top at canvas 616, GUI 205) would
+        // leave the chat at vanilla's own bottom, GUI 200, its lowest line on the armour row (191 to 200) under the hearts (201).
+        var def720 = UiMath.hudLayout(1280,720,3,1,UiMath.HUD_COMPACT,UiMath.DEFAULT_STATE);
+        check(UiMath.chatSlot(def720,1/3.0,427,240,332,9,10,false).bottom()==187 && UiMath.chatSlot(def720,1/3.0,427,240,332,9,20,true).bottom()==200 && UiMath.chatSlot(def720,1/3.0,427,240,90,9,10,false).bottom()==200, "closed, the chat keeps 4 px above vanilla's armour row where its width reaches it (1280x720 GUI 3, the default battle: bottom 187, not vanilla's 200); open, or a chat too narrow to reach the bars (right edge 90 < the offhand slot at 93), it keeps vanilla's 200");
         check(UiMath.chatSlot(hud(683,384,216,152,false),1,683,384,332,9,10,false).bottom()==83 && UiMath.chatSlot(hud(960,540,280,-1,true),0.5,480,270,332,9,10,false).bottom()==123, "the chat moves up past the respawn and lesson cards (Task 8a's 1366x768 GUI 2: bottom 83) and past the crosshair (1080p GUI 4, hint layer up: bottom 123)");
         var feedOnly = new java.util.LinkedHashMap<String,int[]>(); feedOnly.put("spine",new int[]{12,300,9,100}); feedOnly.put("feed",new int[]{100,250,172,74});
         check(UiMath.chatSlot(feedOnly,1,960,540,332,9,10,true).bottom()==243 && UiMath.chatSlot(hud(960,540,-1,-1,false),1,960,540,332,9,10,false) != null && UiMath.chatSlot(new java.util.HashMap<>(),1,960,540,332,9,10,false) == null && UiMath.columnTop(java.util.Map.of("keys",new int[]{24,506,176,16})) == 506, "the feed slip counts over the chat; the key strip is the column; no column, no lift");
