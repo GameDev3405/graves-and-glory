@@ -36,7 +36,10 @@ final class CampScreen extends ArmyScreen {
     }
     /** The page a name opens: the old names still sent (the war gates' match is the field, the private room is on Friends, the Quartermaster's army is the Banner), else the name. */
     static String alias(String page){return switch(page){case "match"->"field";case "room"->"friends";case "army"->"banner";default->page;};}
-    static void open(String page){MinecraftClient.getInstance().setScreen(new CampScreen(page));}
+    /** The House a station named (recruit:<house>, a tent of the House ring), which the recruit page opens on; "" for none. */
+    String stationHouse="";
+    /** A station: a page, or page:house (the House ring's tents send recruit:<house>), split on the first colon. */
+    static void open(String station){int at=station.indexOf(':');var s=new CampScreen(at<0?station:station.substring(0,at));if(at>=0)s.stationHouse=station.substring(at+1);MinecraftClient.getInstance().setScreen(s);}
     /** The House whose six cards the recruit page shows and whose pool a roll draws from; its tab row changes it. It starts on the House the banner leans on. */
     String house=RosterMath.rollHouse(CampaignClient.profile.banner);
     final List<HouseTab> tabs=new ArrayList<>();
@@ -85,6 +88,10 @@ final class CampScreen extends ArmyScreen {
         }else if(page.equals("results")){
             button("Claim contracts",x,height-84,w/3-8,b->page("contracts"));button("Chapter rewards",x+w/3,height-84,w/3-8,b->page("chapter"));
             primary(value("room").isEmpty()?"BACK TO CAMP":"RETURN TO ROOM",x+2*w/3,height-88,w/3,b->page(value("room").isEmpty()?"home":"friends"));
+        }else if(page.equals("train")){
+            // The Drillmaster: battle 1 (the first Long March battle) and the practice skirmish.
+            var start=primary("START",x,200,w/2-7,b->action("campaign:"+Spec.CAMPAIGNBATTLES[0].id()));start.active=!running;
+            var practice=button("PRACTICE",x+w/2+7,203,w/2-7,b->action("camp:practice"));practice.active=!running; // a button is 20 high and a primary 26: 3 lower, so both labels sit on one line
         }
     }
     @Override public void tick(){if(home!=null&&page.equals("home"))home.tick();if(recruit!=null&&page.equals("recruit"))recruit.tick();if(pages!=null&&pages.page.equals(page))pages.tick();if(!key.equals(state()))clearAndInit();if(running&&!CampaignClient.waiting)close();}
@@ -195,7 +202,7 @@ final class CampScreen extends ArmyScreen {
         if(pages!=null&&pages.page.equals(page)){pages.render(g);super.render(g,mx,my,delta);return;}
         g.getMatrices().push();g.getMatrices().scale(scale,scale,1);DarkUi.background(g,width,height);DarkUi.crest(g,20,16,26,false);DarkUi.title(g,"BANNER CAMP",58,19,DarkUi.GOLD);
         line(g,header(),width-280,24,DarkUi.PAPER,260);
-        int x=194,w=width-x-22;DarkUi.frame(g,x-12,79,w+24,height-139);line(g,page.equals("results")?"BATTLE REPORT":page.equals("troop")?"TROOP CARD":"A PLACE TO PREPARE",x,91,DarkUi.GOLD,w);
+        int x=194,w=width-x-22;DarkUi.frame(g,x-12,79,w+24,height-139);line(g,page.equals("results")?"BATTLE REPORT":page.equals("troop")?"TROOP CARD":page.equals("train")?"TRAINING YARD":"A PLACE TO PREPARE",x,91,DarkUi.GOLD,w);
         var progress=CampaignClient.profile.progression;
         if(page.equals("troop")){
             var t=ArmyCards.spec(troop);if(t!=null)RecruitPages.troopPage(g,textRenderer,t,CampaignClient.profile,x,108,w);
@@ -216,6 +223,11 @@ final class CampScreen extends ArmyScreen {
                 for(int i=0;i<3;i++)line(g,Progression.contract(progress,i)+"  "+Math.min(Progression.progress(progress,i),Progression.target(progress,i))+"/"+Progression.target(progress,i)+(progress.claims.contains("daily:"+i)?" / claimed":Progression.progress(progress,i)>=Progression.target(progress,i)?" / READY TO CLAIM":""),right,y+i*11,DarkUi.MUTED,half);
                 line(g,"Weekly battles: "+Math.min(progress.weeklyBattles,Progression.WEEKLY_BATTLES)+"/"+Progression.WEEKLY_BATTLES+(progress.claims.contains("weekly")?" / claimed":Progression.claimable(progress,"weekly")?" / READY TO CLAIM":""),right,y+33,DarkUi.MUTED,half);
             }
+        }else if(page.equals("train")){
+            var march=Spec.CAMPAIGNBATTLES[0];
+            line(g,"Battle "+march.order()+" / "+march.name(),x,117,DarkUi.PAPER,w);
+            g.drawTextWrapped(textRenderer,Text.literal(march.briefing()),x,138,w,DarkUi.MUTED);
+            line(g,"START begins the battle. PRACTICE is a skirmish against one AI commander.",x,239,DarkUi.MUTED,w);
         }
         boolean card=page.equals("troop")&&CampaignClient.rollShowing(); // the roll card covers the screen: nothing under it takes hover or shows a tooltip
         if(!card)line(g,HintText.expand(CampaignClient.notice,GravesAndGloryClient::hint),x,height-42,DarkUi.GOLD,w); // the card says what the notice would (review Q1)

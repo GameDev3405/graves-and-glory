@@ -6,3 +6,5 @@
 *.png binary
 *.ttf binary
 *.ogg binary
+*.nbt binary
+*.mcfunction text eol=lf

@@ -21,7 +21,8 @@ public final class CampRedesignChecks implements ClientModInitializer {
    if(c.player==null||c.getServer()==null||!GravesAndGloryClient.ready)return;tick++;
    if(tick==20)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());b.campaign.returnLobby();b.campaign.profiles.put(p.getUuid(),new Profile());b.campaign.profile(p.getUuid()).gold=300;b.campaign.collectionsReady.add(p.getUuid());b.campaign.importAllowed.remove(p.getUuid());b.campaign.save(p.getUuid());
     long npcs=0;for(var e:b.world.iterateEntities())if(e.getCommandTags().contains(CampWorld.TAG)&&e instanceof net.minecraft.entity.passive.VillagerEntity)npcs++;
-    check("four-interactive-stewards",npcs==4);check("no-camp-weapons",p.getInventory().isEmpty());});
+    long rows=Arrays.stream(Spec.CAMPSTATIONS).filter(s->!s.npc().equals("-")).count();
+    check("npcs-match-sheet",npcs==rows);check("no-camp-weapons",p.getInventory().isEmpty());});
    if(tick==45){c.setScreen(null);check("battle-hud-off",GravesAndGloryClient.inCamp()&&!GravesAndGloryClient.battleActive());CommandMode.begin("attack");check("orders-disabled-in-camp",!CommandMode.active());}
    if(tick==70){shot(c,"courtyard"); // the camp's slips (UI Task 8b-2): drawn where UiMath.campHud puts them, the keys on ink chips
     var w=c.getWindow();var want=UiMath.campHud(w.getFramebufferWidth(),w.getFramebufferHeight(),(int)w.getScaleFactor(),UiCanvas.hudK());var rows=GravesAndGloryClient.campRowsDrawn;
@@ -63,7 +64,7 @@ public final class CampRedesignChecks implements ClientModInitializer {
    if(tick==730){shot(c,"small-recruitment");CampScreen.open("results");check("short-match-no-rewards-report",CampaignClient.result.get("gold").getAsInt()==0&&CampaignClient.result.get("xp").getAsInt()==0);}
    if(tick==740)shot(c,"small-results");
    if(tick==750){check("suite",!failed);c.setScreen(new CampScreen("home"));server(c,b->{var path=b.server.getSavePath(net.minecraft.util.WorldSavePath.ROOT).resolve("gravesandglory-parties.json");try{var saved=Campaign.JSON.fromJson(java.nio.file.Files.readString(path),SocialHub.class);saved.restore();check("party-readback",saved.party(c.player.getUuid())!=null);var profile=Campaign.JSON.fromJson(java.nio.file.Files.readString(b.campaign.directory.resolve(c.player.getUuid()+".json")),Profile.class);check("profile-readback",profile.progression.claims.contains("daily:0")&&profile.progression.xp>=225);}catch(Exception e){check("readback",false);}});}
-   if(tick==780){c.setScreen(null);server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());b.relocate(p,22,66,CampaignMaps.LOBBY_Z-7,-145,5);GravesAndGlory.openCamp(p,"recruit");});}
+   if(tick==780){c.setScreen(null);server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var at=CampWorld.where("recruit");b.relocate(p,at.x,at.y,at.z+3,180,5);GravesAndGlory.openCamp(p,"recruit");});}
    if(tick==800){check("station-network-route",c.currentScreen instanceof CampScreen screen&&screen.page.equals("recruit"));c.setScreen(null);}
    if(tick==820)shot(c,"recruiter-station");
    if(tick==850){server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());b.campaign.toLobby(p);
@@ -75,7 +76,7 @@ public final class CampRedesignChecks implements ClientModInitializer {
    if(tick==905)GravesAndGloryClient.send("social:ready");
    if(tick==930)GravesAndGloryClient.send("social:start");
    if(tick==990){check("map-preparation-auto-start",GravesAndGloryClient.battleActive());server(c,b->{b.campaign.finish(-1);b.campaign.social.leaveRoom(c.player.getUuid());});}
-   if(tick==1020)server(c,b->b.relocate(b.server.getPlayerManager().getPlayer(c.player.getUuid()),-9.5,65,CampaignMaps.PAD_Z,0,0));
+   if(tick==1020)server(c,b->{var pad=CampaignMaps.padCenter(0);b.relocate(b.server.getPlayerManager().getPlayer(c.player.getUuid()),pad.x,pad.y,pad.z,0,0);});
    if(tick==1050)server(c,b->check("gate-pad-countdown",b.campaign.onPad.containsKey(c.player.getUuid())&&b.campaign.padCountdown>=0));
    if(tick==1070)server(c,b->b.campaign.toLobby(b.server.getPlayerManager().getPlayer(c.player.getUuid())));
    if(tick==1100)server(c,b->check("gate-step-off-cancels",!b.campaign.onPad.containsKey(c.player.getUuid())&&b.campaign.padCountdown<0));

@@ -42,6 +42,7 @@ public final class CampaignChecks implements ClientModInitializer {
         });
     }
     @Override public void onInitializeClient(){
+        if(!System.getProperty("gravesandglory.phase3Checks","").isEmpty())return; // the Phase 3 suites drive their own world
         // The battle self-test (-PselfTest) drives its own battle; these suites would fight it for the same world.
         if(!MeltyTest.active()||Boolean.getBoolean("gravesandglory.selfTest")||Boolean.getBoolean("gravesandglory.campChecks")||Boolean.getBoolean("gravesandglory.networkHost")||Boolean.getBoolean("gravesandglory.networkJoin")||!System.getProperty("gravesandglory.phase1Checks","").isEmpty()||!System.getProperty("gravesandglory.phase2Checks","").isEmpty())return;
         stateProbe();
@@ -53,7 +54,7 @@ public final class CampaignChecks implements ClientModInitializer {
                 if(tick==35){report("startup-suite",!failed,"Startup-only fixture complete");c.scheduleStop();}
                 return;
             }
-            if(tick==20){c.setScreen(new GravesAndGloryClient.LobbyScreen());server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());backup=Campaign.JSON.fromJson(Campaign.JSON.toJson(b.campaign.profile(p.getUuid())),Profile.class);report("lobby-ready",p.getZ()<-275&&b.world.getBlockState(new BlockPos(0,64,CampaignMaps.LOBBY_Z)).isSolidBlock(b.world,new BlockPos(0,64,CampaignMaps.LOBBY_Z)),"Player stands in built war council");});}
+            if(tick==20){c.setScreen(new GravesAndGloryClient.LobbyScreen());server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());backup=Campaign.JSON.fromJson(Campaign.JSON.toJson(b.campaign.profile(p.getUuid())),Profile.class);report("lobby-ready",CampWorld.inCamp(p.getX(),p.getY(),p.getZ())&&b.world.getBlockState(new BlockPos(0,64,CampaignMaps.LOBBY_Z)).isSolidBlock(b.world,new BlockPos(0,64,CampaignMaps.LOBBY_Z)),"Player stands in built war council");});}
             if(tick==25&&devRun()&&Files.exists(restartFile(c))){shot(c,"restart-lobby");server(c,b->{try{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var pr=b.campaign.profile(p.getUuid());var saved=Campaign.JSON.fromJson(Files.readString(restartFile(c)),Profile.class);
                 report("restart-collection",Campaign.JSON.toJsonTree(pr).equals(Campaign.JSON.toJsonTree(saved)),"Entire collection, loadout and commander profile after reopen matches the saved profile");
                 if(Boolean.getBoolean("gravesandglory.migrationFixture")){
@@ -65,7 +66,7 @@ public final class CampaignChecks implements ClientModInitializer {
                 }
                 long stale=0;for(var e:b.world.iterateEntities())if(e.getCommandTags().contains("gravesandglory")&&e.getClass()==net.minecraft.entity.mob.HuskEntity.class)stale++;
                 report("restart-clean-lobby",stale==0,"Hostile husks left from the earlier session: "+stale);}catch(Exception e){report("restart-collection",false,e.toString());}});}
-            if(tick==40)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());b.relocate(p,-9.5,65,-322,90,0);});
+            if(tick==40)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var pad=CampaignMaps.padCenter(0);b.relocate(p,pad.x,pad.y,pad.z,90,0);});
             if(tick==52)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var on=b.campaign.onPad.get(p.getUuid());String note=b.campaign.notices.getOrDefault(p.getUuid(),"");
                 report("pad-ready",on!=null&&on==0&&b.campaign.onPad.size()==1&&b.campaign.padCountdown>=0&&b.campaign.padCountdown<=200,"Solo commander is ready and the countdown is active: pad="+on+" countdown="+b.campaign.padCountdown+" notice="+note);});
             if(tick==54)server(c,b->b.campaign.toLobby(b.server.getPlayerManager().getPlayer(c.player.getUuid())));
@@ -142,7 +143,7 @@ public final class CampaignChecks implements ClientModInitializer {
             if(tick==1000){c.setScreen(new GravesAndGloryClient.LobbyScreen());report("campaign-suite",!failed,"Mechanical checks finished; local multiplayer joining is a separate run");shot(c,"final-lobby");}
             if(tick==1050)server(c,b->{
                 var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var camp=b.campaign;
-                b.relocate(p,-9.5,65,-322,90,0);camp.padMapRolled=true;
+                var pad=CampaignMaps.padCenter(0);b.relocate(p,pad.x,pad.y,pad.z,90,0);camp.padMapRolled=true;
                 camp.padTick(); // since 0.3.5 a new ready group first resets the countdown, so this tick only seats him on the pad
                 camp.padCountdown=10;camp.padTick();
                 report("solo-pad-3v3",b.running&&camp.size==3&&b.squads.size()==6&&b.units.size()==fielded(b)&&eachFieldsBanner(b)&&b.squads.values().stream().filter(s->s.bot).count()==5,"One ready commander starts a 3v3 with five AI commanders");

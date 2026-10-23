@@ -40,19 +40,12 @@ public final class MapTour implements ClientModInitializer {
         try{File out=new File(c.runDirectory,"screenshots/tour-"+tag+"-map"+map+"-topdown.png");out.getParentFile().mkdirs();javax.imageio.ImageIO.write(img,"png",out);}catch(Exception e){e.printStackTrace();}
     }
     /** Every road, bridge and capture-zone cell must stay walkable: nothing solid at feet or head height above the ground. */
-    /** Roads and bridges must stay walkable: nothing solid at feet or head height. Authored buildings (barracks, gatehouses)
-     * are counted apart, and capture zones too, since their cover is placed on purpose. Every hit goes to a file. */
+    /** Roads and bridges must stay walkable: nothing solid at feet or head height. Walkability.scan counts bases (gatehouses, barracks, stores),
+     * other buildings (and through: a building on a through road) and capture zones apart, since their cover is placed on purpose. Every hit goes to a file. */
     void walkable(GravesAndGlory.Battle b){
-        int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ(),cells=0,road=0,building=0,point=0;var all=new StringBuilder();
-        for(int x=-hx;x<=hx;x++)for(int z=-hz;z<=hz;z++){boolean inPoint=false,bridge=false;
-            for(var p:Spec.POINTS)inPoint|=(x-p.x())*(x-p.x())+(z-p.z())*(z-p.z())<=p.radius()*p.radius();
-            for(var s:Spec.STRUCTURES)bridge|=s.kind().equals("bridge")&&Math.abs(x-s.x())<=s.width()/2&&Math.abs(z-s.z())<=s.depth()/2;
-            if(!inPoint&&!bridge&&!Arena.road(x,z))continue;cells++;int g=Arena.ground(x,z);String hit=null;
-            for(int y=g+1;y<=g+2&&hit==null;y++){var pos=new net.minecraft.util.math.BlockPos(x,y,z);var st=b.world.getBlockState(pos);if(!st.getCollisionShape(b.world,pos).isEmpty())hit=st.getBlock().getTranslationKey().replace("block.minecraft.","");}
-            if(hit==null)continue;String kind=!bridge&&MapDressing.onStructure(x,z,0)?"building":inPoint?"point":"road";
-            if(kind.equals("road"))road++;else if(kind.equals("building"))building++;else point++;all.append(kind).append(' ').append(x).append(' ').append(z).append(' ').append(hit).append('\n');}
-        try{java.nio.file.Files.writeString(new File(MinecraftClient.getInstance().runDirectory,"screenshots/tour-"+tag+"-map"+map+"-blocked.txt").toPath(),all);}catch(Exception e){e.printStackTrace();}
-        System.out.println("[Graves and Glory tour] map "+map+" walkable cells="+cells+" blocked road/bridge="+road+" in-building="+building+" in-point="+point);
+        var scan=Walkability.scan(b);
+        try{java.nio.file.Files.writeString(new File(MinecraftClient.getInstance().runDirectory,"screenshots/tour-"+tag+"-map"+map+"-blocked.txt").toPath(),scan.detail());}catch(Exception e){e.printStackTrace();}
+        System.out.println("[Graves and Glory tour] map "+map+" walkable cells="+scan.cells()+" blocked road/bridge="+scan.road()+" in-building="+scan.building()+" in-point="+scan.point()+" through="+scan.through()+" base="+scan.base());
     }
     void camera(MinecraftClient c,View v){var id=c.player.getUuid();c.getServer().execute(()->{var p=c.getServer().getPlayerManager().getPlayer(id);if(p!=null){p.changeGameMode(GameMode.SPECTATOR);p.teleport(c.getServer().getOverworld(),v.x(),v.y(),v.z(),v.yaw(),v.pitch());}});}
     @Override public void onInitializeClient(){

@@ -1,0 +1,70 @@
+package gg.gravesandglory;
+
+import net.minecraft.registry.Registries;
+import net.minecraft.util.math.BlockBox;
+import net.minecraft.util.math.BlockPos;
+
+/**
+ * The walk scan, shared by MapTour and Phase3Checks (harness only, never in the player jar). It visits every road cell, every bridge deck cell
+ * (the planks) and every capture-ring cell of the arena. A cell is blocked when a block with a collision shape stands at Arena.ground+1 or +2,
+ * where a knight's feet and head go. Each blocked cell is counted once, in this order:
+ * road (on a deck; or on a road cell outside every footprint, inside a ring or not), base (inside the footprint of a team camp: the gate, the barracks and the stores of dawn and dusk; a barracks-kind building on the battlefield, the warehouse or the garrison, is a building),
+ * building (inside any other footprint, bridges excepted) and through (a building cell that a road of width 4 or more covers while neither end
+ * of that road lies inside that footprint: a house lane ends at its house, a through road does not), point (a capture ring cell that is not a road cell).
+ * A through cell counts in building and in through; detail names it "through". detail has one "kind x z block" line per blocked cell.
+ * The one exception is the pole of a capture point's flag, the oak_fence at the exact centre of a point (Arena.flag builds and recolours it): wherever it stands, on a deck or at the end of the road that runs
+ * into the point, it is point dressing, one cell a knight walks around, so it counts as point and not as road. Nothing else on a road cell inside a ring is excused.
+ * A deck is the planks only: columns x..x+width-1 and rows z..z+depth-1 from x=s.x()-width/2, z=s.z()-depth/2. Arena.ground also counts the
+ * row z+depth and the column x+width as bridge, but nothing is built on them as a deck.
+ */
+final class Walkability {
+    private Walkability(){}
+    record Scan(int cells,int road,int through,int building,int base,int point,String detail){}
+
+    /** The whole arena. */
+    static Scan scan(GravesAndGlory.Battle b){return scan(b,null);}
+    /** Only the cells inside the x and z range of area (one footprint); null scans the whole arena. */
+    static Scan scan(GravesAndGlory.Battle b,BlockBox area){
+        int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ(),x0=-hx,x1=hx,z0=-hz,z1=hz;
+        if(area!=null){x0=Math.max(x0,area.getMinX());x1=Math.min(x1,area.getMaxX());z0=Math.max(z0,area.getMinZ());z1=Math.min(z1,area.getMaxZ());}
+        int cells=0,road=0,through=0,building=0,base=0,point=0;var all=new StringBuilder();
+        for(int x=x0;x<=x1;x++)for(int z=z0;z<=z1;z++){
+            boolean deck=onDeck(x,z),ring=inRing(x,z);
+            if(!deck&&!ring&&!Arena.road(x,z))continue;cells++;int g=Arena.ground(x,z);String hit=null;
+            for(int y=g+1;y<=g+2&&hit==null;y++){var pos=new BlockPos(x,y,z);var st=b.world.getBlockState(pos);if(!st.getCollisionShape(b.world,pos).isEmpty())hit=Registries.BLOCK.getId(st.getBlock()).getPath();}
+            if(hit==null)continue;
+            String kind="road";
+            if(flagPole(x,z,hit))kind="point";
+            else if(!deck){
+                boolean inBase=false,inBuilding=false,inThrough=false;
+                for(var s:Spec.STRUCTURES){if(s.kind().equals("bridge")||!inside(s,x,z))continue;if(baseLike(s))inBase=true;else{inBuilding=true;inThrough|=through(x,z,s);}}
+                kind=inBase?"base":inThrough?"through":inBuilding?"building":ring&&!Arena.road(x,z)?"point":"road";
+            }
+            switch(kind){case "road"->road++;case "through"->{building++;through++;}case "building"->building++;case "base"->base++;default->point++;}
+            all.append(kind).append(' ').append(x).append(' ').append(z).append(' ').append(hit).append('\n');
+        }
+        return new Scan(cells,road,through,building,base,point,all.toString());
+    }
+
+    /** The oak_fence column Arena.flag stands at the exact centre of a capture point. */
+    static boolean flagPole(int x,int z,String block){
+        if(!block.equals("oak_fence"))return false;
+        for(var p:Spec.POINTS)if(p.x()==x&&p.z()==z)return true;
+        return false;
+    }
+    /** The planks of a bridge, not Arena.ground's wider test. */
+    static boolean onDeck(int x,int z){
+        for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")){int bx=s.x()-s.width()/2,bz=s.z()-s.depth()/2;if(x>=bx&&x<bx+s.width()&&z>=bz&&z<bz+s.depth())return true;}
+        return false;
+    }
+    static boolean inRing(int x,int z){for(var p:Spec.POINTS)if((x-p.x())*(x-p.x())+(z-p.z())*(z-p.z())<=p.radius()*p.radius())return true;return false;}
+    /** The footprint test MapDressing.onStructure uses with no margin. */
+    static boolean inside(Spec.StructuresRow s,int x,int z){return Math.abs(x-s.x())<=s.width()/2&&Math.abs(z-s.z())<=s.depth()/2;}
+    /** A structure of a team camp (CampaignMaps.select): the gate, the barracks and the stores of dawn and dusk. The warehouse and the garrison are barracks-kind buildings on the battlefield, and not base. */
+    static boolean baseLike(Spec.StructuresRow s){return s.id().matches("(dawn|dusk)_(gate|barracks|stores)");}
+    /** A road of width 4 or more covers the cell and neither end of it is inside the footprint of s. */
+    static boolean through(int x,int z,Spec.StructuresRow s){
+        for(var r:CampaignMaps.roads)if(r.width()>=4&&CampaignMaps.distance(x,z,r)<r.width()&&!inside(s,r.ax(),r.az())&&!inside(s,r.bx(),r.bz()))return true;
+        return false;
+    }
+}

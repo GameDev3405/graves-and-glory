@@ -3,6 +3,56 @@ root = pathlib.Path(__file__).resolve().parents[1]
 data = json.loads((root/'sheets/design.json').read_text())
 errors=[]
 cells=0
+# Structure files (Phase 3): gzip NBT with DataVersion 3465, odd width and depth up to 48, height up to 32, a studio script of the same id, ids <group>/<name> in [a-z0-9_/].
+import gzip, re, struct
+STRUCTURE_DATA_VERSION=3465
+def nbt_skip(buf, pos, tag):
+    """Position after the payload of one tag of the given type, without reading its value."""
+    if tag==1: return pos+1
+    if tag==2: return pos+2
+    if tag in (3,5): return pos+4
+    if tag in (4,6): return pos+8
+    if tag==7: return pos+4+struct.unpack_from('>i',buf,pos)[0]
+    if tag==8: return pos+2+struct.unpack_from('>H',buf,pos)[0]
+    if tag==9:
+        item=buf[pos]; count=struct.unpack_from('>i',buf,pos+1)[0]; pos+=5
+        for _ in range(count): pos=nbt_skip(buf,pos,item)
+        return pos
+    if tag==10:
+        while buf[pos]!=0:
+            name=struct.unpack_from('>H',buf,pos+1)[0]; pos=nbt_skip(buf,pos+3+name,buf[pos])
+        return pos+1
+    if tag==11: return pos+4+4*struct.unpack_from('>i',buf,pos)[0]
+    if tag==12: return pos+4+8*struct.unpack_from('>i',buf,pos)[0]
+    raise ValueError(f'unknown NBT tag {tag}')
+def structure_header(path):
+    """(DataVersion, size) of a gzip structure file: walks the root compound and skips every other tag. A value that is missing or of another type is None."""
+    buf=gzip.decompress(path.read_bytes())
+    if buf[0]!=10: raise ValueError('the root tag is not a compound')
+    pos=3+struct.unpack_from('>H',buf,1)[0]; version=None; size=None
+    while buf[pos]!=0:
+        tag=buf[pos]; length=struct.unpack_from('>H',buf,pos+1)[0]; name=buf[pos+3:pos+3+length].decode('utf-8'); pos+=3+length
+        if name=='DataVersion' and tag==3: version=struct.unpack_from('>i',buf,pos)[0]
+        elif name=='size' and tag==9 and buf[pos]==3 and struct.unpack_from('>i',buf,pos+1)[0]==3: size=struct.unpack_from('>3i',buf,pos+5)
+        pos=nbt_skip(buf,pos,tag)
+    return version,size
+studio_scripts='test-tools/resources/data/gravesandglory_studio/functions'
+for folder in ('src/main/resources/data/gravesandglory/structures','test-tools/resources/data/gravesandglory/structures'):
+    if not (root/folder).is_dir(): continue
+    for nbt in sorted((root/folder).rglob('*.nbt')):
+        sid=nbt.relative_to(root/folder).with_suffix('').as_posix()
+        if not re.fullmatch(r'[a-z0-9_]+(/[a-z0-9_]+)+',sid): errors.append(f'structure {sid}: the id must be <group>/<name> in [a-z0-9_/]')
+        if not (root/studio_scripts/(sid+'.mcfunction')).is_file(): errors.append(f'structure {sid}: no script {studio_scripts}/{sid}.mcfunction')
+        try: version,size=structure_header(nbt)
+        except Exception as e: errors.append(f'structure {sid}: cannot read the NBT ({e})'); continue
+        if version!=STRUCTURE_DATA_VERSION: errors.append(f'structure {sid}: DataVersion {version}, expected {STRUCTURE_DATA_VERSION}')
+        if size is None: errors.append(f'structure {sid}: size is not a list of three ints'); continue
+        width,height,depth=size
+        if width%2==0: errors.append(f'structure {sid}: width {width} is even, it must be odd')
+        if depth%2==0: errors.append(f'structure {sid}: depth {depth} is even, it must be odd')
+        if width>48: errors.append(f'structure {sid}: width {width} is more than 48')
+        if depth>48: errors.append(f'structure {sid}: depth {depth} is more than 48')
+        if height>32: errors.append(f'structure {sid}: height {height} is more than 32')
 for sheet, rows in data.items():
     if not rows: errors.append(f'{sheet}: empty sheet'); continue
     columns=set(rows[0])
@@ -260,6 +310,36 @@ if [n['id'] for n in data.get('troopNotes',[])]!=[t['id'] for t in data['troops'
 ECONOMY_INPUTS={'matchesPerHour','winRate','hoursPerPlayDay','playDaysPerWeek','matchGold','winGold','dailyGold','weeklyGold','chapterGold','chapterRareValue','runs'}
 if len(data.get('economyModel',[]))!=1 or not ECONOMY_INPUTS<=set(data['economyModel'][0]): errors.append('economyModel: one row with '+', '.join(sorted(ECONOMY_INPUTS))+' (tools/economy_model.py reads it)')
 elif not 0<=data['economyModel'][0]['winRate']<=1 or any(data['economyModel'][0][k]<=0 for k in ECONOMY_INPUTS-{'winRate'}): errors.append('economyModel: winRate within 0 to 1 and every other input above 0')
+# Built world (Phase 3): the pieces sheet describes the structure files, campPieces places them, campStations names the people and boards of the camp.
+piece_rows={r['id']:r for r in data.get('pieces',[])}
+for r in piece_rows.values():
+    path=root/'src/main/resources/data/gravesandglory/structures'/(r['id']+'.nbt')
+    if not path.is_file(): errors.append(f'pieces/{r["id"]}: no structure file {path.relative_to(root).as_posix()}'); continue
+    try: version,size=structure_header(path)
+    except Exception as e: errors.append(f'pieces/{r["id"]}: cannot read the NBT ({e})'); continue
+    if size is None: errors.append(f'pieces/{r["id"]}: the file has no size'); continue
+    if tuple(size)!=(r['width'],r['height'],r['depth']): errors.append(f'pieces/{r["id"]}: the file is {size[0]} wide, {size[1]} high, {size[2]} deep but the row says {r["width"]}, {r["height"]}, {r["depth"]} (width, height, depth)')
+if len(data.get('camp',[]))!=1: errors.append('camp: the sheet needs exactly one row')
+for r in data.get('campPieces',[]):
+    where=f'campPieces/{r["id"]}'
+    template=piece_rows.get(r['template'])
+    if template is None: errors.append(f'{where}: template {r["template"]} is not a pieces id'); continue
+    if r['rotation'] not in (0,90,180,270): errors.append(f'{where}: rotation {r["rotation"]} is not 0, 90, 180 or 270')
+    if r['station']!='-' and not re.fullmatch(r'[a-z]+(:[a-z]+)?',r['station']): errors.append(f'{where}: station {r["station"]} is neither - nor [a-z]+(:[a-z]+)?')
+    slots=(r['slotX'],r['slotY'],r['slotZ'])
+    if slots!=(-1,-1,-1) and not (0<=slots[0]<template['width'] and 0<=slots[1]<template['height'] and 0<=slots[2]<template['depth']): errors.append(f'{where}: slot {slots} is neither -1,-1,-1 nor a cell inside the template ({template["width"]} wide, {template["height"]} high, {template["depth"]} deep)')
+for r in data.get('campStations',[]):
+    where=f'campStations/{r["id"]}'
+    if r['npc'] not in ('-','armorer','cleric','librarian','cartographer','weaponsmith'): errors.append(f'{where}: npc {r["npc"]} is not - or a villager profession of the camp')
+    if r['page'] not in ('home','contracts','chapter','match','recruit','friends','army','train'): errors.append(f'{where}: page {r["page"]} is not a camp page')
+# Lesson boards (Phase 3): ids unique (the generic check above), and every {key:<id>} marker of a text names a key the HUD lessons and the camp labels know.
+LESSON_KEYS={'menu','attack','follow','formation','map','rotate_left','rotate_right','confirm','cancel','use'}
+for r in data.get('campLessons',[]):
+    where=f'campLessons/{r["id"]}'
+    text=r['text']
+    if text.count('{key:')!=len(re.findall(r'\{key:[a-z_]+\}',text)): errors.append(f'{where}: a {{key: marker is not of the form {{key:<id>}} in [a-z_]')
+    for key in re.findall(r'\{key:([a-z_]+)\}',text):
+        if key not in LESSON_KEYS: errors.append(f'{where}: {{key:{key}}} is not one of '+', '.join(sorted(LESSON_KEYS)))
 if errors:
     print('\n'.join(errors)); sys.exit(1)
 def typ(v): return 'boolean' if isinstance(v,bool) else 'int' if isinstance(v,int) else 'double' if isinstance(v,float) else 'String'

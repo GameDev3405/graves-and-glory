@@ -68,7 +68,7 @@ public final class GravesAndGlory implements ModInitializer {
         // Catch chunks loaded after SERVER_STARTED, not only spawn-area entities.
         ServerEntityEvents.ENTITY_LOAD.register((entity,world)->{
             if(battle!=null&&!CampWorld.generation.isEmpty()&&entity.getCommandTags().contains(CampWorld.TAG)&&!entity.getCommandTags().contains("camp-generation:"+CampWorld.generation))entity.discard();
-            if(entity.getCommandTags().contains("gravesandglory-lobby")||entity.getCommandTags().contains("bannerbound-lobby"))entity.discard();
+            if(entity.getCommandTags().contains("gravesandglory-lobby")||entity.getCommandTags().contains("bannerbound-lobby")||entity.getCommandTags().contains("gravesandglory-camp-v3"))entity.discard();
             if(battle!=null&&world==battle.world&&(entity.getCommandTags().contains("gravesandglory")||entity.getCommandTags().contains("bannerbound"))&&!ArmyMobs.isTroop(entity))entity.discard();
             // A shot's arrow saved mid-flight comes back from disk as a real, clipping arrow. This event also fires for a new spawn, so only a tagged arrow that no queued shot owns is discarded (Projectiles.fire queues the shot before it spawns the arrow). Any world.
             if(entity.getCommandTags().contains(Projectiles.TAG)&&!Projectiles.owns(battle,entity))entity.discard();
@@ -139,7 +139,7 @@ public final class GravesAndGlory implements ModInitializer {
             return ActionResult.SUCCESS;
         });
         UseBlockCallback.EVENT.register((player,world,hand,hit)->{
-            String station=CampWorld.station(hit.getBlockPos());if(station.isEmpty()||battle==null)return ActionResult.PASS;
+            String station=CampWorld.station(hit.getBlockPos());if(station==null||battle==null)return ActionResult.PASS;
             if(!world.isClient&&player instanceof ServerPlayerEntity p&&p.squaredDistanceTo(Vec3d.ofCenter(hit.getBlockPos()))<36)openCamp(p,station);
             return ActionResult.SUCCESS;
         });
@@ -587,6 +587,7 @@ public final class GravesAndGlory implements ModInitializer {
             world.getGameRules().get(GameRules.DO_FIRE_TICK).set(false,server);
             world.getGameRules().get(GameRules.DO_MOB_GRIEFING).set(false,server);
             world.getGameRules().get(GameRules.DO_MOB_LOOT).set(false,server);
+            world.getGameRules().get(GameRules.DO_VINES_SPREAD).set(false,server); // the camp's stonework holds 53 vines; a random tick would grow them into the cells the pieces leave void
             world.getGameRules().get(GameRules.KEEP_INVENTORY).set(true,server);
             world.getGameRules().get(GameRules.ANNOUNCE_ADVANCEMENTS).set(false,server); // vanilla advancement lines do not belong in battle chat
             world.setTimeOfDay(3000);
@@ -605,7 +606,7 @@ public final class GravesAndGlory implements ModInitializer {
                 // while their floor is constructed, before admitting them to the round.
                 for(ServerPlayerEntity p:server.getPlayerManager().getPlayerList()){
                     p.changeGameMode(GameMode.ADVENTURE);
-                    if(p.getZ()>-275||p.getY()<63)campaign.toLobby(p);
+                    if(campaign.leash&&!CampWorld.inCamp(p.getX(),p.getY(),p.getZ()))campaign.toLobby(p);
                 }
                 if(time%20==0)clearOldUnits();
                 int total=(2*R.worldHalfX()+1)*(2*R.worldHalfZ()+1);
@@ -615,7 +616,7 @@ public final class GravesAndGlory implements ModInitializer {
                     Arena.column(world,x,z);
                 }
                 if(buildColumn>=total){
-                    Arena.finish(world);campaign.built();ready=true;message="Your war council is ready. Press {key:menu}.";
+                    Arena.finish(world);campaign.built();CampWorld.warTable(world);ready=true;message="Your war council is ready. Press {key:menu}.";
                     Diagnostics.report("arena-ready",true,null);
                 }
                 if(time%20==0){message="Preparing "+Spec.MAPS[campaign.map].name()+" / "+buildColumn*100/total+"%";sendState();}
