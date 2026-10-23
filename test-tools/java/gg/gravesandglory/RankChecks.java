@@ -84,6 +84,7 @@ final class RankChecks {
                     else if (++wait % 600 == 0) System.out.println("[p2-wait] ranks step 0 after " + wait + " ticks: ready=" + ready + ", posted " + posted.size() + "; " + litWhy(c));
                 }
                 case 1 -> { wait++; // p2-rank-sync: the server sets the level-1 Squire to 3/2/3; within 2 ticks this client reads it
+                    if (wait == 1) localIdentity(c);
                     if (wait == 20) server(c, b -> { stage(gk1, 3, 2, 3); syncSet = true; });
                     if (syncSet && t0 == 0) t0 = wait; // the first client tick that sees the server's set done
                     if (syncSet && seenAt < 0 && new RankSync.Rank(3, 2, 3).equals(RankSync.client(e(c, gk1)))) seenAt = wait;
@@ -254,26 +255,57 @@ final class RankChecks {
             }
         }
 
-        /** p2-weapon-parts-tier: the Squire's generated model with weaponTiers on two parts (surcoat_skirt at tier I, crest_plume at III), built and prepared as TroopModelLoader and TroopRenderer do. */
+        /**
+         * p2-rank-local-identity (Task 9 review I1): a client-only mob (a portrait) that shares its entity id with a world troop
+         * never lends that troop its local rank. Entity.equals and hashCode compare by id, so a map keyed by equality mixes the two up;
+         * on a multiplayer guest a portrait's client-made id can equal a world troop's network id. Built here by giving a fresh
+         * client mob the level-2 Squire's id: two distinct Entity objects, equal by equals.
+         */
+        void localIdentity(MinecraftClient c) {
+            var x = e(c, gk2); if (x == null) { report("p2-rank-local-identity", false, "the level-2 Squire is not in this client's world"); return; }
+            var twin = new net.minecraft.entity.mob.ZombieEntity(net.minecraft.entity.EntityType.ZOMBIE, c.world); twin.setId(x.getId());
+            RankSync.Rank before = RankSync.client(x), lent = new RankSync.Rank(1, 3, 1);
+            RankSync.setLocal(twin, lent);
+            RankSync.Rank world = RankSync.client(x), own = RankSync.client(twin);
+            RankSync.setLocal(twin, null);
+            boolean ok = twin.equals(x) && twin != x && Objects.equals(world, before) && new RankSync.Rank(2, 1, 2).equals(before) && lent.equals(own);
+            report("p2-rank-local-identity", ok, "a client-only mob with the level-2 Squire's id " + x.getId() + " (equals the Squire=" + twin.equals(x) + ", same object=" + (twin == x) + ") set to local rank " + rank(lent)
+                + ": the Squire reads " + rank(world) + " (want its own " + rank(before) + ", 2/1/2), the mob reads " + rank(own) + " (want " + rank(lent) + ")");
+        }
+
+        /** The Squire's generated model with these weaponTiers on its bones (stages cleared on them), built as TroopModelLoader does. */
+        TroopModel<MobEntity> partsFixture(MinecraftClient c, Map<String, int[]> arms) throws Exception {
+            var res = c.getResourceManager().getResource(new Identifier(TroopModels.NAMESPACE, TroopModelLoader.FOLDER + "knight.json"));
+            if (res.isEmpty()) throw new IllegalStateException("models/troop/knight.json is missing");
+            JsonObject j; try (var in = new InputStreamReader(res.get().getInputStream(), StandardCharsets.UTF_8)) { j = JsonParser.parseReader(in).getAsJsonObject(); }
+            for (var el : j.getAsJsonArray("bones")) { var b = el.getAsJsonObject(); int[] t = arms.get(b.get("name").getAsString()); if (t == null) continue;
+                b.add("stages", new com.google.gson.JsonArray()); var a = new com.google.gson.JsonArray(); for (int k : t) a.add(k); b.add("weaponTiers", a); }
+            var rig = TroopModels.rig("biped");
+            return new TroopModel<>(j, TroopModelLoader.parse(j).createModel(), Map.of("right", rig == null ? "right_hand" : rig.handBone("right"), "left", rig == null ? "left_hand" : rig.handBone("left")), null, List.of());
+        }
+
+        /**
+         * p2-weapon-parts-tier: weaponTiers part sets on the Squire's model (no weaponless troop has a model yet). A whole set
+         * (head: iron_cap at tier I, crest_plume at III) switches with the weapon tier, tier II drawing I; a partial one (the same
+         * plus surcoat_skirt at tier I on the body, which has no tier III part) draws tier I at III (Task 9 review M7).
+         */
         void weaponParts(MinecraftClient c) {
             try {
-                var res = c.getResourceManager().getResource(new Identifier(TroopModels.NAMESPACE, TroopModelLoader.FOLDER + "knight.json"));
-                if (res.isEmpty()) { report("p2-weapon-parts-tier", false, "models/troop/knight.json is missing"); return; }
-                JsonObject j; try (var in = new InputStreamReader(res.get().getInputStream(), StandardCharsets.UTF_8)) { j = JsonParser.parseReader(in).getAsJsonObject(); }
-                for (var el : j.getAsJsonArray("bones")) { var b = el.getAsJsonObject(); String n = b.get("name").getAsString();
-                    if (n.equals("surcoat_skirt")) { var a = new com.google.gson.JsonArray(); a.add(1); b.add("weaponTiers", a); }
-                    if (n.equals("crest_plume")) { b.add("stages", new com.google.gson.JsonArray()); var a = new com.google.gson.JsonArray(); a.add(3); b.add("weaponTiers", a); } }
-                var rig = TroopModels.rig("biped");
-                TroopModel<MobEntity> m = new TroopModel<>(j, TroopModelLoader.parse(j).createModel(), Map.of("right", rig == null ? "right_hand" : rig.handBone("right"), "left", rig == null ? "left_hand" : rig.handBone("left")), null, List.of());
-                var row = ArmyCards.spec("knight"); StringBuilder why = new StringBuilder(); boolean ok = m.weaponPart("crest_plume") && m.weaponPart("surcoat_skirt") && !m.weaponPart("iron_cap");
-                boolean[][] want = {{true, false}, {true, false}, {false, true}}; // skirt, crest at weapon tiers 1, 2 (no tier II parts: draws I) and 3
+                var row = ArmyCards.spec("knight"); StringBuilder why = new StringBuilder();
+                var whole = partsFixture(c, Map.of("iron_cap", new int[] {1}, "crest_plume", new int[] {3}));
+                boolean ok = whole.weaponPart("crest_plume") && whole.weaponPart("iron_cap") && !whole.weaponPart("surcoat_skirt");
+                boolean[][] want = {{true, false}, {true, false}, {false, true}}; // cap, crest at weapon tiers 1, 2 (no tier II parts: draws I) and 3
                 for (int t = 1; t <= 3; t++) {
-                    m.prepare(new TroopModels.Look(row, 1, t, 1, false, "gold"), false, false); var shown = m.shownBones(m.shownMask());
-                    boolean skirt = shown.contains("surcoat_skirt"), crest = shown.contains("crest_plume"), cap = shown.contains("iron_cap");
-                    boolean good = skirt == want[t - 1][0] && crest == want[t - 1][1] && cap && m.weaponPartTier(t) == (t == 3 ? 3 : 1); ok &= good;
-                    why.append("weapon tier ").append(t).append(" (parts draw as ").append(m.weaponPartTier(t)).append("): skirt ").append(skirt ? "shown" : "hidden").append(", crest ").append(crest ? "shown" : "hidden").append(", cap ").append(cap ? "shown" : "hidden").append(good ? "" : " (BAD)").append("; ");
+                    whole.prepare(new TroopModels.Look(row, 1, t, 1, false, "gold"), false, false); var shown = whole.shownBones(whole.shownMask());
+                    boolean cap = shown.contains("iron_cap"), crest = shown.contains("crest_plume"), skirt = shown.contains("surcoat_skirt");
+                    boolean good = cap == want[t - 1][0] && crest == want[t - 1][1] && skirt && whole.weaponPartTier(t) == (t == 3 ? 3 : 1); ok &= good;
+                    why.append("whole set, weapon tier ").append(t).append(" (parts draw as ").append(whole.weaponPartTier(t)).append("): cap ").append(cap ? "shown" : "hidden").append(", crest ").append(crest ? "shown" : "hidden").append(good ? "" : " (BAD)").append("; ");
                 }
-                report("p2-weapon-parts-tier", ok, "the Squire's model with weaponTiers [1] on surcoat_skirt and [3] on crest_plume (a fixture: the Old Horn and the other weaponless troops have no model yet): " + why.toString().trim());
+                var partial = partsFixture(c, Map.of("iron_cap", new int[] {1}, "crest_plume", new int[] {3}, "surcoat_skirt", new int[] {1}));
+                partial.prepare(new TroopModels.Look(row, 1, 3, 1, false, "gold"), false, false); var shown = partial.shownBones(partial.shownMask());
+                boolean good = partial.weaponPartTier(3) == 1 && shown.contains("iron_cap") && shown.contains("surcoat_skirt") && !shown.contains("crest_plume"); ok &= good;
+                why.append("partial set (surcoat_skirt [1] on the body, no tier III body part), weapon tier 3: parts draw as ").append(partial.weaponPartTier(3)).append(", crest ").append(shown.contains("crest_plume") ? "shown" : "hidden").append(good ? "" : " (BAD)").append(";");
+                report("p2-weapon-parts-tier", ok, "the Squire's model as a weaponTiers fixture (the Old Horn and the other weaponless troops have no model yet): " + why.toString().trim());
             } catch (Exception ex) { report("p2-weapon-parts-tier", false, ex.toString()); ex.printStackTrace(); }
         }
 

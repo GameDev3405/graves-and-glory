@@ -1,13 +1,18 @@
 """Prepare a headless-only server kit. No installer execution or EULA acceptance."""
 import hashlib
 import json
+import sys
 import zipfile
 from release_config import ROOT, version, source_identity, validate_player_jar
+import build_skins
 
 FABRIC_URL='https://meta.fabricmc.net/v2/versions/loader/1.20.1/0.16.14/1.1.2/server/jar'
 FABRIC_SHA256='856a5f9fe4809ac1972778ff5bac71f8995b7ae0513caa6d0be94288b92cf113'
 
-def export():
+def export(argv=()):
+    # The tier art gate first, as tools/package.py runs it (design 4.4; Task 9 review I2): refuse while a troop draws a stopgap
+    # tier unless --allow-stopgap, which marks the kit -stopgap and takes only the -stopgap player archive and .mrpack.
+    stopgap=build_skins.release_gate(ROOT,list(argv),'export_server')
     release=version();jar=ROOT/f'build/libs/graves-and-glory-{release}.jar'
     validate_player_jar(jar,source_identity())
     rows=json.loads((ROOT/'dependencies/platform-lock.json').read_text(encoding='utf8'))
@@ -18,12 +23,12 @@ def export():
         if hashlib.sha512(data).hexdigest()!=row['hashes']['sha512']:raise RuntimeError('Stale server dependency')
         files['mods/'+row['fileName']]=data
     manifest=json.loads((ROOT/'dist/package-manifest.json').read_text())
-    player=ROOT/'dist'/manifest['fileName']
+    player=ROOT/'dist'/build_skins.release_archive(manifest,release,stopgap,'export_server')
     if hashlib.sha256(player.read_bytes()).hexdigest()!=manifest['sha256']:raise RuntimeError('Player archive changed')
     with zipfile.ZipFile(player) as pack:
         for name in pack.namelist():
             if name.startswith('docs/'):files[name]=pack.read(name)
-    with zipfile.ZipFile(ROOT/f'dist/graves-and-glory-{release}.mrpack') as pack:
+    with zipfile.ZipFile(ROOT/'dist'/build_skins.release_name(release,stopgap,'.mrpack')) as pack:
         files['server.properties']=pack.read('server-overrides/server.properties')
     files['setup-server.ps1']=(f'''$ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
@@ -83,7 +88,7 @@ unfinished. Do not treat this candidate as a finished public competitive service
 The production headless startup/lobby were checked locally; an authenticated
 remote client match and the actual home-server PC still need verification.
 '''.encode()
-    output=ROOT/f'dist/graves-and-glory-{release}-server.zip';temp=output.with_suffix('.zip.tmp')
+    output=ROOT/'dist'/build_skins.release_name(release,stopgap,'-server.zip');temp=output.with_suffix('.zip.tmp')
     with zipfile.ZipFile(temp,'w',zipfile.ZIP_DEFLATED) as pack:
         for name,data in sorted(files.items()):pack.writestr(name,data)
     # Read back every allowed entry; no generated runtime/EULA file is allowlisted.
@@ -98,4 +103,4 @@ remote client match and the actual home-server PC still need verification.
     (ROOT/'dist/server-manifest.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(report,indent=2))
 
-if __name__=='__main__':export()
+if __name__=='__main__':export(sys.argv[1:])

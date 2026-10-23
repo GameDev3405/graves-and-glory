@@ -74,7 +74,7 @@ The Phase 2 sheets: `houses` (five, with `fieldable`, all true), `troops` (30), 
 ### Adding a troop
 
 1. Add a row to `troops` (id, House, rarity, entity, stats, ability, tags) and its id to its House's `troops` list in sheet order; add its `troopNotes` row and its `evolutions` rows. Preflight names every missing cell and reference.
-2. A troop is drawn from its custom name, so its stage names must be unique across all troops (preflight checks it).
+2. A troop is drawn from its custom name, so its level names must be unique across all troops (preflight checks it).
 3. Give it art (section 5): `art/troops/<id>.json` and its skins. Without art the troop draws as its bare rig.
 4. If it uses a new ability mechanic, add the mechanic in `Abilities.java` or `HouseAttacks.java` and the row in `abilities`; the numbers stay in the row.
 5. The client rejects a state packet whose troop count differs from the table length, so host and players must run the same build.
@@ -91,7 +91,7 @@ The Phase 2 sheets: `houses` (five, with `fieldable`, all true), `troops` (30), 
 **Tier art (in-match progression design 4.4).** A troop's armour and weapon each have tiers I to III (the `gearTiers` sheet), set apart from its level.
 - Armour: `art/troops/<id>_s1.png` to `_s3.png`, one skin per armour tier. A skin for a tier no gear tier has fails the build.
 - Weapon: `art/weapons/<weapon>.json` is tier I; `<weapon>_t2.json` and `<weapon>_t3.json` (with their sheets) are tiers II and III. A troop always names its tier I weapon; a `_t<n>` weapon without its tier I base fails the build.
-- Weapon parts (a troop without a held weapon, such as a horn or a banner): a part gets a `"weaponTiers": [..]` key, the weapon tiers it shows at, like `stages` for armour.
+- Weapon parts (a troop without a held weapon, such as a horn or a banner): a part gets a `"weaponTiers": [..]` key, the weapon tiers it shows at, like `stages` (the armour tiers) for armour. A weapon tier of parts counts as drawn only when it is whole: every bone that carries a tier I weapon part carries a part of that tier too, else the troop draws tier I there and stays on the stopgap list.
 - A missing tier draws as the highest tier below it that exists (the stopgap). `python tools/build_skins.py --tiers` lists every troop's tiers and the stopgaps.
 - The rank chevron is `art/marks/chevron.png` (17x7, grey, full alpha or none); the client tints it by the side colour.
 
@@ -117,7 +117,7 @@ python tools/export_server.py         -> dist/graves-and-glory-<version>-server.
 - If old classes survive a rebuild, run a clean Gradle build. Do not reuse a prior remapped JAR.
 - `tools/package.py` fails the build if any harness name appears in the player jar. It also builds `dist/package-manifest.json` with hashes, credits and every third-party notice.
 - Only `dependencies/manifest.json` entries are included, and each file is checked against its pinned SHA-256.
-- `tools/package.py` refuses while any troop draws a stopgap tier (`python tools/build_skins.py --tiers` lists them). `--allow-stopgap` builds anyway for local use and names the zip `graves-and-glory-<version>-stopgap.zip`; never publish that file.
+- `tools/package.py` refuses while any troop draws a stopgap tier (`python tools/build_skins.py --tiers` lists them). `--allow-stopgap` builds anyway for local use and names the zip `graves-and-glory-<version>-stopgap.zip`; never publish that file. `tools/export_modrinth.py` and `tools/export_server.py` run the same check: with `--allow-stopgap` they take only the `-stopgap` player archive and write `-stopgap.mrpack` and `-stopgap-server.zip`; without it they refuse, and they refuse a package manifest whose archive does not carry their own mark.
 
 ## 7. Test harness (development only)
 

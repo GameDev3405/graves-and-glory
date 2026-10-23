@@ -104,7 +104,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         if(bones.size()>MAX_BONES)throw new IllegalArgumentException(bones.size()+" bones, more than "+MAX_BONES);
         Map<String,double[][]> rot=new HashMap<>();Map<String,double[]> at=new HashMap<>();Map<String,List<double[]>> corners=new HashMap<>();
         double[] lo={Double.MAX_VALUE,Double.MAX_VALUE,Double.MAX_VALUE},hi={-Double.MAX_VALUE,-Double.MAX_VALUE,-Double.MAX_VALUE};
-        Set<String> restHidden=new HashSet<>(),crownHidden=new HashSet<>();double crownY=Double.MAX_VALUE;
+        Set<String> restHidden=new HashSet<>(),crownHidden=new HashSet<>();Map<String,Set<Integer>> armsByBone=new LinkedHashMap<>();double crownY=Double.MAX_VALUE;
         int[] size=json.has("size")?new int[]{json.getAsJsonArray("size").get(0).getAsInt(),json.getAsJsonArray("size").get(1).getAsInt()}:new int[]{64,64};
         Map<String,Map<String,TroopMesh>> rel=new TreeMap<>();
         for(JsonElement el:bones){
@@ -115,7 +115,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
                 if(mesh.quads()>0)rel.computeIfAbsent(re.getKey(),k->new LinkedHashMap<>()).put(name,mesh);
             }
             Set<Integer> stages=new TreeSet<>();if(b.has("stages"))for(var s:b.getAsJsonArray("stages"))stages.add(s.getAsInt());
-            Set<Integer> arms=new TreeSet<>();if(b.has("weaponTiers"))for(var s:b.getAsJsonArray("weaponTiers"))arms.add(s.getAsInt());partTiers.addAll(arms);
+            Set<Integer> arms=new TreeSet<>();if(b.has("weaponTiers"))for(var s:b.getAsJsonArray("weaponTiers"))arms.add(s.getAsInt());if(!arms.isEmpty())armsByBone.computeIfAbsent(parent,k->new TreeSet<>()).addAll(arms);
             Bone bone=new Bone(name,parent,str(b,"part"),b.has("team")&&b.get("team").getAsBoolean(),str(b,"tag"),Collections.unmodifiableSet(stages),Collections.unmodifiableSet(arms));
             ModelPart p=parent.isEmpty()?top.getChild(name):parts.get(parent).getChild(name);
             parts.put(name,p);info.put(name,bone);
@@ -146,6 +146,9 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         long team=0;int bit=0;for(Bone b:info.values()){if(b.team())team|=1L<<bit;bit++;}teamBits=team;
         rest=lo[0]>hi[0]?new Box(0,0,0,0,0,0):new Box(lo[0],lo[1],lo[2],hi[0],hi[1],hi[2]);
         crown=crownY==Double.MAX_VALUE?Double.NaN:crownY;
+        // a weapon tier of parts is whole only when every bone carrying a tier I weapon part carries one of that tier too (Task 9
+        // review M7; build_skins.part_tiers is the release gate's twin): a tier II cap without its tier II guard draws tier I
+        for(var tiers:armsByBone.values())for(int t:tiers)if(armsByBone.values().stream().allMatch(o->!o.contains(1)||o.contains(t)))partTiers.add(t);
         // The frustum test's reach (TroopRenderer.shouldRender): every box of every stage, team part and flag at rest, the head
         // turned any way about its pivot, and each arm swung any way about its shoulder with what its hand holds (the weapon in
         // the weapon hand, a shield's reach in the other), so the head look and Task 5b's arm clips stay inside it.
@@ -318,7 +321,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     int skinStage(int stage){Integer out=null;for(int k:skins.keySet())if(k<=stage||out==null)out=k;return out==null?1:out;}
     /** The armour tier a worn tier draws as: its skin, relief, stage parts and glow are that tier's (skinStage: the highest tier at or below it with its own skin). */
     public int armourArt(int worn){return skinStage(worn);}
-    /** The weapon tier a worn tier's weapon parts draw as: the highest tier at or below it that some weaponTiers part shows at, tier I without one (the stopgap). */
+    /** The weapon tier a worn tier's weapon parts draw as: the highest tier at or below it that the weaponTiers parts have whole (every bone with a tier I weapon part has one of it), tier I without one (the stopgap). */
     public int weaponPartTier(int worn){int out=1;for(int t:partTiers)if(t<=worn)out=Math.max(out,t);return out;}
     /** The armour tiers this troop has its own skin for. */
     public Set<Integer> ownSkins(){return Collections.unmodifiableSet(skins.keySet());}

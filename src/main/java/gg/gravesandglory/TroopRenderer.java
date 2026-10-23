@@ -73,7 +73,7 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
 
     @Override public void render(T e,float yaw,float tickDelta,MatrixStack matrices,VertexConsumerProvider consumers,int light){
         TroopModels.Look l=TroopModels.resolve(e);TroopModel<T> m=l==null?null:TroopModels.modelOf(l.troop().id());
-        if(m==null){vanilla.render(e,yaw,tickDelta,matrices,consumers,light);TroopChevrons.draw(e,matrices,consumers,dispatcher);return;}
+        if(m==null){vanilla.render(e,yaw,tickDelta,matrices,consumers,light);TroopChevrons.draw(e,l,null,matrices,consumers,dispatcher);return;}
         if(TroopModels.held(e,l))return;
         model=m;look=l;
         // Folded arms (idleArms folded) open while the troop attacks or a clip holds an arm (unit identity rule 3); a helm_off scene pose hides the helm.
@@ -82,7 +82,7 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
         // Within reach of the camera (TroopDepth.near) the skin pass draws the relief of the skin it binds after the skin; the model spends the arm in that one pass.
         String relief=TroopDepth.near(e)?m.reliefKey(l):null;m.armRelief(relief);
         try{super.render(e,yaw,tickDelta,matrices,consumers,light);reliefKey=m.reliefSpent?relief:null;troopDraws++;record(e,l,m);}finally{m.armRelief(null);look=null;}
-        TroopChevrons.draw(e,matrices,consumers,dispatcher);
+        TroopChevrons.draw(e,l,m,matrices,consumers,dispatcher);
     }
     private void record(Entity e,TroopModels.Look l,TroopModel<?> m){
         Drawn d=DRAWN.computeIfAbsent(e,k->new Drawn());Draw last=d.last;long bones=m.skinMask()|clothMask;

@@ -444,7 +444,7 @@ def bake_bones(rig, what, overrides=None, parts=(), hunch=0.0, folded=True, stag
             origin_uv = vec(entry['uv'], 2, '%s part %s uv' % (what, name), ints=True, minimum=0)
         want = entry.get('stages', [])
         if not isinstance(want, list) or any(s not in stages for s in want):
-            fail('%s: part %s shows at stages %s, but the troop has stages %s' % (what, name, want, list(stages)))
+            fail('%s: part %s shows at armour tiers %s, but the armour tiers are %s' % (what, name, want, list(stages)))
         # weaponTiers: the weapon tiers a weapon part shows at (design 4.4: a troop with no held weapon, or the Ballista
         # Crew's frame, shows its weapon tier as parts on the rig); without the key a part shows at every weapon tier.
         arms = entry.get('weaponTiers')
@@ -506,22 +506,22 @@ def texture_id(name):
 
 
 def troop_files(cat, troop):
-    """The troop's skins by stage, and its veteran, glow and outer files ('' for none), checked against the naming rules."""
+    """The troop's skins by armour tier, and its veteran, glow and outer files ('' for none), checked against the naming rules."""
     src = cat.troops[troop]
     folder = cat.root / 'art/troops'
     if (folder / (troop + '.png')).exists():
-        fail('%s: art/troops/%s.png: skins end _s<stage> or _veteran, never <troop>.png (ETF, when a player has it, '
+        fail('%s: art/troops/%s.png: skins end _s<armour tier> or _veteran, never <troop>.png (ETF, when a player has it, '
              'pairs <name>_e.png with <name>.png)' % (troop, troop))
     stages = cat.stages[troop]
     skins = src.get('skins')
     if not isinstance(skins, dict) or '1' not in skins:
-        fail('%s: skins must map stage numbers to files, with a stage 1 skin' % troop)
+        fail('%s: skins must map armour tiers to files, with a tier 1 skin' % troop)
     own = {}
     for key, f in skins.items():
         if not key.isdigit() or int(key) not in stages:
             fail('%s: a skin for armour tier %s, which no gear tier has (armour tiers %s)' % (troop, key, stages))
         if f != '%s_s%s.png' % (troop, key):
-            fail('%s: the stage %s skin must be %s_s%s.png, not %s' % (troop, key, troop, key, f))
+            fail('%s: the armour tier %s skin must be %s_s%s.png, not %s' % (troop, key, troop, key, f))
         if not (folder / f).is_file():
             fail('%s: %s is missing from art/troops' % (troop, f))
         own[int(key)] = f
@@ -1657,6 +1657,21 @@ def drawn_tiers(own, tiers):
     return out
 
 
+def part_tiers(cat, src) -> set:
+    """The weapon tiers a troop's weaponTiers parts have whole: a tier every bone that carries a tier I weapon part also
+    carries a part of (Task 9 review M7: a tier II cap without its tier II guard is no tier II); TroopModel.partTiers is the
+    client's twin. Empty for a troop without weapon parts."""
+    by_bone = {}
+    for e in src.get('parts', []) or []:
+        if e.get('weaponTiers'):
+            part = cat.parts.get(e.get('part'), {})
+            by_bone.setdefault(e.get('bone', part.get('bone')), set()).update(e['weaponTiers'])
+    if not by_bone:
+        return set()
+    every = set().union(*by_bone.values())
+    return {t for t in every if all(t in tiers for tiers in by_bone.values() if 1 in tiers)}
+
+
 def tier_table(cat: Catalog) -> list:
     """Per sheet troop, by id: {troop, armour, weapon, kind}. armour and weapon map each tier to the tier it draws (None for a
     troop with no model, which draws its vanilla mob); kind names the held weapon, 'parts' (its weapon tier is a weaponTiers
@@ -1668,9 +1683,7 @@ def tier_table(cat: Catalog) -> list:
             rows.append({'troop': tid, 'armour': None, 'weapon': None, 'kind': None})
             continue
         own, _ = troop_files(cat, tid)
-        parts = set()
-        for e in src.get('parts', []) or []:
-            parts |= set(e.get('weaponTiers') or [])
+        parts = part_tiers(cat, src)
         held = weapon_tiers(cat, src.get('weapon'))
         if held:
             have, kind = set(held), src['weapon'] + (' and parts' if parts else '')
@@ -1718,19 +1731,36 @@ def tiers(root: Path) -> int:
     return 0
 
 
-def release_gate(root: Path, argv) -> str:
-    """tools/package.py's tier check (in-match progression design 4.4, round 34 question 6): '' when no troop draws a
-    stopgap tier; with one, '-stopgap' (the package name's mark) under --allow-stopgap, else it prints the list and exits 1."""
+def release_gate(root: Path, argv, tool='package') -> str:
+    """The release files' tier check (in-match progression design 4.4, round 34 question 6), run first by tools/package.py,
+    export_modrinth.py and export_server.py: '' when no troop draws a stopgap tier; with one, '-stopgap' (the file names'
+    mark, release_name) under --allow-stopgap, else it prints the list and exits 1."""
     gaps = stopgaps(load(root))
     if not gaps:
         return ''
     if '--allow-stopgap' in argv:
-        print('package: --allow-stopgap: %d troops draw a stopgap tier, so the package name carries -stopgap: %s' % (len(gaps), stopgap_list(gaps)))
+        print('%s: --allow-stopgap: %d troops draw a stopgap tier, so the file name carries -stopgap: %s' % (tool, len(gaps), stopgap_list(gaps)))
         return '-stopgap'
-    print('package: refused: %d troops still draw a stopgap tier (0.5.0 waits for every troop\'s own weapon and armour '
-          'tiers I to III): %s' % (len(gaps), stopgap_list(gaps)))
-    print('package: for a marked local build run python tools/package.py --allow-stopgap')
+    print('%s: refused: %d troops still draw a stopgap tier (0.5.0 waits for every troop\'s own weapon and armour '
+          'tiers I to III): %s' % (tool, len(gaps), stopgap_list(gaps)))
+    print('%s: for a marked local build run python tools/%s.py --allow-stopgap' % (tool, tool))
     sys.exit(1)
+
+
+def release_name(release, mark, suffix) -> str:
+    """A release file's name: graves-and-glory-<version><mark><suffix> (suffix .zip, .mrpack or -server.zip)."""
+    return 'graves-and-glory-%s%s%s' % (release, mark, suffix)
+
+
+def release_archive(manifest, release, mark, tool='export') -> str:
+    """The player archive dist/package-manifest.json names when it is this version's, with this gate's mark; else the tool
+    refuses (exit 1), so a -stopgap package never feeds an unmarked .mrpack or server kit, nor a stale one a new kit."""
+    want = release_name(release, mark, '.zip')
+    if manifest.get('fileName') != want:
+        print('%s: refused: dist/package-manifest.json names %s, not %s; run python tools/package.py%s first'
+              % (tool, manifest.get('fileName'), want, ' --allow-stopgap' if mark else ''))
+        sys.exit(1)
+    return want
 
 
 def build(cat):

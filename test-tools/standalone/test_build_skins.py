@@ -1282,6 +1282,51 @@ class BuildSkinsChecks(unittest.TestCase):
         self.assertIn('build_skins: tiers hound: no model (draws its vanilla mob)', lines)
         self.assertEqual(lines[-1], 'build_skins: stopgap 3 troops: hound (no model), knight (armour III draws II), mage (weapon II draws I)')
 
+    def test_partial_weapon_parts(self):
+        """A weapon tier of weaponTiers parts has its own art only when every bone that carries a tier I weapon part carries one
+        of that tier too (Task 9 review M7): a set with a tier II cap but no tier II guard draws tier I, and fails the gate."""
+        troops = copy.deepcopy(TROOPS)
+        troops['mage']['skins'] = {'1': 'mage_s1.png', '2': 'mage_s2.png', '3': 'mage_s3.png'}
+        base = TROOPS['mage']['parts']
+        partial = [{'part': 'cap', 'name': 'cap_1', 'uv': [32, 0], 'weaponTiers': [1]},
+                   {'part': 'cap', 'name': 'cap_2', 'uv': [32, 0], 'weaponTiers': [2, 3]},
+                   {'part': 'cap', 'name': 'guard_1', 'bone': 'body', 'uv': [32, 0], 'weaponTiers': [1]}]
+        whole = partial + [{'part': 'cap', 'name': 'guard_2', 'bone': 'body', 'uv': [32, 0], 'weaponTiers': [2, 3]}]
+        for parts, want, gap in ((partial, {1: 1, 2: 1, 3: 1}, 'weapon II draws I, weapon III draws I'), (whole, {1: 1, 2: 2, 3: 3}, None)):
+            troops['mage']['parts'] = base + parts
+            with self.subTest(parts=len(parts)), tempfile.TemporaryDirectory() as tmp:
+                cat = build_skins.load(self.tiers_root(tmp, troops=troops))
+                rows = {r['troop']: r for r in build_skins.tier_table(cat)}
+                self.assertEqual(rows['mage']['weapon'], want)
+                self.assertEqual(dict(build_skins.stopgaps(cat)).get('mage'), gap)
+
+    def test_release_names(self):
+        """The release files' names carry the gate's mark (Task 9 review I2), and an exporter takes only the player archive
+        its own mark names: a -stopgap package never feeds an unmarked .mrpack or server kit, nor an unmarked one a marked."""
+        self.assertEqual(build_skins.release_name('0.5.0', '', '.zip'), 'graves-and-glory-0.5.0.zip')
+        self.assertEqual(build_skins.release_name('0.5.0', '-stopgap', '.mrpack'), 'graves-and-glory-0.5.0-stopgap.mrpack')
+        self.assertEqual(build_skins.release_name('0.5.0', '-stopgap', '-server.zip'), 'graves-and-glory-0.5.0-stopgap-server.zip')
+        self.assertEqual(build_skins.release_archive({'fileName': 'graves-and-glory-0.5.0.zip'}, '0.5.0', ''), 'graves-and-glory-0.5.0.zip')
+        for name, mark in (('graves-and-glory-0.5.0-stopgap.zip', ''), ('graves-and-glory-0.5.0.zip', '-stopgap'), ('graves-and-glory-0.4.0.zip', '')):
+            with self.subTest(name=name, mark=mark), self.assertRaises(SystemExit) as caught, contextlib.redirect_stdout(io.StringIO()) as out:
+                build_skins.release_archive({'fileName': name}, '0.5.0', mark, 'export_modrinth')
+            self.assertEqual(caught.exception.code, 1)
+            self.assertIn('export_modrinth: refused: dist/package-manifest.json names %s' % name, out.getvalue())
+
+    def test_exporters_refuse(self):
+        """tools/export_modrinth.py and tools/export_server.py run the same tier gate as package.py (Task 9 review I2): on this
+        checkout, while a troop draws a stopgap tier, each refuses before it reads a jar or writes into dist/."""
+        import subprocess
+        tools = pathlib.Path(build_skins.__file__).resolve().parent
+        if not build_skins.stopgaps(build_skins.load(tools.parent)):
+            self.skipTest('every troop has its own tiers: the exporters have nothing to refuse')
+        for tool in ('export_modrinth', 'export_server'):
+            with self.subTest(tool=tool):
+                done = subprocess.run([sys.executable, str(tools / (tool + '.py'))], capture_output=True, text=True, cwd=tools.parent)
+                self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+                self.assertIn('%s: refused:' % tool, done.stdout)
+                self.assertIn('python tools/%s.py --allow-stopgap' % tool, done.stdout)
+
     def test_release_gate(self):
         """package.py's check (round 34 question 6): with a stopgap it refuses, printing the list, unless --allow-stopgap is
         given, which marks the file name; with none it passes unmarked."""
