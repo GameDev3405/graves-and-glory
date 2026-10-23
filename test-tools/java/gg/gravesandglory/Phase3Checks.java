@@ -635,8 +635,13 @@ public final class Phase3Checks implements ClientModInitializer {
      *  p3-yard-start (the START button of that screen gives a running battle with activeBattle march-1 within 900 ticks; then returnLobby and the battle is over),
      *  p3-yard-lessons (exactly four text displays tagged camp-lesson:<id> where the rows put them, their JSON holding the keybind menu, formation, attack and key.use in turn and no literal {key: marker; then menu is rebound to K,
      *  the lessons are placed again so that the client resolves the keybind afresh, and the display of lesson 1 on the client reads "Press K,"; picture camp-yard-lessons; the binding is put back),
-     *  p3-yard-dummies (exactly six armor stands tagged camp-dummy, at (-52.5+2k,65,-309.5), invulnerable, facing -90, iron helmet and leather chestplate),
-     *  p3-yard-first-arrival (campaignCleared 0: toLobby puts him within 0.1 of (-33.5,65,-303.5), yaw 90, pitch 8, picture camp-first-arrival from his own eyes; campaignCleared 1: at the spawn row; the profile is restored) and the picture camp-yard.
+     *  p3-yard-lesson-text (each board as the client holds it reads the sheet text with the bound key names), p3-yard-boards (each lesson is a fixed panel facing east that lies on its board's planks,
+     *  and no two of the four lessons and the Drillmaster's label overlap on screen from anywhere a commander stands around the yard), p3-yard-drill-sight (the Drillmaster's label is whole in sight
+     *  from the first arrival, the camp-yard camera and the way in; the benches for information), picture camp-yard-boards,
+     *  p3-yard-dummies (exactly six armor stands tagged camp-dummy, at (-52.5+2k,65,-309.5), invulnerable, facing yaw -90 (east), iron helmet and leather chestplate),
+     *  p3-yard-dummies-locked (an empty hand that right-clicks a dummy at the head or the chest takes nothing),
+     *  p3-yard-first-arrival (campaignCleared 0: toLobby puts him within 0.1 of the camp row's first arrival (firstDx, 65, firstDz), yaw 90 (west, to the Drillmaster), pitch 8, picture camp-first-arrival from his own eyes;
+     *  campaignCleared 1: at the spawn row; the profile is restored) and the picture camp-yard.
      *  No check passes on nothing: zero villagers, zero displays, zero stands or a missing button are failures. */
     static final class Yard implements Suite {
         static final Spec.CampRow C=Spec.CAMP[0];
@@ -860,6 +865,34 @@ public final class Phase3Checks implements ClientModInitializer {
             }
             return out.toString();
         }
+        /** Whether a commander can take a dummy's armour: for each stand tagged camp-dummy, an empty main hand right-clicks it at the head (y 1.8) and at the chest (y 1.3) along the server's own path
+         *  (UseEntityCallback, then ArmorStandEntity.interactAt when the callback passes). The helmet and the chestplate must stay on the stand and the hand must stay empty; anything taken is put back,
+         *  and so is what the player held. "ok ..." when nothing could be taken; a spectator or fewer than six dummies is a failure, not a pass. */
+        static String dummiesLocked(GravesAndGlory.Battle b,net.minecraft.server.network.ServerPlayerEntity p){
+            var w=b.world;var out=new StringBuilder();int n=0,clicks=0;
+            var mode=p.interactionManager.getGameMode();p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE); // a commander in the camp (toLobby); the picture views leave the harness player a spectator
+            if(p.isSpectator())return "the player is still a spectator, so a click takes nothing whatever the dummies allow";
+            var held=p.getMainHandStack().copy();var hand=net.minecraft.util.Hand.MAIN_HAND;
+            var head=net.minecraft.entity.EquipmentSlot.HEAD;var chest=net.minecraft.entity.EquipmentSlot.CHEST;
+            for(var e:w.iterateEntities())if(e instanceof net.minecraft.entity.decoration.ArmorStandEntity s&&s.getCommandTags().contains("camp-dummy")){
+                n++;
+                for(double y:new double[]{1.8,1.3}){
+                    clicks++;p.setStackInHand(hand,net.minecraft.item.ItemStack.EMPTY);
+                    var r=net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.invoker().interact(p,w,hand,s,new net.minecraft.util.hit.EntityHitResult(s,s.getPos().add(0,y,0)));
+                    if(r==net.minecraft.util.ActionResult.PASS)r=s.interactAt(p,new Vec3d(0,y,0),hand);
+                    boolean helmet=s.getEquippedStack(head).isOf(net.minecraft.item.Items.IRON_HELMET),coat=s.getEquippedStack(chest).isOf(net.minecraft.item.Items.LEATHER_CHESTPLATE);
+                    var took=p.getMainHandStack();
+                    if(!took.isEmpty()||!helmet||!coat){
+                        out.append(String.format(Locale.ROOT,"dummy at (%.1f, %.1f): a click at y %.1f gave %s (%s)%s%s; ",s.getX(),s.getZ(),y,took.isEmpty()?"nothing in hand":took.getItem().toString()+" in hand",r,helmet?"":", the helmet is gone",coat?"":", the chestplate is gone"));
+                        if(!helmet)s.equipStack(head,new net.minecraft.item.ItemStack(net.minecraft.item.Items.IRON_HELMET));
+                        if(!coat)s.equipStack(chest,new net.minecraft.item.ItemStack(net.minecraft.item.Items.LEATHER_CHESTPLATE));
+                    }
+                }
+            }
+            p.setStackInHand(hand,held);p.changeGameMode(mode);
+            if(n!=6)out.append(n).append(" stands tagged camp-dummy (want 6); ");
+            return out.length()==0?"ok "+n+" dummies, "+clicks+" empty-hand clicks at the head and the chest, nothing taken":out.toString();
+        }
         /** Where the player stands against a spot (position within the tolerance, yaw and pitch within 0.5): what is wrong, empty when right. */
         static String stands(net.minecraft.server.network.ServerPlayerEntity p,double x,double y,double z,double yaw,double pitch,double tol){
             var out=new StringBuilder();
@@ -920,44 +953,48 @@ public final class Phase3Checks implements ClientModInitializer {
                         report("p3-yard-lessons",why.isEmpty(),why.isEmpty()?"four lesson displays with the keybinds menu, formation, attack and key.use; with menu on K the client reads: "+seen:why);
                         GravesAndGloryClient.menu.setBoundKey(net.minecraft.client.util.InputUtil.fromTranslationKey(savedMenuKey));net.minecraft.client.option.KeyBinding.updateKeysByCode();savedMenuKey=null;
                         done=false;server(c,b->{replaceLessons(b.world);done=true;}); // fresh texts again, resolved with the key put back
-                        stage=20;waited=0;
+                        stage=9;waited=0;
                     }
                 }
-                case 20->{ // the boards as the client draws them, with the binding put back: what each says, then where each panel lies and whether two panels overlap from anywhere a commander stands
+                case 9->{ // the boards as the client draws them, with the binding put back: what each says, then where each panel lies and whether two panels overlap from anywhere a commander stands
                     if(done&&++waited>=30){
                         String text=lessonText(c);report("p3-yard-lesson-text",text.startsWith("ok "),text);
                         String boards=boards(c);report("p3-yard-boards",boards.startsWith("ok "),boards);
                         String sight=drillSight(c);report("p3-yard-drill-sight",sight.startsWith("ok "),sight);
-                        stage=21;waited=0;
+                        stage=10;waited=0;
                     }
                 }
-                case 21->{if(view(c,"camp-yard-boards",-44.0,67.0,-304.5,-56.0,67.0,-304.5)){stage=9;waited=0;}}
-                case 9->{
+                case 10->{if(view(c,"camp-yard-boards",-44.0,67.0,-304.5,-56.0,67.0,-304.5)){stage=11;waited=0;}}
+                case 11->{
                     if(waited==0){done=false;serverPart="";server(c,b->{serverPart=dummies(b);done=true;});waited=1;}
-                    else if(done){report("p3-yard-dummies",serverPart.isEmpty(),serverPart.isEmpty()?"six armor stands tagged camp-dummy at their positions, invulnerable, in an iron helmet and a leather chestplate":serverPart);stage=10;waited=0;}
+                    else if(done){report("p3-yard-dummies",serverPart.isEmpty(),serverPart.isEmpty()?"six armor stands tagged camp-dummy at their positions, invulnerable, in an iron helmet and a leather chestplate":serverPart);stage=12;waited=0;}
                 }
-                case 10->{ // first arrival with no battle cleared
+                case 12->{ // the dummies' armour stays on: an empty hand clicks each at the head and the chest
+                    if(waited==0){done=false;serverPart="";server(c,b->{serverPart=dummiesLocked(b,b.server.getPlayerManager().getPlayer(me));done=true;});waited=1;}
+                    else if(done){report("p3-yard-dummies-locked",serverPart.startsWith("ok "),serverPart);stage=13;waited=0;}
+                }
+                case 13->{ // first arrival with no battle cleared
                     if(waited==0){done=false;arrivalA="";arrivalB="";c.setScreen(null);server(c,b->{b.campaign.leash=true;b.campaign.profile(me).campaignCleared=0;b.campaign.toLobby(b.server.getPlayerManager().getPlayer(me));done=true;});waited=1;}
                     else if(done&&++waited>=30){
                         if((c.world.isChunkLoaded(((int)Math.floor(c.player.getX()))>>4,((int)Math.floor(c.player.getZ()))>>4)&&c.worldRenderer.isTerrainRenderComplete())||waited>230){
-                            done=false;server(c,b->{arrivalA=stands(b.server.getPlayerManager().getPlayer(me),C.originX()+C.firstDx(),65,C.originZ()+C.firstDz(),90,8,0.1);done=true;});stage=11;waited=0;
+                            done=false;server(c,b->{arrivalA=stands(b.server.getPlayerManager().getPlayer(me),C.originX()+C.firstDx(),65,C.originZ()+C.firstDz(),90,8,0.1);done=true;});stage=14;waited=0;
                         }
                     }
                 }
-                case 11->{
-                    if(done&&++waited>=3){shot(c,"camp-first-arrival");done=false;server(c,b->{b.campaign.profile(me).campaignCleared=1;b.campaign.toLobby(b.server.getPlayerManager().getPlayer(me));done=true;});stage=12;waited=0;}
+                case 14->{
+                    if(done&&++waited>=3){shot(c,"camp-first-arrival");done=false;server(c,b->{b.campaign.profile(me).campaignCleared=1;b.campaign.toLobby(b.server.getPlayerManager().getPlayer(me));done=true;});stage=15;waited=0;}
                 }
-                case 12->{
-                    if(done&&++waited>=5){done=false;server(c,b->{arrivalB=stands(b.server.getPlayerManager().getPlayer(me),C.originX()+C.spawnDx(),C.spawnY(),C.originZ()+C.spawnDz(),C.spawnYaw(),C.spawnPitch(),0.1);b.campaign.profile(me).campaignCleared=savedCleared;done=true;});stage=13;waited=0;}
+                case 15->{
+                    if(done&&++waited>=5){done=false;server(c,b->{arrivalB=stands(b.server.getPlayerManager().getPlayer(me),C.originX()+C.spawnDx(),C.spawnY(),C.originZ()+C.spawnDz(),C.spawnYaw(),C.spawnPitch(),0.1);b.campaign.profile(me).campaignCleared=savedCleared;done=true;});stage=16;waited=0;}
                 }
-                case 13->{
+                case 16->{
                     if(done){
                         String why=(arrivalA.isEmpty()?"":"campaignCleared 0: "+arrivalA)+(arrivalB.isEmpty()?"":"campaignCleared 1: "+arrivalB);
-                        report("p3-yard-first-arrival",why.isEmpty(),why.isEmpty()?"campaignCleared 0 arrives at the yard (-33.5, 65, -303.5) facing yaw 90, pitch 8; campaignCleared 1 arrives at the camp spawn":why);
-                        stage=14;
+                        report("p3-yard-first-arrival",why.isEmpty(),why.isEmpty()?String.format(Locale.ROOT,"campaignCleared 0 arrives at the yard (%.1f, 65, %.1f) facing yaw 90 (west), pitch 8; campaignCleared 1 arrives at the camp spawn",C.originX()+C.firstDx(),C.originZ()+C.firstDz()):why);
+                        stage=17;
                     }
                 }
-                case 14->{if(view(c,"camp-yard",-28.5,69,-290,-46,66,-304)){finish(c,"yard");stage=15;}}
+                case 17->{if(view(c,"camp-yard",-28.5,69,-290,-46,66,-304)){finish(c,"yard");stage=18;}}
                 default->{}
             }
         }

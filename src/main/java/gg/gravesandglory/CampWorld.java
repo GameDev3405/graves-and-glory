@@ -60,7 +60,7 @@ final class CampWorld {
 
     // ---- the pure functions ----
 
-    /** Where a commander stands after toLobby: the first arrival (the yard, firstDx/firstDz/firstYaw, looking east to the Drillmaster) while the profile has cleared no Long March battle, else the camp spawn. A null profile is the camp spawn. */
+    /** Where a commander stands after toLobby: the first arrival (the yard, firstDx/firstDz/firstYaw, looking west (yaw 90) to the Drillmaster) while the profile has cleared no Long March battle, else the camp spawn. A null profile is the camp spawn. */
     static Spot spawn(Campaign.Profile p){
         var c=Spec.CAMP[0];
         if(p!=null&&p.campaignCleared==0)return new Spot(c.originX()+c.firstDx(),c.spawnY(),c.originZ()+c.firstDz(),(float)c.firstYaw(),(float)c.spawnPitch());
@@ -268,7 +268,7 @@ final class CampWorld {
 
     // ---- the training yard ----
 
-    /** The lesson boards: a fixed panel facing east (yaw -90) at 1.0 scale wrapped at 112 pixels, so it is 2.85 blocks wide and lies on its three-block backboard of the yard piece (camp/training_yard, local x 0)
+    /** The lesson boards: a fixed panel facing east (yaw -90) at 1.0 scale wrapped at 112 pixels, so it is at most 2.85 blocks wide and lies on its three-block backboard of the yard piece (camp/training_yard, local x 0)
      *  instead of turning to the viewer: four turning 1.7 panels 9 blocks wide on rows 6 blocks apart overlapped into one garbled line from the bowl (Task 3 grade). */
     static final float LESSON_SCALE=1.0f,LESSON_YAW=-90f;
     static final int LESSON_LINE=112;
@@ -285,7 +285,9 @@ final class CampWorld {
     /** How many dummies stand in the yard, and where the first one stands (dx, dz from the origin of the camp, y): the others follow every two blocks along x. */
     static final int DUMMIES=6;
     static final double DUMMY_DX=-52.5,DUMMY_DZ=0.5,DUMMY_Y=65;
-    /** The six practice dummies: armor stands facing west (yaw -90) in an iron helmet and a leather chestplate, invulnerable, no gravity, tagged TAG and camp-dummy. */
+    /** Every slot of an armor stand locked against taking, swapping and placing (the vanilla DisabledSlots mask: bits 0-5, 8-13 and 16-21). */
+    static final int DUMMY_LOCKED=4144959;
+    /** The six practice dummies: armor stands facing east (yaw -90) in an iron helmet and a leather chestplate, invulnerable, no gravity, every slot locked (DisabledSlots) so a click takes nothing, tagged TAG and camp-dummy. */
     static void dummies(ServerWorld w){
         var c=Spec.CAMP[0];
         for(int k=0;k<DUMMIES;k++){
@@ -294,6 +296,7 @@ final class CampWorld {
             stand.setInvulnerable(true);stand.setNoGravity(true);
             stand.equipStack(net.minecraft.entity.EquipmentSlot.HEAD,new net.minecraft.item.ItemStack(net.minecraft.item.Items.IRON_HELMET));
             stand.equipStack(net.minecraft.entity.EquipmentSlot.CHEST,new net.minecraft.item.ItemStack(net.minecraft.item.Items.LEATHER_CHESTPLATE));
+            var locked=stand.writeNbt(new net.minecraft.nbt.NbtCompound());locked.putInt("DisabledSlots",DUMMY_LOCKED);stand.readNbt(locked);
             stand.addCommandTag(TAG);stand.addCommandTag("camp-generation:"+generation);stand.addCommandTag("camp-dummy");
             w.spawnEntity(stand);
         }

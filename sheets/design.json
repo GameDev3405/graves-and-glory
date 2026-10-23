@@ -1794,7 +1794,7 @@
       "tableDx": -7,
       "tableDz": -65,
       "tableY": 78,
-      "firstDx": -33.5,
+      "firstDx": -32.5,
       "firstDz": 6.5,
       "firstYaw": 90.0
     }
@@ -2092,9 +2092,9 @@
     {
       "id": "lesson-4",
       "dx": -55.9,
-      "y": 66.33,
+      "y": 66.105,
       "dz": 14.5,
-      "text": "LESSON 4 OF 4 / Recruit at your barracks lectern with {key:use}. Trained troops join your army at the front."
+      "text": "LESSON 4 OF 4 / Recruit at your barracks lectern with {key:use}. Trained troops march out from the held point nearest the fight."
     }
   ]
 }
