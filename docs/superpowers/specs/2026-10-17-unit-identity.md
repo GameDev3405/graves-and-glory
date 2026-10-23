@@ -156,7 +156,7 @@ metal. Warpaint is pale clay (was ochre).
 
 ### Moot Hound
 Wildmoot | cavalry | Common | Moot Hound > Dire Hound > Packleader | `wm_hound`
-- **Purpose.** The fastest unit, diving over open ground onto archers and casters. Beats archers, casters and routing troops; loses to spears, Frost Stalkers and a Templar wall.
+- **Purpose.** The fastest unit, diving over open ground onto archers and casters. Beats archers, casters and wounded troops; loses to spears, Frost Stalkers and a Templar wall.
 - **Look.** Low and long, head down. Russet #7A4127, bark #4A3626, clay #C8B48A. Shaggy coat, bone collar, team saddle-cloth with hide spikes. Dark muzzle. **Mark:** a clay stripe from nose to tail. **Tell:** a growl and a puff of clay dust on the pounce.
 - **Build.** wolf (`ArmyWolf`); no items.
 - **Portrait.** Beast 16.

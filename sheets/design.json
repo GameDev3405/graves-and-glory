@@ -2398,7 +2398,7 @@
       "glyph": "gravesandglory:textures/gui/house/wildmoot.png",
       "troops": "wm_hound,wm_hunter,wm_stalker,wm_tusk,wm_seer,wm_oldhorn",
       "title": "Moot-Blooded",
-      "fieldable": false
+      "fieldable": true
     },
     {
       "id": "ironclad",

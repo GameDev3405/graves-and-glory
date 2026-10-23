@@ -194,7 +194,7 @@ row in the counter table), `pierce/cleave` (a secondary target), `onhit_slow`,
 
 | id | Beats | Beaten by | Evolve line |
 |---|---|---|---|
-| `wm_hound` | archers, casters, routing troops | spears (Tusk, Trident Guard), Frost Stalker, Templar wall | Moot Hound / Dire Hound (+3/+3) / Packleader (+3/+3) |
+| `wm_hound` | archers, casters, wounded troops | spears (Tusk, Trident Guard), Frost Stalker, Templar wall | Moot Hound / Dire Hound (+3/+3) / Packleader (+3/+3) |
 | `wm_hunter` | anything walking through woods | open-field archers, Hounds, Mortar | Hide Hunter / Thornstalker (+2/+4) / Elder Hunter (+1/+2) |
 | `wm_stalker` | ranged backlines, wall defenders (climbs) | spears, Frost Stalker, Sunweaver sustain | Web Stalker / Broodstalker (+3/+3) / Widowmaker (+3/+3) |
 | `wm_tusk` | cavalry-like (spear tag), charges | archers, Mortar, Cleave | Tusk Spear / Tuskguard (+4/+2) / Boar-Lord (+2/+1) |
