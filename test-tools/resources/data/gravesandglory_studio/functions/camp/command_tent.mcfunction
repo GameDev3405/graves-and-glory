@@ -12,19 +12,10 @@ fill ~6 ~0 ~14 ~15 ~0 ~14 minecraft:spruce_planks
 fill ~17 ~0 ~14 ~18 ~0 ~14 minecraft:spruce_planks
 fill ~24 ~0 ~1 ~24 ~0 ~13 minecraft:dark_oak_planks
 
-# trodden ground in front of the tent
-fill ~0 ~0 ~14 ~1 ~0 ~14 minecraft:coarse_dirt
-setblock ~2 ~0 ~14 minecraft:packed_mud
-setblock ~3 ~0 ~14 minecraft:coarse_dirt
-setblock ~4 ~0 ~14 minecraft:podzol
-setblock ~5 ~0 ~14 minecraft:rooted_dirt
+# a worn band of coarse dirt in front of the tent either side of the porch
+fill ~0 ~0 ~14 ~5 ~0 ~14 minecraft:coarse_dirt
 setblock ~16 ~0 ~14 minecraft:polished_blackstone
-setblock ~19 ~0 ~14 minecraft:packed_mud
-setblock ~20 ~0 ~14 minecraft:podzol
-setblock ~21 ~0 ~14 minecraft:packed_mud
-setblock ~22 ~0 ~14 minecraft:rooted_dirt
-setblock ~23 ~0 ~14 minecraft:podzol
-setblock ~24 ~0 ~14 minecraft:coarse_dirt
+fill ~19 ~0 ~14 ~24 ~0 ~14 minecraft:coarse_dirt
 
 # the poles: dark oak logs at the corners, the sides and the ridge ends
 fill ~0 ~1 ~0 ~0 ~5 ~0 minecraft:dark_oak_log
@@ -39,13 +30,19 @@ fill ~24 ~1 ~0 ~24 ~5 ~0 minecraft:dark_oak_log
 fill ~24 ~1 ~7 ~24 ~5 ~7 minecraft:dark_oak_log
 fill ~24 ~1 ~13 ~24 ~5 ~13 minecraft:dark_oak_log
 
-# the canvas: the back wall and the closed back half of the sides
-fill ~0 ~1 ~1 ~0 ~5 ~6 minecraft:black_wool
-fill ~1 ~1 ~0 ~5 ~6 ~0 minecraft:black_wool
-fill ~7 ~1 ~0 ~11 ~8 ~0 minecraft:black_wool
-fill ~13 ~1 ~0 ~17 ~8 ~0 minecraft:black_wool
-fill ~19 ~1 ~0 ~23 ~6 ~0 minecraft:black_wool
-fill ~24 ~1 ~1 ~24 ~5 ~6 minecraft:black_wool
+# the walls: the back wall and the closed back half of the sides, spruce boards two courses high under black canvas
+fill ~0 ~1 ~1 ~0 ~2 ~6 minecraft:spruce_planks
+fill ~1 ~1 ~0 ~5 ~2 ~0 minecraft:spruce_planks
+fill ~7 ~1 ~0 ~11 ~2 ~0 minecraft:spruce_planks
+fill ~13 ~1 ~0 ~17 ~2 ~0 minecraft:spruce_planks
+fill ~19 ~1 ~0 ~23 ~2 ~0 minecraft:spruce_planks
+fill ~24 ~1 ~1 ~24 ~2 ~6 minecraft:spruce_planks
+fill ~0 ~3 ~1 ~0 ~5 ~6 minecraft:black_wool
+fill ~1 ~3 ~0 ~5 ~6 ~0 minecraft:black_wool
+fill ~7 ~3 ~0 ~11 ~8 ~0 minecraft:black_wool
+fill ~13 ~3 ~0 ~17 ~8 ~0 minecraft:black_wool
+fill ~19 ~3 ~0 ~23 ~6 ~0 minecraft:black_wool
+fill ~24 ~3 ~1 ~24 ~5 ~6 minecraft:black_wool
 fill ~3 ~7 ~0 ~5 ~7 ~0 minecraft:black_wool
 fill ~19 ~7 ~0 ~21 ~7 ~0 minecraft:black_wool
 fill ~8 ~9 ~0 ~11 ~9 ~0 minecraft:black_wool
@@ -128,6 +125,20 @@ setblock ~12 ~13 ~13 minecraft:gray_wool
 fill ~7 ~9 ~13 ~17 ~9 ~13 minecraft:dark_oak_log[axis=x]
 fill ~12 ~12 ~0 ~12 ~12 ~13 minecraft:dark_oak_log[axis=z]
 
+# the lining: pale canvas under the black, stepped with it, so the room reads by day (the ridge beam shows between its halves)
+fill ~1 ~6 ~1 ~2 ~6 ~12 minecraft:light_gray_wool
+fill ~22 ~6 ~1 ~23 ~6 ~12 minecraft:light_gray_wool
+fill ~3 ~7 ~1 ~5 ~7 ~12 minecraft:light_gray_wool
+fill ~19 ~7 ~1 ~21 ~7 ~12 minecraft:light_gray_wool
+fill ~6 ~8 ~1 ~7 ~8 ~12 minecraft:light_gray_wool
+fill ~17 ~8 ~1 ~18 ~8 ~12 minecraft:light_gray_wool
+fill ~8 ~9 ~1 ~9 ~9 ~12 minecraft:light_gray_wool
+fill ~15 ~9 ~1 ~16 ~9 ~12 minecraft:light_gray_wool
+fill ~10 ~10 ~1 ~10 ~10 ~12 minecraft:light_gray_wool
+fill ~14 ~10 ~1 ~14 ~10 ~12 minecraft:light_gray_wool
+fill ~11 ~11 ~1 ~11 ~11 ~12 minecraft:light_gray_wool
+fill ~13 ~11 ~1 ~13 ~11 ~12 minecraft:light_gray_wool
+
 # the front gable above the lintel, closed with black canvas
 fill ~10 ~10 ~13 ~14 ~10 ~13 minecraft:black_wool
 fill ~11 ~11 ~13 ~13 ~11 ~13 minecraft:black_wool
@@ -166,8 +177,12 @@ setblock ~2 ~1 ~14 minecraft:polished_blackstone_wall
 setblock ~22 ~1 ~14 minecraft:polished_blackstone_wall
 
 # chains from the ridge beam and the canopy
-fill ~3 ~6 ~3 ~3 ~7 ~3 minecraft:chain[axis=y]
-fill ~21 ~6 ~3 ~21 ~7 ~3 minecraft:chain[axis=y]
+setblock ~3 ~6 ~3 minecraft:chain[axis=y]
+setblock ~21 ~6 ~3 minecraft:chain[axis=y]
+setblock ~6 ~7 ~3 minecraft:chain[axis=y]
+setblock ~6 ~7 ~9 minecraft:chain[axis=y]
+setblock ~18 ~7 ~3 minecraft:chain[axis=y]
+setblock ~18 ~7 ~9 minecraft:chain[axis=y]
 fill ~12 ~8 ~2 ~12 ~11 ~2 minecraft:chain[axis=y]
 fill ~12 ~8 ~6 ~12 ~11 ~6 minecraft:chain[axis=y]
 fill ~12 ~8 ~10 ~12 ~11 ~10 minecraft:chain[axis=y]
@@ -175,6 +190,10 @@ fill ~12 ~8 ~10 ~12 ~11 ~10 minecraft:chain[axis=y]
 # lanterns hung on the chains and under the lintel
 setblock ~3 ~5 ~3 minecraft:lantern[hanging=true]
 setblock ~21 ~5 ~3 minecraft:lantern[hanging=true]
+setblock ~6 ~6 ~3 minecraft:lantern[hanging=true]
+setblock ~6 ~6 ~9 minecraft:lantern[hanging=true]
+setblock ~18 ~6 ~3 minecraft:lantern[hanging=true]
+setblock ~18 ~6 ~9 minecraft:lantern[hanging=true]
 setblock ~12 ~7 ~2 minecraft:lantern[hanging=true]
 setblock ~12 ~7 ~6 minecraft:lantern[hanging=true]
 setblock ~12 ~7 ~10 minecraft:lantern[hanging=true]

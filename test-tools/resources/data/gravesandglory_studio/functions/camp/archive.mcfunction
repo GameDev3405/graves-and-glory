@@ -6,11 +6,12 @@
 
 # paths: the forecourt before the west door, the way from the parade (z 15) and the way to the court gate
 fill ~0 ~0 ~6 ~3 ~0 ~6 minecraft:stone_bricks
-setblock ~0 ~0 ~7 minecraft:stone_bricks
+fill ~0 ~0 ~7 ~0 ~0 ~10 minecraft:stone_bricks
 setblock ~0 ~0 ~11 minecraft:mossy_stone_bricks
 setblock ~0 ~0 ~12 minecraft:stone_bricks
 setblock ~0 ~0 ~13 minecraft:mossy_stone_bricks
 fill ~0 ~0 ~14 ~1 ~0 ~14 minecraft:stone_bricks
+setblock ~0 ~0 ~15 minecraft:cracked_stone_bricks
 fill ~0 ~0 ~16 ~1 ~0 ~16 minecraft:stone_bricks
 setblock ~0 ~0 ~17 minecraft:stone_bricks
 fill ~1 ~0 ~7 ~2 ~0 ~8 minecraft:cracked_stone_bricks
@@ -470,54 +471,56 @@ setblock ~9 ~4 ~29 minecraft:chiseled_stone_bricks
 setblock ~21 ~4 ~17 minecraft:chiseled_stone_bricks
 setblock ~21 ~4 ~29 minecraft:chiseled_stone_bricks
 
-# the court floor: moss and old flagstones, a flagged path from the gate to the dais
-fill ~9 ~0 ~22 ~10 ~0 ~22 minecraft:stone_bricks
-fill ~9 ~0 ~23 ~9 ~0 ~24 minecraft:stone_bricks
-setblock ~10 ~0 ~19 minecraft:cracked_stone_bricks
-setblock ~10 ~0 ~20 minecraft:mossy_stone_bricks
-setblock ~10 ~0 ~21 minecraft:moss_block
-setblock ~10 ~0 ~23 minecraft:cracked_stone_bricks
-setblock ~10 ~0 ~24 minecraft:cobblestone
-setblock ~10 ~0 ~25 minecraft:moss_block
-setblock ~10 ~0 ~26 minecraft:coarse_dirt
-fill ~10 ~0 ~27 ~11 ~0 ~28 minecraft:moss_block
-fill ~11 ~0 ~18 ~14 ~0 ~18 minecraft:moss_block
-fill ~11 ~0 ~19 ~12 ~0 ~19 minecraft:moss_block
-setblock ~11 ~0 ~21 minecraft:mossy_stone_bricks
-fill ~11 ~0 ~22 ~12 ~0 ~22 minecraft:cracked_stone_bricks
-setblock ~11 ~0 ~23 minecraft:cobblestone
-setblock ~11 ~0 ~24 minecraft:stone_bricks
-setblock ~11 ~0 ~25 minecraft:coarse_dirt
-setblock ~12 ~0 ~20 minecraft:coarse_dirt
-setblock ~12 ~0 ~21 minecraft:moss_block
-fill ~12 ~0 ~23 ~12 ~0 ~24 minecraft:stone_bricks
-fill ~12 ~0 ~25 ~12 ~0 ~28 minecraft:moss_block
-setblock ~13 ~0 ~19 minecraft:cracked_stone_bricks
+# the court floor: old flagstones wall to wall, the moss creeping in from the walls, a clean flagged path from the gate to the dais
+fill ~9 ~0 ~22 ~10 ~0 ~23 minecraft:stone_bricks
+setblock ~9 ~0 ~24 minecraft:stone_bricks
+fill ~10 ~0 ~18 ~12 ~0 ~18 minecraft:mossy_stone_bricks
+fill ~10 ~0 ~19 ~11 ~0 ~19 minecraft:mossy_stone_bricks
+fill ~10 ~0 ~20 ~11 ~0 ~20 minecraft:stone_bricks
+fill ~10 ~0 ~21 ~11 ~0 ~21 minecraft:mossy_stone_bricks
+setblock ~10 ~0 ~24 minecraft:cracked_stone_bricks
+fill ~10 ~0 ~25 ~10 ~0 ~26 minecraft:mossy_stone_bricks
+fill ~10 ~0 ~27 ~10 ~0 ~28 minecraft:stone_bricks
+fill ~11 ~0 ~22 ~11 ~0 ~23 minecraft:cracked_stone_bricks
+fill ~11 ~0 ~24 ~11 ~0 ~25 minecraft:stone_bricks
+setblock ~11 ~0 ~26 minecraft:mossy_stone_bricks
+fill ~11 ~0 ~27 ~12 ~0 ~27 minecraft:cracked_stone_bricks
+setblock ~11 ~0 ~28 minecraft:mossy_stone_bricks
+setblock ~12 ~0 ~19 minecraft:stone_bricks
+setblock ~12 ~0 ~20 minecraft:cracked_stone_bricks
+fill ~12 ~0 ~21 ~12 ~0 ~24 minecraft:stone_bricks
+setblock ~12 ~0 ~25 minecraft:cracked_stone_bricks
+setblock ~12 ~0 ~26 minecraft:stone_bricks
+setblock ~12 ~0 ~28 minecraft:cracked_stone_bricks
+fill ~13 ~0 ~18 ~13 ~0 ~20 minecraft:stone_bricks
 setblock ~13 ~0 ~26 minecraft:mossy_stone_bricks
-setblock ~13 ~0 ~28 minecraft:mossy_stone_bricks
-fill ~14 ~0 ~27 ~15 ~0 ~27 minecraft:moss_block
-setblock ~14 ~0 ~28 minecraft:moss_block
-setblock ~15 ~0 ~19 minecraft:coarse_dirt
-fill ~15 ~0 ~20 ~16 ~0 ~20 minecraft:moss_block
-setblock ~16 ~0 ~18 minecraft:moss_block
-fill ~16 ~0 ~26 ~17 ~0 ~26 minecraft:moss_block
-setblock ~16 ~0 ~27 minecraft:cracked_stone_bricks
-setblock ~16 ~0 ~28 minecraft:moss_block
-fill ~17 ~0 ~19 ~17 ~0 ~20 minecraft:moss_block
-setblock ~17 ~0 ~27 minecraft:moss_block
-setblock ~18 ~0 ~20 minecraft:moss_block
-setblock ~18 ~0 ~22 minecraft:mossy_stone_bricks
-fill ~18 ~0 ~23 ~20 ~0 ~23 minecraft:moss_block
-fill ~18 ~0 ~24 ~19 ~0 ~24 minecraft:moss_block
-fill ~19 ~0 ~18 ~19 ~0 ~19 minecraft:moss_block
-fill ~19 ~0 ~21 ~20 ~0 ~21 minecraft:moss_block
-setblock ~19 ~0 ~25 minecraft:moss_block
-setblock ~20 ~0 ~18 minecraft:cracked_stone_bricks
-setblock ~20 ~0 ~19 minecraft:moss_block
-setblock ~20 ~0 ~20 minecraft:cracked_stone_bricks
-setblock ~20 ~0 ~22 minecraft:cracked_stone_bricks
-setblock ~20 ~0 ~24 minecraft:mossy_stone_bricks
-setblock ~20 ~0 ~25 minecraft:coarse_dirt
+fill ~13 ~0 ~27 ~13 ~0 ~28 minecraft:stone_bricks
+setblock ~14 ~0 ~18 minecraft:mossy_stone_bricks
+fill ~14 ~0 ~19 ~14 ~0 ~20 minecraft:stone_bricks
+fill ~14 ~0 ~26 ~14 ~0 ~27 minecraft:stone_bricks
+setblock ~14 ~0 ~28 minecraft:mossy_stone_bricks
+fill ~15 ~0 ~18 ~15 ~0 ~20 minecraft:stone_bricks
+setblock ~15 ~0 ~26 minecraft:cracked_stone_bricks
+fill ~15 ~0 ~27 ~15 ~0 ~28 minecraft:stone_bricks
+setblock ~16 ~0 ~18 minecraft:mossy_stone_bricks
+fill ~16 ~0 ~19 ~16 ~0 ~20 minecraft:stone_bricks
+fill ~16 ~0 ~26 ~16 ~0 ~27 minecraft:stone_bricks
+fill ~16 ~0 ~28 ~17 ~0 ~28 minecraft:mossy_stone_bricks
+fill ~17 ~0 ~18 ~17 ~0 ~19 minecraft:stone_bricks
+setblock ~17 ~0 ~20 minecraft:mossy_stone_bricks
+setblock ~17 ~0 ~26 minecraft:mossy_stone_bricks
+setblock ~17 ~0 ~27 minecraft:cracked_stone_bricks
+fill ~18 ~0 ~18 ~20 ~0 ~18 minecraft:mossy_stone_bricks
+fill ~18 ~0 ~19 ~19 ~0 ~19 minecraft:stone_bricks
+setblock ~18 ~0 ~20 minecraft:stone_bricks
+fill ~18 ~0 ~22 ~18 ~0 ~23 minecraft:cracked_stone_bricks
+fill ~18 ~0 ~24 ~19 ~0 ~24 minecraft:stone_bricks
+fill ~19 ~0 ~20 ~19 ~0 ~21 minecraft:cracked_stone_bricks
+setblock ~19 ~0 ~22 minecraft:mossy_stone_bricks
+fill ~19 ~0 ~23 ~20 ~0 ~23 minecraft:stone_bricks
+fill ~19 ~0 ~25 ~20 ~0 ~25 minecraft:mossy_stone_bricks
+fill ~20 ~0 ~19 ~20 ~0 ~22 minecraft:mossy_stone_bricks
+setblock ~20 ~0 ~24 minecraft:cracked_stone_bricks
 
 # the dais of the Founders' Stone: polished deepslate in a deepslate tile ring
 fill ~13 ~0 ~21 ~17 ~0 ~21 minecraft:deepslate_tiles
@@ -526,20 +529,19 @@ fill ~14 ~0 ~22 ~16 ~0 ~24 minecraft:polished_deepslate
 fill ~14 ~0 ~25 ~16 ~0 ~25 minecraft:deepslate_tiles
 fill ~17 ~0 ~22 ~17 ~0 ~25 minecraft:deepslate_tiles
 
-# the Founders' Stone: a lodestone at (15, 1, 23) with chiseled stone bricks around it, under a stone canopy
+# the Founders' Stone: a lodestone at (15, 1, 23) with chiseled stone bricks around it: four posts two high at the corners, a polished deepslate step on each side; nothing over it, so its label stays in sight
 fill ~14 ~1 ~22 ~14 ~2 ~22 minecraft:chiseled_stone_bricks
+setblock ~14 ~1 ~23 minecraft:polished_deepslate_stairs[facing=east]
 fill ~14 ~1 ~24 ~14 ~2 ~24 minecraft:chiseled_stone_bricks
+setblock ~15 ~1 ~22 minecraft:polished_deepslate_stairs[facing=south]
 setblock ~15 ~1 ~23 minecraft:lodestone
+setblock ~15 ~1 ~24 minecraft:polished_deepslate_stairs[facing=north]
 fill ~16 ~1 ~22 ~16 ~2 ~22 minecraft:chiseled_stone_bricks
+setblock ~16 ~1 ~23 minecraft:polished_deepslate_stairs[facing=west]
 fill ~16 ~1 ~24 ~16 ~2 ~24 minecraft:chiseled_stone_bricks
-fill ~14 ~3 ~22 ~16 ~3 ~24 minecraft:stone_brick_slab[type=top]
 
-# a dead tree in the south-east corner of the court: a bare spruce trunk with thin crooked twigs (dark oak fence), roots in bare earth
-setblock ~18 ~0 ~27 minecraft:rooted_dirt
-setblock ~19 ~0 ~26 minecraft:rooted_dirt
-setblock ~19 ~0 ~27 minecraft:coarse_dirt
-setblock ~19 ~0 ~28 minecraft:rooted_dirt
-fill ~20 ~0 ~27 ~20 ~0 ~28 minecraft:rooted_dirt
+# a dead tree in the south-east corner of the court: a bare spruce trunk with thin crooked twigs (dark oak fence), in a square bed of rooted earth
+fill ~18 ~0 ~26 ~20 ~0 ~28 minecraft:rooted_dirt
 fill ~19 ~1 ~27 ~19 ~5 ~27 minecraft:spruce_log
 
 # its twigs, which hang on the trunk
@@ -549,9 +551,8 @@ setblock ~17 ~5 ~27 minecraft:dark_oak_fence
 fill ~20 ~5 ~27 ~20 ~6 ~27 minecraft:dark_oak_fence
 fill ~19 ~6 ~27 ~19 ~7 ~27 minecraft:dark_oak_fence
 
-# a woodpile on bare earth by the chimney stack
-fill ~18 ~0 ~5 ~18 ~0 ~8 minecraft:coarse_dirt
-fill ~19 ~0 ~4 ~19 ~0 ~7 minecraft:coarse_dirt
+# a woodpile by the chimney stack (bare earth only under the logs)
+fill ~18 ~0 ~5 ~19 ~0 ~7 minecraft:coarse_dirt
 fill ~18 ~1 ~5 ~19 ~2 ~7 minecraft:spruce_log[axis=z]
 fill ~18 ~3 ~6 ~19 ~3 ~6 minecraft:spruce_log[axis=z]
 
@@ -564,16 +565,6 @@ fill ~1 ~1 ~5 ~1 ~3 ~5 minecraft:dark_oak_fence
 fill ~1 ~1 ~13 ~1 ~3 ~13 minecraft:dark_oak_fence
 fill ~18 ~1 ~21 ~18 ~3 ~21 minecraft:dark_oak_fence
 fill ~18 ~1 ~25 ~18 ~3 ~25 minecraft:dark_oak_fence
-
-# moss and grass at the foot of the walls
-setblock ~5 ~0 ~3 minecraft:moss_block
-setblock ~5 ~0 ~15 minecraft:moss_block
-setblock ~9 ~0 ~3 minecraft:moss_block
-setblock ~13 ~0 ~15 minecraft:moss_block
-setblock ~5 ~1 ~3 minecraft:moss_carpet
-setblock ~5 ~1 ~15 minecraft:grass
-setblock ~9 ~1 ~3 minecraft:moss_carpet
-setblock ~13 ~1 ~15 minecraft:grass
 
 # ivy on the north wall of the hall and the court walls (vines hung south, on full stone blocks)
 fill ~16 ~1 ~16 ~16 ~2 ~16 minecraft:vine[south=true]
@@ -599,13 +590,13 @@ setblock ~13 ~5 ~12 minecraft:lantern[hanging=true]
 setblock ~21 ~5 ~17 minecraft:lantern
 setblock ~21 ~5 ~29 minecraft:lantern
 
-# candles: on the desk, on the bookcase cornices and on the canopy of the Stone
+# candles: on the desk, and on the four posts of the Stone
 setblock ~8 ~2 ~8 minecraft:candle[candles=3,lit=true]
 setblock ~8 ~2 ~11 minecraft:candle[candles=2,lit=true]
-setblock ~14 ~4 ~22 minecraft:candle[candles=2,lit=true]
-setblock ~14 ~4 ~24 minecraft:candle[candles=2,lit=true]
-setblock ~16 ~4 ~22 minecraft:candle[candles=3,lit=true]
-setblock ~16 ~4 ~24 minecraft:candle[candles=3,lit=true]
+setblock ~14 ~3 ~22 minecraft:candle[candles=2,lit=true]
+setblock ~14 ~3 ~24 minecraft:candle[candles=2,lit=true]
+setblock ~16 ~3 ~22 minecraft:candle[candles=3,lit=true]
+setblock ~16 ~3 ~24 minecraft:candle[candles=3,lit=true]
 
 # the hearth fire
 setblock ~16 ~1 ~9 minecraft:campfire[lit=true]
