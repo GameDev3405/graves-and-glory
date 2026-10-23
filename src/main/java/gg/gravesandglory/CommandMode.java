@@ -3,16 +3,17 @@ package gg.gravesandglory;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Vector3f;
 
-/** Selection -> live-world aim/formation preview -> explicit confirmation. */
+/** Selection -> live-world aim/formation preview -> explicit confirmation. While an order is aimed the battle HUD shows its key
+ *  hints (BattleHud.altLayer) and the aimed point's name under its seal; a refused confirmation is a notice in the event feed. */
 public final class CommandMode {
-    public record Group(String id,int count,float health,String order,String formation,float x,float z,float yaw,float cx,float cz,boolean fighting,boolean lastStand){}
+    /** One group of the player's army as the server last sent it: full is the most of it alive at once this round (0: no card), strength its living health over its full health. */
+    public record Group(String id,int count,float health,String order,String formation,float x,float z,float yaw,float cx,float cz,boolean fighting,boolean lastStand,int full,float strength){}
     record Ping(String kind,float x,float z){}
     static java.util.List<Ping> pings=java.util.List.of();static int seconds=600;
     static java.util.List<Group> groups=java.util.List.of();
@@ -22,32 +23,53 @@ public final class CommandMode {
     static boolean facingSet;
     static final java.util.List<Vec3d> preview=new java.util.ArrayList<>();
     static int enemy=-1;
-    static String feedback="";static long feedbackUntil;
-    /** How long a group panel flashes after it takes a loss (presentation only). */
+    /** How long a group card flashes after it takes a loss (presentation only). */
     public static final long FLASH_MS=450;
-    static final int DANGER=0xffd9634c;
     static final java.util.Map<String,Long> flashUntil=new java.util.HashMap<>();
-    /** Compares consecutive server snapshots; a death or a health drop flashes that group's panel. */
+    /** Each group's strength before the loss that started its current flash. */
+    static final java.util.Map<String,Float> flashFrom=new java.util.HashMap<>();
+    /** Compares consecutive server snapshots; a death or a health drop flashes that group's card. A loss inside a flash lengthens it
+     *  and keeps the strength from before the first loss, so the card shows everything lost since the flash began. */
     public static void noteGroups(java.util.List<Group> before,java.util.List<Group> after,long nowMs){
-        for(Group now:after)for(Group was:before)if(was.id().equals(now.id())&&BattleMath.tookLoss(was.health(),was.count(),now.health(),now.count()))flashUntil.put(now.id(),nowMs+FLASH_MS);
+        for(Group now:after)for(Group was:before)if(was.id().equals(now.id())&&BattleMath.tookLoss(was.health(),was.count(),now.health(),now.count())){
+            if(nowMs>=flashUntil.getOrDefault(now.id(),0L))flashFrom.put(now.id(),was.strength());
+            flashUntil.put(now.id(),nowMs+FLASH_MS);
+        }
     }
     public static boolean flashing(String groupId){return net.minecraft.util.Util.getMeasuringTimeMs()<flashUntil.getOrDefault(groupId,0L);}
+    /** The group's strength before the loss that started its current flash (0 when it never flashed). */
+    public static float lostFrom(String group){return flashFrom.getOrDefault(group,0f);}
+    /** The point whose radius holds the aimed ground position while an order is aimed, else -1. */
+    public static int aimPoint(){
+        var at=destination;if(!active()||at==null)return -1;var pts=Spec.POINTS;
+        for(int i=0;i<pts.length;i++){double dx=at.x-pts[i].x(),dz=at.z-pts[i].z(),r=pts[i].radius();if(dx*dx+dz*dz<r*r)return i;}
+        return -1;
+    }
     public static boolean active(){return !pending.isEmpty();}
     static int count(String id){return groups.stream().filter(g->id.equals("all")||id.equals(g.id())).mapToInt(Group::count).sum();}
     static void changeFormation(String id){formation=id;var c=MinecraftClient.getInstance();if(c.player!=null)issue(selected,"formation",id,c.player.getPos(),c.player.getYaw(),-1);}
     static void begin(String order){if(!GravesAndGloryClient.battleActive())return;pending=order;facingSet=false;MinecraftClient.getInstance().setScreen(null);}
     public static boolean cancel(){if(!active())return false;pending="";destination=null;return true;}
+    /** A disconnect: no order stays aimed, and the cards' groups and loss flashes go, so the next server's first snapshot is compared
+     *  with nothing (noteGroups would flash a card for the old battle's losses). The rest of the command state starts as a new
+     *  client's: the map's pings, the clock, the whole army selected (a group the next world lacks would leave no card selected),
+     *  the default formation and the facing taken from the player again. */
+    static void reset(){cancel();preview.clear();enemy=-1;groups=java.util.List.of();flashUntil.clear();flashFrom.clear();pings=java.util.List.of();seconds=600;selected="all";formation="block";facing=0;facingSet=false;}
     public static boolean confirm(){
         if(!active())return false;
-        if(destination==null){feedback="Aim at reachable terrain";feedbackUntil=System.currentTimeMillis()+2500;return true;}
-        if(pending.equals("charge")&&enemy<0){feedback="Charge: aim at an enemy";feedbackUntil=System.currentTimeMillis()+2500;return true;}
+        if(destination==null){refuse("Aim at reachable terrain");return true;}
+        if(pending.equals("charge")&&enemy<0){refuse("Charge: aim at an enemy");return true;}
         issue(selected,pending,formation,destination,facing,enemy);pending="";return true;
+    }
+    /** A refused confirmation as a feed notice; clicking again while the same notice still shows adds no second line. */
+    static void refuse(String why){
+        long now=net.minecraft.util.Util.getMeasuringTimeMs();var lines=EventFeed.lines(now);
+        if(lines.isEmpty()||!lines.get(lines.size()-1).text().equals(why))EventFeed.push("notice",GravesAndGloryClient.team,why,now);
     }
     static void ping(String kind,double x,double z){if(ClientPlayNetworking.canSend(GravesAndGlory.PING)){var b=PacketByteBufs.create();b.writeString(kind);b.writeDouble(x);b.writeDouble(z);ClientPlayNetworking.send(GravesAndGlory.PING,b);}}
     static void issue(String group,String action,String form,Vec3d dest,float yaw,int target){
         if(!GravesAndGloryClient.battleActive()||!ClientPlayNetworking.canSend(GravesAndGlory.TACTICAL))return;
         var b=PacketByteBufs.create();b.writeString(group);b.writeString(action);b.writeString(form);b.writeDouble(dest.x);b.writeDouble(dest.z);b.writeFloat(yaw);b.writeInt(target);ClientPlayNetworking.send(GravesAndGlory.TACTICAL,b);
-        feedback=Morale.label(group)+": "+Morale.label(action)+" order sent";feedbackUntil=System.currentTimeMillis()+3000;
     }
     /** The team a unit fights for, read from its name colour (team 0 aqua, team 1 light purple; see GravesAndGlory.spawn), or -1. */
     static int nameTeam(net.minecraft.entity.Entity e){
@@ -119,26 +141,5 @@ public final class CommandMode {
     static int statusBarsLeft(int w){int sw=MinecraftClient.getInstance().getWindow().getScaledWidth();return (int)Math.floor((sw/2-91)*(w/(double)sw));}
     /** The right edge the group panels were last drawn to, in the HUD frame (read by the checks). */
     static int groupsRight;
-    static void hud(DrawContext g,int w,int h){
-        var c=MinecraftClient.getInstance();int y=h-150;
-        houseStrip(g,y-42);
-        // The group panels end left of vanilla's hearts and armour, which a frame narrower than 640 brings under them: 210 wide when there is room, about 170 in a 640x360 frame.
-        int right=Math.min(218,statusBarsLeft(w)-4),width=right-8,bar=width-16;groupsRight=right;
-        for(Group group:groups){boolean chosen=selected.equals("all")||selected.equals(group.id());
-            boolean hit=flashing(group.id());
-            GravesAndGloryClient.panel(g,8,y,width,28);if(hit)g.drawBorder(8,y,width,28,DANGER);if(chosen)g.fill(8,y,10,y+28,GravesAndGloryClient.GOLD);
-            g.fill(16,y+24,16+bar,y+27,0xff2a3236);g.fill(16,y+24,16+Math.round(bar*Math.max(0,Math.min(1,group.health()))),y+27,hit?DANGER:GravesAndGloryClient.GOLD);
-            g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth((chosen?"> ":"  ")+Morale.label(group.id())+" / "+group.count()+" / "+Math.round(group.health()*100)+"%",width-12),16,y+4,GravesAndGloryClient.WHITE);
-            if(group.lastStand())g.drawTextWithShadow(c.textRenderer,"LAST STAND",16,y+16,DANGER);
-            else g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth(Morale.label(group.order())+(group.fighting()?" / FIGHTING":""),width-12),16,y+16,group.fighting()?0xffffaa66:GravesAndGloryClient.MUTED);y+=30;
-        }
-        if(active()){
-            GravesAndGloryClient.panel(g,w/2-180,52,360,40);
-            g.drawCenteredTextWithShadow(c.textRenderer,Morale.label(selected)+" / "+Morale.label(pending)+" / "+Morale.label(formation),w/2,59,GravesAndGloryClient.GOLD);
-            g.drawCenteredTextWithShadow(c.textRenderer,"Click: confirm / Right-click: cancel | Facing: "+GravesAndGloryClient.rotateLeft.getBoundKeyLocalizedText().getString()+" / "+GravesAndGloryClient.rotateRight.getBoundKeyLocalizedText().getString(),w/2,74,GravesAndGloryClient.WHITE);
-            g.drawCenteredTextWithShadow(c.textRenderer,destination==null?"Choose visible terrain":enemy>=0?"Enemy selected":"Destination: "+(int)destination.x+", "+(int)destination.z,w/2,h/2+20,GravesAndGloryClient.GOLD);
-        }
-        if(System.currentTimeMillis()<feedbackUntil)g.drawCenteredTextWithShadow(c.textRenderer,feedback,w/2,h-65,GravesAndGloryClient.GOLD);
-    }
 }
 

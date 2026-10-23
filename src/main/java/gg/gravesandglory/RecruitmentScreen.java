@@ -40,11 +40,11 @@ class RecruitmentScreen extends ArmyScreen {
         @Override public void renderButton(DrawContext g,int mx,int my,float delta){
             int x=getX(),y=getY();var t=Spec.TROOPS[index];boolean chosen=selected==index;
             g.fill(x,y,x+width,y+height,chosen?0xff30474a:isHovered()?0xff354146:0xff222d32);
-            if(chosen||isFocused())g.drawBorder(x,y,width,height,GOLD);
+            if(chosen||isFocused())g.drawBorder(x,y,width,height,DarkUi.GOLD);
             String fielded=roster[index]+" / "+listed(t);
             if(height>=24){g.drawItem(new net.minecraft.item.ItemStack(net.minecraft.registry.Registries.ITEM.get(new net.minecraft.util.Identifier(t.weapon()))),x+5,y+5);
-                DarkUi.label(g,t.name(),x+28,y+3,WHITE);DarkUi.label(g,price(t)+" gold",x+28,y+15,MUTED);DarkUi.label(g,fielded,x+width-40,y+15,MUTED);}
-            else{DarkUi.label(g,t.name()+"  "+price(t)+" gold",x+5,y+(height-8)/2,WHITE);DarkUi.label(g,fielded,x+width-40,y+(height-8)/2,MUTED);}
+                DarkUi.label(g,t.name(),x+28,y+3,DarkUi.IVORY);DarkUi.label(g,price(t)+" gold",x+28,y+15,DarkUi.MUTED);DarkUi.label(g,fielded,x+width-40,y+15,DarkUi.MUTED);}
+            else{DarkUi.label(g,t.name()+"  "+price(t)+" gold",x+5,y+(height-8)/2,DarkUi.IVORY);DarkUi.label(g,fielded,x+width-40,y+(height-8)/2,DarkUi.MUTED);}
         }
     }
     Controls chosen(){return controls.stream().filter(c->c.index==selected).findFirst().orElse(null);}
@@ -84,11 +84,11 @@ class RecruitmentScreen extends ArmyScreen {
     @Override public boolean mouseScrolled(double x,double y,double amount){return super.mouseScrolled(x/uiScale,y/uiScale,amount);}
     @Override public void render(DrawContext g,int mx,int my,float delta){
         update();g.getMatrices().push();g.getMatrices().scale(uiScale,uiScale,1);
-        DarkUi.background(g,width,height);DarkUi.title(g,"BARRACKS",18,15,WHITE);
-        DarkUi.label(g,"Recruit and manage your army",18,40,MUTED);
-        DarkUi.label(g,"GOLD  "+gold,width-190,19,GOLD);DarkUi.label(g,"ARMY  "+weight(false)+" / "+GravesAndGlory.R.squadSize()+" SLOTS",width-190,39,WHITE);
+        DarkUi.background(g,width,height);DarkUi.title(g,"BARRACKS",18,15,DarkUi.IVORY);
+        DarkUi.label(g,"Recruit and manage your army",18,40,DarkUi.MUTED);
+        DarkUi.label(g,"GOLD  "+gold,width-190,19,DarkUi.GOLD);DarkUi.label(g,"ARMY  "+weight(false)+" / "+GravesAndGlory.R.squadSize()+" SLOTS",width-190,39,DarkUi.IVORY);
         int lw=width*30/100,rx=width*65/100,rw=width-rx-18;
-        DarkUi.label(g,"YOUR BANNER'S TROOPS",18,70,MUTED);
+        DarkUi.label(g,"YOUR BANNER'S TROOPS",18,70,DarkUi.MUTED);
         int cx=(18+lw+rx)/2;
         g.fill(26+lw,81,rx-12,height-45,0x401b3439);
         // Low plinth and contact shadow ground the live, lit model.
@@ -96,18 +96,18 @@ class RecruitmentScreen extends ArmyScreen {
         g.fill(cx-42,height-92,cx+42,height-89,0xff4a5557);
         if(selected>=0){var t=Spec.TROOPS[selected];
             DarkUi.model(g,t,cx,height-93,Math.min(74,(height-155)/3));
-            DarkUi.title(g,t.name(),rx,84,WHITE);DarkUi.label(g,Morale.label(t.group()).toUpperCase(),rx,108,GOLD);
+            DarkUi.title(g,t.name(),rx,84,DarkUi.IVORY);DarkUi.label(g,Morale.label(t.group()).toUpperCase(),rx,108,DarkUi.GOLD);
             DarkUi.rule(g,rx,128,rw);
-            DarkUi.label(g,"Health",rx,143,MUTED);DarkUi.label(g,""+t.health(),rx+rw-26,143,WHITE);
-            DarkUi.label(g,"Damage",rx,163,MUTED);DarkUi.label(g,""+t.damage(),rx+rw-26,163,WHITE);
-            DarkUi.label(g,"Fielded / in banner",rx,183,MUTED);DarkUi.label(g,roster[selected]+" / "+listed(t),rx+rw-34,183,WHITE);
+            DarkUi.label(g,"Health",rx,143,DarkUi.MUTED);DarkUi.label(g,""+t.health(),rx+rw-26,143,DarkUi.IVORY);
+            DarkUi.label(g,"Damage",rx,163,DarkUi.MUTED);DarkUi.label(g,""+t.damage(),rx+rw-26,163,DarkUi.IVORY);
+            DarkUi.label(g,"Fielded / in banner",rx,183,DarkUi.MUTED);DarkUi.label(g,roster[selected]+" / "+listed(t),rx+rw-34,183,DarkUi.IVORY);
             String ability=switch(Abilities.row(t).mechanic()){case "shield"->"Shield / frontline protection";case "mend"->"Mend / restores allied health";case "blight"->"Blight / offensive magic";default->t.group().equals("ranged")?"Ranged / attacks from distance":"Melee / frontline fighter";};
-            DarkUi.label(g,ability,rx,206,MUTED);
-            int yy=height-141;for(var line:textRenderer.wrapLines(DarkUi.body(unavailable(t)),rw)){g.drawText(textRenderer,line,rx,yy,recruit.active?MUTED:GOLD,false);yy+=11;}
+            DarkUi.label(g,ability,rx,206,DarkUi.MUTED);
+            int yy=height-141;for(var line:textRenderer.wrapLines(DarkUi.body(unavailable(t)),rw)){g.drawText(textRenderer,line,rx,yy,recruit.active?DarkUi.MUTED:DarkUi.GOLD,false);yy+=11;}
         }
-        DarkUi.label(g,"TRAINING  "+queued+" queued",18,height-103,WHITE);
-        DarkUi.label(g,queued>0?"Next deployment in "+trainingSeconds+" seconds":"Your training queue is empty",18,height-88,MUTED);
-        DarkUi.label(g,"Replacements follow their group's orders.",130,height-22,MUTED);
+        DarkUi.label(g,"TRAINING  "+queued+" queued",18,height-103,DarkUi.IVORY);
+        DarkUi.label(g,queued>0?"Next deployment in "+trainingSeconds+" seconds":"Your training queue is empty",18,height-88,DarkUi.MUTED);
+        DarkUi.label(g,"Replacements follow their group's orders.",130,height-22,DarkUi.MUTED);
         super.render(g,(int)(mx/uiScale),(int)(my/uiScale),delta);g.getMatrices().pop();
     }
 }

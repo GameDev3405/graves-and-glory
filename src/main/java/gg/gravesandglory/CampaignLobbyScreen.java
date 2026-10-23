@@ -133,24 +133,24 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
     void partyText(DrawContext g){
         JsonObject party=CampaignClient.party;boolean open=party.get("open").getAsBoolean(),member=party.get("member").getAsBoolean(),lead=CampaignClient.lead;
         int rx=24,rw=width-48;String leader=party.get("leader").getAsString();
-        if(invited())text(g,"Invitation from "+party.get("inviter").getAsString()+". Accept or decline below.",rx,137,rw,GOLD);
-        else if(!open)text(g,"No custom lobby is open. Open one to invite commanders who are online here.",rx,137,rw,MUTED);
-        else if(!member)text(g,"Lead: "+leader+". Ask them for an invitation.",rx,137,rw,MUTED);
-        else text(g,"Lead: "+leader+"    Commanders: "+party.getAsJsonArray("members").size()+" of "+party.get("capacity").getAsInt(),rx,137,rw,GOLD);
+        if(invited())text(g,"Invitation from "+party.get("inviter").getAsString()+". Accept or decline below.",rx,137,rw,DarkUi.GOLD);
+        else if(!open)text(g,"No custom lobby is open. Open one to invite commanders who are online here.",rx,137,rw,DarkUi.MUTED);
+        else if(!member)text(g,"Lead: "+leader+". Ask them for an invitation.",rx,137,rw,DarkUi.MUTED);
+        else text(g,"Lead: "+leader+"    Commanders: "+party.getAsJsonArray("members").size()+" of "+party.get("capacity").getAsInt(),rx,137,rw,DarkUi.GOLD);
         int i=0;
         for(var element:party.getAsJsonArray("members")){String name=element.getAsString();boolean isLead=name.equals(leader);
-            text(g,name+(isLead?"  (lead)":""),rx+(i/6)*(rw/4),155+(i%6)*12,rw/4-8,isLead?GOLD:WHITE);i++;}
-        if(lead)text(g,"INVITE ONLINE COMMANDERS",rx,262,rw,MUTED);
-        else if(member)text(g,"Only the lead can invite commanders or start the battle.",rx,262,rw,MUTED);
-        text(g,lead?"Invite commanders, then start the battle when you are ready.":member?"Waiting for the lead to start.":"Stand on a pad to quick-match, or wait for an invitation.",18,height-23,width-230,MUTED);
+            text(g,name+(isLead?"  (lead)":""),rx+(i/6)*(rw/4),155+(i%6)*12,rw/4-8,isLead?DarkUi.GOLD:DarkUi.IVORY);i++;}
+        if(lead)text(g,"INVITE ONLINE COMMANDERS",rx,262,rw,DarkUi.MUTED);
+        else if(member)text(g,"Only the lead can invite commanders or start the battle.",rx,262,rw,DarkUi.MUTED);
+        text(g,lead?"Invite commanders, then start the battle when you are ready.":member?"Waiting for the lead to start.":"Stand on a pad to quick-match, or wait for an invitation.",18,height-23,width-230,DarkUi.MUTED);
     }
     void text(DrawContext g,String value,int x,int y,int max,int color){g.drawText(textRenderer,net.minecraft.util.Language.getInstance().reorder(textRenderer.trimToWidth(DarkUi.body(value),max)),x,y,color,false);}
     @Override public void render(DrawContext g,int mx,int my,float delta){
         g.getMatrices().push();g.getMatrices().scale(uiScale,uiScale,1);mx=(int)(mx/uiScale);my=(int)(my/uiScale);
         DarkUi.background(g,width,height);
-        DarkUi.title(g,new String[]{"BATTLE SETUP","YOUR BANNER","CHOOSE YOUR CLASS","CUSTOM LOBBY"}[tab],18,10,WHITE);text(g,"GOLD  "+CampaignClient.profile.gold,width-270,21,110,GOLD);
+        DarkUi.title(g,new String[]{"BATTLE SETUP","YOUR BANNER","CHOOSE YOUR CLASS","CUSTOM LOBBY"}[tab],18,10,DarkUi.IVORY);text(g,"GOLD  "+CampaignClient.profile.gold,width-270,21,110,DarkUi.GOLD);
         boolean hasResult=!CampaignClient.headline.isEmpty();
-        text(g,hasResult?CampaignClient.headline:ready?"Choose your army. Raise your banner.":message,18,30,width-185,hasResult?GOLD:MUTED);
+        text(g,hasResult?CampaignClient.headline:ready?"Choose your army. Raise your banner.":HintText.expand(message,GravesAndGloryClient::hint),18,30,width-185,hasResult?DarkUi.GOLD:DarkUi.MUTED);
         if(tab==0){
             int lw=(width-52)*2/3,rx=28+lw,rw=width-rx-16,previewH=height-225;
             panel(g,16,109,lw,previewH);
@@ -158,44 +158,44 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
             var preview=new net.minecraft.util.Identifier("gravesandglory","textures/ui/map-"+CampaignClient.map+".png");
             if(client.getResourceManager().getResource(preview).isPresent())g.drawTexture(preview,17,110,lw-2,previewH-2,0f,130f,1280,460,1280,720);
             else map(g,17,110,lw-2,previewH-2,false);
-            g.fill(17,110,15+lw,140,0xdd172126);
-            DarkUi.title(g,Spec.MAPS[CampaignClient.map].name(),26,118,WHITE);
+            g.fill(17,110,15+lw,140,DarkUi.PREVIEW_BAND);
+            DarkUi.title(g,Spec.MAPS[CampaignClient.map].name(),26,118,DarkUi.IVORY);
             panel(g,rx-8,76,rw+16,height-121);
-            text(g,"COMMANDERS",rx,85,rw,WHITE);int y=144;
+            text(g,"COMMANDERS",rx,85,rw,DarkUi.IVORY);int y=144;
             for(var element:CampaignClient.players){var p=element.getAsJsonObject();int faction=p.get("team").getAsInt();
-                DarkUi.teamMark(g,faction,rx+3,y);text(g,p.get("name").getAsString(),rx+20,y,rw-20,DarkUi.teamColor(faction));y+=13;}
-            text(g,"700 x 500 blocks / 3 objectives",24,height-68,lw-16,MUTED);
+                DarkUi.crest(g,rx,y-2,12,faction==1);DarkUi.teamMark(g,faction,rx+16,y);text(g,p.get("name").getAsString(),rx+27,y,rw-27,DarkUi.teamColor(faction));y+=13;}
+            text(g,"700 x 500 blocks / 3 objectives",24,height-68,lw-16,DarkUi.MUTED);
             int total=CampaignClient.mode.equals("ai")?2:Integer.parseInt(CampaignClient.mode)*2;
-            text(g,total+" commander slots",rx,height-72,rw,MUTED);
+            text(g,total+" commander slots",rx,height-72,rw,DarkUi.MUTED);
             String hint=CampaignClient.lead?(hasResult?"Choose the battlefield, then open a custom lobby to play again.":"Choose your battlefield, then start from the Custom lobby tab."):(hasResult?"Stand on a pad or open a custom lobby to play again.":"Only the custom lobby lead chooses the battlefield. Stand on a pad to quick-match.");
-            text(g,hint,18,height-23,width-230,MUTED);
-            if(CampaignClient.padCountdown>0)text(g,"Match starts in "+CampaignClient.padCountdown+" s / "+CampaignClient.padSize+"v"+CampaignClient.padSize,18,height-44,width-230,GOLD);
-            else if(CampaignClient.padDawn+CampaignClient.padDusk>0)text(g,"On pads: Dawn "+CampaignClient.padDawn+", Dusk "+CampaignClient.padDusk+" / plays "+CampaignClient.padSize+"v"+CampaignClient.padSize,18,height-44,width-230,MUTED);
+            text(g,hint,18,height-23,width-230,DarkUi.MUTED);
+            if(CampaignClient.padCountdown>0)text(g,"Match starts in "+CampaignClient.padCountdown+" s / "+CampaignClient.padSize+"v"+CampaignClient.padSize,18,height-44,width-230,DarkUi.GOLD);
+            else if(CampaignClient.padDawn+CampaignClient.padDusk>0)text(g,"On pads: Dawn "+CampaignClient.padDawn+", Dusk "+CampaignClient.padDusk+" / plays "+CampaignClient.padSize+"v"+CampaignClient.padSize,18,height-44,width-230,DarkUi.MUTED);
         }else if(tab==1){
             var catalog=RosterMath.Catalog.fromSpec();var line=CampaignClient.profile.banner;int used=(int)line.stream().filter(id->!id.equals(RosterMath.EMPTY)).count();
-            text(g,"BANNER / "+RosterMath.units(line,catalog)+" UNITS IN "+used+" OF "+line.size()+" SLOTS",16,74,width/2-28,GOLD);
-            DarkUi.frame(g,15,88,285,182);text(g,"FRONT / toward the enemy",24,94,270,MUTED);text(g,"REAR",24,260,270,MUTED);
+            text(g,"BANNER / "+RosterMath.units(line,catalog)+" UNITS IN "+used+" OF "+line.size()+" SLOTS",16,74,width/2-28,DarkUi.GOLD);
+            DarkUi.frame(g,15,88,285,182);text(g,"FRONT / toward the enemy",24,94,270,DarkUi.MUTED);text(g,"REAR",24,260,270,DarkUi.MUTED);
             int left=width/2+8;var row=Arrays.stream(Spec.HOUSES).filter(h->h.id().equals(house)).findFirst().orElse(null);
-            if(row!=null&&Arrays.stream(Spec.TROOPS).noneMatch(t->t.house().equals(house)&&CampaignClient.profile.owned.containsKey(t.id())))text(g,"No "+row.name()+" troops in your collection yet.",left,104,width-left-16,MUTED);
-            text(g,pickLine(),left,266,width-left-16,GOLD);
-            text(g,row!=null&&!row.fieldable()?row.name()+" has not joined the war: its troops cannot be fielded yet.":"Pick a troop, then a slot. Epics fill 2 slots, Legendaries 4.",left,280,width-left-16,MUTED);
-            text(g,"New troops join by recruitment rolls at the camp shrine, "+Spec.RECRUITMENT[0].rollCost()+" gold each. The four marks set your banner colour.",16,height-27,width-32,MUTED);
+            if(row!=null&&Arrays.stream(Spec.TROOPS).noneMatch(t->t.house().equals(house)&&CampaignClient.profile.owned.containsKey(t.id())))text(g,"No "+row.name()+" troops in your collection yet.",left,104,width-left-16,DarkUi.MUTED);
+            text(g,pickLine(),left,266,width-left-16,DarkUi.GOLD);
+            text(g,row!=null&&!row.fieldable()?row.name()+" has not joined the war: its troops cannot be fielded yet.":"Pick a troop, then a slot. Epics fill 2 slots, Legendaries 4.",left,280,width-left-16,DarkUi.MUTED);
+            text(g,"New troops join by recruitment rolls at the camp shrine, "+Spec.RECRUITMENT[0].rollCost()+" gold each. The four marks set your banner colour.",16,height-27,width-32,DarkUi.MUTED);
         }else if(tab==2){
             // The track headings over each row of class cards (the cards draw themselves).
             classHeadings.clear();var tracks=classTracks();
             for(int r=0;r<tracks.size();r++){String track=tracks.get(r).get(0).track(),head=track.toUpperCase(Locale.ROOT),note=trackNote(track);int y=classRowTop(r),hx=18;
-                text(g,head,hx,y,width-36,GOLD);hx+=textRenderer.getWidth(DarkUi.body(head))+8;
-                if(!note.isEmpty()){text(g,note,hx,y,width-hx-18,MUTED);hx+=textRenderer.getWidth(DarkUi.body(note))+8;}
+                text(g,head,hx,y,width-36,DarkUi.GOLD);hx+=textRenderer.getWidth(DarkUi.body(head))+8;
+                if(!note.isEmpty()){text(g,note,hx,y,width-hx-18,DarkUi.MUTED);hx+=textRenderer.getWidth(DarkUi.body(note))+8;}
                 DarkUi.rule(g,hx,y+5,width-16-hx);classHeadings.add(head);
             }
             var current=Arrays.stream(Spec.CLASSES).filter(c->c.id().equals(CampaignClient.profile.commander)).findFirst().orElse(Spec.CLASSES[0]);
-            text(g,"Active commander: "+current.name(),18,height-23,width-230,WHITE);
+            text(g,"Active commander: "+current.name(),18,height-23,width-230,DarkUi.IVORY);
         }else{
             partyText(g);
         }
 
-        if(!CampaignClient.notice.isEmpty())text(g,CampaignClient.notice,18,tab==1?height-12:69,width-36,GOLD);super.render(g,mx,my,delta);
-        if(System.currentTimeMillis()<CampaignClient.revealUntil){int cx=width/2,cy=height/2;panel(g,cx-160,cy-45,320,90);g.drawBorder(cx-160,cy-45,320,90,GOLD);g.drawCenteredTextWithShadow(textRenderer,"A NEW SOLDIER JOINS YOUR BANNER",cx,cy-28,GOLD);long remain=CampaignClient.revealUntil-System.currentTimeMillis();String name=remain>1300?Spec.TROOPS[(int)(System.currentTimeMillis()/75%Spec.TROOPS.length)].name():CampaignClient.revealUnit;g.drawCenteredTextWithShadow(textRenderer,name,cx,cy-2,WHITE);g.drawCenteredTextWithShadow(textRenderer,remain>1300?"Opening recruitment seal...":"NOW IN YOUR COLLECTION",cx,cy+24,GOLD);}
+        if(!CampaignClient.notice.isEmpty())text(g,HintText.expand(CampaignClient.notice,GravesAndGloryClient::hint),18,tab==1?height-12:69,width-36,DarkUi.GOLD);super.render(g,mx,my,delta);
+        if(System.currentTimeMillis()<CampaignClient.revealUntil){int cx=width/2,cy=height/2;panel(g,cx-160,cy-45,320,90);g.drawBorder(cx-160,cy-45,320,90,DarkUi.GOLD);g.drawCenteredTextWithShadow(textRenderer,"A NEW SOLDIER JOINS YOUR BANNER",cx,cy-28,DarkUi.GOLD);long remain=CampaignClient.revealUntil-System.currentTimeMillis();String name=remain>1300?Spec.TROOPS[(int)(System.currentTimeMillis()/75%Spec.TROOPS.length)].name():CampaignClient.revealUnit;g.drawCenteredTextWithShadow(textRenderer,name,cx,cy-2,DarkUi.IVORY);g.drawCenteredTextWithShadow(textRenderer,remain>1300?"Opening recruitment seal...":"PERMANENTLY UNLOCKED",cx,cy+24,DarkUi.GOLD);}
         g.getMatrices().pop();
     }
 }

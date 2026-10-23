@@ -6,7 +6,12 @@
   "client": [
     "CommandInputMixin",
     "EntranceCameraMixin",
-    "CinematicHudMixin"
+    "CinematicHudMixin",
+    "HungerHudMixin",
+    "ChatHudMixin",
+    "ChatHudAccessor",
+    "LivingEntityRendererAccessor",
+    "KeybindTextMixin"
   ],
   "injectors": {
     "defaultRequire": 1

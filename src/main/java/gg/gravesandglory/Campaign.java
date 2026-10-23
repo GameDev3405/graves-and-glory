@@ -35,6 +35,8 @@ public final class Campaign {
     /** AI armies that fell back stay there until rallied, so they do not walk back into the fight. */
     final Set<UUID> botRetreating=new HashSet<>();
     final Map<UUID,String> notices=new HashMap<>();
+    /** How many notices each player has been sent; the snapshot carries it so a client can tell a notice sent again from one it has already shown. */
+    final Map<UUID,Integer> noticeSerials=new HashMap<>();
     final Map<UUID,JsonObject> results=new HashMap<>();
     /** Per commander, the last roll or chosen buy (the snapshot's lastRoll, for the camp's roll result card): {n, troop, duplicate, starsBefore, starsAfter, shards}; n counts up so the client tells a new one from the same. Not saved. */
     final Map<UUID,JsonObject> lastRolls=new HashMap<>();
@@ -96,13 +98,25 @@ public final class Campaign {
         }catch(Exception ignored){}
         collectionsReady.add(id);
     }
-    void notice(UUID id,String text){notices.put(id,text);var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)p.sendMessage(Text.literal(text),true);}
+    /** The welcome notices a joining player gets (waiting while a battle runs, or in the camp), each naming his own menu key. */
+    static final String WELCOME_WAIT="Battle in progress. Wait in camp for the next round. {key:menu} opens your war council.",WELCOME="Welcome to Graves and Glory. {key:menu} opens your war council.";
+    /** A notice for one player: kept for the camp snapshot (the client fills in its keys) and sent to the action bar, where each
+     *  {key:(id)} shows the player's own binding. */
+    void notice(UUID id,String text){notices.put(id,text);noticeSerials.merge(id,1,Integer::sum);var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)p.sendMessage(keyText(text),true);}
+    /** A {key:(id)} template as chat text: each text as it is, each id as Text.keybind of its binding (HintText.bindingKey), so
+     *  every client shows its own key, or its "Not bound", named as its feed names it (KeybindTextMixin: a mouse button as LMB,
+     *  RMB or MMB). */
+    public static Text keyText(String template){
+        var parts=HintText.tokens(template);var out=Text.literal(parts.get(0));
+        for(int i=1;i<parts.size();i+=2)out.append(Text.keybind(HintText.bindingKey(parts.get(i)))).append(parts.get(i+1));
+        return out;
+    }
     void joined(ServerPlayerEntity p){
         if(!Files.exists(directory.resolve(p.getUuid()+".json")))importAllowed.add(p.getUuid());profile(p.getUuid());
         // Rejoining the same battle keeps the original start time, so a dropped connection does not cost the reward.
         if(!(b.running&&participants.contains(p.getUuid())))joinedAt.put(p.getUuid(),b.time);var squad=b.squads.get(p.getUuid());
         if(b.running&&squad!=null&&squad.seated)b.toBase(p,squad.team);else toLobby(p);
-        notice(p.getUuid(),b.running&&(squad==null||!squad.seated)?"Battle in progress. Wait in camp for the next round. R opens your war council.":"Welcome to Graves and Glory. R opens your war council.");}
+        notice(p.getUuid(),b.running&&(squad==null||!squad.seated)?WELCOME_WAIT:WELCOME);}
     void toLobby(ServerPlayerEntity p){b.relocate(p,0,66,CampaignMaps.LOBBY_Z+20,180,8);p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();Commander.applyPlayer(p,null);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
@@ -121,6 +135,11 @@ public final class Campaign {
         if(cmd.equals("camp:practice")){
             String refused=soloRefusal(p.getUuid(),"Practice is solo. Use a private room to play with your party.");if(!refused.isEmpty()){notice(p.getUuid(),refused);return true;}
             soloStart(p,null);return true;
+        }
+        if(cmd.equals("camp:gates")){ // Ride to the war gates: onto the middle of the ready pad of the team the commander's squad is on
+            if(b.running){notice(p.getUuid(),"Wait until the current battle finishes.");return true;}
+            var squad=b.squads.get(p.getUuid());Vec3d at=CampaignMaps.padCentre(squad==null?0:squad.team);
+            b.relocate(p,at.x,at.y,at.z,180,8);return true;
         }
         if(cmd.startsWith("campaign:")){ // a Long March battle: solo, on its own map, which is built first if another map stands
             var row=Arrays.stream(Spec.CAMPAIGNBATTLES).filter(r->r.id().equals(cmd.substring(9))).findFirst().orElse(null);
@@ -567,7 +586,7 @@ public final class Campaign {
         return BattleMath.garrison(owners,s.team,at.toArray(double[][]::new),assignable,points,NEAR_RADIUS_FACTOR*tier.chargeDistance())[me];
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
-    void switchMap(int index){Projectiles.clear(b);Abilities.clearBanners(b);Houses.reset(b);b.clearSides();map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
+    void switchMap(int index){Projectiles.clear(b);Abilities.clearBanners(b);Houses.reset(b);b.clearSides();FeedEvents.clear();map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
     /** The lesson a commander is on, or -1: only a campaign battle whose sheet row teaches (lessons) shows them, to its commanders, until all four are done. They repeat on every replay. */
     int tutorialStep(UUID id){
         if(!b.running||activeBattle==null||!activeBattle.lessons()||!participants.contains(id))return -1;
@@ -603,7 +622,7 @@ public final class Campaign {
         boolean changed=!onPad.equals(accepted);onPad.clear();onPad.putAll(accepted);mapVotes.keySet().retainAll(onPad.keySet());
         if(changed){padCountdown=-1;for(UUID id:onPad.keySet())notice(id,"Ready group changed. Countdown reset; step off to cancel.");}
         if(onPad.isEmpty()){padCountdown=-1;return;}
-        if(padCountdown<0){padCountdown=200;for(UUID id:onPad.keySet())notice(id,"Starting in 10 seconds. Open camp guide to vote for a map.");return;}
+        if(padCountdown<0){padCountdown=200;for(UUID id:onPad.keySet())notice(id,"Starting in 10 seconds. Open the war table and press Change to vote for a map.");return;}
         padCountdown-=10;if(padCountdown<=0)startQuickMatch();
     }
     void startQuickMatch(){
@@ -659,7 +678,7 @@ public final class Campaign {
         }
     }
     String snapshot(ServerPlayerEntity p){
-        JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",forClient(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("waiting",b.running&&(!b.squads.containsKey(p.getUuid())||!b.squads.get(p.getUuid()).seated));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("difficulty",difficulty);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",b.squads.containsKey(p.getUuid())&&b.squads.get(p.getUuid()).seated?Math.max(0,introUntil-b.time):0);j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("headline",headline);j.addProperty("tutorial",tutorialStep(p.getUuid()));JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
+        JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",forClient(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("waiting",b.running&&(!b.squads.containsKey(p.getUuid())||!b.squads.get(p.getUuid()).seated));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("difficulty",difficulty);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",b.squads.containsKey(p.getUuid())&&b.squads.get(p.getUuid()).seated?Math.max(0,introUntil-b.time):0);j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("noticeSerial",noticeSerials.getOrDefault(p.getUuid(),0));j.addProperty("headline",headline);j.addProperty("tutorial",tutorialStep(p.getUuid()));JsonObject pads=new JsonObject();pads.addProperty("countdown",padCountdown<0?0:(padCountdown+19)/20);pads.addProperty("mine",onPad.getOrDefault(p.getUuid(),-1));pads.addProperty("dawn",(int)onPad.values().stream().filter(t->t==0).count());pads.addProperty("dusk",(int)onPad.values().stream().filter(t->t==1).count());pads.addProperty("size",padSize());j.add("pads",pads);
         JsonObject battle=new JsonObject();if(activeBattle!=null){battle.addProperty("id",activeBattle.id());battle.addProperty("name",activeBattle.name());battle.addProperty("briefing",activeBattle.briefing());battle.addProperty("reason",activeBattle.reason());}j.add("battle",battle); // the Long March battle being fought, or {}
         JsonObject partyJson=new JsonObject();boolean member=party.contains(p.getUuid());Long until=inviteUntil.get(p.getUuid());UUID inviter=invites.get(p.getUuid());
         partyJson.addProperty("open",partyLeader!=null);partyJson.addProperty("member",member);partyJson.addProperty("lead",leader(p));partyJson.addProperty("capacity",size*2);

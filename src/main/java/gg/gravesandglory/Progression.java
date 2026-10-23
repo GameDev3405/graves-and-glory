@@ -40,6 +40,22 @@ final class Progression {
         while(s.matchGrants.size()>256)s.matchGrants.remove(s.matchGrants.iterator().next());
         s.totalBattles++;s.dailyBattles++;s.weeklyBattles++;if(won)s.totalWins++;
         int xp=won?150:100;s.xp=Math.min(1_000_000,s.xp+xp);return new Grant(0,xp,"Battle progress saved.");}
+    /** Battles in a week for the weekly contract. */
+    static final int WEEKLY_BATTLES=6;
+    /** Why key cannot be claimed now ("" when it can): the War Table's Contracts badge and the Contracts page read it. It follows claim's rules
+     *  (integration: Phase 2's Houses rules), ignoring the House or troop suffix, which claim itself asks for when it pays shards or a Rare. */
+    static String refusal(State s,String key){
+        String[] parts=key.split(":",-1);
+        if(parts.length<1||parts.length>3)return "Unknown reward.";
+        if(parts[0].equals("weekly")&&parts.length<=2)return s.claims.contains("weekly")?"Already claimed.":s.weeklyBattles<WEEKLY_BATTLES?"Complete "+WEEKLY_BATTLES+" battles this week.":"";
+        if(parts.length<2)return "Unknown reward.";
+        if(parts[0].equals("daily")){int slot=parse(parts[1]);if(!parts[1].equals(Integer.toString(slot))||slot<0||slot>2)return "Contract is not complete.";
+            return s.claims.contains("daily:"+slot)?"Already claimed.":progress(s,slot)<target(s,slot)?"Contract is not complete.":"";}
+        if(parts[0].equals(SEASON)){int level=parse(parts[1]);if(!parts[1].equals(Integer.toString(level))||level<1||level>TIERS)return "That chapter tier is locked.";
+            return s.claims.contains(SEASON+":"+level)?"Already claimed.":tier(s)<level?"That chapter tier is locked.":"";}
+        return "Unknown reward.";
+    }
+    static boolean claimable(State s,String key){return refusal(s,key).isEmpty();}
     /**
      * Claims a reward by key: daily:<slot>[:<house>], weekly[:<house>] or founders:<tier>[:<house or troop>]. The key is stored without its suffix, so a
      * claim made before Houses (founders:2, daily:0, weekly) stays claimed. A claim that pays shards needs a House (the daily that completes all three,

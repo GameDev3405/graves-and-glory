@@ -28,19 +28,20 @@ public final class Morale {
     /** Whether the group stands its last stand now (tick keeps Squad.lastStand). */
     public static boolean lastStand(GravesAndGlory.Squad s,String group){return s.lastStand.contains(group);}
 
-    /** Full health per group from the squad's lineup; only ever raised during a round. */
+    /** Full health and full head count per group from the squad's lineup; only ever raised during a round. */
     static void lineup(GravesAndGlory.Battle b,GravesAndGlory.Squad s,List<String> line){
-        Map<String,Double> full=new HashMap<>();int position=0;
+        Map<String,Double> full=new HashMap<>();Map<String,Integer> heads=new HashMap<>();int position=0;
         for(String id:line){if(position++>=GravesAndGlory.R.squadSize()||id.equals(RosterMath.EMPTY)||id.equals(RosterMath.MARKER))continue;
             var spec=Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(id)).findFirst().orElse(null);if(spec==null)continue;
-            full.merge(spec.group(),spec.health()*b.campaign.health(s,spec),Double::sum);}
+            full.merge(spec.group(),spec.health()*b.campaign.health(s,spec),Double::sum);heads.merge(spec.group(),1,Integer::sum);}
         for(var e:full.entrySet())s.fullHealth.merge(e.getKey(),e.getValue(),Math::max);
+        for(var e:heads.entrySet())s.fullCount.merge(e.getKey(),e.getValue(),Math::max);
     }
 
     /** A troop joined mid-round: the group's ceiling rises to the health actually fielded (so a trained-only group still has a strength), and never falls. */
     static void fielded(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String group){
-        double health=0;for(var u:b.units)if(u.squad==s&&!u.temporary&&u.spec.group().equals(group)&&u.mob.isAlive())health+=u.spec.health()*b.campaign.health(s,u.spec);
-        s.fullHealth.merge(group,health,Math::max);
+        double health=0;int heads=0;for(var u:b.units)if(u.squad==s&&!u.temporary&&u.spec.group().equals(group)&&u.mob.isAlive()){health+=u.spec.health()*b.campaign.health(s,u.spec);heads++;}
+        s.fullHealth.merge(group,health,Math::max);s.fullCount.merge(group,heads,Math::max);
     }
 
     /**
