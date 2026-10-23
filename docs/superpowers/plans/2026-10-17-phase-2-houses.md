@@ -1840,14 +1840,14 @@ Art half (after Task 5d; see Halves):
 
 **Interfaces:**
 - Produces:
-  - `Battle.targeters` (`Map<Integer,Integer>`): target entity id to the count of living Wildmoot troops targeting it, rebuilt when `time % 10 == 0` before units tick.
+  - `Battle.targeters` (`Map<Squad,Map<Integer,Integer>>`, built per army because the houses design counts three or more OWN Wildmoot troops; Task 10 difference 1): per army, target entity id to the count of that army's living Wildmoot troops targeting it, rebuilt when `time % 10 == 0` before units tick.
   - `Abilities.noSky(Unit u) -> boolean` (`!world.isSkyVisible(blockPos.up())`), which feeds `Hit.noSky`.
   - Pounce uses `Unit.travelSinceAttack >= 6` and its cooldown, and applies x1.8 through `auraFactor`.
   - Bloodrush: Speed II for 200 ticks and 30% lifesteal on the player's melee hits (in `allowDamage`). Each enemy troop the player kills queues one free `Training` of the cheapest troop the squad lost this round, at most 3 per use.
 - Rules:
   - Howl: every 300 ticks, own troops within 10 get +15% damage (`auraFactor`) and +15% speed for 120 ticks.
   - Trample: on first contact while the group order is `charge`, deals 6 to every enemy within 3 with knockback 1.2; cooldown 200.
-  - Pack Hunters uses `packHunters(...)`, with `sameTarget = targeters[target]` and the bearing from the target's facing.
+  - Pack Hunters uses `packHunters(...)`, with `sameTarget = targeters(squad, target)` and the bearing from the target's facing.
   - After Task 8b (no-routing design 4.1): counter C16 is x1.30, not x1.15, and Pack Hunters' own rear bonus stacks on top of it, so a hound from the rear shows counters 1.30 and traits 1.2, multiplied. Cover (Gilded Bulwark, design 4.2) voids C16 and C16s but not Pack Hunters, so a rear hit on a covered target shows counters 1.0 and traits 1.2.
   - Beats text (no-routing design 7.6): the Moot Hound beats "archers, casters and wounded troops" (Houses spec 2.3 and unit identity; it read "routing troops").
 
