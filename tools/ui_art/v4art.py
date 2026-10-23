@@ -49,6 +49,7 @@ def oak_table(W=960, H=540, seed=11, avoid=(), rows=None):
     pn = Noise(seed + 10, 9, 2)
     nails = []
     prev = []
+    joints_by_row = {}   # (plank top, height) -> its butt joints' x, for table_big (kit_props) to keep its own joints clear
 
     def put(x, y, t, y0, h, force=False):
         if 0 <= x < W and 0 <= y < H and y0 + 2 <= y <= y0 + h - 3 and (force or not lock[y][x]):
@@ -207,6 +208,7 @@ def oak_table(W=960, H=540, seed=11, avoid=(), rows=None):
                 for ny in (y0 + 6, y0 + h - 9):
                     nails.append((nx, ny, base))
         prev = joints
+        joints_by_row[(y0, h)] = list(joints)
     # scratches, dents and rubbed patches where hands and tokens rest
     for _ in range(140):
         cx = rnd.gauss(lx, 200); cy = rnd.gauss(ly, 120)
@@ -250,6 +252,7 @@ def oak_table(W=960, H=540, seed=11, avoid=(), rows=None):
             if rnd.random() < 0.8:
                 s.set(nx + dx, ny + dy, c)
         s.grid(nx, ny, NAIL, {'k': IRON[1], 'H': IRON[7], 'm': IRON[5], 'd': IRON[3]})
+    s.joints = joints_by_row
     return s
 
 

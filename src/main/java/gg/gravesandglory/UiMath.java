@@ -663,12 +663,18 @@ public final class UiMath {
     /** The camp's two slips on the HUD canvas of a fbW x fbH window at k screen px per canvas px (UI Task 8b-2), each a notice
      *  slip's box (164x40; its PNG's shadow reaches 5 px right and 6 below): "camp-head", the camp's name, gold and title at the
      *  top left; "camp-hint", the war table's and the stations' keys at the bottom right, its shadow 12 px inside the canvas, off
-     *  vanilla's bars and the closed chat (both end left of it). */
-    public static java.util.Map<String, int[]> campHud(int fbW, int fbH, int k) {
-        int w = fbW / k, h = fbH / k;
+     *  vanilla's bars and the closed chat (both end left of it). Where the slip would reach over the items a player can switch on
+     *  right of the hotbar (a left-handed player's offhand slot, GUI x sw/2 + 91 to + 120 from sh - 23, and the Hotbar-mode attack
+     *  indicator inside that span), as at 1080p GUI 4 with Standard or Large, it stands 4 px above them instead. gui is the GUI
+     *  Scale. */
+    public static java.util.Map<String, int[]> campHud(int fbW, int fbH, int gui, int k) {
+        int w = fbW / k, h = fbH / k, sw = -Math.floorDiv(-fbW, gui), sh = -Math.floorDiv(-fbH, gui);
         var r = new java.util.LinkedHashMap<String, int[]>();
         r.put("camp-head", new int[]{12, 12, 164, 40});
-        r.put("camp-hint", new int[]{w - 12 - 169, h - 12 - 46, 164, 40});
+        int x = w - 12 - 169, y = h - 12 - 46;
+        int[] right = guiToCanvas(new int[]{sw / 2 + 91, sh - 23, 29, 24}, gui, k);
+        if (meets(new int[]{x, y, 169, 46}, right)) y = Math.min(y, right[1] - 4 - 46);
+        r.put("camp-hint", new int[]{x, y, 164, 40});
         return r;
     }
 

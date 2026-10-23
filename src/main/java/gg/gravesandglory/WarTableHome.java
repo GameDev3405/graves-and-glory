@@ -110,7 +110,7 @@ final class WarTableHome {
     private static final Map<String, String> texts = Collections.unmodifiableMap(textsDrawn);
     private static final List<PortraitDraw> portraits = Collections.unmodifiableList(portraitsDrawn);
 
-    /** Boxes {x,y,w,h} in canvas px: floor, table, maproll and rail (as WarTable.drawChrome drew them), glow, candle (its solid part), inkwell (its solid part), seat-(i), ready-(i),
+    /** Boxes {x,y,w,h} in canvas px: table, maproll and rail (as WarTable.drawChrome drew them), glow, candle (its solid part), inkwell (its solid part), seat-(i), ready-(i),
      *  invite, practice, skirmish and campaign (the sheets as drawn this frame, between their flat and raised boxes), seal,
      *  ribbon, field, last, ride-label and notice. */
     static Map<String, int[]> rects() { return rects; }

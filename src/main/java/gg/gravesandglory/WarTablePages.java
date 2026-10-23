@@ -113,10 +113,10 @@ final class WarTablePages {
      *  column under the bonus. Contracts and the Field move as one, the notice under them. Friends: the camp column at 12 and 200
      *  wide, the party and the room close up beside it; the notice under the party's note. Chapter: the hero letter at the top
      *  left (its title seal on the letter, clear of the rail), the chapter block, the XP rail and Claim right of it with the
-     *  notice between the XP line and Claim, and the track under both, nine tiers shown, the labels at the page's edge and the
-     *  "no oaths" line under them. */
+     *  notice between the XP line and Claim, and the track under both, nine tiers shown, the labels at the page's edge, "no oaths"
+     *  in two even lines under The Oath in place of "not sworn"; the letter and the chapter block 4 px under the rail. */
     static final int[] C_ROLL = {-29, -36}, C_SHEET = {-40, -36}, C_CLASS = {-62, -36}, C_CONTRACTS = {-55, -40}, C_FIELD = {-55, -36};
-    static final int[] C_CAMP = {-44, -36}, C_PARTY = {-76, -36}, C_ROOM = {-76, -36}, C_HERO = {-44, -6}, C_BLOCK = {-64, -14}, C_BLOCK_HEAD = {-58, -14};
+    static final int[] C_CAMP = {-44, -36}, C_PARTY = {-76, -36}, C_ROOM = {-76, -36}, C_HERO = {-44, -2}, C_BLOCK = {-64, -10}, C_BLOCK_HEAD = {-58, -10};
     static final int C_CAMP_W = 200, C_BANNER_NOTICE_Y = 292, C_BANNER_NOTICE_LINES = 4, C_CONTRACTS_NOTICE_Y = 396, C_FIELD_NOTICE_Y = 425;
     static final int C_FRIENDS_NOTICE_Y = 400, C_FRIENDS_NOTICE_CX = 406, C_FRIENDS_NOTICE_W = 340, C_CHAPTER_NOTICE_Y = 188;
     /** The compact Chapter's track, in compact page px: nine tiers from x 150, the rod at 276, the Roll at 300 and the Oath at 388
@@ -162,7 +162,7 @@ final class WarTablePages {
     private static final Set<String> underlined = Collections.unmodifiableSet(underlinedDrawn);
     private static final List<String> sent = Collections.unmodifiableList(sentCommands);
 
-    /** Boxes {x,y,w,h} in canvas px as drawn: floor, table and rail (drawChrome's), here (the lit plaque), title, notice; Banner:
+    /** Boxes {x,y,w,h} in canvas px as drawn: table and rail (drawChrome's), here (the lit plaque), title, notice; Banner:
      *  roll, mark, row-(i), roll-hint, sheet, seat-(i), armed-seat, class-(id); Contracts: note-(i), progress-(i) (the count),
      *  stamp-(i), weekly, progress-weekly, stamp-weekly, reroll; Chapter: hero, seal, xp-rail, roll-(t) and oath-(t) for each
      *  tier on the track (t the tier), claim; Friends: party, member-(i), party-rule, room, room-why, code; Field: sheet, card, map-(i);
@@ -471,8 +471,8 @@ final class WarTablePages {
     }
 
     /** The page's focal title, IVORY with its shadow, centred on the page at TITLE_Y; none on the Chapter (its chapter block). On a
-     *  canvas shorter than the page (854x480, which crops it) TITLE_Y would fall under the rail's moulding, so the title keeps to
-     *  the planks just under the rail. */
+     *  canvas shorter than the page (the compact page, 854x480) TITLE_Y would fall under the rail's moulding, so the title keeps
+     *  to the planks just under the rail. */
     void title(DrawContext g, int ox, int oy) {
         if (page.equals("chapter")) return;
         var font = font();
@@ -914,7 +914,7 @@ final class WarTablePages {
         g.drawText(font, DarkUi.heading("The Roll"), lx, tr.rollTop() + 28, DarkUi.BRASS, false);
         g.drawText(font, "for all", lx, tr.rollTop() + 44, DarkUi.MUTED, false);
         g.drawText(font, DarkUi.heading("The Oath"), lx, tr.oathTop() + 28, DarkUi.SEPIA_L, false);
-        g.drawText(font, "not sworn", lx, tr.oathTop() + 44, DarkUi.MUTED, false);
+        if (!WarTable.compact()) g.drawText(font, "not sworn", lx, tr.oathTop() + 44, DarkUi.MUTED, false);
         var rodTex = UiTex.entry("chapter/track-rod");
         int rod = PITCH * tr.shown(), rodW = rodTex.w();
         if (rod >= rodW) UiTex.draw(g, "chapter/track-rod", tr.x0() - 6, tr.rodY());
@@ -924,12 +924,14 @@ final class WarTablePages {
         }
         rectsDrawn.put("rod", new int[]{tr.x0() - 6, tr.rodY(), Math.min(rod, rodW), rodTex.h()});
         track(g, tr, first, tier);
-        if (WarTable.compact()) { // under the labels, in their column
-            int uw = tr.x0() - 24 - lx;
-            var un = lines(g, UNSWORN, lx, tr.oathTop() + 56, uw, 2, DarkUi.MUTED);
+        if (WarTable.compact()) { // in the label column, in place of "not sworn" (one fact said once), as two even lines
+            java.util.function.ToIntFunction<String> wide = t -> font.getWidth(DarkUi.body(t));
+            int uw = tr.x0() - 24 - lx, w = (wide.applyAsInt(UNSWORN) + 1) / 2;
+            while (w < uw && !String.join(" ", UiMath.lines(UNSWORN, w, 2, wide)).equals(UNSWORN)) w++;
+            var un = lines(g, UNSWORN, lx, tr.oathTop() + 44, w, 2, DarkUi.MUTED);
             textsDrawn.put("unsworn", String.join(" ", un));
             colorsDrawn.put("unsworn", DarkUi.MUTED);
-            rectsDrawn.put("unsworn", new int[]{lx, tr.oathTop() + 56, uw, 13 * un.size() - 2});
+            rectsDrawn.put("unsworn", new int[]{lx, tr.oathTop() + 44, w, 13 * un.size() - 2});
         } else text(g, "unsworn", DarkUi.body(UNSWORN), UNSWORN, tr.x0(), tr.oathTop() + 92, DarkUi.MUTED);
         textsDrawn.put("tier", String.valueOf(tier));
         textsDrawn.put("first", String.valueOf(first));

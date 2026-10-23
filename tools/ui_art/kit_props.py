@@ -53,6 +53,8 @@ def table(page):
 
 BIG_W, BIG_H = 1920, 1080      # the big-canvas oak (UI Task 8b-2): a 1920 x 1080 canvas (GUI 1 at 1080p) shows no floor
 PLANK_HEIGHTS = [30, 32, 34, 36, 38]
+JOINT_IN = (8, 149)   # a butt joint's px in from the middle's edge: past 149 its nails reach the 960 view (x 160 of the 1280)
+JOINT_GAP = 40        # no plank shorter than this between two joints in a row (UI Task 8b-2 review, Important 1)
 
 
 def plank_rows(seed, H=720):
@@ -71,8 +73,9 @@ def table_big(page):
     at (320, 180), from its first whole plank to its last; round it the same kit paints more oak from the page's seed
     on rows that carry the middle's plank lines on to both edges, with new planks above and below. Each middle plank
     meets the oak beside it at a butt joint, the painter's own (a dark gap, the end grain lit on one side and shaded on
-    the other, two nails each side), set a random 8 to 220 px in from the middle's edge so the joints stagger as a
-    real table's do. The light sits where the middle's does, so the stepped vignette runs on across the seam."""
+    the other, two nails each side), set a random 8 to 149 px in from the middle's edge (so the 960 x 540 view, x 160
+    to 1120 of the 1280, keeps the approved oak to the pixel) and at least 40 px from every other joint in its row, so
+    no short offcut shows. The light sits where the middle's does, so the stepped vignette runs on across the seam."""
     seed = TABLE_SEEDS[page]
     middle = table(page)
     ox, oy = (BIG_W - 1280) // 2, (BIG_H - 720) // 2
@@ -94,8 +97,29 @@ def table_big(page):
         dk = max(0.0, min(1.0, (math.sqrt(dx * dx + dy * dy) - 0.5) / 0.55)) * 1.9
         return OAK[max(0, t - (int(dk + 0.5) if dk > 0 else 0))]
     NAIL = ['.kk.', 'kHmk', 'kmdk', '.kk.']
+    def pick(lo, hi, side, near, own):
+        # a joint lo..hi px in from the middle's edge, at least JOINT_GAP px from every joint in its row, old or new;
+        # failing that, the middle's own joint in that stretch (the paste ends on it and the joint is drawn again where it
+        # was, so no second joint shows); failing that too, the one farthest from the rest
+        best, bd = None, -1
+        for _try in range(80):
+            d = rnd.randint(lo, hi)
+            x = ox + d if side < 0 else ox + 1280 - d
+            gap = min([abs(x - q) for q in near] or [9999])
+            if gap >= JOINT_GAP:
+                return x
+            if gap > bd:
+                best, bd = x, gap
+        for q in own:
+            d = q - ox if side < 0 else ox + 1280 - q
+            if lo <= d <= hi and min([abs(q - r) for r in near if r != q] or [9999]) >= JOINT_GAP:
+                return q
+        return best
     for (y0, h) in whole:
-        xl, xr = ox + rnd.randint(8, 220), ox + 1280 - rnd.randint(8, 220)
+        own = [q + ox for q in middle.joints.get((y0, h), [])]
+        near = own + s.joints.get((y0 + oy, h), [])
+        xl = pick(JOINT_IN[0], JOINT_IN[1], -1, near, own)
+        xr = pick(JOINT_IN[0], JOINT_IN[1], 1, near + ([] if xl in own else [xl]), own)
         s.im.paste(middle.im.crop((xl - ox, y0, xr - ox, y0 + h)), (xl, y0 + oy))
         Y0 = y0 + oy
         for jx in (xl, xr):

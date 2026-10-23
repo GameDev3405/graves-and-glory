@@ -19,7 +19,7 @@ Paths: `MOCK` = `C:\Users\kortt\Melty\bannerbound\work\ui-concepts\`. `SHOT` = `
 | Field page | none | `...\p1-ui-page-field-1080.png`, `-gates.png`, `-voted.png` | 9.5 (Task 7 review) | graded by a reviewer |
 | Task 8c frames, five sizes: 1280x720 GUI 3, 1366x768 GUI 2, 1920x1080 GUI 4, 1920x1080 GUI 2, 854x480 GUI 2 | `MOCK` `v4-hud-iron-ledger.png` | Compact only, from the stopped run: `ui-8c-green-233227\...\p1-ui-hud-1280.png`, `-1366.png`, `-1080-gui4.png`, `-1080-gui2.png`, `-small.png`. Partial sheet: `C:\Users\kortt\Melty\bannerbound-ui\work\p1\ui-8c-before-after-partial.png` | Implementer, provisional: 8.5 to 10 (the two 1280x720 shots at 8.5 predate a chat fix). No reviewer grade. | pending client check, all five; Standard and Large frames do not exist yet |
 
-The battle report page keeps its old layout; its War Table look is parked. The pages are graded at 1080p; 854x480 still crops (Task 8b-2 fixes that, it needs a client).
+The battle report page keeps its old layout; its War Table look is parked. The pages are graded at 1080p. Since Task 8b-2 the 854x480 window gets the compact page (everything fits, no crop) and the oak runs to every edge; a window under 854x480 still crops (docs/PARKED.md).
 
 ## Questions still open for you
 

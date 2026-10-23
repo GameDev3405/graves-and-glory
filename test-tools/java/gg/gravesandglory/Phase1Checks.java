@@ -2116,24 +2116,30 @@ public final class Phase1Checks implements ClientModInitializer {
         static boolean darker(int a,int b){return ((a>>16)&0xff)<((b>>16)&0xff)&&((a>>8)&0xff)<((b>>8)&0xff)&&(a&0xff)<(b&0xff);}
         /** UI Task 8b-2 (Kort, 2026-10-22: everything fits, every page, no noted crop): what a page draws at a size it must fit, every
          *  box (the drawn art's and the widgets', the table, the rail and the candle's light apart) 12 px inside the canvas, and none
-         *  whose top is below the rail's plaques (y 41) and under the rail (its height, 66). Empty when the page fits. */
+         *  under the rail (its height, 66) but what hangs on it: a box whose top is the plaques' row (y 12) or the banners' (13) is the
+         *  rail's own, as is a box inside one (a banner's label); any other with its top above 66 lies over the rail (fix round 1, Minor 2: a box lifted to y 20 was missed).
+         *  Empty when the page fits. */
         static List<String> fits(Map<String,int[]> drawn,Map<String,int[]> widgets){
             int w=UiCanvas.width(),h=UiCanvas.height(),railH=UiTex.entry("table/rail").h();List<String> bad=new ArrayList<>();
             Map<String,int[]> all=new LinkedHashMap<>();
             for(var e:drawn.entrySet())if(!Set.of("table","rail","glow").contains(e.getKey()))all.put(e.getKey(),e.getValue());
             for(var e:widgets.entrySet())all.put("widget "+e.getKey(),e.getValue());
+            List<int[]> hung=new ArrayList<>();for(int[] a:all.values())if(a!=null&&a[1]<=13)hung.add(a); // the plaques and the banners, and what they carry
             for(var e:all.entrySet()){int[] a=e.getValue();if(a==null)continue;
                 if(a[0]<12||a[1]<12||a[0]+a[2]>w-12||a[1]+a[3]>h-12)bad.add(e.getKey()+" "+str(a)+" not 12 px inside the "+w+"x"+h+" canvas");
-                if(a[1]>=41&&a[1]<railH)bad.add(e.getKey()+" "+str(a)+" under the rail");}
+                if(a[1]>13&&a[1]<railH&&hung.stream().noneMatch(q->a[0]>=q[0]&&a[1]>=q[1]&&a[0]+a[2]<=q[0]+q[2]&&a[1]+a[3]<=q[1]+q[3]))bad.add(e.getKey()+" "+str(a)+" under the rail");}
             return bad;
         }
-        /** The big-canvas oak (UI Task 8b-2): on a canvas bigger than the 960 page the planks run to its edges. Oak's warm (red over
-         *  blue), the old floor (DarkUi.FLOOR, 0b0d0f) cool: reads the framebuffer at the four edges' middles and where the floor
+        /** The big-canvas oak (UI Task 8b-2): on a canvas bigger than the 960 page the planks run to its edges. Oak's red runs over
+         *  its green and its blue in every tone; the old floor (DarkUi.FLOOR, 0b0d0f), the camp's grass and stone seen past the
+         *  planks do not (fix round 1: a red-over-blue test let the grass through): reads the framebuffer at the four edges' middles and where the floor
          *  used to show (half way from the 1280x720 middle to the edge). Empty when every one is oak. */
         static List<String> oakToEdges(MinecraftClient c){
             int cw=UiCanvas.width(),ch=UiCanvas.height(),ox=(cw-1280)/4,oy=(ch-720)/4;List<String> bad=new ArrayList<>();
             int[][] at={{0,ch/2},{cw-1,ch/2},{cw/2,ch-1},{ox,ch/2},{cw-1-ox,ch/2},{cw/2,ch-1-Math.max(0,oy)},{cw/4,UiTex.entry("table/rail").h()+2}};
-            for(int[] p:at){int px=pixel(c,p[0],p[1]);if(px<0||((px>>16)&0xff)<=(px&0xff)||px==(DarkUi.FLOOR&0xffffff))bad.add(p[0]+","+p[1]+" "+hex(px));}
+            for(int[] p:at){int warm=0,px=pixel(c,p[0],p[1]); // five pixels along the row (a nail's iron is grey): three must be oak
+                for(int dx=-2;dx<=2;dx++){int x=Math.max(0,Math.min(cw-1,p[0]+dx)),q=pixel(c,x,p[1]),r=(q>>16)&0xff;if(q>=0&&r>((q>>8)&0xff)&&r>(q&0xff))warm++;}
+                if(warm<3)bad.add(p[0]+","+p[1]+" "+hex(px));}
             return bad;
         }
         /** The Ride plate's label as the last frame drew it. */
@@ -3210,9 +3216,13 @@ public final class Phase1Checks implements ClientModInitializer {
                         // the leader makes and joins rooms, so the room's note carries no word on why its tags are dull
                         String drawn=String.valueOf(text("party-line"));boolean line=WarTablePages.PARTY_LASTS.equals(drawn)&&!drawn.contains(WarTablePages.me())&&text("room-why")==null;
                         // UI Task 8b-2: the leader said once across every word the page drew, and in the in-party shot
-                        List<String> leads=new ArrayList<>();for(var e:WarTablePages.texts().entrySet())if(e.getValue()!=null&&e.getValue().toLowerCase(java.util.Locale.ROOT).contains("lead")&&!e.getKey().startsWith("lead-"))leads.add(e.getKey()+" \""+e.getValue()+"\"");
-                        boolean once="You lead the party".equals(text("status-0"))&&leads.size()==1;shot(c,"ui-page-friends-party");
-                        boolean pass=sent&&tags&&seat&&line&&once;ok&=pass;why+="; the leader said "+leads.size()+" time(s): "+leads+(once?"":" WRONG");
+                        // the leader said once (fix round 1, Minor 1): every drawn text naming a leader ("lead", "Led by") and every one
+                        // carrying the player's name, the lead- tags apart: only seat 0's status and seat 0's name
+                        List<String> leads=new ArrayList<>(),names=new ArrayList<>();
+                        for(var e:WarTablePages.texts().entrySet()){String v=e.getValue();if(v==null||e.getKey().startsWith("lead-"))continue;String low=v.toLowerCase(java.util.Locale.ROOT);
+                            if(low.contains("lead")||low.contains("led by"))leads.add(e.getKey()+" \""+v+"\"");if(v.contains(WarTablePages.me()))names.add(e.getKey()+" \""+v+"\"");}
+                        boolean once="You lead the party".equals(text("status-0"))&&leads.size()==1&&names.size()==1&&names.get(0).startsWith("member-0 ");shot(c,"ui-page-friends-party");
+                        boolean pass=sent&&tags&&seat&&line&&once;ok&=pass;why+="; the leader said "+leads.size()+" time(s): "+leads+", the name "+names.size()+" time(s): "+names+(once?"":" WRONG");
                         why+="; Create party sent "+lastSent()+(sent?"":" WRONG")+": party "+WarTablePages.flag("party")+", Leave party and Disband party "+(tags?"shown, Create party gone":"WRONG: disband "+button(c,"disband")+", create "+button(c,"create"))
                             +", seat 0 "+text("member-0")+(seat?"":" WRONG")+", \""+text("party-line")+"\""+(line?"":" WRONG");next(tick);}
                     else if(k>100){ok=false;why+="; Create party sent "+lastSent()+": no party drawn 100 ticks on (party "+WarTablePages.flag("party")+", Leave party "+(leave==null?"missing":"\""+text("leave")+"\"")+") WRONG";stage=4;}}

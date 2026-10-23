@@ -48,7 +48,7 @@ final class WarTable {
     static final int TABLE_W = 1920, TABLE_H = 1080;
 
     private static final Set<String> warned = new HashSet<>();
-    // What the last drawChrome passed to the draw calls: the floor fill, the table and the rail, in canvas px, and the table's name.
+    // What the last drawChrome passed to the draw calls: the table (its centred 1920x1080 tile), the maproll and the rail, in canvas px, and the table's name.
     private static final Map<String, int[]> drawnRects = new LinkedHashMap<>();
     private static final Map<String, int[]> drawn = Collections.unmodifiableMap(drawnRects);
     private static String drawnTable = "none";

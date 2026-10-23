@@ -24,7 +24,7 @@ public final class CampRedesignChecks implements ClientModInitializer {
     check("four-interactive-stewards",npcs==4);check("no-camp-weapons",p.getInventory().isEmpty());});
    if(tick==45){c.setScreen(null);check("battle-hud-off",GravesAndGloryClient.inCamp()&&!GravesAndGloryClient.battleActive());CommandMode.begin("attack");check("orders-disabled-in-camp",!CommandMode.active());}
    if(tick==70){shot(c,"courtyard"); // the camp's slips (UI Task 8b-2): drawn where UiMath.campHud puts them, the keys on ink chips
-    var w=c.getWindow();var want=UiMath.campHud(w.getFramebufferWidth(),w.getFramebufferHeight(),UiCanvas.hudK());var rows=GravesAndGloryClient.campRowsDrawn;
+    var w=c.getWindow();var want=UiMath.campHud(w.getFramebufferWidth(),w.getFramebufferHeight(),(int)w.getScaleFactor(),UiCanvas.hudK());var rows=GravesAndGloryClient.campRowsDrawn;
     boolean placed=GravesAndGloryClient.campRectsDrawn.size()==2&&want.keySet().stream().allMatch(k->Arrays.equals(want.get(k),GravesAndGloryClient.campRectsDrawn.get(k)));
     boolean words=rows.size()==4&&rows.get(2).equals(List.of(GravesAndGloryClient.hint("menu"),"War table"))&&rows.get(3).equals(List.of(GravesAndGloryClient.hint("use"),"on a station to interact"))&&rows.get(1).get(0).startsWith(CampaignClient.profile.gold+" gold");
     System.out.println("[camp-check] slips "+GravesAndGloryClient.campRectsDrawn.keySet()+" rows "+rows);check("hint-slip",placed&&words);}

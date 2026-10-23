@@ -253,7 +253,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         var font=c.textRenderer;var win=c.getWindow();
         UiCanvas.beginHud(g);
         try{
-            var at=UiMath.campHud(win.getFramebufferWidth(),win.getFramebufferHeight(),UiCanvas.hudK());
+            var at=UiMath.campHud(win.getFramebufferWidth(),win.getFramebufferHeight(),(int)win.getScaleFactor(),UiCanvas.hudK());
             int[] head=at.get("camp-head"),hint=at.get("camp-hint");
             UiTex.draw(g,"hud/notice-slip",head[0],head[1]);
             g.drawText(font,DarkUi.heading("Banner camp"),head[0]+10,head[1]+7,DarkUi.INK_TEXT,false);

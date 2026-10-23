@@ -79,7 +79,7 @@ final class WarTableRecruit {
      *  row's), rule-(i) (above row i), letter, broken (the seal), bundle and note (the Odds note). The boxes the widgets handed
      *  their painters: banner-(house), choose, enlist and odds; row-(i) as rowAt drew it. The portrait's window as Portrait.draw
      *  scissored it: window. The words' extents: the banners' labels label-(house), the purse (pouch and sum), rung and notice
-     *  (all its lines). Also floor, table and rail as WarTable.drawChrome drew them. */
+     *  (all its lines). Also table and rail as WarTable.drawChrome drew them. */
     static Map<String, int[]> rects() { return rects; }
     /** Words drawn: banner-(house), letter-troop (the troop's id), letter-name, letter-line1, letter-line2, choose-cost, enlist
      *  (the plate's label), enlist-cost ("100", "Need 100", or none when nothing is left), purse, rung, note-(i) (the Odds note's

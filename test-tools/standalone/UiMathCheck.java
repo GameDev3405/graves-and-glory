@@ -237,7 +237,10 @@ public final class UiMathCheck {
         for (int[] s : win) for (int z = UiMath.HUD_COMPACT; z <= UiMath.HUD_LARGE; z++) {
             int k = UiMath.hudScale(s[0],s[1],s[2],z), cw = s[0]/k, ch = s[1]/k, sw = -Math.floorDiv(-s[0],s[2]), sh = -Math.floorDiv(-s[1],s[2]);
             var bars = UiMath.namedBars(sw,sh,s[2],k); bars.put("the closed chat", UiMath.guiToCanvas(new int[]{0,sh-40-90,332,90},s[2],k));
-            for (var e : UiMath.campHud(s[0],s[1],k).entrySet()) {
+            // the opt-in items right of the hotbar (the fix round's Minor 3): a left-handed player's offhand slot, the Hotbar-mode attack indicator
+            bars.put("the right-hand offhand slot", UiMath.guiToCanvas(new int[]{sw/2+91,sh-23,29,24},s[2],k));
+            bars.put("the attack indicator", UiMath.guiToCanvas(new int[]{sw/2+97,sh-20,18,18},s[2],k));
+            for (var e : UiMath.campHud(s[0],s[1],s[2],k).entrySet()) {
                 int[] b = e.getValue(), ink = {b[0],b[1],169,46};
                 if (ink[0] < 12 || ink[1] < 12 || ink[0]+ink[2] > cw-12 || ink[1]+ink[3] > ch-12) campBad += "; " + s[0]+"x"+s[1]+" GUI "+s[2]+" size "+z+" "+e.getKey()+" within 12 px of the edge";
                 for (var bar : bars.entrySet()) if (UiMath.meets(ink,bar.getValue())) campBad += "; " + s[0]+"x"+s[1]+" GUI "+s[2]+" size "+z+" "+e.getKey()+" "+java.util.Arrays.toString(ink)+" meets "+bar.getKey();
