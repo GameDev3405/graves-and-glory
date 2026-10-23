@@ -11,17 +11,17 @@ import java.util.*;
 /**
  * The troops' own models (Phase 2 Task 5; unit identity section 0), as TroopModelLoader last loaded them from
  * models/troop/, and how a mob on the client maps to one. A troop is a plain vanilla mob named by Battle.spawn: its custom
- * name gives the troop and the stage (ArmyMobs.named), a name ending " (Veteran)" the Veteran skin, and its gg_<side>
+ * name gives the troop and its level (ArmyMobs.named), a name ending " (Veteran)" the Veteran skin, and its gg_<side>
  * scoreboard team the cloth its panels and pennant are drawn in.
  */
 public final class TroopModels {
     private TroopModels() {}
     /**
-     * What a troop entity looks like: its row, evolution stage, Veteran skin, and its side: the side of its gg_ team, else
+     * What a troop entity looks like: its row, armour tier, Veteran skin, and its side: the side of its gg_ team, else
      * the side this client last resolved for it (the server takes a troop off its team as it dies, and the body stays a second
      * longer in its colours, with its flag), else null.
      */
-    public record Look(Spec.TroopsRow troop, int stage, boolean veteran, String side) {}
+    public record Look(Spec.TroopsRow troop, int armourTier, boolean veteran, String side) {}
     /**
      * A weapon model (troop depth design, section 2): its id, the meshes of its frames (rest first, then pull_0 to pull_2 of a
      * draw weapon), the times of the pulls in seconds of bow_draw (empty without a pull), the grip that places the sprite in the
@@ -92,7 +92,7 @@ public final class TroopModels {
     }
 
     /**
-     * The Look of a troop entity: null for a mob that is no troop (no custom name, or a name no troop or stage has) and for a
+     * The Look of a troop entity: null for a mob that is no troop (no custom name, or a name no troop or level has) and for a
      * troop whose House has no model yet, which therefore draws through its vanilla renderer. A troop without a gg_ team keeps
      * the side this client last resolved for it, for as long as the entity exists.
      */
@@ -101,13 +101,13 @@ public final class TroopModels {
         String name=e.getCustomName().getString();boolean veteran=name.endsWith(VETERAN);
         if(veteran)name=name.substring(0,name.length()-VETERAN.length());
         Spec.TroopsRow t=ArmyMobs.named(name);if(t==null||!troops.containsKey(t.id()))return null;
-        int stage=1;
-        if(!name.equals(t.name()))for(var row:Spec.EVOLUTIONS)if(row.troop().equals(t.evolveLine())&&row.name().equals(name)){stage=row.stage();break;}
+        int armourTier=1; // stopgap until Task 9 reads RankSync: a level name stands for its level, and the level picks the armour tier
+        if(!name.equals(t.name()))for(var row:Spec.LEVELNAMES)if(row.troop().equals(t.evolveLine())&&row.name().equals(name)){armourTier=row.level();break;}
         var team=e.getScoreboardTeam();String side=null;
         if(team!=null&&team.getName().startsWith(TEAM))side=team.getName().substring(TEAM.length());
         Seen seen=SEEN.computeIfAbsent(e,k->new Seen(k.getWorld()==null?0:k.getWorld().getTime()));
         if(side!=null)seen.side=side;else side=seen.side;
-        return new Look(t,stage,veteran,side);
+        return new Look(t,armourTier,veteran,side);
     }
     /**
      * Whether a troop waits undrawn this frame: it has no side yet (its team has not reached this client), wears no dress (a
@@ -124,12 +124,12 @@ public final class TroopModels {
     /** The troops with a model. */
     public static Set<String> ids(){return troops.keySet();}
 
-    /** The skin of a Look: its stage's armour tier (a stage without its own skin draws the next lower stage's). A Veteran wears the same tier, with trim over it. */
-    public static Identifier skin(Look l){var m=troops.get(l.troop().id());return m==null?null:m.skin(l.stage());}
+    /** The skin of a Look: its armour tier's skin (a tier without its own skin draws the next lower tier's). A Veteran wears the same tier, with trim over it. */
+    public static Identifier skin(Look l){var m=troops.get(l.troop().id());return m==null?null:m.skin(l.armourTier());}
     /** The veteran trim (<troop>_veteran, in-match progression design 4.4) a Look draws over its skin: null unless it is a Veteran and the troop has a trim. */
     public static Identifier trim(Look l){var m=troops.get(l.troop().id());return m==null||!l.veteran()?null:m.veteran;}
     /** The glow layer (<troop>_e) of a Look, null below the troop's glowFrom stage or for a troop without one. */
-    public static Identifier glow(Look l){var m=troops.get(l.troop().id());return m==null||m.glow==null||l.stage()<m.glowFrom?null:m.glow;}
+    public static Identifier glow(Look l){var m=troops.get(l.troop().id());return m==null||m.glow==null||l.armourTier()<m.glowFrom?null:m.glow;}
     /** The cloth sheet of a side (a factions id), of the company ("company"), or linen for null. */
     public static Identifier cloth(String side){return new Identifier(NAMESPACE,CLOTH+(side==null?"linen":side)+".png");}
     public static Weapon weapon(String id){return id==null?null:weapons.get(id);}

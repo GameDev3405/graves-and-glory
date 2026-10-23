@@ -145,12 +145,17 @@ final class RecruitPages {
     }
 
     // ---- the troop page ----
-    /** The three level names of a troop (in-match levels I to III): its evolutions rows' names, or its own name at each for a troop with no line. */
-    static List<String> levelNames(Spec.TroopsRow t){return List.of(ArmyMobs.stageName(t,1),ArmyMobs.stageName(t,2),ArmyMobs.stageName(t,3));}
-    /** The three ability lines: the abilities row's text (level I), then the troopNotes level 2 and level 3 lines. */
+    /** The three level names of a troop (in-match levels I to III): its levelNames rows' names, or its own name at each for a troop with no line. */
+    static List<String> levelNames(Spec.TroopsRow t){return List.of(ArmyMobs.levelName(t,1),ArmyMobs.levelName(t,2),ArmyMobs.levelName(t,3));}
+    /** The three ability lines: the abilities row's text (level I), then the text of the troop's level 2 and level 3 levelAbilities rows, the rows the game reads. */
     static List<String> abilityLines(Spec.TroopsRow t){
-        String base=t.ability();for(var a:Spec.ABILITIES)if(a.id().equals(t.ability()))base=a.text();var n=ArmyCards.notes(t);
-        return List.of(base,n==null?"":n.level2(),n==null?"":n.level3());
+        String base=t.ability();for(var a:Spec.ABILITIES)if(a.id().equals(t.ability()))base=a.text();
+        return List.of(base,levelAbilityText(t,2),levelAbilityText(t,3));
+    }
+    /** The ability text of a troop's levelAbilities row at a level (2 or 3); empty when the sheet has none. */
+    static String levelAbilityText(Spec.TroopsRow t,int level){
+        for(var l:Spec.LEVELABILITIES)if(l.troop().equals(t.id())&&l.level()==level)for(var a:Spec.ABILITIES)if(a.id().equals(l.ability()))return a.text();
+        return "";
     }
     /** What a Mastery level gives, worded for the card from its mastery.reward cell. */
     static String masteryReward(Spec.MasteryRow m){

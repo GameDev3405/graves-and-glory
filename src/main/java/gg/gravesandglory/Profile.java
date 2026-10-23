@@ -3,15 +3,15 @@ package gg.gravesandglory;
 import java.util.*;
 
 /**
- * A commander's saved collection, schema 2 (spec 6.2): the banner, the owned troops with stars, stages and mastery, and per
+ * A commander's saved collection, schema 2 (spec 6.2): the banner, the owned troops with stars and mastery, and per
  * House shards, Renown and Epic pity. Server-owned JSON, one file per player (Campaign.profile loads it, migrating a
  * schema-1 file first). Pure, so the standalone checks compile it.
  */
 public final class Profile {
     /** The JSON key of progression. Campaign.forClient finds the nested state by it to strip the match ids; a rename of the field that leaves this behind sends them again, which p1-report-snapshot catches. */
     static final String PROGRESSION = "progression";
-    /** One owned troop type: copies received, stars (1 to 3), evolution stage (1 to 3), and its mastery ledger. */
-    static final class Owned { int copies=1, stars=1, stage=1, kills, survived, mastery; String variant="base"; }
+    /** One owned troop type: copies received, stars (1 to 3) and its mastery ledger. A stored "stage" field of an older file is ignored: Gson drops a key the class lacks. */
+    static final class Owned { int copies=1, stars=1, kills, survived, mastery; String variant="base"; }
 
     int schema = 2;
     int gold, matches, wins;
@@ -35,8 +35,7 @@ public final class Profile {
 
     /**
      * Repairs a loaded or migrated profile in place. Owned ids the catalog does not know are dropped. Stars clamp to
-     * 1..recruitment.maxStars and stages to 1..the troop's last evolutions stage, which is 1 for Epics and Legendaries (they
-     * have no evolve line). A banner that fails validBanner is repacked. An unknown class becomes champion and an unknown
+     * 1..recruitment.maxStars. A banner that fails validBanner is repacked. An unknown class becomes champion and an unknown
      * side colour gold. Shards, renown and pity hold exactly the given Houses, each at 0 or more.
      */
     void sanitize(RosterMath.Catalog c, Set<String> classIds, Set<String> sideIds, List<String> houses) {
@@ -57,7 +56,6 @@ public final class Profile {
             Owned o = e.getValue();
             o.copies = Math.max(1, o.copies);
             o.stars = clamp(o.stars, 1, Spec.RECRUITMENT[0].maxStars());
-            o.stage = clamp(o.stage, 1, lastStage(e.getKey()));
             o.kills = Math.max(0, o.kills);
             o.survived = Math.max(0, o.survived);
             o.mastery = clamp(o.mastery, 0, maxMastery);
@@ -92,12 +90,6 @@ public final class Profile {
         return out;
     }
     static int clamp(int value, int min, int max) { return Math.max(min, Math.min(max, value)); }
-    /** The last evolution stage a troop can reach: its highest evolutions.stage, or 1 without an evolve line. */
-    static int lastStage(String troop) {
-        int stage = 1;
-        for (var e : Spec.EVOLUTIONS) if (e.troop().equals(troop)) stage = Math.max(stage, e.stage());
-        return stage;
-    }
     /** A count per House, in House order: every given House at 0 or more, and no other key. */
     static Map<String, Integer> perHouse(Map<String, Integer> counts, List<String> houses) {
         Map<String, Integer> out = new LinkedHashMap<>();

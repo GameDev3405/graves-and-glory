@@ -106,8 +106,10 @@ public final class CounterMath {
         striking.addAll(kindTags(kind));
         Set<String> braced = new HashSet<>(own);
         braced.add("holding");
+        Set<String> granted = grantedTags();
         for (var r : rows) {
             if (r.multiplier() == 1.0) continue;
+            if (levelOnly(r, granted)) continue; // a row only a level ability can trigger: the card shows that level's ability line instead
             boolean charge = r.condition().equals("charge") || r.condition().equals("charge_impact");
             var against = charge ? rows : new Spec.CountersRow[]{r};
             if (!r.attackerTag().equals("any") && tagged(r.attackerTag(), striking)) {
@@ -121,6 +123,17 @@ public final class CounterMath {
             }
         }
         return out;
+    }
+    /** The counter tags the abilities rows grant (abilities.tags, | joined): the tags only a level 2 or level 3 ability brings to a soldier. */
+    static Set<String> grantedTags() {
+        Set<String> out = new HashSet<>();
+        for (var a : Spec.ABILITIES) if (!a.tags().equals("none")) out.addAll(Arrays.asList(a.tags().split("\\|")));
+        return out;
+    }
+    /** Whether a counter row names a granted tag on either side: it applies to a soldier only once a level ability grants the tag. */
+    static boolean levelOnly(Spec.CountersRow r, Set<String> granted) {
+        for (String part : (r.attackerTag() + "+" + r.targetTag()).split("\\+")) if (granted.contains(part)) return true;
+        return false;
     }
     /** The tags a hit of an attack kind adds to its attacker (Combat.resolve reads these): melee; arrow and shot; bolt, shot and magic; blight and magic; slam and melee. */
     public static Set<String> kindTags(String kind) {

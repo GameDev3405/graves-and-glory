@@ -900,7 +900,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 10->{ // p1-bots-least-defended
                     clear(b);hard=army(b,0,"hard",-105,100); // 25 blocks east of West Outpost (index 1)
-                    var shipped=b.campaign.tier(hard);var row=new Spec.BotCommandRow(shipped.id(),shipped.retreatShare(),shipped.rallyShare(),shipped.chargeRatio(),shipped.decisionTicks(),true,shipped.defenderWeight(),shipped.shieldwallVsArchers(),shipped.archerThreatCount(),shipped.archerThreatRange(),shipped.chargeDistance()); // the flanking rule stays tested; the shipped Hard row has it off (Kort, 2026-10-18)
+                    var shipped=b.campaign.tier(hard);var row=new Spec.BotCommandRow(shipped.id(),shipped.retreatShare(),shipped.rallyShare(),shipped.chargeRatio(),shipped.decisionTicks(),true,shipped.defenderWeight(),shipped.shieldwallVsArchers(),shipped.archerThreatCount(),shipped.archerThreatRange(),shipped.chargeDistance(),shipped.gearMaxTier(),shipped.gearReserveTroops(),shipped.gearPriority()); // the flanking rule stays tested; the shipped Hard row has it off (Kort, 2026-10-18)
                     b.campaign.botDecide(hard,row);int none=chosen(b,hard);
                     plant(b,1,9);b.campaign.botDecide(hard,row);int defended=chosen(b,hard);
                     for(var u:foes)u.mob.discard(); // the nine fall, but the memory of them stays

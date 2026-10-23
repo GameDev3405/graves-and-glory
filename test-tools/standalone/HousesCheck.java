@@ -254,6 +254,51 @@ public final class HousesCheck {
         check(wBare.gold() == 0 && wBare.message().contains("Choose a House") && wk.gold() == 150 && wk.xp() == 300 && wk.shards() == 10 && "tidecallers".equals(wk.house()) && w.claims.contains("weekly"), "the weekly asks for a House, then gives 150 gold, 300 XP and 10 shards to it: " + wBare + " " + wk);
     }
 
+    /** In-match progression Task 1: the new sheets, the level names and level ability rows, the counter rows, and the evolution teardown. */
+    static void progressionSheets() {
+        var p = Spec.PROGRESSION[0];
+        check(Spec.PROGRESSION.length == 1 && p.enabled() && p.assistSeconds() == 10 && p.commanderBounty() == 3 && p.chevronRange() == 24.0 && p.feedLevel() == 3, "progression: one row, enabled, assist 10 s, commander bounty 3, chevrons 24 blocks, feed line at level 3");
+        check(Spec.LEVELS.length == 3 && Spec.LEVELS[0].kills() == 0 && Spec.LEVELS[1].kills() == 3 && Spec.LEVELS[2].kills() == 8 && eq(Spec.LEVELS[1].healthPct(), 0.05) && eq(Spec.LEVELS[2].damagePct(), 0.10) && Spec.LEVELS[0].healthPct() == 0, "levels: 0, 3 and 8 kills for +0, +5% and +10% health and damage");
+        check(Spec.GEARTIERS.length == 3 && Spec.GEARTIERS[0].weaponPct() == 0 && eq(Spec.GEARTIERS[1].weaponPct(), 0.10) && eq(Spec.GEARTIERS[2].armourPct(), 0.20), "gearTiers: tier I nothing, II +10%, III +20%");
+        int[][] prices = {{40, 80}, {60, 120}, {80, 160}, {100, 200}};
+        for (int i = 0; i < 4; i++) check(Spec.RARITIES[i].gearPrice2() == prices[i][0] && Spec.RARITIES[i].gearPrice3() == prices[i][1], "rarities." + Spec.RARITIES[i].id() + " gear prices " + prices[i][0] + "/" + prices[i][1]);
+        // the full gear cost of gilded_normal: both tracks, tiers II and III, once per troop type (design 4.3)
+        var banner = Arrays.stream(Spec.BOTBANNERS).filter(b -> b.id().equals("gilded_normal")).findFirst().orElseThrow();
+        int cost = 0;
+        for (String id : new LinkedHashSet<>(Arrays.asList(banner.slots().split(",")))) if (!id.equals("^")) { var r = rarity(troop(id).rarity()); cost += 2 * (r.gearPrice2() + r.gearPrice3()); }
+        check(cost == 1680, "gilded_normal's full gear cost is 1,680 (two Commons, two Rares, one Epic), not " + cost);
+        // level names: the 40 old evolve-line rows, nothing else
+        check(Spec.LEVELNAMES.length == 40, "levelNames: 40 rows, 20 Commons and Rares at levels 2 and 3");
+        for (var t : Spec.TROOPS) if (t.rarity().equals("common") || t.rarity().equals("rare")) {
+            long n = Arrays.stream(Spec.LEVELNAMES).filter(l -> l.troop().equals(t.evolveLine())).count();
+            check(n == 2 && Arrays.stream(Spec.LEVELNAMES).anyMatch(l -> l.troop().equals(t.evolveLine()) && l.level() == 2) && Arrays.stream(Spec.LEVELNAMES).anyMatch(l -> l.troop().equals(t.evolveLine()) && l.level() == 3), "levelNames: " + t.id() + " has level names for 2 and 3");
+        }
+        check(Arrays.stream(Spec.LEVELNAMES).anyMatch(l -> l.id().equals("knight_3") && l.level() == 3 && l.name().equals("Knight-Captain")) && Arrays.stream(Spec.LEVELNAMES).anyMatch(l -> l.id().equals("knight_2") && l.name().equals("Knight")), "levelNames: the Squire is a Knight at level 2 and a Knight-Captain at level 3");
+        // level abilities: two rows per troop, a level-2 row keeps its base mechanic
+        check(Spec.LEVELABILITIES.length == 60, "levelAbilities: 60 rows");
+        for (var t : Spec.TROOPS) {
+            var base = ability(t.ability());
+            var l2 = Arrays.stream(Spec.LEVELABILITIES).filter(l -> l.troop().equals(t.id()) && l.level() == 2).toList();
+            var l3 = Arrays.stream(Spec.LEVELABILITIES).filter(l -> l.troop().equals(t.id()) && l.level() == 3).toList();
+            check(l2.size() == 1 && l3.size() == 1, "levelAbilities: " + t.id() + " has exactly one level-2 and one level-3 row");
+            var second = ability(l2.get(0).ability());
+            check(second.mechanic().equals(base.mechanic()), "levelAbilities: " + t.id() + " level 2 keeps the mechanic " + base.mechanic() + ", not " + second.mechanic());
+            check(second.text().length() <= 90 && ability(l3.get(0).ability()).text().length() <= 90, "levelAbilities: " + t.id() + " ability text within 90 characters");
+        }
+        check(Arrays.stream(Spec.ABILITIES).noneMatch(a -> a.mechanic().equals("onhit_slow")) && Arrays.stream(Spec.ABILITIES).filter(a -> a.mechanic().equals("onhit_status") && a.status().equals("slow")).map(Spec.AbilitiesRow::id).toList().containsAll(List.of("frostshot", "ensnare", "brine", "harpoon")), "abilities: no onhit_slow row is left; frostshot, ensnare, brine and the harpoon are onhit_status slow");
+        check(ability("frostshot").statusTicks() == 40 && ability("ensnare").statusLevel() == 1 && ability("ensnare").cooldownTicks() == 80 && ability("harpoon").knockback() == -1.0 && ability("brine").statusTicks() == 20, "abilities: the slow rows keep today's ticks, levels, cooldowns and pull");
+        check(eq(ability("revenant_l2").amount(), 0.3) && eq(ability("revenant_l2").amount2(), 0.4) && ability("gb_hollowking_l2").radius() == 12.0 && eq(ability("gb_hollowking_l2").amount(), 0.2) && ability("gb_hollowking_l2").amount2() == 0, "level 2 is today's row plus the design step: fearless 0.20/0.30 becomes 0.30/0.40, and dread changes radius and amount only");
+        check(ability("knight_l2").tags().equals("guard2") && ability("ic_mortar_l3").status().equals("bleed") && !ability("ic_mortar_l3").rangedPenalty() && eq(ability("ic_colossus_l3").taken(), 0.1) && ability("mage_l3").cleanse() && ability("frostshot").tags().equals("none") && ability("frostshot").rangedPenalty(), "abilities: the new status, taken, cleanse, rangedPenalty and tags columns are filled where a row uses them and default elsewhere");
+        // counters
+        var ids = Arrays.stream(Spec.COUNTERS).map(Spec.CountersRow::id).toList();
+        check(ids.containsAll(List.of("C1g", "C3g", "C15b", "C15v", "C14v", "C18a2", "C18b2", "C18c2", "C18d", "C19", "C20", "C21")), "counters: the twelve in-match progression rows exist");
+        check(Arrays.stream(Spec.COUNTERS).filter(c -> c.id().equals("C19")).allMatch(c -> c.attackerTag().equals("shot") && c.targetTag().equals("thickhide") && eq(c.multiplier(), 0.75)) && Arrays.stream(Spec.COUNTERS).filter(c -> c.id().equals("C21")).allMatch(c -> c.condition().equals("target_wounded")) && Arrays.stream(Spec.COUNTERS).filter(c -> c.id().equals("C20")).allMatch(c -> c.condition().equals("target_slowed_or_wounded")), "counters: C19 thickhide x0.75, C20 and C21 on the two new conditions");
+        // botCommand and the card text
+        check(Arrays.stream(Spec.BOTCOMMAND).map(Spec.BotCommandRow::gearMaxTier).toList().equals(List.of(2, 3, 3)) && Arrays.stream(Spec.BOTCOMMAND).map(Spec.BotCommandRow::gearReserveTroops).toList().equals(List.of(8, 5, 2)) && Arrays.stream(Spec.BOTCOMMAND).map(Spec.BotCommandRow::gearPriority).toList().equals(List.of("banner", "role", "open")), "botCommand: easy buys to II and keeps 8 troops, normal III and 5 by role, hard III and 2 as soon as open");
+        check(Arrays.stream(Spec.TroopNotesRow.class.getRecordComponents()).noneMatch(c -> c.getName().startsWith("level")), "troopNotes: level2 and level3 are gone; the card lines come from the levelAbilities rows");
+        check(Arrays.stream(Spec.class.getDeclaredFields()).noneMatch(f -> f.getName().equals("EVOLUTIONS")), "Spec has no EVOLUTIONS table: the evolution sheet is gone");
+    }
+
     public static void main(String[] args) {
         // the sheets agree with the spec section 2 fixture
         check(Arrays.stream(Spec.HOUSES).map(Spec.HousesRow::id).toList().equals(HOUSES), "houses sheet lists the five Houses in order");
@@ -277,7 +322,7 @@ public final class HousesCheck {
         var D=Spec.COMBATDISCIPLINE[0];
         check(D.lastStandShare()==0.25 && D.lastStandRadius()==16 && D.hornCooldownSeconds()==8 && D.hornVolume()==1.6 && D.woundedShare()==0.3 && D.lastStandFeedSeconds()==30 && D.arriveRadius()==4.0, "combatDiscipline carries the last stand, the feedback cue, the wounded share and the arrival radius");
         check(Arrays.stream(Spec.class.getDeclaredFields()).noneMatch(f->f.getName().equals("MORALE")), "Spec has no MORALE table: the morale sheet is gone");
-        check(ability("fearless").amount()==0.2 && ability("fearless").amount2()==0.3 && ability("dread").amount2()==0 && ability("oath_banner").anchors() && Arrays.stream(Spec.ABILITIES).filter(Spec.AbilitiesRow::anchors).count()==1, "fearless is +20% at 30% health, dread routs nothing, the Oath Banner alone anchors");
+        check(ability("fearless").amount()==0.2 && ability("fearless").amount2()==0.3 && ability("dread").amount2()==0 && ability("oath_banner").anchors() && Arrays.stream(Spec.ABILITIES).filter(Spec.AbilitiesRow::anchors).map(Spec.AbilitiesRow::id).toList().equals(List.of("oath_banner","gl_marshal_l2")), "fearless is +20% at 30% health, dread routs nothing, the Oath Banner and its level-2 row alone anchor");
         check(classRow("marshal").value1()==0.2 && classRow("marshal").value2()==0 && classRow("marshal").active().equals("rally_horn"), "the Marshal's Muster (the sheet's rally_horn): +20% speed, nothing steadies");
         check(Set.of(troop("ic_colossus").tags().split(",")).contains("large") && !Set.of(troop("ic_colossus").tags().split(",")).contains("fearless") && Set.of(troop("bonebow").tags().split(",")).contains("fearless"), "Brassjaw is large and not fearless; the Bone Archer is fearless");
         check(CounterMath.applied(impact("melee,beast,cavalry","ranged"),Spec.COUNTERS).equals(List.of("C5")) && CounterMath.applied(hit("arrow,armour_bolt","shield",10,true),Spec.COUNTERS).equals(List.of("C15")) && CounterMath.applied(hit("arrow","any",10,false),Spec.COUNTERS).isEmpty(), "applied names the row that wins each group");
@@ -296,13 +341,14 @@ public final class HousesCheck {
         // cap, stars: the +12% cap comes from stars alone (in-match progression design, sections 8 and 10): every rarity's star 3 is at most capPct, Common and Rare +6% / +12%
         for (var r : Spec.RARITIES) check(r.starPct2() <= r.starPct3() && r.starPct3() <= Spec.RECRUITMENT[0].capPct()+1e-9, "cap from stars alone: rarities." + r.id() + ".starPct3 " + r.starPct3() + " is at most recruitment.capPct");
         for (String r : List.of("common", "rare")) check(eq(rarity(r).starPct2(),0.06) && eq(rarity(r).starPct3(),0.12) && eq(rarity(r).starPct3(),Spec.RECRUITMENT[0].capPct()), "cap from stars alone: a " + r + " is +6% at star 2 and +12% at star 3, the whole cap");
-        check(progressionMultiplier(.06,.06,.12)==1.12 && progressionMultiplier(.12,.06,.12)==1.12 && eq(progressionMultiplier(.03,0,.12),1.03), "cap clamps");
+        check(progressionMultiplier(.06,.12)==1.06 && progressionMultiplier(.12,.12)==1.12 && progressionMultiplier(.2,.12)==1.12 && eq(progressionMultiplier(.03,.12),1.03), "cap clamps: stars alone");
         check(starFromCopies(1,C)==1 && starFromCopies(2,C)==2 && starFromCopies(3,C)==2 && starFromCopies(4,C)==3, "4 copies for star 3");
         check(starFromCopies(9,rarity("legendary"))==1 && starPct(1,C)==0 && eq(starPct(2,C),0.06) && eq(starPct(3,C),0.12) && eq(starPct(3,rarity("epic")),0.12), "star bonuses; Legendary stars come from shards only");
         check(Arrays.stream(Spec.MASTERY).filter(m -> m.level() == 1).map(Spec.MasteryRow::reward).toList().equals(List.of("title:Veteran")), "Mastery I gives the title only: it unlocks nothing");
         founders();
         pacts();
         cardRows();
+        progressionSheets();
         // the battle report's House rows (Task 11): every House the banner has slots in, House order, with its banner tier, trait seconds, shards and Renown (0 when absent)
         var houseRows = MatchStats.houseRows(HOUSES, houseSlots(SPEC_EXAMPLE_BANNER,cat), Map.of("gilded",3), Map.of("gilded",40,"graveborn",12,"wildmoot",9), Map.of("gilded",2), Map.of("gilded",2,"graveborn",1));
         check(houseRows.equals(List.of(new MatchStats.HouseRow("gilded",3,40,2,2), new MatchStats.HouseRow("graveborn",0,12,0,1))), "report House rows: one per House with banner slots, a House at tier 0 included, none for a House with no slots: " + houseRows);

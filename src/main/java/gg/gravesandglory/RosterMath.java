@@ -253,8 +253,8 @@ public final class RosterMath {
     /** The star bonus to health and damage: 0 at star 1, starPct2 at star 2, starPct3 at star 3. */
     public static double starPct(int stars, Spec.RaritiesRow r) { return stars >= 3 ? r.starPct3() : stars == 2 ? r.starPct2() : 0; }
 
-    /** The progression multiplier for health or damage: 1 plus the star and stage bonuses, capped at 1 + capPct (recruitment.capPct). */
-    public static double progressionMultiplier(double starPct, double stagePct, double capPct) { return Math.min(1 + capPct, 1 + starPct + stagePct); }
+    /** The progression multiplier for health or damage: 1 plus the star bonus, capped at 1 + capPct (recruitment.capPct). Stars alone since the in-match progression design. */
+    public static double progressionMultiplier(double starPct, double capPct) { return Math.min(1 + capPct, 1 + starPct); }
 
     /** A House's Renown level for its points: one level per renown.points threshold reached, so 0 to 5. */
     public static int renownLevel(int points, int[] thresholds) { return reached(points, thresholds); }

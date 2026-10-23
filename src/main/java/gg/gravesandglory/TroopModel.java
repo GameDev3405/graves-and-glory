@@ -262,7 +262,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     /** The relief key of the skin a Look binds (the stage whose skin file draws; a Veteran's trim takes none); null when the model has no relief for it. */
     public String reliefKey(TroopModels.Look l){
         if(relief.isEmpty()||l==null)return null;
-        String key=String.valueOf(skinStage(l.stage()));
+        String key=String.valueOf(skinStage(l.armourTier()));
         return relief.containsKey(key)?key:null;
     }
     /** Arms the next render to draw the relief of a key after the skin (null disarms). One render spends it. */
@@ -319,7 +319,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
      * only for a troop on a side whose row flies one).
      */
     public void prepare(TroopModels.Look l,boolean folded,boolean helmOff){
-        int stage=l==null?1:l.stage();this.folded=folded&&parts.containsKey("arms_folded");
+        int stage=l==null?1:l.armourTier();this.folded=folded&&parts.containsKey("arms_folded");
         for(Bone b:info.values()){
             boolean on=b.stages().isEmpty()||b.stages().contains(stage);if(helmOff&&"helm".equals(b.tag()))on=false;
             parts.get(b.name()).visible=on&&!b.team();

@@ -69,8 +69,8 @@ SHEET = {
                {'id': 'sentinel', 'entity': 'husk', 'rarity': 'rare', 'evolveLine': 'sentinel'},
                {'id': 'mage', 'entity': 'husk', 'rarity': 'epic', 'evolveLine': 'none'},
                {'id': 'hound', 'entity': 'wolf', 'rarity': 'common', 'evolveLine': 'hound'}],
-    'evolutions': [{'id': 'knight_2', 'troop': 'knight', 'stage': 2}, {'id': 'knight_3', 'troop': 'knight', 'stage': 3},
-                   {'id': 'sentinel_2', 'troop': 'sentinel', 'stage': 2}, {'id': 'sentinel_3', 'troop': 'sentinel', 'stage': 3}],
+    'levelNames': [{'id': 'knight_2', 'troop': 'knight', 'level': 2}, {'id': 'knight_3', 'troop': 'knight', 'level': 3},
+                   {'id': 'sentinel_2', 'troop': 'sentinel', 'level': 2}, {'id': 'sentinel_3', 'troop': 'sentinel', 'level': 3}],
 }
 GLYPH_AT = [(2, 3), (3, 3)]   # the sun mask's pixels, on the pennant field
 FIELD = {(x, y): (1.0 if y < 4 else 0.8 if y < 7 else 0.6) for x in range(1, 9) for y in range(1, 9)}

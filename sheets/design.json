@@ -2002,7 +2002,10 @@
       "shieldwallVsArchers": false,
       "archerThreatCount": 3,
       "archerThreatRange": 30.0,
-      "chargeDistance": 0.0
+      "chargeDistance": 0.0,
+      "gearMaxTier": 2,
+      "gearReserveTroops": 8,
+      "gearPriority": "banner"
     },
     {
       "id": "normal",
@@ -2015,7 +2018,10 @@
       "shieldwallVsArchers": false,
       "archerThreatCount": 3,
       "archerThreatRange": 30.0,
-      "chargeDistance": 0.0
+      "chargeDistance": 0.0,
+      "gearMaxTier": 3,
+      "gearReserveTroops": 5,
+      "gearPriority": "role"
     },
     {
       "id": "hard",
@@ -2028,7 +2034,10 @@
       "shieldwallVsArchers": true,
       "archerThreatCount": 3,
       "archerThreatRange": 30.0,
-      "chargeDistance": 18.0
+      "chargeDistance": 18.0,
+      "gearMaxTier": 3,
+      "gearReserveTroops": 2,
+      "gearPriority": "open"
     }
   ],
   "combatDiscipline": [
@@ -2618,7 +2627,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "No special ability."
+      "text": "No special ability.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "shield",
@@ -2636,7 +2650,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Carries a shield: raised, it stops most arrows and blunts blows from the front."
+      "text": "Carries a shield: raised, it stops most arrows and blunts blows from the front.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "steady",
@@ -2654,7 +2673,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "+20% damage while the group order is Hold."
+      "text": "+20% damage while the group order is Hold.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "ambush",
@@ -2672,7 +2696,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "+25% damage while the shooter cannot see the sky, under trees or a roof."
+      "text": "+25% damage while the shooter cannot see the sky, under trees or a roof.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "brace",
@@ -2690,7 +2719,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "x1.3 damage against charging enemies while its own order is Hold."
+      "text": "x1.3 damage against charging enemies while its own order is Hold.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "armour_bolt",
@@ -2708,7 +2742,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Against shield troops the shield multiplier is x0.7 instead of x0.35."
+      "text": "Against shield troops the shield multiplier is x0.7 instead of x0.35.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "sunder",
@@ -2726,7 +2765,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Ignores the shield multiplier entirely and deals x1.4 to shield troops."
+      "text": "Ignores the shield multiplier entirely and deals x1.4 to shield troops.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "pierce_longbow",
@@ -2744,7 +2788,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Each shot also hits the nearest enemy within 2 blocks behind the target for 50%."
+      "text": "Each shot also hits the nearest enemy within 2 blocks behind the target for 50%.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "mend_sunweaver",
@@ -2762,7 +2811,12 @@
       "minRange": 0.0,
       "target": "allies",
       "anchors": false,
-      "text": "Heals 5 health on allies within 10 blocks, every 4 seconds."
+      "text": "Heals 5 health on allies within 10 blocks, every 4 seconds.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "oath_banner",
@@ -2780,7 +2834,12 @@
       "minRange": 0.0,
       "target": "allies",
       "anchors": true,
-      "text": "On Hold, a 15 s banner: troops within 12 deal 10% more and cannot be moved or slowed."
+      "text": "On Hold, a 15 s banner: troops within 12 deal 10% more and cannot be moved or slowed.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "fearless",
@@ -2798,7 +2857,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Below 30% health he deals 20% more damage."
+      "text": "Below 30% health he deals 20% more damage.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "cleave_reaper",
@@ -2816,11 +2880,16 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Each hit also strikes one other enemy within 2 blocks of the target for 57%."
+      "text": "Each hit also strikes one other enemy within 2 blocks of the target for 57%.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "frostshot",
-      "mechanic": "onhit_slow",
+      "mechanic": "onhit_status",
       "trigger": "onhit",
       "cooldownTicks": 0,
       "radius": 0.0,
@@ -2834,7 +2903,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Hits apply Slowness I for 2 seconds."
+      "text": "Hits apply Slowness I for 2 seconds.",
+      "status": "slow",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "blight_gravecaller",
@@ -2852,7 +2926,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Calls down blight: after 1 s it strikes within 2.5 and slows for 2 s."
+      "text": "Calls down blight: after 1 s it strikes within 2.5 and slows for 2 s.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "dread",
@@ -2870,7 +2949,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Enemies within 10 deal 15% less damage."
+      "text": "Enemies within 10 deal 15% less damage.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "pounce",
@@ -2888,11 +2972,16 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "The first hit after closing 6 blocks without attacking deals x1.8 damage."
+      "text": "The first hit after closing 6 blocks without attacking deals x1.8 damage.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "ensnare",
-      "mechanic": "onhit_slow",
+      "mechanic": "onhit_status",
       "trigger": "onhit",
       "cooldownTicks": 80,
       "radius": 0.0,
@@ -2906,7 +2995,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Hits apply Slowness II for 1.5 s, at most every 4 s. Climbs walls."
+      "text": "Hits apply Slowness II for 1.5 s, at most every 4 s. Climbs walls.",
+      "status": "slow",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "howl",
@@ -2924,7 +3018,12 @@
       "minRange": 0.0,
       "target": "allies",
       "anchors": false,
-      "text": "Every 15 s, allies within 10 gain +15% damage and +15% speed for 6 s."
+      "text": "Every 15 s, allies within 10 gain +15% damage and +15% speed for 6 s.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "trample",
@@ -2942,7 +3041,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "On first contact in a Charge, deals 6 to every enemy within 3 and knocks them back."
+      "text": "On first contact in a Charge, deals 6 to every enemy within 3 and knocks them back.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "pierce_ballista",
@@ -2960,7 +3064,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Each bolt also hits a second enemy within 4 blocks behind the target for 60%."
+      "text": "Each bolt also hits a second enemy within 4 blocks behind the target for 60%.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "shell",
@@ -2978,7 +3087,12 @@
       "minRange": 10.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Lobs a shell that bursts over 3.5 blocks after 1.5 s. Cannot fire closer than 10."
+      "text": "Lobs a shell that bursts over 3.5 blocks after 1.5 s. Cannot fire closer than 10.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "forge_slam",
@@ -2996,11 +3110,16 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Every hit also deals 60% to all other enemies within 2.5 and knocks them back."
+      "text": "Every hit also deals 60% to all other enemies within 2.5 and knocks them back.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "brine",
-      "mechanic": "onhit_slow",
+      "mechanic": "onhit_status",
       "trigger": "onhit",
       "cooldownTicks": 0,
       "radius": 0.0,
@@ -3014,11 +3133,16 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Hits apply Slowness I for 1 second."
+      "text": "Hits apply Slowness I for 1 second.",
+      "status": "slow",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "harpoon",
-      "mechanic": "onhit_slow",
+      "mechanic": "onhit_status",
       "trigger": "onhit",
       "cooldownTicks": 60,
       "radius": 0.0,
@@ -3032,7 +3156,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Hits pull the target 1 block closer and apply Slowness I for 1.5 s; every 3 s."
+      "text": "Hits pull the target 1 block closer and apply Slowness I for 1.5 s; every 3 s.",
+      "status": "slow",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "mist",
@@ -3050,7 +3179,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Leaves mist of radius 4 for 5 s: enemies in it slow, and shots through it deal x0.5."
+      "text": "Leaves mist of radius 4 for 5 s: enemies in it slow, and shots through it deal x0.5.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "tentacle_sweep",
@@ -3068,7 +3202,12 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Hits also sweep other enemies within 3 for 70% and knock them back, once per 3 s."
+      "text": "Hits also sweep other enemies within 3 for 70% and knock them back, once per 3 s.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
     },
     {
       "id": "undertow",
@@ -3086,7 +3225,1754 @@
       "minRange": 0.0,
       "target": "enemies",
       "anchors": false,
-      "text": "Every 10 s, drags enemies within 7 three blocks in, deals 4 and applies Slowness II."
+      "text": "Every 10 s, drags enemies within 7 three blocks in, deals 4 and applies Slowness II.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "knight_l2",
+      "mechanic": "shield",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Better guard: his raised shield takes arrows x0.30 and blows x0.5.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "guard2"
+    },
+    {
+      "id": "archer_l2",
+      "mechanic": "stance",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Steady: +30% damage while the group order is Hold.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "steady2"
+    },
+    {
+      "id": "sentinel_l2",
+      "mechanic": "shield",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Better guard: his raised shield takes arrows x0.30 and blows x0.5.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "guard2"
+    },
+    {
+      "id": "longbow_l2",
+      "mechanic": "pierce",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 3.0,
+      "windupTicks": 0,
+      "amount": 0.7,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Each shot also hits the nearest enemy within 3 blocks behind the target for 70%.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "mage_l2",
+      "mechanic": "mend",
+      "trigger": "cast",
+      "cooldownTicks": 80,
+      "radius": 10.0,
+      "windupTicks": 0,
+      "amount": 7.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "allies",
+      "anchors": false,
+      "text": "Heals 7 health on allies within 10 blocks, every 4 seconds.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "gl_marshal_l2",
+      "mechanic": "aura",
+      "trigger": "hold",
+      "cooldownTicks": 600,
+      "radius": 12.0,
+      "windupTicks": 0,
+      "amount": 0.15,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 400,
+      "minRange": 0.0,
+      "target": "allies",
+      "anchors": true,
+      "text": "On Hold, a 20 s banner: troops within 12 deal 15% more and cannot be moved or slowed.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "revenant_l2",
+      "mechanic": "fearless",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.3,
+      "amount2": 0.4,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "At or below 40% health he deals 30% more damage.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "bonebow_l2",
+      "mechanic": "fearless",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.3,
+      "amount2": 0.4,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "At or below 40% health he deals 30% more damage.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "reaper_l2",
+      "mechanic": "cleave",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 2.0,
+      "windupTicks": 0,
+      "amount": 0.77,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Each hit also strikes one other enemy within 2 blocks of the target for 77%.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "stalker_l2",
+      "mechanic": "onhit_status",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 60,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Hits apply Slowness I for 3 seconds.",
+      "status": "slow",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "hexer_l2",
+      "mechanic": "blight",
+      "trigger": "cast",
+      "cooldownTicks": 100,
+      "radius": 3.0,
+      "windupTicks": 20,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 60,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Calls down blight: after 1 s it strikes within 3 and slows for 3 s.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "gb_hollowking_l2",
+      "mechanic": "aura",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 12.0,
+      "windupTicks": 0,
+      "amount": 0.2,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Enemies within 12 deal 20% less damage.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "wm_hound_l2",
+      "mechanic": "pounce",
+      "trigger": "onhit",
+      "cooldownTicks": 80,
+      "radius": 6.0,
+      "windupTicks": 0,
+      "amount": 2.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "The first hit after closing 6 blocks without attacking deals x2.0, every 4 s.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "wm_hunter_l2",
+      "mechanic": "stance",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "+35% damage while the shooter cannot see the sky, under trees or a roof.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "ambush2"
+    },
+    {
+      "id": "wm_stalker_l2",
+      "mechanic": "onhit_status",
+      "trigger": "onhit",
+      "cooldownTicks": 80,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 50,
+      "statusLevel": 1,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Hits apply Slowness II for 2.5 s, at most every 4 s. Climbs walls.",
+      "status": "slow",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "wm_tusk_l2",
+      "mechanic": "stance",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "x1.5 damage against charging enemies while its own order is Hold.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "brace2"
+    },
+    {
+      "id": "wm_seer_l2",
+      "mechanic": "aura",
+      "trigger": "timer",
+      "cooldownTicks": 240,
+      "radius": 10.0,
+      "windupTicks": 0,
+      "amount": 0.2,
+      "amount2": 0.2,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 120,
+      "minRange": 0.0,
+      "target": "allies",
+      "anchors": false,
+      "text": "Every 12 s, allies within 10 gain +20% damage and +20% speed for 6 s.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "wm_oldhorn_l2",
+      "mechanic": "slam",
+      "trigger": "charge_contact",
+      "cooldownTicks": 160,
+      "radius": 3.0,
+      "windupTicks": 0,
+      "amount": 8.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 1.2,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "On first contact in a Charge, deals 8 to every enemy within 3 and knocks them back.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "ic_hearthguard_l2",
+      "mechanic": "shield",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Better guard: his raised shield takes arrows x0.30 and blows x0.5.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "guard2"
+    },
+    {
+      "id": "ic_arbalist_l2",
+      "mechanic": "stance",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Against shield troops the shield multiplier is x0.85 instead of x0.35.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "armour_bolt2"
+    },
+    {
+      "id": "ic_breaker_l2",
+      "mechanic": "stance",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Ignores the shield multiplier entirely and deals x1.6 to shield troops.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "sunder2"
+    },
+    {
+      "id": "ic_ballista_l2",
+      "mechanic": "pierce",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 4.0,
+      "windupTicks": 0,
+      "amount": 0.8,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Each bolt also hits a second enemy within 4 blocks behind the target for 80%.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "ic_mortar_l2",
+      "mechanic": "blight",
+      "trigger": "cast",
+      "cooldownTicks": 100,
+      "radius": 4.0,
+      "windupTicks": 30,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 10.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Lobs a shell that bursts over 4 blocks after 1.5 s. Cannot fire closer than 10.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "ic_colossus_l2",
+      "mechanic": "slam",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 2.5,
+      "windupTicks": 0,
+      "amount": 0.75,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.8,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Every hit also deals 75% to all other enemies within 2.5 and knocks them back.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "tc_raider_l2",
+      "mechanic": "onhit_status",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 40,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Hits apply Slowness I for 2 seconds.",
+      "status": "slow",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "tc_harpooner_l2",
+      "mechanic": "onhit_status",
+      "trigger": "onhit",
+      "cooldownTicks": 50,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 30,
+      "statusLevel": 0,
+      "knockback": -2.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Hits pull the target 2 blocks closer and apply Slowness I for 1.5 s; every 2.5 s.",
+      "status": "slow",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "tc_tideguard_l2",
+      "mechanic": "stance",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "x1.5 damage against charging enemies while its own order is Hold.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "brace2"
+    },
+    {
+      "id": "tc_mist_l2",
+      "mechanic": "mist",
+      "trigger": "cast",
+      "cooldownTicks": 160,
+      "radius": 5.0,
+      "windupTicks": 20,
+      "amount": 0.5,
+      "amount2": 0.0,
+      "statusTicks": 20,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 140,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Leaves mist of radius 5 for 7 s: enemies in it slow, and shots through it deal x0.5.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "tc_brute_l2",
+      "mechanic": "slam",
+      "trigger": "onhit",
+      "cooldownTicks": 60,
+      "radius": 3.0,
+      "windupTicks": 0,
+      "amount": 0.85,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 1.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Hits also sweep other enemies within 3 for 85% and knock them back, once per 3 s.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "tc_admiral_l2",
+      "mechanic": "slam",
+      "trigger": "timer",
+      "cooldownTicks": 160,
+      "radius": 8.0,
+      "windupTicks": 0,
+      "amount": 4.0,
+      "amount2": 0.0,
+      "statusTicks": 60,
+      "statusLevel": 1,
+      "knockback": -3.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Every 8 s, drags enemies within 8 three blocks in, deals 4 and applies Slowness II.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "knight_l3",
+      "mechanic": "slam",
+      "trigger": "onhit",
+      "cooldownTicks": 100,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 20,
+      "statusLevel": 0,
+      "knockback": 1.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Shield bash: every 5 s a hit knocks the target back and stuns it for 1 s.",
+      "status": "stun",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "archer_l3",
+      "mechanic": "stance",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Bodkin points: a raised shield stops only 40% of his arrows.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "bodkin"
+    },
+    {
+      "id": "sentinel_l3",
+      "mechanic": "stance",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Unbroken: at 30% health or less he takes 20% less damage.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "unbroken"
+    },
+    {
+      "id": "longbow_l3",
+      "mechanic": "onhit_status",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 30,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Pinning shot: hits apply Slowness I for 1.5 s.",
+      "status": "slow",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "mage_l3",
+      "mechanic": "mend",
+      "trigger": "cast",
+      "cooldownTicks": 80,
+      "radius": 10.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "allies",
+      "anchors": false,
+      "text": "Dawnlight: each mend also cleanses slow, weaken and bleed.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": true,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "gl_marshal_l3",
+      "mechanic": "cleave",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 2.0,
+      "windupTicks": 0,
+      "amount": 0.5,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Marshal's sweep: his blows also strike one enemy within 2 for 50%.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "revenant_l3",
+      "mechanic": "onhit_status",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 80,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Rotten blade: hits bleed for 4 s.",
+      "status": "bleed",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "bonebow_l3",
+      "mechanic": "onhit_status",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.15,
+      "amount2": 0.0,
+      "statusTicks": 40,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Marrow arrows: hits weaken for 2 s.",
+      "status": "weaken",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "reaper_l3",
+      "mechanic": "onkill_heal",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.25,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Reap: a killing blow heals him a quarter of his health.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "stalker_l3",
+      "mechanic": "pierce",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 2.0,
+      "windupTicks": 0,
+      "amount": 0.4,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Ice lance: shots also pierce one enemy within 2 behind for 40%.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "hexer_l3",
+      "mechanic": "raise",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 2.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 300,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Death knell: enemies her blight kills rise as her Risen for 15 s, 2 at most.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "gb_hollowking_l3",
+      "mechanic": "rise",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.5,
+      "amount2": 1.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Undying King: he rises once at half health.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "wm_hound_l3",
+      "mechanic": "stance",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Run them down: +30% damage against a slowed or wounded target.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "rundown"
+    },
+    {
+      "id": "wm_hunter_l3",
+      "mechanic": "mark",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.1,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 60,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Hunter's mark: marked targets take +10% from his army for 3 s.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "wm_stalker_l3",
+      "mechanic": "onhit_status",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 80,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Venom bite: hits bleed for 4 s.",
+      "status": "bleed",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "wm_tusk_l3",
+      "mechanic": "pierce",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 2.0,
+      "windupTicks": 0,
+      "amount": 0.4,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Long spear: thrusts also hit one enemy within 2 behind the target for 40%.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "wm_seer_l3",
+      "mechanic": "aura",
+      "trigger": "timer",
+      "cooldownTicks": 240,
+      "radius": 10.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 120,
+      "minRange": 0.0,
+      "target": "allies",
+      "anchors": false,
+      "text": "Rousing howl: the howl also cleanses slow, weaken and bleed from own troops.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": true,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "wm_oldhorn_l3",
+      "mechanic": "stance",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Thick hide: shots against him deal x0.75.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "thickhide"
+    },
+    {
+      "id": "ic_hearthguard_l3",
+      "mechanic": "stance",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Brace the wall: x1.3 against a charge while on Hold.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "bracewall"
+    },
+    {
+      "id": "ic_arbalist_l3",
+      "mechanic": "onhit_status",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.6,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Heavy bolt: hits knock the target back 0.6 blocks.",
+      "status": "knockback",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "ic_breaker_l3",
+      "mechanic": "onhit_status",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.15,
+      "amount2": 0.0,
+      "statusTicks": 60,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Shatter: hits weaken for 3 s.",
+      "status": "weaken",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "ic_ballista_l3",
+      "mechanic": "onhit_status",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 30,
+      "statusLevel": 1,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Pinning bolt: hits apply Slowness II for 1.5 s.",
+      "status": "slow",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "ic_mortar_l3",
+      "mechanic": "mist",
+      "trigger": "cast",
+      "cooldownTicks": 100,
+      "radius": 2.5,
+      "windupTicks": 30,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 20,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 60,
+      "minRange": 10.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Firepot: a shell leaves burning ground for 3 s; enemies in it bleed.",
+      "status": "bleed",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": false,
+      "tags": "none"
+    },
+    {
+      "id": "ic_colossus_l3",
+      "mechanic": "aura",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 6.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "allies",
+      "anchors": false,
+      "text": "Furnace heart: own troops within 6 take 10% less damage.",
+      "status": "none",
+      "taken": 0.1,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "tc_raider_l3",
+      "mechanic": "pounce",
+      "trigger": "onhit",
+      "cooldownTicks": 100,
+      "radius": 6.0,
+      "windupTicks": 0,
+      "amount": 1.5,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Boarding rush: the first hit after closing 6 blocks deals x1.5.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "tc_harpooner_l3",
+      "mechanic": "onhit_status",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 80,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Barbed hook: hits bleed for 4 s.",
+      "status": "bleed",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "tc_tideguard_l3",
+      "mechanic": "cleave",
+      "trigger": "onhit",
+      "cooldownTicks": 0,
+      "radius": 2.0,
+      "windupTicks": 0,
+      "amount": 0.4,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Trident sweep: hits also strike one enemy within 2 for 40%.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    },
+    {
+      "id": "tc_mist_l3",
+      "mechanic": "mist",
+      "trigger": "cast",
+      "cooldownTicks": 160,
+      "radius": 5.0,
+      "windupTicks": 20,
+      "amount": 0.15,
+      "amount2": 0.0,
+      "statusTicks": 20,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 140,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Chill fog: enemies in her cloud are also weakened.",
+      "status": "weaken",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": false,
+      "tags": "none"
+    },
+    {
+      "id": "tc_brute_l3",
+      "mechanic": "stance",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 0.0,
+      "windupTicks": 0,
+      "amount": 0.0,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "enemies",
+      "anchors": false,
+      "text": "Barnacle hide: shots against it deal x0.75.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "thickhide"
+    },
+    {
+      "id": "tc_admiral_l3",
+      "mechanic": "aura",
+      "trigger": "passive",
+      "cooldownTicks": 0,
+      "radius": 10.0,
+      "windupTicks": 0,
+      "amount": 0.1,
+      "amount2": 0.0,
+      "statusTicks": 0,
+      "statusLevel": 0,
+      "knockback": 0.0,
+      "durationTicks": 0,
+      "minRange": 0.0,
+      "target": "allies",
+      "anchors": false,
+      "text": "Admiral's call: own troops within 10 deal +10% damage.",
+      "status": "none",
+      "taken": 0.0,
+      "cleanse": false,
+      "rangedPenalty": true,
+      "tags": "none"
+    }
+  ],
+  "levelAbilities": [
+    {
+      "id": "knight_2",
+      "troop": "knight",
+      "level": 2,
+      "ability": "knight_l2"
+    },
+    {
+      "id": "knight_3",
+      "troop": "knight",
+      "level": 3,
+      "ability": "knight_l3"
+    },
+    {
+      "id": "archer_2",
+      "troop": "archer",
+      "level": 2,
+      "ability": "archer_l2"
+    },
+    {
+      "id": "archer_3",
+      "troop": "archer",
+      "level": 3,
+      "ability": "archer_l3"
+    },
+    {
+      "id": "sentinel_2",
+      "troop": "sentinel",
+      "level": 2,
+      "ability": "sentinel_l2"
+    },
+    {
+      "id": "sentinel_3",
+      "troop": "sentinel",
+      "level": 3,
+      "ability": "sentinel_l3"
+    },
+    {
+      "id": "longbow_2",
+      "troop": "longbow",
+      "level": 2,
+      "ability": "longbow_l2"
+    },
+    {
+      "id": "longbow_3",
+      "troop": "longbow",
+      "level": 3,
+      "ability": "longbow_l3"
+    },
+    {
+      "id": "mage_2",
+      "troop": "mage",
+      "level": 2,
+      "ability": "mage_l2"
+    },
+    {
+      "id": "mage_3",
+      "troop": "mage",
+      "level": 3,
+      "ability": "mage_l3"
+    },
+    {
+      "id": "gl_marshal_2",
+      "troop": "gl_marshal",
+      "level": 2,
+      "ability": "gl_marshal_l2"
+    },
+    {
+      "id": "gl_marshal_3",
+      "troop": "gl_marshal",
+      "level": 3,
+      "ability": "gl_marshal_l3"
+    },
+    {
+      "id": "revenant_2",
+      "troop": "revenant",
+      "level": 2,
+      "ability": "revenant_l2"
+    },
+    {
+      "id": "revenant_3",
+      "troop": "revenant",
+      "level": 3,
+      "ability": "revenant_l3"
+    },
+    {
+      "id": "bonebow_2",
+      "troop": "bonebow",
+      "level": 2,
+      "ability": "bonebow_l2"
+    },
+    {
+      "id": "bonebow_3",
+      "troop": "bonebow",
+      "level": 3,
+      "ability": "bonebow_l3"
+    },
+    {
+      "id": "reaper_2",
+      "troop": "reaper",
+      "level": 2,
+      "ability": "reaper_l2"
+    },
+    {
+      "id": "reaper_3",
+      "troop": "reaper",
+      "level": 3,
+      "ability": "reaper_l3"
+    },
+    {
+      "id": "stalker_2",
+      "troop": "stalker",
+      "level": 2,
+      "ability": "stalker_l2"
+    },
+    {
+      "id": "stalker_3",
+      "troop": "stalker",
+      "level": 3,
+      "ability": "stalker_l3"
+    },
+    {
+      "id": "hexer_2",
+      "troop": "hexer",
+      "level": 2,
+      "ability": "hexer_l2"
+    },
+    {
+      "id": "hexer_3",
+      "troop": "hexer",
+      "level": 3,
+      "ability": "hexer_l3"
+    },
+    {
+      "id": "gb_hollowking_2",
+      "troop": "gb_hollowking",
+      "level": 2,
+      "ability": "gb_hollowking_l2"
+    },
+    {
+      "id": "gb_hollowking_3",
+      "troop": "gb_hollowking",
+      "level": 3,
+      "ability": "gb_hollowking_l3"
+    },
+    {
+      "id": "wm_hound_2",
+      "troop": "wm_hound",
+      "level": 2,
+      "ability": "wm_hound_l2"
+    },
+    {
+      "id": "wm_hound_3",
+      "troop": "wm_hound",
+      "level": 3,
+      "ability": "wm_hound_l3"
+    },
+    {
+      "id": "wm_hunter_2",
+      "troop": "wm_hunter",
+      "level": 2,
+      "ability": "wm_hunter_l2"
+    },
+    {
+      "id": "wm_hunter_3",
+      "troop": "wm_hunter",
+      "level": 3,
+      "ability": "wm_hunter_l3"
+    },
+    {
+      "id": "wm_stalker_2",
+      "troop": "wm_stalker",
+      "level": 2,
+      "ability": "wm_stalker_l2"
+    },
+    {
+      "id": "wm_stalker_3",
+      "troop": "wm_stalker",
+      "level": 3,
+      "ability": "wm_stalker_l3"
+    },
+    {
+      "id": "wm_tusk_2",
+      "troop": "wm_tusk",
+      "level": 2,
+      "ability": "wm_tusk_l2"
+    },
+    {
+      "id": "wm_tusk_3",
+      "troop": "wm_tusk",
+      "level": 3,
+      "ability": "wm_tusk_l3"
+    },
+    {
+      "id": "wm_seer_2",
+      "troop": "wm_seer",
+      "level": 2,
+      "ability": "wm_seer_l2"
+    },
+    {
+      "id": "wm_seer_3",
+      "troop": "wm_seer",
+      "level": 3,
+      "ability": "wm_seer_l3"
+    },
+    {
+      "id": "wm_oldhorn_2",
+      "troop": "wm_oldhorn",
+      "level": 2,
+      "ability": "wm_oldhorn_l2"
+    },
+    {
+      "id": "wm_oldhorn_3",
+      "troop": "wm_oldhorn",
+      "level": 3,
+      "ability": "wm_oldhorn_l3"
+    },
+    {
+      "id": "ic_hearthguard_2",
+      "troop": "ic_hearthguard",
+      "level": 2,
+      "ability": "ic_hearthguard_l2"
+    },
+    {
+      "id": "ic_hearthguard_3",
+      "troop": "ic_hearthguard",
+      "level": 3,
+      "ability": "ic_hearthguard_l3"
+    },
+    {
+      "id": "ic_arbalist_2",
+      "troop": "ic_arbalist",
+      "level": 2,
+      "ability": "ic_arbalist_l2"
+    },
+    {
+      "id": "ic_arbalist_3",
+      "troop": "ic_arbalist",
+      "level": 3,
+      "ability": "ic_arbalist_l3"
+    },
+    {
+      "id": "ic_breaker_2",
+      "troop": "ic_breaker",
+      "level": 2,
+      "ability": "ic_breaker_l2"
+    },
+    {
+      "id": "ic_breaker_3",
+      "troop": "ic_breaker",
+      "level": 3,
+      "ability": "ic_breaker_l3"
+    },
+    {
+      "id": "ic_ballista_2",
+      "troop": "ic_ballista",
+      "level": 2,
+      "ability": "ic_ballista_l2"
+    },
+    {
+      "id": "ic_ballista_3",
+      "troop": "ic_ballista",
+      "level": 3,
+      "ability": "ic_ballista_l3"
+    },
+    {
+      "id": "ic_mortar_2",
+      "troop": "ic_mortar",
+      "level": 2,
+      "ability": "ic_mortar_l2"
+    },
+    {
+      "id": "ic_mortar_3",
+      "troop": "ic_mortar",
+      "level": 3,
+      "ability": "ic_mortar_l3"
+    },
+    {
+      "id": "ic_colossus_2",
+      "troop": "ic_colossus",
+      "level": 2,
+      "ability": "ic_colossus_l2"
+    },
+    {
+      "id": "ic_colossus_3",
+      "troop": "ic_colossus",
+      "level": 3,
+      "ability": "ic_colossus_l3"
+    },
+    {
+      "id": "tc_raider_2",
+      "troop": "tc_raider",
+      "level": 2,
+      "ability": "tc_raider_l2"
+    },
+    {
+      "id": "tc_raider_3",
+      "troop": "tc_raider",
+      "level": 3,
+      "ability": "tc_raider_l3"
+    },
+    {
+      "id": "tc_harpooner_2",
+      "troop": "tc_harpooner",
+      "level": 2,
+      "ability": "tc_harpooner_l2"
+    },
+    {
+      "id": "tc_harpooner_3",
+      "troop": "tc_harpooner",
+      "level": 3,
+      "ability": "tc_harpooner_l3"
+    },
+    {
+      "id": "tc_tideguard_2",
+      "troop": "tc_tideguard",
+      "level": 2,
+      "ability": "tc_tideguard_l2"
+    },
+    {
+      "id": "tc_tideguard_3",
+      "troop": "tc_tideguard",
+      "level": 3,
+      "ability": "tc_tideguard_l3"
+    },
+    {
+      "id": "tc_mist_2",
+      "troop": "tc_mist",
+      "level": 2,
+      "ability": "tc_mist_l2"
+    },
+    {
+      "id": "tc_mist_3",
+      "troop": "tc_mist",
+      "level": 3,
+      "ability": "tc_mist_l3"
+    },
+    {
+      "id": "tc_brute_2",
+      "troop": "tc_brute",
+      "level": 2,
+      "ability": "tc_brute_l2"
+    },
+    {
+      "id": "tc_brute_3",
+      "troop": "tc_brute",
+      "level": 3,
+      "ability": "tc_brute_l3"
+    },
+    {
+      "id": "tc_admiral_2",
+      "troop": "tc_admiral",
+      "level": 2,
+      "ability": "tc_admiral_l2"
+    },
+    {
+      "id": "tc_admiral_3",
+      "troop": "tc_admiral",
+      "level": 3,
+      "ability": "tc_admiral_l3"
     }
   ],
   "counters": [
@@ -3278,6 +5164,114 @@
       "multiplier": 1.3,
       "replaces": "none",
       "text": "Braced spears punish a charge."
+    },
+    {
+      "id": "C1g",
+      "attackerTag": "arrow",
+      "targetTag": "guard2",
+      "condition": "raised_front",
+      "multiplier": 0.3,
+      "replaces": "C1",
+      "text": "Better guard: a raised shield stops more arrows."
+    },
+    {
+      "id": "C3g",
+      "attackerTag": "melee",
+      "targetTag": "guard2",
+      "condition": "raised_front",
+      "multiplier": 0.5,
+      "replaces": "C3",
+      "text": "Better guard: a raised shield blunts blows harder."
+    },
+    {
+      "id": "C15b",
+      "attackerTag": "bodkin",
+      "targetTag": "shield",
+      "condition": "raised_front",
+      "multiplier": 0.6,
+      "replaces": "C1",
+      "text": "Bodkin points punch through raised shields."
+    },
+    {
+      "id": "C15v",
+      "attackerTag": "armour_bolt2",
+      "targetTag": "shield",
+      "condition": "raised_front",
+      "multiplier": 0.85,
+      "replaces": "C1|C15",
+      "text": "Veteran armour bolts nearly ignore raised shields."
+    },
+    {
+      "id": "C14v",
+      "attackerTag": "sunder2",
+      "targetTag": "shield",
+      "condition": "always",
+      "multiplier": 1.6,
+      "replaces": "C1|C2|C3|C14",
+      "text": "Veteran sunder smashes through shields."
+    },
+    {
+      "id": "C18a2",
+      "attackerTag": "steady2",
+      "targetTag": "any",
+      "condition": "hold",
+      "multiplier": 1.3,
+      "replaces": "C18a",
+      "text": "Veteran steady archers on Hold shoot truer."
+    },
+    {
+      "id": "C18b2",
+      "attackerTag": "ambush2",
+      "targetTag": "any",
+      "condition": "no_sky",
+      "multiplier": 1.35,
+      "replaces": "C18b",
+      "text": "Veteran hunters strike harder from cover."
+    },
+    {
+      "id": "C18c2",
+      "attackerTag": "brace2",
+      "targetTag": "charging",
+      "condition": "hold",
+      "multiplier": 1.5,
+      "replaces": "C18c",
+      "text": "Veteran braced spears punish a charge."
+    },
+    {
+      "id": "C18d",
+      "attackerTag": "bracewall",
+      "targetTag": "charging",
+      "condition": "hold",
+      "multiplier": 1.3,
+      "replaces": "none",
+      "text": "A braced wall punishes a charge."
+    },
+    {
+      "id": "C19",
+      "attackerTag": "shot",
+      "targetTag": "thickhide",
+      "condition": "always",
+      "multiplier": 0.75,
+      "replaces": "none",
+      "text": "Thick hide turns aside shots."
+    },
+    {
+      "id": "C20",
+      "attackerTag": "rundown",
+      "targetTag": "any",
+      "condition": "target_slowed_or_wounded",
+      "multiplier": 1.3,
+      "replaces": "none",
+      "text": "Run them down: slowed or wounded prey takes more."
+    },
+    {
+      "id": "C21",
+      "attackerTag": "any",
+      "targetTag": "unbroken",
+      "condition": "target_wounded",
+      "multiplier": 0.8,
+      "replaces": "none",
+      "text": "Unbroken: a wounded veteran takes less."
     }
   ],
   "rarities": [
@@ -3293,7 +5287,9 @@
       "shardStar2": 0,
       "shardStar3": 0,
       "dismantleShards": 2,
-      "bannerMax": 20
+      "bannerMax": 20,
+      "gearPrice2": 40,
+      "gearPrice3": 80
     },
     {
       "id": "rare",
@@ -3307,7 +5303,9 @@
       "shardStar2": 0,
       "shardStar3": 0,
       "dismantleShards": 4,
-      "bannerMax": 20
+      "bannerMax": 20,
+      "gearPrice2": 60,
+      "gearPrice3": 120
     },
     {
       "id": "epic",
@@ -3321,7 +5319,9 @@
       "shardStar2": 30,
       "shardStar3": 60,
       "dismantleShards": 8,
-      "bannerMax": 2
+      "bannerMax": 2,
+      "gearPrice2": 80,
+      "gearPrice3": 160
     },
     {
       "id": "legendary",
@@ -3335,449 +5335,304 @@
       "shardStar2": 40,
       "shardStar3": 80,
       "dismantleShards": 0,
-      "bannerMax": 1
+      "bannerMax": 1,
+      "gearPrice2": 100,
+      "gearPrice3": 200
     }
   ],
-  "evolutions": [
+  "progression": [
+    {
+      "id": "main",
+      "enabled": true,
+      "assistSeconds": 10,
+      "commanderBounty": 3,
+      "chevronRange": 24.0,
+      "feedLevel": 3
+    }
+  ],
+  "levels": [
+    {
+      "id": "l1",
+      "level": 1,
+      "kills": 0,
+      "healthPct": 0.0,
+      "damagePct": 0.0
+    },
+    {
+      "id": "l2",
+      "level": 2,
+      "kills": 3,
+      "healthPct": 0.05,
+      "damagePct": 0.05
+    },
+    {
+      "id": "l3",
+      "level": 3,
+      "kills": 8,
+      "healthPct": 0.1,
+      "damagePct": 0.1
+    }
+  ],
+  "gearTiers": [
+    {
+      "id": "t1",
+      "tier": 1,
+      "weaponPct": 0.0,
+      "armourPct": 0.0
+    },
+    {
+      "id": "t2",
+      "tier": 2,
+      "weaponPct": 0.1,
+      "armourPct": 0.1
+    },
+    {
+      "id": "t3",
+      "tier": 3,
+      "weaponPct": 0.2,
+      "armourPct": 0.2
+    }
+  ],
+  "levelNames": [
     {
       "id": "knight_2",
       "troop": "knight",
-      "stage": 2,
-      "name": "Knight",
-      "healthPct": 0.03,
-      "damagePct": 0.03,
-      "shards": 10,
-      "gold": 100,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Knight"
     },
     {
       "id": "knight_3",
       "troop": "knight",
-      "stage": 3,
-      "name": "Knight-Captain",
-      "healthPct": 0.06,
-      "damagePct": 0.06,
-      "shards": 25,
-      "gold": 250,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Knight-Captain"
     },
     {
       "id": "archer_2",
       "troop": "archer",
-      "stage": 2,
-      "name": "Order Bowman",
-      "healthPct": 0.02,
-      "damagePct": 0.04,
-      "shards": 10,
-      "gold": 100,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Order Bowman"
     },
     {
       "id": "archer_3",
       "troop": "archer",
-      "stage": 3,
-      "name": "Sergeant-Archer",
-      "healthPct": 0.03,
-      "damagePct": 0.06,
-      "shards": 25,
-      "gold": 250,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Sergeant-Archer"
     },
     {
       "id": "revenant_2",
       "troop": "revenant",
-      "stage": 2,
-      "name": "Revenant",
-      "healthPct": 0.03,
-      "damagePct": 0.03,
-      "shards": 10,
-      "gold": 100,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Revenant"
     },
     {
       "id": "revenant_3",
       "troop": "revenant",
-      "stage": 3,
-      "name": "Grave Knight",
-      "healthPct": 0.06,
-      "damagePct": 0.06,
-      "shards": 25,
-      "gold": 250,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Grave Knight"
     },
     {
       "id": "bonebow_2",
       "troop": "bonebow",
-      "stage": 2,
-      "name": "Barrow Archer",
-      "healthPct": 0.02,
-      "damagePct": 0.04,
-      "shards": 10,
-      "gold": 100,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Barrow Archer"
     },
     {
       "id": "bonebow_3",
       "troop": "bonebow",
-      "stage": 3,
-      "name": "Deadeye",
-      "healthPct": 0.03,
-      "damagePct": 0.06,
-      "shards": 25,
-      "gold": 250,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Deadeye"
     },
     {
       "id": "wm_hound_2",
       "troop": "wm_hound",
-      "stage": 2,
-      "name": "Dire Hound",
-      "healthPct": 0.03,
-      "damagePct": 0.03,
-      "shards": 10,
-      "gold": 100,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Dire Hound"
     },
     {
       "id": "wm_hound_3",
       "troop": "wm_hound",
-      "stage": 3,
-      "name": "Packleader",
-      "healthPct": 0.06,
-      "damagePct": 0.06,
-      "shards": 25,
-      "gold": 250,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Packleader"
     },
     {
       "id": "wm_hunter_2",
       "troop": "wm_hunter",
-      "stage": 2,
-      "name": "Thornstalker",
-      "healthPct": 0.02,
-      "damagePct": 0.04,
-      "shards": 10,
-      "gold": 100,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Thornstalker"
     },
     {
       "id": "wm_hunter_3",
       "troop": "wm_hunter",
-      "stage": 3,
-      "name": "Elder Hunter",
-      "healthPct": 0.03,
-      "damagePct": 0.06,
-      "shards": 25,
-      "gold": 250,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Elder Hunter"
     },
     {
       "id": "ic_hearthguard_2",
       "troop": "ic_hearthguard",
-      "stage": 2,
-      "name": "Ironwall",
-      "healthPct": 0.04,
-      "damagePct": 0.02,
-      "shards": 10,
-      "gold": 100,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Ironwall"
     },
     {
       "id": "ic_hearthguard_3",
       "troop": "ic_hearthguard",
-      "stage": 3,
-      "name": "Hearth-Thane",
-      "healthPct": 0.06,
-      "damagePct": 0.03,
-      "shards": 25,
-      "gold": 250,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Hearth-Thane"
     },
     {
       "id": "ic_arbalist_2",
       "troop": "ic_arbalist",
-      "stage": 2,
-      "name": "Steel Arbalist",
-      "healthPct": 0.02,
-      "damagePct": 0.04,
-      "shards": 10,
-      "gold": 100,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Steel Arbalist"
     },
     {
       "id": "ic_arbalist_3",
       "troop": "ic_arbalist",
-      "stage": 3,
-      "name": "Bolt-Master",
-      "healthPct": 0.03,
-      "damagePct": 0.06,
-      "shards": 25,
-      "gold": 250,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Bolt-Master"
     },
     {
       "id": "tc_raider_2",
       "troop": "tc_raider",
-      "stage": 2,
-      "name": "Reef Raider",
-      "healthPct": 0.03,
-      "damagePct": 0.03,
-      "shards": 10,
-      "gold": 100,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Reef Raider"
     },
     {
       "id": "tc_raider_3",
       "troop": "tc_raider",
-      "stage": 3,
-      "name": "Tide Reaver",
-      "healthPct": 0.06,
-      "damagePct": 0.06,
-      "shards": 25,
-      "gold": 250,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Tide Reaver"
     },
     {
       "id": "tc_harpooner_2",
       "troop": "tc_harpooner",
-      "stage": 2,
-      "name": "Whaler",
-      "healthPct": 0.02,
-      "damagePct": 0.04,
-      "shards": 10,
-      "gold": 100,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Whaler"
     },
     {
       "id": "tc_harpooner_3",
       "troop": "tc_harpooner",
-      "stage": 3,
-      "name": "Deep Harpooner",
-      "healthPct": 0.03,
-      "damagePct": 0.06,
-      "shards": 25,
-      "gold": 250,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Deep Harpooner"
     },
     {
       "id": "sentinel_2",
       "troop": "sentinel",
-      "stage": 2,
-      "name": "Templar Knight",
-      "healthPct": 0.04,
-      "damagePct": 0.02,
-      "shards": 15,
-      "gold": 150,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Templar Knight"
     },
     {
       "id": "sentinel_3",
       "troop": "sentinel",
-      "stage": 3,
-      "name": "Templar Commander",
-      "healthPct": 0.06,
-      "damagePct": 0.03,
-      "shards": 35,
-      "gold": 350,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Templar Commander"
     },
     {
       "id": "longbow_2",
       "troop": "longbow",
-      "stage": 2,
-      "name": "Yeoman Longbow",
-      "healthPct": 0.02,
-      "damagePct": 0.04,
-      "shards": 15,
-      "gold": 150,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Yeoman Longbow"
     },
     {
       "id": "longbow_3",
       "troop": "longbow",
-      "stage": 3,
-      "name": "Master Longbow",
-      "healthPct": 0.03,
-      "damagePct": 0.06,
-      "shards": 35,
-      "gold": 350,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Master Longbow"
     },
     {
       "id": "reaper_2",
       "troop": "reaper",
-      "stage": 2,
-      "name": "Harvester",
-      "healthPct": 0.03,
-      "damagePct": 0.03,
-      "shards": 15,
-      "gold": 150,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Harvester"
     },
     {
       "id": "reaper_3",
       "troop": "reaper",
-      "stage": 3,
-      "name": "Lord of Scythes",
-      "healthPct": 0.06,
-      "damagePct": 0.06,
-      "shards": 35,
-      "gold": 350,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Lord of Scythes"
     },
     {
       "id": "stalker_2",
       "troop": "stalker",
-      "stage": 2,
-      "name": "Frost Stalker",
-      "healthPct": 0.02,
-      "damagePct": 0.04,
-      "shards": 15,
-      "gold": 150,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Frost Stalker"
     },
     {
       "id": "stalker_3",
       "troop": "stalker",
-      "stage": 3,
-      "name": "Wight Stalker",
-      "healthPct": 0.03,
-      "damagePct": 0.06,
-      "shards": 35,
-      "gold": 350,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Wight Stalker"
     },
     {
       "id": "wm_stalker_2",
       "troop": "wm_stalker",
-      "stage": 2,
-      "name": "Broodstalker",
-      "healthPct": 0.03,
-      "damagePct": 0.03,
-      "shards": 15,
-      "gold": 150,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Broodstalker"
     },
     {
       "id": "wm_stalker_3",
       "troop": "wm_stalker",
-      "stage": 3,
-      "name": "Widowmaker",
-      "healthPct": 0.06,
-      "damagePct": 0.06,
-      "shards": 35,
-      "gold": 350,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Widowmaker"
     },
     {
       "id": "wm_tusk_2",
       "troop": "wm_tusk",
-      "stage": 2,
-      "name": "Tuskguard",
-      "healthPct": 0.04,
-      "damagePct": 0.02,
-      "shards": 15,
-      "gold": 150,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Tuskguard"
     },
     {
       "id": "wm_tusk_3",
       "troop": "wm_tusk",
-      "stage": 3,
-      "name": "Boar-Lord",
-      "healthPct": 0.06,
-      "damagePct": 0.03,
-      "shards": 35,
-      "gold": 350,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Boar-Lord"
     },
     {
       "id": "ic_breaker_2",
       "troop": "ic_breaker",
-      "stage": 2,
-      "name": "Gatebreaker",
-      "healthPct": 0.03,
-      "damagePct": 0.03,
-      "shards": 15,
-      "gold": 150,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Gatebreaker"
     },
     {
       "id": "ic_breaker_3",
       "troop": "ic_breaker",
-      "stage": 3,
-      "name": "Anvilfist",
-      "healthPct": 0.06,
-      "damagePct": 0.06,
-      "shards": 35,
-      "gold": 350,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Anvilfist"
     },
     {
       "id": "ic_ballista_2",
       "troop": "ic_ballista",
-      "stage": 2,
-      "name": "Siege Crew",
-      "healthPct": 0.02,
-      "damagePct": 0.04,
-      "shards": 15,
-      "gold": 150,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Siege Crew"
     },
     {
       "id": "ic_ballista_3",
       "troop": "ic_ballista",
-      "stage": 3,
-      "name": "Master Engineer",
-      "healthPct": 0.03,
-      "damagePct": 0.06,
-      "shards": 35,
-      "gold": 350,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Master Engineer"
     },
     {
       "id": "tc_tideguard_2",
       "troop": "tc_tideguard",
-      "stage": 2,
-      "name": "Reef Warden",
-      "healthPct": 0.04,
-      "damagePct": 0.02,
-      "shards": 15,
-      "gold": 150,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Reef Warden"
     },
     {
       "id": "tc_tideguard_3",
       "troop": "tc_tideguard",
-      "stage": 3,
-      "name": "Tide-Sworn",
-      "healthPct": 0.06,
-      "damagePct": 0.03,
-      "shards": 35,
-      "gold": 350,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Tide-Sworn"
     },
     {
       "id": "tc_mist_2",
       "troop": "tc_mist",
-      "stage": 2,
-      "name": "Fogweaver",
-      "healthPct": 0.03,
-      "damagePct": 0.03,
-      "shards": 15,
-      "gold": 150,
-      "requiresMastery": 0
+      "level": 2,
+      "name": "Fogweaver"
     },
     {
       "id": "tc_mist_3",
       "troop": "tc_mist",
-      "stage": 3,
-      "name": "Stormcaller",
-      "healthPct": 0.06,
-      "damagePct": 0.06,
-      "shards": 35,
-      "gold": 350,
-      "requiresMastery": 1
+      "level": 3,
+      "name": "Stormcaller"
     }
   ],
   "recruitment": [
@@ -3997,212 +5852,152 @@
     {
       "id": "knight",
       "beats": "archers and arbalists (shield)",
-      "beatenBy": "Shieldbreaker, Reaper cleave, blight",
-      "level2": "Better guard: his raised shield takes arrows x0.30 and blows x0.5",
-      "level3": "Shield bash: every 5 s a hit knocks the target back and stuns it for 1 s"
+      "beatenBy": "Shieldbreaker, Reaper cleave, blight"
     },
     {
       "id": "archer",
       "beats": "slow infantry, Graveborn Risen",
-      "beatenBy": "Hounds, Web Stalkers, any charge",
-      "level2": "Steady: +30% damage while the group holds",
-      "level3": "Bodkin points: a raised shield stops only 40% of his arrows"
+      "beatenBy": "Hounds, Web Stalkers, any charge"
     },
     {
       "id": "sentinel",
       "beats": "ranged of every kind, Hounds at a wall",
-      "beatenBy": "Shieldbreaker, Mortar, Mist Caller",
-      "level2": "Better guard: his raised shield takes arrows x0.30 and blows x0.5",
-      "level3": "Unbroken: at 30% health or less he takes 20% less damage"
+      "beatenBy": "Shieldbreaker, Mortar, Mist Caller"
     },
     {
       "id": "longbow",
       "beats": "packed lines (pierce), Ballista crews at range",
-      "beatenBy": "Web Stalkers, Hounds, Mist",
-      "level2": "Pierce: an enemy up to 3 blocks behind takes 70%",
-      "level3": "Pinning shot: hits apply Slowness I for 1.5 s"
+      "beatenBy": "Web Stalkers, Hounds, Mist"
     },
     {
       "id": "mage",
       "beats": "attrition fights, Rise Again stalls",
-      "beatenBy": "Pounce, Harpooner pull, Mortar",
-      "level2": "Mend: heals 7",
-      "level3": "Dawnlight: each mend also cleanses slow, weaken and bleed"
+      "beatenBy": "Pounce, Harpooner pull, Mortar"
     },
     {
       "id": "gl_marshal",
       "beats": "slows, pulls and knockback: Tidecallers and Ironclad slams",
-      "beatenBy": "Slam (Colossus, Old Horn), focused blight",
-      "level2": "Oath Banner: 20 s, own troops deal +15% damage",
-      "level3": "Marshal's sweep: his blows also strike one enemy within 2 for 50%"
+      "beatenBy": "Slam (Colossus, Old Horn), focused blight"
     },
     {
       "id": "revenant",
       "beats": "other Commons by numbers and price, long grinding fights",
-      "beatenBy": "Cleave, Slam, Mortar, Order Archers kiting",
-      "level2": "Fearless: +30% damage at 40% health or less",
-      "level3": "Rotten blade: hits bleed for 4 s"
+      "beatenBy": "Cleave, Slam, Mortar, Order Archers kiting"
     },
     {
       "id": "bonebow",
       "beats": "Sunweaver (focus fire), slow siege crews",
-      "beatenBy": "Hounds, Gilded shields",
-      "level2": "Fearless: +30% damage at 40% health or less",
-      "level3": "Marrow arrows: hits weaken for 2 s"
+      "beatenBy": "Hounds, Gilded shields"
     },
     {
       "id": "reaper",
       "beats": "Commons in crowds, Risen-vs-Risen mirrors",
-      "beatenBy": "Templar (shield), Trident Guard brace",
-      "level2": "Cleave: the second enemy takes 77%",
-      "level3": "Reap: a killing blow heals him a quarter of his health"
+      "beatenBy": "Templar (shield), Trident Guard brace"
     },
     {
       "id": "stalker",
       "beats": "Hounds and Web Stalkers (the slow kills pounce), cavalry-like",
-      "beatenBy": "Templar, Mist Caller",
-      "level2": "Frostshot: Slowness I for 3 s",
-      "level3": "Ice lance: shots pierce one enemy within 2 behind for 40%"
+      "beatenBy": "Templar, Mist Caller"
     },
     {
       "id": "hexer",
       "beats": "shieldwalls, clumped Commons",
-      "beatenBy": "Hounds, Harpooners, pierce",
-      "level2": "Blight: radius 3, Slowness I for 3 s",
-      "level3": "Death knell: enemies her blight kills rise as her Risen for 15 s, 2 at most"
+      "beatenBy": "Hounds, Harpooners, pierce"
     },
     {
       "id": "gb_hollowking",
       "beats": "damage-heavy packs, above all Wildmoot's",
-      "beatenBy": "Lord Marshal banner, Sunder, Colossus",
-      "level2": "Dread: radius 12, enemies inside deal 20% less",
-      "level3": "Undying King: he rises once at half health"
+      "beatenBy": "Lord Marshal banner, Sunder, Colossus"
     },
     {
       "id": "wm_hound",
       "beats": "archers, casters, wounded troops",
-      "beatenBy": "spears (Tusk, Trident Guard), Frost Stalker, Templar wall",
-      "level2": "Pounce: x2.0, every 4 s",
-      "level3": "Run them down: +30% against a slowed or wounded target"
+      "beatenBy": "spears (Tusk, Trident Guard), Frost Stalker, Templar wall"
     },
     {
       "id": "wm_hunter",
       "beats": "anything walking through woods",
-      "beatenBy": "open-field archers, Hounds, Mortar",
-      "level2": "Ambush: +35% damage under cover",
-      "level3": "Hunter's mark: marked targets take +10% from his army for 3 s"
+      "beatenBy": "open-field archers, Hounds, Mortar"
     },
     {
       "id": "wm_stalker",
       "beats": "ranged backlines, wall defenders (climbs)",
-      "beatenBy": "spears, Frost Stalker, Sunweaver sustain",
-      "level2": "Ensnare: Slowness II for 2.5 s",
-      "level3": "Venom bite: hits bleed for 4 s"
+      "beatenBy": "spears, Frost Stalker, Sunweaver sustain"
     },
     {
       "id": "wm_tusk",
       "beats": "cavalry-like (spear tag), charges",
-      "beatenBy": "archers, Mortar, Cleave",
-      "level2": "Brace: x1.5 against a charge",
-      "level3": "Long spear: thrusts also hit one enemy within 2 behind for 40%"
+      "beatenBy": "archers, Mortar, Cleave"
     },
     {
       "id": "wm_seer",
       "beats": "long melee brawls",
-      "beatenBy": "pierce, Barrow Stalker, Harpooners",
-      "level2": "Howl: +20% damage and speed, every 12 s",
-      "level3": "Rousing howl: the howl also cleanses slow, weaken and bleed"
+      "beatenBy": "pierce, Barrow Stalker, Harpooners"
     },
     {
       "id": "wm_oldhorn",
       "beats": "archer lines, Commons in Line formation",
-      "beatenBy": "braced spears, Shieldbreaker, Mortar",
-      "level2": "Trample: 8 damage, every 8 s",
-      "level3": "Thick hide: shots against him deal x0.75"
+      "beatenBy": "braced spears, Shieldbreaker, Mortar"
     },
     {
       "id": "ic_hearthguard",
       "beats": "archers, Hounds at a wall",
-      "beatenBy": "Shieldbreaker, Mortar, Mist",
-      "level2": "Better guard: his raised shield takes arrows x0.30 and blows x0.5",
-      "level3": "Brace the wall: x1.3 against a charge while on Hold"
+      "beatenBy": "Shieldbreaker, Mortar, Mist"
     },
     {
       "id": "ic_arbalist",
       "beats": "Gilded shields (partly), slow infantry",
-      "beatenBy": "Hounds, Web Stalkers (60-tick reload)",
-      "level2": "Armour bolt: x0.85 against a raised shield",
-      "level3": "Heavy bolt: hits knock the target back"
+      "beatenBy": "Hounds, Web Stalkers (60-tick reload)"
     },
     {
       "id": "ic_breaker",
       "beats": "every shield troop, the Colossus",
-      "beatenBy": "archers, Hounds, Reaper cleave",
-      "level2": "Sunder: x1.6 against shield troops",
-      "level3": "Shatter: hits weaken for 3 s"
+      "beatenBy": "archers, Hounds, Reaper cleave"
     },
     {
       "id": "ic_ballista",
       "beats": "lines, Legendaries (large), structures (Phase 4)",
-      "beatenBy": "Hounds, Web Stalkers (climb past cover), Old Horn",
-      "level2": "Pierce: the second target takes 80%",
-      "level3": "Pinning bolt: hits apply Slowness II for 1.5 s"
+      "beatenBy": "Hounds, Web Stalkers (climb past cover), Old Horn"
     },
     {
       "id": "ic_mortar",
       "beats": "shieldwalls, entrenched lines, clumps",
-      "beatenBy": "anything that gets closer than 10",
-      "level2": "Shell: radius 4",
-      "level3": "Firepot: a shell leaves burning ground for 3 s; enemies in it bleed"
+      "beatenBy": "anything that gets closer than 10"
     },
     {
       "id": "ic_colossus",
       "beats": "Commons, packed melee",
-      "beatenBy": "Shieldbreaker, Mortar focus fire, kiting archers",
-      "level2": "Forge slam: the splash deals 75%",
-      "level3": "Furnace heart: own troops within 6 take 10% less damage"
+      "beatenBy": "Shieldbreaker, Mortar focus fire, kiting archers"
     },
     {
       "id": "tc_raider",
       "beats": "Hounds and runners (slow), retreating troops",
-      "beatenBy": "Templar, Cleave, Mortar",
-      "level2": "Brine: Slowness I for 2 s",
-      "level3": "Boarding rush: the first hit after closing 6 blocks deals x1.5"
+      "beatenBy": "Templar, Cleave, Mortar"
     },
     {
       "id": "tc_harpooner",
       "beats": "casters and Ballista crews (pulls them out of cover)",
-      "beatenBy": "longer-range archers, Gilded shields",
-      "level2": "Harpoon: pulls 2 blocks, every 2.5 s",
-      "level3": "Barbed hook: hits bleed for 4 s"
+      "beatenBy": "longer-range archers, Gilded shields"
     },
     {
       "id": "tc_tideguard",
       "beats": "cavalry-like, Old Horn, Brute mirror",
-      "beatenBy": "archers, Mortar, Shieldbreaker",
-      "level2": "Brace: x1.5 against a charge",
-      "level3": "Trident sweep: hits also strike one enemy within 2 for 40%"
+      "beatenBy": "archers, Mortar, Shieldbreaker"
     },
     {
       "id": "tc_mist",
       "beats": "archer and ballista lines",
-      "beatenBy": "Hounds, Web Stalkers, Reaper",
-      "level2": "Mist: radius 5, lasts 7 s",
-      "level3": "Chill fog: enemies in her cloud are also weakened"
+      "beatenBy": "Hounds, Web Stalkers, Reaper"
     },
     {
       "id": "tc_brute",
       "beats": "Commons, archer lines",
-      "beatenBy": "braced spears, Shieldbreaker focus fire",
-      "level2": "Tentacle sweep: the sweep deals 85%",
-      "level3": "Barnacle hide: shots against it deal x0.75"
+      "beatenBy": "braced spears, Shieldbreaker focus fire"
     },
     {
       "id": "tc_admiral",
       "beats": "kiting archers, backline casters (pull)",
-      "beatenBy": "Lord Marshal banner, Sunder focus fire",
-      "level2": "Undertow: every 8 s, radius 8",
-      "level3": "Admiral's call: own troops within 10 deal +10% damage"
+      "beatenBy": "Lord Marshal banner, Sunder focus fire"
     }
   ],
   "economyModel": [

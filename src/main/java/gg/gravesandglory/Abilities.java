@@ -154,7 +154,7 @@ final class Abilities {
     /**
      * What a landed hit sets off on its attacker's ability: pierce hits the nearest other enemy within the row's radius behind the target for the
      * row's amount (secondary); cleave hits the nearest other enemy within the row's radius of the target, any side of it, for the row's amount
-     * (secondary); an onhit_slow row slows the target (slow); the pounce starts its cooldown and ends its run (pounce); a slam on charge_contact
+     * (secondary); an onhit_status row with status slow slows the target (slow; the other statuses come with Statuses in Task 6); the pounce starts its cooldown and ends its run (pounce); a slam on charge_contact
      * tramples (trample). dealt is the amount applied. Combat.resolve skips it for a secondary hit.
      */
     static void onHit(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity target, float dealt, String kind) {
@@ -162,8 +162,8 @@ final class Abilities {
         switch (row.mechanic()) {
             case "pierce" -> secondary(b, u, target, row.radius(), row.amount(), true, kind);
             case "cleave" -> secondary(b, u, target, row.radius(), row.amount(), false, kind);
-            case "onhit_slow" -> {
-                if (target.isAlive() && !Combat.structure(target) && offCooldown(b, u, row)) {
+            case "onhit_status" -> {
+                if (row.status().equals("slow") && target.isAlive() && !Combat.structure(target) && offCooldown(b, u, row)) {
                     slow(b, target, row);
                     if (row.knockback() < 0) pull(b, target, u.mob.getPos(), -row.knockback()); // the Harpooner's: a negative knockback drags the target toward the shooter
                 }

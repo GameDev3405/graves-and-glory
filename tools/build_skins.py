@@ -185,7 +185,7 @@ def read_png(path, what):
 
 
 class Catalog:
-    """Every source under art/ plus the sheet rows the build reads (troops, factions, evolutions)."""
+    """Every source under art/ plus the sheet rows the build reads (troops, factions, levelNames)."""
 
     def __init__(self, root):
         self.root = root
@@ -214,8 +214,8 @@ def load(root: Path) -> Catalog:
         if reserved in cat.factions:
             fail('factions row %s: linen and company name the cloths with no side' % reserved)
     lines = {}
-    for e in design.get('evolutions', []):
-        lines.setdefault(e['troop'], set()).add(int(e['stage']))
+    for e in design.get('levelNames', []):  # a level name per line and level; the level is the armour tier (in-match progression design 4.4)
+        lines.setdefault(e['troop'], set()).add(int(e['level']))
     for tid, row in cat.sheet.items():
         cat.stages[tid] = sorted({1} | lines.get(row.get('evolveLine'), set()))
     art = root / 'art'

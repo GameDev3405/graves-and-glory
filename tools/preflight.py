@@ -100,14 +100,14 @@ for r in data['ui']:
         formationIds={f['id'] for f in data['formations']}
         for id in r['bottom'].split(','):
             if id not in formationIds: errors.append('UI formation reference missing: '+id)
-# Phase 2 Houses (spec 6.1): a troop's House, rarity, ability and evolve line are its own columns.
+# Phase 2 Houses (spec 6.1): a troop's House, rarity, ability and evolve line (the levelNames key since the in-match progression design) are its own columns.
 squad=data['rules'][0]['squadSize']
 houses={h['id']:h for h in data['houses']}
 rarities={r['id']:r for r in data['rarities']}
 RARITY_ORDER=['common','rare','epic','legendary']
 if [r['id'] for r in data['rarities']]!=RARITY_ORDER: errors.append('rarities: the rows must be common, rare, epic, legendary, in that order (validBanner checks bannerMax from the last row up, rarest first)')
 abilityIds={a['id'] for a in data['abilities']}
-evolveTroops={e['troop'] for e in data['evolutions']}
+evolveTroops={e['troop'] for e in data['levelNames']}
 HOUSE_SHAPE={'common':2,'rare':2,'epic':1,'legendary':1}
 houseOf,rarityOf={},{}
 for t in data['troops']:
@@ -116,7 +116,7 @@ for t in data['troops']:
     houseOf[t['id']]=t['house'];rarityOf[t['id']]=t['rarity']
     if t['ability'] not in abilityIds: errors.append(f'{name}: ability {t["ability"]} does not resolve')
     if t['rarity'] in ('common','rare'):
-        if t['evolveLine'] not in evolveTroops: errors.append(f'{name}: a Common or Rare needs an evolveLine that names an evolutions troop, not {t["evolveLine"]}')
+        if t['evolveLine'] not in evolveTroops: errors.append(f'{name}: a Common or Rare needs an evolveLine that names a levelNames troop, not {t["evolveLine"]}')
     elif t['evolveLine']!='none': errors.append(f'{name}: an Epic or Legendary has evolveLine none')
     if t['slotWeight']!=rarities[t['rarity']]['slotWeight']: errors.append(f'{name}: slotWeight {t["slotWeight"]} differs from rarities/{t["rarity"]} slotWeight {rarities[t["rarity"]]["slotWeight"]}')
     if t['ranged']!=(t['range']>3): errors.append(f'{name}: ranged must be true exactly when range is above 3')
@@ -125,21 +125,21 @@ for t in data['troops']:
     tags=t['tags'].split(',')
     if 'none' in tags and len(tags)>1: errors.append(f'{name}: tags is none or a comma list of tags, never both')
 # A troop is drawn from its custom name (TroopModels.resolve through ArmyMobs.named, where a later troop row wins and a troop
-# name beats a stage name), and " (Veteran)" on it marks the Veteran skin: so no name may stand for two troops, two stages of
-# one line, or a stage and its own troop, and none may end in " (Veteran)".
+# name beats a level name), and " (Veteran)" on it marks the Veteran skin: so no name may stand for two troops, two levels of
+# one line, or a level and its own troop, and none may end in " (Veteran)".
 VETERAN=' (Veteran)'
 nameOwners={}
 for t in data['troops']: nameOwners.setdefault(t['name'],{}).setdefault(t['id'],[]).append(f'troops/{t["id"]}')
-for e in data['evolutions']:
+for e in data['levelNames']:
     for t in data['troops']:
-        if t['evolveLine']==e['troop']: nameOwners.setdefault(e['name'],{}).setdefault(t['id'],[]).append(f'evolutions/{e["id"]}')
+        if t['evolveLine']==e['troop']: nameOwners.setdefault(e['name'],{}).setdefault(t['id'],[]).append(f'levelNames/{e["id"]}')
 for nm,owners in nameOwners.items():
     where=', '.join(w for ws in owners.values() for w in ws)
     if nm.endswith(VETERAN): errors.append(f'{where}: the name "{nm}" ends in "{VETERAN.strip()}", which marks a Veteran skin')
     if len(owners)>1: errors.append(f'{where}: the name "{nm}" stands for {len(owners)} troops ({", ".join(owners)}); a troop is drawn from its name, so one would draw as the other')
     else:
         for troop,ws in owners.items():
-            if len(ws)>1: errors.append(f'{where}: the name "{nm}" is two stages of {troop}; its stage could not be told from it')
+            if len(ws)>1: errors.append(f'{where}: the name "{nm}" is two levels of {troop}; its level could not be told from it')
 for h in houses.values():
     if h['glyph']!=f'gravesandglory:textures/gui/house/{h["id"]}.png': errors.append(f'houses/{h["id"]}: glyph must be gravesandglory:textures/gui/house/{h["id"]}.png')
     elif not (root/'src/main/resources/assets/gravesandglory'/h['glyph'].partition(':')[2]).is_file(): errors.append(f'houses/{h["id"]}: missing glyph texture {h["glyph"]}')
@@ -178,7 +178,7 @@ for t in data['houseTraits']:
     if t['house'] not in houses: errors.append(f'houseTraits/{t["id"]}: house does not resolve')
     if t['id']!=f'{t["house"]}_{t["tier"]}': errors.append(f'houseTraits/{t["id"]}: id must be <house>_<tier>')
     if t['mechanic'] not in TRAIT_MECHANICS: errors.append(f'houseTraits/{t["id"]}: mechanic {t["mechanic"]} is not one of {", ".join(TRAIT_MECHANICS)} (CounterMath.is reads bulwark, pack_hunters, entrench and riptide; rise_again is the Graveborn death rule)')
-MECHANICS={'none','shield','mend','blight','stance','pierce','cleave','onhit_slow','pounce','aura','slam','fearless','mist'}
+MECHANICS={'none','shield','mend','blight','stance','pierce','cleave','onhit_status','pounce','aura','slam','fearless','mist','onkill_heal','raise','rise','mark'}
 TRIGGERS={'passive','onhit','cast','hold','timer','charge_contact'}
 for a in data['abilities']:
     if a['mechanic'] not in MECHANICS: errors.append(f'abilities/{a["id"]}: mechanic {a["mechanic"]} is not in the closed list')
@@ -189,10 +189,11 @@ for a in data['abilities']:
     if not isinstance(a['anchors'],bool): errors.append(f'abilities/{a["id"]}: anchors must be true or false')
     elif a['anchors'] and (a['mechanic']!='aura' or a['target']!='allies'): errors.append(f'abilities/{a["id"]}: only an aura on allies can anchor (Abilities.anchored reads the Oath Banner)')
     if a['mechanic']=='fearless' and not 0<a['amount2']<1: errors.append(f'abilities/{a["id"]}: a fearless row health share (amount2) must be between 0 and 1')
-CONDITIONS={'always','raised_front','lowered_front','front','charge_impact','charge','hold','flank','no_sky','in_mist'}
-# A counter tag is a dynamic tag, an ability id or a tag some troop carries in its tags column.
+CONDITIONS={'always','raised_front','lowered_front','front','charge_impact','charge','hold','flank','no_sky','in_mist','target_slowed_or_wounded','target_wounded'}
+# A counter tag is a dynamic tag, an ability id, a tag some troop carries in its tags column or a tag an abilities row grants (abilities.tags, | joined).
 troopTags={tag for t in data['troops'] for tag in t['tags'].split(',')}-{'none'}
-TAGS={'melee','arrow','shot','magic','nonsiege','ranged','charging','holding','structure','any'}|troopTags|abilityIds
+grantedTags={tag for a in data['abilities'] for tag in a['tags'].split('|')}-{'none'}
+TAGS={'melee','arrow','shot','magic','nonsiege','ranged','charging','holding','structure','any'}|troopTags|abilityIds|grantedTags
 counterIds={c['id'] for c in data['counters']}
 for c in data['counters']:
     if c['condition'] not in CONDITIONS: errors.append(f'counters/{c["id"]}: condition {c["condition"]} is not in the closed list')
@@ -214,17 +215,63 @@ cap=data['recruitment'][0]['capPct']
 for r in rarities.values():
     if not 0<=r['starPct2']<=r['starPct3']<=cap+1e-9: errors.append(f'rarities/{r["id"]}: star bonuses must rise and stay within recruitment.capPct')
     if r['slotWeight']<1 or r['bannerMax']<1: errors.append(f'rarities/{r["id"]}: slotWeight and bannerMax must be at least 1')
-stages={}
-for e in data['evolutions']:
-    if e['id']!=f'{e["troop"]}_{e["stage"]}' or e['stage'] not in (2,3): errors.append(f'evolutions/{e["id"]}: id must be <troop>_<stage> for stage 2 or 3'); continue
-    if rarityOf.get(e['troop']) not in ('common','rare'): errors.append(f'evolutions/{e["id"]}: only a House Common or Rare evolves'); continue
-    stages.setdefault(e['troop'],{})[e['stage']]=e
-    # The hard cap covers stars alone now (in-match progression design, sections 8 and 10): starPct3 <= capPct, so a stage bonus is not added to it.
-    if rarities.get(rarityOf[e['troop']],{}).get('starPct3',0)>cap+1e-9: errors.append(f'evolutions/{e["id"]}: the rarity starPct3 passes recruitment.capPct {cap}')
+# In-match progression (design sections 3, 4, 8 and 9): levels from kills, gear bought in battle, the level names and the per-level ability rows.
+# Nothing here is a stage or an evolution: the between-match evolutions are gone, and no player text may say so (checked below).
+levelNameRows={}
+for e in data['levelNames']:
+    if e['id']!=f'{e["troop"]}_{e["level"]}' or e['level'] not in (2,3): errors.append(f'levelNames/{e["id"]}: id must be <troop>_<level> for level 2 or 3'); continue
+    if rarityOf.get(e['troop']) not in ('common','rare'): errors.append(f'levelNames/{e["id"]}: only a House Common or Rare has level names (an Epic or Legendary keeps its own name)'); continue
+    levelNameRows.setdefault(e['troop'],{})[e['level']]=e
 for t,r in rarityOf.items():
-    if r in ('common','rare') and sorted(stages.get(t,{}))!=[2,3]: errors.append(f'evolutions: {t} needs one stage 2 and one stage 3 row')
-for t,s in stages.items():
-    if len(s)==2 and (s[3]['healthPct']<s[2]['healthPct'] or s[3]['damagePct']<s[2]['damagePct']): errors.append(f'evolutions: {t} percentages are cumulative, so stage 3 cannot be below stage 2')
+    if r in ('common','rare') and sorted(levelNameRows.get(t,{}))!=[2,3]: errors.append(f'levelNames: {t} needs one level 2 and one level 3 row')
+if len(data['progression'])!=1: errors.append('progression: exactly one row')
+else:
+    pg=data['progression'][0]
+    if not isinstance(pg['enabled'],bool): errors.append('progression: enabled must be true or false')
+    if pg['assistSeconds']<1 or pg['commanderBounty']<1 or pg['chevronRange']<=0: errors.append('progression: assistSeconds, commanderBounty and chevronRange must be above 0')
+    if pg['feedLevel'] not in (2,3): errors.append('progression: feedLevel must be 2 or 3')
+levels=data['levels']
+if [l['level'] for l in levels]!=[1,2,3]: errors.append('levels: the rows must be levels 1, 2 and 3, in order')
+elif levels[0]['kills']!=0: errors.append('levels: level 1 needs 0 kills (a soldier is trained at level 1)')
+for a,b in zip(levels,levels[1:]):
+    if a['kills']>=b['kills']: errors.append(f'levels: kills must rise strictly with the level ({a["id"]} {a["kills"]}, {b["id"]} {b["kills"]})')
+    if b['healthPct']<a['healthPct'] or b['damagePct']<a['damagePct']: errors.append(f'levels: healthPct and damagePct must not fall with the level ({a["id"]} to {b["id"]})')
+tiers=data['gearTiers']
+if [g['tier'] for g in tiers]!=[1,2,3]: errors.append('gearTiers: the rows must be tiers 1, 2 and 3, in order')
+for a,b in zip(tiers,tiers[1:]):
+    if b['weaponPct']<a['weaponPct'] or b['armourPct']<a['armourPct']: errors.append(f'gearTiers: weaponPct and armourPct must not fall with the tier ({a["id"]} to {b["id"]})')
+for r in rarities.values():
+    if r['gearPrice2']<=0 or r['gearPrice3']<=r['gearPrice2']: errors.append(f'rarities/{r["id"]}: gear prices must be positive with tier III (gearPrice3) above tier II (gearPrice2)')
+STATUSES=('none','slow','weaken','bleed','knockback','stun')
+abilityRows={a['id']:a for a in data['abilities']}
+for a in data['abilities']:
+    if a['status'] not in STATUSES: errors.append(f'abilities/{a["id"]}: status {a["status"]} is not one of {", ".join(STATUSES)}')
+    if a['mechanic']=='onhit_status' and a['status']=='none': errors.append(f'abilities/{a["id"]}: an onhit_status row needs a status')
+    if a['taken']<0 or a['taken']>=1: errors.append(f'abilities/{a["id"]}: taken must be at least 0 and below 1')
+    if not isinstance(a['cleanse'],bool) or not isinstance(a['rangedPenalty'],bool): errors.append(f'abilities/{a["id"]}: cleanse and rangedPenalty must be true or false')
+levelAbility={}
+for l in data['levelAbilities']:
+    if l['troop'] not in troops or l['level'] not in (2,3) or l['id']!=f'{l["troop"]}_{l["level"]}': errors.append(f'levelAbilities/{l["id"]}: id must be <troop>_<level> for a troops id and level 2 or 3'); continue
+    if l['ability'] not in abilityRows: errors.append(f'levelAbilities/{l["id"]}: ability {l["ability"]} does not resolve'); continue
+    if (l['troop'],l['level']) in levelAbility: errors.append(f'levelAbilities/{l["id"]}: a second row for the same troop and level')
+    levelAbility[(l['troop'],l['level'])]=l
+for t in data['troops']:
+    for lv in (2,3):
+        if (t['id'],lv) not in levelAbility: errors.append(f'levelAbilities: {t["id"]} needs exactly one level-{lv} row')
+    two=levelAbility.get((t['id'],2))
+    if two and t['ability'] in abilityRows and abilityRows[two['ability']]['mechanic']!=abilityRows[t['ability']]['mechanic']: errors.append(f'levelAbilities/{two["id"]}: a level-2 ability keeps its base ability\'s mechanic ({abilityRows[t["ability"]]["mechanic"]}), not {abilityRows[two["ability"]]["mechanic"]}')
+# Every counter tag an ability grants is read by some counter row, so no granted tag is dead.
+counterTags={tag for c in data['counters'] for tag in c['attackerTag'].split('+')+c['targetTag'].split('+')}
+for a in data['abilities']:
+    if a['tags']!='none':
+        for tag in a['tags'].split('|'):
+            if tag not in counterTags: errors.append(f'abilities/{a["id"]}: tag {tag} appears in no counter row')
+# Player-facing text never says stage, evolve or Writ (it says Pact): every text and name cell, and every troopNotes cell.
+BANNED=re.compile(r'stage|evolve|writ',re.I)
+for sheet,rows in data.items():
+    for row in rows:
+        for col,value in row.items():
+            if isinstance(value,str) and (col in ('text','name') or sheet=='troopNotes' and col!='id') and BANNED.search(value): errors.append(f'{sheet}/{row.get("id")}/{col}: player text says "{BANNED.search(value).group(0)}" (it says level, tier or Pact): {value}')
 for sheet,keys in (('mastery',('kills','matches')),('renown',('points',))):
     rows=data[sheet]
     if [r['level'] for r in rows]!=list(range(1,len(rows)+1)): errors.append(f'{sheet}: levels must run 1, 2, 3 and on, in order')

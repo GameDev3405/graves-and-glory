@@ -253,23 +253,18 @@ public final class Campaign {
     }
     /** Units in the banner a commander would field now; 0 means he has no army to bring. */
     int bannerUnits(UUID id){var catalog=RosterMath.Catalog.fromSpec();return RosterMath.units(RosterMath.fieldable(profile(id).banner,catalog,RosterMath.fieldableHouses()),catalog);}
-    /** The progression multiplier of a commander's owned troop (spec 4.4): its star bonus plus its evolution stage bonus, capped at 1 + recruitment.capPct. Bots, and troops the commander does not own, fight at 1. */
-    double progression(GravesAndGlory.Squad s,Spec.TroopsRow t,boolean health){
+    /** The progression multiplier of a commander's owned troop (spec 4.4, in-match progression design 8): its star bonus alone, capped at 1 + recruitment.capPct. Levels and gear come from the soldier, not the profile. Bots, and troops the commander does not own, fight at 1. */
+    double progression(GravesAndGlory.Squad s,Spec.TroopsRow t){
         if(s.bot)return 1;var o=profile(s.owner).owned.get(t.id());if(o==null)return 1;
-        var rarity=RosterMath.rarityRow(t.rarity());double stage=0;
-        if(o.stage>=2)for(var e:Spec.EVOLUTIONS)if(e.troop().equals(t.evolveLine())&&e.stage()==o.stage)stage=health?e.healthPct():e.damagePct();
-        return RosterMath.progressionMultiplier(rarity==null?0:RosterMath.starPct(o.stars,rarity),stage,Spec.RECRUITMENT[0].capPct());
-    }
-    /** The evolution stage (1 to 3) a commander's owned troop fights at; 1 for a bot, for a troop he does not own and for one with no evolve line. */
-    int stage(GravesAndGlory.Squad s,Spec.TroopsRow t){
-        if(s.bot)return 1;var o=profile(s.owner).owned.get(t.id());return o==null?1:Math.max(1,Math.min(3,o.stage));
+        var rarity=RosterMath.rarityRow(t.rarity());
+        return RosterMath.progressionMultiplier(rarity==null?0:RosterMath.starPct(o.stars,rarity),Spec.RECRUITMENT[0].capPct());
     }
     /** Whether a commander's owned troop wears the veteran trim: Mastery II or higher (Houses spec 4.7, in-match progression design 4.4). Never a bot's. */
     boolean veteran(GravesAndGlory.Squad s,Spec.TroopsRow t){
         if(s.bot)return false;var o=profile(s.owner).owned.get(t.id());return o!=null&&o.mastery>=2;
     }
-    double damage(GravesAndGlory.Unit u){return progression(u.squad,u.spec,false);}
-    double health(GravesAndGlory.Squad s,Spec.TroopsRow t){return progression(s,t,true);}
+    double damage(GravesAndGlory.Unit u){return progression(u.squad,u.spec);}
+    double health(GravesAndGlory.Squad s,Spec.TroopsRow t){return progression(s,t);}
     /** Sets the side row each team flies this round (Battle.sides) from the seated commanders; see sidesFor. */
     void chooseSides(){b.sides=sidesFor(seats(s->s.seated));}
     /**

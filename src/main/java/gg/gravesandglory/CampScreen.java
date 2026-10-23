@@ -117,12 +117,12 @@ final class CampScreen extends ArmyScreen {
     void pickClaimHouse(String next){claimHouse=next;var r=RecruitPages.rares(next);rare=r.isEmpty()?"":r.get(0);clearAndInit();}
     /** Tier 20's Rare: the next Rare of the chosen House. */
     void cycleRare(){var r=RecruitPages.rares(claimHouse);if(!r.isEmpty())rare=r.get((r.indexOf(rare)+1)%r.size());clearAndInit();}
-    /** One card of the recruit page: a troop of the House, whether the commander owns it, and its stars, evolution stage and copies. */
-    record Card(Spec.TroopsRow troop,boolean owned,int stars,int stage,int copies){}
+    /** One card of the recruit page: a troop of the House, whether the commander owns it, and its stars and copies. */
+    record Card(Spec.TroopsRow troop,boolean owned,int stars,int copies){}
     /** The six troops of a House in sheet order, each with the commander's holding of it. */
     static List<Card> cards(String house,Profile p){
         List<Card> out=new ArrayList<>();
-        for(var t:Spec.TROOPS)if(t.house().equals(house)){var o=p.owned.get(t.id());out.add(new Card(t,o!=null,o==null?0:o.stars,o==null?0:o.stage,o==null?0:o.copies));}
+        for(var t:Spec.TROOPS)if(t.house().equals(house)){var o=p.owned.get(t.id());out.add(new Card(t,o!=null,o==null?0:o.stars,o==null?0:o.copies));}
         return out;
     }
     static int rarityColour(String rarity){return switch(rarity){case "rare"->0xff8fb8d8;case "epic"->0xffc79be0;case "legendary"->DarkUi.GOLD;default->DarkUi.MUTED;};}
@@ -134,7 +134,7 @@ final class CampScreen extends ArmyScreen {
     void cardLine(DrawContext g,String text,int x,int y,int dy,int color,int room){line(g,text,x,y+dy,color,room);}
     /** While card() draws: the lowest word or pip so far, as rows under the card's top (the harness reads it; p2-card-layout). */
     void ink(int y){if(inCard)cardLow=Math.max(cardLow,y-cardTop+9);}
-    /** One troop card: the portrait on the House accent, the stage name, the rarity, the stars as pips and the stage; a troop the commander lacks is dimmed and says LOCKED with its odds. */
+    /** One troop card: the portrait on the House accent, the level 1 name, the rarity and the stars as pips; a troop the commander lacks is dimmed and says LOCKED with its odds. */
     void card(DrawContext g,Card card,int x,int y,int w,int h,int poolTotal){
         cardLow=0;cardTop=y;inCard=true;seenCards.put(card.troop().id(),card.owned());
         var troop=card.troop();DarkUi.frame(g,x,y,w,h);
@@ -146,7 +146,7 @@ final class CampScreen extends ArmyScreen {
         g.getMatrices().translate(0,0,50);
         int tx=x+70,room=w-76;
         // A long name (a Legendary's title) wraps onto a second line, and everything under it moves down a line.
-        var title=textRenderer.wrapLines(Text.literal(ArmyMobs.stageName(troop,card.owned()?card.stage():1)),room);int more=title.size()>1?10:0;
+        var title=textRenderer.wrapLines(Text.literal(ArmyMobs.levelName(troop,1)),room);int more=title.size()>1?10:0;
         for(int i=0;i<Math.min(2,title.size());i++){g.drawText(textRenderer,title.get(i),tx,y+10+i*10,card.owned()?DarkUi.GOLD:DarkUi.MUTED,false);ink(y+10+i*10);}
         var rows=RecruitPages.cardRows(more>0);cardLine(g,cap(troop.rarity()),tx,y,rows.rarity(),rarityColour(troop.rarity()),room);
         if(card.owned()){

@@ -44,9 +44,9 @@ public final class ProfileMigrationCheck {
         v.commander = v1Class;
         return toV2(v).commander;
     }
-    static Profile.Owned owned(int copies, int stars, int stage) {
+    static Profile.Owned owned(int copies, int stars) {
         var o = new Profile.Owned();
-        o.copies = copies; o.stars = stars; o.stage = stage;
+        o.copies = copies; o.stars = stars;
         return o;
     }
 
@@ -67,7 +67,7 @@ public final class ProfileMigrationCheck {
     public static void main(String[] args) throws IOException {
         // mig-fresh: the v1 defaults
         var fresh = toV2(v1());
-        check(fresh.owned.keySet().equals(COMMONS) && fresh.owned.values().stream().allMatch(o -> o.copies == 1 && o.stars == 1 && o.stage == 1), "mig-fresh: owned is exactly the 10 Commons at star 1 and stage 1; mage and hexer are refunded, not owned");
+        check(fresh.owned.keySet().equals(COMMONS) && fresh.owned.values().stream().allMatch(o -> o.copies == 1 && o.stars == 1), "mig-fresh: owned is exactly the 10 Commons at star 1; mage and hexer are refunded, not owned");
         check(fresh.banner.equals(line("knight*12,archer*6,empty*2")) && fresh.commander.equals("champion"), "mig-fresh: banner knight x12, archer x6, empty x2; commander champion");
         check(REFUND == 300 && fresh.gold == 420 + 2 * REFUND, "mig-fresh: gold is v1 gold + 600 (economy.refundGold 300 each for mage and hexer)");
         check(fresh.matches == 31 && fresh.wins == 17 && fresh.campaignCleared == 1 && fresh.tutorialDone, "mig-fresh: matches, wins, campaignCleared and tutorialDone are copied");
@@ -113,10 +113,10 @@ public final class ProfileMigrationCheck {
         var blank = new Profile();
         check(blank.schema == 2 && blank.banner.equals(RosterMath.starterBanner()) && blank.commander.equals("champion") && blank.bannerColour.equals("gold"), "profile-default: schema 2, the starter banner, champion, gold");
         check(blank.owned.keySet().equals(COMMONS) && new ArrayList<>(blank.owned.keySet()).equals(List.of("knight", "archer", "revenant", "bonebow", "wm_hound", "wm_hunter", "ic_hearthguard", "ic_arbalist", "tc_raider", "tc_harpooner"))
-            && blank.owned.values().stream().allMatch(o -> o.copies == 1 && o.stars == 1 && o.stage == 1) && RosterMath.validBanner(blank.banner, cat, blank.owned.keySet()) == null, "profile-default: one copy of each of the 10 Commons, in sheet order, so the starter banner is valid");
+            && blank.owned.values().stream().allMatch(o -> o.copies == 1 && o.stars == 1) && RosterMath.validBanner(blank.banner, cat, blank.owned.keySet()) == null, "profile-default: one copy of each of the 10 Commons, in sheet order, so the starter banner is valid");
         var p = new Profile();
         p.owned.clear();
-        p.owned.put("knight", owned(0, 0, 5)); p.owned.put("mage", owned(2, 7, 3)); p.owned.put("oracle", owned(1, 1, 1)); p.owned.put("archer", null);
+        p.owned.put("knight", owned(0, 0)); p.owned.put("mage", owned(2, 7)); p.owned.put("oracle", owned(1, 1)); p.owned.put("archer", null);
         p.owned.get("knight").mastery = 9; p.owned.get("mage").mastery = -1;
         p.banner = new ArrayList<>(line("knight*12,oracle,mage*2"));
         p.commander = "vanguard"; p.bannerColour = "dawn";
@@ -126,14 +126,15 @@ public final class ProfileMigrationCheck {
         check(p.owned.keySet().equals(Set.of("knight", "mage")), "sanitize: unknown ids and empty entries are dropped from owned");
         var knight = p.owned.get("knight");
         var mage = p.owned.get("mage");
-        check(knight.copies == 1 && knight.stars == 1 && knight.stage == 3 && mage.stars == 3 && mage.stage == 1, "sanitize: stars and stages clamp to 1..3, stage 1 for an Epic");
+        check(knight.copies == 1 && knight.stars == 1 && mage.stars == 3, "sanitize: stars clamp to 1..3");
+        check(Arrays.stream(Profile.Owned.class.getDeclaredFields()).noneMatch(f -> f.getName().equals("stage")) && Arrays.stream(Profile.class.getDeclaredMethods()).noneMatch(m -> m.getName().equals("lastStage")), "profile-no-stage: Owned has no stage field and Profile no lastStage, so a stored stage is never read (Gson ignores the key) and never written (the in-game migration suite round-trips a stage:3 file)");
         check(knight.mastery == 3 && mage.mastery == 0, "sanitize: mastery clamps to 0..3, the last mastery level (9 becomes 3, -1 becomes 0)");
         check(RosterMath.validBanner(p.banner, cat, p.owned.keySet()) == null && p.banner.equals(line("knight*12,mage,^,mage,^,empty*4")), "sanitize: a banner that fails validBanner is repacked");
         check(p.commander.equals("champion") && p.bannerColour.equals("gold"), "sanitize: an unknown class maps to champion and an unknown colour to gold");
         check(zeros(p.shards) && zeros(p.renown) && zeros(p.pity), "sanitize: shards, renown and pity hold the five House keys at 0 or more, and nothing else");
         check(p.gold == 0 && p.wins == 3 && p.progression != null && p.schema == 2, "sanitize: gold and wins clamp; a missing progression is rebuilt");
         var valid = new Profile();
-        for (String id : COMMONS) valid.owned.put(id, owned(1, 1, 1));
+        for (String id : COMMONS) valid.owned.put(id, owned(1, 1));
         valid.banner = new ArrayList<>(line("revenant*12,bonebow*8"));
         valid.sanitize(cat, CLASSES, SIDES, HOUSES);
         check(valid.banner.equals(line("revenant*12,bonebow*8")), "sanitize: a valid banner is left alone");

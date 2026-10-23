@@ -211,8 +211,8 @@ public final class GravesAndGlory implements ModInitializer {
         String lastHitTroop;
         /** The tags this troop brings to the counter table (ArmyMobs.tags), a copy a House task may add to. */
         Set<String> tags;
-        /** The evolution stage (1 to 3) its custom name and stats show; 1 for a bot and for a troop its commander does not own. */
-        int stage=1;
+        /** The soldier's level for the match (1 to 3), his kill credits, and the weapon and armour tier he wears (1 to 3). Level 1 and tier I when trained or rebought; nothing carries to the next match (in-match progression design 3 and 4). */
+        int level=1, credits=0, weaponTier=1, armourTier=1;
         /** A troop raised for the round only (Grave Bloom Risen): it never counts toward the slot check or earns mastery, and expiresAt (battle ticks) ends it. */
         boolean temporary;long expiresAt;
         /** Battle time until which the troop is stunned (a slam, a bear's roar). */
@@ -919,10 +919,9 @@ public final class GravesAndGlory implements ModInitializer {
             mob.equipStack(EquipmentSlot.CHEST,chest);
             for(EquipmentSlot eq:EquipmentSlot.values())mob.setEquipmentDropChance(eq,0);
             // The name colour is the team tag, not the side colour: CommandMode.nameTeam reads it on the client to tell friend from foe (both teams can field the same House). Recolour names by side only together with that reader.
-            int stage=campaign.stage(s,spec);
-            mob.setCustomName(Text.literal(ArmyMobs.stageName(spec,stage)+(campaign.veteran(s,spec)?ArmyMobs.VETERAN:"")).formatted(s.team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE));
+            mob.setCustomName(Text.literal(ArmyMobs.levelName(spec,1)+(campaign.veteran(s,spec)?ArmyMobs.VETERAN:"")).formatted(s.team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE));
             mob.setCustomNameVisible(false);
-            Unit u=new Unit(mob,s,spec,slot);u.stage=stage;u.stance=Tactics.stance(this,u);
+            Unit u=new Unit(mob,s,spec,slot);u.stance=Tactics.stance(this,u);
             spawning=u;try{world.spawnEntity(mob);}finally{spawning=null;} // the players in range start tracking it here (its stance goes with that)
             joinSide(mob,s.team);
             units.add(u);Houses.recompute(s);return u;
