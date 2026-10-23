@@ -57,6 +57,7 @@ public final class Phase3Checks implements ClientModInitializer {
         SUITES.put("campwalk",CampWalk::new);
         SUITES.put("yard",Yard::new);
         SUITES.put("houses",Houses::new);
+        SUITES.put("landmarks",Landmarks::new);
     }
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed,broken;
@@ -605,10 +606,10 @@ public final class Phase3Checks implements ClientModInitializer {
             boolean ok=a.road()==1&&a.point()==0&&c.point()==1&&c.road()==0&&d.road()==1&&fine==poles;
             report("p3-walk-rule-map"+n,ok,"a stone on a ring cell that is also a road cell ("+onRoad[0]+","+onRoad[1]+"): road "+a.road()+" point "+a.point()+" (want road 1); on a ring cell off the roads ("+offRoad[0]+","+offRoad[1]+"): point "+c.point()+" road "+c.road()+" (want point 1); on a road cell outside the rings ("+outside[0]+","+outside[1]+"): road "+d.road()+" (want 1); the centre cell of "+fine+" of "+poles+" points is not road");
         }
-        /** A cell the scan visits and finds clear: dry, not a deck plank, outside every footprint, nothing with a collision shape at ground+1 or +2. */
+        /** A cell the scan visits and finds clear: dry, not a deck plank, outside every footprint (the ring of a point that a landmark encloses is not its footprint, Walkability.counts), nothing with a collision shape at ground+1 or +2. */
         static boolean plain(GravesAndGlory.Battle b,int x,int z){
             if(Arena.river(x,z)||Walkability.onDeck(x,z))return false;
-            for(var s:Spec.STRUCTURES)if(!s.kind().equals("bridge")&&Walkability.inside(s,x,z))return false;
+            for(var s:Spec.STRUCTURES)if(!s.kind().equals("bridge")&&Walkability.counts(s,x,z))return false;
             int g=Arena.ground(x,z);
             for(int y=g+1;y<=g+2;y++){var pos=new BlockPos(x,y,z);if(!b.world.getBlockState(pos).getCollisionShape(b.world,pos).isEmpty())return false;}
             return true;
@@ -1523,9 +1524,10 @@ public final class Phase3Checks implements ClientModInitializer {
             report(name.apply("pits"),pi.paths()>0&&pi.paved()==0&&pi.lone()==0&&pi.earth()==0,"dirt path cells "+pi.paths()+", of them inside a plaza (within 9.2 blocks of a flag pole) or on the parade ground of a camp, where everything is paved, off the floors and decks: "+pi.paved()+(pi.paved()==0?"":", first "+pi.sample())
                 +"; with no dirt path on any of their four sides (anywhere): "+pi.lone()+"; coarse dirt or gravel on the ground outside the plazas and off the river: "+pi.earth()+(pi.earth()==0?"":", first "+pi.earthSample())+"; lone cells the dressing's own guard put back as ground: "+MapDressing.despeckled);
             var we=wear(b);
-            report(name.apply("wear"),we.verge()>0&&we.ring()>0&&we.gaps()==0,"worn band: dirt path cells that touch a road cell on a side "+we.verge()+", plain ground left beside a road that the band should have covered "+we.gapsRoad()+"; worn ring: dirt path cells just outside the edge stone of a point "+we.ring()+", plain ground left in it "+we.gapsRing()+(we.gaps()==0?"":", first "+we.sample()));
+            report(name.apply("wear"),we.verge()>0&&(we.ring()>0||we.rings()==0)&&we.gaps()==0,"worn band: dirt path cells that touch a road cell on a side "+we.verge()+", plain ground left beside a road that the band should have covered "+we.gapsRoad()+"; worn ring of the "+we.rings()+" laid rings no landmark encloses"+(we.rings()==0?" (none on this map: the outposts pave round theirs)":"")+": dirt path cells just outside the edge stone of a point "+we.ring()+", plain ground left in it "+we.gapsRing()+(we.gaps()==0?"":", first "+we.sample()));
             var pl=plazas(b,n);
-            report(name.apply("plaza"),pl.cells()>0&&pl.wrong()==0,"plaza cells (within 9.2 blocks of a flag pole, off the 3x3 pad, the water and the buildings) "+pl.cells()+", not the block of the pattern (earth, a compass of trim, a ring of paving) "+pl.wrong()+(pl.wrong()==0?"":", first: "+pl.sample()));
+            boolean noPlaza=Arrays.stream(Spec.POINTS).allMatch(p->enclosed(p)||Math.abs(p.x()-Arena.riverX(p.z()))<11);
+            report(name.apply("plaza"),(pl.cells()>0||noPlaza)&&pl.wrong()==0,(noPlaza?"every point of this map is on the river or inside an outpost (Task 6), which paves it; ":"")+"plaza cells (within 9.2 blocks of a flag pole, off the 3x3 pad, the water and the buildings) "+pl.cells()+", not the block of the pattern (earth, a compass of trim, a ring of paving) "+pl.wrong()+(pl.wrong()==0?"":", first: "+pl.sample()));
         }
         /** The ring of every capture point: per point {ring cells, those over river water, those on a deck or its rails, those with air under, pad cells with air under}. A ring cell is smooth stone at the elevation of the point, radius-1 to radius out. */
         record Ring(boolean ok,String text){}
@@ -1592,7 +1594,7 @@ public final class Phase3Checks implements ClientModInitializer {
                 if((z&15)==0)w.getChunk(x>>4,z>>4);
                 var top=w.getBlockState(new BlockPos(x,Arena.height(x,z),z));
                 if(!top.isOf(Blocks.DIRT_PATH)){
-                    if((top.isOf(Blocks.COARSE_DIRT)||top.isOf(Blocks.GRAVEL))&&!Arena.river(x,z)){ // trampled earth is the floor of a plaza and the worn strips of dirt path: coarse dirt or gravel anywhere else is a patch
+                    if((top.isOf(Blocks.COARSE_DIRT)||top.isOf(Blocks.GRAVEL))&&!Arena.river(x,z)&&!landmarkCell(x,z)){ // a landmark lays its own yard and lanes (Task 6) // trampled earth is the floor of a plaza and the worn strips of dirt path: coarse dirt or gravel anywhere else is a patch
                         double pd=999;for(var q:Spec.POINTS)pd=Math.min(pd,Math.hypot(x-q.x(),z-q.z()));
                         if(pd>=9.2){earth++;if(earth<=6)earthSample.append(earth>1?"; ":"").append(name(top)).append(" at (").append(x).append(", ").append(z).append(')');detail.append("earth ").append(name(top)).append(' ').append(x).append(' ').append(z).append((char)10);}
                     }
@@ -1618,7 +1620,7 @@ public final class Phase3Checks implements ClientModInitializer {
         }
         /** The worn band and the worn ring, looked at on the map that stands: the dirt path cells that touch a road cell (not a road cell themselves), and the plain ground that is still left beside a road cell of dirt path where MapDressing.wearable says the band
          *  should lie (gapsRoad), the dirt path cells of the worn ring of every point whose stone ring is laid, and the plain ground still left in it (gapsRing). */
-        record Wear(int verge,int ring,int gapsRoad,int gapsRing,String sample){int gaps(){return gapsRoad+gapsRing;}}
+        record Wear(int verge,int ring,int gapsRoad,int gapsRing,int rings,String sample){int gaps(){return gapsRoad+gapsRing;}}
         /** The top blocks on the four sides of a cell (west, east, north, south), a star after a road cell. */
         static String around(net.minecraft.server.world.ServerWorld w,int x,int z){
             var sb=new StringBuilder();
@@ -1633,9 +1635,10 @@ public final class Phase3Checks implements ClientModInitializer {
                 if(w.getBlockState(new BlockPos(x,Arena.height(x,z),z)).isOf(Blocks.DIRT_PATH))verge++;
                 else if(d.follows(x,z)&&d.wearable(x,z)){gr++;if(gr+gg<=6)sample.append(sample.length()>0?"; ":"").append("band (").append(x).append(", ").append(z).append(") with ").append(around(w,x,z));}
             }
+            int rings=0;
             for(var p:Spec.POINTS){
-                if(!Arena.ringLaid(p))continue;
-                int r=p.radius();
+                if(!Arena.ringLaid(p)||enclosed(p))continue; // an outpost (Task 6) paves round the ring of the point it encloses
+                int r=p.radius();rings++;
                 for(int dx=-r-4;dx<=r+4;dx++)for(int dz=-r-4;dz<=r+4;dz++){
                     if(!MapDressing.ringCell(dx,dz,r+.5))continue;
                     int x=p.x()+dx,z=p.z()+dz;var bd=MapDressing.bandOf(p,dx,dz);
@@ -1644,8 +1647,12 @@ public final class Phase3Checks implements ClientModInitializer {
                     else if(d.wearable(x,z)){gg++;if(gr+gg<=6)sample.append(sample.length()>0?"; ":"").append("ring of ").append(p.id()).append(" (").append(x).append(", ").append(z).append(") with ").append(around(w,x,z));}
                 }
             }
-            return new Wear(verge,ring,gr,gg,sample.toString());
+            return new Wear(verge,ring,gr,gg,rings,sample.toString());
         }
+        /** Inside the footprint of a landmark (Task 6): an authored piece lays its own floor, yard and lanes. */
+        static boolean landmarkCell(int x,int z){for(var s:Spec.STRUCTURES)if(s.kind().equals("landmark")&&Walkability.inside(s,x,z))return true;return false;}
+        /** A landmark of the map that stands encloses the point (its landmarks row names it: the Kingsfield outposts round B and D). */
+        static boolean enclosed(Spec.PointsRow p){for(var r:Spec.LANDMARKS)if(r.map()==CampaignMaps.selected&&r.encloses().equals(p.id()))return true;return false;}
         /** On what a structure builds: the cells x0..x0+width-1 by z0..z0+depth-1 (floor course, or the planks of a deck). */
         static boolean builtCell(int x,int z){
             for(var s:Spec.STRUCTURES){
@@ -2919,6 +2926,233 @@ public final class Phase3Checks implements ClientModInitializer {
             boolean all=found==n;
             ck("p3-cw-labels",all&&bad.length()==0&&blocked==0&&overlaps==0&&(views>0||!ranLeg("leg")),"labels at y+3.7 of their rows "+found+" of "+n+(bad.length()==0?"":": "+bad)+"; views of labels from the walker's stops "+views+", with a point of the label out of sight "+blocked+(seenBad.length()==0?"":": "+seenBad)+"; pairs of labels overlapping in a view "+overlaps+(over.length()==0?"":": "+over));
             labelsDone=true;
+        }
+    }
+
+    /** Task 6 (suite landmarks): the landmarks rows of the maps in GRAVES_PHASE3_MAPS (system property gravesandglory.phase3Maps). Each map is switched to (built afresh, even when it stands) and, once ready, per row:
+     *  p3-lm-ID-placed (a LOG entry of this row since the switch, not missing; the row it replaces is gone from Spec.STRUCTURES and a landmark row of its id is there),
+     *  p3-lm-ID-fits (Placed.box equals Structures.footprint of the template size at the row's centre, elevation and rotation, inside |x|<=350, |z|<=250),
+     *  p3-lm-ID-clear (every structure-void cell of the template at local y 1 and up is air in the world, but the flag of an enclosed point: the pole column, its cloth and its lantern),
+     *  p3-lm-ID-roads (Walkability.scan over the footprint: through 0 and no blocked deck cell), p3-lm-ID-ring (no non-void template column within 19 of a point the row does not enclose; for an enclosed point the ring,
+     *  the centre pad and the flag are the arena's blocks), p3-lm-ID-gates (enclosing rows: every cell within 2 of a road that ends at the point, from radius 17.5 to the footprint edge, has no collision shape at ground+1 and +2),
+     *  p3-lm-ID-cover and -sight per landmarkLines row of the template (the world end points through Structures.toWorld, compared with the values the plan states; a raycast with COLLIDER, no fluids and the player:
+     *  cover passes on a block hit more than 0.3 before the end, sight on a miss or a hit within 0.3 of it). Per map p3-lm-budget-mapN (each row at most 100 ms, all at most 1.5 s), the pictures lm-mapN-overview and
+     *  lm-ID-ground (and lm-ID-high off the kit) for the first row of each template (the plan's camera, turned round the piece when its view is not clear: see plan). Once per run p3-lm-switch-mid-queue (map 4 is switched to; while its landmarks are queued, map 0: the queue is empty at once, no kf- row is
+     *  placed after it, and map 0 is ready only once its own queue is drained) and p3-lm-cache (campaign.cached() after the build, not with Structures.salt="test", again after it is put back). */
+    static final class Landmarks implements Suite {
+        record Line(double fx,double fy,double fz,double tx,double ty,double tz){}
+        /** The world end points of the lines the plan states (ty NaN: the ground at the end point plus 2.6). */
+        static final Map<String,Line> EXPECTED=Map.of(
+            "rg-mill/cover",new Line(-25.5,66.6,-167.5,-30.5,66.6,-145.5),"rg-mill/sight",new Line(-22.5,73.6,-173.5,-16.5,66.6,-145.5),
+            "kf-mill/cover",new Line(-24.5,66.6,-182.5,-29.5,66.6,-160.5),"kf-mill/sight",new Line(-21.5,73.6,-188.5,-15.5,66.6,-160.5),
+            "kf-outpost-west/cover",new Line(-116.5,76.6,113.5,-110.5,76.6,119.5),"kf-outpost-west/sight",new Line(-144.5,85.6,115.5,-160.5,Double.NaN,100.5),
+            "kf-outpost-east/cover",new Line(117.5,76.6,-112.5,111.5,76.6,-118.5),"kf-outpost-east/sight",new Line(145.5,85.6,-114.5,161.5,Double.NaN,-99.5));
+        record Shot(String name,double x,double y,double z,double tx,double ty,double tz){}
+        final List<Integer> maps=new ArrayList<>();
+        volatile List<Shot> shots=List.of();
+        int index,stage,shot;
+        volatile boolean switched,checked,hookDone,cacheDone;
+        volatile Set<Structures.Placed> before;
+        /** The once-per-run mid-queue switch runs on the server tick (the client suite does not step while a map builds). */
+        static volatile Runnable hook;
+        static boolean hooked;
+        Landmarks(){
+            for(String s:System.getProperty("gravesandglory.phase3Maps","0,1,2,3,4").split(","))if(!s.isBlank())maps.add(Integer.parseInt(s.trim()));
+            if(!hooked){hooked=true;net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(s->{var h=hook;if(h!=null)try{h.run();}catch(Throwable e){hook=null;report("p3-lm-switch-mid-queue",false,e.toString());e.printStackTrace();hookDone=true;}});}
+        }
+        @Override public int limit(){return 12000;}
+        static Set<Structures.Placed> snapshot(){var s=Collections.newSetFromMap(new IdentityHashMap<Structures.Placed,Boolean>());s.addAll(Structures.LOG);return s;}
+        static List<Structures.Placed> newer(Set<Structures.Placed> before){var out=new ArrayList<Structures.Placed>();for(var p:Structures.LOG)if(!before.contains(p))out.add(p);return out;}
+        @Override public void step(MinecraftClient c,int tick){
+            if(tick<20)return;
+            switch(stage){
+                case 0->{
+                    if(index>=maps.size()){stage=4;return;}
+                    int n=maps.get(index);switched=false;checked=false;
+                    server(c,b->{before=snapshot();b.campaign.switchMap(n);switched=true;});stage=1;
+                }
+                case 1->{
+                    int n=maps.get(index);var b=GravesAndGlory.battle;
+                    if(switched&&b!=null&&b.ready&&b.campaign.map==n&&CampaignMaps.selected==n){stage=2;server(c,x->check(x,n));}
+                }
+                case 2->{if(checked){shot=0;stage=3;}}
+                case 3->{
+                    if(shot>=shots.size()){index++;stage=0;return;}
+                    var s=shots.get(shot);if(view(c,s.name(),s.x(),s.y(),s.z(),s.tx(),s.ty(),s.tz()))shot++;
+                }
+                case 4->{hookDone=false;server(c,this::midQueue);stage=5;}
+                case 5->{var b=GravesAndGlory.battle;if(hookDone&&b!=null&&b.ready){stage=6;server(c,this::cache);}}
+                case 6->{if(cacheDone){finish(c,"landmarks");stage=7;}}
+                default->{}
+            }
+        }
+        @Override public void cleanup(MinecraftClient c){Structures.salt="";hook=null;server(c,b->b.campaign.leash=true);}
+
+        /** The pictures of map n: the overview, and for the first row of each template the ground view (and the high view off the kit), from the side of the nearest point the row does not enclose: the camera of the plan
+         *  (the centre plus u times max(w,d)+12 at ground+5, and times max(w,d)+30 at elevation+30, u toward that point). Where that camera stands in a block or another footprint, or something outside the piece stands
+         *  between it and the piece (the dressing of a capture ring, a tree, a house of the hamlet), u is turned by 30 degrees at a time, either way, to the first camera with a clear view; the turn is in the note. */
+        List<Shot> plan(GravesAndGlory.Battle b,int n){
+            var out=new ArrayList<Shot>();
+            double p=Math.toRadians(40);out.add(new Shot("lm-map"+n+"-overview",0,175,250,0,175-100*Math.sin(p),250-100*Math.cos(p)));
+            var seen=new HashSet<String>();
+            var player=b.server.getPlayerManager().getPlayerList().isEmpty()?null:b.server.getPlayerManager().getPlayerList().get(0);
+            for(var r:Spec.LANDMARKS){
+                if(r.map()!=n||!seen.add(r.template()))continue;
+                Spec.StructuresRow s=null;for(var st:Spec.STRUCTURES)if(st.id().equals(r.id()))s=st;if(s==null)continue;
+                Spec.PointsRow near=null;double best=Double.MAX_VALUE;
+                for(var pt:Spec.POINTS){if(pt.id().equals(r.encloses()))continue;double d=Math.hypot(pt.x()-r.x(),pt.z()-r.z());if(d<best){best=d;near=pt;}}
+                double a0=Math.atan2(near.z()-r.z(),near.x()-r.x());
+                int reach=Math.max(s.width(),s.depth());double tx=r.x()+.5,ty=r.elevation()+4,tz=r.z()+.5;
+                for(int high=0;high<(r.template().startsWith("kit/")?1:2);high++){
+                    int dist=reach+(high==1?30:12);Shot chosen=null,first=null;int turned=0;
+                    for(int t:new int[]{0,30,-30,60,-60,90,-90,120,-120,150,-150,180}){
+                        double a=a0+Math.toRadians(t),cx=r.x()+.5+Math.cos(a)*dist,cz=r.z()+.5+Math.sin(a)*dist;
+                        double cy=high==1?r.elevation()+30:Math.max(r.elevation(),Arena.ground((int)Math.floor(cx),(int)Math.floor(cz)))+5;
+                        var shot=new Shot("lm-"+r.id()+(high==1?"-high":"-ground"),cx,cy,cz,tx,ty,tz);if(first==null)first=shot;
+                        if(player!=null&&clearView(b,player,s,cx,cy,cz)){chosen=shot;turned=t;break;}
+                    }
+                    if(chosen==null){chosen=first;System.out.println("[p3] note view "+first.name()+": no clear camera round the piece, the plan's camera is kept");}
+                    else if(turned!=0)System.out.println("[p3] note view "+chosen.name()+": the plan's camera (toward "+near.id()+") had no clear view, turned "+turned+" degrees");
+                    out.add(chosen);
+                }
+            }
+            return out;
+        }
+        /** The camera (eyes at cx,cy,cz) stands in air (a ground camera also outside every other footprint), and the lines from it to the centre and the four corners of the piece at its elevation+2 and +4 meet nothing before the footprint (one block round it). */
+        static boolean clearView(GravesAndGlory.Battle b,net.minecraft.entity.Entity player,Spec.StructuresRow s,double cx,double cy,double cz){
+            var w=b.world;var eye=BlockPos.ofFloored(cx,cy,cz);
+            if(!w.getBlockState(eye).isAir()||!w.getBlockState(eye.down()).isAir())return false;
+            if(cy<s.elevation()+20)for(var o:Spec.STRUCTURES)if(o!=s&&!o.kind().equals("bridge")&&Math.abs(cx-o.x())<=o.width()/2.0+2&&Math.abs(cz-o.z())<=o.depth()/2.0+2)return false;
+            double hx=s.width()/2.0,hz=s.depth()/2.0;var from=new Vec3d(cx,cy,cz);
+            for(double[] c:new double[][]{{0,0},{-hx,-hz},{hx,-hz},{-hx,hz},{hx,hz}})for(int up:new int[]{2,4}){
+                var to=new Vec3d(s.x()+.5+c[0]*.8,s.elevation()+up,s.z()+.5+c[1]*.8);
+                var hit=w.raycast(new net.minecraft.world.RaycastContext(from,to,net.minecraft.world.RaycastContext.ShapeType.OUTLINE,net.minecraft.world.RaycastContext.FluidHandling.NONE,player));
+                if(hit.getType()!=net.minecraft.util.hit.HitResult.Type.MISS){var q=hit.getBlockPos();if(Math.abs(q.getX()-s.x())>hx+1||Math.abs(q.getZ()-s.z())>hz+1)return false;}
+            }
+            return true;
+        }
+
+        static boolean flagCell(Spec.PointsRow p,BlockPos q){
+            int y=q.getY()-p.elevation();
+            return q.getZ()==p.z()&&(q.getX()==p.x()&&y>=1&&y<=7||q.getX()>=p.x()+1&&q.getX()<=p.x()+3&&y>=4&&y<=5);
+        }
+
+        /** The checks of every row of map n, on the server thread once the map is ready. */
+        void check(GravesAndGlory.Battle b,int n){
+            var w=b.world;var placed=newer(before);
+            long sum=0;int rows=0,laid=0,slowCount=0;var slow=new StringBuilder();
+            var player=b.server.getPlayerManager().getPlayerList().isEmpty()?null:b.server.getPlayerManager().getPlayerList().get(0);
+            for(var r:Spec.LANDMARKS){
+                if(r.map()!=n)continue;rows++;
+                String id=r.id(),k="p3-lm-"+id;
+                Structures.Placed p=null;for(var q:placed)if(q.row().equals(id))p=q;
+                boolean gone=r.replaces().equals("-")||Arrays.stream(Spec.STRUCTURES).noneMatch(s->s.id().equals(r.replaces()));
+                Spec.StructuresRow row=null;for(var s:Spec.STRUCTURES)if(s.id().equals(id)&&s.kind().equals("landmark"))row=s;
+                report(k+"-placed",p!=null&&!p.missing()&&gone&&row!=null,(p==null?"no LOG entry of this row since the switch":"placed "+p.id()+" ("+p.blocks()+" blocks, "+p.nanos()/1000000+" ms, missing "+p.missing()+")")+"; replaced row "+r.replaces()+(gone?" gone":" still in Spec.STRUCTURES")+"; landmark row "+(row!=null?"there":"missing"));
+                if(p==null||p.missing())continue;
+                laid++;sum+=p.nanos();if(p.nanos()>100_000_000L){slowCount++;slow.append(' ').append(id).append('=').append(p.nanos()/1000000).append("ms");}
+                var size=Structures.template(w,r.template()).get().getSize();
+                var fp=Structures.footprint(size,r.x(),r.elevation(),r.z(),r.rotation());var bx=p.box();
+                boolean same=bx.getMinX()==fp.getMinX()&&bx.getMinY()==fp.getMinY()&&bx.getMinZ()==fp.getMinZ()&&bx.getMaxX()==fp.getMaxX()&&bx.getMaxY()==fp.getMaxY()&&bx.getMaxZ()==fp.getMaxZ();
+                boolean in=fp.getMinX()>=-350&&fp.getMaxX()<=350&&fp.getMinZ()>=-250&&fp.getMaxZ()<=250;
+                report(k+"-fits",same&&in,"Placed.box "+bx+(same?" equals":" differs from")+" the footprint "+fp+"; inside |x|<=350, |z|<=250 "+in);
+                // the template's cells as its file lists them (void cells are not in the file)
+                var nbt=Structures.read(b.server,r.template()).get();var list=nbt.getList("blocks",NbtElement.COMPOUND_TYPE);
+                var present=new HashSet<Long>();var columns=new HashSet<Long>();
+                for(int i=0;i<list.size();i++){var pos=list.getCompound(i).getList("pos",NbtElement.INT_TYPE);present.add(key(pos.getInt(0),pos.getInt(1),pos.getInt(2)));columns.add(key(pos.getInt(0),0,pos.getInt(2)));}
+                Spec.PointsRow enclosed=null;for(var pt:Spec.POINTS)if(pt.id().equals(r.encloses()))enclosed=pt;
+                int voids=0,dirty=0;var where=new StringBuilder();
+                for(int lx=0;lx<size.getX();lx++)for(int ly=1;ly<size.getY();ly++)for(int lz=0;lz<size.getZ();lz++){
+                    if(present.contains(key(lx,ly,lz)))continue;var q=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),lx,ly,lz);
+                    if(enclosed!=null&&flagCell(enclosed,q))continue;voids++;
+                    if(!w.getBlockState(q).isAir()){dirty++;if(dirty<=6)where.append(' ').append(name(w.getBlockState(q))).append(xyz(q));}
+                }
+                report(k+"-clear",dirty==0,voids+" void cells at local y 1 and up (the flag of an enclosed point left out), "+dirty+" of them not air"+where);
+                var scan=Walkability.scan(b,fp);int deck=0;
+                for(String line:scan.detail().split("\n")){var f=line.split(" ");if(f.length>=3&&Walkability.onDeck(Integer.parseInt(f[1]),Integer.parseInt(f[2])))deck++;}
+                report(k+"-roads",scan.through()==0&&deck==0,"over the footprint: cells "+scan.cells()+", through "+scan.through()+", blocked deck cells "+deck+", building "+scan.building()+", road "+scan.road());
+                int near=0;var close=new StringBuilder();
+                for(long col:columns){int lx=(int)(col>>24),lz=(int)(col&0xfff);var q=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),lx,0,lz);
+                    for(var pt:Spec.POINTS){if(pt==enclosed)continue;if(Math.hypot(q.getX()-pt.x(),q.getZ()-pt.z())<=19){near++;if(near<=3)close.append(' ').append(pt.id()).append(xyz(q));}}}
+                String ringWhy=near+" template columns within 19 of a point it does not enclose"+close;boolean ringOk=near==0;
+                if(enclosed!=null){
+                    var pt=enclosed;int ring=0,ringBad=0,pad=0,padBad=0;boolean ringIsLaid=Arena.ringLaid(pt);
+                    for(int dx=-pt.radius();dx<=pt.radius();dx++)for(int dz=-pt.radius();dz<=pt.radius();dz++){
+                        double d=Math.hypot(dx,dz);int x=pt.x()+dx,z=pt.z()+dz;var q=new BlockPos(x,pt.elevation(),z);
+                        if(ringIsLaid&&d>=pt.radius()-1&&d<=pt.radius()&&!Arena.wetBank(x,z)&&!Arena.deckCell(x,z)){ring++;if(!name(w.getBlockState(q)).equals("smooth_stone"))ringBad++;}
+                        if(Math.abs(dx)<=1&&Math.abs(dz)<=1){pad++;if(!name(w.getBlockState(q)).equals("chiseled_stone_bricks"))padBad++;}
+                    }
+                    int pole=0;for(int y=1;y<=6;y++)if(name(at(w,pt.x(),pt.elevation()+y,pt.z())).equals("oak_fence"))pole++;
+                    int cloth=0;for(int a=1;a<=3;a++)for(int y=4;y<=5;y++)if(name(at(w,pt.x()+a,pt.elevation()+y,pt.z())).endsWith("_wool"))cloth++;
+                    boolean lamp=name(at(w,pt.x(),pt.elevation()+7,pt.z())).equals("sea_lantern");
+                    ringOk&=ringIsLaid&&ring>0&&ringBad==0&&pad==9&&padBad==0&&pole==6&&cloth==6&&lamp;
+                    ringWhy+="; enclosed "+pt.id()+": ring laid "+ringIsLaid+", smooth stone "+(ring-ringBad)+" of "+ring+", pad "+(pad-padBad)+" of 9, pole "+pole+" of 6, cloth "+cloth+" of 6, lantern "+lamp;
+                    // gates: every cell within 2 of a road into the point, from radius 17.5 to the footprint edge
+                    int roadsIn=0,cells=0,shut=0;var shutAt=new StringBuilder();
+                    for(var rd:CampaignMaps.roads){
+                        if(!(rd.ax()==pt.x()&&rd.az()==pt.z()||rd.bx()==pt.x()&&rd.bz()==pt.z()))continue;roadsIn++;
+                        for(int x=fp.getMinX();x<=fp.getMaxX();x++)for(int z=fp.getMinZ();z<=fp.getMaxZ();z++){
+                            if(CampaignMaps.distance(x,z,rd)>2||Math.hypot(x-pt.x(),z-pt.z())<17.5)continue;cells++;int g=Arena.ground(x,z);boolean blocked=false;
+                            for(int y=g+1;y<=g+2;y++){var q=new BlockPos(x,y,z);if(!w.getBlockState(q).getCollisionShape(w,q).isEmpty())blocked=true;}
+                            if(blocked){shut++;if(shut<=6)shutAt.append(' ').append(x).append(',').append(z);}
+                        }
+                    }
+                    report(k+"-gates",roadsIn>0&&cells>0&&shut==0,roadsIn+" roads end at "+pt.id()+"; "+cells+" cells within 2 of them from radius 17.5 to the footprint edge, "+shut+" with a collision shape at ground+1 or +2"+shutAt);
+                }
+                report(k+"-ring",ringOk,ringWhy);
+                for(var l:Spec.LANDMARKLINES){
+                    if(!l.template().equals(r.template()))continue;
+                    Vec3d from=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),l.fromX(),l.fromY(),l.fromZ());
+                    Vec3d to=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),l.toX(),l.toY(),l.toZ());
+                    if(l.toY()==-1.0)to=new Vec3d(to.x,Arena.ground((int)Math.floor(to.x),(int)Math.floor(to.z))+2.6,to.z);
+                    var e=EXPECTED.get(id+"/"+l.kind());
+                    boolean stated=e==null||close(from.x,e.fx())&&close(from.y,e.fy())&&close(from.z,e.fz())&&close(to.x,e.tx())&&(Double.isNaN(e.ty())||close(to.y,e.ty()))&&close(to.z,e.tz());
+                    var hit=w.raycast(new net.minecraft.world.RaycastContext(from,to,net.minecraft.world.RaycastContext.ShapeType.COLLIDER,net.minecraft.world.RaycastContext.FluidHandling.NONE,player));
+                    boolean blocked=hit.getType()==net.minecraft.util.hit.HitResult.Type.BLOCK;double left=hit.getPos().distanceTo(to);
+                    boolean ok=l.kind().equals("cover")?blocked&&left>0.3:!blocked||left<=0.3;
+                    String what=blocked?"hit "+name(w.getBlockState(hit.getBlockPos()))+xyz(hit.getBlockPos())+" "+String.format(Locale.ROOT,"%.2f",left)+" before the end":"no hit";
+                    report(k+"-"+l.kind(),ok&&stated&&player!=null,l.id()+" "+v(from)+" to "+v(to)+(e==null?"":stated?" (the stated world points)":" (NOT the stated world points)")+": "+what);
+                }
+            }
+            report("p3-lm-budget-map"+n,rows>0&&laid==rows&&slowCount==0&&sum<=1_500_000_000L,laid+" of "+rows+" rows placed, all together "+sum/1000000+" ms (at most 1500), over 100 ms:"+(slowCount==0?" none":slow.toString()));
+            int hx=GravesAndGlory.R.worldHalfX(),hz=GravesAndGlory.R.worldHalfZ();
+            var loose=w.getEntitiesByType(EntityType.ITEM,new Box(-hx,w.getBottomY(),-hz,hx+1,w.getTopY(),hz+1),x->true);
+            var kinds=new TreeMap<String,Integer>();for(var it:loose)kinds.merge(net.minecraft.registry.Registries.ITEM.getId(it.getStack().getItem()).getPath(),it.getStack().getCount(),Integer::sum);
+            System.out.println("[p3] note landmarks map "+n+": "+loose.size()+" loose items after the build "+kinds);
+            shots=plan(b,n);checked=true;
+        }
+        static long key(int x,int y,int z){return ((long)x<<24)|((long)y<<12)|z;}
+        static boolean close(double a,double b){return Math.abs(a-b)<1e-6;}
+        static String v(Vec3d p){return String.format(Locale.ROOT,"(%.1f,%.1f,%.1f)",p.x,p.y,p.z);}
+
+        /** Map 4 is switched to; on the server tick, once its landmarks are queued, map 0; then until map 0 is ready, the queue and the LOG are watched. */
+        void midQueue(GravesAndGlory.Battle b0){
+            int map0=0;for(var r:Spec.LANDMARKS)if(r.map()==0)map0++;final int want=map0;
+            int[] phase={0},ticks={0},queuedAt={-1};Set<Structures.Placed>[] snap=new Set[1];
+            b0.campaign.switchMap(4);
+            hook=()->{
+                var b=GravesAndGlory.battle;if(b==null)return;
+                if(++ticks[0]>20*900){hook=null;report("p3-lm-switch-mid-queue",false,"no result after 900 s (phase "+phase[0]+")");hookDone=true;return;}
+                if(phase[0]==0){
+                    if(b.campaign.map==4&&Structures.queued()>0){queuedAt[0]=Structures.queued();snap[0]=snapshot();b.campaign.switchMap(0);int left=Structures.queued();boolean ready=b.ready;phase[0]=1;
+                        if(left!=0||ready){hook=null;report("p3-lm-switch-mid-queue",false,"switched to map 0 with "+queuedAt[0]+" map 4 landmarks queued: queued "+left+" right after (want 0), ready "+ready);hookDone=true;}}
+                    return;
+                }
+                var after=newer(snap[0]);long kf=after.stream().filter(p->p.row().startsWith("kf-")).count(),rg=after.stream().filter(p->p.row().startsWith("rg-")).count();
+                if(!b.ready)return;
+                hook=null;
+                boolean ok=kf==0&&rg==want&&Structures.queued()==0;
+                report("p3-lm-switch-mid-queue",ok,"map 4 had "+queuedAt[0]+" landmarks queued when map 0 was switched to; the queue was empty at once; map 0 ready with "+Structures.queued()+" queued, "+rg+" of "+want+" rg- rows placed since the switch, "+kf+" kf- rows placed since the switch");
+                hookDone=true;
+            };
+        }
+        /** The cache marker of the map built last (map 0): current, stale with the salt, current again without it. */
+        void cache(GravesAndGlory.Battle b){
+            boolean built=b.campaign.cached();String h=Structures.hash(b.campaign.map);
+            Structures.salt="test";boolean salted=b.campaign.cached();String hs=Structures.hash(b.campaign.map);
+            Structures.salt="";boolean back=b.campaign.cached();
+            report("p3-lm-cache",built&&!salted&&back&&!h.equals(hs),"map "+b.campaign.map+" after its build: cached "+built+" (hash "+h+"); with salt test: cached "+salted+" (hash "+hs+"); salt put back: cached "+back);
+            cacheDone=true;
         }
     }
 }

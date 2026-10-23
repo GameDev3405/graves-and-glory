@@ -1,23 +1,30 @@
 package gg.gravesandglory;
 
-/** The map cache marker (LayoutMarker): a marker written before the arena margin was tapered (layout and map only), or with a margin built to an older camp terrain, is not current, so the arena of that map is built once more; the marker this build writes is current for its map and for no other. */
+/** The map cache marker (LayoutMarker): a marker written before the arena margin was tapered (layout and map only), with a margin built to an older camp terrain, or without the landmarks hash of the map or with another one, is not current, so the arena of that map is built once more; the marker this build writes is current for its map and its landmarks and for no other. */
 public final class LayoutMarkerCheck {
  static int count;static void check(boolean pass,String text){count++;if(!pass)throw new AssertionError(text);}
  public static void main(String[] args){
+  String h="1a2b3c4d";
   String old2="{\"layout\":\"campaign-3\",\"map\":2}";
-  check(!LayoutMarker.current(old2,2),"A marker from before the taper (layout and map, no margin revision) is not current");
-  check(!LayoutMarker.text(2).equals(old2),"The marker written now differs from the one written before the taper");
-  check(LayoutMarker.current(LayoutMarker.text(2),2),"The marker this build writes is current for its map");
-  check(!LayoutMarker.current(LayoutMarker.text(2),3),"The marker of one map is not current for another");
-  for(int map=0;map<5;map++)check(LayoutMarker.current(LayoutMarker.text(map),map)&&!LayoutMarker.current(old2.replace("2",""+map),map),"Map "+map+": the new marker is current, the old form of it is not");
-  check(!LayoutMarker.current("{\"layout\":\"campaign-3\",\"map\":2,\"margin\":\"margin-old\"}",2),"Another margin revision is not current");
-  check(!LayoutMarker.current("{\"layout\":\"campaign-2\",\"map\":2,\"margin\":\""+LayoutMarker.MARGIN+"\"}",2),"Another layout string is not current");
-  check(!LayoutMarker.current("",2)&&!LayoutMarker.current("not json",2)&&!LayoutMarker.current("[]",2)&&!LayoutMarker.current("{}",2),"Unreadable markers are not current");
-  check(LayoutMarker.text(0).contains(LayoutMarker.MARGIN),"The marker names the margin revision");
+  check(!LayoutMarker.current(old2,2,h),"A marker from before the taper (layout and map, no margin revision) is not current");
+  check(!LayoutMarker.text(2,h).equals(old2),"The marker written now differs from the one written before the taper");
+  check(LayoutMarker.current(LayoutMarker.text(2,h),2,h),"The marker this build writes is current for its map");
+  check(!LayoutMarker.current(LayoutMarker.text(2,h),3,h),"The marker of one map is not current for another");
+  for(int map=0;map<5;map++)check(LayoutMarker.current(LayoutMarker.text(map,h),map,h)&&!LayoutMarker.current(old2.replace("2",""+map),map,h),"Map "+map+": the new marker is current, the old form of it is not");
+  check(!LayoutMarker.current("{\"layout\":\"campaign-3\",\"map\":2,\"margin\":\"margin-old\",\"landmarks\":\""+h+"\"}",2,h),"Another margin revision is not current");
+  check(!LayoutMarker.current("{\"layout\":\"campaign-2\",\"map\":2,\"margin\":\""+LayoutMarker.MARGIN+"\",\"landmarks\":\""+h+"\"}",2,h),"Another layout string is not current");
+  check(!LayoutMarker.current("",2,h)&&!LayoutMarker.current("not json",2,h)&&!LayoutMarker.current("[]",2,h)&&!LayoutMarker.current("{}",2,h),"Unreadable markers are not current");
+  check(LayoutMarker.text(0,h).contains(LayoutMarker.MARGIN),"The marker names the margin revision");
   check(LayoutMarker.MARGIN.contains(CampTerrain.REVISION),"The margin revision names the camp terrain revision (the margin meets the rim of that terrain)");
-  check(!LayoutMarker.current("{\"layout\":\"campaign-3\",\"map\":2,\"margin\":\"margin-1\"}",2),"A margin built to the camp terrain before fix round 4 (margin-1, terrain-3) is not current: the map's arena is built once more");
-  check(!LayoutMarker.current("{\"layout\":\"campaign-3\",\"map\":4,\"margin\":\"margin-1/terrain-4\"}",4),"A margin built to the camp terrain of fix round 4 (margin-1/terrain-4, the marker the upgrade run of re-grade 4 wrote) is not current: the map's arena is built once more");
-  check(LayoutMarker.LAYOUT.equals("campaign-3"),"The layout string is not bumped (only the margin revision changes)");
+  check(!LayoutMarker.current("{\"layout\":\"campaign-3\",\"map\":2,\"margin\":\"margin-1\"}",2,h),"A margin built to the camp terrain before fix round 4 (margin-1, terrain-3) is not current: the map's arena is built once more");
+  check(!LayoutMarker.current("{\"layout\":\"campaign-3\",\"map\":4,\"margin\":\"margin-1/terrain-4\"}",4,h),"A margin built to the camp terrain of fix round 4 (margin-1/terrain-4, the marker the upgrade run of re-grade 4 wrote) is not current: the map's arena is built once more");
+  check(LayoutMarker.LAYOUT.equals("campaign-3"),"The layout string is not bumped (only the margin revision and the landmarks hash change)");
+  // Landmarks (Phase 3 Task 6): the hash of the map's landmarks is in the marker.
+  String before="{\"layout\":\"campaign-3\",\"map\":0,\"margin\":\""+LayoutMarker.MARGIN+"\"}";
+  check(!LayoutMarker.current(before,0,h),"A marker written before the landmarks (no landmarks field) is not current: the map is built once more with its landmarks");
+  check(!LayoutMarker.current(LayoutMarker.text(0,"ffff0000"),0,h),"A marker with another landmarks hash (other rows, another structure file, other lines, or the harness salt) is not current");
+  check(LayoutMarker.current(LayoutMarker.text(0,h),0,h),"A marker with the map's own landmarks hash is current");
+  check(LayoutMarker.text(0,h).contains("\"landmarks\":\""+h+"\""),"The marker names the landmarks hash");
   System.out.println("PASS "+count+" layout marker scenarios");
  }
 }

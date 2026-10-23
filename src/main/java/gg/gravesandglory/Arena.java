@@ -57,13 +57,16 @@ public final class Arena {
         h+=.5*Spec.TERRAINSTYLE[0].roughness()*(Math.sin(x*.067+z*.031)+.5*Math.sin(z*.13-x*.043));
         double d=Math.abs(x-riverX(z));if(d<14)h=blend(h,Y-3,d,5,9);
         if(d>=5&&d<14)h=Math.max(Y-1,h);
-        for(var s:Spec.STRUCTURES)if(!s.kind().equals("bridge")){double dx=Math.max(0,Math.abs(x-s.x())-s.width()/2.0-2),dz=Math.max(0,Math.abs(z-s.z())-s.depth()/2.0-2);h=blend(h,s.elevation(),Math.hypot(dx,dz),0,10);}
+        for(var s:Spec.STRUCTURES)if(!s.kind().equals("bridge")&&!s.kind().equals("landmark")){double dx=Math.max(0,Math.abs(x-s.x())-s.width()/2.0-2),dz=Math.max(0,Math.abs(z-s.z())-s.depth()/2.0-2);h=blend(h,s.elevation(),Math.hypot(dx,dz),0,10);}
         for(var p:Spec.POINTS)h=blend(h,p.elevation(),Math.hypot(x-p.x(),z-p.z()),p.radius()+2,9);
         // Bridge decks and their approaches must be walkable even where a hill
         // meets the river. Clear/flatten the entire deck and blend broad ramps.
         for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")){double dx=Math.max(0,Math.abs(x-s.x())-s.width()/2.0-1),dz=Math.max(0,Math.abs(z-s.z())-s.depth()/2.0-1);h=blend(h,s.elevation(),Math.hypot(dx,dz),0,12);}
         double rd=CampaignMaps.roadDistance(x,z);
         if(rd<8)h=blend(h,roadLevel(x,z),rd,0,8);
+        // Landmarks (authored pieces, see CampaignMaps.landmarks) stand on ground flat at their elevation out to 2 blocks past the footprint, after the roads so a lane
+        // that reaches a door meets the floor of the piece; the shoulder widens by 2 a block of rise, so a raised outpost meets the plain in a slope a squad can walk.
+        for(var s:Spec.STRUCTURES)if(s.kind().equals("landmark")){double dx=Math.max(0,Math.abs(x-s.x())-s.width()/2.0-2),dz=Math.max(0,Math.abs(z-s.z())-s.depth()/2.0-2);h=blend(h,s.elevation(),Math.hypot(dx,dz),0,10+2*(s.elevation()-64));}
         double border=Math.max(Math.abs(x)-GravesAndGlory.R.arenaHalfX()+14,Math.abs(z)-GravesAndGlory.R.arenaHalfZ()+12);
         if(border>0)h+=Math.min(Spec.TERRAINSTYLE[0].boundaryRise(),border*.4)*(.65+.35*Math.sin(x*.055+z*.043));
         if(z<-GravesAndGlory.R.arenaHalfZ())h=CampWorld.taper(x,z,h); // the margin north of the playable box (z -251 to -266) meets the rim of the camp; the box itself is not touched

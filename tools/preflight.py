@@ -122,6 +122,28 @@ for r in data.get('campLessons',[]):
     if text.count('{key:')!=len(re.findall(r'\{key:[a-z_]+\}',text)): errors.append(f'{where}: a {{key: marker is not of the form {{key:<id>}} in [a-z_]')
     for key in re.findall(r'\{key:([a-z_]+)\}',text):
         if key not in LESSON_KEYS: errors.append(f'{where}: {{key:{key}}} is not one of '+', '.join(sorted(LESSON_KEYS)))
+# Landmarks (Phase 3): authored pieces that replace rows of CampaignMaps on one map. Ids unique (the generic check above); the footprints of one map
+# (the centre block plus and minus (w-1)/2 and (d-1)/2, w and d swapped at 90 and 270) never share a cell.
+spans={}
+for r in data.get('landmarks',[]):
+    where=f'landmarks/{r["id"]}'
+    if r['map'] not in range(5): errors.append(f'{where}: map {r["map"]} is not 0..4')
+    template=piece_rows.get(r['template'])
+    if template is None: errors.append(f'{where}: template {r["template"]} is not a pieces id')
+    if r['rotation'] not in (0,90,180,270): errors.append(f'{where}: rotation {r["rotation"]} is not 0, 90, 180 or 270')
+    if not 60<=r['elevation']<=90: errors.append(f'{where}: elevation {r["elevation"]} is not 60..90')
+    if r['replaces']!='-' and not re.fullmatch(r'[a-z0-9_-]+',r['replaces']): errors.append(f'{where}: replaces {r["replaces"]} is neither - nor a row id [a-z0-9_-]+')
+    if r['encloses'] not in ('-','A','B','C','D','E'): errors.append(f'{where}: encloses {r["encloses"]} is neither - nor one of A..E')
+    if template is None or r['rotation'] not in (0,90,180,270): continue
+    w,d=(template['depth'],template['width']) if r['rotation'] in (90,270) else (template['width'],template['depth'])
+    box=(r['x']-(w-1)//2,r['z']-(d-1)//2,r['x']+w-1-(w-1)//2,r['z']+d-1-(d-1)//2)
+    for other,obox in spans.get(r['map'],[]):
+        if box[0]<=obox[2] and obox[0]<=box[2] and box[1]<=obox[3] and obox[1]<=box[3]: errors.append(f'{where}: its footprint x {box[0]}..{box[2]}, z {box[1]}..{box[3]} overlaps landmarks/{other} on map {r["map"]}')
+    spans.setdefault(r['map'],[]).append((r['id'],box))
+for r in data.get('landmarkLines',[]):
+    where=f'landmarkLines/{r["id"]}'
+    if r['template'] not in piece_rows: errors.append(f'{where}: template {r["template"]} is not a pieces id')
+    if r['kind'] not in ('cover','sight'): errors.append(f'{where}: kind {r["kind"]} is neither cover nor sight')
 if errors:
     print('\n'.join(errors)); sys.exit(1)
 def typ(v): return 'boolean' if isinstance(v,bool) else 'int' if isinstance(v,int) else 'double' if isinstance(v,float) else 'String'

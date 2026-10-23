@@ -14,6 +14,7 @@ import net.minecraft.util.math.BlockPos;
  * A through cell counts in building and in through; detail names it "through". detail has one "kind x z block" line per blocked cell.
  * The one exception is the pole of a capture point's flag, the oak_fence at the exact centre of a point (Arena.flag builds and recolours it): wherever it stands, on a deck or at the end of the road that runs
  * into the point, it is point dressing, one cell a knight walks around, so it counts as point and not as road. Nothing else on a road cell inside a ring is excused.
+ * A landmark that encloses a capture point (a Kingsfield outpost round B or D) leaves the ring of that point to the arena: inside the ring it is not a footprint, and a blocked cell there counts as road or point like any ring cell.
  * A deck is the planks only: columns x..x+width-1 and rows z..z+depth-1 from x=s.x()-width/2, z=s.z()-depth/2. Arena.ground also counts the
  * row z+depth and the column x+width as bridge, but nothing is built on them as a deck.
  */
@@ -37,7 +38,7 @@ final class Walkability {
             if(flagPole(x,z,hit))kind="point";
             else if(!deck){
                 boolean inBase=false,inBuilding=false,inThrough=false;
-                for(var s:Spec.STRUCTURES){if(s.kind().equals("bridge")||!inside(s,x,z))continue;if(baseLike(s))inBase=true;else{inBuilding=true;inThrough|=through(x,z,s);}}
+                for(var s:Spec.STRUCTURES){if(s.kind().equals("bridge")||!counts(s,x,z))continue;if(baseLike(s))inBase=true;else{inBuilding=true;inThrough|=through(x,z,s);}}
                 kind=inBase?"base":inThrough?"through":inBuilding?"building":ring&&!Arena.road(x,z)?"point":"road";
             }
             switch(kind){case "road"->road++;case "through"->{building++;through++;}case "building"->building++;case "base"->base++;default->point++;}
@@ -60,6 +61,14 @@ final class Walkability {
     static boolean inRing(int x,int z){for(var p:Spec.POINTS)if((x-p.x())*(x-p.x())+(z-p.z())*(z-p.z())<=p.radius()*p.radius())return true;return false;}
     /** The footprint test MapDressing.onStructure uses with no margin. */
     static boolean inside(Spec.StructuresRow s,int x,int z){return Math.abs(x-s.x())<=s.width()/2&&Math.abs(z-s.z())<=s.depth()/2;}
+    /** inside(s,x,z), except in the ring of a capture point that s, a landmark, encloses (its landmarks row names the point): that ring is the arena's. */
+    static boolean counts(Spec.StructuresRow s,int x,int z){
+        if(!inside(s,x,z))return false;
+        if(!s.kind().equals("landmark"))return true;
+        for(var r:Spec.LANDMARKS)if(r.id().equals(s.id())&&r.map()==CampaignMaps.selected&&!r.encloses().equals("-"))
+            for(var p:Spec.POINTS)if(p.id().equals(r.encloses())&&(x-p.x())*(x-p.x())+(z-p.z())*(z-p.z())<=p.radius()*p.radius())return false;
+        return true;
+    }
     /** A structure of a team camp (CampaignMaps.select): the gate, the barracks and the stores of dawn and dusk. The warehouse and the garrison are barracks-kind buildings on the battlefield, and not base. */
     static boolean baseLike(Spec.StructuresRow s){return s.id().matches("(dawn|dusk)_(gate|barracks|stores)");}
     /** A road of width 4 or more covers the cell and neither end of it is inside the footprint of s. */

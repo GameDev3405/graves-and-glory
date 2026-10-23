@@ -208,6 +208,8 @@ public final class GravesAndGlory implements ModInitializer {
         public int roundSeconds=R.roundSeconds();
         String message="Preparing the battlefield...";
         int buildColumn=0;
+        /** True once the columns are built and the map's landmarks are being placed (Structures.step, one a tick); the map is ready when the queue is empty. */
+        boolean placing=false;
         int rounds=0;long roundStarted;
         record Ping(UUID owner,int team,String kind,double x,double z,long until){}
         final List<Ping> pings=new ArrayList<>();final Map<UUID,Long> lastPing=new HashMap<>();
@@ -266,8 +268,12 @@ public final class GravesAndGlory implements ModInitializer {
                     Arena.column(world,x,z);
                 }
                 if(buildColumn>=total){
-                    Arena.finish(world);campaign.built();CampWorld.warTable(world);ready=true;message="Your war council is ready. Press R.";
-                    Diagnostics.report("arena-ready",true,null);
+                    // The columns are built: the landmarks of the map go down one a tick on the finished ground, and the map is ready once the last is placed.
+                    if(!placing){Arena.finish(world);Structures.queueLandmarks(world);placing=true;}
+                    else if(Structures.step(world)){
+                        campaign.built();CampWorld.warTable(world);ready=true;placing=false;message="Your war council is ready. Press R.";
+                        Diagnostics.report("arena-ready",true,null);
+                    }
                 }
                 if(time%20==0){message="Preparing "+Spec.MAPS[campaign.map].name()+" / "+buildColumn*100/total+"%";sendState();}
                 return;

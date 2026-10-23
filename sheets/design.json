@@ -1764,6 +1764,86 @@
       "height": 8,
       "palette": "wood",
       "purpose": "training yard and tutorial"
+    },
+    {
+      "id": "kit/house_a",
+      "width": 15,
+      "depth": 13,
+      "height": 11,
+      "palette": "wood",
+      "purpose": "hamlet cottage, door east"
+    },
+    {
+      "id": "kit/house_b",
+      "width": 15,
+      "depth": 13,
+      "height": 11,
+      "palette": "wood",
+      "purpose": "hamlet two-storey house, door east"
+    },
+    {
+      "id": "kit/market",
+      "width": 19,
+      "depth": 9,
+      "height": 6,
+      "palette": "wood",
+      "purpose": "market stalls"
+    },
+    {
+      "id": "kit/farm",
+      "width": 27,
+      "depth": 19,
+      "height": 3,
+      "palette": "wood",
+      "purpose": "fenced wheat field"
+    },
+    {
+      "id": "kit/customs",
+      "width": 19,
+      "depth": 15,
+      "height": 12,
+      "palette": "wood",
+      "purpose": "toll house"
+    },
+    {
+      "id": "kit/warehouse",
+      "width": 25,
+      "depth": 19,
+      "height": 12,
+      "palette": "stone",
+      "purpose": "stone storehouse"
+    },
+    {
+      "id": "kit/shrine",
+      "width": 23,
+      "depth": 19,
+      "height": 15,
+      "palette": "stone",
+      "purpose": "roadside shrine"
+    },
+    {
+      "id": "kit/watchtower",
+      "width": 11,
+      "depth": 11,
+      "height": 17,
+      "palette": "stone",
+      "purpose": "base watchtower, door west"
+    },
+    {
+      "id": "rivergate/mill",
+      "width": 19,
+      "depth": 21,
+      "height": 16,
+      "palette": "wood",
+      "purpose": "mill and yard at the north crossing"
+    },
+    {
+      "id": "kingsfield/outpost",
+      "width": 47,
+      "depth": 47,
+      "height": 14,
+      "palette": "wood",
+      "purpose": "flank outpost enclosing a point"
     }
   ],
   "camp": [
@@ -2095,6 +2175,384 @@
       "y": 66.105,
       "dz": 14.5,
       "text": "LESSON 4 OF 4 / Recruit at your barracks lectern with {key:use}. Trained troops march out from the held point nearest the fight."
+    }
+  ],
+  "landmarks": [
+    {
+      "id": "rg-house-0",
+      "map": 0,
+      "template": "kit/house_a",
+      "x": -85,
+      "z": -133,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_0",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-house-1",
+      "map": 0,
+      "template": "kit/house_b",
+      "x": -111,
+      "z": -133,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_1",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-house-2",
+      "map": 0,
+      "template": "kit/house_b",
+      "x": -85,
+      "z": -118,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_2",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-house-3",
+      "map": 0,
+      "template": "kit/house_a",
+      "x": -111,
+      "z": -118,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_3",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-market",
+      "map": 0,
+      "template": "kit/market",
+      "x": -60,
+      "z": -112,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "market",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-farm",
+      "map": 0,
+      "template": "kit/farm",
+      "x": -100,
+      "z": -170,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "farm",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-mill",
+      "map": 0,
+      "template": "rivergate/mill",
+      "x": -28,
+      "z": -175,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "mill",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-customs",
+      "map": 0,
+      "template": "kit/customs",
+      "x": -58,
+      "z": 30,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "customs",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-warehouse",
+      "map": 0,
+      "template": "kit/warehouse",
+      "x": 60,
+      "z": -30,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "warehouse",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-shrine",
+      "map": 0,
+      "template": "kit/shrine",
+      "x": 69,
+      "z": 127,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "shrine",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-dawn-tower-n",
+      "map": 0,
+      "template": "kit/watchtower",
+      "x": -180,
+      "z": -85,
+      "rotation": 0,
+      "elevation": 67,
+      "replaces": "dawn_tower_-85",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-dawn-tower-s",
+      "map": 0,
+      "template": "kit/watchtower",
+      "x": -180,
+      "z": 85,
+      "rotation": 0,
+      "elevation": 67,
+      "replaces": "dawn_tower_85",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-dusk-tower-n",
+      "map": 0,
+      "template": "kit/watchtower",
+      "x": 180,
+      "z": -85,
+      "rotation": 180,
+      "elevation": 67,
+      "replaces": "dusk_tower_-85",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-dusk-tower-s",
+      "map": 0,
+      "template": "kit/watchtower",
+      "x": 180,
+      "z": 85,
+      "rotation": 180,
+      "elevation": 67,
+      "replaces": "dusk_tower_85",
+      "encloses": "-"
+    },
+    {
+      "id": "kf-house-0",
+      "map": 4,
+      "template": "kit/house_a",
+      "x": -84,
+      "z": -148,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_0",
+      "encloses": "-"
+    },
+    {
+      "id": "kf-house-1",
+      "map": 4,
+      "template": "kit/house_b",
+      "x": -110,
+      "z": -148,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_1",
+      "encloses": "-"
+    },
+    {
+      "id": "kf-house-2",
+      "map": 4,
+      "template": "kit/house_b",
+      "x": -84,
+      "z": -133,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_2",
+      "encloses": "-"
+    },
+    {
+      "id": "kf-house-3",
+      "map": 4,
+      "template": "kit/house_a",
+      "x": -110,
+      "z": -133,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_3",
+      "encloses": "-"
+    },
+    {
+      "id": "kf-market",
+      "map": 4,
+      "template": "kit/market",
+      "x": -59,
+      "z": -127,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "market",
+      "encloses": "-"
+    },
+    {
+      "id": "kf-farm",
+      "map": 4,
+      "template": "kit/farm",
+      "x": -99,
+      "z": -185,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "farm",
+      "encloses": "-"
+    },
+    {
+      "id": "kf-mill",
+      "map": 4,
+      "template": "rivergate/mill",
+      "x": -27,
+      "z": -190,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "mill",
+      "encloses": "-"
+    },
+    {
+      "id": "kf-customs",
+      "map": 4,
+      "template": "kit/customs",
+      "x": -45,
+      "z": 47,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "customs",
+      "encloses": "-"
+    },
+    {
+      "id": "kf-warehouse",
+      "map": 4,
+      "template": "kit/warehouse",
+      "x": 45,
+      "z": -47,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "warehouse",
+      "encloses": "-"
+    },
+    {
+      "id": "kf-shrine",
+      "map": 4,
+      "template": "kit/shrine",
+      "x": 68,
+      "z": 142,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "shrine",
+      "encloses": "-"
+    },
+    {
+      "id": "kf-outpost-west",
+      "map": 4,
+      "template": "kingsfield/outpost",
+      "x": -130,
+      "z": 100,
+      "rotation": 0,
+      "elevation": 74,
+      "replaces": "-",
+      "encloses": "B"
+    },
+    {
+      "id": "kf-outpost-east",
+      "map": 4,
+      "template": "kingsfield/outpost",
+      "x": 130,
+      "z": -100,
+      "rotation": 180,
+      "elevation": 74,
+      "replaces": "-",
+      "encloses": "D"
+    },
+    {
+      "id": "kf-dawn-tower-n",
+      "map": 4,
+      "template": "kit/watchtower",
+      "x": -180,
+      "z": -85,
+      "rotation": 0,
+      "elevation": 67,
+      "replaces": "dawn_tower_-85",
+      "encloses": "-"
+    },
+    {
+      "id": "kf-dawn-tower-s",
+      "map": 4,
+      "template": "kit/watchtower",
+      "x": -180,
+      "z": 85,
+      "rotation": 0,
+      "elevation": 67,
+      "replaces": "dawn_tower_85",
+      "encloses": "-"
+    },
+    {
+      "id": "kf-dusk-tower-n",
+      "map": 4,
+      "template": "kit/watchtower",
+      "x": 180,
+      "z": -85,
+      "rotation": 180,
+      "elevation": 67,
+      "replaces": "dusk_tower_-85",
+      "encloses": "-"
+    },
+    {
+      "id": "kf-dusk-tower-s",
+      "map": 4,
+      "template": "kit/watchtower",
+      "x": 180,
+      "z": 85,
+      "rotation": 180,
+      "elevation": 67,
+      "replaces": "dusk_tower_85",
+      "encloses": "-"
+    }
+  ],
+  "landmarkLines": [
+    {
+      "id": "mill-cover",
+      "template": "rivergate/mill",
+      "kind": "cover",
+      "fromX": 11.5,
+      "fromY": 2.6,
+      "fromZ": 17.5,
+      "toX": 6.5,
+      "toY": 2.6,
+      "toZ": 39.5
+    },
+    {
+      "id": "mill-sight",
+      "template": "rivergate/mill",
+      "kind": "sight",
+      "fromX": 14.5,
+      "fromY": 9.6,
+      "fromZ": 11.5,
+      "toX": 20.5,
+      "toY": 2.6,
+      "toZ": 39.5
+    },
+    {
+      "id": "outpost-cover",
+      "template": "kingsfield/outpost",
+      "kind": "cover",
+      "fromX": 36.5,
+      "fromY": 2.6,
+      "fromZ": 36.5,
+      "toX": 42.5,
+      "toY": 2.6,
+      "toZ": 42.5
+    },
+    {
+      "id": "outpost-sight",
+      "template": "kingsfield/outpost",
+      "kind": "sight",
+      "fromX": 8.5,
+      "fromY": 11.6,
+      "fromZ": 38.5,
+      "toX": -7.5,
+      "toY": -1.0,
+      "toZ": 23.5
     }
   ]
 }

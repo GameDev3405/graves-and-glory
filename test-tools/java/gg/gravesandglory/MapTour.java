@@ -66,7 +66,7 @@ public final class MapTour implements ClientModInitializer {
                 if(map>=0)c.getServer().execute(()->b.campaign.returnLobby());
                 if(queue.isEmpty()){System.out.println("[Graves and Glory tour] COMPLETE");done=true;c.scheduleStop();return;}
                 map=queue.poll();int target=map;building=true;
-                c.getServer().execute(()->{b.campaign.returnLobby();if(b.campaign.map!=target)b.campaign.switchMap(target);else{b.ready=false;b.buildColumn=0;}});
+                c.getServer().execute(()->{b.campaign.returnLobby();if(b.campaign.map!=target)b.campaign.switchMap(target);else{b.ready=false;b.buildColumn=0;Structures.clearQueue();b.placing=false;}});
                 System.out.println("[Graves and Glory tour] building map "+map);return;
             }
             wait++;

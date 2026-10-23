@@ -95,9 +95,9 @@ public final class Campaign {
     Profile profile(UUID id){return profiles.computeIfAbsent(id,key->{Path file=directory.resolve(key+".json");if(!Files.exists(file))return new Profile();
         try{Profile p=JSON.fromJson(Files.readString(file),Profile.class);if(p==null)throw new IllegalStateException("Empty profile");p.sanitize();return p;}
         catch(Exception e){throw new IllegalStateException("Commander profile could not be read. Original and .bak preserved: "+key,e);}});}
-    /** The marker (see LayoutMarker) names this layout, this map and this revision of the arena margin; a save made before the margin was tapered has no revision, so its arena is built once more. */
-    boolean cached(){try{return LayoutMarker.current(Files.readString(layoutFile()),map);}catch(Exception e){return false;}}
-    void built(){try{Files.writeString(b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-layout.json"),LayoutMarker.text(map));}catch(Exception e){System.err.println("[Graves and Glory] Map cache marker could not be saved.");}}
+    /** The marker (see LayoutMarker) names this layout, this map, this revision of the arena margin and the hash of the map's landmarks (Structures.hash); a save made before the margin was tapered, or before these landmarks, builds its arena once more. */
+    boolean cached(){try{return LayoutMarker.current(Files.readString(layoutFile()),map,Structures.hash(map));}catch(Exception e){return false;}}
+    void built(){try{Files.writeString(b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-layout.json"),LayoutMarker.text(map,Structures.hash(map)));}catch(Exception e){System.err.println("[Graves and Glory] Map cache marker could not be saved.");}}
     boolean save(UUID id){try{Files.createDirectories(directory);Path path=directory.resolve(id+".json"),tmp=directory.resolve(id+".tmp");Files.writeString(tmp,JSON.toJson(profile(id)));if(Files.exists(path))Files.copy(path,path.resolveSibling(path.getFileName()+".bak"),StandardCopyOption.REPLACE_EXISTING);
             try{Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}catch(AtomicMoveNotSupportedException e){Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING);}return true;
         }catch(Exception e){System.err.println("[Graves and Glory] Could not save commander collection: "+e.getClass().getSimpleName());notice(id,"Collection could not be saved; check disk space.");return false;}}
@@ -389,7 +389,7 @@ public final class Campaign {
         return BattleMath.garrison(owners,s.team,at.toArray(double[][]::new),assignable,points,NEAR_RADIUS_FACTOR*tier.chargeDistance())[me];
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
-    void switchMap(int index){Projectiles.clear(b);map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
+    void switchMap(int index){Projectiles.clear(b);map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;Structures.clearQueue();b.placing=false;}
     /** The lesson a commander is on, or -1: only a campaign battle whose sheet row teaches (lessons) shows them, to its commanders, until all four are done. They repeat on every replay. */
     int tutorialStep(UUID id){
         if(!b.running||activeBattle==null||!activeBattle.lessons()||!participants.contains(id))return -1;

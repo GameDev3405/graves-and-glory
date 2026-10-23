@@ -12,11 +12,12 @@ final class LayoutMarker {
     static final String MARGIN_BASE="margin-1";
     static final String MARGIN=MARGIN_BASE+"/"+CampTerrain.REVISION;
 
-    static String text(int map){return "{\"layout\":\""+LAYOUT+"\",\"map\":"+map+",\"margin\":\""+MARGIN+"\"}";}
+    /** The marker of a map built now; landmarks is Structures.hash(map), what the landmarks placed on it are made of. */
+    static String text(int map,String landmarks){return "{\"layout\":\""+LAYOUT+"\",\"map\":"+map+",\"margin\":\""+MARGIN+"\",\"landmarks\":\""+landmarks+"\"}";}
 
-    /** True when the marker in json belongs to this build and this map: the layout string, the map, and the revision of the margin all agree. Anything unreadable is not current. */
-    static boolean current(String json,int map){
-        try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();return LAYOUT.equals(j.get("layout").getAsString())&&j.get("map").getAsInt()==map&&MARGIN.equals(j.get("margin").getAsString());}
+    /** True when the marker in json belongs to this build and this map: the layout string, the map, the revision of the margin and the landmarks hash all agree. A marker without the hash (written before the landmarks) and anything unreadable are not current. */
+    static boolean current(String json,int map,String landmarks){
+        try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();return LAYOUT.equals(j.get("layout").getAsString())&&j.get("map").getAsInt()==map&&MARGIN.equals(j.get("margin").getAsString())&&j.has("landmarks")&&landmarks.equals(j.get("landmarks").getAsString());}
         catch(Exception e){return false;}
     }
 }
