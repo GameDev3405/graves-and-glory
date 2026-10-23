@@ -88,17 +88,17 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
         @Override public void renderButton(DrawContext g,int mx,int my,float delta){
             int x=getX(),y=getY(),w=width,h=height,room=w-20;boolean selected=pendingClass.equals(c.id());
             panel(g,x,y,w,h);
-            if(selected){g.fill(x,y,x+w,y+3,GOLD);g.drawBorder(x,y,w,h,GOLD);}else if(isHovered()||isFocused())g.drawBorder(x,y,w,h,MUTED);
-            DarkUi.title(g,c.name().toUpperCase(Locale.ROOT),x+10,y+6,WHITE);
+            if(selected){g.fill(x,y,x+w,y+3,DarkUi.GOLD);g.drawBorder(x,y,w,h,DarkUi.GOLD);}else if(isHovered()||isFocused())g.drawBorder(x,y,w,h,DarkUi.MUTED);
+            DarkUi.title(g,c.name().toUpperCase(Locale.ROOT),x+10,y+6,DarkUi.IVORY);
             String group=Arrays.stream(Spec.GROUPS).filter(r->r.id().equals(c.group())).map(r->r.label()).findFirst().orElse(c.group()).toUpperCase(Locale.ROOT);
-            int gw=textRenderer.getWidth(DarkUi.body(group));DarkUi.label(g,group,x+w-10-gw,y+9,selected?GOLD:MUTED);
+            int gw=textRenderer.getWidth(DarkUi.body(group));DarkUi.label(g,group,x+w-10-gw,y+9,selected?DarkUi.GOLD:DarkUi.MUTED);
             String cooldown=c.cooldownTicks()/20+" s cooldown";int cdw=textRenderer.getWidth(DarkUi.body(cooldown));
-            DarkUi.label(g,cooldown,x+w-10-cdw,y+23,MUTED);text(g,Commander.activeName(c.active()).toUpperCase(Locale.ROOT),x+10,y+23,room-cdw-6,GOLD);
+            DarkUi.label(g,cooldown,x+w-10-cdw,y+23,DarkUi.MUTED);text(g,Commander.activeName(c.active()).toUpperCase(Locale.ROOT),x+10,y+23,room-cdw-6,DarkUi.GOLD);
             clipped=0;int ty=y+34;var lines=textRenderer.wrapLines(DarkUi.body(c.activeText()),room);
-            for(int i=0;i<lines.size();i++){if(i>=ACTIVE_LINES){clipped++;continue;}g.drawText(textRenderer,lines.get(i),x+10,ty,WHITE,false);ty+=10;}
-            int py=y+34+10*ACTIVE_LINES+2;DarkUi.label(g,"PASSIVE",x+10,py,MUTED);int pw=textRenderer.getWidth(DarkUi.body("PASSIVE"))+6;DarkUi.rule(g,x+10+pw,py+5,room-pw);
+            for(int i=0;i<lines.size();i++){if(i>=ACTIVE_LINES){clipped++;continue;}g.drawText(textRenderer,lines.get(i),x+10,ty,DarkUi.IVORY,false);ty+=10;}
+            int py=y+34+10*ACTIVE_LINES+2;DarkUi.label(g,"PASSIVE",x+10,py,DarkUi.MUTED);int pw=textRenderer.getWidth(DarkUi.body("PASSIVE"))+6;DarkUi.rule(g,x+10+pw,py+5,room-pw);
             ty=py+11;lines=textRenderer.wrapLines(DarkUi.body(c.passiveText()),room);
-            for(int i=0;i<lines.size();i++){if(i>=PASSIVE_LINES||ty+9>y+h){clipped++;continue;}g.drawText(textRenderer,lines.get(i),x+10,ty,WHITE,false);ty+=10;}
+            for(int i=0;i<lines.size();i++){if(i>=PASSIVE_LINES||ty+9>y+h){clipped++;continue;}g.drawText(textRenderer,lines.get(i),x+10,ty,DarkUi.IVORY,false);ty+=10;}
         }
     }
     /** An invitation waits for this player: they are not in the lobby yet and the lead's invite has not expired. */

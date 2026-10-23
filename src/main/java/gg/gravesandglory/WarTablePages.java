@@ -532,12 +532,14 @@ final class WarTablePages {
     /** The troops of the commander's House he has recruited, in roll order (at most ROWS: Phase 1 has six to a House). */
     static List<RecruitView.Row> owned() {
         List<RecruitView.Row> out = new ArrayList<>();
-        for (var r : RecruitView.roll(Spec.FACTIONS[team()].id())) if (r.owned() && out.size() < ROWS) out.add(r);
+        for (var r : RecruitView.roll(RosterMath.rollHouse(CampaignClient.profile.banner))) if (r.owned() && out.size() < ROWS) out.add(r); // integration: the House the banner leans on
         return out;
     }
 
     /** The seats a troop holds in the deployment (the army's count of it). */
-    static int seats(String troop) { return CampaignClient.profile.army.getOrDefault(troop, 0); }
+    static int seats(String troop) { return java.util.Collections.frequency(CampaignClient.profile.banner, troop); }
+    /** Integration: the seats the banner fills (not empty, not a marker of a wide troop). */
+    static int filled() { int n = 0; for (var id : CampaignClient.profile.banner) if (!id.equals(RosterMath.EMPTY) && !id.equals(RosterMath.MARKER)) n++; return n; }
 
     static String troopName(String id) {
         var s = ArmyCards.spec(id);
@@ -570,7 +572,7 @@ final class WarTablePages {
     void refreshBanner() {
         var roll = owned();
         if (armed == null || !armed.equals(EMPTY) && roll.stream().noneMatch(r -> r.troopId().equals(armed))) armed = roll.isEmpty() ? EMPTY : roll.get(0).troopId();
-        boolean free = battleFree(), room = CampaignClient.profile.count(team()) < SEATS;
+        boolean free = battleFree(), room = filled() < SEATS;
         for (int i = 0; i < ROWS; i++) {
             boolean shown = i < roll.size();
             String troop = shown ? roll.get(i).troopId() : "";
@@ -603,7 +605,10 @@ final class WarTablePages {
     /** Add or Remove on row i: army:(troop):add takes the first empty seat, :remove empties the last seat the troop holds. */
     void army(int i, String how) {
         var roll = owned();
-        if (i < roll.size()) send("army:" + roll.get(i).troopId() + ":" + how);
+        if (i >= roll.size()) return;
+        String troop = roll.get(i).troopId(); var line = CampaignClient.profile.banner; // integration: p2 takes slot:<i>:<id>, not army:
+        int at = how.equals("add") ? line.indexOf(EMPTY) : line.lastIndexOf(troop);
+        if (at >= 0) send("slot:" + at + ":" + (how.equals("add") ? troop : EMPTY));
     }
 
     void place(int seat, String troop) { if (troop != null) send("slot:" + seat + ":" + troop); }
@@ -670,12 +675,12 @@ final class WarTablePages {
         int t = team();
         int nx = WarTableHome.centred(g, DarkUi.heading(Spec.FACTIONS[t].name()), x + 200, y + 16, DarkUi.INK_TEXT);
         DarkUi.teamMark(g, t, nx - 11, y + 18);
-        String seated = CampaignClient.profile.count(t) + " of " + SEATS + " seats filled";
+        String seated = filled() + " of " + SEATS + " seats filled";
         WarTableHome.centred(g, DarkUi.body(seated), x + 200, y + 32, DarkUi.SEPIA);
         textsDrawn.put("seated", seated);
         g.drawText(font, DarkUi.body("Front"), x + 16, oy + SEAT_Y + 19, DarkUi.SEPIA, false);
         g.drawText(font, DarkUi.body("Rear"), x + 16, oy + SEAT_Y + 3 * SEAT_STEP + 19, DarkUi.SEPIA, false);
-        var line = CampaignClient.profile.lineup(t);
+        var line = CampaignClient.profile.banner;
         for (int i = 0; i < SEATS; i++)
             seat(g, "seat-" + i, i < line.size() ? line.get(i) : EMPTY, ox + SEAT_X + SEAT_STEP * (i % 5), oy + SEAT_Y + SEAT_STEP * (i / 5));
     }

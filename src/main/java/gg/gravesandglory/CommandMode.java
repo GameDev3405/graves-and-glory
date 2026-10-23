@@ -3,6 +3,7 @@ package gg.gravesandglory;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.util.hit.HitResult;
@@ -134,7 +135,7 @@ public final class CommandMode {
         if(tiers.isEmpty())return;
         int team=GravesAndGloryClient.team;var side=DarkUi.side(team); // DarkUi.side reads the live battle state, like every other team mark
         GravesAndGloryClient.panel(g,8,y,210,38);
-        if(side!=null){DarkUi.teamMark(g,team,16,y+4);g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth(side.name().toUpperCase(java.util.Locale.ROOT)+" / HOUSES",190),28,y+4,GravesAndGloryClient.MUTED);}
+        if(side!=null){DarkUi.teamMark(g,team,16,y+4);g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth(side.name().toUpperCase(java.util.Locale.ROOT)+" / HOUSES",190),28,y+4,DarkUi.MUTED);}
         int x=16;for(var house:Spec.HOUSES){int tier=tiers.getOrDefault(house.id(),0);if(tier<=0)continue;DarkUi.houseMark(g,house.id(),tier,x,y+17);x+=DarkUi.houseMarkWidth(tier)+12;}
     }
     /** Where vanilla draws the hearts and the armour row (GUI x width / 2 - 91), in the HUD frame of width w (the GUI scaled by min(1, width / 640)). */

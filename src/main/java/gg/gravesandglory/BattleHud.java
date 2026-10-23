@@ -247,7 +247,7 @@ public final class BattleHud {
     /** A plate's state, first match wins: FALLEN (none left of a fielded group), ROUTING, FLASH (a loss in the last
      *  CommandMode.FLASH_MS), SELECTED (the selected group, or every group while the army is), PLAIN. */
     static String plateState(CommandMode.Group grp,boolean chosen){
-        return grp.count()==0?"FALLEN":grp.routing()?"ROUTING":CommandMode.flashing(grp.id())?"FLASH":chosen?"SELECTED":"PLAIN";
+        return grp.count()==0?"FALLEN":CommandMode.flashing(grp.id())?"FLASH":chosen?"SELECTED":"PLAIN";
     }
 
     /** The selected group's ledger card, 62 px tall, as the mock draws it: its name, its state word (the rout stamp; the fight
@@ -390,9 +390,9 @@ public final class BattleHud {
         }
     }
 
-    static String groupLabel(String id){for(var row:Spec.GROUPS)if(row.id().equals(id))return row.label();return CommandMode.label(id);}
-    static String orderLabel(String id){for(var row:Spec.ORDERS)if(row.id().equals(id))return row.label();return CommandMode.label(id);}
-    static String formationLabel(String id){for(var row:Spec.FORMATIONS)if(row.id().equals(id))return row.label();return CommandMode.label(id);}
+    static String groupLabel(String id){for(var row:Spec.GROUPS)if(row.id().equals(id))return row.label();return Morale.label(id);}
+    static String orderLabel(String id){for(var row:Spec.ORDERS)if(row.id().equals(id))return row.label();return Morale.label(id);}
+    static String formationLabel(String id){for(var row:Spec.FORMATIONS)if(row.id().equals(id))return row.label();return Morale.label(id);}
 
     /** The lesson note's tag, before the copy's first line: LESSON k/4. */
     static String lessonTag(int step){return "LESSON "+(step+1)+"/4";}
