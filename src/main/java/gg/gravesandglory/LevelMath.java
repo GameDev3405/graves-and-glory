@@ -122,6 +122,56 @@ public final class LevelMath {
         return t.name();
     }
 
+    /** One banner troop type's row of an army's Armoury: the troop id and its four buttons, Weapon II, Weapon III, Armour II and Armour III. */
+    public record ArmouryRow(String troop, Buy weapon2, Buy weapon3, Buy armour2, Buy armour3) {}
+
+    /** An army's Armoury as state_v9 carries it to its commander: whether he stands where he may buy (armouryHere) and one row per banner troop type, in banner order. */
+    public record Armoury(boolean here, List<ArmouryRow> rows) {
+        public Armoury { rows = List.copyOf(rows); }
+        /** No buy place and no rows: what the state carries before Task 5 fills it, and what a client holds before its first state. */
+        public static final Armoury EMPTY = new Armoury(false, List.of());
+    }
+
+    /** The three writes the state_v9 Armoury block uses; a PacketByteBuf does them as writeBoolean, writeByte and writeString. */
+    public interface Out { void bool(boolean v); void b(int v); void str(String v); }
+
+    /** The three reads that match Out: readBoolean, readByte (signed) and readString. */
+    public interface In { boolean bool(); int b(); String str(); }
+
+    /**
+     * Writes the state_v9 Armoury block, the one place its layout is set: boolean armouryHere, byte n (the rows), then per row String troop and four bytes
+     * weapon2, weapon3, armour2, armour3, each a Buy ordinal (LOCKED 0, OPEN 1, BOUGHT 2, UNAFFORDABLE 3). decodeArmoury reads the same.
+     */
+    public static void encodeArmoury(Armoury a, Out out) {
+        out.bool(a.here());
+        out.b(a.rows().size());
+        for (var r : a.rows()) {
+            out.str(r.troop());
+            out.b(r.weapon2().ordinal()); out.b(r.weapon3().ordinal()); out.b(r.armour2().ordinal()); out.b(r.armour3().ordinal());
+        }
+    }
+
+    /** Reads the block encodeArmoury writes; null for a row count outside 0 to the troop sheet's length or a buy byte that is no Buy ordinal (the client then drops the packet). */
+    public static Armoury decodeArmoury(In in) {
+        boolean here = in.bool();
+        int n = in.b();
+        if (n < 0 || n > Spec.TROOPS.length) return null;
+        List<ArmouryRow> rows = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            String troop = in.str();
+            Buy w2 = buy(in.b()), w3 = buy(in.b()), a2 = buy(in.b()), a3 = buy(in.b());
+            if (w2 == null || w3 == null || a2 == null || a3 == null) return null;
+            rows.add(new ArmouryRow(troop, w2, w3, a2, a3));
+        }
+        return new Armoury(here, rows);
+    }
+
+    /** The Buy with this ordinal, or null. */
+    static Buy buy(int ordinal) {
+        var all = Buy.values();
+        return ordinal >= 0 && ordinal < all.length ? all[ordinal] : null;
+    }
+
     /** The highest gear tier the gearTiers sheet has. */
     public static int maxTier() {
         int max = 1;

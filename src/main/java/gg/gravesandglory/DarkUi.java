@@ -12,7 +12,7 @@ final class DarkUi {
     /** The factions row with this id; null for an id the sheet lacks. */
     private static Spec.FactionsRow faction(String id){for(var f:Spec.FACTIONS)if(f.id().equals(id))return f;return null;}
     /**
-     * The side row a team flies; null for no team. While a battle runs the live state names it (GravesAndGloryClient.sideIds, state_v8);
+     * The side row a team flies; null for no team. While a battle runs the live state names it (GravesAndGloryClient.sideIds, state_v9);
      * in the camp, and for an id the sheet lacks, the camp snapshot does (CampaignClient.sides, which in the lobby previews the next round's sides).
      */
     static Spec.FactionsRow side(int team){

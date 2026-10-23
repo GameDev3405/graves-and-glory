@@ -48,7 +48,9 @@ public final class CampaignClient {
     /** Whether the reveal on screen is the last roll's card: it arrived with this reveal and Skip reveal has not ended it. */
     static boolean rollShowing(){return lastRoll!=null&&revealUntil>System.currentTimeMillis()&&revealUntil==rollAt+REVEAL_MS;}
     /** Forgets the last roll and the first-snapshot mark when the client leaves a server: a restarted server counts n from 1 again, and its first snapshot must not reveal (review minor 5). */
-    static void forget(){lastRoll=null;rollAt=0;received=false;revealUntil=0;}
+    static void forget(){lastRoll=null;rollAt=0;received=false;revealUntil=0;armoury=LevelMath.Armoury.EMPTY;}
+    /** This army's Armoury from the last state_v9 (armouryHere and the buy states per banner troop type, LevelMath.decodeArmoury); empty before the first state, after a disconnect and until the server fills it (Task 5). The Armoury tab and the Iron Ledger glint read it. */
+    static LevelMath.Armoury armoury=LevelMath.Armoury.EMPTY;
     /** Reads the snapshot's lastRoll; a new one (another n) after the first snapshot starts the reveal. */
     static void acceptRoll(JsonObject j,boolean first){
         if(!j.has("lastRoll"))return;var r=j.getAsJsonObject("lastRoll");if(!r.has("n")||!r.has("troop"))return;

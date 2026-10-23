@@ -33,7 +33,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static boolean ready,running,nearBarracks;
     static int dawn,dusk,team=-1,count,respawn,gold,queued,trainingSeconds;
     static String message="Preparing battlefield",order="follow",formation="block";
-    /** state_v8: the side id each team flies, this army's House trait tiers (tier I or higher), and the commander ability (its active id, ticks until ready or -1 when this build has no behaviour for it, ticks left active; "" while unseated). */
+    /** From state_v8 (still in state_v9): the side id each team flies, this army's House trait tiers (tier I or higher), and the commander ability (its active id, ticks until ready or -1 when this build has no behaviour for it, ticks left active; "" while unseated). */
     static String[] sideIds={"",""};static Map<String,Integer> houses=Map.of();static String commanderActive="";static int commanderReady,commanderFor;
     static boolean[] contested={false,false,false};
     record Sight(float x,float z,int age){}
@@ -77,6 +77,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             String stance=i>=0&&i<Tactics.STANCES.size()?Tactics.STANCES.get(i):"";
             if(stance.isEmpty())TroopAnimator.STANCES.remove(id);else TroopAnimator.STANCES.put(id,stance);});});
         ClientEntityEvents.ENTITY_UNLOAD.register((entity,world)->TroopAnimator.forget(entity.getId()));
+        // A soldier's rank (rank_v1): level, weapon tier and armour tier by entity id, for the troop renderer, the chevrons and the portraits (Task 9).
+        RankSync.registerClient();
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.STATE,(client,handler,buf,responder)->{
             boolean r=buf.readBoolean(),run=buf.readBoolean();int a=buf.readInt(),b=buf.readInt();String msg=buf.readString();int t=buf.readInt(),n=buf.readInt();String o=buf.readString(),f=buf.readString();int resp=buf.readInt();
             int points=buf.readInt();if(points<1||points>8)return;boolean[] contest=new boolean[points];int[] own=new int[points],pr=new int[points],ch=new int[points];for(int i=0;i<points;i++){buf.readString();own[i]=buf.readInt();pr[i]=buf.readInt();ch[i]=buf.readInt();contest[i]=buf.readBoolean();}
@@ -84,16 +86,17 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             int[] owned=new int[types],waiting=new int[types];for(int i=0;i<types;i++){owned[i]=buf.readInt();waiting[i]=buf.readInt();}
             int amount=buf.readInt();if(amount<0||amount>160)return;List<Marker> friendly=new ArrayList<>();for(int i=0;i<amount;i++)friendly.add(new Marker(buf.readFloat(),buf.readFloat(),buf.readBoolean(),buf.readBoolean(),buf.readString()));
             int groupCount=buf.readInt();if(groupCount!=3)return;var groups=new ArrayList<CommandMode.Group>();
-            for(int i=0;i<groupCount;i++)groups.add(new CommandMode.Group(buf.readString(),buf.readInt(),buf.readFloat(),buf.readString(),buf.readString(),buf.readFloat(),buf.readFloat(),buf.readFloat(),buf.readFloat(),buf.readFloat(),buf.readBoolean(),buf.readBoolean()));
+            for(int i=0;i<groupCount;i++)groups.add(new CommandMode.Group(buf.readString(),buf.readInt(),buf.readFloat(),buf.readString(),buf.readString(),buf.readFloat(),buf.readFloat(),buf.readFloat(),buf.readFloat(),buf.readFloat(),buf.readBoolean(),buf.readBoolean(),buf.readInt(),buf.readInt(),buf.readBoolean())); // the last three: state_v9's level2, level3 and armouryOpen
             int pingCount=buf.readInt();if(pingCount<0||pingCount>4)return;var pings=new ArrayList<CommandMode.Ping>();for(int i=0;i<pingCount;i++)pings.add(new CommandMode.Ping(buf.readString(),buf.readFloat(),buf.readFloat()));int seconds=buf.readInt();
             int seen=buf.readInt();if(seen<0||seen>160)return;var sight=new ArrayList<Sight>();for(int i=0;i<seen;i++)sight.add(new Sight(buf.readFloat(),buf.readFloat(),buf.readInt()));
             String campaignJson=buf.readString(Campaign.SNAPSHOT_LIMIT);
             String sideA=buf.readString(64),sideB=buf.readString(64);int tierCount=buf.readByte();if(tierCount<0||tierCount>Spec.HOUSES.length)return;Map<String,Integer> tiers=new LinkedHashMap<>();for(int i=0;i<tierCount;i++){String house=buf.readString(64);tiers.put(house,(int)buf.readByte());}
             String ability=buf.readString(64);int abilityReady=buf.readInt(),abilityFor=buf.readInt();
-            client.execute(()->{sideIds=new String[]{sideA,sideB};houses=Collections.unmodifiableMap(tiers);commanderActive=ability;commanderReady=abilityReady;commanderFor=abilityFor;CampaignClient.accept(client,campaignJson,run);sightings=List.copyOf(sight);contested=contest;CommandMode.pings=java.util.List.copyOf(pings);CommandMode.seconds=seconds;CommandMode.noteGroups(CommandMode.groups,groups,net.minecraft.util.Util.getMeasuringTimeMs());CommandMode.groups=java.util.List.copyOf(groups);ready=r;running=run;dawn=a;dusk=b;message=msg;team=t;count=n;order=o;formation=f;respawn=resp;owners=own;progress=pr;challengers=ch;gold=g;nearBarracks=near;queued=q;trainingSeconds=eta;roster=owned;pending=waiting;markers=List.copyOf(friendly);});
+            var armoury=LevelMath.decodeArmoury(wire(buf));if(armoury==null)return; // state_v9's Armoury block (LevelMath.encodeArmoury)
+            client.execute(()->{CampaignClient.armoury=armoury;sideIds=new String[]{sideA,sideB};houses=Collections.unmodifiableMap(tiers);commanderActive=ability;commanderReady=abilityReady;commanderFor=abilityFor;CampaignClient.accept(client,campaignJson,run);sightings=List.copyOf(sight);contested=contest;CommandMode.pings=java.util.List.copyOf(pings);CommandMode.seconds=seconds;CommandMode.noteGroups(CommandMode.groups,groups,net.minecraft.util.Util.getMeasuringTimeMs());CommandMode.groups=java.util.List.copyOf(groups);ready=r;running=run;dawn=a;dusk=b;message=msg;team=t;count=n;order=o;formation=f;respawn=resp;owners=own;progress=pr;challengers=ch;gold=g;nearBarracks=near;queued=q;trainingSeconds=eta;roster=owned;pending=waiting;markers=List.copyOf(friendly);});
         });
         ClientPlayConnectionEvents.JOIN.register((handler,sender,client)->{CampaignClient.sendProfile(client);if(connectingInvitation&&!joined){joined=true;say("Melty joined: "+join);}});
-        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);CampaignClient.forget();TroopAnimator.clear();ready=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
+        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);CampaignClient.forget();TroopAnimator.clear();RankSync.clear();ready=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
             if(client.getOverlay()==null&&client.currentScreen instanceof TitleScreen){
                 if(!attempted){PackControls.prepare(client);if(!Presentation.prepareResources(client))return;attempted=true;}
@@ -118,6 +121,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // Troop depth: the frame's cutoff from the game camera, once, before any pass draws (Iris's shadow pass among them).
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->TroopDepth.beginFrame(ctx.camera().getPos(),ctx.world().getEntities()));
     }
+    /** A packet buffer as LevelMath's pure reader: readBoolean, readByte and readString (64 characters at most, a troop id). */
+    static LevelMath.In wire(PacketByteBuf b){return new LevelMath.In(){public boolean bool(){return b.readBoolean();}public int b(){return b.readByte();}public String str(){return b.readString(64);}};}
     static KeyBinding key(String name,int key){return KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory."+name,InputUtil.Type.KEYSYM,key,"category.gravesandglory"));}
     /** The player's own key for an action, as a hint names it: key.attack for hit, key.use for use, key.gravesandglory.(id) for the mod's own
      *  (menu, attack, follow, formation, map, rotate_left, rotate_right, confirm, cancel, ability); "Not bound" when it is unbound or unknown. */

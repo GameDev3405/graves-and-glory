@@ -42,7 +42,8 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier IMPACT = new Identifier("gravesandglory", "impact_v1");
     public static final Identifier PING = new Identifier("gravesandglory", "ping_v1");
     public static final Identifier TACTICAL = new Identifier("gravesandglory", "tactical_v1");
-    public static final Identifier STATE = new Identifier("gravesandglory", "state_v8");
+    /** The battle state, server to client every 10 ticks: its layout is Battle.sendState's (state_v9 adds the in-match progression fields there), and GravesAndGloryClient reads it. */
+    public static final Identifier STATE = new Identifier("gravesandglory", "state_v9");
     public static final Identifier OPEN_BARRACKS = new Identifier("gravesandglory", "barracks_v1");
     public static final Identifier PARTY = new Identifier("gravesandglory", "party_v1");
     /** A troop's stance (Tactics.STANCES), server to client: a varInt entity id and a byte index. */
@@ -90,6 +91,8 @@ public final class GravesAndGlory implements ModInitializer {
             ServerPlayerEntity joined=handler.player;
             server.execute(()->{if(battle!=null)Tactics.registerSends+=Tactics.sendTracked(battle,joined);});
         });
+        // A soldier's rank (rank_v1: level, weapon tier, armour tier) goes the same two ways as his stance: on START_TRACKING and on a late channel registration.
+        RankSync.registerServer();
         ServerPlayNetworking.registerGlobalReceiver(ORDER, (server, player, handler, buf, responder) -> {
             String command=buf.readString(128);
             server.execute(() -> { if(battle!=null) battle.command(player,command); });
@@ -477,8 +480,12 @@ public final class GravesAndGlory implements ModInitializer {
         final Map<Squad,Map<Integer,Integer>> targeters=new HashMap<>();
         /** How many of an army's living Pack Hunters troops had this target at the last count. */
         int targeters(Squad s,LivingEntity target){var m=targeters.get(s);return m==null?0:m.getOrDefault(target.getId(),0);}
-        /** The unit spawn is placing, while spawnEntity runs (the stance_v1 tracking send finds it here); null otherwise. */
+        /** The unit spawn is placing, while spawnEntity runs (the stance_v1 and rank_v1 tracking sends find it here); null otherwise. */
         Unit spawning;
+        /** The kill-credit logs of in-match progression (design 3.2): who hit, slowed, pulled or zoned each victim and who healed or buffed each troop, within progression.assistSeconds (Veterans.helped and supported write it); and when Veterans last trimmed it. clearProgression empties it. */
+        final CreditLog credit=new CreditLog();long creditTrimmedAt;
+        /** A round boundary for in-match progression (startRound, Campaign.returnLobby and switchMap): the credit logs, every status and every client's ranks go. */
+        void clearProgression(){Veterans.clear(this);Statuses.clear(this);RankSync.clear(this);}
         public final List<Capture> points=new ArrayList<>();
         public final List<Projectiles.Shot> shots=new ArrayList<>();
         /** The standing banners (the Oath Banner); Abilities.bannerTick takes them down on time, and startRound, the lobby and a map switch clear them. */
@@ -618,7 +625,7 @@ public final class GravesAndGlory implements ModInitializer {
             campaign.tick();
             updateUnitChunks();
             if(running&&time>=campaign.introUntil){
-                Projectiles.tick(this);Commander.tick(this);Abilities.bannerTick(this);Houses.expire(this);
+                Projectiles.tick(this);Commander.tick(this);Abilities.bannerTick(this);Houses.expire(this);Statuses.tick(this);
                 if(time%20==0){Morale.tick(this);Houses.tick(this);}
                 if(time%10==0)Houses.countTargeters(this);
                 for(Unit u:new ArrayList<>(units))unitTick(u);
@@ -875,7 +882,7 @@ public final class GravesAndGlory implements ModInitializer {
         /** The deploy notice after "<troop> trained: " (a null anchor means the barracks). */
         String deployNote(Squad s,Anchor anchor){return anchor==null?"deploying from barracks":"deploying at "+anchor.name();}
         void startRound(){
-            Projectiles.clear(this);Abilities.clearBanners(this);Houses.reset(this);
+            Projectiles.clear(this);Abilities.clearBanners(this);Houses.reset(this);clearProgression();
             campaign.prepareRound();
             clearSides();
             Arrays.fill(scores,0);pointSeconds=new int[2][points.size()];
@@ -993,6 +1000,7 @@ public final class GravesAndGlory implements ModInitializer {
             }
             Squad hitter=attackerSquad;Unit striker=null;for(Unit u:units)if(u.mob==attacker){hitter=u.squad;striker=u;}
             if(hitter!=null)for(Unit u:units)if(u.mob==entity){u.lastHitBy=hitter;u.lastHitAt=time;u.lastHitTroop=striker==null||striker.temporary?null:striker.spec.id();break;}
+            if(striker!=null)Veterans.helped(this,striker,entity); // every troop blow the battle lets through (Combat.resolve's and any other) logs its striker as a helper on the victim (kill credit, design 3.2)
             return true;
         }
         record Sight(float x,float z,long seen){}
@@ -1004,6 +1012,14 @@ public final class GravesAndGlory implements ModInitializer {
                 if(visible)memory.put(enemy.mob.getUuid(),new Sight((float)enemy.mob.getX(),(float)enemy.mob.getZ(),time));
             }
         }}
+        /** A packet buffer as LevelMath's pure writer: writeBoolean, writeByte and writeString. */
+        static LevelMath.Out wire(PacketByteBuf b){return new LevelMath.Out(){public void bool(boolean v){b.writeBoolean(v);}public void b(int v){b.writeByte(v);}public void str(String v){b.writeString(v);}};}
+        /**
+         * state_v9 to every player that takes it. The fields, in order: ready, running, scores, message, team, fielded count, order, formation, respawn
+         * seconds, the points, gold, at barracks, training, the troop counts, the friendly markers, the three groups (each ends with state_v9's level2,
+         * level3 and armouryOpen), the pings, the seconds left, the sightings, the camp snapshot, then state_v8's sides, House tiers and commander
+         * ability, then state_v9's Armoury block (LevelMath.encodeArmoury). GravesAndGloryClient reads the same order.
+         */
         void sendState(){
             updateSight();
             for(ServerPlayerEntity p:server.getPlayerManager().getPlayerList())if(ServerPlayNetworking.canSend(p,STATE)){
@@ -1028,16 +1044,20 @@ public final class GravesAndGlory implements ModInitializer {
                     b.writeString(group);b.writeInt(members.size());b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getHealth()/u.mob.getMaxHealth()).average().orElse(0));
                     b.writeString(a.order);b.writeString(a.formation);b.writeFloat((float)a.target.x);b.writeFloat((float)a.target.z);b.writeFloat(a.yaw);
                     b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getX()).average().orElse(a.target.x));b.writeFloat((float)members.stream().mapToDouble(u->u.mob.getZ()).average().orElse(a.target.z));
-                    b.writeBoolean(members.stream().anyMatch(u->u.mob.getTarget()!=null));b.writeBoolean(s!=null&&Morale.lastStand(s,group)); // the last boolean was Phase 1's routing; state_v8's layout is unchanged
+                    b.writeBoolean(members.stream().anyMatch(u->u.mob.getTarget()!=null));b.writeBoolean(s!=null&&Morale.lastStand(s,group)); // the last boolean was Phase 1's routing
+                    // state_v9, at the end of each group record: the living soldiers at level 2 and at level 3, and whether an Armoury buy for a troop of the group is open and not yet bought (Veterans.armouryOpen). On the merged base these follow the UI branch's fullCount and strength, never sit between lastStand and them.
+                    b.writeInt((int)members.stream().filter(u->u.level==2).count());b.writeInt((int)members.stream().filter(u->u.level==3).count());b.writeBoolean(s!=null&&Veterans.armouryOpen(s,group));
                 }
                 var visiblePings=pings.stream().filter(v->s!=null&&v.team==s.team&&v.until>time).toList();b.writeInt(visiblePings.size());for(var ping:visiblePings){b.writeString(ping.kind);b.writeFloat((float)ping.x);b.writeFloat((float)ping.z);}
                 b.writeInt(running?(int)Math.max(0,roundSeconds-(time-roundStarted)/20):roundSeconds);
                 var memory=s==null?Map.<UUID,Sight>of():sightings.getOrDefault(s.team,Map.of());b.writeInt(memory.size());for(var sight:memory.values()){b.writeFloat(sight.x);b.writeFloat(sight.z);b.writeInt((int)(time-sight.seen));}
                 b.writeString(campaign.snapshot(p));
-                // state_v8, after the Phase 1 fields: the side id each team flies, this army's House tiers (count, then House and tier), and the commander ability of a seated squad (its class's active id, ticks until ready, ticks left active; ready is -1 while this build has no behaviour for that active, and the fields are "", 0, 0 for anyone unseated).
+                // Added in state_v8, after the Phase 1 fields: the side id each team flies, this army's House tiers (count, then House and tier), and the commander ability of a seated squad (its class's active id, ticks until ready, ticks left active; ready is -1 while this build has no behaviour for that active, and the fields are "", 0, 0 for anyone unseated).
                 b.writeString(side(0).id());b.writeString(side(1).id());
                 Map<String,Integer> tiers=s==null?Map.of():s.traits;b.writeByte(tiers.size());for(var tier:tiers.entrySet()){b.writeString(tier.getKey());b.writeByte(tier.getValue());}
                 boolean commanding=s!=null&&s.seated;b.writeString(commanding?Commander.row(s).active():"");b.writeInt(commanding?Commander.readyIn(this,s):0);b.writeInt(commanding?Commander.activeFor(this,s):0);
+                // state_v9, after the commander ability: this army's Armoury (LevelMath.encodeArmoury sets the layout: boolean armouryHere, byte n, then per banner troop type String troop and the bytes weapon2, weapon3, armour2, armour3, each a LevelMath.Buy ordinal). Empty until Task 5.
+                LevelMath.encodeArmoury(s==null?LevelMath.Armoury.EMPTY:Veterans.armouryState(s),wire(b));
                 ServerPlayNetworking.send(p,STATE,b);
             }
         }

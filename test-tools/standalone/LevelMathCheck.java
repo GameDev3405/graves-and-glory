@@ -35,6 +35,38 @@ public final class LevelMathCheck {
         check(gold - spent(list) >= row.gearReserveTroops() * cheapest || list.isEmpty(), fixture + ": botPicks spent into the reserve (" + spent(list) + " of " + gold + ")");
         for (var o : list) check(o.tier() <= row.gearMaxTier() && o.tier() >= 2, fixture + ": a pick above gearMaxTier or below tier II: " + picks(list));
     }
+    /** A byte buffer that writes and reads as PacketByteBuf does: a boolean is one byte 0 or 1, a byte is one byte, a string is its UTF-8 length as a VarInt, then the bytes. */
+    static final class Wire implements LevelMath.Out {
+        final java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        Wire() {}
+        Wire(byte[] start) { out.writeBytes(start); }
+        void raw(byte v) { out.write(v); }
+        byte[] bytes() { return out.toByteArray(); }
+        public void bool(boolean v) { out.write(v ? 1 : 0); }
+        public void b(int v) { out.write(v); }
+        public void str(String v) {
+            byte[] s = v.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            int n = s.length;
+            while ((n & ~0x7F) != 0) { out.write((n & 0x7F) | 0x80); n >>>= 7; }
+            out.write(n);
+            out.writeBytes(s);
+        }
+        LevelMath.In reader() {
+            byte[] data = bytes();
+            return new LevelMath.In() {
+                int at;
+                public boolean bool() { return data[at++] != 0; }
+                public int b() { return data[at++]; }
+                public String str() {
+                    int n = 0, shift = 0, v;
+                    do { v = data[at++]; n |= (v & 0x7F) << shift; shift += 7; } while ((v & 0x80) != 0);
+                    String s = new String(data, at, n, java.nio.charset.StandardCharsets.UTF_8);
+                    at += n;
+                    return s;
+                }
+            };
+        }
+    }
     static boolean clean(String copy) {
         String c = copy.toLowerCase(Locale.ROOT);
         return !c.contains("stage") && !c.contains("evolve") && !c.contains("writ");
@@ -188,6 +220,28 @@ public final class LevelMathCheck {
         check(log.credited(V, 22, 0, T, W).equals(Set.of(22)), "lm-credit-clear: clear empties every log (a round boundary)");
         log.forget(23); log.trim(T + 10 * W, W);
         check(log.credited(V, 23, 0, T + 10 * W, W).equals(Set.of(23)), "lm-credit-forget: a forgotten id with no entries left is dropped by trim, so a reused id is credited again");
+
+        // lm-state-roundtrip: the state_v9 Armoury block (armouryHere, byte n, then per type the troop id and four Buy ordinal bytes) through the pure encoder, on PacketByteBuf's own byte rules
+        var armoury = new LevelMath.Armoury(true, List.of(
+            new LevelMath.ArmouryRow("knight", LevelMath.Buy.OPEN, LevelMath.Buy.LOCKED, LevelMath.Buy.BOUGHT, LevelMath.Buy.UNAFFORDABLE),
+            new LevelMath.ArmouryRow("archer", LevelMath.Buy.LOCKED, LevelMath.Buy.LOCKED, LevelMath.Buy.LOCKED, LevelMath.Buy.LOCKED)));
+        var wire = new Wire();
+        LevelMath.encodeArmoury(armoury, wire);
+        byte[] want = {1, 2, 6, 'k', 'n', 'i', 'g', 'h', 't', 1, 0, 2, 3, 6, 'a', 'r', 'c', 'h', 'e', 'r', 0, 0, 0, 0};
+        check(Arrays.equals(wire.bytes(), want), "lm-state-roundtrip: the layout is armouryHere, byte n, then per type the troop id (VarInt length, UTF-8) and weapon2, weapon3, armour2, armour3 as Buy ordinals: " + Arrays.toString(wire.bytes()));
+        check(LevelMath.Buy.LOCKED.ordinal() == 0 && LevelMath.Buy.OPEN.ordinal() == 1 && LevelMath.Buy.BOUGHT.ordinal() == 2 && LevelMath.Buy.UNAFFORDABLE.ordinal() == 3, "lm-state-roundtrip: the Buy ordinals on the wire are LOCKED 0, OPEN 1, BOUGHT 2, UNAFFORDABLE 3");
+        check(armoury.equals(LevelMath.decodeArmoury(wire.reader())), "lm-state-roundtrip: decode gives back what encode wrote");
+        var empty = new Wire();
+        LevelMath.encodeArmoury(LevelMath.Armoury.EMPTY, empty);
+        check(Arrays.equals(empty.bytes(), new byte[] {0, 0}) && LevelMath.Armoury.EMPTY.equals(LevelMath.decodeArmoury(empty.reader())), "lm-state-roundtrip: the empty Armoury (before Task 5) is two zero bytes and reads back empty");
+        check(LevelMath.decodeArmoury(new Wire(new byte[] {0, (byte) (Spec.TROOPS.length + 1)}).reader()) == null, "lm-state-roundtrip: a count above the troop sheet is refused");
+        check(LevelMath.decodeArmoury(new Wire(new byte[] {0, (byte) -1}).reader()) == null, "lm-state-roundtrip: a negative count is refused");
+        check(LevelMath.decodeArmoury(new Wire(new byte[] {1, 1, 1, 'x', 0, 4, 0, 0}).reader()) == null, "lm-state-roundtrip: a buy byte outside the Buy ordinals is refused");
+        var three = new Wire();
+        LevelMath.encodeArmoury(armoury, three);
+        three.raw((byte) 9);
+        var reader = three.reader();
+        check(armoury.equals(LevelMath.decodeArmoury(reader)) && reader.b() == 9, "lm-state-roundtrip: decode reads exactly the block, leaving the next field in place");
 
         System.out.println("LevelMathCheck: " + checks + " checks passed");
     }

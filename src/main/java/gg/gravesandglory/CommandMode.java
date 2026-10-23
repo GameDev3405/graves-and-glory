@@ -12,7 +12,8 @@ import org.joml.Vector3f;
 
 /** Selection -> live-world aim/formation preview -> explicit confirmation. */
 public final class CommandMode {
-    public record Group(String id,int count,float health,String order,String formation,float x,float z,float yaw,float cx,float cz,boolean fighting,boolean lastStand){}
+    /** One morale group as state_v9 sends it; level2 and level3 count its living soldiers at those levels, and armouryOpen is set while an Armoury buy for a troop of the group is open and not yet bought (the Iron Ledger pips and glint, Task 12). */
+    public record Group(String id,int count,float health,String order,String formation,float x,float z,float yaw,float cx,float cz,boolean fighting,boolean lastStand,int level2,int level3,boolean armouryOpen){}
     record Ping(String kind,float x,float z){}
     static java.util.List<Ping> pings=java.util.List.of();static int seconds=600;
     static java.util.List<Group> groups=java.util.List.of();

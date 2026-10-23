@@ -24,8 +24,12 @@ public final class Combat {
     /** How many hits LAST keeps. */
     static final int LOG_SIZE = 64;
 
-    /** One resolved hit: the attacker's and target's entity ids, the base amount, each factor, the clamped total and the ids of the counters rows that applied. */
-    public record HitLog(int attacker, int target, float base, double counters, double stance, double traits, double auras, double commander, double total, List<String> rows) {}
+    /**
+     * One resolved hit: the attacker's and target's entity ids, the base amount as given (stars in it), each factor, the clamped total and the ids of the
+     * counters rows that applied. veteran is the attacker's level-and-weapon factor (Veterans.damageFactor), which multiplies the base outside the clamp;
+     * status is his statuses' share (Statuses.factorOut), inside the clamped total beside the auras. The amount dealt is base x veteran x total.
+     */
+    public record HitLog(int attacker, int target, float base, double counters, double stance, double traits, double auras, double commander, double veteran, double status, double total, List<String> rows) {}
     /** The newest resolved hits, oldest first, at most 64. Server thread only. */
     public static final ArrayDeque<HitLog> LAST = new ArrayDeque<>();
 
@@ -69,16 +73,17 @@ public final class Combat {
 
         double counters = CounterMath.counters(hit, Spec.COUNTERS), stance = stance(attacker);
         double traits = Houses.traitFactor(b, attacker, target, kind, area ? 0 : bearing), auras = Abilities.auraFactor(b, attacker, target), commander = commanderFactor(b, attacker, target);
-        double total = CounterMath.total(counters * stance, traits, auras, commander, D.multiplierMin(), D.multiplierMax());
+        double veteran = Veterans.damageFactor(attacker), status = Statuses.factorOut(b, attacker.mob); // in-match progression: the level-and-weapon factor goes on the base, outside the clamp, as stars do; the statuses (weaken, Task 6) sit in the product with the auras
+        double total = CounterMath.total(counters * stance, traits, auras * status, commander, D.multiplierMin(), D.multiplierMax());
         List<String> rows = List.copyOf(CounterMath.applied(hit, Spec.COUNTERS));
         if (rows.contains("C16")) attacker.squad.stats.flankHits++; // the round's flank tally per army (MatchStats.SquadStats)
         if (rows.contains("C16s")) attacker.squad.stats.flankShots++;
-        LAST.addLast(new HitLog(attacker.mob.getId(), target.getId(), base, counters, stance, traits, auras, commander, total, rows));
+        LAST.addLast(new HitLog(attacker.mob.getId(), target.getId(), base, counters, stance, traits, auras, commander, veteran, status, total, rows));
         while (LAST.size() > LOG_SIZE) LAST.removeFirst();
 
         if (impact) attacker.chargeHitAt = b.time;
         if (victim != null) { victim.lastHitBy = attacker.squad; victim.lastHitAt = b.time; victim.lastHitTroop = attacker.temporary ? null : attacker.spec.id(); } // the troop type too, for the mastery ledger (a shot whose archer fell still credits it)
-        float amount = (float) (base * total);
+        float amount = (float) (base * veteran * total);
         boolean anchored = victim != null && Abilities.anchored(b, victim);
         Vec3d stood = target.getVelocity();
         boolean hurt = target.damage(source(b, attacker.mob), amount);
