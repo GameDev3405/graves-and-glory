@@ -10,9 +10,12 @@ import re
 import sys
 import tempfile
 import unittest
+import base64
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / 'tools'))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_skins
+import test_bbmodel as bbt
 from PIL import Image
 
 ASSETS = 'src/main/resources/assets/gravesandglory'
@@ -151,6 +154,107 @@ def put_bow(root, bow=None, **sizes):
     for i, name in enumerate(('bow', 'bow_pull_0', 'bow_pull_1', 'bow_pull_2')):
         size = sizes.get(name, (8, 9))
         put_png(root / 'art/weapons' / (name + '.png'), sprite_image(size, [(2, y) for y in range(min(9, size[1]))], BOW_COLOURS[i]))
+
+
+# ---- Task 5d: cube weapons, made in Blockbench (art pipeline v2) ----
+
+SHEET_2X = (64, 128)
+KEYS = {'steel': (255, 0, 0), 'iron': (170, 0, 0), 'gilt': (255, 170, 0), 'wood': (0x8B, 0x45, 0x13), 'linen': (255, 255, 255),
+        'leather': (0x55, 0x33, 0x22)}
+PAINT = {'steel': (124, 133, 145), 'iron': (90, 96, 104), 'gilt': (150, 120, 58), 'wood': (110, 84, 64), 'linen': (191, 181, 154),
+         'leather': (90, 62, 44)}
+# a pike: a leather grip, a gilt guard across its top and a steel blade; the cube specs are (name, from, to, material, rotation)
+PIKE = [('grip', (-0.5, -2, -0.5), (0.5, 2, 0.5), 'leather', None),
+        ('guard', (-2, 2, -0.5), (2, 3, 0.5), 'gilt', None),
+        ('blade', (-0.5, 3, -0.25), (0.5, 10, 0.25), 'steel', None)]
+PIKE_JSON = {'weapon': 'pike', 'thickness': 1, 'grip': {'offset': [0, 0, 0], 'rotation': [0, 0, 0]}}
+# a bow: a leather grip between wood risers, wood limbs with tips out to the string, and the string 0.2 px in front of the tips
+BOW_NOCKS = [[-2.8, 0], [-2.9, 0], [-3.0, 0], [-3.1, 0]]
+
+
+def bow_specs(shift=0.0):
+    x = -2.8 - shift
+    return [('grip', (-0.5, -2, -0.5), (0.5, 2, 0.5), 'leather', None),
+            ('riser_hi', (-0.4, 2, -0.5), (0.4, 7, 0.5), 'wood', None), ('riser_lo', (-0.4, -7, -0.5), (0.4, -2, 0.5), 'wood', None),
+            ('tip_hi', (-3.0, 7, -0.5), (0.4, 8, 0.5), 'wood', None), ('tip_lo', (-3.0, -8, -0.5), (0.4, -7, 0.5), 'wood', None),
+            ('string', (x - 0.1, -7.5, -0.1), (x + 0.1, 7.5, 0.1), 'linen', None)]
+
+
+BOW_FRAMES = {'rest': bow_specs(0), 'pull_0': bow_specs(0.1), 'pull_1': bow_specs(0.2), 'pull_2': bow_specs(0.3)}
+BOW_JSON = {'weapon': 'recurve', 'thickness': 1, 'grip': {'offset': [0, 0, 0], 'rotation': [0, 0, 0]}, 'pull': [0.15, 0.32, 0.48],
+            'nocks': BOW_NOCKS}
+
+
+def data_url(im):
+    buf = io.BytesIO()
+    im.save(buf, 'PNG')
+    return 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode()
+
+
+def pack_frames(frames, sheet=SHEET_2X):
+    """Gives every face of every cube its own patch at 2 texels per px on a shelf of the sheet, painted in the cube's material
+    with its key colour in the material map. Returns ({frame: [cube element, ...]}, colour image, key image)."""
+    colour, keys = Image.new('RGBA', sheet, (0, 0, 0, 0)), Image.new('RGBA', sheet, (0, 0, 0, 0))
+    x = y = row = 0
+    out, patches = {}, {}   # a cube of the same name and size in another frame keeps its patch (Blockbench's duplicate keeps the UVs)
+    for frame, specs in frames.items():
+        cubes = []
+        for name, frm, to, material, rot in specs:
+            uv = {}
+            for face in bbt.FACE_ORDER:
+                w, h = bbt.face_size(frm, to, face)
+                if (name, face, round(w, 4), round(h, 4)) in patches:
+                    uv[face] = patches[(name, face, round(w, 4), round(h, 4))]
+                    continue
+                pw, ph = 2 * w, 2 * h
+                cw, ch = max(1, math.ceil(pw - 1e-6)), max(1, math.ceil(ph - 1e-6))
+                if x + cw > sheet[0]:
+                    x, y, row = 0, y + row, 0
+                uv[face] = patches[(name, face, round(w, 4), round(h, 4))] = [x, y, x + pw, y + ph]
+                for yy in range(y, y + ch):
+                    for xx in range(x, x + cw):
+                        colour.putpixel((xx, yy), PAINT[material] + (255,))
+                        keys.putpixel((xx, yy), KEYS[material] + (255,))
+                x += cw
+                row = max(row, ch)
+            cubes.append(bbt.cube(name, frm, to, rot=rot, uv=uv))
+        out[frame] = cubes
+    return out, colour, keys
+
+
+def put_cube_weapon(root, wid='pike', frames=None, meta=None, tweak=None, sheet=SHEET_2X, root_cubes=()):
+    """art/weapons/<wid>.bbmodel (the texture embedded), .json, .png and _m.png from cube specs; tweak(data, colour, keys, meta)
+    may change anything before it is written. Returns the project dict."""
+    root = pathlib.Path(root)
+    cubes, colour, keys = pack_frames(frames or {'rest': PIKE}, sheet)
+    meta = copy.deepcopy(meta or PIKE_JSON)
+    meta['weapon'] = wid
+    data = bbt.project(cubes, tex=sheet, name=wid, root=list(root_cubes))
+    data['textures'][0]['source'] = data_url(colour)
+    if tweak:
+        tweak(data, colour, keys, meta)
+    folder = root / 'art/weapons'
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / (wid + '.bbmodel')).write_text(json.dumps(data), encoding='utf-8')
+    write_json(folder / (wid + '.json'), meta)
+    colour.save(folder / (wid + '.png'))
+    keys.save(folder / (wid + '_m.png'))
+    return data
+
+
+def cube_fixture(tmp, **kw):
+    root = fixture(tmp)
+    put_cube_weapon(root, **kw)
+    return root
+
+
+def model_of(root, wid='pike'):
+    return json.loads((pathlib.Path(root) / ASSETS / ('models/troop/weapon/%s.json' % wid)).read_text(encoding='utf-8'))
+
+
+def texture_of(root, name):
+    with Image.open(pathlib.Path(root) / ASSETS / 'textures/entity/troop/weapon' / name) as im:
+        return im.convert('RGBA')
 
 
 NORMALS = ((0, -1, 0), (0, 1, 0), (0, 0, -1), (0, 0, 1), (-1, 0, 0), (1, 0, 0))   # Minecraft's Direction order, in model space
@@ -690,7 +794,7 @@ class BuildSkinsChecks(unittest.TestCase):
             with Image.open(out / 'textures/entity/troop/weapon/bow.png') as im:
                 tex = im.convert('RGBA')
         self.assertEqual(index['weapons'], ['bow', 'sword'])
-        self.assertEqual(model['format'], 2)
+        self.assertEqual(model['format'], 3)
         self.assertEqual((tex.size, model['size']), ((32, 9), [32, 9]))
         self.assertEqual([f['name'] for f in model['frames']], ['rest', 'pull_0', 'pull_1', 'pull_2'])
         self.assertEqual(model['pull'], [0.15, 0.32, 0.48])
@@ -760,6 +864,364 @@ class BuildSkinsChecks(unittest.TestCase):
             self.export(root)
             frame = json.loads((root / ASSETS / 'models/troop/weapon/sword.json').read_text(encoding='utf-8'))['frames'][0]
             self.assertEqual(len(frame['quads']), 126)
+
+    # ---- Task 5d: cube weapons from .bbmodel files ----
+
+    def assert_cube_quad(self, q, what=''):
+        """A 20-number quad as the client reads it: four corners that make a parallelogram (corner 2 is corner 1 + corner 3 -
+        corner 0), a corner cross product that is not zero, and texels of area above 0."""
+        self.assertEqual(len(q), 20, what)
+        c = [q[0:3], q[3:6], q[6:9], q[9:12]]
+        for a in range(3):
+            self.assertAlmostEqual(c[2][a], c[1][a] + c[3][a] - c[0][a], places=3, msg=what)
+        n = cross(sub(c[1], c[0]), sub(c[3], c[0]))
+        self.assertGreater(math.sqrt(dot(n, n)), 1e-6, what)
+        t = [q[12:14], q[14:16], q[16:18], q[18:20]]
+        self.assertGreater(abs((t[1][0] - t[0][0]) * (t[3][1] - t[0][1]) - (t[1][1] - t[0][1]) * (t[3][0] - t[0][0])), 0, what)
+
+    def test_bbmodel_weapon(self):
+        """A weapon with a .bbmodel is built from its cubes: format 3, 20-number quads (6 a cube), the grip from the json, the
+        colour sheet with the far version's strip under it, and the _n and _s maps beside it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = cube_fixture(tmp)
+            index = self.export(root)
+            model = model_of(root)
+            tex, normal, spec = (texture_of(root, n) for n in ('pike.png', 'pike_n.png', 'pike_s.png'))
+            with Image.open(root / 'art/weapons/pike.png') as im:
+                source = im.convert('RGBA')
+        self.assertEqual(index['weapons'], ['pike', 'sword'])
+        for name in ('pike.png', 'pike_n.png', 'pike_s.png'):
+            self.assertIn('textures/entity/troop/weapon/' + name, index['outputs'])
+        self.assertEqual((model['format'], model['kind'], model['thickness'], model['pull']), (3, 'cube', 1, []))
+        self.assertEqual(model['grip'], {'offset': [0, 0, 0], 'rotation': [0, 0, 0]})
+        base = 'gravesandglory:textures/entity/troop/weapon/'
+        self.assertEqual((model['texture'], model['normal'], model['specular'], model['glow']),
+                         (base + 'pike.png', base + 'pike_n.png', base + 'pike_s.png', ''))
+        self.assertEqual([f['name'] for f in model['frames']], ['rest'])
+        self.assertIsNone(model['frames'][0]['nock'])
+        quads = model['frames'][0]['quads']
+        self.assertEqual(len(quads), 18)
+        for q in quads:
+            self.assert_cube_quad(q)
+        # the grip's north face (Blockbench's front) is the weapon frame's south face: y and z flip, its patch is [0, 0, 2, 8]
+        self.assertEqual(quads[0], [0.5, 2, 0.5, -0.5, 2, 0.5, -0.5, -2, 0.5, 0.5, -2, 0.5, 0, 8, 2, 8, 2, 0, 0, 0])
+        self.assertEqual(model['size'][0], 64)
+        self.assertGreater(model['size'][1], 128)
+        self.assertEqual(tex.size, tuple(model['size']))
+        self.assertEqual((normal.size, spec.size), (tex.size, tex.size))
+        self.assertEqual(tex.crop((0, 0, 64, 128)).tobytes(), source.tobytes())
+        for q in quads:
+            for u, v in zip(q[12::2], q[13::2]):
+                self.assertTrue(0 <= u <= 64 and 0 <= v <= 128, q)
+
+    def test_far_weapon(self):
+        """The far version is built from the rest frame: a front view as a sprite extruded to at most 32 quads, its big faces
+        first, its sprite in the strip under the colour sheet."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = cube_fixture(tmp)
+            self.export(root)
+            model = model_of(root)
+        far = model['far']
+        self.assertTrue(2 <= len(far) <= build_skins.FAR_CAP, len(far))
+        self.assertEqual([q[0] for q in far[:2]], [2, 3])
+        strip = model['size'][1] - 128
+        self.assertEqual(strip, 13)   # the pike seen from the front is 13 rows tall: the blade, guard and grip
+        for q in far:
+            self.assert_quad(q)
+            self.assertTrue(all(128 <= v <= 128 + strip for v in (q[8], q[10], q[12])), q)   # every texel in the strip
+        big = far[0]
+        self.assertEqual((big[1], big[4]), (-2.5, 2.5))     # five columns, the guard's width, about the grip's centre
+        self.assertEqual((big[2], big[5]), (-10.5, 2.5))    # thirteen rows, the blade's tip at the top
+        self.assertEqual(model['frames'][0]['quads'][0][:3], [0.5, 2, 0.5])
+
+    def test_far_version_keeps_the_glow(self):
+        """The glow sheet carries the lit texels the front view shows, in the strip under the colour sheet."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = cube_fixture(tmp)
+            lit_sheet = Image.new('RGBA', SHEET_2X, (0, 0, 0, 0))
+            for y in range(0, 8):
+                for x in (4, 5):
+                    lit_sheet.putpixel((x, y), (255, 240, 200, 255))   # the grip's south face (the front), its whole patch
+            lit_sheet.save(root / 'art/weapons/pike_e.png')
+            self.export(root)
+            model = model_of(root)
+            lit_out = texture_of(root, 'pike_e.png')
+        self.assertEqual(model['glow'], 'gravesandglory:textures/entity/troop/weapon/pike_e.png')
+        self.assertEqual(lit_out.size, tuple(model['size']))
+        self.assertEqual(sum(1 for y in range(128) for x in range(64) if lit_out.getpixel((x, y))[3]), 16)
+        self.assertGreater(sum(1 for y in range(128, lit_out.height) for x in range(64) if lit_out.getpixel((x, y))[3]), 0)
+
+    def test_tiers_share_the_base_glow(self):
+        """A tier model <weapon>_t2 with no glow file of its own is lit by <weapon>_e.png (the heart is the same cube at the
+        same sheet spot in every tier); a glow of its own wins."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = cube_fixture(tmp)
+            put_cube_weapon(root, 'pike_t2')
+            put_cube_weapon(root, 'pike_t3')
+            lit_sheet = Image.new('RGBA', SHEET_2X, (0, 0, 0, 0))
+            lit_sheet.putpixel((0, 0), (255, 240, 200, 255))
+            lit_sheet.save(root / 'art/weapons/pike_e.png')
+            own = Image.new('RGBA', SHEET_2X, (0, 0, 0, 0))
+            own.putpixel((1, 1), (255, 240, 200, 255))
+            own.save(root / 'art/weapons/pike_t3_e.png')
+            self.export(root)
+            one, two, three = (model_of(root, w) for w in ('pike', 'pike_t2', 'pike_t3'))
+            lit_two, lit_three = texture_of(root, 'pike_t2_e.png'), texture_of(root, 'pike_t3_e.png')
+        self.assertTrue(one['glow'].endswith('/pike_e.png') and two['glow'].endswith('/pike_t2_e.png'))
+        self.assertTrue(three['glow'].endswith('/pike_t3_e.png'))
+        self.assertEqual(lit_two.getpixel((0, 0))[3], 255)
+        self.assertEqual((lit_three.getpixel((0, 0))[3], lit_three.getpixel((1, 1))[3]), (0, 255))
+
+    def test_bbmodel_pull_frames(self):
+        """A bow made of frame groups: rest, pull_0, pull_1 and pull_2 (saved hidden), a nock a frame in the weapon frame's px."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = cube_fixture(tmp, wid='recurve', frames=BOW_FRAMES, meta=BOW_JSON)
+            self.export(root)
+            model = model_of(root, 'recurve')
+        self.assertEqual([f['name'] for f in model['frames']], ['rest', 'pull_0', 'pull_1', 'pull_2'])
+        self.assertEqual(model['pull'], [0.15, 0.32, 0.48])
+        self.assertEqual([f['nock'] for f in model['frames']], [[-2.8, 0, 0], [-2.9, 0, 0], [-3, 0, 0], [-3.1, 0, 0]])
+        self.assertEqual([len(f['quads']) for f in model['frames']], [36] * 4)
+        self.assertEqual(model['size'][0], 64)
+        self.assertLessEqual(len(model['far']), build_skins.FAR_CAP)
+
+    def test_bbmodel_weapon_rules(self):
+        """Each of these exits 1, naming the weapon and what is wrong."""
+        def edit(**changes):
+            return lambda data, colour, keys, m: m.update(changes)
+
+        def pixel(data, colour, keys, m):
+            m['grip']['pixel'] = [1, 1]
+
+        def set_texture(**changes):
+            return lambda data, colour, keys, m: data['textures'][0].update(changes)
+
+        def other_texture(data, colour, keys, m):
+            changed = colour.copy()
+            changed.putpixel((0, 0), (1, 2, 3, 255))
+            data['textures'][0]['source'] = data_url(changed)
+
+        def not_a_png(data, colour, keys, m):
+            data['textures'][0]['source'] = 'data:image/jpeg;base64,AAAA'
+
+        def off_sheet(data, colour, keys, m):
+            data['elements'][0]['faces']['north']['uv'] = [60, 0, 62.0, 8.0 + 130]
+
+        def stretched(data, colour, keys, m):
+            data['elements'][1]['faces']['north']['uv'] = [0, 100, 3, 103]
+
+        column = [('c%d' % i, (0, i, 0), (1, i + 1, 1), 'wood', None) for i in range(22)]
+        plate = ('plate', (-1, 2.2, -0.5), (1, 2.8, 0.2), 'gilt', None)
+        lifted = [PIKE[0], PIKE[1], ('blade', (-0.5, 4, -0.25), (0.5, 11, 0.25), 'steel', None)]
+        loose = bbt.cube('loose', (0, 0, 0), (1, 1, 1))
+        without_pull_1 = {k: v for k, v in BOW_FRAMES.items() if k != 'pull_1'}
+        cases = [
+            ('boxes', 'pike', dict(tweak=edit(boxes=[1]))),
+            ('thickness', 'pike', dict(tweak=edit(thickness=4))),
+            ('thickness', 'pike', dict(tweak=edit(thickness=0))),
+            ('thickness 3', 'pike', dict(tweak=edit(thickness=3))),
+            ('grip pixel', 'pike', dict(tweak=pixel)),
+            ('rest', 'pike', dict(frames={'stand': PIKE})),
+            ('extra', 'pike', dict(frames={'rest': PIKE, 'extra': PIKE})),
+            ('pull_1', 'recurve', dict(frames=without_pull_1, meta=BOW_JSON)),
+            ('pull_0', 'pike', dict(frames={'rest': PIKE, 'pull_0': PIKE})),
+            ('coplanar', 'pike', dict(frames={'rest': PIKE + [plate]})),
+            ('air gap', 'pike', dict(frames={'rest': lifted})),
+            ('twice', 'pike', dict(tweak=stretched)),
+            ('root', 'pike', dict(root_cubes=[loose])),
+            ('UV size', 'pike', dict(tweak=set_texture(uv_width=16, uv_height=16))),
+            ('embedded', 'pike', dict(tweak=other_texture)),
+            ('embedded', 'pike', dict(tweak=not_a_png)),
+            ('off the 64x128 sheet', 'pike', dict(tweak=off_sheet)),
+            ('132 quads', 'pike', dict(frames={'rest': column})),
+        ]
+        for want, wid, kw in cases:
+            with self.subTest(want=want, kw=sorted(kw)), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp)
+                put_cube_weapon(root, wid, **kw)
+                said = self.fails(export_assets, root)
+                self.assertIn(wid, said)
+                self.assertIn(want, said)
+
+    def test_bbmodel_weapon_checks_name_the_cubes(self):
+        """The coplanar, air gap and density messages name the frame and the cubes or the face."""
+        def stretched(data, colour, keys, m):
+            data['elements'][1]['faces']['north']['uv'] = [0, 100, 3, 103]
+        plate = ('plate', (-1, 2.2, -0.5), (1, 2.8, 0.2), 'gilt', None)
+        lifted = [PIKE[0], PIKE[1], ('blade', (-0.5, 4, -0.25), (0.5, 11, 0.25), 'steel', None)]
+        with tempfile.TemporaryDirectory() as tmp:
+            said = self.fails(export_assets, cube_fixture(tmp, frames={'rest': PIKE + [plate]}))
+        for word in ('frame rest', 'guard', 'plate', 'north', 'art/weapons/pike.bbmodel'):
+            self.assertIn(word, said)
+        with tempfile.TemporaryDirectory() as tmp:
+            said = self.fails(export_assets, cube_fixture(tmp, frames={'rest': lifted}))
+        for word in ('frame rest', 'blade', 'guard', 'one piece'):
+            self.assertIn(word, said)
+        with tempfile.TemporaryDirectory() as tmp:
+            said = self.fails(export_assets, cube_fixture(tmp, tweak=stretched))
+        for word in ('frame rest', 'guard', 'north', 'twice its size'):
+            self.assertIn(word, said)
+
+    def test_string_may_hang_free(self):
+        """A string 0.2 px from its limb tips passes (it hangs from its nocks); one 0.3 px off fails."""
+        def string_at(gap):
+            x = -3.1 - gap
+            frames = {k: [c if c[0] != 'string' else ('string', (x - 0.1, -7.5, -0.1), (x + 0.1, 7.5, 0.1), 'linen', None) for c in v]
+                      for k, v in BOW_FRAMES.items()}
+            return frames, dict(BOW_JSON, nocks=[[x, 0]] * 4)
+        frames, meta = string_at(0.2)
+        with tempfile.TemporaryDirectory() as tmp:
+            self.export(cube_fixture(tmp, wid='recurve', frames=frames, meta=meta))
+        frames, meta = string_at(0.3)
+        with tempfile.TemporaryDirectory() as tmp:
+            said = self.fails(export_assets, cube_fixture(tmp, wid='recurve', frames=frames, meta=meta))
+        self.assertIn('string', said)
+        self.assertIn('recurve', said)
+
+    def test_bbmodel_bow_rules(self):
+        """A pull that does not rise or leaves 0..1.2, nocks that are missing, too few or off the string, and a glow beside
+        pull each exit 1, naming the weapon."""
+        def edit(**changes):
+            return lambda data, colour, keys, m: m.update(changes)
+        cases = {
+            'does not rise': dict(tweak=edit(pull=[0.3, 0.3, 0.5])),
+            'between 0 and 1.2': dict(tweak=edit(pull=[0.3, 0.5, 1.3])),
+            'nocks must hold': dict(tweak=edit(nocks=BOW_NOCKS[:3])),
+            'is not on the string': dict(tweak=edit(nocks=[[5, 0]] + BOW_NOCKS[1:])),
+        }
+        for want, kw in cases.items():
+            with self.subTest(want=want), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp)
+                put_cube_weapon(root, 'recurve', frames=BOW_FRAMES, meta=BOW_JSON, **kw)
+                said = self.fails(export_assets, root)
+                self.assertIn('recurve', said)
+                self.assertIn(want, said)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            put_cube_weapon(root, 'recurve', frames=BOW_FRAMES, meta=BOW_JSON)
+            lit_sheet = Image.new('RGBA', SHEET_2X, (0, 0, 0, 0))
+            lit_sheet.putpixel((0, 0), (255, 240, 200, 255))
+            lit_sheet.save(root / 'art/weapons/recurve_e.png')
+            said = self.fails(export_assets, root)
+        self.assertIn('recurve_e.png', said)
+        self.assertIn('pull', said)
+        lacking = {k: v for k, v in BOW_JSON.items() if k != 'nocks'}
+        with tempfile.TemporaryDirectory() as tmp:
+            said = self.fails(export_assets, cube_fixture(tmp, wid='recurve', frames=BOW_FRAMES, meta=lacking))
+        self.assertIn('nocks', said)
+
+    def test_material_maps(self):
+        """The _m key table gives the _s smoothness (R), F0 (G) and porosity (B) of its material, smoothness +12 a tone step
+        above the patch's face tone; _n is flat with a one-texel tilt along the patch edge and a height in alpha that is
+        never 0; _s alpha is 200 where the _e layer is lit and 255 elsewhere; _s G never falls in 238 to 254 (undefined
+        metals)."""
+        mid, hi, lo = (100, 100, 100, 255), (140, 140, 140, 255), (60, 60, 60, 255)
+        colour = Image.new('RGBA', (8, 8), mid)
+        keys = Image.new('RGBA', (8, 8), KEYS['steel'] + (255,))
+        colour.putpixel((1, 1), hi)
+        colour.putpixel((2, 2), lo)
+        colour.putpixel((7, 7), (0, 0, 0, 0))
+        keys.putpixel((7, 7), (0, 0, 0, 0))
+        keys.putpixel((0, 0), KEYS['gilt'] + (255,))
+        lit_sheet = Image.new('RGBA', (8, 8), (0, 0, 0, 0))
+        lit_sheet.putpixel((3, 0), (255, 240, 200, 255))
+        normal, spec = build_skins.material_maps(colour, keys, [(0, 0, 8, 8)], lit_sheet)
+        self.assertEqual(spec.getpixel((4, 4)), (185, 230, 0, 255))      # polished steel at the face tone
+        self.assertEqual(spec.getpixel((1, 1)), (197, 230, 0, 255))      # one tone step lighter: +12
+        self.assertEqual(spec.getpixel((2, 2)), (173, 230, 0, 255))      # one step darker: -12
+        self.assertEqual(spec.getpixel((0, 0)), (200, 231, 0, 255))      # gilt: gold's F0
+        self.assertEqual(spec.getpixel((3, 0)), (185, 230, 0, 200))      # lit in _e: emission 200
+        self.assertEqual(spec.getpixel((7, 7)), (0, 0, 0, 255))          # no material
+        self.assertEqual(normal.getpixel((7, 7)), (128, 128, 255, 255))
+        self.assertEqual(normal.getpixel((5, 5)), (128, 128, 255, 128))  # flat inside a patch: height 0.5
+        self.assertGreater(normal.getpixel((1, 1))[3], normal.getpixel((5, 5))[3])
+        self.assertLess(normal.getpixel((2, 2))[3], normal.getpixel((5, 5))[3])
+        self.assertLess(normal.getpixel((0, 5))[0], 128)                 # the left edge tilts out (-x)
+        self.assertGreater(normal.getpixel((7, 5))[0], 128)              # the right edge tilts out (+x)
+        self.assertLess(normal.getpixel((4, 0))[1], 128)                 # the top edge tilts up the image: DirectX, green down
+        self.assertGreater(normal.getpixel((4, 7))[1], 128)
+        for x in range(8):
+            for y in range(8):
+                self.assertGreaterEqual(normal.getpixel((x, y))[3], 1)
+                self.assertEqual(normal.getpixel((x, y))[2], 255)
+                self.assertFalse(238 <= spec.getpixel((x, y))[1] <= 254)
+        for key, (name, smooth, f0, porosity) in build_skins.MATERIALS.items():
+            self.assertFalse(238 <= f0 <= 254, name)
+            self.assertTrue(0 <= smooth <= 255 and 0 <= porosity <= 255, name)
+        self.assertEqual(build_skins.MATERIALS[KEYS['wood']][1:], (70, 10, 40))
+        self.assertEqual(build_skins.MATERIALS[KEYS['linen']][1:], (30, 8, 60))
+        self.assertEqual(set(KEYS.values()) - set(build_skins.MATERIALS), set())
+
+    def test_map_rules(self):
+        """Each of these exits 1, naming the weapon, the file and the texel: an _m of another size, an opaque texel with no key
+        colour, a transparent texel with one, a key colour that is not in the table, a lit texel off the colour sheet's
+        opaque texels and a missing _m."""
+        def keyed(pos, value):
+            def make(root):
+                im = Image.open(root / 'art/weapons/pike_m.png').convert('RGBA')
+                im.putpixel(pos, value)
+                im.save(root / 'art/weapons/pike_m.png')
+            return make
+
+        def small(root):
+            Image.new('RGBA', (32, 32), (0, 0, 0, 0)).save(root / 'art/weapons/pike_m.png')
+
+        def lit_off_sheet(root):
+            lit_sheet = Image.new('RGBA', SHEET_2X, (0, 0, 0, 0))
+            lit_sheet.putpixel((63, 127), (255, 240, 200, 255))
+            lit_sheet.save(root / 'art/weapons/pike_e.png')
+
+        def small_glow(root):
+            Image.new('RGBA', (32, 32), (0, 0, 0, 0)).save(root / 'art/weapons/pike_e.png')
+
+        def no_m(root):
+            (root / 'art/weapons/pike_m.png').unlink()
+        cases = [
+            ('pike_m.png is 32x32', 'not the colour sheet', small),
+            ('pike_m.png', 'texel (0, 0) is opaque in the colour sheet but has no key colour', keyed((0, 0), (0, 0, 0, 0))),
+            ('pike_m.png', 'texel (63, 127) is transparent in the colour sheet but has the key colour', keyed((63, 127), (255, 0, 0, 255))),
+            ('pike_m.png', '#010203 at texel (0, 0) is not in the material table', keyed((0, 0), (1, 2, 3, 255))),
+            ('pike_e.png', 'texel (63, 127)', lit_off_sheet),
+            ('pike_e.png is 32x32', 'not the colour sheet', small_glow),
+            ('pike_m.png', 'is missing', no_m),
+        ]
+        for name, want, make in cases:
+            with self.subTest(want=want), tempfile.TemporaryDirectory() as tmp:
+                root = cube_fixture(tmp)
+                make(root)
+                said = self.fails(export_assets, root)
+                self.assertIn('pike', said)
+                self.assertIn(name, said)
+                self.assertIn(want, said)
+
+    def test_sprite_weapon_stays_the_fallback(self):
+        """A weapon with only a PNG is still extruded as a sprite, written as format 3 with 13-number quads, no maps and no far
+        version, beside a cube weapon in the same catalogue."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = cube_fixture(tmp)
+            self.export(root)
+            sprite = model_of(root, 'sword')
+            self.assertFalse((root / ASSETS / 'textures/entity/troop/weapon/sword_n.png').exists())
+        self.assertEqual((sprite['format'], sprite['kind'], sprite['far'], sprite['normal'], sprite['specular']), (3, 'sprite', [], '', ''))
+        self.assertEqual({len(q) for f in sprite['frames'] for q in f['quads']}, {13})
+
+    def test_verify_cube_weapons(self):
+        """--verify rebuilds cube weapons, their maps and far versions byte for byte (PNGs by pixels)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = cube_fixture(tmp)
+            self.export(root)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(build_skins.verify(root), 0)
+            for target in ('models/troop/weapon/pike.json', 'textures/entity/troop/weapon/pike_s.png',
+                           'textures/entity/troop/weapon/pike_n.png', 'textures/entity/troop/weapon/pike.png'):
+                path = root / ASSETS / target
+                before = path.read_bytes()
+                data = bytearray(before)
+                data[len(data) // 2] ^= 0x01
+                path.write_bytes(bytes(data))
+                said = self.fails(build_skins.verify, root)
+                self.assertIn(target, said)
+                path.write_bytes(before)
 
     # ---- Task 5d: the relief layer ----
 
@@ -929,7 +1391,7 @@ class BuildSkinsChecks(unittest.TestCase):
 
     def test_relief_keys(self):
         """Bones with relief carry it keyed by the skin ("1", "2"), only where they have quads; the veteran trim takes none;
-        the top-level keys stay Task 5's list and format is 2."""
+        the top-level keys stay Task 5's list and format is 3."""
         troops = self.with_knight(skins={'1': 'knight_s1.png', '2': 'knight_s2.png'})
         with tempfile.TemporaryDirectory() as tmp:
             root = fixture(tmp, troops=troops)
@@ -938,7 +1400,7 @@ class BuildSkinsChecks(unittest.TestCase):
             relief_png(root, 'knight_s2_r.png', [(22, 22), (23, 22), (10, 10)])   # the head too, at stage 2
             index = self.export(root)
             model = json.loads((root / ASSETS / 'models/troop/knight.json').read_text(encoding='utf-8'))
-        self.assertEqual(model['format'], 2)
+        self.assertEqual(model['format'], 3)
         self.assertEqual(tuple(model), build_skins.MODEL_KEYS)
         self.assertFalse(set(model) & set(build_skins.VANILLA_KEYS))
         self.assertEqual(model['veteran'], 'gravesandglory:textures/entity/troop/knight_veteran.png')

@@ -52,6 +52,7 @@ k; a part takes its anchor bone's scale times its own; root then shifts so the l
 
 Deterministic: every collection is walked in file or sorted order. Like build_ui_art.py it re-executes itself with
 PYTHONHASHSEED=0 and runs under Python 3.12. Pillow is a dev tool only."""
+import base64
 import io
 import json
 import math
@@ -61,17 +62,19 @@ import subprocess
 import sys
 import tempfile
 import colorsys
+from collections import Counter
 from pathlib import Path
 
 sys.dont_write_bytecode = True
 from PIL import Image
+import bbmodel
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = 'src/main/resources/assets/gravesandglory'
 MODELS = 'models/troop'
 TEXTURES = 'textures/entity/troop'
 NAMESPACE = 'gravesandglory'
-FORMAT = 2
+FORMAT = 3
 # The rig of each sheet entity (TroopModels.RIGS in the client).
 RIGS = {'husk': 'biped', 'zombie': 'biped', 'skeleton': 'biped', 'stray': 'biped', 'wither_skeleton': 'biped',
         'drowned': 'biped', 'zombified_piglin': 'biped', 'vindicator': 'biped', 'pillager': 'biped', 'evoker': 'biped',
@@ -122,6 +125,25 @@ PULL_FRAMES = 3      # pull_0 to pull_2 of a draw weapon, after the rest frame
 PULL_MAX = 1.2       # a pull time lies between 0 and the longest bow_draw clip, in seconds
 SLIVER = 0.25        # a side face reads its texel through a UV band 2 x SLIVER across, at the texel's centre
 THICKNESS = (1, 2, 3)
+# Cube weapons (art pipeline v2): made in Blockbench, 2 texels to a model px on a 64 x 128 sheet; the build adds a far version
+# under the sheet and the _n and _s maps beside it.
+WEAPON_FRAMES = ('rest', 'pull_0', 'pull_1', 'pull_2')
+WEAPON_DENSITY = 2.0   # texels a px: a face's UV is exactly twice its size
+THICKNESS_SLACK = 1.5  # px a json thickness may differ from the model's depth across z (it is informational)
+FAR_CAP = 32           # quads of the far version, which a weapon on a troop outside TroopDepth.near draws
+FAR_SAMPLES = 4        # the front-view raster takes this many samples a side of a px
+FAR_COVER = 0.5        # the share of a px's samples a face must cover for the far sprite to be solid there
+NOCK_REACH = 0.5       # px a nock may lie from the string cube
+GLOW_EMISSION = 200    # _s alpha on a texel lit in _e (255 is none)
+TONE_LUMA = 0.12       # luma (0 to 1) of one tone step of a ramp
+TONE_SMOOTH = 12       # smoothness a tone step above the patch's face tone adds
+TONE_MAX = 2           # steps either side of the face tone (a ramp has five tones)
+HEIGHT_BASE, HEIGHT_TONE, EDGE_TILT = 0.5, 0.05, 1.2   # _n alpha: a texel is 0.5 high, 0.05 a tone step; a patch edge tilts by the drop
+# The material map's key colours (art pipeline v2 section 6): name, _s smoothness (R), F0 (G, never 238 to 254), porosity (B).
+MATERIALS = {
+    (255, 0, 0): ('steel', 185, 230, 0), (170, 0, 0): ('iron', 110, 230, 0), (255, 170, 0): ('gilt', 200, 231, 0),
+    (0x8B, 0x45, 0x13): ('wood', 70, 10, 40), (255, 255, 255): ('linen', 30, 8, 60), (0x55, 0x33, 0x22): ('leather', 60, 10, 30),
+    (0xEE, 0xEE, 0xDD): ('bone', 90, 12, 20), (0, 255, 0): ('glass', 240, 20, 200)}
 # Minecraft's Direction order in model space (0 down is -y, y runs down the model), the axis of each, and the quad rule.
 NORMALS = ((0, -1, 0), (0, 1, 0), (0, 0, -1), (0, 0, 1), (-1, 0, 0), (1, 0, 0))
 AXIS = (1, 1, 2, 2, 0, 0)
@@ -190,6 +212,7 @@ class Catalog:
     def __init__(self, root):
         self.root = root
         self.rigs, self.parts, self.weapons, self.troops = {}, {}, {}, {}
+        self.bbmodels = {}   # weapon id -> art/weapons/<id>.bbmodel
         self.sheet, self.factions, self.stages = {}, {}, {}
         self.template, self.glyphs = None, {}
 
@@ -222,6 +245,10 @@ def load(root: Path) -> Catalog:
     cat.rigs = sources(art / 'rigs', 'rig')
     cat.parts = sources(art / 'parts', 'part')
     cat.weapons = sources(art / 'weapons', 'weapon')
+    for path in sorted((art / 'weapons').glob('*.bbmodel')):
+        if path.stem not in cat.weapons:
+            fail('art/weapons/%s has no art/weapons/%s.json (grip, thickness, pull and nocks)' % (path.name, path.stem))
+        cat.bbmodels[path.stem] = path
     cat.troops = sources(art / 'troops', 'troop')
     if (art / 'team/team_cloth.png').is_file():
         cat.template = read_png(art / 'team/team_cloth.png', 'team cloth template')
@@ -601,12 +628,13 @@ def runs(flags):
     return out
 
 
-def sprite_mesh(frame: Image.Image, thickness: int, grip: tuple, column: int) -> list:
+def sprite_mesh(frame: Image.Image, thickness: int, grip: tuple, column: int, v0: float = 0) -> list:
     """The quads of one weapon frame (design 2): its two big faces first (north, then south), each the whole frame, then a
     side face along every run of edges between an opaque pixel and transparency or the border, thickness deep and centred
     on z = 0. The grip pixel's centre is (0, 0, 0); x runs right, y down, one sprite pixel is one model pixel. The UVs
     are those of the frame's column in the packed sheet; a side face reads its edge pixel through a band half a texel
-    across at the pixel's centre and the full run along."""
+    across at the pixel's centre and the full run along. v0 is the row of the sheet the frame's top row sits on (0 for a
+    sprite weapon's packed sheet; a cube weapon's far version stands under its colour sheet)."""
     w, h = frame.size
     px = frame.load()
     gx, gy, t = grip[0] + 0.5, grip[1] + 0.5, thickness / 2
@@ -617,41 +645,67 @@ def sprite_mesh(frame: Image.Image, thickness: int, grip: tuple, column: int) ->
         return 0 <= x < w and 0 <= y < h and px[x, y][3] > 0
 
     def whole(c):
-        return u0 + c[0] + gx, c[1] + gy
+        return u0 + c[0] + gx, v0 + c[1] + gy
     quads = [make_quad(2, (x0, y0, -t), (x1, y1, -t), whole), make_quad(3, (x0, y0, t), (x1, y1, t), whole)]
     for d, dy in ((0, -1), (1, 1)):   # the edges that face up (-y) and down (+y), row by row
         for y in range(h):
             for a, b in runs([solid(x, y) and not solid(x, y + dy) for x in range(w)]):
                 plane = (y if d == 0 else y + 1) - gy
                 quads.append(make_quad(d, (a - gx, plane, -t), (b - gx, plane, t),
-                                       lambda c, y=y: (u0 + c[0] + gx, y + 0.5 + (SLIVER if c[2] > 0 else -SLIVER))))
+                                       lambda c, y=y: (u0 + c[0] + gx, v0 + y + 0.5 + (SLIVER if c[2] > 0 else -SLIVER))))
     for d, dx in ((4, -1), (5, 1)):   # the edges that face left (-x) and right (+x), column by column
         for x in range(w):
             for a, b in runs([solid(x, y) and not solid(x + dx, y) for y in range(h)]):
                 plane = (x if d == 4 else x + 1) - gx
                 quads.append(make_quad(d, (plane, a - gy, -t), (plane, b - gy, t),
-                                       lambda c, x=x: (u0 + x + 0.5 + (SLIVER if c[2] > 0 else -SLIVER), c[1] + gy)))
+                                       lambda c, x=x: (u0 + x + 0.5 + (SLIVER if c[2] > 0 else -SLIVER), v0 + c[1] + gy)))
     return quads
 
 
-def weapon_outputs(cat, wid):
-    """The files of one weapon (design 2): its model with the frames' quads, the packed texture and the packed glow. Returns
-    (files, lit glow pixels, [(weapon, frame, quads)])."""
+def weapon_meta(cat, wid, cube):
+    """The checked json of a weapon: thickness, grip (a pixel for a sprite), offset, rotation and pull; the same rules for a
+    sprite and a cube weapon. Returns a dict."""
     w = cat.weapons[wid]
     what = 'weapon ' + wid
     if 'boxes' in w or 'size' in w:
-        fail('%s: boxes and size are gone (format 2): a weapon is a sprite, art/weapons/%s.png, that the build extrudes; give '
-             'it a thickness and a grip pixel' % (what, wid))
+        fail('%s: boxes and size are gone (format 2): a weapon is a Blockbench model, art/weapons/%s.bbmodel, or a sprite, '
+             'art/weapons/%s.png, that the build extrudes' % (what, wid, wid))
     keys(w, WEAPON_KEYS, what)
     thickness = w.get('thickness')
     if isinstance(thickness, bool) or thickness not in THICKNESS:
         fail('%s: thickness must be 1, 2 or 3 (px of depth), not %s' % (what, thickness))
     grip = w.get('grip')
     keys(grip, {'pixel', 'offset', 'rotation', 'note'}, what + ' grip')
-    pixel = vec(grip.get('pixel'), 2, what + ' grip pixel', ints=True, minimum=0)
+    if cube and 'pixel' in grip:
+        fail('%s: grip pixel is gone from a .bbmodel weapon: the origin of the model is the grip (art pipeline v2 section 2.1)' % what)
+    pixel = None if cube else vec(grip.get('pixel'), 2, what + ' grip pixel', ints=True, minimum=0)
     offset = vec(grip.get('offset', [0, 0, 0]), 3, what + ' grip offset')
     rotation = vec(grip.get('rotation', [0, 0, 0]), 3, what + ' grip rotation')
     pull = w.get('pull')
+    if pull is not None:
+        pull = vec(pull, PULL_FRAMES, what + ' pull')
+        if any(b <= a for a, b in zip(pull, pull[1:])):
+            fail('%s: pull %s does not rise strictly' % (what, [num(p) for p in pull]))
+        if pull[0] < 0 or pull[-1] > PULL_MAX:
+            fail('%s: pull %s must lie between 0 and %s seconds' % (what, [num(p) for p in pull], num(PULL_MAX)))
+    return {'what': what, 'thickness': thickness, 'pixel': pixel, 'offset': offset, 'rotation': rotation, 'pull': pull,
+            'nocks': w.get('nocks')}
+
+
+def weapon_model(wid, kind, size, meta, frames, far, texture, normal, specular, glow):
+    """A weapon's model json (format 3): the keys of format 2 plus its kind ('sprite' or 'cube'), the far version, and the
+    ids of the normal and specular maps (informational: Iris finds them by suffix)."""
+    return {'format': FORMAT, 'weapon': wid, 'kind': kind, 'size': list(size), 'thickness': meta['thickness'],
+            'grip': {'offset': [num(c) for c in meta['offset']], 'rotation': [num(c) for c in meta['rotation']]},
+            'pull': [num(p) for p in meta['pull']] if meta['pull'] is not None else [], 'frames': frames, 'far': far,
+            'texture': texture, 'normal': normal, 'specular': specular, 'glow': glow}
+
+
+def sprite_weapon_outputs(cat, wid):
+    """The files of a weapon that has only a PNG (design 2 of the troop depth design): its model with the quads of the
+    extruded sprite frames, the packed texture and the packed glow. Returns (files, lit glow pixels, [(weapon, frame, quads)])."""
+    meta = weapon_meta(cat, wid, False)
+    what, thickness, pixel, pull, nocks = meta['what'], meta['thickness'], meta['pixel'], meta['pull'], meta['nocks']
     folder = cat.root / 'art/weapons'
     if pull is None:
         names, files = ['rest'], [wid + '.png']
@@ -659,11 +713,6 @@ def weapon_outputs(cat, wid):
         if stray:
             fail('%s: %s without a pull key (the three times of bow_draw)' % (what, stray[0]))
     else:
-        pull = vec(pull, PULL_FRAMES, what + ' pull')
-        if any(b <= a for a, b in zip(pull, pull[1:])):
-            fail('%s: pull %s does not rise strictly' % (what, [num(p) for p in pull]))
-        if pull[0] < 0 or pull[-1] > PULL_MAX:
-            fail('%s: pull %s must lie between 0 and %s seconds' % (what, [num(p) for p in pull], num(PULL_MAX)))
         names = ['rest'] + ['pull_%d' % i for i in range(PULL_FRAMES)]
         files = [wid + '.png'] + ['%s_pull_%d.png' % (wid, i) for i in range(PULL_FRAMES)]
     frames = []
@@ -683,7 +732,6 @@ def weapon_outputs(cat, wid):
     for name, im in zip(names, frames):
         if im.getpixel(tuple(pixel))[3] == 0:
             fail('%s: grip pixel %s is on a transparent pixel of frame %s' % (what, pixel, name))
-    nocks = w.get('nocks')
     if pull is None:
         if nocks is not None:
             fail('%s: nocks without a pull key: nothing to nock' % what)
@@ -710,16 +758,339 @@ def weapon_outputs(cat, wid):
     sheet = Image.new('RGBA', (fw * len(frames), fh), (0, 0, 0, 0))
     for i, im in enumerate(frames):
         sheet.paste(im, (i * fw, 0))
-    model = {'format': FORMAT, 'weapon': wid, 'size': [sheet.width, fh], 'thickness': thickness,
-             'grip': {'offset': [num(c) for c in offset], 'rotation': [num(c) for c in rotation]},
-             'pull': [num(p) for p in pull] if pull is not None else [], 'frames': out_frames,
-             'texture': texture_id('weapon/%s.png' % wid), 'glow': texture_id('weapon/%s_e.png' % wid) if glow else ''}
+    model = weapon_model(wid, 'sprite', sheet.size, meta, out_frames, [], texture_id('weapon/%s.png' % wid), '', '',
+                         texture_id('weapon/%s_e.png' % wid) if glow else '')
     out = {'%s/weapon/%s.json' % (MODELS, wid): dumps(model), '%s/weapon/%s.png' % (TEXTURES, wid): png_bytes(sheet)}
     if glow:
         lit_sheet = Image.new('RGBA', sheet.size, (0, 0, 0, 0))
         lit_sheet.paste(glow, (0, 0))
         out['%s/weapon/%s_e.png' % (TEXTURES, wid)] = png_bytes(lit_sheet)
     return out, (lit(glow) if glow else 0), stats
+
+
+# ---- cube weapons: the .bbmodel, the far version and the LabPBR maps (art pipeline v2) ----
+
+def glow_source(cat, wid):
+    """The _e.png a cube weapon is lit by: its own, or for a tier model (<weapon>_t2, _t3) the base weapon's, as the heart is
+    the same cube at the same sheet spot in every tier. Returns the path or None."""
+    folder = cat.root / 'art/weapons'
+    if (folder / (wid + '_e.png')).is_file():
+        return folder / (wid + '_e.png')
+    tier = re.fullmatch(r'(.+)_t[23]', wid)
+    if tier and tier.group(1) in cat.weapons and (folder / (tier.group(1) + '_e.png')).is_file():
+        return folder / (tier.group(1) + '_e.png')
+    return None
+
+
+def far_view(quads, colour, keys, lit_sheet):
+    """The far version's sprite (the fourth cut): the rest frame seen from the front (the weapon frame's -z side), one px to
+    a model px, a px solid where at least half of its samples hit a face; its colour, key colour and glow are the ones most
+    of its samples read, and a texel the sheet leaves transparent is a cutout. quads are the frame's 20-number quads.
+    Returns the colour, key and lit images of the sprite and its grip pixel (the one whose centre is the model's origin)."""
+    cpx, kpx = colour.load(), keys.load()
+    lpx = lit_sheet.load() if lit_sheet is not None else None
+    n = FAR_SAMPLES
+    xs = [q[i] for q in quads for i in (0, 3, 6, 9)]
+    ys = [q[i] for q in quads for i in (1, 4, 7, 10)]
+    ix0, ix1 = math.floor(min(xs) + 0.5), math.floor(max(xs) + 0.5)
+    iy0, iy1 = math.floor(min(ys) + 0.5), math.floor(max(ys) + 0.5)
+    w, h = ix1 - ix0 + 1, iy1 - iy0 + 1
+    depth = {}   # (sample column, sample row) -> (z, the texel it reads); sample i lies at x = (i + 0.5) / n
+    for q in quads:
+        c0, c1, c3 = q[0:3], q[3:6], q[9:12]
+        e1, e3 = [c1[k] - c0[k] for k in range(3)], [c3[k] - c0[k] for k in range(3)]
+        det = e1[0] * e3[1] - e1[1] * e3[0]
+        if det >= -1e-9:   # faces away from the viewer at -z, or stands on edge
+            continue
+        t0, t1, t3 = q[12:14], q[14:16], q[16:18]
+        t2 = (t1[0] + t3[0] - t0[0], t1[1] + t3[1] - t0[1])
+        umin, umax = min(t0[0], t1[0], t3[0], t2[0]), max(t0[0], t1[0], t3[0], t2[0])
+        vmin, vmax = min(t0[1], t1[1], t3[1], t2[1]), max(t0[1], t1[1], t3[1], t2[1])
+        px = [c0[0], c1[0], c1[0] + c3[0] - c0[0], c3[0]]
+        py = [c0[1], c1[1], c1[1] + c3[1] - c0[1], c3[1]]
+        for sj in range(math.floor(min(py) * n), math.ceil(max(py) * n)):
+            y = (sj + 0.5) / n
+            for si in range(math.floor(min(px) * n), math.ceil(max(px) * n)):
+                x = (si + 0.5) / n
+                a = ((x - c0[0]) * e3[1] - (y - c0[1]) * e3[0]) / det
+                b = (e1[0] * (y - c0[1]) - e1[1] * (x - c0[0])) / det
+                if a < -1e-9 or a > 1 + 1e-9 or b < -1e-9 or b > 1 + 1e-9:
+                    continue
+                z = c0[2] + a * e1[2] + b * e3[2]
+                if (si, sj) in depth and depth[(si, sj)][0] <= z:
+                    continue
+                u = min(max(t0[0] + a * (t1[0] - t0[0]) + b * (t3[0] - t0[0]), umin), umax - 1e-6)
+                v = min(max(t0[1] + a * (t1[1] - t0[1]) + b * (t3[1] - t0[1]), vmin), vmax - 1e-6)
+                tx = min(max(int(math.floor(u)), 0), colour.width - 1)
+                ty = min(max(int(math.floor(v)), 0), colour.height - 1)
+                if cpx[tx, ty][3] == 0:
+                    continue   # an unpainted texel of a patch rounded up to whole texels: a cutout
+                depth[(si, sj)] = (z, (cpx[tx, ty], kpx[tx, ty], bool(lpx and lpx[tx, ty][3])))
+    far_c, far_k, far_l = (Image.new('RGBA', (w, h), (0, 0, 0, 0)) for _ in range(3))
+    for row in range(h):
+        for col in range(w):
+            first_i, first_j = (col + ix0) * n - n // 2, (row + iy0) * n - n // 2
+            hits = [depth[(first_i + a, first_j + b)][1] for b in range(n) for a in range(n) if (first_i + a, first_j + b) in depth]
+            if len(hits) < n * n * FAR_COVER:
+                continue
+            record = max(Counter(hits).items(), key=lambda kv: kv[1])[0]
+            far_c.putpixel((col, row), record[0])
+            far_k.putpixel((col, row), record[1])
+            if record[2]:
+                far_l.putpixel((col, row), (255, 255, 255, 255))
+    return far_c, far_k, far_l, (-ix0, -iy0)
+
+
+def far_quads(sprite, thickness, grip, v0):
+    """The far sprite extruded, cut to FAR_CAP quads: the two big faces, then the longest side runs, in their own order."""
+    quads = sprite_mesh(sprite, thickness, grip, 0, v0)
+    if len(quads) <= FAR_CAP:
+        return quads
+    longest = sorted(range(2, len(quads)), key=lambda i: (-max(quads[i][4] - quads[i][1], quads[i][5] - quads[i][2]), i))
+    keep = set(longest[:FAR_CAP - 2])
+    return quads[:2] + [q for i, q in enumerate(quads) if i in keep]
+
+
+def luma(c):
+    return (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255
+
+
+def material_maps(colour, keys, rects, lit_sheet=None):
+    """The _n and _s maps of a weapon sheet from its colour sheet and its key colours (art pipeline v2 section 6). _s: R the
+    material's smoothness, +12 a tone step above the patch's face tone (the most common colour of its patch), G its F0, B its
+    porosity, A 255 or 200 on a texel lit in lit_sheet; a texel with no material is (0, 0, 0, 255). _n: R and G the tilt of
+    the height field across the texel (DirectX, green down), B 255, A the height (0.5 flat, 0.05 a tone step, never 0); every
+    patch edge drops to nothing, so its edge texels tilt outward. rects are the patches, as (x0, y0, x1, y1) texels."""
+    w, h = colour.size
+    cpx, kpx = colour.load(), keys.load()
+    lpx = lit_sheet.load() if lit_sheet is not None else None
+    patch = [[None] * w for _ in range(h)]
+    for i, (x0, y0, x1, y1) in enumerate(rects):
+        for y in range(max(0, y0), min(h, y1)):
+            for x in range(max(0, x0), min(w, x1)):
+                if patch[y][x] is None and cpx[x, y][3]:
+                    patch[y][x] = i
+    for y in range(h):
+        for x in range(w):
+            if patch[y][x] is None and cpx[x, y][3]:
+                patch[y][x] = -1   # a texel no patch claims: one patch of its own
+    colours = {}
+    for y in range(h):
+        for x in range(w):
+            if patch[y][x] is not None:
+                colours.setdefault(patch[y][x], Counter())[tuple(cpx[x, y][:3])] += 1
+    face_luma = {p: luma(max(c.items(), key=lambda kv: kv[1])[0]) for p, c in colours.items()}
+    tone = [[0] * w for _ in range(h)]
+    height = [[0.0] * w for _ in range(h)]
+    for y in range(h):
+        for x in range(w):
+            if patch[y][x] is not None:
+                step = round((luma(cpx[x, y]) - face_luma[patch[y][x]]) / TONE_LUMA)
+                tone[y][x] = max(-TONE_MAX, min(TONE_MAX, step))
+                height[y][x] = HEIGHT_BASE + HEIGHT_TONE * tone[y][x]
+    normal = Image.new('RGBA', (w, h), (128, 128, 255, 255))
+    spec = Image.new('RGBA', (w, h), (0, 0, 0, 255))
+    for y in range(h):
+        for x in range(w):
+            pid = patch[y][x]
+            if pid is None:
+                continue
+
+            def at(xx, yy):
+                return height[yy][xx] if 0 <= xx < w and 0 <= yy < h and patch[yy][xx] == pid else 0.0
+            nx = -(at(x + 1, y) - at(x - 1, y)) * EDGE_TILT
+            ny = -(at(x, y + 1) - at(x, y - 1)) * EDGE_TILT
+            ln = math.sqrt(nx * nx + ny * ny + 1.0)
+            normal.putpixel((x, y), (int(round(128 + nx / ln * 127)), int(round(128 + ny / ln * 127)), 255,
+                                     max(1, min(255, int(height[y][x] * 255 + 0.5)))))
+            material = MATERIALS.get(tuple(kpx[x, y][:3]))
+            if material is None:
+                continue
+            name, smooth, f0, porosity = material
+            if 238 <= f0 <= 254:
+                fail('material %s has F0 %d, which LabPBR leaves undefined (238 to 254)' % (name, f0))
+            spec.putpixel((x, y), (max(0, min(255, smooth + TONE_SMOOTH * tone[y][x])), f0, porosity,
+                                   GLOW_EMISSION if lpx and lpx[x, y][3] else 255))
+    return normal, spec
+
+
+def embedded_png(url):
+    """The image a base64 PNG data URL carries, or None when the URL is anything else."""
+    head = 'data:image/png;base64,'
+    if not url.startswith(head):
+        return None
+    try:
+        with Image.open(io.BytesIO(base64.b64decode(url[len(head):], validate=True))) as im:
+            return im.convert('RGBA')
+    except Exception:
+        return None
+
+
+def key_sheet(cat, wid, colour):
+    """art/weapons/<wid>_m.png, the material map, checked against the colour sheet: its size, a key colour on every opaque
+    texel and none on a transparent one, every key colour in MATERIALS."""
+    what = 'weapon ' + wid
+    path = cat.root / 'art/weapons' / (wid + '_m.png')
+    if not path.is_file():
+        fail('%s: art/weapons/%s_m.png is missing (the material map: a key colour on every opaque texel, art pipeline v2 section 6)' % (what, wid))
+    keys = read_png(path, what)
+    if keys.size != colour.size:
+        fail('%s: art/weapons/%s_m.png is %dx%d, not the colour sheet\'s %dx%d' % (what, wid, keys.width, keys.height, colour.width, colour.height))
+    cpx, kpx = colour.load(), keys.load()
+    for y in range(colour.height):
+        for x in range(colour.width):
+            opaque, keyed = cpx[x, y][3] > 0, kpx[x, y][3] > 0
+            if opaque and not keyed:
+                fail('%s: art/weapons/%s_m.png texel (%d, %d) is opaque in the colour sheet but has no key colour' % (what, wid, x, y))
+            if keyed and not opaque:
+                fail('%s: art/weapons/%s_m.png texel (%d, %d) is transparent in the colour sheet but has the key colour #%02X%02X%02X'
+                     % ((what, wid, x, y) + tuple(kpx[x, y][:3])))
+            if keyed and tuple(kpx[x, y][:3]) not in MATERIALS:
+                fail('%s: art/weapons/%s_m.png key colour #%02X%02X%02X at texel (%d, %d) is not in the material table'
+                     % ((what, wid) + tuple(kpx[x, y][:3]) + (x, y)))
+    return keys
+
+
+def cube_weapon_outputs(cat, wid):
+    """The files of a weapon made in Blockbench (art pipeline v2): its model (the quads of each frame group, 20 numbers
+    each, and the far version), the colour sheet with the far version's strip under it, the _n and _s maps, and the glow.
+    Returns (files, lit glow pixels, [(weapon, frame, quads)])."""
+    meta = weapon_meta(cat, wid, True)
+    what, thickness, pull, nocks = meta['what'], meta['thickness'], meta['pull'], meta['nocks']
+    folder = cat.root / 'art/weapons'
+    shown = 'art/weapons/%s.bbmodel' % wid
+
+    def bad(why):
+        fail('%s: %s %s' % (what, shown, why))
+    try:
+        model = bbmodel.read(cat.bbmodels[wid])
+        quads_of = bbmodel.weapon_frames(model)
+    except bbmodel.BBError as e:
+        fail('%s: %s' % (what, e))
+    if 'rest' not in model.frames:
+        bad('has no frame group rest (its top-level groups are %s)' % (', '.join(model.frames) or 'none'))
+    for name in model.frames:
+        if name not in WEAPON_FRAMES:
+            bad('has a top-level group %s, which is none of rest, pull_0, pull_1 or pull_2 (the frame groups)' % name)
+    names = [n for n in WEAPON_FRAMES if n in model.frames]
+    if pull is None:
+        if len(names) > 1:
+            bad('has frame group %s without a pull key in %s.json (the three times of bow_draw)' % (names[1], wid))
+    else:
+        for n in WEAPON_FRAMES:
+            if n not in model.frames:
+                bad('frame group %s is missing: a weapon with a pull key has rest, pull_0, pull_1 and pull_2' % n)
+    for problem in bbmodel.check_textures(model):
+        bad(problem)
+    texture = model.textures[0]
+    png = folder / (wid + '.png')
+    if not png.is_file():
+        bad('is missing its texture art/weapons/%s.png' % wid)
+    colour = read_png(png, what)
+    if colour.size != (texture.width, texture.height):
+        bad('texture is %dx%d in the project but art/weapons/%s.png is %dx%d' % (texture.width, texture.height, wid, colour.width, colour.height))
+    embedded = embedded_png(texture.source)
+    if embedded is None:
+        bad('has no embedded PNG texture (its source is %s); save the project with the texture embedded in Blockbench' %
+            (texture.source[:24] + '...' if texture.source else 'empty'))
+    if embedded.size != colour.size or embedded.tobytes() != colour.tobytes():
+        a, b = embedded.tobytes(), colour.tobytes()
+        at = next((i for i in range(min(len(a), len(b))) if a[i] != b[i]), 0) // 4
+        bad('the embedded texture differs from art/weapons/%s.png at pixel (%d, %d); save the texture in Blockbench' %
+            (wid, at % colour.width, at // colour.width))
+    sheet_w, sheet_h = colour.size
+    depth = max(c.hi[2] - c.lo[2] for c in model.frames['rest'])
+    if abs(depth - thickness) > THICKNESS_SLACK:
+        bad('thickness %d in %s.json but the rest frame is %s px deep across z (a thickness is the depth, to %s px)' %
+            (thickness, wid, num(depth), num(THICKNESS_SLACK)))
+    for name in names:
+        cubes = model.frames[name]
+        for c in cubes:
+            for face, (_, uv) in sorted(c.faces.items()):
+                if (min(uv[0], uv[2]) < -1e-6 or min(uv[1], uv[3]) < -1e-6 or max(uv[0], uv[2]) > sheet_w + 1e-6
+                        or max(uv[1], uv[3]) > sheet_h + 1e-6):
+                    bad('frame %s: cube %s face %s reads texels off the %dx%d sheet (UV %s)' %
+                        (name, c.name, face, sheet_w, sheet_h, [num(v) for v in uv]))
+        for cube, face, want_w, want_h, got_w, got_h in bbmodel.off_density(cubes, WEAPON_DENSITY):
+            bad('frame %s: cube %s face %s is %s x %s texels, but twice its size is %s x %s (a weapon sheet has 2 texels a px; '
+                'no face is stretched)' % (name, cube, face, num(got_w), num(got_h), num(want_w), num(want_h)))
+        for a, fa, b, fb, dist, overlap in bbmodel.coplanar_faces(cubes):
+            bad('frame %s: cube %s face %s and cube %s face %s are coplanar (%s px apart) and overlap by %s px squared, so '
+                'they z-fight; move one off or put them back to back' % (name, a, fa, b, fb, num(dist), num(overlap)))
+        pieces, free = bbmodel.joined(cubes)
+        if len(pieces) > 1:
+            bad('frame %s has an air gap: it is not one piece (%s); every cube must touch or overlap the rest' %
+                (name, ' | '.join(', '.join(p) for p in pieces)))
+        if free:
+            bad('frame %s: the string %s hangs %s px from every other cube, over the 0.2 px a string may hang from its nocks' %
+                (name, free[0][0], num(free[0][1])))
+        if len(quads_of[name]) > WEAPON_CAP:
+            bad('frame %s has %d quads, over the %d quads a frame may have' % (name, len(quads_of[name]), WEAPON_CAP))
+    if pull is None:
+        if nocks is not None:
+            fail('%s: nocks without a pull key: nothing to nock' % what)
+    else:
+        if not isinstance(nocks, list) or len(nocks) != len(names):
+            fail('%s: nocks must hold one [x, y] a frame (%d), the middle of the string in the weapon frame\'s px' % (what, len(names)))
+        nocks = [vec(n, 2, '%s nock' % what) for n in nocks]
+        for name, nock in zip(names, nocks):
+            strings = [c for c in model.frames[name] if bbmodel.is_string(c)]
+            reach = min((bbmodel.distance(c, [nock[0], -nock[1], 0.0]) for c in strings), default=None)
+            if reach is None or reach > NOCK_REACH:
+                bad('frame %s: nock [%s, %s] is not on the string (%s)' % (
+                    name, num(nock[0]), num(nock[1]), 'the frame has no cube called string' if reach is None else
+                    'the nearest string cube is %s px away, over the %s px a nock may be' % (num(reach), num(NOCK_REACH))))
+    glow_path = glow_source(cat, wid)
+    glow = None
+    if glow_path is not None:
+        if pull is not None:
+            fail('%s: %s beside pull: a draw weapon has no glow' % (what, glow_path.name))
+        glow = read_png(glow_path, what)
+        if glow.size != colour.size:
+            fail('%s: art/weapons/%s is %dx%d, not the colour sheet\'s %dx%d' % (what, glow_path.name, glow.width, glow.height, sheet_w, sheet_h))
+        for y in range(sheet_h):
+            for x in range(sheet_w):
+                if glow.getpixel((x, y))[3] and not colour.getpixel((x, y))[3]:
+                    fail('%s: art/weapons/%s lights texel (%d, %d), which is transparent in the colour sheet' % (what, glow_path.name, x, y))
+    keys = key_sheet(cat, wid, colour)
+    tint(colour, '%s: art/weapons/%s.png' % (what, wid), cat.factions)
+    frames_out, stats = [], []
+    for i, name in enumerate(names):
+        nock = None if nocks is None else [num(nocks[i][0]), num(nocks[i][1]), 0]
+        frames_out.append({'name': name, 'nock': nock, 'quads': quads_of[name]})
+        stats.append((wid, name, len(quads_of[name])))
+    far_c, far_k, far_l, grip = far_view(quads_of['rest'], colour, keys, glow)
+    if far_c.width > sheet_w:
+        fail('%s: its far version is %d px wide, over the %d px of the sheet' % (what, far_c.width, sheet_w))
+    far = far_quads(far_c, thickness, grip, sheet_h)
+    total = (sheet_w, sheet_h + far_c.height)
+
+    def stacked(top, strip):
+        out = Image.new('RGBA', total, (0, 0, 0, 0))
+        if top is not None:
+            out.paste(top, (0, 0))
+        out.paste(strip, (0, sheet_h))
+        return out
+    colour_full, keys_full, lit_full = stacked(colour, far_c), stacked(keys, far_k), stacked(glow, far_l)
+    rects = bbmodel.face_rects(model) + [(0, sheet_h, far_c.width, sheet_h + far_c.height)]
+    normal, spec = material_maps(colour_full, keys_full, rects, lit_full if glow else None)
+    base = 'weapon/%s' % wid
+    out_model = weapon_model(wid, 'cube', total, meta, frames_out, far, texture_id(base + '.png'), texture_id(base + '_n.png'),
+                             texture_id(base + '_s.png'), texture_id(base + '_e.png') if glow else '')
+    out = {'%s/%s.json' % (MODELS, base): dumps(out_model), '%s/%s.png' % (TEXTURES, base): png_bytes(colour_full),
+           '%s/%s_n.png' % (TEXTURES, base): png_bytes(normal), '%s/%s_s.png' % (TEXTURES, base): png_bytes(spec)}
+    if glow:
+        out['%s/%s_e.png' % (TEXTURES, base)] = png_bytes(lit_full)
+    return out, (lit(glow) if glow else 0), stats
+
+
+def weapon_outputs(cat, wid):
+    """The files of one weapon: its model, the packed texture, the glow and for a cube weapon the maps. A weapon with a
+    .bbmodel is built from its cubes; one with only a PNG is extruded as a sprite. Returns (files, lit glow pixels,
+    [(weapon, frame, quads)])."""
+    if wid in cat.bbmodels:
+        return cube_weapon_outputs(cat, wid)
+    return sprite_weapon_outputs(cat, wid)
 
 
 # ---- the relief layer (Task 5d, design 3 and 7) ----
