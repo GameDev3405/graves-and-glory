@@ -175,7 +175,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         return mouseChip(binding(translationKey));
     }
     /** The camp's bottom hint, naming the player's own menu and use keys (a mouse button as LMB, RMB or MMB). */
-    public static String campHint(){return hint("menu")+" / Camp guide    "+hint("use")+" on a station to interact";}
+    public static String campHint(){return hint("menu")+" / War table    "+hint("use")+" on a station to interact";}
     static void say(String line){try{Files.writeString(runtime.resolve("melty.log"),line+"\n",StandardOpenOption.CREATE,StandardOpenOption.APPEND);}catch(Exception ignored){}}
     static void send(String action){if(ClientPlayNetworking.canSend(GravesAndGlory.ORDER)){PacketByteBuf b=PacketByteBufs.create();b.writeString(action);ClientPlayNetworking.send(GravesAndGlory.ORDER,b);}}
     static void connectOrHost(MinecraftClient c){
