@@ -173,6 +173,21 @@ public final class UiMathCheck {
         // leave the chat at vanilla's own bottom, GUI 200, its lowest line on the armour row (191 to 200) under the hearts (201).
         var def720 = UiMath.hudLayout(1280,720,3,1,UiMath.HUD_COMPACT,UiMath.DEFAULT_STATE);
         check(UiMath.chatSlot(def720,1/3.0,427,240,332,9,10,false).bottom()==187 && UiMath.chatSlot(def720,1/3.0,427,240,332,9,20,true).bottom()==200 && UiMath.chatSlot(def720,1/3.0,427,240,90,9,10,false).bottom()==200, "closed, the chat keeps 4 px above vanilla's armour row where its width reaches it (1280x720 GUI 3, the default battle: bottom 187, not vanilla's 200); open, or a chat too narrow to reach the bars (right edge 90 < the offhand slot at 93), it keeps vanilla's 200");
+        // Standard and Large (the brief's item 6), as the ui-hud sweep draws them: every frame of the four passes at the suite's
+        // windows, each selection, clean, and the chat, closed and open, with a line on the screen. hudFits vets a step above the
+        // kit scale; this also covers the windows where no step fits and Standard and Large draw at the kit scale with their leaf.
+        String sized = ""; int sizedFrames = 0;
+        for (int[] s : win) for (int z = UiMath.HUD_STANDARD; z <= UiMath.HUD_LARGE; z++) {
+            int k = UiMath.hudScale(s[0],s[1],s[2],z), sw = -Math.floorDiv(-s[0],s[2]), sh = -Math.floorDiv(-s[1],s[2]);
+            for (int p = 0; p < 4; p++) for (String sel : new String[]{"all","infantry","ranged","support"}) {
+                var r = UiMath.hudLayout(s[0],s[1],s[2],k,z,new UiMath.HudState(3,groups,sel,p==1||p==3,p<2?2:0,p==0,true));
+                var faults = UiMath.frameFaults(r,s[0]/k,s[1]/k,UiMath.namedBars(sw,sh,s[2],k));
+                boolean onScreen = UiMath.chatSlot(r,k/(double)s[2],sw,sh,UiMath.CHAT_RIGHT,9,10,false).onScreen() && UiMath.chatSlot(r,k/(double)s[2],sw,sh,UiMath.CHAT_RIGHT,9,20,true).onScreen();
+                sizedFrames++;
+                if (!faults.isEmpty() || !onScreen) sized += (sized.isEmpty() ? "" : "; ") + s[0]+"x"+s[1]+" GUI "+s[2]+" "+(z == UiMath.HUD_STANDARD ? "Standard" : "Large")+" at "+k+"x, pass "+"ABCD".charAt(p)+", "+sel+" selected: "+(onScreen ? "" : "the chat off the screen ")+faults;
+            }
+        }
+        check(sized.isEmpty() && sizedFrames == win.length*2*4*4, "every Standard and Large frame of the four passes at the suite's windows, each selection: every plate 12 px inside, none on another or on vanilla's bars, the chat closed and open on the screen (UI Task 8c, item 6)" + (sized.isEmpty() ? "" : ": " + sized.substring(0, Math.min(400, sized.length()))));
         check(UiMath.chatSlot(hud(683,384,216,152,false),1,683,384,332,9,10,false).bottom()==83 && UiMath.chatSlot(hud(960,540,280,-1,true),0.5,480,270,332,9,10,false).bottom()==123, "the chat moves up past the respawn and lesson cards (Task 8a's 1366x768 GUI 2: bottom 83) and past the crosshair (1080p GUI 4, hint layer up: bottom 123)");
         var feedOnly = new java.util.LinkedHashMap<String,int[]>(); feedOnly.put("spine",new int[]{12,300,9,100}); feedOnly.put("feed",new int[]{100,250,172,74});
         check(UiMath.chatSlot(feedOnly,1,960,540,332,9,10,true).bottom()==243 && UiMath.chatSlot(hud(960,540,-1,-1,false),1,960,540,332,9,10,false) != null && UiMath.chatSlot(new java.util.HashMap<>(),1,960,540,332,9,10,false) == null && UiMath.columnTop(java.util.Map.of("keys",new int[]{24,506,176,16})) == 506, "the feed slip counts over the chat; the key strip is the column; no column, no lift");
