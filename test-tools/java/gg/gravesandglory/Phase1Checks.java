@@ -3134,7 +3134,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(landedAt<0&&pr.claims.contains(Progression.SEASON+":11"))landedAt=tick;
                     if(landedAt>0&&tick>=landedAt+12){
                         boolean pass="progress:founders:11".equals(lastSent())&&slid&&"11".equals(text("first"))&&Arrays.equals(rect("roll-11"),new int[]{o[0]+136,o[1]+312,68,88})&&claim!=null&&!claim.active&&"table/btn-dull-240x40".equals(tex("claim"))
-                            &&"table/stamp-hollow-fresh".equals(tex("stamp-11"))&&"Claimed reward: +25 gold / +0 XP".equals(text("notice"));
+                            &&"table/stamp-hollow-fresh".equals(tex("stamp-11"))&&"Claimed reward: +25 gold".equals(text("notice"));
                         ok&=pass;why+="; Enter sent "+lastSent()+": the track "+(slid?"slid one plaque":"did not slide")+" to start at "+text("first")+" (roll-11 at "+str(rect("roll-11"))+"), Claim "+tex("claim")+", tier 11 stamped "+tex("stamp-11")+", the notice \""+text("notice")+"\""+(pass?"":" WRONG");
                         shot(c,"ui-page-chapter-claimed");landedAt=-1;next(tick);}
                     else if(k>120){ok=false;why+="; Enter sent "+lastSent()+": the claim never landed WRONG";stage=4;}}

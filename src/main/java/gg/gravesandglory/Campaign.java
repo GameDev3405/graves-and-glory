@@ -441,7 +441,7 @@ public final class Campaign {
         boolean changed=!onPad.equals(accepted);onPad.clear();onPad.putAll(accepted);mapVotes.keySet().retainAll(onPad.keySet());
         if(changed){padCountdown=-1;for(UUID id:onPad.keySet())notice(id,"Ready group changed. Countdown reset; step off to cancel.");}
         if(onPad.isEmpty()){padCountdown=-1;return;}
-        if(padCountdown<0){padCountdown=200;for(UUID id:onPad.keySet())notice(id,"Starting in 10 seconds. Open camp guide to vote for a map.");return;}
+        if(padCountdown<0){padCountdown=200;for(UUID id:onPad.keySet())notice(id,"Starting in 10 seconds. Use a war gate sign to vote for a map on The Field.");return;}
         padCountdown-=10;if(padCountdown<=0)startQuickMatch();
     }
     void startQuickMatch(){

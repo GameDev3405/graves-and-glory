@@ -51,6 +51,8 @@ public final class CampRulesCheck {
   check(Progression.claim(s,"founders:01").gold()==0,"Alternate tier spelling rejected");
   Progression.reset(s,day.plusDays(20));check(s.claims.contains("founders:30")&&s.titles.contains("Bannerlord"),"Chapter unlocks survive daily/weekly reset");
   check(Progression.claim(s,"founders:31").gold()==0,"Unreleased tiers cannot claim");
+  Progression.State said=new Progression.State();Progression.reset(said,day);said.xp=5*Progression.XP_PER_TIER;said.weeklyBattles=Progression.WEEKLY_BATTLES;
+  check(Progression.claim(said,"founders:1").message().equals("Claimed reward: +25 gold")&&Progression.claim(said,"founders:5").message().equals("Claimed reward: Scout title unlocked")&&Progression.claim(said,"weekly").message().equals("Claimed reward: +150 gold / +300 XP"),"A claim's notice names only what it grants: no +0 XP on a tier, no +0 gold on a title (UI Task 8b)");
   System.out.println("PASS "+count+" social/progression scenarios");
  }
 }

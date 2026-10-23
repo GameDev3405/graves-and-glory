@@ -42,11 +42,13 @@ final class Progression {
     static boolean claimable(State s,String key){return refusal(s,key).isEmpty();}
     static Grant claim(State s,String key){
         String why=refusal(s,key);if(!why.isEmpty())return new Grant(0,0,why);
-        int gold=0,xp=0;
+        int gold=0,xp=0;String title=null;
         if(key.startsWith("daily:")){gold=parse(key.substring(6))==1?40:30;xp=75;}
         else if(key.equals("weekly")){gold=150;xp=300;}
-        else{int level=parse(key.substring(SEASON.length()+1));if(level%5==0)s.titles.add(TITLES[level/5-1]);else gold=25;}
-        s.claims.add(key);s.xp=Math.min(1_000_000,s.xp+xp);return new Grant(gold,xp,"Claimed reward: +"+gold+" gold / +"+xp+" XP"+(key.startsWith(SEASON+":")&&gold==0?" / title unlocked":""));}
+        else{int level=parse(key.substring(SEASON.length()+1));if(level%5==0)s.titles.add(title=TITLES[level/5-1]);else gold=25;}
+        // the notice names only what this claim grants (UI Task 8b): "+25 gold", "+30 gold / +75 XP" or "Scout title unlocked"
+        List<String> got=new ArrayList<>();if(gold>0)got.add("+"+gold+" gold");if(xp>0)got.add("+"+xp+" XP");if(title!=null)got.add(title+" title unlocked");
+        s.claims.add(key);s.xp=Math.min(1_000_000,s.xp+xp);return new Grant(gold,xp,"Claimed reward: "+String.join(" / ",got));}
     static int parse(String value){try{return Integer.parseInt(value);}catch(NumberFormatException e){return -1;}}
     static String reroll(State s){if(s.rerolled)return "Your free daily reroll is already used.";if(s.claims.contains("daily:2"))return "That contract is already claimed.";s.rerolled=true;return "Third contract changed to tactical orders. One free reroll per day.";}
     static String chapter(State s,int unlocked,int total){if(s.totalBattles==0)return "1 / Learn command on The Long March";if(unlocked<total)return "2 / Recruit the launch roster";if(tier(s)<TIERS)return "3 / Complete the Founders chapter";return "Chapter complete / master your army and await the next chapter";}
