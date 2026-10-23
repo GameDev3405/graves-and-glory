@@ -227,7 +227,24 @@ final class AbilityLevelChecks {
                     Statuses.apply(b, a, v.mob, "bleed", 90, 0); long r90 = Statuses.remaining(b, v.mob, "bleed");
                     boolean ok = r60 == 60 && r40 == 60 && near(f, .85) && r90 == 90;
                     Phase2Checks.report("p2-status-nostack", ok, "a 60-tick bleed leaves " + r60 + "; a 40-tick one over it leaves " + r40 + " (want 60: the longer stands); a 40-tick weaken of 0.30 over a 60-tick one of 0.15 leaves x" + fmt(f) + " (want 0.85); a 90-tick bleed over the 60 leaves " + r90 + " (want 90: the longer takes its place)");
-                    clearFixture(b, "nostack"); next(b, 18);
+                    clearFixture(b, "nostack"); next(b, 17);
+                }
+                case 17 -> { // p2-status-bleed-sheet: the bleed's damage and beat are the combatDiscipline cells bleedDamage and bleedEveryTicks, not code (Task 10)
+                    a = lv(post(b, dawn, "revenant", 0, -2, 0, true), 3); v = dummy(b, dusk, 0, 0); traits();
+                    var real = Spec.COMBATDISCIPLINE; var D = real[0];
+                    long beat = -1; float lost = -1; String err = "";
+                    try {
+                        Spec.COMBATDISCIPLINE = new Spec.CombatDisciplineRow[] {new Spec.CombatDisciplineRow(D.id(), D.damageScale(), D.targetMemoryTicks(), D.rangedObstructionStep(), D.spellWindupTicks(), D.spellRadius(), D.recoveryIncome(), D.enemyKnowledge(), D.healAmount(), D.healRadius(), D.abilityCooldownTicks(), D.arrowSpeed(), D.boltSpeed(), D.projectileMinTicks(), D.projectileMaxTicks(), D.impactParticles(), D.multiplierMin(), D.multiplierMax(), D.chargeImpactTicks(), D.flankArcDegrees(), D.lastStandShare(), D.lastStandRadius(), D.hornCooldownSeconds(), D.hornVolume(), D.woundedShare(), D.lastStandFeedSeconds(), D.arriveRadius(), 2.0, 10)};
+                        Statuses.apply(b, a, v.mob, "bleed", 100, 0);
+                        var st = Statuses.on(b).get(v.mob).get("bleed");
+                        beat = st.nextTick - b.time;
+                        float before = v.mob.getHealth(); v.mob.timeUntilRegen = 0;
+                        Statuses.bleed(b, v.mob, st);
+                        lost = before - v.mob.getHealth();
+                    } catch (RuntimeException e) { err = e.toString(); } finally { Spec.COMBATDISCIPLINE = real; }
+                    boolean back = Statuses.bleedEvery() == D.bleedEveryTicks() && Statuses.bleedDamage() == (float) D.bleedDamage() && D.bleedEveryTicks() == 20 && D.bleedDamage() == 1.0;
+                    Phase2Checks.report("p2-status-bleed-sheet", err.isEmpty() && beat == 10 && near(lost, 2) && back, "with the sheet's bleed cells swapped for 2.0 damage every 10 ticks, a fresh bleed's first beat is " + beat + " ticks away (want 10) and one bleed tick cost a bare dummy " + fmt(lost) + " (want 2); with the sheet back the cells read " + Statuses.bleedDamage() + " every " + Statuses.bleedEvery() + " (want 1.0 every 20)" + (err.isEmpty() ? "" : ", THREW " + err));
+                    clearFixture(b, "bleed-sheet"); next(b, 18);
                 }
                 case 18 -> { // p2-status-knockback: Heavy bolt
                     a2 = lv(post(b, dawn, "ic_arbalist", -4, -8, 0, true), 2); a = lv(post(b, dawn, "ic_arbalist", 4, -8, 0, true), 3);

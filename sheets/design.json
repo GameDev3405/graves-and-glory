@@ -2068,7 +2068,9 @@
       "hornVolume": 1.6,
       "woundedShare": 0.3,
       "lastStandFeedSeconds": 30,
-      "arriveRadius": 4.0
+      "arriveRadius": 4.0,
+      "bleedDamage": 1.0,
+      "bleedEveryTicks": 20
     }
   ],
   "recruitmentView": [

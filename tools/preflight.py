@@ -204,8 +204,8 @@ for c in data['counters']:
 cd=data['combatDiscipline'][0]
 if not 0<cd['multiplierMin']<=1<=cd['multiplierMax']: errors.append('combatDiscipline: the counter clamp must hold 1 (0 < multiplierMin <= 1 <= multiplierMax)')
 if cd['chargeImpactTicks']<1: errors.append('combatDiscipline: chargeImpactTicks (the counters row C5 window) must be at least 1')
-# The columns that came over from the Phase 1 morale sheet when routing went (Task 8b): the flank arc, the last stand, the command feedback sounds, the wounded share and the arrival radius.
-for col,lo,hi in (('flankArcDegrees',0,180),('lastStandShare',0,1),('lastStandRadius',0,None),('hornCooldownSeconds',0,None),('hornVolume',0,None),('woundedShare',0,1),('lastStandFeedSeconds',1,None),('arriveRadius',0,None)):
+# The columns that came over from the Phase 1 morale sheet when routing went (Task 8b): the flank arc, the last stand, the command feedback sounds, the wounded share and the arrival radius; and the bleed (damage per beat and ticks between beats, design N3, Statuses: Task 10 moved them from code).
+for col,lo,hi in (('flankArcDegrees',0,180),('lastStandShare',0,1),('lastStandRadius',0,None),('hornCooldownSeconds',0,None),('hornVolume',0,None),('woundedShare',0,1),('lastStandFeedSeconds',1,None),('arriveRadius',0,None),('bleedDamage',0,None),('bleedEveryTicks',0,None)):
     if col not in cd: errors.append(f'combatDiscipline: missing {col}')
     elif cd[col]<lo or hi is not None and cd[col]>hi or cd[col]==lo and col not in ('hornCooldownSeconds','lastStandFeedSeconds'): errors.append(f'combatDiscipline: {col} must be above {lo}'+(f' and at most {hi}' if hi is not None else ''))
 if 'morale' in data: errors.append('morale: the sheet went with routing (Task 8b); its surviving numbers live in combatDiscipline')

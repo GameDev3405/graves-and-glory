@@ -482,7 +482,35 @@ final class LevelChecks {
                     boolean down = b.respawns.containsKey(player);
                     boolean ok = down && helper.credits == 0 && helper.level == 1;
                     Phase2Checks.report("p2-commander-unknown", ok, "a Dusk Squire struck the commander and a vanilla zombie (no troop, no commander) struck him down (respawning " + down + "): " + cl(helper) + " (want 0: an unknown attacker is nobody's, never the enemy's by default)");
-                    zombie.discard(); revive(b); clearFixture(b, "commander-unknown"); next(b, 99);
+                    zombie.discard(); revive(b); clearFixture(b, "commander-unknown"); next(b, 98);
+                }
+                case 98 -> { // p2-level-killing-blow, p2-level-killing-reap: the blow that kills crosses a level and the new row applies on that blow (Task 6 review M1, the comment above Combat.onHit; Task 10)
+                    // Order Longbow one kill from level 2: his killing arrow levels him inside target.damage (AFTER_DEATH), and the level-2 pierce (reach 3; reach 2 at level 1) takes the Squire 2.5 behind the victim on that same arrow
+                    var lb = at(b, dawn, "longbow", -6, -10); lb.credits = 2;
+                    var vk = at(b, dusk, "knight", -6, 0); var behind = victim(b, dusk, "knight", -6, 2.5);
+                    var lb0 = at(b, dawn, "longbow", 6, -10); // the control: no credit, his kill leaves him at level 1, and reach 2 misses the Squire 2.5 behind
+                    var vk0 = at(b, dusk, "knight", 6, 0); var behind0 = victim(b, dusk, "knight", 6, 2.5);
+                    float pierce = (float) (.7 * Abilities.baseHit(b, lb));
+                    var hm = Combat.LAST.peekLast();
+                    vk.mob.setHealth(1f); shoot(b, lb, vk.mob, 50f);
+                    var onBehind = Phase2Checks.Gilded.hitOn(behind.mob, hm);
+                    hm = Combat.LAST.peekLast();
+                    vk0.mob.setHealth(1f); shoot(b, lb0, vk0.mob, 50f);
+                    var onBehind0 = Phase2Checks.Gilded.hitOn(behind0.mob, hm);
+                    boolean crossed = !vk.mob.isAlive() && lb.credits == 3 && lb.level == 2 && Abilities.row(lb).id().equals("longbow_l2");
+                    boolean ok = crossed && onBehind != null && Math.abs(onBehind.base() - pierce) < 1e-4 && !vk0.mob.isAlive() && lb0.credits == 1 && lb0.level == 1 && onBehind0 == null;
+                    Phase2Checks.report("p2-level-killing-blow", ok, "an Order Longbow with 2 credits shot a Dusk Squire dead (dead " + !vk.mob.isAlive() + "): " + cl(lb) + " (want 3/2, the kill made him level 2), his row " + Abilities.row(lb).id() + "; on that same arrow the Squire 2.5 behind took " + (onBehind == null ? "nothing" : fmt(onBehind.base())) + " (want the level-2 pierce 0.7 x " + fmt(Abilities.baseHit(b, lb)) + " = " + fmt(pierce) + "); the control with no credit killed his Squire (dead " + !vk0.mob.isAlive() + "): " + cl(lb0) + " (want 1/1) and his pierce took " + (onBehind0 == null ? "nothing" : fmt(onBehind0.base())) + " from the Squire behind (want nothing: reach 2)");
+                    // Grave Reaper one kill from level 3: Veterans.award credits him before it calls Abilities.onKill, so Reap (level 3 only) heals 25% of his new maximum on the kill that makes him level 3; one that stays at level 2 heals nothing
+                    var rp = at(b, dawn, "reaper", -2, -3); Veterans.credit(b, rp, 7);
+                    var rp2 = at(b, dawn, "reaper", 2, -3); Veterans.credit(b, rp2, 3);
+                    var vr = at(b, dusk, "knight", -2, 0); var vr2 = at(b, dusk, "knight", 2, 0);
+                    rp.mob.setHealth(rp.mob.getMaxHealth() * .4f); rp2.mob.setHealth(rp2.mob.getMaxHealth() * .4f);
+                    float max2 = rp.mob.getMaxHealth(), h0 = rp.mob.getHealth(), h20 = rp2.mob.getHealth(); int lvl0 = rp.level;
+                    kill(b, rp, vr); kill(b, rp2, vr2);
+                    float max3 = rp.mob.getMaxHealth(), stepped = Math.min(max3, h0 + (max3 - max2)), reaped = rp.mob.getHealth() - stepped;
+                    boolean reap = lvl0 == 2 && rp.level == 3 && rp.credits == 8 && !vr.mob.isAlive() && Math.abs(reaped - .25f * max3) < 1e-2 && rp2.level == 2 && rp2.credits == 4 && !vr2.mob.isAlive() && Math.abs(rp2.mob.getHealth() - h20) < 1e-3;
+                    Phase2Checks.report("p2-level-killing-reap", reap, "a Grave Reaper at level " + lvl0 + " with 7 credits and 40% health killed a Dusk Squire: " + cl(rp) + " (want 8/3), health " + fmt(rp.mob.getHealth()) + " of " + fmt(max3) + "; the level up gave " + fmt(stepped - h0) + " and Reap " + fmt(reaped) + " more (want 25% of the new maximum = " + fmt(.25f * max3) + "); the control with 3 credits killed his Squire and stayed at " + cl(rp2) + " (want 4/2), health " + fmt(rp2.mob.getHealth()) + " (want " + fmt(h20) + ", no Reap)");
+                    clearFixture(b, "killing-blow"); next(b, 99);
                 }
                 default -> {}
             }

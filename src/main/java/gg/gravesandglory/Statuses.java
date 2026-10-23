@@ -18,7 +18,7 @@ import java.util.*;
  *   player's to move, and nothing stops a player's hands (a ruling for Kort, in the Task 6 report).
  * - weaken: the target's own blows deal x(1 - amount) for its ticks (factorOut, which Combat.resolve multiplies in beside the auras and Commander.playerFactor
  *   onto a commander's own blow). Not vanilla Weakness, which troop damage does not read.
- * - bleed: 1 damage every BLEED_EVERY ticks for its ticks, through the troop damage type (Combat.TROOP), outside Combat.resolve, so an undead troop takes it
+ * - bleed: 1 damage every bleedEvery() ticks for its ticks, through the troop damage type (Combat.TROOP), outside Combat.resolve, so an undead troop takes it
  *   (vanilla Poison would not hurt him). Armour reduces it as it does every troop blow.
  * - mark (Hunter's mark): the target takes x(1 + amount) from the marking army's troops (markFactor, which Commander.factor reads beside Mark Prey), and
  *   from no other army, an allied one included. No glow.
@@ -32,9 +32,9 @@ import java.util.*;
 final class Statuses {
     private Statuses() {}
 
-    /** A bleed's damage per tick and its beat in battle ticks (design N3: 1 damage every 20 ticks). Fixed by the design, like Riptide's Slowness I. */
-    static final float BLEED_DAMAGE = 1f;
-    static final int BLEED_EVERY = 20;
+    /** A bleed's damage per beat and the battle ticks between beats (design N3: 1 damage every 20 ticks): the combatDiscipline cells bleedDamage and bleedEveryTicks (Task 10 moved them out of code). */
+    static float bleedDamage() { return (float) Spec.COMBATDISCIPLINE[0].bleedDamage(); }
+    static int bleedEvery() { return Spec.COMBATDISCIPLINE[0].bleedEveryTicks(); }
     /** The hurt cooldown a bleed tick waits out (vanilla takes only the excess of a blow inside the last half of it): a tick waits while the target's timeUntilRegen is above this. */
     static final int HURT_HALF = 10;
     /** The latest a bleed tick that had to wait for a hurt cooldown may come after its status ran out. */
@@ -117,7 +117,7 @@ final class Statuses {
                 long until = b.time + ticks;
                 if (have != null && have.until >= until) return; // the longer one stands
                 var s = have != null ? have : new Status(status);
-                if (have == null) s.nextTick = b.time + BLEED_EVERY;
+                if (have == null) s.nextTick = b.time + bleedEvery();
                 s.until = until; s.amount = amount;
                 s.from = from; s.by = from == null ? null : from.squad; s.troop = from == null || from.temporary ? null : from.spec.id();
                 mine.put(key, s);
@@ -139,7 +139,7 @@ final class Statuses {
             var mine = e.getValue();
             var bleed = mine.get("bleed");
             if (bleed != null && b.time >= bleed.nextTick && bleed.nextTick <= bleed.until && target.timeUntilRegen <= HURT_HALF) {
-                bleed.nextTick += BLEED_EVERY;
+                bleed.nextTick += bleedEvery();
                 bleed(b, target, bleed);
                 if (!target.isAlive()) { map.remove(target); continue; }
             }
@@ -150,7 +150,7 @@ final class Statuses {
     }
 
     /**
-     * One bleed tick: BLEED_DAMAGE through the troop damage type. A striker that lives is its source (Battle.allowDamage logs him and the kill is his); one that
+     * One bleed tick: bleedDamage() through the troop damage type. A striker that lives is its source (Battle.allowDamage logs him and the kill is his); one that
      * has fallen is not, and the target's lastHitBy names his army so the kill still goes to it (the AFTER_DEATH fallback). The knock vanilla gives a blow with an
      * attacker is taken back, and the target's hurt cooldown is left as it was, so a bleed neither shoves nor eats the next real blow. The velocity goes back
      * on the server only: the update flag stays as the tick found it, so a bleed never sends a velocity of its own (a commander's server velocity is not
@@ -165,7 +165,7 @@ final class Statuses {
         Vec3d stood = target.getVelocity();
         int regen = target.timeUntilRegen;
         boolean due = target.velocityModified;
-        boolean hurt = target.damage(source, BLEED_DAMAGE);
+        boolean hurt = target.damage(source, bleedDamage());
         if (target.isAlive()) { target.setVelocity(stood); target.velocityModified = due; target.timeUntilRegen = regen; }
         if (hurt) bleedTicks++;
         b.world.spawnParticles(Abilities.dust(BLOOD), target.getX(), target.getBodyY(.5), target.getZ(), 5, .2, .3, .2, 0);

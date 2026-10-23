@@ -172,11 +172,14 @@ public final class LevelMath {
         return ordinal >= 0 && ordinal < all.length ? all[ordinal] : null;
     }
 
-    /** The highest gear tier the gearTiers sheet has. */
+    /** The tiers the rarities sheet prices (gearPrice2 and gearPrice3). price throws above it, so no buy state, refusal or bot pick may reach a tier above it (Task 10: the cap lives here, one place). */
+    public static final int PRICED_TIERS = 3;
+
+    /** The highest gear tier: the gearTiers sheet's last row, never above the priced tiers (preflight keeps the sheet at three rows; a longer one in a test or a hand edit gets no higher gear). */
     public static int maxTier() {
         int max = 1;
         for (var r : Spec.GEARTIERS) max = Math.max(max, r.tier());
-        return max;
+        return Math.min(max, PRICED_TIERS);
     }
 
     /** The levels row for a level, clamped to the sheet's range. */

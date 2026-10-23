@@ -123,6 +123,20 @@ public final class LevelMathCheck {
         boolean threw = false; try { LevelMath.price("mythic", 2); } catch (IllegalArgumentException e) { threw = true; }
         check(threw, "lm-prices: an unknown rarity is refused, not priced 0");
 
+        // lm-tier-cap (Task 10, Task 5 re-review note 4): the rarities sheet prices tiers II and III only, so a gearTiers sheet with a fourth row must not make the buy states, the refusals or the bots reach price() above III
+        var sheetTiers = Spec.GEARTIERS;
+        try {
+            Spec.GEARTIERS = new Spec.GearTiersRow[] {sheetTiers[0], sheetTiers[1], sheetTiers[2], new Spec.GearTiersRow("t4", 4, 0.3, 0.3)};
+            check(LevelMath.maxTier() == 3, "lm-tier-cap: with a fourth gearTiers row the highest tier is still the highest priced one, III, not " + LevelMath.maxTier());
+            check(LevelMath.buyState(4, 4, 3, 1000, 0) == LevelMath.Buy.LOCKED, "lm-tier-cap: tier IV is LOCKED however rich the army and high the soldier");
+            String why = LevelMath.refusal(4, 4, 3, 1000, 0, true, "Knight");
+            check(why.startsWith("Needs a level-4 "), "lm-tier-cap: tier IV is refused, not bought: " + why);
+            List<LevelMath.Option> capped = null; String thrown = "";
+            try { capped = LevelMath.botPicks(bot("hard", 4, 0, "open"), List.of(type("knight", 3, 3, 3, 4), type("archer", 3, 1, 1, 1)), 100000, 22); } catch (RuntimeException e) { thrown = e.toString(); }
+            check(thrown.isEmpty() && picks(capped).equals("archer:weapon:2,archer:weapon:3,archer:armour:2,archer:armour:3"), "lm-tier-cap: a bot whose row allows tier IV buys up to III and never throws (the knight is done, the archer buys II and III on both tracks): " + (thrown.isEmpty() ? picks(capped) : "THREW " + thrown));
+        } finally { Spec.GEARTIERS = sheetTiers; }
+        check(LevelMath.maxTier() == 3 && Spec.GEARTIERS.length == 3, "lm-tier-cap: the sheet's own three tiers are back");
+
         // lm-refusal: the Armoury's player copy (design 5.1)
         check(LevelMath.refusal(2, 2, 1, 100, 40, true).isEmpty() && LevelMath.refusal(3, 3, 2, 80, 80, true, "armour", "Knight-Captain").isEmpty(), "lm-refusal: an allowed buy gives no copy");
         check(LevelMath.refusal(2, 1, 1, 100, 40, true, "Knight").equals("Needs a level-2 Knight"), "lm-refusal: a locked tier II names the level-2 name: " + LevelMath.refusal(2, 1, 1, 100, 40, true, "Knight"));
