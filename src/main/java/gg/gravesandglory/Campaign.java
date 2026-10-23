@@ -35,6 +35,13 @@ public final class Campaign {
     /** AI armies that fell back stay there until rallied, so they do not walk back into the fight. */
     final Set<UUID> botRetreating=new HashSet<>();
     final Map<UUID,String> notices=new HashMap<>();
+    /**
+     * When each notice was posted (battle ticks). expireNotices drops a notice NOTICE_TICKS after it, so a notice the player dismissed on his screen cannot come back with a
+     * later camp snapshot (Phase 2 Task 13's trade-off, done in in-match progression Task 4; no protocol change). The same words posted again start a new 10 seconds.
+     */
+    final Map<UUID,Long> noticeAt=new HashMap<>();
+    /** How long a notice stays in the camp snapshot: 10 seconds. */
+    static final int NOTICE_TICKS=200;
     final Map<UUID,JsonObject> results=new HashMap<>();
     /** Per commander, the last roll or chosen buy (the snapshot's lastRoll, for the camp's roll result card): {n, troop, duplicate, starsBefore, starsAfter, shards}; n counts up so the client tells a new one from the same. Not saved. */
     final Map<UUID,JsonObject> lastRolls=new HashMap<>();
@@ -96,7 +103,12 @@ public final class Campaign {
         }catch(Exception ignored){}
         collectionsReady.add(id);
     }
-    void notice(UUID id,String text){notices.put(id,text);var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)p.sendMessage(Text.literal(text),true);}
+    void notice(UUID id,String text){notices.put(id,text);noticeAt.put(id,b.time);var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)p.sendMessage(Text.literal(text),true);}
+    /** Drops every notice older than NOTICE_TICKS (tick, once a second). A notice put without notice() (a harness's) is timed from the first pass that sees it. */
+    void expireNotices(){
+        notices.keySet().removeIf(id->{Long at=noticeAt.get(id);if(at==null){noticeAt.put(id,b.time);return false;}return b.time-at>NOTICE_TICKS;});
+        noticeAt.keySet().retainAll(notices.keySet());
+    }
     /** The first-visit rule: a player with no server file may bring his collection from his own computer, once; one with a file may not (the server copy wins). */
     void grantImport(UUID id){if(!Files.exists(directory.resolve(id+".json")))importAllowed.add(id);}
     void joined(ServerPlayerEntity p){
@@ -444,6 +456,7 @@ public final class Campaign {
         return rows;
     }
     void tick(){
+        if(b.time%20==0)expireNotices();
         if(pendingBattle!=null&&b.ready){ // the map of a campaign battle is built: it starts unless something changed meanwhile
             var row=pendingBattle;UUID id=pendingCommander;pendingBattle=null;pendingCommander=null;
             var host=b.server.getPlayerManager().getPlayer(id);String refused=host==null?"":soloRefusal(id,MARCH_SOLO);

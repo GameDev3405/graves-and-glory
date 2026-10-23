@@ -117,12 +117,13 @@ public final class GravesAndGlory implements ModInitializer {
             Battle.leaveSide(entity);
             if(battle==null)return;
             Entity attacker=source.getAttacker();
-            for(Unit victim:battle.units)if(victim.mob==entity){
-                if(victim.temporary)continue; // a Grave Bloom Risen is no loss, no kill and no fallen troop to raise
+            for(Unit victim:new ArrayList<>(battle.units))if(victim.mob==entity){ // a copy: a level up's ability seams (Abilities.rowsChanged, onKill) may change the list
                 Squad winner=attacker==null?null:battle.squads.get(attacker.getUuid());String troop=null; // troop: the troop type the kill goes to in the mastery ledger, none for a commander's or a temporary troop's
                 for(Unit u:battle.units)if(u.mob==attacker){winner=u.squad;troop=u.temporary?null:u.spec.id();}
                 // A shot that lands after its archer fell still credits the archer's army, and so does a death soon after an enemy's blow; a fall, lava, cramming or /kill long after one is nobody's kill.
                 if(winner==null&&BattleMath.creditWindowOpen(battle.time,victim.lastHitAt,Projectiles.CREDIT_WINDOW_TICKS)){winner=victim.lastHitBy;troop=victim.lastHitTroop;}
+                Veterans.onDeath(battle,victim,attacker,winner); // kill credit and levels (in-match progression design 3.2): the killing blow's troop, his helpers and their supporters; above the temporary skip, so a Risen killed counts 1. Gold, kills and mastery below are unchanged.
+                if(victim.temporary)continue; // a Grave Bloom Risen is no loss, no kill and no fallen troop to raise
                 victim.squad.stats.lost++;victim.squad.fallen.merge(victim.spec.id(),1,Integer::sum);Houses.logDeath(battle,victim);Houses.recompute(victim.squad);
                 if(winner!=null&&winner.team!=victim.squad.team){winner.earn(Spec.ECONOMY[0].killGold());winner.stats.kills++;if(troop!=null)winner.stats.troopKills.merge(troop,1,Integer::sum);if(attacker instanceof ServerPlayerEntity&&source.getSource()==attacker)Commander.playerKill(battle,winner);} // a kill by the commander's own hand (not his arrow, not a troop of his, not a fall in his credit window): a Reaver's Bloodrush gives a troop back
             }
@@ -925,14 +926,19 @@ public final class GravesAndGlory implements ModInitializer {
             if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,side(s.team).color());
             mob.equipStack(EquipmentSlot.CHEST,chest);
             for(EquipmentSlot eq:EquipmentSlot.values())mob.setEquipmentDropChance(eq,0);
-            // The name colour is the team tag, not the side colour: CommandMode.nameTeam reads it on the client to tell friend from foe (both teams can field the same House). Recolour names by side only together with that reader.
-            mob.setCustomName(Text.literal(ArmyMobs.levelName(spec,1)+(campaign.veteran(s,spec)?ArmyMobs.VETERAN:"")).formatted(s.team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE));
+            mob.setCustomName(troopName(s,spec,1));
             mob.setCustomNameVisible(false);
             Unit u=new Unit(mob,s,spec,slot);u.stance=Tactics.stance(this,u);
             spawning=u;try{world.spawnEntity(mob);}finally{spawning=null;} // the players in range start tracking it here (its stance goes with that)
             joinSide(mob,s.team);
             units.add(u);Houses.recompute(s);return u;
         }
+        /**
+         * A troop's hidden custom name at a level: its level name (ArmyMobs.levelName) and, for a commander's Mastery II troop, the veteran suffix. Battle.spawn names a new troop at
+         * level 1 and Veterans.levelUp renames him as he rises. The name colour is the team tag, not the side colour: CommandMode.nameTeam reads it on the client to tell friend from
+         * foe (both teams can field the same House). Recolour names by side only together with that reader.
+         */
+        Text troopName(Squad s,Spec.TroopsRow spec,int level){return Text.literal(ArmyMobs.levelName(spec,level)+(campaign.veteran(s,spec)?ArmyMobs.VETERAN:"")).formatted(s.team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE);}
         final Set<Long> unitChunks=new HashSet<>();
         void updateUnitChunks(){
             if(time%40!=0)return;Set<Long> wanted=new HashSet<>();
@@ -996,7 +1002,9 @@ public final class GravesAndGlory implements ModInitializer {
             if(entity instanceof ServerPlayerEntity p&&p.getHealth()<=amount){
                 if(Diagnostics.active())System.out.println("[Graves and Glory damage] respawn cause="+source.getType().msgId()+" amount="+amount+" hp="+p.getHealth()+" pos="+p.getPos()+" fall="+p.fallDistance);
                 p.setHealth(p.getMaxHealth());toBase(p,team);p.changeGameMode(GameMode.SPECTATOR);
-                respawns.put(p.getUuid(),time+Commander.respawnSeconds(victimSquad)*20L);return false;
+                respawns.put(p.getUuid(),time+Commander.respawnSeconds(victimSquad)*20L);
+                Veterans.onCommanderDeath(this,p,team,attacker); // a commander struck down never reaches AFTER_DEATH: his killers get the commander bounty here, and his credit log is forgotten (he stands again within its window)
+                return false;
             }
             Squad hitter=attackerSquad;Unit striker=null;for(Unit u:units)if(u.mob==attacker){hitter=u.squad;striker=u;}
             if(hitter!=null)for(Unit u:units)if(u.mob==entity){u.lastHitBy=hitter;u.lastHitAt=time;u.lastHitTroop=striker==null||striker.temporary?null:striker.spec.id();break;}
