@@ -13,6 +13,8 @@ public final class CampRedesignChecks implements ClientModInitializer {
  void server(MinecraftClient c,java.util.function.Consumer<GravesAndGlory.Battle> fn){c.getServer().execute(()->{try{fn.accept(GravesAndGlory.battle);}catch(Exception e){check("exception",false);e.printStackTrace();}});}
  void shot(MinecraftClient c,String name){ScreenshotRecorder.saveScreenshot(c.runDirectory,"camp-"+name+".png",c.getFramebuffer(),t->{});}
  void press(MinecraftClient c,String prefix){var b=c.currentScreen.children().stream().filter(v->v instanceof ButtonWidget w&&w.getMessage().getString().startsWith(prefix)).map(v->(ButtonWidget)v).findFirst().orElseThrow();b.onPress();}
+ /** The Friends page's ready tag is one toggle widget whose word flips ("Ready", "Cancel ready"); the old screen's "Toggle ready" had one fixed label. Press whichever is shown. */
+ void toggleReady(MinecraftClient c){var b=c.currentScreen.children().stream().filter(v->v instanceof ButtonWidget w&&(w.getMessage().getString().equals("Ready")||w.getMessage().getString().equals("Cancel ready"))).map(v->(ButtonWidget)v).findFirst().orElseThrow();b.onPress();}
  public void onInitializeClient(){if(!Boolean.getBoolean("gravesandglory.campChecks"))return;
   ClientTickEvents.END_CLIENT_TICK.register(c->{try{
    if(c.getOverlay()!=null)return;if(!started){if(c.currentScreen instanceof FrontMenuScreen&&++front==40){started=true;GravesAndGloryClient.startCamp(c,false);}return;}
@@ -29,7 +31,7 @@ public final class CampRedesignChecks implements ClientModInitializer {
    if(tick==200){check("party-packet",CampaignClient.social.get("party").getAsBoolean());shot(c,"friends");press(c,"Create private room");}
    if(tick==225){server(c,b->{var r=b.campaign.social.room(c.player.getUuid());if(r!=null)r.map=b.campaign.map;});CampScreen.open("room");check("room-packet",!CampaignClient.social.get("room").getAsString().isEmpty());}
    if(tick==245)shot(c,"room");
-   if(tick==260){press(c,"Ready");}
+   if(tick==260){toggleReady(c);}
    if(tick==280){press(c,"Start together");}
    if(tick==310){check("room-started",GravesAndGloryClient.battleActive());server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());check("room-seat",b.squads.get(p.getUuid()).seated&&!b.campaign.activeRoom.isEmpty());check("room-bot-count",b.squads.values().stream().filter(s->s.seated).count()==4);});}
    if(tick==440)shot(c,"battle-hud");
@@ -39,7 +41,7 @@ public final class CampRedesignChecks implements ClientModInitializer {
    if(tick==510){shot(c,"contracts");press(c,"Claim");}
    if(tick==535){check("daily-claim",CampaignClient.profile.progression.claims.contains("daily:0"));int gold=CampaignClient.profile.gold;press(c,"Claim");server(c,b->check("claim-ledger",b.campaign.profile(c.player.getUuid()).gold==gold));}
    if(tick==560)CampScreen.open("chapter");if(tick==580)shot(c,"chapter");
-   if(tick==600){CampScreen.open("room");press(c,"Ready");}
+   if(tick==600){CampScreen.open("room");toggleReady(c);}
    if(tick==625){press(c,"Start together");}
    if(tick==655){check("rematch-with-same-room",GravesAndGloryClient.battleActive());server(c,b->b.campaign.finish(-1));}
    if(tick==680){org.lwjgl.glfw.GLFW.glfwSetWindowSize(c.getWindow().getHandle(),854,480);CampScreen.open("home");}
