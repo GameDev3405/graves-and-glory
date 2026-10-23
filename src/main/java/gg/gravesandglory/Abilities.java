@@ -186,7 +186,7 @@ final class Abilities {
      * ally as the heal is sent.
      */
     static void mend(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
-        if (time < u.abilityAt) return;
+        if (time < u.abilityAt || time < u.stunnedUntil) return; // a stunned mender sends nothing (Shield bash, Rise Again: no attacks, no casts); her cooldown waits for the stun to end
         var mob = u.mob;
         double radius = row.radius() > 0 ? row.radius() : D.healRadius();
         var ally = b.units.stream().filter(v -> v.squad.team == u.squad.team && v.mob.isAlive() && v.mob.getHealth() < v.mob.getMaxHealth() && v.mob.squaredDistanceTo(mob) < radius * radius && mob.canSee(v.mob))
@@ -642,10 +642,13 @@ final class Abilities {
      * An aura troop's beat. The Oath Banner (trigger hold) plants when the troop's group order, the stored one its commander gave, has turned
      * to Hold since its last beat and its cooldown is ready; the order it finds on its first beat is only remembered, so a round that starts
      * on Hold plants nothing. Dread (trigger passive) is not planted on a beat: it acts through auraFactor. The Howl (trigger timer) sounds whenever its cooldown is up (howl).
+     * A stun (Unit.stunnedUntil) stops the casts as it stops the attacks: the banner plant, the howl, the mend and the spells wait it out. The passive auras
+     * (dread, Furnace heart, Admiral's call) are the bearer's presence, not a cast, and still stand while he is stunned (Task 7 ruling on the Task 6 review M2).
      */
     static void aura(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
         switch (row.trigger()) {
             case "hold" -> {
+                if (time < u.stunnedUntil) return; // a stunned Marshal plants nothing; the order he has not seen yet waits, so a Hold given during the stun plants when it ends
                 String order = b.storedAssignment(u.squad, u.spec.group()).order, was = u.seenOrder;
                 u.seenOrder = order;
                 if (was != null && !was.equals(order) && order.equals("hold") && time >= u.abilityAt) plant(b, u, row, time);
@@ -834,8 +837,12 @@ final class Abilities {
             b.world.setBlockState(banner.block(), banner.was() == null ? Blocks.AIR.getDefaultState() : banner.was());
     }
 
-    /** Every banner falls now, the Oath Banners and the Forward Supply banners, and every Mist cloud goes (startRound, returnLobby, switchMap, and the server stopping). */
+    /**
+     * Every banner falls now, the Oath Banners and the Forward Supply banners, and every Mist cloud goes (startRound, returnLobby, switchMap, and the server
+     * stopping). Lane B's static stores let go too (Statuses.release: the statuses, SECOND_AT and RAISED), so a world closed and opened again keeps no old troop.
+     */
     static void clearBanners(GravesAndGlory.Battle b) {
+        Statuses.release();
         for (var banner : b.banners) lower(b, banner);
         b.banners.clear();
         for (var st : new ArrayList<>(b.structures)) st.discard();

@@ -60,8 +60,15 @@ final class Statuses {
     static double lastKnock;
 
     private static Map<LivingEntity, Map<String, Status>> on(GravesAndGlory.Battle b) {
-        if (owner != b) { ON.clear(); owner = b; }
+        if (owner != b) { ON.clear(); owner = b; Abilities.clearRound(); } // a new battle (a world opened again): nothing of the old one's troops stays
         return ON;
+    }
+
+    /** The server stops (Abilities.clearBanners, from SERVER_STOPPING): every static store lets go, the battle it belonged to included. */
+    static void release() {
+        ON.clear();
+        owner = null;
+        Abilities.clearRound();
     }
 
     /** The row's status from a troop's blow, zone or slam: status, statusTicks, statusLevel, and amount (knockback for a knockback). */
@@ -141,7 +148,9 @@ final class Statuses {
     /**
      * One bleed tick: BLEED_DAMAGE through the troop damage type. A striker that lives is its source (Battle.allowDamage logs him and the kill is his); one that
      * has fallen is not, and the target's lastHitBy names his army so the kill still goes to it (the AFTER_DEATH fallback). The knock vanilla gives a blow with an
-     * attacker is taken back, and the target's hurt cooldown is left as it was, so a bleed neither shoves nor eats the next real blow.
+     * attacker is taken back, and the target's hurt cooldown is left as it was, so a bleed neither shoves nor eats the next real blow. The velocity goes back
+     * on the server only: the update flag stays as the tick found it, so a bleed never sends a velocity of its own (a commander's server velocity is not
+     * his client's, and sending it would stop his run or replay an old knock; Task 6 review M3), while a knock or pull already due this tick is still sent.
      */
     static void bleed(GravesAndGlory.Battle b, LivingEntity target, Status s) {
         boolean live = s.from != null && s.from.mob.isAlive() && b.units.contains(s.from);
@@ -151,8 +160,9 @@ final class Statuses {
         var source = live ? Combat.source(b, s.from.mob) : b.world.getDamageSources().create(Combat.TROOP);
         Vec3d stood = target.getVelocity();
         int regen = target.timeUntilRegen;
+        boolean due = target.velocityModified;
         boolean hurt = target.damage(source, BLEED_DAMAGE);
-        if (target.isAlive()) { target.setVelocity(stood); target.velocityModified = true; target.timeUntilRegen = regen; }
+        if (target.isAlive()) { target.setVelocity(stood); target.velocityModified = due; target.timeUntilRegen = regen; }
         if (hurt) bleedTicks++;
         b.world.spawnParticles(Abilities.dust(BLOOD), target.getX(), target.getBodyY(.5), target.getZ(), 5, .2, .3, .2, 0);
     }

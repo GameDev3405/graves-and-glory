@@ -266,6 +266,9 @@ for t in data['troops']:
 # raise, on a kill by the troop's blight).
 for (troop,lv),l in levelAbility.items():
     a=abilityRows[l['ability']];name=f'abilities/{a["id"]}'
+    # Task 6 review M6: Abilities.tick casts only a soldier's first row and onHit adds his level-3 row only on the onhit trigger, so a level-3 row on a clock
+    # (cast, timer, hold) or on a charge's contact would never fire.
+    if lv==3 and a['trigger'] in ('cast','timer','hold','charge_contact'): errors.append(f'{name}: a level-3 row on trigger {a["trigger"]} never fires (a level-3 row acts as a passive, on a hit, as a rider or on a kill)')
     if a['trigger']=='rider':
         two=levelAbility.get((troop,2));two=abilityRows.get(two['ability']) if two else None
         if lv!=3 or two is None: errors.append(f'{name}: a rider is a level-3 row on a troop with a level-2 row'); continue
