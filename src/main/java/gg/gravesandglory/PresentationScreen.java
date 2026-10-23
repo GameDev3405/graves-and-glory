@@ -12,9 +12,10 @@ final class PresentationScreen extends GravesAndGloryClient.ArmyScreen {
         int texture=Presentation.textures();for(int i=0;i<3;i++){final int n=i;button((texture==i?"> ":"")+Presentation.TEXTURES[i],30+i*195,222,185,b->{Presentation.selectTextures(n);clearAndInit();});}
         button("Impact accents: "+new String[]{"OFF","SUBTLE","STRONG"}[Presentation.impact],30,262,170,b->{Presentation.impact=(Presentation.impact+1)%3;Presentation.save();clearAndInit();});
         // UI Task 8c: Compact, Standard, Large. Fix round 1: the button names the size this window draws the choice at where that is
-        // smaller ("Battle HUD: Standard (Compact size here)", 201 px of 11 px Lato, the longest), so it is 220 wide and the accents
-        // button 170 (its longest words, STRONG's, 121 px)
-        button(HudSize.label(),208,262,220,b->{HudSize.cycle();clearAndInit();});
+        // smaller (UI Task 8b: "Battle HUD: Standard (Compact scale here)", 206 px of 11 px Lato, the longest), so it is 222 wide
+        // (2 px to spare inside FantasyButton's 14 px of padding; 5 px clear of the sound button on the narrowest, 640 px, screen)
+        // and the accents button 170 (its longest words, STRONG's, 121 px)
+        button(HudSize.label(),208,262,222,b->{HudSize.cycle();clearAndInit();});
         button("Minecraft sound levels",width-205,262,175,b->client.setScreen(new net.minecraft.client.gui.screen.option.SoundOptionsScreen(this,client.options)));
         button("Back to war council",30,height-53,220,b->client.setScreen(new GravesAndGloryClient.LobbyScreen()));
     }

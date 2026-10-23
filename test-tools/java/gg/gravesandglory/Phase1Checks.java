@@ -1668,7 +1668,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 steps.add((press==0?"before any press":"press "+press)+": the button reads '"+label+"'"+(press==0?"":" (wanted '"+wantLabel[want]+"'), the notice '"+notice+"' (wanted '"+wantNotice[want]+"')")+", HudSize "+HudSize.NAMES[got]+", hud.json "+file+", read back as a launch reads it: "+HudSize.NAMES[read]+", the HUD at "+k+"x (wanted "+HudSize.NAMES[want]+" at "+wantK[want]+"x)"+(step?"":", WRONG"));
             }
             // fix round 1: every word the button can show fits it uncut, in the game's own body font (FantasyButton trims to its
-            // width less 14), the longest, "Battle HUD: Standard (Compact size here)", included though this window never shows it
+            // width less 14), the longest, "Battle HUD: Standard (Compact scale here)" (UI Task 8b), included though this window never shows it
             var hb=hudButton(c);int room=hb==null?0:hb.getWidth()-14,widest=0;String widestLabel="none";
             for(int z=UiMath.HUD_COMPACT;z<=UiMath.HUD_LARGE;z++)for(int as=UiMath.HUD_COMPACT;as<=z;as++){String l=UiMath.hudSizeLabel(z,as);int w=c.textRenderer.getWidth(DarkUi.body(l));if(w>widest){widest=w;widestLabel=l;}}
             ok&=hb!=null&&widest<=room;steps.add("the widest words the button can show, '"+widestLabel+"', take "+widest+" px of its "+room+" px"+(hb!=null&&widest<=room?"":", WRONG: they would be cut"));

@@ -391,6 +391,17 @@ public final class UiMath {
         return k;
     }
 
+    /** The Friends page's private room (UI Task 8b): a commander alone or leading their party makes and joins rooms, as the server
+     *  rules it (SocialHub.lead: no party, or its leader); a party member who does not lead cannot, so Create private room and
+     *  Join with party are dull for them and the room's note carries roomWhy beside them, not tone alone. */
+    public static boolean roomOpen(boolean inParty, boolean leads) { return !inParty || leads; }
+
+    /** The room note's word for a party member who does not lead (189 px of the body face, one line of the note's 196). */
+    public static final String ROOM_LEADER_ONLY = "Your party leader makes or joins rooms.";
+
+    /** Why the room's tags are dull for this commander: ROOM_LEADER_ONLY while roomOpen is false, else nothing (""). */
+    public static String roomWhy(boolean inParty, boolean leads) { return roomOpen(inParty, leads) ? "" : ROOM_LEADER_ONLY; }
+
     // The battle HUD's size and layout (UI Task 8c, which replaces Task 8a's scale rule: Kort found too much of the screen blocked).
     // BattleHud draws every plate where hudLayout puts it, hudFits lays the HUD out by the same method, and the ui-hud suite checks
     // that what a frame drew is what hudLayout gives for that frame.
@@ -423,29 +434,39 @@ public final class UiMath {
     }
 
     /** The Battle HUD button's words for a size this window shows at shownAs (hudShownAs): "Battle HUD: Large", or where the
-     *  window draws it at a smaller size's scale, that size too: "Battle HUD: Large (Standard size here)". */
+     *  window draws it at a smaller size's scale, that too (hudShownHere): "Battle HUD: Large (Standard size here)". */
     public static String hudSizeLabel(int size, int shownAs) {
         String label = "Battle HUD: " + hudSizeName(size);
-        return shownAs < size ? label + " (" + hudSizeName(shownAs) + " size here)" : label;
+        return shownAs < size ? label + " (" + hudShownHere(shownAs) + " here)" : label;
     }
 
     /** The screen's notice once a size is saved: "Battle HUD: Large. Your choice is saved.", and where the window draws it at a
-     *  smaller size's scale, " In this window it draws at Standard size." after it. */
+     *  smaller size's scale, " In this window it draws at Standard size." after it (hudShownHere). */
     public static String hudSizeNotice(int size, int shownAs) {
         String notice = "Battle HUD: " + hudSizeName(size) + ". Your choice is saved.";
-        return shownAs < size ? notice + " In this window it draws at " + hudSizeName(shownAs) + " size." : notice;
+        return shownAs < size ? notice + " In this window it draws at " + hudShownHere(shownAs) + "." : notice;
     }
+
+    /** What a size shown at a smaller one's scale is, in words true to it (UI Task 8b, the Task 8c review's Minor A): at Standard's
+     *  scale Large is Standard in full (the same feed, hints and scale), so "Standard size"; at Compact's scale Standard and Large
+     *  keep their five-line feed and 60 s of hints, so only "Compact scale". */
+    static String hudShownHere(int shownAs) { return hudSizeName(shownAs) + (shownAs == HUD_COMPACT ? " scale" : " size"); }
 
     static String hudSizeName(int size) { return HUD_SIZE_NAMES[size >= 0 && size < HUD_SIZE_NAMES.length ? size : HUD_COMPACT]; }
 
     private static final java.util.regex.Pattern HUD_SIZE_KEY = java.util.regex.Pattern.compile("\"size\"\\s*:\\s*\"([^\"\\\\]*)\"");
 
+    /** The byte order mark a text file may start with (Windows Notepad's "UTF-8" save writes one). */
+    static final char BOM = (char) 0xFEFF;
+
     /** The size a hud.json's text names (UI Task 8c): {"size":"Standard"} as HudSize writes it, white space allowed, the name
      *  matched exactly. Compact for no file (null), text that is not one flat {...} object, no "size" string in it, or a name it
-     *  does not know. Pure, so the standalone check covers the fallback (HudSize.reload reads the file). */
+     *  does not know. A leading byte order mark (BOM) is skipped, as gson skipped it (UI Task 8b, the Task 8c review's Minor C).
+     *  Pure, so the standalone check covers the fallback (HudSize.reload reads the file). */
     public static int hudSizeOf(String json) {
         if (json == null) return HUD_COMPACT;
         String t = json.strip();
+        if (!t.isEmpty() && t.charAt(0) == BOM) t = t.substring(1).strip();
         if (!t.startsWith("{") || t.indexOf('{', 1) >= 0 || t.indexOf('}') != t.length() - 1) return HUD_COMPACT;
         java.util.regex.Matcher m = HUD_SIZE_KEY.matcher(t);
         if (!m.find()) return HUD_COMPACT;
