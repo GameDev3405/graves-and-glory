@@ -14,5 +14,5 @@
   ],
   "note": "the grip's centre is the model origin (the fist box covers y -2..+2); the model is y up with its big faces across z, and the converter turns it by a half turn about x into the weapon frame; the sword is turned flat to the side and tilted 45 degrees forward, as the sprite sword was"
  },
- "note": "The Squire's arming sword, tier III (elite): a broader fullered blade, a 3 x 3.5 px steel boss on the grip with the Order's sun painted on it, a straight steel cross with gilt diamond finials, an enamel-wound grip and a 3 px sun pommel; 24.0 px long."
+ "note": "The Squire's arming sword, tier III (elite): a broad fullered blade with a gilt inlay in its groove, a 3 x 3.5 px steel boss on the grip with the Order's sun painted on it and a gilt ray each side, a straight engraved cross with gilt diamond terminals, an enamel-wound grip and a 2.7 px sun pommel in a gilt star; 24.1 px long."
 }
