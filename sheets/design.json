@@ -1745,7 +1745,10 @@
       "plateauY": 76,
       "tableDx": -7,
       "tableDz": -65,
-      "tableY": 78
+      "tableY": 78,
+      "firstDx": -33.5,
+      "firstDz": 6.5,
+      "firstYaw": 90.0
     }
   ],
   "campPieces": [
@@ -1936,6 +1939,48 @@
       "halfX": 1,
       "halfZ": 1,
       "label": "Recruiter / New troops"
+    },
+    {
+      "id": "drillmaster",
+      "page": "train",
+      "npc": "weaponsmith",
+      "x": -38.5,
+      "y": 65.0,
+      "z": 6.5,
+      "yaw": -90.0,
+      "halfX": 1,
+      "halfZ": 1,
+      "label": "DRILLMASTER / Battle 1 and practice"
+    }
+  ],
+  "campLessons": [
+    {
+      "id": "lesson-1",
+      "dx": -55.5,
+      "y": 67.2,
+      "dz": -3.5,
+      "text": "LESSON 1 OF 4 / Press {key:menu}, choose a group and Move, then click the ground to send them."
+    },
+    {
+      "id": "lesson-2",
+      "dx": -55.5,
+      "y": 67.2,
+      "dz": 2.5,
+      "text": "LESSON 2 OF 4 / Press {key:formation} to change formation. Shieldwall holds a line; Wedge breaks one."
+    },
+    {
+      "id": "lesson-3",
+      "dx": -55.5,
+      "y": 67.2,
+      "dz": 8.5,
+      "text": "LESSON 3 OF 4 / Press {key:attack} and aim at an enemy or a point to send your army in."
+    },
+    {
+      "id": "lesson-4",
+      "dx": -55.5,
+      "y": 67.2,
+      "dz": 14.5,
+      "text": "LESSON 4 OF 4 / Recruit at your barracks lectern with {key:use}. Trained troops join your army at the front."
     }
   ]
 }

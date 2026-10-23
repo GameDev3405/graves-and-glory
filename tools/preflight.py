@@ -114,6 +114,14 @@ for r in data.get('campStations',[]):
     where=f'campStations/{r["id"]}'
     if r['npc'] not in ('-','armorer','cleric','librarian','cartographer','weaponsmith'): errors.append(f'{where}: npc {r["npc"]} is not - or a villager profession of the camp')
     if r['page'] not in ('home','contracts','chapter','match','recruit','friends','army','train'): errors.append(f'{where}: page {r["page"]} is not a camp page')
+# Lesson boards (Phase 3): ids unique (the generic check above), and every {key:<id>} marker of a text names a key the HUD lessons and the camp labels know.
+LESSON_KEYS={'menu','attack','follow','formation','map','rotate_left','rotate_right','confirm','cancel','use'}
+for r in data.get('campLessons',[]):
+    where=f'campLessons/{r["id"]}'
+    text=r['text']
+    if text.count('{key:')!=len(re.findall(r'\{key:[a-z_]+\}',text)): errors.append(f'{where}: a {{key: marker is not of the form {{key:<id>}} in [a-z_]')
+    for key in re.findall(r'\{key:([a-z_]+)\}',text):
+        if key not in LESSON_KEYS: errors.append(f'{where}: {{key:{key}}} is not one of '+', '.join(sorted(LESSON_KEYS)))
 if errors:
     print('\n'.join(errors)); sys.exit(1)
 def typ(v): return 'boolean' if isinstance(v,bool) else 'int' if isinstance(v,int) else 'double' if isinstance(v,float) else 'String'

@@ -55,6 +55,7 @@ public final class Phase3Checks implements ClientModInitializer {
         SUITES.put("camp",Camp::new);
         SUITES.put("walkthrough",Walkthrough::new);
         SUITES.put("campwalk",CampWalk::new);
+        SUITES.put("yard",Yard::new);
     }
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed,broken;
@@ -628,6 +629,184 @@ public final class Phase3Checks implements ClientModInitializer {
         }
     }
 
+    /** Task 5 (suite yard): the training yard and the tutorial hooks, with a fresh commander (campaignCleared 0 for the run, put back in cleanup).
+     *  p3-yard-drillmaster (exactly one villager tagged camp:train and the camp tag within 0.5 of (-38.5,65,-303.5), and openCamp "train" opens CampScreen on page train; picture camp-train-page),
+     *  p3-yard-start (the START button of that screen gives a running battle with activeBattle march-1 within 900 ticks; then returnLobby and the battle is over),
+     *  p3-yard-lessons (exactly four text displays tagged camp-lesson:<id> where the rows put them, their JSON holding the keybind menu, formation, attack and key.use in turn and no literal {key: marker; then menu is rebound to K,
+     *  the lessons are placed again so that the client resolves the keybind afresh, and the display of lesson 1 on the client reads "Press K,"; picture camp-yard-lessons; the binding is put back),
+     *  p3-yard-dummies (exactly six armor stands tagged camp-dummy, at (-52.5+2k,65,-309.5), invulnerable, facing -90, iron helmet and leather chestplate),
+     *  p3-yard-first-arrival (campaignCleared 0: toLobby puts him within 0.1 of (-33.5,65,-303.5), yaw 90, pitch 8, picture camp-first-arrival from his own eyes; campaignCleared 1: at the spawn row; the profile is restored) and the picture camp-yard.
+     *  No check passes on nothing: zero villagers, zero displays, zero stands or a missing button are failures. */
+    static final class Yard implements Suite {
+        static final Spec.CampRow C=Spec.CAMP[0];
+        static final String[] KEYS={"key.gravesandglory.menu","key.gravesandglory.formation","key.gravesandglory.attack","key.use"};
+        int stage,waited;volatile boolean done;
+        volatile int savedCleared=-1;String savedMenuKey;
+        volatile String serverPart="",arrivalA="",arrivalB="";volatile boolean started,over;
+        @Override public int limit(){return 4000;}
+        @Override public void cleanup(MinecraftClient c){
+            if(savedMenuKey!=null){GravesAndGloryClient.menu.setBoundKey(net.minecraft.client.util.InputUtil.fromTranslationKey(savedMenuKey));net.minecraft.client.option.KeyBinding.updateKeysByCode();savedMenuKey=null;}
+            UUID me=c.player==null?null:c.player.getUuid();
+            server(c,b->{b.campaign.leash=true;if(me!=null&&savedCleared>=0){b.campaign.profile(me).campaignCleared=savedCleared;savedCleared=-1;}});
+        }
+        static Vec3d at(double dx,double y,double dz){return new Vec3d(C.originX()+dx,y,C.originZ()+dz);}
+        /** Presses the button whose label starts with the prefix on the open screen; false when there is none. */
+        static boolean press(MinecraftClient c,String prefix){
+            if(c.currentScreen==null)return false;
+            var b=c.currentScreen.children().stream().filter(v->v instanceof net.minecraft.client.gui.widget.ButtonWidget w&&w.getMessage().getString().startsWith(prefix)).map(v->(net.minecraft.client.gui.widget.ButtonWidget)v).findFirst();
+            if(b.isEmpty())return false;b.get().onPress();return true;
+        }
+        /** The server half of p3-yard-drillmaster: what is wrong, empty when right. */
+        static String drillmaster(GravesAndGlory.Battle b){
+            var w=b.world;var want=at(-38.5,65.0,6.5);var out=new StringBuilder();
+            var near=w.getEntitiesByClass(net.minecraft.entity.passive.VillagerEntity.class,new Box(want,want).expand(0.5),v->v.getPos().distanceTo(want)<=0.5);
+            if(near.size()!=1)out.append(near.size()).append(" villagers within 0.5 of ").append(want).append(" (want exactly 1); ");
+            else{var v=near.get(0);if(!v.getCommandTags().contains("camp:train")||!v.getCommandTags().contains(CampWorld.TAG))out.append("tags ").append(v.getCommandTags()).append(" lack camp:train or the camp tag; ");}
+            return out.toString();
+        }
+        /** The lesson displays of the world by id (a list per id, so that a double is seen). */
+        static Map<String,List<net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity>> lessonDisplays(ServerWorld w){
+            var m=new LinkedHashMap<String,List<net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity>>();
+            for(var e:w.iterateEntities())if(e instanceof net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity d)for(var t:d.getCommandTags())if(t.startsWith("camp-lesson:"))m.computeIfAbsent(t.substring("camp-lesson:".length()),k->new ArrayList<>()).add(d);
+            return m;
+        }
+        /** The server half of p3-yard-lessons. */
+        static String lessons(GravesAndGlory.Battle b){
+            var w=b.world;var out=new StringBuilder();var got=lessonDisplays(w);
+            if(Spec.CAMPLESSONS.length!=4)out.append("the campLessons sheet has ").append(Spec.CAMPLESSONS.length).append(" rows (want 4); ");
+            if(got.size()!=4)out.append(got.size()).append(" lesson ids on displays (want 4: ").append(got.keySet()).append("); ");
+            for(int i=0;i<Spec.CAMPLESSONS.length;i++){
+                var row=Spec.CAMPLESSONS[i];var list=got.getOrDefault(row.id(),List.of());
+                if(list.size()!=1){out.append(row.id()).append(": ").append(list.size()).append(" displays (want 1); ");continue;}
+                var d=list.get(0);var want=at(row.dx(),row.y(),row.dz());
+                if(d.getPos().distanceTo(want)>0.05)out.append(row.id()).append(" at ").append(d.getPos()).append(" not ").append(want).append("; ");
+                if(!d.getCommandTags().contains(CampWorld.TAG))out.append(row.id()).append(" lacks the camp tag; ");
+                String json=d.writeNbt(new NbtCompound()).getString("text");
+                if(i<KEYS.length&&!json.contains("\""+KEYS[i]+"\""))out.append(row.id()).append(" text has no keybind ").append(KEYS[i]).append(": ").append(json).append("; ");
+                if(json.contains("{key:"))out.append(row.id()).append(" still holds a literal {key: marker; ");
+                if(i==3&&json.contains("key.gravesandglory."))out.append(row.id()).append(" names a mod key where it must name key.use; ");
+            }
+            return out.toString();
+        }
+        /** Takes the lesson displays away and places them again (fresh Text objects: a keybind text keeps the key it first resolved). */
+        static void replaceLessons(ServerWorld w){
+            var old=new ArrayList<net.minecraft.entity.Entity>();
+            for(var e:w.iterateEntities())for(var t:e.getCommandTags())if(t.startsWith("camp-lesson:")){old.add(e);break;}
+            old.forEach(net.minecraft.entity.Entity::discard);
+            CampWorld.lessons(w);
+        }
+        static int lessonCount(ServerWorld w){int n=0;for(var l:lessonDisplays(w).values())n+=l.size();return n;}
+        static String dummies(GravesAndGlory.Battle b){
+            var w=b.world;var out=new StringBuilder();var stands=new ArrayList<net.minecraft.entity.decoration.ArmorStandEntity>();
+            for(var e:w.iterateEntities())if(e instanceof net.minecraft.entity.decoration.ArmorStandEntity s&&s.getCommandTags().contains("camp-dummy"))stands.add(s);
+            if(stands.size()!=6)out.append(stands.size()).append(" armor stands tagged camp-dummy (want 6); ");
+            for(int k=0;k<6;k++){
+                final Vec3d target=new Vec3d(C.originX()-52.5+2*k,65,C.originZ()+0.5);
+                var hit=stands.stream().filter(s->s.getPos().distanceTo(target)<=0.05).toList();
+                if(hit.size()!=1){out.append("dummy ").append(k).append(": ").append(hit.size()).append(" stands at ").append(target).append(" (want 1); ");continue;}
+                var s=hit.get(0);
+                if(!s.isInvulnerable())out.append("dummy ").append(k).append(" is not invulnerable; ");
+                if(!s.hasNoGravity())out.append("dummy ").append(k).append(" has gravity; ");
+                if(Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(s.getYaw()+90))>0.5)out.append("dummy ").append(k).append(" faces yaw ").append(s.getYaw()).append(" (want -90); ");
+                if(!s.getEquippedStack(net.minecraft.entity.EquipmentSlot.HEAD).isOf(net.minecraft.item.Items.IRON_HELMET)||!s.getEquippedStack(net.minecraft.entity.EquipmentSlot.CHEST).isOf(net.minecraft.item.Items.LEATHER_CHESTPLATE))out.append("dummy ").append(k).append(" lacks the iron helmet or the leather chestplate; ");
+                if(!s.getCommandTags().contains(CampWorld.TAG))out.append("dummy ").append(k).append(" lacks the camp tag; ");
+            }
+            return out.toString();
+        }
+        /** Where the player stands against a spot (position within the tolerance, yaw and pitch within 0.5): what is wrong, empty when right. */
+        static String stands(net.minecraft.server.network.ServerPlayerEntity p,double x,double y,double z,double yaw,double pitch,double tol){
+            var out=new StringBuilder();
+            if(p.getPos().distanceTo(new Vec3d(x,y,z))>tol)out.append(String.format(Locale.ROOT,"at (%.2f,%.2f,%.2f) not (%.2f,%.2f,%.2f); ",p.getX(),p.getY(),p.getZ(),x,y,z));
+            if(Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(p.getYaw()-(float)yaw))>0.5)out.append("yaw ").append(p.getYaw()).append(" not ").append(yaw).append("; ");
+            if(Math.abs(p.getPitch()-pitch)>0.5)out.append("pitch ").append(p.getPitch()).append(" not ").append(pitch).append("; ");
+            return out.toString();
+        }
+
+        @Override public void step(MinecraftClient c,int tick){
+            if(tick<20)return;
+            UUID me=c.player.getUuid();
+            switch(stage){
+                case 0->{done=false;server(c,b->{b.campaign.leash=true;var prof=b.campaign.profile(me);savedCleared=prof.campaignCleared;prof.campaignCleared=0;b.campaign.toLobby(b.server.getPlayerManager().getPlayer(me));done=true;});stage=1;waited=0;}
+                case 1->{if(done&&++waited>=40){c.setScreen(null);serverPart="";done=false;server(c,b->{serverPart=drillmaster(b);GravesAndGlory.openCamp(b.server.getPlayerManager().getPlayer(me),"train");done=true;});stage=2;waited=0;}}
+                case 2->{
+                    if(done&&++waited>=20){
+                        var s=c.currentScreen;boolean ok=s instanceof CampScreen cs&&cs.page.equals("train");
+                        String why=serverPart+(ok?"":"openCamp(\"train\") opened "+(s==null?"no screen":s.getClass().getSimpleName()+(s instanceof CampScreen cs2?" on page "+cs2.page:""))+"; ");
+                        report("p3-yard-drillmaster",why.isEmpty(),why.isEmpty()?"one villager tagged camp:train at the Drillmaster row and openCamp(\"train\") opened the train page":why);
+                        stage=3;waited=0;
+                    }
+                }
+                case 3->{if(++waited>=10){shot(c,"camp-train-page");stage=4;waited=0;}}
+                case 4->{
+                    started=false;
+                    if(!press(c,"START")){report("p3-yard-start",false,"no START button on the train page ("+(c.currentScreen==null?"no screen":c.currentScreen.getClass().getSimpleName())+")");stage=7;waited=0;break;}
+                    stage=5;waited=0;
+                }
+                case 5->{
+                    waited++;
+                    if(waited%10==0)server(c,b->{started=b.running&&b.campaign.activeBattle!=null&&b.campaign.activeBattle.id().equals("march-1");});
+                    if(started||waited>900){
+                        report("p3-yard-start",started,started?"pressing START gave a running battle with activeBattle march-1 after about "+waited+" ticks":"no running battle with activeBattle march-1 within 900 ticks after START");
+                        stage=6;waited=0;over=false;server(c,b->b.campaign.returnLobby());
+                    }
+                }
+                case 6->{
+                    waited++;if(waited%10==0)server(c,b->{over=!b.running&&b.campaign.activeBattle==null;});
+                    if(over||waited>300){if(!over)report("p3-yard-start-return",false,"returnLobby left the battle running or activeBattle set after 300 ticks");c.setScreen(null);stage=7;waited=0;}
+                }
+                case 7->{ // the lessons: the server half, then menu to K and the lessons placed again
+                    if(waited==0){
+                        c.setScreen(null);done=false;serverPart="";
+                        savedMenuKey=GravesAndGloryClient.menu.getBoundKeyTranslationKey();
+                        GravesAndGloryClient.menu.setBoundKey(net.minecraft.client.util.InputUtil.fromKeyCode(org.lwjgl.glfw.GLFW.GLFW_KEY_K,0));net.minecraft.client.option.KeyBinding.updateKeysByCode();
+                        server(c,b->{b.campaign.leash=true;serverPart=lessons(b);replaceLessons(b.world);int n=lessonCount(b.world);if(n!=4)serverPart+="after placing them again "+n+" lesson displays stand (want 4); ";done=true;});
+                        waited=1;
+                    }else if(done&&++waited>=10)stage=8;
+                }
+                case 8->{
+                    if(view(c,"camp-yard-lessons",-51.5,67.6,-313.5,-55.5,67.2,-313.5)){
+                        var want=at(Spec.CAMPLESSONS[0].dx(),Spec.CAMPLESSONS[0].y(),Spec.CAMPLESSONS[0].dz());String why=serverPart,seen="";
+                        net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity found=null;
+                        for(var e:c.world.getEntities())if(e instanceof net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity d&&d.getPos().distanceTo(want)<=0.5)found=d;
+                        if(found==null)why+="the client has no text display at the place of lesson 1; ";
+                        else{seen=Text.Serializer.fromJson(found.writeNbt(new NbtCompound()).getString("text")).getString();if(!seen.contains("Press K,"))why+="the client's lesson 1 reads \""+seen+"\" (want it to contain \"Press K,\"); ";}
+                        report("p3-yard-lessons",why.isEmpty(),why.isEmpty()?"four lesson displays with the keybinds menu, formation, attack and key.use; with menu on K the client reads: "+seen:why);
+                        GravesAndGloryClient.menu.setBoundKey(net.minecraft.client.util.InputUtil.fromTranslationKey(savedMenuKey));net.minecraft.client.option.KeyBinding.updateKeysByCode();savedMenuKey=null;
+                        done=false;server(c,b->{replaceLessons(b.world);done=true;}); // fresh texts again, resolved with the key put back
+                        stage=9;waited=0;
+                    }
+                }
+                case 9->{
+                    if(waited==0){done=false;serverPart="";server(c,b->{serverPart=dummies(b);done=true;});waited=1;}
+                    else if(done){report("p3-yard-dummies",serverPart.isEmpty(),serverPart.isEmpty()?"six armor stands tagged camp-dummy at their positions, invulnerable, in an iron helmet and a leather chestplate":serverPart);stage=10;waited=0;}
+                }
+                case 10->{ // first arrival with no battle cleared
+                    if(waited==0){done=false;arrivalA="";arrivalB="";c.setScreen(null);server(c,b->{b.campaign.leash=true;b.campaign.profile(me).campaignCleared=0;b.campaign.toLobby(b.server.getPlayerManager().getPlayer(me));done=true;});waited=1;}
+                    else if(done&&++waited>=30){
+                        if((c.world.isChunkLoaded(((int)Math.floor(c.player.getX()))>>4,((int)Math.floor(c.player.getZ()))>>4)&&c.worldRenderer.isTerrainRenderComplete())||waited>230){
+                            done=false;server(c,b->{arrivalA=stands(b.server.getPlayerManager().getPlayer(me),C.originX()+C.firstDx(),65,C.originZ()+C.firstDz(),90,8,0.1);done=true;});stage=11;waited=0;
+                        }
+                    }
+                }
+                case 11->{
+                    if(done&&++waited>=3){shot(c,"camp-first-arrival");done=false;server(c,b->{b.campaign.profile(me).campaignCleared=1;b.campaign.toLobby(b.server.getPlayerManager().getPlayer(me));done=true;});stage=12;waited=0;}
+                }
+                case 12->{
+                    if(done&&++waited>=5){done=false;server(c,b->{arrivalB=stands(b.server.getPlayerManager().getPlayer(me),C.originX()+C.spawnDx(),C.spawnY(),C.originZ()+C.spawnDz(),C.spawnYaw(),C.spawnPitch(),0.1);b.campaign.profile(me).campaignCleared=savedCleared;done=true;});stage=13;waited=0;}
+                }
+                case 13->{
+                    if(done){
+                        String why=(arrivalA.isEmpty()?"":"campaignCleared 0: "+arrivalA)+(arrivalB.isEmpty()?"":"campaignCleared 1: "+arrivalB);
+                        report("p3-yard-first-arrival",why.isEmpty(),why.isEmpty()?"campaignCleared 0 arrives at the yard (-33.5, 65, -303.5) facing yaw 90, pitch 8; campaignCleared 1 arrives at the camp spawn":why);
+                        stage=14;
+                    }
+                }
+                case 14->{if(view(c,"camp-yard",-28.5,69,-290,-46,66,-304)){finish(c,"yard");stage=15;}}
+                default->{}
+            }
+        }
+    }
+
     /** Task 3 (suite camp): the camp base as a commander meets it. One launch, in this order: spawn (p3-camp-spawn), then on the world as built p3-camp-built, p3-camp-budget, p3-camp-stations and the war table of map 0 (p3-camp-war-table, first
      *  part), p3-camp-shapes (extra: every fence, wall, pane and bar inside the pieces is settled, every vine of the files stands, the game rule doVinesSpread is off), and the two checks of the look of the terrain (fix round 2): p3-camp-bank-mix (at least 9 of the 12 rows of the bank
      *  of the ridge have no block above 85 percent of their columns, so the bank is a mix and not stripes) and p3-camp-flank-relief (the crest of each flank, at x 90 either side of the origin, spans at least 6 blocks); then p3-camp-pages (every page the stations name opens its screen),
@@ -735,7 +914,9 @@ public final class Phase3Checks implements ClientModInitializer {
 
         /** p3-camp-spawn: after toLobby the player is within 0.1 of the camp spawn, on a block with a collision shape, with air at his feet and head. */
         void spawn(GravesAndGlory.Battle b,UUID me){
-            var p=b.server.getPlayerManager().getPlayer(me);b.campaign.toLobby(p);
+            var p=b.server.getPlayerManager().getPlayer(me);
+            var prof=b.campaign.profile(me);int was=prof.campaignCleared;prof.campaignCleared=Math.max(1,was); // the normal spawn: with no battle cleared toLobby sends him to the yard (suite yard checks that arrival)
+            try{b.campaign.toLobby(p);}finally{prof.campaignCleared=was;}
             var feet=p.getBlockPos();var below=feet.down();var w=b.world;
             boolean there=Math.abs(p.getX()-0.5)<0.1&&Math.abs(p.getY()-65)<0.1&&Math.abs(p.getZ()+291.5)<0.1&&Math.abs(p.getYaw()-180)<0.5;
             boolean floor=!w.getBlockState(below).getCollisionShape(w,below).isEmpty(),air=w.getBlockState(feet).isAir()&&w.getBlockState(feet.up()).isAir();
@@ -1984,7 +2165,8 @@ public final class Phase3Checks implements ClientModInitializer {
         @Override String pre(){return "cw";}
         @Override boolean legOk(Leg leg){return leg.finished&&leg.stuck==0&&leg.forced==0;}
         @Override public int limit(){return 40000;}
-        @Override public void cleanup(MinecraftClient c){super.cleanup(c);server(c,b->b.world.setTimeOfDay(3000));}
+        volatile int savedCleared=-1;
+        @Override public void cleanup(MinecraftClient c){super.cleanup(c);UUID me=c.player==null?null:c.player.getUuid();server(c,b->{b.world.setTimeOfDay(3000);if(me!=null&&savedCleared>=0){b.campaign.profile(me).campaignCleared=savedCleared;savedCleared=-1;}});}
         /** One check line, remembered by id (p3-cw-complete wants them all). */
         void ck(String id,boolean pass,String why){ids.add(id);report(id,pass,why);}
         boolean ran(String group){return only.isEmpty()||want(group);}
@@ -1998,11 +2180,11 @@ public final class Phase3Checks implements ClientModInitializer {
             switch(stage){
                 case 0->{ // the arrival: through Campaign.toLobby, as the camp does it for a commander
                     UUID me=c.player.getUuid();arrived=false;
-                    server(c,x->{x.campaign.leash=true;x.world.setTimeOfDay(3000);var sp=x.server.getPlayerManager().getPlayer(me);x.clearOldUnits();x.campaign.toLobby(sp);arrived=true;});
+                    server(c,x->{x.campaign.leash=true;x.world.setTimeOfDay(3000);var sp=x.server.getPlayerManager().getPlayer(me);x.clearOldUnits();var prof=x.campaign.profile(me);if(savedCleared<0)savedCleared=prof.campaignCleared;prof.campaignCleared=Math.max(1,savedCleared);x.campaign.toLobby(sp);arrived=true;});
                     stage=1;waited=0;
                 }
                 case 1->{
-                    var s=CampWorld.spawn(null);var p=c.player;
+                    var s=CampWorld.spawn(null);var p=c.player; // null profile: the normal spawn, which the walker is sent to with campaignCleared raised to 1 (restored in cleanup)
                     if(arrived&&++waited>=40&&p.squaredDistanceTo(s.x(),s.y(),s.z())<1.0&&terrainReady(c,p.getX(),p.getZ())){
                         ck("p3-cw-arrival",true,String.format(Locale.ROOT,"after Campaign.toLobby the walker stands at (%.2f, %.2f, %.2f), yaw %.0f, pitch %.0f; the spawn row says (%.2f, %.2f, %.2f)",p.getX(),p.getY(),p.getZ(),p.getYaw(),p.getPitch(),s.x(),s.y(),s.z()));
                         scanned=false;server(c,x->scan(x));stage=2;waited=0;
@@ -2353,7 +2535,7 @@ public final class Phase3Checks implements ClientModInitializer {
                 }
                 if(bad){inside++;if(inside<=6)insideAt.append(inside>1?"; ":"").append(e.getType().getUntranslatedName()).append(' ').append(String.format(Locale.ROOT,"(%.2f, %.2f, %.2f)",e.getX(),e.getY(),e.getZ()));}
             }
-            ck("p3-cw-entities",villagers==wantV&&labels==Spec.CAMPSTATIONS.length&&others==0&&inside==0,"camp entities: villagers "+villagers+" (want "+wantV+"), labels "+labels+" (want "+Spec.CAMPSTATIONS.length+"), other camp entities "+others+" (want 0), inside a block that stops them "+inside+(inside==0?"":": "+insideAt));
+            ck("p3-cw-entities",villagers==wantV&&labels==Spec.CAMPSTATIONS.length+Spec.CAMPLESSONS.length&&others==CampWorld.DUMMIES&&inside==0,"camp entities: villagers "+villagers+" (want "+wantV+"), labels "+labels+" (want "+Spec.CAMPSTATIONS.length+" stations + "+Spec.CAMPLESSONS.length+" lessons), other camp entities "+others+" (want "+CampWorld.DUMMIES+", the yard dummies), inside a block that stops them "+inside+(inside==0?"":": "+insideAt));
             // 4. places for the flank pictures
             var m=new LinkedHashMap<String,double[]>();
             Object[][] want={{"north-edge",OX,OZ-106,new double[]{0,-1},new double[]{0,1}},{"sw-corner",OX-92,OZ+36}};

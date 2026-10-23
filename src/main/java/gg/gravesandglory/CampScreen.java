@@ -73,6 +73,10 @@ final class CampScreen extends ArmyScreen {
         }else if(page.equals("results")){
             button("Claim contracts",x,height-84,w/3-8,b->page("contracts"));button("Chapter rewards",x+w/3,height-84,w/3-8,b->page("chapter"));
             primary(value("room").isEmpty()?"BACK TO CAMP":"RETURN TO ROOM",x+2*w/3,height-88,w/3,b->page(value("room").isEmpty()?"home":"room"));
+        }else if(page.equals("train")){
+            // The Drillmaster: battle 1 (the first Long March battle) and the practice skirmish.
+            var start=primary("START",x,200,w/2-7,b->action("campaign:"+Spec.CAMPAIGNBATTLES[0].id()));start.active=!running;
+            var practice=button("PRACTICE",x+w/2+7,200,w/2-7,b->action("camp:practice"));practice.active=!running;
         }else if(page.equals("match")){
             for(int i=0;i<Spec.MAPS.length;i++){final int map=i;button("Vote: "+Spec.MAPS[i].name(),x,149+i*35,w,b->action("vote:"+map));}
             button("Play with friends in a room",x,350,w,b->page("room"));
@@ -102,7 +106,7 @@ final class CampScreen extends ArmyScreen {
     @Override public void render(DrawContext g,int mx,int my,float delta){
         g.getMatrices().push();g.getMatrices().scale(scale,scale,1);DarkUi.background(g,width,height);DarkUi.crest(g,20,16,26,false);DarkUi.title(g,"BANNER CAMP",58,19,DarkUi.GOLD);
         line(g,CampaignClient.profile.progression.title+"  /  "+CampaignClient.profile.gold+" gold",width-280,24,DarkUi.PAPER,260);
-        int x=194,w=width-x-22;DarkUi.frame(g,x-12,79,w+24,height-139);String title=switch(page){case "recruit"->"RECRUITMENT SHRINE";case "friends"->"YOUR FRIEND GROUP";case "room"->"PRIVATE WAR ROOM";case "contracts"->"CONTRACT BOARD";case "chapter"->"FOUNDERS CHAPTER";case "match"->"WAR GATES";case "results"->"BATTLE REPORT";default->"A PLACE TO PREPARE";};
+        int x=194,w=width-x-22;DarkUi.frame(g,x-12,79,w+24,height-139);String title=switch(page){case "recruit"->"RECRUITMENT SHRINE";case "friends"->"YOUR FRIEND GROUP";case "room"->"PRIVATE WAR ROOM";case "contracts"->"CONTRACT BOARD";case "chapter"->"FOUNDERS CHAPTER";case "match"->"WAR GATES";case "train"->"TRAINING YARD";case "results"->"BATTLE REPORT";default->"A PLACE TO PREPARE";};
         line(g,title,x,91,DarkUi.GOLD,w);
         var p=CampaignClient.profile;var progress=p.progression;
         if(page.equals("home")){
@@ -151,6 +155,11 @@ final class CampScreen extends ArmyScreen {
                 for(int i=0;i<3;i++)line(g,Progression.contract(progress,i)+"  "+Math.min(Progression.progress(progress,i),Progression.target(progress,i))+"/"+Progression.target(progress,i)+(progress.claims.contains("daily:"+i)?" / claimed":Progression.progress(progress,i)>=Progression.target(progress,i)?" / READY TO CLAIM":""),right,y+i*11,DarkUi.MUTED,half);
                 line(g,"Weekly battles: "+Math.min(progress.weeklyBattles,6)+"/6"+(progress.claims.contains("weekly")?" / claimed":progress.weeklyBattles>=6?" / READY TO CLAIM":""),right,y+33,DarkUi.MUTED,half);
             }
+        }else if(page.equals("train")){
+            var march=Spec.CAMPAIGNBATTLES[0];
+            line(g,"Battle "+march.order()+" / "+march.name(),x,117,DarkUi.PAPER,w);
+            g.drawTextWrapped(textRenderer,Text.literal(march.briefing()),x,138,w,DarkUi.MUTED);
+            line(g,"START begins the battle. PRACTICE is a skirmish against one AI commander.",x,239,DarkUi.MUTED,w);
         }else if(page.equals("match")){
             line(g,"Dawn "+CampaignClient.padDawn+" / 4   |   Dusk "+CampaignClient.padDusk+" / 4   |   "+CampaignClient.padCountdown+"s",x,116,DarkUi.GOLD,w);
             line(g,"Vote while on a ready pad. Most votes wins; ties use map order.",x,133,DarkUi.MUTED,w);
