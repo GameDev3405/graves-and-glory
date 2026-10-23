@@ -1,6 +1,6 @@
 package gg.gravesandglory;
 
-/** The map cache marker (LayoutMarker): a marker written before the arena margin was tapered (layout and map only) is not current, so the arena of that map is built once more; the marker this build writes is current for its map and for no other. */
+/** The map cache marker (LayoutMarker): a marker written before the arena margin was tapered (layout and map only), or with a margin built to an older camp terrain, is not current, so the arena of that map is built once more; the marker this build writes is current for its map and for no other. */
 public final class LayoutMarkerCheck {
  static int count;static void check(boolean pass,String text){count++;if(!pass)throw new AssertionError(text);}
  public static void main(String[] args){
@@ -14,6 +14,9 @@ public final class LayoutMarkerCheck {
   check(!LayoutMarker.current("{\"layout\":\"campaign-2\",\"map\":2,\"margin\":\""+LayoutMarker.MARGIN+"\"}",2),"Another layout string is not current");
   check(!LayoutMarker.current("",2)&&!LayoutMarker.current("not json",2)&&!LayoutMarker.current("[]",2)&&!LayoutMarker.current("{}",2),"Unreadable markers are not current");
   check(LayoutMarker.text(0).contains(LayoutMarker.MARGIN),"The marker names the margin revision");
+  check(LayoutMarker.MARGIN.contains(CampTerrain.REVISION),"The margin revision names the camp terrain revision (the margin meets the rim of that terrain)");
+  check(!LayoutMarker.current("{\"layout\":\"campaign-3\",\"map\":2,\"margin\":\"margin-1\"}",2),"A margin built to the camp terrain before fix round 4 (margin-1, terrain-3) is not current: the map's arena is built once more");
+  check(LayoutMarker.LAYOUT.equals("campaign-3"),"The layout string is not bumped (only the margin revision changes)");
   System.out.println("PASS "+count+" layout marker scenarios");
  }
 }

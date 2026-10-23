@@ -2249,7 +2249,7 @@ public final class Phase3Checks implements ClientModInitializer {
             // leg 1: the arrival
             var l=lane("1-arrival",new double[]{0.5,-291.5},new double[]{0.5,-312.0});
             at(l,"spawn-north",0.5,-291.5,0.5,68.0,-320.0);
-            at(l,"welcome-label",0.5,-291.5,0.5,68.7,-295.5,0,"label:welcome");
+            at(l,"welcome-label",0.5,-291.5,0.5,68.7,-298.5,0,"label:welcome");
             at(l,"avenue-standard",0.5,-299.0,0.5,69.0,-316.0);
             at(l,"parade-west",0.5,-304.0,-16.0,66.0,-306.0);
             at(l,"parade-east",0.5,-304.0,16.0,66.0,-306.0);
@@ -2278,7 +2278,7 @@ public final class Phase3Checks implements ClientModInitializer {
             // leg 3: back to the parade, the Steward, the pads, the arch
             l=lane("3a-steward",new double[]{47.0,-296.0},new double[]{24.0,-296.0},new double[]{6.0,-296.0},new double[]{2.5,-292.0},new double[]{2.5,-290.5});
             at(l,"parade-east-edge",24.0,-296.0,0.5,66.5,-296.0);
-            at(l,"welcome-from-east",8.0,-296.0,0.5,68.7,-295.5,0,"label:welcome");
+            at(l,"welcome-from-east",8.0,-296.0,0.5,68.7,-298.5,0,"label:welcome");
             at(l,"spawn-plinth",6.0,-296.0,0.5,64.8,-292.0);
             at(l,"steward",2.5,-291.0,4.5,66.4,-287.5);
             at(l,"steward-label",2.5,-291.0,4.5,68.7,-287.5,0,"label:steward");

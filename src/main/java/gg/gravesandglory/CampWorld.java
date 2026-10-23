@@ -35,15 +35,14 @@ final class CampWorld {
     static final String TAG="gravesandglory-camp-v4";
     /** In the world folder: the hash of what the terrain was built from. */
     static final String MARKER_FILE="gravesandglory-camp.json";
-    /** Part of the hash: a change to the way the terrain is written makes every world rebuild it. */
-    static final String TERRAIN="terrain-3";
-    /** Where the plateau begins and where its bank starts at the foot (dz, from the origin of the camp): the bank rises over the 13 blocks between them. */
-    static final int RIDGE_TOP_DZ=-51,RIDGE_FOOT_DZ=-38;
-    /** The southern rim: from RIM_FOOT_DZ (the end of the apron of the gates) the ground climbs RIM_SLOPE blocks per block, to RIM_RISE above the floor, and stays there to the last row of the rim (rimEnd).
-     *  It is the camp's half of the southern seam. Behind the island the arena's north hills (CampaignMaps, north_mountains, 20 high and 45 on Frostmarch) are cut off at z -266, the last column the build writes, so that the raw edge stood at y 71 to 90 over the
-     *  camp floor (71 to 109 on Frostmarch), above the crest of the rim (79 in the middle). taper() is the arena's half: in the 16 columns of the build beyond the playable box (z -251 to -266) the hills meet the crest, and no face is left. */
-    static final int RIM_FOOT_DZ=37,RIM_RISE=15;
-    static final double RIM_SLOPE=2.5;
+    /** Part of the hash: a change to the way the terrain is shaped or written makes every world rebuild it (CampTerrain.REVISION, which the arena margin's revision names as well). */
+    static final String TERRAIN=CampTerrain.REVISION;
+    /** Where the plateau begins and where its bank starts at the foot beside the stairs (CampTerrain). */
+    static final int RIDGE_TOP_DZ=CampTerrain.RIDGE_TOP_DZ,RIDGE_FOOT_DZ=CampTerrain.RIDGE_FOOT_DZ;
+    /** The southern rim behind the gates (CampTerrain): the camp's half of the southern seam. Behind the island the arena's north hills (CampaignMaps, north_mountains, 20 high and 45 on Frostmarch) are cut off at z -266, the last column the build writes;
+     *  taper() is the arena's half: in the 16 columns of the build beyond the playable box (z -251 to -266) the hills meet the crest of the rim, and no face is left. */
+    static final int RIM_FOOT_DZ=CampTerrain.RIM_FOOT_DZ,RIM_RISE=CampTerrain.RIM_RISE;
+    static final double RIM_SLOPE=CampTerrain.RIM_SLOPE;
     /** The blocks beyond the width of the island over which taper() fades out. */
     static final int SKIRT=28;
     static String generation="";
@@ -150,29 +149,12 @@ final class CampWorld {
 
     /** The last row (dz) the terrain writes: the south edge of the island, or the row before the first column of the arena when that is further south (the arena owns z from -worldHalfZ on, and the rim runs up to it
      *  so that nothing but the rim is seen from the camp; the leash box of inCamp stays the island). */
-    static int rimEnd(Spec.CampRow c){return Math.max(c.islandMaxDz(),-GravesAndGlory.R.worldHalfZ()-1-c.originZ());}
-
-    /** The height of the island at (dx,dz) from the origin of the camp, before the pieces: the floor, the plateau and the bank to it, the slope behind the plateau, the flanks with their relief, the southern rim, and outside the bowl a gentle swell. */
-    static double heightRaw(Spec.CampRow c,int dx,int dz){
-        double rise=c.plateauY()-c.floorY(),h=c.floorY();
-        if(dz<=RIDGE_TOP_DZ)h+=rise;else if(dz<RIDGE_FOOT_DZ)h+=rise*(RIDGE_FOOT_DZ-dz)/(double)(RIDGE_FOOT_DZ-RIDGE_TOP_DZ);
-        if(dz<c.minDz())h+=Math.min(18,0.7*(c.minDz()-dz));
-        if(Math.abs(dx)>c.maxDx())h+=Math.min(20,0.8*(Math.abs(dx)-c.maxDx()));
-        if(dz>RIM_FOOT_DZ)h+=Math.min(RIM_RISE,RIM_SLOPE*(dz-RIM_FOOT_DZ));
-        if(!inBowl(c,dx,dz))h+=2*Math.sin(dx*.21)*Math.cos(dz*.17)+flank(c,dx,dz);
-        return h;
-    }
-    static int height(Spec.CampRow c,int dx,int dz){return (int)Math.round(heightRaw(c,dx,dz));}
-    /** The relief of the flanks, so that the sides of the island are not one plane: spurs and gullies from three waves along the flank (the two lower ones drift with the distance, the west side has its own phase). It is nothing at the wall of the bowl,
-     *  full from 22 blocks out, and it fades out over the six rows before the rim, so that the rim keeps its steepest step (2.5 a block) and the seam of the south sees the same crest at every x. At most 5.1 up or down, about 2 on the average. */
-    static double flank(Spec.CampRow c,int dx,int dz){
-        double f=Math.min(1,Math.max(0,(Math.abs(dx)-c.maxDx())/22.0)),g=Math.min(1,Math.max(0,(RIM_FOOT_DZ-dz)/6.0));
-        if(f==0||g==0)return 0;
-        double a=Math.abs(dx),phase=dx<0?1.7:0;
-        return f*g*(2.3*Math.sin(dz*.13+a*.05+1.3+phase)+1.2*Math.sin(dz*.27-a*.08+.4-phase)+1.6*Math.sin(dz*.07+phase*2));
-    }
+    static int rimEnd(Spec.CampRow c){return CampTerrain.rimEnd(c);}
+    /** The height of the island at (dx,dz) from the origin of the camp, before the pieces (CampTerrain.heightRaw). */
+    static double heightRaw(Spec.CampRow c,int dx,int dz){return CampTerrain.heightRaw(c,dx,dz);}
+    static int height(Spec.CampRow c,int dx,int dz){return CampTerrain.height(c,dx,dz);}
     /** The crest of the rim at dx: the height of its last row, the one the arena's margin has to meet. */
-    static int rimTop(Spec.CampRow c,int dx){return height(c,Math.max(c.islandMinDx(),Math.min(c.islandMaxDx(),dx)),rimEnd(c));}
+    static int rimTop(Spec.CampRow c,int dx){return CampTerrain.rimTop(c,dx);}
     /** The arena's height h at (x,z) in the margin north of the playable box (z less than -arenaHalfZ, down to -worldHalfZ, the last column the build writes), pulled towards the crest of the rim: with the share (-arenaHalfZ-z)/(worldHalfZ-arenaHalfZ)
      *  that grows by a sixteenth a row from nothing at the box (the box itself is not touched) to all of it at the edge, so the last column of the arena stands at the height of the first row of the rim. Over the width of the island the pull is full;
      *  beyond it, it fades out over SKIRT blocks. The hills of the north (up to 109 on Frostmarch at the edge) come down to the rim and the valley of the river comes up to it, nowhere by more than 3 a block. Arena.height calls this for z less than -arenaHalfZ only. */
@@ -184,28 +166,19 @@ final class CampWorld {
         double share=Math.min(1,(edge-z)/(double)(edge-end)),t=out/(double)SKIRT,across=1-t*t*(3-2*t);
         return h+share*across*(rimTop(c,dx)-h);
     }
-    static boolean inBowl(Spec.CampRow c,int dx,int dz){return dx>=c.minDx()&&dx<=c.maxDx()&&dz>=c.minDz()&&dz<=c.maxDz();}
+    static boolean inBowl(Spec.CampRow c,int dx,int dz){return CampTerrain.inBowl(c,dx,dz);}
 
-    /** The terrain: the height of every column of the island box, the rows of campPieces laid over it (a flatten row's footprint takes its floor y, a flatten=false footprint keeps the ground, and a cell within two of a flatten row's footprint takes the
-     *  highest such floor), stone under dirt under grass (stone from y 80; on steep ground the slope mix of top and under instead of grass over dirt), the air above it up to the top of what stood there, then the spruces outside the bowl.
+    /** The terrain: the ground of every column of the island box (CampTerrain.ground: the height with the rows of campPieces laid over it), stone under the under block under the top block (CampTerrain.top and underAt: rock on the outcrops, else the slope mix, rockier
+     *  with height from y 84), the air above it up to the top of what stood there, then the plants of the slopes and the spruces (CampTerrain.plant and tree).
      *  Written with Arena's build flags (2 and 16): no shape update runs, so taking away the blocks of an older camp cannot break and spill what stood against them, and the terrain holds nothing a shape update would change
-     *  (stone, dirt, coarse dirt, grass, air, spruce logs and persistent leaves). The pieces come after, through Structures.place, which does run them.
+     *  (stone, andesite, dirt, coarse dirt, grass, air, grass and ferns on grass, spruce logs and persistent leaves). The pieces come after, through Structures.place, which does run them.
      *  The chunks it covers are loaded first, and that time is counted in the 6 s budget: without the preload the first build generated them one at a time between the block writes and took 7573 ms. If p3-camp-budget fails, look at the preload first.
-     *  The rows go from the island's north edge to rimEnd (the south rim, see RIM_FOOT_DZ); the trees stand outside the bowl, keep their crowns out of the arena's columns and put leaves only into air, so a crown on the rim or a flank does not eat into the slope. */
+     *  The rows go from the island's north edge to rimEnd (the south rim); the trees keep their crowns out of the arena's columns and put leaves only into air, so a crown on the rim or a flank does not eat into the slope. */
     static void terrain(ServerWorld w){
         var c=Spec.CAMP[0];int width=c.islandMaxDx()-c.islandMinDx()+1,last=rimEnd(c),depth=last-c.islandMinDz()+1;
-        int[] ground=new int[width*depth];
-        var rows=Spec.CAMPPIECES;var boxes=new BlockBox[rows.length];for(int i=0;i<rows.length;i++)boxes[i]=box(rows[i]);
-        for(int i=0;i<width;i++)for(int k=0;k<depth;k++){
-            int dx=c.islandMinDx()+i,dz=c.islandMinDz()+k,x=c.originX()+dx,z=c.originZ()+dz,h=height(c,dx,dz);
-            Integer flat=null,apron=null;boolean inside=false;
-            for(int r=0;r<rows.length;r++){
-                var b=boxes[r];
-                if(x>=b.getMinX()&&x<=b.getMaxX()&&z>=b.getMinZ()&&z<=b.getMaxZ()){inside=true;if(rows[r].flatten())flat=flat==null?rows[r].y():Math.max(flat,rows[r].y());}
-                else if(rows[r].flatten()&&x>=b.getMinX()-2&&x<=b.getMaxX()+2&&z>=b.getMinZ()-2&&z<=b.getMaxZ()+2)apron=apron==null?rows[r].y():Math.max(apron,rows[r].y());
-            }
-            ground[i*depth+k]=flat!=null?flat:inside?h:apron!=null?apron:h;
-        }
+        var rows=Spec.CAMPPIECES;int[][] boxes=new int[rows.length][];boolean[] flatten=new boolean[rows.length];int[] floors=new int[rows.length];
+        for(int i=0;i<rows.length;i++){var b=box(rows[i]);boxes[i]=new int[]{b.getMinX(),b.getMaxX(),b.getMinZ(),b.getMaxZ()};flatten[i]=rows[i].flatten();floors[i]=rows[i].y();}
+        int[] ground=CampTerrain.ground(c,boxes,flatten,floors);
         long t0=System.nanoTime();
         for(int cx=(c.originX()+c.islandMinDx()-2)>>4;cx<=(c.originX()+c.islandMaxDx()+2)>>4;cx++)for(int cz=(c.originZ()+c.islandMinDz()-2)>>4;cz<=(c.originZ()+last+2)>>4;cz++)w.getChunk(cx,cz);
         long t1=System.nanoTime();
@@ -213,56 +186,39 @@ final class CampWorld {
         try{
             int flags=Arena.flags();var pos=new BlockPos.Mutable();
             for(int i=0;i<width;i++)for(int k=0;k<depth;k++){
-                int x=c.originX()+c.islandMinDx()+i,z=c.originZ()+c.islandMinDz()+k,h=ground[i*depth+k];
+                int dx=c.islandMinDx()+i,dz=c.islandMinDz()+k,x=c.originX()+dx,z=c.originZ()+dz,h=ground[i*depth+k];
                 w.getChunk(x>>4,z>>4); // load it first: getTopY answers the world bottom for a chunk that is not loaded
                 int top=w.getTopY(Heightmap.Type.WORLD_SURFACE,x,z);
                 for(int y=top;y>h;y--)if(!w.getBlockState(pos.set(x,y,z)).isAir())w.setBlockState(pos,Blocks.AIR.getDefaultState(),flags); // from the top down: nothing is left standing on a block that has gone
                 for(int y=c.islandBottomY();y<h-1;y++)w.setBlockState(pos.set(x,y,z),Blocks.STONE.getDefaultState(),flags);
-                double rock=steepness(ground,width,depth,i,k);
-                w.setBlockState(pos.set(x,h-1,z),under(rock,x,z),flags);
-                w.setBlockState(pos.set(x,h,z),top(h,rock,x,z),flags);
+                double rock=CampTerrain.steepness(ground,width,depth,i,k);
+                int kind=CampTerrain.top(h,rock,x,z);
+                w.setBlockState(pos.set(x,h-1,z),block(CampTerrain.underAt(rock,x,z),Blocks.DIRT).getDefaultState(),flags);
+                w.setBlockState(pos.set(x,h,z),block(kind,Blocks.GRASS_BLOCK).getDefaultState(),flags);
+                int plant=CampTerrain.plant(c,dx,dz,h,kind);
+                if(plant!=0)w.setBlockState(pos.set(x,h+1,z),(plant==1?Blocks.GRASS:Blocks.FERN).getDefaultState(),flags);
             }
-            long t2=System.nanoTime();
+            long t2=System.nanoTime();int trees=0;
             for(int i=0;i<width;i++)for(int k=0;k<depth;k++){
                 int dx=c.islandMinDx()+i,dz=c.islandMinDz()+k,h=ground[i*depth+k];
-                if(!inBowl(c,dx,dz)&&dz<=last-2&&h>64&&h<88&&Math.floorMod(dx*734287+dz*912931,23)==0)Arena.tree(w,c.originX()+dx,h+1,c.originZ()+dz,5,8+Math.floorMod(dx+dz,4),true,true);
+                var t=CampTerrain.tree(c,dx,dz,h,CampTerrain.steepness(ground,width,depth,i,k));
+                if(t!=null){Arena.tree(w,c.originX()+dx,h+1,c.originZ()+dz,t[1],t[0],true,true);trees++;}
             }
-            log("[Graves and Glory] camp terrain detail: chunks "+millis(t0,t1)+" ms, columns "+millis(t1,t2)+" ms, trees "+millis(t2,System.nanoTime())+" ms");
+            log("[Graves and Glory] camp terrain detail: chunks "+millis(t0,t1)+" ms, columns "+millis(t1,t2)+" ms, trees "+trees+" in "+millis(t2,System.nanoTime())+" ms");
         }finally{Arena.building=was;}
     }
 
-    /** How steep the ground is at column (i,k) of the ground array, 0 to 1: see rockOf; the height differences are those of the columns two away along z and along x, scaled to four blocks. The edges of the array look at the columns they have. */
-    static double steepness(int[] ground,int width,int depth,int i,int k){
-        int z0=Math.max(0,k-2),z1=Math.min(depth-1,k+2),x0=Math.max(0,i-2),x1=Math.min(width-1,i+2);
-        double dz=z1>z0?Math.abs(ground[i*depth+z1]-ground[i*depth+z0])*4.0/(z1-z0):0,dx=x1>x0?Math.abs(ground[x1*depth+k]-ground[x0*depth+k])*4.0/(x1-x0):0;
-        return rockOf(Math.max(dz,dx));
-    }
-    /** The 0 to 1 steepness of a slope that climbs perStride blocks over four blocks: 0 up to 1.5 (a slope of 0.375 a block), 1 from 4.5 (1.125 a block), between them in a line. The bank of the ridge (0.92 a block) is 0.73, the flanks (0.8) 0.57,
-     *  the rim (2.5) 1; the floor and the gentle swell outside the bowl are 0. */
-    static double rockOf(double perStride){return Math.min(1,Math.max(0,(perStride-1.5)/3.0));}
-    /** A number from 0 to 1 that depends on the column and on the seed alone, with no pattern along either axis. */
-    static double hash01(int x,int z,int seed){
-        int h=x*374761393+z*668265263+seed*362437;h=(h^(h>>>13))*1274126177;h^=h>>>16;
-        return (h&0xffff)/65536.0;
-    }
-    /** Patches of about six blocks, 0 to 1: two waves across each other. They are what makes the loose blocks of a slope lie in groups. */
-    static double patch(int x,int z){return 0.5+0.25*(Math.sin(x*.43+z*.29)+Math.sin(x*.27-z*.51));}
-    /** The block on top of a column: the flat block (grass, snow, podzol) on level ground; where the ground is steep, rock (0 to 1) is the share of the columns, taken in patches and by hash, that show stone or coarse dirt instead, and the steeper
-     *  the more of them are stone. The bank of the ridge, the flanks and the rim were stripes of grass over dirt (one block of each per row, the arena's slopes still are); this is a mix without rows. The camp and the margin of the arena both lay it.
-     *  Coarse dirt and not plain dirt: grass spreads over a plain dirt block that has air above it, so the patches would turn green by themselves, a few at a time, and the slope would change its look over the hours of a game. */
-    static Block mix(Block flat,double rock,int x,int z){
-        if(rock<=0||0.55*hash01(x,z,1)+0.45*patch(x,z)>=rock)return flat;
-        return hash01(x,z,2)<rock*rock*0.55?Blocks.STONE:Blocks.COARSE_DIRT;
-    }
-    /** The top block of a camp column of height h: stone from y 80, else the mix over grass. */
-    static BlockState top(int h,double rock,int x,int z){return (h>=80?Blocks.STONE:mix(Blocks.GRASS_BLOCK,rock,x,z)).getDefaultState();}
-    /** The block under the top block: dirt on the flat, and on steep ground (it is the face seen between two rows) dirt, coarse dirt or stone by hash. */
+    /** The 0 to 1 steepness of a slope that climbs perStride blocks over four blocks for the arena's margin (CampTerrain.rockOf; the camp itself uses CampTerrain.slopeRock). */
+    static double rockOf(double perStride){return CampTerrain.rockOf(perStride);}
+    static double hash01(int x,int z,int seed){return CampTerrain.hash01(x,z,seed);}
+    /** The block of a CampTerrain kind, flat being the flat block of the ground (grass, snow, podzol). */
+    static Block block(int kind,Block flat){return kind==CampTerrain.STONE?Blocks.STONE:kind==CampTerrain.ANDESITE?Blocks.ANDESITE:kind==CampTerrain.COARSE?Blocks.COARSE_DIRT:kind==CampTerrain.DIRT?Blocks.DIRT:flat;}
+    /** The block on top of a column: the flat block (grass, snow, podzol) on level ground; where the ground is steep, rock (0 to 1) is the share of the columns, taken in patches and by hash, that show stone or coarse dirt instead (CampTerrain.mix).
+     *  The camp and the margin of the arena both lay it. Coarse dirt and not plain dirt: grass spreads over a plain dirt block that has air above it, so the patches would turn green by themselves over the hours of a game. */
+    static Block mix(Block flat,double rock,int x,int z){return block(CampTerrain.mix(rock,x,z),flat);}
+    /** The block under the top block: dirt on the flat, and on steep ground (it is the face seen between two rows) dirt, coarse dirt or stone by hash (CampTerrain.under). */
     static BlockState under(double rock,int x,int z){return underBlock(rock,x,z).getDefaultState();}
-    static Block underBlock(double rock,int x,int z){
-        if(rock<0.25)return Blocks.DIRT;
-        double p=hash01(x,z,3);
-        return p<rock*0.35?Blocks.STONE:p<0.6?Blocks.COARSE_DIRT:Blocks.DIRT;
-    }
+    static Block underBlock(double rock,int x,int z){return block(CampTerrain.under(rock,x,z),Blocks.DIRT);}
 
     // ---- the people ----
 
