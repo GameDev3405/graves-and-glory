@@ -31,7 +31,7 @@ Guide for people and AI helpers changing this project. Project root: `C:\Users\k
 | `test-tools/java/gg/gravesandglory/` | Development test harness. Not in the player jar |
 | `melty.json` | Legacy Melty publish metadata. Kept for now but unused: packaging and verification never read it, so it can go stale or be deleted |
 | `README.md` | Player-facing description. Keep it accurate |
-| `UPDATE_PLAN.md` | Working log: status, evidence, decisions, open items |
+| `docs/archive/UPDATE_PLAN.md` | Archived working log up to 0.3.7; current state is `docs/HANDOFF.md` |
 | `build.gradle` | Build config, version, Loom run configs, harness tasks |
 | `dist/` | Packaged output. Old builds are in `dist/superseded/`; `bannerbound-0.2.0.zip` there still contains harness classes; do not reuse it |
 

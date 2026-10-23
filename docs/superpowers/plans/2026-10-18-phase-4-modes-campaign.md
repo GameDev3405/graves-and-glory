@@ -22,7 +22,7 @@
 - The harness lives only in `test-tools/`. Add `Phase4Checks`, `ModeMathCheck`, `MarchMathCheck`, `StoryCheck` and `t_voice` to the `forbidden` tuple in `tools/release_config.py`.
 - Working copy is CRLF (`core.autocrlf=true`). Edit dense one-line Java in place; never reformat a file or re-save it with other line endings. Add lines to the shared harness files (`test-tools/isolated-checks.gradle`, `test-tools/resources/fabric.mod.json`, `tools/release_config.py`); never reorder them.
 - Commit locally per task on `phase-4-modes-campaign`, adding files by explicit path (never `git add -A`), each message ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Never push, publish or upload.
-- No launch while Kort plays. Before every launch run `powershell -NoProfile -Command "Get-Process java,javaw -ErrorAction SilentlyContinue | Select-Object Id,StartTime,MainWindowTitle"` and read each java command line: a java process with `--gameDir` outside `C:\Users\kortt\Melty\*\work\` is Kort's, so wait; otherwise at two harness clients, wait (Kort's ruling, 2026-10-18: two harness clients may run at once, never while Kort plays). One client per agent.
+- No launch while Kort plays. Before every launch run `powershell -NoProfile -Command "Get-Process java,javaw -ErrorAction SilentlyContinue | Select-Object Id,StartTime,MainWindowTitle"` and read each java command line: a java process with `--gameDir` outside `C:\Users\kortt\Melty\*\work\` is Kort's, so wait; otherwise at four harness clients, wait (Kort's ruling, 2026-10-18: four harness clients may run at once, never while Kort plays). One client per agent.
 - Isolated runs only, always `--offline`: a fresh `GRAVES_ROADMAP_TEST_ROOT` under `C:/Users/kortt/Melty/bannerbound/work/p4/` with `run/options.txt` seeded (recipe below). Never edit anything under `work/`. Creating a fresh run root under `work/p4/` is the only write there, besides the paint templates that Phase 2's `build_skins.py --template` writes to `work/troops/` (Task 19). The staging run's files under `work/ui-concepts/storybook/stills/` are read, never changed.
 - Pillar 5 binds: nothing is done until a running game shows it by log line and screenshot. The tester opens every named screenshot and states in one sentence what it shows; a screenshot that does not show the claim fails the step even if its check passed.
 - Art gate: every scene image is real in-game footage, and nothing is painted (Kort's ruling, 2026-10-18 late). Panels are sets on the stage area, thumbnails are captured frames, and portraits are rendered from live models. Every book leaf, card, chit and kit piece, every set's grading frame in both looks (Task 18), every named character's face and skin (Task 19), every thumbnail and every portrait is graded 1 to 10 against `work/ui-concepts/GRADING-RUBRIC.md` by a Sonnet 5.5 max tester before Kort sees it, at the detail Kort set for the War Table (two to three times the first round's pixel detail). Below 9 is a fix round. Walkthrough gate (Phase 3's rule): every world piece (Task 4) is walked first-person by a Sonnet 5.5 max tester and graded on the same rubric adapted to world pieces; below 9 is a fix round.
@@ -1947,7 +1947,7 @@ git commit -m "Phase 4: the camp story: arrival lines, the guide card, the stret
 
 **Files:**
 - Create: `docs/PHASE-4-PLAYTEST.md`
-- Modify: `docs/PHASE-4-GATES.md` (sections "Final regression", "Screenshot gate" and "Kort's gate"), `docs/PROJECT-STATE.md`, `docs/PARKED.md` (append only)
+- Modify: `docs/PHASE-4-GATES.md` (sections "Final regression", "Screenshot gate" and "Kort's gate"), `docs/HANDOFF.md`, `docs/PARKED.md` (append only)
 
 **Interfaces:**
 - Consumes: every suite, check id and gate above; Phase 1's, the UI plan's, Phase 2's and Phase 3's final regression lists, as their plans' last tasks name them.
@@ -1991,10 +1991,10 @@ git commit -m "Phase 4: the camp story: arrival lines, the guide card, the stret
 - [ ] **Step 9: Append to `docs/PARKED.md`:**
   - "Chapter 1 voice recording (story 7.9 and 12.4; who voices whom is Kort's call)";
   - "A turning mill wheel for `c1_b4_after` (no command or piece moves it)".
-- [ ] **Step 10: Update `docs/PROJECT-STATE.md`:** Phase 4 built and waiting on Kort's gate, with the test roots of Steps 2 and 3.
+- [ ] **Step 10: Update `docs/HANDOFF.md`:** Phase 4 built and waiting on Kort's gate, with the test roots of Steps 2 and 3.
 - [ ] **Step 11: Commit.**
 ```bash
-git add docs/PHASE-4-PLAYTEST.md docs/PHASE-4-GATES.md docs/PROJECT-STATE.md docs/PARKED.md
+git add docs/PHASE-4-PLAYTEST.md docs/PHASE-4-GATES.md docs/HANDOFF.md docs/PARKED.md
 git commit -m "Phase 4: regression, contact sheets and Kort's gate"
 ```
   There is no merge, push or upload, and `mod_version` stays the controller's call. Hand the branch and `docs/PHASE-4-PLAYTEST.md` to the orchestrator.

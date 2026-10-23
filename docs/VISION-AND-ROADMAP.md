@@ -3,7 +3,7 @@
 Version 1, 2026-10-17. Written from Kort's answers in the orchestrator session.
 Replaces the Codex six-milestone checklist as the forward plan; that checklist
 stays as a reference for packaging and hosting detail. Current state of the
-project is in `PROJECT-STATE.md`.
+project is in `HANDOFF.md`.
 
 ## 1. The one-paragraph pitch
 

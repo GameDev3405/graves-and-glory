@@ -18,13 +18,13 @@ This private GitHub repository preserves the local Minecraft modpack project and
 | Player-facing overview | [README](../../README.md) |
 | Vision and roadmap | [Vision](../VISION-AND-ROADMAP.md) |
 | Decisions and your answers | [Questions and answers](../QUESTIONS-FOR-KORT.md) |
-| Consolidated historical checkpoint | [Project state](../PROJECT-STATE.md) |
+| Consolidated historical checkpoint | [Project state](../archive/PROJECT-STATE.md) |
 | Detailed implementation plans | [Plans](../superpowers/plans/) |
 | Design specifications | [Specs](../superpowers/specs/) |
 | Story text | [Copy](../copy/) |
 | Code, assets and game data | `src/`, `sheets/` |
 | Development and packaging instructions | [How to edit](../../HOW-TO-EDIT.md) |
-| Work log | [Update plan](../../UPDATE_PLAN.md) |
+| Work log (to 0.3.7, archived; current state is HANDOFF.md) | [Update plan](../archive/UPDATE_PLAN.md) |
 | Design mockups and artwork tools | [Design archive](../../design-archive/) |
 | Earlier Codex roadmap and audit | [October 17 archive](../archive/2026-10-17-roadmap/) |
 | Original local folders and snapshots | [Worktree inventory](2026-10-19-worktrees.json) |

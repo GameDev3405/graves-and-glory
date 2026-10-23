@@ -26,7 +26,7 @@ Anti-goals: difficulty that touches stats (health, damage, speed, gold, training
 ## 3. Constraints and what changes
 
 - Minecraft 1.20.1, Fabric, Java 17; a 50 ms server tick (the AI's share is under Budget in section 6).
-- Tests: one client per agent, at most two harness clients on the machine, never while Kort plays; isolated roots, `--offline`. Bot sims run on a dedicated server.
+- Tests: one client per agent, at most four harness clients on the machine, never while Kort plays; isolated roots, `--offline`. Bot sims run on a dedicated server.
 - Numbers live in `sheets/design.json`; `Spec.java` is generated. One `Battle` per server.
 - After Phase 2 Task 3 (`ArmyMobs`, `Combat.resolve`, `Unit.tags`) and before Phase 4, in worktree `C:\Users\kortt\Melty\bannerbound-ai`, branch `phase-ai` (call 1), cut from `phase-2-houses`. It merges `phase-3-built-world`, whose landmarks shape the grid, and later Phase 2 tasks at four seams: `Battle.spacing` becomes clearance, structure targets join the fight set, `Houses.fords` becomes a cost profile, spiders climb off the grid. `p2-ironclad-bridge`, `p2-tidecallers-bridge`, `p2-riptide-ford` and `p2-spider-wall` must still pass.
 

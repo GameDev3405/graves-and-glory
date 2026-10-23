@@ -2019,7 +2019,7 @@ Art half (after Task 5d; see Halves):
 **Files:**
 - Create: `docs/PHASE-2-PLAYTEST.md`.
 - Create: `test-tools/resources/fixtures/profile-v1-{fresh,full,invalid}.json` and `profile-v1-cache.json` (a client cache copy).
-- Modify: `docs/PROJECT-STATE.md`, `docs/PHASE-2-BALANCE.md`, `gradle.properties` (`mod_version=0.5.0`) and `docs/RELEASE-0.5.0.txt`.
+- Modify: `docs/HANDOFF.md`, `docs/PHASE-2-BALANCE.md`, `gradle.properties` (`mod_version=0.5.0`) and `docs/RELEASE-0.5.0.txt`.
 - Modify: `HOW-TO-EDIT.md` sections 3 to 5: the new classes, sheets and skin pipeline, and the rule that no class number is hard-coded.
 - Modify: `tools/preflight.py`: the composition rule becomes "exactly" for every House, now that all are fieldable.
 - Modify: `Phase2Checks.java` (suite `migration`).
@@ -2049,7 +2049,7 @@ Art half (after Task 5d; see Halves):
   - Session 4: the report's House rows and, once the levels-and-gear plan has run, a match played for levels and gear.
 
   Each item gets a yes/no box. Free-text questions: "Did it feel good?", "Which House read worst on the field?", "Is the chase pace right?". Appendix: every gate line and the economy model table.
-- [ ] **Step 7: Update `PROJECT-STATE.md` and `HOW-TO-EDIT.md`, then commit** `"Phase 2: migration verified in game, regression, 0.5.0, playtest gate"`. Do not merge or push; hand the branch and `docs/PHASE-2-PLAYTEST.md` to the orchestrator.
+- [ ] **Step 7: Update `HANDOFF.md` and `HOW-TO-EDIT.md`, then commit** `"Phase 2: migration verified in game, regression, 0.5.0, playtest gate"`. Do not merge or push; hand the branch and `docs/PHASE-2-PLAYTEST.md` to the orchestrator.
 
 ---
 

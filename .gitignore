@@ -24,3 +24,9 @@ __pycache__/
 .claude/
 work/
 .superpowers/
+
+# Generated caches and dumps
+graphify-out/cache/
+*.hprof
+hs_err_pid*
+Thumbs.db
