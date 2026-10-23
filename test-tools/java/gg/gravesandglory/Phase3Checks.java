@@ -812,8 +812,9 @@ public final class Phase3Checks implements ClientModInitializer {
      *  Checks, each failing when the sheet does not hold the five House rows (no vacuous pass): p3-houses-pieces (the five campPieces rows whose station is recruit:<house> are in Structures.LOG, placed, none missing),
      *  p3-houses-banners (each wall banner, tents (6,9,9) and the graveyard (11,4,18), and each tent's standing banner (0,7,10), at its toWorld position, of the House colour, its patterns in order, the wall banner facing the rotated south and the standing one turned with the piece),
      *  p3-houses-slots (extra: CampWorld.slot(row,0) is the first display slot the plan lists, slot 1 lies two blocks on in the direction it lists, and every slot stands on a block with a collision shape with air at feet and head),
+     *  p3-houses-silhouettes (fix round 1: the body height maps of every pair of tents, local x 1..11, z 0..7, differ by 2 or more in at least 26 of 88 columns, so each House has its own roof form),
      *  p3-houses-shaded (no slot sees the sky: World.isSkyVisible of the block above its feet is false for all 30), p3-houses-opens (CampWorld.station at every slot gives the row's station, and openCamp(p,"recruit:gilded") opens CampScreen on the recruit page with house "gilded";
-     *  the display-mob half waits for the merge), p3-houses-recruiter-gone (no campStations row recruiter, no villager tagged camp:recruit). Pictures: camp-recruit-gilded, camp-ring, camp-house-<id> for the five rows (the camera max(width,depth)+8 from the piece centre toward the ring centre, swung 30 degrees north when that spot lies in the smoke of the parade braziers,
+     *  the display-mob half waits for the merge), p3-houses-recruiter-gone (no campStations row recruiter, no villager tagged camp:recruit). Pictures: camp-recruit-gilded, camp-ring, camp-house-<id> for the five rows (the camera max(width,depth)+8 from the piece centre toward the ring centre, for a tent square on its front from width+3 at y 72 looking at y 69 (stepped up to 3 toward the ring centre), swung 30 degrees north when that spot lies in the smoke of the parade braziers,
      *  (0.5,y,-315.5) at y 67.6, looking at the centre at y 67). Not here until the merge: p3-houses-displays, p3-houses-survive, p3-houses-labels (they need ArmyMobs, the houses sheet and CampDisplays). */
     static final class Houses implements Suite {
         static final Spec.CampRow C=Spec.CAMP[0];
@@ -890,6 +891,17 @@ public final class Phase3Checks implements ClientModInitializer {
                 info.append("; ");
             }
             report("p3-houses-banners",five&&bad.length()==0,bad.length()==0?"every House banner holds its patterns and faces the front: "+info:bad.toString());
+            // p3-houses-silhouettes (fix round 1): each House tent has its own roof form. The body's height map (the top non-air block of each column, local x 1..11, z 0..7, y 0..11)
+            // of every pair of tents differs by 2 or more in at least 26 of the 88 columns (30%); dressing outside the body (x 0 and 12, the porch) does not count
+            var tentRows=new ArrayList<Spec.CampPiecesRow>();for(var r:rows)if(tent(r))tentRows.add(r);
+            var maps=new ArrayList<int[]>();var prof=new StringBuilder();
+            for(var r:tentRows){int[] m=new int[88];for(int x=1;x<=11;x++)for(int z=0;z<8;z++){int top=0;for(int y=0;y<12;y++)if(!w.getBlockState(local(r,x,y,z)).isAir())top=y;m[(x-1)*8+z]=top;}maps.add(m);
+                int peak=0;for(int v:m)peak=Math.max(peak,v);prof.append(house(r)).append(" peak y ").append(peak).append(", across the middle ");for(int x=1;x<=11;x++)prof.append(x>1?"-":"").append(m[(x-1)*8+4]);prof.append("; ");}
+            bad=new StringBuilder(count);int least=88;var pairs=new StringBuilder();
+            for(int i=0;i<maps.size();i++)for(int j=i+1;j<maps.size();j++){int d=0;for(int k=0;k<88;k++)if(Math.abs(maps.get(i)[k]-maps.get(j)[k])>=2)d++;least=Math.min(least,d);
+                pairs.append(house(tentRows.get(i))).append('/').append(house(tentRows.get(j))).append(' ').append(d).append(", ");
+                if(d<26)bad.append(house(tentRows.get(i))).append(" and ").append(house(tentRows.get(j))).append(" share a roof form: only ").append(d).append(" of 88 body columns differ by 2 or more (want 26); ");}
+            report("p3-houses-silhouettes",five&&tentRows.size()==4&&bad.length()==0,(bad.length()==0?"every pair of tents differs in its roof form: ":bad.toString())+"columns apart per pair "+pairs+"least "+least+"; "+prof);
             // p3-houses-slots and p3-houses-shaded
             bad=new StringBuilder(count);var shade=new StringBuilder(count);int slots=0,sky=0;
             for(var r:rows){
@@ -922,10 +934,12 @@ public final class Phase3Checks implements ClientModInitializer {
             views.add(new double[]{0.5,72,-291,0.5,66,-330});viewNames.add("camp-ring");
             for(var r:rows){
                 var sz=size(r);double cx=C.originX()+r.dx()+0.5,cz=C.originZ()+r.dz()+0.5,d=Math.max(sz.getX(),sz.getZ())+8,ax=0.5-cx,az=-315.5-cz,len=Math.hypot(ax,az);ax/=len;az/=len;
+                if(tent(r)){var front=Structures.rotation(r.rotation()).rotate(Direction.SOUTH);ax=front.getOffsetX();az=front.getOffsetZ();d=sz.getX()+3;} // fix round 1: a tent is photographed square on its front from width+3 and from y 72 (looking at y 69), so its roof form shows over the porch and fills the frame; from max(w,d)+8 toward the ring centre at eye height the neighbouring tents and the graveyard filled it
                 double sx=cx+ax*d,sz2=cz+az*d;
                 if(Math.min(Math.hypot(sx+4.5,sz2+315.5),Math.hypot(sx-5.5,sz2+315.5))<4){ // straight toward the ring centre the camera would stand in the smoke of the parade's two braziers (world -4.5/5.5, -315.5): it swings 30 degrees to the north, away from the parade's posts
                     double c30=Math.cos(Math.toRadians(30)),s30=Math.sin(Math.toRadians(30));double[] ra={ax*c30-az*s30,ax*s30+az*c30},rb={ax*c30+az*s30,-ax*s30+az*c30};var o=ra[1]<rb[1]?ra:rb;ax=o[0];az=o[1];}
-                views.add(new double[]{cx+ax*d,67.6,cz+az*d,cx,67,cz});viewNames.add("camp-house-"+house(r));
+                double side=0;if(tent(r)){double px=-az,pz=ax,toward=(0.5-cx)*px+(-315.5-cz)*pz;side=Math.signum(toward)*Math.min(3,Math.abs(toward));sx=px*side;sz2=pz*side;}else{sx=0;sz2=0;} // a tent's camera steps up to 3 blocks sideways toward the ring centre, out from behind the neighbour's porch
+                views.add(new double[]{cx+ax*d+sx,tent(r)?72:67.6,cz+az*d+sz2,cx,tent(r)?69:67,cz});viewNames.add("camp-house-"+house(r));
             }
         }
     }
