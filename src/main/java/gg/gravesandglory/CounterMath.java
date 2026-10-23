@@ -91,28 +91,50 @@ public final class CounterMath {
     /** One counter line of a troop card: the row, whether it hits the troop (incoming) or the troop deals it (outgoing), its multiplier and its text. */
     public record CardRow(String id, boolean incoming, double multiplier, String text) {}
     /**
-     * The counter rows a troop card shows (Task 12), in sheet order: every row whose own tag side names one of the troop's tags (troops.tags, its
-     * ability, its group: ArmyMobs.tags) and that applies on the card's canonical hit, through applied. Incoming: the row's attacker tags on the
-     * troop from the front, its shield raised if it has one, braced (holding). Outgoing: the troop on the row's target tags from the front, a
-     * shield there raised, the troop on Hold and out of the sky. Rows of multiplier 1 and an "any" tag side are left out.
+     * The counter rows a troop card shows (Task 12, review S1 of fix round 1), in sheet order: every row whose own tag side names one of the
+     * troop's tags and that applies on the card's canonical hit, through applied. The troop's tags are troops.tags, its ability and its group
+     * (ArmyMobs.tags); on the outgoing side they also hold its attack kind's tags (kindTags of attackKind: melee, arrow and shot, or bolt, shot
+     * and magic), as Combat.resolve adds them at hit time.
+     * Incoming: the row's attacker tags on the troop from the front, its shield raised if it has one, braced (holding). Outgoing: the troop on
+     * the row's target tags from the front, a shield there raised, the troop on Hold and out of the sky. A row a charge keys (charge,
+     * charge_impact) is read on a canonical charge instead, the first blow of a fresh Charge, against every row, so a row that replaces it
+     * (C5 over C6) wins as it does in a fight. Rows of multiplier 1 and an "any" tag side are left out.
      */
-    public static List<CardRow> cardRows(Set<String> own, Spec.CountersRow[] rows) {
+    public static List<CardRow> cardRows(Set<String> own, String kind, Spec.CountersRow[] rows) {
         List<CardRow> out = new ArrayList<>();
+        Set<String> striking = new HashSet<>(own);
+        striking.addAll(kindTags(kind));
         Set<String> braced = new HashSet<>(own);
         braced.add("holding");
         for (var r : rows) {
             if (r.multiplier() == 1.0) continue;
-            var one = new Spec.CountersRow[]{r};
-            if (!r.attackerTag().equals("any") && tagged(r.attackerTag(), own)) {
+            boolean charge = r.condition().equals("charge") || r.condition().equals("charge_impact");
+            var against = charge ? rows : new Spec.CountersRow[]{r};
+            if (!r.attackerTag().equals("any") && tagged(r.attackerTag(), striking)) {
                 Set<String> to = parts(r.targetTag());
-                if (applied(new Hit(own, to, 0, to.contains("shield"), false, false, true, true, false), one).contains(r.id())) out.add(new CardRow(r.id(), false, r.multiplier(), r.text()));
+                var hit = charge ? new Hit(striking, to, 0, to.contains("shield"), true, true, false, false, false) : new Hit(striking, to, 0, to.contains("shield"), false, false, true, true, false);
+                if (applied(hit, against).contains(r.id())) out.add(new CardRow(r.id(), false, r.multiplier(), r.text()));
             }
             if (!r.targetTag().equals("any") && tagged(r.targetTag(), braced) && !tagged(r.targetTag(), Set.of("holding"))) {
-                if (applied(new Hit(parts(r.attackerTag()), braced, 0, own.contains("shield"), false, false, false, false, false), one).contains(r.id())) out.add(new CardRow(r.id(), true, r.multiplier(), r.text()));
+                var hit = new Hit(parts(r.attackerTag()), braced, 0, own.contains("shield"), charge, charge, false, false, false);
+                if (applied(hit, against).contains(r.id())) out.add(new CardRow(r.id(), true, r.multiplier(), r.text()));
             }
         }
         return out;
     }
+    /** The tags a hit of an attack kind adds to its attacker (Combat.resolve reads these): melee; arrow and shot; bolt, shot and magic; blight and magic; slam and melee. */
+    public static Set<String> kindTags(String kind) {
+        return switch (kind) {
+            case "melee" -> Set.of("melee");
+            case "arrow" -> Set.of("arrow", "shot");
+            case "bolt" -> Set.of("bolt", "shot", "magic");
+            case "blight" -> Set.of("blight", "magic");
+            case "slam" -> Set.of("slam", "melee");
+            default -> Set.of();
+        };
+    }
+    /** A troop's main attack kind, as Abilities fires it: melee for a troop that is not ranged, a bolt for a magic one (Abilities.visual), else an arrow (a trident lands as an arrow). */
+    public static String attackKind(Spec.TroopsRow t) { return !t.ranged() ? "melee" : t.magic() ? "bolt" : "arrow"; }
     static Set<String> parts(String rule) {
         Set<String> out = new HashSet<>();
         for (String part : rule.split("\\+")) if (!part.equals("any")) out.add(part);

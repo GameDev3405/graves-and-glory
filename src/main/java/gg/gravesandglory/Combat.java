@@ -47,14 +47,7 @@ public final class Combat {
         boolean area = kind.equals("blight") || kind.equals("slam") || secondary && kind.equals("melee");
 
         Set<String> from = new HashSet<>(attacker.tags);
-        switch (kind) {
-            case "melee" -> from.add("melee");
-            case "arrow" -> { from.add("arrow"); from.add("shot"); }
-            case "bolt" -> { from.add("bolt"); from.add("shot"); from.add("magic"); }
-            case "blight" -> { from.add("blight"); from.add("magic"); }
-            case "slam" -> { from.add("slam"); from.add("melee"); }
-            default -> {}
-        }
+        from.addAll(CounterMath.kindTags(kind)); // the troop card's counter lines read the same tags (CounterMath.cardRows)
         if (!from.contains("siege")) from.add("nonsiege");
         Set<String> to = victim == null ? new HashSet<>() : new HashSet<>(victim.tags);
         if (structure(target)) to.add("structure");

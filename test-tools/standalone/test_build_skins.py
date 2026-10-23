@@ -984,6 +984,27 @@ class BuildSkinsChecks(unittest.TestCase):
                 for want in wants:
                     self.assertIn(want, said)
 
+    def test_veteran_trim_under_relief(self):
+        """Task 12 review minor 3: a trim texel under a relief voxel is hidden up close (TroopDepth.near draws the voxel over the
+        flat face), so the export names how many lie under each skin's relief, and names none when no texel does."""
+        def run(root):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                export_assets(root)
+            return out.getvalue()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            relief = relief_png(root, 'knight_s1_r.png', [(22, 22), (23, 22)])
+            trim = relief_png(root, 'knight_veteran.png', [(22, 22), (24, 22), (25, 22)])
+            self.assertEqual(build_skins.trim_under_relief(trim, {'1': relief}), {'1': [(22, 22)]})
+            said = run(root)
+            self.assertIn('knight: knight_veteran.png: 1 of 3 trim texels lie under the s1 relief', said)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            relief_png(root, 'knight_s1_r.png', [(23, 22)])
+            relief_png(root, 'knight_veteran.png', [(22, 22), (24, 22)])
+            self.assertNotIn('under the s1 relief', run(root))
+
     def test_relief_template(self):
         """--template's relief sheet: allowed faces in their hue at 40%, a texel whose voxel would overlap another box
         hatched red, nothing where no skin box lies."""

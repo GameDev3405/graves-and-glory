@@ -54,26 +54,30 @@ final class ArmyCards {
         });
     }
     // ---- the troop card's counter lines (Task 12) ----
-    /** The counter rows a troop's card shows (CounterMath.cardRows on its counter tags, ArmyMobs.tags), in sheet order. */
-    static List<CounterMath.CardRow> counterRows(Spec.TroopsRow t){return CounterMath.cardRows(ArmyMobs.tags(t),Spec.COUNTERS);}
+    /** The counter rows a troop's card shows (CounterMath.cardRows on its counter tags, ArmyMobs.tags, and its attack kind), in sheet order. */
+    static List<CounterMath.CardRow> counterRows(Spec.TroopsRow t){return CounterMath.cardRows(ArmyMobs.tags(t),CounterMath.attackKind(t),Spec.COUNTERS);}
     /** Whether a counter line favours the troop: a blow it takes softened, or a blow it deals sharpened. */
     static boolean favours(CounterMath.CardRow r){return r.incoming()?r.multiplier()<1:r.multiplier()>1;}
-    /** Ember red: a counter line against the troop (its swords crossed point down, so the state is not colour alone). */
+    /** Ember red: a counter line against the troop (its swords are broken, so the state is not colour alone). */
     static final int AGAINST=0xffd8826c;
     /** A 9x9 crossed-swords glyph, blades up: pommels, crossguards and grips at the bottom. */
     private static final String[] SWORDS={"x.......x",".x.....x.","..x...x..","...x.x...","....x....",".x.x.x.x.","..x...x..",".x.....x.","x.......x"};
-    /** The crossed-swords glyph of a counter line at (x, y), drawn with fills; flipped (blades down) for a line against the troop. */
+    /** A line against the troop: the same swords with both blades broken off below their tips (rows 2 and 3 empty), a shape and not only a colour (review minor 2). */
+    private static final String[] BROKEN={"x.......x",".x.....x.",".........",".........","....x....",".x.x.x.x.","..x...x..",".x.....x.","x.......x"};
+    /** The crossed-swords glyph of a counter line at (x, y), drawn with fills; broken (down is true) for a line against the troop. */
     static void swords(DrawContext g,int x,int y,int colour,boolean down){
-        for(int j=0;j<9;j++){String row=SWORDS[down?8-j:j];for(int i=0;i<9;i++)if(row.charAt(i)=='x')g.fill(x+i,y+j,x+i+1,y+j+1,colour);}
+        var mask=glyph(!down);for(int j=0;j<9;j++){String row=mask[j];for(int i=0;i<9;i++)if(row.charAt(i)=='x')g.fill(x+i,y+j,x+i+1,y+j+1,colour);}
     }
+    /** The 9x9 mask of a counter line's glyph: for a line in the troop's favour, or against it. */
+    static String[] glyph(boolean good){return good?SWORDS:BROKEN;}
     /** One counter line as the card words it: "Takes x0.35 / Raised shields stop most arrows." or "Deals x1.60 / ...". */
     static String counterText(CounterMath.CardRow r){
         String m=String.format(Locale.ROOT,r.multiplier()==Math.rint(r.multiplier()*10)/10?"%.1f":"%.2f",r.multiplier());
         return (r.incoming()?"Takes x":"Deals x")+m+"  "+r.text();
     }
     /**
-     * Draws a troop's counter lines from y, one a line: the crossed swords (brass, blades up, for a line in its favour; ember,
-     * blades down, against it) and the line's words, trimmed to w. Returns the ids of the rows drawn, in order.
+     * Draws a troop's counter lines from y, one a line: the crossed swords (brass and whole for a line in its favour; ember and
+     * broken against it) and the line's words, trimmed to w. Returns the ids of the rows drawn, in order.
      */
     static List<String> counterLines(DrawContext g,TextRenderer f,Spec.TroopsRow t,int x,int y,int w){
         List<String> drawn=new ArrayList<>();

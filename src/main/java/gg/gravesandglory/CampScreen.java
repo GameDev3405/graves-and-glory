@@ -25,7 +25,7 @@ final class CampScreen extends ArmyScreen {
     int number(String name,int fallback){return social().has(name)?social().get(name).getAsInt():fallback;}
     JsonArray rows(String name){return social().has(name)?social().getAsJsonArray(name):new JsonArray();}
     void action(String cmd){if(System.currentTimeMillis()-requestAt<300)return;requestAt=System.currentTimeMillis();send(cmd);}
-    void page(String next){page=next;offset=0;clearAndInit();}
+    void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;page=next;offset=0;clearAndInit();} // leaving a page ends its roll card (review minor 4)
     String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready+RecruitPages.stateKey(CampaignClient.profile);}
     @Override protected void init(){
         scale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/760f,client.getWindow().getScaledHeight()/460f));width=(int)(client.getWindow().getScaledWidth()/scale);height=(int)(client.getWindow().getScaledHeight()/scale);key=state();code=null;
@@ -139,13 +139,13 @@ final class CampScreen extends ArmyScreen {
         // A long name (a Legendary's title) wraps onto a second line, and everything under it moves down a line.
         var title=textRenderer.wrapLines(Text.literal(ArmyMobs.stageName(troop,card.owned()?card.stage():1)),room);int more=title.size()>1?10:0;
         for(int i=0;i<Math.min(2,title.size());i++)g.drawText(textRenderer,title.get(i),tx,y+10+i*10,card.owned()?DarkUi.GOLD:DarkUi.MUTED,false);
-        line(g,cap(troop.rarity()),tx,y+24+more,rarityColour(troop.rarity()),room);
+        var rows=RecruitPages.cardRows(more>0);line(g,cap(troop.rarity()),tx,y+rows.rarity(),rarityColour(troop.rarity()),room);
         if(card.owned()){
-            for(int i=0;i<Spec.RECRUITMENT[0].maxStars();i++){int px=tx+i*11;g.drawBorder(px,y+40+more,8,8,DarkUi.GOLD);if(i<card.stars())g.fill(px+1,y+41+more,px+7,y+47+more,DarkUi.GOLD);}
-            line(g,card.copies()+(card.copies()==1?" copy":" copies"),tx,y+54+more,DarkUi.MUTED,room);
+            for(int i=0;i<Spec.RECRUITMENT[0].maxStars();i++){int px=tx+i*11;g.drawBorder(px,y+rows.pips(),8,8,DarkUi.GOLD);if(i<card.stars())g.fill(px+1,y+rows.pips()+1,px+7,y+rows.pips()+7,DarkUi.GOLD);}
+            line(g,card.copies()+(card.copies()==1?" copy":" copies"),tx,y+rows.copies(),DarkUi.MUTED,room);
         }else{
-            line(g,"LOCKED",tx,y+44+more,DarkUi.PAPER,room);
-            line(g,troop.rarity().equals("legendary")||weight(troop)<=0?"Comes from a Pact":String.format(java.util.Locale.ROOT,"%.1f",100.0*weight(troop)/Math.max(1,poolTotal))+"% a roll",tx,y+58+more,DarkUi.MUTED,room);
+            line(g,"LOCKED",tx,y+rows.locked(),DarkUi.PAPER,room);
+            line(g,troop.rarity().equals("legendary")||weight(troop)<=0?"Comes from a Pact":String.format(java.util.Locale.ROOT,"%.1f",100.0*weight(troop)/Math.max(1,poolTotal))+"% a roll",tx,y+rows.odds(),DarkUi.MUTED,room);
         }
         g.getMatrices().pop();
     }
@@ -253,14 +253,15 @@ final class CampScreen extends ArmyScreen {
             line(g,"Dawn "+CampaignClient.padDawn+" / 4   |   Dusk "+CampaignClient.padDusk+" / 4   |   "+CampaignClient.padCountdown+"s",x,116,DarkUi.GOLD,w);
             line(g,"Vote while on a ready pad. Most votes wins; ties use map order.",x,133,DarkUi.MUTED,w);
         }
-        boolean card=page.equals("recruit")&&CampaignClient.rollShowing(); // the roll card covers the page: nothing under it takes hover or shows a tooltip
-        line(g,CampaignClient.notice,x,height-42,DarkUi.GOLD,w);super.render(g,card?-1:(int)(mx/scale),card?-1:(int)(my/scale),delta);
-        if(page.equals("recruit")&&CampaignClient.rollShowing())RecruitPages.rollCard(g,textRenderer,x-11,80,w+22,height-141);
-        else if(page.equals("recruit")&&CampaignClient.revealUntil>System.currentTimeMillis()){g.getMatrices().push();g.getMatrices().translate(0,0,300);DarkUi.frame(g,x+30,180,w-60,100);line(g,"RECRUITMENT CONFIRMED",x+50,201,DarkUi.GOLD,w-100);line(g,CampaignClient.revealUnit+" has joined your collection.",x+50,226,DarkUi.PAPER,w-100);line(g,"Place it in your banner in the war council / Skip reveal above to continue",x+50,251,DarkUi.MUTED,w-100);g.getMatrices().pop();}
+        boolean reveals=page.equals("recruit")||page.equals("troop"),card=reveals&&CampaignClient.rollShowing(); // the roll card covers the screen: nothing under it takes hover or shows a tooltip
+        if(!card)line(g,CampaignClient.notice,x,height-42,DarkUi.GOLD,w); // the card says what the notice would (review Q1)
+        super.render(g,card?-1:(int)(mx/scale),card?-1:(int)(my/scale),delta);
+        if(card){RecruitPages.rollOn=page;RecruitPages.noticeShown=false;RecruitPages.rollCard(g,textRenderer,0,0,width,height);} // dims the whole screen, nav and header too: one focal point
+        else if(reveals&&CampaignClient.revealUntil>System.currentTimeMillis()){g.getMatrices().push();g.getMatrices().translate(0,0,300);DarkUi.frame(g,x+30,180,w-60,100);line(g,"RECRUITMENT CONFIRMED",x+50,201,DarkUi.GOLD,w-100);line(g,CampaignClient.revealUnit+" has joined your collection.",x+50,226,DarkUi.PAPER,w-100);line(g,"Place it in your banner in the war council / Skip reveal above to continue",x+50,251,DarkUi.MUTED,w-100);g.getMatrices().pop();}
         g.getMatrices().pop();
     }
     @Override public boolean mouseClicked(double x,double y,int button){
-        if(page.equals("recruit")&&CampaignClient.rollShowing()){CampaignClient.revealUntil=0;return true;} // any click ends the roll card, as Skip reveal does
+        if((page.equals("recruit")||page.equals("troop"))&&CampaignClient.rollShowing()){CampaignClient.revealUntil=0;return true;} // any click ends the roll card, as Skip reveal does
         return super.mouseClicked(x/scale,y/scale,button);}
     @Override public boolean mouseReleased(double x,double y,int button){return super.mouseReleased(x/scale,y/scale,button);}
     @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){return super.mouseDragged(x/scale,y/scale,button,dx/scale,dy/scale);}

@@ -82,13 +82,27 @@ final class RecruitPages {
         actions.addAll(cards);return actions;
     }
     static final int CARD_Y=152,CARD_H=96;
+    /**
+     * A recruit card's text rows (y from the card's top) under its name: the rarity, the stars' pips, the copies, LOCKED and the odds
+     * line. A two-line name (a Legendary's title) closes them up rather than pushing them down, so every row ends above the action
+     * button at y + CARD_H - 24 (review minor 1: at virtual width 817 three Legendary titles wrap).
+     */
+    record CardRows(int rarity,int pips,int copies,int locked,int odds){}
+    static CardRows cardRows(boolean twoLine){return twoLine?new CardRows(32,44,56,44,56):new CardRows(24,40,54,44,58);}
+    /** The lowest pixel a recruit card's words reach for a troop (owned or not) in a card whose name has room px: its longest stage name wrapped. */
+    static int cardTextBottom(TextRenderer f,Spec.TroopsRow t,boolean owned,int room){
+        boolean two=false;for(int s=1;s<=3;s++)two|=f.wrapLines(Text.literal(ArmyMobs.stageName(t,s)),room).size()>1;var r=cardRows(two);
+        return owned?Math.max(r.pips()+8,r.copies()+9):r.odds()+9;
+    }
 
     // ---- what was drawn, for the harness (suite screens reads it, never re-derives it) ----
     /** The last roll card drawn: its troop, its label, the stars it fills from and to, the pips filled, the pip growing (-1 none) and how far, and its outcome line. */
     record SeenRoll(String troop,String label,int from,int to,int filled,int growing,float part,String outcome){}
     /** The last troop page drawn: its troop, the stars drawn (-1 for a troop not owned), the level names, the three ability lines, the Mastery bars drawn, the beats and beaten-by lines and the counter rows drawn with their glyphs. */
-    record SeenTroop(String troop,int stars,List<String> levels,List<String> abilities,int masteryBars,String beats,String beatenBy,List<String> glyphs){}
+    record SeenTroop(String troop,int stars,List<String> levels,List<String> abilities,int masteryBars,String beats,String beatenBy,List<String> glyphs,List<String> counts){}
     static volatile SeenRoll seenRoll;static volatile SeenTroop seenTroop;
+    /** The roll card's last dim (x, y, w, h in CampScreen's space), the page it was drawn over, and whether the last camp frame drew the notice line. */
+    static volatile int[] rollDim;static volatile String rollOn;static volatile boolean noticeShown;
 
     // ---- the roll result card ----
     /** Stars as pips: max boxes of size s, the first filled ones filled, the box at index growing filled by part (0 to 1) from its foot. */
@@ -103,14 +117,14 @@ final class RecruitPages {
         for(int c=o.copies+1;c<64;c++)if(RosterMath.starFromCopies(c,r)>o.stars)return c;return 0;
     }
     /**
-     * The roll result card over the recruit page (the reveal's focal point): the cards behind dimmed; the portrait on the House
+     * The roll result card over the recruit or troop page (the reveal's focal point): the whole screen behind dimmed (CampScreen passes it); the portrait on the House
      * accent; NEW RECRUIT or DUPLICATE; the name and rarity; the stars as large pips filling from starsBefore to starsAfter over
      * CampaignClient.ROLL_FILL_MS; and what the copy did. Skip reveal ends it.
      */
     static void rollCard(DrawContext g,TextRenderer f,int areaX,int areaY,int areaW,int areaH){
         var r=CampaignClient.lastRoll;var t=r==null?null:ArmyCards.spec(r.troop());if(t==null)return;
         g.getMatrices().push();g.getMatrices().translate(0,0,300);
-        g.fill(areaX,areaY,areaX+areaW,areaY+areaH,0xd00d1215);
+        g.fill(areaX,areaY,areaX+areaW,areaY+areaH,0xe60d1215);rollDim=new int[]{areaX,areaY,areaW,areaH}; // 90%: the page behind reads as shapes, not words
         int cw=Math.min(420,areaW-40),ch=156,cx=areaX+(areaW-cw)/2,cy=areaY+(areaH-ch)/2;
         DarkUi.frame(g,cx,cy,cw,ch);g.drawBorder(cx,cy,cw,ch,DarkUi.GOLD);g.drawBorder(cx+2,cy+2,cw-4,ch-4,0xff5a4a30);
         var row=ArmyCards.house(t);int accent=row==null?0x4c9391:row.accent()&0xffffff;
@@ -190,19 +204,19 @@ final class RecruitPages {
             var wrapped=wrap(f,lines.get(i).isEmpty()?"No change at this level":lines.get(i),rw-20,2);int ly=ry;for(var l:wrapped){g.drawText(f,l,rx+20,ly,i==0?DarkUi.PAPER:0xffd9d3c7,false);ly+=10;}ry=Math.max(ry+12,ly+2);}
         ry+=4;head(g,f,"MASTERY",rx,ry,rw);ry+=13;int level=o==null?0:o.mastery,bars=0;
         int col=0;for(var m:Spec.MASTERY)col=Math.max(col,f.getWidth(masteryReward(m)));col+=12;
-        int kw=f.getWidth("400/400 kills"),bw=f.getWidth("60/60 battles"),room=Math.max(48,rw-20-col-kw-bw-6-6-10),killBar=room*56/96,fightBar=room-killBar;
+        int kw=f.getWidth("400/400 kills"),bw=f.getWidth("60/60 survived"),room=Math.max(48,rw-20-col-kw-bw-6-6-10),killBar=room*56/96,fightBar=room-killBar;List<String> counts=new ArrayList<>();
         for(var m:Spec.MASTERY){boolean reached=level>=m.level();String n=DarkUi.roman(m.level());
             g.drawText(f,n,rx,ry,reached?DarkUi.GOLD:DarkUi.MUTED,false);g.drawText(f,masteryReward(m),rx+20,ry,reached?DarkUi.PAPER:DarkUi.MUTED,false);
             int kills=o==null?0:o.kills,fought=o==null?0:o.survived;int bx=rx+20+col;
             bar(g,bx,ry+3,killBar,kills,m.kills());bars++;g.drawText(f,Math.min(kills,m.kills())+"/"+m.kills()+" kills",bx+killBar+6,ry,DarkUi.MUTED,false);
-            int bx2=bx+killBar+6+kw+10;bar(g,bx2,ry+3,fightBar,fought,m.matches());bars++;g.drawText(f,Math.min(fought,m.matches())+"/"+m.matches()+" battles",bx2+fightBar+6,ry,DarkUi.MUTED,false);
+            int bx2=bx+killBar+6+kw+10;bar(g,bx2,ry+3,fightBar,fought,m.matches());bars++;String count=Math.min(fought,m.matches())+"/"+m.matches()+" survived";g.drawText(f,count,bx2+fightBar+6,ry,DarkUi.MUTED,false);counts.add(count);
             ry+=13;}
         ry+=5;head(g,f,"MATCHUPS",rx,ry,rw);ry+=13;var notes=ArmyCards.notes(t);
         if(notes!=null){for(String[] kv:new String[][]{{"Beats",notes.beats()},{"Beaten by",notes.beatenBy()}}){int lw=f.getWidth("Beaten by")+8;g.drawText(f,kv[0],rx,ry,DarkUi.GOLD,false);
             var wrapped=wrap(f,kv[1],rw-lw,2);for(var l:wrapped){g.drawText(f,l,rx+lw,ry,DarkUi.PAPER,false);ry+=10;}ry+=2;}}
         ry+=3;var glyphs=ArmyCards.counterLines(g,f,t,rx,ry,rw);
         g.getMatrices().pop();
-        seenTroop=new SeenTroop(t.id(),o==null?-1:o.stars,names,lines,bars,notes==null?"":notes.beats(),notes==null?"":notes.beatenBy(),glyphs);
+        seenTroop=new SeenTroop(t.id(),o==null?-1:o.stars,names,lines,bars,notes==null?"":notes.beats(),notes==null?"":notes.beatenBy(),glyphs,counts);
     }
 
     // ---- the House picker of the contracts and chapter pages ----

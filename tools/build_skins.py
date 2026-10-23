@@ -1165,6 +1165,21 @@ def trim_check(trim, skins, troop, name):
         fail('%s: %s covers %d texels, over %d%% of the %d the stage 1 skin paints' % (troop, name, n, TRIM_SHARE * 100, base))
 
 
+def trim_under_relief(trim, reliefs):
+    """{key: [(x, y)]} of the trim's opaque texels that lie under an opaque texel of each relief layer (key: the skin's stage).
+    Within TroopDepth.near a relief voxel stands one texel proud and covers the trim on the flat face there, so up close those
+    trim texels do not show (Task 12 review minor 3). Keys with none are left out."""
+    tp = trim.load()
+    w, h = trim.size
+    out = {}
+    for key in sorted(reliefs):
+        rp = reliefs[key].load()
+        under = [(x, y) for y in range(h) for x in range(w) if tp[x, y][3] and rp[x, y][3]]
+        if under:
+            out[key] = under
+    return out
+
+
 def relief_sources(cat, troop, own, extra):
     """{key: file} of the troop's relief files: none, or one for every own skin (the stages' keys). The veteran trim is an
     overlay and takes none."""
@@ -1489,6 +1504,10 @@ def troop_outputs(cat, troop, weapon_lit):
             tint(im, '%s: %s' % (troop, f), cat.factions)
         if f == extra['veteran']:
             trim_check(im, [read_png(folder / own[s], troop) for s in sorted(own)], troop, f)
+            n = sum(1 for a in im.tobytes()[3::4] if a)
+            for key, under in trim_under_relief(im, {k: read_png(folder / reliefs[k], troop) for k in reliefs}).items():
+                print('build_skins: note: %s: %s: %d of %d trim texels lie under the s%s relief (hidden within TroopDepth.near)'
+                      % (troop, f, len(under), n, key))
         key = key_of.get(f)
         if key in reliefs:
             relief = read_png(folder / reliefs[key], troop)

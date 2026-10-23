@@ -47,6 +47,8 @@ public final class CampaignClient {
     static long rollElapsed(){return revealHeldAt>=0?revealHeldAt:System.currentTimeMillis()-rollAt;}
     /** Whether the reveal on screen is the last roll's card: it arrived with this reveal and Skip reveal has not ended it. */
     static boolean rollShowing(){return lastRoll!=null&&revealUntil>System.currentTimeMillis()&&revealUntil==rollAt+REVEAL_MS;}
+    /** Forgets the last roll and the first-snapshot mark when the client leaves a server: a restarted server counts n from 1 again, and its first snapshot must not reveal (review minor 5). */
+    static void forget(){lastRoll=null;rollAt=0;received=false;revealUntil=0;}
     /** Reads the snapshot's lastRoll; a new one (another n) after the first snapshot starts the reveal. */
     static void acceptRoll(JsonObject j,boolean first){
         if(!j.has("lastRoll"))return;var r=j.getAsJsonObject("lastRoll");if(!r.has("n")||!r.has("troop"))return;

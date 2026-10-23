@@ -180,14 +180,25 @@ public final class HousesCheck {
         check(pactChapters(rows, 3, Set.of()).equals(List.of(1, 2)), "pacts: two chapters cleared at once pay two, in chapter order");
         check(pactChapters(Arrays.asList(Spec.CAMPAIGNBATTLES), Spec.CAMPAIGNBATTLES.length, Set.of()).size() == Arrays.stream(Spec.CAMPAIGNBATTLES).map(Spec.CampaignBattlesRow::chapter).distinct().count(), "pacts: the sheet's Long March cleared pays one Pact a chapter");
     }
-    /** The troop card's counter lines (Task 12): CounterMath.cardRows on a canonical frontal hit, the troop's shield raised; rows of multiplier 1 left out. */
+    /**
+     * The troop card's counter lines (Task 12, fix round 1): CounterMath.cardRows with the troop's attack-kind tags on its outgoing side, on a
+     * canonical frontal hit (a shield raised) and, for the rows a charge keys, a canonical charge; rows of multiplier 1 and any-tag sides left out.
+     */
     static void cardRows() {
-        var templar = CounterMath.cardRows(Set.of("shield", "infantry"), Spec.COUNTERS);
-        check(templar.stream().map(CounterMath.CardRow::id).toList().equals(List.of("C1", "C3", "C14", "C15")) && templar.stream().allMatch(CounterMath.CardRow::incoming), "card rows: the Templar is hit by C1 and C3 (its raised shield), C14 and C15; C2 (lowered), C4 (x1) and the any-target rows are left out: " + templar);
-        var spear = CounterMath.cardRows(Set.of("spear", "brace", "infantry"), Spec.COUNTERS);
-        check(spear.stream().map(r -> r.id() + (r.incoming() ? "<" : ">")).toList().equals(List.of("C8>", "C9<", "C18c>")), "card rows: a braced spear beats beasts (C8) and a charge (C18c), and beasts falter against it (C9): " + spear);
-        var archer = CounterMath.cardRows(Set.of("steady", "ranged"), Spec.COUNTERS);
-        check(archer.stream().map(r -> r.id() + (r.incoming() ? "<" : ">")).toList().equals(List.of("C7<", "C18a>")) && archer.get(0).multiplier() == 1.3, "card rows: archers fear cavalry (C7) and shoot true on Hold (C18a): " + archer);
+        var templar = ids(CounterMath.cardRows(Set.of("shield", "infantry"), "melee", Spec.COUNTERS));
+        check(templar.equals(List.of("C1<", "C3>", "C3<", "C5>", "C14<", "C15<")), "card rows: the Templar is hit by C1 and C3 (its raised shield), C14 and C15, and as a melee troop its blows are blunted by shields (C3) and its charge crashes into archers (C5, which replaces C6): " + templar);
+        var spear = ids(CounterMath.cardRows(Set.of("spear", "brace", "infantry"), "melee", Spec.COUNTERS));
+        check(spear.equals(List.of("C3>", "C5>", "C8>", "C9<", "C18c>")), "card rows: a braced spear beats beasts (C8) and a charge (C18c), beasts falter against it (C9), and its blows and charge read C3 and C5: " + spear);
+        var archerRows = CounterMath.cardRows(Set.of("steady", "ranged"), "arrow", Spec.COUNTERS);
+        var archer = ids(archerRows);
+        check(archer.equals(List.of("C1>", "C5<", "C7<", "C18a>")) && archerRows.get(1).multiplier() == 1.5 && archerRows.get(2).multiplier() == 1.3, "card rows: an archer's arrows are stopped by raised shields (C1), a charge crashes into it (C5, x1.5) and cavalry run it down (C7, x1.3), and it shoots true on Hold (C18a): " + archer);
+        var mage = ids(CounterMath.cardRows(Set.of("ranged"), "bolt", Spec.COUNTERS));
+        check(mage.equals(List.of("C5<", "C7<")), "card rows: a bolt is magic, so shields do not touch it (C4 is x1, left out), and a charge and cavalry still catch the mage (C5, C7): " + mage);
+        check(CounterMath.kindTags("arrow").equals(Set.of("arrow", "shot")) && CounterMath.kindTags("bolt").equals(Set.of("bolt", "shot", "magic")) && CounterMath.kindTags("melee").equals(Set.of("melee")) && CounterMath.kindTags("slam").equals(Set.of("slam", "melee")) && CounterMath.kindTags("blight").equals(Set.of("blight", "magic")), "card rows: the attack-kind tags are the ones Combat.resolve adds");
+        boolean kinds = true; for (var t : Spec.TROOPS) kinds &= CounterMath.attackKind(t).equals(!t.ranged() ? "melee" : t.magic() ? "bolt" : "arrow");
+        check(kinds, "card rows: a troop's attack kind is melee, a bolt for a magic troop, else an arrow");
+    }
+    static List<String> ids(List<CounterMath.CardRow> rows) { return rows.stream().map(r -> r.id() + (r.incoming() ? "<" : ">")).toList();
     }
     static Spec.CampaignBattlesRow march(String id, int chapter, int order) { return new Spec.CampaignBattlesRow(id, chapter, order, id, 0, 1, "easy", false, "", ""); }
     /** The re-authored Founders chapter (spec 4.8) and the House-aware contract claims (spec 4.5), through Progression.claim alone. */

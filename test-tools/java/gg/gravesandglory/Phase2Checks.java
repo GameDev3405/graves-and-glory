@@ -4329,10 +4329,12 @@ public final class Phase2Checks implements ClientModInitializer {
         static final int[][] LIT_AT={{0,0},{-6,0},{6,0},{0,-3},{0,6},{-6,12},{0,12},{6,12}};
         int darkFor,awayFor,recoveries;Vec3d back;float backYaw,backPitch;
         /**
-         * Client: lit(c) for a suite's first step, with the recovery the Task 5 review asked for (minor 5). Sky light 0 at every
-         * LIT_AT point for 600 ticks with the terrain built means this client never got the platform's light, and waiting does not
-         * mend that: the spectator goes 400 blocks east (out of view distance, inside the arena) and back to the camera 40 ticks
-         * later, so the client takes the platform's chunks and their light again. "[p2-light]" lines mark a recovered run.
+         * Client: lit(c) for a suite's first step, with the recovery the Task 5 review asked for (minor 5). Sky light 0 at a
+         * LIT_AT point (both layers) for 600 ticks with the terrain built means this client never got that chunk's light, and waiting
+         * does not mend that: the spectator goes 400 blocks east (out of view distance, inside the arena) and back to the camera 40
+         * ticks later, so the client takes the platform's chunks and their light again. Any dark point counts, not only all of them:
+         * the flake also splits along a chunk column, 15 on one side and 0 on the other (Task 12 fix round 1, the anim and screens
+         * runs). "[p2-light]" lines mark a recovered run.
          */
         boolean litStart(MinecraftClient c){
             if(awayFor>0){
@@ -4341,9 +4343,9 @@ public final class Phase2Checks implements ClientModInitializer {
                 return false;
             }
             if(lit(c)){darkFor=0;return true;}
-            if(c.world!=null&&site!=null&&c.worldRenderer!=null&&c.worldRenderer.isTerrainRenderComplete()&&allDark(c)){
+            if(c.world!=null&&site!=null&&c.worldRenderer!=null&&c.worldRenderer.isTerrainRenderComplete()&&anyDark(c)){
                 if(++darkFor>=600){awayFor=1;darkFor=0;recoveries++;sendAway(c);
-                    System.out.println("[p2-light] "+name()+": sky light 0 at every floor point for 600 ticks with the terrain built; the spectator goes 400 blocks away and back to take the platform's chunks again (recovery "+recoveries+")");}
+                    System.out.println("[p2-light] "+name()+": sky light 0 at a floor point for 600 ticks with the terrain built; the spectator goes 400 blocks away and back to take the platform's chunks again (recovery "+recoveries+")");}
             }else darkFor=0;
             return false;
         }
@@ -4354,24 +4356,29 @@ public final class Phase2Checks implements ClientModInitializer {
         void sendAway(MinecraftClient c){
             server(c,b->{var p=sp(b);if(p==null)return;back=p.getPos();backYaw=p.getYaw();backPitch=p.getPitch();b.relocate(p,site.getX()+400.5,site.getY()+4,site.getZ()+.5,backYaw,backPitch);});
         }
-        /** Client: sky light 0 at both layers of every LIT_AT point. */
-        boolean allDark(MinecraftClient c){
+        /** Client: sky light 0 at both layers of some LIT_AT point (a chunk whose light this client never got). */
+        boolean anyDark(MinecraftClient c){
             var sky=net.minecraft.world.LightType.SKY;
-            for(int[] d:LIT_AT)for(int y=0;y<=1;y++)if(c.world.getLightLevel(sky,site.add(d[0],y,d[1]))>0)return false;
-            return true;
+            for(int[] d:LIT_AT)if(c.world.getLightLevel(sky,site.add(d[0],0,d[1]))==0&&c.world.getLightLevel(sky,site.add(d[0],1,d[1]))==0)return true;
+            return false;
         }
-        int litWait,litAgain;
+        int litWait,litAgain,shotRecoveries;
         /** Client: whether a world shot may be taken this tick. A freshly laid platform can go dark on the client after it was lit
          *  (a light update from the server's engine half way through the floor), so every shot checks again, the light data and the
          *  frame itself. While the stage is unlit the caller holds its step; once it is lit again it settles 10 ticks before the
-         *  shot. After 1200 ticks it shoots anyway and the suite fails on p2-<suite>-light. */
+         *  shot. Every 300 ticks of holding with a LIT_AT point at sky light 0 it takes litStart's recovery (away and back), at most
+         *  3 times a suite (Task 12 fix round 1: the anim runs held 1200 ticks on a platform split dark along a chunk column). After
+         *  1200 ticks it shoots anyway and the suite fails on p2-<suite>-light. */
         boolean shotReady(MinecraftClient c,String shot){
+            if(awayFor>0){litStart(c);return false;} // a recovery is away: litStart counts its ticks and brings the spectator back
             boolean on=lit(c)&&groundLit(c);
             if(on&&litWait==0)return true;
             if(on){if(++litAgain<10)return false;System.out.println("[p2-light] "+shot+": lit after holding "+litWait+" ticks");litWait=0;litAgain=0;return true;}
             litAgain=0;
             if(litWait++==0){StringBuilder sb=new StringBuilder();if(c.world!=null&&site!=null)for(int[] d:LIT_AT)sb.append(d[0]).append(",").append(d[1]).append("=").append(c.world.getLightLevel(net.minecraft.world.LightType.SKY,site.add(d[0],1,d[1]))).append(" ");
                 System.out.println("[p2-light] "+shot+": holding, eye-level sky light "+sb.toString().trim()+", terrain built="+(c.worldRenderer!=null&&c.worldRenderer.isTerrainRenderComplete())+", ground lit="+groundLit(c));}
+            if(litWait%300==0&&litWait<1200&&shotRecoveries<3&&c.world!=null&&site!=null&&anyDark(c)){shotRecoveries++;awayFor=1;darkFor=0;sendAway(c);
+                System.out.println("[p2-light] "+shot+": a floor point at sky light 0 after holding "+litWait+" ticks; the spectator goes 400 blocks away and back (shot recovery "+shotRecoveries+")");}
             if(litWait<1200)return false;
             report("p2-"+name()+"-light",false,shot+" taken unlit after 1200 ticks of waiting for sky light 15 where the troops stand");litWait=0;return true;
         }
@@ -6095,14 +6102,10 @@ public final class Phase2Checks implements ClientModInitializer {
         /** The six Gilded holdings before the lineup shots made them Mastery II (null for one the profile lacked), put back at cleanup. */
         final Map<String,Integer> mastery0=new LinkedHashMap<>();volatile boolean lineupCast;volatile int lineupRound;
         String name(){return "screens";}
-        int holding,recovered;
-        /** Client: a platform that stays dark 300 ticks while a shot waits on it is taken again (Stage.litStart's recovery: away and back), at most 3 times. */
-        void relight(MinecraftClient c,String at){
-            if(++holding<300||recovered>=3)return;holding=0;recovered++;awayFor=1;darkFor=0;litWait=0;litAgain=0;sendAway(c);
-            System.out.println("[p2-light] screens "+at+": dark 300 ticks while the shot waits; the spectator goes 400 blocks away and back (recovery "+recovered+")");
-        }
-        /** Client: true while a recovery is away (litStart brings the spectator back); the step's wait starts again after. */
-        boolean relit(MinecraftClient c){if(awayFor==0)return false;litStart(c);if(awayFor==0){wait=0;holding=0;}return true;}
+        /** The player's profile as the suite found it (stage 100), put back whole at the end (Task 12 review minor 7), and what the put-back read. */
+        volatile String before;volatile boolean restoreDone,restoreOk;volatile String restoreWhy="";
+        /** p2-roll-card-troop: the roll serial before the troop page's buy, its phase, the frame its card showed, and what was drawn. */
+        int buyN=-1,buyPhase,buySeenAt;boolean onTroop;String buyWhy="";
         /** Server: the six Gilded troops in a row at 6 blocks, the player's own at Mastery II (veteran) or the bot's (plain). */
         void lineup(GravesAndGlory.Battle b,boolean veteran){lineup(b,veteran,false);}
         /** The same with the player's own army on the violet side (team 1), for the trim against a cloth that is not brass-like. */
@@ -6126,7 +6129,7 @@ public final class Phase2Checks implements ClientModInitializer {
             var camp=b.campaign;if(player==null||sp(b)==null)return;
             switch(stage){
                 case 100->{if(b.running){camp.returnLobby();return;}
-                    var pr=camp.profile(player);var k=pr.owned.computeIfAbsent("knight",x->new Profile.Owned());knightMastery0=k.mastery;knightStage0=k.stage;
+                    var pr=camp.profile(player);if(before==null)before=Campaign.JSON.toJson(pr);var k=pr.owned.computeIfAbsent("knight",x->new Profile.Owned());knightMastery0=k.mastery;knightStage0=k.stage;
                     k.copies=1;k.stars=1;k.mastery=0;pr.gold=1000;
                     var t=pr.owned.computeIfAbsent("sentinel",x->new Profile.Owned());t.copies=2;t.stars=2;t.kills=60;t.survived=10;t.mastery=1;
                     rngSaved=camp.rollRng;camp.rollRng=Engine.fixed(0);camp.save(player);stage=101;campReady=true;}
@@ -6169,7 +6172,9 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(wait>8&&shotDone(c)&&stage>=103){var seen=RecruitPages.seenRoll;var r=CampaignClient.lastRoll;
                         boolean card=seen!=null&&seen.troop().equals("knight")&&seen.label().equals("DUPLICATE")&&seen.from()==1&&seen.to()==2&&seen.filled()==1&&seen.growing()==1&&seen.part()>0.3f&&seen.part()<0.7f&&seen.outcome().equals("Star 1 to star 2");
                         boolean snap=r!=null&&r.duplicate()&&r.starsBefore()==1&&r.starsAfter()==2&&r.shards()==0;boolean server=rollStars==2&&rollCopies==2;
-                        report("p2-roll-card",card&&snap&&server,"a forced roll of the owned star-1 knight: the snapshot's lastRoll "+r+" (want a duplicate from star 1 to 2, no shards)="+snap+"; the card drawn "+seen+" (want DUPLICATE, 1 pip filled and the second half grown at 600 ms of 1200, Star 1 to star 2)="+card+"; the server holds the knight at star "+rollStars+", copies "+rollCopies+" (want 2, 2)="+server+"; picture p2-chase-roll-dup.png");
+                        var dim=RecruitPages.rollDim;var sc=c.currentScreen;boolean full=dim!=null&&sc!=null&&dim[0]<=0&&dim[1]<=0&&dim[0]+dim[2]>=sc.width&&dim[1]+dim[3]>=sc.height;
+                        boolean quiet=!RecruitPages.noticeShown&&!CampaignClient.notice.isEmpty();
+                        report("p2-roll-card",card&&snap&&server&&full&&quiet,"the dim "+(dim==null?"none":Arrays.toString(dim))+" over the screen "+(sc==null?"none":sc.width+"x"+sc.height)+" (want all of it: one focal point)="+full+"; the notice \""+CampaignClient.notice+"\" drawn under the card="+RecruitPages.noticeShown+" (want not: the card says it)="+quiet+"; "+"a forced roll of the owned star-1 knight: the snapshot's lastRoll "+r+" (want a duplicate from star 1 to 2, no shards)="+snap+"; the card drawn "+seen+" (want DUPLICATE, 1 pip filled and the second half grown at 600 ms of 1200, Star 1 to star 2)="+card+"; the server holds the knight at star "+rollStars+", copies "+rollCopies+" (want 2, 2)="+server+"; picture p2-chase-roll-dup.png");
                         CampaignClient.revealHeldAt=-1;CampaignClient.revealUntil=0;cs=3;wait=0;}}
                 case 3->{if(!(c.currentScreen instanceof CampScreen s)){c.setScreen(new CampScreen("recruit"));return;}
                     if(++wait==2)shoot("screens-recruit"); // the recruit page with its card actions, after the roll card (for the contact sheet)
@@ -6184,8 +6189,22 @@ public final class Phase2Checks implements ClientModInitializer {
                         boolean levels=page&&seen.levels().equals(List.of("Templar","Templar Knight","Templar Commander"));
                         boolean lines=page&&n!=null&&seen.abilities().size()==3&&seen.abilities().stream().noneMatch(String::isEmpty)&&seen.abilities().get(1).equals(n.level2())&&seen.abilities().get(2).equals(n.level3());
                         boolean noEvolve=button(s,"Evolve",0)==null&&button(s,"EVOLVE",0)==null;
-                        report("p2-troop-card",page&&notes&&glyphs&&stars&&bars&&levels&&lines&&noEvolve,"the Templar's troop page drew "+seen+": beats and beaten by from troopNotes="+notes+", glyphs for C1 and C3="+glyphs+", star 2="+stars+", "+(2*Spec.MASTERY.length)+" Mastery bars="+bars+", the level names="+levels+", the three ability lines (level 2 and 3 from troopNotes)="+lines+", no evolve button="+noEvolve+"; picture p2-chase-troop-card.png");
-                        server(c,b->stage=104);cs=4;wait=0;}}
+                        boolean shape=!sameShape(ArmyCards.glyph(true),ArmyCards.glyph(false));
+                        boolean counts=page&&seen.counts().size()==Spec.MASTERY.length&&seen.counts().stream().allMatch(x->x.endsWith(" survived"));
+                        report("p2-troop-card",page&&notes&&glyphs&&stars&&bars&&levels&&lines&&noEvolve&&shape&&counts,"the against glyph differs from the favour glyph by shape, not by a flip, a turn or colour alone="+shape+"; the Mastery counts "+(seen==null?"none":seen.counts())+" read matches survived="+counts+"; the Templar's troop page drew "+seen+": beats and beaten by from troopNotes="+notes+", glyphs for C1 and C3="+glyphs+", star 2="+stars+", "+(2*Spec.MASTERY.length)+" Mastery bars="+bars+", the level names="+levels+", the three ability lines (level 2 and 3 from troopNotes)="+lines+", no evolve button="+noEvolve+"; picture p2-chase-troop-card.png");
+                        cs=11;wait=0;buyPhase=0;}}
+                case 11->{if(!(c.currentScreen instanceof CampScreen s))return;wait++; // a chosen buy from the troop page shows its roll card there, and leaving the page ends it (review minor 4)
+                    if(buyPhase==0){if(wait<2)return;var buy=button(s,"BUY 300",0);buyN=CampaignClient.lastRoll==null?-1:CampaignClient.lastRoll.n();RecruitPages.rollOn=null;RecruitPages.seenRoll=null;
+                        if(buy==null||!buy.active){report("p2-roll-card-troop",false,"no active BUY 300 on the Templar's troop page");layout(c);server(c,b->stage=104);cs=4;wait=0;return;}
+                        buy.onPress();buyPhase=1;return;}
+                    var r=CampaignClient.lastRoll;
+                    if(buyPhase==1){if(r!=null&&r.n()!=buyN&&r.troop().equals("sentinel")&&CampaignClient.rollShowing()){buyPhase=2;buySeenAt=wait;}
+                        else if(wait>400){report("p2-roll-card-troop",false,"the buy's card never showed: lastRoll "+r+", showing "+CampaignClient.rollShowing());layout(c);server(c,b->stage=104);cs=4;wait=0;}return;}
+                    if(buyPhase==2){if(wait-buySeenAt<5)return;var seen=RecruitPages.seenRoll;onTroop="troop".equals(RecruitPages.rollOn)&&seen!=null&&seen.troop().equals("sentinel");
+                        buyWhy="BUY 300 on the Templar's page: lastRoll "+r+"; the card drawn over page "+RecruitPages.rollOn+" (want troop): "+seen+"="+onTroop;s.page("recruit");buyPhase=3;return;}
+                    boolean stale=CampaignClient.rollShowing();
+                    report("p2-roll-card-troop",onTroop&&!stale,buyWhy+"; after the page went back to recruitment the card still shows="+stale+" (want false: leaving the page ends the reveal)");
+                    CampaignClient.revealUntil=0;layout(c);server(c,b->stage=104);cs=4;wait=0;}
                 case 4->{if(!claimReady)return;
                     if(!(c.currentScreen instanceof CampScreen s)||!s.page.equals("contracts")){if(++wait%20==5)c.setScreen(new CampScreen("contracts"));return;}
                     if(++wait==10){var h=chip(s,"ironclad");if(h!=null)h.onPress();}
@@ -6204,7 +6223,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(wait>20&&shotDone(c)){c.setScreen(null);server(c,b->stage=108);cs=5;wait=0;}}
                 case 5->{if(!vetCast){if(++wait%600==0)System.out.println("[p2-wait] screens: veteran stage not cast after "+wait+" ticks, server stage "+stage);return;}
                     if(!litStart(c))return;c.options.hudHidden=true;cs=6;wait=0;}
-                case 6->{if(relit(c))return;if(++wait<40)return;if(!shotReady(c,"chase-veteran")){wait--;relight(c,"chase-veteran");return;}
+                case 6->{if(++wait<40)return;if(!shotReady(c,"chase-veteran")){wait--;return;} // Stage.shotReady holds, and recovers a dark platform
                     var e1=client(c,vet1.mob);var e3=client(c,vet3.mob);var e0=client(c,plain.mob);
                     var d1=e1==null?null:TroopRenderer.drawn(e1);var d3=e3==null?null:TroopRenderer.drawn(e3);var d0=e0==null?null:TroopRenderer.drawn(e0);
                     String n1=e1==null||e1.getCustomName()==null?"":e1.getCustomName().getString(),n3=e3==null||e3.getCustomName()==null?"":e3.getCustomName().getString(),n0=e0==null||e0.getCustomName()==null?"":e0.getCustomName().getString();
@@ -6219,17 +6238,41 @@ public final class Phase2Checks implements ClientModInitializer {
                     report("p2-veteran-skin",names&&one&&three&&bare&&named,"names on the client: \""+n1+"\", \""+n3+"\", \""+n0+"\" (want Order Squire (Veteran), Knight-Captain (Veteran), Order Squire)="+names+"; the Mastery II knight at tier I drew skin "+(l1==null?"none":l1.skin())+" with trim "+(l1==null?"none":l1.trim())+"="+one+"; at tier III skin "+(l3==null?"none":l3.skin())+" with trim "+(l3==null?"none":l3.trim())+"="+three+"; the bot's plain knight trim "+(l0==null?"none":l0.trim())+"="+bare+"; "+serverWhy+"="+named+"; picture p2-chase-veteran.png");
                     lineupCast=false;server(c,b->lineup(b,true));cs=8;wait=0;}
                 case 8,9,10->{if(!lineupCast||!(posted.size()==6&&posted.stream().allMatch(u->{var e=client(c,u.mob);return e!=null&&e.getCustomName()!=null;})))return; // the six at Mastery II, then the six plain (for the trim's grading)
-                    if(relit(c))return;if(++wait<40)return;if(!shotReady(c,"screens-lineup")){wait--;relight(c,"screens-lineup");return;}
+                    if(++wait<40)return;if(!shotReady(c,"screens-lineup")){wait--;return;}
                     shot(c,cs==8?"screens-lineup-veteran":cs==9?"screens-lineup-plain":"screens-lineup-veteran-violet");
-                    if(cs==8){lineupCast=false;server(c,b->lineup(b,false));cs=9;wait=0;}else if(cs==9){lineupCast=false;server(c,b->lineup(b,true,true));cs=10;wait=0;}else end(c);}
+                    if(cs==8){lineupCast=false;server(c,b->lineup(b,false));cs=9;wait=0;}else if(cs==9){lineupCast=false;server(c,b->lineup(b,true,true));cs=10;wait=0;}else{restoreDone=false;server(c,this::restore);cs=12;wait=0;}}
+                case 12->{if(!restoreDone){if(++wait>200){report("p2-screens-restore",false,"the put-back never ran");end(c);}return;}report("p2-screens-restore",restoreOk,restoreWhy);end(c);}
                 default->{}
             }
         }
         public void cleanup(MinecraftClient c){
             CampaignClient.revealHeldAt=-1;
-            server(c,b->{if(player==null)return;var pr=b.campaign.profile(player);for(var e:mastery0.entrySet()){if(e.getValue()==null)pr.owned.remove(e.getKey());else{var o=pr.owned.get(e.getKey());if(o!=null)o.mastery=e.getValue();}}b.campaign.save(player);});
+            server(c,b->{if(!restoreDone)restore(b);});
             super.cleanup(c);
-            server(c,b->{if(rngSaved!=null)b.campaign.rollRng=rngSaved;if(player==null)return;var o=b.campaign.profile(player).owned.get("knight");if(o!=null&&knightMastery0>=0){o.mastery=knightMastery0;b.campaign.save(player);}});
+        }
+        /** Server: puts the player's profile back as stage 100 found it, and the roll draw; restoreOk is whether the profile then reads as it did. */
+        void restore(GravesAndGlory.Battle b){
+            if(rngSaved!=null){b.campaign.rollRng=rngSaved;rngSaved=null;}
+            if(player==null||before==null){restoreWhy="no profile was saved at stage 100";restoreDone=true;return;}
+            var back=Campaign.JSON.fromJson(before,Profile.class);back.sanitize();b.campaign.profiles.put(player,back);b.campaign.save(player); // the whole profile, not the fields the suite remembers touching
+            String now=Campaign.JSON.toJson(b.campaign.profile(player));restoreOk=now.equals(before);
+            restoreWhy="after the suite (a roll, a buy, a claim, the fixture's gold, stars, copies, kills and the lineup's masteries) the profile reads as stage 100 found it="+restoreOk+(restoreOk?"":": before "+before.length()+" chars, after "+now.length()+", first difference at char "+firstDiff(before,now));
+            restoreDone=true;
+        }
+        static int firstDiff(String a,String b){int n=Math.min(a.length(),b.length());for(int i=0;i<n;i++)if(a.charAt(i)!=b.charAt(i))return i;return n;}
+        /** Whether two 9x9 masks are one shape: equal, or equal after a flip, a turn or a transpose. */
+        static boolean sameShape(String[] a,String[] b){
+            for(int k=0;k<8;k++){boolean same=true;
+                for(int y=0;y<9&&same;y++)for(int x=0;x<9&&same;x++){int u=x,v=y;if((k&1)!=0)u=8-u;if((k&2)!=0)v=8-v;if((k&4)!=0){int t=u;u=v;v=t;}same=a[y].charAt(x)==b[v].charAt(u);}
+                if(same)return true;}
+            return false;
+        }
+        /** p2-card-layout (review minor 1): at virtual widths 817 and 960, every troop's card words, owned or locked, end 2 px or more above its action button. */
+        void layout(MinecraftClient c){
+            var f=c.textRenderer;StringBuilder bad=new StringBuilder();int top=RecruitPages.CARD_H-24;
+            for(int W:new int[]{817,960}){int cw=(W-194-22)/3-10,room=cw-76;
+                for(var t:Spec.TROOPS)for(boolean owned:new boolean[]{false,true}){int bottom=RecruitPages.cardTextBottom(f,t,owned,room);if(bottom>top-2)bad.append(t.id()).append(owned?" owned":" locked").append(" at width ").append(W).append(" (room ").append(room).append("): words to y+").append(bottom).append("; ");}}
+            report("p2-card-layout",bad.length()==0,bad.length()==0?"every troop's card words end at y+"+(top-2)+" or above, over its action button at y+"+top+", at virtual widths 817 and 960":"words reach the action button at y+"+top+": "+bad.toString().trim());
         }
     }
 
