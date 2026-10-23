@@ -298,13 +298,21 @@ public final class Phase3Checks implements ClientModInitializer {
                     else{stage=8;server(c,b->{StructureStudio.clear(b.world);settle=0;stage=9;});}
                 }
                 case 9->{if(++settle>=10){stage=2;server(c,this::piece);}} // the light settles after the last piece is cleared
-                case 3->{
-                    int sx=size.getX(),sy=size.getY(),sz=size.getZ();double d=Math.max(sx,sz)+8;var o=StructureStudio.ORIGIN;
-                    if(view(c,"studio-"+slug(pieces.get(index)),o.getX()+sx/2.0+0.7*d,o.getY()+sy+0.4*d,o.getZ()+sz/2.0+0.7*d,o.getX()+sx/2.0,o.getY()+sy/3.0,o.getZ()+sz/2.0))stage=6;
+                case 3->{ // fix round 2: closer cameras (a piece the size of a market filled a fifth of the picture), and the two other corners
+                    int sx=size.getX(),sy=size.getY(),sz=size.getZ();double d=Math.max(sx,sz)*0.6+5;var o=StructureStudio.ORIGIN;
+                    if(view(c,"studio-"+slug(pieces.get(index)),o.getX()+sx/2.0+0.75*d,o.getY()+sy*0.8+0.25*d,o.getZ()+sz/2.0+0.75*d,o.getX()+sx/2.0,o.getY()+sy/3.0,o.getZ()+sz/2.0))stage=6;
                 }
                 case 6->{ // the north and west faces, which the first camera cannot see
-                    int sx=size.getX(),sy=size.getY(),sz=size.getZ();double d=Math.max(sx,sz)+8;var o=StructureStudio.ORIGIN;
-                    if(view(c,"studio-"+slug(pieces.get(index))+"-nw",o.getX()+sx/2.0-0.7*d,o.getY()+sy+0.4*d,o.getZ()+sz/2.0-0.7*d,o.getX()+sx/2.0,o.getY()+sy/3.0,o.getZ()+sz/2.0)){stage=7;server(c,b->{dumpTrip(b);index++;stage=1;});}
+                    int sx=size.getX(),sy=size.getY(),sz=size.getZ();double d=Math.max(sx,sz)*0.6+5;var o=StructureStudio.ORIGIN;
+                    if(view(c,"studio-"+slug(pieces.get(index))+"-nw",o.getX()+sx/2.0-0.75*d,o.getY()+sy*0.8+0.25*d,o.getZ()+sz/2.0-0.75*d,o.getX()+sx/2.0,o.getY()+sy/3.0,o.getZ()+sz/2.0))stage=10;
+                }
+                case 10->{ // the south and west faces (a market's front is the south)
+                    int sx=size.getX(),sy=size.getY(),sz=size.getZ();double d=Math.max(sx,sz)*0.6+5;var o=StructureStudio.ORIGIN;
+                    if(view(c,"studio-"+slug(pieces.get(index))+"-sw",o.getX()+sx/2.0-0.75*d,o.getY()+sy*0.8+0.25*d,o.getZ()+sz/2.0+0.75*d,o.getX()+sx/2.0,o.getY()+sy/3.0,o.getZ()+sz/2.0))stage=11;
+                }
+                case 11->{ // the north and east faces (a customs' road is the north)
+                    int sx=size.getX(),sy=size.getY(),sz=size.getZ();double d=Math.max(sx,sz)*0.6+5;var o=StructureStudio.ORIGIN;
+                    if(view(c,"studio-"+slug(pieces.get(index))+"-ne",o.getX()+sx/2.0+0.75*d,o.getY()+sy*0.8+0.25*d,o.getZ()+sz/2.0-0.75*d,o.getX()+sx/2.0,o.getY()+sy/3.0,o.getZ()+sz/2.0)){stage=7;server(c,b->{dumpTrip(b);index++;stage=1;});}
                 }
                 case 5->finish(c,"studio");
                 default->{}
@@ -3019,8 +3027,43 @@ public final class Phase3Checks implements ClientModInitializer {
                     else if(turned!=0)System.out.println("[p3] note view "+chosen.name()+": the plan's camera (toward "+near.id()+") had no clear view, turned "+turned+" degrees");
                     out.add(chosen);
                 }
+                var side=ROADSIDE.get(r.template());
+                if(side!=null&&player!=null){var shot=roadShot(b,player,s,r,side);if(shot!=null)out.add(shot);}
             }
             return out;
+        }
+        /** Pictures from the side a piece shows its detail to (fix round 2: the market cross hid behind a stall, the toll board of the customs was in no picture): per template the eye {x, z} and the aim {x, y, z} in local
+         *  coordinates of the piece (the eye's z is where it stands, not a distance: a customs' road is the north side, a market's front the south). The eye is 4 above the ground; where that view is not clear (a tree, another
+         *  piece) the eye is moved along the piece by 5 blocks at a time, either way, and then 6 blocks further away. */
+        static final Map<String,double[]> ROADSIDE=Map.of(
+            "kit/market",new double[]{9.5,23.5,9.5,5.0,6.5},
+            "kit/customs",new double[]{4.0,-11.0,6.0,3.0,1.0});
+        static Shot roadShot(GravesAndGlory.Battle b,net.minecraft.entity.Entity player,Spec.StructuresRow s,Spec.LandmarksRow r,double[] a){
+            var size=Structures.template(b.world,r.template()).get().getSize();
+            double zs=Math.signum(a[1]-a[4]);
+            for(double far:new double[]{0,6})for(double along:new double[]{0,5,-5,10,-10}){
+                var eye=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),a[0]+along,0,a[1]+zs*far);
+                var aim=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),a[2],a[3],a[4]);
+                double cy=Math.max(r.elevation(),Arena.ground((int)Math.floor(eye.x),(int)Math.floor(eye.z)))+4;
+                if(clearView(b,player,s,eye.x,cy,eye.z))return new Shot("lm-"+r.id()+"-road",eye.x,cy,eye.z,aim.x,aim.y,aim.z);
+            }
+            System.out.println("[p3] note view lm-"+r.id()+"-road: no clear camera on the road side, no picture");
+            return null;
+        }
+        /** The single-column slivers on the shoulders of the landmarks (fix round 2: a column one block lower or higher than both neighbours on an axis stands as a dirt wedge in the grass): the cells of every landmark's
+         *  shoulder (the blend distance between 0 and the shoulder) that Arena.height makes lower or higher than both of its neighbours along x, or along z. Cells within 16 of the river are left out (its banks have their own profile). */
+        static int[] slivers(int n,StringBuilder first){
+            var seen=new HashSet<Long>();int cells=0,bad=0;
+            for(var s:Spec.STRUCTURES){
+                if(!s.kind().equals("landmark"))continue;
+                double sh=Arena.shoulder(s);int reachX=(int)Math.ceil(s.width()/2.0+2+sh+6),reachZ=(int)Math.ceil(s.depth()/2.0+2+sh+6);
+                for(int x=s.x()-reachX;x<=s.x()+reachX;x++)for(int z=s.z()-reachZ;z<=s.z()+reachZ;z++){
+                    double ld=Arena.landmarkDistance(s,x,z);if(!(ld>0&&ld<sh)||Math.abs(x-Arena.riverX(z))<16||!seen.add(key(x+1000,0,z+1000)))continue;
+                    cells++;int c=Arena.height(x,z),a=Arena.height(x-1,z),e=Arena.height(x+1,z),no=Arena.height(x,z-1),so=Arena.height(x,z+1);
+                    if(a>c&&e>c||a<c&&e<c||no>c&&so>c||no<c&&so<c){bad++;if(bad<=4)first.append(' ').append(s.id()).append(" (").append(x).append(',').append(z).append(") ").append(c).append(" among ").append(a).append(' ').append(e).append(' ').append(no).append(' ').append(so).append(';');}
+                }
+            }
+            return new int[]{cells,bad};
         }
         /** The camera (eyes at cx,cy,cz) stands in air (a ground camera also outside every other footprint), and the lines from it to the centre and the four corners of the piece at its elevation+2 and +4 meet nothing before the footprint (one block round it). */
         static boolean clearView(GravesAndGlory.Battle b,net.minecraft.entity.Entity player,Spec.StructuresRow s,double cx,double cy,double cz){
@@ -3120,6 +3163,8 @@ public final class Phase3Checks implements ClientModInitializer {
             }
             // a map with no landmarks rows (maps 1 to 3 today) has nothing to place and passes; a map with rows passes only when every one of them was placed (a build that placed nothing is not within budget)
             report("p3-lm-budget-map"+n,laid==rows&&slowCount==0&&sum<=1_500_000_000L,(rows==0?"no landmarks rows on this map; ":"")+laid+" of "+rows+" rows placed, all together "+sum/1000000+" ms (at most 1500), over 100 ms:"+(slowCount==0?" none":slow.toString()));
+            var sliverWhy=new StringBuilder();var sl=slivers(n,sliverWhy);
+            report("p3-lm-slivers-map"+n,sl[1]==0,sl[0]+" shoulder columns of the landmarks, "+sl[1]+" lower or higher than both neighbours on an axis"+sliverWhy);
             int hx=GravesAndGlory.R.worldHalfX(),hz=GravesAndGlory.R.worldHalfZ();
             var loose=w.getEntitiesByType(EntityType.ITEM,new Box(-hx,w.getBottomY(),-hz,hx+1,w.getTopY(),hz+1),x->true);
             var kinds=new TreeMap<String,Integer>();for(var it:loose)kinds.merge(net.minecraft.registry.Registries.ITEM.getId(it.getStack().getItem()).getPath(),it.getStack().getCount(),Integer::sum);

@@ -51,7 +51,49 @@ public final class Arena {
     }
     public static boolean road(int x,int z){return CampaignMaps.road(x,z);}
     static double blend(double h,double flat,double dist,double radius,double shoulder){double t=MathHelper.clamp((dist-radius)/shoulder,0,1);t=t*t*(3-2*t);return flat+(h-flat)*t;}
+    /** The ground height of the column. On the shoulder of a landmark (the blend distance between 0 and the shoulder, off the river) the rounded heights are despiked (see smooth): the grade of Task 6 found single columns of dirt standing
+     *  as wedges in the grass, where a contour of the blend wandered round a half block; elsewhere it is the rounded height of rawHeight. */
     public static int height(int x,int z){
+        return onShoulder(x,z)?smooth(x,z):rawHeight(x,z);
+    }
+    /** The column lies on the shoulder of a landmark, at least 16 from the river (its banks have a profile of their own). */
+    static boolean onShoulder(int x,int z){
+        if(Math.abs(x-riverX(z))<16)return false;
+        for(var s:Spec.STRUCTURES)if(s.kind().equals("landmark")){double ld=landmarkDistance(s,x,z);if(ld>0&&ld<shoulder(s))return true;}
+        return false;
+    }
+    /** The rounded heights of the 11x11 columns round (x, z) filtered by the median of five along x then along z, twice, and by the median of three along x then along z: a column, or two side by side, that is lower than both sides
+     *  on an axis is raised to the higher of them and one that is higher than both lowered (no single or double column stands out as a pit, a bump or a one-block strip), while a slope or a step of any width passes through unchanged
+     *  (a median keeps a sequence that rises or falls). A step of the shoulder is at least three columns wide on an axis. */
+    static int smooth(int x,int z){
+        final int n=5,w=2*n+1;int[][] g=new int[w][w];
+        for(int i=0;i<w;i++)for(int j=0;j<w;j++)g[i][j]=cachedRaw(x-n+i,z-n+j);
+        int[] ok={0,w-1,0,w-1}; // the box of g that is valid: x from ok[0] to ok[1], z from ok[2] to ok[3]
+        for(int[] step:new int[][]{{2,0},{2,1},{2,0},{2,1},{1,0},{1,1}})g=median(g,ok,step[0],step[1]==0);
+        return g[n][n];
+    }
+    /** g filtered along x (alongX) or along z by the median of 2*half+1 values, for the columns whose window lies in the valid box ok, which shrinks by half along that axis. */
+    private static int[][] median(int[][] g,int[] ok,int half,boolean alongX){
+        int w=g.length;int[][] o=new int[w][w];int[] v=new int[2*half+1];
+        int x0=ok[0]+(alongX?half:0),x1=ok[1]-(alongX?half:0),z0=ok[2]+(alongX?0:half),z1=ok[3]-(alongX?0:half);
+        for(int i=x0;i<=x1;i++)for(int j=z0;j<=z1;j++){
+            for(int k=-half;k<=half;k++)v[k+half]=alongX?g[i+k][j]:g[i][j+k];
+            java.util.Arrays.sort(v);o[i][j]=v[half];
+        }
+        ok[0]=x0;ok[1]=x1;ok[2]=z0;ok[3]=z1;
+        return o;
+    }
+    /** rawHeight of the columns the smoothing reads, kept per thread while the structures, hills, points and roads of the map stay the ones they were computed for (a switch of the map replaces all four). */
+    private static final class RawCache{Object structures,terrain,points,roads;final java.util.HashMap<Long,Integer> heights=new java.util.HashMap<>();}
+    private static final ThreadLocal<RawCache> RAW=ThreadLocal.withInitial(RawCache::new);
+    static int cachedRaw(int x,int z){
+        var c=RAW.get();
+        if(c.structures!=Spec.STRUCTURES||c.terrain!=Spec.TERRAIN||c.points!=Spec.POINTS||c.roads!=CampaignMaps.roads||c.heights.size()>400_000){c.heights.clear();c.structures=Spec.STRUCTURES;c.terrain=Spec.TERRAIN;c.points=Spec.POINTS;c.roads=CampaignMaps.roads;}
+        long k=((long)x<<32)^(z&0xffffffffL);Integer h=c.heights.get(k);
+        if(h==null){h=rawHeight(x,z);c.heights.put(k,h);}
+        return h;
+    }
+    static int rawHeight(int x,int z){
         double h=Y;
         for(var hill:Spec.TERRAIN){double wx=x+Spec.TERRAINSTYLE[0].warpAmplitude()*Math.sin(z*Spec.TERRAINSTYLE[0].warpFrequency()),wz=z+5*Math.sin(x*.043);double a=(wx-hill.x())/(double)hill.radiusX(),b=(wz-hill.z())/(double)hill.radiusZ();h+=hill.height()*Math.exp(-2*(a*a+b*b));}
         h+=.5*Spec.TERRAINSTYLE[0].roughness()*(Math.sin(x*.067+z*.031)+.5*Math.sin(z*.13-x*.043));
@@ -83,6 +125,7 @@ public final class Arena {
     static double landmarkDistance(Spec.StructuresRow s,int x,int z){
         double dx=Math.max(0,Math.abs(x-s.x())-s.width()/2.0-2),dz=Math.max(0,Math.abs(z-s.z())-s.depth()/2.0-2),d=Math.hypot(dx,dz);
         if(d<=0)return 0;
+        if(d>=shoulder(s)+6)return d; // past the wander (at most 4.8) the blend is 1 either way
         double amp=Math.min(4,.25*shoulder(s)),fade=Math.min(1,d/4);
         return Math.max(0,d+fade*(amp*CampTerrain.fbm(x,z,8,611)+1.6*(CampTerrain.noise(x,z,3,612)-.5)));
     }

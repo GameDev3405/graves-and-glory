@@ -6,11 +6,13 @@
 # The ground layer is the plinth of the rooms and the paving of the passage (x 8..12, z 1..13): every other cell of y 0 is structure void, so the ground of the map runs up to the walls.
 
 # the clearing: air over the piece from y 1 up, so nothing the battlefield built here before stands in it
-fill ~0 ~1 ~0 ~5 ~1 ~1 minecraft:air
-fill ~0 ~1 ~2 ~0 ~7 ~14 minecraft:air
+fill ~0 ~1 ~0 ~5 ~1 ~0 minecraft:air
+fill ~0 ~1 ~1 ~1 ~8 ~1 minecraft:air
+fill ~0 ~1 ~2 ~0 ~4 ~14 minecraft:air
 fill ~1 ~1 ~13 ~6 ~2 ~14 minecraft:air
 fill ~2 ~1 ~5 ~3 ~4 ~10 minecraft:air
 fill ~2 ~1 ~11 ~2 ~4 ~11 minecraft:air
+fill ~3 ~1 ~1 ~4 ~1 ~1 minecraft:air
 fill ~3 ~1 ~3 ~5 ~4 ~4 minecraft:air
 fill ~4 ~1 ~6 ~4 ~3 ~11 minecraft:air
 fill ~5 ~1 ~5 ~5 ~4 ~11 minecraft:air
@@ -25,25 +27,28 @@ fill ~14 ~1 ~13 ~17 ~2 ~13 minecraft:air
 fill ~16 ~1 ~4 ~16 ~4 ~4 minecraft:air
 fill ~16 ~1 ~6 ~16 ~4 ~10 minecraft:air
 fill ~16 ~1 ~14 ~17 ~12 ~14 minecraft:air
-fill ~18 ~1 ~2 ~18 ~7 ~14 minecraft:air
-fill ~0 ~2 ~0 ~5 ~12 ~0 minecraft:air
-fill ~0 ~2 ~1 ~2 ~8 ~1 minecraft:air
+fill ~18 ~1 ~2 ~18 ~4 ~14 minecraft:air
+fill ~0 ~2 ~0 ~2 ~12 ~0 minecraft:air
 fill ~2 ~2 ~3 ~2 ~4 ~4 minecraft:air
-fill ~4 ~2 ~1 ~4 ~8 ~1 minecraft:air
 fill ~4 ~2 ~5 ~4 ~4 ~5 minecraft:air
+fill ~5 ~2 ~0 ~5 ~12 ~0 minecraft:air
 fill ~14 ~2 ~11 ~16 ~4 ~11 minecraft:air
 fill ~16 ~2 ~3 ~16 ~4 ~3 minecraft:air
 fill ~1 ~3 ~13 ~5 ~8 ~14 minecraft:air
-fill ~3 ~3 ~1 ~3 ~8 ~1 minecraft:air
-fill ~5 ~3 ~1 ~5 ~8 ~1 minecraft:air
 fill ~6 ~3 ~3 ~6 ~4 ~3 minecraft:air
 fill ~6 ~3 ~14 ~6 ~12 ~14 minecraft:air
-fill ~8 ~3 ~1 ~12 ~3 ~14 minecraft:air
+fill ~8 ~3 ~1 ~12 ~3 ~2 minecraft:air
+fill ~8 ~3 ~4 ~8 ~3 ~10 minecraft:air
+fill ~8 ~3 ~12 ~8 ~3 ~14 minecraft:air
+fill ~9 ~3 ~3 ~11 ~3 ~14 minecraft:air
+fill ~12 ~3 ~4 ~12 ~3 ~10 minecraft:air
+fill ~12 ~3 ~12 ~12 ~3 ~14 minecraft:air
 fill ~14 ~3 ~0 ~18 ~12 ~0 minecraft:air
 fill ~14 ~3 ~14 ~15 ~12 ~14 minecraft:air
 fill ~15 ~3 ~1 ~18 ~8 ~1 minecraft:air
 fill ~15 ~3 ~13 ~17 ~8 ~13 minecraft:air
 fill ~16 ~3 ~5 ~16 ~4 ~5 minecraft:air
+fill ~3 ~4 ~0 ~4 ~12 ~0 minecraft:air
 setblock ~4 ~4 ~6 minecraft:air
 fill ~4 ~4 ~8 ~4 ~4 ~11 minecraft:air
 fill ~6 ~4 ~0 ~13 ~12 ~0 minecraft:air
@@ -55,38 +60,40 @@ fill ~11 ~4 ~1 ~12 ~4 ~1 minecraft:air
 fill ~14 ~4 ~3 ~15 ~4 ~6 minecraft:air
 fill ~14 ~4 ~7 ~14 ~4 ~10 minecraft:air
 fill ~15 ~4 ~8 ~15 ~4 ~10 minecraft:air
-fill ~6 ~5 ~1 ~6 ~8 ~1 minecraft:air
+fill ~0 ~5 ~2 ~0 ~8 ~6 minecraft:air
+fill ~0 ~5 ~8 ~0 ~8 ~14 minecraft:air
+fill ~2 ~5 ~1 ~6 ~8 ~1 minecraft:air
 fill ~6 ~5 ~13 ~6 ~8 ~13 minecraft:air
 fill ~7 ~5 ~3 ~7 ~9 ~11 minecraft:air
 fill ~8 ~5 ~14 ~12 ~12 ~14 minecraft:air
 fill ~13 ~5 ~3 ~13 ~9 ~11 minecraft:air
 fill ~14 ~5 ~1 ~14 ~8 ~1 minecraft:air
 fill ~14 ~5 ~13 ~14 ~8 ~13 minecraft:air
+fill ~18 ~5 ~2 ~18 ~8 ~6 minecraft:air
+fill ~18 ~5 ~8 ~18 ~8 ~14 minecraft:air
 fill ~2 ~6 ~3 ~6 ~9 ~11 minecraft:air
 fill ~7 ~6 ~1 ~13 ~8 ~1 minecraft:air
 fill ~7 ~6 ~13 ~13 ~8 ~13 minecraft:air
 fill ~8 ~6 ~3 ~12 ~9 ~11 minecraft:air
 fill ~14 ~6 ~3 ~16 ~9 ~11 minecraft:air
-fill ~0 ~8 ~2 ~0 ~8 ~3 minecraft:air
-fill ~0 ~8 ~5 ~0 ~10 ~9 minecraft:air
-fill ~0 ~8 ~11 ~0 ~8 ~14 minecraft:air
-fill ~18 ~8 ~2 ~18 ~8 ~3 minecraft:air
-fill ~18 ~8 ~5 ~18 ~10 ~9 minecraft:air
-fill ~18 ~8 ~11 ~18 ~8 ~14 minecraft:air
-fill ~0 ~9 ~3 ~0 ~9 ~4 minecraft:air
-fill ~0 ~9 ~10 ~0 ~9 ~11 minecraft:air
+fill ~0 ~7 ~7 ~0 ~11 ~7 minecraft:air
+fill ~18 ~7 ~7 ~18 ~11 ~7 minecraft:air
+fill ~0 ~9 ~3 ~0 ~9 ~6 minecraft:air
+fill ~0 ~9 ~8 ~0 ~9 ~11 minecraft:air
 fill ~0 ~9 ~14 ~5 ~12 ~14 minecraft:air
-fill ~18 ~9 ~3 ~18 ~9 ~4 minecraft:air
-fill ~18 ~9 ~10 ~18 ~9 ~11 minecraft:air
+fill ~18 ~9 ~3 ~18 ~9 ~6 minecraft:air
+fill ~18 ~9 ~8 ~18 ~9 ~11 minecraft:air
 fill ~18 ~9 ~14 ~18 ~12 ~14 minecraft:air
 fill ~0 ~10 ~1 ~18 ~12 ~2 minecraft:air
+fill ~0 ~10 ~5 ~0 ~10 ~6 minecraft:air
+fill ~0 ~10 ~8 ~0 ~10 ~9 minecraft:air
 fill ~0 ~10 ~12 ~18 ~12 ~13 minecraft:air
 fill ~2 ~10 ~5 ~16 ~10 ~9 minecraft:air
+fill ~18 ~10 ~5 ~18 ~10 ~6 minecraft:air
+fill ~18 ~10 ~8 ~18 ~10 ~9 minecraft:air
 fill ~0 ~11 ~3 ~18 ~12 ~4 minecraft:air
-setblock ~0 ~11 ~7 minecraft:air
 fill ~0 ~11 ~10 ~18 ~12 ~11 minecraft:air
 fill ~2 ~11 ~7 ~16 ~11 ~7 minecraft:air
-setblock ~18 ~11 ~7 minecraft:air
 fill ~0 ~12 ~5 ~18 ~12 ~6 minecraft:air
 fill ~0 ~12 ~8 ~18 ~12 ~9 minecraft:air
 
@@ -530,7 +537,7 @@ setblock ~6 ~3 ~1 minecraft:lantern[hanging=true]
 setblock ~6 ~3 ~13 minecraft:lantern[hanging=true]
 setblock ~14 ~3 ~1 minecraft:lantern[hanging=true]
 setblock ~14 ~3 ~13 minecraft:lantern[hanging=true]
-setblock ~6 ~4 ~1 minecraft:dark_oak_fence[north=false,east=true,south=true,west=false]
+setblock ~6 ~4 ~1 minecraft:dark_oak_fence[north=false,east=true,south=true,west=true]
 setblock ~6 ~4 ~13 minecraft:dark_oak_fence[north=true,east=true,south=false,west=false]
 setblock ~14 ~4 ~1 minecraft:dark_oak_fence[north=false,east=false,south=true,west=true]
 setblock ~14 ~4 ~13 minecraft:dark_oak_fence[north=true,east=false,south=false,west=true]
@@ -548,16 +555,28 @@ setblock ~11 ~3 ~0 minecraft:stripped_birch_log[axis=x]
 setblock ~12 ~3 ~0 minecraft:stripped_mangrove_log[axis=x]
 setblock ~13 ~3 ~0 minecraft:stripped_birch_log[axis=x]
 
-# the toll board and the sign: two spruce wall signs on the toll room wall beside the north mouth, a hanging sign under the pentice over the passage
-setblock ~3 ~2 ~1 minecraft:spruce_wall_sign[facing=north]{front_text:{messages:['{"text":"A cart: 2"}','{"text":"A beast: 1"}','{"text":"On foot: 1"}','{"text":""}']}}
-setblock ~5 ~2 ~1 minecraft:spruce_wall_sign[facing=north]{front_text:{messages:['{"text":"TOLL"}','{"text":"by order"}','{"text":"of the King"}','{"text":""}']}}
+# the toll board and the sign: a board of dark oak planks on two dark oak posts before the toll room wall beside the north mouth, four pale birch signs on its face, a hanging sign under the pentice over the passage
+fill ~2 ~1 ~1 ~2 ~4 ~1 minecraft:dark_oak_log[axis=y]
+fill ~5 ~1 ~1 ~5 ~4 ~1 minecraft:dark_oak_log[axis=y]
+setblock ~3 ~2 ~0 minecraft:birch_wall_sign[facing=north]{front_text:{messages:['{"text":"Halt"}','{"text":"at the bar"}','{"text":""}','{"text":""}']}}
+fill ~3 ~2 ~1 ~4 ~3 ~1 minecraft:dark_oak_planks
+setblock ~4 ~2 ~0 minecraft:birch_wall_sign[facing=north]{front_text:{messages:['{"text":"No pay,"}','{"text":"no road"}','{"text":""}','{"text":""}']}}
+setblock ~3 ~3 ~0 minecraft:birch_wall_sign[facing=north]{front_text:{messages:['{"text":"TOLL"}','{"text":"by order"}','{"text":"of the King"}','{"text":""}']}}
+setblock ~4 ~3 ~0 minecraft:birch_wall_sign[facing=north]{front_text:{messages:['{"text":"A cart: 2"}','{"text":"A beast: 1"}','{"text":"On foot: 1"}','{"text":""}']}}
+fill ~3 ~4 ~1 ~4 ~4 ~1 minecraft:dark_oak_slab[type=bottom]
 setblock ~10 ~4 ~1 minecraft:dark_oak_hanging_sign[rotation=8,attached=false]{front_text:{messages:['{"text":""}','{"text":"CUSTOMS"}','{"text":""}','{"text":""}']}}
 
-# the arms of the crown on both gables: red banners with a gold lozenge over a black base under the verge, so the toll house reads as a house of the crown from every side
-setblock ~0 ~8 ~4 minecraft:red_wall_banner[facing=west]{Patterns:[{Pattern:"mr",Color:4},{Pattern:"bs",Color:15}]}
-setblock ~0 ~8 ~10 minecraft:red_wall_banner[facing=west]{Patterns:[{Pattern:"mr",Color:4},{Pattern:"bs",Color:15}]}
-setblock ~18 ~8 ~4 minecraft:red_wall_banner[facing=east]{Patterns:[{Pattern:"mr",Color:4},{Pattern:"bs",Color:15}]}
-setblock ~18 ~8 ~10 minecraft:red_wall_banner[facing=east]{Patterns:[{Pattern:"mr",Color:4},{Pattern:"bs",Color:15}]}
+# the arms of the crown inside the arch: a red banner with a gold lozenge on each wall of the passage at both mouths (fix round 2: two banners over the two windows of a gable read as a face)
+setblock ~8 ~3 ~3 minecraft:red_wall_banner[facing=east]{Patterns:[{Pattern:"mr",Color:4},{Pattern:"bs",Color:15}]}
+setblock ~8 ~3 ~11 minecraft:red_wall_banner[facing=east]{Patterns:[{Pattern:"mr",Color:4},{Pattern:"bs",Color:15}]}
+setblock ~12 ~3 ~3 minecraft:red_wall_banner[facing=west]{Patterns:[{Pattern:"mr",Color:4},{Pattern:"bs",Color:15}]}
+setblock ~12 ~3 ~11 minecraft:red_wall_banner[facing=west]{Patterns:[{Pattern:"mr",Color:4},{Pattern:"bs",Color:15}]}
+
+# a lantern on a dark oak bracket over the middle of each gable, hung under the string course (one light on the axis of the gable)
+setblock ~0 ~5 ~7 minecraft:lantern[hanging=true]
+setblock ~18 ~5 ~7 minecraft:lantern[hanging=true]
+setblock ~0 ~6 ~7 minecraft:dark_oak_fence[north=false,east=true,south=false,west=false]
+setblock ~18 ~6 ~7 minecraft:dark_oak_fence[north=false,east=false,south=false,west=true]
 
 # the south mouth: the old swing gate of spruce rails, opened back against the guard room wall
 fill ~14 ~1 ~14 ~14 ~2 ~14 minecraft:spruce_fence[north=false,east=true,south=false,west=false]
