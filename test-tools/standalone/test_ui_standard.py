@@ -12,8 +12,10 @@
 - the methods that draw player names (NAME_METHODS: the party's seats on home and Friends, the Invite tags) set only fixed words
   in the heading face: every heading( there takes one string literal, so a name, and the measure that trims one, is in
   Minecraft's face, whose 1 is no I (UI Task 8b, the Task 7 review's out-of-scope 1);
-- the back rail's camp plaques (RAIL, RAIL_X, RAIL_LABELS) are declared once, in WarTableHome, and nowhere else (UI Task 8b, the
-  Task 7 review's Minor 8).
+- the back rail's camp plaques (RAIL, RAIL_X, RAIL_LABELS, RAIL_W) are declared once, in WarTableHome, and nowhere else (UI Task
+  8b, the Task 7 review's Minor 8), and the lit plaque WarTablePages.here( draws for the open page ("table/plaque-N-here",
+  written whole for build_ui_art --verify) names WarTableHome's RAIL_W as its N, so a new rail width cannot leave the lit plaque
+  the old size (8b review Minor 4).
 Prints 'test_ui_standard: clean', or one 'file: snippet' line per finding and exits 1."""
 import pathlib
 import re
@@ -37,7 +39,17 @@ INK_DECL = re.compile(r'\b([A-Z][A-Z0-9_]*)\s*=\s*0[xX]([0-9a-fA-F]{8})\b')
 NAME_METHODS = {'WarTablePages': ('party', 'paintInvite'), 'WarTableHome': ('party',)}
 HEADING_CALL = re.compile(r'\bheading\s*\(')
 RAIL_HOME = 'WarTableHome'
-RAIL_DECL = re.compile(r'\b(RAIL|RAIL_X|RAIL_LABELS)\s*=(?!=)')
+RAIL_DECL = re.compile(r'\b(RAIL|RAIL_X|RAIL_LABELS|RAIL_W)\s*=(?!=)')
+RAIL_W_DECL = re.compile(r'\bRAIL_W\s*=\s*(\d+)\s*;')
+LIT_PLAQUE = re.compile(r'"table/plaque-(\d+)-here"')
+RAIL_HERE = ('WarTablePages', 'here')  # the method that draws the open page's rail plaque lit (the class plaques' 120 is not the rail)
+
+
+def rail_width():
+    """WarTableHome's RAIL_W, read from its source; None when it declares no number."""
+    code, _ = scan((SRC / (RAIL_HOME + '.java')).read_text(encoding='utf-8'))
+    m = RAIL_W_DECL.search(code)
+    return int(m.group(1)) if m else None
 
 
 def contrast(a, b):
@@ -222,6 +234,18 @@ def check_file(path):
     if name != RAIL_HOME:
         for m in RAIL_DECL.finditer(code):
             found.append(f'{path.name}:{line_of(text, m.start())}: {m.group(1)} declared again; the rail is WarTableHome\'s alone')
+    here = any_method_spans(code, RAIL_HERE[1]) if name == RAIL_HERE[0] else []
+    if name == RAIL_HERE[0] and not here:
+        found.append(f'{path.name}: no method {RAIL_HERE[1]}( to check the lit rail plaque in')
+    lit = [(offset, m) for offset, literal in strings if any(a <= offset < b for a, b in here) for m in LIT_PLAQUE.finditer(literal)]
+    if here and not lit:
+        found.append(f'{path.name}: {RAIL_HERE[1]}( writes no "table/plaque-N-here" to check against the rail\'s width')
+    if lit:
+        width = rail_width()
+        for offset, m in lit:
+            if width is None or int(m.group(1)) != width:
+                found.append(f'{path.name}:{line_of(text, offset)}: "table/plaque-{m.group(1)}-here" is not the rail\'s width '
+                             f'(WarTableHome.RAIL_W {width})')
     if name != 'DarkUi':
         lines = code.split('\n')
         for k, line in enumerate(lines):

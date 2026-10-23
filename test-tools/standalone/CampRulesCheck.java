@@ -53,6 +53,13 @@ public final class CampRulesCheck {
   check(Progression.claim(s,"founders:31").gold()==0,"Unreleased tiers cannot claim");
   Progression.State said=new Progression.State();Progression.reset(said,day);said.xp=5*Progression.XP_PER_TIER;said.weeklyBattles=Progression.WEEKLY_BATTLES;
   check(Progression.claim(said,"founders:1").message().equals("Claimed reward: +25 gold")&&Progression.claim(said,"founders:5").message().equals("Claimed reward: Scout title unlocked")&&Progression.claim(said,"weekly").message().equals("Claimed reward: +150 gold / +300 XP"),"A claim's notice names only what it grants: no +0 XP on a tier, no +0 gold on a title (UI Task 8b)");
+  // the room gate's truth table, row by row {in a party, leads it, may make or join a room}: the same rows UiMathCheck pins for the
+  // client's copy (UiMath.roomOpen, which dulls the Friends page's room tags), so a change to either side fails its own check (8b review Minor 5)
+  boolean[][] roomRows={{false,false,true},{true,true,true},{true,false,false}};
+  SocialHub gate=new SocialHub();UUID alone=id(),head=id(),member=id();gate.presence(Set.of(alone,head,member),now);gate.createParty(head);gate.invite(head,member,now);gate.accept(member,now+1);
+  UUID[] who={alone,head,member};boolean rowsOk=true;
+  for(int i=0;i<roomRows.length;i++){var p=gate.party(who[i]);rowsOk&=(p!=null)==roomRows[i][0]&&(p!=null&&who[i].equals(p.leader))==roomRows[i][1]&&gate.lead(who[i])==roomRows[i][2];}
+  check(rowsOk&&gate.createRoom(member).startsWith("Only your party leader"),"The server's room gate gives the client's rows: alone yes, leading yes, a member who does not lead no");
   System.out.println("PASS "+count+" social/progression scenarios");
  }
 }
