@@ -42,7 +42,7 @@ public final class BotSimulation implements ModInitializer {
         maps=mapList==null?IntStream.range(0,Spec.MAPS.length).toArray():Arrays.stream(mapList.split(",")).map(String::trim).filter(v->!v.isEmpty()).mapToInt(v->number("simMaps",v)).toArray();
         size=number("simSize",System.getProperty("gravesandglory.simSize","3"));roundSeconds=number("simRoundSeconds",System.getProperty("gravesandglory.simRoundSeconds","300"));
         kit=System.getProperty("gravesandglory.simKit","native").trim();
-        if(!kit.equals("native")&&Arrays.stream(Spec.HOUSES).noneMatch(h->h.id().equals(kit)&&h.fieldable()))throw new IllegalArgumentException("[botsim] simKit must be native or a fieldable House (gilded, graveborn), got '"+kit+"'");
+        if(!kit.equals("native")&&Arrays.stream(Spec.HOUSES).noneMatch(h->h.id().equals(kit)&&h.fieldable()))throw new IllegalArgumentException("[botsim] simKit must be native or a fieldable House ("+Arrays.stream(Spec.HOUSES).filter(h->h.fieldable()).map(h->h.id()).collect(java.util.stream.Collectors.joining(", "))+"), got '"+kit+"'");
         for(int team=0;team<2;team++){String id=System.getProperty("gravesandglory.simBanner"+team);if(id==null)continue;String row=id.trim();
             if(Arrays.stream(Spec.BOTBANNERS).noneMatch(r->r.id().equals(row)))throw new IllegalArgumentException("[botsim] simBanner"+team+" must be a botBanners id, got '"+id+"'");bannerChoice[team]=row;}
         if(matches<1||roundSeconds<1||size<1||size>Spec.RULES[0].playersPerTeam()||maps.length==0||Arrays.stream(maps).anyMatch(m->m<0||m>=Spec.MAPS.length))
@@ -93,14 +93,16 @@ public final class BotSimulation implements ModInitializer {
     }
     /** Where each troop stood at the last sample, for the stuck count (cleared at each round start). */
     final Map<UUID,net.minecraft.util.math.Vec3d> seen=new HashMap<>();
-    /** The sample's health line on the console: living troops, how many are on fire, and how many stood still for the whole sample (30 s) with no target and an order other than Hold: a troop that cannot walk, or one that burns, shows here. */
+    /** The sample's health line on the console: living troops, how many are on fire, how many stood still for the whole sample (30 s) with no target and an order other than Hold (a troop that cannot walk, or one that burns, shows here), how many are posed as vanilla would have them (a wolf sitting, a wolf, boar-kin or bear holding anger: Task 10's mobs must never be) and how many bears rear (Old Horn's trample pulse alone, 20 ticks each). */
     void health(GravesAndGlory.Battle b,long second){
-        int living=0,burning=0,stuck=0;Map<UUID,net.minecraft.util.math.Vec3d> now=new HashMap<>();
+        int living=0,burning=0,stuck=0,posed=0,rearing=0;Map<UUID,net.minecraft.util.math.Vec3d> now=new HashMap<>();
         for(var u:b.units){if(!u.mob.isAlive())continue;living++;if(u.mob.isOnFire()||u.mob.getFireTicks()>0)burning++;
             var was=seen.get(u.mob.getUuid());if(was!=null&&u.mob.getTarget()==null&&u.mob.squaredDistanceTo(was)<1.0&&!b.assignment(u).order.equals("hold"))stuck++;
+            if(u.mob instanceof net.minecraft.entity.passive.WolfEntity w&&(w.isSitting()||w.isInSittingPose())||u.mob instanceof net.minecraft.entity.mob.Angerable a&&(a.hasAngerTime()||a.getAngryAt()!=null))posed++;
+            if(u.mob instanceof net.minecraft.entity.passive.PolarBearEntity pb&&pb.isWarning())rearing++;
             now.put(u.mob.getUuid(),u.mob.getPos());}
         seen.clear();seen.putAll(now);
-        System.out.println("[botsim] health match="+(match+1)+" second="+second+" living="+living+" burning="+burning+" stuck="+stuck);
+        System.out.println("[botsim] health match="+(match+1)+" second="+second+" living="+living+" burning="+burning+" stuck="+stuck+" posed="+posed+" rearing="+rearing);
     }
     /** One gold.csv row per team: gold earned so far, gold in hand and living troops. */
     void sample(GravesAndGlory.Battle b,long second){
