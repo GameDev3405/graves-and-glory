@@ -16,6 +16,7 @@ public final class LayoutMarkerCheck {
   check(LayoutMarker.text(0).contains(LayoutMarker.MARGIN),"The marker names the margin revision");
   check(LayoutMarker.MARGIN.contains(CampTerrain.REVISION),"The margin revision names the camp terrain revision (the margin meets the rim of that terrain)");
   check(!LayoutMarker.current("{\"layout\":\"campaign-3\",\"map\":2,\"margin\":\"margin-1\"}",2),"A margin built to the camp terrain before fix round 4 (margin-1, terrain-3) is not current: the map's arena is built once more");
+  check(!LayoutMarker.current("{\"layout\":\"campaign-3\",\"map\":4,\"margin\":\"margin-1/terrain-4\"}",4),"A margin built to the camp terrain of fix round 4 (margin-1/terrain-4, the marker the upgrade run of re-grade 4 wrote) is not current: the map's arena is built once more");
   check(LayoutMarker.LAYOUT.equals("campaign-3"),"The layout string is not bumped (only the margin revision changes)");
   System.out.println("PASS "+count+" layout marker scenarios");
  }

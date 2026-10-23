@@ -6,12 +6,12 @@
 # Standard: 3x3 polished blackstone at (20, 0, 2), pole y 1..4, banner y 5. Spawn plinth: flush polished andesite 3x3 at (20, 0, 26).
 # The field is a mix of grounds in patches with a ragged edge to the lawn on the west, north and east sides: cells the script leaves unset are structure void and keep the lawn the terrain lays (y 64, flattened).
 
-# the drill field: packed mud worn into patches of coarse dirt, rooted dirt and gravel, tracks of dirt path and tufts of grass; at the west, north and east sides the lawn of the bowl comes in in tongues (those cells are left to the ground)
+# the drill field: packed mud worn into patches of coarse dirt, rooted dirt and gravel, tracks of podzol and tufts of grass; at the west, north and east sides the lawn of the bowl comes in in tongues (those cells are left to the ground)
 setblock ~1 ~0 ~3 minecraft:grass_block
 fill ~1 ~0 ~4 ~1 ~0 ~5 minecraft:packed_mud
 setblock ~1 ~0 ~6 minecraft:grass_block
 fill ~2 ~0 ~1 ~3 ~0 ~1 minecraft:grass_block
-setblock ~2 ~0 ~2 minecraft:dirt_path
+setblock ~2 ~0 ~2 minecraft:podzol
 fill ~2 ~0 ~3 ~2 ~0 ~5 minecraft:packed_mud
 setblock ~2 ~0 ~6 minecraft:coarse_dirt
 fill ~2 ~0 ~28 ~3 ~0 ~28 minecraft:rooted_dirt
@@ -45,9 +45,9 @@ setblock ~5 ~0 ~8 minecraft:rooted_dirt
 setblock ~5 ~0 ~9 minecraft:coarse_dirt
 fill ~5 ~0 ~11 ~8 ~0 ~11 minecraft:gravel
 fill ~5 ~0 ~27 ~6 ~0 ~29 minecraft:coarse_dirt
-setblock ~5 ~0 ~30 minecraft:dirt_path
+setblock ~5 ~0 ~30 minecraft:podzol
 fill ~5 ~0 ~31 ~5 ~0 ~32 minecraft:coarse_dirt
-setblock ~6 ~0 ~3 minecraft:dirt_path
+setblock ~6 ~0 ~3 minecraft:podzol
 setblock ~6 ~0 ~4 minecraft:grass_block
 setblock ~6 ~0 ~5 minecraft:packed_mud
 fill ~6 ~0 ~6 ~6 ~0 ~9 minecraft:rooted_dirt
@@ -105,13 +105,13 @@ fill ~11 ~0 ~23 ~11 ~0 ~25 minecraft:rooted_dirt
 fill ~11 ~0 ~26 ~12 ~0 ~27 minecraft:packed_mud
 setblock ~11 ~0 ~28 minecraft:packed_mud
 setblock ~12 ~0 ~7 minecraft:packed_mud
-setblock ~12 ~0 ~8 minecraft:dirt_path
+setblock ~12 ~0 ~8 minecraft:podzol
 setblock ~12 ~0 ~9 minecraft:packed_mud
 fill ~12 ~0 ~17 ~13 ~0 ~23 minecraft:packed_mud
-fill ~12 ~0 ~24 ~12 ~0 ~25 minecraft:dirt_path
+fill ~12 ~0 ~24 ~12 ~0 ~25 minecraft:podzol
 setblock ~13 ~0 ~5 minecraft:coarse_dirt
 fill ~13 ~0 ~8 ~14 ~0 ~8 minecraft:packed_mud
-fill ~13 ~0 ~9 ~14 ~0 ~9 minecraft:dirt_path
+fill ~13 ~0 ~9 ~14 ~0 ~9 minecraft:podzol
 fill ~13 ~0 ~10 ~14 ~0 ~11 minecraft:packed_mud
 setblock ~13 ~0 ~12 minecraft:rooted_dirt
 fill ~13 ~0 ~24 ~14 ~0 ~24 minecraft:packed_mud
@@ -122,7 +122,7 @@ setblock ~13 ~0 ~32 minecraft:packed_mud
 fill ~14 ~0 ~5 ~14 ~0 ~6 minecraft:packed_mud
 setblock ~14 ~0 ~12 minecraft:packed_mud
 fill ~14 ~0 ~16 ~14 ~0 ~18 minecraft:packed_mud
-fill ~14 ~0 ~19 ~14 ~0 ~20 minecraft:dirt_path
+fill ~14 ~0 ~19 ~14 ~0 ~20 minecraft:podzol
 fill ~14 ~0 ~21 ~16 ~0 ~21 minecraft:packed_mud
 fill ~14 ~0 ~22 ~15 ~0 ~23 minecraft:packed_mud
 setblock ~14 ~0 ~25 minecraft:coarse_dirt
@@ -132,8 +132,8 @@ fill ~15 ~0 ~8 ~16 ~0 ~8 minecraft:coarse_dirt
 fill ~15 ~0 ~9 ~15 ~0 ~12 minecraft:packed_mud
 fill ~15 ~0 ~16 ~16 ~0 ~16 minecraft:coarse_dirt
 fill ~15 ~0 ~17 ~15 ~0 ~19 minecraft:packed_mud
-fill ~15 ~0 ~20 ~16 ~0 ~20 minecraft:dirt_path
-setblock ~15 ~0 ~24 minecraft:dirt_path
+fill ~15 ~0 ~20 ~16 ~0 ~20 minecraft:podzol
+setblock ~15 ~0 ~24 minecraft:podzol
 setblock ~15 ~0 ~29 minecraft:coarse_dirt
 fill ~15 ~0 ~30 ~16 ~0 ~30 minecraft:packed_mud
 fill ~16 ~0 ~9 ~16 ~0 ~12 minecraft:coarse_dirt
@@ -142,26 +142,24 @@ fill ~16 ~0 ~18 ~16 ~0 ~19 minecraft:packed_mud
 fill ~16 ~0 ~22 ~16 ~0 ~23 minecraft:coarse_dirt
 fill ~16 ~0 ~28 ~16 ~0 ~29 minecraft:coarse_dirt
 fill ~16 ~0 ~31 ~16 ~0 ~32 minecraft:coarse_dirt
-setblock ~24 ~0 ~8 minecraft:packed_mud
-fill ~24 ~0 ~9 ~24 ~0 ~11 minecraft:dirt_path
+fill ~24 ~0 ~8 ~25 ~0 ~11 minecraft:podzol
 setblock ~24 ~0 ~12 minecraft:coarse_dirt
 fill ~24 ~0 ~16 ~30 ~0 ~16 minecraft:coarse_dirt
 fill ~24 ~0 ~17 ~24 ~0 ~19 minecraft:coarse_dirt
 fill ~24 ~0 ~20 ~24 ~0 ~21 minecraft:rooted_dirt
-setblock ~24 ~0 ~22 minecraft:dirt_path
+setblock ~24 ~0 ~22 minecraft:podzol
 fill ~24 ~0 ~23 ~25 ~0 ~23 minecraft:packed_mud
 fill ~24 ~0 ~29 ~24 ~0 ~32 minecraft:coarse_dirt
-fill ~25 ~0 ~8 ~25 ~0 ~11 minecraft:dirt_path
 fill ~25 ~0 ~12 ~29 ~0 ~12 minecraft:packed_mud
 fill ~25 ~0 ~17 ~30 ~0 ~17 minecraft:packed_mud
 setblock ~25 ~0 ~18 minecraft:coarse_dirt
 fill ~25 ~0 ~19 ~25 ~0 ~22 minecraft:rooted_dirt
 setblock ~25 ~0 ~24 minecraft:packed_mud
-setblock ~25 ~0 ~25 minecraft:dirt_path
+setblock ~25 ~0 ~25 minecraft:podzol
 fill ~25 ~0 ~30 ~25 ~0 ~32 minecraft:coarse_dirt
 setblock ~26 ~0 ~5 minecraft:packed_mud
 fill ~26 ~0 ~8 ~26 ~0 ~10 minecraft:packed_mud
-setblock ~26 ~0 ~11 minecraft:dirt_path
+setblock ~26 ~0 ~11 minecraft:podzol
 fill ~26 ~0 ~18 ~28 ~0 ~18 minecraft:packed_mud
 setblock ~26 ~0 ~19 minecraft:coarse_dirt
 fill ~26 ~0 ~20 ~27 ~0 ~22 minecraft:rooted_dirt
@@ -169,7 +167,7 @@ setblock ~26 ~0 ~23 minecraft:coarse_dirt
 setblock ~26 ~0 ~24 minecraft:rooted_dirt
 fill ~26 ~0 ~25 ~26 ~0 ~26 minecraft:coarse_dirt
 fill ~26 ~0 ~31 ~26 ~0 ~32 minecraft:packed_mud
-setblock ~27 ~0 ~3 minecraft:dirt_path
+setblock ~27 ~0 ~3 minecraft:podzol
 setblock ~27 ~0 ~4 minecraft:packed_mud
 setblock ~27 ~0 ~8 minecraft:coarse_dirt
 fill ~27 ~0 ~9 ~27 ~0 ~11 minecraft:gravel
@@ -187,7 +185,7 @@ fill ~28 ~0 ~26 ~29 ~0 ~26 minecraft:gravel
 fill ~28 ~0 ~27 ~28 ~0 ~28 minecraft:coarse_dirt
 setblock ~29 ~0 ~6 minecraft:coarse_dirt
 fill ~29 ~0 ~7 ~29 ~0 ~11 minecraft:gravel
-setblock ~29 ~0 ~18 minecraft:dirt_path
+setblock ~29 ~0 ~18 minecraft:podzol
 setblock ~29 ~0 ~20 minecraft:packed_mud
 setblock ~29 ~0 ~21 minecraft:gravel
 fill ~29 ~0 ~22 ~29 ~0 ~23 minecraft:rooted_dirt
@@ -217,7 +215,7 @@ fill ~31 ~0 ~24 ~33 ~0 ~25 minecraft:packed_mud
 fill ~31 ~0 ~26 ~34 ~0 ~26 minecraft:rooted_dirt
 fill ~31 ~0 ~28 ~32 ~0 ~28 minecraft:gravel
 setblock ~31 ~0 ~29 minecraft:gravel
-fill ~31 ~0 ~30 ~33 ~0 ~30 minecraft:dirt_path
+fill ~31 ~0 ~30 ~33 ~0 ~30 minecraft:podzol
 setblock ~31 ~0 ~31 minecraft:coarse_dirt
 setblock ~32 ~0 ~0 minecraft:grass_block
 setblock ~32 ~0 ~1 minecraft:packed_mud
@@ -228,7 +226,7 @@ setblock ~32 ~0 ~29 minecraft:rooted_dirt
 fill ~32 ~0 ~31 ~33 ~0 ~31 minecraft:packed_mud
 setblock ~32 ~0 ~32 minecraft:coarse_dirt
 setblock ~33 ~0 ~0 minecraft:packed_mud
-setblock ~33 ~0 ~3 minecraft:dirt_path
+setblock ~33 ~0 ~3 minecraft:podzol
 fill ~33 ~0 ~4 ~33 ~0 ~5 minecraft:packed_mud
 fill ~33 ~0 ~6 ~33 ~0 ~9 minecraft:rooted_dirt
 setblock ~33 ~0 ~10 minecraft:gravel
@@ -243,7 +241,7 @@ fill ~34 ~0 ~7 ~35 ~0 ~11 minecraft:rooted_dirt
 fill ~34 ~0 ~12 ~35 ~0 ~12 minecraft:packed_mud
 fill ~34 ~0 ~20 ~34 ~0 ~22 minecraft:gravel
 setblock ~34 ~0 ~23 minecraft:packed_mud
-fill ~34 ~0 ~24 ~35 ~0 ~24 minecraft:dirt_path
+fill ~34 ~0 ~24 ~35 ~0 ~24 minecraft:podzol
 fill ~34 ~0 ~25 ~35 ~0 ~25 minecraft:packed_mud
 fill ~34 ~0 ~27 ~35 ~0 ~27 minecraft:coarse_dirt
 fill ~34 ~0 ~30 ~34 ~0 ~32 minecraft:packed_mud
@@ -278,7 +276,7 @@ setblock ~37 ~0 ~32 minecraft:packed_mud
 setblock ~38 ~0 ~2 minecraft:packed_mud
 setblock ~38 ~0 ~3 minecraft:rooted_dirt
 setblock ~38 ~0 ~5 minecraft:grass_block
-setblock ~38 ~0 ~16 minecraft:dirt_path
+setblock ~38 ~0 ~16 minecraft:podzol
 fill ~38 ~0 ~17 ~39 ~0 ~17 minecraft:packed_mud
 fill ~38 ~0 ~18 ~38 ~0 ~19 minecraft:grass_block
 fill ~38 ~0 ~20 ~38 ~0 ~21 minecraft:gravel

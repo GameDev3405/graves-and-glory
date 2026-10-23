@@ -168,7 +168,7 @@ final class CampWorld {
     }
     static boolean inBowl(Spec.CampRow c,int dx,int dz){return CampTerrain.inBowl(c,dx,dz);}
 
-    /** The terrain: the ground of every column of the island box (CampTerrain.ground: the height with the rows of campPieces laid over it), stone under the under block under the top block (CampTerrain.top and underAt: rock on the outcrops, else the slope mix, rockier
+    /** The terrain: the ground of every column of the island box (CampTerrain.ground: the height with the rows of campPieces laid over it), stone (with the andesite lenses of CampTerrain.rockKind in its top six blocks) under the under block under the top block (CampTerrain.tops and underAt: rock and soil in patches, rockier
      *  with height from y 84), the air above it up to the top of what stood there, then the plants of the slopes and the spruces (CampTerrain.plant and tree).
      *  Written with Arena's build flags (2 and 16): no shape update runs, so taking away the blocks of an older camp cannot break and spill what stood against them, and the terrain holds nothing a shape update would change
      *  (stone, andesite, dirt, coarse dirt, grass, air, grass and ferns on grass, spruce logs and persistent leaves). The pieces come after, through Structures.place, which does run them.
@@ -178,7 +178,7 @@ final class CampWorld {
         var c=Spec.CAMP[0];int width=c.islandMaxDx()-c.islandMinDx()+1,last=rimEnd(c),depth=last-c.islandMinDz()+1;
         var rows=Spec.CAMPPIECES;int[][] boxes=new int[rows.length][];boolean[] flatten=new boolean[rows.length];int[] floors=new int[rows.length];
         for(int i=0;i<rows.length;i++){var b=box(rows[i]);boxes[i]=new int[]{b.getMinX(),b.getMaxX(),b.getMinZ(),b.getMaxZ()};flatten[i]=rows[i].flatten();floors[i]=rows[i].y();}
-        int[] ground=CampTerrain.ground(c,boxes,flatten,floors);
+        int[] ground=CampTerrain.ground(c,boxes,flatten,floors),kinds=CampTerrain.tops(ground,width,depth);
         long t0=System.nanoTime();
         for(int cx=(c.originX()+c.islandMinDx()-2)>>4;cx<=(c.originX()+c.islandMaxDx()+2)>>4;cx++)for(int cz=(c.originZ()+c.islandMinDz()-2)>>4;cz<=(c.originZ()+last+2)>>4;cz++)w.getChunk(cx,cz);
         long t1=System.nanoTime();
@@ -190,10 +190,10 @@ final class CampWorld {
                 w.getChunk(x>>4,z>>4); // load it first: getTopY answers the world bottom for a chunk that is not loaded
                 int top=w.getTopY(Heightmap.Type.WORLD_SURFACE,x,z);
                 for(int y=top;y>h;y--)if(!w.getBlockState(pos.set(x,y,z)).isAir())w.setBlockState(pos,Blocks.AIR.getDefaultState(),flags); // from the top down: nothing is left standing on a block that has gone
-                for(int y=c.islandBottomY();y<h-1;y++)w.setBlockState(pos.set(x,y,z),Blocks.STONE.getDefaultState(),flags);
+                for(int y=c.islandBottomY();y<h-1;y++)w.setBlockState(pos.set(x,y,z),(y>=h-6?block(CampTerrain.rockKind(x,y,z),Blocks.STONE):Blocks.STONE).getDefaultState(),flags); // the faces of a crag show the andesite lenses of its top
                 double rock=CampTerrain.steepness(ground,width,depth,i,k);
-                int kind=CampTerrain.top(h,rock,x,z);
-                w.setBlockState(pos.set(x,h-1,z),block(CampTerrain.underAt(rock,x,z),Blocks.DIRT).getDefaultState(),flags);
+                int kind=kinds[i*depth+k];
+                w.setBlockState(pos.set(x,h-1,z),block(CampTerrain.underAt(kind,h,rock,x,z),Blocks.DIRT).getDefaultState(),flags);
                 w.setBlockState(pos.set(x,h,z),block(kind,Blocks.GRASS_BLOCK).getDefaultState(),flags);
                 int plant=CampTerrain.plant(c,dx,dz,h,kind);
                 if(plant!=0)w.setBlockState(pos.set(x,h+1,z),(plant==1?Blocks.GRASS:Blocks.FERN).getDefaultState(),flags);
@@ -212,7 +212,7 @@ final class CampWorld {
     static double rockOf(double perStride){return CampTerrain.rockOf(perStride);}
     static double hash01(int x,int z,int seed){return CampTerrain.hash01(x,z,seed);}
     /** The block of a CampTerrain kind, flat being the flat block of the ground (grass, snow, podzol). */
-    static Block block(int kind,Block flat){return kind==CampTerrain.STONE?Blocks.STONE:kind==CampTerrain.ANDESITE?Blocks.ANDESITE:kind==CampTerrain.COARSE?Blocks.COARSE_DIRT:kind==CampTerrain.DIRT?Blocks.DIRT:flat;}
+    static Block block(int kind,Block flat){return kind==CampTerrain.STONE?Blocks.STONE:kind==CampTerrain.ANDESITE?Blocks.ANDESITE:kind==CampTerrain.COARSE?Blocks.COARSE_DIRT:kind==CampTerrain.DIRT?Blocks.DIRT:kind==CampTerrain.ROOTED?Blocks.ROOTED_DIRT:flat;}
     /** The block on top of a column: the flat block (grass, snow, podzol) on level ground; where the ground is steep, rock (0 to 1) is the share of the columns, taken in patches and by hash, that show stone or coarse dirt instead (CampTerrain.mix).
      *  The camp and the margin of the arena both lay it. Coarse dirt and not plain dirt: grass spreads over a plain dirt block that has air above it, so the patches would turn green by themselves over the hours of a game. */
     static Block mix(Block flat,double rock,int x,int z){return block(CampTerrain.mix(rock,x,z),flat);}

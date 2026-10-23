@@ -6,7 +6,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** The camp's ground as the grade of 2026-10-23 asked for it (Phase 3 Task 3, fix round 4), checked on the pure shape of the island (CampTerrain), the sheets (Spec) and the parade's script, with no game:
+/** The camp's ground as the grade of 2026-10-23 asked for it (Phase 3 Task 3, fix round 4) and its re-grade 4 asked for it (fix round 5: no one-block terraces beside the stairs, rock and soil in patches, the rim either side of the gatehouse a slope framed by spruce, a flush parade), checked on the pure shape of the island (CampTerrain), the sheets (Spec) and the parade's script, with no game:
  *  the parade field is a mix of grounds with a ragged edge, not one flat slab in a hard rectangle; the welcome label is in the frame of the arrival view; the ridge bank is a hillside, not full-width one-block terraces;
  *  the edges of the bowl and the stands of spruce are irregular, not ruled lines and rows; the south rim beside the gates and the high corners are slopes, not stepped walls of stone.
  *  It also guards what the grade passed and what other pieces stand on: the ground under the two ridge stairs is the profile their script was cut to, the recruiter, the yard and the drillmaster stand on the floor of the bowl,
@@ -57,6 +57,9 @@ public final class CampTerrainCheck {
         for(int x=17;x<=23;x++)ways&=g[x][0]!=null&&g[x][D-1]!=null;
         for(int x=2;x<=38;x++)ways&=g[x][D-1]!=null; // the south side meets the paving of the War Gates: no lawn between them
         check(ways,"the cross way reaches both sides, the avenue both ends, and the south side meets the gates' paving with no gap");
+        // fix round 5: a dirt path is 15/16 of a block, so its patches sat sunken in the field with black edge lines
+        int low=0;for(int x=0;x<W;x++)for(int z=0;z<D;z++)if("dirt_path".equals(g[x][z])||"farmland".equals(g[x][z]))low++;
+        check(low==0,"the parade's ground layer is flush: "+low+" cells of dirt path or farmland (want 0)");
     }
 
     // ---- the welcome label in the arrival view ----
@@ -71,8 +74,9 @@ public final class CampTerrainCheck {
     }
 
     // ---- the terrain ----
+    static boolean isRock(int kind){return kind==CampTerrain.STONE||kind==CampTerrain.ANDESITE;}
     static int[][] boxes;static boolean[] flat;static int[] floor;
-    static int width,depth,last;static int[] ground;
+    static int width,depth,last;static int[] ground,K;
     static int g(int dx,int dz){return ground[(dx-C.islandMinDx())*depth+(dz-C.islandMinDz())];}
     static boolean nearPiece(int dx,int dz,int m){int x=C.originX()+dx,z=C.originZ()+dz;for(var b:boxes)if(x>=b[0]-m&&x<=b[1]+m&&z>=b[2]-m&&z<=b[3]+m)return true;return false;}
     static void terrain(){
@@ -84,14 +88,16 @@ public final class CampTerrainCheck {
             boxes[r]=new int[]{x0,x0+sx-1,z0,z0+sz-1};flat[r]=rows[r].flatten();floor[r]=rows[r].y();
         }
         width=C.islandMaxDx()-C.islandMinDx()+1;last=CampTerrain.rimEnd(C);depth=last-C.islandMinDz()+1;
-        ground=CampTerrain.ground(C,boxes,flat,floor);
+        ground=CampTerrain.ground(C,boxes,flat,floor);K=CampTerrain.tops(ground,width,depth); // the top kinds as CampWorld lays them
         int fy=C.floorY(),rise=C.plateauY()-C.floorY();
 
         // guards: the stairs' ground, the people on the floor, the seam
-        int off=0;String first="";
+        int off=0,above=0;String first="";
         for(var row:rows)if(row.template().equals("camp/ridge_stair"))for(int dx=row.dx()-6;dx<=row.dx()+6;dx++)for(int z=0;z<13;z++){
-            int dz=row.dz()-6+z,want=fy+(int)Math.floor(12*(12-z)/13.0+0.5);if(CampTerrain.height(C,dx,dz)!=want){off++;if(first.isEmpty())first="dx "+dx+" dz "+dz+": "+CampTerrain.height(C,dx,dz)+" not "+want;}}
-        check(off==0,"the ground under both ridge stairs is the bank their script was cut to (local y floor(12(12-z)/13+.5)): "+off+" columns off"+(first.isEmpty()?"":", first "+first));
+            int dz=row.dz()-6+z,want=fy+(int)Math.floor(12*(12-z)/13.0+0.5),h=CampTerrain.height(C,dx,dz);
+            if(Math.abs(dx-row.dx())<=3){if(h!=want){off++;if(first.isEmpty())first="dx "+dx+" dz "+dz+": "+h+" not "+want;}}
+            else if(h>want||h<fy){above++;if(first.isEmpty())first="cheek dx "+dx+" dz "+dz+": "+h+" against "+want;}}
+        check(off==0&&above==0,"the ground of both ridge stairs: under the walls and the flight the bank their script was cut to (local y floor(12(12-z)/13+.5)), "+off+" columns off; on the cheeks outside the walls at or under it and not under the floor, "+above+" off"+(first.isEmpty()?"":", first "+first));
         int notFloor=0;String nf="";
         for(int dx=-60;dx<=-36;dx++)for(int dz=-12;dz<=24;dz++)if(CampTerrain.height(C,dx,dz)!=fy){notFloor++;if(nf.isEmpty())nf="dx "+dx+" dz "+dz+" at "+CampTerrain.height(C,dx,dz);}
         for(int dx=-3;dx<=4;dx++)for(int dz=-37;dz<=-30;dz++)if(CampTerrain.height(C,dx,dz)!=fy){notFloor++;if(nf.isEmpty())nf="dx "+dx+" dz "+dz+" at "+CampTerrain.height(C,dx,dz);}
@@ -104,8 +110,8 @@ public final class CampTerrainCheck {
         // the camp suite's bank mix and flank relief, on the same rules
         int mixed=0;var shares=new StringBuilder();
         for(int dz=CampTerrain.RIDGE_TOP_DZ+1;dz<CampTerrain.RIDGE_FOOT_DZ;dz++){
-            int[] n=new int[5];int all=0;
-            for(int dx=C.minDx()+2;dx<=C.maxDx()-2;dx++){if(nearPiece(dx,dz,1))continue;int i=dx-C.islandMinDx(),k=dz-C.islandMinDz(),h=ground[i*depth+k];n[CampTerrain.top(h,CampTerrain.steepness(ground,width,depth,i,k),C.originX()+dx,C.originZ()+dz)]++;all++;}
+            int[] n=new int[8];int all=0;
+            for(int dx=C.minDx()+2;dx<=C.maxDx()-2;dx++){if(nearPiece(dx,dz,1))continue;int i=dx-C.islandMinDx(),k=dz-C.islandMinDz(),h=ground[i*depth+k];n[K[i*depth+k]]++;all++;}
             int top=Arrays.stream(n).max().getAsInt();if(all>0&&top*100<=85*all)mixed++;shares.append(dz).append(':').append(all==0?0:100*top/all).append("% ");
         }
         check(mixed>=9,"p3-camp-bank-mix on the pure terrain: "+mixed+" of 12 bank rows mixed (want 9): "+shares);
@@ -131,6 +137,36 @@ public final class CampTerrainCheck {
             if(nearStair)continue;pairs++;if(CampTerrain.height(C,dx,dz)==CampTerrain.height(C,dx+1,dz))same++;
         }
         check(pairs>0&&same*100<=70*pairs,"no full-width terraces on the bank: "+(pairs==0?0:100*same/pairs)+"% of neighbouring columns along a bank row stand at one height (want 70% or less)");
+        // fix round 5 (re-grade 4, item 1): no column of the bank climbs as a stair of one-block steps, row after row. A terrace row is a step of exactly 1 whose row before also stepped exactly 1; beside the stairs (the cheeks and the
+        // nine columns beyond them) and over the whole bank (|dx| up to 60, all but the stairs' walls and flights), at most 35% of the rising steps may be such rows
+        for(int pass=0;pass<2;pass++){
+            int rising=0,terrace=0;
+            for(int dx=-60;dx<=60;dx++){
+                boolean core=false,beside=false;for(var row:rows)if(row.template().equals("camp/ridge_stair")){int d=Math.abs(dx-row.dx());if(d<=3)core=true;else if(d<=15)beside=true;}
+                if(core||(pass==0&&!beside))continue;
+                int prev=-1;
+                for(int dz=-30;dz>-60;dz--){int s=CampTerrain.height(C,dx,dz-1)-CampTerrain.height(C,dx,dz);
+                    if(CampTerrain.height(C,dx,dz)>=C.plateauY())break;
+                    if(s>0||prev>0){rising++;if(s==1&&prev==1)terrace++;}
+                    prev=s;}
+            }
+            check(rising>0&&terrace*100<=35*rising,(pass==0?"the bank beside the stairs (the cheeks and the columns up to 15 from a stair's middle)":"the whole bank (|dx| up to 60, but the stairs' walls and flights)")+" is a hillside, not a stack of one-block terraces: "+terrace+" of "+rising+" rising rows ("+(rising==0?0:100*terrace/rising)+"%) step by 1 after a step of 1 (want 35% or less)");
+        }
+        // fix round 5 (re-grade 4, item 2): rock and soil lie in patches, not as single cells: over the lifted ground, few top blocks differ from all four neighbours, and few cells of rock stand among soil or of soil among rock
+        int lifted=0,alone=0,rockCells=0,speck=0;
+        int[][] kind=new int[width][depth];
+        for(int i=0;i<width;i++)for(int k=0;k<depth;k++)kind[i][k]=K[i*depth+k];
+        for(int i=1;i<width-1;i++)for(int k=1;k<depth-1;k++){
+            if(ground[i*depth+k]<fy+2)continue;lifted++;int me=kind[i][k];
+            int[] nb={kind[i-1][k],kind[i+1][k],kind[i][k-1],kind[i][k+1]};
+            boolean diff=true;int otherRock=0;for(int v:nb){if(v==me)diff=false;if(isRock(v)!=isRock(me))otherRock++;}
+            if(diff)alone++;if(isRock(me))rockCells++;if(otherRock>=3)speck++;
+        }
+        check(lifted>0&&alone*100<=3*lifted,"the top blocks of the slopes lie in patches: "+alone+" of "+lifted+" lifted columns ("+(lifted==0?0:100.0*alone/lifted)+"%) differ from all four neighbours (want 3% or less)");
+        check(rockCells>0&&speck*100<=4*rockCells,"rock is not checkered with soil: "+speck+" columns (against "+rockCells+" of rock) are rock among soil or soil among rock on three or four sides (want 4% or less)");
+        int plat=0,worn=0;
+        for(int dx=-30;dx<=30;dx++)for(int dz=-72;dz<=-44;dz++){if(nearPiece(dx,dz,2)||g(dx,dz)!=C.plateauY())continue;plat++;int t=kind[dx-C.islandMinDx()][dz-C.islandMinDz()];if(t==CampTerrain.COARSE||t==CampTerrain.ROOTED||t==CampTerrain.DIRT)worn++;}
+        check(plat>0&&worn*100<=plat,"the plateau's lawn has no squares of coarse dirt: "+worn+" of "+plat+" plateau-high columns (dx -30..30, dz -72..-44, the lip of the bank too) show worn ground (want 1% or less)");
 
         // defect 5: the edges of the bowl are not ruled lines
         for(int side:new int[]{-1,1}){
@@ -146,8 +182,12 @@ public final class CampTerrainCheck {
         int common=0;String ck="";for(var e:stepsOf.entrySet())if(e.getValue()>common){common=e.getValue();ck=e.getKey();}
         check(trees.size()>=250&&common*100<=20*trees.size(),"the spruce are not in rows: "+trees.size()+" trees, the commonest step to the nearest tree ("+ck+") is shared by "+(trees.isEmpty()?0:100*common/trees.size())+"% (want 20% or less, and 250 trees or more)");
         int onFloor=0;for(var t:trees)if(CampTerrain.height(C,t[0],t[1])<=fy&&CampTerrain.inBowl(C,t[0],t[1]))onFloor++;
-        int nearP=0;for(var t:trees)if(nearPiece(t[0],t[1],3))nearP++;
-        check(onFloor==0&&nearP==0,"no spruce on the lawn of the bowl ("+onFloor+") or within 3 of a piece ("+nearP+")");
+        int nearP=0;for(var t:trees){int r=CampTerrain.tree(C,t[0],t[1],g(t[0],t[1]),CampTerrain.steepness(ground,width,depth,t[0]-C.islandMinDx(),t[1]-C.islandMinDz()))[1]/2;
+            boolean bad=nearPiece(t[0],t[1],2);for(int a=-r;a<=r;a++)for(int b=-r;b<=r;b++)if(nearPiece(t[0]+a,t[1]+b,1))bad=true;if(bad)nearP++;}
+        check(onFloor==0&&nearP==0,"no spruce on the lawn of the bowl ("+onFloor+"), and none with its trunk within 2 of a piece or its crown within 1 ("+nearP+")");
+        // fix round 5 (re-grade 4, item 2): spruce frame the War Gates, on the slopes either side of the gatehouse
+        int west=0,east=0;for(var t:trees)if(t[1]>=22&&Math.abs(t[0])>=19&&Math.abs(t[0])<=36){if(t[0]<0)west++;else east++;}
+        check(west>=3&&east>=3,"spruce frame the War Gates: "+west+" west and "+east+" east of the gatehouse (|dx| 19..36, dz 22 on; want 3 or more on each side)");
 
         // defect 6: the south rim beside the gates is a slope, not a stepped wall
         int big=0,all=0,maxStep=0;var feet=new TreeSet<Integer>();
@@ -158,9 +198,17 @@ public final class CampTerrainCheck {
         }
         check(big*100<=2*all,"the south rim away from the gates (|dx| 28 to 90) climbs as a slope: "+big+" of "+all+" steps along z are 3 or more (largest "+maxStep+"; want 2% or less)");
         check(feet.size()>=3&&feet.first()<=30,"the foot of the south rim beside the gates wanders and starts well before the island's edge: first rows "+feet+" (want 3 or more different, from dz 30 or nearer)");
+        // fix round 5 (re-grade 4, item 3): either side of the gatehouse (|dx| 21 to 45) the rim is a slope too, its foot brought forward beside the gatehouse
+        int gbig=0,gall=0,gmax=0;var gfeet=new TreeSet<Integer>();
+        for(int a=21;a<=45;a++)for(int side:new int[]{-1,1}){
+            int dx=side*a;boolean found=false;
+            for(int dz=14;dz<last;dz++){int d=g(dx,dz+1)-g(dx,dz);if(dz>=20){gall++;if(Math.abs(d)>=3)gbig++;gmax=Math.max(gmax,Math.abs(d));}
+                if(!found&&a<=30&&g(dx,dz)>fy){gfeet.add(dz);found=true;}}
+        }
+        check(gbig*100<=2*gall&&!gfeet.isEmpty()&&gfeet.last()<=30,"the south rim either side of the gatehouse (|dx| 21 to 45) climbs as a slope: "+gbig+" of "+gall+" steps along z are 3 or more (largest "+gmax+"; want 2% or less), its foot beside the gatehouse (|dx| 21 to 30) at rows "+gfeet+" (want all by dz 30)");
         // defect 6: the high corners are not grey stepped cones
         int high=0,stone=0,peak=0;
-        for(int i=0;i<width;i++)for(int k=0;k<depth;k++){int h=ground[i*depth+k];peak=Math.max(peak,h);if(h>=80){high++;if(CampTerrain.top(h,CampTerrain.steepness(ground,width,depth,i,k),C.originX()+C.islandMinDx()+i,C.originZ()+C.islandMinDz()+k)==CampTerrain.STONE)stone++;}}
+        for(int i=0;i<width;i++)for(int k=0;k<depth;k++){int h=ground[i*depth+k];peak=Math.max(peak,h);if(h>=80){high++;if(K[i*depth+k]==CampTerrain.STONE)stone++;}}
         check(peak<=106&&(high==0||stone*100<=45*high),"the high ground is not bare stone cones: highest column y "+peak+" (want 106 or lower), stone on top of "+(high==0?0:100*stone/high)+"% of the "+high+" columns at y 80 or above (want 45% or less)");
     }
 }
