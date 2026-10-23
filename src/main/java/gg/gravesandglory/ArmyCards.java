@@ -35,11 +35,11 @@ final class ArmyCards {
     /** The tier I portrait: weapon tier 1 and armour tier 1. */
     static MobEntity portrait(Spec.TroopsRow spec){return portrait(spec,1,1);}
     /**
-     * A portrait mob of a troop at a weapon tier and an armour tier (1 to 3), named as Battle.spawn names it (ArmyMobs.levelName; until Task 9 reads
-     * the tiers from RankSync, the armour tier picks today's stage skin through the level name and the weapon tier is ignored), so a troop with a
-     * model draws it through TroopRenderer: no team, so no match side and no pennant, in the company's cloth (unit identity
-     * rule 8 as Kort ruled it), with its painted shield on a grey field (Battle.PORTRAIT_FIELD). Cached per id, tiers and colour: the chest item
-     * is still dyed the commander's colour (the barracks and editor checks read it), though troop armour never draws.
+     * A portrait mob of a troop at a weapon tier and an armour tier (1 to 3), named as Battle.spawn names a fresh one (ArmyMobs.levelName at level 1),
+     * so a troop with a model draws it through TroopRenderer: its tiers are set on the mob with RankSync.setLocal (level 1, so no chevrons), and a
+     * tier the troop has no art for draws the highest one below it, as in battle. No team, so no match side and no pennant, in the company's cloth
+     * (unit identity rule 8 as Kort ruled it), with its painted shield on a grey field (Battle.PORTRAIT_FIELD). Cached per id, tiers and colour: the
+     * chest item is still dyed the commander's colour (the barracks and editor checks read it), though troop armour never draws.
      */
     static MobEntity portrait(Spec.TroopsRow spec,int weaponTier,int armourTier){
         var c=MinecraftClient.getInstance();if(world!=c.world){portraits.clear();world=c.world;}if(c.world==null)return null;
@@ -47,7 +47,8 @@ final class ArmyCards {
         return portraits.computeIfAbsent(spec.id()+"/"+weaponTier+"/"+armourTier+"/"+colour,key->{
             // The sheet's entity type (ArmyMobs.portrait): a vanilla mob, so a card draws a House's beasts and crews before the House can take the field.
             MobEntity e=ArmyMobs.portrait(spec.entity(),c.world);
-            e.setCustomName(Text.literal(ArmyMobs.levelName(spec,armourTier)));e.setCustomNameVisible(false);e.setPersistent();e.setSilent(true);
+            e.setCustomName(Text.literal(ArmyMobs.levelName(spec,1)));e.setCustomNameVisible(false);e.setPersistent();e.setSilent(true);
+            RankSync.setLocal(e,new RankSync.Rank(1,weaponTier,armourTier));
             e.equipStack(EquipmentSlot.MAINHAND,new ItemStack(Registries.ITEM.get(new Identifier(spec.weapon()))));e.equipStack(EquipmentSlot.HEAD,new ItemStack(Registries.ITEM.get(new Identifier(spec.helmet()))));
             var chest=new ItemStack(Registries.ITEM.get(new Identifier(spec.chest())));if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,colour);e.equipStack(EquipmentSlot.CHEST,chest);
             if(ArmyMobs.tags(spec).contains("shield"))e.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(spec,GravesAndGlory.Battle.PORTRAIT_FIELD));

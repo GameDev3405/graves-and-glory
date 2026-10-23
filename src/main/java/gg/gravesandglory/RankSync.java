@@ -1,5 +1,6 @@
 package gg.gravesandglory;
 
+import com.google.common.collect.MapMaker;
 import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
@@ -10,10 +11,8 @@ import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -115,8 +114,8 @@ public final class RankSync {
 
     /** The ranks the server sent, by entity id (a client-world troop). */
     static final Map<Integer, Rank> RANKS = new ConcurrentHashMap<>();
-    /** Ranks set on client-only entities (portraits), by the entity itself: their ids are not the server's. */
-    static final Map<Entity, Rank> LOCAL = Collections.synchronizedMap(new WeakHashMap<>());
+    /** Ranks set on client-only entities (portraits), by the entity object itself (identity, weak, thread-safe): Entity.equals compares ids, and a portrait's client-made id can equal a world troop's network id on a multiplayer guest. */
+    static final Map<Entity, Rank> LOCAL = new MapMaker().weakKeys().makeMap();
     /** rank_v1 packets this client read (the harness reads it). */
     static volatile int received;
 

@@ -4284,8 +4284,18 @@ public final class Phase2Checks implements ClientModInitializer {
         void move(MobEntity m,double dx,double dz,float yaw){Vec3d where=at(dx,dz);pins.removeIf(p->p.mob()==m);pins.add(new Pin(m,where,yaw));pin(m,where,yaw);}
         /** The text of one abilities row, from the sheet. */
         static String sheetAbilityText(String id){return Arrays.stream(Spec.ABILITIES).filter(a->a.id().equals(id)).findFirst().orElseThrow().text();}
-        /** Sets a posted troop to a level and renames it to that level's name, as a level up names it (the " (Veteran)" suffix of a Mastery II troop stays); the level also picks the armour tier until RankSync does (Task 9). */
-        static void stage(GravesAndGlory.Unit u,int level){u.level=level;u.armourTier=level;boolean vet=u.mob.getCustomName()!=null&&u.mob.getCustomName().getString().endsWith(ArmyMobs.VETERAN);u.mob.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.levelName(u.spec,level)+(vet?ArmyMobs.VETERAN:"")).formatted(u.squad.team==0?net.minecraft.util.Formatting.AQUA:net.minecraft.util.Formatting.LIGHT_PURPLE));}
+        /** Sets a posted troop to a level wearing armour of the same tier (weapon tier I), as stage(u, level, 1, level). */
+        static void stage(GravesAndGlory.Unit u,int level){stage(u,level,1,level);}
+        /**
+         * Sets a posted troop's rank on the server and sends it (RankSync.changed; a player who starts tracking it later gets it through
+         * START_TRACKING), and renames it to the level's name, as a level up names it (the " (Veteran)" suffix of a Mastery II troop stays).
+         * The client draws the tiers from rank_v1 (in-match progression Task 9), never from the name.
+         */
+        static void stage(GravesAndGlory.Unit u,int level,int weaponTier,int armourTier){
+            u.level=level;u.weaponTier=weaponTier;u.armourTier=armourTier;boolean vet=u.mob.getCustomName()!=null&&u.mob.getCustomName().getString().endsWith(ArmyMobs.VETERAN);
+            u.mob.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.levelName(u.spec,level)+(vet?ArmyMobs.VETERAN:"")).formatted(u.squad.team==0?net.minecraft.util.Formatting.AQUA:net.minecraft.util.Formatting.LIGHT_PURPLE));
+            RankSync.changed(GravesAndGlory.battle,u);
+        }
         /** The spectator camera: the eye at (dx, eye, dz) from the platform centre's standing layer. */
         void camera(GravesAndGlory.Battle b,double dx,double eye,double dz,float yaw,float pitch){var p=sp(b);if(p!=null)b.relocate(p,site.getX()+.5+dx,site.getY()+eye-1.62,site.getZ()+.5+dz,yaw,pitch);}
         void force(GravesAndGlory.Battle b,BlockPos from,BlockPos to){
@@ -4802,7 +4812,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(wait==1)server(c,b->{List<GravesAndGlory.Unit> us=new ArrayList<>();for(int s=1;s<=3;s++){var u=post(b,gold,line,(2-s)*2.0,STUDIO,180+20);stage(u,s);us.add(u);staged.add(u);}lines.put(line,us);camera(b,0,1.6,STUDIO-5,0,8);});
                     if(wait==50){String n=line.equals("knight")?"gilded-stages":"gilded-stages-"+line;if(lines.containsKey(line)&&shotReady(c,n)){stagesCheck(c,line);shot(c,n);}else wait--;}
                     if(wait==55){var us=lines.get(line);server(c,b->{for(var u:us){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();pins.removeIf(p->p.mob()==u.mob);b.units.remove(u);posted.remove(u);}});
-                        li++;wait=0;if(li==LINES.size()){report("p2-gilded-stages",stagesOk,stagesWhy.toString().trim());kit(c);cs=5;}}}
+                        li++;wait=0;if(li==LINES.size()){report("p2-gilded-armour-tiers",stagesOk,stagesWhy.toString().trim());kit(c);cs=5;}}}
                 case 5->{wait++; // the culling box: the camera 1.1 blocks in front of Aldric looks up at his standard, his body and the vanilla box below the view
                     if(wait==1){fovScale(c,0.0);cullPitch=-(float)(c.options.getFov().getValue()/2.0-CULL_DIP);final float pitch=cullPitch;
                         server(c,b->{move(golds.get("gl_marshal").mob,0,STUDIO,180);camera(b,0,CULL_EYE,STUDIO-1.1,0,pitch);});}
@@ -4879,18 +4889,19 @@ public final class Phase2Checks implements ClientModInitializer {
                     .append(i==2?" (first drawn in "+(first==null?"-":first.cloth())+" at suite tick "+firstGold+", moved to crimson at "+movedAt+")":"").append(good?"":" (BAD)").append("; ");}
             report("p2-gilded-sides",ok,"one Squire on each side, left to right on the frame: "+why.toString().trim());
         }
-        /** One line of p2-gilded-stages: each of its three troops was last drawn at its own stage, in that stage's skin, with the line's stage 3 parts at stage 3 only. */
+        /** One line of p2-gilded-armour-tiers (the stage check, in-match progression Task 9): each of its three troops at armour tiers 1, 2 and 3, set on the server and read by this client through rank_v1 (RankSync.client), was last drawn at its own tier, in that tier's skin, with the line's tier 3 parts at tier 3 only. */
         void stagesCheck(MinecraftClient c,String line){
             var m=TroopModels.model(line);List<String> parts=STAGE3.get(line);boolean ok=m!=null&&m.bones().containsAll(parts);
             stagesWhy.append(line).append(m!=null&&m.bones().containsAll(parts)?"":" (BAD: the model lacks "+parts+")").append(": ");
             for(var u:lines.get(line)){var e=client(c,u.mob);var d=e==null?null:TroopRenderer.drawn(e);var l=d==null?null:d.last.look();
-                if(l==null||m==null){ok=false;stagesWhy.append("stage ").append(u.armourTier).append(" not drawn (BAD); ");continue;}
+                if(l==null||m==null){ok=false;stagesWhy.append("armour tier ").append(u.armourTier).append(" not drawn (BAD); ");continue;}
+                var rank=RankSync.client(e);
                 List<String> shown=m.shownBones(d.last.bones());long on=parts.stream().filter(shown::contains).count();
                 // the skin the draw bound (TroopRenderer.getTexture, observed), against the file the line and the stage name (Task 5 review minor 2)
                 var skin=d.last.skin();var want=new Identifier("gravesandglory","textures/entity/troop/"+u.spec.id()+"_s"+u.armourTier+".png");
                 boolean skinOk=want.equals(skin)&&c.getResourceManager().getResource(skin).isPresent();
-                boolean good=l.armourTier()==u.armourTier&&(l.armourTier()==3?on==parts.size():on==0)&&skinOk;ok&=good;
-                stagesWhy.append("\"").append(e.getCustomName().getString()).append("\" drawn at stage ").append(l.armourTier()).append(" in ").append(skin==null?"no skin":skin.getPath().substring(skin.getPath().lastIndexOf('/')+1))
+                boolean good=rank!=null&&rank.armourTier()==u.armourTier&&l.armourTier()==u.armourTier&&(l.armourTier()==3?on==parts.size():on==0)&&skinOk;ok&=good;
+                stagesWhy.append("\"").append(e.getCustomName().getString()).append("\" rank_v1 ").append(rank==null?"none":rank.level()+"/"+rank.weaponTier()+"/"+rank.armourTier()).append(", drawn at armour tier ").append(l.armourTier()).append(" in ").append(skin==null?"no skin":skin.getPath().substring(skin.getPath().lastIndexOf('/')+1))
                     .append(", ").append(String.join("+",parts)).append(" ").append(on==parts.size()?"drawn":on==0?"not drawn":on+" of "+parts.size()+" drawn").append(good?"":" (BAD)").append("; ");}
             stagesOk&=ok;
         }
@@ -7130,9 +7141,9 @@ public final class Phase2Checks implements ClientModInitializer {
             if(c.getTextureManager().getOrDefault(WHITE,null)==null){var img=new NativeImage(16,16,false);img.fillRect(0,0,16,16,0xFFFFFFFF);c.getTextureManager().registerTexture(WHITE,new net.minecraft.client.texture.NativeImageBackedTexture(img));}
             if(squire==null&&c.world!=null){squire=figure(c,"knight",1);templar=figure(c,"sentinel",3);}
         }
-        /** A gold troop of one stage, dressed as the portraits are: its name, the painted shield and its weapon. */
+        /** A gold troop of one armour tier (its level the same), dressed as the portraits are: its name, its rank set locally (RankSync.setLocal), the painted shield and its weapon. */
         static MobEntity figure(MinecraftClient c,String troop,int stage){
-            var spec=ArmyCards.spec(troop);MobEntity m=ArmyMobs.portrait(spec.entity(),c.world);m.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.levelName(spec,stage)));
+            var spec=ArmyCards.spec(troop);MobEntity m=ArmyMobs.portrait(spec.entity(),c.world);m.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.levelName(spec,stage)));RankSync.setLocal(m,new RankSync.Rank(stage,1,stage));
             String dye="yellow";for(var fa:Spec.FACTIONS)if(fa.id().equals("gold"))dye=fa.dye();
             if(!spec.shield().equals("none"))m.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(spec,dye));
             m.equipStack(EquipmentSlot.MAINHAND,new ItemStack(net.minecraft.registry.Registries.ITEM.get(new Identifier(spec.weapon()))));

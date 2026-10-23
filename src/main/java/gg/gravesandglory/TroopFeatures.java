@@ -76,12 +76,12 @@ final class TroopFeatures {
         }
     }
 
-    /** The troop's own weapon model at its hand bone, and the weapon's glow. */
+    /** The troop's own weapon model at its hand bone, at the weapon tier it wears (<weapon>_t<n>; a tier without a model draws the highest tier below it), and the weapon's glow. */
     static final class Weapon<T extends MobEntity> extends FeatureRenderer<T,TroopModel<T>> {
         final TroopRenderer<T> r;Weapon(TroopRenderer<T> r){super(r);this.r=r;}
         @Override public void render(MatrixStack m,VertexConsumerProvider v,int light,T e,float limbAngle,float limbDistance,float tickDelta,float age,float headYaw,float headPitch){
             TroopModel<T> model=getContextModel();if(r.look==null||e.isInvisible()||model.folded)return;
-            var w=TroopModels.weapon(model.weaponId());List<ModelPart> path=model.handPath(model.hand());if(w==null||!shown(path)||HIDDEN.contains(w.id()))return;
+            var w=TroopModels.weapon(model.weaponId(),r.look.weaponTier());List<ModelPart> path=model.handPath(model.hand());if(w==null||!shown(path)||HIDDEN.contains(w.id())||HIDDEN.contains(model.weaponId()))return;
             // a draw weapon shows the pull frame its bow_draw time is at (the rest frame when nothing draws); with troop depth off only the sprite's two big faces draw
             int frame=w.pull().length==0?0:TroopModels.Weapon.frameAt(w.pull(),TroopAnimator.drawSeconds(e,model,age),TroopClips.BOW_TIMES.getOrDefault(model.rig,TroopClips.BOW_TIMES.get("biped"))[1]);
             var mesh=w.frames().get(Math.min(frame,w.frames().size()-1));int limit=TroopDepth.enabled?Integer.MAX_VALUE:2;
@@ -89,7 +89,7 @@ final class TroopFeatures {
             int quads=mesh.render(m.peek(),v.getBuffer(RenderLayer.getEntityCutout(w.texture())),light,LivingEntityRenderer.getOverlay(e,0f),1f,1f,1f,1f,limit);
             // the glow pass draws the same mesh again through the eyes layer: weaponQuads counts the mesh once, weaponGlowDraws the extra passes
             if(w.glow()!=null){mesh.render(m.peek(),v.getBuffer(RenderLayer.getEyes(w.glow())),FULL_BRIGHT,OverlayTexture.DEFAULT_UV,1f,1f,1f,1f,limit);weaponGlowDraws++;}
-            m.pop();r.weaponDrawn=true;r.weaponFrame=frame;r.weaponQuads=quads;
+            m.pop();r.weaponDrawn=true;r.weaponId=w.id();r.weaponFrame=frame;r.weaponQuads=quads;
         }
     }
 

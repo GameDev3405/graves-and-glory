@@ -3,9 +3,11 @@ import hashlib
 import json
 import pathlib
 import re
+import sys
 import urllib.parse
 import zipfile
 from release_config import ROOT, version, source_identity, validate_player_jar
+import build_skins
 
 ALLOWED_HOSTS={'cdn.modrinth.com','github.com','raw.githubusercontent.com','gitlab.com'}
 
@@ -28,7 +30,10 @@ def validate_index(index):
         for side in ('client','server'):
             if file['env'][side] not in ('required','unsupported','optional'):raise ValueError('Invalid environment')
 
-def export():
+def export(argv=()):
+    # The tier art gate first, as tools/package.py runs it (design 4.4; Task 9 review I2): refuse while a troop draws a stopgap
+    # tier unless --allow-stopgap, which marks the .mrpack -stopgap and takes only the -stopgap player archive.
+    stopgap=build_skins.release_gate(ROOT,list(argv),'export_modrinth')
     release=version();jar=ROOT/f'build/libs/graves-and-glory-{release}.jar'
     validate_player_jar(jar,source_identity())
     rows=json.loads((ROOT/'dependencies/platform-lock.json').read_text(encoding='utf8'))
@@ -42,13 +47,13 @@ def export():
         index['files'].append({'path':folder+'/'+row['fileName'],'hashes':row['hashes'],
                                'downloads':row['downloads'],'fileSize':len(data),'env':row['env']})
     validate_index(index)
-    output=ROOT/f'dist/graves-and-glory-{release}.mrpack';temp=output.with_suffix('.mrpack.tmp')
+    manifest=json.loads((ROOT/'dist/package-manifest.json').read_text())
+    archive=ROOT/'dist'/build_skins.release_archive(manifest,release,stopgap,'export_modrinth')
+    output=ROOT/'dist'/build_skins.release_name(release,stopgap,'.mrpack');temp=output.with_suffix('.mrpack.tmp')
     with zipfile.ZipFile(temp,'w',zipfile.ZIP_DEFLATED) as pack:
         pack.writestr('modrinth.index.json',json.dumps(index,indent=2))
         pack.write(jar,'overrides/mods/'+jar.name)
         # Documentation/notices only, from the verified ordinary player archive.
-        manifest=json.loads((ROOT/'dist/package-manifest.json').read_text())
-        archive=ROOT/'dist'/manifest['fileName']
         if hashlib.sha256(archive.read_bytes()).hexdigest()!=manifest['sha256']:raise RuntimeError('Player archive hash mismatch')
         with zipfile.ZipFile(archive) as source:
             for name in source.namelist():
@@ -69,4 +74,4 @@ def export():
                       'downloadFiles':len(index['files']),'serverDownloadFiles':sum(r['env']['server']=='required' for r in rows),
                       'status':'Prepared locally; launcher import and platform moderation remain pending'},indent=2))
 
-if __name__=='__main__':export()
+if __name__=='__main__':export(sys.argv[1:])

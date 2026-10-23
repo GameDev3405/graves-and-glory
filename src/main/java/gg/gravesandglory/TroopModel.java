@@ -19,13 +19,13 @@ import java.util.*;
 
 /**
  * One troop's own model (or a bare rig), built by TroopModelLoader from its generated models/troop JSON. Proportions are
- * baked in that file; this class shows and hides parts per stage, fold and helm, and TroopAnimator poses it from its rig's
+ * baked in that file; this class shows and hides parts per armour tier (the stages key), weapon tier (weaponTiers), fold and helm, and TroopAnimator poses it from its rig's
  * clips (Task 5b). Team bones (panels, pennant, standard) are hidden for the skin pass and drawn by TroopFeatures.Cloth
  * from the cloth sheet. One instance serves every entity of the troop, so prepare and setAngles run right before each draw.
  */
 public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel<T> {
     /** A bone as the generated file describes it. */
-    record Bone(String name,String parent,String part,boolean team,String tag,Set<Integer> stages){}
+    record Bone(String name,String parent,String part,boolean team,String tag,Set<Integer> stages,Set<Integer> weaponTiers){}
     static final float RAD=MathHelper.RADIANS_PER_DEGREE;
     /** Head look limits in degrees: yaw both ways, pitch only downwards, so a helm never swings into the pennant pole behind it. */
     static final float HEAD_YAW=30,HEAD_DOWN=30;
@@ -38,6 +38,8 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     final String troop,rig,hand,idleArms,portrait,weapon;
     final Identifier veteran,glow,outer;final int glowFrom;
     private final Map<Integer,Identifier> skins=new TreeMap<>();
+    /** Every weapon tier some weapon part (weaponTiers) shows at: the tiers whose weapon-part art the troop has. */
+    private final Set<Integer> partTiers=new TreeSet<>();
     private final Map<String,ModelPart> parts=new LinkedHashMap<>();
     private final Map<String,Bone> info=new LinkedHashMap<>();
     private final Map<String,List<ModelPart>> paths=new HashMap<>();
@@ -46,6 +48,8 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     private final boolean[] teamOn;
     private final Map<String,String> hands;
     private final Box rest;
+    /** The highest point at rest of the skin bones of every armour and weapon tier (no team cloth), in model pixels (y down), or NaN for a model without one: where the rank chevrons sit, so no tier's crest reaches them. */
+    private final double crown;
     /** The frustum test's reach about the entity, in blocks: horizontal radius, and the bottom and top over its feet. */
     private final double cullRadius,cullBottom,cullTop;
     /** The outer layer's twin (rig boxes dilated by the rig's outer), or null; its bones copy this model's pose. */
@@ -78,7 +82,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     private TroopModel(){
         super(RenderLayer::getEntityCutout);top=new ModelPart(List.of(),Map.of());troop=rig=hand=idleArms=portrait=weapon="";
         veteran=glow=outer=null;glowFrom=1;teamOn=new boolean[0];hands=Map.of();rest=new Box(0,0,0,0,0,0);outerTop=null;
-        cullRadius=cullBottom=cullTop=0;teamBits=0;weaponPoints=List.of();relief=Map.of();reliefWalk=Map.of();
+        cullRadius=cullBottom=cullTop=0;crown=Double.NaN;teamBits=0;weaponPoints=List.of();relief=Map.of();reliefWalk=Map.of();
     }
     /** An empty placeholder: TroopRenderer is built before TroopModelLoader may have loaded anything. */
     static <T extends MobEntity> TroopModel<T> empty(){return new TroopModel<>();}
@@ -100,7 +104,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         if(bones.size()>MAX_BONES)throw new IllegalArgumentException(bones.size()+" bones, more than "+MAX_BONES);
         Map<String,double[][]> rot=new HashMap<>();Map<String,double[]> at=new HashMap<>();Map<String,List<double[]>> corners=new HashMap<>();
         double[] lo={Double.MAX_VALUE,Double.MAX_VALUE,Double.MAX_VALUE},hi={-Double.MAX_VALUE,-Double.MAX_VALUE,-Double.MAX_VALUE};
-        Set<String> restHidden=new HashSet<>();
+        Set<String> restHidden=new HashSet<>(),crownHidden=new HashSet<>();Map<String,Set<Integer>> armsByBone=new LinkedHashMap<>();double crownY=Double.MAX_VALUE;
         int[] size=json.has("size")?new int[]{json.getAsJsonArray("size").get(0).getAsInt(),json.getAsJsonArray("size").get(1).getAsInt()}:new int[]{64,64};
         Map<String,Map<String,TroopMesh>> rel=new TreeMap<>();
         for(JsonElement el:bones){
@@ -111,13 +115,14 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
                 if(mesh.quads()>0)rel.computeIfAbsent(re.getKey(),k->new LinkedHashMap<>()).put(name,mesh);
             }
             Set<Integer> stages=new TreeSet<>();if(b.has("stages"))for(var s:b.getAsJsonArray("stages"))stages.add(s.getAsInt());
-            Bone bone=new Bone(name,parent,str(b,"part"),b.has("team")&&b.get("team").getAsBoolean(),str(b,"tag"),Collections.unmodifiableSet(stages));
+            Set<Integer> arms=new TreeSet<>();if(b.has("weaponTiers"))for(var s:b.getAsJsonArray("weaponTiers"))arms.add(s.getAsInt());if(!arms.isEmpty())armsByBone.computeIfAbsent(parent,k->new TreeSet<>()).addAll(arms);
+            Bone bone=new Bone(name,parent,str(b,"part"),b.has("team")&&b.get("team").getAsBoolean(),str(b,"tag"),Collections.unmodifiableSet(stages),Collections.unmodifiableSet(arms));
             ModelPart p=parent.isEmpty()?top.getChild(name):parts.get(parent).getChild(name);
             parts.put(name,p);info.put(name,bone);
             List<ModelPart> path=new ArrayList<>(parent.isEmpty()?List.of(top):paths.get(parent));path.add(p);paths.put(name,List.copyOf(path));
             if(bone.team()){teamPaths.add(paths.get(name));teamBones.add(bone);}
             if(outerTop!=null&&bone.part().isEmpty()){ModelPart twin=parent.isEmpty()?outerTop.getChild(name):outerParts.get(parent).getChild(name);outerParts.put(name,twin);}
-            // every bone's boxes at rest, in model space: the rest bounds take the skin bones shown at stage 1 in the idle stance
+            // every bone's boxes at rest, in model space: the rest bounds take the skin bones shown at armour and weapon tier I in the idle stance
             double[][] r=rotation(b.has("rotation")?vec(b,"rotation"):new double[3]);double[] pivot=vec(b,"pivot");
             double[][] pr=parent.isEmpty()?identity():rot.get(parent);double[] pt=parent.isEmpty()?new double[3]:at.get(parent);
             double[] t=add(pt,apply(pr,pivot));double[][] wr=mul(pr,r);rot.put(name,wr);at.put(name,t);
@@ -130,7 +135,9 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
                 }
             }
             corners.put(name,mine);
-            boolean hidden=bone.team()||!stages.isEmpty()&&!stages.contains(1)||restHidden.contains(parent)
+            boolean swapped="folded".equals(idleArms)?name.equals("right_arm")||name.equals("left_arm"):name.equals("arms_folded");
+            if(bone.team()||swapped||crownHidden.contains(parent))crownHidden.add(name);else for(double[] w:mine)crownY=Math.min(crownY,w[1]);
+            boolean hidden=bone.team()||!stages.isEmpty()&&!stages.contains(1)||!arms.isEmpty()&&!arms.contains(1)||restHidden.contains(parent)
                 ||("folded".equals(idleArms)?name.equals("right_arm")||name.equals("left_arm"):name.equals("arms_folded"));
             if(hidden){restHidden.add(name);continue;}
             for(double[] w:mine)for(int i=0;i<3;i++){lo[i]=Math.min(lo[i],w[i]);hi[i]=Math.max(hi[i],w[i]);}
@@ -138,6 +145,10 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         teamOn=new boolean[teamPaths.size()];
         long team=0;int bit=0;for(Bone b:info.values()){if(b.team())team|=1L<<bit;bit++;}teamBits=team;
         rest=lo[0]>hi[0]?new Box(0,0,0,0,0,0):new Box(lo[0],lo[1],lo[2],hi[0],hi[1],hi[2]);
+        crown=crownY==Double.MAX_VALUE?Double.NaN:crownY;
+        // a weapon tier of parts is whole only when every bone carrying a tier I weapon part carries one of that tier too (Task 9
+        // review M7; build_skins.part_tiers is the release gate's twin): a tier II cap without its tier II guard draws tier I
+        for(var tiers:armsByBone.values())for(int t:tiers)if(armsByBone.values().stream().allMatch(o->!o.contains(1)||o.contains(t)))partTiers.add(t);
         // The frustum test's reach (TroopRenderer.shouldRender): every box of every stage, team part and flag at rest, the head
         // turned any way about its pivot, and each arm swung any way about its shoulder with what its hand holds (the weapon in
         // the weapon hand, a shield's reach in the other), so the head look and Task 5b's arm clips stay inside it.
@@ -179,8 +190,10 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     @Override public Optional<ModelPart> getChild(String name){return Optional.ofNullable(parts.get(name));}
     public ModelPart bone(String name){return parts.get(name);}
     public Set<String> bones(){return Collections.unmodifiableSet(parts.keySet());}
-    /** The skin bones shown at stage 1, at rest, in model pixels (y down, the ground at y 24). */
+    /** The skin bones shown at armour and weapon tier I, at rest, in model pixels (y down, the ground at y 24). */
     public Box restBounds(){return rest;}
+    /** The highest point at rest over every armour and weapon tier's skin bones (no team cloth), in model pixels (y down, the ground at y 24), or NaN. */
+    public double crown(){return crown;}
     /** Every team bone's path from the root part to the bone, in file order. */
     public List<List<ModelPart>> teamPaths(){return Collections.unmodifiableList(teamPaths);}
     /** The path from the root part to a bone (empty for a bone the model lacks). */
@@ -259,7 +272,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     public Set<String> reliefKeys(){return Collections.unmodifiableSet(relief.keySet());}
     /** The quads of a key over all its bones. */
     public int reliefQuads(String key){var m=relief.get(key);int n=0;if(m!=null)for(TroopMesh t:m.values())n+=t.quads();return n;}
-    /** The relief key of the skin a Look binds (the stage whose skin file draws; a Veteran's trim takes none); null when the model has no relief for it. */
+    /** The relief key of the skin a Look binds (the armour tier whose skin file draws, armourArt; a Veteran's trim takes none); null when the model has no relief for it. */
     public String reliefKey(TroopModels.Look l){
         if(relief.isEmpty()||l==null)return null;
         String key=String.valueOf(skinStage(l.armourTier()));
@@ -304,8 +317,16 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     }
     /** The bone names in file order (a snapshot's order). */
     public List<String> boneOrder(){return List.copyOf(parts.keySet());}
-    /** The stage whose skin file draws at a stage: the highest not above it, else the lowest. */
+    /** The armour tier whose skin file draws at a tier: the highest own skin not above it, else the lowest (the stopgap, in-match progression design 4.4). */
     int skinStage(int stage){Integer out=null;for(int k:skins.keySet())if(k<=stage||out==null)out=k;return out==null?1:out;}
+    /** The armour tier a worn tier draws as: its skin, relief, stage parts and glow are that tier's (skinStage: the highest tier at or below it with its own skin). */
+    public int armourArt(int worn){return skinStage(worn);}
+    /** The weapon tier a worn tier's weapon parts draw as: the highest tier at or below it that the weaponTiers parts have whole (every bone with a tier I weapon part has one of it), tier I without one (the stopgap). */
+    public int weaponPartTier(int worn){int out=1;for(int t:partTiers)if(t<=worn)out=Math.max(out,t);return out;}
+    /** The armour tiers this troop has its own skin for. */
+    public Set<Integer> ownSkins(){return Collections.unmodifiableSet(skins.keySet());}
+    /** Whether a bone is a weapon part (it has a weaponTiers list). */
+    public boolean weaponPart(String bone){var b=info.get(bone);return b!=null&&!b.weaponTiers().isEmpty();}
     Identifier skin(int stage){return skins.get(skinStage(stage));}
     String hand(){return hand;}
     String idleArms(){return idleArms;}
@@ -313,21 +334,22 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     Map<String,ModelPart> outerParts(){return outerParts;}
 
     /**
-     * Sets visibility for one draw: parts shown at the Look's stage, the arms or arms_folded by the fold (any model with an
-     * arms_folded bone folds when asked; TroopAnimator.folds asks), helm parts unless
+     * Sets visibility for one draw: parts shown at the armour tier the Look's art draws as (armourArt, its stages key) and at
+     * the weapon tier its weapon parts draw as (weaponPartTier, their weaponTiers key), the arms or arms_folded by the fold
+     * (any model with an arms_folded bone folds when asked; TroopAnimator.folds asks), helm parts unless
      * helmOff, and every team bone hidden for the skin pass (renderCloth shows the ones that draw: a pennant or standard
      * only for a troop on a side whose row flies one).
      */
     public void prepare(TroopModels.Look l,boolean folded,boolean helmOff){
-        int stage=l==null?1:l.armourTier();this.folded=folded&&parts.containsKey("arms_folded");
+        int stage=armourArt(l==null?1:l.armourTier()),arms=weaponPartTier(l==null?1:l.weaponTier());this.folded=folded&&parts.containsKey("arms_folded");
         for(Bone b:info.values()){
-            boolean on=b.stages().isEmpty()||b.stages().contains(stage);if(helmOff&&"helm".equals(b.tag()))on=false;
+            boolean on=(b.stages().isEmpty()||b.stages().contains(stage))&&(b.weaponTiers().isEmpty()||b.weaponTiers().contains(arms));if(helmOff&&"helm".equals(b.tag()))on=false;
             parts.get(b.name()).visible=on&&!b.team();
         }
         ModelPart right=parts.get("right_arm"),left=parts.get("left_arm"),fold=parts.get("arms_folded");
         if(fold!=null){fold.visible=this.folded;if(right!=null)right.visible=!this.folded;if(left!=null)left.visible=!this.folded;}
         boolean flies=l!=null&&l.side()!=null&&l.troop().pennant();
-        for(int i=0;i<teamBones.size();i++){Bone b=teamBones.get(i);teamOn[i]=(b.stages().isEmpty()||b.stages().contains(stage))&&(!FLAGS.contains(b.part())||flies)&&(!helmOff||!"helm".equals(b.tag()));}
+        for(int i=0;i<teamBones.size();i++){Bone b=teamBones.get(i);teamOn[i]=(b.stages().isEmpty()||b.stages().contains(stage))&&(b.weaponTiers().isEmpty()||b.weaponTiers().contains(arms))&&(!FLAGS.contains(b.part())||flies)&&(!helmOff||!"helm".equals(b.tag()));}
         long mask=0;int i=0,t=0;
         for(Bone b:info.values()){
             List<ModelPart> path=paths.get(b.name());boolean on=b.team()?teamOn[t++]:path.get(path.size()-1).visible;
