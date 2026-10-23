@@ -31,6 +31,36 @@ The gate prints `gate <a> vs <b> win=<P>% pass|fail` (exit status 0 pass, 1 fail
 
 ## Results
 
+### Phase 2 Task 10 gates: Wildmoot (2026-10-23; `wildmoot_normal` vs `ironclad_normal` 10%, vs `gilded_normal` 0%; both report-only, both outside the band)
+
+Code: `phase-2-houses` at `dc62e65` (Task 10 fix round 1: the Moot Hound takes a troop's blow in full, Bloodrush lifesteal and refunds by the commander's hand only, the trample once per fresh Charge), on the no-routing game of Task 8b at the design's own numbers. By the controller's ruling both gates are report-only: no sheet number was changed and tuning is deferred to the end balance pass, which takes Wildmoot as a structural item next to Tidecallers (check first whether the bots use the hound and pack mechanics at all).
+
+Both gates use the recipe unchanged (two processes of 10 matches, `-PsimDawn=normal -PsimDusk=normal -PsimMaps=0,1,2,3,4 -PsimRoundSeconds=300`, a fresh server root each), one after the other: ports 25681 and 25682 for gate 1 (roots `work/p2/t11-sim1-005751` and `work/p2/t11-sim2-005811`, 00:57 to 01:53), 25683 and 25684 for gate 2 (`work/p2/t11-sim3-015328` and `work/p2/t11-sim4-015348`, 01:53 to 02:49). All 40 rounds ran their full 300 s; none aborted. An earlier gate 1 on `d5ccb0a` (3 of 20) is invalid: on that code vanilla's wolf halved every troop blow on a Moot Hound.
+
+#### Gate 1: `wildmoot_normal` vs `ironclad_normal` (report-only)
+
+```
+work/p2/t11-sim1-005751/botsim/results.csv: wildmoot_normal on dawn: won=0 lost=10 drawn=0 aborted=0
+work/p2/t11-sim2-005811/botsim/results.csv: wildmoot_normal on dusk: won=2 lost=8 drawn=0 aborted=0
+rounds=20 decided=20 won=2 lost=18 drawn=0
+gate wildmoot_normal vs ironclad_normal win=10% fail
+```
+
+- `wildmoot_normal` won 2 of 20 (both on map 4 from Dusk's seat): P = 10%. Kills 18.9 a match against 97.0; 9.9 of its groups wiped a match against 0.1 of Ironclad's; fights 16.1 s mean (11.6 to 32.0).
+
+#### Gate 2: `wildmoot_normal` vs `gilded_normal` (report-only)
+
+```
+work/p2/t11-sim3-015328/botsim/results.csv: wildmoot_normal on dawn: won=0 lost=10 drawn=0 aborted=0
+work/p2/t11-sim4-015348/botsim/results.csv: wildmoot_normal on dusk: won=0 lost=10 drawn=0 aborted=0
+rounds=20 decided=20 won=0 lost=20 drawn=0
+gate wildmoot_normal vs gilded_normal win=0% fail
+```
+
+- `wildmoot_normal` won 0 of 20: P = 0%. Kills 21.8 a match against 96.7; 10.1 of its groups wiped a match against 0.4 of Gilded's; fights 17.9 s mean (13.8 to 22.7).
+
+Result: Wildmoot loses both pairings by a wide margin, on kills, not on points. Nothing is tuned now; the end balance pass owns it.
+
 ### Phase 2 Task 8b gates: the no-routing game (2026-10-22; `graveborn_normal` vs `gilded_normal` 17.5%, fail, one tuning round below; `ironclad_normal` vs `gilded_normal` 60%, report-only, inside the band)
 
 Code: the Task 8b tree on `cdcf095` (the commits of this task), at the design's own numbers (`docs/superpowers/specs/2026-10-22-no-routing-design.md`, section 8). The controller's ruling for 8b: the `graveborn_normal` pairing must pass (40 <= P <= 60 over 20 decided matches; if not, one tuning round on the design's own numbers; if that still fails, stop and report), and the `ironclad_normal` pairing is report-only. (The design's section 10 names the gates the other way round; the ruling was followed.) Both reruns are the new baselines; the routing-game results stay below as the routing reference: `graveborn_normal` vs `gilded_normal` 47.5% (the balance fix of 2026-10-22, at the same troop rows as here) and `ironclad_normal` vs `gilded_normal` 75% (the same entry; 45% in the Task 8 gate before the Squire and Templar cuts).
