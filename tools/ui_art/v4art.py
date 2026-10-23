@@ -20,7 +20,7 @@ def save(spr, name):
 RUSTW = ['#3b2214', '#4f2c18', '#63391f']     # rust bleeding into oak, dark to light
 
 
-def oak_table(W=960, H=540, seed=11, avoid=()):
+def oak_table(W=960, H=540, seed=11, avoid=(), rows=None):
     """flat-sawn oak planks at full pixel density. Per plank: a base tone, cathedral figures (nested arches
     whose arms run out into straight grain), straight late-wood lines broken into runs, early-wood pores,
     knots with rings, a check crack and a lit far wall, the grain bending round them. Between planks: a dark
@@ -38,10 +38,13 @@ def oak_table(W=960, H=540, seed=11, avoid=()):
     idx = [[4] * W for _ in range(H)]
     lock = [[False] * W for _ in range(H)]
     planks = []
-    y = -6
-    while y < H:
-        h = rnd.choice([30, 32, 34, 36, 38])
-        planks.append((y, h)); y += h
+    if rows is not None:   # tools/ui_art edit, UI Task 8b-2: the big-canvas oak (kit_props.table_big) lays its planks
+        planks = list(rows)  # on the rows of the page's 1280 x 720 oak; without rows the table paints as before
+    else:
+        y = -6
+        while y < H:
+            h = rnd.choice([30, 32, 34, 36, 38])
+            planks.append((y, h)); y += h
     wob = Noise(seed + 9, 40, 6)
     pn = Noise(seed + 10, 9, 2)
     nails = []

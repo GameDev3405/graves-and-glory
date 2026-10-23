@@ -1174,7 +1174,7 @@ public final class Phase1Checks implements ClientModInitializer {
          *  leaving one line between it and the crosshair), else above it. Open, the crosshair does not count (UI polish round 2). At
          *  Standard and Large the chat is held to the same rules, not to numbers. Last, the HUD's scale under Task 8a (the footprint's
          *  baseline) and 1 for the brief's five footprint windows. */
-        static final int[][] WINDOWS={{960,540,1,0,1,1,1,10,20,10,20,10,20,10,20,1,0},{854,480,2,0,1,1,1,4,6,1,9,4,14,1,12,1,1},{1280,720,3,0,1,1,1,6,9,6,16,6,19,6,17,1,1},{1920,1080,2,1,2,3,3,10,20,10,20,10,20,10,20,2,1},{1920,1080,4,1,2,3,3,7,9,5,15,7,19,5,17,2,1},{1280,720,2,0,1,2,2,10,14,10,20,10,20,10,20,2,0},{1366,768,2,0,1,2,2,10,15,10,20,10,20,10,20,2,1}};
+        static final int[][] WINDOWS={{960,540,1,0,1,1,1,10,20,10,20,10,20,10,20,1,0},{854,480,2,0,1,1,1,4,6,1,9,4,14,1,12,1,1},{1280,720,3,0,1,1,1,6,8,6,16,6,18,6,17,1,1},{1920,1080,2,1,2,3,3,10,20,10,20,10,20,10,20,2,1},{1920,1080,4,1,2,3,3,7,9,5,15,7,19,5,17,2,1},{1280,720,2,0,1,2,2,10,14,10,20,10,20,10,20,2,0},{1366,768,2,0,1,2,2,10,15,10,20,10,20,10,20,2,1}};
         /** Each window's screenshot; pass B adds -hints, C -battle and D -battle-hints, and a size above Compact -standard or -large. */
         static final String[] SHOTS={"ui-hud-chat","ui-hud-small","ui-hud-1280","ui-hud-1080-gui2","ui-hud-1080-gui4","ui-hud-720-gui2","ui-hud-1366"},PASS_SHOT={"","-hints","-battle","-battle-hints"},SIZE_SHOT={"","-standard","-large"};
         /** The footprint's baseline (UI Task 8c, run ui-8c-base-211317): in the default battle state the HUD before this task drew two
@@ -1449,9 +1449,9 @@ public final class Phase1Checks implements ClientModInitializer {
                         int[] dr=ChatPlacement.drawn,cross={(sw-15)/2,(sh-15)/2,15,15},chat=dr==null?null:canvas(c,dr[0],dr[1],dr[2],dr[3]);boolean open=c.currentScreen instanceof net.minecraft.client.gui.screen.ChatScreen,over=meets(dr,cross);
                         List<String> hit=new ArrayList<>();if(chat!=null)for(var e:r.entrySet())if(meets(chat,e.getValue()))hit.add(e.getKey());shot(c,"ui-hud-chat-typing");
                         // Compact (UI Task 8c): closed, the chat keeps off vanilla's bars (UiMath.chatSlot, a49ceb0): its bottom at GUI 187, 4 px
-                        // clear of the armour row at sh-49 (the hearts at sh-39), so 6 lines fit below the crosshair; open, it keeps vanilla's
-                        // place and 17 fit below the lesson note's shadow
-                        report("p1-ui-chat-open",open&&chat!=null&&r.containsKey("lesson")&&r.containsKey("feed")&&!r.containsKey("respawn")&&closedLines==6&&shown==17&&ChatPlacement.drawnLines==17&&hit.isEmpty()&&over,"at "+w.getFramebufferWidth()+"x"+w.getFramebufferHeight()+" GUI "+(int)w.getScaleFactor()+" ("+HudSize.NAMES[HudSize.get()]+", the HUD at "+UiCanvas.hudK()+"x) with the commander up (a respawn card: "+r.containsKey("respawn")+"), the feed leaf at "+box(r.get("feed"))+" and the lesson note at "+box(r.get("lesson"))+", the closed chat showed "+closedLines+" lines (wanted 6: its bottom 4 px over the armour row, the crosshair above it); open (true: "+open+") with 25 lines in it, it shows "+shown+" and drew "+ChatPlacement.drawnLines+" at GUI "+box(dr)+" (wanted 17, the lesson note above it)"+(hit.isEmpty()?", apart from every element of the HUD":", meeting "+hit)+", "+(over?"over":"clear of")+" the crosshair at GUI "+box(cross));
+                        // clear of the armour row at sh-49 (the hearts at sh-39), so 6 lines fit below the crosshair; open, it keeps 4 px over
+                        // the ability slot beside the hotbar (UI Task 8b-2: bottom 189, not vanilla's 200) and 16 fit below the lesson note's shadow
+                        report("p1-ui-chat-open",open&&chat!=null&&r.containsKey("lesson")&&r.containsKey("feed")&&!r.containsKey("respawn")&&closedLines==6&&shown==16&&ChatPlacement.drawnLines==16&&hit.isEmpty()&&over,"at "+w.getFramebufferWidth()+"x"+w.getFramebufferHeight()+" GUI "+(int)w.getScaleFactor()+" ("+HudSize.NAMES[HudSize.get()]+", the HUD at "+UiCanvas.hudK()+"x) with the commander up (a respawn card: "+r.containsKey("respawn")+"), the feed leaf at "+box(r.get("feed"))+" and the lesson note at "+box(r.get("lesson"))+", the closed chat showed "+closedLines+" lines (wanted 6: its bottom 4 px over the armour row, the crosshair above it); open (true: "+open+") with 25 lines in it, it shows "+shown+" and drew "+ChatPlacement.drawnLines+" at GUI "+box(dr)+" (wanted 16, the lesson note above it, the ability slot below)"+(hit.isEmpty()?", apart from every element of the HUD":", meeting "+hit)+", "+(over?"over":"clear of")+" the crosshair at GUI "+box(cross));
                         c.setScreen(null);stage=43;}
                 }
                 case 43->{keepLesson=false;keepRespawn=false;CampaignClient.tutorial=-1;int frames=3*4*WINDOWS.length;
@@ -2114,6 +2114,28 @@ public final class Phase1Checks implements ClientModInitializer {
             }catch(Exception ex){return -1;}
         }
         static boolean darker(int a,int b){return ((a>>16)&0xff)<((b>>16)&0xff)&&((a>>8)&0xff)<((b>>8)&0xff)&&(a&0xff)<(b&0xff);}
+        /** UI Task 8b-2 (Kort, 2026-10-22: everything fits, every page, no noted crop): what a page draws at a size it must fit, every
+         *  box (the drawn art's and the widgets', the table, the rail and the candle's light apart) 12 px inside the canvas, and none
+         *  whose top is below the rail's plaques (y 41) and under the rail (its height, 66). Empty when the page fits. */
+        static List<String> fits(Map<String,int[]> drawn,Map<String,int[]> widgets){
+            int w=UiCanvas.width(),h=UiCanvas.height(),railH=UiTex.entry("table/rail").h();List<String> bad=new ArrayList<>();
+            Map<String,int[]> all=new LinkedHashMap<>();
+            for(var e:drawn.entrySet())if(!Set.of("table","rail","glow").contains(e.getKey()))all.put(e.getKey(),e.getValue());
+            for(var e:widgets.entrySet())all.put("widget "+e.getKey(),e.getValue());
+            for(var e:all.entrySet()){int[] a=e.getValue();if(a==null)continue;
+                if(a[0]<12||a[1]<12||a[0]+a[2]>w-12||a[1]+a[3]>h-12)bad.add(e.getKey()+" "+str(a)+" not 12 px inside the "+w+"x"+h+" canvas");
+                if(a[1]>=41&&a[1]<railH)bad.add(e.getKey()+" "+str(a)+" under the rail");}
+            return bad;
+        }
+        /** The big-canvas oak (UI Task 8b-2): on a canvas bigger than the 960 page the planks run to its edges. Oak's warm (red over
+         *  blue), the old floor (DarkUi.FLOOR, 0b0d0f) cool: reads the framebuffer at the four edges' middles and where the floor
+         *  used to show (half way from the 1280x720 middle to the edge). Empty when every one is oak. */
+        static List<String> oakToEdges(MinecraftClient c){
+            int cw=UiCanvas.width(),ch=UiCanvas.height(),ox=(cw-1280)/4,oy=(ch-720)/4;List<String> bad=new ArrayList<>();
+            int[][] at={{0,ch/2},{cw-1,ch/2},{cw/2,ch-1},{ox,ch/2},{cw-1-ox,ch/2},{cw/2,ch-1-Math.max(0,oy)},{cw/4,UiTex.entry("table/rail").h()+2}};
+            for(int[] p:at){int px=pixel(c,p[0],p[1]);if(px<0||((px>>16)&0xff)<=(px&0xff)||px==(DarkUi.FLOOR&0xffffff))bad.add(p[0]+","+p[1]+" "+hex(px));}
+            return bad;
+        }
         /** The Ride plate's label as the last frame drew it. */
         static String label(){return WarTableHome.texts().getOrDefault("ride","none");}
         /** The solid pixels (alpha 200 or more: the props themselves, not their light or shadows) of frame f of a sheet, as {x,y}
@@ -2144,7 +2166,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     for(int i=0;i<LAYOUT.length;i++){int[] b=boxes.get(LAYOUT_NAMES[i]);if(b==null||!Arrays.equals(b,LAYOUT[i]))bad.append(bad.length()==0?"":", ").append(LAYOUT_NAMES[i]).append(" ").append(str(b)).append(" not ").append(str(LAYOUT[i]));}
                     int[] o=WarTable.origin();String ride=label();var t=WarTableHome.texts();
                     int[] drawnTable=WarTable.drawn().get("table"),drawnRail=WarTable.drawn().get("rail");var badges=WarTable.badges();
-                    boolean chrome=WarTable.drawnTable().equals("table/oak-table")&&Arrays.equals(drawnTable,new int[]{-160,-90,1280,720})&&drawnRail!=null&&drawnRail[2]==UiCanvas.width()&&drawnRail[3]==UiTex.entry("table/rail").h()&&Arrays.equals(WarTable.drawn().get("floor"),new int[]{0,0,UiCanvas.width(),UiCanvas.height()})&&Arrays.equals(WarTable.drawn().get("maproll"),new int[]{148,48,156,80});
+                    boolean chrome=WarTable.drawnTable().equals("table/oak-table")&&Arrays.equals(drawnTable,new int[]{-480,-270,1920,1080})&&drawnRail!=null&&drawnRail[2]==UiCanvas.width()&&drawnRail[3]==UiTex.entry("table/rail").h()&&!WarTable.drawn().containsKey("floor")&&Arrays.equals(WarTable.drawn().get("maproll"),new int[]{148,48,156,80});
                     boolean badged=Integer.valueOf(WarTableHome.contractsBadge()).equals(badges.get("Contracts"))&&Integer.valueOf(WarTableHome.friendsBadge()).equals(badges.get("Friends"))&&badges.get("Camp")!=null&&badges.get("Camp")==0;
                     report("p1-ui-home-layout",home(c)!=null&&bad.length()==0&&ride.equals("Ride to the war gates")&&o[0]==0&&o[1]==0&&CampaignClient.homeMode.equals("skirmish")&&chrome&&badged,
                         "canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", origin "+o[0]+","+o[1]+"; "+(bad.length()==0?"the 11 widget boxes as pinned":"wrong: "+bad)+"; the plate reads \""+ride+"\"; homeMode "+CampaignClient.homeMode+"; drawChrome drew "+WarTable.drawnTable()+" at "+str(drawnTable)+", the rail "+str(drawnRail)+", badges "+badges+"; field card \""+t.get("field-name")+"\" / \""+t.get("field-rule")+"\" / \""+t.get("field-teams")+"\"");
@@ -2292,12 +2314,14 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==22){window(c,854,480,2);return;}
                     if(k==42){int w=UiCanvas.width(),h=UiCanvas.height();var b=boxes(c);List<String> out=new ArrayList<>(),over=new ArrayList<>();var keys=new ArrayList<>(b.keySet());
                         for(int i=0;i<keys.size();i++){if(!inside(b.get(keys.get(i)),w,h))out.add(keys.get(i)+" "+str(b.get(keys.get(i))));for(int j=i+1;j<keys.size();j++)if(overlap(b.get(keys.get(i)),b.get(keys.get(j))))over.add(keys.get(i)+"/"+keys.get(j));}
-                        var r=WarTableHome.rects();boolean cut=r.containsKey("candle")||r.containsKey("inkwell")||r.containsKey("glow"); // the props would cross the edge: left off
-                        // the field card at x 752 of the page lands on canvas 699 to 866 of 854: its last 13 columns, its shadow and its right tack are off the canvas (accepted for this task; docs/PARKED.md, Task 8: a compact layout)
-                        int[] field=r.get("field");boolean cropped=Arrays.equals(field,new int[]{699,158,168,188})&&field[0]+field[2]-w==13;
-                        scalesOk&=home(c)!=null&&w==854&&h==480&&b.size()>=12&&out.isEmpty()&&over.isEmpty()&&!cut&&cropped;
-                        scalesWhy+="; 854x480 GUI 2: canvas "+w+"x"+h+", origin "+Arrays.toString(WarTable.origin())+", "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+", props "+(cut?"drawn across the edge: candle "+str(r.get("candle"))+", inkwell "+str(r.get("inkwell")):"left off (they would cross the 12 px edge)")
-                            +", field card "+str(field)+(field==null?"":" runs "+(field[0]+field[2]-w)+" columns past the right edge")+" (pinned: 13)";shot(c,"ui-home-small");return;}
+                        // UI Task 8b-2: the compact page. The party in a row under the rail, the sheets' block centred under it, the candle
+                        // at the foot left of Ride, the inkwell and the rolled map left off; every box 12 px inside, none under the rail
+                        var r=WarTableHome.rects();var bad=fits(r,b);
+                        boolean props=r.containsKey("candle")&&r.containsKey("glow")&&!r.containsKey("inkwell")&&!r.containsKey("maproll");
+                        int[] field=r.get("field");boolean placed=WarTable.compact()&&Arrays.equals(field,new int[]{611,160,168,188})&&Arrays.equals(r.get("seat-0"),new int[]{75,82,48,48})&&Arrays.equals(box(c,"ride"),new int[]{219,360,240,40})&&Arrays.equals(box(c,"camp"),new int[]{12,12,96,28});
+                        scalesOk&=home(c)!=null&&w==854&&h==480&&b.size()>=12&&out.isEmpty()&&over.isEmpty()&&bad.isEmpty()&&props&&placed;
+                        scalesWhy+="; 854x480 GUI 2 (compact "+WarTable.compact()+"): canvas "+w+"x"+h+", "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+", not fitting "+bad+", candle "+str(r.get("candle"))+(props?", inkwell and rolled map left off":" WRONG props "+r.keySet())
+                            +", seat 0 "+str(r.get("seat-0"))+", field card "+str(field)+", ride "+str(box(c,"ride"))+", camp "+str(box(c,"camp"))+(placed?"":" WRONG (pinned 75,82 / 611,160 / 219,360 / 12,12)");shot(c,"ui-home-small");return;}
                     if(k==44){window(c,1920,1080,2,true);return;}
                     if(k==64){int[] o=WarTable.origin();boolean same=Arrays.equals(box(c,"ride"),LAYOUT[10])&&Arrays.equals(box(c,"camp"),LAYOUT[0]);
                         scalesOk&=home(c)!=null&&UiCanvas.k()==2&&UiCanvas.width()==960&&UiCanvas.height()==540&&o[0]==0&&o[1]==0&&same;
@@ -2312,23 +2336,23 @@ public final class Phase1Checks implements ClientModInitializer {
                 default->{}
             }
         }
-        /** A canvas larger than the table (a maximized window on a 1080p screen, 1920x1080 at GUI 1): the page stays centred, the floor
-         *  shows round the planks with the table's shadow on it, the rail runs the width, every widget is inside and the props are drawn.
-         *  Reads the framebuffer's pixels for the floor and the shadow. Returns the line for the report and clears scalesOk when wrong. */
+        /** A big canvas (a maximized window on a 1080p screen, 1920x1080 at GUI 1): the page stays centred, the 1920x1080 oak
+         *  (UI Task 8b-2) runs to every edge with no floor, the rail runs the width, every widget is inside and the props and the
+         *  rolled map are drawn. Reads the framebuffer's pixels at the edges. Returns the line for the report and clears scalesOk when
+         *  wrong. */
         String bigCanvas(MinecraftClient c,int w,int h,String shotName){
             int cw=UiCanvas.width(),ch=UiCanvas.height(),k=UiCanvas.k();int[] o=WarTable.origin();var r=WarTableHome.rects();var b=boxes(c);
-            int tx=(cw-1280)/2,ty=(ch-720)/2,floor=DarkUi.FLOOR&0xffffff;
+            int tx=(cw-WarTable.TABLE_W)/2,ty=(ch-WarTable.TABLE_H)/2;
             List<String> out=new ArrayList<>(),over=new ArrayList<>();var keys=new ArrayList<>(b.keySet());
             for(int i=0;i<keys.size();i++){if(!inside(b.get(keys.get(i)),cw,ch))out.add(keys.get(i));for(int j=i+1;j<keys.size();j++)if(overlap(b.get(keys.get(i)),b.get(keys.get(j))))over.add(keys.get(i)+"/"+keys.get(j));}
             int[] t=r.get("table"),rail=r.get("rail");
-            boolean placed=cw==w&&ch==h&&k==1&&o[0]==(w-960)/2&&o[1]==(h-540)/2&&Arrays.equals(t,new int[]{tx,ty,1280,720})&&Arrays.equals(r.get("floor"),new int[]{0,0,cw,ch})&&rail!=null&&rail[2]==cw&&Arrays.equals(box(c,"ride"),new int[]{o[0]+360,o[1]+388,240,40});
-            boolean props=r.containsKey("candle")&&r.containsKey("inkwell")&&r.containsKey("glow")&&!r.containsKey("maproll"); // the rolled map hangs from the rail, which is over bare floor here: it is left off
-            int farLeft=pixel(c,tx/2,ch/2),shadow1=pixel(c,tx-1,ch/2),shadow4=pixel(c,tx-4,ch/2),beyond=pixel(c,tx-5,ch/2),plank=pixel(c,tx+8,ch/2),below=pixel(c,cw/2,ty+720),farBelow=pixel(c,cw/2,ty+720+WarTable.SHADOW+1);
-            boolean floorOk=farLeft==floor&&beyond==floor&&darker(shadow1,floor)&&shadow4!=floor&&darker(below,floor)&&farBelow==floor&&plank!=floor&&plank!=shadow1;
-            boolean ok=placed&&out.isEmpty()&&over.isEmpty()&&props&&floorOk&&b.size()>=13;
+            boolean placed=cw==w&&ch==h&&k==1&&o[0]==(w-960)/2&&o[1]==(h-540)/2&&Arrays.equals(t,new int[]{tx,ty,WarTable.TABLE_W,WarTable.TABLE_H})&&!r.containsKey("floor")&&rail!=null&&rail[2]==cw&&Arrays.equals(box(c,"ride"),new int[]{o[0]+360,o[1]+388,240,40});
+            boolean props=r.containsKey("candle")&&r.containsKey("inkwell")&&r.containsKey("glow")&&Arrays.equals(r.get("maproll"),new int[]{o[0]+148,WarTable.MAPROLL_Y,156,80}); // the rolled map lies on the planks under the rail
+            var floor=oakToEdges(c);
+            boolean ok=placed&&out.isEmpty()&&over.isEmpty()&&props&&floor.isEmpty()&&b.size()>=13;
             scalesOk&=ok;shot(c,shotName);
-            return w+"x"+h+" GUI 1: canvas "+cw+"x"+ch+" (k "+k+"), origin "+o[0]+","+o[1]+", table "+str(t)+" (the canvas does not stop at the planks: "+tx+" px of floor left and right, "+ty+" above and below), rail "+str(rail)+", ride "+str(box(c,"ride"))+", "+b.size()+" widgets, outside "+out+", overlapping "+over+", props "
-                +(props?"drawn, the rolled map left off (the rail is over bare floor)":"missing or the rolled map hanging over the floor")+"; pixels: far left "+hex(farLeft)+", shadow beside the planks "+hex(shadow1)+" to "+hex(shadow4)+", floor again "+hex(beyond)+", below the planks "+hex(below)+" then "+hex(farBelow)+", plank "+hex(plank)+" (floor "+hex(floor)+")"+(ok?"":" WRONG");
+            return w+"x"+h+" GUI 1: canvas "+cw+"x"+ch+" (k "+k+"), origin "+o[0]+","+o[1]+", table "+str(t)+", rail "+str(rail)+", ride "+str(box(c,"ride"))+", "+b.size()+" widgets, outside "+out+", overlapping "+over+", props "
+                +(props?"drawn, the rolled map on the planks":"missing, or no rolled map: "+r.keySet())+"; the edges "+(floor.isEmpty()?"oak all round, no floor":"not oak at "+floor)+(ok?"":" WRONG");
         }
         static String hex(int rgb){return rgb<0?"none":String.format("%06x",rgb);}
         /** Closes the table, puts the session's sheet back on Skirmish and the window as the suite found it; p1-ui-home-suite follows. */
@@ -2345,8 +2369,8 @@ public final class Phase1Checks implements ClientModInitializer {
      *  once every Dawn troop is recruited the ladder runs out and Odds says so, and a roll:dawn sent anyway is refused on the notice
      *  line with the gold untouched. Keys: with Tab's focus on Choose, Enter presses Choose; the underline follows the pointer or the
      *  keyboard's focus, never a click's; the wheel; a held Esc closes the note, then goes home and no further; the back and Banner
-     *  plaques; B. Scales: the layout's page again (a fresh commander) at 854x480 GUI 2 (a canvas smaller than the page, cropped:
-     *  Task 5's ruling, docs/PARKED.md) and 1920x974 GUI 1 (larger than the table). Keys reach the screen as GLFW sends them (a
+     *  plaques; B. Scales: the layout's page again (a fresh commander) at 854x480 GUI 2 (the compact page, UI Task 8b-2) and
+     *  1920x974 GUI 1 (the big-canvas oak to every edge). Keys reach the screen as GLFW sends them (a
      *  press, a held key's repeats as more presses, then the release; Tab sets the keyboard's navigation first), clicks as Mouse
      *  sends them (the navigation turns to the mouse's), and the pointer the page reads when it draws is set where a check needs it
      *  (parked off every widget otherwise). */
@@ -2695,12 +2719,12 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 10->{ // p1-ui-recruit-scales: the page as the layout step saw it (a fresh commander with 300 gold, Dawn Sentinel on the letter)
                     stage=-1;server(c,b->{var p=new Campaign.Profile();p.gold=300;b.campaign.profiles.put(player,p);b.campaign.save(player);stage=101;});
                 }
-                case 101->{ // the snapshot brings the fresh profile; the page opens anew, at 854x480 GUI 2 (smaller than the page: Task 5's crop ruling, docs/PARKED.md)
+                case 101->{ // the snapshot brings the fresh profile; the page opens anew, at 854x480 GUI 2 (the compact page, UI Task 8b-2)
                     var p=CampaignClient.profile;boolean fresh=p.gold==300&&p.unlocked.equals(new Campaign.Profile().unlocked);
                     if(!fresh){if(since(tick)>300){report("p1-ui-recruit-scales",false,"no fresh profile with 300 gold 300 ticks on: gold "+p.gold+", unlocked "+p.unlocked);end(c);}return;}
                     CampScreen.open("recruit");window(c,854,480,2);stage=102;
                 }
-                case 102->{ // then 1920x974 GUI 1 (larger than the table: the floor ruling)
+                case 102->{ // then 1920x974 GUI 1 (the big-canvas oak to the edges, UI Task 8b-2)
                     int k=since(tick);
                     if(k==18){park(c);return;}
                     if(k==20){scalesWhy=small(c);shot(c,"ui-recruit-854");return;}
@@ -2713,42 +2737,41 @@ public final class Phase1Checks implements ClientModInitializer {
                 default->{}
             }
         }
-        /** 854x480 GUI 2, the first-launch window: a canvas smaller than the page, which stays centred and is cropped (Task 5's
-         *  ruling; a compact layout is Task 8's). Pins what lands where: every widget inside the canvas, none overlapping, and of what
-         *  the page drew only two things cross the canvas edge: the muster roll's art (its rods' left 12 columns) and the row mark's
-         *  (its left column). */
+        /** 854x480 GUI 2, the first-launch window: the compact page (UI Task 8b-2; Kort, 2026-10-22: everything fits, no crop). The
+         *  three columns close up and rise (roll box 27, letter 286, ladder 600 on its axis at 720), the rung's line and Odds share a
+         *  row under the purse, the Banner plaque stands 12 px from the right edge. Pins what lands where: every widget inside the
+         *  canvas, none overlapping, and every box the page drew and every widget 12 px inside, none under the rail (UiHomeChecks.fits). */
         String small(MinecraftClient c){
-            int w=UiCanvas.width(),h=UiCanvas.height();int[] o=WarTable.origin();var b=boxes(c);var r=WarTableRecruit.rects();
-            List<String> out=new ArrayList<>(),over=new ArrayList<>(),cut=new ArrayList<>();var keys=new ArrayList<>(b.keySet());Set<String> cutKeys=new LinkedHashSet<>();
+            int w=UiCanvas.width(),h=UiCanvas.height();var b=boxes(c);var r=WarTableRecruit.rects();
+            List<String> out=new ArrayList<>(),over=new ArrayList<>();var keys=new ArrayList<>(b.keySet());
             for(int i=0;i<keys.size();i++){if(!UiHomeChecks.inside(b.get(keys.get(i)),w,h))out.add(keys.get(i)+" "+str(b.get(keys.get(i))));for(int j=i+1;j<keys.size();j++)if(UiHomeChecks.overlap(b.get(keys.get(i)),b.get(keys.get(j))))over.add(keys.get(i)+"/"+keys.get(j));}
-            for(var e:r.entrySet())if(!Set.of("floor","table","rail").contains(e.getKey())&&!UiHomeChecks.inside(e.getValue(),w,h)){cut.add(e.getKey()+" "+str(e.getValue()));cutKeys.add(e.getKey());}
-            int[] roll=r.get("roll"),mark=r.get("mark"),enlist=box(c,"enlist");
-            boolean ok=page(c)!=null&&w==854&&h==480&&UiCanvas.k()==1&&o[0]==-53&&o[1]==-30&&b.size()==13&&out.isEmpty()&&over.isEmpty()&&cutKeys.equals(Set.of("roll","mark"))
-                &&Arrays.equals(roll,new int[]{-12,94,270,372})&&Arrays.equals(mark,new int[]{-1,278,234,58})&&Arrays.equals(enlist,new int[]{611,324,240,40})&&Arrays.equals(r.get("bundle"),new int[]{611,94,240,218})&&Arrays.equals(r.get("letter"),new int[]{275,94,310,376})&&Arrays.equals(box(c,"choose"),new int[]{383,410,88,24})
-                &&Arrays.equals(box(c,"back"),new int[]{3,12,120,28})&&Arrays.equals(box(c,"banner"),new int[]{747,12,104,28})&&Arrays.equals(box(c,"odds"),new int[]{699,438,64,24})&&hotNone();
+            var bad=UiHomeChecks.fits(r,b);
+            int[] roll=r.get("roll"),enlist=box(c,"enlist"),rung=r.get("rung"),odds=box(c,"odds");
+            boolean row=rung!=null&&odds!=null&&rung[0]+rung[2]<=odds[0]&&rung[1]>=odds[1]&&rung[1]+rung[3]<=odds[1]+odds[3]; // the rung's line and Odds on one row, either side of the axis
+            boolean ok=page(c)!=null&&WarTable.compact()&&w==854&&h==480&&UiCanvas.k()==1&&b.size()==13&&out.isEmpty()&&over.isEmpty()&&bad.isEmpty()&&row
+                &&Arrays.equals(roll,new int[]{12,92,270,372})&&Arrays.equals(enlist,new int[]{600,322,240,40})&&Arrays.equals(r.get("bundle"),new int[]{600,92,240,218})&&Arrays.equals(r.get("letter"),new int[]{286,92,310,376})&&Arrays.equals(box(c,"choose"),new int[]{394,408,88,24})
+                &&Arrays.equals(box(c,"back"),new int[]{12,12,120,28})&&Arrays.equals(box(c,"banner"),new int[]{738,12,104,28})&&Arrays.equals(odds,new int[]{724,408,64,24})&&hotNone();
             scalesOk&=ok;
-            return "854x480 GUI 2: canvas "+w+"x"+h+" (k "+UiCanvas.k()+"), origin "+o[0]+","+o[1]+", "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+"; drawn across the canvas edge "+cut
-                +" (pinned: the roll's art, 12 columns off the left, and the row mark's, 1); roll "+str(roll)+", mark "+str(mark)+", choose "+str(box(c,"choose"))+", letter "+str(r.get("letter"))+" (its foot "+(r.get("letter")==null?"?":h-r.get("letter")[1]-r.get("letter")[3])+" px above the canvas's), bundle "+str(r.get("bundle"))
-                +", enlist "+str(enlist)+(enlist==null?"":" ("+(w-enlist[0]-enlist[2])+" px from the right edge)")+", odds "+str(box(c,"odds"))+(box(c,"odds")==null?"":" (its foot "+(h-box(c,"odds")[1]-box(c,"odds")[3])+" px above the canvas's)")+", back "+str(box(c,"back"))+", banner "+str(box(c,"banner"))+(ok?"":" WRONG");
+            return "854x480 GUI 2 (compact "+WarTable.compact()+"): canvas "+w+"x"+h+" (k "+UiCanvas.k()+"), "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+", not fitting "+bad
+                +"; roll "+str(roll)+", letter "+str(r.get("letter"))+", choose "+str(box(c,"choose"))+", bundle "+str(r.get("bundle"))+", enlist "+str(enlist)+", rung "+str(rung)+" and odds "+str(odds)+(row?" on one row":" WRONG: not on one row")+", back "+str(box(c,"back"))+", banner "+str(box(c,"banner"))+(ok?"":" WRONG");
         }
-        /** 1920x974 GUI 1, a maximized window on a 1080p screen: a canvas larger than the table. The page stays centred on the planks,
-         *  the floor shows round them with the table's shadow on it (read from the framebuffer as home's check reads it), the rail runs
-         *  the width with the banners hanging from it over the floor, and every widget is inside. */
+        /** 1920x974 GUI 1, a maximized window on a 1080p screen: the page stays centred on the big-canvas oak (UI Task 8b-2), which
+         *  runs to every edge with no floor (read from the framebuffer as home's check reads it), the rail runs the width with the
+         *  banners hanging from it, and every widget is inside. */
         String big(MinecraftClient c){
             int cw=UiCanvas.width(),ch=UiCanvas.height(),k=UiCanvas.k();int[] o=WarTable.origin();var r=WarTableRecruit.rects();var b=boxes(c);
-            int tx=(cw-1280)/2,ty=(ch-720)/2,floor=DarkUi.FLOOR&0xffffff;
+            int tx=(cw-WarTable.TABLE_W)/2,ty=(ch-WarTable.TABLE_H)/2;
             List<String> out=new ArrayList<>(),over=new ArrayList<>();var keys=new ArrayList<>(b.keySet());
             for(int i=0;i<keys.size();i++){if(!UiHomeChecks.inside(b.get(keys.get(i)),cw,ch))out.add(keys.get(i));for(int j=i+1;j<keys.size();j++)if(UiHomeChecks.overlap(b.get(keys.get(i)),b.get(keys.get(j))))over.add(keys.get(i)+"/"+keys.get(j));}
             int[] t=r.get("table"),rail=r.get("rail"),enlist=box(c,"enlist"),roll=r.get("roll"),dawn=box(c,"house-dawn");
-            boolean placed=cw==1920&&ch==974&&k==1&&o[0]==480&&o[1]==217&&Arrays.equals(t,new int[]{tx,ty,1280,720})&&Arrays.equals(r.get("floor"),new int[]{0,0,cw,ch})&&rail!=null&&rail[2]==cw
+            boolean placed=cw==1920&&ch==974&&k==1&&o[0]==480&&o[1]==217&&Arrays.equals(t,new int[]{tx,ty,WarTable.TABLE_W,WarTable.TABLE_H})&&!r.containsKey("floor")&&rail!=null&&rail[2]==cw
                 &&Arrays.equals(enlist,new int[]{o[0]+664,o[1]+354,240,40})&&Arrays.equals(roll,new int[]{o[0]+41,o[1]+124,270,372})&&Arrays.equals(dawn,new int[]{o[0]+372,13,104,60})&&!r.containsKey("maproll")
                 &&Arrays.equals(r.get("bundle"),new int[]{o[0]+664,o[1]+124,240,218})&&Arrays.equals(box(c,"choose"),new int[]{o[0]+436,o[1]+440,88,24});
-            int farLeft=UiHomeChecks.pixel(c,tx/2,ch/2),shadow1=UiHomeChecks.pixel(c,tx-1,ch/2),shadow4=UiHomeChecks.pixel(c,tx-4,ch/2),beyond=UiHomeChecks.pixel(c,tx-5,ch/2),plank=UiHomeChecks.pixel(c,tx+8,ch/2),below=UiHomeChecks.pixel(c,cw/2,ty+720),farBelow=UiHomeChecks.pixel(c,cw/2,ty+720+WarTable.SHADOW+1);
-            boolean floorOk=farLeft==floor&&beyond==floor&&UiHomeChecks.darker(shadow1,floor)&&shadow4!=floor&&UiHomeChecks.darker(below,floor)&&farBelow==floor&&plank!=floor&&plank!=shadow1;
-            boolean ok=page(c)!=null&&placed&&out.isEmpty()&&over.isEmpty()&&floorOk&&b.size()==13&&hotNone();
+            var floor=UiHomeChecks.oakToEdges(c);
+            boolean ok=page(c)!=null&&placed&&out.isEmpty()&&over.isEmpty()&&floor.isEmpty()&&b.size()==13&&hotNone();
             scalesOk&=ok;
-            return "1920x974 GUI 1: canvas "+cw+"x"+ch+" (k "+k+"), origin "+o[0]+","+o[1]+", table "+str(t)+" ("+tx+" px of floor left and right, "+ty+" above and below), rail "+str(rail)+", the Dawn banner "+str(dawn)+" (over the floor: the planks start at "+ty+"), roll "+str(roll)+", bundle "+str(r.get("bundle"))+", enlist "+str(enlist)+", choose "+str(box(c,"choose"))+", "+b.size()+" widgets, outside "+out+", overlapping "+over
-                +"; pixels: far left "+UiHomeChecks.hex(farLeft)+", shadow beside the planks "+UiHomeChecks.hex(shadow1)+" to "+UiHomeChecks.hex(shadow4)+", floor again "+UiHomeChecks.hex(beyond)+", below the planks "+UiHomeChecks.hex(below)+" then "+UiHomeChecks.hex(farBelow)+", plank "+UiHomeChecks.hex(plank)+" (floor "+UiHomeChecks.hex(floor)+")"+(ok?"":" WRONG");
+            return "1920x974 GUI 1: canvas "+cw+"x"+ch+" (k "+k+"), origin "+o[0]+","+o[1]+", table "+str(t)+", rail "+str(rail)+", the Dawn banner "+str(dawn)+", roll "+str(roll)+", bundle "+str(r.get("bundle"))+", enlist "+str(enlist)+", choose "+str(box(c,"choose"))+", "+b.size()+" widgets, outside "+out+", overlapping "+over
+                +"; the edges "+(floor.isEmpty()?"oak all round, no floor":"not oak at "+floor)+(ok?"":" WRONG");
         }
         /** Closes the table and puts the window back as the suite found it; p1-ui-recruit-suite follows. */
         void end(MinecraftClient c){finished=true;c.setScreen(null);if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;}
@@ -2826,7 +2849,7 @@ public final class Phase1Checks implements ClientModInitializer {
             List<String> out=new ArrayList<>(),over=new ArrayList<>(),art=new ArrayList<>();var keys=new ArrayList<>(b.keySet());
             for(int i=0;i<keys.size();i++){int[] a=b.get(keys.get(i));if(!within(a))out.add(keys.get(i)+" "+str(a));
                 for(int j=i+1;j<keys.size();j++)if(UiHomeChecks.overlap(a,b.get(keys.get(j))))over.add(keys.get(i)+"/"+keys.get(j));}
-            for(var e:WarTablePages.rects().entrySet())if(!Set.of("floor","table","rail").contains(e.getKey())&&!within(e.getValue()))art.add(e.getKey()+" "+str(e.getValue()));
+            for(var e:WarTablePages.rects().entrySet())if(!Set.of("table","rail").contains(e.getKey())&&!within(e.getValue()))art.add(e.getKey()+" "+str(e.getValue()));
             boolean ours=s!=null&&s.children().stream().allMatch(e->e instanceof UiButton);
             boolean back=Arrays.equals(b.get("back"),new int[]{o[0]+56,12,120,28});
             boolean rail=true;StringBuilder railWhy=new StringBuilder();
@@ -2857,30 +2880,29 @@ public final class Phase1Checks implements ClientModInitializer {
             boolean placed=pages(c)!=null&&w==1280&&h==720&&UiCanvas.k()==1&&o[0]==160&&o[1]==90&&t!=null&&t[0]<=0&&t[1]<=0&&t[0]+t[2]>=w&&t[1]+t[3]>=h;scalesOk&=placed;
             return "origin "+o[0]+","+o[1]+", table "+str(t)+(placed?"":" WRONG")+", "+scaled(c,name);
         }
-        /** 854x480 GUI 2, the first-launch window: a canvas smaller than the page, which stays centred and is cropped (Task 5's ruling;
-         *  a compact layout is Task 8's). Every widget inside the canvas, none overlapping; the page's title (where it has one) on the
-         *  planks under the rail, not under its moulding; what the page drew across the canvas edge is listed (art and words only). */
-        String small(MinecraftClient c){
-            int w=UiCanvas.width(),h=UiCanvas.height();int[] o=WarTable.origin();var b=boxes(c);
-            List<String> out=new ArrayList<>(),over=new ArrayList<>(),cut=new ArrayList<>();var keys=new ArrayList<>(b.keySet());
+        /** 854x480 GUI 2, the first-launch window: the compact page (UI Task 8b-2; Kort, 2026-10-22: everything must fit, every page,
+         *  no noted crop). Every widget inside the canvas, none overlapping, and every box the page drew and every widget 12 px inside,
+         *  none under the rail (UiHomeChecks.fits); the back plaque 12 px from the left edge; the page's own oak. */
+        String small(MinecraftClient c,String name){
+            int w=UiCanvas.width(),h=UiCanvas.height();var b=boxes(c);var r=WarTablePages.rects();
+            List<String> out=new ArrayList<>(),over=new ArrayList<>();var keys=new ArrayList<>(b.keySet());
             for(int i=0;i<keys.size();i++){if(!UiHomeChecks.inside(b.get(keys.get(i)),w,h))out.add(keys.get(i)+" "+str(b.get(keys.get(i))));for(int j=i+1;j<keys.size();j++)if(UiHomeChecks.overlap(b.get(keys.get(i)),b.get(keys.get(j))))over.add(keys.get(i)+"/"+keys.get(j));}
-            for(var e:WarTablePages.rects().entrySet())if(!Set.of("floor","table","rail").contains(e.getKey())&&!UiHomeChecks.inside(e.getValue(),w,h))cut.add(e.getKey()+" "+str(e.getValue()));
-            int[] title=rect("title"),rail=rect("rail");boolean titleClear=title==null||rail!=null&&title[1]>=rail[1]+rail[3];
-            boolean pass=pages(c)!=null&&w==854&&h==480&&UiCanvas.k()==1&&o[0]==-53&&o[1]==-30&&b.size()>=5&&out.isEmpty()&&over.isEmpty()&&titleClear;scalesOk&=pass;
-            return "canvas "+w+"x"+h+" (k "+UiCanvas.k()+"), origin "+o[0]+","+o[1]+", "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+", the title "+(title==null?"none (the chapter block)":str(title)+" under the rail "+str(rail)+(titleClear?"":" WRONG: under its moulding"))+"; drawn across the canvas edge "+cut+(pass?"":" WRONG");
+            var bad=UiHomeChecks.fits(r,b);
+            int[] title=rect("title"),back=b.get("back");String table=WarTable.drawnTable();
+            boolean pass=pages(c)!=null&&WarTable.compact()&&w==854&&h==480&&UiCanvas.k()==1&&b.size()>=5&&out.isEmpty()&&over.isEmpty()&&bad.isEmpty()
+                &&Arrays.equals(back,new int[]{12,12,120,28})&&table.equals("table/oak-table-"+name);scalesOk&=pass;
+            return "canvas "+w+"x"+h+" (k "+UiCanvas.k()+", compact "+WarTable.compact()+"), "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+", not fitting "+bad+", back "+str(back)+", the title "+(title==null?"none (the chapter block)":str(title))+", the oak "+table+(pass?"":" WRONG");
         }
-        /** 1920x974 GUI 1, a maximized window on a 1080p screen: a canvas larger than the table. The page stays centred on the planks,
-         *  the floor shows round them with the table's shadow on it (read from the framebuffer as home's check reads it), the rail runs
-         *  the width, and layout's rules hold. */
+        /** 1920x974 GUI 1, a maximized window on a 1080p screen: the page stays centred on the big-canvas oak (UI Task 8b-2), which
+         *  runs to every edge with no floor (read from the framebuffer as home's check reads it), the rail runs the width, and
+         *  layout's rules hold. */
         String big(MinecraftClient c,String name){
             int cw=UiCanvas.width(),ch=UiCanvas.height(),k=UiCanvas.k();int[] o=WarTable.origin(),t=rect("table"),rail=rect("rail");
-            int tx=(cw-1280)/2,ty=(ch-720)/2,floor=DarkUi.FLOOR&0xffffff;
-            boolean placed=pages(c)!=null&&cw==1920&&ch==974&&k==1&&o[0]==480&&o[1]==217&&Arrays.equals(t,new int[]{tx,ty,1280,720})&&Arrays.equals(rect("floor"),new int[]{0,0,cw,ch})&&rail!=null&&rail[2]==cw;
-            int farLeft=UiHomeChecks.pixel(c,tx/2,ch/2),shadow1=UiHomeChecks.pixel(c,tx-1,ch/2),shadow4=UiHomeChecks.pixel(c,tx-4,ch/2),beyond=UiHomeChecks.pixel(c,tx-5,ch/2),plank=UiHomeChecks.pixel(c,tx+8,ch/2),below=UiHomeChecks.pixel(c,cw/2,ty+720),farBelow=UiHomeChecks.pixel(c,cw/2,ty+720+WarTable.SHADOW+1);
-            boolean floorOk=farLeft==floor&&beyond==floor&&UiHomeChecks.darker(shadow1,floor)&&shadow4!=floor&&UiHomeChecks.darker(below,floor)&&farBelow==floor&&plank!=floor&&plank!=shadow1;
-            scalesOk&=placed&&floorOk;
-            return "origin "+o[0]+","+o[1]+", table "+str(t)+" ("+tx+" px of floor left and right, "+ty+" above and below), rail "+str(rail)+(placed?"":" WRONG")+"; pixels: far left "+UiHomeChecks.hex(farLeft)+", shadow beside the planks "+UiHomeChecks.hex(shadow1)+" to "+UiHomeChecks.hex(shadow4)
-                +", floor again "+UiHomeChecks.hex(beyond)+", below the planks "+UiHomeChecks.hex(below)+" then "+UiHomeChecks.hex(farBelow)+", plank "+UiHomeChecks.hex(plank)+" (floor "+UiHomeChecks.hex(floor)+")"+(floorOk?"":" WRONG")+"; "+scaled(c,name);
+            int tx=(cw-WarTable.TABLE_W)/2,ty=(ch-WarTable.TABLE_H)/2;
+            boolean placed=pages(c)!=null&&cw==1920&&ch==974&&k==1&&o[0]==480&&o[1]==217&&Arrays.equals(t,new int[]{tx,ty,WarTable.TABLE_W,WarTable.TABLE_H})&&rect("floor")==null&&rail!=null&&rail[2]==cw;
+            var floor=UiHomeChecks.oakToEdges(c);
+            scalesOk&=placed&&floor.isEmpty();
+            return "origin "+o[0]+","+o[1]+", table "+str(t)+", rail "+str(rail)+(placed?"":" WRONG")+"; the edges "+(floor.isEmpty()?"oak all round, no floor":"not oak at "+floor+" WRONG")+"; "+scaled(c,name);
         }
 
         public void step(MinecraftClient c,int tick){
@@ -2921,8 +2943,8 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==44){var s=screen(c);boolean home=s!=null&&s.page.equals("home")&&s.home!=null;ok&=home;why+="; the back plaque went "+(home?"home":"WRONG: "+(s==null?"the table closed":s.page));
                         report("p1-ui-page-"+name,ok,why);index++;stage=index<PAGES.length?2:5;}
                 }
-                case 5->{ // p1-ui-page-scales: each page at 1280x720 GUI 3 (canvas 1280x720), 854x480 GUI 2 (a canvas smaller than the page:
-                    // cropped, Task 5's ruling, a compact layout is Task 8's) and 1920x974 GUI 1 (larger than the table: the floor round the planks)
+                case 5->{ // p1-ui-page-scales: each page at 1280x720 GUI 3 (canvas 1280x720), 854x480 GUI 2 (the compact page, UI Task 8b-2)
+                    // and 1920x974 GUI 1 (the big-canvas oak to every edge)
                     int k=since(tick),p=k/80,j=k%80;
                     if(p>=PAGES.length){if(j==0)window(c,960,540,1);if(j==20){report("p1-ui-page-scales",scalesOk,scalesWhy);stage=6;}return;}
                     String name=PAGES[p];
@@ -2930,7 +2952,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(j==20||j==44||j==68){UiRecruitChecks.park(c);return;}
                     if(j==22){scalesWhy+=(p==0?"":"; ")+name+" at 1280x720 GUI 3: "+mid(c,name);shot(c,"ui-page-"+name+"-720");return;}
                     if(j==24){window(c,854,480,2);return;}
-                    if(j==46){scalesWhy+="; at 854x480 GUI 2: "+small(c);shot(c,"ui-page-"+name+"-854");return;}
+                    if(j==46){scalesWhy+="; at 854x480 GUI 2: "+small(c,name);shot(c,"ui-page-"+name+"-854");return;}
                     if(j==48){window(c,1920,974,1,true);return;}
                     if(j==70){scalesWhy+="; at 1920x974 GUI 1: "+big(c,name);shot(c,"ui-page-"+name+"-1920x974");}
                 }
@@ -3187,7 +3209,10 @@ public final class Phase1Checks implements ClientModInitializer {
                         // UI Task 8b: the leader is said once, on seat 0 ("You lead the party"): the line under the seats does not name them again;
                         // the leader makes and joins rooms, so the room's note carries no word on why its tags are dull
                         String drawn=String.valueOf(text("party-line"));boolean line=WarTablePages.PARTY_LASTS.equals(drawn)&&!drawn.contains(WarTablePages.me())&&text("room-why")==null;
-                        boolean pass=sent&&tags&&seat&&line;ok&=pass;
+                        // UI Task 8b-2: the leader said once across every word the page drew, and in the in-party shot
+                        List<String> leads=new ArrayList<>();for(var e:WarTablePages.texts().entrySet())if(e.getValue()!=null&&e.getValue().toLowerCase(java.util.Locale.ROOT).contains("lead")&&!e.getKey().startsWith("lead-"))leads.add(e.getKey()+" \""+e.getValue()+"\"");
+                        boolean once="You lead the party".equals(text("status-0"))&&leads.size()==1;shot(c,"ui-page-friends-party");
+                        boolean pass=sent&&tags&&seat&&line&&once;ok&=pass;why+="; the leader said "+leads.size()+" time(s): "+leads+(once?"":" WRONG");
                         why+="; Create party sent "+lastSent()+(sent?"":" WRONG")+": party "+WarTablePages.flag("party")+", Leave party and Disband party "+(tags?"shown, Create party gone":"WRONG: disband "+button(c,"disband")+", create "+button(c,"create"))
                             +", seat 0 "+text("member-0")+(seat?"":" WRONG")+", \""+text("party-line")+"\""+(line?"":" WRONG");next(tick);}
                     else if(k>100){ok=false;why+="; Create party sent "+lastSent()+": no party drawn 100 ticks on (party "+WarTablePages.flag("party")+", Leave party "+(leave==null?"missing":"\""+text("leave")+"\"")+") WRONG";stage=4;}}

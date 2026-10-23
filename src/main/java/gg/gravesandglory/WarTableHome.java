@@ -79,6 +79,23 @@ final class WarTableHome {
     /** The Ride plate's label is trimmed to this width (UiMath.plateLabelX keeps it clear of the Enter key). */
     static final int RIDE_LABEL_W = 175;
 
+    /** The compact page (UI Task 8b-2, WarTable.compact): the party sits in a row under the rail, "Party" over seats SEAT_STEP
+     *  apart; the sheets, the field card, Ride, Last battle and the notice move as one block by COMPACT_BLOCK (the 960 page's
+     *  216..920 centred on the 854 page, and up under the party); the candle stands at the page's foot left of Ride, and the
+     *  inkwell and the rolled map are left off (no room clear of the content). */
+    static final int COMPACT_PARTY_X = 75, COMPACT_PARTY_Y = 68, COMPACT_SEAT_Y = 82, SEAT_STEP = 164;
+    static final int[] COMPACT_BLOCK = {-141, -28}, COMPACT_CANDLE = {4, 362};
+
+    /** The offset of the sheets' block (sheets, field card, Ride, Last battle, notice): the 960 page's origin, or the compact one. */
+    static int[] block() { return WarTable.column(COMPACT_BLOCK[0], COMPACT_BLOCK[1]); }
+
+    /** Seat i's frame, top left in canvas px: down the left column on the 960 page, along the row under the rail on the compact. */
+    static int[] seat(int i) {
+        if (WarTable.compact()) { int[] c = WarTable.compactOrigin(); return new int[]{c[0] + COMPACT_PARTY_X + SEAT_STEP * i, c[1] + COMPACT_SEAT_Y}; }
+        int[] o = WarTable.origin();
+        return new int[]{o[0] + 56, o[1] + 206 + 56 * i};
+    }
+
     /** A party member as the home seats them. */
     record Member(String name, boolean online, boolean me) {}
     /** A portrait drawn by the last frame: the member's name, the window's centre x and the feet y in canvas px, the model size,
@@ -147,7 +164,7 @@ final class WarTableHome {
     /** Builds the widgets (CampScreen.init on page home): again whenever the camp state or a badge changes. */
     void init() {
         buttons.clear();
-        int[] o = WarTable.origin();
+        int[] o = block();
         int ox = o[0], oy = o[1];
         builtFriends = friendsBadge();
         add("camp", WarTable.plaque(56, 96, "icon-camp", "Camp", "Esc", 61, 0, b -> screen.close()));
@@ -157,7 +174,8 @@ final class WarTableHome {
             add(target, WarTable.plaque(RAIL_X[i], RAIL_W, "icon-" + target, RAIL_LABELS[i], null, 0, badge, b -> screen.page(target)));
         }
         int seated = members().size();
-        if (seated < 4) add("invite", new UiButton(ox + 56, oy + 206 + 56 * seated, 104, 48, Text.literal("Invite"), b -> screen.page("friends"), this::paintInvite));
+        int[] open = seat(seated);
+        if (seated < 4) add("invite", new UiButton(open[0], open[1], 104, 48, Text.literal("Invite"), b -> screen.page("friends"), this::paintInvite));
         for (int i = 0; i < 3; i++) {
             final int index = i;
             sheets[i] = add(MODES[i], new UiButton(0, 0, 1, 1, Text.literal(NAMES[i]), b -> focus(index), (g, x, y, w, h, hot) -> {}));
@@ -171,7 +189,7 @@ final class WarTableHome {
 
     /** The focused sheet's widget takes its raised box and the others their flat boxes, at once (the drawing animates). */
     void placeSheets() {
-        int[] o = WarTable.origin();
+        int[] o = block();
         for (int i = 0; i < 3; i++) {
             if (sheets[i] == null) continue;
             int c = CENTRES[i];
@@ -297,12 +315,12 @@ final class WarTableHome {
         double now = clock();
         UiCanvas.begin(g);
         try {
-            int[] o = WarTable.origin();
+            int[] o = block();
             int ox = o[0], oy = o[1];
             WarTable.drawChrome(g, "home");
-            rectsDrawn.putAll(WarTable.drawn()); // floor, table, maproll and rail, as drawChrome drew them
-            props(g, ox, oy, now);
-            party(g, ox, oy);
+            rectsDrawn.putAll(WarTable.drawn()); // table, maproll and rail, as drawChrome drew them
+            props(g, now);
+            party(g);
             field(g, ox + FIELD_X, oy + FIELD_Y);
             g.draw();
             Integer[] order = {0, 1, 2};
@@ -317,9 +335,12 @@ final class WarTableHome {
 
     /** The candle's light under everything, breathing; the candle on its flame frame; the inkwell on its quill frame. Each prop
      *  draws only where its solid part keeps PROP_EDGE inside the canvas. */
-    void props(DrawContext g, int ox, int oy, double now) {
+    void props(DrawContext g, double now) {
         var glow = UiTex.entry("table/prop-glow"); // the light's size is the atlas's
-        int cx = ox + CANDLE_X, cy = oy + CANDLE_Y, gx = cx + FLAME[0] - glow.w() / 2, gy = cy + FLAME[1] - glow.h() / 2;
+        int[] o = WarTable.origin(), c = WarTable.compactOrigin();
+        boolean compact = WarTable.compact();
+        int ox = o[0], oy = o[1];
+        int cx = compact ? c[0] + COMPACT_CANDLE[0] : ox + CANDLE_X, cy = compact ? c[1] + COMPACT_CANDLE[1] : oy + CANDLE_Y, gx = cx + FLAME[0] - glow.w() / 2, gy = cy + FLAME[1] - glow.h() / 2;
         int[] candle = {cx + CANDLE_SOLID[0], cy + CANDLE_SOLID[1], CANDLE_SOLID[2], CANDLE_SOLID[3]};
         int[] inkwell = {ox + INKWELL_X + INKWELL_SOLID[0], oy + INKWELL_Y + INKWELL_SOLID[1], INKWELL_SOLID[2], INKWELL_SOLID[3]};
         if (inside(candle)) {
@@ -330,7 +351,7 @@ final class WarTableHome {
             rectsDrawn.put("glow", new int[]{gx, gy, glow.w(), glow.h()});
             rectsDrawn.put("candle", candle);
         }
-        if (inside(inkwell)) {
+        if (!compact && inside(inkwell)) {
             double since = ticks - quillAt;
             int quill = since < QUILL_TWITCH_TICKS ? 1 : since < QUILL_TWITCH_TICKS + QUILL_BACK_TICKS ? 2 : 0;
             UiTex.frame(g, "table/prop-inkwell", quill, ox + INKWELL_X, oy + INKWELL_Y);
@@ -344,14 +365,17 @@ final class WarTableHome {
     }
 
     /** "Party" over a seat per member, the live model in each window; the Invite seat is a widget (paintInvite). */
-    void party(DrawContext g, int ox, int oy) {
+    void party(DrawContext g) {
         var c = MinecraftClient.getInstance();
         var font = c.textRenderer;
-        g.drawText(font, DarkUi.heading("Party"), ox + 56, oy + 186, DarkUi.BRASS, false);
+        int[] first = seat(0);
+        g.drawText(font, DarkUi.heading("Party"), first[0], first[1] - 20 + (WarTable.compact() ? 6 : 0), DarkUi.BRASS, false);
+        rectsDrawn.put("party-heading", new int[]{first[0], first[1] - 20 + (WarTable.compact() ? 6 : 0), font.getWidth(DarkUi.heading("Party")), 11});
         var seated = members();
         for (int i = 0; i < seated.size(); i++) {
             var m = seated.get(i);
-            int x = ox + 56, y = oy + 206 + 56 * i;
+            int[] at = seat(i);
+            int x = at[0], y = at[1];
             UiTex.draw(g, "table/frame-back-48", x + 4, y + 4);
             LivingEntity e = m.me() ? c.player : null;
             if (!m.me() && c.world != null) for (var p : c.world.getPlayers()) if (p.getGameProfile().getName().equals(m.name())) e = p;

@@ -39,6 +39,16 @@ final class WarTableRecruit {
      *  the page's right edge) and how many lines it may take (the second ends 12 px above the page's foot). */
     static final int NOTICE_Y = 504, NOTICE_STEP = 13, NOTICE_W = 328, NOTICE_LINES = 2;
     static final String NO_DUPLICATES = "No duplicates: every letter is a new troop.";
+    /** The compact page (UI Task 8b-2, WarTable.compact): the three columns close up and rise 32 px (roll box at 27, letter at 286,
+     *  ladder at 600 on the 854 page, their inks 10 px apart), the rung's line and Odds share one row either side of the axis
+     *  under the purse, and the notice comes up under them, 240 px wide; the Banner plaque stands 12 px from the page's right
+     *  edge. Each column's offset from its 960 place: */
+    static final int[] COMPACT_ROLL = {-29, -32}, COMPACT_LETTER = {-42, -32}, COMPACT_LADDER = {-64, -32};
+    static final int COMPACT_ODDS_Y = 440, COMPACT_NOTICE_Y = 472, COMPACT_NOTICE_W = 240, COMPACT_BANNER_X = 738;
+
+    static int[] rollAt() { return WarTable.column(COMPACT_ROLL[0], COMPACT_ROLL[1]); }
+    static int[] letterAt() { return WarTable.column(COMPACT_LETTER[0], COMPACT_LETTER[1]); }
+    static int[] ladderAt() { return WarTable.column(COMPACT_LADDER[0], COMPACT_LADDER[1]); }
 
     /** A portrait the last frame drew: the troop, where (row-(i) or letter) and what Portrait.draw passed to drawEntity. */
     record PortraitDraw(String troop, String where, Portrait.Drawn drawn) {}
@@ -123,19 +133,20 @@ final class WarTableRecruit {
      *  banners' boxes follow the House, the selection and the purse through refresh, so a click needs no rebuild. */
     void init() {
         buttons.clear();
-        int[] o = WarTable.origin();
-        int ox = o[0], oy = o[1];
+        int[] ro = rollAt(), lo = letterAt(), la = ladderAt();
+        boolean compact = WarTable.compact();
         add("back", WarTable.backPlaque(b -> back()));
-        add("banner", WarTable.plaque(800, 104, "icon-banner", "Banner", "B", 79, 0, b -> screen.page("banner")));
+        int bannerX = compact ? WarTable.compactOrigin()[0] + COMPACT_BANNER_X : WarTable.railX(800);
+        add("banner", WarTable.plaqueAt(bannerX, 104, "icon-banner", "Banner", "B", 79, 0, b -> screen.page("banner")));
         for (var h : RecruitView.houses())
             add("house-" + h.id(), new UiButton(0, BANNER_Y, BANNER_W, BANNER_H, Text.literal(h.name()), b -> chooseHouse(h.id()), (g, x, y, w, bh, hot) -> paintBanner(g, h, x, y, w, bh)));
         for (int i = 0; i < ROWS; i++) {
             final int index = i;
-            add("row-" + i, new UiButton(ox + ROLL_X, oy + ROW_TOP + ROW_H * i, ROLL_W, ROW_H, Text.literal(""), b -> pick(index), (g, x, y, w, h, hot) -> {}));
+            add("row-" + i, new UiButton(ro[0] + ROLL_X, ro[1] + ROW_TOP + ROW_H * i, ROLL_W, ROW_H, Text.literal(""), b -> pick(index), (g, x, y, w, h, hot) -> {}));
         }
-        choose = add("choose", new UiButton(ox + LETTER_X + CHOOSE_X, oy + LETTER_Y + CHOOSE_Y, 88, 24, Text.literal("Choose"), b -> chooseTroop(), this::paintChoose));
-        enlist = add("enlist", new UiButton(ox + ENLIST_X, oy + ENLIST_Y, 240, 40, Text.literal("Enlist"), b -> enlist(), this::paintEnlist));
-        add("odds", new UiButton(ox + ODDS_X, oy + ODDS_Y, 64, 24, Text.literal("Odds"), b -> odds = !odds, this::paintOdds));
+        choose = add("choose", new UiButton(lo[0] + LETTER_X + CHOOSE_X, lo[1] + LETTER_Y + CHOOSE_Y, 88, 24, Text.literal("Choose"), b -> chooseTroop(), this::paintChoose));
+        enlist = add("enlist", new UiButton(la[0] + ENLIST_X, la[1] + ENLIST_Y, 240, 40, Text.literal("Enlist"), b -> enlist(), this::paintEnlist));
+        add("odds", new UiButton(compact ? la[0] + AXIS + 4 : la[0] + ODDS_X, la[1] + (compact ? COMPACT_ODDS_Y : ODDS_Y), 64, 24, Text.literal("Odds"), b -> odds = !odds, this::paintOdds));
         refresh();
     }
 
@@ -323,17 +334,16 @@ final class WarTableRecruit {
         rectsDrawn.clear(); textsDrawn.clear(); texturesDrawn.clear(); colorsDrawn.clear(); portraitsDrawn.clear(); rowsDrawn.clear(); underlinedDrawn.clear();
         UiCanvas.begin(g);
         try {
-            int[] o = WarTable.origin();
-            int ox = o[0], oy = o[1];
+            int[] ro = rollAt(), lo = letterAt(), la = ladderAt();
             WarTable.drawChrome(g, "recruit");
-            rectsDrawn.putAll(WarTable.drawn()); // floor, table and rail, as drawChrome drew them
+            rectsDrawn.putAll(WarTable.drawn()); // table and rail, as drawChrome drew them
             texturesDrawn.put("table", WarTable.drawnTable());
-            rod(g, ox);
+            rod(g, WarTable.origin()[0]);
             var roll = RecruitView.roll(house);
-            roll(g, roll, ox + ROLL_X, oy + ROLL_Y, oy);
-            letter(g, row(roll, selected), ox + LETTER_X, oy + LETTER_Y);
-            ladder(g, ox, oy);
-            notice(g, ox, oy);
+            roll(g, roll, ro[0] + ROLL_X, ro[1] + ROLL_Y, ro[1]);
+            letter(g, row(roll, selected), lo[0] + LETTER_X, lo[1] + LETTER_Y);
+            ladder(g, la[0], la[1]);
+            notice(g, la[0], la[1]);
         } finally {
             UiCanvas.end(g);
         }
@@ -344,7 +354,7 @@ final class WarTableRecruit {
         if (!odds) return;
         UiCanvas.begin(g);
         try {
-            int[] o = WarTable.origin();
+            int[] o = letterAt();
             note(g, o[0] + NOTE_X, o[1] + NOTE_Y);
         } finally {
             UiCanvas.end(g);
@@ -490,9 +500,11 @@ final class WarTableRecruit {
         rectsDrawn.put("purse", new int[]{px, py, pw, pouch[3]});
         textsDrawn.put("purse", gold);
         String rung = pity >= 0 ? UiMath.pityLine(pity) : UiMath.lettersLine(left);
-        int rungInk = DarkUi.MUTED;
-        int rx = WarTableHome.centred(g, DarkUi.body(rung), ox + AXIS, oy + RUNG_Y, rungInk);
-        rectsDrawn.put("rung", new int[]{rx, oy + RUNG_Y, font.getWidth(DarkUi.body(rung)), 11});
+        int rungInk = DarkUi.MUTED, rw = font.getWidth(DarkUi.body(rung)), ry = WarTable.compact() ? oy + COMPACT_ODDS_Y + 7 : oy + RUNG_Y;
+        int rx = ox + AXIS - 4 - rw; // compact: right of it, Odds on the same row
+        if (WarTable.compact()) g.drawText(font, DarkUi.body(rung), rx, ry, rungInk, false);
+        else rx = WarTableHome.centred(g, DarkUi.body(rung), ox + AXIS, ry, rungInk);
+        rectsDrawn.put("rung", new int[]{rx, ry, rw, 11});
         textsDrawn.put("rung", rung);
         colorsDrawn.put("rung", rungInk);
     }
@@ -505,10 +517,11 @@ final class WarTableRecruit {
         if (noticeText.isEmpty() || age >= WarTableHome.NOTICE_TICKS + WarTableHome.NOTICE_FADE_TICKS) return;
         var font = MinecraftClient.getInstance().textRenderer;
         float fade = age < WarTableHome.NOTICE_TICKS ? 1 : 1 - (age - WarTableHome.NOTICE_TICKS) / (float) WarTableHome.NOTICE_FADE_TICKS;
-        var lines = UiMath.lines(HintText.expand(noticeText, GravesAndGloryClient::hint), NOTICE_W, NOTICE_LINES, s -> font.getWidth(DarkUi.body(s)));
+        boolean compact = WarTable.compact();
+        var lines = UiMath.lines(HintText.expand(noticeText, GravesAndGloryClient::hint), compact ? COMPACT_NOTICE_W : NOTICE_W, NOTICE_LINES, s -> font.getWidth(DarkUi.body(s)));
         if (lines.isEmpty()) return;
         int alpha = Math.max(4, Math.round(fade * 255)), ink = (alpha << 24) | (DarkUi.IVORY & 0xffffff);
-        int left = Integer.MAX_VALUE, right = Integer.MIN_VALUE, top = oy + NOTICE_Y;
+        int left = Integer.MAX_VALUE, right = Integer.MIN_VALUE, top = oy + (compact ? COMPACT_NOTICE_Y : NOTICE_Y);
         for (int i = 0; i < lines.size(); i++) {
             int x = WarTableHome.centred(g, DarkUi.body(lines.get(i)), ox + AXIS, top + NOTICE_STEP * i, ink);
             left = Math.min(left, x);

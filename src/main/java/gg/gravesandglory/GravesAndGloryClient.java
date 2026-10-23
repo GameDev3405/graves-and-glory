@@ -241,11 +241,38 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     }
     public static boolean inCamp(){return ready&&!battleActive();}
     public static boolean battleActive(){return ready&&running&&!CampaignClient.waiting;}
+    /** The camp slips' boxes (UiMath.campHud) and their rows' words as the last camp frame drew them, for the checks. */
+    static Map<String,int[]> campRectsDrawn=new LinkedHashMap<>();
+    static List<List<String>> campRowsDrawn=new ArrayList<>();
+    /** The camp's slips on the HUD canvas (UI Task 8b-2), the battle hint slip's look: at the top left the camp's name in INK and the
+     *  gold and title in SEPIA; at the bottom right, off vanilla's bars and the chat, the war table's key and the stations' key, each
+     *  an ink chip naming the player's binding (a mouse button as LMB, RMB or MMB) before its words in SEPIA, the keys taking their
+     *  short names, then giving way, where a long name would run a row past the paper (UiMath.fitKeys). */
+    static void campSlips(DrawContext g){
+        var c=MinecraftClient.getInstance();campRectsDrawn.clear();campRowsDrawn.clear();if(c.currentScreen!=null)return;
+        var font=c.textRenderer;var win=c.getWindow();
+        UiCanvas.beginHud(g);
+        try{
+            var at=UiMath.campHud(win.getFramebufferWidth(),win.getFramebufferHeight(),UiCanvas.hudK());
+            int[] head=at.get("camp-head"),hint=at.get("camp-hint");
+            UiTex.draw(g,"hud/notice-slip",head[0],head[1]);
+            g.drawText(font,DarkUi.heading("Banner camp"),head[0]+10,head[1]+7,DarkUi.INK_TEXT,false);
+            String purse=UiMath.trim(CampaignClient.profile.gold+" gold / "+CampaignClient.profile.progression.title,BattleHud.HINT_ROW_W,font::getWidth);
+            g.drawText(font,purse,head[0]+10,head[1]+24,DarkUi.SEPIA,false);
+            campRowsDrawn.add(List.of("Banner camp"));campRowsDrawn.add(List.of(purse));
+            UiTex.draw(g,"hud/notice-slip",hint[0],hint[1]);
+            String[] ids={"menu","use"},words={"War table","on a station to interact"};
+            for(int row=0;row<2;row++){
+                var keys=UiMath.fitKeys(List.of(hint(ids[row])),List.of(hintShort(ids[row])),Arrays.asList(words[row]),BattleHud.HINT_ROW_W,8,font::getWidth);
+                String key=keys.get(0);int kx=hint[0]+10,ky=hint[1]+(row==0?7:22),kw=UiMath.chipWidth(font.getWidth(key));
+                UiTex.three(g,"hud/key-chip",kx,ky,kw);g.drawText(font,key,kx+2,ky+2,DarkUi.CHIP_TEXT,false);
+                g.drawText(font,words[row],kx+kw+2,ky+2,DarkUi.SEPIA,false);campRowsDrawn.add(List.of(key,words[row]));
+            }
+            campRectsDrawn.putAll(at);
+        }finally{UiCanvas.end(g);}
+    }
     static void campHud(DrawContext g,int w,int h){
         var c=MinecraftClient.getInstance();if(c.currentScreen!=null)return;
-        DarkUi.frame(g,12,12,182,40);g.drawText(c.textRenderer,"BANNER CAMP",22,21,DarkUi.GOLD,false);
-        g.drawText(c.textRenderer,CampaignClient.profile.gold+" gold / "+CampaignClient.profile.progression.title,22,36,DarkUi.PAPER,false);
-        g.drawCenteredTextWithShadow(c.textRenderer,campHint(),w/2,h-45,DarkUi.PAPER);
         if(CampaignClient.padCountdown>0)g.drawCenteredTextWithShadow(c.textRenderer,"War gates: "+CampaignClient.padCountdown+"s / Step off to cancel",w/2,24,DarkUi.GOLD);
         else if(CampaignClient.waiting)g.drawCenteredTextWithShadow(c.textRenderer,"A battle is underway / Your camp remains open",w/2,24,DarkUi.MUTED);
     }
@@ -255,6 +282,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         var c=MinecraftClient.getInstance();if(c.player==null||c.currentScreen instanceof ArmyScreen||Diagnostics.active()&&Diagnostics.hideHud()){BattleHud.clear();return;}
         boolean ledger=battleActive()&&!CampaignClient.cinematic();
         if(ledger)BattleHud.render(g,delta);else BattleHud.clear();
+        if(!battleActive())campSlips(g);else{campRectsDrawn.clear();campRowsDrawn.clear();}
         float scale=Math.min(1,c.getWindow().getScaledWidth()/640f);g.getMatrices().push();g.getMatrices().scale(scale,scale,1);
         int w=(int)(c.getWindow().getScaledWidth()/scale),h=(int)(c.getWindow().getScaledHeight()/scale);
         if(!battleActive())campHud(g,w,h);

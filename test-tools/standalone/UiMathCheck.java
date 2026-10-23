@@ -203,8 +203,9 @@ public final class UiMathCheck {
         // battle with neither (the default state), D a battle's first seconds (the hint layer up). 1280x720 GUI 3 in A worked by hand:
         // the column's top at 616 would put the chat's bottom at GUI 201, below vanilla's own 200, so it starts there; closed, it
         // moves up past the hearts (201) and the armour row (191) to 187, and 6 lines fit above it and below the crosshair (127, 4 px
-        // clear); open, vanilla's bars do not count, and 9 fit below the respawn card's shadow (GUI 111).
-        String[][] wantChat = {{"10/20","10/20","10/20","10/20"},{"4/6","1/9","4/14","1/12"},{"6/9","6/16","6/19","6/17"},{"10/20","10/20","10/20","10/20"},{"7/9","5/15","7/19","5/17"},{"10/14","10/20","10/20","10/20"},{"10/15","10/20","10/20","10/20"}};
+        // clear); open, vanilla's bars do not count, but the ability slot beside the hotbar does (GUI 193, UI Task 8b-2): the bottom
+        // moves up to 189, and 8 fit below the respawn card's shadow (GUI 111).
+        String[][] wantChat = {{"10/20","10/20","10/20","10/20"},{"4/6","1/9","4/14","1/12"},{"6/8","6/16","6/18","6/17"},{"10/20","10/20","10/20","10/20"},{"7/9","5/15","7/19","5/17"},{"10/14","10/20","10/20","10/20"},{"10/15","10/20","10/20","10/20"}};
         String chats = ""; boolean chatsOk = true, clean = true;
         for (int i = 0; i < win.length; i++) for (int p = 0; p < 4; p++) {
             int[] s = win[i]; int k = UiMath.hudScale(s[0],s[1],s[2],UiMath.HUD_COMPACT);
@@ -214,6 +215,35 @@ public final class UiMathCheck {
             if (!got.equals(wantChat[i][p])) chats += (chats.isEmpty() ? "" : ", ") + s[0]+"x"+s[1]+" GUI "+s[2]+" pass "+"ABCD".charAt(p)+" "+got+" (want "+wantChat[i][p]+")";
         }
         check(chatsOk, "the lifted chat's lines over the Compact HUD in each pass at each window" + (chats.isEmpty() ? "" : ": " + chats));
+        // The open chat's box (GUI x 0 to 332, its lines above its bottom) never meets the ability slot beside the hotbar (UI Task
+        // 8b-2: at 1280x720 GUI 3 vanilla's open chat, bottom 200, reached the slot at GUI 193..225 x 317..367), in any pass or size.
+        String onAbility = "";
+        for (int[] s : win) for (int z = UiMath.HUD_COMPACT; z <= UiMath.HUD_LARGE; z++) for (int p = 0; p < 4; p++) {
+            int k = UiMath.hudScale(s[0],s[1],s[2],z), sw = -Math.floorDiv(-s[0],s[2]), sh = -Math.floorDiv(-s[1],s[2]);
+            var r = UiMath.hudLayout(s[0],s[1],s[2],k,z,new UiMath.HudState(3,groups,"all",p==1||p==3,p<2?2:0,p==0,true));
+            r.put("ability", UiMath.abilityRect(sw,sh,s[2],k));
+            for (int open = 0; open < 2; open++) {
+                var slot = UiMath.chatSlot(r,k/(double)s[2],sw,sh,UiMath.CHAT_RIGHT,9,open==1?20:10,open==1);
+                int[] box = {0,slot.bottom()-9*slot.lines(),(int)UiMath.CHAT_RIGHT,9*slot.lines()};
+                if (UiMath.meets(box,new int[]{sw/2+104,sh-47,50,32})) onAbility += (onAbility.isEmpty() ? "" : ", ") + s[0]+"x"+s[1]+" GUI "+s[2]+" size "+z+" pass "+"ABCD".charAt(p)+(open==1?" open":" closed")+" bottom "+slot.bottom();
+            }
+        }
+        check(onAbility.isEmpty(), "the chat, closed and open, keeps off the ability slot at every window, size and pass" + (onAbility.isEmpty() ? "" : ": " + onAbility));
+        // The camp's slips (UI Task 8b-2: the bare ivory hint on the courtyard's stone read 3.6:1): each slip's PNG, shadow and all, 12
+        // px inside the HUD canvas at every window and size, off vanilla's bars and off the closed chat's ten lines (GUI x 0 to 332, up
+        // from vanilla's bottom at sh - 40); the slip's words in SEPIA read 4.5:1 or better on its darkest paper, the chip's in
+        // CHIP_TEXT on its ink.
+        String campBad = "";
+        for (int[] s : win) for (int z = UiMath.HUD_COMPACT; z <= UiMath.HUD_LARGE; z++) {
+            int k = UiMath.hudScale(s[0],s[1],s[2],z), cw = s[0]/k, ch = s[1]/k, sw = -Math.floorDiv(-s[0],s[2]), sh = -Math.floorDiv(-s[1],s[2]);
+            var bars = UiMath.namedBars(sw,sh,s[2],k); bars.put("the closed chat", UiMath.guiToCanvas(new int[]{0,sh-40-90,332,90},s[2],k));
+            for (var e : UiMath.campHud(s[0],s[1],k).entrySet()) {
+                int[] b = e.getValue(), ink = {b[0],b[1],169,46};
+                if (ink[0] < 12 || ink[1] < 12 || ink[0]+ink[2] > cw-12 || ink[1]+ink[3] > ch-12) campBad += "; " + s[0]+"x"+s[1]+" GUI "+s[2]+" size "+z+" "+e.getKey()+" within 12 px of the edge";
+                for (var bar : bars.entrySet()) if (UiMath.meets(ink,bar.getValue())) campBad += "; " + s[0]+"x"+s[1]+" GUI "+s[2]+" size "+z+" "+e.getKey()+" "+java.util.Arrays.toString(ink)+" meets "+bar.getKey();
+            }
+        }
+        check(campBad.isEmpty() && UiMath.contrast(0xff5c4a32,0xffd6c69c) >= 4.5 && UiMath.contrast(0xfff1e7cb,0xff2a2219) >= 4.5, "the camp's slips 12 px inside, off vanilla's bars and the chat, their words 4.5:1 on the paper" + campBad);
         check(clean, "every Compact frame of the four passes at the suite's windows: every plate 12 px inside, none on another or on vanilla's bars, the lesson note beside the respawn card (it never has to give way at Compact)");
         // The closed chat off vanilla's bars (UI Task 8c): at 1280x720 GUI 3 the compact column (top at canvas 616, GUI 205) would
         // leave the chat at vanilla's own bottom, GUI 200, its lowest line on the armour row (191 to 200) under the hearts (201).
@@ -270,9 +300,11 @@ public final class UiMathCheck {
         return r;
     }
 
-    /** The chat's lines over those boxes, "closed/open", in a fbW x fbH window (s[0], s[1]) at GUI s[2] with the HUD at s[3]x. */
+    /** The chat's lines over those boxes and the ability slot, "closed/open", in a fbW x fbH window (s[0], s[1]) at GUI s[2] with the
+     *  HUD at s[3]x. */
     static String chat(java.util.Map<String,int[]> r, int[] s) {
         int sw = -Math.floorDiv(-s[0],s[2]), sh = -Math.floorDiv(-s[1],s[2]); double f = s[3] / (double) s[2];
+        r = new java.util.LinkedHashMap<>(r); r.put("ability", UiMath.abilityRect(sw,sh,s[2],s[3]));
         return UiMath.chatSlot(r,f,sw,sh,332,9,10,false).lines()+"/"+UiMath.chatSlot(r,f,sw,sh,332,9,20,true).lines();
     }
 }

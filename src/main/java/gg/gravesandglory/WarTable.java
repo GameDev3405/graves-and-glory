@@ -15,16 +15,37 @@ final class WarTable {
     /** {ox, oy}: the canvas point the 960x540 page's top left sits on (negative when the canvas is smaller than the page). */
     static int[] origin() { return new int[]{(UiCanvas.width() - 960) / 2, (UiCanvas.height() - 540) / 2}; }
 
+    /** The compact page (UI Task 8b-2; Kort, 2026-10-22: everything fits, every page, no crop): on a canvas narrower than 960 or
+     *  shorter than 540 (the default 854x480 window) each page lays its content out on an 854x480 page instead, centred on the
+     *  canvas, every box 12 px inside it and nothing under the rail. The rail's plaques move in by COMPACT_RAIL so the first
+     *  stands 12 px from the edge. */
+    static final int COMPACT_W = 854, COMPACT_H = 480, COMPACT_RAIL = 44;
+
+    static boolean compact() { return UiCanvas.width() < 960 || UiCanvas.height() < 540; }
+
+    /** {cx, cy}: the canvas point the compact page's top left sits on. */
+    static int[] compactOrigin() { return new int[]{(UiCanvas.width() - COMPACT_W) / 2, (UiCanvas.height() - COMPACT_H) / 2}; }
+
+    /** A rail plaque's canvas x for its x on the 960 page: origin()[0] + x, or on the compact page COMPACT_RAIL further in. */
+    static int railX(int x) { return compact() ? compactOrigin()[0] + x - COMPACT_RAIL : origin()[0] + x; }
+
+    /** A page column's offset {dx, dy}: the 960 page's origin(), or on the compact page the column's own, so that a box at page
+     *  (x, y) of the 960 layout lands at (cx + x + compactDx, cy + y + compactDy). */
+    static int[] column(int compactDx, int compactDy) {
+        if (!compact()) return origin();
+        int[] c = compactOrigin();
+        return new int[]{c[0] + compactDx, c[1] + compactDy};
+    }
+
     /** Home's oak, the table every page falls back to until its own is exported. */
     static final String HOME_TABLE = "table/oak-table";
     /** The pages that have a seed in tools/ui_art/kit_props.TABLE_SEEDS: each has, or will have, its own table/oak-table-<page>. */
     static final Set<String> PAGES = Set.of("home", "recruit", "banner", "contracts", "chapter", "friends", "field", "results");
     /** Where home's rolled map lies, on the rail line (canvas y), its far end pushed under the rail. */
     static final int MAPROLL_Y = 48;
-    /** The table's size, and the 4 px of shadow its planks cast on the floor round them. */
-    static final int TABLE_W = 1280, TABLE_H = 720, SHADOW = 4;
-    /** The shadow's alpha on the floor, nearest the planks first. */
-    static final int[] SHADOW_ALPHA = {0xb0, 0x80, 0x50, 0x28};
+    /** The table's size (UI Task 8b-2: the big-canvas oak, tools/ui_art/kit_props.table_big, whose middle 1280x720 is the page's
+     *  oak the layout was set on). */
+    static final int TABLE_W = 1920, TABLE_H = 1080;
 
     private static final Set<String> warned = new HashSet<>();
     // What the last drawChrome passed to the draw calls: the floor fill, the table and the rail, in canvas px, and the table's name.
@@ -35,7 +56,7 @@ final class WarTable {
     private static final Map<String, Integer> badges = Collections.unmodifiableMap(badgesDrawn);
     /** The count each rail plaque drew on its wax badge (0: none) the last frame it was drawn, by label. */
     static Map<String, Integer> badges() { return badges; }
-    /** Boxes {x,y,w,h} the last drawChrome drew: floor (the whole canvas), table, rail and, on home, maproll. */
+    /** Boxes {x,y,w,h} the last drawChrome drew: table (the copy centred on the canvas), rail and, on home, maproll. */
     static Map<String, int[]> drawn() { return drawn; }
     /** The table texture the last drawChrome drew. */
     static String drawnTable() { return drawnTable; }
@@ -53,27 +74,20 @@ final class WarTable {
         return HOME_TABLE;
     }
 
-    /** Fills the canvas with the floor, draws the page's 1280x720 table centred on it with its shadow on the floor round it
-     *  (a canvas larger than the table shows both), what the page keeps under the rail (home's rolled campaign map, its far end
-     *  pushed under the rail), then the rail across the canvas. page is a page name or a full table/... texture name. */
+    /** Draws the page's 1920x1080 table centred on the canvas, so the planks run to its edges (UI Task 8b-2: no floor shows), and
+     *  on a canvas bigger than the table (GUI 1 above 1080p) more copies of it side by side and above and below; then what the
+     *  page keeps under the rail (home's rolled campaign map, its far end pushed under the rail; left off on the compact page,
+     *  where home's party sits there), then the rail across the canvas. page is a page name or a full table/... texture name. */
     static void drawChrome(DrawContext g, String page) {
         int w = UiCanvas.width(), h = UiCanvas.height(), ox = origin()[0];
         String table = tableTexture(page);
         int tx = (w - TABLE_W) / 2, ty = (h - TABLE_H) / 2, railH = UiTex.entry("table/rail").h();
-        g.fill(0, 0, w, h, DarkUi.FLOOR);
         drawnRects.clear();
-        drawnRects.put("floor", new int[]{0, 0, w, h});
-        for (int i = 1; i <= SHADOW; i++) { // a ring of the shadow round the planks per pixel, nearest the planks darkest
-            int a = SHADOW_ALPHA[i - 1] << 24, x0 = tx - i, y0 = ty - i, x1 = tx + TABLE_W + i, y1 = ty + TABLE_H + i;
-            g.fill(x0, y0, x1, y0 + 1, a);
-            g.fill(x0, y1 - 1, x1, y1, a);
-            g.fill(x0, y0 + 1, x0 + 1, y1 - 1, a);
-            g.fill(x1 - 1, y0 + 1, x1, y1 - 1, a);
-        }
-        UiTex.draw(g, table, tx, ty);
+        int x0 = tx - TABLE_W * Math.max(0, -Math.floorDiv(-tx, TABLE_W)), y0 = ty - TABLE_H * Math.max(0, -Math.floorDiv(-ty, TABLE_H));
+        for (int y = y0; y < h; y += TABLE_H) for (int x = x0; x < w; x += TABLE_W) UiTex.draw(g, table, x, y);
         drawnTable = table;
         drawnRects.put("table", new int[]{tx, ty, TABLE_W, TABLE_H});
-        if ((page.equals("home") || page.equals(HOME_TABLE)) && ty <= railH) { // the roll lies on the planks while the rail covers the table's top edge; on a taller canvas it would hang over bare floor, so it stays off
+        if ((page.equals("home") || page.equals(HOME_TABLE)) && !compact()) {
             UiTex.draw(g, "table/prop-maproll", ox + 148, MAPROLL_Y);
             drawnRects.put("maproll", new int[]{ox + 148, MAPROLL_Y, UiTex.entry("table/prop-maproll").w(), UiTex.entry("table/prop-maproll").h()});
         }
@@ -85,9 +99,14 @@ final class WarTable {
      *  IVORY at (28,8); its key, unless null, on a brass cap at (keyX,7) with the text in 8 px RAIL_KEY at (keyX+4,10); its count,
      *  when badge is above 0, on a wax drop at (93,8) in 8 px CHIP_TEXT at (96,10). Hovered or focused, the name turns BRASS_HI. */
     static UiButton plaque(int x, int width, String icon, String label, String key, int keyX, int badge, ButtonWidget.PressAction a) {
+        return plaqueAt(railX(x), width, icon, label, key, keyX, badge, a);
+    }
+
+    /** plaque, at canvas x (the recruit page's Banner plaque, right-aligned on the compact page). */
+    static UiButton plaqueAt(int canvasX, int width, String icon, String label, String key, int keyX, int badge, ButtonWidget.PressAction a) {
         // the names are built here, not in the UiTex calls: build_ui_art --verify checks only the names written whole in a call
         String plate = "table/plaque-" + width, mark = "table/" + icon;
-        return new UiButton(origin()[0] + x, 12, width, 28, Text.literal(label), a, (g, bx, by, bw, bh, hot) -> {
+        return new UiButton(canvasX, 12, width, 28, Text.literal(label), a, (g, bx, by, bw, bh, hot) -> {
             var font = MinecraftClient.getInstance().textRenderer;
             UiTex.draw(g, plate, bx, by);
             UiTex.draw(g, mark, bx + 8, by + 7);

@@ -23,7 +23,11 @@ public final class CampRedesignChecks implements ClientModInitializer {
     long npcs=0;for(var e:b.world.iterateEntities())if(e.getCommandTags().contains(CampWorld.TAG)&&e instanceof net.minecraft.entity.passive.VillagerEntity)npcs++;
     check("four-interactive-stewards",npcs==4);check("no-camp-weapons",p.getInventory().isEmpty());});
    if(tick==45){c.setScreen(null);check("battle-hud-off",GravesAndGloryClient.inCamp()&&!GravesAndGloryClient.battleActive());CommandMode.begin("attack");check("orders-disabled-in-camp",!CommandMode.active());}
-   if(tick==70)shot(c,"courtyard");
+   if(tick==70){shot(c,"courtyard"); // the camp's slips (UI Task 8b-2): drawn where UiMath.campHud puts them, the keys on ink chips
+    var w=c.getWindow();var want=UiMath.campHud(w.getFramebufferWidth(),w.getFramebufferHeight(),UiCanvas.hudK());var rows=GravesAndGloryClient.campRowsDrawn;
+    boolean placed=GravesAndGloryClient.campRectsDrawn.size()==2&&want.keySet().stream().allMatch(k->Arrays.equals(want.get(k),GravesAndGloryClient.campRectsDrawn.get(k)));
+    boolean words=rows.size()==4&&rows.get(2).equals(List.of(GravesAndGloryClient.hint("menu"),"War table"))&&rows.get(3).equals(List.of(GravesAndGloryClient.hint("use"),"on a station to interact"))&&rows.get(1).get(0).startsWith(CampaignClient.profile.gold+" gold");
+    System.out.println("[camp-check] slips "+GravesAndGloryClient.campRectsDrawn.keySet()+" rows "+rows);check("hint-slip",placed&&words);}
    if(tick==80)c.setScreen(new CampScreen("home"));if(tick==95)shot(c,"guide");
    if(tick==100)CampScreen.open("recruit");if(tick==115)shot(c,"recruitment");if(tick==120)press(c,"Enlist"); // the War Table recruit page's plate (UI plan Task 6)
    if(tick==150){check("server-confirmed-recruit",CampaignClient.profile.gold==200&&CampaignClient.profile.unlocked.size()==7);shot(c,"reward-reveal");}

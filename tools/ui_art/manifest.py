@@ -99,8 +99,10 @@ add('hud/respawn-card', lambda: ledger_card(200, 28, 'lo', IRON, seed=16), ox=1,
 # the 1280 x 720 tables, one stretch of oak per War Table page from the page's own seed (kit_props.TABLE_SEEDS; Kort,
 # 2026-10-18 late): home's is the round 4 mock's (seed 11), recruit's has its reserved seed; plank layout, knots and
 # nail heads only, never a brass fitting (no butterfly key, no mending plate)
-add('table/oak-table', lambda: kit_props.table('home'))
-add('table/oak-table-recruit', lambda: kit_props.table('recruit'))
+# UI Task 8b-2: each is exported on the 1920 x 1080 big-canvas table (kit_props.table_big), its 1280 x 720 middle the page's
+# oak pixel for pixel, so the planks run to the window's edge on a GUI 1 canvas at 1080p
+add('table/oak-table', lambda: kit_props.table_big('home'))
+add('table/oak-table-recruit', lambda: kit_props.table_big('recruit'))
 mock('table', 'rail', kind='three-h', l=0, r=0)
 for _w in (96, 104, 112, 120):     # plates 6 px in from each edge; the PNG adds 1 px of shadow right, 2 below
     mock('table', 'plaque-%d' % _w, kind='nine', l=6, t=6, r=7, b=8)
@@ -129,7 +131,7 @@ add('table/btn-iron-240x40', lambda: kit_extra.btn_iron(MOCK['btn-brass-240x40']
 # Kort approved it (kit_track, from work/ui-concepts/track), the open page's rail plaques, and a painted card for every
 # map (kit_maps: Rivergate's is the mock's card with its seals lettered, the others painted from their layouts)
 for _p in ('banner', 'contracts', 'chapter', 'friends', 'field'):
-    add('table/oak-table-' + _p, (lambda p: lambda: kit_props.table(p))(_p))
+    add('table/oak-table-' + _p, (lambda p: lambda: kit_props.table_big(p))(_p))
 for _n, (_w, _h, _s) in kit_extra.SHEETS.items():
     add(_n, (lambda w, h, s: lambda: kit_extra.pinned(w, h, s))(_w, _h, _s))
 for _c, _paint in kit_extra.CLASS_ICONS.items():

@@ -51,6 +51,71 @@ def table(page):
     return v4art.oak_table(W=1280, H=720, seed=TABLE_SEEDS[page], avoid=TABLE_AVOID.get(page, []))
 
 
+BIG_W, BIG_H = 1920, 1080      # the big-canvas oak (UI Task 8b-2): a 1920 x 1080 canvas (GUI 1 at 1080p) shows no floor
+PLANK_HEIGHTS = [30, 32, 34, 36, 38]
+
+
+def plank_rows(seed, H=720):
+    """the plank rows (top, height) oak_table cuts from a seed for an H-tall table: its first draws, before any other"""
+    rnd = random.Random(seed)
+    rows, y = [], -6
+    while y < H:
+        h = rnd.choice(PLANK_HEIGHTS)
+        rows.append((y, h)); y += h
+    return rows
+
+
+def table_big(page):
+    """a page's oak on a 1920 x 1080 table (UI Task 8b-2; Kort, 2026-10-22: the planks run to the window's edge at every
+    size, the fittings keep the 1280 x 720 layout). The page's own 1280 x 720 oak, pixel for pixel, lies in the middle,
+    at (320, 180), from its first whole plank to its last; round it the same kit paints more oak from the page's seed
+    on rows that carry the middle's plank lines on to both edges, with new planks above and below. Each middle plank
+    meets the oak beside it at a butt joint, the painter's own (a dark gap, the end grain lit on one side and shaded on
+    the other, two nails each side), set a random 8 to 220 px in from the middle's edge so the joints stagger as a
+    real table's do. The light sits where the middle's does, so the stepped vignette runs on across the seam."""
+    seed = TABLE_SEEDS[page]
+    middle = table(page)
+    ox, oy = (BIG_W - 1280) // 2, (BIG_H - 720) // 2
+    whole = [(y, h) for (y, h) in plank_rows(seed) if y >= 0 and y + h <= 720]
+    rnd = random.Random(seed * 7 + 1)
+    rows = [(y + oy, h) for (y, h) in whole]
+    y = rows[0][0]
+    while y > 0:
+        h = rnd.choice(PLANK_HEIGHTS); y -= h; rows.insert(0, (y, h))
+    y = rows[-1][0] + rows[-1][1]
+    while y < BIG_H:
+        h = rnd.choice(PLANK_HEIGHTS); rows.append((y, h)); y += h
+    s = v4art.oak_table(W=BIG_W, H=BIG_H, seed=seed + 1000, rows=rows)
+    lx, ly = 480 + (BIG_W - 960) / 2.0, 300 + (BIG_H - 540) / 2.0
+    OAK = v4art.OAK
+
+    def tone(x, y, t):   # an oak tone under the vignette's steps at (x, y), as oak_table darkens it (its noise left out)
+        dx, dy = (x - lx) / 600.0, (y - ly) / 380.0
+        dk = max(0.0, min(1.0, (math.sqrt(dx * dx + dy * dy) - 0.5) / 0.55)) * 1.9
+        return OAK[max(0, t - (int(dk + 0.5) if dk > 0 else 0))]
+    NAIL = ['.kk.', 'kHmk', 'kmdk', '.kk.']
+    for (y0, h) in whole:
+        xl, xr = ox + rnd.randint(8, 220), ox + 1280 - rnd.randint(8, 220)
+        s.im.paste(middle.im.crop((xl - ox, y0, xr - ox, y0 + h)), (xl, y0 + oy))
+        Y0 = y0 + oy
+        for jx in (xl, xr):
+            for yy in range(Y0 + 1, Y0 + h):
+                s.set(jx, yy, OAK[0]); s.set(jx - 1, yy, tone(jx - 1, yy, 2)); s.set(jx + 1, yy, tone(jx + 1, yy, 6))
+                if (yy * 3) % 7:
+                    s.set(jx + 2, yy, tone(jx + 2, yy, 5))
+            for nx in (jx - 7, jx + 4):
+                for ny in (Y0 + 6, Y0 + h - 9):
+                    for (dx, dy) in ((-1, 0), (0, -1), (-1, 1), (1, -1)):
+                        s.set(nx + dx, ny + dy, tone(nx, ny, 2))
+                    for (dx, dy) in ((4, 2), (2, 4), (4, 3), (3, 4)):
+                        s.set(nx + dx, ny + dy, tone(nx, ny, 6))
+                    for (dx, dy, c) in ((4, 1, v4art.RUSTW[1]), (5, 2, v4art.RUSTW[0]), (1, 4, v4art.RUSTW[1]), (6, 2, v4art.RUSTW[0]), (2, 5, v4art.RUSTW[0])):
+                        if rnd.random() < 0.8:
+                            s.set(nx + dx, ny + dy, c)
+                    s.grid(nx, ny, NAIL, {'k': v4art.IRON[1], 'H': v4art.IRON[7], 'm': v4art.IRON[5], 'd': v4art.IRON[3]})
+    return s
+
+
 # ================================================================ the chamberstick
 CW, CH = 124, 128                     # one frame
 CX, CY = 50, 84                       # the stick's axis, the dish's centre

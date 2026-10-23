@@ -653,10 +653,29 @@ public final class UiMath {
     public static final double CHAT_RIGHT = 332;
 
     /** Whether the lifted chat stays clear of the HUD element with this rect key (BattleHud.rects): the score bar, the bosses, the
-     *  seals, the aimed point's name, the lesson note, the respawn card and the feed. The group column is below the chat by its
-     *  place, and the ability slot sits beside the hotbar. */
+     *  seals, the aimed point's name, the lesson note, the respawn card, the feed and the ability slot beside the hotbar (UI Task
+     *  8b-2: on a GUI under 456 px wide, as 1280x720 GUI 3, it reaches under vanilla's widest chat, and the open chat at vanilla's
+     *  bottom covered it). The group column is below the chat by its place. */
     public static boolean overChat(String key) {
-        return key.equals("score") || key.endsWith("-boss") || key.startsWith("seal-") || key.equals("aim-name") || key.equals("lesson") || key.equals("respawn") || key.equals("feed");
+        return key.equals("score") || key.endsWith("-boss") || key.startsWith("seal-") || key.equals("aim-name") || key.equals("lesson") || key.equals("respawn") || key.equals("feed") || key.equals("ability");
+    }
+
+    /** The camp's two slips on the HUD canvas of a fbW x fbH window at k screen px per canvas px (UI Task 8b-2), each a notice
+     *  slip's box (164x40; its PNG's shadow reaches 5 px right and 6 below): "camp-head", the camp's name, gold and title at the
+     *  top left; "camp-hint", the war table's and the stations' keys at the bottom right, its shadow 12 px inside the canvas, off
+     *  vanilla's bars and the closed chat (both end left of it). */
+    public static java.util.Map<String, int[]> campHud(int fbW, int fbH, int k) {
+        int w = fbW / k, h = fbH / k;
+        var r = new java.util.LinkedHashMap<String, int[]>();
+        r.put("camp-head", new int[]{12, 12, 164, 40});
+        r.put("camp-hint", new int[]{w - 12 - 169, h - 12 - 46, 164, 40});
+        return r;
+    }
+
+    /** The ability slot's box in canvas px on a GUI sw x sh at gui GUI Scale, k screen px per canvas px: BattleHud draws it in
+     *  vanilla's GUI px, 50x32 at (sw/2 + 104, sh - 47), beside the hotbar's right end. */
+    public static int[] abilityRect(int sw, int sh, int gui, int k) {
+        return guiToCanvas(new int[]{sw / 2 + 104, sh - 47, 50, 32}, gui, k);
     }
 
     /** The rows a HUD plate's PNG paints above its box, by rect key (atlas.json oy): 1 for the score card, the lesson note, the
@@ -801,7 +820,7 @@ public final class UiMath {
         if (w < 1 || h < 1) return false;
         double f = k / (double) gui;
         var bars = namedBars(sw, sh, gui, k);
-        int[] ability = guiToCanvas(new int[]{sw / 2 + 104, sh - 47, 50, 32}, gui, k);
+        int[] ability = abilityRect(sw, sh, gui, k);
         List<String> groups = DEFAULT_STATE.groups();
         for (int n = 3; n <= 5; n += 2) for (String sel : new String[]{"all", "infantry"}) for (int content = 0; content < 3; content++)
             for (int hint = content == 2 ? 1 : 0; hint < 2; hint++) for (int down = 0; down < 2; down++) {
