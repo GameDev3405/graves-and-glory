@@ -9,6 +9,7 @@ from v4lib import Spr, rgba
 from v4pal import IRON, BRASS, VIOL, OAK, VEL, WAX, TEAL
 from v4a_hud import glyph, INK, PAPER, FEEDV_GLYPH, SHADOW, iron_shade, ledger_card, BRASSR, notice_slip, feed_slip, hp_channel, stamp
 from v4a_paper import parchment, tack
+from v4a_furn import SPEC
 
 # 'k' ink, 'L' the light vellum inside a shape, as in v4a_hud.GLYPHS
 GLYPHS = {
@@ -84,8 +85,10 @@ def fgv_moon():
 
 def btn_iron(brass):
     """the iron Enlist plate (short of gold): the brass plate with every BRASS[i] pixel replaced by IRON[max(0, i-3)],
-    so its face BRASS[5] becomes IRON[2] #1f2427; the shadow, the specular and the tarnish stay as painted"""
+    so its face BRASS[5] becomes IRON[2] #1f2427; the brass plate's warm specular on the top bevel (SPEC #fff0c4) becomes
+    IRON[7] #7d878c, so the plate reads as iron (Task 6 ruling, UI Task 8b); the shadow and the tarnish stay as painted"""
     lut = {rgba(c)[:3]: rgba(IRON[max(0, i - 3)])[:3] for i, c in enumerate(BRASS)}
+    lut[rgba(SPEC)[:3]] = rgba(IRON[7])[:3]
     px = brass.px
     for y in range(brass.h):
         for x in range(brass.w):
