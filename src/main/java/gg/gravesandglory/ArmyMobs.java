@@ -89,8 +89,7 @@ public final class ArmyMobs {
 
     /** A troop's custom name at a level: the troop name at level 1, the levelNames row's name at level 2 or 3, and the troop name for a troop with no line (Epics and Legendaries). */
     public static String levelName(Spec.TroopsRow t, int level) {
-        if (level >= 2) for (var e : Spec.LEVELNAMES) if (e.troop().equals(t.evolveLine()) && e.level() == level) return e.name();
-        return t.name();
+        return LevelMath.levelName(t, level);
     }
 
     private static Spec.TroopsRow[] namedTroops;
