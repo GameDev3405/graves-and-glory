@@ -1,45 +1,41 @@
 {
-"weapon": "order_bow",
-"thickness": 2,
-"grip": {
-"pixel": [
-5,
-11
-],
-"offset": [
-0,
-0,
-0
-],
-"rotation": [
-0,
-0,
-0
-],
-"note": "the grip pixel is the left column of the 2 px wound grip, through the middle of the fist; the belly stands one pixel in front of it"
-},
-"pull": [
-0.15,
-0.32,
-0.48
-],
-"nocks": [
-[
-3.5,
-11.5
-],
-[
-2.5,
-11.5
-],
-[
-1.5,
-11.5
-],
-[
-0.5,
-11.5
-]
-],
-"note": "The Order Archer's bow, 23 px: a short recurve in dark wood, gilt tips and collars, the grip wound in linen; the string to the left (back, toward the archer), drawn to the right hand's place 4 px behind the grip at the full draw."
+ "weapon": "order_bow",
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "the grip's centre is the model origin (the fist box covers y -2..+2); the model is y up with its big faces across z, and the converter turns it by a half turn about x into the weapon frame"
+ },
+ "pull": [
+  0.15,
+  0.32,
+  0.48
+ ],
+ "nocks": [
+  [
+   -3.98,
+   0.0
+  ],
+  [
+   -4.73,
+   0.0
+  ],
+  [
+   -5.48,
+   0.0
+  ],
+  [
+   -6.23,
+   0.0
+  ]
+ ],
+ "note": "The Archer's bow, tier I (plain): a dark-wood recurve of five staves a limb, a leather grip between wood risers, self nocks; 26 px tall; the string to the left (-x), drawn 0.75 px a frame."
 }

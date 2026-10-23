@@ -1,22 +1,18 @@
 {
-"weapon": "arming_sword",
-"thickness": 1,
-"grip": {
-"pixel": [
-2,
-13
-],
-"offset": [
-0,
-0,
--0.5
-],
-"rotation": [
-90,
-45,
-90
-],
-"note": "the grip pixel is the middle of the wound grip, through the fist; the sprite is turned flat to the side and tilted 45 degrees forward, as the box sword stood"
-},
-"note": "The Squire's arming sword: a 10 px blade and point, a 6 px gilt guard, a wound grip and a gilt pommel; 1 px thick."
+ "weapon": "arming_sword",
+ "thickness": 1,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   90,
+   45,
+   90
+  ],
+  "note": "the grip's centre is the model origin (the fist box covers y -2..+2); the model is y up with its big faces across z, and the converter turns it by a half turn about x into the weapon frame; the sword is turned flat to the side and tilted 45 degrees forward, as the sprite sword was"
+ },
+ "note": "The Squire's arming sword, tier I (plain): a 13 px blade and a 3 px point, a straight 9 px steel cross over a seat block, a leather grip and a 1.8 px steel wheel pommel; no gilt; 22.8 px long."
 }
