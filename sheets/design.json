@@ -1777,7 +1777,7 @@
       "id": "kit/house_b",
       "width": 15,
       "depth": 13,
-      "height": 11,
+      "height": 17,
       "palette": "wood",
       "purpose": "hamlet two-storey house, door east"
     },
@@ -1785,7 +1785,7 @@
       "id": "kit/market",
       "width": 19,
       "depth": 9,
-      "height": 6,
+      "height": 8,
       "palette": "wood",
       "purpose": "market stalls"
     },
@@ -1801,7 +1801,7 @@
       "id": "kit/customs",
       "width": 19,
       "depth": 15,
-      "height": 12,
+      "height": 13,
       "palette": "wood",
       "purpose": "toll house"
     },

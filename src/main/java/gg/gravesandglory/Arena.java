@@ -66,13 +66,61 @@ public final class Arena {
         if(rd<8)h=blend(h,roadLevel(x,z),rd,0,8);
         // Landmarks (authored pieces, see CampaignMaps.landmarks) stand on ground flat at their elevation out to 2 blocks past the footprint, after the roads so a lane
         // that reaches a door meets the floor of the piece; the shoulder widens by 2 a block of rise, so a raised outpost meets the plain in a slope a squad can walk.
-        for(var s:Spec.STRUCTURES)if(s.kind().equals("landmark")){double dx=Math.max(0,Math.abs(x-s.x())-s.width()/2.0-2),dz=Math.max(0,Math.abs(z-s.z())-s.depth()/2.0-2);h=blend(h,s.elevation(),Math.hypot(dx,dz),0,10+2*(s.elevation()-64));}
+        // Its edge wanders and a raised landmark's shoulder has relief (landmarkDistance, relief): its one-block steps are neither rings parallel to the footprint nor ruled diagonal sawtooth.
+        for(var s:Spec.STRUCTURES)if(s.kind().equals("landmark")){double ld=landmarkDistance(s,x,z),sh=shoulder(s);h=blend(h,s.elevation(),ld,0,sh);if(s.elevation()>Y&&ld>0&&ld<sh)h+=relief(x,z,ld,sh);}
         double border=Math.max(Math.abs(x)-GravesAndGlory.R.arenaHalfX()+14,Math.abs(z)-GravesAndGlory.R.arenaHalfZ()+12);
         if(border>0)h+=Math.min(Spec.TERRAINSTYLE[0].boundaryRise(),border*.4)*(.65+.35*Math.sin(x*.055+z*.043));
         if(z<-GravesAndGlory.R.arenaHalfZ())h=CampWorld.taper(x,z,h); // the margin north of the playable box (z -251 to -266) meets the rim of the camp; the box itself is not touched
         int r=(int)Math.round(h);
         // A river column writes nothing at h (the river check wants air from h up), so a column of the margin that the taper lifted out of the water would end one block below its neighbours: its height is one more than its ground, and buildColumn lays the ground at h-1.
         return z<-GravesAndGlory.R.arenaHalfZ()&&river(x,z)&&r>Y?r+1:r;
+    }
+    /** The shoulder of a landmark: the blocks over which its flat ring meets the ground round it, 10 and 2 more a block of rise above 64 (the preflight keeps a landmark's elevation 64 and up). */
+    static double shoulder(Spec.StructuresRow s){return 10+2*(s.elevation()-64);}
+    /** The distance the landmark blend reads at (x, z): from the flat ring (2 beyond the footprint), wandered by a noise of about 8 blocks (up to a quarter of the shoulder, at most 4) and by under a block more on a
+     *  noise of about 3 blocks (no single columns, which would stand as pits), faded in over the first 4 blocks so the flat ring stays flat. A wandering distance gives each one-block step of the shoulder its own edge, where a straight one stacks them as rings parallel to the footprint and
+     *  draws a diagonal step as a ruled sawtooth (the grade of Task 6). The wander reaches at most 5 blocks past the shoulder, inside the 10 the box diff gives a landmark's zone. */
+    static double landmarkDistance(Spec.StructuresRow s,int x,int z){
+        double dx=Math.max(0,Math.abs(x-s.x())-s.width()/2.0-2),dz=Math.max(0,Math.abs(z-s.z())-s.depth()/2.0-2),d=Math.hypot(dx,dz);
+        if(d<=0)return 0;
+        double amp=Math.min(4,.25*shoulder(s)),fade=Math.min(1,d/4);
+        return Math.max(0,d+fade*(amp*CampTerrain.fbm(x,z,8,611)+1.6*(CampTerrain.noise(x,z,3,612)-.5)));
+    }
+    /** The relief of a raised landmark's shoulder at blend distance d of shoulder sh: swells of about 7 blocks (up to about a block) and a few knobs of rock (outcrop), strongest at the middle of the slope and nothing at its
+     *  top and foot, and nothing within 1 of a road and less within 5 (a road that climbs the shoulder keeps its even grade). */
+    static double relief(int x,int z,double d,double sh){
+        double t=d/sh,mid=4*t*(1-t),road=MathHelper.clamp((CampaignMaps.roadDistance(x,z)-1)/4,0,1);
+        return road*mid*(1.2*CampTerrain.fbm(x,z,7,621)+outcrop(x,z));
+    }
+    /** A knob of rock on a raised landmark's shoulder, 0 to 1: where a noise of about 5 blocks is high. buildColumn lays stone or andesite on its top (rocky). */
+    static double outcrop(int x,int z){return MathHelper.clamp((CampTerrain.noise(x,z,5,622)-.74)/.1,0,1);}
+    /** The block of a knob of rock: stone, andesite or mossy cobblestone in patches of about three blocks. */
+    static Block rock(int x,int z){double n=CampTerrain.noise(x,z,3,624);return n<.4?Blocks.STONE:n<.7?Blocks.ANDESITE:Blocks.MOSSY_COBBLESTONE;}
+    /** The column's top is a knob of rock on the slope of a raised landmark's shoulder (relief lifted it by more than half a block there). */
+    static boolean rocky(int x,int z){
+        if(outcrop(x,z)<.5)return false;
+        for(var s:Spec.STRUCTURES)if(s.kind().equals("landmark")&&s.elevation()>Y){double d=landmarkDistance(s,x,z),sh=shoulder(s);if(d>0&&d<sh&&4*(d/sh)*(1-d/sh)*MathHelper.clamp((CampaignMaps.roadDistance(x,z)-1)/4,0,1)*outcrop(x,z)>.5)return true;}
+        return false;
+    }
+    /** The yard of a landmark (the grade of Task 6: a band of grass across the lane at a door): within 6 blocks of a landmark's footprint or inside it (where its ground layer is void the map's ground shows), a cell off the road that has a road cell 5 or fewer blocks one way along x, z or a
+     *  diagonal and a road cell or the footprint 5 or fewer blocks the other way is laid as dirt path by buildColumn. So a lane runs on to the doorstep and to the plinth, and no sliver of grass is left between two lanes or
+     *  between a lane and a wall. Off the river and its banks. */
+    static boolean yard(int x,int z){
+        if(road(x,z)||wetBank(x,z))return false;
+        boolean near=false;
+        for(var s:Spec.STRUCTURES)if(s.kind().equals("landmark")&&Math.max(Math.abs(x-s.x())-s.width()/2,Math.abs(z-s.z())-s.depth()/2)<=6)near=true;
+        if(!near)return false;
+        for(int[] v:new int[][]{{1,0},{0,1},{1,1},{1,-1}}){
+            int a=reach(x,z,v[0],v[1]),b=reach(x,z,-v[0],-v[1]);
+            if(a>0&&b>0&&(a==1||b==1))return true;
+        }
+        return false;
+    }
+    /** Along (vx, vz) from (x, z), 1 to 5 blocks: 1 for a road cell first, 2 for a landmark footprint first, 0 for neither. */
+    static int reach(int x,int z,int vx,int vz){
+        for(int k=1;k<=5;k++){int px=x+vx*k,pz=z+vz*k;if(road(px,pz))return 1;
+            for(var s:Spec.STRUCTURES)if(s.kind().equals("landmark")&&Math.abs(px-s.x())<=s.width()/2&&Math.abs(pz-s.z())<=s.depth()/2)return 2;}
+        return 0;
     }
     /** How far a road climbs to a raised capture point (Kingsfield's outposts): from the floor of the arena at the end of this distance beyond the plateau of the point up to the elevation of the point at the edge of the plateau. */
     static final double CLIMB=48;
@@ -118,7 +166,7 @@ public final class Arena {
         else put(w,x,h-1,z,margin&&!river(x,z)?CampWorld.underBlock(rock,x,z):Blocks.DIRT);
         if(river(x,z)){for(int y=Y-5;y<=Y-3;y++)put(w,x,y,z,Blocks.GRAVEL);for(int y=Y-2;y<=Y-1;y++)put(w,x,y,z,Blocks.WATER);}
         else{
-            Block surface=road(x,z)?Blocks.DIRT_PATH:margin&&natural(h)!=Blocks.STONE?CampWorld.mix(natural(h),rock,x,z):natural(h);
+            Block surface=road(x,z)||!margin&&yard(x,z)?Blocks.DIRT_PATH:margin&&natural(h)!=Blocks.STONE?CampWorld.mix(natural(h),rock,x,z):!margin&&rocky(x,z)?rock(x,z):natural(h);
             put(w,x,h,z,surface);
             var deco=Spec.DECORATIONS[0];int hash=Math.floorMod(x*734287+z*912931+x*z*17,100003);
             boolean clear=!road(x,z)&&h<84&&Math.abs(x-riverX(z))>15&&surface==natural(h); // no plant on the stone and the dirt of a steep margin

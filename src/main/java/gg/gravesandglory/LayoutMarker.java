@@ -12,7 +12,8 @@ final class LayoutMarker {
     static final String MARGIN_BASE="margin-1";
     static final String MARGIN=MARGIN_BASE+"/"+CampTerrain.REVISION;
 
-    /** The marker of a map built now; landmarks is Structures.hash(map), what the landmarks placed on it are made of. */
+    /** The marker of a map built now; landmarks is Structures.hash(map), what the landmarks placed on it are made of. A change to how the arena build lays the ground of a landmark (the landmark blend of Arena.height,
+     *  the landmark yard of Arena.buildColumn) is not in the files the hash reads: bump Structures.PASS with it, so every map with landmarks builds once more. */
     static String text(int map,String landmarks){return "{\"layout\":\""+LAYOUT+"\",\"map\":"+map+",\"margin\":\""+MARGIN+"\",\"landmarks\":\""+landmarks+"\"}";}
 
     /** True when the marker in json belongs to this build and this map: the layout string, the map, the revision of the margin and the landmarks hash all agree. A marker without the hash (written before the landmarks) and anything unreadable are not current. */

@@ -287,7 +287,7 @@ public final class Phase3Checks implements ClientModInitializer {
     static final class StudioChecks implements Suite {
         static final String MARKER="test/p3_marker";
         volatile int stage;volatile UUID player;volatile boolean exporting;volatile List<String> pieces=List.of();volatile Vec3i size=new Vec3i(1,1,1);
-        int index;
+        int index,settle;
         @Override public int limit(){return 1200+400*pieces.size();}
         static String slug(String id){return id.replace('/','-');}
         @Override public void step(MinecraftClient c,int tick){
@@ -295,8 +295,9 @@ public final class Phase3Checks implements ClientModInitializer {
             switch(stage){
                 case 1->{
                     if(index>=pieces.size()){stage=4;server(c,this::roundtrip);}
-                    else{stage=2;server(c,this::piece);}
+                    else{stage=8;server(c,b->{StructureStudio.clear(b.world);settle=0;stage=9;});}
                 }
+                case 9->{if(++settle>=10){stage=2;server(c,this::piece);}} // the light settles after the last piece is cleared
                 case 3->{
                     int sx=size.getX(),sy=size.getY(),sz=size.getZ();double d=Math.max(sx,sz)+8;var o=StructureStudio.ORIGIN;
                     if(view(c,"studio-"+slug(pieces.get(index)),o.getX()+sx/2.0+0.7*d,o.getY()+sy+0.4*d,o.getZ()+sz/2.0+0.7*d,o.getX()+sx/2.0,o.getY()+sy/3.0,o.getZ()+sz/2.0))stage=6;
@@ -2936,9 +2937,9 @@ public final class Phase3Checks implements ClientModInitializer {
      *  p3-lm-ID-roads (Walkability.scan over the footprint: through 0 and no blocked deck cell), p3-lm-ID-ring (no non-void template column within 19 of a point the row does not enclose; for an enclosed point the ring,
      *  the centre pad and the flag are the arena's blocks), p3-lm-ID-gates (enclosing rows: every cell within 2 of a road that ends at the point, from radius 17.5 to the footprint edge, has no collision shape at ground+1 and +2),
      *  p3-lm-ID-cover and -sight per landmarkLines row of the template (the world end points through Structures.toWorld, compared with the values the plan states; a raycast with COLLIDER, no fluids and the player:
-     *  cover passes on a block hit more than 0.3 before the end, sight on a miss or a hit within 0.3 of it). Per map p3-lm-budget-mapN (each row at most 100 ms, all at most 1.5 s), the pictures lm-mapN-overview and
+     *  cover passes on a block hit more than 0.3 before the end, sight on a miss or a hit within 0.3 of it). Per map p3-lm-budget-mapN (each row at most 100 ms, all at most 1.5 s), the pictures lm-mapN-overview-north and -south and
      *  lm-ID-ground (and lm-ID-high off the kit) for the first row of each template (the plan's camera, turned round the piece when its view is not clear: see plan). Once per run p3-lm-switch-mid-queue (map 4 is switched to; while its landmarks are queued, map 0: the queue is empty at once, no kf- row is
-     *  placed after it, and map 0 is ready only once its own queue is drained) and p3-lm-cache (campaign.cached() after the build, not with Structures.salt="test", again after it is put back). */
+     *  placed after it, and map 0 is ready only once its own queue is drained) and p3-lm-cache (campaign.cached() after the build, not with Structures.salt="test", again after it is put back) and p3-lm-cache-pieces (a pieces row of a template of the map one block taller: another hash, the marker stale; put back: current again). A map with no landmarks rows passes p3-lm-budget-mapN with nothing to place. */
     static final class Landmarks implements Suite {
         record Line(double fx,double fy,double fz,double tx,double ty,double tz){}
         /** The world end points of the lines the plan states (ty NaN: the ground at the end point plus 2.6). */
@@ -2993,7 +2994,10 @@ public final class Phase3Checks implements ClientModInitializer {
          *  between it and the piece (the dressing of a capture ring, a tree, a house of the hamlet), u is turned by 30 degrees at a time, either way, to the first camera with a clear view; the turn is in the note. */
         List<Shot> plan(GravesAndGlory.Battle b,int n){
             var out=new ArrayList<Shot>();
-            double p=Math.toRadians(40);out.add(new Shot("lm-map"+n+"-overview",0,175,250,0,175-100*Math.sin(p),250-100*Math.cos(p)));
+            // two overviews low and near enough to read through the fog of a shader pack (fix round 1: the one from (0, 175, 250) was lost in it): the north half (the hamlet, its market, farm and mill)
+            // from the middle of the field, and the middle (the customs, the warehouse, the crossing) from the south of it
+            out.add(new Shot("lm-map"+n+"-overview-north",-20,112,-60,-75,64,-150));
+            out.add(new Shot("lm-map"+n+"-overview-south",0,108,95,0,64,-15));
             var seen=new HashSet<String>();
             var player=b.server.getPlayerManager().getPlayerList().isEmpty()?null:b.server.getPlayerManager().getPlayerList().get(0);
             for(var r:Spec.LANDMARKS){
@@ -3114,7 +3118,8 @@ public final class Phase3Checks implements ClientModInitializer {
                     report(k+"-"+l.kind(),ok&&stated&&player!=null,l.id()+" "+v(from)+" to "+v(to)+(e==null?"":stated?" (the stated world points)":" (NOT the stated world points)")+": "+what);
                 }
             }
-            report("p3-lm-budget-map"+n,rows>0&&laid==rows&&slowCount==0&&sum<=1_500_000_000L,laid+" of "+rows+" rows placed, all together "+sum/1000000+" ms (at most 1500), over 100 ms:"+(slowCount==0?" none":slow.toString()));
+            // a map with no landmarks rows (maps 1 to 3 today) has nothing to place and passes; a map with rows passes only when every one of them was placed (a build that placed nothing is not within budget)
+            report("p3-lm-budget-map"+n,laid==rows&&slowCount==0&&sum<=1_500_000_000L,(rows==0?"no landmarks rows on this map; ":"")+laid+" of "+rows+" rows placed, all together "+sum/1000000+" ms (at most 1500), over 100 ms:"+(slowCount==0?" none":slow.toString()));
             int hx=GravesAndGlory.R.worldHalfX(),hz=GravesAndGlory.R.worldHalfZ();
             var loose=w.getEntitiesByType(EntityType.ITEM,new Box(-hx,w.getBottomY(),-hz,hx+1,w.getTopY(),hz+1),x->true);
             var kinds=new TreeMap<String,Integer>();for(var it:loose)kinds.merge(net.minecraft.registry.Registries.ITEM.getId(it.getStack().getItem()).getPath(),it.getStack().getCount(),Integer::sum);
@@ -3152,6 +3157,17 @@ public final class Phase3Checks implements ClientModInitializer {
             Structures.salt="test";boolean salted=b.campaign.cached();String hs=Structures.hash(b.campaign.map);
             Structures.salt="";boolean back=b.campaign.cached();
             report("p3-lm-cache",built&&!salted&&back&&!h.equals(hs),"map "+b.campaign.map+" after its build: cached "+built+" (hash "+h+"); with salt test: cached "+salted+" (hash "+hs+"); salt put back: cached "+back);
+            // the pieces row of a template the map places is in the hash too (fix round 1): a row one block taller makes the marker stale, the row put back makes it current
+            String template=null;for(var r:Spec.LANDMARKS)if(r.map()==b.campaign.map){template=r.template();break;}
+            int at=-1;for(int i=0;i<Spec.PIECES.length;i++)if(Spec.PIECES[i].id().equals(template))at=i;
+            if(at<0)report("p3-lm-cache-pieces",false,"map "+b.campaign.map+": no pieces row for its first landmark template "+template);
+            else{
+                var row=Spec.PIECES[at];String hp;boolean taller;
+                try{Spec.PIECES[at]=new Spec.PiecesRow(row.id(),row.width(),row.depth(),row.height()+1,row.palette(),row.purpose());hp=Structures.hash(b.campaign.map);taller=b.campaign.cached();}
+                finally{Spec.PIECES[at]=row;}
+                boolean again=b.campaign.cached()&&Structures.hash(b.campaign.map).equals(h);
+                report("p3-lm-cache-pieces",!hp.equals(h)&&!taller&&again,"map "+b.campaign.map+", pieces row "+row.id()+" one block taller: hash "+hp+(hp.equals(h)?" (the same: the pieces row is not in the hash)":" (differs)")+", cached "+taller+"; put back: hash and marker current "+again);
+            }
             cacheDone=true;
         }
     }

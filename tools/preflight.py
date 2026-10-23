@@ -131,9 +131,12 @@ for r in data.get('landmarks',[]):
     template=piece_rows.get(r['template'])
     if template is None: errors.append(f'{where}: template {r["template"]} is not a pieces id')
     if r['rotation'] not in (0,90,180,270): errors.append(f'{where}: rotation {r["rotation"]} is not 0, 90, 180 or 270')
-    if not 60<=r['elevation']<=90: errors.append(f'{where}: elevation {r["elevation"]} is not 60..90')
+    # 64 and up: Arena.height widens the shoulder of a landmark by 2 a block of rise above 64 (10+2*(elevation-64)), so below 64 it would shrink to a cliff
+    if not 64<=r['elevation']<=90: errors.append(f'{where}: elevation {r["elevation"]} is not 64..90')
     if r['replaces']!='-' and not re.fullmatch(r'[a-z0-9_-]+',r['replaces']): errors.append(f'{where}: replaces {r["replaces"]} is neither - nor a row id [a-z0-9_-]+')
-    if r['encloses'] not in ('-','A','B','C','D','E'): errors.append(f'{where}: encloses {r["encloses"]} is neither - nor one of A..E')
+    # the points of a map (CampaignMaps.select): A, B and C on maps 0 to 3, A to E on Kingsfield (map 4, the two raised outposts are B and D)
+    points=('A','B','C','D','E') if r['map']==4 else ('A','B','C')
+    if r['encloses']!='-' and r['encloses'] not in points: errors.append(f'{where}: encloses {r["encloses"]} is neither - nor a point of map {r["map"]} ('+', '.join(points)+')')
     if template is None or r['rotation'] not in (0,90,180,270): continue
     w,d=(template['depth'],template['width']) if r['rotation'] in (90,270) else (template['width'],template['depth'])
     box=(r['x']-(w-1)//2,r['z']-(d-1)//2,r['x']+w-1-(w-1)//2,r['z']+d-1-(d-1)//2)
