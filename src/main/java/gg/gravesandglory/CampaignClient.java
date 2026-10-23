@@ -26,7 +26,7 @@ public final class CampaignClient {
     static String text(JsonObject j,String key){return j.has(key)?j.get(key).getAsString():"";}
     /** The Long March number (sheet order) of the battle being fought; 1 when none is known. */
     static int battleOrder(){for(var row:Spec.CAMPAIGNBATTLES)if(row.id().equals(text(battle,"id")))return row.order();return 1;}
-    static boolean lead,fill=true;static String mode="2",notice="",headline="",partyKey="";
+    static boolean lead,fill=true;static String mode="2",notice="",dismissed="",headline="",partyKey="";
     /** The server-wide bot difficulty (a Spec.BOTCOMMAND id), as last sent in the snapshot. */
     static String difficulty="normal";
     static String botsLabel(){return "Bots: "+difficulty.substring(0,1).toUpperCase()+difficulty.substring(1);}
@@ -59,6 +59,9 @@ public final class CampaignClient {
     static int map=0,serial=-1,intro=0;static boolean lastRunning,waiting;
     public static double cameraX,cameraY,cameraZ;public static float cameraYaw,cameraPitch;
     public static boolean cinematic(){return camera!=null;}
+    /** The notice the player left behind by changing page: the server keeps sending it with every state packet, so the client hides that text until the server says something else (no protocol change; review I1). acceptedStates counts the state packets read (the harness waits for two). */
+    static int acceptedStates;
+    static String shownNotice(){return notice.equals(dismissed)?"":notice;}
     static boolean previousHud;
     static ArmorStandEntity camera;static Perspective previous;static int cameraTicks;
     static Path collection(MinecraftClient c){return c.runDirectory.toPath().resolve((Diagnostics.active()?"gravesandglory/test-collections/":"gravesandglory/collections/")+c.getSession().getUuid()+".json");}
@@ -71,7 +74,7 @@ public final class CampaignClient {
             if(j.has("sides")){var s=j.getAsJsonArray("sides");if(s.size()==2)sides=new String[]{s.get(0).getAsString(),s.get(1).getAsString()};}
             if(j.has("banner")){var list=new java.util.ArrayList<String>();for(var e:j.getAsJsonArray("banner"))list.add(e.getAsString());banner=list;}social=j.has("social")?j.getAsJsonObject("social"):new JsonObject();progression=j.has("progression")?j.getAsJsonObject("progression"):new JsonObject();if(j.has("progression"))profile.progression=Campaign.JSON.fromJson(progression,Progression.State.class);players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
             JsonObject keyed=new JsonObject();for(var entry:party.entrySet())if(!entry.getKey().equals("inviteSeconds"))keyed.add(entry.getKey(),entry.getValue());partyKey=keyed.toString();
-            JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;battle=j.has("battle")?j.getAsJsonObject("battle"):new JsonObject();fill=j.get("fill").getAsBoolean();difficulty=j.has("difficulty")?j.get("difficulty").getAsString():"normal";mode=j.get("mode").getAsString();notice=j.get("notice").getAsString();headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
+            JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;battle=j.has("battle")?j.getAsJsonObject("battle"):new JsonObject();fill=j.get("fill").getAsBoolean();difficulty=j.has("difficulty")?j.get("difficulty").getAsString():"normal";mode=j.get("mode").getAsString();String nextNotice=j.get("notice").getAsString();if(!nextNotice.equals(notice))dismissed="";notice=nextNotice;acceptedStates++;headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
             int next=j.get("map").getAsInt();if(next!=map||Spec.FACTIONS[0].spawnX()!=-283){map=next;if(c.getServer()==null)CampaignMaps.select(map);GravesAndGloryClient.invalidateMap(c);}
             waiting=j.has("waiting")&&j.get("waiting").getAsBoolean();
             int round=j.get("serial").getAsInt();intro=j.get("intro").getAsInt();

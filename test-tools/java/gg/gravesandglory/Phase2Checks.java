@@ -6099,6 +6099,8 @@ public final class Phase2Checks implements ClientModInitializer {
         java.util.random.RandomGenerator rngSaved;int knightMastery0=-1,knightStage0=1;
         GravesAndGlory.Squad mine;GravesAndGlory.Unit plain,vet1,vet3;
         String shot;int shotWait;boolean claimOk;String claimWhy="";
+        /** Task 13 fix round 1 (review I1): the server keeps a notice and sends it with every state packet, so p2-notice-clears waits for two packets after the page change. */
+        static final String NOTICE="Order Squire rises to star 2!",NOTICE2="Choose dry ground or a crossing.";int noticeStates0,noticeWaits,noticePhase;String noticeLeft="";
         /** The six Gilded holdings before the lineup shots made them Mastery II (null for one the profile lacked), put back at cleanup. */
         final Map<String,Integer> mastery0=new LinkedHashMap<>();volatile boolean lineupCast;volatile int lineupRound;
         String name(){return "screens";}
@@ -6179,10 +6181,15 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 3->{if(!(c.currentScreen instanceof CampScreen s)){c.setScreen(new CampScreen("recruit"));return;}
                     if(++wait==2)shoot("screens-recruit"); // the recruit page with its card actions, after the roll card (for the contact sheet)
                     if(wait<3||!shotDone(c))return;
-                    if(wait==40){RecruitPages.seenTroop=null;if(CampaignClient.notice.isEmpty())CampaignClient.notice="Order Squire rises to star 2!";String left=CampaignClient.notice;s.openTroop("sentinel"); // Task 12 re-review N2: the roll's notice must not follow the player to another card
-                        report("p2-notice-clears",CampaignClient.notice.isEmpty(),"the recruit page showed the notice \""+left+"\"; after opening the Templar's troop page it reads \""+CampaignClient.notice+"\" (want empty)");}
+                    if(wait==30){var me=c.player.getUuid();server(c,bb->bb.campaign.notice(me,NOTICE));} // the server holds the roll's notice, as after a duplicate roll
+                    if(wait==40){if(!NOTICE.equals(CampaignClient.notice)&&++noticeWaits<100){wait=39;return;}
+                        RecruitPages.seenTroop=null;noticeLeft=CampaignClient.shownNotice();noticeStates0=CampaignClient.acceptedStates;s.openTroop("sentinel");} // Task 12 re-review N2 and fix round 1 I1: the roll's notice must not follow the player to another card, not even when the next state packet brings it again
                     if(wait==50)shoot("chase-troop-card");
-                    if(wait>50&&shotDone(c)){var seen=RecruitPages.seenTroop;var t=Campaign.troop("sentinel");var n=ArmyCards.notes(t);
+                    if(wait>50&&noticePhase==0&&CampaignClient.acceptedStates>=noticeStates0+2){noticePhase=1; // two state packets after the page change: the server has sent the notice again, the screen must still not show it
+                        report("p2-notice-clears",NOTICE.equals(noticeLeft)&&CampaignClient.shownNotice().isEmpty()&&NOTICE.equals(CampaignClient.notice),"the recruit page showed the notice \""+noticeLeft+"\"; after opening the Templar's troop page and "+(CampaignClient.acceptedStates-noticeStates0)+" state packets the client still holds \""+CampaignClient.notice+"\" (the server resends it) and shows \""+CampaignClient.shownNotice()+"\" (want empty)");
+                        var me=c.player.getUuid();server(c,bb->bb.campaign.notice(me,NOTICE2));noticeWaits=0;}
+                    if(wait>50&&noticePhase==1){if(NOTICE2.equals(CampaignClient.shownNotice())||++noticeWaits>200){noticePhase=2;report("p2-notice-changes",NOTICE2.equals(CampaignClient.shownNotice()),"a new notice text after the page change is shown again: \""+CampaignClient.shownNotice()+"\" (want \""+NOTICE2+"\")");}}
+                    if(wait>50&&noticePhase==2&&shotDone(c)){var seen=RecruitPages.seenTroop;var t=Campaign.troop("sentinel");var n=ArmyCards.notes(t);
                         boolean page=s.page.equals("troop")&&seen!=null&&seen.troop().equals("sentinel");
                         boolean notes=page&&n!=null&&!n.beats().isEmpty()&&seen.beats().equals(n.beats())&&seen.beatenBy().equals(n.beatenBy());
                         boolean glyphs=page&&seen.glyphs().contains("C1")&&seen.glyphs().contains("C3");
@@ -6398,7 +6405,8 @@ public final class Phase2Checks implements ClientModInitializer {
         void importCache(GravesAndGlory.Battle b,net.minecraft.server.network.ServerPlayerEntity p)throws IOException{
             var camp=b.campaign;Path file=camp.directory.resolve(player+".json");StringBuilder bad=new StringBuilder();
             String cache=new String(fixture("profile-v1-cache.json"),java.nio.charset.StandardCharsets.UTF_8);
-            Files.deleteIfExists(file);camp.profiles.remove(player);camp.importAllowed.add(player);camp.collectionsReady.remove(player);
+            Files.deleteIfExists(file);camp.profiles.remove(player);camp.importAllowed.remove(player);camp.grantImport(player);camp.collectionsReady.remove(player); // the real first-visit gate (Campaign.joined calls it): no file, so the join grants the import
+            if(!camp.importAllowed.contains(player))bad.append("a join with no server file did not grant the import; ");
             camp.importProfile(p,cache);
             var got=camp.profile(player);Set<String> owned=new HashSet<>(COMMONS);owned.add("sentinel");
             if(!got.owned.keySet().equals(owned))bad.append("owned ").append(new TreeSet<>(got.owned.keySet())).append(" (want the 10 Commons and sentinel); ");
@@ -6407,6 +6415,7 @@ public final class Phase2Checks implements ClientModInitializer {
             boolean saved=Files.exists(file)&&Files.readString(file).contains("\"schema\": 2")&&JsonParser.parseString(Files.readString(file)).getAsJsonObject().get("gold").getAsInt()==900+3*REFUND;
             if(!saved)bad.append("the import was not saved as a schema 2 file; ");
             if(camp.importAllowed.contains(player)||!camp.collectionsReady.contains(player))bad.append("the permission was not used up or the collection is not ready; ");
+            camp.grantImport(player);if(camp.importAllowed.contains(player))bad.append("a join with a server file on disk granted the import (the server copy must win); ");
             byte[] first=Files.exists(file)?Files.readAllBytes(file):new byte[0];
             var rich=JsonParser.parseString(cache).getAsJsonObject();rich.addProperty("gold",99999);rich.addProperty("commander","arcanist");rich.getAsJsonArray("unlocked").add("stalker");
             camp.importProfile(p,rich.toString());

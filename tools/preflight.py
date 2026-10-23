@@ -145,6 +145,7 @@ for h in houses.values():
     elif not (root/'src/main/resources/assets/gravesandglory'/h['glyph'].partition(':')[2]).is_file(): errors.append(f'houses/{h["id"]}: missing glyph texture {h["glyph"]}')
     mine=[t['id'] for t in data['troops'] if t['house']==h['id']]
     if h['troops'].split(',')!=mine: errors.append(f'houses/{h["id"]}: troops must be {",".join(mine)}, the House troops in sheet order')
+    if not h.get('fieldable'): errors.append(f'houses/{h["id"]}: fieldable must be true (all five Houses are fieldable since Phase 2 Task 13; a House that is not vanishes from banners)')
     for r,n in HOUSE_SHAPE.items():
         have=sum(1 for t in mine if rarityOf.get(t)==r)
         if have!=n: errors.append(f'houses/{h["id"]}: {have} {r} troops; every House has exactly {n} (all five are fieldable since Phase 2 Task 13)')

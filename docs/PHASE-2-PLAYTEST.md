@@ -28,7 +28,7 @@ Branch `phase-2-houses`. Four sessions, about 20 minutes each. Tick `[x] yes` or
 
 ## Session 2: a pure Gilded skirmish on Normal
 
-- [ ] yes / [ ] no: a shieldwall holds, the Bulwark tile shows in the trait strip, and Aldric's banner (Lord Marshal) gives its aura.
+- [ ] yes / [ ] no: a shieldwall holds, the Bulwark tile shows in the trait strip, and Aldric's banner (Lord Marshal) gives its aura. A migrated camp owns no Legendary and holds no Pact yet: play one match first (a Pact is earned at a match's end), then spend the Pact on Lord Marshal Aldric in the Gilded tab.
 - [ ] yes / [ ] no: a line of yours holds to its last stand without breaking, and the LAST STAND stamp shows.
 - [ ] yes / [ ] no: you pull a group out with Retreat, and its horn answers to you alone.
 - [ ] yes / [ ] no: the battle report shows a House row with trait seconds, shards and Renown.
@@ -65,8 +65,8 @@ gate tidecallers_normal vs gilded_normal     win=0%    fail  (Task 9, report-onl
 gate wildmoot_normal vs ironclad_normal      win=10%   fail  (Task 10, report-only)
 gate wildmoot_normal vs gilded_normal        win=0%    fail  (Task 10, report-only)
 gate graveborn_normal vs gilded_normal       win=17.5% fail  (Task 8b, no-routing game)
+gate graveborn_normal vs gilded_normal       win=32.5% fail  (Task 8b, its one tuning round: NOT committed, so the live sheet is the 17.5% line above; kept here for the record)
 gate ironclad_normal vs gilded_normal        win=60%   pass  (Task 8b)
-gate graveborn_normal vs gilded_normal       win=32.5% fail  (Task 8b, after its one tuning round; left to the end balance pass)
 gate graveborn_normal vs gilded_normal       win=47.5% pass  (balance fix: Squire 28, Templar 40; with routing)
 gate ironclad_normal vs gilded_normal        win=75%   fail  (same fix, report-only)
 gate ironclad_normal vs gilded_normal        win=45%   pass  (Task 8, report-only, spec numbers)

@@ -97,8 +97,10 @@ public final class Campaign {
         collectionsReady.add(id);
     }
     void notice(UUID id,String text){notices.put(id,text);var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)p.sendMessage(Text.literal(text),true);}
+    /** The first-visit rule: a player with no server file may bring his collection from his own computer, once; one with a file may not (the server copy wins). */
+    void grantImport(UUID id){if(!Files.exists(directory.resolve(id+".json")))importAllowed.add(id);}
     void joined(ServerPlayerEntity p){
-        if(!Files.exists(directory.resolve(p.getUuid()+".json")))importAllowed.add(p.getUuid());profile(p.getUuid());
+        grantImport(p.getUuid());profile(p.getUuid());
         // Rejoining the same battle keeps the original start time, so a dropped connection does not cost the reward.
         if(!(b.running&&participants.contains(p.getUuid())))joinedAt.put(p.getUuid(),b.time);var squad=b.squads.get(p.getUuid());
         if(b.running&&squad!=null&&squad.seated)b.toBase(p,squad.team);else toLobby(p);

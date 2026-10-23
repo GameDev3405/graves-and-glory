@@ -6,7 +6,7 @@ This is a local release candidate. Isolated game checks do not constitute a
 production launcher installation or an eight-human Internet multiplayer playtest.
 Public Internet matchmaking and the home-hosted official service remain planned
 work. This candidate reworks the solo game: shots that fly before they land,
-lines that rout and rally, recruits deploying from held points, Easy, Normal and
+lines that fight on to a last stand (nothing routs in 0.5.0), recruits deploying from held points, Easy, Normal and
 Hard bots, a guided first campaign battle and a report after every match (see
 "0.4.0 solo rework candidate" below). Version 0.5.0 adds five Houses (thirty troops), schema 2 collections that migrate
 from older camps, six commander classes and the recruit and troop card pages; it
@@ -41,9 +41,9 @@ The free, nonexpiring Founders chapter ends at tier 30 (7,500 XP). Eligible matc
 
 Arrange twenty deployment slots before battle: place any unlocked unit type in any front or rear slot, or leave slots empty. There is no required ratio of troop types. These positions control initial deployment; battlefield orders and formations take over when issued. Losing a soldier never removes its permanent unlock.
 
-Six starting types are available immediately: Dawn Knight, Dawn Ranger, Sunweaver, Dusk Revenant, Bone Archer and Gravecaller. Six additional types can be unlocked: Dawn Sentinel, Dawn Longbow, Dawn Oracle, Dusk Reaper, Dusk Stalker and Dusk Wraith. Unlocking a type lets you field any number within the twenty-troop cap. Practice lets you try all types; trial units stay locked in regular matches.
+The ten Commons of the five Houses are yours from the start. The other twenty troops (Rares, Epics and Legendaries) come from rolls, chosen buys, Pacts and chapter rewards. Owning a type lets you field any number within the twenty-troop cap, and a banner can hold troops of more than one House. Practice lets you try all types; trial units stay locked in regular matches.
 
-Earn 80 collection gold for completing a regular match, plus 40 for victory. Practice awards 40. A match must last at least three minutes to award gold; leaving before the result earns none. A roll costs 100 gold and permanently unlocks one remaining type, with equal odds and no duplicates. There are no real-money rolls. Collections and army arrangements save automatically with the Minecraft player profile and travel to friends' hosts; the host also keeps a saved copy. This is a local friends-hosted economy, not a centrally secured competitive service.
+Earn 80 collection gold for completing a regular match, plus 40 for victory. Practice awards 40. A match must last at least three minutes to award gold; leaving before the result earns none. A roll costs 100 gold and draws from the House you pick, by rarity: a new troop is unlocked, and a duplicate raises its stars (a duplicate of a full-star troop pays shards). A chosen buy costs 300 gold and Epics are guaranteed by pity. Houses also pay shards, Renown and Mastery after matches of three minutes or more. There are no real-money rolls. Collections and army arrangements save automatically with the Minecraft player profile and travel to friends' hosts; the host also keeps a saved copy. This is a local friends-hosted economy, not a centrally secured competitive service.
 
 Pick one of six commander classes in the war council. Heroes lead from the front: the Champion has 4 more health and his infantry within 10 blocks deal 10% more damage; the Reaver deals 2 more attack damage and respawns in 9 seconds instead of 12; the Warden's ranged troops deal 10% more damage and reach 2 blocks further. Generals run the army: the Marshal's troops train in 20% less time; the Warlock's magic troops cost 20% less gold in battle; each point the Quartermaster holds pays 2 more gold every income tick. Each class also has an active ability on the ability key (H). Dawn shield troops guard in close compact combat and support heal wounded allies. Dusk casters mark an area before a damaging slowing spell lands. Ranged attacks require line of sight.
 
@@ -113,7 +113,7 @@ Sodium: CaffeineMC, PolyForm Shield 1.0.0. Iris: IrisShaders contributors, LGPL-
 
 Redesigned battle setup, class selection and barracks with live troop previews, readable Lato body type, and restrained brass selection states. Select a class, then confirm it. Recruitment costs and availability remain server-authoritative.
 
-Armour detail uses Entity Model Features overlays from the built-in armory pack: a tabard, buckle, belt and shoulder pauldrons on player, husk, skeleton and wither skeleton models. Limits: one neutral armour set, so faction colours are not applied to these overlays; the overlays apply to every husk, skeleton and wither skeleton in a Graves and Glory world, not only named troops; and while the armory pack is enabled it replaces the Excalibur and Fresh Animations patch skeleton and wither skeleton models.
+Armour detail uses Entity Model Features overlays from the built-in armory pack: a tabard, buckle, belt and shoulder pauldrons on player, husk, skeleton and wither skeleton models. Limits: one neutral armour set, so faction colours are not applied to these overlays; the overlays apply to every husk, skeleton and wither skeleton in a Graves and Glory world (named troops no longer use them: in 0.5.0 troops draw their own models); and while the armory pack is enabled it replaces the Excalibur and Fresh Animations patch skeleton and wither skeleton models.
 
 Development checks are never in the player archive. They are built from `test-tools/` by the `localTestToolsJar` task and run only with `gradle runClient --offline -PcampaignChecks`.
 
@@ -128,6 +128,8 @@ raised to leave room for visitors. Admission policy checks pass; live full-match
 join, camp movement, reconnect and next-round verification remain pending.
 
 ## 0.4.0 solo rework candidate
+
+*History: this is the 0.4.0 text. In 0.5.0 nothing routs; a losing group makes a last stand.*
 
 Arrows, bolts and spells fly before they land, with team-coloured impact puffs,
 and a group card flashes when its troops take hits. A shattered group, or one

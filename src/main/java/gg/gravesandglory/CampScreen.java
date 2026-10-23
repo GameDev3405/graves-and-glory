@@ -25,7 +25,7 @@ final class CampScreen extends ArmyScreen {
     int number(String name,int fallback){return social().has(name)?social().get(name).getAsInt():fallback;}
     JsonArray rows(String name){return social().has(name)?social().getAsJsonArray(name):new JsonArray();}
     void action(String cmd){if(System.currentTimeMillis()-requestAt<300)return;requestAt=System.currentTimeMillis();send(cmd);}
-    void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.notice="";page=next;offset=0;clearAndInit();} // leaving a page ends its roll card (review minor 4) and its notice (Task 12 re-review N2: "rises to star 2!" must not follow the player to another card)
+    void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.dismissed=CampaignClient.notice;page=next;offset=0;clearAndInit();} // leaving a page ends its roll card (review minor 4) and its notice (Task 12 re-review N2: "rises to star 2!" must not follow the player to another card)
     String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready+RecruitPages.stateKey(CampaignClient.profile);}
     @Override protected void init(){
         scale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/760f,client.getWindow().getScaledHeight()/460f));width=(int)(client.getWindow().getScaledWidth()/scale);height=(int)(client.getWindow().getScaledHeight()/scale);key=state();code=null;
@@ -127,14 +127,16 @@ final class CampScreen extends ArmyScreen {
     }
     static int rarityColour(String rarity){return switch(rarity){case "rare"->0xff8fb8d8;case "epic"->0xffc79be0;case "legendary"->DarkUi.GOLD;default->DarkUi.MUTED;};}
     /** The lowest pixel (from the card's top) the last card() call drew a word or a pip at, and whether the harness is probing (no portrait is drawn). Task 12 re-review N1: p2-card-layout reads what card() drew, not the row table. */
-    int cardLow;static volatile boolean probe;
+    int cardLow,cardTop;boolean inCard;static volatile boolean probe;
     /** The troops the last frames' cards drew and whether each was owned (the harness clears it, presses a House tab and reads it: Task 13, p2-full-roster). */
     static final Map<String,Boolean> seenCards=new java.util.concurrent.ConcurrentHashMap<>();
-    /** A word of a card at dy under the card's top: drawn, and noted for cardLow. */
-    void cardLine(DrawContext g,String text,int x,int y,int dy,int color,int room){line(g,text,x,y+dy,color,room);cardLow=Math.max(cardLow,dy+9);}
+    /** A word of a card at dy under the card's top. line() notes every word drawn while a card is drawn (cardLow), so no row can bypass the layout check. */
+    void cardLine(DrawContext g,String text,int x,int y,int dy,int color,int room){line(g,text,x,y+dy,color,room);}
+    /** While card() draws: the lowest word or pip so far, as rows under the card's top (the harness reads it; p2-card-layout). */
+    void ink(int y){if(inCard)cardLow=Math.max(cardLow,y-cardTop+9);}
     /** One troop card: the portrait on the House accent, the stage name, the rarity, the stars as pips and the stage; a troop the commander lacks is dimmed and says LOCKED with its odds. */
     void card(DrawContext g,Card card,int x,int y,int w,int h,int poolTotal){
-        cardLow=0;seenCards.put(card.troop().id(),card.owned());
+        cardLow=0;cardTop=y;inCard=true;seenCards.put(card.troop().id(),card.owned());
         var troop=card.troop();DarkUi.frame(g,x,y,w,h);
         var row=ArmyCards.house(troop);g.fillGradient(x+3,y+3,x+w-3,y+h-3,0x33000000|(row==null?0x4c9391:row.accent()&0xffffff),0x00181820);
         var portrait=ArmyCards.portrait(troop);float wide=portrait==null?0:portrait.getWidth()*1.25f; // a wide model (a spider's legs) is drawn smaller so it stays inside its card
@@ -145,16 +147,16 @@ final class CampScreen extends ArmyScreen {
         int tx=x+70,room=w-76;
         // A long name (a Legendary's title) wraps onto a second line, and everything under it moves down a line.
         var title=textRenderer.wrapLines(Text.literal(ArmyMobs.stageName(troop,card.owned()?card.stage():1)),room);int more=title.size()>1?10:0;
-        for(int i=0;i<Math.min(2,title.size());i++){g.drawText(textRenderer,title.get(i),tx,y+10+i*10,card.owned()?DarkUi.GOLD:DarkUi.MUTED,false);cardLow=Math.max(cardLow,10+i*10+9);}
+        for(int i=0;i<Math.min(2,title.size());i++){g.drawText(textRenderer,title.get(i),tx,y+10+i*10,card.owned()?DarkUi.GOLD:DarkUi.MUTED,false);ink(y+10+i*10);}
         var rows=RecruitPages.cardRows(more>0);cardLine(g,cap(troop.rarity()),tx,y,rows.rarity(),rarityColour(troop.rarity()),room);
         if(card.owned()){
-            for(int i=0;i<Spec.RECRUITMENT[0].maxStars();i++){int px=tx+i*11;g.drawBorder(px,y+rows.pips(),8,8,DarkUi.GOLD);if(i<card.stars())g.fill(px+1,y+rows.pips()+1,px+7,y+rows.pips()+7,DarkUi.GOLD);cardLow=Math.max(cardLow,rows.pips()+8);}
+            for(int i=0;i<Spec.RECRUITMENT[0].maxStars();i++){int px=tx+i*11;g.drawBorder(px,y+rows.pips(),8,8,DarkUi.GOLD);if(i<card.stars())g.fill(px+1,y+rows.pips()+1,px+7,y+rows.pips()+7,DarkUi.GOLD);ink(y+rows.pips()-1);}
             cardLine(g,card.copies()+(card.copies()==1?" copy":" copies"),tx,y,rows.copies(),DarkUi.MUTED,room);
         }else{
             cardLine(g,"LOCKED",tx,y,rows.locked(),DarkUi.PAPER,room);
             cardLine(g,troop.rarity().equals("legendary")||weight(troop)<=0?"Comes from a Pact":String.format(java.util.Locale.ROOT,"%.1f",100.0*weight(troop)/Math.max(1,poolTotal))+"% a roll",tx,y,rows.odds(),DarkUi.MUTED,room);
         }
-        g.getMatrices().pop();
+        g.getMatrices().pop();inCard=false;
     }
     /** One House's tab on the recruit page: its glyph and name, the chosen one edged in brass. */
     final class HouseTab extends ButtonWidget {
@@ -169,7 +171,7 @@ final class CampScreen extends ArmyScreen {
             if(chosen)g.fill(x,y+height-2,x+width,y+height,DarkUi.GOLD);
         }
     }
-    void line(DrawContext g,String text,int x,int y,int color,int max){g.drawText(textRenderer, textRenderer.trimToWidth(text,max),x,y,color,false);}
+    void line(DrawContext g,String text,int x,int y,int color,int max){ink(y);g.drawText(textRenderer, textRenderer.trimToWidth(text,max),x,y,color,false);}
     /** The battle report table from y down: COMMANDER / KILLS / LOST / GOLD / ON POINTS, one row per army (your team first, a rule before the
      *  enemy, your row in brass, a crest on the MVP), then one line per point with the seconds each team held it. Returns the y under it. */
     int table(DrawContext g,JsonObject report,int x,int y,int w){
@@ -261,7 +263,7 @@ final class CampScreen extends ArmyScreen {
             line(g,"Vote while on a ready pad. Most votes wins; ties use map order.",x,133,DarkUi.MUTED,w);
         }
         boolean reveals=page.equals("recruit")||page.equals("troop"),card=reveals&&CampaignClient.rollShowing(); // the roll card covers the screen: nothing under it takes hover or shows a tooltip
-        if(!card)line(g,CampaignClient.notice,x,height-42,DarkUi.GOLD,w); // the card says what the notice would (review Q1)
+        if(!card)line(g,CampaignClient.shownNotice(),x,height-42,DarkUi.GOLD,w); // the card says what the notice would (review Q1)
         super.render(g,card?-1:(int)(mx/scale),card?-1:(int)(my/scale),delta);
         if(card){RecruitPages.rollOn=page;RecruitPages.noticeShown=false;RecruitPages.rollCard(g,textRenderer,0,0,width,height);} // dims the whole screen, nav and header too: one focal point
         else if(reveals&&CampaignClient.revealUntil>System.currentTimeMillis()){g.getMatrices().push();g.getMatrices().translate(0,0,300);DarkUi.frame(g,x+30,180,w-60,100);line(g,"RECRUITMENT CONFIRMED",x+50,201,DarkUi.GOLD,w-100);line(g,CampaignClient.revealUnit+" has joined your collection.",x+50,226,DarkUi.PAPER,w-100);line(g,"Place it in your banner in the war council / Skip reveal above to continue",x+50,251,DarkUi.MUTED,w-100);g.getMatrices().pop();}
