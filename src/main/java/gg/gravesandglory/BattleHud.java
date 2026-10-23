@@ -267,7 +267,7 @@ public final class BattleHud {
         if(state.equals("ROUTING")){word="ROUTING";UiTex.draw(g,"hud/stamp-rout",x+108,y+4);g.drawText(font,word,centred(font,word,x+135),y+8,DarkUi.ROUT_TEXT,false);}
         else{
             word=state.equals("FALLEN")?"Fallen":grp.fighting()?"Fighting":"Steady";Text t=DarkUi.body(word);int wx=x+166-font.getWidth(t);
-            g.drawText(font,t,wx,y+7,word.equals("Fighting")?DarkUi.INK_TEXT:DarkUi.SEPIA,false);
+            g.drawText(font,t,wx,y+7,word.equals("Steady")?DarkUi.SEPIA:DarkUi.INK_TEXT,false); // Fallen in ink: sepia on the grey plate is 3.5:1
             if(word.equals("Fighting"))UiTex.draw(g,"hud/g-fight",wx-3-9,y+9);
         }
         // Strength in its channel; during a flash the stretch just lost shows white, from the strength now to the strength before.
@@ -310,7 +310,7 @@ public final class BattleHud {
         g.drawText(font,DarkUi.heading(name),x+10,y+4,DarkUi.INK_TEXT,false);
         String word;
         if(state.equals("ROUTING")){word="ROUTING";UiTex.draw(g,"hud/stamp-chip",sx,y+2);g.drawText(font,word,centred(font,word,sx+33),y+5,DarkUi.ROUT_TEXT,false);}
-        else if(state.equals("FALLEN")){word="Fallen";Text t=DarkUi.body(word);g.drawText(font,t,(int)Math.round(sx+33-font.getWidth(t)/2.0),y+4,DarkUi.SEPIA,false);}
+        else if(state.equals("FALLEN")){word="Fallen";Text t=DarkUi.body(word);g.drawText(font,t,(int)Math.round(sx+33-font.getWidth(t)/2.0),y+4,DarkUi.INK_TEXT,false);} // ink: 6.4:1 on the grey plate, sepia 3.5:1
         else{
             word=grp.fighting()?"Fighting":"Steady";int bar=UiMath.chipBar(grp.strength());
             UiTex.draw(g,"hud/chip-channel",sx,y+6);
