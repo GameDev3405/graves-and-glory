@@ -1,0 +1,14 @@
+{
+"part":"long_feather",
+"note":"The Master Longbow's long white feather (stage 3): stuck in the felt cap's band on the left side, rising up and outwards past the crown and swept back, so it stands clear of the cap in a front view; tagged helm, so it comes off with the cap. Block 14x10.",
+"bone":"head",
+"team":false,
+"tag":"helm",
+"pivot":[4.4,-7,1.5],
+"rotation":[-28,0,34],
+"boxes":[
+{"origin":[0,-2,0],"size":[1,2,1],"uv":[0,0],"note":"the bare quill in the band"},
+{"origin":[-0.5,-11,0],"size":[2,9,1],"uv":[4,0],"note":"the white vane, its broad face forward"},
+{"origin":[0,-13,0],"size":[1,2,1],"uv":[10,0],"note":"its tip"}
+]
+}

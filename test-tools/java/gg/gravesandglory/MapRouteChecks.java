@@ -19,7 +19,7 @@ import java.util.*;
 final class MapRouteChecks {
     final MinecraftClient client;final int[] maps;
     int index,bridge,phase,retries,crossings;long at;boolean all=true,done;
-    Campaign.Profile backup;GravesAndGlory.Squad squad;boolean practice,fill;int size;
+    Profile backup;GravesAndGlory.Squad squad;boolean practice,fill;int size;
     MapRouteChecks(MinecraftClient c,int[] requested){
         client=c;
         maps=requested!=null&&requested.length>0?requested:new int[]{0,1,2,3};
@@ -31,7 +31,7 @@ final class MapRouteChecks {
         int map=maps[index];
         if(phase==0){
             // Camp return first: it clears the running round, every troop and any AI commander, and it moves the player.
-            if(backup==null){backup=Campaign.JSON.fromJson(Campaign.JSON.toJson(b.campaign.profile(p.getUuid())),Campaign.Profile.class);practice=b.campaign.practice;fill=b.campaign.fill;size=b.campaign.size;}
+            if(backup==null){backup=Campaign.JSON.fromJson(Campaign.JSON.toJson(b.campaign.profile(p.getUuid())),Profile.class);practice=b.campaign.practice;fill=b.campaign.fill;size=b.campaign.size;}
             b.campaign.returnLobby();
             // Not practice, no bot fill: prepareRound then adds no AI commander to either team.
             b.campaign.practice=false;b.campaign.fill=false;b.campaign.size=1;
@@ -41,7 +41,7 @@ final class MapRouteChecks {
         if(phase==1){
             if(!b.ready||b.campaign.map!=map||CampaignMaps.selected!=map)return; // the arena is still being built
             var profile=b.campaign.profile(p.getUuid());
-            for(var t:Spec.TROOPS)if(t.faction().equals("dawn"))profile.army.put(t.id(),t.id().equals("knight")?20:0);
+            profile.banner=new ArrayList<>(Collections.nCopies(20,"knight")); // a banner of twenty knights (prepareRound fields it)
             squad=b.squads.get(p.getUuid());if(squad==null)return;
             squad.team=0;squad.seated=true;
             b.startRound();
@@ -84,7 +84,7 @@ final class MapRouteChecks {
     /** Places the army west of the next crossing, only now that the round is running, and sends it east. */
     void prepare(GravesAndGlory.Battle b,ServerPlayerEntity p){
         var span=bridges().get(bridge);double start=span.x()-span.width()/2.0-14,westEdge=span.x()-span.width()/2.0-3;
-        squad.assignments.clear();squad.order="move";squad.formation="line";squad.target=new Vec3d(span.x()+span.width()/2.0+18,65,span.z());squad.yaw=-90;
+        squad.assignments.clear();squad.arrived.clear();squad.order="move";squad.formation="line";squad.target=new Vec3d(span.x()+span.width()/2.0+18,65,span.z());squad.yaw=-90;
         for(var u:b.units)if(u.squad==squad){
             Vec3d cell=standingCell(b,start-(u.slot/5)*2,span.z()+(u.slot%5-2)*1.8,westEdge);
             u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(cell.x,cell.y,cell.z,-90,0);u.nextPath=0;u.stuckTicks=0;u.lastPosition=u.mob.getPos();

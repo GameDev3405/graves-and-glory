@@ -10,14 +10,16 @@ import java.nio.file.*;
  *  Fabric enables the built-in armory pack itself (DEFAULT_ENABLED in GravesAndGloryClient). */
 public final class Presentation {
     static int impact=1;
+    /** Troop depth: the raised relief of near troops (TroopDepth). Off draws every troop flat; weapons keep their sprite meshes. Saved with the other presentation preferences. */
+    static volatile boolean troopDepth=true;
     static String notice="Choose a look. Your choice affects only your screen.";
     static boolean loaded,changing;
     static long hitAt,lastHit;static float hitStrength;static int receivedImpacts;
     static final String[] SHADERS={"Off / fastest","Reimagined","Unbound","MakeUp Ultra Fast"};
     static final String[] FILES={"","ComplementaryReimagined_r5.5.1.zip","ComplementaryUnbound_r5.5.1.zip","MakeUp-UltraFast-9.5g.zip"};
     static Path file(){return MinecraftClient.getInstance().runDirectory.toPath().resolve("gravesandglory/presentation.json");}
-    static void load(){if(loaded)return;loaded=true;try{var j=JsonParser.parseString(Files.readString(file())).getAsJsonObject();impact=Math.max(0,Math.min(2,j.get("impact").getAsInt()));}catch(Exception ignored){}}
-    static void save(){try{Files.createDirectories(file().getParent());Files.writeString(file(),"{\"impact\":"+impact+"}");}catch(Exception e){notice="Your visual preference could not be saved.";}}
+    static void load(){if(loaded)return;loaded=true;try{var j=JsonParser.parseString(Files.readString(file())).getAsJsonObject();impact=Math.max(0,Math.min(2,j.get("impact").getAsInt()));troopDepth=!j.has("troopDepth")||j.get("troopDepth").getAsBoolean();}catch(Exception ignored){}}
+    static void save(){try{Files.createDirectories(file().getParent());Files.writeString(file(),"{\"impact\":"+impact+",\"troopDepth\":"+troopDepth+"}");}catch(Exception e){notice="Your visual preference could not be saved.";}}
     static int shader(){
         try{Class<?> iris=Class.forName("net.irisshaders.iris.Iris");Object config=iris.getMethod("getIrisConfig").invoke(null);if(!(Boolean)config.getClass().getMethod("areShadersEnabled").invoke(config))return 0;
             Object name=config.getClass().getMethod("getShaderPackName").invoke(config);String s=((java.util.Optional<?>)name).map(Object::toString).orElse("");for(int i=1;i<FILES.length;i++)if(FILES[i].equals(s))return i;

@@ -1,0 +1,22 @@
+{
+"weapon": "marshal_sword",
+"thickness": 1,
+"grip": {
+"pixel": [
+5,
+18
+],
+"offset": [
+0,
+0,
+-0.5
+],
+"rotation": [
+90,
+45,
+90
+],
+"note": "the grip pixel is the middle of the wound grip; the turn is the arming sword"
+},
+"note": "Lord Marshal Aldric's sword: a broad 3 px blade with a fuller, an 11 px gilt guard with dropped quillons, a wound grip and a gilt wheel pommel; 1 px thick."
+}

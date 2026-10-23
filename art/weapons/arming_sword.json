@@ -1,0 +1,22 @@
+{
+"weapon": "arming_sword",
+"thickness": 1,
+"grip": {
+"pixel": [
+2,
+13
+],
+"offset": [
+0,
+0,
+-0.5
+],
+"rotation": [
+90,
+45,
+90
+],
+"note": "the grip pixel is the middle of the wound grip, through the fist; the sprite is turned flat to the side and tilted 45 degrees forward, as the box sword stood"
+},
+"note": "The Squire's arming sword: a 10 px blade and point, a 6 px gilt guard, a wound grip and a gilt pommel; 1 px thick."
+}

@@ -1,0 +1,22 @@
+{
+"weapon": "longsword",
+"thickness": 1,
+"grip": {
+"pixel": [
+3,
+16
+],
+"offset": [
+0,
+0,
+-0.5
+],
+"rotation": [
+90,
+45,
+90
+],
+"note": "the grip pixel is in the upper third of the hand-and-a-half grip; the turn is the arming sword"
+},
+"note": "The Templar's longsword: a 13 px blade, an 8 px guard with dropped ends and a hand-and-a-half grip; 1 px thick."
+}

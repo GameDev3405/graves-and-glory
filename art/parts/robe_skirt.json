@@ -1,0 +1,12 @@
+{
+"part":"robe_skirt",
+"note":"The Sunweaver's robe falling to the ground in three widening tiers: the robed triangle. Block 48x36.",
+"bone":"body",
+"team":false,
+"tag":"",
+"boxes":[
+{"origin":[-5,0,-3],"size":[10,4,6],"uv":[0,0],"note":"the robe's first tier, from the hips"},
+{"origin":[-6,4,-4],"size":[12,4,8],"uv":[0,10],"note":"second tier"},
+{"origin":[-7,8,-5],"size":[14,4,10],"uv":[0,22],"note":"third tier, to the ground"}
+]
+}

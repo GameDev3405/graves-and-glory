@@ -5,6 +5,9 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.projectile.ArrowEntity;
 import net.minecraft.entity.projectile.PersistentProjectileEntity;
+import net.minecraft.entity.projectile.TridentEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.util.math.Vec3d;
@@ -17,8 +20,8 @@ public final class Projectiles {
     static final Spec.CombatDisciplineRow C=Spec.COMBATDISCIPLINE[0];
     /** Ticks after an enemy's last blow on a unit during which a death with no attacker still credits the blow's army. lastHitAt is stamped when a blow lands (melee, or an arrow on impact), so flight time never counts: this is a blow-to-death allowance, sized as projectileMaxTicks plus 20 so a late shot plus a short fall still pays. The +20 is a code-held tuning number; see docs/PARKED.md. */
     public static final int CREDIT_WINDOW_TICKS=C.projectileMaxTicks()+20;
-    /** kind: "arrow" (damage, vanilla arrow visual), "bolt" (blight cast, visual only), "mend" (heal).
-     *  A bolt has no target: it flies to the fixed point {@code at}; other shots follow their target and leave {@code at} null. */
+    /** kind: "arrow" (damage, vanilla arrow visual), "trident" (the same damage as an arrow, a flying trident for the visual: the Harpooner's), "bolt" (the blight cast, visual only; with a target and an amount, a magic shot that damages on landing), "mend" (heal).
+     *  The blight cast's bolt has no target: it flies to the fixed point {@code at}; other shots follow their target and leave {@code at} null. */
     public record Shot(GravesAndGlory.Unit shooter,GravesAndGlory.Squad squad,LivingEntity target,String kind,float amount,Vec3d from,long fired,long lands,Entity visual,Vec3d at){}
     private Projectiles(){}
 
@@ -26,13 +29,14 @@ public final class Projectiles {
 
     public static void fire(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,String kind,float amount){
         Vec3d from=u.mob.getEyePos(),to=aim(target);
-        boolean arrow=kind.equals("arrow");
+        boolean arrow=kind.equals("arrow")||kind.equals("trident");
         int travel=BattleMath.travelTicks(from.distanceTo(to),arrow?C.arrowSpeed():C.boltSpeed(),C.projectileMinTicks(),C.projectileMaxTicks());
         long lands=b.time+travel;
         Entity visual=null;
         if(arrow){
             // No-clip arrows never collide, so they carry no damage of their own: the queue applies it on landing.
-            ArrowEntity a=new ArrowEntity(b.world,from.x,from.y,from.z);
+            PersistentProjectileEntity a=kind.equals("trident")?new TridentEntity(b.world,u.mob,new ItemStack(Items.TRIDENT)):new ArrowEntity(b.world,from.x,from.y,from.z);
+            a.setPosition(from);
             a.setNoGravity(true);a.setNoClip(true);a.pickupType=PersistentProjectileEntity.PickupPermission.DISALLOWED;a.addCommandTag(TAG);
             Vec3d v=to.subtract(from).multiply(1.0/travel);a.setVelocity(v.x,v.y,v.z,(float)v.length(),0);
             visual=a;
@@ -61,7 +65,7 @@ public final class Projectiles {
                 s.visual.setVelocity(v);s.visual.velocityModified=true;
             }else{
                 double t=Math.min(1,(b.time-s.fired)/(double)Math.max(1,s.lands-s.fired));Vec3d p=s.from.lerp(to,t);
-                int rgb=Spec.FACTIONS[s.squad.team].color();
+                int rgb=b.side(s.squad.team).color();
                 b.world.spawnParticles(new DustParticleEffect(new Vector3f((rgb>>16&255)/255f,(rgb>>8&255)/255f,(rgb&255)/255f),1.4f),p.x,p.y,p.z,2,.04,.04,.04,0);
                 b.world.spawnParticles(s.squad.team==1?ParticleTypes.WITCH:ParticleTypes.ENCHANT,p.x,p.y,p.z,1,.05,.05,.05,0);
             }
@@ -72,9 +76,14 @@ public final class Projectiles {
     static void drop(GravesAndGlory.Battle b,Shot s){b.shots.remove(s);if(s.visual!=null)s.visual.discard();}
     static void land(GravesAndGlory.Battle b,Shot s,Vec3d at){
         switch(s.kind){
-            case "arrow"->{
-                for(var v:b.units)if(v.mob==s.target){v.lastHitBy=s.squad;v.lastHitAt=b.time;break;}
-                s.target.damage(b.world.getDamageSources().mobAttack(s.shooter.mob),s.amount);
+            case "arrow","trident"->{
+                // Combat.resolve credits the shooter's army (lastHitBy), applies the counters and hurts the target with the troop damage type.
+                Combat.resolve(b,s.shooter,s.target,s.amount,"arrow",false);
+                BattleEffects.flash(b,at,s.squad.team);
+            }
+            case "bolt"->{
+                // A bolt with a target and an amount is a damaging magic shot; the blight cast's bolt has neither and stays a visual that arrives with the burst.
+                if(s.target!=null&&s.amount>0)Combat.resolve(b,s.shooter,s.target,s.amount,"bolt",false);
                 BattleEffects.flash(b,at,s.squad.team);
             }
             case "mend"->{s.target.heal(s.amount);b.world.spawnParticles(ParticleTypes.HEART,s.target.getX(),s.target.getY()+2,s.target.getZ(),3,.3,.2,.3,0);}

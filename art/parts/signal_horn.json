@@ -1,0 +1,16 @@
+{
+"part":"signal_horn",
+"note":"The Sergeant-Archer's signal horn (stage 3): an ivory horn bound in gilt, slung on its baldric across the front of the jerkin from the right shoulder to the left hip, the dark tip and gilt mouthpiece high, the bell low and swelling. On the slight archer's body, with the body scale cancelled by the entry. Block 36x6.",
+"bone":"body",
+"team":false,
+"tag":"",
+"pivot":[0,-5.5,-3.1],
+"rotation":[0,0,38],
+"boxes":[
+{"origin":[-5,-0.5,-0.5],"size":[1,1,1],"uv":[0,0],"note":"the gilt mouthpiece"},
+{"origin":[-4,-0.5,-0.5],"size":[2,1,1],"uv":[4,0],"note":"the dark tip of the horn"},
+{"origin":[-2,-1,-1],"size":[2,2,2],"uv":[10,0],"note":"the ivory horn widening"},
+{"origin":[0,-1.4,-1],"size":[2,2,2],"uv":[18,0],"note":"curving"},
+{"origin":[2,-1.9,-1.5],"size":[2,3,3],"uv":[26,0],"note":"the bell, its gilt rim round a dark mouth"}
+]
+}

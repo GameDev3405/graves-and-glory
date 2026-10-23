@@ -13,7 +13,11 @@ import java.nio.file.*;
 
 /** Portable local collection and a temporary, skippable camera introduction. */
 public final class CampaignClient {
-    static Campaign.Profile profile=new Campaign.Profile();
+    static Profile profile=new Profile();
+    /** The side row ids the two teams fly (from the snapshot "sides"): team 0 first. */
+    static String[] sides={"gold","violet"};
+    /** The banner this commander fields (snapshot "banner"): the battle banner while seated in a running battle, else the profile banner. */
+    static java.util.List<String> banner=RosterMath.starterBanner();
     static JsonArray players=new JsonArray();
     static JsonObject social=new JsonObject(),progression=new JsonObject();
     static JsonObject result=new JsonObject();static String shownResult="";
@@ -31,6 +35,27 @@ public final class CampaignClient {
     static JsonObject party=emptyParty();static int padCountdown,padDawn,padDusk,padSize=2,tutorial=-1;
     static JsonObject emptyParty(){JsonObject j=new JsonObject();j.addProperty("open",false);j.addProperty("member",false);j.addProperty("lead",false);j.addProperty("capacity",2);j.addProperty("leader","");j.add("members",new JsonArray());j.addProperty("inviteSeconds",0);j.addProperty("inviter","");j.add("online",new JsonArray());return j;}
     static String lastSaved="",revealUnit="";static long revealUntil;static boolean received;
+    /** The last roll or chosen buy, from the snapshot's lastRoll (Task 12): the troop id, whether it was a duplicate, its stars before and after and the shards it gave; n tells a new one from the same. */
+    record LastRoll(String troop,boolean duplicate,int starsBefore,int starsAfter,int shards,int n){}
+    /** The newest LastRoll, or null before the first; rollAt is when this client received it (the reveal's clock). */
+    static LastRoll lastRoll;static long rollAt;
+    /** How long the roll card's pips take to fill from starsBefore to starsAfter, and how long the card stays. */
+    static final long ROLL_FILL_MS=1200,REVEAL_MS=2400;
+    /** Harness only: when 0 or more, the reveal's elapsed milliseconds are held there (a mid-animation screenshot). */
+    static long revealHeldAt=-1;
+    /** The roll card's elapsed milliseconds since the roll arrived. */
+    static long rollElapsed(){return revealHeldAt>=0?revealHeldAt:System.currentTimeMillis()-rollAt;}
+    /** Whether the reveal on screen is the last roll's card: it arrived with this reveal and Skip reveal has not ended it. */
+    static boolean rollShowing(){return lastRoll!=null&&revealUntil>System.currentTimeMillis()&&revealUntil==rollAt+REVEAL_MS;}
+    /** Forgets the last roll and the first-snapshot mark when the client leaves a server: a restarted server counts n from 1 again, and its first snapshot must not reveal (review minor 5). */
+    static void forget(){lastRoll=null;rollAt=0;received=false;revealUntil=0;}
+    /** Reads the snapshot's lastRoll; a new one (another n) after the first snapshot starts the reveal. */
+    static void acceptRoll(JsonObject j,boolean first){
+        if(!j.has("lastRoll"))return;var r=j.getAsJsonObject("lastRoll");if(!r.has("n")||!r.has("troop"))return;
+        var next=new LastRoll(r.get("troop").getAsString(),r.get("duplicate").getAsBoolean(),r.get("starsBefore").getAsInt(),r.get("starsAfter").getAsInt(),r.get("shards").getAsInt(),r.get("n").getAsInt());
+        if(lastRoll!=null&&lastRoll.n()==next.n())return;lastRoll=next;if(first)return;
+        var t=ArmyCards.spec(next.troop());if(t!=null)revealUnit=t.name();rollAt=System.currentTimeMillis();revealUntil=rollAt+REVEAL_MS;
+    }
     static int map=0,serial=-1,intro=0;static boolean lastRunning,waiting;
     public static double cameraX,cameraY,cameraZ;public static float cameraYaw,cameraPitch;
     public static boolean cinematic(){return camera!=null;}
@@ -38,11 +63,13 @@ public final class CampaignClient {
     static ArmorStandEntity camera;static Perspective previous;static int cameraTicks;
     static Path collection(MinecraftClient c){return c.runDirectory.toPath().resolve((Diagnostics.active()?"gravesandglory/test-collections/":"gravesandglory/collections/")+c.getSession().getUuid()+".json");}
     static void sendProfile(MinecraftClient c){
-        try{Path path=collection(c);String json=Files.exists(path)?Files.readString(path):Campaign.JSON.toJson(new Campaign.Profile());if(json.length()<16000&&ClientPlayNetworking.canSend(GravesAndGlory.PROFILE)){var packet=PacketByteBufs.create();packet.writeString(json);ClientPlayNetworking.send(GravesAndGlory.PROFILE,packet);}}catch(Exception ignored){}
+        try{Path path=collection(c);String json=Files.exists(path)?Files.readString(path):Campaign.JSON.toJson(new Profile());if(json.length()<16000&&ClientPlayNetworking.canSend(GravesAndGlory.PROFILE)){var packet=PacketByteBufs.create();packet.writeString(json);ClientPlayNetworking.send(GravesAndGlory.PROFILE,packet);}}catch(Exception ignored){}
 
     }
     static void accept(MinecraftClient c,String json,boolean running){
-        try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();if(!j.has("profile"))return; /* "{}": the server could not fit this snapshot; keep the last camp state */var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Campaign.Profile.class);if(received&&nextProfile.unlocked.size()>profile.unlocked.size()){for(var unit:Spec.TROOPS)if(nextProfile.unlocked.contains(unit.id())&&!profile.unlocked.contains(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}nextProfile.sanitize();profile=nextProfile;received=true;social=j.has("social")?j.getAsJsonObject("social"):new JsonObject();progression=j.has("progression")?j.getAsJsonObject("progression"):new JsonObject();if(j.has("progression"))profile.progression=Campaign.JSON.fromJson(progression,Progression.State.class);players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
+        try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();if(!j.has("profile"))return; /* "{}": the server could not fit this snapshot; keep the last camp state */var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Profile.class);if(received&&nextProfile.owned!=null&&nextProfile.owned.size()>profile.owned.size()){for(var unit:Spec.TROOPS)if(nextProfile.owned.containsKey(unit.id())&&!profile.owned.containsKey(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}nextProfile.sanitize();profile=nextProfile;acceptRoll(j,!received);received=true;
+            if(j.has("sides")){var s=j.getAsJsonArray("sides");if(s.size()==2)sides=new String[]{s.get(0).getAsString(),s.get(1).getAsString()};}
+            if(j.has("banner")){var list=new java.util.ArrayList<String>();for(var e:j.getAsJsonArray("banner"))list.add(e.getAsString());banner=list;}social=j.has("social")?j.getAsJsonObject("social"):new JsonObject();progression=j.has("progression")?j.getAsJsonObject("progression"):new JsonObject();if(j.has("progression"))profile.progression=Campaign.JSON.fromJson(progression,Progression.State.class);players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
             JsonObject keyed=new JsonObject();for(var entry:party.entrySet())if(!entry.getKey().equals("inviteSeconds"))keyed.add(entry.getKey(),entry.getValue());partyKey=keyed.toString();
             JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;battle=j.has("battle")?j.getAsJsonObject("battle"):new JsonObject();fill=j.get("fill").getAsBoolean();difficulty=j.has("difficulty")?j.get("difficulty").getAsString():"normal";mode=j.get("mode").getAsString();notice=j.get("notice").getAsString();headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
             int next=j.get("map").getAsInt();if(next!=map||Spec.FACTIONS[0].spawnX()!=-283){map=next;if(c.getServer()==null)CampaignMaps.select(map);GravesAndGloryClient.invalidateMap(c);}

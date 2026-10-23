@@ -60,7 +60,7 @@ public final class Phase1Checks implements ClientModInitializer {
     }
 
     @Override public void onInitializeClient(){
-        String list=System.getProperty("gravesandglory.phase1Checks","");if(list.isBlank())return;
+        String list=System.getProperty("gravesandglory.phase1Checks","");if(list.isBlank()||!System.getProperty("gravesandglory.phase2Checks","").isEmpty())return;
         for(String name:list.split(","))if(!name.isBlank())queue.add(name.trim());
         ServerTickEvents.END_SERVER_TICK.register(s->{if(current instanceof ServerWatch w&&GravesAndGlory.battle!=null)try{w.serverTick(GravesAndGlory.battle);}catch(Exception e){report("p1-"+currentName+"-exception",false,e.toString());e.printStackTrace();}});
         ClientTickEvents.END_CLIENT_TICK.register(c->{
@@ -68,6 +68,7 @@ public final class Phase1Checks implements ClientModInitializer {
             if(c.getOverlay()!=null)return;
             if(!started){if(c.currentScreen instanceof FrontMenuScreen&&++front==40){started=true;GravesAndGloryClient.startCamp(c,false);}return;}
             if(c.player==null||c.getServer()==null||!GravesAndGloryClient.ready)return;
+            listenSounds(c);
             if(current==null){
                 if(queue.isEmpty())return;
                 currentName=queue.poll();failed=false;tick=0;var make=SUITES.get(currentName);
@@ -83,6 +84,33 @@ public final class Phase1Checks implements ClientModInitializer {
     static Spec.TroopsRow troop(String id){return Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(id)).findFirst().orElseThrow();}
     static double top(GravesAndGlory.Battle b,double x,double z){return b.world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES,(int)Math.floor(x),(int)Math.floor(z));}
     static void freeze(GravesAndGlory.Unit u){u.nextAttack=Long.MAX_VALUE;u.abilityAt=Long.MAX_VALUE;u.spellCenter=null;}
+    /** The ids of the sounds this client's own sound system played, in order (a SoundInstanceListener, registered once per client by listenSounds): what the player really hears. Every suite reads it. */
+    public static final java.util.concurrent.CopyOnWriteArrayList<String> clientSounds=new java.util.concurrent.CopyOnWriteArrayList<>();
+    static boolean soundsListened;
+    public static void listenSounds(MinecraftClient c){if(soundsListened)return;soundsListened=true;c.getSoundManager().registerListener((sound,set)->clientSounds.add(sound.getId().toString()));}
+    /** How many times this client has played the sound. */
+    public static long heardOnClient(String id){return clientSounds.stream().filter(id::equals).count();}
+    /**
+     * A second player for the sound checks: a FakePlayer of the battle's world that stands where it is put and is listed among the server's players
+     * while it is in, so the world-sound path (PlayerManager.sendToAround, where the three-argument PlayerEntity.playSound goes) reaches it like any
+     * player in range; its network handler keeps every packet sent to it instead of a connection. sounds() lists the sounds it was sent.
+     */
+    public static final class Listener extends net.fabricmc.fabric.api.entity.FakePlayer {
+        public final List<net.minecraft.network.packet.Packet<?>> packets=new java.util.concurrent.CopyOnWriteArrayList<>();
+        Listener(net.minecraft.server.world.ServerWorld w){
+            super(w,new com.mojang.authlib.GameProfile(UUID.randomUUID(),"Listener"));
+            new net.minecraft.server.network.ServerPlayNetworkHandler(w.getServer(),new net.minecraft.network.ClientConnection(net.minecraft.network.NetworkSide.SERVERBOUND),this){
+                @Override public void sendPacket(net.minecraft.network.packet.Packet<?> packet,net.minecraft.network.PacketCallbacks callbacks){packets.add(packet);}
+            };
+        }
+        /** Stands at (x, y, z) in the battle's world and joins the server's player list. */
+        public static Listener join(GravesAndGlory.Battle b,double x,double y,double z){var l=new Listener(b.world);l.refreshPositionAndAngles(x,y,z,0,0);b.server.getPlayerManager().getPlayerList().add(l);return l;}
+        public void leave(GravesAndGlory.Battle b){b.server.getPlayerManager().getPlayerList().remove(this);}
+        /** The ids of the sounds sent to it (PlaySoundS2CPacket), in order. */
+        public List<String> sounds(){List<String> out=new ArrayList<>();for(var p:packets)if(p instanceof net.minecraft.network.packet.s2c.play.PlaySoundS2CPacket s)out.add(s.getSound().value().getId().toString());return out;}
+        /** Those of them that are this mod's (gravesandglory:...) or the order chime. */
+        public List<String> cues(){return sounds().stream().filter(s->s.startsWith("gravesandglory:")||s.endsWith("note_block.chime")).toList();}
+    }
 
     /** Task 1: visible delayed projectiles, team impact flashes, HUD health flash and tick cost. Stages run on the server tick. */
     static final class Combat implements Suite,ServerWatch {
@@ -185,7 +213,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(duskShot==null){for(var s:b.shots)if(s.shooter()==chosen&&s.kind().equals("arrow")){duskShot=s;flashesBefore=BattleEffects.flashes;freeze(chosen);}
                         if(duskShot==null&&late(b,400)){duskWhy="the Dusk archer never fired";freeze(chosen);next(b,8);}break;}
                     if(b.time>=duskShot.lands()){
-                        duskOk=BattleEffects.flashes>flashesBefore&&BattleEffects.lastFlashColor==Spec.FACTIONS[1].color();
+                        duskOk=BattleEffects.flashes>flashesBefore&&BattleEffects.lastFlashColor==b.side(1).color();
                         duskWhy="Dusk arrow flashes +"+(BattleEffects.flashes-flashesBefore)+" colour "+Integer.toHexString(BattleEffects.lastFlashColor);next(b,8);
                     }
                 }
@@ -196,8 +224,8 @@ public final class Phase1Checks implements ClientModInitializer {
                     chosen.mob.refreshPositionAndAngles(foe.mob.getX()-1.5,foe.mob.getY(),foe.mob.getZ(),-90,0);chosen.nextAttack=0;flashesBefore=BattleEffects.flashes;next(b,9);
                 }
                 case 9->{
-                    if(BattleEffects.flashes>flashesBefore){freeze(chosen);boolean dawnOk=BattleEffects.lastFlashColor==Spec.FACTIONS[0].color();
-                        report("p1-impact-team-colour",duskOk&&dawnOk,duskWhy+"; Dawn melee colour "+Integer.toHexString(BattleEffects.lastFlashColor)+" (Dusk "+Integer.toHexString(Spec.FACTIONS[1].color())+", Dawn "+Integer.toHexString(Spec.FACTIONS[0].color())+")");next(b,10);}
+                    if(BattleEffects.flashes>flashesBefore){freeze(chosen);boolean dawnOk=BattleEffects.lastFlashColor==b.side(0).color();
+                        report("p1-impact-team-colour",duskOk&&dawnOk,duskWhy+"; Dawn melee colour "+Integer.toHexString(BattleEffects.lastFlashColor)+" (Dusk "+Integer.toHexString(b.side(1).color())+", Dawn "+Integer.toHexString(b.side(0).color())+")");next(b,10);}
                     else if(late(b,400)){freeze(chosen);report("p1-impact-team-colour",false,duskWhy+"; the Dawn soldier never struck");next(b,10);}
                 }
                 case 11->{ // a shot whose target vanishes, then a round that ends with a shot in the air
@@ -236,148 +264,337 @@ public final class Phase1Checks implements ClientModInitializer {
         }
     }
 
-    /** Task 2: rout when weak or flanked, regroup, stored orders, RoutGuard, horns and the ROUTING HUD. Stages run on the server tick. */
+    /** Task 2, rewritten by the no-routing design: no group breaks (p1-no-rout); flank blows, C16s and covered flanks (p1-flank-damage); the LAST STAND state, its feed line and its HUD stamp (p1-last-stand, p1-hud-last-stand); command feedback to the commanding player alone and no horn in the world (p1-command-sound, p1-charge-horn); Retreat and Move arrive and fight as Hold (p1-retreat-arrive). Stages run on the server tick. */
     static final class MoraleChecks implements Suite,ServerWatch {
-        static final Spec.MoraleRow M=Spec.MORALE[0];
+        static final Spec.CombatDisciplineRow D=Spec.COMBATDISCIPLINE[0];
         static final double FX=48,FZ=0; // open valley on the Dusk side of Rivergate (60 blocks from the sheet's Dusk base; CampaignMaps moves the live base to x=283, inside a village)
         volatile int stage;volatile String wantShot;volatile boolean finished,hudDone;
         volatile UUID player;long stageAt;int shotDelay;
         GravesAndGlory.Squad own,enemy,flankers;
-        long routStart=-1,routEnd=-1;double startDistance;int routHorns,rallyHorns,guardCalls;
-        boolean weakOk,orderStored;String weakWhy="";
-        final List<GravesAndGlory.Unit> shadows=new ArrayList<>();
-        final Morale.RoutGuard guard=(b,s,g)->{guardCalls++;return true;};
+        final List<GravesAndGlory.Unit> flank=new ArrayList<>();
+        // p1-no-rout
+        boolean orderKept=true;int samples,targeted;double startHome;String noRoutWhy="";boolean noRoutOk;
+        // p1-last-stand
+        int linesBefore;long onAt=-1,offAt=-1,againAt=-1,risenAt=-1;boolean lastOk=true;String lastWhy="";
+        // the sounds
+        boolean soundOk=true;String soundWhy="";
+        // the arrival
+        GravesAndGlory.Unit waylayer,greeter;int strikes;boolean targetOnWay,runSeen,fought;long arrivedAt=-1,foughtAt=-1;String arriveWhy="";boolean arriveOk=true;Vec3d dest;
+        // the sounds' transport (p1-feedback-reach): what the commanding client played and what a second player 5 blocks from him was sent
+        List<String> listenerCues=List.of();long routBefore,chargeBefore,chimeBefore;
+        // the arrival's pull and its ranged and support legs
+        long pullAt=-1,settleAt=-1;double pullMax;int pullSamples,pullArrived,pullHold,pullTargets;boolean pullOk,rangedStart,supportStart;Leg rangedLeg,supportLeg;Vec3d rangedDest,supportDest;
+        // the last-stand line due after lastStandFeedSeconds
+        long off2At=-1,on2At=-1;
 
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
         long since(GravesAndGlory.Battle b){return b.time-stageAt;}
         ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
-        static int horns(String kind){return BattleEffects.horns.getOrDefault(kind,0);}
         List<GravesAndGlory.Unit> knights(GravesAndGlory.Battle b){return b.units.stream().filter(u->u.squad==own&&u.spec.group().equals("infantry")&&u.mob.isAlive()).toList();}
         double homeDistance(GravesAndGlory.Battle b){Vec3d home=GravesAndGlory.Battle.base(0);return knights(b).stream().mapToDouble(u->Math.hypot(u.mob.getX()-home.x,u.mob.getZ()-home.z)).average().orElse(0);}
         Vec3d centre(GravesAndGlory.Battle b){return Morale.centre(knights(b));}
-        static void place(GravesAndGlory.Battle b,GravesAndGlory.Unit u,double x,double z,float yaw){u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(x,top(b,x,z),z,yaw,0);u.deployed=u.mob.getPos();u.lastPosition=u.mob.getPos();u.nextPath=0;u.stuckTicks=0;}
-        void move(GravesAndGlory.Battle b,String group,double x,double z){own.assignments.put(group,new GravesAndGlory.Assignment("move","block",new Vec3d(x,top(b,x,z),z),-90));}
-        /** A fresh, frozen, full infantry group standing in block at the fixture point, facing Dusk. */
-        void freshInfantry(GravesAndGlory.Battle b){
+        static void place(GravesAndGlory.Battle b,GravesAndGlory.Unit u,double x,double z,float yaw){u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(x,top(b,x,z),z,yaw,0);u.mob.setHeadYaw(yaw);u.mob.setBodyYaw(yaw);u.deployed=u.mob.getPos();u.lastPosition=u.mob.getPos();u.nextPath=0;u.stuckTicks=0;}
+        /** A stored group order (block formation, facing Dusk) to a spot, as Battle.issue would store it. */
+        void order(GravesAndGlory.Battle b,String group,String order,double x,double z){own.arrived.remove(group);own.assignments.put(group,new GravesAndGlory.Assignment(order,"block",new Vec3d(x,top(b,x,z),z),-90));}
+        /** A fresh, full infantry group standing in block at the fixture point on Hold, facing Dusk; frozen (never attacking) or free to fight. */
+        void freshInfantry(GravesAndGlory.Battle b,boolean frozen){
             for(var u:knights(b))u.mob.discard();b.units.removeIf(u->u.squad==own&&u.spec.group().equals("infantry"));
-            own.routedAt.remove("infantry");own.steadyUntil.remove("infantry");b.reinforce(own);move(b,"infantry",FX,FZ);
-            for(var u:knights(b)){Vec3d at=b.formation(u);place(b,u,at.x,at.z,-90);freeze(u);}
+            own.lastStand.remove("infantry");own.lastStandAt.remove("infantry");b.reinforce(own);order(b,"infantry","hold",FX,FZ);
+            for(var u:knights(b)){Vec3d at=b.formation(u);place(b,u,at.x,at.z,-90);if(frozen)freeze(u);}
+            Houses.recompute(own);
         }
         /** Kills the rearmost knights (highest slots), leaving the front rank. */
         void kill(GravesAndGlory.Battle b,int n){var list=new ArrayList<>(knights(b));list.sort(Comparator.comparingInt(u->-u.slot));for(int i=0;i<n&&i<list.size();i++)list.get(i).mob.kill();b.units.removeIf(u->!u.mob.isAlive());}
+        /** The Dusk squad 6 blocks in front of the knights. */
         void enemyFront(GravesAndGlory.Battle b){enemy.target=new Vec3d(FX+6,top(b,FX+6,FZ),FZ);int i=0;for(var u:b.units)if(u.squad==enemy){double x=FX+6+(i/5)*2,z=FZ+(i%5-2)*2;place(b,u,x,z,90);i++;}}
+        /** The Dusk squad camped on the Dawn base, far beyond lastStandRadius of the knights. */
+        void enemyHome(GravesAndGlory.Battle b){Vec3d home=GravesAndGlory.Battle.base(0);enemy.target=home;int i=0;for(var u:b.units)if(u.squad==enemy){place(b,u,home.x+6+(i/5)*2,home.z+(i%5-2)*2,90);i++;}}
         void camera(GravesAndGlory.Battle b,double x,double z,double up,float yaw,float pitch){var p=sp(b);p.changeGameMode(GameMode.SPECTATOR);b.relocate(p,x,top(b,x,z)+up,z,yaw,pitch);}
-        /** Keeps three frozen Dusk troops beside the routing knights. */
-        void shadow(GravesAndGlory.Battle b){if(knights(b).isEmpty())return;Vec3d at=centre(b);int i=0;for(var u:shadows)if(u.mob.isAlive())place(b,u,at.x+4,at.z+(i++-1)*2,90);}
+        /** Frozen Dusk Risen of the flankers squad standing behind the knights (west of them: the knights face east), each with the nearest knight as its target. */
+        void placeFlankers(GravesAndGlory.Battle b,int n){
+            Vec3d at=centre(b);flankers=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(at.x-5,at.y,at.z));flankers.order="hold";flankers.yaw=-90;
+            var revenant=troop("revenant");var ks=knights(b);flank.clear();
+            for(int i=0;i<n;i++){double z=at.z-1.5+i;var u=b.spawn(flankers,revenant,40+i,new Vec3d(at.x-5,top(b,at.x-5,z),z));freeze(u);flank.add(u);
+                var nearest=ks.stream().min(Comparator.comparingDouble(k->k.mob.squaredDistanceTo(u.mob))).orElseThrow();u.mob.setTarget(nearest.mob);}
+        }
+        void dropFlankers(GravesAndGlory.Battle b){if(flankers==null)return;for(var u:b.units)if(u.squad==flankers)u.mob.discard();b.units.removeIf(u->u.squad==flankers);flank.clear();}
+        /** One blow of base 1 from the attacker's troop on the victim, past the victim's hurt cooldown, as a primary hit (not a cleave's second target), and the hit it logged. */
+        static gg.gravesandglory.Combat.HitLog blow(GravesAndGlory.Battle b,GravesAndGlory.Unit attacker,GravesAndGlory.Unit victim,String kind){
+            victim.mob.timeUntilRegen=0;victim.mob.hurtTime=0;var mark=gg.gravesandglory.Combat.LAST.peekLast();gg.gravesandglory.Combat.resolve(b,attacker,victim.mob,1f,kind,false);var h=gg.gravesandglory.Combat.LAST.peekLast();return h==mark?null:h;
+        }
+        static boolean is(gg.gravesandglory.Combat.HitLog h,double counters,List<String> rows){return h!=null&&Math.abs(h.counters()-counters)<1e-9&&h.rows().equals(rows);}
+        static String show(gg.gravesandglory.Combat.HitLog h){return h==null?"no hit":"counters "+h.counters()+" rows "+h.rows()+" stance "+h.stance()+" traits "+h.traits()+" total "+h.total();}
+        /** How many feedback sounds this player heard of a kind. */
+        static int heard(UUID p,String kind){int n=0;for(var h:BattleEffects.heard)if(h.player().equals(p)&&h.kind().equals(kind))n++;return n;}
+        static int lines(UUID owner,String group){int n=0;for(var l:Morale.lastStandLines)if(l.owner().equals(owner)&&l.group().equals(group))n++;return n;}
+        boolean lastStand(){return Morale.lastStand(own,"infantry");}
+        /** A frozen Dusk Risen of the flankers squad at a spot (the waylayer on the way, the greeter near a destination). */
+        GravesAndGlory.Unit risen(GravesAndGlory.Battle b,double x,double z,float yaw){var u=b.spawn(flankers,troop("revenant"),40+flank.size(),new Vec3d(x,top(b,x,z),z));freeze(u);place(b,u,x,z,yaw);flank.add(u);return u;}
+        boolean anyTarget(GravesAndGlory.Battle b){for(var k:knights(b))if(k.mob.getTarget()!=null)return true;return false;}
+        boolean arrived(GravesAndGlory.Battle b){var ks=knights(b);return !ks.isEmpty()&&Tactics.arrived(b,ks.get(0),b.assignment(ks.get(0)));}
+        /** One group's arrival reading: when it was taken (stage ticks), whether it is right, and the reading. */
+        record Leg(long at,boolean ok,String why){}
+        /**
+         * Reads a group's arrival on a Retreat to spot: null while Tactics.arrived is false for its first member; else the reading at the moment it turned true:
+         * its centre's distance to the centre of its slots (want arriveRadius or less: the arrival is measured there, Battle.formation) and the latch, with its
+         * distance to the spot for the record.
+         */
+        Leg leg(GravesAndGlory.Battle b,String group,Vec3d spot){
+            var ms=Morale.members(b,own,group);if(ms.isEmpty())return new Leg(since(b),false,group+": no member left");
+            if(!Tactics.arrived(b,ms.get(0),b.assignment(ms.get(0))))return null;
+            Vec3d c=Morale.centre(ms),slots=Vec3d.ZERO;for(var m:ms)slots=slots.add(b.formation(m));slots=slots.multiply(1.0/ms.size());
+            double toSpot=Math.sqrt(GravesAndGlory.Battle.horizontalDistance(c,spot)),toSlots=Math.sqrt(GravesAndGlory.Battle.horizontalDistance(c,slots));
+            boolean ok=toSlots<=D.arriveRadius()&&own.arrived.contains(group);
+            return new Leg(since(b),ok,group+" ("+ms.size()+" troops) arrived at +"+since(b)+" with its centre "+String.format("%.1f",toSlots)+" from the centre of its slots (want "+D.arriveRadius()+" or less) and "+String.format("%.1f",toSpot)+" from the spot, latched="+own.arrived.contains(group)+"="+ok);
+        }
+        /** The same group 100 ticks on, settled on its slots: its centre stands beyond arriveRadius of the spot (its slots are behind it, so by the spot it would count as not arrived) and it is still arrived and latched. */
+        Leg settled(GravesAndGlory.Battle b,String group,Vec3d spot){
+            var ms=Morale.members(b,own,group);if(ms.isEmpty())return new Leg(since(b),false,group+": no member left");
+            double toSpot=Math.sqrt(GravesAndGlory.Battle.horizontalDistance(Morale.centre(ms),spot));boolean arrived=Tactics.arrived(b,ms.get(0),b.assignment(ms.get(0))),latched=own.arrived.contains(group);
+            boolean ok=toSpot>D.arriveRadius()&&arrived&&latched;
+            return new Leg(since(b),ok,group+" settled with its centre "+String.format("%.1f",toSpot)+" from the spot (want more than "+D.arriveRadius()+": by the spot it would not count as arrived) and still arrived="+arrived+", latched="+latched+"="+ok);
+        }
+        /** The troop faces Dusk (east) again, whatever it was looking at, so a bearing measured from it is the fixture's. */
+        static void face(GravesAndGlory.Unit u){u.mob.setYaw(-90);u.mob.setHeadYaw(-90);u.mob.setBodyYaw(-90);}
 
         public void step(MinecraftClient c,int tick){
             if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;next(b,1);});}
             if(wantShot!=null&&++shotDelay>=2){c.setScreen(null);shot(c,wantShot);wantShot=null;shotDelay=0;}
-            if(!hudDone&&stage>=3&&stage<=5){
+            if(!hudDone&&stage>=6&&stage<=7){
                 var g=CommandMode.groups.stream().filter(v->v.id().equals("infantry")).findFirst().orElse(null);
-                if(g!=null&&g.routing()&&wantShot==null){hudDone=true;wantShot="morale-hud";report("p1-hud-routing",true,"client infantry group routing=true, count "+g.count()+", stored order "+g.order());}
+                if(g!=null&&g.lastStand()&&wantShot==null){hudDone=true;wantShot="hud-last-stand";report("p1-hud-last-stand",true,"client infantry group lastStand=true, count "+g.count()+", stored order "+g.order()+" (the card stamps LAST STAND; picture hud-last-stand)");}
             }
-            if(!hudDone&&stage>5){hudDone=true;report("p1-hud-routing",false,"the client never saw infantry routing");}
+            if(!hudDone&&stage>7){hudDone=true;report("p1-hud-last-stand",false,"the client never saw the infantry at its last stand");}
             if(stage==99&&!finished&&wantShot==null){finished=true;finish(c,"morale");}
-            if(tick>12000&&!finished){finished=true;Morale.GUARDS.remove(guard);report("p1-morale-timeout",false,"stuck in stage "+stage);finish(c,"morale");}
+            if(tick>12000&&!finished){finished=true;report("p1-morale-timeout",false,"stuck in stage "+stage);finish(c,"morale");} // the id keeps the suite's name (morale) for continuity with every plan's regression list, though no morale system remains
         }
 
         public void serverTick(GravesAndGlory.Battle b){
             switch(stage){
-                case 1->{ // fixture: practice on map 0, the player's army 60 blocks from the Dusk base, one frozen Dusk squad holding 6 blocks in front
+                case 1->{ // fixture: practice on map 0, the player's army 60 blocks from the Dusk base on Hold, one frozen Dusk squad holding 6 blocks in front
                     var p=sp(b);if(p==null||!skirmish(b,p,0,1,"normal"))return;
                     own=b.squads.get(player);
                     for(var s:b.squads.values()){s.reinforceAt=Long.MAX_VALUE;if(s.bot)b.campaign.botRespawns.put(s.owner,Long.MAX_VALUE);}
                     for(var u:b.units)if(u.squad!=own)u.mob.discard();b.units.removeIf(u->u.squad!=own);
-                    own.order="move";own.formation="block";own.target=new Vec3d(FX,top(b,FX,FZ),FZ);own.yaw=-90;
-                    move(b,"ranged",FX-8,FZ+24);move(b,"support",FX-8,FZ+30);
+                    own.order="hold";own.formation="block";own.target=new Vec3d(FX,top(b,FX,FZ),FZ);own.yaw=-90;
+                    order(b,"ranged","hold",FX-8,FZ+24);order(b,"support","hold",FX-8,FZ+30);
                     for(var u:b.units)if(u.squad==own&&!u.spec.group().equals("infantry")){Vec3d at=b.formation(u);place(b,u,at.x,at.z,-90);freeze(u);}
-                    freshInfantry(b);
+                    freshInfantry(b,true);
                     enemy=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(FX+6,65,FZ));enemy.order="hold";enemy.yaw=90;int slot=0;
-                    for(var spec:Spec.TROOPS)if(spec.faction().equals(Spec.FACTIONS[1].id()))for(int n=0;n<spec.count();n++,slot++)freeze(b.spawn(enemy,spec,slot,new Vec3d(FX+6,65,FZ)));
+                    // Phase 1's Dusk default line (12 Risen, 6 Bone Archers, 2 Gravecallers), spawned directly so the fixture stays the one Phase 1 measured.
+                    String[] duskLine={"revenant","bonebow","hexer"};int[] duskCounts={12,6,2};
+                    for(int k=0;k<duskLine.length;k++)for(int n=0;n<duskCounts[k];n++,slot++)freeze(b.spawn(enemy,troop(duskLine[k]),slot,new Vec3d(FX+6,65,FZ)));
                     enemyFront(b);
                     camera(b,FX-20,FZ+9,5,-105,18);
-                    System.out.println("[p1] morale fixture at "+(int)FX+", "+(int)FZ+": "+knights(b).size()+" knights, fullHealth="+own.fullHealth+", "+b.units.stream().filter(u->u.squad==enemy).count()+" Dusk troops, map "+b.campaign.map);
+                    System.out.println("[p1] morale fixture at "+(int)FX+", "+(int)FZ+": "+knights(b).size()+" knights, fullHealth="+own.fullHealth+", traits "+own.traits+", "+b.units.stream().filter(u->u.squad==enemy).count()+" Dusk troops, map "+b.campaign.map);
                     next(b,2);
                 }
-                case 2->{if(since(b)>=40){routHorns=horns("rout");kill(b,10);System.out.println("[p1] rout-weak: killed 10, "+knights(b).size()+" knights left");next(b,3);}}
-                case 3->{ // p1-rout-weak: routing within 40 ticks, rout horn, then running home
-                    if(Morale.routing(own,"infantry")){
-                        routStart=own.routedAt.get("infantry");startDistance=homeDistance(b);
-                        // Watch from 14 blocks down the road home, looking back past the runners at the enemy.
-                        Vec3d at=centre(b);double cx=at.x-14,cz=at.z+5;camera(b,cx,cz,4,(float)Math.toDegrees(Math.atan2(-(at.x-cx),at.z-cz)),15);
-                        weakWhy="routed "+since(b)+" ticks after the losses, rout horns +"+(horns("rout")-routHorns);weakOk=since(b)<=40&&horns("rout")>routHorns;
-                        next(b,4);
-                    }else if(since(b)>40){report("p1-rout-weak",false,"no rout 40 ticks after killing 10 of 12 knights");report("p1-rout-order-kept",false,"no rout");report("p1-rout-ends",false,"no rout");next(b,7);}
+                case 2->{if(since(b)>=40){startHome=homeDistance(b);kill(b,10);samples=0;targeted=0;orderKept=true;System.out.println("[p1] no-rout: killed 10, "+knights(b).size()+" knights left at "+String.format("%.0f%%",100*BattleMath.strength(knights(b).stream().mapToDouble(u->u.mob.getHealth()).sum(),own.fullHealth.get("infantry"))));next(b,3);}}
+                case 3->{ // p1-no-rout, part one: two knights of twelve, Dusk 6 blocks in front: for 300 ticks they keep Hold at the fixture point, keep targets and do not run home
+                    var ks=knights(b);if(ks.isEmpty()){report("p1-no-rout",false,"no knight left");next(b,5);break;}
+                    var a=b.assignment(ks.get(0));orderKept&=a.order.equals("hold")&&Math.abs(a.target.x-FX)<.01;
+                    if(since(b)%20==0){samples++;if(anyTarget(b))targeted++;}
+                    if(since(b)<300)return;
+                    double home=homeDistance(b);boolean stayed=startHome-home<4;
+                    noRoutOk=orderKept&&targeted*2>=samples&&stayed&&lastStand();
+                    noRoutWhy="two knights of twelve at "+String.format("%.0f%%",100*BattleMath.strength(ks.stream().mapToDouble(u->u.mob.getHealth()).sum(),own.fullHealth.get("infantry")))+" with 20 Dusk troops 6 blocks in front for 300 ticks: their order stayed Hold at the fixture point="+orderKept+"; a knight had a target in "+targeted+" of "+samples+" samples; mean distance to base "+String.format("%.1f",startHome)+" -> "+String.format("%.1f",home)+" (did not run home="+stayed+"); at their last stand="+lastStand();
+                    // part two: four Risen strike them from behind; the group keeps holding
+                    for(var k:ks)face(k);placeFlankers(b,4);StringBuilder hits=new StringBuilder();boolean c16=true;
+                    for(var f:flank){var h=blow(b,f,ks.get(0),"melee");c16&=is(h,1.3,List.of("C16"));hits.append(show(h)).append("; ");}
+                    noRoutOk&=c16;noRoutWhy+="; four Risen struck a knight from behind: "+hits+"(want counters 1.3 rows [C16] each="+c16+")";
+                    next(b,4);
                 }
-                case 4->{
-                    if(since(b)==20){ // p1-rout-order-kept, part one: an order given mid-rout is stored while the rout still drives the group
-                        var p=sp(b);own.lastOrder=-1000;b.tactical(p,"infantry","hold","block",FX-8,FZ,-90,-1);
-                        var stored=own.assignments.get("infantry");var unit=knights(b).get(0);
-                        orderStored=stored!=null&&stored.order.equals("hold")&&b.assignment(unit).order.equals("retreat");
-                        System.out.println("[p1] mid-rout order: stored="+(stored==null?"none":stored.order)+" effective="+b.assignment(unit).order);
-                    }
-                    if(since(b)==40)wantShot="morale-rout";
-                    if(since(b)==60){double d=homeDistance(b);
-                        report("p1-rout-weak",weakOk&&startDistance-d>=4,weakWhy+"; mean distance to base "+String.format("%.1f",startDistance)+" -> "+String.format("%.1f",d)+" after 60 ticks");
-                        rallyHorns=horns("rally");
-                    }
-                    if(since(b)==70){ // after the screenshot, which shows the enemy the knights are running from
-                        // Camp the rest of the Dusk squad on the Dawn base and keep three frozen Dusk troops beside the runners,
-                        // so neither reaching home nor shaking off pursuit can end the rout: only routMaxSeconds can.
-                        Vec3d home=GravesAndGlory.Battle.base(0);enemy.target=home;int i=0;
-                        for(var u:b.units)if(u.squad==enemy){if(shadows.size()<3&&u.spec.group().equals("infantry"))shadows.add(u);else{place(b,u,home.x+6+(i/5)*2,home.z+(i%5-2)*2,90);i++;}}
-                        next(b,5);
-                    }
+                case 4->{ // 60 ticks after the flank blows the order is still Hold; then p1-flank-damage on the same knight
+                    var ks=knights(b);if(ks.isEmpty()){report("p1-no-rout",false,noRoutWhy+"; no knight left after the flank");next(b,5);break;}
+                    var a=b.assignment(ks.get(0));orderKept&=a.order.equals("hold");
+                    if(since(b)<60)return;
+                    report("p1-no-rout",noRoutOk&&orderKept,noRoutWhy+"; 60 ticks after the flank blows the order is "+a.order+" (want hold, kept="+orderKept+")");
+                    var k=ks.get(0);face(k);enemyFront(b);Houses.recompute(own);var f=flank.get(0);
+                    var front=b.units.stream().filter(u->u.squad==enemy&&u.spec.id().equals("revenant")&&u.mob.isAlive()).min(Comparator.comparingDouble(u->u.mob.squaredDistanceTo(k.mob))).orElseThrow();
+                    var fromFront=blow(b,front,k,"melee");var melee=blow(b,f,k,"melee");var arrow=blow(b,f,k,"arrow");var bolt=blow(b,f,k,"bolt");var blight=blow(b,f,k,"blight");
+                    double bearingBehind=BattleMath.relativeBearing(k.mob.getYaw(),f.mob.getX()-k.mob.getX(),f.mob.getZ()-k.mob.getZ()),bearingFront=BattleMath.relativeBearing(k.mob.getYaw(),front.mob.getX()-k.mob.getX(),front.mob.getZ()-k.mob.getZ());
+                    boolean open=is(fromFront,1.0,List.of())&&is(melee,1.3,List.of("C16"))&&is(arrow,1.15,List.of("C16s"))&&is(bolt,1.15,List.of("C4","C16s"))&&is(blight,1.0,List.of("C4"))&&!Houses.covered(b,k);
+                    String why="a Dusk Risen's blow from the front (bearing "+String.format("%.0f",bearingFront)+") "+show(fromFront)+"; from behind (bearing "+String.format("%.0f",bearingBehind)+", arc "+D.flankArcDegrees()+"): melee "+show(melee)+" (want 1.3 C16), an arrow "+show(arrow)+" (want 1.15 C16s) and a bolt "+show(bolt)+" (want 1.15: C4 at x1, magic ignores the shield, and C16s), blight "+show(blight)+" (area: want 1.0, C4 alone); covered="+Houses.covered(b,k)+" (want false: his Gilded archers stand 24+ off, a knight of his own group 1.5 off does not cover)="+open;
+                    // covered: an Order Archer of his own army (another group) steps to within the tier's radius of the knight; the bonus returns just outside it
+                    var archer=b.units.stream().filter(u->u.squad==own&&u.spec.id().equals("archer")&&u.mob.isAlive()).findFirst().orElseThrow();Vec3d was=archer.mob.getPos();
+                    int tier=own.traits.getOrDefault("gilded",0);var t=CounterMath.trait(Spec.HOUSETRAITS,"gilded",tier);double radius=t==null?0:t.radius();
+                    place(b,archer,k.mob.getX()-3,k.mob.getZ()+3,-90);boolean covered=Houses.covered(b,k);var cMelee=blow(b,f,k,"melee");var cArrow=blow(b,f,k,"arrow");
+                    place(b,archer,k.mob.getX()-(radius+1),k.mob.getZ(),-90);boolean uncovered=!Houses.covered(b,k);var uMelee=blow(b,f,k,"melee");
+                    place(b,archer,was.x,was.z,-90);
+                    boolean cover=tier>=1&&covered&&is(cMelee,1.0,List.of())&&is(cArrow,1.0,List.of())&&uncovered&&is(uMelee,1.3,List.of("C16"));
+                    why+="; with an Order Archer of his army 4.2 off (Gilded tier "+tier+", radius "+radius+") the knight is covered="+covered+": melee from behind "+show(cMelee)+", an arrow "+show(cArrow)+" (want 1.0, no row); with the archer "+(radius+1)+" off covered="+!uncovered+" and melee from behind "+show(uMelee)+" (want 1.3 C16)="+cover;
+                    report("p1-flank-damage",open&&cover,why);
+                    dropFlankers(b);next(b,5);
                 }
-                case 5->{ // p1-rout-ends: the rout ends by routMaxSeconds; then no new rout during the regroup immunity
-                    if(b.time%10==0)shadow(b);
-                    if(routEnd<0&&!Morale.routing(own,"infantry")){routEnd=b.time;
-                        var a=b.assignment(knights(b).get(0));
-                        report("p1-rout-order-kept",orderStored&&a.order.equals("hold")&&Math.abs(a.target.x-(FX-8))<.01,"stored during rout="+orderStored+"; after regroup the infantry order is "+a.order+" at "+(int)a.target.x+", "+(int)a.target.z);
-                        System.out.println("[p1] regroup after "+(routEnd-routStart)+" ticks, enemy within routSafeRadius="+Morale.enemyWithin(b,0,centre(b),M.routSafeRadius())+", rally horns +"+(horns("rally")-rallyHorns));
-                    }
-                    long limit=routStart+M.routMaxSeconds()*20L+40;
-                    if(routEnd<0&&b.time>limit){report("p1-rout-ends",false,"still routing "+(b.time-routStart)+" ticks after it began");report("p1-rout-order-kept",false,"the rout never ended");next(b,7);}
-                    else if(routEnd>=0&&Morale.routing(own,"infantry")){report("p1-rout-ends",false,"routed again "+(b.time-routEnd)+" ticks after regrouping");next(b,7);}
-                    else if(routEnd>=0&&b.time>=routEnd+M.regroupImmunitySeconds()*20L-1){
-                        report("p1-rout-ends",routEnd<=limit&&horns("rally")>rallyHorns&&Morale.enemyWithin(b,0,centre(b),M.engageCheckRadius()),"rout lasted "+(routEnd-routStart)+" ticks (max "+M.routMaxSeconds()*20+"), rally horns +"+(horns("rally")-rallyHorns)+", held "+(b.time-routEnd)+" ticks of immunity with "+knights(b).size()+" knights and Dusk troops in range");
-                        next(b,6);
-                    }
+                case 5->{ // p1-last-stand: a fresh full group with Dusk in front leaves the state; then ten die
+                    freshInfantry(b,true);enemyFront(b);next(b,6);
                 }
-                case 6->{shadow(b);if(since(b)>=40){System.out.println("[p1] after immunity: routing again="+Morale.routing(own,"infantry"));next(b,7);}}
-                case 7->{ // p1-flank-rout: half strength alone holds; four attackers from behind break it
-                    shadows.clear();enemyFront(b);freshInfantry(b);next(b,8);
+                case 6->{
+                    if(since(b)<40)return;
+                    if(since(b)==40){boolean off=!lastStand();lastOk=off;lastWhy="a fresh full group with Dusk 6 blocks off is not at its last stand="+off;linesBefore=lines(player,"infantry");kill(b,10);onAt=-1;}
+                    if(onAt<0&&lastStand())onAt=since(b)-40;
+                    if(onAt<0){if(since(b)>100){lastOk=false;lastWhy+="; after ten of twelve died the state never came on in 60 ticks";report("p1-last-stand",false,lastWhy);next(b,8);}return;}
+                    int added=lines(player,"infantry")-linesBefore;boolean line=added==1;lastOk&=onAt<=30&&line;
+                    lastWhy+="; two knights of twelve ("+String.format("%.0f%%",100*BattleMath.strength(knights(b).stream().mapToDouble(u->u.mob.getHealth()).sum(),own.fullHealth.get("infantry")))+", at or below "+D.lastStandShare()+") with Dusk within "+D.lastStandRadius()+" turned to their last stand "+onAt+" ticks after the deaths (want 30 or fewer: the pass runs every 20 ticks, plus a beat) and the hook recorded "+added+" line(s) for this owner's infantry (want 1)="+line;
+                    next(b,7);
                 }
-                case 8->{if(since(b)>=20){kill(b,6);next(b,9);}}
-                case 9->{if(since(b)>=40){
-                    if(Morale.routing(own,"infantry")){report("p1-flank-rout",false,"half-strength group routed before it was flanked");next(b,11);break;}
-                    Vec3d at=centre(b);flankers=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(at.x-5,at.y,at.z));flankers.order="hold";flankers.yaw=-90;
-                    var revenant=troop("revenant");var ks=knights(b);
-                    for(int i=0;i<4;i++){double z=at.z-1.5+i;var u=b.spawn(flankers,revenant,40+i,new Vec3d(at.x-5,top(b,at.x-5,z),z));freeze(u);
-                        var nearest=ks.stream().min(Comparator.comparingDouble(k->k.mob.squaredDistanceTo(u.mob))).orElseThrow();u.mob.setTarget(nearest.mob);}
-                    System.out.println("[p1] flank: not routing at half strength; 4 revenants placed 5 blocks behind "+ks.size()+" knights");next(b,10);
-                }}
+                case 7->{ // the HUD stamp is read on the client (step); then Dusk camps far away and the state goes
+                    if(!hudDone&&since(b)<120)return;
+                    enemyHome(b);offAt=-1;next(b,8);
+                }
+                case 8->{
+                    if(offAt<0&&!lastStand())offAt=since(b);
+                    if(offAt<0){if(since(b)>60){lastOk=false;lastWhy+="; with Dusk gone the state stayed on for 60 ticks";report("p1-last-stand",false,lastWhy);next(b,11);}return;}
+                    lastWhy+="; with Dusk camped "+String.format("%.0f",Math.sqrt(GravesAndGlory.Battle.horizontalDistance(centre(b),GravesAndGlory.Battle.base(0))))+" blocks off the state went "+offAt+" ticks later (want 30 or fewer: the pass runs every 20 ticks, plus a beat)";lastOk&=offAt<=30;
+                    enemyFront(b);againAt=-1;next(b,9);
+                }
+                case 9->{ // Dusk returns inside 30 s: the state comes back and the hook adds no second line
+                    if(againAt<0&&lastStand())againAt=since(b);
+                    if(againAt<0){if(since(b)>60){lastOk=false;lastWhy+="; with Dusk back the state did not return in 60 ticks";report("p1-last-stand",false,lastWhy);next(b,11);}return;}
+                    int added=lines(player,"infantry")-linesBefore;boolean once=added==1;lastOk&=againAt<=30&&once;
+                    lastWhy+="; with Dusk back the state returned "+againAt+" ticks later and the hook still has "+added+" line(s) (one per "+D.lastStandFeedSeconds()+" s)="+once;
+                    // the line due after lastStandFeedSeconds: the last telling is set back that far, Dusk leaves and returns, and the hook adds exactly one more line
+                    own.lastStandAt.put("infantry",b.time-D.lastStandFeedSeconds()*20L);enemyHome(b);off2At=-1;next(b,21);
+                }
+                case 21->{
+                    if(off2At<0&&!lastStand())off2At=since(b);
+                    if(off2At<0){if(since(b)>60){lastOk=false;lastWhy+="; (the 30 s leg) with Dusk gone again the state stayed on for 60 ticks";report("p1-last-stand",false,lastWhy);next(b,11);}return;}
+                    lastOk&=off2At<=30;enemyFront(b);on2At=-1;next(b,22);
+                }
+                case 22->{
+                    if(on2At<0&&lastStand())on2At=since(b);
+                    if(on2At<0){if(since(b)>60){lastOk=false;lastWhy+="; (the 30 s leg) with Dusk back the state did not return in 60 ticks";report("p1-last-stand",false,lastWhy);next(b,11);}return;}
+                    int added=lines(player,"infantry")-linesBefore;boolean more=added==2;lastOk&=on2At<=30&&more;
+                    lastWhy+="; with the last telling set back "+D.lastStandFeedSeconds()+" s, Dusk gone (the state off "+off2At+" ticks later, want 30 or fewer) and back (on "+on2At+" ticks later, want 30 or fewer) the hook has "+added+" line(s) (want 2: exactly one more)="+more;
+                    // the strength rises: ten fresh knights join at the fixture point with Dusk still in front
+                    b.reinforce(own);for(var u:knights(b))if(u.deployed==null||u.mob.squaredDistanceTo(centre(b))>400){Vec3d at=b.formation(u);place(b,u,at.x,at.z,-90);freeze(u);}
+                    Houses.recompute(own);risenAt=-1;next(b,10);
+                }
                 case 10->{
-                    if(Morale.routing(own,"infantry")){report("p1-flank-rout",true,"held at half strength for 40 ticks, routed "+since(b)+" ticks after four attackers came from behind");next(b,11);}
-                    else if(since(b)>40){report("p1-flank-rout",false,"no rout within 40 ticks of the flank");next(b,11);}
+                    if(risenAt<0&&!lastStand())risenAt=since(b);
+                    if(risenAt<0){if(since(b)>60){lastOk=false;lastWhy+="; with ten fresh knights the state stayed on for 60 ticks";report("p1-last-stand",false,lastWhy);next(b,11);}return;}
+                    lastOk&=risenAt<=30&&knights(b).size()==12;
+                    report("p1-last-stand",lastOk,lastWhy+"; with ten fresh knights ("+knights(b).size()+" living, Dusk still 6 off) the state went "+risenAt+" ticks later (want 30 or fewer: the pass runs every 20 ticks, plus a beat)");
+                    next(b,11);
                 }
-                case 11->{ // p1-rout-guard: a guard that holds keeps a broken group from routing
-                    for(var u:b.units)if(u.squad==flankers)u.mob.discard();b.units.removeIf(u->u.squad==flankers);
-                    enemyFront(b);freshInfantry(b);guardCalls=0;routHorns=horns("rout");Morale.GUARDS.add(guard);kill(b,10);next(b,12);
-                }
-                case 12->{if(since(b)>=60){boolean routed=Morale.routing(own,"infantry");Morale.GUARDS.remove(guard);
-                    report("p1-rout-guard",!routed&&guardCalls>0&&horns("rout")==routHorns,"routing="+routed+" with "+knights(b).size()+" knights; guard consulted "+guardCalls+" times; rout horns +"+(horns("rout")-routHorns));next(b,13);}}
-                case 13->{freshInfantry(b);enemyFront(b);camera(b,FX-12,FZ,4,-90,12);next(b,14);}
-                case 14->{if(since(b)>=20){ // p1-charge-horn: a charge sounds once; another charge inside the cooldown is silent
+                case 11->{freshInfantry(b,true);enemyFront(b);camera(b,FX-12,FZ,4,-90,12);next(b,12);}
+                case 12->{if(since(b)>=20){ // p1-charge-horn and the command sounds: Retreat and Charge play to the commanding player alone, once per kind per hornCooldownSeconds; another order the chime; a bot's charge nothing
                     var p=sp(b);var foe=b.units.stream().filter(u->u.squad==enemy&&u.mob.isAlive()&&p.canSee(u.mob)).findFirst().orElse(null);
-                    if(foe==null){report("p1-charge-horn",false,"no Dusk troop visible from the camera");next(b,99);break;}
-                    int before=horns("charge");own.lastOrder=-1000;b.tactical(p,"infantry","charge","block",foe.mob.getX(),foe.mob.getZ(),-90,foe.mob.getId());int first=horns("charge");
-                    own.lastOrder=-1000;b.tactical(p,"ranged","charge","block",foe.mob.getX(),foe.mob.getZ(),-90,foe.mob.getId());int second=horns("charge");
+                    if(foe==null){report("p1-charge-horn",false,"no Dusk troop visible from the camera");soundOk=false;soundWhy="no Dusk troop visible from the camera";next(b,13);break;}
+                    var listener=Listener.join(b,p.getX()+5,p.getY(),p.getZ());routBefore=heardOnClient("gravesandglory:horn_rout");chargeBefore=heardOnClient("gravesandglory:horn_charge");chimeBefore=heardOnClient("minecraft:block.note_block.chime");
+                    int total=BattleEffects.heard.size(),r0=heard(player,"retreat"),c0=heard(player,"charge");
+                    own.lastOrder=-1000;b.tactical(p,"infantry","retreat","block",FX-20,FZ,-90,-1);int r1=heard(player,"retreat");
+                    own.lastOrder=-1000;b.tactical(p,"ranged","retreat","block",FX-20,FZ+24,-90,-1);int r2=heard(player,"retreat");
+                    own.lastOrder=-1000;b.tactical(p,"infantry","charge","block",foe.mob.getX(),foe.mob.getZ(),-90,foe.mob.getId());int c1=heard(player,"charge");
+                    own.lastOrder=-1000;b.tactical(p,"ranged","charge","block",foe.mob.getX(),foe.mob.getZ(),-90,foe.mob.getId());int c2=heard(player,"charge");
                     var ranged=own.assignments.get("ranged");
-                    report("p1-charge-horn",first==before+1&&second==first&&ranged!=null&&ranged.order.equals("charge"),"charge horns "+before+" -> "+first+" after the infantry charge, "+second+" after the ranged charge inside the "+M.hornCooldownSeconds()+" s cooldown (ranged order "+(ranged==null?"none":ranged.order)+")");
-                    next(b,99);
+                    own.lastOrder=-1000;b.tactical(p,"support","hold","block",FX-8,FZ+30,-90,-1);int afterHold=BattleEffects.heard.size();
+                    b.markCharge(enemy,"all");int afterBot=BattleEffects.heard.size();
+                    listenerCues=listener.cues();listener.leave(b);boolean nobodyElse=listenerCues.isEmpty();
+                    boolean mine=BattleEffects.heard.stream().allMatch(h->h.player().equals(player));
+                    boolean charge=c1==c0+1&&c2==c1&&ranged!=null&&ranged.order.equals("charge");
+                    report("p1-charge-horn",charge&&nobodyElse,"the commanding player's charge feedback "+c0+" -> "+c1+" after the infantry charge, "+c2+" after the ranged charge inside the "+D.hornCooldownSeconds()+" s cooldown (ranged order "+(ranged==null?"none":ranged.order)+"); a second player 5 blocks from him was sent "+listenerCues+" (want nothing: the cues go to him alone)="+nobodyElse);
+                    soundOk=r1==r0+1&&r2==r1&&charge&&afterHold==total+2&&afterBot==afterHold&&mine;
+                    soundWhy="Retreat feedback to the player "+r0+" -> "+r1+" (want +1), a second Retreat at once "+r2+" (want no more); Charge "+c0+" -> "+c1+" -> "+c2+"; a Hold order added nothing ("+total+" -> "+afterHold+", want +2 over the four orders); a bot's charge added nothing ("+afterBot+"); every sound heard was this player's="+mine;
+                    next(b,16);
                 }}
+                case 16->{ // p1-feedback-reach: what was really sent. The commanding client played the Retreat cue, the Charge cue and the chime once each (its own sound system, SoundInstanceListener), and the second player 5 blocks from him was sent none of them
+                    if(since(b)<30)return;
+                    long rout=heardOnClient("gravesandglory:horn_rout")-routBefore,charges=heardOnClient("gravesandglory:horn_charge")-chargeBefore,chime=heardOnClient("minecraft:block.note_block.chime")-chimeBefore;
+                    boolean reach=rout==1&&charges==1&&chime==1&&listenerCues.isEmpty();
+                    report("p1-feedback-reach",reach,"after Retreat, Retreat, Charge, Charge and Hold the commanding client played horn_rout "+rout+" time(s), horn_charge "+charges+", the chime "+chime+" (want 1, 1, 1: the throttled repeats play nothing) and a second player 5 blocks from him was sent "+listenerCues+" (want nothing)="+reach);
+                    soundOk&=reach;soundWhy+="; the transport: the client played rout "+rout+", charge "+charges+", chime "+chime+" (want 1 each) and the second player was sent "+listenerCues+" (want nothing)="+reach;
+                    report("p1-command-sound",soundOk,soundWhy); // reported here, not at stage 99: the client ends the suite the tick the stage turns 99, before a server tick could report
+                    next(b,13);
+                }
+                case 13->{ // p1-retreat-arrive: a free group on Retreat to 20 blocks west; a frozen Risen on the way strikes them; another waits 5 blocks beyond the destination
+                    freshInfantry(b,false);enemyHome(b);
+                    flankers=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(FX-9,65,FZ));flankers.order="hold";flankers.yaw=-90;flank.clear();
+                    waylayer=risen(b,FX-9,FZ+1.2,-90);greeter=risen(b,FX-25,FZ,-90);
+                    dest=new Vec3d(FX-20,top(b,FX-20,FZ),FZ);order(b,"infantry","retreat",FX-20,FZ);
+                    strikes=0;targetOnWay=false;runSeen=false;fought=false;arrivedAt=-1;foughtAt=-1;
+                    camera(b,FX-14,FZ+14,6,-150,30);
+                    next(b,14);
+                }
+                case 14->{
+                    var ks=knights(b);if(ks.isEmpty()){report("p1-retreat-arrive",false,"no knight left");next(b,99);break;}
+                    if(arrivedAt<0){
+                        if(arrived(b)){arrivedAt=since(b);return;} // read first: on the tick it arrives a knight's beat may already take a target
+                        if(since(b)%10==0)for(var k:ks)if(waylayer.mob.isAlive()&&k.mob.squaredDistanceTo(waylayer.mob)<2.5*2.5){blow(b,waylayer,k,"melee");strikes++;}
+                        if(anyTarget(b))targetOnWay=true;
+                        if(Tactics.stance(b,ks.get(0)).equals("run"))runSeen=true;
+                        if(since(b)>1200){arriveOk=false;arriveWhy="the retreating group never arrived within 4 of its destination in 1200 ticks (centre "+String.format("%.1f",Math.sqrt(GravesAndGlory.Battle.horizontalDistance(centre(b),dest)))+" off)";report("p1-retreat-arrive",false,arriveWhy);next(b,99);}
+                        return;
+                    }
+                    if(foughtAt<0&&anyTarget(b))foughtAt=since(b)-arrivedAt;
+                    if(foughtAt<0&&since(b)-arrivedAt<=100)return;
+                    boolean onWay=strikes>0&&!targetOnWay&&runSeen,after=foughtAt>=0&&foughtAt<=100&&Tactics.stance(b,ks.get(0)).equals("hold")&&b.assignment(ks.get(0)).order.equals("retreat");
+                    arriveOk=onWay&&after;
+                    arriveWhy="on the way a Risen struck them "+strikes+" times and no knight ever took a target="+!targetOnWay+" (stance run="+runSeen+")="+onWay+"; they arrived at +"+arrivedAt+" and "+(foughtAt<0?"never":foughtAt+" ticks later")+" a knight took a target (the Risen 5 blocks beyond, within Hold's 10), their stance now "+Tactics.stance(b,ks.get(0))+" (want hold) with the stored order still "+b.assignment(ks.get(0)).order+"="+after;
+                    // the same for a Move order: to 10 blocks south of the fixture point, with a Risen waiting 8 blocks beyond it (inside Hold's 10, past arriveRadius)
+                    for(var u:new ArrayList<>(flank))u.mob.discard();b.units.removeAll(flank);flank.clear();
+                    greeter=risen(b,FX,FZ+18,-90);dest=new Vec3d(FX,top(b,FX,FZ+10),FZ+10);order(b,"infantry","move",FX,FZ+10);
+                    for(var k:ks){k.mob.setTarget(null);k.lockedTarget=null;}
+                    targetOnWay=false;arrivedAt=-1;foughtAt=-1;next(b,15);
+                }
+                case 15->{
+                    var ks=knights(b);if(ks.isEmpty()){report("p1-retreat-arrive",false,arriveWhy+"; no knight left for the Move");next(b,99);break;}
+                    if(arrivedAt<0){
+                        if(arrived(b)){arrivedAt=since(b);return;}
+                        if(since(b)>10&&anyTarget(b))targetOnWay=true;
+                        if(since(b)>1200){report("p1-retreat-arrive",false,arriveWhy+"; the Move group never arrived within 4 of its destination in 1200 ticks");next(b,99);}
+                        return;
+                    }
+                    if(foughtAt<0&&anyTarget(b))foughtAt=since(b)-arrivedAt;
+                    if(foughtAt<0&&since(b)-arrivedAt<=100)return;
+                    boolean move=!targetOnWay&&foughtAt>=0&&foughtAt<=100;arriveOk&=move;
+                    arriveWhy+="; on a Move 10 blocks south no knight took a target on the way="+!targetOnWay+", they arrived at +"+arrivedAt+" and "+(foughtAt<0?"never":foughtAt+" ticks later")+" a knight took a target (the Risen 8 beyond, within Hold's 10)="+move;
+                    pullAt=-1;pullMax=0;pullSamples=pullArrived=pullHold=pullTargets=0;next(b,17);
+                }
+                case 17->{ // the Hold fight pulls the group out: the Risen 8 beyond the spot, pinned and kept alive, draws the knights past arriveRadius of their spot; arrival stays latched (Squad.arrived) and they keep Hold and their targets instead of turning back into a passive Move that walks home
+                    var ks=knights(b);if(ks.isEmpty()){report("p1-retreat-arrive",false,arriveWhy+"; no knight left for the pull");next(b,99);break;}
+                    if(!greeter.mob.isAlive()){report("p1-retreat-arrive",false,arriveWhy+"; the pinned Risen died");next(b,99);break;}
+                    place(b,greeter,FX,FZ+18,-90);greeter.mob.setHealth(greeter.mob.getMaxHealth());
+                    double off=Math.sqrt(GravesAndGlory.Battle.horizontalDistance(centre(b),dest));
+                    if(pullAt<0){
+                        if(off>D.arriveRadius()+1)pullAt=since(b);
+                        else if(since(b)>600){report("p1-retreat-arrive",false,arriveWhy+"; the Hold fight never pulled the centre past "+(D.arriveRadius()+1)+" of the spot in 600 ticks ("+String.format("%.1f",off)+" off now)");next(b,99);}
+                        return;
+                    }
+                    pullMax=Math.max(pullMax,off);pullSamples++;if(arrived(b))pullArrived++;if(Tactics.stance(b,ks.get(0)).equals("hold"))pullHold++;if(anyTarget(b))pullTargets++;
+                    if(since(b)-pullAt<60)return;
+                    pullOk=pullArrived==pullSamples&&pullHold==pullSamples&&pullTargets*4>=pullSamples*3&&own.arrived.contains("infantry");
+                    arriveWhy+="; the Hold fight pulled the centre "+String.format("%.1f",pullMax)+" from the spot: over "+pullSamples+" ticks past "+(D.arriveRadius()+1)+" arrived="+pullArrived+", stance hold="+pullHold+", a knight had a target in "+pullTargets+" (want all, all, three in four) and the latch holds="+own.arrived.contains("infantry")+"="+pullOk;
+                    arriveOk&=pullOk;
+                    // ranged and support on Retreat, 10 blocks west of where they hold: their slots stand 6.8 and 10.8 or more behind each spot (Battle.formation), so the centre never comes within arriveRadius of the spot itself; arrival is measured at the slots
+                    dropFlankers(b);
+                    if(Morale.members(b,own,"support").isEmpty()){ // the fixture's banner fields no support troop: two Sunweavers join the army, frozen, on the support group's Hold slots
+                        for(int i=0;i<2;i++){var m=b.spawn(own,troop("mage"),20+i,new Vec3d(FX-8,top(b,FX-8,FZ+30),FZ+30));freeze(m);Vec3d at=b.formation(m);place(b,m,at.x,at.z,-90);}
+                        Morale.fielded(b,own,"support");Houses.recompute(own);
+                    }
+                    rangedDest=new Vec3d(FX-18,top(b,FX-18,FZ+24),FZ+24);supportDest=new Vec3d(FX-18,top(b,FX-18,FZ+30),FZ+30);
+                    order(b,"ranged","retreat",FX-18,FZ+24);order(b,"support","retreat",FX-18,FZ+30);
+                    for(var u:b.units)if(u.squad==own&&!u.spec.group().equals("infantry")){u.mob.setTarget(null);u.lockedTarget=null;u.nextPath=0;}
+                    var rs=Morale.members(b,own,"ranged");var ss=Morale.members(b,own,"support");
+                    rangedStart=!rs.isEmpty()&&Tactics.arrived(b,rs.get(0),b.assignment(rs.get(0)));supportStart=!ss.isEmpty()&&Tactics.arrived(b,ss.get(0),b.assignment(ss.get(0)));
+                    rangedLeg=null;supportLeg=null;settleAt=-1;next(b,18);
+                }
+                case 18->{
+                    if(rangedLeg==null)rangedLeg=leg(b,"ranged",rangedDest);
+                    if(supportLeg==null)supportLeg=leg(b,"support",supportDest);
+                    if(rangedLeg==null||supportLeg==null){
+                        if(since(b)>1200){report("p1-retreat-arrive",false,arriveWhy+"; ranged and support on Retreat 10 blocks west: "+(rangedLeg==null?"ranged never arrived in 1200 ticks":rangedLeg.why())+"; "+(supportLeg==null?"support never arrived in 1200 ticks":supportLeg.why()));next(b,99);}
+                        return;
+                    }
+                    if(settleAt<0)settleAt=since(b);
+                    if(since(b)-settleAt<100)return;
+                    var rangedSettled=settled(b,"ranged",rangedDest);var supportSettled=settled(b,"support",supportDest);
+                    boolean legs=rangedLeg.ok()&&supportLeg.ok()&&rangedSettled.ok()&&supportSettled.ok()&&!rangedStart&&!supportStart;
+                    arriveOk&=legs;
+                    report("p1-retreat-arrive",arriveOk,arriveWhy+"; ranged and support on Retreat 10 blocks west (neither counted as arrived when ordered="+(!rangedStart&&!supportStart)+"): "+rangedLeg.why()+"; "+supportLeg.why()+"; 100 ticks on: "+rangedSettled.why()+"; "+supportSettled.why()+"="+legs);
+                    next(b,99);
+                }
+                case 99->{}
                 default->{}
             }
         }
@@ -391,7 +608,7 @@ public final class Phase1Checks implements ClientModInitializer {
         volatile int stage;volatile String wantShot;volatile boolean finished;
         volatile UUID player;long stageAt;int shotDelay;
         final Spec.TroopsRow knight=troop("knight");
-        GravesAndGlory.Squad own;GravesAndGlory.Capture point,anchor;
+        GravesAndGlory.Squad own;GravesAndGlory.Capture point;GravesAndGlory.Anchor anchor;
         Set<GravesAndGlory.Unit> known=new HashSet<>();GravesAndGlory.Unit trained,foe;long appeared;Vec3d spawnAt;
         double before,after;boolean shotAsked,control,heldOk;int probe;
         GravesAndGlory.Unit garrison;long captured=-1;
@@ -424,7 +641,7 @@ public final class Phase1Checks implements ClientModInitializer {
         boolean ideal(GravesAndGlory.Battle b){
             b.forwardReinforcement=true;point.owner=0;point.ownedSince=b.time-E.forwardHoldSeconds()*20L-1;point.contested=false;
             if(foe!=null){foe.mob.discard();b.units.remove(foe);foe=null;}
-            return b.reinforcementAnchors(0).contains(point);
+            return b.reinforcementAnchors(0).contains(GravesAndGlory.Anchor.of(point));
         }
         void drop(GravesAndGlory.Battle b){if(trained!=null){trained.mob.discard();b.units.remove(trained);trained=null;}}
         /** One frozen Dusk revenant at (x,z) in an ad hoc hold squad, the enemy of the enemy probes; ideal() removes it. */
@@ -477,11 +694,11 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 6->{ // after: forward reinforcement on, the point held 10 s: the new knight appears at the point
                     if(!arrived(b)){if(since(b)>100)fail(b,"p1-reinforce-walk","the bought knight never appeared (after)");break;}
                     if(!shotAsked){shotAsked=true;anchor=b.deploy(own,trained.slot).anchor();wantShot="reinforce-forward";
-                        System.out.println("[p1] reinforce after: appeared at "+spawnAt+", "+String.format("%.1f",flat(spawnAt,point.spec.x(),point.spec.z()))+" blocks from the point centre, anchor "+(anchor==null?"none":anchor.spec.name()));}
+                        System.out.println("[p1] reinforce after: appeared at "+spawnAt+", "+String.format("%.1f",flat(spawnAt,point.spec.x(),point.spec.z()))+" blocks from the point centre, anchor "+(anchor==null?"none":anchor.name()));}
                     long t=walked(b);
                     if(t>=0||b.time-appeared>=TIMEOUT){after=(t>=0?t:TIMEOUT)/20.0;
                         System.out.println("[p1] reinforce-walk before="+String.format("%.1f",before)+"s after="+String.format("%.1f",after)+"s");
-                        report("p1-reinforce-walk",t>=0&&anchor==point&&after<before&&after<=20,"walk to the formation point "+String.format("%.1f",before)+" s from the barracks, "+String.format("%.1f",after)+" s from "+(anchor==null?"no anchor":anchor.spec.name())+" (needs after < before and <= 20 s)");
+                        report("p1-reinforce-walk",t>=0&&GravesAndGlory.Anchor.of(point).equals(anchor)&&after<before&&after<=20,"walk to the formation point "+String.format("%.1f",before)+" s from the barracks, "+String.format("%.1f",after)+" s from "+(anchor==null?"no anchor":anchor.name())+" (needs after < before and <= 20 s)");
                         drop(b);next(b,7);}
                 }
                 case 7->{ // one disturbance per probe on an otherwise ideal point; the troop must deploy at the barracks
@@ -508,7 +725,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 8->{ // p1-forward-message: the deploy notice names the point, or the barracks
                     ideal(b);String at=anchor==null?"":b.deployNote(own,anchor),home=b.deployNote(own,null);
-                    report("p1-forward-message",anchor==point&&at.contains(point.spec.name())&&home.contains("barracks"),"anchored note \""+at+"\", barracks note \""+home+"\"");
+                    report("p1-forward-message",GravesAndGlory.Anchor.of(point).equals(anchor)&&at.contains(point.spec.name())&&home.contains("barracks"),"anchored note \""+at+"\", barracks note \""+home+"\"");
                     // p1-forward-held, nothing faked: a lone Dawn knight on a neutral point captures it through captureTick, which stamps ownedSince
                     point.owner=-1;point.challenger=-1;point.progress=0;point.contested=false;point.ownedSince=0;Arena.flag(b.world,point.spec,-1);
                     var holder=new GravesAndGlory.Squad(UUID.randomUUID(),0,new Vec3d(point.spec.x(),65,point.spec.z()));holder.order="hold";holder.yaw=-90;
@@ -516,20 +733,21 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 81->{
                     if(captured<0){
-                        if(point.owner==0){captured=b.time;heldOk=point.ownedSince==b.time&&!b.reinforcementAnchors(0).contains(point);}
+                        if(point.owner==0){captured=b.time;heldOk=point.ownedSince==b.time&&!b.reinforcementAnchors(0).contains(GravesAndGlory.Anchor.of(point));}
                         else if(since(b)>400){report("p1-forward-held",false,"the garrison never captured the point in 400 ticks");disband(b,garrison);next(b,82);}
                         break;
                     }
                     long held=b.time-captured,need=E.forwardHoldSeconds()*20L;
-                    if(held==need-1)heldOk&=!b.reinforcementAnchors(0).contains(point);
-                    if(held==need){boolean anchorNow=b.reinforcementAnchors(0).contains(point);
+                    if(held==need-1)heldOk&=!b.reinforcementAnchors(0).contains(GravesAndGlory.Anchor.of(point));
+                    if(held==need){boolean anchorNow=b.reinforcementAnchors(0).contains(GravesAndGlory.Anchor.of(point));
                         report("p1-forward-held",heldOk&&anchorNow,"captured at tick "+captured+" (ownedSince "+point.ownedSince+"); not an anchor for the first "+need+" ticks="+heldOk+", an anchor at "+held+" ticks held="+anchorNow);
                         disband(b,garrison);next(b,82);}
                 }
                 case 82->{
                     // the Task 2 review fix: a group made only of trained troops still gets a health ceiling
-                    support=Arrays.stream(Spec.TROOPS).filter(t->t.faction().equals(Spec.FACTIONS[0].id())&&t.group().equals("support")).findFirst().orElseThrow();
-                    for(var u:b.units)if(u.squad==own&&u.spec.group().equals("support"))u.mob.discard();b.units.removeIf(u->!u.mob.isAlive()||u.mob.isRemoved());
+                    support=troop("mage"); // the Gilded Order's support troop (Phase 2: troops belong to Houses, not sides)
+                    // Phase 1's Dawn line ended with two support troops in slots 18 and 19; the starter banner has none there, so those two slots are freed for the trained ones.
+                    for(var u:b.units)if(u.squad==own&&(u.spec.group().equals("support")||u.slot>=18))u.mob.discard();b.units.removeIf(u->!u.mob.isAlive()||u.mob.isRemoved());
                     own.fullHealth.remove("support");own.training.addLast(new GravesAndGlory.Training(support,b.time));next(b,9);
                 }
                 case 9->{if(supporters(b)==1){fullOne=fullHealth();own.training.addLast(new GravesAndGlory.Training(support,b.time));next(b,10);}else if(since(b)>100){fail(b,"p1-trained-fullhealth","the first support troop never appeared");}}
@@ -554,7 +772,7 @@ public final class Phase1Checks implements ClientModInitializer {
         boolean lobbyOk,commandOk,homeOk,buttonOk,tiersOk,refusedOk;String lobbyWhy="",homeWhy="",tiersWhy="";
         final Map<UUID,Vec3d> firstTarget=new HashMap<>();final Map<UUID,Long> decidedAt=new HashMap<>();
         GravesAndGlory.Squad hard;List<GravesAndGlory.Unit> foes=new ArrayList<>();
-        int hornsBefore;String farOrder="";boolean shieldFormation;double gap;
+        String farOrder="";boolean shieldFormation;double gap;
         GravesAndGlory.Unit hexer,aim;final Map<GravesAndGlory.Unit,Float> hpBefore=new HashMap<>();final Set<GravesAndGlory.Unit> bracedBefore=new HashSet<>();boolean frontalBlocked;String frontalWhy="";
 
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
@@ -571,14 +789,15 @@ public final class Phase1Checks implements ClientModInitializer {
             for(var memory:b.sightings.values())memory.clear();
             for(var p:b.points){p.owner=-1;p.contested=false;p.progress=0;p.challenger=-1;}
         }
-        /** A synthetic bot army (not in b.squads, so only the fixture decides for it): the lineup of the team's starting troops, frozen, in rows behind (cx,cz). */
+        /** A synthetic bot army (not in b.squads, so only the fixture decides for it): the team's Normal bot banner (Phase 2: gilded_normal for team 0, graveborn_normal for team 1), frozen, each unit at its banner position, in rows behind (cx,cz). */
         GravesAndGlory.Squad army(GravesAndGlory.Battle b,int team,String tier,double cx,double cz){
             var s=new GravesAndGlory.Squad(UUID.randomUUID(),team,new Vec3d(cx,top(b,cx,cz),cz));
-            s.bot=true;s.tier=tier;s.lane=1;s.order="hold";s.yaw=team==0?-90:90;int slot=0;
-            for(var spec:Spec.TROOPS)if(spec.faction().equals(Spec.FACTIONS[team].id())&&spec.count()>0)
-                for(int n=0;n<spec.count();n++,slot++)freeze(b.spawn(s,spec,slot,new Vec3d(cx,top(b,cx,cz),cz)));
+            s.bot=true;s.tier=tier;s.lane=1;s.order="hold";s.yaw=team==0?-90:90;s.banner=Campaign.bannerRow(team==0?"gilded_normal":"graveborn_normal");
+            for(int slot=0;slot<s.banner.size();slot++){var spec=Campaign.troop(s.banner.get(slot));if(spec!=null)freeze(b.spawn(s,spec,slot,new Vec3d(cx,top(b,cx,cz),cz)));}
             place(b,s,cx,cz);return s;
         }
+        /** Shield troops (abilities mechanic shield: the Order Squire and the Templar of gilded_normal) of a squad, alive. */
+        static List<GravesAndGlory.Unit> shields(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return b.units.stream().filter(u->u.squad==s&&u.tags.contains("shield")&&u.mob.isAlive()).toList();}
         /** Stands the army's rows behind the front rank at (cx,cz), facing the enemy. */
         void place(GravesAndGlory.Battle b,GravesAndGlory.Squad s,double cx,double cz){
             int back=s.team==0?-1:1;
@@ -711,15 +930,15 @@ public final class Phase1Checks implements ClientModInitializer {
                 }}
                 case 12->{
                     if(since(b)>=40&&!shotAsked){shotAsked=true;
-                        long up=b.units.stream().filter(u->u.squad==hard&&u.spec.id().equals("knight")&&u.mob.isUsingItem()).count(),knights=b.units.stream().filter(u->u.squad==hard&&u.spec.id().equals("knight")&&u.mob.isAlive()).count();
+                        long up=shields(b,hard).stream().filter(u->u.mob.isUsingItem()).count(),knights=shields(b,hard).size();
                         Vec3d at=centre(b,hard);
-                        report("p1-bots-shieldwall",shieldFormation&&up>=6,"Hard infantry formation shieldwall (Normal left it alone)="+shieldFormation+"; "+up+" of "+knights+" knights using their shield "+since(b)+" ticks later; six Dusk archers "+String.format("%.0f",gap)+" blocks in front of the front rank when ordered ("+String.format("%.0f",Math.abs(foes.get(0).mob.getX()-at.x))+" from the army centre now), no Dusk melee");
+                        report("p1-bots-shieldwall",shieldFormation&&up>=6,"Hard infantry formation shieldwall (Normal left it alone)="+shieldFormation+"; "+up+" of "+knights+" shield troops using their shield "+since(b)+" ticks later; six Dusk archers "+String.format("%.0f",gap)+" blocks in front of the front rank when ordered ("+String.format("%.0f",Math.abs(foes.get(0).mob.getX()-at.x))+" from the army centre now), no Dusk melee");
                         wantShot="bots-shieldwall";
                     }
                     if(shotAsked&&wantShot==null)next(b,13); // the archers stay, so the wall keeps bracing for p1-bots-blight
                 }
                 case 13->{ // p1-bots-blight: a frontal blow on a knight braced in shieldwall is blocked; a Gravecaller burst on the same wall is not
-                    var knights=b.units.stream().filter(u->u.squad==hard&&u.spec.id().equals("knight")&&u.mob.isAlive()).toList();
+                    var knights=shields(b,hard);
                     if(hexer==null){
                         var braced=knights.stream().filter(u->u.mob.isBlocking()).toList();
                         if(braced.size()<2){report("p1-bots-blight",false,"only "+braced.size()+" knights braced");for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,14);return;}
@@ -744,16 +963,18 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 14->{ // p1-bots-charge-timing: eight frozen Dusk revenants 60 blocks away, then 15 blocks away
                     clear(b);hard=army(b,0,"hard",-100,0);foes.clear();Vec3d at=centre(b,hard);
                     spawnFoes(b,"revenant",8,at.x+60,at.z);int seenFar=see(b);
-                    b.campaign.botDecide(hard,b.campaign.tier(hard));farOrder=hard.order;hornsBefore=BattleEffects.horns.getOrDefault("charge",0);int hornsFar=hornsBefore;
+                    hard.chargedAt.clear();int heardBefore=BattleEffects.heard.size();
+                    b.campaign.botDecide(hard,b.campaign.tier(hard));farOrder=hard.order;Long chargeFar=hard.chargedAt.get("infantry");
                     spawnFoes(b,"revenant",8,at.x+28,at.z);int seenMid=see(b); // seen, and the army outnumbers them, but they are outside the 18-block gate
-                    b.campaign.botDecide(hard,b.campaign.tier(hard));String midOrder=hard.order;int hornsMid=BattleEffects.horns.getOrDefault("charge",0);
+                    b.campaign.botDecide(hard,b.campaign.tier(hard));String midOrder=hard.order;Long chargeMid=hard.chargedAt.get("infantry");
                     spawnFoes(b,"revenant",8,at.x+15,at.z);int seenNear=see(b);
-                    b.campaign.botDecide(hard,b.campaign.tier(hard));int hornsNear=BattleEffects.horns.getOrDefault("charge",0);
-                    report("p1-bots-charge-timing",farOrder.equals("attack")&&midOrder.equals("attack")&&seenMid==8&&hornsMid==hornsFar&&hard.order.equals("charge")&&seenNear==8&&hornsNear>hornsMid,"Hard army with eight Dusk revenants 60 blocks off ("+seenFar+" remembered): order "+farOrder+"; 28 blocks off ("+seenMid+" remembered, outside the 18-block gate): order "+midOrder+"; 15 blocks off ("+seenNear+" remembered): order "+hard.order+"; charge horns "+hornsFar+" -> "+hornsMid+" -> "+hornsNear);
+                    b.campaign.botDecide(hard,b.campaign.tier(hard));Long chargeNear=hard.chargedAt.get("infantry");
+                    boolean silent=BattleEffects.heard.size()==heardBefore; // true by construction: Battle.markCharge never calls BattleEffects.feedback, and Campaign.botDecide calls only markCharge; the grep of botDecide is the proof that a bot's charge plays nothing
+                    report("p1-bots-charge-timing",farOrder.equals("attack")&&midOrder.equals("attack")&&seenMid==8&&chargeFar==null&&chargeMid==null&&hard.order.equals("charge")&&seenNear==8&&chargeNear!=null&&chargeNear==b.time&&silent,"Hard army with eight Dusk revenants 60 blocks off ("+seenFar+" remembered): order "+farOrder+"; 28 blocks off ("+seenMid+" remembered, outside the 18-block gate): order "+midOrder+"; 15 blocks off ("+seenNear+" remembered): order "+hard.order+"; the charge stamped (Squad.chargedAt) "+chargeFar+" -> "+chargeMid+" -> "+(chargeNear==null?"null":"now")+"; feedback sounds "+heardBefore+" -> "+BattleEffects.heard.size()+" (want none: true by construction, see the comment)="+silent);
                     for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();
-                    for(var u:b.units)if(u.squad==hard&&u.slot>=3)u.mob.discard(); // three left of twenty: the army retreats
-                    hard.yaw=0;b.campaign.botDecide(hard,b.campaign.tier(hard));
-                    report("p1-bots-retreat-facing",hard.order.equals("retreat")&&hard.yaw==-90,"Hard army cut down to three: order "+hard.order+", facing "+hard.yaw+" (Dawn faces -90 after every decision, retreat included)");
+                    for(var u:b.units)if(u.squad==hard&&u.slot>=3)u.mob.discard(); // its first three banner slots left (two troops of nineteen): the army retreats
+                    hard.yaw=0;b.campaign.botDecide(hard,b.campaign.tier(hard));long left=b.units.stream().filter(u->u.squad==hard&&u.mob.isAlive()).count();
+                    report("p1-bots-retreat-facing",hard.order.equals("retreat")&&hard.yaw==-90,"Hard army cut down to "+left+" of "+RosterMath.units(hard.banner,RosterMath.Catalog.fromSpec())+": order "+hard.order+", facing "+hard.yaw+" (Dawn faces -90 after every decision, retreat included)");
                     next(b,99);
                 }
                 default->{}
@@ -766,7 +987,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  on a replay; a victory marks the battle cleared and turns its primary camp button into a normal one; a pad match never teaches.
      *  Commands run on the server tick; the client records the lessons it shows, reads the camp buttons and takes the screenshots. */
     static final class TutorialChecks implements Suite,ServerWatch {
-        static final int ROLL=Spec.CAMPAIGN[0].rollCost(),START_TICKS=900;
+        static final int ROLL=Spec.RECRUITMENT[0].rollCost(),START_TICKS=900; // the barracks lesson pays one recruitment roll
         /** One run of the four lessons: the server lesson after each command and the profile gold around the barracks lesson (server thread), the lessons the client showed (client thread). */
         static final class Run {
             final List<Integer> steps=Collections.synchronizedList(new ArrayList<>());volatile int goldBefore=-1,goldAfter=-1;volatile String commands="";volatile boolean over;
@@ -785,7 +1006,7 @@ public final class Phase1Checks implements ClientModInitializer {
         long since(GravesAndGlory.Battle b){return b.time-stageAt;}
         ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
         int gold(GravesAndGlory.Battle b){return b.campaign.profile(player).gold;}
-        void fresh(GravesAndGlory.Battle b){b.campaign.profiles.put(player,new Campaign.Profile());b.campaign.save(player);}
+        void fresh(GravesAndGlory.Battle b){b.campaign.profiles.put(player,new Profile());b.campaign.save(player);}
         /** The command of lesson n, as the keys send it: R then Move (a tactical move), B (a tactical formation), G (a tactical attack on open ground ahead), the barracks lectern. Dawn faces +x. */
         void lesson(GravesAndGlory.Battle b,Run r,int n){
             var p=sp(b);Vec3d at=p.getPos();
@@ -970,7 +1191,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 while(st.matchGrants.size()<256)st.matchGrants.add(UUID.randomUUID().toString());
                 for(int i=0;i<3;i++)st.claims.add("daily:"+i);st.claims.add("weekly");for(int t=1;t<=Progression.TIERS;t++)st.claims.add(Progression.SEASON+":"+t);st.titles.addAll(Arrays.asList(Progression.TITLES));
                 var four=crowded(realReport);c.results.put(player,four);String worst=c.snapshot(p);
-                var saved=Campaign.JSON.fromJson(Campaign.JSON.toJson(c.profile(player)),Campaign.Profile.class).progression;var again=Progression.match(saved,st.matchGrants.iterator().next(),true,true);
+                var saved=Campaign.JSON.fromJson(Campaign.JSON.toJson(c.profile(player)),Profile.class).progression;var again=Progression.match(saved,st.matchGrants.iterator().next(),true,true);
                 String key=Progression.State.MATCH_GRANTS;boolean named=Campaign.JSON.toJsonTree(st).getAsJsonObject().has(key);
                 boolean pretty=worst.contains("\n"),ids=worst.contains(key)||st.matchGrants.stream().anyMatch(worst::contains),kept=parse(worst).getAsJsonObject("result").has("id");
                 report("p1-report-snapshot",worst.length()<=Campaign.SNAPSHOT_LIMIT&&pretty&&kept&&named&&!ids&&saved.matchGrants.size()==256&&again.xp()==0,

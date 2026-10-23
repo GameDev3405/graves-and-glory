@@ -1,0 +1,12 @@
+{
+"part":"cape",
+"note":"The Templar Commander's white mantle (stage 3, the houses spec 2.7 extra): laid over both shoulders and the tops of the arms, open over the chest so the tabard's cross shows, and down the back behind the tabard to the waist; below the waist it goes on as cape_skirt, one half on each leg. Block 46x20.",
+"bone":"body",
+"team":false,
+"tag":"",
+"boxes":[
+{"origin":[-5,-12,2.6],"size":[10,12,1],"uv":[0,0],"note":"the mantle down the back, behind the tabard"},
+{"origin":[-9,-12.5,-3],"size":[6,4,6],"uv":[22,0],"note":"over the right shoulder and the top of the arm"},
+{"origin":[3,-12.5,-3],"size":[6,4,6],"uv":[22,10],"note":"over the left shoulder and the top of the arm"}
+]
+}

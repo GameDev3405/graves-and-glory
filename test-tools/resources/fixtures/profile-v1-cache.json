@@ -1,0 +1,93 @@
+{
+  "progression": {
+    "schema": 1,
+    "xp": 777,
+    "totalBattles": 9,
+    "totalWins": 5,
+    "weeklyBattles": 3,
+    "day": "2026-10-16",
+    "week": "2026-10-12",
+    "title": "Recruit",
+    "rerolled": false,
+    "dailyBattles": 0,
+    "dailyCaptures": 0,
+    "dailyOrders": 0,
+    "claims": [],
+    "titles": [
+      "Recruit"
+    ],
+    "matchGrants": []
+  },
+  "gold": 900,
+  "matches": 12,
+  "wins": 7,
+  "commander": "marksman",
+  "tutorialDone": true,
+  "campaignCleared": 1,
+  "unlocked": [
+    "knight",
+    "archer",
+    "mage",
+    "revenant",
+    "bonebow",
+    "hexer",
+    "sentinel",
+    "oracle"
+  ],
+  "army": {
+    "knight": 12,
+    "archer": 6,
+    "mage": 2,
+    "revenant": 12,
+    "bonebow": 6,
+    "hexer": 2,
+    "sentinel": 2,
+    "oracle": 2
+  },
+  "deployment": {
+    "dawn": [
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "knight",
+      "archer",
+      "archer",
+      "archer",
+      "archer",
+      "archer",
+      "archer",
+      "sentinel",
+      "sentinel"
+    ],
+    "dusk": [
+      "revenant",
+      "revenant",
+      "revenant",
+      "revenant",
+      "revenant",
+      "revenant",
+      "revenant",
+      "revenant",
+      "revenant",
+      "revenant",
+      "revenant",
+      "revenant",
+      "bonebow",
+      "bonebow",
+      "bonebow",
+      "bonebow",
+      "bonebow",
+      "bonebow",
+      "hexer",
+      "hexer"
+    ]
+  }
+}

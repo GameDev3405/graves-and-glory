@@ -1,0 +1,45 @@
+{
+"weapon": "order_bow",
+"thickness": 2,
+"grip": {
+"pixel": [
+5,
+11
+],
+"offset": [
+0,
+0,
+0
+],
+"rotation": [
+0,
+0,
+0
+],
+"note": "the grip pixel is the left column of the 2 px wound grip, through the middle of the fist; the belly stands one pixel in front of it"
+},
+"pull": [
+0.15,
+0.32,
+0.48
+],
+"nocks": [
+[
+3.5,
+11.5
+],
+[
+2.5,
+11.5
+],
+[
+1.5,
+11.5
+],
+[
+0.5,
+11.5
+]
+],
+"note": "The Order Archer's bow, 23 px: a short recurve in dark wood, gilt tips and collars, the grip wound in linen; the string to the left (back, toward the archer), drawn to the right hand's place 4 px behind the grip at the full draw."
+}

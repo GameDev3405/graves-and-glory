@@ -1,0 +1,45 @@
+{
+"weapon": "longbow",
+"thickness": 2,
+"grip": {
+"pixel": [
+5,
+24
+],
+"offset": [
+0,
+0,
+0
+],
+"rotation": [
+0,
+0,
+0
+],
+"note": "the grip pixel is the left column of the 2 px leather grip, through the middle of the fist; the top is 24 px above it, the foot 13 below, as the box longbow stood"
+},
+"pull": [
+0.15,
+0.32,
+0.48
+],
+"nocks": [
+[
+3.5,
+24.5
+],
+[
+2.5,
+24.5
+],
+[
+1.5,
+24.5
+],
+[
+0.5,
+24.5
+]
+],
+"note": "The Order Longbow's yew longbow, 38 px: a shallow D, horn nocks, a leather grip; the string to the left, drawn to the right hand's place at the full draw."
+}

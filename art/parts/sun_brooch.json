@@ -1,0 +1,10 @@
+{
+"part":"sun_brooch",
+"note":"The Sunweaver's gilt sunburst brooch. Block 8x4.",
+"bone":"body",
+"team":false,
+"tag":"",
+"boxes":[
+{"origin":[-1.5,-10.2,-3.6],"size":[3,3,1],"uv":[0,0],"note":"the sunburst brooch on the breast under the beard, over the vestment"}
+]
+}

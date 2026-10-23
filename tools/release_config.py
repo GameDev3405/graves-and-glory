@@ -37,7 +37,7 @@ def validate_player_jar(path, expected):
             raise RuntimeError('JAR was built from different source; rebuild before packaging')
         forbidden = ('MeltyTest', 'CampaignChecks', 'CampaignDevControl', 'MapRouteChecks',
                      'VisualChecks', 'RevisionChecks', 'LocalProbe', 'LegacyDataMigrationCheck',
-                     'CompatibilityChecks', 'CompatibilityPolicyCheck', 'FrontMenuChecks', 'AdmissionPolicyCheck', 'CampRulesCheck', 'CampRedesignChecks', 'CampNetworkChecks', 'MapTour', 'Phase1Checks', 'BattleMathCheck', 'BotSimulation', 'TitleDemo',
+                     'CompatibilityChecks', 'CompatibilityPolicyCheck', 'FrontMenuChecks', 'AdmissionPolicyCheck', 'CampRulesCheck', 'CampRedesignChecks', 'CampNetworkChecks', 'MapTour', 'Phase1Checks', 'BattleMathCheck', 'BotSimulation', 'Phase2Checks', 'HousesCheck', 'ProfileMigrationCheck', 'TitleDemo',
                      'gg/gravesandglory/testing/', 'META-INF/services/gg.gravesandglory.Diagnostics$Probe')
         for name in jar.namelist():
             if any(token in name for token in forbidden):

@@ -24,7 +24,7 @@ Camp guide: set **Bots** to Normal. At the War Gates stand alone on the **DAWN**
 
 | You should see | Yes | No |
 |---|:-:|:-:|
-| A line of yours held to the last stand without breaking (its card reading LAST STAND), and you pulled a group out with Retreat. | [ ] | [ ] |
+| A line of yours held to its last stand without breaking: cut to a quarter of its strength with the enemy on it, its group card reads LAST STAND and the troops keep their order and their fight; no horn sounds in the field. Then you pulling a group out with Retreat: you alone hear the retreat cue, the group turns away and fights nothing on the way, and once it arrives it stands as on Hold. | [ ] | [ ] |
 | Bots that lose troops buying replacements with their gold and sending them back in. | [ ] | [ ] |
 | The match readable from the HUD without colour: each point with its holder in words (A: Dawn, B: Contested) and the score as DAWN 120 / 300. The sun and moon glyphs come with the UI plan, not in this build. | [ ] | [ ] |
 
@@ -35,7 +35,7 @@ Set **Bots** to Hard. Stand alone on the **DUSK** pad this time, so the enemy Ha
 | You should see | Yes | No |
 |---|:-:|:-:|
 | Dawn's Hard knights raising a shieldwall when three or more of your Bone Rangers are within 30 blocks of their army and none of your revenants is within 8. | [ ] | [ ] |
-| Hard charges starting close, within about 18 blocks, as a group breaking into a run with no horn, not from across the map. | [ ] | [ ] |
+| Hard charges starting close, within about 18 blocks, breaking into a run, not from across the map (no horn sounds in the field). | [ ] | [ ] |
 | The report naming an MVP (a crest and "MVP" on the best row). | [ ] | [ ] |
 
 ## Your verdict (write freely)

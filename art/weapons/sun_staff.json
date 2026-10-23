@@ -1,0 +1,22 @@
+{
+"weapon": "sun_staff",
+"thickness": 2,
+"grip": {
+"pixel": [
+4,
+29
+],
+"offset": [
+0,
+0,
+-2.5
+],
+"rotation": [
+0,
+0,
+0
+],
+"note": "the grip pixel is on the shaft, through the fist; the disc stands 25 px above it"
+},
+"note": "The Sunweaver's staff: a pale ash shaft with gilt bands, a gilt collar and a 5x5 sun disc with gilt rays in its own plane (the mark), the disc's heart lit; 2 px thick."
+}

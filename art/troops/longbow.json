@@ -1,0 +1,20 @@
+{
+"troop":"longbow",
+"note":"Order Longbow > Yeoman Longbow > Master Longbow (unit identity 1): husk, biped, narrow; the peaked felt cap, a weathered bearded face, the gambeson, the team jerkin, the gilt sash with the tall quiver at the hip, the pennant; stage 3 long white feather. The yew longbow rising past the head, in the left hand, drawn with the right.",
+"rig":"biped",
+"size":[128,64],
+"bones":{"body":{"scale":[0.9,1,0.9]},"right_leg":{"scale":[1,1.05,1]},"left_leg":{"scale":[1,1.05,1]}},
+"idleArms":"hang",
+"parts":[
+{"part":"felt_cap","uv":[64,0]},
+{"part":"tall_quiver","uv":[64,12]},
+{"part":"gilt_sash","uv":[92,12]},
+{"part":"jerkin"},
+{"part":"pennant","scale":[1.111111,1.0,1.111111]},
+{"part":"long_feather","uv":[64,26],"stages":[3]}
+],
+"skins":{"1":"longbow_s1.png","2":"longbow_s2.png","3":"longbow_s3.png"},
+"weapon":"longbow",
+"hand":"left",
+"portrait":"tall 2"
+}
