@@ -14,5 +14,5 @@
   ],
   "note": "the grip's centre is the model origin (the fist box covers y -2..+2); the model is y up with its big faces across z, and the converter turns it by a half turn about x into the weapon frame; the sword is turned flat to the side and tilted 45 degrees forward, as the sprite sword was"
  },
- "note": "The Templar's longsword, tier I (plain): a slender iron blade (12 px and a 2.7 px point) weathered along its edge, an iron bar 8 px wide whose arms drop 16 degrees into flat terminals, a seat block, a long leather grip with an iron ferrule and a 2.6 px iron ring pommel; no gilt; 24.1 px long."
+ "note": "The Templar's longsword, tier I (plain): a slim dark-iron blade (9.6 px and a 3.7 px point) with a few edge chips, a short iron bar whose arms drop 14 degrees into flat terminals, a seat block, a long leather grip with an iron ferrule and a 2.6 px iron ring pommel; no gilt; 22.7 px long."
 }
