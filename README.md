@@ -1,6 +1,6 @@
 
 
-# Graves and Glory 0.4.0
+# Graves and Glory 0.5.0 (Houses candidate)
 
 This is a local release candidate. Isolated game checks do not constitute a
 production launcher installation or an eight-human Internet multiplayer playtest.
@@ -8,7 +8,10 @@ Public Internet matchmaking and the home-hosted official service remain planned
 work. This candidate reworks the solo game: shots that fly before they land,
 lines that rout and rally, recruits deploying from held points, Easy, Normal and
 Hard bots, a guided first campaign battle and a report after every match (see
-"0.4.0 solo rework candidate" below). Nothing in this update has been published
+"0.4.0 solo rework candidate" below). Version 0.5.0 adds five Houses (thirty troops), schema 2 collections that migrate
+from older camps, six commander classes and the recruit and troop card pages; it
+has no levels or gear yet and is a local candidate for Kort's playtest only
+(docs/PHASE-2-PLAYTEST.md). Nothing in this update has been published
 automatically.
 
 Clients must match the server's game version and build identity. A missing or

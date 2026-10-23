@@ -31,6 +31,19 @@ The gate prints `gate <a> vs <b> win=<P>% pass|fail` (exit status 0 pass, 1 fail
 
 ## Results
 
+### Phase 2 Task 13 gates: mixed banners against their pure Houses (2026-10-23; `mix_gilded_graveborn_normal` vs `gilded_normal` 5%, `mix_ironclad_tidecallers_normal` vs `tidecallers_normal` 90%; log only, both outside the band)
+
+Log-only by the plan (no gate, nothing tuned, nothing changed in the sheets). Code: `phase-2-houses` at `efff4cc` (Task 12 fix round 1 plus its N1/N2 fix) in the detached worktree `bannerbound-gate13`, built with `gradle localTestToolsJar --offline`; the Task 13 commits after it change no game rule (a card-layout probe, a test suite, a preflight rule). Recipe as the Task 9 gate (`work/p2/t8b/{gate.sh,sim.sh,fightstats.py}` with the paths changed): per pairing two bot-simulation servers at once, 10 matches each, `-PsimDawn=normal -PsimDusk=normal -PsimMaps=0,1,2,3,4 -PsimRoundSeconds=300`, seats swapped. Raw logs in `work/p2/t13/gates/`. The two pairings ran one after the other (07:45 to 08:41 and 09:00 to 09:56); every round ran its full 300 s and none aborted.
+
+```
+gate mix_gilded_graveborn_normal vs gilded_normal win=5% fail   (rounds=20 decided=20 won=1 lost=19 drawn=0)
+gate mix_ironclad_tidecallers_normal vs tidecallers_normal win=90% fail   (rounds=20 decided=20 won=18 lost=2 drawn=0)
+```
+
+- `mix_gilded_graveborn_normal` (seat-pooled, 20 matches): won 1 (on Dawn, map 1), lost 19; kills 57.2, lost 59.5; groups wiped 2.80 own and 2.35 enemy; 6.05 fights of 37.2 s. The fights are level, the points are not: `gilded_normal` takes the match on points. Both seats lose (Dawn 1 of 10, Dusk 0 of 10). Reading: mixing two Houses halves each House's trait slots, so neither trait reaches its tier the way a pure banner's does, and the Gilded Bulwark and shieldwall edge goes to the pure banner.
+- `mix_ironclad_tidecallers_normal`: won 18, lost 2 (Dawn 9 of 10, Dusk 9 of 10); kills 81.2, lost 52.5; groups wiped 2.40 own and 4.10 enemy; 7.55 fights of 31.4 s. The Ironclad half carries the mix: it beats pure Tidecallers about as `ironclad_normal` does (Task 9: 0 won of 20 for Tidecallers). This says Tidecallers are weak (structural, see the Task 9 gate and the round robin), not that mixing is strong.
+- Both are far outside 40 to 60. Neither is a defect to fix in Task 13 (report-only by ruling); they go to the end balance pass with the Tidecallers and Wildmoot items, and they are flagged in `docs/PHASE-2-PLAYTEST.md`.
+
 ### Phase 2 Task 10 gates: Wildmoot (2026-10-23; `wildmoot_normal` vs `ironclad_normal` 10%, vs `gilded_normal` 0%; both report-only, both outside the band)
 
 Code: `phase-2-houses` at `dc62e65` (Task 10 fix round 1: the Moot Hound takes a troop's blow in full, Bloodrush lifesteal and refunds by the commander's hand only, the trample once per fresh Charge), on the no-routing game of Task 8b at the design's own numbers. By the controller's ruling both gates are report-only: no sheet number was changed and tuning is deferred to the end balance pass, which takes Wildmoot as a structural item next to Tidecallers (check first whether the bots use the hound and pack mechanics at all).

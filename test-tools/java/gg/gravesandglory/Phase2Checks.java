@@ -3079,14 +3079,14 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean cd=u1.abilityAt==t0+200;
                     tideOk=sheet&&idle&&hit&&pulled&&slowed&&untouched&&cd;
                     tideWhy="the Admiral's row "+row.id()+" ("+row.mechanic()+" on a "+row.trigger()+", cooldown "+row.cooldownTicks()+", radius "+row.radius()+", amount "+row.amount()+", "+row.statusTicks()+" ticks of Slowness level "+(row.statusLevel()+1)+", knockback "+row.knockback()+")="+sheet+"; with only a knight 8.5 off it did nothing and spent no cooldown="+idle+"; with a knight 3.0 off and one 6.2 off the timer fired: they took "+show(h0)+" and "+show(h1)+" (base "+(h0==null?"-":fmt(h0.base()))+", want "+fmt(4*b.campaign.damage(u1))+")="+hit+", stand "+fmt(g0)+" and "+fmt(g1)+" off her now (want 1.5, the nearest a pull goes, and 3.2)="+pulled+", with "+slowText(us[0].mob)+" and "+slowText(us[1].mob)+" (want Slowness 2 for 60)="+slowed+"; the ally 4 off and the knight 8.5 off took no hit and did not move="+untouched+"; the next cast is at +"+(u1.abilityAt-t0)+" (want 200)="+cd;
-                    next(b,19);
+                    mark=Combat.LAST.peekLast();next(b,19);
                 }
-                case 19->{ // inside the cooldown nothing happens; once it is up it fires again
-                    boolean due=b.time>=u1.abilityAt;
-                    mark=Combat.LAST.peekLast();Abilities.tick(b,u1,null,b.time);
+                case 19->{ // inside the cooldown nothing happens; once it is up it fires again. The unit's own 10-tick beat (Tactics.tick) may cast it first on the very tick it is due, so the cast is read from the timer, not from this call (Task 13: the order-dependent stall after the Ironclad suite)
+                    if(u1.abilityAt==t0+200)Abilities.tick(b,u1,null,b.time);
+                    boolean fired=u1.abilityAt!=t0+200;
                     var again=Gilded.hitOn(us[0].mob,mark);
-                    if(!due){tideOk&=again==null&&u1.abilityAt==t0+200;return;}
-                    boolean second=again!=null&&u1.abilityAt==b.time+200&&slowAt(us[0].mob,1)==60;
+                    if(!fired){tideOk&=again==null;mark=Combat.LAST.peekLast();return;}
+                    boolean second=again!=null&&u1.abilityAt==t0+400&&b.time>=t0+200&&slowAt(us[0].mob,1)==60;
                     report("p2-undertow",tideOk&&second,tideWhy+"; at +"+(b.time-t0)+" (the cooldown up) it fired again (a hit on the knight "+show(again)+", the next cast at +"+(u1.abilityAt-b.time)+" and every tick before that did nothing)="+second);
                     clearFixture(b,"undertow");
                     // p2-pull-wall (Task 9 review, minor 4): a pull into a wall stops at the wall. The Admiral again, a fresh knight 4.5 off and a stone wall 3 off between them (two blocks high): the undertow's 3-block pull leaves the knight against the wall, not in it

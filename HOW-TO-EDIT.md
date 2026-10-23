@@ -6,7 +6,7 @@ Guide for people and AI helpers changing this project. Project root: `C:\Users\k
 
 - A release is a plain zip, a Modrinth `.mrpack` and a server kit (section 6). Publishing, uploading or submitting any of them anywhere (Modrinth, CurseForge, GitHub, a launcher or marketplace) needs Kort's go.
 - Do not hand-edit `src/main/java/gg/gravesandglory/Spec.java`. It is generated from `sheets/design.json` on every build. Change the sheet, then rebuild.
-- Do not launch the game, send mouse or keyboard input, or close game processes you did not start. Kort may be playing; check first.
+- Harness clients may be launched (Kort lifted the no-Minecraft rule on 2026-10-23), under the client rules in `docs/HANDOFF.md`: at most four at once across all worktrees, one per agent, 30 minutes each, never compile while your own client runs, and if a java process runs with a `--gameDir` outside `C:\Users\kortt\Melty\*\work\`, Kort is playing: wait. Never send input to, or close, a process you did not start.
 - Do not run `tools/prepare_preview_checks.py` or `tools/revise_command_design.py` for a release. They rewrite `design.json` and, for the first one, harness sources under `src`.
 - The player jar must contain no test harness. The harness lives only in `test-tools/`.
 
@@ -36,23 +36,25 @@ Guide for people and AI helpers changing this project. Project root: `C:\Users\k
 
 ## 3. Source files
 
-- `GravesAndGlory.java`: server entry point and battle logic. Commands, troop orders and formations on the server, barracks, respawn, packet sending, stale-soldier cleanup. It also calls the optional diagnostics hooks.
-- `GravesAndGloryClient.java`: client entry point. Registers the armory resource pack (`DEFAULT_ENABLED`), the husk renderer override for dawn troops, the battle state receiver, HUD drawing (`renderHud`), the tactical map and command preview.
-- `Spec.java`: GENERATED. One record and one static table per sheet. Read it, do not write it.
-- `Campaign.java`: match flow for a player's campaign. Rolls, rewards, bot logic each tick, class numbers (the numbers that class bonuses use are in code, not read from the text).
-- `CampaignClient.java`: client side of the campaign. Collection file location and per-frame sampling.
-- `CampaignLobbyScreen.java`: the physical lobby UI: collection, rolls, army and class selection, enter-battle.
-- `CampaignMaps.java`: the five battlefields and their objectives.
-- `Arena.java`: builds the battlefield, structures and bridges, sets time of day per map.
-- `Tactics.java`: unit abilities (shield, mend, blight), class-specific behaviour, orders.
-- `CommandMode.java`: battlefield command mode: targeting, facing and the formation preview math. It duplicates the server's formation math, so change both together.
-- `BattleEffects.java`: sound and particle cues in battle.
-- `RecruitmentScreen.java`: the recruitment and troop ability text.
-- `ArmyCards.java`: army card display.
-- `DarkUi.java`: shared UI drawing helpers and colours.
-- `Presentation.java`: resource pack and texture choices. Also sets the pack priority (armory last, so it wins).
-- `PresentationScreen.java`: the graphics and effects settings screen.
-- `Diagnostics.java`: an optional hook. It loads a `Probe` through `ServiceLoader`. The player jar has no provider, so it does nothing in play.
+The game is `src/main/java/gg/gravesandglory/`. A number a rule needs is read from `Spec` (the generated tables) or passed in by the caller; the classes below name the sheets they read.
+
+**Match and server**
+- `GravesAndGlory.java`: server entry point and battle logic: commands, troop orders and formations, barracks, respawn, packets, stale-soldier cleanup, `Battle.spawn` (a troop is a plain vanilla mob named by its troop and stage).
+- `Campaign.java`: a player's camp and match flow: profiles (`profile(UUID)` upgrades a schema 1 file in place), rolls, chosen buys, stars and shards, Pacts, rewards, the first-visit cache import, bot logic each tick. `CampaignMaps.java` and `Arena.java`: the five battlefields; `CampWorld.java`: the camp courtyard; `MapDressing.java`: dressing.
+- `Combat.java`: all troop damage. One factor from the counters rows, the House traits, the auras and the commander effects, clamped to the `combatDiscipline` range. `CounterMath.java` is the pure half (the standalone `HousesCheck` compiles it).
+- `Abilities.java` and `HouseAttacks.java`: troop abilities and each House's own attack, read from the `abilities` sheet by mechanic id. `Houses.java`: trait tiers in battle, the mechanics of the five Houses. `Morale.java`: group standing (nothing routs; the LAST STAND). `Projectiles.java`, `Tactics.java`, `CommandMode.java`, `BattleEffects.java`, `PackControls.java`: shots, orders, the command UI and cues.
+- `Commander.java`: the six commander classes. The code knows only effect kinds, named by the `classes` sheet's `passive` and `active` columns; **no class number is hard-coded**: cooldowns, durations, radii, ranges and every value come from the class row, and its `activeText` and `passiveText` are display only.
+
+**Data and profile (pure, no Minecraft types, compiled by the standalone checks)**
+- `Profile.java`: a commander's saved collection, schema 2 (banner, owned troops with stars, stage and mastery, shards, Renown, Epic pity). `ProfileMigration.java`: the one-time v1 upgrade (parse and write functions are passed in). `RosterMath.java`: banners, trait tiers, rolls and pity, stars, the progression cap. `MatchStats.java`, `BattleMath.java`, `Progression.java`, `SocialHub.java`.
+- `Spec.java`: GENERATED, never hand-edited.
+
+**Camp screens**
+- `CampScreen.java`: the camp pages. `RecruitPages.java`: the recruit cards' actions, the roll result card and the troop page. `CampaignClient.java`: the client's copy of the snapshot and the roll reveal. `ArmyCards.java`, `DarkUi.java`, `RecruitmentScreen.java`, `CampaignLobbyScreen.java`, `PresentationScreen.java`, `FrontMenuScreen.java`.
+
+**Troop models (client)**
+- `TroopModelLoader.java` loads `models/troop/` on every resource reload into `TroopModels.java`; `TroopModel.java` shows and hides a troop's parts by stage, fold and helm; `TroopRenderer.java` and `TroopRenderers.java` draw it (never vanilla armour, held items or the elytra); `TroopFeatures.java` draws its layers (outer, veteran trim, team cloth, glow, weapon, shield); `TroopMesh.java` and `TroopDepth.java` do the relief; `TroopAnimator.java` poses a troop from `TroopClips.java` (`BipedClips`, `ColossusClips`, `HoundClips`, `SpiderClips`: 18 clips a rig) with `TroopTells.java` and the House attack clips.
+- `Diagnostics.java`: an optional hook loaded through `ServiceLoader`; the player jar has no provider, so it does nothing in play.
 
 ## 4. Changing game data (the usual edit)
 
@@ -65,39 +67,28 @@ Guide for people and AI helpers changing this project. Project root: `C:\Users\k
 
 Sheets listed in `NOT_SHIPPED` inside `tools/preflight.py` (currently `checks`, `revisionChecks`, `playtestMilestone`) are validated but not turned into Java records. They are project process notes. Add a sheet there only if it must not ship as game data.
 
-Some sheet values are display text only. For example, the class bonus strings in `classes` are not parsed; the numbers are hard-coded in `Campaign.java` and `Tactics.java`. When you change a class number, change the code and the text together.
+Some sheet values are display text only (a class's `activeText` and `passiveText`, an ability's `text`, a row's `text`). The numbers are not: no class number, ability number or counter multiplier is hard-coded, so change the sheet and the card text together, and the code follows. A new number the code needs gets a column, not a literal. Pure rules (`RosterMath`, `CounterMath`, `ProfileMigration`) take their numbers from `Spec` or from their caller, which is what lets the standalone checks pin them without Minecraft.
 
-### Adding a troop type (existing mob)
+The Phase 2 sheets: `houses` (five, with `fieldable`, all true), `troops` (30), `troopNotes` (card text), `evolutions`, `mastery`, `renown`, `rarities`, `recruitment`, `economy` and `economyModel` (the numbers `tools/economy_model.py` simulates), `abilities`, `counters`, `houseTraits`, `classes`, `combatDiscipline`, `botBanners` and `campaignBattles`. `tools/preflight.py` checks them, and a House must hold exactly its composition (every House has the same rarity shape, since all five are fieldable).
 
-1. Add a row to `troops` with its id, faction, group, count, range, magic flag and texture (`gravesandglory:textures/...` must exist under `src/main/resources/assets/gravesandglory/`).
-2. Add its id to the faction's `troops` list and keep the squad count matching `rules.squadSize`.
-3. If it uses an ability, add the case in `Tactics.java` and the text in `RecruitmentScreen.java`.
-4. The client rejects a state packet whose troop count differs from the table length, so host and players must run the same build.
+### Adding a troop
 
-Adding a new mob class is larger work: it touches the entity mapping in `GravesAndGlory.java` and `ArmyCards.java`.
+1. Add a row to `troops` (id, House, rarity, entity, stats, ability, tags) and its id to its House's `troops` list in sheet order; add its `troopNotes` row and its `evolutions` rows. Preflight names every missing cell and reference.
+2. A troop is drawn from its custom name, so its stage names must be unique across all troops (preflight checks it).
+3. Give it art (section 5): `art/troops/<id>.json` and its skins. Without art the troop draws as its bare rig.
+4. If it uses a new ability mechanic, add the mechanic in `Abilities.java` or `HouseAttacks.java` and the row in `abilities`; the numbers stay in the row.
+5. The client rejects a state packet whose troop count differs from the table length, so host and players must run the same build.
 
-## 5. Weapon and armour overlays (Entity Model Features)
+## 5. Troop models, skins and the armory overlay
 
-Visual detail on player and troop bodies comes from Entity Model Features (EMF) overlay files in the armory pack. No Java rendering code is involved.
+**Troops draw from their own models.** `tools/build_skins.py` turns the sources in `art/` (rigs, parts, weapons, troops, team cloth) into `src/main/resources/assets/gravesandglory/models/troop/` (`index.json`, one file per troop, rig and weapon) and `textures/entity/troop/` (one skin per stage with its relief layer, the Veteran trim, glow and outer layers, weapon sheets, and one team cloth per side). The client picks a troop's model and stage skin from its custom name (a troop or stage name, with an optional ` (Veteran)` suffix) and its cloth from its `gg_<side>` team, so a side colour is data (the `factions` sheet), never a texture edit. Never hand-edit a generated file.
 
-- Files: `src/main/resources/resourcepacks/armory/assets/minecraft/optifine/cem/`
-  - `player.jem`, `player_slim.jem`: tabard, buckle, belt, shoulder pauldrons for the normal and slim arms.
-  - `husk.jem`, `skeleton.jem`, `wither_skeleton.jem`: the same overlay parts, referencing Fresh Animations' `*_animations.jpm` through a root entry.
-- Texture: `assets/gravesandglory/textures/entity/armor_overlay.png`, 64 by 64. Regions: pauldron (0,0), crest (0,8), tabard (20,8), buckle (34,8), belt (0,24).
-- Weapon items: 30 vanilla item model overrides under `assets/minecraft/models/item/`.
-- Pack priority: the armory pack loads last in `Presentation.java`, so it overrides Fresh Animations, Excalibur, Clarent and the patch. This is why the skeleton and wither-skeleton geometry from those packs is replaced.
+- `python tools/build_skins.py` exports; `--verify` rebuilds into a temp dir and compares (it must pass before a commit that touches `art/` or the generated models); `--template <troop>` writes the sheet to paint over.
+- `tools/preflight.py` checks that `models/troop/index.json` lists exactly the `art/troops` ids.
+- Where each part of the art pipeline lives, its sizes and the rules (relief, two texels a model pixel on weapons, no vanilla armour on a troop) is in `docs/superpowers/specs/2026-10-17-unit-identity.md` (and `docs/ART-STYLE-GUIDE.md` on the base branch); this file only says how to rebuild.
+- Phase 2 painted skins for the six Gilded troops; the other 24 draw as their bare rigs until each House's art half. That is why every troop must work without art.
 
-JEM format notes (EMF 3.3.12):
-- Top level: `textureSize` and `models`.
-- `part`: the vanilla part to attach to (`body`, `right_arm`, `left_arm`, `head`, or `root`).
-- `attach: true` makes the box a child of the vanilla part and uses raw vanilla coordinates. `attach: false` replaces the part.
-- `invertAxis` flips translate, rotate and box coordinates on the named axes. Do not combine it with attach children unless you have checked the flip math.
-- `boxes[].coordinates` is `[x, y, z, width, height, depth]`, with `textureOffset` for box UVs or per-face `uv` values.
-- `sizeAdd` grows the box so it sits over the body without z-fighting.
-- `texture` forms: `"texture"` (same folder as the model), `"./x"`, `"~/x"`, `"folder/x"` (under `assets/minecraft/`), or `"mod:folder/x"` (`assets/mod/folder/x.png`).
-- Arm sizes: vanilla humanoid arms are 4 wide; skeleton arms are 2 wide; slim arms are 3 wide. The arm boxes in the four JEMs follow those sizes.
-
-The overlays apply to every husk, skeleton and wither skeleton in a Graves and Glory world, including ones that are not troops. One neutral armour set is used, so faction tints are not applied to these overlays. Changing a JEM needs a game restart or resource reload to see; in-game look has not been verified in this build.
+**Armory overlay (players and vanilla mobs only).** The armory resource pack under `src/main/resources/resourcepacks/armory/` still carries Entity Model Features overlays (`player.jem`, `player_slim.jem`, and `husk`, `skeleton` and `wither_skeleton` `.jem` files) and 30 vanilla weapon item overrides. Troops no longer use them. EMF, ETF and Fresh Animations and the husk, skeleton and wither skeleton `.jem` files leave in the release step (Needs Kort 13); until then they stay pinned, for the presentation modpack only. Changing a JEM needs a game restart or resource reload to see.
 
 ## 6. Packaging a release
 
@@ -112,7 +103,7 @@ python tools/verify_modrinth.py       -> reads back the .mrpack
 python tools/export_server.py         -> dist/graves-and-glory-<version>-server.zip
 ```
 
-- `gradle.properties` supplies the single `mod_version` value (currently `0.4.0`). Gradle expands it into `fabric.mod.json` and the archive names. `docs/RELEASE-<version>.txt` must exist for that version, or packaging fails. Packaging does not read `melty.json`.
+- `gradle.properties` supplies the single `mod_version` value (currently `0.5.0`). Gradle expands it into `fabric.mod.json` and the archive names. `docs/RELEASE-<version>.txt` must exist for that version, or packaging fails. Packaging does not read `melty.json`.
 - `generateReleaseIdentity` embeds a normalized source fingerprint in `gravesandglory-build.json`. Packaging rejects a stale JAR. The final ZIP uses a staging file so a packaging failure cannot replace an earlier archive.
 - Run `python tools/verify_package.py` after packaging to read back every entry and verify its hash, the inner JAR and the third-party pins.
 - Permission evidence used by packaging is tracked in `dependencies/author-permissions.json`, rather than the ignored `evidence/` directory.
@@ -125,6 +116,7 @@ python tools/export_server.py         -> dist/graves-and-glory-<version>-server.
 - Source: `test-tools/java/gg/gravesandglory/` (campaign checks, route checks, visual checks, and `MeltyTest`, the shared check-report hook).
 - Built into `build/localTestTools/local-integration-DO-NOT-SHIP.jar` by the `localTestToolsJar` task.
 - Used by `gradle runClient --offline -PcampaignChecks`. Never include that jar in a release.
+- Phase 2 suites run with `GRAVES_PHASE2_CHECKS=<suite>[,...]` (`banners`, `engine`, `commander`, `gilded`, `spike`, `gilded-art`, `graveborn`, `ironclad`, `tidecallers`, `wildmoot`, `chase`, `anim`, `turn`, `tells`, `depth`, `screens`, `migration`) and Phase 1 suites with `GRAVES_PHASE1_CHECKS=<suite>[,...]`, through `test-tools/isolated-checks.gradle`. Suite `migration` is meant to be run twice on one run root (the second launch checks the files the first left). A launch has a 30 minute cap, so split a long list. Bot simulations are headless: `gradle runServer --offline -PbotSim=10 ... --init-script test-tools/isolated-server.gradle` (see `docs/PHASE-2-BALANCE.md`).
 - The Melty test recipe is retired. `MeltyTest` keeps its legacy name, but every harness check reports through `MeltyTest.report`, driven by `-Dgravesandglory.localChecks` in development runs, so it stays. Its `%LOCALAPPDATA%\Melty\test` branch is the retirable part, and renaming the class touches about a dozen harness files. The leak check in `release_config.py` still lists `MeltyTest` by name for that reason. In-game regression and launcher installation for 0.3.1 remain pending.
 
 ## 8. Known gaps and open decisions
