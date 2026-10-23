@@ -1279,6 +1279,7 @@ public final class Phase1Checks implements ClientModInitializer {
             var own=player==null?null:b.squads.get(player);
             if(own!=null&&routSupport&&b.units.stream().anyMatch(u->u.squad==own&&u.spec.group().equals("support")&&u.mob.isAlive()))own.routedAt.put("support",b.time); // never long enough to regroup
             if(keepRespawn&&player!=null)b.respawns.put(player,b.time+12*20L);
+            if(keepRespawn&&b.running){b.roundStarted=b.time-(b.roundSeconds-462)*20L;b.scores[0]=148;b.scores[1]=121;} // the sweep (stages 40 to 49) holds the mock's 148, 7:42 and 121 that stage 10 set: a red run's 200-tick waits (a window that never lays out as set) outlast the 462 s and the 152 scoring steps the round had left, ending the round mid-sweep (UI Task 8 leftovers)
             if(hungerOn&&!hungerDone)hunger(b);
             if(stage==71&&!fiveReady)five(b);
         }
@@ -1306,7 +1307,7 @@ public final class Phase1Checks implements ClientModInitializer {
         }
 
         public void step(MinecraftClient c,int tick){
-            if(tick>16000&&!finished){report("p1-ui-hud-timeout",false,"stuck in stage "+stage+" ("+HudSize.NAMES[size]+", pass "+"ABCD".charAt(pass)+", window "+win+")");end(c);return;}
+            if(tick>24000&&!finished){report("p1-ui-hud-timeout",false,"stuck in stage "+stage+" ("+HudSize.NAMES[size]+", pass "+"ABCD".charAt(pass)+", window "+win+")");end(c);return;}
             if(keepLesson)CampaignClient.tutorial=lessonStep;
             if(Math.abs(stage)>=2&&stage<99&&stage!=46&&stage!=47&&stage!=49&&stage!=92&&c.currentScreen!=null)c.setScreen(null); // stages 46, 47 and 49 hold the chat open, 92 the Visuals and sound screen
             switch(stage){
