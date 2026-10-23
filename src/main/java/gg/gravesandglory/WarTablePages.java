@@ -729,7 +729,7 @@ final class WarTablePages {
         boolean mine = cl.id().equals(CampaignClient.profile.commander);
         String key = "class-" + cl.id(), plate = mine ? "table/plaque-120-here" : "table/plaque-120", icon = "table/icon-class-" + cl.id();
         UiTex.draw(g, plate, x, y);
-        UiTex.draw(g, icon, x + 8, y + 7);
+        if (UiTex.has(icon)) UiTex.draw(g, icon, x + 8, y + 7); // integration: Phase 2's classes beyond the three the War Table art painted have no icon yet
         int ink = mine ? DarkUi.RAIL_KEY : hot(buttons.get(key)) ? DarkUi.BRASS_HI : DarkUi.IVORY;
         text(g, key, DarkUi.heading(cl.name()), cl.name(), x + 28, y + 8, ink);
         rectsDrawn.put(key, new int[]{x, y, CLASS_W, 28});

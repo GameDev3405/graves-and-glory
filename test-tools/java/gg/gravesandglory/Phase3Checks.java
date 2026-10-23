@@ -715,7 +715,7 @@ public final class Phase3Checks implements ClientModInitializer {
                 var m=java.util.regex.Pattern.compile("\\{key:([a-z_]+)\\}").matcher(row.text());var want=new StringBuilder();int from=0;
                 while(m.find()){
                     want.append(row.text(),from,m.start());String id=m.group(1).equals("use")?"key.use":"key.gravesandglory."+m.group(1);String name=null;
-                    for(var k:c.options.allKeys)if(k.getTranslationKey().equals(id))name=k.getBoundKeyLocalizedText().getString();
+                    for(var k:c.options.allKeys)if(k.getTranslationKey().equals(id))name=GravesAndGloryClient.hint(m.group(1)); // integration: the UI branch names keys as every hint does (LMB, RMB, MMB for the mouse buttons)
                     want.append(name==null?"<no binding "+id+">":name);from=m.end();
                 }
                 want.append(row.text().substring(from));read++;
