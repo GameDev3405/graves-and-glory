@@ -39,7 +39,7 @@ final class CampScreen extends ArmyScreen {
     /** The House a station named (recruit:<house>, a tent of the House ring), which the recruit page opens on; "" for none. */
     String stationHouse="";
     /** A station: a page, or page:house (the House ring's tents send recruit:<house>), split on the first colon. */
-    static void open(String station){int at=station.indexOf(':');var s=new CampScreen(at<0?station:station.substring(0,at));if(at>=0)s.stationHouse=station.substring(at+1);MinecraftClient.getInstance().setScreen(s);}
+    static void open(String station){int at=station.indexOf(':');var s=new CampScreen(at<0?station:station.substring(0,at));if(at>=0){s.stationHouse=station.substring(at+1);for(var h:Spec.HOUSES)if(h.id().equals(s.stationHouse))s.house=h.id();}MinecraftClient.getInstance().setScreen(s);}
     /** The House whose six cards the recruit page shows and whose pool a roll draws from; its tab row changes it. It starts on the House the banner leans on. */
     String house=RosterMath.rollHouse(CampaignClient.profile.banner);
     final List<HouseTab> tabs=new ArrayList<>();

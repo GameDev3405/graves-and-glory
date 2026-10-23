@@ -1157,7 +1157,7 @@ public final class Phase3Checks implements ClientModInitializer {
                     String want=PAGES.get(page);
                     if(waited==0){c.setScreen(null);server(c,b->GravesAndGlory.openCamp(b.server.getPlayerManager().getPlayer(c.player.getUuid()),want));waited=1;}
                     else if(++waited>14){
-                        var s=c.currentScreen;boolean ok=want.equals("army")?s instanceof GravesAndGloryClient.LobbyScreen:s instanceof CampScreen cs&&cs.page.equals(want);
+                        var s=c.currentScreen;boolean ok=s instanceof CampScreen cs&&cs.page.equals(CampScreen.alias(want)); // integration: the War Table pages take the old station names (army is the Banner page, match the field page)
                         if(!ok)pagesBad.append("openCamp(\"").append(want).append("\") opened ").append(s==null?"no screen":s.getClass().getSimpleName()+(s instanceof CampScreen cs2?" on page "+cs2.page:"")).append("; ");
                         page++;waited=0;
                     }

@@ -117,7 +117,7 @@ final class WarTableRecruit {
 
     WarTableRecruit(CampScreen screen) {
         this.screen = screen;
-        house = RecruitView.houses().get(0).id();
+        house = RecruitView.houses().stream().anyMatch(h -> h.id().equals(screen.stationHouse)) ? screen.stationHouse : RecruitView.houses().get(0).id(); // a House ring tent (recruit:<house>) opens on its House
         revealSeen = CampaignClient.revealUntil;
         noticeSerialSeen = CampaignClient.noticeSerial;
     }

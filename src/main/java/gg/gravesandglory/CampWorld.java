@@ -61,7 +61,7 @@ final class CampWorld {
     // ---- the pure functions ----
 
     /** Where a commander stands after toLobby: the first arrival (the yard, firstDx/firstDz/firstYaw, looking east to the Drillmaster) while the profile has cleared no Long March battle, else the camp spawn. A null profile is the camp spawn. */
-    static Spot spawn(Campaign.Profile p){
+    static Spot spawn(Profile p){
         var c=Spec.CAMP[0];
         if(p!=null&&p.campaignCleared==0)return new Spot(c.originX()+c.firstDx(),c.spawnY(),c.originZ()+c.firstDz(),(float)c.firstYaw(),(float)c.spawnPitch());
         return new Spot(c.originX()+c.spawnDx(),c.spawnY(),c.originZ()+c.spawnDz(),(float)c.spawnYaw(),(float)c.spawnPitch());
