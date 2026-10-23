@@ -21,21 +21,21 @@
  ],
  "nocks": [
   [
-   -3.96,
+   -4.03,
    0.0
   ],
   [
-   -4.96,
+   -4.55,
    0.0
   ],
   [
-   -5.96,
+   -5.08,
    0.0
   ],
   [
-   -6.96,
+   -5.6,
    0.0
   ]
  ],
- "note": "The Order Longbow's yew longbow, tier I (plain): a slender shallow D of five staves a limb with no recurve, a leather grip between plain wood risers, dark horn nocks; 35.8 px tall; the string to the left (-x), drawn 1 px a frame."
+ "note": "The Order Longbow's yew longbow, tier I (plain): a shallow D of five staves a limb with no recurve, 1.2 px wide at the root, one unbroken grain line and three light flecks a limb, a leather grip between leather-wrapped risers, dark horn nocks; 35.8 px tall; the string to the left (-x), drawn 0.52 px a frame (full draw at x -5.6, within 2 px of the clip's drawing hand)."
 }

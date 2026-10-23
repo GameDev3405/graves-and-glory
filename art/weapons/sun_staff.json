@@ -14,5 +14,5 @@
   ],
   "note": "the grip's centre is the model origin (the fist box covers y -2..+2); the model is y up with its big faces across z, and the converter turns it by a half turn about x into the weapon frame"
  },
- "note": "The Sunweaver's staff, tier I (plain): a pale ash shaft with an iron foot and two gilt rings, a leather grip, a steel collar and a small gilt sun (a gilt square over a cream turned square, the eight-pointed star) holding the lit heart; 40.3 px; the heart (12 lit texels, the south face of its cube) is the same cube at the same sheet spot in all three tiers, so one sun_staff_e.png lights them all."
+ "note": "The Sunweaver's staff, tier I (plain): a warm ash shaft with an iron foot and two gilt rings (one grain line and a few pits), a leather grip, a steel collar and a small gilt sun (a gilt square over a cream turned square, the eight-pointed star) on two short cream rays, holding the lit heart; 37.6 px; the heart (12 lit texels, the south face of its cube) is the same cube at the same sheet spot in all three tiers, so one sun_staff_e.png lights them all."
 }
