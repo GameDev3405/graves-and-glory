@@ -7,7 +7,8 @@ import net.minecraft.client.util.Window;
 
 /** The design canvas our screens and the HUD are laid out on (UI spec section 3, Canvas): the framebuffer divided by
  *  k, where k = UiMath.pixelScale is the whole number of screen pixels per art pixel (2 at 1080p, 1 at 1366x768),
- *  never more than the player's GUI Scale. Between begin and end, coordinates are canvas pixels. */
+ *  never more than the player's GUI Scale. Between begin and end, coordinates are canvas pixels. The battle HUD has its own
+ *  scale, hudK (UI Task 8a), with its own canvas (hudWidth, hudHeight, beginHud). */
 public final class UiCanvas {
     private UiCanvas() {}
 
@@ -24,11 +25,32 @@ public final class UiCanvas {
     public static int height() { return window().getFramebufferHeight() / k(); }
 
     /** Draw in canvas pixels until end: pushes a matrix scale of k / GUI scale. */
-    public static void begin(DrawContext g) {
-        float s = (float) (k() / window().getScaleFactor());
+    public static void begin(DrawContext g) { begin(g, k()); }
+
+    private static void begin(DrawContext g, int k) {
+        float s = (float) (k / window().getScaleFactor());
         g.getMatrices().push();
         g.getMatrices().scale(s, s, 1);
     }
+
+    private static int hudW = -1, hudH = -1, hudGui = -1, hudScale = 1;
+
+    /** The battle HUD's screen pixels per canvas pixel (UiMath.hudScale: the GUI Scale up to 2 on windows under 1600 px wide where
+     *  the HUD fits, else k), worked out again only when the window or the GUI Scale changes. The screens keep k. */
+    public static int hudK() {
+        Window w = window();
+        int fw = w.getFramebufferWidth(), fh = w.getFramebufferHeight(), gui = (int) w.getScaleFactor();
+        if (fw != hudW || fh != hudH || gui != hudGui) { hudScale = UiMath.hudScale(fw, fh, gui); hudW = fw; hudH = fh; hudGui = gui; }
+        return hudScale;
+    }
+
+    /** The battle HUD's canvas, the framebuffer over hudK. */
+    public static int hudWidth() { return window().getFramebufferWidth() / hudK(); }
+
+    public static int hudHeight() { return window().getFramebufferHeight() / hudK(); }
+
+    /** Draw the battle HUD in its canvas pixels until end: a matrix scale of hudK / GUI scale. */
+    public static void beginHud(DrawContext g) { begin(g, hudK()); }
 
     public static void end(DrawContext g) { g.getMatrices().pop(); }
 

@@ -837,7 +837,10 @@ public final class Phase1Checks implements ClientModInitializer {
             if(stage==6&&c.currentScreen!=null)c.setScreen(null); // the barracks lesson opens the barracks screen
             if(stage==6&&first.over&&++first.wait==40){ // 40 ticks for the lesson end and the new gold to reach the client
                 reportStart();clientGoldAfter=CampaignClient.profile.gold;int shots=0,whole=0;for(int i=0;i<4;i++){if(lessonShot[i])shots++;if(lessonWhole[i])whole++;}
-                String use=HintText.chip(c.options.useKey.getBoundKeyLocalizedText().getString());boolean named=GravesAndGloryClient.lessonText(3).contains(use); // lesson 4 names the use key as bound, as its chip (RMB for the right button, UI polish M6; drawn whole above)
+                // lesson 4 names the use key as bound (drawn whole above): the first three mouse buttons by the key bound, not its name,
+                // as LMB, RMB or MMB (RMB by default, UI polish M6 and Task 8a), any other key as the game names it
+                var useKey=net.minecraft.client.util.InputUtil.fromTranslationKey(c.options.useKey.getBoundKeyTranslationKey());
+                String use=useKey.getCategory()==net.minecraft.client.util.InputUtil.Type.MOUSE&&useKey.getCode()>=0&&useKey.getCode()<=2?List.of("LMB","RMB","MMB").get(useKey.getCode()):c.options.useKey.getBoundKeyLocalizedText().getString();boolean named=GravesAndGloryClient.lessonText(3).contains(use);
                 report("p1-tutorial-lessons",first.taught()&&shots==4&&whole==4&&named,first.why()+"; "+shots+" of 4 lesson screenshots; "+whole+" of 4 lessons drawn whole inside the panel ("+copyWhy+"); lesson 4 names the use key \""+use+"\": "+named);
                 server(c,b->next(b,7));
             }
@@ -1153,15 +1156,23 @@ public final class Phase1Checks implements ClientModInitializer {
         static final double AX=-220,AZ=0; // open ground on the Dawn road, 63 blocks out from the live Dawn base at x=-283
         static final List<BattleHud.CardDraw> CARDS=List.of(new BattleHud.CardDraw("infantry","FLASH",false,24,348,176,48),new BattleHud.CardDraw("ranged","SELECTED",true,24,404,176,62),new BattleHud.CardDraw("support","ROUTING",false,24,474,176,48));
         static final List<BattleHud.SealDraw> SEALS=List.of(new BattleHud.SealDraw("hud/seal-dawn",439,41),new BattleHud.SealDraw("hud/seal-contested",467,40),new BattleHud.SealDraw("hud/seal-dusk",495,41));
-        /** Width, height, GUI scale, 1 for a borderless window (the 1080 windows: see window(c,w,h,gui,bare)), then the chat lines
-         *  p1-ui-chat-lift wants there with the lesson and respawn cards up, closed and open (worked out by hand). Closed (UI polish
-         *  M1): vanilla's 10 where the chat stops short of the screen's centre, else what fits between the chat's bottom and 4 px
-         *  below vanilla's 15 px crosshair at the centre (1 at 854x480 GUI 2, 4 at 1280x720 GUI 3, 2 at 1920x1080 GUI 4). Open (UI
-         *  polish round 2) the crosshair no longer counts: vanilla's 20, or what fits 4 px below the respawn card where the chat
-         *  reaches it (2, 5 and 3 at those three sizes, where the card ends at GUI y 114, 116 and 129). At 1366x768 GUI 2 (UI polish
-         *  M2) the chat stops just short of the crosshair (GUI x 332 of 334) but reaches the respawn card, which ends at GUI y 186:
-         *  10 lines fit below it, open or closed. */
-        static final int[][] WINDOWS={{960,540,1,0,10,20},{854,480,2,0,1,2},{1280,720,3,0,4,5},{1920,1080,2,1,10,20},{1920,1080,4,1,2,3},{1366,768,2,0,10,10}};
+        /** Width, height, GUI scale, 1 for a borderless window (the 1080 windows: see window(c,w,h,gui,bare)), the battle HUD's scale
+         *  there (UI Task 8a: the GUI Scale up to 2 under 1600 px wide where the HUD fits, UiMath.hudScale), then the chat lines
+         *  p1-ui-chat-lift wants, closed and open, in three passes, worked out by hand from the boxes (UiMathCheck pins the same
+         *  numbers): A, the lesson and respawn cards with the hint layer down; B, the lesson with the hint layer up (a round's first
+         *  minute: three tall cards and the hint slip) and the commander up; C, a battle with neither card, the layer down, at the
+         *  2x sizes only (-1 elsewhere). Closed, the chat's lowest line keeps 4 px clear of vanilla's 15 px crosshair: below it where
+         *  there is room (1 at 854x480 GUI 2 and 4 at 1280x720 GUI 3 in A), else above it (5 at 1920x1080 GUI 4 in B). Open, the
+         *  crosshair does not count (UI polish round 2). At 2x (1280x720 and 1366x768 GUI 2) the lesson card, centred on a 640 or 683
+         *  px canvas, comes over the chat's width: with the tutorial's cards up the chat keeps one line, between the seals and the
+         *  lesson card; a battle without them leaves it 9 lines at 720p and 10, 12 open, at 1366x768. Last, 1 where pass A draws the
+         *  lesson card beside the respawn card, 0 where it gives way (UiMath.lessonYields, Task 8a): at 1280x720 GUI 2 the respawn
+         *  card, at y 140, would hang in the lesson's shadow, which ends at 144; without it the chat there keeps 7 lines. */
+        static final int[][] WINDOWS={{960,540,1,0,1,10,20,10,13,-1,-1,1},{854,480,2,0,1,1,2,3,3,-1,-1,1},{1280,720,3,0,1,4,6,1,10,-1,-1,1},{1920,1080,2,1,2,10,20,10,13,-1,-1,1},{1920,1080,4,1,2,2,4,5,6,-1,-1,1},{1280,720,2,0,2,7,7,1,1,9,9,0},{1366,768,2,0,2,1,1,1,1,10,12,1}};
+        /** Each window's screenshot; pass B adds -hints, pass C -battle. */
+        static final String[] SHOTS={"ui-hud-chat","ui-hud-small","ui-hud-1280","ui-hud-1080-gui2","ui-hud-1080-gui4","ui-hud-720-gui2","ui-hud-1366"},PASS_SHOT={"","-hints","-battle"};
+        /** A battle's chat, twelve lines so the closed chat fills every line it shows. */
+        static final List<String> CHAT=List.of("<Ansel> hold the ford until the archers are up","<Brannoc> on my way","<Ansel> Dusk knights at the mill","<Corwen> my archers are on the ridge","<Brannoc> taking the crossing","<Ansel> watch the left, revenants coming","<Corwen> need help at the shrine","<Brannoc> holding","<Ansel> good, push when the horn sounds","<Corwen> banner down, back in 12","<Brannoc> gg so far","<Ansel> last push, all to the crossing");
         // Written by both threads. A negative stage is a hand-off: the client waits for the server task it sent to set the next stage.
         volatile int stage;volatile UUID player;
         volatile boolean hungerOn,hungerDone,routSupport,keepRespawn,fiveReady;volatile int hungerSets,hungerOk;volatile String hungerWrong="",fixture="";
@@ -1177,10 +1188,18 @@ public final class Phase1Checks implements ClientModInitializer {
         // p1-ui-chat-lift (controller addition A, client thread): the chat above the left column in battle, in place in camp; the
         // chat text size p1-ui-chat-edge changed, to put back (-1: unchanged)
         int campLift=-1;boolean chatOk=true;String chatWhy="";double chatScale=-1;
+        // the window passes (UI Task 8a, client thread): the pass (0 A, 1 B, 2 C), ticks the pass's state has held, and
+        // p1-ui-hud-scale's windows
+        int pass,settled,scaleSeen;boolean scaleOk=true;String scaleWhy="";
         // client thread, every HUD frame: the food draws the mixin skipped in that frame, watched during the hunger run and while the
         // five-seal battlefield builds
         int lastSkipped,hungerFrames,hungerFull,hungerLow,buildFrames,buildFull,buildLow,buildCloses;boolean watchHunger,watchBuild;String hungerOdd="",buildOdd="";
 
+        /** keepLesson pins a lesson the server does not know: every STATE packet (each 10 ticks) puts the client's step back to the
+         *  server's -1, and a frame drawn before the next client tick showed no lesson card, so the chat lifted over it the frame
+         *  after (run ui-8a-green-192612: the open chat at 1920x1080 GUI 4 measured 10 lines past a card that frame lacked). The pin
+         *  is also set as each frame starts, before the HUD draws. In play the server sends the step itself, so nothing flickers. */
+        UiHudChecks(){net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->{if(current==this&&keepLesson)CampaignClient.tutorial=lessonStep;});}
         ServerPlayerEntity sp(GravesAndGlory.Battle b){return player==null?null:b.server.getPlayerManager().getPlayer(player);}
         static CommandMode.Group group(String id){for(var g:CommandMode.groups)if(g.id().equals(id))return g;return null;}
         static boolean meets(int[] a,int[] b){return a!=null&&b!=null&&a[0]<b[0]+b[2]&&b[0]<a[0]+a[2]&&a[1]<b[1]+b[3]&&b[1]<a[1]+a[3];}
@@ -1197,9 +1216,9 @@ public final class Phase1Checks implements ClientModInitializer {
             for(int i=0;i<keys.size();i++)for(int j=i+1;j<keys.size();j++)if(!allowed(keys.get(i),keys.get(j))&&meets(r.get(keys.get(i)),r.get(keys.get(j))))bad.add(keys.get(i)+" "+box(r.get(keys.get(i)))+" meets "+keys.get(j)+" "+box(r.get(keys.get(j))));
             return bad;
         }
-        /** A GUI box in canvas px, rounded outward. */
+        /** A GUI box in the battle HUD's canvas px (UiCanvas.hudK), rounded outward. */
         static int[] canvas(MinecraftClient c,int x,int y,int w,int h){
-            double f=c.getWindow().getScaleFactor()/UiCanvas.k();
+            double f=c.getWindow().getScaleFactor()/UiCanvas.hudK();
             int x0=(int)Math.floor(x*f+1e-9),y0=(int)Math.floor(y*f+1e-9),x1=(int)Math.ceil((x+w)*f-1e-9),y1=(int)Math.ceil((y+h)*f-1e-9);
             return new int[]{x0,y0,x1-x0,y1-y0};
         }
@@ -1355,32 +1374,39 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(!BattleHud.rects().containsKey("ability")&&GravesAndGloryClient.abilityId.equals("none")){report("p1-ui-ability",abilityOk&&tick-askAt<=12,abilityWhy+"; with testAbility null the slot was gone "+(tick-askAt)+" client ticks later");stage=40;}
                     else if(tick-askAt>60){report("p1-ui-ability",false,abilityWhy+"; the slot was still drawn 60 ticks after testAbility was cleared");stage=40;}
                 }
-                case 40->{keepLesson=true;keepRespawn=true;win=0;stage=-40;server(c,b->{b.testAbility=new GravesAndGlory.Battle.AbilityState("rally_horn",960,1800);stage=41;});}
-                case 41->{var s=WINDOWS[win];window(c,s[0],s[1],s[2],s[3]==1);waitFrom=tick;stage=42;
-                    var chat=c.inGameHud.getChatHud();chat.clear(false);chat.addMessage(net.minecraft.text.Text.literal("Chat check: hold the ford"));chat.addMessage(net.minecraft.text.Text.literal("Chat check: archers to the ridge"));}
-                case 42->{ // p1-ui-small-window, one window size
+                case 40->{keepLesson=true;keepRespawn=true;win=0;pass=0;stage=-40;server(c,b->{b.testAbility=new GravesAndGlory.Battle.AbilityState("rally_horn",960,1800);stage=41;});}
+                case 41->{var s=WINDOWS[win];window(c,s[0],s[1],s[2],s[3]==1);waitFrom=tick;settled=0;stage=42;
+                    BattleHud.roundShownMs=net.minecraft.util.Util.getMeasuringTimeMs()-(pass==1?0:61000); // pass B: the round's first minute, the hint layer up
+                    var chat=c.inGameHud.getChatHud();chat.clear(false);for(String m:CHAT)chat.addMessage(net.minecraft.text.Text.literal(m));}
+                case 42->{ // p1-ui-small-window and p1-ui-chat-lift, one window size in one pass
                     var r=BattleHud.rects();var s=WINDOWS[win];var score=r.get("score");var fb=c.getWindow();
                     if(minimized(c)){window(c,s[0],s[1],s[2],s[3]==1);return;} // minimized since the size was set: show it again, then measure
                     boolean sized=fb.getFramebufferWidth()==s[0]&&fb.getFramebufferHeight()==s[1]&&(int)fb.getScaleFactor()==s[2];
-                    boolean full=sized&&r.containsKey("lesson")&&r.containsKey("respawn")&&r.containsKey("ability")&&r.containsKey("spine")&&BattleHud.cards().size()==3&&score!=null&&score[0]==UiCanvas.width()/2-128;
-                    if(full||tick-waitFrom>100){
-                        if(full)measure(c,s,r);else{smallOk=false;smallWhy+=(smallWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": no frame with every element in 100 ticks (drew "+r.keySet()+")";}
-                        if(win==0)shot(c,"ui-hud-chat");if(win==1)shot(c,"ui-hud-small");if(win==2)shot(c,"ui-hud-1280");if(win==3)shot(c,"ui-hud-1080-gui2");if(win==4)shot(c,"ui-hud-1080-gui4");if(win==5)shot(c,"ui-hud-1366");
+                    boolean state=pass==0?r.containsKey("lesson")==(s[11]==1)&&r.containsKey("respawn")&&!r.containsKey("hints"):pass==1?r.containsKey("lesson")&&r.containsKey("hints")&&!r.containsKey("respawn"):!r.containsKey("lesson")&&!r.containsKey("respawn")&&!r.containsKey("hints");
+                    boolean full=sized&&state&&r.containsKey("ability")&&r.containsKey("spine")&&BattleHud.cards().size()==3&&score!=null&&score[0]==UiCanvas.hudWidth()/2-128&&ChatPlacement.drawnLines>0;
+                    settled=full?settled+1:0; // the chat follows the HUD's frame before: the pass's state held for three ticks
+                    if(settled>=3||tick-waitFrom>200){
+                        String name=SHOTS[win]+PASS_SHOT[pass];
+                        if(settled>=3)measure(c,s,r);else{smallOk=false;smallWhy+=(smallWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+" pass "+"ABC".charAt(pass)+": no frame with every element of the pass in 200 ticks (drew "+r.keySet()+(pass==0?"; the lesson card wanted "+(s[11]==1?"beside the respawn card":"gone, giving way to the respawn card"):"")+")";}
+                        shot(c,name);
                         // then the chat open at this size (UI polish round 2), 25 lines in it: stage 47 measures it
                         var chat=c.inGameHud.getChatHud();chat.clear(false);for(int i=1;i<=25;i++)chat.addMessage(net.minecraft.text.Text.literal("Chat check line "+i));
                         c.setScreen(new net.minecraft.client.gui.screen.ChatScreen(""));waitFrom=tick;stage=47;
                     }
                 }
-                case 47->{if(tick-waitFrom>=3){measureOpen(c,WINDOWS[win],BattleHud.rects());c.setScreen(null);win++;stage=win<WINDOWS.length?41:45;}}
-                case 45->{ // p1-ui-chat-respawn (UI polish M2): at 1366x768 GUI 2, the last window, the open chat stops below the respawn card
+                case 47->{if(tick-waitFrom>=3){measureOpen(c,WINDOWS[win],BattleHud.rects());c.setScreen(null);win=next(win+1);stage=win<WINDOWS.length?41:pass==0?45:pass==1?56:57;}}
+                case 45->{ // p1-ui-chat-respawn (UI polish M2): at 1366x768 GUI 2, pass A's last window, the open chat stops below the respawn card
                     var chat=c.inGameHud.getChatHud();chat.clear(false);for(int i=1;i<=25;i++)chat.addMessage(net.minecraft.text.Text.literal("Chat check line "+i));
                     c.setScreen(new net.minecraft.client.gui.screen.ChatScreen(""));waitFrom=tick;stage=46;}
-                case 46->{
+                case 46->{ // at the HUD's 2x there (UI Task 8a) the respawn card and the lesson card above it leave the open chat one line
                     if(tick-waitFrom>=3){var w=c.getWindow();var hud=c.inGameHud.getChatHud();int[] dr=ChatPlacement.drawn,card=BattleHud.rects().get("respawn"),chat=dr==null?null:canvas(c,dr[0],dr[1],dr[2],dr[3]);
                         boolean open=c.currentScreen instanceof net.minecraft.client.gui.screen.ChatScreen;int shown=hud.getVisibleLineCount();shot(c,"ui-hud-chat-open");
-                        report("p1-ui-chat-respawn",open&&card!=null&&chat!=null&&shown==10&&ChatPlacement.drawnLines==10&&!meets(chat,card),"with the chat open (true: "+open+") at "+w.getFramebufferWidth()+"x"+w.getFramebufferHeight()+" GUI "+(int)w.getScaleFactor()+" and 25 lines in it, it shows "+shown+" lines (wanted 10 of vanilla's 20) and drew "+ChatPlacement.drawnLines+" at canvas "+box(chat)+" (GUI "+box(dr)+"); the respawn card at "+box(card));
-                        c.setScreen(null);keepRespawn=false;window(c,1280,720,3);waitFrom=tick;stage=-46;server(c,b->{b.respawns.remove(player);stage=48;});}
+                        report("p1-ui-chat-respawn",open&&card!=null&&chat!=null&&shown==1&&ChatPlacement.drawnLines==1&&!meets(chat,card),"with the chat open (true: "+open+") at "+w.getFramebufferWidth()+"x"+w.getFramebufferHeight()+" GUI "+(int)w.getScaleFactor()+" (the HUD at "+UiCanvas.hudK()+"x) and 25 lines in it, it shows "+shown+" lines (wanted 1 of vanilla's 20) and drew "+ChatPlacement.drawnLines+" at canvas "+box(chat)+" (GUI "+box(dr)+"); the respawn card at "+box(card)+", the lesson card at "+box(BattleHud.rects().get("lesson")));
+                        c.setScreen(null);keepRespawn=false;stage=-46;server(c,b->{b.respawns.remove(player);stage=55;});}
                 }
+                case 55->{pass=1;win=next(0);stage=41;} // pass B: the hint layer up, the commander up
+                case 56->{pass=2;keepLesson=false;CampaignClient.tutorial=-1;win=next(0);stage=41;} // pass C: a battle without the tutorial's cards
+                case 57->{keepLesson=true;BattleHud.roundShownMs=net.minecraft.util.Util.getMeasuringTimeMs()-61000;window(c,1280,720,3);waitFrom=tick;stage=48;}
                 case 48->{ // p1-ui-chat-open (UI polish round 2): typing with the commander up at 1280x720 GUI 3, the crosshair over the chat
                     var r=BattleHud.rects();var fb=c.getWindow();
                     if(minimized(c)){window(c,1280,720,3);return;}
@@ -1396,7 +1422,8 @@ public final class Phase1Checks implements ClientModInitializer {
                         report("p1-ui-chat-open",open&&chat!=null&&r.containsKey("lesson")&&!r.containsKey("respawn")&&closedLines==4&&shown==13&&ChatPlacement.drawnLines==13&&hit.isEmpty()&&over,"at "+w.getFramebufferWidth()+"x"+w.getFramebufferHeight()+" GUI "+(int)w.getScaleFactor()+" with the commander up (a respawn card: "+r.containsKey("respawn")+") and the lesson card at "+box(r.get("lesson"))+", the closed chat showed "+closedLines+" lines (wanted 4, the crosshair above it); open (true: "+open+") with 25 lines in it, it shows "+shown+" and drew "+ChatPlacement.drawnLines+" at GUI "+box(dr)+" (wanted 13, the lesson card above it)"+(hit.isEmpty()?", apart from every element of the HUD":", meeting "+hit)+", "+(over?"over":"clear of")+" the crosshair at GUI "+box(cross));
                         c.setScreen(null);stage=43;}
                 }
-                case 43->{keepLesson=false;keepRespawn=false;CampaignClient.tutorial=-1;report("p1-ui-small-window",smallOk,smallWhy);report("p1-ui-chat-lift",chatOk&&campLift==0,"in camp the chat moved "+campLift+" GUI px; "+chatWhy);window(c,960,540,1);
+                case 43->{keepLesson=false;keepRespawn=false;CampaignClient.tutorial=-1;report("p1-ui-small-window",smallOk,smallWhy);report("p1-ui-chat-lift",chatOk&&campLift==0,"in camp the chat moved "+campLift+" GUI px; "+chatWhy);
+                    report("p1-ui-hud-scale",scaleOk&&scaleSeen==WINDOWS.length,"the battle HUD follows the GUI Scale up to 2x under 1600 px wide where it fits, else the kit scale: "+scaleWhy+(scaleSeen==WINDOWS.length?"":"; only "+scaleSeen+" of "+WINDOWS.length+" windows measured"));window(c,960,540,1);
                     chatScale=c.options.getChatScale().getValue();c.options.getChatScale().setValue(0.6);
                     var chat=c.inGameHud.getChatHud();chat.clear(false);chat.addMessage(net.minecraft.text.Text.literal("Chat check: hold the ford"));chat.addMessage(net.minecraft.text.Text.literal("Chat check: archers to the ridge"));waitFrom=tick;stage=44;}
                 case 44->{ // p1-ui-chat-edge (UI polish M5): at 60% chat text size the cut's right edge is where vanilla ends the lines it draws
@@ -1440,8 +1467,10 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 64->{
                     if(seen==0&&CommandMode.aimPoint()==1)seen=tick;
                     if(seen>0&&tick>=seen+3){
-                        var font=c.textRenderer;String want=Spec.POINTS[1].name(),got=BattleHud.texts().get("aim-name");int[] r=BattleHud.rects().get("aim-name");
-                        int[] wantR={BattleHud.centred(font,want,UiMath.sealCentre(1,GravesAndGloryClient.owners.length,UiCanvas.width())),68,font.getWidth(want)+1,9};
+                        // pinned by number, not by the centring under test (Task 3 review Minor 8): map 0's point B, 78 px of text and its
+                        // shadow, centred under the middle seal at x 480 of the 960 px canvas, the half pixel rounded right (run ui-8a-base-181517)
+                        String want="Trade Crossing",got=BattleHud.texts().get("aim-name");int[] r=BattleHud.rects().get("aim-name");
+                        int[] wantR={441,68,79,9};
                         var touch=touching(BattleHud.rects());shot(c,"ui-hud-aim");
                         report("p1-ui-aim-name",want.equals(got)&&Arrays.equals(r,wantR)&&CommandMode.aimPoint()==1&&touch.isEmpty(),"a move aimed at "+CommandMode.destination+" (point "+Spec.POINTS[1].id()+") drew the name '"+got+"' at "+box(r)+" (wanted '"+want+"' at "+box(wantR)+"); seals "+box(BattleHud.rects().get("seal-0"))+", "+box(BattleHud.rects().get("seal-1"))+", "+box(BattleHud.rects().get("seal-2"))+"; of the frame's "+BattleHud.rects().size()+" rects ("+String.join(", ",BattleHud.rects().keySet())+") "+(touch.isEmpty()?"none touch":"these touch: "+String.join("; ",touch)));
                         CommandMode.cancel();seen=0;stage=70;
@@ -1504,36 +1533,53 @@ public final class Phase1Checks implements ClientModInitializer {
             }
         }
 
-        /** One window of p1-ui-small-window: every rect inside the canvas, none touching another (but a card and the spine, a boss and
-         *  the score card), and none touching the vanilla hotbar or hearts converted to canvas px. */
+        /** One window of p1-ui-small-window in one pass: the HUD at the window's scale (p1-ui-hud-scale, pass A), every rect inside
+         *  the canvas, none touching another (but a card and the spine, a boss and the score card), and none touching vanilla's
+         *  hotbar, selected slot, hearts, armour row, experience bar or crosshair, converted to canvas px. Vanilla draws the offhand
+         *  slot left of the hotbar while the offhand holds something: it counts where the HUD is above the screens' scale (the 2x
+         *  this task adds); at the kit scale the bottom card meets it at 854x480 GUI 2, as before this task, and the log says so. */
         void measure(MinecraftClient c,int[] s,Map<String,int[]> r){
-            var w=c.getWindow();int cw=UiCanvas.width(),ch=UiCanvas.height(),sw=w.getScaledWidth(),sh=w.getScaledHeight();List<String> bad=new ArrayList<>();
+            var w=c.getWindow();int hk=UiCanvas.hudK(),cw=UiCanvas.hudWidth(),ch=UiCanvas.hudHeight(),sw=w.getScaledWidth(),sh=w.getScaledHeight();List<String> bad=new ArrayList<>(),noted=new ArrayList<>();
+            String at=s[0]+"x"+s[1]+" GUI "+s[2]+" pass "+"ABC".charAt(pass);
             if(w.getFramebufferWidth()!=s[0]||w.getFramebufferHeight()!=s[1]||(int)w.getScaleFactor()!=s[2])bad.add("the window is "+w.getFramebufferWidth()+"x"+w.getFramebufferHeight()+" at GUI "+(int)w.getScaleFactor());
+            if(hk!=s[4])bad.add("the HUD at "+hk+"x (wanted "+s[4]+"x)");
+            if(pass==0){boolean ok=hk==s[4]&&cw==s[0]/s[4]&&ch==s[1]/s[4];scaleOk&=ok;scaleSeen++;
+                scaleWhy+=(scaleWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": the HUD at "+hk+"x (wanted "+s[4]+"x) on a "+cw+"x"+ch+" canvas, the screens at "+UiCanvas.k()+"x"+(ok?"":", WRONG");}
             for(var e:r.entrySet())if(!inside(e.getValue(),cw,ch))bad.add(e.getKey()+" "+box(e.getValue())+" leaves the canvas");
             bad.addAll(touching(r));
-            int[] hotbar=canvas(c,sw/2-91,sh-22,182,22),hearts=canvas(c,sw/2-91,sh-39,81,9);
-            for(var e:r.entrySet()){if(meets(e.getValue(),hotbar))bad.add(e.getKey()+" meets the hotbar");if(meets(e.getValue(),hearts))bad.add(e.getKey()+" meets the hearts");}
+            Map<String,int[]> bars=new LinkedHashMap<>();int slot=c.player.getInventory().selectedSlot;
+            bars.put("the hotbar",canvas(c,sw/2-91,sh-22,182,22));bars.put("the selected slot",canvas(c,sw/2-92+slot*20,sh-23,24,22));bars.put("the hearts",canvas(c,sw/2-91,sh-39,81,9));
+            bars.put("the armour row",canvas(c,sw/2-91,sh-49,81,9));bars.put("the experience bar",canvas(c,sw/2-91,sh-29,182,5));bars.put("the crosshair",canvas(c,(sw-15)/2,(sh-15)/2,15,15));
+            int[] offhand=canvas(c,sw/2-120,sh-23,29,24);
+            for(var e:r.entrySet()){
+                for(var bar:bars.entrySet())if(meets(e.getValue(),bar.getValue()))bad.add(e.getKey()+" "+box(e.getValue())+" meets "+bar.getKey()+" "+box(bar.getValue()));
+                if(meets(e.getValue(),offhand))(hk>UiCanvas.k()?bad:noted).add(e.getKey()+" "+box(e.getValue())+" meets the offhand slot "+box(offhand));
+            }
             smallOk&=bad.isEmpty();
-            // p1-ui-chat-lift: the chat's lines above the left column (ChatPlacement), its top below vanilla's crosshair wherever it
-            // reaches the screen's centre (UI polish M1), and the lines it shows closed, the window's wanted count (measureOpen: open)
-            var hud=c.inGameHud.getChatHud();int top=ChatPlacement.columnTop(r);int[] dr=ChatPlacement.drawn,cross={(sw-15)/2,(sh-15)/2,15,15};
-            int[] chat=dr==null?null:canvas(c,dr[0],dr[1],dr[2],dr[3]);String first=r.keySet().stream().filter(k->k.startsWith("card-")).min(Comparator.comparingInt(k->r.get(k)[1])).orElse(null);
-            int shown=hud.getVisibleLineCount();
-            boolean clear=dr!=null&&(dr[0]+dr[2]<=cross[0]||dr[1]>=cross[1]+cross[3]);
-            boolean apart=chat!=null&&top>=0&&chat[1]+chat[3]<=top&&ChatPlacement.drawnLines==Math.min(2,s[4])&&shown==s[4]&&clear&&first!=null&&!meets(chat,r.get(first))&&!meets(chat,r.get("respawn"));chatOk&=apart;
-            chatWhy+=(chatWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": chat scale "+hud.getChatScale()+", lifted "+ChatPlacement.lift(sh)+" GUI px, "+ChatPlacement.drawnLines+" lines drawn at canvas "+box(chat)+" (GUI "+box(dr)+"), the column's top at "+top+" and "+first+" "+box(first==null?null:r.get(first))+", the crosshair at GUI "+box(cross)+(clear?" clear":" COVERED")+", the respawn card at "+box(r.get("respawn"))+"; closed it shows "+shown+" lines (wanted "+s[4]+")"+(apart?"":", WRONG");
-            smallWhy+=(smallWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+": canvas "+cw+"x"+ch+" (k "+UiCanvas.k()+"), "+r.size()+" rects, cards "+BattleHud.cards().stream().map(d->d.group()+" "+d.y()).toList()+", ability "+box(r.get("ability"))+", lesson "+box(r.get("lesson"))+", respawn "+box(r.get("respawn"))+", spine "+box(r.get("spine"))+", hotbar "+box(hotbar)+", hearts "+box(hearts)+(bad.isEmpty()?", every rect inside and apart":", WRONG: "+String.join("; ",bad.subList(0,Math.min(6,bad.size()))));
+            // p1-ui-chat-lift: the chat's lines above the left column (ChatPlacement), on the screen, apart from every element of the
+            // HUD and, closed, from vanilla's crosshair (UI polish M1, Task 8a), and the lines it shows closed, the window's wanted
+            // count in this pass (measureOpen: open); twelve lines are in it, so it draws every line it shows
+            var hud=c.inGameHud.getChatHud();int top=UiMath.columnTop(r);int[] dr=ChatPlacement.drawn,cross={(sw-15)/2,(sh-15)/2,15,15};
+            int[] chat=dr==null?null:canvas(c,dr[0],dr[1],dr[2],dr[3]);int shown=hud.getVisibleLineCount(),want=s[5+2*pass];
+            List<String> hit=new ArrayList<>();if(chat!=null)for(var e:r.entrySet())if(meets(chat,e.getValue()))hit.add(e.getKey());
+            boolean clear=dr!=null&&!meets(dr,cross);
+            boolean apart=chat!=null&&dr[1]>=0&&top!=UiMath.NO_COLUMN&&chat[1]+chat[3]<=top&&ChatPlacement.drawnLines==shown&&shown==want&&clear&&hit.isEmpty();chatOk&=apart;
+            chatWhy+=(chatWhy.isEmpty()?"":"; ")+at+": chat scale "+hud.getChatScale()+", lifted "+ChatPlacement.lift(sh)+" GUI px, "+ChatPlacement.drawnLines+" lines drawn at canvas "+box(chat)+" (GUI "+box(dr)+"), the column's top at "+top+", the crosshair at GUI "+box(cross)+(clear?" clear":" COVERED")+(hit.isEmpty()?", apart from every element of the HUD":", meeting "+hit)+"; closed it shows "+shown+" lines (wanted "+want+")"+(apart?"":", WRONG");
+            smallWhy+=(smallWhy.isEmpty()?"":"; ")+at+": canvas "+cw+"x"+ch+" (HUD "+hk+"x, screens "+UiCanvas.k()+"x), "+r.size()+" rects, cards "+BattleHud.cards().stream().map(d->d.group()+" "+d.y()+(d.tall()?" tall":"")).toList()+", ability "+box(r.get("ability"))+", lesson "+box(r.get("lesson"))+", respawn "+box(r.get("respawn"))+", hints "+box(r.get("hints"))+", spine "+box(r.get("spine"))+", feed "+box(r.get("feed"))+", hotbar "+box(bars.get("the hotbar"))+", hearts "+box(bars.get("the hearts"))+", crosshair "+box(bars.get("the crosshair"))
+                +(bad.isEmpty()?", every rect inside and apart":", WRONG: "+String.join("; ",bad.subList(0,Math.min(6,bad.size()))))+(noted.isEmpty()?"":" (at the kit scale, as before this task: "+String.join("; ",noted)+")");
         }
 
-        /** p1-ui-chat-lift at one window with the chat open (UI polish round 2): it shows and draws the window's open count, apart
-         *  from every element of the HUD; over the crosshair is allowed, and the log says which. */
+        /** p1-ui-chat-lift at one window with the chat open (UI polish round 2): it shows and draws the window's open count in this
+         *  pass, on the screen and apart from every element of the HUD; over the crosshair is allowed, and the log says which. */
         void measureOpen(MinecraftClient c,int[] s,Map<String,int[]> r){
-            var w=c.getWindow();var hud=c.inGameHud.getChatHud();int sw=w.getScaledWidth(),sh=w.getScaledHeight(),lh=((gg.gravesandglory.mixin.ChatHudAccessor)hud).gravesandglory$getLineHeight(),shown=hud.getVisibleLineCount();
+            var w=c.getWindow();var hud=c.inGameHud.getChatHud();int sw=w.getScaledWidth(),sh=w.getScaledHeight(),lh=((gg.gravesandglory.mixin.ChatHudAccessor)hud).gravesandglory$getLineHeight(),shown=hud.getVisibleLineCount(),want=s[6+2*pass];
             int vanilla=net.minecraft.client.gui.hud.ChatHud.getHeight(c.options.getChatHeightFocused().getValue())/lh;int[] dr=ChatPlacement.drawn,cross={(sw-15)/2,(sh-15)/2,15,15},chat=dr==null?null:canvas(c,dr[0],dr[1],dr[2],dr[3]);
             boolean open=c.currentScreen instanceof net.minecraft.client.gui.screen.ChatScreen;List<String> hit=new ArrayList<>();if(chat!=null)for(var e:r.entrySet())if(meets(chat,e.getValue()))hit.add(e.getKey());
-            boolean ok=open&&chat!=null&&shown==s[5]&&ChatPlacement.drawnLines==s[5]&&hit.isEmpty();chatOk&=ok;
-            chatWhy+=(chatWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+" open"+(open?"":" (NOT open)")+": "+shown+" of vanilla's "+vanilla+" lines shown and "+ChatPlacement.drawnLines+" drawn at GUI "+box(dr)+" (wanted "+s[5]+")"+(hit.isEmpty()?", apart from every element of the HUD":", meeting "+hit)+", "+(meets(dr,cross)?"over":"clear of")+" the crosshair"+(ok?"":", WRONG");
+            boolean ok=open&&chat!=null&&dr[1]>=0&&shown==want&&ChatPlacement.drawnLines==want&&hit.isEmpty();chatOk&=ok;
+            chatWhy+=(chatWhy.isEmpty()?"":"; ")+s[0]+"x"+s[1]+" GUI "+s[2]+" pass "+"ABC".charAt(pass)+" open"+(open?"":" (NOT open)")+": "+shown+" of vanilla's "+vanilla+" lines shown and "+ChatPlacement.drawnLines+" drawn at GUI "+box(dr)+" (wanted "+want+")"+(hit.isEmpty()?", apart from every element of the HUD":", meeting "+hit)+", "+(dr!=null&&meets(dr,cross)?"over":"clear of")+" the crosshair"+(ok?"":", WRONG");
         }
+        /** The first window from i on that runs in this pass (pass C runs the 2x windows only). */
+        int next(int i){while(i<WINDOWS.length&&WINDOWS[i][5+2*pass]<0)i++;return i;}
 
         /** The real atlas JSON with one texture left out. */
         static String atlasWithout(MinecraftClient c,String name)throws java.io.IOException{
@@ -1557,7 +1603,8 @@ public final class Phase1Checks implements ClientModInitializer {
     }
 
     /** UI Task 3: the battle event feed (feed_v1), key hints from the player's own bindings, the hint layer and the map's glyphs, over
-     *  four practice rounds: A on map 0 (the bindings, the hint layer, the map), B on map 0 (a point taken, losses and kills), C on
+     *  four practice rounds: A on map 0 (the bindings, the hint layer, the map), B on map 0 (a point taken, losses and kills, then
+     *  a line of each kind on the slip), C on
      *  map 0 (a rout, a deploy, a fallen solo commander) and D on Kingsfield (the flood). Each round goes back to the camp before the
      *  next starts, so the client sees running turn false and then true: the feed clears and the hint layer's first 60 s begin again.
      *  The window is 960x540 at GUI 1 (k 1, the mock's size), but GUI 2 for the map's screenshot. */
@@ -1565,7 +1612,15 @@ public final class Phase1Checks implements ClientModInitializer {
         static final double AX=-220,AZ=0; // open ground on map 0's Dawn road (UiHudChecks.AX)
         static final String NOTICE="{key:menu} opens your war council.";
         static final String LONG="The long notice of the flood check runs on well past the width of the feed slip, so the slip trims it";
-        static final List<List<String>> HINT_ROWS=List.of(List.of("Not bound","Map","K","Commands"),List.of("[","]","Turn","Left Alt","Hints"));
+        static final List<List<String>> HINT_ROWS=List.of(List.of("Not Bound","Map","K","Commands"),List.of("[","]","Turn","Left Alt","Hints")); // an unbound key in the game's own words (UI Task 8a)
+        /** p1-ui-feed-kinds (Task 3 review Minor 9): one feed line of each kind but the rout stamp, in two shots of the slip, as a Dawn
+         *  player sees them: each line's kind, team and text, then the row, glyph and ink the slip must draw it with (the inks
+         *  written out, FeedLines' table: Dawn, Dusk, grey, loss red, brass, sepia). */
+        record FeedKind(String kind,int team,String text,int row,String glyph,int argb){}
+        static final List<List<FeedKind>> FEED_KINDS=List.of(
+            List.of(new FeedKind("point",0,"Dawn took Mill Hamlet",0,"hud/fgv-seal-dawn",0xff1d4f4c),new FeedKind("point",1,"Dusk took Trade Crossing",1,"hud/fgv-seal-x-dusk",0xff563a73),
+                new FeedKind("kill",0,"2 Dusk Revenants lost",2,"hud/fgv-skull-grey",0xff504b44),new FeedKind("loss",0,"3 Dawn Knights lost",3,"hud/fgv-skull",0xff7a2416),new FeedKind("deploy",0,"Dawn Knights deploying",4,"hud/fgv-sun",0xff3d3124)),
+            List.of(new FeedKind("down",0,"Ansel's banner has fallen",2,"hud/fgv-banner-down",0xff684600),new FeedKind("up",0,"Ansel is back in the field",3,"hud/fgv-banner-up",0xff684600),new FeedKind("notice",0,"Capture the objectives.",4,"hud/fgv-sun",0xff3d3124)));
         static final List<String> AIM_ROW=List.of("LMB","Confirm","RMB","Cancel");
         static final List<String> COLOURS=List.of("red","blue","green","gold","yellow","purple","white","grey","gray","orange","cyan","aqua","black","pink","violet","brown");
         static final UUID STALE=UUID.randomUUID(); // the remembered sighting the map stage keeps 100 ticks old
@@ -1577,6 +1632,7 @@ public final class Phase1Checks implements ClientModInitializer {
         // client thread
         int oldW,oldH,oldGui,round,after,waitFrom,seen,seen2,mark=-1,routAt,respawnAt,sentBefore;boolean finished,campOk,battleOk,rowsOk,inFirst,respawnSeen,banner,floodOk,prepOk;
         String campWhy="",battleWhy="",rowsWhy="",prepWhy="",floodWhy="";List<Boolean> tallFirst=List.of(),tallLate=List.of();
+        boolean kindsOk=true;String kindsWhy=""; // p1-ui-feed-kinds
 
         ServerPlayerEntity sp(GravesAndGlory.Battle b){return player==null?null:b.server.getPlayerManager().getPlayer(player);}
         static List<EventFeed.Line> lines(){return EventFeed.lines(net.minecraft.util.Util.getMeasuringTimeMs());}
@@ -1590,6 +1646,7 @@ public final class Phase1Checks implements ClientModInitializer {
         static String feed(){return lines().stream().map(l->l.kind()+"/"+l.team()+" '"+l.text()+"'").toList().toString();}
         static boolean bannerLine(){return lines().stream().anyMatch(l->l.kind().equals("down")||l.kind().equals("up"));}
         static List<Boolean> talls(){return BattleHud.cards().stream().map(BattleHud.CardDraw::tall).toList();}
+        static String feedRow(BattleHud.FeedDraw d){return "row "+d.row()+" "+d.glyph()+" #"+String.format(Locale.ROOT,"%06x",d.argb()&0xffffff)+" '"+d.text()+"'";}
         static net.minecraft.client.util.InputUtil.Key hintsKey(){return net.minecraft.client.util.InputUtil.fromTranslationKey(GravesAndGloryClient.hints.getBoundKeyTranslationKey());}
         /** The troop a loss line names ("?" for none). */
         static String troopOf(String text){for(var t:Spec.TROOPS)if(text.equals(FeedLines.lost(1,t.name()))||text.endsWith(" "+FeedLines.plural(t.name())+" lost"))return t.id();return "?";}
@@ -1600,8 +1657,6 @@ public final class Phase1Checks implements ClientModInitializer {
         int since(int tick){if(mark!=stage){mark=stage;waitFrom=tick;}return tick-waitFrom;}
         /** The menu, map and turn keys back on their defaults (R, M, [ and ]). */
         static void defaults(){for(var k:new net.minecraft.client.option.KeyBinding[]{GravesAndGloryClient.menu,GravesAndGloryClient.mapKey,GravesAndGloryClient.rotateLeft,GravesAndGloryClient.rotateRight,GravesAndGloryClient.attack})k.setBoundKey(k.getDefaultKey());net.minecraft.client.option.KeyBinding.updateKeysByCode();}
-        /** A chip shows the name, or a trim of it (UiMath.trimKey): a start of the name, the dots, then an end of it. */
-        static boolean trimOf(String chip,String name){int d=chip.indexOf("...");return chip.equals(name)||d>=0&&name.startsWith(chip.substring(0,d))&&name.endsWith(chip.substring(d+3));}
         /** Back to the camp (the client must see running false), then round r on its map; 20 ticks after the client shows it, stage next. */
         void restart(MinecraftClient c,int r,int next){round=r;after=next;stage=-900;server(c,b->{if(b.running)b.campaign.returnLobby();stage=900;});}
 
@@ -1744,10 +1799,11 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 23->{ // p1-ui-hints-long (UI polish M4): two long names on each row of the hint slip, which must still end on its paper.
                     // The turn keys go on Page Up and Page Down, two long names with one start, as the review's Keypad 4 and 6 would be; in
-                    // game those read 4 and 6 (GLFW names a printable key by its character) and fit (run ui-polish1-201624). The row cannot
-                    // keep every last word whole (UiMathCheck: P...Up, Pag..., L...Alt), so the two turn chips need only differ. Attack goes on
-                    // Caps Lock (UI polish round 2), too long for the mock's places on the tall cards: each card's key row must still keep
-                    // its Attack pair clear of the Follow chip and end by the card's x + 166
+                    // game those read 4 and 6 (GLFW names a printable key by its character) and fit (run ui-polish1-201624). Too long for
+                    // the row whole, the keys take their short names (UI Task 8a, the re-review's 'Pag...'): None for the unbound Map key,
+                    // RShift; PgUp, PgDn, LAlt. Attack goes on Caps Lock (UI polish round 2), too long for the mock's places on the tall
+                    // cards: each card's key row reads Caps, keeps its Attack pair clear of the Follow chip and ends by the card's x + 166,
+                    // Formation as Form (Kort, 2026-10-18)
                     var keysym=net.minecraft.client.util.InputUtil.Type.KEYSYM;
                     GravesAndGloryClient.menu.setBoundKey(keysym.createFromCode(GLFW.GLFW_KEY_RIGHT_SHIFT));GravesAndGloryClient.mapKey.setBoundKey(net.minecraft.client.util.InputUtil.UNKNOWN_KEY);
                     GravesAndGloryClient.rotateLeft.setBoundKey(keysym.createFromCode(GLFW.GLFW_KEY_PAGE_UP));GravesAndGloryClient.rotateRight.setBoundKey(keysym.createFromCode(GLFW.GLFW_KEY_PAGE_DOWN));
@@ -1758,16 +1814,14 @@ public final class Phase1Checks implements ClientModInitializer {
                         boolean shape=rows.size()==2&&ends.size()==2&&slip!=null&&rows.get(0).size()==4&&rows.get(1).size()==5;
                         boolean on=shape&&ends.get(0)<=slip[0]+164&&ends.get(1)<=slip[0]+164; // the slip PNG's paper ends at x 172: 8 px kept clear, as on the left
                         String shift=GravesAndGloryClient.menu.getBoundKeyLocalizedText().getString(),up=GravesAndGloryClient.rotateLeft.getBoundKeyLocalizedText().getString(),down=GravesAndGloryClient.rotateRight.getBoundKeyLocalizedText().getString();
-                        boolean named=shape&&shift.equals("Right Shift")&&up.equals("Page Up")&&down.equals("Page Down")&&trimOf(rows.get(0).get(0),"Not bound")&&rows.get(0).get(1).equals("Map")&&trimOf(rows.get(0).get(2),shift)&&rows.get(0).get(3).equals("Commands")
-                            &&trimOf(rows.get(1).get(0),up)&&trimOf(rows.get(1).get(1),down)&&rows.get(1).get(2).equals("Turn")&&trimOf(rows.get(1).get(3),"Left Alt")&&rows.get(1).get(4).equals("Hints");
-                        boolean apart=shape&&!rows.get(1).get(0).equals(rows.get(1).get(1))&&rows.get(0).get(2).endsWith("Shift")&&String.join("",rows.get(0)).contains("...")&&String.join("",rows.get(1)).contains("...");
+                        boolean named=shape&&shift.equals("Right Shift")&&up.equals("Page Up")&&down.equals("Page Down")&&rows.equals(List.of(List.of("None","Map","RShift","Commands"),List.of("PgUp","PgDn","Turn","LAlt","Hints")));
                         String caps=GravesAndGloryClient.attack.getBoundKeyLocalizedText().getString();var keyRows=List.copyOf(BattleHud.keyRows());List<String> cardsWrong=new ArrayList<>();
                         for(var kr:keyRows){int[] card=BattleHud.rects().get("card-"+kr.group());var p=kr.parts();
-                            boolean ok=card!=null&&p.size()==6&&trimOf(p.get(0),caps)&&p.get(1).equals("Attack")&&p.get(2).equals(GravesAndGloryClient.hint("follow"))&&p.get(3).equals("Follow")&&p.get(4).equals(GravesAndGloryClient.hint("formation"))&&p.get(5).equals("Form")&&kr.from().get(0)>=card[0]+10&&kr.to().get(5)<=card[0]+166;
+                            boolean ok=card!=null&&p.equals(List.of("Caps","Attack","V","Follow","B","Form"))&&kr.from().get(0)>=card[0]+10&&kr.to().get(5)<=card[0]+166;
                             for(int i=0;ok&&i<5;i++)ok=kr.to().get(i)<kr.from().get(i+1);if(!ok)cardsWrong.add(kr.group());}
                         boolean cardsOk=caps.equals("Caps Lock")&&keyRows.size()==3&&cardsWrong.isEmpty();
                         shot(c,"ui-hud-hints-long");defaults();
-                        report("p1-ui-hints-long",on&&named&&apart&&cardsOk,"with Map unbound, Commands on "+shift+" and Turn on "+up+" and "+down+", the slip at "+UiHudChecks.box(slip)+" drew the rows "+rows+", ending at canvas x "+ends+" (the paper's text edge at "+(slip==null?"?":String.valueOf(slip[0]+164))+"); with Attack on "+caps+" the tall cards drew the key rows "+keyRows.stream().map(kr->kr.group()+" "+kr.parts()+" from x "+kr.from()+" to "+kr.to()+" (the card at "+UiHudChecks.box(BattleHud.rects().get("card-"+kr.group()))+")").toList()+(cardsWrong.isEmpty()?"":", WRONG on "+cardsWrong)+"; then the keys went back to "+GravesAndGloryClient.hint("menu")+", "+GravesAndGloryClient.hint("map")+", "+GravesAndGloryClient.hint("rotate_left")+", "+GravesAndGloryClient.hint("rotate_right")+" and "+GravesAndGloryClient.hint("attack"));
+                        report("p1-ui-hints-long",on&&named&&cardsOk,"with Map unbound, Commands on "+shift+" and Turn on "+up+" and "+down+", the slip at "+UiHudChecks.box(slip)+" drew the rows "+rows+", ending at canvas x "+ends+" (the paper's text edge at "+(slip==null?"?":String.valueOf(slip[0]+164))+"); with Attack on "+caps+" the tall cards drew the key rows "+keyRows.stream().map(kr->kr.group()+" "+kr.parts()+" from x "+kr.from()+" to "+kr.to()+" (the card at "+UiHudChecks.box(BattleHud.rects().get("card-"+kr.group()))+")").toList()+(cardsWrong.isEmpty()?"":", WRONG on "+cardsWrong)+"; then the keys went back to "+GravesAndGloryClient.hint("menu")+", "+GravesAndGloryClient.hint("map")+", "+GravesAndGloryClient.hint("rotate_left")+", "+GravesAndGloryClient.hint("rotate_right")+" and "+GravesAndGloryClient.hint("attack"));
                         seen=tick;stage=14;}
                 }
                 case 14->{ // p1-ui-alt-layer: in the first 60 s every card is tall
@@ -1808,7 +1862,19 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 32->{EventFeed.clear();stage=-32;server(c,b->{lossKill(b);stage=33;});}
                 case 33->{ // p1-ui-feed-loss-kill
                     if(since(tick)>=60){long lost=count("loss",0,"3 Dawn Knights lost"),slain=count("kill",0,"2 Dusk Revenants lost");
-                        report("p1-ui-feed-loss-kill",lost==1&&slain==1,killed+"; 60 client ticks later the feed held "+lost+" '3 Dawn Knights lost' (loss, 0) and "+slain+" '2 Dusk Revenants lost' (kill, 0): "+feed());restart(c,3,50);}
+                        report("p1-ui-feed-loss-kill",lost==1&&slain==1,killed+"; 60 client ticks later the feed held "+lost+" '3 Dawn Knights lost' (loss, 0) and "+slain+" '2 Dusk Revenants lost' (kill, 0): "+feed());stage=34;}
+                }
+                case 34,35->{ // p1-ui-feed-kinds: each set of lines on the slip alone, then its screenshot three ticks later
+                    int set=stage-34;
+                    if(since(tick)==0){EventFeed.clear();long now=net.minecraft.util.Util.getMeasuringTimeMs();for(var k:FEED_KINDS.get(set))EventFeed.push(k.kind(),k.team(),k.text(),now);}
+                    else if(since(tick)>=3){
+                        var got=List.copyOf(BattleHud.feedRows());var want=FEED_KINDS.get(set).stream().map(k->new BattleHud.FeedDraw(k.row(),k.glyph(),k.argb(),k.text())).toList();
+                        boolean ok=GravesAndGloryClient.team==0&&got.equals(want);kindsOk&=ok;
+                        kindsWhy+=(kindsWhy.isEmpty()?"":"; ")+"shot "+(set+1)+" (viewer team "+GravesAndGloryClient.team+"): drew "+got.stream().map(UiFeedChecks::feedRow).toList()+(ok?"":", WRONG (wanted "+want.stream().map(UiFeedChecks::feedRow).toList()+")");
+                        shot(c,set==0?"ui-feed-kinds":"ui-feed-kinds-2");
+                        if(set==0)stage=35;
+                        else{report("p1-ui-feed-kinds",kindsOk,"one line of each kind but the rout stamp, pushed onto the slip as a Dawn player sees them: "+kindsWhy);EventFeed.clear();restart(c,3,50);}
+                    }
                 }
                 // Round C: map 0
                 case 50->{EventFeed.clear();stage=-50;server(c,b->{killTroop(b,b.squads.get(player),"knight",10);stage=51;});}
@@ -3091,43 +3157,76 @@ public final class Phase1Checks implements ClientModInitializer {
         void end(MinecraftClient c){finished=true;c.setScreen(null);CampaignClient.homeMode="skirmish";if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;}
     }
 
-    /** UI polish M11, the last suite listed (it leaves the world): a disconnect empties what the battle HUD keeps between frames. A
-     *  practice round on map 0 draws the pinned lesson 4, then a feed line, the hint slip and the cards with an attack order aimed (the
-     *  card hides while an order is aimed; its wrap and lines stay); then the client leaves as the pause menu's Save and Quit does. No HUD frame runs without a world, so 20 ticks after it is gone the records
-     *  must already be empty: what the last frame drew, the feed, the aimed order, the cards' groups and flashes, the lesson wrap and
-     *  its lines, and the hint layer's clock, with the chat lift back at 0. */
+    /** UI polish M11, the last suite listed (it leaves the world): a disconnect empties what the battle HUD keeps between frames and
+     *  puts the command state back as a new client starts it. A practice round on map 0 draws the pinned lesson 4; then a feed line,
+     *  an attack order aimed down the field (the hint slip and every card's key row up, the lesson card hidden, its wrap and lines
+     *  kept) with ranged, the wedge and a set facing chosen, a ping on the map, the clock at 7:42 and a knight killed (a card flash).
+     *  The guard is honest (Task 3 re-review Minor 6): every record must hold something at once before the client leaves, or the
+     *  check fails naming the empty ones, since "empty after" proves nothing of a record that was empty before. Then the client
+     *  leaves as the pause menu's Save and Quit does, and this suite's own disconnect listener, which runs after the mod's, empties
+     *  the client's task queue as MinecraftClient.disconnect's cancelTasks can (the re-review's race): a clear the mod queued would
+     *  be lost. No HUD frame runs without a world, so 20 ticks after it is gone nothing may be held: what the last frame drew, the
+     *  feed (its raw size, expired lines too), the aimed order, the groups and flashes, the pings, the clock, the selection, the
+     *  formation and the facing, the lesson wrap and lines, the hint layer's clock and the chat lift. p1-ui-keybind-scope: on the
+     *  mod's server the use key's keybind text reads RMB, off it the game's own words. */
     static final class UiLeaveChecks implements Suite,ServerWatch,HudWatch {
-        volatile boolean want,fixed;volatile UUID player;volatile String thread="";
+        volatile boolean want,fixed;volatile UUID player;volatile String thread="",wiped="";
         // client thread
-        int stage,waitFrom,waited,left;String before="";
-        UiLeaveChecks(){ClientPlayConnectionEvents.DISCONNECT.register((h,c)->{if(current==this)thread=Thread.currentThread().getName();});} // which thread the event fires on
+        int stage,waitFrom,waited,left;String before="",useIn="";
+        // registered when the suite starts, after the mod's own handler, so it runs after it: which thread the event fires on, then the wipe
+        UiLeaveChecks(){ClientPlayConnectionEvents.DISCONNECT.register((h,c)->{if(current!=this)return;thread=Thread.currentThread().getName();wiped=wipeTasks(c);});}
+        /** MinecraftClient.disconnect's own first step, ThreadExecutor.cancelTasks (protected): whatever the client had queued is dropped. */
+        static String wipeTasks(MinecraftClient c){
+            try{var m=net.minecraft.util.thread.ThreadExecutor.class.getDeclaredMethod("cancelTasks");m.setAccessible(true);int n=c.getTaskCount();m.invoke(c);return "wiped "+n+" queued task(s)";}
+            catch(ReflectiveOperationException e){return "could not empty the task queue: "+e;}
+        }
         public void serverTick(GravesAndGlory.Battle b){if(want){var p=player==null?null:b.server.getPlayerManager().getPlayer(player);if(p!=null&&skirmish(b,p,0,1,"normal")){want=false;fixed=true;}}}
         public void hudFrame(MinecraftClient c){}
-        /** What the battle HUD keeps between frames. */
+        /** What the battle HUD and the command state keep between frames. */
         static String records(MinecraftClient c){
-            return "rects "+BattleHud.rects().keySet()+", "+BattleHud.texts().size()+" texts, "+BattleHud.cards().size()+" cards, "+BattleHud.seals().size()+" seals, hint rows "+BattleHud.hintRows()+", "+BattleHud.keyRows().size()+" card key rows, "+EventFeed.lines(net.minecraft.util.Util.getMeasuringTimeMs()).size()+" feed lines, order aimed "+CommandMode.active()+" (at "+CommandMode.destination+"), "+CommandMode.groups.size()+" groups, "+CommandMode.flashUntil.size()+" flashes, lesson wrap "+(BattleHud.wrappedFor()!=null)+", "+GravesAndGloryClient.lessonDrawn.size()+" lesson lines, round clock "+BattleHud.roundShownMs+", chat lift "+ChatPlacement.lift(c.getWindow().getScaledHeight());
+            return "rects "+BattleHud.rects().keySet()+", "+BattleHud.texts().size()+" texts, "+BattleHud.cards().size()+" cards, "+BattleHud.seals().size()+" seals, hint rows "+BattleHud.hintRows()+" ending at "+BattleHud.hintEnds()+", "+BattleHud.keyRows().size()+" card key rows, "+BattleHud.feedRows().size()+" feed rows drawn, "+EventFeed.size()+" feed lines held, order aimed "+CommandMode.active()+" (at "+CommandMode.destination+", "+CommandMode.preview.size()+" preview marks), "+CommandMode.groups.size()+" groups, "+CommandMode.flashUntil.size()+" flashes ("+CommandMode.flashFrom.size()+" strengths), "+CommandMode.pings.size()+" pings, clock "+CommandMode.seconds+" s, selected "+CommandMode.selected+", formation "+CommandMode.formation+", facing "+CommandMode.facing+(CommandMode.facingSet?" (set)":"")+", lesson wrap "+(BattleHud.wrappedFor()!=null)+", "+GravesAndGloryClient.lessonDrawn.size()+" lesson lines, round clock "+BattleHud.roundShownMs+", chat lift "+ChatPlacement.lift(c.getWindow().getScaledHeight());
         }
-        static boolean empty(MinecraftClient c){
-            return BattleHud.rects().isEmpty()&&BattleHud.texts().isEmpty()&&BattleHud.cards().isEmpty()&&BattleHud.seals().isEmpty()&&BattleHud.hintRows().isEmpty()&&BattleHud.hintEnds().isEmpty()&&BattleHud.keyRows().isEmpty()&&EventFeed.lines(net.minecraft.util.Util.getMeasuringTimeMs()).isEmpty()
-                &&!CommandMode.active()&&CommandMode.destination==null&&CommandMode.groups.isEmpty()&&CommandMode.flashUntil.isEmpty()&&BattleHud.wrappedFor()==null&&GravesAndGloryClient.lessonDrawn.isEmpty()&&BattleHud.roundShownMs==0&&ChatPlacement.lift(c.getWindow().getScaledHeight())==0;
+        /** Each record by name, and whether it holds anything: the command state's when it differs from a new client's. */
+        static Map<String,Boolean> held(MinecraftClient c){
+            Map<String,Boolean> m=new LinkedHashMap<>();
+            m.put("rects",!BattleHud.rects().isEmpty());m.put("texts",!BattleHud.texts().isEmpty());m.put("cards",!BattleHud.cards().isEmpty());m.put("seals",!BattleHud.seals().isEmpty());
+            m.put("hint rows",!BattleHud.hintRows().isEmpty());m.put("hint row ends",!BattleHud.hintEnds().isEmpty());m.put("card key rows",!BattleHud.keyRows().isEmpty());m.put("feed rows",!BattleHud.feedRows().isEmpty());m.put("feed lines",EventFeed.size()>0);
+            m.put("aimed order",CommandMode.active());m.put("destination",CommandMode.destination!=null);m.put("preview",!CommandMode.preview.isEmpty());m.put("groups",!CommandMode.groups.isEmpty());
+            m.put("flashes",!CommandMode.flashUntil.isEmpty());m.put("flash strengths",!CommandMode.flashFrom.isEmpty());m.put("pings",!CommandMode.pings.isEmpty());m.put("clock",CommandMode.seconds!=600);
+            m.put("selection",!CommandMode.selected.equals("all"));m.put("formation",!CommandMode.formation.equals("block"));m.put("facing",CommandMode.facingSet||CommandMode.facing!=0);
+            m.put("lesson wrap",BattleHud.wrappedFor()!=null);m.put("lesson lines",!GravesAndGloryClient.lessonDrawn.isEmpty());m.put("round clock",BattleHud.roundShownMs!=0);m.put("chat lift",ChatPlacement.lift(c.getWindow().getScaledHeight())!=0);
+            return m;
         }
+        static List<String> named(Map<String,Boolean> m,boolean value){return m.entrySet().stream().filter(e->e.getValue()==value).map(Map.Entry::getKey).toList();}
         public void step(MinecraftClient c,int tick){
             if(stage<3)CampaignClient.tutorial=3; // lesson 4 pinned, so the lesson card draws
-            if(stage>0&&stage<3&&tick-waitFrom>3000){report("p1-ui-leave-clear",false,"no round with its lesson and an aimed order 3000 ticks in (stage "+stage+"): "+records(c));stage=9;finish(c,"ui-leave");return;}
+            if(stage==1&&tick-waitFrom>3000){report("p1-ui-leave-clear",false,"no round with its lesson card 3000 ticks in: "+records(c));stage=9;finish(c,"ui-leave");return;}
+            if(stage==2&&tick-waitFrom>600){report("p1-ui-leave-clear",false,"600 ticks after the round showed, these records still held nothing: "+named(held(c),false)+" ("+records(c)+")");CommandMode.cancel();stage=9;finish(c,"ui-leave");return;}
             switch(stage){
                 case 0->{
                     if(tick<20)return;
                     if(!queue.isEmpty()){report("p1-ui-leave-clear",false,"ui-leave leaves the world, so it must be the last suite listed; still queued: "+queue);stage=9;finish(c,"ui-leave");return;}
                     c.setScreen(null);player=c.player.getUuid();want=true;waitFrom=tick;stage=1;
                 }
-                case 1->{ // the round on screen with its lesson card: a feed line, then an attack order aimed
+                case 1->{ // the round on screen with its lesson card: then every record is given something to hold
                     if(c.currentScreen!=null)c.setScreen(null);
-                    if(fixed&&GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()&&BattleHud.rects().containsKey("lesson")){EventFeed.push("notice",GravesAndGloryClient.team,"Leaving the field",net.minecraft.util.Util.getMeasuringTimeMs());CommandMode.begin("attack");stage=2;}
+                    if(fixed&&GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()&&BattleHud.rects().containsKey("lesson")){
+                        useIn=net.minecraft.text.Text.keybind("key.use").getString(); // on the mod's server
+                        EventFeed.push("notice",GravesAndGloryClient.team,"Leaving the field",net.minecraft.util.Util.getMeasuringTimeMs());
+                        CommandMode.begin("attack");CommandMode.selected="ranged";CommandMode.formation="wedge";CommandMode.facing=45;CommandMode.facingSet=true;
+                        c.player.setPitch(40); // looking down at the field before the player, so the aimed order has a destination and a preview
+                        UUID id=player;server(c,b->{var p=b.server.getPlayerManager().getPlayer(id);var own=b.squads.get(id);if(p==null||own==null)return;
+                            b.ping(p,Spec.PINGS[0].id(),UiHudChecks.AX,UiHudChecks.AZ); // on the Dawn road, inside the arena
+                            b.roundStarted=b.time-(b.roundSeconds-462)*20L; // the clock at 7:42
+                            for(var u:b.units)if(u.squad==own&&u.spec.group().equals("infantry")&&u.mob.isAlive()){u.mob.kill();break;} // a knight falls: the infantry card flashes
+                            b.units.removeIf(u->!u.mob.isAlive());});
+                        waitFrom=tick;stage=2;
+                    }
                 }
-                case 2->{ // every record held at once (the lesson card hides while an order is aimed, its wrap and lines stay), then the pause
-                    // menu's Save and Quit (GameMenuScreen.disconnect), outside the tick
-                    var r=BattleHud.rects();
-                    if(CommandMode.active()&&r.containsKey("feed")&&r.containsKey("hints")&&!BattleHud.cards().isEmpty()&&BattleHud.wrappedFor()!=null&&!GravesAndGloryClient.lessonDrawn.isEmpty()){
+                case 2->{ // every record held at once, then the pause menu's Save and Quit (GameMenuScreen.disconnect), outside the tick
+                    if(c.currentScreen!=null)c.setScreen(null);
+                    if(EventFeed.size()==0)EventFeed.push("notice",GravesAndGloryClient.team,"Leaving the field",net.minecraft.util.Util.getMeasuringTimeMs()); // a feed line lives 8 s
+                    if(named(held(c),false).isEmpty()){
                         before=records(c);stage=3;
                         c.send(()->{if(c.world!=null)c.world.disconnect();c.disconnect(new net.minecraft.client.gui.screen.MessageScreen(net.minecraft.text.Text.translatable("menu.savingLevel")));c.setScreen(new net.minecraft.client.gui.screen.TitleScreen());});
                     }
@@ -3135,12 +3234,15 @@ public final class Phase1Checks implements ClientModInitializer {
                 default->{}
             }
         }
-        /** Runs with no world too, where step() does not: 20 ticks after the world and the server are gone, the records must be empty. */
+        /** Runs with no world too, where step() does not: 20 ticks after the world and the server are gone, nothing may be held. */
         @Override public void clientTick(MinecraftClient c){
             if(stage!=3)return;
             if(c.world==null&&c.getServer()==null)left++;
             if(left<20&&++waited<=1200)return;
-            report("p1-ui-leave-clear",left>=20&&!thread.isEmpty()&&empty(c),"before the Save and Quit: "+before+"; the disconnect event fired on the thread '"+thread+"'; "+(left>=20?"20 client ticks with no world later: ":"the world was not gone 1200 ticks after the Save and Quit: ")+records(c));
+            var kept=named(held(c),true);
+            report("p1-ui-leave-clear",left>=20&&!thread.isEmpty()&&wiped.startsWith("wiped")&&kept.isEmpty(),"before the Save and Quit every record held something: "+before+"; the disconnect event fired on the thread '"+thread+"', and this suite's listener after the mod's "+wiped+"; "+(left>=20?"20 client ticks with no world later: ":"the world was not gone 1200 ticks after the Save and Quit: ")+records(c)+(kept.isEmpty()?"; nothing held":"; STILL HELD: "+kept));
+            String useOut=net.minecraft.text.Text.keybind("key.use").getString(),right=net.minecraft.client.util.InputUtil.Type.MOUSE.createFromCode(GLFW.GLFW_MOUSE_BUTTON_RIGHT).getLocalizedText().getString();
+            report("p1-ui-keybind-scope",left>=20&&"RMB".equals(useIn)&&useOut.equals(right)&&!useOut.equals("RMB"),"the use key's keybind text (Text.keybind(\"key.use\"), the camp sign's and the notices' kind) read '"+useIn+"' on the mod's server (wanted RMB) and '"+useOut+"' off it (wanted the game's own '"+right+"')");
             stage=9;finish(c,"ui-leave");
         }
     }

@@ -3,14 +3,20 @@
 - the old team colours and factionColor( live only in DarkUi.java;
 - the HUD and screen files listed below draw no ARGB literal of their own (colours live in DarkUi, the feed inks in FeedLines),
   except the map terrain fills, the FantasyButton class body and a bit mask (a literal right after &, as in col&0xff00ff00);
-- every teamColor( outside DarkUi.java has a teamMark( within three lines, so colour never carries a meaning alone.
+- every teamColor( outside DarkUi.java has a teamMark( within three lines, so colour never carries a meaning alone;
+- no string literal names a mouse button in English ("Right Button"): chips go by the bound key, not its name (UI Task 8a);
+- the battle HUD's files (HUD_CANVAS) never take the screens' canvas scale or size (UiCanvas.k, width, height, begin): the HUD
+  draws at its own scale, UiCanvas.hudK (UI Task 8a).
 Prints 'test_ui_standard: clean', or one 'file: snippet' line per finding and exits 1."""
 import pathlib
 import re
 import sys
 
 SRC = pathlib.Path(__file__).resolve().parents[2] / 'src/main/java/gg/gravesandglory'
-BANNED_TEXT = [r'Press [A-Z]\b', r'\b[A-Z] opens', r'[Rr]ight-click', r'Click:', r'"M /', r'cyan ally', r'Gold yours']
+BANNED_TEXT = [r'Press [A-Z]\b', r'\b[A-Z] opens', r'[Rr]ight-click', r'Click:', r'"M /', r'cyan ally', r'Gold yours',
+               r'\b(Left|Right|Middle) Button\b']
+HUD_CANVAS = {'BattleHud', 'ChatPlacement'}
+SCREEN_CANVAS = re.compile(r'\bUiCanvas\s*\.\s*(k|width|height|begin)\s*\(')
 OLD_COLOURS = ['0xff57d9ee', '0xffc58bff', '0xff70a8a4', '0xff9e77ba', '0xff6ddfe9']
 NO_ARGB = {'GravesAndGloryClient', 'CommandMode', 'CampScreen', 'CampaignClient', 'BattleHud', 'EventFeed', 'TitleScene', 'Portrait'}
 ARGB_ALLOWED = {'0x66303c39', '0xff34473b'}
@@ -109,6 +115,9 @@ def check_file(path):
             if mask or m.group().lower() in ARGB_ALLOWED or button and button[0] <= m.start() < button[1]:
                 continue
             found.append(f'{path.name}:{line_of(text, m.start())}: {m.group()}')
+    if name in HUD_CANVAS:
+        for m in SCREEN_CANVAS.finditer(code):
+            found.append(f'{path.name}:{line_of(text, m.start())}: {m.group()} takes the screens\' scale, not the HUD\'s (hudK)')
     if name != 'DarkUi':
         lines = code.split('\n')
         for k, line in enumerate(lines):

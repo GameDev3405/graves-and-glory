@@ -39,13 +39,67 @@ public final class HintText {
         return parts;
     }
 
-    /** A key's name as a chip shows it: the mouse buttons as LMB, RMB and MMB, any other name unchanged. */
-    public static String chip(String keyName) {
-        return switch (keyName) {
-            case "Left Button" -> "LMB";
-            case "Right Button" -> "RMB";
-            case "Middle Button" -> "MMB";
-            default -> keyName;
+    /** A mouse button's chip by its code (GLFW's, as InputUtil.Type.MOUSE numbers them): LMB, RMB and MMB for buttons 0, 1 and 2
+     *  in every language; null for the rest, which keep the game's own name. */
+    public static String mouseChip(int button) {
+        return switch (button) {
+            case 0 -> "LMB";
+            case 1 -> "RMB";
+            case 2 -> "MMB";
+            default -> null;
+        };
+    }
+
+    /** A mouse button's short name for a crowded key row: its chip, else MB4, MB5 and on (button 3 is the fourth). */
+    public static String mouseShort(int button) {
+        String chip = mouseChip(button);
+        return chip != null ? chip : "MB" + (button + 1);
+    }
+
+    /** An unbound key's short name for a crowded key row; uncrowded, the game's own words for it. */
+    public static final String UNBOUND_SHORT = "None";
+
+    /** A key's short name where it is shorter than its full one (in characters), else the full name: a printable key's name
+     *  is short already (the keypad's 4 reads "4" in game, shorter than Num4). */
+    public static String shorter(String full, String shortName) {
+        return shortName != null && shortName.length() < full.length() ? shortName : full;
+    }
+
+    /** A keyboard key's short name for a crowded key row, by its GLFW code (UI Task 8a, the Task 3 re-review's thin trims: Page Down
+     *  read "Pag..."): PgUp, RShift, Num4 and the like for the long names; null for a key whose name is short already. */
+    public static String keyShort(int code) {
+        if (code >= 320 && code <= 329) return "Num" + (code - 320);
+        return switch (code) {
+            case 256 -> "Esc";
+            case 259 -> "Bksp";
+            case 260 -> "Ins";
+            case 261 -> "Del";
+            case 262 -> "Right";
+            case 263 -> "Left";
+            case 264 -> "Down";
+            case 265 -> "Up";
+            case 266 -> "PgUp";
+            case 267 -> "PgDn";
+            case 280 -> "Caps";
+            case 281 -> "ScrLk";
+            case 282 -> "NumLk";
+            case 283 -> "PrtSc";
+            case 330 -> "Num.";
+            case 331 -> "Num/";
+            case 332 -> "Num*";
+            case 333 -> "Num-";
+            case 334 -> "Num+";
+            case 335 -> "NumEnt";
+            case 336 -> "Num=";
+            case 340 -> "LShift";
+            case 341 -> "LCtrl";
+            case 342 -> "LAlt";
+            case 343 -> "LWin";
+            case 344 -> "RShift";
+            case 345 -> "RCtrl";
+            case 346 -> "RAlt";
+            case 347 -> "RWin";
+            default -> null;
         };
     }
 

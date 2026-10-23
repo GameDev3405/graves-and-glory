@@ -135,15 +135,23 @@ public final class UiMath {
 
     /** fitKeys for a key row with wordGap px after each word in place of the slip's 8 (a tall card's row). */
     public static List<String> fitKeys(List<String> keys, List<String> words, int maxW, int wordGap, ToIntFunction<String> width) {
+        return fitKeys(keys, keys, words, maxW, wordGap, width);
+    }
+
+    /** A key row's names fitted to maxW, given each key's short name as well (HintText.keyShort: Right Shift as RShift, Page Up as
+     *  PgUp). The full names when the row fits; else the short names when they fit; else the short names trimmed to the widest
+     *  common cap at which the row fits, as fitKeys trims. A narrower cap never widens a name, so the cap is found by halving. */
+    public static List<String> fitKeys(List<String> keys, List<String> shorts, List<String> words, int maxW, int wordGap, ToIntFunction<String> width) {
         if (hintRowWidth(keys, words, wordGap, width) <= maxW) return keys;
+        if (hintRowWidth(shorts, words, wordGap, width) <= maxW) return shorts;
         int lo = 0, hi = 0;
-        for (String k : keys) hi = Math.max(hi, width.applyAsInt(k));
+        for (String k : shorts) hi = Math.max(hi, width.applyAsInt(k));
         while (lo < hi) {
             int mid = (lo + hi + 1) / 2;
-            if (hintRowWidth(capped(keys, mid, width), words, wordGap, width) <= maxW) lo = mid;
+            if (hintRowWidth(capped(shorts, mid, width), words, wordGap, width) <= maxW) lo = mid;
             else hi = mid - 1;
         }
-        return capped(keys, lo, width);
+        return capped(shorts, lo, width);
     }
 
     static List<String> capped(List<String> keys, int cap, ToIntFunction<String> width) {
@@ -169,6 +177,12 @@ public final class UiMath {
      *  and long names give way alike as on the hint slip (fitKeys), so no pair runs into the next and the row ends by
      *  CARD_ROW_END. */
     public static CardRow cardRow(List<String> keys, List<String> words, List<String> shortWords, ToIntFunction<String> width) {
+        return cardRow(keys, keys, words, shortWords, width);
+    }
+
+    /** cardRow given each key's short name as well: a flowing row takes the full names when they fit, else the short names, as
+     *  fitKeys picks them. */
+    public static CardRow cardRow(List<String> keys, List<String> shorts, List<String> words, List<String> shortWords, ToIntFunction<String> width) {
         boolean fixed = true;
         for (int k = 0; k < keys.size(); k++) {
             int end = CARD_KEY_AT[k] + chipWidth(width.applyAsInt(keys.get(k))) + 2 + width.applyAsInt(words.get(k));
@@ -179,7 +193,7 @@ public final class UiMath {
             for (int k = 0; k < keys.size(); k++) at.add(CARD_KEY_AT[k]);
             return new CardRow(List.copyOf(keys), List.copyOf(words), List.copyOf(at));
         }
-        List<String> fitted = fitKeys(keys, shortWords, CARD_ROW_END - CARD_KEY_AT[0], CARD_ROW_GAP, width);
+        List<String> fitted = fitKeys(keys, shorts, shortWords, CARD_ROW_END - CARD_KEY_AT[0], CARD_ROW_GAP, width);
         int x = CARD_KEY_AT[0];
         for (int k = 0; k < fitted.size(); k++) {
             at.add(x);
@@ -377,5 +391,197 @@ public final class UiMath {
         if (along > 0.5 && across < 0.62) k = 2;
         if (k > 0 && x == (int) Math.rint(c) && y <= c) k = 3;
         return k;
+    }
+
+    // The battle HUD's scale and layout (UI Task 8a). BattleHud and ChatPlacement draw by these; hudFits lays the HUD out with them.
+
+    /** Windows this wide or wider keep the battle HUD at the kit scale, pixelScale (controller ruling 2026-10-18: 1366x768 and
+     *  1280x720 at GUI Scale 2 get a readable ledger, and the 1080p layout does not grow). */
+    public static final int HUD_KIT_WIDTH = 1600;
+
+    /** The battle HUD's screen pixels per canvas pixel. From HUD_KIT_WIDTH up, the kit scale (pixelScale). Narrower, the player's GUI
+     *  Scale up to 2 wherever the whole HUD fits at that size beside vanilla's bars (hudFits), else the kit scale, which is 1 there.
+     *  Never below 1, so the canvas (the framebuffer divided by it) never divides by zero; a GUI Scale of 0 or less counts as 1. */
+    public static int hudScale(int fbW, int fbH, int guiScale) {
+        int gui = Math.max(1, guiScale), kit = pixelScale(fbW, fbH, gui);
+        if (fbW >= HUD_KIT_WIDTH) return kit;
+        for (int k = Math.min(gui, 2); k > kit; k--) if (hudFits(fbW, fbH, gui, k)) return k;
+        return kit;
+    }
+
+    /** The lesson card's top: the aimed point's name (y 68, 9 tall) and 11 px clear above it. */
+    public static final int LESSON_Y = 88;
+    /** How far left the lesson card may sit: 16 px right of the group column, whose cards and hint slip end at x 200. */
+    public static final int LESSON_MIN_X = 216;
+
+    /** The lesson card's height for `lines` lines of copy: 40, and 11 more for each line past the first. */
+    public static int lessonHeight(int lines) { return 40 + 11 * Math.max(0, lines - 1); }
+
+    /** The lesson card's x: centred on the canvas centre cx as the mock lays it out, unless that would reach the group column (a
+     *  canvas under 832 px wide, as 1280x720 and 1366x768 are at GUI Scale 2); then LESSON_MIN_X. */
+    public static int lessonX(int cx) { return Math.max(cx - 200, LESSON_MIN_X); }
+
+    /** Vanilla's crosshair top in canvas px: InGameHud draws the 15 px icon at GUI y (scaledH - 15) / 2, and a GUI px is gui screen
+     *  px, a canvas px k. */
+    public static int crosshairTop(int scaledH, int gui, int k) { return Math.floorDiv((scaledH - 15) / 2 * gui, Math.max(1, k)); }
+
+    /** The respawn card's top: 40 px above the canvas's middle as in the mock, raised where that would leave less than 4 px between
+     *  the 28 px card and vanilla's crosshair below it (crossTop, canvas px), as when the GUI Scale is above the canvas scale. */
+    public static int respawnY(int canvasH, int crossTop) { return Math.min(canvasH / 2 - 40, crossTop - 4 - 28); }
+
+    /** Rows the respawn card's top edge keeps clear of the lesson card's shadow; nearer, the lesson card gives way (lessonYields). */
+    public static final int CARD_GAP = 4;
+
+    /** Whether the lesson card (`lines` lines of copy) gives way to the respawn card at y respawnY while the commander is down: where
+     *  the respawn card's top edge would come within CARD_GAP of the lesson card's shadow, as at 1280x720 GUI 2, where the HUD's 2x
+     *  would hang the respawn card in a two-line lesson's shadow (y 140 against 144). The countdown is what the player needs then;
+     *  the lesson is back when the commander is. */
+    public static boolean lessonYields(int lines, int respawnY) {
+        return respawnY - inkAbove("respawn") - (LESSON_Y + lessonHeight(lines) + inkBelow("lesson")) < CARD_GAP;
+    }
+
+    /** GUI px the lifted chat keeps clear of the battle HUD and of vanilla's crosshair, below it and above it (ChatPlacement). */
+    public static final int CHAT_GAP = 4;
+    /** Vanilla's crosshair icon, a square this many GUI px wide at the screen's centre. The icon only: vanilla's attack indicator
+     *  below it (the screen's middle + 9) may meet the closed chat's top line for a moment after a swing, accepted by controller
+     *  ruling (UI Task 8a), as ChatPlacement says. */
+    public static final int CROSSHAIR = 15;
+    /** Where the line backgrounds of vanilla's widest chat end (Chat Width 100%, 320 px, at Chat Text Size 100%: GUI x 332, as
+     *  ChatPlacement.right gives it), the chat hudFits lays out. */
+    public static final double CHAT_RIGHT = 332;
+
+    /** Whether the lifted chat stays clear of the HUD element with this rect key (BattleHud.rects): the score bar, the bosses, the
+     *  seals, the aimed point's name, the lesson and respawn cards and the feed. The group column is below the chat by its place,
+     *  and the ability slot sits beside the hotbar. */
+    public static boolean overChat(String key) {
+        return key.equals("score") || key.endsWith("-boss") || key.startsWith("seal-") || key.equals("aim-name") || key.equals("lesson") || key.equals("respawn") || key.equals("feed");
+    }
+
+    /** The rows a HUD element's PNG paints above its box, by rect key (atlas.json oy): 1 for the score card and the lesson and respawn
+     *  cards, 3 for the feed slip; the seals, the bosses and the aimed point's name paint inside their boxes. */
+    static int inkAbove(String key) { return key.equals("feed") ? 3 : key.equals("score") || key.equals("lesson") || key.equals("respawn") ? 1 : 0; }
+
+    /** The rows of drop shadow a HUD element's PNG paints below its box (atlas.json: the PNG's height less oy and the box's): 5 for
+     *  the score card and the lesson and respawn cards, 7 for the feed slip, none for the rest. */
+    static int inkBelow(String key) { return key.equals("feed") ? 7 : key.equals("score") || key.equals("lesson") || key.equals("respawn") ? 5 : 0; }
+
+    /** columnTop's answer for a frame that drew no column (camp, an entrance, a screen over the HUD). */
+    public static final int NO_COLUMN = Integer.MIN_VALUE;
+
+    /** The top of the battle HUD's left column (the spine above the top card, or the hint slip) in canvas px, which a window too
+     *  short for the column puts above the canvas; NO_COLUMN when a frame drew none. */
+    public static int columnTop(java.util.Map<String, int[]> r) {
+        int top = NO_COLUMN;
+        for (var e : r.entrySet()) {
+            String k = e.getKey();
+            if (k.equals("spine") || k.equals("hints") || k.startsWith("card-")) top = top == NO_COLUMN ? e.getValue()[1] : Math.min(top, e.getValue()[1]);
+        }
+        return top;
+    }
+
+    /** The lifted chat: its bottom in GUI px, the lines it shows, and whether its lowest line is on the screen. */
+    public record ChatSlot(int bottom, int lines, boolean onScreen) {}
+
+    /** The chat over one frame of the battle HUD (rects in canvas px, f GUI px per canvas px) on a GUI sw x sh: a chat whose line
+     *  backgrounds end at GUI x `right`, lineH GUI px a line, vanilla's count `vanilla`. Each element overChat names that the chat's
+     *  width reaches is a span {top, bottom, box bottom} in GUI px, its PNG's edge and shadow included (inkAbove, inkBelow), and
+     *  so is vanilla's crosshair while the chat is closed (focused false). Null without a column: the chat keeps vanilla's place. */
+    public static ChatSlot chatSlot(java.util.Map<String, int[]> rects, double f, int sw, int sh, double right, double lineH, int vanilla, boolean focused) {
+        int top = columnTop(rects);
+        if (top == NO_COLUMN) return null;
+        List<double[]> spans = new ArrayList<>();
+        for (var e : rects.entrySet()) {
+            String k = e.getKey();
+            int[] a = e.getValue();
+            if (overChat(k) && a[0] * f < right) spans.add(new double[]{(a[1] - inkAbove(k)) * f, (a[1] + a[3] + inkBelow(k)) * f, (a[1] + a[3]) * f});
+        }
+        if (!focused && right > (sw - CROSSHAIR) / 2) {
+            int y = (sh - CROSSHAIR) / 2;
+            spans.add(new double[]{y, y + CROSSHAIR, y + CROSSHAIR});
+        }
+        return chatSlot(vanilla, Math.min((int) Math.floor(top * f) - CHAT_GAP, sh - 40), spans, lineH);
+    }
+
+    /** Where the lifted chat sits and what it shows (Kort's answer: above the group cards, small but readable). Its bottom starts at
+     *  `bottom` (CHAT_GAP above the column's top) and moves up past each span that would come under its lowest line or within
+     *  CHAT_GAP below it, so that line never covers anything the HUD paints. It shows as many lineH lines as fit between its bottom
+     *  and the lowest box above it, CHAT_GAP clear, from 1 to vanilla's count; a drop shadow above may reach the one row of
+     *  background over a line's text. Should that push the lowest line off the screen's top (a window too small for the HUD at
+     *  its scale, which hudScale never picks above the kit scale), the chat keeps its first place, or the screen's top line where
+     *  even that is off the screen, and one line: onScreen false. */
+    public static ChatSlot chatSlot(int vanilla, int bottom, List<double[]> spans, double lineH) {
+        int start = bottom;
+        for (boolean moved = true; moved; ) {
+            moved = false;
+            for (double[] s : spans) if (s[0] < bottom + CHAT_GAP && s[1] > bottom - lineH) { bottom = (int) Math.floor(s[0]) - CHAT_GAP; moved = true; }
+        }
+        if (bottom - lineH < 0) return new ChatSlot(Math.max(start, (int) Math.ceil(lineH)), 1, false);
+        double above = 0;
+        for (double[] s : spans) if (s[0] < bottom + CHAT_GAP) above = Math.max(above, Math.ceil(s[2]));
+        int fit = (int) Math.floor((bottom - above - CHAT_GAP) / lineH);
+        return new ChatSlot(bottom, Math.max(1, Math.min(vanilla, fit)), true);
+    }
+
+    /** Two boxes {x, y, w, h} share a pixel. */
+    public static boolean meets(int[] a, int[] b) { return a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3]; }
+
+    /** A GUI box in canvas px at gui GUI Scale and k screen px per canvas px, rounded outward. */
+    static int[] guiToCanvas(int[] a, int gui, int k) {
+        int x0 = Math.floorDiv(a[0] * gui, k), y0 = Math.floorDiv(a[1] * gui, k);
+        return new int[]{x0, y0, -Math.floorDiv(-(a[0] + a[2]) * gui, k) - x0, -Math.floorDiv(-(a[1] + a[3]) * gui, k) - y0};
+    }
+
+    /** How far the aimed point's name may reach past the first and last seals' centres, hudFits's room for the longest name. */
+    static final int AIM_REACH = 80;
+
+    /** Whether the battle HUD fits a fbW x fbH window at GUI Scale gui with k screen px per canvas px, in its fullest states. In each,
+     *  every element sits 12 px or more inside the canvas, none on another but a card on the spine and a boss on the score card,
+     *  none on vanilla's hotbar, selected slot, offhand slot, hearts, armour, experience bar or crosshair, and the lifted chat
+     *  (vanilla's widest, closed and open) keeps its lowest line on the screen. The states: three or five points; no lesson, the
+     *  lesson (two lines), or an aimed point's name in its place (aiming raises the hint layer); the hint layer down (the army
+     *  selected) or up (every card tall, the hint slip); the commander up or down (the respawn card, the lesson giving way to it
+     *  where lessonYields says, as BattleHud draws them); the feed and the ability slot always. */
+    public static boolean hudFits(int fbW, int fbH, int gui, int k) {
+        if (gui < 1 || k < 1) return false;
+        int w = fbW / k, h = fbH / k, cx = w / 2, sw = -Math.floorDiv(-fbW, gui), sh = -Math.floorDiv(-fbH, gui);
+        if (w < 1 || h < 1) return false;
+        double f = k / (double) gui;
+        List<int[]> bars = new ArrayList<>();
+        for (int[] b : new int[][]{{sw / 2 - 91, sh - 22, 182, 22}, {sw / 2 - 92, sh - 23, 24, 22}, {sw / 2 - 120, sh - 23, 29, 24}, {sw / 2 - 91, sh - 39, 81, 9},
+            {sw / 2 - 91, sh - 49, 81, 9}, {sw / 2 - 91, sh - 29, 182, 5}, {(sw - CROSSHAIR) / 2, (sh - CROSSHAIR) / 2, CROSSHAIR, CROSSHAIR}}) bars.add(guiToCanvas(b, gui, k));
+        int[] ability = guiToCanvas(new int[]{sw / 2 + 104, sh - 47, 50, 32}, gui, k);
+        int ry = respawnY(h, crosshairTop(sh, gui, k));
+        String[] groups = {"infantry", "ranged", "support"};
+        for (int n = 3; n <= 5; n += 2) for (int content = 0; content < 3; content++) for (int hint = content == 2 ? 1 : 0; hint < 2; hint++) for (int down = 0; down < 2; down++) {
+            java.util.Map<String, int[]> r = new java.util.LinkedHashMap<>();
+            r.put("score", new int[]{cx - 128, 13, 256, 24});
+            r.put("dawn-boss", new int[]{cx - 140, 12, 27, 28});
+            r.put("dusk-boss", new int[]{cx + 115, 12, 27, 28});
+            for (int i = 0; i < n; i++) r.put("seal-" + i, new int[]{sealCentre(i, n, w) - 13, 37, 27, 31});
+            if (content == 1 && !(down == 1 && lessonYields(2, ry))) r.put("lesson", new int[]{lessonX(cx), LESSON_Y, 400, lessonHeight(2)});
+            if (content == 2) r.put("aim-name", new int[]{sealCentre(0, n, w) - AIM_REACH, 68, sealCentre(n - 1, n, w) - sealCentre(0, n, w) + 2 * AIM_REACH, 9});
+            if (down == 1) r.put("respawn", new int[]{cx - 100, ry, 200, 28});
+            r.put("feed", new int[]{w - 188, h / 2 - 38, 172, 74});
+            int[] heights = hint == 1 ? new int[]{62, 62, 62} : new int[]{48, 48, 62}, tops = cardTops(h, heights);
+            for (int i = 0; i < 3; i++) r.put("card-" + groups[i], new int[]{24, tops[i], 176, heights[i]});
+            r.put("spine", new int[]{12, tops[0] - 4, 9, tops[2] + heights[2] - tops[0] + 8});
+            if (hint == 1) r.put("hints", new int[]{24, tops[0] - 48, 176, 40});
+            for (int[] a : r.values()) if (a[0] < 12 || a[1] < 12 || a[0] + a[2] > w - 12 || a[1] + a[3] > h - 12) return false;
+            r.put("ability", ability);
+            List<String> keys = new ArrayList<>(r.keySet());
+            for (int i = 0; i < keys.size(); i++) {
+                int[] a = r.get(keys.get(i));
+                for (int[] bar : bars) if (meets(a, bar)) return false;
+                for (int j = i + 1; j < keys.size(); j++) if (!mayTouch(keys.get(i), keys.get(j)) && meets(a, r.get(keys.get(j)))) return false;
+            }
+            for (int open = 0; open < 2; open++) if (!chatSlot(r, f, sw, sh, CHAT_RIGHT, 9, open == 1 ? 20 : 10, open == 1).onScreen()) return false;
+        }
+        return true;
+    }
+
+    /** A card may hang on the spine and a boss may sit on the score card; nothing else of the HUD may touch. */
+    static boolean mayTouch(String a, String b) {
+        if (a.startsWith("card-") && b.equals("spine") || b.startsWith("card-") && a.equals("spine")) return true;
+        return a.endsWith("-boss") && b.equals("score") || b.endsWith("-boss") && a.equals("score");
     }
 }

@@ -52,8 +52,10 @@ public final class CommandMode {
     static void begin(String order){if(!GravesAndGloryClient.battleActive())return;pending=order;facingSet=false;MinecraftClient.getInstance().setScreen(null);}
     public static boolean cancel(){if(!active())return false;pending="";destination=null;return true;}
     /** A disconnect: no order stays aimed, and the cards' groups and loss flashes go, so the next server's first snapshot is compared
-     *  with nothing (noteGroups would flash a card for the old battle's losses). */
-    static void reset(){cancel();preview.clear();enemy=-1;groups=java.util.List.of();flashUntil.clear();flashFrom.clear();}
+     *  with nothing (noteGroups would flash a card for the old battle's losses). The rest of the command state starts as a new
+     *  client's: the map's pings, the clock, the whole army selected (a group the next world lacks would leave no card selected),
+     *  the default formation and the facing taken from the player again. */
+    static void reset(){cancel();preview.clear();enemy=-1;groups=java.util.List.of();flashUntil.clear();flashFrom.clear();pings=java.util.List.of();seconds=600;selected="all";formation="block";facing=0;facingSet=false;}
     public static boolean confirm(){
         if(!active())return false;
         if(destination==null){refuse("Aim at reachable terrain");return true;}

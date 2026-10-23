@@ -14,8 +14,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** The chat above the battle HUD's left column (ChatPlacement): its bottom lifted, in the drawing and in the mouse's hit tests
- *  alike, and its line count cut where the lifted column would reach the HUD above it or, while the chat is closed, the crosshair. Its scale and width stay
- *  vanilla's. Each frame's line backgrounds are recorded for checks. */
+ *  alike, past what its lowest line would cover, and its line count cut where the room above it is short. Its scale and width
+ *  stay vanilla's. Each frame's line backgrounds are recorded for checks. */
 @Mixin(ChatHud.class)
 abstract class ChatHudMixin {
     @Shadow @Final private MinecraftClient client;
@@ -23,10 +23,16 @@ abstract class ChatHudMixin {
     @Shadow public abstract int getWidth();
 
     @ModifyExpressionValue(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/DrawContext;getScaledWindowHeight()I"))
-    private int gravesandglory$drawHeight(int height) { return height - ChatPlacement.lift(height); }
+    private int gravesandglory$drawHeight(int height) { return height - gravesandglory$lift(height); }
 
     @ModifyExpressionValue(method = {"toChatLineY", "mouseClicked"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/util/Window;getScaledHeight()I"))
-    private int gravesandglory$hitHeight(int height) { return height - ChatPlacement.lift(height); }
+    private int gravesandglory$hitHeight(int height) { return height - gravesandglory$lift(height); }
+
+    /** ChatPlacement.lift for this chat: its scale, width, line spacing and focus, the window's GUI width. */
+    private int gravesandglory$lift(int height) {
+        var self = (ChatHudAccessor) (Object) this;
+        return ChatPlacement.lift(client.getWindow().getScaledWidth(), height, getChatScale(), self.gravesandglory$getLineHeight(), getWidth(), self.gravesandglory$isChatFocused());
+    }
 
     @ModifyReturnValue(method = "getVisibleLineCount", at = @At("RETURN"))
     private int gravesandglory$lines(int lines) {

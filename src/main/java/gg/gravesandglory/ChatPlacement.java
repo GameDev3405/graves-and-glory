@@ -1,27 +1,34 @@
 package gg.gravesandglory;
 
+import gg.gravesandglory.mixin.ChatHudAccessor;
 import net.minecraft.client.MinecraftClient;
-import java.util.Map;
+import net.minecraft.client.gui.hud.ChatHud;
 
 /** Vanilla chat above the battle HUD's left column (Kort's answer on chat placement: above the group cards, small but readable).
  *  While the battle HUD is drawn, the chat's bottom sits GAP GUI px above the column's top: the iron spine above the top card, or
- *  the hint slip while it shows. The chat keeps vanilla's scale, width and line count; only where the lifted column would reach the
- *  score bar, a boss, a seal, the aimed point's name, the lesson card, the respawn card or, while the chat is closed, the
- *  crosshair above it does it show fewer lines, never smaller text. Open, the player is typing: the chat may cross the crosshair
- *  then rather than drop to a line or two. In camp, and whenever the battle HUD is not drawn, nothing moves. The battle HUD draws after the chat in a frame,
- *  so the chat follows the layout of the frame before. ChatHudMixin applies it. */
+ *  the hint slip while it shows. The chat keeps vanilla's scale, width and line count. Where its lowest line would cover the
+ *  score bar, a boss, a seal, the aimed point's name, the lesson or respawn card, the feed or, while the chat is closed, the
+ *  crosshair, it moves up past them; where the room above it is short, it shows fewer lines, never smaller text (UiMath.chatSlot).
+ *  Open, the player is typing: the chat may cross the crosshair then rather than drop to a line or two. In camp, and whenever the
+ *  battle HUD is not drawn, nothing moves. The battle HUD draws after the chat in a frame, so the chat follows the layout of the
+ *  frame before. ChatHudMixin applies it.
+ *
+ *  Accepted, not fixed (controller ruling, UI Task 8a): the crosshair band is vanilla's 15 px icon only. Vanilla's attack
+ *  indicator below it (the Crosshair setting's 16x4 cooldown bar, or its 16x16 icon, from the screen's middle + 9) can meet the
+ *  closed chat's top line. It shows only for a moment after a swing and sits on the chat's translucent background, and keeping
+ *  clear of it would cost lines at the small sizes (1280x720 GUI 3: 4 to 2). */
 public final class ChatPlacement {
     private ChatPlacement() {}
 
     /** The one switch: false puts the chat back at vanilla's place and line count. */
     public static final boolean LIFT_CHAT = true;
     /** GUI px kept clear between the chat and the battle HUD, below the chat and above it. */
-    static final int GAP = 4;
+    static final int GAP = UiMath.CHAT_GAP;
     /** Vanilla's chat bottom in GUI px above the window's bottom (ChatHud.render's height - 40). */
     static final int VANILLA_BOTTOM = 40;
     /** Vanilla's crosshair icon, a square this many GUI px wide at the screen's centre (InGameHud.renderCrosshair draws it at
      *  ((width - 15) / 2, (height - 15) / 2)). */
-    static final int CROSSHAIR = 15;
+    static final int CROSSHAIR = UiMath.CROSSHAIR;
 
     /** For checks: the chat's line backgrounds as its last frame drew them, a box {x,y,w,h} in GUI px (null when it drew none), and
      *  how many lines that frame drew. */
@@ -29,27 +36,29 @@ public final class ChatPlacement {
     public static int drawnLines;
     private static int x0, y0, x1, y1, lines;
 
-    /** The top of the battle HUD's left column (the spine above the top card, or the hint slip) in canvas px; -1 when the last
-     *  frame drew no column (camp, an entrance, a screen over the HUD). */
-    static int columnTop(Map<String, int[]> r) {
-        int top = -1;
-        for (var e : r.entrySet()) {
-            String k = e.getKey();
-            if (k.equals("spine") || k.equals("hints") || k.startsWith("card-")) top = top < 0 ? e.getValue()[1] : Math.min(top, e.getValue()[1]);
-        }
-        return top;
+    /** GUI px per canvas px: the battle HUD's scale (UiCanvas.hudK) over the GUI Scale. */
+    static double gui() { return UiCanvas.hudK() / Math.max(1, MinecraftClient.getInstance().getWindow().getScaleFactor()); }
+
+    /** The lifted chat over the battle HUD's last frame (UiMath.chatSlot) for a chat of this scale, line height, width and focus on
+     *  a GUI scaledWidth x scaledHeight; null when the frame drew no column or LIFT_CHAT is off. */
+    static UiMath.ChatSlot slot(int vanilla, int scaledWidth, int scaledHeight, double scale, int lineHeight, int width, boolean focused) {
+        if (!LIFT_CHAT) return null;
+        return UiMath.chatSlot(BattleHud.rects(), gui(), scaledWidth, scaledHeight, right(width, scale), lineHeight * scale, vanilla, focused);
     }
 
-    /** GUI px per canvas px. */
-    static double gui() { return UiCanvas.k() / MinecraftClient.getInstance().getWindow().getScaleFactor(); }
+    /** How far up the chat moves, in GUI px: from vanilla's bottom to the slot's (GAP above the column's top, or above what its
+     *  lowest line would cover); 0 without a column. */
+    public static int lift(int scaledWidth, int scaledHeight, double scale, int lineHeight, int width, boolean focused) {
+        UiMath.ChatSlot s = slot(1, scaledWidth, scaledHeight, scale, lineHeight, width, focused);
+        return s == null ? 0 : Math.max(0, scaledHeight - VANILLA_BOTTOM - s.bottom());
+    }
 
-    /** How far up the chat moves, in GUI px: from vanilla's bottom to GAP above the column's top; 0 without a column. */
+    /** lift for the game's own chat as it is now (its scale, width, line spacing and focus), for checks. */
     public static int lift(int scaledHeight) {
-        if (!LIFT_CHAT) return 0;
-        int top = columnTop(BattleHud.rects());
-        if (top < 0) return 0;
-        int bottom = (int) Math.floor(top * gui()) - GAP;
-        return Math.max(0, scaledHeight - VANILLA_BOTTOM - bottom);
+        MinecraftClient mc = MinecraftClient.getInstance();
+        ChatHud chat = mc.inGameHud.getChatHud();
+        ChatHudAccessor a = (ChatHudAccessor) chat;
+        return lift(mc.getWindow().getScaledWidth(), scaledHeight, chat.getChatScale(), a.gravesandglory$getLineHeight(), chat.getWidth(), a.gravesandglory$isChatFocused());
     }
 
     /** The GUI x where the chat's line backgrounds end. ChatHud.render draws each line ceil(width / scale) wide in its own space,
@@ -58,24 +67,12 @@ public final class ChatPlacement {
     public static double right(int width, double scale) { float f = (float) scale; return (Math.ceil(width / f) + 12) * f; }
 
     /** The lines the lifted chat shows: vanilla's, or as many as fit between its bottom and the lowest of the score bar, the
-     *  bosses, the seals, the aimed point's name, the lesson card, the respawn card (while the commander is down) and, while the
-     *  chat is closed (focused false), the crosshair, over the chat's width, GAP clear; at least one. The HUD's elements count
-     *  open or closed, so the chat's top stays below them; the crosshair counts only closed, since one or two lines are too few to
-     *  type by (UI polish round 2). */
+     *  bosses, the seals, the aimed point's name, the lesson card, the respawn card (while the commander is down) and the feed
+     *  over the chat's width, GAP clear; at least one. The crosshair counts only while the chat is closed (focused false), since
+     *  one or two lines are too few to type by (UI polish round 2). */
     public static int lines(int vanilla, int scaledWidth, int scaledHeight, double scale, int lineHeight, int width, boolean focused) {
-        int lift = lift(scaledHeight);
-        if (lift <= 0) return vanilla;
-        double f = gui(), right = right(width, scale);
-        int above = 0;
-        for (var e : BattleHud.rects().entrySet()) {
-            String k = e.getKey();
-            int[] a = e.getValue();
-            boolean over = k.equals("score") || k.endsWith("-boss") || k.startsWith("seal-") || k.equals("aim-name") || k.equals("lesson") || k.equals("respawn");
-            if (over && a[0] * f < right) above = Math.max(above, (int) Math.ceil((a[1] + a[3]) * f));
-        }
-        if (!focused && right > (scaledWidth - CROSSHAIR) / 2) above = Math.max(above, (scaledHeight - CROSSHAIR) / 2 + CROSSHAIR);
-        int bottom = scaledHeight - VANILLA_BOTTOM - lift, fit = (int) Math.floor((bottom - above - GAP) / (lineHeight * scale));
-        return Math.max(1, Math.min(vanilla, fit));
+        UiMath.ChatSlot s = slot(vanilla, scaledWidth, scaledHeight, scale, lineHeight, width, focused);
+        return s == null ? vanilla : s.lines();
     }
 
     /** ChatHud.render starts a frame (ChatHudMixin calls this and the two below). */

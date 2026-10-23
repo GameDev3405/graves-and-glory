@@ -9,7 +9,8 @@ public final class FeedLines {
     public record Style(String glyph, int argb) {}
 
     /** The inks on the feed's vellum: the team inks Dawn #1d4f4c and Dusk #563a73, losses red, kills and routs grey, commanders
-     *  brass, deploys and notices sepia. Each holds 4.5:1 or better on the slip (UiMathCheck). */
+     *  brass, deploys and notices sepia. Each holds 5.2:1 or better on the slip, the spec's bar for the feed's small text
+     *  (UiMathCheck). */
     public static final int DAWN_INK = 0xff1d4f4c, DUSK_INK = 0xff563a73, LOSS_INK = 0xff7a2416, GREY_INK = 0xff504b44,
         BRASS_INK = 0xff684600, NOTICE_INK = 0xff3d3124;
 

@@ -28,4 +28,8 @@ public final class EventFeed {
     }
 
     public static void clear() { lines.clear(); }
+
+    /** The lines held, expired ones too (lines(now) drops those only when read): for checks that a clear emptied the feed, which
+     *  must not pass because its lines aged out. */
+    static int size() { return lines.size(); }
 }

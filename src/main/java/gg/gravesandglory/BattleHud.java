@@ -15,11 +15,12 @@ import java.util.*;
 
 /** The Iron Ledger battle HUD (UI spec 4.5, mock v4-hud-iron-ledger): the score bar between the two bosses, the point seals hanging
  *  from it, the group cards on their iron spine, the commander's ability slot beside the hotbar, and the lesson and respawn cards.
- *  All but the ability slot is drawn on the UiCanvas; the slot sits in vanilla GUI space at the player's GUI Scale, next to the
- *  hotbar. Colour never carries a meaning alone (spec 6.1): seals carry their owner's emblem, a routing card its stamp and grey
- *  card, a fallen one its word. The event feed hangs at the right edge; the hint layer (altLayer) puts every key row on the cards
- *  and the hint slip above them. What the last frame drew is kept for checks: cards(), seals(), rects(), texts(), hintRows(),
- *  hintEnds() and keyRows(). */
+ *  All but the ability slot is drawn on the HUD's canvas (UiCanvas.hudK: the GUI Scale up to 2 on windows under 1600 px wide where
+ *  it fits, else the screens' scale); the slot sits in vanilla GUI space at the player's GUI Scale, next to the hotbar. Colour
+ *  never carries a meaning alone (spec 6.1): seals carry their owner's emblem, a routing card its stamp and grey card, a fallen
+ *  one its word. The event feed hangs at the right edge; the hint layer (altLayer) puts every key row on the cards and the hint
+ *  slip above them. What the last frame drew is kept for checks: cards(), seals(), rects(), texts(), hintRows(), hintEnds(),
+ *  keyRows() and feedRows(). */
 public final class BattleHud {
     private BattleHud() {}
 
@@ -31,6 +32,9 @@ public final class BattleHud {
     /** A tall card's key row the last frame drew: its group, its chips and words in order, and the canvas x where each starts and
      *  where it ends. */
     public record KeyRowDraw(String group,List<String> parts,List<Integer> from,List<Integer> to){}
+    /** A feed line the last frame drew: its row (0 to 4 from the top), its glyph's atlas name, its ink (opaque) and its text as
+     *  trimmed. */
+    public record FeedDraw(int row,String glyph,int argb,String text){}
 
     /** Food icons HungerHudMixin skipped. It lives here because a mixin class cannot be referenced at runtime. */
     public static int foodSkipped;
@@ -52,6 +56,7 @@ public final class BattleHud {
     private static final List<List<String>> hintRowsDrawn=new ArrayList<>();
     private static final List<Integer> hintEndsDrawn=new ArrayList<>();
     private static final List<KeyRowDraw> keyRowsDrawn=new ArrayList<>();
+    private static final List<FeedDraw> feedRowsDrawn=new ArrayList<>();
     private static final List<CardDraw> cards=Collections.unmodifiableList(cardsDrawn);
     private static final List<SealDraw> seals=Collections.unmodifiableList(sealsDrawn);
     private static final Map<String,int[]> rects=Collections.unmodifiableMap(rectsDrawn);
@@ -59,6 +64,7 @@ public final class BattleHud {
     private static final List<List<String>> hintRows=Collections.unmodifiableList(hintRowsDrawn);
     private static final List<Integer> hintEnds=Collections.unmodifiableList(hintEndsDrawn);
     private static final List<KeyRowDraw> keyRows=Collections.unmodifiableList(keyRowsDrawn);
+    private static final List<FeedDraw> feedRows=Collections.unmodifiableList(feedRowsDrawn);
     /** Set when a frame named a texture the atlas lacks: the HUD stays off, and the client up, until the next resource reload. */
     private static boolean stopped;
     // The lesson copy last wrapped, its style and its lines.
@@ -81,6 +87,8 @@ public final class BattleHud {
     public static List<Integer> hintEnds(){return hintEnds;}
     /** The key rows the tall cards last drew, in drawing order; empty while no card is tall. */
     public static List<KeyRowDraw> keyRows(){return keyRows;}
+    /** The feed lines the last frame drew, top row first; empty while the feed is empty. */
+    public static List<FeedDraw> feedRows(){return feedRows;}
     /** The hint layer is up: the hints key held, the round's first HINT_LAYER_MS, or an order being aimed. Every living card then
      *  carries its key row, and the hint slip above the cards names the other keys. */
     public static boolean altLayer(){
@@ -88,10 +96,11 @@ public final class BattleHud {
         return k!=null&&k.isPressed()||Util.getMeasuringTimeMs()-roundShownMs<HINT_LAYER_MS||CommandMode.active();
     }
     /** A frame without the ledger (camp, a battle's entrance, a menu over the HUD): nothing reads as drawn. */
-    static void clear(){cardsDrawn.clear();sealsDrawn.clear();rectsDrawn.clear();textsDrawn.clear();hintRowsDrawn.clear();hintEndsDrawn.clear();keyRowsDrawn.clear();}
-    /** A disconnect (GravesAndGloryClient's handler, on the client thread): the last battle's records go with it, since no HUD frame
-     *  runs without a world to clear them, and ChatPlacement.lift reads rects() before the next world's first frame. That is what
-     *  the frame drew, the lesson wrap and the lines drawn from it, and the hint layer's round clock. */
+    static void clear(){cardsDrawn.clear();sealsDrawn.clear();rectsDrawn.clear();textsDrawn.clear();hintRowsDrawn.clear();hintEndsDrawn.clear();keyRowsDrawn.clear();feedRowsDrawn.clear();}
+    /** A disconnect (GravesAndGloryClient.resetHud, on the client thread: the first client tick without a world after it, and the
+     *  next join): the last battle's records go with it, since no HUD frame runs without a world to clear them, and ChatPlacement
+     *  reads rects() before the next world's first frame. That is what the frame drew, the lesson wrap and the lines drawn from it,
+     *  and the hint layer's round clock. */
     static void reset(){clear();wrappedCopy=null;wrappedStyle=null;wrappedLines=List.of();wrappedJoined="";roundShownMs=0;GravesAndGloryClient.lessonDrawn=List.of();}
     /** The lesson copy the cached wrap was made for; null after a reset or a resource reload. */
     static String wrappedFor(){return wrappedCopy;}
@@ -108,13 +117,13 @@ public final class BattleHud {
         if(stopped)return;
         var c=MinecraftClient.getInstance();var font=c.textRenderer;
         try{
-            UiCanvas.begin(g);
+            UiCanvas.beginHud(g);
             try{
-                int w=UiCanvas.width(),h=UiCanvas.height(),cx=w/2;
+                int w=UiCanvas.hudWidth(),h=UiCanvas.hudHeight(),cx=w/2;
                 ledger(g,font,cx,rectsDrawn,textsDrawn);
                 seals(g,font,w,rectsDrawn,sealsDrawn,textsDrawn);
                 cards(g,font,h,rectsDrawn,cardsDrawn,textsDrawn);
-                lesson(g,font,cx,rectsDrawn,textsDrawn);
+                lesson(g,font,cx,h,rectsDrawn,textsDrawn);
                 respawn(g,font,cx,h,rectsDrawn,textsDrawn);
                 feed(g,font,w,h,rectsDrawn,textsDrawn);
             }finally{UiCanvas.end(g);}
@@ -196,15 +205,16 @@ public final class BattleHud {
 
     /** The hint slip, its box 48 px above firstTop: row one names Map and Commands (Confirm and Cancel while an order is aimed), row
      *  two the facing keys and the hints key. Each key is an ink chip naming the player's binding, a mouse button as LMB, RMB or MMB.
-     *  Where long names would run a row past the paper, they give way alike (UiMath.fitKeys): nothing runs past it. */
+     *  Where long names would run a row past the paper, the row takes the keys' short names (PgDn, RShift, None for an unbound
+     *  key), and those give way alike where they still would (UiMath.fitKeys): nothing runs past it. */
     static void hintSlip(DrawContext g,TextRenderer font,int firstTop,Map<String,int[]> r){
         int x=24,y=firstTop-48;boolean aiming=CommandMode.active();
         UiTex.draw(g,"hud/notice-slip",x,y);
         String[][] ids={aiming?new String[]{"confirm","cancel"}:new String[]{"map","menu"},{"rotate_left","rotate_right","hints"}};
         String[][] words={aiming?new String[]{"Confirm","Cancel"}:new String[]{"Map","Commands"},{null,"Turn","Hints"}};
         for(int row=0;row<2;row++){
-            List<String> keys=new ArrayList<>();for(String id:ids[row])keys.add(GravesAndGloryClient.hint(id));
-            keys=UiMath.fitKeys(keys,Arrays.asList(words[row]),HINT_ROW_W,font::getWidth);
+            List<String> keys=new ArrayList<>(),shorts=new ArrayList<>();for(String id:ids[row]){keys.add(GravesAndGloryClient.hint(id));shorts.add(GravesAndGloryClient.hintShort(id));}
+            keys=UiMath.fitKeys(keys,shorts,Arrays.asList(words[row]),HINT_ROW_W,8,font::getWidth);
             List<String> drawn=new ArrayList<>();int kx=x+10,ky=y+(row==0?7:22),end=kx;
             for(int k=0;k<keys.size();k++){
                 String key=keys.get(k);int kw=UiMath.chipWidth(font.getWidth(key));
@@ -253,8 +263,8 @@ public final class BattleHud {
             formationGlyph(g,grp.formation(),down,x+72,y+30);
             g.drawText(font,formationLabel(grp.formation()),x+84,y+31,DarkUi.INK_TEXT,false);
         }else formationGlyph(g,grp.formation(),down,x+25,y+30);
-        if(tall){ // the order keys, each in an ink chip as wide as its key's name: at the mock's places, or where long names crowd the row, flowed and fitted as on the hint slip (UiMath.cardRow)
-            var row=UiMath.cardRow(List.of(GravesAndGloryClient.hint("attack"),GravesAndGloryClient.hint("follow"),GravesAndGloryClient.hint("formation")),CARD_WORDS,CARD_SHORT_WORDS,font::getWidth);
+        if(tall){ // the order keys, each in an ink chip as wide as its key's name: at the mock's places, or where long names crowd the row, flowed and fitted as on the hint slip, short names first (UiMath.cardRow)
+            var row=UiMath.cardRow(List.of(GravesAndGloryClient.hint("attack"),GravesAndGloryClient.hint("follow"),GravesAndGloryClient.hint("formation")),List.of(GravesAndGloryClient.hintShort("attack"),GravesAndGloryClient.hintShort("follow"),GravesAndGloryClient.hintShort("formation")),CARD_WORDS,CARD_SHORT_WORDS,font::getWidth);
             List<String> parts=new ArrayList<>();List<Integer> from=new ArrayList<>(),to=new ArrayList<>();
             for(int k=0;k<3;k++){
                 String key=row.keys().get(k),label=row.words().get(k);int kw=UiMath.chipWidth(font.getWidth(key)),kx=x+row.at().get(k);
@@ -313,11 +323,14 @@ public final class BattleHud {
     static String formationLabel(String id){for(var row:Spec.FORMATIONS)if(row.id().equals(id))return row.label();return CommandMode.label(id);}
 
     /** The Long March lesson on a vellum card below the seals; its copy wraps to LESSON_TEXT_WIDTH and the card grows a row per
-     *  line, so nothing is cut. Hidden while an order is being aimed. */
-    static void lesson(DrawContext g,TextRenderer font,int cx,Map<String,int[]> r,Map<String,String> tx){
+     *  line, so nothing is cut. Centred, or 16 px clear of the group column where the canvas is too narrow for that (UiMath.lessonX).
+     *  Hidden while an order is being aimed, and while the commander is down where the respawn card would hang in its shadow
+     *  (UiMath.lessonYields: 1280x720 at GUI Scale 2). */
+    static void lesson(DrawContext g,TextRenderer font,int cx,int canvasH,Map<String,int[]> r,Map<String,String> tx){
         int step=CampaignClient.tutorial;if(step<0||step>3||CommandMode.active())return;
         List<String> lines=wrapped(font,GravesAndGloryClient.lessonText(step),DarkUi.BODY_STYLE);
-        int x=cx-200,y=88,h=40+11*Math.max(0,lines.size()-1);
+        if(GravesAndGloryClient.respawn>0&&UiMath.lessonYields(lines.size(),respawnY(canvasH)))return;
+        int x=UiMath.lessonX(cx),y=UiMath.LESSON_Y,h=UiMath.lessonHeight(lines.size());
         lessonCard(g,x,y,h);
         g.drawText(font,"THE LONG MARCH / BATTLE "+CampaignClient.battleOrder()+" / LESSON "+(step+1)+" OF 4",x+10,y+7,DarkUi.SEPIA,false);
         for(int i=0;i<lines.size();i++)g.drawText(font,DarkUi.body(lines.get(i)),x+10,y+20+11*i,DarkUi.INK_TEXT,false);
@@ -354,7 +367,7 @@ public final class BattleHud {
             var style=FeedLines.style(line.kind(),line.team(),viewer);
             try{RenderSystem.setShaderColor(1,1,1,a);feedGlyph(g,style.glyph(),x+8,ry);}finally{RenderSystem.setShaderColor(1,1,1,1);}
             String text=UiMath.trimWords(line.text(),140,font::getWidth);
-            g.drawText(font,text,x+20,ry,alpha<<24|style.argb()&0xffffff,false);tx.put("feed-"+row,text);
+            g.drawText(font,text,x+20,ry,alpha<<24|style.argb()&0xffffff,false);tx.put("feed-"+row,text);feedRowsDrawn.add(new FeedDraw(row,style.glyph(),style.argb(),text));
         }
         r.put("feed",new int[]{x,y,172,74});
     }
@@ -376,13 +389,20 @@ public final class BattleHud {
         }
     }
 
-    /** While the commander is down: a card at the middle of the canvas counting the seconds. */
+    /** While the commander is down: a card at the middle of the canvas counting the seconds, 40 px above the middle, or higher where
+     *  vanilla's crosshair (at the GUI Scale, above the HUD's scale) would come within 4 px of it (UiMath.respawnY). */
     static void respawn(DrawContext g,TextRenderer font,int cx,int h,Map<String,int[]> r,Map<String,String> tx){
         int seconds=GravesAndGloryClient.respawn;if(seconds<=0)return;
-        int x=cx-100,y=h/2-40;String line="Respawn in "+seconds+" s";Text t=DarkUi.heading(line);
+        int x=cx-100,y=respawnY(h);String line="Respawn in "+seconds+" s";Text t=DarkUi.heading(line);
         UiTex.draw(g,"hud/respawn-card",x,y);
         g.drawText(font,t,(int)Math.round(cx-font.getWidth(t)/2.0),y+8,DarkUi.INK_TEXT,false);
         r.put("respawn",new int[]{x,y,200,28});tx.put("respawn",line);
+    }
+
+    /** The respawn card's top on a canvas h px tall: UiMath.respawnY against vanilla's crosshair at the player's GUI Scale. */
+    static int respawnY(int h){
+        var win=MinecraftClient.getInstance().getWindow();
+        return UiMath.respawnY(h,UiMath.crosshairTop(win.getScaledHeight(),(int)win.getScaleFactor(),UiCanvas.hudK()));
     }
 
     /** The commander ability beside the hotbar, in GUI px at the player's GUI Scale: the iron slot, the horn, the cooldown sweep (a
@@ -398,7 +418,7 @@ public final class BattleHud {
         String key=GravesAndGloryClient.hint("ability"),secs=left>0?String.valueOf((left+19)/20):"";
         g.drawText(font,key,x+4,y+4,DarkUi.ABILITY_KEY,false);
         if(!secs.isEmpty())g.drawText(font,secs,centred(font,secs,x+39),y+12,DarkUi.IVORY,true);
-        double f=w.getScaleFactor()/UiCanvas.k();
+        double f=w.getScaleFactor()/UiCanvas.hudK();
         int x0=(int)Math.floor(x*f+1e-9),y0=(int)Math.floor(y*f+1e-9),x1=(int)Math.ceil((x+50)*f-1e-9),y1=(int)Math.ceil((y+32)*f-1e-9);
         r.put("ability",new int[]{x0,y0,x1-x0,y1-y0});tx.put("ability",id);tx.put("ability-seconds",secs);tx.put("ability-key",key);
     }

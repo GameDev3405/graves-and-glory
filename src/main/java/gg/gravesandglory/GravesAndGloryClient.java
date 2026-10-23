@@ -100,11 +100,14 @@ public final class GravesAndGloryClient implements ClientModInitializer {
                 if(run&&!msg.isEmpty()&&(!msg.equals(before)||!was))EventFeed.push("notice",t,HintText.expand(msg,GravesAndGloryClient::hint),now);
                 CampaignClient.accept(client,campaignJson,run);sightings=List.copyOf(sight);contested=contest;CommandMode.pings=java.util.List.copyOf(pings);CommandMode.seconds=seconds;CommandMode.noteGroups(CommandMode.groups,groups,net.minecraft.util.Util.getMeasuringTimeMs());CommandMode.groups=java.util.List.copyOf(groups);ready=r;running=run;dawn=a;dusk=b;message=msg;team=t;count=n;order=o;formation=f;respawn=resp;owners=own;progress=pr;challengers=ch;gold=g;nearBarracks=near;queued=q;trainingSeconds=eta;roster=owned;pending=waiting;markers=List.copyOf(friendly);abilityId=abilityRead;abilityRemaining=cooldownLeft;abilityTotal=cooldownAll;});
         });
-        ClientPlayConnectionEvents.JOIN.register((handler,sender,client)->{CampaignClient.sendProfile(client);if(connectingInvitation&&!joined){joined=true;say("Melty joined: "+join);}});
-        // The battle HUD's records (the feed, what the last frame drew, the lesson wrap, an aimed order) go on the client thread:
-        // Fabric can fire this event on the network thread, and no HUD frame runs without a world to clear them before the next one.
-        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);client.execute(()->{EventFeed.clear();BattleHud.reset();CommandMode.reset();});ready=false;modServer=false;running=false;team=-1;opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
+        ClientPlayConnectionEvents.JOIN.register((handler,sender,client)->{resetHud();CampaignClient.sendProfile(client);if(connectingInvitation&&!joined){joined=true;say("Melty joined: "+join);}});
+        // The battle HUD's records (the feed, what the last frame drew, the lesson wrap, an aimed order) are cleared on the client
+        // thread, and not through client.execute: Fabric can fire this event on the network thread, and MinecraftClient.disconnect
+        // wipes the queued tasks (the Task 3 re-review's race). The flag waits for the first client tick without a world, and the
+        // next join clears them as well; no HUD frame runs without a world to clear them before the next one.
+        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);hudResetPending=true;ready=false;modServer=false;running=false;team=-1;opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
+            if(hudResetPending&&client.world==null)resetHud();
             if(client.getOverlay()==null&&client.currentScreen instanceof TitleScreen){
                 if(!attempted){PackControls.prepare(client);if(!Presentation.prepareResources(client))return;attempted=true;}
                 client.setScreen(error.isEmpty()?new FrontMenuScreen():new FailureScreen(error));
@@ -126,14 +129,50 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(CommandMode::renderWorld);
     }
     static KeyBinding key(String name,int key){return KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory."+name,InputUtil.Type.KEYSYM,key,"category.gravesandglory"));}
+    /** Set by a disconnect, which may come on the network thread; the client tick clears the battle HUD's records once no world is
+     *  left (resetHud). */
+    static volatile boolean hudResetPending;
+    /** The last battle's records go: the feed, what the HUD last drew and its lesson wrap, the command state. On the client thread:
+     *  the first client tick without a world after a disconnect, and every join. */
+    static void resetHud(){hudResetPending=false;EventFeed.clear();BattleHud.reset();CommandMode.reset();}
+    /** The binding with this translation key, or null when there is none. */
+    static KeyBinding binding(String translationKey){
+        for(KeyBinding k:MinecraftClient.getInstance().options.allKeys)if(k.getTranslationKey().equals(translationKey))return k;
+        return null;
+    }
+    /** A binding's first three mouse buttons by the key bound, not by its name: LMB, RMB or MMB in every language (HintText.mouseChip);
+     *  null for any other key and for an unbound binding. */
+    static String mouseChip(KeyBinding k){
+        if(k==null||k.isUnbound())return null;
+        InputUtil.Key key=KeyBindingHelper.getBoundKeyOf(k);
+        return key.getCategory()==InputUtil.Type.MOUSE?HintText.mouseChip(key.getCode()):null;
+    }
     /** The player's own key for an action, as a hint shows it: the binding HintText.bindingKey names (key.attack for confirm and
      *  hit, key.use for cancel and use, key.gravesandglory.(id) for the rest: menu, attack, follow, formation, map, rotate_left,
-     *  rotate_right, ability, hints), a mouse button as LMB, RMB or MMB (HintText.chip), so every hint names it alike: chips, the
-     *  lessons, the camp sign and the notices; "Not bound" when that binding is unbound or unknown. */
+     *  rotate_right, ability, hints), the first three mouse buttons as LMB, RMB and MMB (mouseChip), any other key and an unbound
+     *  one in the game's own words, so every hint names it alike: chips, the lessons, the camp sign and the notices. */
     public static String hint(String id){
-        String name=HintText.bindingKey(id);
-        for(KeyBinding k:MinecraftClient.getInstance().options.allKeys)if(k.getTranslationKey().equals(name))return k.isUnbound()?"Not bound":HintText.chip(k.getBoundKeyLocalizedText().getString());
-        return "Not bound";
+        KeyBinding k=binding(HintText.bindingKey(id));
+        if(k==null)return InputUtil.UNKNOWN_KEY.getLocalizedText().getString();
+        String mouse=mouseChip(k);
+        return mouse!=null?mouse:k.getBoundKeyLocalizedText().getString();
+    }
+    /** The same key's short name for a crowded key row (the hint slip and the tall cards, UiMath.fitKeys): PgDn, RShift, Num4 or
+     *  Caps for the long names (HintText.keyShort), MB4 and on for the other mouse buttons, "None" for an unbound key; hint's own
+     *  name where that is no longer. */
+    public static String hintShort(String id){
+        KeyBinding k=binding(HintText.bindingKey(id));
+        if(k==null||k.isUnbound())return HintText.UNBOUND_SHORT;
+        InputUtil.Key key=KeyBindingHelper.getBoundKeyOf(k);
+        String full=hint(id),s=key.getCategory()==InputUtil.Type.MOUSE?HintText.mouseShort(key.getCode()):key.getCategory()==InputUtil.Type.KEYSYM?HintText.keyShort(key.getCode()):null;
+        return HintText.shorter(full,s);
+    }
+    /** KeybindTextMixin's name for a keybind text's binding (by its translation key): LMB, RMB or MMB for a binding the hints name
+     *  (HintText.hinted) on one of those mouse buttons, while this is a Graves and Glory server (modServer); null keeps the game's
+     *  own text everywhere else (other servers, singleplayer worlds of other games, other bindings). */
+    public static String keybindChip(String translationKey){
+        if(!modServer||!HintText.hinted(translationKey))return null;
+        return mouseChip(binding(translationKey));
     }
     /** The camp's bottom hint, naming the player's own menu and use keys (a mouse button as LMB, RMB or MMB). */
     public static String campHint(){return hint("menu")+" / Camp guide    "+hint("use")+" on a station to interact";}
