@@ -1654,7 +1654,8 @@ public final class Phase1Checks implements ClientModInitializer {
          *  Compact, Standard, Large and back to Compact; each press saves gravesandglory/hud.json at once, a launch reads the same back
          *  (HudSize.reload, as the first HUD frame of a launch does), and the HUD's scale follows: at 1080p GUI 4, 2x at Compact and 3x
          *  at Standard and Large. Fix round 1 (the Task 8c review's Important 2): Large draws at Standard's scale there, so its button
-         *  and its notice say so (UiMath.hudShownAs), in the words written out here; Compact and Standard say only their names. */
+         *  and its notice say so (UiMath.hudShownAs), in the words written out here; Compact and Standard say only their names. Every
+         *  word the button can show must fit it uncut in the game's body font. */
         void sizeSetting(MinecraftClient c){
             boolean ok=c.currentScreen instanceof PresentationScreen;List<String> steps=new ArrayList<>();int[] wantK={2,3,3};
             String[] wantLabel={"Battle HUD: Compact","Battle HUD: Standard","Battle HUD: Large (Standard size here)"};
@@ -1666,6 +1667,11 @@ public final class Phase1Checks implements ClientModInitializer {
                 boolean step=label.equals(wantLabel[want])&&(press==0||notice.equals(wantNotice[want]))&&got==want&&read==want&&k==wantK[want]&&file.equals("{\"size\":\""+HudSize.NAMES[want]+"\"}");ok&=step;
                 steps.add((press==0?"before any press":"press "+press)+": the button reads '"+label+"'"+(press==0?"":" (wanted '"+wantLabel[want]+"'), the notice '"+notice+"' (wanted '"+wantNotice[want]+"')")+", HudSize "+HudSize.NAMES[got]+", hud.json "+file+", read back as a launch reads it: "+HudSize.NAMES[read]+", the HUD at "+k+"x (wanted "+HudSize.NAMES[want]+" at "+wantK[want]+"x)"+(step?"":", WRONG"));
             }
+            // fix round 1: every word the button can show fits it uncut, in the game's own body font (FantasyButton trims to its
+            // width less 14), the longest, "Battle HUD: Standard (Compact size here)", included though this window never shows it
+            var hb=hudButton(c);int room=hb==null?0:hb.getWidth()-14,widest=0;String widestLabel="none";
+            for(int z=UiMath.HUD_COMPACT;z<=UiMath.HUD_LARGE;z++)for(int as=UiMath.HUD_COMPACT;as<=z;as++){String l=UiMath.hudSizeLabel(z,as);int w=c.textRenderer.getWidth(DarkUi.body(l));if(w>widest){widest=w;widestLabel=l;}}
+            ok&=hb!=null&&widest<=room;steps.add("the widest words the button can show, '"+widestLabel+"', take "+widest+" px of its "+room+" px"+(hb!=null&&widest<=room?"":", WRONG: they would be cut"));
             report("p1-ui-hud-size-setting",ok,"the Visuals and sound screen ("+(c.currentScreen instanceof PresentationScreen?"open":"NOT open")+") at 1920x1080 GUI 4: "+String.join("; ",steps)+"; the notice reads '"+Presentation.notice+"'");
         }
         /** The Visuals and sound screen's Battle HUD button, or null. */
