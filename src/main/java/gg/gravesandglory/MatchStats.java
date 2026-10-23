@@ -1,5 +1,6 @@
 package gg.gravesandglory;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,17 @@ public final class MatchStats {
         public int objectiveSeconds;
         /** Seconds each House's trait was at tier I or higher for this army this round, by House id (Houses.tick adds one a second). */
         public final Map<String, Integer> traitSeconds = new LinkedHashMap<>();
+        /** This round's kills by troop id, for the mastery ledger: a troop's own blow, or a death in the credit window after it. A commander's kill and a temporary troop's (a Grave Bloom Risen) count in kills only. */
+        public final Map<String, Integer> troopKills = new LinkedHashMap<>();
+    }
+    /** One House row of the battle report: the banner's trait tier in that House (0 when its slots reach none), the seconds its trait held this round, and the shards and Renown the match paid it. */
+    public record HouseRow(String house, int tier, int traitSeconds, int shards, int renown) {}
+    /** The report's House rows: one for every House the banner has slots in, in houseOrder. Tiers, trait seconds, shards and Renown are read by House id, 0 when absent. */
+    public static List<HouseRow> houseRows(List<String> houseOrder, Map<String, Integer> bannerSlots, Map<String, Integer> tiers, Map<String, Integer> traitSeconds, Map<String, Integer> shards, Map<String, Integer> renown) {
+        List<HouseRow> rows = new ArrayList<>();
+        for (String h : houseOrder)
+            if (bannerSlots.getOrDefault(h, 0) > 0) rows.add(new HouseRow(h, tiers.getOrDefault(h, 0), traitSeconds.getOrDefault(h, 0), shards.getOrDefault(h, 0), renown.getOrDefault(h, 0)));
+        return rows;
     }
     /** Share of matches won, 0 when no match was played. */
     public static double winRate(int wins, int matches) {

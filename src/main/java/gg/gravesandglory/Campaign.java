@@ -133,7 +133,7 @@ public final class Campaign {
         if(b.running){
             var current=b.squads.get(p.getUuid());
             boolean global=cmd.startsWith("map:")||cmd.startsWith("mode:")||cmd.equals("fill")||cmd.equals("start")||cmd.startsWith("difficulty:");
-            boolean personal=cmd.equals("roll")||cmd.startsWith("roll:")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("colour:")||cmd.startsWith("class:");
+            boolean personal=cmd.equals("roll")||cmd.startsWith("roll:")||cmd.startsWith("buy:")||cmd.startsWith("star:")||cmd.startsWith("legendary:")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("colour:")||cmd.startsWith("class:");
             if(global||personal&&current!=null&&current.seated){notice(p.getUuid(),"Active battle choices are locked until the match ends.");return true;}
         }
         if(cmd.startsWith("difficulty:")){
@@ -143,6 +143,9 @@ public final class Campaign {
         }
         Profile pr=profile(p.getUuid());var squad=b.squads.get(p.getUuid());if(squad==null)return false;
         if(cmd.equals("roll")||cmd.startsWith("roll:")){roll(p,pr,cmd.equals("roll")?RosterMath.rollHouse(pr.banner):cmd.substring(5));return true;}
+        if(cmd.startsWith("buy:")){buy(p,pr,cmd.substring(4));return true;}
+        if(cmd.startsWith("star:")){star(p,pr,cmd.substring(5));return true;}
+        if(cmd.startsWith("legendary:")){legendary(p,pr,cmd.substring(10));return true;}
         if(cmd.startsWith("unlock:")||cmd.startsWith("army:")){notice(p.getUuid(),"Troops now join by recruitment rolls at the camp shrine.");return true;}
         if(cmd.startsWith("class:")){String id=cmd.substring(6);if(Arrays.stream(Spec.CLASSES).anyMatch(c->c.id().equals(id))){pr.commander=id;squad.commander=id;Commander.applyPlayer(p,squad);save(p.getUuid());}return true;}
         if(cmd.startsWith("slot:")){ // slot:<i>:<troop id or empty>: the banner is rebuilt with repack, so markers follow their Epic or Legendary
@@ -288,13 +291,70 @@ public final class Campaign {
         String before=JSON.toJson(pr);
         var drawn=RosterMath.roll(commons,rares,epic,common.rollWeight(),rare.rollWeight(),epicRow.rollWeight(),pr.pity.getOrDefault(house,0),Spec.RECRUITMENT[0].epicPity(),rollRng);
         pr.gold-=cost;pr.pity.put(house,drawn.pityAfter());
-        var t=troop(drawn.troop());var owned=pr.owned.get(t.id());String result;
-        if(owned==null){pr.owned.put(t.id(),new Profile.Owned());result="Joined your collection: "+t.name()+"!";}
-        else{int stars=owned.stars,shards=RosterMath.addCopy(owned,RosterMath.rarityRow(t.rarity()));
-            if(shards>0){pr.shards.merge(house,shards,Integer::sum);result=t.name()+" is at full stars: +"+shards+" "+row.name()+" shards.";}
-            else result=owned.stars>stars?t.name()+" rises to star "+owned.stars+"!":"Another "+t.name()+": copy "+owned.copies+" toward the next star.";}
+        String result=receive(pr,troop(drawn.troop()));
         if(!save(p.getUuid())){profiles.put(p.getUuid(),JSON.fromJson(before,Profile.class));return;}
-        notice(p.getUuid(),result);p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","unit_reveal")),SoundCategory.PLAYERS,.7f,1f); // to him alone (the ServerPlayerEntity overload)
+        notice(p.getUuid(),result);reveal(p);
+    }
+    /** One copy of a troop joins the collection (spec 4.2): a new troop, a copy toward its next star, or past the last star its House's shards (RosterMath.addCopy). Returns what happened, for the notice. Rolls, chosen buys and the Founders Rare use it. */
+    static String receive(Profile pr,Spec.TroopsRow t){
+        var owned=pr.owned.get(t.id());
+        if(owned==null){pr.owned.put(t.id(),new Profile.Owned());return "Joined your collection: "+t.name()+"!";}
+        int stars=owned.stars,shards=RosterMath.addCopy(owned,RosterMath.rarityRow(t.rarity()));
+        if(shards>0){pr.shards.merge(t.house(),shards,Integer::sum);return t.name()+" is at full stars: +"+shards+" "+RosterMath.houseName(t.house())+" shards.";}
+        return owned.stars>stars?t.name()+" rises to star "+owned.stars+"!":"Another "+t.name()+": copy "+owned.copies+" toward the next star.";
+    }
+    /** The recruitment reveal sound, to the commander alone (the ServerPlayerEntity overload). */
+    static void reveal(ServerPlayerEntity p){p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","unit_reveal")),SoundCategory.PLAYERS,.7f,1f);}
+    /** Undoes a command whose save failed: the profile goes back to its JSON from before, and the commander is told nothing changed. */
+    void unsaved(UUID id,String before,String what){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,what+" was not saved, so nothing changed. Check disk space and try again.");}
+    /**
+     * A chosen recruit (buy:<troop>, spec 4.2): a Common or Rare of any House for recruitment.chosenCost gold, as a new troop or a copy toward its
+     * next star. An Epic or Legendary, a troop already at full stars (a buy would only dismantle it) and a purse short of the price are refused.
+     */
+    void buy(ServerPlayerEntity p,Profile pr,String id){
+        var t=troop(id);if(t==null)return;UUID who=p.getUuid();
+        if(!t.rarity().equals("common")&&!t.rarity().equals("rare")){notice(who,"Only Commons and Rares can be bought. "+t.name()+" comes from recruitment rolls.");return;}
+        var owned=pr.owned.get(id);if(owned!=null&&owned.stars>=RosterMath.maxStars()){notice(who,t.name()+" is at full stars already.");return;}
+        int cost=Spec.RECRUITMENT[0].chosenCost();
+        if(pr.gold<cost){notice(who,"A chosen recruit costs "+cost+" gold. You have "+pr.gold+".");return;}
+        String before=JSON.toJson(pr);pr.gold-=cost;String result=receive(pr,t);
+        if(!save(who)){unsaved(who,before,"The recruit");return;}
+        notice(who,result);reveal(p);
+    }
+    /**
+     * An Epic's or Legendary's next star (star:<troop>, spec 4.3) for its House's shards: rarities.shardStar2 for star 2, shardStar3 for star 3; it
+     * takes no copy. A Common or Rare (its stars come from copies), a troop not owned or at full stars, and too few shards are refused.
+     */
+    void star(ServerPlayerEntity p,Profile pr,String id){
+        var t=troop(id);if(t==null)return;UUID who=p.getUuid();var r=RosterMath.rarityRow(t.rarity());
+        if(r==null||!t.rarity().equals("epic")&&!t.rarity().equals("legendary")){notice(who,t.name()+" rises by copies, not shards: recruit it again.");return;}
+        var owned=pr.owned.get(id);if(owned==null){notice(who,t.name()+" is not in your collection.");return;}
+        if(owned.stars>=RosterMath.maxStars()){notice(who,t.name()+" is at full stars already.");return;}
+        int cost=owned.stars<=1?r.shardStar2():r.shardStar3(),have=pr.shards.getOrDefault(t.house(),0);String house=RosterMath.houseName(t.house());
+        if(have<cost){notice(who,"Star "+(owned.stars+1)+" of "+t.name()+" costs "+cost+" "+house+" shards. You have "+have+".");return;}
+        String before=JSON.toJson(pr);pr.shards.put(t.house(),have-cost);owned.stars++;
+        if(!save(who)){unsaved(who,before,"The star");return;}
+        notice(who,t.name()+" rises to star "+owned.stars+"! (-"+cost+" "+house+" shards)");reveal(p);
+    }
+    /**
+     * A House's Legendary (legendary:<house>:pact or legendary:<house>:shards, spec 4.4). The pact road spends one Pact; the shards road needs
+     * recruitment.renownForLegendary Renown in that House and spends recruitment.legendaryShards of its shards, keeping the Renown. Refused when
+     * the Legendary is owned already or the price is not there.
+     */
+    void legendary(ServerPlayerEntity p,Profile pr,String arg){
+        String[] parts=arg.split(":",-1);if(parts.length!=2||!parts[1].equals("pact")&&!parts[1].equals("shards"))return;
+        String house=parts[0];boolean pact=parts[1].equals("pact");UUID who=p.getUuid();
+        var t=Arrays.stream(Spec.TROOPS).filter(x->x.house().equals(house)&&x.rarity().equals("legendary")).findFirst().orElse(null);if(t==null)return;
+        if(pr.owned.containsKey(t.id())){notice(who,t.name()+" is in your collection already.");return;}
+        var R=Spec.RECRUITMENT[0];int renown=pr.renown.getOrDefault(house,0),shards=pr.shards.getOrDefault(house,0);String name=RosterMath.houseName(house);
+        if(pact&&pr.writs<1){notice(who,"You hold no Pact. Clear every battle of a Long March chapter to earn one.");return;}
+        if(!pact&&renown<R.renownForLegendary()){notice(who,t.name()+" answers at "+R.renownForLegendary()+" "+name+" Renown. You have "+renown+".");return;}
+        if(!pact&&shards<R.legendaryShards()){notice(who,t.name()+" costs "+R.legendaryShards()+" "+name+" shards. You have "+shards+".");return;}
+        String before=JSON.toJson(pr);
+        if(pact)pr.writs--;else pr.shards.put(house,shards-R.legendaryShards());
+        pr.owned.put(t.id(),new Profile.Owned());
+        if(!save(who)){unsaved(who,before,"The Legendary");return;}
+        notice(who,t.name()+" joins your collection"+(pact?", sworn by your Pact!":"!"));reveal(p);
     }
     void finish(int winner){
         if(!b.running)return;
@@ -303,12 +363,57 @@ public final class Campaign {
         for(UUID id:participants){var s=b.squads.get(id);if(s==null||!s.seated)continue;Profile p=profile(id);String before=JSON.toJson(p);
             int earned=Math.min(seconds,(b.time-joinedAt.getOrDefault(id,b.roundStarted))/20)>=Spec.CAMPAIGN[0].minimumRewardSeconds()?(practice?Spec.CAMPAIGN[0].practiceGold():Spec.CAMPAIGN[0].completionGold()+(s.team==winner?Spec.CAMPAIGN[0].victoryGold():0)):0;
             int priorXp=p.progression.xp;Progression.reset(p.progression,Progression.today());Progression.match(p.progression,matchId,s.team==winner,earned>0);p.gold+=earned;p.matches++;if(s.team==winner)p.wins++;if(s.team==winner&&activeBattle!=null)p.campaignCleared=Math.max(p.campaignCleared,activeBattle.order());
-            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());results.put(id,report);
-            if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}notice(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":""));
+            // The chase (spec 4.3 to 4.6), in the same save as the gold: an eligible match pays shards and Renown by the fielded banner's Houses and adds to the mastery ledger; a chapter cleared pays its Pact.
+            var slots=RosterMath.houseSlots(s.banner,RosterMath.Catalog.fromSpec());
+            var paid=earned>0?RosterMath.matchRewards(slots,Houses.thresholds(Spec.HOUSES[0].id()),Profile.houseOrder(),s.team==winner):NO_REWARDS; // every House has the same slot thresholds (HousesCheck)
+            paid.shards().forEach((h,n)->p.shards.merge(h,n,Integer::sum));paid.renown().forEach((h,n)->p.renown.merge(h,n,Integer::sum));
+            List<String> titles=earned>0?ledger(p,s):List.of();int pacts=pacts(p);
+            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));results.put(id,report);
+            if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
+            String extra=(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
+            notice(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":"")+extra);
         }
         b.message=(winner<0?"Draw":b.side(winner).name()+" wins")+"! Back to the war council.";headline=b.message;
         for(var p:b.server.getPlayerManager().getPlayerList())if(participants.contains(p.getUuid()))p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","victory")),SoundCategory.PLAYERS,.8f,1); // each participant, to his own connection
         returnLobby();
+    }
+    static final RosterMath.Rewards NO_REWARDS=new RosterMath.Rewards(Map.of(),Map.of());
+    /**
+     * The mastery ledger of one eligible match (spec 4.6): each troop type's kills this round (SquadStats.troopKills) and +1 survived for each
+     * type with a living troop of the army at the end (a temporary one is none), then each owned troop's Mastery level (RosterMath.masteryLevel;
+     * it never falls). A level reached grants the title part of its mastery reward as "<troop> <title>" (Order Squire Veteran); the other parts,
+     * skins and frames, wait for their task. A House whose troops (houses.troops) are all owned at Mastery I or higher grants the House's title.
+     * Returns the titles new to the profile, for the notice.
+     */
+    List<String> ledger(Profile p,GravesAndGlory.Squad s){
+        s.stats.troopKills.forEach((troop,n)->{var o=p.owned.get(troop);if(o!=null)o.kills=Math.min(1_000_000,o.kills+n);});
+        b.fielded(s).map(u->u.spec.id()).distinct().forEach(troop->{var o=p.owned.get(troop);if(o!=null)o.survived++;});
+        List<String> gained=new ArrayList<>();
+        for(var e:p.owned.entrySet()){var o=e.getValue();var t=troop(e.getKey());int level=RosterMath.masteryLevel(o.kills,o.survived,Spec.MASTERY);
+            if(t==null||level<=o.mastery)continue;
+            for(var row:Spec.MASTERY)if(row.level()>o.mastery&&row.level()<=level){String title=masteryTitle(row.reward());if(title!=null&&p.progression.titles.add(t.name()+" "+title))gained.add(t.name()+" "+title);}
+            o.mastery=level;}
+        for(var h:Spec.HOUSES){
+            if(h.title().isBlank()||!Arrays.stream(h.troops().split(",")).allMatch(troop->{var o=p.owned.get(troop);return o!=null&&o.mastery>=1;}))continue;
+            if(p.progression.titles.add(h.title()))gained.add(h.title());}
+        return gained;
+    }
+    /** The title a mastery reward gives (its title: part, "title:Veteran" or "frame:brass;title:Master"), or null when it gives none. */
+    static String masteryTitle(String reward){for(String part:reward.split(";"))if(part.startsWith("title:")&&part.length()>6)return part.substring(6);return null;}
+    /** A Pact (spec 4.4) for each Long March chapter whose every battle is cleared (campaignBattles order up to campaignCleared) and that has not paid one yet (writChapters). Returns how many were granted. */
+    static int pacts(Profile p){
+        int granted=0;Set<Integer> chapters=new TreeSet<>();for(var r:Spec.CAMPAIGNBATTLES)chapters.add(r.chapter());
+        for(int chapter:chapters){
+            if(p.writChapters.contains(chapter)||!Arrays.stream(Spec.CAMPAIGNBATTLES).filter(r->r.chapter()==chapter).allMatch(r->r.order()<=p.campaignCleared))continue;
+            p.writs++;p.writChapters.add(chapter);granted++;}
+        return granted;
+    }
+    /** The report's House rows (MatchStats.houseRows): every House the fielded banner has slots in, its banner tier, its trait seconds this round, and what the match paid it (0 when nothing was saved). */
+    JsonArray reportHouses(GravesAndGlory.Squad s,Map<String,Integer> slots,RosterMath.Rewards paid){
+        JsonArray rows=new JsonArray();
+        for(var h:MatchStats.houseRows(Profile.houseOrder(),slots,Houses.bannerTiers(s),s.stats.traitSeconds,paid.shards(),paid.renown())){
+            JsonObject row=new JsonObject();row.addProperty("house",h.house());row.addProperty("tier",h.tier());row.addProperty("traitSeconds",h.traitSeconds());row.addProperty("shards",h.shards());row.addProperty("renown",h.renown());rows.add(row);}
+        return rows;
     }
     /** The report table for one commander: every seated army of both teams, his own team first (join order kept); a bot is named after its tier. */
     JsonArray reportSquads(GravesAndGlory.Squad me){
@@ -627,7 +732,10 @@ public final class Campaign {
         String action=cmd.substring(9),result;
         if(action.equals("reroll"))result=Progression.reroll(p.progression);
         else if(action.startsWith("title:")){String title=action.substring(6);if(p.progression.titles.contains(title)){p.progression.title=title;result="Title equipped: "+title;}else result="That title is locked.";}
-        else {var reward=Progression.claim(p.progression,action);p.gold=Math.min(1_000_000,p.gold+reward.gold());result=reward.message();}
+        else {var reward=Progression.claim(p.progression,action);p.gold=Math.min(1_000_000,p.gold+reward.gold());result=reward.message();
+            if(reward.shards()>0&&reward.house()!=null)p.shards.merge(reward.house(),reward.shards(),Integer::sum); // a contract's or a Founders tier's shards, to the House the claim named
+            var troop=reward.troop()==null?null:troop(reward.troop());if(troop!=null)result+=". "+receive(p,troop); // the Founders Rare: a new troop, a copy, or past full stars its shards
+            if(reward.cosmetic()!=null)p.cosmetics.add(reward.cosmetic());}
         if(!save(id)){profiles.put(id,JSON.fromJson(before,Profile.class));result="Reward was not applied because saving failed. Try again after checking disk space.";}
         notice(id,result);return true;
     }

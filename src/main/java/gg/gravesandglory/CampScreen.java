@@ -166,6 +166,13 @@ final class CampScreen extends ArmyScreen {
         for(var e:report.getAsJsonArray("points")){var p=e.getAsJsonObject();line(g,p.get("name").getAsString()+"  Dawn "+p.get("dawn").getAsInt()+"s / Dusk "+p.get("dusk").getAsInt()+"s",x,y,DarkUi.MUTED,w);y+=11;}
         return y;
     }
+    /** One House row of the battle report: the House's name in its accent, then the banner's trait tier in it with the seconds the trait held, and the shards and Renown the match paid it. */
+    void houseRow(DrawContext g,JsonObject h,int x,int y,int w){
+        Spec.HousesRow row=null;for(var r:Spec.HOUSES)if(r.id().equals(h.get("house").getAsString()))row=r;if(row==null)return;
+        int tier=h.get("tier").getAsInt();String name=row.name().toUpperCase(java.util.Locale.ROOT);
+        line(g,name,x,y,0xff000000|row.accent(),w);int at=x+textRenderer.getWidth(name)+8;
+        line(g,(tier>0?"Trait "+DarkUi.roman(tier)+" held "+h.get("traitSeconds").getAsInt()+"s":"No trait tier")+"   +"+h.get("shards").getAsInt()+" shards   +"+h.get("renown").getAsInt()+" Renown",at,y,DarkUi.PAPER,x+w-at);
+    }
     @Override public void render(DrawContext g,int mx,int my,float delta){
         g.getMatrices().push();g.getMatrices().scale(scale,scale,1);DarkUi.background(g,width,height);DarkUi.crest(g,20,16,26,false);DarkUi.title(g,"BANNER CAMP",58,19,DarkUi.GOLD);
         line(g,header(),width-280,24,DarkUi.PAPER,260);
@@ -203,20 +210,22 @@ final class CampScreen extends ArmyScreen {
             line(g,"Weekly: "+progress.weeklyBattles+" / 6 battles / 150 gold + 300 XP",x,358,DarkUi.PAPER,w-140);line(g,"Daily reset 00:00 UTC / weekly reset Monday 00:00 UTC",x,386,DarkUi.MUTED,w);
         }else if(page.equals("chapter")){
             line(g,"Tier "+Progression.tier(progress)+" / 30  |  "+Math.min(progress.xp,7500)+" / 7500 XP  |  Free; no expiry",x,108,DarkUi.PAPER,w);
-            for(int i=0;i<10;i++){int tier=offset+i+1;String reward=tier%5==0?Progression.TITLES[tier/5-1]+" title":"25 gold";line(g,reward+(progress.claims.contains("founders:"+tier)?" / claimed":Progression.tier(progress)<tier?" / locked":" / earned"),x+(i%2)*(w/2)+4,146+(i/2)*45,DarkUi.MUTED,w/2-16);}
+            for(int i=0;i<10;i++){int tier=offset+i+1;String reward=Progression.reward(tier);line(g,reward+(progress.claims.contains("founders:"+tier)?" / claimed":Progression.tier(progress)<tier?" / locked":" / earned"),x+(i%2)*(w/2)+4,146+(i/2)*45,DarkUi.MUTED,w/2-16);}
             line(g,"Finish the chapter; keep every unit and title when new chapters arrive.",x,397,DarkUi.MUTED,w);
         }else if(page.equals("results")){
             var report=CampaignClient.result;
             if(report.has("id")){
                 line(g,report.get("outcome").getAsString()+" / "+report.get("map").getAsString(),x,117,DarkUi.GOLD,w);
-                int y=Math.max(table(g,report,x,132,w)+5,height-163); // the battle table first; the rewards sit above the buttons, or right under a long table
+                var houses=report.has("houses")?report.getAsJsonArray("houses"):new JsonArray();int extra=houses.isEmpty()?0:houses.size()*11+3; // one line per House of the banner, under the gold
+                int y=Math.max(table(g,report,x,132,w)+5,height-163-extra); // the battle table first; the rewards sit above the buttons, or right under a long table
                 boolean saved=report.get("saved").getAsBoolean();
                 line(g,saved?"+"+report.get("gold").getAsInt()+" GOLD     +"+report.get("xp").getAsInt()+" CHAPTER XP":"REWARDS NOT SAVED / Progress unchanged",x,y,saved?DarkUi.PAPER:0xffff7777,w);
                 line(g,!saved?"Check disk space before playing again.":report.get("eligible").getAsBoolean()?"Rewards saved. Contract and tier rewards are claimed separately.":"No match rewards: play at least 3 minutes to qualify.",x,y+11,DarkUi.MUTED,w);
-                y+=25;int tier=Progression.tier(progress),xp=Math.min(progress.xp,7500),half=w/2-8,right=x+w-half; // chapter progress on the left, contracts on the right
+                for(int i=0;i<houses.size();i++)houseRow(g,houses.get(i).getAsJsonObject(),x,y+24+i*11,w);
+                y+=25+extra;int tier=Progression.tier(progress),xp=Math.min(progress.xp,7500),half=w/2-8,right=x+w-half; // chapter progress on the left, contracts on the right
                 line(g,"FOUNDERS / Tier "+tier+" of 30 / "+xp+" XP",x,y,DarkUi.GOLD,half);
                 g.fill(x,y+11,x+half,y+15,0xff29383c);g.fill(x,y+11,x+(int)(half*(tier==30?1:(xp%250)/250f)),y+15,DarkUi.GOLD);
-                line(g,tier==30?"Chapter complete. Troops and titles stay yours.":"Next: tier "+(tier+1)+" / "+((tier+1)%5==0?Progression.TITLES[(tier+1)/5-1]+" title":"25 gold")+" / "+(250-xp%250)+" XP to go",x,y+19,DarkUi.PAPER,half);
+                line(g,tier==30?"Chapter complete. Troops and titles stay yours.":"Next: tier "+(tier+1)+" / "+Progression.reward(tier+1)+" / "+(250-xp%250)+" XP to go",x,y+19,DarkUi.PAPER,half);
                 for(int i=0;i<3;i++)line(g,Progression.contract(progress,i)+"  "+Math.min(Progression.progress(progress,i),Progression.target(progress,i))+"/"+Progression.target(progress,i)+(progress.claims.contains("daily:"+i)?" / claimed":Progression.progress(progress,i)>=Progression.target(progress,i)?" / READY TO CLAIM":""),right,y+i*11,DarkUi.MUTED,half);
                 line(g,"Weekly battles: "+Math.min(progress.weeklyBattles,6)+"/6"+(progress.claims.contains("weekly")?" / claimed":progress.weeklyBattles>=6?" / READY TO CLAIM":""),right,y+33,DarkUi.MUTED,half);
             }

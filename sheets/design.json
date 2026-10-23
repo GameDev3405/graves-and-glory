@@ -3286,8 +3286,8 @@
       "rollWeight": 43,
       "chosenPrice": 300,
       "slotWeight": 1,
-      "starPct2": 0.03,
-      "starPct3": 0.06,
+      "starPct2": 0.06,
+      "starPct3": 0.12,
       "dupsStar2": 1,
       "dupsStar3": 2,
       "shardStar2": 0,
@@ -3300,8 +3300,8 @@
       "rollWeight": 6,
       "chosenPrice": 300,
       "slotWeight": 1,
-      "starPct2": 0.03,
-      "starPct3": 0.06,
+      "starPct2": 0.06,
+      "starPct3": 0.12,
       "dupsStar2": 1,
       "dupsStar3": 2,
       "shardStar2": 0,
@@ -3798,7 +3798,7 @@
       "level": 1,
       "kills": 40,
       "matches": 8,
-      "reward": "title:Veteran;evolve:3"
+      "reward": "title:Veteran"
     },
     {
       "id": "mastery_2",

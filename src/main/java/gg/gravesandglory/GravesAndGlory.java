@@ -116,12 +116,12 @@ public final class GravesAndGlory implements ModInitializer {
             Entity attacker=source.getAttacker();
             for(Unit victim:battle.units)if(victim.mob==entity){
                 if(victim.temporary)continue; // a Grave Bloom Risen is no loss, no kill and no fallen troop to raise
-                Squad winner=attacker==null?null:battle.squads.get(attacker.getUuid());
-                for(Unit u:battle.units)if(u.mob==attacker)winner=u.squad;
+                Squad winner=attacker==null?null:battle.squads.get(attacker.getUuid());String troop=null; // troop: the troop type the kill goes to in the mastery ledger, none for a commander's or a temporary troop's
+                for(Unit u:battle.units)if(u.mob==attacker){winner=u.squad;troop=u.temporary?null:u.spec.id();}
                 // A shot that lands after its archer fell still credits the archer's army, and so does a death soon after an enemy's blow; a fall, lava, cramming or /kill long after one is nobody's kill.
-                if(winner==null&&BattleMath.creditWindowOpen(battle.time,victim.lastHitAt,Projectiles.CREDIT_WINDOW_TICKS))winner=victim.lastHitBy;
+                if(winner==null&&BattleMath.creditWindowOpen(battle.time,victim.lastHitAt,Projectiles.CREDIT_WINDOW_TICKS)){winner=victim.lastHitBy;troop=victim.lastHitTroop;}
                 victim.squad.stats.lost++;victim.squad.fallen.merge(victim.spec.id(),1,Integer::sum);Houses.logDeath(battle,victim);Houses.recompute(victim.squad);
-                if(winner!=null&&winner.team!=victim.squad.team){winner.earn(Spec.ECONOMY[0].killGold());winner.stats.kills++;if(attacker instanceof ServerPlayerEntity&&source.getSource()==attacker)Commander.playerKill(battle,winner);} // a kill by the commander's own hand (not his arrow, not a troop of his, not a fall in his credit window): a Reaver's Bloodrush gives a troop back
+                if(winner!=null&&winner.team!=victim.squad.team){winner.earn(Spec.ECONOMY[0].killGold());winner.stats.kills++;if(troop!=null)winner.stats.troopKills.merge(troop,1,Integer::sum);if(attacker instanceof ServerPlayerEntity&&source.getSource()==attacker)Commander.playerKill(battle,winner);} // a kill by the commander's own hand (not his arrow, not a troop of his, not a fall in his credit window): a Reaver's Bloodrush gives a troop back
             }
         });
         net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register((player,world,hand,entity,hit)->{
@@ -207,6 +207,8 @@ public final class GravesAndGlory implements ModInitializer {
         Squad lastHitBy;
         /** Battle time (ticks) of that blow: a death with no attacker credits lastHitBy only within Projectiles.CREDIT_WINDOW_TICKS of it. */
         long lastHitAt;
+        /** The troop id whose blow that was, for the mastery ledger (SquadStats.troopKills); null for a commander's blow or a temporary troop's. */
+        String lastHitTroop;
         /** The tags this troop brings to the counter table (ArmyMobs.tags), a copy a House task may add to. */
         Set<String> tags;
         /** The evolution stage (1 to 3) its custom name and stats show; 1 for a bot and for a troop its commander does not own. */
@@ -990,8 +992,8 @@ public final class GravesAndGlory implements ModInitializer {
                 p.setHealth(p.getMaxHealth());toBase(p,team);p.changeGameMode(GameMode.SPECTATOR);
                 respawns.put(p.getUuid(),time+Commander.respawnSeconds(victimSquad)*20L);return false;
             }
-            Squad hitter=attackerSquad;for(Unit u:units)if(u.mob==attacker)hitter=u.squad;
-            if(hitter!=null)for(Unit u:units)if(u.mob==entity){u.lastHitBy=hitter;u.lastHitAt=time;break;}
+            Squad hitter=attackerSquad;Unit striker=null;for(Unit u:units)if(u.mob==attacker){hitter=u.squad;striker=u;}
+            if(hitter!=null)for(Unit u:units)if(u.mob==entity){u.lastHitBy=hitter;u.lastHitAt=time;u.lastHitTroop=striker==null||striker.temporary?null:striker.spec.id();break;}
             return true;
         }
         record Sight(float x,float z,long seen){}

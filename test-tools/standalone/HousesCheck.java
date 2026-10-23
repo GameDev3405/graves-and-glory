@@ -164,6 +164,65 @@ public final class HousesCheck {
         return addCopy(o, rarity(rarityId)) == 0 && o.copies == copies + 1 ? o.stars : -1;
     }
 
+    /** A Founders state at tier 30, every tier open. */
+    static Progression.State tier30() {
+        var s = new Progression.State();
+        s.xp = Progression.TIERS * Progression.XP_PER_TIER;
+        return s;
+    }
+    /** The re-authored Founders chapter (spec 4.8) and the House-aware contract claims (spec 4.5), through Progression.claim alone. */
+    static void founders() {
+        var s = tier30();
+        var gold1 = Progression.claim(s, "founders:1");
+        check(gold1.gold() == 30 && gold1.shards() == 0 && gold1.troop() == null && s.claims.contains("founders:1"), "founders:1 gives 30 gold: " + gold1);
+        var bare = Progression.claim(s, "founders:2");
+        check(bare.gold() == 0 && bare.shards() == 0 && bare.message().contains("Choose a House") && !s.claims.contains("founders:2"), "founders:2 without a House gives nothing, asks for one and stays unclaimed: " + bare);
+        var shards = Progression.claim(s, "founders:2:gilded");
+        check(shards.shards() == 10 && "gilded".equals(shards.house()) && shards.gold() == 0 && s.claims.contains("founders:2") && s.claims.stream().noneMatch(k -> k.startsWith("founders:2:")), "founders:2:gilded gives 10 shards to gilded and is stored as founders:2: " + shards + " " + s.claims);
+        var nowhere = Progression.claim(s, "founders:4:nowhere");
+        check(nowhere.shards() == 0 && !s.claims.contains("founders:4"), "a shard tier naming no House gives nothing: " + nowhere);
+        var epic = Progression.claim(s, "founders:20:mage");
+        check(epic.troop() == null && epic.gold() == 0 && !s.claims.contains("founders:20"), "founders:20:mage (an Epic) is refused: " + epic);
+        var noRare = Progression.claim(s, "founders:20");
+        check(noRare.troop() == null && !s.claims.contains("founders:20"), "founders:20 without a troop is refused: " + noRare);
+        var rare = Progression.claim(s, "founders:20:longbow");
+        check("longbow".equals(rare.troop()) && rare.gold() == 0 && s.claims.contains("founders:20"), "founders:20:longbow grants the Order Longbow: " + rare);
+        var pennant = Progression.claim(s, "founders:21");
+        check("pennant_pattern".equals(pennant.cosmetic()) && s.claims.contains("founders:21"), "founders:21 gives the cosmetic pennant_pattern: " + pennant);
+        var frame = Progression.claim(s, "founders:29");
+        check("banner_frame".equals(frame.cosmetic()), "founders:29 gives the cosmetic banner_frame: " + frame);
+        var top = Progression.claim(s, "founders:30");
+        check(top.gold() == 0 && s.titles.contains("Bannerlord"), "founders:30 gives the title Bannerlord: " + top);
+        // every tier claimed once, each with what it asks for: 300 gold, 12 x 10 shards, the five titles (no Vanguard), one Rare, two cosmetics
+        var all = tier30();
+        int gold = 0, shardTotal = 0;List<String> troops = new ArrayList<>(), cosmetics = new ArrayList<>();
+        for (int t = 1; t <= Progression.TIERS; t++) {
+            var g = Progression.claim(all, "founders:" + t + (t == 20 ? ":longbow" : ":graveborn"));
+            gold += g.gold();shardTotal += g.shards();if (g.troop() != null) troops.add(g.troop());if (g.cosmetic() != null) cosmetics.add(g.cosmetic());
+        }
+        check(gold == 300 && shardTotal == 120 && troops.equals(List.of("longbow")) && cosmetics.equals(List.of("pennant_pattern", "banner_frame")) && all.claims.size() == 30, "all 30 tiers: gold " + gold + " (want 300), shards " + shardTotal + " (want 120), troops " + troops + ", cosmetics " + cosmetics + ", claims " + all.claims.size());
+        check(all.titles.equals(new LinkedHashSet<>(List.of("Recruit", "Scout", "Pathfinder", "Captain", "Veteran", "Bannerlord"))), "the chapter's titles are Scout, Pathfinder, Captain, Veteran and Bannerlord: " + all.titles);
+        var old = tier30();old.claims.add("founders:2");
+        var again = Progression.claim(old, "founders:2:gilded");
+        check(again.shards() == 0 && again.gold() == 0 && again.message().equals("Already claimed."), "a state holding the old claim founders:2 returns Already claimed: " + again);
+        // the daily that completes all three gives +3 shards to its House; the first two give none
+        var d = new Progression.State();Progression.reset(d, java.time.LocalDate.of(2026, 10, 23));
+        for (int i = 0; i < 3; i++) Progression.match(d, "m" + i, true, true);
+        d.dailyCaptures = 1;
+        var d0 = Progression.claim(d, "daily:0:ironclad");var d1 = Progression.claim(d, "daily:1:ironclad");
+        check(d0.gold() == 30 && d0.shards() == 0 && d1.gold() == 40 && d1.shards() == 0, "the first two dailies pay gold and no shards: " + d0 + " " + d1);
+        var d2bare = Progression.claim(d, "daily:2");
+        check(d2bare.shards() == 0 && d2bare.gold() == 0 && d2bare.message().contains("Choose a House") && !d.claims.contains("daily:2"), "the third daily without a House waits for one: " + d2bare);
+        var d2 = Progression.claim(d, "daily:2:ironclad");
+        check(d2.gold() == 30 && d2.shards() == 3 && "ironclad".equals(d2.house()) && d.claims.equals(Set.of("daily:0", "daily:1", "daily:2")), "the third daily with :ironclad gives 3 Ironclad shards and every key is stored bare: " + d2 + " " + d.claims);
+        check(Progression.claim(d, "daily:0:ironclad").message().equals("Already claimed.") && Progression.claim(d, "daily:00:ironclad").gold() == 0, "a daily pays once, whatever suffix or spelling");
+        // the weekly: 150 gold, 300 XP and +10 shards to a chosen House
+        var w = new Progression.State();Progression.reset(w, java.time.LocalDate.of(2026, 10, 23));
+        for (int i = 0; i < 6; i++) Progression.match(w, "w" + i, true, true);
+        var wBare = Progression.claim(w, "weekly");var wk = Progression.claim(w, "weekly:tidecallers");
+        check(wBare.gold() == 0 && wBare.message().contains("Choose a House") && wk.gold() == 150 && wk.xp() == 300 && wk.shards() == 10 && "tidecallers".equals(wk.house()) && w.claims.contains("weekly"), "the weekly asks for a House, then gives 150 gold, 300 XP and 10 shards to it: " + wBare + " " + wk);
+    }
+
     public static void main(String[] args) {
         // the sheets agree with the spec section 2 fixture
         check(Arrays.stream(Spec.HOUSES).map(Spec.HousesRow::id).toList().equals(HOUSES), "houses sheet lists the five Houses in order");
@@ -203,14 +262,17 @@ public final class HousesCheck {
         check(eq(packHunters(trait("wildmoot",2),3,0),1.2) && eq(packHunters(trait("wildmoot",2),2,120),1.2) && eq(packHunters(trait("wildmoot",2),3,120),1.2) && packHunters(trait("wildmoot",2),2,90)==1, "pack hunters once");
         check(eq(entrench(trait("ironclad",1),true,false),0.9) && eq(entrench(trait("ironclad",1),true,true),0.8) && entrench(trait("ironclad",1),false,true)==1, "entrench doubled on points");
         check(eq(riptideSpeed(trait("tidecallers",2),true),1.25) && riptideSpeed(trait("tidecallers",2),false)==1 && riptideSpeed(trait("gilded",2),true)==1, "riptide speed in water or rain only");
-        // cap, stars
-        for (var e : Spec.EVOLUTIONS) {
-            String r = cat.rarityOf(e.troop());
-            check(r != null && r.matches("common|rare") && rarity(r).starPct3()+Math.max(e.healthPct(),e.damagePct()) <= Spec.RECRUITMENT[0].capPct()+1e-9, "cap "+e.id());
-        }
+        // cap, stars: the +12% cap comes from stars alone (in-match progression design, sections 8 and 10): every rarity's star 3 is at most capPct, Common and Rare +6% / +12%
+        for (var r : Spec.RARITIES) check(r.starPct2() <= r.starPct3() && r.starPct3() <= Spec.RECRUITMENT[0].capPct()+1e-9, "cap from stars alone: rarities." + r.id() + ".starPct3 " + r.starPct3() + " is at most recruitment.capPct");
+        for (String r : List.of("common", "rare")) check(eq(rarity(r).starPct2(),0.06) && eq(rarity(r).starPct3(),0.12) && eq(rarity(r).starPct3(),Spec.RECRUITMENT[0].capPct()), "cap from stars alone: a " + r + " is +6% at star 2 and +12% at star 3, the whole cap");
         check(progressionMultiplier(.06,.06,.12)==1.12 && progressionMultiplier(.12,.06,.12)==1.12 && eq(progressionMultiplier(.03,0,.12),1.03), "cap clamps");
         check(starFromCopies(1,C)==1 && starFromCopies(2,C)==2 && starFromCopies(3,C)==2 && starFromCopies(4,C)==3, "4 copies for star 3");
-        check(starFromCopies(9,rarity("legendary"))==1 && starPct(1,C)==0 && eq(starPct(2,C),0.03) && eq(starPct(3,rarity("epic")),0.12), "star bonuses; Legendary stars come from shards only");
+        check(starFromCopies(9,rarity("legendary"))==1 && starPct(1,C)==0 && eq(starPct(2,C),0.06) && eq(starPct(3,C),0.12) && eq(starPct(3,rarity("epic")),0.12), "star bonuses; Legendary stars come from shards only");
+        check(Arrays.stream(Spec.MASTERY).filter(m -> m.level() == 1).map(Spec.MasteryRow::reward).toList().equals(List.of("title:Veteran")), "Mastery I gives the title only: it unlocks nothing");
+        founders();
+        // the battle report's House rows (Task 11): every House the banner has slots in, House order, with its banner tier, trait seconds, shards and Renown (0 when absent)
+        var houseRows = MatchStats.houseRows(HOUSES, houseSlots(SPEC_EXAMPLE_BANNER,cat), Map.of("gilded",3), Map.of("gilded",40,"graveborn",12,"wildmoot",9), Map.of("gilded",2), Map.of("gilded",2,"graveborn",1));
+        check(houseRows.equals(List.of(new MatchStats.HouseRow("gilded",3,40,2,2), new MatchStats.HouseRow("graveborn",0,12,0,1))), "report House rows: one per House with banner slots, a House at tier 0 included, none for a House with no slots: " + houseRows);
         check(addCopyAt(4,"common")==2 && addCopyAt(4,"rare")==4 && addCopyAt(4,"epic")==8 && addCopyAt(1,"common")==0, "dismantle past star 3");
         check(starsAfterCopy(1,1,"common")==2 && starsAfterCopy(3,2,"common")==3, "addCopy raises stars: the 2nd copy gives star 2 and the 4th star 3");
         // rolls (shares() runs 200,000 rolls with new SplittableRandom(7) and epicPity = Integer.MAX_VALUE)

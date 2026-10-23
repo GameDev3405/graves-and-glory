@@ -218,8 +218,8 @@ for e in data['evolutions']:
     if e['id']!=f'{e["troop"]}_{e["stage"]}' or e['stage'] not in (2,3): errors.append(f'evolutions/{e["id"]}: id must be <troop>_<stage> for stage 2 or 3'); continue
     if rarityOf.get(e['troop']) not in ('common','rare'): errors.append(f'evolutions/{e["id"]}: only a House Common or Rare evolves'); continue
     stages.setdefault(e['troop'],{})[e['stage']]=e
-    # The hard cap (spec 4.4): star 3 plus the stage bonus stays within capPct on every stat.
-    if rarities.get(rarityOf[e['troop']],{}).get('starPct3',0)+max(e['healthPct'],e['damagePct'])>cap+1e-9: errors.append(f'evolutions/{e["id"]}: starPct3 + max(healthPct, damagePct) passes recruitment.capPct {cap}')
+    # The hard cap covers stars alone now (in-match progression design, sections 8 and 10): starPct3 <= capPct, so a stage bonus is not added to it.
+    if rarities.get(rarityOf[e['troop']],{}).get('starPct3',0)>cap+1e-9: errors.append(f'evolutions/{e["id"]}: the rarity starPct3 passes recruitment.capPct {cap}')
 for t,r in rarityOf.items():
     if r in ('common','rare') and sorted(stages.get(t,{}))!=[2,3]: errors.append(f'evolutions: {t} needs one stage 2 and one stage 3 row')
 for t,s in stages.items():

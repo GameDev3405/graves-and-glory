@@ -50,7 +50,7 @@ public final class Phase2Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every server tick, for checks that wait on the battle. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("graveborn",Graveborn::new);SUITES.put("ironclad",Ironclad::new);SUITES.put("tidecallers",Tidecallers::new);SUITES.put("wildmoot",Wildmoot::new);SUITES.put("anim",Anim::new);SUITES.put("turn",Turn::new);SUITES.put("tells",Tells::new);SUITES.put("depth",Depth::new);}
+    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("graveborn",Graveborn::new);SUITES.put("ironclad",Ironclad::new);SUITES.put("tidecallers",Tidecallers::new);SUITES.put("wildmoot",Wildmoot::new);SUITES.put("chase",Chase::new);SUITES.put("anim",Anim::new);SUITES.put("turn",Turn::new);SUITES.put("tells",Tells::new);SUITES.put("depth",Depth::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -3967,6 +3967,195 @@ public final class Phase2Checks implements ClientModInitializer {
                         cost.handBack();b.campaign.returnLobby();next(b,99);
                     }
                 }
+                default->{}
+            }
+        }
+    }
+
+    /**
+     * Task 11, the chase, server side (GRAVES_PHASE2_CHECKS=chase): chosen buys, Epic stars for shards, the two Legendary roads, the +12% cap from
+     * stars alone, a won match's shards, Renown, kill ledger and Mastery, the report's House rows, and the re-authored Founders claims. Every
+     * command goes through the real client packet (GravesAndGloryClient.send); the stages run on the server tick and read the profile, the saved
+     * file and the battle report.
+     */
+    static final class Chase implements Suite,ServerWatch {
+        volatile int stage;volatile UUID player;volatile String send,wantShot,wantScreen,reportId;volatile boolean shotTaken,finished;
+        long stageAt;int shotDelay,reportWait;boolean reportDone,reportSent,reportOk;String reportWhy="";
+        boolean ok=true;String why="";
+        GravesAndGlory.Squad own;Map<String,Integer> shards0=new HashMap<>(),renown0=new HashMap<>();int gold0,knightStars0;
+        static final int COST=Spec.RECRUITMENT[0].chosenCost();
+        static String fmt(double v){return String.format(Locale.ROOT,"%.2f",v);}
+        void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
+        long since(GravesAndGlory.Battle b){return b.time-stageAt;}
+        /** A command's answer has had time to come back (the packet, the server's handling and the save). */
+        boolean answered(GravesAndGlory.Battle b){return since(b)>=20;}
+        ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
+        Profile profile(GravesAndGlory.Battle b){return b.campaign.profile(player);}
+        String notice(GravesAndGlory.Battle b){return b.campaign.notices.getOrDefault(player,"");}
+        Profile.Owned owned(GravesAndGlory.Battle b,String id){return profile(b).owned.get(id);}
+        String held(GravesAndGlory.Battle b,String id){var o=owned(b,id);return o==null?id+" not owned":id+" copies "+o.copies+" star "+o.stars;}
+        void save(GravesAndGlory.Battle b){b.campaign.save(player);}
+        void command(GravesAndGlory.Battle b,String cmd,int nextStage){b.campaign.notices.remove(player);send=cmd;next(b,nextStage);}
+        /** One part of the current check: its condition and its line in the reason. */
+        void part(boolean pass,String line){ok&=pass;why+=(why.isEmpty()?"":"; ")+line+"="+pass;}
+        /** Reports the parts gathered so far under one id and starts the next check. */
+        void done(String id){Phase2Checks.report(id,ok,why);ok=true;why="";}
+        JsonObject disk(GravesAndGlory.Battle b){try{return JsonParser.parseString(Files.readString(b.campaign.directory.resolve(player+".json"))).getAsJsonObject();}catch(Exception e){return new JsonObject();}}
+        int shards(GravesAndGlory.Battle b,String house){return profile(b).shards.getOrDefault(house,0);}
+        int renown(GravesAndGlory.Battle b,String house){return profile(b).renown.getOrDefault(house,0);}
+        public void cleanup(MinecraftClient c){server(c,b->{if(b.running)b.campaign.returnLobby();});}
+
+        public void step(MinecraftClient c,int tick){
+            if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;next(b,1);});}
+            String cmd=send;if(cmd!=null){send=null;GravesAndGloryClient.send(cmd);System.out.println("[p2] sent "+cmd);}
+            String screen=wantScreen;if(screen!=null){wantScreen=null;CampScreen.open(screen);}
+            if(wantShot!=null&&!shotTaken&&++shotDelay>=30){shot(c,wantShot);shotTaken=true;}
+            if(stage==61&&!reportDone){ // p2-report-houses: the report's House rows reach the client, on the results page
+                var r=CampaignClient.result;String id=reportId;boolean arrived=id!=null&&r.has("id")&&r.get("id").getAsString().equals(id);
+                boolean open=c.currentScreen instanceof CampScreen s&&s.page.equals("results");
+                if(arrived&&open){reportDone=true;
+                    var rows=r.has("houses")?r.getAsJsonArray("houses"):new com.google.gson.JsonArray();boolean gilded=false,graveborn=false;
+                    for(var e:rows){var h=e.getAsJsonObject();if(!h.has("house")||!h.has("tier")||!h.has("traitSeconds")||!h.has("shards")||!h.has("renown"))continue;
+                        String house=h.get("house").getAsString();int tier=h.get("tier").getAsInt(),seconds=h.get("traitSeconds").getAsInt(),sh=h.get("shards").getAsInt(),rn=h.get("renown").getAsInt();
+                        if(house.equals("gilded"))gilded=tier==3&&seconds>0&&sh==2&&rn==2;
+                        if(house.equals("graveborn"))graveborn=tier==1&&seconds>0&&sh==1&&rn==2;}
+                    reportOk=rows.size()==2&&gilded&&graveborn;
+                    reportWhy="the report on the client has houses "+rows+" (want two rows: gilded tier 3 and graveborn tier 1, trait seconds above 0, shards 2 and 1, Renown 2 and 2)="+reportOk;
+                    shotTaken=false;shotDelay=0;wantShot="chase-report";
+                }else if(++reportWait>400){reportDone=true;reportOk=false;reportWhy="the report never reached the results page (arrived "+arrived+", page open "+open+")";shotTaken=false;shotDelay=0;wantShot="chase-report";}
+            }
+            if(stage==61&&reportDone&&shotTaken&&!reportSent){reportSent=true;wantShot=null;Phase2Checks.report("p2-report-houses",reportOk,reportWhy+"; picture p2-chase-report.png");c.setScreen(null);server(c,b->next(b,70));}
+            if(stage==99&&!finished){finished=true;c.setScreen(null);finish(c,"chase");}
+            if(tick>14000&&!finished){finished=true;Phase2Checks.report("p2-chase-timeout",false,"stuck in stage "+stage);finish(c,"chase");}
+        }
+
+        public void serverTick(GravesAndGlory.Battle b){
+            if(player==null||finished)return;var camp=b.campaign;var p=sp(b);if(p==null)return;
+            switch(stage){
+                case 1->{ // p2-buy-chosen: a Common or Rare for chosenCost, new or as a duplicate copy; refused short of gold and for an Epic
+                    if(b.running){camp.returnLobby();return;}
+                    var pr=profile(b);pr.owned.remove("sentinel");pr.gold=COST-1;save(b);command(b,"buy:sentinel",2);}
+                case 2->{if(!answered(b))return;var pr=profile(b);
+                    part(owned(b,"sentinel")==null&&pr.gold==COST-1,"with "+(COST-1)+" gold buy:sentinel is refused: "+held(b,"sentinel")+", gold "+pr.gold+", notice \""+notice(b)+"\"");
+                    pr.gold=COST;save(b);command(b,"buy:sentinel",3);}
+                case 3->{if(!answered(b))return;var pr=profile(b);var o=owned(b,"sentinel");var j=disk(b);
+                    boolean onDisk=j.has("owned")&&j.getAsJsonObject("owned").has("sentinel")&&j.get("gold").getAsInt()==0;
+                    part(o!=null&&o.copies==1&&o.stars==1&&pr.gold==0&&onDisk,COST+" gold buys the Templar: "+held(b,"sentinel")+", gold "+pr.gold+", in the saved file "+onDisk+", notice \""+notice(b)+"\"");
+                    pr.gold=COST;save(b);command(b,"buy:sentinel",4);}
+                case 4->{if(!answered(b))return;var pr=profile(b);var o=owned(b,"sentinel");
+                    part(o!=null&&o.copies==2&&o.stars==2&&pr.gold==0,"a second buy adds a copy and star 2: "+held(b,"sentinel")+", gold "+pr.gold+", notice \""+notice(b)+"\"");
+                    pr.owned.remove("mage");pr.gold=COST;save(b);command(b,"buy:mage",5);}
+                case 5->{if(!answered(b))return;var pr=profile(b);
+                    part(owned(b,"mage")==null&&pr.gold==COST,"buy:mage (an Epic) is refused: "+held(b,"mage")+", gold "+pr.gold+", notice \""+notice(b)+"\"");
+                    done("p2-buy-chosen");next(b,10);}
+                case 10->{ // p2-star-shards: an Epic's stars for its House's shards (30 for star 2, 60 for star 3); a Common's stars come from copies only
+                    var pr=profile(b);pr.owned.put("mage",new Profile.Owned());pr.shards.put("gilded",29);save(b);command(b,"star:mage",11);}
+                case 11->{if(!answered(b))return;var pr=profile(b);
+                    part(owned(b,"mage").stars==1&&shards(b,"gilded")==29,"29 Gilded shards: star:mage is refused: "+held(b,"mage")+", shards "+shards(b,"gilded")+", notice \""+notice(b)+"\"");
+                    pr.shards.put("gilded",30);save(b);command(b,"star:mage",12);}
+                case 12->{if(!answered(b))return;var pr=profile(b);
+                    part(owned(b,"mage").stars==2&&owned(b,"mage").copies==1&&shards(b,"gilded")==0,"30 Gilded shards raise the Sunweaver to star 2 with no duplicate: "+held(b,"mage")+", shards "+shards(b,"gilded")+", notice \""+notice(b)+"\"");
+                    pr.shards.put("gilded",60);save(b);command(b,"star:mage",13);}
+                case 13->{if(!answered(b))return;var pr=profile(b);
+                    part(owned(b,"mage").stars==3&&shards(b,"gilded")==0,"60 more raise it to star 3: "+held(b,"mage")+", shards "+shards(b,"gilded"));
+                    knightStars0=owned(b,"knight").stars;pr.shards.put("gilded",100);save(b);command(b,"star:knight",14);}
+                case 14->{if(!answered(b))return;
+                    part(owned(b,"knight").stars==knightStars0&&shards(b,"gilded")==100,"star:knight (a Common) is refused: "+held(b,"knight")+", shards "+shards(b,"gilded")+", notice \""+notice(b)+"\"");
+                    done("p2-star-shards");next(b,20);}
+                case 20->{ // p2-legendary-pact: clearing every battle of chapter 1 grants one Pact, once; a Pact buys a House's Legendary
+                    var pr=profile(b);pr.writs=0;pr.writChapters.clear();pr.campaignCleared=0;pr.owned.remove("gl_marshal");pr.owned.remove("gb_hollowking");save(b);next(b,21);}
+                case 21,23->{if(!Phase1Checks.skirmish(b,p,0,1,"easy"))return;camp.activeBattle=Spec.CAMPAIGNBATTLES[0];own=b.squads.get(player);next(b,stage+1);}
+                case 22,24->{if(since(b)<5)return;
+                    b.roundStarted=b.time-181*20;camp.joinedAt.put(player,b.roundStarted);camp.finish(own.team);var pr=profile(b);var row=Spec.CAMPAIGNBATTLES[0];
+                    if(stage==22){part(pr.writs==1&&pr.writChapters.contains(row.chapter())&&pr.campaignCleared>=row.order(),"winning "+row.name()+" (chapter "+row.chapter()+", every battle of it) grants a Pact: writs "+pr.writs+", chapters "+pr.writChapters+", cleared "+pr.campaignCleared);next(b,23);}
+                    else{part(pr.writs==1&&pr.writChapters.equals(Set.of(row.chapter())),"winning it again grants no second Pact: writs "+pr.writs+", chapters "+pr.writChapters);command(b,"legendary:gilded:pact",25);}}
+                case 25->{if(!answered(b))return;var pr=profile(b);
+                    part(owned(b,"gl_marshal")!=null&&pr.writs==0,"legendary:gilded:pact spends it on the Lord Marshal: "+held(b,"gl_marshal")+", writs "+pr.writs+", notice \""+notice(b)+"\"");
+                    command(b,"legendary:graveborn:pact",26);}
+                case 26->{if(!answered(b))return;var pr=profile(b);
+                    part(owned(b,"gb_hollowking")==null&&pr.writs==0,"with no Pact left legendary:graveborn:pact is refused: "+held(b,"gb_hollowking")+", notice \""+notice(b)+"\"");
+                    done("p2-legendary-pact");next(b,30);}
+                case 30->{ // p2-legendary-renown: Renown V (30) in the House and 50 of its shards buy its Legendary
+                    var pr=profile(b);pr.owned.remove("gb_hollowking");pr.renown.put("graveborn",Spec.RECRUITMENT[0].renownForLegendary()-1);pr.shards.put("graveborn",Spec.RECRUITMENT[0].legendaryShards());save(b);command(b,"legendary:graveborn:shards",31);}
+                case 31->{if(!answered(b))return;var pr=profile(b);
+                    part(owned(b,"gb_hollowking")==null&&shards(b,"graveborn")==50,"Renown 29: refused: "+held(b,"gb_hollowking")+", shards "+shards(b,"graveborn")+", notice \""+notice(b)+"\"");
+                    pr.renown.put("graveborn",30);pr.shards.put("graveborn",49);save(b);command(b,"legendary:graveborn:shards",32);}
+                case 32->{if(!answered(b))return;var pr=profile(b);
+                    part(owned(b,"gb_hollowking")==null&&shards(b,"graveborn")==49,"Renown 30 and 49 shards: refused: "+held(b,"gb_hollowking")+", notice \""+notice(b)+"\"");
+                    pr.shards.put("graveborn",50);save(b);command(b,"legendary:graveborn:shards",33);}
+                case 33->{if(!answered(b))return;var pr=profile(b);
+                    part(owned(b,"gb_hollowking")!=null&&shards(b,"graveborn")==0&&renown(b,"graveborn")==30,"Renown 30 and 50 shards buy the Hollow King and keep the Renown: "+held(b,"gb_hollowking")+", shards "+shards(b,"graveborn")+", renown "+renown(b,"graveborn")+", notice \""+notice(b)+"\"");
+                    pr.shards.put("graveborn",50);save(b);command(b,"legendary:graveborn:shards",34);}
+                case 34->{if(!answered(b))return;
+                    part(shards(b,"graveborn")==50,"owned already: refused and nothing paid: shards "+shards(b,"graveborn")+", notice \""+notice(b)+"\"");
+                    done("p2-legendary-renown");next(b,40);}
+                case 40->{ // p2-cap: a star 3 Order Squire at stage 1 fights at the full +12% from stars alone
+                    if(b.running){camp.returnLobby();return;}
+                    var pr=profile(b);var o=pr.owned.get("knight");o.copies=4;o.stars=3;o.stage=1;pr.banner=RosterMath.starterBanner();save(b);next(b,41);}
+                case 41->{if(!Phase1Checks.skirmish(b,p,0,1,"easy"))return;own=b.squads.get(player);next(b,42);}
+                case 42->{if(since(b)<2)return;
+                    var knight=b.units.stream().filter(u->u.squad==own&&u.spec.id().equals("knight")).findFirst().orElse(null);
+                    var archer=b.units.stream().filter(u->u.squad==own&&u.spec.id().equals("archer")).findFirst().orElse(null);
+                    double cap=Spec.RECRUITMENT[0].capPct(),want=knight==null?0:knight.spec.health()*(1+cap);
+                    part(knight!=null&&Math.abs(knight.mob.getMaxHealth()-want)<1e-3&&owned(b,"knight").stage==1&&Math.abs(camp.health(own,knight.spec)-1.12)<1e-9,
+                        "a star 3 Order Squire at stage 1 spawns with max health "+(knight==null?"none":fmt(knight.mob.getMaxHealth()))+" (want "+fmt(want)+" = its sheet health "+(knight==null?"?":knight.spec.health())+" x 1.12; the brief's 32 is the Squire's health before the Gilded balance fix cut it to 28), multiplier "+(knight==null?"?":camp.health(own,knight.spec)));
+                    part(archer!=null&&Math.abs(archer.mob.getMaxHealth()-archer.spec.health())<1e-3,"a star 1 Order Archer has its sheet health: "+(archer==null?"none":fmt(archer.mob.getMaxHealth())));
+                    done("p2-cap");camp.returnLobby();next(b,50);}
+                case 50->{ // p2-match-rewards: a won match with the banner Gilded 14 / Graveborn 6
+                    var pr=profile(b);pr.banner=banner("knight*14,revenant*6");
+                    var k=pr.owned.get("knight");k.kills=39;k.survived=7;k.mastery=0;
+                    for(String id:List.of("archer","sentinel","longbow","mage","gl_marshal"))pr.owned.computeIfAbsent(id,x->new Profile.Owned()).mastery=1;
+                    var r=pr.owned.get("revenant");r.kills=0;r.survived=0;r.mastery=0;
+                    pr.progression.titles.removeIf(t->t.endsWith(" Veteran")||t.equals("Oathsworn"));
+                    save(b);shards0=new HashMap<>(pr.shards);renown0=new HashMap<>(pr.renown);next(b,51);}
+                case 51->{if(!skirmishBanners(b,p,0,"knight*14,revenant*6","knight*20"))return;own=b.squads.get(player);next(b,52);}
+                case 52->{if(since(b)<45)return; // a trait second or two has passed
+                    var mine=b.units.stream().filter(u->u.squad==own&&u.mob.isAlive()&&!u.temporary).toList();
+                    var knight=mine.stream().filter(u->u.spec.id().equals("knight")).findFirst().orElse(null);var revenant=mine.stream().filter(u->u.spec.id().equals("revenant")).findFirst().orElse(null);
+                    var foes=b.units.stream().filter(u->u.squad.team!=own.team&&u.mob.isAlive()).toList();
+                    if(knight==null||revenant==null||foes.size()<3){part(false,"the fixture: knight "+knight+", revenant "+revenant+", "+foes.size()+" enemies");done("p2-match-rewards");camp.returnLobby();next(b,70);return;}
+                    int armyKills=own.stats.kills;
+                    Combat.resolve(b,knight,foes.get(0).mob,1000f,"melee",false); // a knight's blow kills
+                    Combat.resolve(b,revenant,foes.get(1).mob,0.5f,"melee",false);foes.get(1).mob.kill(); // a revenant's blow, then a death with no attacker inside the credit window: lastHitBy and the troop that struck
+                    var temp=b.spawn(own,Campaign.troop("revenant"),GravesAndGlory.R.squadSize()+1,revenant.mob.getPos());temp.temporary=true;temp.expiresAt=b.time+6000; // a Grave Bloom Risen
+                    Combat.resolve(b,temp,foes.get(2).mob,1000f,"melee",false); // its kill is the army's, not a troop type's
+                    boolean dead=!foes.get(0).mob.isAlive()&&!foes.get(1).mob.isAlive()&&!foes.get(2).mob.isAlive();int killed=own.stats.kills-armyKills;
+                    for(var u:new ArrayList<>(b.units))if(u.squad==own&&u.spec.id().equals("revenant")&&!u.temporary){u.mob.discard();b.units.remove(u);} // no real revenant lives to the end; the temporary one does
+                    var seconds=new HashMap<>(own.stats.traitSeconds);
+                    b.roundStarted=b.time-181*20;camp.joinedAt.put(player,b.roundStarted);reportId=camp.matchId;camp.finish(own.team);
+                    var pr=profile(b);var k=pr.owned.get("knight");var r=pr.owned.get("revenant");
+                    part(dead&&killed==3,"three enemies die (a knight's blow, a revenant's blow then a fall, a temporary Risen's blow)="+dead+" and the army is credited "+killed+" kills");
+                    part(shards(b,"gilded")-shards0.getOrDefault("gilded",0)==2&&shards(b,"graveborn")-shards0.getOrDefault("graveborn",0)==1,"shards +"+(shards(b,"gilded")-shards0.getOrDefault("gilded",0))+" Gilded / +"+(shards(b,"graveborn")-shards0.getOrDefault("graveborn",0))+" Graveborn (want +2 / +1)");
+                    part(renown(b,"gilded")-renown0.getOrDefault("gilded",0)==2&&renown(b,"graveborn")-renown0.getOrDefault("graveborn",0)==2,"Renown +"+(renown(b,"gilded")-renown0.getOrDefault("gilded",0))+" / +"+(renown(b,"graveborn")-renown0.getOrDefault("graveborn",0))+" (want +2 / +2)");
+                    part(k.kills==40&&k.survived==8,"knight ledger: kills "+k.kills+" (want 39 + 1), survived "+k.survived+" (want 7 + 1)");
+                    part(r.kills==1&&r.survived==0,"revenant ledger: kills "+r.kills+" (want 1: the blow before the fall; the temporary Risen's kill is no troop's), survived "+r.survived+" (want 0: only a temporary revenant lived to the end)");
+                    part(k.mastery==1&&pr.progression.titles.contains("Order Squire Veteran"),"knight Mastery "+k.mastery+" (want 1 at 40 kills and 8 matches) and the title Order Squire Veteran");
+                    part(pr.progression.titles.contains("Oathsworn"),"all six Gilded troops at Mastery I give the House title Oathsworn: titles "+pr.progression.titles);
+                    part(seconds.getOrDefault("gilded",0)>0&&seconds.getOrDefault("graveborn",0)>0,"trait seconds before the finish "+seconds);
+                    done("p2-match-rewards");wantScreen="results";next(b,61);}
+                case 70->{ // p2-founders: the re-authored chapter through progress: commands
+                    if(b.running){camp.returnLobby();return;}
+                    var pr=profile(b);var st=pr.progression;Progression.reset(st,Progression.today());st.xp=Progression.TIERS*Progression.XP_PER_TIER;
+                    st.claims.removeIf(k->k.startsWith(Progression.SEASON+":")||k.equals("weekly"));st.weeklyBattles=6;pr.owned.remove("longbow");pr.cosmetics.clear();
+                    save(b);gold0=pr.gold;shards0=new HashMap<>(pr.shards);command(b,"progress:founders:1",71);}
+                case 71->{if(!answered(b))return;var pr=profile(b);
+                    part(pr.gold==gold0+30&&pr.progression.claims.contains("founders:1"),"progress:founders:1: gold "+gold0+" -> "+pr.gold+" (want +30), notice \""+notice(b)+"\"");
+                    gold0=pr.gold;command(b,"progress:founders:2:graveborn",72);}
+                case 72->{if(!answered(b))return;var pr=profile(b);
+                    part(shards(b,"graveborn")==shards0.getOrDefault("graveborn",0)+10&&pr.progression.claims.contains("founders:2")&&pr.gold==gold0,"progress:founders:2:graveborn: Graveborn shards "+shards0.getOrDefault("graveborn",0)+" -> "+shards(b,"graveborn")+" (want +10), notice \""+notice(b)+"\"");
+                    command(b,"progress:founders:20:longbow",73);}
+                case 73->{if(!answered(b))return;var pr=profile(b);
+                    part(owned(b,"longbow")!=null&&pr.progression.claims.contains("founders:20"),"progress:founders:20:longbow: "+held(b,"longbow")+", notice \""+notice(b)+"\"");
+                    command(b,"progress:founders:21",74);}
+                case 74->{if(!answered(b))return;var pr=profile(b);
+                    part(pr.cosmetics.contains("pennant_pattern")&&pr.progression.claims.contains("founders:21"),"progress:founders:21: cosmetics "+pr.cosmetics+", notice \""+notice(b)+"\"");
+                    gold0=pr.gold;command(b,"progress:weekly:ironclad",75);}
+                case 75->{if(!answered(b))return;var pr=profile(b);var st=pr.progression;var j=disk(b);
+                    part(pr.gold==gold0+150&&shards(b,"ironclad")==shards0.getOrDefault("ironclad",0)+10&&st.claims.contains("weekly"),"progress:weekly:ironclad: gold +"+(pr.gold-gold0)+" (want 150), Ironclad shards "+shards0.getOrDefault("ironclad",0)+" -> "+shards(b,"ironclad")+" (want +10), notice \""+notice(b)+"\"");
+                    var claims=j.has("progression")?j.getAsJsonObject("progression").getAsJsonArray("claims").toString():"none";
+                    boolean bare=st.claims.stream().noneMatch(k->k.split(":").length>2||k.startsWith("weekly:"));
+                    part(bare&&claims.contains("founders:20")&&claims.contains("weekly")&&!claims.contains("longbow")&&!claims.contains("graveborn"),"every claim is stored bare, in memory "+st.claims+" and in the saved file "+claims);
+                    done("p2-founders");next(b,99);}
                 default->{}
             }
         }

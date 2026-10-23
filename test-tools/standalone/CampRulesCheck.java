@@ -41,7 +41,7 @@ public final class CampRulesCheck {
   Progression.reset(s,day.plusDays(1));check(s.dailyBattles==0&&!s.claims.contains("daily:0")&&s.weeklyBattles==1,"Daily reset retains weekly progress");
   Progression.reroll(s);check(s.rerolled&&Progression.target(s,2)==10,"Free reroll substitutes achievable orders quest");check(Progression.reroll(s).contains("already"),"Only one free reroll");
   s.xp=7500;check(Progression.tier(s)==30,"Chapter has a defined tier-30 endpoint");int gold=0;for(int i=1;i<=30;i++)gold+=Progression.claim(s,"founders:"+i).gold();
-  check(gold==600&&s.titles.size()==7&&s.titles.contains("Bannerlord"),"Complete track pays 600 gold and six distinct titles");
+  check(gold==300&&s.titles.size()==6&&s.titles.contains("Bannerlord")&&!s.titles.contains("Vanguard"),"Complete track pays 300 gold and five distinct titles (the re-authored Founders chapter; its shard tiers and Rare wait for a House or a troop)");
   check(Progression.claim(s,"founders:01").gold()==0,"Alternate tier spelling rejected");
   Progression.reset(s,day.plusDays(20));check(s.claims.contains("founders:30")&&s.titles.contains("Bannerlord"),"Chapter unlocks survive daily/weekly reset");
   check(Progression.claim(s,"founders:31").gold()==0,"Unreleased tiers cannot claim");

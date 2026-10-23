@@ -84,7 +84,7 @@ public final class Combat {
         while (LAST.size() > LOG_SIZE) LAST.removeFirst();
 
         if (impact) attacker.chargeHitAt = b.time;
-        if (victim != null) { victim.lastHitBy = attacker.squad; victim.lastHitAt = b.time; }
+        if (victim != null) { victim.lastHitBy = attacker.squad; victim.lastHitAt = b.time; victim.lastHitTroop = attacker.temporary ? null : attacker.spec.id(); } // the troop type too, for the mastery ledger (a shot whose archer fell still credits it)
         float amount = (float) (base * total);
         boolean anchored = victim != null && Abilities.anchored(b, victim);
         Vec3d stood = target.getVelocity();
