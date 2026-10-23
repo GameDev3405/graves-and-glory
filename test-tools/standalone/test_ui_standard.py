@@ -8,7 +8,12 @@
 - the battle HUD's files (HUD_CANVAS) never take the screens' canvas scale or size (UiCanvas.k, width, height, begin): the HUD
   draws at its own scale, UiCanvas.hudK (UI Task 8a);
 - the methods that write on the darker vellum plates (LO_PLATE_TEXT: the key strip, the lesson note) name only DarkUi inks that
-  hold 4.5:1 on those plates' darkest vellum, #bda97c (UI Task 8c fix round 1: sepia gave 3.7:1 there).
+  hold 4.5:1 on those plates' darkest vellum, #bda97c (UI Task 8c fix round 1: sepia gave 3.7:1 there);
+- the methods that draw player names (NAME_METHODS: the party's seats on home and Friends, the Invite tags) set only fixed words
+  in the heading face: every heading( there takes one string literal, so a name, and the measure that trims one, is in
+  Minecraft's face, whose 1 is no I (UI Task 8b, the Task 7 review's out-of-scope 1);
+- the back rail's camp plaques (RAIL, RAIL_X, RAIL_LABELS) are declared once, in WarTableHome, and nowhere else (UI Task 8b, the
+  Task 7 review's Minor 8).
 Prints 'test_ui_standard: clean', or one 'file: snippet' line per finding and exits 1."""
 import pathlib
 import re
@@ -29,6 +34,10 @@ LO_PLATE_TEXT = {'BattleHud': ('keyStrip', 'lesson')}
 LO_VELLUM_EDGE = 0xbda97c
 INK_TOKEN = re.compile(r'\bDarkUi\s*\.\s*([A-Z][A-Z0-9_]*)\b')
 INK_DECL = re.compile(r'\b([A-Z][A-Z0-9_]*)\s*=\s*0[xX]([0-9a-fA-F]{8})\b')
+NAME_METHODS = {'WarTablePages': ('party', 'paintInvite'), 'WarTableHome': ('party',)}
+HEADING_CALL = re.compile(r'\bheading\s*\(')
+RAIL_HOME = 'WarTableHome'
+RAIL_DECL = re.compile(r'\b(RAIL|RAIL_X|RAIL_LABELS)\s*=(?!=)')
 
 
 def contrast(a, b):
@@ -61,6 +70,37 @@ def method_spans(code, name):
                     spans.append((m.end() - 1, k + 1))
                     break
     return spans
+
+
+def any_method_spans(code, name):
+    """The body offsets of each method `name` declares, static or not (every overload), by brace matching over the blanked
+    code; a call, which has no return type before it and no body after it, does not count."""
+    spans = []
+    head = r'(?m)^[ \t]*(?:(?:static|final|private|public|protected)\s+)*[\w<>\[\],.?]+\s+' + name + r'\s*\([^()]*\)\s*\{'
+    for m in re.finditer(head, code):
+        depth = 0
+        for k in range(m.end() - 1, len(code)):
+            if code[k] == '{':
+                depth += 1
+            elif code[k] == '}':
+                depth -= 1
+                if depth == 0:
+                    spans.append((m.end() - 1, k + 1))
+                    break
+    return spans
+
+
+def call_argument(code, open_paren):
+    """The text between the ( at open_paren and its matching )."""
+    depth = 0
+    for k in range(open_paren, len(code)):
+        if code[k] == '(':
+            depth += 1
+        elif code[k] == ')':
+            depth -= 1
+            if depth == 0:
+                return code[open_paren + 1:k]
+    return code[open_paren + 1:]
 
 
 def scan(text):
@@ -169,6 +209,19 @@ def check_file(path):
                     if ratio is None or ratio < 4.5:
                         found.append(f'{path.name}:{line_of(text, m.start())}: DarkUi.{m.group(1)} in {method}( holds '
                                      + ('no known ink' if ratio is None else f'{ratio:.2f}:1') + ' on the darker vellum\'s edge #bda97c (wanted 4.5)')
+    if name in NAME_METHODS:
+        for method in NAME_METHODS[name]:
+            spans = any_method_spans(code, method)
+            if not spans:
+                found.append(f'{path.name}: no method {method}( to check the player names\' face in')
+            for a, b in spans:
+                for m in HEADING_CALL.finditer(code, a, b):
+                    if call_argument(code, m.end() - 1).strip():  # a literal is blanked to spaces: anything left is not one
+                        found.append(f'{path.name}:{line_of(text, m.start())}: heading( in {method}( takes more than fixed words; '
+                                     'a player name goes in Minecraft\'s face, whose 1 is no I')
+    if name != RAIL_HOME:
+        for m in RAIL_DECL.finditer(code):
+            found.append(f'{path.name}:{line_of(text, m.start())}: {m.group(1)} declared again; the rail is WarTableHome\'s alone')
     if name != 'DarkUi':
         lines = code.split('\n')
         for k, line in enumerate(lines):

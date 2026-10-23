@@ -30,10 +30,7 @@ final class WarTablePages {
     /** Each page's focal title (the Chapter's is its chapter block). */
     static final Map<String, String> TITLES = Map.of("banner", "Your Banner", "contracts", "Contracts", "chapter", "Founders Chapter", "friends", "Friends", "field", "The Field");
     static final int TITLE_X = 480, TITLE_Y = 84;
-    /** The rail's camp plaques as home has them: page, x and label (the icon is table/icon-(page)). */
-    static final String[] RAIL = {"recruit", "banner", "contracts", "chapter", "friends"};
-    static final int[] RAIL_X = {184, 304, 424, 544, 664};
-    static final String[] RAIL_LABELS = {"Recruit", "Banner", "Contracts", "Chapter", "Friends"};
+    // The rail's camp plaques are home's (WarTableHome.RAIL, RAIL_X, RAIL_LABELS, RAIL_W): one source, no copy here.
     /** The notice line: its first line's top, 12 px under the lowest content of every page; its lines 13 px apart, centred on the
      *  page, as wide as home's and at most two (the second ends 12 px above the page's foot). On the Chapter it is right-aligned
      *  to the track's right end at top 500, opposite the Oath's line. */
@@ -96,6 +93,8 @@ final class WarTablePages {
      *  or, once it is open on the network, where friends find it. */
     static final int RULE_X = 188, RULE_W = 156;
     static final String PARTY_RULE = "A party of up to four friends always fights on one team.";
+    /** Under the seats while in a party. */
+    static final String PARTY_LASTS = "The party lasts through matches and restarts.";
     static final String CAMP_HOW = "To play together, host a camp on this network from Play with friends on the title screen; friends pick Join a server there.";
     static final String CAMP_OPEN = "This camp is open on your network: friends pick Play with friends, then Join a server, on their title screen.";
 
@@ -133,14 +132,14 @@ final class WarTablePages {
     /** Boxes {x,y,w,h} in canvas px as drawn: floor, table and rail (drawChrome's), here (the lit plaque), title, notice; Banner:
      *  roll, mark, row-(i), roll-hint, sheet, seat-(i), armed-seat, class-(id); Contracts: note-(i), progress-(i) (the count),
      *  stamp-(i), weekly, progress-weekly, stamp-weekly, reroll; Chapter: hero, seal, xp-rail, roll-(t) and oath-(t) for each
-     *  tier on the track (t the tier), claim; Friends: party, member-(i), party-rule, room, code; Field: sheet, card, map-(i);
+     *  tier on the track (t the tier), claim; Friends: party, member-(i), party-rule, room, room-why, code; Field: sheet, card, map-(i);
      *  and every vellum tag by its widget's name. */
     static Map<String, int[]> rects() { return rects; }
     /** Words drawn: here, title, notice; Banner: row-(i) (the troop id), count-(i), roll-hint, seat-(i) (the troop id, or empty),
      *  armed, armed-hint, seated, bonus, class-(id); Contracts: contract-(i), progress-(i), weekly, progress-weekly, reroll-hint,
      *  reset; Chapter: tier, first (the first tier on the track), xp, to-next, hero (its tier), hero-name, hero-state, roll-(t)
      *  and oath-(t) (their two lines), unsworn; Friends: camp-how, invite-hint, invitation, lobby-invitation, member-(i),
-     *  party-rule, party-line, code, room-code, code-count; Field: map-(i), card-name, status, bots-current; every vellum tag's
+     *  party-rule, party-line, room-why, code, room-code, code-count; Field: map-(i), card-name, status, bots-current; every vellum tag's
      *  label by its widget's name. */
     static Map<String, String> texts() { return texts; }
     /** The texture each part was drawn from: table, here, class-(id), claim (the Claim plate), roll-(t), stamp-(t), stamp-(i),
@@ -213,11 +212,11 @@ final class WarTablePages {
         builtContracts = WarTableHome.contractsBadge();
         builtFriends = WarTableHome.friendsBadge();
         add("back", WarTable.backPlaque(b -> back()));
-        for (int i = 0; i < RAIL.length; i++) {
-            if (RAIL[i].equals(page)) continue; // the open page's plaque is drawn lit (here), not a widget
-            final String target = RAIL[i];
+        for (int i = 0; i < WarTableHome.RAIL.length; i++) {
+            if (WarTableHome.RAIL[i].equals(page)) continue; // the open page's plaque is drawn lit (here), not a widget
+            final String target = WarTableHome.RAIL[i];
             int badge = target.equals("contracts") ? builtContracts : target.equals("friends") ? builtFriends : 0;
-            add(target, WarTable.plaque(RAIL_X[i], 112, "icon-" + target, RAIL_LABELS[i], null, 0, badge, b -> screen.page(target)));
+            add(target, WarTable.plaque(WarTableHome.RAIL_X[i], WarTableHome.RAIL_W, "icon-" + target, WarTableHome.RAIL_LABELS[i], null, 0, badge, b -> screen.page(target)));
         }
         switch (page) {
             case "banner" -> initBanner();
@@ -426,14 +425,15 @@ final class WarTablePages {
 
     /** The open page's plaque on the rail, lit (plaque-112-here, its name in RAIL_KEY): the page you are on. */
     void here(DrawContext g, int ox) {
-        int i = Arrays.asList(RAIL).indexOf(page);
+        int i = Arrays.asList(WarTableHome.RAIL).indexOf(page);
         if (i < 0) return;
-        int x = ox + RAIL_X[i];
+        int x = ox + WarTableHome.RAIL_X[i];
         UiTex.draw(g, "table/plaque-112-here", x, 12);
-        rectsDrawn.put("here", new int[]{x, 12, 112, 28}); // the plaque's box, as the rail's widgets have theirs (the PNG adds a shadow)
-        String icon = "table/icon-" + RAIL[i]; // built, as WarTable.plaque builds it
+        rectsDrawn.put("here", new int[]{x, 12, WarTableHome.RAIL_W, 28}); // the plaque's box, as the rail's widgets have theirs (the PNG adds a shadow)
+        String icon = "table/icon-" + WarTableHome.RAIL[i]; // built, as WarTable.plaque builds it
         UiTex.draw(g, icon, x + 8, 19);
-        text(g, "here", DarkUi.heading(RAIL_LABELS[i]), RAIL_LABELS[i], x + 28, 20, DarkUi.RAIL_KEY);
+        String label = WarTableHome.RAIL_LABELS[i];
+        text(g, "here", DarkUi.heading(label), label, x + 28, 20, DarkUi.RAIL_KEY);
         texturesDrawn.put("here", "table/plaque-112-here");
     }
 
@@ -1163,10 +1163,11 @@ final class WarTablePages {
             var b = buttons.get("invite-" + k);
             if (b != null) b.active = lead;
         }
+        boolean rooms = UiMath.roomOpen(!alone, lead); // the room's note says why when not (room, UiMath.roomWhy)
         var create = buttons.get("room-create");
-        if (create != null) create.active = alone || lead;
+        if (create != null) create.active = rooms;
         var join = buttons.get("room-join");
-        if (join != null) join.active = (alone || lead) && code.length() == CODE_LENGTH;
+        if (join != null) join.active = rooms && code.length() == CODE_LENGTH;
         for (String n : new String[]{"size-1", "size-2", "size-3", "size-4", "fill", "map"}) {
             var b = buttons.get(n);
             if (b != null) b.active = host && !playing;
@@ -1219,23 +1220,30 @@ final class WarTablePages {
         }
     }
 
-    /** An Invite tag: the vellum the width of the column, the plus, and "Invite (name)"; sepia while only a leader may invite. */
+    /** An Invite tag: the vellum the width of the column, the plus, "Invite" in the heading face and the commander's name after it
+     *  in Minecraft's face (UI Task 8b: a name is an identifier, and the heading face's old-style 1 reads as an I, so "Steve1" and
+     *  "SteveI" would look alike; Minecraft's face is drawn 2 px lower to sit on the heading's line, as the room's code does);
+     *  sepia while only a leader may invite. */
     void paintInvite(DrawContext g, String key, String name, int x, int y, int w, int h) {
         var font = font();
         var b = buttons.get(key);
         int ink = b != null && b.active ? DarkUi.INK_TEXT : DarkUi.SEPIA;
         UiTex.nine(g, "table/btn-vellum-64x24", x, y, w + 1, h + 2);
         UiTex.draw(g, "table/invite-plus", x + 8, y + 8);
-        String label = UiMath.trim("Invite " + name, w - 30, s -> font.getWidth(DarkUi.heading(s)));
-        g.drawText(font, DarkUi.heading(label), x + 22, y + 6, ink, false);
-        if (hot(b)) underline(g, key, x + 22, y + 18, font.getWidth(DarkUi.heading(label)), ink);
+        var verb = DarkUi.heading("Invite");
+        int nx = x + 22 + font.getWidth(verb) + 4;
+        String shown = UiMath.trim(name, x + w - 8 - nx, s -> font.getWidth(s));
+        g.drawText(font, verb, x + 22, y + 6, ink, false);
+        g.drawText(font, shown, nx, y + 8, ink, false);
+        if (hot(b)) underline(g, key, x + 22, y + 18, nx + font.getWidth(shown) - (x + 22), ink);
         rectsDrawn.put(key, new int[]{x, y, w, h});
-        textsDrawn.put(key, label);
+        textsDrawn.put(key, "Invite " + shown);
         colorsDrawn.put(key, ink);
     }
 
     /** The party's note: a seat per member as home seats the party (the live model, or the skin's face for one out of sight),
-     *  their names and standing, the party's rule beside them and, in a party, who leads it under them. Make leader, Remove and
+     *  their names (in Minecraft's face, as paintInvite) and standing (the leader's seat says who leads), the party's rule beside
+     *  them and, in a party, that it lasts under them. Make leader, Remove and
      *  the party's tags are widgets. */
     void party(DrawContext g, int ox, int oy) {
         var c = MinecraftClient.getInstance();
@@ -1257,8 +1265,8 @@ final class WarTablePages {
                 if (entry != null) PlayerSkinDrawer.draw(g, entry.getSkinTexture(), x + 4, y + 4, 40);
             }
             UiTex.draw(g, "table/frame-rim-48", x, y);
-            String name = UiMath.trim(m.name(), PARTY_NAME_W, s -> font.getWidth(DarkUi.heading(s)));
-            text(g, "member-" + i, DarkUi.heading(name), name, x + 56, y + 12, m.online() ? DarkUi.INK_TEXT : DarkUi.SEPIA);
+            String name = UiMath.trim(m.name(), PARTY_NAME_W, s -> font.getWidth(s)); // Minecraft's face: its 1 is no I (paintInvite)
+            text(g, "member-" + i, Text.literal(name), name, x + 56, y + 14, m.online() ? DarkUi.INK_TEXT : DarkUi.SEPIA);
             g.drawText(font, DarkUi.body(status(m)), x + 56, y + 28, DarkUi.SEPIA, false);
             rectsDrawn.put("member-" + i, new int[]{x, y, SEAT, SEAT});
         }
@@ -1273,7 +1281,9 @@ final class WarTablePages {
         textsDrawn.put("party-rule", String.join(" ", rule));
         rectsDrawn.put("party-rule", new int[]{nx + RULE_X, ny + 28, RULE_W, 13 * rule.size() - 4});
         if (!flag("party")) return;
-        String line = UiMath.trimWords("Led by " + value("leader") + ". The party lasts through matches and restarts.", 328, s -> font.getWidth(DarkUi.body(s)));
+        // who leads is said once, on the leader's seat ("You lead the party", or "Leader, online"): the seats hold every member
+        // (a party has at most PARTY_SEATS), so this line does not name the leader again (UI Task 8b)
+        String line = UiMath.trimWords(PARTY_LASTS, 328, s -> font.getWidth(DarkUi.body(s)));
         text(g, "party-line", DarkUi.body(line), line, nx + 16, ny + 240, DarkUi.SEPIA);
     }
 
@@ -1297,7 +1307,17 @@ final class WarTablePages {
         if (room.isEmpty()) {
             lines(g, "Your own battle, with friends on the teams you choose.", lx, y + 30, ROOM_W, 2, DarkUi.SEPIA);
             g.drawText(font, DarkUi.heading("Join a room"), lx, y + JOIN_HEAD_DY, DarkUi.INK_TEXT, false);
-            lines(g, "Each commander readies; the host picks the map.", lx, y + RULES_DY, ROOM_W, 3, DarkUi.SEPIA);
+            // a party member who does not lead sees Create and Join dull: the word why, under Join, ahead of the rule (UI Task 8b)
+            String why = UiMath.roomWhy(flag("party"), flag("partyLead"));
+            int ruleY = y + RULES_DY;
+            if (!why.isEmpty()) {
+                var said = lines(g, why, lx, ruleY, ROOM_W, 2, DarkUi.SEPIA);
+                textsDrawn.put("room-why", String.join(" ", said));
+                colorsDrawn.put("room-why", DarkUi.SEPIA);
+                rectsDrawn.put("room-why", new int[]{lx, ruleY, ROOM_W, 13 * said.size() - 4});
+                ruleY += 13 * said.size() + 6;
+            }
+            lines(g, "Each commander readies; the host picks the map.", lx, ruleY, ROOM_W, 3, DarkUi.SEPIA);
             return;
         }
         var label = DarkUi.body("Code");

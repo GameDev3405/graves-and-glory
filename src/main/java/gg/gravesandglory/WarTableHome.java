@@ -57,6 +57,14 @@ final class WarTableHome {
      *  a prop that would come closer is left off, with its light, rather than cut by the edge. */
     static final int PROP_EDGE = 12;
 
+    /** The back rail's camp plaques, the one source home and every page build them from (WarTablePages; UI Task 8b, the Task 7
+     *  review's Minor 8): each page's name (its icon is table/icon-(page)), x on the page and label; each RAIL_W wide. The Camp
+     *  plaque (Esc) on home and the back plaque on the pages stand left of them. */
+    static final String[] RAIL = {"recruit", "banner", "contracts", "chapter", "friends"};
+    static final int[] RAIL_X = {184, 304, 424, 544, 664};
+    static final String[] RAIL_LABELS = {"Recruit", "Banner", "Contracts", "Chapter", "Friends"};
+    static final int RAIL_W = 112;
+
     static final String[] MODES = {"practice", "skirmish", "campaign"};
     static final String[] NAMES = {"Practice", "Skirmish", "Campaign"};
     static final String[] SUBTITLES = {"train against bots", "one battle, your rules", "the story, battle by battle"};
@@ -143,11 +151,11 @@ final class WarTableHome {
         int ox = o[0], oy = o[1];
         builtFriends = friendsBadge();
         add("camp", WarTable.plaque(56, 96, "icon-camp", "Camp", "Esc", 61, 0, b -> screen.close()));
-        add("recruit", WarTable.plaque(184, 112, "icon-recruit", "Recruit", null, 0, 0, b -> screen.page("recruit")));
-        add("banner", WarTable.plaque(304, 112, "icon-banner", "Banner", null, 0, 0, b -> screen.page("banner")));
-        add("contracts", WarTable.plaque(424, 112, "icon-contracts", "Contracts", null, 0, contractsBadge(), b -> screen.page("contracts")));
-        add("chapter", WarTable.plaque(544, 112, "icon-chapter", "Chapter", null, 0, 0, b -> screen.page("chapter")));
-        add("friends", WarTable.plaque(664, 112, "icon-friends", "Friends", null, 0, builtFriends, b -> screen.page("friends")));
+        for (int i = 0; i < RAIL.length; i++) {
+            final String target = RAIL[i];
+            int badge = target.equals("contracts") ? contractsBadge() : target.equals("friends") ? builtFriends : 0;
+            add(target, WarTable.plaque(RAIL_X[i], RAIL_W, "icon-" + target, RAIL_LABELS[i], null, 0, badge, b -> screen.page(target)));
+        }
         int seated = members().size();
         if (seated < 4) add("invite", new UiButton(ox + 56, oy + 206 + 56 * seated, 104, 48, Text.literal("Invite"), b -> screen.page("friends"), this::paintInvite));
         for (int i = 0; i < 3; i++) {
@@ -359,8 +367,9 @@ final class WarTableHome {
                 }
             }
             UiTex.draw(g, "table/frame-rim-48", x, y);
-            String name = UiMath.trim(m.name(), NAME_W, s -> font.getWidth(DarkUi.heading(s)));
-            g.drawText(font, DarkUi.heading(name), x + 60, y + 12, DarkUi.IVORY, false);
+            // a name in Minecraft's face, whose 1 is no I (UI Task 8b, as the Friends page draws names), 2 px under the heading's top
+            String name = UiMath.trim(m.name(), NAME_W, s -> font.getWidth(s));
+            g.drawText(font, name, x + 60, y + 14, DarkUi.IVORY, false);
             if (m.online()) { UiTex.draw(g, "table/ready-check", x + 60, y + 29); rectsDrawn.put("ready-" + i, new int[]{x + 60, y + 29, 9, 8}); }
             rectsDrawn.put("seat-" + i, new int[]{x, y, 48, 48});
             textsDrawn.put("seat-" + i, name);

@@ -2830,10 +2830,15 @@ public final class Phase1Checks implements ClientModInitializer {
             boolean ours=s!=null&&s.children().stream().allMatch(e->e instanceof UiButton);
             boolean back=Arrays.equals(b.get("back"),new int[]{o[0]+56,12,120,28});
             boolean rail=true;StringBuilder railWhy=new StringBuilder();
-            for(int i=0;i<WarTablePages.RAIL.length;i++){String r=WarTablePages.RAIL[i];int[] want={o[0]+WarTablePages.RAIL_X[i],12,112,28};
-                boolean at=r.equals(name)?!b.containsKey(r)&&Arrays.equals(rect("here"),want)&&"table/plaque-112-here".equals(tex("here")):Arrays.equals(b.get(r),want);
+            // UI Task 8b (the Task 7 review's Minor 8): each camp plaque where the home suite pins home's (UiHomeChecks.LAYOUT, the
+            // 960x540 page), moved by the origin's x; every one of home's camp plaques is on the rail (WarTableHome.RAIL, the one source)
+            List<String> homeNames=Arrays.asList(UiHomeChecks.LAYOUT_NAMES);
+            for(String r:homeNames.subList(1,6))if(!Arrays.asList(WarTableHome.RAIL).contains(r)){rail=false;railWhy.append(' ').append(r).append(" off the rail");}
+            for(int i=0;i<WarTableHome.RAIL.length;i++){String r=WarTableHome.RAIL[i];int j=homeNames.indexOf(r);int[] home=j<0?null:UiHomeChecks.LAYOUT[j];
+                int[] want=home==null?null:new int[]{o[0]+home[0],home[1],home[2],home[3]};
+                boolean at=want!=null&&(r.equals(name)?!b.containsKey(r)&&Arrays.equals(rect("here"),want)&&"table/plaque-112-here".equals(tex("here")):Arrays.equals(b.get(r),want));
                 rail&=at;if(!at)railWhy.append(' ').append(r);}
-            if(!Arrays.asList(WarTablePages.RAIL).contains(name)&&rect("here")!=null){rail=false;railWhy.append(" a plaque lit");}
+            if(!Arrays.asList(WarTableHome.RAIL).contains(name)&&rect("here")!=null){rail=false;railWhy.append(" a plaque lit");}
             String table=WarTable.drawnTable();boolean wood=table.equals("table/oak-table-"+name);
             String title=text("title");int[] tr=rect("title");
             boolean titled=name.equals("chapter")?title==null&&"Chapter 1 / The Founders".equals(text("chapter"))
@@ -3170,7 +3175,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 3->{if(k<2||!"ABC1234".equals(text("room-code"))&&k<40)return;var create=button(c,"create");boolean shown=create!=null&&create.visible&&create.active&&"Create party".equals(text("create"));
                     boolean open="Open seat".equals(text("open-1"))&&"Open seat".equals(text("open-3"))&&text("open-0")==null&&WarTablePages.me().equals(text("member-0"))&&"table/note-room-short".equals(tex("room"));
                     boolean count="7 of 8".equals(text("code-count"))&&join!=null&&!join.active;
-                    boolean words=WarTablePages.PARTY_RULE.equals(text("party-rule"))&&text("party-line")==null&&in(rect("party-rule"),rect("party"))&&(c.getServer()!=null&&c.getServer().isRemote()?WarTablePages.CAMP_OPEN:WarTablePages.CAMP_HOW).equals(text("camp-how"));
+                    boolean words=WarTablePages.PARTY_RULE.equals(text("party-rule"))&&text("party-line")==null&&text("room-why")==null&&in(rect("party-rule"),rect("party"))&&(c.getServer()!=null&&c.getServer().isRemote()?WarTablePages.CAMP_OPEN:WarTablePages.CAMP_HOW).equals(text("camp-how"));
                     ok&=shown&&open&&count&&words;
                     why+="; Create party "+(shown?"shown":"WRONG: missing")+", seat 0 "+text("member-0")+" and seats 1 to 3 \""+text("open-1")+"\""+", the room's note "+tex("room")+(open?"":" WRONG")
                         +"; the code's line after Esc \""+text("room-code")+"\" counted \""+text("code-count")+"\" with Join "+(join!=null&&join.active?"taking a press":"dull")+(count?"":" WRONG")
@@ -3178,7 +3183,10 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 4->{ // the party lands in the snapshot; the page rebuilds on it (Leave party a widget) and a frame draws it
                     var leave=button(c,"leave");
                     if(WarTablePages.flag("party")&&leave!=null&&"Leave party".equals(text("leave"))){
-                        boolean sent="social:create".equals(lastSent()),tags=leave.visible&&button(c,"disband")!=null&&button(c,"create")==null,seat=WarTablePages.me().equals(text("member-0")),line=String.valueOf(text("party-line")).startsWith("Led by ");
+                        boolean sent="social:create".equals(lastSent()),tags=leave.visible&&button(c,"disband")!=null&&button(c,"create")==null,seat=WarTablePages.me().equals(text("member-0"));
+                        // UI Task 8b: the leader is said once, on seat 0 ("You lead the party"): the line under the seats does not name them again;
+                        // the leader makes and joins rooms, so the room's note carries no word on why its tags are dull
+                        String drawn=String.valueOf(text("party-line"));boolean line=WarTablePages.PARTY_LASTS.equals(drawn)&&!drawn.contains(WarTablePages.me())&&text("room-why")==null;
                         boolean pass=sent&&tags&&seat&&line;ok&=pass;
                         why+="; Create party sent "+lastSent()+(sent?"":" WRONG")+": party "+WarTablePages.flag("party")+", Leave party and Disband party "+(tags?"shown, Create party gone":"WRONG: disband "+button(c,"disband")+", create "+button(c,"create"))
                             +", seat 0 "+text("member-0")+(seat?"":" WRONG")+", \""+text("party-line")+"\""+(line?"":" WRONG");next(tick);}
