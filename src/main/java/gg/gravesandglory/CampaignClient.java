@@ -64,6 +64,10 @@ public final class CampaignClient {
     /** The notice the player left behind by changing page: the server keeps sending it with every state packet, so the client hides that text until the server says something else (no protocol change; review I1). acceptedStates counts the state packets read (the harness waits for two). */
     static int acceptedStates;
     static String shownNotice(){return notice.equals(dismissed)?"":notice;}
+    /** Takes the notice of a state packet: a different text ends the dismissal of the old one (the same words stay dismissed until the player acts or another text comes). */
+    static void acceptNotice(String next){if(!next.equals(notice))dismissed="";notice=next;}
+    /** A report this client has not shown opens: the lines the player dismissed before belong to an earlier match. */
+    static void reportOpened(String id){shownResult=id;dismissed="";}
     static boolean previousHud;
     static ArmorStandEntity camera;static Perspective previous;static int cameraTicks;
     static Path collection(MinecraftClient c){return c.runDirectory.toPath().resolve((Diagnostics.active()?"gravesandglory/test-collections/":"gravesandglory/collections/")+c.getSession().getUuid()+".json");}
@@ -76,14 +80,14 @@ public final class CampaignClient {
             if(j.has("sides")){var s=j.getAsJsonArray("sides");if(s.size()==2)sides=new String[]{s.get(0).getAsString(),s.get(1).getAsString()};}
             if(j.has("banner")){var list=new java.util.ArrayList<String>();for(var e:j.getAsJsonArray("banner"))list.add(e.getAsString());banner=list;}social=j.has("social")?j.getAsJsonObject("social"):new JsonObject();progression=j.has("progression")?j.getAsJsonObject("progression"):new JsonObject();if(j.has("progression"))profile.progression=Campaign.JSON.fromJson(progression,Progression.State.class);players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
             JsonObject keyed=new JsonObject();for(var entry:party.entrySet())if(!entry.getKey().equals("inviteSeconds"))keyed.add(entry.getKey(),entry.getValue());partyKey=keyed.toString();
-            JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;battle=j.has("battle")?j.getAsJsonObject("battle"):new JsonObject();fill=j.get("fill").getAsBoolean();difficulty=j.has("difficulty")?j.get("difficulty").getAsString():"normal";mode=j.get("mode").getAsString();String nextNotice=j.get("notice").getAsString();if(!nextNotice.equals(notice))dismissed="";notice=nextNotice;acceptedStates++;headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
+            JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;battle=j.has("battle")?j.getAsJsonObject("battle"):new JsonObject();fill=j.get("fill").getAsBoolean();difficulty=j.has("difficulty")?j.get("difficulty").getAsString():"normal";mode=j.get("mode").getAsString();acceptNotice(j.get("notice").getAsString());acceptedStates++;headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
             int next=j.get("map").getAsInt();if(next!=map||Spec.FACTIONS[0].spawnX()!=-283){map=next;if(c.getServer()==null)CampaignMaps.select(map);GravesAndGloryClient.invalidateMap(c);}
             waiting=j.has("waiting")&&j.get("waiting").getAsBoolean();
             int round=j.get("serial").getAsInt();intro=j.get("intro").getAsInt();
             if(round!=serial&&running&&intro>0){cameraTicks=120-intro;begin(c);}serial=round;
             if(!running)end(c);
             result=j.has("result")?j.getAsJsonObject("result"):new JsonObject();
-            if(!running&&result.has("id")&&!result.get("id").getAsString().equals(shownResult)){shownResult=result.get("id").getAsString();c.setScreen(new CampScreen("results"));}
+            if(!running&&result.has("id")&&!result.get("id").getAsString().equals(shownResult)){reportOpened(result.get("id").getAsString());c.setScreen(new CampScreen("results"));}
             else if(!running&&lastRunning&&!(c.currentScreen instanceof CampScreen)&&!(c.currentScreen instanceof CampaignLobbyScreen))c.setScreen(new CampScreen("home"));lastRunning=running;
             if(!j.get("collectionReady").getAsBoolean()){sendProfile(c);return;}String saved=Campaign.JSON.toJson(profile);if(saved.equals(lastSaved))return;lastSaved=saved;Path path=collection(c);Files.createDirectories(path.getParent());Path tmp=path.resolveSibling(path.getFileName()+".tmp");Files.writeString(tmp,saved);Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING);
         }catch(Exception e){System.err.println("[Graves and Glory] Collection sync could not be saved: "+e.getClass().getSimpleName());}

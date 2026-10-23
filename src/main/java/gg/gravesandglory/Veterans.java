@@ -270,14 +270,18 @@ final class Veterans {
         return out;
     }
 
+    /** The tiers the rarities sheet prices (gearPrice2 and gearPrice3; LevelMath.price throws above them): a gearTiers sheet with more rows cannot make a buy throw, its extra tiers are no such gear until a price exists. */
+    static final int PRICED_TIERS = 3;
+
     /**
      * Where a commander may buy gear (design 5.3, until supply houses exist): within economy.accessRadius of his barracks, or of one of his team's
      * reinforcement anchors (Battle.reinforcementAnchors: a held point that passes the forward-deploy rule, a standing Forward Supply banner with no
-     * enemy near), measured on the ground plane as the barracks reach is.
+     * enemy near), measured on the ground plane as the barracks reach is. With Battle.forwardReinforcement off nothing deploys at an anchor, so only the barracks counts.
      */
     static boolean buyHere(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s) {
         if (b == null || p == null || s == null) return false;
         if (b.atBarracks(p, s)) return true;
+        if (!b.forwardReinforcement) return false;
         double reach = Spec.ECONOMY[0].accessRadius();
         for (var a : b.reinforcementAnchors(s.team)) if (GravesAndGlory.Battle.horizontalDistance(p.getPos(), new Vec3d(a.x(), 0, a.z())) <= reach * reach) return true;
         return false;
@@ -314,7 +318,7 @@ final class Veterans {
     static String refusal(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.TroopsRow t, String track, int tier, boolean here) {
         if (!enabled()) return "Levels are off";
         if (b == null || s == null || !b.running || !s.seated) return "Gear is bought during a battle";
-        if (t == null || !(LevelMath.WEAPON.equals(track) || LevelMath.ARMOUR.equals(track)) || tier < 1 || tier > LevelMath.maxTier()) return "No such gear";
+        if (t == null || !(LevelMath.WEAPON.equals(track) || LevelMath.ARMOUR.equals(track)) || tier < 1 || tier > Math.min(LevelMath.maxTier(), PRICED_TIERS)) return "No such gear";
         if (!types(s).contains(t)) return t.name() + " is not in your banner";
         var k = peek(b, s, t.id());
         int highest = k == null ? 1 : k.highest, bought = k == null ? 1 : k.bought(track);

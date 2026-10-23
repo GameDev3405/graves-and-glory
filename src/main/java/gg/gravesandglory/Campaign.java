@@ -38,7 +38,7 @@ public final class Campaign {
     /**
      * When each notice was posted (battle ticks). expireNotices drops an action's notice (notice) NOTICE_TICKS after it, so a notice the player dismissed on his screen
      * cannot come back with a later camp snapshot (Phase 2 Task 13's trade-off, done in in-match progression Task 4; no protocol change). The same words posted again start
-     * a new 10 seconds. A line that tells the player's state (standing: the welcome, the wait for the next round, the match reward) is marked STANDING and stays until the
+     * a new 10 seconds. A line that tells the player's state (standing: the welcome, the match reward; the wait for the next round is an action's notice, it stops being true with the round) is marked STANDING and stays until the
      * next notice replaces it.
      */
     final Map<UUID,Long> noticeAt=new HashMap<>();
@@ -46,6 +46,8 @@ public final class Campaign {
     static final int NOTICE_TICKS=200;
     /** noticeAt's mark for a standing line, which never expires. */
     static final long STANDING=Long.MAX_VALUE;
+    /** What a commander who joins while a round runs and holds no seat reads (an action's notice: it expires, and returnLobby drops it). */
+    static final String WAIT_LINE="Battle in progress. Wait in camp for the next round. R opens your war council.";
     final Map<UUID,JsonObject> results=new HashMap<>();
     /** Per commander, the last roll or chosen buy (the snapshot's lastRoll, for the camp's roll result card): {n, troop, duplicate, starsBefore, starsAfter, shards}; n counts up so the client tells a new one from the same. Not saved. */
     final Map<UUID,JsonObject> lastRolls=new HashMap<>();
@@ -109,7 +111,7 @@ public final class Campaign {
     }
     /** An action's result for the player (a refusal, a buy, a vote saved): shown on his action bar and kept in the camp snapshot for NOTICE_TICKS. */
     void notice(UUID id,String text){post(id,text,b.time);}
-    /** A line that tells the player's state (the welcome, the wait for the next round, the match reward): shown like a notice, but kept until the next notice replaces it. */
+    /** A line that tells the player's state (the welcome, the match reward): shown like a notice, but kept until the next notice replaces it. */
     void standing(UUID id,String text){post(id,text,STANDING);}
     private void post(UUID id,String text,long at){notices.put(id,text);noticeAt.put(id,at);var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)p.sendMessage(Text.literal(text),true);}
     /** Drops every action's notice older than NOTICE_TICKS (tick, once a second); a standing line stays. A notice put without notice() (a harness's) is timed from the first pass that sees it. */
@@ -124,7 +126,8 @@ public final class Campaign {
         // Rejoining the same battle keeps the original start time, so a dropped connection does not cost the reward.
         if(!(b.running&&participants.contains(p.getUuid())))joinedAt.put(p.getUuid(),b.time);var squad=b.squads.get(p.getUuid());
         if(b.running&&squad!=null&&squad.seated)b.toBase(p,squad.team);else toLobby(p);
-        standing(p.getUuid(),b.running&&(squad==null||!squad.seated)?"Battle in progress. Wait in camp for the next round. R opens your war council.":"Welcome to Graves and Glory. R opens your war council.");}
+        if(b.running&&(squad==null||!squad.seated))notice(p.getUuid(),WAIT_LINE); // true for the moments he reads it, and gone with the round (returnLobby) or after NOTICE_TICKS: no standing line, which the round's end would leave false
+        else standing(p.getUuid(),"Welcome to Graves and Glory. R opens your war council.");}
     void toLobby(ServerPlayerEntity p){b.relocate(p,0,66,CampaignMaps.LOBBY_Z+20,180,8);p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();Commander.applyPlayer(p,null);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
@@ -132,10 +135,11 @@ public final class Campaign {
         Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearSides();b.clearProgression();
         b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}onPad.clear();padCountdown=-1;closeParty();
+        notices.values().removeIf(WAIT_LINE::equals);noticeAt.keySet().retainAll(notices.keySet()); // "Battle in progress" is no longer true
         for(var p:b.server.getPlayerManager().getPlayerList())toLobby(p);
     }
     /** Leaving frees the pad, any seat in a custom lobby, and invitations to it, and forgets which snapshot forms were logged for him. */
-    void left(UUID id){onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);}
+    void left(UUID id){onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
     boolean handle(ServerPlayerEntity p,String cmd){
         if(cmd.startsWith("social:"))return socialCommand(p,cmd);
         if(cmd.startsWith("progress:"))return progressCommand(p,cmd);

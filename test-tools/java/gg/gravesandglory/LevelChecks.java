@@ -2,6 +2,7 @@ package gg.gravesandglory;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import java.util.ArrayList;
@@ -499,6 +500,8 @@ final class LevelChecks {
         static final String ACTION = "Gear check: an action's notice expires";
         /** The stage that ends the suite: past every numbered stage (the levels suite's 99 would cut this one short at its stage 100). */
         static final int DONE = 999;
+        /** How long a check waits before it reads an action's notice as gone: the expiry runs at b.time % 20 == 0 and drops what is older than Campaign.NOTICE_TICKS, so a notice posted on such a tick goes 220 ticks later, in that tick's pass. Both the mod's tick and a suite's serverTick are END_SERVER_TICK handlers and the mod's runs first, so 220 is enough today; one more tick keeps the check right if the order changes (review M4). */
+        static final int NOTICE_WAIT = 221;
         Spec.TroopsRow knight, archer, mage;
         List<String> bannerBefore; String commanderBefore;
         int knightStars; boolean starsSet;
@@ -507,11 +510,18 @@ final class LevelChecks {
         int goldTrained, paid; java.util.Set<Integer> fieldedBefore = new java.util.HashSet<>();
         // p2-armoury-state's client half: the server's Armoury and glint bits the client must hold
         volatile LevelMath.Armoury armouryWant; volatile Map<String, Boolean> glintWant; volatile String armourySeen, armouryLast = "";
-        // p2-report-levels' client half
-        volatile String reportId; volatile boolean reportShot; volatile int reportRowsClient = -1; int screenTicks;
+        // p2-report-levels' client half: the reports the client page must show (id -> picture name), the levels rows it held and the pictures taken
+        final Map<String, String> reportShots = new java.util.concurrent.ConcurrentHashMap<>();
+        final Map<String, Integer> reportRows = new java.util.concurrent.ConcurrentHashMap<>();
+        final java.util.Set<String> reportDone = java.util.concurrent.ConcurrentHashMap.newKeySet();
+        volatile String screenId = ""; int screenTicks;
+        String firstReport, secondReport, thirdReport;
         boolean reportOk; String reportWhy = "";
-        // p2-notice-standing
-        String reward, welcome, waiting, standWhy = ""; boolean standOk;
+        // p2-report-levels-fit: what the client measured (the smallest canvas, every troop, and each page it drew)
+        final List<String> fitNotes = new java.util.concurrent.CopyOnWriteArrayList<>(), fitFails = new java.util.concurrent.CopyOnWriteArrayList<>();
+        volatile String minFit = ""; volatile boolean minFitOk, minFitDone;
+        // p2-notice-standing, p2-notice-wait, p2-notice-left
+        String reward, welcome, waiting, standWhy = "", waitWhy = ""; boolean standOk, waitOk;
 
         /** The commander's command as his client sends it (order_v4); returns the notice it left ("" for none). */
         String say(GravesAndGlory.Battle b, String cmd) { b.campaign.notices.remove(player); var p = sp(b); if (p != null) b.command(p, cmd); return b.campaign.notices.getOrDefault(player, ""); }
@@ -563,12 +573,78 @@ final class LevelChecks {
                     armourySeen = CampaignClient.armoury + " with the glint bits " + g.toString().trim();
                 }
             }
-            var id = reportId;
-            if (id != null && !reportShot && c.currentScreen instanceof CampScreen cs && "results".equals(cs.page) && CampaignClient.result.has("levels") && CampaignClient.result.has("id") && CampaignClient.result.get("id").getAsString().equals(id)) {
-                if (++screenTicks == 5) { reportRowsClient = CampaignClient.result.getAsJsonArray("levels").size(); Phase2Checks.shot(c, "gear-report"); reportShot = true; }
+            if (c.currentScreen instanceof CampScreen cs && "results".equals(cs.page) && CampaignClient.result.has("levels") && CampaignClient.result.has("id")) {
+                String id = CampaignClient.result.get("id").getAsString(), name = reportShots.get(id);
+                if (name != null && !reportDone.contains(id)) {
+                    if (!id.equals(screenId)) { screenId = id; screenTicks = 0; }
+                    if (++screenTicks == 5) { // five ticks on the page: its rows and its words measured as drawn, then the picture
+                        var rows = CampaignClient.result.getAsJsonArray("levels"); reportRows.put(id, rows.size());
+                        fitPage(c, cs, name, rows);
+                        Phase2Checks.shot(c, name); reportDone.add(id);
+                    }
+                }
             }
-            if (stage == DONE && !finished) { finished = true; c.setScreen(null); Phase2Checks.finish(c, "gear"); }
+            if (tick == 30) noticeRedismissed();
+            if (tick == 40) fitSmallest(c);
+            if (stage == DONE && !finished) {
+                finished = true; c.setScreen(null);
+                Phase2Checks.report("p2-report-levels-fit", minFitDone && minFitOk && fitFails.isEmpty() && reportDone.size() == 3, minFit + "; the pages the client drew: " + (fitNotes.isEmpty() ? "none" : String.join("; ", fitNotes)) + "; pictures taken " + reportDone.size() + " (want 3)");
+                Phase2Checks.finish(c, "gear");
+            }
             if (tick > 16000 && !finished) { finished = true; Phase2Checks.report("p2-gear-timeout", false, "stuck in stage " + stage); Phase2Checks.finish(c, "gear"); }
+        }
+
+        /** Whether a levels row was drawn whole in its cell: the words after the name uncut, the name whole or, in the short form only, given way to an ellipsis that keeps at least 12 letters, and the two together inside the cell. Returns "" when whole, else what was cut. */
+        static String cut(net.minecraft.client.font.TextRenderer font, com.google.gson.JsonObject row, int cell, boolean compact) {
+            var words = CampScreen.levelWords(row, compact); var drawn = CampScreen.levelDrawn(font, row, cell, compact);
+            if (words == null || drawn == null) return "an unknown troop " + row;
+            boolean nameWhole = drawn[0].equals(words[0]), nameGaveWay = compact && drawn[0].endsWith("...") && drawn[0].length() >= 15 && words[0].startsWith(drawn[0].substring(0, drawn[0].length() - 3));
+            int need = font.getWidth(drawn[0]) + 8 + font.getWidth(drawn[1]);
+            if (drawn[1].equals(words[1]) && (nameWhole || nameGaveWay) && need <= cell) return "";
+            return words[0] + " \"" + words[1] + "\" drawn as \"" + drawn[0] + "\" + \"" + drawn[1] + "\" needs " + need + " px";
+        }
+        /** The levels rows of a page the client drew, measured: the cell they got, the form, and every row drawn whole. */
+        void fitPage(MinecraftClient c, CampScreen cs, String name, com.google.gson.JsonArray rows) {
+            int n = rows.size(), cell = CampScreen.levelCell(n, cs.width - 194 - 22), trimmed = 0, widest = 0; boolean compact = CampScreen.levelCompact(n);
+            List<String> clipped = new ArrayList<>();
+            for (var e : rows) {
+                var row = e.getAsJsonObject(); String why = cut(c.textRenderer, row, cell, compact);
+                if (!why.isEmpty()) clipped.add(why);
+                var drawn = CampScreen.levelDrawn(c.textRenderer, row, cell, compact);
+                if (drawn != null) { widest = Math.max(widest, c.textRenderer.getWidth(drawn[0]) + 8 + c.textRenderer.getWidth(drawn[1])); if (drawn[0].endsWith("...")) trimmed++; }
+            }
+            fitNotes.add(name + ": " + n + " rows as the " + (compact ? "short" : "long") + " line in cells of " + cell + " px (page " + cs.width + " wide), the widest drawn is " + widest + " px, " + trimmed + " names given way" + (clipped.isEmpty() ? " (all whole)" : " CUT " + clipped));
+            if (!clipped.isEmpty()) fitFails.add(name);
+        }
+        /** The smallest canvas the camp page runs on (760 wide: the page is 544 inside the nav and the margin): for one to eight rows, every troop with the widest words a row can have (level 3, 99 at level 3, Weapon III and Armour III) is drawn whole. */
+        void fitSmallest(MinecraftClient c) {
+            int page = 760 - 194 - 22, widest = 0, bad = 0, gaveWay = 0; String first = "", wideName = "";
+            for (int n = 1; n <= 8; n++) {
+                int cell = CampScreen.levelCell(n, page); boolean compact = CampScreen.levelCompact(n);
+                for (var t : Spec.TROOPS) {
+                    var row = new com.google.gson.JsonObject();
+                    row.addProperty("troop", t.id()); row.addProperty("highestLevel", 3); row.addProperty("level3Count", 99); row.addProperty("weapon", 3); row.addProperty("armour", 3);
+                    String why = cut(c.textRenderer, row, cell, compact); var drawn = CampScreen.levelDrawn(c.textRenderer, row, cell, compact);
+                    int need = drawn == null ? 0 : c.textRenderer.getWidth(drawn[0]) + 8 + c.textRenderer.getWidth(drawn[1]);
+                    if (need > widest) { widest = need; wideName = t.name(); }
+                    if (drawn != null && drawn[0].endsWith("...")) gaveWay++;
+                    if (!why.isEmpty()) { bad++; if (first.isEmpty()) first = "in a block of " + n + " rows (cell " + cell + " px) " + why; }
+                }
+            }
+            minFitOk = bad == 0; minFit = "at the smallest canvas (page " + page + " wide) " + bad + " of " + (8 * Spec.TROOPS.length) + " troop-and-size cells are cut" + (bad == 0 ? "" : ", the first: " + first) + "; the widest drawn row is " + wideName + " at " + widest + " px; " + gaveWay + " names gave way to an ellipsis (short form only)";
+            minFitDone = true;
+        }
+        /** p2-notice-redismissed (client only): a report line the player dismissed stays hidden when the same words arrive again, and shows when the next match's report opens. */
+        void noticeRedismissed() {
+            String n0 = CampaignClient.notice, d0 = CampaignClient.dismissed, r0 = CampaignClient.shownResult, line = "Victory / +100 collection gold";
+            CampaignClient.notice = line; CampaignClient.dismissed = line; // the first match's reward line, left behind by a page change
+            CampaignClient.acceptNotice(line); // the next state packet carries the same words
+            boolean held = CampaignClient.shownNotice().isEmpty();
+            CampaignClient.reportOpened("harness-next-report"); // the second match's report opens with the same words
+            boolean again = line.equals(CampaignClient.shownNotice());
+            CampaignClient.acceptNotice("Another line"); boolean other = "Another line".equals(CampaignClient.shownNotice());
+            CampaignClient.notice = n0; CampaignClient.dismissed = d0; CampaignClient.shownResult = r0;
+            Phase2Checks.report("p2-notice-redismissed", held && again && other, "a reward line dismissed by a page change: the same words in the next state packet " + (held ? "stay hidden" : "SHOW AGAIN") + ", the same words when the next report opens " + (again ? "show" : "STAY HIDDEN (the new match's line is swallowed)") + ", another text " + (other ? "shows" : "does not show"));
         }
 
         @Override public void serverTick(GravesAndGlory.Battle b) {
@@ -779,43 +855,43 @@ final class LevelChecks {
                     clearFixture(b, "bots"); next(b, 110);
                 }
                 case 110 -> { // p2-report-levels: the finished report's levels block, then the results page (screenshot gear-report)
+                    // The rows below hold only for stages 10 to 100 as they are: Squires at Weapon III (stage 40) and Armour III (stage 80) with two at level 3, archers at Armour III (stage 20) with one at level 3, the Sunweaver at Weapon III (stage 40) with one at level 3. A stage taken out or moved fails this check for that reason, not the report's.
                     var want = Veterans.levelRows(b, own);
                     b.campaign.finish(own.team);
                     var report = b.campaign.results.get(player);
-                    var rows = report == null || !report.has("levels") ? new com.google.gson.JsonArray() : report.getAsJsonArray("levels");
-                    boolean same = rows.size() == want.size();
-                    StringBuilder got = new StringBuilder();
-                    for (int i = 0; i < rows.size(); i++) {
-                        var r = rows.get(i).getAsJsonObject(); got.append(r).append(' ');
-                        if (i < want.size()) { var w = want.get(i); same &= r.get("troop").getAsString().equals(w.troop()) && r.get("highestLevel").getAsInt() == w.highest() && r.get("level3Count").getAsInt() == w.level3s() && r.get("weapon").getAsInt() == w.weapon() && r.get("armour").getAsInt() == w.armour(); }
-                    }
+                    StringBuilder got = new StringBuilder(); boolean same = rowsMatch(report, want, got);
                     var expect = List.of(new MatchStats.LevelRow("knight", 3, 2, 3, 3), new MatchStats.LevelRow("archer", 3, 1, 1, 3), new MatchStats.LevelRow("mage", 3, 1, 3, 1));
                     String text = want.isEmpty() ? "" : MatchStats.levelText(want.get(0), knight.name(), LevelMath.levelName(knight, want.get(0).highest()));
                     reportOk = same && want.equals(expect) && text.equals("reached Knight-Captain / 2 at level 3 / Weapon III, Armour III") && MatchStats.levelText(new MatchStats.LevelRow("mage", 1, 0, 1, 1), mage.name(), mage.name()).equals("no level ups / no gear bought")
                         && MatchStats.levelText(new MatchStats.LevelRow("mage", 3, 1, 3, 1), mage.name(), LevelMath.levelName(mage, 3)).equals("reached level 3 / 1 at level 3 / Weapon III") && !b.running && b.armouries.isEmpty();
                     reportWhy = "the report's levels rows " + got.toString().trim() + " (want " + want + ", which is " + expect + ")=" + same + "; the Squires' line \"" + text + "\"; the Armoury emptied as the round ended " + b.armouries.isEmpty() + "; ";
-                    reportId = report == null ? null : report.get("id").getAsString();
+                    firstReport = report == null ? "none" : report.get("id").getAsString(); reportShots.put(firstReport, "gear-report");
                     reward = b.campaign.notices.get(player);
                     next(b, 111);
                 }
                 case 111 -> {
-                    if (since(b) < 220 || !reportShot && since(b) < 600) return;
-                    Phase2Checks.report("p2-report-levels", reportOk && reportShot && reportRowsClient == 3, reportWhy + "the results page opened on the client with " + reportRowsClient + " levels rows (want 3) and the picture gear-report was taken=" + reportShot);
+                    if (since(b) < 220 || !reportDone.contains(firstReport) && since(b) < 600) return;
+                    boolean shot = reportDone.contains(firstReport); int rows = reportRows.getOrDefault(firstReport, -1);
+                    Phase2Checks.report("p2-report-levels", reportOk && shot && rows == 3, reportWhy + "the results page opened on the client with " + rows + " levels rows (want 3) and the picture gear-report was taken=" + shot);
                     String now = b.campaign.notices.get(player);
                     Long at = b.campaign.noticeAt.get(player);
                     boolean stays = reward != null && reward.equals(now) && at != null && at == Campaign.STANDING;
                     standOk = stays; standWhy = "the reward line \"" + reward + "\" after " + since(b) + " ticks: \"" + now + "\" (want the same)=" + stays + "; ";
-                    b.campaign.notice(player, ACTION); next(b, 112);
+                    next(b, 112);
                 }
-                case 112 -> {
-                    if (since(b) < 220) return;
+                case 112 -> { // an action's notice is posted on the tick the once-a-second expiry runs: the worst phase for the check at NOTICE_WAIT
+                    if (b.time % 20 != 0) return;
+                    b.campaign.notice(player, ACTION); next(b, 113);
+                }
+                case 113 -> {
+                    if (since(b) < NOTICE_WAIT) return;
                     boolean gone = !ACTION.equals(b.campaign.notices.get(player));
                     standOk &= gone; standWhy += "an action's notice after " + since(b) + " ticks: \"" + b.campaign.notices.getOrDefault(player, "") + "\" (want gone)=" + gone + "; ";
                     var p = sp(b); if (p != null) b.campaign.joined(p); welcome = b.campaign.notices.get(player);
-                    next(b, 113);
+                    next(b, 114);
                 }
-                case 113 -> {
-                    var p = sp(b); if (p == null || since(b) < 220) return;
+                case 114 -> {
+                    var p = sp(b); if (p == null || since(b) < NOTICE_WAIT) return;
                     String now = b.campaign.notices.get(player);
                     boolean stays = welcome != null && welcome.startsWith("Welcome to Graves and Glory") && welcome.equals(now);
                     // p2-gear-round-reset: an Armoury and a tally seeded in the lobby; a new round starts with neither
@@ -823,21 +899,137 @@ final class LevelChecks {
                     if (!Phase1Checks.skirmish(b, p, 0, 1, "normal")) { Phase2Checks.report("p2-gear-round-reset", false, "the next round did not start at once"); next(b, DONE); return; }
                     boolean reset = b.running && b.armouries.isEmpty() && Veterans.peek(b, own, "knight") == null && Veterans.TALLY[0] != tally && Veterans.TALLY[0].level3s == 0 && Veterans.TALLY[0].bought.isEmpty();
                     Phase2Checks.report("p2-gear-round-reset", reset, "the commander's Armoury seeded " + seeded + " and the tally at 99 level 3s, then a new round started (running " + b.running + "): every Armoury " + kits(b, own) + " (want empty: " + b.armouries.isEmpty() + "), a fresh tally " + (Veterans.TALLY[0] != tally) + " at " + Veterans.TALLY[0].level3s + " level 3s");
-                    standOk &= stays; standWhy += "the welcome \"" + welcome + "\" after 220 ticks: \"" + now + "\" (want the same)=" + stays + "; ";
+                    standOk &= stays; standWhy += "the welcome \"" + welcome + "\" after " + since(b) + " ticks: \"" + now + "\" (want the same)=" + stays;
+                    Phase2Checks.report("p2-notice-standing", standOk, standWhy);
                     // the wait line: a commander who joins while a round runs and he holds no seat
                     own.seated = false; b.campaign.joined(p); waiting = b.campaign.notices.get(player); own.seated = true; b.toBase(p, own.team);
-                    next(b, 114);
+                    next(b, 115);
                 }
-                case 114 -> {
-                    if (since(b) < 220) return;
+                case 115 -> { // p2-notice-wait: the wait line is an action's notice (gone after 10 s), and it goes when the round ends; p2-notice-left
+                    var p = sp(b); if (p == null || since(b) < NOTICE_WAIT) return;
                     String now = b.campaign.notices.get(player);
-                    boolean stays = waiting != null && waiting.startsWith("Battle in progress. Wait in camp for the next round.") && waiting.equals(now);
-                    standOk &= stays; standWhy += "the wait line \"" + waiting + "\" after " + since(b) + " ticks: \"" + now + "\" (want the same)=" + stays;
-                    Phase2Checks.report("p2-notice-standing", standOk, standWhy);
+                    boolean wait = waiting != null && waiting.startsWith("Battle in progress. Wait in camp for the next round."), expired = wait && !waiting.equals(now);
+                    waitWhy = "the wait line \"" + waiting + "\" after " + since(b) + " ticks: \"" + now + "\" (want gone)=" + expired + "; ";
+                    own.seated = false; b.campaign.joined(p); String second = b.campaign.notices.get(player); own.seated = true; b.toBase(p, own.team);
+                    b.campaign.returnLobby();
+                    String after = b.campaign.notices.get(player); Long afterAt = b.campaign.noticeAt.get(player);
+                    boolean ended = second != null && second.equals(waiting) && !b.running && after == null && afterAt == null;
+                    waitWhy += "the wait line posted again \"" + second + "\", then the round ended (running " + b.running + "): \"" + after + "\" (want none)=" + ended;
+                    Phase2Checks.report("p2-notice-wait", expired && ended, waitWhy);
+                    // a player who leaves takes his notice entries with him, a standing line's too
+                    UUID a = UUID.randomUUID(), z = UUID.randomUUID();
+                    b.campaign.standing(a, "Harness standing line"); b.campaign.notice(z, "Harness action notice");
+                    boolean had = b.campaign.notices.containsKey(a) && b.campaign.noticeAt.containsKey(a) && b.campaign.notices.containsKey(z) && b.campaign.noticeAt.containsKey(z);
+                    b.campaign.left(a); b.campaign.left(z);
+                    boolean cleared = !b.campaign.notices.containsKey(a) && !b.campaign.noticeAt.containsKey(a) && !b.campaign.notices.containsKey(z) && !b.campaign.noticeAt.containsKey(z);
+                    Phase2Checks.report("p2-notice-left", had && cleared, "two players held a standing line and an action's notice (entries present " + had + "); after Campaign.left for each, the entries are gone=" + cleared);
+                    next(b, 116);
+                }
+                case 116 -> { // the report of a banner with five troop types (the page's two columns) with its picture
+                    var p = sp(b); if (p == null || !Phase1Checks.skirmish(b, p, 0, 1, "normal")) return;
+                    secondReport = reportOf(b, List.of("knight", "archer", "sentinel", "longbow", "mage", "^", "^", "^"), new int[][] {{3, 2, 3, 3}, {3, 1, 2, 3}, {2, 0, 2, 1}, {3, 1, 1, 2}, {3, 12, 3, 1}}, "gear-report-5");
+                    next(b, 117);
+                }
+                case 117 -> {
+                    if (!reportDone.contains(secondReport) && since(b) < 600) return;
+                    next(b, 118);
+                }
+                case 118 -> { // a banner of eight types, the widest names the sheet has (Legendaries keep theirs), with its picture: the page at its fullest
+                    var p = sp(b); if (p == null || !Phase1Checks.skirmish(b, p, 0, 1, "normal")) return;
+                    thirdReport = reportOf(b, List.of("knight", "archer", "tc_admiral", "wm_oldhorn", "ic_colossus", "longbow", "mage", "sentinel"), new int[][] {{3, 12, 3, 3}, {3, 1, 2, 3}, {3, 1, 3, 3}, {3, 3, 2, 2}, {3, 1, 3, 2}, {2, 0, 2, 1}, {3, 1, 3, 1}, {1, 0, 1, 1}}, "gear-report-8");
+                    next(b, 119);
+                }
+                case 119 -> {
+                    if (!reportDone.contains(thirdReport) && since(b) < 600) return;
+                    boolean shots = reportDone.contains(secondReport) && reportDone.contains(thirdReport);
+                    int rows5 = reportRows.getOrDefault(secondReport, -1), rows8 = reportRows.getOrDefault(thirdReport, -1);
+                    Phase2Checks.report("p2-report-levels-pages", pagesOk && shots && rows5 == 5 && rows8 == 8, pagesWhy + "the client's pages held " + rows5 + " and " + rows8 + " levels rows (want 5 and 8) and the pictures gear-report-5 and gear-report-8 were taken=" + shots);
+                    next(b, 120);
+                }
+                case 120 -> { // p2-gear-refusals, p2-gear-forward, p2-gear-tier-cap: a fresh round, the Armoury seeded here so each stands alone
+                    var p = sp(b); if (p == null || !Phase1Checks.skirmish(b, p, 0, 1, "normal")) return;
+                    own.banner = new ArrayList<>(List.of("knight", "knight", "knight", "knight", "archer", "archer", "mage", "^"));
+                    Veterans.kit(b, own, "knight").highest = 2; Veterans.kit(b, own, "archer").highest = 3; Veterans.kit(b, own, "mage").highest = 3;
+                    refusals(b); forward(b, p); tierCap(b);
                     next(b, DONE);
                 }
                 default -> {}
             }
+        }
+
+        /** The finished report's levels block against the Armoury's rows (Veterans.levelRows): true when it holds the same rows in the same order; got collects the rows as drawn. */
+        boolean rowsMatch(com.google.gson.JsonObject report, List<MatchStats.LevelRow> want, StringBuilder got) {
+            var rows = report == null || !report.has("levels") ? new com.google.gson.JsonArray() : report.getAsJsonArray("levels");
+            boolean same = rows.size() == want.size();
+            for (int i = 0; i < rows.size(); i++) {
+                var r = rows.get(i).getAsJsonObject(); got.append(r).append(' ');
+                if (i < want.size()) { var w = want.get(i); same &= r.get("troop").getAsString().equals(w.troop()) && r.get("highestLevel").getAsInt() == w.highest() && r.get("level3Count").getAsInt() == w.level3s() && r.get("weapon").getAsInt() == w.weapon() && r.get("armour").getAsInt() == w.armour(); }
+            }
+            return same;
+        }
+
+        boolean pagesOk = true; String pagesWhy = "";
+        /** In the round just started: the army's banner and the Armoury's Kits ({highest level, level 3 soldiers, weapon tier, armour tier} per distinct banner type in order), then the round ends with a report. Returns the report's id, its picture queued under name. */
+        String reportOf(GravesAndGlory.Battle b, List<String> banner, int[][] kits, String name) {
+            own.banner = new ArrayList<>(banner);
+            var types = Veterans.types(own);
+            for (int i = 0; i < types.size(); i++) { var k = Veterans.kit(b, own, types.get(i).id()); k.highest = kits[i][0]; k.level3s = kits[i][1]; k.weapon = kits[i][2]; k.armour = kits[i][3]; }
+            var want = Veterans.levelRows(b, own);
+            b.campaign.finish(own.team);
+            var report = b.campaign.results.get(player);
+            StringBuilder got = new StringBuilder(); boolean same = rowsMatch(report, want, got) && want.size() == kits.length;
+            pagesOk &= same; pagesWhy += name + ": the report's rows " + got.toString().trim() + " (want " + want + ")=" + same + "; ";
+            String id = report == null ? "none-" + name : report.get("id").getAsString();
+            reportShots.put(id, name);
+            return id;
+        }
+
+        /** p2-gear-refusals: the refusals that guard the gold and the buyer, each with its exact words and the gold and Kits untouched. */
+        void refusals(GravesAndGlory.Battle b) {
+            toBarracks(b); String kit0 = kits(b, own);
+            own.gold = 39; String poor = say(b, "gear:archer:weapon:2");
+            boolean poorOk = poor.equals("Not enough gold") && own.gold == 39 && kits(b, own).equals(kit0);
+            own.gold = 40; String exact = say(b, "gear:archer:weapon:2");
+            boolean exactOk = exact.equals("Order Archer: Weapon II bought for 40 gold") && own.gold == 0 && Veterans.peek(b, own, "archer").weapon == 2;
+            own.gold = 1000; String kit1 = kits(b, own); List<String> wrong = new ArrayList<>();
+            String templar = Campaign.troop("sentinel").name() + " is not in your banner";
+            String[][] malformed = {{"gear:archer:weapon:4", "No such gear"}, {"gear:archer:weapon:0", "No such gear"}, {"gear:archer:armour:-1", "No such gear"}, {"gear:archer:armour:two", "No such gear"}, {"gear:archer:shield:2", "No such gear"},
+                {"gear:nobody:weapon:2", "No such gear"}, {"gear:archer:weapon", "No such gear"}, {"gear:archer:weapon:2:3", "No such gear"}, {"gear:sentinel:weapon:2", templar}};
+            for (var m : malformed) { String got = say(b, m[0]); if (!got.equals(m[1])) wrong.add(m[0] + " said \"" + got + "\" (want \"" + m[1] + "\")"); }
+            b.running = false; String idle = say(b, "gear:mage:armour:2"); b.running = true;
+            Veterans.override = Boolean.FALSE; String off = say(b, "gear:mage:armour:2"); Veterans.override = null;
+            own.seated = false; String seatless = say(b, "gear:mage:armour:2"); own.seated = true;
+            home(b);
+            boolean ok = poorOk && exactOk && wrong.isEmpty() && idle.equals("Gear is bought during a battle") && off.equals("Levels are off") && seatless.isEmpty() && own.gold == 1000 && kits(b, own).equals(kit1);
+            Phase2Checks.report("p2-gear-refusals", ok, "with 39 gold the archers' Weapon II (40) said \"" + poor + "\" (want \"Not enough gold\", gold and Kits unchanged)=" + poorOk + "; with 40 it said \"" + exact + "\" (want bought, 0 left)=" + exactOk
+                + "; malformed or foreign: " + (wrong.isEmpty() ? "all nine said what they should" : wrong) + "; the Sunweaver's Armour II (80, affordable and open) with no round running said \"" + idle + "\" (want \"Gear is bought during a battle\"), with levels off \"" + off + "\" (want \"Levels are off\"), unseated \"" + seatless + "\" (want nothing: the command is dropped); gold " + own.gold + " (want 1000) and Kits " + kits(b, own) + " (want " + kit1 + ")");
+        }
+
+        /** p2-gear-forward: with Battle.forwardReinforcement off no point is a place to buy (troops no longer deploy there), the barracks still is. */
+        void forward(GravesAndGlory.Battle b, ServerPlayerEntity p) {
+            own.gold = 1000; boolean flag = b.forwardReinforcement;
+            hold(b, held); toPoint(b, held);
+            boolean anchored = b.reinforcementAnchors(0).stream().anyMatch(a -> a.x() == held.spec.x() && a.z() == held.spec.z()), hereOn = Veterans.buyHere(b, p, own);
+            boolean hereOff, barracksOff; String atPoint, atBarracks; int goldPoint;
+            b.forwardReinforcement = false;
+            try {
+                hereOff = Veterans.buyHere(b, p, own); atPoint = say(b, "gear:mage:armour:2"); goldPoint = own.gold;
+                toBarracks(b); barracksOff = Veterans.buyHere(b, p, own); atBarracks = say(b, "gear:mage:armour:2");
+            } finally { b.forwardReinforcement = flag; restoreHeld(); home(b); }
+            boolean ok = anchored && hereOn && !hereOff && atPoint.equals("Buy at your barracks or a held point") && goldPoint == 1000 && barracksOff && atBarracks.equals("Sunweaver: Armour II bought for 80 gold") && own.gold == 920;
+            Phase2Checks.report("p2-gear-forward", ok, "at a point Dawn holds (a reinforcement anchor " + anchored + ") a commander may buy " + hereOn + " (want true); with forwardReinforcement off he may buy there " + hereOff + " (want false), the buy said \"" + atPoint + "\" (want \"Buy at your barracks or a held point\"), gold " + goldPoint + " (want 1000); at the barracks with it off he may buy " + barracksOff + " and it said \"" + atBarracks + "\", gold " + own.gold + " (want 920)");
+        }
+
+        /** p2-gear-tier-cap: a sheet with a fourth gear tier (the sheet's tiers are rows) must not make the buy throw: gear prices exist for tiers II and III, so a higher tier is no such gear. */
+        void tierCap(GravesAndGlory.Battle b) {
+            var sheet = Spec.GEARTIERS; own.gold = 1000; String why = "", said = "", thrown = "";
+            try {
+                Spec.GEARTIERS = new Spec.GearTiersRow[] {sheet[0], sheet[1], sheet[2], new Spec.GearTiersRow("t4", 4, 0.3, 0.3)};
+                toBarracks(b);
+                try { why = Veterans.refusal(b, own, mage, LevelMath.WEAPON, 4, true); said = say(b, "gear:mage:weapon:4"); } catch (RuntimeException e) { thrown = e.toString(); }
+            } finally { Spec.GEARTIERS = sheet; home(b); }
+            boolean ok = thrown.isEmpty() && why.equals("No such gear") && said.equals("No such gear") && own.gold == 1000;
+            Phase2Checks.report("p2-gear-tier-cap", ok, "with a fourth row in the gearTiers sheet, Weapon IV of the Sunweaver: the refusal \"" + why + "\" and the command's notice \"" + said + "\" (want \"No such gear\" both)" + (thrown.isEmpty() ? "" : ", THREW " + thrown) + ", gold " + own.gold + " (want 1000)");
         }
     }
 }

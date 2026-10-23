@@ -41,12 +41,28 @@ public final class MatchStats {
      * null, or the troop's own name (an Epic or Legendary keeps its name), reads "reached level 3". "no level ups" and "no gear bought" when nothing happened.
      */
     public static String levelText(LevelRow r, String troopName, String reachedName) {
-        String reached = r.highest() < 2 ? "no level ups" : "reached " + (reachedName == null || reachedName.isEmpty() || reachedName.equals(troopName) ? "level " + r.highest() : reachedName);
+        String reached = r.highest() < 2 ? "no level ups" : "reached " + reachedPart(r, troopName, reachedName);
         String threes = r.level3s() > 0 ? " / " + r.level3s() + " at level 3" : "";
         List<String> gear = new ArrayList<>();
         if (r.weapon() > 1) gear.add("Weapon " + roman(r.weapon()));
         if (r.armour() > 1) gear.add("Armour " + roman(r.armour()));
         return reached + threes + " / " + (gear.isEmpty() ? "no gear bought" : String.join(", ", gear));
+    }
+    /** The level a row reached: the troop's name at its highest level, or "level N" when it has none (null, empty, or the troop's own name: an Epic or Legendary). */
+    static String reachedPart(LevelRow r, String troopName, String reachedName) {
+        return reachedName == null || reachedName.isEmpty() || reachedName.equals(troopName) ? "level " + r.highest() : reachedName;
+    }
+    /**
+     * The same line for the results page's two-column form (more than three troop types, half a page each): "Knight-Captain x2 / W III A III". The level name
+     * (or "level 3"), x and how many reached level 3, then W and A for the weapon and armour tiers bought; "no level ups" and "no gear" when nothing happened.
+     */
+    public static String levelShort(LevelRow r, String troopName, String reachedName) {
+        String reached = r.highest() < 2 ? "no level ups" : reachedPart(r, troopName, reachedName);
+        String threes = r.level3s() > 0 ? " x" + r.level3s() : "";
+        List<String> gear = new ArrayList<>();
+        if (r.weapon() > 1) gear.add("W " + roman(r.weapon()));
+        if (r.armour() > 1) gear.add("A " + roman(r.armour()));
+        return reached + threes + " / " + (gear.isEmpty() ? "no gear" : String.join(" ", gear));
     }
     static String roman(int n) { return switch (n) { case 1 -> "I"; case 2 -> "II"; case 3 -> "III"; default -> Integer.toString(n); }; }
     /** Share of matches won, 0 when no match was played. */

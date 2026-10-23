@@ -198,13 +198,32 @@ final class CampScreen extends ArmyScreen {
         line(g,name,x,y,0xff000000|row.accent(),w);int at=x+textRenderer.getWidth(name)+8;
         line(g,(tier>0?"Trait "+DarkUi.roman(tier)+" held "+h.get("traitSeconds").getAsInt()+"s":"No trait tier")+"   +"+h.get("shards").getAsInt()+" shards   +"+h.get("renown").getAsInt()+" Renown",at,y,DarkUi.PAPER,x+w-at);
     }
-    /** One troop type's levels row of the battle report (in-match progression design 7): the troop's name in its House's accent, then the level name it reached, its level-3 count and the gear its army bought (MatchStats.levelText). */
-    void levelRow(DrawContext g,JsonObject r,int x,int y,int w){
-        var t=ArmyCards.spec(r.get("troop").getAsString());if(t==null)return;
-        var row=new MatchStats.LevelRow(t.id(),r.get("highestLevel").getAsInt(),r.get("level3Count").getAsInt(),r.get("weapon").getAsInt(),r.get("armour").getAsInt());
+    /** One troop type's levels row of the battle report (in-match progression design 7): the troop's name in its House's accent, then what it reached, its level-3 count and the gear its army bought (MatchStats.levelText; in the two-column form levelShort, right-aligned in its cell). */
+    void levelRow(DrawContext g,JsonObject r,int x,int y,int cell,boolean compact){
+        var t=ArmyCards.spec(r.get("troop").getAsString());var d=levelDrawn(textRenderer,r,cell,compact);if(t==null||d==null)return;
         int accent=DarkUi.PAPER;for(var h:Spec.HOUSES)if(h.id().equals(t.house()))accent=0xff000000|h.accent();
-        line(g,t.name(),x,y,accent,w);int at=x+textRenderer.getWidth(t.name())+8;
-        line(g,MatchStats.levelText(row,t.name(),LevelMath.levelName(t,row.highest())),at,y,DarkUi.PAPER,x+w-at);
+        int nameWidth=textRenderer.getWidth(d[0]),statsWidth=textRenderer.getWidth(d[1]);
+        line(g,d[0],x,y,accent,cell);
+        if(compact)line(g,d[1],x+cell-statsWidth,y,DarkUi.PAPER,statsWidth);else line(g,d[1],x+nameWidth+8,y,DarkUi.PAPER,cell-nameWidth-8);
+    }
+    /** The levels block's form: the long line in one column up to three troop types, the short form in two columns of half a page past three (which keeps its height to half the rows). */
+    static boolean levelCompact(int n){return n>3;}
+    /** The width of one cell of the levels block when it has n rows on a page of width w, and the lines it takes. */
+    static int levelCell(int n,int w){return levelCompact(n)?w/2-8:w;}
+    static int levelLines(int n){return levelCompact(n)?(n+1)/2:n;}
+    /** One levels row's words, untrimmed: the troop's name and what it reached, long or short (MatchStats.levelText, levelShort); null for a troop this client does not know. */
+    static String[] levelWords(JsonObject r,boolean compact){
+        var t=ArmyCards.spec(r.get("troop").getAsString());if(t==null)return null;
+        var row=new MatchStats.LevelRow(t.id(),r.get("highestLevel").getAsInt(),r.get("level3Count").getAsInt(),r.get("weapon").getAsInt(),r.get("armour").getAsInt());
+        String reached=LevelMath.levelName(t,row.highest());
+        return new String[]{t.name(),compact?MatchStats.levelShort(row,t.name(),reached):MatchStats.levelText(row,t.name(),reached)};
+    }
+    /** What levelRow draws in a cell of width cell. The words after the name are never cut: in the short form the name gives way (an ellipsis), in the long form the harness checks that every troop fits the smallest page. */
+    static String[] levelDrawn(net.minecraft.client.font.TextRenderer font,JsonObject r,int cell,boolean compact){
+        var words=levelWords(r,compact);if(words==null)return null;
+        if(!compact)return new String[]{font.trimToWidth(words[0],cell),font.trimToWidth(words[1],cell-font.getWidth(words[0])-8)};
+        String stats=font.trimToWidth(words[1],cell);int room=cell-font.getWidth(stats)-8;
+        return new String[]{font.getWidth(words[0])<=room?words[0]:font.trimToWidth(words[0],Math.max(0,room-font.getWidth("...")))+"...",stats};
     }
     @Override public void render(DrawContext g,int mx,int my,float delta){
         g.getMatrices().push();g.getMatrices().scale(scale,scale,1);DarkUi.background(g,width,height);DarkUi.crest(g,20,16,26,false);DarkUi.title(g,"BANNER CAMP",58,19,DarkUi.GOLD);
@@ -254,14 +273,14 @@ final class CampScreen extends ArmyScreen {
             if(report.has("id")){
                 line(g,report.get("outcome").getAsString()+" / "+report.get("map").getAsString(),x,117,DarkUi.GOLD,w);
                 var houses=report.has("houses")?report.getAsJsonArray("houses"):new JsonArray();int houseLines=houses.isEmpty()?0:houses.size()*11+3; // one line per House of the banner, under the gold
-                var levels=report.has("levels")?report.getAsJsonArray("levels"):new JsonArray();int levelLines=levels.size()>3?(levels.size()+1)/2:levels.size(); // then one per troop type: its levels and gear (two columns past three)
+                var levels=report.has("levels")?report.getAsJsonArray("levels"):new JsonArray();int levelLines=levelLines(levels.size()); // then one per troop type: its levels and gear (two columns past three)
                 int extra=houseLines+(levelLines==0?0:levelLines*11+3);
                 int y=Math.max(table(g,report,x,132,w)+5,height-163-extra); // the battle table first; the rewards sit above the buttons, or right under a long table
                 boolean saved=report.get("saved").getAsBoolean();
                 line(g,saved?"+"+report.get("gold").getAsInt()+" GOLD     +"+report.get("xp").getAsInt()+" CHAPTER XP":"REWARDS NOT SAVED / Progress unchanged",x,y,saved?DarkUi.PAPER:0xffff7777,w);
                 line(g,!saved?"Check disk space before playing again.":report.get("eligible").getAsBoolean()?"Rewards saved. Contract and tier rewards are claimed separately.":"No match rewards: play at least 3 minutes to qualify.",x,y+11,DarkUi.MUTED,w);
                 for(int i=0;i<houses.size();i++)houseRow(g,houses.get(i).getAsJsonObject(),x,y+24+i*11,w);
-                for(int i=0;i<levels.size();i++){boolean two=levels.size()>3;levelRow(g,levels.get(i).getAsJsonObject(),x+(two?i/levelLines*(w/2):0),y+24+houseLines+i%levelLines*11,two?w/2-8:w);}
+                for(int i=0;i<levels.size();i++){boolean two=levelCompact(levels.size());levelRow(g,levels.get(i).getAsJsonObject(),x+(two?i/levelLines*(w/2):0),y+24+houseLines+i%levelLines*11,levelCell(levels.size(),w),two);}
                 y+=25+extra;int tier=Progression.tier(progress),xp=Math.min(progress.xp,7500),half=w/2-8,right=x+w-half; // chapter progress on the left, contracts on the right
                 line(g,"FOUNDERS / Tier "+tier+" of 30 / "+xp+" XP",x,y,DarkUi.GOLD,half);
                 g.fill(x,y+11,x+half,y+15,0xff29383c);g.fill(x,y+11,x+(int)(half*(tier==30?1:(xp%250)/250f)),y+15,DarkUi.GOLD);
