@@ -115,6 +115,23 @@ public final class Commander {
     static final String RISEN = "revenant";
 
     /**
+     * One temporary troop of an army where a troop fell (Grave Bloom's Risen, and Death knell's: Abilities.raise): in the first slot past the army's own that
+     * none of its troops holds, at full health, gone at until (Houses.expire, and with the round: Houses.reset), with the soul effect where it rises. The caller
+     * sets its health and calls Houses.recompute once it has raised all it raises.
+     */
+    static GravesAndGlory.Unit temporary(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.TroopsRow spec, Vec3d at, long until) {
+        Set<Integer> used = new HashSet<>();
+        for (var u : b.units) if (u.squad == s) used.add(u.slot);
+        int slot = GravesAndGlory.R.squadSize();
+        while (used.contains(slot)) slot++;
+        var u = b.spawn(s, spec, slot, at);
+        u.temporary = true;
+        u.expiresAt = until;
+        BattleEffects.soul(b, at);
+        return u;
+    }
+
+    /**
      * The Warlock's Grave Bloom: the point he looks at (a raycast of the row's range, the end of it when he looks at nothing) raises up to
      * value2 of the troops of either side that fell within radius of it in the last value3 ticks (Battle.deaths), the ones nearest that point
      * first, as Risen of his own army. Each is a temporary troop (it never counts toward the slot check, a House tier, morale, mastery or the
@@ -132,17 +149,9 @@ public final class Commander {
                 .limit(Math.round(c.value2())).toList();
             if (fallen.isEmpty()) { b.campaign.notice(s.owner, "No fallen troops there."); return false; }
             var spec = Campaign.troop(RISEN);
-            Set<Integer> used = new HashSet<>();
-            for (var u : b.units) if (u.squad == s) used.add(u.slot);
-            int slot = GravesAndGlory.R.squadSize();
             for (var d : fallen) {
-                while (used.contains(slot)) slot++;
-                used.add(slot);
-                var u = b.spawn(s, spec, slot, d.at());
-                u.temporary = true;
-                u.expiresAt = b.time + c.durationTicks();
+                var u = temporary(b, s, spec, d.at(), b.time + c.durationTicks());
                 u.mob.setHealth((float) (c.value1() * u.mob.getMaxHealth()));
-                BattleEffects.soul(b, d.at());
                 b.deaths.remove(d);
             }
             Houses.recompute(s);
@@ -388,7 +397,8 @@ public final class Commander {
 
     /**
      * The commander share of a troop's blow, on the attacker's side (Combat.resolve): the Champion's infantry within passiveRadius of
-     * him x(1 + passiveValue2), the Warden's ranged troops x(1 + passiveValue), and x(1 + value1) on the entity his running Mark Prey marked.
+     * him x(1 + passiveValue2), the Warden's ranged troops x(1 + passiveValue), and x(1 + value1) on the entity his running Mark Prey marked. Beside Mark Prey,
+     * Hunter's mark (N8, Statuses.markFactor): x(1 + amount) on an entity a troop of the attacker's own army marked, and from no other army.
      */
     public static double factor(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target) {
         var s = attacker.squad;
@@ -399,7 +409,7 @@ public final class Commander {
             if (p != null && GravesAndGlory.Battle.horizontalDistance(p.getPos(), attacker.mob.getPos()) <= c.passiveRadius() * c.passiveRadius()) f *= 1 + c.passiveValue2();
         }
         if (c.passive().equals("warden") && covers(c, attacker.spec)) f *= 1 + c.passiveValue();
-        return f * marked(b, s, target);
+        return f * marked(b, s, target) * Statuses.markFactor(b, s, target);
     }
 
     /** Mark Prey's share: x(1 + value1) when the squad's running mark_prey marked this entity (abilityData holds it or its UUID), else 1. */
@@ -418,8 +428,14 @@ public final class Commander {
         return p != null && GravesAndGlory.Battle.horizontalDistance(p.getPos(), u.mob.getPos()) <= c.radius() * c.radius() ? 1 - c.value1() : 1;
     }
 
-    /** The commander share of a blow a commander strikes himself (Battle.allowDamage): his own Mark Prey on its mark, and the target side's Stand Fast. */
-    public static double playerFactor(GravesAndGlory.Battle b, GravesAndGlory.Squad attacker, LivingEntity target) { return marked(b, attacker, target) * takenFactor(b, target); }
+    /**
+     * The commander share of a blow a commander strikes himself (Battle.allowDamage): his own Mark Prey on its mark, the target side's Stand Fast, and a weaken
+     * on the commander himself (Statuses.factorOut: Kort, round 34 question 3, statuses hit commanders too).
+     */
+    public static double playerFactor(GravesAndGlory.Battle b, GravesAndGlory.Squad attacker, LivingEntity target) {
+        var p = attacker == null ? null : player(b, attacker);
+        return marked(b, attacker, target) * takenFactor(b, target) * (p == null ? 1 : Statuses.factorOut(b, p));
+    }
 
     /** The Warden's extra reach for a troop of his group (passiveValue2 blocks); 0 otherwise. Abilities.range adds it. */
     public static double rangeBonus(GravesAndGlory.Squad s, GravesAndGlory.Unit u) {

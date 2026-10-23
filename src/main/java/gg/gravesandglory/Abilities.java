@@ -22,10 +22,7 @@ import net.minecraft.util.math.RotationPropertyHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.Heightmap;
 import org.joml.Vector3f;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Troop abilities (spec 2, the abilities sheet). A troop's ability id names a row; the row's mechanic decides what it does. The shield is a tag
@@ -41,33 +38,129 @@ import java.util.UUID;
  * stance (counters row C18b, from noSky: no sky over the shooter's head), the ensnare (an on-hit slow with a cooldown), the howl (the aura row on a timer: damage and
  * speed to the army's troops within its radius for its duration) and the trample (a slam on charge_contact: once per fresh Charge, on the bear's first blow under it,
  * every enemy within the radius of the bear, the one struck among them, with knockback and the bear's rear). Every number comes from the row, with the combatDiscipline defaults where a row says 0.
+ * In-match progression (design 6, Task 6): a soldier's rows follow his level. row(u) is his level-2 row in place of the base from level 2 (row(spec) stays the
+ * base row the cards and the sheet checks read); second(u) is his level-3 row, added from level 3 (the sheet's none row below it). tick and onHit run both rows.
+ * A level-3 row on the rider trigger (ruling I1) is no second cast: it changes what the level-2 row does (a mend or the howl that also cleanses, a cloud that
+ * also weakens, a shell that leaves burning ground), and one on the onkill trigger acts on a kill (Reap: onKill; Death knell: burst). The cooldowns of the
+ * on-hit level-3 rows (Shield bash, Boarding rush) and the Risen Death knell raised live in this file's own store (SECOND_AT, RAISED: review note I2), never
+ * on the Unit, and go with the round (clearRound). The statuses those rows lay (weaken, bleed, mark, stun, knockback) are Statuses'.
  */
 final class Abilities {
     private Abilities() {}
     static final Spec.CombatDisciplineRow D = Spec.COMBATDISCIPLINE[0];
 
-    /** The abilities row of a troop's ability id; the sheet's none row for an id it lacks. */
-    static Spec.AbilitiesRow row(Spec.TroopsRow t) {
+    /** The abilities rows by id, and each troop's {base, level 2, level 3} rows (levelAbilities), read once per sheet. */
+    private record Index(Spec.AbilitiesRow[] abilities, Spec.LevelAbilitiesRow[] levels, Spec.TroopsRow[] troops, Map<String, Spec.AbilitiesRow> byId, Map<String, Spec.AbilitiesRow[]> byTroop, Spec.AbilitiesRow none) {}
+    private static volatile Index index;
+    private static Index index() {
+        var i = index;
+        if (i != null && i.abilities() == Spec.ABILITIES && i.levels() == Spec.LEVELABILITIES && i.troops() == Spec.TROOPS) return i;
+        Map<String, Spec.AbilitiesRow> byId = new HashMap<>();
         Spec.AbilitiesRow none = null;
-        for (var a : Spec.ABILITIES) { if (a.id().equals(t.ability())) return a; if (a.id().equals("none")) none = a; }
-        return none;
+        for (var a : Spec.ABILITIES) { byId.putIfAbsent(a.id(), a); if (none == null && a.id().equals("none")) none = a; }
+        Map<String, Spec.AbilitiesRow[]> byTroop = new HashMap<>();
+        for (var t : Spec.TROOPS) byTroop.put(t.id(), new Spec.AbilitiesRow[]{byId.getOrDefault(t.ability(), none), null, null});
+        for (var l : Spec.LEVELABILITIES) { var rows = byTroop.get(l.troop()); if (rows != null && (l.level() == 2 || l.level() == 3)) rows[l.level() - 1] = byId.get(l.ability()); }
+        index = i = new Index(Spec.ABILITIES, Spec.LEVELABILITIES, Spec.TROOPS, byId, byTroop, none);
+        return i;
     }
 
-    /** In-match progression seam (Task 3): the soldier's level changed, so his ability rows (the level-2 row in place of the base, the level-3 row added) and their counter tags are read again. Lane A's level up calls it from Task 4; lane B fills it in Task 6. A no-op until then. */
-    static void rowsChanged(GravesAndGlory.Unit u) {}
+    /** The abilities row of a troop's ability id (the base row, as cards and the sheet checks read it); the sheet's none row for an id it lacks. */
+    static Spec.AbilitiesRow row(Spec.TroopsRow t) { var i = index(); return i.byId().getOrDefault(t.ability(), i.none()); }
 
-    /** In-match progression seam (Task 3): the soldier landed a killing blow. Lane A's kill path calls it from Task 4; lane B fills it in Task 6 (Reap, onkill_heal). A no-op until then. */
-    static void onKill(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {}
+    /** The soldier's own ability row: his level-2 row in place of the base one from level 2 (levelAbilities), else the base row. */
+    static Spec.AbilitiesRow row(GravesAndGlory.Unit u) {
+        if (u.level >= 2) { var rows = index().byTroop().get(u.spec.id()); if (rows != null && rows[1] != null) return rows[1]; }
+        return row(u.spec);
+    }
+
+    /** The soldier's second ability row: his level-3 row from level 3 (levelAbilities), else the sheet's none row. */
+    static Spec.AbilitiesRow second(GravesAndGlory.Unit u) {
+        var i = index();
+        if (u.level >= 3) { var rows = i.byTroop().get(u.spec.id()); if (rows != null && rows[2] != null) return rows[2]; }
+        return i.none();
+    }
+
+    /** The soldier's level-3 row when it rides on his level-2 row with this mechanic (trigger rider, ruling I1), else null. */
+    static Spec.AbilitiesRow rider(GravesAndGlory.Unit u, String mechanic) {
+        var two = second(u);
+        return two.trigger().equals("rider") && two.mechanic().equals(mechanic) ? two : null;
+    }
+
+    /** Every counter tag an abilities row grants (abilities.tags, | joined), "none" giving none. */
+    static List<String> granted(Spec.AbilitiesRow row) { return row == null || row.tags().equals("none") ? List.of() : Arrays.asList(row.tags().split("\\|")); }
+
+    /**
+     * The soldier's level changed (lane A's level up calls it, and the harness after it sets a level): his counter tags are his troop's own (ArmyMobs.tags)
+     * and those his level-2 and level-3 rows grant (abilities.tags), every tag a lower level granted coming off; below level 3 his level-3 row's cooldown and
+     * the Risen it raised are forgotten. The rows themselves are read from his level at every use (row, second).
+     */
+    static void rowsChanged(GravesAndGlory.Unit u) {
+        var base = ArmyMobs.tags(u.spec);
+        var all = CounterMath.grantedTags();
+        u.tags.removeIf(t -> all.contains(t) && !base.contains(t));
+        u.tags.addAll(granted(row(u)));
+        u.tags.addAll(granted(second(u)));
+        if (u.level < 3) { SECOND_AT.remove(u); RAISED.remove(u); }
+    }
+
+    /** The cooldown of each soldier's on-hit level-3 row (Shield bash, Boarding rush): the battle time it is ready. A soldier with none is ready. Review note I2. */
+    static final Map<GravesAndGlory.Unit, Long> SECOND_AT = new IdentityHashMap<>();
+    /** The temporary Risen each Gravecaller's Death knell raised (at most the row's amount standing at once). */
+    static final Map<GravesAndGlory.Unit, List<GravesAndGlory.Unit>> RAISED = new IdentityHashMap<>();
+
+    /** A round boundary (Statuses.clear): every level-3 cooldown and Death knell count goes. */
+    static void clearRound() { SECOND_AT.clear(); RAISED.clear(); }
+
+    /** Every 200 ticks of a running round (Statuses.tick): the soldiers who fell or left drop out of the store, and the Risen who went out of each list. */
+    static void prune(GravesAndGlory.Battle b) {
+        SECOND_AT.keySet().removeIf(u -> !u.mob.isAlive() || !b.units.contains(u));
+        RAISED.values().forEach(l -> l.removeIf(r -> !r.mob.isAlive() || !b.units.contains(r)));
+        RAISED.entrySet().removeIf(e -> e.getValue().isEmpty() && (!e.getKey().mob.isAlive() || !b.units.contains(e.getKey())));
+    }
+
+    /** The battle time a row of the soldier's is ready: his own abilityAt for his first row, the store for his level-3 row. */
+    static long readyAt(GravesAndGlory.Unit u, boolean second) { return second ? SECOND_AT.getOrDefault(u, 0L) : u.abilityAt; }
+    static void spend(GravesAndGlory.Unit u, boolean second, long until) { if (second) SECOND_AT.put(u, until); else u.abilityAt = until; }
+
+    /**
+     * The soldier landed a killing blow (lane A's kill path calls it; Task 4). Reap (onkill_heal, his level-3 row on the onkill trigger): he heals the row's
+     * amount of his max health.
+     */
+    static void onKill(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
+        if (u == null || !u.mob.isAlive()) return;
+        var two = second(u);
+        if (!two.mechanic().equals("onkill_heal") || two.amount() <= 0) return;
+        u.mob.heal((float) (two.amount() * u.mob.getMaxHealth()));
+        b.world.spawnParticles(dust(Statuses.BLOOD), u.mob.getX(), u.mob.getBodyY(.6), u.mob.getZ(), 10, .3, .4, .3, 0);
+        b.world.spawnParticles(ParticleTypes.HEART, u.mob.getX(), u.mob.getY() + u.mob.getHeight() + .2, u.mob.getZ(), 1, 0, 0, 0, 0);
+    }
 
     /** The troop's ability row when it is a dread aura (mechanic aura, trigger passive, aimed at enemies: the Hollow King's), else null. auraFactor reads its amount. */
     static Spec.AbilitiesRow dreadRow(GravesAndGlory.Unit u) {
-        var row = row(u.spec);
+        var row = row(u);
         return row.mechanic().equals("aura") && row.trigger().equals("passive") && row.target().equals("enemies") ? row : null;
     }
 
-    /** The beat's cast and aura triggers for a troop: a mender heals, a caster's spell bursts when its windup ends. enemy is the troop's current target, or null. */
+    /** The soldier's level-3 aura that serves his own army where he stands (Furnace heart's taken, Admiral's call's amount: an aura on allies, passive), else null. */
+    static Spec.AbilitiesRow allyAura(GravesAndGlory.Unit u) {
+        var two = second(u);
+        return two.mechanic().equals("aura") && two.trigger().equals("passive") && two.target().equals("allies") ? two : null;
+    }
+
+    /** The soldier's own rise row (the Hollow King's Undying King: mechanic rise, on his level-3 row), else null. Houses.allowDeath reads it. */
+    static Spec.AbilitiesRow riseRow(GravesAndGlory.Unit u) {
+        var two = second(u);
+        return two.mechanic().equals("rise") ? two : null;
+    }
+
+    /**
+     * The beat's cast and aura triggers for a troop: a mender heals, a caster's spell bursts when its windup ends. enemy is the troop's current target, or null.
+     * His level-3 row on the beat: an aura that serves his army where he stands (Furnace heart, Admiral's call) logs each of his army's troops inside it as
+     * supported (lend). A rider acts through the level-2 row's own path, and the on-hit rows in onHit.
+     */
     static void tick(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity enemy, long time) {
-        var row = row(u.spec);
+        var row = row(u);
         switch (row.mechanic()) {
             case "mend" -> mend(b, u, row, time);
             case "blight" -> burst(b, u, row, time);
@@ -76,23 +169,42 @@ final class Abilities {
             case "slam" -> { if (row.trigger().equals("timer")) undertow(b, u, row, time); } // the Admiral's; a slam on hit acts in onHit
             default -> {} // the stances (steady, ambush, brace) act through the counters table; the pounce, the on-hit slows (ensnare, the harpoon) and the trample act in onHit
         }
+        var lend = allyAura(u);
+        if (lend != null) lend(b, u, lend);
     }
 
-    /** A mender sends a heal to the most hurt ally in sight within the row's radius, once per cooldown. */
+    /** A level-3 aura on allies (Furnace heart, Admiral's call) serves its army's troops within its radius: each is logged as supported by its bearer (Veterans.supported: kill credit design 3.2, review note I3). */
+    static void lend(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row) {
+        if (!u.mob.isAlive()) return;
+        double reach = row.radius() * row.radius();
+        for (var v : b.units) if (v.squad == u.squad && v != u && v.mob.isAlive() && GravesAndGlory.Battle.horizontalDistance(v.mob.getPos(), u.mob.getPos()) <= reach) Veterans.supported(b, u, v.mob);
+    }
+
+    /**
+     * A mender sends a heal to the most hurt ally in sight within the row's radius, once per cooldown. The heal is the row's amount times his army's progression and
+     * his output factor (Veterans.outputFactor: his level and weapon tier, design 4.1). Dawnlight (a mend rider that cleanses) takes slow, weaken and bleed off the
+     * ally as the heal is sent.
+     */
     static void mend(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
-        if (time < u.abilityAt) return;
+        if (time < u.abilityAt || time < u.stunnedUntil) return; // a stunned mender sends nothing (Shield bash, Rise Again: no attacks, no casts); her cooldown waits for the stun to end
         var mob = u.mob;
         double radius = row.radius() > 0 ? row.radius() : D.healRadius();
         var ally = b.units.stream().filter(v -> v.squad.team == u.squad.team && v.mob.isAlive() && v.mob.getHealth() < v.mob.getMaxHealth() && v.mob.squaredDistanceTo(mob) < radius * radius && mob.canSee(v.mob))
             .min(Comparator.comparingDouble(v -> v.mob.getHealth() / v.mob.getMaxHealth())).orElse(null);
         if (ally == null) return;
         double amount = row.amount() > 0 ? row.amount() : D.healAmount();
-        Projectiles.fire(b, u, ally.mob, "mend", (float) (amount * b.campaign.damage(u)));
+        Projectiles.fire(b, u, ally.mob, "mend", (float) (amount * b.campaign.damage(u) * Veterans.outputFactor(u)));
         Veterans.supported(b, u, ally.mob); // the mended troop is supported by the mender (kill credit, design 3.2)
+        var dawnlight = rider(u, "mend");
+        if (dawnlight != null && dawnlight.cleanse()) Statuses.cleanse(b, u, ally.mob);
         u.abilityAt = time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
     }
 
-    /** A caster's spell: the ring marks the centre while the windup runs; when it ends the burst hurts every enemy troop inside the radius and applies the row's status. */
+    /**
+     * A caster's spell: the ring marks the centre while the windup runs; when it ends the burst hurts every enemy troop inside the radius and applies the row's status.
+     * The caster's level-3 row rides on it: the Firepot (a mist rider on a blight) leaves its burning ground at the centre, and Death knell (raise) raises each
+     * enemy troop the burst killed (raise).
+     */
     static void burst(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
         if (u.spellCenter == null) return;
         if (time < u.stunnedUntil) { u.spellCenter = null; return; } // a stunned caster cannot land a spell it began before the stun
@@ -100,12 +212,41 @@ final class Abilities {
         for (int i = 0; i < 12; i++) { double angle = i * Math.PI / 6; b.world.spawnParticles(ParticleTypes.WITCH, u.spellCenter.x + Math.cos(angle) * radius, u.spellCenter.y + .2, u.spellCenter.z + Math.sin(angle) * radius, 1, 0, 0, 0, 0); }
         if (time < u.windupUntil) return;
         float base = (float) ((row.amount() > 0 ? row.amount() : u.spec.damage()) * b.campaign.damage(u));
+        var two = second(u);
+        var knell = two.mechanic().equals("raise") ? two : null;
         for (var v : new java.util.ArrayList<>(b.units)) if (v.squad.team != u.squad.team && v.mob.isAlive() && v.mob.squaredDistanceTo(u.spellCenter) < radius * radius) {
             Combat.resolve(b, u, v.mob, base, "blight", false);
             if (row.statusTicks() > 0 && v.mob.isAlive() && !anchored(b, v)) v.mob.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, row.statusTicks(), row.statusLevel()));
+            if (knell != null && !v.mob.isAlive()) raise(b, u, v, knell);
         }
         for (var st : new java.util.ArrayList<>(b.structures)) if (st.team() != u.squad.team && st.isAlive() && st.squaredDistanceTo(u.spellCenter) < radius * radius) Combat.resolve(b, u, st, base, "blight", false); // a shell bursts on a supply banner too (counters row C10 for a siege troop)
+        var firepot = rider(u, "mist");
+        if (firepot != null) {
+            b.mists.add(new Mist(u.squad.team, u.spellCenter, firepot.radius(), time + firepot.durationTicks(), u, firepot, null));
+            b.world.playSound(null, BlockPos.ofFloored(u.spellCenter), SoundEvents.ITEM_FIRECHARGE_USE, SoundCategory.HOSTILE, .8f, .9f);
+        }
         u.spellCenter = null;
+    }
+
+    /**
+     * Death knell (N6, raise): an enemy troop the caster's blight killed rises where it fell as a temporary Risen of her army for the row's durationTicks, at full
+     * health, while fewer than the row's amount she raised still stand. Grave Bloom's temporary troop (Commander.temporary): it never counts toward the slot
+     * check, a House tier, morale, mastery or the report's losses, goes at its time (Houses.expire) and with the round (Houses.reset). A temporary troop (a Risen
+     * already) does not rise, and the one that rises leaves the death log, so Grave Bloom cannot raise it again.
+     */
+    static void raise(GravesAndGlory.Battle b, GravesAndGlory.Unit u, GravesAndGlory.Unit victim, Spec.AbilitiesRow row) {
+        if (victim.temporary || victim.rose) return;
+        var mine = RAISED.computeIfAbsent(u, k -> new ArrayList<>());
+        mine.removeIf(r -> !r.mob.isAlive() || !b.units.contains(r));
+        if (mine.size() >= Math.round(row.amount()) || row.durationTicks() <= 0) return;
+        var spec = Campaign.troop(Commander.RISEN);
+        if (spec == null) return;
+        Vec3d at = victim.mob.getPos();
+        var risen = Commander.temporary(b, u.squad, spec, at, b.time + row.durationTicks());
+        mine.add(risen);
+        long now = b.time;
+        b.deaths.removeIf(d -> d.time() == now && d.troop().equals(victim.spec.id()) && d.at().squaredDistanceTo(at) < 1e-6);
+        Houses.recompute(u.squad);
     }
 
     /**
@@ -113,7 +254,7 @@ final class Abilities {
      * else shoots an arrow (a ranged troop) or hits (a melee one) through Combat.resolve.
      */
     static void attack(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity enemy, long time) {
-        var row = row(u.spec);
+        var row = row(u);
         switch (row.mechanic()) {
             case "blight", "mist" -> {
                 if (time < u.abilityAt || tooClose(u, u.mob.squaredDistanceTo(enemy))) return; // a shell is never lobbed at an enemy inside the row's minimum range
@@ -150,7 +291,7 @@ final class Abilities {
     }
 
     /** The troop's ability row's minRange: the nearest an enemy may be and still be cast at (the Mortar's shell, 10); 0 for a troop with none. */
-    static double minRange(GravesAndGlory.Unit u) { return row(u.spec).minRange(); }
+    static double minRange(GravesAndGlory.Unit u) { return row(u).minRange(); }
 
     /** Whether an enemy at this squared distance is inside the troop's minimum range. */
     static boolean tooClose(GravesAndGlory.Unit u, double distanceSquared) { double min = minRange(u); return min > 0 && distanceSquared < min * min; }
@@ -161,26 +302,50 @@ final class Abilities {
     /**
      * What a landed hit sets off on its attacker's ability: pierce hits the nearest other enemy within the row's radius behind the target for the
      * row's amount (secondary); cleave hits the nearest other enemy within the row's radius of the target, any side of it, for the row's amount
-     * (secondary); an onhit_status row with status slow slows the target (slow; the other statuses come with Statuses in Task 6); the pounce starts its cooldown and ends its run (pounce); a slam on charge_contact
-     * tramples (trample). dealt is the amount applied. Combat.resolve skips it for a secondary hit.
+     * (secondary); an onhit_status row lays its status on the target, once per its cooldown (a slow through slow, with the Harpoon's pull; weaken, bleed, stun and
+     * knockback through Statuses); the pounce starts its cooldown and ends its run (pounce); a slam on hit with a radius sweeps (slam), one with none is a Shield bash
+     * on the target alone (bash); a slam on charge_contact tramples (trample); a mark marks the target for the attacker's army (Statuses). The soldier's level-3 row
+     * on hit acts after his own row, on its own cooldown (SECOND_AT). dealt is the amount applied. Combat.resolve skips it for a secondary hit.
      */
     static void onHit(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity target, float dealt, String kind) {
-        var row = row(u.spec);
+        act(b, u, target, kind, row(u), false);
+        var two = second(u);
+        if (two.trigger().equals("onhit")) act(b, u, target, kind, two, true);
+        var riptide = Houses.riptide(u);
+        if (riptide != null && target.isAlive() && !Combat.structure(target)) slow(b, u, target, SLOWNESS_I, riptide.durationTicks()); // Riptide: every hit of a Tidecaller slows; with brine or a harpoon the longer duration stands
+    }
+
+    /** One row's part of a landed hit (onHit); second says it is the soldier's level-3 row, whose cooldown is the store's. */
+    static void act(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity target, String kind, Spec.AbilitiesRow row, boolean second) {
         switch (row.mechanic()) {
             case "pierce" -> secondary(b, u, target, row.radius(), row.amount(), true, kind);
             case "cleave" -> secondary(b, u, target, row.radius(), row.amount(), false, kind);
             case "onhit_status" -> {
-                if (row.status().equals("slow") && target.isAlive() && !Combat.structure(target) && offCooldown(b, u, row)) {
+                if (!target.isAlive() || Combat.structure(target) || !offCooldown(b, u, row, second)) return;
+                if (row.status().equals("slow")) {
                     slow(b, u, target, row);
                     if (row.knockback() < 0) pull(b, u, target, u.mob.getPos(), -row.knockback()); // the Harpooner's: a negative knockback drags the target toward the shooter
-                }
+                } else Statuses.apply(b, u, target, row);
             }
-            case "slam" -> { if (row.trigger().equals("onhit")) slam(b, u, target, row); else if (row.trigger().equals("charge_contact")) trample(b, u, target, row); }
-            case "pounce" -> pounce(b, u, row, kind);
+            case "slam" -> {
+                if (row.trigger().equals("onhit")) { if (row.radius() > 0) slam(b, u, target, row, second); else bash(b, u, target, row, second); }
+                else if (row.trigger().equals("charge_contact")) trample(b, u, target, row);
+            }
+            case "pounce" -> pounce(b, u, row, kind, second);
+            case "mark" -> { if (target.isAlive() && !Combat.structure(target)) Statuses.apply(b, u, target, "mark", row.durationTicks(), 0, row.amount()); }
             default -> {}
         }
-        var riptide = Houses.riptide(u);
-        if (riptide != null && target.isAlive() && !Combat.structure(target)) slow(b, u, target, SLOWNESS_I, riptide.durationTicks()); // Riptide: every hit of a Tidecaller slows; with brine or a harpoon the longer duration stands
+    }
+
+    /**
+     * Shield bash (N4, a slam on hit with radius 0): once per the row's cooldown, the struck target alone is thrown back by the row's knockback and stunned for
+     * its statusTicks (Statuses: a troop is stunned, a commander is only thrown; an anchored troop is not moved but still stunned).
+     */
+    static void bash(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity target, Spec.AbilitiesRow row, boolean second) {
+        if (!target.isAlive() || Combat.structure(target) || !offCooldown(b, u, row, second)) return;
+        Statuses.apply(b, u, target, "knockback", 0, 0, row.knockback());
+        Statuses.apply(b, u, target, row.status().equals("none") ? "stun" : row.status(), row.statusTicks(), row.statusLevel(), row.amount());
+        b.world.playSound(null, target.getBlockPos(), SoundEvents.ITEM_SHIELD_BLOCK, SoundCategory.HOSTILE, 1f, .7f);
     }
 
     /** Slowness I is the amplifier 0 of Riptide's slow (the spec's fixed effect kind); the abilities rows carry their own statusLevel. */
@@ -190,10 +355,13 @@ final class Abilities {
      * Whether an on-hit row may fire now. A row with a cooldown (the Harpoon's 60 ticks, Ensnare's 80) fires once and then waits it out, on the troop's own
      * abilityAt; a row with none (brine, frostshot) always fires.
      */
-    static boolean offCooldown(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row) {
+    static boolean offCooldown(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row) { return offCooldown(b, u, row, false); }
+
+    /** The same for either of the soldier's rows: his level-3 row (second) waits on the store (SECOND_AT), not on abilityAt. */
+    static boolean offCooldown(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, boolean second) {
         if (row.cooldownTicks() <= 0) return true;
-        if (b.time < u.abilityAt) return false;
-        u.abilityAt = b.time + row.cooldownTicks();
+        if (b.time < readyAt(u, second)) return false;
+        spend(u, second, b.time + row.cooldownTicks());
         return true;
     }
 
@@ -202,11 +370,14 @@ final class Abilities {
      * own counters, traits, auras and commander factors apply and no on-hit ability runs again), and each one that took it and lives is thrown back
      * from the target's spot with the row's knockback (a structure is not moved).
      */
-    static void slam(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity primary, Spec.AbilitiesRow row) {
-        if (row.cooldownTicks() > 0 && b.time < u.abilityAt) return; // the Brute's sweep: at most once per cooldown
+    static void slam(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity primary, Spec.AbilitiesRow row) { slam(b, u, primary, row, false); }
+
+    /** The same for either of the soldier's rows (second: his level-3 row, on the store's cooldown). */
+    static void slam(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity primary, Spec.AbilitiesRow row, boolean second) {
+        if (row.cooldownTicks() > 0 && b.time < readyAt(u, second)) return; // the Brute's sweep: at most once per cooldown
         Vec3d at = primary.getPos();
         int swept = splash(b, u, at, primary, (float) (row.amount() * baseHit(b, u)), row.radius(), row.knockback(), u.mob.getPos());
-        if (swept > 0 && row.cooldownTicks() > 0) u.abilityAt = b.time + row.cooldownTicks(); // a sweep that struck nobody keeps its cooldown for the next hit
+        if (swept > 0 && row.cooldownTicks() > 0) spend(u, second, b.time + row.cooldownTicks()); // a sweep that struck nobody keeps its cooldown for the next hit
         b.world.spawnParticles(ParticleTypes.CLOUD, at.x, at.y + .2, at.z, 16, row.radius() / 2, .1, row.radius() / 2, .06);
         b.world.playSound(null, primary.getBlockPos(), SoundEvents.BLOCK_ANVIL_LAND, SoundCategory.HOSTILE, .35f, .7f);
     }
@@ -255,14 +426,23 @@ final class Abilities {
     }
 
     /** Whether a pounce troop's next blow is the pounce: its row's mechanic, the row's radius or more blocks walked since its last attack (Unit.travelSinceAttack), and its cooldown up. auraFactor and pounce read it. */
-    static boolean pounceReady(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row) {
-        return row.mechanic().equals("pounce") && u.travelSinceAttack >= row.radius() && b.time >= u.abilityAt;
+    static boolean pounceReady(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row) { return pounceReady(b, u, row, false); }
+
+    /** The same for either of the soldier's rows (second: his level-3 row, the Drowned Raider's Boarding rush, on the store's cooldown). */
+    static boolean pounceReady(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, boolean second) {
+        return row.mechanic().equals("pounce") && u.travelSinceAttack >= row.radius() && b.time >= readyAt(u, second);
     }
 
+    /** Whether either of the soldier's rows is a pounce, so his run since his last attack is measured (unitTick). */
+    static boolean pounces(GravesAndGlory.Unit u) { return row(u).mechanic().equals("pounce") || second(u).mechanic().equals("pounce"); }
+
     /** A blow of a pounce troop landed: when it was the pounce (its x amount was auraFactor's) the cooldown starts, the hound growls and clay dust bursts at its feet; either way its run ends (travelSinceAttack back to 0). */
-    static void pounce(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, String kind) {
-        if (kind.equals("melee") && pounceReady(b, u, row)) {
-            u.abilityAt = b.time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
+    static void pounce(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, String kind) { pounce(b, u, row, kind, false); }
+
+    /** The same for either of the soldier's rows (second: his level-3 row, on the store's cooldown). */
+    static void pounce(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, String kind, boolean second) {
+        if (kind.equals("melee") && pounceReady(b, u, row, second)) {
+            spend(u, second, b.time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks()));
             b.world.playSound(null, u.mob.getBlockPos(), SoundEvents.ENTITY_WOLF_GROWL, SoundCategory.HOSTILE, 1.5f, 1f);
             b.world.spawnParticles(dust(CLAY), u.mob.getX(), u.mob.getY() + .2, u.mob.getZ(), 12, .5, .1, .5, 0);
         }
@@ -384,21 +564,34 @@ final class Abilities {
      * The aura share of the factor: x(1 + amount) for an attacker of the planting army standing within the radius of its standing banner
      * (the Oath Banner), the largest one only when banners overlap, times x(1 - amount) while a living enemy troop with a dread row (the Hollow
      * King) stands within its radius, the strongest one only, times x(1 + amount) of the Howl on the attacker while it lasts (howl), times the pounce's x amount
-     * when the attacker's blow is its pounce (pounceReady).
+     * when the attacker's blow is the pounce of either of his rows (pounceReady). The level-3 auras on allies (allyAura): x(1 + amount) for an attacker within the
+     * radius of a living troop of his own army that bears Admiral's call (the strongest one only), and x(1 - taken) for a target within the radius of one of its own
+     * army that bears Furnace heart (the strongest one only): the damage an own troop takes (N11). A commander struck by a troop is no troop of an army here, so
+     * Furnace heart never covers him.
      */
     static double auraFactor(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target) {
         double f = 1;
         for (var banner : b.banners) if (covers(b, banner, attacker.squad, attacker.mob.getPos())) f = Math.max(f, 1 + banner.amount());
         if (b.time < attacker.howlUntil) f *= 1 + attacker.howlAmount;
-        var own = row(attacker.spec);
-        if (pounceReady(b, attacker, own)) f *= own.amount();
-        double dread = 1;
+        var own = row(attacker);
+        if (pounceReady(b, attacker, own, false)) f *= own.amount();
+        var two = second(attacker);
+        if (pounceReady(b, attacker, two, true)) f *= two.amount();
+        var victim = target == null ? null : Combat.unitOf(b, target);
+        double dread = 1, call = 1, heart = 1;
         for (var e : b.units) {
-            if (e.squad.team == attacker.squad.team || !e.mob.isAlive()) continue;
-            var row = dreadRow(e);
-            if (row != null && GravesAndGlory.Battle.horizontalDistance(e.mob.getPos(), attacker.mob.getPos()) <= row.radius() * row.radius()) dread = Math.min(dread, 1 - row.amount());
+            if (!e.mob.isAlive()) continue;
+            if (e.squad.team != attacker.squad.team) {
+                var row = dreadRow(e);
+                if (row != null && GravesAndGlory.Battle.horizontalDistance(e.mob.getPos(), attacker.mob.getPos()) <= row.radius() * row.radius()) dread = Math.min(dread, 1 - row.amount());
+            }
+            var aura = e.level >= 3 ? allyAura(e) : null;
+            if (aura == null) continue;
+            double reach = aura.radius() * aura.radius();
+            if (aura.amount() > 0 && e.squad == attacker.squad && GravesAndGlory.Battle.horizontalDistance(e.mob.getPos(), attacker.mob.getPos()) <= reach) call = Math.max(call, 1 + aura.amount());
+            if (aura.taken() > 0 && victim != null && e.squad == victim.squad && GravesAndGlory.Battle.horizontalDistance(e.mob.getPos(), victim.mob.getPos()) <= reach) heart = Math.min(heart, 1 - aura.taken());
         }
-        return f * dread;
+        return f * call * dread * heart;
     }
 
     /**
@@ -449,10 +642,14 @@ final class Abilities {
      * An aura troop's beat. The Oath Banner (trigger hold) plants when the troop's group order, the stored one its commander gave, has turned
      * to Hold since its last beat and its cooldown is ready; the order it finds on its first beat is only remembered, so a round that starts
      * on Hold plants nothing. Dread (trigger passive) is not planted on a beat: it acts through auraFactor. The Howl (trigger timer) sounds whenever its cooldown is up (howl).
+     * A stun (Unit.stunnedUntil) stops the casts as it stops the attacks: the banner plant, the howl, the mend and the spells wait it out. The passive auras
+     * (dread, Furnace heart, Admiral's call) are the bearer's presence, not a cast, and still stand while he is stunned (Task 7 ruling on the Task 6 review M2).
      */
     static void aura(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
         switch (row.trigger()) {
             case "hold" -> {
+                if (u.seenOrder == null) u.seenOrder = b.storedAssignment(u.squad, u.spec.group()).order; // the order found on his first beat is remembered even in a stun, so a Hold given during it plants when it ends (review M6)
+                if (time < u.stunnedUntil) return; // a stunned Marshal plants nothing; the order he has not seen yet waits, so a Hold given during the stun plants when it ends
                 String order = b.storedAssignment(u.squad, u.spec.group()).order, was = u.seenOrder;
                 u.seenOrder = order;
                 if (was != null && !was.equals(order) && order.equals("hold") && time >= u.abilityAt) plant(b, u, row, time);
@@ -472,17 +669,21 @@ final class Abilities {
      * The Seer's Howl (the aura row on a timer): when its cooldown is up and the Seer is not stunned, every living troop of its own army within the row's radius
      * (itself included) gets +amount damage (auraFactor) and +amount2 speed (hasten: the attribute share that makes a real x(1 + amount2) on its ground, kept
      * by unitTick) for the row's durationTicks; the cooldown starts, the Seer howls and a ring of clay dust marks the radius. A Howl always spends its cooldown:
-     * the Seer is always within its own reach.
+     * the Seer is always within its own reach. Rousing howl (an aura rider that cleanses, on the Seer's level-3 row) also takes slow, weaken and bleed off each
+     * troop the howl reaches.
      */
     static void howl(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
         if (time < u.abilityAt || time < u.stunnedUntil) return;
         u.abilityAt = time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
         double reach = row.radius() * row.radius();
+        var rousing = rider(u, "aura");
+        boolean cleanse = rousing != null && rousing.cleanse();
         for (var v : b.units) {
             if (v.squad != u.squad || !v.mob.isAlive() || GravesAndGlory.Battle.horizontalDistance(v.mob.getPos(), u.mob.getPos()) > reach) continue;
             v.howlUntil = time + row.durationTicks(); v.howlAmount = row.amount(); v.howlSpeed = row.amount2();
             hasten(v);
             Veterans.supported(b, u, v.mob); // each howled troop is supported by the Seer (kill credit, design 3.2; the Seer himself is not)
+            if (cleanse) Statuses.cleanse(b, u, v.mob);
         }
         b.world.playSound(null, u.mob.getBlockPos(), SoundEvents.ENTITY_WOLF_HOWL, SoundCategory.HOSTILE, 1.5f, .8f);
         ring(b, u.mob.getPos(), row.radius(), CLAY);
@@ -510,7 +711,7 @@ final class Abilities {
      * howled troop's speed share is kept on its ground and taken off when its Howl ends.
      */
     static void unitTick(GravesAndGlory.Battle b, GravesAndGlory.Unit u, long time) {
-        if (u.tags.contains("pounce")) {
+        if (pounces(u)) {
             Vec3d at = u.mob.getPos();
             if (u.travelAt != null) u.travelSinceAttack += Math.sqrt(GravesAndGlory.Battle.horizontalDistance(at, u.travelAt));
             u.travelAt = at;
@@ -637,8 +838,12 @@ final class Abilities {
             b.world.setBlockState(banner.block(), banner.was() == null ? Blocks.AIR.getDefaultState() : banner.was());
     }
 
-    /** Every banner falls now, the Oath Banners and the Forward Supply banners, and every Mist cloud goes (startRound, returnLobby, switchMap, and the server stopping). */
+    /**
+     * Every banner falls now, the Oath Banners and the Forward Supply banners, and every Mist cloud goes (startRound, returnLobby, switchMap, and the server
+     * stopping). Lane B's static stores let go too (Statuses.release: the statuses, SECOND_AT and RAISED), so a world closed and opened again keeps no old troop.
+     */
     static void clearBanners(GravesAndGlory.Battle b) {
+        Statuses.release();
         for (var banner : b.banners) lower(b, banner);
         b.banners.clear();
         for (var st : new ArrayList<>(b.structures)) st.discard();
@@ -649,8 +854,12 @@ final class Abilities {
     /**
      * A Mist Caller's cloud (the mist row): the team that cast it, its centre, its radius and the battle time it thins away. It stands in Battle.mists.
      * It is a ball (radius around the centre, up and down as well as across), so a troop on a bridge above it is not in it.
+     * row is the row it acts by (its caster's mist row, or the Firepot's for the burning ground a shell leaves: N12) and rider the level-3 row that rides on it
+     * (Chill fog's weaken), or null.
      */
-    public record Mist(int team, Vec3d at, double radius, long until, GravesAndGlory.Unit caster) {
+    public record Mist(int team, Vec3d at, double radius, long until, GravesAndGlory.Unit caster, Spec.AbilitiesRow row, Spec.AbilitiesRow rider) {
+        /** A cloud cast by a troop that acts by the sheet's mist row (mistRow) with no rider. */
+        public Mist(int team, Vec3d at, double radius, long until, GravesAndGlory.Unit caster) { this(team, at, radius, until, caster, mistRow(), null); }
         /** A cloud no troop cast (the harness's): it credits nobody. */
         public Mist(int team, Vec3d at, double radius, long until) { this(team, at, radius, until, null); }
         /** Whether a point is in the cloud at this battle time. */
@@ -658,6 +867,10 @@ final class Abilities {
             double dx = p.x - at.x, dy = p.y - at.y, dz = p.z - at.z;
             return time < until && dx * dx + dy * dy + dz * dz <= radius * radius;
         }
+        /** Whether it halves the shots fired from or into it (counters row C17): a mist does, the Firepot's burning ground does not (its row's rangedPenalty). */
+        public boolean penalises() { return row == null || row.rangedPenalty(); }
+        /** Whether it is burning ground (its row lays a bleed), which looks like fire, not mist. */
+        public boolean burning() { return row != null && row.status().equals("bleed"); }
     }
 
     /** The mist row (the sheet's first row whose mechanic is mist): the numbers the cloud's slow reads. Null when the sheet has none. */
@@ -669,6 +882,8 @@ final class Abilities {
     /**
      * A Mist Caller's beat: the cast began in attack (the target's spot is spellCenter, a bolt of mist flies to it) and the ring marks the cloud-to-be while the
      * windup runs; when it ends the cloud stands there for the row's durationTicks, radius and all from the row. A stunned caster loses the cast.
+     * The duration takes the caster's output factor (Veterans.outputFactor: his level and weapon tier, design 4.1), and her level-3 row rides on the cloud
+     * when it is a mist rider (Chill fog).
      */
     static void cloud(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
         if (u.spellCenter == null) return;
@@ -676,7 +891,8 @@ final class Abilities {
         double radius = row.radius() > 0 ? row.radius() : D.spellRadius();
         for (int i = 0; i < 12; i++) { double angle = i * Math.PI / 6; b.world.spawnParticles(ParticleTypes.CLOUD, u.spellCenter.x + Math.cos(angle) * radius, u.spellCenter.y + .2, u.spellCenter.z + Math.sin(angle) * radius, 1, 0, 0, 0, 0); }
         if (time < u.windupUntil) return;
-        b.mists.add(new Mist(u.squad.team, u.spellCenter, radius, time + row.durationTicks(), u));
+        long lasts = Math.round(row.durationTicks() * Veterans.outputFactor(u));
+        b.mists.add(new Mist(u.squad.team, u.spellCenter, radius, time + lasts, u, row, rider(u, "mist")));
         b.world.playSound(null, BlockPos.ofFloored(u.spellCenter), SoundEvents.ENTITY_EVOKER_PREPARE_SUMMON, SoundCategory.HOSTILE, .6f, 1.3f);
         u.spellCenter = null;
     }
@@ -688,23 +904,40 @@ final class Abilities {
      * Every tick of a running round: a cloud thins away when its time is up; while it stands, every BEAT ticks, each enemy troop and seated enemy
      * commander in it is slowed again by the row's statusLevel for its statusTicks (so it holds while they stay and wears off a moment after they leave),
      * and it shows its particles. The shots through it are halved by counters row C17 (Combat.resolve reads inMist), not here.
+     * Each cloud acts by its own row (N12): a row whose status is none or slow slows, any other lays its status through Statuses (the Firepot's burning ground
+     * bleeds); its rider lays its own status too (Chill fog weakens). Each enemy held logs the caster as a helper (kill credit, design 3.2, review note I3).
      */
     static void mistTick(GravesAndGlory.Battle b) {
         if (b.mists.isEmpty()) return;
         b.mists.removeIf(m -> b.time >= m.until());
         if (b.time % BEAT != 0) return;
-        var row = mistRow();
         for (var m : b.mists) {
-            b.world.spawnParticles(ParticleTypes.CLOUD, m.at().x, m.at().y + .6, m.at().z, 10, m.radius() / 2, .35, m.radius() / 2, .01);
-            if (b.time % (2 * BEAT) == 0) ring(b, m.at(), m.radius(), FOAM);
+            if (m.burning()) {
+                b.world.spawnParticles(ParticleTypes.FLAME, m.at().x, m.at().y + .2, m.at().z, 8, m.radius() / 2, .05, m.radius() / 2, .01);
+                b.world.spawnParticles(ParticleTypes.SMOKE, m.at().x, m.at().y + .5, m.at().z, 4, m.radius() / 2, .2, m.radius() / 2, .01);
+                if (b.time % (2 * BEAT) == 0) ring(b, m.at(), m.radius(), EMBER);
+            } else {
+                b.world.spawnParticles(ParticleTypes.CLOUD, m.at().x, m.at().y + .6, m.at().z, 10, m.radius() / 2, .35, m.radius() / 2, .01);
+                if (b.time % (2 * BEAT) == 0) ring(b, m.at(), m.radius(), FOAM);
+            }
+            var row = m.row();
             if (row == null) continue;
-            for (var e : enemies(b, m.team())) if (!Combat.structure(e) && m.holds(e.getPos().add(0, e.getHeight() / 2, 0), b.time)) { Veterans.helped(b, m.caster(), e); slow(b, e, row); } // every enemy held in the cloud logs its caster as a helper (kill credit, design 3.2)
+            boolean slows = row.status().equals("none") || row.status().equals("slow");
+            for (var e : enemies(b, m.team())) {
+                if (Combat.structure(e) || !m.holds(e.getPos().add(0, e.getHeight() / 2, 0), b.time)) continue;
+                Veterans.helped(b, m.caster(), e); // every enemy held in the cloud logs its caster as a helper (kill credit, design 3.2)
+                if (slows) slow(b, e, row); else Statuses.apply(b, m.caster(), e, row);
+                if (m.rider() != null && e.isAlive()) Statuses.apply(b, m.caster(), e, m.rider());
+            }
         }
     }
 
-    /** Whether a point stands in a Mist cloud now (the shooter's or the target's middle, for counters row C17). */
+    /** The burning ground's ring colour (a presentation number). */
+    static final int EMBER = 0xE0702A;
+
+    /** Whether a point stands in a Mist cloud now that halves shots (the shooter's or the target's middle, for counters row C17); burning ground does not. */
     static boolean inMist(GravesAndGlory.Battle b, Vec3d p) {
-        for (var m : b.mists) if (m.holds(p, b.time)) return true;
+        for (var m : b.mists) if (m.penalises() && m.holds(p, b.time)) return true;
         return false;
     }
 

@@ -19,8 +19,12 @@ public final class CounterMath {
      * attacker's group order, noSky is whether the attacker cannot see the sky, inMist is the shooter or the target
      * standing in a Mist cloud, covered is the target's flanks covered (Gilded Bulwark: Houses.covered) and area is a
      * blow with no direction (blight, a shell, mist, the splash of a slam or a cleave on the others around the target).
+     * targetSlowed is the target under Slowness and targetWounded the target at or below combatDiscipline.woundedShare of its max health (in-match
+     * progression N9: the conditions target_slowed_or_wounded and target_wounded).
      */
-    public record Hit(Set<String> attacker, Set<String> target, double bearing, boolean raised, boolean chargeImpact, boolean charging, boolean holding, boolean noSky, boolean inMist, boolean covered, boolean area) {
+    public record Hit(Set<String> attacker, Set<String> target, double bearing, boolean raised, boolean chargeImpact, boolean charging, boolean holding, boolean noSky, boolean inMist, boolean covered, boolean area, boolean targetSlowed, boolean targetWounded) {
+        /** A hit on a target that is neither slowed nor wounded (the Phase 2 shape). */
+        public Hit(Set<String> attacker, Set<String> target, double bearing, boolean raised, boolean chargeImpact, boolean charging, boolean holding, boolean noSky, boolean inMist, boolean covered, boolean area) { this(attacker, target, bearing, raised, chargeImpact, charging, holding, noSky, inMist, covered, area, false, false); }
         /** A hit with uncovered flanks and a direction (the Phase 1 shape). */
         public Hit(Set<String> attacker, Set<String> target, double bearing, boolean raised, boolean chargeImpact, boolean charging, boolean holding, boolean noSky, boolean inMist) { this(attacker, target, bearing, raised, chargeImpact, charging, holding, noSky, inMist, false, false); }
     }
@@ -33,7 +37,11 @@ public final class CounterMath {
         for (String part : rule.split("\\+")) if (!part.equals("any") && !tags.contains(part)) return false;
         return true;
     }
-    /** The closed condition list (spec 6.1). Front is a bearing of FRONT_DEGREES or less; flank is more than combatDiscipline.flankArcDegrees, and never for a covered target or a blow with no direction (area). */
+    /**
+     * The closed condition list (spec 6.1). Front is a bearing of FRONT_DEGREES or less; flank is more than combatDiscipline.flankArcDegrees, and never for a covered
+     * target or a blow with no direction (area). target_slowed_or_wounded (Run them down, C20) holds for a slowed or a wounded target, once for both; target_wounded
+     * (Unbroken, C21) for a wounded one only.
+     */
     static boolean condition(String condition, Hit h) {
         boolean front = h.bearing() <= FRONT_DEGREES;
         return switch (condition) {
@@ -47,6 +55,8 @@ public final class CounterMath {
             case "hold" -> h.holding();
             case "no_sky" -> h.noSky();
             case "in_mist" -> h.inMist();
+            case "target_slowed_or_wounded" -> h.targetSlowed() || h.targetWounded();
+            case "target_wounded" -> h.targetWounded();
             default -> false;
         };
     }
@@ -68,22 +78,28 @@ public final class CounterMath {
     /**
      * The matched rows that contribute. A matched row and the matched rows its replaces column lists form one group (groups
      * that share a row merge), and each group contributes only its largest multiplier; a tie keeps the earlier row.
+     * A level row (one that names a tag only a level ability grants: levelOnly) takes the place of the matched rows it replaces, whatever their size
+     * (in-match progression Task 6): those rows drop out of their group's contest, so Better guard's C1g (x0.30) stands in place of C1 (x0.35) and C3g
+     * (x0.5) in place of C3 (x0.6). The group still holds them, so a row that shares one with a level row (C15 and C1g, both over C1) still meets it there.
      */
     static List<Spec.CountersRow> winners(Hit h, Spec.CountersRow[] rows) {
         int n = rows.length;
         int[] group = new int[n]; // the group label of a matched row, -1 for a row that does not match
+        boolean[] dropped = new boolean[n]; // a matched row a matched level row replaces
+        Set<String> granted = grantedTags();
         for (int i = 0; i < n; i++) group[i] = matches(rows[i], h) ? i : -1;
         for (int i = 0; i < n; i++) {
             if (group[i] < 0 || rows[i].replaces().equals("none")) continue;
+            boolean level = levelOnly(rows[i], granted);
             for (String id : rows[i].replaces().split("\\|"))
                 for (int j = 0; j < n; j++)
-                    if (group[j] >= 0 && rows[j].id().equals(id)) relabel(group, group[j], group[i]);
+                    if (group[j] >= 0 && rows[j].id().equals(id)) { relabel(group, group[j], group[i]); if (level) dropped[j] = true; }
         }
         List<Spec.CountersRow> out = new ArrayList<>();
         for (int i = 0; i < n; i++) {
-            if (group[i] < 0) continue;
+            if (group[i] < 0 || dropped[i]) continue;
             int best = -1;
-            for (int j = 0; j < n; j++) if (group[j] == group[i] && (best < 0 || rows[j].multiplier() > rows[best].multiplier())) best = j;
+            for (int j = 0; j < n; j++) if (group[j] == group[i] && !dropped[j] && (best < 0 || rows[j].multiplier() > rows[best].multiplier())) best = j;
             if (best == i) out.add(rows[i]);
         }
         return out;
@@ -124,11 +140,17 @@ public final class CounterMath {
         }
         return out;
     }
-    /** The counter tags the abilities rows grant (abilities.tags, | joined): the tags only a level 2 or level 3 ability brings to a soldier. */
-    static Set<String> grantedTags() {
-        Set<String> out = new HashSet<>();
-        for (var a : Spec.ABILITIES) if (!a.tags().equals("none")) out.addAll(Arrays.asList(a.tags().split("\\|")));
-        return out;
+    private static Spec.AbilitiesRow[] grantedFrom;
+    private static Set<String> granted = Set.of();
+    /** The counter tags the abilities rows grant (abilities.tags, | joined): the tags only a level 2 or level 3 ability brings to a soldier. Read once per abilities sheet (winners asks on every blow). */
+    static synchronized Set<String> grantedTags() {
+        if (grantedFrom != Spec.ABILITIES) {
+            Set<String> out = new HashSet<>();
+            for (var a : Spec.ABILITIES) if (!a.tags().equals("none")) out.addAll(Arrays.asList(a.tags().split("\\|")));
+            granted = Collections.unmodifiableSet(out);
+            grantedFrom = Spec.ABILITIES;
+        }
+        return granted;
     }
     /** Whether a counter row names a granted tag on either side: it applies to a soldier only once a level ability grants the tag. */
     static boolean levelOnly(Spec.CountersRow r, Set<String> granted) {

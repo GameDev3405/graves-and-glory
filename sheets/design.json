@@ -4017,7 +4017,7 @@
     {
       "id": "mage_l3",
       "mechanic": "mend",
-      "trigger": "cast",
+      "trigger": "rider",
       "cooldownTicks": 80,
       "radius": 10.0,
       "windupTicks": 0,
@@ -4109,7 +4109,7 @@
     {
       "id": "reaper_l3",
       "mechanic": "onkill_heal",
-      "trigger": "onhit",
+      "trigger": "onkill",
       "cooldownTicks": 0,
       "radius": 0.0,
       "windupTicks": 0,
@@ -4155,7 +4155,7 @@
     {
       "id": "hexer_l3",
       "mechanic": "raise",
-      "trigger": "onhit",
+      "trigger": "onkill",
       "cooldownTicks": 0,
       "radius": 0.0,
       "windupTicks": 0,
@@ -4293,7 +4293,7 @@
     {
       "id": "wm_seer_l3",
       "mechanic": "aura",
-      "trigger": "timer",
+      "trigger": "rider",
       "cooldownTicks": 240,
       "radius": 10.0,
       "windupTicks": 0,
@@ -4431,7 +4431,7 @@
     {
       "id": "ic_mortar_l3",
       "mechanic": "mist",
-      "trigger": "cast",
+      "trigger": "rider",
       "cooldownTicks": 100,
       "radius": 2.5,
       "windupTicks": 30,
@@ -4546,7 +4546,7 @@
     {
       "id": "tc_mist_l3",
       "mechanic": "mist",
-      "trigger": "cast",
+      "trigger": "rider",
       "cooldownTicks": 160,
       "radius": 5.0,
       "windupTicks": 20,
