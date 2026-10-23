@@ -54,6 +54,7 @@ public final class Phase3Checks implements ClientModInitializer {
         SUITES.put("arena",Rebuild::new);
         SUITES.put("camp",Camp::new);
         SUITES.put("walkthrough",Walkthrough::new);
+        SUITES.put("campwalk",CampWalk::new);
     }
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed,broken;
@@ -1147,14 +1148,25 @@ public final class Phase3Checks implements ClientModInitializer {
      *  by a face, an edge or a corner, a chain of solid blocks that reaches the floor. The rest of the scans (bands over water, hanging ring and pad, blocks standing in the river, the profile of every lane, the sight lines, every floating piece)
      *  are notes in screenshots/p3-wt<N>-notes.txt.
      *  GRAVES_WALK_ONLY (or a file walk-only.txt in the run folder) lists name fragments: only the lanes and picture groups whose name contains one of them are done (camp, lane1, flank, link, spur0, band, rail, posts, wall, hall, plaza, edge, outpost, ramp, float, building, sight). */
-    static final class Walkthrough implements Suite {
+    static class Walkthrough implements Suite {
         static final net.minecraft.world.Heightmap.Type FEET=net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES;
-        record Stop(String name,double arc,double tx,double ty,double tz){}
+        /** A picture stop of a lane. dwell: extra ticks the walker stands still before the picture (the camp walk stands on a pad); probe: a name the suite answers in probe() just before the picture (null: none). */
+        record Stop(String name,double arc,double tx,double ty,double tz,int dwell,String probe){
+            Stop(String name,double arc,double tx,double ty,double tz){this(name,arc,tx,ty,tz,0,null);}
+        }
+        /** The first part of the name of this suite's check ids and picture files: wt<N> for the map walk, cw for the camp walk. */
+        String pre(){return "wt"+n;}
+        /** Called at a stop with a probe name, with the walker standing still and before the picture. */
+        void probe(MinecraftClient c,Stop st,Leg leg){}
+        /** What passes a lane check: the map walk wants it finished with no stuck window, the camp walk also wants no forced step. */
+        boolean legOk(Leg leg){return leg.finished&&leg.stuck==0;}
 
         /** A road to walk: its centre line c, the line q a walker keeps to (off blocks to his right of c, mitred at the bends) with the length arc of q up to each vertex. */
         static final class Leg {
             final String id;final double off,len;final double[][] c,q;final double[] arc;final List<Stop> stops=new ArrayList<>();
             int stuck,slow,bumps,forced,ticks,photos;double walked,ymin=1e9,ymax=-1e9,stuckArc=-1;boolean finished,failed;
+            /** sprint: the walker holds the sprint key (the camp walk walks, doors and stairs are narrow); holdEnd: the lane is not finished before the last stop is done (a stop at the very end). */
+            boolean sprint=true,holdEnd=false;double look=5.0;
             Leg(String id,double off,double[]... centre){
                 this.id=id;this.off=off;c=centre;int m=c.length;q=new double[m][2];arc=new double[m];double[][] r=new double[m-1][2];
                 for(int i=0;i<m-1;i++){double dx=c[i+1][0]-c[i][0],dz=c[i+1][1]-c[i][1],l=Math.hypot(dx,dz);r[i][0]=-dz/l;r[i][1]=dx/l;} // the right-hand normal: east -> south, south -> west
@@ -1270,11 +1282,11 @@ public final class Phase3Checks implements ClientModInitializer {
                 for(int back:new int[]{16,6}){double[] from=leg.at(Math.max(0.0,leg.stuckArc-back));
                     jobs.addFirst(new ShotJob("stuck-"+leg.id+"-"+back,from[0],from[1],on[0],66.0,on[1],12,"lane "+leg.id+": "+back+" blocks before the place of its first stuck window ("+Math.round(on[0])+", "+Math.round(on[1])+"), looking at it"));}
             }
-            report("p3-wt"+n+"-leg-"+leg.id,leg.finished&&leg.stuck==0,String.format(Locale.ROOT,"%s lane of %.0f blocks walked in %d ticks (%.1f s): stuck windows %d, slow windows %d, forced steps %d, auto-jumps %d, y %.2f to %.2f, pictures %d",leg.finished?"finished":"NOT finished,",leg.len,leg.ticks,leg.ticks/20.0,leg.stuck,leg.slow,leg.forced,leg.bumps,leg.ymin,leg.ymax,leg.photos));
+            report("p3-"+pre()+"-leg-"+leg.id,legOk(leg),String.format(Locale.ROOT,"%s lane of %.0f blocks walked in %d ticks (%.1f s): stuck windows %d, slow windows %d, forced steps %d, auto-jumps %d, y %.2f to %.2f, pictures %d",leg.finished?"finished":"NOT finished,",leg.len,leg.ticks,leg.ticks/20.0,leg.stuck,leg.slow,leg.forced,leg.bumps,leg.ymin,leg.ymax,leg.photos));
         }
         /** One picture: the file is p3-wt<N>-<sequence>-<tag>.png, and its check line says where the walker stood and looked. */
         void took(MinecraftClient c,String tag,String what,Leg leg){
-            String file="wt"+n+"-"+String.format(Locale.ROOT,"%02d",++seq)+"-"+tag;shot(c,file);photoTotal++;if(leg!=null)leg.photos++;
+            String file=pre()+"-"+String.format(Locale.ROOT,"%02d",++seq)+"-"+tag;shot(c,file);photoTotal++;if(leg!=null)leg.photos++;
             var p=c.player;
             report("p3-"+file,true,String.format(Locale.ROOT,"feet (%.1f, %.1f, %.1f), eye y %.2f, yaw %.1f, pitch %.1f, render distance %d: %s",p.getX(),p.getY(),p.getZ(),p.getEyeY(),p.getYaw(),p.getPitch(),c.options.getViewDistance().getValue(),what));
         }
@@ -1310,8 +1322,8 @@ public final class Phase3Checks implements ClientModInitializer {
                     return false;
                 }
                 String label=tag==null?"start":tag;
-                if(!placed){if(t>200){report("p3-wt"+n+"-port-"+label,false,"the server did not place the walker");return true;}return false;}
-                if(p.squaredDistanceTo(x,feet,z)>2.25){if(t>400){report("p3-wt"+n+"-port-"+label,false,"the walker did not arrive at ("+x+", "+feet+", "+z+"), he stands at ("+p.getX()+", "+p.getY()+", "+p.getZ()+")");return true;}return false;}
+                if(!placed){if(t>200){report("p3-"+pre()+"-port-"+label,false,"the server did not place the walker");return true;}return false;}
+                if(p.squaredDistanceTo(x,feet,z)>2.25){if(t>400){report("p3-"+pre()+"-port-"+label,false,"the walker did not arrive at ("+x+", "+feet+", "+z+"), he stands at ("+p.getX()+", "+p.getY()+", "+p.getZ()+")");return true;}return false;}
                 if(arrived==0)arrived=t;
                 p.setYaw((float)yaw);p.setPitch((float)pitch);p.prevYaw=(float)yaw;p.prevPitch=(float)pitch;
                 boolean steady=p.isOnGround()&&p.getVelocity().horizontalLength()<0.02&&terrainReady(c,x,z);
@@ -1331,11 +1343,28 @@ public final class Phase3Checks implements ClientModInitializer {
             }
             return sb.length()==0?"nothing":sb.toString();
         }
+        /** The blocks with a collision shape in the 3x3 columns round the walker, on the two layers above the ground he hopped from, with the top of each shape (for the auto-jump notes). */
+        static String around(MinecraftClient c){
+            var p=c.player;int by=(int)Math.floor(p.getY()-0.45);var sb=new StringBuilder();
+            for(int dy=0;dy<=1;dy++)for(int ax=-1;ax<=1;ax++)for(int az=-1;az<=1;az++){
+                var pos=BlockPos.ofFloored(p.getX()+ax,by+dy,p.getZ()+az);var st=c.world.getBlockState(pos);
+                if(st.isAir())continue;var sh=st.getCollisionShape(c.world,pos);if(sh.isEmpty())continue;
+                sb.append(name(st)).append(' ').append(xyz(pos)).append(String.format(Locale.ROOT," top %.2f; ",pos.getY()+sh.getMax(Direction.Axis.Y)));
+            }
+            return sb.length()==0?"nothing":sb.toString();
+        }
 
         /** The walk: the real client player runs along a lane with the forward and sprint keys held, steering by his yaw alone (the lane line five blocks ahead), and stops for each of its pictures. */
         final class LegJob extends Job {
             final Leg leg;int seg,stopIx,phaseT,jump,win,run;String phase="walk";double wx,wz;boolean hasWin,ground=true;
             LegJob(Leg leg){this.leg=leg;}
+            /** An auto-jump: he left the ground with upward speed over 0.2 and the jump key was not down (the client's own hop over a block in front of him). */
+            void bumpCheck(MinecraftClient c,boolean g,double px,double pz,double arc){
+                var p=c.player;
+                if(ground&&!g&&p.getVelocity().y>0.2&&!c.options.jumpKey.isPressed()){
+                    leg.bumps++;if(leg.bumps<=10)note(String.format(Locale.ROOT,"auto-jump %d on lane %s at (%.1f, %.1f, %.1f), %.0f of %.0f blocks; ahead: %s; round him: %s",leg.bumps,leg.id,px,p.getY(),pz,arc,leg.len,ahead(c),around(c)));
+                }
+            }
             @Override boolean step(MinecraftClient c){
                 var p=c.player;if(p==null)return false;
                 if(c.currentScreen!=null)c.setScreen(null);
@@ -1347,31 +1376,29 @@ public final class Phase3Checks implements ClientModInitializer {
                 }
                 double sx=q[seg+1][0]-q[seg][0],sz=q[seg+1][1]-q[seg][1],sl=Math.hypot(sx,sz);
                 double u=Math.max(0,Math.min(sl,((px-q[seg][0])*sx+(pz-q[seg][1])*sz)/sl)),arc=leg.arc[seg]+u;
-                leg.ymin=Math.min(leg.ymin,p.getY());leg.ymax=Math.max(leg.ymax,p.getY());
-                if(p.getY()<Arena.Y-6||p.isDead()){release(c);leg.failed=true;report("p3-wt"+n+"-fell-"+leg.id,false,String.format(Locale.ROOT,"the walker fell or died at (%.1f, %.1f, %.1f), %.0f of %.0f blocks along lane %s",px,p.getY(),pz,arc,leg.len,leg.id));return true;}
-                if(seg==m-2&&sl-u<1.2){release(c);leg.finished=true;return true;}
-                if(t>leg.len*8+900){release(c);leg.failed=true;report("p3-wt"+n+"-timeout-"+leg.id,false,String.format(Locale.ROOT,"lane %s not finished after %d ticks, the walker is at (%.1f, %.1f, %.1f), %.0f of %.0f blocks",leg.id,t,px,p.getY(),pz,arc,leg.len));return true;}
+                leg.ymin=Math.min(leg.ymin,p.getY());leg.ymax=Math.max(leg.ymax,p.getY());                if(p.getY()<Arena.Y-6||p.isDead()){release(c);leg.failed=true;report("p3-"+pre()+"-fell-"+leg.id,false,String.format(Locale.ROOT,"the walker fell or died at (%.1f, %.1f, %.1f), %.0f of %.0f blocks along lane %s",px,p.getY(),pz,arc,leg.len,leg.id));return true;}
+                if(seg==m-2&&sl-u<1.2&&(!leg.holdEnd||stopIx>=leg.stops.size())){release(c);leg.finished=true;return true;}
+                if(t>leg.len*8+900+(leg.holdEnd?leg.stops.size()*400:0)){release(c);leg.failed=true;report("p3-"+pre()+"-timeout-"+leg.id,false,String.format(Locale.ROOT,"lane %s not finished after %d ticks, the walker is at (%.1f, %.1f, %.1f), %.0f of %.0f blocks",leg.id,t,px,p.getY(),pz,arc,leg.len));return true;}
                 boolean g=p.isOnGround();
                 if(phase.equals("walk")){
-                    if(stopIx<leg.stops.size()&&arc>=leg.stops.get(stopIx).arc()-1.8){phase="brake";phaseT=0;release(c);ground=g;return false;}
-                    double[] a=leg.at(arc+5.0);
+                    if(stopIx<leg.stops.size()&&arc>=leg.stops.get(stopIx).arc()-1.8){bumpCheck(c,g,px,pz,arc);phase="brake";phaseT=0;release(c);ground=g;return false;}
+                    double[] a=leg.at(arc+leg.look);
                     float want=(float)Math.toDegrees(Math.atan2(-(a[0]-px),a[1]-pz)),cur=p.getYaw(),d=wrap(want-cur);
                     p.setYaw(cur+Math.max(-25f,Math.min(25f,d)));p.prevYaw=p.getYaw();p.setPitch(4f);p.prevPitch=4f;
-                    boolean go=Math.abs(wrap(want-p.getYaw()))<35f;
-                    o.forwardKey.setPressed(go);o.sprintKey.setPressed(go);o.jumpKey.setPressed(jump>0);if(jump>0)jump--;
-                    if(ground&&!g&&p.getVelocity().y>0.2&&!o.jumpKey.isPressed()){
-                        leg.bumps++;if(leg.bumps<=10)note(String.format(Locale.ROOT,"auto-jump %d on lane %s at (%.1f, %.1f, %.1f), %.0f of %.0f blocks; ahead: %s",leg.bumps,leg.id,px,p.getY(),pz,arc,leg.len,ahead(c)));
-                    }
+                    boolean go=Math.abs(wrap(want-p.getYaw()))<(leg.look<4?12f:35f);
+                    o.forwardKey.setPressed(go);o.sprintKey.setPressed(go&&leg.sprint);o.jumpKey.setPressed(jump>0);if(jump>0)jump--;
+                    bumpCheck(c,g,px,pz,arc);
                     if(go)watch(c,px,pz,arc);
                 }else if(phase.equals("brake")){
-                    release(c);
+                    release(c);bumpCheck(c,g,px,pz,arc); // the walker still coasts a quarter of a block here and the client's own auto-jump can hop him up a block in front of him
                     if(p.getVelocity().horizontalLength()<0.03||++phaseT>30){phase="look";phaseT=0;}
                 }else if(phase.equals("look")){
                     var st=leg.stops.get(stopIx);var v=MapTour.look(st.name(),p.getX(),p.getEyeY(),p.getZ(),st.tx(),st.ty(),st.tz());
                     p.setYaw(v.yaw());p.setPitch(v.pitch());p.prevYaw=v.yaw();p.prevPitch=v.pitch();phase="wait";phaseT=0;
                 }else if(phase.equals("wait")){
                     var st=leg.stops.get(stopIx);
-                    if(++phaseT>=24&&(terrainReady(c,p.getX(),p.getZ())||phaseT>=240)){
+                    if(++phaseT>=24+st.dwell()&&(terrainReady(c,p.getX(),p.getZ())||phaseT>=240+st.dwell())){
+                        if(st.probe()!=null)probe(c,st,leg);
                         took(c,st.name(),String.format(Locale.ROOT,"lane %s at %.0f of %.0f blocks, looking at (%.1f, %.1f, %.1f)",leg.id,arc,leg.len,st.tx(),st.ty(),st.tz()),leg);
                         stopIx++;phase="walk";hasWin=false;
                     }
@@ -1386,7 +1413,7 @@ public final class Phase3Checks implements ClientModInitializer {
                 double moved=Math.hypot(px-wx,pz-wz);leg.walked+=moved;
                 if(moved<3.0){
                     leg.stuck++;run++;
-                    report("p3-wt"+n+"-stuck-"+leg.id+"-"+leg.stuck,false,String.format(Locale.ROOT,"gained %.1f blocks in 2 s at (%.1f, %.1f, %.1f), %.0f of %.0f blocks along lane %s; ahead: %s",moved,px,c.player.getY(),pz,arc,leg.len,leg.id,ahead(c)));
+                    report("p3-"+pre()+"-stuck-"+leg.id+"-"+leg.stuck,false,String.format(Locale.ROOT,"gained %.1f blocks in 2 s at (%.1f, %.1f, %.1f), %.0f of %.0f blocks along lane %s; ahead: %s",moved,px,c.player.getY(),pz,arc,leg.len,leg.id,ahead(c)));
                     if(leg.stuck==1)leg.stuckArc=arc;
                     if(run==1)jump=10;
                     else{
@@ -1739,42 +1766,45 @@ public final class Phase3Checks implements ClientModInitializer {
             double cx(){return (x0+x1)/2.0+0.5;}double cy(){return (y0+y1)/2.0+0.5;}double cz(){return (z0+z1)/2.0+0.5;}
         }
         volatile List<Piece> pieces=List.of();
-        /** The floor of the scan is Arena.Y-8, its top Arena.Y+80. A solid block that touches (face, edge or corner: a tent of wool rows meets at its edges) nothing that leads back to the floor is part of a floating piece; the pieces are counted and listed. */
-        void floating(ServerWorld w,int hx,int hz,net.minecraft.entity.Entity ent){
-            int y0=Arena.Y-8,y1=Arena.Y+80,wz=2*hz+1,hy=y1-y0+1,cx0=(-hx)>>4,cz0=(-hz)>>4,ncx=(hx>>4)-cx0+1,ncz=(hz>>4)-cz0+1;
+        /** What floatBox found: the floating pieces (largest first), the solid blocks that reach the floor, and the blocks of the floating pieces. */
+        record FloatScan(List<Piece> found,long reached,long floatTotal){}
+        /** The reached-from-floor scan of a box (x0..x1, z0..z1, y0..y1, all included): the solid blocks of the layer y0 are the floor, a solid block that touches (face, edge or corner: a tent of wool rows meets at its edges) a block that reaches the floor
+         *  reaches it too, and a solid block that does not belongs to a floating piece. Shared by the map walk (the arena) and the camp walk (the island). Server thread. */
+        static FloatScan floatBox(ServerWorld w,int x0,int x1,int z0,int z1,int y0,int y1){
+            int wx=x1-x0+1,wz=z1-z0+1,hy=y1-y0+1,cx0=x0>>4,cz0=z0>>4,ncx=(x1>>4)-cx0+1,ncz=(z1>>4)-cz0+1;
             var chunks=new net.minecraft.world.chunk.Chunk[ncx*ncz];
             for(int a=0;a<ncx;a++)for(int c=0;c<ncz;c++)chunks[a*ncz+c]=w.getChunk(cx0+a,cz0+c);
-            var seen=new BitSet((2*hx+1)*wz*hy);var pos=new BlockPos.Mutable();
+            var seen=new BitSet(wx*wz*hy);var pos=new BlockPos.Mutable();
             int[] st=new int[1<<20];int sp=0;long reached=0;
             int[] dx=new int[26],dy=new int[26],dz=new int[26];int q=0;
             for(int a=-1;a<=1;a++)for(int b=-1;b<=1;b++)for(int c=-1;c<=1;c++)if(a!=0||b!=0||c!=0){dx[q]=a;dy[q]=b;dz[q]=c;q++;}
-            for(int x=-hx;x<=hx;x++)for(int z=-hz;z<=hz;z++){
+            for(int x=x0;x<=x1;x++)for(int z=z0;z<=z1;z++){
                 var ch=chunks[((x>>4)-cx0)*ncz+((z>>4)-cz0)];
-                if(solid(ch.getBlockState(pos.set(x,y0,z)))){int id=((x+hx)*wz+(z+hz))*hy;if(!seen.get(id)){seen.set(id);if(sp==st.length)st=Arrays.copyOf(st,sp*2);st[sp++]=id;}}
+                if(solid(ch.getBlockState(pos.set(x,y0,z)))){int id=((x-x0)*wz+(z-z0))*hy;if(!seen.get(id)){seen.set(id);if(sp==st.length)st=Arrays.copyOf(st,sp*2);st[sp++]=id;}}
             }
             while(sp>0){
-                int id=st[--sp];reached++;int y=id%hy+y0,r=id/hy,z=r%wz-hz,x=r/wz-hx;
+                int id=st[--sp];reached++;int y=id%hy+y0,r=id/hy,z=r%wz+z0,x=r/wz+x0;
                 for(int k=0;k<26;k++){
                     int nx=x+dx[k],ny=y+dy[k],nz=z+dz[k];
-                    if(nx<-hx||nx>hx||nz<-hz||nz>hz||ny<y0||ny>y1)continue;
-                    int nid=((nx+hx)*wz+(nz+hz))*hy+(ny-y0);if(seen.get(nid))continue;
+                    if(nx<x0||nx>x1||nz<z0||nz>z1||ny<y0||ny>y1)continue;
+                    int nid=((nx-x0)*wz+(nz-z0))*hy+(ny-y0);if(seen.get(nid))continue;
                     if(!solid(chunks[((nx>>4)-cx0)*ncz+((nz>>4)-cz0)].getBlockState(pos.set(nx,ny,nz))))continue;
                     seen.set(nid);if(sp==st.length)st=Arrays.copyOf(st,sp*2);st[sp++]=nid;
                 }
             }
             var found=new ArrayList<Piece>();long floatTotal=0;
-            for(int x=-hx;x<=hx;x++)for(int z=-hz;z<=hz;z++)for(int y=y0;y<=y1;y++){
-                int id=((x+hx)*wz+(z+hz))*hy+(y-y0);if(seen.get(id))continue;
+            for(int x=x0;x<=x1;x++)for(int z=z0;z<=z1;z++)for(int y=y0;y<=y1;y++){
+                int id=((x-x0)*wz+(z-z0))*hy+(y-y0);if(seen.get(id))continue;
                 if(!solid(chunks[((x>>4)-cx0)*ncz+((z>>4)-cz0)].getBlockState(pos.set(x,y,z))))continue;
                 seen.set(id);sp=0;st[sp++]=id;int size=0,bx0=x,by0=y,bz0=z,bx1=x,by1=y,bz1=z;var names=new TreeMap<String,Integer>();
                 while(sp>0){
-                    int cid=st[--sp];size++;int cy=cid%hy+y0,r=cid/hy,cz=r%wz-hz,cx=r/wz-hx;
+                    int cid=st[--sp];size++;int cy=cid%hy+y0,r=cid/hy,cz=r%wz+z0,cx=r/wz+x0;
                     bx0=Math.min(bx0,cx);bx1=Math.max(bx1,cx);by0=Math.min(by0,cy);by1=Math.max(by1,cy);bz0=Math.min(bz0,cz);bz1=Math.max(bz1,cz);
                     names.merge(name(chunks[((cx>>4)-cx0)*ncz+((cz>>4)-cz0)].getBlockState(pos.set(cx,cy,cz))),1,Integer::sum);
                     for(int k=0;k<26;k++){
                         int nx=cx+dx[k],ny=cy+dy[k],nz=cz+dz[k];
-                        if(nx<-hx||nx>hx||nz<-hz||nz>hz||ny<y0||ny>y1)continue;
-                        int nid=((nx+hx)*wz+(nz+hz))*hy+(ny-y0);if(seen.get(nid))continue;
+                        if(nx<x0||nx>x1||nz<z0||nz>z1||ny<y0||ny>y1)continue;
+                        int nid=((nx-x0)*wz+(nz-z0))*hy+(ny-y0);if(seen.get(nid))continue;
                         if(!solid(chunks[((nx>>4)-cx0)*ncz+((nz>>4)-cz0)].getBlockState(pos.set(nx,ny,nz))))continue;
                         seen.set(nid);if(sp==st.length)st=Arrays.copyOf(st,sp*2);st[sp++]=nid;
                     }
@@ -1784,6 +1814,12 @@ public final class Phase3Checks implements ClientModInitializer {
                 found.add(new Piece(size,bx0,by0,bz0,bx1,by1,bz1,tn.toString(),null));
             }
             found.sort((p,o)->o.size()-p.size());
+            return new FloatScan(found,reached,floatTotal);
+        }
+        /** The floor of the scan is Arena.Y-8, its top Arena.Y+80 (see floatBox); the pieces are counted and listed, and the first ones get a place to stand for their pictures. */
+        void floating(ServerWorld w,int hx,int hz,net.minecraft.entity.Entity ent){
+            int y0=Arena.Y-8,y1=Arena.Y+80;
+            var scan=floatBox(w,-hx,hx,-hz,hz,y0,y1);var found=scan.found();long reached=scan.reached(),floatTotal=scan.floatTotal();
             // a place to stand for the pictures of the first pieces: 3 to 10 blocks off, on a floor under the piece, with a clear ray from the eye to the piece
             var sigs=new HashSet<String>();
             for(int i=0;i<found.size()&&sigs.size()<6;i++){
@@ -1810,6 +1846,457 @@ public final class Phase3Checks implements ClientModInitializer {
             pieces=found;
             report("p3-wt"+n+"-floating",found.isEmpty(),"solid blocks reached from the floor "+reached+", floating pieces "+found.size()+" of "+floatTotal+" blocks"+(found.isEmpty()?"":", the biggest "+found.stream().limit(6).map(p->p.size()+" blocks x "+p.x0()+".."+p.x1()+" y "+p.y0()+".."+p.y1()+" z "+p.z0()+".."+p.z1()+" ("+p.top()+")").toList()));
             for(int i=0;i<Math.min(40,found.size());i++){var p=found.get(i);note("floating piece "+(i+1)+": "+p.size()+" blocks, x "+p.x0()+" to "+p.x1()+", y "+p.y0()+" to "+p.y1()+", z "+p.z0()+" to "+p.z1()+": "+p.top());}
+        }
+    }
+
+    /** Task 3, the camp walkthrough gate (suite campwalk): the camp as a commander meets it, walked by a real client player (movement keys held, not teleports) and photographed from his eyes. The camp stands as the world builds it
+     *  (the client starts the world, CampWorld.build runs) and the walker arrives through Campaign.toLobby. He walks (no sprint: doors and stairs are narrow) four legs, in sub-legs that begin where the one before ended (a sub-leg never turns back on itself):
+     *  leg 1 (1-arrival) from the spawn plinth north up the avenue to the parade standard; leg 2 (2a-archive, 2b-founders) east along the cross way to the archive, through its west door to the Archivist, out again and round to the court of the Founders' Stone;
+     *  leg 3 (3a-steward, 3b-west-pad, 3c-east-pad, 3d-arch) back across the parade to the Steward, both ready pads (he stands on each for about 5 s: a match starts after 10 s of ready), and the arch to the portcullis; leg 4 (4a-ridge-foot, 4b-west-stair, 4c-plateau,
+     *  4d-tent, 4e-quartermaster, 4f-east-stair) across the bare bowl to the foot of the west stair, up it, along the plateau into the command tent, round the war table to the Quartermaster, and down the east stair.
+     *  After the legs: the arrival, parade, gates, pads and tent views again at dusk and at night (the world time is set; lanterns, braziers), the two flanks and the edges of the island seen from the ground, and the flight views (spectator camera: both pads from above,
+     *  the war table, the island from outside). Pictures are screenshots/p3-cw-<NN>-<what>.png, each with a check line p3-cw-<NN>-<what> that says where the walker stood and looked.
+     *  Checks: p3-cw-leg-<id> (the lane finished, no stuck window of 2 s with under 3 blocks gained, no forced step), p3-cw-walk (all legs: stuck windows, forced steps, auto-jumps, blocks walked), p3-cw-pad-west and p3-cw-pad-east (the walker stood on the pad: his feet inside it,
+     *  smooth quartz under him, Campaign.onPad has his team), p3-cw-stairs (the west flight climbed to feet 77 and the east flight descended to feet 65, no forced step), p3-cw-floating (floatBox over the island box and the rim rows, y from minY: no solid block that does not reach the
+     *  floor), p3-cw-lantern (every lantern of the box could be placed where it hangs: LanternBlock.canPlaceAt), p3-cw-barrier (the 21 barriers are the arch's and no other barrier stands in the box), p3-cw-entities (no camp entity inside a block that stops him: villagers by their
+     *  collision box, labels by the cell they stand in), p3-cw-labels (every label 3.7 above its row and, from the place the walker photographed it, all five sample points of its rectangle in sight; no two labels overlap in his view), p3-cw-pictures (the files exist),
+     *  p3-cw-complete (every id of the walk was reported; only when no filter was given) and p3-cw-suite.
+     *  GRAVES_WALK_ONLY lists name fragments: leg1, leg2, leg3b, leg4, night, flank, fly (nothing given: all). A leg that is run alone starts with the walker put at its first point (a note says so). GRAVES_CW_SABOTAGE=1 plants one defect for each scan check
+     *  (a floating block, a loose lantern, a barrier on the parade, an armor stand in the floor, the Archivist's label moved up into the roof), a wall across the avenue, the quartz floors of both pads turned to stone and a wall across the west stair, to show that the checks go red; use it with GRAVES_WALK_ONLY=leg1,leg3b,leg3c,leg4b,scan. */
+    static final class CampWalk extends Walkthrough {
+        static final Spec.CampRow C=Spec.CAMP[0];
+        static final int OX=C.originX(),OZ=C.originZ();
+        /** The feet of a walker on the floor of the bowl and on the plateau. */
+        static final double GROUND=C.floorY()+1,PLATEAU=C.plateauY()+1;
+        final boolean sabotage="1".equals(System.getenv("GRAVES_CW_SABOTAGE"));
+        final List<Leg> mine=new ArrayList<>();
+        final Set<String> ids=Collections.synchronizedSet(new LinkedHashSet<>());
+        volatile boolean scanned,arrived,labelsDone;
+        final double[][] padFeet=new double[2][];final boolean[] padQuartz=new boolean[2];final int[] padOn={-9,-9},padCount={-9,-9};
+        double stairTop=Double.NaN,stairFoot=Double.NaN;
+        final List<double[]> labelViews=Collections.synchronizedList(new ArrayList<>());
+        volatile Map<String,double[]> spots=Map.of();
+        volatile String scanSummary="";
+        float[] labelPx=new float[0];
+        int pictureWait;
+
+        @Override String pre(){return "cw";}
+        @Override boolean legOk(Leg leg){return leg.finished&&leg.stuck==0&&leg.forced==0;}
+        @Override public int limit(){return 40000;}
+        @Override public void cleanup(MinecraftClient c){super.cleanup(c);server(c,b->b.world.setTimeOfDay(3000));}
+        /** One check line, remembered by id (p3-cw-complete wants them all). */
+        void ck(String id,boolean pass,String why){ids.add(id);report(id,pass,why);}
+        boolean ran(String group){return only.isEmpty()||want(group);}
+        /** Whether the lanes whose id begins with the prefix (leg3, leg3b, ...) are run in this launch. */
+        boolean ranLeg(String prefix){return only.isEmpty()||only.stream().anyMatch(f->f.startsWith(prefix)||prefix.startsWith(f));}
+        @Override void legDone(Leg leg){super.legDone(leg);ids.add("p3-cw-leg-"+leg.id);}
+
+        @Override public void step(MinecraftClient c,int tick){
+            if(tick<20)return;
+            if(tick==20)setup(c);
+            switch(stage){
+                case 0->{ // the arrival: through Campaign.toLobby, as the camp does it for a commander
+                    UUID me=c.player.getUuid();arrived=false;
+                    server(c,x->{x.campaign.leash=true;x.world.setTimeOfDay(3000);var sp=x.server.getPlayerManager().getPlayer(me);x.clearOldUnits();x.campaign.toLobby(sp);arrived=true;});
+                    stage=1;waited=0;
+                }
+                case 1->{
+                    var s=CampWorld.spawn(null);var p=c.player;
+                    if(arrived&&++waited>=40&&p.squaredDistanceTo(s.x(),s.y(),s.z())<1.0&&terrainReady(c,p.getX(),p.getZ())){
+                        ck("p3-cw-arrival",true,String.format(Locale.ROOT,"after Campaign.toLobby the walker stands at (%.2f, %.2f, %.2f), yaw %.0f, pitch %.0f; the spawn row says (%.2f, %.2f, %.2f)",p.getX(),p.getY(),p.getZ(),p.getYaw(),p.getPitch(),s.x(),s.y(),s.z()));
+                        scanned=false;server(c,x->scan(x));stage=2;waited=0;
+                    }else if(waited>600){ck("p3-cw-arrival",false,"the walker is not at the spawn after "+waited+" ticks, he stands at ("+p.getX()+", "+p.getY()+", "+p.getZ()+")");finish(c,"cw");stage=9;}
+                }
+                case 2->{if(scanned){labelPx=measure(c);assemble();stage=3;}}
+                case 3->{
+                    if(job==null){job=jobs.poll();if(job==null){stage=4;return;}}
+                    if(job.step(c)){if(job instanceof LegJob lj)legDone(lj.leg);job=null;}
+                }
+                case 4->{release(c);labelsDone=false;final float[] px=labelPx;server(c,x->labels(x,px));stage=5;waited=0;}
+                case 5->{if(labelsDone&&++waited>=60){summary(c);stage=6;pictureWait=0;}}
+                case 6->{if(++pictureWait>=80){pictures(c);finish(c,"cw");stage=9;}}
+                default->{}
+            }
+        }
+
+        // ---- the lanes ----
+        Leg lane(String id,double[]... pts){var l=new Leg(id,0.0,pts);l.sprint=false;l.holdEnd=true;mine.add(l);return l;}
+        /** A stop at the point (x,z) of the lane: the walker brakes 1.8 blocks before the arc of the stop and coasts a quarter of a block, so the stop is put 1.55 past the point. */
+        void at(Leg l,String tag,double x,double z,double tx,double ty,double tz){at(l,tag,x,z,tx,ty,tz,0,null);}
+        void at(Leg l,String tag,double x,double z,double tx,double ty,double tz,int dwell,String probe){l.stops.add(new Stop(tag,Math.min(l.len+1.5,l.arcOf(x,z)+1.55),tx,ty,tz,dwell,probe));}
+        void fin(Leg l,double feetY){
+            l.stops.sort(Comparator.comparingDouble(Stop::arc));
+            if(want("leg"+l.id)||only.isEmpty()){jobs.add(new EnsureAt(l.q[0][0],l.q[0][1],feetY,l.q[1][0],l.q[1][1]));jobs.add(new LegJob(l));}
+            else mine.remove(l);
+        }
+        /** Puts the walker at the start of a lane when a filter skipped the lane before it (or the one before it failed): not when he stands there already. */
+        final class EnsureAt extends Job {
+            final double x,z,y,tx,tz;ShotJob inner;boolean decided;
+            EnsureAt(double x,double z,double y,double tx,double tz){this.x=x;this.z=z;this.y=y;this.tx=tx;this.tz=tz;}
+            @Override boolean step(MinecraftClient c){
+                if(!decided){
+                    decided=true;var p=c.player;if(p==null)return false;
+                    if(Math.hypot(p.getX()-x,p.getZ()-z)<=3.5&&Math.abs(p.getY()-y)<1.6)return true;
+                    note(String.format(Locale.ROOT,"the walker is put at (%.1f, %.1f, %.1f), the start of the next lane (he stood at %.1f, %.1f, %.1f)",x,y,z,p.getX(),p.getY(),p.getZ()));
+                    inner=new ShotJob(null,x,z,tx,y+1.0,tz,12,"start of a lane",y);
+                }
+                return inner.step(c);
+            }
+        }
+        /** Sets the world time and waits for the client to have it. */
+        final class TimeJob extends Job {
+            final long time;TimeJob(long time){this.time=time;}
+            @Override boolean step(MinecraftClient c){if(++t==1){server(c,b->b.world.setTimeOfDay(time));}return t>=45;}
+        }
+        /** A flight picture: the spectator camera at (x,y,z) looking at a target; the number is taken when the view starts, so the files stay in the order of the walk. */
+        final class ViewJob extends Job {
+            final String tag,what;final double x,y,z,tx,ty,tz;String name;
+            ViewJob(String tag,double x,double y,double z,double tx,double ty,double tz,String what){this.tag=tag;this.x=x;this.y=y;this.z=z;this.tx=tx;this.ty=ty;this.tz=tz;this.what=what;}
+            @Override boolean step(MinecraftClient c){
+                if(c.currentScreen!=null)c.setScreen(null);
+                if(name==null){release(c);if(c.options.getViewDistance().getValue()!=14)c.options.getViewDistance().setValue(14);name="cw-"+String.format(Locale.ROOT,"%02d",++seq)+"-"+tag;}
+                if(!view(c,name,x,y,z,tx,ty,tz))return false;
+                photoTotal++;report("p3-"+name,true,String.format(Locale.ROOT,"flight camera at (%.1f, %.1f, %.1f) looking at (%.1f, %.1f, %.1f), spectator, render distance 14: %s",x,y,z,tx,ty,tz,what));ids.add("p3-"+name);return true;
+            }
+        }
+        void snap(String tag,double x,double z,double fy,double tx,double ty,double tz,int view,String what){jobs.add(new ShotJob(tag,x,z,tx,ty,tz,view,what,fy));}
+
+        void assemble(){
+            jobs.clear();mine.clear();var f=GROUND;double top=PLATEAU;
+            // leg 1: the arrival
+            var l=lane("1-arrival",new double[]{0.5,-291.5},new double[]{0.5,-312.0});
+            at(l,"spawn-north",0.5,-291.5,0.5,68.0,-320.0);
+            at(l,"welcome-label",0.5,-291.5,0.5,68.7,-295.5,0,"label:welcome");
+            at(l,"avenue-standard",0.5,-299.0,0.5,69.0,-316.0);
+            at(l,"parade-west",0.5,-304.0,-16.0,66.0,-306.0);
+            at(l,"parade-east",0.5,-304.0,16.0,66.0,-306.0);
+            at(l,"standard",0.5,-309.4,0.5,69.5,-316.0);
+            fin(l,f);
+            // leg 2: east to the archive
+            l=lane("2a-archive",new double[]{0.5,-310.8},new double[]{0.5,-304.0},new double[]{34.0,-304.0},new double[]{36.0,-308.0},new double[]{38.0,-309.5},new double[]{41.4,-309.5});
+            at(l,"archive-from-parade",16.0,-304.0,40.0,70.0,-308.0);
+            at(l,"archive-west-face",30.0,-304.0,39.0,69.0,-309.5);
+            at(l,"archive-forecourt",35.0,-306.0,39.0,67.0,-309.5);
+            at(l,"door-threshold",39.5,-309.5,46.0,67.0,-309.5);
+            at(l,"archivist",41.4,-309.5,44.5,66.2,-309.5);
+            at(l,"archivist-label",41.4,-309.5,44.5,68.8,-309.5,0,"label:archivist");
+            at(l,"hall-hearth",41.4,-309.5,50.5,67.0,-309.5);
+            at(l,"hall-shelves",41.4,-309.5,45.0,67.0,-313.5);
+            at(l,"hall-roof",41.4,-309.5,45.0,73.0,-309.5);
+            fin(l,f);
+            l=lane("2b-founders",new double[]{41.4,-309.5},new double[]{36.5,-309.5},new double[]{35.0,-304.5},new double[]{35.0,-297.0},new double[]{41.0,-296.0},new double[]{47.0,-296.0});
+            at(l,"door-looking-out",41.4,-309.5,34.0,67.0,-309.5);
+            at(l,"court-approach",35.0,-298.0,46.0,66.5,-296.0);
+            at(l,"court-gate",44.5,-296.0,50.0,66.0,-296.0,0,"label:founders");
+            at(l,"founders-stone",47.0,-296.0,50.0,65.8,-296.0);
+            at(l,"founders-label",47.0,-296.0,50.5,68.7,-295.5,0,"label:founders");
+            at(l,"court-corner",47.0,-296.0,53.0,66.5,-291.0);
+            fin(l,f);
+            // leg 3: back to the parade, the Steward, the pads, the arch
+            l=lane("3a-steward",new double[]{47.0,-296.0},new double[]{24.0,-296.0},new double[]{6.0,-296.0},new double[]{2.5,-292.0},new double[]{2.5,-290.5});
+            at(l,"parade-east-edge",24.0,-296.0,0.5,66.5,-296.0);
+            at(l,"welcome-from-east",8.0,-296.0,0.5,68.7,-295.5,0,"label:welcome");
+            at(l,"spawn-plinth",6.0,-296.0,0.5,64.8,-292.0);
+            at(l,"steward",2.5,-291.0,4.5,66.4,-287.5);
+            at(l,"steward-label",2.5,-291.0,4.5,68.7,-287.5,0,"label:steward");
+            fin(l,f);
+            l=lane("3b-west-pad",new double[]{2.5,-290.5},new double[]{-9.0,-287.0},new double[]{-9.0,-282.0});
+            at(l,"west-pad-label",-9.0,-287.0,-9.0,68.7,-282.0,0,"label:gate-west");
+            at(l,"west-pad-stand",-9.0,-282.0,-1.0,69.0,-279.0,30,"pad:0");
+            at(l,"west-pad-tower",-9.0,-282.0,-35.0,74.0,-268.0);
+            at(l,"west-pad-back",-9.0,-282.0,-9.0,66.5,-304.0);
+            fin(l,f);
+            l=lane("3c-east-pad",new double[]{-9.0,-282.0},new double[]{-9.0,-285.0},new double[]{10.0,-285.0},new double[]{10.0,-282.0});
+            at(l,"east-pad-label",10.0,-285.0,10.0,68.7,-282.0,0,"label:gate-east");
+            at(l,"east-pad-stand",10.0,-282.0,1.5,69.0,-279.0,30,"pad:1");
+            at(l,"east-pad-tower",10.0,-282.0,35.0,74.0,-268.0);
+            at(l,"pads-pair",10.0,-282.0,-9.0,65.5,-282.0);
+            fin(l,f);
+            l=lane("3d-arch",new double[]{10.0,-282.0},new double[]{10.0,-285.0},new double[]{0.5,-285.0},new double[]{0.5,-278.4});
+            at(l,"arch-front",0.5,-285.0,0.5,67.0,-277.0);
+            at(l,"arch-inside",0.5,-279.5,0.5,72.0,-278.0);
+            at(l,"portcullis",0.5,-278.4,0.5,66.5,-277.0);
+            at(l,"rim-through-gate",0.5,-278.4,0.5,74.0,-268.0);
+            fin(l,f);
+            // leg 4: the ridge
+            l=lane("4a-ridge-foot",new double[]{0.5,-278.4},new double[]{0.5,-300.0},new double[]{0.5,-312.0},new double[]{-8.0,-314.0},new double[]{-8.0,-322.0},new double[]{-4.0,-333.0});
+            at(l,"gates-from-avenue",0.5,-300.0,0.5,71.0,-282.0,0,"label:war-gates");
+            at(l,"bowl-bare",-8.0,-322.0,0.0,76.0,-352.0);
+            at(l,"both-stairs",-4.0,-333.0,0.5,74.0,-352.0);
+            fin(l,f);
+            l=lane("4a2-recruiter",new double[]{-4.0,-333.0},new double[]{0.5,-339.0},new double[]{0.5,-343.5});
+            at(l,"recruiter-far",0.5,-339.0,0.5,66.4,-346.5);
+            at(l,"recruiter",0.5,-343.5,0.5,66.4,-346.5);
+            at(l,"recruiter-label",0.5,-343.5,0.5,68.7,-346.5,0,"label:recruiter");
+            fin(l,f);
+            l=lane("4a3-west-foot",new double[]{0.5,-343.5},new double[]{-17.5,-343.5},new double[]{-17.5,-347.0});
+            at(l,"west-stair-approach",-12.0,-343.5,-17.5,72.0,-352.0);
+            at(l,"west-stair-foot",-17.5,-347.0,-17.5,77.0,-360.0);
+            fin(l,f);
+            l=lane("4b-west-stair",new double[]{-17.5,-347.0},new double[]{-17.5,-361.5});
+            at(l,"stair-middle-up",-17.5,-354.0,-17.5,79.0,-362.0);
+            at(l,"stair-middle-back",-17.5,-354.0,-17.5,66.0,-330.0);
+            at(l,"stair-near-top",-17.5,-358.5,0.5,82.0,-370.0);
+            at(l,"stair-top",-17.5,-361.5,0.5,82.0,-372.0,0,"top");
+            fin(l,f);
+            l=lane("4c-plateau",new double[]{-17.5,-361.5},new double[]{0.5,-361.5},new double[]{0.5,-364.6});
+            at(l,"tent-front-from-west",-12.0,-361.5,0.5,82.0,-364.0);
+            at(l,"plateau-edge-south",-6.0,-361.5,0.5,66.0,-310.0);
+            at(l,"camp-from-plateau",-3.0,-361.5,6.0,66.0,-290.0);
+            at(l,"tent-threshold",0.5,-363.2,0.5,79.0,-372.0);
+            at(l,"war-table-south",0.5,-364.6,0.5,78.1,-372.0);
+            at(l,"war-table-near",0.5,-364.6,0.5,77.9,-367.0);
+            fin(l,top);
+            l=lane("4d-tent",new double[]{0.5,-364.45},new double[]{-10.3,-364.45},new double[]{-10.3,-368.0});
+            l.look=2.5;
+            at(l,"tent-west-wall",-10.3,-364.45,-9.5,79.0,-376.0);
+            at(l,"war-table-west-end",-10.3,-368.0,8.0,78.3,-371.0);
+            at(l,"tent-roof",-10.3,-368.0,0.5,87.0,-371.0);
+            fin(l,top);
+            l=lane("4e-quartermaster",new double[]{-10.3,-368.0},new double[]{-10.3,-364.0},new double[]{-8.3,-364.45},new double[]{6.5,-364.45},new double[]{9.2,-363.6});
+            l.look=1.4;
+            at(l,"war-table-from-east",6.0,-364.45,-6.0,78.1,-371.0);
+            at(l,"quartermaster",9.2,-363.6,10.5,78.3,-367.5);
+            at(l,"quartermaster-label",9.2,-363.6,10.5,80.7,-367.5,0,"label:quartermaster");
+            at(l,"armoury",9.2,-363.6,12.5,78.5,-367.5);
+            fin(l,top);
+            l=lane("4f-east-stair",new double[]{9.2,-363.6},new double[]{7.8,-363.6},new double[]{7.8,-361.2},new double[]{18.5,-361.2},new double[]{18.5,-343.0});
+            l.look=2.5;
+            at(l,"standard-pole",14.0,-361.2,4.5,86.0,-363.5);
+            at(l,"east-stair-top",18.5,-361.2,18.5,68.0,-340.0);
+            at(l,"east-stair-middle",18.5,-354.0,18.5,66.0,-330.0);
+            at(l,"east-stair-foot",18.5,-343.5,18.5,77.0,-360.0,0,"foot");
+            fin(l,top);
+            legs=mine;
+            var s=spots;
+            // dusk and night: the same views again with the lanterns and braziers lit
+            if(ran("night")){
+                jobs.add(new TimeJob(13300));
+                snap("dusk-arrival",0.5,-291.5,f,0.5,68.0,-320.0,12,"dusk (world time 13300): the arrival view again, from the spawn plinth up the avenue");
+                snap("dusk-parade",0.5,-306.0,f,0.5,69.0,-316.0,12,"dusk: the parade standard and the lamp posts of the avenue");
+                snap("dusk-gates",0.5,-291.0,f,0.5,68.5,-278.0,12,"dusk: the War Gates and the lantern posts of both pads from the avenue");
+                snap("dusk-tent",0.5,-360.8,top,0.5,81.0,-369.0,12,"dusk: the command tent from the plateau edge");
+                jobs.add(new TimeJob(18000));
+                snap("night-tent-inside",0.5,-364.6,top,0.5,79.0,-372.0,12,"night (world time 18000): inside the command tent, looking over the war table");
+                snap("night-gates",0.5,-287.0,f,0.5,68.5,-278.0,12,"night: the War Gates arch");
+                snap("night-archive-door",36.0,-306.0,f,39.0,68.0,-309.5,12,"night: the archive's west door");
+                jobs.add(new TimeJob(3000));
+            }
+            // the flanks and the edges of the island, from the ground
+            if(ran("flank")){
+                snap("south-rim-west",-26.0,-289.0,f,-46.0,76.0,-268.0,14,"the south rim of the island seen from beside the pads, over the bowl's west corner (the gates hide it from the pads themselves)");
+                snap("south-rim-east",26.0,-289.0,f,46.0,76.0,-268.0,14,"the south rim of the island from the east of the pads");
+                snap("west-flank-slope",-30.0,-335.0,f,-92.0,82.0,-335.0,14,"the west flank of the island seen from the bowl: the slope up to the forested rim (the rim itself is thick forest, so no picture is taken in it)");
+                snap("east-flank-slope",30.0,-335.0,f,92.0,82.0,-335.0,14,"the east flank of the island seen from the bowl");
+                var n=s.get("north-edge");if(n!=null){
+                    snap("north-edge-out",n[0],n[1],n[2],n[0],n[2]-14.0,n[1]-60,14,"the north edge of the island behind the ridge (dz -106), looking out to the north");
+                    snap("north-edge-back",n[0],n[1],n[2],0.5,84.0,-380.0,14,"the north edge: looking back south up the back slope to the roof of the command tent");}
+                var sw=s.get("sw-corner");if(sw!=null){
+                    snap("island-edge-south-west",sw[0],sw[1],sw[2],sw[0]-60,sw[2]+0.5,sw[1]+50,14,"the south-west corner of the island, looking out over its edge to the south-west");
+                    snap("island-corner-back",sw[0],sw[1],sw[2],0.5,72.0,-300.0,14,"the same corner looking back over the bowl towards the parade");}
+                snap("north-slope-from-plateau",-35.0,-368.0,top,-35.0,93.0,-410.0,14,"the slope behind the tent (dz -52 to -108) seen from the plateau, looking north");
+            }
+            // the flight views
+            if(ran("fly")){
+                jobs.add(new ViewJob("fly-aerial-front",0.5,110.0,-250.0,0.5,64.0,-320.0,"the camp from the south and above: the gates, the parade, the bowl, the ridge"));
+                jobs.add(new ViewJob("fly-aerial-back",0.5,108.0,-440.0,0.5,66.0,-300.0,"the camp from behind the island and above: the back slope, the tent, the stairs, the bowl"));
+                jobs.add(new ViewJob("fly-pad-west",-9.0,72.0,-287.0,-9.0,65.0,-282.0,"the west ready pad from above (4x4 smooth quartz in its blackstone frame, lantern posts either side)"));
+                jobs.add(new ViewJob("fly-pad-east",10.0,72.0,-287.0,10.0,65.0,-282.0,"the east ready pad from above"));
+                jobs.add(new ViewJob("fly-war-table",0.5,86.0,-361.0,0.5,78.0,-371.0,"the war table from above and the south"));
+                jobs.add(new ViewJob("fly-tent-front",-7.0,79.5,-355.0,4.0,78.0,-371.0,"the war table and the tent from in front of it, a little to the west and at the height of the table"));
+                jobs.add(new ViewJob("fly-west-island",-150.0,92.0,-310.0,-50.0,70.0,-310.0,"the island from the west, outside it"));
+                jobs.add(new ViewJob("fly-east-island",150.0,92.0,-310.0,50.0,70.0,-310.0,"the island from the east, outside it"));
+                jobs.add(new ViewJob("fly-underside",0.5,30.0,-230.0,0.5,64.0,-310.0,"the island from below and the south"));
+                jobs.add(new ViewJob("fly-gates-outside",0.5,71.5,-262.0,0.5,67.0,-284.0,"the War Gates seen from outside, over the south rim"));
+            }
+        }
+
+        // ---- the checks that wait for the walk ----
+        @Override void probe(MinecraftClient c,Stop st,Leg leg){
+            var p=c.player;String[] k=st.probe().split(":");
+            switch(k[0]){
+                case "pad"->{
+                    int team=Integer.parseInt(k[1]);padFeet[team]=new double[]{p.getX(),p.getY(),p.getZ()};padQuartz[team]=c.world.getBlockState(p.getBlockPos().down()).isOf(Blocks.SMOOTH_QUARTZ);
+                    UUID id=p.getUuid();
+                    server(c,b->{Integer on=b.campaign.onPad.get(id);padOn[team]=on==null?-1:on;padCount[team]=b.campaign.padCountdown;b.campaign.padCountdown=-1;}); // a fresh countdown: the walker is off the pad long before it ends
+                }
+                case "label"->{for(int i=0;i<Spec.CAMPSTATIONS.length;i++)if(Spec.CAMPSTATIONS[i].id().equals(k[1]))labelViews.add(new double[]{i,p.getX(),p.getEyeY(),p.getZ()});}
+                case "top"->stairTop=p.getY();
+                case "foot"->stairFoot=p.getY();
+                default->{}
+            }
+        }
+        /** The width of every label text in pixels, from the client's text renderer (the keybind parts are named there). */
+        float[] measure(MinecraftClient c){
+            var px=new float[Spec.CAMPSTATIONS.length];
+            for(int i=0;i<px.length;i++)px[i]=c.textRenderer.getWidth(CampWorld.text(Spec.CAMPSTATIONS[i].label()));
+            return px;
+        }
+        void summary(MinecraftClient c){
+            int total=0;for(var l:mine)total++;
+            boolean all=legsDone==total&&legsFailed==0&&stuckTotal==0&&forcedTotal==0;
+            ck("p3-cw-walk",all&&(total>0),"lanes finished "+legsDone+" of "+total+", failed "+legsFailed+", blocks walked "+Math.round(walkedTotal)+", stuck windows "+stuckTotal+", slow windows (under 6 blocks in 2 s) "+slowTotal+", forced steps "+forcedTotal+", auto-jumps "+bumpTotal+", pictures "+photoTotal);
+            String[] names={"west","east"};
+            for(int team=0;team<2;team++){
+                if(!ranLeg(team==0?"leg3b":"leg3c"))continue;
+                var f=padFeet[team];boolean has=f!=null;
+                boolean in=has&&CampaignMaps.onPad(team,f[0],f[1],f[2]);
+                var ctr=CampaignMaps.padCenter(team);
+                ck("p3-cw-pad-"+names[team],has&&in&&padQuartz[team]&&padOn[team]==team,has?String.format(Locale.ROOT,"the walker stood at (%.2f, %.2f, %.2f), the pad centre is (%.1f, %.1f, %.1f): inside the pad %s, smooth quartz under his feet %s, Campaign.onPad says team %d (want %d), ready countdown %d of 200 when he was photographed",f[0],f[1],f[2],ctr.x,ctr.y,ctr.z,in,padQuartz[team],padOn[team],team,padCount[team]):"the walker never reached the pad stop");
+            }
+            Leg west=null,east=null;for(var l:mine){if(l.id.equals("4b-west-stair"))west=l;if(l.id.equals("4f-east-stair"))east=l;}
+            if(west!=null||east!=null){
+                boolean up=west==null||(!Double.isNaN(stairTop)&&stairTop>=76.9),down=east==null||(!Double.isNaN(stairFoot)&&stairFoot<=65.1);
+                boolean clean=(west==null||(west.finished&&west.forced==0&&west.stuck==0))&&(east==null||(east.finished&&east.forced==0&&east.stuck==0));
+                ck("p3-cw-stairs",up&&down&&clean,String.format(Locale.ROOT,"west flight: the walker's feet at its top %.2f (want 77 or more), lane %s, auto-jumps %d, stuck windows %d, forced steps %d; east flight: feet at its foot %.2f (want 65), lane %s, auto-jumps %d, stuck windows %d, forced steps %d",
+                    stairTop,west==null?"not run":west.finished?"finished":"NOT finished",west==null?0:west.bumps,west==null?0:west.stuck,west==null?0:west.forced,stairFoot,east==null?"not run":east.finished?"finished":"NOT finished",east==null?0:east.bumps,east==null?0:east.stuck,east==null?0:east.forced));
+            }
+            if(only.isEmpty()){
+                var need=new ArrayList<String>(List.of("p3-cw-arrival","p3-cw-walk","p3-cw-pad-west","p3-cw-pad-east","p3-cw-stairs","p3-cw-floating","p3-cw-lantern","p3-cw-barrier","p3-cw-entities","p3-cw-labels"));
+                for(var l:mine)need.add("p3-cw-leg-"+l.id);
+                var missing=new ArrayList<String>();for(var id:need)if(!ids.contains(id))missing.add(id);
+                ck("p3-cw-complete",missing.isEmpty()&&photoTotal>=40,"every check id of the walk was reported: "+(missing.isEmpty()?"yes":"MISSING "+missing)+"; pictures taken "+photoTotal+" (want 40 or more)");
+            }
+        }
+        void pictures(MinecraftClient c){
+            int files=0;var names=new TreeSet<String>();
+            try(var s=Files.list(c.runDirectory.toPath().resolve("screenshots"))){s.forEach(f->{var n=f.getFileName().toString();if(n.startsWith("p3-cw-")&&n.endsWith(".png"))names.add(n);});}catch(Exception e){ck("p3-cw-pictures",false,"cannot list screenshots: "+e);return;}
+            files=names.size();
+            ck("p3-cw-pictures",files==photoTotal&&files>=(only.isEmpty()?40:1),files+" files p3-cw-*.png in screenshots/, pictures taken "+photoTotal+" ("+(only.isEmpty()?"at least 40 wanted":"a filter was given")+")");
+        }
+
+        // ---- the scans, on the server thread ----
+        /** The cells of the arch's barrier: the war_gates piece at local x 15..21, y 1..3, z 10. */
+        static Set<BlockPos> archCells(){
+            var out=new HashSet<BlockPos>();
+            for(var row:Spec.CAMPPIECES)if(row.template().equals("camp/war_gates")){
+                var p=Camp.piece(row.template());var size=new Vec3i(p.width(),p.height(),p.depth());
+                for(int lx=15;lx<=21;lx++)for(int ly=1;ly<=3;ly++)out.add(Structures.toWorld(size,OX+row.dx(),row.y(),OZ+row.dz(),row.rotation(),lx,ly,10));
+            }
+            return out;
+        }
+        /** A place near (x,z) where the walker can stand for a flank picture: inside the island (3 blocks from its edge), the highest block with a collision shape a full opaque block that is no log or leaves, none of those within 5 blocks around and 9 above (when no such place is found within 12 blocks: 2 around and 5 above within 20, then 1 and 3 within 40). {x, z, feet y}, or null; every direction given as {dx, dz} must be open (no block with a collision shape at three heights) for 10 blocks. The column is read block by block (the heightmap of a column the camp builder wrote is not trusted). */
+        static double[] clearSpot(ServerWorld w,int x,int z,double[]... dirs){
+            int lx0=OX+C.islandMinDx()+3,lx1=OX+C.islandMaxDx()-3,lz0=OZ+C.islandMinDz()+3,lz1=OZ+CampWorld.rimEnd(C)-3;
+            var logs=net.minecraft.registry.tag.BlockTags.LOGS;var leaves=net.minecraft.registry.tag.BlockTags.LEAVES;
+            for(int[] clear:new int[][]{{5,9,12},{2,5,20},{0,0,40}})for(int r=0;r<=clear[2];r++)for(int dx=-r;dx<=r;dx++)for(int dz=-r;dz<=r;dz++){
+                if(Math.max(Math.abs(dx),Math.abs(dz))!=r)continue;
+                int bx=x+dx,bz=z+dz;if(bx<lx0||bx>lx1||bz<lz0||bz>lz1)continue;
+                w.getChunk(bx>>4,bz>>4);int top=Integer.MIN_VALUE;
+                for(int y=140;y>=C.minY();y--){var pos=new BlockPos(bx,y,bz);var st=w.getBlockState(pos);if(st.isAir()||st.getCollisionShape(w,pos).isEmpty())continue;top=y;break;}
+                if(top==Integer.MIN_VALUE)continue;
+                var tp=new BlockPos(bx,top,bz);var g=w.getBlockState(tp);if(g.isIn(logs)||g.isIn(leaves)||!g.isOpaqueFullCube(w,tp))continue;
+                boolean free=true;
+                for(int ax=-clear[0];ax<=clear[0]&&free;ax++)for(int az=-clear[0];az<=clear[0]&&free;az++)for(int y=top+1;y<=top+clear[1];y++){
+                    var st=w.getBlockState(new BlockPos(bx+ax,y,bz+az));
+                    if(st.isIn(logs)||st.isIn(leaves)){free=false;break;}
+                }
+                for(var d:dirs){if(!free)break;double len=Math.hypot(d[0],d[1]);for(double h:new double[]{1.2,1.7,2.6})for(double k=0.5;k<=10.0&&free;k+=0.5){
+                    var bp=BlockPos.ofFloored(bx+0.5+d[0]/len*k,top+h,bz+0.5+d[1]/len*k);var st=w.getBlockState(bp);if(!st.isAir()&&!st.getCollisionShape(w,bp).isEmpty())free=false;}}
+                if(free)return new double[]{bx+0.5,bz+0.5,top+1.0};
+            }
+            return null;
+        }
+        /** GRAVES_CW_SABOTAGE: one planted defect per scan check, and a wall across the avenue. */
+        void plant(ServerWorld w){
+            int flags=Block.NOTIFY_LISTENERS|Block.FORCE_STATE;
+            w.setBlockState(new BlockPos(OX+30,100,OZ-50),Blocks.STONE.getDefaultState(),flags); // floats
+            w.setBlockState(new BlockPos(OX+25,75,OZ-20),Blocks.LANTERN.getDefaultState().with(net.minecraft.block.LanternBlock.HANGING,false),flags); // nothing under it
+            w.setBlockState(new BlockPos(OX+8,65,OZ+6),Blocks.BARRIER.getDefaultState(),flags); // a barrier on the parade
+            var stand=EntityType.ARMOR_STAND.create(w);stand.refreshPositionAndAngles(OX+12.5,64.4,OZ+8.5,0,0);stand.addCommandTag(CampWorld.TAG);stand.addCommandTag("camp-generation:"+CampWorld.generation);boolean spawned=w.spawnEntity(stand); // in the floor (the mod's ENTITY_LOAD discards a camp-tagged entity of another generation)
+            note("SABOTAGE armor stand spawned "+spawned+" at "+stand.getPos()+", tags "+stand.getCommandTags()+", in the world "+(w.getEntity(stand.getUuid())!=null)+", block there "+w.getBlockState(BlockPos.ofFloored(stand.getPos())).getBlock());
+            for(var e:w.iterateEntities())if(e instanceof net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity d&&d.getCommandTags().contains("camp:contracts")){d.setPosition(d.getX(),d.getY()+3.0,d.getZ());break;} // the Archivist's label into the roof
+            for(int x=-3;x<=3;x++)for(int y=65;y<=67;y++)w.setBlockState(new BlockPos(OX+x,y,OZ+9),Blocks.STONE_BRICKS.getDefaultState(),flags); // a wall across the avenue, 3 high
+            for(int team=0;team<2;team++){var ctr=CampaignMaps.padCenter(team);for(int dx=-2;dx<=2;dx++)for(int dz=-2;dz<=2;dz++){var bp=new BlockPos((int)Math.floor(ctr.x)+dx,(int)Math.floor(ctr.y)-1,(int)Math.floor(ctr.z)+dz);if(w.getBlockState(bp).isOf(Blocks.SMOOTH_QUARTZ))w.setBlockState(bp,Blocks.STONE.getDefaultState(),flags);}} // the quartz floors of both pads become stone
+            for(int x=-24;x<=-12;x++)for(int y=69;y<=72;y++)w.setBlockState(new BlockPos(OX+x,y,OZ-42),Blocks.STONE_BRICKS.getDefaultState(),flags); // a wall across the west stair, 4 high
+        }
+        void scan(GravesAndGlory.Battle b){
+            var w=b.world;long t0=System.nanoTime();
+            if(sabotage){plant(w);note("SABOTAGE: a floating block at (30, 100, -360), a loose lantern at (25, 75, -330), a barrier at (8, 65, -304), an armor stand in the floor at (12, 64, -302), the Archivist's label 3 higher, a wall across the avenue at z -301, the quartz floors of both pads turned to stone, a 4-high wall across the west stair at z -352");}
+            int x0=OX+C.islandMinDx(),x1=OX+C.islandMaxDx(),z0=OZ+C.islandMinDz(),z1=OZ+CampWorld.rimEnd(C),y0=C.minY(),y1=140;
+            // 1. floating pieces
+            var fs=floatBox(w,x0,x1,z0,z1,y0,y1);
+            ck("p3-cw-floating",fs.found().isEmpty()&&fs.reached()>100000,"island box x "+x0+".."+x1+", z "+z0+".."+z1+" (the rim rows included), y "+y0+".."+y1+": solid blocks reached from the floor "+fs.reached()+", floating pieces "+fs.found().size()+" of "+fs.floatTotal()+" blocks"+(fs.found().isEmpty()?"":", the biggest "+fs.found().stream().limit(6).map(p->p.size()+" blocks x "+p.x0()+".."+p.x1()+" y "+p.y0()+".."+p.y1()+" z "+p.z0()+".."+p.z1()+" ("+p.top()+")").toList()));
+            for(int i=0;i<Math.min(40,fs.found().size());i++){var p=fs.found().get(i);note("floating piece "+(i+1)+": "+p.size()+" blocks, x "+p.x0()+" to "+p.x1()+", y "+p.y0()+" to "+p.y1()+", z "+p.z0()+" to "+p.z1()+": "+p.top());}
+            // 2. lanterns and barriers
+            var arch=archCells();int lanterns=0,loose=0,barriers=0,inArch=0,outside=0,exposed=0;var looseAt=new StringBuilder();var outAt=new StringBuilder();var pos=new BlockPos.Mutable();
+            for(int cx=x0>>4;cx<=x1>>4;cx++)for(int cz=z0>>4;cz<=z1>>4;cz++){
+                var ch=w.getChunk(cx,cz);
+                for(int x=Math.max(x0,cx*16);x<=Math.min(x1,cx*16+15);x++)for(int z=Math.max(z0,cz*16);z<=Math.min(z1,cz*16+15);z++)for(int y=y0;y<=y1;y++){
+                    var st=ch.getBlockState(pos.set(x,y,z));if(st.isAir())continue;
+                    if(st.getBlock() instanceof net.minecraft.block.LanternBlock){
+                        lanterns++;if(!st.canPlaceAt(w,pos)){loose++;if(loose<=6)looseAt.append(loose>1?"; ":"").append(name(st)).append(' ').append(xyz(pos.toImmutable())).append(" hanging ").append(st.get(net.minecraft.block.LanternBlock.HANGING));}
+                    }else if(st.isOf(Blocks.BARRIER)){
+                        barriers++;
+                        if(arch.contains(pos.toImmutable()))inArch++;
+                        else{
+                            outside++;boolean open=false;for(var d:Direction.values()){var nb=pos.offset(d);var ns=w.getBlockState(nb);if(!ns.isOf(Blocks.BARRIER)&&!ns.isOpaqueFullCube(w,nb))open=true;}
+                            if(open)exposed++;if(outside<=6)outAt.append(outside>1?"; ":"").append(xyz(pos.toImmutable())).append(open?" in the open":" buried");
+                        }
+                    }
+                }
+            }
+            ck("p3-cw-lantern",lanterns>0&&loose==0,"lanterns in the box "+lanterns+", without a block to hang from or to stand on (the test LanternBlock.canPlaceAt makes) "+loose+(loose==0?"":", first: "+looseAt));
+            ck("p3-cw-barrier",inArch==arch.size()&&outside==0,"barrier blocks in the box "+barriers+": in the arch "+inArch+" of "+arch.size()+" cells, anywhere else "+outside+" ("+exposed+" of them with a face in the open)"+(outside==0?"":": "+outAt)+"; the walker's lanes pass no barrier but the arch's portcullis stop");
+            // 3. entities
+            int villagers=0,labels=0,inside=0,others=0;var insideAt=new StringBuilder();int wantV=0;for(var s:Spec.CAMPSTATIONS)if(!s.npc().equals("-"))wantV++;
+            for(var e:w.iterateEntities()){
+                if(!e.getCommandTags().contains(CampWorld.TAG))continue;
+                boolean bad;
+                if(e instanceof net.minecraft.entity.LivingEntity){
+                    if(e instanceof net.minecraft.entity.passive.VillagerEntity)villagers++;else others++;
+                    bad=w.getBlockCollisions(e,e.getBoundingBox().contract(0.01)).iterator().hasNext();
+                }else{
+                    if(e instanceof net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity)labels++;else others++;
+                    var cell=BlockPos.ofFloored(e.getPos());bad=!w.getBlockState(cell).getCollisionShape(w,cell).isEmpty();
+                }
+                if(bad){inside++;if(inside<=6)insideAt.append(inside>1?"; ":"").append(e.getType().getUntranslatedName()).append(' ').append(String.format(Locale.ROOT,"(%.2f, %.2f, %.2f)",e.getX(),e.getY(),e.getZ()));}
+            }
+            ck("p3-cw-entities",villagers==wantV&&labels==Spec.CAMPSTATIONS.length&&others==0&&inside==0,"camp entities: villagers "+villagers+" (want "+wantV+"), labels "+labels+" (want "+Spec.CAMPSTATIONS.length+"), other camp entities "+others+" (want 0), inside a block that stops them "+inside+(inside==0?"":": "+insideAt));
+            // 4. places for the flank pictures
+            var m=new LinkedHashMap<String,double[]>();
+            Object[][] want={{"north-edge",OX,OZ-106,new double[]{0,-1},new double[]{0,1}},{"sw-corner",OX-92,OZ+36}};
+            for(var wnt:want){var dirs=new double[wnt.length-3][];for(int q=3;q<wnt.length;q++)dirs[q-3]=(double[])wnt[q];var sp=clearSpot(w,(Integer)wnt[1],(Integer)wnt[2],dirs);if(sp!=null)m.put((String)wnt[0],sp);else note("no clear spot near "+wnt[0]);}
+            spots=m;
+            note(String.format(Locale.ROOT,"scan of the camp took %d ms; flank spots %s",(System.nanoTime()-t0)/1000000,m.entrySet().stream().map(q->q.getKey()+" "+Arrays.toString(q.getValue())).toList()));
+            scanned=true;
+        }
+        /** p3-cw-labels: the heights, then the view of each label from the place its picture was taken. */
+        void labels(GravesAndGlory.Battle b,float[] px){
+            var w=b.world;var bad=new StringBuilder();int found=0;
+            int n=Spec.CAMPSTATIONS.length;var centre=new Vec3d[n];var half=new double[n][2];
+            for(int i=0;i<n;i++){
+                var s=Spec.CAMPSTATIONS[i];var at=new Vec3d(OX+s.x(),s.y()+3.7,OZ+s.z());centre[i]=at;
+                var hit=w.getEntitiesByClass(net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity.class,new Box(at,at).expand(1.5,6.0,1.5),d->d.getCommandTags().contains("camp:"+s.page()));
+                net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity me=null;for(var d:hit)if(Math.abs(d.getX()-at.x)<0.01&&Math.abs(d.getZ()-at.z)<0.01)me=d;
+                if(me==null){bad.append(s.id()).append(": no label at x,z of its row; ");continue;}
+                found++;
+                if(Math.abs(me.getY()-at.y)>0.01)bad.append(s.id()).append(": label at y ").append(String.format(Locale.ROOT,"%.2f",me.getY())).append(" not ").append(String.format(Locale.ROOT,"%.2f",at.y)).append("; ");
+                double width=Math.min(px[i],220f)+2,lines=Math.ceil(px[i]/220.0);half[i][0]=width*0.0425/2;half[i][1]=(lines*9+2)*0.0425/2; // 1.7 times 1/40 block a pixel
+            }
+            int views=0,blocked=0,overlaps=0;var seenBad=new StringBuilder();var over=new StringBuilder();var ent=b.server.getPlayerManager().getPlayerList().get(0);
+            for(var v:new ArrayList<>(labelViews)){
+                int i=(int)v[0];var eye=new Vec3d(v[1],v[2],v[3]);views++;
+                var d=centre[i].subtract(eye).normalize();var up=Math.abs(d.y)>0.98?new Vec3d(1,0,0):new Vec3d(0,1,0);var r=up.crossProduct(d).normalize();var u=d.crossProduct(r).normalize();
+                int seen=0;var pts=new Vec3d[]{centre[i],centre[i].add(r.multiply(half[i][0])),centre[i].subtract(r.multiply(half[i][0])),centre[i].add(u.multiply(half[i][1])),centre[i].subtract(u.multiply(half[i][1]))};
+                for(var pt:pts){
+                    var hit=w.raycast(new net.minecraft.world.RaycastContext(eye,pt,net.minecraft.world.RaycastContext.ShapeType.VISUAL,net.minecraft.world.RaycastContext.FluidHandling.NONE,ent));
+                    if(hit.getType()==net.minecraft.util.hit.HitResult.Type.MISS||hit.getPos().distanceTo(pt)<0.2)seen++;
+                }
+                if(seen<5){blocked++;seenBad.append(Spec.CAMPSTATIONS[i].id()).append(" from (").append(String.format(Locale.ROOT,"%.1f, %.1f, %.1f",v[1],v[2],v[3])).append("): ").append(seen).append(" of 5 points in sight; ");}
+                for(int j=0;j<n;j++){
+                    if(j==i)continue;var e=centre[j].subtract(eye);double dist=e.length(),fwd=e.normalize().dotProduct(d);if(fwd<0.4)continue;
+                    double a=e.dotProduct(r)/e.dotProduct(d),bb=e.dotProduct(u)/e.dotProduct(d),a0=0,b0=0; // the label j on the tangent plane of the view; label i is at the middle
+                    double hw=half[j][0]/Math.max(0.5,e.dotProduct(d)),hh=half[j][1]/Math.max(0.5,e.dotProduct(d)),w0=half[i][0]/centre[i].subtract(eye).length(),h0=half[i][1]/centre[i].subtract(eye).length();
+                    if(Math.abs(a-a0)<hw+w0&&Math.abs(bb-b0)<hh+h0){
+                        var hit=w.raycast(new net.minecraft.world.RaycastContext(eye,centre[j],net.minecraft.world.RaycastContext.ShapeType.VISUAL,net.minecraft.world.RaycastContext.FluidHandling.NONE,ent));
+                        if(hit.getType()==net.minecraft.util.hit.HitResult.Type.MISS||hit.getPos().distanceTo(centre[j])<0.2){overlaps++;over.append(Spec.CAMPSTATIONS[i].id()).append(" and ").append(Spec.CAMPSTATIONS[j].id()).append(" from (").append(String.format(Locale.ROOT,"%.1f, %.1f, %.1f",v[1],v[2],v[3])).append("); ");}
+                    }
+                }
+            }
+            boolean all=found==n;
+            ck("p3-cw-labels",all&&bad.length()==0&&blocked==0&&overlaps==0&&(views>0||!ranLeg("leg")),"labels at y+3.7 of their rows "+found+" of "+n+(bad.length()==0?"":": "+bad)+"; views of labels from the walker's stops "+views+", with a point of the label out of sight "+blocked+(seenBad.length()==0?"":": "+seenBad)+"; pairs of labels overlapping in a view "+overlaps+(over.length()==0?"":": "+over));
+            labelsDone=true;
         }
     }
 }
