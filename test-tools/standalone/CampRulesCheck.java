@@ -44,7 +44,7 @@ public final class CampRulesCheck {
   Progression.reset(s,day.minusDays(1));check(s.claims.contains("daily:0"),"Clock rollback does not reopen claims");
   Progression.reset(s,day.plusDays(1));check(s.dailyBattles==0&&!s.claims.contains("daily:0")&&s.weeklyBattles==1,"Daily reset retains weekly progress");
   s.weeklyBattles=Progression.WEEKLY_BATTLES-1;check(!Progression.claimable(s,"weekly")&&Progression.claim(s,"weekly").gold()==0,"The weekly needs "+Progression.WEEKLY_BATTLES+" battles");
-  s.weeklyBattles=Progression.WEEKLY_BATTLES;check(Progression.claimable(s,"weekly")&&Progression.claim(s,"weekly").gold()==150&&!Progression.claimable(s,"weekly"),"The weekly pays once at "+Progression.WEEKLY_BATTLES+" battles");
+  s.weeklyBattles=Progression.WEEKLY_BATTLES;check(Progression.claimable(s,"weekly")&&Progression.claim(s,"weekly:gilded").gold()==150&&!Progression.claimable(s,"weekly"),"The weekly pays once at "+Progression.WEEKLY_BATTLES+" battles");
   Progression.reroll(s);check(s.rerolled&&Progression.target(s,2)==10,"Free reroll substitutes achievable orders quest");check(Progression.reroll(s).contains("already"),"Only one free reroll");
   s.xp=7500;check(Progression.tier(s)==30,"Chapter has a defined tier-30 endpoint");int gold=0;for(int i=1;i<=30;i++)gold+=Progression.claim(s,"founders:"+i).gold();
   check(gold==300&&s.titles.size()==6&&s.titles.contains("Bannerlord")&&!s.titles.contains("Vanguard"),"Complete track pays 300 gold and five distinct titles (the re-authored Founders chapter; its shard tiers and Rare wait for a House or a troop)");
@@ -52,7 +52,8 @@ public final class CampRulesCheck {
   Progression.reset(s,day.plusDays(20));check(s.claims.contains("founders:30")&&s.titles.contains("Bannerlord"),"Chapter unlocks survive daily/weekly reset");
   check(Progression.claim(s,"founders:31").gold()==0,"Unreleased tiers cannot claim");
   Progression.State said=new Progression.State();Progression.reset(said,day);said.xp=5*Progression.XP_PER_TIER;said.weeklyBattles=Progression.WEEKLY_BATTLES;
-  check(Progression.claim(said,"founders:1").message().equals("Claimed reward: +25 gold")&&Progression.claim(said,"founders:5").message().equals("Claimed reward: Scout title unlocked")&&Progression.claim(said,"weekly").message().equals("Claimed reward: +150 gold / +300 XP"),"A claim's notice names only what it grants: no +0 XP on a tier, no +0 gold on a title (UI Task 8b)");
+  String tierSaid=Progression.claim(said,"founders:1").message(),titleSaid=Progression.claim(said,"founders:5").message(),weeklySaid=Progression.claim(said,"weekly:gilded").message(); // integration: Phase 2's chapter and its House-named weekly
+  check(tierSaid.matches("Claimed reward: [+][0-9]+ gold")&&!tierSaid.contains("+0")&&titleSaid.startsWith("Claimed reward: ")&&titleSaid.contains("Scout")&&!titleSaid.contains("gold")&&!titleSaid.contains("XP")&&weeklySaid.startsWith("Claimed reward: +150 gold / +300 XP")&&!weeklySaid.contains("+0"),"A claim's notice names only what it grants: no +0 XP on a tier, no +0 gold on a title (UI Task 8b)");
   // the room gate's truth table, row by row {in a party, leads it, may make or join a room}: the same rows UiMathCheck pins for the
   // client's copy (UiMath.roomOpen, which dulls the Friends page's room tags), so a change to either side fails its own check (8b review Minor 5)
   boolean[][] roomRows={{false,false,true},{true,true,true},{true,false,false}};

@@ -124,7 +124,7 @@ final class CampScreen extends ArmyScreen {
         for(var t:Spec.TROOPS)if(t.house().equals(house)){var o=p.owned.get(t.id());out.add(new Card(t,o!=null,o==null?0:o.stars,o==null?0:o.stage,o==null?0:o.copies));}
         return out;
     }
-    static int rarityColour(String rarity){return switch(rarity){case "rare"->0xff8fb8d8;case "epic"->0xffc79be0;case "legendary"->DarkUi.GOLD;default->DarkUi.MUTED;};}
+    static int rarityColour(String rarity){return switch(rarity){case "rare"->DarkUi.RARE_INK;case "epic"->DarkUi.EPIC_INK;case "legendary"->DarkUi.GOLD;default->DarkUi.MUTED;};}
     /** The lowest pixel (from the card's top) the last card() call drew a word or a pip at, and whether the harness is probing (no portrait is drawn). Task 12 re-review N1: p2-card-layout reads what card() drew, not the row table. */
     int cardLow;static volatile boolean probe;
     /** The troops the last frames' cards drew and whether each was owned (the harness clears it, presses a House tab and reads it: Task 13, p2-full-roster). */
@@ -135,11 +135,11 @@ final class CampScreen extends ArmyScreen {
     void card(DrawContext g,Card card,int x,int y,int w,int h,int poolTotal){
         cardLow=0;seenCards.put(card.troop().id(),card.owned());
         var troop=card.troop();DarkUi.frame(g,x,y,w,h);
-        var row=ArmyCards.house(troop);g.fillGradient(x+3,y+3,x+w-3,y+h-3,0x33000000|(row==null?0x4c9391:row.accent()&0xffffff),0x00181820);
+        var row=ArmyCards.house(troop);g.fillGradient(x+3,y+3,x+w-3,y+h-3,DarkUi.CARD_SHADE|(row==null?0x4c9391:row.accent()&0xffffff),DarkUi.CARD_FADE);
         var portrait=ArmyCards.portrait(troop);float wide=portrait==null?0:portrait.getWidth()*1.25f; // a wide model (a spider's legs) is drawn smaller so it stays inside its card
         if(!probe)DarkUi.model(g,troop,x+34,y+h-12,wide>1.5f?(int)(28*1.5f/wide):28);
         g.getMatrices().push();g.getMatrices().translate(0,0,100); // the model is drawn at z 50 and writes depth, so what must show over it is nearer: the dim of a card the commander lacks at z 100, the card's text at z 150
-        if(!card.owned())g.fill(x+3,y+3,x+w-3,y+h-3,0x99111119);
+        if(!card.owned())g.fill(x+3,y+3,x+w-3,y+h-3,DarkUi.CARD_DIM);
         g.getMatrices().translate(0,0,50);
         int tx=x+70,room=w-76;
         // A long name (a Legendary's title) wraps onto a second line, and everything under it moves down a line.
@@ -162,7 +162,7 @@ final class CampScreen extends ArmyScreen {
         boolean selected(){return CampScreen.this.house.equals(house);}
         @Override public void renderButton(DrawContext g,int mx,int my,float delta){
             int x=getX(),y=getY();boolean chosen=selected(),focus=active&&(isHovered()||isFocused());
-            g.fill(x,y,x+width,y+height,chosen?0xff30474a:focus?0xff39464b:0xff252f34);g.drawBorder(x,y,width,height,chosen||focus?DarkUi.GOLD:0xff455156);
+            g.fill(x,y,x+width,y+height,chosen?DarkUi.TAB_CHOSEN:focus?DarkUi.TAB_FOCUS:DarkUi.TAB_IDLE);g.drawBorder(x,y,width,height,chosen||focus?DarkUi.GOLD:DarkUi.TAB_EDGE);
             for(var row:Spec.HOUSES)if(row.id().equals(house))g.drawTexture(new Identifier(row.glyph()),x+6,y+6,0f,0f,16,16,16,16);
             var font=textRenderer;g.drawText(font,font.trimToWidth(getMessage().getString(),width-34),x+28,y+10,chosen?DarkUi.PAPER:DarkUi.MUTED,false);
             if(chosen)g.fill(x,y+height-2,x+width,y+height,DarkUi.GOLD);
@@ -193,7 +193,7 @@ final class CampScreen extends ArmyScreen {
     void houseRow(DrawContext g,JsonObject h,int x,int y,int w){
         Spec.HousesRow row=null;for(var r:Spec.HOUSES)if(r.id().equals(h.get("house").getAsString()))row=r;if(row==null)return;
         int tier=h.get("tier").getAsInt();String name=row.name().toUpperCase(java.util.Locale.ROOT);
-        line(g,name,x,y,0xff000000|row.accent(),w);int at=x+textRenderer.getWidth(name)+8;
+        line(g,name,x,y,DarkUi.OPAQUE|row.accent(),w);int at=x+textRenderer.getWidth(name)+8;
         line(g,(tier>0?"Trait "+DarkUi.roman(tier)+" held "+h.get("traitSeconds").getAsInt()+"s":"No trait tier")+"   +"+h.get("shards").getAsInt()+" shards   +"+h.get("renown").getAsInt()+" Renown",at,y,DarkUi.PAPER,x+w-at);
     }
     @Override public void render(DrawContext g,int mx,int my,float delta){

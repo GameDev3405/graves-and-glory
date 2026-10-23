@@ -22,6 +22,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 ART = ROOT / 'tools' / 'ui_art'
 OUT = ROOT / 'src/main/resources/assets/gravesandglory/textures/gui'
+FOREIGN = ('house/',)  # folders under OUT this tool does not paint: Phase 2's House glyphs (integration-0.5)
 JAVA = (ROOT / 'src/main/java', ROOT / 'test-tools/java')
 PAINTERS = ('v4lib', 'v4pal', 'v4a_table', 'v4a_paper', 'v4a_hud', 'v4a_recruit', 'v4a_ink', 'v4a_map', 'v4a_furn',
             'v4a_portrait', 'v4a_recruit2', 'v4art')
@@ -92,7 +93,7 @@ def export():
         if path.is_file():
             path.unlink()
             print('build_ui_art: removed', gone + '.png')
-    strays = sorted(set(pngs(OUT)) - set(atlas['textures']))
+    strays = sorted(n for n in set(pngs(OUT)) - set(atlas['textures']) if not n.startswith(FOREIGN))
     if strays:
         print('build_ui_art: left %d PNG(s) that no atlas listed, first %s.png; --verify fails until they go'
               % (len(strays), strays[0]))
@@ -139,7 +140,7 @@ def verify():
             b = Image.open(Path(tmp) / (name + '.png')).convert('RGBA')
             if a.size != b.size or a.tobytes() != b.tobytes():
                 fail('%s.png differs from its repaint (RGBA)' % name)
-        extra = sorted(on_disk - set(fresh['textures']))
+        extra = sorted(n for n in on_disk - set(fresh['textures']) if not n.startswith(FOREIGN))
         if extra:
             fail('%s.png is not in atlas.json' % extra[0])
     for src in JAVA:
