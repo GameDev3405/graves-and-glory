@@ -812,7 +812,7 @@ public final class Phase3Checks implements ClientModInitializer {
      *  Checks, each failing when the sheet does not hold the five House rows (no vacuous pass): p3-houses-pieces (the five campPieces rows whose station is recruit:<house> are in Structures.LOG, placed, none missing),
      *  p3-houses-banners (each wall banner, tents (6,9,9) and the graveyard (11,4,18), and each tent's standing banner (0,7,10), at its toWorld position, of the House colour, its patterns in order, the wall banner facing the rotated south and the standing one turned with the piece),
      *  p3-houses-slots (extra: CampWorld.slot(row,0) is the first display slot the plan lists, slot 1 lies two blocks on in the direction it lists, and every slot stands on a block with a collision shape with air at feet and head),
-     *  p3-houses-silhouettes (fix round 1: the body height maps of every pair of tents, local x 1..11, z 0..7, differ by 2 or more in at least 26 of 88 columns, so each House has its own roof form),
+     *  p3-houses-silhouettes (fix round 1: the body height maps of every pair of tents, local x 1..11, z 0..7, differ by 2 or more in at least 26 of 88 columns, so each House has its own roof form; fix round 2: the Tidecallers front elevation, the top of each body column x 1..11 over z 0..7 as seen square on from the parade, is one sail: it climbs from a low side to a high side at least 4 higher and never falls back more than 1 on the way, so it ends in a single prow and not two horns),
      *  p3-houses-shaded (no slot sees the sky: World.isSkyVisible of the block above its feet is false for all 30), p3-houses-opens (CampWorld.station at every slot gives the row's station, and openCamp(p,"recruit:gilded") opens CampScreen on the recruit page with house "gilded";
      *  the display-mob half waits for the merge), p3-houses-recruiter-gone (no campStations row recruiter, no villager tagged camp:recruit). Pictures: camp-recruit-gilded, camp-ring, camp-house-<id> for the five rows (the camera max(width,depth)+8 from the piece centre toward the ring centre, for a tent square on its front from width+3 at y 72 looking at y 69 (stepped up to 3 toward the ring centre), swung 30 degrees north when that spot lies in the smoke of the parade braziers,
      *  (0.5,y,-315.5) at y 67.6, looking at the centre at y 67). Not here until the merge: p3-houses-displays, p3-houses-survive, p3-houses-labels (they need ArmyMobs, the houses sheet and CampDisplays). */
@@ -901,7 +901,17 @@ public final class Phase3Checks implements ClientModInitializer {
             for(int i=0;i<maps.size();i++)for(int j=i+1;j<maps.size();j++){int d=0;for(int k=0;k<88;k++)if(Math.abs(maps.get(i)[k]-maps.get(j)[k])>=2)d++;least=Math.min(least,d);
                 pairs.append(house(tentRows.get(i))).append('/').append(house(tentRows.get(j))).append(' ').append(d).append(", ");
                 if(d<26)bad.append(house(tentRows.get(i))).append(" and ").append(house(tentRows.get(j))).append(" share a roof form: only ").append(d).append(" of 88 body columns differ by 2 or more (want 26); ");}
-            report("p3-houses-silhouettes",five&&tentRows.size()==4&&bad.length()==0,(bad.length()==0?"every pair of tents differs in its roof form: ":bad.toString())+"columns apart per pair "+pairs+"least "+least+"; "+prof);
+            // fix round 2: the front elevation of the Tidecallers tent (the top of each body column x 1..11 over z 0..7, seen square on from the parade) is one sail:
+            // it climbs from its low side to its high side, at least 4 higher, never falling back more than 1 on the way, so its top is a single prow and not two horns
+            var fronts=new StringBuilder();
+            for(int i=0;i<maps.size();i++){int[] m=maps.get(i);int[] f=new int[11];for(int x=0;x<11;x++)for(int z=0;z<8;z++)f[x]=Math.max(f[x],m[x*8+z]);
+                fronts.append(house(tentRows.get(i))).append(" front ");for(int x=0;x<11;x++)fronts.append(x>0?"-":"").append(f[x]);fronts.append("; ");
+                if(!house(tentRows.get(i)).equals("tidecallers"))continue;
+                boolean east=f[10]>=f[0];int lo=east?f[0]:f[10],hi=east?f[10]:f[0],run=0,fall=0;
+                for(int k=0;k<11;k++){int v=f[east?k:10-k];run=Math.max(run,v);fall=Math.max(fall,run-v);}
+                int peak=0;for(int v:f)peak=Math.max(peak,v);
+                if(hi-lo<4||fall>1||peak!=hi)bad.append("the tidecallers front is not one sail (low side ").append(lo).append(", high side ").append(hi).append(", peak ").append(peak).append(", falls back ").append(fall).append("; want the high side at least 4 above the low one, the peak on it and no fall over 1); ");}
+            report("p3-houses-silhouettes",five&&tentRows.size()==4&&bad.length()==0,(bad.length()==0?"every pair of tents differs in its roof form: ":bad.toString())+"columns apart per pair "+pairs+"least "+least+"; "+prof+fronts);
             // p3-houses-slots and p3-houses-shaded
             bad=new StringBuilder(count);var shade=new StringBuilder(count);int slots=0,sky=0;
             for(var r:rows){

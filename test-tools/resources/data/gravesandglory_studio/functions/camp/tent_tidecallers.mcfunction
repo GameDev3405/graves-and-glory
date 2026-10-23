@@ -2,7 +2,7 @@
 # camp/tent_tidecallers: Tidecallers recruiter tent (sea-faded canvas on driftwood, prismarine, a tide pool, a mast and sea lanterns).
 # Local coordinates from the minimum corner; y 0 is the ground layer. Cells no line sets are structure void and keep the ground.
 # Written feature by feature: what a block hangs on (a wall, a pole, a chain, a ceiling) is always set before it.
-# Facing south. Body x 1..11, z 0..7 (a bowed sail: canvas slung between two curved driftwood spars that sweep from y 6 at the back up to a prow at y 11 over the porch, the belly two blocks under them); porch z 8..10 under the awning at y 7; plinth y 1 along z 9, display slots x 1..11 step 2 (feet y 2).
+# Facing south. Body x 1..11, z 0..7 (a bowed lateen sail over a dark sea-blue hull: white sailcloth with sea-blue seams whose front edge climbs from the low boom on the west side (y 7 at the front) to a prow at y 11 on the east, where a mast stands at the front corner; along the east side the spar sweeps from y 6 at the back up to the prow); porch z 8..10 under the awning at y 7; plinth y 1 along z 9, display slots x 1..11 step 2 (feet y 2).
 # Banners: the House wall banner at (6,9,9) facing south on the gable, the House standing banner at (0,7,10) on the dark oak fence pole (0,1..6,10).
 
 # the floor of the body (prismarine bricks) and of the porch (driftwood (stripped oak) in a dark prismarine border)
@@ -12,99 +12,98 @@ fill ~1 ~0 ~8 ~11 ~0 ~9 minecraft:stripped_oak_log[axis=x]
 fill ~1 ~0 ~10 ~11 ~0 ~10 minecraft:dark_prismarine
 fill ~12 ~0 ~8 ~12 ~0 ~10 minecraft:dark_prismarine
 
-# the body: a bowed sail: canvas slung between two curved driftwood spars that sweep from y 6 at the back up to a prow at y 11 over the porch, the belly two blocks under them
+# the body: a bowed lateen sail over a dark sea-blue hull: white sailcloth with sea-blue seams whose front edge climbs from the low boom on the west side (y 7 at the front) to a prow at y 11 on the east, where a mast stands at the front corner; along the east side the spar sweeps from y 6 at the back up to the prow
 fill ~1 ~1 ~0 ~11 ~1 ~0 minecraft:dark_prismarine
 fill ~1 ~1 ~1 ~1 ~1 ~7 minecraft:dark_prismarine
 setblock ~2 ~1 ~7 minecraft:dark_prismarine
 setblock ~10 ~1 ~7 minecraft:dark_prismarine
 fill ~11 ~1 ~1 ~11 ~1 ~7 minecraft:dark_prismarine
 setblock ~1 ~2 ~0 minecraft:stripped_oak_log
-setblock ~1 ~2 ~1 minecraft:cyan_terracotta
-fill ~1 ~2 ~2 ~1 ~2 ~3 minecraft:gray_wool
-fill ~1 ~2 ~4 ~1 ~7 ~6 minecraft:cyan_terracotta
-setblock ~1 ~2 ~7 minecraft:stripped_oak_log
-fill ~2 ~2 ~0 ~8 ~3 ~0 minecraft:cyan_terracotta
-fill ~2 ~2 ~7 ~2 ~3 ~7 minecraft:light_gray_wool
-fill ~9 ~2 ~0 ~10 ~3 ~0 minecraft:light_gray_wool
-fill ~10 ~2 ~7 ~10 ~4 ~7 minecraft:cyan_terracotta
+fill ~1 ~2 ~1 ~1 ~2 ~6 minecraft:cyan_terracotta
+fill ~1 ~2 ~7 ~1 ~6 ~7 minecraft:stripped_oak_log
+fill ~2 ~2 ~0 ~10 ~3 ~0 minecraft:cyan_terracotta
+fill ~2 ~2 ~7 ~2 ~6 ~7 minecraft:cyan_terracotta
+fill ~10 ~2 ~7 ~10 ~6 ~7 minecraft:cyan_terracotta
 setblock ~11 ~2 ~0 minecraft:stripped_oak_log
-fill ~11 ~2 ~1 ~11 ~3 ~1 minecraft:light_gray_wool
-fill ~11 ~2 ~2 ~11 ~4 ~6 minecraft:cyan_terracotta
-setblock ~11 ~2 ~7 minecraft:stripped_oak_log
-setblock ~1 ~3 ~0 minecraft:cyan_terracotta
-fill ~1 ~3 ~1 ~1 ~3 ~2 minecraft:gray_wool
-fill ~1 ~3 ~3 ~1 ~7 ~3 minecraft:cyan_terracotta
-fill ~1 ~3 ~7 ~1 ~10 ~7 minecraft:cyan_terracotta
-setblock ~11 ~3 ~0 minecraft:light_gray_wool
-fill ~11 ~3 ~7 ~11 ~10 ~7 minecraft:cyan_terracotta
-fill ~1 ~4 ~0 ~2 ~5 ~0 minecraft:gray_wool
-setblock ~1 ~4 ~1 minecraft:gray_wool
-fill ~1 ~4 ~2 ~1 ~6 ~2 minecraft:cyan_terracotta
-fill ~2 ~4 ~7 ~3 ~7 ~7 minecraft:cyan_terracotta
-fill ~3 ~4 ~0 ~3 ~5 ~0 minecraft:cyan_wool
-fill ~4 ~4 ~0 ~4 ~4 ~1 minecraft:gray_wool
-fill ~5 ~4 ~0 ~6 ~4 ~0 minecraft:cyan_terracotta
-setblock ~5 ~4 ~1 minecraft:gray_wool
-setblock ~6 ~4 ~1 minecraft:cyan_terracotta
-fill ~7 ~4 ~0 ~8 ~4 ~1 minecraft:gray_wool
-fill ~9 ~4 ~0 ~9 ~5 ~0 minecraft:cyan_wool
-fill ~9 ~4 ~7 ~9 ~5 ~7 minecraft:cyan_terracotta
-fill ~10 ~4 ~0 ~11 ~5 ~0 minecraft:cyan_terracotta
-fill ~11 ~4 ~1 ~11 ~5 ~1 minecraft:cyan_terracotta
-fill ~1 ~5 ~1 ~2 ~5 ~1 minecraft:cyan_terracotta
-setblock ~3 ~5 ~1 minecraft:cyan_wool
-fill ~4 ~5 ~2 ~8 ~5 ~2 minecraft:cyan_terracotta
-fill ~4 ~5 ~7 ~7 ~7 ~7 minecraft:cyan_terracotta
-fill ~8 ~5 ~7 ~8 ~9 ~7 minecraft:gray_wool
-setblock ~9 ~5 ~1 minecraft:cyan_wool
-setblock ~10 ~5 ~1 minecraft:cyan_terracotta
-setblock ~10 ~5 ~7 minecraft:light_gray_wool
-fill ~11 ~5 ~2 ~11 ~6 ~5 minecraft:cyan_terracotta
+fill ~11 ~2 ~1 ~11 ~2 ~6 minecraft:cyan_terracotta
+fill ~11 ~2 ~7 ~11 ~6 ~7 minecraft:stripped_oak_log
+fill ~1 ~3 ~0 ~1 ~3 ~1 minecraft:stripped_oak_log[axis=z]
+fill ~1 ~3 ~2 ~1 ~3 ~6 minecraft:white_wool
+fill ~11 ~3 ~0 ~11 ~3 ~1 minecraft:light_gray_wool
+fill ~11 ~3 ~2 ~11 ~4 ~6 minecraft:white_wool
+fill ~1 ~4 ~2 ~1 ~4 ~3 minecraft:stripped_oak_log[axis=z]
+fill ~1 ~4 ~4 ~1 ~4 ~6 minecraft:white_wool
+fill ~2 ~4 ~0 ~3 ~4 ~1 minecraft:white_wool
+setblock ~2 ~4 ~2 minecraft:white_wool
+fill ~3 ~4 ~7 ~3 ~6 ~7 minecraft:cyan_terracotta
+fill ~4 ~4 ~0 ~4 ~4 ~1 minecraft:cyan_wool
+fill ~5 ~4 ~0 ~7 ~5 ~0 minecraft:white_wool
+fill ~8 ~4 ~0 ~8 ~5 ~0 minecraft:cyan_wool
+setblock ~9 ~4 ~0 minecraft:light_gray_wool
+fill ~9 ~4 ~7 ~9 ~6 ~7 minecraft:cyan_terracotta
+fill ~10 ~4 ~0 ~11 ~5 ~0 minecraft:white_wool
+fill ~11 ~4 ~1 ~11 ~5 ~1 minecraft:white_wool
+fill ~1 ~5 ~4 ~1 ~5 ~5 minecraft:stripped_oak_log[axis=z]
+setblock ~1 ~5 ~6 minecraft:white_wool
+fill ~2 ~5 ~3 ~2 ~5 ~4 minecraft:white_wool
+fill ~3 ~5 ~2 ~3 ~5 ~3 minecraft:white_wool
+setblock ~4 ~5 ~2 minecraft:cyan_wool
+fill ~4 ~5 ~7 ~8 ~6 ~7 minecraft:cyan_terracotta
+fill ~5 ~5 ~1 ~7 ~5 ~1 minecraft:white_wool
+setblock ~5 ~5 ~2 minecraft:white_wool
+setblock ~8 ~5 ~1 minecraft:cyan_wool
+fill ~9 ~5 ~0 ~9 ~6 ~0 minecraft:white_wool
+fill ~11 ~5 ~2 ~11 ~6 ~5 minecraft:white_wool
 setblock ~11 ~5 ~6 minecraft:light_gray_wool
-fill ~1 ~6 ~0 ~1 ~6 ~1 minecraft:stripped_oak_log[axis=z]
-setblock ~2 ~6 ~2 minecraft:cyan_terracotta
-setblock ~3 ~6 ~2 minecraft:cyan_wool
-fill ~4 ~6 ~3 ~8 ~6 ~4 minecraft:cyan_terracotta
-setblock ~9 ~6 ~2 minecraft:cyan_wool
-fill ~9 ~6 ~7 ~9 ~8 ~7 minecraft:gray_wool
-setblock ~10 ~6 ~2 minecraft:cyan_terracotta
-fill ~10 ~6 ~7 ~10 ~8 ~7 minecraft:cyan_terracotta
+setblock ~1 ~6 ~6 minecraft:stripped_oak_log[axis=z]
+setblock ~2 ~6 ~5 minecraft:white_wool
+fill ~3 ~6 ~4 ~3 ~6 ~5 minecraft:white_wool
+fill ~4 ~6 ~3 ~4 ~6 ~4 minecraft:cyan_wool
+fill ~5 ~6 ~3 ~6 ~6 ~3 minecraft:white_wool
+setblock ~5 ~6 ~4 minecraft:white_wool
+fill ~6 ~6 ~2 ~7 ~6 ~2 minecraft:white_wool
+setblock ~8 ~6 ~2 minecraft:cyan_wool
+fill ~9 ~6 ~1 ~9 ~6 ~2 minecraft:white_wool
+fill ~10 ~6 ~0 ~10 ~6 ~1 minecraft:white_wool
 fill ~11 ~6 ~0 ~11 ~6 ~1 minecraft:stripped_oak_log[axis=z]
-fill ~11 ~6 ~6 ~11 ~8 ~6 minecraft:cyan_terracotta
-setblock ~1 ~7 ~2 minecraft:stripped_oak_log[axis=z]
-fill ~2 ~7 ~3 ~2 ~7 ~4 minecraft:cyan_terracotta
-fill ~3 ~7 ~3 ~3 ~7 ~4 minecraft:cyan_wool
-fill ~4 ~7 ~5 ~7 ~7 ~5 minecraft:cyan_terracotta
-setblock ~8 ~7 ~5 minecraft:gray_wool
-fill ~9 ~7 ~3 ~9 ~7 ~4 minecraft:cyan_wool
-fill ~10 ~7 ~3 ~11 ~7 ~4 minecraft:cyan_terracotta
+fill ~11 ~6 ~6 ~11 ~8 ~6 minecraft:white_wool
+setblock ~1 ~7 ~7 minecraft:smooth_quartz_slab[type=bottom]
+fill ~2 ~7 ~6 ~3 ~7 ~7 minecraft:white_wool
+setblock ~4 ~7 ~5 minecraft:cyan_wool
+fill ~4 ~7 ~7 ~4 ~8 ~7 minecraft:cyan_wool
+setblock ~5 ~7 ~5 minecraft:white_wool
+fill ~5 ~7 ~7 ~7 ~9 ~7 minecraft:white_wool
+fill ~6 ~7 ~4 ~6 ~7 ~5 minecraft:white_wool
+fill ~7 ~7 ~3 ~7 ~7 ~4 minecraft:white_wool
+fill ~8 ~7 ~3 ~8 ~7 ~4 minecraft:cyan_wool
+fill ~8 ~7 ~7 ~8 ~10 ~7 minecraft:cyan_wool
+setblock ~9 ~7 ~3 minecraft:light_gray_wool
+setblock ~9 ~7 ~4 minecraft:white_wool
+fill ~9 ~7 ~7 ~11 ~10 ~7 minecraft:white_wool
+setblock ~10 ~7 ~2 minecraft:light_gray_wool
 setblock ~11 ~7 ~2 minecraft:stripped_oak_log[axis=z]
-fill ~11 ~7 ~5 ~11 ~8 ~5 minecraft:cyan_terracotta
-fill ~1 ~8 ~3 ~1 ~8 ~4 minecraft:stripped_oak_log[axis=z]
-fill ~1 ~8 ~5 ~2 ~8 ~5 minecraft:cyan_terracotta
-setblock ~1 ~8 ~6 minecraft:cyan_terracotta
-fill ~2 ~8 ~7 ~3 ~10 ~7 minecraft:gray_wool
-setblock ~3 ~8 ~5 minecraft:cyan_wool
-fill ~4 ~8 ~6 ~7 ~8 ~6 minecraft:cyan_terracotta
-fill ~4 ~8 ~7 ~6 ~8 ~7 minecraft:cyan_terracotta
-fill ~7 ~8 ~7 ~7 ~9 ~7 minecraft:gray_wool
-setblock ~8 ~8 ~6 minecraft:gray_wool
-setblock ~9 ~8 ~5 minecraft:cyan_wool
-setblock ~10 ~8 ~5 minecraft:cyan_terracotta
+fill ~11 ~7 ~3 ~11 ~7 ~5 minecraft:white_wool
+setblock ~2 ~8 ~7 minecraft:smooth_quartz_slab[type=bottom]
+setblock ~3 ~8 ~7 minecraft:white_wool
+setblock ~4 ~8 ~6 minecraft:cyan_wool
+fill ~5 ~8 ~6 ~6 ~8 ~6 minecraft:white_wool
+setblock ~7 ~8 ~5 minecraft:white_wool
+setblock ~8 ~8 ~5 minecraft:cyan_wool
+setblock ~9 ~8 ~5 minecraft:white_wool
+fill ~10 ~8 ~3 ~10 ~8 ~4 minecraft:white_wool
 fill ~11 ~8 ~3 ~11 ~8 ~4 minecraft:stripped_oak_log[axis=z]
-setblock ~1 ~9 ~5 minecraft:stripped_oak_log[axis=z]
-setblock ~1 ~9 ~6 minecraft:light_gray_wool
-setblock ~2 ~9 ~6 minecraft:gray_wool
-setblock ~3 ~9 ~6 minecraft:cyan_wool
-setblock ~4 ~9 ~7 minecraft:gray_wool
-fill ~5 ~9 ~7 ~6 ~9 ~7 minecraft:cyan_terracotta
-setblock ~9 ~9 ~6 minecraft:cyan_wool
-fill ~9 ~9 ~7 ~10 ~10 ~7 minecraft:light_gray_wool
-fill ~10 ~9 ~6 ~11 ~9 ~6 minecraft:light_gray_wool
+setblock ~11 ~8 ~5 minecraft:white_wool
+setblock ~4 ~9 ~7 minecraft:smooth_quartz_slab[type=bottom]
+setblock ~7 ~9 ~6 minecraft:white_wool
+setblock ~8 ~9 ~6 minecraft:cyan_wool
+setblock ~9 ~9 ~6 minecraft:white_wool
+setblock ~10 ~9 ~5 minecraft:white_wool
 setblock ~11 ~9 ~5 minecraft:stripped_oak_log[axis=z]
-setblock ~1 ~10 ~6 minecraft:stripped_oak_log[axis=z]
+setblock ~11 ~9 ~6 minecraft:light_gray_wool
+fill ~6 ~10 ~7 ~7 ~10 ~7 minecraft:smooth_quartz_slab[type=bottom]
+setblock ~10 ~10 ~6 minecraft:light_gray_wool
 setblock ~11 ~10 ~6 minecraft:stripped_oak_log[axis=z]
-setblock ~1 ~11 ~7 minecraft:stripped_oak_log[axis=z]
+fill ~9 ~11 ~7 ~10 ~11 ~7 minecraft:smooth_quartz_slab[type=bottom]
 setblock ~11 ~11 ~7 minecraft:stripped_oak_log[axis=z]
 
 # the door posts and the lintel over the door (x 4..8)
@@ -112,17 +111,18 @@ fill ~3 ~1 ~7 ~3 ~3 ~7 minecraft:stripped_oak_log
 fill ~9 ~1 ~7 ~9 ~3 ~7 minecraft:stripped_oak_log
 fill ~4 ~4 ~7 ~8 ~4 ~7 minecraft:dark_prismarine
 
-# a sea lantern in the belly of the sail at the prow, and rope stays (chains) from the spar tips to the awning
-setblock ~6 ~10 ~7 minecraft:sea_lantern
+# the foremast at the east front corner (x 12, z 7) up to the prow, a sea-blue pennant streaming from its head
+fill ~12 ~1 ~7 ~12 ~11 ~7 minecraft:stripped_oak_log
+setblock ~12 ~11 ~8 minecraft:cyan_wall_banner[facing=south]
 
 # the porch posts at its four corners (the west front one is the dark oak fence pole of the standard)
 setblock ~0 ~1 ~8 minecraft:oak_fence[north=false,east=false,south=true,west=false]
 setblock ~0 ~1 ~10 minecraft:dark_oak_fence[north=true,east=false,south=false,west=false]
-setblock ~12 ~1 ~8 minecraft:oak_fence[north=false,east=false,south=true,west=false]
+setblock ~12 ~1 ~8 minecraft:oak_fence[north=true,east=false,south=true,west=false]
 setblock ~12 ~1 ~10 minecraft:oak_fence[north=true,east=false,south=false,west=false]
 fill ~0 ~2 ~8 ~0 ~6 ~8 minecraft:oak_fence[north=false,east=false,south=false,west=false]
 fill ~0 ~2 ~10 ~0 ~6 ~10 minecraft:dark_oak_fence[north=false,east=false,south=false,west=false]
-fill ~12 ~2 ~8 ~12 ~6 ~8 minecraft:oak_fence[north=false,east=false,south=false,west=false]
+fill ~12 ~2 ~8 ~12 ~6 ~8 minecraft:oak_fence[north=true,east=false,south=false,west=false]
 fill ~12 ~2 ~10 ~12 ~6 ~10 minecraft:oak_fence[north=false,east=false,south=false,west=false]
 
 # the awning at y 7 over the porch, its front edge in dark prismarine weights
