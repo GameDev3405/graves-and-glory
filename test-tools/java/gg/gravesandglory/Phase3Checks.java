@@ -629,8 +629,11 @@ public final class Phase3Checks implements ClientModInitializer {
     }
 
     /** Task 3 (suite camp): the camp base as a commander meets it. One launch, in this order: spawn (p3-camp-spawn), then on the world as built p3-camp-built, p3-camp-budget, p3-camp-stations and the war table of map 0 (p3-camp-war-table, first
-     *  part), p3-camp-shapes (extra: every fence, wall, pane and bar inside the pieces is settled, every vine of the files stands, the game rule doVinesSpread is off), p3-camp-pages (every page the stations name opens its screen), p3-camp-pads (both pads put the squad on their team),
-     *  p3-camp-leash (the three cases of the brief), the nine photographs (p3-camp-arrival.png and so on: the brief's seven and two of the south rim), the war table again after map 2 was built (second part), then a world made by an older build is planted
+     *  part), p3-camp-shapes (extra: every fence, wall, pane and bar inside the pieces is settled, every vine of the files stands, the game rule doVinesSpread is off), and the two checks of the look of the terrain (fix round 2): p3-camp-bank-mix (at least 9 of the 12 rows of the bank
+     *  of the ridge have no block above 85 percent of their columns, so the bank is a mix and not stripes) and p3-camp-flank-relief (the crest of each flank, at x 90 either side of the origin, spans at least 6 blocks); then p3-camp-pages (every page the stations name opens its screen),
+     *  p3-camp-pads (both pads put the squad on their team), p3-camp-leash (the three cases of the brief), the sixteen photographs (twelve of map 0: p3-camp-arrival.png, -ridge, -aerial, -war-table, -gates-inside, -gates-outside, -archive, -south-pads, -south-oblique, -bank, -flank-west and
+     *  -flank-east, the brief's seven, two of the south rim and three of the terrain; and the four of Frostmarch, p3-camp-map2-gates-inside.png, -ridge, -south-oblique and -aerial, taken once map 2 stands), then every map in turn (map 0 stands, maps 1 to 4 are built over it) the rim seam
+     *  (p3-camp-rim-seam, fix round 2: one verdict after the last map; with GRAVES_BOX_DUMP set map 0 is built once more at the end and the playable box of each map is dumped), and on map 2 the war table built over the camp (second part); then a world made by an older build is planted
      *  (the old pads, the gold seal, a brick of the old tower, and entities of the older tags), the terrain marker is deleted, and CampWorld.build runs again as it does on the first load of an old world (p3-camp-old-gone),
      *  and last a build that has nothing to rebuild (p3-camp-rebuild-idempotent: both CRC32 readings and the build itself are in one server callback, so no random tick can grow a vine between the two readings). */
     static final class Camp implements Suite {
@@ -846,23 +849,27 @@ public final class Phase3Checks implements ClientModInitializer {
             return -1;
         }
         /** p3-camp-rim-seam (one reading per map; the id is reported after the last map): over the width of the island (x -96 to 96), for z -270 to -262 (the last rim rows of the camp, z -267, and the first arena rows, from z -266 on), the ground at z -267
-         *  is at least the ground at z -266 (the arena's edge never stands above the rim: no cut face), and no neighbouring pair of columns, along z or along x, differs by more than 3 blocks. */
+         *  is at least the ground at z -266 (the arena's edge never stands above the rim: no cut face), and no neighbouring pair of columns, along z or along x, differs by more than 3 blocks. A column in which ground() finds nothing (-1: the world was not read) is wrong, so the check cannot pass on an unread world. */
         void rimSeam(GravesAndGlory.Battle b,int n){
             var w=b.world;int x0=C.originX()+C.islandMinDx(),x1=C.originX()+C.islandMaxDx(),zRim=-267,zEdge=-266,zLo=-270,zHi=-262;
             int cols=x1-x0+1,rows=zHi-zLo+1;int[][] top=new int[cols][rows];
             for(int i=0;i<cols;i++)for(int k=0;k<rows;k++)top[i][k]=ground(w,x0+i,zLo+k);
-            int above=0,worstAbove=0,firstAbove=Integer.MIN_VALUE,steps=0,worstStep=0;String firstStep="";
+            int above=0,worstAbove=0,firstAbove=Integer.MIN_VALUE,steps=0,worstStep=0,unread=0;String firstStep="",firstUnread="";
             for(int i=0;i<cols;i++){
                 int rim=top[i][zRim-zLo],edge=top[i][zEdge-zLo];
+                boolean bad=false;
+                for(int k=0;k<rows;k++)if(top[i][k]<=0){bad=true;if(firstUnread.isEmpty())firstUnread="x "+(x0+i)+" z "+(zLo+k);} // ground() answers -1 when it finds nothing from y 150 to 40: a world that did not load reads -1 everywhere, and every difference of -1 and -1 is 0
+                if(bad)unread++;
                 if(edge>rim){above++;if(edge-rim>worstAbove){worstAbove=edge-rim;firstAbove=x0+i;}}
                 for(int k=0;k<rows;k++){
                     if(k+1<rows){int d=Math.abs(top[i][k]-top[i][k+1]);if(d>3){steps++;if(firstStep.isEmpty())firstStep="z "+(zLo+k)+" to "+(zLo+k+1)+" at x "+(x0+i)+": "+top[i][k]+" to "+top[i][k+1];}worstStep=Math.max(worstStep,d);}
                     if(i+1<cols){int d=Math.abs(top[i][k]-top[i+1][k]);if(d>3){steps++;if(firstStep.isEmpty())firstStep="x "+(x0+i)+" to "+(x0+i+1)+" at z "+(zLo+k)+": "+top[i][k]+" to "+top[i+1][k];}worstStep=Math.max(worstStep,d);}
                 }
             }
-            boolean ok=above==0&&steps==0;if(!ok)seamOk=false;
+            boolean ok=above==0&&steps==0&&unread==0;if(!ok)seamOk=false;
             seamWhy.append("map ").append(n).append(": ").append(cols).append(" columns, edge (z -266) above the rim (z -267) in ").append(above).append(worstAbove>0?" (worst by "+worstAbove+" at x "+firstAbove+")":"")
-                .append(", neighbour steps over 3: ").append(steps).append(" (largest step ").append(worstStep).append(steps>0?", first "+firstStep:"").append(ok?") ok; ":") WRONG; ");
+                .append(", neighbour steps over 3: ").append(steps).append(" (largest step ").append(worstStep).append(steps>0?", first "+firstStep:"")
+                .append("; unread columns, where no ground was found from y 150 to 40, count as WRONG: ").append(unread).append(unread>0?", first at "+firstUnread:"").append(ok?") ok; ":") WRONG; ");
         }
         /** When the environment variable GRAVES_BOX_DUMP names a folder: the state of every block of the playable box (x -366 to 366, z -250 to 250, y 50 to 140) as 16-bit ids, gzipped, in box-map<N>.bin.gz. Two runs of different code are compared with work/p3/tools/boxdiff.py; the random ticks are stopped (game rule randomTickSpeed 0) when the dump is on, so that no grass spreads and no farmland dries between two runs. */
         void dump(GravesAndGlory.Battle b,int n){

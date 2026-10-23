@@ -67,7 +67,9 @@ public final class Arena {
         double border=Math.max(Math.abs(x)-GravesAndGlory.R.arenaHalfX()+14,Math.abs(z)-GravesAndGlory.R.arenaHalfZ()+12);
         if(border>0)h+=Math.min(Spec.TERRAINSTYLE[0].boundaryRise(),border*.4)*(.65+.35*Math.sin(x*.055+z*.043));
         if(z<-GravesAndGlory.R.arenaHalfZ())h=CampWorld.taper(x,z,h); // the margin north of the playable box (z -251 to -266) meets the rim of the camp; the box itself is not touched
-        return (int)Math.round(h);
+        int r=(int)Math.round(h);
+        // A river column writes nothing at h (the river check wants air from h up), so a column of the margin that the taper lifted out of the water would end one block below its neighbours: its height is one more than its ground, and buildColumn lays the ground at h-1.
+        return z<-GravesAndGlory.R.arenaHalfZ()&&river(x,z)&&r>Y?r+1:r;
     }
     /** How far a road climbs to a raised capture point (Kingsfield's outposts): from the floor of the arena at the end of this distance beyond the plateau of the point up to the elevation of the point at the edge of the plateau. */
     static final double CLIMB=48;
@@ -106,10 +108,11 @@ public final class Arena {
         for(int y=Y-9;y<h-2;y++)put(w,x,y,z,Blocks.STONE);
         put(w,x,h-2,z,Blocks.STONE);
         // The margin north of the playable box (z -251 to -266, see CampWorld.taper) is a steep slope, and a block of grass over a block of dirt a row would stand in stripes on it: there the slope mix of the camp is laid (CampWorld.mix). The playable box is not touched.
-        // A river column of the margin that the taper lifted out of the water ends in natural ground, not in a strip of dirt up the slope (it keeps nothing at h: the river check wants air from h up).
-        boolean margin=z<-GravesAndGlory.R.arenaHalfZ();
+        // A river column of the margin that the taper lifted out of the water (lifted: height() put its h one above its ground) keeps nothing at h, because the river check wants air from h up, and is laid like its neighbours one block lower: the slope mix at ground g=h-1 over the under block.
+        boolean margin=z<-GravesAndGlory.R.arenaHalfZ(),lifted=margin&&river(x,z)&&h>Y+1;
         double rock=margin?CampWorld.rockOf(Math.max(Math.abs(height(x,z+2)-height(x,z-2)),Math.abs(height(x+2,z)-height(x-2,z)))):0;
-        put(w,x,h-1,z,river(x,z)?(margin&&h-1>=Y?natural(h):Blocks.DIRT):margin?CampWorld.underBlock(rock,x,z):Blocks.DIRT);
+        if(lifted){int g=h-1;put(w,x,g-1,z,CampWorld.underBlock(rock,x,z));put(w,x,g,z,natural(g)!=Blocks.STONE?CampWorld.mix(natural(g),rock,x,z):natural(g));}
+        else put(w,x,h-1,z,margin&&!river(x,z)?CampWorld.underBlock(rock,x,z):Blocks.DIRT);
         if(river(x,z)){for(int y=Y-5;y<=Y-3;y++)put(w,x,y,z,Blocks.GRAVEL);for(int y=Y-2;y<=Y-1;y++)put(w,x,y,z,Blocks.WATER);}
         else{
             Block surface=road(x,z)?Blocks.DIRT_PATH:margin&&natural(h)!=Blocks.STONE?CampWorld.mix(natural(h),rock,x,z):natural(h);
