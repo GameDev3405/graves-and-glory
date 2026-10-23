@@ -223,9 +223,9 @@ The player's own orders replace the automatic rout **(Kort)**:
 false, nothing converts them on arrival, and only the routing rally ever ended a Retreat. Without routing that would
 leave a pulled-out group standing passive, even when struck, until it is ordered again, and the same for Muster's
 Move orders and a bot army's Retreat to its base. So this change brings forward the approved unit AI rule "an ended
-order holds" (`arrive` hold, its call 7) for these two orders: a group on Retreat or Move whose centre is within
-`arriveRadius` (4 blocks, draft) of its destination fights as on Hold (from its slot, Hold's `engageRadius`) until its
-next order. On the way it still fights nothing. The unit AI plan later replaces this with its full `arrive` column.
+order holds" (`arrive` hold, its call 7) for these two orders: a group on Retreat or Move whose slot centre (the mean of its formation slots, so ranged, support and siege groups, whose slots sit behind the
+group's centre, arrive too) is within `arriveRadius` (4 blocks, draft) of its destination fights as on Hold (from its slot, Hold's
+`engageRadius`) and stays arrived, latched on the squad, until its next order (Task 8b fix round 1, 2026-10-22). On the way it still fights nothing. The unit AI plan later replaces this with its full `arrive` column.
 
 **A retreat under contact costs.** A retreating group has its back to its pursuers, so their blows land as flank or
 rear hits (C16, C16s). That is the price of pulling out while engaged, and Retreat gets no exemption **(designer's
