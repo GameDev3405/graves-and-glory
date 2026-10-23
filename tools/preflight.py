@@ -179,7 +179,7 @@ for t in data['houseTraits']:
     if t['id']!=f'{t["house"]}_{t["tier"]}': errors.append(f'houseTraits/{t["id"]}: id must be <house>_<tier>')
     if t['mechanic'] not in TRAIT_MECHANICS: errors.append(f'houseTraits/{t["id"]}: mechanic {t["mechanic"]} is not one of {", ".join(TRAIT_MECHANICS)} (CounterMath.is reads bulwark, pack_hunters, entrench and riptide; rise_again is the Graveborn death rule)')
 MECHANICS={'none','shield','mend','blight','stance','pierce','cleave','onhit_status','pounce','aura','slam','fearless','mist','onkill_heal','raise','rise','mark'}
-TRIGGERS={'passive','onhit','cast','hold','timer','charge_contact'}
+TRIGGERS={'passive','onhit','cast','hold','timer','charge_contact','rider','onkill'}
 for a in data['abilities']:
     if a['mechanic'] not in MECHANICS: errors.append(f'abilities/{a["id"]}: mechanic {a["mechanic"]} is not in the closed list')
     if a['trigger'] not in TRIGGERS: errors.append(f'abilities/{a["id"]}: trigger {a["trigger"]} is not in the closed list')
@@ -260,6 +260,31 @@ for t in data['troops']:
         if (t['id'],lv) not in levelAbility: errors.append(f'levelAbilities: {t["id"]} needs exactly one level-{lv} row')
     two=levelAbility.get((t['id'],2))
     if two and t['ability'] in abilityRows and abilityRows[two['ability']]['mechanic']!=abilityRows[t['ability']]['mechanic']: errors.append(f'levelAbilities/{two["id"]}: a level-2 ability keeps its base ability\'s mechanic ({abilityRows[t["ability"]]["mechanic"]}), not {abilityRows[two["ability"]]["mechanic"]}')
+# In-match progression Task 6, ruling I1: a level-3 row that changes what the level-2 row does is no second cast. Trigger rider: it rides on the level-2 row
+# (Abilities.second): a mend or the howl that also cleanses, a cloud that also lays a status, or a burst (blight) that also leaves a zone. It keeps the level-2
+# row's timing, and a rider of the same mechanic its reach too, so it never casts on its own clock. Trigger onkill: it acts on a kill (onkill_heal, Abilities.onKill;
+# raise, on a kill by the troop's blight).
+for (troop,lv),l in levelAbility.items():
+    a=abilityRows[l['ability']];name=f'abilities/{a["id"]}'
+    if a['trigger']=='rider':
+        two=levelAbility.get((troop,2));two=abilityRows.get(two['ability']) if two else None
+        if lv!=3 or two is None: errors.append(f'{name}: a rider is a level-3 row on a troop with a level-2 row'); continue
+        same=a['mechanic']==two['mechanic']
+        if not (same and a['mechanic'] in ('mend','mist') or same and a['mechanic']=='aura' and two['trigger']=='timer' or a['mechanic']=='mist' and two['mechanic']=='blight'): errors.append(f'{name}: a rider is a mend on a mend, an aura on a timed aura (the howl), a mist on a mist, or a mist zone on a blight burst; its level-2 row is {two["mechanic"]} on {two["trigger"]}'); continue
+        if two['trigger']=='rider': errors.append(f'{name}: the level-2 row a rider rides on has a trigger of its own')
+        if any(a[k]!=two[k] for k in ('cooldownTicks','windupTicks','minRange')): errors.append(f'{name}: a rider keeps its level-2 row\'s cooldownTicks, windupTicks and minRange (it never casts on its own clock)')
+        if same and any(a[k]!=two[k] for k in ('radius','durationTicks')): errors.append(f'{name}: a rider of its level-2 row\'s mechanic keeps its radius and durationTicks')
+        if a['mechanic'] in ('mend','aura') and (not a['cleanse'] or a['amount']!=0 or a['amount2']!=0): errors.append(f'{name}: a mend or aura rider cleanses (cleanse true) and adds no heal or share of its own (amount and amount2 0)')
+        if a['mechanic']=='mist' and (a['status'] not in ('weaken','bleed') or a['statusTicks']<=0): errors.append(f'{name}: a mist rider lays weaken or bleed (a Statuses status) for statusTicks above 0')
+        if a['mechanic']=='mist' and not same and (a['radius']<=0 or a['durationTicks']<=0): errors.append(f'{name}: a zone a burst leaves needs a radius and a durationTicks above 0')
+    elif a['mechanic']=='raise':
+        two=levelAbility.get((troop,2));two=abilityRows.get(two['ability']) if two else None
+        if lv!=3 or two is None or two['mechanic']!='blight': errors.append(f'{name}: raise is a level-3 row of a troop whose level-2 row is a blight (her blight kills rise)')
+        elif a['amount']<1 or a['durationTicks']<=0: errors.append(f'{name}: raise needs amount (the most at a time) 1 or more and durationTicks above 0')
+for a in data['abilities']:
+    if (a['trigger']=='onkill')!=(a['mechanic'] in ('onkill_heal','raise')): errors.append(f'abilities/{a["id"]}: onkill_heal and raise act on a kill (trigger onkill), and only they do')
+    if a['trigger'] in ('rider','onkill') and a['id'] in {t['ability'] for t in data['troops']}: errors.append(f'abilities/{a["id"]}: a rider or onkill row is a level-3 row, never a troop\'s base ability')
+    if a['trigger'] in ('rider','onkill') and a['id'] not in {l['ability'] for (_,lv),l in levelAbility.items() if lv==3}: errors.append(f'abilities/{a["id"]}: a rider or onkill row is the ability of a level-3 levelAbilities row')
 # Every counter tag an ability grants is read by some counter row, so no granted tag is dead.
 counterTags={tag for c in data['counters'] for tag in c['attackerTag'].split('+')+c['targetTag'].split('+')}
 for a in data['abilities']:

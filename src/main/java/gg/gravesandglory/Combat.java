@@ -3,6 +3,7 @@ package gg.gravesandglory;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.damage.DamageType;
+import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.item.Items;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
@@ -69,7 +70,8 @@ public final class Combat {
         boolean raised = victim != null && victim.tags.contains("shield") && victim.mob.isUsingItem() && victim.mob.getActiveItem().isOf(Items.SHIELD);
         boolean noSky = from.contains("ambush") && Abilities.noSky(attacker);
         boolean covered = victim != null && Houses.covered(b, victim);
-        var hit = new CounterMath.Hit(from, to, bearing, raised, impact, charging, holding, noSky, Abilities.inMist(b, attacker.mob, target), covered, area);
+        boolean slowed = target.hasStatusEffect(StatusEffects.SLOWNESS), wounded = BattleMath.wounded(target.getHealth(), target.getMaxHealth(), D.woundedShare()); // Run them down (C20) and Unbroken (C21)
+        var hit = new CounterMath.Hit(from, to, bearing, raised, impact, charging, holding, noSky, Abilities.inMist(b, attacker.mob, target), covered, area, slowed, wounded);
 
         double counters = CounterMath.counters(hit, Spec.COUNTERS), stance = stance(attacker);
         double traits = Houses.traitFactor(b, attacker, target, kind, area ? 0 : bearing), auras = Abilities.auraFactor(b, attacker, target), commander = commanderFactor(b, attacker, target);
@@ -99,10 +101,12 @@ public final class Combat {
     /**
      * The attacker's stance share, per soldier, from his ability row: fearless (the Risen, the Bone Archer) deals x(1 + amount) while his own health is at or
      * below amount2 of his maximum (BattleMath.wounded), else 1; a troop that rose through Rise Again stands at 30% and so is fearless already. The
-     * other stances (steady, ambush, brace) are counters rows and act through the table, not here.
+     * other stances (steady, ambush, brace) are counters rows and act through the table, not here. The row is his own (Abilities.row(u)): at level 2 the
+     * fearless row's larger bonus and share (in-match progression design 6.2); the level rows that act on the table (Better guard, Bodkin points, Run them
+     * down, Thick hide and the rest) do so through the tags they grant (Abilities.rowsChanged).
      */
     static double stance(GravesAndGlory.Unit attacker) {
-        var row = Abilities.row(attacker.spec);
+        var row = Abilities.row(attacker);
         return row.mechanic().equals("fearless") && BattleMath.wounded(attacker.mob.getHealth(), attacker.mob.getMaxHealth(), row.amount2()) ? 1 + row.amount() : 1;
     }
 
