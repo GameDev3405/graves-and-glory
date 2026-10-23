@@ -36,12 +36,16 @@ public final class Campaign {
     final Set<UUID> botRetreating=new HashSet<>();
     final Map<UUID,String> notices=new HashMap<>();
     /**
-     * When each notice was posted (battle ticks). expireNotices drops a notice NOTICE_TICKS after it, so a notice the player dismissed on his screen cannot come back with a
-     * later camp snapshot (Phase 2 Task 13's trade-off, done in in-match progression Task 4; no protocol change). The same words posted again start a new 10 seconds.
+     * When each notice was posted (battle ticks). expireNotices drops an action's notice (notice) NOTICE_TICKS after it, so a notice the player dismissed on his screen
+     * cannot come back with a later camp snapshot (Phase 2 Task 13's trade-off, done in in-match progression Task 4; no protocol change). The same words posted again start
+     * a new 10 seconds. A line that tells the player's state (standing: the welcome, the wait for the next round, the match reward) is marked STANDING and stays until the
+     * next notice replaces it.
      */
     final Map<UUID,Long> noticeAt=new HashMap<>();
-    /** How long a notice stays in the camp snapshot: 10 seconds. */
+    /** How long an action's notice stays in the camp snapshot: 10 seconds. */
     static final int NOTICE_TICKS=200;
+    /** noticeAt's mark for a standing line, which never expires. */
+    static final long STANDING=Long.MAX_VALUE;
     final Map<UUID,JsonObject> results=new HashMap<>();
     /** Per commander, the last roll or chosen buy (the snapshot's lastRoll, for the camp's roll result card): {n, troop, duplicate, starsBefore, starsAfter, shards}; n counts up so the client tells a new one from the same. Not saved. */
     final Map<UUID,JsonObject> lastRolls=new HashMap<>();
@@ -103,10 +107,14 @@ public final class Campaign {
         }catch(Exception ignored){}
         collectionsReady.add(id);
     }
-    void notice(UUID id,String text){notices.put(id,text);noticeAt.put(id,b.time);var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)p.sendMessage(Text.literal(text),true);}
-    /** Drops every notice older than NOTICE_TICKS (tick, once a second). A notice put without notice() (a harness's) is timed from the first pass that sees it. */
+    /** An action's result for the player (a refusal, a buy, a vote saved): shown on his action bar and kept in the camp snapshot for NOTICE_TICKS. */
+    void notice(UUID id,String text){post(id,text,b.time);}
+    /** A line that tells the player's state (the welcome, the wait for the next round, the match reward): shown like a notice, but kept until the next notice replaces it. */
+    void standing(UUID id,String text){post(id,text,STANDING);}
+    private void post(UUID id,String text,long at){notices.put(id,text);noticeAt.put(id,at);var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)p.sendMessage(Text.literal(text),true);}
+    /** Drops every action's notice older than NOTICE_TICKS (tick, once a second); a standing line stays. A notice put without notice() (a harness's) is timed from the first pass that sees it. */
     void expireNotices(){
-        notices.keySet().removeIf(id->{Long at=noticeAt.get(id);if(at==null){noticeAt.put(id,b.time);return false;}return b.time-at>NOTICE_TICKS;});
+        notices.keySet().removeIf(id->{Long at=noticeAt.get(id);if(at==null){noticeAt.put(id,b.time);return false;}return at!=STANDING&&b.time-at>NOTICE_TICKS;});
         noticeAt.keySet().retainAll(notices.keySet());
     }
     /** The first-visit rule: a player with no server file may bring his collection from his own computer, once; one with a file may not (the server copy wins). */
@@ -116,7 +124,7 @@ public final class Campaign {
         // Rejoining the same battle keeps the original start time, so a dropped connection does not cost the reward.
         if(!(b.running&&participants.contains(p.getUuid())))joinedAt.put(p.getUuid(),b.time);var squad=b.squads.get(p.getUuid());
         if(b.running&&squad!=null&&squad.seated)b.toBase(p,squad.team);else toLobby(p);
-        notice(p.getUuid(),b.running&&(squad==null||!squad.seated)?"Battle in progress. Wait in camp for the next round. R opens your war council.":"Welcome to Graves and Glory. R opens your war council.");}
+        standing(p.getUuid(),b.running&&(squad==null||!squad.seated)?"Battle in progress. Wait in camp for the next round. R opens your war council.":"Welcome to Graves and Glory. R opens your war council.");}
     void toLobby(ServerPlayerEntity p){b.relocate(p,0,66,CampaignMaps.LOBBY_Z+20,180,8);p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();Commander.applyPlayer(p,null);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
@@ -395,10 +403,10 @@ public final class Campaign {
             var paid=earned>0?RosterMath.matchRewards(slots,Houses.thresholds(Spec.HOUSES[0].id()),Profile.houseOrder(),s.team==winner):NO_REWARDS; // every House has the same slot thresholds (HousesCheck)
             paid.shards().forEach((h,n)->p.shards.merge(h,n,Integer::sum));paid.renown().forEach((h,n)->p.renown.merge(h,n,Integer::sum));
             List<String> titles=earned>0?ledger(p,s):List.of();int pacts=pacts(p);
-            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));results.put(id,report);
-            if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
+            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));results.put(id,report);
+            if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));standing(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
             String extra=(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
-            notice(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":"")+extra);
+            standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":"")+extra);
         }
         b.message=(winner<0?"Draw":b.side(winner).name()+" wins")+"! Back to the war council.";headline=b.message;
         for(var p:b.server.getPlayerManager().getPlayerList())if(participants.contains(p.getUuid()))p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","victory")),SoundCategory.PLAYERS,.8f,1); // each participant, to his own connection
@@ -438,6 +446,15 @@ public final class Campaign {
         JsonArray rows=new JsonArray();
         for(var h:MatchStats.houseRows(Profile.houseOrder(),slots,Houses.bannerTiers(s),s.stats.traitSeconds,paid.shards(),paid.renown())){
             JsonObject row=new JsonObject();row.addProperty("house",h.house());row.addProperty("tier",h.tier());row.addProperty("traitSeconds",h.traitSeconds());row.addProperty("shards",h.shards());row.addProperty("renown",h.renown());rows.add(row);}
+        return rows;
+    }
+    /**
+     * The report's levels rows (in-match progression design 7; Veterans.levelRows): one per banner troop type in banner order, the highest level a soldier of it reached this
+     * round, how many reached level 3, and the weapon and armour tier bought (1: none). Built before returnLobby clears the Armoury. Empty with progression off.
+     */
+    JsonArray reportLevels(GravesAndGlory.Squad s){
+        JsonArray rows=new JsonArray();if(!Veterans.enabled())return rows;
+        for(var r:Veterans.levelRows(b,s)){JsonObject row=new JsonObject();row.addProperty("troop",r.troop());row.addProperty("highestLevel",r.highest());row.addProperty("level3Count",r.level3s());row.addProperty("weapon",r.weapon());row.addProperty("armour",r.armour());rows.add(row);}
         return rows;
     }
     /** The report table for one commander: every seated army of both teams, his own team first (join order kept); a bot is named after its tier. */
@@ -489,6 +506,7 @@ public final class Campaign {
                     int price=Commander.cost(s,type); // the bot's class price (a Warlock's magic troops cost less)
                     while(have<want.getValue()&&s.gold>=price&&weight+type.slotWeight()<=GravesAndGlory.R.squadSize()){s.gold-=price;long previous=s.training.isEmpty()?b.time:s.training.getLast().finished();s.training.addLast(new GravesAndGlory.Training(type,Math.max(b.time,previous)+Commander.trainingTicks(s,type),price));weight+=type.slotWeight();have++;}
                 }
+                Veterans.botBuy(b,s); // then gear, from what the refill left, keeping its tier's reserve for rebuys (in-match progression design 9.1)
             }
             if(decide)botDecide(s,tier);
         }

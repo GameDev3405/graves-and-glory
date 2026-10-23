@@ -34,6 +34,21 @@ public final class MatchStats {
             if (bannerSlots.getOrDefault(h, 0) > 0) rows.add(new HouseRow(h, tiers.getOrDefault(h, 0), traitSeconds.getOrDefault(h, 0), shards.getOrDefault(h, 0), renown.getOrDefault(h, 0)));
         return rows;
     }
+    /** One troop type's row of the report's levels block (in-match progression design 7): the highest level a soldier of it reached this round (1 to 3), how many reached level 3, and the weapon and armour tier the army bought for it (1: none). */
+    public record LevelRow(String troop, int highest, int level3s, int weapon, int armour) {}
+    /**
+     * The results page's line for a LevelRow: "reached Knight-Captain / 2 at level 3 / Weapon III, Armour II". reachedName is the troop's name at its highest level;
+     * null, or the troop's own name (an Epic or Legendary keeps its name), reads "reached level 3". "no level ups" and "no gear bought" when nothing happened.
+     */
+    public static String levelText(LevelRow r, String troopName, String reachedName) {
+        String reached = r.highest() < 2 ? "no level ups" : "reached " + (reachedName == null || reachedName.isEmpty() || reachedName.equals(troopName) ? "level " + r.highest() : reachedName);
+        String threes = r.level3s() > 0 ? " / " + r.level3s() + " at level 3" : "";
+        List<String> gear = new ArrayList<>();
+        if (r.weapon() > 1) gear.add("Weapon " + roman(r.weapon()));
+        if (r.armour() > 1) gear.add("Armour " + roman(r.armour()));
+        return reached + threes + " / " + (gear.isEmpty() ? "no gear bought" : String.join(", ", gear));
+    }
+    static String roman(int n) { return switch (n) { case 1 -> "I"; case 2 -> "II"; case 3 -> "III"; default -> Integer.toString(n); }; }
     /** Share of matches won, 0 when no match was played. */
     public static double winRate(int wins, int matches) {
         return matches == 0 ? 0 : (double) wins / matches;

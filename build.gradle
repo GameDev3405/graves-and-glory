@@ -44,14 +44,14 @@ if (project.hasProperty('selfTest')) {
  loom.runs.client.vmArg "-Dgravesandglory.localChecks=${file('evidence/self-test.txt').absolutePath}"
 }
 // Bot-vs-bot simulation on the dedicated server (test-tools/java/gg/gravesandglory/BotSimulation.java):
-// -PbotSim=<matches> [-PsimDawn=<tier> -PsimDusk=<tier> -PsimMaps=0,1,2 -PsimSize=3 -PsimRoundSeconds=300 -PsimKit=native|gilded|graveborn -PsimBanner0=<botBanners id> -PsimBanner1=<botBanners id>]; results in <server root>/botsim/.
+// -PbotSim=<matches> [-PsimDawn=<tier> -PsimDusk=<tier> -PsimMaps=0,1,2 -PsimSize=3 -PsimRoundSeconds=300 -PsimKit=native|gilded|graveborn -PsimBanner0=<botBanners id> -PsimBanner1=<botBanners id> -PsimProgression=on|off]; results in <server root>/botsim/.
 if (project.hasProperty('botSim')) {
  loom.runs.server.vmArg '-Dgravesandglory.localIntegration=true'
  loom.runs.server.vmArg "-Dfabric.addMods=${file('build/localTestTools/local-integration-DO-NOT-SHIP.jar').absolutePath}"
  // The test tools' checks probe would otherwise append to the file a Melty test descriptor names; keep its lines in the server root.
  loom.runs.server.vmArg '-Dgravesandglory.localChecks=local-checks.txt'
  loom.runs.server.vmArg "-Dgravesandglory.botSim=${project.property('botSim')}"
- ['simDawn', 'simDusk', 'simMaps', 'simSize', 'simRoundSeconds', 'simKit', 'simBanner0', 'simBanner1'].each { name ->
+ ['simDawn', 'simDusk', 'simMaps', 'simSize', 'simRoundSeconds', 'simKit', 'simBanner0', 'simBanner1', 'simProgression'].each { name ->
   if (project.hasProperty(name)) loom.runs.server.vmArg "-Dgravesandglory.${name}=${project.property(name)}"
  }
  tasks.named('runServer') { dependsOn localTestToolsJar }

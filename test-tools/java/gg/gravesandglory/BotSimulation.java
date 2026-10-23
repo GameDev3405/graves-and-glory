@@ -15,14 +15,23 @@ import java.util.stream.IntStream;
  *  One match at a time (one Battle per server). Dawn's bots play -PsimDawn, Dusk's -PsimDusk (Spec.BOTCOMMAND ids); -PsimMaps is cycled.
  *  -PsimKit=native (default) fields Dawn's seat with the gilded_<tier> bot banner and Dusk's with graveborn_<tier>; gilded or graveborn gives both seats that House's row (sides and bases stay), so House and seat can be told apart.
  *  -PsimBanner0 and -PsimBanner1 (botBanners ids, for example gilded_normal) field every bot of team 0 or team 1 with that exact banner, whatever the kit says; results.csv and the summary name the banners fielded.
- *  Writes botsim/results.csv (one row per match, with the no-routing design's fight stats) and botsim/gold.csv (each team every 30 s of round time) under the server root. */
+ *  -PsimProgression=on|off overrides progression.enabled for the run (Veterans.override; absent: the sheet's value), the in-match progression gate's baseline switch.
+ *  Writes botsim/results.csv (one row per match, with the no-routing design's fight stats and each team's score at 300 s), botsim/gold.csv (each team every 30 s of round
+ *  time) and botsim/levels.csv (per match and team: when the first soldier reached level 2 and 3, the share of living soldiers at level 2 or higher at the end, the level-3
+ *  count and every gear buy with its second) under the server root. */
 public final class BotSimulation implements ModInitializer {
     static final int SAMPLE_TICKS=600;
+    /** results.csv's score300_0 and score300_1: each team's score at 300 s of round time (6000 battle ticks), or the final score when the round ended sooner. */
+    static final int SCORE_TICKS=6000;
     /** How long an arena build may take (5 minutes) before the simulation gives up. */
     static final int READY_TICKS=6000;
     /** Campaign.lastWinner while a simulated round runs. Only Campaign.finish overwrites it, so a round that stops any other way is recorded as aborted. */
     static final int ABORTED=-2;
-    int matches,size,roundSeconds,waited,notReady;int[] maps;String dawnTier,duskTier,kit;Path results,gold;
+    int matches,size,roundSeconds,waited,notReady;int[] maps;String dawnTier,duskTier,kit,progression;Path results,gold,levels;
+    /** This round's score at SCORE_TICKS per team, -1 until then. */
+    final int[] score300={-1,-1};
+    /** This round's progression tallies (Veterans.TALLY), the round's start and each team's share of living soldiers at level 2 or higher, as the last running tick saw them: the round's end clears the Armoury and puts fresh tallies in place before record runs. */
+    final Veterans.Tally[] tallies={null,null};long startedAt;final double[] shareLevel2={-1,-1};
     /** The seats, for the CSV team columns: -PsimKit may give both teams one House. */
     static final String[] SEATS={"dawn","dusk"};
     /** The match being prepared or played (0-based); playing while its round runs. */
@@ -45,12 +54,16 @@ public final class BotSimulation implements ModInitializer {
         if(!kit.equals("native")&&Arrays.stream(Spec.HOUSES).noneMatch(h->h.id().equals(kit)&&h.fieldable()))throw new IllegalArgumentException("[botsim] simKit must be native or a fieldable House ("+Arrays.stream(Spec.HOUSES).filter(h->h.fieldable()).map(h->h.id()).collect(java.util.stream.Collectors.joining(", "))+"), got '"+kit+"'");
         for(int team=0;team<2;team++){String id=System.getProperty("gravesandglory.simBanner"+team);if(id==null)continue;String row=id.trim();
             if(Arrays.stream(Spec.BOTBANNERS).noneMatch(r->r.id().equals(row)))throw new IllegalArgumentException("[botsim] simBanner"+team+" must be a botBanners id, got '"+id+"'");bannerChoice[team]=row;}
+        String prog=System.getProperty("gravesandglory.simProgression");
+        if(prog!=null){String v=prog.trim();if(v.equals("on"))Veterans.override=Boolean.TRUE;else if(v.equals("off"))Veterans.override=Boolean.FALSE;else throw new IllegalArgumentException("[botsim] simProgression must be on or off, got '"+prog+"'");}
+        progression=Veterans.enabled()?"on":"off";
         if(matches<1||roundSeconds<1||size<1||size>Spec.RULES[0].playersPerTeam()||maps.length==0||Arrays.stream(maps).anyMatch(m->m<0||m>=Spec.MAPS.length))
             throw new IllegalArgumentException("[botsim] bad settings: matches="+matches+" size="+size+" roundSeconds="+roundSeconds+" maps="+Arrays.toString(maps));
-        Path dir=FabricLoader.getInstance().getGameDir().resolve("botsim");results=dir.resolve("results.csv");gold=dir.resolve("gold.csv");
+        Path dir=FabricLoader.getInstance().getGameDir().resolve("botsim");results=dir.resolve("results.csv");gold=dir.resolve("gold.csv");levels=dir.resolve("levels.csv");
         try{Files.createDirectories(dir);
-            Files.writeString(results,"match,map,dawnTier,duskTier,winner,dawnScore,duskScore,seconds,banner0,banner1,dawnKills,duskKills,dawnWiped,duskWiped,dawnRetreats,duskRetreats,fights,meanFightSeconds,dawnFlankHits,duskFlankHits,dawnFlankShots,duskFlankShots\n",StandardCharsets.UTF_8);
+            Files.writeString(results,"match,map,dawnTier,duskTier,winner,dawnScore,duskScore,seconds,banner0,banner1,dawnKills,duskKills,dawnWiped,duskWiped,dawnRetreats,duskRetreats,fights,meanFightSeconds,dawnFlankHits,duskFlankHits,dawnFlankShots,duskFlankShots,score300_0,score300_1\n",StandardCharsets.UTF_8);
             Files.writeString(gold,"match,second,team,goldEarned,goldBank,living\n",StandardCharsets.UTF_8);
+            Files.writeString(levels,"match,team,banner,firstLevel2,firstLevel3,endShareLevel2,level3Count,gear\n",StandardCharsets.UTF_8);
         }catch(IOException e){throw new UncheckedIOException(e);}
         ServerTickEvents.END_SERVER_TICK.register(this::tick);
     }
@@ -65,7 +78,8 @@ public final class BotSimulation implements ModInitializer {
         var b=GravesAndGlory.battle;if(done)return;
         if(b==null){if(++waited==200){System.out.println("[botsim] no battle on this world (level-name must be Graves and Glory); stopping");done=true;server.stop(false);}return;}
         if(playing){
-            if(b.running){scan(b);long elapsed=b.time-b.roundStarted;if(elapsed>0&&elapsed%SAMPLE_TICKS==0)sample(b,elapsed/20);return;}
+            if(b.running){scan(b);progress(b);long elapsed=b.time-b.roundStarted;if(elapsed>0&&elapsed%SAMPLE_TICKS==0)sample(b,elapsed/20);
+                if(elapsed>=SCORE_TICKS&&score300[0]<0){score300[0]=b.scores[0];score300[1]=b.scores[1];}return;}
             playing=false;record(b);
             if(++match>=matches){summary();done=true;server.stop(false);}
             return;
@@ -79,6 +93,7 @@ public final class BotSimulation implements ModInitializer {
         b.startRound();
         armies.clear();for(var s:b.squads.values())if(s.bot){if(s.team==1)s.tier=duskTier;armies.add(s);}
         field(b);seen.clear();resetStats();
+        score300[0]=score300[1]=-1;startedAt=b.roundStarted;tallies[0]=tallies[1]=null;shareLevel2[0]=shareLevel2[1]=-1;
         playing=true;
     }
     /** Phase 2: once each seat's tier is set, every bot army fields one bot banner row for its tier (Spec.BOTBANNERS), replacing the
@@ -131,6 +146,22 @@ public final class BotSimulation implements ModInitializer {
         if(closes&&fightOpenedAt>=0)closeFight(b);
     }
     void closeFight(GravesAndGlory.Battle b){fights++;fightTicks+=b.time-fightOpenedAt;fightOpenedAt=-1;}
+    /** Each running tick: holds this round's tallies and each team's share of living regular soldiers (no temporaries) at level 2 or higher, for levels.csv. */
+    void progress(GravesAndGlory.Battle b){
+        int[] alive={0,0},veterans={0,0};
+        for(var u:b.units)if(u.mob.isAlive()&&!u.temporary&&(u.squad.team==0||u.squad.team==1)){alive[u.squad.team]++;if(u.level>=2)veterans[u.squad.team]++;}
+        for(int t=0;t<2;t++){tallies[t]=Veterans.TALLY[t];shareLevel2[t]=alive[t]==0?-1:veterans[t]/(double)alive[t];}
+    }
+    /** One levels.csv row per team: the round second the first soldier reached level 2 and level 3 (blank: never), the share at level 2 or higher at the end (blank: none living), the level-3 count, and the gear bought as troop:track:tier@second joined by ';'. */
+    void recordLevels(){
+        StringBuilder rows=new StringBuilder();
+        for(int t=0;t<2;t++){var tally=tallies[t];
+            String first2=tally==null||tally.firstAt[2]<0?"":String.valueOf((tally.firstAt[2]-startedAt)/20),first3=tally==null||tally.firstAt[3]<0?"":String.valueOf((tally.firstAt[3]-startedAt)/20);
+            StringBuilder gear=new StringBuilder();if(tally!=null)for(var g:tally.bought){if(gear.length()>0)gear.append(';');gear.append(g.troop()).append(':').append(g.track()).append(':').append(g.tier()).append('@').append((g.time()-startedAt)/20);}
+            rows.append(match+1).append(',').append(SEATS[t]).append(',').append(fielded[t]).append(',').append(first2).append(',').append(first3).append(',')
+                .append(shareLevel2[t]<0?"":String.format(Locale.ROOT,"%.3f",shareLevel2[t])).append(',').append(tally==null?0:tally.level3s).append(',').append(gear).append('\n');}
+        append(levels,rows.toString());
+    }
     void record(GravesAndGlory.Battle b){
         int winner=b.campaign.lastWinner;
         if(winner==0)dawnWins++;else if(winner==1)duskWins++;else if(winner==ABORTED)aborted++;else draws++;
@@ -139,13 +170,15 @@ public final class BotSimulation implements ModInitializer {
         int[] kills={0,0},flankHits={0,0},flankShots={0,0};for(var s:armies){kills[1-s.team]+=s.stats.lost;flankHits[s.team]+=s.stats.flankHits;flankShots[s.team]+=s.stats.flankShots;} // the flank rows each side landed (MatchStats.SquadStats, counted in Combat.resolve)
         append(results,String.join(",",String.valueOf(match+1),String.valueOf(maps[match%maps.length]),dawnTier,duskTier,winner==ABORTED?"aborted":winner<0?"draw":SEATS[winner],
             String.valueOf(b.scores[0]),String.valueOf(b.scores[1]),String.valueOf((b.time-b.roundStarted)/20),fielded[0],fielded[1],
-            String.valueOf(kills[0]),String.valueOf(kills[1]),String.valueOf(wiped[0]),String.valueOf(wiped[1]),String.valueOf(retreats[0]),String.valueOf(retreats[1]),String.valueOf(fights),fights==0?"":String.format(Locale.ROOT,"%.1f",fightTicks/20.0/fights),String.valueOf(flankHits[0]),String.valueOf(flankHits[1]),String.valueOf(flankShots[0]),String.valueOf(flankShots[1]))+"\n");
+            String.valueOf(kills[0]),String.valueOf(kills[1]),String.valueOf(wiped[0]),String.valueOf(wiped[1]),String.valueOf(retreats[0]),String.valueOf(retreats[1]),String.valueOf(fights),fights==0?"":String.format(Locale.ROOT,"%.1f",fightTicks/20.0/fights),String.valueOf(flankHits[0]),String.valueOf(flankHits[1]),String.valueOf(flankShots[0]),String.valueOf(flankShots[1]),
+            String.valueOf(score300[0]<0?b.scores[0]:score300[0]),String.valueOf(score300[1]<0?b.scores[1]:score300[1]))+"\n");
+        recordLevels();
     }
     /** The final line. Mean gold earned is a team's total over its commanders at the end of a round, averaged over the matches.
-     *  " aborted=N" goes on the end only when a round stopped without Campaign.finish, " kit=<id>" only under -PsimKit gilded or graveborn, and " banner0=<id> banner1=<id>" always closes the line: the banners the two teams fielded. */
+     *  " aborted=N" goes on the end only when a round stopped without Campaign.finish, " kit=<id>" only under -PsimKit gilded or graveborn, then " banner0=<id> banner1=<id>": the banners the two teams fielded, and " progression=on|off" closes the line. */
     void summary(){
         System.out.println(String.format(Locale.ROOT,"[botsim] matches=%d dawn(%s)=%d dusk(%s)=%d draws=%d dawnWin=%.0f%% meanGoldEarnedAtEnd dawn=%.0f dusk=%.0f",
-            matches,dawnTier,dawnWins,duskTier,duskWins,draws,100*MatchStats.winRate(dawnWins,matches),earnedAtEnd[0]/(double)matches,earnedAtEnd[1]/(double)matches)+(aborted>0?" aborted="+aborted:"")+(kit.equals("native")?"":" kit="+kit)+" banner0="+fielded[0]+" banner1="+fielded[1]);
+            matches,dawnTier,dawnWins,duskTier,duskWins,draws,100*MatchStats.winRate(dawnWins,matches),earnedAtEnd[0]/(double)matches,earnedAtEnd[1]/(double)matches)+(aborted>0?" aborted="+aborted:"")+(kit.equals("native")?"":" kit="+kit)+" banner0="+fielded[0]+" banner1="+fielded[1]+" progression="+progression);
     }
     /** Recreates botsim/ if it vanished. A failed write is logged, not thrown, so the run still ends with its summary line. */
     static void append(Path file,String text){
