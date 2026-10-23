@@ -11,6 +11,7 @@ final class PresentationScreen extends GravesAndGloryClient.ArmyScreen {
         for(int i=0;i<4;i++){final int n=i;button((i==selected?"> ":"")+Presentation.SHADERS[i],30+i%2*190,94+i/2*55,180,b->{Presentation.selectShader(n);clearAndInit();});}
         int texture=Presentation.textures();for(int i=0;i<3;i++){final int n=i;button((texture==i?"> ":"")+Presentation.TEXTURES[i],30+i*195,222,185,b->{Presentation.selectTextures(n);clearAndInit();});}
         button("Impact accents: "+new String[]{"OFF","SUBTLE","STRONG"}[Presentation.impact],30,262,240,b->{Presentation.impact=(Presentation.impact+1)%3;Presentation.save();clearAndInit();});
+        button("Battle HUD: "+HudSize.NAMES[HudSize.get()],278,262,150,b->{HudSize.cycle();clearAndInit();}); // UI Task 8c: Compact, Standard, Large
         button("Minecraft sound levels",width-205,262,175,b->client.setScreen(new net.minecraft.client.gui.screen.option.SoundOptionsScreen(this,client.options)));
         button("Back to war council",30,height-53,220,b->client.setScreen(new GravesAndGloryClient.LobbyScreen()));
     }

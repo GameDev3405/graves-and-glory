@@ -42,7 +42,7 @@ public final class UiMathCheck {
         check(UiMath.contrast(0xffeee9df,0xff1f2427)>=4.5 && UiMath.contrast(0xffe47a64,0xff1f2427)>=4.5, "ivory and alarm text on the iron plate");
         check(Math.abs(UiMath.contrast(0xff000000,0xffffffff)-21.0)<0.01, "WCAG ratio");
         check(UiMath.sealCentre(0,3,960)==452 && UiMath.sealCentre(2,3,960)==508 && UiMath.sealCentre(0,5,960)==424 && UiMath.sealCentre(4,5,960)==536, "seals on a 28 px pitch, centred");
-        check(java.util.Arrays.equals(UiMath.cardTops(540,new int[]{48,62,48}),new int[]{348,404,474}) && java.util.Arrays.equals(UiMath.cardTops(540,new int[]{48,48}),new int[]{418,474}), "cards end 18 above the bottom, 8 px apart");
+        check(java.util.Arrays.equals(UiMath.cardTops(522,new int[]{18,62,18},4),new int[]{416,438,504}) && java.util.Arrays.equals(UiMath.cardTops(502,new int[]{18,18,18},4),new int[]{440,462,484}) && UiMath.cardTops(522,new int[0],4).length==0, "the column's plates stack up from its foot, 4 px apart (UI Task 8c: a chip each, the selected group's card)");
         check(UiMath.countText(9,12).equals("9/12") && UiMath.countText(0,2).equals("0/2") && UiMath.clock(462).equals("7:42") && UiMath.clock(5).equals("0:05"), "count and clock");
         check(UiMath.trackFill(148,300)==27 && UiMath.trackFill(400,300)==54 && UiMath.trackFill(10,0)==0, "track fill, guarded");
         check(UiMath.barWidth(0.667f)==68 && UiMath.barWidth(1.4f)==102 && UiMath.barWidth(-1f)==0, "strength bar of 102 px");
@@ -64,7 +64,9 @@ public final class UiMathCheck {
         check(FeedLines.style("loss",0,0).argb()==0xff7a2416 && FeedLines.style("kill",1,0).glyph().equals("hud/fgv-skull-grey") && FeedLines.style("down",0,0).glyph().equals("hud/fgv-banner-down") && FeedLines.style("regroup",0,0).argb()==0xff504b44, "loss, kill, banner, regroup");
         check(FeedLines.style("deploy",0,0).glyph().equals("hud/fgv-sun") && FeedLines.style("notice",1,1).glyph().equals("hud/fgv-moon") && FeedLines.style("bogus",0,0).equals(FeedLines.style("notice",0,0)), "own emblem; unknown kinds are notices");
         for(String kind:new String[]{"point","loss","kill","down","up","rout","regroup","deploy","notice"}) for(int t=0;t<2;t++) for(int v=0;v<2;v++) check(UiMath.contrast(FeedLines.style(kind,t,v).argb(),0xffdccb9f)>=5.2, "feed ink "+kind+" (team "+t+", seen by "+v+") holds the spec's 5.2:1 on the slip");
-        check(UiMath.feedAlpha(0)==1f && UiMath.feedAlpha(6000)==1f && Math.abs(UiMath.feedAlpha(7000)-0.5f)<1e-6 && UiMath.feedAlpha(8000)==0f && UiMath.feedAlpha(9000)==0f, "8 s life, 2 s fade");
+        check(UiMath.feedAlpha(0,8000)==1f && UiMath.feedAlpha(6000,8000)==1f && Math.abs(UiMath.feedAlpha(7000,8000)-0.5f)<1e-6 && UiMath.feedAlpha(8000,8000)==0f && UiMath.feedAlpha(9000,8000)==0f, "8 s life, 2 s fade");
+        check(UiMath.feedLife(UiMath.HUD_COMPACT)==6000 && UiMath.feedLife(UiMath.HUD_STANDARD)==8000 && UiMath.feedLife(UiMath.HUD_LARGE)==8000 && UiMath.feedLines(UiMath.HUD_COMPACT)==3 && UiMath.feedLines(UiMath.HUD_STANDARD)==5 && UiMath.feedLines(UiMath.HUD_LARGE)==5
+            && UiMath.feedAlpha(3999,6000)==1f && Math.abs(UiMath.feedAlpha(5000,6000)-0.5f)<1e-6 && UiMath.feedAlpha(6000,6000)==0f, "Compact's feed (UI Task 8c): three lines that live 6 s, fading over the last 2; Standard and Large keep the spec's five and 8 s");
         check(UiMath.portraitSize(40,0)==32 && UiMath.portraitSize(160,0)==128 && UiMath.portraitSize(40,2)==29 && UiMath.portraitSize(160,2)==116, "2 px and 8 px per model pixel; Tall +2");
         check(UiMath.portraitFeet(40,0)==72 && UiMath.portraitFeet(160,0)==288 && UiMath.portraitFeet(40,2)==69, "feet below the window: 36 model px from the top");
         check(UiMath.plateLabelX(126)==57 && UiMath.plateLabelX(150)==57 && UiMath.plateLabelX(100)==70, "plate label clears the Enter key");
@@ -88,38 +90,87 @@ public final class UiMathCheck {
         check(UiMath.xpPoured(2870,250,30,360)==138 && UiMath.xpPoured(0,250,30,360)==0 && UiMath.xpPoured(9000,250,30,360)==360 && UiMath.xpPoured(-5,250,30,360)==0, "the XP rail pours 138 of 360 columns for 2,870 of 7,500 XP, as the approved track");
         check(UiMath.spellSmall("Complete 1 battle").equals("Complete one battle") && UiMath.spellSmall("Issue 10 tactical orders").equals("Issue ten tactical orders") && UiMath.spellSmall("Complete 6 battles this week").equals("Complete six battles this week")
             && UiMath.spellSmall("Hold 3.").equals("Hold three.") && UiMath.spellSmall("Win 25 battles").equals("Win 25 battles") && UiMath.spellSmall("1v1 in room AB12CD34").equals("1v1 in room AB12CD34") && UiMath.spellSmall("2.5 or 1,000 or 05").equals("2.5 or 1,000 or 05"), "a heading spells its counts to twenty (its old-style 1 and 0 read as I and O); codes, 1v1, decimals and larger numbers stay");
-        // UI Task 8a: the battle HUD's scale, worked by hand from the boxes (the ledger follows GUI Scale up to 2 under 1600 px where it fits).
-        check(UiMath.hudScale(1280,720,2)==2 && UiMath.hudScale(1366,768,2)==2 && UiMath.hudScale(1440,900,2)==2, "720p, 1366x768 and 1440x900 at GUI 2: the ledger at 2x");
-        check(UiMath.hudScale(854,480,2)==1 && UiMath.hudScale(1024,768,2)==1 && UiMath.hudScale(960,540,1)==1 && UiMath.hudScale(1280,720,1)==1, "854x480 and 1024x768 at GUI 2 are too narrow for 2x (the lesson card would leave the canvas); GUI 1 stays 1");
-        check(UiMath.hudScale(1280,720,3)==1 && !UiMath.hudFits(1280,720,3,2) && UiMath.hudScale(1366,768,3)==1 && UiMath.hudScale(1440,900,3)==1, "at GUI 3 the 2x bottom card would meet the hotbar (720p) or the offhand slot (1366x768, 1440x900): 1x");
-        check(UiMath.hudScale(1536,768,3)==1 && UiMath.hudScale(1536,864,3)==2, "1536x768 at GUI 3: at 2x the tutorial's chat would be pushed past the lesson card, the seals and the score bar off the top: 1x; 1536x864 has the room");
-        check(UiMath.hudScale(1920,1080,2)==2 && UiMath.hudScale(1920,1080,4)==2 && UiMath.hudScale(1920,1080,1)==1 && UiMath.hudScale(1600,900,2)==1 && UiMath.hudScale(1600,900,4)==1 && UiMath.hudScale(3840,2160,4)==4, "from 1600 px wide the kit scale, as the screens");
+        // UI Task 8c: the HUD size setting, the column of chips, the lesson note, the lighter feed and the footprint budget. Task 8a's
+        // scale rule (the GUI Scale up to 2 under 1600 px wide) is gone: Kort found too much of the screen blocked.
+        int[][] win = {{960,540,1},{854,480,2},{1280,720,3},{1920,1080,2},{1920,1080,4},{1280,720,2},{1366,768,2}}; // the ui-hud suite's windows
+        int[][] scales = {{1,1,1},{1,1,1},{1,1,1},{2,3,3},{2,3,3},{1,2,2},{1,2,2}}; // Compact, Standard, Large there
+        String picked = ""; boolean pickedOk = true;
+        for (int i = 0; i < win.length; i++) {
+            int[] s = win[i]; int c = UiMath.hudScale(s[0],s[1],s[2],UiMath.HUD_COMPACT), st = UiMath.hudScale(s[0],s[1],s[2],UiMath.HUD_STANDARD), l = UiMath.hudScale(s[0],s[1],s[2],UiMath.HUD_LARGE);
+            pickedOk &= c == scales[i][0] && st == scales[i][1] && l == scales[i][2];
+            picked += (picked.isEmpty() ? "" : ", ") + s[0]+"x"+s[1]+" GUI "+s[2]+" "+c+"/"+st+"/"+l;
+        }
+        check(pickedOk, "Compact at the kit scale on every window; Standard a step up where the HUD fits (1080p 3, 720p and 1366x768 at GUI 2 2), else the kit's; Large the same at these windows: " + picked);
+        check(UiMath.hudScale(2560,1440,4,UiMath.HUD_STANDARD)==3 && UiMath.hudScale(2560,1440,4,UiMath.HUD_LARGE)==4 && UiMath.hudScale(3840,2160,4,UiMath.HUD_LARGE)==6 && UiMath.hudScale(3840,2160,4,UiMath.HUD_COMPACT)==4 && UiMath.hudScale(1280,720,2,7)==1, "Large is two steps up where the window has the room (2560x1440, 4K); an unknown size is Compact");
+        check(!UiMath.hudFits(960,540,1,2,UiMath.HUD_STANDARD) && !UiMath.hudFits(1920,1080,4,4,UiMath.HUD_LARGE) && !UiMath.hudFits(1280,720,3,2,UiMath.HUD_STANDARD) && UiMath.hudFits(1920,1080,4,3,UiMath.HUD_LARGE), "a step that would not fit is not taken: 960x540 at 2x (the respawn card on the feed), 1080p at 4x (the hint slip in the lesson's shadow), 720p GUI 3 at 2x (the tutorial's chat pushed off the screen)");
         int sizes = 0; String bad = "";
-        for (int fw : new int[]{0,1,320,640,854,959,960,1024,1280,1366,1440,1599,1600,1920,2560,3840}) for (int fh : new int[]{0,1,240,480,540,720,768,900,1080,1440,2160}) for (int gui : new int[]{-1,0,1,2,3,4,6}) {
-            int k = UiMath.hudScale(fw,fh,gui), g = Math.max(1,gui), kit = UiMath.pixelScale(fw,fh,g);
-            if (k < 1 || k > g || fw >= 1600 && k != kit || k > Math.max(kit,2) || k > kit && !UiMath.hudFits(fw,fh,g,k)) bad += (bad.isEmpty() ? "" : ", ") + "hudScale("+fw+","+fh+","+gui+") = "+k;
+        for (int fw : new int[]{0,1,320,640,854,959,960,1024,1280,1366,1440,1599,1600,1920,2560,3840}) for (int fh : new int[]{0,1,240,480,540,720,768,900,1080,1440,2160}) for (int gui : new int[]{-1,0,1,2,3,4,6}) for (int z = 0; z < 3; z++) {
+            int k = UiMath.hudScale(fw,fh,gui,z), g = Math.max(1,gui), kit = UiMath.pixelScale(fw,fh,g);
+            if (k < kit || k > kit + z || z == UiMath.HUD_COMPACT && k != kit || k > kit && !UiMath.hudFits(fw,fh,g,k,z) || z == UiMath.HUD_LARGE && k < UiMath.hudScale(fw,fh,gui,UiMath.HUD_STANDARD)) bad += (bad.isEmpty() ? "" : ", ") + "hudScale("+fw+","+fh+","+gui+","+z+") = "+k;
             sizes++;
         }
-        check(bad.isEmpty() && sizes == 16*11*7 && !UiMath.hudFits(0,0,2,2) && !UiMath.hudFits(1280,720,0,1) && !UiMath.hudFits(1280,720,2,0), "every size, a 0 x 0 window and GUI 0 included: a scale of 1 or more, no division by zero, never past the GUI Scale, and a scale above the kit's only where the HUD fits" + (bad.isEmpty() ? "" : "; wrong: " + bad.substring(0, Math.min(300, bad.length()))));
-        check(UiMath.lessonX(480)==280 && UiMath.lessonX(320)==216 && UiMath.lessonX(416)==216 && UiMath.lessonX(417)==217 && UiMath.lessonHeight(1)==40 && UiMath.lessonHeight(2)==51, "the lesson card centred (x 280 at 960) unless that reaches the group column, whose edge is x 200");
+        check(bad.isEmpty() && sizes == 16*11*7*3 && !UiMath.hudFits(0,0,2,2,0) && !UiMath.hudFits(1280,720,0,1,0) && !UiMath.hudFits(1280,720,2,0,0), "every size, a 0 x 0 window and GUI 0 included: Compact the kit scale (1 or more, so no division by zero), Standard and Large no more than one and two steps above it, above it only where the HUD fits, Large never under Standard" + (bad.isEmpty() ? "" : "; wrong: " + bad.substring(0, Math.min(300, bad.length()))));
+        check(UiMath.hintLayerMs(UiMath.HUD_COMPACT)==15000 && UiMath.hintLayerMs(UiMath.HUD_STANDARD)==60000 && UiMath.hintLayerMs(UiMath.HUD_LARGE)==60000, "the hint layer: a round's first 15 s at Compact, the spec's 60 s at Standard and Large");
+        check(UiMath.chipBar(0.75f)==48 && UiMath.chipBar(1f)==64 && UiMath.chipBar(1.4f)==64 && UiMath.chipBar(-1f)==0 && UiMath.chipBar(Float.NaN)==0 && UiMath.chipBar(0f)==0, "a chip's strength bar of 64 px, clamped; NaN (a group with nothing to measure) draws none");
+        // The column at the mock's 960 x 540 (Compact, k 1): its foot 18 px above the bottom, plates 4 px apart.
+        var groups = java.util.List.of("infantry","ranged","support");
+        var cards = UiMath.hudLayout(960,540,1,1,UiMath.HUD_COMPACT,new UiMath.HudState(3,groups,"ranged",false,0,false,true));
+        check(java.util.Arrays.equals(cards.get("card-infantry"),new int[]{24,416,176,18}) && java.util.Arrays.equals(cards.get("card-ranged"),new int[]{24,438,176,62}) && java.util.Arrays.equals(cards.get("card-support"),new int[]{24,504,176,18})
+            && java.util.Arrays.equals(cards.get("spine"),new int[]{12,412,9,114}) && !cards.containsKey("keys") && !cards.containsKey("hints") && java.util.Arrays.equals(cards.get("feed"),new int[]{778,248,166,44}), "ranged selected: its ledger card 62 tall between two chips 18 tall, the spine 4 px past either end, Compact's feed leaf at the right");
+        var army = UiMath.hudLayout(960,540,1,1,UiMath.HUD_COMPACT,new UiMath.HudState(3,groups,"all",true,2,true,true));
+        check(java.util.Arrays.equals(army.get("card-infantry"),new int[]{24,440,176,18}) && java.util.Arrays.equals(army.get("card-ranged"),new int[]{24,462,176,18}) && java.util.Arrays.equals(army.get("card-support"),new int[]{24,484,176,18}) && java.util.Arrays.equals(army.get("keys"),new int[]{24,506,176,16})
+            && java.util.Arrays.equals(army.get("spine"),new int[]{12,436,9,90}) && java.util.Arrays.equals(army.get("hints"),new int[]{24,392,164,40}) && java.util.Arrays.equals(army.get("lesson"),new int[]{12,72,280,33}) && java.util.Arrays.equals(army.get("respawn"),new int[]{380,230,200,28}), "the army selected: three chips over the key strip; the hint slip 48 above the top chip; the lesson note at the top left; the respawn card 40 above the middle");
+        var small = UiMath.hudLayout(854,480,2,1,UiMath.HUD_COMPACT,UiMath.DEFAULT_STATE);
+        check(UiMath.columnBottom(854,480,2,1)==430 && java.util.Arrays.equals(small.get("keys"),new int[]{24,414,176,16}) && UiMath.columnBottom(960,540,1,1)==522 && UiMath.columnBottom(1920,1080,4,2)==522, "at 854x480 GUI 2 the offhand slot (canvas x 186, y 434) reaches into the column: its foot rises to 430, 4 px above it; elsewhere 18 px above the bottom");
+        var none = UiMath.hudLayout(960,540,1,1,UiMath.HUD_COMPACT,new UiMath.HudState(3,java.util.List.of(),"all",true,0,false,false));
+        var nobody = UiMath.hudLayout(960,540,1,1,UiMath.HUD_COMPACT,new UiMath.HudState(3,groups,"none",false,0,false,false));
+        check(!none.containsKey("spine") && !none.containsKey("keys") && java.util.Arrays.equals(none.get("hints"),new int[]{24,474,164,40}) && nobody.get("card-ranged")[3]==18 && !nobody.containsKey("keys") && UiMath.hudLayout(0,0,0,0,0,UiMath.DEFAULT_STATE).containsKey("score"), "no group fielded: no spine and no key strip, the hint slip above the column's foot; nothing selected: three chips; a 0 x 0 window divides by nothing");
+        // The lesson note: 11 px Lato, 264 px a line after its tag, never cut.
+        java.util.function.ToIntFunction<String> four = s -> 4*s.length();
+        var two = UiMath.lessonLines("Press B to change formation. Shieldwall holds a line; Wedge breaks one.",58,264,four);
+        check(two.equals(java.util.List.of("Press B to change formation. Shieldwall holds a","line; Wedge breaks one.")) && String.join(" ",two).equals("Press B to change formation. Shieldwall holds a line; Wedge breaks one."), "the first line is the tag's width narrower; the copy wraps at its spaces and joins back whole");
+        check(UiMath.lessonLines("Unbreakableline here",0,40,four).equals(java.util.List.of("Unbreakableline","here")) && UiMath.lessonLines("  ",58,264,four).isEmpty() && UiMath.lessonLines("a  b",0,264,four).equals(java.util.List.of("a b")), "a word too long for a line stands alone, uncut; spaces collapse");
+        check(UiMath.lessonHeight(2)==33 && UiMath.lessonHeight(1)==22 && UiMath.lessonHeight(0)==22 && UiMath.lessonHeight(3)==44, "the note: 11 px a line and 11 more");
+        check(UiMath.lessonYields(new int[]{12,72,280,33},new int[]{220,110,200,28}) && UiMath.lessonYields(new int[]{12,72,280,33},new int[]{220,114,200,28}) && !UiMath.lessonYields(new int[]{12,72,280,33},new int[]{220,115,200,28}) && !UiMath.lessonYields(new int[]{12,72,280,33},new int[]{292,90,200,28}) && UiMath.lessonYields(new int[]{12,72,280,33},new int[]{100,60,200,28}), "the note gives way to the respawn card where their columns meet and the card's top edge (a row above its box) comes within 4 rows of the note's shadow, which ends at y 110: at y 114, not 115; or over it");
         check(UiMath.crosshairTop(540,1,1)==262 && UiMath.crosshairTop(270,4,2)==254 && UiMath.crosshairTop(240,2,1)==224 && UiMath.crosshairTop(240,3,1)==336, "vanilla's crosshair in canvas px");
         check(UiMath.respawnY(540,262)==230 && UiMath.respawnY(384,184)==152 && UiMath.respawnY(540,254)==222 && UiMath.respawnY(480,224)==192 && UiMath.respawnY(720,336)==304, "the respawn card 40 px above the middle, raised 8 or 16 px where a larger GUI Scale's crosshair comes within 4 px");
-        // A two-line lesson card's shadow ends at y 144 (88 + 51 + 5); the respawn card's PNG starts a row above its box.
-        check(UiMath.lessonYields(2,140) && UiMath.lessonYields(2,148) && !UiMath.lessonYields(2,149) && !UiMath.lessonYields(2,152) && !UiMath.lessonYields(1,140) && UiMath.lessonYields(3,152) && !UiMath.lessonYields(2,230), "the lesson card gives way to the respawn card within 4 px of its shadow: 720p GUI 2 (y 140), not 1366x768 (152) or a one-line lesson");
-        // The lifted chat, closed/open lines with vanilla's widest chat (right edge GUI 332, 9 px lines, 10 and 20 lines): A, the lesson and respawn
-        // cards with the hint layer down (the last number: 0 where the lesson card gives way to the respawn card); B, the lesson with the hint layer
-        // up and the commander up; C, neither card, the layer down. Hand-worked.
-        int[][] at = {{960,540,1,1,280,230,1},{854,480,2,1,227,192,1},{1280,720,3,1,440,304,1},{1920,1080,2,2,280,230,1},{1920,1080,4,2,280,222,1},{1280,720,2,2,216,140,0},{1366,768,2,2,216,152,1}};
-        String[] wantA = {"10/20","1/2","4/6","10/20","2/4","7/7","1/1"}, wantB = {"10/13","3/3","1/10","10/13","5/6","1/1","1/1"};
-        for (int i = 0; i < at.length; i++) {
-            int[] s = at[i]; int w2 = s[0]/s[3], h2 = s[1]/s[3];
-            String a = chat(hud(w2,h2,s[6]==1?s[4]:-1,s[5],false),s), b = chat(hud(w2,h2,s[4],-1,true),s);
-            check(UiMath.hudScale(s[0],s[1],s[2])==s[3] && a.equals(wantA[i]) && b.equals(wantB[i]), s[0]+"x"+s[1]+" GUI "+s[2]+" at "+s[3]+"x: the chat shows "+a+" lines with the respawn card"+(s[6]==1?" and the lesson card":", the lesson card giving way")+" (want "+wantA[i]+"), "+b+" with the hint layer up (want "+wantB[i]+")");
+        check(UiMath.inksApart("feed",new int[]{200,120,166,44},"lesson",new int[]{12,72,280,33}) && !UiMath.inksApart("feed",new int[]{200,112,166,44},"lesson",new int[]{12,72,280,33}) && UiMath.inksApart("feed",new int[]{292,90,166,44},"lesson",new int[]{12,72,280,33}), "the feed leaf's top edge (3 rows above its box) keeps 4 rows from the note's shadow where they share columns (the 8a review's Important 2)");
+        var feedOnLesson = UiMath.hudLayout(960,540,1,1,UiMath.HUD_COMPACT,new UiMath.HudState(3,groups,"all",false,2,false,true)); feedOnLesson.put("feed",new int[]{200,108,166,44});
+        check(UiMath.frameFaults(feedOnLesson,960,540,new java.util.HashMap<>()).size()==1 && UiMath.frameFaults(army,960,540,UiMath.namedBars(960,540,1,1)).isEmpty(), "frameFaults finds a feed leaf hung in the note's shadow, and nothing in the fullest Compact frame at 960 x 540");
+        check(java.util.Arrays.equals(UiMath.feedBox(960,540,UiMath.HUD_COMPACT),new int[]{778,248,166,44}) && java.util.Arrays.equals(UiMath.feedBox(960,540,UiMath.HUD_STANDARD),new int[]{772,232,172,74}) && UiMath.feedTextW(UiMath.HUD_COMPACT)==134 && UiMath.feedTextW(UiMath.HUD_LARGE)==140 && UiMath.feedRowY(UiMath.HUD_COMPACT,2)==31 && UiMath.feedRowY(UiMath.HUD_STANDARD,4)==57, "the feed: Compact's 166 x 44 leaf of three entries, text 134 px; the five-entry 172 x 74 leaf at Standard and Large, as UI Task 3 hung it");
+        // The footprint budget (the brief's item 5): the plates' share of the screen in the default battle state, Compact against the
+        // HUD before this task (Task 8a's cards, 48 + 48 + 62 tall, and 172 x 74 feed slip, at its scale: 1, 2, 2, 2, 1), at most half;
+        // and the centre band clear. Hand-worked: before, 40536 canvas px; Compact, 3 x 176 x 18 + 176 x 16 + 166 x 44 = 19624.
+        int[][] five = {{1280,720,3,1},{1366,768,2,2},{1920,1080,4,2},{1920,1080,2,2},{854,480,2,1}};
+        String shares = ""; boolean budget = true;
+        for (int[] s : five) {
+            double before = UiMath.footprint(hud(s[0]/s[3],s[1]/s[3],-1,-1,false),s[3],s[0],s[1]);
+            int k = UiMath.hudScale(s[0],s[1],s[2],UiMath.HUD_COMPACT); var r = UiMath.hudLayout(s[0],s[1],s[2],k,UiMath.HUD_COMPACT,UiMath.DEFAULT_STATE);
+            double now = UiMath.footprint(r,k,s[0],s[1]); var band = UiMath.inBand(r,s[0]/k,s[1]/k);
+            budget &= now <= before / 2 && band.isEmpty() && Math.abs(before*s[0]*s[1]/(s[3]*s[3])-40536)<0.5 && Math.abs(now*s[0]*s[1]/(k*k)-19624)<0.5;
+            shares += (shares.isEmpty() ? "" : ", ") + String.format(java.util.Locale.ROOT,"%dx%d GUI %d %.3f%% before, %.3f%% now (%.0f%%)%s",s[0],s[1],s[2],100*before,100*now,100*now/before,band.isEmpty()?"":" band "+band);
         }
-        check(chat(hud(640,360,-1,-1,false),at[5]).equals("9/9") && chat(hud(683,384,-1,-1,false),at[6]).equals("10/12"), "in a battle with neither card at 2x: 9 lines at 720p, 10 (12 open) at 1366x768");
-        check(UiMath.chatSlot(hud(683,384,216,152,false),1,683,384,332,9,10,false).bottom()==83 && UiMath.chatSlot(hud(960,540,280,-1,true),0.5,480,270,332,9,10,false).bottom()==123, "the chat moves up past the respawn and lesson cards (1366x768 GUI 2: bottom 83) and past the crosshair (1080p GUI 4, hint layer up: bottom 123)");
+        check(budget, "Compact covers at most half the screen the HUD covered before this task, the centre band clear: " + shares);
+        check(java.util.Arrays.equals(UiMath.centreBand(960,540),new int[]{288,162,384,173}) && UiMath.inBand(army,960,540).equals(java.util.List.of()) && UiMath.inBand(java.util.Map.of("feed",new int[]{400,200,10,10},"respawn",new int[]{380,230,200,28},"score",new int[]{300,200,10,10}),960,540).equals(java.util.List.of("feed")), "the centre band (40% of the width, 30% to 62% of the height): a plate in it is named, the respawn card is let in, the ledger is no plate");
+        // The lifted chat over the Compact HUD, closed/open with vanilla's widest chat (right edge GUI 332, 9 px lines, 10 and 20 lines),
+        // in the suite's four passes: A the lesson and respawn cards with the hint layer down, B the lesson with the hint layer up, C a
+        // battle with neither (the default state), D a battle's first seconds (the hint layer up). 1280x720 GUI 3 in A worked by hand:
+        // the column's top at 616 puts the chat's bottom at GUI 201; closed, 7 lines fit above it and below the crosshair (127, 4 px
+        // clear), open 9 below the respawn card's shadow (GUI 111).
+        String[][] wantChat = {{"10/20","10/20","10/20","10/20"},{"4/6","1/9","4/14","1/12"},{"7/9","6/16","7/19","6/17"},{"10/20","10/20","10/20","10/20"},{"7/9","5/15","7/19","5/17"},{"10/14","10/20","10/20","10/20"},{"10/15","10/20","10/20","10/20"}};
+        String chats = ""; boolean chatsOk = true, clean = true;
+        for (int i = 0; i < win.length; i++) for (int p = 0; p < 4; p++) {
+            int[] s = win[i]; int k = UiMath.hudScale(s[0],s[1],s[2],UiMath.HUD_COMPACT);
+            var r = UiMath.hudLayout(s[0],s[1],s[2],k,UiMath.HUD_COMPACT,new UiMath.HudState(3,groups,"all",p==1||p==3,p<2?2:0,p==0,true));
+            String got = chat(r,new int[]{s[0],s[1],s[2],k}); chatsOk &= got.equals(wantChat[i][p]);
+            clean &= UiMath.frameFaults(r,s[0]/k,s[1]/k,UiMath.namedBars(-Math.floorDiv(-s[0],s[2]),-Math.floorDiv(-s[1],s[2]),s[2],k)).isEmpty() && r.containsKey("lesson") == (p < 2);
+            if (!got.equals(wantChat[i][p])) chats += (chats.isEmpty() ? "" : ", ") + s[0]+"x"+s[1]+" GUI "+s[2]+" pass "+"ABCD".charAt(p)+" "+got+" (want "+wantChat[i][p]+")";
+        }
+        check(chatsOk, "the lifted chat's lines over the Compact HUD in each pass at each window" + (chats.isEmpty() ? "" : ": " + chats));
+        check(clean, "every Compact frame of the four passes at the suite's windows: every plate 12 px inside, none on another or on vanilla's bars, the lesson note beside the respawn card (it never has to give way at Compact)");
+        check(UiMath.chatSlot(hud(683,384,216,152,false),1,683,384,332,9,10,false).bottom()==83 && UiMath.chatSlot(hud(960,540,280,-1,true),0.5,480,270,332,9,10,false).bottom()==123, "the chat moves up past the respawn and lesson cards (Task 8a's 1366x768 GUI 2: bottom 83) and past the crosshair (1080p GUI 4, hint layer up: bottom 123)");
         var feedOnly = new java.util.LinkedHashMap<String,int[]>(); feedOnly.put("spine",new int[]{12,300,9,100}); feedOnly.put("feed",new int[]{100,250,172,74});
-        check(UiMath.chatSlot(feedOnly,1,960,540,332,9,10,true).bottom()==243 && UiMath.chatSlot(hud(960,540,-1,-1,false),1,960,540,332,9,10,false) != null && UiMath.chatSlot(new java.util.HashMap<>(),1,960,540,332,9,10,false) == null, "the feed slip counts over the chat; no column, no lift");
+        check(UiMath.chatSlot(feedOnly,1,960,540,332,9,10,true).bottom()==243 && UiMath.chatSlot(hud(960,540,-1,-1,false),1,960,540,332,9,10,false) != null && UiMath.chatSlot(new java.util.HashMap<>(),1,960,540,332,9,10,false) == null && UiMath.columnTop(java.util.Map.of("keys",new int[]{24,506,176,16})) == 506, "the feed slip counts over the chat; the key strip is the column; no column, no lift");
         check(UiMath.chatSlot(10,0,java.util.List.of(),0).lines()==1 && UiMath.chatSlot(10,100,java.util.List.of(new double[]{50,60,60}),0).lines()==10 && !UiMath.chatSlot(10,20,java.util.List.of(new double[]{5,30,30}),9).onScreen() && UiMath.chatSlot(10,20,java.util.List.of(new double[]{5,30,30}),9).bottom()==20, "a line height of 0 divides by nothing; a push off the screen keeps the first place");
         // Short key names for crowded rows (the re-review's 'Pag...'), by the key's code; the long names only where the row is crowded.
         check("MB4".equals(HintText.mouseShort(3)) && "RMB".equals(HintText.mouseShort(1)) && "RShift".equals(HintText.keyShort(344)) && "PgUp".equals(HintText.keyShort(266)) && "PgDn".equals(HintText.keyShort(267)) && "Caps".equals(HintText.keyShort(280)) && "LAlt".equals(HintText.keyShort(342)) && "Num4".equals(HintText.keyShort(324)) && "Num.".equals(HintText.keyShort(330)) && HintText.keyShort(65)==null && HintText.UNBOUND_SHORT.equals("None"), "short names by GLFW code");
@@ -135,9 +186,10 @@ public final class UiMathCheck {
         System.out.println("UiMathCheck: " + checks + " checks passed");
     }
 
-    /** The battle HUD's boxes in canvas px on a w x h canvas with three points, as BattleHud lays them out (the mock's numbers, not
-     *  UiMath's helpers): the lesson card of two lines at x lessonX (-1: none), the respawn card at y respawnY (-1: none), the hint
-     *  layer up (three tall cards and the hint slip) or down (the army selected: the bottom card tall), and the feed slip. */
+    /** The battle HUD's boxes in canvas px on a w x h canvas with three points as Task 8a laid them out, before UI Task 8c (the
+     *  mock's numbers, not UiMath's helpers): the lesson card of two lines at x lessonX (-1: none), the respawn card at y respawnY
+     *  (-1: none), the hint layer up (three tall cards and the hint slip) or down (the army selected: the bottom card tall), and the
+     *  feed slip. The footprint budget measures the HUD before this task by it. */
     static java.util.Map<String,int[]> hud(int w, int h, int lessonX, int respawnY, boolean hint) {
         var r = new java.util.LinkedHashMap<String,int[]>(); int cx = w / 2;
         r.put("score", new int[]{cx-128,13,256,24}); r.put("dawn-boss", new int[]{cx-140,12,27,28}); r.put("dusk-boss", new int[]{cx+115,12,27,28});

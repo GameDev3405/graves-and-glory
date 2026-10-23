@@ -36,7 +36,7 @@ def crop(paint, x, y, w, h):
 
 # ================================================================ hud/
 for _n in ('boss-dawn', 'boss-dusk', 'chain', 'hook', 'hook-brass', 'stamp-rout', 'horn', 'ability-slot',
-           'key-brass-plate', 'hp-channel', 'hp-channel-grey', 'notice-slip'):
+           'key-brass-plate', 'hp-channel', 'hp-channel-grey'):
     mock('hud', _n)
 mock('hud', 'score-card', ox=1, oy=1)
 mock('hud', 'feed-slip', ox=1, oy=3)
@@ -59,15 +59,25 @@ add('hud/track-dawn-fill', crop(lambda: track(56, 1.0, 'dawn'), 1, 2, 54, 4))
 add('hud/track-dusk-fill', crop(lambda: track(56, 1.0, 'dusk'), 1, 2, 54, 4))
 # the spine, 9 x 58: its 24 px middle holds one rivet, so tiling keeps the painter's 24 px rivet pitch
 add('hud/spine', lambda: spine(56), kind='three-v', t=18, b=16)
-# ledger cards, and the heights the mock did not paint, from the same ledger_card arguments
-mock('hud', 'card-plain', ox=1, oy=1)
+# the selected group's ledger card, 62 px tall with its key row (the mock's card-sel, and its loss flash and rout states from
+# the same ledger_card arguments); the mock's 48 px cards and the plain iron card went with UI Task 8c, where only the
+# selected group keeps a card and every other group hangs as a chip
 mock('hud', 'card-sel', ox=1, oy=1)
-mock('hud', 'card-rout', ox=1, oy=1)
-mock('hud', 'card-flash', ox=2, oy=2)
-add('hud/card-plain-62', lambda: ledger_card(176, 62, seed=11), ox=1, oy=1)
 add('hud/card-flash-62', lambda: ledger_card(176, 62, seed=12, flash=True), ox=2, oy=2)
 add('hud/card-rout-62', lambda: ledger_card(176, 62, kind='grey', seed=14, rust=0.35), ox=1, oy=1)
-add('hud/card-sel-48', lambda: ledger_card(176, 48, metal=BRASSR, seed=13), ox=1, oy=1)
+# the lighter battle HUD (UI Task 8c, kit_extra): a group's chip in its four looks (iron, the loss flash, brass while the
+# army is selected, grey and rusted when routed or fallen), its strength channel and rout stamp, the army's key strip,
+# the tutorial's lesson note, the narrower hint slip and the Compact size's feed leaf of three entries
+add('hud/chip-plain', lambda: kit_extra.chip(seed=41), ox=1, oy=1)
+add('hud/chip-flash', lambda: kit_extra.chip(seed=42, flash=True), ox=2, oy=2)
+add('hud/chip-sel', lambda: kit_extra.chip(metal=BRASSR, seed=43), ox=1, oy=1)
+add('hud/chip-rout', lambda: kit_extra.chip('grey', seed=44, rust=0.35), ox=1, oy=1)
+add('hud/chip-channel', kit_extra.chip_channel)
+add('hud/stamp-chip', kit_extra.chip_stamp)
+add('hud/keys-strip', kit_extra.keys_strip, ox=1, oy=1)
+add('hud/lesson-note', kit_extra.lesson_note, kind='three-v', t=kit_extra.LESSON_T, b=kit_extra.LESSON_B, ox=1, oy=1)
+add('hud/notice-slip', kit_extra.hint_slip)
+add('hud/feed-slip-3', kit_extra.feed_leaf_3, ox=1, oy=3)
 # bar fills, 102 x 3, cut to length in game (UiTex.bar)
 add('hud/hp-full-dawn', lambda: hp_fill(102))
 add('hud/hp-lost', lambda: hp_fill(102, 'lost'))
@@ -83,8 +93,6 @@ for _n in ('fgv-skull', 'fgv-skull-grey', 'fgv-banner-down', 'fgv-banner-up', 'f
     mock('hud', _n)
 add('hud/fgv-moon', kit_extra.fgv_moon)
 # cards that carry text
-# the lesson card grows a row per line of its copy: a three-v whose middle band is plain edge and bare vellum (kit_extra)
-add('hud/lesson-card', kit_extra.lesson_card, kind='three-v', t=20, b=24, ox=1, oy=1)
 add('hud/respawn-card', lambda: ledger_card(200, 28, 'lo', IRON, seed=16), ox=1, oy=1)
 
 # ================================================================ table/

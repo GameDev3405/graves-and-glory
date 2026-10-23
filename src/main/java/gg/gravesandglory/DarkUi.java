@@ -28,9 +28,12 @@ final class DarkUi {
     static final int MAP_PIN=0xcc101722, MAP_GROUP=0xff111923, CONTEST=0xffffaa55, WARN=0xffff9955, MAP_TROOP=0xfff5e2a8, MAP_ENEMY=0xffff6860, MAP_STALE=0xffa2a5aa, PING=0xffffcc55, MAP_YOU=0xffffffff;
     // Screen inks: the map screen's scrim, the entrance letterbox, the band over the battle preview and the chapter bar's track.
     static final int SCRIM=0xee0c1420, LETTERBOX=0xff080c13, PREVIEW_BAND=0xdd172126, TRACK=0xff29383c;
-    static final Identifier TITLE=new Identifier("gravesandglory","title"), FOCAL=new Identifier("gravesandglory","focal"), BODY=new Identifier("gravesandglory","body");
-    /** The Lato body style: body and label draw in it, and BattleHud wraps the lesson in it. */
+    static final Identifier TITLE=new Identifier("gravesandglory","title"), FOCAL=new Identifier("gravesandglory","focal"), BODY=new Identifier("gravesandglory","body"), SMALL=new Identifier("gravesandglory","small");
+    /** The Lato body style: body and label draw in it. */
     static final Style BODY_STYLE=Style.EMPTY.withFont(BODY);
+    /** Lato at 11 px, the battle HUD's lesson note (UI Task 8c): BattleHud wraps the lesson in it. */
+    static final Style SMALL_STYLE=Style.EMPTY.withFont(SMALL);
+    static Text small(String text){return Text.literal(text).setStyle(SMALL_STYLE);}
     /** The one 16 px Marcellus focal line of a screen. */
     static Text focal(String text){return Text.literal(text).setStyle(Style.EMPTY.withFont(FOCAL));}
     /** 11 px Marcellus, for headings and names. */

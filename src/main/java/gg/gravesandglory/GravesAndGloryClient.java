@@ -225,8 +225,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         for(var ping:CommandMode.pings){int px=x+(int)((ping.x()+350)*w/700),pz=y+(int)((ping.z()+250)*h/500);g.drawBorder(px-6,pz-6,13,13,DarkUi.PING);if(labels)g.drawTextWithShadow(font,ping.kind().toUpperCase(),px+8,pz,DarkUi.PING);}
         var p=MinecraftClient.getInstance().player;if(p!=null){int px=x+(int)((p.getX()+350)*w/700),pz=y+(int)((p.getZ()+250)*h/500);g.fill(px-1,pz-2,px+2,pz+3,DarkUi.MAP_YOU);}
     }
-    /** Lesson text wraps to this width (body style) inside the 400-pixel lesson card BattleHud draws. */
-    static final int LESSON_TEXT_WIDTH=350;
+    /** Lesson text wraps to this width (the small style) inside the 280 px lesson note BattleHud draws, its first line the LESSON
+     *  k/4 tag and 6 px narrower (UiMath.lessonLines, UI Task 8c). */
+    static final int LESSON_TEXT_WIDTH=UiMath.LESSON_TEXT_W;
     /** The lesson text lines drawn in the last frame, so a check can compare them with the full copy. */
     static List<String> lessonDrawn=List.of();
     /** The copy of lesson step (0 to 3), naming the player's own key binding. */

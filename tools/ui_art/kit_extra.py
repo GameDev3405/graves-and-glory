@@ -7,7 +7,7 @@ the recruit page's Odds note is a light parchment pinned by two tacks (UI plan T
 import math
 from v4lib import Spr, rgba
 from v4pal import IRON, BRASS, VIOL, OAK, VEL, WAX, TEAL
-from v4a_hud import glyph, INK, PAPER, FEEDV_GLYPH, SHADOW, iron_shade, ledger_card
+from v4a_hud import glyph, INK, PAPER, FEEDV_GLYPH, SHADOW, iron_shade, ledger_card, BRASSR, notice_slip, feed_slip, hp_channel, stamp
 from v4a_paper import parchment, tack
 
 # 'k' ink, 'L' the light vellum inside a shape, as in v4a_hud.GLYPHS
@@ -93,33 +93,6 @@ def btn_iron(brass):
             if p[:3] in lut:
                 px[x, y] = lut[p[:3]] + (p[3],)
     return brass
-
-
-def lesson_card():
-    """hud/lesson-card as a three-v, t=20, b=24 (UI plan Task 3, controller addition B): the mock's ledger_card(400, 40, 'lo',
-    IRON, seed=15), its box at (1, 1), with a 10-row middle band, PNG rows 20 to 29, set between the painting's rows 19 and 22.
-    The corner brackets run down the side edges to rows 19 and 22, so rows 20 and 21 are the only rows whose edges are plain: the
-    band's 14 columns at either side are those two rows in turn, and between them lies the vellum of rows 20 to 29. A card 40 px
-    tall drawn from it is the painting itself (its middle is band rows 0 and 1, the painting's rows 20 and 21); a taller card tiles
-    the band, so a bracket never repeats."""
-    card = ledger_card(400, 40, 'lo', IRON, seed=15).im
-    w, h = card.size
-    side, band = 14, 10
-    out = Spr(w, h + band - 2)
-    im = out.im
-    im.paste(card.crop((0, 0, w, 20)), (0, 0))
-    for i in range(band):
-        edge = 20 + i % 2
-        im.paste(card.crop((0, edge, side, edge + 1)), (0, 20 + i))
-        im.paste(card.crop((side, 20 + i, w - side, 21 + i)), (side, 20 + i))
-        im.paste(card.crop((w - side, edge, w, edge + 1)), (w - side, 20 + i))
-    im.paste(card.crop((0, 22, w, h)), (0, 20 + band))
-    # no bracket inside the band: between its edges only opaque, warm vellum (iron is grey, its red under its blue)
-    for y in range(20, 20 + band):
-        for x in range(side, w - side):
-            r, g, b, a = im.getpixel((x, y))
-            assert a == 255 and r - b >= 30, ('hud/lesson-card band', x, y, (r, g, b, a))
-    return out
 
 
 # ================================================================ recruit/
@@ -235,3 +208,99 @@ def class_arcanist():
 
 
 CLASS_ICONS = {'vanguard': class_vanguard, 'marksman': class_marksman, 'arcanist': class_arcanist}
+
+
+# ================================================================ hud/ the lighter battle HUD (UI Task 8c)
+# Kort, 2026-10-22: too much of the screen was blocked. A group that is not selected hangs on the spine as a chip one line
+# high; the whole army selected shows its chips in brass over one key strip; the tutorial's lesson is one short note. Each
+# is a plate of the cards' own ledger (v4a_hud.ledger_card's vellum, inked edge rule, loss-flash rule and shadow), bound
+# at its corners by small caps: the cards' book-corner brackets need 13 px of plate a side, more than an 18 px chip has, so
+# these are v4a_hud.corner_caps made small, a right-angled plate a pixel proud of the vellum, one engraved groove for its
+# two and a rivet head. Shaded in screen space, so the light stays on the top left whichever corner a cap sits on.
+def small_caps(S, w, h, metal=IRON, size=6, seed=5, ox=0, oy=0, rust=0.0, corners=(0, 1, 2, 3)):
+    """v4a_hud.corner_caps (lines 92-113) at a chip's size: the same right-angled plate over each corner standing a pixel
+    proud, one engraved groove parallel to the cut edge (lit on its far side, as there) in place of two, and a 2 x 2
+    rivet head (its specular on the upper left) in place of the 4 x 4 dome. (ox, oy) is where the plate's own top-left
+    pixel lies inside S."""
+    base = {(x, y) for y in range(-1, size) for x in range(-1, size) if x + y <= size - 1}
+    groove = {(x, y) for (x, y) in base if x + y == size - 3 and x >= 0 and y >= 0}
+    for k in corners:
+        fx, fy = k in (1, 3), k in (2, 3)
+        M = lambda x, y: (ox + ((w - 1 - x) if fx else x), oy + ((h - 1 - y) if fy else y))
+        m = {M(x, y) for (x, y) in base}
+        iron_shade(S, m, 0, 0, ramp=metal, seed=seed + k, rust=rust, scratches=False)
+        g = [M(x, y) for (x, y) in groove]
+        for (X, Y) in g:
+            S.set(X, Y, metal[2])
+        for (X, Y) in g:
+            for (a, b) in ((1, 0), (0, 1)):
+                q = (X + a, Y + b)
+                if q in m and q not in g and S.get(*q)[:3] != rgba(metal[0])[:3]:
+                    S.set(q[0], q[1], metal[6])
+        rx = min(M(0, 0)[0], M(1, 1)[0]); ry = min(M(0, 0)[1], M(1, 1)[1])
+        S.grid(rx, ry, ['Hb', 'bd'], {'H': metal[-1], 'b': metal[5], 'd': metal[2]})
+
+
+# a chip is 176 x 18, the cards' width; the PNG puts the box at (1, 1), (2, 2) with the flash rule
+CHIP_W, CHIP_H = 176, 18
+
+
+def chip(kind='lo', metal=IRON, seed=41, rust=0.0, flash=False):
+    """a group's chip: ledger_card's plate at 176 x 18 without its brackets, bound by small caps (iron; brass while the
+    whole army is selected); flash, the loss flash's alarm-red rule round it; the grey vellum and rust of a routed or
+    fallen group's card"""
+    S = ledger_card(CHIP_W, CHIP_H, kind, metal, seed=seed, rust=rust, flash=flash, caps=False)
+    pad = 2 if flash else 1
+    small_caps(S, CHIP_W, CHIP_H, metal, 6, seed, pad, pad, rust=rust)
+    return S
+
+
+def keys_strip():
+    """the key strip under the bottom chip while the whole army is selected: the order keys' row of the selected card on a
+    brass-capped plate of its own, 176 x 16"""
+    S = ledger_card(CHIP_W, 16, 'lo', BRASSR, seed=45, caps=False)
+    small_caps(S, CHIP_W, 16, BRASSR, 6, 45, 1, 1)
+    return S
+
+
+# the lesson note: 280 x 33 for two lines of copy, a three-v whose middle band (PNG rows 12 to 24) is the plate's plain
+# side edges round bare vellum, so a third line (a long key name) grows it between its caps
+LESSON_W, LESSON_H, LESSON_T, LESSON_B = 280, 33, 12, 14
+
+
+def lesson_note():
+    """the tutorial's lesson as one short note: ledger_card(280, 33)'s plate with small caps of 8 px, iron"""
+    S = ledger_card(LESSON_W, LESSON_H, 'lo', IRON, seed=46, caps=False)
+    small_caps(S, LESSON_W, LESSON_H, IRON, 8, 46, 1, 1)
+    im = S.im
+    w, h = im.size
+    # the middle band holds no cap: only the inked edge rule and the shadow at its sides, vellum between
+    for y in range(LESSON_T, h - LESSON_B):
+        for x in range(2, w - 4):
+            r, g, b, a = im.getpixel((x, y))
+            assert a == 255 and r - b >= 30, ('hud/lesson-note band', x, y, (r, g, b, a))
+    return S
+
+
+# the hint slip, narrower: v4a_hud.notice_slip at 164 x 40; its rows run 142 px from x 10 (BattleHud.HINT_ROW_W), so the
+# longest short-name row (PgUp PgDn Turn LAlt Hints, 141 px) still ends 12 px inside the box, as the 176 px slip's did
+HINT_W = 164
+
+
+def hint_slip():
+    return notice_slip(HINT_W, 40)
+
+
+# a chip's strength channel and rout stamp: the card's channel (v4a_hud.hp_channel) and stamp at the chip's 66 px state slot
+def chip_channel():
+    return hp_channel(66)
+
+
+def chip_stamp():
+    return stamp(66, 14)
+
+
+def feed_leaf_3():
+    """the feed's leaf at the Compact size: v4a_hud.feed_slip ruled for three entries on a 12 px pitch from row 7, 166 x 44
+    (the five-entry leaf is 172 x 74); its text runs 134 px from x 20, 12 px short of the binding, as the five-entry leaf's"""
+    return feed_slip(w=166, h=44, rows=3, top=7, pitch=12)

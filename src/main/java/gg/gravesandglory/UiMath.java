@@ -207,17 +207,6 @@ public final class UiMath {
         return canvasW / 2 + 28 * i - 14 * (n - 1);
     }
 
-    /** Tops of the group cards stacked upward: the bottom card ends 18 px above the canvas bottom, 8 px between cards. */
-    public static int[] cardTops(int canvasH, int[] heights) {
-        int[] tops = new int[heights.length];
-        int bottom = canvasH - 18;
-        for (int i = heights.length - 1; i >= 0; i--) {
-            tops[i] = bottom - heights[i];
-            bottom = tops[i] - 8;
-        }
-        return tops;
-    }
-
     /** A card's head count: alive of the round's most, as "9/12". */
     public static String countText(int alive, int full) {
         return alive + "/" + full;
@@ -240,12 +229,21 @@ public final class UiMath {
         return Math.round(Math.max(0f, Math.min(1f, strength)) * 102);
     }
 
-    /** How long an event feed line lives, and the last stretch of that over which it fades out (presentation timings). */
-    public static final long FEED_LIFE_MS = 8000, FEED_FADE_MS = 2000;
+    /** How long an event feed line lives at the Compact HUD size (UI Task 8c), and at Standard and Large (the spec's 8 s), and the
+     *  last stretch over which it fades out (presentation timings). */
+    public static final long FEED_LIFE_COMPACT_MS = 6000, FEED_LIFE_MS = 8000, FEED_FADE_MS = 2000;
+    /** The most lines the feed shows at once at the Compact HUD size, and at Standard and Large (the spec's five). */
+    public static final int FEED_LINES_COMPACT = 3, FEED_LINES = 5;
 
-    /** An event feed line's alpha at ageMs: 1 until its last FEED_FADE_MS, then down in a straight line to 0 at FEED_LIFE_MS. */
-    public static float feedAlpha(long ageMs) {
-        long left = FEED_LIFE_MS - ageMs;
+    /** A feed line's life at a HUD size (HUD_COMPACT, HUD_STANDARD or HUD_LARGE). */
+    public static long feedLife(int size) { return size == HUD_COMPACT ? FEED_LIFE_COMPACT_MS : FEED_LIFE_MS; }
+
+    /** The most feed lines shown at once at a HUD size. */
+    public static int feedLines(int size) { return size == HUD_COMPACT ? FEED_LINES_COMPACT : FEED_LINES; }
+
+    /** An event feed line's alpha at ageMs of a lifeMs life: 1 until its last FEED_FADE_MS, then down in a straight line to 0. */
+    public static float feedAlpha(long ageMs, long lifeMs) {
+        long left = lifeMs - ageMs;
         if (left <= 0) return 0f;
         return left >= FEED_FADE_MS ? 1f : left / (float) FEED_FADE_MS;
     }
@@ -393,33 +391,121 @@ public final class UiMath {
         return k;
     }
 
-    // The battle HUD's scale and layout (UI Task 8a). BattleHud and ChatPlacement draw by these; hudFits lays the HUD out with them.
+    // The battle HUD's size and layout (UI Task 8c, which replaces Task 8a's scale rule: Kort found too much of the screen blocked).
+    // BattleHud draws every plate where hudLayout puts it, hudFits lays the HUD out by the same method, and the ui-hud suite checks
+    // that what a frame drew is what hudLayout gives for that frame.
 
-    /** Windows this wide or wider keep the battle HUD at the kit scale, pixelScale (controller ruling 2026-10-18: 1366x768 and
-     *  1280x720 at GUI Scale 2 get a readable ledger, and the 1080p layout does not grow). */
-    public static final int HUD_KIT_WIDTH = 1600;
+    /** The HUD size setting (HudSize): Compact, the default, draws the HUD at the kit scale on every window and GUI Scale; Standard
+     *  and Large are one and two steps larger, where the whole HUD fits beside vanilla's bars. */
+    public static final int HUD_COMPACT = 0, HUD_STANDARD = 1, HUD_LARGE = 2;
 
-    /** The battle HUD's screen pixels per canvas pixel. From HUD_KIT_WIDTH up, the kit scale (pixelScale). Narrower, the player's GUI
-     *  Scale up to 2 wherever the whole HUD fits at that size beside vanilla's bars (hudFits), else the kit scale, which is 1 there.
-     *  Never below 1, so the canvas (the framebuffer divided by it) never divides by zero; a GUI Scale of 0 or less counts as 1. */
-    public static int hudScale(int fbW, int fbH, int guiScale) {
+    /** The battle HUD's screen pixels per canvas pixel at a HUD size. Compact: the kit scale (pixelScale), the screens' own, 1 on a
+     *  1280x720 or 1366x768 window and 2 at 1080p. Standard: the kit scale plus one, and Large plus two, each a step less wherever
+     *  the whole HUD would not fit there in every state hudFits lays out, never below the kit scale. Never below 1, so the canvas
+     *  (the framebuffer divided by it) never divides by zero; a GUI Scale of 0 or less counts as 1, any other size as Compact. */
+    public static int hudScale(int fbW, int fbH, int guiScale, int size) {
         int gui = Math.max(1, guiScale), kit = pixelScale(fbW, fbH, gui);
-        if (fbW >= HUD_KIT_WIDTH) return kit;
-        for (int k = Math.min(gui, 2); k > kit; k--) if (hudFits(fbW, fbH, gui, k)) return k;
+        for (int k = kit + (size == HUD_LARGE ? 2 : size == HUD_STANDARD ? 1 : 0); k > kit; k--) if (hudFits(fbW, fbH, gui, k, size)) return k;
         return kit;
     }
 
-    /** The lesson card's top: the aimed point's name (y 68, 9 tall) and 11 px clear above it. */
-    public static final int LESSON_Y = 88;
-    /** How far left the lesson card may sit: 16 px right of the group column, whose cards and hint slip end at x 200. */
-    public static final int LESSON_MIN_X = 216;
+    /** How long a round's start shows the hint layer: the spec's first 60 s at Standard and Large (UI spec 4.5), 15 s at Compact
+     *  (UI Task 8c); presentation timings. Holding the hints key brings it back at any size. */
+    public static final long HINT_LAYER_MS = 60000, HINT_LAYER_COMPACT_MS = 15000;
 
-    /** The lesson card's height for `lines` lines of copy: 40, and 11 more for each line past the first. */
-    public static int lessonHeight(int lines) { return 40 + 11 * Math.max(0, lines - 1); }
+    /** The hint layer's time at a round's start at a HUD size. */
+    public static long hintLayerMs(int size) { return size == HUD_COMPACT ? HINT_LAYER_COMPACT_MS : HINT_LAYER_MS; }
 
-    /** The lesson card's x: centred on the canvas centre cx as the mock lays it out, unless that would reach the group column (a
-     *  canvas under 832 px wide, as 1280x720 and 1366x768 are at GUI Scale 2); then LESSON_MIN_X. */
-    public static int lessonX(int cx) { return Math.max(cx - 200, LESSON_MIN_X); }
+    // The left column on its iron spine (UI Task 8c, Kort's choice): the selected group keeps its ledger card with its order,
+    // formation and key row; every other group hangs as a chip one line high; while the whole army is selected every group's
+    // chip is brass and one key strip hangs under the bottom chip. Canvas px.
+    /** The column's cards and chips start at x 24, 176 wide; the spine at x 12 and the hooks between, so the column lies in x 12
+     *  to 200. */
+    public static final int CARD_X = 24, CARD_W = 176, COLUMN_LEFT = 12, COLUMN_RIGHT = 200;
+    /** Heights: the selected group's ledger card, a chip, and the army's key strip. */
+    public static final int CARD_H = 62, CHIP_H = 18, KEYS_H = 16;
+    /** The px between two plates of the column, and between the column and a vanilla bar below it. */
+    public static final int COLUMN_GAP = 4;
+    /** The column's foot: 18 px above the canvas's bottom, as the mock hangs the cards. */
+    public static final int COLUMN_FOOT = 18;
+    /** The hint slip, 164 x 40, its box 48 px above the column's top plate: 8 px between, the spine's top in them. */
+    public static final int HINTS_W = 164, HINTS_H = 40, HINTS_ABOVE = 48;
+    /** A chip's strength bar: 64 px in its 66 px channel. */
+    public static final int CHIP_BAR = 64;
+
+    /** Filled pixels of a chip's 64 px strength bar: barWidth's rule (clamped to 0..1, NaN as 0). */
+    public static int chipBar(float strength) {
+        return Math.round(Math.max(0f, Math.min(1f, strength)) * CHIP_BAR);
+    }
+
+    /** Tops of plates of these heights stacked upward, gap px apart, the last ending at `bottom`. */
+    public static int[] cardTops(int bottom, int[] heights, int gap) {
+        int[] tops = new int[heights.length];
+        for (int i = heights.length - 1; i >= 0; i--) {
+            tops[i] = bottom - heights[i];
+            bottom = tops[i] - gap;
+        }
+        return tops;
+    }
+
+    /** The column's foot in canvas px: COLUMN_FOOT above the canvas's bottom, raised to COLUMN_GAP above any of vanilla's bars that
+     *  reaches into the column's x 12 to 200 (the offhand slot at 854x480 GUI 2, the hotbar on a narrow canvas at a large scale),
+     *  so no plate of the column sits on one. */
+    public static int columnBottom(int fbW, int fbH, int gui, int k) {
+        int g = Math.max(1, gui), kk = Math.max(1, k), bottom = fbH / kk - COLUMN_FOOT;
+        for (int[] b : vanillaBars(-Math.floorDiv(-fbW, g), -Math.floorDiv(-fbH, g), g, kk, false))
+            if (b[0] < COLUMN_RIGHT && b[0] + b[2] > COLUMN_LEFT) bottom = Math.min(bottom, b[1] - COLUMN_GAP);
+        return bottom;
+    }
+
+    /** Vanilla's bars in canvas px (rounded outward) on a GUI sw x sh at GUI Scale gui and k screen px per canvas px: the hotbar, the
+     *  selected slot's frame on any slot, the offhand slot (left of the hotbar while the offhand holds something), the hearts, the
+     *  armour row, the experience bar and, with `crosshair`, the crosshair. */
+    public static List<int[]> vanillaBars(int sw, int sh, int gui, int k, boolean crosshair) {
+        List<int[]> out = new ArrayList<>();
+        for (int[] b : new int[][]{{sw / 2 - 91, sh - 22, 182, 22}, {sw / 2 - 92, sh - 23, 184, 22}, {sw / 2 - 120, sh - 23, 29, 24}, {sw / 2 - 91, sh - 39, 81, 9},
+            {sw / 2 - 91, sh - 49, 81, 9}, {sw / 2 - 91, sh - 29, 182, 5}}) out.add(guiToCanvas(b, gui, k));
+        if (crosshair) out.add(guiToCanvas(new int[]{(sw - CROSSHAIR) / 2, (sh - CROSSHAIR) / 2, CROSSHAIR, CROSSHAIR}, gui, k));
+        return out;
+    }
+
+    /** The lesson note (the tutorial's lesson, UI Task 8c): one short block at x 12, y 72, below the seals (which end at y 68) and
+     *  off the centre band, 280 px wide; its copy in 11 px Lato, 264 px a line, the first line after its LESSON k/4 tag and 6 px. */
+    public static final int LESSON_X = 12, LESSON_Y = 72, LESSON_W = 280, LESSON_TEXT_W = 264, LESSON_TAG_GAP = 6;
+
+    /** The lesson note's height for `lines` lines of copy (at least one): 11 px a line and 11 more, 5 above the first line and 6
+     *  under the last. */
+    public static int lessonHeight(int lines) { return 11 * Math.max(1, lines) + 11; }
+
+    /** The lesson copy in lines no wider than `width`, the first `indent` px narrower (the tag before it), each broken at the last
+     *  space that fits. A word too long for a line stands alone on its line: nothing is cut, and the lines joined with spaces are
+     *  the copy (its runs of spaces as one). */
+    public static List<String> lessonLines(String copy, int indent, int width, ToIntFunction<String> w) {
+        List<String> out = new ArrayList<>();
+        String line = "";
+        for (String word : copy.strip().split(" +")) {
+            if (word.isEmpty()) continue;
+            String next = line.isEmpty() ? word : line + " " + word;
+            if (line.isEmpty() || w.applyAsInt(next) <= (out.isEmpty() ? width - indent : width)) line = next;
+            else { out.add(line); line = word; }
+        }
+        if (!line.isEmpty()) out.add(line);
+        return out;
+    }
+
+    /** The feed leaf's box on a w x h canvas at a HUD size: Compact's leaf of three entries, 166 x 44, 16 px in from the right edge
+     *  and centred on the canvas's middle; Standard's and Large's leaf of the spec's five, 172 x 74, as UI Task 3 hung it. */
+    public static int[] feedBox(int w, int h, int size) {
+        return size == HUD_COMPACT ? new int[]{w - 182, h / 2 - 22, 166, 44} : new int[]{w - 188, h / 2 - 38, 172, 74};
+    }
+
+    /** How far a feed line's text runs from x 20 of its leaf: 134 px on Compact's leaf, 140 on the five-entry leaf, 12 px short of
+     *  the binding on either. */
+    public static int feedTextW(int size) { return size == HUD_COMPACT ? 134 : 140; }
+
+    /** A feed row's y in its leaf, row 0 at the top: Compact's leaf rules its entries from y 7, the five-entry leaf from y 9, 12 px
+     *  apart on both. */
+    public static int feedRowY(int size, int row) { return (size == HUD_COMPACT ? 7 : 9) + 12 * row; }
 
     /** Vanilla's crosshair top in canvas px: InGameHud draws the 15 px icon at GUI y (scaledH - 15) / 2, and a GUI px is gui screen
      *  px, a canvas px k. */
@@ -429,15 +515,66 @@ public final class UiMath {
      *  the 28 px card and vanilla's crosshair below it (crossTop, canvas px), as when the GUI Scale is above the canvas scale. */
     public static int respawnY(int canvasH, int crossTop) { return Math.min(canvasH / 2 - 40, crossTop - 4 - 28); }
 
-    /** Rows the respawn card's top edge keeps clear of the lesson card's shadow; nearer, the lesson card gives way (lessonYields). */
+    /** Rows two shadowed plates keep between their inks where their columns meet (inksApart); nearer, the lesson note gives way to
+     *  the respawn card (lessonYields), and hudFits fails a layout. */
     public static final int CARD_GAP = 4;
 
-    /** Whether the lesson card (`lines` lines of copy) gives way to the respawn card at y respawnY while the commander is down: where
-     *  the respawn card's top edge would come within CARD_GAP of the lesson card's shadow, as at 1280x720 GUI 2, where the HUD's 2x
-     *  would hang the respawn card in a two-line lesson's shadow (y 140 against 144). The countdown is what the player needs then;
-     *  the lesson is back when the commander is. */
-    public static boolean lessonYields(int lines, int respawnY) {
-        return respawnY - inkAbove("respawn") - (LESSON_Y + lessonHeight(lines) + inkBelow("lesson")) < CARD_GAP;
+    /** Whether two plates keep their inks CARD_GAP rows apart where their columns meet: the upper one's shadow (inkBelow) and the
+     *  lower one's top edge (inkAbove). Plates whose columns do not meet always do. */
+    public static boolean inksApart(String ka, int[] a, String kb, int[] b) {
+        if (a[0] >= b[0] + b[2] || b[0] >= a[0] + a[2]) return true;
+        if (a[1] > b[1]) return inksApart(kb, b, ka, a);
+        return b[1] - inkAbove(kb) - (a[1] + a[3] + inkBelow(ka)) >= CARD_GAP;
+    }
+
+    /** Whether the lesson note gives way to the respawn card while the commander is down: where its inks would come within CARD_GAP
+     *  rows of the card's (inksApart), as on a canvas too short for both. The countdown is what the player needs then; the lesson
+     *  is back when the commander is. */
+    public static boolean lessonYields(int[] lesson, int[] respawn) { return !inksApart("lesson", lesson, "respawn", respawn); }
+
+    /** One frame of the battle HUD as hudLayout lays it out: the points (a seal each), the groups the round fielded in their order
+     *  (infantry, ranged, support), the selection ("all" for the whole army, else a group's id; anything else selects none), the
+     *  hint layer up (the hint slip), the lesson's lines (0 for none: no tutorial, or an order being aimed), the commander down (the
+     *  respawn card) and a feed line alive (the feed leaf). */
+    public record HudState(int points, List<String> groups, String selected, boolean hints, int lessonLines, boolean respawn, boolean feed) {}
+
+    /** The default battle state the footprint budget is measured in (UI Task 8c): three points, the three groups fielded, the whole
+     *  army selected (as a round starts), the hint layer down, a feed line alive, no lesson, the commander up. */
+    public static final HudState DEFAULT_STATE = new HudState(3, List.of("infantry", "ranged", "support"), "all", false, 0, false, true);
+
+    /** Every plate of one frame of the battle HUD, {x, y, w, h} in canvas px, on a fbW x fbH window at GUI Scale gui with k screen
+     *  px per canvas px and at a HUD size, keyed as BattleHud.rects keys them: score, dawn-boss, dusk-boss and seal-(i); card-(group)
+     *  for each group fielded, the selected group's card CARD_H tall and every other group's chip CHIP_H, stacked up from the
+     *  column's foot (columnBottom) COLUMN_GAP apart; keys, the army's key strip under the bottom chip while the whole army is
+     *  selected; spine, from 4 px above the top plate to 4 px below the foot; hints, the hint slip in the hint layer; lesson, unless
+     *  it gives way to the respawn card (lessonYields); respawn; feed (feedBox). Not the aimed point's name, whose width is its
+     *  text's, nor the ability slot, which sits in vanilla's GUI px. BattleHud draws by it; hudFits tries it in every state. */
+    public static java.util.Map<String, int[]> hudLayout(int fbW, int fbH, int gui, int k, int size, HudState s) {
+        int g = Math.max(1, gui), kk = Math.max(1, k), w = fbW / kk, h = fbH / kk, cx = w / 2, sh = -Math.floorDiv(-fbH, g);
+        var r = new java.util.LinkedHashMap<String, int[]>();
+        r.put("score", new int[]{cx - 128, 13, 256, 24});
+        r.put("dawn-boss", new int[]{cx - 140, 12, 27, 28});
+        r.put("dusk-boss", new int[]{cx + 115, 12, 27, 28});
+        for (int i = 0; i < s.points(); i++) r.put("seal-" + i, new int[]{sealCentre(i, s.points(), w) - 13, 37, 27, 31});
+        List<String> gs = s.groups();
+        int n = gs.size(), bottom = columnBottom(fbW, fbH, g, kk);
+        boolean army = "all".equals(s.selected()) && n > 0;
+        int[] heights = new int[n];
+        for (int i = 0; i < n; i++) heights[i] = !army && gs.get(i).equals(s.selected()) ? CARD_H : CHIP_H;
+        int[] tops = cardTops(army ? bottom - KEYS_H - COLUMN_GAP : bottom, heights, COLUMN_GAP);
+        int first = n > 0 ? tops[0] : bottom;
+        if (n > 0) r.put("spine", new int[]{COLUMN_LEFT, first - 4, 9, bottom - first + 8});
+        for (int i = 0; i < n; i++) r.put("card-" + gs.get(i), new int[]{CARD_X, tops[i], CARD_W, heights[i]});
+        if (army) r.put("keys", new int[]{CARD_X, bottom - KEYS_H, CARD_W, KEYS_H});
+        if (s.hints()) r.put("hints", new int[]{CARD_X, first - HINTS_ABOVE, HINTS_W, HINTS_H});
+        int[] respawn = s.respawn() ? new int[]{cx - 100, respawnY(h, crosshairTop(sh, g, kk)), 200, 28} : null;
+        if (s.lessonLines() > 0) {
+            int[] lesson = {LESSON_X, LESSON_Y, LESSON_W, lessonHeight(s.lessonLines())};
+            if (respawn == null || !lessonYields(lesson, respawn)) r.put("lesson", lesson);
+        }
+        if (respawn != null) r.put("respawn", respawn);
+        if (s.feed()) r.put("feed", feedBox(w, h, size));
+        return r;
     }
 
     /** GUI px the lifted chat keeps clear of the battle HUD and of vanilla's crosshair, below it and above it (ChatPlacement). */
@@ -451,30 +588,47 @@ public final class UiMath {
     public static final double CHAT_RIGHT = 332;
 
     /** Whether the lifted chat stays clear of the HUD element with this rect key (BattleHud.rects): the score bar, the bosses, the
-     *  seals, the aimed point's name, the lesson and respawn cards and the feed. The group column is below the chat by its place,
-     *  and the ability slot sits beside the hotbar. */
+     *  seals, the aimed point's name, the lesson note, the respawn card and the feed. The group column is below the chat by its
+     *  place, and the ability slot sits beside the hotbar. */
     public static boolean overChat(String key) {
         return key.equals("score") || key.endsWith("-boss") || key.startsWith("seal-") || key.equals("aim-name") || key.equals("lesson") || key.equals("respawn") || key.equals("feed");
     }
 
-    /** The rows a HUD element's PNG paints above its box, by rect key (atlas.json oy): 1 for the score card and the lesson and respawn
-     *  cards, 3 for the feed slip; the seals, the bosses and the aimed point's name paint inside their boxes. */
-    static int inkAbove(String key) { return key.equals("feed") ? 3 : key.equals("score") || key.equals("lesson") || key.equals("respawn") ? 1 : 0; }
+    /** The rows a HUD plate's PNG paints above its box, by rect key (atlas.json oy): 1 for the score card, the lesson note, the
+     *  respawn card and the key strip, 2 for a card or chip (its loss flash's rule; 1 otherwise), 3 for the feed leaf; the seals,
+     *  the bosses, the hint slip and the aimed point's name paint inside or below their boxes. */
+    static int inkAbove(String key) {
+        if (key.startsWith("card-")) return 2;
+        return switch (key) { case "feed" -> 3; case "score", "lesson", "respawn", "keys" -> 1; default -> 0; };
+    }
 
-    /** The rows of drop shadow a HUD element's PNG paints below its box (atlas.json: the PNG's height less oy and the box's): 5 for
-     *  the score card and the lesson and respawn cards, 7 for the feed slip, none for the rest. */
-    static int inkBelow(String key) { return key.equals("feed") ? 7 : key.equals("score") || key.equals("lesson") || key.equals("respawn") ? 5 : 0; }
+    /** The rows of drop shadow a HUD plate's PNG paints below its box (atlas.json: the PNG's height less oy and the box's): 5 for the
+     *  score card, the lesson note, the respawn card and the key strip, 6 for a card or chip (in its loss flash; 5 otherwise) and
+     *  for the hint slip, 7 for the feed leaf, none for the rest. */
+    static int inkBelow(String key) {
+        if (key.startsWith("card-")) return 6;
+        return switch (key) { case "feed" -> 7; case "hints" -> 6; case "score", "lesson", "respawn", "keys" -> 5; default -> 0; };
+    }
+
+    /** The pairs whose inks keep CARD_GAP rows apart (inksApart): the lesson note, the respawn card or the feed leaf with one
+     *  another, or with the hint slip or a plate of the column. The column's own plates hang closer by design. */
+    static boolean shadowed(String a, String b) {
+        boolean ca = a.equals("lesson") || a.equals("respawn") || a.equals("feed"), cb = b.equals("lesson") || b.equals("respawn") || b.equals("feed");
+        return ca && (cb || column(b)) || cb && column(a);
+    }
+
+    static boolean column(String key) { return key.equals("hints") || key.equals("keys") || key.startsWith("card-"); }
 
     /** columnTop's answer for a frame that drew no column (camp, an entrance, a screen over the HUD). */
     public static final int NO_COLUMN = Integer.MIN_VALUE;
 
-    /** The top of the battle HUD's left column (the spine above the top card, or the hint slip) in canvas px, which a window too
+    /** The top of the battle HUD's left column (the spine above the top plate, or the hint slip) in canvas px, which a window too
      *  short for the column puts above the canvas; NO_COLUMN when a frame drew none. */
     public static int columnTop(java.util.Map<String, int[]> r) {
         int top = NO_COLUMN;
         for (var e : r.entrySet()) {
             String k = e.getKey();
-            if (k.equals("spine") || k.equals("hints") || k.startsWith("card-")) top = top == NO_COLUMN ? e.getValue()[1] : Math.min(top, e.getValue()[1]);
+            if (k.equals("spine") || k.equals("hints") || k.equals("keys") || k.startsWith("card-")) top = top == NO_COLUMN ? e.getValue()[1] : Math.min(top, e.getValue()[1]);
         }
         return top;
     }
@@ -534,48 +688,59 @@ public final class UiMath {
     /** How far the aimed point's name may reach past the first and last seals' centres, hudFits's room for the longest name. */
     static final int AIM_REACH = 80;
 
-    /** Whether the battle HUD fits a fbW x fbH window at GUI Scale gui with k screen px per canvas px, in its fullest states. In each,
-     *  every element sits 12 px or more inside the canvas, none on another but a card on the spine and a boss on the score card,
-     *  none on vanilla's hotbar, selected slot, offhand slot, hearts, armour, experience bar or crosshair, and the lifted chat
-     *  (vanilla's widest, closed and open) keeps its lowest line on the screen. The states: three or five points; no lesson, the
-     *  lesson (two lines), or an aimed point's name in its place (aiming raises the hint layer); the hint layer down (the army
-     *  selected) or up (every card tall, the hint slip); the commander up or down (the respawn card, the lesson giving way to it
-     *  where lessonYields says, as BattleHud draws them); the feed and the ability slot always. */
-    public static boolean hudFits(int fbW, int fbH, int gui, int k) {
+    /** What one frame of the HUD (rects in canvas px on a w x h canvas) breaks, empty when nothing: a plate (the ability slot apart,
+     *  which sits in vanilla's GUI px) less than 12 px inside the canvas; two plates that touch, but a card on the spine and a boss
+     *  on the score card; a plate on one of vanilla's bars (by name); and the lesson note, the respawn card or the feed leaf with
+     *  its inks within CARD_GAP rows of another plate's (shadowed, inksApart). hudFits asks it of every state it lays out, and the
+     *  ui-hud suite of every frame it measures. */
+    public static List<String> frameFaults(java.util.Map<String, int[]> r, int w, int h, java.util.Map<String, int[]> bars) {
+        List<String> bad = new ArrayList<>();
+        List<String> keys = new ArrayList<>(r.keySet());
+        for (int i = 0; i < keys.size(); i++) {
+            String ka = keys.get(i);
+            int[] a = r.get(ka);
+            if (!ka.equals("ability") && (a[0] < 12 || a[1] < 12 || a[0] + a[2] > w - 12 || a[1] + a[3] > h - 12)) bad.add(ka + " " + java.util.Arrays.toString(a) + " is not 12 px inside the " + w + "x" + h + " canvas");
+            for (var b : bars.entrySet()) if (meets(a, b.getValue())) bad.add(ka + " " + java.util.Arrays.toString(a) + " meets " + b.getKey() + " " + java.util.Arrays.toString(b.getValue()));
+            for (int j = i + 1; j < keys.size(); j++) {
+                String kb = keys.get(j);
+                int[] b = r.get(kb);
+                if (!mayTouch(ka, kb) && meets(a, b)) bad.add(ka + " " + java.util.Arrays.toString(a) + " meets " + kb + " " + java.util.Arrays.toString(b));
+                else if (shadowed(ka, kb) && !inksApart(ka, a, kb, b)) bad.add(ka + " " + java.util.Arrays.toString(a) + " and " + kb + " " + java.util.Arrays.toString(b) + " come within " + CARD_GAP + " rows of each other's ink");
+            }
+        }
+        return bad;
+    }
+
+    /** vanillaBars by name, for frameFaults. */
+    static java.util.Map<String, int[]> namedBars(int sw, int sh, int gui, int k) {
+        var bars = vanillaBars(sw, sh, gui, k, true);
+        String[] names = {"the hotbar", "the selected slot", "the offhand slot", "the hearts", "the armour row", "the experience bar", "the crosshair"};
+        var out = new java.util.LinkedHashMap<String, int[]>();
+        for (int i = 0; i < names.length; i++) out.put(names[i], bars.get(i));
+        return out;
+    }
+
+    /** Whether the battle HUD fits a fbW x fbH window at GUI Scale gui with k screen px per canvas px at a HUD size, in its fullest
+     *  states: three or five points; the whole army or one group selected; no lesson, the lesson (two lines), or the aimed point's
+     *  name in its place (aiming raises the hint layer); the hint layer down or up; the commander up or down (the lesson giving way
+     *  where lessonYields says, as BattleHud draws them); a feed line and the ability slot always. In each, frameFaults finds
+     *  nothing, and the lifted chat (vanilla's widest, closed and open) keeps its lowest line on the screen. */
+    public static boolean hudFits(int fbW, int fbH, int gui, int k, int size) {
         if (gui < 1 || k < 1) return false;
-        int w = fbW / k, h = fbH / k, cx = w / 2, sw = -Math.floorDiv(-fbW, gui), sh = -Math.floorDiv(-fbH, gui);
+        int w = fbW / k, h = fbH / k, sw = -Math.floorDiv(-fbW, gui), sh = -Math.floorDiv(-fbH, gui);
         if (w < 1 || h < 1) return false;
         double f = k / (double) gui;
-        List<int[]> bars = new ArrayList<>();
-        for (int[] b : new int[][]{{sw / 2 - 91, sh - 22, 182, 22}, {sw / 2 - 92, sh - 23, 24, 22}, {sw / 2 - 120, sh - 23, 29, 24}, {sw / 2 - 91, sh - 39, 81, 9},
-            {sw / 2 - 91, sh - 49, 81, 9}, {sw / 2 - 91, sh - 29, 182, 5}, {(sw - CROSSHAIR) / 2, (sh - CROSSHAIR) / 2, CROSSHAIR, CROSSHAIR}}) bars.add(guiToCanvas(b, gui, k));
+        var bars = namedBars(sw, sh, gui, k);
         int[] ability = guiToCanvas(new int[]{sw / 2 + 104, sh - 47, 50, 32}, gui, k);
-        int ry = respawnY(h, crosshairTop(sh, gui, k));
-        String[] groups = {"infantry", "ranged", "support"};
-        for (int n = 3; n <= 5; n += 2) for (int content = 0; content < 3; content++) for (int hint = content == 2 ? 1 : 0; hint < 2; hint++) for (int down = 0; down < 2; down++) {
-            java.util.Map<String, int[]> r = new java.util.LinkedHashMap<>();
-            r.put("score", new int[]{cx - 128, 13, 256, 24});
-            r.put("dawn-boss", new int[]{cx - 140, 12, 27, 28});
-            r.put("dusk-boss", new int[]{cx + 115, 12, 27, 28});
-            for (int i = 0; i < n; i++) r.put("seal-" + i, new int[]{sealCentre(i, n, w) - 13, 37, 27, 31});
-            if (content == 1 && !(down == 1 && lessonYields(2, ry))) r.put("lesson", new int[]{lessonX(cx), LESSON_Y, 400, lessonHeight(2)});
-            if (content == 2) r.put("aim-name", new int[]{sealCentre(0, n, w) - AIM_REACH, 68, sealCentre(n - 1, n, w) - sealCentre(0, n, w) + 2 * AIM_REACH, 9});
-            if (down == 1) r.put("respawn", new int[]{cx - 100, ry, 200, 28});
-            r.put("feed", new int[]{w - 188, h / 2 - 38, 172, 74});
-            int[] heights = hint == 1 ? new int[]{62, 62, 62} : new int[]{48, 48, 62}, tops = cardTops(h, heights);
-            for (int i = 0; i < 3; i++) r.put("card-" + groups[i], new int[]{24, tops[i], 176, heights[i]});
-            r.put("spine", new int[]{12, tops[0] - 4, 9, tops[2] + heights[2] - tops[0] + 8});
-            if (hint == 1) r.put("hints", new int[]{24, tops[0] - 48, 176, 40});
-            for (int[] a : r.values()) if (a[0] < 12 || a[1] < 12 || a[0] + a[2] > w - 12 || a[1] + a[3] > h - 12) return false;
-            r.put("ability", ability);
-            List<String> keys = new ArrayList<>(r.keySet());
-            for (int i = 0; i < keys.size(); i++) {
-                int[] a = r.get(keys.get(i));
-                for (int[] bar : bars) if (meets(a, bar)) return false;
-                for (int j = i + 1; j < keys.size(); j++) if (!mayTouch(keys.get(i), keys.get(j)) && meets(a, r.get(keys.get(j)))) return false;
+        List<String> groups = DEFAULT_STATE.groups();
+        for (int n = 3; n <= 5; n += 2) for (String sel : new String[]{"all", "infantry"}) for (int content = 0; content < 3; content++)
+            for (int hint = content == 2 ? 1 : 0; hint < 2; hint++) for (int down = 0; down < 2; down++) {
+                var r = hudLayout(fbW, fbH, gui, k, size, new HudState(n, groups, sel, hint == 1, content == 1 ? 2 : 0, down == 1, true));
+                if (content == 2) r.put("aim-name", new int[]{sealCentre(0, n, w) - AIM_REACH, 68, sealCentre(n - 1, n, w) - sealCentre(0, n, w) + 2 * AIM_REACH, 9});
+                r.put("ability", ability);
+                if (!frameFaults(r, w, h, bars).isEmpty()) return false;
+                for (int open = 0; open < 2; open++) if (!chatSlot(r, f, sw, sh, CHAT_RIGHT, 9, open == 1 ? 20 : 10, open == 1).onScreen()) return false;
             }
-            for (int open = 0; open < 2; open++) if (!chatSlot(r, f, sw, sh, CHAT_RIGHT, 9, open == 1 ? 20 : 10, open == 1).onScreen()) return false;
-        }
         return true;
     }
 
@@ -583,5 +748,33 @@ public final class UiMath {
     static boolean mayTouch(String a, String b) {
         if (a.startsWith("card-") && b.equals("spine") || b.startsWith("card-") && a.equals("spine")) return true;
         return a.endsWith("-boss") && b.equals("score") || b.endsWith("-boss") && a.equals("score");
+    }
+
+    /** The plates the footprint counts (UI Task 8c): the group cards and chips, the army's key strip, the feed leaf, the hint slip,
+     *  the lesson note and the respawn card. */
+    public static boolean plate(String key) {
+        return key.startsWith("card-") || key.equals("keys") || key.equals("feed") || key.equals("hints") || key.equals("lesson") || key.equals("respawn");
+    }
+
+    /** The share of a fbW x fbH screen the HUD's plates cover (plate), from their boxes in canvas px at k screen px each; plates never
+     *  touch one another (frameFaults), so their areas add. 0 for an empty screen. */
+    public static double footprint(java.util.Map<String, int[]> rects, int k, int fbW, int fbH) {
+        long a = 0;
+        for (var e : rects.entrySet()) if (plate(e.getKey())) a += (long) e.getValue()[2] * e.getValue()[3];
+        return fbW <= 0 || fbH <= 0 ? 0 : a * (double) k * k / ((double) fbW * fbH);
+    }
+
+    /** The centre band, {x, y, w, h} on a w x h canvas: the middle 40% of its width, from 30% to 62% of its height. */
+    public static int[] centreBand(int w, int h) {
+        int x0 = (int) Math.floor(w * 0.3), x1 = (int) Math.ceil(w * 0.7), y0 = (int) Math.floor(h * 0.3), y1 = (int) Math.ceil(h * 0.62);
+        return new int[]{x0, y0, x1 - x0, y1 - y0};
+    }
+
+    /** The plates in the centre band, empty when it is clear; the respawn card is let in, as the commander is down while it shows. */
+    public static List<String> inBand(java.util.Map<String, int[]> rects, int w, int h) {
+        int[] band = centreBand(w, h);
+        List<String> in = new ArrayList<>();
+        for (var e : rects.entrySet()) if (plate(e.getKey()) && !e.getKey().equals("respawn") && meets(e.getValue(), band)) in.add(e.getKey());
+        return in;
     }
 }
