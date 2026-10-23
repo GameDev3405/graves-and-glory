@@ -14,7 +14,6 @@ Camp guide, **THE LONG MARCH / BATTLE 1**: you against one Easy bot on Rivergate
 | Four lessons, one at a time, each naming your own key: send a group with Move, change formation, attack, recruit at your barracks lectern. | [ ] | [ ] |
 | Arrows visibly in the air before they land, and puffs where they hit in the shooter's colour (cyan Dawn, purple Dusk). | [ ] | [ ] |
 | Your group card flashing when your troops take hits. | [ ] | [ ] |
-| At least one enemy group breaking and running, with a horn. | [ ] | [ ] |
 | Recruits marching out of Trade Crossing (B, the centre) instead of your base once it has been yours for 10 s with no enemy within 20 blocks; the action bar reads "... trained: deploying at Trade Crossing". | [ ] | [ ] |
 | The report after the battle: your kills, losses, gold and seconds on points. | [ ] | [ ] |
 
@@ -35,7 +34,7 @@ Set **Bots** to Hard. Stand alone on the **DUSK** pad this time, so the enemy Ha
 | You should see | Yes | No |
 |---|:-:|:-:|
 | Dawn's Hard knights raising a shieldwall when three or more of your Bone Rangers are within 30 blocks of their army and none of your revenants is within 8. | [ ] | [ ] |
-| Hard charges starting close, within about 18 blocks, with the charge horn, not from across the map. | [ ] | [ ] |
+| Hard charges starting close, within about 18 blocks, breaking into a run, not from across the map (no horn sounds in the field). | [ ] | [ ] |
 | The report naming an MVP (a crest and "MVP" on the best row). | [ ] | [ ] |
 
 ## Your verdict (write freely)

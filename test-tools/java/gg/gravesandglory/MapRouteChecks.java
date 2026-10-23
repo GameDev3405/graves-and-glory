@@ -84,7 +84,7 @@ final class MapRouteChecks {
     /** Places the army west of the next crossing, only now that the round is running, and sends it east. */
     void prepare(GravesAndGlory.Battle b,ServerPlayerEntity p){
         var span=bridges().get(bridge);double start=span.x()-span.width()/2.0-14,westEdge=span.x()-span.width()/2.0-3;
-        squad.assignments.clear();squad.order="move";squad.formation="line";squad.target=new Vec3d(span.x()+span.width()/2.0+18,65,span.z());squad.yaw=-90;
+        squad.assignments.clear();squad.arrived.clear();squad.order="move";squad.formation="line";squad.target=new Vec3d(span.x()+span.width()/2.0+18,65,span.z());squad.yaw=-90;
         for(var u:b.units)if(u.squad==squad){
             Vec3d cell=standingCell(b,start-(u.slot/5)*2,span.z()+(u.slot%5-2)*1.8,westEdge);
             u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(cell.x,cell.y,cell.z,-90,0);u.nextPath=0;u.stuckTicks=0;u.lastPosition=u.mob.getPos();

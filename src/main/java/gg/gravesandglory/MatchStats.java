@@ -15,6 +15,8 @@ public final class MatchStats {
         public int kills;
         /** This army's own troops that died, whatever killed them. */
         public int lost;
+        /** Blows this army's troops landed on a flank or rear (the counters row C16) and shots that did (C16s), this round: the flank asymmetry measured, not inferred (Combat.resolve counts; BotSimulation writes them per side). */
+        public int flankHits, flankShots;
         /** Seconds with a troop or the commander inside any objective's radius; one per second however many points. */
         public int objectiveSeconds;
         /** Seconds each House's trait was at tier I or higher for this army this round, by House id (Houses.tick adds one a second). */

@@ -18,8 +18,12 @@ public final class Morale {
 
     /** A feed line the last stand would send: the army's owner, the group and the battle time. The HUD task joins the feed call here; the harness reads the list. */
     public record Line(UUID owner,String group,long time){}
-    /** Every last-stand line recorded since the server started, in order (the closing HUD task sends them to the feed). */
+    /** Every last-stand line recorded since the round started, in order, a player's army's only (Battle.startRound clears it; the closing HUD task sends them to the feed). */
     public static final CopyOnWriteArrayList<Line> lastStandLines=new CopyOnWriteArrayList<>();
+    /** A new round: the lines of the last one go. */
+    static void startRound(){lastStandLines.clear();}
+    /** The display name of a sheet id (a group, an order, a rarity): its first letter in upper case. The server (the last-stand notice) and the client (CommandMode, ArmyCards) read it here. */
+    public static String label(String id){return Character.toUpperCase(id.charAt(0))+id.substring(1);}
 
     /** Whether the group stands its last stand now (tick keeps Squad.lastStand). */
     public static boolean lastStand(GravesAndGlory.Squad s,String group){return s.lastStand.contains(group);}
@@ -58,8 +62,8 @@ public final class Morale {
                 if(!s.lastStand.add(group))continue;
                 Long told=s.lastStandAt.get(group);
                 if(told!=null&&b.time-told<D.lastStandFeedSeconds()*20L)continue;
-                s.lastStandAt.put(group,b.time);lastStandLines.add(new Line(s.owner,group,b.time));
-                if(!s.bot)b.campaign.notice(s.owner,CommandMode.label(group)+" make a last stand");
+                s.lastStandAt.put(group,b.time);if(s.bot)continue; // a bot's army is told nothing, and its lines are nobody's to read
+                lastStandLines.add(new Line(s.owner,group,b.time));b.campaign.notice(s.owner,label(group)+" make a last stand");
             }
         }
     }

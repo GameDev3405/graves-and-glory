@@ -96,7 +96,7 @@ class RecruitmentScreen extends ArmyScreen {
         g.fill(cx-42,height-92,cx+42,height-89,0xff4a5557);
         if(selected>=0){var t=Spec.TROOPS[selected];
             DarkUi.model(g,t,cx,height-93,Math.min(74,(height-155)/3));
-            DarkUi.title(g,t.name(),rx,84,WHITE);DarkUi.label(g,CommandMode.label(t.group()).toUpperCase(),rx,108,GOLD);
+            DarkUi.title(g,t.name(),rx,84,WHITE);DarkUi.label(g,Morale.label(t.group()).toUpperCase(),rx,108,GOLD);
             DarkUi.rule(g,rx,128,rw);
             DarkUi.label(g,"Health",rx,143,MUTED);DarkUi.label(g,""+t.health(),rx+rw-26,143,WHITE);
             DarkUi.label(g,"Damage",rx,163,MUTED);DarkUi.label(g,""+t.damage(),rx+rw-26,163,WHITE);

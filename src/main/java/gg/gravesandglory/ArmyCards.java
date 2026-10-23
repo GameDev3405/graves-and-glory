@@ -20,7 +20,7 @@ final class ArmyCards {
     static Spec.TroopsRow spec(String id){return Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(id)).findFirst().orElse(null);}
     static Spec.HousesRow house(Spec.TroopsRow t){for(var h:Spec.HOUSES)if(h.id().equals(t.house()))return h;return null;}
     /** A troop's rarity as a word: Common, Rare, Epic, Legendary. */
-    static String rarityName(Spec.TroopsRow t){return CommandMode.label(t.rarity());}
+    static String rarityName(Spec.TroopsRow t){return Morale.label(t.rarity());}
     /** Whether a troop's House can take the field in this build (houses.fieldable). */
     static boolean fieldable(Spec.TroopsRow t){var h=house(t);return h!=null&&h.fieldable();}
     /**
@@ -59,7 +59,7 @@ final class ArmyCards {
         final Spec.TroopsRow spec;boolean selected;
         Recruit(Spec.TroopsRow spec,int x,int y,int w,PressAction action){super(x,y,w,78,Text.literal(spec.name()),action,DEFAULT_NARRATION_SUPPLIER);this.spec=spec;setTooltip(Tooltip.of(Text.literal(describe(spec))));}
         /** The card's tooltip: name, House and rarity, group, health and damage, and whether the House cannot be fielded yet. */
-        static String describe(Spec.TroopsRow spec){var h=house(spec);return spec.name()+" / "+(h==null?spec.house():h.name())+" "+rarityName(spec)+" / "+CommandMode.label(spec.group())+" / "+spec.health()+" health / "+spec.damage()+" damage"+(fieldable(spec)?"":" / cannot be fielded yet");}
+        static String describe(Spec.TroopsRow spec){var h=house(spec);return spec.name()+" / "+(h==null?spec.house():h.name())+" "+rarityName(spec)+" / "+Morale.label(spec.group())+" / "+spec.health()+" health / "+spec.damage()+" damage"+(fieldable(spec)?"":" / cannot be fielded yet");}
         @Override public void renderButton(DrawContext g,int mx,int my,float delta){
             var c=MinecraftClient.getInstance();selected=c.currentScreen instanceof CampaignLobbyScreen lobby&&lobby.selectedUnit.equals(spec.id());
             int x=getX(),y=getY();DarkUi.frame(g,x,y,width,height);
@@ -70,7 +70,7 @@ final class ArmyCards {
             if(!active)g.fill(x+3,y+3,x+width-3,y+height-3,0x99111119);
             g.getMatrices().translate(0,0,50);
             g.drawCenteredTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth(spec.name(),width-8),x+width/2,y+57,active?DarkUi.PAPER:DarkUi.MUTED);
-            boolean note=!fieldable(spec)||spec.slotWeight()>1;String state=!fieldable(spec)?"NOT FIELDABLE":spec.slotWeight()>1?spec.slotWeight()+" SLOTS":CommandMode.label(spec.group());
+            boolean note=!fieldable(spec)||spec.slotWeight()>1;String state=!fieldable(spec)?"NOT FIELDABLE":spec.slotWeight()>1?spec.slotWeight()+" SLOTS":Morale.label(spec.group());
             g.drawCenteredTextWithShadow(c.textRenderer,state,x+width/2,y+68,note?DarkUi.GOLD:DarkUi.MUTED);
             g.drawTextWithShadow(c.textRenderer,""+Collections.frequency(CampaignClient.profile.banner,spec.id()),x+width-13,y+7,DarkUi.GOLD);
             g.getMatrices().pop();

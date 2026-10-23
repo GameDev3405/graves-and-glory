@@ -77,7 +77,10 @@ public final class Combat {
         double counters = CounterMath.counters(hit, Spec.COUNTERS), stance = stance(attacker);
         double traits = Houses.traitFactor(b, attacker, target, kind), auras = Abilities.auraFactor(b, attacker, target), commander = commanderFactor(b, attacker, target);
         double total = CounterMath.total(counters * stance, traits, auras, commander, D.multiplierMin(), D.multiplierMax());
-        LAST.addLast(new HitLog(attacker.mob.getId(), target.getId(), base, counters, stance, traits, auras, commander, total, List.copyOf(CounterMath.applied(hit, Spec.COUNTERS))));
+        List<String> rows = List.copyOf(CounterMath.applied(hit, Spec.COUNTERS));
+        if (rows.contains("C16")) attacker.squad.stats.flankHits++; // the round's flank tally per army (MatchStats.SquadStats)
+        if (rows.contains("C16s")) attacker.squad.stats.flankShots++;
+        LAST.addLast(new HitLog(attacker.mob.getId(), target.getId(), base, counters, stance, traits, auras, commander, total, rows));
         while (LAST.size() > LOG_SIZE) LAST.removeFirst();
 
         if (impact) attacker.chargeHitAt = b.time;

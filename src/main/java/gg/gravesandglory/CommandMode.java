@@ -33,7 +33,6 @@ public final class CommandMode {
     }
     public static boolean flashing(String groupId){return net.minecraft.util.Util.getMeasuringTimeMs()<flashUntil.getOrDefault(groupId,0L);}
     public static boolean active(){return !pending.isEmpty();}
-    static String label(String id){return Character.toUpperCase(id.charAt(0))+id.substring(1);}
     static int count(String id){return groups.stream().filter(g->id.equals("all")||id.equals(g.id())).mapToInt(Group::count).sum();}
     static void changeFormation(String id){formation=id;var c=MinecraftClient.getInstance();if(c.player!=null)issue(selected,"formation",id,c.player.getPos(),c.player.getYaw(),-1);}
     static void begin(String order){if(!GravesAndGloryClient.battleActive())return;pending=order;facingSet=false;MinecraftClient.getInstance().setScreen(null);}
@@ -48,7 +47,7 @@ public final class CommandMode {
     static void issue(String group,String action,String form,Vec3d dest,float yaw,int target){
         if(!GravesAndGloryClient.battleActive()||!ClientPlayNetworking.canSend(GravesAndGlory.TACTICAL))return;
         var b=PacketByteBufs.create();b.writeString(group);b.writeString(action);b.writeString(form);b.writeDouble(dest.x);b.writeDouble(dest.z);b.writeFloat(yaw);b.writeInt(target);ClientPlayNetworking.send(GravesAndGlory.TACTICAL,b);
-        feedback=label(group)+": "+label(action)+" order sent";feedbackUntil=System.currentTimeMillis()+3000;
+        feedback=Morale.label(group)+": "+Morale.label(action)+" order sent";feedbackUntil=System.currentTimeMillis()+3000;
     }
     /** The team a unit fights for, read from its name colour (team 0 aqua, team 1 light purple; see GravesAndGlory.spawn), or -1. */
     static int nameTeam(net.minecraft.entity.Entity e){
@@ -129,13 +128,13 @@ public final class CommandMode {
             boolean hit=flashing(group.id());
             GravesAndGloryClient.panel(g,8,y,width,28);if(hit)g.drawBorder(8,y,width,28,DANGER);if(chosen)g.fill(8,y,10,y+28,GravesAndGloryClient.GOLD);
             g.fill(16,y+24,16+bar,y+27,0xff2a3236);g.fill(16,y+24,16+Math.round(bar*Math.max(0,Math.min(1,group.health()))),y+27,hit?DANGER:GravesAndGloryClient.GOLD);
-            g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth((chosen?"> ":"  ")+label(group.id())+" / "+group.count()+" / "+Math.round(group.health()*100)+"%",width-12),16,y+4,GravesAndGloryClient.WHITE);
+            g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth((chosen?"> ":"  ")+Morale.label(group.id())+" / "+group.count()+" / "+Math.round(group.health()*100)+"%",width-12),16,y+4,GravesAndGloryClient.WHITE);
             if(group.lastStand())g.drawTextWithShadow(c.textRenderer,"LAST STAND",16,y+16,DANGER);
-            else g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth(label(group.order())+(group.fighting()?" / FIGHTING":""),width-12),16,y+16,group.fighting()?0xffffaa66:GravesAndGloryClient.MUTED);y+=30;
+            else g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth(Morale.label(group.order())+(group.fighting()?" / FIGHTING":""),width-12),16,y+16,group.fighting()?0xffffaa66:GravesAndGloryClient.MUTED);y+=30;
         }
         if(active()){
             GravesAndGloryClient.panel(g,w/2-180,52,360,40);
-            g.drawCenteredTextWithShadow(c.textRenderer,label(selected)+" / "+label(pending)+" / "+label(formation),w/2,59,GravesAndGloryClient.GOLD);
+            g.drawCenteredTextWithShadow(c.textRenderer,Morale.label(selected)+" / "+Morale.label(pending)+" / "+Morale.label(formation),w/2,59,GravesAndGloryClient.GOLD);
             g.drawCenteredTextWithShadow(c.textRenderer,"Click: confirm / Right-click: cancel | Facing: "+GravesAndGloryClient.rotateLeft.getBoundKeyLocalizedText().getString()+" / "+GravesAndGloryClient.rotateRight.getBoundKeyLocalizedText().getString(),w/2,74,GravesAndGloryClient.WHITE);
             g.drawCenteredTextWithShadow(c.textRenderer,destination==null?"Choose visible terrain":enemy>=0?"Enemy selected":"Destination: "+(int)destination.x+", "+(int)destination.z,w/2,h/2+20,GravesAndGloryClient.GOLD);
         }

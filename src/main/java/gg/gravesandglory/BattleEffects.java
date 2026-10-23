@@ -28,17 +28,20 @@ public final class BattleEffects {
         b.world.playSound(null,at.x,at.y,at.z,SoundEvents.PARTICLE_SOUL_ESCAPE,SoundCategory.HOSTILE,1f,.9f);
         souls++;
     }
-    /** Harness counter: horns played in the world, by kind. No horn ever sounds in the field (the no-routing design: the Marshal's horn is silent dress), so it stays empty; the harness asserts it. */
-    public static final java.util.Map<String,Integer> horns=new java.util.concurrent.ConcurrentHashMap<>();
     /** One command feedback sound a player heard: who, which kind (charge, retreat or rally) and the battle time. */
     public record Heard(java.util.UUID player,String kind,long time){}
-    /** Every feedback sound played since the server started, in order (the harness reads it). */
+    /** Every feedback sound played since the round started, in order (Battle.startRound clears it; the harness reads it). */
     public static final java.util.concurrent.CopyOnWriteArrayList<Heard> heard=new java.util.concurrent.CopyOnWriteArrayList<>();
+    /** Per player, when each kind last played (the throttle); Battle.startRound clears it. */
     static final java.util.Map<java.util.UUID,java.util.Map<String,Long>> lastFeedback=new java.util.concurrent.ConcurrentHashMap<>();
+    /** A new round: the sounds of the last one and the throttle go. */
+    static void startRound(){heard.clear();lastFeedback.clear();}
     /**
      * A command's feedback sound, to the commanding player alone (nobody else hears it, and a bot's command plays nothing): the kind's cue (charge for
      * Charge: horn_charge; retreat for Retreat: horn_rout; rally for Muster: horn_rally) at combatDiscipline.hornVolume, once per kind per player per
-     * hornCooldownSeconds. A second command of the kind within the cooldown plays nothing (the design's 5.2). Returns whether it played.
+     * hornCooldownSeconds. A second command of the kind within the cooldown plays nothing (the design's 5.2). Returns whether it played. The call is the
+     * ServerPlayerEntity overload (sound, category, volume, pitch): one PlaySoundS2CPacket to his connection; the three-argument PlayerEntity one goes
+     * through the world (sendToAround), which sends to every player near him and skips him.
      */
     public static boolean feedback(GravesAndGlory.Battle b,net.minecraft.server.network.ServerPlayerEntity p,String kind){
         if(p==null)return false;
@@ -46,7 +49,7 @@ public final class BattleEffects {
         if(last!=null&&b.time>=last&&b.time-last<Spec.COMBATDISCIPLINE[0].hornCooldownSeconds()*20L)return false;
         var sound=net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory",kind.equals("retreat")?"horn_rout":"horn_"+kind));if(sound==null)return false;
         mine.put(kind,b.time);
-        p.playSound(sound,(float)Spec.COMBATDISCIPLINE[0].hornVolume(),1f);
+        p.playSound(sound,SoundCategory.PLAYERS,(float)Spec.COMBATDISCIPLINE[0].hornVolume(),1f);
         heard.add(new Heard(p.getUuid(),kind,b.time));
         return true;
     }

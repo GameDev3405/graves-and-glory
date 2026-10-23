@@ -28,17 +28,24 @@ final class Tactics {
     static GravesAndGlory.Assignment held(GravesAndGlory.Assignment a){var h=new GravesAndGlory.Assignment("hold",a.formation,a.target,a.yaw);h.issued=a.issued;return h;}
     /**
      * Arrival (the no-routing design's section 6): a group under an order that engages nothing (Retreat, Move) has arrived once its centre (Morale.members:
-     * its living troops that are not temporary) stands within combatDiscipline.arriveRadius of its destination, and from then until its next order it
-     * fights as on Hold, from its slot and with Hold's engage radius. On the way it fights nothing, even when struck. A bot's Retreat to its base and
-     * Muster's Move orders arrive the same way. The unit AI plan's arrive column replaces this later.
+     * its living troops that are not temporary) stands within combatDiscipline.arriveRadius of the centre of its own slots (slotCentre: the spots its
+     * troops walk to, which Battle.formation puts behind the order's spot, 5, 7 and 9 blocks and the rows for ranged, siege and support), and from then
+     * until its next order it fights as on Hold, from its slot and with Hold's engage radius. The arrival is latched on the squad (Squad.arrived): a Hold
+     * fight that pulls the group out of the radius does not undo it; Battle.issue, the command path, Campaign.botDecide and Battle.startRound clear it.
+     * On the way it fights nothing, even when struck. A bot's Retreat to its base and Muster's Move orders arrive the same way. The unit AI plan's arrive
+     * column replaces this later.
      */
     static boolean arrived(GravesAndGlory.Battle b,GravesAndGlory.Unit u,GravesAndGlory.Assignment a){
         var order=Arrays.stream(Spec.ORDERS).filter(o->o.id().equals(a.order)).findFirst().orElse(Spec.ORDERS[0]);
         if(order.engage())return false;
-        var members=Morale.members(b,u.squad,u.spec.group());if(members.isEmpty())return false;
+        String group=u.spec.group();if(u.squad.arrived.contains(group))return true;
+        var members=Morale.members(b,u.squad,group);if(members.isEmpty())return false;
         double r=Spec.COMBATDISCIPLINE[0].arriveRadius();
-        return GravesAndGlory.Battle.horizontalDistance(Morale.centre(members),a.target)<=r*r;
+        if(GravesAndGlory.Battle.horizontalDistance(Morale.centre(members),slotCentre(b,members))>r*r)return false;
+        u.squad.arrived.add(group);return true;
     }
+    /** The centre of the members' formation slots (Battle.formation): where their walk ends. */
+    static Vec3d slotCentre(GravesAndGlory.Battle b,List<GravesAndGlory.Unit> members){Vec3d sum=Vec3d.ZERO;for(var m:members)sum=sum.add(b.formation(m));return sum.multiply(1.0/members.size());}
     static String stance(GravesAndGlory.Assignment a,GravesAndGlory.Unit u){
         return switch(a.order){
             case "hold"->"shieldwall".equals(a.formation)||ArmyMobs.tags(u.spec).contains("spear")?"brace":"hold";

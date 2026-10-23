@@ -171,6 +171,8 @@ public final class GravesAndGlory implements ModInitializer {
         final ArrayDeque<Training> training=new ArrayDeque<>();
         /** Per group: which groups stand their last stand now, when each was last told of it (Morale.tick), and the group's full lineup health this round. */
         final Set<String> lastStand=new HashSet<>();final Map<String,Long> lastStandAt=new HashMap<>();
+        /** The groups whose Retreat or Move has arrived (Tactics.arrived), latched there until the group's next order (Battle.issue, the command path, Campaign.botDecide) or the round's start. */
+        final Set<String> arrived=new HashSet<>();
         final Map<String,Double> fullHealth=new HashMap<>();
         /** Battle time (ticks) each group's order last became Charge (Battle.markCharge): the counter table's charge impact reads it. */
         final Map<String,Long> chargedAt=new HashMap<>();
@@ -644,7 +646,7 @@ public final class GravesAndGlory implements ModInitializer {
             }
             for(var order:Spec.ORDERS)if(cmd.equals(order.id())){
                 boolean charging=order.id().equals("charge")&&startsCharge(s,"all");
-                s.assignments.clear();s.order=order.id();s.yaw=p.getYaw();if(charging)markCharge(s,"all");
+                s.assignments.clear();s.arrived.clear();s.order=order.id();s.yaw=p.getYaw();if(charging)markCharge(s,"all");
                 if(order.id().equals("charge")||order.id().equals("retreat"))BattleEffects.feedback(this,p,order.id()); // the command's feedback, to this player alone
                 campaign.tutorialDid(p,order.id().equals("attack")||order.id().equals("charge")?2:0);
                 if(Diagnostics.active()&&testedOrders.add(order.id())&&testedOrders.size()==Spec.ORDERS.length)Diagnostics.report("orders-commanded",true,null);
@@ -675,11 +677,11 @@ public final class GravesAndGlory implements ModInitializer {
         /**
          * The one place a group order takes effect, for a player's order (tactical) and the Marshal's Muster alike: each named group (a group id, or "all")
          * stores a fresh Assignment of this order (never shared, since a later formation change edits one group's), and those groups' troops drop their target,
-         * spell centre and path so they turn at once. The caller has vetted the spot (inArena, wet, groundAt) and, for a player, the command cooldown.
+         * spell centre and path so they turn at once, and the group's arrival latch (Squad.arrived) is cleared. The caller has vetted the spot (inArena, wet, groundAt) and, for a player, the command cooldown.
          */
         void issue(Squad s,String group,String action,String formation,Vec3d dest,float yaw,int enemyId){
             for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id()))){
-                Assignment a=new Assignment(action,formation,dest,yaw);a.enemy=enemyId;a.issued=time;s.assignments.put(g.id(),a);
+                Assignment a=new Assignment(action,formation,dest,yaw);a.enemy=enemyId;a.issued=time;s.assignments.put(g.id(),a);s.arrived.remove(g.id());
             }
             for(Unit u:units)if(u.squad==s&&(group.equals("all")||u.spec.group().equals(group))){u.lockedTarget=null;u.spellCenter=null;u.mob.setTarget(null);u.mob.getNavigation().stop();u.nextPath=0;u.stuckTicks=0;}
         }
@@ -703,8 +705,8 @@ public final class GravesAndGlory implements ModInitializer {
             issue(s,group,action,formation,dest,yaw,enemyId);
             if(charging)markCharge(s,group);
             campaign.tutorialDid(p,action.equals("attack")||action.equals("charge")?2:0);campaign.progressEvent(p.getUuid(),false);
-            // The command's feedback, to this player alone: Retreat's and Charge's own cues (once per kind per hornCooldownSeconds, else nothing), every other order the chime.
-            if(action.equals("retreat")||action.equals("charge"))BattleEffects.feedback(this,p,action);else p.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(),.6f,1.1f);
+            // The command's feedback, to this player alone: Retreat's and Charge's own cues (once per kind per hornCooldownSeconds, else nothing), every other order the chime (the ServerPlayerEntity overload: to his connection only).
+            if(action.equals("retreat")||action.equals("charge"))BattleEffects.feedback(this,p,action);else p.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(),SoundCategory.PLAYERS,.6f,1.1f);
             p.sendMessage(Text.literal(group+" / "+action+" / "+(int)x+", "+(int)z),true);
         }
         /** The room a troop's body takes in a formation and the lane it takes on a bridge: its width and 0.3, at least 1.3 (BattleMath.spacing). */
@@ -803,9 +805,9 @@ public final class GravesAndGlory implements ModInitializer {
             clearSides();
             Arrays.fill(scores,0);pointSeconds=new int[2][points.size()];
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
-            respawns.clear();
+            respawns.clear();BattleEffects.startRound();Morale.startRound();
             for(Squad s:squads.values()){
-                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.chargedAt.clear();s.traits.clear();s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
+                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.arrived.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.chargedAt.clear();s.traits.clear();s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
                 var player=server.getPlayerManager().getPlayer(s.owner);
                 if(player!=null){toBase(player,s.team);player.changeGameMode(GameMode.ADVENTURE);equipPlayer(player);}
                 reinforce(s);

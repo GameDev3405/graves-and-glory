@@ -49,7 +49,7 @@ public final class BotSimulation implements ModInitializer {
             throw new IllegalArgumentException("[botsim] bad settings: matches="+matches+" size="+size+" roundSeconds="+roundSeconds+" maps="+Arrays.toString(maps));
         Path dir=FabricLoader.getInstance().getGameDir().resolve("botsim");results=dir.resolve("results.csv");gold=dir.resolve("gold.csv");
         try{Files.createDirectories(dir);
-            Files.writeString(results,"match,map,dawnTier,duskTier,winner,dawnScore,duskScore,seconds,banner0,banner1,dawnKills,duskKills,dawnWiped,duskWiped,dawnRetreats,duskRetreats,fights,meanFightSeconds\n",StandardCharsets.UTF_8);
+            Files.writeString(results,"match,map,dawnTier,duskTier,winner,dawnScore,duskScore,seconds,banner0,banner1,dawnKills,duskKills,dawnWiped,duskWiped,dawnRetreats,duskRetreats,fights,meanFightSeconds,dawnFlankHits,duskFlankHits,dawnFlankShots,duskFlankShots\n",StandardCharsets.UTF_8);
             Files.writeString(gold,"match,second,team,goldEarned,goldBank,living\n",StandardCharsets.UTF_8);
         }catch(IOException e){throw new UncheckedIOException(e);}
         ServerTickEvents.END_SERVER_TICK.register(this::tick);
@@ -114,7 +114,8 @@ public final class BotSimulation implements ModInitializer {
     /** The no-routing design's fight stats (its section 8), scanned every tick of a round. Kills per side are the other side's losses (Squad.stats.lost, a death by any cause);
      *  a group is wiped out when a bot army's group goes from living regular troops to none (temporaries do not count, and a group refilled from the barracks can be wiped again);
      *  a retreat is a bot army entering Campaign.botRetreating (the bot's own Retreat order); a fight opens at the first blow logged (Combat.LAST) while none is open and closes
-     *  at the next wipe or retreat, or the round's end, so meanFightSeconds is the mean length from first contact to one side's group wiped or retreating. */
+     *  at the next wipe or retreat, or the round's end, so meanFightSeconds is the mean length from first contact to one side's group wiped or retreating;
+     *  dawnFlankHits, duskFlankHits, dawnFlankShots and duskFlankShots are the C16 and C16s rows each side's blows and shots carried (MatchStats.SquadStats). */
     final Map<String,Integer> living=new HashMap<>();final Set<UUID> retreating=new HashSet<>();
     final int[] wiped={0,0},retreats={0,0};int fights;long fightTicks,fightOpenedAt=-1;Combat.HitLog lastBlow;
     void resetStats(){living.clear();retreating.clear();wiped[0]=wiped[1]=0;retreats[0]=retreats[1]=0;fights=0;fightTicks=0;fightOpenedAt=-1;lastBlow=Combat.LAST.peekLast();}
@@ -133,10 +134,10 @@ public final class BotSimulation implements ModInitializer {
         if(winner==0)dawnWins++;else if(winner==1)duskWins++;else if(winner==ABORTED)aborted++;else draws++;
         for(var s:armies)earnedAtEnd[s.team]+=s.stats.goldEarned;
         if(fightOpenedAt>=0)closeFight(b);
-        int[] kills={0,0};for(var s:armies)kills[1-s.team]+=s.stats.lost;
+        int[] kills={0,0},flankHits={0,0},flankShots={0,0};for(var s:armies){kills[1-s.team]+=s.stats.lost;flankHits[s.team]+=s.stats.flankHits;flankShots[s.team]+=s.stats.flankShots;} // the flank rows each side landed (MatchStats.SquadStats, counted in Combat.resolve)
         append(results,String.join(",",String.valueOf(match+1),String.valueOf(maps[match%maps.length]),dawnTier,duskTier,winner==ABORTED?"aborted":winner<0?"draw":SEATS[winner],
             String.valueOf(b.scores[0]),String.valueOf(b.scores[1]),String.valueOf((b.time-b.roundStarted)/20),fielded[0],fielded[1],
-            String.valueOf(kills[0]),String.valueOf(kills[1]),String.valueOf(wiped[0]),String.valueOf(wiped[1]),String.valueOf(retreats[0]),String.valueOf(retreats[1]),String.valueOf(fights),fights==0?"":String.format(Locale.ROOT,"%.1f",fightTicks/20.0/fights))+"\n");
+            String.valueOf(kills[0]),String.valueOf(kills[1]),String.valueOf(wiped[0]),String.valueOf(wiped[1]),String.valueOf(retreats[0]),String.valueOf(retreats[1]),String.valueOf(fights),fights==0?"":String.format(Locale.ROOT,"%.1f",fightTicks/20.0/fights),String.valueOf(flankHits[0]),String.valueOf(flankHits[1]),String.valueOf(flankShots[0]),String.valueOf(flankShots[1]))+"\n");
     }
     /** The final line. Mean gold earned is a team's total over its commanders at the end of a round, averaged over the matches.
      *  " aborted=N" goes on the end only when a round stopped without Campaign.finish, " kit=<id>" only under -PsimKit gilded or graveborn, and " banner0=<id> banner1=<id>" always closes the line: the banners the two teams fielded. */

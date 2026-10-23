@@ -294,7 +294,7 @@ public final class Campaign {
             if(shards>0){pr.shards.merge(house,shards,Integer::sum);result=t.name()+" is at full stars: +"+shards+" "+row.name()+" shards.";}
             else result=owned.stars>stars?t.name()+" rises to star "+owned.stars+"!":"Another "+t.name()+": copy "+owned.copies+" toward the next star.";}
         if(!save(p.getUuid())){profiles.put(p.getUuid(),JSON.fromJson(before,Profile.class));return;}
-        notice(p.getUuid(),result);p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","unit_reveal")),.7f,1f);
+        notice(p.getUuid(),result);p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","unit_reveal")),SoundCategory.PLAYERS,.7f,1f); // to him alone (the ServerPlayerEntity overload)
     }
     void finish(int winner){
         if(!b.running)return;
@@ -307,7 +307,7 @@ public final class Campaign {
             if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}notice(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":""));
         }
         b.message=(winner<0?"Draw":b.side(winner).name()+" wins")+"! Back to the war council.";headline=b.message;
-        for(var p:b.server.getPlayerManager().getPlayerList())if(participants.contains(p.getUuid()))p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","victory")),.8f,1);
+        for(var p:b.server.getPlayerManager().getPlayerList())if(participants.contains(p.getUuid()))p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","victory")),SoundCategory.PLAYERS,.8f,1); // each participant, to his own connection
         returnLobby();
     }
     /** The report table for one commander: every seated army of both teams, his own team first (join order kept); a bot is named after its tier. */
@@ -400,7 +400,7 @@ public final class Campaign {
         }
         long enemies=foes.size();
         boolean couldCharge=b.startsCharge(s,"all"),retreating=botRetreating.contains(s.owner);
-        s.assignments.clear();
+        String wasOrder=s.order;Vec3d wasTarget=s.target;s.assignments.clear();
         if(retreating){s.order="retreat";s.formation="loose";s.target=GravesAndGlory.Battle.base(s.team);}
         else{
             s.order=choice.owner==s.team?"hold":"attack";s.formation=living<8?"loose":"block";s.target=new Vec3d(choice.spec.x(),choice.spec.elevation()+1,choice.spec.z());
@@ -424,6 +424,7 @@ public final class Campaign {
                 else if(enemy.spec.group().equals("infantry")&&d<=MELEE_THREAT_RANGE)melee++;}
             if(BattleMath.shieldwallVsArchers(ranged,melee,tier.archerThreatCount(),shields))s.assignments.put("infantry",new GravesAndGlory.Assignment(s.order,"shieldwall",s.target,s.yaw));
         }
+        if(!s.order.equals(wasOrder)||!Objects.equals(s.target,wasTarget))s.arrived.clear(); // a new order or spot ends an arrival (Tactics.arrived); the same decision again keeps it
         if(s.order.equals("charge")&&couldCharge)b.markCharge(s,"all");
     }
     /** Hard holds what it has taken before it flanks. Gathers the team's armies for BattleMath.garrison, near meaning within
