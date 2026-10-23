@@ -255,12 +255,17 @@ for b in data['botBanners']:
             if n>rarities.get(r,{}).get('bannerMax',squad): errors.append(f'{name}: {n} {r} units, over bannerMax {rarities[r]["bannerMax"]}')
 for d in sorted(difficulties):
     if not any(b['difficulty']==d and all(houses.get(houseOf.get(s),{}).get('fieldable') for s in b['slots'].split(',') if s!='^') for b in data['botBanners']): errors.append(f'botBanners: no {d} banner fields only fieldable Houses (Campaign.botBanner picks from those)')
+# Troop card text (Task 12): one troopNotes row per troop, in troops order, and nothing else; the economy model row (houses design 4.9, NOT_SHIPPED) has every input.
+if [n['id'] for n in data.get('troopNotes',[])]!=[t['id'] for t in data['troops']]: errors.append('troopNotes: one row per troops row, in the same order, with the same ids')
+ECONOMY_INPUTS={'matchesPerHour','winRate','hoursPerPlayDay','playDaysPerWeek','matchGold','winGold','dailyGold','weeklyGold','chapterGold','chapterRareValue','runs'}
+if len(data.get('economyModel',[]))!=1 or not ECONOMY_INPUTS<=set(data['economyModel'][0]): errors.append('economyModel: one row with '+', '.join(sorted(ECONOMY_INPUTS))+' (tools/economy_model.py reads it)')
+elif not 0<=data['economyModel'][0]['winRate']<=1 or any(data['economyModel'][0][k]<=0 for k in ECONOMY_INPUTS-{'winRate'}): errors.append('economyModel: winRate within 0 to 1 and every other input above 0')
 if errors:
     print('\n'.join(errors)); sys.exit(1)
 def typ(v): return 'boolean' if isinstance(v,bool) else 'int' if isinstance(v,int) else 'double' if isinstance(v,float) else 'String'
 def literal(v): return json.dumps(v,ensure_ascii=True)
 # Validated above, but process metadata rather than game data: never shipped as Spec records.
-NOT_SHIPPED={'checks','revisionChecks','playtestMilestone'}
+NOT_SHIPPED={'checks','revisionChecks','playtestMilestone','economyModel'}
 out=['package gg.gravesandglory;','public final class Spec {']
 for sheet,rows in data.items():
     if sheet in NOT_SHIPPED: continue

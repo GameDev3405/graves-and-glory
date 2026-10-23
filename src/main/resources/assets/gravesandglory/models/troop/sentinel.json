@@ -24,7 +24,7 @@
 {"name":"cape_skirt_left","parent":"left_leg","part":"cape_skirt","team":false,"tag":"","stages":[3],"sheet":[128,64],"pivot":[3.2,0,0],"rotation":[0,0,0],"boxes":[{"origin":[-4.6,0.75,2.7],"size":[6,10,1],"uv":[80,41],"mirror":false,"dilation":[0,0.75,0]}]}
 ],
 "skins":{"1":"gravesandglory:textures/entity/troop/sentinel_s1.png","2":"gravesandglory:textures/entity/troop/sentinel_s2.png","3":"gravesandglory:textures/entity/troop/sentinel_s3.png"},
-"veteran":"",
+"veteran":"gravesandglory:textures/entity/troop/sentinel_veteran.png",
 "glow":"",
 "glowFrom":1,
 "outer":"",

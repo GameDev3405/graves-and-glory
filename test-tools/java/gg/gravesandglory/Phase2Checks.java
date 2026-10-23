@@ -50,7 +50,7 @@ public final class Phase2Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every server tick, for checks that wait on the battle. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("graveborn",Graveborn::new);SUITES.put("ironclad",Ironclad::new);SUITES.put("tidecallers",Tidecallers::new);SUITES.put("wildmoot",Wildmoot::new);SUITES.put("chase",Chase::new);SUITES.put("anim",Anim::new);SUITES.put("turn",Turn::new);SUITES.put("tells",Tells::new);SUITES.put("depth",Depth::new);}
+    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("graveborn",Graveborn::new);SUITES.put("ironclad",Ironclad::new);SUITES.put("tidecallers",Tidecallers::new);SUITES.put("wildmoot",Wildmoot::new);SUITES.put("chase",Chase::new);SUITES.put("anim",Anim::new);SUITES.put("turn",Turn::new);SUITES.put("tells",Tells::new);SUITES.put("depth",Depth::new);SUITES.put("screens",Screens::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -6080,6 +6080,159 @@ public final class Phase2Checks implements ClientModInitializer {
      * Task 5 tick-cost fixture at two cameras). The screenshots are depth-*.png; with Iris and shaders on, the same views are saved as
      * depth-shader-*.png.
      */
+    /**
+     * Task 12 (batch 6b): the camp's roll result card, the troop page, the House picker of the claims and the veteran trim. The
+     * camp parts run in the lobby on the player's own profile (the roll lands on the knight through a fixed roll draw); the veteran
+     * part is a Stage: a sky platform at noon, two of the player's own knights at Mastery II (armour tiers I and III) beside a bot's
+     * plain knight, drawn through TroopRenderer. Every check reads what was drawn or sent (RecruitPages.seenRoll and seenTroop,
+     * GravesAndGloryClient.lastSent, TroopRenderer.drawn), never a re-derived value.
+     */
+    static final class Screens extends Stage {
+        volatile boolean campReady,claimReady,vetCast,claimed;volatile String serverWhy="";volatile int rollStars=-1,rollCopies=-1,ironShards0=-1,ironShards=-1;
+        java.util.random.RandomGenerator rngSaved;int knightMastery0=-1,knightStage0=1;
+        GravesAndGlory.Squad mine;GravesAndGlory.Unit plain,vet1,vet3;
+        String shot;int shotWait;boolean claimOk;String claimWhy="";
+        /** The six Gilded holdings before the lineup shots made them Mastery II (null for one the profile lacked), put back at cleanup. */
+        final Map<String,Integer> mastery0=new LinkedHashMap<>();volatile boolean lineupCast;volatile int lineupRound;
+        String name(){return "screens";}
+        int holding,recovered;
+        /** Client: a platform that stays dark 300 ticks while a shot waits on it is taken again (Stage.litStart's recovery: away and back), at most 3 times. */
+        void relight(MinecraftClient c,String at){
+            if(++holding<300||recovered>=3)return;holding=0;recovered++;awayFor=1;darkFor=0;litWait=0;litAgain=0;sendAway(c);
+            System.out.println("[p2-light] screens "+at+": dark 300 ticks while the shot waits; the spectator goes 400 blocks away and back (recovery "+recovered+")");
+        }
+        /** Client: true while a recovery is away (litStart brings the spectator back); the step's wait starts again after. */
+        boolean relit(MinecraftClient c){if(awayFor==0)return false;litStart(c);if(awayFor==0){wait=0;holding=0;}return true;}
+        /** Server: the six Gilded troops in a row at 6 blocks, the player's own at Mastery II (veteran) or the bot's (plain). */
+        void lineup(GravesAndGlory.Battle b,boolean veteran){lineup(b,veteran,false);}
+        /** The same with the player's own army on the violet side (team 1), for the trim against a cloth that is not brass-like. */
+        void lineup(GravesAndGlory.Battle b,boolean veteran,boolean violetSide){
+            clearPosted(b);var pr=b.campaign.profile(player);
+            for(String id:GildedArt.SIX){var o=pr.owned.get(id);if(!mastery0.containsKey(id))mastery0.put(id,o==null?null:o.mastery);if(o==null){o=new Profile.Owned();pr.owned.put(id,o);}o.mastery=veteran?2:0;}
+            var squad=violetSide?new GravesAndGlory.Squad(player,1,GravesAndGlory.Battle.base(0)):veteran?mine:gold;if(violetSide)squad.order="hold";for(int i=0;i<6;i++)post(b,squad,GildedArt.SIX.get(i),-6.25+i*2.5,0,0);
+            camera(b,0,1.6,6,180,4);lineupCast=true;
+        }
+        void cast(GravesAndGlory.Battle b){
+            var pr=b.campaign.profile(player);var k=pr.owned.get("knight");var base=GravesAndGlory.Battle.base(0);
+            mine=new GravesAndGlory.Squad(player,0,base);mine.order="hold"; // the player's own army (not a bot): Battle.spawn reads his holdings
+            k.mastery=2;k.stage=1;vet1=post(b,mine,"knight",0,0,0);
+            k.stage=3;vet3=post(b,mine,"knight",2.5,0,0);k.stage=knightStage0;
+            plain=post(b,gold,"knight",-2.5,0,0);
+            camera(b,0,1.7,4.6,180,6);vetCast=true;
+        }
+        public void serverTick(GravesAndGlory.Battle b){if(stage>=100){camp(b);return;}super.serverTick(b);}
+        /** The camp parts' server side (the lobby). */
+        void camp(GravesAndGlory.Battle b){
+            var camp=b.campaign;if(player==null||sp(b)==null)return;
+            switch(stage){
+                case 100->{if(b.running){camp.returnLobby();return;}
+                    var pr=camp.profile(player);var k=pr.owned.computeIfAbsent("knight",x->new Profile.Owned());knightMastery0=k.mastery;knightStage0=k.stage;
+                    k.copies=1;k.stars=1;k.mastery=0;pr.gold=1000;
+                    var t=pr.owned.computeIfAbsent("sentinel",x->new Profile.Owned());t.copies=2;t.stars=2;t.kills=60;t.survived=10;t.mastery=1;
+                    rngSaved=camp.rollRng;camp.rollRng=Engine.fixed(0);camp.save(player);stage=101;campReady=true;}
+                case 102->{var o=camp.profile(player).owned.get("knight");rollStars=o==null?-1:o.stars;rollCopies=o==null?-1:o.copies;camp.rollRng=rngSaved;rngSaved=null;stage=103;}
+                case 104->{var pr=camp.profile(player);var s=pr.progression;Progression.reset(s,Progression.today());
+                    s.claims.remove("daily:2");s.claims.add("daily:0");s.claims.add("daily:1");s.rerolled=false;s.dailyCaptures=Math.max(1,s.dailyCaptures);
+                    ironShards0=pr.shards.getOrDefault("ironclad",0);camp.save(player);stage=105;claimReady=true;}
+                case 106->{var pr=camp.profile(player);ironShards=pr.shards.getOrDefault("ironclad",0);claimed=pr.progression.claims.contains("daily:2");stage=107;}
+                case 108->{var o=camp.profile(player).owned.get("knight");o.mastery=2;camp.save(player);
+                    var a=ArmyMobs.named("Order Squire (Veteran)");var c3=ArmyMobs.named("Knight-Captain (Veteran)");
+                    serverWhy="ArmyMobs.named(Order Squire (Veteran)) is "+(a==null?"null":a.id())+", named(Knight-Captain (Veteran)) is "+(c3==null?"null":c3.id());
+                    stage=1;} // the Stage flow: a skirmish, the platform, cast
+                default->{}
+            }
+        }
+        /** A camp screen's button by label (the nth whose label starts with start), or null. */
+        static net.minecraft.client.gui.widget.ButtonWidget button(net.minecraft.client.gui.screen.Screen s,String start,int nth){int n=0;for(var e:s.children())if(e instanceof net.minecraft.client.gui.widget.ButtonWidget b&&b.getMessage().getString().startsWith(start)&&n++==nth)return b;return null;}
+        /** The House chip of a House on a camp screen, or null. */
+        static RecruitPages.HouseChip chip(net.minecraft.client.gui.screen.Screen s,String house){for(var e:s.children())if(e instanceof RecruitPages.HouseChip h&&h.house.equals(house))return h;return null;}
+        void shoot(String name){shot=name;shotWait=0;}
+        /** Client: takes a pending shot after 30 frames; true once it is taken. */
+        boolean shotDone(MinecraftClient c){if(shot==null)return true;if(++shotWait>=30){shot(c,shot);shot=null;return true;}return false;}
+
+        public void step(MinecraftClient c,int tick){
+            if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;stage=100;});}
+            if(finished)return;
+            if(tick>12000){report("p2-screens-timeout",false,"stuck at client step "+cs+" ("+wait+"), server stage "+stage);end(c);return;}
+            var p=CampaignClient.profile;
+            switch(cs){
+                case 0->{var k=p.owned.get("knight");var t=p.owned.get("sentinel");
+                    if(campReady&&k!=null&&k.stars==1&&k.copies==1&&p.gold==1000&&t!=null&&t.mastery==1){CampaignClient.revealUntil=0;CampaignClient.notice="";c.setScreen(new CampScreen("recruit"));cs=1;wait=0;}
+                    else if(++wait>600){report("p2-roll-card",false,"the fixture profile never reached the client");server(c,b->{if(stage==101)stage=102;});cs=3;wait=0;}}
+                case 1->{if(!(c.currentScreen instanceof CampScreen s))return;
+                    if(++wait==10){var roll=button(s,"ROLL GILDED",0);if(roll==null||!roll.active){report("p2-roll-card",false,"no active ROLL GILDED button on the recruit page");server(c,b->{if(stage==101)stage=102;});cs=3;wait=0;return;}
+                        RecruitPages.seenRoll=null;roll.onPress();}
+                    var r=CampaignClient.lastRoll;
+                    if(wait>10&&r!=null&&r.troop().equals("knight")&&CampaignClient.rollShowing()){CampaignClient.revealHeldAt=600;cs=2;wait=0;}
+                    else if(wait>400){report("p2-roll-card",false,"the roll's card never showed: lastRoll "+r+", showing "+CampaignClient.rollShowing());server(c,b->{if(stage==101)stage=102;});cs=3;wait=0;}}
+                case 2->{if(++wait==8){server(c,b->{if(stage==101)stage=102;});shoot("chase-roll-dup");}
+                    if(wait>8&&shotDone(c)&&stage>=103){var seen=RecruitPages.seenRoll;var r=CampaignClient.lastRoll;
+                        boolean card=seen!=null&&seen.troop().equals("knight")&&seen.label().equals("DUPLICATE")&&seen.from()==1&&seen.to()==2&&seen.filled()==1&&seen.growing()==1&&seen.part()>0.3f&&seen.part()<0.7f&&seen.outcome().equals("Star 1 to star 2");
+                        boolean snap=r!=null&&r.duplicate()&&r.starsBefore()==1&&r.starsAfter()==2&&r.shards()==0;boolean server=rollStars==2&&rollCopies==2;
+                        report("p2-roll-card",card&&snap&&server,"a forced roll of the owned star-1 knight: the snapshot's lastRoll "+r+" (want a duplicate from star 1 to 2, no shards)="+snap+"; the card drawn "+seen+" (want DUPLICATE, 1 pip filled and the second half grown at 600 ms of 1200, Star 1 to star 2)="+card+"; the server holds the knight at star "+rollStars+", copies "+rollCopies+" (want 2, 2)="+server+"; picture p2-chase-roll-dup.png");
+                        CampaignClient.revealHeldAt=-1;CampaignClient.revealUntil=0;cs=3;wait=0;}}
+                case 3->{if(!(c.currentScreen instanceof CampScreen s)){c.setScreen(new CampScreen("recruit"));return;}
+                    if(++wait==2)shoot("screens-recruit"); // the recruit page with its card actions, after the roll card (for the contact sheet)
+                    if(wait<3||!shotDone(c))return;
+                    if(wait==40){RecruitPages.seenTroop=null;s.openTroop("sentinel");}
+                    if(wait==50)shoot("chase-troop-card");
+                    if(wait>50&&shotDone(c)){var seen=RecruitPages.seenTroop;var t=Campaign.troop("sentinel");var n=ArmyCards.notes(t);
+                        boolean page=s.page.equals("troop")&&seen!=null&&seen.troop().equals("sentinel");
+                        boolean notes=page&&n!=null&&!n.beats().isEmpty()&&seen.beats().equals(n.beats())&&seen.beatenBy().equals(n.beatenBy());
+                        boolean glyphs=page&&seen.glyphs().contains("C1")&&seen.glyphs().contains("C3");
+                        boolean stars=page&&seen.stars()==2,bars=page&&seen.masteryBars()==2*Spec.MASTERY.length;
+                        boolean levels=page&&seen.levels().equals(List.of("Templar","Templar Knight","Templar Commander"));
+                        boolean lines=page&&n!=null&&seen.abilities().size()==3&&seen.abilities().stream().noneMatch(String::isEmpty)&&seen.abilities().get(1).equals(n.level2())&&seen.abilities().get(2).equals(n.level3());
+                        boolean noEvolve=button(s,"Evolve",0)==null&&button(s,"EVOLVE",0)==null;
+                        report("p2-troop-card",page&&notes&&glyphs&&stars&&bars&&levels&&lines&&noEvolve,"the Templar's troop page drew "+seen+": beats and beaten by from troopNotes="+notes+", glyphs for C1 and C3="+glyphs+", star 2="+stars+", "+(2*Spec.MASTERY.length)+" Mastery bars="+bars+", the level names="+levels+", the three ability lines (level 2 and 3 from troopNotes)="+lines+", no evolve button="+noEvolve+"; picture p2-chase-troop-card.png");
+                        server(c,b->stage=104);cs=4;wait=0;}}
+                case 4->{if(!claimReady)return;
+                    if(!(c.currentScreen instanceof CampScreen s)||!s.page.equals("contracts")){if(++wait%20==5)c.setScreen(new CampScreen("contracts"));return;}
+                    if(++wait==10){var h=chip(s,"ironclad");if(h!=null)h.onPress();}
+                    if(wait==12)shoot("screens-contracts");
+                    if(wait>12&&wait<20&&!shotDone(c)){wait--;return;}
+                    if(wait==20){var claim=button(s,"Claim",2);GravesAndGloryClient.lastSent="";
+                        var h=chip(s,"ironclad");boolean chosen=s.claimHouse.equals("ironclad")&&h!=null&&h.selected();
+                        if(claim!=null)claim.onPress();String sent=GravesAndGloryClient.lastSent;
+                        server(c,b->stage=106);claimWhy="the picker on ironclad="+chosen+"; the third Claim button sent \""+sent+"\" (want progress:daily:2:ironclad)";claimOk=chosen&&sent.equals("progress:daily:2:ironclad");}
+                    if(wait>40&&stage>=107){boolean paid=claimed&&ironShards==ironShards0+Progression.DAILY_SHARDS;
+                        report("p2-claim-house",claimOk&&paid,claimWhy+"; the server stored daily:2="+claimed+" and the Ironclad shards went "+ironShards0+" to "+ironShards+" (want +"+Progression.DAILY_SHARDS+")="+paid);
+                        c.setScreen(new CampScreen("chapter"));cs=7;wait=0;}}
+                case 7->{if(!(c.currentScreen instanceof CampScreen s))return; // the chapter page at tiers 11 to 20, its House picker and tier 20's Rare (for the contact sheet)
+                    if(++wait==10){var next=button(s,"Next 10",0);if(next!=null)next.onPress();}
+                    if(wait==20)shoot("screens-chapter");
+                    if(wait>20&&shotDone(c)){c.setScreen(null);server(c,b->stage=108);cs=5;wait=0;}}
+                case 5->{if(!vetCast){if(++wait%600==0)System.out.println("[p2-wait] screens: veteran stage not cast after "+wait+" ticks, server stage "+stage);return;}
+                    if(!litStart(c))return;c.options.hudHidden=true;cs=6;wait=0;}
+                case 6->{if(relit(c))return;if(++wait<40)return;if(!shotReady(c,"chase-veteran")){wait--;relight(c,"chase-veteran");return;}
+                    var e1=client(c,vet1.mob);var e3=client(c,vet3.mob);var e0=client(c,plain.mob);
+                    var d1=e1==null?null:TroopRenderer.drawn(e1);var d3=e3==null?null:TroopRenderer.drawn(e3);var d0=e0==null?null:TroopRenderer.drawn(e0);
+                    String n1=e1==null||e1.getCustomName()==null?"":e1.getCustomName().getString(),n3=e3==null||e3.getCustomName()==null?"":e3.getCustomName().getString(),n0=e0==null||e0.getCustomName()==null?"":e0.getCustomName().getString();
+                    var l1=d1==null?null:d1.last;var l3=d3==null?null:d3.last;var l0=d0==null?null:d0.last;
+                    String trim="gravesandglory:textures/entity/troop/knight_veteran.png";
+                    boolean names=n1.equals("Order Squire (Veteran)")&&n3.equals("Knight-Captain (Veteran)")&&n0.equals("Order Squire");
+                    boolean one=l1!=null&&l1.look().veteran()&&String.valueOf(l1.skin()).endsWith("knight_s1.png")&&String.valueOf(l1.trim()).equals(trim);
+                    boolean three=l3!=null&&l3.look().veteran()&&l3.look().stage()==3&&String.valueOf(l3.skin()).endsWith("knight_s3.png")&&String.valueOf(l3.trim()).equals(trim);
+                    boolean bare=l0!=null&&!l0.look().veteran()&&l0.trim()==null&&String.valueOf(l0.skin()).endsWith("knight_s1.png");
+                    boolean named=serverWhy.contains("(Order Squire (Veteran)) is knight")&&serverWhy.contains("(Knight-Captain (Veteran)) is knight");
+                    shot(c,"chase-veteran");
+                    report("p2-veteran-skin",names&&one&&three&&bare&&named,"names on the client: \""+n1+"\", \""+n3+"\", \""+n0+"\" (want Order Squire (Veteran), Knight-Captain (Veteran), Order Squire)="+names+"; the Mastery II knight at tier I drew skin "+(l1==null?"none":l1.skin())+" with trim "+(l1==null?"none":l1.trim())+"="+one+"; at tier III skin "+(l3==null?"none":l3.skin())+" with trim "+(l3==null?"none":l3.trim())+"="+three+"; the bot's plain knight trim "+(l0==null?"none":l0.trim())+"="+bare+"; "+serverWhy+"="+named+"; picture p2-chase-veteran.png");
+                    lineupCast=false;server(c,b->lineup(b,true));cs=8;wait=0;}
+                case 8,9,10->{if(!lineupCast||!(posted.size()==6&&posted.stream().allMatch(u->{var e=client(c,u.mob);return e!=null&&e.getCustomName()!=null;})))return; // the six at Mastery II, then the six plain (for the trim's grading)
+                    if(relit(c))return;if(++wait<40)return;if(!shotReady(c,"screens-lineup")){wait--;relight(c,"screens-lineup");return;}
+                    shot(c,cs==8?"screens-lineup-veteran":cs==9?"screens-lineup-plain":"screens-lineup-veteran-violet");
+                    if(cs==8){lineupCast=false;server(c,b->lineup(b,false));cs=9;wait=0;}else if(cs==9){lineupCast=false;server(c,b->lineup(b,true,true));cs=10;wait=0;}else end(c);}
+                default->{}
+            }
+        }
+        public void cleanup(MinecraftClient c){
+            CampaignClient.revealHeldAt=-1;
+            server(c,b->{if(player==null)return;var pr=b.campaign.profile(player);for(var e:mastery0.entrySet()){if(e.getValue()==null)pr.owned.remove(e.getKey());else{var o=pr.owned.get(e.getKey());if(o!=null)o.mastery=e.getValue();}}b.campaign.save(player);});
+            super.cleanup(c);
+            server(c,b->{if(rngSaved!=null)b.campaign.rollRng=rngSaved;if(player==null)return;var o=b.campaign.profile(player).owned.get("knight");if(o!=null&&knightMastery0>=0){o.mastery=knightMastery0;b.campaign.save(player);}});
+        }
+    }
+
     static final class Depth extends Stage {
         static final List<String> SIX=GildedArt.SIX;
         static final double STUDIO=12,PARK=60,LINE_Z=10;
@@ -6182,7 +6335,6 @@ public final class Phase2Checks implements ClientModInitializer {
                 if(m==null){ok=false;why.append(id).append(": no model (BAD); ");continue;}
                 try{
                     var j=modelJson(c,id);Map<String,Integer> want=fileQuads(j);Set<String> skins=new TreeSet<>();for(var e:j.getAsJsonObject("skins").entrySet())skins.add(e.getKey());
-                    if(j.has("veteran")&&!j.get("veteran").getAsString().isEmpty())skins.add("veteran");
                     Set<String> got=new TreeSet<>(m.reliefKeys());boolean good=got.equals(want.keySet())&&got.equals(skins)&&!got.isEmpty();
                     StringBuilder per=new StringBuilder();
                     for(String k:got){int q=m.reliefQuads(k);good&=q==want.getOrDefault(k,-1)&&q>0&&q<=256;per.append(k).append('=').append(q).append(' ');}

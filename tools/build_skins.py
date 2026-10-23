@@ -1,6 +1,7 @@
 """Builds the troops' own models and skins (Phase 2 Task 5) from art/ into src/main/resources/assets/gravesandglory/:
 models/troop/<troop>.json, rig/<rig>.json, weapon/<id>.json and index.json (every troop, rig, weapon and output), and
-textures/entity/troop/<troop>_s<stage>.png (the source skin with its relief layer pasted over it), _veteran, _e (glow),
+textures/entity/troop/<troop>_s<stage>.png (the source skin with its relief layer pasted over it), _veteran (the Mastery II
+trim overlay), _e (glow),
 _o (outer layer), weapon/<id>.png (the frames packed left to right, and _e), and one team_cloth_<side>.png per factions row
 plus team_cloth_linen.png (no side) and team_cloth_company.png (the company's navy, which portraits wear: unit identity
 rule 8 as Kort ruled it, Needs Kort 11).
@@ -36,8 +37,12 @@ Sources (sizes in model pixels, y down, the ground at y 24, angles in degrees; a
   art/troops/<troop>.json  troop, rig, size?, bones {<name>: {pivot?, boxes?, scale?}}, hunch? (biped), idleArms?,
                            parts[] of {part, name?, bone?, uv, offset?, rotation?, scale?, stages?}, skins {<stage>: file},
                            veteran?, glow?, glowFrom?, outer?, weapon (an id or none), hand, portrait.
-  art/troops/<troop>_s<stage>_r.png  the relief layer of that skin, and <troop>_veteran_r.png beside a veteran skin: the
-                           troop's size, alpha 0 or 255, an opaque texel stands one texel proud of its face (design 3).
+  art/troops/<troop>_s<stage>_r.png  the relief layer of that skin: the troop's size, alpha 0 or 255, an opaque texel
+                           stands one texel proud of its face (design 3).
+  art/troops/<troop>_veteran.png  the veteran trim (in-match progression design 4.4): an overlay drawn over whichever
+                           armour tier the troop wears, never a fourth full skin. The troop's size, alpha 0 or 255, every
+                           opaque texel on a texel every own skin paints, at most TRIM_SHARE of the stage 1 skin's opaque
+                           texels, team tint rule 1; it takes no relief layer (a _veteran_r.png is refused).
   art/team/team_cloth.png  the greyscale cloth template; its three greys take the side colour x1.0, x0.8 and x0.6, every
                            other pixel keeps its paint. art/team/glyph_<glyph>.png: full-sheet masks, stamped in white.
 
@@ -1132,12 +1137,42 @@ def composite(skin: Image.Image, relief: Image.Image) -> Image.Image:
     return out
 
 
+TRIM_SHARE = 0.20   # the veteran trim covers at most this share of the stage 1 skin's opaque texels (gilt kept rare)
+
+
+def trim_check(trim, skins, troop, name):
+    """The veteran trim rules: alpha 0 or 255, every opaque texel on a texel every own skin paints (so it lies on the armour
+    whichever tier is worn), and at most TRIM_SHARE of the stage 1 skin's opaque texels."""
+    tp = trim.load()
+    w, h = trim.size
+    sp = [s.load() for s in skins]
+    n = 0
+    for y in range(h):
+        for x in range(w):
+            a = tp[x, y][3]
+            if a not in (0, 255):
+                fail('%s: %s: texel (%d, %d) has alpha %d; a trim is alpha 0 or 255' % (troop, name, x, y, a))
+            if a == 0:
+                continue
+            n += 1
+            for s in sp:
+                if s[x, y][3] == 0:
+                    fail('%s: %s: texel (%d, %d) lies on a texel a skin leaves clear' % (troop, name, x, y))
+    base = sum(1 for y in range(h) for x in range(w) if sp[0][x, y][3] > 0)
+    if n == 0:
+        fail('%s: %s is empty' % (troop, name))
+    if n > TRIM_SHARE * base:
+        fail('%s: %s covers %d texels, over %d%% of the %d the stage 1 skin paints' % (troop, name, n, TRIM_SHARE * 100, base))
+
+
 def relief_sources(cat, troop, own, extra):
-    """{key: file} of the troop's relief files: none, or one for every own skin (the stages' keys and veteran)."""
+    """{key: file} of the troop's relief files: none, or one for every own skin (the stages' keys). The veteran trim is an
+    overlay and takes none."""
     folder = cat.root / 'art/troops'
     want = {str(s): relief_name(troop, str(s)) for s in sorted(own)}
-    if extra['veteran']:
-        want['veteran'] = relief_name(troop, 'veteran')
+    if (folder / relief_name(troop, 'veteran')).is_file():
+        fail('%s: %s: the veteran trim is an overlay drawn over the worn tier and takes no relief layer'
+             % (troop, relief_name(troop, 'veteran')))
     stray = re.compile(r'%s_(s\d+|veteran)_r\.png' % re.escape(troop))
     for path in sorted(folder.glob('*_r.png')):
         if stray.fullmatch(path.name) and path.name not in want.values():
@@ -1443,8 +1478,6 @@ def troop_outputs(cat, troop, weapon_lit):
     out = {}
     reliefs = relief_sources(cat, troop, own, extra)
     key_of = {own[s]: str(s) for s in own}
-    if extra['veteran']:
-        key_of[extra['veteran']] = 'veteran'
     by_bone, stats = {}, []
     for f in [own[s] for s in sorted(own)] + [extra['veteran'], extra['outer'], extra['glow']]:
         if not f:
@@ -1454,6 +1487,8 @@ def troop_outputs(cat, troop, weapon_lit):
             fail('%s: %s is %dx%d, not the troop size %dx%d' % (troop, f, im.size[0], im.size[1], size[0], size[1]))
         if f != extra['glow']:
             tint(im, '%s: %s' % (troop, f), cat.factions)
+        if f == extra['veteran']:
+            trim_check(im, [read_png(folder / own[s], troop) for s in sorted(own)], troop, f)
         key = key_of.get(f)
         if key in reliefs:
             relief = read_png(folder / reliefs[key], troop)
@@ -1468,7 +1503,7 @@ def troop_outputs(cat, troop, weapon_lit):
         out['%s/%s' % (TEXTURES, f)] = png_bytes(im)
     for b in model['bones']:
         if b['name'] in by_bone:
-            b['relief'] = {k: by_bone[b['name']][k] for k in sorted(by_bone[b['name']], key=lambda k: (k == 'veteran', k))}
+            b['relief'] = {k: by_bone[b['name']][k] for k in sorted(by_bone[b['name']], key=lambda k: (len(k), k))}
     out['%s/%s.json' % (MODELS, troop)] = dumps(model)
     cap = GLOW_CAP.get(cat.sheet[troop]['rarity'], 6)
     n = (lit(read_png(folder / extra['glow'], troop)) if extra['glow'] else 0) + weapon_lit.get(model['weapon'], 0)

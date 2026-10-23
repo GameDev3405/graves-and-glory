@@ -21,7 +21,7 @@
 {"name":"signal_horn","parent":"body","part":"signal_horn","team":false,"tag":"","stages":[3],"sheet":[128,64],"pivot":[0,-5.5,-2.79],"rotation":[0,0,38],"boxes":[{"origin":[-5,-0.5,-0.5],"size":[1,1,1],"uv":[88,18],"mirror":false,"dilation":[0,0,0]},{"origin":[-4,-0.5,-0.5],"size":[2,1,1],"uv":[92,18],"mirror":false,"dilation":[0,0,0]},{"origin":[-2,-1,-1],"size":[2,2,2],"uv":[98,18],"mirror":false,"dilation":[0,0,0]},{"origin":[0,-1.4,-1],"size":[2,2,2],"uv":[106,18],"mirror":false,"dilation":[0,0,0]},{"origin":[2,-1.9,-1.5],"size":[2,3,3],"uv":[114,18],"mirror":false,"dilation":[0,0,0]}]}
 ],
 "skins":{"1":"gravesandglory:textures/entity/troop/archer_s1.png","2":"gravesandglory:textures/entity/troop/archer_s2.png","3":"gravesandglory:textures/entity/troop/archer_s3.png"},
-"veteran":"",
+"veteran":"gravesandglory:textures/entity/troop/archer_veteran.png",
 "glow":"",
 "glowFrom":1,
 "outer":"",

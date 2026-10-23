@@ -74,7 +74,7 @@ public final class TroopModels {
         Map.entry("vindicator","biped"),Map.entry("pillager","biped"),Map.entry("evoker","biped"),
         Map.entry("wolf","hound"),Map.entry("polar_bear","hound"),Map.entry("ravager","hound"),
         Map.entry("spider","spider"),Map.entry("iron_golem","colossus"));
-    static final String VETERAN=" (Veteran)",TEAM="gg_",NAMESPACE="gravesandglory",CLOTH="textures/entity/troop/team_cloth_";
+    static final String VETERAN=ArmyMobs.VETERAN,TEAM="gg_",NAMESPACE="gravesandglory",CLOTH="textures/entity/troop/team_cloth_";
     /** Ticks a troop in the world waits undrawn for its side's team (the spawn packet can reach a client a frame before the team packet); after that it draws in linen. */
     static final int HOLD_TICKS=40;
     private static volatile Map<String,TroopModel<?>> troops=Map.of(),rigs=Map.of();
@@ -124,8 +124,10 @@ public final class TroopModels {
     /** The troops with a model. */
     public static Set<String> ids(){return troops.keySet();}
 
-    /** The skin of a Look: the Veteran skin when it is a Veteran and the troop has one, else its stage's (a stage without its own skin draws the next lower stage's). */
-    public static Identifier skin(Look l){var m=troops.get(l.troop().id());if(m==null)return null;return l.veteran()&&m.veteran!=null?m.veteran:m.skin(l.stage());}
+    /** The skin of a Look: its stage's armour tier (a stage without its own skin draws the next lower stage's). A Veteran wears the same tier, with trim over it. */
+    public static Identifier skin(Look l){var m=troops.get(l.troop().id());return m==null?null:m.skin(l.stage());}
+    /** The veteran trim (<troop>_veteran, in-match progression design 4.4) a Look draws over its skin: null unless it is a Veteran and the troop has a trim. */
+    public static Identifier trim(Look l){var m=troops.get(l.troop().id());return m==null||!l.veteran()?null:m.veteran;}
     /** The glow layer (<troop>_e) of a Look, null below the troop's glowFrom stage or for a troop without one. */
     public static Identifier glow(Look l){var m=troops.get(l.troop().id());return m==null||m.glow==null||l.stage()<m.glowFrom?null:m.glow;}
     /** The cloth sheet of a side (a factions id), of the company ("company"), or linen for null. */

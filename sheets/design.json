@@ -3992,5 +3992,233 @@
       "difficulty": "hard",
       "slots": "wm_oldhorn,^,^,^,wm_hound,wm_hound,wm_hunter,wm_hunter,wm_stalker,wm_tusk,mage,^,knight,knight,knight,knight,archer,archer,sentinel,longbow"
     }
+  ],
+  "troopNotes": [
+    {
+      "id": "knight",
+      "beats": "archers and arbalists (shield)",
+      "beatenBy": "Shieldbreaker, Reaper cleave, blight",
+      "level2": "Better guard: his raised shield takes arrows x0.30 and blows x0.5",
+      "level3": "Shield bash: every 5 s a hit knocks the target back and stuns it for 1 s"
+    },
+    {
+      "id": "archer",
+      "beats": "slow infantry, Graveborn Risen",
+      "beatenBy": "Hounds, Web Stalkers, any charge",
+      "level2": "Steady: +30% damage while the group holds",
+      "level3": "Bodkin points: a raised shield stops only 40% of his arrows"
+    },
+    {
+      "id": "sentinel",
+      "beats": "ranged of every kind, Hounds at a wall",
+      "beatenBy": "Shieldbreaker, Mortar, Mist Caller",
+      "level2": "Better guard: his raised shield takes arrows x0.30 and blows x0.5",
+      "level3": "Unbroken: at 30% health or less he takes 20% less damage"
+    },
+    {
+      "id": "longbow",
+      "beats": "packed lines (pierce), Ballista crews at range",
+      "beatenBy": "Web Stalkers, Hounds, Mist",
+      "level2": "Pierce: an enemy up to 3 blocks behind takes 70%",
+      "level3": "Pinning shot: hits apply Slowness I for 1.5 s"
+    },
+    {
+      "id": "mage",
+      "beats": "attrition fights, Rise Again stalls",
+      "beatenBy": "Pounce, Harpooner pull, Mortar",
+      "level2": "Mend: heals 7",
+      "level3": "Dawnlight: each mend also cleanses slow, weaken and bleed"
+    },
+    {
+      "id": "gl_marshal",
+      "beats": "slows, pulls and knockback: Tidecallers and Ironclad slams",
+      "beatenBy": "Slam (Colossus, Old Horn), focused blight",
+      "level2": "Oath Banner: 20 s, own troops deal +15% damage",
+      "level3": "Marshal's sweep: his blows also strike one enemy within 2 for 50%"
+    },
+    {
+      "id": "revenant",
+      "beats": "other Commons by numbers and price, long grinding fights",
+      "beatenBy": "Cleave, Slam, Mortar, Order Archers kiting",
+      "level2": "Fearless: +30% damage at 40% health or less",
+      "level3": "Rotten blade: hits bleed for 4 s"
+    },
+    {
+      "id": "bonebow",
+      "beats": "Sunweaver (focus fire), slow siege crews",
+      "beatenBy": "Hounds, Gilded shields",
+      "level2": "Fearless: +30% damage at 40% health or less",
+      "level3": "Marrow arrows: hits weaken for 2 s"
+    },
+    {
+      "id": "reaper",
+      "beats": "Commons in crowds, Risen-vs-Risen mirrors",
+      "beatenBy": "Templar (shield), Trident Guard brace",
+      "level2": "Cleave: the second enemy takes 77%",
+      "level3": "Reap: a killing blow heals him a quarter of his health"
+    },
+    {
+      "id": "stalker",
+      "beats": "Hounds and Web Stalkers (the slow kills pounce), cavalry-like",
+      "beatenBy": "Templar, Mist Caller",
+      "level2": "Frostshot: Slowness I for 3 s",
+      "level3": "Ice lance: shots pierce one enemy within 2 behind for 40%"
+    },
+    {
+      "id": "hexer",
+      "beats": "shieldwalls, clumped Commons",
+      "beatenBy": "Hounds, Harpooners, pierce",
+      "level2": "Blight: radius 3, Slowness I for 3 s",
+      "level3": "Death knell: enemies her blight kills rise as her Risen for 15 s, 2 at most"
+    },
+    {
+      "id": "gb_hollowking",
+      "beats": "damage-heavy packs, above all Wildmoot's",
+      "beatenBy": "Lord Marshal banner, Sunder, Colossus",
+      "level2": "Dread: radius 12, enemies inside deal 20% less",
+      "level3": "Undying King: he rises once at half health"
+    },
+    {
+      "id": "wm_hound",
+      "beats": "archers, casters, wounded troops",
+      "beatenBy": "spears (Tusk, Trident Guard), Frost Stalker, Templar wall",
+      "level2": "Pounce: x2.0, every 4 s",
+      "level3": "Run them down: +30% against a slowed or wounded target"
+    },
+    {
+      "id": "wm_hunter",
+      "beats": "anything walking through woods",
+      "beatenBy": "open-field archers, Hounds, Mortar",
+      "level2": "Ambush: +35% damage under cover",
+      "level3": "Hunter's mark: marked targets take +10% from his army for 3 s"
+    },
+    {
+      "id": "wm_stalker",
+      "beats": "ranged backlines, wall defenders (climbs)",
+      "beatenBy": "spears, Frost Stalker, Sunweaver sustain",
+      "level2": "Ensnare: Slowness II for 2.5 s",
+      "level3": "Venom bite: hits bleed for 4 s"
+    },
+    {
+      "id": "wm_tusk",
+      "beats": "cavalry-like (spear tag), charges",
+      "beatenBy": "archers, Mortar, Cleave",
+      "level2": "Brace: x1.5 against a charge",
+      "level3": "Long spear: thrusts also hit one enemy within 2 behind for 40%"
+    },
+    {
+      "id": "wm_seer",
+      "beats": "long melee brawls",
+      "beatenBy": "pierce, Barrow Stalker, Harpooners",
+      "level2": "Howl: +20% damage and speed, every 12 s",
+      "level3": "Rousing howl: the howl also cleanses slow, weaken and bleed"
+    },
+    {
+      "id": "wm_oldhorn",
+      "beats": "archer lines, Commons in Line formation",
+      "beatenBy": "braced spears, Shieldbreaker, Mortar",
+      "level2": "Trample: 8 damage, every 8 s",
+      "level3": "Thick hide: shots against him deal x0.75"
+    },
+    {
+      "id": "ic_hearthguard",
+      "beats": "archers, Hounds at a wall",
+      "beatenBy": "Shieldbreaker, Mortar, Mist",
+      "level2": "Better guard: his raised shield takes arrows x0.30 and blows x0.5",
+      "level3": "Brace the wall: x1.3 against a charge while on Hold"
+    },
+    {
+      "id": "ic_arbalist",
+      "beats": "Gilded shields (partly), slow infantry",
+      "beatenBy": "Hounds, Web Stalkers (60-tick reload)",
+      "level2": "Armour bolt: x0.85 against a raised shield",
+      "level3": "Heavy bolt: hits knock the target back"
+    },
+    {
+      "id": "ic_breaker",
+      "beats": "every shield troop, the Colossus",
+      "beatenBy": "archers, Hounds, Reaper cleave",
+      "level2": "Sunder: x1.6 against shield troops",
+      "level3": "Shatter: hits weaken for 3 s"
+    },
+    {
+      "id": "ic_ballista",
+      "beats": "lines, Legendaries (large), structures (Phase 4)",
+      "beatenBy": "Hounds, Web Stalkers (climb past cover), Old Horn",
+      "level2": "Pierce: the second target takes 80%",
+      "level3": "Pinning bolt: hits apply Slowness II for 1.5 s"
+    },
+    {
+      "id": "ic_mortar",
+      "beats": "shieldwalls, entrenched lines, clumps",
+      "beatenBy": "anything that gets closer than 10",
+      "level2": "Shell: radius 4",
+      "level3": "Firepot: a shell leaves burning ground for 3 s; enemies in it bleed"
+    },
+    {
+      "id": "ic_colossus",
+      "beats": "Commons, packed melee",
+      "beatenBy": "Shieldbreaker, Mortar focus fire, kiting archers",
+      "level2": "Forge slam: the splash deals 75%",
+      "level3": "Furnace heart: own troops within 6 take 10% less damage"
+    },
+    {
+      "id": "tc_raider",
+      "beats": "Hounds and runners (slow), retreating troops",
+      "beatenBy": "Templar, Cleave, Mortar",
+      "level2": "Brine: Slowness I for 2 s",
+      "level3": "Boarding rush: the first hit after closing 6 blocks deals x1.5"
+    },
+    {
+      "id": "tc_harpooner",
+      "beats": "casters and Ballista crews (pulls them out of cover)",
+      "beatenBy": "longer-range archers, Gilded shields",
+      "level2": "Harpoon: pulls 2 blocks, every 2.5 s",
+      "level3": "Barbed hook: hits bleed for 4 s"
+    },
+    {
+      "id": "tc_tideguard",
+      "beats": "cavalry-like, Old Horn, Brute mirror",
+      "beatenBy": "archers, Mortar, Shieldbreaker",
+      "level2": "Brace: x1.5 against a charge",
+      "level3": "Trident sweep: hits also strike one enemy within 2 for 40%"
+    },
+    {
+      "id": "tc_mist",
+      "beats": "archer and ballista lines",
+      "beatenBy": "Hounds, Web Stalkers, Reaper",
+      "level2": "Mist: radius 5, lasts 7 s",
+      "level3": "Chill fog: enemies in her cloud are also weakened"
+    },
+    {
+      "id": "tc_brute",
+      "beats": "Commons, archer lines",
+      "beatenBy": "braced spears, Shieldbreaker focus fire",
+      "level2": "Tentacle sweep: the sweep deals 85%",
+      "level3": "Barnacle hide: shots against it deal x0.75"
+    },
+    {
+      "id": "tc_admiral",
+      "beats": "kiting archers, backline casters (pull)",
+      "beatenBy": "Lord Marshal banner, Sunder focus fire",
+      "level2": "Undertow: every 8 s, radius 8",
+      "level3": "Admiral's call: own troops within 10 deal +10% damage"
+    }
+  ],
+  "economyModel": [
+    {
+      "id": "default",
+      "matchesPerHour": 4.0,
+      "winRate": 0.5,
+      "hoursPerPlayDay": 1.5,
+      "playDaysPerWeek": 4,
+      "matchGold": 80,
+      "winGold": 40,
+      "dailyGold": 100,
+      "weeklyGold": 150,
+      "chapterGold": 300,
+      "chapterRareValue": 300,
+      "runs": 20000
+    }
   ]
 }

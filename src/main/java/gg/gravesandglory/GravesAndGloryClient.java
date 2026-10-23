@@ -127,7 +127,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         return "Not bound";
     }
     static void say(String line){try{Files.writeString(runtime.resolve("melty.log"),line+"\n",StandardOpenOption.CREATE,StandardOpenOption.APPEND);}catch(Exception ignored){}}
-    static void send(String action){if(ClientPlayNetworking.canSend(GravesAndGlory.ORDER)){PacketByteBuf b=PacketByteBufs.create();b.writeString(action);ClientPlayNetworking.send(GravesAndGlory.ORDER,b);}}
+    /** The last action send passed on (the harness reads what a screen sent). */
+    static volatile String lastSent="";
+    static void send(String action){if(ClientPlayNetworking.canSend(GravesAndGlory.ORDER)){lastSent=action;PacketByteBuf b=PacketByteBufs.create();b.writeString(action);ClientPlayNetworking.send(GravesAndGlory.ORDER,b);}}
     static void connectOrHost(MinecraftClient c){
         if(!join.isEmpty()){connectingInvitation=true;ConnectScreen.connect(new FrontMenuScreen("friends"),c,ServerAddress.parse(join),new ServerInfo("Graves and Glory",join,false),false);return;}
         try { LegacyDataMigration.world(c.runDirectory.toPath().resolve("saves")); }

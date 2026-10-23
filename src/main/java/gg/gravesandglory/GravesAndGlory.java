@@ -920,7 +920,7 @@ public final class GravesAndGlory implements ModInitializer {
             for(EquipmentSlot eq:EquipmentSlot.values())mob.setEquipmentDropChance(eq,0);
             // The name colour is the team tag, not the side colour: CommandMode.nameTeam reads it on the client to tell friend from foe (both teams can field the same House). Recolour names by side only together with that reader.
             int stage=campaign.stage(s,spec);
-            mob.setCustomName(Text.literal(ArmyMobs.stageName(spec,stage)).formatted(s.team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE));
+            mob.setCustomName(Text.literal(ArmyMobs.stageName(spec,stage)+(campaign.veteran(s,spec)?ArmyMobs.VETERAN:"")).formatted(s.team==0?Formatting.AQUA:Formatting.LIGHT_PURPLE));
             mob.setCustomNameVisible(false);
             Unit u=new Unit(mob,s,spec,slot);u.stage=stage;u.stance=Tactics.stance(this,u);
             spawning=u;try{world.spawnEntity(mob);}finally{spawning=null;} // the players in range start tracking it here (its stance goes with that)

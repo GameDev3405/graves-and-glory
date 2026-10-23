@@ -62,7 +62,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     private double[] normalCull,posedCull;
     /** The inputs of the last setAngles: age, limb angle, limb distance, head yaw and head pitch (the harness reads them). */
     final float[] lastInputs=new float[5];
-    /** The relief layer (troop depth design, section 3): per key ("1", "2", "3" or "veteran") the mesh of each skin bone that has one, in file order. */
+    /** The relief layer (troop depth design, section 3): per key ("1", "2" or "3") the mesh of each skin bone that has one, in file order. */
     private final Map<String,Map<String,TroopMesh>> relief;
     /** Per key, the bones the relief walk visits: the ones with a mesh and their ancestors. */
     private final Map<String,Set<String>> reliefWalk;
@@ -159,8 +159,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         Map<String,Set<String>> walk=new TreeMap<>();
         for(var k:rel.entrySet()){
             String key=k.getKey();int total=0;
-            if(key.equals("veteran")){if(veteran==null)throw new IllegalArgumentException("relief for the Veteran skin, which the troop does not have");}
-            else{if(!key.matches("[1-9][0-9]*")||!skins.containsKey(Integer.parseInt(key)))throw new IllegalArgumentException("relief for key "+key+", which is no skin of the troop");}
+            if(!key.matches("[1-9][0-9]*")||!skins.containsKey(Integer.parseInt(key)))throw new IllegalArgumentException("relief for key "+key+", which is no skin of the troop (the veteran trim takes none)");
             Set<String> visit=new HashSet<>();
             for(var m:k.getValue().entrySet()){total+=m.getValue().quads();for(String n=m.getKey();!n.isEmpty()&&visit.add(n);n=info.get(n).parent());}
             if(total>MAX_RELIEF_QUADS)throw new IllegalArgumentException("relief "+key+" has "+total+" quads, more than "+MAX_RELIEF_QUADS);
@@ -256,14 +255,14 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     // ---- the relief layer (troop depth design, sections 3 and 4) ----
     /** The relief mesh of a bone for a key; empty when the bone has none. */
     public TroopMesh relief(String bone,String key){var m=relief.get(key);var mesh=m==null?null:m.get(bone);return mesh==null?TroopMesh.EMPTY:mesh;}
-    /** The keys this model has relief for, one per own skin: "1", "2", "3" and "veteran". */
+    /** The keys this model has relief for, one per own skin: "1", "2" and "3". */
     public Set<String> reliefKeys(){return Collections.unmodifiableSet(relief.keySet());}
     /** The quads of a key over all its bones. */
     public int reliefQuads(String key){var m=relief.get(key);int n=0;if(m!=null)for(TroopMesh t:m.values())n+=t.quads();return n;}
-    /** The relief key of the skin a Look binds ("veteran", or the stage whose skin file draws); null when the model has no relief for it. */
+    /** The relief key of the skin a Look binds (the stage whose skin file draws; a Veteran's trim takes none); null when the model has no relief for it. */
     public String reliefKey(TroopModels.Look l){
         if(relief.isEmpty()||l==null)return null;
-        String key=l.veteran()&&veteran!=null?"veteran":String.valueOf(skinStage(l.stage()));
+        String key=String.valueOf(skinStage(l.stage()));
         return relief.containsKey(key)?key:null;
     }
     /** Arms the next render to draw the relief of a key after the skin (null disarms). One render spends it. */

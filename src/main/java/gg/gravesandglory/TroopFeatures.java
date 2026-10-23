@@ -17,7 +17,7 @@ import org.joml.Quaternionf;
 import java.util.List;
 
 /**
- * The layers TroopRenderer draws over a troop's skin: the outer layer, the team cloth, the glow, the weapon model and the
+ * The layers TroopRenderer draws over a troop's skin: the outer layer, the veteran trim, the team cloth, the glow, the weapon model and the
  * painted off-hand shield. Each draws only for the troop TroopRenderer is drawing (its Look is set), and none for an
  * invisible troop; the weapon and the shield also wait while the arms are folded. Each reports to TroopRenderer what it
  * bound and drew (the harness reads the draws as observed, never re-derived).
@@ -54,6 +54,16 @@ final class TroopFeatures {
             Identifier cloth=TroopModels.cloth(TroopModels.clothOf(e,l));
             long drawn=getContextModel().renderCloth(m,v.getBuffer(RenderLayer.getEntityCutout(cloth)),light,LivingEntityRenderer.getOverlay(e,0f));
             r.clothSheet=cloth;r.clothMask=drawn;
+        }
+    }
+
+    /** The veteran trim (<troop>_veteran) over the worn armour tier, lit as the skin is, on the skin bones only (in-match progression design 4.4). */
+    static final class Trim<T extends MobEntity> extends FeatureRenderer<T,TroopModel<T>> {
+        final TroopRenderer<T> r;Trim(TroopRenderer<T> r){super(r);this.r=r;}
+        @Override public void render(MatrixStack m,VertexConsumerProvider v,int light,T e,float limbAngle,float limbDistance,float tickDelta,float age,float headYaw,float headPitch){
+            var l=r.look;if(l==null||e.isInvisible())return;Identifier trim=TroopModels.trim(l);if(trim==null)return;
+            getContextModel().render(m,v.getBuffer(RenderLayer.getEntityCutoutNoCull(trim)),light,LivingEntityRenderer.getOverlay(e,0f),1f,1f,1f,1f);
+            r.trimSheet=trim;
         }
     }
 

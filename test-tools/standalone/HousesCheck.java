@@ -180,6 +180,15 @@ public final class HousesCheck {
         check(pactChapters(rows, 3, Set.of()).equals(List.of(1, 2)), "pacts: two chapters cleared at once pay two, in chapter order");
         check(pactChapters(Arrays.asList(Spec.CAMPAIGNBATTLES), Spec.CAMPAIGNBATTLES.length, Set.of()).size() == Arrays.stream(Spec.CAMPAIGNBATTLES).map(Spec.CampaignBattlesRow::chapter).distinct().count(), "pacts: the sheet's Long March cleared pays one Pact a chapter");
     }
+    /** The troop card's counter lines (Task 12): CounterMath.cardRows on a canonical frontal hit, the troop's shield raised; rows of multiplier 1 left out. */
+    static void cardRows() {
+        var templar = CounterMath.cardRows(Set.of("shield", "infantry"), Spec.COUNTERS);
+        check(templar.stream().map(CounterMath.CardRow::id).toList().equals(List.of("C1", "C3", "C14", "C15")) && templar.stream().allMatch(CounterMath.CardRow::incoming), "card rows: the Templar is hit by C1 and C3 (its raised shield), C14 and C15; C2 (lowered), C4 (x1) and the any-target rows are left out: " + templar);
+        var spear = CounterMath.cardRows(Set.of("spear", "brace", "infantry"), Spec.COUNTERS);
+        check(spear.stream().map(r -> r.id() + (r.incoming() ? "<" : ">")).toList().equals(List.of("C8>", "C9<", "C18c>")), "card rows: a braced spear beats beasts (C8) and a charge (C18c), and beasts falter against it (C9): " + spear);
+        var archer = CounterMath.cardRows(Set.of("steady", "ranged"), Spec.COUNTERS);
+        check(archer.stream().map(r -> r.id() + (r.incoming() ? "<" : ">")).toList().equals(List.of("C7<", "C18a>")) && archer.get(0).multiplier() == 1.3, "card rows: archers fear cavalry (C7) and shoot true on Hold (C18a): " + archer);
+    }
     static Spec.CampaignBattlesRow march(String id, int chapter, int order) { return new Spec.CampaignBattlesRow(id, chapter, order, id, 0, 1, "easy", false, "", ""); }
     /** The re-authored Founders chapter (spec 4.8) and the House-aware contract claims (spec 4.5), through Progression.claim alone. */
     static void founders() {
@@ -282,6 +291,7 @@ public final class HousesCheck {
         check(Arrays.stream(Spec.MASTERY).filter(m -> m.level() == 1).map(Spec.MasteryRow::reward).toList().equals(List.of("title:Veteran")), "Mastery I gives the title only: it unlocks nothing");
         founders();
         pacts();
+        cardRows();
         // the battle report's House rows (Task 11): every House the banner has slots in, House order, with its banner tier, trait seconds, shards and Renown (0 when absent)
         var houseRows = MatchStats.houseRows(HOUSES, houseSlots(SPEC_EXAMPLE_BANNER,cat), Map.of("gilded",3), Map.of("gilded",40,"graveborn",12,"wildmoot",9), Map.of("gilded",2), Map.of("gilded",2,"graveborn",1));
         check(houseRows.equals(List.of(new MatchStats.HouseRow("gilded",3,40,2,2), new MatchStats.HouseRow("graveborn",0,12,0,1))), "report House rows: one per House with banner slots, a House at tier 0 included, none for a House with no slots: " + houseRows);

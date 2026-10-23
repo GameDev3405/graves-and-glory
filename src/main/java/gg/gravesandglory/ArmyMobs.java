@@ -96,8 +96,12 @@ public final class ArmyMobs {
     private static Spec.TroopsRow[] namedTroops;
     private static Spec.EvolutionsRow[] namedEvolutions;
     private static Map<String, Spec.TroopsRow> names = Map.of();
-    /** The troop whose name, or whose evolved stage name, is the given custom name; null for any other name. A troop name wins over a stage name that matches it. */
+    /** The suffix a Mastery II troop's custom name carries (its veteran trim, in-match progression design 4.4); TroopModels.resolve reads it. */
+    public static final String VETERAN = " (Veteran)";
+
+    /** The troop whose name, or whose evolved stage name, is the given custom name (a trailing VETERAN ignored); null for any other name. A troop name wins over a stage name that matches it. */
     public static synchronized Spec.TroopsRow named(String name) {
+        if (name != null && name.endsWith(VETERAN)) name = name.substring(0, name.length() - VETERAN.length());
         if (namedTroops != Spec.TROOPS || namedEvolutions != Spec.EVOLUTIONS) {
             Map<String, Spec.TroopsRow> map = new HashMap<>();
             for (var t : Spec.TROOPS) map.put(t.name(), t);

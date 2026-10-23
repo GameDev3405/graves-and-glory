@@ -928,22 +928,22 @@ class BuildSkinsChecks(unittest.TestCase):
                 self.export(root)
 
     def test_relief_keys(self):
-        """Bones with relief carry it keyed by the skin ("1", "2", "veteran"), only where they have quads; the top-level
-        keys stay Task 5's list and format is 2."""
+        """Bones with relief carry it keyed by the skin ("1", "2"), only where they have quads; the veteran trim takes none;
+        the top-level keys stay Task 5's list and format is 2."""
         troops = self.with_knight(skins={'1': 'knight_s1.png', '2': 'knight_s2.png'})
         with tempfile.TemporaryDirectory() as tmp:
             root = fixture(tmp, troops=troops)
-            skin(root / 'art/troops/knight_veteran.png')
+            relief_png(root, 'knight_veteran.png', [(24, 22), (25, 22)])
             relief_png(root, 'knight_s1_r.png', [(22, 22)])
             relief_png(root, 'knight_s2_r.png', [(22, 22), (23, 22), (10, 10)])   # the head too, at stage 2
-            relief_png(root, 'knight_veteran_r.png', [(24, 22)])
             index = self.export(root)
             model = json.loads((root / ASSETS / 'models/troop/knight.json').read_text(encoding='utf-8'))
         self.assertEqual(model['format'], 2)
         self.assertEqual(tuple(model), build_skins.MODEL_KEYS)
         self.assertFalse(set(model) & set(build_skins.VANILLA_KEYS))
+        self.assertEqual(model['veteran'], 'gravesandglory:textures/entity/troop/knight_veteran.png')
         bones = {b['name']: b for b in model['bones']}
-        self.assertEqual(list(bones['body']['relief']), ['1', '2', 'veteran'])
+        self.assertEqual(list(bones['body']['relief']), ['1', '2'])
         self.assertEqual(list(bones['head']['relief']), ['2'])
         for name, bone in bones.items():
             if name not in ('body', 'head'):
@@ -954,6 +954,35 @@ class BuildSkinsChecks(unittest.TestCase):
                     self.assert_quad(q)
         self.assertEqual(len(bones['body']['relief']['1']), 5)
         self.assertEqual(index['outputs'], sorted(index['outputs']))
+
+    def test_veteran_trim(self):
+        """The veteran trim is an overlay (in-match progression design 4.4): alpha 0 or 255, on texels every skin paints, at
+        most 20% of the stage 1 skin's opaque texels, no relief layer. The output keeps its pixels (nothing pasted over it)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            trim = relief_png(root, 'knight_veteran.png', [(24, 22), (25, 22), (26, 23)])
+            self.export(root)
+            got = Image.open(root / ASSETS / 'textures/entity/troop/knight_veteran.png').convert('RGBA')
+            self.assertEqual(got.tobytes(), trim.tobytes())
+        clear = [((x, 63), (0, 0, 0, 0)) for x in range(4)]
+        cases = [   # name, the trim texels, a setup, what the message names
+            ('partial alpha', [(22, 22, (120, 100, 80, 128))], None, ['alpha', '(22, 22)']),
+            ('over 20%', [(x, y) for x in range(64) for y in range(14)], None, ['20%']),
+            ('empty', [], None, ['empty']),
+            ('on a clear texel', [(1, 63)], lambda r: skin(r / 'art/troops/knight_s1.png', extra=clear), ['clear', '(1, 63)']),
+            ('team hue', [(22, 22, (227, 179, 65, 255))], None, ['gold side colour']),
+            ('a relief layer', [(22, 22)], lambda r: relief_png(r, 'knight_veteran_r.png', [(22, 22)]), ['knight_veteran_r.png', 'no relief']),
+        ]
+        for name, texels, setup, wants in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp)
+                relief_png(root, 'knight_veteran.png', texels)
+                if setup:
+                    setup(root)
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
 
     def test_relief_template(self):
         """--template's relief sheet: allowed faces in their hue at 40%, a texel whose voxel would overlap another box

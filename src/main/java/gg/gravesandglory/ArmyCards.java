@@ -53,6 +53,37 @@ final class ArmyCards {
             TroopModels.dress(e,"company");return e;
         });
     }
+    // ---- the troop card's counter lines (Task 12) ----
+    /** The counter rows a troop's card shows (CounterMath.cardRows on its counter tags, ArmyMobs.tags), in sheet order. */
+    static List<CounterMath.CardRow> counterRows(Spec.TroopsRow t){return CounterMath.cardRows(ArmyMobs.tags(t),Spec.COUNTERS);}
+    /** Whether a counter line favours the troop: a blow it takes softened, or a blow it deals sharpened. */
+    static boolean favours(CounterMath.CardRow r){return r.incoming()?r.multiplier()<1:r.multiplier()>1;}
+    /** Ember red: a counter line against the troop (its swords crossed point down, so the state is not colour alone). */
+    static final int AGAINST=0xffd8826c;
+    /** A 9x9 crossed-swords glyph, blades up: pommels, crossguards and grips at the bottom. */
+    private static final String[] SWORDS={"x.......x",".x.....x.","..x...x..","...x.x...","....x....",".x.x.x.x.","..x...x..",".x.....x.","x.......x"};
+    /** The crossed-swords glyph of a counter line at (x, y), drawn with fills; flipped (blades down) for a line against the troop. */
+    static void swords(DrawContext g,int x,int y,int colour,boolean down){
+        for(int j=0;j<9;j++){String row=SWORDS[down?8-j:j];for(int i=0;i<9;i++)if(row.charAt(i)=='x')g.fill(x+i,y+j,x+i+1,y+j+1,colour);}
+    }
+    /** One counter line as the card words it: "Takes x0.35 / Raised shields stop most arrows." or "Deals x1.60 / ...". */
+    static String counterText(CounterMath.CardRow r){
+        String m=String.format(Locale.ROOT,r.multiplier()==Math.rint(r.multiplier()*10)/10?"%.1f":"%.2f",r.multiplier());
+        return (r.incoming()?"Takes x":"Deals x")+m+"  "+r.text();
+    }
+    /**
+     * Draws a troop's counter lines from y, one a line: the crossed swords (brass, blades up, for a line in its favour; ember,
+     * blades down, against it) and the line's words, trimmed to w. Returns the ids of the rows drawn, in order.
+     */
+    static List<String> counterLines(DrawContext g,TextRenderer f,Spec.TroopsRow t,int x,int y,int w){
+        List<String> drawn=new ArrayList<>();
+        for(var r:counterRows(t)){boolean good=favours(r);swords(g,x,y,good?DarkUi.GOLD:AGAINST,!good);
+            g.drawText(f,f.trimToWidth(counterText(r),w-14),x+14,y+1,DarkUi.PAPER,false);y+=12;drawn.add(r.id());}
+        return drawn;
+    }
+    /** The troopNotes row of a troop (its beats and beaten-by cells and its level 2 and 3 card lines), or null. */
+    static Spec.TroopNotesRow notes(Spec.TroopsRow t){for(var n:Spec.TROOPNOTES)if(n.id().equals(t.id()))return n;return null;}
+
     /** A portrait size that fits any model in the same frame: a husk at size, a wolf no larger than 1.25 times, a golem smaller. */
     static int size(MobEntity e,int size){return (int)Math.round(size*Math.min(1.25,1.95/Math.max(.6,Math.max(e.getHeight(),e.getWidth()))));}
     static final class Recruit extends ButtonWidget {

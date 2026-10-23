@@ -15,6 +15,8 @@ final class CampScreen extends ArmyScreen {
     /** The House whose six cards the recruit page shows and whose pool a roll draws from; its tab row changes it. It starts on the House the banner leans on. */
     String house=RosterMath.rollHouse(CampaignClient.profile.banner);
     final List<HouseTab> tabs=new ArrayList<>();
+    /** Task 12 (RecruitPages): the troop the troop page shows, the House the contracts and chapter pages claim shards for, and tier 20's Rare. */
+    String troop="",claimHouse=house,rare=RecruitPages.rares(house).isEmpty()?"":RecruitPages.rares(house).get(0);
     CampScreen(String page){super("Banner camp");this.page=page;}
     static void open(String page){var c=net.minecraft.client.MinecraftClient.getInstance();if(page.equals("army"))c.setScreen(new LobbyScreen(1));else c.setScreen(new CampScreen(page));}
     JsonObject social(){return CampaignClient.social;}
@@ -24,7 +26,7 @@ final class CampScreen extends ArmyScreen {
     JsonArray rows(String name){return social().has(name)?social().getAsJsonArray(name):new JsonArray();}
     void action(String cmd){if(System.currentTimeMillis()-requestAt<300)return;requestAt=System.currentTimeMillis();send(cmd);}
     void page(String next){page=next;offset=0;clearAndInit();}
-    String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready;}
+    String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready+RecruitPages.stateKey(CampaignClient.profile);}
     @Override protected void init(){
         scale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/760f,client.getWindow().getScaledHeight()/460f));width=(int)(client.getWindow().getScaledWidth()/scale);height=(int)(client.getWindow().getScaledHeight()/scale);key=state();code=null;
         String[] names={"Camp guide","Recruitment","Friends","Private room","Contracts","Chapter rewards"};String[] ids={"home","recruit","friends","room","contracts","chapter"};
@@ -47,6 +49,11 @@ final class CampScreen extends ArmyScreen {
             int cost=Spec.RECRUITMENT[0].rollCost();
             var roll=primary(rollLabel(),x,height-78,w,b->action("roll:"+house));roll.active=CampaignClient.profile.gold>=cost&&(!running||CampaignClient.waiting);
             button("Skip reveal",width-126,49,104,b->CampaignClient.revealUntil=0);
+            for(var widget:RecruitPages.recruitWidgets(house,CampaignClient.profile,x,w,this::action,this::openTroop))addDrawableChild(widget);
+        }else if(page.equals("troop")){
+            var t=ArmyCards.spec(troop);var a=t==null?null:RecruitPages.action(t,CampaignClient.profile);
+            if(a!=null){var go=primary(a.label().toUpperCase(java.util.Locale.ROOT),x,height-114,RecruitPages.LEFT,b->action(a.command()));go.active=a.active()&&(!running||CampaignClient.waiting);go.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(a.tip())));}
+            button("Back to recruitment",x,height-82,RecruitPages.LEFT,b->page("recruit"));
         }else if(page.equals("friends")){
             if(!flag("party"))primary("CREATE PARTY",x,117,180,b->action("social:create"));else{
                 button("Leave party",x,117,120,b->action("social:leave"));button(flag("partyLead")?"Disband party":"Claim offline lead",x+130,117,160,b->action(flag("partyLead")?"social:disband":"social:claim"));
@@ -70,10 +77,14 @@ final class CampScreen extends ArmyScreen {
                 button("Toggle ready",x,height-78,w/2-8,b->action("social:ready"));var start=primary(flag("playing")?"MATCH IN PROGRESS":flag("preparing")?"PREPARING MAP":"START TOGETHER",x+w/2,height-82,w/2,b->action("social:start"));start.active=flag("host")&&!flag("playing")&&ready&&!running;
             }
         }else if(page.equals("contracts")){
-            for(int i=0;i<3;i++){final int slot=i;button("Claim",x+w-90,124+i*65,90,b->action("progress:daily:"+slot));}
-            button("Free third-contract reroll",x,317,230,b->action("progress:reroll"));button("Claim weekly",x+w-130,354,130,b->action("progress:weekly"));
+            for(int i=0;i<3;i++){final int slot=i;button("Claim",x+w-90,124+i*65,90,b->action(RecruitPages.contractClaim("daily:"+slot,claimHouse)));}
+            button("Free third-contract reroll",x,317,230,b->action("progress:reroll"));button("Claim weekly",x+w-130,354,130,b->action(RecruitPages.contractClaim("weekly",claimHouse)));
+            for(var chip:RecruitPages.houseChips(x+w,86,()->claimHouse,this::pickClaimHouse))addDrawableChild(chip);
         }else if(page.equals("chapter")){
-            for(int i=0;i<10;i++){int tier=offset+i+1;if(tier>30)break;button("Claim tier "+tier,x+(i%2)*(w/2),121+(i/2)*45,w/2-8,b->action("progress:founders:"+tier));}
+            for(int i=0;i<10;i++){int tier=offset+i+1;if(tier>30)break;boolean pick=tier==Progression.RARE_TIER;int bw=w/2-8-(pick?112:0);
+                button("Claim tier "+tier,x+(i%2)*(w/2),121+(i/2)*45,bw,b->action(RecruitPages.foundersClaim(tier,claimHouse,rare)));
+                if(pick){var t=ArmyCards.spec(rare);button(t==null?"Choose a Rare":"Rare: "+t.name(),x+(i%2)*(w/2)+bw+4,121+(i/2)*45,108,b->cycleRare()).setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal("Tier "+tier+"'s Rare, from the chosen House")));}}
+            for(var chip:RecruitPages.houseChips(x+w,86,()->claimHouse,this::pickClaimHouse))addDrawableChild(chip);
             button("Previous 10",x,359,120,b->{offset=Math.max(0,offset-10);clearAndInit();});button("Next 10",x+130,359,120,b->{offset=Math.min(20,offset+10);clearAndInit();});
             button("Cycle earned title",x+w-180,359,180,b->{var titles=CampaignClient.profile.progression.titles.toArray(String[]::new);int index=Arrays.asList(titles).indexOf(CampaignClient.profile.progression.title);if(titles.length>0)action("progress:title:"+titles[(index+1)%titles.length]);});
         }else if(page.equals("results")){
@@ -100,6 +111,12 @@ final class CampScreen extends ArmyScreen {
     List<HouseTab> houseTabs(){return List.copyOf(tabs);}
     /** Shows another House's cards and rolls from its pool. */
     void pickHouse(String next){house=next;clearAndInit();}
+    /** Opens the troop page of a troop (a recruit card's click). */
+    void openTroop(String id){troop=id;page("troop");}
+    /** The House the contracts and chapter pages' claims pay shards to; tier 20's Rare moves to that House's first. */
+    void pickClaimHouse(String next){claimHouse=next;var r=RecruitPages.rares(next);rare=r.isEmpty()?"":r.get(0);clearAndInit();}
+    /** Tier 20's Rare: the next Rare of the chosen House. */
+    void cycleRare(){var r=RecruitPages.rares(claimHouse);if(!r.isEmpty())rare=r.get((r.indexOf(rare)+1)%r.size());clearAndInit();}
     /** One card of the recruit page: a troop of the House, whether the commander owns it, and its stars, evolution stage and copies. */
     record Card(Spec.TroopsRow troop,boolean owned,int stars,int stage,int copies){}
     /** The six troops of a House in sheet order, each with the commander's holding of it. */
@@ -125,8 +142,7 @@ final class CampScreen extends ArmyScreen {
         line(g,cap(troop.rarity()),tx,y+24+more,rarityColour(troop.rarity()),room);
         if(card.owned()){
             for(int i=0;i<Spec.RECRUITMENT[0].maxStars();i++){int px=tx+i*11;g.drawBorder(px,y+40+more,8,8,DarkUi.GOLD);if(i<card.stars())g.fill(px+1,y+41+more,px+7,y+47+more,DarkUi.GOLD);}
-            int last=Profile.lastStage(troop.id());line(g,"Stage "+card.stage()+(last>1?" of "+last:""),tx,y+54+more,DarkUi.PAPER,room);
-            line(g,card.copies()+(card.copies()==1?" copy":" copies"),tx,y+68+more,DarkUi.MUTED,room);
+            line(g,card.copies()+(card.copies()==1?" copy":" copies"),tx,y+54+more,DarkUi.MUTED,room);
         }else{
             line(g,"LOCKED",tx,y+44+more,DarkUi.PAPER,room);
             line(g,troop.rarity().equals("legendary")||weight(troop)<=0?"Comes from a Pact":String.format(java.util.Locale.ROOT,"%.1f",100.0*weight(troop)/Math.max(1,poolTotal))+"% a roll",tx,y+58+more,DarkUi.MUTED,room);
@@ -176,7 +192,7 @@ final class CampScreen extends ArmyScreen {
     @Override public void render(DrawContext g,int mx,int my,float delta){
         g.getMatrices().push();g.getMatrices().scale(scale,scale,1);DarkUi.background(g,width,height);DarkUi.crest(g,20,16,26,false);DarkUi.title(g,"BANNER CAMP",58,19,DarkUi.GOLD);
         line(g,header(),width-280,24,DarkUi.PAPER,260);
-        int x=194,w=width-x-22;DarkUi.frame(g,x-12,79,w+24,height-139);String title=switch(page){case "recruit"->"RECRUITMENT SHRINE";case "friends"->"YOUR FRIEND GROUP";case "room"->"PRIVATE WAR ROOM";case "contracts"->"CONTRACT BOARD";case "chapter"->"FOUNDERS CHAPTER";case "match"->"WAR GATES";case "results"->"BATTLE REPORT";default->"A PLACE TO PREPARE";};
+        int x=194,w=width-x-22;DarkUi.frame(g,x-12,79,w+24,height-139);String title=switch(page){case "recruit"->"RECRUITMENT SHRINE";case "friends"->"YOUR FRIEND GROUP";case "room"->"PRIVATE WAR ROOM";case "contracts"->"CONTRACT BOARD";case "chapter"->"FOUNDERS CHAPTER";case "troop"->"TROOP CARD";case "match"->"WAR GATES";case "results"->"BATTLE REPORT";default->"A PLACE TO PREPARE";};
         line(g,title,x,91,DarkUi.GOLD,w);
         var p=CampaignClient.profile;var progress=p.progression;
         if(page.equals("home")){
@@ -193,6 +209,8 @@ final class CampScreen extends ArmyScreen {
             var cards=cards(house,p);int cardWidth=w/3-10,cardHeight=96;
             for(int i=0;i<cards.size();i++)card(g,cards.get(i),x+(i%3)*(w/3),152+(i/3)*(cardHeight+8),cardWidth,cardHeight,total);
             line(g,pityLine()+(ArmyCards.house(pool.get(0))!=null&&!ArmyCards.house(pool.get(0)).fieldable()?"  /  "+RosterMath.houseName(house)+" cannot take the field yet":""),x,height-96,DarkUi.GOLD,w);
+        }else if(page.equals("troop")){
+            var t=ArmyCards.spec(troop);if(t!=null)RecruitPages.troopPage(g,textRenderer,t,p,x,108,w);
         }else if(page.equals("friends")){
             line(g,flag("party")?"Leader: "+value("leader")+" / party survives matches and server restarts":"Parties hold up to four friends and always enter one team.",x,104,DarkUi.MUTED,w);
             if(!value("inviter").isEmpty())line(g,"Invitation from "+value("inviter")+" ("+number("inviteSeconds",0)+"s)",x,149,DarkUi.GOLD,w);
@@ -206,9 +224,11 @@ final class CampScreen extends ArmyScreen {
             }else{line(g,"CODE "+value("room")+"  /  "+(flag("host")?"You host":"Member"),x+w-225,119,DarkUi.GOLD,225);
                 int[] count={0,0};for(var e:rows("commanders")){var r=e.getAsJsonObject();int team=r.get("team").getAsInt();line(g,r.get("name").getAsString()+" / "+(!r.get("online").getAsBoolean()?"reconnecting":r.get("ready").getAsBoolean()?"READY":"not ready"),x+team*(w/2),193+count[team]++*24,DarkUi.PAPER,w/2-10);}}
         }else if(page.equals("contracts")){
-            for(int i=0;i<3;i++){int y=128+i*65;line(g,Progression.contract(progress,i),x,y,DarkUi.PAPER,w-110);line(g,Math.min(Progression.progress(progress,i),Progression.target(progress,i))+" / "+Progression.target(progress,i)+"  |  "+(i==1?40:30)+" gold + 75 XP"+(progress.claims.contains("daily:"+i)?" / CLAIMED":""),x,y+21,DarkUi.MUTED,w-110);}
-            line(g,"Weekly: "+progress.weeklyBattles+" / 6 battles / 150 gold + 300 XP",x,358,DarkUi.PAPER,w-140);line(g,"Daily reset 00:00 UTC / weekly reset Monday 00:00 UTC",x,386,DarkUi.MUTED,w);
+            RecruitPages.caption(g,textRenderer,claimHouse,x+w,86);
+            for(int i=0;i<3;i++){int y=128+i*65;line(g,Progression.contract(progress,i),x,y,DarkUi.PAPER,w-110);line(g,Math.min(Progression.progress(progress,i),Progression.target(progress,i))+" / "+Progression.target(progress,i)+"  |  "+(i==1?40:30)+" gold + 75 XP"+RecruitPages.contractShards(progress,i)+(progress.claims.contains("daily:"+i)?" / CLAIMED":""),x,y+21,DarkUi.MUTED,w-110);}
+            line(g,"Weekly: "+progress.weeklyBattles+" / 6 battles / 150 gold + 300 XP"+RecruitPages.contractShards(progress,-1),x,358,DarkUi.PAPER,w-140);line(g,"Daily reset 00:00 UTC / weekly reset Monday 00:00 UTC",x,386,DarkUi.MUTED,w);
         }else if(page.equals("chapter")){
+            RecruitPages.caption(g,textRenderer,claimHouse,x+w,86);
             line(g,"Tier "+Progression.tier(progress)+" / 30  |  "+Math.min(progress.xp,7500)+" / 7500 XP  |  Free; no expiry",x,108,DarkUi.PAPER,w);
             for(int i=0;i<10;i++){int tier=offset+i+1;String reward=Progression.reward(tier);line(g,reward+(progress.claims.contains("founders:"+tier)?" / claimed":Progression.tier(progress)<tier?" / locked":" / earned"),x+(i%2)*(w/2)+4,146+(i/2)*45,DarkUi.MUTED,w/2-16);}
             line(g,"Finish the chapter; keep every unit and title when new chapters arrive.",x,397,DarkUi.MUTED,w);
@@ -233,11 +253,15 @@ final class CampScreen extends ArmyScreen {
             line(g,"Dawn "+CampaignClient.padDawn+" / 4   |   Dusk "+CampaignClient.padDusk+" / 4   |   "+CampaignClient.padCountdown+"s",x,116,DarkUi.GOLD,w);
             line(g,"Vote while on a ready pad. Most votes wins; ties use map order.",x,133,DarkUi.MUTED,w);
         }
-        line(g,CampaignClient.notice,x,height-42,DarkUi.GOLD,w);super.render(g,(int)(mx/scale),(int)(my/scale),delta);
-        if(page.equals("recruit")&&CampaignClient.revealUntil>System.currentTimeMillis()){g.getMatrices().push();g.getMatrices().translate(0,0,300);DarkUi.frame(g,x+30,180,w-60,100);line(g,"RECRUITMENT CONFIRMED",x+50,201,DarkUi.GOLD,w-100);line(g,CampaignClient.revealUnit+" has joined your collection.",x+50,226,DarkUi.PAPER,w-100);line(g,"Place it in your banner in the war council / Skip reveal above to continue",x+50,251,DarkUi.MUTED,w-100);g.getMatrices().pop();}
+        boolean card=page.equals("recruit")&&CampaignClient.rollShowing(); // the roll card covers the page: nothing under it takes hover or shows a tooltip
+        line(g,CampaignClient.notice,x,height-42,DarkUi.GOLD,w);super.render(g,card?-1:(int)(mx/scale),card?-1:(int)(my/scale),delta);
+        if(page.equals("recruit")&&CampaignClient.rollShowing())RecruitPages.rollCard(g,textRenderer,x-11,80,w+22,height-141);
+        else if(page.equals("recruit")&&CampaignClient.revealUntil>System.currentTimeMillis()){g.getMatrices().push();g.getMatrices().translate(0,0,300);DarkUi.frame(g,x+30,180,w-60,100);line(g,"RECRUITMENT CONFIRMED",x+50,201,DarkUi.GOLD,w-100);line(g,CampaignClient.revealUnit+" has joined your collection.",x+50,226,DarkUi.PAPER,w-100);line(g,"Place it in your banner in the war council / Skip reveal above to continue",x+50,251,DarkUi.MUTED,w-100);g.getMatrices().pop();}
         g.getMatrices().pop();
     }
-    @Override public boolean mouseClicked(double x,double y,int button){return super.mouseClicked(x/scale,y/scale,button);}
+    @Override public boolean mouseClicked(double x,double y,int button){
+        if(page.equals("recruit")&&CampaignClient.rollShowing()){CampaignClient.revealUntil=0;return true;} // any click ends the roll card, as Skip reveal does
+        return super.mouseClicked(x/scale,y/scale,button);}
     @Override public boolean mouseReleased(double x,double y,int button){return super.mouseReleased(x/scale,y/scale,button);}
     @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){return super.mouseDragged(x/scale,y/scale,button,dx/scale,dy/scale);}
     @Override public boolean keyPressed(int key,int scan,int mods){if(code!=null&&code.isFocused()&&key!=256)return code.keyPressed(key,scan,mods);if(key==77)return true;return super.keyPressed(key,scan,mods);}

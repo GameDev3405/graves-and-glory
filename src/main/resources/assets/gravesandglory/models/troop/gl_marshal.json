@@ -20,7 +20,7 @@
 {"name":"standard","parent":"body","part":"standard","team":true,"tag":"","stages":[],"sheet":[128,64],"pivot":[0,2.4,0],"rotation":[0,0,0],"boxes":[{"origin":[-0.5,-36,7.1],"size":[1,34,1],"uv":[124,0],"mirror":false,"dilation":[0,0,0]},{"origin":[-0.5,-38,7.1],"size":[1,2,1],"uv":[60,40],"mirror":false,"dilation":[0,0,0]},{"origin":[-4,-36,7.1],"size":[8,1,1],"uv":[32,40],"mirror":false,"dilation":[0,0,0]},{"origin":[-3,-35,7.1],"size":[6,10,1],"uv":[32,44],"mirror":false,"dilation":[0,0,0]},{"origin":[-0.5,-11,1.1],"size":[1,1,6],"uv":[50,44],"mirror":false,"dilation":[0,0,0]},{"origin":[-0.5,-5,1.1],"size":[1,1,6],"uv":[50,51],"mirror":false,"dilation":[0,0,0]}]}
 ],
 "skins":{"1":"gravesandglory:textures/entity/troop/gl_marshal_s1.png"},
-"veteran":"",
+"veteran":"gravesandglory:textures/entity/troop/gl_marshal_veteran.png",
 "glow":"",
 "glowFrom":1,
 "outer":"",

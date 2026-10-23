@@ -22,7 +22,7 @@
 {"name":"long_feather","parent":"head","part":"long_feather","team":false,"tag":"helm","stages":[3],"sheet":[128,64],"pivot":[4.4,-7,1.5],"rotation":[-28,0,34],"boxes":[{"origin":[0,-2,0],"size":[1,2,1],"uv":[64,26],"mirror":false,"dilation":[0,0,0]},{"origin":[-0.5,-11,0],"size":[2,9,1],"uv":[68,26],"mirror":false,"dilation":[0,0,0]},{"origin":[0,-13,0],"size":[1,2,1],"uv":[74,26],"mirror":false,"dilation":[0,0,0]}]}
 ],
 "skins":{"1":"gravesandglory:textures/entity/troop/longbow_s1.png","2":"gravesandglory:textures/entity/troop/longbow_s2.png","3":"gravesandglory:textures/entity/troop/longbow_s3.png"},
-"veteran":"",
+"veteran":"gravesandglory:textures/entity/troop/longbow_veteran.png",
 "glow":"",
 "glowFrom":1,
 "outer":"",

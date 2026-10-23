@@ -36,6 +36,9 @@ public final class Campaign {
     final Set<UUID> botRetreating=new HashSet<>();
     final Map<UUID,String> notices=new HashMap<>();
     final Map<UUID,JsonObject> results=new HashMap<>();
+    /** Per commander, the last roll or chosen buy (the snapshot's lastRoll, for the camp's roll result card): {n, troop, duplicate, starsBefore, starsAfter, shards}; n counts up so the client tells a new one from the same. Not saved. */
+    final Map<UUID,JsonObject> lastRolls=new HashMap<>();
+    private int rollSerial;
     /** The shortened forms each commander's camp snapshot has been sent in: each form is logged once, until he leaves. */
     final Map<UUID,Set<String>> snapshotForms=new HashMap<>();
     String headline="";
@@ -259,6 +262,10 @@ public final class Campaign {
     int stage(GravesAndGlory.Squad s,Spec.TroopsRow t){
         if(s.bot)return 1;var o=profile(s.owner).owned.get(t.id());return o==null?1:Math.max(1,Math.min(3,o.stage));
     }
+    /** Whether a commander's owned troop wears the veteran trim: Mastery II or higher (Houses spec 4.7, in-match progression design 4.4). Never a bot's. */
+    boolean veteran(GravesAndGlory.Squad s,Spec.TroopsRow t){
+        if(s.bot)return false;var o=profile(s.owner).owned.get(t.id());return o!=null&&o.mastery>=2;
+    }
     double damage(GravesAndGlory.Unit u){return progression(u.squad,u.spec,false);}
     double health(GravesAndGlory.Squad s,Spec.TroopsRow t){return progression(s,t,true);}
     /** Sets the side row each team flies this round (Battle.sides) from the seated commanders; see sidesFor. */
@@ -291,9 +298,10 @@ public final class Campaign {
         String before=JSON.toJson(pr);
         var drawn=RosterMath.roll(commons,rares,epic,common.rollWeight(),rare.rollWeight(),epicRow.rollWeight(),pr.pity.getOrDefault(house,0),Spec.RECRUITMENT[0].epicPity(),rollRng);
         pr.gold-=cost;pr.pity.put(house,drawn.pityAfter());
-        String result=receive(pr,troop(drawn.troop()));
+        var got=troop(drawn.troop());var card=rollCard(pr,got);
+        String result=receive(pr,got);
         if(!save(p.getUuid())){profiles.put(p.getUuid(),JSON.fromJson(before,Profile.class));return;}
-        notice(p.getUuid(),result);reveal(p);
+        lastRolls.put(p.getUuid(),rolled(card,pr,got));notice(p.getUuid(),result);reveal(p);
     }
     /** One copy of a troop joins the collection (spec 4.2): a new troop, a copy toward its next star, or past the last star its House's shards (RosterMath.addCopy). Returns what happened, for the notice. Rolls, chosen buys and the Founders Rare use it. */
     static String receive(Profile pr,Spec.TroopsRow t){
@@ -302,6 +310,16 @@ public final class Campaign {
         int stars=owned.stars,shards=RosterMath.addCopy(owned,RosterMath.rarityRow(t.rarity()));
         if(shards>0){pr.shards.merge(t.house(),shards,Integer::sum);return t.name()+" is at full stars: +"+shards+" "+RosterMath.houseName(t.house())+" shards.";}
         return owned.stars>stars?t.name()+" rises to star "+owned.stars+"!":"Another "+t.name()+": copy "+owned.copies+" toward the next star.";
+    }
+    /** The roll result card's "before" half: the troop, whether it is a duplicate, its stars before and the House's shards before (rolled finishes it). */
+    static JsonObject rollCard(Profile pr,Spec.TroopsRow t){
+        var o=pr.owned.get(t.id());JsonObject j=new JsonObject();j.addProperty("troop",t.id());j.addProperty("duplicate",o!=null);
+        j.addProperty("starsBefore",o==null?0:o.stars);j.addProperty("shards",pr.shards.getOrDefault(t.house(),0));return j;
+    }
+    /** Finishes a roll result card after receive: its stars after, the shards it gave (after minus before) and a fresh n. */
+    JsonObject rolled(JsonObject card,Profile pr,Spec.TroopsRow t){
+        var o=pr.owned.get(t.id());card.addProperty("starsAfter",o==null?0:o.stars);
+        card.addProperty("shards",pr.shards.getOrDefault(t.house(),0)-card.get("shards").getAsInt());card.addProperty("n",++rollSerial);return card;
     }
     /** The recruitment reveal sound, to the commander alone (the ServerPlayerEntity overload). */
     static void reveal(ServerPlayerEntity p){p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","unit_reveal")),SoundCategory.PLAYERS,.7f,1f);}
@@ -317,9 +335,9 @@ public final class Campaign {
         var owned=pr.owned.get(id);if(owned!=null&&owned.stars>=RosterMath.maxStars()){notice(who,t.name()+" is at full stars already.");return;}
         int cost=Spec.RECRUITMENT[0].chosenCost();
         if(pr.gold<cost){notice(who,"A chosen recruit costs "+cost+" gold. You have "+pr.gold+".");return;}
-        String before=JSON.toJson(pr);pr.gold-=cost;String result=receive(pr,t);
+        String before=JSON.toJson(pr);pr.gold-=cost;var card=rollCard(pr,t);String result=receive(pr,t);
         if(!save(who)){unsaved(who,before,"The recruit");return;}
-        notice(who,result);reveal(p);
+        lastRolls.put(who,rolled(card,pr,t));notice(who,result);reveal(p);
     }
     /**
      * An Epic's or Legendary's next star (star:<troop>, spec 4.3) for its House's shards: rarities.shardStar2 for star 2, shardStar3 for star 3; it
@@ -652,7 +670,7 @@ public final class Campaign {
         partyJson.add("online",online);j.add("party",partyJson);j.add("result",results.getOrDefault(p.getUuid(),new JsonObject()));
         // In the lobby a row carries the team the viewer's next round gives that commander (nextSeats), or -1 when he would not enter with the viewer, so the list's marks read like the side preview; in battle, the squad's team.
         Map<UUID,Integer> nextTeams=new HashMap<>();if(!b.running)for(var seat:nextSeats(p.getUuid()))nextTeams.put(seat.owner(),seat.team());
-        JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",b.running?s.team:nextTeams.getOrDefault(s.owner,-1));row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("sides",sidesJson(p.getUuid()));j.add("banner",bannerJson(p.getUuid()));j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));return fitted(j,p.getUuid());
+        JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",b.running?s.team:nextTeams.getOrDefault(s.owner,-1));row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("sides",sidesJson(p.getUuid()));j.add("banner",bannerJson(p.getUuid()));j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));j.add("lastRoll",lastRolls.getOrDefault(p.getUuid(),new JsonObject()));return fitted(j,p.getUuid());
     }
     /**
      * The seats the viewer's next round would have, for the lobby's side preview. While a start is under way they are the seated
