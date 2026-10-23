@@ -14,5 +14,5 @@
   ],
   "note": "the grip's centre is the model origin (the fist box covers y -2..+2); the model is y up with its big faces across z, and the converter turns it by a half turn about x into the weapon frame; the sword is turned flat to the side and tilted 45 degrees forward, as the sprite sword was"
  },
- "note": "The Templar's longsword, tier III (elite): a slim blade of dark steel with a solid gilt thread in its groove, a steel boss on the grip with the Order's cross painted on it, engraved arms that drop 28 degrees into tall gilt terminals, an enamel-wound grip with a steel ferrule and a tall 2.8 x 3.8 px ring pommel in a gilt frame; 24.1 px long."
+ "note": "The Templar's longsword, tier III (elite): a slim blade of dark steel with a gilt tracery run in its groove just above the boss, a steel boss on the grip with the Order's cross painted on it, engraved arms (a 12 px cross) that drop 28 degrees into tall gilt terminals, an enamel-wound grip with a steel ferrule and a tall 2.8 x 3.8 px ring pommel with a rounded socket in a gilt frame; 24.1 px long."
 }
