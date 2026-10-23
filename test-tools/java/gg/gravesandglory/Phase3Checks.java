@@ -56,6 +56,7 @@ public final class Phase3Checks implements ClientModInitializer {
         SUITES.put("walkthrough",Walkthrough::new);
         SUITES.put("campwalk",CampWalk::new);
         SUITES.put("yard",Yard::new);
+        SUITES.put("houses",Houses::new);
     }
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed,broken;
@@ -803,6 +804,128 @@ public final class Phase3Checks implements ClientModInitializer {
                 }
                 case 14->{if(view(c,"camp-yard",-28.5,69,-290,-46,66,-304)){finish(c,"yard");stage=15;}}
                 default->{}
+            }
+        }
+    }
+
+    /** Task 4 (suite houses): the House ring, the half that stands without Phase 2 (ArmyMobs, the houses sheet and the recruit page's House tabs are on phase-2-houses, not on this branch).
+     *  Checks, each failing when the sheet does not hold the five House rows (no vacuous pass): p3-houses-pieces (the five campPieces rows whose station is recruit:<house> are in Structures.LOG, placed, none missing),
+     *  p3-houses-banners (each wall banner, tents (6,9,9) and the graveyard (11,4,18), and each tent's standing banner (0,7,10), at its toWorld position, of the House colour, its patterns in order, the wall banner facing the rotated south and the standing one turned with the piece),
+     *  p3-houses-slots (extra: CampWorld.slot(row,0) is the first display slot the plan lists, slot 1 lies two blocks on in the direction it lists, and every slot stands on a block with a collision shape with air at feet and head),
+     *  p3-houses-shaded (no slot sees the sky: World.isSkyVisible of the block above its feet is false for all 30), p3-houses-opens (CampWorld.station at every slot gives the row's station, and openCamp(p,"recruit:gilded") opens CampScreen on the recruit page with house "gilded";
+     *  the display-mob half waits for the merge), p3-houses-recruiter-gone (no campStations row recruiter, no villager tagged camp:recruit). Pictures: camp-recruit-gilded, camp-ring, camp-house-<id> for the five rows (the camera max(width,depth)+8 from the piece centre toward the ring centre, swung 30 degrees north when that spot lies in the smoke of the parade braziers,
+     *  (0.5,y,-315.5) at y 67.6, looking at the centre at y 67). Not here until the merge: p3-houses-displays, p3-houses-survive, p3-houses-labels (they need ArmyMobs, the houses sheet and CampDisplays). */
+    static final class Houses implements Suite {
+        static final Spec.CampRow C=Spec.CAMP[0];
+        /** The House banners of the brief: the colour, then pattern code and colour id pairs, in order. */
+        static final Map<String,String> BANNERS=Map.of("gilded","white sc 4 bo 4","wildmoot","brown tts 0 bts 0 mr 1","ironclad","black bri 7 mc 1 bo 4","tidecallers","blue gru 9 bts 0 bo 9","graveborn","black gru 13 sku 0 bo 15");
+        /** The first display slot of each row (k 0, feet) and the step to the next, from the plan. */
+        static final Map<String,double[]> FIRST=Map.of("gilded",new double[]{-21.5,66,-310.5,0,-2},"wildmoot",new double[]{-22.5,66,-329.5,2,0},"graveborn",new double[]{-4.5,65,-340.5,2,0},"ironclad",new double[]{13.5,66,-329.5,2,0},"tidecallers",new double[]{22.5,66,-320.5,0,2});
+        int stage,waited,viewIx;volatile boolean done;
+        final List<double[]> views=new ArrayList<>();final List<String> viewNames=new ArrayList<>();
+        @Override public int limit(){return 3000;}
+        @Override public void cleanup(MinecraftClient c){server(c,b->b.campaign.leash=true);}
+        static List<Spec.CampPiecesRow> rows(){var out=new ArrayList<Spec.CampPiecesRow>();for(var r:Spec.CAMPPIECES)if(r.station().startsWith("recruit:"))out.add(r);return out;}
+        static String house(Spec.CampPiecesRow r){return r.station().substring("recruit:".length());}
+        static boolean tent(Spec.CampPiecesRow r){return r.template().startsWith("camp/tent_");}
+        static Vec3i size(Spec.CampPiecesRow r){var p=Camp.piece(r.template());return new Vec3i(p.width(),p.height(),p.depth());}
+        static BlockPos local(Spec.CampPiecesRow r,int lx,int ly,int lz){return Structures.toWorld(size(r),C.originX()+r.dx(),r.y(),C.originZ()+r.dz(),r.rotation(),lx,ly,lz);}
+        /** What is wrong with the banner at p against the House's: its block (colour, wall or standing), its patterns in order; empty when right. */
+        static String banner(ServerWorld w,BlockPos p,String house,boolean wall){
+            var want=BANNERS.get(house).split(" ");var st=w.getBlockState(p);String id=name(st);
+            String block=want[0]+(wall?"_wall_banner":"_banner");
+            if(!id.equals(block))return house+(wall?" wall":" standing")+" banner at "+xyz(p)+" is "+id+" (want "+block+"); ";
+            var be=w.getBlockEntity(p);if(!(be instanceof BannerBlockEntity bb))return house+" banner at "+xyz(p)+" has no banner block entity; ";
+            NbtList list=bb.createNbt().getList(BannerBlockEntity.PATTERNS_KEY,NbtElement.COMPOUND_TYPE);var got=new StringBuilder();
+            for(int i=0;i<list.size();i++){var e=list.getCompound(i);got.append(i>0?" ":"").append(e.getString(BannerBlockEntity.PATTERN_KEY)).append(' ').append(e.getInt(BannerBlockEntity.COLOR_KEY));}
+            String wantP=String.join(" ",Arrays.copyOfRange(want,1,want.length));
+            return got.toString().equals(wantP)?"":house+" banner at "+xyz(p)+" holds ["+got+"] (want ["+wantP+"]); ";
+        }
+        @Override public void step(MinecraftClient c,int tick){
+            if(tick<20)return;
+            UUID me=c.player.getUuid();
+            switch(stage){
+                case 0->{done=false;c.setScreen(null);server(c,b->{b.campaign.leash=true;run(b);done=true;});stage=1;waited=0;}
+                case 1->{if(done&&++waited>=10){c.setScreen(null);server(c,b->GravesAndGlory.openCamp(b.server.getPlayerManager().getPlayer(me),"recruit:gilded"));stage=2;waited=0;}}
+                case 2->{
+                    if(++waited>=20){
+                        var s=c.currentScreen;boolean ok=s instanceof CampScreen cs&&cs.page.equals("recruit")&&cs.house.equals("gilded");
+                        String screen=s==null?"no screen":s.getClass().getSimpleName()+(s instanceof CampScreen cs2?" on page "+cs2.page+" with house \""+cs2.house+"\"":"");
+                        report("p3-houses-opens",opensOk&&ok&&rows().size()==5,opensWhy+"openCamp(p,\"recruit:gilded\") opened "+screen+(ok?"":" (want CampScreen on page recruit with house gilded)")+"; the display-mob half (using a Graveborn display opens recruit:graveborn) waits for ArmyMobs (Phase 2 merge)");
+                        stage=3;waited=0;
+                    }
+                }
+                case 3->{if(++waited>=5){shot(c,"camp-recruit-gilded");c.setScreen(null);stage=4;viewIx=0;}}
+                case 4->{
+                    if(viewIx>=views.size()){finish(c,"houses");stage=5;break;}
+                    var v=views.get(viewIx);if(view(c,viewNames.get(viewIx),v[0],v[1],v[2],v[3],v[4],v[5]))viewIx++;
+                }
+                default->{}
+            }
+        }
+        volatile boolean opensOk;volatile String opensWhy="";
+        void run(GravesAndGlory.Battle b){
+            var w=b.world;var rows=rows();boolean five=rows.size()==5;String count=five?"":"the campPieces sheet has "+rows.size()+" rows with a recruit:<house> station (want 5); ";
+            // p3-houses-pieces
+            var bad=new StringBuilder(count);var info=new StringBuilder();
+            for(var r:rows){
+                var want=Camp.box(r);Structures.Placed hit=null;for(var p:Structures.LOG)if(p.id().equals(r.template())&&Camp.same(p.box(),want))hit=p;
+                if(hit==null)bad.append(r.id()).append(" has no log entry for ").append(r.template()).append("; ");
+                else if(hit.missing()||hit.blocks()<=0)bad.append(r.id()).append(hit.missing()?" is missing its file; ":" placed no blocks; ");
+                else info.append(r.id()).append(' ').append(r.template()).append(' ').append(hit.blocks()).append(" blocks, ");
+            }
+            report("p3-houses-pieces",five&&bad.length()==0,bad.length()==0?"the five House rows are placed: "+info:bad.toString());
+            // p3-houses-banners
+            bad=new StringBuilder(count);info=new StringBuilder();
+            for(var r:rows){
+                String h=house(r);var rot=Structures.rotation(r.rotation());
+                var wp=tent(r)?local(r,6,9,9):local(r,11,4,18);bad.append(banner(w,wp,h,true));
+                var f=facing(w.getBlockState(wp));if(f!=null&&f!=rot.rotate(Direction.SOUTH))bad.append(h).append(" wall banner faces ").append(f).append(" (want ").append(rot.rotate(Direction.SOUTH)).append("); ");
+                info.append(h).append(" wall ").append(xyz(wp)).append(" facing ").append(f);
+                if(tent(r)){
+                    var sp=local(r,0,7,10);bad.append(banner(w,sp,h,false));var st=w.getBlockState(sp);
+                    if(st.contains(Properties.ROTATION)&&st.get(Properties.ROTATION)!=rot.rotate(0,16))bad.append(h).append(" standing banner rotation ").append(st.get(Properties.ROTATION)).append(" (want ").append(rot.rotate(0,16)).append("); ");
+                    info.append(", standing ").append(xyz(sp));
+                }
+                info.append("; ");
+            }
+            report("p3-houses-banners",five&&bad.length()==0,bad.length()==0?"every House banner holds its patterns and faces the front: "+info:bad.toString());
+            // p3-houses-slots and p3-houses-shaded
+            bad=new StringBuilder(count);var shade=new StringBuilder(count);int slots=0,sky=0;
+            for(var r:rows){
+                String h=house(r);var first=FIRST.get(h);
+                var s0=CampWorld.slot(r,0);var s1=CampWorld.slot(r,1);
+                if(first==null)bad.append(h).append(" is not a House of the plan; ");
+                else{
+                    if(s0.distanceTo(new Vec3d(first[0],first[1],first[2]))>1e-6)bad.append(h).append(" slot 0 at ").append(s0).append(" (want ").append(first[0]).append(',').append(first[1]).append(',').append(first[2]).append("); ");
+                    if(Math.abs(s1.x-s0.x-first[3])>1e-6||Math.abs(s1.z-s0.z-first[4])>1e-6)bad.append(h).append(" slot 1 at ").append(s1).append(" is not two blocks on from slot 0 the way the plan says; ");
+                }
+                for(int k=0;k<6;k++){
+                    var s=CampWorld.slot(r,k);var feet=BlockPos.ofFloored(s);slots++;
+                    var below=feet.down();if(w.getBlockState(below).getCollisionShape(w,below).isEmpty())bad.append(h).append(" slot ").append(k).append(" stands on ").append(name(w.getBlockState(below))).append(" (no collision shape); ");
+                    for(var at:new BlockPos[]{feet,feet.up()}){var st=w.getBlockState(at);if(!st.getCollisionShape(w,at).isEmpty())bad.append(h).append(" slot ").append(k).append(" has ").append(name(st)).append(" at ").append(xyz(at)).append("; ");}
+                    if(w.isSkyVisible(feet.up())){sky++;shade.append(h).append(" slot ").append(k).append(" at ").append(xyz(feet)).append(" sees the sky; ");}
+                }
+            }
+            report("p3-houses-slots",five&&bad.length()==0,bad.length()==0?"slot 0 of each row is the plan's, slot 1 two blocks on the plan's way, and all "+slots+" slots stand on a solid block with air at feet and head":bad.toString());
+            report("p3-houses-shaded",five&&slots==30&&sky==0,shade.length()==0?"none of the "+slots+" slots sees the sky (World.isSkyVisible of the block above the feet)":shade.toString());
+            // the server half of p3-houses-opens: the station of every slot
+            bad=new StringBuilder(count);int right=0;
+            for(var r:rows)for(int k=0;k<6;k++){var s=CampWorld.slot(r,k);String got=CampWorld.station(BlockPos.ofFloored(s));if(r.station().equals(got))right++;else bad.append(house(r)).append(" slot ").append(k).append(": station ").append(got).append(" (want ").append(r.station()).append("); ");}
+            opensOk=five&&bad.length()==0;opensWhy=bad.length()==0?"CampWorld.station gives the row's station at all "+right+" slots; ":bad.toString();
+            // p3-houses-recruiter-gone
+            int villagers=0;for(var e:w.iterateEntities())if(e instanceof net.minecraft.entity.passive.VillagerEntity&&e.getCommandTags().contains("camp:recruit"))villagers++;
+            boolean row=Arrays.stream(Spec.CAMPSTATIONS).anyMatch(s->s.id().equals("recruiter"));
+            report("p3-houses-recruiter-gone",five&&villagers==0&&!row,count+"campStations row recruiter "+(row?"still there":"gone")+", villagers tagged camp:recruit "+villagers);
+            // the photographs
+            views.clear();viewNames.clear();
+            views.add(new double[]{0.5,72,-291,0.5,66,-330});viewNames.add("camp-ring");
+            for(var r:rows){
+                var sz=size(r);double cx=C.originX()+r.dx()+0.5,cz=C.originZ()+r.dz()+0.5,d=Math.max(sz.getX(),sz.getZ())+8,ax=0.5-cx,az=-315.5-cz,len=Math.hypot(ax,az);ax/=len;az/=len;
+                double sx=cx+ax*d,sz2=cz+az*d;
+                if(Math.min(Math.hypot(sx+4.5,sz2+315.5),Math.hypot(sx-5.5,sz2+315.5))<4){ // straight toward the ring centre the camera would stand in the smoke of the parade's two braziers (world -4.5/5.5, -315.5): it swings 30 degrees to the north, away from the parade's posts
+                    double c30=Math.cos(Math.toRadians(30)),s30=Math.sin(Math.toRadians(30));double[] ra={ax*c30-az*s30,ax*s30+az*c30},rb={ax*c30+az*s30,-ax*s30+az*c30};var o=ra[1]<rb[1]?ra:rb;ax=o[0];az=o[1];}
+                views.add(new double[]{cx+ax*d,67.6,cz+az*d,cx,67,cz});viewNames.add("camp-house-"+house(r));
             }
         }
     }
@@ -2307,10 +2430,10 @@ public final class Phase3Checks implements ClientModInitializer {
             at(l,"bowl-bare",-8.0,-322.0,0.0,76.0,-352.0);
             at(l,"both-stairs",-4.0,-333.0,0.5,74.0,-352.0);
             fin(l,f);
-            l=lane("4a2-recruiter",new double[]{-4.0,-333.0},new double[]{0.5,-339.0},new double[]{0.5,-343.5});
-            at(l,"recruiter-far",0.5,-339.0,0.5,66.4,-346.5);
-            at(l,"recruiter",0.5,-343.5,0.5,66.4,-346.5);
-            at(l,"recruiter-label",0.5,-343.5,0.5,68.7,-346.5,0,"label:recruiter");
+            // Task 4: the recruiter is gone; the lane walks into the Graveborn graveyard (camp/graveyard) through its gateway and the colonnade arch, to the court
+            l=lane("4a2-graveyard",new double[]{-4.0,-333.0},new double[]{0.5,-339.0},new double[]{0.5,-343.5});
+            at(l,"graveyard-gate",0.5,-339.0,0.5,66.4,-346.5);
+            at(l,"graveyard-court",0.5,-343.5,0.5,70.0,-357.0);
             fin(l,f);
             l=lane("4a3-west-foot",new double[]{0.5,-343.5},new double[]{-17.5,-343.5},new double[]{-17.5,-347.0});
             at(l,"west-stair-approach",-12.0,-343.5,-17.5,72.0,-352.0);

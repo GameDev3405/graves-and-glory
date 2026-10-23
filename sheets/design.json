@@ -1716,6 +1716,46 @@
       "height": 6,
       "palette": "stone",
       "purpose": "parade ground, standard, spawn plinth"
+    },
+    {
+      "id": "camp/tent_gilded",
+      "width": 13,
+      "depth": 11,
+      "height": 12,
+      "palette": "wood",
+      "purpose": "Gilded Order recruiter tent"
+    },
+    {
+      "id": "camp/tent_wildmoot",
+      "width": 13,
+      "depth": 11,
+      "height": 12,
+      "palette": "wood",
+      "purpose": "Wildmoot recruiter tent"
+    },
+    {
+      "id": "camp/tent_ironclad",
+      "width": 13,
+      "depth": 11,
+      "height": 12,
+      "palette": "wood",
+      "purpose": "Ironclad recruiter tent"
+    },
+    {
+      "id": "camp/tent_tidecallers",
+      "width": 13,
+      "depth": 11,
+      "height": 12,
+      "palette": "wood",
+      "purpose": "Tidecallers recruiter tent"
+    },
+    {
+      "id": "camp/graveyard",
+      "width": 23,
+      "depth": 23,
+      "height": 16,
+      "palette": "stone",
+      "purpose": "Graveborn shrine and recruiter"
     }
   ],
   "camp": [
@@ -1829,6 +1869,71 @@
       "slotX": -1,
       "slotY": -1,
       "slotZ": -1
+    },
+    {
+      "id": "gilded",
+      "template": "camp/tent_gilded",
+      "dx": -26,
+      "dz": -6,
+      "y": 64,
+      "rotation": 270,
+      "flatten": true,
+      "station": "recruit:gilded",
+      "slotX": 1,
+      "slotY": 2,
+      "slotZ": 9
+    },
+    {
+      "id": "wildmoot",
+      "template": "camp/tent_wildmoot",
+      "dx": -18,
+      "dz": -24,
+      "y": 64,
+      "rotation": 0,
+      "flatten": true,
+      "station": "recruit:wildmoot",
+      "slotX": 1,
+      "slotY": 2,
+      "slotZ": 9
+    },
+    {
+      "id": "graveborn",
+      "template": "camp/graveyard",
+      "dx": 0,
+      "dz": -39,
+      "y": 64,
+      "rotation": 0,
+      "flatten": true,
+      "station": "recruit:graveborn",
+      "slotX": 6,
+      "slotY": 1,
+      "slotZ": 19
+    },
+    {
+      "id": "ironclad",
+      "template": "camp/tent_ironclad",
+      "dx": 18,
+      "dz": -24,
+      "y": 64,
+      "rotation": 0,
+      "flatten": true,
+      "station": "recruit:ironclad",
+      "slotX": 1,
+      "slotY": 2,
+      "slotZ": 9
+    },
+    {
+      "id": "tidecallers",
+      "template": "camp/tent_tidecallers",
+      "dx": 26,
+      "dz": -6,
+      "y": 64,
+      "rotation": 90,
+      "flatten": true,
+      "station": "recruit:tidecallers",
+      "slotX": 1,
+      "slotY": 2,
+      "slotZ": 9
     }
   ],
   "campStations": [
@@ -1927,18 +2032,6 @@
       "halfX": 3,
       "halfZ": 1,
       "label": "WAR GATES / Local matches / Bots fill empty seats"
-    },
-    {
-      "id": "recruiter",
-      "page": "recruit",
-      "npc": "cleric",
-      "x": 0.5,
-      "y": 65.0,
-      "z": -36.5,
-      "yaw": 0.0,
-      "halfX": 1,
-      "halfZ": 1,
-      "label": "Recruiter / New troops"
     },
     {
       "id": "drillmaster",

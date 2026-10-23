@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 /** The camp's ground as the grade of 2026-10-23 asked for it (Phase 3 Task 3, fix round 4) and its re-grade 4 asked for it (fix round 5: no one-block terraces beside the stairs, rock and soil in patches, the rim either side of the gatehouse a slope framed by spruce, a flush parade), checked on the pure shape of the island (CampTerrain), the sheets (Spec) and the parade's script, with no game:
  *  the parade field is a mix of grounds with a ragged edge, not one flat slab in a hard rectangle; the welcome label is in the frame of the arrival view; the ridge bank is a hillside, not full-width one-block terraces;
  *  the edges of the bowl and the stands of spruce are irregular, not ruled lines and rows; the south rim beside the gates and the high corners are slopes, not stepped walls of stone.
- *  It also guards what the grade passed and what other pieces stand on: the ground under the two ridge stairs is the profile their script was cut to, the recruiter, the yard and the drillmaster stand on the floor of the bowl,
+ *  It also guards what the grade passed and what other pieces stand on: the ground under the two ridge stairs is the profile their script was cut to, the yard and the drillmaster stand on the floor of the bowl, the Graveborn graveyard lies at the floor between the stairs with the bank beside it where its walls were cut (Task 4),
  *  the rim seam, the bank mix and the flank relief of the camp suite still hold. Run: javac with Spec, CampTerrain and this file; java gg.gravesandglory.CampTerrainCheck <parade.mcfunction>. */
 public final class CampTerrainCheck {
     static int count,failed;
@@ -100,8 +100,14 @@ public final class CampTerrainCheck {
         check(off==0&&above==0,"the ground of both ridge stairs: under the walls and the flight the bank their script was cut to (local y floor(12(12-z)/13+.5)), "+off+" columns off; on the cheeks outside the walls at or under it and not under the floor, "+above+" off"+(first.isEmpty()?"":", first "+first));
         int notFloor=0;String nf="";
         for(int dx=-60;dx<=-36;dx++)for(int dz=-12;dz<=24;dz++)if(CampTerrain.height(C,dx,dz)!=fy){notFloor++;if(nf.isEmpty())nf="dx "+dx+" dz "+dz+" at "+CampTerrain.height(C,dx,dz);}
-        for(int dx=-3;dx<=4;dx++)for(int dz=-37;dz<=-30;dz++)if(CampTerrain.height(C,dx,dz)!=fy){notFloor++;if(nf.isEmpty())nf="dx "+dx+" dz "+dz+" at "+CampTerrain.height(C,dx,dz);}
-        check(notFloor==0,"the yard (dx -60..-36, dz -12..24: lessons, dummies, the drillmaster) and the recruiter's place stand on the floor of the bowl: "+notFloor+" columns off"+(nf.isEmpty()?"":", first "+nf));
+        check(notFloor==0,"the yard (dx -60..-36, dz -12..24: lessons, dummies, the drillmaster) stands on the floor of the bowl: "+notFloor+" columns off"+(nf.isEmpty()?"":", first "+nf));
+        // Phase 3 Task 4: the recruiter is gone; the Graveborn graveyard (camp/graveyard, 23 x 23, centre dx 0 dz -39) fills the notch between the stairs. Its footprint is laid at the floor, and the bank outside its two side walls
+        // (dx -12 and 12, the inner columns of the stairs, local z 0..7 of the graveyard) stands where its script cut the walls: at or under BANK[z] above the floor and at most one under it, so the walls meet the hillside
+        int[] bank={10,8,6,5,4,3,2,1};int gyOff=0,seam=0;String gf="",sf="";
+        boolean gyRow=false;for(var r:rows)if(r.id().equals("graveborn")&&r.template().equals("camp/graveyard")&&r.dx()==0&&r.dz()==-39&&r.flatten())gyRow=true;
+        for(int dx=-11;dx<=11;dx++)for(int dz=-50;dz<=-28;dz++)if(g(dx,dz)!=fy){gyOff++;if(gf.isEmpty())gf="dx "+dx+" dz "+dz+" at "+g(dx,dz);}
+        for(int side:new int[]{-12,12})for(int z=0;z<8;z++){int h=g(side,-50+z)-fy;if(h>bank[z]||h<bank[z]-1){seam++;if(sf.isEmpty())sf="dx "+side+" dz "+(-50+z)+" at +"+h+" (wall cut to +"+bank[z]+")";}}
+        check(gyRow&&gyOff==0&&seam==0,"the graveyard row (graveborn, camp/graveyard at dx 0 dz -39, flatten) is in the sheet ("+gyRow+"), its footprint (dx -11..11, dz -50..-28) lies at the floor ("+gyOff+" columns off"+(gf.isEmpty()?"":", first "+gf)+"), and the bank beside its side walls is the one its script was cut to ("+seam+" off"+(sf.isEmpty()?"":", first "+sf)+")");
         int steps=0,worst=0;for(int dx=C.islandMinDx();dx<C.islandMaxDx();dx++){int d=Math.abs(CampTerrain.rimTop(C,dx)-CampTerrain.rimTop(C,dx+1));worst=Math.max(worst,d);if(d>3)steps++;}
         check(steps==0&&CampTerrain.rimTop(C,0)==fy+CampTerrain.RIM_RISE,"the crest of the rim (the row the arena's margin meets) steps at most 3 between columns (largest "+worst+") and stands at "+(fy+CampTerrain.RIM_RISE)+" behind the gates (it is "+CampTerrain.rimTop(C,0)+")");
         int zsteps=0;for(int dx=C.islandMinDx();dx<=C.islandMaxDx();dx++)for(int dz=last-3;dz<last;dz++)if(Math.abs(g(dx,dz)-g(dx,dz+1))>3)zsteps++;

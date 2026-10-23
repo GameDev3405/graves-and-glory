@@ -110,6 +110,15 @@ final class CampWorld {
     }
     static Spec.PiecesRow piece(String id){for(var p:Spec.PIECES)if(p.id().equals(id))return p;throw new IllegalStateException("no pieces row "+id);}
 
+    /** Where display k (0 to 5) of a House row stands, its feet: the row's slot (slotX+2k, slotY, slotZ, local to its piece) turned with the piece, at the centre of its block. Pure, so the client can call it. */
+    static Vec3d slot(Spec.CampPiecesRow row,int k){
+        var c=Spec.CAMP[0];var p=piece(row.template());
+        var at=Structures.toWorld(new Vec3i(p.width(),p.height(),p.depth()),c.originX()+row.dx(),row.y(),c.originZ()+row.dz(),row.rotation(),row.slotX()+2*k,row.slotY(),row.slotZ());
+        return new Vec3d(at.getX()+.5,at.getY(),at.getZ()+.5);
+    }
+    /** The yaw a display of a piece turned by rotation faces: the front of a piece authored facing south (0 south, 90 west, 180 north, 270 east). */
+    static float yaw(int rotation){return switch(rotation){case 0->0f;case 90->90f;case 180->180f;case 270->-90f;default->throw new IllegalArgumentException("rotation "+rotation);};}
+
     // ---- the build ----
 
     /** The camp at world start (and in the harness): terrain when the world lacks the current hash, the pieces at every start, the people, the war table; the hash is written last. */

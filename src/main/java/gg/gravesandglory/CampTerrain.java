@@ -7,7 +7,7 @@ package gg.gravesandglory;
 final class CampTerrain {
     private CampTerrain(){}
     /** Part of the camp's hash (CampWorld.hash) and of the arena margin's revision (LayoutMarker.MARGIN): a change to the way the terrain is shaped or written makes every world rebuild the camp, and every map its margin, once. */
-    static final String REVISION="terrain-5";
+    static final String REVISION="terrain-6";
     /** Where the plateau begins and where its bank starts at the foot (dz, from the origin of the camp), beside the stairs: the bank rises over the 13 rows between them. Away from the stairs the foot and the top wander (bank). */
     static final int RIDGE_TOP_DZ=-51,RIDGE_FOOT_DZ=-38;
     /** The southern rim behind the War Gates: from RIM_FOOT_DZ (the end of the apron of the gates) the ground climbs RIM_SLOPE blocks per block, to RIM_RISE above the floor, at the last row of the rim (rimEnd). It is the camp's half of the southern seam (CampWorld.taper).

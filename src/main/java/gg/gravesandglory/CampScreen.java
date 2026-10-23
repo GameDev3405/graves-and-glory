@@ -10,8 +10,11 @@ import static gg.gravesandglory.GravesAndGloryClient.*;
 /** Quiet camp navigation; social, recruitment and progression have separate destinations. */
 final class CampScreen extends ArmyScreen {
     String page;float scale=1;int offset;String key="",roomInput="";long requestAt;TextFieldWidget code;
+    /** The House a station named (recruit:<house>, a tent of the House ring): the House tab the recruit page opens on once the House tabs are merged in; "" for none. */
+    String house="";
     CampScreen(String page){super("Banner camp");this.page=page;}
-    static void open(String page){var c=net.minecraft.client.MinecraftClient.getInstance();if(page.equals("army"))c.setScreen(new LobbyScreen(1));else c.setScreen(new CampScreen(page));}
+    /** A station: a page, or page:house (the House ring's tents send recruit:<house>), split on the first colon. */
+    static void open(String station){var c=net.minecraft.client.MinecraftClient.getInstance();int at=station.indexOf(':');String page=at<0?station:station.substring(0,at);if(page.equals("army")){c.setScreen(new LobbyScreen(1));return;}var s=new CampScreen(page);s.house=at<0?"":station.substring(at+1);c.setScreen(s);}
     JsonObject social(){return CampaignClient.social;}
     boolean flag(String name){return social().has(name)&&social().get(name).getAsBoolean();}
     String value(String name){return social().has(name)?social().get(name).getAsString():"";}
