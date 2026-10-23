@@ -70,12 +70,12 @@ public final class Combat {
         boolean impact = charging && charged != null && b.time - charged <= D.chargeImpactTicks() && attacker.chargeHitAt < charged;
         double bearing = structure(target) ? 0 : BattleMath.relativeBearing(target.getYaw(), attacker.mob.getX() - target.getX(), attacker.mob.getZ() - target.getZ()); // a structure has no facing, so no flank (C16, C16s)
         boolean raised = victim != null && victim.tags.contains("shield") && victim.mob.isUsingItem() && victim.mob.getActiveItem().isOf(Items.SHIELD);
-        boolean noSky = from.contains("ambush") && !b.world.isSkyVisible(attacker.mob.getBlockPos());
+        boolean noSky = from.contains("ambush") && Abilities.noSky(attacker);
         boolean covered = victim != null && Houses.covered(b, victim);
         var hit = new CounterMath.Hit(from, to, bearing, raised, impact, charging, holding, noSky, Abilities.inMist(b, attacker.mob, target), covered, area);
 
         double counters = CounterMath.counters(hit, Spec.COUNTERS), stance = stance(attacker);
-        double traits = Houses.traitFactor(b, attacker, target, kind), auras = Abilities.auraFactor(b, attacker, target), commander = commanderFactor(b, attacker, target);
+        double traits = Houses.traitFactor(b, attacker, target, kind, area ? 0 : bearing), auras = Abilities.auraFactor(b, attacker, target), commander = commanderFactor(b, attacker, target);
         double total = CounterMath.total(counters * stance, traits, auras, commander, D.multiplierMin(), D.multiplierMax());
         List<String> rows = List.copyOf(CounterMath.applied(hit, Spec.COUNTERS));
         if (rows.contains("C16")) attacker.squad.stats.flankHits++; // the round's flank tally per army (MatchStats.SquadStats)

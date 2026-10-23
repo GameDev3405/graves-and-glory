@@ -6,6 +6,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.block.TallPlantBlock;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.MovementType;
+import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
@@ -24,6 +25,7 @@ import org.joml.Vector3f;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Troop abilities (spec 2, the abilities sheet). A troop's ability id names a row; the row's mechanic decides what it does. The shield is a tag
@@ -32,10 +34,13 @@ import java.util.List;
  * by the soldier's own health; pierce hits a second enemy behind the target (secondary); the Oath Banner aura plants a Banner (Battle.banners) that
  * lends its planter's army damage (auraFactor) and anchors its troops inside (anchored: no knockback, pull or Slowness from any troop source, and a slow
  * already on them is taken off). The slam (Brassjaw's) hits every other enemy within its radius of the target for the row's share, with knockback; the shell (the
- * Ironhold Mortar's) is a blight that cannot be cast at anything nearer than the row's minRange. Every other mechanic is a no-op until the task of its House.
+ * Ironhold Mortar's) is a blight that cannot be cast at anything nearer than the row's minRange.
  * The Tidecallers' rows: the mist (a blight variant whose burst is a standing cloud, Battle.mists: it slows the enemies in it and counters row C17 halves the shots through it), the
  * harpoon (an on-hit slow with a cooldown and a pull toward the shooter), the tentacle sweep (a slam on hit with a cooldown) and the undertow (a slam on a timer that pulls and hurts).
- * Every number comes from the row, with the combatDiscipline defaults where a row says 0.
+ * The Wildmoot's rows: the pounce (x amount on the first blow after radius blocks walked since the last attack, then its cooldown: auraFactor and onHit), the ambush
+ * stance (counters row C18b, from noSky: no sky over the shooter's head), the ensnare (an on-hit slow with a cooldown), the howl (the aura row on a timer: damage and
+ * speed to the army's troops within its radius for its duration) and the trample (a slam on charge_contact: on a blow under Charge, every other enemy within the
+ * radius of the bear, with knockback and the bear's rear). Every number comes from the row, with the combatDiscipline defaults where a row says 0.
  */
 final class Abilities {
     private Abilities() {}
@@ -63,7 +68,7 @@ final class Abilities {
             case "aura" -> aura(b, u, row, time);
             case "mist" -> cloud(b, u, row, time);
             case "slam" -> { if (row.trigger().equals("timer")) undertow(b, u, row, time); } // the Admiral's; a slam on hit acts in onHit
-            default -> {} // the stances (steady, ambush, brace) act through the counters table; every other mechanic waits for the task of its House
+            default -> {} // the stances (steady, ambush, brace) act through the counters table; the pounce, the on-hit slows (ensnare, the harpoon) and the trample act in onHit
         }
     }
 
@@ -149,8 +154,8 @@ final class Abilities {
     /**
      * What a landed hit sets off on its attacker's ability: pierce hits the nearest other enemy within the row's radius behind the target for the
      * row's amount (secondary); cleave hits the nearest other enemy within the row's radius of the target, any side of it, for the row's amount
-     * (secondary); an onhit_slow row slows the target (slow). dealt is the amount applied. Combat.resolve skips it for a secondary hit. The
-     * pounce waits for the task of its House.
+     * (secondary); an onhit_slow row slows the target (slow); the pounce starts its cooldown and ends its run (pounce); a slam on charge_contact
+     * tramples (trample). dealt is the amount applied. Combat.resolve skips it for a secondary hit.
      */
     static void onHit(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity target, float dealt, String kind) {
         var row = row(u.spec);
@@ -163,7 +168,8 @@ final class Abilities {
                     if (row.knockback() < 0) pull(b, target, u.mob.getPos(), -row.knockback()); // the Harpooner's: a negative knockback drags the target toward the shooter
                 }
             }
-            case "slam" -> { if (row.trigger().equals("onhit")) slam(b, u, target, row); }
+            case "slam" -> { if (row.trigger().equals("onhit")) slam(b, u, target, row); else if (row.trigger().equals("charge_contact")) trample(b, u, target, row); }
+            case "pounce" -> pounce(b, u, row, kind);
             default -> {}
         }
         var riptide = Houses.riptide(u);
@@ -206,6 +212,46 @@ final class Abilities {
         if (swept > 0 && row.cooldownTicks() > 0) u.abilityAt = b.time + row.cooldownTicks(); // a sweep that struck nobody keeps its cooldown for the next hit
         b.world.spawnParticles(ParticleTypes.CLOUD, at.x, at.y + .2, at.z, 16, row.radius() / 2, .1, row.radius() / 2, .06);
         b.world.playSound(null, primary.getBlockPos(), SoundEvents.BLOCK_ANVIL_LAND, SoundCategory.HOSTILE, .35f, .7f);
+    }
+
+    /**
+     * Old Horn's trample (the slam row on charge_contact): on a blow of his while his group's order is Charge and his cooldown is up, every other enemy within
+     * the row's radius of him takes the row's amount (times his army's progression) as a secondary slam hit, which their counters and traits shape, and each
+     * that lives is thrown from his spot with the row's knockback (a structure is not moved); the cooldown starts and he rears (ArmyBear.rear: the warning pose
+     * for its pulse, his attack animation) in a cloud of dust. On Hold, or inside the cooldown, his blow is a bite alone. The trample lands with the blow that
+     * makes contact, not before it.
+     */
+    static void trample(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity primary, Spec.AbilitiesRow row) {
+        if (!b.assignment(u).order.equals("charge") || b.time < u.abilityAt) return;
+        u.abilityAt = b.time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
+        Vec3d at = u.mob.getPos();
+        float base = (float) (row.amount() * b.campaign.damage(u));
+        double reach = row.radius() * row.radius();
+        for (var e : enemies(b, u.squad.team)) {
+            if (e == primary || e.squaredDistanceTo(u.mob) > reach) continue;
+            float applied = Combat.resolve(b, u, e, base, "slam", true);
+            if (applied <= 0) continue;
+            BattleEffects.flash(b, new Vec3d(e.getX(), e.getBodyY(.6), e.getZ()), u.squad.team);
+            if (e.isAlive() && !Combat.structure(e)) knock(b, e, at, primary.getPos(), row.knockback());
+        }
+        if (u.mob instanceof GravesAndGlory.ArmyBear bear) bear.rear();
+        b.world.spawnParticles(ParticleTypes.CLOUD, at.x, at.y + .2, at.z, 20, row.radius() / 2, .1, row.radius() / 2, .06);
+        b.world.playSound(null, u.mob.getBlockPos(), SoundEvents.ENTITY_POLAR_BEAR_WARNING, SoundCategory.HOSTILE, 1f, .8f);
+    }
+
+    /** Whether a pounce troop's next blow is the pounce: its row's mechanic, the row's radius or more blocks walked since its last attack (Unit.travelSinceAttack), and its cooldown up. auraFactor and pounce read it. */
+    static boolean pounceReady(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row) {
+        return row.mechanic().equals("pounce") && u.travelSinceAttack >= row.radius() && b.time >= u.abilityAt;
+    }
+
+    /** A blow of a pounce troop landed: when it was the pounce (its x amount was auraFactor's) the cooldown starts, the hound growls and clay dust bursts at its feet; either way its run ends (travelSinceAttack back to 0). */
+    static void pounce(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, String kind) {
+        if (kind.equals("melee") && pounceReady(b, u, row)) {
+            u.abilityAt = b.time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
+            b.world.playSound(null, u.mob.getBlockPos(), SoundEvents.ENTITY_WOLF_GROWL, SoundCategory.HOSTILE, 1.5f, 1f);
+            b.world.spawnParticles(dust(CLAY), u.mob.getX(), u.mob.getY() + .2, u.mob.getZ(), 12, .5, .1, .5, 0);
+        }
+        u.travelSinceAttack = 0;
     }
 
     /** Throws an entity away from a spot (the attacker's own, for one standing on it) with vanilla's knockback of that strength, which its knockback resistance reduces. An anchored troop is not moved. */
@@ -311,11 +357,14 @@ final class Abilities {
     /**
      * The aura share of the factor: x(1 + amount) for an attacker of the planting army standing within the radius of its standing banner
      * (the Oath Banner), the largest one only when banners overlap, times x(1 - amount) while a living enemy troop with a dread row (the Hollow
-     * King) stands within its radius, the strongest one only. Howl (the attacker's side) joins in the task of its House.
+     * King) stands within its radius, the strongest one only, times x(1 + amount) of the Howl on the attacker while it lasts (howl), times the pounce's x amount
+     * when the attacker's blow is its pounce (pounceReady).
      */
     static double auraFactor(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target) {
         double f = 1;
         for (var banner : b.banners) if (covers(b, banner, attacker.squad, attacker.mob.getPos())) f = Math.max(f, 1 + banner.amount());
+        if (b.time < attacker.howlUntil) f *= 1 + attacker.howlAmount;
+        if (pounceReady(b, attacker, row(attacker.spec))) f *= row(attacker.spec).amount();
         double dread = 1;
         for (var e : b.units) {
             if (e.squad.team == attacker.squad.team || !e.mob.isAlive()) continue;
@@ -370,14 +419,74 @@ final class Abilities {
     /**
      * An aura troop's beat. The Oath Banner (trigger hold) plants when the troop's group order, the stored one its commander gave, has turned
      * to Hold since its last beat and its cooldown is ready; the order it finds on its first beat is only remembered, so a round that starts
-     * on Hold plants nothing. Dread (trigger passive) is not planted on a beat: it acts through auraFactor. Howl (trigger timer) waits for the task of its House.
+     * on Hold plants nothing. Dread (trigger passive) is not planted on a beat: it acts through auraFactor. The Howl (trigger timer) sounds whenever its cooldown is up (howl).
      */
     static void aura(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
-        if (!row.trigger().equals("hold")) return;
-        String order = b.storedAssignment(u.squad, u.spec.group()).order, was = u.seenOrder;
-        u.seenOrder = order;
-        if (was != null && !was.equals(order) && order.equals("hold") && time >= u.abilityAt) plant(b, u, row, time);
+        switch (row.trigger()) {
+            case "hold" -> {
+                String order = b.storedAssignment(u.squad, u.spec.group()).order, was = u.seenOrder;
+                u.seenOrder = order;
+                if (was != null && !was.equals(order) && order.equals("hold") && time >= u.abilityAt) plant(b, u, row, time);
+            }
+            case "timer" -> howl(b, u, row, time);
+            default -> {}
+        }
     }
+
+    /** The clay of the Wildmoot's tells (#C8B48A): the Seer's howl ring and the hound's pounce dust. */
+    static final int CLAY = 0xC8B48A;
+
+    /** The fixed id of the Howl's speed modifier on a troop, so a new one always replaces the old. */
+    static final UUID HOWL = UUID.fromString("5b6f0c3e-2a7d-4c3b-9f1e-7d2a4b8c6e01");
+
+    /**
+     * The Seer's Howl (the aura row on a timer): when its cooldown is up and the Seer is not stunned, every living troop of its own army within the row's radius
+     * (itself included) gets +amount damage (auraFactor) and +amount2 speed (hasten: the attribute share that makes a real x(1 + amount2) on its ground, kept
+     * by unitTick) for the row's durationTicks; the cooldown starts, the Seer howls and a ring of clay dust marks the radius. A Howl always spends its cooldown:
+     * the Seer is always within its own reach.
+     */
+    static void howl(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
+        if (time < u.abilityAt || time < u.stunnedUntil) return;
+        u.abilityAt = time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
+        double reach = row.radius() * row.radius();
+        for (var v : b.units) {
+            if (v.squad != u.squad || !v.mob.isAlive() || GravesAndGlory.Battle.horizontalDistance(v.mob.getPos(), u.mob.getPos()) > reach) continue;
+            v.howlUntil = time + row.durationTicks(); v.howlAmount = row.amount(); v.howlSpeed = row.amount2();
+            hasten(v);
+        }
+        b.world.playSound(null, u.mob.getBlockPos(), SoundEvents.ENTITY_WOLF_HOWL, SoundCategory.HOSTILE, 1.5f, .8f);
+        ring(b, u.mob.getPos(), row.radius(), CLAY);
+    }
+
+    /** The Howl's speed modifier on a troop: BattleMath.speedModifier's value for x(1 + howlSpeed) on its ground, added where it lacks and replaced where the ground changed it (as Muster's hasten). */
+    static void hasten(GravesAndGlory.Unit u) {
+        var speed = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+        if (speed == null) return;
+        double value = BattleMath.speedModifier(1 + u.howlSpeed, u.mob.isTouchingWater());
+        var have = speed.getModifier(HOWL);
+        if (have != null && have.getValue() == value) return;
+        if (have != null) speed.removeModifier(HOWL);
+        speed.addTemporaryModifier(new EntityAttributeModifier(HOWL, "Graves and Glory howl", value, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+    }
+
+    /**
+     * Every tick of every troop, before Tactics (Battle.unitTick): a pounce troop's run since its last attack grows by the ground it covered (horizontal), and a
+     * howled troop's speed share is kept on its ground and taken off when its Howl ends.
+     */
+    static void unitTick(GravesAndGlory.Battle b, GravesAndGlory.Unit u, long time) {
+        if (u.tags.contains("pounce")) {
+            Vec3d at = u.mob.getPos();
+            if (u.travelAt != null) u.travelSinceAttack += Math.sqrt(GravesAndGlory.Battle.horizontalDistance(at, u.travelAt));
+            u.travelAt = at;
+        }
+        if (u.howlUntil > 0) {
+            if (time < u.howlUntil) hasten(u);
+            else { u.howlUntil = 0; var speed = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED); if (speed != null) speed.removeModifier(HOWL); }
+        }
+    }
+
+    /** The ambush stance's condition (counters row C18b, Hit.noSky): no sky over the shooter's head, the block above its feet. A roof one block up is enough; the open is not. */
+    static boolean noSky(GravesAndGlory.Unit u) { return !u.mob.getWorld().isSkyVisible(u.mob.getBlockPos().up()); }
 
     /**
      * Plants the Oath Banner: a standing banner block in the nearest dye to its team's colour, one step behind the troop against its group's

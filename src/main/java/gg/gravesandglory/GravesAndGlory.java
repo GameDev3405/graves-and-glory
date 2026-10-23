@@ -11,6 +11,8 @@ import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.entity.passive.IronGolemEntity;
+import net.minecraft.entity.passive.PolarBearEntity;
+import net.minecraft.entity.passive.WolfEntity;
 import net.minecraft.entity.mob.*;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.*;
@@ -117,8 +119,8 @@ public final class GravesAndGlory implements ModInitializer {
                 for(Unit u:battle.units)if(u.mob==attacker)winner=u.squad;
                 // A shot that lands after its archer fell still credits the archer's army, and so does a death soon after an enemy's blow; a fall, lava, cramming or /kill long after one is nobody's kill.
                 if(winner==null&&BattleMath.creditWindowOpen(battle.time,victim.lastHitAt,Projectiles.CREDIT_WINDOW_TICKS))winner=victim.lastHitBy;
-                victim.squad.stats.lost++;Houses.logDeath(battle,victim);Houses.recompute(victim.squad);
-                if(winner!=null&&winner.team!=victim.squad.team){winner.earn(Spec.ECONOMY[0].killGold());winner.stats.kills++;}
+                victim.squad.stats.lost++;victim.squad.fallen.merge(victim.spec.id(),1,Integer::sum);Houses.logDeath(battle,victim);Houses.recompute(victim.squad);
+                if(winner!=null&&winner.team!=victim.squad.team){winner.earn(Spec.ECONOMY[0].killGold());winner.stats.kills++;if(attacker instanceof ServerPlayerEntity)Commander.playerKill(battle,winner);} // a kill by the commander's own hand: a Reaver's Bloodrush gives a troop back
             }
         });
         net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register((player,world,hand,entity,hit)->{
@@ -178,6 +180,8 @@ public final class GravesAndGlory implements ModInitializer {
         final Map<String,Long> chargedAt=new HashMap<>();
         /** House id to trait tier (1 to 3) for the Houses this army's living troops reach, from their slot weights; Houses.recompute keeps it. */
         final Map<String,Integer> traits=new LinkedHashMap<>();
+        /** Troop id to how many of them this army lost this round and has not had back as a Reaver's Bloodrush refund (Commander.Bloodrush); the round's start clears it. */
+        final Map<String,Integer> fallen=new LinkedHashMap<>();
         /** The commander ability (Commander): the battle time its cooldown ends, the time its run ends (0: not running), and what the running active keeps. */
         long abilityReadyAt,abilityUntil;Object abilityData;
         Squad(UUID owner,int team,Vec3d pos) {this.owner=owner;this.team=team;target=pos;}
@@ -212,8 +216,12 @@ public final class GravesAndGlory implements ModInitializer {
         long stunnedUntil;
         /** True once a Graveborn troop has risen again; it rises once. */
         boolean rose;
-        /** Blocks walked since this troop's last attack, for Pounce. */
+        /** Blocks walked since this troop's last attack, for Pounce (Abilities.unitTick adds the ground covered each tick; onHit sets it back to 0). */
         double travelSinceAttack;
+        /** Where the troop stood on its last tick, for travelSinceAttack. Null before its first tick. */
+        Vec3d travelAt;
+        /** The Howl on this troop: the battle time it ends (0: none) and its damage and speed shares (Abilities.howl sets them, auraFactor and unitTick read them). */
+        long howlUntil;double howlAmount,howlSpeed;
         /** Battle time of this troop's last charge-impact hit: the impact is the first hit of a fresh Charge (the combatDiscipline chargeImpactTicks window). */
         long chargeHitAt=-1;
         /** The group order an aura troop found on its last beat (Abilities.aura): the Oath Banner plants when it turns to Hold. Null before its first beat. */
@@ -390,6 +398,49 @@ public final class GravesAndGlory implements ModInitializer {
             speed.setBaseValue(sheet);
         }
     }
+    /** The Wildmoot Hide Hunter, Tusk Spear and Seer: a zombified piglin with only a SwimGoal that never holds anger (vanilla's mobTick, which is its anger pass, its grunts and its speed boost, is skipped whole: Tactics alone moves and swings it), never burns in daylight and never turns into a zombie in water. */
+    public static final class ArmyBoarkin extends ZombifiedPiglinEntity implements ArmyMob {
+        public ArmyBoarkin(World world){super(EntityType.ZOMBIFIED_PIGLIN,world);}
+        @Override public boolean shouldSave(){return false;}
+        @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
+        @Override protected boolean isAffectedByDaylight(){return false;}
+        @Override protected boolean canConvertInWater(){return false;}
+        @Override protected void mobTick(){}
+        @Override public void setAngerTime(int ticks){super.setAngerTime(0);}
+        @Override public void setAngryAt(UUID uuid){super.setAngryAt(null);}
+        @Override public void chooseRandomAngerTime(){}
+    }
+    /** The Wildmoot Moot Hound: a wolf with only a SwimGoal, never tamed, that never sits (a seat is cleared every tick) and never holds anger at anyone: Tactics alone picks its target, and the anger vanilla's tick would set from it is dropped. */
+    public static final class ArmyWolf extends WolfEntity implements ArmyMob {
+        public ArmyWolf(World world){super(EntityType.WOLF,world);}
+        @Override public boolean shouldSave(){return false;}
+        @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
+        @Override public void tickMovement(){super.tickMovement();if(isSitting())setSitting(false);if(isInSittingPose())setInSittingPose(false);}
+        @Override public void setAngerTime(int ticks){super.setAngerTime(0);}
+        @Override public void setAngryAt(UUID uuid){super.setAngryAt(null);}
+        @Override public void chooseRandomAngerTime(){}
+    }
+    /** The Wildmoot Web Stalker: a spider with only a SwimGoal. Its climbing navigation (SpiderNavigation, and the wall climb its tick sets from a horizontal collision) is vanilla's, so it goes over a wall Tactics sends it against. */
+    public static final class ArmySpider extends SpiderEntity implements ArmyMob {
+        public ArmySpider(World world){super(EntityType.SPIDER,world);}
+        @Override public boolean shouldSave(){return false;}
+        @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
+    }
+    /** The Wildmoot Old Horn: a polar bear with only a SwimGoal that never holds anger. Its warning pose (vanilla's rear) is set by nothing of its own: the trample (Abilities.trample) pulses it through rear for WARNING_TICKS as the bear's attack animation. */
+    public static final class ArmyBear extends PolarBearEntity implements ArmyMob {
+        /** How long the rear shows (presentation only): the client takes 6 ticks to raise the bear and 6 to drop it. */
+        static final int WARNING_TICKS=20;
+        int warningUntil;
+        public ArmyBear(World world){super(EntityType.POLAR_BEAR,world);}
+        @Override public boolean shouldSave(){return false;}
+        @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
+        @Override public void setAngerTime(int ticks){super.setAngerTime(0);}
+        @Override public void setAngryAt(UUID uuid){super.setAngryAt(null);}
+        @Override public void chooseRandomAngerTime(){}
+        /** The trample's rear: the warning pose for WARNING_TICKS from now. */
+        public void rear(){setWarning(true);warningUntil=age+WARNING_TICKS;}
+        @Override public void tick(){super.tick();if(isWarning()&&age>=warningUntil)setWarning(false);}
+    }
     /** A troop that fell: where, when (battle ticks), which troop (its sheet id) and for which team. Grave Bloom raises from Battle.deaths. */
     public record Death(Vec3d at,long time,String troop,int team) {}
     public static final class ArmyZombie extends ZombieEntity implements ArmyMob {
@@ -413,6 +464,10 @@ public final class GravesAndGlory implements ModInitializer {
         public final ServerWorld world;
         public final LinkedHashMap<UUID,Squad> squads=new LinkedHashMap<>();
         public final List<Unit> units=new ArrayList<>();
+        /** Per army, how many of its living troops of a Pack Hunters House (Houses.packHouse) have each enemy (entity id) as their target: Houses.countTargeters rebuilds it every 10 ticks before the units tick, and Pack Hunters (Houses.packHunters) reads it. */
+        final Map<Squad,Map<Integer,Integer>> targeters=new HashMap<>();
+        /** How many of an army's living Pack Hunters troops had this target at the last count. */
+        int targeters(Squad s,LivingEntity target){var m=targeters.get(s);return m==null?0:m.getOrDefault(target.getId(),0);}
         /** The unit spawn is placing, while spawnEntity runs (the stance_v1 tracking send finds it here); null otherwise. */
         Unit spawning;
         public final List<Capture> points=new ArrayList<>();
@@ -556,6 +611,7 @@ public final class GravesAndGlory implements ModInitializer {
             if(running&&time>=campaign.introUntil){
                 Projectiles.tick(this);Commander.tick(this);Abilities.bannerTick(this);Houses.expire(this);
                 if(time%20==0){Morale.tick(this);Houses.tick(this);}
+                if(time%10==0)Houses.countTargeters(this);
                 for(Unit u:new ArrayList<>(units))unitTick(u);
                 if(time%20==0)captureTick();
                 if(time%R.scoreInterval()==0){
@@ -726,6 +782,22 @@ public final class GravesAndGlory implements ModInitializer {
             var f=Spec.FACTIONS[s.team];return horizontalDistance(p.getPos(),new Vec3d(f.barracksX(),65,f.barracksZ()))<=Spec.ECONOMY[0].accessRadius()*Spec.ECONOMY[0].accessRadius();
         }
         void openBarracks(ServerPlayerEntity p){if(running)campaign.tutorialDid(p,3);if(ServerPlayNetworking.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,OPEN_BARRACKS,PacketByteBufs.create());}
+        /** Why a troop cannot join the squad's training queue now, or null when it can: a troop trains only while its living and queued units are below its count in the squad's banner, and slot weights stay within rules.squadSize. */
+        String roomFor(Squad s,Spec.TroopsRow spec){
+            int listed=Collections.frequency(s.banner,spec.id());
+            if(listed==0)return spec.name()+" is not in your banner. Only your banner's troops train here.";
+            long fielded=fielded(s).filter(u->u.spec==spec).count()+s.training.stream().filter(t->t.spec()==spec).count();
+            if(fielded>=listed)return "All "+listed+" "+spec.name()+" of your banner are fielded or in training.";
+            int weight=fielded(s).mapToInt(u->u.spec.slotWeight()).sum()+s.training.stream().mapToInt(t->t.spec().slotWeight()).sum();
+            if(weight+spec.slotWeight()>R.squadSize())return "Army full: disband a troop to make room for a different unit.";
+            return null;
+        }
+        /** A free troop at the back of the squad's training queue (a Bloodrush refund), done after the one before it; false, and nothing queued, when the queue is full or roomFor says no. */
+        boolean queueFree(Squad s,Spec.TroopsRow spec){
+            if(s.training.size()>=Spec.ECONOMY[0].maxQueue()||roomFor(s,spec)!=null)return false;
+            long previous=s.training.isEmpty()?time:s.training.getLast().finished();
+            s.training.addLast(new Training(spec,Math.max(time,previous)+Commander.trainingTicks(s,spec)));return true;
+        }
         void manage(ServerPlayerEntity p,Squad s,String cmd){
             if(!atBarracks(p,s)){p.sendMessage(Text.literal("Return to your faction's barracks to train or disband troops."),true);return;}
             if(cmd.equals("cancel-training")){for(Training t:s.training)s.gold+=t.paid();s.training.clear();return;}
@@ -735,13 +807,7 @@ public final class GravesAndGlory implements ModInitializer {
                 for(int i=units.size()-1;i>=0;i--){Unit u=units.get(i);if(u.squad==s&&!u.temporary&&u.spec==spec&&u.mob.isAlive()){leaveSide(u.mob);u.mob.discard();units.remove(i);s.gold+=Spec.ECONOMY[0].disbandRefund();Houses.recompute(s);return;}}
                 return;
             }
-            // A troop trains only while its living and queued units are below its count in the squad's banner, and slot weights stay within rules.squadSize.
-            int listed=Collections.frequency(s.banner,spec.id());
-            if(listed==0){p.sendMessage(Text.literal(spec.name()+" is not in your banner. Only your banner's troops train here."),true);return;}
-            long fielded=fielded(s).filter(u->u.spec==spec).count()+s.training.stream().filter(t->t.spec()==spec).count();
-            if(fielded>=listed){p.sendMessage(Text.literal("All "+listed+" "+spec.name()+" of your banner are fielded or in training."),true);return;}
-            int weight=fielded(s).mapToInt(u->u.spec.slotWeight()).sum()+s.training.stream().mapToInt(t->t.spec().slotWeight()).sum();
-            if(weight+spec.slotWeight()>R.squadSize()){p.sendMessage(Text.literal("Army full: disband a troop to make room for a different unit."),true);return;}
+            String full=roomFor(s,spec);if(full!=null){p.sendMessage(Text.literal(full),true);return;}
             int price=Commander.cost(s,spec);
             if(s.gold<price){p.sendMessage(Text.literal("Not enough gold. Battle supplies arrive over time; holding points increases them."),true);return;}
             if(s.training.size()>=Spec.ECONOMY[0].maxQueue())return;
@@ -807,7 +873,7 @@ public final class GravesAndGlory implements ModInitializer {
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
             respawns.clear();BattleEffects.startRound();Morale.startRound();
             for(Squad s:squads.values()){
-                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.arrived.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.chargedAt.clear();s.traits.clear();s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
+                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.arrived.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.chargedAt.clear();s.traits.clear();s.fallen.clear();s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
                 var player=server.getPlayerManager().getPlayer(s.owner);
                 if(player!=null){toBase(player,s.team);player.changeGameMode(GameMode.ADVENTURE);equipPlayer(player);}
                 reinforce(s);
@@ -861,7 +927,7 @@ public final class GravesAndGlory implements ModInitializer {
             for(long key:unitChunks)if(!wanted.contains(key)){var p=new net.minecraft.util.math.ChunkPos(key);world.setChunkForced(p.x,p.z,false);}
             unitChunks.clear();unitChunks.addAll(wanted);
         }
-        void unitTick(Unit u){ Tactics.tick(this,u,time); }
+        void unitTick(Unit u){ Abilities.unitTick(this,u,time);Tactics.tick(this,u,time); }
         void captureTick(){
             Set<Squad> onPoint=new HashSet<>(); // armies with a troop or their commander inside any point radius this second
             for(Capture p:points){
@@ -913,6 +979,7 @@ public final class GravesAndGlory implements ModInitializer {
             }
             Squad hitter=attackerSquad;for(Unit u:units)if(u.mob==attacker)hitter=u.squad;
             if(hitter!=null)for(Unit u:units)if(u.mob==entity){u.lastHitBy=hitter;u.lastHitAt=time;break;}
+            Commander.lifesteal(this,attackerSquad,attacker,source,amount); // the Reaver's Bloodrush: his own blow by hand feeds him
             return true;
         }
         record Sight(float x,float z,long seen){}

@@ -49,19 +49,48 @@ final class Houses {
     }
 
     /**
-     * The trait share of the factor in Combat.resolve: the attacker's House traits and the target's. Gilded Bulwark is the target's: a troop
+     * The trait share of the factor in Combat.resolve: the attacker's House traits and the target's. Wildmoot Pack Hunters is the attacker's
+     * (packHunters, with the blow's bearing off the target's facing: 0 for a blow with no direction). Gilded Bulwark is the target's: a troop
      * of a House whose Bulwark its squad reaches, with the shield tag, takes 1 - value from an arrow, bolt or blight (CounterMath.bulwark).
      * Ironclad Entrench is the target's too: a troop of Ironclad that stands still (still) takes 1 - value, and 1 - 2 x value inside the radius
-     * of a point its team owns (CounterMath.entrench). The other Houses' traits join in their tasks.
+     * of a point its team owns (CounterMath.entrench). Graveborn's trait does not shape a blow.
      */
-    static double traitFactor(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target, String kind) {
+    static double traitFactor(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target, String kind, double bearing) {
+        double factor = packHunters(b, attacker, target, bearing);
         var victim = Combat.unitOf(b, target);
-        if (victim == null) return 1;
+        if (victim == null) return factor;
         String house = victim.spec.house();
         var own = CounterMath.trait(Spec.HOUSETRAITS, house, victim.squad.traits.getOrDefault(house, 0));
-        double factor = CounterMath.bulwark(own, victim.tags.contains("shield"), kind);
+        factor *= CounterMath.bulwark(own, victim.tags.contains("shield"), kind);
         if (own != null && own.mechanic().equals("entrench")) factor *= CounterMath.entrench(own, still(victim), onOwnedPoint(b, victim));
         return factor;
+    }
+
+    /**
+     * Wildmoot Pack Hunters (the attacker's House trait at its army's tier): x(1 + value) when value2 or more of the attacker's own army's troops of that House
+     * have the target (Battle.targeters, counted every 10 ticks from each troop's target), or the attacker stands more than CounterMath.flankDegrees off the
+     * target's facing (CounterMath.packHunters). It stacks on the flank row C16, and cover (Bulwark) does not void it (no-routing design 4.1 and 4.2); a blow with no direction (bearing 0) has only the count.
+     */
+    static double packHunters(GravesAndGlory.Battle b, GravesAndGlory.Unit attacker, LivingEntity target, double bearing) {
+        String house = attacker.spec.house();
+        var own = CounterMath.trait(Spec.HOUSETRAITS, house, attacker.squad.traits.getOrDefault(house, 0));
+        return CounterMath.packHunters(own, b.targeters(attacker.squad, target), bearing);
+    }
+
+    /** Whether a House has Pack Hunters at any tier, so its troops are counted in Battle.targeters. */
+    static boolean packHouse(String house) {
+        for (var r : Spec.HOUSETRAITS) if (r.house().equals(house) && r.mechanic().equals("pack_hunters")) return true;
+        return false;
+    }
+
+    /** Rebuilds Battle.targeters: per army, its living troops of a Pack Hunters House by the entity id of their current target. Battle.tick calls it every 10 ticks before the units tick. */
+    static void countTargeters(GravesAndGlory.Battle b) {
+        b.targeters.clear();
+        for (var u : b.units) {
+            if (!u.mob.isAlive() || !packHouse(u.spec.house())) continue;
+            var t = u.mob.getTarget();
+            if (t != null) b.targeters.computeIfAbsent(u.squad, k -> new HashMap<>()).merge(t.getId(), 1, Integer::sum);
+        }
     }
 
     /** The troop's own House trait at its army's tier when that trait is Entrench, else null. */

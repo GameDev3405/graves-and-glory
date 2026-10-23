@@ -1,12 +1,16 @@
 package gg.gravesandglory;
 
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 import java.util.*;
@@ -47,13 +51,14 @@ public final class Commander {
     /** The fixed id of Muster's speed modifier on its army's troops. */
     static final UUID RALLY = UUID.fromString("8382ceb7-bd85-41fd-b662-34b5f1d36d95");
 
-    /** Puts this build's actives into ACTIVES (mod init): the Champion's Stand Fast, the Marshal's Muster (the sheet's active id rally_horn), the Warlock's Grave Bloom, the Quartermaster's Forward Supply and the Warden's Mark Prey. */
+    /** Puts this build's actives into ACTIVES (mod init): the Champion's Stand Fast, the Marshal's Muster (the sheet's active id rally_horn), the Warlock's Grave Bloom, the Quartermaster's Forward Supply, the Warden's Mark Prey and the Reaver's Bloodrush. */
     static void register() {
         ACTIVES.put("stand_fast", new StandFast());
         ACTIVES.put("rally_horn", new Muster());
         ACTIVES.put("grave_bloom", new GraveBloom());
         ACTIVES.put("forward_supply", new ForwardSupply());
         ACTIVES.put("mark_prey", new MarkPrey());
+        ACTIVES.put("bloodrush", new Bloodrush());
     }
 
     /**
@@ -242,6 +247,52 @@ public final class Commander {
         /** The margin round a foe's box the view ray may miss by and still pick it (blocks): a presentation number, so a mark lands on a troop the crosshair is on or beside. */
         static final double MARGIN = 0.3;
     }
+
+    /**
+     * The Reaver's Bloodrush: for durationTicks he has Speed II, his own blows by hand feed him value1 of what they deal (lifesteal, from Battle.allowDamage),
+     * and each enemy troop he kills by hand (playerKill, from Battle's AFTER_DEATH) brings one troop back for nothing: the cheapest his army lost this round
+     * and has not had back (Squad.fallen), at the back of his training queue (Battle.queueFree), at most value2 per use (the count in abilityData). It always starts.
+     */
+    static final class Bloodrush implements Active {
+        /** Speed II: the fixed effect kind the spec names. */
+        static final int SPEED_II = 1;
+        @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, Spec.ClassesRow c) {
+            p.addStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, c.durationTicks(), SPEED_II));
+            s.abilityData = new int[]{0};
+            b.world.playSound(null, p.getBlockPos(), SoundEvents.ENTITY_WOLF_GROWL, SoundCategory.PLAYERS, 1f, .6f);
+            b.world.spawnParticles(ParticleTypes.CRIT, p.getX(), p.getBodyY(.5), p.getZ(), 24, .6, .6, .6, .2);
+            return true;
+        }
+        @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.ClassesRow c) {}
+        /** The Speed goes with it (it would run out now anyway at expiry; at round start, the lobby or a leave it goes early). */
+        @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
+            var p = b.server.getPlayerManager().getPlayer(s.owner);
+            if (p != null) p.removeStatusEffect(StatusEffects.SPEED);
+        }
+        /** One troop back for a kill: the cheapest fallen troop that the banner and the army's room allow, after the last of the queue; nothing past value2 refunds, or when none fits. */
+        static void refund(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.ClassesRow c) {
+            if (!(s.abilityData instanceof int[] given) || given[0] >= c.value2()) return;
+            List<Spec.TroopsRow> fallen = new ArrayList<>();
+            for (var e : s.fallen.entrySet()) if (e.getValue() > 0) { var t = Campaign.troop(e.getKey()); if (t != null) fallen.add(t); }
+            fallen.sort(Comparator.comparingInt(Spec.TroopsRow::cost)); // a tie keeps the order they fell in
+            for (var t : fallen) {
+                if (!b.queueFree(s, t)) continue;
+                s.fallen.merge(t.id(), -1, Integer::sum);
+                given[0]++;
+                b.campaign.notice(s.owner, "Bloodrush: " + t.name() + " returns to your banner for nothing.");
+                return;
+            }
+        }
+    }
+
+    /** The Reaver's lifesteal (Bloodrush): his own blow by hand (the source is himself, not an arrow or a spell) heals him value1 of the amount while it runs. Battle.allowDamage calls it with the amount the target takes (a troop's damageScale applied). */
+    static void lifesteal(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Entity attacker, DamageSource source, float amount) {
+        if (!(attacker instanceof ServerPlayerEntity p) || source.getSource() != attacker || !running(b, s, "bloodrush")) return;
+        p.heal((float) (amount * row(s).value1()));
+    }
+
+    /** An enemy troop the commander killed by his own hand (Battle's AFTER_DEATH, after the kill's gold): while his Bloodrush runs, one troop comes back (Bloodrush.refund). */
+    static void playerKill(GravesAndGlory.Battle b, GravesAndGlory.Squad s) { if (running(b, s, "bloodrush")) Bloodrush.refund(b, s, row(s)); }
 
     /** The class row a squad fights under: its commander id, or the sheet's first class for an unknown id. */
     public static Spec.ClassesRow row(GravesAndGlory.Squad s) { return row(s == null ? "" : s.commander); }
