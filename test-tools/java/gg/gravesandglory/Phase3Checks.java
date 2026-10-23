@@ -697,6 +697,152 @@ public final class Phase3Checks implements ClientModInitializer {
             CampWorld.lessons(w);
         }
         static int lessonCount(ServerWorld w){int n=0;for(var l:lessonDisplays(w).values())n+=l.size();return n;}
+
+        /** The client's text display standing within 0.3 of a point, or null. */
+        static net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity clientDisplay(MinecraftClient c,Vec3d at){
+            net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity found=null;double best=0.3;
+            for(var e:c.world.getEntities())if(e instanceof net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity d&&d.getPos().distanceTo(at)<=best){best=d.getPos().distanceTo(at);found=d;}
+            return found;
+        }
+        /** p3-yard-lesson-text: each lesson display on the client reads its sheet text with every {key:<id>} turned into the name of the key that is bound (key.use for use), line breaks read as " / ";
+         *  so a garbled board would show here, not only in a picture. "ok ..." when right. */
+        static String lessonText(MinecraftClient c){
+            var out=new StringBuilder();var seen=new StringBuilder();int read=0;
+            for(var row:Spec.CAMPLESSONS){
+                var d=clientDisplay(c,at(row.dx(),row.y(),row.dz()));
+                if(d==null){out.append(row.id()).append(": no display on the client; ");continue;}
+                String got=Text.Serializer.fromJson(d.writeNbt(new NbtCompound()).getString("text")).getString().replace("\n"," / ");
+                var m=java.util.regex.Pattern.compile("\\{key:([a-z_]+)\\}").matcher(row.text());var want=new StringBuilder();int from=0;
+                while(m.find()){
+                    want.append(row.text(),from,m.start());String id=m.group(1).equals("use")?"key.use":"key.gravesandglory."+m.group(1);String name=null;
+                    for(var k:c.options.allKeys)if(k.getTranslationKey().equals(id))name=k.getBoundKeyLocalizedText().getString();
+                    want.append(name==null?"<no binding "+id+">":name);from=m.end();
+                }
+                want.append(row.text().substring(from));read++;
+                if(!got.equals(want.toString()))out.append(row.id()).append(" reads \"").append(got).append("\", want \"").append(want).append("\"; ");
+                if(got.contains("key.gravesandglory")||got.contains("{key"))out.append(row.id()).append(" shows a raw key name; ");
+                seen.append(row.id()).append(": ").append(got).append(" | ");
+            }
+            if(read!=4)out.append(read).append(" lessons read (want 4); ");
+            return out.length()==0?"ok every lesson reads its sheet text with the bound keys: "+seen:out.toString();
+        }
+        /** A text panel as the client draws it (DisplayEntityRenderer: lines of 9 px wrapped at line_width, 1/40 block a pixel times the scale, the dark background 1 px around, bottom centre at the entity):
+         *  fixed panels have their own normal (the entity's yaw), center panels turn to the eye. */
+        record Panel(String id,Vec3d base,boolean fixed,Vec3d normal,double half,double height,int lines,int px,float scale){
+            Vec3d centre(){return base.add(0,height/2,0);}
+            /** The four corners seen from an eye: bottom left, bottom right, top right, top left. */
+            Vec3d[] corners(Vec3d eye){
+                Vec3d r,u;
+                if(fixed){r=new Vec3d(-normal.z,0,normal.x);u=new Vec3d(0,1,0);}
+                else{var d=centre().subtract(eye).normalize();var up=Math.abs(d.y)>0.98?new Vec3d(1,0,0):new Vec3d(0,1,0);r=up.crossProduct(d).normalize();u=d.crossProduct(r).normalize();if(u.y<0)u=u.multiply(-1);}
+                var b=base.subtract(u.multiply(scale*0.025));
+                return new Vec3d[]{b.subtract(r.multiply(half)),b.add(r.multiply(half)),b.add(r.multiply(half)).add(u.multiply(height)),b.subtract(r.multiply(half)).add(u.multiply(height))};
+            }
+        }
+        static Panel panel(MinecraftClient c,String id,net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity d){
+            var nbt=d.writeNbt(new NbtCompound());var text=Text.Serializer.fromJson(nbt.getString("text"));int lw=nbt.contains("line_width")?nbt.getInt("line_width"):200;
+            float s=nbt.getCompound("transformation").getList("scale",net.minecraft.nbt.NbtElement.FLOAT_TYPE).getFloat(0);
+            var lines=c.textRenderer.wrapLines(text,lw);int px=0;for(var l:lines)px=Math.max(px,c.textRenderer.getWidth(l));
+            boolean fixed=nbt.getString("billboard").equals("fixed");double yaw=Math.toRadians(d.getYaw());
+            return new Panel(id,d.getPos(),fixed,new Vec3d(-Math.sin(yaw),0,Math.cos(yaw)),(px+2)/2.0*0.025*s,(lines.size()*9+2)*0.025*s,lines.size(),px,s);
+        }
+        /** Whether two convex quads of the view plane overlap by more than eps (separating axes). */
+        static boolean overlap(double[][] a,double[][] b,double eps){
+            for(var poly:new double[][][]{a,b})for(int i=0;i<poly.length;i++){
+                double ex=poly[(i+1)%poly.length][0]-poly[i][0],ey=poly[(i+1)%poly.length][1]-poly[i][1],nx=-ey,ny=ex,len=Math.hypot(nx,ny);if(len<1e-9)continue;nx/=len;ny/=len;
+                double a0=1e9,a1=-1e9,b0=1e9,b1=-1e9;
+                for(var p:a){double v=p[0]*nx+p[1]*ny;a0=Math.min(a0,v);a1=Math.max(a1,v);}
+                for(var p:b){double v=p[0]*nx+p[1]*ny;b0=Math.min(b0,v);b1=Math.max(b1,v);}
+                if(Math.min(a1,b1)-Math.max(a0,b0)<=eps)return false;
+            }
+            return true;
+        }
+        /** p3-yard-boards: every lesson panel is a fixed panel facing east that lies on its board (behind each of 15 points of it, 0.15 back, the board's dark oak planks; in front of it, 0.05 out, nothing with a shape),
+         *  and from every place a commander can stand around the yard (feet at the floor, x -56..-20, z -330..-278, a block apart, eye 1.62 up; feet and head cells free) and from the three yard pictures'
+         *  cameras no two panels of the four lessons and the Drillmaster's label overlap in his view (the corners of each pair projected on the plane square to the eye's look between them; a fixed panel seen from behind
+         *  is skipped, as its board hides it). "ok ..." when right. */
+        static String boards(MinecraftClient c){
+            var out=new StringBuilder();var panels=new ArrayList<Panel>();
+            for(var row:Spec.CAMPLESSONS){var d=clientDisplay(c,at(row.dx(),row.y(),row.dz()));if(d==null){out.append(row.id()).append(": no display on the client; ");continue;}panels.add(panel(c,row.id(),d));}
+            Spec.CampStationsRow drill=null;for(var s:Spec.CAMPSTATIONS)if(s.id().equals("drillmaster"))drill=s;
+            if(drill==null)out.append("no drillmaster row; ");
+            else{var d=clientDisplay(c,new Vec3d(C.originX()+drill.x(),drill.y()+3.7,C.originZ()+drill.z()));if(d==null)out.append("no Drillmaster label on the client; ");else panels.add(panel(c,"drillmaster",d));}
+            var sizes=new StringBuilder();int lessonsOn=0;
+            for(var p:panels){
+                sizes.append(String.format(Locale.ROOT,"%s %s %d lines %d px %.2f x %.2f, y %.2f..%.2f; ",p.id(),p.fixed()?"fixed":"turning",p.lines(),p.px(),2*p.half(),p.height(),p.base().y-p.scale()*0.025,p.base().y-p.scale()*0.025+p.height()));
+                if(p.id().equals("drillmaster"))continue;
+                if(!p.fixed()){out.append(p.id()).append(" turns to the viewer (want a fixed panel on its board); ");continue;}
+                if(p.normal().x<0.99){out.append(p.id()).append(String.format(Locale.ROOT," faces (%.2f, %.2f) not east; ",p.normal().x,p.normal().z));continue;}
+                var k=p.corners(p.base().add(p.normal().multiply(5)));int off=0,covered=0;String firstOff="";
+                for(int i=0;i<5;i++)for(int j=0;j<3;j++){
+                    double fi=i/4.0,fj=j/2.0;var pt=k[0].add(k[1].subtract(k[0]).multiply(fi)).add(k[3].subtract(k[0]).multiply(fj));
+                    pt=pt.add(k[1].subtract(k[0]).normalize().multiply(fi==0?0.02:fi==1?-0.02:0)).add(0,fj==0?0.02:fj==1?-0.02:0,0);
+                    var back=BlockPos.ofFloored(pt.subtract(p.normal().multiply(0.15)));var front=BlockPos.ofFloored(pt.add(p.normal().multiply(0.05)));
+                    if(!c.world.getBlockState(back).isOf(Blocks.DARK_OAK_PLANKS)){off++;if(firstOff.isEmpty())firstOff=back.toShortString()+" is "+c.world.getBlockState(back).getBlock().getTranslationKey();}
+                    if(!c.world.getBlockState(front).getCollisionShape(c.world,front).isEmpty())covered++;
+                }
+                if(off>0)out.append(p.id()).append(": ").append(off).append(" of 15 points not on the board's planks (first ").append(firstOff).append("); ");
+                if(covered>0)out.append(p.id()).append(": ").append(covered).append(" of 15 points covered by a block in front; ");
+                if(off==0&&covered==0)lessonsOn++;
+            }
+            var eyes=new ArrayList<Vec3d>();int floor=C.floorY()+1;
+            for(int x=-56;x<=-20;x++)for(int z=-330;z<=-278;z++){
+                var feet=new BlockPos(x,floor,z);if(!c.world.getBlockState(feet).getCollisionShape(c.world,feet).isEmpty()||!c.world.getBlockState(feet.up()).getCollisionShape(c.world,feet.up()).isEmpty())continue;
+                var under=feet.down();if(c.world.getBlockState(under).getCollisionShape(c.world,under).isEmpty())continue;
+                eyes.add(new Vec3d(x+.5,floor+1.62,z+.5));
+            }
+            eyes.add(new Vec3d(-28.5,69,-290));eyes.add(new Vec3d(-51.5,67.6,-313.5));eyes.add(new Vec3d(C.originX()+C.firstDx(),C.spawnY()+1.62,C.originZ()+C.firstDz()));
+            int views=0,pairs=0,overlaps=0;var over=new StringBuilder();var count=new TreeMap<String,Integer>();
+            for(var eye:eyes){
+                views++;
+                for(int i=0;i<panels.size();i++)for(int j=i+1;j<panels.size();j++){
+                    var a=panels.get(i);var b=panels.get(j);
+                    if(a.fixed()&&eye.subtract(a.base()).dotProduct(a.normal())<=0.05||b.fixed()&&eye.subtract(b.base()).dotProduct(b.normal())<=0.05)continue;
+                    var dref=a.centre().add(b.centre()).multiply(0.5).subtract(eye).normalize();var up=Math.abs(dref.y)>0.98?new Vec3d(1,0,0):new Vec3d(0,1,0);var rr=up.crossProduct(dref).normalize();var uu=dref.crossProduct(rr).normalize();
+                    double[][] pa=new double[4][],pb=new double[4][];boolean front=true;var ca=a.corners(eye);var cb=b.corners(eye);
+                    for(int q=0;q<4&&front;q++){
+                        var ea=ca[q].subtract(eye);var eb=cb[q].subtract(eye);double da=ea.dotProduct(dref),db=eb.dotProduct(dref);
+                        if(da<0.2||db<0.2){front=false;break;}
+                        pa[q]=new double[]{ea.dotProduct(rr)/da,ea.dotProduct(uu)/da};pb[q]=new double[]{eb.dotProduct(rr)/db,eb.dotProduct(uu)/db};
+                    }
+                    if(!front)continue;
+                    pairs++;
+                    if(overlap(pa,pb,0.002)){overlaps++;count.merge(a.id()+" and "+b.id(),1,Integer::sum);if(over.length()<600)over.append(a.id()).append(" and ").append(b.id()).append(String.format(Locale.ROOT," from (%.1f, %.1f, %.1f); ",eye.x,eye.y,eye.z));}
+                }
+            }
+            if(lessonsOn!=4)out.append(lessonsOn).append(" of 4 lessons lie on their boards; ");
+            if(panels.size()!=5)out.append(panels.size()).append(" panels found (want 4 lessons and the Drillmaster's label); ");
+            if(views<500)out.append("only ").append(views).append(" places to look from; ");
+            if(overlaps>0)out.append(overlaps).append(" overlapping pairs in ").append(pairs).append(" pairs seen from ").append(views).append(" places (").append(count).append("), first: ").append(over);
+            return (out.length()==0?"ok the four lessons lie on their boards and no two of the five panels overlap: ":"")+out+"pairs seen "+pairs+" from "+views+" places; panels: "+sizes;
+        }
+        /** p3-yard-drill-sight: the Drillmaster's label is whole in sight (11 points of its panel: 9 along its middle line from end to end, the middle of its top and of its bottom, each reached by a ray from the eye
+         *  that hits no block shape on the way) from the first arrival, the camp-yard camera and the way in from the parade (feet on the floor at z -303.5, x -34.5 to -22.5): no post, beam or rack of the yard covers it
+         *  where a commander first meets it. The views from the benches before the boards (x -53.5 and -52.5, z -315.5 to -293.5, looking back east) are counted and named but do not fail it: from there the shade's
+         *  two back posts stand in front of the 8-block label, as any post near it does from one side. "ok ..." when right. */
+        static String drillSight(MinecraftClient c){
+            Spec.CampStationsRow drill=null;for(var s:Spec.CAMPSTATIONS)if(s.id().equals("drillmaster"))drill=s;
+            if(drill==null)return "no drillmaster row";
+            var d=clientDisplay(c,new Vec3d(C.originX()+drill.x(),drill.y()+3.7,C.originZ()+drill.z()));if(d==null)return "no Drillmaster label on the client";
+            var p=panel(c,"drillmaster",d);
+            var eyes=new LinkedHashMap<String,Vec3d>();double eye=C.floorY()+1+1.62;
+            eyes.put("first arrival",new Vec3d(C.originX()+C.firstDx(),C.spawnY()+1.62,C.originZ()+C.firstDz()));eyes.put("camp-yard camera",new Vec3d(-28.5,69,-290));
+            for(double x=-34.5;x<=-22.5;x+=2)eyes.put(String.format(Locale.ROOT,"way in x %.1f",x),new Vec3d(x,eye,C.originZ()+6.5));
+            for(double x:new double[]{-53.5,-52.5})for(double z=-315.5;z<=-293.5;z+=2)eyes.put(String.format(Locale.ROOT,"bench (%.1f, %.1f)",x,z),new Vec3d(x,eye,z));
+            int views=0,blocked=0,benches=0,benchBlocked=0;var bad=new StringBuilder();var benchBad=new StringBuilder();
+            for(var en:eyes.entrySet()){
+                boolean bench=en.getKey().startsWith("bench");
+                var e=en.getValue();var k=p.corners(e);var mid0=k[0].add(k[3]).multiply(0.5);var mid1=k[1].add(k[2]).multiply(0.5);var pts=new ArrayList<Vec3d>();
+                for(int i=0;i<9;i++){double f=0.02+0.96*i/8.0;pts.add(mid0.add(mid1.subtract(mid0).multiply(f)));}
+                var c0=k[0].add(k[1]).multiply(0.5);var c3=k[3].add(k[2]).multiply(0.5);pts.add(c0.add(c3.subtract(c0).multiply(0.05)));pts.add(c0.add(c3.subtract(c0).multiply(0.95)));
+                int seen=0;
+                for(var pt:pts){var hit=c.world.raycast(new net.minecraft.world.RaycastContext(e,pt,net.minecraft.world.RaycastContext.ShapeType.VISUAL,net.minecraft.world.RaycastContext.FluidHandling.NONE,c.player));if(hit.getType()==net.minecraft.util.hit.HitResult.Type.MISS||hit.getPos().distanceTo(pt)<0.1)seen++;}
+                if(bench){benches++;if(seen<pts.size()){benchBlocked++;if(benchBad.length()<400)benchBad.append(en.getKey()).append(" ").append(seen).append("/").append(pts.size()).append("; ");}continue;}
+                views++;if(seen<pts.size()){blocked++;if(bad.length()<500)bad.append(en.getKey()).append(": ").append(seen).append(" of ").append(pts.size()).append(" points in sight; ");}
+            }
+            return (blocked==0&&views>=8?"ok ":"")+"the Drillmaster's label ("+String.format(Locale.ROOT,"%.2f x %.2f",2*p.half(),p.height())+") from the arrival, the camp-yard camera and the way in, "+views+" places, with a point out of sight from "+blocked+(bad.length()==0?"":": "+bad)
+                +"; for information, from the benches "+benches+" places, "+benchBlocked+" with a point out of sight"+(benchBad.length()==0?"":": "+benchBad);
+        }
         static String dummies(GravesAndGlory.Battle b){
             var w=b.world;var out=new StringBuilder();var stands=new ArrayList<net.minecraft.entity.decoration.ArmorStandEntity>();
             for(var e:w.iterateEntities())if(e instanceof net.minecraft.entity.decoration.ArmorStandEntity s&&s.getCommandTags().contains("camp-dummy"))stands.add(s);
@@ -774,9 +920,18 @@ public final class Phase3Checks implements ClientModInitializer {
                         report("p3-yard-lessons",why.isEmpty(),why.isEmpty()?"four lesson displays with the keybinds menu, formation, attack and key.use; with menu on K the client reads: "+seen:why);
                         GravesAndGloryClient.menu.setBoundKey(net.minecraft.client.util.InputUtil.fromTranslationKey(savedMenuKey));net.minecraft.client.option.KeyBinding.updateKeysByCode();savedMenuKey=null;
                         done=false;server(c,b->{replaceLessons(b.world);done=true;}); // fresh texts again, resolved with the key put back
-                        stage=9;waited=0;
+                        stage=20;waited=0;
                     }
                 }
+                case 20->{ // the boards as the client draws them, with the binding put back: what each says, then where each panel lies and whether two panels overlap from anywhere a commander stands
+                    if(done&&++waited>=30){
+                        String text=lessonText(c);report("p3-yard-lesson-text",text.startsWith("ok "),text);
+                        String boards=boards(c);report("p3-yard-boards",boards.startsWith("ok "),boards);
+                        String sight=drillSight(c);report("p3-yard-drill-sight",sight.startsWith("ok "),sight);
+                        stage=21;waited=0;
+                    }
+                }
+                case 21->{if(view(c,"camp-yard-boards",-44.0,67.0,-304.5,-56.0,67.0,-304.5)){stage=9;waited=0;}}
                 case 9->{
                     if(waited==0){done=false;serverPart="";server(c,b->{serverPart=dummies(b);done=true;});waited=1;}
                     else if(done){report("p3-yard-dummies",serverPart.isEmpty(),serverPart.isEmpty()?"six armor stands tagged camp-dummy at their positions, invulnerable, in an iron helmet and a leather chestplate":serverPart);stage=10;waited=0;}

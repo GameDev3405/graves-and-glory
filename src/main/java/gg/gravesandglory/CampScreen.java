@@ -79,7 +79,7 @@ final class CampScreen extends ArmyScreen {
         }else if(page.equals("train")){
             // The Drillmaster: battle 1 (the first Long March battle) and the practice skirmish.
             var start=primary("START",x,200,w/2-7,b->action("campaign:"+Spec.CAMPAIGNBATTLES[0].id()));start.active=!running;
-            var practice=button("PRACTICE",x+w/2+7,200,w/2-7,b->action("camp:practice"));practice.active=!running;
+            var practice=button("PRACTICE",x+w/2+7,203,w/2-7,b->action("camp:practice"));practice.active=!running; // a button is 20 high and a primary 26: 3 lower, so both labels sit on one line
         }else if(page.equals("match")){
             for(int i=0;i<Spec.MAPS.length;i++){final int map=i;button("Vote: "+Spec.MAPS[i].name(),x,149+i*35,w,b->action("vote:"+map));}
             button("Play with friends in a room",x,350,w,b->page("room"));

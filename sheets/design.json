@@ -1756,6 +1756,14 @@
       "height": 16,
       "palette": "stone",
       "purpose": "Graveborn shrine and recruiter"
+    },
+    {
+      "id": "camp/training_yard",
+      "width": 23,
+      "depth": 31,
+      "height": 8,
+      "palette": "wood",
+      "purpose": "training yard and tutorial"
     }
   ],
   "camp": [
@@ -1934,6 +1942,19 @@
       "slotX": 1,
       "slotY": 2,
       "slotZ": 9
+    },
+    {
+      "id": "yard",
+      "template": "camp/training_yard",
+      "dx": -46,
+      "dz": 6,
+      "y": 64,
+      "rotation": 0,
+      "flatten": true,
+      "station": "train",
+      "slotX": -1,
+      "slotY": -1,
+      "slotZ": -1
     }
   ],
   "campStations": [
@@ -2049,29 +2070,29 @@
   "campLessons": [
     {
       "id": "lesson-1",
-      "dx": -55.5,
-      "y": 67.2,
+      "dx": -55.9,
+      "y": 66.55,
       "dz": -3.5,
       "text": "LESSON 1 OF 4 / Press {key:menu}, choose a group and Move, then click the ground to send them."
     },
     {
       "id": "lesson-2",
-      "dx": -55.5,
-      "y": 67.2,
+      "dx": -55.9,
+      "y": 66.55,
       "dz": 2.5,
       "text": "LESSON 2 OF 4 / Press {key:formation} to change formation. Shieldwall holds a line; Wedge breaks one."
     },
     {
       "id": "lesson-3",
-      "dx": -55.5,
-      "y": 67.2,
+      "dx": -55.9,
+      "y": 66.78,
       "dz": 8.5,
       "text": "LESSON 3 OF 4 / Press {key:attack} and aim at an enemy or a point to send your army in."
     },
     {
       "id": "lesson-4",
-      "dx": -55.5,
-      "y": 67.2,
+      "dx": -55.9,
+      "y": 66.33,
       "dz": 14.5,
       "text": "LESSON 4 OF 4 / Recruit at your barracks lectern with {key:use}. Trained troops join your army at the front."
     }

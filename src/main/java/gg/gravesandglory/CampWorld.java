@@ -254,22 +254,33 @@ final class CampWorld {
         var c=Spec.CAMP[0];display(w,s.label(),c.originX()+s.x(),s.y()+3.7,c.originZ()+s.z(),"camp:"+s.page());
     }
     /** One text display in the label style (centre billboard, dark panel, shadow, 1.7 scale) at a world position, text through text(), tagged TAG, the generation and the extra tag. */
-    static void display(ServerWorld w,String text,double x,double y,double z,String extraTag){
+    static void display(ServerWorld w,String text,double x,double y,double z,String extraTag){display(w,text(text),x,y,z,extraTag,"center",1.7f,220,0f);}
+    /** One text display with the label's dark panel and shadow: the billboard mode (center turns to the viewer, fixed stands at the yaw), the scale, the line width in pixels and the yaw. */
+    static void display(ServerWorld w,Text text,double x,double y,double z,String extraTag,String billboard,float size,int lineWidth,float yaw){
         var label=EntityType.TEXT_DISPLAY.create(w);if(label==null)return;
-        var nbt=label.writeNbt(new net.minecraft.nbt.NbtCompound());nbt.putString("text",Text.Serializer.toJson(text(text)));
-        nbt.putString("billboard","center");nbt.putInt("background",0xb0192227);nbt.putBoolean("shadow",true);nbt.putInt("line_width",220);nbt.putFloat("view_range",2f);
-        var transform=new net.minecraft.nbt.NbtCompound();var scale=new net.minecraft.nbt.NbtList();for(int i=0;i<3;i++)scale.add(net.minecraft.nbt.NbtFloat.of(1.7f));transform.put("scale",scale);var translation=new net.minecraft.nbt.NbtList();for(int i=0;i<3;i++)translation.add(net.minecraft.nbt.NbtFloat.of(0));transform.put("translation",translation);
+        var nbt=label.writeNbt(new net.minecraft.nbt.NbtCompound());nbt.putString("text",Text.Serializer.toJson(text));
+        nbt.putString("billboard",billboard);nbt.putInt("background",0xb0192227);nbt.putBoolean("shadow",true);nbt.putInt("line_width",lineWidth);nbt.putFloat("view_range",2f);
+        var transform=new net.minecraft.nbt.NbtCompound();var scale=new net.minecraft.nbt.NbtList();for(int i=0;i<3;i++)scale.add(net.minecraft.nbt.NbtFloat.of(size));transform.put("scale",scale);var translation=new net.minecraft.nbt.NbtList();for(int i=0;i<3;i++)translation.add(net.minecraft.nbt.NbtFloat.of(0));transform.put("translation",translation);
         for(String key:new String[]{"left_rotation","right_rotation"}){var rotation=new net.minecraft.nbt.NbtList();for(int i=0;i<4;i++)rotation.add(net.minecraft.nbt.NbtFloat.of(i==3?1:0));transform.put(key,rotation);}nbt.put("transformation",transform);
-        label.readNbt(nbt);label.refreshPositionAndAngles(x,y,z,0,0);
+        label.readNbt(nbt);label.refreshPositionAndAngles(x,y,z,yaw,0);
         label.addCommandTag(TAG);label.addCommandTag("camp-generation:"+generation);label.addCommandTag(extraTag);w.spawnEntity(label);
     }
 
     // ---- the training yard ----
 
+    /** The lesson boards: a fixed panel facing east (yaw -90) at 1.0 scale wrapped at 112 pixels, so it is 2.85 blocks wide and lies on its three-block backboard of the yard piece (camp/training_yard, local x 0)
+     *  instead of turning to the viewer: four turning 1.7 panels 9 blocks wide on rows 6 blocks apart overlapped into one garbled line from the bowl (Task 3 grade). */
+    static final float LESSON_SCALE=1.0f,LESSON_YAW=-90f;
+    static final int LESSON_LINE=112;
     /** The lesson boards of the yard: one text display per campLessons row at (originX+dx, y, originZ+dz), tagged TAG and camp-lesson:<id>; {key:<id>} in a text becomes the keybind, so the board shows the key the player has set. */
     static void lessons(ServerWorld w){
         var c=Spec.CAMP[0];
-        for(var l:Spec.CAMPLESSONS)display(w,l.text(),c.originX()+l.dx(),l.y(),c.originZ()+l.dz(),"camp-lesson:"+l.id());
+        for(var l:Spec.CAMPLESSONS)display(w,lessonText(l.text()),c.originX()+l.dx(),l.y(),c.originZ()+l.dz(),"camp-lesson:"+l.id(),"fixed",LESSON_SCALE,LESSON_LINE,LESSON_YAW);
+    }
+    /** A lesson as Text: the part before the first " / " is a bold heading on its own line, the rest goes through text() (gold, keybinds). */
+    static Text lessonText(String lesson){
+        int cut=lesson.indexOf(" / ");if(cut<0)return text(lesson);
+        return Text.empty().append(Text.literal(lesson.substring(0,cut)).formatted(Formatting.BOLD)).append("\n").append(text(lesson.substring(cut+3))).formatted(Formatting.GOLD);
     }
     /** How many dummies stand in the yard, and where the first one stands (dx, dz from the origin of the camp, y): the others follow every two blocks along x. */
     static final int DUMMIES=6;
