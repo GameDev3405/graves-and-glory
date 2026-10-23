@@ -15,6 +15,7 @@ import net.minecraft.entity.passive.PolarBearEntity;
 import net.minecraft.entity.passive.WolfEntity;
 import net.minecraft.entity.mob.*;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.projectile.PersistentProjectileEntity;
 import net.minecraft.item.*;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.PacketByteBuf;
@@ -120,7 +121,7 @@ public final class GravesAndGlory implements ModInitializer {
                 // A shot that lands after its archer fell still credits the archer's army, and so does a death soon after an enemy's blow; a fall, lava, cramming or /kill long after one is nobody's kill.
                 if(winner==null&&BattleMath.creditWindowOpen(battle.time,victim.lastHitAt,Projectiles.CREDIT_WINDOW_TICKS))winner=victim.lastHitBy;
                 victim.squad.stats.lost++;victim.squad.fallen.merge(victim.spec.id(),1,Integer::sum);Houses.logDeath(battle,victim);Houses.recompute(victim.squad);
-                if(winner!=null&&winner.team!=victim.squad.team){winner.earn(Spec.ECONOMY[0].killGold());winner.stats.kills++;if(attacker instanceof ServerPlayerEntity)Commander.playerKill(battle,winner);} // a kill by the commander's own hand: a Reaver's Bloodrush gives a troop back
+                if(winner!=null&&winner.team!=victim.squad.team){winner.earn(Spec.ECONOMY[0].killGold());winner.stats.kills++;if(attacker instanceof ServerPlayerEntity&&source.getSource()==attacker)Commander.playerKill(battle,winner);} // a kill by the commander's own hand (not his arrow, not a troop of his, not a fall in his credit window): a Reaver's Bloodrush gives a troop back
             }
         });
         net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register((player,world,hand,entity,hit)->{
@@ -224,6 +225,8 @@ public final class GravesAndGlory implements ModInitializer {
         long howlUntil;double howlAmount,howlSpeed;
         /** Battle time of this troop's last charge-impact hit: the impact is the first hit of a fresh Charge (the combatDiscipline chargeImpactTicks window). */
         long chargeHitAt=-1;
+        /** The Charge stamp (Squad.chargedAt of its group) Old Horn last trampled under: a trample comes once per fresh Charge (Abilities.trample). */
+        long trampledCharge=-1;
         /** The group order an aura troop found on its last beat (Abilities.aura): the Oath Banner plants when it turns to Hold. Null before its first beat. */
         String seenOrder;
         /** Where the troop stood when it last moved more than the Entrench radius, and the battle time (ticks) it has stood there since (Houses.sample, on each Tactics beat). Null before its first beat. */
@@ -410,12 +413,16 @@ public final class GravesAndGlory implements ModInitializer {
         @Override public void setAngryAt(UUID uuid){super.setAngryAt(null);}
         @Override public void chooseRandomAngerTime(){}
     }
-    /** The Wildmoot Moot Hound: a wolf with only a SwimGoal, never tamed, that never sits (a seat is cleared every tick) and never holds anger at anyone: Tactics alone picks its target, and the anger vanilla's tick would set from it is dropped. */
+    /** The Wildmoot Moot Hound: a wolf with only a SwimGoal that never sits (a seat is cleared every tick), never holds anger at anyone (Tactics alone picks its target, and the anger vanilla's tick would set from it is dropped), takes a troop's blow in full (vanilla's wolf halves a blow from anything but a player or an arrow) and cannot be tamed or fed (a click is passed). */
     public static final class ArmyWolf extends WolfEntity implements ArmyMob {
         public ArmyWolf(World world){super(EntityType.WOLF,world);}
         @Override public boolean shouldSave(){return false;}
         @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
         @Override public void tickMovement(){super.tickMovement();if(isSitting())setSitting(false);if(isInSittingPose())setInSittingPose(false);}
+        /** Vanilla's wolf takes (amount + 1) / 2 of a blow whose attacker is neither a player nor an arrow; a troop's blow goes in as 2a - 1, so the half is a again. */
+        @Override public boolean damage(DamageSource source,float amount){Entity e=source.getAttacker();return super.damage(source,e!=null&&!(e instanceof PlayerEntity)&&!(e instanceof PersistentProjectileEntity)?amount*2-1:amount);}
+        /** No taming, no seat on a click, no bone taken: a troop is not a pet. */
+        @Override public ActionResult interactMob(PlayerEntity player,Hand hand){return ActionResult.PASS;}
         @Override public void setAngerTime(int ticks){super.setAngerTime(0);}
         @Override public void setAngryAt(UUID uuid){super.setAngryAt(null);}
         @Override public void chooseRandomAngerTime(){}
@@ -967,10 +974,16 @@ public final class GravesAndGlory implements ModInitializer {
             if(team<0)return true;
             if(!running)return false;
             if(!R.friendlyFire()&&attackTeam==team)return false;
-            // A commander's own blow: a troop takes it at combatDiscipline.damageScale, and the commander effects (his Mark Prey, the target side's Stand Fast) multiply in.
-            if(!scalingDamage&&attacker instanceof ServerPlayerEntity){
+            // A commander's own blow: a troop takes it at combatDiscipline.damageScale, and the commander effects (his Mark Prey, the target side's Stand Fast) multiply in. Under his Bloodrush a blow by hand feeds him from what the target really loses (this hook fires before vanilla's shield block and hurt cooldown, which may take nothing), so the scaled blow is dealt here and measured.
+            if(!scalingDamage&&attacker instanceof ServerPlayerEntity p){
                 double scale=(entity instanceof ServerPlayerEntity?1:Spec.COMBATDISCIPLINE[0].damageScale())*Commander.playerFactor(this,attackerSquad,entity);
-                if(scale!=1){scalingDamage=true;try{entity.damage(source,(float)(amount*scale));}finally{scalingDamage=false;}return false;}
+                boolean feeds=Commander.feeds(this,attackerSquad,source);
+                if(scale!=1||feeds){
+                    float before=entity.getHealth()+entity.getAbsorptionAmount();
+                    scalingDamage=true;try{entity.damage(source,(float)(amount*scale));}finally{scalingDamage=false;}
+                    if(feeds){float after=entity.getHealth()+entity.getAbsorptionAmount();Commander.lifesteal(this,attackerSquad,p,after>before?before:before-after);} // more than before: a commander struck down and respawned, or a troop that rose again, lost all it had
+                    return false;
+                }
             }
             if(entity instanceof ServerPlayerEntity p&&p.getHealth()<=amount){
                 if(Diagnostics.active())System.out.println("[Graves and Glory damage] respawn cause="+source.getType().msgId()+" amount="+amount+" hp="+p.getHealth()+" pos="+p.getPos()+" fall="+p.fallDistance);
@@ -979,7 +992,6 @@ public final class GravesAndGlory implements ModInitializer {
             }
             Squad hitter=attackerSquad;for(Unit u:units)if(u.mob==attacker)hitter=u.squad;
             if(hitter!=null)for(Unit u:units)if(u.mob==entity){u.lastHitBy=hitter;u.lastHitAt=time;break;}
-            Commander.lifesteal(this,attackerSquad,attacker,source,amount); // the Reaver's Bloodrush: his own blow by hand feeds him
             return true;
         }
         record Sight(float x,float z,long seen){}

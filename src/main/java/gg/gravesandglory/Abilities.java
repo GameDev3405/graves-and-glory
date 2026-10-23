@@ -39,8 +39,8 @@ import java.util.UUID;
  * harpoon (an on-hit slow with a cooldown and a pull toward the shooter), the tentacle sweep (a slam on hit with a cooldown) and the undertow (a slam on a timer that pulls and hurts).
  * The Wildmoot's rows: the pounce (x amount on the first blow after radius blocks walked since the last attack, then its cooldown: auraFactor and onHit), the ambush
  * stance (counters row C18b, from noSky: no sky over the shooter's head), the ensnare (an on-hit slow with a cooldown), the howl (the aura row on a timer: damage and
- * speed to the army's troops within its radius for its duration) and the trample (a slam on charge_contact: on a blow under Charge, every other enemy within the
- * radius of the bear, with knockback and the bear's rear). Every number comes from the row, with the combatDiscipline defaults where a row says 0.
+ * speed to the army's troops within its radius for its duration) and the trample (a slam on charge_contact: once per fresh Charge, on the bear's first blow under it,
+ * every enemy within the radius of the bear, the one struck among them, with knockback and the bear's rear). Every number comes from the row, with the combatDiscipline defaults where a row says 0.
  */
 final class Abilities {
     private Abilities() {}
@@ -198,42 +198,50 @@ final class Abilities {
     static void slam(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity primary, Spec.AbilitiesRow row) {
         if (row.cooldownTicks() > 0 && b.time < u.abilityAt) return; // the Brute's sweep: at most once per cooldown
         Vec3d at = primary.getPos();
-        int swept = 0;
-        float base = (float) (row.amount() * baseHit(b, u));
-        double reach = row.radius() * row.radius();
-        for (var e : enemies(b, u.squad.team)) {
-            if (e == primary || e.squaredDistanceTo(primary) > reach) continue;
-            float applied = Combat.resolve(b, u, e, base, "slam", true);
-            if (applied <= 0) continue;
-            swept++;
-            BattleEffects.flash(b, new Vec3d(e.getX(), e.getBodyY(.6), e.getZ()), u.squad.team);
-            if (e.isAlive() && !Combat.structure(e)) knock(b, e, at, u.mob.getPos(), row.knockback());
-        }
+        int swept = splash(b, u, at, primary, (float) (row.amount() * baseHit(b, u)), row.radius(), row.knockback(), u.mob.getPos());
         if (swept > 0 && row.cooldownTicks() > 0) u.abilityAt = b.time + row.cooldownTicks(); // a sweep that struck nobody keeps its cooldown for the next hit
         b.world.spawnParticles(ParticleTypes.CLOUD, at.x, at.y + .2, at.z, 16, row.radius() / 2, .1, row.radius() / 2, .06);
         b.world.playSound(null, primary.getBlockPos(), SoundEvents.BLOCK_ANVIL_LAND, SoundCategory.HOSTILE, .35f, .7f);
     }
 
     /**
-     * Old Horn's trample (the slam row on charge_contact): on a blow of his while his group's order is Charge and his cooldown is up, every other enemy within
-     * the row's radius of him takes the row's amount (times his army's progression) as a secondary slam hit, which their counters and traits shape, and each
-     * that lives is thrown from his spot with the row's knockback (a structure is not moved); the cooldown starts and he rears (ArmyBear.rear: the warning pose
-     * for its pulse, his attack animation) in a cloud of dust. On Hold, or inside the cooldown, his blow is a bite alone. The trample lands with the blow that
-     * makes contact, not before it.
+     * The splash of a slam or a trample: every enemy within the radius of the spot (but `except`: the slam's primary, which its own blow struck) takes base as a
+     * secondary slam hit (its own counters, traits, auras and commander factors apply and no on-hit ability runs again), each that took it flashes, and each that
+     * took it and lives is thrown from the spot with the knockback (a structure is not moved; `fallback` gives the direction for one standing on the spot).
+     * Returns how many took it.
+     */
+    static int splash(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Vec3d at, LivingEntity except, float base, double radius, double knockback, Vec3d fallback) {
+        int struck = 0;
+        double reach = radius * radius;
+        for (var e : enemies(b, u.squad.team)) {
+            if (e == except || e.squaredDistanceTo(at) > reach) continue;
+            float applied = Combat.resolve(b, u, e, base, "slam", true);
+            if (applied <= 0) continue;
+            struck++;
+            BattleEffects.flash(b, new Vec3d(e.getX(), e.getBodyY(.6), e.getZ()), u.squad.team);
+            if (e.isAlive() && !Combat.structure(e)) knock(b, e, at, fallback, knockback);
+        }
+        return struck;
+    }
+
+    /**
+     * Old Horn's trample (the slam row on charge_contact): once per fresh Charge, on his first blow under it with his cooldown up (Unit.trampledCharge holds the
+     * Charge stamp, Squad.chargedAt of his group, he last trampled under), every enemy within the row's radius of him, the one his blow struck among them, takes
+     * the row's amount (times his army's progression) as a secondary slam hit, which their counters and traits shape, and each that lives is thrown from his spot
+     * with the row's knockback (a structure is not moved); the cooldown starts and he rears (ArmyBear.rear: the warning pose for its pulse, his attack animation)
+     * in a cloud of dust. On Hold, under a Charge order with no stamp or one he trampled under already, or inside the cooldown, his blow is a bite alone. The
+     * trample lands with the blow that makes contact, not before it: the struck enemy took the bite this tick, so its hurt cooldown is cleared first, or vanilla
+     * would swallow the smaller blow.
      */
     static void trample(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity primary, Spec.AbilitiesRow row) {
         if (!b.assignment(u).order.equals("charge") || b.time < u.abilityAt) return;
+        Long charged = u.squad.chargedAt.get(u.spec.group());
+        if (charged == null || u.trampledCharge >= charged) return;
+        u.trampledCharge = charged;
         u.abilityAt = b.time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks());
         Vec3d at = u.mob.getPos();
-        float base = (float) (row.amount() * b.campaign.damage(u));
-        double reach = row.radius() * row.radius();
-        for (var e : enemies(b, u.squad.team)) {
-            if (e == primary || e.squaredDistanceTo(u.mob) > reach) continue;
-            float applied = Combat.resolve(b, u, e, base, "slam", true);
-            if (applied <= 0) continue;
-            BattleEffects.flash(b, new Vec3d(e.getX(), e.getBodyY(.6), e.getZ()), u.squad.team);
-            if (e.isAlive() && !Combat.structure(e)) knock(b, e, at, primary.getPos(), row.knockback());
-        }
+        primary.timeUntilRegen = 0;
+        splash(b, u, at, null, (float) (row.amount() * b.campaign.damage(u)), row.radius(), row.knockback(), primary.getPos());
         if (u.mob instanceof GravesAndGlory.ArmyBear bear) bear.rear();
         b.world.spawnParticles(ParticleTypes.CLOUD, at.x, at.y + .2, at.z, 20, row.radius() / 2, .1, row.radius() / 2, .06);
         b.world.playSound(null, u.mob.getBlockPos(), SoundEvents.ENTITY_POLAR_BEAR_WARNING, SoundCategory.HOSTILE, 1f, .8f);
@@ -364,7 +372,8 @@ final class Abilities {
         double f = 1;
         for (var banner : b.banners) if (covers(b, banner, attacker.squad, attacker.mob.getPos())) f = Math.max(f, 1 + banner.amount());
         if (b.time < attacker.howlUntil) f *= 1 + attacker.howlAmount;
-        if (pounceReady(b, attacker, row(attacker.spec))) f *= row(attacker.spec).amount();
+        var own = row(attacker.spec);
+        if (pounceReady(b, attacker, own)) f *= own.amount();
         double dread = 1;
         for (var e : b.units) {
             if (e.squad.team == attacker.squad.team || !e.mob.isAlive()) continue;
@@ -458,15 +467,21 @@ final class Abilities {
         ring(b, u.mob.getPos(), row.radius(), CLAY);
     }
 
-    /** The Howl's speed modifier on a troop: BattleMath.speedModifier's value for x(1 + howlSpeed) on its ground, added where it lacks and replaced where the ground changed it (as Muster's hasten). */
-    static void hasten(GravesAndGlory.Unit u) {
-        var speed = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+    /** The Howl's speed modifier on a troop: BattleMath.speedModifier's value for x(1 + howlSpeed) on its ground, kept by keepSpeed (as Muster's hasten). */
+    static void hasten(GravesAndGlory.Unit u) { keepSpeed(u.mob, HOWL, "Graves and Glory howl", BattleMath.speedModifier(1 + u.howlSpeed, u.mob.isTouchingWater())); }
+
+    /**
+     * Keeps one speed modifier (by its id) on a mob at a value: added where it lacks, replaced where the value changed (the ground did: BattleMath.speedModifier
+     * differs on land and in water), left alone where it stands at that value already, and only taken off for a value of 0. The Howl (hasten), Muster
+     * (Commander.Muster.hasten) and Riptide (Houses.swim) keep theirs through it; a mob without the attribute is left alone.
+     */
+    static void keepSpeed(LivingEntity mob, UUID id, String name, double value) {
+        var speed = mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
         if (speed == null) return;
-        double value = BattleMath.speedModifier(1 + u.howlSpeed, u.mob.isTouchingWater());
-        var have = speed.getModifier(HOWL);
-        if (have != null && have.getValue() == value) return;
-        if (have != null) speed.removeModifier(HOWL);
-        speed.addTemporaryModifier(new EntityAttributeModifier(HOWL, "Graves and Glory howl", value, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+        var have = speed.getModifier(id);
+        if (have != null && Math.abs(have.getValue() - value) < 1e-9) return;
+        if (have != null) speed.removeModifier(id);
+        if (value != 0) speed.addTemporaryModifier(new EntityAttributeModifier(id, name, value, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
     }
 
     /**

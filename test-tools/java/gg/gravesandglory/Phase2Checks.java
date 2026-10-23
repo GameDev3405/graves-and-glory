@@ -1644,6 +1644,8 @@ public final class Phase2Checks implements ClientModInitializer {
         void move(GravesAndGlory.Unit u,double dx,double dz,float yaw){Vec3d at=new Vec3d(site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz);pins.removeIf(p->p.u()==u);pins.add(new Pin(u,at,yaw));u.deployed=at;Engine.apply(u,at,yaw);}
         /** The troop's armour off, so the health it loses is the amount applied. */
         static GravesAndGlory.Unit bare(GravesAndGlory.Unit u){for(var slot:List.of(EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET))u.mob.equipStack(slot,ItemStack.EMPTY);return u;}
+        /** The troop at 4000 health, so a stage's blows never kill it. */
+        static GravesAndGlory.Unit tough(GravesAndGlory.Unit u){u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(4000);u.mob.setHealth(4000f);return u;}
         /** A real blow of this size from the attacker's troop, past the victim's hurt cooldown, through Combat.resolve (so the on-hit abilities and the ALLOW_DEATH hook run). */
         static float strike(GravesAndGlory.Battle b,GravesAndGlory.Unit attacker,GravesAndGlory.Unit victim,float base){victim.mob.timeUntilRegen=0;victim.mob.hurtTime=0;return Combat.resolve(b,attacker,victim.mob,base,"melee",false);}
         void platform(GravesAndGlory.Battle b,BlockPos c,int half,net.minecraft.block.BlockState floor){
@@ -2185,7 +2187,6 @@ public final class Phase2Checks implements ClientModInitializer {
         }
         void unpin(GravesAndGlory.Unit u){pins.removeIf(p->p.u()==u);}
         /** A troop that cannot be killed by the stage in hand. */
-        static GravesAndGlory.Unit tough(GravesAndGlory.Unit u){u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(4000);u.mob.setHealth(4000f);return u;}
         @Override void cleared(){shielded.clear();raise=false;Arrays.fill(us,null);Arrays.fill(line,null);}
         @Override void staged(){mainSite=site;platforms.add(site);}
         /** After each server tick: the pinned troops stand where the stage put them, and the troops in `shielded` hold their shields as `raise` says. */
@@ -2855,7 +2856,6 @@ public final class Phase2Checks implements ClientModInitializer {
         GravesAndGlory.Unit live(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String troop,double dx,double dz,float yaw){return liveAt(b,s,troop,dx,0,dz,yaw);}
         void unpin(GravesAndGlory.Unit u){pins.removeIf(p->p.u()==u);}
         /** A troop that cannot be killed by the stage in hand. */
-        static GravesAndGlory.Unit tough(GravesAndGlory.Unit u){u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(4000);u.mob.setHealth(4000f);return u;}
         /** The order point of an army that puts the formation spot of its troop where it asks (a troop under a Move order walks to that spot). */
         void standAt(GravesAndGlory.Battle b,GravesAndGlory.Squad s,GravesAndGlory.Unit u,Vec3d at,float yaw){
             s.yaw=yaw;s.target=at;Vec3d off=b.formation(u).subtract(at);s.target=at.subtract(off);
@@ -3433,7 +3433,7 @@ public final class Phase2Checks implements ClientModInitializer {
     static final class Wildmoot extends Staged {
         final Map<BlockPos,net.minecraft.block.BlockState> built=new LinkedHashMap<>();
         final List<Entity> labels=new ArrayList<>();
-        GravesAndGlory.Unit u1,u2,u3,u4,u5,u6;final GravesAndGlory.Unit[] us=new GravesAndGlory.Unit[12],line=new GravesAndGlory.Unit[7],hounds=new GravesAndGlory.Unit[6],knights=new GravesAndGlory.Unit[7];
+        GravesAndGlory.Unit u1,u2,u3,u4,u5,u6;final GravesAndGlory.Unit[] us=new GravesAndGlory.Unit[12],line=new GravesAndGlory.Unit[12],hounds=new GravesAndGlory.Unit[6],knights=new GravesAndGlory.Unit[7];
         Combat.HitLog mark,liveHit;TickCost cost;
         String mobsWhy="",why="";boolean mobsOk,ok;
         // the live mobs: ticks a wolf sat, a wolf, boar-kin or bear held anger, the bear warned, the spider climbed; the howls and growls heard before
@@ -3442,6 +3442,8 @@ public final class Phase2Checks implements ClientModInitializer {
         String pounceWhy="",ambushWhy="",snareWhy="",howlWhy="",trampleWhy="",packWhy="",rushWhy="";boolean pounceOk,ambushOk,snareOk,howlOk,trampleOk,packOk,rushOk,warnEnded;long cooldownEnd;final float[] hp=new float[12];
         // the wall
         boolean wallShot;int wallClimb;
+        // the shield a stage holds up (hold re-raises it), the poses set by hand, a troop's blow on each mob, the hound offered a bone, the supply banner a trample strikes
+        GravesAndGlory.Unit shieldUp;boolean poseOk,dmgOk,houndOk;String poseWhy="",dmgWhy="",formationWas;GravesAndGlory.ArmySupplyBanner stand;
 
         /** A troop with its AI on (Tactics moves and swings it), on the platform at (dx, dy, dz) from its centre. */
         GravesAndGlory.Unit liveAt(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String troop,double dx,double dy,double dz,float yaw){
@@ -3456,9 +3458,9 @@ public final class Phase2Checks implements ClientModInitializer {
             fixture.add(u);pins.add(new Pin(u,at,yaw));u.deployed=at;Engine.apply(u,at,yaw);return u;
         }
         void unpin(GravesAndGlory.Unit u){pins.removeIf(p->p.u()==u);}
+        @Override void hold(){super.hold();if(shieldUp!=null&&shieldUp.mob.isAlive()&&!shieldUp.mob.isUsingItem())shieldUp.mob.setCurrentHand(net.minecraft.util.Hand.OFF_HAND);}
         /** One troop of the fixture out of the battle now. */
         void drop(GravesAndGlory.Battle b,GravesAndGlory.Unit u){unpin(u);fixture.remove(u);Houses.discard(b,u);audit(b,"drop",false);}
-        static GravesAndGlory.Unit tough(GravesAndGlory.Unit u){u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(4000);u.mob.setHealth(4000f);return u;}
         Vec3d pos(double dx,double dy,double dz){return new Vec3d(site.getX()+.5+dx,site.getY()+dy,site.getZ()+.5+dz);}
         void put(GravesAndGlory.Battle b,BlockPos at,net.minecraft.block.BlockState state){BlockPos k=at.toImmutable();built.putIfAbsent(k,b.world.getBlockState(k));b.world.setBlockState(k,state);}
         void unbuild(GravesAndGlory.Battle b){for(var e:built.entrySet())b.world.setBlockState(e.getKey(),e.getValue());built.clear();}
@@ -3477,8 +3479,8 @@ public final class Phase2Checks implements ClientModInitializer {
             e.readNbt(nbt);e.setPosition(at.x,at.y,at.z);b.world.spawnEntity(e);labels.add(e);
         }
         void unlabel(){for(var e:labels)e.discard();labels.clear();}
-        /** One line of the overlay for a logged hit. */
-        static String numbers(String who,Combat.HitLog h){return h==null?who+": no hit":String.format(Locale.ROOT,"%s x%.2f = counters %.2f %s x traits %.2f x auras %.2f",who,h.total(),h.counters(),h.rows(),h.traits(),h.auras());}
+        /** One line of the overlay for a logged hit: its factors, and the health the target lost against the amount they make. */
+        static String numbers(String who,Combat.HitLog h,float lost){return h==null?who+": no hit":String.format(Locale.ROOT,"%s x%.2f = counters %.2f %s x traits %.2f x auras %.2f; took %.2f of %.2f",who,h.total(),h.counters(),h.rows(),h.traits(),h.auras(),lost,h.base()*h.total());}
         /** The short line of the overlay, for a crowd of them. */
         static String brief(String who,Combat.HitLog h){return h==null?who+": no hit":String.format(Locale.ROOT,"%s x%.2f %s traits %.2f",who,h.total(),h.rows(),h.traits());}
         /** The anger a wolf, a boar-kin or a bear holds, and a wolf's seat, as vanilla would show them. */
@@ -3489,14 +3491,20 @@ public final class Phase2Checks implements ClientModInitializer {
         static String au(Combat.HitLog h){return h==null?"none":fmt(h.auras());}
         static String tr(Combat.HitLog h){return h==null?"none":fmt(h.traits());}
         static boolean rows(Combat.HitLog h,String... want){return h!=null&&h.rows().size()==want.length&&h.rows().containsAll(List.of(want));}
-        /** The trample's three knights back on their spots (1.5, 2.0 and 2.9 from the bear), unpinned and past their hurt cooldown, their health read. */
+        /** The trample's four knights back on their spots (2.2 before the bear, then 1.5, 2.0 and 2.9 off), unpinned and past their hurt cooldown, their health read. */
         void replace(GravesAndGlory.Battle b){
-            double[][] at={{-1.5,0},{0,2},{2.4,-1.6}};
-            for(int i=1;i<=3;i++){move(us[i],at[i-1][0],at[i-1][1],90);unpin(us[i]);us[i].mob.timeUntilRegen=0;us[i].mob.hurtTime=0;hp[i]=us[i].mob.getHealth();}
+            double[][] at={{2.2,0},{-1.5,0},{0,2},{2.4,-1.6}};
+            for(int i=0;i<=3;i++){move(us[i],at[i][0],at[i][1],90);unpin(us[i]);us[i].mob.timeUntilRegen=0;us[i].mob.hurtTime=0;hp[i]=us[i].mob.getHealth();}
         }
-        @Override void cleared(){Arrays.fill(us,null);Arrays.fill(line,null);Arrays.fill(hounds,null);Arrays.fill(knights,null);unlabel();}
-        /** A real blow of the commander (his attack damage source) on the entity, past its hurt cooldown: through Battle.allowDamage, so the Reaver's lifesteal and a kill's credit run. */
-        static void playerBlow(GravesAndGlory.Battle b,ServerPlayerEntity p,net.minecraft.entity.LivingEntity target,float amount){target.timeUntilRegen=0;target.hurtTime=0;target.damage(b.world.getDamageSources().playerAttack(p),amount);}
+        /** The trample logged on an entity after the mark (its base is the row's 6 times the army's progression), or null: the bite on the struck knight has the bear's own base. */
+        Combat.HitLog trampleOn(GravesAndGlory.Battle b,net.minecraft.entity.LivingEntity t,Combat.HitLog mark){var h=Gilded.hitOn(t,mark);return h!=null&&Math.abs(h.base()-6*b.campaign.damage(u1))<1e-4?h:null;}
+        /** The first hit logged on an entity after the mark (the bite on the struck knight comes before its trample), or null. */
+        static Combat.HitLog firstOn(net.minecraft.entity.LivingEntity t,Combat.HitLog mark){boolean after=mark==null;for(var h:Combat.LAST){if(h==mark){after=true;continue;}if(after&&h.target()==t.getId())return h;}return null;}
+        /** How many of the four knights within 3 of the bear (the struck one among them) a blow trampled. */
+        int trampled(GravesAndGlory.Battle b,Combat.HitLog mark){int n=0;for(int i=0;i<=3;i++)if(us[i]!=null&&trampleOn(b,us[i].mob,mark)!=null)n++;return n;}
+        @Override void cleared(){Arrays.fill(us,null);Arrays.fill(line,null);Arrays.fill(hounds,null);Arrays.fill(knights,null);unlabel();shieldUp=null;stand=null;}
+        /** A real blow of the commander (his attack damage source) on the entity as it stands (its hurt cooldown is not reset): through Battle.allowDamage, so the Reaver's lifesteal and a kill's credit run. */
+        static void playerBlow(GravesAndGlory.Battle b,ServerPlayerEntity p,net.minecraft.entity.LivingEntity target,float amount){target.damage(b.world.getDamageSources().playerAttack(p),amount);}
 
         public void cleanup(MinecraftClient c){
             server(c,b->{Abilities.clearBanners(b);Projectiles.clear(b);unlabel();
@@ -3541,24 +3549,46 @@ public final class Phase2Checks implements ClientModInitializer {
                     next(b,5);
                 }
                 case 5->{var p=sp(b);if(p==null||!Phase1Checks.skirmish(b,p,0,1,"normal"))return;next(b,6);}
-                case 6->{if(since(b)<10)return;stageFixture(b);camera(b,pos(-16,9,-10),pos(0,1,0));next(b,10);}
-                case 10->{ // p2-wolf-stands and the live mobs: two Moot Hounds, a Hide Hunter, a Web Stalker, a Tusk Spear, the Seer and Old Horn (AI on) fight a pinned tough knight for 600 ticks; the commander's blow on a pinned enemy hound
+                case 6->{if(since(b)<10)return;stageFixture(b);camera(b,pos(-16,9,-10),pos(0,1,0));next(b,8);}
+                case 8->{ // p2-wildmoot-damage: a Dawn knight's real blow on a bare tough Moot Hound, Web Stalker, boar-kin (a Hide Hunter) and Old Horn: each loses what Combat.resolve computed (vanilla's wolf halves a blow whose attacker is no player); then a seat and a warning pose set by hand on the hound and the bear
+                    dawn.order="hold";dusk.order="hold";
+                    u1=post(b,dawn,"knight",-2,0,-90,true);float base=(float)Abilities.baseHit(b,u1);
+                    String[] troops={"wm_hound","wm_stalker","wm_hunter","wm_oldhorn"};StringBuilder s=new StringBuilder();boolean good=true;
+                    for(int i=0;i<4;i++){
+                        us[i]=tough(bare(post(b,dusk,troops[i],0,-4.5+i*3,90,true)));float before=us[i].mob.getHealth();
+                        mark=Combat.LAST.peekLast();strike(b,u1,us[i],base);var h=Gilded.hitOn(us[i].mob,mark);float lost=before-us[i].mob.getHealth();
+                        boolean one=h!=null&&Math.abs(lost-h.base()*h.total())<1e-2;good&=one;
+                        s.append(troops[i]).append(" (").append(us[i].mob.getClass().getSimpleName()).append(") lost ").append(fmt(lost)).append(h==null?" with no hit logged":" of base "+fmt(h.base())+" x"+fmt(h.total())+" = "+fmt(h.base()*h.total())).append(one?"":" (BAD)").append("; ");
+                    }
+                    dmgOk=good;dmgWhy="a Dawn knight's blow on each bare tough Wildmoot mob, the health lost against Combat.resolve's amount: "+s;
+                    var w=(net.minecraft.entity.passive.WolfEntity)us[0].mob;w.setSitting(true);w.setInSittingPose(true);var bear=(net.minecraft.entity.passive.PolarBearEntity)us[3].mob;bear.setWarning(true);
+                    poseOk=sitting(w)&&warning(bear);poseWhy="a seat set by hand on a hound reads sitting="+sitting(w)+" and a warning pose set by hand on a bear reads warning="+warning(bear)+" at once";
+                    next(b,9);
+                }
+                case 9->{ // the next tick: the hound's own tick cleared its seat and the bear's its pose (a build without the overrides keeps both)
+                    boolean cleared=!sitting(us[0].mob)&&!warning(us[3].mob);poseOk&=cleared;poseWhy+="; a tick later sitting="+sitting(us[0].mob)+", warning="+warning(us[3].mob)+" (want both false: the mob's own tick clears what vanilla or a hand set)="+cleared;
+                    report("p2-wildmoot-damage",dmgOk,dmgWhy);
+                    clearFixture(b,"damage");next(b,10);
+                }
+                case 10->{ // p2-wolf-stands and the live mobs: two Moot Hounds, a Hide Hunter, a Web Stalker, a Tusk Spear, the Seer and Old Horn (AI on) fight a pinned tough knight for 600 ticks; a bone offered to a pinned enemy hound
+                    var p=sp(b);if(p==null)return;
                     dawn.order="attack";dusk.order="hold";sat=angry=warned=climbed=0;
                     us[0]=tough(bare(post(b,dusk,"knight",7,0,180,true)));foeHp=us[0].mob.getHealth();dawn.target=us[0].mob.getPos();
                     u1=live(b,dawn,"wm_hound",-6,-3,-90);u2=live(b,dawn,"wm_hound",-6,3,-90);u3=live(b,dawn,"wm_hunter",-9,0,-90);u4=live(b,dawn,"wm_stalker",-5,6,-90);u5=live(b,dawn,"wm_tusk",-4,-6,-90);u6=live(b,dawn,"wm_seer",-10,-5,-90);
                     us[1]=live(b,dawn,"wm_oldhorn",-8,9,-90);
-                    us[2]=post(b,dusk,"wm_hound",6,-9,180,true); // the probe: an enemy hound the commander strikes
+                    us[2]=post(b,dusk,"wm_hound",6,-9,180,true); // the probe: an enemy hound the commander offers a bone (vanilla would take it and might tame)
                     howlsBefore=Phase1Checks.heardOnClient("minecraft:entity.wolf.howl");
-                    var p=sp(b);if(p!=null)Commanders.strike(b,p,us[2].mob,"an enemy Moot Hound");
-                    boolean afterBlow=!sitting(us[2].mob)&&!holdsAnger(us[2].mob)&&us[2].mob.getTarget()!=p;
-                    why="after the commander's blow the enemy hound sits="+sitting(us[2].mob)+", holds anger="+holdsAnger(us[2].mob)+" (anger time "+((net.minecraft.entity.passive.WolfEntity)us[2].mob).getAngerTime()+", angry at "+((net.minecraft.entity.passive.WolfEntity)us[2].mob).getAngryAt()+")="+afterBlow+"; ";
+                    var w=(net.minecraft.entity.passive.WolfEntity)us[2].mob;var held=p.getMainHandStack().copy();p.setStackInHand(net.minecraft.util.Hand.MAIN_HAND,new ItemStack(net.minecraft.item.Items.BONE,4));
+                    var offered=w.interactMob(p,net.minecraft.util.Hand.MAIN_HAND);int bones=p.getMainHandStack().isOf(net.minecraft.item.Items.BONE)?p.getMainHandStack().getCount():0;p.setStackInHand(net.minecraft.util.Hand.MAIN_HAND,held);
+                    houndOk=offered==net.minecraft.util.ActionResult.PASS&&bones==4&&!w.isTamed()&&!sitting(w)&&poseOk;
+                    why="a bone offered to an enemy hound (interactMob) returned "+offered+" (want PASS), bones left "+bones+" (want 4), tamed="+w.isTamed()+", sits="+sitting(w)+"; "+poseWhy+"; ";
                     next(b,11);
                 }
                 case 11->{ // each tick: no wolf sits, nobody holds anger, the bear never warns outside a trample (none here: the order is Attack), the spider's climbing ticks are counted
                     for(var u:fixture){if(!u.mob.isAlive())continue;if(sitting(u.mob))sat++;if(holdsAnger(u.mob))angry++;if(warning(u.mob))warned++;if(u.mob instanceof net.minecraft.entity.mob.SpiderEntity sp&&sp.isClimbingWall())climbed++;}
                     if(since(b)<600)return;
                     boolean hit=us[0].mob.getHealth()<foeHp;long howls=Phase1Checks.heardOnClient("minecraft:entity.wolf.howl")-howlsBefore;warnedFight=warned;
-                    report("p2-wolf-stands",sat==0&&angry==0&&hit,why+"over 600 ticks of two live Moot Hounds (with a Hide Hunter, a Web Stalker, a Tusk Spear, the Seer and Old Horn) fighting a pinned knight: ticks a wolf sat "+sat+" (want 0), ticks a wolf, boar-kin or bear held anger "+angry+" (want 0); the knight lost "+fmt(foeHp-us[0].mob.getHealth())+" health (want some)="+hit);
+                    report("p2-wolf-stands",houndOk&&sat==0&&angry==0&&hit,why+"over 600 ticks of two live Moot Hounds (with a Hide Hunter, a Web Stalker, a Tusk Spear, the Seer and Old Horn) fighting a pinned knight: ticks a wolf sat "+sat+" (want 0), ticks a wolf, boar-kin or bear held anger "+angry+" (want 0); the knight lost "+fmt(foeHp-us[0].mob.getHealth())+" health (want some)="+hit);
                     report("p2-wildmoot-mobs",mobsOk&&sat==0&&angry==0&&warned==0&&hit,mobsWhy+"over the same 600 ticks the bear's warning pose showed "+warned+" ticks (want 0: it rears for the trample alone), the spider climbed "+climbed+" ticks, the Seer's howl was heard "+howls+" times on the client (two timers fall in 600 ticks)");
                     Projectiles.clear(b);clearFixture(b,"mobs");next(b,12);
                 }
@@ -3568,13 +3598,13 @@ public final class Phase2Checks implements ClientModInitializer {
                     var row=Abilities.row(u1.spec);
                     boolean sheet=row.id().equals("pounce")&&row.mechanic().equals("pounce")&&row.trigger().equals("onhit")&&row.cooldownTicks()==100&&near(row.radius(),6)&&near(row.amount(),1.8)&&u1.tags.contains("pounce");
                     u1.travelSinceAttack=6;u1.abilityAt=0;t0=b.time;
-                    var h1=Commanders.blow(b,u1,us[0].mob,"melee");boolean first=h1!=null&&near(h1.auras(),1.8)&&u1.abilityAt==t0+100&&u1.travelSinceAttack==0;
+                    var h1=Commanders.blow(b,u1,us[0].mob,"melee");boolean first=h1!=null&&near(h1.auras(),1.8)&&u1.abilityAt==t0+100&&u1.travelSinceAttack==0;long cd1=u1.abilityAt-t0;
                     var h2=Commanders.blow(b,u1,us[0].mob,"melee");boolean second=h2!=null&&near(h2.auras(),1.0);
                     u1.travelSinceAttack=5.9;u1.abilityAt=0;var h3=Commanders.blow(b,u1,us[0].mob,"melee");boolean shortRun=h3!=null&&near(h3.auras(),1.0)&&u1.abilityAt==0;
                     u1.travelSinceAttack=6;u1.abilityAt=b.time+50;var h4=Commanders.blow(b,u1,us[0].mob,"melee");boolean cooling=h4!=null&&near(h4.auras(),1.0)&&u1.abilityAt==b.time+50;
                     u1.travelSinceAttack=6;u1.abilityAt=0;var h5=Commanders.blow(b,u1,us[0].mob,"melee");boolean again=h5!=null&&near(h5.auras(),1.8)&&u1.abilityAt==b.time+100;
                     pounceOk=sheet&&first&&second&&shortRun&&cooling&&again;
-                    pounceWhy="the Moot Hound's row "+row.id()+" ("+row.mechanic()+" on "+row.trigger()+", cooldown "+row.cooldownTicks()+", "+row.radius()+" blocks, x"+row.amount()+")="+sheet+"; with 6 blocks walked since its last attack its blow has auras "+au(h1)+" (want 1.8), starts the cooldown to +"+(u1.abilityAt-t0>0?100:-1)+" and resets the travel="+first+"; the next blow "+au(h2)+" (want 1.0)="+second+"; with 5.9 walked "+au(h3)+" (want 1.0, no cooldown spent)="+shortRun+"; with 6 walked inside the cooldown "+au(h4)+" (want 1.0)="+cooling+"; with 6 walked and the cooldown up "+au(h5)+" (want 1.8)="+again;
+                    pounceWhy="the Moot Hound's row "+row.id()+" ("+row.mechanic()+" on "+row.trigger()+", cooldown "+row.cooldownTicks()+", "+row.radius()+" blocks, x"+row.amount()+")="+sheet+"; with 6 blocks walked since its last attack its blow has auras "+au(h1)+" (want 1.8), starts the cooldown to +"+cd1+" (want 100) and resets the travel="+first+"; the next blow "+au(h2)+" (want 1.0)="+second+"; with 5.9 walked "+au(h3)+" (want 1.0, no cooldown spent)="+shortRun+"; with 6 walked inside the cooldown "+au(h4)+" (want 1.0)="+cooling+"; with 6 walked and the cooldown up "+au(h5)+" (want 1.8)="+again;
                     clearFixture(b,"pounce");
                     // the live run: a Moot Hound 14 west of a tough knight walks in under Attack; its first blow is the pounce and a growl is heard
                     us[0]=tough(bare(post(b,dusk,"knight",6,0,90,true)));dawn.order="attack";dawn.target=us[0].mob.getPos();
@@ -3640,60 +3670,85 @@ public final class Phase2Checks implements ClientModInitializer {
                     var row=Abilities.row(u1.spec);
                     boolean sheet=row.id().equals("howl")&&row.mechanic().equals("aura")&&row.trigger().equals("timer")&&row.cooldownTicks()==300&&near(row.radius(),10)&&near(row.amount(),.15)&&near(row.amount2(),.15)&&row.durationTicks()==120&&row.target().equals("allies");
                     var before=Commanders.hit(b,u2,us[0].mob,"melee");boolean quiet=before!=null&&near(before.auras(),1.0)&&near(speedRatio(u2),1.0);double quietSpeed=speedRatio(u2);
+                    u1.stunnedUntil=b.time+50;u1.abilityAt=0;Abilities.tick(b,u1,null,b.time);long stunnedCd=u1.abilityAt;var stunned=Commanders.hit(b,u2,us[0].mob,"melee");double stunnedSpeed=speedRatio(u2);boolean mute=stunnedCd==0&&stunned!=null&&near(stunned.auras(),1.0)&&near(stunnedSpeed,1.0);u1.stunnedUntil=0;
                     u1.abilityAt=0;t0=b.time;howlsBefore=Phase1Checks.heardOnClient("minecraft:entity.wolf.howl");
                     Abilities.tick(b,u1,null,b.time);
                     var hound=Commanders.hit(b,u2,us[0].mob,"melee");var near9=Commanders.hit(b,u3,us[0].mob,"melee");var far=Commanders.hit(b,u4,us[0].mob,"melee");var foe=Commanders.hit(b,u5,us[1].mob,"melee");var self=Commanders.hit(b,u1,us[0].mob,"bolt");
                     boolean damage=hound!=null&&near(hound.auras(),1.15)&&near9!=null&&near(near9.auras(),1.15)&&far!=null&&near(far.auras(),1.0)&&foe!=null&&near(foe.auras(),1.0)&&self!=null&&near(self.auras(),1.15);
                     double want=Math.sqrt(1.15);boolean speed=Math.abs(speedRatio(u2)-want)<1e-6&&Math.abs(speedRatio(u3)-want)<1e-6&&near(speedRatio(u4),1.0)&&near(speedRatio(u5),1.0);
                     boolean cd=u1.abilityAt==t0+300;
-                    howlOk=sheet&&quiet&&damage&&speed&&cd;
-                    howlWhy="the Seer's row "+row.id()+" ("+row.mechanic()+" on a "+row.trigger()+", cooldown "+row.cooldownTicks()+", radius "+row.radius()+", +"+row.amount()+" damage, +"+row.amount2()+" speed, lasts "+row.durationTicks()+", for "+row.target()+")="+sheet+"; before the howl a hound 5 off has auras "+au(before)+" and speed x"+fmt(quietSpeed)+"="+quiet+"; after it the hound 5 off "+au(hound)+", a knight 9.5 off "+au(near9)+" (want 1.15), a knight 11 off "+au(far)+", an enemy knight 3 off "+au(foe)+" (want 1.0), the Seer's own bolt "+au(self)+" (want 1.15)="+damage+"; speed x"+fmt(speedRatio(u2))+", x"+fmt(speedRatio(u3))+" (want "+fmt(want)+": the square root of 1.15 on land, BattleMath.speedModifier), x"+fmt(speedRatio(u4))+", x"+fmt(speedRatio(u5))+" (want 1.0)="+speed+"; the next howl at +"+(u1.abilityAt-t0)+" (want 300)="+cd;
+                    howlOk=sheet&&quiet&&mute&&damage&&speed&&cd;
+                    howlWhy="the Seer's row "+row.id()+" ("+row.mechanic()+" on a "+row.trigger()+", cooldown "+row.cooldownTicks()+", radius "+row.radius()+", +"+row.amount()+" damage, +"+row.amount2()+" speed, lasts "+row.durationTicks()+", for "+row.target()+")="+sheet+"; before the howl a hound 5 off has auras "+au(before)+" and speed x"+fmt(quietSpeed)+"="+quiet+"; a beat while the Seer is stunned (50 ticks) with its cooldown up left the cooldown at "+stunnedCd+" (want 0: no howl, none spent), the hound's auras "+au(stunned)+" and speed x"+fmt(stunnedSpeed)+" (want 1.0)="+mute+"; after the howl the hound 5 off "+au(hound)+", a knight 9.5 off "+au(near9)+" (want 1.15), a knight 11 off "+au(far)+", an enemy knight 3 off "+au(foe)+" (want 1.0), the Seer's own bolt "+au(self)+" (want 1.15)="+damage+"; speed x"+fmt(speedRatio(u2))+", x"+fmt(speedRatio(u3))+" (want "+fmt(want)+": the square root of 1.15 on land, BattleMath.speedModifier), x"+fmt(speedRatio(u4))+", x"+fmt(speedRatio(u5))+" (want 1.0)="+speed+"; the next howl at +"+(u1.abilityAt-t0)+" (want 300)="+cd;
                     next(b,23);
                 }
                 case 23->{
                     long t=b.time-t0;
                     if(t==5){long heard=Phase1Checks.heardOnClient("minecraft:entity.wolf.howl")-howlsBefore;howlOk&=heard>0;howlWhy+="; the howl was heard "+heard+" time(s) on the client (want some)";}
-                    if(t==60){Abilities.tick(b,u1,null,b.time);boolean held=u1.abilityAt==t0+300;howlOk&=held;howlWhy+="; a beat at +60 inside the cooldown howled again="+!held;}
+                    if(t==30){for(var d:new int[][]{{1,0},{-1,0},{0,1},{0,-1}})put(b,site.add(5+d[0],0,d[1]),Blocks.STONE.getDefaultState());put(b,site.add(5,0,0),Blocks.WATER.getDefaultState());} // the hound 5 off stands in a block of water walled by stone
+                    if(t==45){boolean wet=u2.mob.isTouchingWater()&&Math.abs(speedRatio(u2)-1.15)<1e-6;howlOk&=wet;howlWhy+="; in water at +45 (touching="+u2.mob.isTouchingWater()+") the hound's speed reads x"+fmt(speedRatio(u2))+" (want 1.15: in water the share stands as it is)="+wet;unbuild(b);}
+                    if(t==60){Abilities.tick(b,u1,null,b.time);boolean held=u1.abilityAt==t0+300;howlOk&=held;howlWhy+="; a beat at +60 inside the cooldown held the cooldown="+held;boolean dry=!u2.mob.isTouchingWater()&&Math.abs(speedRatio(u2)-Math.sqrt(1.15))<1e-6;howlOk&=dry;howlWhy+="; out of the water at +60 x"+fmt(speedRatio(u2))+" (want the square root again)="+dry;}
                     if(t==121){var h=Commanders.hit(b,u2,us[0].mob,"melee");boolean over=h!=null&&near(h.auras(),1.0);howlOk&=over;howlWhy+="; at +121 the hound's auras read "+au(h)+" (want 1.0)="+over;}
                     if(t<135)return;
                     boolean slow=near(speedRatio(u2),1.0)&&near(speedRatio(u3),1.0);
                     report("p2-howl",howlOk&&slow,howlWhy+"; at +"+t+" (a beat after it ended) the speed is back to x"+fmt(speedRatio(u2))+", x"+fmt(speedRatio(u3))+" (want 1.0)="+slow);
-                    clearFixture(b,"howl");next(b,26);
+                    clearFixture(b,"howl");next(b,24);
                 }
-                case 26->{ // p2-trample and p2-bear-warning: Old Horn before a knight 2.2 off with three more within 3 of him (1.5, 2.0 and 2.9) and one 3.5 off; an ally 1.5 off; on Hold first, then under Charge
+                case 24->{ // p2-trample-splash: a Dusk Old Horn under a fresh Charge before a Dawn knight 2.2 off, with Dawn's supply banner 2 off and the commander (Dawn's, in Adventure) 2.2 off
+                    var p=sp(b);if(p==null)return;
+                    dusk.order="charge";dawn.order="hold";b.markCharge(dusk,"cavalry");
+                    u1=post(b,dusk,"wm_oldhorn",0,0,90,true);u1.abilityAt=0;
+                    us[0]=tough(bare(post(b,dawn,"knight",-2.2,0,-90,true)));unpin(us[0]);
+                    stand=GravesAndGlory.ArmySupplyBanner.place(b,dawn,site.add(0,0,2),0f,40f);
+                    p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);b.relocate(p,site.getX()+.5,site.getY(),site.getZ()+.5-2.2,0f,0f);p.setHealth(p.getMaxHealth());
+                    next(b,25);
+                }
+                case 25->{if(since(b)<5)return;
+                    var p=sp(b);if(p==null)return;
+                    boolean set=stand!=null&&stand.isAlive()&&distance(stand.getPos(),u1.mob.getPos())<3&&distance(p.getPos(),u1.mob.getPos())<3;
+                    float standHp=stand==null?0:stand.hp(),pHp=p.getHealth();Vec3d standAt=stand==null?Vec3d.ZERO:stand.getPos();
+                    mark=Combat.LAST.peekLast();strike(b,u1,us[0],(float)Abilities.baseHit(b,u1));
+                    var onStand=stand==null?null:Gilded.hitOn(stand,mark);boolean structure=onStand!=null&&stand.hp()<standHp&&stand.getPos().equals(standAt)&&stand.isAlive();
+                    var onP=Gilded.hitOn(p,mark);Vec3d d=p.getPos().subtract(u1.mob.getPos()),v=p.getVelocity();double speed=Math.hypot(v.x,v.z),dot=d.x*v.x+d.z*v.z;
+                    boolean commander=onP!=null&&p.getHealth()<pHp&&dot>0&&speed>0.3;
+                    report("p2-trample-splash",set&&structure&&commander,"a Dusk Old Horn under a fresh Charge with Dawn's supply banner "+(stand==null?"missing":fmt(distance(stand.getPos(),u1.mob.getPos()))+" off")+" and the commander "+fmt(distance(p.getPos(),u1.mob.getPos()))+" off (both within 3)="+set+"; its first blow's trample hit the banner ("+(stand==null?"none":fmt(standHp)+" to "+fmt(stand.hp()))+") and left it standing where it was="+structure+"; hit the commander ("+fmt(pHp)+" to "+fmt(p.getHealth())+") and threw him at "+fmt(speed)+"="+commander);
+                    if(stand!=null){stand.discard();stand=null;}p.setHealth(p.getMaxHealth());p.changeGameMode(net.minecraft.world.GameMode.SPECTATOR);
+                    dusk.order="hold";clearFixture(b,"splash");next(b,26);
+                }
+                case 26->{ // p2-trample and p2-bear-warning: Old Horn before a knight 2.2 off with three more within 3 of him (1.5, 2.0 and 2.9) and one 3.5 off; an ally 1.5 off; on Hold, under a Charge order with no stamp, then under a fresh Charge
                     dawn.order="hold";dusk.order="hold";
                     u1=post(b,dawn,"wm_oldhorn",0,0,-90,true);u1.abilityAt=0;
                     var row=Abilities.row(u1.spec);
                     boolean sheet=row.id().equals("trample")&&row.mechanic().equals("slam")&&row.trigger().equals("charge_contact")&&row.cooldownTicks()==200&&near(row.radius(),3)&&near(row.amount(),6)&&near(row.knockback(),1.2);
                     us[0]=tough(bare(post(b,dusk,"knight",2.2,0,90,true)));us[1]=tough(bare(post(b,dusk,"knight",-1.5,0,90,true)));us[2]=tough(bare(post(b,dusk,"knight",0,2,90,true)));us[3]=tough(bare(post(b,dusk,"knight",2.4,-1.6,90,true)));us[4]=tough(bare(post(b,dusk,"knight",3.5,0,90,true)));
                     u2=tough(post(b,dawn,"knight",0,-1.5,-90,true));
-                    for(int i=1;i<=3;i++)unpin(us[i]);
                     float base=(float)Abilities.baseHit(b,u1);
-                    mark=Combat.LAST.peekLast();strike(b,u1,us[0],base);
-                    boolean held=Gilded.hitOn(us[1].mob,mark)==null&&Gilded.hitOn(us[2].mob,mark)==null&&Gilded.hitOn(us[3].mob,mark)==null&&!warning(u1.mob)&&u1.abilityAt==0;
-                    dawn.order="charge";
-                    for(int i=0;i<5;i++)hp[i]=us[i].mob.getHealth();float allyHp=u2.mob.getHealth();
+                    replace(b);mark=Combat.LAST.peekLast();strike(b,u1,us[0],base);
+                    boolean held=trampled(b,mark)==0&&!warning(u1.mob)&&u1.abilityAt==0;
+                    dawn.order="charge";dawn.chargedAt.clear();
+                    replace(b);mark=Combat.LAST.peekLast();strike(b,u1,us[0],base);
+                    boolean unstamped=trampled(b,mark)==0&&!warning(u1.mob)&&u1.abilityAt==0;
+                    b.markCharge(dawn,"cavalry");replace(b);hp[4]=us[4].mob.getHealth();float allyHp=u2.mob.getHealth();
                     mark=Combat.LAST.peekLast();t0=b.time;strike(b,u1,us[0],base);
-                    var bite=Gilded.hitOn(us[0].mob,mark);StringBuilder s=new StringBuilder();boolean ring=bite!=null&&Math.abs(bite.base()-base)<1e-4;
+                    var bite=firstOn(us[0].mob,mark);StringBuilder s=new StringBuilder();boolean ring=true;
                     double want=6*b.campaign.damage(u1);
-                    for(int i=1;i<=3;i++){
-                        var log=Gilded.hitOn(us[i].mob,mark);float li=hp[i]-us[i].mob.getHealth();
+                    for(int i=0;i<=3;i++){
+                        var log=trampleOn(b,us[i].mob,mark);float li=hp[i]-us[i].mob.getHealth();double amount=(log==null?0:log.base()*log.total())+(i==0&&bite!=null?bite.base()*bite.total():0);
                         Vec3d d=us[i].mob.getPos().subtract(u1.mob.getPos()),v=us[i].mob.getVelocity();double speed=Math.hypot(v.x,v.z),dot=d.x*v.x+d.z*v.z;
-                        boolean good=log!=null&&Math.abs(log.base()-want)<1e-4&&li>=log.base()*log.total()-1e-2&&dot>0&&speed>0.3;
-                        ring&=good;s.append("knight ").append(i).append(" ").append(fmt(distance(us[i].mob.getPos(),u1.mob.getPos()))).append(" off took ").append(log==null?"no hit":"base "+fmt(log.base())+" x"+fmt(log.total())).append(" and lost ").append(fmt(li)).append(", thrown away at ").append(fmt(speed)).append(good?"":" (BAD)").append("; ");
+                        boolean good=log!=null&&Math.abs(log.base()-want)<1e-4&&li>=amount-1e-2&&dot>0&&speed>0.3;
+                        ring&=good;s.append(i==0?"the struck knight ":"knight "+i+" ").append(fmt(distance(us[i].mob.getPos(),u1.mob.getPos()))).append(" off took ").append(log==null?"no trample":"base "+fmt(log.base())+" x"+fmt(log.total())).append(i==0?" over the bite":"").append(" and lost ").append(fmt(li)).append(" (want at least ").append(fmt(amount)).append("), thrown away at ").append(fmt(speed)).append(good?"":" (BAD)").append("; ");
                     }
                     boolean outside=Gilded.hitOn(us[4].mob,mark)==null&&us[4].mob.getHealth()==hp[4]&&Gilded.hitOn(u2.mob,mark)==null&&u2.mob.getHealth()==allyHp;
                     boolean cd=u1.abilityAt==t0+200,reared=warning(u1.mob);
-                    trampleOk=sheet&&held&&ring&&outside&&cd;warnEnded=false;
-                    trampleWhy="Old Horn's row "+row.id()+" ("+row.mechanic()+" on "+row.trigger()+", cooldown "+row.cooldownTicks()+", radius "+row.radius()+", amount "+row.amount()+", knockback "+row.knockback()+")="+sheet+"; on Hold his blow trampled nobody, spent no cooldown and he did not rear="+held+"; under Charge his first blow bit the knight 2.2 off ("+(bite==null?"no hit":"base "+fmt(bite.base()))+") and trampled (want base "+fmt(want)+" each): "+s+"the knight 3.5 off and the ally 1.5 off took no hit="+outside+"; the next trample is at +"+(u1.abilityAt-t0)+" (want 200)="+cd;
-                    why="under Charge he rears as he tramples="+reared;ok=reared;
+                    trampleOk=sheet&&held&&unstamped&&ring&&outside&&cd;warnEnded=false;
+                    trampleWhy="Old Horn's row "+row.id()+" ("+row.mechanic()+" on "+row.trigger()+", cooldown "+row.cooldownTicks()+", radius "+row.radius()+", amount "+row.amount()+", knockback "+row.knockback()+")="+sheet+"; on Hold his blow trampled nobody, spent no cooldown and he did not rear="+held+"; under a Charge order with no stamp (never in a round: the order paths stamp Squad.chargedAt) the same="+unstamped+"; under a fresh Charge his first blow bit the knight 2.2 off ("+(bite==null?"no hit":"base "+fmt(bite.base())+" x"+fmt(bite.total()))+") and trampled (want base "+fmt(want)+" each, the struck knight among them): "+s+"the knight 3.5 off and the ally 1.5 off took no hit="+outside+"; the next trample is at +"+(u1.abilityAt-t0)+" (want 200)="+cd;
+                    why="under a fresh Charge he rears as he tramples="+reared;ok=reared;
                     next(b,27);
                 }
                 case 27->{if(since(b)<6)return; // inside the cooldown a blow tramples nobody; the thrown knights are put back first
                     replace(b);
                     mark=Combat.LAST.peekLast();strike(b,u1,us[0],(float)Abilities.baseHit(b,u1));
-                    boolean none=true;for(int i=1;i<=3;i++)none&=Gilded.hitOn(us[i].mob,mark)==null&&us[i].mob.getHealth()==hp[i];
-                    trampleOk&=none;trampleWhy+="; 6 ticks later another blow trampled nobody="+none;
+                    var bite=firstOn(us[0].mob,mark);float lost=hp[0]-us[0].mob.getHealth();boolean none=trampled(b,mark)==0&&bite!=null&&Math.abs(lost-bite.base()*bite.total())<1e-2;
+                    trampleOk&=none;trampleWhy+="; 6 ticks later another blow trampled nobody (the struck knight lost the bite alone, "+fmt(lost)+")="+none;
                     next(b,28);
                 }
                 case 28->{ // the rear is a pulse: it ends well before the cooldown
@@ -3702,14 +3757,27 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(!warnEnded){ok=false;why+="; the pose still showed at +60";}
                     next(b,29);
                 }
-                case 29->{ // once the 200 ticks are up it tramples again, and rears again
+                case 29->{ // once the 200 ticks are up the same Charge tramples no more (once per fresh Charge); a fresh one tramples again, and he rears again
                     if(b.time-t0<202)return;
-                    replace(b);
-                    mark=Combat.LAST.peekLast();strike(b,u1,us[0],(float)Abilities.baseHit(b,u1));
-                    int hit=0;for(int i=1;i<=3;i++)if(Gilded.hitOn(us[i].mob,mark)!=null&&us[i].mob.getHealth()<hp[i])hit++;
-                    boolean again=warning(u1.mob);
-                    report("p2-trample",trampleOk&&hit==3,trampleWhy+"; at +"+(b.time-t0)+" (the cooldown up, the knights back on their spots) it trampled again and hurt "+hit+" of the three (want 3)");
-                    report("p2-bear-warning",ok&&again&&warnedFight==0,"over 600 ticks of fighting under Attack the bear's warning pose showed "+warnedFight+" ticks (want 0); "+why+"; the second trample rears again="+again);
+                    replace(b);mark=Combat.LAST.peekLast();strike(b,u1,us[0],(float)Abilities.baseHit(b,u1));
+                    boolean spent=trampled(b,mark)==0&&!warning(u1.mob)&&u1.abilityAt==t0+200;
+                    b.markCharge(dawn,"cavalry");long t1=b.time;replace(b);mark=Combat.LAST.peekLast();strike(b,u1,us[0],(float)Abilities.baseHit(b,u1));
+                    int hit=trampled(b,mark);boolean again=warning(u1.mob)&&u1.abilityAt==t1+200;
+                    trampleOk&=spent&&hit==4;trampleWhy+="; at +"+(t1-t0)+" (the cooldown up, the knights back) a blow under the same Charge trampled nobody and he did not rear="+spent+"; a fresh Charge stamped then: its first blow trampled "+hit+" of the four within 3 (want 4), the next at +200="+again;
+                    ok&=again;why+="; the fresh Charge's trample rears again="+again;
+                    t0=t1;next(b,30);
+                }
+                case 30->{if(since(b)<6)return; // a fresh Charge stamped inside the cooldown tramples nothing yet
+                    b.markCharge(dawn,"cavalry");replace(b);mark=Combat.LAST.peekLast();strike(b,u1,us[0],(float)Abilities.baseHit(b,u1));
+                    boolean cooling=trampled(b,mark)==0&&u1.abilityAt==t0+200;
+                    trampleOk&=cooling;trampleWhy+="; a fresh Charge stamped 6 ticks into the cooldown: its first blow trampled nobody and the cooldown stands="+cooling;
+                    next(b,31);
+                }
+                case 31->{if(b.time-t0<202)return; // that Charge has not trampled yet, so once the cooldown is up its next blow does
+                    replace(b);mark=Combat.LAST.peekLast();strike(b,u1,us[0],(float)Abilities.baseHit(b,u1));
+                    int hit=trampled(b,mark);boolean late=hit==4&&warning(u1.mob);
+                    report("p2-trample",trampleOk&&late,trampleWhy+"; at +"+(b.time-t0)+" (the cooldown up) the blow under that Charge trampled "+hit+" (want 4: a Charge tramples once, on its first blow with the cooldown up)="+late);
+                    report("p2-bear-warning",ok&&late&&warnedFight==0&&poseOk,"over 600 ticks of fighting under Attack the bear's warning pose showed "+warnedFight+" ticks (want 0); "+poseWhy+"; "+why+"; the late trample rears too="+late);
                     dawn.order="hold";clearFixture(b,"trample");next(b,32);
                 }
                 case 32->{ // p2-spider-wall: a stone wall 3 high across the whole platform; a live Web Stalker 7 west of it, a pinned tough archer 6 east, under Attack
@@ -3736,22 +3804,22 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean sheet=t2!=null&&t2.mechanic().equals("pack_hunters")&&near(t2.value(),.2)&&near(t2.value2(),3)&&near(CounterMath.flankDegrees(),110);
                     us[0]=tough(bare(post(b,dusk,"archer",0,0,90,true)));us[1]=tough(bare(post(b,dusk,"knight",0,6,90,true)));dawn.target=us[0].mob.getPos();own.target=us[0].mob.getPos();
                     hounds[0]=post(b,dawn,"wm_hound",-2,0,-90,true);hounds[1]=post(b,dawn,"wm_hound",-1.6,1.6,-90,true);
-                    packOk=sheet;packWhy="the sheet's wildmoot_2 ("+(t2==null?"none":t2.mechanic()+" +"+t2.value()+", "+t2.value2()+" on one target")+") and the flank arc "+CounterMath.flankDegrees()+"="+sheet;
+                    for(int i=0;i<8;i++)post(b,dawn,"wm_hunter",-11.5,-7+i*2,-90,true); // eight Hide Hunters at the far edge (beyond Hold's 10-block leash of the archer): ten Wildmoot slots, the sheet's wildmoot_2
+                    Houses.recompute(dawn);boolean tier=dawn.traits.getOrDefault("wildmoot",0)==2;
+                    packOk=sheet&&tier;packWhy="the sheet's wildmoot_2 ("+(t2==null?"none":t2.mechanic()+" +"+t2.value()+", "+t2.value2()+" on one target")+") and the flank arc "+CounterMath.flankDegrees()+"="+sheet+"; two hounds and eight Hide Hunters (10 slots) make the army's traits "+dawn.traits+" (want wildmoot 2 through Houses.recompute, not by hand)="+tier;
                     next(b,37);
                 }
                 case 37->{if(since(b)<22)return; // two beats have passed: each hound targets the archer, and the targeters were rebuilt
-                    dawn.traits.put("wildmoot",2);
                     var a=Commanders.blow(b,hounds[0],us[0].mob,"melee");boolean front2=a!=null&&near(a.traits(),1.0)&&Gilded.is(a,1.3,"C7");
                     packOk&=front2;packWhy+="; two hounds in front of the archer, both on it: a blow "+show(a)+" (want traits 1.0, counters 1.3 C7)="+front2;
                     move(hounds[0],2,0,90);move(hounds[1],1.6,-1.6,90); // behind it, facing it
                     next(b,38);
                 }
                 case 38->{if(since(b)<22)return;
-                    dawn.traits.put("wildmoot",2);
-                    var r=Commanders.blow(b,hounds[0],us[0].mob,"melee");var r2=Commanders.blow(b,hounds[1],us[0].mob,"melee");
-                    boolean rear2=r!=null&&near(r.traits(),1.2)&&near(r.counters(),1.69)&&rows(r,"C7","C16")&&r2!=null&&near(r2.traits(),1.2)&&near(r2.counters(),1.69);
-                    packOk&=rear2;packWhy+="; two hounds behind it: "+show(r)+" and "+show(r2)+" (want traits 1.2 on counters 1.69, C7 and C16: the rear bonus stacks on the flank row)="+rear2;
-                    label(b,pos(2,2.3,0),numbers("Hound 1 (rear)",r));label(b,pos(1.6,3.0,-1.6),numbers("Hound 2 (rear)",r2));label(b,pos(0,3.8,0),"Order Archer, facing west: Pack Hunters II against it"); // three heights, so the lines do not stack
+                    float a0=us[0].mob.getHealth();var r=Commanders.blow(b,hounds[0],us[0].mob,"melee");float lost1=a0-us[0].mob.getHealth(),a1=us[0].mob.getHealth();var r2=Commanders.blow(b,hounds[1],us[0].mob,"melee");float lost2=a1-us[0].mob.getHealth();
+                    boolean rear2=r!=null&&near(r.traits(),1.2)&&near(r.counters(),1.69)&&rows(r,"C7","C16")&&r2!=null&&near(r2.traits(),1.2)&&near(r2.counters(),1.69)&&Math.abs(lost1-r.base()*r.total())<1e-2&&Math.abs(lost2-r2.base()*r2.total())<1e-2;
+                    packOk&=rear2;packWhy+="; two hounds behind it: "+show(r)+" and "+show(r2)+" (want traits 1.2 on counters 1.69, C7 and C16: the rear bonus stacks on the flank row), the archer losing "+fmt(lost1)+" and "+fmt(lost2)+" (want the amounts the factors make)="+rear2;
+                    label(b,pos(2,2.3,0),numbers("Hound 1 (rear)",r,lost1));label(b,pos(1.6,3.0,-1.6),numbers("Hound 2 (rear)",r2,lost2));label(b,pos(0,3.8,0),"Order Archer, facing west: Pack Hunters II against it"); // three heights, so the lines do not stack
                     camera(b,pos(-5,4.5,6),pos(1.2,1.4,-0.6));requestShot("wildmoot-flank",6);next(b,39);
                 }
                 case 39->{if(!shotTaken&&since(b)<60)return;wantShot=null;unlabel();
@@ -3760,7 +3828,6 @@ public final class Phase2Checks implements ClientModInitializer {
                     next(b,40);
                 }
                 case 40->{if(since(b)<22)return;
-                    dawn.traits.put("wildmoot",2);
                     var three=Commanders.blow(b,hounds[0],us[0].mob,"melee");boolean pack3=three!=null&&near(three.traits(),1.2)&&Gilded.is(three,1.3,"C7");
                     packOk&=pack3;packWhy+="; three hounds in front, all on the archer: "+show(three)+" (want traits 1.2, counters 1.3 C7)="+pack3;
                     drop(b,hounds[2]);hounds[2]=null;
@@ -3768,14 +3835,13 @@ public final class Phase2Checks implements ClientModInitializer {
                     next(b,41);
                 }
                 case 41->{if(since(b)<22)return;
-                    dawn.traits.put("wildmoot",2);
                     var kr=Commanders.blow(b,hounds[0],us[1].mob,"melee");boolean knightRear=kr!=null&&near(kr.traits(),1.2)&&Gilded.is(kr,1.3,"C16");
                     packOk&=knightRear;packWhy+="; two hounds behind the knight: "+show(kr)+" (want counters 1.3 C16 and traits 1.2)="+knightRear;
                     dusk.traits.put("gilded",1);us[2]=post(b,dusk,"archer",-3,6,90,true); // a Gilded ranged troop of another group 3 from the knight (west of it, so the hounds keep the knight as their target): it is covered
                     next(b,42);
                 }
                 case 42->{if(since(b)<12)return;
-                    dawn.traits.put("wildmoot",2);dusk.traits.put("gilded",1);
+                    dusk.traits.put("gilded",1);
                     boolean covered=Houses.covered(b,us[1]);
                     var cr=Commanders.blow(b,hounds[0],us[1].mob,"melee");boolean coveredRear=covered&&cr!=null&&near(cr.counters(),1.0)&&cr.rows().isEmpty()&&near(cr.traits(),1.2);
                     packOk&=coveredRear;packWhy+="; with a Gilded archer 3 from the knight (Bulwark I: covered="+covered+") the same blow "+show(cr)+" (want counters 1.0, no C16, and traits 1.2: cover voids the flank row, not Pack Hunters)="+coveredRear;
@@ -3784,12 +3850,11 @@ public final class Phase2Checks implements ClientModInitializer {
                     next(b,43);
                 }
                 case 43->{if(since(b)<22)return;
-                    dawn.traits.put("wildmoot",2);
                     var o=Commanders.blow(b,hounds[0],us[0].mob,"melee");boolean ownOnly=o!=null&&near(o.traits(),1.0);
                     report("p2-pack-hunters",packOk&&ownOnly,packWhy+"; two of Dawn's hounds and one of the commander's army on the archer, in front: "+show(o)+" (want traits 1.0: the three must be the attacker's own army's, design 2.3)="+ownOnly);
                     dawn.traits.clear();own.traits.clear();clearFixture(b,"pack");next(b,46);
                 }
-                case 46->{ // p2-reaver-bloodrush: the Reaver with four hounds, two hunters and two spears of his banner on the platform; five enemy archers; two hounds and a hunter fall first
+                case 46->{ // p2-reaver-bloodrush: the Reaver with four hounds, two hunters and two spears of his banner; twelve enemy archers and a shield knight facing him; two hounds and a hunter fall first
                     var p=sp(b);if(p==null)return;
                     clearFixture(b,"bloodrush");unbuild(b);reset(own);Commander.reset(b,own);own.training.clear();own.order="hold";dawn.order="hold";dusk.order="hold";
                     var c=Commander.row(own);
@@ -3797,33 +3862,63 @@ public final class Phase2Checks implements ClientModInitializer {
                     p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);b.relocate(p,site.getX()+.5-3,site.getY(),site.getZ()+.5,-90f,0f);
                     own.banner=new ArrayList<>(banner("wm_hound*4,wm_hunter*2,wm_tusk*2,empty*12"));
                     for(int i=0;i<4;i++)us[i]=post(b,own,"wm_hound",-6,-6+i*2,-90,true);us[4]=post(b,own,"wm_hunter",-8,-3,-90,true);us[5]=post(b,own,"wm_hunter",-8,3,-90,true);us[6]=post(b,own,"wm_tusk",-5,-8,-90,true);us[7]=post(b,own,"wm_tusk",-5,8,-90,true);
-                    for(int i=0;i<5;i++)line[i]=bare(post(b,dusk,"archer",2+i*1.2,3,90,true));
-                    var hound=Campaign.troop("wm_hound");var hunter=Campaign.troop("wm_hunter");
+                    us[8]=post(b,dawn,"knight",-2,-4,-90,true); // an ally's troop (Dawn's)
+                    for(int i=0;i<12;i++)line[i]=bare(post(b,dusk,"archer",2+(i%6)*1.2,i<6?3:6,90,true));
+                    formationWas=dusk.formation;dusk.formation="shieldwall";shieldUp=bare(post(b,dusk,"knight",0,0,90,true)); // facing the Reaver 3 west of it, its shield kept and raised from now (hold, and Tactics' brace agrees in a shield wall)
                     int lostBefore=own.stats.lost;
                     for(var u:List.of(us[0],us[1],us[4]))u.mob.damage(b.world.getDamageSources().generic(),1000f);
                     boolean fell=own.stats.lost==lostBefore+3;
-                    p.setHealth(10f);playerBlow(b,p,line[0].mob,10f);float plain=p.getHealth();
+                    p.setHealth(10f);float a0=line[0].mob.getHealth();playerBlow(b,p,line[0].mob,10f);float plain=p.getHealth(),plainLost=a0-line[0].mob.getHealth();
                     b.campaign.notices.remove(player);t0=b.time;b.command(p,"ability");
                     var speed=p.getStatusEffect(StatusEffects.SPEED);
                     boolean started=Commander.running(b,own,"bloodrush")&&own.abilityUntil==t0+200&&own.abilityReadyAt==t0+1500&&speed!=null&&speed.getAmplifier()==1&&Math.abs(speed.getDuration()-200)<=2;
-                    p.setHealth(10f);line[0].mob.setHealth(line[0].mob.getMaxHealth());playerBlow(b,p,line[0].mob,10f);float fed=p.getHealth();
-                    double scale=Spec.COMBATDISCIPLINE[0].damageScale();boolean healed=near(plain,10)&&Math.abs(fed-(10+10*scale*c.value1()))<0.05;
-                    int killsBefore=own.stats.kills;
-                    for(int i=1;i<=4;i++){line[i].mob.setHealth(1f);playerBlow(b,p,line[i].mob,10f);}
-                    var q=new ArrayList<>(own.training);
-                    boolean refunds=own.stats.kills==killsBefore+4&&q.size()==3&&q.stream().allMatch(t->t.paid()==0)&&q.get(0).spec()==hound&&q.get(1).spec()==hound&&q.get(2).spec()==hunter
-                        &&q.get(0).finished()==b.time+Commander.trainingTicks(own,hound)&&q.get(1).finished()==q.get(0).finished()+Commander.trainingTicks(own,hound)&&q.get(2).finished()==q.get(1).finished()+Commander.trainingTicks(own,hunter);
-                    rushOk=sheet&&fell&&started&&healed&&refunds;
-                    rushWhy="the Reaver's row "+c.id()+"/"+c.active()+" (cooldown "+c.cooldownTicks()+", lasts "+c.durationTicks()+", lifesteal "+c.value1()+", refunds "+c.value2()+")="+sheet+"; two hounds and a hunter of his army fell (lost "+(own.stats.lost-lostBefore)+")="+fell+"; before the active a blow of 10 on an archer left him at "+fmt(plain)+" (want 10)="+near(plain,10)+"; the key started Bloodrush (runs to +"+(own.abilityUntil-t0)+", ready at +"+(own.abilityReadyAt-t0)+", "+(speed==null?"no Speed":"Speed "+(speed.getAmplifier()+1)+" for "+speed.getDuration())+")="+started+"; a blow of 10 (x"+scale+" on a troop) fed him to "+fmt(fed)+" (want "+fmt(10+10*scale*c.value1())+")="+healed+"; four kills by his own hand queued "+q.size()+" free troops "+q.stream().map(t->t.spec().id()+(t.paid()==0?"":" paid "+t.paid())).toList()+" (want 3: hound, hound, hunter, the cheapest lost first, each after the last)="+refunds;
-                    own.training.clear(); // before any of them trains for real
+                    rushOk=sheet&&fell&&near(plain,10)&&plainLost>0&&started;
+                    rushWhy="the Reaver's row "+c.id()+"/"+c.active()+" (cooldown "+c.cooldownTicks()+", lasts "+c.durationTicks()+", lifesteal "+c.value1()+", refunds "+c.value2()+")="+sheet+"; two hounds and a hunter of his army fell (lost "+(own.stats.lost-lostBefore)+")="+fell+"; before the active a blow of 10 on an archer (it lost "+fmt(plainLost)+") left him at "+fmt(plain)+" (want 10)="+near(plain,10)+"; the key started Bloodrush (runs to +"+(own.abilityUntil-t0)+", ready at +"+(own.abilityReadyAt-t0)+", "+(speed==null?"no Speed":"Speed "+(speed.getAmplifier()+1)+" for "+speed.getDuration())+")="+started;
                     next(b,47);
                 }
-                case 47->{if(b.time<t0+203)return; // after the duration: no Speed, nothing kept, and a kill queues nothing
+                case 47->{if(since(b)<10)return; // the shield has been up 10 ticks: the lifesteal, then the kills
+                    var p=sp(b);if(p==null)return;var c=Commander.row(own);
+                    p.setHealth(10f);float k0=shieldUp.mob.getHealth();boolean blocking=shieldUp.mob.isBlocking();playerBlow(b,p,shieldUp.mob,10f);float kLost=k0-shieldUp.mob.getHealth(),afterShield=p.getHealth();
+                    boolean shielded=blocking&&kLost==0&&afterShield==10f;
+                    p.setHealth(10f);float a1=line[1].mob.getHealth();playerBlow(b,p,line[1].mob,10f);float lost1=a1-line[1].mob.getHealth(),fed=p.getHealth();
+                    double scale=Spec.COMBATDISCIPLINE[0].damageScale();boolean healed=Math.abs(lost1-10*scale)<1e-3&&Math.abs(fed-(10+lost1*c.value1()))<1e-3;
+                    float a2=line[1].mob.getHealth();playerBlow(b,p,line[1].mob,10f);float lost2=a2-line[1].mob.getHealth(),fed2=p.getHealth();
+                    boolean cooled=lost2==0&&fed2==fed;
+                    rushOk&=shielded&&healed&&cooled;
+                    rushWhy+="; a frontal blow of 10 on a knight's raised shield (blocking="+blocking+"): the knight lost "+fmt(kLost)+" and he stayed at "+fmt(afterShield)+" (want 0 and 10)="+shielded+"; a blow of 10 on an archer took "+fmt(lost1)+" (want "+fmt(10*scale)+", x"+scale+" on a troop) and fed him to "+fmt(fed)+" (want "+fmt(10+lost1*c.value1())+": "+c.value1()+" of what it lost)="+healed+"; a second blow at once, inside its hurt cooldown, took "+fmt(lost2)+" and fed him to "+fmt(fed2)+" (want 0 and no more)="+cooled;
+                    var hound=Campaign.troop("wm_hound");var hunter=Campaign.troop("wm_hunter");int killsBefore=own.stats.kills;
+                    line[2].mob.setHealth(1f);var arrow=EntityType.ARROW.create(b.world);arrow.setOwner(p);line[2].mob.damage(b.world.getDamageSources().arrow(arrow,p),10f);
+                    boolean bow=!line[2].mob.isAlive()&&own.training.isEmpty()&&own.stats.kills==killsBefore+1;
+                    line[3].mob.setHealth(1f);strike(b,us[2],line[3],10f);boolean troop=!line[3].mob.isAlive()&&own.training.isEmpty()&&own.stats.kills==killsBefore+2;
+                    line[4].mob.setHealth(1f);strike(b,us[8],line[4],10f);boolean ally=!line[4].mob.isAlive()&&own.training.isEmpty()&&dawn.training.isEmpty()&&own.stats.kills==killsBefore+2;
+                    playerBlow(b,p,line[5].mob,1f);line[5].mob.damage(b.world.getDamageSources().generic(),1000f);boolean window=!line[5].mob.isAlive()&&own.training.isEmpty()&&own.stats.kills==killsBefore+3;
+                    rushOk&=bow&&troop&&ally&&window;
+                    rushWhy+="; kills that are not his hand's refund nothing: by his bow (an arrow's source, his credit)="+bow+", by his own hound="+troop+", by an ally's knight (Dawn's credit)="+ally+", by a fall inside the credit window after his blow (his credit)="+window+" (queue "+own.training.size()+", kills +"+(own.stats.kills-killsBefore)+", want 3)";
+                    for(int i=0;i<Spec.ECONOMY[0].maxQueue();i++)own.training.addLast(new GravesAndGlory.Training(hound,b.time+100L*(i+1)));
+                    line[6].mob.setHealth(1f);playerBlow(b,p,line[6].mob,10f);boolean full=!line[6].mob.isAlive()&&own.training.size()==Spec.ECONOMY[0].maxQueue();
+                    own.training.clear();
+                    us[9]=post(b,own,"wm_hound",-6,-10,-90,true);us[10]=post(b,own,"wm_hound",-6,10,-90,true); // all four hounds of the banner fielded: no room for one
+                    line[7].mob.setHealth(1f);playerBlow(b,p,line[7].mob,10f);var q1=new ArrayList<>(own.training);boolean room=q1.size()==1&&q1.get(0).spec()==hunter&&q1.get(0).paid()==0;
+                    drop(b,us[9]);drop(b,us[10]);us[9]=us[10]=null;
+                    for(int i=8;i<=10;i++){line[i].mob.setHealth(1f);playerBlow(b,p,line[i].mob,10f);}
+                    var q=new ArrayList<>(own.training);
+                    boolean refunds=q.size()==3&&q.stream().allMatch(t->t.paid()==0)&&q.get(0).spec()==hunter&&q.get(1).spec()==hound&&q.get(2).spec()==hound
+                        &&q.get(0).finished()>=b.time+Commander.trainingTicks(own,hunter)&&q.get(1).finished()==q.get(0).finished()+Commander.trainingTicks(own,hound)&&q.get(2).finished()==q.get(1).finished()+Commander.trainingTicks(own,hound);
+                    rushOk&=full&&room&&refunds;
+                    rushWhy+="; a hand kill with the queue full ("+Spec.ECONOMY[0].maxQueue()+") queued nothing="+full+"; with all four hounds of the banner fielded a hand kill skipped the hound and queued "+q1.stream().map(t->t.spec().id()).toList()+" (want the hunter, the next cheapest)="+room+"; with two hounds gone again three hand kills left the queue "+q.stream().map(t->t.spec().id()+(t.paid()==0?"":" paid "+t.paid())).toList()+" (want hunter, hound, hound: two more refunds, then nothing past "+c.value2()+", each after the last)="+refunds;
+                    own.training.clear(); // before any of them trains for real
+                    next(b,48);
+                }
+                case 48->{if(b.time<t0+203)return; // after the duration: no Speed, nothing kept, and a kill queues nothing; then the Speed it ends is its own alone
                     var p=sp(b);if(p==null)return;
                     boolean over=!Commander.running(b,own)&&!p.hasStatusEffect(StatusEffects.SPEED)&&own.abilityData==null;
-                    line[0].mob.setHealth(1f);playerBlow(b,p,line[0].mob,10f);boolean none=!line[0].mob.isAlive()&&own.training.isEmpty();
-                    report("p2-reaver-bloodrush",rushOk&&over&&none,rushWhy+"; at +"+(b.time-t0)+" it has ended (Speed gone, nothing kept)="+over+" and a fifth kill queues nothing="+none);
-                    own.training.clear();clearFixture(b,"bloodrush done");next(b,50);
+                    line[11].mob.setHealth(1f);playerBlow(b,p,line[11].mob,10f);boolean none=!line[11].mob.isAlive()&&own.training.isEmpty();
+                    own.abilityReadyAt=0;b.command(p,"ability");boolean second=Commander.running(b,own,"bloodrush");
+                    p.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(StatusEffects.SPEED,600,2));Commander.stop(b,own);var kept=p.getStatusEffect(StatusEffects.SPEED);
+                    boolean keeps=second&&kept!=null&&kept.getAmplifier()==2&&kept.getDuration()>=590;p.removeStatusEffect(StatusEffects.SPEED);
+                    own.abilityReadyAt=0;b.command(p,"ability");boolean third=Commander.running(b,own,"bloodrush");Commander.stop(b,own);boolean gone=third&&!p.hasStatusEffect(StatusEffects.SPEED);
+                    report("p2-reaver-bloodrush",rushOk&&over&&none&&keeps&&gone,rushWhy+"; at +"+(b.time-t0)+" it has ended (Speed gone, nothing kept)="+over+" and a kill queues nothing="+none+"; started again (the cooldown waived by hand) and ended early with a Speed III of 600 ticks given meanwhile, that Speed stays ("+(kept==null?"none":"Speed "+(kept.getAmplifier()+1)+" for "+kept.getDuration())+")="+keeps+"; started and ended early with nothing else given, the Speed is gone="+gone);
+                    dusk.formation=formationWas;own.training.clear();clearFixture(b,"bloodrush done");next(b,50);
                 }
                 case 50->{ // the showcase: the commander's Wildmoot army; six hounds behind a line of seven archers, the Web Stalker on a wall, Old Horn before a line of seven knights
                     var p=sp(b);if(p==null)return;
@@ -3844,7 +3939,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     for(int i=0;i<6;i++){var h=Commanders.blow(b,hounds[i],line[i].mob,"melee");if(h!=null&&h.rows().contains("C16")&&near(h.traits(),1.3))rear++;label(b,pos(6.2,2.3+(i%3)*.7,-10+i*1.2),brief("Hound "+(i+1),h));if(i<2)s.append(show(h)).append("; ");}
                     for(int i:new int[]{1,2,4,5})unpin(knights[i]);
                     for(int i=0;i<7;i++)hp[i]=knights[i].mob.getHealth();
-                    mark=Combat.LAST.peekLast();strike(b,u1,knights[3],(float)Abilities.baseHit(b,u1));
+                    b.markCharge(own,"cavalry");mark=Combat.LAST.peekLast();strike(b,u1,knights[3],(float)Abilities.baseHit(b,u1));
                     int flung=0;for(int i:new int[]{1,2,4,5})if(knights[i].mob.getHealth()<hp[i])flung++;
                     boolean onWall=u2.mob.getY()>=site.getY()+3-1e-3,reared=warning(u1.mob);
                     ok=rear==6&&flung==4&&onWall&&own.traits.getOrDefault("wildmoot",0)==3;
@@ -3857,8 +3952,14 @@ public final class Phase2Checks implements ClientModInitializer {
                 }
                 case 60->{ // the tick cost: eight bot armies, four Wildmoot (hard) against four Gilded (hard)
                     var p=sp(b);if(p==null)return;
-                    if(cost==null)cost=tickCost(b,List.of("wildmoot_hard","wildmoot_hard","wildmoot_hard","wildmoot_hard","gilded_hard","gilded_hard","gilded_hard","gilded_hard"));
+                    if(cost==null){
+                        b.targeters.computeIfAbsent(own,k->new HashMap<>()).put(-1,1);Houses.reset(b);boolean targetersGone=b.targeters.isEmpty();
+                        own.fallen.put("by-hand",2);why="Houses.reset empties the targeters="+targetersGone+"; a fallen entry written by hand (the key by-hand, which no death writes) before the new skirmish";ok=targetersGone;
+                        cost=tickCost(b,List.of("wildmoot_hard","wildmoot_hard","wildmoot_hard","wildmoot_hard","gilded_hard","gilded_hard","gilded_hard","gilded_hard"));
+                    }
                     if(cost.step(p)){
+                        var now=b.squads.get(player);boolean fallenGone=now==own&&!own.fallen.containsKey("by-hand");
+                        report("p2-wildmoot-round-reset",ok&&fallenGone,why+" is gone after its startRound (the same army object="+(now==own)+", fallen "+own.fallen+": the army's own losses in the bot fight)="+fallenGone);
                         int posed=0;for(var u:b.units)if(u.mob.isAlive()&&(sitting(u.mob)||holdsAnger(u.mob)))posed++;
                         report("p2-wildmoot-tick-cost",cost.last<40&&posed==0,"server tick "+String.format(Locale.ROOT,"%.2f",cost.last)+" ms (600-tick mean "+String.format(Locale.ROOT,"%.2f",cost.avg)+" ms) with "+cost.troops+" troops at the start and "+b.units.size()+" at the end, "+posed+" sitting or angry at the end (want 0) ("+cost.note+")");
                         audit(b,"before the final returnLobby",false);

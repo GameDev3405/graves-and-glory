@@ -1,6 +1,5 @@
 package gg.gravesandglory;
 
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
@@ -106,18 +105,9 @@ public final class Commander {
         @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
             for (var u : b.units) if (u.squad == s) { var speed = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED); if (speed != null) speed.removeModifier(RALLY); }
         }
-        /** The speed modifier on every living troop of the army: the attribute change that makes a real x(1 + value1) on its ground (BattleMath.speedModifier: the square root on land, as it stands in water), added where it lacks and replaced where the ground changed it. */
+        /** The speed modifier on every living troop of the army: the attribute change that makes a real x(1 + value1) on its ground (BattleMath.speedModifier: the square root on land, as it stands in water), kept by Abilities.keepSpeed (added where it lacks, replaced where the ground changed it). */
         static void hasten(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.ClassesRow c) {
-            for (var u : b.units) {
-                if (u.squad != s || !u.mob.isAlive()) continue;
-                var speed = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
-                if (speed == null) continue;
-                double value = BattleMath.speedModifier(1 + c.value1(), u.mob.isTouchingWater());
-                var have = speed.getModifier(RALLY);
-                if (have != null && have.getValue() == value) continue;
-                if (have != null) speed.removeModifier(RALLY);
-                speed.addTemporaryModifier(new EntityAttributeModifier(RALLY, "Graves and Glory muster", value, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
-            }
+            for (var u : b.units) if (u.squad == s && u.mob.isAlive()) Abilities.keepSpeed(u.mob, RALLY, "Graves and Glory muster", BattleMath.speedModifier(1 + c.value1(), u.mob.isTouchingWater()));
         }
     }
 
@@ -249,49 +239,54 @@ public final class Commander {
     }
 
     /**
-     * The Reaver's Bloodrush: for durationTicks he has Speed II, his own blows by hand feed him value1 of what they deal (lifesteal, from Battle.allowDamage),
-     * and each enemy troop he kills by hand (playerKill, from Battle's AFTER_DEATH) brings one troop back for nothing: the cheapest his army lost this round
-     * and has not had back (Squad.fallen), at the back of his training queue (Battle.queueFree), at most value2 per use (the count in abilityData). It always starts.
+     * The Reaver's Bloodrush: for durationTicks he has Speed II, his own blows by hand feed him value1 of what their target really loses (lifesteal, from
+     * Battle.allowDamage), and each enemy troop he kills by hand (playerKill, from Battle's AFTER_DEATH: the killing blow's source is himself) brings one troop
+     * back for nothing: the cheapest his army lost this round and has not had back (Squad.fallen), at the back of his training queue (Battle.queueFree), at most
+     * value2 per use (the count in its State, Squad.abilityData). It always starts.
      */
     static final class Bloodrush implements Active {
         /** Speed II: the fixed effect kind the spec names. */
         static final int SPEED_II = 1;
+        /** What a running Bloodrush keeps (Squad.abilityData): the refunds given so far, and the battle time the Speed it gave runs out. */
+        static final class State { int given; long speedUntil; }
         @Override public boolean start(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, Spec.ClassesRow c) {
             p.addStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, c.durationTicks(), SPEED_II));
-            s.abilityData = new int[]{0};
+            var st = new State(); st.speedUntil = b.time + c.durationTicks(); s.abilityData = st;
             b.world.playSound(null, p.getBlockPos(), SoundEvents.ENTITY_WOLF_GROWL, SoundCategory.PLAYERS, 1f, .6f);
             b.world.spawnParticles(ParticleTypes.CRIT, p.getX(), p.getBodyY(.5), p.getZ(), 24, .6, .6, .6, .2);
             return true;
         }
         @Override public void tick(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.ClassesRow c) {}
-        /** The Speed goes with it (it would run out now anyway at expiry; at round start, the lobby or a leave it goes early). */
+        /** The Speed it gave goes with it (it would run out now anyway at expiry; at round start, the lobby or a leave it goes early): the Speed on him is taken off only while it is still that one, a Speed II running no longer than the rush had left; a stronger or longer Speed from elsewhere stays. */
         @Override public void end(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
             var p = b.server.getPlayerManager().getPlayer(s.owner);
-            if (p != null) p.removeStatusEffect(StatusEffects.SPEED);
+            if (p == null || !(s.abilityData instanceof State st)) return;
+            var speed = p.getStatusEffect(StatusEffects.SPEED);
+            if (speed != null && speed.getAmplifier() == SPEED_II && b.time + speed.getDuration() <= st.speedUntil + 1) p.removeStatusEffect(StatusEffects.SPEED);
         }
         /** One troop back for a kill: the cheapest fallen troop that the banner and the army's room allow, after the last of the queue; nothing past value2 refunds, or when none fits. */
         static void refund(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.ClassesRow c) {
-            if (!(s.abilityData instanceof int[] given) || given[0] >= c.value2()) return;
+            if (!(s.abilityData instanceof State st) || st.given >= c.value2()) return;
             List<Spec.TroopsRow> fallen = new ArrayList<>();
             for (var e : s.fallen.entrySet()) if (e.getValue() > 0) { var t = Campaign.troop(e.getKey()); if (t != null) fallen.add(t); }
             fallen.sort(Comparator.comparingInt(Spec.TroopsRow::cost)); // a tie keeps the order they fell in
             for (var t : fallen) {
                 if (!b.queueFree(s, t)) continue;
                 s.fallen.merge(t.id(), -1, Integer::sum);
-                given[0]++;
+                st.given++;
                 b.campaign.notice(s.owner, "Bloodrush: " + t.name() + " returns to your banner for nothing.");
                 return;
             }
         }
     }
 
-    /** The Reaver's lifesteal (Bloodrush): his own blow by hand (the source is himself, not an arrow or a spell) heals him value1 of the amount while it runs. Battle.allowDamage calls it with the amount the target takes (a troop's damageScale applied). */
-    static void lifesteal(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Entity attacker, DamageSource source, float amount) {
-        if (!(attacker instanceof ServerPlayerEntity p) || source.getSource() != attacker || !running(b, s, "bloodrush")) return;
-        p.heal((float) (amount * row(s).value1()));
-    }
+    /** Whether a blow feeds the Reaver (Bloodrush): his own blow by hand (the source is the attacker himself, not an arrow or a spell) while it runs. Battle.allowDamage asks before the blow lands and then measures what the target lost. */
+    static boolean feeds(GravesAndGlory.Battle b, GravesAndGlory.Squad s, DamageSource source) { return source.getSource() == source.getAttacker() && running(b, s, "bloodrush"); }
 
-    /** An enemy troop the commander killed by his own hand (Battle's AFTER_DEATH, after the kill's gold): while his Bloodrush runs, one troop comes back (Bloodrush.refund). */
+    /** The Reaver's lifesteal (Bloodrush): value1 of the health (absorption included) the target of his blow by hand really lost, which a raised shield or the target's hurt cooldown can make 0. */
+    static void lifesteal(GravesAndGlory.Battle b, GravesAndGlory.Squad s, ServerPlayerEntity p, float lost) { if (lost > 0 && running(b, s, "bloodrush")) p.heal((float) (lost * row(s).value1())); }
+
+    /** An enemy troop the commander killed by his own hand (Battle's AFTER_DEATH, when the killing blow's source is himself, after the kill's gold): while his Bloodrush runs, one troop comes back (Bloodrush.refund). */
     static void playerKill(GravesAndGlory.Battle b, GravesAndGlory.Squad s) { if (running(b, s, "bloodrush")) Bloodrush.refund(b, s, row(s)); }
 
     /** The class row a squad fights under: its commander id, or the sheet's first class for an unknown id. */

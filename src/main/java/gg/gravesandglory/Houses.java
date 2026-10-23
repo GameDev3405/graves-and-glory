@@ -1,8 +1,6 @@
 package gg.gravesandglory;
 
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.attribute.EntityAttributeModifier;
-import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.registry.tag.DamageTypeTags;
 import net.minecraft.util.math.Vec3d;
@@ -127,14 +125,8 @@ final class Houses {
      * vanilla drag makes every land mob slow).
      */
     static void swim(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
-        var speed = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
-        if (speed == null) return;
         double travel = CounterMath.riptideSpeed(riptide(u), u.mob.isTouchingWater() || b.world.isRaining());
-        double bonus = BattleMath.speedModifier(travel, u.mob.isTouchingWater());
-        var have = speed.getModifier(RIPTIDE);
-        if (have != null && Math.abs(have.getValue() - bonus) < 1e-9) return;
-        if (have != null) speed.removeModifier(RIPTIDE);
-        if (bonus > 0) speed.addTemporaryModifier(new EntityAttributeModifier(RIPTIDE, "Graves and Glory riptide", bonus, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+        Abilities.keepSpeed(u.mob, RIPTIDE, "Graves and Glory riptide", BattleMath.speedModifier(travel, u.mob.isTouchingWater()));
     }
 
     /** The sheet's rest rule: its first Entrench row (the radius and the durationTicks are the same on every tier), or null when the sheet has none. Any troop's rest is measured by it, whatever its House. */
@@ -239,10 +231,11 @@ final class Houses {
         b.units.remove(u);
     }
 
-    /** Every temporary troop is discarded and the death log emptied: startRound, returnLobby and switchMap call it, so nothing a round raised or logged outlives it. */
+    /** Every temporary troop is discarded, the death log emptied and the Pack Hunters' targeters forgotten: startRound, returnLobby and switchMap call it, so nothing a round raised, logged or counted outlives it. */
     static void reset(GravesAndGlory.Battle b) {
         for (var u : new ArrayList<>(b.units)) if (u.temporary) discard(b, u);
         b.deaths.clear();
+        b.targeters.clear();
     }
 
     /** Once a second while a round runs: refreshes every seated squad's tiers and adds a second to the trait seconds of each House at tier I or higher. */
