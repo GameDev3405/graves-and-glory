@@ -562,16 +562,16 @@ class BuildSkinsChecks(unittest.TestCase):
         self.assertEqual(sword.getpixel((0, 15)), (124, 133, 145, 255))
 
     def test_sheet_rules(self):
-        """A box outside the sheet, a skin of the wrong size and a skin for a stage the line lacks each fail, naming the troop."""
+        """A box outside the sheet, a skin of the wrong size and a skin for an armour tier no gear tier has each fail, naming the troop."""
         mage = copy.deepcopy(TROOPS)
-        mage['mage']['skins'] = {'1': 'mage_s1.png', '2': 'mage_s2.png'}
+        mage['mage']['skins'] = {'1': 'mage_s1.png', '5': 'mage_s5.png'}
         cases = [
             ('knight', 'outside the 64x64 sheet',
              self.with_knight(parts=[{'part': 'cap', 'uv': [50, 0]}, {'part': 'skirt', 'uv': [0, 32]}, {'part': 'pennant'}]), False),
             ('knight', 'knight_s1.png is 32x32, not the troop size 64x64', TROOPS, True),
-            ('knight', 'a skin for stage 4, which the evolution line lacks',
+            ('knight', 'a skin for armour tier 4, which no gear tier has (armour tiers [1, 2, 3])',
              self.with_knight(skins={'1': 'knight_s1.png', '4': 'knight_s4.png'}), False),
-            ('mage', 'a skin for stage 2, which the evolution line lacks', mage, False),
+            ('mage', 'a skin for armour tier 5, which no gear tier has', mage, False),
         ]
         for troop, want, troops, small in cases:
             with self.subTest(want=want), tempfile.TemporaryDirectory() as tmp:
@@ -1177,6 +1177,170 @@ class BuildSkinsChecks(unittest.TestCase):
         last, before = build_skins.contact_picture_box(5, 4), build_skins.contact_picture_box(4, 4)
         self.assertEqual(sheet.getpixel(((last[0] + last[2]) // 2, last[1] + build_skins.CONTACT_CELL // 4)), (200, 40, 40))
         self.assertEqual(sheet.getpixel(((before[0] + before[2]) // 2, before[1] + build_skins.CONTACT_CELL // 4)), build_skins.CONTACT_GREY)
+
+    # ---- in-match progression Task 9: armour tiers, weapon tiers, the stopgap list, the chevron ----
+
+    def tiers_root(self, tmp, troops=None, weapons=(), chevron=None):
+        """The fixture with these extra weapon sources (sword_t2, ...) copied from the sword, and a chevron source when given."""
+        root = fixture(tmp, troops=troops)
+        for wid in weapons:
+            write_json(root / 'art/weapons' / (wid + '.json'), dict(SWORD, weapon=wid))
+            skin(root / 'art/weapons' / (wid + '.png'), (16, 16), (150, 150, 160, 255))
+        if chevron is not None:
+            put_png(root / 'art/marks/chevron.png', chevron)
+        return root
+
+    def test_armour_tiers_every_troop(self):
+        """Armour tiers are the gearTiers rows (in-match progression design 4.4): an Epic, which has no level line, takes a
+        tier II and III skin; a sheet with gearTiers rows 1 and 2 refuses a tier 3 skin."""
+        troops = copy.deepcopy(TROOPS)
+        troops['mage']['skins'] = {'1': 'mage_s1.png', '2': 'mage_s2.png', '3': 'mage_s3.png'}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp, troops=troops)
+            self.export(root)
+            model = json.loads((root / ASSETS / 'models/troop/mage.json').read_text(encoding='utf-8'))
+        self.assertEqual(list(model['skins']), ['1', '2', '3'])
+        sheet = copy.deepcopy(SHEET)
+        sheet['gearTiers'] = [{'id': 't1', 'tier': 1}, {'id': 't2', 'tier': 2}]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp, troops=troops, sheet=sheet)
+            said = self.fails(export_assets, root)
+        self.assertIn('mage: a skin for armour tier 3, which no gear tier has (armour tiers [1, 2])', said)
+
+    def test_own_skins_only(self):
+        """The model's skins name only the troop's own files: a missing tier is the client's stopgap, never a copied key."""
+        model = self.bake(TROOPS)['knight']
+        self.assertEqual(model['skins'], {'1': 'gravesandglory:textures/entity/troop/knight_s1.png'})
+        model = self.bake(self.with_knight(skins={'1': 'knight_s1.png', '3': 'knight_s3.png'}))['knight']
+        self.assertEqual(list(model['skins']), ['1', '3'])
+
+    def test_weapon_tier_parts(self):
+        """The weaponTiers part key (design 4.4): the bone carries the weapon tiers it shows at; an entry without it carries
+        none (the key is left out of the bone, so models without weapon parts keep their bytes); a tier no gear tier has fails."""
+        parts = TROOPS['mage']['parts'] + [{'part': 'cap', 'uv': [32, 0], 'weaponTiers': [2, 3]}]
+        troops = copy.deepcopy(TROOPS)
+        troops['mage']['parts'] = parts
+        model = self.bake(troops)['mage']
+        self.assertEqual(find(model, 'cap')['weaponTiers'], [2, 3])
+        self.assertNotIn('weaponTiers', find(model, 'pennant'))
+        self.assertNotIn('weaponTiers', find(self.bake(TROOPS)['knight'], 'cap'))
+        for bad, want in (([4], 'shows at weapon tiers [4]'), (2, 'weaponTiers must list the weapon tiers it shows at, not 2'), ([], 'weaponTiers must list')):
+            troops['mage']['parts'] = TROOPS['mage']['parts'] + [{'part': 'cap', 'uv': [32, 0], 'weaponTiers': bad}]
+            with self.subTest(bad=bad), tempfile.TemporaryDirectory() as tmp:
+                said = self.fails(export_assets, fixture(tmp, troops=troops))
+                self.assertIn('mage', said)
+                self.assertIn(want, said)
+
+    def test_weapon_tier_models(self):
+        """art/weapons/<weapon>_t2 and _t3 build as their own weapons; one without its tier I weapon fails, and so does a troop
+        that names a tier weapon instead of its tier I weapon."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tiers_root(tmp, weapons=('sword_t2',))
+            index = self.export(root)
+            self.assertIn('sword_t2', index['weapons'])
+            self.assertTrue((root / ASSETS / 'models/troop/weapon/sword_t2.json').is_file())
+        with tempfile.TemporaryDirectory() as tmp:
+            said = self.fails(export_assets, self.tiers_root(tmp, weapons=('axe_t2',)))
+            self.assertIn('weapon axe_t2: a weapon tier of axe, which art/weapons lacks', said)
+        with tempfile.TemporaryDirectory() as tmp:
+            said = self.fails(export_assets, self.tiers_root(tmp, troops=self.with_knight(weapon='sword_t2'), weapons=('sword_t2',)))
+            self.assertIn('knight: weapon sword_t2 is a weapon tier; name its tier I weapon sword', said)
+        with tempfile.TemporaryDirectory() as tmp:
+            said = self.fails(export_assets, self.tiers_root(tmp, weapons=('sword_t4',)))
+            self.assertIn('weapon sword_t4: tier 4 is no weapon tier', said)
+
+    def test_tiers_list(self):
+        """--tiers (tier_table and stopgaps): per troop, each armour and weapon tier and the tier it draws; a troop with every
+        tier of its own is no stopgap, a missing _s3 or weapon tier and a troop with no model at all are."""
+        troops = copy.deepcopy(TROOPS)
+        troops['knight']['skins'] = {'1': 'knight_s1.png', '2': 'knight_s2.png'}
+        troops['sentinel']['skins'] = {'1': 'sentinel_s1.png', '2': 'sentinel_s2.png', '3': 'sentinel_s3.png'}
+        troops['mage']['parts'] = TROOPS['mage']['parts'] + [{'part': 'cap', 'uv': [32, 0], 'weaponTiers': [3]}]
+        troops['mage']['skins'] = {'1': 'mage_s1.png', '2': 'mage_s2.png', '3': 'mage_s3.png'}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tiers_root(tmp, troops=troops, weapons=('sword_t2', 'sword_t3'))
+            cat = build_skins.load(root)
+            rows = {r['troop']: r for r in build_skins.tier_table(cat)}
+            gaps = build_skins.stopgaps(cat)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = build_skins.tiers(root)
+        self.assertEqual(rows['knight']['armour'], {1: 1, 2: 2, 3: 2})
+        self.assertEqual(rows['knight']['weapon'], {1: 1, 2: 2, 3: 3})
+        self.assertEqual(rows['sentinel']['armour'], {1: 1, 2: 2, 3: 3})
+        self.assertEqual(rows['mage']['weapon'], {1: 1, 2: 1, 3: 3})
+        self.assertIsNone(rows['hound']['armour'])
+        self.assertEqual([g[0] for g in gaps], ['hound', 'knight', 'mage'])
+        self.assertEqual(dict(gaps)['knight'], 'armour III draws II')
+        self.assertEqual(dict(gaps)['mage'], 'weapon II draws I')
+        self.assertEqual(dict(gaps)['hound'], 'no model')
+        lines = out.getvalue().splitlines()
+        self.assertEqual(code, 0)
+        self.assertIn('build_skins: tiers knight: armour I II III->II; weapon sword I II III', lines)
+        self.assertIn('build_skins: tiers mage: armour I II III; weapon parts I II->I III', lines)
+        self.assertIn('build_skins: tiers sentinel: armour I II III; weapon sword I II III', lines)
+        self.assertIn('build_skins: tiers hound: no model (draws its vanilla mob)', lines)
+        self.assertEqual(lines[-1], 'build_skins: stopgap 3 troops: hound (no model), knight (armour III draws II), mage (weapon II draws I)')
+
+    def test_release_gate(self):
+        """package.py's check (round 34 question 6): with a stopgap it refuses, printing the list, unless --allow-stopgap is
+        given, which marks the file name; with none it passes unmarked."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tiers_root(tmp)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), self.assertRaises(SystemExit) as caught:
+                build_skins.release_gate(root, [])
+            self.assertEqual(caught.exception.code, 1)
+            self.assertIn('package: refused: 4 troops still draw a stopgap tier', out.getvalue())
+            self.assertIn('hound (no model)', out.getvalue())
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(build_skins.release_gate(root, ['--allow-stopgap']), '-stopgap')
+        sheet = copy.deepcopy(SHEET)
+        sheet['troops'] = [t for t in SHEET['troops'] if t['id'] == 'sentinel']
+        troops = {'sentinel': dict(TROOPS['sentinel'], skins={'1': 'sentinel_s1.png', '2': 'sentinel_s2.png', '3': 'sentinel_s3.png'})}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp, troops=troops, sheet=sheet)
+            for wid in ('sword_t2', 'sword_t3'):
+                write_json(root / 'art/weapons' / (wid + '.json'), dict(SWORD, weapon=wid))
+                skin(root / 'art/weapons' / (wid + '.png'), (16, 16), (150, 150, 160, 255))
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(build_skins.release_gate(root, []), '')
+                self.assertEqual(build_skins.release_gate(root, ['--allow-stopgap']), '')
+
+    def test_package_refuses(self):
+        """tools/package.py on this checkout, while its troops are not all tier-complete, refuses before it reads a jar."""
+        import subprocess
+        tools = pathlib.Path(build_skins.__file__).resolve().parent
+        if not build_skins.stopgaps(build_skins.load(tools.parent)):
+            self.skipTest('every troop has its own tiers: package.py has nothing to refuse')
+        done = subprocess.run([sys.executable, str(tools / 'package.py')], capture_output=True, text=True, cwd=tools.parent)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn('package: refused:', done.stdout)
+        self.assertIn('--allow-stopgap', done.stdout)
+
+    def test_chevron(self):
+        """art/marks/chevron.png builds to textures/entity/troop/chevron.png (the rank chevron, tinted by the side colour on the
+        client): every opaque pixel grey, alpha 0 or 255, at most 32 px a side."""
+        good = Image.new('RGBA', (11, 7), (0, 0, 0, 0))
+        for x in range(11):
+            good.putpixel((x, 3), (230, 230, 230, 255))
+        good.putpixel((5, 0), (28, 28, 28, 255))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tiers_root(tmp, chevron=good)
+            index = self.export(root)
+            self.assertIn('textures/entity/troop/chevron.png', index['outputs'])
+            built = Image.open(root / ASSETS / 'textures/entity/troop/chevron.png').convert('RGBA')
+            self.assertEqual(list(built.getdata()), list(good.getdata()))
+        for name, edit in (('is not grey', lambda im: im.putpixel((0, 3), (230, 200, 40, 255))),
+                           ('alpha 128', lambda im: im.putpixel((1, 3), (230, 230, 230, 128))),
+                           ('33x7', None)):
+            im = good.copy() if edit else Image.new('RGBA', (33, 7), (0, 0, 0, 0))
+            if edit:
+                edit(im)
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                said = self.fails(export_assets, self.tiers_root(tmp, chevron=im))
+                self.assertIn('chevron.png', said)
+                self.assertIn(name, said)
 
 
 if __name__ == '__main__':

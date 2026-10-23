@@ -81,12 +81,19 @@ The Phase 2 sheets: `houses` (five, with `fieldable`, all true), `troops` (30), 
 
 ## 5. Troop models, skins and the armory overlay
 
-**Troops draw from their own models.** `tools/build_skins.py` turns the sources in `art/` (rigs, parts, weapons, troops, team cloth) into `src/main/resources/assets/gravesandglory/models/troop/` (`index.json`, one file per troop, rig and weapon) and `textures/entity/troop/` (one skin per stage with its relief layer, the Veteran trim, glow and outer layers, weapon sheets, and one team cloth per side). The client picks a troop's model and stage skin from its custom name (a troop or stage name, with an optional ` (Veteran)` suffix) and its cloth from its `gg_<side>` team, so a side colour is data (the `factions` sheet), never a texture edit. Never hand-edit a generated file.
+**Troops draw from their own models.** `tools/build_skins.py` turns the sources in `art/` (rigs, parts, weapons, troops, team cloth) into `src/main/resources/assets/gravesandglory/models/troop/` (`index.json`, one file per troop, rig and weapon) and `textures/entity/troop/` (one skin per armour tier with its relief layer, the Veteran trim, glow and outer layers, weapon sheets, the rank chevron, and one team cloth per side). The client picks a troop's model from its custom name (a troop or level name, with an optional ` (Veteran)` suffix), its armour skin and weapon from its rank_v1 rank (`RankSync`: level, weapon tier, armour tier), and its cloth from its `gg_<side>` team, so a side colour is data (the `factions` sheet), never a texture edit. Never hand-edit a generated file.
 
 - `python tools/build_skins.py` exports; `--verify` rebuilds into a temp dir and compares (it must pass before a commit that touches `art/` or the generated models); `--template <troop>` writes the sheet to paint over.
 - `tools/preflight.py` checks that `models/troop/index.json` lists exactly the `art/troops` ids.
 - Where each part of the art pipeline lives, its sizes and the rules (relief, two texels a model pixel on weapons, no vanilla armour on a troop) is in `docs/superpowers/specs/2026-10-17-unit-identity.md` (and `docs/ART-STYLE-GUIDE.md` on the base branch); this file only says how to rebuild.
 - Phase 2 painted skins for the six Gilded troops; the other 24 draw as their bare rigs until each House's art half. That is why every troop must work without art.
+
+**Tier art (in-match progression design 4.4).** A troop's armour and weapon each have tiers I to III (the `gearTiers` sheet), set apart from its level.
+- Armour: `art/troops/<id>_s1.png` to `_s3.png`, one skin per armour tier. A skin for a tier no gear tier has fails the build.
+- Weapon: `art/weapons/<weapon>.json` is tier I; `<weapon>_t2.json` and `<weapon>_t3.json` (with their sheets) are tiers II and III. A troop always names its tier I weapon; a `_t<n>` weapon without its tier I base fails the build.
+- Weapon parts (a troop without a held weapon, such as a horn or a banner): a part gets a `"weaponTiers": [..]` key, the weapon tiers it shows at, like `stages` for armour.
+- A missing tier draws as the highest tier below it that exists (the stopgap). `python tools/build_skins.py --tiers` lists every troop's tiers and the stopgaps.
+- The rank chevron is `art/marks/chevron.png` (17x7, grey, full alpha or none); the client tints it by the side colour.
 
 **Armory overlay (players and vanilla mobs only).** The armory resource pack under `src/main/resources/resourcepacks/armory/` still carries Entity Model Features overlays (`player.jem`, `player_slim.jem`, and `husk`, `skeleton` and `wither_skeleton` `.jem` files) and 30 vanilla weapon item overrides. Troops no longer use them. EMF, ETF and Fresh Animations and the husk, skeleton and wither skeleton `.jem` files leave in the release step (Needs Kort 13); until then they stay pinned, for the presentation modpack only. Changing a JEM needs a game restart or resource reload to see.
 
@@ -110,6 +117,7 @@ python tools/export_server.py         -> dist/graves-and-glory-<version>-server.
 - If old classes survive a rebuild, run a clean Gradle build. Do not reuse a prior remapped JAR.
 - `tools/package.py` fails the build if any harness name appears in the player jar. It also builds `dist/package-manifest.json` with hashes, credits and every third-party notice.
 - Only `dependencies/manifest.json` entries are included, and each file is checked against its pinned SHA-256.
+- `tools/package.py` refuses while any troop draws a stopgap tier (`python tools/build_skins.py --tiers` lists them). `--allow-stopgap` builds anyway for local use and names the zip `graves-and-glory-<version>-stopgap.zip`; never publish that file.
 
 ## 7. Test harness (development only)
 

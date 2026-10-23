@@ -11,17 +11,23 @@ import java.util.*;
 /**
  * The troops' own models (Phase 2 Task 5; unit identity section 0), as TroopModelLoader last loaded them from
  * models/troop/, and how a mob on the client maps to one. A troop is a plain vanilla mob named by Battle.spawn: its custom
- * name gives the troop and its level (ArmyMobs.named), a name ending " (Veteran)" the Veteran skin, and its gg_<side>
- * scoreboard team the cloth its panels and pennant are drawn in.
+ * name says only which troop it is (ArmyMobs.named reads any of its level names) and, ending " (Veteran)", that it wears the
+ * veteran trim; its rank (level, weapon tier, armour tier) comes from rank_v1 (RankSync.client, in-match progression Task 9);
+ * its gg_<side> scoreboard team gives the cloth its panels and pennant are drawn in.
  */
 public final class TroopModels {
     private TroopModels() {}
     /**
-     * What a troop entity looks like: its row, armour tier, Veteran skin, and its side: the side of its gg_ team, else
-     * the side this client last resolved for it (the server takes a troop off its team as it dies, and the body stays a second
-     * longer in its colours, with its flag), else null.
+     * What a troop entity looks like: its row, its rank (level, worn weapon tier and armour tier, from RankSync: Rank.FRESH,
+     * 1/1/1, until the first rank_v1 for it arrives), the veteran trim, and its side: the side of its gg_ team, else the side
+     * this client last resolved for it (the server takes a troop off its team as it dies, and the body stays a second longer in
+     * its colours, with its flag), else null. The tiers are the worn ones; a tier whose art the troop lacks draws the highest
+     * tier below it that it has (the stopgap: TroopModel.armourArt, weaponPartTier, TroopModels.weapon).
      */
-    public record Look(Spec.TroopsRow troop, int armourTier, boolean veteran, String side) {}
+    public record Look(Spec.TroopsRow troop, int level, int weaponTier, int armourTier, boolean veteran, String side) {
+        /** A fresh soldier's look at an armour tier (level 1, weapon tier I): the harness's drawn-by-hand poses. */
+        public Look(Spec.TroopsRow troop, int armourTier, boolean veteran, String side) { this(troop, 1, 1, armourTier, veteran, side); }
+    }
     /**
      * A weapon model (troop depth design, section 2): its id, the meshes of its frames (rest first, then pull_0 to pull_2 of a
      * draw weapon), the times of the pulls in seconds of bow_draw (empty without a pull), the grip that places the sprite in the
@@ -85,6 +91,8 @@ public final class TroopModels {
     private static final Map<Entity,Seen> SEEN=new MapMaker().weakKeys().makeMap();
     private static final class Seen { volatile String side;final long first;Seen(long first){this.first=first;} }
 
+    /** Harness only (RankChecks): adds a weapon model under an id until the next resource reload, for a tier model no art has yet. */
+    static void addWeapon(String id,Weapon w){var m=new LinkedHashMap<>(weapons);if(w==null)m.remove(id);else m.put(id,w);weapons=Collections.unmodifiableMap(m);}
     /** Called by TroopModelLoader at the end of each resource reload. */
     static void publish(Map<String,TroopModel<?>> troopModels,Map<String,TroopModel<?>> rigModels,Map<String,Weapon> weaponModels){
         troops=Collections.unmodifiableMap(new LinkedHashMap<>(troopModels));rigs=Collections.unmodifiableMap(new LinkedHashMap<>(rigModels));
@@ -93,21 +101,31 @@ public final class TroopModels {
 
     /**
      * The Look of a troop entity: null for a mob that is no troop (no custom name, or a name no troop or level has) and for a
-     * troop whose House has no model yet, which therefore draws through its vanilla renderer. A troop without a gg_ team keeps
-     * the side this client last resolved for it, for as long as the entity exists.
+     * troop whose House has no model yet, which therefore draws through its vanilla renderer. The name gives only the troop
+     * and the veteran trim; the rank is RankSync.client's (a portrait's own through setLocal), Rank.FRESH while none has
+     * arrived. A troop without a gg_ team keeps the side this client last resolved for it, for as long as the entity exists.
      */
     public static Look resolve(Entity e){
+        Spec.TroopsRow t=troopOf(e);if(t==null||!troops.containsKey(t.id()))return null;
+        boolean veteran=e.getCustomName().getString().endsWith(VETERAN);
+        RankSync.Rank rank=rank(e);
+        return new Look(t,rank.level(),rank.weaponTier(),rank.armourTier(),veteran,side(e));
+    }
+    /** The troop a mob is by its custom name (any of its level names, with or without the veteran suffix), whether or not it has a model; null for no troop. */
+    static Spec.TroopsRow troopOf(Entity e){
         if(!(e instanceof MobEntity)||e.getCustomName()==null)return null;
-        String name=e.getCustomName().getString();boolean veteran=name.endsWith(VETERAN);
-        if(veteran)name=name.substring(0,name.length()-VETERAN.length());
-        Spec.TroopsRow t=ArmyMobs.named(name);if(t==null||!troops.containsKey(t.id()))return null;
-        int armourTier=1; // stopgap until Task 9 reads RankSync: a level name stands for its level, and the level picks the armour tier
-        if(!name.equals(t.name()))for(var row:Spec.LEVELNAMES)if(row.troop().equals(t.evolveLine())&&row.name().equals(name)){armourTier=row.level();break;}
+        String name=e.getCustomName().getString();if(name.endsWith(VETERAN))name=name.substring(0,name.length()-VETERAN.length());
+        return ArmyMobs.named(name);
+    }
+    /** The rank this client holds for a troop: RankSync.client, else Rank.FRESH (a troop draws at 1/1/1 until its first rank_v1). */
+    static RankSync.Rank rank(Entity e){RankSync.Rank r=RankSync.client(e);return r==null?RankSync.Rank.FRESH:r;}
+    /** The side of a troop: its gg_ team's, else the side this client last resolved for it (remembered for as long as the entity exists), else null. */
+    static String side(Entity e){
         var team=e.getScoreboardTeam();String side=null;
         if(team!=null&&team.getName().startsWith(TEAM))side=team.getName().substring(TEAM.length());
         Seen seen=SEEN.computeIfAbsent(e,k->new Seen(k.getWorld()==null?0:k.getWorld().getTime()));
         if(side!=null)seen.side=side;else side=seen.side;
-        return new Look(t,armourTier,veteran,side);
+        return side;
     }
     /**
      * Whether a troop waits undrawn this frame: it has no side yet (its team has not reached this client), wears no dress (a
@@ -124,14 +142,33 @@ public final class TroopModels {
     /** The troops with a model. */
     public static Set<String> ids(){return troops.keySet();}
 
-    /** The skin of a Look: its armour tier's skin (a tier without its own skin draws the next lower tier's). A Veteran wears the same tier, with trim over it. */
+    /** The skin of a Look: its armour tier's skin (the stopgap: a tier without its own skin draws the highest own tier below it). A Veteran wears the same tier, with trim over it. */
     public static Identifier skin(Look l){var m=troops.get(l.troop().id());return m==null?null:m.skin(l.armourTier());}
-    /** The veteran trim (<troop>_veteran, in-match progression design 4.4) a Look draws over its skin: null unless it is a Veteran and the troop has a trim. */
+    /** The veteran trim (<troop>_veteran, in-match progression design 4.4) a Look draws over whichever armour tier it wears: null unless it is a Veteran and the troop has a trim. */
     public static Identifier trim(Look l){var m=troops.get(l.troop().id());return m==null||!l.veteran()?null:m.veteran;}
-    /** The glow layer (<troop>_e) of a Look, null below the troop's glowFrom stage or for a troop without one. */
-    public static Identifier glow(Look l){var m=troops.get(l.troop().id());return m==null||m.glow==null||l.armourTier()<m.glowFrom?null:m.glow;}
+    /** The glow layer (<troop>_e) of a Look, null below the troop's glowFrom tier (the armour tier its art draws) or for a troop without one. */
+    public static Identifier glow(Look l){var m=troops.get(l.troop().id());return m==null||m.glow==null||m.armourArt(l.armourTier())<m.glowFrom?null:m.glow;}
+    /**
+     * The weapon model a troop holding weapon id draws at a weapon tier: <id>_t<n> for tier n, tier I <id>; a tier without its
+     * own model draws the highest tier below it that has one (the stopgap). Null for no weapon or an unknown id.
+     */
+    public static Weapon weapon(String id,int tier){
+        if(id==null)return null;
+        for(int t=Math.min(tier,MAX_TIER);t>1;t--){Weapon w=weapons.get(tierId(id,t));if(w!=null)return w;}
+        return weapons.get(id);
+    }
+    /** The weapon tier a troop holding weapon id draws at a worn tier (the stopgap's answer): the highest tier at or below it with a model; 1 for none. */
+    public static int weaponArt(String id,int tier){
+        if(id!=null)for(int t=Math.min(tier,MAX_TIER);t>1;t--)if(weapons.containsKey(tierId(id,t)))return t;
+        return 1;
+    }
+    /** The id of a weapon's tier model: <id>_t<n>, tier I <id> (tools/build_skins.py WEAPON_TIER). */
+    static String tierId(String id,int tier){return tier<=1?id:id+"_t"+tier;}
+    /** The highest gear tier (the gearTiers rows). */
+    static final int MAX_TIER=Arrays.stream(Spec.GEARTIERS).mapToInt(Spec.GearTiersRow::tier).max().orElse(3);
     /** The cloth sheet of a side (a factions id), of the company ("company"), or linen for null. */
     public static Identifier cloth(String side){return new Identifier(NAMESPACE,CLOTH+(side==null?"linen":side)+".png");}
+    /** A weapon model by its id (a tier model's id is <id>_t<n>); weapon(id, tier) picks a worn tier's. */
     public static Weapon weapon(String id){return id==null?null:weapons.get(id);}
     /** N for a troop framed "tall N", else 0 (the UI plan's Portrait.draw tall argument). */
     public static int portraitTall(String troop){String f=framing(troop);return f!=null&&f.startsWith("tall ")?Integer.parseInt(f.substring(5).trim()):0;}
