@@ -637,15 +637,23 @@ public final class Phase3Checks implements ClientModInitializer {
         static final Spec.CampRow C=Spec.CAMP[0];
         static final List<String> PAGES=new ArrayList<>();
         static{for(var s:Spec.CAMPSTATIONS)if(!PAGES.contains(s.page()))PAGES.add(s.page());}
-        static final String[] VIEW_NAMES={"camp-arrival","camp-ridge","camp-aerial","camp-war-table","camp-gates-inside","camp-gates-outside","camp-archive","camp-south-pads","camp-south-oblique"};
+        static final String[] VIEW_NAMES={"camp-arrival","camp-ridge","camp-aerial","camp-war-table","camp-gates-inside","camp-gates-outside","camp-archive","camp-south-pads","camp-south-oblique","camp-bank","camp-flank-west","camp-flank-east"};
+        /** The views that are taken again once Frostmarch (map 2, the highest hills at the south edge) stands: indexes into VIEWS, the photographs are called camp-map2-<name>. */
+        static final int[] FROST_VIEWS={4,1,8,2};
         /** The first seven are the brief's, except camp-gates-outside, whose camera went from y 70 to y 71.5: the southern rim now stands up to y 69 at that spot (z -271), where the ground used to be 62, so the camera is one and a half blocks above the slope.
-         *  The last two (fix round 1) look at the south rim as a commander meets it: from the west pad area toward the south-west, and from the east of the bowl toward the south-west across the gatehouse. */
-        static final double[][] VIEWS={{0.5,67.6,-292.0,0.5,67,-330},{0.5,82,-361,0.5,64,-300},{0.5,110,-250,0.5,64,-320},{0.5,84,-361,0.5,78,-371},{0.5,67,-298,0.5,66,-276},{0.5,71.5,-271,0.5,67,-290},{30.5,68,-304,46,66,-304},{-9.5,66.6,-290.0,-36,76,-268},{30.5,66.6,-300.0,-30,76,-268}};
-        int stage,waited,page,pad,leashCase,shotIndex;
+         *  The next two (fix round 1) look at the south rim as a commander meets it: from the west pad area toward the south-west, and from the east of the bowl toward the south-west across the gatehouse.
+         *  The last three (fix round 2) look at the terrain itself: the bank of the ridge from the east side of the bowl, and each flank from above the middle of the bowl. */
+        static final double[][] VIEWS={{0.5,67.6,-292.0,0.5,67,-330},{0.5,82,-361,0.5,64,-300},{0.5,110,-250,0.5,64,-320},{0.5,84,-361,0.5,78,-371},{0.5,67,-298,0.5,66,-276},{0.5,71.5,-271,0.5,67,-290},{30.5,68,-304,46,66,-304},{-9.5,66.6,-290.0,-36,76,-268},{30.5,66.6,-300.0,-30,76,-268},{44.5,67,-328,-6,71,-356},{-10.5,92,-330,-80,84,-330},{10.5,92,-330,80,84,-330}};
+        int stage,waited,page,pad,leashCase,shotIndex,mapIx,sub,frostIx;
         volatile boolean done;
+        /** The maps the rim seam is looked at on, in the order they are built (map 0 stands from the start of the world). With GRAVES_BOX_DUMP set, map 0 is built once more at the end: the first map 0 was built before the rule that stops the random ticks could be set. */
+        static final boolean DUMPING=System.getenv("GRAVES_BOX_DUMP")!=null&&!System.getenv("GRAVES_BOX_DUMP").isEmpty();
+        static final int[] SEAM_MAPS=DUMPING?new int[]{0,1,2,3,4,0}:new int[]{0,1,2,3,4};
+        final StringBuilder seamWhy=new StringBuilder();
+        boolean seamOk=true;
         final StringBuilder pagesBad=new StringBuilder(),padsWhy=new StringBuilder(),leashWhy=new StringBuilder();
         boolean padsOk=true,leashOk=true;
-        @Override public int limit(){return 9000;}
+        @Override public int limit(){return 16000;}
         @Override public void cleanup(MinecraftClient c){server(c,b->b.campaign.leash=true);}
         static Spec.PiecesRow piece(String id){for(var p:Spec.PIECES)if(p.id().equals(id))return p;throw new IllegalStateException("no pieces row "+id);}
         static BlockBox box(Spec.CampPiecesRow row){var p=piece(row.template());return Structures.footprint(new Vec3i(p.width(),p.height(),p.depth()),C.originX()+row.dx(),row.y(),C.originZ()+row.dz(),row.rotation());}
@@ -657,8 +665,8 @@ public final class Phase3Checks implements ClientModInitializer {
         @Override public void step(MinecraftClient c,int tick){
             if(tick<20)return;
             switch(stage){
-                case 0->{done=false;UUID me=c.player.getUuid();server(c,b->{b.campaign.leash=true;spawn(b,me);done=true;});stage=1;waited=0;}
-                case 1->{if(done&&++waited>=20){done=false;server(c,b->{built(b);budget();stations(b);tableMap0(b);shapes(b);done=true;});stage=2;}}
+                case 0->{done=false;UUID me=c.player.getUuid();server(c,b->{b.campaign.leash=true;if(DUMPING)b.server.getGameRules().get(net.minecraft.world.GameRules.RANDOM_TICK_SPEED).set(0,b.server);spawn(b,me);done=true;});stage=1;waited=0;}
+                case 1->{if(done&&++waited>=20){done=false;server(c,b->{built(b);budget();stations(b);tableMap0(b);shapes(b);look(b);done=true;});stage=2;}}
                 case 2->{if(done){stage=3;page=0;waited=0;}}
                 case 3->{
                     if(page>=PAGES.size()){report("p3-camp-pages",pagesBad.length()==0,pagesBad.length()==0?"every page opened its screen: "+String.join(", ",PAGES):pagesBad.toString());c.setScreen(null);stage=4;pad=0;waited=0;done=false;break;}
@@ -695,9 +703,25 @@ public final class Phase3Checks implements ClientModInitializer {
                     if(shotIndex>=VIEWS.length){stage=8;waited=0;done=false;break;}
                     var v=VIEWS[shotIndex];if(view(c,VIEW_NAMES[shotIndex],v[0],v[1],v[2],v[3],v[4],v[5]))shotIndex++;
                 }
-                case 8->{ // map 2 (Frostmarch): built over, the war table follows
-                    if(waited==0){server(c,b->{b.campaign.leash=true;if(b.campaign.map!=2)b.campaign.switchMap(2);done=true;});waited=1;}
-                    else{var b=GravesAndGlory.battle;if(done&&b!=null&&b.ready&&b.campaign.map==2&&CampaignMaps.selected==2){done=false;server(c,x->{tableMap2(x);done=true;});stage=9;waited=0;}else if(++waited>3000){report("p3-camp-war-table",false,"map 2 was not ready after "+waited+" ticks");stage=9;done=true;}}
+                case 8->{ // every map in turn (map 0 stands): the seam of the rim on each, and on map 2 (Frostmarch) the war table built over the camp
+                    int n=SEAM_MAPS[mapIx];
+                    if(sub==0){
+                        done=false;waited=0;
+                        if(n==0&&mapIx==0){server(c,b->{checkMap(b,0,false);done=true;});sub=2;}
+                        else{server(c,b->{b.campaign.leash=true;if(b.campaign.map!=n)b.campaign.switchMap(n);done=true;});sub=1;}
+                    }else if(sub==1){
+                        var b=GravesAndGlory.battle;
+                        if(done&&b!=null&&b.ready&&b.campaign.map==n&&CampaignMaps.selected==n){done=false;server(c,x->{checkMap(x,n,true);done=true;});sub=2;}
+                        else if(++waited>3000){seamOk=false;seamWhy.append("map ").append(n).append(" was not ready after ").append(waited).append(" ticks; ");if(n==2)report("p3-camp-war-table",false,"map 2 was not ready after "+waited+" ticks");sub=3;}
+                    }else if(sub==2){if(done)sub=n==2?4:3;}
+                    else if(sub==4){ // Frostmarch stands: the same photographs of the south as on map 0
+                        if(frostIx>=FROST_VIEWS.length)sub=3;
+                        else{int k=FROST_VIEWS[frostIx];var v=VIEWS[k];if(view(c,"camp-map2-"+VIEW_NAMES[k].substring(5),v[0],v[1],v[2],v[3],v[4],v[5]))frostIx++;}
+                    }
+                    if(sub==3){
+                        mapIx++;sub=0;waited=0;
+                        if(mapIx>=SEAM_MAPS.length){report("p3-camp-rim-seam",seamOk,seamWhy.toString());stage=9;done=true;}
+                    }
                 }
                 case 9->{if(done){done=false;server(c,b->{oldGone(b);done=true;});stage=10;}}
                 case 10->{if(done){done=false;server(c,b->{idempotent(b);done=true;});stage=11;}}
@@ -783,6 +807,76 @@ public final class Phase3Checks implements ClientModInitializer {
             for(int i=0;i<15;i++)for(int j=0;j<9;j++)if(b.world.getBlockState(new BlockPos(C.originX()+C.tableDx()+i,C.tableY(),C.originZ()+C.tableDz()+j)).isOf(Blocks.GREEN_CARPET))green++;
             report("p3-camp-war-table",part1&&bad.isEmpty()&&green==0&&CampaignMaps.selected==2,part1Why+" | map "+CampaignMaps.selected+": "+(bad.isEmpty()?"every cell holds tableCell":bad)+", green carpets "+green+" (want 0), lit candles "+lit[0]);
         }
+        /** p3-camp-bank-mix and p3-camp-flank-relief, on the terrain as built: the bank of the ridge (the 12 rows between the foot and the plateau, the columns outside the stair pieces and one block round them) is not banded: in at least 9 of the 12 rows no one block
+         *  (grass) is more than 85 percent of the columns; and the crest of each flank (x +-90 from the origin, the 67 rows from 36 before the origin to 30 after it, where the ground is level but for its relief) is not one plane: it ranges over at least 6 blocks. */
+        void look(GravesAndGlory.Battle b){
+            var w=b.world;int ox=C.originX(),oz=C.originZ();var boxes=new ArrayList<BlockBox>();for(var row:Spec.CAMPPIECES)boxes.add(box(row));
+            int mixed=0,rows=0;var shares=new StringBuilder();
+            for(int dz=CampWorld.RIDGE_TOP_DZ+1;dz<CampWorld.RIDGE_FOOT_DZ;dz++){
+                var count=new TreeMap<String,Integer>();int n=0;
+                for(int dx=C.minDx()+2;dx<=C.maxDx()-2;dx++){
+                    int x=ox+dx,z=oz+dz;boolean near=false;for(var bx:boxes)if(x>=bx.getMinX()-1&&x<=bx.getMaxX()+1&&z>=bx.getMinZ()-1&&z<=bx.getMaxZ()+1)near=true;
+                    if(near)continue;
+                    count.merge(name(w.getBlockState(new BlockPos(x,ground(w,x,z),z))),1,Integer::sum);n++;
+                }
+                int top=0;String which="";for(var e:count.entrySet())if(e.getValue()>top){top=e.getValue();which=e.getKey();}
+                rows++;boolean ok=n>0&&top*100<=85*n;if(ok)mixed++;
+                shares.append(dz).append(':').append(n==0?"-":(100*top/n)+"% "+which).append(ok?"" :" (banded)").append(' ');
+            }
+            report("p3-camp-bank-mix",mixed>=9,mixed+" of the "+rows+" bank rows are mixed (no block above 85 percent of the columns outside the stairs); the biggest share per row (dz): "+shares);
+            var ranges=new StringBuilder();boolean level=true;
+            for(int side:new int[]{-1,1}){
+                int lo=Integer.MAX_VALUE,hi=Integer.MIN_VALUE;
+                for(int dz=-36;dz<=30;dz++){int y=ground(w,ox+side*90,oz+dz);lo=Math.min(lo,y);hi=Math.max(hi,y);}
+                if(hi-lo<6)level=false;
+                ranges.append(side<0?"west":"east").append(" crest y ").append(lo).append(" to ").append(hi).append(" (range ").append(hi-lo).append("); ");
+            }
+            report("p3-camp-flank-relief",level,ranges+"want a range of at least 6 on each (the crest was level to within 1 before the relief)");
+        }
+        /** What a map stands on in this seam check: the checks of one built map (the rim seam, on map 2 the war table after it, and when GRAVES_BOX_DUMP is set and the map was built after the rule was set, the dump of the playable box). */
+        void checkMap(GravesAndGlory.Battle b,int n,boolean dumped){
+            rimSeam(b,n);
+            if(n==2)tableMap2(b);
+            if(dumped)dump(b,n);
+        }
+        /** The ground of a column for the seam check: the highest block that is not air, not a leaf or a log and has a collision shape (plants, flowers and the crowns of trees do not count). */
+        static int ground(ServerWorld w,int x,int z){
+            var pos=new BlockPos.Mutable();
+            for(int y=150;y>=40;y--){var s=w.getBlockState(pos.set(x,y,z));if(s.isAir()||s.getBlock() instanceof net.minecraft.block.LeavesBlock||s.isIn(net.minecraft.registry.tag.BlockTags.LOGS)||s.getCollisionShape(w,pos).isEmpty())continue;return y;}
+            return -1;
+        }
+        /** p3-camp-rim-seam (one reading per map; the id is reported after the last map): over the width of the island (x -96 to 96), for z -270 to -262 (the last rim rows of the camp, z -267, and the first arena rows, from z -266 on), the ground at z -267
+         *  is at least the ground at z -266 (the arena's edge never stands above the rim: no cut face), and no neighbouring pair of columns, along z or along x, differs by more than 3 blocks. */
+        void rimSeam(GravesAndGlory.Battle b,int n){
+            var w=b.world;int x0=C.originX()+C.islandMinDx(),x1=C.originX()+C.islandMaxDx(),zRim=-267,zEdge=-266,zLo=-270,zHi=-262;
+            int cols=x1-x0+1,rows=zHi-zLo+1;int[][] top=new int[cols][rows];
+            for(int i=0;i<cols;i++)for(int k=0;k<rows;k++)top[i][k]=ground(w,x0+i,zLo+k);
+            int above=0,worstAbove=0,firstAbove=Integer.MIN_VALUE,steps=0,worstStep=0;String firstStep="";
+            for(int i=0;i<cols;i++){
+                int rim=top[i][zRim-zLo],edge=top[i][zEdge-zLo];
+                if(edge>rim){above++;if(edge-rim>worstAbove){worstAbove=edge-rim;firstAbove=x0+i;}}
+                for(int k=0;k<rows;k++){
+                    if(k+1<rows){int d=Math.abs(top[i][k]-top[i][k+1]);if(d>3){steps++;if(firstStep.isEmpty())firstStep="z "+(zLo+k)+" to "+(zLo+k+1)+" at x "+(x0+i)+": "+top[i][k]+" to "+top[i][k+1];}worstStep=Math.max(worstStep,d);}
+                    if(i+1<cols){int d=Math.abs(top[i][k]-top[i+1][k]);if(d>3){steps++;if(firstStep.isEmpty())firstStep="x "+(x0+i)+" to "+(x0+i+1)+" at z "+(zLo+k)+": "+top[i][k]+" to "+top[i+1][k];}worstStep=Math.max(worstStep,d);}
+                }
+            }
+            boolean ok=above==0&&steps==0;if(!ok)seamOk=false;
+            seamWhy.append("map ").append(n).append(": ").append(cols).append(" columns, edge (z -266) above the rim (z -267) in ").append(above).append(worstAbove>0?" (worst by "+worstAbove+" at x "+firstAbove+")":"")
+                .append(", neighbour steps over 3: ").append(steps).append(" (largest step ").append(worstStep).append(steps>0?", first "+firstStep:"").append(ok?") ok; ":") WRONG; ");
+        }
+        /** When the environment variable GRAVES_BOX_DUMP names a folder: the state of every block of the playable box (x -366 to 366, z -250 to 250, y 50 to 140) as 16-bit ids, gzipped, in box-map<N>.bin.gz. Two runs of different code are compared with work/p3/tools/boxdiff.py; the random ticks are stopped (game rule randomTickSpeed 0) when the dump is on, so that no grass spreads and no farmland dries between two runs. */
+        void dump(GravesAndGlory.Battle b,int n){
+            String dir=System.getenv("GRAVES_BOX_DUMP");if(dir==null||dir.isEmpty())return;
+            try{
+                Files.createDirectories(Path.of(dir));var path=Path.of(dir,"box-map"+n+".bin.gz");var pos=new BlockPos.Mutable();var w=b.world;long cells=0;var names=new TreeMap<Integer,String>();
+                try(var out=new java.io.DataOutputStream(new java.io.BufferedOutputStream(new java.util.zip.GZIPOutputStream(Files.newOutputStream(path),1<<16),1<<16))){
+                    for(int x=-366;x<=366;x++)for(int z=-250;z<=250;z++)for(int y=50;y<=140;y++){var st=w.getBlockState(pos.set(x,y,z));int id=Block.getRawIdFromState(st);out.writeShort(id);cells++;if(!names.containsKey(id))names.put(id,st.toString());}
+                }
+                var list=new StringBuilder();for(var e:names.entrySet())list.append(e.getKey()).append(' ').append(e.getValue()).append((char)10);
+                Files.writeString(Path.of(dir,"box-map"+n+".ids.txt"),list.toString());
+                System.out.println("[p3] note box dump of map "+n+": "+cells+" cells in "+path);
+            }catch(Exception e){report("p3-camp-rim-seam",false,"box dump of map "+n+" failed: "+e);}
+        }
         /** p3-camp-shapes (extra): inside every piece box each fence, wall, pane and bar equals what the shape update of its neighbours gives, and each vine of the structure file stands. */
         void shapes(GravesAndGlory.Battle b){
             var w=b.world;int connecting=0,unsettled=0,vinesFile=0,vinesLost=0;var first=new StringBuilder();
@@ -820,7 +914,7 @@ public final class Phase3Checks implements ClientModInitializer {
             w.setBlockState(new BlockPos(5,64,oz),Blocks.GOLD_BLOCK.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
             w.setBlockState(new BlockPos(-39,70,-339),Blocks.STONE_BRICKS.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
             boolean deleted=false;try{deleted=Files.deleteIfExists(b.server.getSavePath(WorldSavePath.ROOT).resolve(CampWorld.MARKER_FILE));}catch(Exception e){report("p3-camp-old-gone",false,"cannot delete the terrain marker: "+e);return;}
-            int mark=CampWorld.LINES.size();CampWorld.build(w);boolean rebuilt=false;for(int i=mark;i<CampWorld.LINES.size();i++)if(CampWorld.LINES.get(i).contains("camp terrain ")&&!CampWorld.LINES.get(i).contains("skipped"))rebuilt=true;
+            long mark=CampWorld.logged();CampWorld.build(w);boolean rebuilt=false;for(var l:CampWorld.since(mark))if(l.contains("camp terrain ")&&!l.contains("skipped"))rebuilt=true; // a count of lines ever logged: an index into LINES would be wrong once the oldest lines were dropped
             int stale=0;for(var e:w.iterateEntities()){var t=e.getCommandTags();if(t.contains("gravesandglory-camp-v3")||t.contains("gravesandglory-lobby")||t.contains("bannerbound-lobby"))stale++;}
             int concrete=0;for(int x:new int[]{-11,-10,-9,-8,8,9,10,11})for(int z=oz-14;z<=oz-11;z++)if(name(w.getBlockState(new BlockPos(x,64,z))).endsWith("concrete"))concrete++;
             boolean gold=w.getBlockState(new BlockPos(5,64,oz)).isOf(Blocks.GOLD_BLOCK),brick=!w.getBlockState(new BlockPos(-39,70,-339)).isAir();
@@ -830,9 +924,9 @@ public final class Phase3Checks implements ClientModInitializer {
         }
         /** p3-camp-rebuild-idempotent: a second build logs camp terrain skipped; the CRC32 of the bowl box and the count of TAG entities are the same before and after. Both readings and the build are one callback. */
         void idempotent(GravesAndGlory.Battle b){
-            var w=b.world;int mark=CampWorld.LINES.size();
+            var w=b.world;long mark=CampWorld.logged();
             long before=crc(w);int n0=tagged(w);CampWorld.build(w);long after=crc(w);int n1=tagged(w);
-            boolean skip=false;for(int i=mark;i<CampWorld.LINES.size();i++)if(CampWorld.LINES.get(i).contains("camp terrain skipped"))skip=true;
+            boolean skip=false;for(var l:CampWorld.since(mark))if(l.contains("camp terrain skipped"))skip=true;
             report("p3-camp-rebuild-idempotent",skip&&before==after&&n0==n1&&n0>0,"second build logged terrain skipped "+skip+"; CRC32 of the bowl box (y 62..90) "+Long.toHexString(before)+" then "+Long.toHexString(after)+"; entities tagged "+CampWorld.TAG+" "+n0+" then "+n1+"; both readings and the build in one server callback");
         }
     }

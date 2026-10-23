@@ -66,6 +66,7 @@ public final class Arena {
         if(rd<8)h=blend(h,roadLevel(x,z),rd,0,8);
         double border=Math.max(Math.abs(x)-GravesAndGlory.R.arenaHalfX()+14,Math.abs(z)-GravesAndGlory.R.arenaHalfZ()+12);
         if(border>0)h+=Math.min(Spec.TERRAINSTYLE[0].boundaryRise(),border*.4)*(.65+.35*Math.sin(x*.055+z*.043));
+        if(z<-GravesAndGlory.R.arenaHalfZ())h=CampWorld.taper(x,z,h); // the margin north of the playable box (z -251 to -266) meets the rim of the camp; the box itself is not touched
         return (int)Math.round(h);
     }
     /** How far a road climbs to a raised capture point (Kingsfield's outposts): from the floor of the arena at the end of this distance beyond the plateau of the point up to the elevation of the point at the edge of the plateau. */
@@ -103,12 +104,18 @@ public final class Arena {
         int from=river(x,z)?Math.min(h+1,Y):h+1; // a river column writes water up to Y-1 and nothing at y=h, so from Y up the block of the map built before would survive at h
         for(int y=from;y<=top;y++)if(!w.getBlockState(new BlockPos(x,y,z)).isAir())put(w,x,y,z,Blocks.AIR);
         for(int y=Y-9;y<h-2;y++)put(w,x,y,z,Blocks.STONE);
-        put(w,x,h-2,z,Blocks.STONE);put(w,x,h-1,z,Blocks.DIRT);
+        put(w,x,h-2,z,Blocks.STONE);
+        // The margin north of the playable box (z -251 to -266, see CampWorld.taper) is a steep slope, and a block of grass over a block of dirt a row would stand in stripes on it: there the slope mix of the camp is laid (CampWorld.mix). The playable box is not touched.
+        // A river column of the margin that the taper lifted out of the water ends in natural ground, not in a strip of dirt up the slope (it keeps nothing at h: the river check wants air from h up).
+        boolean margin=z<-GravesAndGlory.R.arenaHalfZ();
+        double rock=margin?CampWorld.rockOf(Math.max(Math.abs(height(x,z+2)-height(x,z-2)),Math.abs(height(x+2,z)-height(x-2,z)))):0;
+        put(w,x,h-1,z,river(x,z)?(margin&&h-1>=Y?natural(h):Blocks.DIRT):margin?CampWorld.underBlock(rock,x,z):Blocks.DIRT);
         if(river(x,z)){for(int y=Y-5;y<=Y-3;y++)put(w,x,y,z,Blocks.GRAVEL);for(int y=Y-2;y<=Y-1;y++)put(w,x,y,z,Blocks.WATER);}
         else{
-            put(w,x,h,z,road(x,z)?Blocks.DIRT_PATH:natural(h));
+            Block surface=road(x,z)?Blocks.DIRT_PATH:margin&&natural(h)!=Blocks.STONE?CampWorld.mix(natural(h),rock,x,z):natural(h);
+            put(w,x,h,z,surface);
             var deco=Spec.DECORATIONS[0];int hash=Math.floorMod(x*734287+z*912931+x*z*17,100003);
-            boolean clear=!road(x,z)&&h<84&&Math.abs(x-riverX(z))>15;
+            boolean clear=!road(x,z)&&h<84&&Math.abs(x-riverX(z))>15&&surface==natural(h); // no plant on the stone and the dirt of a steep margin
             for(var p:Spec.POINTS)if(Math.hypot(x-p.x(),z-p.z())<deco.avoidPointRadius())clear=false;
             for(var s:Spec.STRUCTURES)if(Math.abs(x-s.x())<s.width()/2+deco.structureMargin()&&Math.abs(z-s.z())<s.depth()/2+deco.structureMargin())clear=false;
             if(clear&&hash%deco.plantEvery()==0)put(w,x,h+1,z,CampaignMaps.selected==2?Blocks.SNOW:CampaignMaps.selected==3?Blocks.FERN:hash%deco.flowerEvery()==0?Blocks.POPPY:Blocks.GRASS);
@@ -136,14 +143,17 @@ public final class Arena {
     }
     /** One tree with its trunk standing on (x,y,z) (y is the first block above the ground): a spruce as a cone, an oak as a rounded crown; leaves are persistent so the woods never thin out mid-battle. width is the width of the crown, height the height of the trunk
      *  (a spruce trunk reaches its tip). The scenery loop of the arena and the camp terrain (CampWorld) both plant their trees here; the blocks are written with flags(). */
-    static void tree(ServerWorld w,int x,int y,int z,int width,int height,boolean spruce){
+    static void tree(ServerWorld w,int x,int y,int z,int width,int height,boolean spruce){tree(w,x,y,z,width,height,spruce,false);}
+    /** keep: the leaves go only where there is air, so the crown of a tree on a steep slope does not eat into the ground beside it (the camp plants its trees on its flanks and rim; the arena's scenery passes false and is as it was). */
+    static void tree(ServerWorld w,int x,int y,int z,int width,int height,boolean spruce,boolean keep){
         Block log=spruce?Blocks.SPRUCE_LOG:Blocks.OAK_LOG;
         BlockState leaf=(spruce?Blocks.SPRUCE_LEAVES:Blocks.OAK_LEAVES).getDefaultState().with(LeavesBlock.PERSISTENT,true);int r=width/2,top=y+height;
         if(spruce)for(int dy=0;dy<height-1;dy++){int ly=y+2+dy;int rr=Math.max(0,(int)Math.round(r*(1-dy/(double)(height-1))+(dy%2==0?0:-.6)));
-            for(int dx=-rr;dx<=rr;dx++)for(int dz=-rr;dz<=rr;dz++)if(dx*dx+dz*dz<=rr*rr+1&&!(dx==0&&dz==0))w.setBlockState(new BlockPos(x+dx,ly,z+dz),leaf,flags());}
-        else for(int dx=-r;dx<=r;dx++)for(int dy=-2;dy<=2;dy++)for(int dz=-r;dz<=r;dz++){double e=dx*dx/(double)(r*r)+dy*dy/4.5+dz*dz/(double)(r*r);if(e<=1.05&&Math.floorMod(dx*31+dy*17+dz*7+x,11)!=0)w.setBlockState(new BlockPos(x+dx,top-2+dy,z+dz),leaf,flags());}
-        box(w,x,y,z,1,spruce?height:height-1,1,log);if(spruce)w.setBlockState(new BlockPos(x,top,z),leaf,flags());
+            for(int dx=-rr;dx<=rr;dx++)for(int dz=-rr;dz<=rr;dz++)if(dx*dx+dz*dz<=rr*rr+1&&!(dx==0&&dz==0))leaf(w,new BlockPos(x+dx,ly,z+dz),leaf,keep);}
+        else for(int dx=-r;dx<=r;dx++)for(int dy=-2;dy<=2;dy++)for(int dz=-r;dz<=r;dz++){double e=dx*dx/(double)(r*r)+dy*dy/4.5+dz*dz/(double)(r*r);if(e<=1.05&&Math.floorMod(dx*31+dy*17+dz*7+x,11)!=0)leaf(w,new BlockPos(x+dx,top-2+dy,z+dz),leaf,keep);}
+        box(w,x,y,z,1,spruce?height:height-1,1,log);if(spruce)leaf(w,new BlockPos(x,top,z),leaf,keep);
     }
+    static void leaf(ServerWorld w,BlockPos at,BlockState leaf,boolean keep){if(!keep||w.getBlockState(at).isAir())w.setBlockState(at,leaf,flags());}
     /** Gives every fence, wall and pane the build placed the connections its neighbours imply, the state a placement with shape updates would have had, written without notifying anything around it. */
     static void settleShapes(ServerWorld w){
         for(var pos:shaped){var s=w.getBlockState(pos);if(!connects(s.getBlock()))continue;var n=Block.postProcessState(s,w,pos);if(n!=s&&!n.isAir())w.setBlockState(pos,n,flags());}
