@@ -6100,7 +6100,7 @@ public final class Phase2Checks implements ClientModInitializer {
         GravesAndGlory.Squad mine;GravesAndGlory.Unit plain,vet1,vet3;
         String shot;int shotWait;boolean claimOk;String claimWhy="";
         /** Task 13 fix round 1 (review I1): the server keeps a notice and sends it with every state packet, so p2-notice-clears waits for two packets after the page change. */
-        static final String NOTICE="Order Squire rises to star 2!",NOTICE2="Choose dry ground or a crossing.";int noticeStates0,noticeWaits,noticePhase;String noticeLeft="";
+        static final String NOTICE="Order Squire rises to star 2!",NOTICE2="Choose dry ground or a crossing.",NOTICE3="Troops now join by recruitment rolls at the camp shrine.";int noticeStates0,noticeWaits,noticePhase;String noticeLeft="";
         /** The six Gilded holdings before the lineup shots made them Mastery II (null for one the profile lacked), put back at cleanup. */
         final Map<String,Integer> mastery0=new LinkedHashMap<>();volatile boolean lineupCast;volatile int lineupRound;
         String name(){return "screens";}
@@ -6189,7 +6189,12 @@ public final class Phase2Checks implements ClientModInitializer {
                         report("p2-notice-clears",NOTICE.equals(noticeLeft)&&CampaignClient.shownNotice().isEmpty()&&NOTICE.equals(CampaignClient.notice),"the recruit page showed the notice \""+noticeLeft+"\"; after opening the Templar's troop page and "+(CampaignClient.acceptedStates-noticeStates0)+" state packets the client still holds \""+CampaignClient.notice+"\" (the server resends it) and shows \""+CampaignClient.shownNotice()+"\" (want empty)");
                         var me=c.player.getUuid();server(c,bb->bb.campaign.notice(me,NOTICE2));noticeWaits=0;}
                     if(wait>50&&noticePhase==1){if(NOTICE2.equals(CampaignClient.shownNotice())||++noticeWaits>200){noticePhase=2;report("p2-notice-changes",NOTICE2.equals(CampaignClient.shownNotice()),"a new notice text after the page change is shown again: \""+CampaignClient.shownNotice()+"\" (want \""+NOTICE2+"\")");}}
-                    if(wait>50&&noticePhase==2&&shotDone(c)){var seen=RecruitPages.seenTroop;var t=Campaign.troop("sentinel");var n=ArmyCards.notes(t);
+                    // fix round 2: the same words again, after the player acted, must show again (the server answers an unlock: with one fixed line)
+                    if(wait>50&&noticePhase==2){s.action("unlock:x");noticePhase=3;noticeWaits=0;}
+                    if(wait>50&&noticePhase==3){if(NOTICE3.equals(CampaignClient.shownNotice())){s.openTroop("sentinel");noticeStates0=CampaignClient.acceptedStates;noticePhase=4;}else if(++noticeWaits>200){report("p2-notice-repeats",false,"the server's answer \""+NOTICE3+"\" never showed (shows \""+CampaignClient.shownNotice()+"\")");noticePhase=6;}}
+                    if(wait>50&&noticePhase==4&&CampaignClient.acceptedStates>=noticeStates0+2){boolean held=NOTICE3.equals(CampaignClient.notice)&&CampaignClient.shownNotice().isEmpty();s.action("unlock:x");noticePhase=5;noticeWaits=0;noticeLeft=held?"":"precondition failed: the dismissed notice was not held and hidden";}
+                    if(wait>50&&noticePhase==5){boolean back=NOTICE3.equals(CampaignClient.shownNotice());if(back||++noticeWaits>200){noticePhase=6;report("p2-notice-repeats",back&&noticeLeft.isEmpty(),"a notice dismissed by a page change, then the same words from the server after the player acted again, shows again: \""+CampaignClient.shownNotice()+"\" (want \""+NOTICE3+"\") "+noticeLeft);}}
+                    if(wait>50&&noticePhase==6&&shotDone(c)){var seen=RecruitPages.seenTroop;var t=Campaign.troop("sentinel");var n=ArmyCards.notes(t);
                         boolean page=s.page.equals("troop")&&seen!=null&&seen.troop().equals("sentinel");
                         boolean notes=page&&n!=null&&!n.beats().isEmpty()&&seen.beats().equals(n.beats())&&seen.beatenBy().equals(n.beatenBy());
                         boolean glyphs=page&&seen.glyphs().contains("C1")&&seen.glyphs().contains("C3");

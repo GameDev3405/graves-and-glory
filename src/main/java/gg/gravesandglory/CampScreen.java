@@ -24,7 +24,7 @@ final class CampScreen extends ArmyScreen {
     String value(String name){return social().has(name)?social().get(name).getAsString():"";}
     int number(String name,int fallback){return social().has(name)?social().get(name).getAsInt():fallback;}
     JsonArray rows(String name){return social().has(name)?social().getAsJsonArray(name):new JsonArray();}
-    void action(String cmd){if(System.currentTimeMillis()-requestAt<300)return;requestAt=System.currentTimeMillis();send(cmd);}
+    void action(String cmd){if(System.currentTimeMillis()-requestAt<300)return;requestAt=System.currentTimeMillis();CampaignClient.notice="";CampaignClient.dismissed="";send(cmd);} // what the player does next speaks anew: a notice he left behind by changing page shows again if the server answers with the same words (review fix round 2)
     void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.dismissed=CampaignClient.notice;page=next;offset=0;clearAndInit();} // leaving a page ends its roll card (review minor 4) and its notice (Task 12 re-review N2: "rises to star 2!" must not follow the player to another card)
     String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready+RecruitPages.stateKey(CampaignClient.profile);}
     @Override protected void init(){
