@@ -934,6 +934,21 @@ class BuildSkinsChecks(unittest.TestCase):
         self.assertEqual((big[2], big[5]), (-10.5, 2.5))    # thirteen rows, the blade's tip at the top
         self.assertEqual(model['frames'][0]['quads'][0][:3], [0.5, 2, 0.5])
 
+    def test_far_version_leaves_the_string_out(self):
+        """A string is under a px. At the far version's one px to a model px it would vanish or, where it fills half a px column,
+        turn into a plank, by the luck of its alignment, so the far version leaves every cube called string out."""
+        laced = PIKE + [('string', (-2.4, -1, -0.1), (-1.9, 2, 0.1), 'linen', None)]   # a lanyard hanging from the guard, half a px wide
+        with tempfile.TemporaryDirectory() as tmp:
+            root = cube_fixture(tmp, wid='plain')
+            put_cube_weapon(root, 'laced', frames={'rest': laced})
+            self.export(root)
+            plain, with_string = model_of(root, 'plain'), model_of(root, 'laced')
+            sheets = [texture_of(root, name + '.png') for name in ('plain', 'laced')]
+        self.assertEqual(len(with_string['frames'][0]['quads']), len(plain['frames'][0]['quads']) + 6)   # the string is still a cube of the weapon
+        lit = [sum(1 for y in range(128, im.height) for x in range(im.width) if im.getpixel((x, y))[3]) for im in sheets]
+        self.assertEqual(lit[0], lit[1])
+        self.assertEqual(plain['far'], with_string['far'])
+
     def test_far_version_keeps_the_glow(self):
         """The glow sheet carries the lit texels the front view shows, in the strip under the colour sheet."""
         with tempfile.TemporaryDirectory() as tmp:

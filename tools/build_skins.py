@@ -785,7 +785,8 @@ def glow_source(cat, wid):
 def far_view(quads, colour, keys, lit_sheet):
     """The far version's sprite (the fourth cut): the rest frame seen from the front (the weapon frame's -z side), one px to
     a model px, a px solid where at least half of its samples hit a face; its colour, key colour and glow are the ones most
-    of its samples read, and a texel the sheet leaves transparent is a cutout. quads are the frame's 20-number quads.
+    of its samples read, and a texel the sheet leaves transparent is a cutout. quads are the frame's 20-number quads (the
+    caller leaves a string's out: it is under a px).
     Returns the colour, key and lit images of the sprite and its grip pixel (the one whose centre is the model's origin)."""
     cpx, kpx = colour.load(), keys.load()
     lpx = lit_sheet.load() if lit_sheet is not None else None
@@ -1059,7 +1060,9 @@ def cube_weapon_outputs(cat, wid):
         nock = None if nocks is None else [num(nocks[i][0]), num(nocks[i][1]), 0]
         frames_out.append({'name': name, 'nock': nock, 'quads': quads_of[name]})
         stats.append((wid, name, len(quads_of[name])))
-    far_c, far_k, far_l, grip = far_view(quads_of['rest'], colour, keys, glow)
+    # a string is under a px: at one px to a model px it would vanish or become a plank by the luck of its alignment, so it is left out
+    solid = [q.numbers() for q in bbmodel.frame_quads(model)['rest'] if not bbmodel.is_string(q.cube)]
+    far_c, far_k, far_l, grip = far_view(solid or quads_of['rest'], colour, keys, glow)
     if far_c.width > sheet_w:
         fail('%s: its far version is %d px wide, over the %d px of the sheet' % (what, far_c.width, sheet_w))
     far = far_quads(far_c, thickness, grip, sheet_h)
