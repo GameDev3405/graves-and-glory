@@ -6,11 +6,12 @@ import net.minecraft.util.math.Vec3d;
 import java.util.Arrays;
 
 /**
- * Which troops draw their relief this frame (troop depth design, section 4). Within NEAR_BLOCKS of the game camera the
+ * Which troops draw their relief, and their weapon whole, this frame (troop depth design, section 4; art pipeline v2, section 3). Within NEAR_BLOCKS of the game camera the
  * NEAR_CAP nearest troops (and any troop at exactly the cap-th one's distance: a tie draws too) draw the relief layer of the skin they bind, every other troop draws flat (the same paint on the
  * same skin, so the switch shows only as the 1 px sides appearing, at no cost). A dressed mob (every ArmyCards portrait) is
  * always near. The cutoff is worked out once per frame on WorldRenderEvents.START from the game camera, so Iris's shadow
- * pass and the main pass draw the same geometry.
+ * pass and the main pass draw the same geometry. The same set draws a cube weapon whole (the fourth cut): a weapon on a troop
+ * outside it draws its far version of at most 32 quads.
  */
 public final class TroopDepth {
     private TroopDepth() {}
@@ -19,7 +20,7 @@ public final class TroopDepth {
     /** This many of the nearest draw relief in one frame (a tie at the last one's distance draws too, so the count is this or, for exact ties, a few more). */
     public static final int NEAR_CAP=48;
     private static final double NEAR_SQ=NEAR_BLOCKS*NEAR_BLOCKS;
-    /** Off: no relief anywhere and weapons draw only their two big faces (the harness's flat shots and its cost baseline). The player's option is Presentation.troopDepth. */
+    /** Off: no relief anywhere, sprite weapons draw only their two big faces and cube weapons their far version (the harness's flat shots and its cost baseline). The player's option is Presentation.troopDepth. */
     public static volatile boolean enabled=true;
     /** The last frame's counts, each troop once however many passes drew it: troops that drew relief, relief quads and weapon quads drawn (the weapon's mesh once; its glow pass draws it again and is counted by TroopFeatures.weaponGlowDraws). */
     public static volatile int nearDraws;
@@ -42,7 +43,7 @@ public final class TroopDepth {
     public static void beginFrame(Vec3d cam,Iterable<Entity> entities){
         nearDraws=drawsNow;reliefQuads=reliefNow;weaponQuads=weaponNow;drawsNow=0;reliefNow=weaponNow=0;frame++;
         camera=cam;int n=0;
-        if(reliefOn())for(Entity e:entities){
+        if(enabled)for(Entity e:entities){
             if(!(e instanceof MobEntity)||e.getCustomName()==null)continue;
             double d=distSq(e,cam);if(d>=NEAR_SQ||TroopModels.resolve(e)==null)continue;
             if(n==inRange.length)inRange=Arrays.copyOf(inRange,n*2);
@@ -73,7 +74,17 @@ public final class TroopDepth {
 
     /** Whether this frame's relief is drawn for the entity: on, and a dressed mob, or within NEAR_BLOCKS and among the NEAR_CAP nearest (ties at the cap-th distance included). */
     public static boolean near(Entity e){
-        if(!reliefOn())return false;
+        return reliefOn()&&inRange(e);
+    }
+    /**
+     * Whether a cube weapon on this entity draws whole this frame (the fourth cut): troop depth is on (the harness flag; the player's
+     * option gates only the relief) and the entity is a dressed mob, or within NEAR_BLOCKS and among the NEAR_CAP nearest. Any other
+     * troop draws its weapon's far version.
+     */
+    public static boolean weaponNear(Entity e){
+        return enabled&&inRange(e);
+    }
+    private static boolean inRange(Entity e){
         if(TroopModels.dressed(e))return true;
         double d=distSq(e,camera);return d<NEAR_SQ&&d<=cutoff;
     }

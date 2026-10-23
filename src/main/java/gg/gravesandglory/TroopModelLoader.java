@@ -24,9 +24,11 @@ import java.util.*;
  */
 public final class TroopModelLoader implements SimpleSynchronousResourceReloadListener {
     static final String FOLDER="models/troop/";
-    static final int FORMAT=2;
+    static final int FORMAT=3;
     /** The most quads one weapon frame may have (the build fails above it, and so does the load). */
     static final int MAX_WEAPON_QUADS=128;
+    /** The most quads a cube weapon's far version may have (art pipeline v2, section 8: the fourth cut). */
+    static final int MAX_FAR_QUADS=32;
     static final Logger LOG=LoggerFactory.getLogger("gravesandglory");
     @Override public Identifier getFabricId(){return new Identifier(TroopModels.NAMESPACE,"troop_models");}
 
@@ -114,11 +116,15 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
     }
 
     /**
-     * A weapon (format 2, troop depth design section 2): the meshes of its frames on the packed sheet (rest first, then one per
-     * pull), the pull times and each frame's nock, the grip that places the sprite in the hand bone's frame, its texture and glow.
+     * A weapon (format 3, troop depth design section 2 and art pipeline v2 section 2.1): the meshes of its frames on the sheet (rest
+     * first, then one per pull), the pull times and each frame's nock, the grip that places the model in the hand bone's frame, its
+     * texture and glow. A "sprite" weapon is an extruded PNG: every frame opens with its two big faces (north, then south), which a
+     * flat draw keeps. A "cube" weapon is a Blockbench model: its frames hold any quads (13 or 20 numbers) and it carries a far
+     * version of at most 32 quads, a sprite extrusion that opens with its two big faces, which a troop outside TroopDepth.near draws.
      */
     static TroopModels.Weapon parseWeapon(JsonObject w){
         need(w.has("format")&&w.get("format").getAsInt()==FORMAT,"format is not "+FORMAT);
+        String kind=str(w,"kind");need(kind.equals("sprite")||kind.equals("cube"),"kind is "+kind+", not sprite or cube");boolean cube=kind.equals("cube");
         int[] size=ints(w,"size",2);need(size[0]>0&&size[1]>0,"size must be above 0");
         JsonObject grip=w.getAsJsonObject("grip");need(grip!=null,"no grip");
         float[] p=floats(grip,"offset",3),r=floats(grip,"rotation",3);String glow=str(w,"glow");
@@ -136,20 +142,31 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
             need(f.has("quads")&&f.get("quads").isJsonArray(),"frame "+want+" has no quads");
             TroopMesh mesh;try{mesh=TroopMesh.parse(f.getAsJsonArray("quads"),size[0],size[1]);}catch(IllegalArgumentException e){throw new IllegalArgumentException("frame "+want+": "+e.getMessage(),e);}
             need(mesh.quads()>=2&&mesh.quads()<=MAX_WEAPON_QUADS,"frame "+want+" has "+mesh.quads()+" quads, not 2 to "+MAX_WEAPON_QUADS);
-            // the flat draw (troop depth off in the harness) keeps the first two quads, so they must be the two big faces: north then south, each spanning the frame in x and y
-            need(mesh.direction(0)==2&&mesh.direction(1)==3,"frame "+want+" must open with its two big faces (north, then south), not directions "+mesh.direction(0)+" and "+mesh.direction(1));
-            float[] bb=mesh.bounds();
-            for(int q=0;q<2;q++){float[] ps=mesh.positions(q);float x0=Float.MAX_VALUE,y0=Float.MAX_VALUE,x1=-Float.MAX_VALUE,y1=-Float.MAX_VALUE;
-                for(int k=0;k<4;k++){x0=Math.min(x0,ps[3*k]);x1=Math.max(x1,ps[3*k]);y0=Math.min(y0,ps[3*k+1]);y1=Math.max(y1,ps[3*k+1]);}
-                need(x0==bb[0]&&x1==bb[3]&&y0==bb[1]&&y1==bb[4],"frame "+want+": quad "+q+" does not span the frame (its x and y extent is not the mesh's)");}
+            if(!cube)bigFacesFirst(mesh,"frame "+want);
             meshes.add(mesh);
             if(pull.length>0){
                 need(f.has("nock")&&f.get("nock").isJsonArray()&&f.getAsJsonArray("nock").size()==3,"frame "+want+" has no nock");
                 JsonArray n=f.getAsJsonArray("nock");nocks.add(new Vec3d(n.get(0).getAsDouble(),n.get(1).getAsDouble(),n.get(2).getAsDouble()));
             }
         }
-        return new TroopModels.Weapon(str(w,"weapon"),List.copyOf(meshes),pull,ModelTransform.of(p[0],p[1],p[2],r[0]*MathHelper.RADIANS_PER_DEGREE,r[1]*MathHelper.RADIANS_PER_DEGREE,r[2]*MathHelper.RADIANS_PER_DEGREE),
+        TroopMesh far=null;
+        if(cube){
+            need(w.has("far")&&w.get("far").isJsonArray(),"a cube weapon has no far version");
+            try{far=TroopMesh.parse(w.getAsJsonArray("far"),size[0],size[1]);}catch(IllegalArgumentException e){throw new IllegalArgumentException("far version: "+e.getMessage(),e);}
+            need(far.quads()>=2&&far.quads()<=MAX_FAR_QUADS,"the far version has "+far.quads()+" quads, not 2 to "+MAX_FAR_QUADS);
+            bigFacesFirst(far,"the far version");
+        }else need(!w.has("far")||w.get("far").isJsonArray()&&w.getAsJsonArray("far").isEmpty(),"a sprite weapon has no far version");
+        return new TroopModels.Weapon(str(w,"weapon"),List.copyOf(meshes),far,pull,ModelTransform.of(p[0],p[1],p[2],r[0]*MathHelper.RADIANS_PER_DEGREE,r[1]*MathHelper.RADIANS_PER_DEGREE,r[2]*MathHelper.RADIANS_PER_DEGREE),
             List.copyOf(nocks),new Identifier(str(w,"texture")),glow.isEmpty()?null:new Identifier(glow));
+    }
+
+    /** A sprite's mesh (a sprite weapon's frame, a cube weapon's far version) opens with its two big faces, north then south, each spanning the mesh in x and y: a flat draw keeps the first two quads. */
+    static void bigFacesFirst(TroopMesh mesh,String what){
+        need(mesh.direction(0)==2&&mesh.direction(1)==3,what+" must open with its two big faces (north, then south), not directions "+mesh.direction(0)+" and "+mesh.direction(1));
+        float[] bb=mesh.bounds();
+        for(int q=0;q<2;q++){float[] ps=mesh.positions(q);float x0=Float.MAX_VALUE,y0=Float.MAX_VALUE,x1=-Float.MAX_VALUE,y1=-Float.MAX_VALUE;
+            for(int k=0;k<4;k++){x0=Math.min(x0,ps[3*k]);x1=Math.max(x1,ps[3*k]);y0=Math.min(y0,ps[3*k+1]);y1=Math.max(y1,ps[3*k+1]);}
+            need(x0==bb[0]&&x1==bb[3]&&y0==bb[1]&&y1==bb[4],what+": quad "+q+" does not span the mesh (its x and y extent is not the mesh's)");}
     }
 
     static JsonObject read(ResourceManager manager,String file)throws Exception{

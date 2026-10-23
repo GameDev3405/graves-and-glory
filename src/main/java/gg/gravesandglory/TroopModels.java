@@ -23,16 +23,19 @@ public final class TroopModels {
      */
     public record Look(Spec.TroopsRow troop, int armourTier, boolean veteran, String side) {}
     /**
-     * A weapon model (troop depth design, section 2): its id, the meshes of its frames (rest first, then pull_0 to pull_2 of a
-     * draw weapon), the times of the pulls in seconds of bow_draw (empty without a pull), the grip that places the sprite in the
-     * hand bone's frame (the centre of the grip pixel is the sprite's origin), the nock of each frame (the middle of the string in
+     * A weapon model (troop depth design, section 2; art pipeline v2, section 2.1): its id, the meshes of its frames (rest first,
+     * then pull_0 to pull_2 of a draw weapon), the far version (at most 32 quads, built from the rest frame; null for a sprite weapon,
+     * whose frames are already thin), the times of the pulls in seconds of bow_draw (empty without a pull), the grip that places the
+     * model in the hand bone's frame (the model's origin is the grip), the nock of each frame (the middle of the string in
      * the weapon frame, model px; empty without a pull), its texture and its glow (null for none). rot is the grip's turn as a quaternion,
      * worked out once (null for no turn); build a Weapon without it and the constructor below fills it in.
      */
-    public record Weapon(String id, java.util.List<TroopMesh> frames, float[] pull, net.minecraft.client.model.ModelTransform grip, java.util.List<Vec3d> nocks, Identifier texture, Identifier glow, org.joml.Quaternionf rot) {
-        public Weapon(String id, java.util.List<TroopMesh> frames, float[] pull, net.minecraft.client.model.ModelTransform grip, java.util.List<Vec3d> nocks, Identifier texture, Identifier glow) {
-            this(id, frames, pull, grip, nocks, texture, glow, turn(grip));
+    public record Weapon(String id, java.util.List<TroopMesh> frames, TroopMesh far, float[] pull, net.minecraft.client.model.ModelTransform grip, java.util.List<Vec3d> nocks, Identifier texture, Identifier glow, org.joml.Quaternionf rot) {
+        public Weapon(String id, java.util.List<TroopMesh> frames, TroopMesh far, float[] pull, net.minecraft.client.model.ModelTransform grip, java.util.List<Vec3d> nocks, Identifier texture, Identifier glow) {
+            this(id, frames, far, pull, grip, nocks, texture, glow, turn(grip));
         }
+        /** Whether this is a cube weapon (a Blockbench model, with a far version), which draws whole at every depth setting; a sprite weapon draws its two big faces with troop depth off. */
+        public boolean cube() { return far != null; }
         private static org.joml.Quaternionf turn(net.minecraft.client.model.ModelTransform g) {
             return g.pitch != 0f || g.yaw != 0f || g.roll != 0f ? new org.joml.Quaternionf().rotationZYX(g.roll, g.yaw, g.pitch) : null;
         }
