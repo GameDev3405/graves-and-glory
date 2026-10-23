@@ -402,11 +402,9 @@ public final class Campaign {
     static String masteryTitle(String reward){for(String part:reward.split(";"))if(part.startsWith("title:")&&part.length()>6)return part.substring(6);return null;}
     /** A Pact (spec 4.4) for each Long March chapter whose every battle is cleared (campaignBattles order up to campaignCleared) and that has not paid one yet (writChapters). Returns how many were granted. */
     static int pacts(Profile p){
-        int granted=0;Set<Integer> chapters=new TreeSet<>();for(var r:Spec.CAMPAIGNBATTLES)chapters.add(r.chapter());
-        for(int chapter:chapters){
-            if(p.writChapters.contains(chapter)||!Arrays.stream(Spec.CAMPAIGNBATTLES).filter(r->r.chapter()==chapter).allMatch(r->r.order()<=p.campaignCleared))continue;
-            p.writs++;p.writChapters.add(chapter);granted++;}
-        return granted;
+        var chapters=RosterMath.pactChapters(Arrays.asList(Spec.CAMPAIGNBATTLES),p.campaignCleared,p.writChapters);
+        for(int chapter:chapters){p.writs++;p.writChapters.add(chapter);}
+        return chapters.size();
     }
     /** The report's House rows (MatchStats.houseRows): every House the fielded banner has slots in, its banner tier, its trait seconds this round, and what the match paid it (0 when nothing was saved). */
     JsonArray reportHouses(GravesAndGlory.Squad s,Map<String,Integer> slots,RosterMath.Rewards paid){
@@ -732,7 +730,10 @@ public final class Campaign {
         String action=cmd.substring(9),result;
         if(action.equals("reroll"))result=Progression.reroll(p.progression);
         else if(action.startsWith("title:")){String title=action.substring(6);if(p.progression.titles.contains(title)){p.progression.title=title;result="Title equipped: "+title;}else result="That title is locked.";}
-        else {var reward=Progression.claim(p.progression,action);p.gold=Math.min(1_000_000,p.gold+reward.gold());result=reward.message();
+        else {var reward=Progression.claim(p.progression,action);
+            // A claim that grants a troop (the Founders Rare) waits for the match to end, as roll and buy do: a copy taken mid-battle would raise the stars of a fielded troop.
+            var seat=b.squads.get(id);if(reward.troop()!=null&&b.running&&seat!=null&&seat.seated){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,"Claim tier "+Progression.RARE_TIER+"'s Rare after the battle: active battle choices are locked until the match ends.");return true;}
+            p.gold=Math.min(1_000_000,p.gold+reward.gold());result=reward.message();
             if(reward.shards()>0&&reward.house()!=null)p.shards.merge(reward.house(),reward.shards(),Integer::sum); // a contract's or a Founders tier's shards, to the House the claim named
             var troop=reward.troop()==null?null:troop(reward.troop());if(troop!=null)result+=". "+receive(p,troop); // the Founders Rare: a new troop, a copy, or past full stars its shards
             if(reward.cosmetic()!=null)p.cosmetics.add(reward.cosmetic());}

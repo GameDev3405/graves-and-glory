@@ -170,6 +170,17 @@ public final class HousesCheck {
         s.xp = Progression.TIERS * Progression.XP_PER_TIER;
         return s;
     }
+    /** Task 11 review minor 3: a Pact pays for a chapter only when every battle of it is cleared, pinned on a two-battle chapter (the sheet's chapter 1 has one). */
+    static void pacts() {
+        var rows = List.of(march("march-1", 1, 1), march("march-2", 1, 2), march("march-3", 2, 3));
+        check(pactChapters(rows, 0, Set.of()).isEmpty(), "pacts: nothing cleared pays nothing");
+        check(pactChapters(rows, 1, Set.of()).isEmpty(), "pacts: battle 1 of a two-battle chapter cleared pays no Pact (every battle of the chapter, not any)");
+        check(pactChapters(rows, 2, Set.of()).equals(List.of(1)), "pacts: both battles of chapter 1 cleared pay its Pact: " + pactChapters(rows, 2, Set.of()));
+        check(pactChapters(rows, 3, Set.of(1)).equals(List.of(2)) && pactChapters(rows, 3, Set.of(1, 2)).isEmpty(), "pacts: a chapter already paid pays again never");
+        check(pactChapters(rows, 3, Set.of()).equals(List.of(1, 2)), "pacts: two chapters cleared at once pay two, in chapter order");
+        check(pactChapters(Arrays.asList(Spec.CAMPAIGNBATTLES), Spec.CAMPAIGNBATTLES.length, Set.of()).size() == Arrays.stream(Spec.CAMPAIGNBATTLES).map(Spec.CampaignBattlesRow::chapter).distinct().count(), "pacts: the sheet's Long March cleared pays one Pact a chapter");
+    }
+    static Spec.CampaignBattlesRow march(String id, int chapter, int order) { return new Spec.CampaignBattlesRow(id, chapter, order, id, 0, 1, "easy", false, "", ""); }
     /** The re-authored Founders chapter (spec 4.8) and the House-aware contract claims (spec 4.5), through Progression.claim alone. */
     static void founders() {
         var s = tier30();
@@ -270,6 +281,7 @@ public final class HousesCheck {
         check(starFromCopies(9,rarity("legendary"))==1 && starPct(1,C)==0 && eq(starPct(2,C),0.06) && eq(starPct(3,C),0.12) && eq(starPct(3,rarity("epic")),0.12), "star bonuses; Legendary stars come from shards only");
         check(Arrays.stream(Spec.MASTERY).filter(m -> m.level() == 1).map(Spec.MasteryRow::reward).toList().equals(List.of("title:Veteran")), "Mastery I gives the title only: it unlocks nothing");
         founders();
+        pacts();
         // the battle report's House rows (Task 11): every House the banner has slots in, House order, with its banner tier, trait seconds, shards and Renown (0 when absent)
         var houseRows = MatchStats.houseRows(HOUSES, houseSlots(SPEC_EXAMPLE_BANNER,cat), Map.of("gilded",3), Map.of("gilded",40,"graveborn",12,"wildmoot",9), Map.of("gilded",2), Map.of("gilded",2,"graveborn",1));
         check(houseRows.equals(List.of(new MatchStats.HouseRow("gilded",3,40,2,2), new MatchStats.HouseRow("graveborn",0,12,0,1))), "report House rows: one per House with banner slots, a House at tier 0 included, none for a House with no slots: " + houseRows);

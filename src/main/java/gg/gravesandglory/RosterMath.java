@@ -295,4 +295,17 @@ public final class RosterMath {
         }
         return level;
     }
+
+    /**
+     * The Long March chapters that pay a Pact now (spec 4.3): each chapter whose every battle (the rows of that chapter) has an order
+     * at or below cleared, the highest order won, and that is not in paid. Ascending chapter order.
+     */
+    public static List<Integer> pactChapters(List<Spec.CampaignBattlesRow> rows, int cleared, Set<Integer> paid) {
+        Set<Integer> chapters = new TreeSet<>();
+        for (var r : rows) chapters.add(r.chapter());
+        List<Integer> out = new ArrayList<>();
+        for (int chapter : chapters)
+            if (!paid.contains(chapter) && rows.stream().filter(r -> r.chapter() == chapter).allMatch(r -> r.order() <= cleared)) out.add(chapter);
+        return out;
+    }
 }

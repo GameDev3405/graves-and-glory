@@ -3983,6 +3983,8 @@ public final class Phase2Checks implements ClientModInitializer {
         long stageAt;int shotDelay,reportWait;boolean reportDone,reportSent,reportOk;String reportWhy="";
         boolean ok=true;String why="";
         GravesAndGlory.Squad own;Map<String,Integer> shards0=new HashMap<>(),renown0=new HashMap<>();int gold0,knightStars0;
+        /** p2-kill-credit: the enemy the dead archer's arrow is on its way to, and the counts before it lands. */
+        GravesAndGlory.Unit shotTarget;int archerKills0,kills0Shot;
         static final int COST=Spec.RECRUITMENT[0].chosenCost();
         static String fmt(double v){return String.format(Locale.ROOT,"%.2f",v);}
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
@@ -4100,7 +4102,30 @@ public final class Phase2Checks implements ClientModInitializer {
                     part(knight!=null&&Math.abs(knight.mob.getMaxHealth()-want)<1e-3&&owned(b,"knight").stage==1&&Math.abs(camp.health(own,knight.spec)-1.12)<1e-9,
                         "a star 3 Order Squire at stage 1 spawns with max health "+(knight==null?"none":fmt(knight.mob.getMaxHealth()))+" (want "+fmt(want)+" = its sheet health "+(knight==null?"?":knight.spec.health())+" x 1.12; the brief's 32 is the Squire's health before the Gilded balance fix cut it to 28), multiplier "+(knight==null?"?":camp.health(own,knight.spec)));
                     part(archer!=null&&Math.abs(archer.mob.getMaxHealth()-archer.spec.health())<1e-3,"a star 1 Order Archer has its sheet health: "+(archer==null?"none":fmt(archer.mob.getMaxHealth())));
-                    done("p2-cap");camp.returnLobby();next(b,50);}
+                    done("p2-cap");
+                    // p2-claim-seated (Task 11 review minor 1): a claim that grants a troop is refused while the commander is seated in a battle, as roll and buy are
+                    var pr=profile(b);var st=pr.progression;Progression.reset(st,Progression.today());st.xp=Math.max(st.xp,Progression.RARE_TIER*Progression.XP_PER_TIER);st.claims.remove(Progression.SEASON+":"+Progression.RARE_TIER);
+                    var lb=pr.owned.computeIfAbsent("longbow",x->new Profile.Owned());lb.copies=1;lb.stars=1;save(b);
+                    command(b,"progress:founders:20:longbow",43);}
+                case 43->{if(!answered(b))return;var pr=profile(b);var lb=owned(b,"longbow");
+                    part(b.running&&own.seated&&lb!=null&&lb.copies==1&&lb.stars==1&&!pr.progression.claims.contains("founders:20"),"seated in a running battle (running "+b.running+", seated "+own.seated+"), progress:founders:20:longbow is refused: "+held(b,"longbow")+" (want copies 1 star 1), tier 20 claimed "+pr.progression.claims.contains("founders:20")+", notice \""+notice(b)+"\"");
+                    done("p2-claim-seated");
+                    // p2-kill-credit (Task 11 review minor 4): a commander's own kill credits his army but no troop type, even with a troop's blow in the credit window; a shot that lands after its archer died credits the archer's type through lastHitTroop
+                    var foes=b.units.stream().filter(u->u.squad.team!=own.team&&u.mob.isAlive()&&!u.temporary).toList();
+                    var archer=b.units.stream().filter(u->u.squad==own&&u.mob.isAlive()&&u.spec.id().equals("archer")).findFirst().orElse(null);
+                    if(foes.size()<2||archer==null){part(false,"the fixture: "+foes.size()+" enemies, archer "+archer);done("p2-kill-credit");camp.returnLobby();next(b,50);return;}
+                    int kills0=own.stats.kills;var types0=new HashMap<>(own.stats.troopKills);
+                    var f0=foes.get(0);f0.lastHitBy=own;f0.lastHitAt=b.time;f0.lastHitTroop="knight";
+                    f0.mob.damage(p.getDamageSources().playerAttack(p),1000f);
+                    part(!f0.mob.isAlive()&&own.stats.kills==kills0+1&&own.stats.troopKills.equals(types0),"the commander's own blow kills an enemy that a knight struck a moment before: dead "+!f0.mob.isAlive()+", army kills +"+(own.stats.kills-kills0)+" (want +1), troop kills "+types0+" -> "+own.stats.troopKills+" (want unchanged)");
+                    shotTarget=foes.get(1);shotTarget.lastHitBy=null;shotTarget.lastHitTroop=null;archerKills0=own.stats.troopKills.getOrDefault("archer",0);kills0Shot=own.stats.kills;
+                    b.shots.add(new Projectiles.Shot(archer,own,shotTarget.mob,"arrow",1000f,archer.mob.getEyePos(),b.time,b.time+4,null,null));
+                    archer.mob.kill();b.units.remove(archer); // the archer falls and is gone from the battle before his arrow lands
+                    next(b,44);}
+                case 44->{if(since(b)<10)return;
+                    int archerKills=own.stats.troopKills.getOrDefault("archer",0);
+                    part(!shotTarget.mob.isAlive()&&own.stats.kills==kills0Shot+1&&archerKills==archerKills0+1,"an arrow lands 4 ticks after its archer died: target dead "+!shotTarget.mob.isAlive()+", army kills +"+(own.stats.kills-kills0Shot)+", archer kills "+archerKills0+" -> "+archerKills+" (want +1), troop kills "+own.stats.troopKills);
+                    done("p2-kill-credit");camp.returnLobby();next(b,50);}
                 case 50->{ // p2-match-rewards: a won match with the banner Gilded 14 / Graveborn 6
                     var pr=profile(b);pr.banner=banner("knight*14,revenant*6");
                     var k=pr.owned.get("knight");k.kills=39;k.survived=7;k.mastery=0;
