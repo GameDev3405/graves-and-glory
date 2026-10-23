@@ -8,11 +8,13 @@ public final class FeedLines {
     /** A line's glyph (an 8x8 atlas name) and the dark ink of its hue. */
     public record Style(String glyph, int argb) {}
 
-    /** The inks on the feed's vellum: the team inks Dawn #1d4f4c and Dusk #563a73, losses red, kills and routs grey, commanders
-     *  brass, deploys and notices sepia. Each holds 5.2:1 or better on the slip, the spec's bar for the feed's small text
-     *  (UiMathCheck). */
-    public static final int DAWN_INK = 0xff1d4f4c, DUSK_INK = 0xff563a73, LOSS_INK = 0xff7a2416, GREY_INK = 0xff504b44,
-        BRASS_INK = 0xff684600, NOTICE_INK = 0xff3d3124;
+    /** The inks on the feed's vellum: the team inks Dawn #1b4a47 and Dusk #52376d, losses red, kills and routs grey, commanders
+     *  brass, deploys and notices sepia. Each holds 5.2:1 or better on the slip, the spec's bar for the feed's small text, on its
+     *  darker vellum (#d0bd90) as on its body, and 4.5:1 on the next tone down (#c2ae80), the worst the Compact leaf's text rows
+     *  show at the 90th percentile (UiMathCheck). UI Task 8c fix round 1 took Dawn, Dusk, grey and brass one step darker in
+     *  their own hues for that (from #1d4f4c, #563a73, #504b44 and #684600: 5.0, 5.05, 4.67 and 4.61:1 on #d0bd90). */
+    public static final int DAWN_INK = 0xff1b4a47, DUSK_INK = 0xff52376d, LOSS_INK = 0xff7a2416, GREY_INK = 0xff47433d,
+        BRASS_INK = 0xff5c3e00, NOTICE_INK = 0xff3d3124;
 
     /** A troop name in the plural: +"s", a trailing "man" becomes "men", and a name ending in "s" or the Risen stays as it is. */
     public static String plural(String name) {

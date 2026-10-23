@@ -282,7 +282,7 @@ public final class BattleHud {
         g.drawText(font,orderLabel(grp.order()),x+22,y+31,DarkUi.INK_TEXT,false);
         formationGlyph(g,grp.formation(),down,x+72,y+30);
         g.drawText(font,formationLabel(grp.formation()),x+84,y+31,DarkUi.INK_TEXT,false);
-        keyRow(g,font,id,x,y+44);
+        keyRow(g,font,id,x,y+44,DarkUi.SEPIA);
         cd.add(new CardDraw(id,state,true,x,y,box[2],box[3]));r.put("card-"+id,box);
         tx.put("count-"+id,count);tx.put("state-"+id,word);
     }
@@ -326,23 +326,26 @@ public final class BattleHud {
 
     /** The army's key strip under the bottom chip while the whole army is selected (UI Task 8c): the order keys of a card's key row
      *  at a card's places, on a 176 x 16 plate capped in brass and hung on the spine by a brass hook. The keys are the same for every
-     *  group, so one row serves the army: the cheapest form that keeps them on screen. */
+     *  group, so one row serves the army: the cheapest form that keeps them on screen. Its labels are in KEY_INK, a step darker than
+     *  the card's sepia: the strip is the darker vellum, where sepia holds 4.6:1 and 3.7:1 at its edges (#bda97c), KEY_INK 6.0:1
+     *  there (UI Task 8c fix round 1; test_ui_standard checks it). */
     static void keyStrip(DrawContext g,TextRenderer font,int[] box,Map<String,int[]> r){
         int x=box[0],y=box[1];
         UiTex.draw(g,"hud/keys-strip",x,y);UiTex.draw(g,"hud/hook-brass",x-7,y+3);
-        keyRow(g,font,"all",x,y+3);r.put("keys",box);
+        keyRow(g,font,"all",x,y+3,DarkUi.KEY_INK);r.put("keys",box);
     }
 
     /** A key row at canvas y ky on a plate at x: the order keys, each in an ink chip as wide as its key's name, at the mock's places,
-     *  or where long names crowd the row flowed and fitted as on the hint slip, short names first (UiMath.cardRow). */
-    static void keyRow(DrawContext g,TextRenderer font,String group,int x,int ky){
+     *  or where long names crowd the row flowed and fitted as on the hint slip, short names first (UiMath.cardRow); each key's label
+     *  after it in labelInk, the plate's own (sepia on a card, KEY_INK on the key strip). */
+    static void keyRow(DrawContext g,TextRenderer font,String group,int x,int ky,int labelInk){
         var row=UiMath.cardRow(List.of(GravesAndGloryClient.hint("attack"),GravesAndGloryClient.hint("follow"),GravesAndGloryClient.hint("formation")),List.of(GravesAndGloryClient.hintShort("attack"),GravesAndGloryClient.hintShort("follow"),GravesAndGloryClient.hintShort("formation")),CARD_WORDS,CARD_SHORT_WORDS,font::getWidth);
         List<String> parts=new ArrayList<>();List<Integer> from=new ArrayList<>(),to=new ArrayList<>();
         for(int k=0;k<3;k++){
             String key=row.keys().get(k),label=row.words().get(k);int kw=UiMath.chipWidth(font.getWidth(key)),kx=x+row.at().get(k);
             UiTex.three(g,"hud/key-chip",kx,ky,kw);
             g.drawText(font,key,kx+2,ky+2,DarkUi.CHIP_TEXT,false);
-            g.drawText(font,label,kx+kw+2,ky+2,DarkUi.SEPIA,false);
+            g.drawText(font,label,kx+kw+2,ky+2,labelInk,false);
             parts.add(key);from.add(kx);to.add(kx+kw);parts.add(label);from.add(kx+kw+2);to.add(kx+kw+2+font.getWidth(label));
         }
         keyRowsDrawn.add(new KeyRowDraw(group,List.copyOf(parts),List.copyOf(from),List.copyOf(to)));
@@ -395,7 +398,8 @@ public final class BattleHud {
     static String lessonTag(int step){return "LESSON "+(step+1)+"/4";}
 
     /** The Long March lesson as one short note at the top left (UI Task 8c): under the seals and off the centre band, in the box the
-     *  layout gives it, the LESSON k/4 tag in sepia and the copy after it, both in 11 px Lato. Every lesson is two lines with the
+     *  layout gives it, the LESSON k/4 tag in KEY_INK and the copy after it in ink, both in 11 px Lato (the tag a step darker than
+     *  sepia, which holds 3.7:1 on the note's darkest vellum, #bda97c; KEY_INK 6.0:1: UI Task 8c fix round 1). Every lesson is two lines with the
      *  default keys; a long key name may make a third, and the note grows a line for it (a three-v whose middle band is bare
      *  vellum), so nothing is cut. The layout leaves it out outside the tutorial, while an order is aimed, and where it would come
      *  within CARD_GAP rows of the respawn card's ink (UiMath.lessonYields: at Compact never, on the windows ui-hud covers). */
@@ -403,7 +407,7 @@ public final class BattleHud {
         int[] box=at.get("lesson");if(box==null)return;
         int step=CampaignClient.tutorial,x=box[0],y=box[1];List<String> lines=lesson(font,step);Text tag=DarkUi.small(lessonTag(step));
         UiTex.three(g,"hud/lesson-note",x,y,box[3]+LESSON_FRAME);
-        g.drawText(font,tag,x+8,y+5,DarkUi.SEPIA,false);
+        g.drawText(font,tag,x+8,y+5,DarkUi.KEY_INK,false);
         int indent=font.getWidth(tag)+UiMath.LESSON_TAG_GAP;
         for(int i=0;i<lines.size();i++)g.drawText(font,DarkUi.small(lines.get(i)),x+8+(i==0?indent:0),y+5+11*i,DarkUi.INK_TEXT,false);
         GravesAndGloryClient.lessonDrawn=lines;r.put("lesson",box);tx.put("lesson",wrappedJoined);

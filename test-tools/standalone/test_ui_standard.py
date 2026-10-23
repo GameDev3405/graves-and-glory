@@ -6,7 +6,9 @@
 - every teamColor( outside DarkUi.java has a teamMark( within three lines, so colour never carries a meaning alone;
 - no string literal names a mouse button in English ("Right Button"): chips go by the bound key, not its name (UI Task 8a);
 - the battle HUD's files (HUD_CANVAS) never take the screens' canvas scale or size (UiCanvas.k, width, height, begin): the HUD
-  draws at its own scale, UiCanvas.hudK (UI Task 8a).
+  draws at its own scale, UiCanvas.hudK (UI Task 8a);
+- the methods that write on the darker vellum plates (LO_PLATE_TEXT: the key strip, the lesson note) name only DarkUi inks that
+  hold 4.5:1 on those plates' darkest vellum, #bda97c (UI Task 8c fix round 1: sepia gave 3.7:1 there).
 Prints 'test_ui_standard: clean', or one 'file: snippet' line per finding and exits 1."""
 import pathlib
 import re
@@ -23,6 +25,42 @@ ARGB_ALLOWED = {'0x66303c39', '0xff34473b'}
 ARGB = re.compile(r'\b0[xX][0-9a-fA-F]{8}(?![0-9a-fA-F_])')
 BACKSLASH = chr(92)
 KEY_TOKEN = re.compile(r'\{key:[^{}]*\}')
+LO_PLATE_TEXT = {'BattleHud': ('keyStrip', 'lesson')}
+LO_VELLUM_EDGE = 0xbda97c
+INK_TOKEN = re.compile(r'\bDarkUi\s*\.\s*([A-Z][A-Z0-9_]*)\b')
+INK_DECL = re.compile(r'\b([A-Z][A-Z0-9_]*)\s*=\s*0[xX]([0-9a-fA-F]{8})\b')
+
+
+def contrast(a, b):
+    """WCAG 2 contrast of two 0xRRGGBB colours, as UiMath.contrast."""
+    def lum(c):
+        ch = [((c >> s) & 255) / 255 for s in (16, 8, 0)]
+        ch = [v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4 for v in ch]
+        return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2]
+    la, lb = lum(a), lum(b)
+    return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+
+
+def darkui_inks():
+    """DarkUi's ARGB tokens by name, read from its source (an alias such as GOLD=BRASS has no literal and is left out)."""
+    code, _ = scan((SRC / 'DarkUi.java').read_text(encoding='utf-8'))
+    return {m.group(1): int(m.group(2), 16) & 0xffffff for m in INK_DECL.finditer(code)}
+
+
+def method_spans(code, name):
+    """The body offsets of each static method `name` declares (every overload), by brace matching over the blanked code."""
+    spans = []
+    for m in re.finditer(r'\bstatic\s+[\w<>\[\],.? ]+?\s+' + name + r'\s*\([^()]*\)\s*\{', code):
+        depth = 0
+        for k in range(m.end() - 1, len(code)):
+            if code[k] == '{':
+                depth += 1
+            elif code[k] == '}':
+                depth -= 1
+                if depth == 0:
+                    spans.append((m.end() - 1, k + 1))
+                    break
+    return spans
 
 
 def scan(text):
@@ -118,6 +156,19 @@ def check_file(path):
     if name in HUD_CANVAS:
         for m in SCREEN_CANVAS.finditer(code):
             found.append(f'{path.name}:{line_of(text, m.start())}: {m.group()} takes the screens\' scale, not the HUD\'s (hudK)')
+    if name in LO_PLATE_TEXT:
+        inks = darkui_inks()
+        for method in LO_PLATE_TEXT[name]:
+            spans = method_spans(code, method)
+            if not spans:
+                found.append(f'{path.name}: no static method {method}( to check the darker vellum\'s inks in')
+            for a, b in spans:
+                for m in INK_TOKEN.finditer(code, a, b):
+                    ink = inks.get(m.group(1))
+                    ratio = None if ink is None else contrast(ink, LO_VELLUM_EDGE)
+                    if ratio is None or ratio < 4.5:
+                        found.append(f'{path.name}:{line_of(text, m.start())}: DarkUi.{m.group(1)} in {method}( holds '
+                                     + ('no known ink' if ratio is None else f'{ratio:.2f}:1') + ' on the darker vellum\'s edge #bda97c (wanted 4.5)')
     if name != 'DarkUi':
         lines = code.split('\n')
         for k, line in enumerate(lines):

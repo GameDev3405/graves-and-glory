@@ -1710,11 +1710,11 @@ public final class Phase1Checks implements ClientModInitializer {
          *  must draw it with (the inks written out, FeedLines' table: Dawn, Dusk, grey, loss red, brass, sepia). */
         record FeedKind(String kind,int team,String text,int row,String glyph,int argb){}
         static final List<List<FeedKind>> FEED_KINDS=List.of(
-            List.of(new FeedKind("point",0,"Dawn took Mill Hamlet",0,"hud/fgv-seal-dawn",0xff1d4f4c),new FeedKind("point",1,"Dusk took Trade Crossing",1,"hud/fgv-seal-x-dusk",0xff563a73),
-                new FeedKind("kill",0,"2 Dusk Revenants lost",2,"hud/fgv-skull-grey",0xff504b44)),
+            List.of(new FeedKind("point",0,"Dawn took Mill Hamlet",0,"hud/fgv-seal-dawn",0xff1b4a47),new FeedKind("point",1,"Dusk took Trade Crossing",1,"hud/fgv-seal-x-dusk",0xff52376d),
+                new FeedKind("kill",0,"2 Dusk Revenants lost",2,"hud/fgv-skull-grey",0xff47433d)),
             List.of(new FeedKind("loss",0,"3 Dawn Knights lost",0,"hud/fgv-skull",0xff7a2416),new FeedKind("deploy",0,"Dawn Knights deploying",1,"hud/fgv-sun",0xff3d3124),
-                new FeedKind("down",0,"Ansel's banner has fallen",2,"hud/fgv-banner-down",0xff684600)),
-            List.of(new FeedKind("up",0,"Ansel is back in the field",1,"hud/fgv-banner-up",0xff684600),new FeedKind("notice",0,"Capture the objectives.",2,"hud/fgv-sun",0xff3d3124)));
+                new FeedKind("down",0,"Ansel's banner has fallen",2,"hud/fgv-banner-down",0xff5c3e00)),
+            List.of(new FeedKind("up",0,"Ansel is back in the field",1,"hud/fgv-banner-up",0xff5c3e00),new FeedKind("notice",0,"Capture the objectives.",2,"hud/fgv-sun",0xff3d3124)));
         static final List<String> AIM_ROW=List.of("LMB","Confirm","RMB","Cancel");
         static final List<String> COLOURS=List.of("red","blue","green","gold","yellow","purple","white","grey","gray","orange","cyan","aqua","black","pink","violet","brown");
         static final UUID STALE=UUID.randomUUID(); // the remembered sighting the map stage keeps 100 ticks old

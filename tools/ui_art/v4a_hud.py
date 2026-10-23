@@ -804,9 +804,10 @@ ASSETS['spine-180'] = lambda: spine(180)
 # ================================================================ v4.1: the battle feed in the cards' own material
 # On vellum the feed keeps its colour code but writes it in dark inks of the same hues, as the cards write theirs:
 # teal for a point we took, violet for a point lost, red for our losses, grey for theirs, a brown brass for a
-# commander, plain ink for notices. Every ink holds 5.2:1 or better on the vellum body.
-FEEDV = {'us': '#1d4f4c', 'them': VIOL[2], 'loss': '#7a2416', 'kill': '#504b44', 'brass': '#684600',
-         'grey': '#504b44', 'ivory': INK[2]}
+# commander, plain ink for notices. Every ink holds 5.2:1 or better on the vellum body and on its darker tone #d0bd90
+# (FeedLines draws the words in these; UI Task 8c fix round 1 took us, them, kill and brass a step darker in their own hues).
+FEEDV = {'us': '#1b4a47', 'them': '#52376d', 'loss': '#7a2416', 'kill': '#47433d', 'brass': '#5c3e00',
+         'grey': '#47433d', 'ivory': INK[2]}
 # the glyphs carry the hue a little brighter than the words (dark side, body, lit pixel)
 FEEDV_GLYPH = {'us': (TEAL[0], TEAL[2], TEAL[3]), 'them': (VIOL[1], VIOL[2], VIOL[3]),
                'loss': (ALARM[0], ALARM[1], ALARM[3]), 'kill': ('#2c2925', '#4d4943', '#7a756b'),
