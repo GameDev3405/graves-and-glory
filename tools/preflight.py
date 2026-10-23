@@ -147,7 +147,7 @@ for h in houses.values():
     if h['troops'].split(',')!=mine: errors.append(f'houses/{h["id"]}: troops must be {",".join(mine)}, the House troops in sheet order')
     for r,n in HOUSE_SHAPE.items():
         have=sum(1 for t in mine if rarityOf.get(t)==r)
-        if have>n or (h['fieldable'] and have!=n): errors.append(f'houses/{h["id"]}: {have} {r} troops; a House has at most {n}, and a fieldable House exactly {n}')
+        if have!=n: errors.append(f'houses/{h["id"]}: {have} {r} troops; every House has exactly {n} (all five are fieldable since Phase 2 Task 13)')
 CLASS_ACTIVES=('stand_fast','bloodrush','mark_prey','rally_horn','grave_bloom','forward_supply')
 CLASS_PASSIVES=('champion','reaver','warden','marshal','warlock','quartermaster')
 for c in data['classes']:

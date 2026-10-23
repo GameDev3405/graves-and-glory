@@ -128,11 +128,13 @@ final class CampScreen extends ArmyScreen {
     static int rarityColour(String rarity){return switch(rarity){case "rare"->0xff8fb8d8;case "epic"->0xffc79be0;case "legendary"->DarkUi.GOLD;default->DarkUi.MUTED;};}
     /** The lowest pixel (from the card's top) the last card() call drew a word or a pip at, and whether the harness is probing (no portrait is drawn). Task 12 re-review N1: p2-card-layout reads what card() drew, not the row table. */
     int cardLow;static volatile boolean probe;
+    /** The troops the last frames' cards drew and whether each was owned (the harness clears it, presses a House tab and reads it: Task 13, p2-full-roster). */
+    static final Map<String,Boolean> seenCards=new java.util.concurrent.ConcurrentHashMap<>();
     /** A word of a card at dy under the card's top: drawn, and noted for cardLow. */
     void cardLine(DrawContext g,String text,int x,int y,int dy,int color,int room){line(g,text,x,y+dy,color,room);cardLow=Math.max(cardLow,dy+9);}
     /** One troop card: the portrait on the House accent, the stage name, the rarity, the stars as pips and the stage; a troop the commander lacks is dimmed and says LOCKED with its odds. */
     void card(DrawContext g,Card card,int x,int y,int w,int h,int poolTotal){
-        cardLow=0;
+        cardLow=0;seenCards.put(card.troop().id(),card.owned());
         var troop=card.troop();DarkUi.frame(g,x,y,w,h);
         var row=ArmyCards.house(troop);g.fillGradient(x+3,y+3,x+w-3,y+h-3,0x33000000|(row==null?0x4c9391:row.accent()&0xffffff),0x00181820);
         var portrait=ArmyCards.portrait(troop);float wide=portrait==null?0:portrait.getWidth()*1.25f; // a wide model (a spider's legs) is drawn smaller so it stays inside its card

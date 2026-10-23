@@ -50,7 +50,7 @@ public final class Phase2Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every server tick, for checks that wait on the battle. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("graveborn",Graveborn::new);SUITES.put("ironclad",Ironclad::new);SUITES.put("tidecallers",Tidecallers::new);SUITES.put("wildmoot",Wildmoot::new);SUITES.put("chase",Chase::new);SUITES.put("anim",Anim::new);SUITES.put("turn",Turn::new);SUITES.put("tells",Tells::new);SUITES.put("depth",Depth::new);SUITES.put("screens",Screens::new);}
+    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("graveborn",Graveborn::new);SUITES.put("ironclad",Ironclad::new);SUITES.put("tidecallers",Tidecallers::new);SUITES.put("wildmoot",Wildmoot::new);SUITES.put("chase",Chase::new);SUITES.put("anim",Anim::new);SUITES.put("turn",Turn::new);SUITES.put("tells",Tells::new);SUITES.put("depth",Depth::new);SUITES.put("screens",Screens::new);SUITES.put("migration",Migration::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -4637,7 +4637,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 report("p2-spike-feet",feet,String.format(Locale.ROOT,"rest bounds y (model px, ground 24): knight %.2f..%.2f, Templar %.2f..%.2f; the Templar's top is %.2f px above the knight's (want 2 or more)",kb.minY,kb.maxY,sb.minY,sb.maxY,kb.minY-sb.minY));}
             else report("p2-spike-feet",false,"no knight or sentinel model");
             List<String> bad=new ArrayList<>();int lines=0;
-            try{for(String line:Files.readAllLines(c.runDirectory.toPath().resolve("logs/latest.log"),java.nio.charset.StandardCharsets.ISO_8859_1)){lines++;if(line.contains("[troop-models]")||line.contains("Failed to load model")&&line.contains("gravesandglory:troop/"))bad.add(line.trim());}}catch(IOException e){bad.add(e.toString());}
+            try{for(String line:Files.readAllLines(c.runDirectory.toPath().resolve("logs/latest.log"),java.nio.charset.StandardCharsets.ISO_8859_1)){lines++;if(line.contains("[p2] "))continue; /* the harness's own report lines quote the marker */if(line.contains("[troop-models]")||line.contains("Failed to load model")&&line.contains("gravesandglory:troop/"))bad.add(line.trim());}}catch(IOException e){bad.add(e.toString());}
             // Every rig, weapon and troop that index.json lists has loaded: a client whose loader never ran logs nothing either. The
             // lists are read here with plain JSON, not with the loader's own index() (Task 5 review minor 2), and none may be empty.
             List<String> missing=new ArrayList<>();String listed;
@@ -6288,6 +6288,165 @@ public final class Phase2Checks implements ClientModInitializer {
         }
     }
 
+    /**
+     * Task 13 (GRAVES_PHASE2_CHECKS=migration): the v1 fixtures through the real Campaign.profile(), a restart, a first LAN visit's cache import, and a
+     * roster of all 30 troops on every House tab. Run it twice on one run root: the second launch finds the first launch's files and checks they are
+     * byte-unchanged and read as the same profile (p2-migrate-restart is also run inside one launch, by dropping the in-memory profile and reading again).
+     * Expected values are written out here from the sheets and the fixtures, never worked out by ProfileMigration.
+     */
+    static final class Migration implements Suite,ServerWatch {
+        volatile UUID player;volatile int stage;volatile boolean finished,rosterSet,restoreDone,restoreOk;
+        int cs,wait,tabIdx,frames;boolean rosterOk=true;String rosterWhy="";volatile String before="";
+        static final String[] CASES={"fresh","full","invalid","invalid-both"};
+        static final Set<String> COMMONS=Set.of("knight","archer","revenant","bonebow","wm_hound","wm_hunter","ic_hearthguard","ic_arbalist","tc_raider","tc_harpooner");
+        static final int REFUND=Spec.ECONOMY[0].refundGold();
+        /** What a case's profile must read as: gold, class, extra owned troops over the 10 Commons, banner, matches, wins, Phase 1 campaignCleared, tutorial flag. */
+        record Want(int gold,String commander,Set<String> extra,String banner,int matches,int wins,int cleared,boolean tutorial){}
+        static final Map<String,Want> WANT=Map.of(
+            "fresh",new Want(420+2*REFUND,"champion",Set.of(),"knight*12,archer*6,empty*2",0,0,0,false),
+            "full",new Want(1500+4*REFUND,"warlock",Set.of("sentinel","longbow","reaper","stalker"),"sentinel*4,longbow*4,knight*10,empty*2",31,17,1,true),
+            "invalid",new Want(90+2*REFUND,"warden",Set.of(),"revenant*12,bonebow*6,empty*2",3,1,1,true),
+            "invalid-both",new Want(90+2*REFUND,"warden",Set.of(),"knight*12,archer*8",3,1,1,true));
+        static UUID caseId(String c){return UUID.nameUUIDFromBytes(("gg-migration-suite-"+c).getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+        /** The fixture's bytes; "invalid-both" is the invalid fixture with its Dusk line emptied too. */
+        static byte[] bytes(String c)throws IOException{
+            if(!c.equals("invalid-both"))return fixture("profile-v1-"+c+".json");
+            var j=JsonParser.parseString(new String(fixture("profile-v1-invalid.json"),java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+            var dusk=new com.google.gson.JsonArray();for(int i=0;i<20;i++)dusk.add("empty");j.getAsJsonObject("deployment").add("dusk",dusk);
+            return j.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+        static String sha(byte[] b){try{var d=java.security.MessageDigest.getInstance("SHA-256").digest(b);var sb=new StringBuilder();for(byte x:d)sb.append(String.format("%02x",x));return sb.toString();}catch(Exception e){return e.toString();}}
+        /** A profile as comparable JSON (objects compare without key order; arrays keep theirs). */
+        static com.google.gson.JsonElement tree(Profile p){return JsonParser.parseString(Campaign.JSON.toJson(p));}
+        /** What is wrong with the profile a case loaded as, or "" when it reads as Want says. */
+        static String wrong(String c,Profile pr){
+            var w=WANT.get(c);StringBuilder bad=new StringBuilder();
+            Set<String> owned=new HashSet<>(COMMONS);owned.addAll(w.extra());
+            if(!pr.owned.keySet().equals(owned))bad.append("owned ").append(new TreeSet<>(pr.owned.keySet())).append(" (want ").append(new TreeSet<>(owned)).append("); ");
+            if(!pr.owned.values().stream().allMatch(o->o.copies==1&&o.stars==1&&o.stage==1))bad.append("a troop is not at one copy, star 1, stage 1; ");
+            if(!Collections.disjoint(pr.owned.keySet(),Set.of("mage","hexer","oracle","wraith")))bad.append("mage, hexer, oracle or wraith owned; ");
+            if(pr.gold!=w.gold())bad.append("gold ").append(pr.gold).append(" (want ").append(w.gold()).append("); ");
+            if(!pr.commander.equals(w.commander()))bad.append("class ").append(pr.commander).append(" (want ").append(w.commander()).append("); ");
+            if(!pr.banner.equals(banner(w.banner())))bad.append("banner ").append(String.join(",",pr.banner)).append(" (want ").append(w.banner()).append("); ");
+            if(pr.matches!=w.matches()||pr.wins!=w.wins()||pr.campaignCleared!=w.cleared()||pr.tutorialDone!=w.tutorial())bad.append("matches/wins/cleared/tutorial ").append(pr.matches).append("/").append(pr.wins).append("/").append(pr.campaignCleared).append("/").append(pr.tutorialDone).append("; ");
+            if(pr.schema!=2)bad.append("schema ").append(pr.schema).append("; ");
+            for(var h:Spec.HOUSES)if(pr.shards.getOrDefault(h.id(),-1)!=0||pr.renown.getOrDefault(h.id(),-1)!=0||pr.pity.getOrDefault(h.id(),-1)!=0)bad.append("shards, renown or pity of ").append(h.id()).append(" not 0; ");
+            if(c.equals("full")&&!(pr.progression.xp==4321&&pr.progression.title.equals("Vanguard")&&pr.progression.titles.contains("Vanguard")&&pr.progression.claims.contains("founders:20")))bad.append("progression xp ").append(pr.progression.xp).append(" title ").append(pr.progression.title).append(" claims ").append(pr.progression.claims).append(" (want 4321, Vanguard, founders:20 kept); ");
+            return bad.toString();
+        }
+        public void cleanup(MinecraftClient c){server(c,b->{if(!before.isEmpty()&&!restoreDone)restore(b);});}
+        void restore(GravesAndGlory.Battle b){
+            var back=Campaign.JSON.fromJson(before,Profile.class);back.sanitize();b.campaign.profiles.put(player,back);b.campaign.save(player);
+            restoreOk=tree(b.campaign.profile(player)).equals(JsonParser.parseString(before));restoreDone=true;
+        }
+        public void serverTick(GravesAndGlory.Battle b){
+            if(player==null||finished)return;var camp=b.campaign;var p=b.server.getPlayerManager().getPlayer(player);if(p==null)return;
+            switch(stage){
+                case 1->{
+                    if(b.running){camp.returnLobby();return;}
+                    before=Campaign.JSON.toJson(camp.profile(player));
+                    try{fixtures(b);}catch(Exception e){report("p2-migrate-fixtures",false,e.toString());e.printStackTrace();}
+                    try{importCache(b,p);}catch(Exception e){report("p2-migrate-import",false,e.toString());e.printStackTrace();}
+                    try{
+                        var pr=camp.profile(player);
+                        for(var t:Spec.TROOPS)pr.owned.putIfAbsent(t.id(),new Profile.Owned());
+                        camp.save(player);rosterSet=pr.owned.size()==Spec.TROOPS.length;
+                    }catch(Exception e){report("p2-full-roster",false,"the roster could not be set: "+e);rosterSet=true;}
+                    stage=2;}
+                case 3->{restore(b);stage=4;}
+                default->{}
+            }
+        }
+        /** p2-migrate-fixtures and p2-migrate-restart on the four cases; the manifest the first launch leaves in the world makes the second launch's restart check a true one. */
+        void fixtures(GravesAndGlory.Battle b)throws IOException{
+            var camp=b.campaign;Files.createDirectories(camp.directory);Path manifest=camp.directory.resolve("migration-suite-manifest.txt");
+            boolean second=Files.exists(manifest);Map<String,String[]> was=new HashMap<>();
+            if(second)for(String line:Files.readAllLines(manifest)){String[] f=line.split("\t",5);was.put(f[0],f);}
+            StringBuilder loaded=new StringBuilder(),restart=new StringBuilder(),notes=new StringBuilder();List<String> out=new ArrayList<>();
+            for(String c:CASES){
+                UUID id=caseId(c);Path file=camp.directory.resolve(id+".json"),v1=camp.directory.resolve(id+".v1.json");byte[] fx=bytes(c);
+                if(second){ // a true restart: the files the first launch left, read for the first time in this process
+                    var m=was.get(c);
+                    if(m==null||!Files.exists(file)){restart.append(c).append(": not in the manifest or its file is gone; ");continue;}
+                    byte[] main=Files.readAllBytes(file);long mtime=Files.getLastModifiedTime(file).toMillis();
+                    camp.profiles.remove(id);var pr=camp.profile(id);
+                    boolean same=sha(main).equals(m[1])&&sha(Files.readAllBytes(file)).equals(m[1])&&mtime==Long.parseLong(m[3])&&Files.getLastModifiedTime(file).toMillis()==mtime&&Files.exists(v1)&&sha(Files.readAllBytes(v1)).equals(m[2])&&Arrays.equals(Files.readAllBytes(v1),fx);
+                    boolean equal=tree(pr).equals(JsonParser.parseString(m[4]));
+                    if(!same||!equal)restart.append(c).append(": files byte-unchanged and the v1 copy equal to the fixture=").append(same).append(", profile equal to the first launch's=").append(equal).append("; ");
+                    String bad=wrong(c,pr);if(!bad.isEmpty())loaded.append(c).append(": ").append(bad);
+                    notes.append(c).append(" gold ").append(pr.gold).append(", ").append(pr.owned.size()).append(" owned, class ").append(pr.commander).append("; ");
+                }else{
+                    Files.deleteIfExists(v1);Files.deleteIfExists(camp.directory.resolve(id+".json.bak"));Files.write(file,fx);camp.profiles.remove(id);
+                    var pr=camp.profile(id);
+                    String bad=wrong(c,pr);boolean kept=Files.exists(v1)&&Arrays.equals(Files.readAllBytes(v1),fx),v2=Files.readString(file).contains("\"schema\": 2");
+                    if(!kept)bad+="the .v1.json is not a byte copy of the fixture; ";if(!v2)bad+="the file is not rewritten as schema 2; ";
+                    if(!bad.isEmpty())loaded.append(c).append(": ").append(bad);
+                    // in-process restart: the profile dropped from memory and read again
+                    byte[] main=Files.readAllBytes(file);long mtime=Files.getLastModifiedTime(file).toMillis();
+                    camp.profiles.remove(id);var again=camp.profile(id);
+                    boolean same=Arrays.equals(main,Files.readAllBytes(file))&&mtime==Files.getLastModifiedTime(file).toMillis()&&Arrays.equals(Files.readAllBytes(v1),fx),equal=tree(again).equals(tree(pr));
+                    if(!same||!equal)restart.append(c).append(": files byte-unchanged=").append(same).append(", profile equal=").append(equal).append("; ");
+                    out.add(c+"\t"+sha(main)+"\t"+sha(Files.readAllBytes(v1))+"\t"+mtime+"\t"+tree(pr));
+                    notes.append(c).append(" gold ").append(pr.gold).append(", ").append(pr.owned.size()).append(" owned, class ").append(pr.commander).append("; ");
+                }
+            }
+            if(!second)Files.write(manifest,out);
+            report("p2-migrate-fixtures",loaded.length()==0,"profile-v1-fresh, -full, -invalid (a short Dawn line, so the Dusk line is used) and the invalid one with an emptied Dusk line too, each as <uuid>.json read through Campaign.profile() on the "+(second?"second launch (from the already-migrated files)":"first launch")+": "+(loaded.length()==0?"each matches its hand-written expectation: "+notes:loaded));
+            report("p2-migrate-restart",restart.length()==0,(second?"a second launch on the same run root: ":"inside one launch, the profile dropped from memory and read again (the second launch repeats it for real): ")+(restart.length()==0?"all four files byte-unchanged (hash and modified time), the .v1.json equal to its fixture, and each profile equal to the one before the restart":restart));
+        }
+        /** p2-migrate-import: a first LAN visit (no server file, import allowed) imports the cache and migrates it; a second, richer one is ignored. */
+        void importCache(GravesAndGlory.Battle b,net.minecraft.server.network.ServerPlayerEntity p)throws IOException{
+            var camp=b.campaign;Path file=camp.directory.resolve(player+".json");StringBuilder bad=new StringBuilder();
+            String cache=new String(fixture("profile-v1-cache.json"),java.nio.charset.StandardCharsets.UTF_8);
+            Files.deleteIfExists(file);camp.profiles.remove(player);camp.importAllowed.add(player);camp.collectionsReady.remove(player);
+            camp.importProfile(p,cache);
+            var got=camp.profile(player);Set<String> owned=new HashSet<>(COMMONS);owned.add("sentinel");
+            if(!got.owned.keySet().equals(owned))bad.append("owned ").append(new TreeSet<>(got.owned.keySet())).append(" (want the 10 Commons and sentinel); ");
+            if(got.gold!=900+3*REFUND)bad.append("gold ").append(got.gold).append(" (want ").append(900+3*REFUND).append(": 900 + mage, hexer and oracle refunded); ");
+            if(!got.commander.equals("warden")||!got.banner.equals(banner("knight*12,archer*6,sentinel*2"))||got.schema!=2||got.matches!=12||got.wins!=7||got.campaignCleared!=1||!got.tutorialDone||got.progression.xp!=777)bad.append("class/banner/schema/matches/wins/cleared/tutorial/xp: ").append(got.commander).append(" ").append(String.join(",",got.banner)).append(" ").append(got.schema).append(" ").append(got.matches).append(" ").append(got.wins).append(" ").append(got.campaignCleared).append("; ");
+            boolean saved=Files.exists(file)&&Files.readString(file).contains("\"schema\": 2")&&JsonParser.parseString(Files.readString(file)).getAsJsonObject().get("gold").getAsInt()==900+3*REFUND;
+            if(!saved)bad.append("the import was not saved as a schema 2 file; ");
+            if(camp.importAllowed.contains(player)||!camp.collectionsReady.contains(player))bad.append("the permission was not used up or the collection is not ready; ");
+            byte[] first=Files.exists(file)?Files.readAllBytes(file):new byte[0];
+            var rich=JsonParser.parseString(cache).getAsJsonObject();rich.addProperty("gold",99999);rich.addProperty("commander","arcanist");rich.getAsJsonArray("unlocked").add("stalker");
+            camp.importProfile(p,rich.toString());
+            var again=camp.profile(player);
+            if(again.gold!=900+3*REFUND||again.owned.containsKey("stalker")||!again.commander.equals("warden")||!Arrays.equals(first,Files.readAllBytes(file)))bad.append("the second import with 99999 gold changed the profile or the file (gold ").append(again.gold).append(", stalker owned ").append(again.owned.containsKey("stalker")).append("); ");
+            report("p2-migrate-import",bad.length()==0,bad.length()==0?"first visit: profile-v1-cache.json imported and migrated (gold "+got.gold+", "+got.owned.size()+" owned, class "+got.commander+", saved as schema 2); a second import with 99999 gold and a stalker was ignored, the file byte-unchanged":bad.toString());
+        }
+        public void step(MinecraftClient c,int tick){
+            if(finished)return;
+            if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;stage=1;});}
+            if(tick>6000){report("p2-migration-timeout",false,"stuck at client step "+cs+" ("+wait+"), server stage "+stage+", roster set "+rosterSet);end(c);return;}
+            switch(cs){
+                case 0->{ // wait for the server side, and for the snapshot with all 30 troops
+                    if(!rosterSet||CampaignClient.profile.owned.size()<Spec.TROOPS.length){if(++wait>800){rosterOk=false;rosterWhy="the client's profile never showed all "+Spec.TROOPS.length+" troops (owned "+CampaignClient.profile.owned.size()+", roster set "+rosterSet+"); ";cs=9;}return;}
+                    CampaignClient.revealUntil=0;CampaignClient.notice="";c.setScreen(new CampScreen("recruit"));cs=1;wait=0;}
+                case 1->{
+                    if(!(c.currentScreen instanceof CampScreen s)){if(++wait>40){c.setScreen(new CampScreen("recruit"));wait=0;}return;}
+                    var tabs=s.houseTabs();
+                    if(tabs.size()!=Spec.HOUSES.length){rosterOk=false;rosterWhy+="the recruit page has "+tabs.size()+" House tabs (want "+Spec.HOUSES.length+"); ";cs=9;return;}
+                    CampScreen.seenCards.clear();tabs.get(tabIdx).onPress();frames=0;cs=2;}
+                case 2->{
+                    if(!(c.currentScreen instanceof CampScreen s))return;
+                    CampaignClient.revealUntil=0;CampaignClient.notice=""; // the roster's arrival would otherwise show its roll card over the cards
+                    if(++frames==8){var tab=s.houseTabs().get(tabIdx);String house=tab.house;
+                        var want=new ArrayList<String>();for(var t:Spec.TROOPS)if(t.house().equals(house))want.add(t.id());
+                        var seen=CampScreen.seenCards;boolean all=want.size()==6&&seen.keySet().equals(new HashSet<>(want))&&seen.values().stream().allMatch(v->v)&&tab.selected();
+                        if(!all){rosterOk=false;rosterWhy+=house+": drew "+seen+" (want these six owned: "+want+"), tab chosen "+tab.selected()+"; ";}
+                        else rosterWhy+=house+" 6/6 owned; ";
+                        shot(c,tabIdx==0?"migration-full-roster":"migration-full-roster-"+house);}
+                    if(frames>=40){if(++tabIdx<Spec.HOUSES.length)cs=1;else cs=9;}}
+                case 9->{
+                    report("p2-full-roster",rosterOk&&rosterWhy.length()>0,"a profile owning all "+Spec.TROOPS.length+" troops at star 1 (the client shows "+CampaignClient.profile.owned.size()+"): "+rosterWhy+"pictures p2-migration-full-roster*.png");
+                    cs=10;wait=0;server(c,b->stage=3);}
+                case 10->{if(restoreDone||++wait>200){report("p2-migrate-restore",restoreDone&&restoreOk,"the player's own profile put back after the import and the roster test, and read as before="+restoreOk);end(c);}}
+                default->{}
+            }
+        }
+        void end(MinecraftClient c){finished=true;c.setScreen(null);finish(c,"migration");}
+    }
+
     static final class Depth extends Stage {
         static final List<String> SIX=GildedArt.SIX;
         static final double STUDIO=12,PARK=60,LINE_Z=10;
@@ -6405,7 +6564,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 ok&=good;why.append("weapon ").append(w.id()).append(": ").append(w.frames().size()).append(" frames (want ").append(want).append(") of ").append(q).append("quads").append(good?"":" (BAD)").append("; ");
             }
             int lines=0;List<String> bad=new ArrayList<>();
-            try{for(String line:Files.readAllLines(c.runDirectory.toPath().resolve("logs/latest.log"),java.nio.charset.StandardCharsets.ISO_8859_1)){lines++;if(line.contains("[troop-models]"))bad.add(line.trim());}}catch(IOException e){bad.add(e.toString());}
+            try{for(String line:Files.readAllLines(c.runDirectory.toPath().resolve("logs/latest.log"),java.nio.charset.StandardCharsets.ISO_8859_1)){lines++;if(line.contains("[p2] "))continue; /* an earlier suite's report line (p2-spike-load) quotes the marker: seen in the Task 13 regression */if(line.contains("[troop-models]"))bad.add(line.trim());}}catch(IOException e){bad.add(e.toString());}
             ok&=bad.isEmpty()&&lines>0;why.append(lines).append(" lines of latest.log read, ").append(bad.isEmpty()?"no [troop-models] line":bad.size()+" [troop-models] lines, first: "+bad.get(0));
             report("p2-depth-load",ok,"every Gilded model loads one relief mesh set per own skin with the quad counts its generated file holds, the bows have 4 frames and the other weapons 1: "+why);
         }
