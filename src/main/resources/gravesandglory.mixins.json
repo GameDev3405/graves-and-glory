@@ -6,8 +6,7 @@
   "client": [
     "CommandInputMixin",
     "EntranceCameraMixin",
-    "CinematicHudMixin",
-    "ModelAngleCompatibilityMixin"
+    "CinematicHudMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -6933,7 +6933,7 @@ public final class Phase2Checks implements ClientModInitializer {
             try{
                 Presentation.troopDepth=false;Presentation.save();Presentation.loaded=false;Presentation.troopDepth=true;Presentation.load();
                 if(Presentation.troopDepth)bad.append("a saved Off read back On; ");
-                java.nio.file.Files.writeString(Presentation.file(),"{\"impact\":"+Presentation.impact+",\"packsInitialized\":"+Presentation.packsInitialized+",\"armoryInitialized\":"+Presentation.armoryInitialized+"}");
+                java.nio.file.Files.writeString(Presentation.file(),"{\"impact\":"+Presentation.impact+"}");
                 Presentation.loaded=false;Presentation.troopDepth=false;Presentation.load();
                 if(!Presentation.troopDepth)bad.append("a file without the option read Off, want On (the default); ");
             }catch(Exception e){bad.append("threw ").append(e);}
