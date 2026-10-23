@@ -1,0 +1,41 @@
+{
+ "weapon": "order_bow_t2",
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "the origin is the grip centre (the middle of the fist); rotation carried from the sprite weapon, offset 0 because the cubes are centred in z (the sprite was extruded from its back)"
+ },
+ "note": "Tier II: a sharper recurve whose tips turn past the string, a linen wire grip between gilt collars, gilt nocks.",
+ "pull": [
+  0.15,
+  0.32,
+  0.48
+ ],
+ "nocks": [
+  [
+   -3.21,
+   -0.0
+  ],
+  [
+   -3.96,
+   -0.0
+  ],
+  [
+   -4.71,
+   -0.0
+  ],
+  [
+   -5.46,
+   -0.0
+  ]
+ ]
+}

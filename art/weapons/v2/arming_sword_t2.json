@@ -1,0 +1,18 @@
+{
+ "weapon": "arming_sword_t2",
+ "thickness": 1,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   90,
+   45,
+   90
+  ],
+  "note": "the origin is the grip centre (the middle of the fist); rotation carried from the sprite weapon, offset 0 because the cubes are centred in z (the sprite was extruded from its back)"
+ },
+ "note": "Tier II: a fullered blade, steel quillons swept 22 degrees up with gilt finials, a linen wire grip, a wheel pommel with a gilt boss. 23.7 px."
+}

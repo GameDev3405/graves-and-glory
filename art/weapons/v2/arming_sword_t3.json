@@ -1,0 +1,18 @@
+{
+ "weapon": "arming_sword_t3",
+ "thickness": 1,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   90,
+   45,
+   90
+  ],
+  "note": "the origin is the grip centre (the middle of the fist); rotation carried from the sprite weapon, offset 0 because the cubes are centred in z (the sprite was extruded from its back)"
+ },
+ "note": "Tier III: a straight steel cross whose gilt terminals turn down, a 3 px steel boss on the blade root with the Order's sun painted on it (joined to the grip), an enamel grip, a steel sun pommel. 24.0 px."
+}

@@ -1,0 +1,41 @@
+{
+ "weapon": "order_bow",
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "the origin is the grip centre (the middle of the fist); rotation carried from the sprite weapon, offset 0 because the cubes are centred in z (the sprite was extruded from its back)"
+ },
+ "note": "The Order Archer's bow, tier I: five-stave recurve limbs in wood, a leather grip between wood risers, wood nocks, the string on -x tied into them.",
+ "pull": [
+  0.15,
+  0.32,
+  0.48
+ ],
+ "nocks": [
+  [
+   -3.86,
+   -0.0
+  ],
+  [
+   -4.61,
+   -0.0
+  ],
+  [
+   -5.36,
+   -0.0
+  ],
+  [
+   -6.11,
+   -0.0
+  ]
+ ]
+}

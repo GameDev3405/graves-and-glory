@@ -1,0 +1,41 @@
+{
+ "weapon": "order_bow_t3",
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "the origin is the grip centre (the middle of the fist); rotation carried from the sprite weapon, offset 0 because the cubes are centred in z (the sprite was extruded from its back)"
+ },
+ "note": "Tier III: stained-wood limbs with gilt chasing inlaid along every stave, gilt-capped horn tips, an enamel grip between gilt collars on stained feet. The tallest bow.",
+ "pull": [
+  0.15,
+  0.32,
+  0.48
+ ],
+ "nocks": [
+  [
+   -2.96,
+   -0.0
+  ],
+  [
+   -3.71,
+   -0.0
+  ],
+  [
+   -4.46,
+   -0.0
+  ],
+  [
+   -5.21,
+   -0.0
+  ]
+ ]
+}
