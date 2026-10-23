@@ -648,6 +648,7 @@ final class Abilities {
     static void aura(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, long time) {
         switch (row.trigger()) {
             case "hold" -> {
+                if (u.seenOrder == null) u.seenOrder = b.storedAssignment(u.squad, u.spec.group()).order; // the order found on his first beat is remembered even in a stun, so a Hold given during it plants when it ends (review M6)
                 if (time < u.stunnedUntil) return; // a stunned Marshal plants nothing; the order he has not seen yet waits, so a Hold given during the stun plants when it ends
                 String order = b.storedAssignment(u.squad, u.spec.group()).order, was = u.seenOrder;
                 u.seenOrder = order;

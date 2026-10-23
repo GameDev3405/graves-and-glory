@@ -59,10 +59,14 @@ final class Statuses {
     static int bleedTicks, knocks, cleanses;
     static double lastKnock;
 
-    private static Map<LivingEntity, Map<String, Status>> on(GravesAndGlory.Battle b) {
+    /** The store of a battle: a different battle than the owner's takes over an empty one. Package-private for the harness (p2-status-clear-round reads the branch). */
+    static Map<LivingEntity, Map<String, Status>> on(GravesAndGlory.Battle b) {
         if (owner != b) { ON.clear(); owner = b; Abilities.clearRound(); } // a new battle (a world opened again): nothing of the old one's troops stays
         return ON;
     }
+
+    /** How many entities carry a status now, whatever battle owns the store (the harness: has() and get() read nothing once owner is null, so only this sees ON itself). */
+    static int held() { return ON.size(); }
 
     /** The server stops (Abilities.clearBanners, from SERVER_STOPPING): every static store lets go, the battle it belonged to included. */
     static void release() {

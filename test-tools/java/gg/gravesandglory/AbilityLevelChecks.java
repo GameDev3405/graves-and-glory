@@ -478,13 +478,23 @@ final class AbilityLevelChecks {
                     blow(b, a, v.mob, "melee");
                     boolean before = Statuses.has(b, v.mob, "weaken") && Statuses.has(b, v.mob, "bleed") && Statuses.has(b, v.mob, "mark") && Abilities.SECOND_AT.containsKey(a);
                     b.clearProgression(); // what startRound, Campaign.returnLobby and switchMap call at a round boundary
-                    boolean after = !Statuses.has(b, v.mob, "weaken") && !Statuses.has(b, v.mob, "bleed") && !Statuses.has(b, v.mob, "mark") && Abilities.SECOND_AT.isEmpty() && Abilities.RAISED.isEmpty() && near(Statuses.factorOut(b, v.mob), 1) && near(Statuses.markFactor(b, dawn, v.mob), 1);
+                    boolean after = !Statuses.has(b, v.mob, "weaken") && !Statuses.has(b, v.mob, "bleed") && !Statuses.has(b, v.mob, "mark") && Statuses.held() == 0 && Abilities.SECOND_AT.isEmpty() && Abilities.RAISED.isEmpty() && near(Statuses.factorOut(b, v.mob), 1) && near(Statuses.markFactor(b, dawn, v.mob), 1);
                     Statuses.apply(b, a, v.mob, "bleed", 400, 0); blow(b, a, v.mob, "melee"); // and the server stopping (SERVER_STOPPING: Abilities.clearBanners) lets every store go
-                    Abilities.SECOND_AT.put(a, b.time + 100);
+                    Abilities.SECOND_AT.put(a, b.time + 100); Abilities.RAISED.put(a, new ArrayList<>(List.of(v)));
+                    boolean laid = Statuses.held() == 1 && Statuses.has(b, v.mob, "bleed") && !Abilities.SECOND_AT.isEmpty() && !Abilities.RAISED.isEmpty();
                     Abilities.clearBanners(b);
-                    boolean released = !Statuses.has(b, v.mob, "bleed") && Abilities.SECOND_AT.isEmpty() && Abilities.RAISED.isEmpty();
+                    // has() reads nothing once the store has no owner, so only held() sees ON itself: a release that forgot ON.clear() would keep every statused troop of a stopped world
+                    int kept = Statuses.held(), keptCooldowns = Abilities.SECOND_AT.size(), keptCounts = Abilities.RAISED.size();
+                    boolean released = kept == 0 && !Statuses.has(b, v.mob, "bleed") && keptCooldowns == 0 && keptCounts == 0;
                     Statuses.clear(b);
-                    Phase2Checks.report("p2-status-clear-round", before && after && released, "a weaken, a bleed, a mark and a Shield bash cooldown stand=" + before + "; after Battle.clearProgression (a new round) none does=" + after + "; after Abilities.clearBanners (the server stopping) a bleed and a cooldown laid again are gone too (review M7)=" + released);
+                    Statuses.apply(b, a, v.mob, "bleed", 400, 0); // a store claimed by one battle lets go of its troops when another asks (Statuses.on, the owner != b branch; null is a battle that is not b)
+                    Abilities.SECOND_AT.put(a, b.time + 100); Abilities.RAISED.put(a, new ArrayList<>(List.of(v)));
+                    boolean held = Statuses.held() == 1 && Statuses.has(b, v.mob, "bleed") && !Abilities.SECOND_AT.isEmpty() && !Abilities.RAISED.isEmpty();
+                    Statuses.on(null);
+                    int heldNow = Statuses.held(), cooldownsNow = Abilities.SECOND_AT.size(), countsNow = Abilities.RAISED.size();
+                    boolean swapped = heldNow == 0 && cooldownsNow == 0 && countsNow == 0;
+                    Statuses.clear(b);
+                    Phase2Checks.report("p2-status-clear-round", before && after && laid && released && held && swapped, "a weaken, a bleed, a mark and a Shield bash cooldown stand=" + before + "; after Battle.clearProgression (a new round) none does and the store is empty=" + after + "; after Abilities.clearBanners (the server stopping) a bleed, a cooldown and a Death knell count laid again stood=" + laid + " and are gone (statused troops kept " + kept + ", cooldowns " + keptCooldowns + ", counts " + keptCounts + ", want 0 each)=" + released + " (review M7); a store holding a bleed, a cooldown and a count=" + held + " lets all three go when another battle asks for it (the owner != b branch: kept " + heldNow + ", " + cooldownsNow + " and " + countsNow + ", want 0 each)=" + swapped);
                     clearFixture(b, "clear"); next(b, 54);
                 }
                 case 54 -> { // p2-stun-no-cast (review M2): a Shield bash on a Sunweaver and on a Lord Marshal: neither mends nor plants until the stun ends
@@ -497,14 +507,22 @@ final class AbilityLevelChecks {
                     Abilities.tick(b, a, null, b.time); Abilities.tick(b, x, null, b.time);
                     flag = a.stunnedUntil - t0 == 20 && x.stunnedUntil - t0 == 20 && a.abilityAt == 0 && mendOf(b, a) == null && bannerOf(b, x) == null && "charge".equals(x.seenOrder);
                     why = "a level-3 Squire's bash stuns a Sunweaver for " + (a.stunnedUntil - t0) + " and a Lord Marshal for " + (x.stunnedUntil - t0) + " ticks (want 20 each); their beat in the stun: no mend sent=" + (mendOf(b, a) == null && a.abilityAt == 0) + ", no banner planted=" + (bannerOf(b, x) == null) + ", the Hold he has not seen kept for later=" + "charge".equals(x.seenOrder);
+                    w = ready(lv(post(b, dawn, "gl_marshal", 0, -9, 0, true), 1)); traits(); // review M6: a Marshal whose very first beat is in a stun (seenOrder null) remembers the order he finds, so the Hold that follows plants
+                    boolean fresh = w.seenOrder == null;
+                    dawn.order = "charge"; Statuses.apply(b, null, w.mob, "stun", 20, 0);
+                    Abilities.tick(b, w, null, b.time);
+                    boolean first = fresh && w.stunnedUntil - t0 == 20 && "charge".equals(w.seenOrder) && bannerOf(b, w) == null;
+                    dawn.order = "hold"; // the Hold is given during the stun
+                    flag &= first;
+                    why += "; a Marshal stunned on his very first beat (fresh=" + fresh + ") remembers the Charge he found=" + first;
                     next(b, 55);
                 }
                 case 55 -> {
                     if (since(b) == 10) { flag &= a.abilityAt == 0 && bannerOf(b, x) == null; why += "; 10 ticks into the stun still none=" + (a.abilityAt == 0 && bannerOf(b, x) == null); }
                     if (since(b) < 21) return;
-                    Abilities.tick(b, a, null, b.time); Abilities.tick(b, x, null, b.time);
-                    boolean cast = a.abilityAt > t0 + 20 && bannerOf(b, x) != null;
-                    Phase2Checks.report("p2-stun-no-cast", flag && cast, why + "; after the stun she mends (her cooldown now runs to +" + (a.abilityAt - t0) + ") and he plants=" + cast);
+                    Abilities.tick(b, a, null, b.time); Abilities.tick(b, x, null, b.time); Abilities.tick(b, w, null, b.time);
+                    boolean cast = a.abilityAt > t0 + 20 && bannerOf(b, x) != null && bannerOf(b, w) != null;
+                    Phase2Checks.report("p2-stun-no-cast", flag && cast, why + "; after the stun she mends (her cooldown now runs to +" + (a.abilityAt - t0) + "), he plants=" + (bannerOf(b, x) != null) + " and so does the one stunned on his first beat, whose Hold came during the stun=" + (bannerOf(b, w) != null));
                     for (var bn : b.banners) Abilities.lower(b, bn);
                     b.banners.clear(); Projectiles.clear(b); clearFixture(b, "stun cast"); next(b, 56);
                 }
@@ -599,17 +617,25 @@ final class AbilityLevelChecks {
             };
         }
 
-        /** A second hit (pierce, cleave or slam) from one blow at the level: the dummy at (dx, dz) takes share x the base hit; at level `without` it takes `shareWithout` (0: none). */
-        Check share(String id, String troop, int level, String kind, double share, double dx, double dz, int without, double shareWithout, String what) {
+        /**
+         * A second hit (pierce, cleave or slam) from one blow at the level: the dummy at (dx, dz) takes share x the base hit; at level `without` it takes `shareWithout` (0: none).
+         * reach is the row's stated radius at the level. A second dummy stands on the same line half a block past it and is the only other enemy of a first blow at the level, so a
+         * row whose radius grew past the sheet's hits it (the nearest other enemy is the one a pierce or cleave takes, so a nearer dummy would hide it; a slam hits both).
+         */
+        Check share(String id, String troop, int level, String kind, double share, double reach, double dx, double dz, int without, double shareWithout, String what) {
             return b -> {
                 boolean ranged = !kind.equals("melee");
-                a = ready(post(b, dawn, troop, 0, ranged ? -9 : -2, 0, true)); v = dummy(b, dusk, 0, 0); w = dummy(b, dusk, dx, dz); traits();
-                lv(a, without); var m = mark(); blow(b, a, v.mob, kind); var hw0 = after(w.mob, m);
-                ready(a); lv(a, level); boolean p = picks(a); v.mob.timeUntilRegen = 0; w.mob.timeUntilRegen = 0; m = mark(); blow(b, a, v.mob, kind); var hw = after(w.mob, m);
+                a = ready(post(b, dawn, troop, 0, ranged ? -9 : -2, 0, true)); v = dummy(b, dusk, 0, 0);
+                double past = (reach + .5) / Math.hypot(dx, dz);
+                y = dummy(b, dusk, dx * past, dz * past); traits();
+                lv(a, level); boolean p = picks(a); var m = mark(); blow(b, a, v.mob, kind); var hy = after(y.mob, m);
+                w = dummy(b, dusk, dx, dz); traits();
+                ready(a); lv(a, without); v.mob.timeUntilRegen = 0; m = mark(); blow(b, a, v.mob, kind); var hw0 = after(w.mob, m);
+                ready(a); lv(a, level); v.mob.timeUntilRegen = 0; w.mob.timeUntilRegen = 0; m = mark(); blow(b, a, v.mob, kind); var hw = after(w.mob, m);
                 float want = (float) (share * Abilities.baseHit(b, a)), wantWithout = (float) (shareWithout * Abilities.baseHit(b, a));
                 boolean before = shareWithout <= 0 ? hw0 == null : hw0 != null && Math.abs(hw0.base() - wantWithout) < 1e-4;
-                boolean ok = p && hw != null && Math.abs(hw.base() - want) < 1e-4 && before;
-                Phase2Checks.report(id, ok, what + ": the dummy " + fmt(Math.hypot(dx, dz)) + " from the target takes " + base(hw) + " at level " + level + " (" + rows(a) + ")=" + p + " (want " + fmt(share) + " x " + fmt(Abilities.baseHit(b, a)) + " = " + fmt(want) + "); at level " + without + " " + base(hw0) + " (want " + (shareWithout <= 0 ? "nothing" : fmt(wantWithout)) + ")");
+                boolean ok = p && hy == null && hw != null && Math.abs(hw.base() - want) < 1e-4 && before;
+                Phase2Checks.report(id, ok, what + ": the dummy " + fmt(Math.hypot(dx, dz)) + " from the target takes " + base(hw) + " at level " + level + " (" + rows(a) + ")=" + p + " (want " + fmt(share) + " x " + fmt(Abilities.baseHit(b, a)) + " = " + fmt(want) + "); at level " + without + " " + base(hw0) + " (want " + (shareWithout <= 0 ? "nothing" : fmt(wantWithout)) + "); a dummy " + fmt(reach + .5) + " from it (past the reach " + fmt(reach) + "), the only other enemy of a blow at level " + level + ", is hit=" + (hy != null) + " (want no)");
                 return true;
             };
         }
@@ -722,14 +748,16 @@ final class AbilityLevelChecks {
             add("p2-l3-sentinel", b -> { // Unbroken: at or below 30% of max health x0.8 taken (C21)
                 v = tough(bare(post(b, dusk, "sentinel", 0, 0, 180, true))); x = post(b, dawn, "revenant", 0, -2, 0, true); traits();
                 lv(v, 3); boolean p = picks(v); String three = rows(v) + ", tags " + v.tags; var whole = probe(b, x, v.mob, "melee");
-                v.mob.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(40); v.mob.setHealth(12f);
+                v.mob.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(40); v.mob.setHealth(12.5f);
+                var above = probe(b, x, v.mob, "melee"); // 31% of his health: not wounded yet, so a wounded share above 0.3 shows
+                v.mob.setHealth(12f);
                 var low = probe(b, x, v.mob, "melee");
                 lv(v, 2); var two = probe(b, x, v.mob, "melee");
-                boolean ok = p && whole != null && !whole.rows().contains("C21") && near(whole.counters(), 1) && is(low, .8, "C21") && two != null && !two.rows().contains("C21") && near(two.counters(), 1);
-                Phase2Checks.report("p2-l3-sentinel", ok, "Unbroken: a level-3 Templar (" + three + ")=" + p + " whole takes " + hit(whole) + " (want 1.0, no row); at 12 of 40 (30%) " + hit(low) + " (want 0.8, C21); a level-2 one at 30% " + hit(two) + " (want 1.0, no row)");
+                boolean ok = p && whole != null && !whole.rows().contains("C21") && near(whole.counters(), 1) && above != null && !above.rows().contains("C21") && near(above.counters(), 1) && is(low, .8, "C21") && two != null && !two.rows().contains("C21") && near(two.counters(), 1);
+                Phase2Checks.report("p2-l3-sentinel", ok, "Unbroken: a level-3 Templar (" + three + ")=" + p + " whole takes " + hit(whole) + " (want 1.0, no row); at 12.5 of 40 (31%) " + hit(above) + " (want 1.0, no row); at 12 of 40 (30%) " + hit(low) + " (want 0.8, C21); a level-2 one at 30% " + hit(two) + " (want 1.0, no row)");
                 return true;
             });
-            add("p2-l2-longbow", share("p2-l2-longbow", "longbow", 2, "arrow", .7, 0, 2.5, 1, 0, "Pierce 50% to 70%, reach 2 to 3"));
+            add("p2-l2-longbow", share("p2-l2-longbow", "longbow", 2, "arrow", .7, 3, 0, 2.5, 1, 0, "Pierce 50% to 70%, reach 2 to 3"));
             add("p2-l3-longbow", slows("p2-l3-longbow", "longbow", 3, "arrow", 0, 30, 0, "Pinning shot: Slowness I for 30"));
             add("p2-l2-mage", b -> { // Mend: heal 5 to 7
                 a = ready(lv(post(b, dawn, "mage", 0, -4, 0, true), 2)); v = dummy(b, dawn, 0, 2); v.mob.setHealth(v.mob.getMaxHealth() - 20); traits();
@@ -760,7 +788,7 @@ final class AbilityLevelChecks {
                 Phase2Checks.report("p2-l2-gl_marshal", ok, "Oath Banner: a level-2 Lord Marshal (" + rows(a) + ")=" + p + " plants a banner " + (bn == null ? "(none)" : "for " + (bn.until() - t0) + " ticks at +" + fmt(bn.amount()) + " within " + fmt(bn.radius())) + " (want 400, +0.15, 12) and waits " + (a.abilityAt - t0) + " (want 600)");
                 return true;
             });
-            add("p2-l3-gl_marshal", share("p2-l3-gl_marshal", "gl_marshal", 3, "melee", .5, 1.5, 0, 2, 0, "Marshal's sweep: a cleave of 50% within 2"));
+            add("p2-l3-gl_marshal", share("p2-l3-gl_marshal", "gl_marshal", 3, "melee", .5, 2, 1.5, 0, 2, 0, "Marshal's sweep: a cleave of 50% within 2"));
             add("p2-levels-gilded-shot", picture("gilded", b -> {
                 a = lv(post(b, dawn, "knight", -2, -1.6, 0, true), 3); v = dummy(b, dusk, -2, 0);
                 x = lv(post(b, dawn, "gl_marshal", 2.5, -1.8, 0, true), 3); w = dummy(b, dusk, 2.5, 0); y = dummy(b, dusk, 3.8, .6);
@@ -784,7 +812,7 @@ final class AbilityLevelChecks {
             add("p2-l3-revenant", lays("p2-l3-revenant", "revenant", "melee", "bleed", 80, 0, "Rotten blade: hits bleed for 80"));
             add("p2-l2-bonebow", fearless("bonebow", "arrow"));
             add("p2-l3-bonebow", lays("p2-l3-bonebow", "bonebow", "arrow", "weaken", 40, .15, "Marrow arrows: hits weaken for 40"));
-            add("p2-l2-reaper", share("p2-l2-reaper", "reaper", 2, "melee", .77, 1.5, 0, 1, .57, "Cleave 57% to 77%"));
+            add("p2-l2-reaper", share("p2-l2-reaper", "reaper", 2, "melee", .77, 2, 1.5, 0, 1, .57, "Cleave 57% to 77%"));
             add("p2-l3-reaper", b -> { // Reap: a killing blow heals 25% of max health
                 a = lv(post(b, dawn, "reaper", -3, -2, 0, true), 3); x = lv(post(b, dawn, "reaper", 3, -2, 0, true), 2); traits();
                 boolean p = picks(a);
@@ -795,7 +823,7 @@ final class AbilityLevelChecks {
                 return true;
             });
             add("p2-l2-stalker", slows("p2-l2-stalker", "stalker", 2, "arrow", 0, 60, 0, "Frostshot: Slowness I 40 to 60"));
-            add("p2-l3-stalker", share("p2-l3-stalker", "stalker", 3, "arrow", .4, 0, 1.5, 2, 0, "Ice lance: a pierce of 40% within 2 behind"));
+            add("p2-l3-stalker", share("p2-l3-stalker", "stalker", 3, "arrow", .4, 2, 0, 1.5, 2, 0, "Ice lance: a pierce of 40% within 2 behind"));
             add("p2-l2-hexer", b -> { // Blight: radius 2.5 to 3.0, slow 40 to 60
                 a = lv(post(b, dawn, "hexer", 0, -10, 0, true), 2); v = dummy(b, dusk, 0, 0); w = dummy(b, dusk, 2.8, 0); y = dummy(b, dusk, 3.3, 0); traits();
                 boolean p = picks(a); var m = mark();
@@ -819,11 +847,11 @@ final class AbilityLevelChecks {
             });
             add("p2-l2-gb_hollowking", b -> { // Dread: radius 10 to 12, enemy damage -15% to -20%
                 var king = post(b, dusk, "gb_hollowking", 0, 6, 180, true);
-                a = post(b, dawn, "revenant", 0, -5, 0, true); x = post(b, dawn, "revenant", 0, -3, 0, true); v = dummy(b, dusk, 2, 0); traits();
-                lv(king, 1); var far1 = probe(b, a, v.mob, "melee"); var near1 = probe(b, x, v.mob, "melee");
-                lv(king, 2); boolean p = picks(king); var far2 = probe(b, a, v.mob, "melee"); var near2 = probe(b, x, v.mob, "melee");
-                boolean ok = p && far1 != null && near(far1.auras(), 1) && near1 != null && near(near1.auras(), .85) && far2 != null && near(far2.auras(), .8) && near2 != null && near(near2.auras(), .8);
-                Phase2Checks.report("p2-l2-gb_hollowking", ok, "Dread: an enemy Risen 11 from a level-1 Hollow King deals auras x" + (far1 == null ? "none" : fmt(far1.auras())) + " (want 1: outside 10), one 9 from him x" + (near1 == null ? "none" : fmt(near1.auras())) + " (want 0.85); at level 2 (" + rows(king) + ")=" + p + " x" + (far2 == null ? "none" : fmt(far2.auras())) + " and x" + (near2 == null ? "none" : fmt(near2.auras())) + " (want 0.8 each: within 12)");
+                a = post(b, dawn, "revenant", 0, -5, 0, true); x = post(b, dawn, "revenant", 0, -3, 0, true); y = post(b, dawn, "revenant", 0, -6.5, 0, true); v = dummy(b, dusk, 2, 0); traits();
+                lv(king, 1); var far1 = probe(b, a, v.mob, "melee"); var near1 = probe(b, x, v.mob, "melee"); var past1 = probe(b, y, v.mob, "melee");
+                lv(king, 2); boolean p = picks(king); var far2 = probe(b, a, v.mob, "melee"); var near2 = probe(b, x, v.mob, "melee"); var past2 = probe(b, y, v.mob, "melee");
+                boolean ok = p && far1 != null && near(far1.auras(), 1) && near1 != null && near(near1.auras(), .85) && past1 != null && near(past1.auras(), 1) && far2 != null && near(far2.auras(), .8) && near2 != null && near(near2.auras(), .8) && past2 != null && near(past2.auras(), 1);
+                Phase2Checks.report("p2-l2-gb_hollowking", ok, "Dread: an enemy Risen 11 from a level-1 Hollow King deals auras x" + (far1 == null ? "none" : fmt(far1.auras())) + " (want 1: outside 10), one 9 from him x" + (near1 == null ? "none" : fmt(near1.auras())) + " (want 0.85), one 12.5 from him x" + (past1 == null ? "none" : fmt(past1.auras())) + " (want 1); at level 2 (" + rows(king) + ")=" + p + " x" + (far2 == null ? "none" : fmt(far2.auras())) + " and x" + (near2 == null ? "none" : fmt(near2.auras())) + " (want 0.8 each: within 12), the one 12.5 away x" + (past2 == null ? "none" : fmt(past2.auras())) + " (want 1: past 12)");
                 return true;
             });
             add("p2-l3-gb_hollowking", b -> { // Undying King: rises once at 50%
@@ -865,9 +893,11 @@ final class AbilityLevelChecks {
                 boolean p = picks(a);
                 var plain = probe(b, a, v.mob, "melee");
                 v.mob.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, 200, 0)); var slowed = probe(b, a, v.mob, "melee");
-                v.mob.removeStatusEffect(StatusEffects.SLOWNESS); v.mob.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(40); v.mob.setHealth(12f); var wounded = probe(b, a, v.mob, "melee");
-                boolean ok = p && plain != null && near(plain.counters(), 1) && !plain.rows().contains("C20") && is(slowed, 1.3, "C20") && is(wounded, 1.3, "C20");
-                Phase2Checks.report("p2-l3-wm_hound", ok, "Run them down: a level-3 Moot Hound (" + rows(a) + ", tags " + a.tags + ")=" + p + " on a whole target " + hit(plain) + " (want no row), slowed " + hit(slowed) + ", at 30% " + hit(wounded) + " (want 1.3, C20, each)");
+                v.mob.removeStatusEffect(StatusEffects.SLOWNESS); v.mob.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(40);
+                v.mob.setHealth(12.5f); var above = probe(b, a, v.mob, "melee"); // 31%: not wounded yet
+                v.mob.setHealth(12f); var wounded = probe(b, a, v.mob, "melee");
+                boolean ok = p && plain != null && near(plain.counters(), 1) && !plain.rows().contains("C20") && is(slowed, 1.3, "C20") && above != null && near(above.counters(), 1) && !above.rows().contains("C20") && is(wounded, 1.3, "C20");
+                Phase2Checks.report("p2-l3-wm_hound", ok, "Run them down: a level-3 Moot Hound (" + rows(a) + ", tags " + a.tags + ")=" + p + " on a whole target " + hit(plain) + " (want no row), slowed " + hit(slowed) + ", at 31% (12.5 of 40) " + hit(above) + " (want 1.0, no row), at 30% " + hit(wounded) + " (want 1.3, C20, as the slowed one)");
                 return true;
             });
             add("p2-l2-wm_hunter", b -> { // Ambush: +25% to +35% with no sky (C18b2)
@@ -889,7 +919,7 @@ final class AbilityLevelChecks {
             add("p2-l2-wm_stalker", slows("p2-l2-wm_stalker", "wm_stalker", 2, "melee", 1, 50, 80, "Ensnare: Slowness II 30 to 50, cooldown 80"));
             add("p2-l3-wm_stalker", lays("p2-l3-wm_stalker", "wm_stalker", "melee", "bleed", 80, 0, "Venom bite: hits bleed for 80"));
             add("p2-l2-wm_tusk", counter("p2-l2-wm_tusk", "wm_tusk", "melee", 1, 1.3, "C18c", 2, 1.5, "C18c2", null, true, "Brace x1.3 to x1.5 against a charging enemy on Hold"));
-            add("p2-l3-wm_tusk", share("p2-l3-wm_tusk", "wm_tusk", 3, "melee", .4, 0, 1.5, 2, 0, "Long spear: a thrust also hits one enemy within 2 behind for 40%"));
+            add("p2-l3-wm_tusk", share("p2-l3-wm_tusk", "wm_tusk", 3, "melee", .4, 2, 0, 1.5, 2, 0, "Long spear: a thrust also hits one enemy within 2 behind for 40%"));
             add("p2-l2-wm_seer", b -> { // Howl: +15% to +20% damage and speed, cooldown 300 to 240
                 a = ready(lv(post(b, dawn, "wm_seer", 0, -4, 0, true), 2)); v = post(b, dawn, "revenant", 0, 4, 0, true); traits();
                 boolean p = picks(a); t0 = b.time;
@@ -956,7 +986,7 @@ final class AbilityLevelChecks {
             });
             add("p2-l2-ic_breaker", counter("p2-l2-ic_breaker", "ic_breaker", "melee", 1, 1.4, "C14", 2, 1.6, "C14v", "knight", false, "Sunder x1.4 to x1.6 against shield troops"));
             add("p2-l3-ic_breaker", lays("p2-l3-ic_breaker", "ic_breaker", "melee", "weaken", 60, .15, "Shatter: hits weaken for 60"));
-            add("p2-l2-ic_ballista", share("p2-l2-ic_ballista", "ic_ballista", 2, "arrow", .8, 0, 3.5, 1, .6, "Pierce 60% to 80%"));
+            add("p2-l2-ic_ballista", share("p2-l2-ic_ballista", "ic_ballista", 2, "arrow", .8, 4, 0, 3.5, 1, .6, "Pierce 60% to 80%"));
             add("p2-l3-ic_ballista", slows("p2-l3-ic_ballista", "ic_ballista", 3, "arrow", 1, 30, 0, "Pinning bolt: Slowness II for 30"));
             add("p2-l2-ic_mortar", b -> { // Shell: radius 3.5 to 4.0
                 a = lv(post(b, dawn, "ic_mortar", 0, -12, 0, true), 2); v = dummy(b, dusk, 0, 0); w = dummy(b, dusk, 3.8, 0); y = dummy(b, dusk, 4.3, 0); traits();
@@ -982,14 +1012,14 @@ final class AbilityLevelChecks {
                 Phase2Checks.report("p2-l3-ic_mortar", flag && bleeds && spared, why + "; the target in the ground bleeds=" + bleeds + ", a dummy 3 off (in the shell, out of the ground) does not=" + spared);
                 return true;
             });
-            add("p2-l2-ic_colossus", share("p2-l2-ic_colossus", "ic_colossus", 2, "melee", .75, 1.5, 0, 1, .6, "Forge slam 60% to 75%"));
+            add("p2-l2-ic_colossus", share("p2-l2-ic_colossus", "ic_colossus", 2, "melee", .75, 2.5, 1.5, 0, 1, .6, "Forge slam 60% to 75%"));
             add("p2-l3-ic_colossus", b -> { // Furnace heart: own troops within 6 take 10% less
                 var heart = lv(post(b, dusk, "ic_colossus", 0, 4, 180, true), 3);
-                v = dummy(b, dusk, 0, 0); w = dummy(b, dusk, 9, 4); a = post(b, dawn, "revenant", 0, -3, 0, true); traits();
+                v = dummy(b, dusk, 0, 0); w = dummy(b, dusk, 6.5, 4); y = dummy(b, dusk, 5.5, 4); a = post(b, dawn, "revenant", 0, -3, 0, true); traits();
                 boolean p = picks(heart);
-                var in = probe(b, a, v.mob, "melee"); var out = probe(b, a, w.mob, "melee");
-                boolean ok = p && in != null && near(in.auras(), .9) && out != null && near(out.auras(), 1);
-                Phase2Checks.report("p2-l3-ic_colossus", ok, "Furnace heart: a level-3 Brassjaw's (" + rows(heart) + ")=" + p + " troop 4 from him takes auras x" + (in == null ? "none" : fmt(in.auras())) + " (want 0.9), one 9 from him x" + (out == null ? "none" : fmt(out.auras())) + " (want 1)");
+                var in = probe(b, a, v.mob, "melee"); var edge = probe(b, a, y.mob, "melee"); var out = probe(b, a, w.mob, "melee");
+                boolean ok = p && in != null && near(in.auras(), .9) && edge != null && near(edge.auras(), .9) && out != null && near(out.auras(), 1);
+                Phase2Checks.report("p2-l3-ic_colossus", ok, "Furnace heart: a level-3 Brassjaw's (" + rows(heart) + ")=" + p + " troop 4 from him takes auras x" + (in == null ? "none" : fmt(in.auras())) + " (want 0.9), one 5.5 from him x" + (edge == null ? "none" : fmt(edge.auras())) + " (want 0.9: within 6), one 6.5 from him x" + (out == null ? "none" : fmt(out.auras())) + " (want 1: past 6)");
                 return true;
             });
             add("p2-levels-ironclad-shot", picture("ironclad", b -> {
@@ -1010,12 +1040,13 @@ final class AbilityLevelChecks {
             add("p2-l3-tc_raider", b -> { // Boarding rush: the first hit after closing 6 blocks x1.5, on his level-3 row's own cooldown (100)
                 a = ready(lv(post(b, dawn, "tc_raider", 0, -2, 0, true), 3)); v = dummy(b, dusk, 0, 0); traits();
                 boolean p = picks(a); String three = rows(a);
-                a.travelSinceAttack = 7; var rush = probe(b, a, v.mob, "melee");
+                a.travelSinceAttack = 5.5; var short5 = probe(b, a, v.mob, "melee"); // a run short of the 6 blocks is no rush
+                a.travelSinceAttack = 6.5; var rush = probe(b, a, v.mob, "melee");
                 t0 = b.time; blow(b, a, v.mob, "melee"); long cd = Abilities.SECOND_AT.getOrDefault(a, 0L) - t0;
                 a.travelSinceAttack = 7; var waiting = probe(b, a, v.mob, "melee");
                 lv(a, 2); a.travelSinceAttack = 7; var two = probe(b, a, v.mob, "melee");
-                boolean ok = p && rush != null && near(rush.auras(), 1.5) && cd == 100 && waiting != null && near(waiting.auras(), 1) && two != null && near(two.auras(), 1);
-                Phase2Checks.report("p2-l3-tc_raider", ok, "Boarding rush: after 7 blocks a level-3 Drowned Raider's (" + three + ")=" + p + " blow has auras x" + (rush == null ? "none" : fmt(rush.auras())) + " (want 1.5); the rush then waits " + cd + " ticks (want 100) and the next run's blow is x" + (waiting == null ? "none" : fmt(waiting.auras())) + " (want 1); a level-2 Raider's x" + (two == null ? "none" : fmt(two.auras())) + " (want 1)");
+                boolean ok = p && short5 != null && near(short5.auras(), 1) && rush != null && near(rush.auras(), 1.5) && cd == 100 && waiting != null && near(waiting.auras(), 1) && two != null && near(two.auras(), 1);
+                Phase2Checks.report("p2-l3-tc_raider", ok, "Boarding rush: after 5.5 blocks a level-3 Drowned Raider's (" + three + ")=" + p + " blow has auras x" + (short5 == null ? "none" : fmt(short5.auras())) + " (want 1: short of 6), after 6.5 blocks x" + (rush == null ? "none" : fmt(rush.auras())) + " (want 1.5); the rush then waits " + cd + " ticks (want 100) and the next run's blow is x" + (waiting == null ? "none" : fmt(waiting.auras())) + " (want 1); a level-2 Raider's x" + (two == null ? "none" : fmt(two.auras())) + " (want 1)");
                 return true;
             });
             add("p2-l2-tc_harpooner", b -> { // Harpoon: pull 1 to 2 blocks, cooldown 60 to 50
@@ -1032,7 +1063,7 @@ final class AbilityLevelChecks {
             });
             add("p2-l3-tc_harpooner", lays("p2-l3-tc_harpooner", "tc_harpooner", "arrow", "bleed", 80, 0, "Barbed hook: hits bleed for 80"));
             add("p2-l2-tc_tideguard", counter("p2-l2-tc_tideguard", "tc_tideguard", "melee", 1, 1.3, "C18c", 2, 1.5, "C18c2", null, true, "Brace x1.3 to x1.5 against a charging enemy on Hold"));
-            add("p2-l3-tc_tideguard", share("p2-l3-tc_tideguard", "tc_tideguard", 3, "melee", .4, 1.5, 0, 2, 0, "Trident sweep: a cleave of 40% within 2"));
+            add("p2-l3-tc_tideguard", share("p2-l3-tc_tideguard", "tc_tideguard", 3, "melee", .4, 2, 1.5, 0, 2, 0, "Trident sweep: a cleave of 40% within 2"));
             add("p2-l2-tc_mist", b -> { // Mist: radius 4 to 5, 100 to 140 ticks (times her output factor: design 4.1, the level's bonus included)
                 if (phase == 0) {
                     a = lv(post(b, dawn, "tc_mist", 0, -12, 0, true), 2); v = dummy(b, dusk, 0, 0); w = dummy(b, dusk, 4.6, 0); y = dummy(b, dusk, 5.6, 0); traits();
@@ -1084,11 +1115,11 @@ final class AbilityLevelChecks {
             });
             add("p2-l3-tc_admiral", b -> { // Admiral's call: own troops within 10 deal +10%
                 var call = lv(post(b, dawn, "tc_admiral", 0, -4, 0, true), 3);
-                a = post(b, dawn, "revenant", 0, -2, 0, true); x = post(b, dawn, "revenant", 11, -4, 0, true); v = dummy(b, dusk, 0, 0); traits();
+                a = post(b, dawn, "revenant", 0, -2, 0, true); x = post(b, dawn, "revenant", 10.5, -4, 0, true); y = post(b, dawn, "revenant", 9.5, -4, 0, true); v = dummy(b, dusk, 0, 0); traits();
                 boolean p = picks(call);
-                var close = probe(b, a, v.mob, "melee"); var far = probe(b, x, v.mob, "melee");
-                boolean ok = p && close != null && near(close.auras(), 1.1) && far != null && near(far.auras(), 1);
-                Phase2Checks.report("p2-l3-tc_admiral", ok, "Admiral's call: a level-3 Admiral's (" + rows(call) + ")=" + p + " Risen 2 from her deals auras x" + (close == null ? "none" : fmt(close.auras())) + " (want 1.1), one 11 from her x" + (far == null ? "none" : fmt(far.auras())) + " (want 1)");
+                var close = probe(b, a, v.mob, "melee"); var edge = probe(b, y, v.mob, "melee"); var far = probe(b, x, v.mob, "melee");
+                boolean ok = p && close != null && near(close.auras(), 1.1) && edge != null && near(edge.auras(), 1.1) && far != null && near(far.auras(), 1);
+                Phase2Checks.report("p2-l3-tc_admiral", ok, "Admiral's call: a level-3 Admiral's (" + rows(call) + ")=" + p + " Risen 2 from her deals auras x" + (close == null ? "none" : fmt(close.auras())) + " (want 1.1), one 9.5 from her x" + (edge == null ? "none" : fmt(edge.auras())) + " (want 1.1: within 10), one 10.5 from her x" + (far == null ? "none" : fmt(far.auras())) + " (want 1: past 10)");
                 return true;
             });
             add("p2-levels-tidecallers-shot", picture("tidecallers", b -> {
