@@ -25,7 +25,7 @@ final class CampScreen extends ArmyScreen {
     int number(String name,int fallback){return social().has(name)?social().get(name).getAsInt():fallback;}
     JsonArray rows(String name){return social().has(name)?social().getAsJsonArray(name):new JsonArray();}
     void action(String cmd){if(System.currentTimeMillis()-requestAt<300)return;requestAt=System.currentTimeMillis();send(cmd);}
-    void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;page=next;offset=0;clearAndInit();} // leaving a page ends its roll card (review minor 4)
+    void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.notice="";page=next;offset=0;clearAndInit();} // leaving a page ends its roll card (review minor 4) and its notice (Task 12 re-review N2: "rises to star 2!" must not follow the player to another card)
     String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready+RecruitPages.stateKey(CampaignClient.profile);}
     @Override protected void init(){
         scale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/760f,client.getWindow().getScaledHeight()/460f));width=(int)(client.getWindow().getScaledWidth()/scale);height=(int)(client.getWindow().getScaledHeight()/scale);key=state();code=null;
@@ -126,26 +126,31 @@ final class CampScreen extends ArmyScreen {
         return out;
     }
     static int rarityColour(String rarity){return switch(rarity){case "rare"->0xff8fb8d8;case "epic"->0xffc79be0;case "legendary"->DarkUi.GOLD;default->DarkUi.MUTED;};}
+    /** The lowest pixel (from the card's top) the last card() call drew a word or a pip at, and whether the harness is probing (no portrait is drawn). Task 12 re-review N1: p2-card-layout reads what card() drew, not the row table. */
+    int cardLow;static volatile boolean probe;
+    /** A word of a card at dy under the card's top: drawn, and noted for cardLow. */
+    void cardLine(DrawContext g,String text,int x,int y,int dy,int color,int room){line(g,text,x,y+dy,color,room);cardLow=Math.max(cardLow,dy+9);}
     /** One troop card: the portrait on the House accent, the stage name, the rarity, the stars as pips and the stage; a troop the commander lacks is dimmed and says LOCKED with its odds. */
     void card(DrawContext g,Card card,int x,int y,int w,int h,int poolTotal){
+        cardLow=0;
         var troop=card.troop();DarkUi.frame(g,x,y,w,h);
         var row=ArmyCards.house(troop);g.fillGradient(x+3,y+3,x+w-3,y+h-3,0x33000000|(row==null?0x4c9391:row.accent()&0xffffff),0x00181820);
         var portrait=ArmyCards.portrait(troop);float wide=portrait==null?0:portrait.getWidth()*1.25f; // a wide model (a spider's legs) is drawn smaller so it stays inside its card
-        DarkUi.model(g,troop,x+34,y+h-12,wide>1.5f?(int)(28*1.5f/wide):28);
+        if(!probe)DarkUi.model(g,troop,x+34,y+h-12,wide>1.5f?(int)(28*1.5f/wide):28);
         g.getMatrices().push();g.getMatrices().translate(0,0,100); // the model is drawn at z 50 and writes depth, so what must show over it is nearer: the dim of a card the commander lacks at z 100, the card's text at z 150
         if(!card.owned())g.fill(x+3,y+3,x+w-3,y+h-3,0x99111119);
         g.getMatrices().translate(0,0,50);
         int tx=x+70,room=w-76;
         // A long name (a Legendary's title) wraps onto a second line, and everything under it moves down a line.
         var title=textRenderer.wrapLines(Text.literal(ArmyMobs.stageName(troop,card.owned()?card.stage():1)),room);int more=title.size()>1?10:0;
-        for(int i=0;i<Math.min(2,title.size());i++)g.drawText(textRenderer,title.get(i),tx,y+10+i*10,card.owned()?DarkUi.GOLD:DarkUi.MUTED,false);
-        var rows=RecruitPages.cardRows(more>0);line(g,cap(troop.rarity()),tx,y+rows.rarity(),rarityColour(troop.rarity()),room);
+        for(int i=0;i<Math.min(2,title.size());i++){g.drawText(textRenderer,title.get(i),tx,y+10+i*10,card.owned()?DarkUi.GOLD:DarkUi.MUTED,false);cardLow=Math.max(cardLow,10+i*10+9);}
+        var rows=RecruitPages.cardRows(more>0);cardLine(g,cap(troop.rarity()),tx,y,rows.rarity(),rarityColour(troop.rarity()),room);
         if(card.owned()){
-            for(int i=0;i<Spec.RECRUITMENT[0].maxStars();i++){int px=tx+i*11;g.drawBorder(px,y+rows.pips(),8,8,DarkUi.GOLD);if(i<card.stars())g.fill(px+1,y+rows.pips()+1,px+7,y+rows.pips()+7,DarkUi.GOLD);}
-            line(g,card.copies()+(card.copies()==1?" copy":" copies"),tx,y+rows.copies(),DarkUi.MUTED,room);
+            for(int i=0;i<Spec.RECRUITMENT[0].maxStars();i++){int px=tx+i*11;g.drawBorder(px,y+rows.pips(),8,8,DarkUi.GOLD);if(i<card.stars())g.fill(px+1,y+rows.pips()+1,px+7,y+rows.pips()+7,DarkUi.GOLD);cardLow=Math.max(cardLow,rows.pips()+8);}
+            cardLine(g,card.copies()+(card.copies()==1?" copy":" copies"),tx,y,rows.copies(),DarkUi.MUTED,room);
         }else{
-            line(g,"LOCKED",tx,y+rows.locked(),DarkUi.PAPER,room);
-            line(g,troop.rarity().equals("legendary")||weight(troop)<=0?"Comes from a Pact":String.format(java.util.Locale.ROOT,"%.1f",100.0*weight(troop)/Math.max(1,poolTotal))+"% a roll",tx,y+rows.odds(),DarkUi.MUTED,room);
+            cardLine(g,"LOCKED",tx,y,rows.locked(),DarkUi.PAPER,room);
+            cardLine(g,troop.rarity().equals("legendary")||weight(troop)<=0?"Comes from a Pact":String.format(java.util.Locale.ROOT,"%.1f",100.0*weight(troop)/Math.max(1,poolTotal))+"% a roll",tx,y,rows.odds(),DarkUi.MUTED,room);
         }
         g.getMatrices().pop();
     }

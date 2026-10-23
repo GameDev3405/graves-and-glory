@@ -6179,7 +6179,8 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 3->{if(!(c.currentScreen instanceof CampScreen s)){c.setScreen(new CampScreen("recruit"));return;}
                     if(++wait==2)shoot("screens-recruit"); // the recruit page with its card actions, after the roll card (for the contact sheet)
                     if(wait<3||!shotDone(c))return;
-                    if(wait==40){RecruitPages.seenTroop=null;s.openTroop("sentinel");}
+                    if(wait==40){RecruitPages.seenTroop=null;if(CampaignClient.notice.isEmpty())CampaignClient.notice="Order Squire rises to star 2!";String left=CampaignClient.notice;s.openTroop("sentinel"); // Task 12 re-review N2: the roll's notice must not follow the player to another card
+                        report("p2-notice-clears",CampaignClient.notice.isEmpty(),"the recruit page showed the notice \""+left+"\"; after opening the Templar's troop page it reads \""+CampaignClient.notice+"\" (want empty)");}
                     if(wait==50)shoot("chase-troop-card");
                     if(wait>50&&shotDone(c)){var seen=RecruitPages.seenTroop;var t=Campaign.troop("sentinel");var n=ArmyCards.notes(t);
                         boolean page=s.page.equals("troop")&&seen!=null&&seen.troop().equals("sentinel");
@@ -6267,12 +6268,23 @@ public final class Phase2Checks implements ClientModInitializer {
                 if(same)return true;}
             return false;
         }
-        /** p2-card-layout (review minor 1): at virtual widths 817 and 960, every troop's card words, owned or locked, end 2 px or more above its action button. */
+        /**
+         * p2-card-layout (review minor 1; re-review N1): at virtual widths 817 and 960, every troop's card words, owned (at each of its three stage names) or locked,
+         * end 2 px or more above its action button. It runs CampScreen.card() itself on a throwaway DrawContext (no portrait) and reads the lowest pixel card() drew,
+         * so a hard-coded y inside card() cannot hide behind the row table.
+         */
         void layout(MinecraftClient c){
-            var f=c.textRenderer;StringBuilder bad=new StringBuilder();int top=RecruitPages.CARD_H-24;
-            for(int W:new int[]{817,960}){int cw=(W-194-22)/3-10,room=cw-76;
-                for(var t:Spec.TROOPS)for(boolean owned:new boolean[]{false,true}){int bottom=RecruitPages.cardTextBottom(f,t,owned,room);if(bottom>top-2)bad.append(t.id()).append(owned?" owned":" locked").append(" at width ").append(W).append(" (room ").append(room).append("): words to y+").append(bottom).append("; ");}}
-            report("p2-card-layout",bad.length()==0,bad.length()==0?"every troop's card words end at y+"+(top-2)+" or above, over its action button at y+"+top+", at virtual widths 817 and 960":"words reach the action button at y+"+top+": "+bad.toString().trim());
+            StringBuilder bad=new StringBuilder();int top=RecruitPages.CARD_H-24,drawn=0,worst=0;
+            var s=new CampScreen("recruit");s.init(c,817,400);var g=new net.minecraft.client.gui.DrawContext(c,net.minecraft.client.render.VertexConsumerProvider.immediate(new net.minecraft.client.render.BufferBuilder(256)));
+            CampScreen.probe=true;
+            try{
+                for(int W:new int[]{817,960}){int cw=(W-194-22)/3-10;
+                    for(var t:Spec.TROOPS){int total=0;for(var q:CampScreen.pool(t.house()))total+=CampScreen.weight(q);
+                        for(int variant=0;variant<4;variant++){boolean owned=variant>0;int stage=Math.max(1,variant);
+                            s.card(g,new CampScreen.Card(t,owned,owned?1:0,stage,owned?2:0),0,0,cw,RecruitPages.CARD_H,total);drawn++;worst=Math.max(worst,s.cardLow);
+                            if(s.cardLow>top-2)bad.append(t.id()).append(owned?" stage "+stage:" locked").append(" at width ").append(W).append(": words to y+").append(s.cardLow).append("; ");}}}
+            }finally{CampScreen.probe=false;}
+            report("p2-card-layout",bad.length()==0&&drawn>0,bad.length()==0?"CampScreen.card() drew "+drawn+" cards (30 troops x locked and 3 stages x widths 817 and 960); the lowest word or pip is at y+"+worst+", the limit y+"+(top-2)+", over the action button at y+"+top:"words reach the action button at y+"+top+": "+bad.toString().trim());
         }
     }
 

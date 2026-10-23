@@ -89,12 +89,6 @@ final class RecruitPages {
      */
     record CardRows(int rarity,int pips,int copies,int locked,int odds){}
     static CardRows cardRows(boolean twoLine){return twoLine?new CardRows(32,44,56,44,56):new CardRows(24,40,54,44,58);}
-    /** The lowest pixel a recruit card's words reach for a troop (owned or not) in a card whose name has room px: its longest stage name wrapped. */
-    static int cardTextBottom(TextRenderer f,Spec.TroopsRow t,boolean owned,int room){
-        boolean two=false;for(int s=1;s<=3;s++)two|=f.wrapLines(Text.literal(ArmyMobs.stageName(t,s)),room).size()>1;var r=cardRows(two);
-        return owned?Math.max(r.pips()+8,r.copies()+9):r.odds()+9;
-    }
-
     // ---- what was drawn, for the harness (suite screens reads it, never re-derives it) ----
     /** The last roll card drawn: its troop, its label, the stars it fills from and to, the pips filled, the pip growing (-1 none) and how far, and its outcome line. */
     record SeenRoll(String troop,String label,int from,int to,int filled,int growing,float part,String outcome){}
