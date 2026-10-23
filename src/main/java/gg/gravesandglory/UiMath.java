@@ -409,6 +409,50 @@ public final class UiMath {
         return kit;
     }
 
+    /** The sizes by name, as the Visuals and sound screen's Battle HUD button shows them and hud.json keeps them (HudSize). */
+    public static final String[] HUD_SIZE_NAMES = {"Compact", "Standard", "Large"};
+
+    /** The size a window shows a HUD size at (UI Task 8c fix round 1): the smallest size hudScale draws at the same scale there, so
+     *  the size itself wherever it is a step larger than the one below it. At their Auto GUI Scale, Large shows as Standard at 1080p,
+     *  1440p and 4K, and Standard and Large as Compact at 1280x720 and smaller (UiMathCheck pins the windows). Only the scale: shown
+     *  at Compact's, Standard and Large keep their five-line feed and the hint layer's 60 s. Any other size counts as Compact. */
+    public static int hudShownAs(int fbW, int fbH, int guiScale, int size) {
+        int s = size == HUD_STANDARD || size == HUD_LARGE ? size : HUD_COMPACT, k = hudScale(fbW, fbH, guiScale, s);
+        for (int smaller = HUD_COMPACT; smaller < s; smaller++) if (hudScale(fbW, fbH, guiScale, smaller) == k) return smaller;
+        return s;
+    }
+
+    /** The Battle HUD button's words for a size this window shows at shownAs (hudShownAs): "Battle HUD: Large", or where the
+     *  window draws it at a smaller size's scale, that size too: "Battle HUD: Large (Standard size here)". */
+    public static String hudSizeLabel(int size, int shownAs) {
+        String label = "Battle HUD: " + hudSizeName(size);
+        return shownAs < size ? label + " (" + hudSizeName(shownAs) + " size here)" : label;
+    }
+
+    /** The screen's notice once a size is saved: "Battle HUD: Large. Your choice is saved.", and where the window draws it at a
+     *  smaller size's scale, " In this window it draws at Standard size." after it. */
+    public static String hudSizeNotice(int size, int shownAs) {
+        String notice = "Battle HUD: " + hudSizeName(size) + ". Your choice is saved.";
+        return shownAs < size ? notice + " In this window it draws at " + hudSizeName(shownAs) + " size." : notice;
+    }
+
+    static String hudSizeName(int size) { return HUD_SIZE_NAMES[size >= 0 && size < HUD_SIZE_NAMES.length ? size : HUD_COMPACT]; }
+
+    private static final java.util.regex.Pattern HUD_SIZE_KEY = java.util.regex.Pattern.compile("\"size\"\\s*:\\s*\"([^\"\\\\]*)\"");
+
+    /** The size a hud.json's text names (UI Task 8c): {"size":"Standard"} as HudSize writes it, white space allowed, the name
+     *  matched exactly. Compact for no file (null), text that is not one flat {...} object, no "size" string in it, or a name it
+     *  does not know. Pure, so the standalone check covers the fallback (HudSize.reload reads the file). */
+    public static int hudSizeOf(String json) {
+        if (json == null) return HUD_COMPACT;
+        String t = json.strip();
+        if (!t.startsWith("{") || t.indexOf('{', 1) >= 0 || t.indexOf('}') != t.length() - 1) return HUD_COMPACT;
+        java.util.regex.Matcher m = HUD_SIZE_KEY.matcher(t);
+        if (!m.find()) return HUD_COMPACT;
+        for (int i = 0; i < HUD_SIZE_NAMES.length; i++) if (HUD_SIZE_NAMES[i].equals(m.group(1))) return i;
+        return HUD_COMPACT;
+    }
+
     /** How long a round's start shows the hint layer: the spec's first 60 s at Standard and Large (UI spec 4.5), 15 s at Compact
      *  (UI Task 8c); presentation timings. Holding the hints key brings it back at any size. */
     public static final long HINT_LAYER_MS = 60000, HINT_LAYER_COMPACT_MS = 15000;

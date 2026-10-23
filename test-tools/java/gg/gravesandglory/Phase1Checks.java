@@ -1653,15 +1653,18 @@ public final class Phase1Checks implements ClientModInitializer {
         /** p1-ui-hud-size-setting (UI Task 8c, item 2): the Visuals and sound screen's Battle HUD button names the size and cycles
          *  Compact, Standard, Large and back to Compact; each press saves gravesandglory/hud.json at once, a launch reads the same back
          *  (HudSize.reload, as the first HUD frame of a launch does), and the HUD's scale follows: at 1080p GUI 4, 2x at Compact and 3x
-         *  at Standard and Large. */
+         *  at Standard and Large. Fix round 1 (the Task 8c review's Important 2): Large draws at Standard's scale there, so its button
+         *  and its notice say so (UiMath.hudShownAs), in the words written out here; Compact and Standard say only their names. */
         void sizeSetting(MinecraftClient c){
             boolean ok=c.currentScreen instanceof PresentationScreen;List<String> steps=new ArrayList<>();int[] wantK={2,3,3};
+            String[] wantLabel={"Battle HUD: Compact","Battle HUD: Standard","Battle HUD: Large (Standard size here)"};
+            String[] wantNotice={"Battle HUD: Compact. Your choice is saved.","Battle HUD: Standard. Your choice is saved.","Battle HUD: Large. Your choice is saved. In this window it draws at Standard size."};
             for(int press=0;press<4;press++){
                 if(press>0){var button=hudButton(c);if(button==null){ok=false;steps.add("no Battle HUD button to press");break;}button.onPress();}
-                int want=press%3;var b=hudButton(c);String label=b==null?"none":b.getMessage().getString(),file=hudFile();int got=HudSize.get(),k=UiCanvas.hudK();
+                int want=press%3;var b=hudButton(c);String label=b==null?"none":b.getMessage().getString(),file=hudFile(),notice=Presentation.notice;int got=HudSize.get(),k=UiCanvas.hudK();
                 HudSize.reload();int read=HudSize.get();
-                boolean step=label.equals("Battle HUD: "+HudSize.NAMES[want])&&got==want&&read==want&&k==wantK[want]&&file.equals("{\"size\":\""+HudSize.NAMES[want]+"\"}");ok&=step;
-                steps.add((press==0?"before any press":"press "+press)+": the button reads '"+label+"', HudSize "+HudSize.NAMES[got]+", hud.json "+file+", read back as a launch reads it: "+HudSize.NAMES[read]+", the HUD at "+k+"x (wanted "+HudSize.NAMES[want]+" at "+wantK[want]+"x)"+(step?"":", WRONG"));
+                boolean step=label.equals(wantLabel[want])&&(press==0||notice.equals(wantNotice[want]))&&got==want&&read==want&&k==wantK[want]&&file.equals("{\"size\":\""+HudSize.NAMES[want]+"\"}");ok&=step;
+                steps.add((press==0?"before any press":"press "+press)+": the button reads '"+label+"'"+(press==0?"":" (wanted '"+wantLabel[want]+"'), the notice '"+notice+"' (wanted '"+wantNotice[want]+"')")+", HudSize "+HudSize.NAMES[got]+", hud.json "+file+", read back as a launch reads it: "+HudSize.NAMES[read]+", the HUD at "+k+"x (wanted "+HudSize.NAMES[want]+" at "+wantK[want]+"x)"+(step?"":", WRONG"));
             }
             report("p1-ui-hud-size-setting",ok,"the Visuals and sound screen ("+(c.currentScreen instanceof PresentationScreen?"open":"NOT open")+") at 1920x1080 GUI 4: "+String.join("; ",steps)+"; the notice reads '"+Presentation.notice+"'");
         }

@@ -10,8 +10,11 @@ final class PresentationScreen extends GravesAndGloryClient.ArmyScreen {
         Presentation.load();selected=Presentation.shader();scale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/640f,client.getWindow().getScaledHeight()/360f));width=(int)(client.getWindow().getScaledWidth()/scale);height=(int)(client.getWindow().getScaledHeight()/scale);
         for(int i=0;i<4;i++){final int n=i;button((i==selected?"> ":"")+Presentation.SHADERS[i],30+i%2*190,94+i/2*55,180,b->{Presentation.selectShader(n);clearAndInit();});}
         int texture=Presentation.textures();for(int i=0;i<3;i++){final int n=i;button((texture==i?"> ":"")+Presentation.TEXTURES[i],30+i*195,222,185,b->{Presentation.selectTextures(n);clearAndInit();});}
-        button("Impact accents: "+new String[]{"OFF","SUBTLE","STRONG"}[Presentation.impact],30,262,240,b->{Presentation.impact=(Presentation.impact+1)%3;Presentation.save();clearAndInit();});
-        button("Battle HUD: "+HudSize.NAMES[HudSize.get()],278,262,150,b->{HudSize.cycle();clearAndInit();}); // UI Task 8c: Compact, Standard, Large
+        button("Impact accents: "+new String[]{"OFF","SUBTLE","STRONG"}[Presentation.impact],30,262,170,b->{Presentation.impact=(Presentation.impact+1)%3;Presentation.save();clearAndInit();});
+        // UI Task 8c: Compact, Standard, Large. Fix round 1: the button names the size this window draws the choice at where that is
+        // smaller ("Battle HUD: Standard (Compact size here)", 201 px of 11 px Lato, the longest), so it is 220 wide and the accents
+        // button 170 (its longest words, STRONG's, 121 px)
+        button(HudSize.label(),208,262,220,b->{HudSize.cycle();clearAndInit();});
         button("Minecraft sound levels",width-205,262,175,b->client.setScreen(new net.minecraft.client.gui.screen.option.SoundOptionsScreen(this,client.options)));
         button("Back to war council",30,height-53,220,b->client.setScreen(new GravesAndGloryClient.LobbyScreen()));
     }
