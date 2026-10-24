@@ -17,5 +17,5 @@
 "weapon":"sun_staff",
 "hand":"right",
 "portrait":"tall 6",
-"faces":{"count":4,"slots":[[96,64],[64,64],[32,64]]}
+"faces":{"count":4,"slots":[[96,64],[64,64],[32,64]],"beard":{"slots":[[0,64],[14,64],[0,69]]}}
 }

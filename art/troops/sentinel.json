@@ -19,5 +19,5 @@
 "weapon":"longsword",
 "hand":"right",
 "portrait":"tall 2",
-"faces":{"count":4,"slots":[[96,48],[32,32],[0,32]]}
+"faces":{"count":1,"note":"the great helm hides the whole head: only the canonical face is wired; the other three patches of sentinel_faces.png are banked for a helm-off scene (Kort decides)"}
 }
