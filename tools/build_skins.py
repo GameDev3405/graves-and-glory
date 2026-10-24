@@ -161,7 +161,7 @@ GREYS = {(160, 160, 160): 1.0, (128, 128, 128): 0.8, (96, 96, 96): 0.6}   # the 
 LINEN = (0xCF, 0xC6, 0xB0)
 COMPANY = (0x2A, 0x37, 0x47)   # the Hollow's navy (work/ui-concepts/storybook/NOTES.md), the company's cloth
 GLYPH = (0xF3, 0xEF, 0xE4)   # the pennant glyph's white, the white of the charges
-GLOW_CAP = {'epic': 16, 'legendary': 16}   # px of lit area; any other rarity: 6
+GLOW_CAP = {'epic': 16, 'legendary': 16}   # lit area, in layout px for a troop's glow and in texels of a 2x weapon for a cube weapon's (its texels over (D / 2) squared); any other rarity: 6
 TINT_SATURATION, TINT_VALUE, TINT_HUE = 0.45, 0.60, 45.0
 ONE = (1.0, 1.0, 1.0)
 # The bones a model may have: TroopModel records the bones a draw shows as the bits of one long (TroopModel.MAX_BONES),
@@ -176,8 +176,8 @@ PULL_FRAMES = 3      # pull_0 to pull_2 of a draw weapon, after the rest frame
 PULL_MAX = 1.2       # a pull time lies between 0 and the longest bow_draw clip, in seconds
 SLIVER = 0.25        # a side face reads its texel through a UV band 2 x SLIVER across, at the texel's centre
 THICKNESS = (1, 2, 3)
-# Cube weapons (art pipeline v2): made in Blockbench, 2 texels to a model px on a 64 x 128 sheet; the build adds a far version
-# under the sheet and the _n and _s maps beside it.
+# Cube weapons (art pipeline v2): made in Blockbench, by default 2 texels to a model px on a 64 x 128 sheet (a weapon json may say
+# density); the build adds a far version under the sheet and the _n and _s maps beside it.
 WEAPON_FRAMES = ('rest', 'pull_0', 'pull_1', 'pull_2')
 WEAPON_DENSITY = 2     # texels a px of a cube weapon's sheet unless its json says density: a face's UV is exactly twice its size
 TROOP_DENSITY = 1      # texels a px of a troop's PNGs unless its json says density
@@ -1577,8 +1577,8 @@ def relief_mesh(cat: Catalog, model: dict, relief: Image.Image, troop: str, key:
             fail('%s pixel (%d, %d) lies on no skin box face' % (what, x, y))
         b, i, d = hit
         if b.get('variants'):
-            fail('%s pixel (%d, %d) lies on the face bone %s: faces are flat paint, and relief belongs on the helm, the hair or a beard '
-                 'volume' % (what, x, y, b['name']))
+            fail('%s pixel (%d, %d) lies on the face bone %s: faces are flat paint (the beard volume of a beard block is part of '
+                 'the face too), and relief belongs on the helm or the hair' % (what, x, y, b['name']))
         if 0 in b['boxes'][i]['size']:
             fail('%s pixel (%d, %d) lies on box %d of bone %s, which has no depth' % (what, x, y, i, b['name']))
         g = grids.setdefault((b['name'], i), Grid(b['boxes'][i], density))
@@ -2178,23 +2178,27 @@ def read_face_patches(cat, troop, faces, targets, density):
     return head, beard
 
 
-def face_slot_rects(targets):
-    """The rectangles (label, x0, y0, x1, y1) in layout px that belong to the faces of variants 1 and up: no sheet may paint them."""
+def face_slot_rects(targets, overlay=False):
+    """The rectangles (label, x0, y0, x1, y1) in layout px that belong to the faces. Of the skins nothing may paint the slots of variants
+    1 and up; variant 0's own rectangles (the head's and the beard's) are the skin's, replaced by patch 0. An overlay (the veteran trim, the
+    glow) is drawn over whichever face shows, so it may touch none of them: variant 0's rectangles count too, or a trim texel there would
+    mark a quarter of the faces only (a count of 1 has one face and nothing to be uneven)."""
     out = []
     for t in targets:
-        if t['k'] == 0:
-            continue
         for label, box in (('face slot', t['head']), ('beard slot', t['beard'])):
-            if box is not None:
-                (u, v), (fw, fh) = box['uv'], box_rect(box)
-                out.append(('%s %d' % (label, t['k']), u, v, u + fw, v + fh))
+            if box is None or (t['k'] == 0 and not (overlay and len(targets) > 1)):
+                continue
+            (u, v), (fw, fh) = box['uv'], box_rect(box)
+            name = ('the canonical ' + ('face' if box is t['head'] else 'beard')) if t['k'] == 0 else '%s %d' % (label, t['k'])
+            out.append((name, u, v, u + fw, v + fh))
     return out
 
 
-def check_face_slots(im, troop, name, verb, targets, density):
-    """No texel of this sheet (a skin, the trim or the glow) may lie in a slot: the slots are free rows for the face patches."""
+def check_face_slots(im, troop, name, verb, targets, density, overlay=False):
+    """No texel of this sheet (a skin, the trim or the glow) may lie in a slot: the slots are free rows for the face patches. A trim or
+    glow sheet (overlay) may not lie on variant 0's head or beard either."""
     px = im.load()
-    for label, x0, y0, x1, y1 in face_slot_rects(targets):
+    for label, x0, y0, x1, y1 in face_slot_rects(targets, overlay):
         for y in range(y0 * density, y1 * density):
             for x in range(x0 * density, x1 * density):
                 if px[x, y][3]:
@@ -2243,7 +2247,8 @@ def troop_outputs(cat, troop, weapon_lit):
         if list(im.size) != [size[0] * density, size[1] * density]:
             fail('%s: %s is %dx%d, not the troop size %s' % (troop, f, im.size[0], im.size[1], size_words(size, density)))
         if targets:
-            check_face_slots(im, troop, f, 'lights' if f == extra['glow'] else 'covers' if f == extra['veteran'] else 'paints', targets, density)
+            check_face_slots(im, troop, f, 'lights' if f == extra['glow'] else 'covers' if f == extra['veteran'] else 'paints', targets, density,
+                             overlay=f in (extra['glow'], extra['veteran']))
         if f != extra['glow']:
             tint(im, '%s: %s' % (troop, f), cat.factions)
         if f == extra['veteran']:
@@ -2275,7 +2280,7 @@ def troop_outputs(cat, troop, weapon_lit):
     cap = GLOW_CAP.get(cat.sheet[troop]['rarity'], 6)
     n = (lit(read_png(folder / extra['glow'], troop)) / density ** 2 if extra['glow'] else 0) + weapon_lit.get(model['weapon'], 0)
     if n > cap:
-        fail("%s: %s lit pixels in its glow and its weapon's glow together, over the %s cap of %d"
+        fail("%s: %s lit area in its glow and its weapon's glow together, over the %s cap of %d"
              % (troop, px_words(n), cat.sheet[troop]['rarity'], cap))
     return out, stats
 

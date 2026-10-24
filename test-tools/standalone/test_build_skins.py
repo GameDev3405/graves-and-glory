@@ -1755,6 +1755,34 @@ class BuildSkinsChecks(unittest.TestCase):
                     self.assertTrue(tops(b))
                     for q in b:
                         self.assert_quad(q)
+                    self.assert_side_uvs_in_source_texel(a, b)
+
+    def assert_side_uvs_in_source_texel(self, ones, threes):
+        """Every side and corner quad of a density 3 mesh reads the source texel of its 1x twin: its UV box lies inside that texel's
+        cell (layout units), is as long along its run as the 1x quad and a third as wide across (2 x SLIVER over the density),
+        so a side quad whose UV is not divided by the density (or divided twice) leaves the cell and fails."""
+        def key(q):
+            return tuple(round(v, 3) for v in q[:7])
+        by_key = {}
+        for q in ones:
+            by_key.setdefault(key(q), []).append(q)
+        sides = 0
+        for q in threes:
+            x0, y0, x1, y1 = uv_box(q)
+            if min(x1 - x0, y1 - y0) >= 0.99:
+                continue   # a top quad, pinned by its UV rectangle
+            sides += 1
+            fits = []
+            for a in by_key[key(q)]:
+                u0, v0, u1, v1 = uv_box(a)
+                cell = (math.floor(u0 + 1e-6), math.floor(v0 + 1e-6), math.ceil(u1 - 1e-6), math.ceil(v1 - 1e-6))
+                inside = x0 >= cell[0] - 1e-6 and y0 >= cell[1] - 1e-6 and x1 <= cell[2] + 1e-6 and y1 <= cell[3] + 1e-6
+                extents = sorted((x1 - x0, y1 - y0))
+                want = sorted((u1 - u0 if u1 - u0 > 0.6 or u1 - u0 < 0.1 else 2 * build_skins.SLIVER / 3,
+                               v1 - v0 if v1 - v0 > 0.6 or v1 - v0 < 0.1 else 2 * build_skins.SLIVER / 3))
+                fits.append(inside and all(abs(g - w) < 1e-4 for g, w in zip(extents, want)))
+            self.assertTrue(any(fits), 'a side quad %s reads outside its source texel: UV box %s' % (q, (x0, y0, x1, y1)))
+        self.assertGreater(sides, 0)
 
     def test_relief_density_three_fine_detail(self):
         """One raised texel at 3 is a third of a px across and a whole px proud: the voxel's depth along the normal is the box's
@@ -1776,10 +1804,26 @@ class BuildSkinsChecks(unittest.TestCase):
         self.assertAlmostEqual(centre[1], 5.1667, places=3)
         self.assertAlmostEqual(centre[0], want[0], places=3)
         self.assertAlmostEqual(centre[1], want[1], places=3)
+        centre_uv = 15.5 / 3
+        across = {0: 0, 1: 0}   # which texture axis a side quad's sliver runs over
         for q in quads:
             self.assert_quad(q)
             if q is not top:
                 self.assertEqual((q[3], q[6]), (-3, -2))
+                # a side quad is the texel's centre band: its UV box is centred on the texel (5.1667, 5.1667), a third of a layout px
+                # long along its run and 2 x SLIVER / 3 across, so its corners sit at the centre plus or minus SLIVER / 3
+                x0, y0, x1, y1 = uv_box(q)
+                self.assertAlmostEqual((x0 + x1) / 2, centre_uv, places=4)
+                self.assertAlmostEqual((y0 + y1) / 2, centre_uv, places=4)
+                narrow = [i for i, w in enumerate((x1 - x0, y1 - y0)) if abs(w - 2 * build_skins.SLIVER / 3) < 1e-4]
+                self.assertEqual(len(narrow), 1, 'one UV axis is the sliver')
+                across[narrow[0]] += 1
+                long_axis = (x1 - x0, y1 - y0)[1 - narrow[0]]
+                self.assertAlmostEqual(long_axis, 1 / 3, places=4)
+                bounds = (x0, x1) if narrow[0] == 0 else (y0, y1)
+                self.assertAlmostEqual(bounds[0], centre_uv - build_skins.SLIVER / 3, places=4)
+                self.assertAlmostEqual(bounds[1], centre_uv + build_skins.SLIVER / 3, places=4)
+        self.assertEqual(across, {0: 2, 1: 2})   # two side quads slivered over u, two over v
         scaled, _ = mini_model(origin=(-2, -2, -2.0), dilation=(0, 0, 0.4), density=3)   # z scaled 1.2
         for q in self.mesh(scaled, [(15, 15)])['body']:
             self.assertAlmostEqual(q[6] - q[3], 0.0 if q[0] == 2 else 1.2)
@@ -2003,6 +2047,32 @@ class BuildSkinsChecks(unittest.TestCase):
         for i in range(4):
             sparse.putpixel((i % 3, i // 3), a)
         self.assertEqual(build_skins.far_twin(sparse, 3).getpixel((0, 0))[3], 0)
+
+    def test_far_twin_even_density(self):
+        """The half rule lands exactly on a texel count at an even density (the weapons' far version keeps a px at half its samples
+        too): at 2 a block with 2 of its 4 texels painted is kept and one with 1 is clear; a 2-2 colour tie, and a 1-1 tie, go to the
+        colour met first in reading order; at 4, 8 of 16 are kept and 7 are clear."""
+        a, b, clear = (10, 20, 30, 255), (40, 50, 60, 255), (0, 0, 0, 0)
+        # each block lists its texels in reading order: (0,0) (1,0) (0,1) (1,1)
+        blocks = [('two of four, one colour', [a, clear, clear, a], a), ('one of four', [clear, clear, a, clear], clear),
+                  ('three of four, two against one', [b, a, b, clear], b), ('a 2-2 tie, a met first', [a, b, b, a], a),
+                  ('a 2-2 tie, b met first', [b, a, a, b], b), ('a 1-1 tie, kept', [clear, b, a, clear], b),
+                  ('none', [clear] * 4, clear)]
+        im = Image.new('RGBA', (2 * len(blocks), 2), clear)
+        for n, (_, texels, _) in enumerate(blocks):
+            for i, c in enumerate(texels):
+                im.putpixel((2 * n + i % 2, i // 2), c)
+        twin = build_skins.far_twin(im, 2)
+        self.assertEqual(twin.size, (len(blocks), 1))
+        for n, (name, _, want) in enumerate(blocks):
+            with self.subTest(name=name):
+                self.assertEqual(twin.getpixel((n, 0)), want)
+        for painted, kept in ((8, True), (7, False)):
+            with self.subTest(painted=painted, density=4):
+                big = Image.new('RGBA', (4, 4), clear)
+                for i in range(painted):
+                    big.putpixel((i % 4, i // 4), a)
+                self.assertEqual(build_skins.far_twin(big, 4).getpixel((0, 0)), a if kept else clear)
 
     def test_verify_density_three(self):
         """--verify rebuilds a density 3 troop, its far twins and the cloth at 3 (PNGs by pixels, the model byte for byte)."""
@@ -2248,6 +2318,39 @@ class BuildSkinsChecks(unittest.TestCase):
                 self.assertIn('knight', said)
                 for want in wants:
                     self.assertIn(want, said)
+
+    def test_faces_overlays_keep_off_variant_zero(self):
+        """The veteran trim and the glow are drawn over whichever face shows, so they may touch variant 0's head and beard rectangles as
+        little as the slots: a mark there would show on a quarter of the faces only. A skin may paint them (patch 0 replaces it), and a
+        troop of count 1 has no uneven faces, so its trim may lie on its head."""
+        def trim_at(xy):
+            return lambda root: relief_png(root, 'knight_veteran.png', [xy], size=(64, 96))
+
+        def glow_at(xy):
+            def go(root):
+                lit = Image.new('RGBA', (64, 96), (0, 0, 0, 0))
+                lit.putpixel(xy, (255, 240, 200, 255))
+                lit.save(root / 'art/troops/knight_e.png')
+            return go
+        cases = [
+            ('the trim on the head rect', False, trim_at((10, 5)), ['knight_veteran.png', 'canonical face', '(10, 5)']),
+            ('the glow on the head rect', False, glow_at((10, 5)), ['knight_e.png', 'canonical face', '(10, 5)']),
+            ('the trim on the beard rect', True, trim_at((50, 58)), ['knight_veteran.png', 'canonical beard', '(50, 58)']),
+            ('the glow on the beard rect', True, glow_at((50, 58)), ['knight_e.png', 'canonical beard', '(50, 58)']),
+        ]
+        for name, beard, setup, wants in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = self.beard_root(tmp) if beard else faces_fixture(tmp, troops=self.faces_troops())
+                setup(root)
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with self.subTest(name='count 1 trims its head'), tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, troops=self.with_knight(size=[64, 96], faces={'count': 1}), patches=False)
+            put_png(root / 'art/troops/knight_faces.png', face_patches(1, 1))
+            trim_at((10, 5))(root)
+            self.export(root)
 
     def test_faces_carry_no_relief(self):
         """Faces are flat paint: a relief texel on the head's faces or on a slot's is refused, naming the face bone; relief elsewhere
