@@ -1940,6 +1940,46 @@
       "height": 16,
       "palette": "stone",
       "purpose": "moon shrine"
+    },
+    {
+      "id": "supply/rivergate",
+      "width": 31,
+      "depth": 37,
+      "height": 9,
+      "palette": "wood",
+      "purpose": "supply house: granary and walled yard"
+    },
+    {
+      "id": "supply/ironhold",
+      "width": 31,
+      "depth": 37,
+      "height": 9,
+      "palette": "stone",
+      "purpose": "supply house: armoury and walled yard"
+    },
+    {
+      "id": "supply/frostmarch",
+      "width": 31,
+      "depth": 37,
+      "height": 9,
+      "palette": "wood",
+      "purpose": "supply house: ridge hut and walled yard"
+    },
+    {
+      "id": "supply/hollowwood",
+      "width": 31,
+      "depth": 37,
+      "height": 9,
+      "palette": "stone",
+      "purpose": "supply house: woodstore and walled yard"
+    },
+    {
+      "id": "supply/kingsfield",
+      "width": 31,
+      "depth": 37,
+      "height": 9,
+      "palette": "stone",
+      "purpose": "supply house: tithe barn and walled yard"
     }
   ],
   "camp": [
@@ -2283,6 +2323,204 @@
       "rotation": 0,
       "elevation": 64,
       "replaces": "house_0",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-supply-nw",
+      "map": 0,
+      "template": "supply/rivergate",
+      "x": -125,
+      "z": -72,
+      "rotation": 0,
+      "elevation": 74,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-supply-sw",
+      "map": 0,
+      "template": "supply/rivergate",
+      "x": -125,
+      "z": 72,
+      "rotation": 180,
+      "elevation": 74,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-supply-ne",
+      "map": 0,
+      "template": "supply/rivergate",
+      "x": 125,
+      "z": -72,
+      "rotation": 0,
+      "elevation": 74,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "rg-supply-se",
+      "map": 0,
+      "template": "supply/rivergate",
+      "x": 125,
+      "z": 72,
+      "rotation": 180,
+      "elevation": 74,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-supply-nw",
+      "map": 1,
+      "template": "supply/ironhold",
+      "x": -140,
+      "z": -72,
+      "rotation": 0,
+      "elevation": 77,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-supply-sw",
+      "map": 1,
+      "template": "supply/ironhold",
+      "x": -125,
+      "z": 72,
+      "rotation": 180,
+      "elevation": 77,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-supply-ne",
+      "map": 1,
+      "template": "supply/ironhold",
+      "x": 125,
+      "z": -72,
+      "rotation": 0,
+      "elevation": 77,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-supply-se",
+      "map": 1,
+      "template": "supply/ironhold",
+      "x": 140,
+      "z": 72,
+      "rotation": 180,
+      "elevation": 77,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-supply-nw",
+      "map": 2,
+      "template": "supply/frostmarch",
+      "x": -125,
+      "z": -72,
+      "rotation": 0,
+      "elevation": 80,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-supply-sw",
+      "map": 2,
+      "template": "supply/frostmarch",
+      "x": -125,
+      "z": 72,
+      "rotation": 180,
+      "elevation": 80,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-supply-ne",
+      "map": 2,
+      "template": "supply/frostmarch",
+      "x": 125,
+      "z": -72,
+      "rotation": 0,
+      "elevation": 80,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-supply-se",
+      "map": 2,
+      "template": "supply/frostmarch",
+      "x": 125,
+      "z": 72,
+      "rotation": 180,
+      "elevation": 80,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-supply-nw",
+      "map": 3,
+      "template": "supply/hollowwood",
+      "x": -125,
+      "z": -72,
+      "rotation": 0,
+      "elevation": 74,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-supply-sw",
+      "map": 3,
+      "template": "supply/hollowwood",
+      "x": -125,
+      "z": 72,
+      "rotation": 180,
+      "elevation": 74,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-supply-ne",
+      "map": 3,
+      "template": "supply/hollowwood",
+      "x": 125,
+      "z": -72,
+      "rotation": 0,
+      "elevation": 74,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-supply-se",
+      "map": 3,
+      "template": "supply/hollowwood",
+      "x": 125,
+      "z": 72,
+      "rotation": 180,
+      "elevation": 74,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "kf-supply-nw",
+      "map": 4,
+      "template": "supply/kingsfield",
+      "x": -125,
+      "z": -72,
+      "rotation": 0,
+      "elevation": 76,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "kf-supply-se",
+      "map": 4,
+      "template": "supply/kingsfield",
+      "x": 125,
+      "z": 72,
+      "rotation": 180,
+      "elevation": 76,
+      "replaces": "-",
       "encloses": "-"
     },
     {
@@ -3287,6 +3525,316 @@
       "toX": -3.5,
       "toY": -1.0,
       "toZ": 38.5
+    },
+    {
+      "id": "supply-rivergate-cover",
+      "template": "supply/rivergate",
+      "kind": "cover",
+      "fromX": 24.5,
+      "fromY": 2.6,
+      "fromZ": 34.5,
+      "toX": 24.5,
+      "toY": -1.0,
+      "toZ": 48.5
+    },
+    {
+      "id": "supply-rivergate-sight",
+      "template": "supply/rivergate",
+      "kind": "sight",
+      "fromX": 25.5,
+      "fromY": 7.6,
+      "fromZ": 10.5,
+      "toX": 16.5,
+      "toY": -1.0,
+      "toZ": 48.5
+    },
+    {
+      "id": "supply-ironhold-cover",
+      "template": "supply/ironhold",
+      "kind": "cover",
+      "fromX": 24.5,
+      "fromY": 2.6,
+      "fromZ": 34.5,
+      "toX": 24.5,
+      "toY": -1.0,
+      "toZ": 48.5
+    },
+    {
+      "id": "supply-ironhold-sight",
+      "template": "supply/ironhold",
+      "kind": "sight",
+      "fromX": 25.5,
+      "fromY": 7.6,
+      "fromZ": 10.5,
+      "toX": 16.5,
+      "toY": -1.0,
+      "toZ": 48.5
+    },
+    {
+      "id": "supply-frostmarch-cover",
+      "template": "supply/frostmarch",
+      "kind": "cover",
+      "fromX": 24.5,
+      "fromY": 2.6,
+      "fromZ": 34.5,
+      "toX": 24.5,
+      "toY": -1.0,
+      "toZ": 48.5
+    },
+    {
+      "id": "supply-frostmarch-sight",
+      "template": "supply/frostmarch",
+      "kind": "sight",
+      "fromX": 25.5,
+      "fromY": 7.6,
+      "fromZ": 10.5,
+      "toX": 16.5,
+      "toY": -1.0,
+      "toZ": 48.5
+    },
+    {
+      "id": "supply-hollowwood-cover",
+      "template": "supply/hollowwood",
+      "kind": "cover",
+      "fromX": 24.5,
+      "fromY": 2.6,
+      "fromZ": 34.5,
+      "toX": 24.5,
+      "toY": -1.0,
+      "toZ": 48.5
+    },
+    {
+      "id": "supply-hollowwood-sight",
+      "template": "supply/hollowwood",
+      "kind": "sight",
+      "fromX": 25.5,
+      "fromY": 7.6,
+      "fromZ": 10.5,
+      "toX": 16.5,
+      "toY": -1.0,
+      "toZ": 48.5
+    },
+    {
+      "id": "supply-kingsfield-cover",
+      "template": "supply/kingsfield",
+      "kind": "cover",
+      "fromX": 24.5,
+      "fromY": 2.6,
+      "fromZ": 34.5,
+      "toX": 24.5,
+      "toY": -1.0,
+      "toZ": 48.5
+    },
+    {
+      "id": "supply-kingsfield-sight",
+      "template": "supply/kingsfield",
+      "kind": "sight",
+      "fromX": 25.5,
+      "fromY": 7.6,
+      "fromZ": 10.5,
+      "toX": 16.5,
+      "toY": -1.0,
+      "toZ": 48.5
+    }
+  ],
+  "supplyHouses": [
+    {
+      "id": "rg-supply-nw",
+      "map": 0,
+      "name": "Westmill Granary",
+      "landmark": "rg-supply-nw",
+      "yardX": -125,
+      "yardZ": -66,
+      "spurX": -125,
+      "spurZ": 0,
+      "elevation": 74
+    },
+    {
+      "id": "rg-supply-sw",
+      "map": 0,
+      "name": "Westhill Barn",
+      "landmark": "rg-supply-sw",
+      "yardX": -125,
+      "yardZ": 66,
+      "spurX": -125,
+      "spurZ": 0,
+      "elevation": 74
+    },
+    {
+      "id": "rg-supply-ne",
+      "map": 0,
+      "name": "Eastmill Granary",
+      "landmark": "rg-supply-ne",
+      "yardX": 125,
+      "yardZ": -66,
+      "spurX": 125,
+      "spurZ": 0,
+      "elevation": 74
+    },
+    {
+      "id": "rg-supply-se",
+      "map": 0,
+      "name": "Easthill Barn",
+      "landmark": "rg-supply-se",
+      "yardX": 125,
+      "yardZ": 66,
+      "spurX": 125,
+      "spurZ": 0,
+      "elevation": 74
+    },
+    {
+      "id": "ih-supply-nw",
+      "map": 1,
+      "name": "West Armoury",
+      "landmark": "ih-supply-nw",
+      "yardX": -140,
+      "yardZ": -66,
+      "spurX": -140,
+      "spurZ": 0,
+      "elevation": 77
+    },
+    {
+      "id": "ih-supply-sw",
+      "map": 1,
+      "name": "West Quarters",
+      "landmark": "ih-supply-sw",
+      "yardX": -125,
+      "yardZ": 66,
+      "spurX": -125,
+      "spurZ": 0,
+      "elevation": 77
+    },
+    {
+      "id": "ih-supply-ne",
+      "map": 1,
+      "name": "East Armoury",
+      "landmark": "ih-supply-ne",
+      "yardX": 125,
+      "yardZ": -66,
+      "spurX": 125,
+      "spurZ": 0,
+      "elevation": 77
+    },
+    {
+      "id": "ih-supply-se",
+      "map": 1,
+      "name": "East Quarters",
+      "landmark": "ih-supply-se",
+      "yardX": 140,
+      "yardZ": 66,
+      "spurX": 140,
+      "spurZ": 0,
+      "elevation": 77
+    },
+    {
+      "id": "fm-supply-nw",
+      "map": 2,
+      "name": "West Ridge Hut",
+      "landmark": "fm-supply-nw",
+      "yardX": -125,
+      "yardZ": -66,
+      "spurX": -125,
+      "spurZ": 0,
+      "elevation": 80
+    },
+    {
+      "id": "fm-supply-sw",
+      "map": 2,
+      "name": "West Fur Store",
+      "landmark": "fm-supply-sw",
+      "yardX": -125,
+      "yardZ": 66,
+      "spurX": -125,
+      "spurZ": 0,
+      "elevation": 80
+    },
+    {
+      "id": "fm-supply-ne",
+      "map": 2,
+      "name": "East Ridge Hut",
+      "landmark": "fm-supply-ne",
+      "yardX": 125,
+      "yardZ": -66,
+      "spurX": 125,
+      "spurZ": 0,
+      "elevation": 80
+    },
+    {
+      "id": "fm-supply-se",
+      "map": 2,
+      "name": "East Fur Store",
+      "landmark": "fm-supply-se",
+      "yardX": 125,
+      "yardZ": 66,
+      "spurX": 125,
+      "spurZ": 0,
+      "elevation": 80
+    },
+    {
+      "id": "hw-supply-nw",
+      "map": 3,
+      "name": "West Woodstore",
+      "landmark": "hw-supply-nw",
+      "yardX": -125,
+      "yardZ": -66,
+      "spurX": -125,
+      "spurZ": 0,
+      "elevation": 74
+    },
+    {
+      "id": "hw-supply-sw",
+      "map": 3,
+      "name": "West Herb House",
+      "landmark": "hw-supply-sw",
+      "yardX": -125,
+      "yardZ": 66,
+      "spurX": -125,
+      "spurZ": 0,
+      "elevation": 74
+    },
+    {
+      "id": "hw-supply-ne",
+      "map": 3,
+      "name": "East Woodstore",
+      "landmark": "hw-supply-ne",
+      "yardX": 125,
+      "yardZ": -66,
+      "spurX": 125,
+      "spurZ": 0,
+      "elevation": 74
+    },
+    {
+      "id": "hw-supply-se",
+      "map": 3,
+      "name": "East Herb House",
+      "landmark": "hw-supply-se",
+      "yardX": 125,
+      "yardZ": 66,
+      "spurX": 125,
+      "spurZ": 0,
+      "elevation": 74
+    },
+    {
+      "id": "kf-supply-nw",
+      "map": 4,
+      "name": "West Tithe Barn",
+      "landmark": "kf-supply-nw",
+      "yardX": -125,
+      "yardZ": -66,
+      "spurX": -125,
+      "spurZ": 0,
+      "elevation": 76
+    },
+    {
+      "id": "kf-supply-se",
+      "map": 4,
+      "name": "East Tithe Barn",
+      "landmark": "kf-supply-se",
+      "yardX": 125,
+      "yardZ": 66,
+      "spurX": 125,
+      "spurZ": 0,
+      "elevation": 76
     }
   ]
 }

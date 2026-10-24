@@ -90,7 +90,7 @@ public final class Campaign {
             LegacyDataMigration.profiles(save.resolve(Diagnostics.active()?"bannerbound-test-profiles":"bannerbound-profiles"),directory);
             LegacyDataMigration.copyMissing(save.resolve("bannerbound-layout.json"),layoutFile());
         } catch(java.io.IOException migration) { throw new IllegalStateException("Could not upgrade legacy commander data; original files were kept",migration); }
-        try{JsonObject marker=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();if(marker.get("layout").getAsString().equals("campaign-3"))map=marker.get("map").getAsInt();}catch(Exception ignored){}CampaignMaps.select(map);
+        try{JsonObject marker=JsonParser.parseString(Files.readString(layoutFile())).getAsJsonObject();if(marker.get("layout").getAsString().equals(LayoutMarker.LAYOUT))map=marker.get("map").getAsInt();}catch(Exception ignored){}CampaignMaps.select(map);
     }
     Profile profile(UUID id){return profiles.computeIfAbsent(id,key->{Path file=directory.resolve(key+".json");if(!Files.exists(file))return new Profile();
         try{Profile p=JSON.fromJson(Files.readString(file),Profile.class);if(p==null)throw new IllegalStateException("Empty profile");p.sanitize();return p;}

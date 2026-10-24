@@ -147,6 +147,70 @@ for r in data.get('landmarkLines',[]):
     where=f'landmarkLines/{r["id"]}'
     if r['template'] not in piece_rows: errors.append(f'{where}: template {r["template"]} is not a pieces id')
     if r['kind'] not in ('cover','sight'): errors.append(f'{where}: kind {r["kind"]} is neither cover nor sight')
+# Supply houses (Phase 3 Task 8b): five pieces of one size (supply/<map>), eighteen landmark rows, one supplyHouses row for each. A house's footprint is its landmark row's;
+# the yard centre is the piece's local (15,24), 6 blocks from the piece centre toward the front gate (south at rotation 0, north at 180).
+SUPPLY_PREFIX={0:'rg',1:'ih',2:'fm',3:'hw',4:'kf'}
+SUPPLY_COUNT={0:4,1:4,2:4,3:4,4:2}
+def land_box(r):
+    template=piece_rows.get(r['template'])
+    if template is None or r['rotation'] not in (0,90,180,270): return None
+    w,d=(template['depth'],template['width']) if r['rotation'] in (90,270) else (template['width'],template['depth'])
+    return (r['x']-(w-1)//2,r['z']-(d-1)//2,r['x']+w-1-(w-1)//2,r['z']+d-1-(d-1)//2)
+def box_gap(a,b):
+    """Blocks between two footprints: the larger of the x gap and the z gap (0 where the boxes touch or overlap in both)."""
+    return max(0,a[0]-b[2]-1,b[0]-a[2]-1,a[1]-b[3]-1,b[1]-a[3]-1)
+land_rows={r['id']:r for r in data.get('landmarks',[])}
+house_pieces=[r for r in data.get('pieces',[]) if r['id'].startswith('supply/')]
+if len({(r['width'],r['depth'],r['height']) for r in house_pieces})>1: errors.append('pieces: the supply/ pieces must share one width, depth and height ('+', '.join(f'{r["id"]} {r["width"]}x{r["depth"]}x{r["height"]}' for r in house_pieces)+')')
+house_land=[r for r in data.get('landmarks',[]) if r['template'].startswith('supply/')]
+land_order={r['id']:i for i,r in enumerate(data.get('landmarks',[]))}
+for h in house_land:
+    hbox=land_box(h)
+    if hbox is None: continue
+    for o in data.get('landmarks',[]):
+        obox=land_box(o)
+        if o['id']==h['id'] or o['map']!=h['map'] or obox is None: continue
+        gap=box_gap(hbox,obox)
+        # the other row's shoulder (10+2*(e-64)) plus its flat ring (2): it must not reach into the house
+        if gap<12+2*(o['elevation']-64): errors.append(f'landmarks/{h["id"]}: landmarks/{o["id"]} (elevation {o["elevation"]}) is {gap} blocks from this house\'s footprint, under its shoulder of {12+2*(o["elevation"]-64)}')
+        # Arena.height blends the rows in sheet order: a row whose flat or shoulder reaches the house must come after it, so the house keeps its own flat
+        if gap<12+2*(h['elevation']-64) and land_order[o['id']]<land_order[h['id']]: errors.append(f'landmarks/{h["id"]}: landmarks/{o["id"]} is {gap} blocks from this house\'s footprint (the shoulder is {12+2*(h["elevation"]-64)}) but comes before it in the sheet; the house rows go before every row they could touch')
+supply_rows=data.get('supplyHouses',[])
+by_map={}
+for r in supply_rows:
+    where=f'supplyHouses/{r["id"]}'
+    by_map.setdefault(r['map'],[]).append(r)
+    m=re.fullmatch(r'([a-z]+)-supply-(nw|sw|ne|se)',r['id'])
+    if r['map'] not in range(5): errors.append(f'{where}: map {r["map"]} is not 0..4')
+    elif not m or m.group(1)!=SUPPLY_PREFIX[r['map']]: errors.append(f'{where}: the id must be {SUPPLY_PREFIX[r["map"]]}-supply-<nw|sw|ne|se> on map {r["map"]}')
+    land=land_rows.get(r['landmark'])
+    if land is None: errors.append(f'{where}: landmark {r["landmark"]} is not a landmarks id'); continue
+    if land['map']!=r['map']: errors.append(f'{where}: landmark {land["id"]} is on map {land["map"]}, the row is on map {r["map"]}')
+    if not land['template'].startswith('supply/'): errors.append(f'{where}: landmark {land["id"]} has template {land["template"]}, which is not a supply/ piece')
+    if land['elevation']!=r['elevation']: errors.append(f'{where}: elevation {r["elevation"]} is not that of landmark {land["id"]} ({land["elevation"]})')
+    if land['rotation'] not in (0,180): errors.append(f'{where}: landmark {land["id"]} has rotation {land["rotation"]}, a house stands at 0 or 180'); continue
+    yard=(land['x'],land['z']+6 if land['rotation']==0 else land['z']-6)
+    if (r['yardX'],r['yardZ'])!=yard: errors.append(f'{where}: the yard centre is ({r["yardX"]},{r["yardZ"]}), the local (15,24) of landmark {land["id"]} is ({yard[0]},{yard[1]})')
+    box=land_box(land)
+    if box is not None and box[0]<=r['spurX']<=box[2] and box[1]<=r['spurZ']<=box[3]: errors.append(f'{where}: the spur end ({r["spurX"]},{r["spurZ"]}) lies inside the footprint x {box[0]}..{box[2]}, z {box[1]}..{box[3]}')
+    if abs(r['spurX'])>350 or abs(r['spurZ'])>250: errors.append(f'{where}: the spur end ({r["spurX"]},{r["spurZ"]}) is outside |x|<=350, |z|<=250')
+    if len(r['name'])>20: errors.append(f'{where}: the name {r["name"]!r} is {len(r["name"])} characters, at most 20')
+for m,rows in by_map.items():
+    seen={}
+    for r in rows:
+        if r['name'] in seen: errors.append(f'supplyHouses/{r["id"]}: the name {r["name"]!r} is also that of {seen[r["name"]]} on map {m}')
+        seen[r['name']]=r['id']
+        partner=[o for o in rows if (o['yardX'],o['yardZ'])==(-r['yardX'],-r['yardZ'])]
+        if len(partner)!=1: errors.append(f'supplyHouses/{r["id"]}: no partner on map {m} at the yard centre ({-r["yardX"]},{-r["yardZ"]})'); continue
+        o=partner[0]
+        if o['elevation']!=r['elevation']: errors.append(f'supplyHouses/{r["id"]}: its partner {o["id"]} has elevation {o["elevation"]}, this row {r["elevation"]}')
+        if (o['spurX'],o['spurZ'])!=(-r['spurX'],-r['spurZ']): errors.append(f'supplyHouses/{r["id"]}: the spur end of its partner {o["id"]} is ({o["spurX"]},{o["spurZ"]}), not ({-r["spurX"]},{-r["spurZ"]})')
+    if m in SUPPLY_COUNT and len(rows)!=SUPPLY_COUNT[m]: errors.append(f'supplyHouses: map {m} has {len(rows)} rows, it needs {SUPPLY_COUNT[m]}')
+for m in SUPPLY_COUNT:
+    if m not in by_map: errors.append(f'supplyHouses: map {m} has no rows, it needs {SUPPLY_COUNT[m]}')
+used=[r['landmark'] for r in supply_rows]
+for h in house_land:
+    if used.count(h['id'])!=1: errors.append(f'landmarks/{h["id"]}: {used.count(h["id"])} supplyHouses rows name this house, there must be one')
 if errors:
     print('\n'.join(errors)); sys.exit(1)
 def typ(v): return 'boolean' if isinstance(v,bool) else 'int' if isinstance(v,int) else 'double' if isinstance(v,float) else 'String'

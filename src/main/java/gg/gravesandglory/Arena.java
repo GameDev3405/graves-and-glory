@@ -173,16 +173,25 @@ public final class Arena {
     static double roadLevel(int x,int z){
         double level=Y;
         boolean raised=false;for(var p:Spec.POINTS)raised|=p.elevation()>Y;
+        for(var h:Spec.SUPPLYHOUSES)raised|=h.map()==CampaignMaps.selected&&h.elevation()>Y;
         if(!raised)return level;
         CampaignMaps.Road near=null;double best=Double.MAX_VALUE;
         for(var r:CampaignMaps.roads){double d=CampaignMaps.distance(x,z,r)-r.width();if(d<best){best=d;near=r;}}
         if(near==null)return level;
-        for(var p:Spec.POINTS)if(p.elevation()>Y&&(near.ax()==p.x()&&near.az()==p.z()||near.bx()==p.x()&&near.bz()==p.z())){
-            double t=MathHelper.clamp(1-(Math.hypot(x-p.x(),z-p.z())-(p.radius()+2))/CLIMB,0,1);t=t*t*(3-2*t);
-            level=Math.max(level,Y+(p.elevation()-Y)*t);
+        for(var p:Spec.POINTS)if(p.elevation()>Y&&endsAt(near,p.x(),p.z()))level=Math.max(level,climb(Math.hypot(x-p.x(),z-p.z())-(p.radius()+2),p.elevation()));
+        // A raised supply house (its spur ends at the yard centre): the level of its landmark row on the flat ring (2 round the footprint), the climb from there
+        for(var h:Spec.SUPPLYHOUSES)if(h.map()==CampaignMaps.selected&&h.elevation()>Y&&endsAt(near,h.yardX(),h.yardZ())){
+            for(var l:Spec.STRUCTURES)if(l.id().equals(h.landmark())){
+                double dx=Math.max(0,Math.abs(x-l.x())-l.width()/2.0-2),dz=Math.max(0,Math.abs(z-l.z())-l.depth()/2.0-2);
+                level=Math.max(level,climb(Math.hypot(dx,dz),h.elevation()));
+            }
         }
         return level;
     }
+    /** The height of a road that climbs to a raised end: from the floor of the arena at CLIMB blocks beyond the plateau up to `elevation` at its edge (beyond 0 and less), on a smoothstep. */
+    static double climb(double beyond,int elevation){double t=MathHelper.clamp(1-beyond/CLIMB,0,1);t=t*t*(3-2*t);return Y+(elevation-Y)*t;}
+    /** One end of the road is the cell (x, z). */
+    static boolean endsAt(CampaignMaps.Road r,int x,int z){return r.ax()==x&&r.az()==z||r.bx()==x&&r.bz()==z;}
     public static int ground(int x,int z){for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")&&Math.abs(x-s.x())<=s.width()/2&&Math.abs(z-s.z())<=s.depth()/2)return s.elevation();return river(x,z)?Y-3:height(x,z);}
     public static int mapColor(int x,int z){
         int h=height(x,z),color=river(x,z)?0x416d88:road(x,z)?0xa79b75:h>79?0x687270:h>72?0x68815a:0x507b49;
@@ -232,6 +241,8 @@ public final class Arena {
             }
             box(w,p.x()-1,p.elevation(),p.z()-1,3,1,3,Blocks.CHISELED_STONE_BRICKS);flag(w,p,-1);
         }
+        // the supply houses of the map: a neutral flag over each yard centre (the piece leaves its flag column void, so the flag stands; the rules plan recolours it with the same call)
+        for(var h:Spec.SUPPLYHOUSES)if(h.map()==CampaignMaps.selected)flag(w,h.yardX(),h.elevation(),h.yardZ(),-1);
         for(var s:Spec.SCENERY){int y=height(s.x(),s.z())+1;if(s.kind().equals("tree")){
             tree(w,s.x(),y,s.z(),s.width(),s.height(),s.palette().equals("spruce"));
         }else for(int dx=0;dx<s.width();dx++)for(int dz=0;dz<s.width();dz++)for(int dy=0;dy<s.height();dy++)if(dx+dz+dy<s.width()+s.height()-1)put(w,s.x()+dx,y+dy,s.z()+dz,(dx+dz)%3==0?Blocks.MOSSY_COBBLESTONE:Blocks.ANDESITE);}
@@ -299,5 +310,7 @@ public final class Arena {
             case "market" -> {for(int a=0;a<3;a++){int dx=x+a*6;box(w,dx,y,z,1,s.height()-1,1,Blocks.OAK_FENCE);box(w,dx+4,y,z,1,s.height()-1,1,Blocks.OAK_FENCE);box(w,dx,y+s.height()-1,z-1,5,1,5,a%2==0?cloth:Blocks.WHITE_WOOL);box(w,dx,y,z+2,5,1,1,Blocks.OAK_SLAB);put(w,dx+1,y,z+3,Blocks.BARREL);}}
         }
     }
-    public static void flag(ServerWorld w,Spec.PointsRow p,int team){Block color=team<0?Blocks.WHITE_WOOL:team==0?Blocks.CYAN_WOOL:Blocks.PURPLE_WOOL;box(w,p.x(),p.elevation()+1,p.z(),1,6,1,Blocks.OAK_FENCE);box(w,p.x()+1,p.elevation()+4,p.z(),3,2,1,color);put(w,p.x(),p.elevation()+7,p.z(),Blocks.SEA_LANTERN);}
+    public static void flag(ServerWorld w,Spec.PointsRow p,int team){flag(w,p.x(),p.elevation(),p.z(),team);}
+    /** The flag of a point or a supply house: a pole of six fence over the ground at (x, y, z), three blocks of cloth (white neutral, cyan Dawn, purple Dusk) and a sea lantern on top. */
+    public static void flag(ServerWorld w,int x,int y,int z,int team){Block color=team<0?Blocks.WHITE_WOOL:team==0?Blocks.CYAN_WOOL:Blocks.PURPLE_WOOL;box(w,x,y+1,z,1,6,1,Blocks.OAK_FENCE);box(w,x+1,y+4,z,3,2,1,color);put(w,x,y+7,z,Blocks.SEA_LANTERN);}
 }

@@ -162,7 +162,7 @@ public final class Structures {
     /** The revision of the landmark pass of the arena build: the landmark blend of Arena.height (the flat ring, the shoulder and its relief) and the landmark yard of Arena.buildColumn. It is in hash(), so a change
      *  to either builds every map with landmarks once more; bump it whenever one of them changes. */
     static final String PASS="landmark-pass-3";
-    /** CRC32 (hex) of what the landmarks of a map are made of: its landmarks rows, the pieces rows and the bytes of their templates' structure files, the landmarkLines rows of those templates, the revision of the
+    /** CRC32 (hex) of what the landmarks of a map are made of: its landmarks rows, the pieces rows and the bytes of their templates' structure files, the landmarkLines rows of those templates, its supplyHouses rows, the revision of the
      *  landmark pass (PASS, on a map with landmarks rows only) and salt. It is in the map cache marker, so a world whose map was built with other landmarks builds that map once more. */
     public static String hash(int map){
         var crc=new CRC32();boolean any=false;
@@ -172,6 +172,7 @@ public final class Structures {
             crc.update(fileBytes(r.template()));
             for(var l:Spec.LANDMARKLINES)if(l.template().equals(r.template()))crc.update(l.toString().getBytes(StandardCharsets.UTF_8));
         }
+        for(var h:Spec.SUPPLYHOUSES)if(h.map()==map)crc.update(h.toString().getBytes(StandardCharsets.UTF_8)); // the supply houses of the map: their yards, spurs and names
         if(any)crc.update(PASS.getBytes(StandardCharsets.UTF_8)); // a map with no landmarks keeps the hash it had
         crc.update(salt.getBytes(StandardCharsets.UTF_8));
         return Long.toHexString(crc.getValue());

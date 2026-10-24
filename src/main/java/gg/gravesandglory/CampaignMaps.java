@@ -87,6 +87,8 @@ public final class CampaignMaps {
             road(-85,-176,-35,-145,4);road(70,100,40,145,3);
         }
         landmarks(structures);
+        // The supply houses (Phase 3 Task 8b): a spur from the yard centre of each house of this map out of its front gate to the middle lane, laid with the other roads so the woodland keeps off it and Walkability files the part inside the house as building
+        for(var h:Spec.SUPPLYHOUSES)if(h.map()==selected)road(h.yardX(),h.yardZ(),h.spurX(),h.spurZ(),4);
         // The integrated client re-selects the same map while the server builds it,
         // so every shared table is swapped in whole, never left half filled.
         Spec.POINTS=points;roads=building;Spec.STRUCTURES=structures.toArray(Spec.StructuresRow[]::new);Spec.TERRAIN=terrain.toArray(Spec.TerrainRow[]::new);
