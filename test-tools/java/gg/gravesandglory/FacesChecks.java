@@ -178,31 +178,32 @@ final class FacesChecks {
 
         static Field field(Class<?> k, String name) throws NoSuchFieldException { Field f = k.getDeclaredField(name); f.setAccessible(true); return f; }
 
-        /** The UVs a part's cuboids draw, as the bounding rectangle {u0, v0, u1, v1} in px of a w x h sheet, or null when the reflection fails. */
-        static float[] uvBounds(ModelPart part, int w, int h) {
+        /** A part's cuboids, in the order its bone lists its boxes, or null when the reflection fails. */
+        static List<?> cuboidsOf(ModelPart part) {
+            try { return (List<?>) field(ModelPart.class, "cuboids").get(part); }
+            catch (ReflectiveOperationException e) { return null; }
+        }
+
+        /** The UVs one cuboid draws, as the bounding rectangle {u0, v0, u1, v1} in px of a w x h sheet, or null when the reflection fails. */
+        static float[] uvBounds(Object cuboid, int w, int h) {
             try {
                 float u0 = 1e9f, v0 = 1e9f, u1 = -1e9f, v1 = -1e9f;
-                for (Object cuboid : (List<?>) field(ModelPart.class, "cuboids").get(part)) {
-                    for (Object quad : (Object[]) field(cuboid.getClass(), "sides").get(cuboid)) {
-                        for (Object vertex : (Object[]) field(quad.getClass(), "vertices").get(quad)) {
-                            float u = field(vertex.getClass(), "u").getFloat(vertex), v = field(vertex.getClass(), "v").getFloat(vertex);
-                            u0 = Math.min(u0, u); v0 = Math.min(v0, v); u1 = Math.max(u1, u); v1 = Math.max(v1, v);
-                        }
+                for (Object quad : (Object[]) field(cuboid.getClass(), "sides").get(cuboid)) {
+                    for (Object vertex : (Object[]) field(quad.getClass(), "vertices").get(quad)) {
+                        float u = field(vertex.getClass(), "u").getFloat(vertex), v = field(vertex.getClass(), "v").getFloat(vertex);
+                        u0 = Math.min(u0, u); v0 = Math.min(v0, v); u1 = Math.max(u1, u); v1 = Math.max(v1, v);
                     }
                 }
                 return new float[]{u0 * w, v0 * h, u1 * w, v1 * h};
             } catch (ReflectiveOperationException e) { return null; }
         }
 
-        /** The box of a part's first cuboid, {minX, minY, minZ, maxX, maxY, maxZ}, or null. */
-        static float[] boxOf(ModelPart part) {
+        /** One cuboid's box, {minX, minY, minZ, maxX, maxY, maxZ}, or null. */
+        static float[] boxOf(Object cuboid) {
             try {
-                var cuboids = (List<?>) field(ModelPart.class, "cuboids").get(part);
-                if (cuboids.size() != 1) return null;
-                Object q = cuboids.get(0);
                 String[] names = {"minX", "minY", "minZ", "maxX", "maxY", "maxZ"};
                 float[] out = new float[6];
-                for (int i = 0; i < 6; i++) out[i] = field(q.getClass(), names[i]).getFloat(q);
+                for (int i = 0; i < 6; i++) out[i] = field(cuboid.getClass(), names[i]).getFloat(cuboid);
                 return out;
             } catch (ReflectiveOperationException e) { return null; }
         }
@@ -220,8 +221,9 @@ final class FacesChecks {
                 if (count != FACES || m.faceCount != count) wrong.add(t + ": faces.count " + count + ", the loaded model " + m.faceCount + " (want " + FACES + ")");
                 int w = j.has("size") ? j.getAsJsonArray("size").get(0).getAsInt() : 64, h = j.has("size") ? j.getAsJsonArray("size").get(1).getAsInt() : 64;
                 String[] names = new String[count];
-                int[][] uv = new int[count][];
-                int[] box = null;
+                int[][][] uv = new int[count][][];   // per variant, per box of the face bone: the box's uv
+                int[][] box = null;                  // per box: its size, the same in every face bone
+                int boxes = 0;
                 for (var el : j.getAsJsonArray("bones")) {
                     JsonObject b = el.getAsJsonObject();
                     if (!b.has("variants")) continue;
@@ -230,14 +232,23 @@ final class FacesChecks {
                     int v = vs.get(0).getAsInt();
                     if (names[v] != null) wrong.add(t + ": two bones carry variant " + v);
                     names[v] = b.get("name").getAsString();
-                    JsonObject bx = b.getAsJsonArray("boxes").get(0).getAsJsonObject();
-                    uv[v] = new int[]{bx.getAsJsonArray("uv").get(0).getAsInt(), bx.getAsJsonArray("uv").get(1).getAsInt()};
-                    int[] sz = {bx.getAsJsonArray("size").get(0).getAsInt(), bx.getAsJsonArray("size").get(1).getAsInt(), bx.getAsJsonArray("size").get(2).getAsInt()};
-                    if (box == null) box = sz; else if (box[0] != sz[0] || box[1] != sz[1] || box[2] != sz[2]) wrong.add(t + ": face bone of variant " + v + " has another size");
+                    var bxs = b.getAsJsonArray("boxes");
+                    if (box == null) { boxes = bxs.size(); box = new int[boxes][]; }
+                    else if (bxs.size() != boxes) { wrong.add(t + ": face bone of variant " + v + " has " + bxs.size() + " boxes, not " + boxes); continue; }
+                    uv[v] = new int[boxes][];
+                    for (int k = 0; k < boxes; k++) {
+                        JsonObject bx = bxs.get(k).getAsJsonObject();
+                        uv[v][k] = new int[]{bx.getAsJsonArray("uv").get(0).getAsInt(), bx.getAsJsonArray("uv").get(1).getAsInt()};
+                        int[] sz = {bx.getAsJsonArray("size").get(0).getAsInt(), bx.getAsJsonArray("size").get(1).getAsInt(), bx.getAsJsonArray("size").get(2).getAsInt()};
+                        if (box[k] == null) box[k] = sz; else if (box[k][0] != sz[0] || box[k][1] != sz[1] || box[k][2] != sz[2]) wrong.add(t + ": face bone of variant " + v + " has another size for its box " + k);
+                    }
                 }
                 boolean complete = true;
-                for (int v = 0; v < count; v++) if (names[v] == null) { wrong.add(t + ": no bone carries variant " + v); complete = false; }
+                for (int v = 0; v < count; v++) if (names[v] == null || uv[v] == null) { wrong.add(t + ": no bone carries variant " + v); complete = false; }
                 if (!complete || box == null) continue;
+                if (boxes < 1 || boxes > 2) wrong.add(t + ": the face bones hold " + boxes + " boxes (the head, and with a beard block the beard volume)");
+                int fileFixed = j.getAsJsonObject("faces").has("fixed") ? j.getAsJsonObject("faces").get("fixed").getAsInt() : -1;
+                if (m.faceFixed != fileFixed) wrong.add(t + ": the loaded model pins face " + m.faceFixed + ", the file says " + fileFixed);
                 // a draw wearing any number shows exactly the one face bone of that number mod count, the same model otherwise
                 for (int stage = 1; stage <= 3; stage++) {
                     var look = new TroopModels.Look(row, stage, false, null);
@@ -258,22 +269,37 @@ final class FacesChecks {
                 }
                 // the four face bones draw one box from the four slots of the sheet
                 var parts = partsOf(m);
-                float[] box0 = boxOf(parts.get(names[0]));
-                int fw = 2 * (box[0] + box[2]), fh = box[2] + box[1];
+                var cuboids0 = cuboidsOf(parts.get(names[0]));
                 for (int v = 0; v < count; v++) {
-                    var part = parts.get(names[v]);
-                    float[] bounds = uvBounds(part, w, h), b = boxOf(part);
-                    if (bounds == null || b == null || box0 == null) { wrong.add(t + ": the cuboid of " + names[v] + " could not be read"); continue; }
-                    float[] want = {uv[v][0], uv[v][1], uv[v][0] + fw, uv[v][1] + fh};
-                    for (int i = 0; i < 4; i++) if (Math.abs(bounds[i] - want[i]) > 0.01f) { wrong.add(t + ": " + names[v] + " draws sheet px " + java.util.Arrays.toString(bounds) + ", want " + java.util.Arrays.toString(want)); break; }
-                    for (int i = 0; i < 6; i++) if (Math.abs(b[i] - box0[i]) > 1e-4f) { wrong.add(t + ": " + names[v] + " has another box than " + names[0]); break; }
-                    uvs++;
+                    var cuboids = cuboidsOf(parts.get(names[v]));
+                    if (cuboids == null || cuboids0 == null || cuboids.size() != boxes || cuboids0.size() != boxes) { wrong.add(t + ": " + names[v] + " does not read back " + boxes + " cuboids"); continue; }
+                    for (int k = 0; k < boxes; k++) {
+                        float[] bounds = uvBounds(cuboids.get(k), w, h), b = boxOf(cuboids.get(k)), box0 = boxOf(cuboids0.get(k));
+                        if (bounds == null || b == null || box0 == null) { wrong.add(t + ": cuboid " + k + " of " + names[v] + " could not be read"); continue; }
+                        int fw = 2 * (box[k][0] + box[k][2]), fh = box[k][2] + box[k][1];
+                        float[] want = {uv[v][k][0], uv[v][k][1], uv[v][k][0] + fw, uv[v][k][1] + fh};
+                        for (int i = 0; i < 4; i++) if (Math.abs(bounds[i] - want[i]) > 0.01f) { wrong.add(t + ": cuboid " + k + " of " + names[v] + " draws sheet px " + java.util.Arrays.toString(bounds) + ", want " + java.util.Arrays.toString(want)); break; }
+                        for (int i = 0; i < 6; i++) if (Math.abs(b[i] - box0[i]) > 1e-4f) { wrong.add(t + ": cuboid " + k + " of " + names[v] + " has another box than " + names[0]); break; }
+                        uvs++;
+                    }
                 }
                 ok.append(t).append(" (").append(String.join(", ", names)).append("), ");
             }
+            // a troop with no faces block (count 1 in the art file, the Templar's great helm) loads with no face bones and no faces key
+            StringBuilder bare = new StringBuilder();
+            for (String t : new TreeSet<>(TroopModels.ids())) {
+                var m = TroopModels.model(t);
+                if (m == null || m.faceCount > 0 || ArmyCards.spec(t) == null) continue;
+                var parts = partsOf(m);
+                for (String n : parts.keySet()) if (n.startsWith("face_v")) wrong.add(t + " has no faces block but loads the face bone " + n);
+                var look = new TroopModels.Look(ArmyCards.spec(t), 1, false, null);
+                m.prepare(look, false, false, 2);
+                for (String n : m.shownBones(m.shownMask())) if (n.startsWith("face_v")) wrong.add(t + " shows the face bone " + n);
+                bare.append(t).append(", ");
+            }
             // leave every model as a draw would next prepare it
             report("p2-faces-model", wrong.isEmpty() && draws > 0 && uvs > 0, troops.size() + " troops with faces: " + ok + draws + " prepare calls (variants -3 to " + (FACES + 5) + " at stages 1 to 3) each showed exactly the one face bone of the variant mod " + FACES
-                + " and the same other bones as variant 0; " + uvs + " face bones read back from their ModelPart cuboids draw their slot's rectangle of the sheet and one shared box" + (wrong.isEmpty() ? "" : "; wrong: " + wrong));
+                + " and the same other bones as variant 0; " + uvs + " face bones read back from their ModelPart cuboids draw their slot's rectangle of the sheet and one shared box per bone box (head, beard); no face bones on the faceless models: " + bare + (wrong.isEmpty() ? "" : "; wrong: " + wrong));
         }
 
         void picks(MinecraftClient c) {
