@@ -1,5 +1,6 @@
 {
  "weapon": "arming_sword_t3",
+ "density": 3,
  "thickness": 1,
  "grip": {
   "offset": [
