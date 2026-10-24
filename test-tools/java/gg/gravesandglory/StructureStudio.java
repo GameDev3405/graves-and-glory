@@ -117,6 +117,9 @@ public final class StructureStudio implements ModInitializer {
             pos.set(x,y,z);w.setBlockState(pos,state,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
         }
     }
+    /** Sets what the studio built before to air a few ticks ahead of the next piece, so the light engine has caught up when it is built: a crop
+     *  breaks when a neighbour is set beside it in the stale shadow of the last piece, and the rebuild then differs from the shipped file. */
+    public static void clear(ServerWorld w){if(dirty!=null)set(w,dirty,Blocks.AIR.getDefaultState());}
     /** Clears everything the studio built before, sets the new piece box and a margin of air around it, then the box itself to structure void. */
     static void stage(ServerWorld w,Vec3i size){
         BlockBox box=new BlockBox(ORIGIN.getX(),ORIGIN.getY(),ORIGIN.getZ(),ORIGIN.getX()+size.getX()-1,ORIGIN.getY()+size.getY()-1,ORIGIN.getZ()+size.getZ()-1);

@@ -18,18 +18,23 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.zip.CRC32;
 
 /** Authored pieces: vanilla structure files in the mod resources (data/gravesandglory/structures/GROUP/NAME.nbt), read here and never from the
  *  generated folder of a world, placed rotated about their centre block. Server side only: the pure functions are also called by the client. */
 public final class Structures {
     public static final String NS="gravesandglory";
-    /** One placement: the piece, how many blocks its file holds, the time it took, the footprint, and whether the file was not there. */
-    public record Placed(String id,int blocks,long nanos,BlockBox box,boolean missing){}
+    /** One placement: the piece, how many blocks its file holds, the time it took, the footprint, whether the file was not there, and the landmarks row that placed it ("-" for any other placement). */
+    public record Placed(String id,int blocks,long nanos,BlockBox box,boolean missing,String row){
+        public Placed(String id,int blocks,long nanos,BlockBox box,boolean missing){this(id,blocks,nanos,box,missing,"-");}
+    }
     /** The last 256 placements, oldest first. */
     public static final List<Placed> LOG=new CopyOnWriteArrayList<>();
     static final int LOG_LIMIT=256;
@@ -38,7 +43,8 @@ public final class Structures {
     static{
         // A reload can bring other files, and a new server another set of packs: nothing read earlier may outlive either.
         ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server,manager,success)->CACHE.clear());
-        ServerLifecycleEvents.SERVER_STOPPED.register(server->CACHE.clear());
+        // Nor may a landmark still queued when the server stopped land on the world of the next server.
+        ServerLifecycleEvents.SERVER_STOPPED.register(server->{CACHE.clear();clearQueue();});
     }
     private Structures(){}
 
@@ -120,18 +126,60 @@ public final class Structures {
 
     /** Places a piece with its centre block at (cx,y,cz), turned by rotation degrees. Structure void keeps what is there; air clears. A piece with
      *  no file places nothing, logs it and comes back with missing=true; nothing throws but a rotation that is not 0, 90, 180 or 270. */
-    public static Placed place(ServerWorld w,String id,int cx,int y,int cz,int rotation){
+    public static Placed place(ServerWorld w,String id,int cx,int y,int cz,int rotation){return place(w,id,cx,y,cz,rotation,"-");}
+    static Placed place(ServerWorld w,String id,int cx,int y,int cz,int rotation,String row){
         BlockRotation turn=rotation(rotation);
         long started=System.nanoTime();
         Loaded piece=load(w,id);
         if(piece==null){
             System.out.println("[Graves and Glory] structure missing: "+id);
-            return log(new Placed(id,0,System.nanoTime()-started,new BlockBox(cx,y,cz,cx,y,cz),true));
+            return log(new Placed(id,0,System.nanoTime()-started,new BlockBox(cx,y,cz,cx,y,cz),true,row));
         }
         StructureTemplate template=piece.template();Vec3i size=template.getSize();
         BlockPos pivot=pivot(size),origin=new BlockPos(cx,y,cz).subtract(pivot);
         StructurePlacementData data=new StructurePlacementData().setRotation(turn).setMirror(BlockMirror.NONE).setIgnoreEntities(true).setUpdateNeighbors(false).addProcessor(BlockIgnoreStructureProcessor.IGNORE_STRUCTURE_BLOCKS).setPosition(pivot);
         boolean any=template.place(w,origin,origin,data,w.getRandom(),Block.NOTIFY_LISTENERS);
-        return log(new Placed(id,any?piece.blocks():0,System.nanoTime()-started,footprint(size,cx,y,cz,rotation),false));
+        return log(new Placed(id,any?piece.blocks():0,System.nanoTime()-started,footprint(size,cx,y,cz,rotation),false,row));
+    }
+
+    // ---- landmarks (Phase 3): one piece per tick after the column build of a map ----
+    /** The landmarks rows of the selected map still to place, in sheet order. Server thread only. */
+    static final ArrayDeque<Spec.LandmarksRow> QUEUE=new ArrayDeque<>();
+    /** Harness only: mixed into hash(), so a check can make the marker of a built map stale. */
+    public static String salt="";
+    /** Queues the landmarks rows of the selected map (CampaignMaps.selected) in sheet order, after whatever was queued is dropped. */
+    public static void queueLandmarks(ServerWorld w){QUEUE.clear();for(var r:Spec.LANDMARKS)if(r.map()==CampaignMaps.selected)QUEUE.add(r);}
+    /** Places the next queued landmark (its centre block at (x, elevation, z), turned by its rotation) and comes back true once nothing is left. */
+    public static boolean step(ServerWorld w){
+        var r=QUEUE.poll();
+        if(r!=null)place(w,r.template(),r.x(),r.elevation(),r.z(),r.rotation(),r.id());
+        return QUEUE.isEmpty();
+    }
+    /** Drops every queued landmark: a map switch must not land a piece of the old map on the new one. */
+    public static void clearQueue(){QUEUE.clear();}
+    /** How many landmarks are still queued. */
+    public static int queued(){return QUEUE.size();}
+    /** The revision of the landmark pass of the arena build: the landmark blend of Arena.height (the flat ring, the shoulder and its relief) and the landmark yard of Arena.buildColumn. It is in hash(), so a change
+     *  to either builds every map with landmarks once more; bump it whenever one of them changes. */
+    static final String PASS="landmark-pass-3";
+    /** CRC32 (hex) of what the landmarks of a map are made of: its landmarks rows, the pieces rows and the bytes of their templates' structure files, the landmarkLines rows of those templates, its supplyHouses rows, the revision of the
+     *  landmark pass (PASS, on a map with landmarks rows only) and salt. It is in the map cache marker, so a world whose map was built with other landmarks builds that map once more. */
+    public static String hash(int map){
+        var crc=new CRC32();boolean any=false;
+        for(var r:Spec.LANDMARKS)if(r.map()==map){
+            any=true;crc.update(r.toString().getBytes(StandardCharsets.UTF_8));
+            for(var p:Spec.PIECES)if(p.id().equals(r.template()))crc.update(p.toString().getBytes(StandardCharsets.UTF_8));
+            crc.update(fileBytes(r.template()));
+            for(var l:Spec.LANDMARKLINES)if(l.template().equals(r.template()))crc.update(l.toString().getBytes(StandardCharsets.UTF_8));
+        }
+        for(var h:Spec.SUPPLYHOUSES)if(h.map()==map)crc.update(h.toString().getBytes(StandardCharsets.UTF_8)); // the supply houses of the map: their yards, spurs and names
+        if(any)crc.update(PASS.getBytes(StandardCharsets.UTF_8)); // a map with no landmarks keeps the hash it had
+        crc.update(salt.getBytes(StandardCharsets.UTF_8));
+        return Long.toHexString(crc.getValue());
+    }
+    /** The bytes of a piece's structure file as the mod ships it (data/gravesandglory/structures/ID.nbt on the class path); empty when there is none. */
+    static byte[] fileBytes(String id){
+        try(InputStream in=Structures.class.getResourceAsStream("/data/"+NS+"/structures/"+id+".nbt")){return in==null?new byte[0]:in.readAllBytes();}
+        catch(Exception e){return new byte[0];}
     }
 }

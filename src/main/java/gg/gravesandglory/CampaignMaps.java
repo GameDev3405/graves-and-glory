@@ -88,6 +88,9 @@ public final class CampaignMaps {
             structures.add(s("broken_chapel","ruin",70,100,28,22,12,"dusk",64));
             road(-85,-176,-35,-145,4);road(70,100,40,145,3);
         }
+        landmarks(structures);
+        // The supply houses (Phase 3 Task 8b): a spur from the yard centre of each house of this map out of its front gate to the middle lane, laid with the other roads so the woodland keeps off it and Walkability files the part inside the house as building
+        for(var h:Spec.SUPPLYHOUSES)if(h.map()==selected)road(h.yardX(),h.yardZ(),h.spurX(),h.spurZ(),4);
         // The integrated client re-selects the same map while the server builds it,
         // so every shared table is swapped in whole, never left half filled.
         Spec.POINTS=points;roads=building;Spec.STRUCTURES=structures.toArray(Spec.StructuresRow[]::new);Spec.TERRAIN=terrain.toArray(Spec.TerrainRow[]::new);
@@ -106,6 +109,20 @@ public final class CampaignMaps {
      *  so that the road passes the end of the hall 5 blocks off. It used to run straight and into the wall of the barracks. Null: the road is straight. */
     static int[] fanBend(int side,int z){return Integer.signum(z)==-side?new int[]{side*266,-side*12}:null;}
     static Spec.StructuresRow s(String id,String kind,int x,int z,int w,int d,int h,String palette,int y){return new Spec.StructuresRow(id,kind,x,z,w,d,h,palette,y);}
+    /** The landmarks rows of the selected map, in sheet order: each removes the row it replaces and stands in its place as a "landmark" row with the size and palette of its piece (width and depth swapped at 90 and 270), so the woodland, the dressing and
+     *  Arena.height keep off its footprint. A replaces that names no row, and that no earlier row of this map named, is logged. */
+    static void landmarks(List<Spec.StructuresRow> structures){
+        var named=new HashSet<String>();
+        for(var r:Spec.LANDMARKS){
+            if(r.map()!=selected)continue;
+            if(!r.replaces().equals("-")&&!structures.removeIf(st->st.id().equals(r.replaces()))&&!named.contains(r.replaces()))System.out.println("[Graves and Glory] landmark "+r.id()+": no row "+r.replaces());
+            named.add(r.replaces());
+            Spec.PiecesRow piece=null;for(var p:Spec.PIECES)if(p.id().equals(r.template()))piece=p;
+            if(piece==null){System.out.println("[Graves and Glory] landmark "+r.id()+": no piece "+r.template());continue;}
+            boolean turned=r.rotation()==90||r.rotation()==270;
+            structures.add(s(r.id(),"landmark",r.x(),r.z(),turned?piece.depth():piece.width(),turned?piece.width():piece.depth(),piece.height(),piece.palette(),r.elevation()));
+        }
+    }
     static void road(int a,int b,int c,int d,int width){building.add(new Road(a,b,c,d,width));}
     static double distance(double x,double z,Road r){double dx=r.bx-r.ax,dz=r.bz-r.az,t=Math.max(0,Math.min(1,((x-r.ax)*dx+(z-r.az)*dz)/(dx*dx+dz*dz)));return Math.hypot(x-r.ax-t*dx,z-r.az-t*dz);}
     static double roadDistance(int x,int z){double d=999;for(var r:roads)d=Math.min(d,distance(x,z,r)-r.width);return d;}

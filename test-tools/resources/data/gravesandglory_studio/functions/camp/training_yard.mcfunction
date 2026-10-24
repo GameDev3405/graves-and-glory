@@ -47,7 +47,6 @@ fill ~7 ~2 ~29 ~7 ~7 ~30 minecraft:air
 fill ~8 ~2 ~30 ~11 ~7 ~30 minecraft:air
 fill ~13 ~2 ~0 ~17 ~7 ~0 minecraft:air
 fill ~13 ~2 ~29 ~14 ~7 ~30 minecraft:air
-fill ~15 ~2 ~13 ~15 ~5 ~13 minecraft:air
 fill ~15 ~2 ~18 ~15 ~6 ~18 minecraft:air
 fill ~15 ~2 ~30 ~17 ~7 ~30 minecraft:air
 fill ~17 ~2 ~1 ~17 ~7 ~1 minecraft:air
@@ -61,12 +60,13 @@ fill ~6 ~3 ~30 ~6 ~7 ~30 minecraft:air
 fill ~9 ~3 ~1 ~10 ~7 ~1 minecraft:air
 fill ~12 ~3 ~0 ~12 ~7 ~0 minecraft:air
 fill ~12 ~3 ~30 ~12 ~7 ~30 minecraft:air
+fill ~15 ~3 ~13 ~15 ~6 ~13 minecraft:air
 fill ~16 ~3 ~1 ~16 ~7 ~1 minecraft:air
 fill ~18 ~3 ~0 ~18 ~7 ~0 minecraft:air
 fill ~18 ~3 ~30 ~18 ~7 ~30 minecraft:air
 fill ~3 ~4 ~29 ~5 ~7 ~29 minecraft:air
 fill ~9 ~4 ~29 ~11 ~7 ~29 minecraft:air
-fill ~15 ~4 ~14 ~15 ~5 ~17 minecraft:air
+fill ~15 ~4 ~14 ~15 ~6 ~17 minecraft:air
 fill ~22 ~4 ~0 ~22 ~7 ~0 minecraft:air
 fill ~22 ~4 ~30 ~22 ~7 ~30 minecraft:air
 fill ~15 ~5 ~12 ~15 ~6 ~12 minecraft:air
@@ -75,7 +75,6 @@ fill ~0 ~6 ~4 ~0 ~7 ~7 minecraft:air
 fill ~0 ~6 ~10 ~0 ~7 ~13 minecraft:air
 fill ~0 ~6 ~16 ~0 ~7 ~19 minecraft:air
 fill ~0 ~6 ~22 ~0 ~7 ~24 minecraft:air
-fill ~15 ~6 ~14 ~15 ~6 ~16 minecraft:air
 fill ~16 ~6 ~2 ~17 ~7 ~10 minecraft:air
 fill ~16 ~6 ~12 ~16 ~6 ~18 minecraft:air
 fill ~16 ~6 ~20 ~20 ~7 ~29 minecraft:air
@@ -408,7 +407,8 @@ setblock ~9 ~2 ~1 minecraft:target
 # the yard standard: a dark oak fence pole in the north-east corner
 fill ~21 ~1 ~2 ~21 ~4 ~2 minecraft:dark_oak_fence
 
-# lanterns: on the posts of the notice wall and the two east corner posts, and two hung under the high back of the shade
+# lanterns: on the posts of the notice wall and the two east corner posts, and one on the smithing table under the shade (low, so that none shows through the Drillmaster's label from the first arrival)
+setblock ~15 ~2 ~13 minecraft:lantern
 setblock ~22 ~3 ~0 minecraft:lantern
 setblock ~22 ~3 ~30 minecraft:lantern
 setblock ~0 ~6 ~3 minecraft:lantern
@@ -416,8 +416,6 @@ setblock ~0 ~6 ~9 minecraft:lantern
 setblock ~0 ~6 ~15 minecraft:lantern
 setblock ~0 ~6 ~21 minecraft:lantern
 setblock ~0 ~6 ~25 minecraft:lantern
-setblock ~15 ~6 ~13 minecraft:lantern[hanging=true]
-setblock ~15 ~6 ~17 minecraft:lantern[hanging=true]
 
 # banners: the camp standard on the yard pole
 setblock ~21 ~5 ~2 minecraft:black_banner[rotation=8]{Patterns:[{Pattern:"bo",Color:4},{Pattern:"mc",Color:4}]}

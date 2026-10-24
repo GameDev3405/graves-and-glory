@@ -57,6 +57,8 @@ public final class Phase3Checks implements ClientModInitializer {
         SUITES.put("campwalk",CampWalk::new);
         SUITES.put("yard",Yard::new);
         SUITES.put("houses",Houses::new);
+        SUITES.put("landmarks",Landmarks::new);
+        SUITES.put("supply",Supply::new);
     }
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed,broken;
@@ -286,7 +288,7 @@ public final class Phase3Checks implements ClientModInitializer {
     static final class StudioChecks implements Suite {
         static final String MARKER="test/p3_marker";
         volatile int stage;volatile UUID player;volatile boolean exporting;volatile List<String> pieces=List.of();volatile Vec3i size=new Vec3i(1,1,1);
-        int index;
+        int index,settle;
         @Override public int limit(){return 1200+400*pieces.size();}
         static String slug(String id){return id.replace('/','-');}
         @Override public void step(MinecraftClient c,int tick){
@@ -294,15 +296,24 @@ public final class Phase3Checks implements ClientModInitializer {
             switch(stage){
                 case 1->{
                     if(index>=pieces.size()){stage=4;server(c,this::roundtrip);}
-                    else{stage=2;server(c,this::piece);}
+                    else{stage=8;server(c,b->{StructureStudio.clear(b.world);settle=0;stage=9;});}
                 }
-                case 3->{
-                    int sx=size.getX(),sy=size.getY(),sz=size.getZ();double d=Math.max(sx,sz)+8;var o=StructureStudio.ORIGIN;
-                    if(view(c,"studio-"+slug(pieces.get(index)),o.getX()+sx/2.0+0.7*d,o.getY()+sy+0.4*d,o.getZ()+sz/2.0+0.7*d,o.getX()+sx/2.0,o.getY()+sy/3.0,o.getZ()+sz/2.0))stage=6;
+                case 9->{if(++settle>=10){stage=2;server(c,this::piece);}} // the light settles after the last piece is cleared
+                case 3->{ // fix round 2: closer cameras (a piece the size of a market filled a fifth of the picture), and the two other corners
+                    int sx=size.getX(),sy=size.getY(),sz=size.getZ();double d=Math.max(sx,sz)*0.6+5;var o=StructureStudio.ORIGIN;
+                    if(view(c,"studio-"+slug(pieces.get(index)),o.getX()+sx/2.0+0.75*d,o.getY()+sy*0.8+0.25*d,o.getZ()+sz/2.0+0.75*d,o.getX()+sx/2.0,o.getY()+sy/3.0,o.getZ()+sz/2.0))stage=6;
                 }
                 case 6->{ // the north and west faces, which the first camera cannot see
-                    int sx=size.getX(),sy=size.getY(),sz=size.getZ();double d=Math.max(sx,sz)+8;var o=StructureStudio.ORIGIN;
-                    if(view(c,"studio-"+slug(pieces.get(index))+"-nw",o.getX()+sx/2.0-0.7*d,o.getY()+sy+0.4*d,o.getZ()+sz/2.0-0.7*d,o.getX()+sx/2.0,o.getY()+sy/3.0,o.getZ()+sz/2.0)){stage=7;server(c,b->{dumpTrip(b);index++;stage=1;});}
+                    int sx=size.getX(),sy=size.getY(),sz=size.getZ();double d=Math.max(sx,sz)*0.6+5;var o=StructureStudio.ORIGIN;
+                    if(view(c,"studio-"+slug(pieces.get(index))+"-nw",o.getX()+sx/2.0-0.75*d,o.getY()+sy*0.8+0.25*d,o.getZ()+sz/2.0-0.75*d,o.getX()+sx/2.0,o.getY()+sy/3.0,o.getZ()+sz/2.0))stage=10;
+                }
+                case 10->{ // the south and west faces (a market's front is the south)
+                    int sx=size.getX(),sy=size.getY(),sz=size.getZ();double d=Math.max(sx,sz)*0.6+5;var o=StructureStudio.ORIGIN;
+                    if(view(c,"studio-"+slug(pieces.get(index))+"-sw",o.getX()+sx/2.0-0.75*d,o.getY()+sy*0.8+0.25*d,o.getZ()+sz/2.0+0.75*d,o.getX()+sx/2.0,o.getY()+sy/3.0,o.getZ()+sz/2.0))stage=11;
+                }
+                case 11->{ // the north and east faces (a customs' road is the north)
+                    int sx=size.getX(),sy=size.getY(),sz=size.getZ();double d=Math.max(sx,sz)*0.6+5;var o=StructureStudio.ORIGIN;
+                    if(view(c,"studio-"+slug(pieces.get(index))+"-ne",o.getX()+sx/2.0+0.75*d,o.getY()+sy*0.8+0.25*d,o.getZ()+sz/2.0-0.75*d,o.getX()+sx/2.0,o.getY()+sy/3.0,o.getZ()+sz/2.0)){stage=7;server(c,b->{dumpTrip(b);index++;stage=1;});}
                 }
                 case 5->finish(c,"studio");
                 default->{}
@@ -605,10 +616,10 @@ public final class Phase3Checks implements ClientModInitializer {
             boolean ok=a.road()==1&&a.point()==0&&c.point()==1&&c.road()==0&&d.road()==1&&fine==poles;
             report("p3-walk-rule-map"+n,ok,"a stone on a ring cell that is also a road cell ("+onRoad[0]+","+onRoad[1]+"): road "+a.road()+" point "+a.point()+" (want road 1); on a ring cell off the roads ("+offRoad[0]+","+offRoad[1]+"): point "+c.point()+" road "+c.road()+" (want point 1); on a road cell outside the rings ("+outside[0]+","+outside[1]+"): road "+d.road()+" (want 1); the centre cell of "+fine+" of "+poles+" points is not road");
         }
-        /** A cell the scan visits and finds clear: dry, not a deck plank, outside every footprint, nothing with a collision shape at ground+1 or +2. */
+        /** A cell the scan visits and finds clear: dry, not a deck plank, outside every footprint (the ring of a point that a landmark encloses is not its footprint, Walkability.counts), nothing with a collision shape at ground+1 or +2. */
         static boolean plain(GravesAndGlory.Battle b,int x,int z){
             if(Arena.river(x,z)||Walkability.onDeck(x,z))return false;
-            for(var s:Spec.STRUCTURES)if(!s.kind().equals("bridge")&&Walkability.inside(s,x,z))return false;
+            for(var s:Spec.STRUCTURES)if(!s.kind().equals("bridge")&&Walkability.counts(s,x,z))return false;
             int g=Arena.ground(x,z);
             for(int y=g+1;y<=g+2;y++){var pos=new BlockPos(x,y,z);if(!b.world.getBlockState(pos).getCollisionShape(b.world,pos).isEmpty())return false;}
             return true;
@@ -635,8 +646,13 @@ public final class Phase3Checks implements ClientModInitializer {
      *  p3-yard-start (the START button of that screen gives a running battle with activeBattle march-1 within 900 ticks; then returnLobby and the battle is over),
      *  p3-yard-lessons (exactly four text displays tagged camp-lesson:<id> where the rows put them, their JSON holding the keybind menu, formation, attack and key.use in turn and no literal {key: marker; then menu is rebound to K,
      *  the lessons are placed again so that the client resolves the keybind afresh, and the display of lesson 1 on the client reads "Press K,"; picture camp-yard-lessons; the binding is put back),
-     *  p3-yard-dummies (exactly six armor stands tagged camp-dummy, at (-52.5+2k,65,-309.5), invulnerable, facing -90, iron helmet and leather chestplate),
-     *  p3-yard-first-arrival (campaignCleared 0: toLobby puts him within 0.1 of (-33.5,65,-303.5), yaw 90, pitch 8, picture camp-first-arrival from his own eyes; campaignCleared 1: at the spawn row; the profile is restored) and the picture camp-yard.
+     *  p3-yard-lesson-text (each board as the client holds it reads the sheet text with the bound key names), p3-yard-boards (each lesson is a fixed panel facing east that lies on its board's planks,
+     *  and no two of the four lessons and the Drillmaster's label overlap on screen from anywhere a commander stands around the yard), p3-yard-drill-sight (the Drillmaster's label is whole in sight
+     *  from the first arrival, the camp-yard camera and the way in; the benches for information), picture camp-yard-boards,
+     *  p3-yard-dummies (exactly six armor stands tagged camp-dummy, at (-52.5+2k,65,-309.5), invulnerable, facing yaw -90 (east), iron helmet and leather chestplate),
+     *  p3-yard-dummies-locked (an empty hand that right-clicks a dummy at the head or the chest takes nothing),
+     *  p3-yard-first-arrival (campaignCleared 0: toLobby puts him within 0.1 of the camp row's first arrival (firstDx, 65, firstDz), yaw 90 (west, to the Drillmaster), pitch 8, picture camp-first-arrival from his own eyes;
+     *  campaignCleared 1: at the spawn row; the profile is restored) and the picture camp-yard.
      *  No check passes on nothing: zero villagers, zero displays, zero stands or a missing button are failures. */
     static final class Yard implements Suite {
         static final Spec.CampRow C=Spec.CAMP[0];
@@ -860,6 +876,34 @@ public final class Phase3Checks implements ClientModInitializer {
             }
             return out.toString();
         }
+        /** Whether a commander can take a dummy's armour: for each stand tagged camp-dummy, an empty main hand right-clicks it at the head (y 1.8) and at the chest (y 1.3) along the server's own path
+         *  (UseEntityCallback, then ArmorStandEntity.interactAt when the callback passes). The helmet and the chestplate must stay on the stand and the hand must stay empty; anything taken is put back,
+         *  and so is what the player held. "ok ..." when nothing could be taken; a spectator or fewer than six dummies is a failure, not a pass. */
+        static String dummiesLocked(GravesAndGlory.Battle b,net.minecraft.server.network.ServerPlayerEntity p){
+            var w=b.world;var out=new StringBuilder();int n=0,clicks=0;
+            var mode=p.interactionManager.getGameMode();p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE); // a commander in the camp (toLobby); the picture views leave the harness player a spectator
+            if(p.isSpectator())return "the player is still a spectator, so a click takes nothing whatever the dummies allow";
+            var held=p.getMainHandStack().copy();var hand=net.minecraft.util.Hand.MAIN_HAND;
+            var head=net.minecraft.entity.EquipmentSlot.HEAD;var chest=net.minecraft.entity.EquipmentSlot.CHEST;
+            for(var e:w.iterateEntities())if(e instanceof net.minecraft.entity.decoration.ArmorStandEntity s&&s.getCommandTags().contains("camp-dummy")){
+                n++;
+                for(double y:new double[]{1.8,1.3}){
+                    clicks++;p.setStackInHand(hand,net.minecraft.item.ItemStack.EMPTY);
+                    var r=net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.invoker().interact(p,w,hand,s,new net.minecraft.util.hit.EntityHitResult(s,s.getPos().add(0,y,0)));
+                    if(r==net.minecraft.util.ActionResult.PASS)r=s.interactAt(p,new Vec3d(0,y,0),hand);
+                    boolean helmet=s.getEquippedStack(head).isOf(net.minecraft.item.Items.IRON_HELMET),coat=s.getEquippedStack(chest).isOf(net.minecraft.item.Items.LEATHER_CHESTPLATE);
+                    var took=p.getMainHandStack();
+                    if(!took.isEmpty()||!helmet||!coat){
+                        out.append(String.format(Locale.ROOT,"dummy at (%.1f, %.1f): a click at y %.1f gave %s (%s)%s%s; ",s.getX(),s.getZ(),y,took.isEmpty()?"nothing in hand":took.getItem().toString()+" in hand",r,helmet?"":", the helmet is gone",coat?"":", the chestplate is gone"));
+                        if(!helmet)s.equipStack(head,new net.minecraft.item.ItemStack(net.minecraft.item.Items.IRON_HELMET));
+                        if(!coat)s.equipStack(chest,new net.minecraft.item.ItemStack(net.minecraft.item.Items.LEATHER_CHESTPLATE));
+                    }
+                }
+            }
+            p.setStackInHand(hand,held);p.changeGameMode(mode);
+            if(n!=6)out.append(n).append(" stands tagged camp-dummy (want 6); ");
+            return out.length()==0?"ok "+n+" dummies, "+clicks+" empty-hand clicks at the head and the chest, nothing taken":out.toString();
+        }
         /** Where the player stands against a spot (position within the tolerance, yaw and pitch within 0.5): what is wrong, empty when right. */
         static String stands(net.minecraft.server.network.ServerPlayerEntity p,double x,double y,double z,double yaw,double pitch,double tol){
             var out=new StringBuilder();
@@ -920,44 +964,48 @@ public final class Phase3Checks implements ClientModInitializer {
                         report("p3-yard-lessons",why.isEmpty(),why.isEmpty()?"four lesson displays with the keybinds menu, formation, attack and key.use; with menu on K the client reads: "+seen:why);
                         GravesAndGloryClient.menu.setBoundKey(net.minecraft.client.util.InputUtil.fromTranslationKey(savedMenuKey));net.minecraft.client.option.KeyBinding.updateKeysByCode();savedMenuKey=null;
                         done=false;server(c,b->{replaceLessons(b.world);done=true;}); // fresh texts again, resolved with the key put back
-                        stage=20;waited=0;
+                        stage=9;waited=0;
                     }
                 }
-                case 20->{ // the boards as the client draws them, with the binding put back: what each says, then where each panel lies and whether two panels overlap from anywhere a commander stands
+                case 9->{ // the boards as the client draws them, with the binding put back: what each says, then where each panel lies and whether two panels overlap from anywhere a commander stands
                     if(done&&++waited>=30){
                         String text=lessonText(c);report("p3-yard-lesson-text",text.startsWith("ok "),text);
                         String boards=boards(c);report("p3-yard-boards",boards.startsWith("ok "),boards);
                         String sight=drillSight(c);report("p3-yard-drill-sight",sight.startsWith("ok "),sight);
-                        stage=21;waited=0;
+                        stage=10;waited=0;
                     }
                 }
-                case 21->{if(view(c,"camp-yard-boards",-44.0,67.0,-304.5,-56.0,67.0,-304.5)){stage=9;waited=0;}}
-                case 9->{
+                case 10->{if(view(c,"camp-yard-boards",-44.0,67.0,-304.5,-56.0,67.0,-304.5)){stage=11;waited=0;}}
+                case 11->{
                     if(waited==0){done=false;serverPart="";server(c,b->{serverPart=dummies(b);done=true;});waited=1;}
-                    else if(done){report("p3-yard-dummies",serverPart.isEmpty(),serverPart.isEmpty()?"six armor stands tagged camp-dummy at their positions, invulnerable, in an iron helmet and a leather chestplate":serverPart);stage=10;waited=0;}
+                    else if(done){report("p3-yard-dummies",serverPart.isEmpty(),serverPart.isEmpty()?"six armor stands tagged camp-dummy at their positions, invulnerable, in an iron helmet and a leather chestplate":serverPart);stage=12;waited=0;}
                 }
-                case 10->{ // first arrival with no battle cleared
+                case 12->{ // the dummies' armour stays on: an empty hand clicks each at the head and the chest
+                    if(waited==0){done=false;serverPart="";server(c,b->{serverPart=dummiesLocked(b,b.server.getPlayerManager().getPlayer(me));done=true;});waited=1;}
+                    else if(done){report("p3-yard-dummies-locked",serverPart.startsWith("ok "),serverPart);stage=13;waited=0;}
+                }
+                case 13->{ // first arrival with no battle cleared
                     if(waited==0){done=false;arrivalA="";arrivalB="";c.setScreen(null);server(c,b->{b.campaign.leash=true;b.campaign.profile(me).campaignCleared=0;b.campaign.toLobby(b.server.getPlayerManager().getPlayer(me));done=true;});waited=1;}
                     else if(done&&++waited>=30){
                         if((c.world.isChunkLoaded(((int)Math.floor(c.player.getX()))>>4,((int)Math.floor(c.player.getZ()))>>4)&&c.worldRenderer.isTerrainRenderComplete())||waited>230){
-                            done=false;server(c,b->{arrivalA=stands(b.server.getPlayerManager().getPlayer(me),C.originX()+C.firstDx(),65,C.originZ()+C.firstDz(),90,8,0.1);done=true;});stage=11;waited=0;
+                            done=false;server(c,b->{arrivalA=stands(b.server.getPlayerManager().getPlayer(me),C.originX()+C.firstDx(),65,C.originZ()+C.firstDz(),90,8,0.1);done=true;});stage=14;waited=0;
                         }
                     }
                 }
-                case 11->{
-                    if(done&&++waited>=3){shot(c,"camp-first-arrival");done=false;server(c,b->{b.campaign.profile(me).campaignCleared=1;b.campaign.toLobby(b.server.getPlayerManager().getPlayer(me));done=true;});stage=12;waited=0;}
+                case 14->{
+                    if(done&&++waited>=3){shot(c,"camp-first-arrival");done=false;server(c,b->{b.campaign.profile(me).campaignCleared=1;b.campaign.toLobby(b.server.getPlayerManager().getPlayer(me));done=true;});stage=15;waited=0;}
                 }
-                case 12->{
-                    if(done&&++waited>=5){done=false;server(c,b->{arrivalB=stands(b.server.getPlayerManager().getPlayer(me),C.originX()+C.spawnDx(),C.spawnY(),C.originZ()+C.spawnDz(),C.spawnYaw(),C.spawnPitch(),0.1);b.campaign.profile(me).campaignCleared=savedCleared;done=true;});stage=13;waited=0;}
+                case 15->{
+                    if(done&&++waited>=5){done=false;server(c,b->{arrivalB=stands(b.server.getPlayerManager().getPlayer(me),C.originX()+C.spawnDx(),C.spawnY(),C.originZ()+C.spawnDz(),C.spawnYaw(),C.spawnPitch(),0.1);b.campaign.profile(me).campaignCleared=savedCleared;done=true;});stage=16;waited=0;}
                 }
-                case 13->{
+                case 16->{
                     if(done){
                         String why=(arrivalA.isEmpty()?"":"campaignCleared 0: "+arrivalA)+(arrivalB.isEmpty()?"":"campaignCleared 1: "+arrivalB);
-                        report("p3-yard-first-arrival",why.isEmpty(),why.isEmpty()?"campaignCleared 0 arrives at the yard (-33.5, 65, -303.5) facing yaw 90, pitch 8; campaignCleared 1 arrives at the camp spawn":why);
-                        stage=14;
+                        report("p3-yard-first-arrival",why.isEmpty(),why.isEmpty()?String.format(Locale.ROOT,"campaignCleared 0 arrives at the yard (%.1f, 65, %.1f) facing yaw 90 (west), pitch 8; campaignCleared 1 arrives at the camp spawn",C.originX()+C.firstDx(),C.originZ()+C.firstDz()):why);
+                        stage=17;
                     }
                 }
-                case 14->{if(view(c,"camp-yard",-28.5,69,-290,-46,66,-304)){finish(c,"yard");stage=15;}}
+                case 17->{if(view(c,"camp-yard",-28.5,69,-290,-46,66,-304)){finish(c,"yard");stage=18;}}
                 default->{}
             }
         }
@@ -1486,9 +1534,10 @@ public final class Phase3Checks implements ClientModInitializer {
             report(name.apply("pits"),pi.paths()>0&&pi.paved()==0&&pi.lone()==0&&pi.earth()==0,"dirt path cells "+pi.paths()+", of them inside a plaza (within 9.2 blocks of a flag pole) or on the parade ground of a camp, where everything is paved, off the floors and decks: "+pi.paved()+(pi.paved()==0?"":", first "+pi.sample())
                 +"; with no dirt path on any of their four sides (anywhere): "+pi.lone()+"; coarse dirt or gravel on the ground outside the plazas and off the river: "+pi.earth()+(pi.earth()==0?"":", first "+pi.earthSample())+"; lone cells the dressing's own guard put back as ground: "+MapDressing.despeckled);
             var we=wear(b);
-            report(name.apply("wear"),we.verge()>0&&we.ring()>0&&we.gaps()==0,"worn band: dirt path cells that touch a road cell on a side "+we.verge()+", plain ground left beside a road that the band should have covered "+we.gapsRoad()+"; worn ring: dirt path cells just outside the edge stone of a point "+we.ring()+", plain ground left in it "+we.gapsRing()+(we.gaps()==0?"":", first "+we.sample()));
+            report(name.apply("wear"),we.verge()>0&&(we.ring()>0||we.rings()==0)&&we.gaps()==0,"worn band: dirt path cells that touch a road cell on a side "+we.verge()+", plain ground left beside a road that the band should have covered "+we.gapsRoad()+"; worn ring of the "+we.rings()+" laid rings no landmark encloses"+(we.rings()==0?" (none on this map: the outposts pave round theirs)":"")+": dirt path cells just outside the edge stone of a point "+we.ring()+", plain ground left in it "+we.gapsRing()+(we.gaps()==0?"":", first "+we.sample()));
             var pl=plazas(b,n);
-            report(name.apply("plaza"),pl.cells()>0&&pl.wrong()==0,"plaza cells (within 9.2 blocks of a flag pole, off the 3x3 pad, the water and the buildings) "+pl.cells()+", not the block of the pattern (earth, a compass of trim, a ring of paving) "+pl.wrong()+(pl.wrong()==0?"":", first: "+pl.sample()));
+            boolean noPlaza=Arrays.stream(Spec.POINTS).allMatch(p->enclosed(p)||Math.abs(p.x()-Arena.riverX(p.z()))<11);
+            report(name.apply("plaza"),(pl.cells()>0||noPlaza)&&pl.wrong()==0,(noPlaza?"every point of this map is on the river or inside an outpost (Task 6), which paves it; ":"")+"plaza cells (within 9.2 blocks of a flag pole, off the 3x3 pad, the water and the buildings) "+pl.cells()+", not the block of the pattern (earth, a compass of trim, a ring of paving) "+pl.wrong()+(pl.wrong()==0?"":", first: "+pl.sample()));
         }
         /** The ring of every capture point: per point {ring cells, those over river water, those on a deck or its rails, those with air under, pad cells with air under}. A ring cell is smooth stone at the elevation of the point, radius-1 to radius out. */
         record Ring(boolean ok,String text){}
@@ -1555,7 +1604,7 @@ public final class Phase3Checks implements ClientModInitializer {
                 if((z&15)==0)w.getChunk(x>>4,z>>4);
                 var top=w.getBlockState(new BlockPos(x,Arena.height(x,z),z));
                 if(!top.isOf(Blocks.DIRT_PATH)){
-                    if((top.isOf(Blocks.COARSE_DIRT)||top.isOf(Blocks.GRAVEL))&&!Arena.river(x,z)){ // trampled earth is the floor of a plaza and the worn strips of dirt path: coarse dirt or gravel anywhere else is a patch
+                    if((top.isOf(Blocks.COARSE_DIRT)||top.isOf(Blocks.GRAVEL))&&!Arena.river(x,z)&&!landmarkCell(x,z)){ // a landmark lays its own yard and lanes (Task 6) // trampled earth is the floor of a plaza and the worn strips of dirt path: coarse dirt or gravel anywhere else is a patch
                         double pd=999;for(var q:Spec.POINTS)pd=Math.min(pd,Math.hypot(x-q.x(),z-q.z()));
                         if(pd>=9.2){earth++;if(earth<=6)earthSample.append(earth>1?"; ":"").append(name(top)).append(" at (").append(x).append(", ").append(z).append(')');detail.append("earth ").append(name(top)).append(' ').append(x).append(' ').append(z).append((char)10);}
                     }
@@ -1581,7 +1630,7 @@ public final class Phase3Checks implements ClientModInitializer {
         }
         /** The worn band and the worn ring, looked at on the map that stands: the dirt path cells that touch a road cell (not a road cell themselves), and the plain ground that is still left beside a road cell of dirt path where MapDressing.wearable says the band
          *  should lie (gapsRoad), the dirt path cells of the worn ring of every point whose stone ring is laid, and the plain ground still left in it (gapsRing). */
-        record Wear(int verge,int ring,int gapsRoad,int gapsRing,String sample){int gaps(){return gapsRoad+gapsRing;}}
+        record Wear(int verge,int ring,int gapsRoad,int gapsRing,int rings,String sample){int gaps(){return gapsRoad+gapsRing;}}
         /** The top blocks on the four sides of a cell (west, east, north, south), a star after a road cell. */
         static String around(net.minecraft.server.world.ServerWorld w,int x,int z){
             var sb=new StringBuilder();
@@ -1596,9 +1645,10 @@ public final class Phase3Checks implements ClientModInitializer {
                 if(w.getBlockState(new BlockPos(x,Arena.height(x,z),z)).isOf(Blocks.DIRT_PATH))verge++;
                 else if(d.follows(x,z)&&d.wearable(x,z)){gr++;if(gr+gg<=6)sample.append(sample.length()>0?"; ":"").append("band (").append(x).append(", ").append(z).append(") with ").append(around(w,x,z));}
             }
+            int rings=0;
             for(var p:Spec.POINTS){
-                if(!Arena.ringLaid(p))continue;
-                int r=p.radius();
+                if(!Arena.ringLaid(p)||enclosed(p))continue; // an outpost (Task 6) paves round the ring of the point it encloses
+                int r=p.radius();rings++;
                 for(int dx=-r-4;dx<=r+4;dx++)for(int dz=-r-4;dz<=r+4;dz++){
                     if(!MapDressing.ringCell(dx,dz,r+.5))continue;
                     int x=p.x()+dx,z=p.z()+dz;var bd=MapDressing.bandOf(p,dx,dz);
@@ -1607,8 +1657,12 @@ public final class Phase3Checks implements ClientModInitializer {
                     else if(d.wearable(x,z)){gg++;if(gr+gg<=6)sample.append(sample.length()>0?"; ":"").append("ring of ").append(p.id()).append(" (").append(x).append(", ").append(z).append(") with ").append(around(w,x,z));}
                 }
             }
-            return new Wear(verge,ring,gr,gg,sample.toString());
+            return new Wear(verge,ring,gr,gg,rings,sample.toString());
         }
+        /** Inside the footprint of a landmark (Task 6): an authored piece lays its own floor, yard and lanes. */
+        static boolean landmarkCell(int x,int z){for(var s:Spec.STRUCTURES)if(s.kind().equals("landmark")&&Walkability.inside(s,x,z))return true;return false;}
+        /** A landmark of the map that stands encloses the point (its landmarks row names it: the Kingsfield outposts round B and D). */
+        static boolean enclosed(Spec.PointsRow p){for(var r:Spec.LANDMARKS)if(r.map()==CampaignMaps.selected&&r.encloses().equals(p.id()))return true;return false;}
         /** On what a structure builds: the cells x0..x0+width-1 by z0..z0+depth-1 (floor course, or the planks of a deck). */
         static boolean builtCell(int x,int z){
             for(var s:Spec.STRUCTURES){
@@ -1718,7 +1772,7 @@ public final class Phase3Checks implements ClientModInitializer {
      *  GRAVES_PHASE3_MAPS (system property gravesandglory.phase3Maps) lists the maps, default all five; one map per launch keeps a launch under half an hour. Each map is built over the map built before it (N+4 modulo 5 when the
      *  suite starts), so a stale block of the older map would show. Per map the walker follows, 2 blocks to the right of the centre line (a flag pole stands at the centre of a point), every lane from the Dawn camp over its crossing
      *  to the Dusk camp (lane0 to lane2), on Kingsfield the flank road over both outposts and the king's bridge (flank), the two link roads that join the lane heads of one side (link-west, link-east), and every spur road that ends at a
-     *  building (spur<k>-<building>; a spur is walked up to the wall of its building).
+     *  building (spur<k>-<building>; a spur is walked up to the wall of its building; the spur of a supply house is the lane house-<id>, walked through its front gate to 4 blocks short of the yard centre, GRAVES_WALK_ONLY=supply).
      *  The pictures (screenshots/p3-wt<N>-<sequence>-<what>.png, 1280x720, taken where the walker stands, hand and HUD hidden) are: both camps from their dais (camp-); per lane the start of the lane, the approach to the deck from the west
      *  bank, each capture point from 14 blocks up the road, the middle of the deck looking along it, the approach from the east bank (looking back at the deck) and the head of the lane on the Dusk side; per link road its start and middle; the
      *  first spur of each kind (houses and farm and mill, one tower of each camp); where a lane had a stuck window, the place from 16 and from 6 blocks before it (stuck-); the water where the ring band of a point on a deck crossed it, seen from the north
@@ -2080,6 +2134,8 @@ public final class Phase3Checks implements ClientModInitializer {
                 if((a==null)==(b==null))continue;
                 boolean aIn=a!=null;var st=aIn?a:b;
                 double sx=aIn?r.bx():r.ax(),sz=aIn?r.bz():r.az(),ex=aIn?r.ax():r.bx(),ez=aIn?r.az():r.bz(),l=Math.hypot(ex-sx,ez-sz),ux=(ex-sx)/l,uz=(ez-sz)/l,from=0,to=l;
+                Spec.SupplyHousesRow house=null;for(var hh:Spec.SUPPLYHOUSES)if(hh.map()==CampaignMaps.selected&&hh.landmark().equals(st.id())&&hh.yardX()==ex&&hh.yardZ()==ez)house=hh;
+                if(house!=null){out.add(houseLeg(house,sx,sz,ux,uz,l));continue;} // a supply house: its own lane (Task 8b), not a spur numbered with the others
                 for(var p:Spec.POINTS)if(Math.hypot(sx-p.x(),sz-p.z())<3.0)from=4.0; // it starts on the pole of a flag
                 for(double d=from;d<=l;d+=1.0)if(owner(sx+ux*d,sz+uz*d)!=null){to=d-1.0;break;}
                 if(to-from<8.0)continue;
@@ -2089,6 +2145,22 @@ public final class Phase3Checks implements ClientModInitializer {
                 out.add(leg);sp++;
             }
             return out;
+        }
+        /** Task 8b: the lane of a supply house, from the lane end through the front gate to 4 blocks short of the yard centre, 2 blocks to the right of the centre line (the flag stands on it). Pictures: house-ID-spur (2 blocks in, toward the gate),
+         *  house-ID-gate (10 blocks before the gate, at the flag) and house-ID-yard (at the end, at the front of the storehouse). The last stop holds the lane open until it is taken. */
+        static Leg houseLeg(Spec.SupplyHousesRow h,double sx,double sz,double ux,double uz,double l){
+            Spec.LandmarksRow r=null;for(var lm:Spec.LANDMARKS)if(lm.id().equals(h.landmark())&&lm.map()==h.map())r=lm;
+            Vec3i size=null;if(r!=null)for(var pc:Spec.PIECES)if(pc.id().equals(r.template()))size=new Vec3i(pc.width(),pc.height(),pc.depth());
+            double to=l-4.0;
+            var leg=new Leg("house-"+h.id(),2.0,new double[]{sx,sz},new double[]{sx+ux*to,sz+uz*to});
+            leg.holdEnd=true;
+            if(r==null||size==null)return leg;
+            Vec3d gate=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),15.5,3.0,36.5);
+            Vec3d store=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),15.5,3.0,11.5);
+            leg.stops.add(new Stop(leg.id+"-spur",2.0,gate.x,gate.y,gate.z));
+            leg.stops.add(new Stop(leg.id+"-gate",Math.max(3.0,leg.arcOf(gate.x,gate.z)-10.0),h.yardX()+0.5,h.elevation()+5.0,h.yardZ()+0.5));
+            leg.stops.add(new Stop(leg.id+"-yard",leg.len,store.x,store.y,store.z));
+            return leg;
         }
         static Spec.StructuresRow deckNear(int x,int z){
             Spec.StructuresRow best=null;double bd=1e9;
@@ -2222,7 +2294,7 @@ public final class Phase3Checks implements ClientModInitializer {
                 int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ();
                 for(var s:Spec.STRUCTURES){
                     String id=s.id();
-                    if(s.kind().equals("bridge")||id.matches("house_\\d|farm|mill|(dawn|dusk)_gate")||id.contains("_tower_"))continue; // those are seen from their roads, the gates from the dais
+                    if(s.kind().equals("bridge")||id.matches("house_\\d|farm|mill|(dawn|dusk)_gate")||id.contains("_tower_")||id.contains("-supply-"))continue; // those are seen from their roads, the gates from the dais, the supply houses from their lanes (house-ID)
                     double R=Math.max(s.width(),s.depth())/2.0+12.0,bs=1e9,bx=0,bz=0;boolean found=false;
                     for(int k=0;k<16;k++){
                         double a=k*Math.PI/8,x=Math.floor(s.x()+Math.cos(a)*R)+0.5,z=Math.floor(s.z()+Math.sin(a)*R)+0.5;int ix=(int)Math.floor(x),iz=(int)Math.floor(z);
@@ -2245,11 +2317,11 @@ public final class Phase3Checks implements ClientModInitializer {
 
         // ---- the scans, on the server thread ----
         record Sight(double len,double x,double z,double yaw,double ex,double ey,double ez,int road,int sign,double top,String by){}
-        /** Top blocks that cannot belong to this map: the snow and ice of Frostmarch, the podzol, ferns and mud bricks of Hollowwood, grass on the two maps without it, the leaves of the other family of trees. */
+        /** Top blocks that cannot belong to this map: the snow and ice of Frostmarch, the podzol, ferns and mud bricks (blocks, stairs, slabs and walls) of Hollowwood, grass on the two maps without it, the leaves of the other family of trees. */
         static Set<String> alien(int map){
             var s=new HashSet<String>();
             if(map!=2)s.addAll(List.of("snow","snow_block","powder_snow","packed_ice","blue_ice","ice"));
-            if(map!=3)s.addAll(List.of("podzol","fern","mud_bricks"));
+            if(map!=3)s.addAll(List.of("podzol","fern","mud_bricks","mud_brick_stairs","mud_brick_slab","mud_brick_wall"));
             if(map==2||map==3)s.addAll(List.of("grass_block","grass","poppy"));
             if(map<2)s.add("spruce_leaves");else if(map<4)s.add("oak_leaves");
             return s;
@@ -2882,6 +2954,863 @@ public final class Phase3Checks implements ClientModInitializer {
             boolean all=found==n;
             ck("p3-cw-labels",all&&bad.length()==0&&blocked==0&&overlaps==0&&(views>0||!ranLeg("leg")),"labels at y+3.7 of their rows "+found+" of "+n+(bad.length()==0?"":": "+bad)+"; views of labels from the walker's stops "+views+", with a point of the label out of sight "+blocked+(seenBad.length()==0?"":": "+seenBad)+"; pairs of labels overlapping in a view "+overlaps+(over.length()==0?"":": "+over));
             labelsDone=true;
+        }
+    }
+
+    /** Task 6 (suite landmarks): the landmarks rows of the maps in GRAVES_PHASE3_MAPS (system property gravesandglory.phase3Maps). Each map is switched to (built afresh, even when it stands) and, once ready, per row:
+     *  p3-lm-ID-placed (a LOG entry of this row since the switch, not missing; the row it replaces is gone from Spec.STRUCTURES and a landmark row of its id is there),
+     *  p3-lm-ID-fits (Placed.box equals Structures.footprint of the template size at the row's centre, elevation and rotation, inside |x|<=350, |z|<=250),
+     *  p3-lm-ID-clear (every structure-void cell of the template at local y 1 and up is air in the world, but the flag of an enclosed point: the pole column, its cloth and its lantern),
+     *  p3-lm-ID-roads (Walkability.scan over the footprint: through 0 and no blocked deck cell), p3-lm-ID-ring (no non-void template column within 19 of a point the row does not enclose; for an enclosed point the ring,
+     *  the centre pad and the flag are the arena's blocks), p3-lm-ID-gates (enclosing rows: every cell within 2 of a road that ends at the point, from radius 17.5 to the footprint edge, has no collision shape at ground+1 and +2),
+     *  p3-lm-ID-cover and -sight per landmarkLines row of the template (the world end points through Structures.toWorld, compared with the values the plan states; a raycast with COLLIDER, no fluids and the player:
+     *  cover passes on a block hit more than 0.3 before the end, sight on a miss or a hit within 0.3 of it). Per map p3-lm-budget-mapN (each row at most 100 ms, all at most 1.5 s), the pictures lm-mapN-overview-north and -south and
+     *  lm-ID-ground (and lm-ID-high off the kit) for the first row of each template (the plan's camera, turned round the piece when its view is not clear: see plan). Once per run p3-lm-switch-mid-queue (map 4 is switched to; while its landmarks are queued, map 0: the queue is empty at once, no kf- row is
+     *  placed after it, and map 0 is ready only once its own queue is drained) and p3-lm-cache (campaign.cached() after the build, not with Structures.salt="test", again after it is put back) and p3-lm-cache-pieces (a pieces row of a template of the map one block taller: another hash, the marker stale; put back: current again). A map with no landmarks rows passes p3-lm-budget-mapN with nothing to place.
+     *  Task 8b: the 18 rows of the supply houses (templates supply/*) are checked like the others; their -clear leaves out the flag column of the house (reserved: |x-yardX|<=3, |z-yardZ|<=3, elevation+1 to +8), their cover and sight lines are compared with the plan's world points (houseLine),
+     *  and per map with houses p3-lm-supply-clear-control-mapN (a block just outside the reserved column fails -clear, one inside does not, with the column dropped the flag fails it) and p3-lm-supply-lines-control-mapN (a world point out of place fails the comparison, a block on the sight line fails -sight,
+     *  the wall taken off the cover line fails -cover). */
+    static final class Landmarks implements Suite {
+        record Line(double fx,double fy,double fz,double tx,double ty,double tz){}
+        /** The world end points of the lines the plan states (ty NaN: the ground at the end point plus 2.6). */
+        static final Map<String,Line> EXPECTED=Map.ofEntries(
+            Map.entry("rg-mill/cover",new Line(-25.5,66.6,-167.5,-30.5,66.6,-145.5)),Map.entry("rg-mill/sight",new Line(-22.5,73.6,-173.5,-16.5,66.6,-145.5)),
+            Map.entry("kf-mill/cover",new Line(-24.5,66.6,-182.5,-29.5,66.6,-160.5)),Map.entry("kf-mill/sight",new Line(-21.5,73.6,-188.5,-15.5,66.6,-160.5)),
+            Map.entry("kf-outpost-west/cover",new Line(-116.5,76.6,113.5,-110.5,76.6,119.5)),Map.entry("kf-outpost-west/sight",new Line(-144.5,85.6,115.5,-160.5,Double.NaN,100.5)),
+            Map.entry("kf-outpost-east/cover",new Line(117.5,76.6,-112.5,111.5,76.6,-118.5)),Map.entry("kf-outpost-east/sight",new Line(145.5,85.6,-114.5,161.5,Double.NaN,-99.5)),
+            // Task 7: the gate (the west field in line with the passage: cover from behind the wall stub, sight from the rampart opening of the north tower) and the keep (cover inside the north wall, sight from the crenel on the wall-walk to the B deck)
+            Map.entry("ih-gate/cover",new Line(-32.5,66.6,-15.5,-60.5,Double.NaN,-15.5)),Map.entry("ih-gate/sight",new Line(-38.5,78.6,-8.5,-60.5,Double.NaN,0.5)),
+            Map.entry("ih-keep/cover",new Line(-8.5,66.6,25.5,3.5,66.6,0.5)),Map.entry("ih-keep/sight",new Line(-8.5,72.6,21.5,3.5,66.6,0.5)),
+            // Task 8: the lodge (cover from the yard behind its east wall, sight from the upper room of the gatehouse through its east window, both to the lodge lane) and the chapel (cover from the nave behind the pier of its south wall, sight from the nave through its window, both to the chapel lane)
+            Map.entry("fm-lodge/cover",new Line(-75.5,66.6,-184.5,-50.5,Double.NaN,-166.5)),Map.entry("fm-lodge/sight",new Line(-67.5,72.6,-172.5,-50.5,Double.NaN,-166.5)),
+            Map.entry("hw-chapel/cover",new Line(76.5,66.6,104.5,49.5,Double.NaN,141.5)),Map.entry("hw-chapel/sight",new Line(70.5,66.6,109.5,52.5,Double.NaN,127.5)));
+        record Shot(String name,double x,double y,double z,double tx,double ty,double tz){}
+        final List<Integer> maps=new ArrayList<>();
+        volatile List<Shot> shots=List.of();
+        int index,stage,shot;
+        volatile boolean switched,checked,hookDone,cacheDone;
+        volatile Set<Structures.Placed> before;
+        /** The once-per-run mid-queue switch runs on the server tick (the client suite does not step while a map builds). */
+        static volatile Runnable hook;
+        static boolean hooked;
+        Landmarks(){
+            for(String s:System.getProperty("gravesandglory.phase3Maps","0,1,2,3,4").split(","))if(!s.isBlank())maps.add(Integer.parseInt(s.trim()));
+            if(!hooked){hooked=true;net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(s->{var h=hook;if(h!=null)try{h.run();}catch(Throwable e){hook=null;report("p3-lm-switch-mid-queue",false,e.toString());e.printStackTrace();hookDone=true;}});}
+        }
+        @Override public int limit(){return 12000;}
+        static Set<Structures.Placed> snapshot(){var s=Collections.newSetFromMap(new IdentityHashMap<Structures.Placed,Boolean>());s.addAll(Structures.LOG);return s;}
+        static List<Structures.Placed> newer(Set<Structures.Placed> before){var out=new ArrayList<Structures.Placed>();for(var p:Structures.LOG)if(!before.contains(p))out.add(p);return out;}
+        @Override public void step(MinecraftClient c,int tick){
+            if(tick<20)return;
+            switch(stage){
+                case 0->{
+                    if(index>=maps.size()){stage=4;return;}
+                    int n=maps.get(index);switched=false;checked=false;
+                    server(c,b->{before=snapshot();b.campaign.switchMap(n);switched=true;});stage=1;
+                }
+                case 1->{
+                    int n=maps.get(index);var b=GravesAndGlory.battle;
+                    if(switched&&b!=null&&b.ready&&b.campaign.map==n&&CampaignMaps.selected==n){stage=2;server(c,x->check(x,n));}
+                }
+                case 2->{if(checked){shot=0;stage=3;}}
+                case 3->{
+                    if(shot>=shots.size()){index++;stage=0;return;}
+                    var s=shots.get(shot);if(view(c,s.name(),s.x(),s.y(),s.z(),s.tx(),s.ty(),s.tz()))shot++;
+                }
+                case 4->{hookDone=false;server(c,this::midQueue);stage=5;}
+                case 5->{var b=GravesAndGlory.battle;if(hookDone&&b!=null&&b.ready){stage=6;server(c,this::cache);}}
+                case 6->{if(cacheDone){finish(c,"landmarks");stage=7;}}
+                default->{}
+            }
+        }
+        @Override public void cleanup(MinecraftClient c){Structures.salt="";hook=null;server(c,b->b.campaign.leash=true);}
+
+        /** The pictures of map n: the overview, and for the first row of each template the ground view (and the high view off the kit), from the side of the nearest point the row does not enclose: the camera of the plan
+         *  (the centre plus u times max(w,d)+12 at ground+5, and times max(w,d)+30 at elevation+30, u toward that point). Where that camera stands in a block or another footprint, or something outside the piece stands
+         *  between it and the piece (the dressing of a capture ring, a tree, a house of the hamlet), u is turned by 30 degrees at a time, either way, to the first camera with a clear view; the turn is in the note. */
+        List<Shot> plan(GravesAndGlory.Battle b,int n){
+            var out=new ArrayList<Shot>();
+            // two overviews low and near enough to read through the fog of a shader pack (fix round 1: the one from (0, 175, 250) was lost in it): the north half (the hamlet, its market, farm and mill)
+            // from the middle of the field, and the middle (the customs, the warehouse, the crossing) from the south of it
+            out.add(new Shot("lm-map"+n+"-overview-north",-20,112,-60,-75,64,-150));
+            out.add(new Shot("lm-map"+n+"-overview-south",0,108,95,0,64,-15));
+            var seen=new HashSet<String>();
+            var player=b.server.getPlayerManager().getPlayerList().isEmpty()?null:b.server.getPlayerManager().getPlayerList().get(0);
+            for(var r:Spec.LANDMARKS){
+                if(r.map()!=n||!seen.add(r.template()))continue;
+                Spec.StructuresRow s=null;for(var st:Spec.STRUCTURES)if(st.id().equals(r.id()))s=st;if(s==null)continue;
+                Spec.PointsRow near=null;double best=Double.MAX_VALUE;
+                for(var pt:Spec.POINTS){if(pt.id().equals(r.encloses()))continue;double d=Math.hypot(pt.x()-r.x(),pt.z()-r.z());if(d<best){best=d;near=pt;}}
+                double a0=Math.atan2(near.z()-r.z(),near.x()-r.x());
+                int reach=Math.max(s.width(),s.depth());double tx=r.x()+.5,ty=r.elevation()+4,tz=r.z()+.5;
+                for(int high=0;high<(r.template().startsWith("kit/")?1:2);high++){
+                    int dist=reach+(high==1?30:12);Shot chosen=null,first=null;int turned=0;
+                    for(int t:new int[]{0,30,-30,60,-60,90,-90,120,-120,150,-150,180}){
+                        double a=a0+Math.toRadians(t),cx=r.x()+.5+Math.cos(a)*dist,cz=r.z()+.5+Math.sin(a)*dist;
+                        double cy=high==1?r.elevation()+30:Math.max(r.elevation(),Arena.ground((int)Math.floor(cx),(int)Math.floor(cz)))+5;
+                        var shot=new Shot("lm-"+r.id()+(high==1?"-high":"-ground"),cx,cy,cz,tx,ty,tz);if(first==null)first=shot;
+                        if(player!=null&&clearView(b,player,s,cx,cy,cz)){chosen=shot;turned=t;break;}
+                    }
+                    if(chosen==null){chosen=first;System.out.println("[p3] note view "+first.name()+": no clear camera round the piece, the plan's camera is kept");}
+                    else if(turned!=0)System.out.println("[p3] note view "+chosen.name()+": the plan's camera (toward "+near.id()+") had no clear view, turned "+turned+" degrees");
+                    out.add(chosen);
+                }
+                var side=ROADSIDE.get(r.template());
+                if(side!=null&&player!=null){var shot=roadShot(b,player,s,r,side,"road");if(shot!=null)out.add(shot);}
+                var front=FRONT.get(r.template());
+                if(front!=null&&player!=null){var shot=roadShot(b,player,s,r,front,"front");if(shot!=null)out.add(shot);}
+            }
+            return out;
+        }
+        /** Pictures from the side a piece shows its detail to (fix round 2: the market cross hid behind a stall, the toll board of the customs was in no picture): per template the eye {x, z} and the aim {x, y, z} in local
+         *  coordinates of the piece (the eye's z is where it stands, not a distance: a customs' road is the north side, a market's front the south). The eye is 4 above the ground; where that view is not clear (a tree, another
+         *  piece) the eye is moved along the piece by 5 blocks at a time, either way, and then 6 blocks further away. */
+        static final Map<String,double[]> ROADSIDE=Map.ofEntries(
+            Map.entry("kit/market",new double[]{9.5,23.5,9.5,5.0,6.5}),
+            Map.entry("kit/customs",new double[]{4.0,-11.0,6.0,3.0,1.0}),
+            // Task 7: the sides the Ironhold pieces show themselves from: the gate and the curtain from the west field (the outer face), the keep and the garrison from the north (the road to B, the lane), the barn from its yard (south and east)
+            Map.entry("ironhold/gate",new double[]{-15.0,23.5,3.0,6.0,23.5}),
+            Map.entry("ironhold/curtain",new double[]{-16.0,15.5,2.0,6.0,15.5}),
+            Map.entry("ironhold/keep",new double[]{23.5,-26.0,23.5,6.0,4.0}),
+            Map.entry("ironhold/garrison",new double[]{15.5,-14.0,15.5,4.0,8.0}),
+            Map.entry("ironhold/hay_barn",new double[]{12.0,32.0,12.0,3.0,10.0}),
+            // Task 8: the road side of each new piece, the side its lane or road comes to: the lodge from the east (its gate on the lane), the refuge from the north-west (where the lane runs), the signal tower from the north (its door),
+            // the chapel from the south (its door and the lane), the sawmill from the east (its open side), the logging camp from the lane (east), the moon shrine from the south (its gate and, through it, the moon gate)
+            Map.entry("frostmarch/lodge",new double[]{39.0,14.0,24.0,5.0,14.0}),
+            Map.entry("frostmarch/refuge",new double[]{4.0,-9.0,10.0,3.0,6.0}),
+            Map.entry("frostmarch/signal_tower",new double[]{7.5,-12.0,7.5,9.0,3.0}),
+            Map.entry("hollowwood/chapel",new double[]{9.0,33.0,11.0,5.0,22.0}),
+            Map.entry("hollowwood/sawmill",new double[]{36.0,12.0,14.0,3.0,9.0}),
+            Map.entry("hollowwood/logging_camp",new double[]{29.0,11.0,8.0,1.5,8.0}),
+            Map.entry("hollowwood/moon_shrine",new double[]{11.5,31.0,11.5,6.0,6.0}));
+        /** Task 8: the front of each new piece, the face that shows what it is (same format and same search for a clear eye as ROADSIDE): the lodge from the south (the hall and the long yard wall), the refuge from the south, the signal tower from the east (the slits and the stair),
+         *  the chapel from the west (the gable with the rose window), the sawmill from the south (its open side), the logging camp from the south-west (the lean-to, the piles, the hut behind), the moon shrine from the east-south-east (over the low wall: the court, the pool and the moon gate; the north side has the chapel in front of it). */
+        static final Map<String,double[]> FRONT=Map.ofEntries(
+            Map.entry("frostmarch/lodge",new double[]{14.0,34.0,14.0,5.0,12.0}),
+            Map.entry("frostmarch/refuge",new double[]{10.0,30.0,10.0,4.0,8.0}),
+            Map.entry("frostmarch/signal_tower",new double[]{30.0,7.5,7.5,9.0,7.5}),
+            Map.entry("hollowwood/chapel",new double[]{-16.0,15.5,4.0,8.0,15.5}),
+            Map.entry("hollowwood/sawmill",new double[]{12.0,32.0,12.0,4.0,9.0}),
+            Map.entry("hollowwood/logging_camp",new double[]{-8.0,24.0,8.0,2.0,7.0}),
+            Map.entry("hollowwood/moon_shrine",new double[]{32.0,16.0,9.0,6.0,3.0}));
+        static Shot roadShot(GravesAndGlory.Battle b,net.minecraft.entity.Entity player,Spec.StructuresRow s,Spec.LandmarksRow r,double[] a,String tag){
+            var size=Structures.template(b.world,r.template()).get().getSize();
+            double zs=Math.signum(a[1]-a[4]);
+            for(double far:new double[]{0,6})for(double along:new double[]{0,5,-5,10,-10}){
+                var eye=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),a[0]+along,0,a[1]+zs*far);
+                var aim=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),a[2],a[3],a[4]);
+                double cy=Math.max(r.elevation(),Arena.ground((int)Math.floor(eye.x),(int)Math.floor(eye.z)))+4;
+                if(clearView(b,player,s,eye.x,cy,eye.z))return new Shot("lm-"+r.id()+"-"+tag,eye.x,cy,eye.z,aim.x,aim.y,aim.z);
+            }
+            System.out.println("[p3] note view lm-"+r.id()+"-"+tag+": no clear camera on the "+tag+" side, no picture");
+            return null;
+        }
+        /** The single-column slivers on the shoulders of the landmarks (fix round 2: a column one block lower or higher than both neighbours on an axis stands as a dirt wedge in the grass): the cells of every landmark's
+         *  shoulder (the blend distance between 0 and the shoulder) that Arena.height makes lower or higher than both of its neighbours along x, or along z. Cells within 16 of the river are left out (its banks have their own profile). */
+        static int[] slivers(int n,StringBuilder first){
+            var seen=new HashSet<Long>();int cells=0,bad=0;
+            for(var s:Spec.STRUCTURES){
+                if(!s.kind().equals("landmark"))continue;
+                double sh=Arena.shoulder(s);int reachX=(int)Math.ceil(s.width()/2.0+2+sh+6),reachZ=(int)Math.ceil(s.depth()/2.0+2+sh+6);
+                for(int x=s.x()-reachX;x<=s.x()+reachX;x++)for(int z=s.z()-reachZ;z<=s.z()+reachZ;z++){
+                    double ld=Arena.landmarkDistance(s,x,z);if(!(ld>0&&ld<sh)||Math.abs(x-Arena.riverX(z))<16||!seen.add(key(x+1000,0,z+1000)))continue;
+                    cells++;int c=Arena.height(x,z),a=Arena.height(x-1,z),e=Arena.height(x+1,z),no=Arena.height(x,z-1),so=Arena.height(x,z+1);
+                    if(a>c&&e>c||a<c&&e<c||no>c&&so>c||no<c&&so<c){bad++;if(bad==1){System.out.println("[p3] note sliver window of "+s.id()+" at ("+x+","+z+"): smoothed heights, x across from "+(x-6)+", z down from "+(z-6)+", ld "+ld+", shoulder "+sh);for(int wz=-6;wz<=6;wz++){StringBuilder row=new StringBuilder();for(int wx=-6;wx<=6;wx++)row.append(String.format("%4d",Arena.height(x+wx,z+wz)));System.out.println("[p3] note   "+row);}System.out.println("[p3] note sliver window raw heights");for(int wz=-6;wz<=6;wz++){StringBuilder row=new StringBuilder();for(int wx=-6;wx<=6;wx++)row.append(String.format("%4d",Arena.rawHeight(x+wx,z+wz)));System.out.println("[p3] note   "+row);}}if(bad<=4)first.append(' ').append(s.id()).append(" (").append(x).append(',').append(z).append(") ").append(c).append(" among ").append(a).append(' ').append(e).append(' ').append(no).append(' ').append(so).append(';');}
+                }
+            }
+            return new int[]{cells,bad};
+        }
+        /** The camera (eyes at cx,cy,cz) stands in air (a ground camera also outside every other footprint), and the lines from it to the centre and the four corners of the piece at its elevation+2 and +4 meet nothing before the footprint (one block round it). */
+        static boolean clearView(GravesAndGlory.Battle b,net.minecraft.entity.Entity player,Spec.StructuresRow s,double cx,double cy,double cz){
+            var w=b.world;var eye=BlockPos.ofFloored(cx,cy,cz);
+            if(!w.getBlockState(eye).isAir()||!w.getBlockState(eye.down()).isAir())return false;
+            if(cy<s.elevation()+20)for(var o:Spec.STRUCTURES)if(o!=s&&!o.kind().equals("bridge")&&Math.abs(cx-o.x())<=o.width()/2.0+2&&Math.abs(cz-o.z())<=o.depth()/2.0+2)return false;
+            double hx=s.width()/2.0,hz=s.depth()/2.0;var from=new Vec3d(cx,cy,cz);
+            for(double[] c:new double[][]{{0,0},{-hx,-hz},{hx,-hz},{-hx,hz},{hx,hz}})for(int up:new int[]{2,4}){
+                var to=new Vec3d(s.x()+.5+c[0]*.8,s.elevation()+up,s.z()+.5+c[1]*.8);
+                var hit=w.raycast(new net.minecraft.world.RaycastContext(from,to,net.minecraft.world.RaycastContext.ShapeType.OUTLINE,net.minecraft.world.RaycastContext.FluidHandling.NONE,player));
+                if(hit.getType()!=net.minecraft.util.hit.HitResult.Type.MISS){var q=hit.getBlockPos();if(Math.abs(q.getX()-s.x())>hx+1||Math.abs(q.getZ()-s.z())>hz+1)return false;}
+            }
+            return true;
+        }
+
+        /** Task 7: boxes of a template in local cells {x0,y0,z0,x1,y1,z1} that stay free of collision shapes: the passage of the gate (11 wide, 6 high), the four land gates of the keep (5 wide, 4 high, through the 3-thick walls) and its crenel. */
+        static final Map<String,int[][]> OPENINGS=Map.ofEntries(
+            Map.entry("ironhold/gate",new int[][]{{0,1,18,6,6,28}}),
+            Map.entry("ironhold/keep",new int[][]{{7,1,0,11,4,2},{35,1,0,39,4,2},{7,1,24,11,4,26},{35,1,24,39,4,26},{14,7,0,15,8,0}}),
+            // Task 8: the gate passage and the hall door of the lodge; the four doorways of the refuge; the doorway of the signal tower and the hatch over the last steps of its stair; the south door, the window and the kept-clear cells of the chapel;
+            // the aisle of the sawmill (the lane runs through it); the foot of the moon gate and the gap between the pylons of the moon shrine
+            Map.entry("frostmarch/lodge",new int[][]{{23,1,12,26,4,16},{16,1,9,16,3,11}}),
+            Map.entry("frostmarch/refuge",new int[][]{{9,1,4,11,3,4},{9,1,12,11,3,12},{6,1,7,6,3,9},{14,1,7,14,3,9}}),
+            Map.entry("frostmarch/signal_tower",new int[][]{{6,1,3,8,3,3},{4,18,7,4,18,9}}),
+            Map.entry("hollowwood/chapel",new int[][]{{5,1,22,9,4,22},{11,2,22,14,3,22},{11,1,19,16,3,21}}),
+            Map.entry("hollowwood/sawmill",new int[][]{{9,1,10,20,3,12}}),
+            Map.entry("hollowwood/moon_shrine",new int[][]{{10,1,1,12,3,2},{10,1,16,12,5,17}}));
+        record Goal(String name,int x,int y,int z){}
+        /** Task 7: standing places (the feet cell, local) a squad has to be able to walk to from the ground outside, over doors, ladders and stairs: the tops of the towers and the walls, the lofts and floors. */
+        static final Map<String,List<Goal>> REACH=Map.ofEntries(
+            Map.entry("ironhold/gate",List.of(new Goal("north tower top",1,13,14),new Goal("south tower top",1,13,32),new Goal("north stub walk",2,11,6),new Goal("south stub walk",2,11,40))),
+            Map.entry("ironhold/curtain",List.of(new Goal("wall-walk",1,12,15),new Goal("north tower guard room",2,12,2),new Goal("south tower platform",2,12,28))),
+            Map.entry("ironhold/keep",List.of(new Goal("north wall crenel",14,7,0),new Goal("south wall-walk",20,7,25),new Goal("north west tower top",3,13,3),new Goal("donjon roof",36,18,13),new Goal("deck",23,1,13))),
+            Map.entry("ironhold/hay_barn",List.of(new Goal("loft",12,7,6),new Goal("barn floor",5,1,6),new Goal("yard",12,1,16))),
+            Map.entry("ironhold/garrison",List.of(new Goal("upper floor",14,6,16),new Goal("hall",15,1,15),new Goal("yard",15,1,5))),
+            // Task 8 (local feet cells): the upper room of the lodge gatehouse (by its ladder), the hall, the wing and the yard; the hut, its north doorstep and the lean-to of the refuge; the floor, the top of the stair, the platform and the fire side of the signal tower;
+            // the chapel (door, kept-clear cells, aisle, chancel, tower base); the sawmill (aisle, east end, saw deck, head of the ramp, bench); the logging camp (end of the lane, fire pit, hut, east edge, hoist); the moon shrine (gate, court, cloister, dais, moon gate)
+            Map.entry("frostmarch/lodge",List.of(new Goal("gatehouse room",25,7,14),new Goal("hall",8,1,10),new Goal("wing",8,1,3),new Goal("yard",20,1,9))),
+            Map.entry("frostmarch/refuge",List.of(new Goal("hut centre",10,1,8),new Goal("north doorstep",10,1,5),new Goal("lean-to",16,1,8))),
+            Map.entry("frostmarch/signal_tower",List.of(new Goal("tower floor",7,1,7),new Goal("top of the stair",4,18,7),new Goal("platform",4,19,5),new Goal("fire side",7,19,5))),
+            Map.entry("hollowwood/chapel",List.of(new Goal("door",7,1,21),new Goal("kept clear",13,1,20),new Goal("aisle",10,1,15),new Goal("chancel",23,1,15),new Goal("tower base",5,1,6))),
+            Map.entry("hollowwood/sawmill",List.of(new Goal("aisle",12,1,11),new Goal("east end",20,1,13),new Goal("saw deck",10,3,8),new Goal("ramp head",14,3,6),new Goal("bench",4,1,11))),
+            Map.entry("hollowwood/logging_camp",List.of(new Goal("end of the lane",10,1,8),new Goal("fire pit",5,1,8),new Goal("hut",5,1,3),new Goal("east edge",18,1,11),new Goal("hoist",5,1,12))),
+            Map.entry("hollowwood/moon_shrine",List.of(new Goal("gate",11,1,17),new Goal("court",6,1,8),new Goal("cloister",4,1,7),new Goal("dais",11,2,4),new Goal("moon gate",11,1,2))));
+        /** The control of the reach check (Task 7 fix round 1; the sealed cell inside solid stone it replaces could never be stood on, so it proved nothing): the pieces that have ladders are walked a second time with ladders switched off, and
+         *  at least one of their standing places (a tower top, a loft) must then be out of reach. A walk that reached them anyway (a leak, a ledge that is a jump too low) would not be testing the ladders. The garrison has none. */
+        static final Set<String> LADDERED=Set.of("ironhold/gate","ironhold/curtain","ironhold/keep","ironhold/hay_barn","frostmarch/lodge");
+        /** Task 8 fix round 1 (review M1): the other pieces have no ladders to switch off, so their reach checks get a control of another kind. The piece is walked a second time with cells sealed (full blocks whatever is there): a doorway, a ramp, the door of a hut,
+         *  or, for the two pieces that are open ruins and courts, every cell of the footprint's edge from y 1 to y 4 (the ring) except what is listed as a gap. `out` names exactly the standing places that must then be out of reach; every other one must still be reached.
+         *  A control can fail both ways: a way in nobody sealed (a breach, a ledge a jump too low) leaves a place reached that should be out, and a seal that cuts too much takes a place that should stay. Every piece with a control has all of its places reached with nothing sealed (the check above). */
+        record Control(String what,boolean ring,int[][] gaps,int[][] sealed,List<String> out){}
+        static Control seal(String what,int[][] sealed,String... out){return new Control(what,false,new int[0][],sealed,List.of(out));}
+        static Control ring(String what,int[][] gaps,String... out){return new Control(what,true,gaps,new int[0][],List.of(out));}
+        static final Map<String,List<Control>> CONTROLS=Map.ofEntries(
+            Map.entry("frostmarch/refuge",List.of(seal("the four doorways sealed",new int[][]{{9,1,4,11,3,4},{9,1,12,11,3,12},{6,1,7,6,3,9},{14,1,7,14,3,9}},"hut centre","north doorstep"))),
+            Map.entry("frostmarch/signal_tower",List.of(seal("the doorway sealed",new int[][]{{6,1,3,8,3,3}},"tower floor","top of the stair","platform","fire side"))),
+            Map.entry("hollowwood/chapel",List.of(ring("the whole edge of the footprint sealed",new int[0][],"door","kept clear","aisle","chancel","tower base"),ring("the edge sealed but the south door",new int[][]{{5,1,22,9,4,22}}))),
+            Map.entry("hollowwood/sawmill",List.of(seal("the log ramp and the logs beside it sealed",new int[][]{{15,1,5,16,2,9}},"saw deck","ramp head"))),
+            Map.entry("hollowwood/logging_camp",List.of(seal("the hut door sealed",new int[][]{{8,1,3,8,2,3}},"hut"))),
+            Map.entry("hollowwood/moon_shrine",List.of(ring("the whole edge of the footprint sealed",new int[0][],"gate","court","cloister","dais","moon gate"),ring("the edge sealed but the two gates",new int[][]{{10,1,16,12,5,18},{10,1,0,12,3,2}}))));
+        static boolean inBoxes(int[][] boxes,int x,int y,int z){for(var b:boxes)if(x>=b[0]&&x<=b[3]&&y>=b[1]&&y<=b[4]&&z>=b[2]&&z<=b[5])return true;return false;}
+        /** What a player on foot can do: stand on a block with two free cells above it (or in a climbable one: a ladder, a vine), walk to a side cell at the same height, jump one block up, step off a ledge and fall up to three, climb a ladder up and down. Free: no collision
+         *  shape, or one no higher than a carpet. A floor: a block whose collision shape is half a block to a block high (a slab, a stair, a block; not a fence, which is 1.5). */
+        static final class Walk{
+            final ServerWorld w;final BlockBox region;final Set<Long> seen=new HashSet<>();final boolean ladders;
+            /** Task 8 fix round 1: cells (BlockPos.asLong) that count as a full block whatever the world holds there: the control walks seal a doorway, a ramp or the edge of a piece with them and look at what is then out of reach. */
+            final Set<Long> sealed;
+            Walk(ServerWorld w,BlockBox region){this(w,region,true,Set.of());}
+            Walk(ServerWorld w,BlockBox region,boolean ladders){this(w,region,ladders,Set.of());}
+            Walk(ServerWorld w,BlockBox region,boolean ladders,Set<Long> sealed){this.w=w;this.region=region;this.ladders=ladders;this.sealed=sealed;}
+            boolean in(int x,int y,int z){return x>=region.getMinX()&&x<=region.getMaxX()&&y>=region.getMinY()&&y<=region.getMaxY()&&z>=region.getMinZ()&&z<=region.getMaxZ();}
+            boolean climb(int x,int y,int z){var p=new BlockPos(x,y,z);return ladders&&!sealed.contains(p.asLong())&&w.getBlockState(p).isIn(net.minecraft.registry.tag.BlockTags.CLIMBABLE);}
+            double top(int x,int y,int z){var p=new BlockPos(x,y,z);if(!sealed.isEmpty()&&sealed.contains(p.asLong()))return 1.0;var sh=w.getBlockState(p).getCollisionShape(w,p);return sh.isEmpty()?0:sh.getMax(Direction.Axis.Y);}
+            boolean free(int x,int y,int z){return in(x,y,z)&&(climb(x,y,z)||top(x,y,z)<=0.2);}
+            boolean floor(int x,int y,int z){double t=top(x,y-1,z);return t>=0.5&&t<=1.0;}
+            boolean stand(int x,int y,int z){return free(x,y,z)&&free(x,y+1,z)&&(floor(x,y,z)||climb(x,y,z));}
+            void search(List<BlockPos> sources){
+                var queue=new ArrayDeque<int[]>();
+                for(var s:sources)if(stand(s.getX(),s.getY(),s.getZ())&&seen.add(s.asLong()))queue.add(new int[]{s.getX(),s.getY(),s.getZ()});
+                int[][] around={{1,0},{-1,0},{0,1},{0,-1}};
+                while(!queue.isEmpty()){
+                    var c=queue.poll();int x=c[0],y=c[1],z=c[2];
+                    var next=new ArrayList<int[]>();
+                    for(var d:around){
+                        int nx=x+d[0],nz=z+d[1];
+                        if(stand(nx,y,nz))next.add(new int[]{nx,y,nz});
+                        else if(!free(nx,y,nz)||!free(nx,y+1,nz)){if(free(x,y+2,z)&&stand(nx,y+1,nz))next.add(new int[]{nx,y+1,nz});}
+                        else for(int fall=1;fall<=3;fall++){int ny=y-fall;if(!free(nx,ny,nz))break;if(stand(nx,ny,nz)){next.add(new int[]{nx,ny,nz});break;}}
+                    }
+                    if(climb(x,y,z)){if(stand(x,y+1,z))next.add(new int[]{x,y+1,z});if(stand(x,y-1,z))next.add(new int[]{x,y-1,z});}
+                    for(var n2:next)if(seen.add(new BlockPos(n2[0],n2[1],n2[2]).asLong()))queue.add(n2);
+                }
+            }
+            boolean reached(BlockPos p){return seen.contains(p.asLong());}
+            int count(){return seen.size();}
+        }
+        /** Task 7: the sally gaps of the curtain walls on map 1: seven blocks, z -65..-59 and 59..65, along both sides (x -74..-70 and 70..74), with nothing standing from the ground up. */
+        void sallyGaps(ServerWorld w){
+            int cells=0,shut=0;var at=new StringBuilder();
+            for(int sx:new int[]{-72,72})for(int zz:new int[]{-62,62})for(int dx=-2;dx<=2;dx++)for(int dz=-3;dz<=3;dz++){
+                int x=sx+dx,z=zz+dz,g=Arena.ground(x,z);cells++;boolean blocked=false;
+                for(int y=g+1;y<=g+6;y++){var q=new BlockPos(x,y,z);if(!w.getBlockState(q).getCollisionShape(w,q).isEmpty())blocked=true;}
+                if(blocked){shut++;if(shut<=4)at.append(' ').append(x).append(',').append(z);}
+            }
+            // and each gap stands between two sections: the column at its middle x, 4 either side of the gap's middle z (a tower of the section), has a block in the six above the ground
+            int flank=0;
+            for(int sx:new int[]{-72,72})for(int zz:new int[]{-62,62})for(int fz:new int[]{zz-4,zz+4}){
+                int g=Arena.ground(sx,fz);boolean blocked=false;
+                for(int y=g+1;y<=g+6;y++){var q=new BlockPos(sx,y,fz);if(!w.getBlockState(q).getCollisionShape(w,q).isEmpty())blocked=true;}
+                if(blocked)flank++;
+            }
+            report("p3-lm-sally-map1",shut==0&&flank==8,cells+" columns of the four sally gaps (x -74..-70 and 70..74, z -65..-59 and 59..65), "+shut+" with a block in the six above the ground"+at+"; "+flank+" of 8 flanking columns (z -66, -58, 58 and 66 at x -72 and 72) stand");
+        }
+        /** Task 8: the signal fire of Frostmarch is the piece's now. MapDressing used to place it for the structures row "signal_tower" (netherrack at the top of the tower, fire above it, a cobblestone wall on each of the four sides); the row is replaced by fm-signal-tower, the loop
+         *  over Spec.STRUCTURES finds no such id and places nothing, and the piece carries all of it: netherrack at the centre of the piece at elevation+19, fire above it, a cobblestone wall on each of its four sides (62, 83, 170 on the stated map), and no second netherrack, fire
+         *  or cobblestone wall anywhere round it (the 15 x 15 footprint, elevation+6 to +31): the dressing did not put a second fire on top of the piece. */
+        void signalFire(GravesAndGlory.Battle b){
+            var w=b.world;boolean row=false;for(var st:Spec.STRUCTURES)if(st.id().equals("signal_tower"))row=true;
+            Spec.LandmarksRow lm=null;for(var r:Spec.LANDMARKS)if(r.id().equals("fm-signal-tower"))lm=r;
+            if(lm==null){report("p3-lm-fm-signal-fire",false,"no fm-signal-tower row");return;}
+            int x=lm.x(),z=lm.z(),y=lm.elevation()+19;
+            boolean nr=w.getBlockState(new BlockPos(x,y,z)).isOf(Blocks.NETHERRACK),fire=w.getBlockState(new BlockPos(x,y+1,z)).isOf(Blocks.FIRE);
+            int walls=0;for(int[] d:new int[][]{{-1,0},{1,0},{0,-1},{0,1}})if(w.getBlockState(new BlockPos(x+d[0],y,z+d[1])).isOf(Blocks.COBBLESTONE_WALL))walls++;
+            int netherrack=0,fires=0,cobbleWalls=0;
+            for(int dx=-7;dx<=7;dx++)for(int dz=-7;dz<=7;dz++)for(int yy=lm.elevation()+6;yy<=lm.elevation()+31;yy++){
+                var st=w.getBlockState(new BlockPos(x+dx,yy,z+dz));
+                if(st.isOf(Blocks.NETHERRACK))netherrack++;if(st.isOf(Blocks.FIRE))fires++;if(st.isOf(Blocks.COBBLESTONE_WALL))cobbleWalls++;
+            }
+            // Task 8 fix round 1 (review M2): the piece and the old dressing lay the same blocks in the same six cells, so counting them cannot tell a dressing that still lays its fire. The dressing is run for real: the six cells are emptied, MapDressing.setPieces() runs, and
+            // not one of them may come back; then the control that the probe can see what it looks for: the old row put back in Spec.STRUCTURES, the cells emptied, setPieces() again, and all six must come back. The piece's own blocks are put back last.
+            var six=new BlockPos[]{new BlockPos(x,y,z),new BlockPos(x,y+1,z),new BlockPos(x-1,y,z),new BlockPos(x+1,y,z),new BlockPos(x,y,z-1),new BlockPos(x,y,z+1)};
+            var saved=new BlockState[6];for(int i=0;i<6;i++)saved[i]=w.getBlockState(six[i]);
+            int again=0,control=0;var oldRows=Spec.STRUCTURES;
+            try{
+                again=dressingLays(w,six);
+                var withRow=Arrays.copyOf(oldRows,oldRows.length+1);withRow[oldRows.length]=new Spec.StructuresRow("signal_tower","watchtower",x,z,14,14,19,"stone",lm.elevation());
+                Spec.STRUCTURES=withRow;control=dressingLays(w,six);
+            }finally{Spec.STRUCTURES=oldRows;for(int i=0;i<6;i++)w.setBlockState(six[i],saved[i],Block.NOTIFY_LISTENERS);}
+            report("p3-lm-fm-signal-fire",!row&&nr&&fire&&walls==4&&netherrack==1&&fires==1&&cobbleWalls==4&&again==0&&control==6,"structures row signal_tower "+(row?"STILL THERE (the dressing would place a fire of its own)":"gone")+"; netherrack at "+xyz(new BlockPos(x,y,z))+" "+nr+", fire above it "+fire+", cobblestone walls on its four sides "+walls+"; in the 15 x 26 x 15 cells round it: "+netherrack+" netherrack, "+fires+" fire, "+cobbleWalls+" cobblestone wall blocks (want 1, 1 and 4); the six cells emptied and the dressing run (setPieces): "+again+" of 6 laid again (want 0); control, with the old signal_tower row put back: "+control+" of 6 laid (want 6)");
+        }
+        /** The six cells of the signal fire emptied, MapDressing.setPieces() run on the world, and how many of the six hold a block again. */
+        static int dressingLays(ServerWorld w,BlockPos[] six){
+            for(var q:six)w.setBlockState(q,Blocks.AIR.getDefaultState(),Block.NOTIFY_LISTENERS);
+            new MapDressing(w).setPieces();
+            int back=0;for(var q:six)if(!w.getBlockState(q).isAir())back++;
+            return back;
+        }
+        /** Task 7: the hay line (four stacks of hay blocks at x -109 + 4 row, y 65..66, z -152..-150) that Arena.finishBuild used to lay on map 1 is gone: a hay block there is the barn's own (the template has hay at that cell) or there is none. */
+        void hayLine(GravesAndGlory.Battle b){
+            var w=b.world;Spec.LandmarksRow row=null;for(var r:Spec.LANDMARKS)if(r.id().equals("ih-hay-barn"))row=r;
+            if(row==null){report("p3-lm-hay-line-gone",false,"no ih-hay-barn row to take over the hay line's job");return;}
+            var size=Structures.template(w,row.template()).get().getSize();var nbt=Structures.read(b.server,row.template()).get();
+            var pal=nbt.getList("palette",NbtElement.COMPOUND_TYPE);var hay=new HashSet<Integer>();
+            for(int i=0;i<pal.size();i++)if(pal.getCompound(i).getString("Name").equals("minecraft:hay_block"))hay.add(i);
+            var own=new HashSet<BlockPos>();var list=nbt.getList("blocks",NbtElement.COMPOUND_TYPE);
+            for(int i=0;i<list.size();i++){var e=list.getCompound(i);if(!hay.contains(e.getInt("state")))continue;var pos=e.getList("pos",NbtElement.INT_TYPE);own.add(Structures.toWorld(size,row.x(),row.elevation(),row.z(),row.rotation(),pos.getInt(0),pos.getInt(1),pos.getInt(2)));}
+            int old=0,bad=0;var at=new StringBuilder();
+            for(int r=0;r<4;r++)for(int x=-109+r*4;x<-109+r*4+3;x++)for(int y=65;y<=66;y++)for(int z=-152;z<=-150;z++){
+                var q=new BlockPos(x,y,z);if(!w.getBlockState(q).isOf(Blocks.HAY_BLOCK))continue;old++;
+                if(!own.contains(q)){bad++;if(bad<=4)at.append(' ').append(xyz(q));}
+            }
+            report("p3-lm-hay-line-gone",bad==0,old+" hay blocks in the 4 x 18 cells of the old line, "+bad+" of them not the template's own ("+own.size()+" hay blocks in the template)"+at);
+        }
+
+        static boolean flagCell(Spec.PointsRow p,BlockPos q){
+            int y=q.getY()-p.elevation();
+            return q.getZ()==p.z()&&(q.getX()==p.x()&&y>=1&&y<=7||q.getX()>=p.x()+1&&q.getX()<=p.x()+3&&y>=4&&y<=5);
+        }
+        /** Task 8b: the flag column of a supply house, left void by its piece and raised by Arena.flag: |x-yardX|<=3, |z-yardZ|<=3, elevation+1 to elevation+8 (the shape of the flag column of an enclosed point). */
+        static boolean reserved(Spec.SupplyHousesRow h,BlockPos q){
+            int y=q.getY()-h.elevation();
+            return Math.abs(q.getX()-h.yardX())<=3&&Math.abs(q.getZ()-h.yardZ())<=3&&y>=1&&y<=8;
+        }
+        /** The cells of a template that its file does not list (structure void) at local y 1 and up, with the flag of an enclosed point and the flag column of a supply house left out: {void cells, those not air in the world}; the first six not air go to where. */
+        static int[] clearScan(ServerWorld w,Vec3i size,Set<Long> present,Spec.LandmarksRow r,Spec.PointsRow enclosed,Spec.SupplyHousesRow house,StringBuilder where){
+            int voids=0,dirty=0;
+            for(int lx=0;lx<size.getX();lx++)for(int ly=1;ly<size.getY();ly++)for(int lz=0;lz<size.getZ();lz++){
+                if(present.contains(key(lx,ly,lz)))continue;var q=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),lx,ly,lz);
+                if(enclosed!=null&&flagCell(enclosed,q))continue;
+                if(house!=null&&reserved(house,q))continue;
+                voids++;
+                if(!w.getBlockState(q).isAir()){dirty++;if(dirty<=6&&where!=null)where.append(' ').append(name(w.getBlockState(q))).append(xyz(q));}
+            }
+            return new int[]{voids,dirty};
+        }
+        /** Task 8b: the world end points of the cover and sight lines of a supply house at (x, z) with elevation E, from the formulas of the plan (not from toWorld); ty NaN is the ground at the end plus 2.6. */
+        static Line houseLine(Spec.LandmarksRow r,String kind){
+            int x=r.x(),z=r.z();double e=r.elevation();
+            if(r.rotation()==0)return kind.equals("cover")?new Line(x+9.5,e+2.6,z+16.5,x+9.5,Double.NaN,z+30.5):new Line(x+10.5,e+7.6,z-7.5,x+1.5,Double.NaN,z+30.5);
+            return kind.equals("cover")?new Line(x-8.5,e+2.6,z-15.5,x-8.5,Double.NaN,z-29.5):new Line(x-9.5,e+7.6,z+8.5,x-0.5,Double.NaN,z-29.5);
+        }
+        /** The world end points of a line are the values the plan states (null: the plan states none for it). */
+        static boolean stated(Vec3d from,Vec3d to,Line e){
+            return e==null||close(from.x,e.fx())&&close(from.y,e.fy())&&close(from.z,e.fz())&&close(to.x,e.tx())&&(Double.isNaN(e.ty())||close(to.y,e.ty()))&&close(to.z,e.tz());
+        }
+        /** The verdicts of the checks of a line, from the world: sight passes on a miss or a hit within 0.3 of the end, cover on a block hit more than 0.3 before it. */
+        static boolean lineOk(ServerWorld w,net.minecraft.entity.Entity player,String kind,Vec3d from,Vec3d to){
+            var hit=w.raycast(new net.minecraft.world.RaycastContext(from,to,net.minecraft.world.RaycastContext.ShapeType.COLLIDER,net.minecraft.world.RaycastContext.FluidHandling.NONE,player));
+            boolean blocked=hit.getType()==net.minecraft.util.hit.HitResult.Type.BLOCK;double left=hit.getPos().distanceTo(to);
+            return kind.equals("cover")?blocked&&left>0.3:!blocked||left<=0.3;
+        }
+
+        /** Task 8b, once per map with house rows, on its first one: what the -clear check of a house can fail on. The cell just outside the reserved column (local x offset +4) is pretended to be structure void (the file writes it as air) and a stone is put in it: the check
+         *  must count it; a stone on the last cell of the column (offset +3, void in the file) it must not count; and with no reserved column at all the flag itself (its fence, cloth and lantern as far up as the piece's volume reaches: the pole of the house is taller than the piece, so for Rivergate the 8 blocks of fence under its roof line) and both stones are counted. */
+        void clearControl(GravesAndGlory.Battle b,int n,Spec.LandmarksRow r){
+            var w=b.world;Spec.SupplyHousesRow house=null;for(var hh:Spec.SUPPLYHOUSES)if(hh.landmark().equals(r.id()))house=hh;
+            if(house==null){report("p3-lm-supply-clear-control-map"+n,false,"no supplyHouses row for "+r.id());return;}
+            var size=Structures.template(w,r.template()).get().getSize();var list=Structures.read(b.server,r.template()).get().getList("blocks",NbtElement.COMPOUND_TYPE);
+            var present=new HashSet<Long>();
+            for(int i=0;i<list.size();i++){var pos=list.getCompound(i).getList("pos",NbtElement.INT_TYPE);present.add(key(pos.getInt(0),pos.getInt(1),pos.getInt(2)));}
+            var absent=new HashSet<>(present);absent.remove(key(19,1,24));
+            var inside=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),18,1,24);var outside=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),19,1,24);
+            var stone=Blocks.STONE.getDefaultState();var keptIn=w.getBlockState(inside);var keptOut=w.getBlockState(outside);
+            int[] real,in,out,bare;
+            int pole=Arena.housePole(r.elevation()),flagIn=0;for(int y=1;y<size.getY();y++){if(y<=pole)flagIn++;if(y>=pole-2&&y<=pole-1)flagIn+=3;if(y==pole+1)flagIn++;}
+            try{
+                real=clearScan(w,size,present,r,null,house,null);
+                w.setBlockState(inside,stone,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);in=clearScan(w,size,present,r,null,house,null);
+                w.setBlockState(outside,stone,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);out=clearScan(w,size,absent,r,null,house,null);bare=clearScan(w,size,absent,r,null,null,null);
+            }finally{w.setBlockState(inside,keptIn,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);w.setBlockState(outside,keptOut,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);}
+            report("p3-lm-supply-clear-control-map"+n,real[1]==0&&in[1]==0&&out[1]==1&&bare[1]==flagIn+2,r.id()+": the check as it stands counts "+real[1]+" dirty cells (want 0); a stone at "+xyz(inside)+", the last cell of the reserved column, adds "+(in[1]-real[1])+" (want 0); a stone at "+xyz(outside)+", one cell outside it, is counted: "+out[1]+" (want 1); with no reserved column "+bare[1]+" cells are dirty (want "+(flagIn+2)+": the "+flagIn+" blocks of the flag of pole "+pole+" inside the piece's "+size.getY()+" layers and both stones)");
+        }
+        /** Task 8b, once per map with house rows, on its first one: the comparison with the plan's world points and the two verdicts of the lines can fail. */
+        void linesControl(GravesAndGlory.Battle b,int n,Spec.LandmarksRow r,net.minecraft.entity.Entity player){
+            var w=b.world;var size=Structures.template(w,r.template()).get().getSize();
+            Vec3d sf=null,st=null,cf=null,ct=null;
+            for(var l:Spec.LANDMARKLINES){
+                if(!l.template().equals(r.template()))continue;
+                Vec3d from=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),l.fromX(),l.fromY(),l.fromZ());
+                Vec3d to=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),l.toX(),l.toY(),l.toZ());
+                if(l.toY()==-1.0)to=new Vec3d(to.x,Arena.ground((int)Math.floor(to.x),(int)Math.floor(to.z))+2.6,to.z);
+                if(l.kind().equals("sight")){sf=from;st=to;}else{cf=from;ct=to;}
+            }
+            if(sf==null||cf==null||player==null){report("p3-lm-supply-lines-control-map"+n,false,r.id()+": no sight or cover line, or no player");return;}
+            var es=houseLine(r,"sight");var ec=houseLine(r,"cover");
+            boolean plan=stated(sf,st,es)&&stated(cf,ct,ec);
+            boolean off=!stated(sf,st,new Line(es.fx()+1,es.fy(),es.fz(),es.tx(),es.ty(),es.tz()))&&!stated(cf,ct,new Line(ec.fx(),ec.fy(),ec.fz(),ec.tx()+1,ec.ty(),ec.tz()));
+            boolean sightFree=lineOk(w,player,"sight",sf,st);
+            var m=sf.add(st).multiply(0.5);var mid=BlockPos.ofFloored(m.x,m.y,m.z);var keptMid=w.getBlockState(mid);
+            boolean sightBlocked;
+            try{w.setBlockState(mid,Blocks.STONE.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);sightBlocked=lineOk(w,player,"sight",sf,st);}
+            finally{w.setBlockState(mid,keptMid,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);}
+            boolean coverStands=lineOk(w,player,"cover",cf,ct);
+            var removed=new ArrayList<BlockPos>();var keptBlocks=new ArrayList<BlockState>();boolean coverOpen;
+            try{
+                for(int i=0;i<8;i++){
+                    var hit=w.raycast(new net.minecraft.world.RaycastContext(cf,ct,net.minecraft.world.RaycastContext.ShapeType.COLLIDER,net.minecraft.world.RaycastContext.FluidHandling.NONE,player));
+                    if(hit.getType()!=net.minecraft.util.hit.HitResult.Type.BLOCK)break;
+                    removed.add(hit.getBlockPos());keptBlocks.add(w.getBlockState(hit.getBlockPos()));w.setBlockState(hit.getBlockPos(),Blocks.AIR.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
+                }
+                coverOpen=lineOk(w,player,"cover",cf,ct);
+            }finally{for(int i=removed.size()-1;i>=0;i--)w.setBlockState(removed.get(i),keptBlocks.get(i),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);}
+            boolean back=lineOk(w,player,"cover",cf,ct)&&lineOk(w,player,"sight",sf,st);
+            report("p3-lm-supply-lines-control-map"+n,plan&&off&&sightFree&&!sightBlocked&&coverStands&&!coverOpen&&back,r.id()+": the world points are the plan's "+plan+"; one block out of place in a start or an end is "+(off?"seen":"NOT seen")+"; sight clear "+sightFree+", with a stone at "+xyz(mid)+" on it "+(sightBlocked?"STILL PASSES (it cannot fail)":"fails")+"; cover stands "+coverStands+", with the "+removed.size()+" blocks it hits taken away "+(coverOpen?"STILL PASSES (it cannot fail)":"fails")+"; put back, both pass again "+back);
+        }
+
+        /** The checks of every row of map n, on the server thread once the map is ready. */
+        void check(GravesAndGlory.Battle b,int n){
+            var w=b.world;var placed=newer(before);
+            long sum=0;int rows=0,laid=0,slowCount=0;var slow=new StringBuilder();
+            var player=b.server.getPlayerManager().getPlayerList().isEmpty()?null:b.server.getPlayerManager().getPlayerList().get(0);
+            for(var r:Spec.LANDMARKS){
+                if(r.map()!=n)continue;rows++;
+                String id=r.id(),k="p3-lm-"+id;
+                Structures.Placed p=null;for(var q:placed)if(q.row().equals(id))p=q;
+                boolean gone=r.replaces().equals("-")||Arrays.stream(Spec.STRUCTURES).noneMatch(s->s.id().equals(r.replaces()));
+                Spec.StructuresRow row=null;for(var s:Spec.STRUCTURES)if(s.id().equals(id)&&s.kind().equals("landmark"))row=s;
+                report(k+"-placed",p!=null&&!p.missing()&&gone&&row!=null,(p==null?"no LOG entry of this row since the switch":"placed "+p.id()+" ("+p.blocks()+" blocks, "+p.nanos()/1000000+" ms, missing "+p.missing()+")")+"; replaced row "+r.replaces()+(gone?" gone":" still in Spec.STRUCTURES")+"; landmark row "+(row!=null?"there":"missing"));
+                if(p==null||p.missing())continue;
+                laid++;sum+=p.nanos();if(p.nanos()>100_000_000L){slowCount++;slow.append(' ').append(id).append('=').append(p.nanos()/1000000).append("ms");}
+                var size=Structures.template(w,r.template()).get().getSize();
+                var fp=Structures.footprint(size,r.x(),r.elevation(),r.z(),r.rotation());var bx=p.box();
+                boolean same=bx.getMinX()==fp.getMinX()&&bx.getMinY()==fp.getMinY()&&bx.getMinZ()==fp.getMinZ()&&bx.getMaxX()==fp.getMaxX()&&bx.getMaxY()==fp.getMaxY()&&bx.getMaxZ()==fp.getMaxZ();
+                boolean in=fp.getMinX()>=-350&&fp.getMaxX()<=350&&fp.getMinZ()>=-250&&fp.getMaxZ()<=250;
+                report(k+"-fits",same&&in,"Placed.box "+bx+(same?" equals":" differs from")+" the footprint "+fp+"; inside |x|<=350, |z|<=250 "+in);
+                // the template's cells as its file lists them (void cells are not in the file)
+                var nbt=Structures.read(b.server,r.template()).get();var list=nbt.getList("blocks",NbtElement.COMPOUND_TYPE);
+                var present=new HashSet<Long>();var columns=new HashSet<Long>();
+                for(int i=0;i<list.size();i++){var pos=list.getCompound(i).getList("pos",NbtElement.INT_TYPE);present.add(key(pos.getInt(0),pos.getInt(1),pos.getInt(2)));columns.add(key(pos.getInt(0),0,pos.getInt(2)));}
+                Spec.PointsRow enclosed=null;for(var pt:Spec.POINTS)if(pt.id().equals(r.encloses()))enclosed=pt;
+                Spec.SupplyHousesRow house=null;for(var hh:Spec.SUPPLYHOUSES)if(hh.landmark().equals(id))house=hh;
+                var where=new StringBuilder();var cs=clearScan(w,size,present,r,enclosed,house,where);int voids=cs[0],dirty=cs[1];
+                report(k+"-clear",dirty==0,voids+" void cells at local y 1 and up (the flag of an enclosed point and the flag column of a supply house left out), "+dirty+" of them not air"+where);
+                var scan=Walkability.scan(b,fp);int deck=0;
+                for(String line:scan.detail().split("\n")){var f=line.split(" ");if(f.length>=3&&Walkability.onDeck(Integer.parseInt(f[1]),Integer.parseInt(f[2])))deck++;}
+                report(k+"-roads",scan.through()==0&&deck==0,"over the footprint: cells "+scan.cells()+", through "+scan.through()+", blocked deck cells "+deck+", building "+scan.building()+", road "+scan.road());
+                int near=0;var close=new StringBuilder();
+                for(long col:columns){int lx=(int)(col>>24),lz=(int)(col&0xfff);var q=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),lx,0,lz);
+                    for(var pt:Spec.POINTS){if(pt==enclosed)continue;if(Math.hypot(q.getX()-pt.x(),q.getZ()-pt.z())<=19){near++;if(near<=3)close.append(' ').append(pt.id()).append(xyz(q));}}}
+                String ringWhy=near+" template columns within 19 of a point it does not enclose"+close;boolean ringOk=near==0;
+                if(enclosed!=null){
+                    var pt=enclosed;int ring=0,ringBad=0,pad=0,padBad=0;boolean ringIsLaid=Arena.ringLaid(pt);
+                    for(int dx=-pt.radius();dx<=pt.radius();dx++)for(int dz=-pt.radius();dz<=pt.radius();dz++){
+                        double d=Math.hypot(dx,dz);int x=pt.x()+dx,z=pt.z()+dz;var q=new BlockPos(x,pt.elevation(),z);
+                        if(ringIsLaid&&d>=pt.radius()-1&&d<=pt.radius()&&!Arena.wetBank(x,z)&&!Arena.deckCell(x,z)){ring++;if(!name(w.getBlockState(q)).equals("smooth_stone"))ringBad++;}
+                        if(Math.abs(dx)<=1&&Math.abs(dz)<=1){pad++;if(!name(w.getBlockState(q)).equals("chiseled_stone_bricks"))padBad++;}
+                    }
+                    int pole=0;for(int y=1;y<=6;y++)if(name(at(w,pt.x(),pt.elevation()+y,pt.z())).equals("oak_fence"))pole++;
+                    int cloth=0;for(int a=1;a<=3;a++)for(int y=4;y<=5;y++)if(name(at(w,pt.x()+a,pt.elevation()+y,pt.z())).endsWith("_wool"))cloth++;
+                    boolean lamp=name(at(w,pt.x(),pt.elevation()+7,pt.z())).equals("sea_lantern");
+                    ringOk&=ringIsLaid&&ring>0&&ringBad==0&&pad==9&&padBad==0&&pole==6&&cloth==6&&lamp;
+                    ringWhy+="; enclosed "+pt.id()+": ring laid "+ringIsLaid+", smooth stone "+(ring-ringBad)+" of "+ring+", pad "+(pad-padBad)+" of 9, pole "+pole+" of 6, cloth "+cloth+" of 6, lantern "+lamp;
+                    // gates: every cell within 2 of a road into the point, from radius 17.5 to the footprint edge
+                    int roadsIn=0,cells=0,shut=0;var shutAt=new StringBuilder();
+                    for(var rd:CampaignMaps.roads){
+                        if(!(rd.ax()==pt.x()&&rd.az()==pt.z()||rd.bx()==pt.x()&&rd.bz()==pt.z()))continue;roadsIn++;
+                        for(int x=fp.getMinX();x<=fp.getMaxX();x++)for(int z=fp.getMinZ();z<=fp.getMaxZ();z++){
+                            if(CampaignMaps.distance(x,z,rd)>2||Math.hypot(x-pt.x(),z-pt.z())<17.5)continue;cells++;int g=Arena.ground(x,z);boolean blocked=false;
+                            for(int y=g+1;y<=g+2;y++){var q=new BlockPos(x,y,z);if(!w.getBlockState(q).getCollisionShape(w,q).isEmpty())blocked=true;}
+                            if(blocked){shut++;if(shut<=6)shutAt.append(' ').append(x).append(',').append(z);}
+                        }
+                    }
+                    report(k+"-gates",roadsIn>0&&cells>0&&shut==0,roadsIn+" roads end at "+pt.id()+"; "+cells+" cells within 2 of them from radius 17.5 to the footprint edge, "+shut+" with a collision shape at ground+1 or +2"+shutAt);
+                }
+                report(k+"-ring",ringOk,ringWhy);
+                for(var l:Spec.LANDMARKLINES){
+                    if(!l.template().equals(r.template()))continue;
+                    Vec3d from=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),l.fromX(),l.fromY(),l.fromZ());
+                    Vec3d to=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),l.toX(),l.toY(),l.toZ());
+                    if(l.toY()==-1.0)to=new Vec3d(to.x,Arena.ground((int)Math.floor(to.x),(int)Math.floor(to.z))+2.6,to.z);
+                    var e=EXPECTED.get(id+"/"+l.kind());
+                    if(e==null&&house!=null)e=houseLine(r,l.kind());
+                    boolean stated=stated(from,to,e);
+                    var hit=w.raycast(new net.minecraft.world.RaycastContext(from,to,net.minecraft.world.RaycastContext.ShapeType.COLLIDER,net.minecraft.world.RaycastContext.FluidHandling.NONE,player));
+                    boolean blocked=hit.getType()==net.minecraft.util.hit.HitResult.Type.BLOCK;double left=hit.getPos().distanceTo(to);
+                    boolean ok=l.kind().equals("cover")?blocked&&left>0.3:!blocked||left<=0.3;
+                    String what=blocked?"hit "+name(w.getBlockState(hit.getBlockPos()))+xyz(hit.getBlockPos())+" "+String.format(Locale.ROOT,"%.2f",left)+" before the end":"no hit";
+                    report(k+"-"+l.kind(),ok&&stated&&player!=null,l.id()+" "+v(from)+" to "+v(to)+(e==null?"":stated?" (the stated world points)":" (NOT the stated world points)")+": "+what);
+                }
+                var boxes=OPENINGS.get(r.template());
+                if(boxes!=null){
+                    int cellsOpen=0,shut=0;var shutAt=new StringBuilder();
+                    for(var bx2:boxes)for(int lx=bx2[0];lx<=bx2[3];lx++)for(int ly=bx2[1];ly<=bx2[4];ly++)for(int lz=bx2[2];lz<=bx2[5];lz++){
+                        var q=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),lx,ly,lz);cellsOpen++;
+                        if(!w.getBlockState(q).getCollisionShape(w,q).isEmpty()){shut++;if(shut<=4)shutAt.append(' ').append(name(w.getBlockState(q))).append(xyz(q));}
+                    }
+                    report(k+"-openings",shut==0&&cellsOpen>0,cellsOpen+" cells in "+boxes.length+" boxes of the template that stay open (the passage, the gates, the crenel), "+shut+" with a collision shape"+shutAt);
+                }
+                var goals=REACH.get(r.template());
+                if(goals!=null){
+                    var walk=new Walk(w,new BlockBox(fp.getMinX()-5,fp.getMinY()-1,fp.getMinZ()-5,fp.getMaxX()+5,fp.getMaxY()+3,fp.getMaxZ()+5));
+                    var sources=new ArrayList<BlockPos>();
+                    for(int x=fp.getMinX()-4;x<=fp.getMaxX()+4;x++)for(int z=fp.getMinZ()-4;z<=fp.getMaxZ()+4;z++){
+                        if(x>=fp.getMinX()-2&&x<=fp.getMaxX()+2&&z>=fp.getMinZ()-2&&z<=fp.getMaxZ()+2)continue;
+                        sources.add(new BlockPos(x,Arena.ground(x,z)+1,z));
+                    }
+                    walk.search(sources);
+                    var missed=new StringBuilder();int got=0;
+                    for(var g:goals){
+                        var q=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),g.x(),g.y(),g.z());
+                        if(walk.reached(q))got++;else missed.append(' ').append(g.name()).append(xyz(q));
+                    }
+                    int noLadder=0;boolean control=true;
+                    if(LADDERED.contains(r.template())){
+                        var dry=new Walk(w,new BlockBox(fp.getMinX()-5,fp.getMinY()-1,fp.getMinZ()-5,fp.getMaxX()+5,fp.getMaxY()+3,fp.getMaxZ()+5),false);
+                        dry.search(sources);
+                        for(var g:goals)if(dry.reached(Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),g.x(),g.y(),g.z())))noLadder++;
+                        control=noLadder<goals.size();
+                    }
+                    boolean sealOk=true;var sealWhy=new StringBuilder();
+                    var controls=CONTROLS.get(r.template());
+                    if(controls!=null)for(var c:controls){
+                        var cells=new HashSet<Long>();
+                        if(c.ring())for(int lx=0;lx<size.getX();lx++)for(int lz=0;lz<size.getZ();lz++){
+                            if(lx!=0&&lx!=size.getX()-1&&lz!=0&&lz!=size.getZ()-1)continue;
+                            for(int ly=1;ly<=4;ly++)if(!inBoxes(c.gaps(),lx,ly,lz))cells.add(Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),lx,ly,lz).asLong());
+                        }
+                        for(var sb:c.sealed())for(int lx=sb[0];lx<=sb[3];lx++)for(int ly=sb[1];ly<=sb[4];ly++)for(int lz=sb[2];lz<=sb[5];lz++)cells.add(Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),lx,ly,lz).asLong());
+                        var sealedWalk=new Walk(w,new BlockBox(fp.getMinX()-5,fp.getMinY()-1,fp.getMinZ()-5,fp.getMaxX()+5,fp.getMaxY()+3,fp.getMaxZ()+5),true,cells);
+                        sealedWalk.search(sources);
+                        var out=new TreeSet<String>();
+                        for(var g:goals)if(!sealedWalk.reached(Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),g.x(),g.y(),g.z())))out.add(g.name());
+                        var want=new TreeSet<>(c.out());boolean ok=out.equals(want);sealOk&=ok;
+                        sealWhy.append("; control (").append(c.what()).append(", ").append(cells.size()).append(" cells): ").append(goals.size()-out.size()).append(" of ").append(goals.size()).append(" reached, out of reach ").append(out).append(ok?"":" (WANT "+want+")");
+                    }
+                    report(k+"-reach",got==goals.size()&&control&&sealOk,got+" of "+goals.size()+" standing places reached on foot from the ground round the piece (walk, jump one block, ladders, stairs, fall up to three), "+walk.count()+" places in all"+(missed.length()==0?"":"; not reached:"+missed)+(LADDERED.contains(r.template())?"; control: with ladders switched off "+noLadder+" of "+goals.size()+" are reached"+(control?"":" (ALL OF THEM: the ladders are not what the walk needs)"):controls!=null?"":"; no ladders in this piece, no control")+sealWhy);
+                }
+            }
+            // a map with no landmarks rows (maps 1 to 3 today) has nothing to place and passes; a map with rows passes only when every one of them was placed (a build that placed nothing is not within budget)
+            report("p3-lm-budget-map"+n,laid==rows&&slowCount==0&&sum<=1_500_000_000L,(rows==0?"no landmarks rows on this map; ":"")+laid+" of "+rows+" rows placed, all together "+sum/1000000+" ms (at most 1500), over 100 ms:"+(slowCount==0?" none":slow.toString()));
+            for(int[] wc:new int[][]{{0,18},{1,25},{2,18},{3,19},{4,18}})if(wc[0]==n)report("p3-lm-rows-map"+n,rows==wc[1],rows+" landmarks rows on map "+n+" (the plans state "+wc[1]+")");
+            Spec.LandmarksRow houseRow=null;for(var r:Spec.LANDMARKS)if(r.map()==n&&r.template().startsWith("supply/")&&houseRow==null)houseRow=r;
+            if(houseRow!=null&&laid==rows){clearControl(b,n,houseRow);linesControl(b,n,houseRow,player);}
+            if(n==1){sallyGaps(w);hayLine(b);}
+            if(n==2)signalFire(b);
+            var sliverWhy=new StringBuilder();var sl=slivers(n,sliverWhy);
+            report("p3-lm-slivers-map"+n,sl[1]==0,sl[0]+" shoulder columns of the landmarks, "+sl[1]+" lower or higher than both neighbours on an axis"+sliverWhy);
+            int hx=GravesAndGlory.R.worldHalfX(),hz=GravesAndGlory.R.worldHalfZ();
+            var loose=w.getEntitiesByType(EntityType.ITEM,new Box(-hx,w.getBottomY(),-hz,hx+1,w.getTopY(),hz+1),x->true);
+            var kinds=new TreeMap<String,Integer>();for(var it:loose)kinds.merge(net.minecraft.registry.Registries.ITEM.getId(it.getStack().getItem()).getPath(),it.getStack().getCount(),Integer::sum);
+            System.out.println("[p3] note landmarks map "+n+": "+loose.size()+" loose items after the build "+kinds);
+            shots=plan(b,n);checked=true;
+        }
+        static long key(int x,int y,int z){return ((long)x<<24)|((long)y<<12)|z;}
+        static boolean close(double a,double b){return Math.abs(a-b)<1e-6;}
+        static String v(Vec3d p){return String.format(Locale.ROOT,"(%.1f,%.1f,%.1f)",p.x,p.y,p.z);}
+
+        /** Map 4 is switched to; on the server tick, once its landmarks are queued, map 0; then until map 0 is ready, the queue and the LOG are watched. */
+        void midQueue(GravesAndGlory.Battle b0){
+            int map0=0;for(var r:Spec.LANDMARKS)if(r.map()==0)map0++;final int want=map0;
+            int[] phase={0},ticks={0},queuedAt={-1};Set<Structures.Placed>[] snap=new Set[1];
+            b0.campaign.switchMap(4);
+            hook=()->{
+                var b=GravesAndGlory.battle;if(b==null)return;
+                if(++ticks[0]>20*900){hook=null;report("p3-lm-switch-mid-queue",false,"no result after 900 s (phase "+phase[0]+")");hookDone=true;return;}
+                if(phase[0]==0){
+                    if(b.campaign.map==4&&Structures.queued()>0){queuedAt[0]=Structures.queued();snap[0]=snapshot();b.campaign.switchMap(0);int left=Structures.queued();boolean ready=b.ready;phase[0]=1;
+                        if(left!=0||ready){hook=null;report("p3-lm-switch-mid-queue",false,"switched to map 0 with "+queuedAt[0]+" map 4 landmarks queued: queued "+left+" right after (want 0), ready "+ready);hookDone=true;}}
+                    return;
+                }
+                var after=newer(snap[0]);long kf=after.stream().filter(p->p.row().startsWith("kf-")).count(),rg=after.stream().filter(p->p.row().startsWith("rg-")).count();
+                if(!b.ready)return;
+                hook=null;
+                boolean ok=kf==0&&rg==want&&Structures.queued()==0;
+                report("p3-lm-switch-mid-queue",ok,"map 4 had "+queuedAt[0]+" landmarks queued when map 0 was switched to; the queue was empty at once; map 0 ready with "+Structures.queued()+" queued, "+rg+" of "+want+" rg- rows placed since the switch, "+kf+" kf- rows placed since the switch");
+                hookDone=true;
+            };
+        }
+        /** The cache marker of the map built last (map 0): current, stale with the salt, current again without it. */
+        void cache(GravesAndGlory.Battle b){
+            boolean built=b.campaign.cached();String h=Structures.hash(b.campaign.map);
+            Structures.salt="test";boolean salted=b.campaign.cached();String hs=Structures.hash(b.campaign.map);
+            Structures.salt="";boolean back=b.campaign.cached();
+            report("p3-lm-cache",built&&!salted&&back&&!h.equals(hs),"map "+b.campaign.map+" after its build: cached "+built+" (hash "+h+"); with salt test: cached "+salted+" (hash "+hs+"); salt put back: cached "+back);
+            // the pieces row of a template the map places is in the hash too (fix round 1): a row one block taller makes the marker stale, the row put back makes it current
+            String template=null;for(var r:Spec.LANDMARKS)if(r.map()==b.campaign.map){template=r.template();break;}
+            int at=-1;for(int i=0;i<Spec.PIECES.length;i++)if(Spec.PIECES[i].id().equals(template))at=i;
+            if(at<0)report("p3-lm-cache-pieces",false,"map "+b.campaign.map+": no pieces row for its first landmark template "+template);
+            else{
+                var row=Spec.PIECES[at];String hp;boolean taller;
+                try{Spec.PIECES[at]=new Spec.PiecesRow(row.id(),row.width(),row.depth(),row.height()+1,row.palette(),row.purpose());hp=Structures.hash(b.campaign.map);taller=b.campaign.cached();}
+                finally{Spec.PIECES[at]=row;}
+                boolean again=b.campaign.cached()&&Structures.hash(b.campaign.map).equals(h);
+                report("p3-lm-cache-pieces",!hp.equals(h)&&!taller&&again,"map "+b.campaign.map+", pieces row "+row.id()+" one block taller: hash "+hp+(hp.equals(h)?" (the same: the pieces row is not in the hash)":" (differs)")+", cached "+taller+"; put back: hash and marker current "+again);
+            }
+            // the supplyHouses rows of the map are in the hash too (Task 8b fix round 1): a house one block higher makes the marker stale, the row put back makes it current
+            int hi=-1;for(int i=0;i<Spec.SUPPLYHOUSES.length;i++)if(Spec.SUPPLYHOUSES[i].map()==b.campaign.map){hi=i;break;}
+            if(hi<0)report("p3-lm-cache-houses",false,"map "+b.campaign.map+": no supplyHouses row");
+            else{
+                var row=Spec.SUPPLYHOUSES[hi];String hh;boolean higher;
+                try{Spec.SUPPLYHOUSES[hi]=new Spec.SupplyHousesRow(row.id(),row.map(),row.name(),row.landmark(),row.yardX(),row.yardZ(),row.spurX(),row.spurZ(),row.elevation()+1);hh=Structures.hash(b.campaign.map);higher=b.campaign.cached();}
+                finally{Spec.SUPPLYHOUSES[hi]=row;}
+                boolean again=b.campaign.cached()&&Structures.hash(b.campaign.map).equals(h);
+                report("p3-lm-cache-houses",!hh.equals(h)&&!higher&&again,"map "+b.campaign.map+", supplyHouses row "+row.id()+" one block higher: hash "+hh+(hh.equals(h)?" (the same: the supplyHouses rows are not in the hash)":" (differs)")+", cached "+higher+"; put back: hash and marker current "+again);
+            }
+            cacheDone=true;
+        }
+    }
+
+    /** Task 8b (suite supply): the supply houses of the maps in GRAVES_PHASE3_MAPS (system property gravesandglory.phase3Maps, default all five), one map at a time (a launch of a map with four houses is about twelve minutes: eight marches of up to 3600 ticks).
+     *  Each map is switched to (built afresh) and, once ready, per supplyHouses row of the map, on the server thread:
+     *  p3-house-ID-neutral (the flag over the yard centre is the neutral one Arena.flag lays with Arena.housePole(elevation): oak_fence at yardX, elevation+1..+pole, a sea_lantern at +pole+1, white_wool at yardX+1..+3, +pole-2..+pole-1; the two braziers, local (10,3,36) and (20,3,36), are campfires with lit=false),
+     *  p3-house-ID-yard (every cell of the circle of 10 round the yard centre has a collision shape at the elevation and none at +1 and +2, the pole cell excepted; a flood fill over such cells inside the footprint, from beside the pole, reaches the 9 cells of the
+     *  front gate (local z 36, x 11..19) and the 5 of the side gate (local x 30, z 22..26), and the cells just outside, local (15,0,37) and (31,0,24), are such cells too),
+     *  p3-house-ID-flag-lane (from the eye of a walker at the lane end, 1.62 over the ground, to the middle of each of the two rows of the cloth the first block met is the cloth: the white flag reads from the lane, which a flag of the height of a point's, six blocks, does not over the crest of the climb),
+     *  p3-house-ID-spur (along the centre line from the lane end to the outer cell of the front gate: every cell a road cell, nothing with a collision shape at ground+1 and +2, the ground changes by at most 1 from cell to cell and is the elevation at the gate),
+     *  and the pictures ID-spur, ID-gate, ID-yard, ID-lookout and ID-point (p3-ID-VIEW.png). Once per map the controls that the checks can fail: p3-house-neutral-control-mapN (a cyan flag, a lit brazier), p3-house-yard-control-mapN (a block in the circle,
+     *  the gate sealed), p3-house-spur-control-mapN (a block on the centre line, the line moved 10 blocks aside), p3-house-flag-lane-control-mapN (a stone in the line, the cloth taken away). Then the route harness in house mode (MapRouteChecks with houses) over the map: p3-house-routes-mapN passes when every goal (a base and a point start for each
+     *  house) had twenty of twenty knights at the yard. GRAVES_SUPPLY_ROUTES=off leaves the marches out (the checks and the pictures only). */
+    static final class Supply implements Suite {
+        record Res(boolean ok,String why){}
+        record Shot(String name,double x,double y,double z,double tx,double ty,double tz){}
+        final List<Integer> maps=new ArrayList<>();
+        final boolean marches=!"off".equalsIgnoreCase(System.getenv("GRAVES_SUPPLY_ROUTES"));
+        int index,stage,shot;
+        volatile boolean switched,checked,marched;
+        volatile List<Shot> shots=List.of();
+        MapRouteChecks routes;
+        Supply(){for(String s:System.getProperty("gravesandglory.phase3Maps","0,1,2,3,4").split(","))if(!s.isBlank())maps.add(Integer.parseInt(s.trim()));}
+        /** Per map: the build, about 4500 ticks of pictures and eight marches of 3600 ticks at most. */
+        @Override public int limit(){return 8000+maps.size()*45000;}
+        @Override public void step(MinecraftClient c,int tick){
+            if(tick<20)return;
+            switch(stage){
+                case 0->{
+                    if(index>=maps.size()){finish(c,"supply");stage=9;return;}
+                    int n=maps.get(index);switched=false;checked=false;
+                    server(c,b->{b.campaign.switchMap(n);switched=true;});stage=1;
+                }
+                case 1->{
+                    int n=maps.get(index);var b=GravesAndGlory.battle;
+                    if(switched&&b!=null&&b.ready&&b.campaign.map==n&&CampaignMaps.selected==n){stage=2;server(c,x->check(x,n));}
+                }
+                case 2->{if(checked){shot=0;stage=3;}}
+                case 3->{
+                    if(shot>=shots.size()){
+                        if(!marches){System.out.println("[p3] note supply map "+maps.get(index)+": the marches are left out (GRAVES_SUPPLY_ROUTES=off)");index++;stage=0;return;}
+                        routes=new MapRouteChecks(c,new int[]{maps.get(index)},true);marched=false;stage=4;return;
+                    }
+                    var s=shots.get(shot);if(view(c,s.name(),s.x(),s.y(),s.z(),s.tx(),s.ty(),s.tz()))shot++;
+                }
+                case 4->{if(tick%10==0)server(c,this::pump);if(marched){index++;stage=0;}}
+                default->{}
+            }
+        }
+        @Override public void cleanup(MinecraftClient c){server(c,b->b.campaign.leash=true);}
+
+        /** On the server thread, as the dev control calls it: one step of the route harness, and its verdict once it is done. */
+        void pump(GravesAndGlory.Battle b){
+            if(marched||routes==null)return;
+            routes.tick();
+            if(!routes.done)return;
+            int n=maps.get(index),rows=0;for(var h:Spec.SUPPLYHOUSES)if(h.map()==n)rows++;
+            int got=routes.reached.getOrDefault(n,0);
+            int expect=2*rows+MapRouteChecks.nookGoals(n);
+            report("p3-house-routes-map"+n,rows>0&&got==expect,got+" of "+expect+" goals with 20 of 20 knights at the yard: "+String.join(", ",routes.lines));
+            marched=true;
+        }
+
+        static Vec3i sizeOf(Spec.LandmarksRow r){for(var p:Spec.PIECES)if(p.id().equals(r.template()))return new Vec3i(p.width(),p.height(),p.depth());return null;}
+        static Spec.LandmarksRow landmarkOf(Spec.SupplyHousesRow h){for(var r:Spec.LANDMARKS)if(r.id().equals(h.landmark())&&r.map()==h.map())return r;return null;}
+        static boolean shape(ServerWorld w,int x,int y,int z){var p=new BlockPos(x,y,z);return !w.getBlockState(p).getCollisionShape(w,p).isEmpty();}
+        /** A cell of open ground: something to stand on at the elevation and nothing with a collision shape at +1 and +2. */
+        static boolean open(ServerWorld w,int x,int e,int z){return shape(w,x,e,z)&&!shape(w,x,e+1,z)&&!shape(w,x,e+2,z);}
+        static BlockPos local(Spec.LandmarksRow r,Vec3i size,int lx,int ly,int lz){return Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),lx,ly,lz);}
+        static Vec3d local(Spec.LandmarksRow r,Vec3i size,double lx,double ly,double lz){return Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),lx,ly,lz);}
+
+        /** The flag over the yard centre is the neutral one and the braziers are unlit. */
+        static Res neutral(ServerWorld w,Spec.SupplyHousesRow h,Spec.LandmarksRow r,Vec3i size){
+            int e=h.elevation(),x=h.yardX(),z=h.yardZ();
+            int top=Arena.housePole(e),pole=0;for(int y=1;y<=top;y++)if(name(at(w,x,e+y,z)).equals("oak_fence"))pole++;
+            boolean lamp=name(at(w,x,e+top+1,z)).equals("sea_lantern");
+            int white=0;var cloth=new TreeMap<String,Integer>();
+            for(int a=1;a<=3;a++)for(int y=top-2;y<=top-1;y++){String nm=name(at(w,x+a,e+y,z));if(nm.equals("white_wool"))white++;cloth.merge(nm,1,Integer::sum);}
+            int unlit=0;var other=new StringBuilder();
+            for(int bx:new int[]{10,20}){
+                var q=local(r,size,bx,3,36);var st=w.getBlockState(q);
+                if(st.isOf(Blocks.CAMPFIRE)&&!st.get(Properties.LIT))unlit++;
+                else other.append(' ').append(name(st)).append(xyz(q)).append(st.contains(Properties.LIT)?" lit="+st.get(Properties.LIT):"");
+            }
+            return new Res(pole==top&&lamp&&white==6&&unlit==2,"pole "+pole+" of "+top+" oak_fence from "+xyz(new BlockPos(x,e+1,z))+" up, sea_lantern at +"+(top+1)+" "+lamp+", white_wool "+white+" of 6 at +"+(top-2)+".."+(top-1)+" (the cloth is "+cloth+"), unlit campfires at the two braziers "+unlit+" of 2"+other);
+        }
+
+        /** The yard: flat and open inside the circle of 10, and the way from beside the pole to both gates. */
+        static Res yard(ServerWorld w,Spec.SupplyHousesRow h,Spec.LandmarksRow r,Vec3i size){
+            int e=h.elevation(),cx=h.yardX(),cz=h.yardZ(),cells=0,bad=0;var badAt=new StringBuilder();
+            for(int dx=-10;dx<=10;dx++)for(int dz=-10;dz<=10;dz++){
+                if(dx*dx+dz*dz>100)continue;cells++;
+                boolean pole=dx==0&&dz==0,ok=shape(w,cx+dx,e,cz+dz)&&(pole||!shape(w,cx+dx,e+1,cz+dz)&&!shape(w,cx+dx,e+2,cz+dz));
+                if(!ok){bad++;if(bad<=6)badAt.append(" (").append(cx+dx).append(',').append(cz+dz).append(") ").append(name(at(w,cx+dx,e,cz+dz))).append('/').append(name(at(w,cx+dx,e+1,cz+dz))).append('/').append(name(at(w,cx+dx,e+2,cz+dz))).append(';');}
+            }
+            var fp=Structures.footprint(size,r.x(),r.elevation(),r.z(),r.rotation());
+            var seen=new HashSet<Long>();var queue=new ArrayDeque<int[]>();
+            if(open(w,cx+1,e,cz)){seen.add(new BlockPos(cx+1,e,cz).asLong());queue.add(new int[]{cx+1,cz});}
+            while(!queue.isEmpty()){
+                var q=queue.poll();
+                for(int[] d:new int[][]{{1,0},{-1,0},{0,1},{0,-1}}){
+                    int nx=q[0]+d[0],nz=q[1]+d[1];
+                    if(nx<fp.getMinX()||nx>fp.getMaxX()||nz<fp.getMinZ()||nz>fp.getMaxZ()||!open(w,nx,e,nz))continue;
+                    if(seen.add(new BlockPos(nx,e,nz).asLong()))queue.add(new int[]{nx,nz});
+                }
+            }
+            int front=0,side=0;
+            for(int lx=11;lx<=19;lx++)if(seen.contains(local(r,size,lx,0,36).asLong()))front++;
+            for(int lz=22;lz<=26;lz++)if(seen.contains(local(r,size,30,0,lz).asLong()))side++;
+            var outF=local(r,size,15,0,37);var outS=local(r,size,31,0,24);
+            boolean outFront=open(w,outF.getX(),e,outF.getZ()),outSide=open(w,outS.getX(),e,outS.getZ());
+            return new Res(bad==0&&front==9&&side==5&&outFront&&outSide,cells+" cells in the circle of 10, "+bad+" not flat and open"+badAt+"; the flood fill from beside the pole ("+seen.size()+" cells) reaches "+front+" of 9 cells of the front gate and "+side+" of 5 of the side gate; the cell outside the front gate "+xyz(outF)+" is open ground "+outFront+", outside the side gate "+xyz(outS)+" "+outSide);
+        }
+
+        /** The spur: along x = spurX + shift from the lane end to the outer cell of the front gate. */
+        static Res spur(ServerWorld w,Spec.SupplyHousesRow h,Spec.LandmarksRow r,Vec3i size,int shift){
+            var gate=local(r,size,15,0,37);int x=h.spurX()+shift,z0=h.spurZ(),z1=gate.getZ(),dir=Integer.signum(z1-z0);
+            int cells=0,off=0,blocked=0,maxStep=0,first=Arena.ground(x,z0),prev=first;var why=new StringBuilder();
+            for(int z=z0;;z+=dir){
+                cells++;int g=Arena.ground(x,z);
+                if(!Arena.road(x,z)){off++;if(off<=3)why.append(" not road ").append(x).append(',').append(z).append(';');}
+                for(int y=g+1;y<=g+2;y++)if(shape(w,x,y,z)){blocked++;if(blocked<=3)why.append(' ').append(name(at(w,x,y,z))).append(xyz(new BlockPos(x,y,z))).append(';');}
+                maxStep=Math.max(maxStep,Math.abs(g-prev));prev=g;
+                if(z==z1)break;
+            }
+            int last=Arena.ground(gate.getX(),gate.getZ());
+            return new Res(off==0&&blocked==0&&maxStep<=1&&last==h.elevation(),cells+" cells along x "+x+" from z "+z0+" to the outer cell of the front gate "+xyz(gate)+": "+off+" not road cells, "+blocked+" with a collision shape at ground+1 or +2"+why+"; the largest step of the ground between neighbours is "+maxStep+" (want 1 at most); the ground is "+first+" at the lane end and "+last+" at the gate (the elevation is "+h.elevation()+")");
+        }
+
+        /** The flag from the lane (spec 7.1: the holder's colour reads from far off; Task 8b fix round 1): from the eye of a walker at the lane end (the spur point of the row, 1.62 over the ground) to the middle of each of the two rows of the cloth, over the yard centre. Each of the two
+         *  lines must meet the cloth itself as the first block it meets: not the crest of the climb, not a wall or the roof, and not nothing (a miss means there is no cloth at the end of the line). The cloth stands at pole-2..pole-1 over the yard floor, the pole being Arena.housePole(elevation). */
+        static Res lane(ServerWorld w,net.minecraft.entity.Entity player,Spec.SupplyHousesRow h){
+            int x=h.yardX(),z=h.yardZ(),e=h.elevation(),top=Arena.housePole(e);
+            var eye=new Vec3d(h.spurX()+.5,Arena.ground(h.spurX(),h.spurZ())+1.62,h.spurZ()+.5);
+            int seen=0;var why=new StringBuilder();
+            for(int y=top-2;y<=top-1;y++){
+                var to=new Vec3d(x+2.5,e+y+.5,z+.5);
+                var hit=w.raycast(new net.minecraft.world.RaycastContext(eye,to,net.minecraft.world.RaycastContext.ShapeType.COLLIDER,net.minecraft.world.RaycastContext.FluidHandling.NONE,player));
+                boolean block=hit.getType()==net.minecraft.util.hit.HitResult.Type.BLOCK;var q=hit.getBlockPos();
+                boolean cloth=block&&q.getX()>=x+1&&q.getX()<=x+3&&q.getY()==e+y&&q.getZ()==z&&name(w.getBlockState(q)).equals("white_wool");
+                if(cloth)seen++;
+                else why.append(" the line to the cloth row +").append(y).append(block?" meets "+name(w.getBlockState(q))+xyz(q)+" first, "+String.format(Locale.ROOT,"%.1f",hit.getPos().distanceTo(to))+" before its end;":" meets nothing (no cloth at "+xyz(BlockPos.ofFloored(to))+");");
+            }
+            return new Res(seen==2,"from the lane end "+String.format(Locale.ROOT,"(%.1f,%.1f,%.1f)",eye.x,eye.y,eye.z)+", "+Math.round(eye.distanceTo(new Vec3d(x+2.5,e+top,z+.5)))+" blocks from the cloth over the yard "+xyz(new BlockPos(x+2,e+top-1,z))+": "+seen+" of 2 lines of the cloth meet the cloth first"+why+"; the lowest pole over the yard floor that this ground would let both rows be seen from the lane end: "+lowestPole(w,player,h)+" (the house has "+top+")");
+        }
+        /** The smallest pole (4 to 24) whose cloth, at pole-2..pole-1 over the yard floor, both lines of lane() would see: the lines are cast to the cloth's cells' middles and must miss every block (the flag as built is below them, or beside the line, which ends over the yard) or hit one within 0.3 of the end. 0: none. */
+        static int lowestPole(ServerWorld w,net.minecraft.entity.Entity player,Spec.SupplyHousesRow h){
+            int x=h.yardX(),z=h.yardZ(),e=h.elevation();
+            var eye=new Vec3d(h.spurX()+.5,Arena.ground(h.spurX(),h.spurZ())+1.62,h.spurZ()+.5);
+            for(int pole=4;pole<=24;pole++){
+                boolean all=true;
+                for(int y=pole-2;y<=pole-1&&all;y++){
+                    var to=new Vec3d(x+2.5,e+y+.5,z+.5);
+                    var hit=w.raycast(new net.minecraft.world.RaycastContext(eye,to,net.minecraft.world.RaycastContext.ShapeType.COLLIDER,net.minecraft.world.RaycastContext.FluidHandling.NONE,player));
+                    if(hit.getType()==net.minecraft.util.hit.HitResult.Type.BLOCK&&hit.getPos().distanceTo(to)>0.9)all=false;
+                }
+                if(all)return pole;
+            }
+            return 0;
+        }
+
+        static void set(ServerWorld w,BlockPos p,BlockState s){w.setBlockState(p,s,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);}
+
+        /** The checks of every house of map n, on the server thread once the map is ready. */
+        void check(GravesAndGlory.Battle b,int n){
+            var w=b.world;var out=new ArrayList<Shot>();int houses=0;Spec.SupplyHousesRow first=null;
+            var player=b.server.getPlayerManager().getPlayerList().isEmpty()?null:b.server.getPlayerManager().getPlayerList().get(0);
+            for(var h:Spec.SUPPLYHOUSES){
+                if(h.map()!=n)continue;houses++;if(first==null)first=h;
+                var r=landmarkOf(h);var size=r==null?null:sizeOf(r);String k="p3-house-"+h.id();
+                if(r==null||size==null){for(String part:new String[]{"neutral","yard","spur"})report(k+"-"+part,false,"no landmarks row or no pieces row for "+h.landmark());continue;}
+                var ne=neutral(w,h,r,size);report(k+"-neutral",ne.ok(),ne.why());
+                var ya=yard(w,h,r,size);report(k+"-yard",ya.ok(),ya.why());
+                var sp=spur(w,h,r,size,0);report(k+"-spur",sp.ok(),sp.why());
+                var la=lane(w,player,h);report(k+"-flag-lane",la.ok(),la.why());
+                views(out,h,r,size);
+            }
+            int want=n==4?2:4;
+            report("p3-house-rows-map"+n,houses==want,houses+" supplyHouses rows on map "+n+" (the plans state "+want+")");
+            if(first!=null&&landmarkOf(first)!=null&&sizeOf(landmarkOf(first))!=null)controls(w,n,first,landmarkOf(first),player);
+            shots=out;checked=true;
+        }
+
+        /** The five pictures of a house: local points go through Structures.toWorld, so their y is the elevation plus the local y; where no y is given the eye is at the ground+2.6. */
+        void views(List<Shot> out,Spec.SupplyHousesRow h,Spec.LandmarksRow r,Vec3i size){
+            String id=h.id();int e=h.elevation();
+            Vec3d gate=local(r,size,15.5,3.0,36.5);
+            out.add(new Shot(id+"-spur",h.spurX()+.5,Arena.ground(h.spurX(),h.spurZ())+2.6,h.spurZ()+.5,gate.x,gate.y,gate.z));
+            var g2=local(r,size,15.5,0.0,47.5);
+            out.add(new Shot(id+"-gate",g2.x,Arena.ground((int)Math.floor(g2.x),(int)Math.floor(g2.z))+2.6,g2.z,h.yardX()+.5,e+4,h.yardZ()+.5));
+            var y0=local(r,size,15.5,2.6,33.5);var y1=local(r,size,15.5,3.0,11.5);
+            out.add(new Shot(id+"-yard",y0.x,y0.y,y0.z,y1.x,y1.y,y1.z));
+            for(var l:Spec.LANDMARKLINES){
+                if(!l.template().equals(r.template())||!l.kind().equals("sight"))continue;
+                var a=local(r,size,l.fromX(),l.fromY(),l.fromZ());var z=local(r,size,l.toX(),l.toY(),l.toZ());
+                double ty=l.toY()==-1.0?Arena.ground((int)Math.floor(z.x),(int)Math.floor(z.z))+2.6:z.y;
+                out.add(new Shot(id+"-lookout",a.x,a.y,a.z,z.x,ty,z.z));
+            }
+            Spec.PointsRow near=null;double best=Double.MAX_VALUE;
+            for(var pt:Spec.POINTS){double d=Math.hypot(pt.x()-h.yardX(),pt.z()-h.yardZ());if(d<best){best=d;near=pt;}}
+            if(near!=null){
+                double dx=h.yardX()-near.x(),dz=h.yardZ()-near.z(),l=Math.hypot(dx,dz),px=near.x()+.5+dx/l*12,pz=near.z()+.5+dz/l*12;
+                out.add(new Shot(id+"-point",px,Arena.ground((int)Math.floor(px),(int)Math.floor(pz))+2.6,pz,h.yardX()+.5,e+4,h.yardZ()+.5));
+            }
+        }
+
+        /** Once per map, on its first house: what the neutral, yard and spur checks can fail on. Every block put in the world is taken out again. */
+        void controls(ServerWorld w,int n,Spec.SupplyHousesRow h,Spec.LandmarksRow r,net.minecraft.entity.Entity player){
+            var size=sizeOf(r);int e=h.elevation(),x=h.yardX(),z=h.yardZ();
+            var stone=Blocks.STONE.getDefaultState();
+            // neutral: the flag of Dawn (cyan) over the yard, then a brazier lit; each must fail, and the neutral flag and the brazier put back must pass again
+            var flagCells=new ArrayList<BlockPos>();int top=Arena.housePole(e);for(int y=1;y<=top+1;y++)flagCells.add(new BlockPos(x,e+y,z));for(int a=1;a<=3;a++)for(int y=top-2;y<=top-1;y++)flagCells.add(new BlockPos(x+a,e+y,z));
+            var keptFlag=new ArrayList<BlockState>();for(var q:flagCells)keptFlag.add(w.getBlockState(q));
+            Arena.flag(w,x,e,z,0,top);var cyan=neutral(w,h,r,size);Arena.flag(w,x,e,z,-1,top);var white=neutral(w,h,r,size);
+            for(int i=0;i<flagCells.size();i++)set(w,flagCells.get(i),keptFlag.get(i)); // the flag cells as the build left them (a map without the house flags has none)
+            var brazier=local(r,size,10,3,36);var kept=w.getBlockState(brazier);
+            set(w,brazier,Blocks.CAMPFIRE.getDefaultState().with(Properties.LIT,true));var lit=neutral(w,h,r,size);set(w,brazier,kept);var unlit=neutral(w,h,r,size);
+            report("p3-house-neutral-control-map"+n,!cyan.ok()&&white.ok()&&!lit.ok()&&unlit.ok(),h.id()+": with the cyan flag the check "+(cyan.ok()?"PASSES (it cannot fail)":"fails")+", with the white flag put back "+(white.ok()?"passes":"FAILS")+", with the first brazier lit it "+(lit.ok()?"PASSES (it cannot fail)":"fails")+", unlit again "+(unlit.ok()?"passes":"FAILS"));
+            // yard: a block in the circle; the cells of the front gate sealed (a block at +1 in each of the 9)
+            var inCircle=new BlockPos(x+5,e+1,z);var keptCircle=w.getBlockState(inCircle);
+            set(w,inCircle,stone);var blockedCircle=yard(w,h,r,size);set(w,inCircle,keptCircle);
+            var gateCells=new ArrayList<BlockPos>();var keptGate=new ArrayList<BlockState>();
+            for(int lx=11;lx<=19;lx++){var q=local(r,size,lx,1,36);gateCells.add(q);keptGate.add(w.getBlockState(q));}
+            for(var q:gateCells)set(w,q,stone);
+            var sealed=yard(w,h,r,size);
+            for(int i=0;i<gateCells.size();i++)set(w,gateCells.get(i),keptGate.get(i));
+            var again=yard(w,h,r,size);
+            report("p3-house-yard-control-map"+n,!blockedCircle.ok()&&!sealed.ok()&&again.ok(),h.id()+": with a stone at "+xyz(inCircle)+" the check "+(blockedCircle.ok()?"PASSES (it cannot fail)":"fails")+" ("+blockedCircle.why()+"), with the front gate sealed it "+(sealed.ok()?"PASSES (it cannot fail)":"fails")+", both put back "+(again.ok()?"passes":"FAILS"));
+            // spur: a block on the centre line at ground+1; the whole line moved 10 blocks aside (no road cells)
+            int mz=(h.spurZ()+local(r,size,15,0,37).getZ())/2,mg=Arena.ground(h.spurX(),mz);
+            var onLine=new BlockPos(h.spurX(),mg+1,mz);var keptLine=w.getBlockState(onLine);
+            set(w,onLine,stone);var blockedLine=spur(w,h,r,size,0);set(w,onLine,keptLine);
+            var aside=spur(w,h,r,size,10);var fine=spur(w,h,r,size,0);
+            // flag from the lane: a stone put in the line to the lower row of the cloth (the cell at its middle); the cloth of both rows taken away; both put back
+            var eye=new Vec3d(h.spurX()+.5,Arena.ground(h.spurX(),h.spurZ())+1.62,h.spurZ()+.5);var cloth=new Vec3d(x+2.5,e+top-1.5,z+.5);
+            var inLine=BlockPos.ofFloored(eye.add(cloth.subtract(eye).multiply(0.5)));var keptIn=w.getBlockState(inLine);
+            var clear=lane(w,player,h);
+            set(w,inLine,stone);var shadowed=lane(w,player,h);set(w,inLine,keptIn);
+            var clothCells=new ArrayList<BlockPos>();var keptCloth=new ArrayList<BlockState>();
+            for(int a=1;a<=3;a++)for(int y=top-2;y<=top-1;y++){var q=new BlockPos(x+a,e+y,z);clothCells.add(q);keptCloth.add(w.getBlockState(q));}
+            for(var q:clothCells)set(w,q,Blocks.AIR.getDefaultState());
+            var bare=lane(w,player,h);
+            for(int i=0;i<clothCells.size();i++)set(w,clothCells.get(i),keptCloth.get(i));
+            var back=lane(w,player,h);
+            report("p3-house-flag-lane-control-map"+n,player!=null&&clear.ok()&&!shadowed.ok()&&!bare.ok()&&back.ok(),h.id()+": "+(player==null?"NO PLAYER; ":"")+"as built the check "+(clear.ok()?"passes":"FAILS")+", with a stone in the line at "+xyz(inLine)+" it "+(shadowed.ok()?"PASSES (it cannot fail)":"fails")+" ("+shadowed.why().trim()+"), with the cloth taken away it "+(bare.ok()?"PASSES (it cannot fail)":"fails")+", both put back "+(back.ok()?"passes":"FAILS"));
+            report("p3-house-spur-control-map"+n,!blockedLine.ok()&&!aside.ok()&&fine.ok(),h.id()+": with a stone on the centre line at "+xyz(onLine)+" the check "+(blockedLine.ok()?"PASSES (it cannot fail)":"fails")+", with the line moved 10 blocks aside it "+(aside.ok()?"PASSES (it cannot fail)":"fails")+", put back "+(fine.ok()?"passes":"FAILS"));
         }
     }
 }

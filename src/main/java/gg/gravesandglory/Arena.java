@@ -51,25 +51,119 @@ public final class Arena {
     }
     public static boolean road(int x,int z){return CampaignMaps.road(x,z);}
     static double blend(double h,double flat,double dist,double radius,double shoulder){double t=MathHelper.clamp((dist-radius)/shoulder,0,1);t=t*t*(3-2*t);return flat+(h-flat)*t;}
+    /** The ground height of the column. On the shoulder of a landmark (the blend distance between 0 and the shoulder, off the river) the rounded heights are despiked (see smooth): the grade of Task 6 found single columns of dirt standing
+     *  as wedges in the grass, where a contour of the blend wandered round a half block; elsewhere it is the rounded height of rawHeight. */
     public static int height(int x,int z){
+        return onShoulder(x,z)?smooth(x,z):rawHeight(x,z);
+    }
+    /** The column lies on the shoulder of a landmark, at least 16 from the river (its banks have a profile of their own). */
+    static boolean onShoulder(int x,int z){
+        if(Math.abs(x-riverX(z))<16)return false;
+        for(var s:Spec.STRUCTURES)if(s.kind().equals("landmark")){double ld=landmarkDistance(s,x,z);if(ld>0&&ld<shoulder(s))return true;}
+        return false;
+    }
+    /** The rounded heights of the 11x11 columns round (x, z) filtered by the median of five along x then along z, twice, and by the median of three along x then along z: a column, or two side by side, that is lower than both sides
+     *  on an axis is raised to the higher of them and one that is higher than both lowered (no single or double column stands out as a pit, a bump or a one-block strip), while a slope or a step of any width passes through unchanged
+     *  (a median keeps a sequence that rises or falls). A step of the shoulder is at least three columns wide on an axis. */
+    static int smooth(int x,int z){
+        final int n=5,w=2*n+1;int[][] g=new int[w][w];
+        for(int i=0;i<w;i++)for(int j=0;j<w;j++)g[i][j]=cachedRaw(x-n+i,z-n+j);
+        int[] ok={0,w-1,0,w-1}; // the box of g that is valid: x from ok[0] to ok[1], z from ok[2] to ok[3]
+        for(int[] step:new int[][]{{2,0},{2,1},{2,0},{2,1},{1,0},{1,1}})g=median(g,ok,step[0],step[1]==0);
+        return g[n][n];
+    }
+    /** g filtered along x (alongX) or along z by the median of 2*half+1 values, for the columns whose window lies in the valid box ok, which shrinks by half along that axis. */
+    private static int[][] median(int[][] g,int[] ok,int half,boolean alongX){
+        int w=g.length;int[][] o=new int[w][w];int[] v=new int[2*half+1];
+        int x0=ok[0]+(alongX?half:0),x1=ok[1]-(alongX?half:0),z0=ok[2]+(alongX?0:half),z1=ok[3]-(alongX?0:half);
+        for(int i=x0;i<=x1;i++)for(int j=z0;j<=z1;j++){
+            for(int k=-half;k<=half;k++)v[k+half]=alongX?g[i+k][j]:g[i][j+k];
+            java.util.Arrays.sort(v);o[i][j]=v[half];
+        }
+        ok[0]=x0;ok[1]=x1;ok[2]=z0;ok[3]=z1;
+        return o;
+    }
+    /** rawHeight of the columns the smoothing reads, kept per thread while the structures, hills, points and roads of the map stay the ones they were computed for (a switch of the map replaces all four). */
+    private static final class RawCache{Object structures,terrain,points,roads;final java.util.HashMap<Long,Integer> heights=new java.util.HashMap<>();}
+    private static final ThreadLocal<RawCache> RAW=ThreadLocal.withInitial(RawCache::new);
+    static int cachedRaw(int x,int z){
+        var c=RAW.get();
+        if(c.structures!=Spec.STRUCTURES||c.terrain!=Spec.TERRAIN||c.points!=Spec.POINTS||c.roads!=CampaignMaps.roads||c.heights.size()>400_000){c.heights.clear();c.structures=Spec.STRUCTURES;c.terrain=Spec.TERRAIN;c.points=Spec.POINTS;c.roads=CampaignMaps.roads;}
+        long k=((long)x<<32)^(z&0xffffffffL);Integer h=c.heights.get(k);
+        if(h==null){h=rawHeight(x,z);c.heights.put(k,h);}
+        return h;
+    }
+    static int rawHeight(int x,int z){
         double h=Y;
         for(var hill:Spec.TERRAIN){double wx=x+Spec.TERRAINSTYLE[0].warpAmplitude()*Math.sin(z*Spec.TERRAINSTYLE[0].warpFrequency()),wz=z+5*Math.sin(x*.043);double a=(wx-hill.x())/(double)hill.radiusX(),b=(wz-hill.z())/(double)hill.radiusZ();h+=hill.height()*Math.exp(-2*(a*a+b*b));}
         h+=.5*Spec.TERRAINSTYLE[0].roughness()*(Math.sin(x*.067+z*.031)+.5*Math.sin(z*.13-x*.043));
         double d=Math.abs(x-riverX(z));if(d<14)h=blend(h,Y-3,d,5,9);
         if(d>=5&&d<14)h=Math.max(Y-1,h);
-        for(var s:Spec.STRUCTURES)if(!s.kind().equals("bridge")){double dx=Math.max(0,Math.abs(x-s.x())-s.width()/2.0-2),dz=Math.max(0,Math.abs(z-s.z())-s.depth()/2.0-2);h=blend(h,s.elevation(),Math.hypot(dx,dz),0,10);}
+        for(var s:Spec.STRUCTURES)if(!s.kind().equals("bridge")&&!s.kind().equals("landmark")){double dx=Math.max(0,Math.abs(x-s.x())-s.width()/2.0-2),dz=Math.max(0,Math.abs(z-s.z())-s.depth()/2.0-2);h=blend(h,s.elevation(),Math.hypot(dx,dz),0,10);}
         for(var p:Spec.POINTS)h=blend(h,p.elevation(),Math.hypot(x-p.x(),z-p.z()),p.radius()+2,9);
         // Bridge decks and their approaches must be walkable even where a hill
         // meets the river. Clear/flatten the entire deck and blend broad ramps.
         for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")){double dx=Math.max(0,Math.abs(x-s.x())-s.width()/2.0-1),dz=Math.max(0,Math.abs(z-s.z())-s.depth()/2.0-1);h=blend(h,s.elevation(),Math.hypot(dx,dz),0,12);}
         double rd=CampaignMaps.roadDistance(x,z);
         if(rd<8)h=blend(h,roadLevel(x,z),rd,0,8);
+        // Landmarks (authored pieces, see CampaignMaps.landmarks) stand on ground flat at their elevation out to 2 blocks past the footprint, after the roads so a lane
+        // that reaches a door meets the floor of the piece; the shoulder widens by 2 a block of rise, so a raised outpost meets the plain in a slope a squad can walk.
+        // Its edge wanders and a raised landmark's shoulder has relief (landmarkDistance, relief): its one-block steps are neither rings parallel to the footprint nor ruled diagonal sawtooth.
+        for(var s:Spec.STRUCTURES)if(s.kind().equals("landmark")){double ld=landmarkDistance(s,x,z),sh=shoulder(s);h=blend(h,s.elevation(),ld,0,sh);if(s.elevation()>Y&&ld>0&&ld<sh)h+=relief(x,z,ld,sh);}
         double border=Math.max(Math.abs(x)-GravesAndGlory.R.arenaHalfX()+14,Math.abs(z)-GravesAndGlory.R.arenaHalfZ()+12);
         if(border>0)h+=Math.min(Spec.TERRAINSTYLE[0].boundaryRise(),border*.4)*(.65+.35*Math.sin(x*.055+z*.043));
         if(z<-GravesAndGlory.R.arenaHalfZ())h=CampWorld.taper(x,z,h); // the margin north of the playable box (z -251 to -266) meets the rim of the camp; the box itself is not touched
         int r=(int)Math.round(h);
         // A river column writes nothing at h (the river check wants air from h up), so a column of the margin that the taper lifted out of the water would end one block below its neighbours: its height is one more than its ground, and buildColumn lays the ground at h-1.
         return z<-GravesAndGlory.R.arenaHalfZ()&&river(x,z)&&r>Y?r+1:r;
+    }
+    /** The shoulder of a landmark: the blocks over which its flat ring meets the ground round it, 10 and 2 more a block of rise above 64 (the preflight keeps a landmark's elevation 64 and up). */
+    static double shoulder(Spec.StructuresRow s){return 10+2*(s.elevation()-64);}
+    /** The distance the landmark blend reads at (x, z): from the flat ring (2 beyond the footprint), wandered by a noise of about 8 blocks (up to a quarter of the shoulder, at most 4) and by under a block more on a
+     *  noise of about 3 blocks (no single columns, which would stand as pits), faded in over the first 4 blocks so the flat ring stays flat. A wandering distance gives each one-block step of the shoulder its own edge, where a straight one stacks them as rings parallel to the footprint and
+     *  draws a diagonal step as a ruled sawtooth (the grade of Task 6). The wander reaches at most 5 blocks past the shoulder, inside the 10 the box diff gives a landmark's zone. */
+    static double landmarkDistance(Spec.StructuresRow s,int x,int z){
+        double dx=Math.max(0,Math.abs(x-s.x())-s.width()/2.0-2),dz=Math.max(0,Math.abs(z-s.z())-s.depth()/2.0-2),d=Math.hypot(dx,dz);
+        if(d<=0)return 0;
+        if(d>=shoulder(s)+6)return d; // past the wander (at most 4.8) the blend is 1 either way
+        double amp=Math.min(4,.25*shoulder(s)),fade=Math.min(1,d/4);
+        return Math.max(0,d+fade*(amp*CampTerrain.fbm(x,z,8,611)+1.6*(CampTerrain.noise(x,z,3,612)-.5)));
+    }
+    /** The relief of a raised landmark's shoulder at blend distance d of shoulder sh: swells of about 7 blocks (up to about a block) and a few knobs of rock (outcrop), strongest at the middle of the slope and nothing at its
+     *  top and foot, and nothing within 1 of a road and less within 5 (a road that climbs the shoulder keeps its even grade). */
+    static double relief(int x,int z,double d,double sh){
+        double t=d/sh,mid=4*t*(1-t),road=MathHelper.clamp((CampaignMaps.roadDistance(x,z)-1)/4,0,1);
+        return road*mid*(1.2*CampTerrain.fbm(x,z,7,621)+outcrop(x,z));
+    }
+    /** A knob of rock on a raised landmark's shoulder, 0 to 1: where a noise of about 5 blocks is high. buildColumn lays stone or andesite on its top (rocky). */
+    static double outcrop(int x,int z){return MathHelper.clamp((CampTerrain.noise(x,z,5,622)-.74)/.1,0,1);}
+    /** The block of a knob of rock: stone, andesite or mossy cobblestone in patches of about three blocks. */
+    static Block rock(int x,int z){double n=CampTerrain.noise(x,z,3,624);return n<.4?Blocks.STONE:n<.7?Blocks.ANDESITE:Blocks.MOSSY_COBBLESTONE;}
+    /** The column's top is a knob of rock on the slope of a raised landmark's shoulder (relief lifted it by more than half a block there). */
+    static boolean rocky(int x,int z){
+        if(outcrop(x,z)<.5)return false;
+        for(var s:Spec.STRUCTURES)if(s.kind().equals("landmark")&&s.elevation()>Y){double d=landmarkDistance(s,x,z),sh=shoulder(s);if(d>0&&d<sh&&4*(d/sh)*(1-d/sh)*MathHelper.clamp((CampaignMaps.roadDistance(x,z)-1)/4,0,1)*outcrop(x,z)>.5)return true;}
+        return false;
+    }
+    /** The yard of a landmark (the grade of Task 6: a band of grass across the lane at a door): within 6 blocks of a landmark's footprint or inside it (where its ground layer is void the map's ground shows), a cell off the road that has a road cell 5 or fewer blocks one way along x, z or a
+     *  diagonal and a road cell or the footprint 5 or fewer blocks the other way is laid as dirt path by buildColumn. So a lane runs on to the doorstep and to the plinth, and no sliver of grass is left between two lanes or
+     *  between a lane and a wall. Off the river and its banks. */
+    static boolean yard(int x,int z){
+        if(road(x,z)||wetBank(x,z))return false;
+        boolean near=false;
+        for(var s:Spec.STRUCTURES)if(s.kind().equals("landmark")&&Math.max(Math.abs(x-s.x())-s.width()/2,Math.abs(z-s.z())-s.depth()/2)<=6)near=true;
+        if(!near)return false;
+        for(int[] v:new int[][]{{1,0},{0,1},{1,1},{1,-1}}){
+            int a=reach(x,z,v[0],v[1]),b=reach(x,z,-v[0],-v[1]);
+            if(a>0&&b>0&&(a==1||b==1))return true;
+        }
+        return false;
+    }
+    /** Along (vx, vz) from (x, z), 1 to 5 blocks: 1 for a road cell first, 2 for a landmark footprint first, 0 for neither. */
+    static int reach(int x,int z,int vx,int vz){
+        for(int k=1;k<=5;k++){int px=x+vx*k,pz=z+vz*k;if(road(px,pz))return 1;
+            for(var s:Spec.STRUCTURES)if(s.kind().equals("landmark")&&Math.abs(px-s.x())<=s.width()/2&&Math.abs(pz-s.z())<=s.depth()/2)return 2;}
+        return 0;
     }
     /** How far a road climbs to a raised capture point (Kingsfield's outposts): from the floor of the arena at the end of this distance beyond the plateau of the point up to the elevation of the point at the edge of the plateau. */
     static final double CLIMB=48;
@@ -79,16 +173,25 @@ public final class Arena {
     static double roadLevel(int x,int z){
         double level=Y;
         boolean raised=false;for(var p:Spec.POINTS)raised|=p.elevation()>Y;
+        for(var h:Spec.SUPPLYHOUSES)raised|=h.map()==CampaignMaps.selected&&h.elevation()>Y;
         if(!raised)return level;
         CampaignMaps.Road near=null;double best=Double.MAX_VALUE;
         for(var r:CampaignMaps.roads){double d=CampaignMaps.distance(x,z,r)-r.width();if(d<best){best=d;near=r;}}
         if(near==null)return level;
-        for(var p:Spec.POINTS)if(p.elevation()>Y&&(near.ax()==p.x()&&near.az()==p.z()||near.bx()==p.x()&&near.bz()==p.z())){
-            double t=MathHelper.clamp(1-(Math.hypot(x-p.x(),z-p.z())-(p.radius()+2))/CLIMB,0,1);t=t*t*(3-2*t);
-            level=Math.max(level,Y+(p.elevation()-Y)*t);
+        for(var p:Spec.POINTS)if(p.elevation()>Y&&endsAt(near,p.x(),p.z()))level=Math.max(level,climb(Math.hypot(x-p.x(),z-p.z())-(p.radius()+2),p.elevation()));
+        // A raised supply house (its spur ends at the yard centre): the level of its landmark row on the flat ring (2 round the footprint), the climb from there
+        for(var h:Spec.SUPPLYHOUSES)if(h.map()==CampaignMaps.selected&&h.elevation()>Y&&endsAt(near,h.yardX(),h.yardZ())){
+            for(var l:Spec.STRUCTURES)if(l.id().equals(h.landmark())){
+                double dx=Math.max(0,Math.abs(x-l.x())-l.width()/2.0-2),dz=Math.max(0,Math.abs(z-l.z())-l.depth()/2.0-2);
+                level=Math.max(level,climb(Math.hypot(dx,dz),h.elevation()));
+            }
         }
         return level;
     }
+    /** The height of a road that climbs to a raised end: from the floor of the arena at CLIMB blocks beyond the plateau up to `elevation` at its edge (beyond 0 and less), on a smoothstep. */
+    static double climb(double beyond,int elevation){double t=MathHelper.clamp(1-beyond/CLIMB,0,1);t=t*t*(3-2*t);return Y+(elevation-Y)*t;}
+    /** One end of the road is the cell (x, z). */
+    static boolean endsAt(CampaignMaps.Road r,int x,int z){return r.ax()==x&&r.az()==z||r.bx()==x&&r.bz()==z;}
     public static int ground(int x,int z){for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")&&Math.abs(x-s.x())<=s.width()/2&&Math.abs(z-s.z())<=s.depth()/2)return s.elevation();return river(x,z)?Y-3:height(x,z);}
     public static int mapColor(int x,int z){
         int h=height(x,z),color=river(x,z)?0x416d88:road(x,z)?0xa79b75:h>79?0x687270:h>72?0x68815a:0x507b49;
@@ -115,7 +218,7 @@ public final class Arena {
         else put(w,x,h-1,z,margin&&!river(x,z)?CampWorld.underBlock(rock,x,z):Blocks.DIRT);
         if(river(x,z)){for(int y=Y-5;y<=Y-3;y++)put(w,x,y,z,Blocks.GRAVEL);for(int y=Y-2;y<=Y-1;y++)put(w,x,y,z,Blocks.WATER);}
         else{
-            Block surface=road(x,z)?Blocks.DIRT_PATH:margin&&natural(h)!=Blocks.STONE?CampWorld.mix(natural(h),rock,x,z):natural(h);
+            Block surface=road(x,z)||!margin&&yard(x,z)?Blocks.DIRT_PATH:margin&&natural(h)!=Blocks.STONE?CampWorld.mix(natural(h),rock,x,z):!margin&&rocky(x,z)?rock(x,z):natural(h);
             put(w,x,h,z,surface);
             var deco=Spec.DECORATIONS[0];int hash=Math.floorMod(x*734287+z*912931+x*z*17,100003);
             boolean clear=!road(x,z)&&h<84&&Math.abs(x-riverX(z))>15&&surface==natural(h); // no plant on the stone and the dirt of a steep margin
@@ -138,10 +241,11 @@ public final class Arena {
             }
             box(w,p.x()-1,p.elevation(),p.z()-1,3,1,3,Blocks.CHISELED_STONE_BRICKS);flag(w,p,-1);
         }
+        // the supply houses of the map: a neutral flag over each yard centre (the piece leaves its flag column void, so the flag stands; the rules plan recolours it with the same call)
+        for(var h:Spec.SUPPLYHOUSES)if(h.map()==CampaignMaps.selected)flag(w,h.yardX(),h.elevation(),h.yardZ(),-1,housePole(h.elevation()));
         for(var s:Spec.SCENERY){int y=height(s.x(),s.z())+1;if(s.kind().equals("tree")){
             tree(w,s.x(),y,s.z(),s.width(),s.height(),s.palette().equals("spruce"));
         }else for(int dx=0;dx<s.width();dx++)for(int dz=0;dz<s.width();dz++)for(int dy=0;dy<s.height();dy++)if(dx+dz+dy<s.width()+s.height()-1)put(w,s.x()+dx,y+dy,s.z()+dz,(dx+dz)%3==0?Blocks.MOSSY_COBBLESTONE:Blocks.ANDESITE);}
-        if(CampaignMaps.selected==1)for(int row=0;row<4;row++)box(w,-109+row*4,65,-152,3,2,3,Blocks.HAY_BLOCK);
         if(!Boolean.getBoolean("gravesandglory.noDressing"))MapDressing.dress(w); // off only in local A/B harness runs
     }
     /** One tree with its trunk standing on (x,y,z) (y is the first block above the ground): a spruce as a cone, an oak as a rounded crown; leaves are persistent so the woods never thin out mid-battle. width is the width of the crown, height the height of the trunk
@@ -206,5 +310,16 @@ public final class Arena {
             case "market" -> {for(int a=0;a<3;a++){int dx=x+a*6;box(w,dx,y,z,1,s.height()-1,1,Blocks.OAK_FENCE);box(w,dx+4,y,z,1,s.height()-1,1,Blocks.OAK_FENCE);box(w,dx,y+s.height()-1,z-1,5,1,5,a%2==0?cloth:Blocks.WHITE_WOOL);box(w,dx,y,z+2,5,1,1,Blocks.OAK_SLAB);put(w,dx+1,y,z+3,Blocks.BARREL);}}
         }
     }
-    public static void flag(ServerWorld w,Spec.PointsRow p,int team){Block color=team<0?Blocks.WHITE_WOOL:team==0?Blocks.CYAN_WOOL:Blocks.PURPLE_WOOL;box(w,p.x(),p.elevation()+1,p.z(),1,6,1,Blocks.OAK_FENCE);box(w,p.x()+1,p.elevation()+4,p.z(),3,2,1,color);put(w,p.x(),p.elevation()+7,p.z(),Blocks.SEA_LANTERN);}
+    public static void flag(ServerWorld w,Spec.PointsRow p,int team){flag(w,p.x(),p.elevation(),p.z(),team);}
+    /** The pole of a point's flag, in blocks of fence over the ground. */
+    public static final int POINT_POLE=6;
+    /** The least pole of the flag of a supply house, in blocks of fence over the yard floor (Task 8b fix round 1): the road climbs 10 to 16 blocks to the yards, so a flag of six hides behind the crest and the holder's colour cannot be read from the lane; eleven stands over the
+     *  roof ridge (local y 6) and shows its cloth from the lane end of the houses at elevation 74 to 76 (Rivergate, Hollowwood, Kingsfield). The rising-flag rule of the rules plan recolours the same call. */
+    public static final int HOUSE_POLE=11;
+    /** The pole of the flag of a house whose yard floor is at elevation: the higher the yard sits over the lane end (ground 64), the nearer the crest of the climb rises to the line from the lane end to the cloth, so the pole grows by four blocks for every three blocks of elevation over 75: 11 at 74 (Rivergate, Hollowwood), 12 at 76 (Kingsfield), 13 at 77 (Ironhold), 17 at 80 (Frostmarch).
+     *  These are one block over the least pole that shows both rows of the cloth from the lane end (12 for Ironhold, 15 and 16 for Frostmarch, measured by p3-house-ID-flag-lane, which fails when a house has less). */
+    public static int housePole(int elevation){return HOUSE_POLE+Math.max(0,(elevation-75)*4/3);}
+    public static void flag(ServerWorld w,int x,int y,int z,int team){flag(w,x,y,z,team,POINT_POLE);}
+    /** The flag of a point or a supply house: a pole of pole blocks of fence over the ground at (x, y, z), three by two blocks of cloth (white neutral, cyan Dawn, purple Dusk) on its two top blocks, and a sea lantern on top: for the pole of six the cloth is at y+4..5 and the lantern at y+7, as it always was. */
+    public static void flag(ServerWorld w,int x,int y,int z,int team,int pole){Block color=team<0?Blocks.WHITE_WOOL:team==0?Blocks.CYAN_WOOL:Blocks.PURPLE_WOOL;box(w,x,y+1,z,1,pole,1,Blocks.OAK_FENCE);box(w,x+1,y+pole-2,z,3,2,1,color);put(w,x,y+pole+1,z,Blocks.SEA_LANTERN);}
 }
