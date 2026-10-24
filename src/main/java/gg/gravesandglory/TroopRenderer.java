@@ -58,11 +58,11 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
     private static final Map<Entity,Drawn> DRAWN=new MapMaker().weakKeys().makeMap();
     /** The draws of an entity through its own model, or null for one never drawn so. */
     public static Drawn drawn(Entity e){return DRAWN.get(e);}
-    /** What the layers bound and drew in the current draw (TroopFeatures writes them), and the matrix it started with. */
     /** Whether this draw binds the one-texel-a-px twins of a density above 1 troop's PNGs (TroopModels.far; set for the draw, read by getTexture and the layers). */
     boolean far;
     /** The face the current draw wears (TroopModels.face). */
     int variant;
+    /** What the layers bound and drew in the current draw (TroopFeatures writes them), and the matrix it started with. */
     Identifier boundSkin,clothSheet,trimSheet;long clothMask;boolean weaponDrawn,shieldDrawn,weaponFar;String reliefKey;int weaponFrame=-1,weaponQuads;private float tilt;private final Matrix4f start=new Matrix4f(),delta=new Matrix4f();
     private final Vector3f up=new Vector3f();
 

@@ -89,7 +89,7 @@ final class ArmyCards {
     /** The troopNotes row of a troop (its beats and beaten-by cells; the level 2 and 3 card lines come from its levelAbilities rows), or null. */
     static Spec.TroopNotesRow notes(Spec.TroopsRow t){for(var n:Spec.TROOPNOTES)if(n.id().equals(t.id()))return n;return null;}
 
-    /** Draws a portrait mob as the cards do (InventoryScreen.drawEntity), telling TroopModels the scale first: a troop of density above 1 draws its one-texel-a-px twins on a card under 16 x density px a block. */
+    /** Draws a portrait mob as the cards do (InventoryScreen.drawEntity), telling TroopModels the scale first: a troop of density above 1 draws its one-texel-a-px twins on a card under 16 x density GUI px a block (the size as given, not times the GUI scale; see TroopModels.FAR_CARD_PER_DENSITY). */
     static void draw(DrawContext g,int x,int bottom,int size,float mouseX,float mouseY,MobEntity e){
         TroopModels.sized(e,size);InventoryScreen.drawEntity(g,x,bottom,size,mouseX,mouseY,e);
     }

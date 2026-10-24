@@ -140,22 +140,25 @@ public final class TroopModels {
 
     /** The suffix of a density D troop PNG's one-texel-a-px twin (tools/build_skins.py FAR_SUFFIX): knight_s3.png has knight_s3_far.png. */
     static final String FAR_SUFFIX="_far";
-    /** A card portrait is drawn from the twins when it spans fewer than this many screen px a block for each texel of density a px: 16 x density, so 48 for a density 3 troop (at 48 a texel is one screen px; under it a nearest-sampled 3x skin crawls and speckles). */
+    /** A card portrait is drawn from the twins when it spans fewer than this many px a block for each texel of density a px: 16 x density, so 48 for a density 3 troop (at 48 screen px a texel is one screen px; under it a nearest-sampled 3x skin crawls and speckles). The px a card is measured in are the GUI px ArmyCards.draw is given (InventoryScreen.drawEntity's size), not multiplied by the GUI scale: at GUI scale 2 or 3 a card the rule calls small is 2 or 3 times larger on screen, so a card may draw the twin where the skin would have been crisp (the safe side; open item M2 of the texel-3 review). */
     static final int FAR_CARD_PER_DENSITY=16;
+    /** The twins made so far, by texture id: the key set is the few PNGs of the troops, and a far draw asks for several twins a troop a frame, so none is built twice. */
+    private static final Map<Identifier,Identifier> TWINS=new java.util.concurrent.ConcurrentHashMap<>();
     /** The twin of a texture id: the same path with _far before the .png (a path that is no png is its own twin). */
-    static Identifier twin(Identifier id){
+    static Identifier twin(Identifier id){return TWINS.computeIfAbsent(id,TroopModels::makeTwin);}
+    private static Identifier makeTwin(Identifier id){
         String p=id.getPath();return p.endsWith(".png")?new Identifier(id.getNamespace(),p.substring(0,p.length()-4)+FAR_SUFFIX+".png"):id;
     }
     /** The texture a draw binds: the id, or for a density above 1 troop drawing far, its twin. */
     private static Identifier pick(TroopModel<?> m,Identifier id,boolean far){return far&&m.density>1&&id!=null?twin(id):id;}
-    /** The screen px a block spans where a dressed mob was last drawn (ArmyCards.draw records it). Weak keys by identity. */
+    /** The GUI px a block spans where a dressed mob was last drawn (ArmyCards.draw records the size it is given). Weak keys by identity. */
     private static final Map<Entity,Integer> SIZED=new MapMaker().weakKeys().makeMap();
-    /** Records the scale (screen px a block) a portrait mob is about to be drawn at. */
+    /** Records the scale (GUI px a block, as InventoryScreen.drawEntity takes it) a portrait mob is about to be drawn at. */
     static void sized(Entity e,int pxPerBlock){SIZED.put(e,pxPerBlock);}
     /**
      * Whether the draw of this troop binds the one-texel-a-px twins of its PNGs (texel-3 plan Q2a): the troop's density is above 1 and it
      * is a world troop at least TroopDepth.NEAR_BLOCKS from the camera, or a card portrait last drawn at fewer than FAR_CARD_PER_DENSITY
-     * x density px a block. A troop of density 1 never does.
+     * x density GUI px a block. A troop of density 1 never does.
      */
     static boolean far(Entity e,Look l){
         var m=troops.get(l.troop().id());if(m==null||m.density<=1)return false;

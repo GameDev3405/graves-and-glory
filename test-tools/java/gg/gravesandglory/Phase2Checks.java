@@ -6302,6 +6302,8 @@ public final class Phase2Checks implements ClientModInitializer {
      * GravesAndGloryClient.lastSent, TroopRenderer.drawn), never a re-derived value.
      */
     static final class Screens extends Stage {
+        /** A bound texture id as text with a one-texel-a-px twin's _far taken out (knight_s1_far.png is knight_s1.png): a far or card draw of a density above 1 troop binds the twin, and the checks name the skin. */
+        static String unfar(Object id){return String.valueOf(id).replace("_far.png",".png");}
         volatile boolean campReady,claimReady,vetCast,claimed;volatile String serverWhy="";volatile int rollStars=-1,rollCopies=-1,ironShards0=-1,ironShards=-1;
         java.util.random.RandomGenerator rngSaved;int knightMastery0=-1;
         GravesAndGlory.Squad mine;GravesAndGlory.Unit plain,vet1,vet3;
@@ -6450,9 +6452,9 @@ public final class Phase2Checks implements ClientModInitializer {
                     var l1=d1==null?null:d1.last;var l3=d3==null?null:d3.last;var l0=d0==null?null:d0.last;
                     String trim="gravesandglory:textures/entity/troop/knight_veteran.png";
                     boolean names=n1.equals("Order Squire (Veteran)")&&n3.equals("Knight-Captain (Veteran)")&&n0.equals("Order Squire");
-                    boolean one=l1!=null&&l1.look().veteran()&&String.valueOf(l1.skin()).endsWith("knight_s1.png")&&String.valueOf(l1.trim()).equals(trim);
-                    boolean three=l3!=null&&l3.look().veteran()&&l3.look().armourTier()==3&&String.valueOf(l3.skin()).endsWith("knight_s3.png")&&String.valueOf(l3.trim()).equals(trim);
-                    boolean bare=l0!=null&&!l0.look().veteran()&&l0.trim()==null&&String.valueOf(l0.skin()).endsWith("knight_s1.png");
+                    boolean one=l1!=null&&l1.look().veteran()&&unfar(l1.skin()).endsWith("knight_s1.png")&&unfar(l1.trim()).equals(trim);
+                    boolean three=l3!=null&&l3.look().veteran()&&l3.look().armourTier()==3&&unfar(l3.skin()).endsWith("knight_s3.png")&&unfar(l3.trim()).equals(trim);
+                    boolean bare=l0!=null&&!l0.look().veteran()&&l0.trim()==null&&unfar(l0.skin()).endsWith("knight_s1.png");
                     boolean named=serverWhy.contains("(Order Squire (Veteran)) is knight")&&serverWhy.contains("(Knight-Captain (Veteran)) is knight");
                     shot(c,"chase-veteran");
                     report("p2-veteran-skin",names&&one&&three&&bare&&named,"names on the client: \""+n1+"\", \""+n3+"\", \""+n0+"\" (want Order Squire (Veteran), Knight-Captain (Veteran), Order Squire)="+names+"; the Mastery II knight at tier I drew skin "+(l1==null?"none":l1.skin())+" with trim "+(l1==null?"none":l1.trim())+"="+one+"; at tier III skin "+(l3==null?"none":l3.skin())+" with trim "+(l3==null?"none":l3.trim())+"="+three+"; the bot's plain knight trim "+(l0==null?"none":l0.trim())+"="+bare+"; "+serverWhy+"="+named+"; picture p2-chase-veteran.png");
