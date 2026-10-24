@@ -69,7 +69,7 @@ public static RaritiesRow[] RARITIES = new RaritiesRow[] {new RaritiesRow("commo
 public record ProgressionRow(String id,boolean enabled,int assistSeconds,int commanderBounty,double chevronRange,int feedLevel) {}
 public static ProgressionRow[] PROGRESSION = new ProgressionRow[] {new ProgressionRow("main",true,10,3,24.0,3)};
 public record LevelsRow(String id,int level,int kills,double healthPct,double damagePct) {}
-public static LevelsRow[] LEVELS = new LevelsRow[] {new LevelsRow("l1",1,0,0.0,0.0),new LevelsRow("l2",2,3,0.05,0.05),new LevelsRow("l3",3,8,0.1,0.1)};
+public static LevelsRow[] LEVELS = new LevelsRow[] {new LevelsRow("l1",1,0,0.0,0.0),new LevelsRow("l2",2,4,0.05,0.05),new LevelsRow("l3",3,12,0.1,0.1)};
 public record GearTiersRow(String id,int tier,double weaponPct,double armourPct) {}
 public static GearTiersRow[] GEARTIERS = new GearTiersRow[] {new GearTiersRow("t1",1,0.0,0.0),new GearTiersRow("t2",2,0.1,0.1),new GearTiersRow("t3",3,0.2,0.2)};
 public record LevelNamesRow(String id,String troop,int level,String name) {}

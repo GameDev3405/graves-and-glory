@@ -129,7 +129,7 @@ public final class RankNetworkChecks implements ClientModInitializer {
                 if (!has(control, "guest-1.txt")) return;
                 server(c, b -> {
                     var own = b.squads.get(hostId);
-                    Veterans.credit(b, a1, 3); // the archer reaches level 2: his first chevron
+                    Veterans.credit(b, a1, LevelChecks.L2); // the archer reaches level 2: his first chevron
                     Veterans.purchase(b, own, Campaign.troop("knight"), LevelMath.ARMOUR, 3, LevelMath.price(Campaign.troop("knight").rarity(), 3)); // the level-3 squire wears armour III
                     put(control, "expect-2.txt", String.join("\n", List.of(line(a1), line(k3), line(k2), line(k1))));
                 });
@@ -172,7 +172,7 @@ public final class RankNetworkChecks implements ClientModInitializer {
         }
         own.gold = 5000;
         var knight = Campaign.troop("knight");
-        Veterans.credit(b, k3, 8); Veterans.credit(b, k2, 3);
+        Veterans.credit(b, k3, LevelChecks.L3); Veterans.credit(b, k2, LevelChecks.L2);
         Veterans.purchase(b, own, knight, LevelMath.WEAPON, 2, LevelMath.price(knight.rarity(), 2));
         Veterans.purchase(b, own, knight, LevelMath.WEAPON, 3, LevelMath.price(knight.rarity(), 3));
         Veterans.purchase(b, own, knight, LevelMath.ARMOUR, 2, LevelMath.price(knight.rarity(), 2));

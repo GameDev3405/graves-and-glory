@@ -5363,14 +5363,14 @@
     {
       "id": "l2",
       "level": 2,
-      "kills": 3,
+      "kills": 4,
       "healthPct": 0.05,
       "damagePct": 0.05
     },
     {
       "id": "l3",
       "level": 3,
-      "kills": 8,
+      "kills": 12,
       "healthPct": 0.1,
       "damagePct": 0.1
     }

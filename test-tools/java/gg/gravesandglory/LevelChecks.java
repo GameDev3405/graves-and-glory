@@ -20,6 +20,9 @@ import java.util.function.Supplier;
 final class LevelChecks {
     private LevelChecks() {}
 
+    /** The credits that make level 2 and level 3 (sheet levels.kills). Checks that need "just enough for level N" read these, never a literal. */
+    static final int L2 = Spec.LEVELS[1].kills(), L3 = Spec.LEVELS[2].kills();
+
     /** Adds this file's suites to Phase2Checks.SUITES. */
     static void register(Map<String, Supplier<Phase2Checks.Suite>> suites) {
         suites.put("levels", Levels::new);
@@ -256,29 +259,29 @@ final class LevelChecks {
                 }
                 case 41 -> { // p2-bounty: a level-3 victim and two helpers: each of the three gets 3
                     var h1 = at(b, dawn, "archer", -2, -8); var h2 = at(b, dawn, "archer", 2, -8); k = at(b, dawn, "knight", 0, -2); v = victim(b, dusk, "knight", 0, 0);
-                    v.level = 3; v.credits = 8;
+                    v.level = 3; v.credits = L3;
                     shoot(b, h1, v.mob, 1f); shoot(b, h2, v.mob, 1f); var t = mark(); kill(b, k, v);
                     var kills = events(t, -2, "kill");
-                    boolean ok = !v.mob.isAlive() && h1.credits == 3 && h2.credits == 3 && k.credits == 3 && h1.level == 2 && h2.level == 2 && k.level == 2 && kills.size() == 1 && kills.get(0).value() == 3;
-                    Phase2Checks.report("p2-bounty", ok, "a level-3 Dusk Squire killed by a Squire with two archers' help: " + cl(k, h1, h2) + " (want 3/2 each: the bounty is the victim's level), kill " + (kills.isEmpty() ? "none" : kills.get(0).detail()));
+                    boolean ok = !v.mob.isAlive() && h1.credits == 3 && h2.credits == 3 && k.credits == 3 && h1.level == LevelMath.levelFor(3) && h2.level == LevelMath.levelFor(3) && k.level == LevelMath.levelFor(3) && kills.size() == 1 && kills.get(0).value() == 3;
+                    Phase2Checks.report("p2-bounty", ok, "a level-3 Dusk Squire killed by a Squire with two archers' help: " + cl(k, h1, h2) + " (want 3/" + LevelMath.levelFor(3) + " each: the bounty is the victim's level), kill " + (kills.isEmpty() ? "none" : kills.get(0).detail()));
                     clearFixture(b, "bounty"); next(b, 50);
                 }
                 case 50 -> { // p2-level-skip and p2-rank-sent: a fresh Squire, credited once the commander tracks him (so the change packets, not START_TRACKING, must carry the rank)
                     flashUnit = at(b, dawn, "knight", 0, -2); next(b, 54);
                 }
-                case 54 -> { // 9 credits at once from level 1
+                case 54 -> { // the level-3 credits at once from level 1
                     var u = flashUnit;
                     boolean tracked = net.fabricmc.fabric.api.networking.v1.PlayerLookup.tracking(u.mob).contains(sp(b));
                     if (since(b) < 5 || !tracked && since(b) < 60) return;
                     u.mob.setHealth(20f);
                     float max0 = u.mob.getMaxHealth(); int ups0 = Veterans.levelUps, feeds0 = Veterans.pendingFeed.size(); rankSends0 = RankSync.changeSends; var t = mark();
-                    Veterans.credit(b, u, 9);
+                    Veterans.credit(b, u, L3);
                     var levels = values(events(t, u.mob.getId(), "level")); var ranks = values(events(t, u.mob.getId(), "rank")); var feeds = events(t, u.mob.getId(), "feed");
                     double wantMax = u.spec.health() * LevelMath.healthFactor(3, 1);
                     var feed = Veterans.pendingFeed.size() > feeds0 ? Veterans.pendingFeed.get(Veterans.pendingFeed.size() - 1) : null;
-                    boolean ok = u.level == 3 && u.credits == 9 && Math.abs(u.mob.getMaxHealth() - wantMax) < 1e-3 && Math.abs(u.mob.getHealth() - (20 + (wantMax - max0))) < 1e-3
+                    boolean ok = u.level == 3 && u.credits == L3 && Math.abs(u.mob.getMaxHealth() - wantMax) < 1e-3 && Math.abs(u.mob.getHealth() - (20 + (wantMax - max0))) < 1e-3
                         && levels.equals(List.of(2, 3)) && Veterans.levelUps == ups0 + 2 && feeds.size() == 1 && feed != null && Veterans.pendingFeed.size() == feeds0 + 1 && feed.team() == 0 && feed.levelName().equals("Knight-Captain") && name(u).equals("Knight-Captain");
-                    Phase2Checks.report("p2-level-skip", ok, "a Squire at 0 credits and 20 of " + fmt(max0) + " health got 9: " + cl(u) + " (want 9/3), max health " + fmt(u.mob.getMaxHealth()) + " (want " + fmt(wantMax) + ", two steps of +5%), health " + fmt(u.mob.getHealth()) + " (want " + fmt(20 + wantMax - max0) + ": raised by the added health only), level ups logged " + levels + " (want [2, 3]), feed lines " + feeds.size() + " (want 1: " + (feed == null ? "none" : feed.levelName() + " for team " + feed.team()) + "), name \"" + name(u) + "\"");
+                    Phase2Checks.report("p2-level-skip", ok, "a Squire at 0 credits and 20 of " + fmt(max0) + " health got " + L3 + ": " + cl(u) + " (want " + L3 + "/3), max health " + fmt(u.mob.getMaxHealth()) + " (want " + fmt(wantMax) + ", two steps of +5%), health " + fmt(u.mob.getHealth()) + " (want " + fmt(20 + wantMax - max0) + ": raised by the added health only), level ups logged " + levels + " (want [2, 3]), feed lines " + feeds.size() + " (want 1: " + (feed == null ? "none" : feed.levelName() + " for team " + feed.team()) + "), name \"" + name(u) + "\"");
                     rankOk = ranks.equals(List.of(2, 3)) && tracked && RankSync.changeSends >= rankSends0 + 2;
                     rankWhy = "each level up sent the rank: logged " + ranks + " (want [2, 3]), rank_v1 change packets +" + (RankSync.changeSends - rankSends0) + " (want +2) to the commander, who tracks him=" + tracked + " (want true: credited " + since(b) + " ticks after he was posted); ";
                     rankSeen = null; rankWant = 3; rankId = u.mob.getId(); flashUnit = u; next(b, 51);
@@ -290,14 +293,14 @@ final class LevelChecks {
                     Phase2Checks.report("p2-rank-sent", ok, rankWhy + "the client holds for him " + (seen == null ? "nothing at level 3 after 80 ticks" : seen));
                     clearFixture(b, "skip"); next(b, 52);
                 }
-                case 52 -> { // p2-level-up: 3 credits make an Order Squire a Knight with x1.05 health, current health raised by the delta only
+                case 52 -> { // p2-level-up: the level-2 credits make an Order Squire a Knight with x1.05 health, current health raised by the delta only
                     var u = at(b, dawn, "knight", 0, -2); u.mob.setHealth(10f);
                     double base = u.spec.health(), wantMax = base * LevelMath.healthFactor(2, 1), wantHealth = 10 + base * (LevelMath.healthFactor(2, 1) - 1);
                     boolean fresh = u.level == 1 && name(u).equals("Order Squire") && Math.abs(u.mob.getMaxHealth() - base) < 1e-3;
-                    Veterans.credit(b, u, 2); boolean still = u.level == 1 && u.credits == 2;
+                    Veterans.credit(b, u, L2 - 1); boolean still = u.level == 1 && u.credits == L2 - 1;
                     Veterans.credit(b, u, 1);
                     boolean ok = fresh && still && u.level == 2 && name(u).equals("Knight") && Math.abs(u.mob.getMaxHealth() - wantMax) < 1e-3 && Math.abs(u.mob.getHealth() - wantHealth) < 1e-3;
-                    Phase2Checks.report("p2-level-up", ok, "an Order Squire (fresh: level 1, \"Order Squire\", " + fmt(base) + " health=" + fresh + ") at 10 health: 2 credits keep him level 1=" + still + ", the third makes him " + cl(u) + " named \"" + name(u) + "\" (want Knight) with max health " + fmt(u.mob.getMaxHealth()) + " (want " + fmt(wantMax) + ") and health " + fmt(u.mob.getHealth()) + " (want " + fmt(wantHealth) + ")");
+                    Phase2Checks.report("p2-level-up", ok, "an Order Squire (fresh: level 1, \"Order Squire\", " + fmt(base) + " health=" + fresh + ") at 10 health: " + (L2 - 1) + " credits keep him level 1=" + still + ", one more makes him " + cl(u) + " named \"" + name(u) + "\" (want Knight) with max health " + fmt(u.mob.getMaxHealth()) + " (want " + fmt(wantMax) + ") and health " + fmt(u.mob.getHealth()) + " (want " + fmt(wantHealth) + ")");
                     clearFixture(b, "level-up"); next(b, 53);
                 }
                 case 53 -> { // p2-level-name-veteran: a Mastery II Squire of the commander's own army at level 3
@@ -305,7 +308,7 @@ final class LevelChecks {
                     if (!knightHad) { knightOwned = new Profile.Owned(); pr.owned.put("knight", knightOwned); }
                     knightMastery = knightOwned.mastery; knightOwned.mastery = 2;
                     var u = at(b, own, "knight", 0, -2); String fresh = name(u);
-                    Veterans.credit(b, u, 8);
+                    Veterans.credit(b, u, L3);
                     boolean ok = fresh.equals("Order Squire" + ArmyMobs.VETERAN) && u.level == 3 && name(u).equals("Knight-Captain (Veteran)");
                     Phase2Checks.report("p2-level-name-veteran", ok, "a Mastery II Order Squire of the commander's army spawns as \"" + fresh + "\" and at " + cl(u) + " is named \"" + name(u) + "\" (want \"Knight-Captain (Veteran)\")");
                     restoreKnight(b); clearFixture(b, "veteran"); next(b, 60);
@@ -317,7 +320,7 @@ final class LevelChecks {
                 case 61 -> {
                     if (since(b) < 12) return; // the camera has settled: particles that arrive as the player lands are dropped
                     heard0 = (int) Phase1Checks.heardOnClient(Veterans.FLASH_SOUND.getId().toString()); flashes0 = Veterans.flashes;
-                    Veterans.credit(b, flashUnit, 3); requestShot("levels-flash", 3); next(b, 62);
+                    Veterans.credit(b, flashUnit, L2); requestShot("levels-flash", 3); next(b, 62);
                 }
                 case 62 -> {
                     String sound = Veterans.FLASH_SOUND.getId().toString(); int heard = (int) Phase1Checks.heardOnClient(sound);
@@ -332,11 +335,11 @@ final class LevelChecks {
                 case 70 -> { // p2-rise-keeps-level: a level-2 Risen rises through Rise Again
                     var g = at(b, dusk, "revenant", 0, 0); for (int i = 0; i < 5; i++) at(b, dusk, "revenant", -8 + i * 1.5, 10); Houses.recompute(dusk);
                     k = at(b, dawn, "knight", 0, -2);
-                    Veterans.credit(b, g, 3); String named = name(g); int sends = RankSync.changeSends; var t = mark();
+                    Veterans.credit(b, g, L2); String named = name(g); int sends = RankSync.changeSends; var t = mark();
                     Houses.forceRise = Boolean.TRUE; try { kill(b, k, g); } finally { Houses.forceRise = Boolean.FALSE; }
                     var after = events(t, -2, null);
-                    boolean ok = g.mob.isAlive() && g.rose && g.level == 2 && g.credits == 3 && name(g).equals(named) && named.equals("Revenant") && RankSync.changeSends == sends && k.credits == 0 && after.isEmpty() && dusk.traits.getOrDefault("graveborn", 0) >= 1;
-                    Phase2Checks.report("p2-rise-keeps-level", ok, "a level-2 Risen of a Graveborn army (tier " + dusk.traits.getOrDefault("graveborn", 0) + ") named \"" + named + "\" was struck down with the roll forced: alive " + g.mob.isAlive() + ", rose " + g.rose + ", " + cl(g) + " (want 3/2), name \"" + name(g) + "\", rank packets +" + (RankSync.changeSends - sends) + " (want 0), the striker " + cl(k) + " (want 0: the rising blow is no kill), progression events " + after.size() + " (want 0)");
+                    boolean ok = g.mob.isAlive() && g.rose && g.level == 2 && g.credits == L2 && name(g).equals(named) && named.equals("Revenant") && RankSync.changeSends == sends && k.credits == 0 && after.isEmpty() && dusk.traits.getOrDefault("graveborn", 0) >= 1;
+                    Phase2Checks.report("p2-rise-keeps-level", ok, "a level-2 Risen of a Graveborn army (tier " + dusk.traits.getOrDefault("graveborn", 0) + ") named \"" + named + "\" was struck down with the roll forced: alive " + g.mob.isAlive() + ", rose " + g.rose + ", " + cl(g) + " (want " + L2 + "/2), name \"" + name(g) + "\", rank packets +" + (RankSync.changeSends - sends) + " (want 0), the striker " + cl(k) + " (want 0: the rising blow is no kill), progression events " + after.size() + " (want 0)");
                     clearFixture(b, "rise"); next(b, 71);
                 }
                 case 71 -> { // p2-temporary-no-credit: a temporary Risen kills and earns nothing; a temporary Risen killed counts 1
@@ -345,7 +348,7 @@ final class LevelChecks {
                     int troopKills = dawn.stats.troopKills.getOrDefault("revenant", 0);
                     shoot(b, h, v.mob, 1f); blow(b, temp, v.mob, 1f); kill(b, temp, v);
                     boolean earnsNothing = !v.mob.isAlive() && temp.credits == 0 && temp.level == 1 && h.credits == 1 && dawn.stats.troopKills.getOrDefault("revenant", 0) == troopKills;
-                    var t2 = at(b, dusk, "revenant", 4, 0); t2.temporary = true; t2.expiresAt = b.time + 1000; t2.level = 3; t2.credits = 8;
+                    var t2 = at(b, dusk, "revenant", 4, 0); t2.temporary = true; t2.expiresAt = b.time + 1000; t2.level = 3; t2.credits = L3;
                     var k2 = at(b, dawn, "knight", 4, -2); int lost = dusk.stats.lost, kills = dawn.stats.kills;
                     kill(b, k2, t2);
                     boolean countsOne = !t2.mob.isAlive() && k2.credits == 1 && dusk.stats.lost == lost && dawn.stats.kills == kills;
@@ -369,8 +372,8 @@ final class LevelChecks {
                     shoot(b, da, p, 1f);
                     p.setHealth(1f); blow(b, dk, p, 50f);
                     boolean down = b.respawns.containsKey(player) && p.isSpectator();
-                    boolean first = down && dk.credits == 3 && da.credits == 3 && dk.level == 2 && da.level == 2;
-                    String why = "an archer hit the commander and a Squire struck him down (respawning " + down + "): " + cl(dk, da) + " (want 3/2 each: a commander counts progression.commanderBounty " + Spec.PROGRESSION[0].commanderBounty() + ")=" + first + "; ";
+                    boolean first = down && dk.credits == 3 && da.credits == 3 && dk.level == LevelMath.levelFor(3) && da.level == LevelMath.levelFor(3);
+                    String why = "an archer hit the commander and a Squire struck him down (respawning " + down + "): " + cl(dk, da) + " (want 3/" + LevelMath.levelFor(3) + " each: a commander counts progression.commanderBounty " + Spec.PROGRESSION[0].commanderBounty() + ")=" + first + "; ";
                     revive(b);
                     var dk2 = at(b, dusk, "knight", -8, -2);
                     p.setHealth(1f); blow(b, dk2, p, 50f);
@@ -395,7 +398,7 @@ final class LevelChecks {
                     var first = b.units.stream().filter(u -> u.squad == rebuy).findFirst().orElse(null);
                     if (first == null) { Phase2Checks.report("p2-rebuy-level-1", false, "reinforce fielded no Squire"); next(b, 91); return; }
                     fixture.add(first); Phase1Checks.freeze(first); first.mob.setAiDisabled(true);
-                    Veterans.credit(b, first, 8); String high = name(first) + " " + cl(first);
+                    Veterans.credit(b, first, L3); String high = name(first) + " " + cl(first);
                     fall(b, first);
                     b.reinforce(rebuy);
                     var again = b.units.stream().filter(u -> u.squad == rebuy && u.mob.isAlive()).findFirst().orElse(null);
@@ -409,10 +412,10 @@ final class LevelChecks {
                     try {
                         var h = at(b, dawn, "archer", 0, -8); k = at(b, dawn, "knight", 0, -2); v = victim(b, dusk, "knight", 0, 0);
                         int kills = dawn.stats.kills, gold = dawn.stats.goldEarned; var t = mark();
-                        shoot(b, h, v.mob, 1f); kill(b, k, v); Veterans.credit(b, k, 9);
+                        shoot(b, h, v.mob, 1f); kill(b, k, v); Veterans.credit(b, k, L3);
                         var after = events(t, -2, null);
                         boolean ok = !Veterans.enabled() && !v.mob.isAlive() && h.credits == 0 && k.credits == 0 && k.level == 1 && after.isEmpty() && dawn.stats.kills == kills + 1 && dawn.stats.goldEarned == gold + Spec.ECONOMY[0].killGold();
-                        Phase2Checks.report("p2-progression-off", ok, "with progression off (the sim override) an archer's hit and a Squire's kill, then 9 credits handed over: " + cl(h, k) + " (want 0/1 each), progression events " + after.size() + " (want 0), the army's kills +" + (dawn.stats.kills - kills) + " and gold +" + (dawn.stats.goldEarned - gold) + " (want 1 and " + Spec.ECONOMY[0].killGold() + ": unchanged)");
+                        Phase2Checks.report("p2-progression-off", ok, "with progression off (the sim override) an archer's hit and a Squire's kill, then " + L3 + " credits handed over: " + cl(h, k) + " (want 0/1 each), progression events " + after.size() + " (want 0), the army's kills +" + (dawn.stats.kills - kills) + " and gold +" + (dawn.stats.goldEarned - gold) + " (want 1 and " + Spec.ECONOMY[0].killGold() + ": unchanged)");
                     } finally { Veterans.override = null; }
                     clearFixture(b, "off"); next(b, 92);
                 }
@@ -434,7 +437,7 @@ final class LevelChecks {
                     }
                     { // a level up at full health: current health rises with the maximum and ends at it
                         var u = at(b, dawn, "knight", 0, 4); float max0 = u.mob.getMaxHealth(); boolean full = u.mob.getHealth() == max0;
-                        Veterans.credit(b, u, 3);
+                        Veterans.credit(b, u, L2);
                         double want = u.spec.health() * LevelMath.healthFactor(2, 1);
                         boolean ok = full && u.level == 2 && Math.abs(u.mob.getMaxHealth() - want) < 1e-3 && Math.abs(u.mob.getHealth() - u.mob.getMaxHealth()) < 1e-3;
                         Phase2Checks.report("p2-level-full-health", ok, "a Squire at full health (" + fmt(max0) + "=" + full + ") reached " + cl(u) + ": max health " + fmt(u.mob.getMaxHealth()) + " (want " + fmt(want) + "), health " + fmt(u.mob.getHealth()) + " (want the new maximum: raised by the step, never above it)");
@@ -452,8 +455,8 @@ final class LevelChecks {
                 case 94 -> {
                     boolean down = b.respawns.containsKey(player);
                     if (!down && since(b) < 20) return;
-                    boolean ok = down && !arch.mob.isAlive() && helper.credits == 3 && helper.level == 2 && arch.credits == 0;
-                    Phase2Checks.report("p2-commander-fallen-shot", ok, "a Dusk Squire struck the commander, then a Dusk archer's arrow struck him down " + since(b) + " ticks after the archer fell (respawning " + down + "): " + cl(helper, arch) + " (want the Squire 3/2: the shot is his army's blow, Battle.fallenSquad; the fallen archer 0)");
+                    boolean ok = down && !arch.mob.isAlive() && helper.credits == 3 && helper.level == LevelMath.levelFor(3) && arch.credits == 0;
+                    Phase2Checks.report("p2-commander-fallen-shot", ok, "a Dusk Squire struck the commander, then a Dusk archer's arrow struck him down " + since(b) + " ticks after the archer fell (respawning " + down + "): " + cl(helper, arch) + " (want the Squire 3/" + LevelMath.levelFor(3) + ": the shot is his army's blow, Battle.fallenSquad; the fallen archer 0)");
                     revive(b); clearFixture(b, "fallen-shot"); next(b, 95);
                 }
                 case 95 -> { // p2-commander-fall: a Dusk Squire's blow, then a death with no attacker inside the window; then another outside it
@@ -486,7 +489,7 @@ final class LevelChecks {
                 }
                 case 98 -> { // p2-level-killing-blow, p2-level-killing-reap: the blow that kills crosses a level and the new row applies on that blow (Task 6 review M1, the comment above Combat.onHit; Task 10)
                     // Order Longbow one kill from level 2: his killing arrow levels him inside target.damage (AFTER_DEATH), and the level-2 pierce (reach 3; reach 2 at level 1) takes the Squire 2.5 behind the victim on that same arrow
-                    var lb = at(b, dawn, "longbow", -6, -10); lb.credits = 2;
+                    var lb = at(b, dawn, "longbow", -6, -10); lb.credits = L2 - 1;
                     var vk = at(b, dusk, "knight", -6, 0); var behind = victim(b, dusk, "knight", -6, 2.5);
                     var lb0 = at(b, dawn, "longbow", 6, -10); // the control: no credit, his kill leaves him at level 1, and reach 2 misses the Squire 2.5 behind
                     var vk0 = at(b, dusk, "knight", 6, 0); var behind0 = victim(b, dusk, "knight", 6, 2.5);
@@ -497,19 +500,19 @@ final class LevelChecks {
                     hm = Combat.LAST.peekLast();
                     vk0.mob.setHealth(1f); shoot(b, lb0, vk0.mob, 50f);
                     var onBehind0 = Phase2Checks.Gilded.hitOn(behind0.mob, hm);
-                    boolean crossed = !vk.mob.isAlive() && lb.credits == 3 && lb.level == 2 && Abilities.row(lb).id().equals("longbow_l2");
+                    boolean crossed = !vk.mob.isAlive() && lb.credits == L2 && lb.level == 2 && Abilities.row(lb).id().equals("longbow_l2");
                     boolean ok = crossed && onBehind != null && Math.abs(onBehind.base() - pierce) < 1e-4 && !vk0.mob.isAlive() && lb0.credits == 1 && lb0.level == 1 && onBehind0 == null;
-                    Phase2Checks.report("p2-level-killing-blow", ok, "an Order Longbow with 2 credits shot a Dusk Squire dead (dead " + !vk.mob.isAlive() + "): " + cl(lb) + " (want 3/2, the kill made him level 2), his row " + Abilities.row(lb).id() + "; on that same arrow the Squire 2.5 behind took " + (onBehind == null ? "nothing" : fmt(onBehind.base())) + " (want the level-2 pierce 0.7 x " + fmt(Abilities.baseHit(b, lb)) + " = " + fmt(pierce) + "); the control with no credit killed his Squire (dead " + !vk0.mob.isAlive() + "): " + cl(lb0) + " (want 1/1) and his pierce took " + (onBehind0 == null ? "nothing" : fmt(onBehind0.base())) + " from the Squire behind (want nothing: reach 2)");
+                    Phase2Checks.report("p2-level-killing-blow", ok, "an Order Longbow with " + (L2 - 1) + " credits shot a Dusk Squire dead (dead " + !vk.mob.isAlive() + "): " + cl(lb) + " (want " + L2 + "/2, the kill made him level 2), his row " + Abilities.row(lb).id() + "; on that same arrow the Squire 2.5 behind took " + (onBehind == null ? "nothing" : fmt(onBehind.base())) + " (want the level-2 pierce 0.7 x " + fmt(Abilities.baseHit(b, lb)) + " = " + fmt(pierce) + "); the control with no credit killed his Squire (dead " + !vk0.mob.isAlive() + "): " + cl(lb0) + " (want 1/1) and his pierce took " + (onBehind0 == null ? "nothing" : fmt(onBehind0.base())) + " from the Squire behind (want nothing: reach 2)");
                     // Grave Reaper one kill from level 3: Veterans.award credits him before it calls Abilities.onKill, so Reap (level 3 only) heals 25% of his new maximum on the kill that makes him level 3; one that stays at level 2 heals nothing
-                    var rp = at(b, dawn, "reaper", -2, -3); Veterans.credit(b, rp, 7);
-                    var rp2 = at(b, dawn, "reaper", 2, -3); Veterans.credit(b, rp2, 3);
+                    var rp = at(b, dawn, "reaper", -2, -3); Veterans.credit(b, rp, L3 - 1);
+                    var rp2 = at(b, dawn, "reaper", 2, -3); Veterans.credit(b, rp2, L2);
                     var vr = at(b, dusk, "knight", -2, 0); var vr2 = at(b, dusk, "knight", 2, 0);
                     rp.mob.setHealth(rp.mob.getMaxHealth() * .4f); rp2.mob.setHealth(rp2.mob.getMaxHealth() * .4f);
                     float max2 = rp.mob.getMaxHealth(), h0 = rp.mob.getHealth(), h20 = rp2.mob.getHealth(); int lvl0 = rp.level;
                     kill(b, rp, vr); kill(b, rp2, vr2);
                     float max3 = rp.mob.getMaxHealth(), stepped = Math.min(max3, h0 + (max3 - max2)), reaped = rp.mob.getHealth() - stepped;
-                    boolean reap = lvl0 == 2 && rp.level == 3 && rp.credits == 8 && !vr.mob.isAlive() && Math.abs(reaped - .25f * max3) < 1e-2 && rp2.level == 2 && rp2.credits == 4 && !vr2.mob.isAlive() && Math.abs(rp2.mob.getHealth() - h20) < 1e-3;
-                    Phase2Checks.report("p2-level-killing-reap", reap, "a Grave Reaper at level " + lvl0 + " with 7 credits and 40% health killed a Dusk Squire: " + cl(rp) + " (want 8/3), health " + fmt(rp.mob.getHealth()) + " of " + fmt(max3) + "; the level up gave " + fmt(stepped - h0) + " and Reap " + fmt(reaped) + " more (want 25% of the new maximum = " + fmt(.25f * max3) + "); the control with 3 credits killed his Squire and stayed at " + cl(rp2) + " (want 4/2), health " + fmt(rp2.mob.getHealth()) + " (want " + fmt(h20) + ", no Reap)");
+                    boolean reap = lvl0 == 2 && rp.level == 3 && rp.credits == L3 && !vr.mob.isAlive() && Math.abs(reaped - .25f * max3) < 1e-2 && rp2.level == 2 && rp2.credits == L2 + 1 && !vr2.mob.isAlive() && Math.abs(rp2.mob.getHealth() - h20) < 1e-3;
+                    Phase2Checks.report("p2-level-killing-reap", reap, "a Grave Reaper at level " + lvl0 + " with " + (L3 - 1) + " credits and 40% health killed a Dusk Squire: " + cl(rp) + " (want " + L3 + "/3), health " + fmt(rp.mob.getHealth()) + " of " + fmt(max3) + "; the level up gave " + fmt(stepped - h0) + " and Reap " + fmt(reaped) + " more (want 25% of the new maximum = " + fmt(.25f * max3) + "); the control with " + L2 + " credits killed his Squire and stayed at " + cl(rp2) + " (want " + (L2 + 1) + "/2), health " + fmt(rp2.mob.getHealth()) + " (want " + fmt(h20) + ", no Reap)");
                     clearFixture(b, "killing-blow"); next(b, 99);
                 }
                 default -> {}
@@ -714,7 +717,7 @@ final class LevelChecks {
                     String locked = say(b, "gear:knight:weapon:2");
                     boolean lockedOk = locked.equals("Needs a level-2 Knight") && own.gold == 1000 && Veterans.peek(b, own, "knight") == null && Veterans.row(b, own, knight).weapon2() == LevelMath.Buy.LOCKED;
                     Phase2Checks.report("p2-gear-locked", lockedOk, "before any Squire reached level 2, gear:knight:weapon:2 left the notice \"" + locked + "\" (want \"Needs a level-2 Knight\"), gold " + own.gold + " (want 1000), the row " + states(Veterans.row(b, own, knight)));
-                    Veterans.credit(b, u1, 3); Veterans.credit(b, u2, 3);
+                    Veterans.credit(b, u1, L2); Veterans.credit(b, u2, L2);
                     var r = Veterans.row(b, own, knight);
                     String three = say(b, "gear:knight:weapon:3");
                     boolean open = u1.level == 2 && r.weapon2() == LevelMath.Buy.OPEN && r.weapon3() == LevelMath.Buy.LOCKED && r.armour2() == LevelMath.Buy.OPEN && r.armour3() == LevelMath.Buy.LOCKED
@@ -736,13 +739,13 @@ final class LevelChecks {
                     boolean wearNow = weaponWorn && u1.armourTier == 2 && u2.armourTier == 2 && u3.armourTier == 1 && Math.abs(u1.mob.getMaxHealth() - want2) < 1e-3 && Math.abs(u2.mob.getMaxHealth() - want2) < 1e-3
                         && Math.abs(u1.mob.getHealth() - (10 + base * .10)) < 1e-3 && Math.abs(u2.mob.getHealth() - (15 + base * .10)) < 1e-3 && Math.abs(u3.mob.getMaxHealth() - u3max) < 1e-3;
                     Phase2Checks.report("p2-gear-wear-now", wearNow, "Weapon II bought: tiers " + u1.weaponTier + "/" + u2.weaponTier + "/" + u3.weaponTier + " (want 2/2/1: the level-1 Squire cannot wear it), wear events " + worn.size() + " (want 2, each a rank_v1 change); Armour II bought: the level-2 Squires at max " + fmt(u1.mob.getMaxHealth()) + " and " + fmt(u2.mob.getMaxHealth()) + " (want " + fmt(want2) + ": +10%), health 10 -> " + fmt(u1.mob.getHealth()) + " and 15 -> " + fmt(u2.mob.getHealth()) + " (want +" + fmt(base * .10) + ": the delta only), the level-1 Squire tier " + u3.armourTier + " at " + fmt(u3.mob.getMaxHealth()) + " (want 1 at " + fmt(u3max) + ")");
-                    u3.mob.setHealth(10f); Veterans.credit(b, u3, 3);
+                    u3.mob.setHealth(10f); Veterans.credit(b, u3, L2);
                     boolean later = tierOne && u3.level == 2 && u3.weaponTier == 2 && u3.armourTier == 2 && Math.abs(u3.mob.getMaxHealth() - want2) < 1e-3 && Math.abs(u3.mob.getHealth() - (10 + base * .15)) < 1e-3;
                     Phase2Checks.report("p2-gear-wear-later", later, "the Squires who levelled before the buy wore tier I until it=" + tierOne + "; a Squire reaching level 2 after both buys: " + cl(u3) + " wears weapon " + u3.weaponTier + " armour " + u3.armourTier + " (want 2/2) at max " + fmt(u3.mob.getMaxHealth()) + " (want " + fmt(want2) + ") and health 10 -> " + fmt(u3.mob.getHealth()) + " (want " + fmt(10 + base * .15) + ": the level step and the armour step)");
                     clearFixture(b, "location"); next(b, 20);
                 }
                 case 20 -> { // p2-gear-iii-needs-ii: a level-3 archer; Armour III is refused until Armour II is bought
-                    var a1 = at(b, own, "archer", 0, -6); float max0 = a1.mob.getMaxHealth(); Veterans.credit(b, a1, 8);
+                    var a1 = at(b, own, "archer", 0, -6); float max0 = a1.mob.getMaxHealth(); Veterans.credit(b, a1, L3);
                     toBarracks(b); int g0 = own.gold;
                     String first = say(b, "gear:archer:armour:3"); int g1 = own.gold;
                     String two = say(b, "gear:archer:armour:2"), three = say(b, "gear:archer:armour:3");
@@ -753,7 +756,7 @@ final class LevelChecks {
                     clearFixture(b, "iii-needs-ii"); next(b, 30);
                 }
                 case 30 -> { // p2-gear-open-stays: the only levelled Sunweaver dies; its buys stay open for the round
-                    var m = at(b, own, "mage", 2, -8); Veterans.credit(b, m, 3);
+                    var m = at(b, own, "mage", 2, -8); Veterans.credit(b, m, L2);
                     var before = Veterans.row(b, own, mage);
                     fall(b, m);
                     var after = Veterans.row(b, own, mage); boolean none = b.fielded(own).noneMatch(u -> u.spec == mage);
@@ -763,7 +766,7 @@ final class LevelChecks {
                 }
                 case 40 -> { // p2-gear-price: Common 40/80, Epic 80/160, for a Warlock too (his discount is on troops, never gear)
                     own.commander = "warlock";
-                    var k3 = at(b, own, "knight", -4, -4); Veterans.credit(b, k3, 8); var m3 = at(b, own, "mage", 4, -8); Veterans.credit(b, m3, 8);
+                    var k3 = at(b, own, "knight", -4, -4); Veterans.credit(b, k3, L3); var m3 = at(b, own, "mage", 4, -8); Veterans.credit(b, m3, L3);
                     int troop = Commander.cost(own, mage);
                     toBarracks(b); int g0 = own.gold;
                     String kw3 = say(b, "gear:knight:weapon:3"); int g1 = own.gold;
@@ -803,7 +806,7 @@ final class LevelChecks {
                     boolean tierOne = fresh.level == 1 && fresh.weaponTier == 1 && fresh.armourTier == 1 && Math.abs(fresh.mob.getMaxHealth() - want) < 1e-3;
                     var kit = Veterans.peek(b, own, "knight"); int goldNow = own.gold;
                     String arrived = "level " + fresh.level + " wearing " + fresh.weaponTier + "/" + fresh.armourTier + " at max " + fmt(fresh.mob.getMaxHealth());
-                    Veterans.credit(b, fresh, 3);
+                    Veterans.credit(b, fresh, L2);
                     boolean levels = fresh.level == 2 && fresh.weaponTier == 2 && fresh.armourTier == 2;
                     boolean ok = paid == Commander.cost(own, knight) && goldNow >= goldTrained && tierOne && levels && kit.weapon == 3 && kit.armour == 2;
                     Phase2Checks.report("p2-gear-rebuy-tier1", ok, "train:knight at the barracks took " + paid + " gold (want the troop's " + Commander.cost(own, knight) + ", no gear charge), and gold stayed at or above " + goldTrained + " to the spawn (" + goldNow + "); the new Squire arrived at " + arrived + " (want level 1, tier I/I, " + fmt(want) + ") though the army bought " + kit + "; at level 2 he wears " + fresh.weaponTier + "/" + fresh.armourTier + " (want 2/2: min of his level and the tier bought)");
@@ -811,8 +814,8 @@ final class LevelChecks {
                 }
                 case 70 -> { // p2-gear-allies-separate: a second Dawn army keeps its own Armoury
                     dawn.banner = new ArrayList<>(List.of("knight", "archer"));
-                    var dk = at(b, dawn, "knight", 0, -4); Veterans.credit(b, dk, 3);
-                    var ok2 = at(b, own, "knight", 2, -4); Veterans.credit(b, ok2, 3);
+                    var dk = at(b, dawn, "knight", 0, -4); Veterans.credit(b, dk, L2);
+                    var ok2 = at(b, own, "knight", 2, -4); Veterans.credit(b, ok2, L2);
                     var dr = Veterans.row(b, dawn, knight); var or = Veterans.row(b, own, knight); String ownKit = Veterans.peek(b, own, "knight").toString();
                     boolean untouched = dk.weaponTier == 1 && dk.armourTier == 1 && dr.weapon2() == LevelMath.Buy.OPEN && dr.armour2() == LevelMath.Buy.OPEN && or.weapon2() == LevelMath.Buy.BOUGHT && Veterans.peek(b, dawn, "knight") != Veterans.peek(b, own, "knight");
                     String wore = dk.weaponTier + "/" + dk.armourTier;
@@ -829,7 +832,7 @@ final class LevelChecks {
                     double star = b.campaign.health(own, knight);
                     var ks = at(b, own, "knight", 0, -2); double max0 = ks.mob.getMaxHealth();
                     toBarracks(b); String a3 = say(b, "gear:knight:armour:3"); home(b);
-                    Veterans.credit(b, ks, 8);
+                    Veterans.credit(b, ks, L3);
                     var v = victim(b, dusk, "knight", 0, 0);
                     float base = (float) Abilities.baseHit(b, ks);
                     float dealt = strike(b, ks, v, base); var log = Combat.LAST.peekLast();
@@ -875,7 +878,7 @@ final class LevelChecks {
                     Phase2Checks.report("p2-bot-gear-normal", okN, "a Normal bot with 500 gold (same levels) bought " + opts(n) + " (want " + opts(wantN) + ": infantry armour first, ranged weapon first, up to tier III), gold left " + normal.gold + " (want 140, at least the reserve " + 5 * 22 + ")");
                     var hard = bot(b, "hard", 300, "knight", "archer");
                     var ha1 = at(b, hard, "archer", -4, 6); var ha2 = at(b, hard, "archer", -2, 6); var hk = at(b, hard, "knight", 2, 6);
-                    Veterans.credit(b, ha1, 8); Veterans.credit(b, ha2, 8); Veterans.credit(b, hk, 3);
+                    Veterans.credit(b, ha1, L3); Veterans.credit(b, ha2, L3); Veterans.credit(b, hk, L2);
                     var h = Veterans.botBuy(b, hard);
                     var wantH = List.of(opt("archer", "weapon", 2, 40), opt("archer", "weapon", 3, 80), opt("archer", "armour", 2, 40), opt("archer", "armour", 3, 80));
                     boolean okH = h.equals(wantH) && hard.gold == 60 && hard.gold >= 2 * 22 && ha1.weaponTier == 3 && ha1.armourTier == 3 && hk.weaponTier == 1;

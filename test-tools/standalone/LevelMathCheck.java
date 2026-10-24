@@ -73,13 +73,13 @@ public final class LevelMathCheck {
     }
 
     public static void main(String[] args) {
-        // lm-thresholds: level 2 at 3 credits, level 3 at 8 (design 3.1)
-        check(LevelMath.levelFor(0) == 1 && LevelMath.levelFor(2) == 1 && LevelMath.levelFor(3) == 2 && LevelMath.levelFor(7) == 2 && LevelMath.levelFor(8) == 3 && LevelMath.levelFor(99) == 3, "lm-thresholds: 0->1, 2->1, 3->2, 7->2, 8->3, 99->3");
+        // lm-thresholds: level 2 at 4 credits, level 3 at 12 (design 3.1; Kort's round-35 ruling raised them from 3 and 8)
+        check(LevelMath.levelFor(0) == 1 && LevelMath.levelFor(3) == 1 && LevelMath.levelFor(4) == 2 && LevelMath.levelFor(11) == 2 && LevelMath.levelFor(12) == 3 && LevelMath.levelFor(99) == 3, "lm-thresholds: 0->1, 3->1, 4->2, 11->2, 12->3, 99->3");
         check(LevelMath.levelFor(-1) == 1, "lm-thresholds: no credits below zero lower the level under 1");
 
-        // lm-carry: 9 credits at once take a fresh soldier to level 3, two level ups
-        check(LevelMath.levelFor(0 + 9) == 3 && LevelMath.levelFor(0 + 9) - LevelMath.levelFor(0) == 2, "lm-carry: 0 plus 9 credits gives level 3 and two level ups");
-        check(LevelMath.levelFor(2 + 1) - LevelMath.levelFor(2) == 1 && LevelMath.levelFor(8 + 3) - LevelMath.levelFor(8) == 0, "lm-carry: one level up at the threshold, none past level 3");
+        // lm-carry: 12 credits at once take a fresh soldier to level 3, two level ups
+        check(LevelMath.levelFor(0 + 12) == 3 && LevelMath.levelFor(0 + 12) - LevelMath.levelFor(0) == 2, "lm-carry: 0 plus 12 credits gives level 3 and two level ups");
+        check(LevelMath.levelFor(3 + 1) - LevelMath.levelFor(3) == 1 && LevelMath.levelFor(12 + 3) - LevelMath.levelFor(12) == 0, "lm-carry: one level up at the threshold, none past level 3");
 
         // lm-bounty: a victim counts its own level; a commander counts commanderBounty; a temporary troop counts 1 (design 3.2)
         check(LevelMath.bounty(1, false, false) == 1 && LevelMath.bounty(2, false, false) == 2 && LevelMath.bounty(3, false, false) == 3, "lm-bounty: level 1 gives 1, level 2 gives 2, level 3 gives 3");
