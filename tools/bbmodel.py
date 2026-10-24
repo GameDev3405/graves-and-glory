@@ -8,7 +8,9 @@ y down, z thickness; Blockbench's south, the front the style guide names, is the
 four corners in model px, counter-clockwise seen from outside, then the texel of each corner; its normal is the cross
 product of (corner 1 - corner 0) and (corner 3 - corner 0), as the client's TroopMesh reads it.
 
-  python tools/bbmodel.py <file.bbmodel> ...      print the frames, cubes and quads of each project and the weapon checks
+  python tools/bbmodel.py [--density N] <file.bbmodel> ...      print the frames, cubes and quads of each project and the weapon checks
+
+The density (texels a px) is 2 for a weapon unless art/weapons/<name>.json says "density" (3 for the texel-3 trial) or --density does.
 
 Reading never looks at visibility: a hidden group or cube is still a frame or a cube (only `rest` is saved visible, so
 Blockbench shows one weapon and not four laid over each other).
@@ -20,6 +22,7 @@ Blockbench and are only ever read here (art pipeline v2 sections 2.3 and 2.4).
 import itertools
 import json
 import math
+import pathlib
 import sys
 
 FACES = ('north', 'east', 'south', 'west', 'up', 'down')
@@ -38,6 +41,7 @@ UV_PICK = ((0, 3), (2, 3), (2, 1), (0, 1))   # corners 0 to 3 read (u1, v2), (u2
 LOCAL_NORMAL = {'north': (0, 0, -1), 'east': (1, 0, 0), 'south': (0, 0, 1), 'west': (-1, 0, 0), 'up': (0, 1, 0), 'down': (0, -1, 0)}
 FACE_AXES = {'north': (0, 1), 'south': (0, 1), 'east': (2, 1), 'west': (2, 1), 'up': (0, 2), 'down': (0, 2)}   # the two axes a face spans
 FLAT = 1e-9   # a face with less area than this draws nothing
+WEAPON_DENSITY = 2.0   # texels a px of a weapon sheet unless its json says density (tools/build_skins.py WEAPON_DENSITY is the same number)
 
 
 class BBError(Exception):
@@ -292,19 +296,47 @@ def bounds(quads):
 
 # ---- the checks (art pipeline v2 section 2.4); each returns what is wrong, empty when nothing is ----
 
-def check_textures(model):
+def check_textures(model, kind='weapon', density=2, layout=None):
+    """What is wrong with the project's texture. kind 'weapon': its UV unit is a texel, so the UV size must equal the bitmap,
+    whatever the weapon's density. kind 'troop': its UV unit is a layout unit (a px of the model), so the bitmap must be the
+    UV size, or `layout` when given, times `density` texels a px (a troop of density 3 on a 128x64 layout has a 384x192 bitmap)."""
+    if kind not in ('weapon', 'troop'):
+        raise ValueError('kind must be weapon or troop, not %r' % (kind,))
     said = []
     if len(model.textures) != 1:
-        said.append('the project has %d textures; a weapon has one texture' % len(model.textures))
+        said.append('the project has %d textures; a %s has one texture' % (len(model.textures), kind))
     for t in model.textures:
-        if (t.uv_width, t.uv_height) != (t.width, t.height):
-            said.append('texture %s has UV size %dx%d but its bitmap is %dx%d (a UV unit must be a texel)'
-                        % (t.name, t.uv_width, t.uv_height, t.width, t.height))
+        if kind == 'weapon':
+            if (t.uv_width, t.uv_height) != (t.width, t.height):
+                said.append('texture %s has UV size %dx%d but its bitmap is %dx%d (a UV unit must be a texel)'
+                            % (t.name, t.uv_width, t.uv_height, t.width, t.height))
+        elif layout is not None and (t.uv_width, t.uv_height) != tuple(layout):
+            said.append('texture %s has UV size %dx%d, not the troop layout %dx%d (a UV unit is a px of the model)'
+                        % (t.name, t.uv_width, t.uv_height, layout[0], layout[1]))
+        else:
+            want = (round(t.uv_width * density), round(t.uv_height * density))
+            if (t.width, t.height) != want:
+                said.append('texture %s is %dx%d, but the UV size %dx%d at %d texels a px is %dx%d'
+                            % (t.name, t.width, t.height, t.uv_width, t.uv_height, density, want[0], want[1]))
     for c in model.cubes():
         for face, (tex, _) in sorted(c.faces.items()):
             if tex < 0 or tex >= len(model.textures):
                 said.append('cube %s face %s uses texture %d, which the project lacks' % (c.name, face, tex))
     return said
+
+
+def file_density(path, override=None):
+    """The texels a px of a weapon project: --density when given, else the "density" of the weapon's json beside it
+    (art/weapons/<stem>.json), else 2 (the weapons' default)."""
+    if override is not None:
+        return float(override)
+    side = pathlib.Path(path).with_suffix('.json')
+    try:
+        data = json.loads(side.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return WEAPON_DENSITY
+    value = data.get('density') if isinstance(data, dict) else None
+    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0 else WEAPON_DENSITY
 
 
 def off_density(cubes, scale, tol=1e-3):
@@ -449,16 +481,27 @@ def distance(cube, p):
 
 
 def main(args):
+    args = list(args)
+    override = None
+    if '--density' in args:
+        at = args.index('--density')
+        try:
+            override = float(args[at + 1])
+        except (IndexError, ValueError):
+            print('bbmodel: --density needs a number of texels a px')
+            return 1
+        del args[at:at + 2]
     for path in args:
         model = read(path)
-        print(path)
+        density = file_density(path, override)
+        print('%s (%s texels a px)' % (path, int(density) if density == int(density) else density))
         for problem in check_textures(model):
             print('  texture: ' + problem)
         for name, cubes in model.frames.items():
             quads = len(cubes) * 6
             pieces, free = joined(cubes)
             print('  %-7s cubes %2d quads %3d pieces %d coplanar %d off-density %d free strings %d%s' % (
-                name, len(cubes), quads, len(pieces), len(coplanar_faces(cubes)), len(off_density(cubes, 2.0)), len(free),
+                name, len(cubes), quads, len(pieces), len(coplanar_faces(cubes)), len(off_density(cubes, density)), len(free),
                 '' if model.visible[name] else ' (saved hidden)'))
     return 0
 

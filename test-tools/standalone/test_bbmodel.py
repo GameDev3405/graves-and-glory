@@ -312,6 +312,60 @@ class BBModelChecks(unittest.TestCase):
         self.assertEqual(said[0][2:], (4.0, 4.0, 4.0, 8.0))
         self.assertEqual(bbmodel.off_density(self.frame_cubes(good), 1.0)[0][1], 'north')   # at 1 texel per px nothing is twice
 
+    def test_density_three(self):
+        """At 3 texels a px a face's UV is exactly three times its size: a patch made at 3 passes at 3 and is listed at 2, and the
+        other way round."""
+        at_three = cube('three', (0, 0, 0), (1, 2.2, 3), scale=3.0)
+        self.assertEqual(bbmodel.off_density(self.frame_cubes(at_three), 3.0), [])
+        listed = bbmodel.off_density(self.frame_cubes(at_three), 2.0)
+        self.assertTrue(listed and all(s[0] == 'three' for s in listed))
+        at_two = cube('two', (0, 0, 0), (1, 2.2, 3))
+        self.assertTrue(bbmodel.off_density(self.frame_cubes(at_two), 3.0))
+        bad = cube('stretched', (0, 0, 0), (2, 2, 2), scale=3.0, uv={'north': [0, 0, 6, 12]})
+        said = bbmodel.off_density(self.frame_cubes(bad), 3.0)
+        self.assertEqual([(s[0], s[1]) for s in said], [('stretched', 'north')])
+        self.assertEqual(said[0][2:], (6.0, 6.0, 6.0, 12.0))
+
+    def test_texture_checks_per_kind(self):
+        """A weapon's UV unit is a texel, whatever its density (a 96x192 bitmap has a 96x192 UV size); a troop's UV unit is a
+        layout unit, and its bitmap is the layout times the density (384x192 for a 128x64 layout at 3)."""
+        one = {'rest': [cube('a', (0, 0, 0), (1, 1, 1))]}
+        self.assertEqual(bbmodel.check_textures(load(project(one, tex=(96, 192)))), [])
+        self.assertEqual(bbmodel.check_textures(load(project(one, tex=(96, 192))), kind='weapon', density=3), [])
+        stretched = load(project(one, tex=(96, 192), uv_size=(64, 128)))
+        self.assertIn('UV size 64x128', bbmodel.check_textures(stretched, kind='weapon', density=3)[0])
+        troop = load(project(one, tex=(384, 192), uv_size=(128, 64)))
+        self.assertEqual(bbmodel.check_textures(troop, kind='troop', density=3), [])
+        self.assertEqual(bbmodel.check_textures(troop, kind='troop', density=3, layout=(128, 64)), [])
+        as_weapon = bbmodel.check_textures(troop)
+        self.assertEqual(len(as_weapon), 1)
+        self.assertIn('384x192', as_weapon[0])
+        flat = load(project(one, tex=(128, 64), uv_size=(128, 64)))
+        said = bbmodel.check_textures(flat, kind='troop', density=3)
+        self.assertEqual(len(said), 1)
+        self.assertIn('384x192', said[0])
+        self.assertIn('3 texels', said[0])
+        self.assertEqual(bbmodel.check_textures(flat, kind='troop', density=1), [])
+        wrong = bbmodel.check_textures(troop, kind='troop', density=3, layout=(64, 64))
+        self.assertEqual(len(wrong), 1)
+        self.assertIn('64x64', wrong[0])
+        two = project(one, tex=(384, 192), uv_size=(128, 64))
+        two['textures'].append(dict(two['textures'][0], id='1', name='other'))
+        self.assertIn('one texture', bbmodel.check_textures(load(two), kind='troop', density=3)[0])
+        with self.assertRaises(ValueError):
+            bbmodel.check_textures(troop, kind='armour')
+
+    def test_density_of_a_weapon_file(self):
+        """tools/bbmodel.py on a file reads the density from the weapon's json beside it (2 without one), and --density wins."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / 'blade.bbmodel'
+            self.assertEqual(bbmodel.file_density(path), 2.0)
+            (pathlib.Path(tmp) / 'blade.json').write_text(json.dumps({'weapon': 'blade', 'density': 3}), encoding='utf-8')
+            self.assertEqual(bbmodel.file_density(path), 3.0)
+            self.assertEqual(bbmodel.file_density(path, 4), 4.0)
+            (pathlib.Path(tmp) / 'blade.json').write_text(json.dumps({'weapon': 'blade'}), encoding='utf-8')
+            self.assertEqual(bbmodel.file_density(path), 2.0)
+
 
 if __name__ == '__main__':
     unittest.main()

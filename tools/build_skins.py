@@ -29,12 +29,12 @@ Sources (sizes in model pixels, y down, the ground at y 24, angles in degrees; a
                            anchor's frame), scale? (the part's own, times the troop's for it), boxes[]. Box UVs are
                            relative to the troop's uv for the part, except that a team part's UVs are absolute on the
                            cloth sheet.
-  art/weapons/<id>.json    weapon, thickness (1 to 3 px), grip {pixel [x, y], offset?, rotation?} (the grip pixel's centre
+  art/weapons/<id>.json    weapon, density? (a .bbmodel weapon: texels a px, 2 unless it says; a sprite takes none), thickness (1 to 3 px), grip {pixel [x, y], offset?, rotation?} (the grip pixel's centre
                            sits on the hand bone's pivot; offset and rotation place the sprite in its frame), pull? (three
                            times in seconds of bow_draw) with nocks (the string's middle in sprite px, a pair a frame).
                            The art is <id>.png (rest), <id>_pull_0..2.png with pull, and for a lit weapon <id>_e.png: the
                            build extrudes the sprites (design 2 of the troop depth design).
-  art/troops/<troop>.json  troop, rig, size?, bones {<name>: {pivot?, boxes?, scale?}}, hunch? (biped), idleArms?,
+  art/troops/<troop>.json  troop, rig, size?, density? (1 to 4, 1 unless it says), bones {<name>: {pivot?, boxes?, scale?}}, hunch? (biped), idleArms?,
                            parts[] of {part, name?, bone?, uv, offset?, rotation?, scale?, stages?}, skins {<stage>: file},
                            veteran?, glow?, glowFrom?, outer?, weapon (an id or none), hand, portrait.
   art/troops/<troop>_s<stage>_r.png  the relief layer of that skin: the troop's size, alpha 0 or 255, an opaque texel
@@ -45,6 +45,19 @@ Sources (sizes in model pixels, y down, the ground at y 24, angles in degrees; a
                            texels, team tint rule 1; it takes no relief layer (a _veteran_r.png is refused).
   art/team/team_cloth.png  the greyscale cloth template; its three greys take the side colour x1.0, x0.8 and x0.6, every
                            other pixel keeps its paint. art/team/glyph_<glyph>.png: full-sheet masks, stamped in white.
+  art/team/team_cloth.json optional {"density": N}: the template and the glyph masks are N texels a px of the cloth layout.
+
+Texel density (the texel-3 trial, docs of .superpowers/sdd/2026-10-17-phase-2-houses/texel-3-plan.md): a troop's "density" is the
+texels a model px of its PNGs carry, a whole number from 1 to 4, 1 unless it says (its json); its size, boxes' uv and bones' sheet
+stay in layout units (px of the model), so the model json needs no change in the client's loader, and every PNG it owns (skins,
+_r relief, _veteran, _e, _o) is density times the layout in each direction; the model says "density" right after "size" when
+it is not 1, and a build of a density 1 troop is byte for byte what it was. A weapon's "density" (cube weapons only, 2 unless it
+says) is the texels a px of its sheet: the sheet is its real size and the quads read real texels, as before. The team cloth's
+density is art/team/team_cloth.json {"density": N} (1 unless it exists); the bones' cloth sheet is the template's size divided
+by it. A troop of density above 1 also gets a one-texel-a-px twin of each of its PNGs, <name>_far.png (a D x D block takes its
+most common colour and is clear unless at least half of it is painted), which the client binds past TroopDepth.NEAR_BLOCKS and
+on the portrait cards drawn under 48 px a block. The relief mesher voxels are a texel wide in the plane and one old cell
+(a px, times the box's scale) proud along the normal, whatever the density; the glow caps count px of lit area (lit texels / D squared).
 
 Proportions are baked here, never scaled at runtime: a bone scale k scales the bone's boxes about its pivot (origin
 k*origin + size*(k-1)/2, dilation size*(k-1)/2, the UV size stays the integer size) and moves its children's pivots by
@@ -97,12 +110,20 @@ LEGS = {'right_leg', 'left_leg', 'front_left_leg', 'front_right_leg', 'back_left
        {'%s_leg_%d' % (s, n) for s in ('left', 'right') for n in (1, 2, 3, 4)}
 MODEL_KEYS = ('format', 'troop', 'rig', 'size', 'bones', 'skins', 'veteran', 'glow', 'glowFrom', 'outer', 'weapon',
               'hand', 'idleArms', 'portrait')
+
+
+def model_keys(density):
+    """The keys of a troop model in order: MODEL_KEYS, with "density" right after "size" when the troop's is not 1."""
+    if density == TROOP_DENSITY:
+        return MODEL_KEYS
+    at = MODEL_KEYS.index('size') + 1
+    return MODEL_KEYS[:at] + ('density',) + MODEL_KEYS[at:]
 VANILLA_KEYS = ('parent', 'elements', 'textures', 'display', 'overrides', 'gui_light', 'ambientocclusion')
-TROOP_KEYS = {'troop', 'rig', 'size', 'bones', 'hunch', 'idleArms', 'parts', 'skins', 'veteran', 'glow', 'glowFrom',
+TROOP_KEYS = {'troop', 'rig', 'size', 'density', 'bones', 'hunch', 'idleArms', 'parts', 'skins', 'veteran', 'glow', 'glowFrom',
               'outer', 'weapon', 'hand', 'portrait', 'note'}
 ENTRY_KEYS = {'part', 'name', 'bone', 'uv', 'offset', 'rotation', 'scale', 'stages', 'note'}
 PART_KEYS = {'part', 'bone', 'team', 'tag', 'pivot', 'rotation', 'scale', 'boxes', 'note'}
-WEAPON_KEYS = {'weapon', 'thickness', 'grip', 'pull', 'nocks', 'note'}
+WEAPON_KEYS = {'weapon', 'density', 'thickness', 'grip', 'pull', 'nocks', 'note'}
 RIG_KEYS = {'rig', 'size', 'outer', 'hands', 'bones', 'note'}
 IDLE_ARMS = ('hang', 'forward', 'folded')
 PORTRAIT = re.compile(r'(standard|tall \d+|wide \d+|beast \d+( yaw -?\d+)?)')
@@ -110,7 +131,7 @@ GREYS = {(160, 160, 160): 1.0, (128, 128, 128): 0.8, (96, 96, 96): 0.6}   # the 
 LINEN = (0xCF, 0xC6, 0xB0)
 COMPANY = (0x2A, 0x37, 0x47)   # the Hollow's navy (work/ui-concepts/storybook/NOTES.md), the company's cloth
 GLYPH = (0xF3, 0xEF, 0xE4)   # the pennant glyph's white, the white of the charges
-GLOW_CAP = {'epic': 16, 'legendary': 16}   # any other rarity: 6
+GLOW_CAP = {'epic': 16, 'legendary': 16}   # px of lit area; any other rarity: 6
 TINT_SATURATION, TINT_VALUE, TINT_HUE = 0.45, 0.60, 45.0
 ONE = (1.0, 1.0, 1.0)
 # The bones a model may have: TroopModel records the bones a draw shows as the bits of one long (TroopModel.MAX_BONES),
@@ -128,7 +149,11 @@ THICKNESS = (1, 2, 3)
 # Cube weapons (art pipeline v2): made in Blockbench, 2 texels to a model px on a 64 x 128 sheet; the build adds a far version
 # under the sheet and the _n and _s maps beside it.
 WEAPON_FRAMES = ('rest', 'pull_0', 'pull_1', 'pull_2')
-WEAPON_DENSITY = 2.0   # texels a px: a face's UV is exactly twice its size
+WEAPON_DENSITY = 2     # texels a px of a cube weapon's sheet unless its json says density: a face's UV is exactly twice its size
+TROOP_DENSITY = 1      # texels a px of a troop's PNGs unless its json says density
+DENSITY_MAX = 4        # the most texels a px a source may name
+FAR_SUFFIX = '_far'    # <name>_far.png: the one-texel-a-px twin of a density D troop PNG (TroopModels.twin in the client derives the same name)
+TIMES = {1: 'once', 2: 'twice', 3: 'three times', 4: 'four times'}
 THICKNESS_SLACK = 1.5  # px a json thickness may differ from the model's depth across z (it is informational)
 FAR_CAP = 32           # quads of the far version, which a weapon on a troop outside TroopDepth.near draws
 FAR_SAMPLES = 4        # the front-view raster takes this many samples a side of a px
@@ -191,6 +216,14 @@ def keys(d, allowed, what):
         fail('%s has unknown key %s' % (what, extra[0]))
 
 
+def density_of(data, what, default):
+    """The "density" of a source json (texels a px): a whole number from 1 to DENSITY_MAX, `default` when it is absent."""
+    value = data.get('density', default)
+    if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= DENSITY_MAX:
+        fail('%s: density must be a whole number from 1 to %d (texels a px), not %s' % (what, DENSITY_MAX, json.dumps(value)))
+    return value
+
+
 def read_json(path):
     try:
         return json.loads(path.read_text(encoding='utf-8'))
@@ -215,6 +248,8 @@ class Catalog:
         self.bbmodels = {}   # weapon id -> art/weapons/<id>.bbmodel
         self.sheet, self.factions, self.stages = {}, {}, {}
         self.template, self.glyphs = None, {}
+        self.cloth_density = TROOP_DENSITY   # texels a px of the cloth template and glyph masks (art/team/team_cloth.json)
+        self.cloth_layout = None             # the cloth sheet in px of the model: the team bones' sheet and the boxes' uv are in it
 
 
 def sources(folder, key):
@@ -252,6 +287,15 @@ def load(root: Path) -> Catalog:
     cat.troops = sources(art / 'troops', 'troop')
     if (art / 'team/team_cloth.png').is_file():
         cat.template = read_png(art / 'team/team_cloth.png', 'team cloth template')
+        if (art / 'team/team_cloth.json').is_file():
+            side = read_json(art / 'team/team_cloth.json')
+            keys(side, {'density', 'note'}, 'art/team/team_cloth.json')
+            cat.cloth_density = density_of(side, 'art/team/team_cloth.json', TROOP_DENSITY)
+        k = cat.cloth_density
+        if cat.template.width % k or cat.template.height % k:
+            fail('art/team/team_cloth.json: art/team/team_cloth.png is %dx%d, which density %d does not divide (a cloth drawn at '
+                 '%d texels a px is %d times its layout in each direction)' % (cat.template.width, cat.template.height, k, k, k))
+        cat.cloth_layout = (cat.template.width // k, cat.template.height // k)
         for path in sorted((art / 'team').glob('glyph_*.png')):
             cat.glyphs[path.stem[len('glyph_'):]] = read_png(path, 'glyph')
     for name in cat.rigs:
@@ -261,7 +305,7 @@ def load(root: Path) -> Catalog:
     team = [(pid, b['uv'], b['size']) for pid in sorted(cat.parts) if cat.parts[pid]['team']
             for b in check_boxes(cat.parts[pid]['boxes'], 'part ' + pid)]
     if team:
-        check_layout(team, cat.template.size, 'the cloth sheet (every team part)')
+        check_layout(team, cat.cloth_layout, 'the cloth sheet (every team part)')
     return cat
 
 
@@ -361,7 +405,7 @@ def check_part(cat, name):
     if p['team']:
         if cat.template is None:
             fail(what + ': a team part needs art/team/team_cloth.png')
-        check_layout([(name, b['uv'], b['size']) for b in boxes], cat.template.size, what + ' on the cloth sheet')
+        check_layout([(name, b['uv'], b['size']) for b in boxes], cat.cloth_layout, what + ' on the cloth sheet')
 
 
 def mat_mul(a, b):
@@ -671,6 +715,9 @@ def weapon_meta(cat, wid, cube):
         fail('%s: boxes and size are gone (format 2): a weapon is a Blockbench model, art/weapons/%s.bbmodel, or a sprite, '
              'art/weapons/%s.png, that the build extrudes' % (what, wid, wid))
     keys(w, WEAPON_KEYS, what)
+    if not cube and 'density' in w:
+        fail('%s: density belongs to a .bbmodel weapon; a sprite weapon is one texel to a px' % what)
+    density = density_of(w, what, WEAPON_DENSITY)
     thickness = w.get('thickness')
     if isinstance(thickness, bool) or thickness not in THICKNESS:
         fail('%s: thickness must be 1, 2 or 3 (px of depth), not %s' % (what, thickness))
@@ -689,16 +736,21 @@ def weapon_meta(cat, wid, cube):
         if pull[0] < 0 or pull[-1] > PULL_MAX:
             fail('%s: pull %s must lie between 0 and %s seconds' % (what, [num(p) for p in pull], num(PULL_MAX)))
     return {'what': what, 'thickness': thickness, 'pixel': pixel, 'offset': offset, 'rotation': rotation, 'pull': pull,
-            'nocks': w.get('nocks')}
+            'nocks': w.get('nocks'), 'density': density}
 
 
 def weapon_model(wid, kind, size, meta, frames, far, texture, normal, specular, glow):
     """A weapon's model json (format 3): the keys of format 2 plus its kind ('sprite' or 'cube'), the far version, and the
-    ids of the normal and specular maps (informational: Iris finds them by suffix)."""
-    return {'format': FORMAT, 'weapon': wid, 'kind': kind, 'size': list(size), 'thickness': meta['thickness'],
-            'grip': {'offset': [num(c) for c in meta['offset']], 'rotation': [num(c) for c in meta['rotation']]},
-            'pull': [num(p) for p in meta['pull']] if meta['pull'] is not None else [], 'frames': frames, 'far': far,
-            'texture': texture, 'normal': normal, 'specular': specular, 'glow': glow}
+    ids of the normal and specular maps (informational: Iris finds them by suffix). A cube weapon whose density is not
+    WEAPON_DENSITY says so right after its size (the sheet and the quads are in real texels either way)."""
+    out = {'format': FORMAT, 'weapon': wid, 'kind': kind, 'size': list(size)}
+    if kind == 'cube' and meta['density'] != WEAPON_DENSITY:
+        out['density'] = meta['density']
+    out.update({'thickness': meta['thickness'],
+                'grip': {'offset': [num(c) for c in meta['offset']], 'rotation': [num(c) for c in meta['rotation']]},
+                'pull': [num(p) for p in meta['pull']] if meta['pull'] is not None else [], 'frames': frames, 'far': far,
+                'texture': texture, 'normal': normal, 'specular': specular, 'glow': glow})
+    return out
 
 
 def sprite_weapon_outputs(cat, wid):
@@ -856,12 +908,15 @@ def luma(c):
     return (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255
 
 
-def material_maps(colour, keys, rects, lit_sheet=None):
+def material_maps(colour, keys, rects, lit_sheet=None, density=WEAPON_DENSITY):
     """The _n and _s maps of a weapon sheet from its colour sheet and its key colours (art pipeline v2 section 6). _s: R the
     material's smoothness, +12 a tone step above the patch's face tone (the most common colour of its patch), G its F0, B its
     porosity, A 255 or 200 on a texel lit in lit_sheet; a texel with no material is (0, 0, 0, 255). _n: R and G the tilt of
     the height field across the texel (DirectX, green down), B 255, A the height (0.5 flat, 0.05 a tone step, never 0); every
-    patch edge drops to nothing, so its edge texels tilt outward. rects are the patches, as (x0, y0, x1, y1) texels."""
+    patch edge drops to nothing, so its edge texels tilt outward, by EDGE_TILT at the weapons' 2 texels a px and less on a finer
+    sheet (a texel is 1/density px, so the same bevel drops by a smaller step: EDGE_TILT x 2 / density). rects are the
+    patches, as (x0, y0, x1, y1) texels."""
+    tilt = EDGE_TILT * WEAPON_DENSITY / density
     w, h = colour.size
     cpx, kpx = colour.load(), keys.load()
     lpx = lit_sheet.load() if lit_sheet is not None else None
@@ -899,8 +954,8 @@ def material_maps(colour, keys, rects, lit_sheet=None):
 
             def at(xx, yy):
                 return height[yy][xx] if 0 <= xx < w and 0 <= yy < h and patch[yy][xx] == pid else 0.0
-            nx = -(at(x + 1, y) - at(x - 1, y)) * EDGE_TILT
-            ny = -(at(x, y + 1) - at(x, y - 1)) * EDGE_TILT
+            nx = -(at(x + 1, y) - at(x - 1, y)) * tilt
+            ny = -(at(x, y + 1) - at(x, y - 1)) * tilt
             ln = math.sqrt(nx * nx + ny * ny + 1.0)
             normal.putpixel((x, y), (int(round(128 + nx / ln * 127)), int(round(128 + ny / ln * 127)), 255,
                                      max(1, min(255, int(height[y][x] * 255 + 0.5)))))
@@ -957,7 +1012,7 @@ def cube_weapon_outputs(cat, wid):
     each, and the far version), the colour sheet with the far version's strip under it, the _n and _s maps, and the glow.
     Returns (files, lit glow pixels, [(weapon, frame, quads)])."""
     meta = weapon_meta(cat, wid, True)
-    what, thickness, pull, nocks = meta['what'], meta['thickness'], meta['pull'], meta['nocks']
+    what, thickness, pull, nocks, density = meta['what'], meta['thickness'], meta['pull'], meta['nocks'], meta['density']
     folder = cat.root / 'art/weapons'
     shown = 'art/weapons/%s.bbmodel' % wid
 
@@ -981,7 +1036,7 @@ def cube_weapon_outputs(cat, wid):
         for n in WEAPON_FRAMES:
             if n not in model.frames:
                 bad('frame group %s is missing: a weapon with a pull key has rest, pull_0, pull_1 and pull_2' % n)
-    for problem in bbmodel.check_textures(model):
+    for problem in bbmodel.check_textures(model, kind='weapon', density=density):
         bad(problem)
     texture = model.textures[0]
     png = folder / (wid + '.png')
@@ -1012,9 +1067,9 @@ def cube_weapon_outputs(cat, wid):
                         or max(uv[1], uv[3]) > sheet_h + 1e-6):
                     bad('frame %s: cube %s face %s reads texels off the %dx%d sheet (UV %s)' %
                         (name, c.name, face, sheet_w, sheet_h, [num(v) for v in uv]))
-        for cube, face, want_w, want_h, got_w, got_h in bbmodel.off_density(cubes, WEAPON_DENSITY):
-            bad('frame %s: cube %s face %s is %s x %s texels, but twice its size is %s x %s (a weapon sheet has 2 texels a px; '
-                'no face is stretched)' % (name, cube, face, num(got_w), num(got_h), num(want_w), num(want_h)))
+        for cube, face, want_w, want_h, got_w, got_h in bbmodel.off_density(cubes, density):
+            bad('frame %s: cube %s face %s is %s x %s texels, but %s its size is %s x %s (the sheet of this weapon has %d texels a px; '
+                'no face is stretched)' % (name, cube, face, num(got_w), num(got_h), TIMES[density], num(want_w), num(want_h), density))
         for a, fa, b, fb, dist, overlap in bbmodel.coplanar_faces(cubes):
             bad('frame %s: cube %s face %s and cube %s face %s are coplanar (%s px apart) and overlap by %s px squared, so '
                 'they z-fight; move one off or put them back to back' % (name, a, fa, b, fb, num(dist), num(overlap)))
@@ -1076,7 +1131,7 @@ def cube_weapon_outputs(cat, wid):
         return out
     colour_full, keys_full, lit_full = stacked(colour, far_c), stacked(keys, far_k), stacked(glow, far_l)
     rects = bbmodel.face_rects(model) + [(0, sheet_h, far_c.width, sheet_h + far_c.height)]
-    normal, spec = material_maps(colour_full, keys_full, rects, lit_full if glow else None)
+    normal, spec = material_maps(colour_full, keys_full, rects, lit_full if glow else None, density)
     base = 'weapon/%s' % wid
     out_model = weapon_model(wid, 'cube', total, meta, frames_out, far, texture_id(base + '.png'), texture_id(base + '_n.png'),
                              texture_id(base + '_s.png'), texture_id(base + '_e.png') if glow else '')
@@ -1084,7 +1139,7 @@ def cube_weapon_outputs(cat, wid):
            '%s/%s_n.png' % (TEXTURES, base): png_bytes(normal), '%s/%s_s.png' % (TEXTURES, base): png_bytes(spec)}
     if glow:
         out['%s/%s_e.png' % (TEXTURES, base)] = png_bytes(lit_full)
-    return out, (lit(glow) if glow else 0), stats
+    return out, (lit(glow) / density ** 2 if glow else 0), stats
 
 
 def weapon_outputs(cat, wid):
@@ -1113,10 +1168,11 @@ def cross3(a, b):
 class Face:
     """One face of a ModelPart.Cuboid as the 1.20.1 constructor lays it out: its geometric normal d, the texel rectangle it
     reads, and the affine map between its plane and the texels. The position p0 + a * e1 + b * e3 reads the texel
-    (u2 + a * du, v1 + b * dv), the vanilla vertices 0, 1 and 3 and their UVs."""
+    (u2 + a * du, v1 + b * dv), the vanilla vertices 0, 1 and 3 and their UVs. The texels are those of the troop's relief layer
+    (and skin), `density` times the layout, so a face of a density 3 troop reads three times as many texels a px."""
 
-    def __init__(self, d, rect, verts, uvs):
-        self.d, self.rect = d, rect
+    def __init__(self, d, rect, verts, uvs, density=1):
+        self.d, self.rect, self.density = d, rect, density
         self.p0 = list(verts[0])
         self.e1 = [verts[1][i] - verts[0][i] for i in range(3)]
         self.e3 = [verts[3][i] - verts[0][i] for i in range(3)]
@@ -1136,9 +1192,10 @@ class Face:
         return [self.p0[i] + a * self.e1[i] + b * self.e3[i] for i in range(3)]
 
 
-def cuboid_faces(box):
+def cuboid_faces(box, density=1):
     """The faces of a baked box by geometric normal, transcribed from ModelPart.Cuboid (1.20.1 yarn): the eight vertices, the
-    UV rectangles and the quad lists, a mirrored box swapping its x vertices and flipping its normals' x."""
+    UV rectangles and the quad lists, a mirrored box swapping its x vertices and flipping its normals' x. The rectangles and
+    UVs are in the texels of a layer of this density (the layout's units times it)."""
     (u, v), (sx, sy, sz) = box['uv'], box['size']
     o, dl = box['origin'], box['dilation']
     x, y, z = o[0] - dl[0], o[1] - dl[1], o[2] - dl[2]
@@ -1154,14 +1211,15 @@ def cuboid_faces(box):
                                      (5, (6, 2, 3, 7), o2, t, q, w), (3, (5, 6, 7, 8), q, t, r, w)):
         if box['mirror'] and d in (4, 5):
             d ^= 1
-        out[d] = Face(d, (min(u1, u2), min(v1, v2), max(u1, u2), max(v1, v2)), [vert[i] for i in names],
-                      [(u2, v1), (u1, v1), (u1, v2), (u2, v2)])
+        k = density
+        out[d] = Face(d, (k * min(u1, u2), k * min(v1, v2), k * max(u1, u2), k * max(v1, v2)), [vert[i] for i in names],
+                      [(k * u2, k * v1), (k * u1, k * v1), (k * u1, k * v2), (k * u2, k * v2)], density)
     return out
 
 
-def face_rects(box):
+def face_rects(box, density=1):
     """The texel rectangle of each of the box's faces that has an area, by geometric normal."""
-    return {d: f.rect for d, f in cuboid_faces(box).items() if f.rect[2] > f.rect[0] and f.rect[3] > f.rect[1]}
+    return {d: f.rect for d, f in cuboid_faces(box, density).items() if f.rect[2] > f.rect[0] and f.rect[3] > f.rect[1]}
 
 
 def box_extent(box):
@@ -1222,28 +1280,33 @@ class Boxes:
 
 class Grid:
     """The occupancy grid of one box (design 3, steps 2 and 3): (w+2) x (h+2) x (d+2) cells in texel units, the box inside
-    and the voxels of its raised texels in the one-cell shell around it. A cell is as big as one texel on the box, so
-    on a scaled box it is as many px as the scale."""
+    and the voxels of its raised texels in the one-cell shell around it. In the plane of a face a cell is as big as one texel
+    on the box, so on a scaled box it is as many px as the scale divided by the density; across it (the shell cells' depth
+    along their normal) it is one layout px, 1 px times the scale, whatever the density, so a voxel of a density 3 troop
+    stands a full px proud of its face and not a third of one (texel-3 plan Q1a): `cell` is that px and `step` the texel."""
 
-    def __init__(self, box):
-        self.box, self.n = box, box['size']
+    def __init__(self, box, density=1):
+        self.box, self.density = box, density
+        self.n = [s * density for s in box['size']]
         self.lo = box_extent(box)[0]
         self.cell = [(box['size'][i] + 2 * box['dilation'][i]) / box['size'][i] for i in range(3)]
-        self.faces = cuboid_faces(box)
+        self.step = [c / density for c in self.cell]
+        self.faces = cuboid_faces(box, density)
         self.voxels = {}   # shell cell -> (face d, tx, ty): the raised texel standing there
         self.edges, self.corners = {}, set()
 
     def cell_of(self, face, tx, ty):
         """The shell cell the voxel of texel (tx, ty) of a face stands in."""
         pos = face.at(tx + 0.5, ty + 0.5)
-        c = [1 + math.floor((pos[i] - self.lo[i]) / self.cell[i]) for i in range(3)]
+        c = [1 + math.floor((pos[i] - self.lo[i]) / self.step[i]) for i in range(3)]
         a = AXIS[face.d]
         c[a] = 0 if NORMALS[face.d][a] < 0 else self.n[a] + 1
         return tuple(c)
 
     def cell_box(self, c):
-        lo = [self.lo[i] + (c[i] - 1) * self.cell[i] for i in range(3)]
-        return lo, [lo[i] + self.cell[i] for i in range(3)]
+        shell = self.shell_axes(c)
+        lo = [self.lo[i] + (c[i] - 1) * (self.cell[i] if c[i] == 0 else self.step[i]) for i in range(3)]
+        return lo, [lo[i] + (self.cell[i] if i in shell else self.step[i]) for i in range(3)]
 
     def shell_axes(self, c):
         return [i for i in range(3) if c[i] in (0, self.n[i] + 1)]
@@ -1309,7 +1372,9 @@ class Grid:
 def sliver_tex(face, texel, axes, run, lo, hi):
     """The texel map of a side or corner quad: along its run axis (an in-plane axis of the face it reads, or None) the
     texels run straight; across, half a texel at the centre of the source texel, SLIVER either side. Every axis of the
-    quad takes one texture axis, so no quad has a UV of zero area (the tangent Iris builds from it stays finite)."""
+    quad takes one texture axis, so no quad has a UV of zero area (the tangent Iris builds from it stays finite). The texels
+    are those of the layer; the map returns layout units (the layer's texels over the face's density), which is what the
+    model json keeps and what the client divides by the bone's sheet."""
     tex_axis = {}
     for m in axes:
         if m in face.ax:
@@ -1326,7 +1391,7 @@ def sliver_tex(face, texel, axes, run, lo, hi):
                 uv[tex_axis[m]] = face.tex(pos)[tex_axis[m]]
             else:
                 uv[tex_axis[m]] = centre[tex_axis[m]] + (SLIVER if pos[m] > (lo[m] + hi[m]) / 2 else -SLIVER)
-        return uv[0], uv[1]
+        return uv[0] / face.density, uv[1] / face.density
     return tex
 
 
@@ -1339,7 +1404,7 @@ def top_quads(g):
         texels = {(x, y) for dd, x, y in g.voxels.values() if dd == d}
         left = set(texels)
         a = AXIS[d]
-        plane = g.lo[a] - g.cell[a] if NORMALS[d][a] < 0 else g.lo[a] + g.n[a] * g.cell[a] + g.cell[a]
+        plane = g.lo[a] - g.cell[a] if NORMALS[d][a] < 0 else g.lo[a] + g.n[a] * g.step[a] + g.cell[a]
         for y, x in sorted((y, x) for x, y in texels):
             if (x, y) not in left:
                 continue
@@ -1353,7 +1418,7 @@ def top_quads(g):
             p, q = f.at(x, y), f.at(x1 + 1, y1 + 1)
             lo, hi = [min(p[i], q[i]) for i in range(3)], [max(p[i], q[i]) for i in range(3)]
             lo[a] = hi[a] = plane
-            quads.append(make_quad(d, lo, hi, f.tex))
+            quads.append(make_quad(d, lo, hi, lambda pos, f=f: tuple(c / f.density for c in f.tex(pos))))
     return quads
 
 
@@ -1420,11 +1485,18 @@ def relief_name(troop, key):
     return '%s_%s_r.png' % (troop, 'veteran' if key == 'veteran' else 's' + key)
 
 
-def side_image(cat, troop, file, size):
-    """The glow or outer file of a troop, which its relief must not cover, checked for the troop's size."""
+def size_words(size, density):
+    """A troop's size as the messages say it: 64x64, or 64x64 at 3 texels a px (192x192) for a density above 1."""
+    if density == TROOP_DENSITY:
+        return '%dx%d' % (size[0], size[1])
+    return '%dx%d at %d texels a px (%dx%d)' % (size[0], size[1], density, size[0] * density, size[1] * density)
+
+
+def side_image(cat, troop, file, size, density=1):
+    """The glow or outer file of a troop, which its relief must not cover, checked for the troop's size (at its density)."""
     im = read_png(cat.root / 'art/troops' / file, troop)
-    if list(im.size) != list(size):
-        fail('%s: %s is %dx%d, not the troop size %dx%d' % (troop, file, im.width, im.height, size[0], size[1]))
+    if list(im.size) != [size[0] * density, size[1] * density]:
+        fail('%s: %s is %dx%d, not the troop size %s' % (troop, file, im.width, im.height, size_words(size, density)))
     return im.load()
 
 
@@ -1435,8 +1507,9 @@ def relief_mesh(cat: Catalog, model: dict, relief: Image.Image, troop: str, key:
     voxel overlaps another box at rest (a box of a part that can hide excepted)."""
     what = '%s: %s' % (troop, relief_name(troop, key))
     size = model['size']
-    if list(relief.size) != list(size):
-        fail('%s is %dx%d, not the troop size %dx%d' % (what, relief.width, relief.height, size[0], size[1]))
+    density = model.get('density', TROOP_DENSITY)
+    if list(relief.size) != [size[0] * density, size[1] * density]:
+        fail('%s is %dx%d, not the troop size %s' % (what, relief.width, relief.height, size_words(size, density)))
     data = relief.load()
     raised = []
     for y in range(relief.height):
@@ -1448,14 +1521,14 @@ def relief_mesh(cat: Catalog, model: dict, relief: Image.Image, troop: str, key:
                 raised.append((x, y))
     tint(relief, what, cat.factions)
     own, extra = troop_files(cat, troop)
-    glow = side_image(cat, troop, extra['glow'], size) if extra['glow'] else None
-    outer = side_image(cat, troop, extra['outer'], size) if extra['outer'] else None
+    glow = side_image(cat, troop, extra['glow'], size, density) if extra['glow'] else None
+    outer = side_image(cat, troop, extra['outer'], size, density) if extra['outer'] else None
     owner = {}
     for b in model['bones']:
         if b['team']:
             continue
         for i, box in enumerate(b['boxes']):
-            for d, (x0, y0, x1, y1) in face_rects(box).items():
+            for d, (x0, y0, x1, y1) in face_rects(box, density).items():
                 for y in range(y0, y1):
                     for x in range(x0, x1):
                         owner[(x, y)] = (b, i, d)
@@ -1471,7 +1544,7 @@ def relief_mesh(cat: Catalog, model: dict, relief: Image.Image, troop: str, key:
         b, i, d = hit
         if 0 in b['boxes'][i]['size']:
             fail('%s pixel (%d, %d) lies on box %d of bone %s, which has no depth' % (what, x, y, i, b['name']))
-        g = grids.setdefault((b['name'], i), Grid(b['boxes'][i]))
+        g = grids.setdefault((b['name'], i), Grid(b['boxes'][i], density))
         g.voxels[g.cell_of(g.faces[d], x, y)] = (d, x, y)
         count[(b['name'], i, d)] = count.get((b['name'], i, d), 0) + 1
     for (name, i, d), n in sorted(count.items()):
@@ -1577,25 +1650,28 @@ def relief_template(cat: Catalog, troop: str) -> Image.Image:
     """Where relief may stand (design 7): every skin box face in its bone's hue at RELIEF_TINT over white, and a texel whose
     voxel would overlap another box at rest (a joint, an inner face, a face under a team part or a part that never hides)
     or lies on a box with no depth hatched in RELIEF_RED. Joint faces that only touch their parent at rest (a limb's top and
-    bottom faces) overlap nothing, so they are NOT hatched: keeping relief off them is still a by-eye rule (design 7)."""
+    bottom faces) overlap nothing, so they are NOT hatched: keeping relief off them is still a by-eye rule (design 7). The sheet
+    is the layer of a density D troop (D times the layout), a texel judged on its own voxel, and the hatch runs by layout px
+    (so it is the density 1 hatch enlarged)."""
     model = bake(cat, troop)
     boxes = Boxes(model)
-    im = Image.new('RGBA', tuple(model['size']), (0, 0, 0, 0))
+    density = model.get('density', TROOP_DENSITY)
+    im = Image.new('RGBA', (model['size'][0] * density, model['size'][1] * density), (0, 0, 0, 0))
     px = im.load()
     names = {'top': 0, 'bottom': 1, 'north': 2, 'south': 3, 'west': 4, 'east': 5}
     for n, b in enumerate(x for x in model['bones'] if not x['team'] and x['boxes']):
         base = HUES[n % len(HUES)]
         for i, box in enumerate(b['boxes']):
             flat = 0 in box['size']
-            g = None if flat else Grid(box)
-            for name, (x0, y0, x1, y1) in faces(box['uv'], box['size']).items():
+            g = None if flat else Grid(box, density)
+            for name, (x0, y0, x1, y1) in faces(box['uv'], box['size'], density).items():
                 d = names[name] ^ (1 if box['mirror'] and name in ('west', 'east') else 0)
                 shaded = [max(0, min(255, int(c * FACE_SHADE[name]))) for c in base]
                 colour = tuple(int(c * RELIEF_TINT + 255 * (1 - RELIEF_TINT)) for c in shaded) + (255,)
                 for y in range(y0, y1):
                     for x in range(x0, x1):
                         no = flat or boxes.hit(b['name'], i, *g.cell_box(g.cell_of(g.faces[d], x, y)))
-                        px[x, y] = RELIEF_RED + (255,) if no and (x + y) % 3 == 0 else colour
+                        px[x, y] = RELIEF_RED + (255,) if no and (x // density + y // density) % 3 == 0 else colour
     return im
 
 
@@ -1803,6 +1879,7 @@ def bake(cat: Catalog, troop: str) -> dict:
     if rig_name != want:
         fail('%s: rig %s is not the %s rig (%s)' % (troop, rig_name, row['entity'], want))
     size = vec(src.get('size', rig['size']), 2, troop + ' size', ints=True, minimum=1)
+    density = density_of(src, troop, TROOP_DENSITY)
     idle = src.get('idleArms', 'hang')
     if idle not in IDLE_ARMS:
         fail('%s: idleArms %s is not one of %s' % (troop, idle, ', '.join(IDLE_ARMS)))
@@ -1828,7 +1905,7 @@ def bake(cat: Catalog, troop: str) -> dict:
     check_layout(skin_boxes, size, troop)
     team_boxes = [(b['part'], x['uv'], x['size']) for b in bones if b['team'] for x in b['boxes']]
     if team_boxes:
-        check_layout(sorted(set((o, tuple(uv), tuple(s)) for o, uv, s in team_boxes), key=str), cat.template.size,
+        check_layout(sorted(set((o, tuple(uv), tuple(s)) for o, uv, s in team_boxes), key=str), cat.cloth_layout,
                      troop + ' on the cloth sheet')
     weapon = src.get('weapon')
     if weapon != 'none' and weapon not in cat.weapons:
@@ -1848,13 +1925,51 @@ def bake(cat: Catalog, troop: str) -> dict:
         last = own.get(s, last)
         skins[str(s)] = texture_id(last)
     model = {'format': FORMAT, 'troop': troop, 'rig': rig_name, 'size': size,
-             'bones': [clean_bone(b, cat.template.size if b['team'] else size) for b in bones], 'skins': skins,
+             'bones': [clean_bone(b, cat.cloth_layout if b['team'] else size) for b in bones], 'skins': skins,
              'veteran': texture_id(extra['veteran']) if extra['veteran'] else '',
              'glow': texture_id(extra['glow']) if extra['glow'] else '', 'glowFrom': glow_from,
              'outer': texture_id(extra['outer']) if extra['outer'] else '',
              'weapon': weapon, 'hand': hand, 'idleArms': idle, 'portrait': portrait}
-    assert tuple(model) == MODEL_KEYS and not set(model) & set(VANILLA_KEYS)
+    order = model_keys(density)
+    model = {k: dict(model, density=density)[k] for k in order}
+    assert tuple(model) == order and not set(model) & set(VANILLA_KEYS)
     return model
+
+
+def px_words(n):
+    """An area in px for a message: whole when it is, else two decimals."""
+    return str(int(n)) if n == int(n) else '%.2f' % n
+
+
+def far_name(name):
+    """The file name of the one-texel-a-px twin of a density D troop PNG: knight_s1.png -> knight_s1_far.png."""
+    assert name.endswith('.png')
+    return name[:-len('.png')] + FAR_SUFFIX + '.png'
+
+
+def far_twin(im, density):
+    """The twin of a density D image at one texel a px (its size over D in each direction), made as the weapons' far version
+    is: a block of D x D texels takes the colour most of its painted texels share (a tie goes to the colour met first in
+    reading order) and is clear unless at least half of it is painted. The client binds it past TroopDepth.NEAR_BLOCKS and on
+    the cards drawn under 48 px a block, where a 3x skin would crawl in the mip chain (texel-3 plan Q2a). Density 1 is the image."""
+    if density == TROOP_DENSITY:
+        return im
+    src = im.convert('RGBA')
+    px = src.load()
+    w, h = src.width // density, src.height // density
+    out = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    op = out.load()
+    for y in range(h):
+        for x in range(w):
+            seen = {}
+            for j in range(density):
+                for i in range(density):
+                    c = px[x * density + i, y * density + j]
+                    if c[3]:
+                        seen[c] = seen.get(c, 0) + 1
+            if 2 * sum(seen.values()) >= density * density:
+                op[x, y] = max(seen.items(), key=lambda kv: kv[1])[0]
+    return out
 
 
 def troop_outputs(cat, troop, weapon_lit):
@@ -1864,6 +1979,7 @@ def troop_outputs(cat, troop, weapon_lit):
     own, extra = troop_files(cat, troop)
     folder = cat.root / 'art/troops'
     size = model['size']
+    density = model.get('density', TROOP_DENSITY)
     out = {}
     reliefs = relief_sources(cat, troop, own, extra)
     key_of = {own[s]: str(s) for s in own}
@@ -1872,8 +1988,8 @@ def troop_outputs(cat, troop, weapon_lit):
         if not f:
             continue
         im = read_png(folder / f, troop)
-        if list(im.size) != size:
-            fail('%s: %s is %dx%d, not the troop size %dx%d' % (troop, f, im.size[0], im.size[1], size[0], size[1]))
+        if list(im.size) != [size[0] * density, size[1] * density]:
+            fail('%s: %s is %dx%d, not the troop size %s' % (troop, f, im.size[0], im.size[1], size_words(size, density)))
         if f != extra['glow']:
             tint(im, '%s: %s' % (troop, f), cat.factions)
         if f == extra['veteran']:
@@ -1894,15 +2010,17 @@ def troop_outputs(cat, troop, weapon_lit):
             stats.append((troop, key, total))
             im = composite(im, relief)
         out['%s/%s' % (TEXTURES, f)] = png_bytes(im)
+        if density != TROOP_DENSITY:
+            out['%s/%s' % (TEXTURES, far_name(f))] = png_bytes(far_twin(im, density))
     for b in model['bones']:
         if b['name'] in by_bone:
             b['relief'] = {k: by_bone[b['name']][k] for k in sorted(by_bone[b['name']], key=lambda k: (len(k), k))}
     out['%s/%s.json' % (MODELS, troop)] = dumps(model)
     cap = GLOW_CAP.get(cat.sheet[troop]['rarity'], 6)
-    n = (lit(read_png(folder / extra['glow'], troop)) if extra['glow'] else 0) + weapon_lit.get(model['weapon'], 0)
+    n = (lit(read_png(folder / extra['glow'], troop)) / density ** 2 if extra['glow'] else 0) + weapon_lit.get(model['weapon'], 0)
     if n > cap:
-        fail("%s: %d lit pixels in its glow and its weapon's glow together, over the %s cap of %d"
-             % (troop, n, cat.sheet[troop]['rarity'], cap))
+        fail("%s: %s lit pixels in its glow and its weapon's glow together, over the %s cap of %d"
+             % (troop, px_words(n), cat.sheet[troop]['rarity'], cap))
     return out, stats
 
 
@@ -2093,23 +2211,28 @@ HUES = [(196, 92, 84), (84, 140, 196), (104, 180, 96), (200, 164, 72), (150, 100
         (120, 120, 200), (180, 90, 150), (110, 160, 60), (90, 110, 130), (200, 200, 110)]
 
 
-def faces(uv, size):
-    """The six face rectangles of a box on its sheet, by the side they show (north is the front, west the model's right)."""
+def faces(uv, size, density=1):
+    """The six face rectangles of a box on its sheet, by the side they show (north is the front, west the model's right), in
+    the texels of a sheet of this density."""
     (u, v), (w, h, d) = uv, size
-    return {'top': (u + d, v, u + d + w, v + d), 'bottom': (u + d + w, v, u + d + 2 * w, v + d),
-            'west': (u, v + d, u + d, v + d + h), 'north': (u + d, v + d, u + d + w, v + d + h),
-            'east': (u + d + w, v + d, u + 2 * d + w, v + d + h), 'south': (u + 2 * d + w, v + d, u + 2 * d + 2 * w, v + d + h)}
+    k = density
+    return {name: tuple(k * c for c in rect) for name, rect in
+            {'top': (u + d, v, u + d + w, v + d), 'bottom': (u + d + w, v, u + d + 2 * w, v + d),
+             'west': (u, v + d, u + d, v + d + h), 'north': (u + d, v + d, u + d + w, v + d + h),
+             'east': (u + d + w, v + d, u + 2 * d + w, v + d + h),
+             'south': (u + 2 * d + w, v + d, u + 2 * d + 2 * w, v + d + h)}.items()}
 
 
 def template(cat: Catalog, troop: str) -> Image.Image:
     """Every skin box face of the troop in a flat colour (one hue per bone; top light, bottom dark, the front plain)."""
     model = bake(cat, troop)
-    im = Image.new('RGBA', tuple(model['size']), (0, 0, 0, 0))
+    density = model.get('density', TROOP_DENSITY)
+    im = Image.new('RGBA', (model['size'][0] * density, model['size'][1] * density), (0, 0, 0, 0))
     px = im.load()
     for i, b in enumerate(x for x in model['bones'] if not x['team'] and x['boxes']):
         base = HUES[i % len(HUES)]
         for box in b['boxes']:
-            for face, (x0, y0, x1, y1) in faces(box['uv'], box['size']).items():
+            for face, (x0, y0, x1, y1) in faces(box['uv'], box['size'], density).items():
                 k = FACE_SHADE[face]
                 colour = tuple(max(0, min(255, int(c * k))) for c in base) + (255,)
                 for y in range(y0, y1):

@@ -143,6 +143,30 @@ def put_png(path, im):
     im.save(path)
 
 
+def upscale(path, k):
+    """Nearest-neighbour enlargement of a PNG to k times its size, in place (the fixture's density-k sources)."""
+    with Image.open(path) as im:
+        big = im.convert('RGBA').resize((im.width * k, im.height * k), Image.NEAREST)
+    big.save(path)
+
+
+def densify(root, troop='knight', density=3, cloth=False):
+    """Makes a fixture troop a density-D troop: "density" in its json and every PNG it owns (skins, glow, outer, trim, relief)
+    enlarged to D times its size; with cloth=True the team cloth template and the glyph masks too, and art/team/team_cloth.json
+    names their density."""
+    root = pathlib.Path(root)
+    path = root / 'art/troops' / (troop + '.json')
+    data = json.loads(path.read_text(encoding='utf-8'))
+    data['density'] = density
+    write_json(path, data)
+    for png in sorted((root / 'art/troops').glob(troop + '_*.png')):
+        upscale(png, density)
+    if cloth:
+        for png in [root / 'art/team/team_cloth.png'] + sorted((root / 'art/team').glob('glyph_*.png')):
+            upscale(png, density)
+        write_json(root / 'art/team/team_cloth.json', {'density': density})
+
+
 BOW = {'weapon': 'bow', 'thickness': 2, 'grip': {'pixel': [2, 4], 'offset': [0, 0, 0], 'rotation': [0, 0, 0]},
        'pull': [0.15, 0.32, 0.48], 'nocks': [[1.5, 4.5], [1.0, 4.5], [0.5, 4.5], [0.0, 4.5]]}
 BOW_COLOURS = [(100 + 30 * i, 120, 140, 255) for i in range(4)]
@@ -159,6 +183,7 @@ def put_bow(root, bow=None, **sizes):
 # ---- Task 5d: cube weapons, made in Blockbench (art pipeline v2) ----
 
 SHEET_2X = (64, 128)
+SHEET_3X = (96, 192)
 KEYS = {'steel': (255, 0, 0), 'iron': (170, 0, 0), 'gilt': (255, 170, 0), 'wood': (0x8B, 0x45, 0x13), 'linen': (255, 255, 255),
         'leather': (0x55, 0x33, 0x22)}
 PAINT = {'steel': (124, 133, 145), 'iron': (90, 96, 104), 'gilt': (150, 120, 58), 'wood': (110, 84, 64), 'linen': (191, 181, 154),
@@ -191,9 +216,9 @@ def data_url(im):
     return 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode()
 
 
-def pack_frames(frames, sheet=SHEET_2X):
-    """Gives every face of every cube its own patch at 2 texels per px on a shelf of the sheet, painted in the cube's material
-    with its key colour in the material map. Returns ({frame: [cube element, ...]}, colour image, key image)."""
+def pack_frames(frames, sheet=SHEET_2X, density=2):
+    """Gives every face of every cube its own patch at `density` texels per px on a shelf of the sheet, painted in the cube's
+    material with its key colour in the material map. Returns ({frame: [cube element, ...]}, colour image, key image)."""
     colour, keys = Image.new('RGBA', sheet, (0, 0, 0, 0)), Image.new('RGBA', sheet, (0, 0, 0, 0))
     x = y = row = 0
     out, patches = {}, {}   # a cube of the same name and size in another frame keeps its patch (Blockbench's duplicate keeps the UVs)
@@ -206,7 +231,7 @@ def pack_frames(frames, sheet=SHEET_2X):
                 if (name, face, round(w, 4), round(h, 4)) in patches:
                     uv[face] = patches[(name, face, round(w, 4), round(h, 4))]
                     continue
-                pw, ph = 2 * w, 2 * h
+                pw, ph = density * w, density * h
                 cw, ch = max(1, math.ceil(pw - 1e-6)), max(1, math.ceil(ph - 1e-6))
                 if x + cw > sheet[0]:
                     x, y, row = 0, y + row, 0
@@ -222,11 +247,12 @@ def pack_frames(frames, sheet=SHEET_2X):
     return out, colour, keys
 
 
-def put_cube_weapon(root, wid='pike', frames=None, meta=None, tweak=None, sheet=SHEET_2X, root_cubes=()):
+def put_cube_weapon(root, wid='pike', frames=None, meta=None, tweak=None, sheet=SHEET_2X, root_cubes=(), density=2):
     """art/weapons/<wid>.bbmodel (the texture embedded), .json, .png and _m.png from cube specs; tweak(data, colour, keys, meta)
-    may change anything before it is written. Returns the project dict."""
+    may change anything before it is written. Patches are made at `density` texels a px (the json is not told: pass
+    meta=dict(PIKE_JSON, density=3) for a weapon that says so). Returns the project dict."""
     root = pathlib.Path(root)
-    cubes, colour, keys = pack_frames(frames or {'rest': PIKE}, sheet)
+    cubes, colour, keys = pack_frames(frames or {'rest': PIKE}, sheet, density)
     meta = copy.deepcopy(meta or PIKE_JSON)
     meta['weapon'] = wid
     data = bbt.project(cubes, tex=sheet, name=wid, root=list(root_cubes))
@@ -333,12 +359,16 @@ def vanilla_uv(box, normal, point):
     raise AssertionError('no face with the normal %s' % (normal,))
 
 
-def mini_model(size=(4, 4, 4), origin=(-2, -2, -2), uv=(0, 0), mirror=False, dilation=(0, 0, 0), sheet=(32, 32)):
-    """A model of one bone with one box, as bake gives it (what relief_mesh reads)."""
+def mini_model(size=(4, 4, 4), origin=(-2, -2, -2), uv=(0, 0), mirror=False, dilation=(0, 0, 0), sheet=(32, 32), density=1):
+    """A model of one bone with one box, as bake gives it (what relief_mesh reads); the sheet is in layout units, and a model
+    of density D carries the key as bake writes it and is relieved by a layer D times the sheet."""
     box = {'origin': list(origin), 'size': list(size), 'uv': list(uv), 'mirror': mirror, 'dilation': list(dilation)}
     bone = {'name': 'body', 'parent': '', 'part': '', 'team': False, 'tag': '', 'stages': [], 'sheet': list(sheet),
             'pivot': [0, 0, 0], 'rotation': [0, 0, 0], 'boxes': [box]}
-    return {'size': list(sheet), 'bones': [bone], 'glowFrom': 1}, box
+    model = {'size': list(sheet), 'bones': [bone], 'glowFrom': 1}
+    if density != 1:
+        model['density'] = density
+    return model, box
 
 
 def export_assets(root):
@@ -433,7 +463,7 @@ class BuildSkinsChecks(unittest.TestCase):
 
     def test_vanilla_keys(self):
         vanilla = {'parent', 'elements', 'textures', 'display', 'overrides', 'gui_light', 'ambientocclusion'}
-        allowed = {'format', 'troop', 'rig', 'size', 'bones', 'skins', 'veteran', 'glow', 'glowFrom', 'outer', 'weapon',
+        allowed = {'format', 'troop', 'rig', 'size', 'density', 'bones', 'skins', 'veteran', 'glow', 'glowFrom', 'outer', 'weapon',
                    'hand', 'idleArms', 'portrait'}
         with tempfile.TemporaryDirectory() as tmp:
             root = fixture(tmp)
@@ -1248,7 +1278,8 @@ class BuildSkinsChecks(unittest.TestCase):
 
     def mesh(self, model, texels, colour=MINT, key='1'):
         """relief_mesh on a hand-made one-box model: the quads of its only bone."""
-        im = Image.new('RGBA', tuple(model['size']), (0, 0, 0, 0))
+        k = model.get('density', 1)
+        im = Image.new('RGBA', (model['size'][0] * k, model['size'][1] * k), (0, 0, 0, 0))
         for t in texels:
             im.putpixel(tuple(t[:2]), t[2] if len(t) > 2 else colour)
         with tempfile.TemporaryDirectory() as tmp:
@@ -1500,6 +1531,422 @@ class BuildSkinsChecks(unittest.TestCase):
         self.assertGreaterEqual(inner.count(red), 12)
         self.assertNotEqual(inner.count(red), len(inner))
         self.assertNotIn(red, [im.getpixel((x, 21)) for x in range(20, 28)])
+
+    # ---- the texel-3 trial: a density a troop and a weapon may name ----
+
+    def outputs(self, root):
+        """{path under the assets root: bytes} of everything a build wrote."""
+        base = pathlib.Path(root) / ASSETS
+        return {p.relative_to(base).as_posix(): p.read_bytes() for p in sorted(base.rglob('*')) if p.is_file()}
+
+    def raised(self, texels, k=3):
+        """The texels of a density 1 relief as a layer drawn at k paints them: each becomes a k x k block."""
+        return [(k * x + i, k * y + j) for x, y in texels for j in range(k) for i in range(k)]
+
+    def test_density_defaults_change_nothing(self):
+        """A density key that names the default (1 for a troop, 2 for a weapon) builds the same files as no key at all, and a model
+        built with none carries no density key: the 1x and 2x outputs stay byte for byte what they were."""
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            plain = cube_fixture(a)
+            named = fixture(b)
+            put_cube_weapon(named, meta=dict(PIKE_JSON, density=2))
+            data = json.loads((named / 'art/troops/knight.json').read_text(encoding='utf-8'))
+            data['density'] = 1
+            write_json(named / 'art/troops/knight.json', data)
+            self.export(plain)
+            self.export(named)
+            first, second = self.outputs(plain), self.outputs(named)
+        self.assertEqual(sorted(first), sorted(second))
+        for name in first:
+            self.assertEqual(first[name], second[name], name)
+        for name in ('models/troop/knight.json', 'models/troop/weapon/pike.json'):
+            self.assertNotIn('density', json.loads(first[name]), name)
+        self.assertEqual(tuple(json.loads(first['models/troop/knight.json'])), build_skins.MODEL_KEYS)
+        self.assertEqual(build_skins.model_keys(1), build_skins.MODEL_KEYS)
+        self.assertFalse([n for n in first if n.endswith('_far.png') and '/weapon/' not in n], 'a density 1 troop has no far twin')
+
+    def test_troop_density_three(self):
+        """A troop of density 3 keeps its layout (the model's size, its boxes' uv and sheet are in layout units, which is what the
+        client divides by) and ships its PNGs at 3 times it; the model says density 3 right after its size."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            densify(root)
+            self.export(root)
+            base = root / ASSETS
+            model = json.loads((base / 'models/troop/knight.json').read_text(encoding='utf-8'))
+            sentinel = json.loads((base / 'models/troop/sentinel.json').read_text(encoding='utf-8'))
+            with Image.open(base / 'textures/entity/troop/knight_s1.png') as im:
+                shipped = im.size
+        self.assertEqual(model['size'], [64, 64])
+        self.assertEqual(model['density'], 3)
+        self.assertEqual(tuple(model), build_skins.model_keys(3))
+        self.assertEqual(list(model)[:6], ['format', 'troop', 'rig', 'size', 'density', 'bones'])
+        self.assertNotIn('density', sentinel)
+        self.assertEqual(shipped, (192, 192))
+        body = find(model, 'body')
+        self.assertEqual((body['sheet'], body['boxes'][0]['uv'], body['boxes'][0]['size']), ([64, 64], [16, 16], [8, 12, 4]))
+
+    def test_cloth_layout_is_not_the_png_size(self):
+        """The cloth template drawn at 3 is 48x48 for a 16x16 layout, and the team bones' sheet stays 16x16: taken from the PNG it
+        would be 48, and the client's sheet/size scale of 3 would sample the top-left third of the cloth."""
+        rgb = ((GOLD >> 16) & 255, (GOLD >> 8) & 255, GOLD & 255)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            densify(root, cloth=True)
+            self.export(root)
+            base = root / ASSETS
+            model = json.loads((base / 'models/troop/knight.json').read_text(encoding='utf-8'))
+            with Image.open(base / 'textures/entity/troop/team_cloth_gold.png') as im:
+                gold = im.convert('RGBA')
+        pennant = find(model, 'pennant')
+        self.assertTrue(pennant['team'])
+        self.assertEqual(pennant['sheet'], [16, 16])
+        self.assertEqual(gold.size, (48, 48))
+        self.assertEqual(gold.getpixel((2 * 3 + 1, 2 * 3 + 1))[:3], rgb)   # the x1.0 field, enlarged
+        self.assertEqual(gold.getpixel((47, 47))[3], 0)
+        with tempfile.TemporaryDirectory() as tmp:   # a cloth at density 1 is as it was
+            root = fixture(tmp)
+            self.export(root)
+            model = json.loads((root / ASSETS / 'models/troop/knight.json').read_text(encoding='utf-8'))
+        self.assertEqual(find(model, 'pennant')['sheet'], [16, 16])
+
+    def test_cloth_layout_checks(self):
+        """A team part is checked against the cloth's layout, not its PNG: a box that fits 48x48 but not 16x16 fails; a template the
+        density does not divide fails naming team_cloth.json; so does a density that is not 1 to 4."""
+        parts = dict(PARTS, pennant=dict(PARTS['pennant'], boxes=[box([-2, -26, 3], [4, 8, 1], [12, 0])]))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp, parts=parts)
+            densify(root, cloth=True)
+            said = self.fails(export_assets, root)
+        self.assertIn('pennant', said)
+        self.assertIn('outside the 16x16 sheet', said)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            Image.new('RGBA', (50, 50), (0, 0, 0, 0)).save(root / 'art/team/team_cloth.png')
+            write_json(root / 'art/team/team_cloth.json', {'density': 3})
+            said = self.fails(export_assets, root)
+        for want in ('team_cloth.json', '50x50', 'density 3'):
+            self.assertIn(want, said)
+        for value in (0, 5, 2.5, True, '3'):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp)
+                write_json(root / 'art/team/team_cloth.json', {'density': value})
+                said = self.fails(export_assets, root)
+                self.assertIn('team_cloth.json', said)
+                self.assertIn('density', said)
+
+    def test_density_key_rules(self):
+        """A density is a whole number from 1 to 4; a sprite weapon (one texel a px) takes none."""
+        for value in (0, 5, 2.5, True, '3'):
+            with self.subTest(troop=value), tempfile.TemporaryDirectory() as tmp:
+                said = self.fails(export_assets, fixture(tmp, troops=self.with_knight(density=value)))
+                self.assertIn('knight', said)
+                self.assertIn('density', said)
+        for value in (0, 5, 2.5, False):
+            with self.subTest(weapon=value), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp)
+                put_cube_weapon(root, meta=dict(PIKE_JSON, density=value))
+                said = self.fails(export_assets, root)
+                self.assertIn('pike', said)
+                self.assertIn('density', said)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            write_json(root / 'art/weapons/sword.json', dict(SWORD, density=1))
+            said = self.fails(export_assets, root)
+        self.assertIn('sword', said)
+        self.assertIn('sprite', said)
+
+    def test_wrong_size_names_the_density(self):
+        """A skin that is the layout size on a density 3 troop fails saying what the troop's size is at 3 texels a px."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            densify(root)
+            skin(root / 'art/troops/knight_s1.png', size=(64, 64))
+            said = self.fails(export_assets, root)
+        self.assertIn('knight_s1.png is 64x64, not the troop size 64x64 at 3 texels a px (192x192)', said)
+
+    def test_relief_density_three_is_the_same_shape(self):
+        """A relief layer drawn at 3 whose blocks are the 1x layer's texels (the nearest-upscaled placeholder) gives the quads of
+        the 1x layer: the same directions and corners and, for a top quad, the same UV rectangle, on a plain, a mirrored and a
+        dilated box, for a strip, a wrapped edge, a three-face corner and one texel on each face."""
+        every = [(5, 1), (9, 1), (1, 5), (5, 5), (9, 5), (13, 5)]
+        patterns = {'strip': [(5, 5), (6, 5)], 'edge': [(4, 5), (3, 5)], 'corner': [(4, 4), (3, 4), (4, 3)], 'every face': every}
+
+        def is_top(q):
+            x0, y0, x1, y1 = uv_box(q)
+            return min(x1 - x0, y1 - y0) >= 0.99
+
+        def tops(quads):
+            return sorted(tuple(round(v, 3) for v in uv_box(q)) for q in quads if is_top(q))
+        for mirror, dilation in ((False, (0, 0, 0)), (True, (0, 0, 0)), (False, (0.2, 0.1, 0.3)), (True, (0.2, 0.1, 0.3))):
+            for name, texels in patterns.items():
+                with self.subTest(name=name, mirror=mirror, dilation=dilation):
+                    one, _ = mini_model(mirror=mirror, dilation=dilation)
+                    three, _ = mini_model(mirror=mirror, dilation=dilation, density=3)
+                    a = self.mesh(one, texels)['body']
+                    b = self.mesh(three, self.raised(texels))['body']
+                    self.assertEqual(len(a), len(b))
+                    self.assertEqual(sorted([round(v, 3) for v in q[:7]] for q in a), sorted([round(v, 3) for v in q[:7]] for q in b))
+                    self.assertEqual(tops(a), tops(b))
+                    self.assertTrue(tops(b))
+                    for q in b:
+                        self.assert_quad(q)
+
+    def test_relief_density_three_fine_detail(self):
+        """One raised texel at 3 is a third of a px across and a whole px proud: the voxel's depth along the normal is the box's
+        px (1.2 on a box scaled 1.2), not the texel's. Its top quad is the texel itself in layout units, in thirds of four decimals."""
+        model, box = mini_model(density=3)
+        quads = self.mesh(model, [(15, 15)])['body']   # the north face's texels run 12 to 23 across and down
+        self.assertEqual(len(quads), 5)
+        tops = [q for q in quads if q[0] == 2]
+        self.assertEqual(len(tops), 1)
+        top = tops[0]
+        self.assertEqual(top[1:7], [-1, -1, -3, -0.6667, -0.6667, -3])
+        for got, want in zip(uv_box(top), (5, 5, 5.3333, 5.3333)):
+            self.assertAlmostEqual(got, want, places=4)
+        c = uv_corners(top)
+        centre = ((c[0][0] + c[2][0]) / 2, (c[0][1] + c[2][1]) / 2)
+        at = [(top[1 + i] + top[4 + i]) / 2 for i in range(3)]
+        want = vanilla_uv(box, NORMALS[top[0]], at)
+        self.assertAlmostEqual(centre[0], 5.1667, places=3)
+        self.assertAlmostEqual(centre[1], 5.1667, places=3)
+        self.assertAlmostEqual(centre[0], want[0], places=3)
+        self.assertAlmostEqual(centre[1], want[1], places=3)
+        for q in quads:
+            self.assert_quad(q)
+            if q is not top:
+                self.assertEqual((q[3], q[6]), (-3, -2))
+        scaled, _ = mini_model(origin=(-2, -2, -2.0), dilation=(0, 0, 0.4), density=3)   # z scaled 1.2
+        for q in self.mesh(scaled, [(15, 15)])['body']:
+            self.assertAlmostEqual(q[6] - q[3], 0.0 if q[0] == 2 else 1.2)
+
+    def test_relief_density_rules(self):
+        """The relief rules count in texels of the troop's density: the layer must be D times the layout, a texel off every face is
+        named in layer texels, and a face may have 20% of its texels raised (19 of 96 at 1x are 171 of 864 at 3)."""
+        rows = [(x, y) for y in (20, 21, 22) for x in range(20, 28)]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            densify(root)
+            relief_png(root, 'knight_s1_r.png', self.raised(rows[:19]), size=(192, 192))
+            self.export(root)
+        cases = [('21 of 96', self.raised(rows[:21]), (192, 192), ['20%']),
+                 ('off every face', [(189, 189)], (192, 192), ['no skin box face', '(189, 189)']),
+                 ('a layer at 1x', [(22, 22)], (64, 64), ['knight_s1_r.png is 64x64', '192x192'])]
+        for name, texels, size, wants in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp)
+                densify(root)
+                relief_png(root, 'knight_s1_r.png', texels, size=size)
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+
+    def test_relief_density_three_in_a_troop(self):
+        """A density 3 troop with a nearest-upscaled relief gives the model the quads of the 1x troop, in layout units."""
+        marks = [(22, 22), (23, 22), (24, 28)]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            relief_png(root, 'knight_s1_r.png', marks)
+            self.export(root)
+            one = json.loads((root / ASSETS / 'models/troop/knight.json').read_text(encoding='utf-8'))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            relief_png(root, 'knight_s1_r.png', marks)
+            densify(root)
+            self.export(root)
+            three = json.loads((root / ASSETS / 'models/troop/knight.json').read_text(encoding='utf-8'))
+        a, b = find(one, 'body')['relief']['1'], find(three, 'body')['relief']['1']
+        self.assertEqual(len(a), len(b))
+        self.assertEqual(sorted(q[:7] for q in a), sorted(q[:7] for q in b))
+
+    def test_templates_at_density(self):
+        """--template draws the sheets at the troop's density: the flat template and the relief template are 192x192 for a 64x64
+        layout and are the 1x template enlarged, texel for texel."""
+        with tempfile.TemporaryDirectory() as tmp:
+            troops = self.knight_with([{'part': 'panel'}])
+            cat = build_skins.load(fixture(tmp, troops=troops, parts=RELIEF_PARTS))
+            flat_one, relief_one = build_skins.template(cat, 'knight').convert('RGBA'), build_skins.relief_template(cat, 'knight').convert('RGBA')
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp, troops=troops, parts=RELIEF_PARTS)
+            densify(root)
+            cat = build_skins.load(root)
+            flat, relief = build_skins.template(cat, 'knight').convert('RGBA'), build_skins.relief_template(cat, 'knight').convert('RGBA')
+        self.assertEqual((flat.size, relief.size), ((192, 192), (192, 192)))
+        red = build_skins.RELIEF_RED + (255,)
+        self.assertEqual(flat.tobytes(), flat_one.resize((192, 192), Image.NEAREST).tobytes())
+        self.assertEqual(relief.tobytes(), relief_one.resize((192, 192), Image.NEAREST).tobytes())
+        self.assertIn(red, [relief.getpixel((x, y)) for x in range(21 * 3, 27 * 3) for y in range(22 * 3, 28 * 3)])
+
+    def test_glow_cap_counts_px(self):
+        """The glow cap counts px of lit area, not texels: 54 lit texels at 3 a px are 6 px (the common cap), 63 are 7. A cube
+        weapon's lit texels count at its own density together with the skin's (16 at 2 a px are 4 px)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            densify(root)
+            glow(root / 'art/troops/knight_e.png', 54, size=(192, 192))
+            self.export(root)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            densify(root)
+            glow(root / 'art/troops/knight_e.png', 63, size=(192, 192))
+            said = self.fails(export_assets, root)
+        for want in ('knight', 'glow', '7 lit', 'cap of 6'):
+            self.assertIn(want, said)
+
+        def lit_pike(root, knight_lit):
+            glow(root / 'art/troops/knight_e.png', knight_lit)
+            lit_sheet = Image.new('RGBA', SHEET_2X, (0, 0, 0, 0))
+            for y in range(8):
+                for x in (4, 5):
+                    lit_sheet.putpixel((x, y), (255, 240, 200, 255))
+            lit_sheet.save(root / 'art/weapons/pike_e.png')
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp, troops=self.with_knight(weapon='pike'))
+            put_cube_weapon(root)
+            lit_pike(root, 2)   # 2 px of skin and 4 px of pike: 6
+            self.export(root)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp, troops=self.with_knight(weapon='pike'))
+            put_cube_weapon(root)
+            lit_pike(root, 3)   # 7
+            said = self.fails(export_assets, root)
+        self.assertIn('knight', said)
+        self.assertIn('7 lit', said)
+
+    def test_weapon_density_three(self):
+        """A weapon that names density 3 has its patches at 3 texels a px on a 96x192 sheet: the model says so right after its size,
+        the quads read texels of that sheet, and the far version stays one texel to a px in the strip under it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            put_cube_weapon(root, meta=dict(PIKE_JSON, density=3), sheet=SHEET_3X, density=3)
+            self.export(root)
+            model = model_of(root)
+            tex, normal, spec = (texture_of(root, n) for n in ('pike.png', 'pike_n.png', 'pike_s.png'))
+        self.assertEqual(model['density'], 3)
+        self.assertEqual(list(model)[:6], ['format', 'weapon', 'kind', 'size', 'density', 'thickness'])
+        self.assertEqual(model['size'][0], 96)
+        self.assertEqual(model['size'][1] - 192, 13)   # the same 13 rows of far version, one texel to a px, under the bigger sheet
+        self.assertEqual(tex.size, tuple(model['size']))
+        self.assertEqual((normal.size, spec.size), (tex.size, tex.size))
+        quads = model['frames'][0]['quads']
+        self.assertEqual(quads[0], [0.5, 2, 0.5, -0.5, 2, 0.5, -0.5, -2, 0.5, 0.5, -2, 0.5, 0, 12, 3, 12, 3, 0, 0, 0])
+        for q in quads:
+            for u, v in zip(q[12::2], q[13::2]):
+                self.assertTrue(0 <= u <= 96 and 0 <= v <= 192, q)
+        for q in model['far']:
+            self.assertTrue(all(192 <= v <= 192 + 13 for v in (q[8], q[10], q[12])), q)
+        self.assertLessEqual(len(model['far']), build_skins.FAR_CAP)
+
+    def test_weapon_density_mismatch(self):
+        """A weapon whose patches are not at the density its json names (or the default 2) fails, saying how many times its size a
+        face should be."""
+        cases = [('three times its size', dict(meta=dict(PIKE_JSON, density=3))),   # patches at 2, the json says 3
+                 ('twice its size', dict(sheet=SHEET_3X, density=3))]               # patches at 3, the json is silent
+        for want, kw in cases:
+            with self.subTest(want=want), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp)
+                put_cube_weapon(root, **kw)
+                said = self.fails(export_assets, root)
+                for word in ('pike', 'texels a px', want):
+                    self.assertIn(word, said)
+
+    def test_material_maps_tilt_follows_the_density(self):
+        """A patch edge tilts the _n map by the drop to the next texel, and a texel is 1/D px: EDGE_TILT is scaled by 2/D, so a 3x
+        weapon's bevel leans as a 2x weapon's does."""
+        colour = Image.new('RGBA', (5, 1), (120, 120, 120, 255))
+        keys = Image.new('RGBA', (5, 1), KEYS['steel'] + (255,))
+
+        def left_edge(tilt):
+            nx = -0.5 * tilt
+            return int(round(128 + nx / math.sqrt(nx * nx + 1.0) * 127))
+        for d, tilt in ((2, build_skins.EDGE_TILT), (3, build_skins.EDGE_TILT * 2 / 3), (4, build_skins.EDGE_TILT / 2)):
+            normal, _ = build_skins.material_maps(colour, keys, [(0, 0, 5, 1)], None, d)
+            self.assertEqual(normal.getpixel((0, 0))[0], left_edge(tilt), d)
+        normal, _ = build_skins.material_maps(colour, keys, [(0, 0, 5, 1)])   # the default is the weapons' 2
+        self.assertEqual(normal.getpixel((0, 0))[0], left_edge(build_skins.EDGE_TILT))
+
+    def test_far_skin_twin(self):
+        """A density 3 troop ships a twin of each skin at one texel to a px (<name>_far.png), made as the weapons' far version is:
+        a block of 3x3 texels takes its most common colour and is clear unless at least half of it is painted. The trim, the glow
+        and the outer layer get twins too; a density 1 troop gets none."""
+        paint, other = (90, 60, 40, 255), (30, 30, 36, 255)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            densify(root)
+            src = root / 'art/troops/knight_s1.png'
+            with Image.open(src) as im:
+                skin_im = im.convert('RGBA')
+            for i in range(9):   # block (5, 5): six texels of paint and three of another colour
+                skin_im.putpixel((15 + i % 3, 15 + i // 3), paint if i < 6 else other)
+            for i in range(9):   # block (7, 7): four painted, five clear: clear
+                skin_im.putpixel((21 + i % 3, 21 + i // 3), paint if i < 4 else (0, 0, 0, 0))
+            for i in range(9):   # block (8, 8): five painted, four clear: painted
+                skin_im.putpixel((24 + i % 3, 24 + i // 3), paint if i < 5 else (0, 0, 0, 0))
+            skin_im.save(src)
+            relief_png(root, 'knight_veteran.png', self.raised([(10, 10)]), size=(192, 192))
+            lit_im = Image.new('RGBA', (192, 192), (0, 0, 0, 0))
+            for i in range(5):
+                lit_im.putpixel((6 + i % 3, 6 + i // 3), (255, 240, 200, 255))   # block (2, 2): five lit
+            lit_im.save(root / 'art/troops/knight_e.png')
+            skin(root / 'art/troops/knight_o.png', size=(192, 192), paint=(0, 0, 0, 0),
+                 extra=[((60 + i % 3, 60 + i // 3), (120, 110, 100, 255)) for i in range(9)])
+            index = self.export(root)
+            base = root / ASSETS / 'textures/entity/troop'
+            names = ('knight_s1_far.png', 'knight_veteran_far.png', 'knight_e_far.png', 'knight_o_far.png')
+            twins = {n: Image.open(base / n).convert('RGBA') for n in names}
+            on_disk = sorted(p.name for p in base.glob('*_far.png'))
+        self.assertEqual(on_disk, sorted(twins))
+        for name in twins:
+            self.assertIn('textures/entity/troop/' + name, index['outputs'])
+            self.assertEqual(twins[name].size, (64, 64), name)
+        far = twins['knight_s1_far.png']
+        self.assertEqual(far.getpixel((5, 5)), paint)
+        self.assertEqual(far.getpixel((7, 7))[3], 0)
+        self.assertEqual(far.getpixel((8, 8)), paint)
+        self.assertEqual(far.getpixel((0, 0)), (200, 196, 186, 255))
+        self.assertEqual(twins['knight_veteran_far.png'].getpixel((10, 10)), MINT)
+        self.assertEqual(twins['knight_veteran_far.png'].getpixel((11, 10))[3], 0)
+        self.assertEqual(twins['knight_e_far.png'].getpixel((2, 2)), (255, 240, 200, 255))
+        self.assertEqual(twins['knight_o_far.png'].getpixel((20, 20)), (120, 110, 100, 255))
+
+    def test_far_twin_function(self):
+        """far_twin on its own: density 1 is the image itself; a tie goes to the colour met first in reading order; a block with
+        fewer than half its texels painted is clear."""
+        im = Image.new('RGBA', (6, 3), (0, 0, 0, 0))
+        a, b = (10, 20, 30, 255), (40, 50, 60, 255)
+        for i in range(9):   # a 3x3 block of four a, four b and one clear: a was met first
+            im.putpixel((i % 3, i // 3), a if i in (0, 1, 3, 4) else b if i in (2, 5, 6, 7) else (0, 0, 0, 0))
+        for x in range(3, 6):
+            for y in range(3):
+                im.putpixel((x, y), b)
+        twin = build_skins.far_twin(im, 3)
+        self.assertEqual(twin.size, (2, 1))
+        self.assertEqual((twin.getpixel((0, 0)), twin.getpixel((1, 0))), (a, b))
+        self.assertIs(build_skins.far_twin(im, 1), im)
+        sparse = Image.new('RGBA', (3, 3), (0, 0, 0, 0))
+        for i in range(4):
+            sparse.putpixel((i % 3, i // 3), a)
+        self.assertEqual(build_skins.far_twin(sparse, 3).getpixel((0, 0))[3], 0)
+
+    def test_verify_density_three(self):
+        """--verify rebuilds a density 3 troop, its far twins and the cloth at 3 (PNGs by pixels, the model byte for byte)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            densify(root, cloth=True)
+            self.export(root)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(build_skins.verify(root), 0)
+            for target in ('models/troop/knight.json', 'textures/entity/troop/knight_s1_far.png', 'textures/entity/troop/knight_s1.png',
+                           'textures/entity/troop/team_cloth_gold.png'):
+                path = root / ASSETS / target
+                before = path.read_bytes()
+                data = bytearray(before)
+                data[len(data) // 2] ^= 0x01
+                path.write_bytes(bytes(data))
+                said = self.fails(build_skins.verify, root)
+                self.assertIn(target, said)
+                path.write_bytes(before)
 
     def test_summary_line(self):
         with tempfile.TemporaryDirectory() as tmp:
