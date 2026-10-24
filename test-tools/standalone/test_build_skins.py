@@ -187,6 +187,26 @@ def face_patches(density=1, count=4):
     return im
 
 
+BEARD_SLOTS = [[32, 80], [46, 80], [32, 85]]   # three free 14x5 rectangles in the 64x96 sheet (the head slots take (0, 64), (32, 64) and (0, 80))
+BEARD_FACES = [(1, 0, 13, 1), (0, 1, 14, 5)]   # the six faces of a 6x4x1 box at uv (0, 0) inside its 14x5 rectangle
+
+
+def beard_colour(k, x, y):
+    """Layout px (x, y) of beard patch k: a cut-out (alpha 0) where (x + y + k) is a multiple of 4, else low in saturation."""
+    return (0, 0, 0, 0) if (x + y + k) % 4 == 0 else (170 + 10 * k, 160 + x % 16, 150 + y % 16, 255)
+
+
+def beard_patches(density=1, count=4):
+    """art/troops/<troop>_beards.png: `count` patches of 14x5 layout px stacked at `density` texels a px (a px is one block of one colour), the six faces of the beard box painted, with cut-outs."""
+    im = Image.new('RGBA', (14 * density, 5 * density * count), (0, 0, 0, 0))
+    for k in range(count):
+        for x0, y0, x1, y1 in BEARD_FACES:
+            for y in range(y0 * density, y1 * density):
+                for x in range(x0 * density, x1 * density):
+                    im.putpixel((x, k * 5 * density + y), beard_colour(k, x // density, y // density))
+    return im
+
+
 def face_skin(path, density=1, size=(64, 96), slots=FACE_SLOTS, paint=(200, 196, 186, 255), rects=()):
     """A skin of the faces fixture: painted all over except the slots' 32x16 rectangles (free rows for the faces) and any `rects` (x0, y0, x1, y1 in layout px)."""
     im = Image.new('RGBA', (size[0] * density, size[1] * density), paint)
@@ -2083,7 +2103,7 @@ class BuildSkinsChecks(unittest.TestCase):
 
     def test_faces_key_rules(self):
         cases = [   # name, the faces keys that change, what the message names
-            ('one face', dict(count=1, slots=[]), ['faces', 'count']),
+            ('no face', dict(count=0, slots=[]), ['faces', 'count']),
             ('nine faces', dict(count=9, slots=FACE_SLOTS * 3), ['faces', 'count']),
             ('count as text', dict(count='4'), ['faces', 'count']),
             ('too few slots', dict(slots=FACE_SLOTS[:2]), ['faces', 'slots', '3']),
@@ -2273,6 +2293,229 @@ class BuildSkinsChecks(unittest.TestCase):
         self.assertEqual(flat.getpixel((2, 66))[3], 0)        # its corner, outside the six faces
         red = build_skins.RELIEF_RED + (255,)
         self.assertIn(red, [relief.getpixel((x, y)) for x in range(8, 16) for y in range(72, 80)])
+
+    # ---- the faces' source resolution, the banked patches, the beard boxes ----
+
+    def scaled_patches(self, scale, count=4):
+        """face_patches(1) drawn at `scale` texels a px: every px a block of one colour but its first texel, which is noise, so the
+        majority of a block is the px's colour and a reduction by the block must give face_patches(1) back."""
+        flat = face_patches(1, count)
+        im = Image.new('RGBA', (flat.width * scale, flat.height * scale), (0, 0, 0, 0))
+        for y in range(flat.height):
+            for x in range(flat.width):
+                c = flat.getpixel((x, y))
+                if not c[3]:
+                    continue
+                for j in range(scale):
+                    for i in range(scale):
+                        im.putpixel((x * scale + i, y * scale + j), (230, 230, 226, 255) if (i, j) == (0, 0) and scale > 1 else c)
+        return im
+
+    def test_faces_source_resolution(self):
+        """Face art is drawn at 3 texels a px whatever the troop's sheet: patches at a whole multiple of the troop's density are taken,
+        and reduced to the density by the same majority rule as the far twin (a block takes its most common colour). A troop at density
+        1 builds the same sheet from 1x, 2x and 3x patches; a patch at a lower density or at a fraction of the density is refused."""
+        for density, scale in ((1, 1), (1, 2), (1, 3), (3, 3), (3, 6)):
+            with self.subTest(density=density, scale=scale), tempfile.TemporaryDirectory() as tmp:
+                root = faces_fixture(tmp, density, self.faces_troops(density=density if density > 1 else None), patches=False)
+                put_png(root / 'art/troops/knight_faces.png', self.scaled_patches(scale))
+                self.export(root)
+                got = Image.open(root / ASSETS / 'textures/entity/troop/knight_s1.png').convert('RGBA')
+                patches = self.scaled_patches(scale) if scale == density else face_patches(1).resize((32 * density, 64 * density), Image.NEAREST)
+                for k, (u, v) in enumerate([(0, 0)] + FACE_SLOTS):
+                    for x0, y0, x1, y1 in HEAD_FACES:
+                        for y in range(y0 * density, y1 * density):
+                            for x in range(x0 * density, x1 * density):
+                                self.assertEqual(got.getpixel((u * density + x, v * density + y)), patches.getpixel((x, k * 16 * density + y)), (k, x, y))
+        for name, density, make, wants in (
+                ('a lower density than the troop', 3, lambda: self.scaled_patches(1), ['knight_faces.png', '32x64', '96x192']),
+                ('a fraction of the density', 3, lambda: self.scaled_patches(2), ['knight_faces.png', '64x128', '96x192']),
+                ('a width that is no whole scale', 1, lambda: self.scaled_patches(3).crop((0, 0, 94, 192)), ['knight_faces.png', '94x192']),
+                ('a height that is no whole patch', 1, lambda: self.scaled_patches(3).crop((0, 0, 96, 190)), ['knight_faces.png', '96x190']),
+                ('fewer patches than the count', 1, lambda: self.scaled_patches(3).crop((0, 0, 96, 144)), ['knight_faces.png', '96x144', '3 patches']),
+        ):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = faces_fixture(tmp, density, self.faces_troops(density=density if density > 1 else None), patches=False)
+                put_png(root / 'art/troops/knight_faces.png', make())
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with self.subTest(name='paint off the faces at 3x'), tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, 1, self.faces_troops(), patches=False)
+            im = self.scaled_patches(3)
+            im.putpixel((2, 2 * 48 + 2), (200, 190, 180, 255))
+            put_png(root / 'art/troops/knight_faces.png', im)
+            said = self.fails(export_assets, root)
+            for want in ('knight_faces.png', 'patch 2', 'outside', '(2, 98)'):
+                self.assertIn(want, said)
+
+    def test_faces_banked_patches(self):
+        """A faces block of count 1 is a troop that wears its canonical face only (the Templar, whose great helm hides it): no face bones,
+        no faces key in the model, no slots; patch 0 is pasted over the head's faces in every own skin. The patch file may hold more
+        patches than the count (banked art, to wire later), and a file with fewer is refused."""
+        for extra in (0, 3):
+            with self.subTest(banked=extra), tempfile.TemporaryDirectory() as tmp:
+                troops = self.with_knight(size=[64, 96], faces={'count': 1})
+                root = faces_fixture(tmp, troops=troops, patches=False)
+                put_png(root / 'art/troops/knight_faces.png', face_patches(1, 1 + extra))
+                before = Image.open(root / 'art/troops/knight_s1.png').convert('RGBA')
+                self.export(root)
+                model = json.loads((root / ASSETS / 'models/troop/knight.json').read_text(encoding='utf-8'))
+                self.assertNotIn('faces', model)
+                self.assertEqual(tuple(model), build_skins.MODEL_KEYS)
+                self.assertFalse([b['name'] for b in model['bones'] if b['name'].startswith('face_v') or 'variants' in b])
+                self.assertEqual(len(find(model, 'head')['boxes']), 1)
+                got = Image.open(root / ASSETS / 'textures/entity/troop/knight_s1.png').convert('RGBA')
+                want = before.copy()
+                patches = face_patches(1, 1)
+                for x0, y0, x1, y1 in HEAD_FACES:
+                    for y in range(y0, y1):
+                        for x in range(x0, x1):
+                            want.putpixel((x, y), patches.getpixel((x, y)))
+                self.assertEqual(got.tobytes(), want.tobytes())
+        for name, change, wants in (
+                ('count 1 with slots', dict(count=1, slots=FACE_SLOTS[:1]), ['faces', 'count 1', 'slots']),
+                ('count 1 fixed to 1', dict(count=1, fixed=1), ['faces', 'fixed']),
+                ('count 0', dict(count=0, slots=[]), ['faces', 'count'])):
+            with self.subTest(name=name):
+                said = self.bake_fails(self.with_knight(size=[64, 96], faces=change))
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with self.subTest(name='fewer patches than the count'), tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, troops=self.faces_troops(), patches=False)
+            put_png(root / 'art/troops/knight_faces.png', face_patches(1, 3))
+            said = self.fails(export_assets, root)
+            for want in ('knight_faces.png', '32x48', '32x64'):
+                self.assertIn(want, said)
+
+    # the beard box: the head's second box (the mage's and the Marshal's beard volume), whose variants are drawn by <troop>_beards.png
+
+    def beard_troops(self, density=None, **faces):
+        """faces_troops with a beard volume (box [6, 4, 1] at uv (48, 56)) as the head's second box and three beard slots."""
+        troops = self.faces_troops(density=density, **dict({'beard': {'slots': BEARD_SLOTS}}, **faces))
+        troops['knight']['bones'] = {'head': {'boxes': [box([-4, -8, -4], [8, 8, 8], [0, 0]), box([-3, -3, -4.9], [6, 4, 1], [48, 56])]}}
+        return troops
+
+    def test_faces_beard_model(self):
+        """With a beard block the head's second box goes into the face bones with the first: face_v0 holds both where they were, face_v1
+        to 3 the head box at its slot and the beard box at its beard slot; `head` keeps no box. Without the block the beard stays on
+        `head` and shows in every variant, as it did."""
+        model = self.bake(self.beard_troops())['knight']
+        self.assertEqual(find(model, 'head')['boxes'], [])
+        for k in range(4):
+            b = find(model, 'face_v%d' % k)
+            self.assertEqual(len(b['boxes']), 2)
+            self.assertEqual(b['boxes'][0]['uv'], [0, 0] if k == 0 else FACE_SLOTS[k - 1])
+            self.assertEqual(b['boxes'][1]['uv'], [48, 56] if k == 0 else BEARD_SLOTS[k - 1])
+            self.assertEqual((b['boxes'][1]['size'], b['boxes'][1]['origin']), ([6, 4, 1], [-3, -3, -4.9]))
+            self.assertEqual(b['variants'], [k])
+        self.assertEqual(self.bake(self.beard_troops())['knight']['faces'], {'count': 4, 'card': 0})
+        troops = self.faces_troops()
+        troops['knight']['bones'] = {'head': {'boxes': [box([-4, -8, -4], [8, 8, 8], [0, 0]), box([-3, -3, -4.9], [6, 4, 1], [48, 56])]}}
+        plain = self.bake(troops)['knight']
+        self.assertEqual(len(find(plain, 'head')['boxes']), 1)
+        self.assertEqual([len(find(plain, 'face_v%d' % k)['boxes']) for k in range(4)], [1, 1, 1, 1])
+
+    def test_faces_beard_rules(self):
+        cases = [   # name, the faces keys that change, what the message names
+            ('too few beard slots', dict(beard={'slots': BEARD_SLOTS[:2]}), ['faces', 'beard', 'slots', '3']),
+            ('a beard slot off the sheet', dict(beard={'slots': [[32, 80], [46, 80], [60, 95]]}), ['beard slot 3', 'sheet']),
+            ('a beard slot on a head slot', dict(beard={'slots': [[32, 80], [46, 80], [2, 66]]}), ['beard slot 3', 'overlaps', 'slot 1']),
+            ('a beard slot on the head', dict(beard={'slots': [[32, 80], [46, 80], [4, 4]]}), ['beard slot 3', 'overlaps', 'head']),
+            ('beard slots on each other', dict(beard={'slots': [[32, 80], [40, 80], [32, 85]]}), ['beard slot 2', 'overlaps', 'beard slot 1']),
+            ('a head slot on a beard slot', dict(slots=[[32, 64], [32, 80], [0, 80]]), ['slot 2', 'overlaps', 'beard slot']),
+            ('an unknown beard key', dict(beard={'slots': BEARD_SLOTS, 'mood': 1}), ['beard', 'unknown key', 'mood']),
+            ('a beard that is no object', dict(beard=[1]), ['faces', 'beard']),
+        ]
+        for name, change, wants in cases:
+            with self.subTest(name=name):
+                said = self.bake_fails(self.beard_troops(**change))
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with self.subTest(name='a beard block and no second head box'):
+            said = self.bake_fails(self.faces_troops(beard={'slots': BEARD_SLOTS}))
+            for want in ('knight', 'beard', 'second box'):
+                self.assertIn(want, said)
+
+    def beard_root(self, tmp, density=1, troops=None):
+        """The beard fixture: skins painted but for the head slots and the beard slots, art/troops/knight_faces.png and knight_beards.png."""
+        root = faces_fixture(tmp, density, troops or self.beard_troops(density=density if density > 1 else None))
+        for name, paint in (('knight_s1.png', (200, 196, 186, 255)), ('knight_s2.png', (190, 186, 176, 255))):
+            if (root / 'art/troops' / name).is_file():
+                face_skin(root / 'art/troops' / name, density, paint=paint, rects=[(u, v, u + 14, v + 5) for u, v in BEARD_SLOTS])
+        put_png(root / 'art/troops/knight_beards.png', beard_patches(density))
+        return root
+
+    def test_faces_beard_composite(self):
+        """Beard patch k replaces the texels of the beard box's six faces, at the box's own rectangle for patch 0 and at beard slot k for
+        the rest, cut-out texels (alpha 0) included: the cut-out is the beard's silhouette, and the head patch of the same variant shows
+        through it. Texels of the rectangle outside the six faces stay as they were."""
+        for density in (1, 3):
+            with self.subTest(density=density), tempfile.TemporaryDirectory() as tmp:
+                troops = self.beard_troops(density=density if density > 1 else None)
+                troops['knight']['skins'] = {'1': 'knight_s1.png', '2': 'knight_s2.png'}
+                root = self.beard_root(tmp, density, troops)
+                self.export(root)
+                beards, heads = beard_patches(density), face_patches(density)
+                got = Image.open(root / ASSETS / 'textures/entity/troop/knight_s1.png').convert('RGBA')
+                want = Image.open(root / 'art/troops/knight_s1.png').convert('RGBA')
+                for k in range(4):
+                    for (u, v), src, parts, h in (((0, 0) if k == 0 else tuple(FACE_SLOTS[k - 1]), heads, HEAD_FACES, 16),
+                                                  ((48, 56) if k == 0 else tuple(BEARD_SLOTS[k - 1]), beards, BEARD_FACES, 5)):
+                        for x0, y0, x1, y1 in parts:
+                            for y in range(y0 * density, y1 * density):
+                                for x in range(x0 * density, x1 * density):
+                                    want.putpixel((u * density + x, v * density + y), src.getpixel((x, k * h * density + y)))
+                self.assertEqual(got.tobytes(), want.tobytes())
+                cut = [(x, y) for x0, y0, x1, y1 in BEARD_FACES for x in range(x0 * density, x1 * density) for y in range(y0 * density, y1 * density)
+                       if beards.getpixel((x, y))[3] == 0]
+                self.assertTrue(cut)
+                for x, y in cut:
+                    self.assertEqual(got.getpixel((48 * density + x, 56 * density + y))[3], 0)   # a cut-out texel is clear in the sheet
+                if density > 1:
+                    twin = Image.open(root / ASSETS / 'textures/entity/troop/knight_s1_far.png').convert('RGBA')
+                    self.assertEqual(twin.tobytes(), build_skins.far_twin(got, density).tobytes())
+
+    def test_faces_beard_patch_rules(self):
+        def edit(name, f):
+            def go(root):
+                path = root / 'art/troops' / name
+                im = Image.open(path).convert('RGBA')
+                f(im)
+                im.save(path)
+            return go
+        cases = [   # name, a change to the fixture, what the message names
+            ('missing', lambda root: (root / 'art/troops/knight_beards.png').unlink(), ['knight_beards.png', 'missing']),
+            ('half alpha', edit('knight_beards.png', lambda im: im.putpixel((5, 2), (200, 190, 180, 128))), ['knight_beards.png', 'alpha 128', '(5, 2)']),
+            ('paint off the faces', edit('knight_beards.png', lambda im: im.putpixel((0, 5 + 0), (200, 190, 180, 255))), ['knight_beards.png', 'patch 1', 'outside', '(0, 5)']),
+            ('a side colour', edit('knight_beards.png', lambda im: im.putpixel((5, 2), (227, 179, 65, 255))), ['knight_beards.png', 'gold side colour']),
+            ('wrong size', lambda root: put_png(root / 'art/troops/knight_beards.png', beard_patches(1).crop((0, 0, 14, 15))), ['knight_beards.png', '14x15', '14x20']),
+            ('a skin paints beard slot 2', edit('knight_s1.png', lambda im: im.putpixel((47, 82), (200, 196, 186, 255))), ['knight_s1.png', 'beard slot 2', '(47, 82)']),
+        ]
+        for name, change, wants in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = self.beard_root(tmp)
+                change(root)
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with self.subTest(name='a beards file and no beard block'), tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, troops=self.faces_troops())
+            put_png(root / 'art/troops/knight_beards.png', beard_patches(1))
+            said = self.fails(export_assets, root)
+            for want in ('knight_beards.png', 'beard'):
+                self.assertIn(want, said)
+        with self.subTest(name='a beard patch at 3 texels a px for a density 1 troop'), tempfile.TemporaryDirectory() as tmp:
+            root = self.beard_root(tmp)
+            put_png(root / 'art/troops/knight_beards.png', beard_patches(3))
+            self.export(root)
+            got = Image.open(root / ASSETS / 'textures/entity/troop/knight_s1.png').convert('RGBA')
+            self.assertEqual(got.size, (64, 96))
+            self.assertEqual(got.getpixel((48 + 4, 56 + 2))[3], 255)
 
     def test_summary_line(self):
         with tempfile.TemporaryDirectory() as tmp:
