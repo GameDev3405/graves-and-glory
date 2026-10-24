@@ -5415,8 +5415,8 @@ public final class Phase2Checks implements ClientModInitializer {
      * drawn as forced.
      * <p>The t3 mode (suite t3, for GRAVES_PHASE2_TURN=knight; texel-3 trial plan 4.3) shoots the Knight-Captain (stage 3, the sword III in hand) at the platform's centre, lit, in gold, idle:
      * t3-close (the camera 1.5 blocks from the sword's grip, 45 degrees to the weapon side), t3-six, t3-six-flat (relief off) and t3-six-side (the weapon-hand side) at 6 blocks, t3-lod-12, -16, -24 and -36
-     * (three-quarter view at that many blocks from the troop; 61 x 61 blocks of floor so the camera stands on it), then for each of those four distances the shimmer set: t3-bg-D (the troop parked
-     * away, the same camera) and t3-shim-D-0 to 7 (the camera stepping 0.05 blocks sideways a shot), then the Knight's card portrait at stage 3 (ArmyCards.draw, the path the cards take) at about 36 px tall
+     * (three-quarter view at that many blocks from the troop; 61 x 61 blocks of floor so the camera stands on it), then for each of those four distances the shimmer set: t3-shim-D-0 to 7 (the camera stepping 0.05 blocks sideways a shot), each next to t3-bg-D-K (the troop parked
+     * away, the same camera, so the troop's mask is where the two differ), then the Knight's card portrait at stage 3 (ArmyCards.draw, the path the cards take) at about 36 px tall
      * (t3-card-36) and 160 px (t3-card-160). "[p2-t3-fact]" lines give each shot's distance, bound skin, relief key and quads, sword and its quads. The checks: p2-t3-shots, and p2-t3-farskin: a troop of density
      * above 1 binds its one-texel-a-px skin twin (<skin>_far.png) from 24 blocks out and on a card under 16 x density px a block, and the full skin otherwise; a troop of density 1 never binds a twin.
      * The same suite runs on a tree without the density work (it reads the density from the model file), for the A side of the comparison.
@@ -5525,9 +5525,9 @@ public final class Phase2Checks implements ClientModInitializer {
                 shots.add(new Shot("t3-six-flat",t,"flat","idle",0f,30,null,false,true,3,6,0));
                 shots.add(new Shot("t3-six-side",t,"idle","idle",0f,90,null,false,false,3,6,0));
                 for(int d:T3_LOD)shots.add(new Shot("t3-lod-"+d,t,"idle","idle",0f,45,null,false,false,3,d,0));
-                for(int d:T3_LOD){
-                    shots.add(new Shot("t3-bg-"+d,t,"bg","idle",0f,45,null,false,false,3,d,0));
-                    for(int k=0;k<T3_STEPS;k++)shots.add(new Shot("t3-shim-"+d+"-"+k,t,"idle","idle",0f,45,null,false,false,3,d,k*T3_STEP));
+                for(int d:T3_LOD)for(int k=0;k<T3_STEPS;k++){ // each step's empty frame is taken next to its frame, so the sky has moved as little as it can between them
+                    shots.add(new Shot("t3-bg-"+d+"-"+k,t,"bg","idle",0f,45,null,false,false,3,d,k*T3_STEP));
+                    shots.add(new Shot("t3-shim-"+d+"-"+k,t,"idle","idle",0f,45,null,false,false,3,d,k*T3_STEP));
                 }
             }
         }
@@ -5565,6 +5565,7 @@ public final class Phase2Checks implements ClientModInitializer {
         /** Client: one shot's turn. */
         void shoot(MinecraftClient c){
             if(si>=shots.size()){TroopAnimator.forced.clear();weapons(null);TroopDepth.enabled=true;cs=t3?3:2;wait=0;return;}
+            if(awayFor>0){litStart(c);return;} // a light recovery has the spectator 400 blocks away, where the troop's client entity is gone: count its 40 ticks here, or the shot is skipped for want of an entity
             Shot s=shots.get(si);var e=client(c,units.get(s.troop()).mob);var m=TroopModels.model(s.troop());
             if(e==null||m==null){if(++held>400){bad.add(s.name()+": no client entity or model");si++;held=0;wait=0;}return;}
             wait++;
@@ -5606,10 +5607,12 @@ public final class Phase2Checks implements ClientModInitializer {
             float[] want=pose(m,s,shield(s.troop()));boolean posed=drawn&&Anim.maxRot(d.pose,want)<=1&&Anim.maxPos(d.pose,want)<=0.1;
             var p=c.player;boolean there=Math.abs(p.getX()-(site.getX()+.5+cam[0]))<.05&&Math.abs(p.getEyeY()-(site.getY()+cam[1]))<.05&&Math.abs(p.getZ()-(site.getZ()+.5+cam[2]))<.05
                 &&Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(p.getYaw()-(float)cam[3]))<1&&Math.abs(p.getPitch()-cam[4])<1;
-            steady=gilt&&posed&&there&&raised?steady+1:0;held++;
+            // (t3) the troop has turned to face north, as pinned: a shot taken while it still turned showed its side to a camera aimed at the front
+            boolean faced=!t3||(e instanceof net.minecraft.entity.LivingEntity le&&Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(le.getBodyYaw()-YAW))<2&&Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(le.prevBodyYaw-YAW))<2);
+            steady=gilt&&posed&&there&&raised&&faced?steady+1:0;held++;
             if(steady>=3||held>300){
                 if(!shotReady(c,s.name()))return;
-                if(steady<3)bad.add(s.name()+": taken anyway after 300 ticks (drawn "+drawn+", in gold "+gilt+", pose "+posed+", camera "+there+", relief "+raised+")");
+                if(steady<3)bad.add(s.name()+": taken anyway after 300 ticks (drawn "+drawn+", in gold "+gilt+", pose "+posed+", camera "+there+", relief "+raised+", facing "+faced+")");
                 shot(c,s.name());if(t3)t3Fact(c,s.name(),e,m,-1);si++;wait=0;steady=0;held=0;
             }
         }
@@ -5652,13 +5655,13 @@ public final class Phase2Checks implements ClientModInitializer {
                 else{c.setScreen(null);cs=2;wait=0;}
             }
         }
-        /** The Knight's card alone on the cards' dark ground, centred. */
+        /** The Knight's card alone on the cards' dark ground, centred (the crest included). */
         static final class T3Card extends net.minecraft.client.gui.screen.Screen {
             final MobEntity mob;final int size;
             T3Card(MobEntity mob,int size){super(net.minecraft.text.Text.literal("t3 card"));this.mob=mob;this.size=size;}
             @Override public void render(net.minecraft.client.gui.DrawContext g,int mx,int my,float delta){
                 g.fill(0,0,width,height,0xff24222a);
-                drawCard(g,width/2,height/2+(int)Math.round(size*.975),size,20,0,mob);
+                drawCard(g,width/2,height/2+(int)Math.round(size*1.2),size,20,0,mob); // the husk is 1.95 blocks and a stage 3 crest adds about 0.3: the figure's middle on the screen's
             }
             @Override public boolean shouldPause(){return false;}
         }
