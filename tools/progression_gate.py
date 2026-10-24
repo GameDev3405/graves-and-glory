@@ -290,7 +290,8 @@ def analyse(off_paths, on_paths, limit=10.0, min_seconds=300):
     if not (c_on['n'] and c_off['n']):
         raise Unusable('no comeback rounds in a condition (every round short, tied at 300 s, drawn or aborted)')
     rules = dict(shares=all(v['ok'] for v in shares.values()), comeback=c_delta * 100 >= -limit - EPS)
-    return dict(houses=names, shares=shares, seat=dict(off=h_off, on=h_on), rounds=dict(off=n_off, on=n_on), outside_both=outside,
+    seat_raw = {k: (sum(r['winner'] == 'dawn' for r in rs), sum(r['winner'] in SEATS for r in rs)) for k, rs in (('off', off), ('on', on))}
+    return dict(houses=names, shares=shares, seat=dict(off=h_off, on=h_on), seat_raw=seat_raw, rounds=dict(off=n_off, on=n_on), outside_both=outside,
                 comeback=dict(off=c_off, on=c_on, delta=c_delta, delta_lo=c_delta - 1.96 * c_se, delta_hi=c_delta + 1.96 * c_se),
                 timings=dict(off=timings(off), on=timings(on)), rules=rules, passed=all(rules.values()), limit=limit, min_seconds=min_seconds,
                 runs=dict(off=len(off_paths), on=len(on_paths)))
@@ -316,7 +317,8 @@ def render(res):
     lim = res['limit']
     add(f'progression gate: off {res["rounds"]["off"]} rounds in {res["runs"]["off"]} runs, on {res["rounds"]["on"]} rounds in {res["runs"]["on"]} runs '
         f'(aborted rounds left out); limit {lim:g} points; comeback pool drops rounds under {res["min_seconds"]} s')
-    add(f'seat term h (team 0 wins an even pairing): off {100 / (1 + math.exp(-res["seat"]["off"])):.0f}%, on {100 / (1 + math.exp(-res["seat"]["on"])):.0f}%')
+    add(f'seat: team 0 (Dawn) won {res["seat_raw"]["off"][0]} of {res["seat_raw"]["off"][1]} decided rounds off and {res["seat_raw"]["on"][0]} of {res["seat_raw"]["on"][1]} on; '
+        f'fitted seat term, team 0 wins an even pairing: off {100 / (1 + math.exp(-res["seat"]["off"])):.0f}%, on {100 / (1 + math.exp(-res["seat"]["on"])):.0f}%')
     add('')
     add(f'shares (Bradley-Terry expected share against the other Houses, 95% interval; raw = plain win rate over non-mirror rounds)')
     add(f'  {"house":12s} {"off %":>7s} {"(95%)":>14s} {"on %":>7s} {"(95%)":>14s} {"delta":>7s} {"(95%)":>16s} {"raw off":>8s} {"raw on":>7s}  rule (|delta| <= {lim:g})')
