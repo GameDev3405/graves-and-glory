@@ -7,6 +7,7 @@
 #   tools/balance_sim.sh p1a 25681 -PbotSim=10 -PsimDawn=normal -PsimDusk=normal -PsimMaps=0,1,2,3,4 -PsimRoundSeconds=300 \
 #       -PsimBanner0=ironclad_normal -PsimBanner1=tidecallers_normal -PsimFast=true
 #   tools/balance_sim.sh duels 25682 -PduelSim=$PWD/work/method/plans/units.txt -PduelShard=0/2 -PsimFast=true
+# SIM_LEVEL_SEED=<n> in the environment fixes the world seed (vanilla level-seed; blank = random, the default).
 # Results: <root>/botsim/{results,gold,types}.csv and meta.txt, or <root>/duel/{duels,types}.csv and meta.txt.
 set -u
 name="$1"; port="$2"; shift 2
@@ -31,6 +32,7 @@ sync-chunk-writes=true
 spawn-protection=16
 difficulty=easy
 level-type=minecraft\:normal
+level-seed=${SIM_LEVEL_SEED:-}
 EOF
 echo "$*" > "$root/args.txt"
 echo "$root"
