@@ -155,8 +155,8 @@ public final class GravesAndGlory implements ModInitializer {
         long nextPath;
         Vec3d lastPosition,lastGoal,deployed;
         int stuckTicks;
-        /** The last sidestep of Tactics.walk (battle tick, where, and how many times in a row at that wedge before it), for Wedge; and the detour a unit stuck again is on (its point, and the tick it is dropped at). */
-        long wedgeTime,detourUntil;Vec3d wedgeAt,detour,detourFor;int wedgeRepeats;
+        /** The last sidestep of Tactics.walk (battle tick, where, and how many times in a row at that wedge before it), for Wedge; and the detour a unit stuck again is on (its point, the goal it was made for, and the tick it is dropped at); detourRetryAt: no new search before this tick (the last found nothing). */
+        long wedgeTime,detourUntil,detourRetryAt;Vec3d wedgeAt,detour,detourFor;int wedgeRepeats;
         LivingEntity lockedTarget;long lockUntil;
         /** The army whose blow last hurt this unit; kill credit when the attacker itself is gone. */
         Squad lastHitBy;
@@ -723,12 +723,12 @@ public final class GravesAndGlory implements ModInitializer {
             testSquad.order="move";testSquad.target=target;testSquad.yaw=yaw;
             for(Unit u:units)if(u.squad==testSquad){double px=x+(u.slot%5)*1.5,pz=z+(u.slot/5-1.5)*1.4;u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(px,Arena.ground((int)px,(int)pz)+1,pz,yaw,0);u.nextPath=0;u.stuckTicks=0;}
         }
-        /** Rivergate's dawn ridge is the climb: troops start on its flat eastern foot, march west to the crest, and must end at least eight blocks above where they began. */
+        /** Rivergate's dawn ridge is the climb: troops start on its flat eastern foot, march west to the crest, and must end at least eight blocks above where they began, or on the crest when that is lower. */
         void prepareHillTest(){
             var ridge=Arrays.stream(Spec.TERRAIN).filter(t->t.id().equals("dawn_ridge")).findFirst().orElseThrow();
             int startX=ridge.x()+ridge.radiusX()*4/5,crestX=ridge.x()+6,z=ridge.z();
-            // Three blocks up the slope: the Dawn ridge was 11 blocks from its foot to its crest (67 to 78) until Task 8b put the supply house yard rg-supply-nw on the crest (74, with the foot at 71), so eight no longer fits; three is still more than standing about at the foot, and every unit must get there.
-            hillClimbY=Arena.ground(startX,z)+3;
+            // Eight blocks above the foot, or the crest when it is lower: the Dawn ridge was 11 blocks from its foot to its crest (67 to 78) until Task 8b put the supply house yard rg-supply-nw on the crest (74, with the foot at 71), so the threshold follows the ground (the standing height of the crest is the lower of the two there, 3 blocks up) and every unit must get there.
+            hillClimbY=Math.min(Arena.ground(startX,z)+8,Arena.height(crestX,z)+1);
             prepareNavigation(startX,z,new Vec3d(crestX,Arena.height(crestX,z)+1,z),90);
         }
         void prepareBridgeTest(){var b=Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList().get(testBridgeIndex);prepareNavigation(b.x()-b.width()/2.0-14,b.z(),new Vec3d(b.x()+b.width()/2.0+16,65,b.z()),-90);}

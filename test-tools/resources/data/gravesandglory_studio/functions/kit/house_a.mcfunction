@@ -12,11 +12,10 @@ fill ~0 ~1 ~1 ~5 ~1 ~1 minecraft:air
 fill ~0 ~1 ~2 ~0 ~4 ~4 minecraft:air
 fill ~0 ~1 ~8 ~0 ~6 ~8 minecraft:air
 fill ~0 ~1 ~10 ~0 ~2 ~12 minecraft:air
-fill ~1 ~1 ~12 ~2 ~10 ~12 minecraft:air
+fill ~1 ~1 ~11 ~13 ~1 ~12 minecraft:air
 fill ~2 ~1 ~3 ~2 ~5 ~4 minecraft:air
 fill ~2 ~1 ~8 ~2 ~5 ~9 minecraft:air
 fill ~3 ~1 ~4 ~5 ~6 ~8 minecraft:air
-fill ~3 ~1 ~11 ~13 ~1 ~12 minecraft:air
 fill ~6 ~1 ~3 ~8 ~2 ~9 minecraft:air
 fill ~9 ~1 ~1 ~14 ~1 ~1 minecraft:air
 fill ~9 ~1 ~4 ~12 ~6 ~8 minecraft:air
@@ -26,8 +25,9 @@ fill ~14 ~1 ~4 ~14 ~1 ~8 minecraft:air
 fill ~14 ~1 ~10 ~14 ~1 ~12 minecraft:air
 fill ~0 ~2 ~1 ~1 ~2 ~1 minecraft:air
 fill ~0 ~2 ~9 ~0 ~5 ~9 minecraft:air
-setblock ~1 ~2 ~11 minecraft:air
+fill ~1 ~2 ~11 ~1 ~2 ~12 minecraft:air
 fill ~2 ~2 ~5 ~2 ~7 ~7 minecraft:air
+fill ~2 ~2 ~12 ~2 ~10 ~12 minecraft:air
 setblock ~3 ~2 ~1 minecraft:air
 fill ~3 ~2 ~3 ~5 ~5 ~3 minecraft:air
 fill ~3 ~2 ~9 ~3 ~5 ~9 minecraft:air
@@ -50,7 +50,7 @@ fill ~14 ~2 ~3 ~14 ~5 ~3 minecraft:air
 setblock ~14 ~2 ~6 minecraft:air
 fill ~14 ~2 ~9 ~14 ~5 ~9 minecraft:air
 fill ~0 ~3 ~10 ~0 ~4 ~10 minecraft:air
-fill ~0 ~3 ~12 ~0 ~10 ~12 minecraft:air
+fill ~0 ~3 ~12 ~1 ~10 ~12 minecraft:air
 fill ~3 ~3 ~12 ~3 ~10 ~12 minecraft:air
 fill ~4 ~3 ~9 ~4 ~5 ~9 minecraft:air
 fill ~5 ~3 ~12 ~9 ~10 ~12 minecraft:air
@@ -345,7 +345,6 @@ fill ~7 ~4 ~3 ~7 ~4 ~9 minecraft:dark_oak_log[axis=z]
 
 # outside: a woodpile under the north eave, a rain barrel under the window and a bench by the door, moss at the foot of the walls
 setblock ~0 ~1 ~9 minecraft:moss_carpet
-fill ~1 ~1 ~11 ~2 ~1 ~11 minecraft:moss_carpet
 fill ~6 ~1 ~1 ~8 ~1 ~1 minecraft:oak_log[axis=x]
 setblock ~14 ~1 ~3 minecraft:barrel[facing=up]
 setblock ~14 ~1 ~9 minecraft:spruce_stairs[facing=west,half=bottom]

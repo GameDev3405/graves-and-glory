@@ -28,10 +28,22 @@ final class MapRouteChecks {
     /** House mode: a yard to reach (the goal), from where (sx, sz) the knights start. */
     record Goal(Spec.SupplyHousesRow house,String kind,double sx,double sz){}
     /** Phase 3 Task 9 fix 1: the pocket of the Hollowwood chapel ruin (map 3) where a march of the supply suite wedged under load: the cell (81,102) of the south-east corner, walls to the east (x 82), north (z 101) and south (z 104, x 80..82). Two goals of the house hw-supply-se start from it, with every other knight already in the yard:
-     *  nook-even puts the slots 2 and 6 in it (the two found there), nook-odd the slots 3 and 7 (the control: the same cell, the other parity of the sidestep of Tactics.walk). Each has 1200 ticks, not 3600: a wedged knight does not leave. */
+     *  nook-even puts the slots 2 and 6 in it (the two found there), nook-odd the slots 3 and 7 (the control: the same cell, the other parity of the sidestep of Tactics.walk). Each has 1200 ticks, not 3600: a wedged knight does not leave.
+     *  Fix 2: nook-far is nook-even with the order to a point 200 blocks past the pocket on the line to the yard (the other eighteen stand at that point): a goal that far has no whole path in the 2560 cells of the detour, so only the detour toward a cell 80 blocks on (Wedge.REACH) frees the two; they pass when both are 40 blocks out of the pocket.
+     *  The red of these goals: GRAVES_NO_DETOUR=1 (the same build with the detour off: nook-even, nook-odd and nook-far fail 18/20), or the build of f54c49c for nook-far (nook-even and nook-odd pass there). A goal also fails, at once, when the pocket is not there: the walls north, east and south of its cell must have a collision shape at the height of the knights' feet, or the goals would pass with no pocket. */
     static final String NOOK_HOUSE="hw-supply-se";static final double[][] NOOK={{81.7,102.5},{81.1,102.5}};static final int[] NOOK_EVEN={2,6},NOOK_ODD={3,7};static final double NOOK_Y=65.0;
-    static int nookGoals(int map){return map==3?2:0;}
-    static int[] nookSlots(String kind){return kind.equals("nook-even")?NOOK_EVEN:kind.equals("nook-odd")?NOOK_ODD:null;}
+    static final int[][] NOOK_WALLS={{81,101},{82,102},{81,104}};static final double NOOK_FAR_BLOCKS=200,NOOK_OUT_BLOCKS=40;
+    static int nookGoals(int map){return map==3?3:0;}
+    static int[] nookSlots(String kind){return kind.equals("nook-even")||kind.equals("nook-far")?NOOK_EVEN:kind.equals("nook-odd")?NOOK_ODD:null;}
+    /** The pocket of the nook goals is still there: the cell of the knights is open and the three walls have a collision shape at the height of their feet. Null when it is, else what is missing. */
+    static String pocketMissing(GravesAndGlory.Battle b){
+        var w=b.world;
+        var cell=new BlockPos((int)Math.floor(NOOK[0][0]),(int)NOOK_Y,(int)Math.floor(NOOK[0][1]));
+        if(!w.getBlockState(cell).getCollisionShape(w,cell).isEmpty())return "pocket gone: its cell "+cell.toShortString()+" is no longer open";
+        for(int[] c:NOOK_WALLS){var bp=new BlockPos(c[0],(int)NOOK_Y,c[1]);if(w.getBlockState(bp).getCollisionShape(w,bp).isEmpty())return "pocket gone: no wall at "+bp.toShortString();}
+        return null;
+    }
+    String pocket;
     List<Goal> goals=List.of();
     int index,bridge,phase,retries,crossings;long at;boolean all=true,done;
     Campaign.Profile backup;GravesAndGlory.Squad squad;boolean practice,fill;int size;
@@ -123,7 +135,7 @@ final class MapRouteChecks {
             for(var pt:Spec.POINTS){double d=Math.hypot(pt.x()-h.yardX(),pt.z()-h.yardZ());if(d<best){best=d;near=pt;}}
             double dx=h.yardX()-near.x(),dz=h.yardZ()-near.z(),l=Math.hypot(dx,dz);
             out.add(new Goal(h,"point",near.x()+dx/l*12,near.z()+dz/l*12));
-            if(h.id().equals(NOOK_HOUSE)){out.add(new Goal(h,"nook-even",NOOK[0][0],NOOK[0][1]));out.add(new Goal(h,"nook-odd",NOOK[0][0],NOOK[0][1]));}
+            if(h.id().equals(NOOK_HOUSE)){out.add(new Goal(h,"nook-even",NOOK[0][0],NOOK[0][1]));out.add(new Goal(h,"nook-odd",NOOK[0][0],NOOK[0][1]));out.add(new Goal(h,"nook-far",NOOK[0][0],NOOK[0][1]));}
         }
         return out;
     }
@@ -132,13 +144,16 @@ final class MapRouteChecks {
         var g=goals.get(bridge);var h=g.house();double tx=h.yardX()+.5,tz=h.yardZ()+.5;
         double dx=tx-g.sx(),dz=tz-g.sz(),l=Math.hypot(dx,dz),ux=dx/l,uz=dz/l;float yaw=(float)Math.toDegrees(Math.atan2(-ux,uz));
         squad.assignments.clear();squad.order="move";squad.formation="block";squad.target=new Vec3d(tx,h.elevation()+1,tz);squad.yaw=yaw;
-        int[] nook=nookSlots(g.kind());
+        int[] nook=nookSlots(g.kind());boolean far=g.kind().equals("nook-far");
+        pocket=nook==null?null:pocketMissing(b);
+        Vec3d farCell=far?standingCell(b,g.sx()+ux*NOOK_FAR_BLOCKS,g.sz()+uz*NOOK_FAR_BLOCKS,Double.MAX_VALUE):null;
+        if(far)squad.target=farCell;
         for(var u:b.units)if(u.squad==squad){
             double rank=u.slot/5,file=u.slot%5-2;
             Vec3d cell=standingCell(b,g.sx()-ux*rank*2.0-uz*file*1.8,g.sz()-uz*rank*2.0+ux*file*1.8,Double.MAX_VALUE);
             if(nook!=null){ // the yard for all but the two slots of the pocket, which stand in it, one at each of its two cells
                 int at=-1;for(int i=0;i<nook.length;i++)if(nook[i]==u.slot)at=i;
-                cell=at>=0?new Vec3d(NOOK[at][0],NOOK_Y,NOOK[at][1]):standingCell(b,tx+(u.slot%5-2)*1.5,tz+(u.slot/5-1.5)*1.5,Double.MAX_VALUE);
+                cell=at>=0?new Vec3d(NOOK[at][0],NOOK_Y,NOOK[at][1]):far?standingCell(b,farCell.x+(u.slot%5-2)*1.5,farCell.z+(u.slot/5-1.5)*1.5,Double.MAX_VALUE):standingCell(b,tx+(u.slot%5-2)*1.5,tz+(u.slot/5-1.5)*1.5,Double.MAX_VALUE);
             }
             u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(cell.x,cell.y,cell.z,yaw,0);u.nextPath=0;u.stuckTicks=0;u.lastPosition=u.mob.getPos();
         }
@@ -152,12 +167,17 @@ final class MapRouteChecks {
         var g=goals.get(bridge);var h=g.house();double cx=h.yardX()+.5,cz=h.yardZ()+.5;
         long alive=b.units.stream().filter(u->u.squad==squad&&u.mob.isAlive()).count();
         long there=b.units.stream().filter(u->u.squad==squad&&u.mob.isAlive()&&Math.hypot(u.mob.getX()-cx,u.mob.getZ()-cz)<=10.0&&u.mob.getY()>h.elevation()+0.5).count();
-        boolean pass=alive==20&&there==20;
+        boolean far=g.kind().equals("nook-far");
+        if(far){ // the two knights of the pocket are 40 blocks out of it (the others stand at the far point)
+            there=b.units.stream().filter(u->u.squad==squad&&u.mob.isAlive()&&java.util.Arrays.stream(NOOK_EVEN).anyMatch(s->s==u.slot)&&Math.hypot(u.mob.getX()-NOOK[0][0],u.mob.getZ()-NOOK[0][1])>=NOOK_OUT_BLOCKS).count();
+        }
+        int want=far?NOOK_EVEN.length:20;
+        boolean pass=alive==20&&there==want&&pocket==null;
         if(TRACE&&!pass&&(b.time-at)%200==0){StringBuilder t=new StringBuilder();for(var u:b.units)if(u.squad==squad&&u.mob.isAlive()&&!(Math.hypot(u.mob.getX()-cx,u.mob.getZ()-cz)<=10.0&&u.mob.getY()>h.elevation()+0.5))t.append(" s").append(u.slot).append('(').append(String.format("%.0f,%.0f,%.0f",u.mob.getX(),u.mob.getY(),u.mob.getZ())).append(')');System.out.println("[Graves and Glory routes] trace "+h.id()+"-"+g.kind()+" t="+(b.time-at)/20+"s not there:"+t);}
-        if(!pass&&b.time-at<=(nookSlots(g.kind())!=null?1200:3600))return;
+        if(!pass&&pocket==null&&b.time-at<=(nookSlots(g.kind())!=null?1200:3600))return;
         all&=pass;crossings++;if(pass)reached.merge(map,1,Integer::sum);
-        String name="map-"+map+"-house-"+h.id()+"-"+g.kind(),text="reached "+there+"/20 ("+alive+" alive); elapsed="+(b.time-at)/20.0+"s; step hops so far "+Tactics.stepHops+", detours so far "+Tactics.detours;
-        MeltyTest.report(name,pass,text);System.out.println("[Graves and Glory routes] "+name+" "+text);lines.add(h.id()+"-"+g.kind()+" "+there+"/20");
+        String name="map-"+map+"-house-"+h.id()+"-"+g.kind(),text=(pocket!=null?pocket+"; ":"")+"reached "+there+"/"+want+(far?" out of the pocket":"")+" ("+alive+" alive); elapsed="+(b.time-at)/20.0+"s; step hops so far "+Tactics.stepHops+", detours so far "+Tactics.detours+" (searches "+Tactics.detourSearches+", misses "+Tactics.detourMisses+String.format(", longest %.1f ms, all %.1f ms",Tactics.detourMaxNanos/1e6,Tactics.detourNanos/1e6)+")"+(nookSlots(g.kind())!=null&&!Tactics.DETOUR?" [GRAVES_NO_DETOUR=1: the control, it is meant to fail]":"");
+        MeltyTest.report(name,pass,text);System.out.println("[Graves and Glory routes] "+name+" "+text);lines.add(h.id()+"-"+g.kind()+" "+there+"/"+want);
         if(TRACE&&!pass)for(var u:b.units)if(u.squad==squad&&u.mob.isAlive()&&!(Math.hypot(u.mob.getX()-cx,u.mob.getZ()-cz)<=10.0&&u.mob.getY()>h.elevation()+0.5)){
             System.out.println("[Graves and Glory routes] surroundings of slot "+u.slot+", heading to "+u.lastGoal+": each cell is the ground height against the unit's feet and T where a block at the ground+1 or +2 has a collision shape, x across from "+((int)Math.floor(u.mob.getX())-7)+", z down from "+((int)Math.floor(u.mob.getZ())-7));
             int ux=(int)Math.floor(u.mob.getX()),uz=(int)Math.floor(u.mob.getZ()),uy=(int)Math.floor(u.mob.getY());

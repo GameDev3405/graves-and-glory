@@ -15,13 +15,11 @@ fill ~0 ~1 ~8 ~1 ~1 ~8 minecraft:air
 fill ~0 ~1 ~10 ~0 ~16 ~12 minecraft:air
 fill ~1 ~1 ~3 ~1 ~2 ~3 minecraft:air
 fill ~1 ~1 ~9 ~1 ~2 ~12 minecraft:air
-fill ~2 ~1 ~11 ~2 ~3 ~12 minecraft:air
+fill ~2 ~1 ~11 ~12 ~1 ~12 minecraft:air
 fill ~3 ~1 ~1 ~14 ~1 ~1 minecraft:air
 fill ~3 ~1 ~4 ~4 ~3 ~5 minecraft:air
 fill ~3 ~1 ~6 ~3 ~3 ~8 minecraft:air
-fill ~3 ~1 ~12 ~3 ~4 ~12 minecraft:air
 fill ~4 ~1 ~8 ~5 ~3 ~9 minecraft:air
-fill ~4 ~1 ~11 ~12 ~1 ~12 minecraft:air
 fill ~5 ~1 ~3 ~5 ~3 ~5 minecraft:air
 fill ~6 ~1 ~4 ~6 ~3 ~8 minecraft:air
 fill ~7 ~1 ~3 ~7 ~2 ~9 minecraft:air
@@ -34,7 +32,7 @@ fill ~14 ~1 ~5 ~14 ~2 ~7 minecraft:air
 fill ~14 ~1 ~10 ~14 ~16 ~12 minecraft:air
 setblock ~1 ~2 ~8 minecraft:air
 fill ~2 ~2 ~1 ~3 ~2 ~1 minecraft:air
-setblock ~3 ~2 ~11 minecraft:air
+fill ~2 ~2 ~11 ~3 ~2 ~12 minecraft:air
 fill ~4 ~2 ~3 ~4 ~3 ~3 minecraft:air
 fill ~4 ~2 ~12 ~4 ~6 ~12 minecraft:air
 fill ~5 ~2 ~1 ~5 ~3 ~1 minecraft:air
@@ -58,7 +56,9 @@ fill ~14 ~2 ~8 ~14 ~3 ~8 minecraft:air
 fill ~0 ~3 ~3 ~0 ~16 ~9 minecraft:air
 fill ~1 ~3 ~10 ~1 ~6 ~12 minecraft:air
 setblock ~2 ~3 ~1 minecraft:air
+fill ~2 ~3 ~11 ~2 ~3 ~12 minecraft:air
 setblock ~3 ~3 ~3 minecraft:air
+fill ~3 ~3 ~12 ~3 ~4 ~12 minecraft:air
 setblock ~4 ~3 ~1 minecraft:air
 setblock ~4 ~3 ~11 minecraft:air
 setblock ~6 ~3 ~1 minecraft:air
@@ -534,5 +534,4 @@ fill ~6 ~7 ~6 ~11 ~7 ~6 minecraft:dark_oak_log[axis=x]
 
 # weather: a cobweb under the jetty and moss on the ground by the plinth
 setblock ~2 ~1 ~1 minecraft:moss_carpet
-setblock ~3 ~1 ~11 minecraft:moss_carpet
 setblock ~12 ~3 ~11 minecraft:cobweb
