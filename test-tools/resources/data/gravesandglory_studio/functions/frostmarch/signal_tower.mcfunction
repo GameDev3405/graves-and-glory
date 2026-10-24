@@ -78,12 +78,12 @@ fill ~5 ~4 ~1 ~5 ~20 ~1 minecraft:air
 fill ~9 ~4 ~1 ~9 ~20 ~1 minecraft:air
 fill ~10 ~4 ~5 ~10 ~17 ~5 minecraft:air
 fill ~10 ~5 ~6 ~10 ~17 ~6 minecraft:air
-fill ~2 ~6 ~2 ~5 ~16 ~2 minecraft:air
-fill ~7 ~6 ~2 ~7 ~16 ~2 minecraft:air
-fill ~9 ~6 ~2 ~12 ~16 ~2 minecraft:air
+fill ~2 ~6 ~2 ~3 ~16 ~2 minecraft:air
+fill ~5 ~6 ~2 ~9 ~16 ~2 minecraft:air
 fill ~10 ~6 ~7 ~10 ~17 ~7 minecraft:air
-fill ~6 ~7 ~2 ~6 ~16 ~2 minecraft:air
-fill ~8 ~7 ~2 ~8 ~16 ~2 minecraft:air
+fill ~11 ~6 ~2 ~12 ~16 ~2 minecraft:air
+fill ~4 ~7 ~2 ~4 ~16 ~2 minecraft:air
+fill ~10 ~7 ~2 ~10 ~16 ~2 minecraft:air
 fill ~10 ~7 ~8 ~10 ~17 ~8 minecraft:air
 fill ~10 ~8 ~9 ~10 ~17 ~9 minecraft:air
 fill ~10 ~9 ~10 ~10 ~17 ~10 minecraft:air
@@ -291,7 +291,7 @@ fill ~8 ~5 ~3 ~9 ~8 ~3 minecraft:stone_bricks
 fill ~11 ~5 ~7 ~11 ~6 ~7 minecraft:stone_bricks
 setblock ~3 ~6 ~5 minecraft:cracked_stone_bricks
 fill ~5 ~6 ~3 ~6 ~7 ~3 minecraft:cracked_stone_bricks
-setblock ~7 ~6 ~3 minecraft:stone_bricks
+fill ~7 ~6 ~3 ~7 ~8 ~3 minecraft:stone_bricks
 setblock ~3 ~7 ~4 minecraft:andesite
 fill ~4 ~7 ~11 ~5 ~7 ~11 minecraft:cracked_stone_bricks
 setblock ~6 ~7 ~11 minecraft:stone_bricks
@@ -398,9 +398,8 @@ fill ~9 ~1 ~3 ~9 ~3 ~3 minecraft:dark_oak_log[axis=y]
 fill ~6 ~3 ~3 ~8 ~3 ~3 minecraft:air
 fill ~5 ~4 ~3 ~9 ~4 ~3 minecraft:dark_oak_log[axis=x]
 
-# arrow slits one block wide and two high: north (x 7) and east (z 7) at y 7..8 and y 12..13, west (z 5) the same, south (x 7) at y 14..15; the stair mass stands behind no slit
+# arrow slits one block wide and two high: north (x 7) high up at y 12..13 only (none low over the door, so nothing sits between the banners), east (z 7) at y 7..8 and y 12..13, west (z 5) the same, south (x 7) at y 14..15; the stair mass stands behind no slit
 fill ~3 ~7 ~5 ~3 ~8 ~5 minecraft:air
-fill ~7 ~7 ~3 ~7 ~8 ~3 minecraft:air
 fill ~11 ~7 ~7 ~11 ~8 ~7 minecraft:air
 fill ~3 ~12 ~5 ~3 ~13 ~5 minecraft:air
 fill ~7 ~12 ~3 ~7 ~13 ~3 minecraft:air
@@ -574,9 +573,9 @@ setblock ~5 ~2 ~5 minecraft:barrel[facing=up]
 setblock ~7 ~14 ~7 minecraft:lantern[hanging=true]
 fill ~7 ~15 ~7 ~7 ~17 ~7 minecraft:chain[axis=y]
 
-# two red banners hung on the north face either side of the doorway above the lintel
-setblock ~6 ~6 ~2 minecraft:red_wall_banner[facing=north]
-setblock ~8 ~6 ~2 minecraft:red_wall_banner[facing=north]
+# two red banners hung on the north face at x 4 and x 10, six blocks apart over the outer parts of the face (not side by side over the doorway), at y 6
+setblock ~4 ~6 ~2 minecraft:red_wall_banner[facing=north]
+setblock ~10 ~6 ~2 minecraft:red_wall_banner[facing=north]
 
 # the door side: lanterns on posts at the doorstep
 fill ~5 ~1 ~1 ~5 ~2 ~1 minecraft:dark_oak_fence[north=false,east=false,south=true,west=false]

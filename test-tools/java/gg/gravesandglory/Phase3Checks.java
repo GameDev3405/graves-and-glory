@@ -3144,15 +3144,32 @@ public final class Phase3Checks implements ClientModInitializer {
         /** The control of the reach check (Task 7 fix round 1; the sealed cell inside solid stone it replaces could never be stood on, so it proved nothing): the pieces that have ladders are walked a second time with ladders switched off, and
          *  at least one of their standing places (a tower top, a loft) must then be out of reach. A walk that reached them anyway (a leak, a ledge that is a jump too low) would not be testing the ladders. The garrison has none. */
         static final Set<String> LADDERED=Set.of("ironhold/gate","ironhold/curtain","ironhold/keep","ironhold/hay_barn","frostmarch/lodge");
+        /** Task 8 fix round 1 (review M1): the other pieces have no ladders to switch off, so their reach checks get a control of another kind. The piece is walked a second time with cells sealed (full blocks whatever is there): a doorway, a ramp, the door of a hut,
+         *  or, for the two pieces that are open ruins and courts, every cell of the footprint's edge from y 1 to y 4 (the ring) except what is listed as a gap. `out` names exactly the standing places that must then be out of reach; every other one must still be reached.
+         *  A control can fail both ways: a way in nobody sealed (a breach, a ledge a jump too low) leaves a place reached that should be out, and a seal that cuts too much takes a place that should stay. Every piece with a control has all of its places reached with nothing sealed (the check above). */
+        record Control(String what,boolean ring,int[][] gaps,int[][] sealed,List<String> out){}
+        static Control seal(String what,int[][] sealed,String... out){return new Control(what,false,new int[0][],sealed,List.of(out));}
+        static Control ring(String what,int[][] gaps,String... out){return new Control(what,true,gaps,new int[0][],List.of(out));}
+        static final Map<String,List<Control>> CONTROLS=Map.ofEntries(
+            Map.entry("frostmarch/refuge",List.of(seal("the four doorways sealed",new int[][]{{9,1,4,11,3,4},{9,1,12,11,3,12},{6,1,7,6,3,9},{14,1,7,14,3,9}},"hut centre","north doorstep"))),
+            Map.entry("frostmarch/signal_tower",List.of(seal("the doorway sealed",new int[][]{{6,1,3,8,3,3}},"tower floor","top of the stair","platform","fire side"))),
+            Map.entry("hollowwood/chapel",List.of(ring("the whole edge of the footprint sealed",new int[0][],"door","kept clear","aisle","chancel","tower base"),ring("the edge sealed but the south door",new int[][]{{5,1,22,9,4,22}}))),
+            Map.entry("hollowwood/sawmill",List.of(seal("the log ramp and the logs beside it sealed",new int[][]{{15,1,5,16,2,9}},"saw deck","ramp head"))),
+            Map.entry("hollowwood/logging_camp",List.of(seal("the hut door sealed",new int[][]{{8,1,3,8,2,3}},"hut"))),
+            Map.entry("hollowwood/moon_shrine",List.of(ring("the whole edge of the footprint sealed",new int[0][],"gate","court","cloister","dais","moon gate"),ring("the edge sealed but the two gates",new int[][]{{10,1,16,12,5,18},{10,1,0,12,3,2}}))));
+        static boolean inBoxes(int[][] boxes,int x,int y,int z){for(var b:boxes)if(x>=b[0]&&x<=b[3]&&y>=b[1]&&y<=b[4]&&z>=b[2]&&z<=b[5])return true;return false;}
         /** What a player on foot can do: stand on a block with two free cells above it (or in a climbable one: a ladder, a vine), walk to a side cell at the same height, jump one block up, step off a ledge and fall up to three, climb a ladder up and down. Free: no collision
          *  shape, or one no higher than a carpet. A floor: a block whose collision shape is half a block to a block high (a slab, a stair, a block; not a fence, which is 1.5). */
         static final class Walk{
             final ServerWorld w;final BlockBox region;final Set<Long> seen=new HashSet<>();final boolean ladders;
-            Walk(ServerWorld w,BlockBox region){this(w,region,true);}
-            Walk(ServerWorld w,BlockBox region,boolean ladders){this.w=w;this.region=region;this.ladders=ladders;}
+            /** Task 8 fix round 1: cells (BlockPos.asLong) that count as a full block whatever the world holds there: the control walks seal a doorway, a ramp or the edge of a piece with them and look at what is then out of reach. */
+            final Set<Long> sealed;
+            Walk(ServerWorld w,BlockBox region){this(w,region,true,Set.of());}
+            Walk(ServerWorld w,BlockBox region,boolean ladders){this(w,region,ladders,Set.of());}
+            Walk(ServerWorld w,BlockBox region,boolean ladders,Set<Long> sealed){this.w=w;this.region=region;this.ladders=ladders;this.sealed=sealed;}
             boolean in(int x,int y,int z){return x>=region.getMinX()&&x<=region.getMaxX()&&y>=region.getMinY()&&y<=region.getMaxY()&&z>=region.getMinZ()&&z<=region.getMaxZ();}
-            boolean climb(int x,int y,int z){return ladders&&w.getBlockState(new BlockPos(x,y,z)).isIn(net.minecraft.registry.tag.BlockTags.CLIMBABLE);}
-            double top(int x,int y,int z){var p=new BlockPos(x,y,z);var sh=w.getBlockState(p).getCollisionShape(w,p);return sh.isEmpty()?0:sh.getMax(Direction.Axis.Y);}
+            boolean climb(int x,int y,int z){var p=new BlockPos(x,y,z);return ladders&&!sealed.contains(p.asLong())&&w.getBlockState(p).isIn(net.minecraft.registry.tag.BlockTags.CLIMBABLE);}
+            double top(int x,int y,int z){var p=new BlockPos(x,y,z);if(!sealed.isEmpty()&&sealed.contains(p.asLong()))return 1.0;var sh=w.getBlockState(p).getCollisionShape(w,p);return sh.isEmpty()?0:sh.getMax(Direction.Axis.Y);}
             boolean free(int x,int y,int z){return in(x,y,z)&&(climb(x,y,z)||top(x,y,z)<=0.2);}
             boolean floor(int x,int y,int z){double t=top(x,y-1,z);return t>=0.5&&t<=1.0;}
             boolean stand(int x,int y,int z){return free(x,y,z)&&free(x,y+1,z)&&(floor(x,y,z)||climb(x,y,z));}
@@ -3208,7 +3225,24 @@ public final class Phase3Checks implements ClientModInitializer {
                 var st=w.getBlockState(new BlockPos(x+dx,yy,z+dz));
                 if(st.isOf(Blocks.NETHERRACK))netherrack++;if(st.isOf(Blocks.FIRE))fires++;if(st.isOf(Blocks.COBBLESTONE_WALL))cobbleWalls++;
             }
-            report("p3-lm-fm-signal-fire",!row&&nr&&fire&&walls==4&&netherrack==1&&fires==1&&cobbleWalls==4,"structures row signal_tower "+(row?"STILL THERE (the dressing would place a fire of its own)":"gone")+"; netherrack at "+xyz(new BlockPos(x,y,z))+" "+nr+", fire above it "+fire+", cobblestone walls on its four sides "+walls+"; in the 15 x 26 x 15 cells round it: "+netherrack+" netherrack, "+fires+" fire, "+cobbleWalls+" cobblestone wall blocks (want 1, 1 and 4)");
+            // Task 8 fix round 1 (review M2): the piece and the old dressing lay the same blocks in the same six cells, so counting them cannot tell a dressing that still lays its fire. The dressing is run for real: the six cells are emptied, MapDressing.setPieces() runs, and
+            // not one of them may come back; then the control that the probe can see what it looks for: the old row put back in Spec.STRUCTURES, the cells emptied, setPieces() again, and all six must come back. The piece's own blocks are put back last.
+            var six=new BlockPos[]{new BlockPos(x,y,z),new BlockPos(x,y+1,z),new BlockPos(x-1,y,z),new BlockPos(x+1,y,z),new BlockPos(x,y,z-1),new BlockPos(x,y,z+1)};
+            var saved=new BlockState[6];for(int i=0;i<6;i++)saved[i]=w.getBlockState(six[i]);
+            int again=0,control=0;var oldRows=Spec.STRUCTURES;
+            try{
+                again=dressingLays(w,six);
+                var withRow=Arrays.copyOf(oldRows,oldRows.length+1);withRow[oldRows.length]=new Spec.StructuresRow("signal_tower","watchtower",x,z,14,14,19,"stone",lm.elevation());
+                Spec.STRUCTURES=withRow;control=dressingLays(w,six);
+            }finally{Spec.STRUCTURES=oldRows;for(int i=0;i<6;i++)w.setBlockState(six[i],saved[i],Block.NOTIFY_LISTENERS);}
+            report("p3-lm-fm-signal-fire",!row&&nr&&fire&&walls==4&&netherrack==1&&fires==1&&cobbleWalls==4&&again==0&&control==6,"structures row signal_tower "+(row?"STILL THERE (the dressing would place a fire of its own)":"gone")+"; netherrack at "+xyz(new BlockPos(x,y,z))+" "+nr+", fire above it "+fire+", cobblestone walls on its four sides "+walls+"; in the 15 x 26 x 15 cells round it: "+netherrack+" netherrack, "+fires+" fire, "+cobbleWalls+" cobblestone wall blocks (want 1, 1 and 4); the six cells emptied and the dressing run (setPieces): "+again+" of 6 laid again (want 0); control, with the old signal_tower row put back: "+control+" of 6 laid (want 6)");
+        }
+        /** The six cells of the signal fire emptied, MapDressing.setPieces() run on the world, and how many of the six hold a block again. */
+        static int dressingLays(ServerWorld w,BlockPos[] six){
+            for(var q:six)w.setBlockState(q,Blocks.AIR.getDefaultState(),Block.NOTIFY_LISTENERS);
+            new MapDressing(w).setPieces();
+            int back=0;for(var q:six)if(!w.getBlockState(q).isAir())back++;
+            return back;
         }
         /** Task 7: the hay line (four stacks of hay blocks at x -109 + 4 row, y 65..66, z -152..-150) that Arena.finishBuild used to lay on map 1 is gone: a hay block there is the barn's own (the template has hay at that cell) or there is none. */
         void hayLine(GravesAndGlory.Battle b){
@@ -3338,7 +3372,23 @@ public final class Phase3Checks implements ClientModInitializer {
                         for(var g:goals)if(dry.reached(Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),g.x(),g.y(),g.z())))noLadder++;
                         control=noLadder<goals.size();
                     }
-                    report(k+"-reach",got==goals.size()&&control,got+" of "+goals.size()+" standing places reached on foot from the ground round the piece (walk, jump one block, ladders, stairs, fall up to three), "+walk.count()+" places in all"+(missed.length()==0?"":"; not reached:"+missed)+(LADDERED.contains(r.template())?"; control: with ladders switched off "+noLadder+" of "+goals.size()+" are reached"+(control?"":" (ALL OF THEM: the ladders are not what the walk needs)"):"; no ladders in this piece, no control"));
+                    boolean sealOk=true;var sealWhy=new StringBuilder();
+                    var controls=CONTROLS.get(r.template());
+                    if(controls!=null)for(var c:controls){
+                        var cells=new HashSet<Long>();
+                        if(c.ring())for(int lx=0;lx<size.getX();lx++)for(int lz=0;lz<size.getZ();lz++){
+                            if(lx!=0&&lx!=size.getX()-1&&lz!=0&&lz!=size.getZ()-1)continue;
+                            for(int ly=1;ly<=4;ly++)if(!inBoxes(c.gaps(),lx,ly,lz))cells.add(Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),lx,ly,lz).asLong());
+                        }
+                        for(var sb:c.sealed())for(int lx=sb[0];lx<=sb[3];lx++)for(int ly=sb[1];ly<=sb[4];ly++)for(int lz=sb[2];lz<=sb[5];lz++)cells.add(Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),lx,ly,lz).asLong());
+                        var sealedWalk=new Walk(w,new BlockBox(fp.getMinX()-5,fp.getMinY()-1,fp.getMinZ()-5,fp.getMaxX()+5,fp.getMaxY()+3,fp.getMaxZ()+5),true,cells);
+                        sealedWalk.search(sources);
+                        var out=new TreeSet<String>();
+                        for(var g:goals)if(!sealedWalk.reached(Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),g.x(),g.y(),g.z())))out.add(g.name());
+                        var want=new TreeSet<>(c.out());boolean ok=out.equals(want);sealOk&=ok;
+                        sealWhy.append("; control (").append(c.what()).append(", ").append(cells.size()).append(" cells): ").append(goals.size()-out.size()).append(" of ").append(goals.size()).append(" reached, out of reach ").append(out).append(ok?"":" (WANT "+want+")");
+                    }
+                    report(k+"-reach",got==goals.size()&&control&&sealOk,got+" of "+goals.size()+" standing places reached on foot from the ground round the piece (walk, jump one block, ladders, stairs, fall up to three), "+walk.count()+" places in all"+(missed.length()==0?"":"; not reached:"+missed)+(LADDERED.contains(r.template())?"; control: with ladders switched off "+noLadder+" of "+goals.size()+" are reached"+(control?"":" (ALL OF THEM: the ladders are not what the walk needs)"):controls!=null?"":"; no ladders in this piece, no control")+sealWhy);
                 }
             }
             // a map with no landmarks rows (maps 1 to 3 today) has nothing to place and passes; a map with rows passes only when every one of them was placed (a build that placed nothing is not within budget)
