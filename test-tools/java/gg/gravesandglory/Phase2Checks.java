@@ -51,7 +51,7 @@ public final class Phase2Checks implements ClientModInitializer {
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
     static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("graveborn",Graveborn::new);SUITES.put("ironclad",Ironclad::new);SUITES.put("tidecallers",Tidecallers::new);SUITES.put("wildmoot",Wildmoot::new);SUITES.put("chase",Chase::new);SUITES.put("anim",Anim::new);SUITES.put("turn",Turn::new);SUITES.put("hands",()->new Turn(true));SUITES.put("t3",()->new Turn(false,true));SUITES.put("tells",Tells::new);SUITES.put("depth",Depth::new);SUITES.put("screens",Screens::new);SUITES.put("migration",Migration::new);}
-    static{LevelChecks.register(SUITES);AbilityLevelChecks.register(SUITES);RankChecks.register(SUITES);} // in-match progression: levels, gear, armoury; statuses, levels-<house>; ranks (each file owns its entries)
+    static{LevelChecks.register(SUITES);AbilityLevelChecks.register(SUITES);RankChecks.register(SUITES);FacesChecks.register(SUITES);} // in-match progression: levels, gear, armoury; statuses, levels-<house>; ranks (each file owns its entries)
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -5450,6 +5450,8 @@ public final class Phase2Checks implements ClientModInitializer {
             noTarget=true;
         }
         static final float YAW=180;
+        /** The face (TroopFaces) forced on every Turn shot, from GRAVES_PHASE2_FACE (the system property gravesandglory.faceForce); -1 for none: the troop wears the face its UUID gives it. */
+        static final int FACE=Integer.getInteger("gravesandglory.faceForce",-1);
         static final int[] ANGLES={0,45,90,135,180,225,270,315};
         /** One shot: its file name, the troop, the pose's label, the clip and second forced on it, the angle round it, a close view of the weapon hand (front, side or above; null for the body), whether the weapon is hidden and whether the relief is off (TroopDepth.enabled false); the hands and t3 modes also the weapon tier; the t3 mode also the camera's distance from the troop in blocks (0: DIST) and a step of the camera sideways in blocks. */
         record Shot(String name,String troop,String pose,String clip,float at,int angle,String hand,boolean bare,boolean flat,int tier,double dist,double side){
@@ -5568,6 +5570,7 @@ public final class Phase2Checks implements ClientModInitializer {
             if(awayFor>0){litStart(c);return;} // a light recovery has the spectator 400 blocks away, where the troop's client entity is gone: count its 40 ticks here, or the shot is skipped for want of an entity
             Shot s=shots.get(si);var e=client(c,units.get(s.troop()).mob);var m=TroopModels.model(s.troop());
             if(e==null||m==null){if(++held>400){bad.add(s.name()+": no client entity or model");si++;held=0;wait=0;}return;}
+            if(FACE>=0)TroopModels.forceFace(e,FACE); // GRAVES_PHASE2_FACE: the same face on every shot, so shots of two runs (or two trees) compare
             wait++;
             if(t3&&s.pose().equals("bg")){ // the shimmer set's empty frame: the same camera, the troop parked away
                 if(wait==1){
@@ -6246,6 +6249,7 @@ public final class Phase2Checks implements ClientModInitializer {
             if(si>=shots.size()){TroopAnimator.forced.clear();cs=2;wait=0;return;}
             Shot s=shots.get(si);var e=client(c,units.get(s.troop()).mob);var m=TroopModels.model(s.troop());
             if(e==null||m==null){if(++held>400){bad.add(s.name()+": no client entity or model");si++;held=0;wait=0;}return;}
+            if(Turn.FACE>=0)TroopModels.forceFace(e,Turn.FACE); // GRAVES_PHASE2_FACE: the same face on every shot, so shots of two runs (or two trees) compare
             wait++;
             if(wait==1){
                 boolean change=!s.troop().equals(on);
