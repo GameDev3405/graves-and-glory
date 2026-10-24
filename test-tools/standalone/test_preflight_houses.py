@@ -14,6 +14,13 @@ class PreflightHouses(unittest.TestCase):
         shutil.copytree(REAL / 'sheets', cls.tmp / 'sheets')
         shutil.copytree(REAL / 'src' / 'main' / 'resources', cls.tmp / 'src' / 'main' / 'resources')
         shutil.copytree(REAL / 'test-tools' / 'resources', cls.tmp / 'test-tools' / 'resources')
+        # Phase 2's rules read the game file, build.gradle and the troop art ids (the model index must list exactly them): the copy holds them too (merge-prep)
+        shutil.copy(REAL / 'build.gradle', cls.tmp / 'build.gradle')
+        game = cls.tmp / 'src' / 'main' / 'java' / 'gg' / 'gravesandglory'
+        game.mkdir(parents=True, exist_ok=True)
+        shutil.copy(REAL / 'src' / 'main' / 'java' / 'gg' / 'gravesandglory' / 'GravesAndGlory.java', game / 'GravesAndGlory.java')
+        if (REAL / 'art' / 'troops').is_dir():
+            shutil.copytree(REAL / 'art' / 'troops', cls.tmp / 'art' / 'troops')
         cls.design = json.loads((REAL / 'sheets' / 'design.json').read_text())
 
     @classmethod

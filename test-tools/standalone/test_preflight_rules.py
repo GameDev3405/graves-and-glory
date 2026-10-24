@@ -1,6 +1,6 @@
 """Runs tools/preflight.py on a scratch copy of the repo with one sheet cell broken at a time and asserts it refuses (no game, no Gradle).
 
-The copy holds only what preflight reads (the sheet, the assets, the troop art json, GravesAndGlory.java, build.gradle), so the real Spec.java and
+The copy holds only what preflight reads (the sheet, the assets, the troop art json, the studio scripts, GravesAndGlory.java, build.gradle), so the real Spec.java and
 sheets/preflight.json are never touched. The first test runs the untouched sheet through the same copy, so a refusal below is the rule's, not the copy's.
 """
 import json
@@ -28,6 +28,9 @@ class PreflightRules(unittest.TestCase):
         shutil.copy(REPO / 'src' / 'main' / 'java' / 'gg' / 'gravesandglory' / 'GravesAndGlory.java', game / 'GravesAndGlory.java')
         if (REPO / 'art' / 'troops').is_dir():
             shutil.copytree(REPO / 'art' / 'troops', cls.root / 'art' / 'troops')
+        # Phase 3's structure rules read the studio scripts (test-tools/resources/data/gravesandglory_studio): the copy holds them too (merge-prep)
+        if (REPO / 'test-tools' / 'resources').is_dir():
+            shutil.copytree(REPO / 'test-tools' / 'resources', cls.root / 'test-tools' / 'resources')
         cls.sheet = json.loads((REPO / 'sheets' / 'design.json').read_text())
 
     @classmethod
