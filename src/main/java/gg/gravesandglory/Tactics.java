@@ -145,6 +145,20 @@ final class Tactics {
         return true;
     }
     static final boolean TRACE_HOPS=System.getenv("GRAVES_ROUTE_TRACE")!=null;
+    /** How many times a unit stuck again at the same wedge was sent round by a detour (Wedge); the route harness prints it. GRAVES_NO_DETOUR=1 leaves the detour out (the control of the chapel nook goals). */
+    static int detours,sidesteps;static final boolean DETOUR=System.getenv("GRAVES_NO_DETOUR")==null;
+    /** The unit is stuck again where it sidestepped before: the node of the whole path to its goal, as many steps on as Wedge says, found by a pathfinder with a larger share of cells (a unit's own looks at 640 and stops short of the way out of a pocket). Null: no whole path, or detours are off. */
+    static Vec3d detour(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d goal,int repeats){
+        if(!DETOUR)return null;
+        var mob=u.mob;var follow=mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_FOLLOW_RANGE);double was=follow.getBaseValue();
+        int gx=(int)Math.floor(goal.x),gz=(int)Math.floor(goal.z);
+        net.minecraft.entity.ai.pathing.Path path;
+        try{follow.setBaseValue(Wedge.FOLLOW_RANGE);path=new net.minecraft.entity.ai.pathing.MobNavigation(mob,battle.world).findPathTo(gx+.5,Arena.ground(gx,gz)+1,gz+.5,1);}
+        finally{follow.setBaseValue(was);}
+        if(path==null||!path.reachesTarget()||path.getLength()<4)return null;
+        var n=path.getNode(Wedge.pick(path.getLength(),Wedge.steps(repeats)));
+        return new Vec3d(n.x+.5,n.y,n.z+.5);
+    }
     /** Where a walking unit stood when it last moved more than a block, and since when: a unit that jumps and sidesteps in place (the sidestep moves it a few tenths each beat, which zeroes the still count of walk) is still pinned. */
     static final class Pin{Vec3d anchor;long since,seen;}
     static final Map<GravesAndGlory.Unit,Pin> PINS=new WeakHashMap<>();
@@ -157,22 +171,35 @@ final class Tactics {
         p.since=time;return true;
     }
     static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed){
-        MobEntity mob=u.mob;Vec3d goal=route(u,destination);
+        MobEntity mob=u.mob;Vec3d goal=route(u,destination);Vec3d routed=goal;
+        // A unit on a detour (see below) walks to its point first, until it is there, the time is up, or its goal has moved four blocks (a new order, an enemy that walked on).
+        boolean onDetour=false;
+        if(u.detour!=null){if(time>=u.detourUntil||GravesAndGlory.Battle.horizontalDistance(mob.getPos(),u.detour)<4.0||GravesAndGlory.Battle.horizontalDistance(routed,u.detourFor)>16.0)u.detour=null;else{goal=u.detour;onDetour=true;}}
         int gx=(int)Math.floor(goal.x),gz=(int)Math.floor(goal.z),gy=Arena.ground(gx,gz)+1;
         if(GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal)<N.preciseRange()*N.preciseRange()&&Math.abs(mob.getY()-gy)<1.1&&!(Arena.river(gx,gz)&&Arena.ground(gx,gz)<64)&&battle.world.getBlockState(new BlockPos(gx,gy,gz)).isAir()&&battle.world.getBlockState(new BlockPos(gx,gy+1,gz)).isAir()){
             mob.getNavigation().stop();mob.getMoveControl().moveTo(goal.x,gy,goal.z,speed);return;
         }
         Vec3d delta=goal.subtract(mob.getPos()).multiply(1,0,1);
-        if(delta.length()>N.waypointDistance())goal=mob.getPos().add(delta.normalize().multiply(N.waypointDistance()));
+        if(!onDetour&&delta.length()>N.waypointDistance())goal=mob.getPos().add(delta.normalize().multiply(N.waypointDistance())); // a detour point is on a whole path: no straight waypoint toward it
         if(mob.squaredDistanceTo(u.lastPosition)<.03)u.stuckTicks+=10;else u.stuckTicks=0;
         u.lastPosition=mob.getPos();
         boolean pinned=pinned(u,time);
         if(u.stuckTicks>N.stuckSeconds()*20||pinned){
             if(stepHop(battle,u,goal)){u.stuckTicks=0;u.nextPath=0;}
             else if(u.stuckTicks>N.stuckSeconds()*20){
-                double sign=(u.slot%2==0?1:-1);Vec3d sideways=new Vec3d(-delta.z,0,delta.x).normalize().multiply(3*sign);
-                goal=mob.getPos().add(delta.normalize().multiply(4)).add(sideways);u.stuckTicks=0;u.nextPath=0;
-                if(mob.isOnGround())mob.getJumpControl().setActive();
+                // Stuck again where it sidestepped before (within ten seconds, six blocks): the sidestep leads to the same corner of a pocket, so go round by a point the pathfinder can reach (Wedge).
+                u.wedgeRepeats=Wedge.repeats(u.wedgeAt!=null,u.wedgeTime,u.wedgeAt==null?0:u.wedgeAt.x,u.wedgeAt==null?0:u.wedgeAt.z,u.wedgeRepeats,time,mob.getX(),mob.getZ());
+                u.wedgeAt=mob.getPos();u.wedgeTime=time;
+                Vec3d out=u.wedgeRepeats>=1?detour(battle,u,routed,u.wedgeRepeats):null;
+                if(out!=null){
+                    if(TRACE_HOPS)System.out.println("[Graves and Glory] detour of slot "+u.slot+" from ("+String.format("%.1f,%.1f,%.1f",mob.getX(),mob.getY(),mob.getZ())+") to ("+String.format("%.1f,%.1f,%.1f",out.x,out.y,out.z)+") on its way to ("+String.format("%.1f,%.1f",routed.x,routed.z)+"), stuck again "+u.wedgeRepeats+" times at this wedge");
+                    u.detour=out;u.detourFor=routed;u.detourUntil=time+Wedge.ticks(Wedge.steps(u.wedgeRepeats));goal=out;detours++;u.stuckTicks=0;u.nextPath=0;
+                }else{
+                    sidesteps++;if(TRACE_HOPS)System.out.println("[Graves and Glory] sidestep of slot "+u.slot+" at ("+String.format("%.1f,%.1f,%.1f",mob.getX(),mob.getY(),mob.getZ())+") on its way to ("+String.format("%.1f,%.1f",routed.x,routed.z)+"), stuck again "+u.wedgeRepeats+" times at this wedge");
+                    double sign=(u.slot%2==0?1:-1);Vec3d sideways=new Vec3d(-delta.z,0,delta.x).normalize().multiply(3*sign);
+                    goal=mob.getPos().add(delta.normalize().multiply(4)).add(sideways);u.stuckTicks=0;u.nextPath=0;
+                    if(mob.isOnGround())mob.getJumpControl().setActive();
+                }
             }
         }
         int x=(int)Math.floor(goal.x),z=(int)Math.floor(goal.z),y=Arena.ground(x,z)+1;

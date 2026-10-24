@@ -155,6 +155,8 @@ public final class GravesAndGlory implements ModInitializer {
         long nextPath;
         Vec3d lastPosition,lastGoal,deployed;
         int stuckTicks;
+        /** The last sidestep of Tactics.walk (battle tick, where, and how many times in a row at that wedge before it), for Wedge; and the detour a unit stuck again is on (its point, and the tick it is dropped at). */
+        long wedgeTime,detourUntil;Vec3d wedgeAt,detour,detourFor;int wedgeRepeats;
         LivingEntity lockedTarget;long lockUntil;
         /** The army whose blow last hurt this unit; kill credit when the attacker itself is gone. */
         Squad lastHitBy;

@@ -3623,7 +3623,8 @@ public final class Phase3Checks implements ClientModInitializer {
             if(!routes.done)return;
             int n=maps.get(index),rows=0;for(var h:Spec.SUPPLYHOUSES)if(h.map()==n)rows++;
             int got=routes.reached.getOrDefault(n,0);
-            report("p3-house-routes-map"+n,rows>0&&got==2*rows,got+" of "+2*rows+" goals with 20 of 20 knights at the yard: "+String.join(", ",routes.lines));
+            int expect=2*rows+MapRouteChecks.nookGoals(n);
+            report("p3-house-routes-map"+n,rows>0&&got==expect,got+" of "+expect+" goals with 20 of 20 knights at the yard: "+String.join(", ",routes.lines));
             marched=true;
         }
 
