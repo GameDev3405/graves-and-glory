@@ -2095,9 +2095,12 @@ class BuildSkinsChecks(unittest.TestCase):
 
     # ---- the troop faces (face variants: head boxes in the sheet, picked by the client from the entity's UUID) ----
 
-    def faces_troops(self, density=None, **faces):
-        """TROOPS with the knight a four-faces troop: a 64x96 sheet (the fixture's 64x64 and free rows under it) and a faces block."""
+    def faces_troops(self, density=None, fdensity=None, **faces):
+        """TROOPS with the knight a four-faces troop: a 64x96 sheet (the fixture's 64x64 and free rows under it) and a faces block
+        (`fdensity` is the block's own "density": the texels a px the patch files are drawn at)."""
         block = {'count': 4, 'slots': FACE_SLOTS}
+        if fdensity is not None:
+            block['density'] = fdensity
         block.update(faces)
         extra = {'size': [64, 96], 'faces': block}
         if density:
@@ -2351,6 +2354,233 @@ class BuildSkinsChecks(unittest.TestCase):
             put_png(root / 'art/troops/knight_faces.png', face_patches(1, 1))
             trim_at((10, 5))(root)
             self.export(root)
+
+    # ---- faces at their own density: the faces of a density 3 sheet drawn at 2 texels a px (Kort's ruling, 2026-10-24) ----
+
+    def dense_troops(self, **faces):
+        """faces_troops of a density 3 knight whose faces are drawn at 2 texels a px."""
+        return self.faces_troops(density=3, fdensity=2, **faces)
+
+    def dense_root(self, tmp, troops=None, rects=(), patches=True):
+        """The density 3 fixture with 2x patches: its skins painted all over but the compact slot rectangles (22x11 layout px) and `rects`."""
+        troops = troops or self.dense_troops()
+        troops['knight']['skins'] = {'1': 'knight_s1.png', '2': 'knight_s2.png'}
+        root = faces_fixture(tmp, 3, troops, patches=False)
+        for name, paint in (('knight_s1.png', (200, 196, 186, 255)), ('knight_s2.png', (190, 186, 176, 255))):
+            face_skin(root / 'art/troops' / name, 3, slots=[], paint=paint, rects=[(u, v, u + 22, v + 11) for u, v in FACE_SLOTS] + list(rects))
+        if patches:
+            put_png(root / 'art/troops/knight_faces.png', face_patches(2))
+        return root
+
+    def test_faces_dense_model(self):
+        """A faces block with "density": 2 on a density 3 troop draws its face bones at 2 texels a px: each face bone has its own sheet,
+        the sheet in face px (the PNG's 192x288 texels over 2 = 96x144), and its boxes' uv in face px (a slot's texel origin over 2), so
+        the client's one unit (a box px of the bone) is two texels and the face's rectangle is 64x32 texels, not 96x48. The other bones
+        keep the layout sheet; the model keeps its size, its density and its faces key."""
+        model = self.bake(self.dense_troops())['knight']
+        self.assertEqual(model['size'], [64, 96])
+        self.assertEqual(model['density'], 3)
+        self.assertEqual(tuple(model), build_skins.model_keys(3, True))
+        self.assertEqual(model['faces'], {'count': 4, 'card': 0})
+        for k, (x, y) in enumerate([[0, 0]] + FACE_SLOTS):
+            b = find(model, 'face_v%d' % k)
+            self.assertEqual(b['sheet'], [96, 144], b['name'])
+            self.assertEqual(b['boxes'][0]['uv'], [x * 3 // 2, y * 3 // 2], b['name'])
+            self.assertEqual(b['boxes'][0]['size'], [8, 8, 8])
+        self.assertEqual(find(model, 'body')['sheet'], [64, 96])
+        self.assertEqual(find(model, 'body')['boxes'][0]['uv'], [16, 16])
+        same = self.bake(self.faces_troops(density=3))['knight']   # no key: the faces at the troop's density as before
+        self.assertEqual(find(same, 'face_v1')['sheet'], [64, 96])
+        self.assertEqual(find(same, 'face_v1')['boxes'][0]['uv'], FACE_SLOTS[0])
+
+    def test_faces_dense_uv_lands_on_texels(self):
+        """Every corner of a dense face bone's six faces, as the client computes the UV (the bone's uv plus the box px over its sheet),
+        falls on a whole texel of the 192x288 PNG: no UV is inside a texel, so no patch edge bleeds into its neighbour, and the
+        rectangle of face k is exactly the 64x32 texels pasted at its slot."""
+        model = self.bake(self.dense_troops())['knight']
+        for k, (x, y) in enumerate([[0, 0]] + FACE_SLOTS):
+            b = find(model, 'face_v%d' % k)
+            u, v = b['boxes'][0]['uv']
+            sw, sh = b['sheet']
+            corners = [(u + du, v + dv) for du in (0, 8, 16, 24, 32) for dv in (0, 8, 16)]
+            for cu, cv in corners:
+                tx, ty = cu * 192 / sw, cv * 288 / sh
+                self.assertAlmostEqual(tx, round(tx), places=9, msg=(k, cu, cv))
+                self.assertAlmostEqual(ty, round(ty), places=9, msg=(k, cu, cv))
+            self.assertEqual((u * 192 / sw, v * 288 / sh, (u + 32) * 192 / sw, (v + 16) * 288 / sh), (3 * x, 3 * y, 3 * x + 64, 3 * y + 32))
+
+    def test_faces_dense_composite(self):
+        """The 2x patches go into a 3x skin texel for texel: patch k at slot k's texel origin (3 x the slot), 64x32 texels over the
+        six faces; variant 0's old head rectangle (96x48 texels) is cleared but for patch 0 (the stale 3x head is unused); nothing else
+        changes. The far twin is made from the composited skin and keeps the patch's last texel column and row (the block that
+        straddles the patch's edge is judged by the patch's texels in it)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.dense_root(tmp)
+            self.export(root)
+            base = root / ASSETS / 'textures/entity/troop'
+            patches = face_patches(2)
+            for name in ('knight_s1.png', 'knight_s2.png'):
+                want = Image.open(root / 'art/troops' / name).convert('RGBA')
+                for y in range(48):
+                    for x in range(96):
+                        want.putpixel((x, y), (0, 0, 0, 0))
+                for k, (u, v) in enumerate([(0, 0)] + FACE_SLOTS):
+                    for x0, y0, x1, y1 in HEAD_FACES:
+                        for y in range(y0 * 2, y1 * 2):
+                            for x in range(x0 * 2, x1 * 2):
+                                want.putpixel((u * 3 + x, v * 3 + y), patches.getpixel((x, k * 32 + y)))
+                got = Image.open(base / name).convert('RGBA')
+                self.assertEqual(got.size, (192, 288))
+                self.assertEqual(got.tobytes(), want.tobytes(), name)
+            s1 = Image.open(base / 'knight_s1.png').convert('RGBA')
+            twin = Image.open(base / 'knight_s1_far.png').convert('RGBA')
+            islands = [(u * 3, v * 3, u * 3 + 64, v * 3 + 32) for u, v in [(0, 0)] + FACE_SLOTS]
+            self.assertEqual(twin.tobytes(), build_skins.far_twin(s1, 3, islands).tobytes())
+            for u, v in [(0, 0)] + FACE_SLOTS:   # the last column (texels 63 to 65 of the patch's row 18 to 20) and the last row
+                self.assertGreater(twin.getpixel((u + 21, v + 6))[3], 0, (u, v))
+                self.assertGreater(twin.getpixel((u + 8, v + 10))[3], 0, (u, v))
+            plain = build_skins.far_twin(s1, 3)
+            self.assertEqual(plain.getpixel((21, 6))[3], 0)   # what the plain 3x3 rule does with the edge block: a hole in the back of the head
+
+    def test_faces_dense_rules(self):
+        """The block's density is a whole number from 1 to 4; above the troop's it must be a whole multiple (it is reduced by that);
+        below it the faces need a face bone (count above 1), a sheet of a whole number of face px, and every uv a whole number of them."""
+        for value in (0, 5, 2.5, True, '2'):
+            with self.subTest(value=value):
+                said = self.bake_fails(self.faces_troops(fdensity=value))
+                for want in ('knight', 'faces', 'density'):
+                    self.assertIn(want, said)
+        with self.subTest(name='4 over 3'):
+            said = self.bake_fails(self.faces_troops(density=3, fdensity=4))
+            for want in ('knight', 'faces', 'density 4', 'multiple', '3'):
+                self.assertIn(want, said)
+        with self.subTest(name='count 1 below the density'):
+            said = self.bake_fails(self.with_knight(size=[64, 96], density=3, faces={'count': 1, 'density': 2}))
+            for want in ('knight', 'count 1', 'density'):
+                self.assertIn(want, said)
+        with self.subTest(name='an odd slot'):
+            said = self.bake_fails(self.dense_troops(slots=[[1, 64], [32, 64], [0, 80]]))
+            for want in ('knight', 'slot 1', '(1, 64)', 'multiple of 2'):
+                self.assertIn(want, said)
+        with self.subTest(name='an odd sheet'):
+            said = self.bake_fails(self.with_knight(size=[65, 96], density=3, faces={'count': 4, 'density': 2, 'slots': FACE_SLOTS}))
+            for want in ('knight', 'sheet', 'multiple of 2'):
+                self.assertIn(want, said)
+        with self.subTest(name='the unit of the key'):
+            model = self.bake(self.faces_troops(density=3, fdensity=3))['knight']   # the troop's own density: as no key
+            self.assertEqual(find(model, 'face_v1')['sheet'], [64, 96])
+
+    def test_faces_dense_slots_collide_at_their_own_size(self):
+        """A dense slot is the rectangle it needs (a 64x32 texel patch is 22x11 layout px on a 3x sheet, not 32x16): two fit side by
+        side where full-size ones would overlap, the one slot that leaves the sheet is the one whose compact rectangle leaves it."""
+        troops = self.dense_troops(slots=[[0, 64], [22, 64], [44, 76]])   # 22 wide each: the sheet is 64 wide, the third ends at 66
+        said = self.bake_fails(troops)
+        for want in ('knight', 'slot 3', 'leaves', '64x96', '22x11'):
+            self.assertIn(want, said)
+        self.bake(self.dense_troops(slots=[[0, 64], [22, 64], [42, 76]]))   # fits: the third ends at 64
+        said = self.bake_fails(self.dense_troops(slots=[[0, 64], [20, 64], [42, 76]]))
+        for want in ('knight', 'slot 2', 'overlaps', 'slot 1'):
+            self.assertIn(want, said)
+        self.bake(self.dense_troops(slots=[[0, 64], [22, 64], [0, 84]]))   # 84 + 11 = 95 (an odd y cannot be a whole number of face px)
+        said = self.bake_fails(self.dense_troops(slots=[[0, 64], [22, 64], [0, 86]]))
+        for want in ('knight', 'slot 3', 'leaves'):
+            self.assertIn(want, said)
+        said = self.bake_fails(self.faces_troops(density=3, slots=[[0, 64], [22, 64], [42, 64]]))   # no key: full-size 32x16 rectangles overlap
+        for want in ('knight', 'slot 2', 'overlaps'):
+            self.assertIn(want, said)
+
+    def test_faces_dense_overlays_and_relief(self):
+        """The trim and the glow keep off the whole reserved rectangle of a dense slot (its texels rounded up to layout px) and off
+        variant 0's whole old head rectangle; a skin may paint the old rectangle (patch 0 replaces what it covers and the rest is
+        cleared); relief on the patch is refused naming the face bone, and relief on the stale rest of the old rectangle lies on no face."""
+        def trim_at(xy):
+            return lambda root: relief_png(root, 'knight_veteran.png', [xy], size=(192, 288))
+
+        def glow_at(xy):
+            def go(root):
+                lit = Image.new('RGBA', (192, 288), (0, 0, 0, 0))
+                lit.putpixel(xy, (255, 240, 200, 255))
+                lit.save(root / 'art/troops/knight_e.png')
+            return go
+        cases = [
+            ('the trim at the corner of slot 1\'s reserved rectangle', trim_at((65, 224)), ['knight_veteran.png', 'slot 1', '(65, 224)']),
+            ('the glow at the end of slot 2', glow_at((96 + 65, 224)), ['knight_e.png', 'slot 2', '(161, 224)']),
+            ('the trim in the old head rectangle beyond the patch', trim_at((80, 10)), ['knight_veteran.png', 'canonical face', '(80, 10)']),
+        ]
+        for name, setup, wants in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = self.dense_root(tmp)
+                setup(root)
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with self.subTest(name='the trim just outside slot 1'), tempfile.TemporaryDirectory() as tmp:
+            root = self.dense_root(tmp)
+            trim_at((66, 224))(root)
+            self.export(root)
+        for name, texel, wants in (('relief on the patch', (20, 20), ['face bone', 'face_v0', '(20, 20)']),
+                                   ('relief on the stale head', (80, 10), ['no skin box face', '(80, 10)'])):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = self.dense_root(tmp)
+                for r in ('knight_s1_r.png', 'knight_s2_r.png'):
+                    relief_png(root, r, [texel], size=(192, 288))
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+
+    def test_faces_one_x_troops_reduce_two_to_one(self):
+        """A density 1 troop whose faces block says density 2 takes patches drawn at 2 texels a px and reduces them by the far twin's
+        majority rule, 2 to 1 (the 8x8 head of the default look); a file of any other size is refused naming the density; a density 3
+        troop whose block says 2 refuses a 3x file."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, 1, self.faces_troops(fdensity=2), patches=False)
+            put_png(root / 'art/troops/knight_faces.png', self.scaled_patches(2))
+            self.export(root)
+            got = Image.open(root / ASSETS / 'textures/entity/troop/knight_s1.png').convert('RGBA')
+            want = Image.open(root / 'art/troops/knight_s1.png').convert('RGBA')
+            patches = face_patches(1)
+            for k, (u, v) in enumerate([(0, 0)] + FACE_SLOTS):
+                for x0, y0, x1, y1 in HEAD_FACES:
+                    for y in range(y0, y1):
+                        for x in range(x0, x1):
+                            want.putpixel((u + x, v + y), patches.getpixel((x, k * 16 + y)))
+            self.assertEqual(got.tobytes(), want.tobytes())
+        for density, scale in ((1, 1), (1, 3), (3, 3), (3, 1)):
+            with self.subTest(density=density, scale=scale), tempfile.TemporaryDirectory() as tmp:
+                root = faces_fixture(tmp, density, self.faces_troops(density=density if density > 1 else None, fdensity=2), patches=False)
+                put_png(root / 'art/troops/knight_faces.png', self.scaled_patches(scale))
+                said = self.fails(export_assets, root)
+                for want in ('knight', 'knight_faces.png', '64x128', '2 texels a px'):
+                    self.assertIn(want, said)
+
+    def test_faces_dense_verify_and_templates(self):
+        """--verify rebuilds a dense-faces troop (a changed texel in its skin or its far twin is named) and the templates draw each face
+        bone at its own density: slot 1's front is the 64x32 texel patch's, not a 96x48 one."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.dense_root(tmp)
+            self.export(root)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(build_skins.verify(root), 0)
+            for target in ('textures/entity/troop/knight_s1.png', 'textures/entity/troop/knight_s1_far.png', 'models/troop/knight.json'):
+                path = root / ASSETS / target
+                before = path.read_bytes()
+                data = bytearray(before)
+                data[len(data) // 2] ^= 0x01
+                path.write_bytes(bytes(data))
+                said = self.fails(build_skins.verify, root)
+                self.assertIn(target, said)
+                path.write_bytes(before)
+            cat = build_skins.load(root)
+            flat, relief = build_skins.template(cat, 'knight').convert('RGBA'), build_skins.relief_template(cat, 'knight').convert('RGBA')
+        self.assertEqual(flat.size, (192, 288))
+        self.assertGreater(flat.getpixel((24, 215))[3], 0)    # slot 1 (texel origin (0, 192)): its front is texels (16..32, 208..224)
+        self.assertGreater(flat.getpixel((63, 223))[3], 0)    # the back's last texel, the patch's 64th column
+        self.assertEqual(flat.getpixel((64, 223))[3], 0)      # beyond the 64 texel patch (a 96 texel one would paint it)
+        self.assertEqual(flat.getpixel((8, 200))[3], 0)       # the corner of the patch rectangle, outside the six faces
+        self.assertEqual(relief.size, (192, 288))
+        self.assertEqual(relief.getpixel((64, 223))[3], 0)
 
     def test_faces_carry_no_relief(self):
         """Faces are flat paint: a relief texel on the head's faces or on a slot's is refused, naming the face bone; relief elsewhere
