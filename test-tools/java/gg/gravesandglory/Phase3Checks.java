@@ -2317,11 +2317,11 @@ public final class Phase3Checks implements ClientModInitializer {
 
         // ---- the scans, on the server thread ----
         record Sight(double len,double x,double z,double yaw,double ex,double ey,double ez,int road,int sign,double top,String by){}
-        /** Top blocks that cannot belong to this map: the snow and ice of Frostmarch, the podzol, ferns and mud bricks of Hollowwood, grass on the two maps without it, the leaves of the other family of trees. */
+        /** Top blocks that cannot belong to this map: the snow and ice of Frostmarch, the podzol, ferns and mud bricks (blocks, stairs, slabs and walls) of Hollowwood, grass on the two maps without it, the leaves of the other family of trees. */
         static Set<String> alien(int map){
             var s=new HashSet<String>();
             if(map!=2)s.addAll(List.of("snow","snow_block","powder_snow","packed_ice","blue_ice","ice"));
-            if(map!=3)s.addAll(List.of("podzol","fern","mud_bricks"));
+            if(map!=3)s.addAll(List.of("podzol","fern","mud_bricks","mud_brick_stairs","mud_brick_slab","mud_brick_wall"));
             if(map==2||map==3)s.addAll(List.of("grass_block","grass","poppy"));
             if(map<2)s.add("spruce_leaves");else if(map<4)s.add("oak_leaves");
             return s;
@@ -3322,7 +3322,7 @@ public final class Phase3Checks implements ClientModInitializer {
         }
 
         /** Task 8b, once per map with house rows, on its first one: what the -clear check of a house can fail on. The cell just outside the reserved column (local x offset +4) is pretended to be structure void (the file writes it as air) and a stone is put in it: the check
-         *  must count it; a stone on the last cell of the column (offset +3, void in the file) it must not count; and with no reserved column at all the flag itself (13 blocks) and both stones are counted. */
+         *  must count it; a stone on the last cell of the column (offset +3, void in the file) it must not count; and with no reserved column at all the flag itself (its fence, cloth and lantern as far up as the piece's volume reaches: the pole of the house is taller than the piece, so for Rivergate the 8 blocks of fence under its roof line) and both stones are counted. */
         void clearControl(GravesAndGlory.Battle b,int n,Spec.LandmarksRow r){
             var w=b.world;Spec.SupplyHousesRow house=null;for(var hh:Spec.SUPPLYHOUSES)if(hh.landmark().equals(r.id()))house=hh;
             if(house==null){report("p3-lm-supply-clear-control-map"+n,false,"no supplyHouses row for "+r.id());return;}
@@ -3333,12 +3333,13 @@ public final class Phase3Checks implements ClientModInitializer {
             var inside=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),18,1,24);var outside=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),19,1,24);
             var stone=Blocks.STONE.getDefaultState();var keptIn=w.getBlockState(inside);var keptOut=w.getBlockState(outside);
             int[] real,in,out,bare;
+            int pole=Arena.housePole(r.elevation()),flagIn=0;for(int y=1;y<size.getY();y++){if(y<=pole)flagIn++;if(y>=pole-2&&y<=pole-1)flagIn+=3;if(y==pole+1)flagIn++;}
             try{
                 real=clearScan(w,size,present,r,null,house,null);
                 w.setBlockState(inside,stone,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);in=clearScan(w,size,present,r,null,house,null);
                 w.setBlockState(outside,stone,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);out=clearScan(w,size,absent,r,null,house,null);bare=clearScan(w,size,absent,r,null,null,null);
             }finally{w.setBlockState(inside,keptIn,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);w.setBlockState(outside,keptOut,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);}
-            report("p3-lm-supply-clear-control-map"+n,real[1]==0&&in[1]==0&&out[1]==1&&bare[1]==15,r.id()+": the check as it stands counts "+real[1]+" dirty cells (want 0); a stone at "+xyz(inside)+", the last cell of the reserved column, adds "+(in[1]-real[1])+" (want 0); a stone at "+xyz(outside)+", one cell outside it, is counted: "+out[1]+" (want 1); with no reserved column "+bare[1]+" cells are dirty (want 15: the flag's 13 blocks and both stones)");
+            report("p3-lm-supply-clear-control-map"+n,real[1]==0&&in[1]==0&&out[1]==1&&bare[1]==flagIn+2,r.id()+": the check as it stands counts "+real[1]+" dirty cells (want 0); a stone at "+xyz(inside)+", the last cell of the reserved column, adds "+(in[1]-real[1])+" (want 0); a stone at "+xyz(outside)+", one cell outside it, is counted: "+out[1]+" (want 1); with no reserved column "+bare[1]+" cells are dirty (want "+(flagIn+2)+": the "+flagIn+" blocks of the flag of pole "+pole+" inside the piece's "+size.getY()+" layers and both stones)");
         }
         /** Task 8b, once per map with house rows, on its first one: the comparison with the plan's world points and the two verdicts of the lines can fail. */
         void linesControl(GravesAndGlory.Battle b,int n,Spec.LandmarksRow r,net.minecraft.entity.Entity player){
@@ -3553,18 +3554,29 @@ public final class Phase3Checks implements ClientModInitializer {
                 boolean again=b.campaign.cached()&&Structures.hash(b.campaign.map).equals(h);
                 report("p3-lm-cache-pieces",!hp.equals(h)&&!taller&&again,"map "+b.campaign.map+", pieces row "+row.id()+" one block taller: hash "+hp+(hp.equals(h)?" (the same: the pieces row is not in the hash)":" (differs)")+", cached "+taller+"; put back: hash and marker current "+again);
             }
+            // the supplyHouses rows of the map are in the hash too (Task 8b fix round 1): a house one block higher makes the marker stale, the row put back makes it current
+            int hi=-1;for(int i=0;i<Spec.SUPPLYHOUSES.length;i++)if(Spec.SUPPLYHOUSES[i].map()==b.campaign.map){hi=i;break;}
+            if(hi<0)report("p3-lm-cache-houses",false,"map "+b.campaign.map+": no supplyHouses row");
+            else{
+                var row=Spec.SUPPLYHOUSES[hi];String hh;boolean higher;
+                try{Spec.SUPPLYHOUSES[hi]=new Spec.SupplyHousesRow(row.id(),row.map(),row.name(),row.landmark(),row.yardX(),row.yardZ(),row.spurX(),row.spurZ(),row.elevation()+1);hh=Structures.hash(b.campaign.map);higher=b.campaign.cached();}
+                finally{Spec.SUPPLYHOUSES[hi]=row;}
+                boolean again=b.campaign.cached()&&Structures.hash(b.campaign.map).equals(h);
+                report("p3-lm-cache-houses",!hh.equals(h)&&!higher&&again,"map "+b.campaign.map+", supplyHouses row "+row.id()+" one block higher: hash "+hh+(hh.equals(h)?" (the same: the supplyHouses rows are not in the hash)":" (differs)")+", cached "+higher+"; put back: hash and marker current "+again);
+            }
             cacheDone=true;
         }
     }
 
     /** Task 8b (suite supply): the supply houses of the maps in GRAVES_PHASE3_MAPS (system property gravesandglory.phase3Maps, default all five), one map at a time (a launch of a map with four houses is about twelve minutes: eight marches of up to 3600 ticks).
      *  Each map is switched to (built afresh) and, once ready, per supplyHouses row of the map, on the server thread:
-     *  p3-house-ID-neutral (the flag over the yard centre is the neutral one Arena.flag lays: oak_fence at yardX, elevation+1..+6, a sea_lantern at +7, white_wool at yardX+1..+3, +4..+5; the two braziers, local (10,3,36) and (20,3,36), are campfires with lit=false),
+     *  p3-house-ID-neutral (the flag over the yard centre is the neutral one Arena.flag lays with Arena.housePole(elevation): oak_fence at yardX, elevation+1..+pole, a sea_lantern at +pole+1, white_wool at yardX+1..+3, +pole-2..+pole-1; the two braziers, local (10,3,36) and (20,3,36), are campfires with lit=false),
      *  p3-house-ID-yard (every cell of the circle of 10 round the yard centre has a collision shape at the elevation and none at +1 and +2, the pole cell excepted; a flood fill over such cells inside the footprint, from beside the pole, reaches the 9 cells of the
      *  front gate (local z 36, x 11..19) and the 5 of the side gate (local x 30, z 22..26), and the cells just outside, local (15,0,37) and (31,0,24), are such cells too),
+     *  p3-house-ID-flag-lane (from the eye of a walker at the lane end, 1.62 over the ground, to the middle of each of the two rows of the cloth the first block met is the cloth: the white flag reads from the lane, which a flag of the height of a point's, six blocks, does not over the crest of the climb),
      *  p3-house-ID-spur (along the centre line from the lane end to the outer cell of the front gate: every cell a road cell, nothing with a collision shape at ground+1 and +2, the ground changes by at most 1 from cell to cell and is the elevation at the gate),
      *  and the pictures ID-spur, ID-gate, ID-yard, ID-lookout and ID-point (p3-ID-VIEW.png). Once per map the controls that the checks can fail: p3-house-neutral-control-mapN (a cyan flag, a lit brazier), p3-house-yard-control-mapN (a block in the circle,
-     *  the gate sealed), p3-house-spur-control-mapN (a block on the centre line, the line moved 10 blocks aside). Then the route harness in house mode (MapRouteChecks with houses) over the map: p3-house-routes-mapN passes when every goal (a base and a point start for each
+     *  the gate sealed), p3-house-spur-control-mapN (a block on the centre line, the line moved 10 blocks aside), p3-house-flag-lane-control-mapN (a stone in the line, the cloth taken away). Then the route harness in house mode (MapRouteChecks with houses) over the map: p3-house-routes-mapN passes when every goal (a base and a point start for each
      *  house) had twenty of twenty knights at the yard. GRAVES_SUPPLY_ROUTES=off leaves the marches out (the checks and the pictures only). */
     static final class Supply implements Suite {
         record Res(boolean ok,String why){}
@@ -3626,17 +3638,17 @@ public final class Phase3Checks implements ClientModInitializer {
         /** The flag over the yard centre is the neutral one and the braziers are unlit. */
         static Res neutral(ServerWorld w,Spec.SupplyHousesRow h,Spec.LandmarksRow r,Vec3i size){
             int e=h.elevation(),x=h.yardX(),z=h.yardZ();
-            int pole=0;for(int y=1;y<=6;y++)if(name(at(w,x,e+y,z)).equals("oak_fence"))pole++;
-            boolean lamp=name(at(w,x,e+7,z)).equals("sea_lantern");
+            int top=Arena.housePole(e),pole=0;for(int y=1;y<=top;y++)if(name(at(w,x,e+y,z)).equals("oak_fence"))pole++;
+            boolean lamp=name(at(w,x,e+top+1,z)).equals("sea_lantern");
             int white=0;var cloth=new TreeMap<String,Integer>();
-            for(int a=1;a<=3;a++)for(int y=4;y<=5;y++){String nm=name(at(w,x+a,e+y,z));if(nm.equals("white_wool"))white++;cloth.merge(nm,1,Integer::sum);}
+            for(int a=1;a<=3;a++)for(int y=top-2;y<=top-1;y++){String nm=name(at(w,x+a,e+y,z));if(nm.equals("white_wool"))white++;cloth.merge(nm,1,Integer::sum);}
             int unlit=0;var other=new StringBuilder();
             for(int bx:new int[]{10,20}){
                 var q=local(r,size,bx,3,36);var st=w.getBlockState(q);
                 if(st.isOf(Blocks.CAMPFIRE)&&!st.get(Properties.LIT))unlit++;
                 else other.append(' ').append(name(st)).append(xyz(q)).append(st.contains(Properties.LIT)?" lit="+st.get(Properties.LIT):"");
             }
-            return new Res(pole==6&&lamp&&white==6&&unlit==2,"pole "+pole+" of 6 oak_fence from "+xyz(new BlockPos(x,e+1,z))+" up, sea_lantern at +7 "+lamp+", white_wool "+white+" of 6 (the cloth is "+cloth+"), unlit campfires at the two braziers "+unlit+" of 2"+other);
+            return new Res(pole==top&&lamp&&white==6&&unlit==2,"pole "+pole+" of "+top+" oak_fence from "+xyz(new BlockPos(x,e+1,z))+" up, sea_lantern at +"+(top+1)+" "+lamp+", white_wool "+white+" of 6 at +"+(top-2)+".."+(top-1)+" (the cloth is "+cloth+"), unlit campfires at the two braziers "+unlit+" of 2"+other);
         }
 
         /** The yard: flat and open inside the circle of 10, and the way from beside the pole to both gates. */
@@ -3681,11 +3693,44 @@ public final class Phase3Checks implements ClientModInitializer {
             return new Res(off==0&&blocked==0&&maxStep<=1&&last==h.elevation(),cells+" cells along x "+x+" from z "+z0+" to the outer cell of the front gate "+xyz(gate)+": "+off+" not road cells, "+blocked+" with a collision shape at ground+1 or +2"+why+"; the largest step of the ground between neighbours is "+maxStep+" (want 1 at most); the ground is "+first+" at the lane end and "+last+" at the gate (the elevation is "+h.elevation()+")");
         }
 
+        /** The flag from the lane (spec 7.1: the holder's colour reads from far off; Task 8b fix round 1): from the eye of a walker at the lane end (the spur point of the row, 1.62 over the ground) to the middle of each of the two rows of the cloth, over the yard centre. Each of the two
+         *  lines must meet the cloth itself as the first block it meets: not the crest of the climb, not a wall or the roof, and not nothing (a miss means there is no cloth at the end of the line). The cloth stands at pole-2..pole-1 over the yard floor, the pole being Arena.housePole(elevation). */
+        static Res lane(ServerWorld w,net.minecraft.entity.Entity player,Spec.SupplyHousesRow h){
+            int x=h.yardX(),z=h.yardZ(),e=h.elevation(),top=Arena.housePole(e);
+            var eye=new Vec3d(h.spurX()+.5,Arena.ground(h.spurX(),h.spurZ())+1.62,h.spurZ()+.5);
+            int seen=0;var why=new StringBuilder();
+            for(int y=top-2;y<=top-1;y++){
+                var to=new Vec3d(x+2.5,e+y+.5,z+.5);
+                var hit=w.raycast(new net.minecraft.world.RaycastContext(eye,to,net.minecraft.world.RaycastContext.ShapeType.COLLIDER,net.minecraft.world.RaycastContext.FluidHandling.NONE,player));
+                boolean block=hit.getType()==net.minecraft.util.hit.HitResult.Type.BLOCK;var q=hit.getBlockPos();
+                boolean cloth=block&&q.getX()>=x+1&&q.getX()<=x+3&&q.getY()==e+y&&q.getZ()==z&&name(w.getBlockState(q)).equals("white_wool");
+                if(cloth)seen++;
+                else why.append(" the line to the cloth row +").append(y).append(block?" meets "+name(w.getBlockState(q))+xyz(q)+" first, "+String.format(Locale.ROOT,"%.1f",hit.getPos().distanceTo(to))+" before its end;":" meets nothing (no cloth at "+xyz(BlockPos.ofFloored(to))+");");
+            }
+            return new Res(seen==2,"from the lane end "+String.format(Locale.ROOT,"(%.1f,%.1f,%.1f)",eye.x,eye.y,eye.z)+", "+Math.round(eye.distanceTo(new Vec3d(x+2.5,e+top,z+.5)))+" blocks from the cloth over the yard "+xyz(new BlockPos(x+2,e+top-1,z))+": "+seen+" of 2 lines of the cloth meet the cloth first"+why+"; the lowest pole over the yard floor that this ground would let both rows be seen from the lane end: "+lowestPole(w,player,h)+" (the house has "+top+")");
+        }
+        /** The smallest pole (4 to 24) whose cloth, at pole-2..pole-1 over the yard floor, both lines of lane() would see: the lines are cast to the cloth's cells' middles and must miss every block (the flag as built is below them, or beside the line, which ends over the yard) or hit one within 0.3 of the end. 0: none. */
+        static int lowestPole(ServerWorld w,net.minecraft.entity.Entity player,Spec.SupplyHousesRow h){
+            int x=h.yardX(),z=h.yardZ(),e=h.elevation();
+            var eye=new Vec3d(h.spurX()+.5,Arena.ground(h.spurX(),h.spurZ())+1.62,h.spurZ()+.5);
+            for(int pole=4;pole<=24;pole++){
+                boolean all=true;
+                for(int y=pole-2;y<=pole-1&&all;y++){
+                    var to=new Vec3d(x+2.5,e+y+.5,z+.5);
+                    var hit=w.raycast(new net.minecraft.world.RaycastContext(eye,to,net.minecraft.world.RaycastContext.ShapeType.COLLIDER,net.minecraft.world.RaycastContext.FluidHandling.NONE,player));
+                    if(hit.getType()==net.minecraft.util.hit.HitResult.Type.BLOCK&&hit.getPos().distanceTo(to)>0.9)all=false;
+                }
+                if(all)return pole;
+            }
+            return 0;
+        }
+
         static void set(ServerWorld w,BlockPos p,BlockState s){w.setBlockState(p,s,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);}
 
         /** The checks of every house of map n, on the server thread once the map is ready. */
         void check(GravesAndGlory.Battle b,int n){
             var w=b.world;var out=new ArrayList<Shot>();int houses=0;Spec.SupplyHousesRow first=null;
+            var player=b.server.getPlayerManager().getPlayerList().isEmpty()?null:b.server.getPlayerManager().getPlayerList().get(0);
             for(var h:Spec.SUPPLYHOUSES){
                 if(h.map()!=n)continue;houses++;if(first==null)first=h;
                 var r=landmarkOf(h);var size=r==null?null:sizeOf(r);String k="p3-house-"+h.id();
@@ -3693,11 +3738,12 @@ public final class Phase3Checks implements ClientModInitializer {
                 var ne=neutral(w,h,r,size);report(k+"-neutral",ne.ok(),ne.why());
                 var ya=yard(w,h,r,size);report(k+"-yard",ya.ok(),ya.why());
                 var sp=spur(w,h,r,size,0);report(k+"-spur",sp.ok(),sp.why());
+                var la=lane(w,player,h);report(k+"-flag-lane",la.ok(),la.why());
                 views(out,h,r,size);
             }
             int want=n==4?2:4;
             report("p3-house-rows-map"+n,houses==want,houses+" supplyHouses rows on map "+n+" (the plans state "+want+")");
-            if(first!=null&&landmarkOf(first)!=null&&sizeOf(landmarkOf(first))!=null)controls(w,n,first,landmarkOf(first));
+            if(first!=null&&landmarkOf(first)!=null&&sizeOf(landmarkOf(first))!=null)controls(w,n,first,landmarkOf(first),player);
             shots=out;checked=true;
         }
 
@@ -3725,13 +3771,13 @@ public final class Phase3Checks implements ClientModInitializer {
         }
 
         /** Once per map, on its first house: what the neutral, yard and spur checks can fail on. Every block put in the world is taken out again. */
-        void controls(ServerWorld w,int n,Spec.SupplyHousesRow h,Spec.LandmarksRow r){
+        void controls(ServerWorld w,int n,Spec.SupplyHousesRow h,Spec.LandmarksRow r,net.minecraft.entity.Entity player){
             var size=sizeOf(r);int e=h.elevation(),x=h.yardX(),z=h.yardZ();
             var stone=Blocks.STONE.getDefaultState();
             // neutral: the flag of Dawn (cyan) over the yard, then a brazier lit; each must fail, and the neutral flag and the brazier put back must pass again
-            var flagCells=new ArrayList<BlockPos>();for(int y=1;y<=7;y++)flagCells.add(new BlockPos(x,e+y,z));for(int a=1;a<=3;a++)for(int y=4;y<=5;y++)flagCells.add(new BlockPos(x+a,e+y,z));
+            var flagCells=new ArrayList<BlockPos>();int top=Arena.housePole(e);for(int y=1;y<=top+1;y++)flagCells.add(new BlockPos(x,e+y,z));for(int a=1;a<=3;a++)for(int y=top-2;y<=top-1;y++)flagCells.add(new BlockPos(x+a,e+y,z));
             var keptFlag=new ArrayList<BlockState>();for(var q:flagCells)keptFlag.add(w.getBlockState(q));
-            Arena.flag(w,x,e,z,0);var cyan=neutral(w,h,r,size);Arena.flag(w,x,e,z,-1);var white=neutral(w,h,r,size);
+            Arena.flag(w,x,e,z,0,top);var cyan=neutral(w,h,r,size);Arena.flag(w,x,e,z,-1,top);var white=neutral(w,h,r,size);
             for(int i=0;i<flagCells.size();i++)set(w,flagCells.get(i),keptFlag.get(i)); // the flag cells as the build left them (a map without the house flags has none)
             var brazier=local(r,size,10,3,36);var kept=w.getBlockState(brazier);
             set(w,brazier,Blocks.CAMPFIRE.getDefaultState().with(Properties.LIT,true));var lit=neutral(w,h,r,size);set(w,brazier,kept);var unlit=neutral(w,h,r,size);
@@ -3751,6 +3797,18 @@ public final class Phase3Checks implements ClientModInitializer {
             var onLine=new BlockPos(h.spurX(),mg+1,mz);var keptLine=w.getBlockState(onLine);
             set(w,onLine,stone);var blockedLine=spur(w,h,r,size,0);set(w,onLine,keptLine);
             var aside=spur(w,h,r,size,10);var fine=spur(w,h,r,size,0);
+            // flag from the lane: a stone put in the line to the lower row of the cloth (the cell at its middle); the cloth of both rows taken away; both put back
+            var eye=new Vec3d(h.spurX()+.5,Arena.ground(h.spurX(),h.spurZ())+1.62,h.spurZ()+.5);var cloth=new Vec3d(x+2.5,e+top-1.5,z+.5);
+            var inLine=BlockPos.ofFloored(eye.add(cloth.subtract(eye).multiply(0.5)));var keptIn=w.getBlockState(inLine);
+            var clear=lane(w,player,h);
+            set(w,inLine,stone);var shadowed=lane(w,player,h);set(w,inLine,keptIn);
+            var clothCells=new ArrayList<BlockPos>();var keptCloth=new ArrayList<BlockState>();
+            for(int a=1;a<=3;a++)for(int y=top-2;y<=top-1;y++){var q=new BlockPos(x+a,e+y,z);clothCells.add(q);keptCloth.add(w.getBlockState(q));}
+            for(var q:clothCells)set(w,q,Blocks.AIR.getDefaultState());
+            var bare=lane(w,player,h);
+            for(int i=0;i<clothCells.size();i++)set(w,clothCells.get(i),keptCloth.get(i));
+            var back=lane(w,player,h);
+            report("p3-house-flag-lane-control-map"+n,player!=null&&clear.ok()&&!shadowed.ok()&&!bare.ok()&&back.ok(),h.id()+": "+(player==null?"NO PLAYER; ":"")+"as built the check "+(clear.ok()?"passes":"FAILS")+", with a stone in the line at "+xyz(inLine)+" it "+(shadowed.ok()?"PASSES (it cannot fail)":"fails")+" ("+shadowed.why().trim()+"), with the cloth taken away it "+(bare.ok()?"PASSES (it cannot fail)":"fails")+", both put back "+(back.ok()?"passes":"FAILS"));
             report("p3-house-spur-control-map"+n,!blockedLine.ok()&&!aside.ok()&&fine.ok(),h.id()+": with a stone on the centre line at "+xyz(onLine)+" the check "+(blockedLine.ok()?"PASSES (it cannot fail)":"fails")+", with the line moved 10 blocks aside it "+(aside.ok()?"PASSES (it cannot fail)":"fails")+", put back "+(fine.ok()?"passes":"FAILS"));
         }
     }

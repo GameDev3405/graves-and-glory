@@ -31,6 +31,23 @@ public final class HouseRouteCheck {
   check(to(0,side[0]+2.0,side[1],gx,gz)==null,"A unit within 3 blocks of the side gate point goes straight to its goal");
   check(to(0,CX+.5,CZ+10,gx,gz)==null,"A unit in the yard goes straight to its goal");
   check(to(0,CX+.5,CZ+60,CX+.5,CZ+40)==null,"A goal outside the footprint is left alone");
+  // a unit well inside the house, 10 blocks from both gates (the yard, the storehouse): no way to route, it goes straight to its goal
+  check(to(0,CX+6.5,CZ+10,gx,gz)==null,"A unit in the yard, 10 blocks from both gates, goes straight to its goal");
+  check(to(0,CX-5.5,CZ-13,gx,gz)==null,"A unit inside the storehouse goes straight to its goal");
+  // a knight (0.6 wide) pressed against an outer wall has its centre 0.3 off it: it is outside, and it is routed along the wall to the gate or round the corner, whatever the last digit of its position (the knife edge of the first version, which handed it its goal)
+  for(double off:new double[]{-1e-7,0,1e-7}){
+   var wx=to(0,CX-15-0.3+off,CZ+6.5,gx,gz);
+   check(wx!=null&&wx[0]<CX-15&&wx[1]>CZ+18,"A knight against the west wall, level with the yard, goes round the south-west corner: "+(wx==null?"null":wx[0]+","+wx[1])+" (offset "+off+")");
+   var nx=to(0,CX+.5,CZ-18-0.3+off,gx,gz);
+   check(nx!=null&&nx[1]<CZ-18,"A knight against the north wall goes to a corner on the north side: "+(nx==null?"null":nx[0]+","+nx[1])+" (offset "+off+")");
+   var ex=to(0,CX+16+0.3+off,CZ-10,gx,gz);
+   check(ex!=null&&Math.abs(ex[0]-side[0])<1e-9&&Math.abs(ex[1]-side[1])<1e-9,"A knight against the east wall, 16 blocks from the side gate, goes along the wall to the point outside the side gate: "+(ex==null?"null":ex[0]+","+ex[1])+" (offset "+off+")");
+   var sx=to(0,CX-10,CZ+19+0.3+off,gx,gz);
+   check(sx!=null&&Math.abs(sx[0]-front[0])<1e-9&&Math.abs(sx[1]-front[1])<1e-9,"A knight against the south wall, 10 blocks from the front gate, goes along the wall to the point outside the front gate: "+(sx==null?"null":sx[0]+","+sx[1])+" (offset "+off+")");
+  }
+  // the same, turned 180: the walls change sides, the knife edge does not
+  var w180=to(180,CX+16+0.3,CZ-6.5,gx,CZ-5.5);
+  check(w180!=null&&w180[0]>CX+15&&w180[1]<CZ-18,"A knight against the east wall of a house turned 180 (its front gate is on the north, its side gate on the west) goes round the north-east corner first: "+(w180==null?"null":w180[0]+","+w180[1]));
   // every point of a grid round the house, both turns: the first waypoint is reached without crossing the house, and the way on from it is clear or round a corner (the walk ends at a gate)
   int starts=0,crossing=0,naive=0;
   for(int rot:new int[]{0,180})for(double x=CX-60;x<=CX+60;x+=3.5)for(double z=CZ-60;z<=CZ+60;z+=3.5){

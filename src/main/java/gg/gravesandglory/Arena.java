@@ -242,7 +242,7 @@ public final class Arena {
             box(w,p.x()-1,p.elevation(),p.z()-1,3,1,3,Blocks.CHISELED_STONE_BRICKS);flag(w,p,-1);
         }
         // the supply houses of the map: a neutral flag over each yard centre (the piece leaves its flag column void, so the flag stands; the rules plan recolours it with the same call)
-        for(var h:Spec.SUPPLYHOUSES)if(h.map()==CampaignMaps.selected)flag(w,h.yardX(),h.elevation(),h.yardZ(),-1);
+        for(var h:Spec.SUPPLYHOUSES)if(h.map()==CampaignMaps.selected)flag(w,h.yardX(),h.elevation(),h.yardZ(),-1,housePole(h.elevation()));
         for(var s:Spec.SCENERY){int y=height(s.x(),s.z())+1;if(s.kind().equals("tree")){
             tree(w,s.x(),y,s.z(),s.width(),s.height(),s.palette().equals("spruce"));
         }else for(int dx=0;dx<s.width();dx++)for(int dz=0;dz<s.width();dz++)for(int dy=0;dy<s.height();dy++)if(dx+dz+dy<s.width()+s.height()-1)put(w,s.x()+dx,y+dy,s.z()+dz,(dx+dz)%3==0?Blocks.MOSSY_COBBLESTONE:Blocks.ANDESITE);}
@@ -311,6 +311,15 @@ public final class Arena {
         }
     }
     public static void flag(ServerWorld w,Spec.PointsRow p,int team){flag(w,p.x(),p.elevation(),p.z(),team);}
-    /** The flag of a point or a supply house: a pole of six fence over the ground at (x, y, z), three blocks of cloth (white neutral, cyan Dawn, purple Dusk) and a sea lantern on top. */
-    public static void flag(ServerWorld w,int x,int y,int z,int team){Block color=team<0?Blocks.WHITE_WOOL:team==0?Blocks.CYAN_WOOL:Blocks.PURPLE_WOOL;box(w,x,y+1,z,1,6,1,Blocks.OAK_FENCE);box(w,x+1,y+4,z,3,2,1,color);put(w,x,y+7,z,Blocks.SEA_LANTERN);}
+    /** The pole of a point's flag, in blocks of fence over the ground. */
+    public static final int POINT_POLE=6;
+    /** The least pole of the flag of a supply house, in blocks of fence over the yard floor (Task 8b fix round 1): the road climbs 10 to 16 blocks to the yards, so a flag of six hides behind the crest and the holder's colour cannot be read from the lane; eleven stands over the
+     *  roof ridge (local y 6) and shows its cloth from the lane end of the houses at elevation 74 to 76 (Rivergate, Hollowwood, Kingsfield). The rising-flag rule of the rules plan recolours the same call. */
+    public static final int HOUSE_POLE=11;
+    /** The pole of the flag of a house whose yard floor is at elevation: the higher the yard sits over the lane end (ground 64), the nearer the crest of the climb rises to the line from the lane end to the cloth, so the pole grows by four blocks for every three blocks of elevation over 75: 11 at 74 (Rivergate, Hollowwood), 12 at 76 (Kingsfield), 13 at 77 (Ironhold), 17 at 80 (Frostmarch).
+     *  These are one block over the least pole that shows both rows of the cloth from the lane end (12 for Ironhold, 15 and 16 for Frostmarch, measured by p3-house-ID-flag-lane, which fails when a house has less). */
+    public static int housePole(int elevation){return HOUSE_POLE+Math.max(0,(elevation-75)*4/3);}
+    public static void flag(ServerWorld w,int x,int y,int z,int team){flag(w,x,y,z,team,POINT_POLE);}
+    /** The flag of a point or a supply house: a pole of pole blocks of fence over the ground at (x, y, z), three by two blocks of cloth (white neutral, cyan Dawn, purple Dusk) on its two top blocks, and a sea lantern on top: for the pole of six the cloth is at y+4..5 and the lantern at y+7, as it always was. */
+    public static void flag(ServerWorld w,int x,int y,int z,int team,int pole){Block color=team<0?Blocks.WHITE_WOOL:team==0?Blocks.CYAN_WOOL:Blocks.PURPLE_WOOL;box(w,x,y+1,z,1,pole,1,Blocks.OAK_FENCE);box(w,x+1,y+pole-2,z,3,2,1,color);put(w,x,y+pole+1,z,Blocks.SEA_LANTERN);}
 }

@@ -108,14 +108,25 @@ final class Tactics {
     }
     /** A goal inside the walled yard of a supply house (Phase 3 Task 8b): the point just outside a gate (HouseRoute) until the unit stands at it, then the goal itself, so that the units do not stand at the wall. Any other goal comes back as it is. */
     static Vec3d houseGate(GravesAndGlory.Unit u,Vec3d goal){
-        for(var h:Spec.SUPPLYHOUSES){
-            if(h.map()!=CampaignMaps.selected)continue;
-            for(var r:Spec.LANDMARKS)if(r.id().equals(h.landmark())){
-                double[] p=HouseRoute.next(r.x(),r.z(),r.rotation(),u.mob.getX(),u.mob.getZ(),goal.x,goal.z,(u.slot%5-2)*0.8);
-                if(p!=null)return new Vec3d(p[0],goal.y,p[1]);
-            }
+        for(var r:housesOfMap()){
+            double[] p=HouseRoute.next(r.x(),r.z(),r.rotation(),u.mob.getX(),u.mob.getZ(),goal.x,goal.z,(u.slot%5-2)*0.8);
+            if(p!=null)return new Vec3d(p[0],goal.y,p[1]);
         }
         return goal;
+    }
+    /** The landmarks rows of the supply houses of the selected map, looked up once per map (walk asks for them on every call of every unit). */
+    static int housesAt=-1;static Spec.LandmarksRow[] houseRows=new Spec.LandmarksRow[0];
+    static Spec.LandmarksRow[] housesOfMap(){
+        int map=CampaignMaps.selected;
+        if(housesAt!=map){
+            var rows=new java.util.ArrayList<Spec.LandmarksRow>();
+            for(var h:Spec.SUPPLYHOUSES){
+                if(h.map()!=map)continue;
+                for(var r:Spec.LANDMARKS)if(r.id().equals(h.landmark())&&r.map()==map)rows.add(r);
+            }
+            houseRows=rows.toArray(new Spec.LandmarksRow[0]);housesAt=map;
+        }
+        return houseRows;
     }
     /** How many times a stuck unit was set on the step beside it (StepHop); the route harness prints it. GRAVES_NO_HOP=1 leaves the hop out (the control of the house marches). */
     static int stepHops;static final boolean HOP=System.getenv("GRAVES_NO_HOP")==null;

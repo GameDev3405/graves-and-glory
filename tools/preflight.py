@@ -210,6 +210,9 @@ for m in SUPPLY_COUNT:
     if m not in by_map: errors.append(f'supplyHouses: map {m} has no rows, it needs {SUPPLY_COUNT[m]}')
 used=[r['landmark'] for r in supply_rows]
 for h in house_land:
+    # a house stands on open ground: it takes the place of no other landmark and encloses no point (the plan's tables have - in both columns)
+    if h['replaces']!='-': errors.append(f'landmarks/{h["id"]}: replaces is {h["replaces"]!r}, a house replaces nothing (-)')
+    if h['encloses']!='-': errors.append(f'landmarks/{h["id"]}: encloses is {h["encloses"]!r}, a house encloses nothing (-)')
     if used.count(h['id'])!=1: errors.append(f'landmarks/{h["id"]}: {used.count(h["id"])} supplyHouses rows name this house, there must be one')
 if errors:
     print('\n'.join(errors)); sys.exit(1)

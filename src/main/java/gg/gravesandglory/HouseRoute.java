@@ -25,9 +25,11 @@ final class HouseRoute {
     }
     /** (x, z) is in the footprint of the house, grown by pad blocks. */
     static boolean inside(int cx,int cz,double x,double z,double pad){return Math.abs(x-(cx+.5))<=WIDTH/2+pad&&Math.abs(z-(cz+.5))<=DEPTH/2+pad;}
-    /** The segment from a to b does not cross the footprint (a little grown: the walls) of the house. */
+    /** How far the footprint is grown for the segment test: less than the half width of a unit (0.3), so that a knight pressed against an outer wall, its centre 0.3 off it, stands outside the grown footprint with room to spare, not on its edge. */
+    static final double GROW=0.25;
+    /** The segment from a to b does not cross the footprint (a little grown: the walls) of the house. A segment that starts inside the footprint always crosses it. */
     static boolean clear(int cx,int cz,double ax,double az,double bx,double bz){
-        double x0=cx+.5-WIDTH/2-0.3,x1=cx+.5+WIDTH/2+0.3,z0=cz+.5-DEPTH/2-0.3,z1=cz+.5+DEPTH/2+0.3;
+        double x0=cx+.5-WIDTH/2-GROW,x1=cx+.5+WIDTH/2+GROW,z0=cz+.5-DEPTH/2-GROW,z1=cz+.5+DEPTH/2+GROW;
         double t0=0,t1=1,dx=bx-ax,dz=bz-az;
         double[] p={-dx,dx,-dz,dz},q={ax-x0,x1-ax,az-z0,z1-az};
         for(int i=0;i<4;i++){
@@ -39,11 +41,12 @@ final class HouseRoute {
     }
     static double dist(double ax,double az,double bx,double bz){return Math.hypot(ax-bx,az-bz);}
 
-    /** The first point a unit at (hx, hz) walks to on its way to (gx, gz): null when the goal is not in the footprint of the house, when the unit is in it already or within ARRIVE of the gate it would use
-     *  (it goes straight to the goal), else the shortest way to a gate: straight to the point outside it, or round one or two corners of the house first. lateral moves the point along the wall (a unit's place in the file,
-     *  so that twenty knights do not all aim at one block). */
+    /** The first point a unit at (hx, hz) walks to on its way to (gx, gz): null when the goal is not in the footprint of the house, when the unit is in it already (no segment from inside is clear) or within ARRIVE of the gate it would use
+     *  (it goes straight to the goal), else the shortest way to a gate: straight to the point outside it, or round one corner of the house first (two corners are never shorter: from any point outside the house one corner and a gate are
+     *  enough, because the side gate lies on the east wall and the front gate on the south; 399384 starts of both turns and three lateral offsets give the same first point with and without a second corner). lateral moves the point along the
+     *  wall (a unit's place in the file, so that twenty knights do not all aim at one block). */
     static double[] next(int cx,int cz,int rotation,double hx,double hz,double gx,double gz,double lateral){
-        if(!inside(cx,cz,gx,gz,0.5)||inside(cx,cz,hx,hz,0.3))return null;
+        if(!inside(cx,cz,gx,gz,0.5))return null;
         double m=MARGIN,xs=WIDTH/2+m,zs=DEPTH/2+m;
         double[][] corner={{cx+.5-xs,cz+.5-zs},{cx+.5+xs,cz+.5-zs},{cx+.5+xs,cz+.5+zs},{cx+.5-xs,cz+.5+zs}};
         double best=Double.MAX_VALUE;double[] first=null;
@@ -54,12 +57,6 @@ final class HouseRoute {
             for(int i=0;i<4;i++){
                 double[] c1=corner[i];if(!clear(cx,cz,hx,hz,c1[0],c1[1]))continue;
                 if(clear(cx,cz,c1[0],c1[1],p[0],p[1])){double c=dist(hx,hz,c1[0],c1[1])+dist(c1[0],c1[1],p[0],p[1]);if(c<best){best=c;first=c1;}}
-                for(int j=0;j<4;j++){
-                    if(j==i)continue;double[] c2=corner[j];
-                    if(!clear(cx,cz,c1[0],c1[1],c2[0],c2[1])||!clear(cx,cz,c2[0],c2[1],p[0],p[1]))continue;
-                    double c=dist(hx,hz,c1[0],c1[1])+dist(c1[0],c1[1],c2[0],c2[1])+dist(c2[0],c2[1],p[0],p[1]);
-                    if(c<best){best=c;first=c1;}
-                }
             }
         }
         return first;
