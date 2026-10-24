@@ -210,6 +210,8 @@ setblock ~0 ~0 ~9 minecraft:andesite
 setblock ~0 ~0 ~10 minecraft:stone_bricks
 fill ~0 ~0 ~11 ~0 ~0 ~13 minecraft:andesite
 setblock ~0 ~0 ~14 minecraft:stone_bricks
+# the void corner beside the lane: the map's own ground at (0, 15), so that the yard grade of Arena.yard does not lay a lone cell of path in it (a dirt path block between full blocks draws as a pit)
+setblock ~0 ~0 ~15 minecraft:snow_block
 fill ~1 ~0 ~6 ~2 ~0 ~6 minecraft:andesite
 fill ~1 ~0 ~7 ~13 ~0 ~8 minecraft:spruce_planks
 fill ~1 ~0 ~9 ~6 ~0 ~11 minecraft:spruce_planks

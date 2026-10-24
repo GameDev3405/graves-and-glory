@@ -1098,132 +1098,52 @@ setblock ~26 ~2 ~0 minecraft:oak_fence[north=false,east=true,south=false,west=tr
 setblock ~30 ~2 ~3 minecraft:oak_fence[north=true,east=false,south=true,west=false]
 setblock ~30 ~2 ~8 minecraft:oak_fence[north=true,east=false,south=true,west=false]
 
-# the hay roof: bales of hay in half-block steps, a dark oak stair at the eave, rotten patches of moss and dried kelp, three holes that show the rafters
+# the hay roof: bales of hay in long courses along the ridge in half-block steps, a dark oak stair at the eave, a cap of dried kelp on the ridge, a few patches of repair boards and moss, three holes that show the rafters
 fill ~0 ~4 ~0 ~30 ~4 ~0 minecraft:dark_oak_stairs[facing=south,half=bottom]
-fill ~0 ~4 ~1 ~1 ~4 ~1 minecraft:dried_kelp_block
-setblock ~0 ~4 ~10 minecraft:hay_block[axis=x]
+fill ~0 ~4 ~1 ~20 ~4 ~1 minecraft:hay_block[axis=x]
+fill ~0 ~4 ~10 ~21 ~4 ~10 minecraft:hay_block[axis=x]
 fill ~0 ~4 ~11 ~21 ~4 ~11 minecraft:dark_oak_stairs[facing=north,half=bottom]
-fill ~1 ~4 ~10 ~4 ~4 ~10 minecraft:dried_kelp_block
-setblock ~2 ~4 ~1 minecraft:hay_block[axis=x]
-setblock ~3 ~4 ~1 minecraft:hay_block[axis=y]
-fill ~4 ~4 ~1 ~8 ~4 ~1 minecraft:dried_kelp_block
-fill ~5 ~4 ~10 ~8 ~4 ~10 minecraft:hay_block[axis=x]
-setblock ~9 ~4 ~1 minecraft:hay_block[axis=y]
-fill ~9 ~4 ~10 ~10 ~4 ~10 minecraft:dried_kelp_block
-setblock ~10 ~4 ~1 minecraft:dried_kelp_block
-fill ~11 ~4 ~1 ~12 ~4 ~1 minecraft:hay_block[axis=x]
-setblock ~11 ~4 ~10 minecraft:moss_block
-setblock ~12 ~4 ~10 minecraft:hay_block[axis=x]
-setblock ~13 ~4 ~1 minecraft:hay_block[axis=y]
-fill ~13 ~4 ~10 ~14 ~4 ~10 minecraft:hay_block[axis=y]
-setblock ~14 ~4 ~1 minecraft:dried_kelp_block
-setblock ~15 ~4 ~1 minecraft:hay_block[axis=y]
-fill ~15 ~4 ~10 ~18 ~4 ~10 minecraft:hay_block[axis=x]
-fill ~16 ~4 ~1 ~20 ~4 ~1 minecraft:hay_block[axis=x]
-fill ~19 ~4 ~10 ~20 ~4 ~10 minecraft:hay_block[axis=y]
 setblock ~21 ~4 ~1 minecraft:dark_oak_planks
-setblock ~21 ~4 ~10 minecraft:hay_block[axis=x]
-fill ~22 ~4 ~1 ~23 ~4 ~1 minecraft:dried_kelp_block
+fill ~22 ~4 ~1 ~23 ~4 ~1 minecraft:hay_block[axis=x]
 setblock ~25 ~4 ~1 minecraft:moss_block
-fill ~26 ~4 ~1 ~29 ~4 ~1 minecraft:hay_block[axis=x]
-setblock ~29 ~4 ~10 minecraft:hay_block[axis=y]
+fill ~26 ~4 ~1 ~30 ~4 ~1 minecraft:hay_block[axis=x]
+fill ~29 ~4 ~10 ~30 ~4 ~10 minecraft:hay_block[axis=x]
 fill ~29 ~4 ~11 ~30 ~4 ~11 minecraft:dark_oak_stairs[facing=north,half=bottom]
-setblock ~30 ~4 ~1 minecraft:hay_block[axis=y]
-setblock ~30 ~4 ~10 minecraft:hay_block[axis=x]
 fill ~0 ~5 ~2 ~2 ~5 ~2 minecraft:hay_block[axis=x]
 fill ~0 ~5 ~3 ~1 ~5 ~3 minecraft:hay_block[axis=x]
-fill ~0 ~5 ~8 ~2 ~5 ~9 minecraft:dried_kelp_block
+fill ~0 ~5 ~8 ~9 ~5 ~9 minecraft:hay_block[axis=x]
 setblock ~2 ~5 ~3 minecraft:dark_oak_planks
 fill ~3 ~5 ~2 ~3 ~5 ~3 minecraft:spruce_planks
-fill ~3 ~5 ~8 ~9 ~5 ~8 minecraft:hay_block[axis=x]
-setblock ~3 ~5 ~9 minecraft:hay_block[axis=y]
-fill ~4 ~5 ~2 ~4 ~5 ~3 minecraft:hay_block[axis=x]
-fill ~4 ~5 ~9 ~9 ~5 ~9 minecraft:hay_block[axis=x]
-setblock ~5 ~5 ~2 minecraft:dried_kelp_block
-setblock ~5 ~5 ~3 minecraft:hay_block[axis=x]
-fill ~7 ~5 ~2 ~8 ~5 ~3 minecraft:dried_kelp_block
-fill ~9 ~5 ~2 ~11 ~5 ~2 minecraft:hay_block[axis=x]
-setblock ~9 ~5 ~3 minecraft:hay_block[axis=y]
-fill ~10 ~5 ~3 ~11 ~5 ~3 minecraft:hay_block[axis=x]
+fill ~4 ~5 ~2 ~5 ~5 ~3 minecraft:hay_block[axis=x]
+fill ~7 ~5 ~2 ~14 ~5 ~2 minecraft:hay_block[axis=x]
+fill ~7 ~5 ~3 ~11 ~5 ~3 minecraft:hay_block[axis=x]
 setblock ~10 ~5 ~8 minecraft:moss_block
-setblock ~10 ~5 ~9 minecraft:dried_kelp_block
-fill ~11 ~5 ~8 ~13 ~5 ~9 minecraft:hay_block[axis=x]
-setblock ~12 ~5 ~2 minecraft:moss_block
-fill ~13 ~5 ~2 ~14 ~5 ~2 minecraft:dried_kelp_block
-setblock ~13 ~5 ~3 minecraft:dried_kelp_block
+setblock ~10 ~5 ~9 minecraft:hay_block[axis=x]
+fill ~11 ~5 ~8 ~21 ~5 ~9 minecraft:hay_block[axis=x]
+setblock ~13 ~5 ~3 minecraft:hay_block[axis=x]
 setblock ~14 ~5 ~3 minecraft:spruce_planks
-fill ~14 ~5 ~8 ~15 ~5 ~8 minecraft:dried_kelp_block
-fill ~14 ~5 ~9 ~15 ~5 ~9 minecraft:hay_block[axis=x]
 setblock ~15 ~5 ~2 minecraft:spruce_planks
 setblock ~15 ~5 ~3 minecraft:dark_oak_planks
-fill ~16 ~5 ~2 ~19 ~5 ~2 minecraft:hay_block[axis=x]
-setblock ~16 ~5 ~3 minecraft:dried_kelp_block
-fill ~16 ~5 ~8 ~17 ~5 ~9 minecraft:moss_block
-fill ~17 ~5 ~3 ~19 ~5 ~3 minecraft:hay_block[axis=x]
-fill ~18 ~5 ~8 ~21 ~5 ~8 minecraft:hay_block[axis=x]
-setblock ~18 ~5 ~9 minecraft:dried_kelp_block
-setblock ~19 ~5 ~9 minecraft:hay_block[axis=x]
-fill ~20 ~5 ~2 ~20 ~5 ~3 minecraft:moss_block
-setblock ~20 ~5 ~9 minecraft:hay_block[axis=y]
+fill ~16 ~5 ~2 ~20 ~5 ~3 minecraft:hay_block[axis=x]
 fill ~21 ~5 ~2 ~21 ~5 ~3 minecraft:spruce_planks
-setblock ~21 ~5 ~9 minecraft:hay_block[axis=x]
-setblock ~22 ~5 ~2 minecraft:hay_block[axis=y]
+fill ~22 ~5 ~2 ~23 ~5 ~2 minecraft:hay_block[axis=x]
 setblock ~22 ~5 ~3 minecraft:spruce_planks
-fill ~23 ~5 ~2 ~23 ~5 ~3 minecraft:dried_kelp_block
-fill ~24 ~5 ~3 ~29 ~5 ~3 minecraft:dried_kelp_block
-fill ~25 ~5 ~2 ~27 ~5 ~2 minecraft:hay_block[axis=x]
-fill ~28 ~5 ~2 ~30 ~5 ~2 minecraft:dried_kelp_block
+fill ~23 ~5 ~3 ~29 ~5 ~3 minecraft:hay_block[axis=x]
+fill ~25 ~5 ~2 ~30 ~5 ~2 minecraft:hay_block[axis=x]
 fill ~29 ~5 ~8 ~30 ~5 ~8 minecraft:hay_block[axis=x]
 setblock ~29 ~5 ~9 minecraft:hay_block[axis=x]
 setblock ~30 ~5 ~3 minecraft:spruce_planks
 setblock ~30 ~5 ~9 minecraft:spruce_planks
-setblock ~0 ~6 ~4 minecraft:dried_kelp_block
-fill ~0 ~6 ~5 ~0 ~6 ~6 minecraft:hay_block[axis=x]
-setblock ~0 ~6 ~7 minecraft:hay_block[axis=y]
-fill ~1 ~6 ~4 ~5 ~6 ~5 minecraft:hay_block[axis=x]
-setblock ~1 ~6 ~6 minecraft:hay_block[axis=x]
-fill ~1 ~6 ~7 ~2 ~6 ~7 minecraft:dried_kelp_block
-setblock ~2 ~6 ~6 minecraft:moss_block
-setblock ~3 ~6 ~6 minecraft:dried_kelp_block
-setblock ~3 ~6 ~7 minecraft:hay_block[axis=x]
-fill ~4 ~6 ~6 ~5 ~6 ~7 minecraft:hay_block[axis=x]
-fill ~6 ~6 ~4 ~8 ~6 ~5 minecraft:dried_kelp_block
-setblock ~6 ~6 ~6 minecraft:hay_block[axis=y]
-fill ~6 ~6 ~7 ~8 ~6 ~7 minecraft:hay_block[axis=x]
-fill ~7 ~6 ~6 ~8 ~6 ~6 minecraft:dried_kelp_block
-fill ~9 ~6 ~4 ~11 ~6 ~4 minecraft:hay_block[axis=x]
-setblock ~9 ~6 ~5 minecraft:moss_block
-fill ~9 ~6 ~6 ~10 ~6 ~7 minecraft:hay_block[axis=x]
-setblock ~10 ~6 ~5 minecraft:dried_kelp_block
-fill ~11 ~6 ~5 ~11 ~6 ~7 minecraft:hay_block[axis=x]
-setblock ~12 ~6 ~5 minecraft:moss_block
-fill ~12 ~6 ~6 ~12 ~6 ~7 minecraft:hay_block[axis=x]
-setblock ~13 ~6 ~4 minecraft:moss_block
-fill ~13 ~6 ~5 ~14 ~6 ~7 minecraft:hay_block[axis=x]
-setblock ~14 ~6 ~4 minecraft:hay_block[axis=y]
-fill ~15 ~6 ~4 ~18 ~6 ~6 minecraft:hay_block[axis=x]
-setblock ~15 ~6 ~7 minecraft:dried_kelp_block
-setblock ~16 ~6 ~7 minecraft:moss_block
-fill ~17 ~6 ~7 ~18 ~6 ~7 minecraft:dried_kelp_block
-fill ~19 ~6 ~4 ~20 ~6 ~5 minecraft:moss_block
-fill ~19 ~6 ~6 ~20 ~6 ~7 minecraft:hay_block[axis=x]
+fill ~0 ~6 ~4 ~11 ~6 ~4 minecraft:hay_block[axis=x]
+fill ~0 ~6 ~5 ~30 ~6 ~5 minecraft:dried_kelp_block
+fill ~0 ~6 ~6 ~20 ~6 ~7 minecraft:hay_block[axis=x]
+fill ~13 ~6 ~4 ~20 ~6 ~4 minecraft:hay_block[axis=x]
 setblock ~21 ~6 ~4 minecraft:spruce_planks
-setblock ~21 ~6 ~5 minecraft:dark_oak_planks
 setblock ~21 ~6 ~6 minecraft:spruce_planks
 setblock ~21 ~6 ~7 minecraft:hay_block[axis=x]
-fill ~22 ~6 ~4 ~24 ~6 ~4 minecraft:moss_block
-fill ~22 ~6 ~5 ~27 ~6 ~5 minecraft:dried_kelp_block
-fill ~22 ~6 ~6 ~23 ~6 ~6 minecraft:hay_block[axis=x]
-fill ~24 ~6 ~6 ~27 ~6 ~6 minecraft:dried_kelp_block
-setblock ~25 ~6 ~4 minecraft:hay_block[axis=x]
-setblock ~26 ~6 ~4 minecraft:hay_block[axis=y]
-setblock ~27 ~6 ~4 minecraft:hay_block[axis=x]
-fill ~28 ~6 ~4 ~29 ~6 ~5 minecraft:dried_kelp_block
-setblock ~28 ~6 ~6 minecraft:hay_block[axis=x]
-fill ~29 ~6 ~6 ~29 ~6 ~7 minecraft:dried_kelp_block
-setblock ~30 ~6 ~4 minecraft:hay_block[axis=x]
-setblock ~30 ~6 ~5 minecraft:hay_block[axis=y]
-fill ~30 ~6 ~6 ~30 ~6 ~7 minecraft:hay_block[axis=x]
+fill ~22 ~6 ~4 ~30 ~6 ~4 minecraft:hay_block[axis=x]
+fill ~22 ~6 ~6 ~30 ~6 ~6 minecraft:hay_block[axis=x]
+fill ~29 ~6 ~7 ~30 ~6 ~7 minecraft:hay_block[axis=x]
 
 # the gable ends under the roof (x 0 and x 30)
 fill ~0 ~4 ~2 ~0 ~4 ~4 minecraft:spruce_planks
@@ -1242,7 +1162,7 @@ setblock ~30 ~5 ~5 minecraft:dark_oak_planks
 setblock ~30 ~5 ~6 minecraft:oak_planks
 setblock ~30 ~5 ~7 minecraft:spruce_planks
 
-# the hay roof: bales of hay in half-block steps, a dark oak stair at the eave, rotten patches of moss and dried kelp, three holes that show the rafters: holes
+# the hay roof: bales of hay in long courses along the ridge in half-block steps, a dark oak stair at the eave, a cap of dried kelp on the ridge, a few patches of repair boards and moss, three holes that show the rafters: holes
 setblock ~24 ~3 ~1 minecraft:dark_oak_log[axis=z]
 setblock ~6 ~4 ~2 minecraft:dark_oak_log[axis=z]
 setblock ~12 ~4 ~3 minecraft:dark_oak_log[axis=z]

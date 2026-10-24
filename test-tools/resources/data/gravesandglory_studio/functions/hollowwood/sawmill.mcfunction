@@ -231,7 +231,7 @@ setblock ~3 ~0 ~6 minecraft:dark_oak_planks
 fill ~3 ~0 ~7 ~4 ~0 ~7 minecraft:spruce_planks
 setblock ~3 ~0 ~8 minecraft:spruce_planks
 setblock ~3 ~0 ~9 minecraft:podzol
-setblock ~3 ~0 ~10 minecraft:dirt_path
+setblock ~3 ~0 ~10 minecraft:coarse_dirt
 fill ~3 ~0 ~11 ~3 ~0 ~12 minecraft:coarse_dirt
 setblock ~3 ~0 ~13 minecraft:packed_mud
 setblock ~4 ~0 ~5 minecraft:dark_oak_planks
@@ -287,7 +287,7 @@ setblock ~11 ~0 ~13 minecraft:coarse_dirt
 setblock ~12 ~0 ~6 minecraft:dark_oak_planks
 fill ~12 ~0 ~7 ~12 ~0 ~8 minecraft:spruce_planks
 fill ~12 ~0 ~9 ~13 ~0 ~9 minecraft:coarse_dirt
-setblock ~12 ~0 ~10 minecraft:dirt_path
+setblock ~12 ~0 ~10 minecraft:coarse_dirt
 setblock ~12 ~0 ~11 minecraft:spruce_planks
 fill ~12 ~0 ~12 ~12 ~0 ~13 minecraft:oak_planks
 setblock ~13 ~0 ~5 minecraft:dark_oak_planks
@@ -300,7 +300,7 @@ fill ~14 ~0 ~5 ~14 ~0 ~6 minecraft:spruce_planks
 setblock ~14 ~0 ~7 minecraft:dark_oak_planks
 fill ~14 ~0 ~8 ~14 ~0 ~9 minecraft:spruce_planks
 setblock ~14 ~0 ~12 minecraft:spruce_planks
-setblock ~14 ~0 ~13 minecraft:dirt_path
+setblock ~14 ~0 ~13 minecraft:coarse_dirt
 fill ~15 ~0 ~5 ~15 ~0 ~6 minecraft:coarse_dirt
 fill ~15 ~0 ~7 ~16 ~0 ~7 minecraft:podzol
 fill ~15 ~0 ~8 ~15 ~0 ~9 minecraft:coarse_dirt
@@ -315,23 +315,23 @@ fill ~16 ~0 ~11 ~17 ~0 ~11 minecraft:spruce_planks
 fill ~16 ~0 ~12 ~16 ~0 ~13 minecraft:coarse_dirt
 fill ~17 ~0 ~5 ~17 ~0 ~6 minecraft:packed_mud
 setblock ~17 ~0 ~7 minecraft:coarse_dirt
-setblock ~17 ~0 ~9 minecraft:dirt_path
+setblock ~17 ~0 ~9 minecraft:coarse_dirt
 setblock ~17 ~0 ~10 minecraft:coarse_dirt
 setblock ~17 ~0 ~12 minecraft:podzol
 setblock ~17 ~0 ~13 minecraft:coarse_dirt
 fill ~18 ~0 ~5 ~18 ~0 ~6 minecraft:coarse_dirt
 fill ~18 ~0 ~7 ~18 ~0 ~9 minecraft:packed_mud
-setblock ~18 ~0 ~10 minecraft:dirt_path
+setblock ~18 ~0 ~10 minecraft:coarse_dirt
 setblock ~18 ~0 ~11 minecraft:podzol
 setblock ~18 ~0 ~12 minecraft:coarse_dirt
-setblock ~18 ~0 ~13 minecraft:dirt_path
+setblock ~18 ~0 ~13 minecraft:coarse_dirt
 setblock ~19 ~0 ~5 minecraft:packed_mud
 setblock ~19 ~0 ~6 minecraft:spruce_planks
 setblock ~19 ~0 ~7 minecraft:oak_planks
 setblock ~19 ~0 ~8 minecraft:spruce_planks
 fill ~19 ~0 ~9 ~19 ~0 ~10 minecraft:coarse_dirt
 setblock ~19 ~0 ~11 minecraft:spruce_planks
-setblock ~19 ~0 ~12 minecraft:dirt_path
+setblock ~19 ~0 ~12 minecraft:coarse_dirt
 setblock ~19 ~0 ~13 minecraft:podzol
 
 # the yard to the east and the way out of the aisle: trodden earth, bark and gravel, a worn track from the aisle to the south-east edge, the log yard on podzol
