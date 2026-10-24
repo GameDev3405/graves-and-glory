@@ -496,13 +496,15 @@ final class AbilityLevelChecks {
                     boolean before = Statuses.has(b, v.mob, "weaken") && Statuses.has(b, v.mob, "bleed") && Statuses.has(b, v.mob, "mark") && Abilities.SECOND_AT.containsKey(a);
                     b.clearProgression(); // what startRound, Campaign.returnLobby and switchMap call at a round boundary
                     boolean after = !Statuses.has(b, v.mob, "weaken") && !Statuses.has(b, v.mob, "bleed") && !Statuses.has(b, v.mob, "mark") && Statuses.held() == 0 && Abilities.SECOND_AT.isEmpty() && Abilities.RAISED.isEmpty() && near(Statuses.factorOut(b, v.mob), 1) && near(Statuses.markFactor(b, dawn, v.mob), 1);
-                    Statuses.apply(b, a, v.mob, "bleed", 400, 0); blow(b, a, v.mob, "melee"); // and the server stopping (SERVER_STOPPING: Abilities.clearBanners) lets every store go
+                    Statuses.apply(b, a, v.mob, "bleed", 400, 0); blow(b, a, v.mob, "melee"); // and the server stopping (SERVER_STOPPING: Abilities.serverStopping) lets every store go
                     Abilities.SECOND_AT.put(a, b.time + 100); Abilities.RAISED.put(a, new ArrayList<>(List.of(v)));
                     boolean laid = Statuses.held() == 1 && Statuses.has(b, v.mob, "bleed") && !Abilities.SECOND_AT.isEmpty() && !Abilities.RAISED.isEmpty();
-                    Abilities.clearBanners(b);
+                    int wipes0 = Statuses.wipes; Abilities.clearBanners(b); // the banners' call at a round boundary leaves the statuses to Battle.clearProgression, which empties them once
+                    boolean bannersOnly = Statuses.wipes == wipes0 && Statuses.held() == 1 && Statuses.has(b, v.mob, "bleed");
+                    Abilities.serverStopping(b);
                     // has() reads nothing once the store has no owner, so only held() sees ON itself: a release that forgot ON.clear() would keep every statused troop of a stopped world
                     int kept = Statuses.held(), keptCooldowns = Abilities.SECOND_AT.size(), keptCounts = Abilities.RAISED.size();
-                    boolean released = kept == 0 && !Statuses.has(b, v.mob, "bleed") && keptCooldowns == 0 && keptCounts == 0;
+                    boolean released = bannersOnly && kept == 0 && !Statuses.has(b, v.mob, "bleed") && keptCooldowns == 0 && keptCounts == 0;
                     Statuses.clear(b);
                     Statuses.apply(b, a, v.mob, "bleed", 400, 0); // a store claimed by one battle lets go of its troops when another asks (Statuses.on, the owner != b branch; null is a battle that is not b)
                     Abilities.SECOND_AT.put(a, b.time + 100); Abilities.RAISED.put(a, new ArrayList<>(List.of(v)));
@@ -511,7 +513,7 @@ final class AbilityLevelChecks {
                     int heldNow = Statuses.held(), cooldownsNow = Abilities.SECOND_AT.size(), countsNow = Abilities.RAISED.size();
                     boolean swapped = heldNow == 0 && cooldownsNow == 0 && countsNow == 0;
                     Statuses.clear(b);
-                    Phase2Checks.report("p2-status-clear-round", before && after && laid && released && held && swapped, "a weaken, a bleed, a mark and a Shield bash cooldown stand=" + before + "; after Battle.clearProgression (a new round) none does and the store is empty=" + after + "; after Abilities.clearBanners (the server stopping) a bleed, a cooldown and a Death knell count laid again stood=" + laid + " and are gone (statused troops kept " + kept + ", cooldowns " + keptCooldowns + ", counts " + keptCounts + ", want 0 each)=" + released + " (review M7); a store holding a bleed, a cooldown and a count=" + held + " lets all three go when another battle asks for it (the owner != b branch: kept " + heldNow + ", " + cooldownsNow + " and " + countsNow + ", want 0 each)=" + swapped);
+                    Phase2Checks.report("p2-status-clear-round", before && after && laid && released && held && swapped, "a weaken, a bleed, a mark and a Shield bash cooldown stand=" + before + "; after Battle.clearProgression (a new round) none does and the store is empty=" + after + "; after Abilities.clearBanners (the banners' call at every round boundary) the bleed still stands, Battle.clearProgression being the one wipe=" + bannersOnly + "; after Abilities.serverStopping (SERVER_STOPPING) a bleed, a cooldown and a Death knell count laid again stood=" + laid + " and are gone (statused troops kept " + kept + ", cooldowns " + keptCooldowns + ", counts " + keptCounts + ", want 0 each)=" + released + " (review M7); a store holding a bleed, a cooldown and a count=" + held + " lets all three go when another battle asks for it (the owner != b branch: kept " + heldNow + ", " + cooldownsNow + " and " + countsNow + ", want 0 each)=" + swapped);
                     clearFixture(b, "clear"); next(b, 54);
                 }
                 case 54 -> { // p2-stun-no-cast (review M2): a Shield bash on a Sunweaver and on a Lord Marshal: neither mends nor plants until the stun ends
@@ -561,7 +563,39 @@ final class AbilityLevelChecks {
                     boolean still = horizontal(v.mob.getVelocity()) < 1e-9;
                     Phase2Checks.report("p2-bleed-velocity", sp != null && sv != null && quiet && hurt && due && still, "a bleed tick from a live Risen on the seated commander hurts him=" + hurt + " and leaves his server velocity as it was with no velocity update sent=" + quiet + "; one with a knock already due this tick still sends it=" + due + "; on a troop the blow's knock is taken back=" + still);
                     p.setHealth(p.getMaxHealth()); p.changeGameMode(GameMode.SPECTATOR);
-                    Statuses.clear(b); clearFixture(b, "bleed velocity"); next(b, 99);
+                    Statuses.clear(b); clearFixture(b, "bleed velocity"); next(b, 58);
+                }
+                case 58 -> { // p2-status-order (whole-plan review M4): eight bleeds laid last-spawned first, then one tick
+                    a = post(b, dawn, "revenant", 0, -6, 0, true); traits();
+                    group.clear();
+                    for (int i = 0; i < 8; i++) { var d = dummy(b, dusk, -7 + i * 2, 0); d.mob.setHealth(1f); group.add(d); }
+                    for (int i = group.size() - 1; i >= 0; i--) Statuses.apply(b, a, group.get(i).mob, "bleed", 100, 0);
+                    next(b, 59);
+                }
+                case 59 -> {
+                    if (since(b) < 8) return; // the striker is tracked by the commander by now
+                    List<Integer> ids = new ArrayList<>(), walk = new ArrayList<>(), died = new ArrayList<>();
+                    for (var u : group) ids.add(u.mob.getId());
+                    List<Integer> ascending = new ArrayList<>(ids); Collections.sort(ascending);
+                    for (var e : Statuses.ordered(Statuses.on(b))) if (ids.contains(e.getKey().getId())) walk.add(e.getKey().getId());
+                    for (var u : group) Statuses.on(b).get(u.mob).get("bleed").nextTick = b.time - 1; // every beat due now
+                    long t = b.time; int sends0 = RankSync.changeSends;
+                    Statuses.tick(b);
+                    for (var l : Veterans.LOG) if (l.kind().equals("kill") && l.time() == t) { var m = java.util.regex.Pattern.compile("#(\\d+)").matcher(l.detail()); if (m.find() && ids.contains(Integer.parseInt(m.group(1)))) died.add(Integer.parseInt(m.group(1))); }
+                    RankSync.changed(b, a); // a rank is out for the boundary check that follows
+                    n1 = RankSync.changeSends - sends0;
+                    boolean spawnedInOrder = ids.equals(ascending), walked = walk.equals(ascending), allDead = group.stream().noneMatch(u -> u.mob.isAlive()), fell = died.equals(ascending);
+                    Phase2Checks.report("p2-status-order", spawnedInOrder && walked && allDead && fell, "eight bleeds laid on eight troops spawned in order (ids " + ids + ", in order=" + spawnedInOrder + "), the last spawned first: the tick walks the store as " + walk + " (want ascending " + ascending + ")=" + walked + "; one tick with every beat due killed all eight=" + allDead + " and their kills were logged in the order " + died + " (want ascending)=" + fell);
+                    flag = false; clearFixture(b, "order"); next(b, 60);
+                }
+                case 60 -> { // p2-boundary-once: the real pair a round end and the next round start make (Campaign.returnLobby, then Battle.startRound; Phase1Checks.skirmish does both)
+                    var p = sp(b); if (p == null) return;
+                    if (!flag) { flag = true; n0 = Statuses.wipes; t0 = RankSync.clearSends; }
+                    if (!Phase1Checks.skirmish(b, p, 0, 1, "normal")) { if (since(b) > 200) { Phase2Checks.report("p2-boundary-once", false, "the second round never started"); next(b, 99); } return; }
+                    int wipes = Statuses.wipes - n0, clears = (int) (RankSync.clearSends - t0), takers = 0;
+                    for (var pl : b.server.getPlayerManager().getPlayerList()) if (net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(pl, RankSync.CHANNEL)) takers++;
+                    Phase2Checks.report("p2-boundary-once", wipes == 2 && clears == takers && takers > 0 && n1 > 0, "a round end and the next round start emptied the status store " + wipes + " time(s) (want 2: Battle.clearProgression once at each boundary, Abilities.clearBanners leaving the statuses to it), and sent " + clears + " rank_v1 CLEAR packet(s) to " + takers + " client(s) that take the channel (want 1 each: the end of the round clears the ranks it sent, the start finds none to clear); a rank was out beforehand (" + n1 + " send(s) at the soldier's level ups and one set)");
+                    next(b, 99);
                 }
                 default -> {}
             }

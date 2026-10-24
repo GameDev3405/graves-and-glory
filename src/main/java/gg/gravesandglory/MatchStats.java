@@ -64,7 +64,16 @@ public final class MatchStats {
         if (r.armour() > 1) gear.add("A " + roman(r.armour()));
         return reached + threes + " / " + (gear.isEmpty() ? "no gear" : String.join(" ", gear));
     }
-    static String roman(int n) { return switch (n) { case 1 -> "I"; case 2 -> "II"; case 3 -> "III"; default -> Integer.toString(n); }; }
+    private static final int[] ROMAN_VALUE = {1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1};
+    private static final String[] ROMAN_TEXT = {"M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"};
+    /** The one Roman numeral every tier and level on screen uses (gear tiers, trait tiers, mastery levels, the refusal copy, the results page): I, II, III, IV and on; nothing for 0 or less, so a House with no trait tier draws no numeral. Above 3999 the digits. */
+    public static String roman(int n) {
+        if (n <= 0) return "";
+        if (n >= 4000) return Integer.toString(n);
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < ROMAN_VALUE.length; i++) while (n >= ROMAN_VALUE[i]) { out.append(ROMAN_TEXT[i]); n -= ROMAN_VALUE[i]; }
+        return out.toString();
+    }
     /** Share of matches won, 0 when no match was played. */
     public static double winRate(int wins, int matches) {
         return matches == 0 ? 0 : (double) wins / matches;

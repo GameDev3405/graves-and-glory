@@ -63,7 +63,7 @@ public final class LevelMath {
     public static String refusal(int tier, int highestLevelSeen, int boughtTier, int gold, int price, boolean here, String track, String levelName) {
         if (boughtTier >= tier) return "Already bought";
         if (tier > maxTier() || highestLevelSeen < tier) return "Needs a level-" + tier + " " + (levelName == null || levelName.isEmpty() ? "soldier" : levelName);
-        if (boughtTier < tier - 1) return "Buy " + (ARMOUR.equals(track) ? "Armour" : "Weapon") + " " + roman(tier - 1) + " first";
+        if (boughtTier < tier - 1) return "Buy " + (ARMOUR.equals(track) ? "Armour" : "Weapon") + " " + MatchStats.roman(tier - 1) + " first";
         if (!here) return "Buy at your barracks or a held point";
         if (gold < price) return "Not enough gold";
         return "";
@@ -200,9 +200,5 @@ public final class LevelMath {
             if (r.tier() <= tier && (best == null || r.tier() > best.tier())) best = r;
         }
         return best != null ? best : lowest;
-    }
-
-    static String roman(int tier) {
-        return switch (tier) { case 1 -> "I"; case 2 -> "II"; case 3 -> "III"; default -> Integer.toString(tier); };
     }
 }

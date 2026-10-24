@@ -46,7 +46,7 @@ final class RankChecks {
         GravesAndGlory.Unit gk2, vk3, gk1, vr3, mage;
         final List<GravesAndGlory.Unit> tiers = new ArrayList<>(), crowd = new ArrayList<>();
         volatile boolean syncSet, syncBack, sceneB, mageUp, crowdUp, vetSet, cleared; boolean syncReported;
-        volatile int registerBefore, clearBefore;
+        volatile int registerBefore, clearBefore, onceQuiet = -1, onceLoud = -1, onceWant; volatile boolean onceDone;
         int marks, seenAt = -1, t0;
         long markTime;
         final Map<Entity, Integer> counts = new HashMap<>();
@@ -248,6 +248,18 @@ final class RankChecks {
                         var x = e(c, crowd.get(0)); var l = last(x);
                         boolean ok = RankSync.RANKS.isEmpty() && RankSync.clearSends > clearBefore && RankSync.client(x) == null && l != null && l.look().armourTier() == 1 && l.look().level() == 1;
                         report("p2-rank-clear", ok, "after Battle.clearProgression the server sent " + (RankSync.clearSends - clearBefore) + " CLEAR packet(s); this client's store holds " + RankSync.RANKS.size() + " rank(s) (want 0) and a level-3 Squire now draws at " + (l == null ? "-" : l.look().level() + "/" + l.look().weaponTier() + "/" + l.look().armourTier()) + " (want 1/1/1)");
+                        server(c, b -> { // p2-rank-clear-once: with nothing sent since that clear a second one sends nothing; after a rank change the next one does
+                            int base = RankSync.clearSends; b.clearProgression(); onceQuiet = RankSync.clearSends - base;
+                            stage(crowd.get(0), 2); b.clearProgression(); onceLoud = RankSync.clearSends - base - onceQuiet;
+                            onceWant = 0; for (var pl : b.server.getPlayerManager().getPlayerList()) if (ServerPlayNetworking.canSend(pl, RankSync.CHANNEL)) onceWant++;
+                            onceDone = true; });
+                        wait = 0; cs = 14;
+                    }
+                }
+                case 14 -> { wait++;
+                    if (onceDone && wait == 20) {
+                        boolean ok = onceQuiet == 0 && onceWant > 0 && onceLoud == onceWant && RankSync.RANKS.isEmpty();
+                        report("p2-rank-clear-once", ok, "a second Battle.clearProgression with no rank sent since the last one sent " + onceQuiet + " CLEAR packet(s) (want 0); after a rank change the next one sent " + onceLoud + " to the " + onceWant + " client(s) that take rank_v1 (want 1 each) and this client's store holds " + RankSync.RANKS.size() + " rank(s) (want 0)");
                         server(c, b -> serverDone = true); end(c);
                     }
                 }

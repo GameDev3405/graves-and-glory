@@ -196,7 +196,7 @@ final class CampScreen extends ArmyScreen {
         Spec.HousesRow row=null;for(var r:Spec.HOUSES)if(r.id().equals(h.get("house").getAsString()))row=r;if(row==null)return;
         int tier=h.get("tier").getAsInt();String name=row.name().toUpperCase(java.util.Locale.ROOT);
         line(g,name,x,y,0xff000000|row.accent(),w);int at=x+textRenderer.getWidth(name)+8;
-        line(g,(tier>0?"Trait "+DarkUi.roman(tier)+" held "+h.get("traitSeconds").getAsInt()+"s":"No trait tier")+"   +"+h.get("shards").getAsInt()+" shards   +"+h.get("renown").getAsInt()+" Renown",at,y,DarkUi.PAPER,x+w-at);
+        line(g,(tier>0?"Trait "+MatchStats.roman(tier)+" held "+h.get("traitSeconds").getAsInt()+"s":"No trait tier")+"   +"+h.get("shards").getAsInt()+" shards   +"+h.get("renown").getAsInt()+" Renown",at,y,DarkUi.PAPER,x+w-at);
     }
     /** One troop type's levels row of the battle report (in-match progression design 7): the troop's name in its House's accent, then what it reached, its level-3 count and the gear its army bought (MatchStats.levelText; in the two-column form levelShort, right-aligned in its cell). */
     void levelRow(DrawContext g,JsonObject r,int x,int y,int cell,boolean compact){

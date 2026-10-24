@@ -38,4 +38,23 @@ class ReleaseIntegrityChecks(unittest.TestCase):
                 with self.subTest(extra=extra),self.assertRaises(RuntimeError):
                     validate_player_jar(self.fixture(root,extra=extra),expected)
 
+    def test_every_harness_class_is_refused(self):
+        """Every class under test-tools/java and every standalone check trips the jar leak guard, so a new test class cannot be forgotten (tools/release_config.py, forbidden)."""
+        expected = {'modId':'gravesandglory','version':'0.3.1','sourceSha256':'expected'}
+        tools = pathlib.Path(__file__).resolve().parents[1]
+        harness = tools / 'java' / 'gg' / 'gravesandglory'
+        names = ['gg/gravesandglory/' + p.relative_to(harness).with_suffix('').as_posix() for p in harness.rglob('*.java')]
+        names += ['gg/gravesandglory/' + p.stem for p in (tools / 'standalone').glob('*.java')]
+        self.assertGreater(len(names), 25)
+        leaked = []
+        with tempfile.TemporaryDirectory() as root:
+            for name in sorted(names):
+                for entry in (name + '.class', name + '$Inner.class'):
+                    try:
+                        validate_player_jar(self.fixture(root,extra=entry),expected)
+                        leaked.append(entry)
+                    except RuntimeError:
+                        pass
+        self.assertEqual(leaked, [], 'harness classes the player-jar guard lets through')
+
 if __name__=='__main__':unittest.main(verbosity=2)

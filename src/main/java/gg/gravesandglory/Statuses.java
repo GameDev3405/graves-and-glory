@@ -55,8 +55,8 @@ final class Statuses {
     private static final Map<LivingEntity, Map<String, Status>> ON = new IdentityHashMap<>();
     private static GravesAndGlory.Battle owner;
 
-    /** Harness counters: bleed ticks dealt, knockbacks thrown and the strength of the last one, cleanses that took something off. */
-    static int bleedTicks, knocks, cleanses;
+    /** Harness counters: bleed ticks dealt, knockbacks thrown and the strength of the last one, cleanses that took something off, and how many times the store was emptied (clear and release). */
+    static int bleedTicks, knocks, cleanses, wipes;
     static double lastKnock;
 
     /** The store of a battle: a different battle than the owner's takes over an empty one. Package-private for the harness (p2-status-clear-round reads the branch). */
@@ -68,8 +68,9 @@ final class Statuses {
     /** How many entities carry a status now, whatever battle owns the store (the harness: has() and get() read nothing once owner is null, so only this sees ON itself). */
     static int held() { return ON.size(); }
 
-    /** The server stops (Abilities.clearBanners, from SERVER_STOPPING): every static store lets go, the battle it belonged to included. */
+    /** The server stops (Abilities.serverStopping, from SERVER_STOPPING): every static store lets go, the battle it belonged to included. A round boundary does not call this; Battle.clearProgression empties the store there, once (clear). */
     static void release() {
+        wipes++;
         ON.clear();
         owner = null;
         Abilities.clearRound();
@@ -133,7 +134,7 @@ final class Statuses {
         var map = on(b);
         if (b.time % 200 == 0) Abilities.prune(b);
         if (map.isEmpty()) return;
-        for (var e : new ArrayList<>(map.entrySet())) {
+        for (var e : ordered(map)) {
             LivingEntity target = e.getKey();
             if (!target.isAlive() || target.isRemoved() || target instanceof PlayerEntity p && p.isSpectator()) { map.remove(target); continue; }
             var mine = e.getValue();
@@ -147,6 +148,17 @@ final class Statuses {
             if (mine.isEmpty()) { map.remove(target); continue; }
             if (b.time % 10 == 0) show(b, target, mine);
         }
+    }
+
+    /**
+     * The store's entries in the order tick walks them: ascending entity id, which is the order the troops were spawned in. The store itself is an
+     * IdentityHashMap, whose own order follows each entity's identity hash and so changes from one JVM run to the next; two bleeds that kill on the same
+     * tick, and the level ups and feed lines their kills cause, would resolve differently in two runs of the same seeded match. A copy, so tick may remove from the store while it walks.
+     */
+    static List<Map.Entry<LivingEntity, Map<String, Status>>> ordered(Map<LivingEntity, Map<String, Status>> map) {
+        var list = new ArrayList<>(map.entrySet());
+        list.sort(Comparator.comparingInt(e -> e.getKey().getId()));
+        return list;
     }
 
     /**
@@ -186,8 +198,9 @@ final class Statuses {
         }
     }
 
-    /** A round boundary: every status goes, and lane B's per-soldier ability state (Abilities.clearRound). */
+    /** A round boundary (Battle.clearProgression: startRound, Campaign.returnLobby, switchMap): every status goes, and lane B's per-soldier ability state (Abilities.clearRound). The store now belongs to this battle. */
     static void clear(GravesAndGlory.Battle b) {
+        wipes++;
         ON.clear();
         owner = b;
         Abilities.clearRound();

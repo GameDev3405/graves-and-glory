@@ -308,6 +308,15 @@ for sheet,keys in (('mastery',('kills','matches')),('renown',('points',))):
 for r in data['renown']:
     if r['reward']=='legendary' and r['points']!=data['recruitment'][0]['renownForLegendary']: errors.append(f'renown/{r["id"]}: the legendary level must sit at recruitment.renownForLegendary')
 difficulties={b['id'] for b in data['botCommand']}
+# Bot gear buying (LevelMath.botPicks): the priority is one of the three orders it knows (any other word silently behaves as banner), the reserve is a count of
+# cheapest-troop prices kept back (a negative one would budget more gold than the army holds), and the top tier is one the rarities sheet prices (gearPrice2, gearPrice3).
+GEAR_PRIORITIES=('banner','role','open')
+PRICED_GEAR_TIERS=3
+for b in data['botCommand']:
+    name=f'botCommand/{b["id"]}'
+    if b['gearPriority'] not in GEAR_PRIORITIES: errors.append(f'{name}/gearPriority: {b["gearPriority"]!r} is not one of {", ".join(GEAR_PRIORITIES)}')
+    if isinstance(b['gearReserveTroops'],bool) or not isinstance(b['gearReserveTroops'],int) or b['gearReserveTroops']<0: errors.append(f'{name}/gearReserveTroops: {b["gearReserveTroops"]!r} must be a whole number of troops, 0 or more')
+    if isinstance(b['gearMaxTier'],bool) or not isinstance(b['gearMaxTier'],int) or not 1<=b['gearMaxTier']<=PRICED_GEAR_TIERS: errors.append(f'{name}/gearMaxTier: {b["gearMaxTier"]!r} must be a whole tier from 1 to {PRICED_GEAR_TIERS} (the tiers rarities.gearPrice2 and gearPrice3 price)')
 for b in data['botBanners']:
     name=f'botBanners/{b["id"]}';parts=b['id'].split('_')
     mixed=parts[0]=='mix' and len(parts)==4

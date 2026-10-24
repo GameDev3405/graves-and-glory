@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * rank_v1, server to client, one packet per soldier: VarInt entity id, byte level (1 to 3), byte weaponTier (1 to 3), byte armourTier (1 to 3).
  * An entity id of -1 (CLEAR, the three bytes 0) tells the client to forget every rank: a round boundary (startRound, Campaign.returnLobby,
- * switchMap). It is sent as stance_v1 is: to a player who starts tracking a troop (ahead of the entity's spawn packet; the client keeps the rank
+ * switchMap), sent only when a rank has gone out since the last one (out), so a returnLobby and the startRound after it send one. It is sent as stance_v1 is: to a player who starts tracking a troop (ahead of the entity's spawn packet; the client keeps the rank
  * for an id it does not have yet), to a player whose client registers the channel only after its trackers started (a guest joining a battle in
  * progress gets every tracked soldier's rank), and on each change to every player tracking the soldier (changed: level ups and gear, Task 4 and 5).
  * The client drops an entry when its entity unloads and empties the store on disconnect.
@@ -55,6 +55,13 @@ public final class RankSync {
         return buf;
     }
 
+    /**
+     * Whether any rank has gone to a client since the last CLEAR went out. Only then does a client hold a rank, so only then is there anything to clear: a
+     * boundary right after another (Campaign.returnLobby, then the next round's startRound) sends its clients one CLEAR, not two. A connection starts with no
+     * ranks (the client empties its store on disconnect), so none is owed to a client that joins between boundaries. Server thread.
+     */
+    static volatile boolean out;
+
     /** Sends a unit's rank to each of these players that takes rank_v1. Returns how many it sent. */
     static int send(GravesAndGlory.Unit u, Collection<ServerPlayerEntity> players) {
         Rank r = of(u);
@@ -64,6 +71,7 @@ public final class RankSync {
             ServerPlayNetworking.send(p, CHANNEL, packet(u.mob.getId(), r));
             sent++;
         }
+        if (sent > 0) out = true;
         return sent;
     }
 
@@ -80,9 +88,10 @@ public final class RankSync {
         return sent;
     }
 
-    /** A round boundary: every client that takes rank_v1 forgets every rank (Battle.clearProgression). */
+    /** A round boundary: every client that takes rank_v1 forgets every rank (Battle.clearProgression), unless none was sent since the last time (out). */
     static void clear(GravesAndGlory.Battle b) {
-        if (b == null) return;
+        if (b == null || !out) return;
+        out = false;
         for (ServerPlayerEntity p : b.server.getPlayerManager().getPlayerList()) {
             if (!ServerPlayNetworking.canSend(p, CHANNEL)) continue;
             ServerPlayNetworking.send(p, CHANNEL, packet(CLEAR, new Rank(0, 0, 0)));

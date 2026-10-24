@@ -353,11 +353,8 @@ final class Abilities {
 
     /**
      * Whether an on-hit row may fire now. A row with a cooldown (the Harpoon's 60 ticks, Ensnare's 80) fires once and then waits it out, on the troop's own
-     * abilityAt; a row with none (brine, frostshot) always fires.
+     * abilityAt, or for his level-3 row (second) on the store (SECOND_AT); a row with none (brine, frostshot) always fires.
      */
-    static boolean offCooldown(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row) { return offCooldown(b, u, row, false); }
-
-    /** The same for either of the soldier's rows: his level-3 row (second) waits on the store (SECOND_AT), not on abilityAt. */
     static boolean offCooldown(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, boolean second) {
         if (row.cooldownTicks() <= 0) return true;
         if (b.time < readyAt(u, second)) return false;
@@ -368,11 +365,8 @@ final class Abilities {
     /**
      * Brassjaw's slam: the row's amount of the attacker's base hit to every other enemy within the row's radius of the target (secondary hits, so their
      * own counters, traits, auras and commander factors apply and no on-hit ability runs again), and each one that took it and lives is thrown back
-     * from the target's spot with the row's knockback (a structure is not moved).
+     * from the target's spot with the row's knockback (a structure is not moved). For either of the soldier's rows (second: his level-3 row, on the store's cooldown).
      */
-    static void slam(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity primary, Spec.AbilitiesRow row) { slam(b, u, primary, row, false); }
-
-    /** The same for either of the soldier's rows (second: his level-3 row, on the store's cooldown). */
     static void slam(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity primary, Spec.AbilitiesRow row, boolean second) {
         if (row.cooldownTicks() > 0 && b.time < readyAt(u, second)) return; // the Brute's sweep: at most once per cooldown
         Vec3d at = primary.getPos();
@@ -425,10 +419,7 @@ final class Abilities {
         b.world.playSound(null, u.mob.getBlockPos(), SoundEvents.ENTITY_POLAR_BEAR_WARNING, SoundCategory.HOSTILE, 1f, .8f);
     }
 
-    /** Whether a pounce troop's next blow is the pounce: its row's mechanic, the row's radius or more blocks walked since its last attack (Unit.travelSinceAttack), and its cooldown up. auraFactor and pounce read it. */
-    static boolean pounceReady(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row) { return pounceReady(b, u, row, false); }
-
-    /** The same for either of the soldier's rows (second: his level-3 row, the Drowned Raider's Boarding rush, on the store's cooldown). */
+    /** Whether a pounce troop's next blow is the pounce: its row's mechanic, the row's radius or more blocks walked since its last attack (Unit.travelSinceAttack), and its cooldown up. For either of the soldier's rows (second: his level-3 row, the Drowned Raider's Boarding rush, on the store's cooldown). auraFactor and pounce read it. */
     static boolean pounceReady(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, boolean second) {
         return row.mechanic().equals("pounce") && u.travelSinceAttack >= row.radius() && b.time >= readyAt(u, second);
     }
@@ -436,10 +427,7 @@ final class Abilities {
     /** Whether either of the soldier's rows is a pounce, so his run since his last attack is measured (unitTick). */
     static boolean pounces(GravesAndGlory.Unit u) { return row(u).mechanic().equals("pounce") || second(u).mechanic().equals("pounce"); }
 
-    /** A blow of a pounce troop landed: when it was the pounce (its x amount was auraFactor's) the cooldown starts, the hound growls and clay dust bursts at its feet; either way its run ends (travelSinceAttack back to 0). */
-    static void pounce(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, String kind) { pounce(b, u, row, kind, false); }
-
-    /** The same for either of the soldier's rows (second: his level-3 row, on the store's cooldown). */
+    /** A blow of a pounce troop landed: when it was the pounce (its x amount was auraFactor's) the cooldown starts, the hound growls and clay dust bursts at its feet; either way its run ends (travelSinceAttack back to 0). For either of the soldier's rows (second: his level-3 row, on the store's cooldown). */
     static void pounce(GravesAndGlory.Battle b, GravesAndGlory.Unit u, Spec.AbilitiesRow row, String kind, boolean second) {
         if (kind.equals("melee") && pounceReady(b, u, row, second)) {
             spend(u, second, b.time + (row.cooldownTicks() > 0 ? row.cooldownTicks() : D.abilityCooldownTicks()));
@@ -840,15 +828,24 @@ final class Abilities {
 
     /**
      * Every banner falls now, the Oath Banners and the Forward Supply banners, and every Mist cloud goes (startRound, returnLobby, switchMap, and the server
-     * stopping). Lane B's static stores let go too (Statuses.release: the statuses, SECOND_AT and RAISED), so a world closed and opened again keeps no old troop.
+     * stopping). It leaves the statuses and the level-3 cooldown stores alone: a round boundary empties those once, through Battle.clearProgression
+     * (Statuses.clear), and the server stopping lets them go in serverStopping.
      */
     static void clearBanners(GravesAndGlory.Battle b) {
-        Statuses.release();
         for (var banner : b.banners) lower(b, banner);
         b.banners.clear();
         for (var st : new ArrayList<>(b.structures)) st.discard();
         b.structures.clear();
         b.mists.clear();
+    }
+
+    /**
+     * The server is stopping (SERVER_STOPPING): the banners and clouds come down, and lane B's static stores let go too (Statuses.release: the statuses, SECOND_AT
+     * and RAISED, and the battle that owned them), so a world closed and opened again keeps no old troop.
+     */
+    static void serverStopping(GravesAndGlory.Battle b) {
+        clearBanners(b);
+        Statuses.release();
     }
 
     /**

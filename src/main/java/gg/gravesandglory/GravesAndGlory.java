@@ -57,7 +57,7 @@ public final class GravesAndGlory implements ModInitializer {
         // The commander actives, once. (The horn cues above are command feedback for the commanding player alone: no horn sounds in the field.)
         Commander.register();
         // A planted banner block must not outlive the battle in the save.
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {if(battle!=null)Abilities.clearBanners(battle);});
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {if(battle!=null)Abilities.serverStopping(battle);});
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             // Only the dedicated Graves and Glory save belongs to this mod.
             if (java.util.Set.of("Graves and Glory", "Bannerbound").contains(server.getSaveProperties().getLevelName())) battle = new Battle(server);

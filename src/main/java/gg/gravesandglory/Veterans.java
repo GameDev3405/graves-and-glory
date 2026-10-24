@@ -299,7 +299,7 @@ final class Veterans {
         if (why.isEmpty()) {
             int price = LevelMath.price(t.rarity(), tier);
             purchase(b, s, t, track, tier, price);
-            said = t.name() + ": " + (LevelMath.ARMOUR.equals(track) ? "Armour " : "Weapon ") + LevelMath.roman(tier) + " bought for " + price + " gold";
+            said = t.name() + ": " + (LevelMath.ARMOUR.equals(track) ? "Armour " : "Weapon ") + MatchStats.roman(tier) + " bought for " + price + " gold";
         }
         log(b, "buy", null, why.isEmpty() ? 1 : 0, cmd + ": " + said);
         if (p != null) b.campaign.notice(p.getUuid(), said);
@@ -464,12 +464,12 @@ final class Veterans {
     /** The soldier's damage factor from his level and worn weapon tier (design 4.1): 1 + levels.damagePct + gearTiers.weaponPct. 1 for no unit. */
     static double damageFactor(GravesAndGlory.Unit u) { return u == null ? 1 : LevelMath.damageFactor(u.level, u.weaponTier); }
 
-    /** The same factor for a troop whose main output is no hit (design 4.1): the Sunweaver's heal amount and the Mist Caller's cloud duration. Lane B applies it in Task 6. */
+    /** The same factor for a troop whose main output is no hit (design 4.1): the Sunweaver's heal amount and the Mist Caller's cloud duration. Abilities applies it: mend (the heal amount) and cloud (the duration). */
     static double outputFactor(GravesAndGlory.Unit u) { return damageFactor(u); }
 
     // ---- the round boundary ----
 
-    /** A round boundary: every credit entry, every Armoury, the round's tallies and every pending feed line go. */
+    /** A round boundary: every credit entry, every Armoury, the round's tallies and every pending feed line go. The tallies are replaced, not emptied (see TALLY): whoever reads a round's numbers after it ends must hold the Tally before this runs, as BotSimulation does on each running tick. */
     static void clear(GravesAndGlory.Battle b) {
         b.credit.clear();
         b.creditTrimmedAt = 0;
