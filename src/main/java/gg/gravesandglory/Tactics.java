@@ -104,7 +104,46 @@ final class Tactics {
                 return new Vec3d(x,best.elevation()+1,best.z()+offset);
             }
         }
+        return houseGate(u,goal);
+    }
+    /** A goal inside the walled yard of a supply house (Phase 3 Task 8b): the point just outside a gate (HouseRoute) until the unit stands at it, then the goal itself, so that the units do not stand at the wall. Any other goal comes back as it is. */
+    static Vec3d houseGate(GravesAndGlory.Unit u,Vec3d goal){
+        for(var h:Spec.SUPPLYHOUSES){
+            if(h.map()!=CampaignMaps.selected)continue;
+            for(var r:Spec.LANDMARKS)if(r.id().equals(h.landmark())){
+                double[] p=HouseRoute.next(r.x(),r.z(),r.rotation(),u.mob.getX(),u.mob.getZ(),goal.x,goal.z,(u.slot%5-2)*0.8);
+                if(p!=null)return new Vec3d(p[0],goal.y,p[1]);
+            }
+        }
         return goal;
+    }
+    /** How many times a stuck unit was set on the step beside it (StepHop); the route harness prints it. GRAVES_NO_HOP=1 leaves the hop out (the control of the house marches). */
+    static int stepHops;static final boolean HOP=System.getenv("GRAVES_NO_HOP")==null;
+    /** The unit stood still for the stuck time: when the cell beside it that is nearest its waypoint is one block up (a step under a low skirt of leaves, which a jump cannot make), it is set on that cell. */
+    static boolean stepHop(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d goal){
+        if(!HOP)return false;
+        var w=battle.world;var mob=u.mob;
+        int[] c=StepHop.up(mob.getX(),mob.getY(),mob.getZ(),goal.x,goal.z,new StepHop.Probe(){
+            public boolean open(int x,int y,int z){var p=new BlockPos(x,y,z);return w.getBlockState(p).getCollisionShape(w,p).isEmpty()&&w.getFluidState(p).isEmpty();}
+            public boolean floor(int x,int y,int z){var p=new BlockPos(x,y,z);return w.getBlockState(p).isSideSolidFullSquare(w,p,Direction.UP);}
+        });
+        if(c==null)return false;
+        if(TRACE_HOPS)System.out.println("[Graves and Glory] step hop of slot "+u.slot+" from ("+String.format("%.1f,%.1f,%.1f",mob.getX(),mob.getY(),mob.getZ())+") to ("+c[0]+","+c[1]+","+c[2]+") on its way to ("+String.format("%.1f,%.1f",goal.x,goal.z)+")");
+        mob.refreshPositionAndAngles(c[0]+.5,c[1],c[2]+.5,mob.getYaw(),mob.getPitch());mob.setVelocity(Vec3d.ZERO);stepHops++;
+        PINS.remove(u);
+        return true;
+    }
+    static final boolean TRACE_HOPS=System.getenv("GRAVES_ROUTE_TRACE")!=null;
+    /** Where a walking unit stood when it last moved more than a block, and since when: a unit that jumps and sidesteps in place (the sidestep moves it a few tenths each beat, which zeroes the still count of walk) is still pinned. */
+    static final class Pin{Vec3d anchor;long since,seen;}
+    static final Map<GravesAndGlory.Unit,Pin> PINS=new WeakHashMap<>();
+    /** The unit has been walking for five seconds (100 ticks) and has not left a block-wide patch. A unit that stopped walking (arrived, fighting) starts again when it walks on. */
+    static boolean pinned(GravesAndGlory.Unit u,long time){
+        var p=PINS.computeIfAbsent(u,k->new Pin());var at=u.mob.getPos();
+        if(p.anchor==null||time-p.seen>30||at.squaredDistanceTo(p.anchor)>1.0){p.anchor=at;p.since=time;}
+        p.seen=time;
+        if(time-p.since<100)return false;
+        p.since=time;return true;
     }
     static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed){
         MobEntity mob=u.mob;Vec3d goal=route(u,destination);
@@ -116,10 +155,14 @@ final class Tactics {
         if(delta.length()>N.waypointDistance())goal=mob.getPos().add(delta.normalize().multiply(N.waypointDistance()));
         if(mob.squaredDistanceTo(u.lastPosition)<.03)u.stuckTicks+=10;else u.stuckTicks=0;
         u.lastPosition=mob.getPos();
-        if(u.stuckTicks>N.stuckSeconds()*20){
-            double sign=(u.slot%2==0?1:-1);Vec3d sideways=new Vec3d(-delta.z,0,delta.x).normalize().multiply(3*sign);
-            goal=mob.getPos().add(delta.normalize().multiply(4)).add(sideways);u.stuckTicks=0;u.nextPath=0;
-            if(mob.isOnGround())mob.getJumpControl().setActive();
+        boolean pinned=pinned(u,time);
+        if(u.stuckTicks>N.stuckSeconds()*20||pinned){
+            if(stepHop(battle,u,goal)){u.stuckTicks=0;u.nextPath=0;}
+            else if(u.stuckTicks>N.stuckSeconds()*20){
+                double sign=(u.slot%2==0?1:-1);Vec3d sideways=new Vec3d(-delta.z,0,delta.x).normalize().multiply(3*sign);
+                goal=mob.getPos().add(delta.normalize().multiply(4)).add(sideways);u.stuckTicks=0;u.nextPath=0;
+                if(mob.isOnGround())mob.getJumpControl().setActive();
+            }
         }
         int x=(int)Math.floor(goal.x),z=(int)Math.floor(goal.z),y=Arena.ground(x,z)+1;
         if(Arena.river(x,z)&&Arena.ground(x,z)<64){x=(int)Arena.riverX(z)+(x>Arena.riverX(z)?11:-11);y=Arena.ground(x,z)+1;}
