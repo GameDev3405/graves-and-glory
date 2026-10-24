@@ -37,6 +37,9 @@ Sources (sizes in model pixels, y down, the ground at y 24, angles in degrees; a
   art/troops/<troop>.json  troop, rig, size?, density? (1 to 4, 1 unless it says), bones {<name>: {pivot?, boxes?, scale?}}, hunch? (biped), idleArms?,
                            parts[] of {part, name?, bone?, uv, offset?, rotation?, scale?, stages?}, skins {<stage>: file},
                            veteran?, glow?, glowFrom?, outer?, weapon (an id or none), hand, portrait.
+                           faces? {count (2 to 8), slots [[x, y] x count-1], card?, fixed?, note?}: the troop's face variants (below).
+  art/troops/<troop>_faces.png  the face patches of a faces troop: count patches stacked, each the head box's rectangle of the
+                           sheet (32x16 px for the 8x8x8 head, times the density), the six faces opaque and nothing else painted.
   art/troops/<troop>_s<stage>_r.png  the relief layer of that skin: the troop's size, alpha 0 or 255, an opaque texel
                            stands one texel proud of its face (design 3).
   art/troops/<troop>_veteran.png  the veteran trim (in-match progression design 4.4): an overlay drawn over whichever
@@ -57,7 +60,16 @@ density is art/team/team_cloth.json {"density": N} (1 unless it exists); the bon
 by it. A troop of density above 1 also gets a one-texel-a-px twin of each of its PNGs, <name>_far.png (a D x D block takes its
 most common colour and is clear unless at least half of it is painted), which the client binds past TroopDepth.NEAR_BLOCKS and
 on the portrait cards drawn under 48 px a block. The relief mesher voxels are a texel wide in the plane and one old cell
-(a px, times the box's scale) proud along the normal, whatever the density; the glow caps count px of lit area (lit texels / D squared).
+(a px, times the box's scale) proud along the normal, whatever the density; the glow caps count a troop's lit texels over D squared and a cube weapon's over (D / 2) squared (a 2x weapon counts as ever).
+
+Face variants (texel-3 faces design F2, .superpowers/sdd/2026-10-17-phase-2-houses/task-5d-faces-design.md): a troop with a "faces"
+block gets its head box split into count sibling bones under `head`, face_v0 (the rig's head box where it was) and face_v1..
+(the same box with its uv at slot 1..), each carrying "variants": [k]; the client shows only the bone of the variant a troop
+wears (TroopFaces: a hash of its UUID; a card and a pinned troop wear card and fixed). The patches of <troop>_faces.png are
+pasted into every own skin (patch 0 over the head's faces, patch k at slot k), so the far twin, the glow and later the _n and _s
+follow the sheet with no draw call and no texture added; a slot's 32x16 rectangle must be free in every sheet of the troop (no
+box uv, no skin paint, no trim, no glow), and a face bone takes no relief. Variant 0 renders as the head always did. The model
+says {"faces": {count, card, fixed?}} after "portrait"; card is the face a card portrait wears (the pinned face unless it says).
 
 Proportions are baked here, never scaled at runtime: a bone scale k scales the bone's boxes about its pivot (origin
 k*origin + size*(k-1)/2, dilation size*(k-1)/2, the UV size stays the integer size) and moves its children's pivots by
@@ -112,15 +124,20 @@ MODEL_KEYS = ('format', 'troop', 'rig', 'size', 'bones', 'skins', 'veteran', 'gl
               'hand', 'idleArms', 'portrait')
 
 
-def model_keys(density):
-    """The keys of a troop model in order: MODEL_KEYS, with "density" right after "size" when the troop's is not 1."""
+def model_keys(density, faces=False):
+    """The keys of a troop model in order: MODEL_KEYS, with "density" right after "size" when the troop's is not 1 and "faces" last
+    for a troop with face variants."""
+    keys = MODEL_KEYS + ('faces',) if faces else MODEL_KEYS
     if density == TROOP_DENSITY:
-        return MODEL_KEYS
-    at = MODEL_KEYS.index('size') + 1
-    return MODEL_KEYS[:at] + ('density',) + MODEL_KEYS[at:]
+        return keys
+    at = keys.index('size') + 1
+    return keys[:at] + ('density',) + keys[at:]
 VANILLA_KEYS = ('parent', 'elements', 'textures', 'display', 'overrides', 'gui_light', 'ambientocclusion')
 TROOP_KEYS = {'troop', 'rig', 'size', 'density', 'bones', 'hunch', 'idleArms', 'parts', 'skins', 'veteran', 'glow', 'glowFrom',
-              'outer', 'weapon', 'hand', 'portrait', 'note'}
+              'outer', 'weapon', 'hand', 'portrait', 'faces', 'note'}
+FACES_KEYS = {'count', 'slots', 'card', 'fixed', 'note'}
+FACES_MIN, FACES_MAX = 2, 8   # the faces a troop may have, the canonical one included
+FACES_SUFFIX = '_faces'       # art/troops/<troop>_faces.png
 ENTRY_KEYS = {'part', 'name', 'bone', 'uv', 'offset', 'rotation', 'scale', 'stages', 'note'}
 PART_KEYS = {'part', 'bone', 'team', 'tag', 'pivot', 'rotation', 'scale', 'boxes', 'note'}
 WEAPON_KEYS = {'weapon', 'density', 'thickness', 'grip', 'pull', 'nocks', 'note'}
@@ -534,11 +551,13 @@ def bake_bones(rig, what, overrides=None, parts=(), hunch=0.0, folded=True, stag
 
 
 def clean_bone(b, sheet):
-    return {'name': b['name'], 'parent': b['parent'], 'part': b['part'], 'team': b['team'], 'tag': b['tag'],
-            'stages': b['stages'], 'sheet': list(sheet), 'pivot': [num(c) for c in b['pivot']],
-            'rotation': [num(c) for c in b['rotation']],
-            'boxes': [{'origin': [num(c) for c in x['origin']], 'size': x['size'], 'uv': x['uv'], 'mirror': x['mirror'],
-                       'dilation': [num(c) for c in x['dilation']]} for x in b['boxes']]}
+    out = {'name': b['name'], 'parent': b['parent'], 'part': b['part'], 'team': b['team'], 'tag': b['tag'], 'stages': b['stages']}
+    if b.get('variants'):   # a face bone of a faces troop: only the bones of a troop with faces say it
+        out['variants'] = b['variants']
+    out.update({'sheet': list(sheet), 'pivot': [num(c) for c in b['pivot']], 'rotation': [num(c) for c in b['rotation']],
+                'boxes': [{'origin': [num(c) for c in x['origin']], 'size': x['size'], 'uv': x['uv'], 'mirror': x['mirror'],
+                           'dilation': [num(c) for c in x['dilation']]} for x in b['boxes']]})
+    return out
 
 
 def texture_id(name):
@@ -1139,7 +1158,9 @@ def cube_weapon_outputs(cat, wid):
            '%s/%s_n.png' % (TEXTURES, base): png_bytes(normal), '%s/%s_s.png' % (TEXTURES, base): png_bytes(spec)}
     if glow:
         out['%s/%s_e.png' % (TEXTURES, base)] = png_bytes(lit_full)
-    return out, (lit(glow) / density ** 2 if glow else 0), stats
+    # a weapon's lit texels keep the unit they always had, a texel of its default density 2 counting 1 (so a 2x weapon's cap is no looser
+    # than it was before the texel-3 work); at another density the same lit area counts the same: texels / (density / 2) squared
+    return out, (lit(glow) * WEAPON_DENSITY ** 2 / density ** 2 if glow else 0), stats
 
 
 def weapon_outputs(cat, wid):
@@ -1542,6 +1563,9 @@ def relief_mesh(cat: Catalog, model: dict, relief: Image.Image, troop: str, key:
         if hit is None:
             fail('%s pixel (%d, %d) lies on no skin box face' % (what, x, y))
         b, i, d = hit
+        if b.get('variants'):
+            fail('%s pixel (%d, %d) lies on the face bone %s: faces are flat paint, and relief belongs on the helm, the hair or a beard '
+                 'volume' % (what, x, y, b['name']))
         if 0 in b['boxes'][i]['size']:
             fail('%s pixel (%d, %d) lies on box %d of bone %s, which has no depth' % (what, x, y, i, b['name']))
         g = grids.setdefault((b['name'], i), Grid(b['boxes'][i], density))
@@ -1670,7 +1694,7 @@ def relief_template(cat: Catalog, troop: str) -> Image.Image:
                 colour = tuple(int(c * RELIEF_TINT + 255 * (1 - RELIEF_TINT)) for c in shaded) + (255,)
                 for y in range(y0, y1):
                     for x in range(x0, x1):
-                        no = flat or boxes.hit(b['name'], i, *g.cell_box(g.cell_of(g.faces[d], x, y)))
+                        no = flat or bool(b.get('variants')) or boxes.hit(b['name'], i, *g.cell_box(g.cell_of(g.faces[d], x, y)))
                         px[x, y] = RELIEF_RED + (255,) if no and (x // density + y // density) % 3 == 0 else colour
     return im
 
@@ -1862,6 +1886,77 @@ def contact(shots: Path, out: Path) -> None:
     print('build_skins: %s %dx%d, %d of %d shots' % (out.name, sheet.width, sheet.height, found, sum(len(h['troops']) for h in houses)))
 
 
+def parse_faces(src, troop, size):
+    """The "faces" block of a troop source checked for its shape: {'count', 'slots', 'card', 'fixed'} ('fixed' is None for none), or
+    None for a troop without one. Where the slots lie on the sheet is split_faces' check."""
+    if 'faces' not in src:
+        return None
+    block = src['faces']
+    what = troop + ' faces'
+    keys(block, FACES_KEYS, what)
+    count = block.get('count')
+    if isinstance(count, bool) or not isinstance(count, int) or not FACES_MIN <= count <= FACES_MAX:
+        fail('%s: count must be a whole number from %d to %d (the canonical face counts), not %s'
+             % (what, FACES_MIN, FACES_MAX, json.dumps(count)))
+    slots = block.get('slots')
+    if not isinstance(slots, list) or len(slots) != count - 1:
+        fail('%s: slots must list %d slots [x, y] (patches 1 to %d: the top left of each, in px of the sheet), not %s'
+             % (what, count - 1, count - 1, json.dumps(slots)))
+    slots = [vec(slot, 2, '%s slot %d' % (what, n), ints=True, minimum=0) for n, slot in enumerate(slots, 1)]
+    out = {}
+    for key, default in (('fixed', None), ('card', None)):
+        value = block.get(key, default)
+        if key == 'card' and value is None:
+            value = out['fixed'] if out['fixed'] is not None else 0
+        if value is not None and (isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < count):
+            fail('%s: %s must be a face from 0 to %d, not %s' % (what, key, count - 1, json.dumps(value)))
+        out[key] = value
+    return {'count': count, 'slots': slots, 'card': out['card'], 'fixed': out['fixed']}
+
+
+def rects_overlap(a, b):
+    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+
+
+def split_faces(bones, faces, troop, size):
+    """The bones of a faces troop: the first box of `head` (the rig's head box, which keeps its place and its scale) moves into
+    a child face_v0, and face_v1.. are the same box with its uv at slot 1.., each bone "variants": [k]; they follow `head` and `head`
+    stays the pivot the clips, the helm bones and helm_off hang from. Any other box of `head` (a beard volume) stays on it and shows
+    in every variant. Every slot is a free rectangle of the head box's size (32x16 px for 8x8x8): inside the sheet, clear of the head's
+    own, of the slots before it and of every other skin box."""
+    at = next((i for i, b in enumerate(bones) if b['name'] == 'head'), None)
+    if at is None or not bones[at]['boxes']:
+        fail('%s: faces need a head bone with a box to split' % troop)
+    if any(b['name'].startswith('face_v') for b in bones):
+        fail('%s: a bone is already called face_v..., the name of a face bone' % troop)
+    head = bones[at]
+    box0 = head['boxes'][0]
+    sx, sy, sz = box0['size']
+    fw, fh = 2 * (sx + sz), sz + sy   # the rectangle of the head box on the sheet: its six faces unfold inside it
+    (u0, v0), (width, height) = box0['uv'], size
+    taken = [('the head (box at uv (%d, %d))' % (u0, v0), (u0, v0, u0 + fw, v0 + fh))]
+    for n, (x, y) in enumerate(faces['slots'], 1):
+        r = (x, y, x + fw, y + fh)
+        if r[2] > width or r[3] > height:
+            fail('%s: faces slot %d at (%d, %d) leaves the %dx%d sheet (a slot is %dx%d px)' % (troop, n, x, y, width, height, fw, fh))
+        boxes = [('the %s box at uv (%d, %d)' % (b['name'], box['uv'][0], box['uv'][1]), rect)
+                 for b in bones if not b['team'] for i, box in enumerate(b['boxes']) if not (b is head and i == 0)
+                 for rect in footprint(box['uv'], box['size'])]
+        for label, other in taken + boxes:
+            if rects_overlap(r, other):
+                fail('%s: faces slot %d at (%d, %d) overlaps %s' % (troop, n, x, y, label))
+        taken.append(('slot %d at (%d, %d)' % (n, x, y), r))
+    kids = []
+    for k in range(faces['count']):
+        box = {key: list(v) if isinstance(v, list) else v for key, v in box0.items()}
+        if k:
+            box['uv'] = list(faces['slots'][k - 1])
+        kids.append({'name': 'face_v%d' % k, 'parent': 'head', 'part': '', 'team': False, 'tag': '', 'stages': [], 'variants': [k],
+                     'pivot': [0.0, 0.0, 0.0], 'rotation': [0.0, 0.0, 0.0], 'boxes': [box]})
+    head['boxes'] = head['boxes'][1:]
+    return bones[:at + 1] + kids + bones[at + 1:]
+
+
 def bake(cat: Catalog, troop: str) -> dict:
     """The generated model of one troop (models/troop/<troop>.json), every rule checked."""
     src = cat.troops.get(troop)
@@ -1880,6 +1975,9 @@ def bake(cat: Catalog, troop: str) -> dict:
         fail('%s: rig %s is not the %s rig (%s)' % (troop, rig_name, row['entity'], want))
     size = vec(src.get('size', rig['size']), 2, troop + ' size', ints=True, minimum=1)
     density = density_of(src, troop, TROOP_DENSITY)
+    faces = parse_faces(src, troop, size)
+    if faces is None and (cat.root / 'art/troops' / (troop + FACES_SUFFIX + '.png')).is_file():
+        fail('%s: art/troops/%s%s.png has no faces block in %s.json to use it' % (troop, troop, FACES_SUFFIX, troop))
     idle = src.get('idleArms', 'hang')
     if idle not in IDLE_ARMS:
         fail('%s: idleArms %s is not one of %s' % (troop, idle, ', '.join(IDLE_ARMS)))
@@ -1898,6 +1996,10 @@ def bake(cat: Catalog, troop: str) -> dict:
         parts.append((e, p))
     stages = cat.stages[troop]
     bones = bake_bones(rig, troop, src.get('bones'), parts, float(hunch), idle == 'folded', stages)
+    if faces:
+        if troop_files(cat, troop)[1]['outer']:
+            fail('%s: faces and an outer layer together: the outer twin of the head would lose its box to the face bones' % troop)
+        bones = split_faces(bones, faces, troop, size)
     if len(bones) > MAX_BONES:
         fail('%s: %d bones, more than %d (the client records the bones a draw shows as the bits of one long and '
              'refuses a bigger model)' % (troop, len(bones), MAX_BONES))
@@ -1930,8 +2032,10 @@ def bake(cat: Catalog, troop: str) -> dict:
              'glow': texture_id(extra['glow']) if extra['glow'] else '', 'glowFrom': glow_from,
              'outer': texture_id(extra['outer']) if extra['outer'] else '',
              'weapon': weapon, 'hand': hand, 'idleArms': idle, 'portrait': portrait}
-    order = model_keys(density)
-    model = {k: dict(model, density=density)[k] for k in order}
+    order = model_keys(density, faces is not None)
+    info = None if faces is None else dict({'count': faces['count'], 'card': faces['card']},
+                                           **({} if faces['fixed'] is None else {'fixed': faces['fixed']}))
+    model = {k: dict(model, density=density, faces=info)[k] for k in order}
     assert tuple(model) == order and not set(model) & set(VANILLA_KEYS)
     return model
 
@@ -1972,6 +2076,74 @@ def far_twin(im, density):
     return out
 
 
+def face_size(bone):
+    """(width, height) in px of the rectangle a face bone's box unfolds in on the sheet: 32x16 for the 8x8x8 head."""
+    sx, sy, sz = bone['boxes'][0]['size']
+    return 2 * (sx + sz), sz + sy
+
+
+def read_face_patches(cat, troop, model, density):
+    """art/troops/<troop>_faces.png of a faces troop, checked: `count` patches of the head box's rectangle stacked, each with the
+    six faces opaque and nothing painted outside them, and the tint rule. Patch k is the head of variant k."""
+    bones = [b for b in model['bones'] if b.get('variants')]
+    sx, sy, sz = bones[0]['boxes'][0]['size']
+    fw, fh = face_size(bones[0])
+    count = model['faces']['count']
+    name = troop + FACES_SUFFIX + '.png'
+    path = cat.root / 'art/troops' / name
+    if not path.is_file():
+        fail('%s: %s is missing from art/troops (the faces block wants %d patches of %dx%d px stacked)' % (troop, name, count, fw, fh))
+    im = read_png(path, troop)
+    want = (fw * density, fh * density * count)
+    if im.size != want:
+        fail('%s: %s is %dx%d, not %dx%d (%d patches of %dx%d stacked%s)' % (
+            troop, name, im.width, im.height, want[0], want[1], count, fw * density, fh * density,
+            '' if density == TROOP_DENSITY else ', at %d texels a px' % density))
+    inside = footprint((0, 0), (sx, sy, sz))
+    px = im.load()
+    for k in range(count):
+        for y in range(fh * density):
+            for x in range(fw * density):
+                a = px[x, k * fh * density + y][3]
+                on = any(x0 * density <= x < x1 * density and y0 * density <= y < y1 * density for x0, y0, x1, y1 in inside)
+                where = '%s texel (%d, %d) (patch %d, texel (%d, %d))' % (name, x, k * fh * density + y, k, x, y)
+                if on and a != 255:
+                    fail('%s: %s has alpha %d: a texel of the faces of the head is opaque' % (troop, where, a))
+                if not on and a != 0:
+                    fail('%s: %s is outside the faces of the head, where nothing is painted' % (troop, where))
+    tint(im, '%s: %s' % (troop, name), cat.factions)
+    return im
+
+
+def check_face_slots(im, troop, name, verb, bones, density):
+    """No texel of this sheet (a skin, the trim or the glow) may lie in a slot: the slots are free rows for the face patches."""
+    px = im.load()
+    for b in bones:
+        k = b['variants'][0]
+        if k == 0:
+            continue
+        (u, v), (fw, fh) = b['boxes'][0]['uv'], face_size(b)
+        for y in range(v * density, (v + fh) * density):
+            for x in range(u * density, (u + fw) * density):
+                if px[x, y][3]:
+                    fail('%s: %s %s texel (%d, %d), inside face slot %d, which belongs to the faces' % (troop, name, verb, x, y, k))
+
+
+def paste_faces(im, patches, bones, density):
+    """The skin with every face bone's patch pasted over the texels of the six faces of its box: patch 0 over the head's, patch k at
+    slot k. Nothing else of the skin changes."""
+    out = im.convert('RGBA').copy()
+    px, src = out.load(), patches.load()
+    for b in bones:
+        box = b['boxes'][0]
+        (u, v), (fw, fh), k = box['uv'], face_size(b), b['variants'][0]
+        for x0, y0, x1, y1 in footprint((0, 0), box['size']):
+            for y in range(y0 * density, y1 * density):
+                for x in range(x0 * density, x1 * density):
+                    px[u * density + x, v * density + y] = src[x, k * fh * density + y]
+    return out
+
+
 def troop_outputs(cat, troop, weapon_lit):
     """The files of one troop: its model, with the relief meshes of its skins, and the skins, each the source skin with its
     relief layer pasted over it. Returns (files, [(troop, key, relief quads)])."""
@@ -1983,6 +2155,8 @@ def troop_outputs(cat, troop, weapon_lit):
     out = {}
     reliefs = relief_sources(cat, troop, own, extra)
     key_of = {own[s]: str(s) for s in own}
+    face_bones = [b for b in model['bones'] if b.get('variants')]
+    patches = read_face_patches(cat, troop, model, density) if face_bones else None
     by_bone, stats = {}, []
     for f in [own[s] for s in sorted(own)] + [extra['veteran'], extra['outer'], extra['glow']]:
         if not f:
@@ -1990,6 +2164,8 @@ def troop_outputs(cat, troop, weapon_lit):
         im = read_png(folder / f, troop)
         if list(im.size) != [size[0] * density, size[1] * density]:
             fail('%s: %s is %dx%d, not the troop size %s' % (troop, f, im.size[0], im.size[1], size_words(size, density)))
+        if face_bones:
+            check_face_slots(im, troop, f, 'lights' if f == extra['glow'] else 'covers' if f == extra['veteran'] else 'paints', face_bones, density)
         if f != extra['glow']:
             tint(im, '%s: %s' % (troop, f), cat.factions)
         if f == extra['veteran']:
@@ -1999,6 +2175,8 @@ def troop_outputs(cat, troop, weapon_lit):
                 print('build_skins: note: %s: %s: %d of %d trim texels lie under the s%s relief (hidden within TroopDepth.near)'
                       % (troop, f, len(under), n, key))
         key = key_of.get(f)
+        if key is not None and face_bones:
+            im = paste_faces(im, patches, face_bones, density)
         if key in reliefs:
             relief = read_png(folder / reliefs[key], troop)
             meshes = relief_mesh(cat, model, relief, troop, key)

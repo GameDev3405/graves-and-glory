@@ -167,6 +167,50 @@ def densify(root, troop='knight', density=3, cloth=False):
         write_json(root / 'art/team/team_cloth.json', {'density': density})
 
 
+FACE_SLOTS = [[0, 64], [32, 64], [0, 80]]   # three free 32x16 rectangles under the fixture's 64x64 sheet, which faced() grows to 64x96
+HEAD_FACES = [(8, 0, 24, 8), (0, 8, 32, 16)]   # the faces of an 8x8x8 box at uv (0, 0) inside its 32x16 rectangle (build_skins.footprint)
+
+
+def patch_colour(k, x, y):
+    """Texel (x, y) of face patch k: low in saturation (the tint rule objects to nothing here), different per patch and per position."""
+    return (180 + 10 * k, 170 + x % 16, 160 + y % 16, 255)
+
+
+def face_patches(density=1, count=4):
+    """art/troops/<troop>_faces.png: `count` patches of 32x16 layout px stacked, the head faces of each painted by patch_colour."""
+    im = Image.new('RGBA', (32 * density, 16 * density * count), (0, 0, 0, 0))
+    for k in range(count):
+        for x0, y0, x1, y1 in HEAD_FACES:
+            for y in range(y0 * density, y1 * density):
+                for x in range(x0 * density, x1 * density):
+                    im.putpixel((x, k * 16 * density + y), patch_colour(k, x, y))
+    return im
+
+
+def face_skin(path, density=1, size=(64, 96), slots=FACE_SLOTS, paint=(200, 196, 186, 255), rects=()):
+    """A skin of the faces fixture: painted all over except the slots' 32x16 rectangles (free rows for the faces) and any `rects` (x0, y0, x1, y1 in layout px)."""
+    im = Image.new('RGBA', (size[0] * density, size[1] * density), paint)
+    for x0, y0, x1, y1 in [(u, v, u + 32, v + 16) for u, v in slots] + list(rects):
+        for y in range(y0 * density, y1 * density):
+            for x in range(x0 * density, x1 * density):
+                im.putpixel((x, y), (0, 0, 0, 0))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    im.save(path)
+    return im
+
+
+def faces_fixture(tmp, density=1, troops=None, patches=True):
+    """The fixture with the knight a faces troop (troops from BuildSkinsChecks.faces_troops): each of its own skins 64x96 at `density`
+    (painted but for the slots), and art/troops/knight_faces.png with four distinct patches."""
+    root = fixture(tmp, troops=troops)
+    for name, paint in (('knight_s1.png', (200, 196, 186, 255)), ('knight_s2.png', (190, 186, 176, 255))):
+        if (root / 'art/troops' / name).is_file():
+            face_skin(root / 'art/troops' / name, density, paint=paint)
+    if patches:
+        put_png(root / 'art/troops/knight_faces.png', face_patches(density))
+    return root
+
+
 BOW = {'weapon': 'bow', 'thickness': 2, 'grip': {'pixel': [2, 4], 'offset': [0, 0, 0], 'rotation': [0, 0, 0]},
        'pull': [0.15, 0.32, 0.48], 'nocks': [[1.5, 4.5], [1.0, 4.5], [0.5, 4.5], [0.0, 4.5]]}
 BOW_COLOURS = [(100 + 30 * i, 120, 140, 255) for i in range(4)]
@@ -1779,8 +1823,9 @@ class BuildSkinsChecks(unittest.TestCase):
         self.assertIn(red, [relief.getpixel((x, y)) for x in range(21 * 3, 27 * 3) for y in range(22 * 3, 28 * 3)])
 
     def test_glow_cap_counts_px(self):
-        """The glow cap counts px of lit area, not texels: 54 lit texels at 3 a px are 6 px (the common cap), 63 are 7. A cube
-        weapon's lit texels count at its own density together with the skin's (16 at 2 a px are 4 px)."""
+        """The glow cap counts a troop's lit texels at its density (54 lit texels at 3 a px are 6 px, the common cap; 63 are 7). A
+        cube weapon's lit texels keep the unit they always had: at its default 2 a px every texel counts 1, as before the texel-3
+        work (a 2x weapon's cap is no looser than it was), and at 3 a px a texel counts 1 / 2.25, the same lit area for the same count."""
         with tempfile.TemporaryDirectory() as tmp:
             root = fixture(tmp)
             densify(root)
@@ -1794,25 +1839,35 @@ class BuildSkinsChecks(unittest.TestCase):
         for want in ('knight', 'glow', '7 lit', 'cap of 6'):
             self.assertIn(want, said)
 
-        def lit_pike(root, knight_lit):
+        def lit_pike(root, knight_lit, pike_lit, sheet=SHEET_2X):
             glow(root / 'art/troops/knight_e.png', knight_lit)
-            lit_sheet = Image.new('RGBA', SHEET_2X, (0, 0, 0, 0))
-            for y in range(8):
-                for x in (4, 5):
-                    lit_sheet.putpixel((x, y), (255, 240, 200, 255))
+            colour = Image.open(root / 'art/weapons/pike.png').convert('RGBA')
+            painted = [(x, y) for y in range(colour.height) for x in range(colour.width) if colour.getpixel((x, y))[3]]
+            lit_sheet = Image.new('RGBA', sheet, (0, 0, 0, 0))
+            for xy in painted[:pike_lit]:
+                lit_sheet.putpixel(xy, (255, 240, 200, 255))
             lit_sheet.save(root / 'art/weapons/pike_e.png')
-        with tempfile.TemporaryDirectory() as tmp:
-            root = fixture(tmp, troops=self.with_knight(weapon='pike'))
-            put_cube_weapon(root)
-            lit_pike(root, 2)   # 2 px of skin and 4 px of pike: 6
-            self.export(root)
-        with tempfile.TemporaryDirectory() as tmp:
-            root = fixture(tmp, troops=self.with_knight(weapon='pike'))
-            put_cube_weapon(root)
-            lit_pike(root, 3)   # 7
-            said = self.fails(export_assets, root)
+
+        def pike_build(knight_lit, pike_lit, density=2):
+            with tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp, troops=self.with_knight(weapon='pike'))
+                if density == 2:
+                    put_cube_weapon(root)
+                else:
+                    put_cube_weapon(root, meta=dict(PIKE_JSON, density=density), sheet=SHEET_3X, density=density)
+                lit_pike(root, knight_lit, pike_lit, SHEET_2X if density == 2 else SHEET_3X)
+                return self.fails(export_assets, root) if knight_lit + pike_lit * (4 / density ** 2) > 6 else self.export(root)
+        pike_build(0, 6)                  # a 2x weapon's texels count 1 each, as before: 6 is the common cap
+        said = pike_build(1, 6)           # 1 + 6 = 7
         self.assertIn('knight', said)
         self.assertIn('7 lit', said)
+        said = pike_build(0, 16)          # 16 lit texels at 2 a px are 16, not the 4 px of area they cover: the cap of an old weapon is not loosened
+        self.assertIn('16 lit', said)
+        self.assertIn('cap of 6', said)
+        self.assertIn('13 lit', pike_build(0, 13))   # the same 13 texels fail at 2 a px ...
+        pike_build(0, 13, density=3)      # ... and pass at 3 a px: 13 / 2.25 = 5.78
+        said = pike_build(0, 14, density=3)   # 14 / 2.25 = 6.22
+        self.assertIn('6.22 lit', said)
 
     def test_weapon_density_three(self):
         """A weapon that names density 3 has its patches at 3 texels a px on a 96x192 sheet: the model says so right after its size,
@@ -1947,6 +2002,277 @@ class BuildSkinsChecks(unittest.TestCase):
                 said = self.fails(build_skins.verify, root)
                 self.assertIn(target, said)
                 path.write_bytes(before)
+
+    # ---- the troop faces (face variants: head boxes in the sheet, picked by the client from the entity's UUID) ----
+
+    def faces_troops(self, density=None, **faces):
+        """TROOPS with the knight a four-faces troop: a 64x96 sheet (the fixture's 64x64 and free rows under it) and a faces block."""
+        block = {'count': 4, 'slots': FACE_SLOTS}
+        block.update(faces)
+        extra = {'size': [64, 96], 'faces': block}
+        if density:
+            extra['density'] = density
+        return self.with_knight(**extra)
+
+    def bake_fails(self, troops, setup=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp, troops=troops)
+            if setup:
+                setup(root)
+            cat = build_skins.load(root)
+            return self.fails(build_skins.bake, cat, 'knight')
+
+    def test_faces_model(self):
+        """A troop with faces keeps `head` as the pivot (the clips, helm bones and helm_off hang from it) and gets one face bone a
+        variant under it, in order, straight after it: face_v0 is the rig's head box exactly where it was, face_v1 to 3 the same box
+        with its uv at a slot. Each says which variant shows it; the model says the count and the card face. A troop without faces
+        is what it was: no faces key, no variants."""
+        model = self.bake(self.faces_troops())['knight']
+        names = [b['name'] for b in model['bones']]
+        at = names.index('head')
+        self.assertEqual(names[at + 1:at + 5], ['face_v0', 'face_v1', 'face_v2', 'face_v3'])
+        self.assertEqual(find(model, 'head')['boxes'], [])
+        uvs = [[0, 0]] + FACE_SLOTS
+        for k in range(4):
+            b = find(model, 'face_v%d' % k)
+            self.assertEqual(list(b), ['name', 'parent', 'part', 'team', 'tag', 'stages', 'variants', 'sheet', 'pivot', 'rotation', 'boxes'])
+            self.assertEqual((b['parent'], b['part'], b['team'], b['tag'], b['stages'], b['variants']), ('head', '', False, '', [], [k]))
+            self.assertEqual((b['sheet'], b['pivot'], b['rotation']), ([64, 96], [0, 0, 0], [0, 0, 0]))
+            self.assertEqual(b['boxes'], [{'origin': [-4, -8, -4], 'size': [8, 8, 8], 'uv': uvs[k], 'mirror': False, 'dilation': [0, 0, 0]}])
+        self.assertEqual(model['faces'], {'count': 4, 'card': 0})
+        self.assertEqual(tuple(model), build_skins.model_keys(1, True))
+        self.assertEqual(list(model)[-2:], ['portrait', 'faces'])
+        plain = self.bake(TROOPS)['knight']
+        self.assertEqual(tuple(plain), build_skins.MODEL_KEYS)
+        self.assertFalse([b['name'] for b in plain['bones'] if 'variants' in b])
+        self.assertEqual([b['name'] for b in plain['bones']], [n for n in names if not n.startswith('face_v')])
+        dense = self.bake(self.faces_troops(density=3))['knight']
+        self.assertEqual(tuple(dense), build_skins.model_keys(3, True))
+        self.assertEqual(find(dense, 'face_v1')['boxes'][0]['uv'], FACE_SLOTS[0])   # slots stay in layout units
+
+    def test_faces_head_boxes(self):
+        """The first box of `head` becomes the faces; any other box of it (the mage's and the Marshal's beard volumes) stays on `head`
+        and shows in every variant. A bone scale reaches the face boxes as it reached the head box."""
+        beard = box([-3, -3, -4.9], [6, 4, 1], [48, 56])
+        main = box([-4, -8, -4], [8, 8, 8], [0, 0])
+        troops = self.faces_troops()
+        troops['knight']['bones'] = {'head': {'boxes': [main, beard]}}
+        model = self.bake(troops)['knight']
+        head = find(model, 'head')
+        self.assertEqual(len(head['boxes']), 1)
+        self.assertEqual((head['boxes'][0]['size'], head['boxes'][0]['uv']), ([6, 4, 1], [48, 56]))
+        for k in range(4):
+            self.assertEqual(len(find(model, 'face_v%d' % k)['boxes']), 1)
+        scaled = self.faces_troops()
+        scaled['knight']['bones'] = {'head': {'scale': 1.25}}
+        plain = copy.deepcopy(TROOPS)
+        plain['knight'].update(size=[64, 96], bones={'head': {'scale': 1.25}})
+        flat = find(self.bake(plain)['knight'], 'head')['boxes'][0]
+        baked = self.bake(scaled)['knight']
+        for k in range(4):
+            got = find(baked, 'face_v%d' % k)['boxes'][0]
+            self.assertEqual({key: v for key, v in got.items() if key != 'uv'}, {key: v for key, v in flat.items() if key != 'uv'})
+
+    def test_faces_card_and_fixed(self):
+        """card is the face a card and a reveal portrait wear (0 unless it says; a pinned troop's own face unless it says), fixed pins
+        a singular character (the Marshal) to one face whatever its UUID; both ride in the model."""
+        self.assertEqual(self.bake(self.faces_troops(card=2))['knight']['faces'], {'count': 4, 'card': 2})
+        self.assertEqual(self.bake(self.faces_troops(fixed=1))['knight']['faces'], {'count': 4, 'card': 1, 'fixed': 1})
+        self.assertEqual(self.bake(self.faces_troops(fixed=1, card=3))['knight']['faces'], {'count': 4, 'card': 3, 'fixed': 1})
+        self.assertEqual(self.bake(self.faces_troops(count=2, slots=FACE_SLOTS[:1]))['knight']['faces'], {'count': 2, 'card': 0})
+
+    def test_faces_key_rules(self):
+        cases = [   # name, the faces keys that change, what the message names
+            ('one face', dict(count=1, slots=[]), ['faces', 'count']),
+            ('nine faces', dict(count=9, slots=FACE_SLOTS * 3), ['faces', 'count']),
+            ('count as text', dict(count='4'), ['faces', 'count']),
+            ('too few slots', dict(slots=FACE_SLOTS[:2]), ['faces', 'slots', '3']),
+            ('a slot that is no pair', dict(slots=[[0, 64], [32], [0, 80]]), ['slot 2']),
+            ('a negative slot', dict(slots=[[0, 64], [-32, 64], [0, 80]]), ['slot 2']),
+            ('a slot off the sheet', dict(slots=[[0, 64], [32, 64], [0, 90]]), ['slot 3', 'sheet']),
+            ('a slot on the cap', dict(slots=[[32, 0], [32, 64], [0, 80]]), ['slot 1', 'overlaps', 'cap']),
+            ('a slot on the head', dict(slots=[[0, 64], [32, 64], [8, 4]]), ['slot 3', 'overlaps', 'head']),
+            ('slots on each other', dict(slots=[[0, 64], [16, 64], [0, 80]]), ['slot 2', 'overlaps', 'slot 1']),
+            ('card out of range', dict(card=4), ['faces', 'card']),
+            ('negative card', dict(card=-1), ['faces', 'card']),
+            ('fixed out of range', dict(fixed=7), ['faces', 'fixed']),
+            ('unknown key', dict(mood=1), ['faces', 'unknown key', 'mood']),
+        ]
+        for name, change, wants in cases:
+            with self.subTest(name=name):
+                said = self.bake_fails(self.faces_troops(**change))
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with self.subTest(name='faces is no object'):
+            said = self.bake_fails(self.with_knight(size=[64, 96], faces=[4]))
+            self.assertIn('faces', said)
+
+        def outer(root):
+            skin(root / 'art/troops/knight_o.png', paint=(0, 0, 0, 0))
+        with self.subTest(name='an outer layer'):
+            said = self.bake_fails(self.faces_troops(), outer)
+            for want in ('faces', 'outer'):
+                self.assertIn(want, said)
+
+    def test_faces_patch_rules(self):
+        def edit(f):
+            def go(root):
+                path = root / 'art/troops/knight_faces.png'
+                im = Image.open(path).convert('RGBA')
+                f(im)
+                im.save(path)
+            return go
+        cases = [   # name, a change to art/troops/knight_faces.png, what the message names
+            ('missing', lambda root: (root / 'art/troops/knight_faces.png').unlink(), ['knight_faces.png', 'missing']),
+            ('half alpha', edit(lambda im: im.putpixel((9, 3), (200, 190, 180, 128))), ['knight_faces.png', 'alpha 128', '(9, 3)']),
+            ('a hole in a face', edit(lambda im: im.putpixel((9, 3), (0, 0, 0, 0))), ['knight_faces.png', 'alpha 0', '(9, 3)']),
+            ('paint off the faces', edit(lambda im: im.putpixel((1, 2 * 16 + 1), (200, 190, 180, 255))),
+             ['knight_faces.png', 'patch 2', 'outside', '(1, 33)']),
+            ('a side colour', edit(lambda im: im.putpixel((9, 3), (227, 179, 65, 255))), ['knight_faces.png', 'gold side colour']),
+        ]
+        for name, change, wants in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = faces_fixture(tmp, troops=self.faces_troops())
+                change(root)
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with self.subTest(name='wrong size'), tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, troops=self.faces_troops())
+            put_png(root / 'art/troops/knight_faces.png', face_patches().crop((0, 0, 32, 48)))
+            said = self.fails(export_assets, root)
+            for want in ('knight_faces.png', '32x48', '32x64'):
+                self.assertIn(want, said)
+        with self.subTest(name='wrong size at density 3'), tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, density=3, troops=self.faces_troops(density=3))
+            put_png(root / 'art/troops/knight_faces.png', face_patches(1))
+            said = self.fails(export_assets, root)
+            for want in ('knight_faces.png', '96x192'):
+                self.assertIn(want, said)
+        with self.subTest(name='a faces file with no faces block'), tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            put_png(root / 'art/troops/knight_faces.png', face_patches())
+            said = self.fails(export_assets, root)
+            for want in ('knight_faces.png', 'faces'):
+                self.assertIn(want, said)
+
+    def test_faces_composite(self):
+        """The patches go into every own skin: patch 0 over the head's faces, patches 1 to 3 at their slots, only on the texels of the
+        six faces (a patch's corners are left alone), at the troop's density; nothing else of the skin changes, the veteran trim
+        and the glow are shipped as they are, and the far twin is made from the composited skin."""
+        for density in (1, 3):
+            with self.subTest(density=density), tempfile.TemporaryDirectory() as tmp:
+                troops = self.faces_troops(density=density if density > 1 else None)
+                troops['knight']['skins'] = {'1': 'knight_s1.png', '2': 'knight_s2.png'}
+                root = faces_fixture(tmp, density, troops)
+                size = (64 * density, 96 * density)
+                trim = relief_png(root, 'knight_veteran.png', self.raised([(24, 22), (25, 22)], density), size=size)
+                lit = Image.new('RGBA', size, (0, 0, 0, 0))
+                lit.putpixel((24 * density, 22 * density), (255, 240, 200, 255))
+                lit.save(root / 'art/troops/knight_e.png')
+                patches = face_patches(density)
+                index = self.export(root)
+                base = root / ASSETS / 'textures/entity/troop'
+                for name in ('knight_s1.png', 'knight_s2.png'):
+                    want = Image.open(root / 'art/troops' / name).convert('RGBA')
+                    for k, (u, v) in enumerate([(0, 0)] + FACE_SLOTS):
+                        for x0, y0, x1, y1 in HEAD_FACES:
+                            for y in range(y0 * density, y1 * density):
+                                for x in range(x0 * density, x1 * density):
+                                    want.putpixel((u * density + x, v * density + y), patches.getpixel((x, k * 16 * density + y)))
+                    got = Image.open(base / name).convert('RGBA')
+                    self.assertEqual(got.size, size)
+                    self.assertEqual(got.tobytes(), want.tobytes(), name)
+                    self.assertNotEqual(got.tobytes(), Image.open(root / 'art/troops' / name).convert('RGBA').tobytes(), name)
+                    self.assertEqual(got.getpixel((0, 64 * density))[3], 0)   # a slot's corner (outside the six faces) stays clear
+                self.assertEqual(Image.open(base / 'knight_veteran.png').convert('RGBA').tobytes(), trim.tobytes())
+                self.assertEqual(Image.open(base / 'knight_e.png').convert('RGBA').tobytes(), lit.tobytes())
+                if density > 1:
+                    s1 = Image.open(base / 'knight_s1.png').convert('RGBA')
+                    twin = Image.open(base / 'knight_s1_far.png').convert('RGBA')
+                    self.assertEqual(twin.size, (64, 96))
+                    self.assertEqual(twin.tobytes(), build_skins.far_twin(s1, density).tobytes())
+                    self.assertGreater(twin.getpixel((12, 76))[3], 0)   # slot 1's front survives in the twin
+                self.assertFalse([n for n in index['outputs'] if 'faces' in n], 'the patch file is a source, not an output')
+
+    def test_faces_free_rows(self):
+        """The sheet around a slot is free: no skin may paint a slot's 32x16 rectangle, and the veteran trim and the glow must not
+        light it (a face on a slot would be painted over by them in every variant but 0)."""
+        def paint_at(xy):
+            def go(root):
+                im = Image.open(root / 'art/troops/knight_s1.png').convert('RGBA')
+                im.putpixel(xy, (200, 196, 186, 255))
+                im.save(root / 'art/troops/knight_s1.png')
+            return go
+
+        def trim_in_slot(root):
+            relief_png(root, 'knight_veteran.png', [(10, 74)], size=(64, 96))
+
+        def glow_in_slot(root):
+            lit = Image.new('RGBA', (64, 96), (0, 0, 0, 0))
+            lit.putpixel((10, 74), (255, 240, 200, 255))
+            lit.save(root / 'art/troops/knight_e.png')
+        cases = [
+            ('a skin paints slot 1', paint_at((3, 70)), ['knight_s1.png', 'slot 1', '(3, 70)']),
+            ('a skin paints slot 3', paint_at((5, 85)), ['knight_s1.png', 'slot 3', '(5, 85)']),
+            ('the trim reaches a slot', trim_in_slot, ['knight_veteran.png', 'slot 1', '(10, 74)']),
+            ('the glow lights a slot', glow_in_slot, ['knight_e.png', 'slot 1', '(10, 74)']),
+        ]
+        for name, setup, wants in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = faces_fixture(tmp, troops=self.faces_troops())
+                setup(root)
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+
+    def test_faces_carry_no_relief(self):
+        """Faces are flat paint: a relief texel on the head's faces or on a slot's is refused, naming the face bone; relief elsewhere
+        (the body) still builds, and no face bone carries any."""
+        for name, texel, wants in (('the head front', (12, 12), ['face bone', 'face_v0', '(12, 12)']),
+                                   ('slot 2', (44, 76), ['face bone', 'face_v2', '(44, 76)'])):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = faces_fixture(tmp, troops=self.faces_troops())
+                relief_png(root, 'knight_s1_r.png', [texel], size=(64, 96))
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, troops=self.faces_troops())
+            relief_png(root, 'knight_s1_r.png', [(22, 22)], size=(64, 96))
+            self.export(root)
+            model = json.loads((root / ASSETS / 'models/troop/knight.json').read_text(encoding='utf-8'))
+        self.assertIn('relief', find(model, 'body'))
+        self.assertFalse([b['name'] for b in model['bones'] if b['name'].startswith('face_v') and 'relief' in b])
+
+    def test_faces_verify_and_templates(self):
+        """--verify rebuilds a faces troop (a changed slot texel is named), and the --template sheets show the slots: a flat
+        colour on the six faces of each, the relief template hatching them as ground where relief may not stand."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, troops=self.faces_troops())
+            self.export(root)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(build_skins.verify(root), 0)
+            path = root / ASSETS / 'textures/entity/troop/knight_s1.png'
+            before = path.read_bytes()
+            im = Image.open(path).convert('RGBA')
+            im.putpixel((12, 76), (1, 2, 3, 255))
+            im.save(path)
+            said = self.fails(build_skins.verify, root)
+            self.assertIn('knight_s1.png', said)
+            self.assertIn('(12, 76)', said)
+            path.write_bytes(before)
+            cat = build_skins.load(root)
+            flat, relief = build_skins.template(cat, 'knight').convert('RGBA'), build_skins.relief_template(cat, 'knight').convert('RGBA')
+        self.assertEqual(flat.size, (64, 96))
+        self.assertGreater(flat.getpixel((12, 76))[3], 0)     # slot 1's front
+        self.assertEqual(flat.getpixel((2, 66))[3], 0)        # its corner, outside the six faces
+        red = build_skins.RELIEF_RED + (255,)
+        self.assertIn(red, [relief.getpixel((x, y)) for x in range(8, 16) for y in range(72, 80)])
 
     def test_summary_line(self):
         with tempfile.TemporaryDirectory() as tmp:
