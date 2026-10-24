@@ -26,7 +26,8 @@ import static gg.gravesandglory.Phase2Checks.server;
  * The troop faces suite (texel-3 faces design F2, task-5d-faces-design.md; GRAVES_PHASE2_CHECKS=faces). Never included in releases.
  * <p>Data checks first, on the loaded models: p2-faces-model (every troop with faces has 4 face bones carrying one variant each; a draw wearing any
  * number, however far outside 0 to 3, shows exactly the one face bone of that variant mod 4, at stages 1 to 3, and the rest of the model shown is
- * the same for every variant; the four face bones draw the same box from the four slots of the sheet, read off the loaded ModelPart cuboids' UVs) and
+ * the same for every variant; the four face bones draw the same box from the four slots of the sheet, read off the loaded ModelPart cuboids' UVs on the face bones' own sheet: faces are
+ * painted at 2 texels a px (F4), so a density 3 troop's face bones have a sheet of 2 texels a px, a density 1 troop's reduced faces 1, and every UV corner lands on a whole texel) and
  * p2-faces-pick (what TroopModels.face gives: a card portrait the model's card face whatever its UUID, a pinned troop its pinned face, any other the face
  * its UUID hashes to, every face reached over 400 UUIDs).
  * <p>Then the shots, with the harness-only forced variant (TroopModels.forceFace) on a row of four gold troops of one kind (variants 0 to 3, left to
@@ -220,6 +221,8 @@ final class FacesChecks {
                 int count = j.getAsJsonObject("faces").get("count").getAsInt();
                 if (count != FACES || m.faceCount != count) wrong.add(t + ": faces.count " + count + ", the loaded model " + m.faceCount + " (want " + FACES + ")");
                 int w = j.has("size") ? j.getAsJsonArray("size").get(0).getAsInt() : 64, h = j.has("size") ? j.getAsJsonArray("size").get(1).getAsInt() : 64;
+                int dens = j.has("density") ? j.get("density").getAsInt() : 1;   // texels a layout px; the texture is size x density texels
+                int[][] sheet = new int[count][];                                // per variant: the face bone's own sheet, in its own px (a face px is the face density's texel)
                 String[] names = new String[count];
                 int[][][] uv = new int[count][][];   // per variant, per box of the face bone: the box's uv
                 int[][] box = null;                  // per box: its size, the same in every face bone
@@ -235,6 +238,7 @@ final class FacesChecks {
                     var bxs = b.getAsJsonArray("boxes");
                     if (box == null) { boxes = bxs.size(); box = new int[boxes][]; }
                     else if (bxs.size() != boxes) { wrong.add(t + ": face bone of variant " + v + " has " + bxs.size() + " boxes, not " + boxes); continue; }
+                    sheet[v] = b.has("sheet") ? new int[]{b.getAsJsonArray("sheet").get(0).getAsInt(), b.getAsJsonArray("sheet").get(1).getAsInt()} : new int[]{w, h};
                     uv[v] = new int[boxes][];
                     for (int k = 0; k < boxes; k++) {
                         JsonObject bx = bxs.get(k).getAsJsonObject();
@@ -267,23 +271,36 @@ final class FacesChecks {
                         draws++;
                     }
                 }
-                // the four face bones draw one box from the four slots of the sheet
+                // the four face bones draw one box from the four slots of the sheet, on one sheet of their own: a whole number of texels a face px
+                // (2 texels on a 3-texel troop, 1 on a 1x troop), every uv corner of every face quad on a whole texel of the texture (nothing bleeds into a neighbour)
+                int texW = w * dens, texH = h * dens, fdens = 0;
+                for (int v = 0; v < count; v++) {
+                    if (sheet[v][0] != sheet[0][0] || sheet[v][1] != sheet[0][1]) wrong.add(t + ": " + names[v] + " has the sheet " + java.util.Arrays.toString(sheet[v]) + ", " + names[0] + " has " + java.util.Arrays.toString(sheet[0]));
+                }
+                if (texW % sheet[0][0] != 0 || texH % sheet[0][1] != 0 || texW / sheet[0][0] != texH / sheet[0][1]) wrong.add(t + ": the face sheet " + java.util.Arrays.toString(sheet[0]) + " is not a whole number of texels a px of the " + texW + "x" + texH + " texture");
+                else fdens = texW / sheet[0][0];
+                int wantDens = dens >= 2 ? 2 : 1;
+                if (fdens != wantDens) wrong.add(t + ": the face density is " + fdens + " texels a px, want " + wantDens + " (2 on a 3-texel troop, 1 on a 1x troop)");
                 var parts = partsOf(m);
                 var cuboids0 = cuboidsOf(parts.get(names[0]));
                 for (int v = 0; v < count; v++) {
                     var cuboids = cuboidsOf(parts.get(names[v]));
                     if (cuboids == null || cuboids0 == null || cuboids.size() != boxes || cuboids0.size() != boxes) { wrong.add(t + ": " + names[v] + " does not read back " + boxes + " cuboids"); continue; }
                     for (int k = 0; k < boxes; k++) {
-                        float[] bounds = uvBounds(cuboids.get(k), w, h), b = boxOf(cuboids.get(k)), box0 = boxOf(cuboids0.get(k));
+                        float[] bounds = uvBounds(cuboids.get(k), sheet[v][0], sheet[v][1]), b = boxOf(cuboids.get(k)), box0 = boxOf(cuboids0.get(k));
                         if (bounds == null || b == null || box0 == null) { wrong.add(t + ": cuboid " + k + " of " + names[v] + " could not be read"); continue; }
                         int fw = 2 * (box[k][0] + box[k][2]), fh = box[k][2] + box[k][1];
                         float[] want = {uv[v][k][0], uv[v][k][1], uv[v][k][0] + fw, uv[v][k][1] + fh};
                         for (int i = 0; i < 4; i++) if (Math.abs(bounds[i] - want[i]) > 0.01f) { wrong.add(t + ": cuboid " + k + " of " + names[v] + " draws sheet px " + java.util.Arrays.toString(bounds) + ", want " + java.util.Arrays.toString(want)); break; }
+                        if (fdens > 0) for (int i = 0; i < 4; i++) {
+                            float texel = bounds[i] * fdens;
+                            if (Math.abs(texel - Math.round(texel)) > 0.01f) { wrong.add(t + ": cuboid " + k + " of " + names[v] + " has a uv corner off the texel grid: " + java.util.Arrays.toString(bounds) + " x " + fdens); break; }
+                        }
                         for (int i = 0; i < 6; i++) if (Math.abs(b[i] - box0[i]) > 1e-4f) { wrong.add(t + ": cuboid " + k + " of " + names[v] + " has another box than " + names[0]); break; }
                         uvs++;
                     }
                 }
-                ok.append(t).append(" (").append(String.join(", ", names)).append("), ");
+                ok.append(t).append(" (").append(String.join(", ", names)).append(", ").append(fdens).append(" texel").append(fdens == 1 ? "" : "s").append(" a face px on the sheet ").append(java.util.Arrays.toString(sheet[0])).append("), ");
             }
             // a troop with no faces block (count 1 in the art file, the Templar's great helm) loads with no face bones and no faces key
             StringBuilder bare = new StringBuilder();
@@ -299,7 +316,7 @@ final class FacesChecks {
             }
             // leave every model as a draw would next prepare it
             report("p2-faces-model", wrong.isEmpty() && draws > 0 && uvs > 0, troops.size() + " troops with faces: " + ok + draws + " prepare calls (variants -3 to " + (FACES + 5) + " at stages 1 to 3) each showed exactly the one face bone of the variant mod " + FACES
-                + " and the same other bones as variant 0; " + uvs + " face bones read back from their ModelPart cuboids draw their slot's rectangle of the sheet and one shared box per bone box (head, beard); no face bones on the faceless models: " + bare + (wrong.isEmpty() ? "" : "; wrong: " + wrong));
+                + " and the same other bones as variant 0; " + uvs + " face bones read back from their ModelPart cuboids draw their slot's rectangle of the face sheet (each corner on a whole texel) and one shared box per bone box (head, beard); no face bones on the faceless models: " + bare + (wrong.isEmpty() ? "" : "; wrong: " + wrong));
         }
 
         void picks(MinecraftClient c) {
