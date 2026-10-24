@@ -14,5 +14,6 @@
 "skins":{"1":"gl_marshal_s1.png"},
 "weapon":"marshal_sword",
 "hand":"right",
-"portrait":"tall 4"
+"portrait":"tall 4",
+"faces":{"density":2,"count":4,"slots":[[96,48],[64,48],[96,32]],"fixed":0,"beard":{"slots":[[32,0],[46,0],[32,4]]}}
 }

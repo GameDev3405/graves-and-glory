@@ -29,16 +29,19 @@ public final class TroopModels {
         public Look(Spec.TroopsRow troop, int armourTier, boolean veteran, String side) { this(troop, 1, 1, armourTier, veteran, side); }
     }
     /**
-     * A weapon model (troop depth design, section 2): its id, the meshes of its frames (rest first, then pull_0 to pull_2 of a
-     * draw weapon), the times of the pulls in seconds of bow_draw (empty without a pull), the grip that places the sprite in the
-     * hand bone's frame (the centre of the grip pixel is the sprite's origin), the nock of each frame (the middle of the string in
+     * A weapon model (troop depth design, section 2; art pipeline v2, section 2.1): its id, the meshes of its frames (rest first,
+     * then pull_0 to pull_2 of a draw weapon), the far version (at most 32 quads, built from the rest frame; null for a sprite weapon,
+     * whose frames are already thin), the times of the pulls in seconds of bow_draw (empty without a pull), the grip that places the
+     * model in the hand bone's frame (the model's origin is the grip), the nock of each frame (the middle of the string in
      * the weapon frame, model px; empty without a pull), its texture and its glow (null for none). rot is the grip's turn as a quaternion,
      * worked out once (null for no turn); build a Weapon without it and the constructor below fills it in.
      */
-    public record Weapon(String id, java.util.List<TroopMesh> frames, float[] pull, net.minecraft.client.model.ModelTransform grip, java.util.List<Vec3d> nocks, Identifier texture, Identifier glow, org.joml.Quaternionf rot) {
-        public Weapon(String id, java.util.List<TroopMesh> frames, float[] pull, net.minecraft.client.model.ModelTransform grip, java.util.List<Vec3d> nocks, Identifier texture, Identifier glow) {
-            this(id, frames, pull, grip, nocks, texture, glow, turn(grip));
+    public record Weapon(String id, java.util.List<TroopMesh> frames, TroopMesh far, float[] pull, net.minecraft.client.model.ModelTransform grip, java.util.List<Vec3d> nocks, Identifier texture, Identifier glow, org.joml.Quaternionf rot) {
+        public Weapon(String id, java.util.List<TroopMesh> frames, TroopMesh far, float[] pull, net.minecraft.client.model.ModelTransform grip, java.util.List<Vec3d> nocks, Identifier texture, Identifier glow) {
+            this(id, frames, far, pull, grip, nocks, texture, glow, turn(grip));
         }
+        /** Whether this is a cube weapon (a Blockbench model, with a far version), which draws whole at every depth setting; a sprite weapon draws its two big faces with troop depth off. */
+        public boolean cube() { return far != null; }
         private static org.joml.Quaternionf turn(net.minecraft.client.model.ModelTransform g) {
             return g.pitch != 0f || g.yaw != 0f || g.roll != 0f ? new org.joml.Quaternionf().rotationZYX(g.roll, g.yaw, g.pitch) : null;
         }
@@ -143,11 +146,43 @@ public final class TroopModels {
     public static Set<String> ids(){return troops.keySet();}
 
     /** The skin of a Look: its armour tier's skin (the stopgap: a tier without its own skin draws the highest own tier below it). A Veteran wears the same tier, with trim over it. */
-    public static Identifier skin(Look l){var m=troops.get(l.troop().id());return m==null?null:m.skin(l.armourTier());}
+    public static Identifier skin(Look l){return skin(l,false);}
+    /** The skin of a Look, or with far its one-texel-a-px twin when the troop's density is above 1 (see far, twin). */
+    public static Identifier skin(Look l,boolean far){var m=troops.get(l.troop().id());return m==null?null:pick(m,m.skin(l.armourTier()),far);}
     /** The veteran trim (<troop>_veteran, in-match progression design 4.4) a Look draws over whichever armour tier it wears: null unless it is a Veteran and the troop has a trim. */
-    public static Identifier trim(Look l){var m=troops.get(l.troop().id());return m==null||!l.veteran()?null:m.veteran;}
+    public static Identifier trim(Look l){return trim(l,false);}
+    public static Identifier trim(Look l,boolean far){var m=troops.get(l.troop().id());return m==null||!l.veteran()?null:pick(m,m.veteran,far);}
     /** The glow layer (<troop>_e) of a Look, null below the troop's glowFrom tier (the armour tier its art draws) or for a troop without one. */
-    public static Identifier glow(Look l){var m=troops.get(l.troop().id());return m==null||m.glow==null||m.armourArt(l.armourTier())<m.glowFrom?null:m.glow;}
+    public static Identifier glow(Look l){return glow(l,false);}
+    public static Identifier glow(Look l,boolean far){var m=troops.get(l.troop().id());return m==null||m.glow==null||m.armourArt(l.armourTier())<m.glowFrom?null:pick(m,m.glow,far);}
+
+    /** The suffix of a density D troop PNG's one-texel-a-px twin (tools/build_skins.py FAR_SUFFIX): knight_s3.png has knight_s3_far.png. */
+    static final String FAR_SUFFIX="_far";
+    /** A card portrait is drawn from the twins when it spans fewer than this many px a block for each texel of density a px: 16 x density, so 48 for a density 3 troop (at 48 screen px a texel is one screen px; under it a nearest-sampled 3x skin crawls and speckles). The px a card is measured in are the GUI px ArmyCards.draw is given (InventoryScreen.drawEntity's size), not multiplied by the GUI scale: at GUI scale 2 or 3 a card the rule calls small is 2 or 3 times larger on screen, so a card may draw the twin where the skin would have been crisp (the safe side; open item M2 of the texel-3 review). */
+    static final int FAR_CARD_PER_DENSITY=16;
+    /** The twins made so far, by texture id: the key set is the few PNGs of the troops, and a far draw asks for several twins a troop a frame, so none is built twice. */
+    private static final Map<Identifier,Identifier> TWINS=new java.util.concurrent.ConcurrentHashMap<>();
+    /** The twin of a texture id: the same path with _far before the .png (a path that is no png is its own twin). */
+    static Identifier twin(Identifier id){return TWINS.computeIfAbsent(id,TroopModels::makeTwin);}
+    private static Identifier makeTwin(Identifier id){
+        String p=id.getPath();return p.endsWith(".png")?new Identifier(id.getNamespace(),p.substring(0,p.length()-4)+FAR_SUFFIX+".png"):id;
+    }
+    /** The texture a draw binds: the id, or for a density above 1 troop drawing far, its twin. */
+    private static Identifier pick(TroopModel<?> m,Identifier id,boolean far){return far&&m.density>1&&id!=null?twin(id):id;}
+    /** The GUI px a block spans where a dressed mob was last drawn (ArmyCards.draw records the size it is given). Weak keys by identity. */
+    private static final Map<Entity,Integer> SIZED=new MapMaker().weakKeys().makeMap();
+    /** Records the scale (GUI px a block, as InventoryScreen.drawEntity takes it) a portrait mob is about to be drawn at. */
+    static void sized(Entity e,int pxPerBlock){SIZED.put(e,pxPerBlock);}
+    /**
+     * Whether the draw of this troop binds the one-texel-a-px twins of its PNGs (texel-3 plan Q2a): the troop's density is above 1 and it
+     * is a world troop at least TroopDepth.NEAR_BLOCKS from the camera, or a card portrait last drawn at fewer than FAR_CARD_PER_DENSITY
+     * x density GUI px a block. A troop of density 1 never does.
+     */
+    static boolean far(Entity e,Look l){
+        var m=troops.get(l.troop().id());if(m==null||m.density<=1)return false;
+        if(dressed(e)){Integer px=SIZED.get(e);return px!=null&&px<FAR_CARD_PER_DENSITY*m.density;}
+        return TroopDepth.beyond(e);
+    }
     /**
      * The weapon model a troop holding weapon id draws at a weapon tier: <id>_t<n> for tier n, tier I <id>; a tier without its
      * own model draws the highest tier below it that has one (the stopgap). Null for no weapon or an unknown id.
@@ -174,6 +209,15 @@ public final class TroopModels {
     public static int portraitTall(String troop){String f=framing(troop);return f!=null&&f.startsWith("tall ")?Integer.parseInt(f.substring(5).trim()):0;}
     /** The raw portrait framing of a troop: standard, tall N, wide N or beast N [yaw D]; null without a model. */
     public static String framing(String troop){var m=troops.get(troop);return m==null?null:m.portrait;}
+
+    /** The face the harness forces on an entity (TroopFaces.pick's forced). Test tools only: production never writes it. Weak keys by identity. */
+    private static final Map<Entity,Integer> FORCED=new MapMaker().weakKeys().makeMap();
+    /** Forces a face on an entity for the harness's face shots; a negative variant lifts it. */
+    static void forceFace(Entity e,int variant){if(variant<0)FORCED.remove(e);else FORCED.put(e,variant);}
+    /** The face forced on an entity, or -1. */
+    static int forcedFace(Entity e){Integer v=FORCED.get(e);return v==null?-1:v;}
+    /** The face this entity wears drawn as this troop's model: a card portrait the card face, a pinned troop its pinned face, any other the face its UUID hashes to (TroopFaces.pick). 0 for a troop with no faces. */
+    static int face(Entity e,TroopModel<?> m){return TroopFaces.pick(e.getUuid(),m.faceCount,m.faceFixed,m.faceCard,dressed(e),forcedFace(e));}
 
     /** Whether the mob wears a dress (an ArmyCards portrait). */
     static boolean dressed(Entity e){return DRESS.containsKey(e);}

@@ -71,7 +71,7 @@ final class RankChecks {
         /** Whether each of these entities drew at least n times since markDraws. */
         boolean drewSince(MinecraftClient c, List<GravesAndGlory.Unit> us, int n) { for (var u : us) { var x = e(c, u); if (x == null || drawCount(x) - counts.getOrDefault(x, 0) < n) return false; } return true; }
         /** A copy of a weapon model under another id: a tier model the art steps have not drawn yet. */
-        static TroopModels.Weapon renamed(TroopModels.Weapon w, String id) { return new TroopModels.Weapon(id, w.frames(), w.pull(), w.grip(), w.nocks(), w.texture(), w.glow(), w.rot()); }
+        static TroopModels.Weapon renamed(TroopModels.Weapon w, String id) { return new TroopModels.Weapon(id, w.frames(), w.far(), w.pull(), w.grip(), w.nocks(), w.texture(), w.glow(), w.rot()); }
 
         public void step(MinecraftClient c, int tick) {
             if (tick == 20) { c.setScreen(null); UUID id = c.player.getUuid(); server(c, b -> { player = id; stage = 1; }); }

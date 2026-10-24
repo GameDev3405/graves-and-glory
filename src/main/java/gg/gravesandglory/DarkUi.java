@@ -103,7 +103,7 @@ final class DarkUi {
     }
     static void model(DrawContext g,Spec.TroopsRow troop,int x,int bottom,int size){
         var entity=ArmyCards.portrait(troop);
-        if(entity!=null)net.minecraft.client.gui.screen.ingame.InventoryScreen.drawEntity(g,x,bottom,ArmyCards.size(entity,size),22,0,entity);
+        if(entity!=null)ArmyCards.draw(g,x,bottom,ArmyCards.size(entity,size),22,0,entity);
     }
     static void title(DrawContext g,String text,int x,int y,int color){
         g.getMatrices().push();g.getMatrices().translate(x,y,0);g.getMatrices().scale(1.35f,1.35f,1);g.drawText(MinecraftClient.getInstance().textRenderer,Text.literal(text).setStyle(Style.EMPTY.withFont(TITLE)),0,0,color,false);g.getMatrices().pop();

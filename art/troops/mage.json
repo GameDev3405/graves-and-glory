@@ -2,7 +2,7 @@
 "troop":"mage",
 "note":"Sunweaver (unit identity 1): husk, biped; the deep white cowl over an old grey-bearded face, the white robe falling in three tiers to the ground, bell sleeves, the team vestment, the gilt sunburst brooch, the pennant. The sun staff in the right hand, its 6x6 disc over the head (the mark); glow on the brooch.",
 "rig":"biped",
-"size":[128,64],
+"size":[128,80],
 "bones":{"head":{"boxes":[{"origin":[-4,-8,-4],"size":[8,8,8],"uv":[0,0]},{"origin":[-3,-3,-4.9],"size":[6,4,1],"uv":[48,32]}]},"right_arm":{"boxes":[{"origin":[-3,-2,-2],"size":[4,12,4],"uv":[40,16]},{"origin":[-4,4,-3],"size":[5,5,6],"uv":[0,32]}]},"left_arm":{"boxes":[{"origin":[-1,-2,-2],"size":[4,12,4],"uv":[32,48]},{"origin":[-1,4,-3],"size":[5,5,6],"uv":[24,32]}]}},
 "idleArms":"hang",
 "parts":[
@@ -16,5 +16,6 @@
 "glow":"mage_e.png",
 "weapon":"sun_staff",
 "hand":"right",
-"portrait":"tall 6"
+"portrait":"tall 6",
+"faces":{"density":2,"count":4,"slots":[[96,64],[64,64],[32,64]],"beard":{"slots":[[0,64],[14,64],[0,69]]}}
 }

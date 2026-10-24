@@ -50,8 +50,8 @@ public final class Phase2Checks implements ClientModInitializer {
     /** Optional for a suite: called on the server thread after every server tick, for checks that wait on the battle. */
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("graveborn",Graveborn::new);SUITES.put("ironclad",Ironclad::new);SUITES.put("tidecallers",Tidecallers::new);SUITES.put("wildmoot",Wildmoot::new);SUITES.put("chase",Chase::new);SUITES.put("anim",Anim::new);SUITES.put("turn",Turn::new);SUITES.put("tells",Tells::new);SUITES.put("depth",Depth::new);SUITES.put("screens",Screens::new);SUITES.put("migration",Migration::new);}
-    static{LevelChecks.register(SUITES);AbilityLevelChecks.register(SUITES);RankChecks.register(SUITES);} // in-match progression: levels, gear, armoury; statuses, levels-<house>; ranks (each file owns its entries)
+    static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("graveborn",Graveborn::new);SUITES.put("ironclad",Ironclad::new);SUITES.put("tidecallers",Tidecallers::new);SUITES.put("wildmoot",Wildmoot::new);SUITES.put("chase",Chase::new);SUITES.put("anim",Anim::new);SUITES.put("turn",Turn::new);SUITES.put("hands",()->new Turn(true));SUITES.put("t3",()->new Turn(false,true));SUITES.put("tells",Tells::new);SUITES.put("depth",Depth::new);SUITES.put("screens",Screens::new);SUITES.put("migration",Migration::new);}
+    static{LevelChecks.register(SUITES);AbilityLevelChecks.register(SUITES);RankChecks.register(SUITES);FacesChecks.register(SUITES);} // in-match progression: levels, gear, armoury; statuses, levels-<house>; ranks (each file owns its entries)
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -5215,7 +5215,7 @@ public final class Phase2Checks implements ClientModInitializer {
         }
         // ---- the bow in its hand (Task 5b fix round 1) ----
         /** A bow troop's pose measured in the troop's own axes (px right, up, front from the feet): the arm's box, the grip pixel's centre (a point box), the sprite's up axis and its plane's normal, the drawn frame's nock (null without one), the other hand's pivot and the frame drawn. */
-        record BowPose(double[] arm,double[] grip,double[] up,double[] normal,double[] nock,double[] other,int frame){}
+        record BowPose(double[] arm,double[] grip,double[] up,double[] normal,double[] nock,double[] other,int frame,double[] handLocal){}
         /** The bone chain and weapon of a bow troop forced to one clip and second (no shield), as Turn.fact reads them. */
         static BowPose bowPose(TroopModel<?> m,String clip,float seconds){
             m.getPart().traverse().forEach(ModelPart::resetTransform);TroopAnimator.applyForced(m,new TroopAnimator.Forced(clip,seconds),TroopAnimator.row(m),false);
@@ -5228,8 +5228,10 @@ public final class Phase2Checks implements ClientModInitializer {
             int frame=w.frames().size()>1?TroopModels.Weapon.frameAt(w.pull(),clip.equals("bow_draw")?seconds:-1f,TroopClips.BOW_TIMES.getOrDefault(m.rig,TroopClips.BOW_TIMES.get("biped"))[1]):0;
             double[] nock=frame<w.nocks().size()?Turn.own(Turn.pt(mw,w.nocks().get(frame).x,w.nocks().get(frame).y,w.nocks().get(frame).z),16):null;
             MatrixStack mo=Turn.base();for(ModelPart p:m.handPath(off))p.rotate(mo);double[] other=Turn.own(Turn.pt(mo,0,0,0),16);
+            // the drawing hand's pivot in the weapon's own frame (px, x right, y down, z thickness), to read how far the string is from it
+            Vector4f wo=Turn.pt(mo,0,0,0);new Matrix4f(mw.peek().getPositionMatrix()).invert().transform(wo);double[] handLocal={wo.x*16,wo.y*16,wo.z*16};
             m.getPart().traverse().forEach(ModelPart::resetTransform);
-            return new BowPose(arm.isEmpty()?null:arm.get(0),new double[]{g[0],g[1],g[2],g[0],g[1],g[2]},Turn.own(u,1),Turn.own(n,1),nock,other,frame);
+            return new BowPose(arm.isEmpty()?null:arm.get(0),new double[]{g[0],g[1],g[2],g[0],g[1],g[2]},Turn.own(u,1),Turn.own(n,1),nock,other,frame,handLocal);
         }
         /**
          * p2-anim-bow: every bow troop (ranged, not magic) holds its bow in the left hand, the drawing hand being the right. At rest (idle at 0 s,
@@ -5422,10 +5424,27 @@ public final class Phase2Checks implements ClientModInitializer {
      * p2-turn-TROOP-POSE-ANGLE.png. The weapon's axes and extents in the troop's own right, up and front axes (px) are logged as
      * "[p2-turn-fact]" lines. The one check, p2-turn-shots: every shot taken lit, in gold, with the camera where it was set and the pose
      * drawn as forced.
+     * <p>The t3 mode (suite t3, for GRAVES_PHASE2_TURN=knight; texel-3 trial plan 4.3) shoots the Knight-Captain (stage 3, the sword III in hand) at the platform's centre, lit, in gold, idle:
+     * t3-close (the camera 1.5 blocks from the sword's grip, 45 degrees to the weapon side), t3-six, t3-six-flat (relief off) and t3-six-side (the weapon-hand side) at 6 blocks, t3-lod-12, -16, -24 and -36
+     * (three-quarter view at that many blocks from the troop; 61 x 61 blocks of floor so the camera stands on it), then for each of those four distances the shimmer set: t3-shim-D-0 to 7 (the camera stepping 0.05 blocks sideways a shot), each next to t3-bg-D-K (the troop parked
+     * away, the same camera, so the troop's mask is where the two differ), then the Knight's card portrait at stage 3 (ArmyCards.draw, the path the cards take) at about 36 px tall
+     * (t3-card-36) and 160 px (t3-card-160). "[p2-t3-fact]" lines give each shot's distance, bound skin, relief key and quads, sword and its quads. The checks: p2-t3-shots, and p2-t3-farskin: a troop of density
+     * above 1 binds its one-texel-a-px skin twin (<skin>_far.png) from 24 blocks out and on a card under 16 x density px a block, and the full skin otherwise; a troop of density 1 never binds a twin.
+     * The same suite runs on a tree without the density work (it reads the density from the model file), for the A side of the comparison.
      */
     static final class Turn extends Stage {
         static final List<String> TROOPS=troops(System.getProperty("gravesandglory.turnTroops","gilded"));
+        /** The hands suite (Turn in its tiers mode): each troop with its weapon at tiers I to III in hand (suite hands, evidence p2-hands-shots). */
+        final boolean tiers;
+        /** The t3 mode (suite t3): the texel-3 trial's distance and card shots. */
+        final boolean t3;
         static final double DIST=3,EYE=1.2,CLOSE=2.0,PARK=24;
+        /** The t3 mode: the LOD shots' distances (blocks), the shimmer set's steps (count, blocks), the floor's half width (a camera 36 blocks out on the diagonal stands over it) and the two card sizes (px a block: 19 and 80 are what DepthCards uses for the 36 px and 160 px portraits). */
+        static final int[] T3_LOD={12,16,24,36};
+        static final int T3_STEPS=8,T3_HALF=30,T3_SMALL=19,T3_LARGE=80;
+        static final double T3_STEP=0.05,T3_CLOSE=1.5,T3_NEAR=24.0;
+        /** TroopModels.FAR_CARD_PER_DENSITY, restated so this file compiles on a tree without it: a card under this many px a block per texel of density draws the twin. */
+        static final int T3_CARD_PER_DENSITY=16;
         /** The troops of a GRAVES_PHASE2_TURN value: a House id gives its troops that have a model (sheet order), anything else is a troop id. */
         static List<String> troops(String arg){
             List<String> out=new ArrayList<>();
@@ -5442,15 +5461,56 @@ public final class Phase2Checks implements ClientModInitializer {
             noTarget=true;
         }
         static final float YAW=180;
+        /** The face (TroopFaces) forced on every Turn shot, from GRAVES_PHASE2_FACE (the system property gravesandglory.faceForce); -1 for none: the troop wears the face its UUID gives it. */
+        static final int FACE=Integer.getInteger("gravesandglory.faceForce",-1);
         static final int[] ANGLES={0,45,90,135,180,225,270,315};
-        /** One shot: its file name, the troop, the pose's label, the clip and second forced on it, the angle round it, a close view of the weapon hand (front, side or above; null for the body), whether the weapon is hidden and whether the relief is off (TroopDepth.enabled false). */
-        record Shot(String name,String troop,String pose,String clip,float at,int angle,String hand,boolean bare,boolean flat){}
+        /** One shot: its file name, the troop, the pose's label, the clip and second forced on it, the angle round it, a close view of the weapon hand (front, side or above; null for the body), whether the weapon is hidden and whether the relief is off (TroopDepth.enabled false); the hands and t3 modes also the weapon tier; the t3 mode also the camera's distance from the troop in blocks (0: DIST) and a step of the camera sideways in blocks. */
+        record Shot(String name,String troop,String pose,String clip,float at,int angle,String hand,boolean bare,boolean flat,int tier,double dist,double side){
+            Shot(String name,String troop,String pose,String clip,float at,int angle,String hand,boolean bare,boolean flat,int tier){this(name,troop,pose,clip,at,angle,hand,bare,flat,tier,0,0);}
+            Shot(String name,String troop,String pose,String clip,float at,int angle,String hand,boolean bare,boolean flat){this(name,troop,pose,clip,at,angle,hand,bare,flat,1,0,0);}
+        }
         final List<Shot> shots=new ArrayList<>();
+        /** The weapon id each troop's model had before the hands suite swapped in a tier's. */
+        final Map<String,String> baseWeapon=new LinkedHashMap<>();
         final Map<String,GravesAndGlory.Unit> units=new LinkedHashMap<>();
-        int si,held,steady,lastCount,settle;String on="";double[] cam;final List<String> bad=new ArrayList<>();
-        String name(){return "turn";}
-        Turn(){
+        int si,held,steady,lastCount,settle;String on="",tierOn="";double[] cam;final List<String> bad=new ArrayList<>();
+        String name(){return t3?"t3":tiers?"hands":"turn";}
+        Turn(){this(false);}
+        Turn(boolean tiers){this(tiers,false);}
+        Turn(boolean tiers,boolean t3){
+            this.tiers=tiers;this.t3=t3;
             hook();
+            if(t3){t3Shots();return;}
+            if(tiers){
+                // the weapon at tiers I to III in hand: the body from the front and the weapon-hand side, the hand from the front, the side and above, the far version
+                // (the relief-off draw) from the front and the side, an attack (a bow: the full draw and the loose) from the side and the hand; every tier of a troop in turn
+                for(String t:TROOPS){
+                    var m=TroopModels.model(t);if(m!=null)baseWeapon.put(t,m.weaponId());
+                    var row=ArmyCards.spec(t);boolean bow=row!=null&&TroopAnimator.bow(row),magic=row!=null&&row.magic();
+                    for(int tier=1;tier<=3;tier++){
+                        String k="hands-"+t+"-t"+tier+"-";
+                        for(int a:new int[]{0,90})shots.add(new Shot(k+"body-"+a,t,"idle","idle",0f,a,null,false,false,tier));
+                        for(String v:List.of("front","side","above"))shots.add(new Shot(k+"hand-"+v,t,"hand-"+v,"idle",0f,0,v,false,false,tier));
+                        for(int a:new int[]{0,90})shots.add(new Shot(k+"far-"+a,t,"far","idle",0f,a,null,false,true,tier));
+                        if(bow){
+                            // the bow is in the left hand: its own side is angle 270 and the hand view "left"
+                            shots.add(new Shot(k+"body-270",t,"idle","idle",0f,270,null,false,false,tier));
+                            shots.add(new Shot(k+"hand-left",t,"hand-left","idle",0f,0,"left",false,false,tier));
+                            shots.add(new Shot(k+"far-270",t,"far","idle",0f,270,null,false,true,tier));
+                            shots.add(new Shot(k+"draw-270",t,"draw","bow_draw",TroopClips.BOW_TIMES.get("biped")[0],270,null,false,false,tier));
+                            shots.add(new Shot(k+"draw-hand-left",t,"draw","bow_draw",TroopClips.BOW_TIMES.get("biped")[0],0,"left",false,false,tier));
+                            shots.add(new Shot(k+"draw-90",t,"draw","bow_draw",TroopClips.BOW_TIMES.get("biped")[0],90,null,false,false,tier));
+                            shots.add(new Shot(k+"draw-hand-side",t,"draw","bow_draw",TroopClips.BOW_TIMES.get("biped")[0],0,"side",false,false,tier));
+                            shots.add(new Shot(k+"draw-hand-front",t,"draw","bow_draw",TroopClips.BOW_TIMES.get("biped")[0],0,"front",false,false,tier));
+                        }else{
+                            String clip=magic?"cast":"attack";
+                            shots.add(new Shot(k+clip+"-90",t,clip,clip,TroopClips.shotTime("biped",clip),90,null,false,false,tier));
+                            shots.add(new Shot(k+clip+"-0",t,clip,clip,TroopClips.shotTime("biped",clip),0,null,false,false,tier));
+                        }
+                    }
+                }
+                return;
+            }
             for(String t:TROOPS){
                 var row=ArmyCards.spec(t);boolean bow=row!=null&&TroopAnimator.bow(row),magic=row!=null&&row.magic();List<Object[]> poses=new ArrayList<>();
                 poses.add(new Object[]{"idle","idle",0f});
@@ -5465,8 +5525,24 @@ public final class Phase2Checks implements ClientModInitializer {
             }
         }
         void cast(GravesAndGlory.Battle b){
-            for(int i=0;i<TROOPS.size();i++){var u=post(b,gold,TROOPS.get(i),0,0,YAW);units.put(TROOPS.get(i),u);place(u,i,false);}
+            if(t3){force(b,site.add(-T3_HALF-2,0,-T3_HALF-2),site.add(T3_HALF+2,0,T3_HALF+2));floor(b,T3_HALF);}
+            for(int i=0;i<TROOPS.size();i++){var u=post(b,gold,TROOPS.get(i),0,0,YAW);if(t3)stage(u,3);units.put(TROOPS.get(i),u);place(u,i,false);}
             camera(b,0,EYE,DIST,0,0);
+        }
+        /** The t3 mode's shots (see the class comment). */
+        void t3Shots(){
+            for(String t:TROOPS){
+                var m=TroopModels.model(t);if(m!=null)baseWeapon.put(t,m.weaponId());
+                shots.add(new Shot("t3-close",t,"close","idle",0f,45,"fist45",false,false,3));
+                shots.add(new Shot("t3-six",t,"idle","idle",0f,30,null,false,false,3,6,0));
+                shots.add(new Shot("t3-six-flat",t,"flat","idle",0f,30,null,false,true,3,6,0));
+                shots.add(new Shot("t3-six-side",t,"idle","idle",0f,90,null,false,false,3,6,0));
+                for(int d:T3_LOD)shots.add(new Shot("t3-lod-"+d,t,"idle","idle",0f,45,null,false,false,3,d,0));
+                for(int d:T3_LOD)for(int k=0;k<T3_STEPS;k++){ // each step's empty frame is taken next to its frame, so the sky has moved as little as it can between them
+                    shots.add(new Shot("t3-bg-"+d+"-"+k,t,"bg","idle",0f,45,null,false,false,3,d,k*T3_STEP));
+                    shots.add(new Shot("t3-shim-"+d+"-"+k,t,"idle","idle",0f,45,null,false,false,3,d,k*T3_STEP));
+                }
+            }
         }
         /** Server: a troop at the platform's centre facing north, or parked high over the floor out of every view (index i keeps the parked ones apart). */
         void place(GravesAndGlory.Unit u,int i,boolean up){
@@ -5476,48 +5552,154 @@ public final class Phase2Checks implements ClientModInitializer {
         public void step(MinecraftClient c,int tick){
             if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;stage=1;});}
             if(finished)return;
-            if(tick>24000){report("p2-turn-timeout",false,"stuck at shot "+si+" of "+shots.size()+", client step "+cs+", server stage "+stage);end(c);return;}
+            if(tick>24000){report("p2-"+name()+"-timeout",false,"stuck at shot "+si+" of "+shots.size()+", client step "+cs+", server stage "+stage);end(c);return;}
             switch(cs){
                 case 0->{boolean lit=litStart(c);
                     if(lit&&ready&&posted.size()==TROOPS.size()&&posted.stream().allMatch(u->client(c,u.mob)!=null)){facts();c.options.hudHidden=true;wait=0;cs=1;}
                     else if(++wait%600==0)System.out.println("[p2-wait] turn step 0 after "+wait+" ticks: ready="+ready+", posted "+posted.size()+" of "+TROOPS.size()+"; "+litWhy(c));}
                 case 1->shoot(c);
-                case 2->{if(++wait==5){report("p2-turn-shots",bad.isEmpty(),shots.size()+" shots"+(bad.isEmpty()?", each taken lit, in gold, with the camera where it was set (0.05 blocks, 1 degree) and the pose drawn as forced (1 degree)":", not as asked: "+bad));serverDone=true;end(c);}}
+                case 3->cards(c);
+                case 2->{if(++wait==5){if(t3)t3Report(c);report("p2-"+name()+"-shots",bad.isEmpty(),shots.size()+" shots"+(bad.isEmpty()?", each taken lit, in gold, with the camera where it was set (0.05 blocks, 1 degree) and the pose drawn as forced (1 degree)"+(tiers?", the tier's weapon in the hand, whole or as its far version as the shot asked":""):", not as asked: "+bad));serverDone=true;end(c);}}
                 default->{}
             }
         }
-        public void cleanup(MinecraftClient c){noTarget=false;TroopAnimator.forced.clear();weapons(null);TroopDepth.enabled=true;super.cleanup(c);}
+        public void cleanup(MinecraftClient c){noTarget=false;TroopAnimator.forced.clear();weapons(null);TroopDepth.enabled=true;restoreWeapons();super.cleanup(c);}
+        /** Client: the model of a troop holds the weapon of a tier (I: its own, II and III: its id with _t2 or _t3), through the model's final field. */
+        void setWeapon(String troop,int tier){
+            var m=TroopModels.model(troop);String base=baseWeapon.get(troop);if(m==null||base==null)return;
+            String id=tier<=1?base:base+"_t"+tier;if(id.equals(m.weaponId()))return;
+            try{var f=TroopModel.class.getDeclaredField("weapon");f.setAccessible(true);f.set(m,id);}catch(ReflectiveOperationException e){throw new IllegalStateException(e);}
+        }
+        void restoreWeapons(){for(String t:baseWeapon.keySet())setWeapon(t,1);}
         /** Client: every weapon model drawn, but the named troop's (TroopFeatures.HIDDEN, by weapon id). */
         static void weapons(String hide){TroopFeatures.HIDDEN.clear();if(hide!=null){var m=TroopModels.model(hide);if(m!=null)TroopFeatures.HIDDEN.add(m.weaponId());}}
         boolean shield(String troop){return !units.get(troop).mob.getOffHandStack().isEmpty();}
 
         /** Client: one shot's turn. */
         void shoot(MinecraftClient c){
-            if(si>=shots.size()){TroopAnimator.forced.clear();weapons(null);cs=2;wait=0;return;}
+            if(si>=shots.size()){TroopAnimator.forced.clear();weapons(null);TroopDepth.enabled=true;cs=t3?3:2;wait=0;return;}
+            if(awayFor>0){litStart(c);return;} // a light recovery has the spectator 400 blocks away, where the troop's client entity is gone: count its 40 ticks here, or the shot is skipped for want of an entity
             Shot s=shots.get(si);var e=client(c,units.get(s.troop()).mob);var m=TroopModels.model(s.troop());
             if(e==null||m==null){if(++held>400){bad.add(s.name()+": no client entity or model");si++;held=0;wait=0;}return;}
+            if(FACE>=0)TroopModels.forceFace(e,FACE); // GRAVES_PHASE2_FACE: the same face on every shot, so shots of two runs (or two trees) compare
             wait++;
+            if(t3&&s.pose().equals("bg")){ // the shimmer set's empty frame: the same camera, the troop parked away
+                if(wait==1){
+                    on="";TroopAnimator.forced.clear();weapons(null);TroopDepth.enabled=true;cam=view(s,m);final double[] v=cam;
+                    server(c,b->{for(int i=0;i<TROOPS.size();i++)place(units.get(TROOPS.get(i)),i,false);camera(b,v[0],v[1],v[2],(float)v[3],(float)v[4]);});
+                    settle=20;steady=0;held=0;return;
+                }
+                if(wait<6+settle)return;
+                var p=c.player;boolean there=Math.abs(p.getX()-(site.getX()+.5+cam[0]))<.05&&Math.abs(p.getEyeY()-(site.getY()+cam[1]))<.05&&Math.abs(p.getZ()-(site.getZ()+.5+cam[2]))<.05;
+                boolean away=e.getY()>site.getY()+5; // the client's copy of the troop has moved up with the pin
+                held++;
+                if((there&&away)||held>300){
+                    if(!shotReady(c,s.name()))return;
+                    if(!(there&&away))bad.add(s.name()+": taken anyway after 300 ticks (camera "+there+", troop away "+away+")");
+                    shot(c,s.name());si++;wait=0;steady=0;held=0;
+                }
+                return;
+            }
             if(wait==1){
-                boolean change=!s.troop().equals(on);
-                if(change){on=s.troop();server(c,b->{for(int i=0;i<TROOPS.size();i++)place(units.get(TROOPS.get(i)),i,TROOPS.get(i).equals(s.troop()));});}
+                boolean troopChange=!s.troop().equals(on),change=troopChange||(tiers||t3)&&!tierOn.equals(s.troop()+s.tier());
+                if(tiers||t3){setWeapon(s.troop(),s.tier());tierOn=s.troop()+s.tier();}
+                if(troopChange){on=s.troop();server(c,b->{for(int i=0;i<TROOPS.size();i++)place(units.get(TROOPS.get(i)),i,TROOPS.get(i).equals(s.troop()));});}
                 TroopAnimator.forced.clear();TroopAnimator.forced.put(e.getId(),new TroopAnimator.Forced(s.clip(),s.at()));weapons(s.bare()?s.troop():null);TroopDepth.enabled=!s.flat();
                 cam=view(s,m);final double[] v=cam;server(c,b->camera(b,v[0],v[1],v[2],(float)v[3],(float)v[4]));
-                settle=change?15:0;steady=0;held=0;return;
+                settle=t3?12:change?15:0;steady=0;held=0;return;
             }
             if(wait<6+settle)return;
             var d=TroopRenderer.drawn(e);boolean drawn=d!=null&&d.pose!=null&&d.last!=null&&d.count>lastCount;lastCount=d==null?0:d.count;
             boolean gilt=drawn&&"gold".equals(d.last.cloth());
             // the relief is what the shot claims: drawn (the troop is near) unless the shot is the flat one; a troop without relief has none to claim
-            boolean raised=drawn&&(m.reliefKeys().isEmpty()||s.flat()==(d.last.relief()==null));
+            // (the t3 mode's shots past TroopDepth.NEAR_BLOCKS are flat by distance, whatever TroopDepth.enabled says; and the troop must be at stage 3, which the server's rename takes a moment to reach the client)
+            boolean wantFlat=s.flat()||t3&&beyond(c,e);
+            boolean raised=drawn&&(m.reliefKeys().isEmpty()||wantFlat==(d.last.relief()==null));
+            if(t3)raised&=drawn&&d.last.look().armourTier()==3;
+            // the hands suite also asks for the tier's weapon, whole or (the relief-off shots) as its far version
+            var hw=drawn&&tiers?TroopModels.weapon(m.weaponId()):null;if(tiers)raised&=drawn&&d.last.weapon()&&hw!=null&&(!hw.cube()||d.last.weaponFar()==s.flat());
             float[] want=pose(m,s,shield(s.troop()));boolean posed=drawn&&Anim.maxRot(d.pose,want)<=1&&Anim.maxPos(d.pose,want)<=0.1;
             var p=c.player;boolean there=Math.abs(p.getX()-(site.getX()+.5+cam[0]))<.05&&Math.abs(p.getEyeY()-(site.getY()+cam[1]))<.05&&Math.abs(p.getZ()-(site.getZ()+.5+cam[2]))<.05
                 &&Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(p.getYaw()-(float)cam[3]))<1&&Math.abs(p.getPitch()-cam[4])<1;
-            steady=gilt&&posed&&there&&raised?steady+1:0;held++;
+            // (t3) the troop has turned to face north, as pinned: a shot taken while it still turned showed its side to a camera aimed at the front
+            boolean faced=!t3||(e instanceof net.minecraft.entity.LivingEntity le&&Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(le.getBodyYaw()-YAW))<2&&Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(le.prevBodyYaw-YAW))<2);
+            steady=gilt&&posed&&there&&raised&&faced?steady+1:0;held++;
             if(steady>=3||held>300){
                 if(!shotReady(c,s.name()))return;
-                if(steady<3)bad.add(s.name()+": taken anyway after 300 ticks (drawn "+drawn+", in gold "+gilt+", pose "+posed+", camera "+there+", relief "+raised+")");
-                shot(c,s.name());si++;wait=0;steady=0;held=0;
+                if(steady<3)bad.add(s.name()+": taken anyway after 300 ticks (drawn "+drawn+", in gold "+gilt+", pose "+posed+", camera "+there+", relief "+raised+", facing "+faced+")");
+                shot(c,s.name());if(t3)t3Fact(c,s.name(),e,m,-1);si++;wait=0;steady=0;held=0;
             }
+        }
+
+        // ---- the t3 mode: distance and card shots, and the far-skin check ----
+        /** Client: whether an entity lies at least TroopDepth.NEAR_BLOCKS (24) from the game camera, from the positions. */
+        static boolean beyond(MinecraftClient c,Entity e){return distance(c,e)>=T3_NEAR;}
+        static double distance(MinecraftClient c,Entity e){var cam=c.gameRenderer.getCamera().getPos();double dx=e.getX()-cam.x,dy=e.getY()-cam.y,dz=e.getZ()-cam.z;return Math.sqrt(dx*dx+dy*dy+dz*dz);}
+        /** One shot's facts: its distance from the camera (blocks; -1 for a card), the card's px a block (0 for a world shot), the texture the draw bound, the relief key, the relief and sword quads it showed. */
+        record T3Fact(String shot,double dist,int px,String skin,String relief,int reliefQuads,String weapon,boolean weaponFar,int weaponQuads){}
+        final List<T3Fact> t3Facts=new ArrayList<>();
+        /** Client: records and logs ("[p2-t3-fact]") what the last draw of the entity bound. px is the card's size, or -1 for a world shot. */
+        void t3Fact(MinecraftClient c,String shot,Entity e,TroopModel<?> m,int px){
+            var d=TroopRenderer.drawn(e);var last=d==null?null:d.last;
+            if(last==null){bad.add(shot+": no draw to record");return;}
+            double dist=px>=0?-1:distance(c,e);String skin=last.skin()==null?"-":last.skin().getPath().substring(last.skin().getPath().lastIndexOf('/')+1);
+            var f=new T3Fact(shot,dist,Math.max(px,0),skin,last.relief()==null?"-":last.relief(),Depth.drawnQuads(m,last),m.weaponId(),last.weaponFar(),Depth.weaponFrameQuads(m,last));
+            t3Facts.add(f);
+            System.out.println(String.format(Locale.ROOT,"[p2-t3-fact] %s: %s, skin %s, relief %s (%d quads), weapon %s %s (%d quads), cloth %s, trim %s",shot,px>=0?"card "+px+" px a block":String.format(Locale.ROOT,"%.2f blocks",dist),f.skin(),f.relief(),f.reliefQuads(),f.weapon(),f.weaponFar()?"far":"whole",f.weaponQuads(),last.cloth(),last.trim()));
+        }
+        /** The portrait the card steps draw. */
+        MobEntity cardMob;int cardMark;
+        /** Client: the Knight's card portrait (stage 3, drawn by ArmyCards.draw when the tree has it) at T3_SMALL and T3_LARGE px a block, a shot of each. */
+        void cards(MinecraftClient c){
+            wait++;
+            if(wait==1){
+                TroopDepth.enabled=true;TroopAnimator.forced.clear();weapons(null);
+                var row=ArmyCards.spec(TROOPS.get(0));cardMob=row==null?null:ArmyCards.portrait(row,3,3);
+                if(cardMob==null){bad.add("no card portrait of "+TROOPS.get(0));cs=2;wait=0;return;}
+                cardMob.age=c.player==null?0:c.player.age;
+                var d=TroopRenderer.drawn(cardMob);cardMark=d==null?0:d.count;
+                c.setScreen(new T3Card(cardMob,ArmyCards.size(cardMob,T3_SMALL)));
+            }
+            if(wait==30||wait==60){
+                boolean small=wait==30;var d=TroopRenderer.drawn(cardMob);
+                if(d==null||d.count-cardMark<5)bad.add("t3-card-"+(small?"36":"160")+": the portrait drew "+(d==null?0:d.count-cardMark)+" times");
+                else t3Fact(c,"t3-card-"+(small?"36":"160"),cardMob,TroopModels.model(TROOPS.get(0)),ArmyCards.size(cardMob,small?T3_SMALL:T3_LARGE));
+                shot(c,"t3-card-"+(small?"36":"160"));
+                if(small){var dd=TroopRenderer.drawn(cardMob);cardMark=dd==null?0:dd.count;c.setScreen(new T3Card(cardMob,ArmyCards.size(cardMob,T3_LARGE)));}
+                else{c.setScreen(null);cs=2;wait=0;}
+            }
+        }
+        /** The Knight's card alone on the cards' dark ground, centred (the crest included). */
+        static final class T3Card extends net.minecraft.client.gui.screen.Screen {
+            final MobEntity mob;final int size;
+            T3Card(MobEntity mob,int size){super(net.minecraft.text.Text.literal("t3 card"));this.mob=mob;this.size=size;}
+            @Override public void render(net.minecraft.client.gui.DrawContext g,int mx,int my,float delta){
+                g.fill(0,0,width,height,0xff24222a);
+                drawCard(g,width/2,height/2+(int)Math.round(size*1.2),size,20,0,mob); // the husk is 1.95 blocks and a stage 3 crest adds about 0.3: the figure's middle on the screen's
+            }
+            @Override public boolean shouldPause(){return false;}
+        }
+        static java.lang.reflect.Method cardDraw;static boolean cardLooked;
+        /** ArmyCards.draw, which tells TroopModels the card's scale (the far-skin rule reads it); on a tree without it, InventoryScreen.drawEntity as the cards used to. */
+        static void drawCard(net.minecraft.client.gui.DrawContext g,int x,int bottom,int size,float mx,float my,MobEntity e){
+            if(!cardLooked){cardLooked=true;try{cardDraw=ArmyCards.class.getDeclaredMethod("draw",net.minecraft.client.gui.DrawContext.class,int.class,int.class,int.class,float.class,float.class,MobEntity.class);cardDraw.setAccessible(true);}catch(NoSuchMethodException nse){cardDraw=null;}}
+            try{if(cardDraw!=null)cardDraw.invoke(null,g,x,bottom,size,mx,my,e);else net.minecraft.client.gui.screen.ingame.InventoryScreen.drawEntity(g,x,bottom,size,mx,my,e);}
+            catch(ReflectiveOperationException roe){throw new IllegalStateException(roe);}
+        }
+        /** p2-t3-farskin: the density of the troop's model file, then each recorded draw's texture against the rule (far past 24 blocks and on a card under 16 x density px a block; never at density 1). */
+        void t3Report(MinecraftClient c){
+            int density=1;String troop=TROOPS.get(0);
+            try{var j=Depth.modelJson(c,troop);density=j.has("density")?j.get("density").getAsInt():1;}catch(Exception x){bad.add("the model file of "+troop+": "+x);}
+            List<String> wrong=new ArrayList<>();int worldFar=0,worldNear=0,cardFar=0,cardNear=0;StringBuilder sb=new StringBuilder();
+            for(T3Fact f:t3Facts){
+                boolean card=f.px()>0,far=f.skin().endsWith("_far.png"),want=density>1&&(card?f.px()<T3_CARD_PER_DENSITY*density:f.dist()>=T3_NEAR);
+                if(card){if(far)cardFar++;else cardNear++;}else{if(far)worldFar++;else worldNear++;}
+                if(far!=want)wrong.add(f.shot()+" bound "+f.skin()+", want "+(want?"the _far twin":"the full skin"));
+                if(!f.shot().contains("shim"))sb.append(f.shot()).append(card?" ("+f.px()+" px a block)":String.format(Locale.ROOT," (%.1f blocks)",f.dist())).append(' ').append(f.skin()).append(", ");
+            }
+            boolean teeth=density==1?worldNear>0&&cardNear>0:worldFar>0&&worldNear>0&&cardFar>0&&cardNear>0;
+            report("p2-t3-farskin",wrong.isEmpty()&&teeth,"the "+troop+" model file has density "+density+"; "+(density>1?"a draw binds the _far skin twin from "+(int)T3_NEAR+" blocks out (the camera to the troop) and on a card under "+T3_CARD_PER_DENSITY*density+" px a block, the full skin otherwise":"no twin is expected anywhere")
+                +": "+sb+worldFar+" far and "+worldNear+" full skins in the world, "+cardFar+" far and "+cardNear+" full on cards"+(wrong.isEmpty()?"":"; wrong: "+wrong)+(teeth?"":" (the shots did not cover both sides of the rule: BAD)"));
         }
         /** The bones of a model forced to a shot's clip and second, then back to rest. */
         static float[] pose(TroopModel<?> m,Shot s,boolean shield){
@@ -5529,13 +5711,16 @@ public final class Phase2Checks implements ClientModInitializer {
         double[] view(Shot s,TroopModel<?> m){
             double y=Math.toRadians(YAW),fx=-Math.sin(y),fz=Math.cos(y),rx=-Math.cos(y),rz=-Math.sin(y); // the troop's front and right on the ground
             if(s.hand()==null){
-                double a=Math.toRadians(s.angle()),ux=Math.cos(a)*fx+Math.sin(a)*rx,uz=Math.cos(a)*fz+Math.sin(a)*rz;
-                return new double[]{DIST*ux,EYE,DIST*uz,yawOf(-ux,-uz),0};
+                double a=Math.toRadians(s.angle()),ux=Math.cos(a)*fx+Math.sin(a)*rx,uz=Math.cos(a)*fz+Math.sin(a)*rz,d=s.dist()>0?s.dist():DIST;
+                return new double[]{d*ux-s.side()*uz,EYE,d*uz+s.side()*ux,yawOf(-ux,-uz),0}; // a sideways step moves the camera across its line of sight, not its aim
             }
             double[] g=grip(m,new TroopAnimator.Forced(s.clip(),s.at()),shield(s.troop())); // the weapon's grip, blocks from the feet in world axes
             return switch(s.hand()){
                 case "front"->new double[]{g[0]+CLOSE*fx,g[1],g[2]+CLOSE*fz,yawOf(-fx,-fz),0};
                 case "side"->new double[]{g[0]+CLOSE*rx,g[1],g[2]+CLOSE*rz,yawOf(-rx,-rz),0};
+                case "left"->new double[]{g[0]-CLOSE*rx,g[1],g[2]-CLOSE*rz,yawOf(rx,rz),0};
+                case "fist45"->{double a=Math.toRadians(s.angle()),ux=Math.cos(a)*fx+Math.sin(a)*rx,uz=Math.cos(a)*fz+Math.sin(a)*rz; // T3_CLOSE blocks from the grip, s.angle() round from the front toward the weapon side
+                    yield new double[]{g[0]+T3_CLOSE*ux,g[1],g[2]+T3_CLOSE*uz,yawOf(-ux,-uz),0};}
                 default->new double[]{g[0],g[1]+CLOSE,g[2],YAW,90};
             };
         }
@@ -5559,10 +5744,28 @@ public final class Phase2Checks implements ClientModInitializer {
             for(String t:TROOPS){
                 var m=TroopModels.model(t);var w=m==null?null:TroopModels.weapon(m.weaponId());
                 if(m==null||w==null||TroopAnimator.row(m)==null){System.out.println("[p2-turn-fact] "+t+": no model, weapon or row");continue;}
-                for(Shot s:shots)if(s.hand()==null&&!s.bare()&&!s.flat()&&s.troop().equals(t)&&s.angle()==0)try{fact(m,w,s);}catch(RuntimeException x){System.out.println("[p2-turn-fact] "+s.name()+": "+x);}
+                for(Shot s:shots)if(s.hand()==null&&!s.bare()&&!s.flat()&&s.troop().equals(t)&&s.angle()==0)try{
+                    if(tiers)setWeapon(t,s.tier());
+                    fact(m,tiers?TroopModels.weapon(m.weaponId()):w,s);
+                }catch(RuntimeException x){System.out.println("[p2-turn-fact] "+s.name()+": "+x);}
             }
             for(String t:TROOPS){var m=TroopModels.model(t);if(m!=null)m.getPart().traverse().forEach(ModelPart::resetTransform);}
+            if(tiers)nockFacts();
         }
+        /** "[p2-hands-nock]" lines: each bow at each tier at the full draw, where the drawing hand is against the frame's nock, in the weapon frame (px, x right, y down, z thickness). */
+        void nockFacts(){
+            for(String t:TROOPS){
+                var m=TroopModels.model(t);var row=ArmyCards.spec(t);if(m==null||row==null||!TroopAnimator.bow(row))continue;
+                for(int tier=1;tier<=3;tier++)try{
+                    setWeapon(t,tier);var w=TroopModels.weapon(m.weaponId());float full=TroopClips.BOW_TIMES.get(m.rig)[0];var d=Anim.bowPose(m,"bow_draw",full);
+                    var nk=w.nocks().get(Math.min(d.frame(),w.nocks().size()-1));double gap=d.nock()==null?-1:dist(d.nock(),d.other());
+                    System.out.println(String.format(Locale.ROOT,"[p2-hands-nock] %s tier %d %s: at %.2f s frame %d, the drawing hand is %.2f px from the nock; in the weapon frame the nock is (%.2f, %.2f, %.2f) and the hand (%.2f, %.2f, %.2f), the hand off the nock by (%.2f, %.2f, %.2f)",
+                        t,tier,m.weaponId(),full,d.frame(),gap,nk.x,nk.y,nk.z,d.handLocal()[0],d.handLocal()[1],d.handLocal()[2],d.handLocal()[0]-nk.x,d.handLocal()[1]-nk.y,d.handLocal()[2]-nk.z));
+                }catch(RuntimeException x){System.out.println("[p2-hands-nock] "+t+" tier "+tier+": "+x);}
+            }
+            restoreWeapons();
+        }
+        static double dist(double[] a,double[] b){return Math.sqrt((a[0]-b[0])*(a[0]-b[0])+(a[1]-b[1])*(a[1]-b[1])+(a[2]-b[2])*(a[2]-b[2]));}
         void fact(TroopModel<?> m,TroopModels.Weapon w,Shot s){
             m.getPart().traverse().forEach(ModelPart::resetTransform);TroopAnimator.applyForced(m,new TroopAnimator.Forced(s.clip(),s.at()),TroopAnimator.row(m),shield(s.troop()));
             String hand=m.hand(),off="left".equals(hand)?"right":"left";List<ModelPart> path=m.handPath(hand);
@@ -6057,6 +6260,7 @@ public final class Phase2Checks implements ClientModInitializer {
             if(si>=shots.size()){TroopAnimator.forced.clear();cs=2;wait=0;return;}
             Shot s=shots.get(si);var e=client(c,units.get(s.troop()).mob);var m=TroopModels.model(s.troop());
             if(e==null||m==null){if(++held>400){bad.add(s.name()+": no client entity or model");si++;held=0;wait=0;}return;}
+            if(Turn.FACE>=0)TroopModels.forceFace(e,Turn.FACE); // GRAVES_PHASE2_FACE: the same face on every shot, so shots of two runs (or two trees) compare
             wait++;
             if(wait==1){
                 boolean change=!s.troop().equals(on);
@@ -6109,6 +6313,8 @@ public final class Phase2Checks implements ClientModInitializer {
      * GravesAndGloryClient.lastSent, TroopRenderer.drawn), never a re-derived value.
      */
     static final class Screens extends Stage {
+        /** A bound texture id as text with a one-texel-a-px twin's _far taken out (knight_s1_far.png is knight_s1.png): a far or card draw of a density above 1 troop binds the twin, and the checks name the skin. */
+        static String unfar(Object id){return String.valueOf(id).replace("_far.png",".png");}
         volatile boolean campReady,claimReady,vetCast,claimed;volatile String serverWhy="";volatile int rollStars=-1,rollCopies=-1,ironShards0=-1,ironShards=-1;
         java.util.random.RandomGenerator rngSaved;int knightMastery0=-1;
         GravesAndGlory.Squad mine;GravesAndGlory.Unit plain,vet1,vet3;
@@ -6257,9 +6463,9 @@ public final class Phase2Checks implements ClientModInitializer {
                     var l1=d1==null?null:d1.last;var l3=d3==null?null:d3.last;var l0=d0==null?null:d0.last;
                     String trim="gravesandglory:textures/entity/troop/knight_veteran.png";
                     boolean names=n1.equals("Order Squire (Veteran)")&&n3.equals("Knight-Captain (Veteran)")&&n0.equals("Order Squire");
-                    boolean one=l1!=null&&l1.look().veteran()&&String.valueOf(l1.skin()).endsWith("knight_s1.png")&&String.valueOf(l1.trim()).equals(trim);
-                    boolean three=l3!=null&&l3.look().veteran()&&l3.look().armourTier()==3&&String.valueOf(l3.skin()).endsWith("knight_s3.png")&&String.valueOf(l3.trim()).equals(trim);
-                    boolean bare=l0!=null&&!l0.look().veteran()&&l0.trim()==null&&String.valueOf(l0.skin()).endsWith("knight_s1.png");
+                    boolean one=l1!=null&&l1.look().veteran()&&unfar(l1.skin()).endsWith("knight_s1.png")&&unfar(l1.trim()).equals(trim);
+                    boolean three=l3!=null&&l3.look().veteran()&&l3.look().armourTier()==3&&unfar(l3.skin()).endsWith("knight_s3.png")&&unfar(l3.trim()).equals(trim);
+                    boolean bare=l0!=null&&!l0.look().veteran()&&l0.trim()==null&&unfar(l0.skin()).endsWith("knight_s1.png");
                     boolean named=serverWhy.contains("(Order Squire (Veteran)) is knight")&&serverWhy.contains("(Knight-Captain (Veteran)) is knight");
                     shot(c,"chase-veteran");
                     report("p2-veteran-skin",names&&one&&three&&bare&&named,"names on the client: \""+n1+"\", \""+n3+"\", \""+n0+"\" (want Order Squire (Veteran), Knight-Captain (Veteran), Order Squire)="+names+"; the Mastery II knight at tier I drew skin "+(l1==null?"none":l1.skin())+" with trim "+(l1==null?"none":l1.trim())+"="+one+"; at tier III skin "+(l3==null?"none":l3.skin())+" with trim "+(l3==null?"none":l3.trim())+"="+three+"; the bot's plain knight trim "+(l0==null?"none":l0.trim())+"="+bare+"; "+serverWhy+"="+named+"; picture p2-chase-veteran.png");
@@ -6520,9 +6726,14 @@ public final class Phase2Checks implements ClientModInitializer {
         static int drawnQuads(TroopModel<?> m,TroopRenderer.Draw d){
             if(m==null||d==null||d.relief()==null)return 0;int n=0;for(String bone:m.shownBones(d.bones()))n+=m.relief(bone,d.relief()).quads();return n;
         }
-        /** The quads the weapon's frame holds (frame 0 unless the draw names another), or 0. */
+        /** The quads the weapon's mesh holds for a draw: its far version when the draw was far, else the frame (frame 0 unless the draw names another), or 0. */
         static int weaponFrameQuads(TroopModel<?> m,TroopRenderer.Draw d){
-            var w=m==null?null:TroopModels.weapon(m.weaponId());if(w==null||d==null||!d.weapon())return 0;return w.frames().get(Math.max(0,d.weaponFrame())).quads();
+            var w=m==null?null:TroopModels.weapon(m.weaponId());if(w==null||d==null||!d.weapon())return 0;
+            return d.weaponFar()?w.far().quads():w.frames().get(Math.max(0,d.weaponFrame())).quads();
+        }
+        /** The quads a weapon draws when troop depth is off or the troop is far: a cube weapon's far version, a sprite weapon's two big faces. */
+        static int flatWeaponQuads(TroopModel<?> m){
+            var w=m==null?null:TroopModels.weapon(m.weaponId());return w==null?0:w.cube()?w.far().quads():2;
         }
         TroopRenderer.Drawn drawn(MinecraftClient c,GravesAndGlory.Unit u){var e=client(c,u.mob);return e==null?null:TroopRenderer.drawn(e);}
         int drawCount(MinecraftClient c,GravesAndGlory.Unit u){var d=drawn(c,u);return d==null?0:d.count;}
@@ -6593,15 +6804,16 @@ public final class Phase2Checks implements ClientModInitializer {
             Set<String> seen=new TreeSet<>();
             for(String id:SIX){
                 var m=TroopModels.model(id);var w=m==null?null:TroopModels.weapon(m.weaponId());if(w==null||!seen.add(w.id()))continue;
-                int want=w.id().equals("order_bow")||w.id().equals("longbow")?4:1;boolean good=w.frames().size()==want;StringBuilder q=new StringBuilder();
+                int want=w.id().equals("order_bow")||w.id().equals("longbow")?4:1;boolean good=w.frames().size()==want&&w.cube();StringBuilder q=new StringBuilder();
                 for(var f:w.frames()){good&=f.quads()>=2&&f.quads()<=128;q.append(f.quads()).append(' ');}
                 if(want==4)good&=w.pull().length==3&&w.nocks().size()==4;
-                ok&=good;why.append("weapon ").append(w.id()).append(": ").append(w.frames().size()).append(" frames (want ").append(want).append(") of ").append(q).append("quads").append(good?"":" (BAD)").append("; ");
+                good&=w.cube()&&w.far().quads()>=2&&w.far().quads()<=32;
+                ok&=good;why.append("weapon ").append(w.id()).append(w.cube()?" (cube)":" (not a cube weapon)").append(": ").append(w.frames().size()).append(" frames (want ").append(want).append(") of ").append(q).append("quads, far version ").append(w.cube()?w.far().quads():-1).append(" (2 to 32)").append(good?"":" (BAD)").append("; ");
             }
             int lines=0;List<String> bad=new ArrayList<>();
             try{for(String line:Files.readAllLines(c.runDirectory.toPath().resolve("logs/latest.log"),java.nio.charset.StandardCharsets.ISO_8859_1)){lines++;if(line.contains("[p2] "))continue; /* an earlier suite's report line (p2-spike-load) quotes the marker: seen in the Task 13 regression */if(line.contains("[troop-models]"))bad.add(line.trim());}}catch(IOException e){bad.add(e.toString());}
             ok&=bad.isEmpty()&&lines>0;why.append(lines).append(" lines of latest.log read, ").append(bad.isEmpty()?"no [troop-models] line":bad.size()+" [troop-models] lines, first: "+bad.get(0));
-            report("p2-depth-load",ok,"every Gilded model loads one relief mesh set per own skin with the quad counts its generated file holds, the bows have 4 frames and the other weapons 1: "+why);
+            report("p2-depth-load",ok,"every Gilded model loads one relief mesh set per own skin with the quad counts its generated file holds, the six weapons are cube weapons, the bows have 4 frames and the other weapons 1, each cube weapon has a far version of 2 to 32 quads: "+why);
         }
 
         // ---- p2-depth-uv ----
@@ -6635,17 +6847,24 @@ public final class Phase2Checks implements ClientModInitializer {
             return out;
         }
         /** One mesh's quads against the three rules (unit axis normal agreeing with the corner order, a UV area above zero, a top quad's UV centre on its cuboid face). Returns the failures; counts are added to n = {quads, top quads}. */
-        static void quadRules(String what,TroopMesh mesh,List<List<float[]>> cuboids,int w,int h,List<String> bad,int[] n){
+        static void quadRules(String what,TroopMesh mesh,List<List<float[]>> cuboids,int w,int h,List<String> bad,int[] n){quadRules(what,mesh,cuboids,w,h,1,bad,n);}
+        /**
+         * The same for a troop of density D (texels a px, texel-3 plan; 1 unless the model file says): the mesh's UVs are in the model's layout units (the file's size) whatever the density, so
+         * a top quad of one relief texel has edges of 1/D layout units and a side quad's thin axis 0.25/D; a top quad is one whose edges are both at least 0.99/D.
+         */
+        static void quadRules(String what,TroopMesh mesh,List<List<float[]>> cuboids,int w,int h,int density,List<String> bad,int[] n){
+            final double least=.99/density;
             for(int i=0;i<mesh.quads();i++){
-                n[0]++;int d=mesh.direction(i);float[] pos=mesh.positions(i),tex=mesh.texels(i);int[] nm=NORMALS[d];int a=nm[0]!=0?0:nm[1]!=0?1:2;
-                boolean flat=true;for(int k=1;k<4;k++)flat&=Math.abs(pos[3*k+a]-pos[a])<1e-4;
+                // a free (20-number) quad of a cube weapon has direction -1 and the normal worked out at parse; the loader checked it is a parallelogram, so it is flat
+                n[0]++;int d=mesh.direction(i);float[] pos=mesh.positions(i),tex=mesh.texels(i),nf=mesh.normal(i);int[] nm=d>=0?NORMALS[d]:null;int a=d<0?0:nm[0]!=0?0:nm[1]!=0?1:2;
+                boolean flat=true;if(d>=0)for(int k=1;k<4;k++)flat&=Math.abs(pos[3*k+a]-pos[a])<1e-4;
                 double[] c1={pos[3]-pos[0],pos[4]-pos[1],pos[5]-pos[2]},c3={pos[9]-pos[0],pos[10]-pos[1],pos[11]-pos[2]};
                 double[] cr={c1[1]*c3[2]-c1[2]*c3[1],c1[2]*c3[0]-c1[0]*c3[2],c1[0]*c3[1]-c1[1]*c3[0]};double len=Math.sqrt(cr[0]*cr[0]+cr[1]*cr[1]+cr[2]*cr[2]);
-                boolean wound=len>1e-6&&(cr[0]*nm[0]+cr[1]*nm[1]+cr[2]*nm[2])/len>.999;
+                boolean wound=len>1e-6&&(cr[0]*nf[0]+cr[1]*nf[1]+cr[2]*nf[2])/len>.999;
                 double e1u=tex[2]-tex[0],e1v=tex[3]-tex[1],e3u=tex[6]-tex[0],e3v=tex[7]-tex[1],area=Math.abs(e1u*e3v-e1v*e3u);
                 if(!flat||!wound)bad.add(what+" quad "+i+" (direction "+d+"): "+(flat?"":"not flat across its normal; ")+(wound?"":"corner order does not agree with the normal"));
                 if(area<=1e-6)bad.add(what+" quad "+i+": UV area "+area);
-                boolean top=Math.hypot(e1u,e1v)>=.99&&Math.hypot(e3u,e3v)>=.99;
+                boolean top=Math.hypot(e1u,e1v)>=least&&Math.hypot(e3u,e3v)>=least;
                 if(top&&cuboids!=null){
                     n[1]++;double[] p={(pos[0]+pos[3]+pos[6]+pos[9])/4,(pos[1]+pos[4]+pos[7]+pos[10])/4,(pos[2]+pos[5]+pos[8]+pos[11])/4};
                     double cu=(tex[0]+tex[2]+tex[4]+tex[6])/4,cv=(tex[1]+tex[3]+tex[5]+tex[7])/4;double[] real=cuboidUv(cuboids,p,nm,w,h);
@@ -6659,10 +6878,10 @@ public final class Phase2Checks implements ClientModInitializer {
             List<String> bad=new ArrayList<>();int[] n={0,0};int meshes=0;
             for(String id:SIX){
                 var m=TroopModels.model(id);if(m==null){bad.add(id+": no model");continue;}
-                int w,h;try{var size=modelJson(c,id).getAsJsonArray("size");w=size.get(0).getAsInt();h=size.get(1).getAsInt();}catch(Exception e){bad.add(id+": "+e);continue;}
+                int w,h,density;try{var j=modelJson(c,id);var size=j.getAsJsonArray("size");w=size.get(0).getAsInt();h=size.get(1).getAsInt();density=j.has("density")?j.get("density").getAsInt():1;}catch(Exception e){bad.add(id+": "+e);continue;}
                 for(String key:m.reliefKeys())for(String bone:m.boneOrder()){
                     var mesh=m.relief(bone,key);if(mesh.quads()==0)continue;meshes++;
-                    quadRules(id+" "+bone+" "+key,mesh,cuboidFaces(m.bone(bone)),w,h,bad,n);
+                    quadRules(id+" "+bone+" "+key,mesh,cuboidFaces(m.bone(bone)),w,h,density,bad,n);
                 }
             }
             int frames=0;Set<String> seen=new TreeSet<>();
@@ -6729,25 +6948,25 @@ public final class Phase2Checks implements ClientModInitializer {
                 if(!there(c,0,1.6,STUDIO-8,0,0)||!stands(c,k,0,STUDIO)){wait--;return;}
                 var d=drawn(c,k);var last=d==null?null:d.last;boolean fresh=d!=null&&d.count>mark;
                 int want=drawnQuads(m,last),wq=weaponFrameQuads(m,last);
-                boolean ok=fresh&&last.relief()!=null&&last.relief().equals(m==null?"":m.reliefKey(last.look()))&&TroopDepth.nearDraws==1&&want>0&&TroopDepth.reliefQuads==want&&wq>2&&TroopDepth.weaponQuads==wq;
-                nearA&=ok;near8=String.format(Locale.ROOT,"at 8 blocks relief %s, nearDraws %d, reliefQuads %d (the bones drawn hold %d of its stage's %d), weaponQuads %d (its frame holds %d)%s; ",last==null?"-":last.relief(),TroopDepth.nearDraws,TroopDepth.reliefQuads,want,last==null||m==null||last.relief()==null?-1:m.reliefQuads(last.relief()),TroopDepth.weaponQuads,wq,ok?"":" (BAD)");
+                boolean ok=fresh&&last.relief()!=null&&last.relief().equals(m==null?"":m.reliefKey(last.look()))&&TroopDepth.nearDraws==1&&want>0&&TroopDepth.reliefQuads==want&&wq>flatWeaponQuads(m)&&!last.weaponFar()&&TroopDepth.weaponQuads==wq;
+                nearA&=ok;near8=String.format(Locale.ROOT,"at 8 blocks relief %s, nearDraws %d, reliefQuads %d (the bones drawn hold %d of its stage's %d), weaponQuads %d (its frame holds %d, the far version %d), far %s%s; ",last==null?"-":last.relief(),TroopDepth.nearDraws,TroopDepth.reliefQuads,want,last==null||m==null||last.relief()==null?-1:m.reliefQuads(last.relief()),TroopDepth.weaponQuads,wq,flatWeaponQuads(m),last==null?"-":last.weaponFar(),ok?"":" (BAD)");
             }
             if(wait==61)server(c,b->camera(b,0,1.6,STUDIO-30,0,0));
             if(wait==115)mark=drawCount(c,k);
             if(wait==120){
                 if(!there(c,0,1.6,STUDIO-30,0,0)){wait--;return;}
                 var d=drawn(c,k);var last=d==null?null:d.last;boolean fresh=d!=null&&d.count>mark;
-                boolean ok=fresh&&last.relief()==null&&TroopDepth.nearDraws==0&&TroopDepth.reliefQuads==0;
-                nearA&=ok;near30=String.format(Locale.ROOT,"at 30 blocks relief %s, nearDraws %d, reliefQuads %d%s; ",last==null?"-":last.relief(),TroopDepth.nearDraws,TroopDepth.reliefQuads,ok?"":" (BAD)");
+                boolean ok=fresh&&last.relief()==null&&TroopDepth.nearDraws==0&&TroopDepth.reliefQuads==0&&last.weaponFar()&&TroopDepth.weaponQuads==flatWeaponQuads(m);
+                nearA&=ok;near30=String.format(Locale.ROOT,"at 30 blocks relief %s, nearDraws %d, reliefQuads %d, weaponQuads %d (want the sword's far version, %d quads), far %s%s; ",last==null?"-":last.relief(),TroopDepth.nearDraws,TroopDepth.reliefQuads,TroopDepth.weaponQuads,flatWeaponQuads(m),last==null?"-":last.weaponFar(),ok?"":" (BAD)");
             }
             if(wait==121)server(c,b->{move(k.mob,0,STUDIO,180+30);camera(b,0,1.45,STUDIO-4,0,6);});
             if(wait==180){
                 if(there(c,0,1.45,STUDIO-4,0,6)&&stands(c,k,0,STUDIO)&&shotReady(c,"depth-knight-near")){shot(c,snap("knight-near"));TroopDepth.enabled=false;mark=drawCount(c,k);}else wait--;
             }
             if(wait==200){
-                var d=drawn(c,k);boolean flat=d!=null&&d.count>mark&&d.last.relief()==null&&!TroopDepth.enabled&&TroopDepth.nearDraws==0&&TroopDepth.reliefQuads==0&&TroopDepth.weaponQuads==2;
+                var d=drawn(c,k);boolean flat=d!=null&&d.count>mark&&d.last.relief()==null&&!TroopDepth.enabled&&TroopDepth.nearDraws==0&&TroopDepth.reliefQuads==0&&d.last.weaponFar()&&TroopDepth.weaponQuads==flatWeaponQuads(m);
                 nearA&=flat;
-                nearWhy.append(String.format(Locale.ROOT,"with TroopDepth.enabled false the knight drew relief %s, nearDraws %d, reliefQuads %d, weaponQuads %d (want none, 0, 0 and the sword's 2 big faces)%s; ",d==null?"-":d.last.relief(),TroopDepth.nearDraws,TroopDepth.reliefQuads,TroopDepth.weaponQuads,flat?"":" (BAD)"));
+                nearWhy.append(String.format(Locale.ROOT,"with TroopDepth.enabled false the knight drew relief %s, nearDraws %d, reliefQuads %d, weaponQuads %d (want none, 0, 0 and the sword's far version of %d quads)%s; ",d==null?"-":d.last.relief(),TroopDepth.nearDraws,TroopDepth.reliefQuads,TroopDepth.weaponQuads,flatWeaponQuads(m),flat?"":" (BAD)"));
                 if(shotReady(c,"depth-knight-flat")){shot(c,snap("knight-flat"));TroopDepth.enabled=true;cs=4;wait=0;}else wait--;
             }
         }
@@ -6772,10 +6991,12 @@ public final class Phase2Checks implements ClientModInitializer {
             }
             if(wait==101)for(var u:crowd)marks.put(u,drawCount(c,u));
             if(wait==120){
-                int fresh=0,raised=0,near=0;var any=drawn(c,crowd.get(0));int wq=weaponFrameQuads(m,any==null?null:any.last);
-                for(var u:crowd){var d=drawn(c,u);if(d!=null&&d.count>marks.getOrDefault(u,0)){fresh++;if(d.last.relief()!=null)raised++;}var e=client(c,u.mob);if(e!=null&&TroopDepth.near(e))near++;}
-                boolean ok=fresh==60&&raised==0&&near==0&&TroopDepth.nearDraws==0&&TroopDepth.reliefQuads==0&&wq>2&&TroopDepth.weaponQuads==(long)60*wq;
-                switchOk&=ok;switchWhy.append(String.format(Locale.ROOT,"with the option Off the same %d knights within 24 blocks: %d drawn fresh, %d with relief, %d that TroopDepth.near calls near, nearDraws %d, reliefQuads %d, weaponQuads %d (want 0, 0, 0, 0 and 60 sprite swords of %d quads = %d)%s; ",crowd.size(),fresh,raised,near,TroopDepth.nearDraws,TroopDepth.reliefQuads,TroopDepth.weaponQuads,wq,60L*wq,ok?"":" (BAD)"));
+                int fresh=0,raised=0,near=0,whole=0,far=0;var any=drawn(c,crowd.get(0));int wq=weaponFrameQuads(m,any==null?null:any.last),fq=flatWeaponQuads(m);
+                for(var u:crowd){var d=drawn(c,u);if(d!=null&&d.count>marks.getOrDefault(u,0)){fresh++;if(d.last.relief()!=null)raised++;if(d.last.weaponFar())far++;else whole++;}var e=client(c,u.mob);if(e!=null&&TroopDepth.near(e))near++;}
+                // the option Off drops the relief only: a cube sword still draws whole on the NEAR_CAP nearest troops and as its far version on the rest
+                long wantQuads=(long)TroopDepth.NEAR_CAP*wq+(long)(60-TroopDepth.NEAR_CAP)*fq;
+                boolean ok=fresh==60&&raised==0&&near==0&&TroopDepth.nearDraws==0&&TroopDepth.reliefQuads==0&&wq>fq&&whole==TroopDepth.NEAR_CAP&&far==60-TroopDepth.NEAR_CAP&&TroopDepth.weaponQuads==wantQuads;
+                switchOk&=ok;switchWhy.append(String.format(Locale.ROOT,"with the option Off the same %d knights within 24 blocks: %d drawn fresh, %d with relief, %d that TroopDepth.near calls near, nearDraws %d, reliefQuads %d, %d swords whole (%d quads) and %d far (%d quads), weaponQuads %d (want 0, 0, 0, 0, %d whole, %d far = %d)%s; ",crowd.size(),fresh,raised,near,TroopDepth.nearDraws,TroopDepth.reliefQuads,whole,wq,far,fq,TroopDepth.weaponQuads,TroopDepth.NEAR_CAP,60-TroopDepth.NEAR_CAP,wantQuads,ok?"":" (BAD)"));
                 Presentation.troopDepth=true;
             }
             if(wait==122)for(var u:crowd)marks.put(u,drawCount(c,u));
@@ -6838,7 +7059,8 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(draw.frame()!=3)bad.add(id+": the frame at "+full+" s is "+draw.frame()+", want 3");
                     if(gap>2)bad.add(String.format(Locale.ROOT,"%s: at the full draw the drawing hand is %.2f px from frame 3's nock (want 2 or less)",id,gap));
                     if(plane<40||plane>50)bad.add(String.format(Locale.ROOT,"%s: at rest the sprite plane's normal is %.1f degrees from the facing (want 45, within 5)",id,plane));
-                    why.append(String.format(Locale.ROOT,"%s: at %.2f s frame %d, the right hand %.2f px from its nock (want 2 or less), at rest the plane's normal %.1f degrees from the facing (want 45 +- 5); ",id,full,draw.frame(),gap,plane));
+                    var nk=w.nocks().get(Math.min(draw.frame(),w.nocks().size()-1));
+                    why.append(String.format(Locale.ROOT,"%s: at %.2f s frame %d, the right hand %.2f px from its nock (want 2 or less; in the weapon frame, x right, y down, z thickness: nock (%.2f, %.2f, %.2f), hand (%.2f, %.2f, %.2f)), at rest the plane's normal %.1f degrees from the facing (want 45 +- 5); ",id,full,draw.frame(),gap,nk.x,nk.y,nk.z,draw.handLocal()[0],draw.handLocal()[1],draw.handLocal()[2],plane));
                 }
                 report("p2-depth-bow",bad.isEmpty(),why.toString().trim()+(bad.isEmpty()?"":" wrong: "+bad));
                 if(shotReady(c,"depth-bow-draw"))shot(c,snap("bow-draw"));
@@ -6859,8 +7081,9 @@ public final class Phase2Checks implements ClientModInitializer {
             if(wait==80){
                 StringBuilder sb=new StringBuilder();List<String> bad=new ArrayList<>();
                 for(int i=0;i<lodders.size();i++){var d=drawn(c,lodders.get(i));var last=d==null?null:d.last;boolean fresh=d!=null&&d.count>marks.getOrDefault(lodders.get(i),0);
-                    boolean up=fresh&&last.relief()!=null;boolean want=LOD_AT[i]<23.95;sb.append((int)LOD_AT[i]).append(up?" raised, ":fresh?" flat, ":" not drawn, ");
-                    if(!fresh)bad.add("the knight at "+LOD_AT[i]+" blocks was not drawn");else if(up!=want)bad.add("the knight at "+LOD_AT[i]+" blocks drew relief "+last.relief()+", want "+(want?"raised":"flat"));}
+                    boolean up=fresh&&last.relief()!=null;boolean want=LOD_AT[i]<23.95;sb.append((int)LOD_AT[i]).append(up?" raised":fresh?" flat":" not drawn").append(fresh?(last.weaponFar()?" and far sword, ":" and whole sword, "):", ");
+                    if(!fresh)bad.add("the knight at "+LOD_AT[i]+" blocks was not drawn");else if(up!=want)bad.add("the knight at "+LOD_AT[i]+" blocks drew relief "+last.relief()+", want "+(want?"raised":"flat"));
+                    else if(last.weaponFar()==want)bad.add("the knight at "+LOD_AT[i]+" blocks drew its sword "+(last.weaponFar()?"far":"whole")+", want "+(want?"whole":"far"));}
                 nearOk&=bad.isEmpty();nearWhy.append("a line of knights at ").append(sb).append("the cutoff 24 blocks").append(bad.isEmpty()?"":" (BAD: "+bad+")").append("; ");
                 if(shotReady(c,"depth-lod"))shot(c,snap("lod"));
                 server(c,b->discard(b,lodders));
@@ -7032,7 +7255,7 @@ public final class Phase2Checks implements ClientModInitializer {
         }
         /**
          * Client: phase 1 is the ground camera, phase 2 the commander camera; in each, the state cycles every TOGGLE_TICKS ticks through 0 depth on, 1 flat (TroopDepth.enabled false:
-         * no relief and the weapons' two big faces, the brief's baseline) and 2 the player option Off (no relief, the weapons' full sprite meshes), so all three see the same battle.
+         * no relief and the cube weapons' far versions, the brief's baseline) and 2 the player option Off (no relief, the weapons whole within TroopDepth.weaponNear and far beyond it), so all three see the same battle.
          * The troops are invulnerable (set when the fixture begins), so the block stays 152 strong all the way.
          */
         void costClient(MinecraftClient c){
@@ -7054,7 +7277,7 @@ public final class Phase2Checks implements ClientModInitializer {
             // the ground camera's relief is the one gate (the 1.0 ms budget was derived from relief quads); the commander camera is report only
             boolean within=rg<=1.0;
             String ground=costLine("ground camera",1,1.0,true),commander=costLine("commander camera",2,0.3,false);
-            String msg=String.format(Locale.ROOT,"the tick-cost fixture's %d troops (gilded_normal under all eight armies), made invulnerable and stood again every 100 ticks in a block of ten files 1.25 blocks apart, teams in alternate ranks, on hold, the nearest rank 4 blocks in front of the ground camera (so the ground camera sees about %.0f troops raised a frame: this is not the design's closing melee) and, for the commander camera, a block whose nearest rank is 25 blocks away; %d ticks a camera, the state cycling every %d ticks through depth on, flat (TroopDepth.enabled false: no relief and the weapons' two big faces) and the player option Off (no relief, full weapon meshes), so all three see the same battle. The gate is the ground camera's relief alone (want 1.0 ms or less, with %d or more raised a frame). The weapon budget is decided when Kort rules on the Blockbench weapon format (art pipeline v2 changes the weapon meshes, so gating today's sprite meshes is moot). %s; %s%s",
+            String msg=String.format(Locale.ROOT,"the tick-cost fixture's %d troops (gilded_normal under all eight armies), made invulnerable and stood again every 100 ticks in a block of ten files 1.25 blocks apart, teams in alternate ranks, on hold, the nearest rank 4 blocks in front of the ground camera (so the ground camera sees about %.0f troops raised a frame: this is not the design's closing melee) and, for the commander camera, a block whose nearest rank is 25 blocks away; %d ticks a camera, the state cycling every %d ticks through depth on, flat (TroopDepth.enabled false: no relief and the cube weapons' far versions) and the player option Off (no relief, the weapons whole within TroopDepth.weaponNear and far beyond it), so all three see the same battle. The gate is the ground camera's relief alone (want 1.0 ms or less, with %d or more raised a frame); the weapons' share (the fourth cut: whole on the nearest 48, a far version of at most 32 quads on the rest) is reported, not gated. %s; %s%s",
                 cost==null?0:cost.troops,DepthCost.avgNear(1),PHASE_TICKS,TOGGLE_TICKS,20,costWhere+ground,commander,shadersNow?" (shaders on: report only)":"");
             System.out.println("[p2] depth cost REPORT ONLY, not a check: "+commander);
             report("p2-depth-cost",shadersNow?seen:(seen&&near&&within),(seen?"":"too few frames measured (BAD); ")+(near||shadersNow?"":"the ground camera drew too little relief to measure (BAD: want 20 near draws a frame on average); ")+msg);

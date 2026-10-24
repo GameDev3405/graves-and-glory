@@ -10,9 +10,12 @@ import re
 import sys
 import tempfile
 import unittest
+import base64
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / 'tools'))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_skins
+import test_bbmodel as bbt
 from PIL import Image
 
 ASSETS = 'src/main/resources/assets/gravesandglory'
@@ -140,6 +143,94 @@ def put_png(path, im):
     im.save(path)
 
 
+def upscale(path, k):
+    """Nearest-neighbour enlargement of a PNG to k times its size, in place (the fixture's density-k sources)."""
+    with Image.open(path) as im:
+        big = im.convert('RGBA').resize((im.width * k, im.height * k), Image.NEAREST)
+    big.save(path)
+
+
+def densify(root, troop='knight', density=3, cloth=False):
+    """Makes a fixture troop a density-D troop: "density" in its json and every PNG it owns (skins, glow, outer, trim, relief)
+    enlarged to D times its size; with cloth=True the team cloth template and the glyph masks too, and art/team/team_cloth.json
+    names their density."""
+    root = pathlib.Path(root)
+    path = root / 'art/troops' / (troop + '.json')
+    data = json.loads(path.read_text(encoding='utf-8'))
+    data['density'] = density
+    write_json(path, data)
+    for png in sorted((root / 'art/troops').glob(troop + '_*.png')):
+        upscale(png, density)
+    if cloth:
+        for png in [root / 'art/team/team_cloth.png'] + sorted((root / 'art/team').glob('glyph_*.png')):
+            upscale(png, density)
+        write_json(root / 'art/team/team_cloth.json', {'density': density})
+
+
+FACE_SLOTS = [[0, 64], [32, 64], [0, 80]]   # three free 32x16 rectangles under the fixture's 64x64 sheet, which faced() grows to 64x96
+HEAD_FACES = [(8, 0, 24, 8), (0, 8, 32, 16)]   # the faces of an 8x8x8 box at uv (0, 0) inside its 32x16 rectangle (build_skins.footprint)
+
+
+def patch_colour(k, x, y):
+    """Texel (x, y) of face patch k: low in saturation (the tint rule objects to nothing here), different per patch and per position."""
+    return (180 + 10 * k, 170 + x % 16, 160 + y % 16, 255)
+
+
+def face_patches(density=1, count=4):
+    """art/troops/<troop>_faces.png: `count` patches of 32x16 layout px stacked, the head faces of each painted by patch_colour."""
+    im = Image.new('RGBA', (32 * density, 16 * density * count), (0, 0, 0, 0))
+    for k in range(count):
+        for x0, y0, x1, y1 in HEAD_FACES:
+            for y in range(y0 * density, y1 * density):
+                for x in range(x0 * density, x1 * density):
+                    im.putpixel((x, k * 16 * density + y), patch_colour(k, x, y))
+    return im
+
+
+BEARD_SLOTS = [[32, 80], [46, 80], [32, 85]]   # three free 14x5 rectangles in the 64x96 sheet (the head slots take (0, 64), (32, 64) and (0, 80))
+BEARD_FACES = [(1, 0, 13, 1), (0, 1, 14, 5)]   # the six faces of a 6x4x1 box at uv (0, 0) inside its 14x5 rectangle
+
+
+def beard_colour(k, x, y):
+    """Layout px (x, y) of beard patch k: a cut-out (alpha 0) where (x + y + k) is a multiple of 4, else low in saturation."""
+    return (0, 0, 0, 0) if (x + y + k) % 4 == 0 else (170 + 10 * k, 160 + x % 16, 150 + y % 16, 255)
+
+
+def beard_patches(density=1, count=4):
+    """art/troops/<troop>_beards.png: `count` patches of 14x5 layout px stacked at `density` texels a px (a px is one block of one colour), the six faces of the beard box painted, with cut-outs."""
+    im = Image.new('RGBA', (14 * density, 5 * density * count), (0, 0, 0, 0))
+    for k in range(count):
+        for x0, y0, x1, y1 in BEARD_FACES:
+            for y in range(y0 * density, y1 * density):
+                for x in range(x0 * density, x1 * density):
+                    im.putpixel((x, k * 5 * density + y), beard_colour(k, x // density, y // density))
+    return im
+
+
+def face_skin(path, density=1, size=(64, 96), slots=FACE_SLOTS, paint=(200, 196, 186, 255), rects=()):
+    """A skin of the faces fixture: painted all over except the slots' 32x16 rectangles (free rows for the faces) and any `rects` (x0, y0, x1, y1 in layout px)."""
+    im = Image.new('RGBA', (size[0] * density, size[1] * density), paint)
+    for x0, y0, x1, y1 in [(u, v, u + 32, v + 16) for u, v in slots] + list(rects):
+        for y in range(y0 * density, y1 * density):
+            for x in range(x0 * density, x1 * density):
+                im.putpixel((x, y), (0, 0, 0, 0))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    im.save(path)
+    return im
+
+
+def faces_fixture(tmp, density=1, troops=None, patches=True):
+    """The fixture with the knight a faces troop (troops from BuildSkinsChecks.faces_troops): each of its own skins 64x96 at `density`
+    (painted but for the slots), and art/troops/knight_faces.png with four distinct patches."""
+    root = fixture(tmp, troops=troops)
+    for name, paint in (('knight_s1.png', (200, 196, 186, 255)), ('knight_s2.png', (190, 186, 176, 255))):
+        if (root / 'art/troops' / name).is_file():
+            face_skin(root / 'art/troops' / name, density, paint=paint)
+    if patches:
+        put_png(root / 'art/troops/knight_faces.png', face_patches(density))
+    return root
+
+
 BOW = {'weapon': 'bow', 'thickness': 2, 'grip': {'pixel': [2, 4], 'offset': [0, 0, 0], 'rotation': [0, 0, 0]},
        'pull': [0.15, 0.32, 0.48], 'nocks': [[1.5, 4.5], [1.0, 4.5], [0.5, 4.5], [0.0, 4.5]]}
 BOW_COLOURS = [(100 + 30 * i, 120, 140, 255) for i in range(4)]
@@ -151,6 +242,109 @@ def put_bow(root, bow=None, **sizes):
     for i, name in enumerate(('bow', 'bow_pull_0', 'bow_pull_1', 'bow_pull_2')):
         size = sizes.get(name, (8, 9))
         put_png(root / 'art/weapons' / (name + '.png'), sprite_image(size, [(2, y) for y in range(min(9, size[1]))], BOW_COLOURS[i]))
+
+
+# ---- Task 5d: cube weapons, made in Blockbench (art pipeline v2) ----
+
+SHEET_2X = (64, 128)
+SHEET_3X = (96, 192)
+KEYS = {'steel': (255, 0, 0), 'iron': (170, 0, 0), 'gilt': (255, 170, 0), 'wood': (0x8B, 0x45, 0x13), 'linen': (255, 255, 255),
+        'leather': (0x55, 0x33, 0x22)}
+PAINT = {'steel': (124, 133, 145), 'iron': (90, 96, 104), 'gilt': (150, 120, 58), 'wood': (110, 84, 64), 'linen': (191, 181, 154),
+         'leather': (90, 62, 44)}
+# a pike: a leather grip, a gilt guard across its top and a steel blade; the cube specs are (name, from, to, material, rotation)
+PIKE = [('grip', (-0.5, -2, -0.5), (0.5, 2, 0.5), 'leather', None),
+        ('guard', (-2, 2, -0.5), (2, 3, 0.5), 'gilt', None),
+        ('blade', (-0.5, 3, -0.25), (0.5, 10, 0.25), 'steel', None)]
+PIKE_JSON = {'weapon': 'pike', 'thickness': 1, 'grip': {'offset': [0, 0, 0], 'rotation': [0, 0, 0]}}
+# a bow: a leather grip between wood risers, wood limbs with tips out to the string, and the string 0.2 px in front of the tips
+BOW_NOCKS = [[-2.8, 0], [-2.9, 0], [-3.0, 0], [-3.1, 0]]
+
+
+def bow_specs(shift=0.0):
+    x = -2.8 - shift
+    return [('grip', (-0.5, -2, -0.5), (0.5, 2, 0.5), 'leather', None),
+            ('riser_hi', (-0.4, 2, -0.5), (0.4, 7, 0.5), 'wood', None), ('riser_lo', (-0.4, -7, -0.5), (0.4, -2, 0.5), 'wood', None),
+            ('tip_hi', (-3.0, 7, -0.5), (0.4, 8, 0.5), 'wood', None), ('tip_lo', (-3.0, -8, -0.5), (0.4, -7, 0.5), 'wood', None),
+            ('string', (x - 0.1, -7.5, -0.1), (x + 0.1, 7.5, 0.1), 'linen', None)]
+
+
+BOW_FRAMES = {'rest': bow_specs(0), 'pull_0': bow_specs(0.1), 'pull_1': bow_specs(0.2), 'pull_2': bow_specs(0.3)}
+BOW_JSON = {'weapon': 'recurve', 'thickness': 1, 'grip': {'offset': [0, 0, 0], 'rotation': [0, 0, 0]}, 'pull': [0.15, 0.32, 0.48],
+            'nocks': BOW_NOCKS}
+
+
+def data_url(im):
+    buf = io.BytesIO()
+    im.save(buf, 'PNG')
+    return 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode()
+
+
+def pack_frames(frames, sheet=SHEET_2X, density=2):
+    """Gives every face of every cube its own patch at `density` texels per px on a shelf of the sheet, painted in the cube's
+    material with its key colour in the material map. Returns ({frame: [cube element, ...]}, colour image, key image)."""
+    colour, keys = Image.new('RGBA', sheet, (0, 0, 0, 0)), Image.new('RGBA', sheet, (0, 0, 0, 0))
+    x = y = row = 0
+    out, patches = {}, {}   # a cube of the same name and size in another frame keeps its patch (Blockbench's duplicate keeps the UVs)
+    for frame, specs in frames.items():
+        cubes = []
+        for name, frm, to, material, rot in specs:
+            uv = {}
+            for face in bbt.FACE_ORDER:
+                w, h = bbt.face_size(frm, to, face)
+                if (name, face, round(w, 4), round(h, 4)) in patches:
+                    uv[face] = patches[(name, face, round(w, 4), round(h, 4))]
+                    continue
+                pw, ph = density * w, density * h
+                cw, ch = max(1, math.ceil(pw - 1e-6)), max(1, math.ceil(ph - 1e-6))
+                if x + cw > sheet[0]:
+                    x, y, row = 0, y + row, 0
+                uv[face] = patches[(name, face, round(w, 4), round(h, 4))] = [x, y, x + pw, y + ph]
+                for yy in range(y, y + ch):
+                    for xx in range(x, x + cw):
+                        colour.putpixel((xx, yy), PAINT[material] + (255,))
+                        keys.putpixel((xx, yy), KEYS[material] + (255,))
+                x += cw
+                row = max(row, ch)
+            cubes.append(bbt.cube(name, frm, to, rot=rot, uv=uv))
+        out[frame] = cubes
+    return out, colour, keys
+
+
+def put_cube_weapon(root, wid='pike', frames=None, meta=None, tweak=None, sheet=SHEET_2X, root_cubes=(), density=2):
+    """art/weapons/<wid>.bbmodel (the texture embedded), .json, .png and _m.png from cube specs; tweak(data, colour, keys, meta)
+    may change anything before it is written. Patches are made at `density` texels a px (the json is not told: pass
+    meta=dict(PIKE_JSON, density=3) for a weapon that says so). Returns the project dict."""
+    root = pathlib.Path(root)
+    cubes, colour, keys = pack_frames(frames or {'rest': PIKE}, sheet, density)
+    meta = copy.deepcopy(meta or PIKE_JSON)
+    meta['weapon'] = wid
+    data = bbt.project(cubes, tex=sheet, name=wid, root=list(root_cubes))
+    data['textures'][0]['source'] = data_url(colour)
+    if tweak:
+        tweak(data, colour, keys, meta)
+    folder = root / 'art/weapons'
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / (wid + '.bbmodel')).write_text(json.dumps(data), encoding='utf-8')
+    write_json(folder / (wid + '.json'), meta)
+    colour.save(folder / (wid + '.png'))
+    keys.save(folder / (wid + '_m.png'))
+    return data
+
+
+def cube_fixture(tmp, **kw):
+    root = fixture(tmp)
+    put_cube_weapon(root, **kw)
+    return root
+
+
+def model_of(root, wid='pike'):
+    return json.loads((pathlib.Path(root) / ASSETS / ('models/troop/weapon/%s.json' % wid)).read_text(encoding='utf-8'))
+
+
+def texture_of(root, name):
+    with Image.open(pathlib.Path(root) / ASSETS / 'textures/entity/troop/weapon' / name) as im:
+        return im.convert('RGBA')
 
 
 NORMALS = ((0, -1, 0), (0, 1, 0), (0, 0, -1), (0, 0, 1), (-1, 0, 0), (1, 0, 0))   # Minecraft's Direction order, in model space
@@ -229,12 +423,16 @@ def vanilla_uv(box, normal, point):
     raise AssertionError('no face with the normal %s' % (normal,))
 
 
-def mini_model(size=(4, 4, 4), origin=(-2, -2, -2), uv=(0, 0), mirror=False, dilation=(0, 0, 0), sheet=(32, 32)):
-    """A model of one bone with one box, as bake gives it (what relief_mesh reads)."""
+def mini_model(size=(4, 4, 4), origin=(-2, -2, -2), uv=(0, 0), mirror=False, dilation=(0, 0, 0), sheet=(32, 32), density=1):
+    """A model of one bone with one box, as bake gives it (what relief_mesh reads); the sheet is in layout units, and a model
+    of density D carries the key as bake writes it and is relieved by a layer D times the sheet."""
     box = {'origin': list(origin), 'size': list(size), 'uv': list(uv), 'mirror': mirror, 'dilation': list(dilation)}
     bone = {'name': 'body', 'parent': '', 'part': '', 'team': False, 'tag': '', 'stages': [], 'sheet': list(sheet),
             'pivot': [0, 0, 0], 'rotation': [0, 0, 0], 'boxes': [box]}
-    return {'size': list(sheet), 'bones': [bone], 'glowFrom': 1}, box
+    model = {'size': list(sheet), 'bones': [bone], 'glowFrom': 1}
+    if density != 1:
+        model['density'] = density
+    return model, box
 
 
 def export_assets(root):
@@ -329,7 +527,7 @@ class BuildSkinsChecks(unittest.TestCase):
 
     def test_vanilla_keys(self):
         vanilla = {'parent', 'elements', 'textures', 'display', 'overrides', 'gui_light', 'ambientocclusion'}
-        allowed = {'format', 'troop', 'rig', 'size', 'bones', 'skins', 'veteran', 'glow', 'glowFrom', 'outer', 'weapon',
+        allowed = {'format', 'troop', 'rig', 'size', 'density', 'bones', 'skins', 'veteran', 'glow', 'glowFrom', 'outer', 'weapon',
                    'hand', 'idleArms', 'portrait'}
         with tempfile.TemporaryDirectory() as tmp:
             root = fixture(tmp)
@@ -690,7 +888,7 @@ class BuildSkinsChecks(unittest.TestCase):
             with Image.open(out / 'textures/entity/troop/weapon/bow.png') as im:
                 tex = im.convert('RGBA')
         self.assertEqual(index['weapons'], ['bow', 'sword'])
-        self.assertEqual(model['format'], 2)
+        self.assertEqual(model['format'], 3)
         self.assertEqual((tex.size, model['size']), ((32, 9), [32, 9]))
         self.assertEqual([f['name'] for f in model['frames']], ['rest', 'pull_0', 'pull_1', 'pull_2'])
         self.assertEqual(model['pull'], [0.15, 0.32, 0.48])
@@ -761,6 +959,379 @@ class BuildSkinsChecks(unittest.TestCase):
             frame = json.loads((root / ASSETS / 'models/troop/weapon/sword.json').read_text(encoding='utf-8'))['frames'][0]
             self.assertEqual(len(frame['quads']), 126)
 
+    # ---- Task 5d: cube weapons from .bbmodel files ----
+
+    def assert_cube_quad(self, q, what=''):
+        """A 20-number quad as the client reads it: four corners that make a parallelogram (corner 2 is corner 1 + corner 3 -
+        corner 0), a corner cross product that is not zero, and texels of area above 0."""
+        self.assertEqual(len(q), 20, what)
+        c = [q[0:3], q[3:6], q[6:9], q[9:12]]
+        for a in range(3):
+            self.assertAlmostEqual(c[2][a], c[1][a] + c[3][a] - c[0][a], places=3, msg=what)
+        n = cross(sub(c[1], c[0]), sub(c[3], c[0]))
+        self.assertGreater(math.sqrt(dot(n, n)), 1e-6, what)
+        t = [q[12:14], q[14:16], q[16:18], q[18:20]]
+        self.assertGreater(abs((t[1][0] - t[0][0]) * (t[3][1] - t[0][1]) - (t[1][1] - t[0][1]) * (t[3][0] - t[0][0])), 0, what)
+
+    def test_bbmodel_weapon(self):
+        """A weapon with a .bbmodel is built from its cubes: format 3, 20-number quads (6 a cube), the grip from the json, the
+        colour sheet with the far version's strip under it, and the _n and _s maps beside it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = cube_fixture(tmp)
+            index = self.export(root)
+            model = model_of(root)
+            tex, normal, spec = (texture_of(root, n) for n in ('pike.png', 'pike_n.png', 'pike_s.png'))
+            with Image.open(root / 'art/weapons/pike.png') as im:
+                source = im.convert('RGBA')
+        self.assertEqual(index['weapons'], ['pike', 'sword'])
+        for name in ('pike.png', 'pike_n.png', 'pike_s.png'):
+            self.assertIn('textures/entity/troop/weapon/' + name, index['outputs'])
+        self.assertEqual((model['format'], model['kind'], model['thickness'], model['pull']), (3, 'cube', 1, []))
+        self.assertEqual(model['grip'], {'offset': [0, 0, 0], 'rotation': [0, 0, 0]})
+        base = 'gravesandglory:textures/entity/troop/weapon/'
+        self.assertEqual((model['texture'], model['normal'], model['specular'], model['glow']),
+                         (base + 'pike.png', base + 'pike_n.png', base + 'pike_s.png', ''))
+        self.assertEqual([f['name'] for f in model['frames']], ['rest'])
+        self.assertIsNone(model['frames'][0]['nock'])
+        quads = model['frames'][0]['quads']
+        self.assertEqual(len(quads), 18)
+        for q in quads:
+            self.assert_cube_quad(q)
+        # the grip's north face (Blockbench's front) is the weapon frame's south face: y and z flip, its patch is [0, 0, 2, 8]
+        self.assertEqual(quads[0], [0.5, 2, 0.5, -0.5, 2, 0.5, -0.5, -2, 0.5, 0.5, -2, 0.5, 0, 8, 2, 8, 2, 0, 0, 0])
+        self.assertEqual(model['size'][0], 64)
+        self.assertGreater(model['size'][1], 128)
+        self.assertEqual(tex.size, tuple(model['size']))
+        self.assertEqual((normal.size, spec.size), (tex.size, tex.size))
+        self.assertEqual(tex.crop((0, 0, 64, 128)).tobytes(), source.tobytes())
+        for q in quads:
+            for u, v in zip(q[12::2], q[13::2]):
+                self.assertTrue(0 <= u <= 64 and 0 <= v <= 128, q)
+
+    def test_far_weapon(self):
+        """The far version is built from the rest frame: a front view as a sprite extruded to at most 32 quads, its big faces
+        first, its sprite in the strip under the colour sheet."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = cube_fixture(tmp)
+            self.export(root)
+            model = model_of(root)
+        far = model['far']
+        self.assertTrue(2 <= len(far) <= build_skins.FAR_CAP, len(far))
+        self.assertEqual([q[0] for q in far[:2]], [2, 3])
+        strip = model['size'][1] - 128
+        self.assertEqual(strip, 13)   # the pike seen from the front is 13 rows tall: the blade, guard and grip
+        for q in far:
+            self.assert_quad(q)
+            self.assertTrue(all(128 <= v <= 128 + strip for v in (q[8], q[10], q[12])), q)   # every texel in the strip
+        big = far[0]
+        self.assertEqual((big[1], big[4]), (-2.5, 2.5))     # five columns, the guard's width, about the grip's centre
+        self.assertEqual((big[2], big[5]), (-10.5, 2.5))    # thirteen rows, the blade's tip at the top
+        self.assertEqual(model['frames'][0]['quads'][0][:3], [0.5, 2, 0.5])
+
+    def test_far_version_leaves_the_string_out(self):
+        """A string is under a px. At the far version's one px to a model px it would vanish or, where it fills half a px column,
+        turn into a plank, by the luck of its alignment, so the far version leaves every cube called string out."""
+        laced = PIKE + [('string', (-2.4, -1, -0.1), (-1.9, 2, 0.1), 'linen', None)]   # a lanyard hanging from the guard, half a px wide
+        with tempfile.TemporaryDirectory() as tmp:
+            root = cube_fixture(tmp, wid='plain')
+            put_cube_weapon(root, 'laced', frames={'rest': laced})
+            self.export(root)
+            plain, with_string = model_of(root, 'plain'), model_of(root, 'laced')
+            sheets = [texture_of(root, name + '.png') for name in ('plain', 'laced')]
+        self.assertEqual(len(with_string['frames'][0]['quads']), len(plain['frames'][0]['quads']) + 6)   # the string is still a cube of the weapon
+        lit = [sum(1 for y in range(128, im.height) for x in range(im.width) if im.getpixel((x, y))[3]) for im in sheets]
+        self.assertEqual(lit[0], lit[1])
+        self.assertEqual(plain['far'], with_string['far'])
+
+    def test_far_version_keeps_the_glow(self):
+        """The glow sheet carries the lit texels the front view shows, in the strip under the colour sheet."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = cube_fixture(tmp)
+            lit_sheet = Image.new('RGBA', SHEET_2X, (0, 0, 0, 0))
+            for y in range(0, 8):
+                for x in (4, 5):
+                    lit_sheet.putpixel((x, y), (255, 240, 200, 255))   # the grip's south face (the front), its whole patch
+            lit_sheet.save(root / 'art/weapons/pike_e.png')
+            self.export(root)
+            model = model_of(root)
+            lit_out = texture_of(root, 'pike_e.png')
+        self.assertEqual(model['glow'], 'gravesandglory:textures/entity/troop/weapon/pike_e.png')
+        self.assertEqual(lit_out.size, tuple(model['size']))
+        self.assertEqual(sum(1 for y in range(128) for x in range(64) if lit_out.getpixel((x, y))[3]), 16)
+        self.assertGreater(sum(1 for y in range(128, lit_out.height) for x in range(64) if lit_out.getpixel((x, y))[3]), 0)
+
+    def test_tiers_share_the_base_glow(self):
+        """A tier model <weapon>_t2 with no glow file of its own is lit by <weapon>_e.png (the heart is the same cube at the
+        same sheet spot in every tier); a glow of its own wins."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = cube_fixture(tmp)
+            put_cube_weapon(root, 'pike_t2')
+            put_cube_weapon(root, 'pike_t3')
+            lit_sheet = Image.new('RGBA', SHEET_2X, (0, 0, 0, 0))
+            lit_sheet.putpixel((0, 0), (255, 240, 200, 255))
+            lit_sheet.save(root / 'art/weapons/pike_e.png')
+            own = Image.new('RGBA', SHEET_2X, (0, 0, 0, 0))
+            own.putpixel((1, 1), (255, 240, 200, 255))
+            own.save(root / 'art/weapons/pike_t3_e.png')
+            self.export(root)
+            one, two, three = (model_of(root, w) for w in ('pike', 'pike_t2', 'pike_t3'))
+            lit_two, lit_three = texture_of(root, 'pike_t2_e.png'), texture_of(root, 'pike_t3_e.png')
+        self.assertTrue(one['glow'].endswith('/pike_e.png') and two['glow'].endswith('/pike_t2_e.png'))
+        self.assertTrue(three['glow'].endswith('/pike_t3_e.png'))
+        self.assertEqual(lit_two.getpixel((0, 0))[3], 255)
+        self.assertEqual((lit_three.getpixel((0, 0))[3], lit_three.getpixel((1, 1))[3]), (0, 255))
+
+    def test_bbmodel_pull_frames(self):
+        """A bow made of frame groups: rest, pull_0, pull_1 and pull_2 (saved hidden), a nock a frame in the weapon frame's px."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = cube_fixture(tmp, wid='recurve', frames=BOW_FRAMES, meta=BOW_JSON)
+            self.export(root)
+            model = model_of(root, 'recurve')
+        self.assertEqual([f['name'] for f in model['frames']], ['rest', 'pull_0', 'pull_1', 'pull_2'])
+        self.assertEqual(model['pull'], [0.15, 0.32, 0.48])
+        self.assertEqual([f['nock'] for f in model['frames']], [[-2.8, 0, 0], [-2.9, 0, 0], [-3, 0, 0], [-3.1, 0, 0]])
+        self.assertEqual([len(f['quads']) for f in model['frames']], [36] * 4)
+        self.assertEqual(model['size'][0], 64)
+        self.assertLessEqual(len(model['far']), build_skins.FAR_CAP)
+
+    def test_bbmodel_weapon_rules(self):
+        """Each of these exits 1, naming the weapon and what is wrong."""
+        def edit(**changes):
+            return lambda data, colour, keys, m: m.update(changes)
+
+        def pixel(data, colour, keys, m):
+            m['grip']['pixel'] = [1, 1]
+
+        def set_texture(**changes):
+            return lambda data, colour, keys, m: data['textures'][0].update(changes)
+
+        def other_texture(data, colour, keys, m):
+            changed = colour.copy()
+            changed.putpixel((0, 0), (1, 2, 3, 255))
+            data['textures'][0]['source'] = data_url(changed)
+
+        def not_a_png(data, colour, keys, m):
+            data['textures'][0]['source'] = 'data:image/jpeg;base64,AAAA'
+
+        def off_sheet(data, colour, keys, m):
+            data['elements'][0]['faces']['north']['uv'] = [60, 0, 62.0, 8.0 + 130]
+
+        def stretched(data, colour, keys, m):
+            data['elements'][1]['faces']['north']['uv'] = [0, 100, 3, 103]
+
+        column = [('c%d' % i, (0, i, 0), (1, i + 1, 1), 'wood', None) for i in range(22)]
+        plate = ('plate', (-1, 2.2, -0.5), (1, 2.8, 0.2), 'gilt', None)
+        lifted = [PIKE[0], PIKE[1], ('blade', (-0.5, 4, -0.25), (0.5, 11, 0.25), 'steel', None)]
+        loose = bbt.cube('loose', (0, 0, 0), (1, 1, 1))
+        without_pull_1 = {k: v for k, v in BOW_FRAMES.items() if k != 'pull_1'}
+        cases = [
+            ('boxes', 'pike', dict(tweak=edit(boxes=[1]))),
+            ('thickness', 'pike', dict(tweak=edit(thickness=4))),
+            ('thickness', 'pike', dict(tweak=edit(thickness=0))),
+            ('thickness 3', 'pike', dict(tweak=edit(thickness=3))),
+            ('grip pixel', 'pike', dict(tweak=pixel)),
+            ('rest', 'pike', dict(frames={'stand': PIKE})),
+            ('extra', 'pike', dict(frames={'rest': PIKE, 'extra': PIKE})),
+            ('pull_1', 'recurve', dict(frames=without_pull_1, meta=BOW_JSON)),
+            ('pull_0', 'pike', dict(frames={'rest': PIKE, 'pull_0': PIKE})),
+            ('coplanar', 'pike', dict(frames={'rest': PIKE + [plate]})),
+            ('air gap', 'pike', dict(frames={'rest': lifted})),
+            ('twice', 'pike', dict(tweak=stretched)),
+            ('root', 'pike', dict(root_cubes=[loose])),
+            ('UV size', 'pike', dict(tweak=set_texture(uv_width=16, uv_height=16))),
+            ('embedded', 'pike', dict(tweak=other_texture)),
+            ('embedded', 'pike', dict(tweak=not_a_png)),
+            ('off the 64x128 sheet', 'pike', dict(tweak=off_sheet)),
+            ('132 quads', 'pike', dict(frames={'rest': column})),
+        ]
+        for want, wid, kw in cases:
+            with self.subTest(want=want, kw=sorted(kw)), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp)
+                put_cube_weapon(root, wid, **kw)
+                said = self.fails(export_assets, root)
+                self.assertIn(wid, said)
+                self.assertIn(want, said)
+
+    def test_bbmodel_weapon_checks_name_the_cubes(self):
+        """The coplanar, air gap and density messages name the frame and the cubes or the face."""
+        def stretched(data, colour, keys, m):
+            data['elements'][1]['faces']['north']['uv'] = [0, 100, 3, 103]
+        plate = ('plate', (-1, 2.2, -0.5), (1, 2.8, 0.2), 'gilt', None)
+        lifted = [PIKE[0], PIKE[1], ('blade', (-0.5, 4, -0.25), (0.5, 11, 0.25), 'steel', None)]
+        with tempfile.TemporaryDirectory() as tmp:
+            said = self.fails(export_assets, cube_fixture(tmp, frames={'rest': PIKE + [plate]}))
+        for word in ('frame rest', 'guard', 'plate', 'north', 'art/weapons/pike.bbmodel'):
+            self.assertIn(word, said)
+        with tempfile.TemporaryDirectory() as tmp:
+            said = self.fails(export_assets, cube_fixture(tmp, frames={'rest': lifted}))
+        for word in ('frame rest', 'blade', 'guard', 'one piece'):
+            self.assertIn(word, said)
+        with tempfile.TemporaryDirectory() as tmp:
+            said = self.fails(export_assets, cube_fixture(tmp, tweak=stretched))
+        for word in ('frame rest', 'guard', 'north', 'twice its size'):
+            self.assertIn(word, said)
+
+    def test_string_may_hang_free(self):
+        """A string 0.2 px from its limb tips passes (it hangs from its nocks); one 0.3 px off fails."""
+        def string_at(gap):
+            x = -3.1 - gap
+            frames = {k: [c if c[0] != 'string' else ('string', (x - 0.1, -7.5, -0.1), (x + 0.1, 7.5, 0.1), 'linen', None) for c in v]
+                      for k, v in BOW_FRAMES.items()}
+            return frames, dict(BOW_JSON, nocks=[[x, 0]] * 4)
+        frames, meta = string_at(0.2)
+        with tempfile.TemporaryDirectory() as tmp:
+            self.export(cube_fixture(tmp, wid='recurve', frames=frames, meta=meta))
+        frames, meta = string_at(0.3)
+        with tempfile.TemporaryDirectory() as tmp:
+            said = self.fails(export_assets, cube_fixture(tmp, wid='recurve', frames=frames, meta=meta))
+        self.assertIn('string', said)
+        self.assertIn('recurve', said)
+
+    def test_bbmodel_bow_rules(self):
+        """A pull that does not rise or leaves 0..1.2, nocks that are missing, too few or off the string, and a glow beside
+        pull each exit 1, naming the weapon."""
+        def edit(**changes):
+            return lambda data, colour, keys, m: m.update(changes)
+        cases = {
+            'does not rise': dict(tweak=edit(pull=[0.3, 0.3, 0.5])),
+            'between 0 and 1.2': dict(tweak=edit(pull=[0.3, 0.5, 1.3])),
+            'nocks must hold': dict(tweak=edit(nocks=BOW_NOCKS[:3])),
+            'is not on the string': dict(tweak=edit(nocks=[[5, 0]] + BOW_NOCKS[1:])),
+        }
+        for want, kw in cases.items():
+            with self.subTest(want=want), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp)
+                put_cube_weapon(root, 'recurve', frames=BOW_FRAMES, meta=BOW_JSON, **kw)
+                said = self.fails(export_assets, root)
+                self.assertIn('recurve', said)
+                self.assertIn(want, said)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            put_cube_weapon(root, 'recurve', frames=BOW_FRAMES, meta=BOW_JSON)
+            lit_sheet = Image.new('RGBA', SHEET_2X, (0, 0, 0, 0))
+            lit_sheet.putpixel((0, 0), (255, 240, 200, 255))
+            lit_sheet.save(root / 'art/weapons/recurve_e.png')
+            said = self.fails(export_assets, root)
+        self.assertIn('recurve_e.png', said)
+        self.assertIn('pull', said)
+        lacking = {k: v for k, v in BOW_JSON.items() if k != 'nocks'}
+        with tempfile.TemporaryDirectory() as tmp:
+            said = self.fails(export_assets, cube_fixture(tmp, wid='recurve', frames=BOW_FRAMES, meta=lacking))
+        self.assertIn('nocks', said)
+
+    def test_material_maps(self):
+        """The _m key table gives the _s smoothness (R), F0 (G) and porosity (B) of its material, smoothness +12 a tone step
+        above the patch's face tone; _n is flat with a one-texel tilt along the patch edge and a height in alpha that is
+        never 0; _s alpha is 200 where the _e layer is lit and 255 elsewhere; _s G never falls in 238 to 254 (undefined
+        metals)."""
+        mid, hi, lo = (100, 100, 100, 255), (140, 140, 140, 255), (60, 60, 60, 255)
+        colour = Image.new('RGBA', (8, 8), mid)
+        keys = Image.new('RGBA', (8, 8), KEYS['steel'] + (255,))
+        colour.putpixel((1, 1), hi)
+        colour.putpixel((2, 2), lo)
+        colour.putpixel((7, 7), (0, 0, 0, 0))
+        keys.putpixel((7, 7), (0, 0, 0, 0))
+        keys.putpixel((0, 0), KEYS['gilt'] + (255,))
+        lit_sheet = Image.new('RGBA', (8, 8), (0, 0, 0, 0))
+        lit_sheet.putpixel((3, 0), (255, 240, 200, 255))
+        normal, spec = build_skins.material_maps(colour, keys, [(0, 0, 8, 8)], lit_sheet)
+        self.assertEqual(spec.getpixel((4, 4)), (185, 230, 0, 255))      # polished steel at the face tone
+        self.assertEqual(spec.getpixel((1, 1)), (197, 230, 0, 255))      # one tone step lighter: +12
+        self.assertEqual(spec.getpixel((2, 2)), (173, 230, 0, 255))      # one step darker: -12
+        self.assertEqual(spec.getpixel((0, 0)), (200, 231, 0, 255))      # gilt: gold's F0
+        self.assertEqual(spec.getpixel((3, 0)), (185, 230, 0, 200))      # lit in _e: emission 200
+        self.assertEqual(spec.getpixel((7, 7)), (0, 0, 0, 255))          # no material
+        self.assertEqual(normal.getpixel((7, 7)), (128, 128, 255, 255))
+        self.assertEqual(normal.getpixel((5, 5)), (128, 128, 255, 128))  # flat inside a patch: height 0.5
+        self.assertGreater(normal.getpixel((1, 1))[3], normal.getpixel((5, 5))[3])
+        self.assertLess(normal.getpixel((2, 2))[3], normal.getpixel((5, 5))[3])
+        self.assertLess(normal.getpixel((0, 5))[0], 128)                 # the left edge tilts out (-x)
+        self.assertGreater(normal.getpixel((7, 5))[0], 128)              # the right edge tilts out (+x)
+        self.assertLess(normal.getpixel((4, 0))[1], 128)                 # the top edge tilts up the image: DirectX, green down
+        self.assertGreater(normal.getpixel((4, 7))[1], 128)
+        for x in range(8):
+            for y in range(8):
+                self.assertGreaterEqual(normal.getpixel((x, y))[3], 1)
+                self.assertEqual(normal.getpixel((x, y))[2], 255)
+                self.assertFalse(238 <= spec.getpixel((x, y))[1] <= 254)
+        for key, (name, smooth, f0, porosity) in build_skins.MATERIALS.items():
+            self.assertFalse(238 <= f0 <= 254, name)
+            self.assertTrue(0 <= smooth <= 255 and 0 <= porosity <= 255, name)
+        self.assertEqual(build_skins.MATERIALS[KEYS['wood']][1:], (70, 10, 40))
+        self.assertEqual(build_skins.MATERIALS[KEYS['linen']][1:], (30, 8, 60))
+        self.assertEqual(set(KEYS.values()) - set(build_skins.MATERIALS), set())
+
+    def test_map_rules(self):
+        """Each of these exits 1, naming the weapon, the file and the texel: an _m of another size, an opaque texel with no key
+        colour, a transparent texel with one, a key colour that is not in the table, a lit texel off the colour sheet's
+        opaque texels and a missing _m."""
+        def keyed(pos, value):
+            def make(root):
+                im = Image.open(root / 'art/weapons/pike_m.png').convert('RGBA')
+                im.putpixel(pos, value)
+                im.save(root / 'art/weapons/pike_m.png')
+            return make
+
+        def small(root):
+            Image.new('RGBA', (32, 32), (0, 0, 0, 0)).save(root / 'art/weapons/pike_m.png')
+
+        def lit_off_sheet(root):
+            lit_sheet = Image.new('RGBA', SHEET_2X, (0, 0, 0, 0))
+            lit_sheet.putpixel((63, 127), (255, 240, 200, 255))
+            lit_sheet.save(root / 'art/weapons/pike_e.png')
+
+        def small_glow(root):
+            Image.new('RGBA', (32, 32), (0, 0, 0, 0)).save(root / 'art/weapons/pike_e.png')
+
+        def no_m(root):
+            (root / 'art/weapons/pike_m.png').unlink()
+        cases = [
+            ('pike_m.png is 32x32', 'not the colour sheet', small),
+            ('pike_m.png', 'texel (0, 0) is opaque in the colour sheet but has no key colour', keyed((0, 0), (0, 0, 0, 0))),
+            ('pike_m.png', 'texel (63, 127) is transparent in the colour sheet but has the key colour', keyed((63, 127), (255, 0, 0, 255))),
+            ('pike_m.png', '#010203 at texel (0, 0) is not in the material table', keyed((0, 0), (1, 2, 3, 255))),
+            ('pike_e.png', 'texel (63, 127)', lit_off_sheet),
+            ('pike_e.png is 32x32', 'not the colour sheet', small_glow),
+            ('pike_m.png', 'is missing', no_m),
+        ]
+        for name, want, make in cases:
+            with self.subTest(want=want), tempfile.TemporaryDirectory() as tmp:
+                root = cube_fixture(tmp)
+                make(root)
+                said = self.fails(export_assets, root)
+                self.assertIn('pike', said)
+                self.assertIn(name, said)
+                self.assertIn(want, said)
+
+    def test_sprite_weapon_stays_the_fallback(self):
+        """A weapon with only a PNG is still extruded as a sprite, written as format 3 with 13-number quads, no maps and no far
+        version, beside a cube weapon in the same catalogue."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = cube_fixture(tmp)
+            self.export(root)
+            sprite = model_of(root, 'sword')
+            self.assertFalse((root / ASSETS / 'textures/entity/troop/weapon/sword_n.png').exists())
+        self.assertEqual((sprite['format'], sprite['kind'], sprite['far'], sprite['normal'], sprite['specular']), (3, 'sprite', [], '', ''))
+        self.assertEqual({len(q) for f in sprite['frames'] for q in f['quads']}, {13})
+
+    def test_verify_cube_weapons(self):
+        """--verify rebuilds cube weapons, their maps and far versions byte for byte (PNGs by pixels)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = cube_fixture(tmp)
+            self.export(root)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(build_skins.verify(root), 0)
+            for target in ('models/troop/weapon/pike.json', 'textures/entity/troop/weapon/pike_s.png',
+                           'textures/entity/troop/weapon/pike_n.png', 'textures/entity/troop/weapon/pike.png'):
+                path = root / ASSETS / target
+                before = path.read_bytes()
+                data = bytearray(before)
+                data[len(data) // 2] ^= 0x01
+                path.write_bytes(bytes(data))
+                said = self.fails(build_skins.verify, root)
+                self.assertIn(target, said)
+                path.write_bytes(before)
+
     # ---- Task 5d: the relief layer ----
 
     def knight_with(self, parts=None, **changes):
@@ -771,7 +1342,8 @@ class BuildSkinsChecks(unittest.TestCase):
 
     def mesh(self, model, texels, colour=MINT, key='1'):
         """relief_mesh on a hand-made one-box model: the quads of its only bone."""
-        im = Image.new('RGBA', tuple(model['size']), (0, 0, 0, 0))
+        k = model.get('density', 1)
+        im = Image.new('RGBA', (model['size'][0] * k, model['size'][1] * k), (0, 0, 0, 0))
         for t in texels:
             im.putpixel(tuple(t[:2]), t[2] if len(t) > 2 else colour)
         with tempfile.TemporaryDirectory() as tmp:
@@ -929,7 +1501,7 @@ class BuildSkinsChecks(unittest.TestCase):
 
     def test_relief_keys(self):
         """Bones with relief carry it keyed by the skin ("1", "2"), only where they have quads; the veteran trim takes none;
-        the top-level keys stay Task 5's list and format is 2."""
+        the top-level keys stay Task 5's list and format is 3."""
         troops = self.with_knight(skins={'1': 'knight_s1.png', '2': 'knight_s2.png'})
         with tempfile.TemporaryDirectory() as tmp:
             root = fixture(tmp, troops=troops)
@@ -938,7 +1510,7 @@ class BuildSkinsChecks(unittest.TestCase):
             relief_png(root, 'knight_s2_r.png', [(22, 22), (23, 22), (10, 10)])   # the head too, at stage 2
             index = self.export(root)
             model = json.loads((root / ASSETS / 'models/troop/knight.json').read_text(encoding='utf-8'))
-        self.assertEqual(model['format'], 2)
+        self.assertEqual(model['format'], 3)
         self.assertEqual(tuple(model), build_skins.MODEL_KEYS)
         self.assertFalse(set(model) & set(build_skins.VANILLA_KEYS))
         self.assertEqual(model['veteran'], 'gravesandglory:textures/entity/troop/knight_veteran.png')
@@ -1023,6 +1595,1260 @@ class BuildSkinsChecks(unittest.TestCase):
         self.assertGreaterEqual(inner.count(red), 12)
         self.assertNotEqual(inner.count(red), len(inner))
         self.assertNotIn(red, [im.getpixel((x, 21)) for x in range(20, 28)])
+
+    # ---- the texel-3 trial: a density a troop and a weapon may name ----
+
+    def outputs(self, root):
+        """{path under the assets root: bytes} of everything a build wrote."""
+        base = pathlib.Path(root) / ASSETS
+        return {p.relative_to(base).as_posix(): p.read_bytes() for p in sorted(base.rglob('*')) if p.is_file()}
+
+    def raised(self, texels, k=3):
+        """The texels of a density 1 relief as a layer drawn at k paints them: each becomes a k x k block."""
+        return [(k * x + i, k * y + j) for x, y in texels for j in range(k) for i in range(k)]
+
+    def test_density_defaults_change_nothing(self):
+        """A density key that names the default (1 for a troop, 2 for a weapon) builds the same files as no key at all, and a model
+        built with none carries no density key: the 1x and 2x outputs stay byte for byte what they were."""
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            plain = cube_fixture(a)
+            named = fixture(b)
+            put_cube_weapon(named, meta=dict(PIKE_JSON, density=2))
+            data = json.loads((named / 'art/troops/knight.json').read_text(encoding='utf-8'))
+            data['density'] = 1
+            write_json(named / 'art/troops/knight.json', data)
+            self.export(plain)
+            self.export(named)
+            first, second = self.outputs(plain), self.outputs(named)
+        self.assertEqual(sorted(first), sorted(second))
+        for name in first:
+            self.assertEqual(first[name], second[name], name)
+        for name in ('models/troop/knight.json', 'models/troop/weapon/pike.json'):
+            self.assertNotIn('density', json.loads(first[name]), name)
+        self.assertEqual(tuple(json.loads(first['models/troop/knight.json'])), build_skins.MODEL_KEYS)
+        self.assertEqual(build_skins.model_keys(1), build_skins.MODEL_KEYS)
+        self.assertFalse([n for n in first if n.endswith('_far.png') and '/weapon/' not in n], 'a density 1 troop has no far twin')
+
+    def test_troop_density_three(self):
+        """A troop of density 3 keeps its layout (the model's size, its boxes' uv and sheet are in layout units, which is what the
+        client divides by) and ships its PNGs at 3 times it; the model says density 3 right after its size."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            densify(root)
+            self.export(root)
+            base = root / ASSETS
+            model = json.loads((base / 'models/troop/knight.json').read_text(encoding='utf-8'))
+            sentinel = json.loads((base / 'models/troop/sentinel.json').read_text(encoding='utf-8'))
+            with Image.open(base / 'textures/entity/troop/knight_s1.png') as im:
+                shipped = im.size
+        self.assertEqual(model['size'], [64, 64])
+        self.assertEqual(model['density'], 3)
+        self.assertEqual(tuple(model), build_skins.model_keys(3))
+        self.assertEqual(list(model)[:6], ['format', 'troop', 'rig', 'size', 'density', 'bones'])
+        self.assertNotIn('density', sentinel)
+        self.assertEqual(shipped, (192, 192))
+        body = find(model, 'body')
+        self.assertEqual((body['sheet'], body['boxes'][0]['uv'], body['boxes'][0]['size']), ([64, 64], [16, 16], [8, 12, 4]))
+
+    def test_cloth_layout_is_not_the_png_size(self):
+        """The cloth template drawn at 3 is 48x48 for a 16x16 layout, and the team bones' sheet stays 16x16: taken from the PNG it
+        would be 48, and the client's sheet/size scale of 3 would sample the top-left third of the cloth."""
+        rgb = ((GOLD >> 16) & 255, (GOLD >> 8) & 255, GOLD & 255)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            densify(root, cloth=True)
+            self.export(root)
+            base = root / ASSETS
+            model = json.loads((base / 'models/troop/knight.json').read_text(encoding='utf-8'))
+            with Image.open(base / 'textures/entity/troop/team_cloth_gold.png') as im:
+                gold = im.convert('RGBA')
+        pennant = find(model, 'pennant')
+        self.assertTrue(pennant['team'])
+        self.assertEqual(pennant['sheet'], [16, 16])
+        self.assertEqual(gold.size, (48, 48))
+        self.assertEqual(gold.getpixel((2 * 3 + 1, 2 * 3 + 1))[:3], rgb)   # the x1.0 field, enlarged
+        self.assertEqual(gold.getpixel((47, 47))[3], 0)
+        with tempfile.TemporaryDirectory() as tmp:   # a cloth at density 1 is as it was
+            root = fixture(tmp)
+            self.export(root)
+            model = json.loads((root / ASSETS / 'models/troop/knight.json').read_text(encoding='utf-8'))
+        self.assertEqual(find(model, 'pennant')['sheet'], [16, 16])
+
+    def test_cloth_layout_checks(self):
+        """A team part is checked against the cloth's layout, not its PNG: a box that fits 48x48 but not 16x16 fails; a template the
+        density does not divide fails naming team_cloth.json; so does a density that is not 1 to 4."""
+        parts = dict(PARTS, pennant=dict(PARTS['pennant'], boxes=[box([-2, -26, 3], [4, 8, 1], [12, 0])]))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp, parts=parts)
+            densify(root, cloth=True)
+            said = self.fails(export_assets, root)
+        self.assertIn('pennant', said)
+        self.assertIn('outside the 16x16 sheet', said)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            Image.new('RGBA', (50, 50), (0, 0, 0, 0)).save(root / 'art/team/team_cloth.png')
+            write_json(root / 'art/team/team_cloth.json', {'density': 3})
+            said = self.fails(export_assets, root)
+        for want in ('team_cloth.json', '50x50', 'density 3'):
+            self.assertIn(want, said)
+        for value in (0, 5, 2.5, True, '3'):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp)
+                write_json(root / 'art/team/team_cloth.json', {'density': value})
+                said = self.fails(export_assets, root)
+                self.assertIn('team_cloth.json', said)
+                self.assertIn('density', said)
+
+    def test_density_key_rules(self):
+        """A density is a whole number from 1 to 4; a sprite weapon (one texel a px) takes none."""
+        for value in (0, 5, 2.5, True, '3'):
+            with self.subTest(troop=value), tempfile.TemporaryDirectory() as tmp:
+                said = self.fails(export_assets, fixture(tmp, troops=self.with_knight(density=value)))
+                self.assertIn('knight', said)
+                self.assertIn('density', said)
+        for value in (0, 5, 2.5, False):
+            with self.subTest(weapon=value), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp)
+                put_cube_weapon(root, meta=dict(PIKE_JSON, density=value))
+                said = self.fails(export_assets, root)
+                self.assertIn('pike', said)
+                self.assertIn('density', said)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            write_json(root / 'art/weapons/sword.json', dict(SWORD, density=1))
+            said = self.fails(export_assets, root)
+        self.assertIn('sword', said)
+        self.assertIn('sprite', said)
+
+    def test_wrong_size_names_the_density(self):
+        """A skin that is the layout size on a density 3 troop fails saying what the troop's size is at 3 texels a px."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            densify(root)
+            skin(root / 'art/troops/knight_s1.png', size=(64, 64))
+            said = self.fails(export_assets, root)
+        self.assertIn('knight_s1.png is 64x64, not the troop size 64x64 at 3 texels a px (192x192)', said)
+
+    def test_relief_density_three_is_the_same_shape(self):
+        """A relief layer drawn at 3 whose blocks are the 1x layer's texels (the nearest-upscaled placeholder) gives the quads of
+        the 1x layer: the same directions and corners and, for a top quad, the same UV rectangle, on a plain, a mirrored and a
+        dilated box, for a strip, a wrapped edge, a three-face corner and one texel on each face."""
+        every = [(5, 1), (9, 1), (1, 5), (5, 5), (9, 5), (13, 5)]
+        patterns = {'strip': [(5, 5), (6, 5)], 'edge': [(4, 5), (3, 5)], 'corner': [(4, 4), (3, 4), (4, 3)], 'every face': every}
+
+        def is_top(q):
+            x0, y0, x1, y1 = uv_box(q)
+            return min(x1 - x0, y1 - y0) >= 0.99
+
+        def tops(quads):
+            return sorted(tuple(round(v, 3) for v in uv_box(q)) for q in quads if is_top(q))
+        for mirror, dilation in ((False, (0, 0, 0)), (True, (0, 0, 0)), (False, (0.2, 0.1, 0.3)), (True, (0.2, 0.1, 0.3))):
+            for name, texels in patterns.items():
+                with self.subTest(name=name, mirror=mirror, dilation=dilation):
+                    one, _ = mini_model(mirror=mirror, dilation=dilation)
+                    three, _ = mini_model(mirror=mirror, dilation=dilation, density=3)
+                    a = self.mesh(one, texels)['body']
+                    b = self.mesh(three, self.raised(texels))['body']
+                    self.assertEqual(len(a), len(b))
+                    self.assertEqual(sorted([round(v, 3) for v in q[:7]] for q in a), sorted([round(v, 3) for v in q[:7]] for q in b))
+                    self.assertEqual(tops(a), tops(b))
+                    self.assertTrue(tops(b))
+                    for q in b:
+                        self.assert_quad(q)
+                    self.assert_side_uvs_in_source_texel(a, b)
+
+    def assert_side_uvs_in_source_texel(self, ones, threes):
+        """Every side and corner quad of a density 3 mesh reads the source texel of its 1x twin: its UV box lies inside that texel's
+        cell (layout units), is as long along its run as the 1x quad and a third as wide across (2 x SLIVER over the density),
+        so a side quad whose UV is not divided by the density (or divided twice) leaves the cell and fails."""
+        def key(q):
+            return tuple(round(v, 3) for v in q[:7])
+        by_key = {}
+        for q in ones:
+            by_key.setdefault(key(q), []).append(q)
+        sides = 0
+        for q in threes:
+            x0, y0, x1, y1 = uv_box(q)
+            if min(x1 - x0, y1 - y0) >= 0.99:
+                continue   # a top quad, pinned by its UV rectangle
+            sides += 1
+            fits = []
+            for a in by_key[key(q)]:
+                u0, v0, u1, v1 = uv_box(a)
+                cell = (math.floor(u0 + 1e-6), math.floor(v0 + 1e-6), math.ceil(u1 - 1e-6), math.ceil(v1 - 1e-6))
+                inside = x0 >= cell[0] - 1e-6 and y0 >= cell[1] - 1e-6 and x1 <= cell[2] + 1e-6 and y1 <= cell[3] + 1e-6
+                extents = sorted((x1 - x0, y1 - y0))
+                want = sorted((u1 - u0 if u1 - u0 > 0.6 or u1 - u0 < 0.1 else 2 * build_skins.SLIVER / 3,
+                               v1 - v0 if v1 - v0 > 0.6 or v1 - v0 < 0.1 else 2 * build_skins.SLIVER / 3))
+                fits.append(inside and all(abs(g - w) < 1e-4 for g, w in zip(extents, want)))
+            self.assertTrue(any(fits), 'a side quad %s reads outside its source texel: UV box %s' % (q, (x0, y0, x1, y1)))
+        self.assertGreater(sides, 0)
+
+    def test_relief_density_three_fine_detail(self):
+        """One raised texel at 3 is a third of a px across and a whole px proud: the voxel's depth along the normal is the box's
+        px (1.2 on a box scaled 1.2), not the texel's. Its top quad is the texel itself in layout units, in thirds of four decimals."""
+        model, box = mini_model(density=3)
+        quads = self.mesh(model, [(15, 15)])['body']   # the north face's texels run 12 to 23 across and down
+        self.assertEqual(len(quads), 5)
+        tops = [q for q in quads if q[0] == 2]
+        self.assertEqual(len(tops), 1)
+        top = tops[0]
+        self.assertEqual(top[1:7], [-1, -1, -3, -0.6667, -0.6667, -3])
+        for got, want in zip(uv_box(top), (5, 5, 5.3333, 5.3333)):
+            self.assertAlmostEqual(got, want, places=4)
+        c = uv_corners(top)
+        centre = ((c[0][0] + c[2][0]) / 2, (c[0][1] + c[2][1]) / 2)
+        at = [(top[1 + i] + top[4 + i]) / 2 for i in range(3)]
+        want = vanilla_uv(box, NORMALS[top[0]], at)
+        self.assertAlmostEqual(centre[0], 5.1667, places=3)
+        self.assertAlmostEqual(centre[1], 5.1667, places=3)
+        self.assertAlmostEqual(centre[0], want[0], places=3)
+        self.assertAlmostEqual(centre[1], want[1], places=3)
+        centre_uv = 15.5 / 3
+        across = {0: 0, 1: 0}   # which texture axis a side quad's sliver runs over
+        for q in quads:
+            self.assert_quad(q)
+            if q is not top:
+                self.assertEqual((q[3], q[6]), (-3, -2))
+                # a side quad is the texel's centre band: its UV box is centred on the texel (5.1667, 5.1667), a third of a layout px
+                # long along its run and 2 x SLIVER / 3 across, so its corners sit at the centre plus or minus SLIVER / 3
+                x0, y0, x1, y1 = uv_box(q)
+                self.assertAlmostEqual((x0 + x1) / 2, centre_uv, places=4)
+                self.assertAlmostEqual((y0 + y1) / 2, centre_uv, places=4)
+                narrow = [i for i, w in enumerate((x1 - x0, y1 - y0)) if abs(w - 2 * build_skins.SLIVER / 3) < 1e-4]
+                self.assertEqual(len(narrow), 1, 'one UV axis is the sliver')
+                across[narrow[0]] += 1
+                long_axis = (x1 - x0, y1 - y0)[1 - narrow[0]]
+                self.assertAlmostEqual(long_axis, 1 / 3, places=4)
+                bounds = (x0, x1) if narrow[0] == 0 else (y0, y1)
+                self.assertAlmostEqual(bounds[0], centre_uv - build_skins.SLIVER / 3, places=4)
+                self.assertAlmostEqual(bounds[1], centre_uv + build_skins.SLIVER / 3, places=4)
+        self.assertEqual(across, {0: 2, 1: 2})   # two side quads slivered over u, two over v
+        scaled, _ = mini_model(origin=(-2, -2, -2.0), dilation=(0, 0, 0.4), density=3)   # z scaled 1.2
+        for q in self.mesh(scaled, [(15, 15)])['body']:
+            self.assertAlmostEqual(q[6] - q[3], 0.0 if q[0] == 2 else 1.2)
+
+    def test_relief_density_rules(self):
+        """The relief rules count in texels of the troop's density: the layer must be D times the layout, a texel off every face is
+        named in layer texels, and a face may have 20% of its texels raised (19 of 96 at 1x are 171 of 864 at 3)."""
+        rows = [(x, y) for y in (20, 21, 22) for x in range(20, 28)]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            densify(root)
+            relief_png(root, 'knight_s1_r.png', self.raised(rows[:19]), size=(192, 192))
+            self.export(root)
+        cases = [('21 of 96', self.raised(rows[:21]), (192, 192), ['20%']),
+                 ('off every face', [(189, 189)], (192, 192), ['no skin box face', '(189, 189)']),
+                 ('a layer at 1x', [(22, 22)], (64, 64), ['knight_s1_r.png is 64x64', '192x192'])]
+        for name, texels, size, wants in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp)
+                densify(root)
+                relief_png(root, 'knight_s1_r.png', texels, size=size)
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+
+    def test_relief_density_three_in_a_troop(self):
+        """A density 3 troop with a nearest-upscaled relief gives the model the quads of the 1x troop, in layout units."""
+        marks = [(22, 22), (23, 22), (24, 28)]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            relief_png(root, 'knight_s1_r.png', marks)
+            self.export(root)
+            one = json.loads((root / ASSETS / 'models/troop/knight.json').read_text(encoding='utf-8'))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            relief_png(root, 'knight_s1_r.png', marks)
+            densify(root)
+            self.export(root)
+            three = json.loads((root / ASSETS / 'models/troop/knight.json').read_text(encoding='utf-8'))
+        a, b = find(one, 'body')['relief']['1'], find(three, 'body')['relief']['1']
+        self.assertEqual(len(a), len(b))
+        self.assertEqual(sorted(q[:7] for q in a), sorted(q[:7] for q in b))
+
+    def test_templates_at_density(self):
+        """--template draws the sheets at the troop's density: the flat template and the relief template are 192x192 for a 64x64
+        layout and are the 1x template enlarged, texel for texel."""
+        with tempfile.TemporaryDirectory() as tmp:
+            troops = self.knight_with([{'part': 'panel'}])
+            cat = build_skins.load(fixture(tmp, troops=troops, parts=RELIEF_PARTS))
+            flat_one, relief_one = build_skins.template(cat, 'knight').convert('RGBA'), build_skins.relief_template(cat, 'knight').convert('RGBA')
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp, troops=troops, parts=RELIEF_PARTS)
+            densify(root)
+            cat = build_skins.load(root)
+            flat, relief = build_skins.template(cat, 'knight').convert('RGBA'), build_skins.relief_template(cat, 'knight').convert('RGBA')
+        self.assertEqual((flat.size, relief.size), ((192, 192), (192, 192)))
+        red = build_skins.RELIEF_RED + (255,)
+        self.assertEqual(flat.tobytes(), flat_one.resize((192, 192), Image.NEAREST).tobytes())
+        self.assertEqual(relief.tobytes(), relief_one.resize((192, 192), Image.NEAREST).tobytes())
+        self.assertIn(red, [relief.getpixel((x, y)) for x in range(21 * 3, 27 * 3) for y in range(22 * 3, 28 * 3)])
+
+    def test_glow_cap_counts_px(self):
+        """The glow cap counts a troop's lit texels at its density (54 lit texels at 3 a px are 6 px, the common cap; 63 are 7). A
+        cube weapon's lit texels keep the unit they always had: at its default 2 a px every texel counts 1, as before the texel-3
+        work (a 2x weapon's cap is no looser than it was), and at 3 a px a texel counts 1 / 2.25, the same lit area for the same count."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            densify(root)
+            glow(root / 'art/troops/knight_e.png', 54, size=(192, 192))
+            self.export(root)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            densify(root)
+            glow(root / 'art/troops/knight_e.png', 63, size=(192, 192))
+            said = self.fails(export_assets, root)
+        for want in ('knight', 'glow', '7 lit', 'cap of 6'):
+            self.assertIn(want, said)
+
+        def lit_pike(root, knight_lit, pike_lit, sheet=SHEET_2X):
+            glow(root / 'art/troops/knight_e.png', knight_lit)
+            colour = Image.open(root / 'art/weapons/pike.png').convert('RGBA')
+            painted = [(x, y) for y in range(colour.height) for x in range(colour.width) if colour.getpixel((x, y))[3]]
+            lit_sheet = Image.new('RGBA', sheet, (0, 0, 0, 0))
+            for xy in painted[:pike_lit]:
+                lit_sheet.putpixel(xy, (255, 240, 200, 255))
+            lit_sheet.save(root / 'art/weapons/pike_e.png')
+
+        def pike_build(knight_lit, pike_lit, density=2):
+            with tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp, troops=self.with_knight(weapon='pike'))
+                if density == 2:
+                    put_cube_weapon(root)
+                else:
+                    put_cube_weapon(root, meta=dict(PIKE_JSON, density=density), sheet=SHEET_3X, density=density)
+                lit_pike(root, knight_lit, pike_lit, SHEET_2X if density == 2 else SHEET_3X)
+                return self.fails(export_assets, root) if knight_lit + pike_lit * (4 / density ** 2) > 6 else self.export(root)
+        pike_build(0, 6)                  # a 2x weapon's texels count 1 each, as before: 6 is the common cap
+        said = pike_build(1, 6)           # 1 + 6 = 7
+        self.assertIn('knight', said)
+        self.assertIn('7 lit', said)
+        said = pike_build(0, 16)          # 16 lit texels at 2 a px are 16, not the 4 px of area they cover: the cap of an old weapon is not loosened
+        self.assertIn('16 lit', said)
+        self.assertIn('cap of 6', said)
+        self.assertIn('13 lit', pike_build(0, 13))   # the same 13 texels fail at 2 a px ...
+        pike_build(0, 13, density=3)      # ... and pass at 3 a px: 13 / 2.25 = 5.78
+        said = pike_build(0, 14, density=3)   # 14 / 2.25 = 6.22
+        self.assertIn('6.22 lit', said)
+
+    def test_weapon_density_three(self):
+        """A weapon that names density 3 has its patches at 3 texels a px on a 96x192 sheet: the model says so right after its size,
+        the quads read texels of that sheet, and the far version stays one texel to a px in the strip under it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            put_cube_weapon(root, meta=dict(PIKE_JSON, density=3), sheet=SHEET_3X, density=3)
+            self.export(root)
+            model = model_of(root)
+            tex, normal, spec = (texture_of(root, n) for n in ('pike.png', 'pike_n.png', 'pike_s.png'))
+        self.assertEqual(model['density'], 3)
+        self.assertEqual(list(model)[:6], ['format', 'weapon', 'kind', 'size', 'density', 'thickness'])
+        self.assertEqual(model['size'][0], 96)
+        self.assertEqual(model['size'][1] - 192, 13)   # the same 13 rows of far version, one texel to a px, under the bigger sheet
+        self.assertEqual(tex.size, tuple(model['size']))
+        self.assertEqual((normal.size, spec.size), (tex.size, tex.size))
+        quads = model['frames'][0]['quads']
+        self.assertEqual(quads[0], [0.5, 2, 0.5, -0.5, 2, 0.5, -0.5, -2, 0.5, 0.5, -2, 0.5, 0, 12, 3, 12, 3, 0, 0, 0])
+        for q in quads:
+            for u, v in zip(q[12::2], q[13::2]):
+                self.assertTrue(0 <= u <= 96 and 0 <= v <= 192, q)
+        for q in model['far']:
+            self.assertTrue(all(192 <= v <= 192 + 13 for v in (q[8], q[10], q[12])), q)
+        self.assertLessEqual(len(model['far']), build_skins.FAR_CAP)
+
+    def test_weapon_density_mismatch(self):
+        """A weapon whose patches are not at the density its json names (or the default 2) fails, saying how many times its size a
+        face should be."""
+        cases = [('three times its size', dict(meta=dict(PIKE_JSON, density=3))),   # patches at 2, the json says 3
+                 ('twice its size', dict(sheet=SHEET_3X, density=3))]               # patches at 3, the json is silent
+        for want, kw in cases:
+            with self.subTest(want=want), tempfile.TemporaryDirectory() as tmp:
+                root = fixture(tmp)
+                put_cube_weapon(root, **kw)
+                said = self.fails(export_assets, root)
+                for word in ('pike', 'texels a px', want):
+                    self.assertIn(word, said)
+
+    def test_material_maps_tilt_follows_the_density(self):
+        """A patch edge tilts the _n map by the drop to the next texel, and a texel is 1/D px: EDGE_TILT is scaled by 2/D, so a 3x
+        weapon's bevel leans as a 2x weapon's does."""
+        colour = Image.new('RGBA', (5, 1), (120, 120, 120, 255))
+        keys = Image.new('RGBA', (5, 1), KEYS['steel'] + (255,))
+
+        def left_edge(tilt):
+            nx = -0.5 * tilt
+            return int(round(128 + nx / math.sqrt(nx * nx + 1.0) * 127))
+        for d, tilt in ((2, build_skins.EDGE_TILT), (3, build_skins.EDGE_TILT * 2 / 3), (4, build_skins.EDGE_TILT / 2)):
+            normal, _ = build_skins.material_maps(colour, keys, [(0, 0, 5, 1)], None, d)
+            self.assertEqual(normal.getpixel((0, 0))[0], left_edge(tilt), d)
+        normal, _ = build_skins.material_maps(colour, keys, [(0, 0, 5, 1)])   # the default is the weapons' 2
+        self.assertEqual(normal.getpixel((0, 0))[0], left_edge(build_skins.EDGE_TILT))
+
+    def test_far_skin_twin(self):
+        """A density 3 troop ships a twin of each skin at one texel to a px (<name>_far.png), made as the weapons' far version is:
+        a block of 3x3 texels takes its most common colour and is clear unless at least half of it is painted. The trim, the glow
+        and the outer layer get twins too; a density 1 troop gets none."""
+        paint, other = (90, 60, 40, 255), (30, 30, 36, 255)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            densify(root)
+            src = root / 'art/troops/knight_s1.png'
+            with Image.open(src) as im:
+                skin_im = im.convert('RGBA')
+            for i in range(9):   # block (5, 5): six texels of paint and three of another colour
+                skin_im.putpixel((15 + i % 3, 15 + i // 3), paint if i < 6 else other)
+            for i in range(9):   # block (7, 7): four painted, five clear: clear
+                skin_im.putpixel((21 + i % 3, 21 + i // 3), paint if i < 4 else (0, 0, 0, 0))
+            for i in range(9):   # block (8, 8): five painted, four clear: painted
+                skin_im.putpixel((24 + i % 3, 24 + i // 3), paint if i < 5 else (0, 0, 0, 0))
+            skin_im.save(src)
+            relief_png(root, 'knight_veteran.png', self.raised([(10, 10)]), size=(192, 192))
+            lit_im = Image.new('RGBA', (192, 192), (0, 0, 0, 0))
+            for i in range(5):
+                lit_im.putpixel((6 + i % 3, 6 + i // 3), (255, 240, 200, 255))   # block (2, 2): five lit
+            lit_im.save(root / 'art/troops/knight_e.png')
+            skin(root / 'art/troops/knight_o.png', size=(192, 192), paint=(0, 0, 0, 0),
+                 extra=[((60 + i % 3, 60 + i // 3), (120, 110, 100, 255)) for i in range(9)])
+            index = self.export(root)
+            base = root / ASSETS / 'textures/entity/troop'
+            names = ('knight_s1_far.png', 'knight_veteran_far.png', 'knight_e_far.png', 'knight_o_far.png')
+            twins = {n: Image.open(base / n).convert('RGBA') for n in names}
+            on_disk = sorted(p.name for p in base.glob('*_far.png'))
+        self.assertEqual(on_disk, sorted(twins))
+        for name in twins:
+            self.assertIn('textures/entity/troop/' + name, index['outputs'])
+            self.assertEqual(twins[name].size, (64, 64), name)
+        far = twins['knight_s1_far.png']
+        self.assertEqual(far.getpixel((5, 5)), paint)
+        self.assertEqual(far.getpixel((7, 7))[3], 0)
+        self.assertEqual(far.getpixel((8, 8)), paint)
+        self.assertEqual(far.getpixel((0, 0)), (200, 196, 186, 255))
+        self.assertEqual(twins['knight_veteran_far.png'].getpixel((10, 10)), MINT)
+        self.assertEqual(twins['knight_veteran_far.png'].getpixel((11, 10))[3], 0)
+        self.assertEqual(twins['knight_e_far.png'].getpixel((2, 2)), (255, 240, 200, 255))
+        self.assertEqual(twins['knight_o_far.png'].getpixel((20, 20)), (120, 110, 100, 255))
+
+    def test_far_twin_function(self):
+        """far_twin on its own: density 1 is the image itself; a tie goes to the colour met first in reading order; a block with
+        fewer than half its texels painted is clear."""
+        im = Image.new('RGBA', (6, 3), (0, 0, 0, 0))
+        a, b = (10, 20, 30, 255), (40, 50, 60, 255)
+        for i in range(9):   # a 3x3 block of four a, four b and one clear: a was met first
+            im.putpixel((i % 3, i // 3), a if i in (0, 1, 3, 4) else b if i in (2, 5, 6, 7) else (0, 0, 0, 0))
+        for x in range(3, 6):
+            for y in range(3):
+                im.putpixel((x, y), b)
+        twin = build_skins.far_twin(im, 3)
+        self.assertEqual(twin.size, (2, 1))
+        self.assertEqual((twin.getpixel((0, 0)), twin.getpixel((1, 0))), (a, b))
+        self.assertIs(build_skins.far_twin(im, 1), im)
+        sparse = Image.new('RGBA', (3, 3), (0, 0, 0, 0))
+        for i in range(4):
+            sparse.putpixel((i % 3, i // 3), a)
+        self.assertEqual(build_skins.far_twin(sparse, 3).getpixel((0, 0))[3], 0)
+
+    def test_far_twin_even_density(self):
+        """The half rule lands exactly on a texel count at an even density (the weapons' far version keeps a px at half its samples
+        too): at 2 a block with 2 of its 4 texels painted is kept and one with 1 is clear; a 2-2 colour tie, and a 1-1 tie, go to the
+        colour met first in reading order; at 4, 8 of 16 are kept and 7 are clear."""
+        a, b, clear = (10, 20, 30, 255), (40, 50, 60, 255), (0, 0, 0, 0)
+        # each block lists its texels in reading order: (0,0) (1,0) (0,1) (1,1)
+        blocks = [('two of four, one colour', [a, clear, clear, a], a), ('one of four', [clear, clear, a, clear], clear),
+                  ('three of four, two against one', [b, a, b, clear], b), ('a 2-2 tie, a met first', [a, b, b, a], a),
+                  ('a 2-2 tie, b met first', [b, a, a, b], b), ('a 1-1 tie, kept', [clear, b, a, clear], b),
+                  ('none', [clear] * 4, clear)]
+        im = Image.new('RGBA', (2 * len(blocks), 2), clear)
+        for n, (_, texels, _) in enumerate(blocks):
+            for i, c in enumerate(texels):
+                im.putpixel((2 * n + i % 2, i // 2), c)
+        twin = build_skins.far_twin(im, 2)
+        self.assertEqual(twin.size, (len(blocks), 1))
+        for n, (name, _, want) in enumerate(blocks):
+            with self.subTest(name=name):
+                self.assertEqual(twin.getpixel((n, 0)), want)
+        for painted, kept in ((8, True), (7, False)):
+            with self.subTest(painted=painted, density=4):
+                big = Image.new('RGBA', (4, 4), clear)
+                for i in range(painted):
+                    big.putpixel((i % 4, i // 4), a)
+                self.assertEqual(build_skins.far_twin(big, 4).getpixel((0, 0)), a if kept else clear)
+
+    def test_verify_density_three(self):
+        """--verify rebuilds a density 3 troop, its far twins and the cloth at 3 (PNGs by pixels, the model byte for byte)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            densify(root, cloth=True)
+            self.export(root)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(build_skins.verify(root), 0)
+            for target in ('models/troop/knight.json', 'textures/entity/troop/knight_s1_far.png', 'textures/entity/troop/knight_s1.png',
+                           'textures/entity/troop/team_cloth_gold.png'):
+                path = root / ASSETS / target
+                before = path.read_bytes()
+                data = bytearray(before)
+                data[len(data) // 2] ^= 0x01
+                path.write_bytes(bytes(data))
+                said = self.fails(build_skins.verify, root)
+                self.assertIn(target, said)
+                path.write_bytes(before)
+
+    # ---- the troop faces (face variants: head boxes in the sheet, picked by the client from the entity's UUID) ----
+
+    def faces_troops(self, density=None, fdensity=None, **faces):
+        """TROOPS with the knight a four-faces troop: a 64x96 sheet (the fixture's 64x64 and free rows under it) and a faces block
+        (`fdensity` is the block's own "density": the texels a px the patch files are drawn at)."""
+        block = {'count': 4, 'slots': FACE_SLOTS}
+        if fdensity is not None:
+            block['density'] = fdensity
+        block.update(faces)
+        extra = {'size': [64, 96], 'faces': block}
+        if density:
+            extra['density'] = density
+        return self.with_knight(**extra)
+
+    def bake_fails(self, troops, setup=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp, troops=troops)
+            if setup:
+                setup(root)
+            cat = build_skins.load(root)
+            return self.fails(build_skins.bake, cat, 'knight')
+
+    def test_faces_model(self):
+        """A troop with faces keeps `head` as the pivot (the clips, helm bones and helm_off hang from it) and gets one face bone a
+        variant under it, in order, straight after it: face_v0 is the rig's head box exactly where it was, face_v1 to 3 the same box
+        with its uv at a slot. Each says which variant shows it; the model says the count and the card face. A troop without faces
+        is what it was: no faces key, no variants."""
+        model = self.bake(self.faces_troops())['knight']
+        names = [b['name'] for b in model['bones']]
+        at = names.index('head')
+        self.assertEqual(names[at + 1:at + 5], ['face_v0', 'face_v1', 'face_v2', 'face_v3'])
+        self.assertEqual(find(model, 'head')['boxes'], [])
+        uvs = [[0, 0]] + FACE_SLOTS
+        for k in range(4):
+            b = find(model, 'face_v%d' % k)
+            self.assertEqual(list(b), ['name', 'parent', 'part', 'team', 'tag', 'stages', 'variants', 'sheet', 'pivot', 'rotation', 'boxes'])
+            self.assertEqual((b['parent'], b['part'], b['team'], b['tag'], b['stages'], b['variants']), ('head', '', False, '', [], [k]))
+            self.assertEqual((b['sheet'], b['pivot'], b['rotation']), ([64, 96], [0, 0, 0], [0, 0, 0]))
+            self.assertEqual(b['boxes'], [{'origin': [-4, -8, -4], 'size': [8, 8, 8], 'uv': uvs[k], 'mirror': False, 'dilation': [0, 0, 0]}])
+        self.assertEqual(model['faces'], {'count': 4, 'card': 0})
+        self.assertEqual(tuple(model), build_skins.model_keys(1, True))
+        self.assertEqual(list(model)[-2:], ['portrait', 'faces'])
+        plain = self.bake(TROOPS)['knight']
+        self.assertEqual(tuple(plain), build_skins.MODEL_KEYS)
+        self.assertFalse([b['name'] for b in plain['bones'] if 'variants' in b])
+        self.assertEqual([b['name'] for b in plain['bones']], [n for n in names if not n.startswith('face_v')])
+        dense = self.bake(self.faces_troops(density=3))['knight']
+        self.assertEqual(tuple(dense), build_skins.model_keys(3, True))
+        self.assertEqual(find(dense, 'face_v1')['boxes'][0]['uv'], FACE_SLOTS[0])   # slots stay in layout units
+
+    def test_faces_head_boxes(self):
+        """The first box of `head` becomes the faces; any other box of it (the mage's and the Marshal's beard volumes) stays on `head`
+        and shows in every variant. A bone scale reaches the face boxes as it reached the head box."""
+        beard = box([-3, -3, -4.9], [6, 4, 1], [48, 56])
+        main = box([-4, -8, -4], [8, 8, 8], [0, 0])
+        troops = self.faces_troops()
+        troops['knight']['bones'] = {'head': {'boxes': [main, beard]}}
+        model = self.bake(troops)['knight']
+        head = find(model, 'head')
+        self.assertEqual(len(head['boxes']), 1)
+        self.assertEqual((head['boxes'][0]['size'], head['boxes'][0]['uv']), ([6, 4, 1], [48, 56]))
+        for k in range(4):
+            self.assertEqual(len(find(model, 'face_v%d' % k)['boxes']), 1)
+        scaled = self.faces_troops()
+        scaled['knight']['bones'] = {'head': {'scale': 1.25}}
+        plain = copy.deepcopy(TROOPS)
+        plain['knight'].update(size=[64, 96], bones={'head': {'scale': 1.25}})
+        flat = find(self.bake(plain)['knight'], 'head')['boxes'][0]
+        baked = self.bake(scaled)['knight']
+        for k in range(4):
+            got = find(baked, 'face_v%d' % k)['boxes'][0]
+            self.assertEqual({key: v for key, v in got.items() if key != 'uv'}, {key: v for key, v in flat.items() if key != 'uv'})
+
+    def test_faces_card_and_fixed(self):
+        """card is the face a card and a reveal portrait wear (0 unless it says; a pinned troop's own face unless it says), fixed pins
+        a singular character (the Marshal) to one face whatever its UUID; both ride in the model."""
+        self.assertEqual(self.bake(self.faces_troops(card=2))['knight']['faces'], {'count': 4, 'card': 2})
+        self.assertEqual(self.bake(self.faces_troops(fixed=1))['knight']['faces'], {'count': 4, 'card': 1, 'fixed': 1})
+        self.assertEqual(self.bake(self.faces_troops(fixed=1, card=3))['knight']['faces'], {'count': 4, 'card': 3, 'fixed': 1})
+        self.assertEqual(self.bake(self.faces_troops(count=2, slots=FACE_SLOTS[:1]))['knight']['faces'], {'count': 2, 'card': 0})
+
+    def test_faces_key_rules(self):
+        cases = [   # name, the faces keys that change, what the message names
+            ('no face', dict(count=0, slots=[]), ['faces', 'count']),
+            ('nine faces', dict(count=9, slots=FACE_SLOTS * 3), ['faces', 'count']),
+            ('count as text', dict(count='4'), ['faces', 'count']),
+            ('too few slots', dict(slots=FACE_SLOTS[:2]), ['faces', 'slots', '3']),
+            ('a slot that is no pair', dict(slots=[[0, 64], [32], [0, 80]]), ['slot 2']),
+            ('a negative slot', dict(slots=[[0, 64], [-32, 64], [0, 80]]), ['slot 2']),
+            ('a slot off the sheet', dict(slots=[[0, 64], [32, 64], [0, 90]]), ['slot 3', 'sheet']),
+            ('a slot on the cap', dict(slots=[[32, 0], [32, 64], [0, 80]]), ['slot 1', 'overlaps', 'cap']),
+            ('a slot on the head', dict(slots=[[0, 64], [32, 64], [8, 4]]), ['slot 3', 'overlaps', 'head']),
+            ('slots on each other', dict(slots=[[0, 64], [16, 64], [0, 80]]), ['slot 2', 'overlaps', 'slot 1']),
+            ('card out of range', dict(card=4), ['faces', 'card']),
+            ('negative card', dict(card=-1), ['faces', 'card']),
+            ('fixed out of range', dict(fixed=7), ['faces', 'fixed']),
+            ('unknown key', dict(mood=1), ['faces', 'unknown key', 'mood']),
+        ]
+        for name, change, wants in cases:
+            with self.subTest(name=name):
+                said = self.bake_fails(self.faces_troops(**change))
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with self.subTest(name='faces is no object'):
+            said = self.bake_fails(self.with_knight(size=[64, 96], faces=[4]))
+            self.assertIn('faces', said)
+
+        def outer(root):
+            skin(root / 'art/troops/knight_o.png', paint=(0, 0, 0, 0))
+        with self.subTest(name='an outer layer'):
+            said = self.bake_fails(self.faces_troops(), outer)
+            for want in ('faces', 'outer'):
+                self.assertIn(want, said)
+
+    def test_faces_patch_rules(self):
+        def edit(f):
+            def go(root):
+                path = root / 'art/troops/knight_faces.png'
+                im = Image.open(path).convert('RGBA')
+                f(im)
+                im.save(path)
+            return go
+        cases = [   # name, a change to art/troops/knight_faces.png, what the message names
+            ('missing', lambda root: (root / 'art/troops/knight_faces.png').unlink(), ['knight_faces.png', 'missing']),
+            ('half alpha', edit(lambda im: im.putpixel((9, 3), (200, 190, 180, 128))), ['knight_faces.png', 'alpha 128', '(9, 3)']),
+            ('a hole in a face', edit(lambda im: im.putpixel((9, 3), (0, 0, 0, 0))), ['knight_faces.png', 'alpha 0', '(9, 3)']),
+            ('paint off the faces', edit(lambda im: im.putpixel((1, 2 * 16 + 1), (200, 190, 180, 255))),
+             ['knight_faces.png', 'patch 2', 'outside', '(1, 33)']),
+            ('a side colour', edit(lambda im: im.putpixel((9, 3), (227, 179, 65, 255))), ['knight_faces.png', 'gold side colour']),
+        ]
+        for name, change, wants in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = faces_fixture(tmp, troops=self.faces_troops())
+                change(root)
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with self.subTest(name='wrong size'), tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, troops=self.faces_troops())
+            put_png(root / 'art/troops/knight_faces.png', face_patches().crop((0, 0, 32, 48)))
+            said = self.fails(export_assets, root)
+            for want in ('knight_faces.png', '32x48', '32x64'):
+                self.assertIn(want, said)
+        with self.subTest(name='wrong size at density 3'), tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, density=3, troops=self.faces_troops(density=3))
+            put_png(root / 'art/troops/knight_faces.png', face_patches(1))
+            said = self.fails(export_assets, root)
+            for want in ('knight_faces.png', '96x192'):
+                self.assertIn(want, said)
+        with self.subTest(name='a faces file with no faces block'), tempfile.TemporaryDirectory() as tmp:
+            root = fixture(tmp)
+            put_png(root / 'art/troops/knight_faces.png', face_patches())
+            said = self.fails(export_assets, root)
+            for want in ('knight_faces.png', 'faces'):
+                self.assertIn(want, said)
+
+    def test_faces_composite(self):
+        """The patches go into every own skin: patch 0 over the head's faces, patches 1 to 3 at their slots, only on the texels of the
+        six faces (a patch's corners are left alone), at the troop's density; nothing else of the skin changes, the veteran trim
+        and the glow are shipped as they are, and the far twin is made from the composited skin."""
+        for density in (1, 3):
+            with self.subTest(density=density), tempfile.TemporaryDirectory() as tmp:
+                troops = self.faces_troops(density=density if density > 1 else None)
+                troops['knight']['skins'] = {'1': 'knight_s1.png', '2': 'knight_s2.png'}
+                root = faces_fixture(tmp, density, troops)
+                size = (64 * density, 96 * density)
+                trim = relief_png(root, 'knight_veteran.png', self.raised([(24, 22), (25, 22)], density), size=size)
+                lit = Image.new('RGBA', size, (0, 0, 0, 0))
+                lit.putpixel((24 * density, 22 * density), (255, 240, 200, 255))
+                lit.save(root / 'art/troops/knight_e.png')
+                patches = face_patches(density)
+                index = self.export(root)
+                base = root / ASSETS / 'textures/entity/troop'
+                for name in ('knight_s1.png', 'knight_s2.png'):
+                    want = Image.open(root / 'art/troops' / name).convert('RGBA')
+                    for k, (u, v) in enumerate([(0, 0)] + FACE_SLOTS):
+                        for x0, y0, x1, y1 in HEAD_FACES:
+                            for y in range(y0 * density, y1 * density):
+                                for x in range(x0 * density, x1 * density):
+                                    want.putpixel((u * density + x, v * density + y), patches.getpixel((x, k * 16 * density + y)))
+                    got = Image.open(base / name).convert('RGBA')
+                    self.assertEqual(got.size, size)
+                    self.assertEqual(got.tobytes(), want.tobytes(), name)
+                    self.assertNotEqual(got.tobytes(), Image.open(root / 'art/troops' / name).convert('RGBA').tobytes(), name)
+                    self.assertEqual(got.getpixel((0, 64 * density))[3], 0)   # a slot's corner (outside the six faces) stays clear
+                self.assertEqual(Image.open(base / 'knight_veteran.png').convert('RGBA').tobytes(), trim.tobytes())
+                self.assertEqual(Image.open(base / 'knight_e.png').convert('RGBA').tobytes(), lit.tobytes())
+                if density > 1:
+                    s1 = Image.open(base / 'knight_s1.png').convert('RGBA')
+                    twin = Image.open(base / 'knight_s1_far.png').convert('RGBA')
+                    self.assertEqual(twin.size, (64, 96))
+                    self.assertEqual(twin.tobytes(), build_skins.far_twin(s1, density).tobytes())
+                    self.assertGreater(twin.getpixel((12, 76))[3], 0)   # slot 1's front survives in the twin
+                self.assertFalse([n for n in index['outputs'] if 'faces' in n], 'the patch file is a source, not an output')
+
+    def test_faces_free_rows(self):
+        """The sheet around a slot is free: no skin may paint a slot's 32x16 rectangle, and the veteran trim and the glow must not
+        light it (a face on a slot would be painted over by them in every variant but 0)."""
+        def paint_at(xy):
+            def go(root):
+                im = Image.open(root / 'art/troops/knight_s1.png').convert('RGBA')
+                im.putpixel(xy, (200, 196, 186, 255))
+                im.save(root / 'art/troops/knight_s1.png')
+            return go
+
+        def trim_in_slot(root):
+            relief_png(root, 'knight_veteran.png', [(10, 74)], size=(64, 96))
+
+        def glow_in_slot(root):
+            lit = Image.new('RGBA', (64, 96), (0, 0, 0, 0))
+            lit.putpixel((10, 74), (255, 240, 200, 255))
+            lit.save(root / 'art/troops/knight_e.png')
+        cases = [
+            ('a skin paints slot 1', paint_at((3, 70)), ['knight_s1.png', 'slot 1', '(3, 70)']),
+            ('a skin paints slot 3', paint_at((5, 85)), ['knight_s1.png', 'slot 3', '(5, 85)']),
+            ('the trim reaches a slot', trim_in_slot, ['knight_veteran.png', 'slot 1', '(10, 74)']),
+            ('the glow lights a slot', glow_in_slot, ['knight_e.png', 'slot 1', '(10, 74)']),
+        ]
+        for name, setup, wants in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = faces_fixture(tmp, troops=self.faces_troops())
+                setup(root)
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+
+    def test_faces_overlays_keep_off_variant_zero(self):
+        """The veteran trim and the glow are drawn over whichever face shows, so they may touch variant 0's head and beard rectangles as
+        little as the slots: a mark there would show on a quarter of the faces only. A skin may paint them (patch 0 replaces it), and a
+        troop of count 1 has no uneven faces, so its trim may lie on its head."""
+        def trim_at(xy):
+            return lambda root: relief_png(root, 'knight_veteran.png', [xy], size=(64, 96))
+
+        def glow_at(xy):
+            def go(root):
+                lit = Image.new('RGBA', (64, 96), (0, 0, 0, 0))
+                lit.putpixel(xy, (255, 240, 200, 255))
+                lit.save(root / 'art/troops/knight_e.png')
+            return go
+        cases = [
+            ('the trim on the head rect', False, trim_at((10, 5)), ['knight_veteran.png', 'canonical face', '(10, 5)']),
+            ('the glow on the head rect', False, glow_at((10, 5)), ['knight_e.png', 'canonical face', '(10, 5)']),
+            ('the trim on the beard rect', True, trim_at((50, 58)), ['knight_veteran.png', 'canonical beard', '(50, 58)']),
+            ('the glow on the beard rect', True, glow_at((50, 58)), ['knight_e.png', 'canonical beard', '(50, 58)']),
+        ]
+        for name, beard, setup, wants in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = self.beard_root(tmp) if beard else faces_fixture(tmp, troops=self.faces_troops())
+                setup(root)
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with self.subTest(name='count 1 trims its head'), tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, troops=self.with_knight(size=[64, 96], faces={'count': 1}), patches=False)
+            put_png(root / 'art/troops/knight_faces.png', face_patches(1, 1))
+            trim_at((10, 5))(root)
+            self.export(root)
+
+    # ---- faces at their own density: the faces of a density 3 sheet drawn at 2 texels a px (Kort's ruling, 2026-10-24) ----
+
+    def dense_troops(self, **faces):
+        """faces_troops of a density 3 knight whose faces are drawn at 2 texels a px."""
+        return self.faces_troops(density=3, fdensity=2, **faces)
+
+    def dense_root(self, tmp, troops=None, rects=(), patches=True):
+        """The density 3 fixture with 2x patches: its skins painted all over but the compact slot rectangles (22x11 layout px) and `rects`."""
+        troops = troops or self.dense_troops()
+        troops['knight']['skins'] = {'1': 'knight_s1.png', '2': 'knight_s2.png'}
+        root = faces_fixture(tmp, 3, troops, patches=False)
+        for name, paint in (('knight_s1.png', (200, 196, 186, 255)), ('knight_s2.png', (190, 186, 176, 255))):
+            face_skin(root / 'art/troops' / name, 3, slots=[], paint=paint, rects=[(u, v, u + 22, v + 11) for u, v in FACE_SLOTS] + list(rects))
+        if patches:
+            put_png(root / 'art/troops/knight_faces.png', face_patches(2))
+        return root
+
+    def test_faces_dense_model(self):
+        """A faces block with "density": 2 on a density 3 troop draws its face bones at 2 texels a px: each face bone has its own sheet,
+        the sheet in face px (the PNG's 192x288 texels over 2 = 96x144), and its boxes' uv in face px (a slot's texel origin over 2), so
+        the client's one unit (a box px of the bone) is two texels and the face's rectangle is 64x32 texels, not 96x48. The other bones
+        keep the layout sheet; the model keeps its size, its density and its faces key."""
+        model = self.bake(self.dense_troops())['knight']
+        self.assertEqual(model['size'], [64, 96])
+        self.assertEqual(model['density'], 3)
+        self.assertEqual(tuple(model), build_skins.model_keys(3, True))
+        self.assertEqual(model['faces'], {'count': 4, 'card': 0})
+        for k, (x, y) in enumerate([[0, 0]] + FACE_SLOTS):
+            b = find(model, 'face_v%d' % k)
+            self.assertEqual(b['sheet'], [96, 144], b['name'])
+            self.assertEqual(b['boxes'][0]['uv'], [x * 3 // 2, y * 3 // 2], b['name'])
+            self.assertEqual(b['boxes'][0]['size'], [8, 8, 8])
+        self.assertEqual(find(model, 'body')['sheet'], [64, 96])
+        self.assertEqual(find(model, 'body')['boxes'][0]['uv'], [16, 16])
+        same = self.bake(self.faces_troops(density=3))['knight']   # no key: the faces at the troop's density as before
+        self.assertEqual(find(same, 'face_v1')['sheet'], [64, 96])
+        self.assertEqual(find(same, 'face_v1')['boxes'][0]['uv'], FACE_SLOTS[0])
+
+    def test_faces_dense_uv_lands_on_texels(self):
+        """Every corner of a dense face bone's six faces, as the client computes the UV (the bone's uv plus the box px over its sheet),
+        falls on a whole texel of the 192x288 PNG: no UV is inside a texel, so no patch edge bleeds into its neighbour, and the
+        rectangle of face k is exactly the 64x32 texels pasted at its slot."""
+        model = self.bake(self.dense_troops())['knight']
+        for k, (x, y) in enumerate([[0, 0]] + FACE_SLOTS):
+            b = find(model, 'face_v%d' % k)
+            u, v = b['boxes'][0]['uv']
+            sw, sh = b['sheet']
+            corners = [(u + du, v + dv) for du in (0, 8, 16, 24, 32) for dv in (0, 8, 16)]
+            for cu, cv in corners:
+                tx, ty = cu * 192 / sw, cv * 288 / sh
+                self.assertAlmostEqual(tx, round(tx), places=9, msg=(k, cu, cv))
+                self.assertAlmostEqual(ty, round(ty), places=9, msg=(k, cu, cv))
+            self.assertEqual((u * 192 / sw, v * 288 / sh, (u + 32) * 192 / sw, (v + 16) * 288 / sh), (3 * x, 3 * y, 3 * x + 64, 3 * y + 32))
+
+    def test_faces_dense_composite(self):
+        """The 2x patches go into a 3x skin texel for texel: patch k at slot k's texel origin (3 x the slot), 64x32 texels over the
+        six faces; variant 0's old head rectangle (96x48 texels) is cleared but for patch 0 (the stale 3x head is unused); nothing else
+        changes. The far twin is made from the composited skin and keeps the patch's last texel column and row (the block that
+        straddles the patch's edge is judged by the patch's texels in it)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.dense_root(tmp)
+            self.export(root)
+            base = root / ASSETS / 'textures/entity/troop'
+            patches = face_patches(2)
+            for name in ('knight_s1.png', 'knight_s2.png'):
+                want = Image.open(root / 'art/troops' / name).convert('RGBA')
+                for y in range(48):
+                    for x in range(96):
+                        want.putpixel((x, y), (0, 0, 0, 0))
+                for k, (u, v) in enumerate([(0, 0)] + FACE_SLOTS):
+                    for x0, y0, x1, y1 in HEAD_FACES:
+                        for y in range(y0 * 2, y1 * 2):
+                            for x in range(x0 * 2, x1 * 2):
+                                want.putpixel((u * 3 + x, v * 3 + y), patches.getpixel((x, k * 32 + y)))
+                got = Image.open(base / name).convert('RGBA')
+                self.assertEqual(got.size, (192, 288))
+                self.assertEqual(got.tobytes(), want.tobytes(), name)
+            s1 = Image.open(base / 'knight_s1.png').convert('RGBA')
+            twin = Image.open(base / 'knight_s1_far.png').convert('RGBA')
+            islands = [(u * 3, v * 3, u * 3 + 64, v * 3 + 32) for u, v in [(0, 0)] + FACE_SLOTS]
+            self.assertEqual(twin.tobytes(), build_skins.far_twin(s1, 3, islands).tobytes())
+            for u, v in [(0, 0)] + FACE_SLOTS:   # the last column (texels 63 to 65 of the patch's row 18 to 20) and the last row
+                self.assertGreater(twin.getpixel((u + 21, v + 6))[3], 0, (u, v))
+                self.assertGreater(twin.getpixel((u + 8, v + 10))[3], 0, (u, v))
+            plain = build_skins.far_twin(s1, 3)
+            self.assertEqual(plain.getpixel((21, 6))[3], 0)   # what the plain 3x3 rule does with the edge block: a hole in the back of the head
+
+    def test_faces_dense_rules(self):
+        """The block's density is a whole number from 1 to 4; above the troop's it must be a whole multiple (it is reduced by that);
+        below it the faces need a face bone (count above 1), a sheet of a whole number of face px, and every uv a whole number of them."""
+        for value in (0, 5, 2.5, True, '2'):
+            with self.subTest(value=value):
+                said = self.bake_fails(self.faces_troops(fdensity=value))
+                for want in ('knight', 'faces', 'density'):
+                    self.assertIn(want, said)
+        with self.subTest(name='4 over 3'):
+            said = self.bake_fails(self.faces_troops(density=3, fdensity=4))
+            for want in ('knight', 'faces', 'density 4', 'multiple', '3'):
+                self.assertIn(want, said)
+        with self.subTest(name='count 1 below the density'):
+            said = self.bake_fails(self.with_knight(size=[64, 96], density=3, faces={'count': 1, 'density': 2}))
+            for want in ('knight', 'count 1', 'density'):
+                self.assertIn(want, said)
+        with self.subTest(name='an odd slot'):
+            said = self.bake_fails(self.dense_troops(slots=[[1, 64], [32, 64], [0, 80]]))
+            for want in ('knight', 'slot 1', '(1, 64)', 'multiple of 2'):
+                self.assertIn(want, said)
+        with self.subTest(name='an odd sheet'):
+            said = self.bake_fails(self.with_knight(size=[65, 96], density=3, faces={'count': 4, 'density': 2, 'slots': FACE_SLOTS}))
+            for want in ('knight', 'sheet', 'multiple of 2'):
+                self.assertIn(want, said)
+        with self.subTest(name='the unit of the key'):
+            model = self.bake(self.faces_troops(density=3, fdensity=3))['knight']   # the troop's own density: as no key
+            self.assertEqual(find(model, 'face_v1')['sheet'], [64, 96])
+
+    def test_faces_dense_slots_collide_at_their_own_size(self):
+        """A dense slot is the rectangle it needs (a 64x32 texel patch is 22x11 layout px on a 3x sheet, not 32x16): two fit side by
+        side where full-size ones would overlap, the one slot that leaves the sheet is the one whose compact rectangle leaves it."""
+        troops = self.dense_troops(slots=[[0, 64], [22, 64], [44, 76]])   # 22 wide each: the sheet is 64 wide, the third ends at 66
+        said = self.bake_fails(troops)
+        for want in ('knight', 'slot 3', 'leaves', '64x96', '22x11'):
+            self.assertIn(want, said)
+        self.bake(self.dense_troops(slots=[[0, 64], [22, 64], [42, 76]]))   # fits: the third ends at 64
+        said = self.bake_fails(self.dense_troops(slots=[[0, 64], [20, 64], [42, 76]]))
+        for want in ('knight', 'slot 2', 'overlaps', 'slot 1'):
+            self.assertIn(want, said)
+        self.bake(self.dense_troops(slots=[[0, 64], [22, 64], [0, 84]]))   # 84 + 11 = 95 (an odd y cannot be a whole number of face px)
+        said = self.bake_fails(self.dense_troops(slots=[[0, 64], [22, 64], [0, 86]]))
+        for want in ('knight', 'slot 3', 'leaves'):
+            self.assertIn(want, said)
+        said = self.bake_fails(self.faces_troops(density=3, slots=[[0, 64], [22, 64], [42, 64]]))   # no key: full-size 32x16 rectangles overlap
+        for want in ('knight', 'slot 2', 'overlaps'):
+            self.assertIn(want, said)
+
+    def test_faces_dense_overlays_and_relief(self):
+        """The trim and the glow keep off the whole reserved rectangle of a dense slot (its texels rounded up to layout px) and off
+        variant 0's whole old head rectangle; a skin may paint the old rectangle (patch 0 replaces what it covers and the rest is
+        cleared); relief on the patch is refused naming the face bone, and relief on the stale rest of the old rectangle lies on no face."""
+        def trim_at(xy):
+            return lambda root: relief_png(root, 'knight_veteran.png', [xy], size=(192, 288))
+
+        def glow_at(xy):
+            def go(root):
+                lit = Image.new('RGBA', (192, 288), (0, 0, 0, 0))
+                lit.putpixel(xy, (255, 240, 200, 255))
+                lit.save(root / 'art/troops/knight_e.png')
+            return go
+        cases = [
+            ('the trim at the corner of slot 1\'s reserved rectangle', trim_at((65, 224)), ['knight_veteran.png', 'slot 1', '(65, 224)']),
+            ('the glow at the end of slot 2', glow_at((96 + 65, 224)), ['knight_e.png', 'slot 2', '(161, 224)']),
+            ('the trim in the old head rectangle beyond the patch', trim_at((80, 10)), ['knight_veteran.png', 'canonical face', '(80, 10)']),
+        ]
+        for name, setup, wants in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = self.dense_root(tmp)
+                setup(root)
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with self.subTest(name='the trim just outside slot 1'), tempfile.TemporaryDirectory() as tmp:
+            root = self.dense_root(tmp)
+            trim_at((66, 224))(root)
+            self.export(root)
+        for name, texel, wants in (('relief on the patch', (20, 20), ['face bone', 'face_v0', '(20, 20)']),
+                                   ('relief on the stale head', (80, 10), ['no skin box face', '(80, 10)'])):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = self.dense_root(tmp)
+                for r in ('knight_s1_r.png', 'knight_s2_r.png'):
+                    relief_png(root, r, [texel], size=(192, 288))
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+
+    def test_faces_one_x_troops_reduce_two_to_one(self):
+        """A density 1 troop whose faces block says density 2 takes patches drawn at 2 texels a px and reduces them by the far twin's
+        majority rule, 2 to 1 (the 8x8 head of the default look); a file of any other size is refused naming the density; a density 3
+        troop whose block says 2 refuses a 3x file."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, 1, self.faces_troops(fdensity=2), patches=False)
+            put_png(root / 'art/troops/knight_faces.png', self.scaled_patches(2))
+            self.export(root)
+            got = Image.open(root / ASSETS / 'textures/entity/troop/knight_s1.png').convert('RGBA')
+            want = Image.open(root / 'art/troops/knight_s1.png').convert('RGBA')
+            patches = face_patches(1)
+            for k, (u, v) in enumerate([(0, 0)] + FACE_SLOTS):
+                for x0, y0, x1, y1 in HEAD_FACES:
+                    for y in range(y0, y1):
+                        for x in range(x0, x1):
+                            want.putpixel((u + x, v + y), patches.getpixel((x, k * 16 + y)))
+            self.assertEqual(got.tobytes(), want.tobytes())
+        for density, scale in ((1, 1), (1, 3), (3, 3), (3, 1)):
+            with self.subTest(density=density, scale=scale), tempfile.TemporaryDirectory() as tmp:
+                root = faces_fixture(tmp, density, self.faces_troops(density=density if density > 1 else None, fdensity=2), patches=False)
+                put_png(root / 'art/troops/knight_faces.png', self.scaled_patches(scale))
+                said = self.fails(export_assets, root)
+                for want in ('knight', 'knight_faces.png', '64x128', '2 texels a px'):
+                    self.assertIn(want, said)
+
+    def test_faces_dense_verify_and_templates(self):
+        """--verify rebuilds a dense-faces troop (a changed texel in its skin or its far twin is named) and the templates draw each face
+        bone at its own density: slot 1's front is the 64x32 texel patch's, not a 96x48 one."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.dense_root(tmp)
+            self.export(root)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(build_skins.verify(root), 0)
+            for target in ('textures/entity/troop/knight_s1.png', 'textures/entity/troop/knight_s1_far.png', 'models/troop/knight.json'):
+                path = root / ASSETS / target
+                before = path.read_bytes()
+                data = bytearray(before)
+                data[len(data) // 2] ^= 0x01
+                path.write_bytes(bytes(data))
+                said = self.fails(build_skins.verify, root)
+                self.assertIn(target, said)
+                path.write_bytes(before)
+            cat = build_skins.load(root)
+            flat, relief = build_skins.template(cat, 'knight').convert('RGBA'), build_skins.relief_template(cat, 'knight').convert('RGBA')
+        self.assertEqual(flat.size, (192, 288))
+        self.assertGreater(flat.getpixel((24, 215))[3], 0)    # slot 1 (texel origin (0, 192)): its front is texels (16..32, 208..224)
+        self.assertGreater(flat.getpixel((63, 223))[3], 0)    # the back's last texel, the patch's 64th column
+        self.assertEqual(flat.getpixel((64, 223))[3], 0)      # beyond the 64 texel patch (a 96 texel one would paint it)
+        self.assertEqual(flat.getpixel((8, 200))[3], 0)       # the corner of the patch rectangle, outside the six faces
+        self.assertEqual(relief.size, (192, 288))
+        self.assertEqual(relief.getpixel((64, 223))[3], 0)
+
+    def test_faces_carry_no_relief(self):
+        """Faces are flat paint: a relief texel on the head's faces or on a slot's is refused, naming the face bone; relief elsewhere
+        (the body) still builds, and no face bone carries any."""
+        for name, texel, wants in (('the head front', (12, 12), ['face bone', 'face_v0', '(12, 12)']),
+                                   ('slot 2', (44, 76), ['face bone', 'face_v2', '(44, 76)'])):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = faces_fixture(tmp, troops=self.faces_troops())
+                relief_png(root, 'knight_s1_r.png', [texel], size=(64, 96))
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, troops=self.faces_troops())
+            relief_png(root, 'knight_s1_r.png', [(22, 22)], size=(64, 96))
+            self.export(root)
+            model = json.loads((root / ASSETS / 'models/troop/knight.json').read_text(encoding='utf-8'))
+        self.assertIn('relief', find(model, 'body'))
+        self.assertFalse([b['name'] for b in model['bones'] if b['name'].startswith('face_v') and 'relief' in b])
+
+    def test_faces_verify_and_templates(self):
+        """--verify rebuilds a faces troop (a changed slot texel is named), and the --template sheets show the slots: a flat
+        colour on the six faces of each, the relief template hatching them as ground where relief may not stand."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, troops=self.faces_troops())
+            self.export(root)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(build_skins.verify(root), 0)
+            path = root / ASSETS / 'textures/entity/troop/knight_s1.png'
+            before = path.read_bytes()
+            im = Image.open(path).convert('RGBA')
+            im.putpixel((12, 76), (1, 2, 3, 255))
+            im.save(path)
+            said = self.fails(build_skins.verify, root)
+            self.assertIn('knight_s1.png', said)
+            self.assertIn('(12, 76)', said)
+            path.write_bytes(before)
+            cat = build_skins.load(root)
+            flat, relief = build_skins.template(cat, 'knight').convert('RGBA'), build_skins.relief_template(cat, 'knight').convert('RGBA')
+        self.assertEqual(flat.size, (64, 96))
+        self.assertGreater(flat.getpixel((12, 76))[3], 0)     # slot 1's front
+        self.assertEqual(flat.getpixel((2, 66))[3], 0)        # its corner, outside the six faces
+        red = build_skins.RELIEF_RED + (255,)
+        self.assertIn(red, [relief.getpixel((x, y)) for x in range(8, 16) for y in range(72, 80)])
+
+    # ---- the faces' source resolution, the banked patches, the beard boxes ----
+
+    def scaled_patches(self, scale, count=4):
+        """face_patches(1) drawn at `scale` texels a px: every px a block of one colour but its first texel, which is noise, so the
+        majority of a block is the px's colour and a reduction by the block must give face_patches(1) back."""
+        flat = face_patches(1, count)
+        im = Image.new('RGBA', (flat.width * scale, flat.height * scale), (0, 0, 0, 0))
+        for y in range(flat.height):
+            for x in range(flat.width):
+                c = flat.getpixel((x, y))
+                if not c[3]:
+                    continue
+                for j in range(scale):
+                    for i in range(scale):
+                        im.putpixel((x * scale + i, y * scale + j), (230, 230, 226, 255) if (i, j) == (0, 0) and scale > 1 else c)
+        return im
+
+    def test_faces_source_resolution(self):
+        """Face art is drawn at 3 texels a px whatever the troop's sheet: patches at a whole multiple of the troop's density are taken,
+        and reduced to the density by the same majority rule as the far twin (a block takes its most common colour). A troop at density
+        1 builds the same sheet from 1x, 2x and 3x patches; a patch at a lower density or at a fraction of the density is refused."""
+        for density, scale in ((1, 1), (1, 2), (1, 3), (3, 3), (3, 6)):
+            with self.subTest(density=density, scale=scale), tempfile.TemporaryDirectory() as tmp:
+                root = faces_fixture(tmp, density, self.faces_troops(density=density if density > 1 else None), patches=False)
+                put_png(root / 'art/troops/knight_faces.png', self.scaled_patches(scale))
+                self.export(root)
+                got = Image.open(root / ASSETS / 'textures/entity/troop/knight_s1.png').convert('RGBA')
+                patches = self.scaled_patches(scale) if scale == density else face_patches(1).resize((32 * density, 64 * density), Image.NEAREST)
+                for k, (u, v) in enumerate([(0, 0)] + FACE_SLOTS):
+                    for x0, y0, x1, y1 in HEAD_FACES:
+                        for y in range(y0 * density, y1 * density):
+                            for x in range(x0 * density, x1 * density):
+                                self.assertEqual(got.getpixel((u * density + x, v * density + y)), patches.getpixel((x, k * 16 * density + y)), (k, x, y))
+        for name, density, make, wants in (
+                ('a lower density than the troop', 3, lambda: self.scaled_patches(1), ['knight_faces.png', '32x64', '96x192']),
+                ('a fraction of the density', 3, lambda: self.scaled_patches(2), ['knight_faces.png', '64x128', '96x192']),
+                ('a width that is no whole scale', 1, lambda: self.scaled_patches(3).crop((0, 0, 94, 192)), ['knight_faces.png', '94x192']),
+                ('a height that is no whole patch', 1, lambda: self.scaled_patches(3).crop((0, 0, 96, 190)), ['knight_faces.png', '96x190']),
+                ('fewer patches than the count', 1, lambda: self.scaled_patches(3).crop((0, 0, 96, 144)), ['knight_faces.png', '96x144', '3 patches']),
+        ):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = faces_fixture(tmp, density, self.faces_troops(density=density if density > 1 else None), patches=False)
+                put_png(root / 'art/troops/knight_faces.png', make())
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with self.subTest(name='paint off the faces at 3x'), tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, 1, self.faces_troops(), patches=False)
+            im = self.scaled_patches(3)
+            im.putpixel((2, 2 * 48 + 2), (200, 190, 180, 255))
+            put_png(root / 'art/troops/knight_faces.png', im)
+            said = self.fails(export_assets, root)
+            for want in ('knight_faces.png', 'patch 2', 'outside', '(2, 98)'):
+                self.assertIn(want, said)
+
+    def test_faces_banked_patches(self):
+        """A faces block of count 1 is a troop that wears its canonical face only (the Templar, whose great helm hides it): no face bones,
+        no faces key in the model, no slots; patch 0 is pasted over the head's faces in every own skin. The patch file may hold more
+        patches than the count (banked art, to wire later), and a file with fewer is refused."""
+        for extra in (0, 3):
+            with self.subTest(banked=extra), tempfile.TemporaryDirectory() as tmp:
+                troops = self.with_knight(size=[64, 96], faces={'count': 1})
+                root = faces_fixture(tmp, troops=troops, patches=False)
+                put_png(root / 'art/troops/knight_faces.png', face_patches(1, 1 + extra))
+                before = Image.open(root / 'art/troops/knight_s1.png').convert('RGBA')
+                self.export(root)
+                model = json.loads((root / ASSETS / 'models/troop/knight.json').read_text(encoding='utf-8'))
+                self.assertNotIn('faces', model)
+                self.assertEqual(tuple(model), build_skins.MODEL_KEYS)
+                self.assertFalse([b['name'] for b in model['bones'] if b['name'].startswith('face_v') or 'variants' in b])
+                self.assertEqual(len(find(model, 'head')['boxes']), 1)
+                got = Image.open(root / ASSETS / 'textures/entity/troop/knight_s1.png').convert('RGBA')
+                want = before.copy()
+                patches = face_patches(1, 1)
+                for x0, y0, x1, y1 in HEAD_FACES:
+                    for y in range(y0, y1):
+                        for x in range(x0, x1):
+                            want.putpixel((x, y), patches.getpixel((x, y)))
+                self.assertEqual(got.tobytes(), want.tobytes())
+        for name, change, wants in (
+                ('count 1 with slots', dict(count=1, slots=FACE_SLOTS[:1]), ['faces', 'count 1', 'slots']),
+                ('count 1 fixed to 1', dict(count=1, fixed=1), ['faces', 'fixed']),
+                ('count 0', dict(count=0, slots=[]), ['faces', 'count'])):
+            with self.subTest(name=name):
+                said = self.bake_fails(self.with_knight(size=[64, 96], faces=change))
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with self.subTest(name='fewer patches than the count'), tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, troops=self.faces_troops(), patches=False)
+            put_png(root / 'art/troops/knight_faces.png', face_patches(1, 3))
+            said = self.fails(export_assets, root)
+            for want in ('knight_faces.png', '32x48', '32x64'):
+                self.assertIn(want, said)
+
+    # the beard box: the head's second box (the mage's and the Marshal's beard volume), whose variants are drawn by <troop>_beards.png
+
+    def beard_troops(self, density=None, **faces):
+        """faces_troops with a beard volume (box [6, 4, 1] at uv (48, 56)) as the head's second box and three beard slots."""
+        troops = self.faces_troops(density=density, **dict({'beard': {'slots': BEARD_SLOTS}}, **faces))
+        troops['knight']['bones'] = {'head': {'boxes': [box([-4, -8, -4], [8, 8, 8], [0, 0]), box([-3, -3, -4.9], [6, 4, 1], [48, 56])]}}
+        return troops
+
+    def test_faces_beard_model(self):
+        """With a beard block the head's second box goes into the face bones with the first: face_v0 holds both where they were, face_v1
+        to 3 the head box at its slot and the beard box at its beard slot; `head` keeps no box. Without the block the beard stays on
+        `head` and shows in every variant, as it did."""
+        model = self.bake(self.beard_troops())['knight']
+        self.assertEqual(find(model, 'head')['boxes'], [])
+        for k in range(4):
+            b = find(model, 'face_v%d' % k)
+            self.assertEqual(len(b['boxes']), 2)
+            self.assertEqual(b['boxes'][0]['uv'], [0, 0] if k == 0 else FACE_SLOTS[k - 1])
+            self.assertEqual(b['boxes'][1]['uv'], [48, 56] if k == 0 else BEARD_SLOTS[k - 1])
+            self.assertEqual((b['boxes'][1]['size'], b['boxes'][1]['origin']), ([6, 4, 1], [-3, -3, -4.9]))
+            self.assertEqual(b['variants'], [k])
+        self.assertEqual(self.bake(self.beard_troops())['knight']['faces'], {'count': 4, 'card': 0})
+        troops = self.faces_troops()
+        troops['knight']['bones'] = {'head': {'boxes': [box([-4, -8, -4], [8, 8, 8], [0, 0]), box([-3, -3, -4.9], [6, 4, 1], [48, 56])]}}
+        plain = self.bake(troops)['knight']
+        self.assertEqual(len(find(plain, 'head')['boxes']), 1)
+        self.assertEqual([len(find(plain, 'face_v%d' % k)['boxes']) for k in range(4)], [1, 1, 1, 1])
+
+    def test_faces_beard_rules(self):
+        cases = [   # name, the faces keys that change, what the message names
+            ('too few beard slots', dict(beard={'slots': BEARD_SLOTS[:2]}), ['faces', 'beard', 'slots', '3']),
+            ('a beard slot off the sheet', dict(beard={'slots': [[32, 80], [46, 80], [60, 95]]}), ['beard slot 3', 'sheet']),
+            ('a beard slot on a head slot', dict(beard={'slots': [[32, 80], [46, 80], [2, 66]]}), ['beard slot 3', 'overlaps', 'slot 1']),
+            ('a beard slot on the head', dict(beard={'slots': [[32, 80], [46, 80], [4, 4]]}), ['beard slot 3', 'overlaps', 'head']),
+            ('beard slots on each other', dict(beard={'slots': [[32, 80], [40, 80], [32, 85]]}), ['beard slot 2', 'overlaps', 'beard slot 1']),
+            ('a head slot on a beard slot', dict(slots=[[32, 64], [32, 80], [0, 80]]), ['slot 2', 'overlaps', 'beard slot']),
+            ('an unknown beard key', dict(beard={'slots': BEARD_SLOTS, 'mood': 1}), ['beard', 'unknown key', 'mood']),
+            ('a beard that is no object', dict(beard=[1]), ['faces', 'beard']),
+        ]
+        for name, change, wants in cases:
+            with self.subTest(name=name):
+                said = self.bake_fails(self.beard_troops(**change))
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with self.subTest(name='a beard block and no second head box'):
+            said = self.bake_fails(self.faces_troops(beard={'slots': BEARD_SLOTS}))
+            for want in ('knight', 'beard', 'second box'):
+                self.assertIn(want, said)
+
+    def beard_root(self, tmp, density=1, troops=None):
+        """The beard fixture: skins painted but for the head slots and the beard slots, art/troops/knight_faces.png and knight_beards.png."""
+        root = faces_fixture(tmp, density, troops or self.beard_troops(density=density if density > 1 else None))
+        for name, paint in (('knight_s1.png', (200, 196, 186, 255)), ('knight_s2.png', (190, 186, 176, 255))):
+            if (root / 'art/troops' / name).is_file():
+                face_skin(root / 'art/troops' / name, density, paint=paint, rects=[(u, v, u + 14, v + 5) for u, v in BEARD_SLOTS])
+        put_png(root / 'art/troops/knight_beards.png', beard_patches(density))
+        return root
+
+    def test_faces_beard_composite(self):
+        """Beard patch k replaces the texels of the beard box's six faces, at the box's own rectangle for patch 0 and at beard slot k for
+        the rest, cut-out texels (alpha 0) included: the cut-out is the beard's silhouette, and the head patch of the same variant shows
+        through it. Texels of the rectangle outside the six faces stay as they were."""
+        for density in (1, 3):
+            with self.subTest(density=density), tempfile.TemporaryDirectory() as tmp:
+                troops = self.beard_troops(density=density if density > 1 else None)
+                troops['knight']['skins'] = {'1': 'knight_s1.png', '2': 'knight_s2.png'}
+                root = self.beard_root(tmp, density, troops)
+                self.export(root)
+                beards, heads = beard_patches(density), face_patches(density)
+                got = Image.open(root / ASSETS / 'textures/entity/troop/knight_s1.png').convert('RGBA')
+                want = Image.open(root / 'art/troops/knight_s1.png').convert('RGBA')
+                for k in range(4):
+                    for (u, v), src, parts, h in (((0, 0) if k == 0 else tuple(FACE_SLOTS[k - 1]), heads, HEAD_FACES, 16),
+                                                  ((48, 56) if k == 0 else tuple(BEARD_SLOTS[k - 1]), beards, BEARD_FACES, 5)):
+                        for x0, y0, x1, y1 in parts:
+                            for y in range(y0 * density, y1 * density):
+                                for x in range(x0 * density, x1 * density):
+                                    want.putpixel((u * density + x, v * density + y), src.getpixel((x, k * h * density + y)))
+                self.assertEqual(got.tobytes(), want.tobytes())
+                cut = [(x, y) for x0, y0, x1, y1 in BEARD_FACES for x in range(x0 * density, x1 * density) for y in range(y0 * density, y1 * density)
+                       if beards.getpixel((x, y))[3] == 0]
+                self.assertTrue(cut)
+                for x, y in cut:
+                    self.assertEqual(got.getpixel((48 * density + x, 56 * density + y))[3], 0)   # a cut-out texel is clear in the sheet
+                if density > 1:
+                    twin = Image.open(root / ASSETS / 'textures/entity/troop/knight_s1_far.png').convert('RGBA')
+                    self.assertEqual(twin.tobytes(), build_skins.far_twin(got, density).tobytes())
+
+    def test_faces_beard_patch_rules(self):
+        def edit(name, f):
+            def go(root):
+                path = root / 'art/troops' / name
+                im = Image.open(path).convert('RGBA')
+                f(im)
+                im.save(path)
+            return go
+        cases = [   # name, a change to the fixture, what the message names
+            ('missing', lambda root: (root / 'art/troops/knight_beards.png').unlink(), ['knight_beards.png', 'missing']),
+            ('half alpha', edit('knight_beards.png', lambda im: im.putpixel((5, 2), (200, 190, 180, 128))), ['knight_beards.png', 'alpha 128', '(5, 2)']),
+            ('paint off the faces', edit('knight_beards.png', lambda im: im.putpixel((0, 5 + 0), (200, 190, 180, 255))), ['knight_beards.png', 'patch 1', 'outside', '(0, 5)']),
+            ('a side colour', edit('knight_beards.png', lambda im: im.putpixel((5, 2), (227, 179, 65, 255))), ['knight_beards.png', 'gold side colour']),
+            ('wrong size', lambda root: put_png(root / 'art/troops/knight_beards.png', beard_patches(1).crop((0, 0, 14, 15))), ['knight_beards.png', '14x15', '14x20']),
+            ('a skin paints beard slot 2', edit('knight_s1.png', lambda im: im.putpixel((47, 82), (200, 196, 186, 255))), ['knight_s1.png', 'beard slot 2', '(47, 82)']),
+        ]
+        for name, change, wants in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = self.beard_root(tmp)
+                change(root)
+                said = self.fails(export_assets, root)
+                self.assertIn('knight', said)
+                for want in wants:
+                    self.assertIn(want, said)
+        with self.subTest(name='a beards file and no beard block'), tempfile.TemporaryDirectory() as tmp:
+            root = faces_fixture(tmp, troops=self.faces_troops())
+            put_png(root / 'art/troops/knight_beards.png', beard_patches(1))
+            said = self.fails(export_assets, root)
+            for want in ('knight_beards.png', 'beard'):
+                self.assertIn(want, said)
+        with self.subTest(name='a beard patch at 3 texels a px for a density 1 troop'), tempfile.TemporaryDirectory() as tmp:
+            root = self.beard_root(tmp)
+            put_png(root / 'art/troops/knight_beards.png', beard_patches(3))
+            self.export(root)
+            got = Image.open(root / ASSETS / 'textures/entity/troop/knight_s1.png').convert('RGBA')
+            self.assertEqual(got.size, (64, 96))
+            self.assertEqual(got.getpixel((48 + 4, 56 + 2))[3], 255)
 
     def test_summary_line(self):
         with tempfile.TemporaryDirectory() as tmp:

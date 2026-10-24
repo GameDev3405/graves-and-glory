@@ -24,9 +24,13 @@ import java.util.*;
  */
 public final class TroopModelLoader implements SimpleSynchronousResourceReloadListener {
     static final String FOLDER="models/troop/";
-    static final int FORMAT=2;
+    static final int FORMAT=3;
     /** The most quads one weapon frame may have (the build fails above it, and so does the load). */
     static final int MAX_WEAPON_QUADS=128;
+    /** The most quads a cube weapon's far version may have (art pipeline v2, section 8: the fourth cut). */
+    static final int MAX_FAR_QUADS=32;
+    /** The most faces a troop may have, its canonical one included (the build's FACES_MAX). */
+    static final int MAX_FACES=8;
     static final Logger LOG=LoggerFactory.getLogger("gravesandglory");
     @Override public Identifier getFabricId(){return new Identifier(TroopModels.NAMESPACE,"troop_models");}
 
@@ -57,6 +61,12 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
             String weapon=str(j,"weapon");need(weapon.equals("none")||weapons.containsKey(weapon),"its weapon "+weapon+" did not load");
             for(var e:j.getAsJsonObject("skins").entrySet())texture(manager,new Identifier(e.getValue().getAsString()));
             for(String key:List.of("veteran","glow","outer"))if(!str(j,key).isEmpty())texture(manager,new Identifier(str(j,key)));
+            // a troop of density above 1 ships a one-texel-a-px twin of each of its PNGs (<name>_far.png) for the draws past TroopDepth.NEAR_BLOCKS and the small cards
+            int density=j.has("density")?j.get("density").getAsInt():1;need(density>=1&&density<=4,"density "+density+" is not 1 to 4");
+            if(density>1){
+                for(var e:j.getAsJsonObject("skins").entrySet())texture(manager,TroopModels.twin(new Identifier(e.getValue().getAsString())));
+                for(String key:List.of("veteran","glow","outer"))if(!str(j,key).isEmpty())texture(manager,TroopModels.twin(new Identifier(str(j,key))));
+            }
             boolean team=false;for(JsonElement b:j.getAsJsonArray("bones"))team|=b.getAsJsonObject().has("team")&&b.getAsJsonObject().get("team").getAsBoolean();
             need(!team||missingCloth==null,"the cloth sheet "+missingCloth+" is missing");
             float outer=rig.get("outer").getAsFloat();
@@ -77,6 +87,31 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
         need(troop.has("skins")&&troop.get("skins").isJsonObject(),"no skins");
         JsonObject skins=troop.getAsJsonObject("skins");need(skins.has("1"),"no armour tier 1 skin");
         for(var e:skins.entrySet()){need(e.getKey().matches("[1-9][0-9]*"),"a skin for armour tier "+e.getKey());need(e.getValue().isJsonPrimitive()&&Identifier.tryParse(e.getValue().getAsString())!=null,"the armour tier "+e.getKey()+" skin is not a texture id");}
+        checkFaces(troop);
+    }
+    /**
+     * A troop's face variants (tools/build_skins.py split_faces): a "faces" object holds the count (2 to MAX_FACES), the card face
+     * and the pinned face (optional), and the bones that name "variants" are exactly one a face, each a face of the count. A troop
+     * without "faces" has no bone that names variants.
+     */
+    static void checkFaces(JsonObject troop){
+        JsonArray bones=troop.getAsJsonArray("bones");
+        if(!troop.has("faces")){
+            if(bones!=null)for(JsonElement e:bones)need(!e.getAsJsonObject().has("variants"),"bone "+str(e.getAsJsonObject(),"name")+" names variants, but the troop has no faces");
+            return;
+        }
+        need(troop.get("faces").isJsonObject(),"faces is not an object");JsonObject f=troop.getAsJsonObject("faces");
+        need(f.has("count")&&f.get("count").isJsonPrimitive(),"faces has no count");int count=f.get("count").getAsInt();
+        need(count>=2&&count<=MAX_FACES,"faces count "+count+" is not 2 to "+MAX_FACES);
+        int card=f.has("card")?f.get("card").getAsInt():0,fixed=f.has("fixed")?f.get("fixed").getAsInt():-1;
+        need(card>=0&&card<count,"faces card "+card+" is not a face from 0 to "+(count-1));need(fixed>=-1&&fixed<count,"faces fixed "+fixed+" is not a face from 0 to "+(count-1));
+        int[] bonesOf=new int[count];
+        if(bones!=null)for(JsonElement e:bones){
+            JsonObject b=e.getAsJsonObject();if(!b.has("variants"))continue;
+            need(b.get("variants").isJsonArray()&&b.getAsJsonArray("variants").size()==1,"bone "+str(b,"name")+" must name one variant");
+            int k=b.getAsJsonArray("variants").get(0).getAsInt();need(k>=0&&k<count,"bone "+str(b,"name")+" names variant "+k+", not a face from 0 to "+(count-1));bonesOf[k]++;
+        }
+        for(int k=0;k<count;k++)need(bonesOf[k]==1,"face "+k+" has "+bonesOf[k]+" bones, not one");
     }
     /** The corners of a weapon's boxes and of each of its tier models' (<weapon>_t2, _t3 that loaded): the cull box holds the biggest tier the troop may hold. */
     static List<double[]> tierPoints(Map<String,TroopModels.Weapon> weapons,String weapon){
@@ -120,11 +155,15 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
     }
 
     /**
-     * A weapon (format 2, troop depth design section 2): the meshes of its frames on the packed sheet (rest first, then one per
-     * pull), the pull times and each frame's nock, the grip that places the sprite in the hand bone's frame, its texture and glow.
+     * A weapon (format 3, troop depth design section 2 and art pipeline v2 section 2.1): the meshes of its frames on the sheet (rest
+     * first, then one per pull), the pull times and each frame's nock, the grip that places the model in the hand bone's frame, its
+     * texture and glow. A "sprite" weapon is an extruded PNG: every frame opens with its two big faces (north, then south), which a
+     * flat draw keeps. A "cube" weapon is a Blockbench model: its frames hold any quads (13 or 20 numbers) and it carries a far
+     * version of at most 32 quads, a sprite extrusion that opens with its two big faces, which a troop outside TroopDepth.near draws.
      */
     static TroopModels.Weapon parseWeapon(JsonObject w){
         need(w.has("format")&&w.get("format").getAsInt()==FORMAT,"format is not "+FORMAT);
+        String kind=str(w,"kind");need(kind.equals("sprite")||kind.equals("cube"),"kind is "+kind+", not sprite or cube");boolean cube=kind.equals("cube");
         int[] size=ints(w,"size",2);need(size[0]>0&&size[1]>0,"size must be above 0");
         JsonObject grip=w.getAsJsonObject("grip");need(grip!=null,"no grip");
         float[] p=floats(grip,"offset",3),r=floats(grip,"rotation",3);String glow=str(w,"glow");
@@ -142,20 +181,31 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
             need(f.has("quads")&&f.get("quads").isJsonArray(),"frame "+want+" has no quads");
             TroopMesh mesh;try{mesh=TroopMesh.parse(f.getAsJsonArray("quads"),size[0],size[1]);}catch(IllegalArgumentException e){throw new IllegalArgumentException("frame "+want+": "+e.getMessage(),e);}
             need(mesh.quads()>=2&&mesh.quads()<=MAX_WEAPON_QUADS,"frame "+want+" has "+mesh.quads()+" quads, not 2 to "+MAX_WEAPON_QUADS);
-            // the flat draw (troop depth off in the harness) keeps the first two quads, so they must be the two big faces: north then south, each spanning the frame in x and y
-            need(mesh.direction(0)==2&&mesh.direction(1)==3,"frame "+want+" must open with its two big faces (north, then south), not directions "+mesh.direction(0)+" and "+mesh.direction(1));
-            float[] bb=mesh.bounds();
-            for(int q=0;q<2;q++){float[] ps=mesh.positions(q);float x0=Float.MAX_VALUE,y0=Float.MAX_VALUE,x1=-Float.MAX_VALUE,y1=-Float.MAX_VALUE;
-                for(int k=0;k<4;k++){x0=Math.min(x0,ps[3*k]);x1=Math.max(x1,ps[3*k]);y0=Math.min(y0,ps[3*k+1]);y1=Math.max(y1,ps[3*k+1]);}
-                need(x0==bb[0]&&x1==bb[3]&&y0==bb[1]&&y1==bb[4],"frame "+want+": quad "+q+" does not span the frame (its x and y extent is not the mesh's)");}
+            if(!cube)bigFacesFirst(mesh,"frame "+want);
             meshes.add(mesh);
             if(pull.length>0){
                 need(f.has("nock")&&f.get("nock").isJsonArray()&&f.getAsJsonArray("nock").size()==3,"frame "+want+" has no nock");
                 JsonArray n=f.getAsJsonArray("nock");nocks.add(new Vec3d(n.get(0).getAsDouble(),n.get(1).getAsDouble(),n.get(2).getAsDouble()));
             }
         }
-        return new TroopModels.Weapon(str(w,"weapon"),List.copyOf(meshes),pull,ModelTransform.of(p[0],p[1],p[2],r[0]*MathHelper.RADIANS_PER_DEGREE,r[1]*MathHelper.RADIANS_PER_DEGREE,r[2]*MathHelper.RADIANS_PER_DEGREE),
+        TroopMesh far=null;
+        if(cube){
+            need(w.has("far")&&w.get("far").isJsonArray(),"a cube weapon has no far version");
+            try{far=TroopMesh.parse(w.getAsJsonArray("far"),size[0],size[1]);}catch(IllegalArgumentException e){throw new IllegalArgumentException("far version: "+e.getMessage(),e);}
+            need(far.quads()>=2&&far.quads()<=MAX_FAR_QUADS,"the far version has "+far.quads()+" quads, not 2 to "+MAX_FAR_QUADS);
+            bigFacesFirst(far,"the far version");
+        }else need(!w.has("far")||w.get("far").isJsonArray()&&w.getAsJsonArray("far").isEmpty(),"a sprite weapon has no far version");
+        return new TroopModels.Weapon(str(w,"weapon"),List.copyOf(meshes),far,pull,ModelTransform.of(p[0],p[1],p[2],r[0]*MathHelper.RADIANS_PER_DEGREE,r[1]*MathHelper.RADIANS_PER_DEGREE,r[2]*MathHelper.RADIANS_PER_DEGREE),
             List.copyOf(nocks),new Identifier(str(w,"texture")),glow.isEmpty()?null:new Identifier(glow));
+    }
+
+    /** A sprite's mesh (a sprite weapon's frame, a cube weapon's far version) opens with its two big faces, north then south, each spanning the mesh in x and y: a flat draw keeps the first two quads. */
+    static void bigFacesFirst(TroopMesh mesh,String what){
+        need(mesh.direction(0)==2&&mesh.direction(1)==3,what+" must open with its two big faces (north, then south), not directions "+mesh.direction(0)+" and "+mesh.direction(1));
+        float[] bb=mesh.bounds();
+        for(int q=0;q<2;q++){float[] ps=mesh.positions(q);float x0=Float.MAX_VALUE,y0=Float.MAX_VALUE,x1=-Float.MAX_VALUE,y1=-Float.MAX_VALUE;
+            for(int k=0;k<4;k++){x0=Math.min(x0,ps[3*k]);x1=Math.max(x1,ps[3*k]);y0=Math.min(y0,ps[3*k+1]);y1=Math.max(y1,ps[3*k+1]);}
+            need(x0==bb[0]&&x1==bb[3]&&y0==bb[1]&&y1==bb[4],what+": quad "+q+" does not span the mesh (its x and y extent is not the mesh's)");}
     }
 
     static JsonObject read(ResourceManager manager,String file)throws Exception{

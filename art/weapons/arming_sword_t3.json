@@ -1,0 +1,19 @@
+{
+ "weapon": "arming_sword_t3",
+ "thickness": 1,
+ "density": 3,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   90,
+   45,
+   90
+  ],
+  "note": "the grip's centre is the model origin (the fist box covers y -2..+2); the model is y up with its big faces across z, and the converter turns it by a half turn about x into the weapon frame; the sword is turned flat to the side and tilted 45 degrees forward, as the sprite sword was"
+ },
+ "note": "The Squire's arming sword, tier III (elite), painted at 3 texels per model px on a 96 x 192 sheet (the texel-3 trial; the 2x twin is commit c83a5e8): a broad polished fullered blade with a continuous gilt thread in its groove, a 3 x 3.5 px steel boss on the grip with the Order's sun painted on it (9 texels across) and a short gilt ray each side, a straight cross with one engraved groove and gilt diamond terminals, an enamel-wound grip and a 2.7 px sun pommel in a gilt star; 24.1 px long."
+}
