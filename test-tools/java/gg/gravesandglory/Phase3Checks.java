@@ -2958,7 +2958,10 @@ public final class Phase3Checks implements ClientModInitializer {
             Map.entry("kf-outpost-east/cover",new Line(117.5,76.6,-112.5,111.5,76.6,-118.5)),Map.entry("kf-outpost-east/sight",new Line(145.5,85.6,-114.5,161.5,Double.NaN,-99.5)),
             // Task 7: the gate (the west field in line with the passage: cover from behind the wall stub, sight from the rampart opening of the north tower) and the keep (cover inside the north wall, sight from the crenel on the wall-walk to the B deck)
             Map.entry("ih-gate/cover",new Line(-32.5,66.6,-15.5,-60.5,Double.NaN,-15.5)),Map.entry("ih-gate/sight",new Line(-38.5,78.6,-8.5,-60.5,Double.NaN,0.5)),
-            Map.entry("ih-keep/cover",new Line(-8.5,66.6,25.5,3.5,66.6,0.5)),Map.entry("ih-keep/sight",new Line(-8.5,72.6,21.5,3.5,66.6,0.5)));
+            Map.entry("ih-keep/cover",new Line(-8.5,66.6,25.5,3.5,66.6,0.5)),Map.entry("ih-keep/sight",new Line(-8.5,72.6,21.5,3.5,66.6,0.5)),
+            // Task 8: the lodge (cover from the yard behind its east wall, sight from the upper room of the gatehouse through its east window, both to the lodge lane) and the chapel (cover from the nave behind the pier of its south wall, sight from the nave through its window, both to the chapel lane)
+            Map.entry("fm-lodge/cover",new Line(-75.5,66.6,-184.5,-50.5,Double.NaN,-166.5)),Map.entry("fm-lodge/sight",new Line(-67.5,72.6,-172.5,-50.5,Double.NaN,-166.5)),
+            Map.entry("hw-chapel/cover",new Line(76.5,66.6,104.5,49.5,Double.NaN,141.5)),Map.entry("hw-chapel/sight",new Line(70.5,66.6,109.5,52.5,Double.NaN,127.5)));
         record Shot(String name,double x,double y,double z,double tx,double ty,double tz){}
         final List<Integer> maps=new ArrayList<>();
         volatile List<Shot> shots=List.of();
@@ -3031,32 +3034,53 @@ public final class Phase3Checks implements ClientModInitializer {
                     out.add(chosen);
                 }
                 var side=ROADSIDE.get(r.template());
-                if(side!=null&&player!=null){var shot=roadShot(b,player,s,r,side);if(shot!=null)out.add(shot);}
+                if(side!=null&&player!=null){var shot=roadShot(b,player,s,r,side,"road");if(shot!=null)out.add(shot);}
+                var front=FRONT.get(r.template());
+                if(front!=null&&player!=null){var shot=roadShot(b,player,s,r,front,"front");if(shot!=null)out.add(shot);}
             }
             return out;
         }
         /** Pictures from the side a piece shows its detail to (fix round 2: the market cross hid behind a stall, the toll board of the customs was in no picture): per template the eye {x, z} and the aim {x, y, z} in local
          *  coordinates of the piece (the eye's z is where it stands, not a distance: a customs' road is the north side, a market's front the south). The eye is 4 above the ground; where that view is not clear (a tree, another
          *  piece) the eye is moved along the piece by 5 blocks at a time, either way, and then 6 blocks further away. */
-        static final Map<String,double[]> ROADSIDE=Map.of(
-            "kit/market",new double[]{9.5,23.5,9.5,5.0,6.5},
-            "kit/customs",new double[]{4.0,-11.0,6.0,3.0,1.0},
+        static final Map<String,double[]> ROADSIDE=Map.ofEntries(
+            Map.entry("kit/market",new double[]{9.5,23.5,9.5,5.0,6.5}),
+            Map.entry("kit/customs",new double[]{4.0,-11.0,6.0,3.0,1.0}),
             // Task 7: the sides the Ironhold pieces show themselves from: the gate and the curtain from the west field (the outer face), the keep and the garrison from the north (the road to B, the lane), the barn from its yard (south and east)
-            "ironhold/gate",new double[]{-15.0,23.5,3.0,6.0,23.5},
-            "ironhold/curtain",new double[]{-16.0,15.5,2.0,6.0,15.5},
-            "ironhold/keep",new double[]{23.5,-26.0,23.5,6.0,4.0},
-            "ironhold/garrison",new double[]{15.5,-14.0,15.5,4.0,8.0},
-            "ironhold/hay_barn",new double[]{12.0,32.0,12.0,3.0,10.0});
-        static Shot roadShot(GravesAndGlory.Battle b,net.minecraft.entity.Entity player,Spec.StructuresRow s,Spec.LandmarksRow r,double[] a){
+            Map.entry("ironhold/gate",new double[]{-15.0,23.5,3.0,6.0,23.5}),
+            Map.entry("ironhold/curtain",new double[]{-16.0,15.5,2.0,6.0,15.5}),
+            Map.entry("ironhold/keep",new double[]{23.5,-26.0,23.5,6.0,4.0}),
+            Map.entry("ironhold/garrison",new double[]{15.5,-14.0,15.5,4.0,8.0}),
+            Map.entry("ironhold/hay_barn",new double[]{12.0,32.0,12.0,3.0,10.0}),
+            // Task 8: the road side of each new piece, the side its lane or road comes to: the lodge from the east (its gate on the lane), the refuge from the north-west (where the lane runs), the signal tower from the north (its door),
+            // the chapel from the south (its door and the lane), the sawmill from the east (its open side), the logging camp from the lane (east), the moon shrine from the south (its gate and, through it, the moon gate)
+            Map.entry("frostmarch/lodge",new double[]{39.0,14.0,24.0,5.0,14.0}),
+            Map.entry("frostmarch/refuge",new double[]{4.0,-9.0,10.0,3.0,6.0}),
+            Map.entry("frostmarch/signal_tower",new double[]{7.5,-12.0,7.5,9.0,3.0}),
+            Map.entry("hollowwood/chapel",new double[]{9.0,33.0,11.0,5.0,22.0}),
+            Map.entry("hollowwood/sawmill",new double[]{36.0,12.0,14.0,3.0,9.0}),
+            Map.entry("hollowwood/logging_camp",new double[]{29.0,11.0,8.0,1.5,8.0}),
+            Map.entry("hollowwood/moon_shrine",new double[]{11.5,31.0,11.5,6.0,6.0}));
+        /** Task 8: the front of each new piece, the face that shows what it is (same format and same search for a clear eye as ROADSIDE): the lodge from the south (the hall and the long yard wall), the refuge from the south, the signal tower from the east (the slits and the stair),
+         *  the chapel from the west (the gable with the rose window), the sawmill from the south (its open side), the logging camp from the south-west (the lean-to, the piles, the hut behind), the moon shrine from the east-south-east (over the low wall: the court, the pool and the moon gate; the north side has the chapel in front of it). */
+        static final Map<String,double[]> FRONT=Map.ofEntries(
+            Map.entry("frostmarch/lodge",new double[]{14.0,34.0,14.0,5.0,12.0}),
+            Map.entry("frostmarch/refuge",new double[]{10.0,30.0,10.0,4.0,8.0}),
+            Map.entry("frostmarch/signal_tower",new double[]{30.0,7.5,7.5,9.0,7.5}),
+            Map.entry("hollowwood/chapel",new double[]{-16.0,15.5,4.0,8.0,15.5}),
+            Map.entry("hollowwood/sawmill",new double[]{12.0,32.0,12.0,4.0,9.0}),
+            Map.entry("hollowwood/logging_camp",new double[]{-8.0,24.0,8.0,2.0,7.0}),
+            Map.entry("hollowwood/moon_shrine",new double[]{32.0,16.0,9.0,6.0,3.0}));
+        static Shot roadShot(GravesAndGlory.Battle b,net.minecraft.entity.Entity player,Spec.StructuresRow s,Spec.LandmarksRow r,double[] a,String tag){
             var size=Structures.template(b.world,r.template()).get().getSize();
             double zs=Math.signum(a[1]-a[4]);
             for(double far:new double[]{0,6})for(double along:new double[]{0,5,-5,10,-10}){
                 var eye=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),a[0]+along,0,a[1]+zs*far);
                 var aim=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),a[2],a[3],a[4]);
                 double cy=Math.max(r.elevation(),Arena.ground((int)Math.floor(eye.x),(int)Math.floor(eye.z)))+4;
-                if(clearView(b,player,s,eye.x,cy,eye.z))return new Shot("lm-"+r.id()+"-road",eye.x,cy,eye.z,aim.x,aim.y,aim.z);
+                if(clearView(b,player,s,eye.x,cy,eye.z))return new Shot("lm-"+r.id()+"-"+tag,eye.x,cy,eye.z,aim.x,aim.y,aim.z);
             }
-            System.out.println("[p3] note view lm-"+r.id()+"-road: no clear camera on the road side, no picture");
+            System.out.println("[p3] note view lm-"+r.id()+"-"+tag+": no clear camera on the "+tag+" side, no picture");
             return null;
         }
         /** The single-column slivers on the shoulders of the landmarks (fix round 2: a column one block lower or higher than both neighbours on an axis stands as a dirt wedge in the grass): the cells of every landmark's
@@ -3089,20 +3113,37 @@ public final class Phase3Checks implements ClientModInitializer {
         }
 
         /** Task 7: boxes of a template in local cells {x0,y0,z0,x1,y1,z1} that stay free of collision shapes: the passage of the gate (11 wide, 6 high), the four land gates of the keep (5 wide, 4 high, through the 3-thick walls) and its crenel. */
-        static final Map<String,int[][]> OPENINGS=Map.of(
-            "ironhold/gate",new int[][]{{0,1,18,6,6,28}},
-            "ironhold/keep",new int[][]{{7,1,0,11,4,2},{35,1,0,39,4,2},{7,1,24,11,4,26},{35,1,24,39,4,26},{14,7,0,15,8,0}});
+        static final Map<String,int[][]> OPENINGS=Map.ofEntries(
+            Map.entry("ironhold/gate",new int[][]{{0,1,18,6,6,28}}),
+            Map.entry("ironhold/keep",new int[][]{{7,1,0,11,4,2},{35,1,0,39,4,2},{7,1,24,11,4,26},{35,1,24,39,4,26},{14,7,0,15,8,0}}),
+            // Task 8: the gate passage and the hall door of the lodge; the four doorways of the refuge; the doorway of the signal tower and the hatch over the last steps of its stair; the south door, the window and the kept-clear cells of the chapel;
+            // the aisle of the sawmill (the lane runs through it); the foot of the moon gate and the gap between the pylons of the moon shrine
+            Map.entry("frostmarch/lodge",new int[][]{{23,1,12,26,4,16},{16,1,9,16,3,11}}),
+            Map.entry("frostmarch/refuge",new int[][]{{9,1,4,11,3,4},{9,1,12,11,3,12},{6,1,7,6,3,9},{14,1,7,14,3,9}}),
+            Map.entry("frostmarch/signal_tower",new int[][]{{6,1,3,8,3,3},{4,18,7,4,18,9}}),
+            Map.entry("hollowwood/chapel",new int[][]{{5,1,22,9,4,22},{11,2,22,14,3,22},{11,1,19,16,3,21}}),
+            Map.entry("hollowwood/sawmill",new int[][]{{9,1,10,20,3,12}}),
+            Map.entry("hollowwood/moon_shrine",new int[][]{{10,1,1,12,3,2},{10,1,16,12,5,17}}));
         record Goal(String name,int x,int y,int z){}
         /** Task 7: standing places (the feet cell, local) a squad has to be able to walk to from the ground outside, over doors, ladders and stairs: the tops of the towers and the walls, the lofts and floors. */
-        static final Map<String,List<Goal>> REACH=Map.of(
-            "ironhold/gate",List.of(new Goal("north tower top",1,13,14),new Goal("south tower top",1,13,32),new Goal("north stub walk",2,11,6),new Goal("south stub walk",2,11,40)),
-            "ironhold/curtain",List.of(new Goal("wall-walk",1,12,15),new Goal("north tower guard room",2,12,2),new Goal("south tower platform",2,12,28)),
-            "ironhold/keep",List.of(new Goal("north wall crenel",14,7,0),new Goal("south wall-walk",20,7,25),new Goal("north west tower top",3,13,3),new Goal("donjon roof",36,18,13),new Goal("deck",23,1,13)),
-            "ironhold/hay_barn",List.of(new Goal("loft",12,7,6),new Goal("barn floor",5,1,6),new Goal("yard",12,1,16)),
-            "ironhold/garrison",List.of(new Goal("upper floor",14,6,16),new Goal("hall",15,1,15),new Goal("yard",15,1,5)));
+        static final Map<String,List<Goal>> REACH=Map.ofEntries(
+            Map.entry("ironhold/gate",List.of(new Goal("north tower top",1,13,14),new Goal("south tower top",1,13,32),new Goal("north stub walk",2,11,6),new Goal("south stub walk",2,11,40))),
+            Map.entry("ironhold/curtain",List.of(new Goal("wall-walk",1,12,15),new Goal("north tower guard room",2,12,2),new Goal("south tower platform",2,12,28))),
+            Map.entry("ironhold/keep",List.of(new Goal("north wall crenel",14,7,0),new Goal("south wall-walk",20,7,25),new Goal("north west tower top",3,13,3),new Goal("donjon roof",36,18,13),new Goal("deck",23,1,13))),
+            Map.entry("ironhold/hay_barn",List.of(new Goal("loft",12,7,6),new Goal("barn floor",5,1,6),new Goal("yard",12,1,16))),
+            Map.entry("ironhold/garrison",List.of(new Goal("upper floor",14,6,16),new Goal("hall",15,1,15),new Goal("yard",15,1,5))),
+            // Task 8 (local feet cells): the upper room of the lodge gatehouse (by its ladder), the hall, the wing and the yard; the hut, its north doorstep and the lean-to of the refuge; the floor, the top of the stair, the platform and the fire side of the signal tower;
+            // the chapel (door, kept-clear cells, aisle, chancel, tower base); the sawmill (aisle, east end, saw deck, head of the ramp, bench); the logging camp (end of the lane, fire pit, hut, east edge, hoist); the moon shrine (gate, court, cloister, dais, moon gate)
+            Map.entry("frostmarch/lodge",List.of(new Goal("gatehouse room",25,7,14),new Goal("hall",8,1,10),new Goal("wing",8,1,3),new Goal("yard",20,1,9))),
+            Map.entry("frostmarch/refuge",List.of(new Goal("hut centre",10,1,8),new Goal("north doorstep",10,1,5),new Goal("lean-to",16,1,8))),
+            Map.entry("frostmarch/signal_tower",List.of(new Goal("tower floor",7,1,7),new Goal("top of the stair",4,18,7),new Goal("platform",4,19,5),new Goal("fire side",7,19,5))),
+            Map.entry("hollowwood/chapel",List.of(new Goal("door",7,1,21),new Goal("kept clear",13,1,20),new Goal("aisle",10,1,15),new Goal("chancel",23,1,15),new Goal("tower base",5,1,6))),
+            Map.entry("hollowwood/sawmill",List.of(new Goal("aisle",12,1,11),new Goal("east end",20,1,13),new Goal("saw deck",10,3,8),new Goal("ramp head",14,3,6),new Goal("bench",4,1,11))),
+            Map.entry("hollowwood/logging_camp",List.of(new Goal("end of the lane",10,1,8),new Goal("fire pit",5,1,8),new Goal("hut",5,1,3),new Goal("east edge",18,1,11),new Goal("hoist",5,1,12))),
+            Map.entry("hollowwood/moon_shrine",List.of(new Goal("gate",11,1,17),new Goal("court",6,1,8),new Goal("cloister",4,1,7),new Goal("dais",11,2,4),new Goal("moon gate",11,1,2))));
         /** The control of the reach check (Task 7 fix round 1; the sealed cell inside solid stone it replaces could never be stood on, so it proved nothing): the pieces that have ladders are walked a second time with ladders switched off, and
          *  at least one of their standing places (a tower top, a loft) must then be out of reach. A walk that reached them anyway (a leak, a ledge that is a jump too low) would not be testing the ladders. The garrison has none. */
-        static final Set<String> LADDERED=Set.of("ironhold/gate","ironhold/curtain","ironhold/keep","ironhold/hay_barn");
+        static final Set<String> LADDERED=Set.of("ironhold/gate","ironhold/curtain","ironhold/keep","ironhold/hay_barn","frostmarch/lodge");
         /** What a player on foot can do: stand on a block with two free cells above it (or in a climbable one: a ladder, a vine), walk to a side cell at the same height, jump one block up, step off a ledge and fall up to three, climb a ladder up and down. Free: no collision
          *  shape, or one no higher than a carpet. A floor: a block whose collision shape is half a block to a block high (a slab, a stair, a block; not a fence, which is 1.5). */
         static final class Walk{
@@ -3151,6 +3192,23 @@ public final class Phase3Checks implements ClientModInitializer {
                 if(blocked)flank++;
             }
             report("p3-lm-sally-map1",shut==0&&flank==8,cells+" columns of the four sally gaps (x -74..-70 and 70..74, z -65..-59 and 59..65), "+shut+" with a block in the six above the ground"+at+"; "+flank+" of 8 flanking columns (z -66, -58, 58 and 66 at x -72 and 72) stand");
+        }
+        /** Task 8: the signal fire of Frostmarch is the piece's now. MapDressing used to place it for the structures row "signal_tower" (netherrack at the top of the tower, fire above it, a cobblestone wall on each of the four sides); the row is replaced by fm-signal-tower, the loop
+         *  over Spec.STRUCTURES finds no such id and places nothing, and the piece carries all of it: netherrack at the centre of the piece at elevation+19, fire above it, a cobblestone wall on each of its four sides (62, 83, 170 on the stated map), and no second netherrack, fire
+         *  or cobblestone wall anywhere round it (the 15 x 15 footprint, elevation+6 to +31): the dressing did not put a second fire on top of the piece. */
+        void signalFire(GravesAndGlory.Battle b){
+            var w=b.world;boolean row=false;for(var st:Spec.STRUCTURES)if(st.id().equals("signal_tower"))row=true;
+            Spec.LandmarksRow lm=null;for(var r:Spec.LANDMARKS)if(r.id().equals("fm-signal-tower"))lm=r;
+            if(lm==null){report("p3-lm-fm-signal-fire",false,"no fm-signal-tower row");return;}
+            int x=lm.x(),z=lm.z(),y=lm.elevation()+19;
+            boolean nr=w.getBlockState(new BlockPos(x,y,z)).isOf(Blocks.NETHERRACK),fire=w.getBlockState(new BlockPos(x,y+1,z)).isOf(Blocks.FIRE);
+            int walls=0;for(int[] d:new int[][]{{-1,0},{1,0},{0,-1},{0,1}})if(w.getBlockState(new BlockPos(x+d[0],y,z+d[1])).isOf(Blocks.COBBLESTONE_WALL))walls++;
+            int netherrack=0,fires=0,cobbleWalls=0;
+            for(int dx=-7;dx<=7;dx++)for(int dz=-7;dz<=7;dz++)for(int yy=lm.elevation()+6;yy<=lm.elevation()+31;yy++){
+                var st=w.getBlockState(new BlockPos(x+dx,yy,z+dz));
+                if(st.isOf(Blocks.NETHERRACK))netherrack++;if(st.isOf(Blocks.FIRE))fires++;if(st.isOf(Blocks.COBBLESTONE_WALL))cobbleWalls++;
+            }
+            report("p3-lm-fm-signal-fire",!row&&nr&&fire&&walls==4&&netherrack==1&&fires==1&&cobbleWalls==4,"structures row signal_tower "+(row?"STILL THERE (the dressing would place a fire of its own)":"gone")+"; netherrack at "+xyz(new BlockPos(x,y,z))+" "+nr+", fire above it "+fire+", cobblestone walls on its four sides "+walls+"; in the 15 x 26 x 15 cells round it: "+netherrack+" netherrack, "+fires+" fire, "+cobbleWalls+" cobblestone wall blocks (want 1, 1 and 4)");
         }
         /** Task 7: the hay line (four stacks of hay blocks at x -109 + 4 row, y 65..66, z -152..-150) that Arena.finishBuild used to lay on map 1 is gone: a hay block there is the barn's own (the template has hay at that cell) or there is none. */
         void hayLine(GravesAndGlory.Battle b){
@@ -3285,8 +3343,9 @@ public final class Phase3Checks implements ClientModInitializer {
             }
             // a map with no landmarks rows (maps 1 to 3 today) has nothing to place and passes; a map with rows passes only when every one of them was placed (a build that placed nothing is not within budget)
             report("p3-lm-budget-map"+n,laid==rows&&slowCount==0&&sum<=1_500_000_000L,(rows==0?"no landmarks rows on this map; ":"")+laid+" of "+rows+" rows placed, all together "+sum/1000000+" ms (at most 1500), over 100 ms:"+(slowCount==0?" none":slow.toString()));
-            for(int[] wc:new int[][]{{0,14},{1,21},{4,16}})if(wc[0]==n)report("p3-lm-rows-map"+n,rows==wc[1],rows+" landmarks rows on map "+n+" (the plans state "+wc[1]+")");
+            for(int[] wc:new int[][]{{0,14},{1,21},{2,14},{3,15},{4,16}})if(wc[0]==n)report("p3-lm-rows-map"+n,rows==wc[1],rows+" landmarks rows on map "+n+" (the plans state "+wc[1]+")");
             if(n==1){sallyGaps(w);hayLine(b);}
+            if(n==2)signalFire(b);
             var sliverWhy=new StringBuilder();var sl=slivers(n,sliverWhy);
             report("p3-lm-slivers-map"+n,sl[1]==0,sl[0]+" shoulder columns of the landmarks, "+sl[1]+" lower or higher than both neighbours on an axis"+sliverWhy);
             int hx=GravesAndGlory.R.worldHalfX(),hz=GravesAndGlory.R.worldHalfZ();

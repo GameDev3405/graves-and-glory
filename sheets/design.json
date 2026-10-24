@@ -1884,6 +1884,62 @@
       "height": 14,
       "palette": "wood",
       "purpose": "flank outpost enclosing a point"
+    },
+    {
+      "id": "frostmarch/lodge",
+      "width": 27,
+      "depth": 19,
+      "height": 14,
+      "palette": "wood",
+      "purpose": "caravan lodge and yard on its lane"
+    },
+    {
+      "id": "frostmarch/refuge",
+      "width": 21,
+      "depth": 17,
+      "height": 12,
+      "palette": "wood",
+      "purpose": "pass refuge"
+    },
+    {
+      "id": "frostmarch/signal_tower",
+      "width": 15,
+      "depth": 15,
+      "height": 21,
+      "palette": "stone",
+      "purpose": "signal tower with its fire"
+    },
+    {
+      "id": "hollowwood/chapel",
+      "width": 29,
+      "depth": 23,
+      "height": 18,
+      "palette": "stone",
+      "purpose": "broken chapel over the south lane"
+    },
+    {
+      "id": "hollowwood/sawmill",
+      "width": 25,
+      "depth": 19,
+      "height": 13,
+      "palette": "wood",
+      "purpose": "sawmill"
+    },
+    {
+      "id": "hollowwood/logging_camp",
+      "width": 19,
+      "depth": 17,
+      "height": 6,
+      "palette": "wood",
+      "purpose": "logging camp holding the old log pile"
+    },
+    {
+      "id": "hollowwood/moon_shrine",
+      "width": 23,
+      "depth": 19,
+      "height": 16,
+      "palette": "stone",
+      "purpose": "moon shrine"
     }
   ],
   "camp": [
@@ -2604,6 +2660,325 @@
       "encloses": "-"
     },
     {
+      "id": "fm-house-0",
+      "map": 2,
+      "template": "kit/house_a",
+      "x": -83,
+      "z": -143,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_0",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-house-1",
+      "map": 2,
+      "template": "kit/house_b",
+      "x": -109,
+      "z": -143,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_1",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-house-2",
+      "map": 2,
+      "template": "kit/house_b",
+      "x": -83,
+      "z": -128,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_2",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-house-3",
+      "map": 2,
+      "template": "kit/house_a",
+      "x": -109,
+      "z": -128,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_3",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-customs",
+      "map": 2,
+      "template": "kit/customs",
+      "x": -58,
+      "z": 30,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "customs",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-warehouse",
+      "map": 2,
+      "template": "kit/warehouse",
+      "x": 60,
+      "z": -30,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "warehouse",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-shrine",
+      "map": 2,
+      "template": "kit/shrine",
+      "x": 67,
+      "z": 137,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "shrine",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-lodge",
+      "map": 2,
+      "template": "frostmarch/lodge",
+      "x": -80,
+      "z": -178,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "caravan_lodge",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-refuge",
+      "map": 2,
+      "template": "frostmarch/refuge",
+      "x": 62,
+      "z": 34,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "pass_refuge",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-signal-tower",
+      "map": 2,
+      "template": "frostmarch/signal_tower",
+      "x": 62,
+      "z": 170,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "signal_tower",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-dawn-tower-n",
+      "map": 2,
+      "template": "kit/watchtower",
+      "x": -180,
+      "z": -85,
+      "rotation": 0,
+      "elevation": 67,
+      "replaces": "dawn_tower_-85",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-dawn-tower-s",
+      "map": 2,
+      "template": "kit/watchtower",
+      "x": -180,
+      "z": 85,
+      "rotation": 0,
+      "elevation": 67,
+      "replaces": "dawn_tower_85",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-dusk-tower-n",
+      "map": 2,
+      "template": "kit/watchtower",
+      "x": 180,
+      "z": -85,
+      "rotation": 180,
+      "elevation": 67,
+      "replaces": "dusk_tower_-85",
+      "encloses": "-"
+    },
+    {
+      "id": "fm-dusk-tower-s",
+      "map": 2,
+      "template": "kit/watchtower",
+      "x": 180,
+      "z": 85,
+      "rotation": 180,
+      "elevation": 67,
+      "replaces": "dusk_tower_85",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-house-0",
+      "map": 3,
+      "template": "kit/house_a",
+      "x": -92,
+      "z": -133,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_0",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-house-1",
+      "map": 3,
+      "template": "kit/house_b",
+      "x": -118,
+      "z": -133,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_1",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-house-2",
+      "map": 3,
+      "template": "kit/house_b",
+      "x": -92,
+      "z": -118,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_2",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-house-3",
+      "map": 3,
+      "template": "kit/house_a",
+      "x": -118,
+      "z": -118,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_3",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-market",
+      "map": 3,
+      "template": "kit/market",
+      "x": -67,
+      "z": -112,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "market",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-customs",
+      "map": 3,
+      "template": "kit/customs",
+      "x": -58,
+      "z": 30,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "customs",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-warehouse",
+      "map": 3,
+      "template": "kit/warehouse",
+      "x": 60,
+      "z": -30,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "warehouse",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-chapel",
+      "map": 3,
+      "template": "hollowwood/chapel",
+      "x": 70,
+      "z": 100,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "broken_chapel",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-sawmill",
+      "map": 3,
+      "template": "hollowwood/sawmill",
+      "x": -85,
+      "z": -176,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "sawmill",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-logging-camp",
+      "map": 3,
+      "template": "hollowwood/logging_camp",
+      "x": -109,
+      "z": -170,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "-",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-moon-shrine",
+      "map": 3,
+      "template": "hollowwood/moon_shrine",
+      "x": 76,
+      "z": 127,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "shrine",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-dawn-tower-n",
+      "map": 3,
+      "template": "kit/watchtower",
+      "x": -180,
+      "z": -85,
+      "rotation": 0,
+      "elevation": 67,
+      "replaces": "dawn_tower_-85",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-dawn-tower-s",
+      "map": 3,
+      "template": "kit/watchtower",
+      "x": -180,
+      "z": 85,
+      "rotation": 0,
+      "elevation": 67,
+      "replaces": "dawn_tower_85",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-dusk-tower-n",
+      "map": 3,
+      "template": "kit/watchtower",
+      "x": 180,
+      "z": -85,
+      "rotation": 180,
+      "elevation": 67,
+      "replaces": "dusk_tower_-85",
+      "encloses": "-"
+    },
+    {
+      "id": "hw-dusk-tower-s",
+      "map": 3,
+      "template": "kit/watchtower",
+      "x": 180,
+      "z": 85,
+      "rotation": 180,
+      "elevation": 67,
+      "replaces": "dusk_tower_85",
+      "encloses": "-"
+    },
+    {
       "id": "kf-house-0",
       "map": 4,
       "template": "kit/house_a",
@@ -2868,6 +3243,50 @@
       "toX": 26.5,
       "toY": 2.6,
       "toZ": -20.5
+    },
+    {
+      "id": "lodge-cover",
+      "template": "frostmarch/lodge",
+      "kind": "cover",
+      "fromX": 17.5,
+      "fromY": 2.6,
+      "fromZ": 2.5,
+      "toX": 42.5,
+      "toY": -1.0,
+      "toZ": 20.5
+    },
+    {
+      "id": "lodge-sight",
+      "template": "frostmarch/lodge",
+      "kind": "sight",
+      "fromX": 25.5,
+      "fromY": 8.6,
+      "fromZ": 14.5,
+      "toX": 42.5,
+      "toY": -1.0,
+      "toZ": 20.5
+    },
+    {
+      "id": "chapel-cover",
+      "template": "hollowwood/chapel",
+      "kind": "cover",
+      "fromX": 20.5,
+      "fromY": 2.6,
+      "fromZ": 15.5,
+      "toX": -6.5,
+      "toY": -1.0,
+      "toZ": 52.5
+    },
+    {
+      "id": "chapel-sight",
+      "template": "hollowwood/chapel",
+      "kind": "sight",
+      "fromX": 14.5,
+      "fromY": 2.6,
+      "fromZ": 20.5,
+      "toX": -3.5,
+      "toY": -1.0,
+      "toZ": 38.5
     }
   ]
 }
