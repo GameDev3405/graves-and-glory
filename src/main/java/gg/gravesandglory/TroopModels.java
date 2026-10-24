@@ -170,6 +170,15 @@ public final class TroopModels {
     /** The raw portrait framing of a troop: standard, tall N, wide N or beast N [yaw D]; null without a model. */
     public static String framing(String troop){var m=troops.get(troop);return m==null?null:m.portrait;}
 
+    /** The face the harness forces on an entity (TroopFaces.pick's forced). Test tools only: production never writes it. Weak keys by identity. */
+    private static final Map<Entity,Integer> FORCED=new MapMaker().weakKeys().makeMap();
+    /** Forces a face on an entity for the harness's face shots; a negative variant lifts it. */
+    static void forceFace(Entity e,int variant){if(variant<0)FORCED.remove(e);else FORCED.put(e,variant);}
+    /** The face forced on an entity, or -1. */
+    static int forcedFace(Entity e){Integer v=FORCED.get(e);return v==null?-1:v;}
+    /** The face this entity wears drawn as this troop's model: a card portrait the card face, a pinned troop its pinned face, any other the face its UUID hashes to (TroopFaces.pick). 0 for a troop with no faces. */
+    static int face(Entity e,TroopModel<?> m){return TroopFaces.pick(e.getUuid(),m.faceCount,m.faceFixed,m.faceCard,dressed(e),forcedFace(e));}
+
     /** Whether the mob wears a dress (an ArmyCards portrait). */
     static boolean dressed(Entity e){return DRESS.containsKey(e);}
     /** Puts a team-less mob in a cloth other than linen (ArmyCards: the company's, "company"); null takes it off again. */

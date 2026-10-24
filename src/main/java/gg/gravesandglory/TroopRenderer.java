@@ -51,6 +51,8 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
      * vanilla death tilt would show). Written on the render thread, read after a frame (the harness does).
      */
     public static final class Drawn { public volatile int count;public volatile Draw first,last;public float[] pose,inputs=new float[5];public float tilt,maxTilt;
+        /** The face (TroopFaces) the last draw wore: 0 for a troop with no faces. */
+        public volatile int variant;
         /** The TroopDepth frame this troop's relief and weapon quads were last counted in (one count a frame, whatever passes drew it). */
         int countedFrame; }
     private static final Map<Entity,Drawn> DRAWN=new MapMaker().weakKeys().makeMap();
@@ -59,6 +61,8 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
     /** What the layers bound and drew in the current draw (TroopFeatures writes them), and the matrix it started with. */
     /** Whether this draw binds the one-texel-a-px twins of a density above 1 troop's PNGs (TroopModels.far; set for the draw, read by getTexture and the layers). */
     boolean far;
+    /** The face the current draw wears (TroopModels.face). */
+    int variant;
     Identifier boundSkin,clothSheet,trimSheet;long clothMask;boolean weaponDrawn,shieldDrawn,weaponFar;String reliefKey;int weaponFrame=-1,weaponQuads;private float tilt;private final Matrix4f start=new Matrix4f(),delta=new Matrix4f();
     private final Vector3f up=new Vector3f();
 
@@ -77,7 +81,8 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
         if(TroopModels.held(e,l))return;
         model=m;look=l;far=TroopModels.far(e,l);
         // Folded arms (idleArms folded) open while the troop attacks or a clip holds an arm (unit identity rule 3); a helm_off scene pose hides the helm.
-        m.prepare(l,TroopAnimator.folds(m,e),TroopAnimator.helmOff(e));
+        variant=TroopModels.face(e,m);
+        m.prepare(l,TroopAnimator.folds(m,e),TroopAnimator.helmOff(e),variant);
         boundSkin=clothSheet=trimSheet=null;clothMask=0;weaponDrawn=shieldDrawn=weaponFar=false;reliefKey=null;weaponFrame=-1;weaponQuads=0;tilt=0;start.set(matrices.peek().getPositionMatrix());
         // Within reach of the camera (TroopDepth.near) the skin pass draws the relief of the skin it binds after the skin; the model spends the arm in that one pass.
         String relief=TroopDepth.near(e)?m.reliefKey(l):null;m.armRelief(relief);
@@ -87,7 +92,7 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
         Drawn d=DRAWN.computeIfAbsent(e,k->new Drawn());Draw last=d.last;long bones=m.skinMask()|clothMask;
         Draw now=last!=null&&last.look().equals(l)&&Objects.equals(last.skin(),boundSkin)&&Objects.equals(last.clothSheet(),clothSheet)&&last.bones()==bones
             &&last.weapon()==weaponDrawn&&last.shield()==shieldDrawn&&Objects.equals(last.relief(),reliefKey)&&last.weaponFrame()==weaponFrame&&last.weaponFar()==weaponFar&&Objects.equals(last.trim(),trimSheet)?last:new Draw(l,boundSkin,clothSheet,bones,weaponDrawn,shieldDrawn,reliefKey,weaponFrame,weaponFar,trimSheet);
-        d.pose=m.snapshot(d.pose);System.arraycopy(m.lastInputs,0,d.inputs,0,5);d.tilt=tilt;d.maxTilt=Math.max(d.maxTilt,tilt);
+        d.pose=m.snapshot(d.pose);System.arraycopy(m.lastInputs,0,d.inputs,0,5);d.tilt=tilt;d.maxTilt=Math.max(d.maxTilt,tilt);d.variant=variant;
         if(d.count==0)d.first=now;d.last=now;d.count++;
         if(d.countedFrame!=TroopDepth.frame()){d.countedFrame=TroopDepth.frame();TroopDepth.count(reliefKey==null?0:m.reliefDrawn,weaponQuads);}
     }

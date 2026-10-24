@@ -29,6 +29,8 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
     static final int MAX_WEAPON_QUADS=128;
     /** The most quads a cube weapon's far version may have (art pipeline v2, section 8: the fourth cut). */
     static final int MAX_FAR_QUADS=32;
+    /** The most faces a troop may have, its canonical one included (the build's FACES_MAX). */
+    static final int MAX_FACES=8;
     static final Logger LOG=LoggerFactory.getLogger("gravesandglory");
     @Override public Identifier getFabricId(){return new Identifier(TroopModels.NAMESPACE,"troop_models");}
 
@@ -85,6 +87,31 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
         need(troop.has("skins")&&troop.get("skins").isJsonObject(),"no skins");
         JsonObject skins=troop.getAsJsonObject("skins");need(skins.has("1"),"no stage 1 skin");
         for(var e:skins.entrySet()){need(e.getKey().matches("[1-9][0-9]*"),"a skin for stage "+e.getKey());need(e.getValue().isJsonPrimitive()&&Identifier.tryParse(e.getValue().getAsString())!=null,"the stage "+e.getKey()+" skin is not a texture id");}
+        checkFaces(troop);
+    }
+    /**
+     * A troop's face variants (tools/build_skins.py split_faces): a "faces" object holds the count (2 to MAX_FACES), the card face
+     * and the pinned face (optional), and the bones that name "variants" are exactly one a face, each a face of the count. A troop
+     * without "faces" has no bone that names variants.
+     */
+    static void checkFaces(JsonObject troop){
+        JsonArray bones=troop.getAsJsonArray("bones");
+        if(!troop.has("faces")){
+            if(bones!=null)for(JsonElement e:bones)need(!e.getAsJsonObject().has("variants"),"bone "+str(e.getAsJsonObject(),"name")+" names variants, but the troop has no faces");
+            return;
+        }
+        need(troop.get("faces").isJsonObject(),"faces is not an object");JsonObject f=troop.getAsJsonObject("faces");
+        need(f.has("count")&&f.get("count").isJsonPrimitive(),"faces has no count");int count=f.get("count").getAsInt();
+        need(count>=2&&count<=MAX_FACES,"faces count "+count+" is not 2 to "+MAX_FACES);
+        int card=f.has("card")?f.get("card").getAsInt():0,fixed=f.has("fixed")?f.get("fixed").getAsInt():-1;
+        need(card>=0&&card<count,"faces card "+card+" is not a face from 0 to "+(count-1));need(fixed>=-1&&fixed<count,"faces fixed "+fixed+" is not a face from 0 to "+(count-1));
+        int[] bonesOf=new int[count];
+        if(bones!=null)for(JsonElement e:bones){
+            JsonObject b=e.getAsJsonObject();if(!b.has("variants"))continue;
+            need(b.get("variants").isJsonArray()&&b.getAsJsonArray("variants").size()==1,"bone "+str(b,"name")+" must name one variant");
+            int k=b.getAsJsonArray("variants").get(0).getAsInt();need(k>=0&&k<count,"bone "+str(b,"name")+" names variant "+k+", not a face from 0 to "+(count-1));bonesOf[k]++;
+        }
+        for(int k=0;k<count;k++)need(bonesOf[k]==1,"face "+k+" has "+bonesOf[k]+" bones, not one");
     }
     static void texture(ResourceManager manager,Identifier id){need(manager.getResource(id).isPresent(),"missing texture "+id);}
 
