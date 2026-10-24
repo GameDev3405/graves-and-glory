@@ -725,7 +725,8 @@ public final class GravesAndGlory implements ModInitializer {
         void prepareHillTest(){
             var ridge=Arrays.stream(Spec.TERRAIN).filter(t->t.id().equals("dawn_ridge")).findFirst().orElseThrow();
             int startX=ridge.x()+ridge.radiusX()*4/5,crestX=ridge.x()+6,z=ridge.z();
-            hillClimbY=Arena.ground(startX,z)+8;
+            // Three blocks up the slope: the Dawn ridge was 11 blocks from its foot to its crest (67 to 78) until Task 8b put the supply house yard rg-supply-nw on the crest (74, with the foot at 71), so eight no longer fits; three is still more than standing about at the foot, and every unit must get there.
+            hillClimbY=Arena.ground(startX,z)+3;
             prepareNavigation(startX,z,new Vec3d(crestX,Arena.height(crestX,z)+1,z),90);
         }
         void prepareBridgeTest(){var b=Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList().get(testBridgeIndex);prepareNavigation(b.x()-b.width()/2.0-14,b.z(),new Vec3d(b.x()+b.width()/2.0+16,65,b.z()),-90);}
