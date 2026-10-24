@@ -3100,15 +3100,17 @@ public final class Phase3Checks implements ClientModInitializer {
             "ironhold/keep",List.of(new Goal("north wall crenel",14,7,0),new Goal("south wall-walk",20,7,25),new Goal("north west tower top",3,13,3),new Goal("donjon roof",36,18,13),new Goal("deck",23,1,13)),
             "ironhold/hay_barn",List.of(new Goal("loft",12,7,6),new Goal("barn floor",5,1,6),new Goal("yard",12,1,16)),
             "ironhold/garrison",List.of(new Goal("upper floor",14,6,16),new Goal("hall",15,1,15),new Goal("yard",15,1,5)));
-        /** A cell of each template inside solid stone (the first wall of the piece): the walk must not reach it. */
-        static final Map<String,int[]> SEALED=Map.of("ironhold/gate",new int[]{2,4,6},"ironhold/curtain",new int[]{2,5,15},"ironhold/keep",new int[]{15,3,1},"ironhold/hay_barn",new int[]{1,2,6},"ironhold/garrison",new int[]{1,2,16});
+        /** The control of the reach check (Task 7 fix round 1; the sealed cell inside solid stone it replaces could never be stood on, so it proved nothing): the pieces that have ladders are walked a second time with ladders switched off, and
+         *  at least one of their standing places (a tower top, a loft) must then be out of reach. A walk that reached them anyway (a leak, a ledge that is a jump too low) would not be testing the ladders. The garrison has none. */
+        static final Set<String> LADDERED=Set.of("ironhold/gate","ironhold/curtain","ironhold/keep","ironhold/hay_barn");
         /** What a player on foot can do: stand on a block with two free cells above it (or in a climbable one: a ladder, a vine), walk to a side cell at the same height, jump one block up, step off a ledge and fall up to three, climb a ladder up and down. Free: no collision
          *  shape, or one no higher than a carpet. A floor: a block whose collision shape is half a block to a block high (a slab, a stair, a block; not a fence, which is 1.5). */
         static final class Walk{
-            final ServerWorld w;final BlockBox region;final Set<Long> seen=new HashSet<>();
-            Walk(ServerWorld w,BlockBox region){this.w=w;this.region=region;}
+            final ServerWorld w;final BlockBox region;final Set<Long> seen=new HashSet<>();final boolean ladders;
+            Walk(ServerWorld w,BlockBox region){this(w,region,true);}
+            Walk(ServerWorld w,BlockBox region,boolean ladders){this.w=w;this.region=region;this.ladders=ladders;}
             boolean in(int x,int y,int z){return x>=region.getMinX()&&x<=region.getMaxX()&&y>=region.getMinY()&&y<=region.getMaxY()&&z>=region.getMinZ()&&z<=region.getMaxZ();}
-            boolean climb(int x,int y,int z){return w.getBlockState(new BlockPos(x,y,z)).isIn(net.minecraft.registry.tag.BlockTags.CLIMBABLE);}
+            boolean climb(int x,int y,int z){return ladders&&w.getBlockState(new BlockPos(x,y,z)).isIn(net.minecraft.registry.tag.BlockTags.CLIMBABLE);}
             double top(int x,int y,int z){var p=new BlockPos(x,y,z);var sh=w.getBlockState(p).getCollisionShape(w,p);return sh.isEmpty()?0:sh.getMax(Direction.Axis.Y);}
             boolean free(int x,int y,int z){return in(x,y,z)&&(climb(x,y,z)||top(x,y,z)<=0.2);}
             boolean floor(int x,int y,int z){double t=top(x,y-1,z);return t>=0.5&&t<=1.0;}
@@ -3271,10 +3273,14 @@ public final class Phase3Checks implements ClientModInitializer {
                         var q=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),g.x(),g.y(),g.z());
                         if(walk.reached(q))got++;else missed.append(' ').append(g.name()).append(xyz(q));
                     }
-                    var sl2=SEALED.get(r.template());
-                    var sealed=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),sl2[0],sl2[1],sl2[2]);
-                    boolean control=!walk.reached(sealed);
-                    report(k+"-reach",got==goals.size()&&control,got+" of "+goals.size()+" standing places reached on foot from the ground round the piece (walk, jump one block, ladders, stairs, fall up to three), "+walk.count()+" places in all"+(missed.length()==0?"":"; not reached:"+missed)+"; the sealed control cell "+xyz(sealed)+(control?" is not reached":" IS REACHED"));
+                    int noLadder=0;boolean control=true;
+                    if(LADDERED.contains(r.template())){
+                        var dry=new Walk(w,new BlockBox(fp.getMinX()-5,fp.getMinY()-1,fp.getMinZ()-5,fp.getMaxX()+5,fp.getMaxY()+3,fp.getMaxZ()+5),false);
+                        dry.search(sources);
+                        for(var g:goals)if(dry.reached(Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),g.x(),g.y(),g.z())))noLadder++;
+                        control=noLadder<goals.size();
+                    }
+                    report(k+"-reach",got==goals.size()&&control,got+" of "+goals.size()+" standing places reached on foot from the ground round the piece (walk, jump one block, ladders, stairs, fall up to three), "+walk.count()+" places in all"+(missed.length()==0?"":"; not reached:"+missed)+(LADDERED.contains(r.template())?"; control: with ladders switched off "+noLadder+" of "+goals.size()+" are reached"+(control?"":" (ALL OF THEM: the ladders are not what the walk needs)"):"; no ladders in this piece, no control"));
                 }
             }
             // a map with no landmarks rows (maps 1 to 3 today) has nothing to place and passes; a map with rows passes only when every one of them was placed (a build that placed nothing is not within budget)

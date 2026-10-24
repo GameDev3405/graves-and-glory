@@ -1102,25 +1102,37 @@ fill ~18 ~0 ~0 ~28 ~0 ~0 minecraft:iron_bars[north=false,east=true,south=false,w
 fill ~18 ~0 ~2 ~28 ~0 ~2 minecraft:iron_bars[north=false,east=true,south=true,west=true]
 fill ~18 ~0 ~24 ~28 ~0 ~24 minecraft:iron_bars[north=true,east=true,south=false,west=true]
 fill ~18 ~0 ~26 ~28 ~0 ~26 minecraft:iron_bars[north=false,east=true,south=false,west=true]
-setblock ~1 ~1 ~7 minecraft:stone_bricks
-fill ~1 ~1 ~8 ~2 ~1 ~10 minecraft:deepslate_bricks
-fill ~1 ~1 ~11 ~1 ~3 ~11 minecraft:cracked_deepslate_bricks
-fill ~1 ~1 ~12 ~1 ~3 ~12 minecraft:deepslate_bricks
-fill ~1 ~1 ~13 ~1 ~1 ~18 minecraft:mossy_stone_bricks
-fill ~1 ~1 ~19 ~1 ~3 ~19 minecraft:deepslate_bricks
-fill ~2 ~1 ~7 ~2 ~3 ~7 minecraft:mossy_stone_bricks
-fill ~2 ~1 ~11 ~2 ~2 ~14 minecraft:deepslate_bricks
-fill ~2 ~1 ~15 ~2 ~1 ~19 minecraft:mossy_stone_bricks
+fill ~1 ~1 ~7 ~2 ~2 ~7 minecraft:mossy_stone_bricks
+fill ~1 ~1 ~8 ~2 ~5 ~8 minecraft:stone_bricks
+fill ~1 ~1 ~9 ~1 ~2 ~9 minecraft:mossy_stone_bricks
+fill ~1 ~1 ~10 ~2 ~1 ~10 minecraft:stone_bricks
+setblock ~1 ~1 ~11 minecraft:deepslate_bricks
+fill ~1 ~1 ~12 ~1 ~2 ~12 minecraft:cracked_stone_bricks
+fill ~1 ~1 ~13 ~1 ~1 ~14 minecraft:stone_bricks
+setblock ~1 ~1 ~15 minecraft:cracked_stone_bricks
+setblock ~1 ~1 ~16 minecraft:mossy_stone_bricks
+setblock ~1 ~1 ~17 minecraft:cracked_stone_bricks
+setblock ~1 ~1 ~18 minecraft:mossy_stone_bricks
+setblock ~1 ~1 ~19 minecraft:cracked_stone_bricks
+setblock ~2 ~1 ~9 minecraft:deepslate_bricks
+setblock ~2 ~1 ~11 minecraft:cracked_stone_bricks
+fill ~2 ~1 ~12 ~2 ~1 ~13 minecraft:stone_bricks
+setblock ~2 ~1 ~14 minecraft:cracked_stone_bricks
+fill ~2 ~1 ~15 ~2 ~1 ~16 minecraft:stone_bricks
+setblock ~2 ~1 ~17 minecraft:deepslate_bricks
+setblock ~2 ~1 ~18 minecraft:cracked_stone_bricks
+setblock ~2 ~1 ~19 minecraft:stone_bricks
 fill ~12 ~1 ~1 ~14 ~1 ~2 minecraft:stone_bricks
-fill ~12 ~1 ~24 ~13 ~2 ~25 minecraft:mossy_stone_bricks
-fill ~14 ~1 ~24 ~15 ~1 ~25 minecraft:deepslate_bricks
-fill ~15 ~1 ~1 ~17 ~3 ~1 minecraft:deepslate_bricks
-setblock ~15 ~1 ~2 minecraft:cracked_deepslate_bricks
-fill ~16 ~1 ~2 ~17 ~3 ~2 minecraft:deepslate_bricks
-setblock ~16 ~1 ~24 minecraft:cracked_deepslate_bricks
-setblock ~16 ~1 ~25 minecraft:deepslate_bricks
-setblock ~17 ~1 ~24 minecraft:deepslate_bricks
-setblock ~17 ~1 ~25 minecraft:cracked_deepslate_bricks
+fill ~12 ~1 ~24 ~13 ~2 ~25 minecraft:stone_bricks
+setblock ~14 ~1 ~24 minecraft:mossy_stone_bricks
+setblock ~14 ~1 ~25 minecraft:cracked_stone_bricks
+fill ~15 ~1 ~1 ~16 ~1 ~1 minecraft:mossy_stone_bricks
+fill ~15 ~1 ~2 ~16 ~1 ~2 minecraft:stone_bricks
+fill ~15 ~1 ~24 ~17 ~1 ~24 minecraft:stone_bricks
+setblock ~15 ~1 ~25 minecraft:deepslate_bricks
+fill ~16 ~1 ~25 ~16 ~5 ~25 minecraft:stone_bricks
+fill ~17 ~1 ~1 ~17 ~1 ~2 minecraft:stone_bricks
+setblock ~17 ~1 ~25 minecraft:mossy_stone_bricks
 setblock ~18 ~1 ~0 minecraft:iron_bars[north=false,east=true,south=false,west=false]
 fill ~18 ~1 ~2 ~28 ~1 ~2 minecraft:iron_bars[north=false,east=true,south=false,west=true]
 fill ~18 ~1 ~24 ~28 ~1 ~24 minecraft:iron_bars[north=false,east=true,south=false,west=true]
@@ -1129,352 +1141,409 @@ fill ~19 ~1 ~0 ~27 ~1 ~0 minecraft:iron_bars[north=false,east=true,south=false,w
 fill ~19 ~1 ~26 ~27 ~1 ~26 minecraft:iron_bars[north=false,east=true,south=false,west=true]
 setblock ~28 ~1 ~0 minecraft:iron_bars[north=false,east=false,south=false,west=true]
 setblock ~28 ~1 ~26 minecraft:iron_bars[north=false,east=false,south=false,west=true]
-fill ~29 ~1 ~1 ~32 ~1 ~2 minecraft:mossy_stone_bricks
-fill ~29 ~1 ~24 ~29 ~1 ~25 minecraft:cracked_deepslate_bricks
-fill ~30 ~1 ~24 ~34 ~1 ~24 minecraft:mossy_stone_bricks
-setblock ~30 ~1 ~25 minecraft:deepslate_bricks
-fill ~31 ~1 ~25 ~34 ~1 ~25 minecraft:mossy_stone_bricks
-setblock ~33 ~1 ~1 minecraft:stone_bricks
-fill ~33 ~1 ~2 ~33 ~3 ~2 minecraft:mossy_stone_bricks
-fill ~34 ~1 ~1 ~34 ~3 ~1 minecraft:mossy_stone_bricks
-setblock ~34 ~1 ~2 minecraft:stone_bricks
-setblock ~44 ~1 ~7 minecraft:cracked_stone_bricks
-setblock ~44 ~1 ~8 minecraft:stone_bricks
-setblock ~44 ~1 ~9 minecraft:cracked_stone_bricks
+fill ~29 ~1 ~1 ~31 ~1 ~1 minecraft:stone_bricks
+setblock ~29 ~1 ~2 minecraft:mossy_stone_bricks
+fill ~29 ~1 ~24 ~29 ~5 ~25 minecraft:stone_bricks
+fill ~30 ~1 ~2 ~30 ~3 ~2 minecraft:stone_bricks
+setblock ~30 ~1 ~24 minecraft:mossy_stone_bricks
+fill ~30 ~1 ~25 ~30 ~5 ~25 minecraft:stone_bricks
+fill ~31 ~1 ~2 ~31 ~2 ~2 minecraft:mossy_stone_bricks
+fill ~31 ~1 ~24 ~32 ~2 ~25 minecraft:stone_bricks
+fill ~32 ~1 ~1 ~34 ~1 ~1 minecraft:mossy_stone_bricks
+setblock ~32 ~1 ~2 minecraft:cracked_stone_bricks
+setblock ~33 ~1 ~2 minecraft:mossy_stone_bricks
+setblock ~33 ~1 ~24 minecraft:mossy_stone_bricks
+setblock ~33 ~1 ~25 minecraft:cracked_stone_bricks
+fill ~34 ~1 ~2 ~34 ~2 ~2 minecraft:stone_bricks
+setblock ~34 ~1 ~24 minecraft:cracked_stone_bricks
+setblock ~34 ~1 ~25 minecraft:stone_bricks
+fill ~44 ~1 ~7 ~45 ~1 ~9 minecraft:stone_bricks
 fill ~44 ~1 ~10 ~44 ~1 ~14 minecraft:stone_bricks
-fill ~44 ~1 ~15 ~44 ~1 ~19 minecraft:mossy_stone_bricks
-fill ~45 ~1 ~7 ~45 ~2 ~9 minecraft:stone_bricks
-setblock ~45 ~1 ~10 minecraft:cracked_stone_bricks
-fill ~45 ~1 ~11 ~45 ~2 ~16 minecraft:stone_bricks
-fill ~45 ~1 ~17 ~45 ~1 ~19 minecraft:mossy_stone_bricks
-fill ~0 ~2 ~7 ~0 ~4 ~7 minecraft:stone_bricks
-setblock ~0 ~2 ~8 minecraft:cracked_stone_bricks
-fill ~0 ~2 ~9 ~1 ~5 ~9 minecraft:stone_bricks
-fill ~0 ~2 ~10 ~0 ~3 ~11 minecraft:stone_bricks
-setblock ~0 ~2 ~12 minecraft:deepslate_bricks
-setblock ~0 ~2 ~13 minecraft:cracked_deepslate_bricks
-fill ~0 ~2 ~14 ~0 ~3 ~16 minecraft:deepslate_bricks
-fill ~0 ~2 ~17 ~0 ~3 ~17 minecraft:cracked_deepslate_bricks
-fill ~0 ~2 ~18 ~0 ~2 ~19 minecraft:deepslate_bricks
-fill ~1 ~2 ~7 ~1 ~2 ~8 minecraft:mossy_stone_bricks
-setblock ~1 ~2 ~10 minecraft:deepslate_bricks
-fill ~1 ~2 ~13 ~1 ~2 ~18 minecraft:deepslate_bricks
-fill ~2 ~2 ~8 ~2 ~2 ~10 minecraft:mossy_stone_bricks
-fill ~2 ~2 ~15 ~2 ~4 ~15 minecraft:deepslate_bricks
-fill ~2 ~2 ~16 ~2 ~3 ~16 minecraft:cracked_deepslate_bricks
-fill ~2 ~2 ~17 ~2 ~3 ~17 minecraft:deepslate_bricks
-setblock ~2 ~2 ~18 minecraft:cracked_stone_bricks
-fill ~2 ~2 ~19 ~2 ~4 ~19 minecraft:stone_bricks
-fill ~12 ~2 ~0 ~15 ~2 ~0 minecraft:stone_bricks
-fill ~12 ~2 ~1 ~13 ~5 ~2 minecraft:stone_bricks
-fill ~12 ~2 ~26 ~14 ~2 ~26 minecraft:mossy_stone_bricks
-setblock ~14 ~2 ~1 minecraft:cracked_stone_bricks
-fill ~14 ~2 ~2 ~14 ~5 ~2 minecraft:stone_bricks
-fill ~14 ~2 ~24 ~15 ~2 ~24 minecraft:deepslate_bricks
-fill ~14 ~2 ~25 ~14 ~5 ~25 minecraft:deepslate_bricks
-fill ~15 ~2 ~2 ~15 ~4 ~2 minecraft:deepslate_bricks
-setblock ~15 ~2 ~25 minecraft:cracked_deepslate_bricks
-fill ~15 ~2 ~26 ~15 ~5 ~26 minecraft:stone_bricks
-fill ~16 ~2 ~0 ~17 ~4 ~0 minecraft:deepslate_bricks
-fill ~16 ~2 ~24 ~17 ~5 ~24 minecraft:stone_bricks
-fill ~16 ~2 ~25 ~16 ~5 ~26 minecraft:stone_bricks
-fill ~17 ~2 ~25 ~17 ~3 ~25 minecraft:cracked_stone_bricks
-fill ~17 ~2 ~26 ~17 ~6 ~26 minecraft:stone_bricks
-fill ~18 ~2 ~1 ~18 ~3 ~1 minecraft:cracked_deepslate_bricks
-fill ~18 ~2 ~25 ~22 ~2 ~25 minecraft:stone_bricks
-fill ~19 ~2 ~1 ~23 ~2 ~1 minecraft:deepslate_bricks
-setblock ~23 ~2 ~25 minecraft:cracked_deepslate_bricks
-setblock ~24 ~2 ~1 minecraft:cracked_deepslate_bricks
-fill ~24 ~2 ~25 ~25 ~4 ~25 minecraft:deepslate_bricks
-fill ~25 ~2 ~1 ~28 ~2 ~1 minecraft:deepslate_bricks
-setblock ~26 ~2 ~25 minecraft:cracked_deepslate_bricks
-fill ~27 ~2 ~25 ~29 ~3 ~25 minecraft:deepslate_bricks
-setblock ~29 ~2 ~0 minecraft:deepslate_bricks
-fill ~29 ~2 ~1 ~30 ~3 ~2 minecraft:stone_bricks
-fill ~29 ~2 ~24 ~31 ~2 ~24 minecraft:deepslate_bricks
-fill ~29 ~2 ~26 ~30 ~2 ~26 minecraft:deepslate_bricks
-fill ~30 ~2 ~0 ~34 ~2 ~0 minecraft:mossy_stone_bricks
-setblock ~30 ~2 ~25 minecraft:cracked_deepslate_bricks
-fill ~31 ~2 ~1 ~33 ~3 ~1 minecraft:mossy_stone_bricks
-fill ~31 ~2 ~2 ~32 ~2 ~2 minecraft:mossy_stone_bricks
-fill ~31 ~2 ~25 ~31 ~5 ~25 minecraft:stone_bricks
-setblock ~31 ~2 ~26 minecraft:cracked_stone_bricks
-fill ~32 ~2 ~24 ~34 ~2 ~26 minecraft:stone_bricks
-fill ~34 ~2 ~2 ~34 ~3 ~2 minecraft:mossy_stone_bricks
-fill ~44 ~2 ~7 ~44 ~4 ~7 minecraft:stone_bricks
-fill ~44 ~2 ~8 ~44 ~3 ~8 minecraft:cracked_stone_bricks
-fill ~44 ~2 ~9 ~44 ~4 ~9 minecraft:stone_bricks
-setblock ~44 ~2 ~10 minecraft:cracked_stone_bricks
-fill ~44 ~2 ~11 ~44 ~2 ~18 minecraft:stone_bricks
+setblock ~44 ~1 ~15 minecraft:mossy_stone_bricks
+fill ~44 ~1 ~16 ~44 ~2 ~16 minecraft:stone_bricks
+fill ~44 ~1 ~17 ~45 ~1 ~17 minecraft:mossy_stone_bricks
+fill ~44 ~1 ~18 ~45 ~2 ~18 minecraft:stone_bricks
+setblock ~44 ~1 ~19 minecraft:stone_bricks
+fill ~45 ~1 ~10 ~45 ~1 ~11 minecraft:mossy_stone_bricks
+fill ~45 ~1 ~12 ~45 ~2 ~12 minecraft:stone_bricks
+fill ~45 ~1 ~13 ~45 ~1 ~14 minecraft:mossy_stone_bricks
+fill ~45 ~1 ~15 ~45 ~1 ~16 minecraft:stone_bricks
+setblock ~45 ~1 ~19 minecraft:deepslate_bricks
+setblock ~0 ~2 ~7 minecraft:mossy_stone_bricks
+fill ~0 ~2 ~8 ~0 ~6 ~8 minecraft:stone_bricks
+fill ~0 ~2 ~9 ~0 ~2 ~10 minecraft:cracked_stone_bricks
+setblock ~0 ~2 ~11 minecraft:deepslate_bricks
+fill ~0 ~2 ~12 ~0 ~2 ~18 minecraft:stone_bricks
+setblock ~0 ~2 ~19 minecraft:mossy_stone_bricks
+setblock ~1 ~2 ~10 minecraft:mossy_stone_bricks
+setblock ~1 ~2 ~11 minecraft:stone_bricks
+fill ~1 ~2 ~13 ~2 ~5 ~13 minecraft:stone_bricks
+setblock ~1 ~2 ~14 minecraft:cracked_stone_bricks
+fill ~1 ~2 ~15 ~1 ~2 ~19 minecraft:stone_bricks
+fill ~2 ~2 ~9 ~2 ~2 ~10 minecraft:cracked_stone_bricks
+fill ~2 ~2 ~11 ~2 ~2 ~12 minecraft:mossy_stone_bricks
+fill ~2 ~2 ~14 ~2 ~5 ~14 minecraft:stone_bricks
+setblock ~2 ~2 ~15 minecraft:mossy_stone_bricks
+fill ~2 ~2 ~16 ~2 ~4 ~16 minecraft:stone_bricks
+setblock ~2 ~2 ~17 minecraft:mossy_stone_bricks
+setblock ~2 ~2 ~18 minecraft:stone_bricks
+setblock ~2 ~2 ~19 minecraft:mossy_stone_bricks
+setblock ~12 ~2 ~0 minecraft:stone_bricks
+setblock ~12 ~2 ~1 minecraft:mossy_stone_bricks
+setblock ~12 ~2 ~2 minecraft:cracked_stone_bricks
+fill ~12 ~2 ~26 ~13 ~2 ~26 minecraft:stone_bricks
+setblock ~13 ~2 ~0 minecraft:mossy_stone_bricks
+fill ~13 ~2 ~1 ~13 ~2 ~2 minecraft:stone_bricks
+fill ~14 ~2 ~0 ~14 ~2 ~1 minecraft:stone_bricks
+setblock ~14 ~2 ~2 minecraft:mossy_stone_bricks
+setblock ~14 ~2 ~24 minecraft:deepslate_bricks
+setblock ~14 ~2 ~25 minecraft:stone_bricks
+setblock ~14 ~2 ~26 minecraft:mossy_stone_bricks
+setblock ~15 ~2 ~0 minecraft:deepslate_bricks
+fill ~15 ~2 ~1 ~15 ~4 ~2 minecraft:stone_bricks
+fill ~15 ~2 ~24 ~15 ~5 ~26 minecraft:stone_bricks
+fill ~16 ~2 ~0 ~16 ~3 ~1 minecraft:stone_bricks
+fill ~16 ~2 ~2 ~17 ~2 ~2 minecraft:mossy_stone_bricks
+setblock ~16 ~2 ~24 minecraft:mossy_stone_bricks
+fill ~16 ~2 ~26 ~16 ~4 ~26 minecraft:stone_bricks
+setblock ~17 ~2 ~0 minecraft:deepslate_bricks
+fill ~17 ~2 ~1 ~23 ~2 ~1 minecraft:stone_bricks
+fill ~17 ~2 ~24 ~17 ~2 ~26 minecraft:stone_bricks
+setblock ~18 ~2 ~25 minecraft:cracked_stone_bricks
+fill ~19 ~2 ~25 ~19 ~5 ~25 minecraft:stone_bricks
+setblock ~20 ~2 ~25 minecraft:deepslate_bricks
+setblock ~21 ~2 ~25 minecraft:mossy_stone_bricks
+fill ~22 ~2 ~25 ~26 ~2 ~25 minecraft:stone_bricks
+setblock ~24 ~2 ~1 minecraft:cracked_stone_bricks
+fill ~25 ~2 ~1 ~27 ~4 ~1 minecraft:stone_bricks
+setblock ~27 ~2 ~25 minecraft:deepslate_bricks
+fill ~28 ~2 ~1 ~29 ~2 ~1 minecraft:mossy_stone_bricks
+fill ~28 ~2 ~25 ~28 ~3 ~25 minecraft:stone_bricks
+fill ~29 ~2 ~0 ~29 ~4 ~0 minecraft:stone_bricks
+fill ~29 ~2 ~2 ~29 ~4 ~2 minecraft:stone_bricks
+setblock ~29 ~2 ~26 minecraft:stone_bricks
+setblock ~30 ~2 ~0 minecraft:deepslate_bricks
+setblock ~30 ~2 ~1 minecraft:stone_bricks
+fill ~30 ~2 ~24 ~30 ~3 ~24 minecraft:stone_bricks
+setblock ~30 ~2 ~26 minecraft:mossy_stone_bricks
+fill ~31 ~2 ~0 ~31 ~2 ~1 minecraft:stone_bricks
+fill ~31 ~2 ~26 ~32 ~2 ~26 minecraft:stone_bricks
+fill ~32 ~2 ~0 ~33 ~2 ~0 minecraft:mossy_stone_bricks
+fill ~32 ~2 ~1 ~33 ~2 ~2 minecraft:stone_bricks
+fill ~33 ~2 ~24 ~34 ~4 ~24 minecraft:stone_bricks
+fill ~33 ~2 ~25 ~34 ~2 ~25 minecraft:mossy_stone_bricks
+fill ~33 ~2 ~26 ~33 ~3 ~26 minecraft:cracked_stone_bricks
+fill ~34 ~2 ~0 ~34 ~5 ~1 minecraft:stone_bricks
+fill ~34 ~2 ~26 ~34 ~5 ~26 minecraft:stone_bricks
+setblock ~44 ~2 ~7 minecraft:mossy_stone_bricks
+fill ~44 ~2 ~8 ~44 ~2 ~10 minecraft:stone_bricks
+setblock ~44 ~2 ~11 minecraft:cracked_stone_bricks
+fill ~44 ~2 ~12 ~44 ~2 ~15 minecraft:stone_bricks
+fill ~44 ~2 ~17 ~45 ~2 ~17 minecraft:stone_bricks
 setblock ~44 ~2 ~19 minecraft:mossy_stone_bricks
-fill ~45 ~2 ~10 ~45 ~5 ~10 minecraft:stone_bricks
-fill ~45 ~2 ~17 ~46 ~2 ~19 minecraft:stone_bricks
-fill ~46 ~2 ~7 ~46 ~6 ~7 minecraft:stone_bricks
-setblock ~46 ~2 ~8 minecraft:cracked_stone_bricks
-fill ~46 ~2 ~9 ~46 ~5 ~11 minecraft:stone_bricks
+fill ~45 ~2 ~7 ~46 ~4 ~7 minecraft:stone_bricks
+setblock ~45 ~2 ~8 minecraft:cracked_stone_bricks
+fill ~45 ~2 ~9 ~45 ~3 ~9 minecraft:mossy_stone_bricks
+fill ~45 ~2 ~10 ~46 ~2 ~11 minecraft:stone_bricks
+fill ~45 ~2 ~13 ~46 ~2 ~13 minecraft:stone_bricks
+setblock ~45 ~2 ~14 minecraft:deepslate_bricks
+fill ~45 ~2 ~15 ~46 ~5 ~15 minecraft:stone_bricks
+setblock ~45 ~2 ~16 minecraft:cracked_stone_bricks
+fill ~45 ~2 ~19 ~45 ~5 ~19 minecraft:stone_bricks
+fill ~46 ~2 ~8 ~46 ~5 ~8 minecraft:stone_bricks
+setblock ~46 ~2 ~9 minecraft:cracked_stone_bricks
 setblock ~46 ~2 ~12 minecraft:cracked_stone_bricks
-fill ~46 ~2 ~13 ~46 ~3 ~15 minecraft:stone_bricks
-setblock ~46 ~2 ~16 minecraft:cracked_stone_bricks
-fill ~0 ~3 ~8 ~0 ~4 ~8 minecraft:stone_bricks
-setblock ~0 ~3 ~12 minecraft:cracked_deepslate_bricks
-fill ~0 ~3 ~13 ~2 ~3 ~13 minecraft:deepslate_bricks
-setblock ~0 ~3 ~18 minecraft:deepslate_bricks
-setblock ~0 ~3 ~19 minecraft:cracked_deepslate_bricks
-fill ~1 ~3 ~7 ~1 ~5 ~8 minecraft:stone_bricks
-setblock ~1 ~3 ~10 minecraft:stone_bricks
-fill ~1 ~3 ~14 ~1 ~3 ~15 minecraft:deepslate_bricks
-setblock ~1 ~3 ~16 minecraft:cracked_deepslate_bricks
-fill ~1 ~3 ~17 ~1 ~4 ~18 minecraft:deepslate_bricks
-setblock ~2 ~3 ~8 minecraft:mossy_stone_bricks
-setblock ~2 ~3 ~9 minecraft:cracked_deepslate_bricks
-setblock ~2 ~3 ~10 minecraft:deepslate_bricks
-fill ~2 ~3 ~11 ~2 ~3 ~12 minecraft:cracked_deepslate_bricks
-setblock ~2 ~3 ~14 minecraft:cracked_deepslate_bricks
-fill ~2 ~3 ~18 ~2 ~5 ~18 minecraft:stone_bricks
-fill ~12 ~3 ~0 ~12 ~4 ~0 minecraft:stone_bricks
-fill ~12 ~3 ~24 ~12 ~3 ~26 minecraft:mossy_stone_bricks
-fill ~13 ~3 ~0 ~14 ~3 ~0 minecraft:cracked_stone_bricks
-fill ~13 ~3 ~24 ~13 ~5 ~24 minecraft:deepslate_bricks
-fill ~13 ~3 ~25 ~13 ~3 ~26 minecraft:mossy_stone_bricks
-fill ~14 ~3 ~1 ~14 ~4 ~1 minecraft:stone_bricks
-setblock ~14 ~3 ~24 minecraft:cracked_deepslate_bricks
-setblock ~14 ~3 ~26 minecraft:deepslate_bricks
-fill ~15 ~3 ~0 ~15 ~6 ~0 minecraft:stone_bricks
-fill ~15 ~3 ~24 ~15 ~3 ~25 minecraft:deepslate_bricks
-setblock ~18 ~3 ~0 minecraft:cracked_deepslate_bricks
-fill ~18 ~3 ~2 ~18 ~4 ~2 minecraft:deepslate_bricks
-setblock ~18 ~3 ~24 minecraft:cracked_stone_bricks
-fill ~18 ~3 ~25 ~18 ~5 ~26 minecraft:stone_bricks
-fill ~19 ~3 ~0 ~25 ~3 ~0 minecraft:deepslate_bricks
-fill ~19 ~3 ~1 ~19 ~3 ~2 minecraft:deepslate_bricks
-fill ~19 ~3 ~24 ~22 ~3 ~24 minecraft:stone_bricks
-fill ~19 ~3 ~25 ~19 ~3 ~26 minecraft:cracked_stone_bricks
-setblock ~20 ~3 ~1 minecraft:cracked_deepslate_bricks
-fill ~20 ~3 ~2 ~23 ~3 ~2 minecraft:deepslate_bricks
-fill ~20 ~3 ~25 ~21 ~3 ~26 minecraft:stone_bricks
-fill ~21 ~3 ~1 ~25 ~3 ~1 minecraft:deepslate_bricks
-fill ~22 ~3 ~25 ~23 ~3 ~26 minecraft:deepslate_bricks
-fill ~23 ~3 ~24 ~27 ~3 ~24 minecraft:deepslate_bricks
-fill ~24 ~3 ~2 ~24 ~4 ~2 minecraft:cracked_deepslate_bricks
-fill ~24 ~3 ~26 ~25 ~4 ~26 minecraft:deepslate_bricks
-fill ~25 ~3 ~2 ~26 ~4 ~2 minecraft:deepslate_bricks
-fill ~26 ~3 ~0 ~27 ~3 ~0 minecraft:cracked_deepslate_bricks
-setblock ~26 ~3 ~1 minecraft:cracked_deepslate_bricks
-fill ~26 ~3 ~25 ~26 ~4 ~26 minecraft:deepslate_bricks
-fill ~27 ~3 ~1 ~27 ~3 ~2 minecraft:deepslate_bricks
-fill ~27 ~3 ~26 ~27 ~4 ~26 minecraft:deepslate_bricks
-fill ~28 ~3 ~0 ~28 ~5 ~1 minecraft:deepslate_bricks
-fill ~28 ~3 ~2 ~28 ~5 ~2 minecraft:stone_bricks
-fill ~28 ~3 ~24 ~29 ~3 ~24 minecraft:cracked_deepslate_bricks
-setblock ~28 ~3 ~26 minecraft:cracked_deepslate_bricks
-fill ~29 ~3 ~0 ~30 ~3 ~0 minecraft:stone_bricks
-setblock ~29 ~3 ~26 minecraft:deepslate_bricks
-setblock ~30 ~3 ~24 minecraft:deepslate_bricks
-fill ~30 ~3 ~25 ~30 ~3 ~26 minecraft:stone_bricks
-fill ~31 ~3 ~0 ~34 ~3 ~0 minecraft:mossy_stone_bricks
-fill ~31 ~3 ~2 ~31 ~5 ~2 minecraft:stone_bricks
-fill ~31 ~3 ~24 ~33 ~3 ~24 minecraft:stone_bricks
-fill ~31 ~3 ~26 ~32 ~4 ~26 minecraft:stone_bricks
-setblock ~32 ~3 ~2 minecraft:mossy_stone_bricks
-fill ~32 ~3 ~25 ~32 ~4 ~25 minecraft:cracked_stone_bricks
-fill ~33 ~3 ~25 ~34 ~4 ~26 minecraft:stone_bricks
-setblock ~34 ~3 ~24 minecraft:cracked_stone_bricks
-fill ~44 ~3 ~10 ~44 ~4 ~12 minecraft:stone_bricks
-setblock ~44 ~3 ~13 minecraft:cracked_stone_bricks
-fill ~44 ~3 ~14 ~44 ~5 ~16 minecraft:stone_bricks
-setblock ~44 ~3 ~17 minecraft:cracked_stone_bricks
-fill ~44 ~3 ~18 ~44 ~5 ~19 minecraft:stone_bricks
-fill ~45 ~3 ~7 ~45 ~4 ~7 minecraft:cracked_stone_bricks
-fill ~45 ~3 ~8 ~46 ~5 ~8 minecraft:stone_bricks
-fill ~45 ~3 ~9 ~45 ~5 ~9 minecraft:stone_bricks
-fill ~45 ~3 ~11 ~45 ~3 ~13 minecraft:stone_bricks
-setblock ~45 ~3 ~14 minecraft:cracked_stone_bricks
-fill ~45 ~3 ~15 ~45 ~4 ~17 minecraft:stone_bricks
-setblock ~45 ~3 ~18 minecraft:cracked_stone_bricks
-fill ~45 ~3 ~19 ~45 ~5 ~19 minecraft:stone_bricks
-fill ~46 ~3 ~12 ~46 ~6 ~12 minecraft:stone_bricks
-fill ~46 ~3 ~16 ~46 ~3 ~19 minecraft:stone_bricks
-setblock ~0 ~4 ~10 minecraft:stone_bricks
-setblock ~0 ~4 ~11 minecraft:cracked_stone_bricks
-fill ~0 ~4 ~12 ~0 ~6 ~15 minecraft:stone_bricks
-fill ~0 ~4 ~16 ~0 ~5 ~16 minecraft:cracked_stone_bricks
-setblock ~0 ~4 ~17 minecraft:deepslate_bricks
-fill ~0 ~4 ~18 ~0 ~4 ~19 minecraft:mossy_stone_bricks
-setblock ~1 ~4 ~10 minecraft:cracked_stone_bricks
-fill ~1 ~4 ~11 ~1 ~5 ~14 minecraft:stone_bricks
-fill ~1 ~4 ~15 ~1 ~4 ~16 minecraft:deepslate_bricks
-fill ~1 ~4 ~19 ~1 ~5 ~19 minecraft:stone_bricks
-fill ~2 ~4 ~7 ~2 ~5 ~7 minecraft:stone_bricks
-setblock ~2 ~4 ~8 minecraft:cracked_stone_bricks
-fill ~2 ~4 ~9 ~2 ~4 ~12 minecraft:stone_bricks
-fill ~2 ~4 ~13 ~2 ~4 ~14 minecraft:deepslate_bricks
-setblock ~2 ~4 ~16 minecraft:deepslate_bricks
-fill ~2 ~4 ~17 ~2 ~5 ~17 minecraft:stone_bricks
-fill ~12 ~4 ~24 ~12 ~5 ~26 minecraft:deepslate_bricks
-fill ~13 ~4 ~0 ~14 ~5 ~0 minecraft:stone_bricks
-fill ~13 ~4 ~25 ~13 ~4 ~26 minecraft:deepslate_bricks
-fill ~14 ~4 ~24 ~15 ~5 ~24 minecraft:deepslate_bricks
-setblock ~14 ~4 ~26 minecraft:cracked_deepslate_bricks
-setblock ~15 ~4 ~1 minecraft:stone_bricks
-setblock ~15 ~4 ~25 minecraft:cracked_deepslate_bricks
-fill ~16 ~4 ~1 ~17 ~4 ~1 minecraft:deepslate_bricks
-fill ~16 ~4 ~2 ~16 ~5 ~2 minecraft:deepslate_bricks
-setblock ~17 ~4 ~2 minecraft:cracked_deepslate_bricks
-fill ~17 ~4 ~25 ~17 ~5 ~25 minecraft:stone_bricks
-fill ~18 ~4 ~0 ~20 ~4 ~1 minecraft:deepslate_bricks
-fill ~18 ~4 ~24 ~20 ~4 ~24 minecraft:stone_bricks
-fill ~19 ~4 ~2 ~22 ~4 ~2 minecraft:cracked_deepslate_bricks
-fill ~19 ~4 ~25 ~19 ~4 ~26 minecraft:stone_bricks
-fill ~20 ~4 ~25 ~21 ~4 ~26 minecraft:deepslate_bricks
-setblock ~21 ~4 ~0 minecraft:cracked_deepslate_bricks
-fill ~21 ~4 ~1 ~24 ~4 ~1 minecraft:deepslate_bricks
-fill ~21 ~4 ~24 ~22 ~5 ~24 minecraft:cracked_deepslate_bricks
-fill ~22 ~4 ~0 ~27 ~4 ~0 minecraft:deepslate_bricks
-setblock ~22 ~4 ~25 minecraft:cracked_deepslate_bricks
-fill ~22 ~4 ~26 ~22 ~6 ~26 minecraft:deepslate_bricks
-setblock ~23 ~4 ~2 minecraft:deepslate_bricks
-fill ~23 ~4 ~24 ~23 ~5 ~25 minecraft:deepslate_bricks
-setblock ~23 ~4 ~26 minecraft:cracked_deepslate_bricks
-fill ~24 ~4 ~24 ~25 ~4 ~24 minecraft:cracked_deepslate_bricks
-setblock ~25 ~4 ~1 minecraft:cracked_deepslate_bricks
-fill ~26 ~4 ~1 ~27 ~4 ~1 minecraft:deepslate_bricks
-fill ~26 ~4 ~24 ~29 ~4 ~24 minecraft:deepslate_bricks
-setblock ~27 ~4 ~2 minecraft:cracked_deepslate_bricks
-setblock ~27 ~4 ~25 minecraft:cracked_deepslate_bricks
-fill ~28 ~4 ~25 ~28 ~4 ~26 minecraft:deepslate_bricks
-fill ~29 ~4 ~0 ~29 ~5 ~2 minecraft:stone_bricks
-fill ~29 ~4 ~25 ~30 ~4 ~25 minecraft:cracked_stone_bricks
-fill ~29 ~4 ~26 ~30 ~6 ~26 minecraft:stone_bricks
-fill ~30 ~4 ~0 ~31 ~4 ~1 minecraft:cracked_stone_bricks
-fill ~30 ~4 ~2 ~30 ~5 ~2 minecraft:stone_bricks
-fill ~30 ~4 ~24 ~32 ~4 ~24 minecraft:stone_bricks
-fill ~32 ~4 ~0 ~33 ~4 ~1 minecraft:stone_bricks
-setblock ~32 ~4 ~2 minecraft:stone_bricks
-setblock ~33 ~4 ~2 minecraft:deepslate_bricks
-setblock ~33 ~4 ~24 minecraft:cracked_stone_bricks
-fill ~34 ~4 ~0 ~34 ~4 ~2 minecraft:deepslate_bricks
-setblock ~34 ~4 ~24 minecraft:stone_bricks
-setblock ~44 ~4 ~8 minecraft:stone_bricks
-fill ~44 ~4 ~13 ~46 ~5 ~13 minecraft:stone_bricks
-setblock ~44 ~4 ~17 minecraft:stone_bricks
-setblock ~45 ~4 ~11 minecraft:stone_bricks
-setblock ~45 ~4 ~12 minecraft:cracked_stone_bricks
-fill ~45 ~4 ~14 ~46 ~5 ~14 minecraft:stone_bricks
-fill ~45 ~4 ~18 ~45 ~5 ~18 minecraft:stone_bricks
-fill ~46 ~4 ~15 ~46 ~4 ~16 minecraft:cracked_stone_bricks
-fill ~46 ~4 ~17 ~46 ~4 ~19 minecraft:stone_bricks
-fill ~0 ~5 ~7 ~0 ~5 ~8 minecraft:cracked_stone_bricks
-setblock ~0 ~5 ~10 minecraft:cracked_stone_bricks
-setblock ~0 ~5 ~11 minecraft:stone_bricks
-fill ~0 ~5 ~17 ~0 ~5 ~19 minecraft:stone_bricks
-setblock ~1 ~5 ~10 minecraft:stone_bricks
-fill ~1 ~5 ~15 ~1 ~5 ~16 minecraft:stone_bricks
-setblock ~1 ~5 ~17 minecraft:cracked_stone_bricks
-setblock ~1 ~5 ~18 minecraft:stone_bricks
-fill ~2 ~5 ~8 ~2 ~5 ~9 minecraft:stone_bricks
-fill ~2 ~5 ~10 ~2 ~5 ~11 minecraft:cracked_stone_bricks
-fill ~2 ~5 ~12 ~2 ~5 ~16 minecraft:stone_bricks
-setblock ~2 ~5 ~19 minecraft:cracked_stone_bricks
+setblock ~46 ~2 ~14 minecraft:mossy_stone_bricks
+setblock ~46 ~2 ~16 minecraft:stone_bricks
+setblock ~46 ~2 ~17 minecraft:cracked_stone_bricks
+fill ~46 ~2 ~18 ~46 ~2 ~19 minecraft:stone_bricks
+fill ~0 ~3 ~7 ~2 ~5 ~7 minecraft:stone_bricks
+setblock ~0 ~3 ~9 minecraft:mossy_stone_bricks
+fill ~0 ~3 ~10 ~0 ~4 ~14 minecraft:stone_bricks
+setblock ~0 ~3 ~15 minecraft:mossy_stone_bricks
+fill ~0 ~3 ~16 ~0 ~3 ~17 minecraft:stone_bricks
+setblock ~0 ~3 ~18 minecraft:mossy_stone_bricks
+setblock ~0 ~3 ~19 minecraft:deepslate_bricks
+fill ~1 ~3 ~9 ~2 ~5 ~10 minecraft:stone_bricks
+setblock ~1 ~3 ~11 minecraft:mossy_stone_bricks
+fill ~1 ~3 ~12 ~1 ~5 ~12 minecraft:stone_bricks
+fill ~1 ~3 ~14 ~1 ~4 ~16 minecraft:stone_bricks
+setblock ~1 ~3 ~17 minecraft:cracked_stone_bricks
+fill ~1 ~3 ~18 ~1 ~3 ~19 minecraft:stone_bricks
+fill ~2 ~3 ~11 ~2 ~5 ~11 minecraft:stone_bricks
+setblock ~2 ~3 ~12 minecraft:mossy_stone_bricks
+fill ~2 ~3 ~15 ~2 ~5 ~15 minecraft:stone_bricks
+setblock ~2 ~3 ~17 minecraft:stone_bricks
+setblock ~2 ~3 ~18 minecraft:cracked_stone_bricks
+fill ~2 ~3 ~19 ~2 ~5 ~19 minecraft:stone_bricks
+setblock ~12 ~3 ~0 minecraft:cracked_stone_bricks
+fill ~12 ~3 ~1 ~12 ~4 ~2 minecraft:stone_bricks
+fill ~12 ~3 ~24 ~14 ~5 ~24 minecraft:stone_bricks
+fill ~12 ~3 ~25 ~12 ~5 ~26 minecraft:stone_bricks
+fill ~13 ~3 ~0 ~13 ~5 ~0 minecraft:stone_bricks
+fill ~13 ~3 ~1 ~13 ~3 ~2 minecraft:cracked_stone_bricks
+fill ~13 ~3 ~25 ~14 ~3 ~25 minecraft:cracked_stone_bricks
+setblock ~13 ~3 ~26 minecraft:mossy_stone_bricks
+setblock ~14 ~3 ~0 minecraft:cracked_stone_bricks
+fill ~14 ~3 ~1 ~14 ~5 ~2 minecraft:stone_bricks
+fill ~14 ~3 ~26 ~14 ~5 ~26 minecraft:stone_bricks
+fill ~15 ~3 ~0 ~15 ~5 ~0 minecraft:stone_bricks
+fill ~16 ~3 ~2 ~16 ~5 ~2 minecraft:stone_bricks
+fill ~16 ~3 ~24 ~18 ~4 ~24 minecraft:stone_bricks
+setblock ~17 ~3 ~0 minecraft:mossy_stone_bricks
+fill ~17 ~3 ~1 ~17 ~5 ~1 minecraft:stone_bricks
+setblock ~17 ~3 ~2 minecraft:mossy_stone_bricks
+fill ~17 ~3 ~25 ~18 ~4 ~25 minecraft:stone_bricks
+setblock ~17 ~3 ~26 minecraft:mossy_stone_bricks
+fill ~18 ~3 ~0 ~28 ~3 ~0 minecraft:stone_bricks
+fill ~18 ~3 ~1 ~19 ~3 ~1 minecraft:cracked_stone_bricks
+fill ~18 ~3 ~2 ~19 ~4 ~2 minecraft:stone_bricks
+fill ~18 ~3 ~26 ~20 ~6 ~26 minecraft:stone_bricks
+setblock ~19 ~3 ~24 minecraft:deepslate_bricks
+fill ~20 ~3 ~1 ~22 ~4 ~2 minecraft:stone_bricks
+fill ~20 ~3 ~24 ~20 ~3 ~25 minecraft:cracked_stone_bricks
+fill ~21 ~3 ~24 ~28 ~3 ~24 minecraft:stone_bricks
+fill ~21 ~3 ~25 ~21 ~5 ~25 minecraft:stone_bricks
+setblock ~21 ~3 ~26 minecraft:cracked_stone_bricks
+setblock ~22 ~3 ~25 minecraft:cracked_stone_bricks
+fill ~22 ~3 ~26 ~22 ~4 ~26 minecraft:stone_bricks
+fill ~23 ~3 ~1 ~23 ~4 ~1 minecraft:cracked_stone_bricks
+fill ~23 ~3 ~2 ~23 ~5 ~2 minecraft:stone_bricks
+fill ~23 ~3 ~25 ~27 ~3 ~26 minecraft:stone_bricks
+fill ~24 ~3 ~1 ~24 ~4 ~2 minecraft:stone_bricks
+fill ~25 ~3 ~2 ~28 ~3 ~2 minecraft:stone_bricks
+fill ~28 ~3 ~1 ~29 ~3 ~1 minecraft:stone_bricks
+setblock ~28 ~3 ~26 minecraft:stone_bricks
+fill ~29 ~3 ~26 ~30 ~3 ~26 minecraft:cracked_stone_bricks
+setblock ~30 ~3 ~0 minecraft:mossy_stone_bricks
+fill ~30 ~3 ~1 ~31 ~3 ~1 minecraft:cracked_stone_bricks
+fill ~31 ~3 ~0 ~33 ~3 ~0 minecraft:stone_bricks
+fill ~31 ~3 ~2 ~33 ~4 ~2 minecraft:stone_bricks
+setblock ~31 ~3 ~24 minecraft:deepslate_bricks
+fill ~31 ~3 ~25 ~31 ~3 ~26 minecraft:cracked_stone_bricks
+setblock ~32 ~3 ~1 minecraft:mossy_stone_bricks
+setblock ~32 ~3 ~24 minecraft:mossy_stone_bricks
+fill ~32 ~3 ~25 ~34 ~5 ~25 minecraft:stone_bricks
+setblock ~32 ~3 ~26 minecraft:cracked_stone_bricks
+setblock ~33 ~3 ~1 minecraft:cracked_stone_bricks
+setblock ~34 ~3 ~2 minecraft:cracked_stone_bricks
+fill ~44 ~3 ~7 ~44 ~3 ~8 minecraft:stone_bricks
+setblock ~44 ~3 ~9 minecraft:mossy_stone_bricks
+fill ~44 ~3 ~10 ~44 ~3 ~11 minecraft:stone_bricks
+setblock ~44 ~3 ~12 minecraft:mossy_stone_bricks
+fill ~44 ~3 ~13 ~44 ~3 ~14 minecraft:stone_bricks
+fill ~44 ~3 ~15 ~44 ~3 ~18 minecraft:mossy_stone_bricks
+setblock ~44 ~3 ~19 minecraft:stone_bricks
+fill ~45 ~3 ~8 ~45 ~5 ~8 minecraft:stone_bricks
+setblock ~45 ~3 ~10 minecraft:mossy_stone_bricks
+fill ~45 ~3 ~11 ~45 ~4 ~11 minecraft:stone_bricks
+fill ~45 ~3 ~12 ~45 ~3 ~13 minecraft:cracked_stone_bricks
+setblock ~45 ~3 ~14 minecraft:stone_bricks
+fill ~45 ~3 ~16 ~45 ~5 ~16 minecraft:stone_bricks
+fill ~45 ~3 ~17 ~45 ~3 ~18 minecraft:cracked_stone_bricks
+fill ~46 ~3 ~9 ~46 ~4 ~14 minecraft:stone_bricks
+setblock ~46 ~3 ~16 minecraft:cracked_stone_bricks
+fill ~46 ~3 ~17 ~46 ~5 ~18 minecraft:stone_bricks
+setblock ~46 ~3 ~19 minecraft:mossy_stone_bricks
+fill ~0 ~4 ~9 ~0 ~5 ~9 minecraft:stone_bricks
+setblock ~0 ~4 ~15 minecraft:stone_bricks
+setblock ~0 ~4 ~16 minecraft:cracked_stone_bricks
+fill ~0 ~4 ~17 ~1 ~5 ~17 minecraft:stone_bricks
+fill ~0 ~4 ~18 ~1 ~4 ~18 minecraft:cracked_stone_bricks
+fill ~0 ~4 ~19 ~1 ~4 ~19 minecraft:stone_bricks
+setblock ~1 ~4 ~11 minecraft:cracked_stone_bricks
+fill ~2 ~4 ~12 ~2 ~5 ~12 minecraft:stone_bricks
+setblock ~2 ~4 ~17 minecraft:cracked_stone_bricks
+setblock ~2 ~4 ~18 minecraft:deepslate_bricks
+setblock ~12 ~4 ~0 minecraft:stone_bricks
+fill ~13 ~4 ~1 ~13 ~5 ~2 minecraft:stone_bricks
+fill ~13 ~4 ~25 ~14 ~4 ~25 minecraft:stone_bricks
+setblock ~13 ~4 ~26 minecraft:cracked_stone_bricks
+fill ~14 ~4 ~0 ~14 ~5 ~0 minecraft:stone_bricks
+fill ~16 ~4 ~0 ~20 ~5 ~0 minecraft:stone_bricks
+setblock ~16 ~4 ~1 minecraft:cracked_stone_bricks
+fill ~17 ~4 ~2 ~17 ~5 ~2 minecraft:stone_bricks
+fill ~17 ~4 ~26 ~17 ~5 ~26 minecraft:stone_bricks
+fill ~18 ~4 ~1 ~19 ~5 ~1 minecraft:stone_bricks
+fill ~19 ~4 ~24 ~22 ~4 ~24 minecraft:stone_bricks
+setblock ~20 ~4 ~25 minecraft:cracked_stone_bricks
+setblock ~21 ~4 ~0 minecraft:cracked_stone_bricks
+setblock ~21 ~4 ~26 minecraft:deepslate_bricks
+fill ~22 ~4 ~0 ~24 ~5 ~0 minecraft:stone_bricks
+setblock ~22 ~4 ~25 minecraft:deepslate_bricks
+setblock ~23 ~4 ~24 minecraft:cracked_stone_bricks
+fill ~23 ~4 ~25 ~23 ~4 ~26 minecraft:stone_bricks
+fill ~24 ~4 ~24 ~24 ~5 ~26 minecraft:stone_bricks
+setblock ~25 ~4 ~0 minecraft:deepslate_bricks
+setblock ~25 ~4 ~2 minecraft:deepslate_bricks
+setblock ~25 ~4 ~24 minecraft:deepslate_bricks
+fill ~25 ~4 ~25 ~27 ~4 ~25 minecraft:stone_bricks
+fill ~25 ~4 ~26 ~26 ~6 ~26 minecraft:stone_bricks
+fill ~26 ~4 ~0 ~28 ~5 ~0 minecraft:stone_bricks
+fill ~26 ~4 ~2 ~27 ~4 ~2 minecraft:stone_bricks
+fill ~26 ~4 ~24 ~28 ~4 ~24 minecraft:stone_bricks
+setblock ~27 ~4 ~26 minecraft:cracked_stone_bricks
+setblock ~28 ~4 ~1 minecraft:stone_bricks
+setblock ~28 ~4 ~2 minecraft:cracked_stone_bricks
+fill ~28 ~4 ~25 ~28 ~4 ~26 minecraft:cracked_stone_bricks
+setblock ~29 ~4 ~1 minecraft:cracked_stone_bricks
+fill ~29 ~4 ~26 ~30 ~4 ~26 minecraft:stone_bricks
+fill ~30 ~4 ~0 ~32 ~4 ~0 minecraft:stone_bricks
+setblock ~30 ~4 ~1 minecraft:deepslate_bricks
+setblock ~30 ~4 ~2 minecraft:cracked_stone_bricks
+setblock ~30 ~4 ~24 minecraft:deepslate_bricks
+fill ~31 ~4 ~1 ~33 ~5 ~1 minecraft:stone_bricks
+fill ~31 ~4 ~24 ~32 ~5 ~24 minecraft:stone_bricks
+fill ~31 ~4 ~25 ~31 ~5 ~26 minecraft:stone_bricks
+fill ~32 ~4 ~26 ~32 ~5 ~26 minecraft:stone_bricks
+setblock ~33 ~4 ~0 minecraft:cracked_stone_bricks
+setblock ~33 ~4 ~26 minecraft:deepslate_bricks
+fill ~34 ~4 ~2 ~34 ~5 ~2 minecraft:stone_bricks
+fill ~44 ~4 ~7 ~44 ~5 ~7 minecraft:stone_bricks
+setblock ~44 ~4 ~8 minecraft:cracked_stone_bricks
+fill ~44 ~4 ~9 ~45 ~5 ~9 minecraft:stone_bricks
+fill ~44 ~4 ~10 ~44 ~5 ~10 minecraft:stone_bricks
+setblock ~44 ~4 ~11 minecraft:cracked_stone_bricks
+fill ~44 ~4 ~12 ~45 ~5 ~12 minecraft:stone_bricks
+fill ~44 ~4 ~13 ~44 ~4 ~14 minecraft:cracked_stone_bricks
+fill ~44 ~4 ~15 ~44 ~4 ~16 minecraft:stone_bricks
+fill ~44 ~4 ~17 ~44 ~5 ~17 minecraft:cracked_stone_bricks
+fill ~44 ~4 ~18 ~44 ~5 ~18 minecraft:stone_bricks
+setblock ~44 ~4 ~19 minecraft:cracked_stone_bricks
+setblock ~45 ~4 ~10 minecraft:cracked_stone_bricks
+fill ~45 ~4 ~13 ~45 ~5 ~13 minecraft:stone_bricks
+setblock ~45 ~4 ~14 minecraft:cracked_stone_bricks
+fill ~45 ~4 ~17 ~45 ~4 ~18 minecraft:stone_bricks
+fill ~46 ~4 ~16 ~46 ~5 ~16 minecraft:stone_bricks
+fill ~46 ~4 ~19 ~46 ~5 ~19 minecraft:stone_bricks
+fill ~0 ~5 ~10 ~0 ~5 ~12 minecraft:stone_bricks
+setblock ~0 ~5 ~13 minecraft:cracked_stone_bricks
+fill ~0 ~5 ~14 ~1 ~5 ~14 minecraft:stone_bricks
+setblock ~0 ~5 ~15 minecraft:cracked_stone_bricks
+setblock ~0 ~5 ~16 minecraft:stone_bricks
+setblock ~0 ~5 ~18 minecraft:stone_bricks
+setblock ~0 ~5 ~19 minecraft:cracked_stone_bricks
+setblock ~1 ~5 ~11 minecraft:stone_bricks
+setblock ~1 ~5 ~15 minecraft:stone_bricks
+fill ~1 ~5 ~16 ~2 ~5 ~16 minecraft:cracked_stone_bricks
+setblock ~1 ~5 ~18 minecraft:cracked_stone_bricks
+setblock ~1 ~5 ~19 minecraft:stone_bricks
+fill ~2 ~5 ~17 ~2 ~5 ~18 minecraft:stone_bricks
 setblock ~12 ~5 ~0 minecraft:cracked_stone_bricks
-fill ~13 ~5 ~25 ~13 ~5 ~26 minecraft:cracked_deepslate_bricks
-fill ~14 ~5 ~1 ~15 ~5 ~1 minecraft:cracked_stone_bricks
-fill ~14 ~5 ~26 ~14 ~6 ~26 minecraft:deepslate_bricks
-setblock ~15 ~5 ~2 minecraft:stone_bricks
-setblock ~15 ~5 ~25 minecraft:stone_bricks
-fill ~16 ~5 ~0 ~16 ~6 ~0 minecraft:stone_bricks
-setblock ~16 ~5 ~1 minecraft:deepslate_bricks
-fill ~17 ~5 ~0 ~17 ~5 ~1 minecraft:cracked_deepslate_bricks
-fill ~17 ~5 ~2 ~19 ~5 ~2 minecraft:stone_bricks
-fill ~18 ~5 ~0 ~21 ~5 ~1 minecraft:stone_bricks
-fill ~18 ~5 ~24 ~19 ~5 ~24 minecraft:stone_bricks
-setblock ~19 ~5 ~25 minecraft:deepslate_bricks
-setblock ~19 ~5 ~26 minecraft:cracked_deepslate_bricks
-setblock ~20 ~5 ~2 minecraft:cracked_stone_bricks
-setblock ~20 ~5 ~24 minecraft:deepslate_bricks
-setblock ~20 ~5 ~25 minecraft:cracked_deepslate_bricks
-fill ~20 ~5 ~26 ~20 ~6 ~26 minecraft:deepslate_bricks
-setblock ~21 ~5 ~2 minecraft:stone_bricks
-fill ~21 ~5 ~25 ~22 ~5 ~25 minecraft:deepslate_bricks
-setblock ~21 ~5 ~26 minecraft:cracked_deepslate_bricks
-setblock ~22 ~5 ~0 minecraft:cracked_stone_bricks
-fill ~22 ~5 ~1 ~22 ~5 ~2 minecraft:stone_bricks
-fill ~23 ~5 ~0 ~24 ~5 ~1 minecraft:stone_bricks
-setblock ~23 ~5 ~2 minecraft:stone_bricks
-fill ~23 ~5 ~26 ~23 ~6 ~26 minecraft:deepslate_bricks
-setblock ~24 ~5 ~2 minecraft:deepslate_bricks
-fill ~24 ~5 ~24 ~27 ~5 ~24 minecraft:deepslate_bricks
-fill ~24 ~5 ~25 ~24 ~5 ~26 minecraft:deepslate_bricks
-fill ~25 ~5 ~0 ~27 ~6 ~0 minecraft:deepslate_bricks
-fill ~25 ~5 ~1 ~26 ~5 ~1 minecraft:deepslate_bricks
-setblock ~25 ~5 ~2 minecraft:cracked_deepslate_bricks
-fill ~25 ~5 ~25 ~25 ~5 ~26 minecraft:cracked_deepslate_bricks
-fill ~26 ~5 ~2 ~27 ~5 ~2 minecraft:deepslate_bricks
-fill ~26 ~5 ~25 ~27 ~5 ~25 minecraft:deepslate_bricks
-setblock ~26 ~5 ~26 minecraft:cracked_deepslate_bricks
-setblock ~27 ~5 ~1 minecraft:cracked_deepslate_bricks
+setblock ~12 ~5 ~1 minecraft:stone_bricks
+setblock ~12 ~5 ~2 minecraft:cracked_stone_bricks
+fill ~13 ~5 ~25 ~13 ~5 ~26 minecraft:stone_bricks
+setblock ~14 ~5 ~25 minecraft:cracked_stone_bricks
+fill ~15 ~5 ~1 ~16 ~5 ~1 minecraft:stone_bricks
+setblock ~15 ~5 ~2 minecraft:cracked_stone_bricks
+setblock ~16 ~5 ~24 minecraft:cracked_stone_bricks
+setblock ~16 ~5 ~26 minecraft:cracked_stone_bricks
+setblock ~17 ~5 ~24 minecraft:stone_bricks
+setblock ~17 ~5 ~25 minecraft:cracked_stone_bricks
+setblock ~18 ~5 ~2 minecraft:cracked_stone_bricks
+fill ~18 ~5 ~24 ~19 ~5 ~24 minecraft:cracked_stone_bricks
+setblock ~18 ~5 ~25 minecraft:stone_bricks
+setblock ~19 ~5 ~2 minecraft:stone_bricks
+fill ~20 ~5 ~1 ~20 ~5 ~2 minecraft:stone_bricks
+fill ~20 ~5 ~24 ~23 ~5 ~24 minecraft:stone_bricks
+setblock ~20 ~5 ~25 minecraft:stone_bricks
+fill ~21 ~5 ~0 ~21 ~5 ~2 minecraft:stone_bricks
+setblock ~21 ~5 ~26 minecraft:stone_bricks
+fill ~22 ~5 ~1 ~22 ~5 ~2 minecraft:cracked_stone_bricks
+fill ~22 ~5 ~25 ~23 ~5 ~25 minecraft:stone_bricks
+fill ~22 ~5 ~26 ~23 ~5 ~26 minecraft:cracked_stone_bricks
+setblock ~23 ~5 ~1 minecraft:stone_bricks
+fill ~24 ~5 ~1 ~25 ~5 ~1 minecraft:cracked_stone_bricks
+fill ~24 ~5 ~2 ~26 ~5 ~2 minecraft:stone_bricks
+fill ~25 ~5 ~0 ~25 ~6 ~0 minecraft:stone_bricks
+fill ~25 ~5 ~24 ~27 ~5 ~24 minecraft:stone_bricks
+setblock ~25 ~5 ~25 minecraft:stone_bricks
+fill ~26 ~5 ~1 ~27 ~5 ~1 minecraft:stone_bricks
+fill ~26 ~5 ~25 ~27 ~5 ~25 minecraft:cracked_stone_bricks
+setblock ~27 ~5 ~2 minecraft:cracked_stone_bricks
 fill ~27 ~5 ~26 ~27 ~6 ~26 minecraft:stone_bricks
-fill ~28 ~5 ~24 ~28 ~5 ~26 minecraft:stone_bricks
-fill ~29 ~5 ~24 ~30 ~5 ~24 minecraft:cracked_stone_bricks
-fill ~29 ~5 ~25 ~30 ~5 ~25 minecraft:stone_bricks
-fill ~30 ~5 ~0 ~32 ~5 ~0 minecraft:stone_bricks
-fill ~30 ~5 ~1 ~31 ~5 ~1 minecraft:cracked_stone_bricks
-setblock ~31 ~5 ~24 minecraft:stone_bricks
-fill ~31 ~5 ~26 ~31 ~6 ~26 minecraft:stone_bricks
-setblock ~32 ~5 ~1 minecraft:stone_bricks
-fill ~32 ~5 ~2 ~33 ~5 ~2 minecraft:cracked_deepslate_bricks
-setblock ~32 ~5 ~24 minecraft:cracked_stone_bricks
-setblock ~32 ~5 ~25 minecraft:cracked_deepslate_bricks
-fill ~32 ~5 ~26 ~32 ~6 ~26 minecraft:deepslate_bricks
-fill ~33 ~5 ~0 ~33 ~5 ~1 minecraft:deepslate_bricks
-fill ~33 ~5 ~24 ~34 ~5 ~26 minecraft:deepslate_bricks
-setblock ~34 ~5 ~0 minecraft:cracked_deepslate_bricks
-fill ~34 ~5 ~1 ~34 ~5 ~2 minecraft:deepslate_bricks
-fill ~44 ~5 ~7 ~45 ~5 ~7 minecraft:deepslate_bricks
-fill ~44 ~5 ~8 ~44 ~5 ~9 minecraft:deepslate_bricks
-fill ~44 ~5 ~10 ~44 ~5 ~11 minecraft:stone_bricks
-setblock ~44 ~5 ~12 minecraft:cracked_stone_bricks
-fill ~44 ~5 ~17 ~45 ~5 ~17 minecraft:cracked_stone_bricks
-setblock ~45 ~5 ~11 minecraft:cracked_stone_bricks
-setblock ~45 ~5 ~12 minecraft:stone_bricks
-fill ~45 ~5 ~15 ~46 ~5 ~15 minecraft:stone_bricks
-setblock ~45 ~5 ~16 minecraft:stone_bricks
-fill ~46 ~5 ~16 ~46 ~5 ~17 minecraft:cracked_stone_bricks
-fill ~46 ~5 ~18 ~46 ~6 ~19 minecraft:stone_bricks
-fill ~0 ~6 ~7 ~0 ~6 ~10 minecraft:stone_bricks
-setblock ~0 ~6 ~11 minecraft:cracked_stone_bricks
-fill ~0 ~6 ~16 ~0 ~6 ~17 minecraft:stone_bricks
-setblock ~0 ~6 ~18 minecraft:cracked_stone_bricks
+setblock ~28 ~5 ~1 minecraft:cracked_stone_bricks
+setblock ~28 ~5 ~2 minecraft:stone_bricks
+setblock ~28 ~5 ~24 minecraft:deepslate_bricks
+fill ~28 ~5 ~25 ~28 ~5 ~26 minecraft:stone_bricks
+setblock ~29 ~5 ~0 minecraft:cracked_stone_bricks
+setblock ~29 ~5 ~1 minecraft:stone_bricks
+setblock ~29 ~5 ~2 minecraft:cracked_stone_bricks
+fill ~29 ~5 ~26 ~30 ~5 ~26 minecraft:cracked_stone_bricks
+fill ~30 ~5 ~0 ~31 ~5 ~0 minecraft:stone_bricks
+setblock ~30 ~5 ~1 minecraft:cracked_stone_bricks
+setblock ~30 ~5 ~2 minecraft:deepslate_bricks
+setblock ~30 ~5 ~24 minecraft:stone_bricks
+setblock ~31 ~5 ~2 minecraft:cracked_stone_bricks
+setblock ~32 ~5 ~0 minecraft:cracked_stone_bricks
+fill ~32 ~5 ~2 ~33 ~5 ~2 minecraft:stone_bricks
+setblock ~33 ~5 ~0 minecraft:stone_bricks
+setblock ~33 ~5 ~24 minecraft:stone_bricks
+setblock ~33 ~5 ~26 minecraft:stone_bricks
+setblock ~34 ~5 ~24 minecraft:cracked_stone_bricks
+setblock ~44 ~5 ~8 minecraft:stone_bricks
+setblock ~44 ~5 ~11 minecraft:stone_bricks
+fill ~44 ~5 ~13 ~44 ~5 ~15 minecraft:stone_bricks
+setblock ~44 ~5 ~16 minecraft:cracked_stone_bricks
+setblock ~44 ~5 ~19 minecraft:stone_bricks
+setblock ~45 ~5 ~7 minecraft:deepslate_bricks
+setblock ~45 ~5 ~10 minecraft:stone_bricks
+setblock ~45 ~5 ~11 minecraft:deepslate_bricks
+fill ~45 ~5 ~14 ~46 ~5 ~14 minecraft:stone_bricks
+setblock ~45 ~5 ~17 minecraft:cracked_stone_bricks
+setblock ~45 ~5 ~18 minecraft:stone_bricks
+setblock ~46 ~5 ~7 minecraft:cracked_stone_bricks
+fill ~46 ~5 ~9 ~46 ~5 ~12 minecraft:stone_bricks
+setblock ~46 ~5 ~13 minecraft:cracked_stone_bricks
+setblock ~0 ~6 ~7 minecraft:stone_bricks
+fill ~0 ~6 ~9 ~0 ~6 ~13 minecraft:deepslate_bricks
+setblock ~0 ~6 ~14 minecraft:cracked_deepslate_bricks
+fill ~0 ~6 ~15 ~0 ~6 ~16 minecraft:deepslate_bricks
+setblock ~0 ~6 ~17 minecraft:cracked_deepslate_bricks
+setblock ~0 ~6 ~18 minecraft:deepslate_bricks
 setblock ~0 ~6 ~19 minecraft:stone_bricks
-fill ~7 ~6 ~0 ~12 ~6 ~0 minecraft:stone_bricks
-fill ~7 ~6 ~26 ~9 ~6 ~26 minecraft:stone_bricks
-setblock ~10 ~6 ~26 minecraft:cracked_stone_bricks
-setblock ~11 ~6 ~26 minecraft:deepslate_bricks
-setblock ~12 ~6 ~26 minecraft:cracked_deepslate_bricks
-setblock ~13 ~6 ~0 minecraft:cracked_stone_bricks
-setblock ~13 ~6 ~26 minecraft:deepslate_bricks
-setblock ~14 ~6 ~0 minecraft:stone_bricks
-fill ~15 ~6 ~26 ~16 ~6 ~26 minecraft:cracked_stone_bricks
-fill ~17 ~6 ~0 ~24 ~6 ~0 minecraft:stone_bricks
-setblock ~18 ~6 ~26 minecraft:stone_bricks
-setblock ~19 ~6 ~26 minecraft:deepslate_bricks
-setblock ~21 ~6 ~26 minecraft:deepslate_bricks
-fill ~24 ~6 ~26 ~25 ~6 ~26 minecraft:deepslate_bricks
-setblock ~26 ~6 ~26 minecraft:cracked_stone_bricks
-setblock ~28 ~6 ~0 minecraft:deepslate_bricks
-setblock ~28 ~6 ~26 minecraft:stone_bricks
-setblock ~29 ~6 ~0 minecraft:cracked_stone_bricks
-setblock ~30 ~6 ~0 minecraft:stone_bricks
-setblock ~31 ~6 ~0 minecraft:cracked_stone_bricks
-setblock ~32 ~6 ~0 minecraft:stone_bricks
-fill ~33 ~6 ~0 ~37 ~6 ~0 minecraft:deepslate_bricks
-fill ~33 ~6 ~26 ~34 ~6 ~26 minecraft:deepslate_bricks
-fill ~35 ~6 ~26 ~39 ~6 ~26 minecraft:stone_bricks
-fill ~38 ~6 ~0 ~39 ~6 ~0 minecraft:cracked_deepslate_bricks
-setblock ~46 ~6 ~8 minecraft:stone_bricks
-setblock ~46 ~6 ~9 minecraft:cracked_stone_bricks
-fill ~46 ~6 ~10 ~46 ~6 ~11 minecraft:stone_bricks
-setblock ~46 ~6 ~13 minecraft:cracked_stone_bricks
-fill ~46 ~6 ~14 ~46 ~6 ~17 minecraft:stone_bricks
+setblock ~7 ~6 ~0 minecraft:stone_bricks
+fill ~7 ~6 ~26 ~11 ~6 ~26 minecraft:stone_bricks
+setblock ~8 ~6 ~0 minecraft:deepslate_bricks
+fill ~9 ~6 ~0 ~10 ~6 ~0 minecraft:stone_bricks
+setblock ~11 ~6 ~0 minecraft:cracked_stone_bricks
+fill ~12 ~6 ~0 ~13 ~6 ~0 minecraft:deepslate_bricks
+fill ~12 ~6 ~26 ~14 ~6 ~26 minecraft:deepslate_bricks
+setblock ~14 ~6 ~0 minecraft:polished_blackstone_bricks
+setblock ~15 ~6 ~0 minecraft:deepslate_bricks
+setblock ~15 ~6 ~26 minecraft:cracked_deepslate_bricks
+setblock ~16 ~6 ~0 minecraft:cracked_deepslate_bricks
+setblock ~16 ~6 ~26 minecraft:polished_blackstone_bricks
+setblock ~17 ~6 ~0 minecraft:deepslate_bricks
+setblock ~17 ~6 ~26 minecraft:deepslate_bricks
+setblock ~18 ~6 ~0 minecraft:cracked_stone_bricks
+fill ~19 ~6 ~0 ~22 ~6 ~0 minecraft:stone_bricks
+setblock ~21 ~6 ~26 minecraft:cracked_stone_bricks
+fill ~22 ~6 ~26 ~24 ~6 ~26 minecraft:stone_bricks
+setblock ~23 ~6 ~0 minecraft:cracked_stone_bricks
+setblock ~24 ~6 ~0 minecraft:stone_bricks
+setblock ~26 ~6 ~0 minecraft:cracked_stone_bricks
+fill ~27 ~6 ~0 ~28 ~6 ~0 minecraft:stone_bricks
+fill ~28 ~6 ~26 ~33 ~6 ~26 minecraft:deepslate_bricks
+setblock ~29 ~6 ~0 minecraft:deepslate_bricks
+setblock ~30 ~6 ~0 minecraft:polished_blackstone_bricks
+setblock ~31 ~6 ~0 minecraft:cracked_deepslate_bricks
+setblock ~32 ~6 ~0 minecraft:deepslate_bricks
+setblock ~33 ~6 ~0 minecraft:cracked_deepslate_bricks
+setblock ~34 ~6 ~0 minecraft:deepslate_bricks
+setblock ~34 ~6 ~26 minecraft:polished_blackstone_bricks
+fill ~35 ~6 ~0 ~39 ~6 ~0 minecraft:stone_bricks
+fill ~35 ~6 ~26 ~37 ~6 ~26 minecraft:stone_bricks
+setblock ~38 ~6 ~26 minecraft:cracked_stone_bricks
+setblock ~39 ~6 ~26 minecraft:stone_bricks
+setblock ~46 ~6 ~7 minecraft:deepslate_bricks
+setblock ~46 ~6 ~8 minecraft:cracked_deepslate_bricks
+fill ~46 ~6 ~9 ~46 ~6 ~10 minecraft:deepslate_bricks
+fill ~46 ~6 ~11 ~46 ~6 ~12 minecraft:cracked_deepslate_bricks
+fill ~46 ~6 ~13 ~46 ~6 ~14 minecraft:deepslate_bricks
+fill ~46 ~6 ~15 ~46 ~6 ~17 minecraft:cracked_deepslate_bricks
+setblock ~46 ~6 ~18 minecraft:deepslate_bricks
+setblock ~46 ~6 ~19 minecraft:cracked_deepslate_bricks
 
 # the plinth lip: cobblestone stairs at y 1 on the outer faces between the gates and the towers, and the timber lintels of the gates and the water gates
 fill ~0 ~1 ~7 ~0 ~1 ~19 minecraft:cobblestone_stairs[facing=east,half=bottom]
@@ -1599,94 +1668,72 @@ setblock ~45 ~6 ~10 minecraft:cracked_stone_bricks
 setblock ~45 ~6 ~11 minecraft:cobblestone
 fill ~45 ~6 ~12 ~45 ~6 ~13 minecraft:stone_bricks
 fill ~45 ~6 ~16 ~45 ~6 ~17 minecraft:mossy_stone_bricks
-setblock ~0 ~7 ~7 minecraft:deepslate_bricks
-setblock ~0 ~7 ~10 minecraft:cracked_stone_bricks
-fill ~0 ~7 ~11 ~0 ~7 ~13 minecraft:stone_bricks
-fill ~0 ~7 ~16 ~0 ~7 ~19 minecraft:cracked_stone_bricks
+setblock ~0 ~7 ~7 minecraft:stone_bricks
+fill ~0 ~7 ~10 ~0 ~7 ~13 minecraft:stone_bricks
+fill ~0 ~7 ~16 ~0 ~7 ~19 minecraft:stone_bricks
 setblock ~2 ~7 ~10 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
 setblock ~2 ~7 ~16 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
 setblock ~7 ~7 ~0 minecraft:stone_bricks
-fill ~7 ~7 ~26 ~7 ~8 ~26 minecraft:deepslate_bricks
-fill ~10 ~7 ~0 ~13 ~7 ~0 minecraft:stone_bricks
-fill ~10 ~7 ~26 ~13 ~7 ~26 minecraft:stone_bricks
+fill ~7 ~7 ~26 ~7 ~8 ~26 minecraft:stone_bricks
+fill ~10 ~7 ~0 ~13 ~8 ~0 minecraft:stone_bricks
+fill ~10 ~7 ~26 ~13 ~8 ~26 minecraft:stone_bricks
 setblock ~13 ~7 ~2 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
 setblock ~13 ~7 ~24 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
-setblock ~16 ~7 ~0 minecraft:cracked_stone_bricks
-fill ~16 ~7 ~26 ~17 ~7 ~26 minecraft:deepslate_bricks
-fill ~17 ~7 ~0 ~18 ~7 ~0 minecraft:stone_bricks
-fill ~18 ~7 ~26 ~18 ~8 ~26 minecraft:stone_bricks
-fill ~19 ~7 ~0 ~19 ~8 ~0 minecraft:deepslate_bricks
-setblock ~19 ~7 ~26 minecraft:cracked_stone_bricks
-setblock ~22 ~7 ~0 minecraft:deepslate_bricks
-fill ~22 ~7 ~26 ~25 ~7 ~26 minecraft:deepslate_bricks
-fill ~23 ~7 ~0 ~25 ~7 ~0 minecraft:stone_bricks
+fill ~16 ~7 ~0 ~19 ~8 ~0 minecraft:stone_bricks
+fill ~16 ~7 ~26 ~16 ~8 ~26 minecraft:stone_bricks
+fill ~17 ~7 ~26 ~19 ~7 ~26 minecraft:cracked_stone_bricks
+fill ~22 ~7 ~0 ~24 ~7 ~0 minecraft:stone_bricks
+fill ~22 ~7 ~26 ~25 ~8 ~26 minecraft:stone_bricks
 setblock ~24 ~7 ~2 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
 setblock ~24 ~7 ~24 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
-fill ~28 ~7 ~0 ~29 ~8 ~0 minecraft:stone_bricks
-setblock ~28 ~7 ~26 minecraft:cracked_stone_bricks
-setblock ~29 ~7 ~26 minecraft:stone_bricks
-setblock ~30 ~7 ~0 minecraft:cracked_deepslate_bricks
-fill ~30 ~7 ~26 ~31 ~7 ~26 minecraft:cracked_stone_bricks
-setblock ~31 ~7 ~0 minecraft:deepslate_bricks
+setblock ~25 ~7 ~0 minecraft:cracked_stone_bricks
+fill ~28 ~7 ~0 ~31 ~8 ~0 minecraft:stone_bricks
+fill ~28 ~7 ~26 ~28 ~8 ~26 minecraft:stone_bricks
+fill ~29 ~7 ~26 ~30 ~7 ~26 minecraft:cracked_stone_bricks
+setblock ~31 ~7 ~26 minecraft:stone_bricks
 setblock ~33 ~7 ~2 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
 setblock ~33 ~7 ~24 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
-fill ~34 ~7 ~0 ~35 ~7 ~0 minecraft:stone_bricks
-setblock ~34 ~7 ~26 minecraft:stone_bricks
-setblock ~35 ~7 ~26 minecraft:cracked_stone_bricks
-setblock ~36 ~7 ~0 minecraft:deepslate_bricks
-fill ~36 ~7 ~26 ~37 ~7 ~26 minecraft:stone_bricks
-setblock ~37 ~7 ~0 minecraft:cracked_deepslate_bricks
+setblock ~34 ~7 ~0 minecraft:cracked_stone_bricks
+fill ~34 ~7 ~26 ~36 ~8 ~26 minecraft:stone_bricks
+fill ~35 ~7 ~0 ~35 ~8 ~0 minecraft:stone_bricks
+fill ~36 ~7 ~0 ~36 ~8 ~0 minecraft:cracked_stone_bricks
+setblock ~37 ~7 ~0 minecraft:stone_bricks
+setblock ~37 ~7 ~26 minecraft:cracked_stone_bricks
 setblock ~44 ~7 ~10 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
 setblock ~44 ~7 ~16 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
 fill ~46 ~7 ~7 ~46 ~8 ~7 minecraft:stone_bricks
-fill ~46 ~7 ~10 ~46 ~8 ~12 minecraft:stone_bricks
-setblock ~46 ~7 ~13 minecraft:cracked_stone_bricks
-setblock ~46 ~7 ~16 minecraft:deepslate_bricks
-fill ~46 ~7 ~17 ~46 ~7 ~19 minecraft:stone_bricks
-setblock ~0 ~8 ~7 minecraft:cracked_stone_bricks
-setblock ~0 ~8 ~10 minecraft:cracked_deepslate_bricks
-fill ~0 ~8 ~11 ~0 ~8 ~13 minecraft:deepslate_bricks
-setblock ~0 ~8 ~16 minecraft:deepslate_bricks
-fill ~0 ~8 ~17 ~0 ~8 ~19 minecraft:stone_bricks
+fill ~46 ~7 ~10 ~46 ~7 ~13 minecraft:stone_bricks
+fill ~46 ~7 ~16 ~46 ~8 ~17 minecraft:stone_bricks
+setblock ~46 ~7 ~18 minecraft:cracked_stone_bricks
+fill ~46 ~7 ~19 ~46 ~8 ~19 minecraft:stone_bricks
+setblock ~0 ~8 ~7 minecraft:deepslate_bricks
+fill ~0 ~8 ~10 ~0 ~8 ~11 minecraft:cracked_stone_bricks
+fill ~0 ~8 ~12 ~0 ~8 ~13 minecraft:stone_bricks
+fill ~0 ~8 ~16 ~0 ~8 ~17 minecraft:cracked_stone_bricks
+fill ~0 ~8 ~18 ~0 ~8 ~19 minecraft:stone_bricks
 setblock ~2 ~8 ~10 minecraft:lantern[hanging=false]
 setblock ~2 ~8 ~16 minecraft:lantern[hanging=false]
-setblock ~7 ~8 ~0 minecraft:deepslate_bricks
-fill ~10 ~8 ~0 ~11 ~8 ~0 minecraft:stone_bricks
-setblock ~10 ~8 ~26 minecraft:cracked_deepslate_bricks
-fill ~11 ~8 ~26 ~13 ~8 ~26 minecraft:stone_bricks
-fill ~12 ~8 ~0 ~13 ~8 ~0 minecraft:deepslate_bricks
+setblock ~7 ~8 ~0 minecraft:cracked_stone_bricks
 setblock ~13 ~8 ~2 minecraft:lantern[hanging=false]
 setblock ~13 ~8 ~24 minecraft:lantern[hanging=false]
-fill ~16 ~8 ~0 ~18 ~8 ~0 minecraft:deepslate_bricks
-setblock ~16 ~8 ~26 minecraft:stone_bricks
-setblock ~17 ~8 ~26 minecraft:cracked_stone_bricks
-setblock ~19 ~8 ~26 minecraft:stone_bricks
-setblock ~22 ~8 ~0 minecraft:cracked_deepslate_bricks
-setblock ~22 ~8 ~26 minecraft:stone_bricks
-fill ~23 ~8 ~0 ~25 ~8 ~0 minecraft:deepslate_bricks
-fill ~23 ~8 ~26 ~24 ~8 ~26 minecraft:cracked_stone_bricks
+fill ~17 ~8 ~26 ~19 ~8 ~26 minecraft:stone_bricks
+fill ~22 ~8 ~0 ~23 ~8 ~0 minecraft:stone_bricks
+setblock ~24 ~8 ~0 minecraft:cracked_stone_bricks
 setblock ~24 ~8 ~2 minecraft:lantern[hanging=false]
 setblock ~24 ~8 ~24 minecraft:lantern[hanging=false]
-setblock ~25 ~8 ~26 minecraft:stone_bricks
-setblock ~28 ~8 ~26 minecraft:cracked_deepslate_bricks
-fill ~29 ~8 ~26 ~31 ~8 ~26 minecraft:deepslate_bricks
-fill ~30 ~8 ~0 ~31 ~8 ~0 minecraft:stone_bricks
+setblock ~25 ~8 ~0 minecraft:stone_bricks
+fill ~29 ~8 ~26 ~30 ~8 ~26 minecraft:stone_bricks
+setblock ~31 ~8 ~26 minecraft:deepslate_bricks
 setblock ~33 ~8 ~2 minecraft:lantern[hanging=false]
 setblock ~33 ~8 ~24 minecraft:lantern[hanging=false]
 setblock ~34 ~8 ~0 minecraft:stone_bricks
-setblock ~34 ~8 ~26 minecraft:cracked_stone_bricks
-setblock ~35 ~8 ~0 minecraft:cracked_stone_bricks
-setblock ~35 ~8 ~26 minecraft:stone_bricks
-fill ~36 ~8 ~0 ~37 ~8 ~0 minecraft:stone_bricks
-setblock ~36 ~8 ~26 minecraft:cracked_stone_bricks
+setblock ~37 ~8 ~0 minecraft:cracked_stone_bricks
 setblock ~37 ~8 ~26 minecraft:stone_bricks
 setblock ~44 ~8 ~10 minecraft:lantern[hanging=false]
 setblock ~44 ~8 ~16 minecraft:lantern[hanging=false]
-setblock ~46 ~8 ~13 minecraft:stone_bricks
-setblock ~46 ~8 ~16 minecraft:cracked_stone_bricks
-setblock ~46 ~8 ~17 minecraft:stone_bricks
-setblock ~46 ~8 ~18 minecraft:cracked_stone_bricks
-setblock ~46 ~8 ~19 minecraft:stone_bricks
+fill ~46 ~8 ~10 ~46 ~8 ~11 minecraft:stone_bricks
+fill ~46 ~8 ~12 ~46 ~8 ~13 minecraft:cracked_stone_bricks
+setblock ~46 ~8 ~18 minecraft:stone_bricks
 setblock ~0 ~9 ~7 minecraft:stone_brick_slab[type=bottom]
 fill ~0 ~9 ~10 ~0 ~9 ~13 minecraft:stone_brick_slab[type=bottom]
 fill ~0 ~9 ~16 ~0 ~9 ~19 minecraft:stone_brick_slab[type=bottom]
@@ -1770,105 +1817,122 @@ setblock ~29 ~6 ~23 minecraft:stone_brick_stairs[facing=west,half=bottom]
 # corner tower at 0,0: walls y 1..11 with dark quoins, moss low
 setblock ~0 ~1 ~0 minecraft:stone_bricks
 fill ~0 ~1 ~6 ~0 ~2 ~6 minecraft:polished_blackstone_bricks
-fill ~1 ~1 ~6 ~2 ~1 ~6 minecraft:deepslate_bricks
-setblock ~3 ~1 ~6 minecraft:mossy_stone_bricks
-setblock ~5 ~1 ~6 minecraft:stone_bricks
+setblock ~1 ~1 ~6 minecraft:stone_bricks
+setblock ~2 ~1 ~6 minecraft:cracked_stone_bricks
+fill ~3 ~1 ~6 ~3 ~4 ~6 minecraft:stone_bricks
+fill ~5 ~1 ~6 ~6 ~1 ~6 minecraft:deepslate_bricks
 fill ~6 ~1 ~0 ~6 ~2 ~0 minecraft:cracked_deepslate_bricks
-fill ~6 ~1 ~1 ~6 ~1 ~3 minecraft:deepslate_bricks
-fill ~6 ~1 ~4 ~6 ~1 ~5 minecraft:stone_bricks
-fill ~6 ~1 ~6 ~6 ~2 ~6 minecraft:deepslate_bricks
-fill ~0 ~2 ~0 ~0 ~2 ~2 minecraft:cracked_deepslate_bricks
-setblock ~0 ~2 ~3 minecraft:deepslate_bricks
-fill ~0 ~2 ~4 ~0 ~4 ~4 minecraft:cracked_deepslate_bricks
-fill ~0 ~2 ~5 ~0 ~4 ~5 minecraft:deepslate_bricks
-fill ~1 ~2 ~0 ~4 ~2 ~0 minecraft:mossy_stone_bricks
-fill ~1 ~2 ~6 ~2 ~2 ~6 minecraft:cracked_deepslate_bricks
-setblock ~3 ~2 ~6 minecraft:cracked_stone_bricks
-fill ~5 ~2 ~0 ~5 ~3 ~0 minecraft:cracked_deepslate_bricks
-fill ~5 ~2 ~6 ~5 ~4 ~6 minecraft:mossy_stone_bricks
-fill ~6 ~2 ~1 ~6 ~3 ~3 minecraft:stone_bricks
-fill ~6 ~2 ~4 ~6 ~3 ~5 minecraft:mossy_stone_bricks
-fill ~0 ~3 ~0 ~1 ~3 ~0 minecraft:deepslate_bricks
-fill ~0 ~3 ~1 ~0 ~3 ~2 minecraft:deepslate_bricks
-fill ~0 ~3 ~6 ~1 ~4 ~6 minecraft:deepslate_bricks
-fill ~2 ~3 ~0 ~2 ~4 ~0 minecraft:mossy_stone_bricks
-setblock ~2 ~3 ~6 minecraft:cracked_deepslate_bricks
-fill ~3 ~3 ~6 ~3 ~6 ~6 minecraft:stone_bricks
+fill ~6 ~1 ~1 ~6 ~1 ~3 minecraft:stone_bricks
+setblock ~6 ~1 ~4 minecraft:mossy_stone_bricks
+fill ~6 ~1 ~5 ~6 ~2 ~5 minecraft:stone_bricks
+setblock ~0 ~2 ~0 minecraft:cracked_deepslate_bricks
+fill ~0 ~2 ~1 ~0 ~3 ~1 minecraft:mossy_stone_bricks
+fill ~0 ~2 ~2 ~0 ~2 ~4 minecraft:stone_bricks
+setblock ~0 ~2 ~5 minecraft:cracked_stone_bricks
+setblock ~1 ~2 ~0 minecraft:mossy_stone_bricks
+setblock ~1 ~2 ~6 minecraft:mossy_stone_bricks
+fill ~2 ~2 ~0 ~4 ~2 ~0 minecraft:stone_bricks
+fill ~2 ~2 ~6 ~2 ~3 ~6 minecraft:stone_bricks
+fill ~5 ~2 ~0 ~5 ~4 ~0 minecraft:cracked_stone_bricks
+fill ~5 ~2 ~6 ~5 ~4 ~6 minecraft:stone_bricks
+setblock ~6 ~2 ~1 minecraft:mossy_stone_bricks
+fill ~6 ~2 ~2 ~6 ~2 ~4 minecraft:stone_bricks
+setblock ~6 ~2 ~6 minecraft:deepslate_bricks
+fill ~0 ~3 ~0 ~0 ~4 ~0 minecraft:deepslate_bricks
+fill ~0 ~3 ~2 ~0 ~4 ~2 minecraft:stone_bricks
+fill ~0 ~3 ~4 ~0 ~4 ~5 minecraft:stone_bricks
+fill ~0 ~3 ~6 ~0 ~4 ~6 minecraft:deepslate_bricks
+setblock ~1 ~3 ~0 minecraft:cracked_stone_bricks
+fill ~1 ~3 ~6 ~1 ~4 ~6 minecraft:stone_bricks
+fill ~2 ~3 ~0 ~2 ~4 ~0 minecraft:stone_bricks
 setblock ~4 ~3 ~0 minecraft:mossy_stone_bricks
 setblock ~6 ~3 ~0 minecraft:polished_blackstone_bricks
+fill ~6 ~3 ~1 ~6 ~4 ~1 minecraft:stone_bricks
+setblock ~6 ~3 ~2 minecraft:cracked_stone_bricks
+fill ~6 ~3 ~3 ~6 ~4 ~3 minecraft:stone_bricks
+setblock ~6 ~3 ~4 minecraft:cracked_stone_bricks
+setblock ~6 ~3 ~5 minecraft:deepslate_bricks
 setblock ~6 ~3 ~6 minecraft:cracked_deepslate_bricks
-setblock ~0 ~4 ~0 minecraft:deepslate_bricks
-fill ~0 ~4 ~1 ~0 ~5 ~2 minecraft:stone_bricks
-setblock ~1 ~4 ~0 minecraft:cracked_stone_bricks
-fill ~2 ~4 ~6 ~2 ~6 ~6 minecraft:stone_bricks
-setblock ~4 ~4 ~0 minecraft:deepslate_bricks
+setblock ~0 ~4 ~1 minecraft:stone_bricks
+setblock ~1 ~4 ~0 minecraft:stone_bricks
+setblock ~2 ~4 ~6 minecraft:cracked_stone_bricks
+setblock ~4 ~4 ~0 minecraft:stone_bricks
 setblock ~4 ~4 ~6 minecraft:cracked_stone_bricks
-fill ~5 ~4 ~0 ~5 ~6 ~0 minecraft:stone_bricks
 setblock ~6 ~4 ~0 minecraft:cracked_deepslate_bricks
-fill ~6 ~4 ~1 ~6 ~6 ~1 minecraft:stone_bricks
-setblock ~6 ~4 ~2 minecraft:cracked_stone_bricks
-fill ~6 ~4 ~3 ~6 ~7 ~4 minecraft:stone_bricks
-setblock ~6 ~4 ~5 minecraft:mossy_stone_bricks
+setblock ~6 ~4 ~2 minecraft:stone_bricks
+fill ~6 ~4 ~4 ~6 ~4 ~5 minecraft:stone_bricks
 fill ~6 ~4 ~6 ~6 ~5 ~6 minecraft:deepslate_bricks
-setblock ~0 ~5 ~0 minecraft:cracked_deepslate_bricks
-fill ~0 ~5 ~3 ~0 ~5 ~5 minecraft:stone_bricks
-setblock ~0 ~5 ~6 minecraft:cracked_deepslate_bricks
-fill ~1 ~5 ~0 ~4 ~6 ~0 minecraft:stone_bricks
-fill ~1 ~5 ~6 ~1 ~6 ~6 minecraft:stone_bricks
-fill ~4 ~5 ~6 ~5 ~5 ~6 minecraft:stone_bricks
+fill ~0 ~5 ~0 ~1 ~5 ~0 minecraft:cracked_deepslate_bricks
+setblock ~0 ~5 ~1 minecraft:polished_blackstone_bricks
+fill ~0 ~5 ~2 ~0 ~5 ~4 minecraft:deepslate_bricks
+fill ~0 ~5 ~5 ~0 ~5 ~6 minecraft:cracked_deepslate_bricks
+fill ~1 ~5 ~6 ~2 ~5 ~6 minecraft:deepslate_bricks
+setblock ~2 ~5 ~0 minecraft:deepslate_bricks
+setblock ~3 ~5 ~0 minecraft:cracked_deepslate_bricks
+fill ~3 ~5 ~6 ~4 ~5 ~6 minecraft:cracked_deepslate_bricks
+setblock ~4 ~5 ~0 minecraft:deepslate_bricks
+setblock ~5 ~5 ~0 minecraft:polished_blackstone_bricks
+setblock ~5 ~5 ~6 minecraft:deepslate_bricks
 setblock ~6 ~5 ~0 minecraft:deepslate_bricks
-fill ~6 ~5 ~2 ~6 ~6 ~2 minecraft:stone_bricks
-fill ~6 ~5 ~5 ~6 ~8 ~5 minecraft:deepslate_bricks
+setblock ~6 ~5 ~1 minecraft:cracked_deepslate_bricks
+fill ~6 ~5 ~2 ~6 ~5 ~3 minecraft:deepslate_bricks
+setblock ~6 ~5 ~4 minecraft:stone_bricks
+setblock ~6 ~5 ~5 minecraft:deepslate_bricks
 setblock ~0 ~6 ~0 minecraft:deepslate_bricks
-fill ~0 ~6 ~1 ~0 ~6 ~2 minecraft:cracked_stone_bricks
-setblock ~0 ~6 ~3 minecraft:stone_bricks
-fill ~0 ~6 ~4 ~0 ~6 ~5 minecraft:cracked_stone_bricks
+fill ~0 ~6 ~1 ~0 ~6 ~3 minecraft:stone_bricks
+setblock ~0 ~6 ~4 minecraft:cracked_stone_bricks
+setblock ~0 ~6 ~5 minecraft:stone_bricks
 setblock ~0 ~6 ~6 minecraft:deepslate_bricks
-fill ~4 ~6 ~6 ~4 ~7 ~6 minecraft:cracked_stone_bricks
-fill ~5 ~6 ~6 ~5 ~7 ~6 minecraft:deepslate_bricks
+setblock ~1 ~6 ~0 minecraft:stone_bricks
+setblock ~1 ~6 ~6 minecraft:stone_bricks
+setblock ~2 ~6 ~0 minecraft:cracked_stone_bricks
+setblock ~2 ~6 ~6 minecraft:cracked_stone_bricks
+fill ~3 ~6 ~0 ~5 ~6 ~0 minecraft:stone_bricks
+fill ~3 ~6 ~6 ~5 ~8 ~6 minecraft:stone_bricks
 setblock ~6 ~6 ~0 minecraft:polished_blackstone_bricks
+fill ~6 ~6 ~1 ~6 ~6 ~3 minecraft:stone_bricks
+setblock ~6 ~6 ~4 minecraft:cracked_stone_bricks
+setblock ~6 ~6 ~5 minecraft:stone_bricks
 setblock ~6 ~6 ~6 minecraft:cracked_deepslate_bricks
 fill ~0 ~7 ~0 ~0 ~8 ~0 minecraft:cracked_deepslate_bricks
 fill ~0 ~7 ~6 ~0 ~8 ~6 minecraft:polished_blackstone_bricks
-setblock ~3 ~7 ~6 minecraft:cracked_stone_bricks
 setblock ~6 ~7 ~0 minecraft:deepslate_bricks
+fill ~6 ~7 ~3 ~6 ~8 ~4 minecraft:stone_bricks
+setblock ~6 ~7 ~5 minecraft:cracked_stone_bricks
 setblock ~6 ~7 ~6 minecraft:stone_bricks
-fill ~0 ~8 ~1 ~0 ~9 ~1 minecraft:deepslate_bricks
-setblock ~0 ~8 ~2 minecraft:cracked_deepslate_bricks
-fill ~0 ~8 ~3 ~0 ~8 ~4 minecraft:deepslate_bricks
-setblock ~0 ~8 ~5 minecraft:cracked_deepslate_bricks
-fill ~1 ~8 ~0 ~3 ~8 ~0 minecraft:deepslate_bricks
-setblock ~3 ~8 ~6 minecraft:cracked_deepslate_bricks
-setblock ~4 ~8 ~0 minecraft:cracked_deepslate_bricks
-fill ~4 ~8 ~6 ~5 ~11 ~6 minecraft:stone_bricks
-fill ~5 ~8 ~0 ~5 ~10 ~0 minecraft:deepslate_bricks
+fill ~0 ~8 ~1 ~0 ~8 ~5 minecraft:stone_bricks
+fill ~1 ~8 ~0 ~5 ~8 ~0 minecraft:stone_bricks
 setblock ~6 ~8 ~0 minecraft:polished_blackstone_bricks
-setblock ~6 ~8 ~3 minecraft:cracked_stone_bricks
-fill ~6 ~8 ~4 ~6 ~9 ~4 minecraft:stone_bricks
+fill ~6 ~8 ~5 ~6 ~9 ~5 minecraft:stone_bricks
 setblock ~6 ~8 ~6 minecraft:deepslate_bricks
-setblock ~0 ~9 ~0 minecraft:stone_bricks
-setblock ~0 ~9 ~2 minecraft:deepslate_bricks
-fill ~0 ~9 ~4 ~0 ~10 ~6 minecraft:deepslate_bricks
-fill ~1 ~9 ~0 ~2 ~9 ~0 minecraft:deepslate_bricks
-setblock ~1 ~9 ~6 minecraft:cracked_deepslate_bricks
-fill ~2 ~9 ~6 ~2 ~10 ~6 minecraft:deepslate_bricks
-fill ~3 ~9 ~6 ~3 ~11 ~6 minecraft:stone_bricks
-fill ~4 ~9 ~0 ~4 ~10 ~0 minecraft:deepslate_bricks
+fill ~0 ~9 ~0 ~0 ~9 ~2 minecraft:stone_bricks
+fill ~0 ~9 ~4 ~0 ~10 ~5 minecraft:stone_bricks
+fill ~0 ~9 ~6 ~0 ~11 ~6 minecraft:deepslate_bricks
+setblock ~1 ~9 ~0 minecraft:cracked_stone_bricks
+fill ~1 ~9 ~6 ~4 ~9 ~6 minecraft:stone_bricks
+fill ~2 ~9 ~0 ~2 ~10 ~0 minecraft:stone_bricks
+fill ~4 ~9 ~0 ~4 ~10 ~0 minecraft:stone_bricks
+setblock ~5 ~9 ~0 minecraft:cracked_stone_bricks
+setblock ~5 ~9 ~6 minecraft:cracked_stone_bricks
 fill ~6 ~9 ~0 ~6 ~10 ~0 minecraft:deepslate_bricks
-fill ~6 ~9 ~1 ~6 ~11 ~3 minecraft:stone_bricks
-setblock ~6 ~9 ~5 minecraft:stone_bricks
+setblock ~6 ~9 ~1 minecraft:cracked_stone_bricks
+fill ~6 ~9 ~2 ~6 ~11 ~2 minecraft:stone_bricks
+setblock ~6 ~9 ~3 minecraft:cracked_stone_bricks
+setblock ~6 ~9 ~4 minecraft:stone_bricks
 setblock ~6 ~9 ~6 minecraft:cracked_deepslate_bricks
 setblock ~0 ~10 ~0 minecraft:polished_blackstone_bricks
-setblock ~0 ~10 ~1 minecraft:stone_bricks
-setblock ~0 ~10 ~2 minecraft:cracked_stone_bricks
+fill ~0 ~10 ~1 ~0 ~10 ~2 minecraft:stone_bricks
 setblock ~1 ~10 ~0 minecraft:stone_bricks
-fill ~1 ~10 ~6 ~1 ~11 ~6 minecraft:deepslate_bricks
-setblock ~2 ~10 ~0 minecraft:deepslate_bricks
-fill ~6 ~10 ~4 ~6 ~10 ~5 minecraft:cracked_stone_bricks
-setblock ~6 ~10 ~6 minecraft:deepslate_bricks
+setblock ~1 ~10 ~6 minecraft:cracked_stone_bricks
+fill ~2 ~10 ~6 ~5 ~10 ~6 minecraft:stone_bricks
+setblock ~5 ~10 ~0 minecraft:stone_bricks
+fill ~6 ~10 ~1 ~6 ~11 ~1 minecraft:stone_bricks
+fill ~6 ~10 ~3 ~6 ~11 ~3 minecraft:stone_bricks
+setblock ~6 ~10 ~4 minecraft:cracked_stone_bricks
+fill ~6 ~10 ~5 ~6 ~10 ~6 minecraft:deepslate_bricks
 setblock ~0 ~11 ~0 minecraft:deepslate_bricks
-setblock ~0 ~11 ~6 minecraft:deepslate_bricks
-setblock ~2 ~11 ~6 minecraft:stone_bricks
+fill ~1 ~11 ~6 ~3 ~11 ~6 minecraft:stone_bricks
+fill ~4 ~11 ~6 ~5 ~11 ~6 minecraft:deepslate_bricks
 setblock ~6 ~11 ~0 minecraft:polished_blackstone_bricks
 fill ~6 ~11 ~4 ~6 ~11 ~5 minecraft:stone_bricks
 setblock ~6 ~11 ~6 minecraft:cracked_deepslate_bricks
@@ -1937,28 +2001,28 @@ fill ~0 ~11 ~1 ~0 ~11 ~5 minecraft:deepslate_brick_stairs[facing=east,half=top]
 fill ~1 ~11 ~0 ~5 ~11 ~0 minecraft:deepslate_brick_stairs[facing=south,half=top]
 
 # the parapet ring at y 13 with merlons at y 14 and lantern posts at the corners
-fill ~0 ~13 ~0 ~0 ~14 ~0 minecraft:deepslate_bricks
-setblock ~0 ~13 ~1 minecraft:cracked_deepslate_bricks
-fill ~0 ~13 ~2 ~0 ~13 ~3 minecraft:deepslate_bricks
-setblock ~0 ~13 ~4 minecraft:cracked_deepslate_bricks
-setblock ~0 ~13 ~5 minecraft:deepslate_bricks
-setblock ~0 ~13 ~6 minecraft:cracked_deepslate_bricks
-fill ~1 ~13 ~0 ~2 ~13 ~0 minecraft:cracked_deepslate_bricks
-fill ~1 ~13 ~6 ~5 ~13 ~6 minecraft:deepslate_bricks
-fill ~3 ~13 ~0 ~6 ~13 ~0 minecraft:deepslate_bricks
-fill ~6 ~13 ~1 ~6 ~13 ~3 minecraft:deepslate_bricks
-setblock ~6 ~13 ~4 minecraft:cracked_deepslate_bricks
-fill ~6 ~13 ~5 ~6 ~13 ~6 minecraft:deepslate_bricks
-setblock ~0 ~14 ~2 minecraft:deepslate_bricks
-setblock ~0 ~14 ~4 minecraft:deepslate_bricks
+fill ~0 ~13 ~0 ~5 ~13 ~0 minecraft:stone_bricks
+setblock ~0 ~13 ~1 minecraft:cracked_stone_bricks
+fill ~0 ~13 ~2 ~0 ~13 ~3 minecraft:stone_bricks
+setblock ~0 ~13 ~4 minecraft:cracked_stone_bricks
+fill ~0 ~13 ~5 ~0 ~13 ~6 minecraft:stone_bricks
+fill ~1 ~13 ~6 ~2 ~13 ~6 minecraft:stone_bricks
+setblock ~3 ~13 ~6 minecraft:cracked_stone_bricks
+fill ~4 ~13 ~6 ~5 ~13 ~6 minecraft:stone_bricks
+setblock ~6 ~13 ~0 minecraft:cracked_stone_bricks
+setblock ~6 ~13 ~1 minecraft:deepslate_bricks
+fill ~6 ~13 ~2 ~6 ~13 ~6 minecraft:stone_bricks
+setblock ~0 ~14 ~0 minecraft:deepslate_bricks
+setblock ~0 ~14 ~2 minecraft:cracked_stone_bricks
+setblock ~0 ~14 ~4 minecraft:stone_bricks
 setblock ~0 ~14 ~6 minecraft:deepslate_bricks
-setblock ~2 ~14 ~0 minecraft:cracked_deepslate_bricks
+setblock ~2 ~14 ~0 minecraft:stone_bricks
 setblock ~2 ~14 ~6 minecraft:stone_bricks
-setblock ~4 ~14 ~0 minecraft:deepslate_bricks
+setblock ~4 ~14 ~0 minecraft:stone_bricks
 setblock ~4 ~14 ~6 minecraft:cracked_stone_bricks
 setblock ~6 ~14 ~0 minecraft:deepslate_bricks
 setblock ~6 ~14 ~2 minecraft:stone_bricks
-setblock ~6 ~14 ~4 minecraft:stone_bricks
+setblock ~6 ~14 ~4 minecraft:cracked_stone_bricks
 setblock ~6 ~14 ~6 minecraft:deepslate_bricks
 setblock ~0 ~15 ~0 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
 setblock ~0 ~15 ~6 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
@@ -1971,92 +2035,102 @@ setblock ~6 ~16 ~6 minecraft:lantern[hanging=false]
 
 # corner tower at 40,0: walls y 1..11 with dark quoins, moss low
 setblock ~40 ~1 ~0 minecraft:cracked_deepslate_bricks
-fill ~40 ~1 ~1 ~40 ~3 ~5 minecraft:mossy_stone_bricks
+setblock ~40 ~1 ~1 minecraft:mossy_stone_bricks
+setblock ~40 ~1 ~2 minecraft:cracked_stone_bricks
+setblock ~40 ~1 ~3 minecraft:mossy_stone_bricks
+fill ~40 ~1 ~4 ~40 ~1 ~5 minecraft:stone_bricks
 fill ~40 ~1 ~6 ~40 ~9 ~6 minecraft:deepslate_bricks
-fill ~41 ~1 ~6 ~41 ~3 ~6 minecraft:mossy_stone_bricks
-setblock ~44 ~1 ~6 minecraft:stone_bricks
-setblock ~45 ~1 ~6 minecraft:cracked_stone_bricks
+fill ~41 ~1 ~6 ~41 ~4 ~6 minecraft:stone_bricks
+fill ~44 ~1 ~6 ~44 ~2 ~6 minecraft:mossy_stone_bricks
+fill ~45 ~1 ~6 ~46 ~1 ~6 minecraft:stone_bricks
 fill ~46 ~1 ~0 ~46 ~2 ~0 minecraft:deepslate_bricks
-setblock ~46 ~1 ~6 minecraft:stone_bricks
 fill ~40 ~2 ~0 ~40 ~6 ~0 minecraft:deepslate_bricks
-fill ~41 ~2 ~0 ~44 ~2 ~0 minecraft:mossy_stone_bricks
-fill ~43 ~2 ~6 ~45 ~3 ~6 minecraft:mossy_stone_bricks
-setblock ~45 ~2 ~0 minecraft:stone_bricks
-fill ~46 ~2 ~1 ~46 ~2 ~2 minecraft:deepslate_bricks
-setblock ~46 ~2 ~3 minecraft:cracked_deepslate_bricks
-fill ~46 ~2 ~4 ~46 ~3 ~5 minecraft:mossy_stone_bricks
+fill ~40 ~2 ~1 ~40 ~2 ~3 minecraft:stone_bricks
+fill ~40 ~2 ~4 ~40 ~2 ~5 minecraft:mossy_stone_bricks
+fill ~41 ~2 ~0 ~42 ~2 ~0 minecraft:stone_bricks
+setblock ~43 ~2 ~0 minecraft:mossy_stone_bricks
+setblock ~43 ~2 ~6 minecraft:stone_bricks
+fill ~44 ~2 ~0 ~45 ~2 ~0 minecraft:cracked_stone_bricks
+setblock ~45 ~2 ~6 minecraft:stone_bricks
+fill ~46 ~2 ~1 ~46 ~2 ~5 minecraft:stone_bricks
 fill ~46 ~2 ~6 ~46 ~3 ~6 minecraft:polished_blackstone_bricks
-fill ~41 ~3 ~0 ~42 ~3 ~0 minecraft:mossy_stone_bricks
-fill ~44 ~3 ~0 ~45 ~4 ~0 minecraft:mossy_stone_bricks
+fill ~40 ~3 ~1 ~40 ~4 ~1 minecraft:stone_bricks
+setblock ~40 ~3 ~2 minecraft:cracked_stone_bricks
+fill ~40 ~3 ~3 ~40 ~3 ~4 minecraft:stone_bricks
+setblock ~40 ~3 ~5 minecraft:mossy_stone_bricks
+setblock ~41 ~3 ~0 minecraft:cracked_stone_bricks
+fill ~42 ~3 ~0 ~42 ~4 ~0 minecraft:stone_bricks
+setblock ~43 ~3 ~6 minecraft:mossy_stone_bricks
+fill ~44 ~3 ~0 ~44 ~4 ~0 minecraft:cracked_stone_bricks
+setblock ~44 ~3 ~6 minecraft:stone_bricks
+setblock ~45 ~3 ~0 minecraft:stone_bricks
+setblock ~45 ~3 ~6 minecraft:deepslate_bricks
 setblock ~46 ~3 ~0 minecraft:polished_blackstone_bricks
-setblock ~46 ~3 ~1 minecraft:deepslate_bricks
-fill ~46 ~3 ~2 ~46 ~5 ~2 minecraft:mossy_stone_bricks
-fill ~40 ~4 ~1 ~40 ~4 ~3 minecraft:deepslate_bricks
-setblock ~40 ~4 ~4 minecraft:cracked_deepslate_bricks
-fill ~40 ~4 ~5 ~40 ~5 ~5 minecraft:deepslate_bricks
-fill ~41 ~4 ~0 ~42 ~4 ~0 minecraft:deepslate_bricks
-fill ~41 ~4 ~6 ~44 ~4 ~6 minecraft:deepslate_bricks
-setblock ~45 ~4 ~6 minecraft:cracked_deepslate_bricks
+fill ~46 ~3 ~1 ~46 ~4 ~2 minecraft:stone_bricks
+fill ~46 ~3 ~4 ~46 ~4 ~5 minecraft:stone_bricks
+setblock ~40 ~4 ~2 minecraft:stone_bricks
+setblock ~40 ~4 ~3 minecraft:cracked_stone_bricks
+fill ~40 ~4 ~4 ~40 ~4 ~5 minecraft:stone_bricks
+setblock ~41 ~4 ~0 minecraft:stone_bricks
+fill ~42 ~4 ~6 ~43 ~4 ~6 minecraft:stone_bricks
+setblock ~44 ~4 ~6 minecraft:cracked_stone_bricks
+setblock ~45 ~4 ~0 minecraft:cracked_stone_bricks
+setblock ~45 ~4 ~6 minecraft:stone_bricks
 setblock ~46 ~4 ~0 minecraft:deepslate_bricks
-fill ~46 ~4 ~1 ~46 ~5 ~1 minecraft:mossy_stone_bricks
-setblock ~46 ~4 ~4 minecraft:mossy_stone_bricks
-fill ~46 ~4 ~5 ~46 ~6 ~5 minecraft:cracked_deepslate_bricks
 fill ~46 ~4 ~6 ~46 ~6 ~6 minecraft:deepslate_bricks
-fill ~40 ~5 ~1 ~40 ~6 ~4 minecraft:stone_bricks
-fill ~41 ~5 ~0 ~42 ~5 ~0 minecraft:stone_bricks
-setblock ~41 ~5 ~6 minecraft:cracked_deepslate_bricks
-fill ~42 ~5 ~6 ~42 ~6 ~6 minecraft:deepslate_bricks
-fill ~43 ~5 ~0 ~44 ~6 ~0 minecraft:deepslate_bricks
-fill ~43 ~5 ~6 ~44 ~5 ~6 minecraft:cracked_deepslate_bricks
-setblock ~45 ~5 ~0 minecraft:mossy_stone_bricks
-setblock ~45 ~5 ~6 minecraft:deepslate_bricks
+setblock ~40 ~5 ~1 minecraft:polished_blackstone_bricks
+fill ~40 ~5 ~2 ~40 ~5 ~5 minecraft:deepslate_bricks
+fill ~41 ~5 ~0 ~42 ~5 ~0 minecraft:deepslate_bricks
+fill ~41 ~5 ~6 ~43 ~5 ~6 minecraft:deepslate_bricks
+setblock ~43 ~5 ~0 minecraft:cracked_deepslate_bricks
+setblock ~44 ~5 ~0 minecraft:polished_blackstone_bricks
+fill ~44 ~5 ~6 ~45 ~5 ~6 minecraft:polished_blackstone_bricks
+setblock ~45 ~5 ~0 minecraft:deepslate_bricks
 fill ~46 ~5 ~0 ~46 ~6 ~0 minecraft:cracked_deepslate_bricks
-setblock ~46 ~5 ~3 minecraft:mossy_stone_bricks
-fill ~46 ~5 ~4 ~46 ~6 ~4 minecraft:deepslate_bricks
-fill ~40 ~6 ~5 ~40 ~11 ~5 minecraft:stone_bricks
-fill ~41 ~6 ~0 ~42 ~6 ~0 minecraft:cracked_stone_bricks
-setblock ~41 ~6 ~6 minecraft:deepslate_bricks
-setblock ~43 ~6 ~6 minecraft:deepslate_bricks
-fill ~44 ~6 ~6 ~45 ~6 ~6 minecraft:cracked_deepslate_bricks
-setblock ~45 ~6 ~0 minecraft:deepslate_bricks
-fill ~46 ~6 ~1 ~46 ~6 ~3 minecraft:deepslate_bricks
+fill ~46 ~5 ~1 ~46 ~5 ~5 minecraft:deepslate_bricks
+fill ~40 ~6 ~1 ~40 ~6 ~2 minecraft:stone_bricks
+setblock ~40 ~6 ~3 minecraft:deepslate_bricks
+fill ~40 ~6 ~4 ~40 ~8 ~5 minecraft:stone_bricks
+fill ~41 ~6 ~0 ~45 ~6 ~0 minecraft:stone_bricks
+fill ~41 ~6 ~6 ~42 ~6 ~6 minecraft:cracked_stone_bricks
+fill ~43 ~6 ~6 ~45 ~6 ~6 minecraft:stone_bricks
+fill ~46 ~6 ~1 ~46 ~6 ~5 minecraft:stone_bricks
 setblock ~40 ~7 ~0 minecraft:polished_blackstone_bricks
-fill ~40 ~7 ~3 ~40 ~7 ~4 minecraft:cracked_stone_bricks
-fill ~41 ~7 ~6 ~41 ~8 ~6 minecraft:stone_bricks
-setblock ~42 ~7 ~6 minecraft:cracked_stone_bricks
-fill ~43 ~7 ~6 ~43 ~10 ~6 minecraft:stone_bricks
+setblock ~40 ~7 ~3 minecraft:stone_bricks
+fill ~41 ~7 ~6 ~43 ~9 ~6 minecraft:stone_bricks
 fill ~46 ~7 ~0 ~46 ~8 ~0 minecraft:deepslate_bricks
 fill ~46 ~7 ~6 ~46 ~9 ~6 minecraft:cracked_deepslate_bricks
 setblock ~40 ~8 ~0 minecraft:cracked_deepslate_bricks
-fill ~40 ~8 ~3 ~40 ~11 ~4 minecraft:stone_bricks
-fill ~41 ~8 ~0 ~41 ~10 ~0 minecraft:stone_bricks
-setblock ~42 ~8 ~0 minecraft:cracked_stone_bricks
-fill ~42 ~8 ~6 ~42 ~10 ~6 minecraft:stone_bricks
-fill ~43 ~8 ~0 ~45 ~8 ~0 minecraft:stone_bricks
-fill ~46 ~8 ~1 ~46 ~8 ~4 minecraft:stone_bricks
-setblock ~46 ~8 ~5 minecraft:cracked_stone_bricks
+setblock ~40 ~8 ~3 minecraft:cracked_stone_bricks
+fill ~41 ~8 ~0 ~45 ~8 ~0 minecraft:stone_bricks
+fill ~46 ~8 ~1 ~46 ~8 ~5 minecraft:stone_bricks
 fill ~40 ~9 ~0 ~40 ~11 ~0 minecraft:deepslate_bricks
-fill ~40 ~9 ~1 ~40 ~11 ~2 minecraft:stone_bricks
-setblock ~41 ~9 ~6 minecraft:cracked_stone_bricks
-fill ~42 ~9 ~0 ~42 ~10 ~0 minecraft:stone_bricks
-setblock ~44 ~9 ~0 minecraft:cracked_stone_bricks
-setblock ~44 ~9 ~6 minecraft:cracked_stone_bricks
-fill ~45 ~9 ~0 ~45 ~10 ~0 minecraft:stone_bricks
-setblock ~45 ~9 ~6 minecraft:stone_bricks
+fill ~40 ~9 ~1 ~40 ~9 ~3 minecraft:stone_bricks
+setblock ~40 ~9 ~4 minecraft:cracked_stone_bricks
+fill ~40 ~9 ~5 ~40 ~11 ~5 minecraft:stone_bricks
+fill ~41 ~9 ~0 ~42 ~10 ~0 minecraft:stone_bricks
+fill ~44 ~9 ~0 ~45 ~10 ~0 minecraft:stone_bricks
+fill ~44 ~9 ~6 ~45 ~10 ~6 minecraft:stone_bricks
 setblock ~46 ~9 ~0 minecraft:cracked_deepslate_bricks
-fill ~46 ~9 ~1 ~46 ~9 ~2 minecraft:stone_bricks
-fill ~46 ~9 ~4 ~46 ~9 ~5 minecraft:stone_bricks
+setblock ~46 ~9 ~1 minecraft:cracked_stone_bricks
+fill ~46 ~9 ~2 ~46 ~10 ~2 minecraft:stone_bricks
+fill ~46 ~9 ~4 ~46 ~10 ~5 minecraft:stone_bricks
+setblock ~40 ~10 ~1 minecraft:deepslate_bricks
+setblock ~40 ~10 ~2 minecraft:cracked_stone_bricks
+fill ~40 ~10 ~3 ~40 ~10 ~4 minecraft:stone_bricks
 fill ~40 ~10 ~6 ~40 ~11 ~6 minecraft:cracked_deepslate_bricks
-fill ~41 ~10 ~6 ~41 ~11 ~6 minecraft:stone_bricks
-setblock ~44 ~10 ~0 minecraft:stone_bricks
-fill ~44 ~10 ~6 ~45 ~11 ~6 minecraft:deepslate_bricks
-fill ~46 ~10 ~0 ~46 ~10 ~2 minecraft:deepslate_bricks
-setblock ~46 ~10 ~4 minecraft:cracked_deepslate_bricks
-fill ~46 ~10 ~5 ~46 ~10 ~6 minecraft:deepslate_bricks
-setblock ~42 ~11 ~6 minecraft:cracked_stone_bricks
-setblock ~43 ~11 ~6 minecraft:deepslate_bricks
-setblock ~46 ~11 ~0 minecraft:deepslate_bricks
-setblock ~46 ~11 ~6 minecraft:deepslate_bricks
+setblock ~41 ~10 ~6 minecraft:deepslate_bricks
+fill ~42 ~10 ~6 ~43 ~11 ~6 minecraft:stone_bricks
+fill ~46 ~10 ~0 ~46 ~11 ~0 minecraft:deepslate_bricks
+setblock ~46 ~10 ~1 minecraft:stone_bricks
+fill ~46 ~10 ~6 ~46 ~11 ~6 minecraft:deepslate_bricks
+setblock ~40 ~11 ~1 minecraft:cracked_stone_bricks
+setblock ~40 ~11 ~2 minecraft:stone_bricks
+setblock ~40 ~11 ~3 minecraft:cracked_stone_bricks
+setblock ~40 ~11 ~4 minecraft:stone_bricks
+setblock ~41 ~11 ~6 minecraft:stone_bricks
+setblock ~44 ~11 ~6 minecraft:cracked_stone_bricks
+setblock ~45 ~11 ~6 minecraft:stone_bricks
 
 # the plinth lip on the two outer faces, the string course at y 7 under the high slits
 fill ~41 ~1 ~0 ~45 ~1 ~0 minecraft:cobblestone_stairs[facing=south,half=bottom]
@@ -2127,25 +2201,27 @@ fill ~41 ~11 ~0 ~45 ~11 ~0 minecraft:deepslate_brick_stairs[facing=south,half=to
 fill ~46 ~11 ~1 ~46 ~11 ~5 minecraft:deepslate_brick_stairs[facing=west,half=top]
 
 # the parapet ring at y 13 with merlons at y 14 and lantern posts at the corners
-fill ~40 ~13 ~0 ~42 ~13 ~0 minecraft:stone_bricks
-fill ~40 ~13 ~1 ~40 ~13 ~6 minecraft:stone_bricks
-fill ~41 ~13 ~6 ~44 ~13 ~6 minecraft:stone_bricks
-setblock ~43 ~13 ~0 minecraft:cracked_stone_bricks
-fill ~44 ~13 ~0 ~45 ~13 ~0 minecraft:stone_bricks
-setblock ~45 ~13 ~6 minecraft:cracked_stone_bricks
-setblock ~46 ~13 ~0 minecraft:cracked_stone_bricks
-fill ~46 ~13 ~1 ~46 ~13 ~6 minecraft:stone_bricks
+setblock ~40 ~13 ~0 minecraft:cracked_stone_bricks
+setblock ~40 ~13 ~1 minecraft:deepslate_bricks
+fill ~40 ~13 ~2 ~40 ~14 ~2 minecraft:cracked_stone_bricks
+fill ~40 ~13 ~3 ~40 ~13 ~4 minecraft:stone_bricks
+setblock ~40 ~13 ~5 minecraft:cracked_stone_bricks
+fill ~40 ~13 ~6 ~43 ~13 ~6 minecraft:stone_bricks
+fill ~41 ~13 ~0 ~44 ~13 ~0 minecraft:stone_bricks
+setblock ~44 ~13 ~6 minecraft:cracked_stone_bricks
+setblock ~45 ~13 ~0 minecraft:cracked_stone_bricks
+setblock ~45 ~13 ~6 minecraft:stone_bricks
+fill ~46 ~13 ~0 ~46 ~13 ~6 minecraft:stone_bricks
 setblock ~40 ~14 ~0 minecraft:deepslate_bricks
-setblock ~40 ~14 ~2 minecraft:stone_bricks
 setblock ~40 ~14 ~4 minecraft:stone_bricks
 setblock ~40 ~14 ~6 minecraft:deepslate_bricks
 setblock ~42 ~14 ~0 minecraft:stone_bricks
 setblock ~42 ~14 ~6 minecraft:cracked_stone_bricks
 setblock ~44 ~14 ~0 minecraft:stone_bricks
-setblock ~44 ~14 ~6 minecraft:deepslate_bricks
+setblock ~44 ~14 ~6 minecraft:stone_bricks
 setblock ~46 ~14 ~0 minecraft:deepslate_bricks
 setblock ~46 ~14 ~2 minecraft:stone_bricks
-setblock ~46 ~14 ~4 minecraft:deepslate_bricks
+setblock ~46 ~14 ~4 minecraft:cracked_stone_bricks
 setblock ~46 ~14 ~6 minecraft:deepslate_bricks
 setblock ~40 ~15 ~0 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
 setblock ~40 ~15 ~6 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
@@ -2159,105 +2235,118 @@ setblock ~46 ~16 ~6 minecraft:lantern[hanging=false]
 # corner tower at 0,20: walls y 1..11 with dark quoins, moss low
 fill ~0 ~1 ~20 ~0 ~2 ~20 minecraft:polished_blackstone_bricks
 fill ~0 ~1 ~26 ~0 ~3 ~26 minecraft:deepslate_bricks
-setblock ~1 ~1 ~20 minecraft:stone_bricks
-setblock ~2 ~1 ~20 minecraft:cracked_stone_bricks
-fill ~3 ~1 ~20 ~3 ~5 ~20 minecraft:mossy_stone_bricks
-fill ~5 ~1 ~20 ~6 ~1 ~20 minecraft:deepslate_bricks
-fill ~6 ~1 ~21 ~6 ~1 ~22 minecraft:deepslate_bricks
-setblock ~6 ~1 ~23 minecraft:cracked_deepslate_bricks
-fill ~6 ~1 ~24 ~6 ~5 ~25 minecraft:mossy_stone_bricks
+fill ~1 ~1 ~20 ~2 ~3 ~20 minecraft:stone_bricks
+setblock ~3 ~1 ~20 minecraft:cracked_stone_bricks
+fill ~5 ~1 ~20 ~5 ~4 ~20 minecraft:stone_bricks
+setblock ~6 ~1 ~20 minecraft:deepslate_bricks
+fill ~6 ~1 ~21 ~6 ~3 ~22 minecraft:stone_bricks
+fill ~6 ~1 ~23 ~6 ~1 ~24 minecraft:mossy_stone_bricks
+setblock ~6 ~1 ~25 minecraft:stone_bricks
 fill ~6 ~1 ~26 ~6 ~2 ~26 minecraft:deepslate_bricks
-fill ~0 ~2 ~21 ~0 ~2 ~22 minecraft:stone_bricks
-setblock ~0 ~2 ~23 minecraft:cracked_stone_bricks
-fill ~0 ~2 ~24 ~0 ~3 ~24 minecraft:stone_bricks
-fill ~0 ~2 ~25 ~0 ~3 ~25 minecraft:mossy_stone_bricks
-setblock ~1 ~2 ~20 minecraft:cracked_stone_bricks
-fill ~1 ~2 ~26 ~5 ~2 ~26 minecraft:deepslate_bricks
-fill ~2 ~2 ~20 ~2 ~6 ~20 minecraft:stone_bricks
-fill ~5 ~2 ~20 ~5 ~4 ~20 minecraft:mossy_stone_bricks
+fill ~0 ~2 ~21 ~0 ~2 ~25 minecraft:stone_bricks
+setblock ~1 ~2 ~26 minecraft:cracked_stone_bricks
+fill ~2 ~2 ~26 ~5 ~2 ~26 minecraft:stone_bricks
+fill ~3 ~2 ~20 ~3 ~3 ~20 minecraft:stone_bricks
 setblock ~6 ~2 ~20 minecraft:stone_bricks
-fill ~6 ~2 ~21 ~6 ~3 ~21 minecraft:deepslate_bricks
-fill ~6 ~2 ~22 ~6 ~4 ~23 minecraft:mossy_stone_bricks
+setblock ~6 ~2 ~23 minecraft:stone_bricks
+setblock ~6 ~2 ~24 minecraft:mossy_stone_bricks
+setblock ~6 ~2 ~25 minecraft:deepslate_bricks
 setblock ~0 ~3 ~20 minecraft:deepslate_bricks
-setblock ~0 ~3 ~21 minecraft:cracked_stone_bricks
-fill ~0 ~3 ~22 ~0 ~5 ~22 minecraft:stone_bricks
-setblock ~1 ~3 ~20 minecraft:stone_bricks
-fill ~1 ~3 ~26 ~2 ~3 ~26 minecraft:deepslate_bricks
-fill ~4 ~3 ~26 ~5 ~3 ~26 minecraft:deepslate_bricks
+setblock ~0 ~3 ~21 minecraft:mossy_stone_bricks
+fill ~0 ~3 ~22 ~0 ~4 ~22 minecraft:stone_bricks
+fill ~0 ~3 ~24 ~0 ~4 ~25 minecraft:stone_bricks
+fill ~1 ~3 ~26 ~2 ~3 ~26 minecraft:mossy_stone_bricks
+setblock ~4 ~3 ~26 minecraft:mossy_stone_bricks
+fill ~5 ~3 ~26 ~5 ~4 ~26 minecraft:stone_bricks
 setblock ~6 ~3 ~20 minecraft:cracked_deepslate_bricks
+fill ~6 ~3 ~23 ~6 ~3 ~24 minecraft:cracked_stone_bricks
+setblock ~6 ~3 ~25 minecraft:mossy_stone_bricks
 setblock ~6 ~3 ~26 minecraft:polished_blackstone_bricks
 fill ~0 ~4 ~20 ~0 ~4 ~21 minecraft:stone_bricks
-setblock ~0 ~4 ~24 minecraft:cracked_stone_bricks
-fill ~0 ~4 ~25 ~0 ~6 ~25 minecraft:stone_bricks
 setblock ~0 ~4 ~26 minecraft:polished_blackstone_bricks
 setblock ~1 ~4 ~20 minecraft:cracked_stone_bricks
-fill ~1 ~4 ~26 ~2 ~6 ~26 minecraft:stone_bricks
-fill ~4 ~4 ~20 ~4 ~5 ~20 minecraft:mossy_stone_bricks
-fill ~4 ~4 ~26 ~4 ~6 ~26 minecraft:stone_bricks
-fill ~5 ~4 ~26 ~6 ~4 ~26 minecraft:deepslate_bricks
+fill ~1 ~4 ~26 ~2 ~4 ~26 minecraft:stone_bricks
+setblock ~2 ~4 ~20 minecraft:stone_bricks
+setblock ~3 ~4 ~20 minecraft:deepslate_bricks
+setblock ~4 ~4 ~20 minecraft:stone_bricks
+setblock ~4 ~4 ~26 minecraft:stone_bricks
 fill ~6 ~4 ~20 ~6 ~6 ~20 minecraft:deepslate_bricks
-setblock ~6 ~4 ~21 minecraft:cracked_stone_bricks
+setblock ~6 ~4 ~21 minecraft:stone_bricks
+setblock ~6 ~4 ~22 minecraft:cracked_stone_bricks
+fill ~6 ~4 ~23 ~6 ~4 ~25 minecraft:stone_bricks
+fill ~6 ~4 ~26 ~6 ~6 ~26 minecraft:deepslate_bricks
 setblock ~0 ~5 ~20 minecraft:cracked_deepslate_bricks
 setblock ~0 ~5 ~21 minecraft:deepslate_bricks
-fill ~0 ~5 ~23 ~0 ~6 ~24 minecraft:stone_bricks
-fill ~0 ~5 ~26 ~0 ~7 ~26 minecraft:deepslate_bricks
-fill ~1 ~5 ~20 ~1 ~6 ~20 minecraft:stone_bricks
-setblock ~3 ~5 ~26 minecraft:cracked_stone_bricks
-fill ~5 ~5 ~20 ~5 ~11 ~20 minecraft:stone_bricks
-setblock ~5 ~5 ~26 minecraft:cracked_stone_bricks
-fill ~6 ~5 ~21 ~6 ~7 ~22 minecraft:stone_bricks
-setblock ~6 ~5 ~23 minecraft:mossy_stone_bricks
-fill ~6 ~5 ~26 ~6 ~6 ~26 minecraft:deepslate_bricks
+setblock ~0 ~5 ~22 minecraft:polished_blackstone_bricks
+setblock ~0 ~5 ~23 minecraft:deepslate_bricks
+setblock ~0 ~5 ~24 minecraft:cracked_deepslate_bricks
+fill ~0 ~5 ~25 ~0 ~5 ~26 minecraft:deepslate_bricks
+fill ~1 ~5 ~20 ~2 ~5 ~20 minecraft:deepslate_bricks
+setblock ~1 ~5 ~26 minecraft:deepslate_bricks
+setblock ~2 ~5 ~26 minecraft:polished_blackstone_bricks
+setblock ~3 ~5 ~20 minecraft:cracked_deepslate_bricks
+setblock ~3 ~5 ~26 minecraft:deepslate_bricks
+fill ~4 ~5 ~20 ~5 ~5 ~20 minecraft:deepslate_bricks
+setblock ~4 ~5 ~26 minecraft:polished_blackstone_bricks
+setblock ~5 ~5 ~26 minecraft:deepslate_bricks
+setblock ~6 ~5 ~21 minecraft:deepslate_bricks
+setblock ~6 ~5 ~22 minecraft:polished_blackstone_bricks
+fill ~6 ~5 ~23 ~6 ~5 ~24 minecraft:cracked_deepslate_bricks
+setblock ~6 ~5 ~25 minecraft:deepslate_bricks
 setblock ~0 ~6 ~20 minecraft:deepslate_bricks
-setblock ~0 ~6 ~21 minecraft:cracked_deepslate_bricks
-setblock ~0 ~6 ~22 minecraft:cracked_stone_bricks
-fill ~3 ~6 ~20 ~4 ~6 ~20 minecraft:cracked_stone_bricks
-setblock ~3 ~6 ~26 minecraft:stone_bricks
-setblock ~5 ~6 ~26 minecraft:stone_bricks
-setblock ~6 ~6 ~23 minecraft:cracked_stone_bricks
+fill ~0 ~6 ~21 ~0 ~6 ~25 minecraft:stone_bricks
+fill ~0 ~6 ~26 ~0 ~7 ~26 minecraft:deepslate_bricks
+fill ~1 ~6 ~20 ~2 ~6 ~20 minecraft:stone_bricks
+fill ~1 ~6 ~26 ~5 ~6 ~26 minecraft:stone_bricks
+fill ~3 ~6 ~20 ~3 ~7 ~20 minecraft:cracked_stone_bricks
+fill ~4 ~6 ~20 ~4 ~11 ~20 minecraft:stone_bricks
+setblock ~5 ~6 ~20 minecraft:cracked_stone_bricks
+fill ~6 ~6 ~21 ~6 ~7 ~22 minecraft:stone_bricks
+setblock ~6 ~6 ~23 minecraft:deepslate_bricks
 fill ~6 ~6 ~24 ~6 ~6 ~25 minecraft:stone_bricks
 setblock ~0 ~7 ~20 minecraft:stone_bricks
-fill ~3 ~7 ~20 ~3 ~8 ~20 minecraft:deepslate_bricks
-setblock ~4 ~7 ~20 minecraft:cracked_stone_bricks
+fill ~5 ~7 ~20 ~5 ~9 ~20 minecraft:stone_bricks
 fill ~6 ~7 ~20 ~6 ~8 ~20 minecraft:cracked_deepslate_bricks
 fill ~6 ~7 ~23 ~6 ~11 ~23 minecraft:stone_bricks
 setblock ~6 ~7 ~26 minecraft:stone_bricks
-fill ~0 ~8 ~20 ~0 ~8 ~23 minecraft:deepslate_bricks
-fill ~0 ~8 ~24 ~0 ~8 ~26 minecraft:cracked_deepslate_bricks
+setblock ~0 ~8 ~20 minecraft:deepslate_bricks
+fill ~0 ~8 ~21 ~0 ~10 ~22 minecraft:stone_bricks
+setblock ~0 ~8 ~23 minecraft:cracked_stone_bricks
+fill ~0 ~8 ~24 ~0 ~10 ~25 minecraft:stone_bricks
+setblock ~0 ~8 ~26 minecraft:cracked_deepslate_bricks
 fill ~1 ~8 ~26 ~5 ~8 ~26 minecraft:stone_bricks
-setblock ~4 ~8 ~20 minecraft:deepslate_bricks
-fill ~6 ~8 ~21 ~6 ~11 ~21 minecraft:stone_bricks
-fill ~6 ~8 ~22 ~6 ~9 ~22 minecraft:cracked_stone_bricks
+fill ~3 ~8 ~20 ~3 ~9 ~20 minecraft:stone_bricks
+setblock ~6 ~8 ~21 minecraft:deepslate_bricks
+setblock ~6 ~8 ~22 minecraft:stone_bricks
 fill ~6 ~8 ~26 ~6 ~10 ~26 minecraft:cracked_deepslate_bricks
-fill ~0 ~9 ~20 ~0 ~9 ~21 minecraft:cracked_deepslate_bricks
-setblock ~0 ~9 ~22 minecraft:deepslate_bricks
-fill ~0 ~9 ~24 ~0 ~9 ~26 minecraft:deepslate_bricks
-setblock ~1 ~9 ~20 minecraft:deepslate_bricks
+setblock ~0 ~9 ~20 minecraft:cracked_deepslate_bricks
+setblock ~0 ~9 ~26 minecraft:deepslate_bricks
+fill ~1 ~9 ~20 ~2 ~11 ~20 minecraft:stone_bricks
 fill ~1 ~9 ~26 ~2 ~9 ~26 minecraft:stone_bricks
-fill ~2 ~9 ~20 ~3 ~9 ~20 minecraft:cracked_deepslate_bricks
-fill ~4 ~9 ~20 ~4 ~11 ~20 minecraft:stone_bricks
-fill ~4 ~9 ~26 ~5 ~9 ~26 minecraft:stone_bricks
+setblock ~4 ~9 ~26 minecraft:cracked_stone_bricks
+setblock ~5 ~9 ~26 minecraft:stone_bricks
 setblock ~6 ~9 ~20 minecraft:deepslate_bricks
+fill ~6 ~9 ~21 ~6 ~11 ~21 minecraft:stone_bricks
+setblock ~6 ~9 ~22 minecraft:cracked_stone_bricks
 fill ~6 ~9 ~24 ~6 ~9 ~25 minecraft:stone_bricks
 setblock ~0 ~10 ~20 minecraft:deepslate_bricks
-fill ~0 ~10 ~21 ~0 ~10 ~22 minecraft:stone_bricks
-fill ~0 ~10 ~24 ~0 ~10 ~25 minecraft:stone_bricks
 setblock ~0 ~10 ~26 minecraft:cracked_deepslate_bricks
-fill ~1 ~10 ~20 ~3 ~10 ~20 minecraft:stone_bricks
-setblock ~1 ~10 ~26 minecraft:cracked_stone_bricks
-setblock ~2 ~10 ~26 minecraft:stone_bricks
+setblock ~1 ~10 ~26 minecraft:stone_bricks
+setblock ~2 ~10 ~26 minecraft:cracked_stone_bricks
+setblock ~3 ~10 ~20 minecraft:cracked_stone_bricks
 setblock ~4 ~10 ~26 minecraft:stone_bricks
-setblock ~5 ~10 ~26 minecraft:cracked_deepslate_bricks
+setblock ~5 ~10 ~20 minecraft:cracked_stone_bricks
+setblock ~5 ~10 ~26 minecraft:cracked_stone_bricks
 fill ~6 ~10 ~20 ~6 ~11 ~20 minecraft:cracked_deepslate_bricks
 fill ~6 ~10 ~22 ~6 ~11 ~22 minecraft:stone_bricks
-setblock ~6 ~10 ~24 minecraft:deepslate_bricks
-setblock ~6 ~10 ~25 minecraft:cracked_deepslate_bricks
-fill ~0 ~11 ~20 ~1 ~11 ~20 minecraft:stone_bricks
+setblock ~6 ~10 ~24 minecraft:stone_bricks
+fill ~6 ~10 ~25 ~6 ~11 ~25 minecraft:cracked_stone_bricks
+setblock ~0 ~11 ~20 minecraft:stone_bricks
 setblock ~0 ~11 ~26 minecraft:deepslate_bricks
-setblock ~2 ~11 ~20 minecraft:cracked_stone_bricks
 setblock ~3 ~11 ~20 minecraft:stone_bricks
-setblock ~6 ~11 ~24 minecraft:cracked_deepslate_bricks
-fill ~6 ~11 ~25 ~6 ~11 ~26 minecraft:deepslate_bricks
+setblock ~5 ~11 ~20 minecraft:stone_bricks
+setblock ~6 ~11 ~24 minecraft:cracked_stone_bricks
+setblock ~6 ~11 ~26 minecraft:deepslate_bricks
 
 # the plinth lip on the two outer faces, the string course at y 7 under the high slits
 fill ~0 ~1 ~21 ~0 ~1 ~25 minecraft:cobblestone_stairs[facing=east,half=bottom]
@@ -2323,25 +2412,23 @@ fill ~0 ~11 ~21 ~0 ~11 ~25 minecraft:deepslate_brick_stairs[facing=east,half=top
 fill ~1 ~11 ~26 ~5 ~11 ~26 minecraft:deepslate_brick_stairs[facing=north,half=top]
 
 # the parapet ring at y 13 with merlons at y 14 and lantern posts at the corners
-fill ~0 ~13 ~20 ~2 ~13 ~20 minecraft:stone_bricks
-fill ~0 ~13 ~21 ~0 ~13 ~22 minecraft:stone_bricks
-setblock ~0 ~13 ~23 minecraft:cracked_stone_bricks
-fill ~0 ~13 ~24 ~0 ~13 ~26 minecraft:stone_bricks
-fill ~1 ~13 ~26 ~2 ~13 ~26 minecraft:stone_bricks
-setblock ~3 ~13 ~20 minecraft:cracked_stone_bricks
-setblock ~3 ~13 ~26 minecraft:cracked_stone_bricks
+fill ~0 ~13 ~20 ~0 ~13 ~22 minecraft:stone_bricks
+setblock ~0 ~13 ~23 minecraft:deepslate_bricks
+fill ~0 ~13 ~24 ~0 ~14 ~24 minecraft:stone_bricks
+setblock ~0 ~13 ~25 minecraft:cracked_stone_bricks
+fill ~0 ~13 ~26 ~4 ~13 ~26 minecraft:stone_bricks
+setblock ~1 ~13 ~20 minecraft:cracked_stone_bricks
+fill ~2 ~13 ~20 ~2 ~14 ~20 minecraft:stone_bricks
+setblock ~3 ~13 ~20 minecraft:deepslate_bricks
 fill ~4 ~13 ~20 ~6 ~13 ~20 minecraft:stone_bricks
-fill ~4 ~13 ~26 ~4 ~14 ~26 minecraft:stone_bricks
-setblock ~5 ~13 ~26 minecraft:cracked_deepslate_bricks
-fill ~6 ~13 ~21 ~6 ~13 ~23 minecraft:stone_bricks
-fill ~6 ~13 ~24 ~6 ~13 ~26 minecraft:deepslate_bricks
+setblock ~5 ~13 ~26 minecraft:cracked_stone_bricks
+fill ~6 ~13 ~21 ~6 ~13 ~26 minecraft:stone_bricks
 setblock ~0 ~14 ~20 minecraft:deepslate_bricks
-setblock ~0 ~14 ~22 minecraft:cracked_stone_bricks
-setblock ~0 ~14 ~24 minecraft:stone_bricks
+setblock ~0 ~14 ~22 minecraft:stone_bricks
 setblock ~0 ~14 ~26 minecraft:deepslate_bricks
-setblock ~2 ~14 ~20 minecraft:stone_bricks
 setblock ~2 ~14 ~26 minecraft:stone_bricks
 setblock ~4 ~14 ~20 minecraft:stone_bricks
+setblock ~4 ~14 ~26 minecraft:stone_bricks
 setblock ~6 ~14 ~20 minecraft:deepslate_bricks
 setblock ~6 ~14 ~22 minecraft:stone_bricks
 setblock ~6 ~14 ~24 minecraft:stone_bricks
@@ -2356,105 +2443,115 @@ setblock ~6 ~16 ~20 minecraft:lantern[hanging=false]
 setblock ~6 ~16 ~26 minecraft:lantern[hanging=false]
 
 # corner tower at 40,20: walls y 1..11 with dark quoins, moss low
-fill ~40 ~1 ~20 ~40 ~2 ~20 minecraft:stone_bricks
-fill ~40 ~1 ~21 ~40 ~1 ~23 minecraft:deepslate_bricks
-fill ~40 ~1 ~24 ~40 ~2 ~24 minecraft:cracked_deepslate_bricks
-fill ~40 ~1 ~25 ~40 ~2 ~26 minecraft:deepslate_bricks
-setblock ~41 ~1 ~20 minecraft:cracked_deepslate_bricks
-fill ~44 ~1 ~20 ~44 ~6 ~20 minecraft:deepslate_bricks
-fill ~45 ~1 ~20 ~46 ~1 ~20 minecraft:cracked_deepslate_bricks
+fill ~40 ~1 ~20 ~41 ~1 ~20 minecraft:stone_bricks
+setblock ~40 ~1 ~21 minecraft:cracked_stone_bricks
+fill ~40 ~1 ~22 ~40 ~1 ~23 minecraft:stone_bricks
+setblock ~40 ~1 ~24 minecraft:mossy_stone_bricks
+fill ~40 ~1 ~25 ~40 ~2 ~25 minecraft:stone_bricks
+fill ~40 ~1 ~26 ~40 ~2 ~26 minecraft:deepslate_bricks
+fill ~44 ~1 ~20 ~45 ~2 ~20 minecraft:stone_bricks
+setblock ~46 ~1 ~20 minecraft:cracked_deepslate_bricks
 setblock ~46 ~1 ~26 minecraft:deepslate_bricks
-fill ~40 ~2 ~21 ~40 ~5 ~22 minecraft:mossy_stone_bricks
-fill ~40 ~2 ~23 ~40 ~6 ~23 minecraft:deepslate_bricks
-fill ~41 ~2 ~20 ~41 ~4 ~20 minecraft:deepslate_bricks
-fill ~41 ~2 ~26 ~41 ~6 ~26 minecraft:deepslate_bricks
-fill ~42 ~2 ~26 ~43 ~2 ~26 minecraft:mossy_stone_bricks
-setblock ~43 ~2 ~20 minecraft:cracked_deepslate_bricks
-fill ~44 ~2 ~26 ~45 ~3 ~26 minecraft:stone_bricks
-fill ~45 ~2 ~20 ~45 ~5 ~20 minecraft:deepslate_bricks
+setblock ~40 ~2 ~20 minecraft:stone_bricks
+setblock ~40 ~2 ~21 minecraft:mossy_stone_bricks
+setblock ~40 ~2 ~22 minecraft:cracked_stone_bricks
+fill ~40 ~2 ~23 ~40 ~2 ~24 minecraft:stone_bricks
+fill ~41 ~2 ~20 ~41 ~3 ~20 minecraft:mossy_stone_bricks
+setblock ~41 ~2 ~26 minecraft:mossy_stone_bricks
+fill ~42 ~2 ~26 ~43 ~2 ~26 minecraft:stone_bricks
+setblock ~43 ~2 ~20 minecraft:mossy_stone_bricks
+setblock ~44 ~2 ~26 minecraft:cracked_stone_bricks
+fill ~45 ~2 ~26 ~45 ~3 ~26 minecraft:stone_bricks
 setblock ~46 ~2 ~20 minecraft:polished_blackstone_bricks
-fill ~46 ~2 ~21 ~46 ~6 ~22 minecraft:stone_bricks
-setblock ~46 ~2 ~23 minecraft:cracked_stone_bricks
-fill ~46 ~2 ~24 ~46 ~3 ~25 minecraft:stone_bricks
+fill ~46 ~2 ~21 ~46 ~4 ~21 minecraft:stone_bricks
+setblock ~46 ~2 ~22 minecraft:cracked_stone_bricks
+fill ~46 ~2 ~23 ~46 ~2 ~25 minecraft:stone_bricks
 setblock ~46 ~2 ~26 minecraft:cracked_deepslate_bricks
 setblock ~40 ~3 ~20 minecraft:deepslate_bricks
-fill ~40 ~3 ~24 ~40 ~3 ~25 minecraft:deepslate_bricks
+fill ~40 ~3 ~21 ~40 ~4 ~22 minecraft:stone_bricks
+setblock ~40 ~3 ~23 minecraft:cracked_stone_bricks
+fill ~40 ~3 ~24 ~40 ~3 ~25 minecraft:mossy_stone_bricks
 setblock ~40 ~3 ~26 minecraft:cracked_deepslate_bricks
-fill ~42 ~3 ~26 ~42 ~5 ~26 minecraft:mossy_stone_bricks
-fill ~43 ~3 ~20 ~43 ~5 ~20 minecraft:deepslate_bricks
+fill ~41 ~3 ~26 ~42 ~4 ~26 minecraft:stone_bricks
+setblock ~43 ~3 ~20 minecraft:cracked_stone_bricks
+setblock ~44 ~3 ~20 minecraft:mossy_stone_bricks
+fill ~44 ~3 ~26 ~44 ~4 ~26 minecraft:stone_bricks
+fill ~45 ~3 ~20 ~45 ~5 ~20 minecraft:stone_bricks
 setblock ~46 ~3 ~20 minecraft:cracked_deepslate_bricks
+setblock ~46 ~3 ~22 minecraft:stone_bricks
+fill ~46 ~3 ~24 ~46 ~4 ~24 minecraft:stone_bricks
+setblock ~46 ~3 ~25 minecraft:cracked_stone_bricks
 setblock ~46 ~3 ~26 minecraft:deepslate_bricks
 fill ~40 ~4 ~20 ~40 ~5 ~20 minecraft:cracked_deepslate_bricks
-setblock ~40 ~4 ~24 minecraft:deepslate_bricks
-fill ~40 ~4 ~25 ~40 ~5 ~25 minecraft:cracked_deepslate_bricks
-fill ~40 ~4 ~26 ~40 ~5 ~26 minecraft:stone_bricks
-fill ~42 ~4 ~20 ~42 ~5 ~20 minecraft:cracked_deepslate_bricks
-fill ~44 ~4 ~26 ~44 ~6 ~26 minecraft:stone_bricks
+fill ~40 ~4 ~23 ~40 ~5 ~23 minecraft:deepslate_bricks
+fill ~40 ~4 ~24 ~40 ~4 ~26 minecraft:stone_bricks
+setblock ~41 ~4 ~20 minecraft:stone_bricks
+setblock ~42 ~4 ~20 minecraft:cracked_stone_bricks
+setblock ~43 ~4 ~20 minecraft:stone_bricks
+setblock ~44 ~4 ~20 minecraft:cracked_stone_bricks
 setblock ~45 ~4 ~26 minecraft:cracked_stone_bricks
 setblock ~46 ~4 ~20 minecraft:deepslate_bricks
-setblock ~46 ~4 ~24 minecraft:cracked_stone_bricks
-fill ~46 ~4 ~25 ~46 ~6 ~25 minecraft:stone_bricks
+fill ~46 ~4 ~22 ~46 ~5 ~22 minecraft:deepslate_bricks
+setblock ~46 ~4 ~25 minecraft:stone_bricks
 setblock ~46 ~4 ~26 minecraft:cracked_deepslate_bricks
-setblock ~40 ~5 ~24 minecraft:cracked_deepslate_bricks
-setblock ~41 ~5 ~20 minecraft:cracked_stone_bricks
-setblock ~43 ~5 ~26 minecraft:cracked_stone_bricks
-fill ~45 ~5 ~26 ~45 ~6 ~26 minecraft:stone_bricks
+fill ~40 ~5 ~21 ~40 ~5 ~22 minecraft:cracked_deepslate_bricks
+fill ~40 ~5 ~24 ~40 ~5 ~25 minecraft:deepslate_bricks
+setblock ~40 ~5 ~26 minecraft:stone_bricks
+fill ~41 ~5 ~20 ~42 ~5 ~20 minecraft:cracked_deepslate_bricks
+fill ~41 ~5 ~26 ~44 ~5 ~26 minecraft:deepslate_bricks
+fill ~43 ~5 ~20 ~44 ~5 ~20 minecraft:deepslate_bricks
+fill ~45 ~5 ~26 ~46 ~5 ~26 minecraft:polished_blackstone_bricks
 setblock ~46 ~5 ~20 minecraft:stone_bricks
-fill ~46 ~5 ~23 ~46 ~5 ~24 minecraft:stone_bricks
-setblock ~46 ~5 ~26 minecraft:polished_blackstone_bricks
+setblock ~46 ~5 ~21 minecraft:deepslate_bricks
+setblock ~46 ~5 ~23 minecraft:polished_blackstone_bricks
+setblock ~46 ~5 ~24 minecraft:deepslate_bricks
+setblock ~46 ~5 ~25 minecraft:cracked_deepslate_bricks
 fill ~40 ~6 ~20 ~40 ~7 ~20 minecraft:deepslate_bricks
-fill ~40 ~6 ~21 ~40 ~8 ~22 minecraft:stone_bricks
-fill ~40 ~6 ~24 ~40 ~6 ~25 minecraft:deepslate_bricks
+fill ~40 ~6 ~21 ~40 ~11 ~21 minecraft:stone_bricks
+fill ~40 ~6 ~22 ~40 ~6 ~25 minecraft:cracked_stone_bricks
 setblock ~40 ~6 ~26 minecraft:polished_blackstone_bricks
-fill ~41 ~6 ~20 ~41 ~11 ~20 minecraft:stone_bricks
+fill ~41 ~6 ~20 ~41 ~8 ~20 minecraft:stone_bricks
+setblock ~41 ~6 ~26 minecraft:stone_bricks
 setblock ~42 ~6 ~20 minecraft:deepslate_bricks
-fill ~42 ~6 ~26 ~43 ~6 ~26 minecraft:stone_bricks
-setblock ~43 ~6 ~20 minecraft:cracked_deepslate_bricks
-setblock ~45 ~6 ~20 minecraft:cracked_deepslate_bricks
-setblock ~46 ~6 ~20 minecraft:deepslate_bricks
-setblock ~46 ~6 ~23 minecraft:stone_bricks
-setblock ~46 ~6 ~24 minecraft:cracked_stone_bricks
-setblock ~46 ~6 ~26 minecraft:stone_bricks
-fill ~40 ~7 ~23 ~40 ~8 ~23 minecraft:stone_bricks
+setblock ~42 ~6 ~26 minecraft:cracked_stone_bricks
+fill ~43 ~6 ~20 ~44 ~6 ~20 minecraft:stone_bricks
+setblock ~43 ~6 ~26 minecraft:stone_bricks
+setblock ~44 ~6 ~26 minecraft:cracked_stone_bricks
+fill ~45 ~6 ~20 ~46 ~6 ~20 minecraft:deepslate_bricks
+setblock ~45 ~6 ~26 minecraft:stone_bricks
+fill ~46 ~6 ~21 ~46 ~6 ~26 minecraft:stone_bricks
+fill ~40 ~7 ~22 ~40 ~11 ~23 minecraft:stone_bricks
 fill ~40 ~7 ~26 ~40 ~8 ~26 minecraft:deepslate_bricks
-fill ~42 ~7 ~20 ~43 ~8 ~20 minecraft:stone_bricks
+fill ~42 ~7 ~20 ~43 ~11 ~20 minecraft:stone_bricks
 setblock ~46 ~7 ~20 minecraft:polished_blackstone_bricks
 setblock ~46 ~7 ~26 minecraft:cracked_deepslate_bricks
 setblock ~40 ~8 ~20 minecraft:polished_blackstone_bricks
-fill ~41 ~8 ~26 ~45 ~8 ~26 minecraft:stone_bricks
+setblock ~41 ~8 ~26 minecraft:stone_bricks
+fill ~42 ~8 ~26 ~43 ~8 ~26 minecraft:cracked_stone_bricks
+fill ~44 ~8 ~26 ~45 ~8 ~26 minecraft:stone_bricks
 fill ~46 ~8 ~20 ~46 ~9 ~20 minecraft:deepslate_bricks
 fill ~46 ~8 ~21 ~46 ~8 ~25 minecraft:stone_bricks
 setblock ~46 ~8 ~26 minecraft:deepslate_bricks
 fill ~40 ~9 ~20 ~40 ~10 ~20 minecraft:deepslate_bricks
-fill ~40 ~9 ~21 ~40 ~9 ~23 minecraft:cracked_stone_bricks
-fill ~40 ~9 ~24 ~40 ~10 ~25 minecraft:stone_bricks
+fill ~40 ~9 ~24 ~40 ~11 ~25 minecraft:stone_bricks
 setblock ~40 ~9 ~26 minecraft:polished_blackstone_bricks
-fill ~41 ~9 ~26 ~42 ~9 ~26 minecraft:cracked_stone_bricks
-fill ~42 ~9 ~20 ~42 ~11 ~20 minecraft:stone_bricks
-setblock ~43 ~9 ~20 minecraft:cracked_stone_bricks
-fill ~44 ~9 ~20 ~44 ~10 ~20 minecraft:stone_bricks
-fill ~44 ~9 ~26 ~45 ~9 ~26 minecraft:stone_bricks
-setblock ~45 ~9 ~20 minecraft:cracked_stone_bricks
-setblock ~46 ~9 ~21 minecraft:stone_bricks
-setblock ~46 ~9 ~22 minecraft:cracked_stone_bricks
-setblock ~46 ~9 ~24 minecraft:cracked_stone_bricks
-setblock ~46 ~9 ~25 minecraft:stone_bricks
+setblock ~41 ~9 ~20 minecraft:cracked_stone_bricks
+setblock ~41 ~9 ~26 minecraft:cracked_stone_bricks
+fill ~42 ~9 ~26 ~42 ~10 ~26 minecraft:stone_bricks
+fill ~44 ~9 ~20 ~44 ~11 ~20 minecraft:stone_bricks
+fill ~44 ~9 ~26 ~45 ~9 ~26 minecraft:cracked_stone_bricks
+setblock ~45 ~9 ~20 minecraft:deepslate_bricks
+fill ~46 ~9 ~21 ~46 ~10 ~22 minecraft:stone_bricks
+fill ~46 ~9 ~24 ~46 ~10 ~25 minecraft:stone_bricks
 fill ~46 ~9 ~26 ~46 ~10 ~26 minecraft:cracked_deepslate_bricks
-fill ~40 ~10 ~21 ~40 ~11 ~21 minecraft:stone_bricks
-fill ~40 ~10 ~22 ~40 ~10 ~23 minecraft:cracked_stone_bricks
-fill ~40 ~10 ~26 ~42 ~10 ~26 minecraft:deepslate_bricks
-setblock ~43 ~10 ~20 minecraft:stone_bricks
-fill ~44 ~10 ~26 ~45 ~10 ~26 minecraft:deepslate_bricks
-fill ~45 ~10 ~20 ~45 ~11 ~20 minecraft:deepslate_bricks
+fill ~40 ~10 ~26 ~40 ~11 ~26 minecraft:deepslate_bricks
+fill ~41 ~10 ~20 ~41 ~11 ~20 minecraft:stone_bricks
+setblock ~41 ~10 ~26 minecraft:stone_bricks
+fill ~44 ~10 ~26 ~45 ~10 ~26 minecraft:stone_bricks
+setblock ~45 ~10 ~20 minecraft:stone_bricks
 setblock ~46 ~10 ~20 minecraft:polished_blackstone_bricks
-fill ~46 ~10 ~21 ~46 ~10 ~22 minecraft:deepslate_bricks
-fill ~46 ~10 ~24 ~46 ~10 ~25 minecraft:deepslate_bricks
 setblock ~40 ~11 ~20 minecraft:stone_bricks
-setblock ~40 ~11 ~22 minecraft:cracked_stone_bricks
-fill ~40 ~11 ~23 ~40 ~11 ~24 minecraft:stone_bricks
-fill ~40 ~11 ~25 ~40 ~11 ~26 minecraft:deepslate_bricks
-setblock ~43 ~11 ~20 minecraft:cracked_deepslate_bricks
-setblock ~44 ~11 ~20 minecraft:deepslate_bricks
+setblock ~45 ~11 ~20 minecraft:cracked_stone_bricks
 setblock ~46 ~11 ~20 minecraft:cracked_deepslate_bricks
 setblock ~46 ~11 ~26 minecraft:deepslate_bricks
 
@@ -2526,28 +2623,29 @@ fill ~41 ~11 ~26 ~45 ~11 ~26 minecraft:deepslate_brick_stairs[facing=north,half=
 fill ~46 ~11 ~21 ~46 ~11 ~25 minecraft:deepslate_brick_stairs[facing=west,half=top]
 
 # the parapet ring at y 13 with merlons at y 14 and lantern posts at the corners
-fill ~40 ~13 ~20 ~43 ~13 ~20 minecraft:deepslate_bricks
-fill ~40 ~13 ~21 ~40 ~13 ~26 minecraft:deepslate_bricks
-setblock ~41 ~13 ~26 minecraft:deepslate_bricks
-setblock ~42 ~13 ~26 minecraft:stone_bricks
-setblock ~43 ~13 ~26 minecraft:cracked_stone_bricks
-fill ~44 ~13 ~20 ~44 ~14 ~20 minecraft:cracked_deepslate_bricks
-fill ~44 ~13 ~26 ~45 ~13 ~26 minecraft:stone_bricks
-fill ~45 ~13 ~20 ~46 ~13 ~20 minecraft:stone_bricks
-setblock ~46 ~13 ~21 minecraft:stone_bricks
-setblock ~46 ~13 ~22 minecraft:cracked_stone_bricks
-fill ~46 ~13 ~23 ~46 ~13 ~25 minecraft:stone_bricks
-fill ~46 ~13 ~26 ~46 ~14 ~26 minecraft:deepslate_bricks
+fill ~40 ~13 ~20 ~42 ~13 ~20 minecraft:stone_bricks
+fill ~40 ~13 ~21 ~40 ~13 ~22 minecraft:deepslate_bricks
+setblock ~40 ~13 ~23 minecraft:cracked_stone_bricks
+fill ~40 ~13 ~24 ~40 ~13 ~26 minecraft:stone_bricks
+fill ~41 ~13 ~26 ~43 ~13 ~26 minecraft:stone_bricks
+setblock ~43 ~13 ~20 minecraft:cracked_stone_bricks
+fill ~44 ~13 ~20 ~46 ~13 ~20 minecraft:stone_bricks
+setblock ~44 ~13 ~26 minecraft:deepslate_bricks
+setblock ~45 ~13 ~26 minecraft:stone_bricks
+fill ~46 ~13 ~21 ~46 ~13 ~25 minecraft:stone_bricks
+setblock ~46 ~13 ~26 minecraft:cracked_stone_bricks
 setblock ~40 ~14 ~20 minecraft:deepslate_bricks
-setblock ~40 ~14 ~22 minecraft:deepslate_bricks
-setblock ~40 ~14 ~24 minecraft:deepslate_bricks
+setblock ~40 ~14 ~22 minecraft:stone_bricks
+setblock ~40 ~14 ~24 minecraft:stone_bricks
 setblock ~40 ~14 ~26 minecraft:deepslate_bricks
-setblock ~42 ~14 ~20 minecraft:deepslate_bricks
-setblock ~42 ~14 ~26 minecraft:deepslate_bricks
-setblock ~44 ~14 ~26 minecraft:cracked_deepslate_bricks
+setblock ~42 ~14 ~20 minecraft:stone_bricks
+setblock ~42 ~14 ~26 minecraft:stone_bricks
+setblock ~44 ~14 ~20 minecraft:stone_bricks
+setblock ~44 ~14 ~26 minecraft:stone_bricks
 setblock ~46 ~14 ~20 minecraft:deepslate_bricks
-setblock ~46 ~14 ~22 minecraft:deepslate_bricks
+setblock ~46 ~14 ~22 minecraft:stone_bricks
 setblock ~46 ~14 ~24 minecraft:stone_bricks
+setblock ~46 ~14 ~26 minecraft:deepslate_bricks
 setblock ~40 ~15 ~20 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
 setblock ~40 ~15 ~26 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
 setblock ~46 ~15 ~20 minecraft:stone_brick_wall[north=none,east=none,south=none,west=none,up=true]
@@ -2558,58 +2656,99 @@ setblock ~46 ~16 ~20 minecraft:lantern[hanging=false]
 setblock ~46 ~16 ~26 minecraft:lantern[hanging=false]
 
 # the donjon x 31..41, z 8..18: walls y 1..16 in patched dark stone with dark quoins, string courses at y 6 and y 12
-setblock ~31 ~1 ~8 minecraft:stone_bricks
-fill ~31 ~1 ~9 ~31 ~1 ~10 minecraft:mossy_stone_bricks
-fill ~31 ~1 ~16 ~31 ~1 ~17 minecraft:mossy_stone_bricks
+fill ~31 ~1 ~8 ~32 ~1 ~8 minecraft:stone_bricks
+setblock ~31 ~1 ~9 minecraft:mossy_stone_bricks
+setblock ~31 ~1 ~10 minecraft:stone_bricks
+fill ~31 ~1 ~16 ~31 ~1 ~17 minecraft:stone_bricks
 fill ~31 ~1 ~18 ~31 ~2 ~18 minecraft:deepslate_bricks
-fill ~32 ~1 ~8 ~33 ~1 ~8 minecraft:deepslate_bricks
-fill ~32 ~1 ~18 ~36 ~1 ~18 minecraft:mossy_stone_bricks
-setblock ~34 ~1 ~8 minecraft:cracked_deepslate_bricks
-fill ~35 ~1 ~8 ~40 ~1 ~8 minecraft:mossy_stone_bricks
-fill ~37 ~1 ~18 ~39 ~1 ~18 minecraft:stone_bricks
-fill ~40 ~1 ~18 ~40 ~4 ~18 minecraft:mossy_stone_bricks
+setblock ~32 ~1 ~18 minecraft:mossy_stone_bricks
+setblock ~33 ~1 ~8 minecraft:mossy_stone_bricks
+fill ~33 ~1 ~18 ~35 ~1 ~18 minecraft:stone_bricks
+setblock ~34 ~1 ~8 minecraft:stone_bricks
+setblock ~35 ~1 ~8 minecraft:mossy_stone_bricks
+setblock ~36 ~1 ~8 minecraft:stone_bricks
+setblock ~36 ~1 ~18 minecraft:deepslate_bricks
+setblock ~37 ~1 ~8 minecraft:cracked_stone_bricks
+fill ~37 ~1 ~18 ~40 ~1 ~18 minecraft:stone_bricks
+setblock ~38 ~1 ~8 minecraft:mossy_stone_bricks
+fill ~39 ~1 ~8 ~40 ~2 ~8 minecraft:stone_bricks
 fill ~41 ~1 ~8 ~41 ~5 ~8 minecraft:deepslate_bricks
-fill ~41 ~1 ~9 ~41 ~1 ~17 minecraft:mossy_stone_bricks
+fill ~41 ~1 ~9 ~41 ~4 ~9 minecraft:mossy_stone_bricks
+setblock ~41 ~1 ~10 minecraft:stone_bricks
+setblock ~41 ~1 ~11 minecraft:mossy_stone_bricks
+fill ~41 ~1 ~12 ~41 ~1 ~15 minecraft:stone_bricks
+setblock ~41 ~1 ~16 minecraft:mossy_stone_bricks
+fill ~41 ~1 ~17 ~41 ~2 ~17 minecraft:stone_bricks
 fill ~41 ~1 ~18 ~41 ~5 ~18 minecraft:deepslate_bricks
 setblock ~31 ~2 ~8 minecraft:polished_blackstone_bricks
-fill ~31 ~2 ~9 ~31 ~2 ~10 minecraft:deepslate_bricks
-fill ~31 ~2 ~16 ~31 ~5 ~17 minecraft:stone_bricks
-fill ~32 ~2 ~8 ~33 ~3 ~8 minecraft:mossy_stone_bricks
-fill ~32 ~2 ~18 ~33 ~5 ~18 minecraft:stone_bricks
-fill ~35 ~2 ~8 ~37 ~4 ~8 minecraft:mossy_stone_bricks
-fill ~35 ~2 ~18 ~35 ~3 ~18 minecraft:cracked_stone_bricks
-fill ~36 ~2 ~18 ~36 ~5 ~18 minecraft:stone_bricks
-fill ~37 ~2 ~18 ~37 ~3 ~18 minecraft:mossy_stone_bricks
-fill ~39 ~2 ~8 ~40 ~5 ~8 minecraft:mossy_stone_bricks
-fill ~39 ~2 ~18 ~39 ~3 ~18 minecraft:mossy_stone_bricks
-fill ~41 ~2 ~9 ~41 ~5 ~9 minecraft:mossy_stone_bricks
-fill ~41 ~2 ~11 ~41 ~5 ~15 minecraft:mossy_stone_bricks
-fill ~41 ~2 ~17 ~41 ~5 ~17 minecraft:mossy_stone_bricks
-setblock ~31 ~3 ~8 minecraft:stone_bricks
-fill ~31 ~3 ~9 ~31 ~5 ~9 minecraft:deepslate_bricks
-setblock ~31 ~3 ~10 minecraft:cracked_deepslate_bricks
+setblock ~31 ~2 ~9 minecraft:stone_bricks
+setblock ~31 ~2 ~10 minecraft:mossy_stone_bricks
+fill ~31 ~2 ~16 ~31 ~5 ~16 minecraft:stone_bricks
+fill ~31 ~2 ~17 ~31 ~3 ~17 minecraft:mossy_stone_bricks
+setblock ~32 ~2 ~8 minecraft:mossy_stone_bricks
+fill ~32 ~2 ~18 ~32 ~4 ~18 minecraft:stone_bricks
+fill ~33 ~2 ~8 ~33 ~3 ~8 minecraft:stone_bricks
+setblock ~33 ~2 ~18 minecraft:mossy_stone_bricks
+fill ~35 ~2 ~8 ~35 ~5 ~8 minecraft:stone_bricks
+fill ~35 ~2 ~18 ~36 ~2 ~18 minecraft:stone_bricks
+fill ~36 ~2 ~8 ~36 ~4 ~8 minecraft:cracked_stone_bricks
+setblock ~37 ~2 ~8 minecraft:stone_bricks
+setblock ~37 ~2 ~18 minecraft:mossy_stone_bricks
+setblock ~39 ~2 ~18 minecraft:cracked_stone_bricks
+setblock ~40 ~2 ~18 minecraft:stone_bricks
+setblock ~41 ~2 ~11 minecraft:deepslate_bricks
+setblock ~41 ~2 ~12 minecraft:mossy_stone_bricks
+fill ~41 ~2 ~13 ~41 ~2 ~15 minecraft:stone_bricks
+fill ~31 ~3 ~8 ~32 ~3 ~8 minecraft:stone_bricks
+setblock ~31 ~3 ~9 minecraft:deepslate_bricks
+fill ~31 ~3 ~10 ~31 ~5 ~10 minecraft:stone_bricks
 setblock ~31 ~3 ~18 minecraft:cracked_deepslate_bricks
+fill ~33 ~3 ~18 ~33 ~5 ~18 minecraft:stone_bricks
+setblock ~35 ~3 ~18 minecraft:mossy_stone_bricks
+fill ~36 ~3 ~18 ~37 ~3 ~18 minecraft:stone_bricks
+fill ~37 ~3 ~8 ~37 ~4 ~8 minecraft:mossy_stone_bricks
+setblock ~39 ~3 ~8 minecraft:cracked_stone_bricks
+setblock ~39 ~3 ~18 minecraft:stone_bricks
+fill ~40 ~3 ~8 ~40 ~5 ~8 minecraft:stone_bricks
+setblock ~40 ~3 ~18 minecraft:mossy_stone_bricks
+fill ~41 ~3 ~11 ~41 ~3 ~12 minecraft:stone_bricks
+setblock ~41 ~3 ~13 minecraft:deepslate_bricks
+fill ~41 ~3 ~14 ~41 ~5 ~14 minecraft:cracked_stone_bricks
+fill ~41 ~3 ~15 ~41 ~5 ~15 minecraft:stone_bricks
+setblock ~41 ~3 ~17 minecraft:mossy_stone_bricks
 setblock ~31 ~4 ~8 minecraft:polished_blackstone_bricks
-fill ~31 ~4 ~10 ~31 ~7 ~10 minecraft:deepslate_bricks
+setblock ~31 ~4 ~9 minecraft:mossy_stone_bricks
+fill ~31 ~4 ~17 ~31 ~5 ~17 minecraft:stone_bricks
 fill ~31 ~4 ~18 ~31 ~6 ~18 minecraft:deepslate_bricks
-fill ~32 ~4 ~8 ~32 ~5 ~8 minecraft:cracked_deepslate_bricks
-fill ~33 ~4 ~8 ~34 ~5 ~8 minecraft:deepslate_bricks
+fill ~32 ~4 ~8 ~32 ~5 ~8 minecraft:stone_bricks
+setblock ~33 ~4 ~8 minecraft:cracked_stone_bricks
+setblock ~34 ~4 ~8 minecraft:mossy_stone_bricks
 fill ~34 ~4 ~18 ~35 ~4 ~18 minecraft:stone_bricks
-fill ~37 ~4 ~18 ~39 ~5 ~18 minecraft:stone_bricks
-fill ~38 ~4 ~8 ~38 ~5 ~8 minecraft:mossy_stone_bricks
-fill ~41 ~4 ~10 ~41 ~5 ~10 minecraft:mossy_stone_bricks
-fill ~41 ~4 ~16 ~41 ~5 ~16 minecraft:mossy_stone_bricks
+setblock ~36 ~4 ~18 minecraft:cracked_stone_bricks
+fill ~37 ~4 ~18 ~38 ~5 ~18 minecraft:stone_bricks
+fill ~38 ~4 ~8 ~39 ~5 ~8 minecraft:stone_bricks
+setblock ~39 ~4 ~18 minecraft:mossy_stone_bricks
+fill ~40 ~4 ~18 ~40 ~5 ~18 minecraft:stone_bricks
+setblock ~41 ~4 ~10 minecraft:stone_bricks
+setblock ~41 ~4 ~11 minecraft:mossy_stone_bricks
+fill ~41 ~4 ~12 ~41 ~5 ~13 minecraft:stone_bricks
+setblock ~41 ~4 ~16 minecraft:mossy_stone_bricks
+fill ~41 ~4 ~17 ~41 ~5 ~17 minecraft:stone_bricks
 fill ~31 ~5 ~8 ~31 ~9 ~8 minecraft:deepslate_bricks
-setblock ~31 ~5 ~11 minecraft:cracked_deepslate_bricks
-setblock ~31 ~5 ~12 minecraft:deepslate_bricks
-setblock ~31 ~5 ~13 minecraft:cracked_deepslate_bricks
-setblock ~31 ~5 ~14 minecraft:deepslate_bricks
-setblock ~31 ~5 ~15 minecraft:cracked_stone_bricks
-fill ~34 ~5 ~18 ~35 ~5 ~18 minecraft:deepslate_bricks
-setblock ~35 ~5 ~8 minecraft:stone_bricks
-fill ~36 ~5 ~8 ~37 ~5 ~8 minecraft:mossy_stone_bricks
-fill ~40 ~5 ~18 ~40 ~6 ~18 minecraft:deepslate_bricks
+setblock ~31 ~5 ~9 minecraft:stone_bricks
+fill ~31 ~5 ~11 ~31 ~5 ~15 minecraft:stone_bricks
+setblock ~32 ~5 ~18 minecraft:cracked_stone_bricks
+setblock ~33 ~5 ~8 minecraft:stone_bricks
+setblock ~34 ~5 ~8 minecraft:cracked_stone_bricks
+setblock ~34 ~5 ~18 minecraft:cracked_stone_bricks
+fill ~35 ~5 ~18 ~36 ~5 ~18 minecraft:stone_bricks
+fill ~36 ~5 ~8 ~37 ~5 ~8 minecraft:stone_bricks
+setblock ~39 ~5 ~18 minecraft:stone_bricks
+setblock ~41 ~5 ~9 minecraft:stone_bricks
+fill ~41 ~5 ~10 ~41 ~5 ~11 minecraft:cracked_stone_bricks
+setblock ~41 ~5 ~16 minecraft:stone_bricks
 setblock ~31 ~6 ~9 minecraft:chiseled_stone_bricks
+setblock ~31 ~6 ~10 minecraft:deepslate_bricks
 setblock ~31 ~6 ~11 minecraft:polished_blackstone_bricks
 fill ~31 ~6 ~12 ~31 ~6 ~14 minecraft:chiseled_stone_bricks
 setblock ~31 ~6 ~15 minecraft:deepslate_bricks
@@ -2617,7 +2756,7 @@ setblock ~31 ~6 ~16 minecraft:polished_blackstone_bricks
 setblock ~31 ~6 ~17 minecraft:deepslate_bricks
 setblock ~32 ~6 ~8 minecraft:chiseled_stone_bricks
 setblock ~32 ~6 ~18 minecraft:deepslate_bricks
-fill ~33 ~6 ~8 ~33 ~10 ~8 minecraft:deepslate_bricks
+setblock ~33 ~6 ~8 minecraft:deepslate_bricks
 setblock ~33 ~6 ~18 minecraft:polished_blackstone_bricks
 fill ~34 ~6 ~8 ~35 ~6 ~8 minecraft:chiseled_stone_bricks
 setblock ~34 ~6 ~18 minecraft:deepslate_bricks
@@ -2628,7 +2767,7 @@ setblock ~37 ~6 ~18 minecraft:polished_blackstone_bricks
 setblock ~38 ~6 ~8 minecraft:polished_blackstone_bricks
 setblock ~38 ~6 ~18 minecraft:chiseled_stone_bricks
 setblock ~39 ~6 ~8 minecraft:deepslate_bricks
-setblock ~39 ~6 ~18 minecraft:deepslate_bricks
+fill ~39 ~6 ~18 ~40 ~6 ~18 minecraft:deepslate_bricks
 fill ~40 ~6 ~8 ~41 ~6 ~8 minecraft:chiseled_stone_bricks
 setblock ~41 ~6 ~9 minecraft:polished_blackstone_bricks
 fill ~41 ~6 ~10 ~41 ~6 ~11 minecraft:deepslate_bricks
@@ -2638,98 +2777,94 @@ setblock ~41 ~6 ~14 minecraft:chiseled_stone_bricks
 setblock ~41 ~6 ~15 minecraft:deepslate_bricks
 fill ~41 ~6 ~16 ~41 ~6 ~17 minecraft:polished_blackstone_bricks
 setblock ~41 ~6 ~18 minecraft:chiseled_stone_bricks
-fill ~31 ~7 ~9 ~31 ~9 ~9 minecraft:deepslate_bricks
-fill ~31 ~7 ~11 ~31 ~8 ~11 minecraft:cracked_deepslate_bricks
-fill ~31 ~7 ~12 ~31 ~16 ~12 minecraft:deepslate_bricks
-setblock ~31 ~7 ~14 minecraft:deepslate_bricks
-setblock ~31 ~7 ~15 minecraft:cracked_deepslate_bricks
-setblock ~31 ~7 ~16 minecraft:deepslate_bricks
-setblock ~31 ~7 ~17 minecraft:stone_bricks
+fill ~31 ~7 ~9 ~31 ~7 ~11 minecraft:stone_bricks
+setblock ~31 ~7 ~12 minecraft:cracked_stone_bricks
+fill ~31 ~7 ~14 ~31 ~7 ~17 minecraft:cracked_stone_bricks
 setblock ~31 ~7 ~18 minecraft:polished_blackstone_bricks
-fill ~32 ~7 ~8 ~32 ~12 ~8 minecraft:deepslate_bricks
-fill ~32 ~7 ~18 ~35 ~7 ~18 minecraft:stone_bricks
-setblock ~34 ~7 ~8 minecraft:cracked_deepslate_bricks
-fill ~35 ~7 ~8 ~35 ~10 ~8 minecraft:deepslate_bricks
-setblock ~36 ~7 ~8 minecraft:cracked_stone_bricks
-setblock ~36 ~7 ~18 minecraft:cracked_stone_bricks
-fill ~37 ~7 ~8 ~40 ~7 ~8 minecraft:stone_bricks
-fill ~37 ~7 ~18 ~37 ~10 ~18 minecraft:stone_bricks
-fill ~38 ~7 ~18 ~39 ~7 ~18 minecraft:cracked_stone_bricks
-fill ~40 ~7 ~18 ~40 ~11 ~18 minecraft:stone_bricks
+fill ~32 ~7 ~8 ~34 ~7 ~8 minecraft:stone_bricks
+fill ~32 ~7 ~18 ~40 ~7 ~18 minecraft:stone_bricks
+setblock ~35 ~7 ~8 minecraft:cracked_stone_bricks
+fill ~36 ~7 ~8 ~38 ~7 ~8 minecraft:stone_bricks
+fill ~39 ~7 ~8 ~40 ~7 ~8 minecraft:cracked_stone_bricks
 setblock ~41 ~7 ~8 minecraft:deepslate_bricks
 fill ~41 ~7 ~9 ~41 ~7 ~10 minecraft:cracked_stone_bricks
 fill ~41 ~7 ~11 ~41 ~7 ~17 minecraft:stone_bricks
 setblock ~41 ~7 ~18 minecraft:deepslate_bricks
-fill ~31 ~8 ~14 ~31 ~9 ~14 minecraft:cracked_deepslate_bricks
-fill ~31 ~8 ~15 ~31 ~10 ~15 minecraft:deepslate_bricks
-fill ~31 ~8 ~17 ~31 ~10 ~18 minecraft:deepslate_bricks
-fill ~32 ~8 ~18 ~33 ~8 ~18 minecraft:stone_bricks
-setblock ~35 ~8 ~18 minecraft:cracked_stone_bricks
-fill ~36 ~8 ~8 ~37 ~11 ~8 minecraft:deepslate_bricks
-setblock ~36 ~8 ~18 minecraft:stone_bricks
-setblock ~39 ~8 ~8 minecraft:stone_bricks
-fill ~39 ~8 ~18 ~39 ~11 ~18 minecraft:stone_bricks
-fill ~40 ~8 ~8 ~40 ~9 ~8 minecraft:cracked_stone_bricks
-fill ~41 ~8 ~8 ~41 ~8 ~9 minecraft:stone_bricks
-fill ~41 ~8 ~11 ~41 ~8 ~15 minecraft:stone_bricks
-fill ~41 ~8 ~17 ~41 ~9 ~17 minecraft:stone_bricks
+fill ~31 ~8 ~9 ~31 ~11 ~9 minecraft:stone_bricks
+fill ~31 ~8 ~11 ~31 ~11 ~12 minecraft:stone_bricks
+fill ~31 ~8 ~14 ~31 ~9 ~15 minecraft:stone_bricks
+fill ~31 ~8 ~17 ~31 ~11 ~17 minecraft:stone_bricks
+fill ~31 ~8 ~18 ~31 ~10 ~18 minecraft:deepslate_bricks
+fill ~32 ~8 ~8 ~33 ~11 ~8 minecraft:stone_bricks
+fill ~32 ~8 ~18 ~33 ~9 ~18 minecraft:stone_bricks
+fill ~35 ~8 ~8 ~35 ~9 ~8 minecraft:stone_bricks
+fill ~35 ~8 ~18 ~37 ~9 ~18 minecraft:stone_bricks
+setblock ~36 ~8 ~8 minecraft:cracked_stone_bricks
+fill ~37 ~8 ~8 ~37 ~11 ~8 minecraft:stone_bricks
+fill ~39 ~8 ~8 ~41 ~8 ~8 minecraft:stone_bricks
+fill ~39 ~8 ~18 ~40 ~8 ~18 minecraft:stone_bricks
+fill ~41 ~8 ~9 ~41 ~11 ~9 minecraft:stone_bricks
+fill ~41 ~8 ~11 ~41 ~11 ~13 minecraft:stone_bricks
+setblock ~41 ~8 ~14 minecraft:cracked_stone_bricks
+fill ~41 ~8 ~15 ~41 ~11 ~15 minecraft:stone_bricks
+setblock ~41 ~8 ~17 minecraft:stone_bricks
 setblock ~41 ~8 ~18 minecraft:polished_blackstone_bricks
-fill ~31 ~9 ~11 ~31 ~11 ~11 minecraft:deepslate_bricks
-setblock ~31 ~9 ~13 minecraft:cracked_deepslate_bricks
-fill ~32 ~9 ~18 ~32 ~11 ~18 minecraft:deepslate_bricks
-setblock ~33 ~9 ~18 minecraft:cracked_deepslate_bricks
-setblock ~35 ~9 ~18 minecraft:stone_bricks
-setblock ~36 ~9 ~18 minecraft:cracked_stone_bricks
-setblock ~39 ~9 ~8 minecraft:cracked_stone_bricks
+fill ~31 ~9 ~13 ~31 ~10 ~13 minecraft:stone_bricks
+fill ~36 ~9 ~8 ~36 ~11 ~8 minecraft:stone_bricks
+fill ~39 ~9 ~8 ~39 ~11 ~8 minecraft:stone_bricks
+fill ~39 ~9 ~18 ~39 ~11 ~18 minecraft:stone_bricks
+setblock ~40 ~9 ~8 minecraft:cracked_stone_bricks
+setblock ~40 ~9 ~18 minecraft:cracked_stone_bricks
 setblock ~41 ~9 ~8 minecraft:polished_blackstone_bricks
-setblock ~41 ~9 ~9 minecraft:stone_bricks
-fill ~41 ~9 ~11 ~41 ~10 ~13 minecraft:stone_bricks
-setblock ~41 ~9 ~14 minecraft:cracked_stone_bricks
-fill ~41 ~9 ~15 ~41 ~10 ~15 minecraft:stone_bricks
+fill ~41 ~9 ~14 ~41 ~11 ~14 minecraft:stone_bricks
+setblock ~41 ~9 ~17 minecraft:cracked_stone_bricks
 setblock ~41 ~9 ~18 minecraft:stone_bricks
-fill ~31 ~10 ~8 ~31 ~10 ~9 minecraft:cracked_deepslate_bricks
-fill ~31 ~10 ~10 ~31 ~13 ~10 minecraft:deepslate_bricks
-fill ~31 ~10 ~13 ~31 ~11 ~14 minecraft:deepslate_bricks
-setblock ~31 ~10 ~16 minecraft:deepslate_bricks
-fill ~33 ~10 ~18 ~36 ~11 ~18 minecraft:deepslate_bricks
-setblock ~34 ~10 ~8 minecraft:deepslate_bricks
-setblock ~38 ~10 ~8 minecraft:cracked_deepslate_bricks
-setblock ~38 ~10 ~18 minecraft:stone_bricks
-fill ~39 ~10 ~8 ~41 ~10 ~8 minecraft:deepslate_bricks
-fill ~41 ~10 ~9 ~41 ~11 ~9 minecraft:deepslate_bricks
+setblock ~31 ~10 ~8 minecraft:cracked_deepslate_bricks
+fill ~31 ~10 ~10 ~31 ~11 ~10 minecraft:stone_bricks
+fill ~31 ~10 ~14 ~31 ~10 ~16 minecraft:cracked_stone_bricks
+setblock ~32 ~10 ~18 minecraft:cracked_stone_bricks
+fill ~33 ~10 ~18 ~34 ~11 ~18 minecraft:stone_bricks
+fill ~34 ~10 ~8 ~34 ~11 ~8 minecraft:stone_bricks
+setblock ~35 ~10 ~8 minecraft:deepslate_bricks
+setblock ~35 ~10 ~18 minecraft:cracked_stone_bricks
+fill ~36 ~10 ~18 ~38 ~10 ~18 minecraft:stone_bricks
+fill ~38 ~10 ~8 ~38 ~11 ~8 minecraft:stone_bricks
+fill ~40 ~10 ~8 ~40 ~11 ~8 minecraft:stone_bricks
+setblock ~40 ~10 ~18 minecraft:deepslate_bricks
+setblock ~41 ~10 ~8 minecraft:deepslate_bricks
 setblock ~41 ~10 ~10 minecraft:stone_bricks
-fill ~41 ~10 ~14 ~41 ~11 ~14 minecraft:stone_bricks
-fill ~41 ~10 ~16 ~41 ~11 ~16 minecraft:stone_bricks
-setblock ~41 ~10 ~17 minecraft:cracked_stone_bricks
+fill ~41 ~10 ~16 ~41 ~11 ~17 minecraft:stone_bricks
 setblock ~41 ~10 ~18 minecraft:polished_blackstone_bricks
 setblock ~31 ~11 ~8 minecraft:stone_bricks
-fill ~31 ~11 ~9 ~31 ~13 ~9 minecraft:deepslate_bricks
-fill ~31 ~11 ~15 ~31 ~11 ~16 minecraft:cracked_deepslate_bricks
-fill ~31 ~11 ~17 ~31 ~14 ~17 minecraft:deepslate_bricks
+setblock ~31 ~11 ~13 minecraft:cracked_stone_bricks
+fill ~31 ~11 ~14 ~31 ~11 ~16 minecraft:stone_bricks
 setblock ~31 ~11 ~18 minecraft:cracked_deepslate_bricks
-fill ~33 ~11 ~8 ~35 ~11 ~8 minecraft:cracked_deepslate_bricks
-fill ~37 ~11 ~18 ~37 ~12 ~18 minecraft:deepslate_bricks
-fill ~38 ~11 ~8 ~40 ~11 ~8 minecraft:deepslate_bricks
-setblock ~38 ~11 ~18 minecraft:cracked_deepslate_bricks
+setblock ~32 ~11 ~18 minecraft:stone_bricks
+setblock ~35 ~11 ~8 minecraft:stone_bricks
+setblock ~35 ~11 ~18 minecraft:stone_bricks
+setblock ~36 ~11 ~18 minecraft:cracked_stone_bricks
+setblock ~37 ~11 ~18 minecraft:stone_bricks
+setblock ~38 ~11 ~18 minecraft:cracked_stone_bricks
+setblock ~40 ~11 ~18 minecraft:stone_bricks
 setblock ~41 ~11 ~8 minecraft:cracked_deepslate_bricks
-fill ~41 ~11 ~10 ~41 ~11 ~13 minecraft:deepslate_bricks
-setblock ~41 ~11 ~15 minecraft:cracked_stone_bricks
-setblock ~41 ~11 ~17 minecraft:stone_bricks
+setblock ~41 ~11 ~10 minecraft:cracked_stone_bricks
 setblock ~41 ~11 ~18 minecraft:cracked_deepslate_bricks
 setblock ~31 ~12 ~8 minecraft:polished_blackstone_bricks
+fill ~31 ~12 ~9 ~31 ~12 ~10 minecraft:deepslate_bricks
 setblock ~31 ~12 ~11 minecraft:polished_blackstone_bricks
+setblock ~31 ~12 ~12 minecraft:deepslate_bricks
 setblock ~31 ~12 ~13 minecraft:chiseled_stone_bricks
-fill ~31 ~12 ~14 ~31 ~12 ~16 minecraft:deepslate_bricks
+fill ~31 ~12 ~14 ~31 ~12 ~17 minecraft:deepslate_bricks
 setblock ~31 ~12 ~18 minecraft:chiseled_stone_bricks
+fill ~32 ~12 ~8 ~33 ~12 ~8 minecraft:deepslate_bricks
 setblock ~32 ~12 ~18 minecraft:polished_blackstone_bricks
-fill ~33 ~12 ~8 ~33 ~13 ~8 minecraft:deepslate_bricks
 fill ~33 ~12 ~18 ~34 ~12 ~18 minecraft:deepslate_bricks
 setblock ~34 ~12 ~8 minecraft:chiseled_stone_bricks
-fill ~35 ~12 ~8 ~35 ~16 ~8 minecraft:deepslate_bricks
+setblock ~35 ~12 ~8 minecraft:deepslate_bricks
 setblock ~35 ~12 ~18 minecraft:chiseled_stone_bricks
 setblock ~36 ~12 ~8 minecraft:polished_blackstone_bricks
-setblock ~36 ~12 ~18 minecraft:deepslate_bricks
-fill ~37 ~12 ~8 ~37 ~16 ~8 minecraft:deepslate_bricks
+fill ~36 ~12 ~18 ~37 ~12 ~18 minecraft:deepslate_bricks
+setblock ~37 ~12 ~8 minecraft:deepslate_bricks
 setblock ~38 ~12 ~8 minecraft:polished_blackstone_bricks
 setblock ~38 ~12 ~18 minecraft:polished_blackstone_bricks
 fill ~39 ~12 ~8 ~40 ~12 ~8 minecraft:deepslate_bricks
@@ -2742,82 +2877,78 @@ fill ~41 ~12 ~13 ~41 ~12 ~16 minecraft:deepslate_bricks
 setblock ~41 ~12 ~17 minecraft:chiseled_stone_bricks
 setblock ~41 ~12 ~18 minecraft:deepslate_bricks
 fill ~31 ~13 ~8 ~31 ~15 ~8 minecraft:deepslate_bricks
-setblock ~31 ~13 ~11 minecraft:deepslate_bricks
-fill ~31 ~13 ~13 ~31 ~13 ~15 minecraft:deepslate_bricks
-setblock ~31 ~13 ~16 minecraft:cracked_deepslate_bricks
+fill ~31 ~13 ~9 ~31 ~16 ~9 minecraft:stone_bricks
+fill ~31 ~13 ~10 ~31 ~13 ~11 minecraft:cracked_stone_bricks
+fill ~31 ~13 ~12 ~31 ~15 ~12 minecraft:stone_bricks
+setblock ~31 ~13 ~13 minecraft:deepslate_bricks
+fill ~31 ~13 ~14 ~31 ~16 ~14 minecraft:stone_bricks
+setblock ~31 ~13 ~15 minecraft:cracked_stone_bricks
+fill ~31 ~13 ~16 ~31 ~13 ~17 minecraft:stone_bricks
 setblock ~31 ~13 ~18 minecraft:polished_blackstone_bricks
-setblock ~32 ~13 ~8 minecraft:cracked_deepslate_bricks
-fill ~32 ~13 ~18 ~32 ~16 ~18 minecraft:deepslate_bricks
-fill ~33 ~13 ~18 ~34 ~13 ~18 minecraft:stone_bricks
-setblock ~34 ~13 ~8 minecraft:deepslate_bricks
-fill ~35 ~13 ~18 ~35 ~14 ~18 minecraft:cracked_stone_bricks
-setblock ~36 ~13 ~8 minecraft:deepslate_bricks
-fill ~36 ~13 ~18 ~38 ~13 ~18 minecraft:stone_bricks
-setblock ~38 ~13 ~8 minecraft:deepslate_bricks
-fill ~39 ~13 ~8 ~40 ~14 ~8 minecraft:stone_bricks
-fill ~39 ~13 ~18 ~39 ~14 ~18 minecraft:cracked_stone_bricks
-fill ~40 ~13 ~18 ~40 ~16 ~18 minecraft:stone_bricks
+setblock ~32 ~13 ~8 minecraft:stone_bricks
+fill ~32 ~13 ~18 ~35 ~13 ~18 minecraft:stone_bricks
+setblock ~33 ~13 ~8 minecraft:cracked_stone_bricks
+fill ~34 ~13 ~8 ~40 ~13 ~8 minecraft:stone_bricks
+setblock ~36 ~13 ~18 minecraft:cracked_stone_bricks
+fill ~37 ~13 ~18 ~39 ~13 ~18 minecraft:stone_bricks
+setblock ~40 ~13 ~18 minecraft:deepslate_bricks
 setblock ~41 ~13 ~8 minecraft:cracked_deepslate_bricks
-setblock ~41 ~13 ~9 minecraft:cracked_stone_bricks
-setblock ~41 ~13 ~10 minecraft:stone_bricks
-fill ~41 ~13 ~11 ~41 ~13 ~12 minecraft:cracked_stone_bricks
-fill ~41 ~13 ~13 ~41 ~13 ~18 minecraft:stone_bricks
-setblock ~31 ~14 ~9 minecraft:cracked_stone_bricks
-setblock ~31 ~14 ~11 minecraft:stone_bricks
-fill ~31 ~14 ~13 ~31 ~16 ~13 minecraft:deepslate_bricks
-fill ~31 ~14 ~14 ~31 ~15 ~14 minecraft:cracked_deepslate_bricks
-fill ~31 ~14 ~15 ~31 ~16 ~15 minecraft:deepslate_bricks
+fill ~41 ~13 ~9 ~41 ~13 ~10 minecraft:cracked_stone_bricks
+fill ~41 ~13 ~11 ~41 ~13 ~18 minecraft:stone_bricks
+setblock ~31 ~14 ~11 minecraft:cracked_stone_bricks
+setblock ~31 ~14 ~13 minecraft:cracked_stone_bricks
+fill ~31 ~14 ~15 ~31 ~16 ~15 minecraft:stone_bricks
+fill ~31 ~14 ~17 ~31 ~16 ~17 minecraft:stone_bricks
 setblock ~31 ~14 ~18 minecraft:cracked_deepslate_bricks
-fill ~32 ~14 ~8 ~33 ~14 ~8 minecraft:stone_bricks
-setblock ~33 ~14 ~18 minecraft:cracked_stone_bricks
-setblock ~37 ~14 ~18 minecraft:cracked_stone_bricks
+setblock ~32 ~14 ~8 minecraft:deepslate_bricks
+fill ~32 ~14 ~18 ~33 ~14 ~18 minecraft:stone_bricks
+fill ~33 ~14 ~8 ~33 ~16 ~8 minecraft:stone_bricks
+fill ~35 ~14 ~8 ~35 ~16 ~8 minecraft:stone_bricks
+fill ~35 ~14 ~18 ~35 ~15 ~18 minecraft:stone_bricks
+fill ~37 ~14 ~8 ~37 ~15 ~8 minecraft:stone_bricks
+fill ~37 ~14 ~18 ~37 ~16 ~18 minecraft:stone_bricks
+fill ~39 ~14 ~8 ~40 ~14 ~8 minecraft:stone_bricks
+fill ~39 ~14 ~18 ~40 ~16 ~18 minecraft:stone_bricks
 setblock ~41 ~14 ~8 minecraft:deepslate_bricks
 fill ~41 ~14 ~9 ~41 ~16 ~9 minecraft:stone_bricks
 setblock ~41 ~14 ~11 minecraft:cracked_stone_bricks
-fill ~41 ~14 ~12 ~41 ~14 ~14 minecraft:stone_bricks
-setblock ~41 ~14 ~15 minecraft:cracked_stone_bricks
-fill ~41 ~14 ~17 ~41 ~16 ~17 minecraft:stone_bricks
+fill ~41 ~14 ~12 ~41 ~16 ~15 minecraft:stone_bricks
+setblock ~41 ~14 ~17 minecraft:cracked_stone_bricks
 setblock ~41 ~14 ~18 minecraft:polished_blackstone_bricks
-setblock ~31 ~15 ~9 minecraft:cracked_deepslate_bricks
-fill ~31 ~15 ~11 ~31 ~16 ~11 minecraft:deepslate_bricks
-setblock ~31 ~15 ~17 minecraft:cracked_deepslate_bricks
+fill ~31 ~15 ~11 ~31 ~16 ~11 minecraft:stone_bricks
+fill ~31 ~15 ~13 ~31 ~16 ~13 minecraft:stone_bricks
 fill ~31 ~15 ~18 ~31 ~16 ~18 minecraft:deepslate_bricks
-fill ~32 ~15 ~8 ~33 ~16 ~8 minecraft:deepslate_bricks
-setblock ~33 ~15 ~18 minecraft:stone_bricks
-fill ~35 ~15 ~18 ~35 ~16 ~18 minecraft:stone_bricks
-fill ~37 ~15 ~18 ~37 ~16 ~18 minecraft:stone_bricks
+fill ~32 ~15 ~8 ~32 ~16 ~8 minecraft:stone_bricks
+fill ~32 ~15 ~18 ~32 ~16 ~18 minecraft:stone_bricks
+setblock ~33 ~15 ~18 minecraft:deepslate_bricks
 setblock ~39 ~15 ~8 minecraft:cracked_stone_bricks
-fill ~39 ~15 ~18 ~39 ~16 ~18 minecraft:stone_bricks
 fill ~40 ~15 ~8 ~40 ~16 ~8 minecraft:stone_bricks
 setblock ~41 ~15 ~8 minecraft:polished_blackstone_bricks
-fill ~41 ~15 ~11 ~41 ~15 ~12 minecraft:stone_bricks
-setblock ~41 ~15 ~13 minecraft:cracked_stone_bricks
-fill ~41 ~15 ~14 ~41 ~16 ~15 minecraft:stone_bricks
+setblock ~41 ~15 ~11 minecraft:stone_bricks
+fill ~41 ~15 ~17 ~41 ~16 ~17 minecraft:stone_bricks
 fill ~41 ~15 ~18 ~41 ~16 ~18 minecraft:deepslate_bricks
 setblock ~31 ~16 ~8 minecraft:stone_bricks
-setblock ~31 ~16 ~9 minecraft:deepslate_bricks
-setblock ~31 ~16 ~10 minecraft:cracked_deepslate_bricks
-setblock ~31 ~16 ~14 minecraft:deepslate_bricks
-fill ~31 ~16 ~16 ~31 ~16 ~17 minecraft:deepslate_bricks
-setblock ~33 ~16 ~18 minecraft:deepslate_bricks
-setblock ~34 ~16 ~8 minecraft:deepslate_bricks
-setblock ~34 ~16 ~18 minecraft:stone_bricks
-setblock ~36 ~16 ~8 minecraft:cracked_deepslate_bricks
+setblock ~31 ~16 ~10 minecraft:stone_bricks
+setblock ~31 ~16 ~12 minecraft:cracked_stone_bricks
+setblock ~31 ~16 ~16 minecraft:stone_bricks
+fill ~33 ~16 ~18 ~34 ~16 ~18 minecraft:stone_bricks
+setblock ~34 ~16 ~8 minecraft:stone_bricks
+setblock ~35 ~16 ~18 minecraft:cracked_stone_bricks
+setblock ~36 ~16 ~8 minecraft:stone_bricks
 setblock ~36 ~16 ~18 minecraft:stone_bricks
-setblock ~38 ~16 ~8 minecraft:deepslate_bricks
-setblock ~38 ~16 ~18 minecraft:cracked_stone_bricks
-setblock ~39 ~16 ~8 minecraft:stone_bricks
+setblock ~37 ~16 ~8 minecraft:deepslate_bricks
+fill ~38 ~16 ~8 ~39 ~16 ~8 minecraft:stone_bricks
+setblock ~38 ~16 ~18 minecraft:stone_bricks
 setblock ~41 ~16 ~8 minecraft:deepslate_bricks
-fill ~41 ~16 ~10 ~41 ~16 ~11 minecraft:stone_bricks
-setblock ~41 ~16 ~12 minecraft:cracked_stone_bricks
-setblock ~41 ~16 ~13 minecraft:stone_bricks
+setblock ~41 ~16 ~10 minecraft:stone_bricks
+setblock ~41 ~16 ~11 minecraft:cracked_stone_bricks
 setblock ~41 ~16 ~16 minecraft:stone_bricks
 
 # buttresses on the faces (z 7 and z 19 at x 34 and 38, x 30 and x 42 at z 9 and 17) stepped back with a stair, the plinth lip
-fill ~30 ~1 ~9 ~30 ~5 ~9 minecraft:mossy_stone_bricks
+fill ~30 ~1 ~9 ~30 ~5 ~9 minecraft:stone_bricks
 fill ~30 ~1 ~17 ~30 ~5 ~17 minecraft:stone_bricks
 fill ~34 ~1 ~7 ~34 ~5 ~7 minecraft:stone_bricks
-fill ~34 ~1 ~19 ~34 ~5 ~19 minecraft:mossy_stone_bricks
+fill ~34 ~1 ~19 ~34 ~5 ~19 minecraft:cracked_stone_bricks
 fill ~38 ~1 ~7 ~38 ~5 ~7 minecraft:stone_bricks
 fill ~38 ~1 ~19 ~38 ~5 ~19 minecraft:stone_bricks
 fill ~42 ~1 ~9 ~42 ~5 ~9 minecraft:stone_bricks
@@ -2961,10 +3092,10 @@ setblock ~30 ~7 ~15 minecraft:stone_brick_wall[north=none,east=low,south=none,we
 # the parapet of the roof platform: y 18 all round, merlons at y 19; the four turrets (3 x 3, y 18..20) with doors onto the platform, slits and tile roofs at y 21
 fill ~31 ~18 ~8 ~32 ~18 ~8 minecraft:deepslate_bricks
 fill ~31 ~18 ~9 ~31 ~18 ~10 minecraft:deepslate_bricks
-setblock ~31 ~18 ~11 minecraft:stone_bricks
-setblock ~31 ~18 ~12 minecraft:cracked_stone_bricks
-fill ~31 ~18 ~13 ~31 ~18 ~14 minecraft:stone_bricks
-fill ~31 ~18 ~15 ~31 ~18 ~17 minecraft:cracked_deepslate_bricks
+fill ~31 ~18 ~11 ~31 ~18 ~13 minecraft:stone_bricks
+setblock ~31 ~18 ~14 minecraft:cracked_stone_bricks
+setblock ~31 ~18 ~15 minecraft:deepslate_bricks
+fill ~31 ~18 ~16 ~31 ~18 ~17 minecraft:cracked_deepslate_bricks
 fill ~31 ~18 ~18 ~31 ~19 ~18 minecraft:deepslate_bricks
 fill ~32 ~18 ~9 ~33 ~19 ~9 minecraft:air
 fill ~32 ~18 ~10 ~33 ~19 ~10 minecraft:deepslate_bricks
@@ -2972,11 +3103,12 @@ fill ~32 ~18 ~16 ~33 ~18 ~16 minecraft:deepslate_bricks
 fill ~32 ~18 ~17 ~33 ~19 ~17 minecraft:air
 fill ~32 ~18 ~18 ~33 ~18 ~18 minecraft:cracked_deepslate_bricks
 setblock ~33 ~18 ~8 minecraft:cracked_deepslate_bricks
-setblock ~34 ~18 ~8 minecraft:stone_bricks
-fill ~34 ~18 ~18 ~34 ~19 ~18 minecraft:deepslate_bricks
-fill ~35 ~18 ~8 ~38 ~18 ~8 minecraft:deepslate_bricks
-setblock ~35 ~18 ~18 minecraft:cracked_deepslate_bricks
-fill ~36 ~18 ~18 ~38 ~18 ~18 minecraft:stone_bricks
+fill ~34 ~18 ~8 ~38 ~18 ~8 minecraft:stone_bricks
+fill ~34 ~18 ~18 ~34 ~19 ~18 minecraft:stone_bricks
+setblock ~35 ~18 ~18 minecraft:cracked_stone_bricks
+setblock ~36 ~18 ~18 minecraft:stone_bricks
+setblock ~37 ~18 ~18 minecraft:cracked_stone_bricks
+fill ~38 ~18 ~18 ~38 ~19 ~18 minecraft:stone_bricks
 setblock ~39 ~18 ~8 minecraft:cracked_deepslate_bricks
 fill ~39 ~18 ~9 ~40 ~19 ~9 minecraft:air
 fill ~39 ~18 ~10 ~39 ~20 ~10 minecraft:deepslate_bricks
@@ -2989,58 +3121,61 @@ setblock ~40 ~18 ~16 minecraft:cracked_deepslate_bricks
 setblock ~40 ~18 ~18 minecraft:cracked_deepslate_bricks
 setblock ~41 ~18 ~8 minecraft:cracked_deepslate_bricks
 setblock ~41 ~18 ~9 minecraft:deepslate_bricks
-fill ~41 ~18 ~10 ~41 ~18 ~14 minecraft:stone_bricks
-setblock ~41 ~18 ~15 minecraft:cracked_stone_bricks
+setblock ~41 ~18 ~10 minecraft:stone_bricks
+setblock ~41 ~18 ~11 minecraft:cracked_stone_bricks
+fill ~41 ~18 ~12 ~41 ~18 ~15 minecraft:stone_bricks
 setblock ~41 ~18 ~16 minecraft:deepslate_bricks
 setblock ~41 ~18 ~17 minecraft:polished_blackstone_bricks
 setblock ~41 ~18 ~18 minecraft:deepslate_bricks
 setblock ~31 ~19 ~8 minecraft:deepslate_bricks
 setblock ~31 ~19 ~9 minecraft:air
-fill ~31 ~19 ~10 ~31 ~20 ~10 minecraft:stone_bricks
-setblock ~31 ~19 ~11 minecraft:deepslate_bricks
-setblock ~31 ~19 ~13 minecraft:deepslate_bricks
-fill ~31 ~19 ~15 ~31 ~19 ~16 minecraft:deepslate_bricks
+fill ~31 ~19 ~10 ~31 ~19 ~11 minecraft:stone_bricks
+setblock ~31 ~19 ~13 minecraft:cracked_stone_bricks
+setblock ~31 ~19 ~15 minecraft:stone_bricks
+fill ~31 ~19 ~16 ~31 ~20 ~16 minecraft:deepslate_bricks
 setblock ~31 ~19 ~17 minecraft:air
 setblock ~32 ~19 ~8 minecraft:air
 setblock ~32 ~19 ~16 minecraft:cracked_deepslate_bricks
 setblock ~32 ~19 ~18 minecraft:air
-fill ~33 ~19 ~8 ~34 ~19 ~8 minecraft:deepslate_bricks
+setblock ~33 ~19 ~8 minecraft:deepslate_bricks
 setblock ~33 ~19 ~16 minecraft:stone_bricks
 setblock ~33 ~19 ~18 minecraft:deepslate_bricks
-setblock ~36 ~19 ~8 minecraft:deepslate_bricks
-setblock ~36 ~19 ~18 minecraft:deepslate_bricks
-fill ~38 ~19 ~8 ~39 ~19 ~8 minecraft:deepslate_bricks
-fill ~38 ~19 ~18 ~39 ~19 ~18 minecraft:cracked_deepslate_bricks
+setblock ~34 ~19 ~8 minecraft:stone_bricks
+setblock ~36 ~19 ~8 minecraft:stone_bricks
+setblock ~36 ~19 ~18 minecraft:cracked_stone_bricks
+setblock ~38 ~19 ~8 minecraft:stone_bricks
+fill ~39 ~19 ~8 ~39 ~20 ~8 minecraft:deepslate_bricks
 setblock ~39 ~19 ~16 minecraft:polished_blackstone_bricks
+fill ~39 ~19 ~18 ~39 ~20 ~18 minecraft:cracked_deepslate_bricks
 setblock ~40 ~19 ~8 minecraft:air
 fill ~40 ~19 ~10 ~41 ~19 ~10 minecraft:deepslate_bricks
 setblock ~40 ~19 ~16 minecraft:deepslate_bricks
 setblock ~40 ~19 ~18 minecraft:air
 setblock ~41 ~19 ~8 minecraft:stone_bricks
 setblock ~41 ~19 ~9 minecraft:air
-setblock ~41 ~19 ~11 minecraft:cracked_deepslate_bricks
-setblock ~41 ~19 ~13 minecraft:deepslate_bricks
-setblock ~41 ~19 ~15 minecraft:deepslate_bricks
+setblock ~41 ~19 ~11 minecraft:deepslate_bricks
+setblock ~41 ~19 ~13 minecraft:stone_bricks
+setblock ~41 ~19 ~15 minecraft:cracked_stone_bricks
 setblock ~41 ~19 ~16 minecraft:cracked_deepslate_bricks
 setblock ~41 ~19 ~17 minecraft:air
 setblock ~41 ~19 ~18 minecraft:cracked_deepslate_bricks
 setblock ~31 ~20 ~8 minecraft:cracked_deepslate_bricks
-setblock ~31 ~20 ~9 minecraft:stone_bricks
-fill ~31 ~20 ~16 ~33 ~20 ~16 minecraft:deepslate_bricks
+fill ~31 ~20 ~9 ~31 ~20 ~10 minecraft:stone_bricks
 setblock ~31 ~20 ~17 minecraft:polished_blackstone_bricks
 setblock ~31 ~20 ~18 minecraft:cracked_deepslate_bricks
 setblock ~32 ~20 ~8 minecraft:deepslate_bricks
 setblock ~32 ~20 ~9 minecraft:air
 setblock ~32 ~20 ~10 minecraft:polished_blackstone_bricks
+fill ~32 ~20 ~16 ~33 ~20 ~16 minecraft:deepslate_bricks
 setblock ~32 ~20 ~17 minecraft:air
 setblock ~32 ~20 ~18 minecraft:stone_bricks
 setblock ~33 ~20 ~8 minecraft:cracked_deepslate_bricks
 setblock ~33 ~20 ~9 minecraft:stone_bricks
 setblock ~33 ~20 ~10 minecraft:deepslate_bricks
 fill ~33 ~20 ~17 ~33 ~20 ~18 minecraft:polished_blackstone_bricks
-fill ~39 ~20 ~8 ~39 ~20 ~9 minecraft:deepslate_bricks
+setblock ~39 ~20 ~9 minecraft:deepslate_bricks
 setblock ~39 ~20 ~16 minecraft:deepslate_bricks
-fill ~39 ~20 ~17 ~39 ~20 ~18 minecraft:cracked_deepslate_bricks
+setblock ~39 ~20 ~17 minecraft:cracked_deepslate_bricks
 fill ~40 ~20 ~8 ~41 ~20 ~8 minecraft:cracked_deepslate_bricks
 setblock ~40 ~20 ~9 minecraft:air
 setblock ~40 ~20 ~10 minecraft:cracked_deepslate_bricks
