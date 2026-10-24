@@ -235,7 +235,6 @@ public final class Arena {
         for(var s:Spec.SCENERY){int y=height(s.x(),s.z())+1;if(s.kind().equals("tree")){
             tree(w,s.x(),y,s.z(),s.width(),s.height(),s.palette().equals("spruce"));
         }else for(int dx=0;dx<s.width();dx++)for(int dz=0;dz<s.width();dz++)for(int dy=0;dy<s.height();dy++)if(dx+dz+dy<s.width()+s.height()-1)put(w,s.x()+dx,y+dy,s.z()+dz,(dx+dz)%3==0?Blocks.MOSSY_COBBLESTONE:Blocks.ANDESITE);}
-        if(CampaignMaps.selected==1)for(int row=0;row<4;row++)box(w,-109+row*4,65,-152,3,2,3,Blocks.HAY_BLOCK);
         if(!Boolean.getBoolean("gravesandglory.noDressing"))MapDressing.dress(w); // off only in local A/B harness runs
     }
     /** One tree with its trunk standing on (x,y,z) (y is the first block above the ground): a spruce as a cone, an oak as a rounded crown; leaves are persistent so the woods never thin out mid-battle. width is the width of the crown, height the height of the trunk

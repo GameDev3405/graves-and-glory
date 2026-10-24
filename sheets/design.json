@@ -1838,6 +1838,46 @@
       "purpose": "mill and yard at the north crossing"
     },
     {
+      "id": "ironhold/keep",
+      "width": 47,
+      "depth": 27,
+      "height": 22,
+      "palette": "stone",
+      "purpose": "river keep south of B"
+    },
+    {
+      "id": "ironhold/gate",
+      "width": 7,
+      "depth": 47,
+      "height": 17,
+      "palette": "stone",
+      "purpose": "west gate, 11-wide passage"
+    },
+    {
+      "id": "ironhold/curtain",
+      "width": 5,
+      "depth": 31,
+      "height": 19,
+      "palette": "stone",
+      "purpose": "curtain section with end towers"
+    },
+    {
+      "id": "ironhold/hay_barn",
+      "width": 25,
+      "depth": 19,
+      "height": 13,
+      "palette": "wood",
+      "purpose": "hay barn and hay yard"
+    },
+    {
+      "id": "ironhold/garrison",
+      "width": 31,
+      "depth": 23,
+      "height": 15,
+      "palette": "stone",
+      "purpose": "garrison barracks and yard"
+    },
+    {
       "id": "kingsfield/outpost",
       "width": 47,
       "depth": 47,
@@ -2333,6 +2373,237 @@
       "encloses": "-"
     },
     {
+      "id": "ih-house-0",
+      "map": 1,
+      "template": "kit/house_a",
+      "x": -75,
+      "z": -118,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_0",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-house-1",
+      "map": 1,
+      "template": "kit/house_b",
+      "x": -101,
+      "z": -118,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_1",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-house-2",
+      "map": 1,
+      "template": "kit/house_b",
+      "x": -75,
+      "z": -103,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_2",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-house-3",
+      "map": 1,
+      "template": "kit/house_a",
+      "x": -101,
+      "z": -103,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "house_3",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-market",
+      "map": 1,
+      "template": "kit/market",
+      "x": -50,
+      "z": -97,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "market",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-keep",
+      "map": 1,
+      "template": "ironhold/keep",
+      "x": 0,
+      "z": 34,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "ironhold",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-gate",
+      "map": 1,
+      "template": "ironhold/gate",
+      "x": -37,
+      "z": 0,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "breach",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-curtain-wn1",
+      "map": 1,
+      "template": "ironhold/curtain",
+      "x": -72,
+      "z": -43,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "curtain_-1_-62",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-curtain-wn2",
+      "map": 1,
+      "template": "ironhold/curtain",
+      "x": -72,
+      "z": -81,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "curtain_-1_-62",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-curtain-ws1",
+      "map": 1,
+      "template": "ironhold/curtain",
+      "x": -72,
+      "z": 43,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "curtain_-1_62",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-curtain-ws2",
+      "map": 1,
+      "template": "ironhold/curtain",
+      "x": -72,
+      "z": 81,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "curtain_-1_62",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-curtain-en1",
+      "map": 1,
+      "template": "ironhold/curtain",
+      "x": 72,
+      "z": -43,
+      "rotation": 180,
+      "elevation": 64,
+      "replaces": "curtain_1_-62",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-curtain-en2",
+      "map": 1,
+      "template": "ironhold/curtain",
+      "x": 72,
+      "z": -81,
+      "rotation": 180,
+      "elevation": 64,
+      "replaces": "curtain_1_-62",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-curtain-es1",
+      "map": 1,
+      "template": "ironhold/curtain",
+      "x": 72,
+      "z": 43,
+      "rotation": 180,
+      "elevation": 64,
+      "replaces": "curtain_1_62",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-curtain-es2",
+      "map": 1,
+      "template": "ironhold/curtain",
+      "x": 72,
+      "z": 81,
+      "rotation": 180,
+      "elevation": 64,
+      "replaces": "curtain_1_62",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-hay-barn",
+      "map": 1,
+      "template": "ironhold/hay_barn",
+      "x": -105,
+      "z": -160,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "supply_barn",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-garrison",
+      "map": 1,
+      "template": "ironhold/garrison",
+      "x": 65,
+      "z": 147,
+      "rotation": 0,
+      "elevation": 64,
+      "replaces": "garrison",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-dawn-tower-n",
+      "map": 1,
+      "template": "kit/watchtower",
+      "x": -180,
+      "z": -85,
+      "rotation": 0,
+      "elevation": 67,
+      "replaces": "dawn_tower_-85",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-dawn-tower-s",
+      "map": 1,
+      "template": "kit/watchtower",
+      "x": -180,
+      "z": 85,
+      "rotation": 0,
+      "elevation": 67,
+      "replaces": "dawn_tower_85",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-dusk-tower-n",
+      "map": 1,
+      "template": "kit/watchtower",
+      "x": 180,
+      "z": -85,
+      "rotation": 180,
+      "elevation": 67,
+      "replaces": "dusk_tower_-85",
+      "encloses": "-"
+    },
+    {
+      "id": "ih-dusk-tower-s",
+      "map": 1,
+      "template": "kit/watchtower",
+      "x": 180,
+      "z": 85,
+      "rotation": 180,
+      "elevation": 67,
+      "replaces": "dusk_tower_85",
+      "encloses": "-"
+    },
+    {
       "id": "kf-house-0",
       "map": 4,
       "template": "kit/house_a",
@@ -2553,6 +2824,50 @@
       "toX": -7.5,
       "toY": -1.0,
       "toZ": 23.5
+    },
+    {
+      "id": "gate-cover",
+      "template": "ironhold/gate",
+      "kind": "cover",
+      "fromX": 7.5,
+      "fromY": 2.6,
+      "fromZ": 7.5,
+      "toX": -20.5,
+      "toY": -1.0,
+      "toZ": 7.5
+    },
+    {
+      "id": "gate-sight",
+      "template": "ironhold/gate",
+      "kind": "sight",
+      "fromX": 1.5,
+      "fromY": 14.6,
+      "fromZ": 14.5,
+      "toX": -20.5,
+      "toY": -1.0,
+      "toZ": 23.5
+    },
+    {
+      "id": "keep-cover",
+      "template": "ironhold/keep",
+      "kind": "cover",
+      "fromX": 14.5,
+      "fromY": 2.6,
+      "fromZ": 4.5,
+      "toX": 26.5,
+      "toY": 2.6,
+      "toZ": -20.5
+    },
+    {
+      "id": "keep-sight",
+      "template": "ironhold/keep",
+      "kind": "sight",
+      "fromX": 14.5,
+      "fromY": 8.6,
+      "fromZ": 0.5,
+      "toX": 26.5,
+      "toY": 2.6,
+      "toZ": -20.5
     }
   ]
 }
