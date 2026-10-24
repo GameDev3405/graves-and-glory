@@ -89,6 +89,10 @@ final class ArmyCards {
     /** The troopNotes row of a troop (its beats and beaten-by cells; the level 2 and 3 card lines come from its levelAbilities rows), or null. */
     static Spec.TroopNotesRow notes(Spec.TroopsRow t){for(var n:Spec.TROOPNOTES)if(n.id().equals(t.id()))return n;return null;}
 
+    /** Draws a portrait mob as the cards do (InventoryScreen.drawEntity), telling TroopModels the scale first: a troop of density above 1 draws its one-texel-a-px twins on a card under 16 x density px a block. */
+    static void draw(DrawContext g,int x,int bottom,int size,float mouseX,float mouseY,MobEntity e){
+        TroopModels.sized(e,size);InventoryScreen.drawEntity(g,x,bottom,size,mouseX,mouseY,e);
+    }
     /** A portrait size that fits any model in the same frame: a husk at size, a wolf no larger than 1.25 times, a golem smaller. */
     static int size(MobEntity e,int size){return (int)Math.round(size*Math.min(1.25,1.95/Math.max(.6,Math.max(e.getHeight(),e.getWidth()))));}
     static final class Recruit extends ButtonWidget {
@@ -101,7 +105,7 @@ final class ArmyCards {
             int x=getX(),y=getY();DarkUi.frame(g,x,y,width,height);
             if(selected||active&&(isHovered()||isFocused()))g.drawBorder(x+1,y+1,width-2,height-2,DarkUi.GOLD);
             var h=house(spec);int col=0x33000000|(h==null?0x4c9391:h.accent()&0xffffff);g.fillGradient(x+4,y+4,x+width-4,y+55,col,0x00181820); // the House accent
-            var e=portrait(spec);if(e!=null){e.age=c.player==null?0:c.player.age;InventoryScreen.drawEntity(g,x+width/2,y+52,size(e,22),20,0,e);}
+            var e=portrait(spec);if(e!=null){e.age=c.player==null?0:c.player.age;draw(g,x+width/2,y+52,size(e,22),20,0,e);}
             g.getMatrices().push();g.getMatrices().translate(0,0,100); // as CampScreen.card: the model is drawn at z 50 and writes depth, so an inactive card's dim sits at z 100 and the card's text at z 150
             if(!active)g.fill(x+3,y+3,x+width-3,y+height-3,0x99111119);
             g.getMatrices().translate(0,0,50);

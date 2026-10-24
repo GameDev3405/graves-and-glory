@@ -37,6 +37,8 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     final ModelPart top;
     final String troop,rig,hand,idleArms,portrait,weapon;
     final Identifier veteran,glow,outer;final int glowFrom;
+    /** Texels a model px of this troop's PNGs carry (the file's "density", 1 unless it says; texel-3 plan): above 1 the build also ships a one-texel-a-px twin of each PNG (TroopModels.twin). */
+    final int density;
     private final Map<Integer,Identifier> skins=new TreeMap<>();
     private final Map<String,ModelPart> parts=new LinkedHashMap<>();
     private final Map<String,Bone> info=new LinkedHashMap<>();
@@ -77,7 +79,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
 
     private TroopModel(){
         super(RenderLayer::getEntityCutout);top=new ModelPart(List.of(),Map.of());troop=rig=hand=idleArms=portrait=weapon="";
-        veteran=glow=outer=null;glowFrom=1;teamOn=new boolean[0];hands=Map.of();rest=new Box(0,0,0,0,0,0);outerTop=null;
+        veteran=glow=outer=null;glowFrom=1;density=1;teamOn=new boolean[0];hands=Map.of();rest=new Box(0,0,0,0,0,0);outerTop=null;
         cullRadius=cullBottom=cullTop=0;teamBits=0;weaponPoints=List.of();relief=Map.of();reliefWalk=Map.of();
     }
     /** An empty placeholder: TroopRenderer is built before TroopModelLoader may have loaded anything. */
@@ -95,6 +97,8 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         portrait=str(json,"portrait");weapon=str(json,"weapon");
         veteran=id(str(json,"veteran"));glow=id(str(json,"glow"));outer=id(str(json,"outer"));
         glowFrom=json.has("glowFrom")?json.get("glowFrom").getAsInt():1;
+        density=json.has("density")?json.get("density").getAsInt():1;
+        if(density<1||density>4)throw new IllegalArgumentException("density "+density+" is not 1 to 4");
         if(json.has("skins"))for(var e:json.getAsJsonObject("skins").entrySet())skins.put(Integer.parseInt(e.getKey()),id(e.getValue().getAsString()));
         JsonArray bones=json.getAsJsonArray("bones");
         if(bones.size()>MAX_BONES)throw new IllegalArgumentException(bones.size()+" bones, more than "+MAX_BONES);

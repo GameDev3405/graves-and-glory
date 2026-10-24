@@ -59,6 +59,12 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
             String weapon=str(j,"weapon");need(weapon.equals("none")||weapons.containsKey(weapon),"its weapon "+weapon+" did not load");
             for(var e:j.getAsJsonObject("skins").entrySet())texture(manager,new Identifier(e.getValue().getAsString()));
             for(String key:List.of("veteran","glow","outer"))if(!str(j,key).isEmpty())texture(manager,new Identifier(str(j,key)));
+            // a troop of density above 1 ships a one-texel-a-px twin of each of its PNGs (<name>_far.png) for the draws past TroopDepth.NEAR_BLOCKS and the small cards
+            int density=j.has("density")?j.get("density").getAsInt():1;need(density>=1&&density<=4,"density "+density+" is not 1 to 4");
+            if(density>1){
+                for(var e:j.getAsJsonObject("skins").entrySet())texture(manager,TroopModels.twin(new Identifier(e.getValue().getAsString())));
+                for(String key:List.of("veteran","glow","outer"))if(!str(j,key).isEmpty())texture(manager,TroopModels.twin(new Identifier(str(j,key))));
+            }
             boolean team=false;for(JsonElement b:j.getAsJsonArray("bones"))team|=b.getAsJsonObject().has("team")&&b.getAsJsonObject().get("team").getAsBoolean();
             need(!team||missingCloth==null,"the cloth sheet "+missingCloth+" is missing");
             float outer=rig.get("outer").getAsFloat();

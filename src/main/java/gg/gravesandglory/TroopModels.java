@@ -128,11 +128,40 @@ public final class TroopModels {
     public static Set<String> ids(){return troops.keySet();}
 
     /** The skin of a Look: its armour tier's skin (a tier without its own skin draws the next lower tier's). A Veteran wears the same tier, with trim over it. */
-    public static Identifier skin(Look l){var m=troops.get(l.troop().id());return m==null?null:m.skin(l.armourTier());}
+    public static Identifier skin(Look l){return skin(l,false);}
+    /** The skin of a Look, or with far its one-texel-a-px twin when the troop's density is above 1 (see far, twin). */
+    public static Identifier skin(Look l,boolean far){var m=troops.get(l.troop().id());return m==null?null:pick(m,m.skin(l.armourTier()),far);}
     /** The veteran trim (<troop>_veteran, in-match progression design 4.4) a Look draws over its skin: null unless it is a Veteran and the troop has a trim. */
-    public static Identifier trim(Look l){var m=troops.get(l.troop().id());return m==null||!l.veteran()?null:m.veteran;}
+    public static Identifier trim(Look l){return trim(l,false);}
+    public static Identifier trim(Look l,boolean far){var m=troops.get(l.troop().id());return m==null||!l.veteran()?null:pick(m,m.veteran,far);}
     /** The glow layer (<troop>_e) of a Look, null below the troop's glowFrom stage or for a troop without one. */
-    public static Identifier glow(Look l){var m=troops.get(l.troop().id());return m==null||m.glow==null||l.armourTier()<m.glowFrom?null:m.glow;}
+    public static Identifier glow(Look l){return glow(l,false);}
+    public static Identifier glow(Look l,boolean far){var m=troops.get(l.troop().id());return m==null||m.glow==null||l.armourTier()<m.glowFrom?null:pick(m,m.glow,far);}
+
+    /** The suffix of a density D troop PNG's one-texel-a-px twin (tools/build_skins.py FAR_SUFFIX): knight_s3.png has knight_s3_far.png. */
+    static final String FAR_SUFFIX="_far";
+    /** A card portrait is drawn from the twins when it spans fewer than this many screen px a block for each texel of density a px: 16 x density, so 48 for a density 3 troop (at 48 a texel is one screen px; under it a nearest-sampled 3x skin crawls and speckles). */
+    static final int FAR_CARD_PER_DENSITY=16;
+    /** The twin of a texture id: the same path with _far before the .png (a path that is no png is its own twin). */
+    static Identifier twin(Identifier id){
+        String p=id.getPath();return p.endsWith(".png")?new Identifier(id.getNamespace(),p.substring(0,p.length()-4)+FAR_SUFFIX+".png"):id;
+    }
+    /** The texture a draw binds: the id, or for a density above 1 troop drawing far, its twin. */
+    private static Identifier pick(TroopModel<?> m,Identifier id,boolean far){return far&&m.density>1&&id!=null?twin(id):id;}
+    /** The screen px a block spans where a dressed mob was last drawn (ArmyCards.draw records it). Weak keys by identity. */
+    private static final Map<Entity,Integer> SIZED=new MapMaker().weakKeys().makeMap();
+    /** Records the scale (screen px a block) a portrait mob is about to be drawn at. */
+    static void sized(Entity e,int pxPerBlock){SIZED.put(e,pxPerBlock);}
+    /**
+     * Whether the draw of this troop binds the one-texel-a-px twins of its PNGs (texel-3 plan Q2a): the troop's density is above 1 and it
+     * is a world troop at least TroopDepth.NEAR_BLOCKS from the camera, or a card portrait last drawn at fewer than FAR_CARD_PER_DENSITY
+     * x density px a block. A troop of density 1 never does.
+     */
+    static boolean far(Entity e,Look l){
+        var m=troops.get(l.troop().id());if(m==null||m.density<=1)return false;
+        if(dressed(e)){Integer px=SIZED.get(e);return px!=null&&px<FAR_CARD_PER_DENSITY*m.density;}
+        return TroopDepth.beyond(e);
+    }
     /** The cloth sheet of a side (a factions id), of the company ("company"), or linen for null. */
     public static Identifier cloth(String side){return new Identifier(NAMESPACE,CLOTH+(side==null?"linen":side)+".png");}
     public static Weapon weapon(String id){return id==null?null:weapons.get(id);}

@@ -84,6 +84,10 @@ public final class TroopDepth {
     public static boolean weaponNear(Entity e){
         return enabled&&inRange(e);
     }
+    /** Whether a world troop lies at least NEAR_BLOCKS from the game camera, where a density above 1 troop binds its one-texel-a-px skin twins (TroopModels.far). A dressed mob (a portrait) is never beyond: its cards choose by their own scale. */
+    public static boolean beyond(Entity e){
+        return !TroopModels.dressed(e)&&distSq(e,camera)>=NEAR_SQ;
+    }
     private static boolean inRange(Entity e){
         if(TroopModels.dressed(e))return true;
         double d=distSq(e,camera);return d<NEAR_SQ&&d<=cutoff;

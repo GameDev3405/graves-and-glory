@@ -57,6 +57,8 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
     /** The draws of an entity through its own model, or null for one never drawn so. */
     public static Drawn drawn(Entity e){return DRAWN.get(e);}
     /** What the layers bound and drew in the current draw (TroopFeatures writes them), and the matrix it started with. */
+    /** Whether this draw binds the one-texel-a-px twins of a density above 1 troop's PNGs (TroopModels.far; set for the draw, read by getTexture and the layers). */
+    boolean far;
     Identifier boundSkin,clothSheet,trimSheet;long clothMask;boolean weaponDrawn,shieldDrawn,weaponFar;String reliefKey;int weaponFrame=-1,weaponQuads;private float tilt;private final Matrix4f start=new Matrix4f(),delta=new Matrix4f();
     private final Vector3f up=new Vector3f();
 
@@ -73,13 +75,13 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
         TroopModels.Look l=TroopModels.resolve(e);TroopModel<T> m=l==null?null:TroopModels.modelOf(l.troop().id());
         if(m==null){vanilla.render(e,yaw,tickDelta,matrices,consumers,light);return;}
         if(TroopModels.held(e,l))return;
-        model=m;look=l;
+        model=m;look=l;far=TroopModels.far(e,l);
         // Folded arms (idleArms folded) open while the troop attacks or a clip holds an arm (unit identity rule 3); a helm_off scene pose hides the helm.
         m.prepare(l,TroopAnimator.folds(m,e),TroopAnimator.helmOff(e));
         boundSkin=clothSheet=trimSheet=null;clothMask=0;weaponDrawn=shieldDrawn=weaponFar=false;reliefKey=null;weaponFrame=-1;weaponQuads=0;tilt=0;start.set(matrices.peek().getPositionMatrix());
         // Within reach of the camera (TroopDepth.near) the skin pass draws the relief of the skin it binds after the skin; the model spends the arm in that one pass.
         String relief=TroopDepth.near(e)?m.reliefKey(l):null;m.armRelief(relief);
-        try{super.render(e,yaw,tickDelta,matrices,consumers,light);reliefKey=m.reliefSpent?relief:null;troopDraws++;record(e,l,m);}finally{m.armRelief(null);look=null;}
+        try{super.render(e,yaw,tickDelta,matrices,consumers,light);reliefKey=m.reliefSpent?relief:null;troopDraws++;record(e,l,m);}finally{m.armRelief(null);look=null;far=false;}
     }
     private void record(Entity e,TroopModels.Look l,TroopModel<?> m){
         Drawn d=DRAWN.computeIfAbsent(e,k->new Drawn());Draw last=d.last;long bones=m.skinMask()|clothMask;
@@ -90,7 +92,7 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
         if(d.countedFrame!=TroopDepth.frame()){d.countedFrame=TroopDepth.frame();TroopDepth.count(reliefKey==null?0:m.reliefDrawn,weaponQuads);}
     }
     @Override public Identifier getTexture(T e){
-        TroopModels.Look l=look!=null?look:TroopModels.resolve(e);Identifier skin=l==null?null:TroopModels.skin(l);
+        TroopModels.Look l=look!=null?look:TroopModels.resolve(e);Identifier skin=l==null?null:TroopModels.skin(l,look!=null&&far);
         Identifier out=skin!=null?skin:vanilla.getTexture(e);if(look!=null)boundSkin=out;return out;
     }
     /** Measures the draw's tilt: how far the model's up axis is from upright, after setupTransforms and the vanilla flip (no scale is applied). */

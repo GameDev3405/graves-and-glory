@@ -39,7 +39,7 @@ final class TroopFeatures {
         @Override public void render(MatrixStack m,VertexConsumerProvider v,int light,T e,float limbAngle,float limbDistance,float tickDelta,float age,float headYaw,float headPitch){
             TroopModel<T> model=getContextModel();if(r.look==null||e.isInvisible()||model.outerTop==null||model.outer==null)return;
             for(var entry:model.outerParts().entrySet()){ModelPart own=model.bone(entry.getKey());entry.getValue().copyTransform(own);entry.getValue().visible=own.visible;}
-            model.outerTop.render(m,v.getBuffer(RenderLayer.getEntityCutoutNoCull(model.outer)),light,LivingEntityRenderer.getOverlay(e,0f));
+            model.outerTop.render(m,v.getBuffer(RenderLayer.getEntityCutoutNoCull(r.far&&model.density>1?TroopModels.twin(model.outer):model.outer)),light,LivingEntityRenderer.getOverlay(e,0f));
         }
     }
 
@@ -61,7 +61,7 @@ final class TroopFeatures {
     static final class Trim<T extends MobEntity> extends FeatureRenderer<T,TroopModel<T>> {
         final TroopRenderer<T> r;Trim(TroopRenderer<T> r){super(r);this.r=r;}
         @Override public void render(MatrixStack m,VertexConsumerProvider v,int light,T e,float limbAngle,float limbDistance,float tickDelta,float age,float headYaw,float headPitch){
-            var l=r.look;if(l==null||e.isInvisible())return;Identifier trim=TroopModels.trim(l);if(trim==null)return;
+            var l=r.look;if(l==null||e.isInvisible())return;Identifier trim=TroopModels.trim(l,r.far);if(trim==null)return;
             getContextModel().render(m,v.getBuffer(RenderLayer.getEntityCutoutNoCull(trim)),light,LivingEntityRenderer.getOverlay(e,0f),1f,1f,1f,1f);
             r.trimSheet=trim;
         }
@@ -71,7 +71,7 @@ final class TroopFeatures {
     static final class Glow<T extends MobEntity> extends FeatureRenderer<T,TroopModel<T>> {
         final TroopRenderer<T> r;Glow(TroopRenderer<T> r){super(r);this.r=r;}
         @Override public void render(MatrixStack m,VertexConsumerProvider v,int light,T e,float limbAngle,float limbDistance,float tickDelta,float age,float headYaw,float headPitch){
-            var l=r.look;if(l==null||e.isInvisible())return;Identifier glow=TroopModels.glow(l);if(glow==null)return;
+            var l=r.look;if(l==null||e.isInvisible())return;Identifier glow=TroopModels.glow(l,r.far);if(glow==null)return;
             getContextModel().render(m,v.getBuffer(RenderLayer.getEyes(glow)),FULL_BRIGHT,OverlayTexture.DEFAULT_UV,1f,1f,1f,1f);
         }
     }
