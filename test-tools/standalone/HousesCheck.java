@@ -258,7 +258,7 @@ public final class HousesCheck {
     static void progressionSheets() {
         var p = Spec.PROGRESSION[0];
         check(Spec.PROGRESSION.length == 1 && p.enabled() && p.assistSeconds() == 10 && p.commanderBounty() == 3 && p.chevronRange() == 24.0 && p.feedLevel() == 3, "progression: one row, enabled, assist 10 s, commander bounty 3, chevrons 24 blocks, feed line at level 3");
-        check(Spec.LEVELS.length == 3 && Spec.LEVELS[0].kills() == 0 && Spec.LEVELS[1].kills() == 5 && Spec.LEVELS[2].kills() == 14 && eq(Spec.LEVELS[1].healthPct(), 0.05) && eq(Spec.LEVELS[2].damagePct(), 0.10) && Spec.LEVELS[0].healthPct() == 0, "levels: 0, 5 and 14 kills for +0, +5% and +10% health and damage");
+        check(Spec.LEVELS.length == 3 && Spec.LEVELS[0].kills() == 0 && Spec.LEVELS[1].kills() == 5 && Spec.LEVELS[2].kills() == 30 && eq(Spec.LEVELS[1].healthPct(), 0.05) && eq(Spec.LEVELS[2].damagePct(), 0.10) && Spec.LEVELS[0].healthPct() == 0, "levels: 0, 5 and 30 kills for +0, +5% and +10% health and damage");
         check(Spec.GEARTIERS.length == 3 && Spec.GEARTIERS[0].weaponPct() == 0 && eq(Spec.GEARTIERS[1].weaponPct(), 0.10) && eq(Spec.GEARTIERS[2].armourPct(), 0.20), "gearTiers: tier I nothing, II +10%, III +20%");
         int[][] prices = {{40, 80}, {60, 120}, {80, 160}, {100, 200}};
         for (int i = 0; i < 4; i++) check(Spec.RARITIES[i].gearPrice2() == prices[i][0] && Spec.RARITIES[i].gearPrice3() == prices[i][1], "rarities." + Spec.RARITIES[i].id() + " gear prices " + prices[i][0] + "/" + prices[i][1]);
