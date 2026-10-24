@@ -3,6 +3,9 @@
   "minVersion": "0.8",
   "package": "gg.gravesandglory.testing.mixin",
   "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "FastTickMixin"
+  ],
   "client": [
     "TitleDemoCameraMixin",
     "TitleDemoPoseMixin"

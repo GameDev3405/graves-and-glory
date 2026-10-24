@@ -27,7 +27,9 @@ public final class BotSimulation implements ModInitializer {
     static final int READY_TICKS=6000;
     /** Campaign.lastWinner while a simulated round runs. Only Campaign.finish overwrites it, so a round that stops any other way is recorded as aborted. */
     static final int ABORTED=-2;
-    int matches,size,roundSeconds,waited,notReady;int[] maps;String dawnTier,duskTier,kit,progression;Path results,gold,levels;
+    int matches,size,roundSeconds,waited,notReady;int[] maps;String dawnTier,duskTier,kit,progression;Path results,gold,levels,types,meta;
+    /** The balance method's per-type ledger (types.csv) and the wall clock of the match that runs (meta.txt), read-only on the game. */
+    final TypeLedger ledger=new TypeLedger();long wallStart;
     /** This round's score at SCORE_TICKS per team, -1 until then. */
     final int[] score300={-1,-1};
     /** This round's progression tallies (Veterans.TALLY), the round's start and each team's share of living soldiers at level 2 or higher, as the last running tick saw them: the round's end clears the Armoury and puts fresh tallies in place before record runs. */
@@ -59,12 +61,16 @@ public final class BotSimulation implements ModInitializer {
         progression=Veterans.enabled()?"on":"off";
         if(matches<1||roundSeconds<1||size<1||size>Spec.RULES[0].playersPerTeam()||maps.length==0||Arrays.stream(maps).anyMatch(m->m<0||m>=Spec.MAPS.length))
             throw new IllegalArgumentException("[botsim] bad settings: matches="+matches+" size="+size+" roundSeconds="+roundSeconds+" maps="+Arrays.toString(maps));
-        Path dir=FabricLoader.getInstance().getGameDir().resolve("botsim");results=dir.resolve("results.csv");gold=dir.resolve("gold.csv");levels=dir.resolve("levels.csv");
+        Path dir=FabricLoader.getInstance().getGameDir().resolve("botsim");results=dir.resolve("results.csv");gold=dir.resolve("gold.csv");levels=dir.resolve("levels.csv");types=dir.resolve("types.csv");meta=dir.resolve("meta.txt");
+        SheetOverride.applyFromProperty(); // -PsimOverride: in-memory sheet changes for an ablation (balance method); none by default
         try{Files.createDirectories(dir);
             Files.writeString(results,"match,map,dawnTier,duskTier,winner,dawnScore,duskScore,seconds,banner0,banner1,dawnKills,duskKills,dawnWiped,duskWiped,dawnRetreats,duskRetreats,fights,meanFightSeconds,dawnFlankHits,duskFlankHits,dawnFlankShots,duskFlankShots,score300_0,score300_1\n",StandardCharsets.UTF_8);
             Files.writeString(gold,"match,second,team,goldEarned,goldBank,living\n",StandardCharsets.UTF_8);
             Files.writeString(levels,"match,team,banner,firstLevel2,firstLevel3,endShareLevel2,level3Count,gear\n",StandardCharsets.UTF_8);
+            Files.writeString(types,"match,map,seat,banner,"+TypeLedger.HEADER+"\n",StandardCharsets.UTF_8);
+            Files.writeString(meta,"override="+SheetOverride.describe()+"\nfast="+gg.gravesandglory.testing.SimSpeed.FAST+"\n",StandardCharsets.UTF_8);
         }catch(IOException e){throw new UncheckedIOException(e);}
+        net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DEATH.register((entity,source)->ledger.onDeath(GravesAndGlory.battle,entity,source));
         ServerTickEvents.END_SERVER_TICK.register(this::tick);
     }
     static String tier(String id){
@@ -78,7 +84,7 @@ public final class BotSimulation implements ModInitializer {
         var b=GravesAndGlory.battle;if(done)return;
         if(b==null){if(++waited==200){System.out.println("[botsim] no battle on this world (level-name must be Graves and Glory); stopping");done=true;server.stop(false);}return;}
         if(playing){
-            if(b.running){scan(b);progress(b);long elapsed=b.time-b.roundStarted;if(elapsed>0&&elapsed%SAMPLE_TICKS==0)sample(b,elapsed/20);
+            if(b.running){scan(b);ledger.tick(b);progress(b);long elapsed=b.time-b.roundStarted;if(elapsed>0&&elapsed%SAMPLE_TICKS==0)sample(b,elapsed/20);
                 if(elapsed>=SCORE_TICKS&&score300[0]<0){score300[0]=b.scores[0];score300[1]=b.scores[1];}return;}
             playing=false;record(b);
             if(++match>=matches){summary();done=true;server.stop(false);}
@@ -92,7 +98,7 @@ public final class BotSimulation implements ModInitializer {
         var c=b.campaign;c.size=size;c.fill=true;c.practice=false;c.difficulty=dawnTier;b.roundSeconds=roundSeconds;c.lastWinner=ABORTED;
         b.startRound();
         armies.clear();for(var s:b.squads.values())if(s.bot){if(s.team==1)s.tier=duskTier;armies.add(s);}
-        field(b);seen.clear();resetStats();
+        field(b);seen.clear();resetStats();ledger.reset(b.time);wallStart=System.currentTimeMillis();
         score300[0]=score300[1]=-1;startedAt=b.roundStarted;tallies[0]=tallies[1]=null;shareLevel2[0]=shareLevel2[1]=-1;
         playing=true;
     }
@@ -173,6 +179,9 @@ public final class BotSimulation implements ModInitializer {
             String.valueOf(kills[0]),String.valueOf(kills[1]),String.valueOf(wiped[0]),String.valueOf(wiped[1]),String.valueOf(retreats[0]),String.valueOf(retreats[1]),String.valueOf(fights),fights==0?"":String.format(Locale.ROOT,"%.1f",fightTicks/20.0/fights),String.valueOf(flankHits[0]),String.valueOf(flankHits[1]),String.valueOf(flankShots[0]),String.valueOf(flankShots[1]),
             String.valueOf(score300[0]<0?b.scores[0]:score300[0]),String.valueOf(score300[1]<0?b.scores[1]:score300[1]))+"\n");
         recordLevels();
+        ledger.stop();String at=(match+1)+","+maps[match%maps.length]+",";
+        append(types,ledger.rows(0,at+"dawn,"+fielded[0])+ledger.rows(1,at+"dusk,"+fielded[1]));
+        append(meta,String.format(Locale.ROOT,"match=%d wallSeconds=%.1f gameSeconds=%d fastApplied=%s%n",match+1,(System.currentTimeMillis()-wallStart)/1000.0,(b.time-b.roundStarted)/20,gg.gravesandglory.testing.SimSpeed.applied));
     }
     /** The final line. Mean gold earned is a team's total over its commanders at the end of a round, averaged over the matches.
      *  " aborted=N" goes on the end only when a round stopped without Campaign.finish, " kit=<id>" only under -PsimKit gilded or graveborn, then " banner0=<id> banner1=<id>": the banners the two teams fielded, and " progression=on|off" closes the line. */

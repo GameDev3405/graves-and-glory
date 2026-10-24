@@ -7,7 +7,8 @@
   "entrypoints": {
     "main": [
       "gg.gravesandglory.testing.LocalIntegration",
-      "gg.gravesandglory.BotSimulation"
+      "gg.gravesandglory.BotSimulation",
+      "gg.gravesandglory.DuelSimulation"
     ],
     "client": [
       "gg.gravesandglory.testing.LocalVisualInspection",
