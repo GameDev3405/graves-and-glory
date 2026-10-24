@@ -58,6 +58,7 @@ public final class Phase3Checks implements ClientModInitializer {
         SUITES.put("yard",Yard::new);
         SUITES.put("houses",Houses::new);
         SUITES.put("landmarks",Landmarks::new);
+        SUITES.put("supply",Supply::new);
     }
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed,broken;
@@ -1771,7 +1772,7 @@ public final class Phase3Checks implements ClientModInitializer {
      *  GRAVES_PHASE3_MAPS (system property gravesandglory.phase3Maps) lists the maps, default all five; one map per launch keeps a launch under half an hour. Each map is built over the map built before it (N+4 modulo 5 when the
      *  suite starts), so a stale block of the older map would show. Per map the walker follows, 2 blocks to the right of the centre line (a flag pole stands at the centre of a point), every lane from the Dawn camp over its crossing
      *  to the Dusk camp (lane0 to lane2), on Kingsfield the flank road over both outposts and the king's bridge (flank), the two link roads that join the lane heads of one side (link-west, link-east), and every spur road that ends at a
-     *  building (spur<k>-<building>; a spur is walked up to the wall of its building).
+     *  building (spur<k>-<building>; a spur is walked up to the wall of its building; the spur of a supply house is the lane house-<id>, walked through its front gate to 4 blocks short of the yard centre, GRAVES_WALK_ONLY=supply).
      *  The pictures (screenshots/p3-wt<N>-<sequence>-<what>.png, 1280x720, taken where the walker stands, hand and HUD hidden) are: both camps from their dais (camp-); per lane the start of the lane, the approach to the deck from the west
      *  bank, each capture point from 14 blocks up the road, the middle of the deck looking along it, the approach from the east bank (looking back at the deck) and the head of the lane on the Dusk side; per link road its start and middle; the
      *  first spur of each kind (houses and farm and mill, one tower of each camp); where a lane had a stuck window, the place from 16 and from 6 blocks before it (stuck-); the water where the ring band of a point on a deck crossed it, seen from the north
@@ -2133,6 +2134,8 @@ public final class Phase3Checks implements ClientModInitializer {
                 if((a==null)==(b==null))continue;
                 boolean aIn=a!=null;var st=aIn?a:b;
                 double sx=aIn?r.bx():r.ax(),sz=aIn?r.bz():r.az(),ex=aIn?r.ax():r.bx(),ez=aIn?r.az():r.bz(),l=Math.hypot(ex-sx,ez-sz),ux=(ex-sx)/l,uz=(ez-sz)/l,from=0,to=l;
+                Spec.SupplyHousesRow house=null;for(var hh:Spec.SUPPLYHOUSES)if(hh.map()==CampaignMaps.selected&&hh.landmark().equals(st.id())&&hh.yardX()==ex&&hh.yardZ()==ez)house=hh;
+                if(house!=null){out.add(houseLeg(house,sx,sz,ux,uz,l));continue;} // a supply house: its own lane (Task 8b), not a spur numbered with the others
                 for(var p:Spec.POINTS)if(Math.hypot(sx-p.x(),sz-p.z())<3.0)from=4.0; // it starts on the pole of a flag
                 for(double d=from;d<=l;d+=1.0)if(owner(sx+ux*d,sz+uz*d)!=null){to=d-1.0;break;}
                 if(to-from<8.0)continue;
@@ -2142,6 +2145,22 @@ public final class Phase3Checks implements ClientModInitializer {
                 out.add(leg);sp++;
             }
             return out;
+        }
+        /** Task 8b: the lane of a supply house, from the lane end through the front gate to 4 blocks short of the yard centre, 2 blocks to the right of the centre line (the flag stands on it). Pictures: house-ID-spur (2 blocks in, toward the gate),
+         *  house-ID-gate (10 blocks before the gate, at the flag) and house-ID-yard (at the end, at the front of the storehouse). The last stop holds the lane open until it is taken. */
+        static Leg houseLeg(Spec.SupplyHousesRow h,double sx,double sz,double ux,double uz,double l){
+            Spec.LandmarksRow r=null;for(var lm:Spec.LANDMARKS)if(lm.id().equals(h.landmark())&&lm.map()==h.map())r=lm;
+            Vec3i size=null;if(r!=null)for(var pc:Spec.PIECES)if(pc.id().equals(r.template()))size=new Vec3i(pc.width(),pc.height(),pc.depth());
+            double to=l-4.0;
+            var leg=new Leg("house-"+h.id(),2.0,new double[]{sx,sz},new double[]{sx+ux*to,sz+uz*to});
+            leg.holdEnd=true;
+            if(r==null||size==null)return leg;
+            Vec3d gate=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),15.5,3.0,36.5);
+            Vec3d store=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),15.5,3.0,11.5);
+            leg.stops.add(new Stop(leg.id+"-spur",2.0,gate.x,gate.y,gate.z));
+            leg.stops.add(new Stop(leg.id+"-gate",Math.max(3.0,leg.arcOf(gate.x,gate.z)-10.0),h.yardX()+0.5,h.elevation()+5.0,h.yardZ()+0.5));
+            leg.stops.add(new Stop(leg.id+"-yard",leg.len,store.x,store.y,store.z));
+            return leg;
         }
         static Spec.StructuresRow deckNear(int x,int z){
             Spec.StructuresRow best=null;double bd=1e9;
@@ -2275,7 +2294,7 @@ public final class Phase3Checks implements ClientModInitializer {
                 int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ();
                 for(var s:Spec.STRUCTURES){
                     String id=s.id();
-                    if(s.kind().equals("bridge")||id.matches("house_\\d|farm|mill|(dawn|dusk)_gate")||id.contains("_tower_"))continue; // those are seen from their roads, the gates from the dais
+                    if(s.kind().equals("bridge")||id.matches("house_\\d|farm|mill|(dawn|dusk)_gate")||id.contains("_tower_")||id.contains("-supply-"))continue; // those are seen from their roads, the gates from the dais, the supply houses from their lanes (house-ID)
                     double R=Math.max(s.width(),s.depth())/2.0+12.0,bs=1e9,bx=0,bz=0;boolean found=false;
                     for(int k=0;k<16;k++){
                         double a=k*Math.PI/8,x=Math.floor(s.x()+Math.cos(a)*R)+0.5,z=Math.floor(s.z()+Math.sin(a)*R)+0.5;int ix=(int)Math.floor(x),iz=(int)Math.floor(z);
@@ -2947,7 +2966,10 @@ public final class Phase3Checks implements ClientModInitializer {
      *  p3-lm-ID-cover and -sight per landmarkLines row of the template (the world end points through Structures.toWorld, compared with the values the plan states; a raycast with COLLIDER, no fluids and the player:
      *  cover passes on a block hit more than 0.3 before the end, sight on a miss or a hit within 0.3 of it). Per map p3-lm-budget-mapN (each row at most 100 ms, all at most 1.5 s), the pictures lm-mapN-overview-north and -south and
      *  lm-ID-ground (and lm-ID-high off the kit) for the first row of each template (the plan's camera, turned round the piece when its view is not clear: see plan). Once per run p3-lm-switch-mid-queue (map 4 is switched to; while its landmarks are queued, map 0: the queue is empty at once, no kf- row is
-     *  placed after it, and map 0 is ready only once its own queue is drained) and p3-lm-cache (campaign.cached() after the build, not with Structures.salt="test", again after it is put back) and p3-lm-cache-pieces (a pieces row of a template of the map one block taller: another hash, the marker stale; put back: current again). A map with no landmarks rows passes p3-lm-budget-mapN with nothing to place. */
+     *  placed after it, and map 0 is ready only once its own queue is drained) and p3-lm-cache (campaign.cached() after the build, not with Structures.salt="test", again after it is put back) and p3-lm-cache-pieces (a pieces row of a template of the map one block taller: another hash, the marker stale; put back: current again). A map with no landmarks rows passes p3-lm-budget-mapN with nothing to place.
+     *  Task 8b: the 18 rows of the supply houses (templates supply/*) are checked like the others; their -clear leaves out the flag column of the house (reserved: |x-yardX|<=3, |z-yardZ|<=3, elevation+1 to +8), their cover and sight lines are compared with the plan's world points (houseLine),
+     *  and per map with houses p3-lm-supply-clear-control-mapN (a block just outside the reserved column fails -clear, one inside does not, with the column dropped the flag fails it) and p3-lm-supply-lines-control-mapN (a world point out of place fails the comparison, a block on the sight line fails -sight,
+     *  the wall taken off the cover line fails -cover). */
     static final class Landmarks implements Suite {
         record Line(double fx,double fy,double fz,double tx,double ty,double tz){}
         /** The world end points of the lines the plan states (ty NaN: the ground at the end point plus 2.6). */
@@ -3093,7 +3115,7 @@ public final class Phase3Checks implements ClientModInitializer {
                 for(int x=s.x()-reachX;x<=s.x()+reachX;x++)for(int z=s.z()-reachZ;z<=s.z()+reachZ;z++){
                     double ld=Arena.landmarkDistance(s,x,z);if(!(ld>0&&ld<sh)||Math.abs(x-Arena.riverX(z))<16||!seen.add(key(x+1000,0,z+1000)))continue;
                     cells++;int c=Arena.height(x,z),a=Arena.height(x-1,z),e=Arena.height(x+1,z),no=Arena.height(x,z-1),so=Arena.height(x,z+1);
-                    if(a>c&&e>c||a<c&&e<c||no>c&&so>c||no<c&&so<c){bad++;if(bad<=4)first.append(' ').append(s.id()).append(" (").append(x).append(',').append(z).append(") ").append(c).append(" among ").append(a).append(' ').append(e).append(' ').append(no).append(' ').append(so).append(';');}
+                    if(a>c&&e>c||a<c&&e<c||no>c&&so>c||no<c&&so<c){bad++;if(bad==1){System.out.println("[p3] note sliver window of "+s.id()+" at ("+x+","+z+"): smoothed heights, x across from "+(x-6)+", z down from "+(z-6)+", ld "+ld+", shoulder "+sh);for(int wz=-6;wz<=6;wz++){StringBuilder row=new StringBuilder();for(int wx=-6;wx<=6;wx++)row.append(String.format("%4d",Arena.height(x+wx,z+wz)));System.out.println("[p3] note   "+row);}System.out.println("[p3] note sliver window raw heights");for(int wz=-6;wz<=6;wz++){StringBuilder row=new StringBuilder();for(int wx=-6;wx<=6;wx++)row.append(String.format("%4d",Arena.rawHeight(x+wx,z+wz)));System.out.println("[p3] note   "+row);}}if(bad<=4)first.append(' ').append(s.id()).append(" (").append(x).append(',').append(z).append(") ").append(c).append(" among ").append(a).append(' ').append(e).append(' ').append(no).append(' ').append(so).append(';');}
                 }
             }
             return new int[]{cells,bad};
@@ -3265,6 +3287,92 @@ public final class Phase3Checks implements ClientModInitializer {
             int y=q.getY()-p.elevation();
             return q.getZ()==p.z()&&(q.getX()==p.x()&&y>=1&&y<=7||q.getX()>=p.x()+1&&q.getX()<=p.x()+3&&y>=4&&y<=5);
         }
+        /** Task 8b: the flag column of a supply house, left void by its piece and raised by Arena.flag: |x-yardX|<=3, |z-yardZ|<=3, elevation+1 to elevation+8 (the shape of the flag column of an enclosed point). */
+        static boolean reserved(Spec.SupplyHousesRow h,BlockPos q){
+            int y=q.getY()-h.elevation();
+            return Math.abs(q.getX()-h.yardX())<=3&&Math.abs(q.getZ()-h.yardZ())<=3&&y>=1&&y<=8;
+        }
+        /** The cells of a template that its file does not list (structure void) at local y 1 and up, with the flag of an enclosed point and the flag column of a supply house left out: {void cells, those not air in the world}; the first six not air go to where. */
+        static int[] clearScan(ServerWorld w,Vec3i size,Set<Long> present,Spec.LandmarksRow r,Spec.PointsRow enclosed,Spec.SupplyHousesRow house,StringBuilder where){
+            int voids=0,dirty=0;
+            for(int lx=0;lx<size.getX();lx++)for(int ly=1;ly<size.getY();ly++)for(int lz=0;lz<size.getZ();lz++){
+                if(present.contains(key(lx,ly,lz)))continue;var q=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),lx,ly,lz);
+                if(enclosed!=null&&flagCell(enclosed,q))continue;
+                if(house!=null&&reserved(house,q))continue;
+                voids++;
+                if(!w.getBlockState(q).isAir()){dirty++;if(dirty<=6&&where!=null)where.append(' ').append(name(w.getBlockState(q))).append(xyz(q));}
+            }
+            return new int[]{voids,dirty};
+        }
+        /** Task 8b: the world end points of the cover and sight lines of a supply house at (x, z) with elevation E, from the formulas of the plan (not from toWorld); ty NaN is the ground at the end plus 2.6. */
+        static Line houseLine(Spec.LandmarksRow r,String kind){
+            int x=r.x(),z=r.z();double e=r.elevation();
+            if(r.rotation()==0)return kind.equals("cover")?new Line(x+9.5,e+2.6,z+16.5,x+9.5,Double.NaN,z+30.5):new Line(x+10.5,e+7.6,z-7.5,x+1.5,Double.NaN,z+30.5);
+            return kind.equals("cover")?new Line(x-8.5,e+2.6,z-15.5,x-8.5,Double.NaN,z-29.5):new Line(x-9.5,e+7.6,z+8.5,x-0.5,Double.NaN,z-29.5);
+        }
+        /** The world end points of a line are the values the plan states (null: the plan states none for it). */
+        static boolean stated(Vec3d from,Vec3d to,Line e){
+            return e==null||close(from.x,e.fx())&&close(from.y,e.fy())&&close(from.z,e.fz())&&close(to.x,e.tx())&&(Double.isNaN(e.ty())||close(to.y,e.ty()))&&close(to.z,e.tz());
+        }
+        /** The verdicts of the checks of a line, from the world: sight passes on a miss or a hit within 0.3 of the end, cover on a block hit more than 0.3 before it. */
+        static boolean lineOk(ServerWorld w,net.minecraft.entity.Entity player,String kind,Vec3d from,Vec3d to){
+            var hit=w.raycast(new net.minecraft.world.RaycastContext(from,to,net.minecraft.world.RaycastContext.ShapeType.COLLIDER,net.minecraft.world.RaycastContext.FluidHandling.NONE,player));
+            boolean blocked=hit.getType()==net.minecraft.util.hit.HitResult.Type.BLOCK;double left=hit.getPos().distanceTo(to);
+            return kind.equals("cover")?blocked&&left>0.3:!blocked||left<=0.3;
+        }
+
+        /** Task 8b, once per map with house rows, on its first one: what the -clear check of a house can fail on. The cell just outside the reserved column (local x offset +4) is pretended to be structure void (the file writes it as air) and a stone is put in it: the check
+         *  must count it; a stone on the last cell of the column (offset +3, void in the file) it must not count; and with no reserved column at all the flag itself (13 blocks) and both stones are counted. */
+        void clearControl(GravesAndGlory.Battle b,int n,Spec.LandmarksRow r){
+            var w=b.world;Spec.SupplyHousesRow house=null;for(var hh:Spec.SUPPLYHOUSES)if(hh.landmark().equals(r.id()))house=hh;
+            if(house==null){report("p3-lm-supply-clear-control-map"+n,false,"no supplyHouses row for "+r.id());return;}
+            var size=Structures.template(w,r.template()).get().getSize();var list=Structures.read(b.server,r.template()).get().getList("blocks",NbtElement.COMPOUND_TYPE);
+            var present=new HashSet<Long>();
+            for(int i=0;i<list.size();i++){var pos=list.getCompound(i).getList("pos",NbtElement.INT_TYPE);present.add(key(pos.getInt(0),pos.getInt(1),pos.getInt(2)));}
+            var absent=new HashSet<>(present);absent.remove(key(19,1,24));
+            var inside=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),18,1,24);var outside=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),19,1,24);
+            var stone=Blocks.STONE.getDefaultState();var keptIn=w.getBlockState(inside);var keptOut=w.getBlockState(outside);
+            int[] real,in,out,bare;
+            try{
+                real=clearScan(w,size,present,r,null,house,null);
+                w.setBlockState(inside,stone,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);in=clearScan(w,size,present,r,null,house,null);
+                w.setBlockState(outside,stone,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);out=clearScan(w,size,absent,r,null,house,null);bare=clearScan(w,size,absent,r,null,null,null);
+            }finally{w.setBlockState(inside,keptIn,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);w.setBlockState(outside,keptOut,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);}
+            report("p3-lm-supply-clear-control-map"+n,real[1]==0&&in[1]==0&&out[1]==1&&bare[1]==15,r.id()+": the check as it stands counts "+real[1]+" dirty cells (want 0); a stone at "+xyz(inside)+", the last cell of the reserved column, adds "+(in[1]-real[1])+" (want 0); a stone at "+xyz(outside)+", one cell outside it, is counted: "+out[1]+" (want 1); with no reserved column "+bare[1]+" cells are dirty (want 15: the flag's 13 blocks and both stones)");
+        }
+        /** Task 8b, once per map with house rows, on its first one: the comparison with the plan's world points and the two verdicts of the lines can fail. */
+        void linesControl(GravesAndGlory.Battle b,int n,Spec.LandmarksRow r,net.minecraft.entity.Entity player){
+            var w=b.world;var size=Structures.template(w,r.template()).get().getSize();
+            Vec3d sf=null,st=null,cf=null,ct=null;
+            for(var l:Spec.LANDMARKLINES){
+                if(!l.template().equals(r.template()))continue;
+                Vec3d from=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),l.fromX(),l.fromY(),l.fromZ());
+                Vec3d to=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),l.toX(),l.toY(),l.toZ());
+                if(l.toY()==-1.0)to=new Vec3d(to.x,Arena.ground((int)Math.floor(to.x),(int)Math.floor(to.z))+2.6,to.z);
+                if(l.kind().equals("sight")){sf=from;st=to;}else{cf=from;ct=to;}
+            }
+            if(sf==null||cf==null||player==null){report("p3-lm-supply-lines-control-map"+n,false,r.id()+": no sight or cover line, or no player");return;}
+            var es=houseLine(r,"sight");var ec=houseLine(r,"cover");
+            boolean plan=stated(sf,st,es)&&stated(cf,ct,ec);
+            boolean off=!stated(sf,st,new Line(es.fx()+1,es.fy(),es.fz(),es.tx(),es.ty(),es.tz()))&&!stated(cf,ct,new Line(ec.fx(),ec.fy(),ec.fz(),ec.tx()+1,ec.ty(),ec.tz()));
+            boolean sightFree=lineOk(w,player,"sight",sf,st);
+            var m=sf.add(st).multiply(0.5);var mid=BlockPos.ofFloored(m.x,m.y,m.z);var keptMid=w.getBlockState(mid);
+            boolean sightBlocked;
+            try{w.setBlockState(mid,Blocks.STONE.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);sightBlocked=lineOk(w,player,"sight",sf,st);}
+            finally{w.setBlockState(mid,keptMid,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);}
+            boolean coverStands=lineOk(w,player,"cover",cf,ct);
+            var removed=new ArrayList<BlockPos>();var keptBlocks=new ArrayList<BlockState>();boolean coverOpen;
+            try{
+                for(int i=0;i<8;i++){
+                    var hit=w.raycast(new net.minecraft.world.RaycastContext(cf,ct,net.minecraft.world.RaycastContext.ShapeType.COLLIDER,net.minecraft.world.RaycastContext.FluidHandling.NONE,player));
+                    if(hit.getType()!=net.minecraft.util.hit.HitResult.Type.BLOCK)break;
+                    removed.add(hit.getBlockPos());keptBlocks.add(w.getBlockState(hit.getBlockPos()));w.setBlockState(hit.getBlockPos(),Blocks.AIR.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
+                }
+                coverOpen=lineOk(w,player,"cover",cf,ct);
+            }finally{for(int i=removed.size()-1;i>=0;i--)w.setBlockState(removed.get(i),keptBlocks.get(i),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);}
+            boolean back=lineOk(w,player,"cover",cf,ct)&&lineOk(w,player,"sight",sf,st);
+            report("p3-lm-supply-lines-control-map"+n,plan&&off&&sightFree&&!sightBlocked&&coverStands&&!coverOpen&&back,r.id()+": the world points are the plan's "+plan+"; one block out of place in a start or an end is "+(off?"seen":"NOT seen")+"; sight clear "+sightFree+", with a stone at "+xyz(mid)+" on it "+(sightBlocked?"STILL PASSES (it cannot fail)":"fails")+"; cover stands "+coverStands+", with the "+removed.size()+" blocks it hits taken away "+(coverOpen?"STILL PASSES (it cannot fail)":"fails")+"; put back, both pass again "+back);
+        }
 
         /** The checks of every row of map n, on the server thread once the map is ready. */
         void check(GravesAndGlory.Battle b,int n){
@@ -3290,13 +3398,9 @@ public final class Phase3Checks implements ClientModInitializer {
                 var present=new HashSet<Long>();var columns=new HashSet<Long>();
                 for(int i=0;i<list.size();i++){var pos=list.getCompound(i).getList("pos",NbtElement.INT_TYPE);present.add(key(pos.getInt(0),pos.getInt(1),pos.getInt(2)));columns.add(key(pos.getInt(0),0,pos.getInt(2)));}
                 Spec.PointsRow enclosed=null;for(var pt:Spec.POINTS)if(pt.id().equals(r.encloses()))enclosed=pt;
-                int voids=0,dirty=0;var where=new StringBuilder();
-                for(int lx=0;lx<size.getX();lx++)for(int ly=1;ly<size.getY();ly++)for(int lz=0;lz<size.getZ();lz++){
-                    if(present.contains(key(lx,ly,lz)))continue;var q=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),lx,ly,lz);
-                    if(enclosed!=null&&flagCell(enclosed,q))continue;voids++;
-                    if(!w.getBlockState(q).isAir()){dirty++;if(dirty<=6)where.append(' ').append(name(w.getBlockState(q))).append(xyz(q));}
-                }
-                report(k+"-clear",dirty==0,voids+" void cells at local y 1 and up (the flag of an enclosed point left out), "+dirty+" of them not air"+where);
+                Spec.SupplyHousesRow house=null;for(var hh:Spec.SUPPLYHOUSES)if(hh.landmark().equals(id))house=hh;
+                var where=new StringBuilder();var cs=clearScan(w,size,present,r,enclosed,house,where);int voids=cs[0],dirty=cs[1];
+                report(k+"-clear",dirty==0,voids+" void cells at local y 1 and up (the flag of an enclosed point and the flag column of a supply house left out), "+dirty+" of them not air"+where);
                 var scan=Walkability.scan(b,fp);int deck=0;
                 for(String line:scan.detail().split("\n")){var f=line.split(" ");if(f.length>=3&&Walkability.onDeck(Integer.parseInt(f[1]),Integer.parseInt(f[2])))deck++;}
                 report(k+"-roads",scan.through()==0&&deck==0,"over the footprint: cells "+scan.cells()+", through "+scan.through()+", blocked deck cells "+deck+", building "+scan.building()+", road "+scan.road());
@@ -3335,7 +3439,8 @@ public final class Phase3Checks implements ClientModInitializer {
                     Vec3d to=Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),l.toX(),l.toY(),l.toZ());
                     if(l.toY()==-1.0)to=new Vec3d(to.x,Arena.ground((int)Math.floor(to.x),(int)Math.floor(to.z))+2.6,to.z);
                     var e=EXPECTED.get(id+"/"+l.kind());
-                    boolean stated=e==null||close(from.x,e.fx())&&close(from.y,e.fy())&&close(from.z,e.fz())&&close(to.x,e.tx())&&(Double.isNaN(e.ty())||close(to.y,e.ty()))&&close(to.z,e.tz());
+                    if(e==null&&house!=null)e=houseLine(r,l.kind());
+                    boolean stated=stated(from,to,e);
                     var hit=w.raycast(new net.minecraft.world.RaycastContext(from,to,net.minecraft.world.RaycastContext.ShapeType.COLLIDER,net.minecraft.world.RaycastContext.FluidHandling.NONE,player));
                     boolean blocked=hit.getType()==net.minecraft.util.hit.HitResult.Type.BLOCK;double left=hit.getPos().distanceTo(to);
                     boolean ok=l.kind().equals("cover")?blocked&&left>0.3:!blocked||left<=0.3;
@@ -3393,7 +3498,9 @@ public final class Phase3Checks implements ClientModInitializer {
             }
             // a map with no landmarks rows (maps 1 to 3 today) has nothing to place and passes; a map with rows passes only when every one of them was placed (a build that placed nothing is not within budget)
             report("p3-lm-budget-map"+n,laid==rows&&slowCount==0&&sum<=1_500_000_000L,(rows==0?"no landmarks rows on this map; ":"")+laid+" of "+rows+" rows placed, all together "+sum/1000000+" ms (at most 1500), over 100 ms:"+(slowCount==0?" none":slow.toString()));
-            for(int[] wc:new int[][]{{0,14},{1,21},{2,14},{3,15},{4,16}})if(wc[0]==n)report("p3-lm-rows-map"+n,rows==wc[1],rows+" landmarks rows on map "+n+" (the plans state "+wc[1]+")");
+            for(int[] wc:new int[][]{{0,18},{1,25},{2,18},{3,19},{4,18}})if(wc[0]==n)report("p3-lm-rows-map"+n,rows==wc[1],rows+" landmarks rows on map "+n+" (the plans state "+wc[1]+")");
+            Spec.LandmarksRow houseRow=null;for(var r:Spec.LANDMARKS)if(r.map()==n&&r.template().startsWith("supply/")&&houseRow==null)houseRow=r;
+            if(houseRow!=null&&laid==rows){clearControl(b,n,houseRow);linesControl(b,n,houseRow,player);}
             if(n==1){sallyGaps(w);hayLine(b);}
             if(n==2)signalFire(b);
             var sliverWhy=new StringBuilder();var sl=slivers(n,sliverWhy);
@@ -3447,6 +3554,204 @@ public final class Phase3Checks implements ClientModInitializer {
                 report("p3-lm-cache-pieces",!hp.equals(h)&&!taller&&again,"map "+b.campaign.map+", pieces row "+row.id()+" one block taller: hash "+hp+(hp.equals(h)?" (the same: the pieces row is not in the hash)":" (differs)")+", cached "+taller+"; put back: hash and marker current "+again);
             }
             cacheDone=true;
+        }
+    }
+
+    /** Task 8b (suite supply): the supply houses of the maps in GRAVES_PHASE3_MAPS (system property gravesandglory.phase3Maps, default all five), one map at a time (a launch of a map with four houses is about twelve minutes: eight marches of up to 3600 ticks).
+     *  Each map is switched to (built afresh) and, once ready, per supplyHouses row of the map, on the server thread:
+     *  p3-house-ID-neutral (the flag over the yard centre is the neutral one Arena.flag lays: oak_fence at yardX, elevation+1..+6, a sea_lantern at +7, white_wool at yardX+1..+3, +4..+5; the two braziers, local (10,3,36) and (20,3,36), are campfires with lit=false),
+     *  p3-house-ID-yard (every cell of the circle of 10 round the yard centre has a collision shape at the elevation and none at +1 and +2, the pole cell excepted; a flood fill over such cells inside the footprint, from beside the pole, reaches the 9 cells of the
+     *  front gate (local z 36, x 11..19) and the 5 of the side gate (local x 30, z 22..26), and the cells just outside, local (15,0,37) and (31,0,24), are such cells too),
+     *  p3-house-ID-spur (along the centre line from the lane end to the outer cell of the front gate: every cell a road cell, nothing with a collision shape at ground+1 and +2, the ground changes by at most 1 from cell to cell and is the elevation at the gate),
+     *  and the pictures ID-spur, ID-gate, ID-yard, ID-lookout and ID-point (p3-ID-VIEW.png). Once per map the controls that the checks can fail: p3-house-neutral-control-mapN (a cyan flag, a lit brazier), p3-house-yard-control-mapN (a block in the circle,
+     *  the gate sealed), p3-house-spur-control-mapN (a block on the centre line, the line moved 10 blocks aside). Then the route harness in house mode (MapRouteChecks with houses) over the map: p3-house-routes-mapN passes when every goal (a base and a point start for each
+     *  house) had twenty of twenty knights at the yard. GRAVES_SUPPLY_ROUTES=off leaves the marches out (the checks and the pictures only). */
+    static final class Supply implements Suite {
+        record Res(boolean ok,String why){}
+        record Shot(String name,double x,double y,double z,double tx,double ty,double tz){}
+        final List<Integer> maps=new ArrayList<>();
+        final boolean marches=!"off".equalsIgnoreCase(System.getenv("GRAVES_SUPPLY_ROUTES"));
+        int index,stage,shot;
+        volatile boolean switched,checked,marched;
+        volatile List<Shot> shots=List.of();
+        MapRouteChecks routes;
+        Supply(){for(String s:System.getProperty("gravesandglory.phase3Maps","0,1,2,3,4").split(","))if(!s.isBlank())maps.add(Integer.parseInt(s.trim()));}
+        /** Per map: the build, about 4500 ticks of pictures and eight marches of 3600 ticks at most. */
+        @Override public int limit(){return 8000+maps.size()*45000;}
+        @Override public void step(MinecraftClient c,int tick){
+            if(tick<20)return;
+            switch(stage){
+                case 0->{
+                    if(index>=maps.size()){finish(c,"supply");stage=9;return;}
+                    int n=maps.get(index);switched=false;checked=false;
+                    server(c,b->{b.campaign.switchMap(n);switched=true;});stage=1;
+                }
+                case 1->{
+                    int n=maps.get(index);var b=GravesAndGlory.battle;
+                    if(switched&&b!=null&&b.ready&&b.campaign.map==n&&CampaignMaps.selected==n){stage=2;server(c,x->check(x,n));}
+                }
+                case 2->{if(checked){shot=0;stage=3;}}
+                case 3->{
+                    if(shot>=shots.size()){
+                        if(!marches){System.out.println("[p3] note supply map "+maps.get(index)+": the marches are left out (GRAVES_SUPPLY_ROUTES=off)");index++;stage=0;return;}
+                        routes=new MapRouteChecks(c,new int[]{maps.get(index)},true);marched=false;stage=4;return;
+                    }
+                    var s=shots.get(shot);if(view(c,s.name(),s.x(),s.y(),s.z(),s.tx(),s.ty(),s.tz()))shot++;
+                }
+                case 4->{if(tick%10==0)server(c,this::pump);if(marched){index++;stage=0;}}
+                default->{}
+            }
+        }
+        @Override public void cleanup(MinecraftClient c){server(c,b->b.campaign.leash=true);}
+
+        /** On the server thread, as the dev control calls it: one step of the route harness, and its verdict once it is done. */
+        void pump(GravesAndGlory.Battle b){
+            if(marched||routes==null)return;
+            routes.tick();
+            if(!routes.done)return;
+            int n=maps.get(index),rows=0;for(var h:Spec.SUPPLYHOUSES)if(h.map()==n)rows++;
+            int got=routes.reached.getOrDefault(n,0);
+            report("p3-house-routes-map"+n,rows>0&&got==2*rows,got+" of "+2*rows+" goals with 20 of 20 knights at the yard: "+String.join(", ",routes.lines));
+            marched=true;
+        }
+
+        static Vec3i sizeOf(Spec.LandmarksRow r){for(var p:Spec.PIECES)if(p.id().equals(r.template()))return new Vec3i(p.width(),p.height(),p.depth());return null;}
+        static Spec.LandmarksRow landmarkOf(Spec.SupplyHousesRow h){for(var r:Spec.LANDMARKS)if(r.id().equals(h.landmark())&&r.map()==h.map())return r;return null;}
+        static boolean shape(ServerWorld w,int x,int y,int z){var p=new BlockPos(x,y,z);return !w.getBlockState(p).getCollisionShape(w,p).isEmpty();}
+        /** A cell of open ground: something to stand on at the elevation and nothing with a collision shape at +1 and +2. */
+        static boolean open(ServerWorld w,int x,int e,int z){return shape(w,x,e,z)&&!shape(w,x,e+1,z)&&!shape(w,x,e+2,z);}
+        static BlockPos local(Spec.LandmarksRow r,Vec3i size,int lx,int ly,int lz){return Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),lx,ly,lz);}
+        static Vec3d local(Spec.LandmarksRow r,Vec3i size,double lx,double ly,double lz){return Structures.toWorld(size,r.x(),r.elevation(),r.z(),r.rotation(),lx,ly,lz);}
+
+        /** The flag over the yard centre is the neutral one and the braziers are unlit. */
+        static Res neutral(ServerWorld w,Spec.SupplyHousesRow h,Spec.LandmarksRow r,Vec3i size){
+            int e=h.elevation(),x=h.yardX(),z=h.yardZ();
+            int pole=0;for(int y=1;y<=6;y++)if(name(at(w,x,e+y,z)).equals("oak_fence"))pole++;
+            boolean lamp=name(at(w,x,e+7,z)).equals("sea_lantern");
+            int white=0;var cloth=new TreeMap<String,Integer>();
+            for(int a=1;a<=3;a++)for(int y=4;y<=5;y++){String nm=name(at(w,x+a,e+y,z));if(nm.equals("white_wool"))white++;cloth.merge(nm,1,Integer::sum);}
+            int unlit=0;var other=new StringBuilder();
+            for(int bx:new int[]{10,20}){
+                var q=local(r,size,bx,3,36);var st=w.getBlockState(q);
+                if(st.isOf(Blocks.CAMPFIRE)&&!st.get(Properties.LIT))unlit++;
+                else other.append(' ').append(name(st)).append(xyz(q)).append(st.contains(Properties.LIT)?" lit="+st.get(Properties.LIT):"");
+            }
+            return new Res(pole==6&&lamp&&white==6&&unlit==2,"pole "+pole+" of 6 oak_fence from "+xyz(new BlockPos(x,e+1,z))+" up, sea_lantern at +7 "+lamp+", white_wool "+white+" of 6 (the cloth is "+cloth+"), unlit campfires at the two braziers "+unlit+" of 2"+other);
+        }
+
+        /** The yard: flat and open inside the circle of 10, and the way from beside the pole to both gates. */
+        static Res yard(ServerWorld w,Spec.SupplyHousesRow h,Spec.LandmarksRow r,Vec3i size){
+            int e=h.elevation(),cx=h.yardX(),cz=h.yardZ(),cells=0,bad=0;var badAt=new StringBuilder();
+            for(int dx=-10;dx<=10;dx++)for(int dz=-10;dz<=10;dz++){
+                if(dx*dx+dz*dz>100)continue;cells++;
+                boolean pole=dx==0&&dz==0,ok=shape(w,cx+dx,e,cz+dz)&&(pole||!shape(w,cx+dx,e+1,cz+dz)&&!shape(w,cx+dx,e+2,cz+dz));
+                if(!ok){bad++;if(bad<=6)badAt.append(" (").append(cx+dx).append(',').append(cz+dz).append(") ").append(name(at(w,cx+dx,e,cz+dz))).append('/').append(name(at(w,cx+dx,e+1,cz+dz))).append('/').append(name(at(w,cx+dx,e+2,cz+dz))).append(';');}
+            }
+            var fp=Structures.footprint(size,r.x(),r.elevation(),r.z(),r.rotation());
+            var seen=new HashSet<Long>();var queue=new ArrayDeque<int[]>();
+            if(open(w,cx+1,e,cz)){seen.add(new BlockPos(cx+1,e,cz).asLong());queue.add(new int[]{cx+1,cz});}
+            while(!queue.isEmpty()){
+                var q=queue.poll();
+                for(int[] d:new int[][]{{1,0},{-1,0},{0,1},{0,-1}}){
+                    int nx=q[0]+d[0],nz=q[1]+d[1];
+                    if(nx<fp.getMinX()||nx>fp.getMaxX()||nz<fp.getMinZ()||nz>fp.getMaxZ()||!open(w,nx,e,nz))continue;
+                    if(seen.add(new BlockPos(nx,e,nz).asLong()))queue.add(new int[]{nx,nz});
+                }
+            }
+            int front=0,side=0;
+            for(int lx=11;lx<=19;lx++)if(seen.contains(local(r,size,lx,0,36).asLong()))front++;
+            for(int lz=22;lz<=26;lz++)if(seen.contains(local(r,size,30,0,lz).asLong()))side++;
+            var outF=local(r,size,15,0,37);var outS=local(r,size,31,0,24);
+            boolean outFront=open(w,outF.getX(),e,outF.getZ()),outSide=open(w,outS.getX(),e,outS.getZ());
+            return new Res(bad==0&&front==9&&side==5&&outFront&&outSide,cells+" cells in the circle of 10, "+bad+" not flat and open"+badAt+"; the flood fill from beside the pole ("+seen.size()+" cells) reaches "+front+" of 9 cells of the front gate and "+side+" of 5 of the side gate; the cell outside the front gate "+xyz(outF)+" is open ground "+outFront+", outside the side gate "+xyz(outS)+" "+outSide);
+        }
+
+        /** The spur: along x = spurX + shift from the lane end to the outer cell of the front gate. */
+        static Res spur(ServerWorld w,Spec.SupplyHousesRow h,Spec.LandmarksRow r,Vec3i size,int shift){
+            var gate=local(r,size,15,0,37);int x=h.spurX()+shift,z0=h.spurZ(),z1=gate.getZ(),dir=Integer.signum(z1-z0);
+            int cells=0,off=0,blocked=0,maxStep=0,first=Arena.ground(x,z0),prev=first;var why=new StringBuilder();
+            for(int z=z0;;z+=dir){
+                cells++;int g=Arena.ground(x,z);
+                if(!Arena.road(x,z)){off++;if(off<=3)why.append(" not road ").append(x).append(',').append(z).append(';');}
+                for(int y=g+1;y<=g+2;y++)if(shape(w,x,y,z)){blocked++;if(blocked<=3)why.append(' ').append(name(at(w,x,y,z))).append(xyz(new BlockPos(x,y,z))).append(';');}
+                maxStep=Math.max(maxStep,Math.abs(g-prev));prev=g;
+                if(z==z1)break;
+            }
+            int last=Arena.ground(gate.getX(),gate.getZ());
+            return new Res(off==0&&blocked==0&&maxStep<=1&&last==h.elevation(),cells+" cells along x "+x+" from z "+z0+" to the outer cell of the front gate "+xyz(gate)+": "+off+" not road cells, "+blocked+" with a collision shape at ground+1 or +2"+why+"; the largest step of the ground between neighbours is "+maxStep+" (want 1 at most); the ground is "+first+" at the lane end and "+last+" at the gate (the elevation is "+h.elevation()+")");
+        }
+
+        static void set(ServerWorld w,BlockPos p,BlockState s){w.setBlockState(p,s,Block.NOTIFY_LISTENERS|Block.FORCE_STATE);}
+
+        /** The checks of every house of map n, on the server thread once the map is ready. */
+        void check(GravesAndGlory.Battle b,int n){
+            var w=b.world;var out=new ArrayList<Shot>();int houses=0;Spec.SupplyHousesRow first=null;
+            for(var h:Spec.SUPPLYHOUSES){
+                if(h.map()!=n)continue;houses++;if(first==null)first=h;
+                var r=landmarkOf(h);var size=r==null?null:sizeOf(r);String k="p3-house-"+h.id();
+                if(r==null||size==null){for(String part:new String[]{"neutral","yard","spur"})report(k+"-"+part,false,"no landmarks row or no pieces row for "+h.landmark());continue;}
+                var ne=neutral(w,h,r,size);report(k+"-neutral",ne.ok(),ne.why());
+                var ya=yard(w,h,r,size);report(k+"-yard",ya.ok(),ya.why());
+                var sp=spur(w,h,r,size,0);report(k+"-spur",sp.ok(),sp.why());
+                views(out,h,r,size);
+            }
+            int want=n==4?2:4;
+            report("p3-house-rows-map"+n,houses==want,houses+" supplyHouses rows on map "+n+" (the plans state "+want+")");
+            if(first!=null&&landmarkOf(first)!=null&&sizeOf(landmarkOf(first))!=null)controls(w,n,first,landmarkOf(first));
+            shots=out;checked=true;
+        }
+
+        /** The five pictures of a house: local points go through Structures.toWorld, so their y is the elevation plus the local y; where no y is given the eye is at the ground+2.6. */
+        void views(List<Shot> out,Spec.SupplyHousesRow h,Spec.LandmarksRow r,Vec3i size){
+            String id=h.id();int e=h.elevation();
+            Vec3d gate=local(r,size,15.5,3.0,36.5);
+            out.add(new Shot(id+"-spur",h.spurX()+.5,Arena.ground(h.spurX(),h.spurZ())+2.6,h.spurZ()+.5,gate.x,gate.y,gate.z));
+            var g2=local(r,size,15.5,0.0,47.5);
+            out.add(new Shot(id+"-gate",g2.x,Arena.ground((int)Math.floor(g2.x),(int)Math.floor(g2.z))+2.6,g2.z,h.yardX()+.5,e+4,h.yardZ()+.5));
+            var y0=local(r,size,15.5,2.6,33.5);var y1=local(r,size,15.5,3.0,11.5);
+            out.add(new Shot(id+"-yard",y0.x,y0.y,y0.z,y1.x,y1.y,y1.z));
+            for(var l:Spec.LANDMARKLINES){
+                if(!l.template().equals(r.template())||!l.kind().equals("sight"))continue;
+                var a=local(r,size,l.fromX(),l.fromY(),l.fromZ());var z=local(r,size,l.toX(),l.toY(),l.toZ());
+                double ty=l.toY()==-1.0?Arena.ground((int)Math.floor(z.x),(int)Math.floor(z.z))+2.6:z.y;
+                out.add(new Shot(id+"-lookout",a.x,a.y,a.z,z.x,ty,z.z));
+            }
+            Spec.PointsRow near=null;double best=Double.MAX_VALUE;
+            for(var pt:Spec.POINTS){double d=Math.hypot(pt.x()-h.yardX(),pt.z()-h.yardZ());if(d<best){best=d;near=pt;}}
+            if(near!=null){
+                double dx=h.yardX()-near.x(),dz=h.yardZ()-near.z(),l=Math.hypot(dx,dz),px=near.x()+.5+dx/l*12,pz=near.z()+.5+dz/l*12;
+                out.add(new Shot(id+"-point",px,Arena.ground((int)Math.floor(px),(int)Math.floor(pz))+2.6,pz,h.yardX()+.5,e+4,h.yardZ()+.5));
+            }
+        }
+
+        /** Once per map, on its first house: what the neutral, yard and spur checks can fail on. Every block put in the world is taken out again. */
+        void controls(ServerWorld w,int n,Spec.SupplyHousesRow h,Spec.LandmarksRow r){
+            var size=sizeOf(r);int e=h.elevation(),x=h.yardX(),z=h.yardZ();
+            var stone=Blocks.STONE.getDefaultState();
+            // neutral: the flag of Dawn (cyan) over the yard, then a brazier lit; each must fail, and the neutral flag and the brazier put back must pass again
+            var flagCells=new ArrayList<BlockPos>();for(int y=1;y<=7;y++)flagCells.add(new BlockPos(x,e+y,z));for(int a=1;a<=3;a++)for(int y=4;y<=5;y++)flagCells.add(new BlockPos(x+a,e+y,z));
+            var keptFlag=new ArrayList<BlockState>();for(var q:flagCells)keptFlag.add(w.getBlockState(q));
+            Arena.flag(w,x,e,z,0);var cyan=neutral(w,h,r,size);Arena.flag(w,x,e,z,-1);var white=neutral(w,h,r,size);
+            for(int i=0;i<flagCells.size();i++)set(w,flagCells.get(i),keptFlag.get(i)); // the flag cells as the build left them (a map without the house flags has none)
+            var brazier=local(r,size,10,3,36);var kept=w.getBlockState(brazier);
+            set(w,brazier,Blocks.CAMPFIRE.getDefaultState().with(Properties.LIT,true));var lit=neutral(w,h,r,size);set(w,brazier,kept);var unlit=neutral(w,h,r,size);
+            report("p3-house-neutral-control-map"+n,!cyan.ok()&&white.ok()&&!lit.ok()&&unlit.ok(),h.id()+": with the cyan flag the check "+(cyan.ok()?"PASSES (it cannot fail)":"fails")+", with the white flag put back "+(white.ok()?"passes":"FAILS")+", with the first brazier lit it "+(lit.ok()?"PASSES (it cannot fail)":"fails")+", unlit again "+(unlit.ok()?"passes":"FAILS"));
+            // yard: a block in the circle; the cells of the front gate sealed (a block at +1 in each of the 9)
+            var inCircle=new BlockPos(x+5,e+1,z);var keptCircle=w.getBlockState(inCircle);
+            set(w,inCircle,stone);var blockedCircle=yard(w,h,r,size);set(w,inCircle,keptCircle);
+            var gateCells=new ArrayList<BlockPos>();var keptGate=new ArrayList<BlockState>();
+            for(int lx=11;lx<=19;lx++){var q=local(r,size,lx,1,36);gateCells.add(q);keptGate.add(w.getBlockState(q));}
+            for(var q:gateCells)set(w,q,stone);
+            var sealed=yard(w,h,r,size);
+            for(int i=0;i<gateCells.size();i++)set(w,gateCells.get(i),keptGate.get(i));
+            var again=yard(w,h,r,size);
+            report("p3-house-yard-control-map"+n,!blockedCircle.ok()&&!sealed.ok()&&again.ok(),h.id()+": with a stone at "+xyz(inCircle)+" the check "+(blockedCircle.ok()?"PASSES (it cannot fail)":"fails")+" ("+blockedCircle.why()+"), with the front gate sealed it "+(sealed.ok()?"PASSES (it cannot fail)":"fails")+", both put back "+(again.ok()?"passes":"FAILS"));
+            // spur: a block on the centre line at ground+1; the whole line moved 10 blocks aside (no road cells)
+            int mz=(h.spurZ()+local(r,size,15,0,37).getZ())/2,mg=Arena.ground(h.spurX(),mz);
+            var onLine=new BlockPos(h.spurX(),mg+1,mz);var keptLine=w.getBlockState(onLine);
+            set(w,onLine,stone);var blockedLine=spur(w,h,r,size,0);set(w,onLine,keptLine);
+            var aside=spur(w,h,r,size,10);var fine=spur(w,h,r,size,0);
+            report("p3-house-spur-control-map"+n,!blockedLine.ok()&&!aside.ok()&&fine.ok(),h.id()+": with a stone on the centre line at "+xyz(onLine)+" the check "+(blockedLine.ok()?"PASSES (it cannot fail)":"fails")+", with the line moved 10 blocks aside it "+(aside.ok()?"PASSES (it cannot fail)":"fails")+", put back "+(fine.ok()?"passes":"FAILS"));
         }
     }
 }
