@@ -16,5 +16,6 @@
 "skins":{"1":"longbow_s1.png","2":"longbow_s2.png","3":"longbow_s3.png"},
 "weapon":"longbow",
 "hand":"left",
-"portrait":"tall 2"
+"portrait":"tall 2",
+"faces":{"count":4,"slots":[[96,48],[64,48],[96,32]]}
 }

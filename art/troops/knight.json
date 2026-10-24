@@ -15,5 +15,6 @@
 "skins":{"1":"knight_s1.png","2":"knight_s2.png","3":"knight_s3.png"},
 "weapon":"arming_sword",
 "hand":"right",
-"portrait":"standard"
+"portrait":"standard",
+"faces":{"count":4,"slots":[[96,48],[64,48],[96,32]]}
 }

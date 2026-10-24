@@ -15,5 +15,6 @@
 "skins":{"1":"archer_s1.png","2":"archer_s2.png","3":"archer_s3.png"},
 "weapon":"order_bow",
 "hand":"left",
-"portrait":"standard"
+"portrait":"standard",
+"faces":{"count":4,"slots":[[96,48],[64,48],[96,32]]}
 }
