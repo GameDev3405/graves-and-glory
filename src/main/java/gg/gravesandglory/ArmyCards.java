@@ -32,21 +32,23 @@ final class ArmyCards {
         if(GravesAndGloryClient.battleActive()){var side=DarkUi.side(GravesAndGloryClient.team);if(side!=null)return side.color();}
         for(var f:Spec.FACTIONS)if(f.id().equals(CampaignClient.profile.bannerColour))return f.color();return Spec.FACTIONS[0].color();
     }
-    /** The stage 1 portrait. */
-    static MobEntity portrait(Spec.TroopsRow spec){return portrait(spec,1);}
+    /** The tier I portrait: weapon tier 1 and armour tier 1. */
+    static MobEntity portrait(Spec.TroopsRow spec){return portrait(spec,1,1);}
     /**
-     * A portrait mob of a troop at an evolution stage, named as Battle.spawn names it (ArmyMobs.stageName), so a troop with a
-     * model draws it through TroopRenderer: no team, so no match side and no pennant, in the company's cloth (unit identity
-     * rule 8 as Kort ruled it), with its painted shield on a grey field (Battle.PORTRAIT_FIELD). Cached per id, stage and colour: the chest item
-     * is still dyed the commander's colour (the barracks and editor checks read it), though troop armour never draws.
+     * A portrait mob of a troop at a weapon tier and an armour tier (1 to 3), named as Battle.spawn names a fresh one (ArmyMobs.levelName at level 1),
+     * so a troop with a model draws it through TroopRenderer: its tiers are set on the mob with RankSync.setLocal (level 1, so no chevrons), and a
+     * tier the troop has no art for draws the highest one below it, as in battle. No team, so no match side and no pennant, in the company's cloth
+     * (unit identity rule 8 as Kort ruled it), with its painted shield on a grey field (Battle.PORTRAIT_FIELD). Cached per id, tiers and colour: the
+     * chest item is still dyed the commander's colour (the barracks and editor checks read it), though troop armour never draws.
      */
-    static MobEntity portrait(Spec.TroopsRow spec,int stage){
+    static MobEntity portrait(Spec.TroopsRow spec,int weaponTier,int armourTier){
         var c=MinecraftClient.getInstance();if(world!=c.world){portraits.clear();world=c.world;}if(c.world==null)return null;
         int colour=troopColour();
-        return portraits.computeIfAbsent(spec.id()+"/"+stage+"/"+colour,key->{
+        return portraits.computeIfAbsent(spec.id()+"/"+weaponTier+"/"+armourTier+"/"+colour,key->{
             // The sheet's entity type (ArmyMobs.portrait): a vanilla mob, so a card draws a House's beasts and crews before the House can take the field.
             MobEntity e=ArmyMobs.portrait(spec.entity(),c.world);
-            e.setCustomName(Text.literal(ArmyMobs.stageName(spec,stage)));e.setCustomNameVisible(false);e.setPersistent();e.setSilent(true);
+            e.setCustomName(Text.literal(ArmyMobs.levelName(spec,1)));e.setCustomNameVisible(false);e.setPersistent();e.setSilent(true);
+            RankSync.setLocal(e,new RankSync.Rank(1,weaponTier,armourTier));
             e.equipStack(EquipmentSlot.MAINHAND,new ItemStack(Registries.ITEM.get(new Identifier(spec.weapon()))));e.equipStack(EquipmentSlot.HEAD,new ItemStack(Registries.ITEM.get(new Identifier(spec.helmet()))));
             var chest=new ItemStack(Registries.ITEM.get(new Identifier(spec.chest())));if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,colour);e.equipStack(EquipmentSlot.CHEST,chest);
             if(ArmyMobs.tags(spec).contains("shield"))e.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(spec,GravesAndGlory.Battle.PORTRAIT_FIELD));
@@ -85,7 +87,7 @@ final class ArmyCards {
             g.drawText(f,f.trimToWidth(counterText(r),w-14),x+14,y+1,DarkUi.PAPER,false);y+=12;drawn.add(r.id());}
         return drawn;
     }
-    /** The troopNotes row of a troop (its beats and beaten-by cells and its level 2 and 3 card lines), or null. */
+    /** The troopNotes row of a troop (its beats and beaten-by cells; the level 2 and 3 card lines come from its levelAbilities rows), or null. */
     static Spec.TroopNotesRow notes(Spec.TroopsRow t){for(var n:Spec.TROOPNOTES)if(n.id().equals(t.id()))return n;return null;}
 
     /** A portrait size that fits any model in the same frame: a husk at size, a wolf no larger than 1.25 times, a golem smaller. */

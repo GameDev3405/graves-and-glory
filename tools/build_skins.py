@@ -12,6 +12,9 @@ rule 8 as Kort ruled it, Needs Kort 11).
                                                   pixels (another Pillow or zlib may encode the same pixels in other
                                                   bytes), anything else byte for byte; exit 1 naming the first
                                                   difference
+  python tools/build_skins.py --tiers             print per troop its armour and weapon tiers I to III and the tier each
+                                                  draws (III->II: tier III's art is missing, it draws tier II's), then the
+                                                  stopgap list, which tools/package.py refuses while it is not empty
   python tools/build_skins.py --template <troop>  write work/troops/<troop>_template.png: every skin box face of the
                                                   troop in a flat colour, the sheet to paint over, and
                                                   <troop>_relief_template.png: where relief may stand (design 7)
@@ -34,9 +37,17 @@ Sources (sizes in model pixels, y down, the ground at y 24, angles in degrees; a
                            times in seconds of bow_draw) with nocks (the string's middle in sprite px, a pair a frame).
                            The art is <id>.png (rest), <id>_pull_0..2.png with pull, and for a lit weapon <id>_e.png: the
                            build extrudes the sprites (design 2 of the troop depth design).
+                           A weapon's tiers II and III (in-match progression design 4.4) are weapons of their own,
+                           art/weapons/<id>_t2 and <id>_t3 under the same rules; a troop names its tier I <id>, and a
+                           missing tier draws the highest tier below it.
   art/troops/<troop>.json  troop, rig, size?, bones {<name>: {pivot?, boxes?, scale?}}, hunch? (biped), idleArms?,
-                           parts[] of {part, name?, bone?, uv, offset?, rotation?, scale?, stages?}, skins {<stage>: file},
-                           veteran?, glow?, glowFrom?, outer?, weapon (an id or none), hand, portrait.
+                           parts[] of {part, name?, bone?, uv, offset?, rotation?, scale?, stages?, weaponTiers?},
+                           skins {<armour tier>: file}, veteran?, glow?, glowFrom?, outer?, weapon (an id or none), hand,
+                           portrait. A skin and a part's stages name armour tiers (1 to 3, the gearTiers rows); a part's
+                           weaponTiers name the weapon tiers it shows at (the weapon parts of a troop with no held weapon,
+                           and the Ballista Crew's frame). A tier with no skin of its own draws the highest own skin below.
+  art/marks/chevron.png    the rank chevron (in-match progression design 7), copied to textures/entity/troop/chevron.png:
+                           at most 32 px a side, alpha 0 or 255, every opaque pixel grey (the client tints it).
   art/troops/<troop>_s<stage>_r.png  the relief layer of that skin: the troop's size, alpha 0 or 255, an opaque texel
                            stands one texel proud of its face (design 3).
   art/troops/<troop>_veteran.png  the veteran trim (in-match progression design 4.4): an overlay drawn over whichever
@@ -97,7 +108,14 @@ MODEL_KEYS = ('format', 'troop', 'rig', 'size', 'bones', 'skins', 'veteran', 'gl
 VANILLA_KEYS = ('parent', 'elements', 'textures', 'display', 'overrides', 'gui_light', 'ambientocclusion')
 TROOP_KEYS = {'troop', 'rig', 'size', 'bones', 'hunch', 'idleArms', 'parts', 'skins', 'veteran', 'glow', 'glowFrom',
               'outer', 'weapon', 'hand', 'portrait', 'note'}
-ENTRY_KEYS = {'part', 'name', 'bone', 'uv', 'offset', 'rotation', 'scale', 'stages', 'note'}
+ENTRY_KEYS = {'part', 'name', 'bone', 'uv', 'offset', 'rotation', 'scale', 'stages', 'weaponTiers', 'note'}
+# The gear tiers (in-match progression design 4.4) when a sheet has no gearTiers rows; a tier's roman numeral for --tiers.
+TIERS = (1, 2, 3)
+ROMAN = {1: 'I', 2: 'II', 3: 'III'}
+# A weapon tier's model: art/weapons/<weapon>_t2 and _t3; tier I keeps <weapon> (in-match progression plan, spec gaps 7).
+WEAPON_TIER = re.compile(r'(.+)_t(\d+)')
+# The rank chevron (in-match progression design 7): art/marks/chevron.png, grey so the client tints it the side colour.
+CHEVRON_SRC, CHEVRON_MAX = 'art/marks/chevron.png', 32
 PART_KEYS = {'part', 'bone', 'team', 'tag', 'pivot', 'rotation', 'scale', 'boxes', 'note'}
 WEAPON_KEYS = {'weapon', 'thickness', 'grip', 'pull', 'nocks', 'note'}
 RIG_KEYS = {'rig', 'size', 'outer', 'hands', 'bones', 'note'}
@@ -185,13 +203,14 @@ def read_png(path, what):
 
 
 class Catalog:
-    """Every source under art/ plus the sheet rows the build reads (troops, factions, evolutions)."""
+    """Every source under art/ plus the sheet rows the build reads (troops, factions, levelNames)."""
 
     def __init__(self, root):
         self.root = root
         self.rigs, self.parts, self.weapons, self.troops = {}, {}, {}, {}
         self.sheet, self.factions, self.stages = {}, {}, {}
         self.template, self.glyphs = None, {}
+        self.tiers = list(TIERS)
 
 
 def sources(folder, key):
@@ -213,11 +232,11 @@ def load(root: Path) -> Catalog:
     for reserved in ('linen', 'company'):
         if reserved in cat.factions:
             fail('factions row %s: linen and company name the cloths with no side' % reserved)
-    lines = {}
-    for e in design.get('evolutions', []):
-        lines.setdefault(e['troop'], set()).add(int(e['stage']))
-    for tid, row in cat.sheet.items():
-        cat.stages[tid] = sorted({1} | lines.get(row.get('evolveLine'), set()))
+    # Every troop has armour tiers I to III, the gearTiers rows (in-match progression design 4.4): a skin _s<n> and the
+    # parts' stages key name armour tiers. A sheet without gearTiers rows (the test fixtures) has the three.
+    cat.tiers = sorted({int(r['tier']) for r in design.get('gearTiers', [])}) or list(TIERS)
+    for tid in cat.sheet:
+        cat.stages[tid] = list(cat.tiers)
     art = root / 'art'
     cat.rigs = sources(art / 'rigs', 'rig')
     cat.parts = sources(art / 'parts', 'part')
@@ -388,7 +407,7 @@ def bake_bones(rig, what, overrides=None, parts=(), hunch=0.0, folded=True, stag
     parts: (entry, part) pairs. Returns the bone dicts, parents first."""
     bones, scale = {}, {}
     for b in rig['bones']:
-        bones[b['name']] = {'name': b['name'], 'parent': b['parent'], 'part': '', 'team': False, 'tag': '', 'stages': [],
+        bones[b['name']] = {'name': b['name'], 'parent': b['parent'], 'part': '', 'team': False, 'tag': '', 'stages': [], 'weaponTiers': [],
                             'pivot': [float(c) for c in b['pivot']], 'rotation': [float(c) for c in b.get('rotation', [0, 0, 0])],
                             'boxes': check_boxes(b.get('boxes', []), what)}
     for name, ov in (overrides or {}).items():
@@ -425,7 +444,14 @@ def bake_bones(rig, what, overrides=None, parts=(), hunch=0.0, folded=True, stag
             origin_uv = vec(entry['uv'], 2, '%s part %s uv' % (what, name), ints=True, minimum=0)
         want = entry.get('stages', [])
         if not isinstance(want, list) or any(s not in stages for s in want):
-            fail('%s: part %s shows at stages %s, but the troop has stages %s' % (what, name, want, list(stages)))
+            fail('%s: part %s shows at armour tiers %s, but the armour tiers are %s' % (what, name, want, list(stages)))
+        # weaponTiers: the weapon tiers a weapon part shows at (design 4.4: a troop with no held weapon, or the Ballista
+        # Crew's frame, shows its weapon tier as parts on the rig); without the key a part shows at every weapon tier.
+        arms = entry.get('weaponTiers')
+        if arms is not None and (not isinstance(arms, list) or not arms):
+            fail('%s: part %s weaponTiers must list the weapon tiers it shows at, not %s' % (what, name, arms))
+        if arms is not None and any(isinstance(t, bool) or t not in stages for t in arms):
+            fail('%s: part %s shows at weapon tiers %s, but the weapon tiers are %s' % (what, name, arms, list(stages)))
         pivot = [a + b for a, b in zip(vec(part.get('pivot', [0, 0, 0]), 3, 'pivot'),
                                        vec(entry.get('offset', [0, 0, 0]), 3, '%s part %s offset' % (what, name)))]
         rot = vec(entry.get('rotation', part.get('rotation', [0, 0, 0])), 3, '%s part %s rotation' % (what, name))
@@ -433,7 +459,7 @@ def bake_bones(rig, what, overrides=None, parts=(), hunch=0.0, folded=True, stag
         for b in boxes:
             b['uv'] = [origin_uv[0] + b['uv'][0], origin_uv[1] + b['uv'][1]]
         bones[name] = {'name': name, 'parent': anchor, 'part': pid, 'team': part['team'], 'tag': part['tag'],
-                       'stages': sorted(want), 'pivot': pivot, 'rotation': rot, 'boxes': boxes}
+                       'stages': sorted(want), 'weaponTiers': sorted(arms or []), 'pivot': pivot, 'rotation': rot, 'boxes': boxes}
         own = scale3(entry.get('scale', 1), '%s part %s' % (what, name))
         base = scale3(part.get('scale', 1), 'part ' + pid)   # the part's own scale, then the troop's for it
         k = scale.get(anchor, ONE)
@@ -463,11 +489,16 @@ def bake_bones(rig, what, overrides=None, parts=(), hunch=0.0, folded=True, stag
 
 
 def clean_bone(b, sheet):
-    return {'name': b['name'], 'parent': b['parent'], 'part': b['part'], 'team': b['team'], 'tag': b['tag'],
-            'stages': b['stages'], 'sheet': list(sheet), 'pivot': [num(c) for c in b['pivot']],
-            'rotation': [num(c) for c in b['rotation']],
-            'boxes': [{'origin': [num(c) for c in x['origin']], 'size': x['size'], 'uv': x['uv'], 'mirror': x['mirror'],
-                       'dilation': [num(c) for c in x['dilation']]} for x in b['boxes']]}
+    """A bone as the generated file keeps it; weaponTiers only on a weapon part (so a model without one keeps its bytes)."""
+    out = {'name': b['name'], 'parent': b['parent'], 'part': b['part'], 'team': b['team'], 'tag': b['tag'],
+           'stages': b['stages']}
+    if b.get('weaponTiers'):
+        out['weaponTiers'] = b['weaponTiers']
+    out.update({'sheet': list(sheet), 'pivot': [num(c) for c in b['pivot']],
+                'rotation': [num(c) for c in b['rotation']],
+                'boxes': [{'origin': [num(c) for c in x['origin']], 'size': x['size'], 'uv': x['uv'], 'mirror': x['mirror'],
+                           'dilation': [num(c) for c in x['dilation']]} for x in b['boxes']]})
+    return out
 
 
 def texture_id(name):
@@ -475,22 +506,22 @@ def texture_id(name):
 
 
 def troop_files(cat, troop):
-    """The troop's skins by stage, and its veteran, glow and outer files ('' for none), checked against the naming rules."""
+    """The troop's skins by armour tier, and its veteran, glow and outer files ('' for none), checked against the naming rules."""
     src = cat.troops[troop]
     folder = cat.root / 'art/troops'
     if (folder / (troop + '.png')).exists():
-        fail('%s: art/troops/%s.png: skins end _s<stage> or _veteran, never <troop>.png (ETF, when a player has it, '
+        fail('%s: art/troops/%s.png: skins end _s<armour tier> or _veteran, never <troop>.png (ETF, when a player has it, '
              'pairs <name>_e.png with <name>.png)' % (troop, troop))
     stages = cat.stages[troop]
     skins = src.get('skins')
     if not isinstance(skins, dict) or '1' not in skins:
-        fail('%s: skins must map stage numbers to files, with a stage 1 skin' % troop)
+        fail('%s: skins must map armour tiers to files, with a tier 1 skin' % troop)
     own = {}
     for key, f in skins.items():
         if not key.isdigit() or int(key) not in stages:
-            fail('%s: a skin for stage %s, which the evolution line lacks (stages %s)' % (troop, key, stages))
+            fail('%s: a skin for armour tier %s, which no gear tier has (armour tiers %s)' % (troop, key, stages))
         if f != '%s_s%s.png' % (troop, key):
-            fail('%s: the stage %s skin must be %s_s%s.png, not %s' % (troop, key, troop, key, f))
+            fail('%s: the armour tier %s skin must be %s_s%s.png, not %s' % (troop, key, troop, key, f))
         if not (folder / f).is_file():
             fail('%s: %s is missing from art/troops' % (troop, f))
         own[int(key)] = f
@@ -639,6 +670,13 @@ def weapon_outputs(cat, wid):
     (files, lit glow pixels, [(weapon, frame, quads)])."""
     w = cat.weapons[wid]
     what = 'weapon ' + wid
+    tiered = WEAPON_TIER.fullmatch(wid)
+    if tiered:
+        base, tier = tiered.group(1), int(tiered.group(2))
+        if tier not in cat.tiers or tier == 1:
+            fail('%s: tier %d is no weapon tier (a tier model is <weapon>_t2 to _t%d; tier I is <weapon>)' % (what, tier, max(cat.tiers)))
+        if base not in cat.weapons:
+            fail('%s: a weapon tier of %s, which art/weapons lacks (tier I is %s.json)' % (what, base, base))
     if 'boxes' in w or 'size' in w:
         fail('%s: boxes and size are gone (format 2): a weapon is a sprite, art/weapons/%s.png, that the build extrudes; give '
              'it a thickness and a grip pixel' % (what, wid))
@@ -833,7 +871,7 @@ class Boxes:
         self.rt = world(model['bones'])
         self.items = []
         for b in model['bones']:
-            hide = b['tag'] == 'helm' or bool(b['stages'])
+            hide = b['tag'] == 'helm' or bool(b['stages']) or bool(b.get('weaponTiers'))
             for i, box in enumerate(b['boxes']):
                 self.items.append((b['name'], i, hide, obb(self.rt[b['name']], *box_extent(box))))
 
@@ -1459,6 +1497,10 @@ def bake(cat: Catalog, troop: str) -> dict:
     weapon = src.get('weapon')
     if weapon != 'none' and weapon not in cat.weapons:
         fail('%s: unknown weapon %s' % (troop, weapon))
+    tiered = WEAPON_TIER.fullmatch(weapon or '')
+    if tiered and tiered.group(1) in cat.weapons:
+        fail('%s: weapon %s is a weapon tier; name its tier I weapon %s (the client picks the tier the soldier wears)'
+             % (troop, weapon, tiered.group(1)))
     hand = src.get('hand')
     if hand not in ('right', 'left'):
         fail('%s: hand must be right or left' % troop)
@@ -1469,10 +1511,9 @@ def bake(cat: Catalog, troop: str) -> dict:
     if glow_from not in stages:
         fail('%s: glowFrom %s is not one of the stages %s' % (troop, glow_from, stages))
     own, extra = troop_files(cat, troop)
-    skins, last = {}, None
-    for s in stages:
-        last = own.get(s, last)
-        skins[str(s)] = texture_id(last)
+    # Only the troop's own skins: a tier without one draws the highest own tier below it on the client (the stopgap,
+    # in-match progression design 4.4), and --tiers lists it.
+    skins = {str(s): texture_id(own[s]) for s in sorted(own)}
     model = {'format': FORMAT, 'troop': troop, 'rig': rig_name, 'size': size,
              'bones': [clean_bone(b, cat.template.size if b['team'] else size) for b in bones], 'skins': skins,
              'veteran': texture_id(extra['veteran']) if extra['veteran'] else '',
@@ -1525,7 +1566,8 @@ def troop_outputs(cat, troop, weapon_lit):
             b['relief'] = {k: by_bone[b['name']][k] for k in sorted(by_bone[b['name']], key=lambda k: (len(k), k))}
     out['%s/%s.json' % (MODELS, troop)] = dumps(model)
     cap = GLOW_CAP.get(cat.sheet[troop]['rarity'], 6)
-    n = (lit(read_png(folder / extra['glow'], troop)) if extra['glow'] else 0) + weapon_lit.get(model['weapon'], 0)
+    held = max([weapon_lit.get(w, 0) for w in weapon_tiers(cat, model['weapon']).values()] or [0])   # the brightest tier it may hold
+    n = (lit(read_png(folder / extra['glow'], troop)) if extra['glow'] else 0) + held
     if n > cap:
         fail("%s: %d lit pixels in its glow and its weapon's glow together, over the %s cap of %d"
              % (troop, n, cat.sheet[troop]['rarity'], cap))
@@ -1570,6 +1612,157 @@ def cloth(cat: Catalog, side) -> Image.Image:
     return out
 
 
+def chevron(cat: Catalog) -> Image.Image:
+    """The rank chevron (in-match progression design 7), checked: at most CHEVRON_MAX px a side, alpha 0 or 255, every
+    opaque pixel grey (r = g = b), since the client multiplies it by the side colour."""
+    im = read_png(cat.root / CHEVRON_SRC, 'chevron')
+    what = CHEVRON_SRC
+    if im.width > CHEVRON_MAX or im.height > CHEVRON_MAX:
+        fail('%s is %dx%d, over the %d px a side a chevron may be' % (what, im.width, im.height, CHEVRON_MAX))
+    px = im.load()
+    for y in range(im.height):
+        for x in range(im.width):
+            r, g, b, a = px[x, y]
+            if a not in (0, 255):
+                fail('%s: pixel (%d, %d) has alpha %d; a chevron pixel is opaque or clear' % (what, x, y, a))
+            if a and not r == g == b:
+                fail('%s: pixel (%d, %d) #%02X%02X%02X is not grey; the client tints the chevron the side colour' % (what, x, y, r, g, b))
+    if not any(a for a in im.tobytes()[3::4]):
+        fail('%s is empty' % what)
+    return im
+
+
+# ---- in-match progression Task 9: armour and weapon tiers, the stopgap list and the release check ----
+
+def weapon_tiers(cat, wid):
+    """{tier: weapon id} of the models a troop holding wid has: tier I is wid, tier n is <wid>_t<n> where art/weapons has
+    one; {} for no held weapon."""
+    if not wid or wid == 'none':
+        return {}
+    out = {1: wid}
+    for t in cat.tiers:
+        if t > 1 and '%s_t%d' % (wid, t) in cat.weapons:
+            out[t] = '%s_t%d' % (wid, t)
+    return out
+
+
+def drawn_tiers(own, tiers):
+    """{tier: the tier it draws}: its own art when it has some, else the highest tier below it that has (the stopgap,
+    in-match progression design 4.4); tier I always has its own."""
+    out, last = {}, 1
+    for t in sorted(tiers):
+        if t == 1 or t in own:
+            last = t
+        out[t] = last
+    return out
+
+
+def part_tiers(cat, src) -> set:
+    """The weapon tiers a troop's weaponTiers parts have whole: a tier every bone that carries a tier I weapon part also
+    carries a part of (Task 9 review M7: a tier II cap without its tier II guard is no tier II); TroopModel.partTiers is the
+    client's twin. Empty for a troop without weapon parts."""
+    by_bone = {}
+    for e in src.get('parts', []) or []:
+        if e.get('weaponTiers'):
+            part = cat.parts.get(e.get('part'), {})
+            by_bone.setdefault(e.get('bone', part.get('bone')), set()).update(e['weaponTiers'])
+    if not by_bone:
+        return set()
+    every = set().union(*by_bone.values())
+    return {t for t in every if all(t in tiers for tiers in by_bone.values() if 1 in tiers)}
+
+
+def tier_table(cat: Catalog) -> list:
+    """Per sheet troop, by id: {troop, armour, weapon, kind}. armour and weapon map each tier to the tier it draws (None for a
+    troop with no model, which draws its vanilla mob); kind names the held weapon, 'parts' (its weapon tier is a weaponTiers
+    part set) or both."""
+    rows = []
+    for tid in sorted(cat.sheet):
+        src = cat.troops.get(tid)
+        if src is None:
+            rows.append({'troop': tid, 'armour': None, 'weapon': None, 'kind': None})
+            continue
+        own, _ = troop_files(cat, tid)
+        parts = part_tiers(cat, src)
+        held = weapon_tiers(cat, src.get('weapon'))
+        if held:
+            have, kind = set(held), src['weapon'] + (' and parts' if parts else '')
+            if parts:
+                have &= parts | {1}
+        else:
+            have, kind = parts | {1}, 'parts'
+        rows.append({'troop': tid, 'armour': drawn_tiers(set(own), cat.tiers), 'weapon': drawn_tiers(have, cat.tiers), 'kind': kind})
+    return rows
+
+
+def stopgaps(cat: Catalog) -> list:
+    """[(troop, why)] of every troop that draws a stopgap tier or has no model, by id: the 0.5.0 art gate."""
+    out = []
+    for r in tier_table(cat):
+        if r['armour'] is None:
+            out.append((r['troop'], 'no model'))
+            continue
+        gaps = ['%s %s draws %s' % (part, ROMAN.get(t, t), ROMAN.get(d, d)) for part in ('armour', 'weapon')
+                for t, d in r[part].items() if t != d]
+        if gaps:
+            out.append((r['troop'], ', '.join(gaps)))
+    return out
+
+
+def tier_line(drawn):
+    return ' '.join(ROMAN.get(t, str(t)) if t == d else '%s->%s' % (ROMAN.get(t, t), ROMAN.get(d, d)) for t, d in drawn.items())
+
+
+def stopgap_list(gaps):
+    return ', '.join('%s (%s)' % g for g in gaps)
+
+
+def tiers(root: Path) -> int:
+    """--tiers: one line per sheet troop with its armour and weapon tiers (III->II: tier III draws tier II's art), then the
+    stopgap list."""
+    cat = load(root)
+    for r in tier_table(cat):
+        if r['armour'] is None:
+            print('build_skins: tiers %s: no model (draws its vanilla mob)' % r['troop'])
+        else:
+            print('build_skins: tiers %s: armour %s; weapon %s %s' % (r['troop'], tier_line(r['armour']), r['kind'], tier_line(r['weapon'])))
+    gaps = stopgaps(cat)
+    print('build_skins: stopgap %s' % ('%d troops: %s' % (len(gaps), stopgap_list(gaps)) if gaps else 'none'))
+    return 0
+
+
+def release_gate(root: Path, argv, tool='package') -> str:
+    """The release files' tier check (in-match progression design 4.4, round 34 question 6), run first by tools/package.py,
+    export_modrinth.py and export_server.py: '' when no troop draws a stopgap tier; with one, '-stopgap' (the file names'
+    mark, release_name) under --allow-stopgap, else it prints the list and exits 1."""
+    gaps = stopgaps(load(root))
+    if not gaps:
+        return ''
+    if '--allow-stopgap' in argv:
+        print('%s: --allow-stopgap: %d troops draw a stopgap tier, so the file name carries -stopgap: %s' % (tool, len(gaps), stopgap_list(gaps)))
+        return '-stopgap'
+    print('%s: refused: %d troops still draw a stopgap tier (0.5.0 waits for every troop\'s own weapon and armour '
+          'tiers I to III): %s' % (tool, len(gaps), stopgap_list(gaps)))
+    print('%s: for a marked local build run python tools/%s.py --allow-stopgap' % (tool, tool))
+    sys.exit(1)
+
+
+def release_name(release, mark, suffix) -> str:
+    """A release file's name: graves-and-glory-<version><mark><suffix> (suffix .zip, .mrpack or -server.zip)."""
+    return 'graves-and-glory-%s%s%s' % (release, mark, suffix)
+
+
+def release_archive(manifest, release, mark, tool='export') -> str:
+    """The player archive dist/package-manifest.json names when it is this version's, with this gate's mark; else the tool
+    refuses (exit 1), so a -stopgap package never feeds an unmarked .mrpack or server kit, nor a stale one a new kit."""
+    want = release_name(release, mark, '.zip')
+    if manifest.get('fileName') != want:
+        print('%s: refused: dist/package-manifest.json names %s, not %s; run python tools/package.py%s first'
+              % (tool, manifest.get('fileName'), want, ' --allow-stopgap' if mark else ''))
+        sys.exit(1)
+    return want
+
+
 def build(cat):
     """Every output as {path under the assets root: bytes}, plus the index, the number of cloths and the relief stages and
     weapon frames built as (owner, name, quads) rows."""
@@ -1594,6 +1787,8 @@ def build(cat):
     sides = list(cat.factions)
     for side in sides + [None, 'company']:
         files['%s/team_cloth_%s.png' % (TEXTURES, side or 'linen')] = png_bytes(cloth(cat, side))
+    if (cat.root / CHEVRON_SRC).is_file():
+        files['%s/chevron.png' % TEXTURES] = png_bytes(chevron(cat))
     index = {'format': FORMAT, 'troops': sorted(cat.troops), 'rigs': sorted(cat.rigs), 'weapons': sorted(cat.weapons),
              'outputs': sorted(files)}
     files['%s/index.json' % MODELS] = dumps(index)
@@ -1747,6 +1942,8 @@ def template(cat: Catalog, troop: str) -> Image.Image:
 def main(args):
     if args == ['--verify']:
         return verify(ROOT)
+    if args == ['--tiers']:
+        return tiers(ROOT)
     if len(args) == 2 and args[0] == '--template':
         cat = load(ROOT)
         for im, name in ((template(cat, args[1]), '_template.png'), (relief_template(cat, args[1]), '_relief_template.png')):

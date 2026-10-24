@@ -3,6 +3,7 @@ package gg.gravesandglory;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.damage.DamageType;
+import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.item.Items;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
@@ -24,8 +25,12 @@ public final class Combat {
     /** How many hits LAST keeps. */
     static final int LOG_SIZE = 64;
 
-    /** One resolved hit: the attacker's and target's entity ids, the base amount, each factor, the clamped total and the ids of the counters rows that applied. */
-    public record HitLog(int attacker, int target, float base, double counters, double stance, double traits, double auras, double commander, double total, List<String> rows) {}
+    /**
+     * One resolved hit: the attacker's and target's entity ids, the base amount as given (stars in it), each factor, the clamped total and the ids of the
+     * counters rows that applied. veteran is the attacker's level-and-weapon factor (Veterans.damageFactor), which multiplies the base outside the clamp;
+     * status is his statuses' share (Statuses.factorOut), inside the clamped total beside the auras. The amount dealt is base x veteran x total.
+     */
+    public record HitLog(int attacker, int target, float base, double counters, double stance, double traits, double auras, double commander, double veteran, double status, double total, List<String> rows) {}
     /** The newest resolved hits, oldest first, at most 64. Server thread only. */
     public static final ArrayDeque<HitLog> LAST = new ArrayDeque<>();
 
@@ -65,25 +70,29 @@ public final class Combat {
         boolean raised = victim != null && victim.tags.contains("shield") && victim.mob.isUsingItem() && victim.mob.getActiveItem().isOf(Items.SHIELD);
         boolean noSky = from.contains("ambush") && Abilities.noSky(attacker);
         boolean covered = victim != null && Houses.covered(b, victim);
-        var hit = new CounterMath.Hit(from, to, bearing, raised, impact, charging, holding, noSky, Abilities.inMist(b, attacker.mob, target), covered, area);
+        boolean slowed = target.hasStatusEffect(StatusEffects.SLOWNESS), wounded = BattleMath.wounded(target.getHealth(), target.getMaxHealth(), D.woundedShare()); // Run them down (C20) and Unbroken (C21)
+        var hit = new CounterMath.Hit(from, to, bearing, raised, impact, charging, holding, noSky, Abilities.inMist(b, attacker.mob, target), covered, area, slowed, wounded);
 
         double counters = CounterMath.counters(hit, Spec.COUNTERS), stance = stance(attacker);
         double traits = Houses.traitFactor(b, attacker, target, kind, area ? 0 : bearing), auras = Abilities.auraFactor(b, attacker, target), commander = commanderFactor(b, attacker, target);
-        double total = CounterMath.total(counters * stance, traits, auras, commander, D.multiplierMin(), D.multiplierMax());
+        double veteran = Veterans.damageFactor(attacker), status = Statuses.factorOut(b, attacker.mob); // in-match progression: the level-and-weapon factor goes on the base, outside the clamp, as stars do; the statuses (weaken, Task 6) sit in the product with the auras
+        double total = CounterMath.total(counters * stance, traits, auras * status, commander, D.multiplierMin(), D.multiplierMax());
         List<String> rows = List.copyOf(CounterMath.applied(hit, Spec.COUNTERS));
         if (rows.contains("C16")) attacker.squad.stats.flankHits++; // the round's flank tally per army (MatchStats.SquadStats)
         if (rows.contains("C16s")) attacker.squad.stats.flankShots++;
-        LAST.addLast(new HitLog(attacker.mob.getId(), target.getId(), base, counters, stance, traits, auras, commander, total, rows));
+        LAST.addLast(new HitLog(attacker.mob.getId(), target.getId(), base, counters, stance, traits, auras, commander, veteran, status, total, rows));
         while (LAST.size() > LOG_SIZE) LAST.removeFirst();
 
         if (impact) attacker.chargeHitAt = b.time;
         if (victim != null) { victim.lastHitBy = attacker.squad; victim.lastHitAt = b.time; victim.lastHitTroop = attacker.temporary ? null : attacker.spec.id(); } // the troop type too, for the mastery ledger (a shot whose archer fell still credits it)
-        float amount = (float) (base * total);
+        float amount = (float) (base * veteran * total);
         boolean anchored = victim != null && Abilities.anchored(b, victim);
         Vec3d stood = target.getVelocity();
         boolean hurt = target.damage(source(b, attacker.mob), amount);
         if (anchored) target.setVelocity(stood); // an anchored troop (the Oath Banner's) is not knocked back by the blow itself either
         if (!hurt) return 0;
+        // Ruling (Task 6 review M1): a killing blow levels its striker inside target.damage (AFTER_DEATH, lane A), so onHit below reads his new rows: the level
+        // up lands at the kill and its first benefit is that same blow (a pierce, a cleave or a slam at the new share, Reap at level 3).
         if (!secondary) Abilities.onHit(b, attacker, target, amount, kind);
         return amount;
     }
@@ -94,10 +103,12 @@ public final class Combat {
     /**
      * The attacker's stance share, per soldier, from his ability row: fearless (the Risen, the Bone Archer) deals x(1 + amount) while his own health is at or
      * below amount2 of his maximum (BattleMath.wounded), else 1; a troop that rose through Rise Again stands at 30% and so is fearless already. The
-     * other stances (steady, ambush, brace) are counters rows and act through the table, not here.
+     * other stances (steady, ambush, brace) are counters rows and act through the table, not here. The row is his own (Abilities.row(u)): at level 2 the
+     * fearless row's larger bonus and share (in-match progression design 6.2); the level rows that act on the table (Better guard, Bodkin points, Run them
+     * down, Thick hide and the rest) do so through the tags they grant (Abilities.rowsChanged).
      */
     static double stance(GravesAndGlory.Unit attacker) {
-        var row = Abilities.row(attacker.spec);
+        var row = Abilities.row(attacker);
         return row.mechanic().equals("fearless") && BattleMath.wounded(attacker.mob.getHealth(), attacker.mob.getMaxHealth(), row.amount2()) ? 1 + row.amount() : 1;
     }
 

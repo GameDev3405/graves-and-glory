@@ -1,0 +1,25 @@
+Graves and Glory 0.5.0 — Houses local candidate
+October 23, 2026
+
+Five Houses join the game: the Gilded Order, Graveborn, Wildmoot, Ironclad
+and Tidecallers, thirty troops in all, each House with its own trait tiers
+and its own way of fighting. Your collection now lives in a schema 2 file:
+the ten Commons are yours from the start, rolls draw from the House you pick,
+duplicates raise stars, Epics are guaranteed by pity, and Houses pay shards,
+Renown and Mastery after matches of three minutes or more. Your old camp
+migrates on first load: the original file is kept beside it as <id>.v1.json,
+the Sunweaver and Gravecaller (and the Oracle and Wraith, if you had them)
+are refunded as 300 gold each, and your class becomes Champion, Warden or
+Warlock. No group breaks and runs any more; a line that is losing makes a
+LAST STAND. Six commander classes act on the H key. Troops draw from their own
+models and animation clips instead of the vanilla mobs' look. The camp has a
+recruit page with a tab per House, a troop card and a roll result card.
+
+Not in this build: levels and gear, and painted art for all but the six
+Gilded troops. This build ships only after the levels-and-gear plan has run
+and every troop has its tier I to III art. Tidecallers and Wildmoot lose most
+bot matches and are left for the balance pass.
+
+Verified by automated checks in isolated development clients and bot
+simulations. This candidate has not been installed into a personal launcher,
+published, or played by Kort yet (docs/PHASE-2-PLAYTEST.md is his gate).

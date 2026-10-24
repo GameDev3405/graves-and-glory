@@ -50,9 +50,9 @@ final class CampScreen extends ArmyScreen {
     int number(String name,int fallback){return social().has(name)?social().get(name).getAsInt():fallback;}
     JsonArray rows(String name){return social().has(name)?social().getAsJsonArray(name):new JsonArray();}
     /** Sends cmd to the server unless a command went less than 300 ms ago; returns whether it went. */
-    boolean action(String cmd){if(System.currentTimeMillis()-requestAt<300)return false;requestAt=System.currentTimeMillis();send(cmd);return true;}
+    boolean action(String cmd){if(System.currentTimeMillis()-requestAt<300)return false;requestAt=System.currentTimeMillis();CampaignClient.notice="";CampaignClient.dismissed="";send(cmd);return true;} // what the player does next speaks anew: a notice he left behind by changing page shows again if the server answers with the same words (review fix round 2)
     /** Turns the table to another page (an old name goes through alias); the keyboard's focus starts afresh there. */
-    void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;page=alias(next);offset=0;if(!page.equals("recruit"))recruit=null;if(pages!=null&&!pages.page.equals(page))pages=null;super.clearAndInit();}
+    void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.dismissed=CampaignClient.notice;page=alias(next);offset=0;if(!page.equals("recruit"))recruit=null;if(pages!=null&&!pages.page.equals(page))pages=null;super.clearAndInit();}
     void rebuild(){clearAndInit();}
     UiButton add(UiButton b){return addDrawableChild(b);}
     String state(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready+RecruitPages.stateKey(CampaignClient.profile);}
@@ -116,24 +116,26 @@ final class CampScreen extends ArmyScreen {
     void pickClaimHouse(String next){claimHouse=next;var r=RecruitPages.rares(next);rare=r.isEmpty()?"":r.get(0);clearAndInit();}
     /** Tier 20's Rare: the next Rare of the chosen House. */
     void cycleRare(){var r=RecruitPages.rares(claimHouse);if(!r.isEmpty())rare=r.get((r.indexOf(rare)+1)%r.size());clearAndInit();}
-    /** One card of the recruit page: a troop of the House, whether the commander owns it, and its stars, evolution stage and copies. */
-    record Card(Spec.TroopsRow troop,boolean owned,int stars,int stage,int copies){}
+    /** One card of the recruit page: a troop of the House, whether the commander owns it, and its stars and copies. */
+    record Card(Spec.TroopsRow troop,boolean owned,int stars,int copies){}
     /** The six troops of a House in sheet order, each with the commander's holding of it. */
     static List<Card> cards(String house,Profile p){
         List<Card> out=new ArrayList<>();
-        for(var t:Spec.TROOPS)if(t.house().equals(house)){var o=p.owned.get(t.id());out.add(new Card(t,o!=null,o==null?0:o.stars,o==null?0:o.stage,o==null?0:o.copies));}
+        for(var t:Spec.TROOPS)if(t.house().equals(house)){var o=p.owned.get(t.id());out.add(new Card(t,o!=null,o==null?0:o.stars,o==null?0:o.copies));}
         return out;
     }
     static int rarityColour(String rarity){return switch(rarity){case "rare"->DarkUi.RARE_INK;case "epic"->DarkUi.EPIC_INK;case "legendary"->DarkUi.GOLD;default->DarkUi.MUTED;};}
     /** The lowest pixel (from the card's top) the last card() call drew a word or a pip at, and whether the harness is probing (no portrait is drawn). Task 12 re-review N1: p2-card-layout reads what card() drew, not the row table. */
-    int cardLow;static volatile boolean probe;
+    int cardLow,cardTop;boolean inCard;static volatile boolean probe;
     /** The troops the last frames' cards drew and whether each was owned (the harness clears it, presses a House tab and reads it: Task 13, p2-full-roster). */
     static final Map<String,Boolean> seenCards=new java.util.concurrent.ConcurrentHashMap<>();
-    /** A word of a card at dy under the card's top: drawn, and noted for cardLow. */
-    void cardLine(DrawContext g,String text,int x,int y,int dy,int color,int room){line(g,text,x,y+dy,color,room);cardLow=Math.max(cardLow,dy+9);}
-    /** One troop card: the portrait on the House accent, the stage name, the rarity, the stars as pips and the stage; a troop the commander lacks is dimmed and says LOCKED with its odds. */
+    /** A word of a card at dy under the card's top. line() notes every word drawn while a card is drawn (cardLow), so no row can bypass the layout check. */
+    void cardLine(DrawContext g,String text,int x,int y,int dy,int color,int room){line(g,text,x,y+dy,color,room);}
+    /** While card() draws: the lowest word or pip so far, as rows under the card's top (the harness reads it; p2-card-layout). */
+    void ink(int y){if(inCard)cardLow=Math.max(cardLow,y-cardTop+9);}
+    /** One troop card: the portrait on the House accent, the level 1 name, the rarity and the stars as pips; a troop the commander lacks is dimmed and says LOCKED with its odds. */
     void card(DrawContext g,Card card,int x,int y,int w,int h,int poolTotal){
-        cardLow=0;seenCards.put(card.troop().id(),card.owned());
+        cardLow=0;cardTop=y;inCard=true;seenCards.put(card.troop().id(),card.owned());
         var troop=card.troop();DarkUi.frame(g,x,y,w,h);
         var row=ArmyCards.house(troop);g.fillGradient(x+3,y+3,x+w-3,y+h-3,DarkUi.CARD_SHADE|(row==null?0x4c9391:row.accent()&0xffffff),DarkUi.CARD_FADE);
         var portrait=ArmyCards.portrait(troop);float wide=portrait==null?0:portrait.getWidth()*1.25f; // a wide model (a spider's legs) is drawn smaller so it stays inside its card
@@ -143,17 +145,17 @@ final class CampScreen extends ArmyScreen {
         g.getMatrices().translate(0,0,50);
         int tx=x+70,room=w-76;
         // A long name (a Legendary's title) wraps onto a second line, and everything under it moves down a line.
-        var title=textRenderer.wrapLines(Text.literal(ArmyMobs.stageName(troop,card.owned()?card.stage():1)),room);int more=title.size()>1?10:0;
-        for(int i=0;i<Math.min(2,title.size());i++){g.drawText(textRenderer,title.get(i),tx,y+10+i*10,card.owned()?DarkUi.GOLD:DarkUi.MUTED,false);cardLow=Math.max(cardLow,10+i*10+9);}
+        var title=textRenderer.wrapLines(Text.literal(ArmyMobs.levelName(troop,1)),room);int more=title.size()>1?10:0;
+        for(int i=0;i<Math.min(2,title.size());i++){g.drawText(textRenderer,title.get(i),tx,y+10+i*10,card.owned()?DarkUi.GOLD:DarkUi.MUTED,false);ink(y+10+i*10);}
         var rows=RecruitPages.cardRows(more>0);cardLine(g,cap(troop.rarity()),tx,y,rows.rarity(),rarityColour(troop.rarity()),room);
         if(card.owned()){
-            for(int i=0;i<Spec.RECRUITMENT[0].maxStars();i++){int px=tx+i*11;g.drawBorder(px,y+rows.pips(),8,8,DarkUi.GOLD);if(i<card.stars())g.fill(px+1,y+rows.pips()+1,px+7,y+rows.pips()+7,DarkUi.GOLD);cardLow=Math.max(cardLow,rows.pips()+8);}
+            for(int i=0;i<Spec.RECRUITMENT[0].maxStars();i++){int px=tx+i*11;g.drawBorder(px,y+rows.pips(),8,8,DarkUi.GOLD);if(i<card.stars())g.fill(px+1,y+rows.pips()+1,px+7,y+rows.pips()+7,DarkUi.GOLD);ink(y+rows.pips()-1);}
             cardLine(g,card.copies()+(card.copies()==1?" copy":" copies"),tx,y,rows.copies(),DarkUi.MUTED,room);
         }else{
             cardLine(g,"LOCKED",tx,y,rows.locked(),DarkUi.PAPER,room);
             cardLine(g,troop.rarity().equals("legendary")||weight(troop)<=0?"Comes from a Pact":String.format(java.util.Locale.ROOT,"%.1f",100.0*weight(troop)/Math.max(1,poolTotal))+"% a roll",tx,y,rows.odds(),DarkUi.MUTED,room);
         }
-        g.getMatrices().pop();
+        g.getMatrices().pop();inCard=false;
     }
     /** One House's tab on the recruit page: its glyph and name, the chosen one edged in brass. */
     final class HouseTab extends ButtonWidget {
@@ -168,7 +170,7 @@ final class CampScreen extends ArmyScreen {
             if(chosen)g.fill(x,y+height-2,x+width,y+height,DarkUi.GOLD);
         }
     }
-    void line(DrawContext g,String text,int x,int y,int color,int max){g.drawText(textRenderer, textRenderer.trimToWidth(text,max),x,y,color,false);}
+    void line(DrawContext g,String text,int x,int y,int color,int max){ink(y);g.drawText(textRenderer, textRenderer.trimToWidth(text,max),x,y,color,false);}
     /** The battle report table from y down: COMMANDER / KILLS / LOST / GOLD / ON POINTS, one row per army (your team first, a rule before the
      *  enemy, each row's team mark in the team column, your row in brass, a crest on the MVP), then one line per point with the seconds each
      *  team held it. Returns the y under it. */
@@ -194,7 +196,34 @@ final class CampScreen extends ArmyScreen {
         Spec.HousesRow row=null;for(var r:Spec.HOUSES)if(r.id().equals(h.get("house").getAsString()))row=r;if(row==null)return;
         int tier=h.get("tier").getAsInt();String name=row.name().toUpperCase(java.util.Locale.ROOT);
         line(g,name,x,y,DarkUi.OPAQUE|row.accent(),w);int at=x+textRenderer.getWidth(name)+8;
-        line(g,(tier>0?"Trait "+DarkUi.roman(tier)+" held "+h.get("traitSeconds").getAsInt()+"s":"No trait tier")+"   +"+h.get("shards").getAsInt()+" shards   +"+h.get("renown").getAsInt()+" Renown",at,y,DarkUi.PAPER,x+w-at);
+        line(g,(tier>0?"Trait "+MatchStats.roman(tier)+" held "+h.get("traitSeconds").getAsInt()+"s":"No trait tier")+"   +"+h.get("shards").getAsInt()+" shards   +"+h.get("renown").getAsInt()+" Renown",at,y,DarkUi.PAPER,x+w-at);
+    }
+    /** One troop type's levels row of the battle report (in-match progression design 7): the troop's name in its House's accent, then what it reached, its level-3 count and the gear its army bought (MatchStats.levelText; in the two-column form levelShort, right-aligned in its cell). */
+    void levelRow(DrawContext g,JsonObject r,int x,int y,int cell,boolean compact){
+        var t=ArmyCards.spec(r.get("troop").getAsString());var d=levelDrawn(textRenderer,r,cell,compact);if(t==null||d==null)return;
+        int accent=DarkUi.PAPER;for(var h:Spec.HOUSES)if(h.id().equals(t.house()))accent=DarkUi.OPAQUE|h.accent();
+        int nameWidth=textRenderer.getWidth(d[0]),statsWidth=textRenderer.getWidth(d[1]);
+        line(g,d[0],x,y,accent,cell);
+        if(compact)line(g,d[1],x+cell-statsWidth,y,DarkUi.PAPER,statsWidth);else line(g,d[1],x+nameWidth+8,y,DarkUi.PAPER,cell-nameWidth-8);
+    }
+    /** The levels block's form: the long line in one column up to three troop types, the short form in two columns of half a page past three (which keeps its height to half the rows). */
+    static boolean levelCompact(int n){return n>3;}
+    /** The width of one cell of the levels block when it has n rows on a page of width w, and the lines it takes. */
+    static int levelCell(int n,int w){return levelCompact(n)?w/2-8:w;}
+    static int levelLines(int n){return levelCompact(n)?(n+1)/2:n;}
+    /** One levels row's words, untrimmed: the troop's name and what it reached, long or short (MatchStats.levelText, levelShort); null for a troop this client does not know. */
+    static String[] levelWords(JsonObject r,boolean compact){
+        var t=ArmyCards.spec(r.get("troop").getAsString());if(t==null)return null;
+        var row=new MatchStats.LevelRow(t.id(),r.get("highestLevel").getAsInt(),r.get("level3Count").getAsInt(),r.get("weapon").getAsInt(),r.get("armour").getAsInt());
+        String reached=LevelMath.levelName(t,row.highest());
+        return new String[]{t.name(),compact?MatchStats.levelShort(row,t.name(),reached):MatchStats.levelText(row,t.name(),reached)};
+    }
+    /** What levelRow draws in a cell of width cell. The words after the name are never cut: in the short form the name gives way (an ellipsis), in the long form the harness checks that every troop fits the smallest page. */
+    static String[] levelDrawn(net.minecraft.client.font.TextRenderer font,JsonObject r,int cell,boolean compact){
+        var words=levelWords(r,compact);if(words==null)return null;
+        if(!compact)return new String[]{font.trimToWidth(words[0],cell),font.trimToWidth(words[1],cell-font.getWidth(words[0])-8)};
+        String stats=font.trimToWidth(words[1],cell);int room=cell-font.getWidth(stats)-8;
+        return new String[]{font.getWidth(words[0])<=room?words[0]:font.trimToWidth(words[0],Math.max(0,room-font.getWidth("...")))+"...",stats};
     }
     @Override public void render(DrawContext g,int mx,int my,float delta){
         if(page.equals("home")&&home!=null){home.render(g);super.render(g,mx,my,delta);return;}
@@ -210,12 +239,15 @@ final class CampScreen extends ArmyScreen {
             var report=CampaignClient.result;
             if(report.has("id")){
                 line(g,report.get("outcome").getAsString()+" / "+report.get("map").getAsString(),x,117,DarkUi.GOLD,w);
-                var houses=report.has("houses")?report.getAsJsonArray("houses"):new JsonArray();int extra=houses.isEmpty()?0:houses.size()*11+3; // one line per House of the banner, under the gold
+                var houses=report.has("houses")?report.getAsJsonArray("houses"):new JsonArray();int houseLines=houses.isEmpty()?0:houses.size()*11+3; // one line per House of the banner, under the gold
+                var levels=report.has("levels")?report.getAsJsonArray("levels"):new JsonArray();int levelLines=levelLines(levels.size()); // then one per troop type: its levels and gear (two columns past three)
+                int extra=houseLines+(levelLines==0?0:levelLines*11+3);
                 int y=Math.max(table(g,report,x,132,w)+5,height-163-extra); // the battle table first; the rewards sit above the buttons, or right under a long table
                 boolean saved=report.get("saved").getAsBoolean();
                 line(g,saved?"+"+report.get("gold").getAsInt()+" GOLD     +"+report.get("xp").getAsInt()+" CHAPTER XP":"REWARDS NOT SAVED / Progress unchanged",x,y,saved?DarkUi.PAPER:DarkUi.ALARM_TEXT,w);
                 line(g,!saved?"Check disk space before playing again.":report.get("eligible").getAsBoolean()?"Rewards saved. Contract and tier rewards are claimed separately.":"No match rewards: play at least 3 minutes to qualify.",x,y+11,DarkUi.MUTED,w);
                 for(int i=0;i<houses.size();i++)houseRow(g,houses.get(i).getAsJsonObject(),x,y+24+i*11,w);
+                for(int i=0;i<levels.size();i++){boolean two=levelCompact(levels.size());levelRow(g,levels.get(i).getAsJsonObject(),x+(two?i/levelLines*(w/2):0),y+24+houseLines+i%levelLines*11,levelCell(levels.size(),w),two);}
                 y+=25+extra;int tier=Progression.tier(progress),xp=Math.min(progress.xp,7500),half=w/2-8,right=x+w-half; // chapter progress on the left, contracts on the right
                 line(g,"FOUNDERS / Tier "+tier+" of 30 / "+xp+" XP",x,y,DarkUi.GOLD,half);
                 g.fill(x,y+11,x+half,y+15,DarkUi.TRACK);g.fill(x,y+11,x+(int)(half*(tier==30?1:(xp%250)/250f)),y+15,DarkUi.GOLD);
@@ -230,7 +262,7 @@ final class CampScreen extends ArmyScreen {
             line(g,"START begins the battle. PRACTICE is a skirmish against one AI commander.",x,239,DarkUi.MUTED,w);
         }
         boolean card=page.equals("troop")&&CampaignClient.rollShowing(); // the roll card covers the screen: nothing under it takes hover or shows a tooltip
-        if(!card)line(g,HintText.expand(CampaignClient.notice,GravesAndGloryClient::hint),x,height-42,DarkUi.GOLD,w); // the card says what the notice would (review Q1)
+        if(!card)line(g,HintText.expand(CampaignClient.shownNotice(),GravesAndGloryClient::hint),x,height-42,DarkUi.GOLD,w); // the card says what the notice would (review Q1)
         super.render(g,card?-1:(int)(mx/scale),card?-1:(int)(my/scale),delta);
         if(card){RecruitPages.rollOn=page;RecruitPages.noticeShown=false;RecruitPages.rollCard(g,textRenderer,0,0,width,height);} // dims the whole screen, nav and header too: one focal point
         g.getMatrices().pop();

@@ -61,7 +61,7 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
             need(!team||missingCloth==null,"the cloth sheet "+missingCloth+" is missing");
             float outer=rig.get("outer").getAsFloat();
             ModelPart twin=str(j,"outer").isEmpty()?null:build(j,outer,true).createModel();
-            TroopModel<?> model=new TroopModel<>(j,parse(j).createModel(),hands(rig),twin,weapon.equals("none")?List.of():weapons.get(weapon).points());
+            TroopModel<?> model=new TroopModel<>(j,parse(j).createModel(),hands(rig),twin,weapon.equals("none")?List.of():tierPoints(weapons,weapon));
             model.rig(rigs.get(str(j,"rig")));troops.put(troop,model);
         }catch(Exception e){log(troop+".json",e);}
         TroopModels.publish(troops,rigs,weapons);
@@ -72,11 +72,17 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
         need(index.has("format")&&index.get("format").getAsInt()==FORMAT,"format is not "+FORMAT);
         return new Index(names(index,"rigs"),names(index,"weapons"),names(index,"troops"));
     }
-    /** What a troop file needs beyond its bones: a skins object with a stage 1 skin, every key a stage number and every value a texture id. */
+    /** What a troop file needs beyond its bones: a skins object with an armour tier 1 skin, every key an armour tier and every value a texture id. */
     static void checkTroop(JsonObject troop){
         need(troop.has("skins")&&troop.get("skins").isJsonObject(),"no skins");
-        JsonObject skins=troop.getAsJsonObject("skins");need(skins.has("1"),"no stage 1 skin");
-        for(var e:skins.entrySet()){need(e.getKey().matches("[1-9][0-9]*"),"a skin for stage "+e.getKey());need(e.getValue().isJsonPrimitive()&&Identifier.tryParse(e.getValue().getAsString())!=null,"the stage "+e.getKey()+" skin is not a texture id");}
+        JsonObject skins=troop.getAsJsonObject("skins");need(skins.has("1"),"no armour tier 1 skin");
+        for(var e:skins.entrySet()){need(e.getKey().matches("[1-9][0-9]*"),"a skin for armour tier "+e.getKey());need(e.getValue().isJsonPrimitive()&&Identifier.tryParse(e.getValue().getAsString())!=null,"the armour tier "+e.getKey()+" skin is not a texture id");}
+    }
+    /** The corners of a weapon's boxes and of each of its tier models' (<weapon>_t2, _t3 that loaded): the cull box holds the biggest tier the troop may hold. */
+    static List<double[]> tierPoints(Map<String,TroopModels.Weapon> weapons,String weapon){
+        List<double[]> out=new ArrayList<>(weapons.get(weapon).points());
+        for(int t=2;t<=TroopModels.MAX_TIER;t++){var w=weapons.get(TroopModels.tierId(weapon,t));if(w!=null)out.addAll(w.points());}
+        return out;
     }
     static void texture(ResourceManager manager,Identifier id){need(manager.getResource(id).isPresent(),"missing texture "+id);}
 

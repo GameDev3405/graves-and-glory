@@ -145,12 +145,17 @@ final class RecruitPages {
     }
 
     // ---- the troop page ----
-    /** The three level names of a troop (in-match levels I to III): its evolutions rows' names, or its own name at each for a troop with no line. */
-    static List<String> levelNames(Spec.TroopsRow t){return List.of(ArmyMobs.stageName(t,1),ArmyMobs.stageName(t,2),ArmyMobs.stageName(t,3));}
-    /** The three ability lines: the abilities row's text (level I), then the troopNotes level 2 and level 3 lines. */
+    /** The three level names of a troop (in-match levels I to III): its levelNames rows' names, or its own name at each for a troop with no line. */
+    static List<String> levelNames(Spec.TroopsRow t){return List.of(ArmyMobs.levelName(t,1),ArmyMobs.levelName(t,2),ArmyMobs.levelName(t,3));}
+    /** The three ability lines: the abilities row's text (level I), then the text of the troop's level 2 and level 3 levelAbilities rows, the rows the game reads. */
     static List<String> abilityLines(Spec.TroopsRow t){
-        String base=t.ability();for(var a:Spec.ABILITIES)if(a.id().equals(t.ability()))base=a.text();var n=ArmyCards.notes(t);
-        return List.of(base,n==null?"":n.level2(),n==null?"":n.level3());
+        String base=t.ability();for(var a:Spec.ABILITIES)if(a.id().equals(t.ability()))base=a.text();
+        return List.of(base,levelAbilityText(t,2),levelAbilityText(t,3));
+    }
+    /** The ability text of a troop's levelAbilities row at a level (2 or 3); empty when the sheet has none. */
+    static String levelAbilityText(Spec.TroopsRow t,int level){
+        for(var l:Spec.LEVELABILITIES)if(l.troop().equals(t.id())&&l.level()==level)for(var a:Spec.ABILITIES)if(a.id().equals(l.ability()))return a.text();
+        return "";
     }
     /** What a Mastery level gives, worded for the card from its mastery.reward cell. */
     static String masteryReward(Spec.MasteryRow m){
@@ -191,15 +196,15 @@ final class RecruitPages {
         // the right column
         int rx=x+LEFT+16,rw=w-LEFT-16,ry=y;
         head(g,f,"LEVELS",rx,ry,rw);ry+=13;var names=levelNames(t);boolean line=!names.get(0).equals(names.get(2));
-        if(line)for(int i=0;i<3;i++){int cx=rx+i*(rw/3);String n=DarkUi.roman(i+1);g.drawText(f,n,cx,ry,DarkUi.GOLD,false);g.drawText(f,f.trimToWidth(names.get(i),rw/3-f.getWidth(n)-10),cx+f.getWidth(n)+4,ry,DarkUi.PAPER,false);}
+        if(line)for(int i=0;i<3;i++){int cx=rx+i*(rw/3);String n=MatchStats.roman(i+1);g.drawText(f,n,cx,ry,DarkUi.GOLD,false);g.drawText(f,f.trimToWidth(names.get(i),rw/3-f.getWidth(n)-10),cx+f.getWidth(n)+4,ry,DarkUi.PAPER,false);}
         else{g.drawText(f,"I  II  III",rx,ry,DarkUi.GOLD,false);g.drawText(f,f.trimToWidth(names.get(0)+" at every level",rw-60),rx+f.getWidth("I  II  III")+6,ry,DarkUi.PAPER,false);}
         ry+=18;head(g,f,"ABILITY",rx,ry,rw);ry+=13;var lines=abilityLines(t);
-        for(int i=0;i<3;i++){String n=DarkUi.roman(i+1);g.drawText(f,n,rx,ry,DarkUi.GOLD,false);
+        for(int i=0;i<3;i++){String n=MatchStats.roman(i+1);g.drawText(f,n,rx,ry,DarkUi.GOLD,false);
             var wrapped=wrap(f,lines.get(i).isEmpty()?"No change at this level":lines.get(i),rw-20,2);int ly=ry;for(var l:wrapped){g.drawText(f,l,rx+20,ly,i==0?DarkUi.PAPER:0xffd9d3c7,false);ly+=10;}ry=Math.max(ry+12,ly+2);}
         ry+=4;head(g,f,"MASTERY",rx,ry,rw);ry+=13;int level=o==null?0:o.mastery,bars=0;
         int col=0;for(var m:Spec.MASTERY)col=Math.max(col,f.getWidth(masteryReward(m)));col+=12;
         int kw=f.getWidth("400/400 kills"),bw=f.getWidth("60/60 survived"),room=Math.max(48,rw-20-col-kw-bw-6-6-10),killBar=room*56/96,fightBar=room-killBar;List<String> counts=new ArrayList<>();
-        for(var m:Spec.MASTERY){boolean reached=level>=m.level();String n=DarkUi.roman(m.level());
+        for(var m:Spec.MASTERY){boolean reached=level>=m.level();String n=MatchStats.roman(m.level());
             g.drawText(f,n,rx,ry,reached?DarkUi.GOLD:DarkUi.MUTED,false);g.drawText(f,masteryReward(m),rx+20,ry,reached?DarkUi.PAPER:DarkUi.MUTED,false);
             int kills=o==null?0:o.kills,fought=o==null?0:o.survived;int bx=rx+20+col;
             bar(g,bx,ry+3,killBar,kills,m.kills());bars++;g.drawText(f,Math.min(kills,m.kills())+"/"+m.kills()+" kills",bx+killBar+6,ry,DarkUi.MUTED,false);

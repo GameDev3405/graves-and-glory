@@ -34,6 +34,46 @@ public final class MatchStats {
             if (bannerSlots.getOrDefault(h, 0) > 0) rows.add(new HouseRow(h, tiers.getOrDefault(h, 0), traitSeconds.getOrDefault(h, 0), shards.getOrDefault(h, 0), renown.getOrDefault(h, 0)));
         return rows;
     }
+    /** One troop type's row of the report's levels block (in-match progression design 7): the highest level a soldier of it reached this round (1 to 3), how many reached level 3, and the weapon and armour tier the army bought for it (1: none). */
+    public record LevelRow(String troop, int highest, int level3s, int weapon, int armour) {}
+    /**
+     * The results page's line for a LevelRow: "reached Knight-Captain / 2 at level 3 / Weapon III, Armour II". reachedName is the troop's name at its highest level;
+     * null, or the troop's own name (an Epic or Legendary keeps its name), reads "reached level 3". "no level ups" and "no gear bought" when nothing happened.
+     */
+    public static String levelText(LevelRow r, String troopName, String reachedName) {
+        String reached = r.highest() < 2 ? "no level ups" : "reached " + reachedPart(r, troopName, reachedName);
+        String threes = r.level3s() > 0 ? " / " + r.level3s() + " at level 3" : "";
+        List<String> gear = new ArrayList<>();
+        if (r.weapon() > 1) gear.add("Weapon " + roman(r.weapon()));
+        if (r.armour() > 1) gear.add("Armour " + roman(r.armour()));
+        return reached + threes + " / " + (gear.isEmpty() ? "no gear bought" : String.join(", ", gear));
+    }
+    /** The level a row reached: the troop's name at its highest level, or "level N" when it has none (null, empty, or the troop's own name: an Epic or Legendary). */
+    static String reachedPart(LevelRow r, String troopName, String reachedName) {
+        return reachedName == null || reachedName.isEmpty() || reachedName.equals(troopName) ? "level " + r.highest() : reachedName;
+    }
+    /**
+     * The same line for the results page's two-column form (more than three troop types, half a page each): "Knight-Captain x2 / W III A III". The level name
+     * (or "level 3"), x and how many reached level 3, then W and A for the weapon and armour tiers bought; "no level ups" and "no gear" when nothing happened.
+     */
+    public static String levelShort(LevelRow r, String troopName, String reachedName) {
+        String reached = r.highest() < 2 ? "no level ups" : reachedPart(r, troopName, reachedName);
+        String threes = r.level3s() > 0 ? " x" + r.level3s() : "";
+        List<String> gear = new ArrayList<>();
+        if (r.weapon() > 1) gear.add("W " + roman(r.weapon()));
+        if (r.armour() > 1) gear.add("A " + roman(r.armour()));
+        return reached + threes + " / " + (gear.isEmpty() ? "no gear" : String.join(" ", gear));
+    }
+    private static final int[] ROMAN_VALUE = {1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1};
+    private static final String[] ROMAN_TEXT = {"M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"};
+    /** The one Roman numeral every tier and level on screen uses (gear tiers, trait tiers, mastery levels, the refusal copy, the results page): I, II, III, IV and on; nothing for 0 or less, so a House with no trait tier draws no numeral. Above 3999 the digits. */
+    public static String roman(int n) {
+        if (n <= 0) return "";
+        if (n >= 4000) return Integer.toString(n);
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < ROMAN_VALUE.length; i++) while (n >= ROMAN_VALUE[i]) { out.append(ROMAN_TEXT[i]); n -= ROMAN_VALUE[i]; }
+        return out.toString();
+    }
     /** Share of matches won, 0 when no match was played. */
     public static double winRate(int wins, int matches) {
         return matches == 0 ? 0 : (double) wins / matches;

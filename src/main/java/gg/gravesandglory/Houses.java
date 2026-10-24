@@ -182,7 +182,10 @@ final class Houses {
     static Boolean forceRise;
 
     /** One Rise Again roll: succeeds when a roll in [0, 1) falls below the tier's value. The harness hook decides instead while it is set. */
-    static boolean rolls(GravesAndGlory.Battle b, Spec.HouseTraitsRow t) { return forceRise != null ? forceRise : b.world.random.nextDouble() < t.value(); }
+    static boolean rolls(GravesAndGlory.Battle b, Spec.HouseTraitsRow t) { return rolls(b, t.value()); }
+
+    /** One rise roll at a chance: succeeds when a roll in [0, 1) falls below it (a chance of 1 or more always does). The harness hook decides instead while it is set. */
+    static boolean rolls(GravesAndGlory.Battle b, double chance) { return forceRise != null ? forceRise : b.world.random.nextDouble() < chance; }
 
     /**
      * Rise Again (ServerLivingEntityEvents.ALLOW_DEATH, which runs as a blow takes a troop's health to 0): a troop whose own House's trait at its
@@ -190,18 +193,24 @@ final class Houses {
      * a temporary troop (Grave Bloom's), one that already rose, damage that bypasses invulnerability (the void, /kill) or an army below tier I.
      * A rise sets its health to value2 of its maximum, marks it rose, stuns it for the row's durationTicks (Tactics skips its attacks, and a spell it had begun is lost) and returns
      * false, which skips vanilla's death and AFTER_DEATH: so the army loses nothing, the enemy earns no kill and the death log gains no entry.
+     * A soldier's own rise row (N7, Undying King: Abilities.riseRow, his level-3 row) lets him rise too, Legendary or not, at its own chance (amount2), added to the
+     * trait's where both apply; such a rise takes the row's health share (amount) and stun (durationTicks). It is the same once-only path, and the soldier keeps
+     * his level, kills and gear: he never died.
      */
     static boolean allowDeath(LivingEntity e, DamageSource src) {
         var b = GravesAndGlory.battle;
         if (b == null) return true;
         var u = Combat.unitOf(b, e);
-        if (u == null || u.temporary || u.rose || u.spec.rarity().equals("legendary") || src.isIn(DamageTypeTags.BYPASSES_INVULNERABILITY)) return true;
+        if (u == null || u.temporary || u.rose || src.isIn(DamageTypeTags.BYPASSES_INVULNERABILITY)) return true;
+        var own = Abilities.riseRow(u);
         var t = CounterMath.trait(Spec.HOUSETRAITS, u.spec.house(), u.squad.traits.getOrDefault(u.spec.house(), 0));
-        if (t == null || !t.mechanic().equals("rise_again") || !rolls(b, t)) return true;
+        boolean trait = t != null && t.mechanic().equals("rise_again") && !u.spec.rarity().equals("legendary");
+        if (!trait && own == null) return true;
+        if (!rolls(b, (trait ? t.value() : 0) + (own != null ? own.amount2() : 0))) return true;
         u.rose = true;
-        u.stunnedUntil = b.time + t.durationTicks();
+        u.stunnedUntil = b.time + (own != null ? own.durationTicks() : t.durationTicks());
         u.spellCenter = null; // a stunned caster loses the spell it had begun
-        e.setHealth((float) (t.value2() * e.getMaxHealth()));
+        e.setHealth((float) ((own != null ? own.amount() : t.value2()) * e.getMaxHealth()));
         BattleEffects.soul(b, e.getPos());
         return false;
     }

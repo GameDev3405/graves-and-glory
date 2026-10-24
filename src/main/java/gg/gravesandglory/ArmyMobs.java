@@ -15,7 +15,7 @@ import java.util.function.Function;
 /**
  * The troop entities (spec section 0). The troops sheet names a mob in its entity column; this class turns that id into the Army*
  * subclass that fights as it, so nothing switches on the id: a House adds its mobs by registering a factory. It also holds the tags a
- * troop carries into the counter table and the stage names its custom name shows.
+ * troop carries into the counter table and the level names its custom name shows.
  */
 public final class ArmyMobs {
     private ArmyMobs() {}
@@ -87,28 +87,27 @@ public final class ArmyMobs {
         });
     }
 
-    /** A troop's custom name at an evolution stage: the troop name at stage 1, the evolutions row's name at stage 2 or 3, and the troop name for a troop with no line (Epics and Legendaries). */
-    public static String stageName(Spec.TroopsRow t, int stage) {
-        if (stage >= 2) for (var e : Spec.EVOLUTIONS) if (e.troop().equals(t.evolveLine()) && e.stage() == stage) return e.name();
-        return t.name();
+    /** A troop's custom name at a level: the troop name at level 1, the levelNames row's name at level 2 or 3, and the troop name for a troop with no line (Epics and Legendaries). */
+    public static String levelName(Spec.TroopsRow t, int level) {
+        return LevelMath.levelName(t, level);
     }
 
     private static Spec.TroopsRow[] namedTroops;
-    private static Spec.EvolutionsRow[] namedEvolutions;
+    private static Spec.LevelNamesRow[] namedLevels;
     private static Map<String, Spec.TroopsRow> names = Map.of();
     /** The suffix a Mastery II troop's custom name carries (its veteran trim, in-match progression design 4.4); TroopModels.resolve reads it. */
     public static final String VETERAN = " (Veteran)";
 
-    /** The troop whose name, or whose evolved stage name, is the given custom name (a trailing VETERAN ignored); null for any other name. A troop name wins over a stage name that matches it. */
+    /** The troop whose name, or whose level name, is the given custom name (a trailing VETERAN ignored); null for any other name. A troop name wins over a level name that matches it. */
     public static synchronized Spec.TroopsRow named(String name) {
         if (name != null && name.endsWith(VETERAN)) name = name.substring(0, name.length() - VETERAN.length());
-        if (namedTroops != Spec.TROOPS || namedEvolutions != Spec.EVOLUTIONS) {
+        if (namedTroops != Spec.TROOPS || namedLevels != Spec.LEVELNAMES) {
             Map<String, Spec.TroopsRow> map = new HashMap<>();
             for (var t : Spec.TROOPS) map.put(t.name(), t);
-            for (var t : Spec.TROOPS) for (var e : Spec.EVOLUTIONS) if (e.troop().equals(t.evolveLine())) map.putIfAbsent(e.name(), t);
+            for (var t : Spec.TROOPS) for (var e : Spec.LEVELNAMES) if (e.troop().equals(t.evolveLine())) map.putIfAbsent(e.name(), t);
             names = map;
             namedTroops = Spec.TROOPS;
-            namedEvolutions = Spec.EVOLUTIONS;
+            namedLevels = Spec.LEVELNAMES;
         }
         return name == null ? null : names.get(name);
     }

@@ -13,8 +13,8 @@ import org.joml.Vector3f;
 /** Selection -> live-world aim/formation preview -> explicit confirmation. While an order is aimed the battle HUD shows its key
  *  hints (BattleHud.altLayer) and the aimed point's name under its seal; a refused confirmation is a notice in the event feed. */
 public final class CommandMode {
-    /** One group of the player's army as the server last sent it: full is the most of it alive at once this round (0: no card), strength its living health over its full health. */
-    public record Group(String id,int count,float health,String order,String formation,float x,float z,float yaw,float cx,float cz,boolean fighting,boolean lastStand,int full,float strength){}
+    /** One group of the player's army as the server last sent it: full is the most of it alive at once this round (0: no card), strength its living health over its full health; level2 and level3 count its living soldiers at those levels (state_v9), and armouryOpen is set while an Armoury buy for a troop of the group is open and not yet bought (the Iron Ledger pips and glint, Task 12). */
+    public record Group(String id,int count,float health,String order,String formation,float x,float z,float yaw,float cx,float cz,boolean fighting,boolean lastStand,int full,float strength,int level2,int level3,boolean armouryOpen){}
     record Ping(String kind,float x,float z){}
     static java.util.List<Ping> pings=java.util.List.of();static int seconds=600;
     static java.util.List<Group> groups=java.util.List.of();

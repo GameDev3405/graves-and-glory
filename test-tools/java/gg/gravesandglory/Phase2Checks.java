@@ -51,6 +51,7 @@ public final class Phase2Checks implements ClientModInitializer {
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
     static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("graveborn",Graveborn::new);SUITES.put("ironclad",Ironclad::new);SUITES.put("tidecallers",Tidecallers::new);SUITES.put("wildmoot",Wildmoot::new);SUITES.put("chase",Chase::new);SUITES.put("anim",Anim::new);SUITES.put("turn",Turn::new);SUITES.put("tells",Tells::new);SUITES.put("depth",Depth::new);SUITES.put("screens",Screens::new);SUITES.put("migration",Migration::new);}
+    static{LevelChecks.register(SUITES);AbilityLevelChecks.register(SUITES);RankChecks.register(SUITES);} // in-match progression: levels, gear, armoury; statuses, levels-<house>; ranks (each file owns its entries)
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -436,7 +437,7 @@ public final class Phase2Checks implements ClientModInitializer {
             for(var u:shielded)if(u.mob.isAlive()){if(raise&&!u.mob.isUsingItem())u.mob.setCurrentHand(net.minecraft.util.Hand.OFF_HAND);else if(!raise&&u.mob.isUsingItem())u.mob.stopUsingItem();}
         }
         static boolean near(double a,double b){return Math.abs(a-b)<1e-9;}
-        static String show(Combat.HitLog h){return h==null?"no hit":"counters "+h.counters()+" rows "+h.rows()+" stance "+h.stance()+" base "+h.base()+" traits "+h.traits()+" auras "+h.auras()+" commander "+h.commander()+" total "+h.total();}
+        static String show(Combat.HitLog h){return h==null?"no hit":"counters "+h.counters()+" rows "+h.rows()+" stance "+h.stance()+" base "+h.base()+" traits "+h.traits()+" auras "+h.auras()+" commander "+h.commander()+" total "+h.total()+" veteran "+h.veteran()+" status "+h.status();}
         /** The newest logged hit on this troop, or null. */
         static Combat.HitLog hitOn(GravesAndGlory.Unit target){Combat.HitLog out=null;for(var h:Combat.LAST)if(h.target()==target.mob.getId())out=h;return out;}
         /** The troops a House shows as owned after the v1 fixture migrated: its Commons, plus the unlocked Templar. */
@@ -518,7 +519,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean unknown=ArmyMobs.portrait("p2_no_such_mob",w) instanceof HuskEntity&&ArmyMobs.portrait("arrow",w) instanceof HuskEntity&&ArmyMobs.portrait("Not An Id",w) instanceof HuskEntity;
                     ArmyMobs.register("p2_probe",GravesAndGlory.ArmyHusk::new);boolean registered=ArmyMobs.create("p2_probe",w) instanceof GravesAndGlory.ArmyHusk;ArmyMobs.FACTORIES.remove("p2_probe");
                     boolean gone=false;try{ArmyMobs.create("p2_probe",w);}catch(IllegalStateException e){gone=true;}
-                    boolean names=ArmyMobs.named("Order Squire")==Campaign.troop("knight")&&ArmyMobs.named("Knight-Captain")==Campaign.troop("knight")&&ArmyMobs.named("Nobody")==null&&ArmyMobs.stageName(Campaign.troop("knight"),1).equals("Order Squire")&&ArmyMobs.stageName(Campaign.troop("knight"),2).equals("Knight")&&ArmyMobs.stageName(Campaign.troop("mage"),2).equals("Sunweaver");
+                    boolean names=ArmyMobs.named("Order Squire")==Campaign.troop("knight")&&ArmyMobs.named("Knight-Captain")==Campaign.troop("knight")&&ArmyMobs.named("Nobody")==null&&ArmyMobs.levelName(Campaign.troop("knight"),1).equals("Order Squire")&&ArmyMobs.levelName(Campaign.troop("knight"),2).equals("Knight")&&ArmyMobs.levelName(Campaign.troop("mage"),2).equals("Sunweaver");
                     ok&=threw&&portrait&&registered&&gone&&names&&control&&unknown;
                     report("p2-armymobs",ok,why+"create(pig) throws IllegalStateException="+threw+" (\""+thrown+"\"); portrait(pig) is a plain pig="+portrait+"; register(p2_probe) then create gives an ArmyHusk="+registered+", gone after removal="+gone+"; stage names resolve (Order Squire, Knight, Knight-Captain; a troop without a line keeps its name)="+names+"; a vanilla Husk's base armour is "+vanillaArmour+" and create() clears it to 0 (above), so a troop's armour is its worn gear="+control+"; portrait of an id the game lacks, of an id that is no mob (arrow) and of a malformed id each draws a husk, not the registry's pig="+unknown);
                     next(b,2);
@@ -1828,7 +1829,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 }
                 case 12->{if(b.time<shot.lands()+2)return;
                     var row=Abilities.row(stalker.spec);var eff=risen.mob.getStatusEffect(StatusEffects.SLOWNESS);
-                    boolean sheet=row.id().equals("frostshot")&&row.mechanic().equals("onhit_slow")&&row.statusTicks()==40&&row.statusLevel()==0;
+                    boolean sheet=row.id().equals("frostshot")&&row.mechanic().equals("onhit_status")&&row.status().equals("slow")&&row.statusTicks()==40&&row.statusLevel()==0;
                     boolean landed=eff!=null&&eff.getAmplifier()==0&&eff.getDuration()>=36&&eff.getDuration()<=40;
                     String s1=eff==null?"no Slowness":"Slowness "+(eff.getAmplifier()+1)+" for "+eff.getDuration()+" ticks";
                     // an arrow that lands on a troop already slowed for longer keeps the longer time; on a shorter one it sets the new time
@@ -2998,7 +2999,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     int[][] want={{20,30,-1,-1},{20,30,20,-1},{30,30,30,-1},{40,40,40,-1}};
                     StringBuilder s=new StringBuilder();boolean good=true;
                     var brine=Abilities.row(u1.spec);var harpoon=Abilities.row(u2.spec);
-                    boolean sheet=brine.mechanic().equals("onhit_slow")&&brine.statusTicks()==20&&brine.statusLevel()==0&&harpoon.mechanic().equals("onhit_slow")&&harpoon.statusTicks()==30&&harpoon.statusLevel()==0&&near(harpoon.knockback(),-1)&&harpoon.cooldownTicks()==60;
+                    boolean sheet=brine.mechanic().equals("onhit_status")&&brine.status().equals("slow")&&brine.statusTicks()==20&&brine.statusLevel()==0&&harpoon.mechanic().equals("onhit_status")&&harpoon.status().equals("slow")&&harpoon.statusTicks()==30&&harpoon.statusLevel()==0&&near(harpoon.knockback(),-1)&&harpoon.cooldownTicks()==60;
                     for(int t=0;t<=3;t++){
                         dawn.traits.put("tidecallers",t);var row=CounterMath.trait(Spec.HOUSETRAITS,"tidecallers",t);
                         int[] got={read(b,u1,us[0],"melee"),read(b,u2,us[0],"arrow"),read(b,u3,us[0],"melee"),read(b,u4,us[0],"melee")};
@@ -3079,14 +3080,14 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean cd=u1.abilityAt==t0+200;
                     tideOk=sheet&&idle&&hit&&pulled&&slowed&&untouched&&cd;
                     tideWhy="the Admiral's row "+row.id()+" ("+row.mechanic()+" on a "+row.trigger()+", cooldown "+row.cooldownTicks()+", radius "+row.radius()+", amount "+row.amount()+", "+row.statusTicks()+" ticks of Slowness level "+(row.statusLevel()+1)+", knockback "+row.knockback()+")="+sheet+"; with only a knight 8.5 off it did nothing and spent no cooldown="+idle+"; with a knight 3.0 off and one 6.2 off the timer fired: they took "+show(h0)+" and "+show(h1)+" (base "+(h0==null?"-":fmt(h0.base()))+", want "+fmt(4*b.campaign.damage(u1))+")="+hit+", stand "+fmt(g0)+" and "+fmt(g1)+" off her now (want 1.5, the nearest a pull goes, and 3.2)="+pulled+", with "+slowText(us[0].mob)+" and "+slowText(us[1].mob)+" (want Slowness 2 for 60)="+slowed+"; the ally 4 off and the knight 8.5 off took no hit and did not move="+untouched+"; the next cast is at +"+(u1.abilityAt-t0)+" (want 200)="+cd;
-                    next(b,19);
+                    mark=Combat.LAST.peekLast();next(b,19);
                 }
-                case 19->{ // inside the cooldown nothing happens; once it is up it fires again
-                    boolean due=b.time>=u1.abilityAt;
-                    mark=Combat.LAST.peekLast();Abilities.tick(b,u1,null,b.time);
+                case 19->{ // inside the cooldown nothing happens; once it is up it fires again. The unit's own 10-tick beat (Tactics.tick) may cast it first on the very tick it is due, so the cast is read from the timer, not from this call (Task 13: the order-dependent stall after the Ironclad suite)
+                    if(u1.abilityAt==t0+200)Abilities.tick(b,u1,null,b.time);
+                    boolean fired=u1.abilityAt!=t0+200;
                     var again=Gilded.hitOn(us[0].mob,mark);
-                    if(!due){tideOk&=again==null&&u1.abilityAt==t0+200;return;}
-                    boolean second=again!=null&&u1.abilityAt==b.time+200&&slowAt(us[0].mob,1)==60;
+                    if(!fired){tideOk&=again==null;mark=Combat.LAST.peekLast();return;}
+                    boolean second=again!=null&&u1.abilityAt==t0+400&&b.time>=t0+200&&slowAt(us[0].mob,1)==60;
                     report("p2-undertow",tideOk&&second,tideWhy+"; at +"+(b.time-t0)+" (the cooldown up) it fired again (a hit on the knight "+show(again)+", the next cast at +"+(u1.abilityAt-b.time)+" and every tick before that did nothing)="+second);
                     clearFixture(b,"undertow");
                     // p2-pull-wall (Task 9 review, minor 4): a pull into a wall stops at the wall. The Admiral again, a fresh knight 4.5 off and a stone wall 3 off between them (two blocks high): the undertow's 3-block pull leaves the knight against the wall, not in it
@@ -3644,7 +3645,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     dawn.order="hold";dusk.order="hold";
                     u1=post(b,dawn,"wm_stalker",-2,0,-90,true);us[0]=tough(bare(post(b,dusk,"knight",0,0,90,true)));
                     var row=Abilities.row(u1.spec);
-                    boolean sheet=row.id().equals("ensnare")&&row.mechanic().equals("onhit_slow")&&row.trigger().equals("onhit")&&row.cooldownTicks()==80&&row.statusTicks()==30&&row.statusLevel()==1&&u1.tags.contains("ensnare");
+                    boolean sheet=row.id().equals("ensnare")&&row.mechanic().equals("onhit_status")&&row.status().equals("slow")&&row.trigger().equals("onhit")&&row.cooldownTicks()==80&&row.statusTicks()==30&&row.statusLevel()==1&&u1.tags.contains("ensnare");
                     us[0].mob.removeStatusEffect(StatusEffects.SLOWNESS);us[0].mob.timeUntilRegen=0;us[0].mob.hurtTime=0;u1.abilityAt=0;t0=b.time;
                     Combat.resolve(b,u1,us[0].mob,3f,"melee",false);
                     boolean snared=slowAt(us[0].mob,1)==30&&u1.abilityAt==t0+80;
@@ -4091,16 +4092,16 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 34->{if(!answered(b))return;
                     part(shards(b,"graveborn")==50,"owned already: refused and nothing paid: shards "+shards(b,"graveborn")+", notice \""+notice(b)+"\"");
                     done("p2-legendary-renown");next(b,40);}
-                case 40->{ // p2-cap: a star 3 Order Squire at stage 1 fights at the full +12% from stars alone
+                case 40->{ // p2-cap: a star 3 Order Squire fights at the full +12% from stars alone (levels and gear come from the soldier, not the profile)
                     if(b.running){camp.returnLobby();return;}
-                    var pr=profile(b);var o=pr.owned.get("knight");o.copies=4;o.stars=3;o.stage=1;pr.banner=RosterMath.starterBanner();save(b);next(b,41);}
+                    var pr=profile(b);var o=pr.owned.get("knight");o.copies=4;o.stars=3;pr.banner=RosterMath.starterBanner();save(b);next(b,41);}
                 case 41->{if(!Phase1Checks.skirmish(b,p,0,1,"easy"))return;own=b.squads.get(player);next(b,42);}
                 case 42->{if(since(b)<2)return;
                     var knight=b.units.stream().filter(u->u.squad==own&&u.spec.id().equals("knight")).findFirst().orElse(null);
                     var archer=b.units.stream().filter(u->u.squad==own&&u.spec.id().equals("archer")).findFirst().orElse(null);
                     double cap=Spec.RECRUITMENT[0].capPct(),want=knight==null?0:knight.spec.health()*(1+cap);
-                    part(knight!=null&&Math.abs(knight.mob.getMaxHealth()-want)<1e-3&&owned(b,"knight").stage==1&&Math.abs(camp.health(own,knight.spec)-1.12)<1e-9,
-                        "a star 3 Order Squire at stage 1 spawns with max health "+(knight==null?"none":fmt(knight.mob.getMaxHealth()))+" (want "+fmt(want)+" = its sheet health "+(knight==null?"?":knight.spec.health())+" x 1.12; the brief's 32 is the Squire's health before the Gilded balance fix cut it to 28), multiplier "+(knight==null?"?":camp.health(own,knight.spec)));
+                    part(knight!=null&&Math.abs(knight.mob.getMaxHealth()-want)<1e-3&&knight.level==1&&Math.abs(camp.health(own,knight.spec)-1.12)<1e-9,
+                        "a star 3 Order Squire at level 1 spawns with max health "+(knight==null?"none":fmt(knight.mob.getMaxHealth()))+" (want "+fmt(want)+" = its sheet health "+(knight==null?"?":knight.spec.health())+" x 1.12; the brief's 32 is the Squire's health before the Gilded balance fix cut it to 28), multiplier "+(knight==null?"?":camp.health(own,knight.spec)));
                     part(archer!=null&&Math.abs(archer.mob.getMaxHealth()-archer.spec.health())<1e-3,"a star 1 Order Archer has its sheet health: "+(archer==null?"none":fmt(archer.mob.getMaxHealth())));
                     done("p2-cap");
                     // p2-claim-seated (Task 11 review minor 1): a claim that grants a troop is refused while the commander is seated in a battle, as roll and buy are
@@ -4281,8 +4282,20 @@ public final class Phase2Checks implements ClientModInitializer {
             posted.add(u);pins.add(new Pin(u.mob,where,yaw));pin(u.mob,where,yaw);return u;
         }
         void move(MobEntity m,double dx,double dz,float yaw){Vec3d where=at(dx,dz);pins.removeIf(p->p.mob()==m);pins.add(new Pin(m,where,yaw));pin(m,where,yaw);}
-        /** Renames a posted troop to its stage's name, as Battle.spawn names a troop of that stage. */
-        static void stage(GravesAndGlory.Unit u,int stage){u.stage=stage;u.mob.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.stageName(u.spec,stage)).formatted(u.squad.team==0?net.minecraft.util.Formatting.AQUA:net.minecraft.util.Formatting.LIGHT_PURPLE));}
+        /** The text of one abilities row, from the sheet. */
+        static String sheetAbilityText(String id){return Arrays.stream(Spec.ABILITIES).filter(a->a.id().equals(id)).findFirst().orElseThrow().text();}
+        /** Sets a posted troop to a level wearing armour of the same tier (weapon tier I), as stage(u, level, 1, level). */
+        static void stage(GravesAndGlory.Unit u,int level){stage(u,level,1,level);}
+        /**
+         * Sets a posted troop's rank on the server and sends it (RankSync.changed; a player who starts tracking it later gets it through
+         * START_TRACKING), and renames it to the level's name, as a level up names it (the " (Veteran)" suffix of a Mastery II troop stays).
+         * The client draws the tiers from rank_v1 (in-match progression Task 9), never from the name.
+         */
+        static void stage(GravesAndGlory.Unit u,int level,int weaponTier,int armourTier){
+            u.level=level;u.weaponTier=weaponTier;u.armourTier=armourTier;boolean vet=u.mob.getCustomName()!=null&&u.mob.getCustomName().getString().endsWith(ArmyMobs.VETERAN);
+            u.mob.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.levelName(u.spec,level)+(vet?ArmyMobs.VETERAN:"")).formatted(u.squad.team==0?net.minecraft.util.Formatting.AQUA:net.minecraft.util.Formatting.LIGHT_PURPLE));
+            RankSync.changed(GravesAndGlory.battle,u);
+        }
         /** The spectator camera: the eye at (dx, eye, dz) from the platform centre's standing layer. */
         void camera(GravesAndGlory.Battle b,double dx,double eye,double dz,float yaw,float pitch){var p=sp(b);if(p!=null)b.relocate(p,site.getX()+.5+dx,site.getY()+eye-1.62,site.getZ()+.5+dz,yaw,pitch);}
         void force(GravesAndGlory.Battle b,BlockPos from,BlockPos to){
@@ -4618,8 +4631,8 @@ public final class Phase2Checks implements ClientModInitializer {
                 boolean good=r instanceof TroopRenderer<?>&&drew>=10&&last!=null&&last.look().troop().id().equals(troops[i])&&sides[i].equals(last.cloth())&&TroopModels.model(troops[i])!=null;renderer&=good;
                 rw.append(e.getCustomName().getString()).append(" -> ").append(r.getClass().getSimpleName()).append(", ").append(drew).append(" draws through its own model in the last 20 ticks")
                     .append(last==null?"":", the last as "+last.look().troop().id()+" in "+last.cloth()).append(good?"":" (BAD: want 10 or more, as "+troops[i]+" in "+sides[i]+")").append("; ");
-                boolean n=e.getCustomName().getString().equals(names[i])&&l!=null&&l.troop().id().equals(troops[i])&&l.stage()==1&&!l.veteran()&&sides[i].equals(l.side());named&=n;
-                nw.append("\"").append(e.getCustomName().getString()).append("\" -> ").append(l==null?"null":l.troop().id()+" stage "+l.stage()+" side "+l.side()).append(n?"":" (want "+names[i]+", "+troops[i]+" stage 1 side "+sides[i]+")").append("; ");}
+                boolean n=e.getCustomName().getString().equals(names[i])&&l!=null&&l.troop().id().equals(troops[i])&&l.armourTier()==1&&!l.veteran()&&sides[i].equals(l.side());named&=n;
+                nw.append("\"").append(e.getCustomName().getString()).append("\" -> ").append(l==null?"null":l.troop().id()+" stage "+l.armourTier()+" side "+l.side()).append(n?"":" (want "+names[i]+", "+troops[i]+" stage 1 side "+sides[i]+")").append("; ");}
             var h=es.get(4);var hr=dispatcher.getRenderer(h);boolean huskOk=hr instanceof TroopRenderer<?> tr&&TroopModels.resolve(h)==null&&tr.vanilla() instanceof net.minecraft.client.render.entity.HuskEntityRenderer&&TroopRenderer.drawn(h)==null;
             long draws=TroopRenderer.troopDraws-drawsBefore;renderer&=huskOk;
             report("p2-spike-renderer",renderer,rw+"the unnamed husk: "+hr.getClass().getSimpleName()+", resolve null, vanilla() a HuskEntityRenderer and never drawn through a troop model="+huskOk+"; "+draws+" troop-model draws in all in those 20 ticks");
@@ -4716,20 +4729,20 @@ public final class Phase2Checks implements ClientModInitializer {
         MobEntity portraitMob;int portraitDraws;
         /** Opens the portrait probe on the Squire's and the Templar's stage 1 portraits, drawn as the cards draw them. */
         void portrait(MinecraftClient c){
-            var e=ArmyCards.portrait(ArmyCards.spec("sentinel"),1);portraitMob=e;var d=e==null?null:TroopRenderer.drawn(e);portraitDraws=d==null?0:d.count;
-            c.setScreen(new PortraitProbe(List.of(ArmyCards.portrait(ArmyCards.spec("knight"),1),e)));
+            var e=ArmyCards.portrait(ArmyCards.spec("sentinel"),1,1);portraitMob=e;var d=e==null?null:TroopRenderer.drawn(e);portraitDraws=d==null?0:d.count;
+            c.setScreen(new PortraitProbe(List.of(ArmyCards.portrait(ArmyCards.spec("knight"),1,1),e)));
         }
         /** p2-spike-portrait, once the probe has drawn for 29 ticks: what the renderer drew for the Templar's portrait (no side, the company's cloth, the tabard and no pennant), and its shield. */
         void portraitCheck(MinecraftClient c){
             var spec=ArmyCards.spec("sentinel");var e=portraitMob;var l=e==null?null:TroopModels.resolve(e);
-            boolean look=l!=null&&l.troop()==spec&&l.stage()==1&&l.side()==null&&e.getCustomName().getString().equals("Templar")&&e.getScoreboardTeam()==null;
+            boolean look=l!=null&&l.troop()==spec&&l.armourTier()==1&&l.side()==null&&e.getCustomName().getString().equals("Templar")&&e.getScoreboardTeam()==null;
             var d=e==null?null:TroopRenderer.drawn(e);int n=d==null?0:d.count-portraitDraws;var last=d==null?null:d.last;var m=TroopModels.model("sentinel");
             List<String> shown=last==null||m==null?List.of():m.shownBones(last.bones());var tex=TroopModels.cloth("company");
             boolean company=last!=null&&last.look().side()==null&&"company".equals(last.cloth())&&c.getResourceManager().getResource(tex).isPresent();
             boolean noPennant=n>=5&&shown.contains("long_tabard")&&!shown.contains("pennant");
             var tag=e==null?null:net.minecraft.item.BlockItem.getBlockEntityNbt(e.getOffHandStack());
             boolean shield=tag!=null&&tag.getInt("Base")==net.minecraft.util.DyeColor.GRAY.getId()&&tag.getList("Patterns",10).size()==1&&tag.getList("Patterns",10).getCompound(0).getString("Pattern").equals("sc");
-            report("p2-spike-portrait",look&&company&&noPennant&&shield,"ArmyCards.portrait(sentinel, 1): named \""+(e==null?"":e.getCustomName().getString())+"\", resolves "+(l==null?"null":l.troop().id()+" stage "+l.stage()+" side "+l.side())+", no scoreboard team="+look
+            report("p2-spike-portrait",look&&company&&noPennant&&shield,"ArmyCards.portrait(sentinel, 1, 1): named \""+(e==null?"":e.getCustomName().getString())+"\", resolves "+(l==null?"null":l.troop().id()+" stage "+l.armourTier()+" side "+l.side())+", no scoreboard team="+look
                 +"; drawn "+n+" times by the probe (want 5 or more), the last in cloth "+(last==null?"-":last.cloth())+" ("+tex+"; Kort's portrait ruling replaced linen with the company's navy)="+company
                 +"; the last draw showed the tabard and no pennant="+noPennant+" "+shown+"; shield "+(tag==null?"none":tag)+" (grey field, white straight cross)="+shield);
         }
@@ -4799,7 +4812,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(wait==1)server(c,b->{List<GravesAndGlory.Unit> us=new ArrayList<>();for(int s=1;s<=3;s++){var u=post(b,gold,line,(2-s)*2.0,STUDIO,180+20);stage(u,s);us.add(u);staged.add(u);}lines.put(line,us);camera(b,0,1.6,STUDIO-5,0,8);});
                     if(wait==50){String n=line.equals("knight")?"gilded-stages":"gilded-stages-"+line;if(lines.containsKey(line)&&shotReady(c,n)){stagesCheck(c,line);shot(c,n);}else wait--;}
                     if(wait==55){var us=lines.get(line);server(c,b->{for(var u:us){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();pins.removeIf(p->p.mob()==u.mob);b.units.remove(u);posted.remove(u);}});
-                        li++;wait=0;if(li==LINES.size()){report("p2-gilded-stages",stagesOk,stagesWhy.toString().trim());kit(c);cs=5;}}}
+                        li++;wait=0;if(li==LINES.size()){report("p2-gilded-armour-tiers",stagesOk,stagesWhy.toString().trim());kit(c);cs=5;}}}
                 case 5->{wait++; // the culling box: the camera 1.1 blocks in front of Aldric looks up at his standard, his body and the vanilla box below the view
                     if(wait==1){fovScale(c,0.0);cullPitch=-(float)(c.options.getFov().getValue()/2.0-CULL_DIP);final float pitch=cullPitch;
                         server(c,b->{move(golds.get("gl_marshal").mob,0,STUDIO,180);camera(b,0,CULL_EYE,STUDIO-1.1,0,pitch);});}
@@ -4834,7 +4847,7 @@ public final class Phase2Checks implements ClientModInitializer {
         void lineup(MinecraftClient c){
             boolean ok=true;StringBuilder why=new StringBuilder();
             for(var u:posted){var e=client(c,u.mob);var d=e==null?null:TroopRenderer.drawn(e);var l=d==null?null:d.last.look();String side=u.squad==gold?"gold":"violet";
-                boolean good=l!=null&&l.troop().id().equals(u.spec.id())&&l.stage()==1&&side.equals(l.side())&&side.equals(d.last.cloth())&&TroopModels.model(u.spec.id())!=null;
+                boolean good=l!=null&&l.troop().id().equals(u.spec.id())&&l.armourTier()==1&&side.equals(l.side())&&side.equals(d.last.cloth())&&TroopModels.model(u.spec.id())!=null;
                 ok&=good;why.append(u.spec.id()).append("/").append(l==null?"not drawn":d.last.cloth()).append(good?"":" (BAD)").append(" ");}
             report("p2-gilded-lineup",ok,"each Gilded troop's last draw is its own model at stage 1 in its side's cloth: "+why.toString().trim());
         }
@@ -4844,8 +4857,8 @@ public final class Phase2Checks implements ClientModInitializer {
             double d=e==null||c.player==null?-1:Math.hypot(e.getX()-c.player.getX(),e.getZ()-c.player.getZ());
             var m=TroopModels.model(troop);List<String> parts=STAGE3.getOrDefault(troop,List.of()),shown=dr==null||m==null?List.of():m.shownBones(dr.last.bones());
             long on=parts.stream().filter(shown::contains).count();boolean partsOk=stage==3?on==parts.size():on==0;
-            boolean good=l!=null&&l.troop().id().equals(troop)&&l.stage()==stage&&"gold".equals(l.side())&&"gold".equals(dr.last.cloth())&&m!=null&&Math.abs(d-4)<0.25&&partsOk;closeOk&=good;
-            closeWhy.append(troop).append(" stage ").append(l==null?"-":String.valueOf(l.stage())).append(" side ").append(l==null?"-":l.side()).append(String.format(Locale.ROOT," at %.2f blocks",d))
+            boolean good=l!=null&&l.troop().id().equals(troop)&&l.armourTier()==stage&&"gold".equals(l.side())&&"gold".equals(dr.last.cloth())&&m!=null&&Math.abs(d-4)<0.25&&partsOk;closeOk&=good;
+            closeWhy.append(troop).append(" stage ").append(l==null?"-":String.valueOf(l.armourTier())).append(" side ").append(l==null?"-":l.side()).append(String.format(Locale.ROOT," at %.2f blocks",d))
                 .append(parts.isEmpty()?"":", "+String.join("+",parts)+" "+(on==parts.size()?"drawn":on==0?"not drawn":on+" of "+parts.size()+" drawn")).append(good?"":" (BAD)").append("; ");
         }
         /** p2-gilded-cull: with only the top of Aldric's standard in view, at the bottom of the frame, he is drawn (the vanilla box test would drop him), the standard's cloth on the frame in gold. */
@@ -4876,18 +4889,19 @@ public final class Phase2Checks implements ClientModInitializer {
                     .append(i==2?" (first drawn in "+(first==null?"-":first.cloth())+" at suite tick "+firstGold+", moved to crimson at "+movedAt+")":"").append(good?"":" (BAD)").append("; ");}
             report("p2-gilded-sides",ok,"one Squire on each side, left to right on the frame: "+why.toString().trim());
         }
-        /** One line of p2-gilded-stages: each of its three troops was last drawn at its own stage, in that stage's skin, with the line's stage 3 parts at stage 3 only. */
+        /** One line of p2-gilded-armour-tiers (the stage check, in-match progression Task 9): each of its three troops at armour tiers 1, 2 and 3, set on the server and read by this client through rank_v1 (RankSync.client), was last drawn at its own tier, in that tier's skin, with the line's tier 3 parts at tier 3 only. */
         void stagesCheck(MinecraftClient c,String line){
             var m=TroopModels.model(line);List<String> parts=STAGE3.get(line);boolean ok=m!=null&&m.bones().containsAll(parts);
             stagesWhy.append(line).append(m!=null&&m.bones().containsAll(parts)?"":" (BAD: the model lacks "+parts+")").append(": ");
             for(var u:lines.get(line)){var e=client(c,u.mob);var d=e==null?null:TroopRenderer.drawn(e);var l=d==null?null:d.last.look();
-                if(l==null||m==null){ok=false;stagesWhy.append("stage ").append(u.stage).append(" not drawn (BAD); ");continue;}
+                if(l==null||m==null){ok=false;stagesWhy.append("armour tier ").append(u.armourTier).append(" not drawn (BAD); ");continue;}
+                var rank=RankSync.client(e);
                 List<String> shown=m.shownBones(d.last.bones());long on=parts.stream().filter(shown::contains).count();
                 // the skin the draw bound (TroopRenderer.getTexture, observed), against the file the line and the stage name (Task 5 review minor 2)
-                var skin=d.last.skin();var want=new Identifier("gravesandglory","textures/entity/troop/"+u.spec.id()+"_s"+u.stage+".png");
+                var skin=d.last.skin();var want=new Identifier("gravesandglory","textures/entity/troop/"+u.spec.id()+"_s"+u.armourTier+".png");
                 boolean skinOk=want.equals(skin)&&c.getResourceManager().getResource(skin).isPresent();
-                boolean good=l.stage()==u.stage&&(l.stage()==3?on==parts.size():on==0)&&skinOk;ok&=good;
-                stagesWhy.append("\"").append(e.getCustomName().getString()).append("\" drawn at stage ").append(l.stage()).append(" in ").append(skin==null?"no skin":skin.getPath().substring(skin.getPath().lastIndexOf('/')+1))
+                boolean good=rank!=null&&rank.armourTier()==u.armourTier&&l.armourTier()==u.armourTier&&(l.armourTier()==3?on==parts.size():on==0)&&skinOk;ok&=good;
+                stagesWhy.append("\"").append(e.getCustomName().getString()).append("\" rank_v1 ").append(rank==null?"none":rank.level()+"/"+rank.weaponTier()+"/"+rank.armourTier()).append(", drawn at armour tier ").append(l.armourTier()).append(" in ").append(skin==null?"no skin":skin.getPath().substring(skin.getPath().lastIndexOf('/')+1))
                     .append(", ").append(String.join("+",parts)).append(" ").append(on==parts.size()?"drawn":on==0?"not drawn":on+" of "+parts.size()+" drawn").append(good?"":" (BAD)").append("; ");}
             stagesOk&=ok;
         }
@@ -6096,9 +6110,11 @@ public final class Phase2Checks implements ClientModInitializer {
      */
     static final class Screens extends Stage {
         volatile boolean campReady,claimReady,vetCast,claimed;volatile String serverWhy="";volatile int rollStars=-1,rollCopies=-1,ironShards0=-1,ironShards=-1;
-        java.util.random.RandomGenerator rngSaved;int knightMastery0=-1,knightStage0=1;
+        java.util.random.RandomGenerator rngSaved;int knightMastery0=-1;
         GravesAndGlory.Squad mine;GravesAndGlory.Unit plain,vet1,vet3;
         String shot;int shotWait;boolean claimOk;String claimWhy="";
+        /** Task 13 fix round 1 (review I1): the server keeps a notice and sends it with every state packet, so p2-notice-clears waits for two packets after the page change. */
+        static final String NOTICE="Order Squire rises to star 2!",NOTICE2="Choose dry ground or a crossing.",NOTICE3="Troops now join by recruitment rolls at the camp shrine.";int noticeStates0,noticeWaits,noticePhase;String noticeLeft="";
         /** The six Gilded holdings before the lineup shots made them Mastery II (null for one the profile lacked), put back at cleanup. */
         final Map<String,Integer> mastery0=new LinkedHashMap<>();volatile boolean lineupCast;volatile int lineupRound;
         String name(){return "screens";}
@@ -6118,8 +6134,8 @@ public final class Phase2Checks implements ClientModInitializer {
         void cast(GravesAndGlory.Battle b){
             var pr=b.campaign.profile(player);var k=pr.owned.get("knight");var base=GravesAndGlory.Battle.base(0);
             mine=new GravesAndGlory.Squad(player,0,base);mine.order="hold"; // the player's own army (not a bot): Battle.spawn reads his holdings
-            k.mastery=2;k.stage=1;vet1=post(b,mine,"knight",0,0,0);
-            k.stage=3;vet3=post(b,mine,"knight",2.5,0,0);k.stage=knightStage0;
+            k.mastery=2;vet1=post(b,mine,"knight",0,0,0);
+            vet3=post(b,mine,"knight",2.5,0,0);stage(vet3,3);
             plain=post(b,gold,"knight",-2.5,0,0);
             camera(b,0,1.7,4.6,180,6);vetCast=true;
         }
@@ -6129,7 +6145,7 @@ public final class Phase2Checks implements ClientModInitializer {
             var camp=b.campaign;if(player==null||sp(b)==null)return;
             switch(stage){
                 case 100->{if(b.running){camp.returnLobby();return;}
-                    var pr=camp.profile(player);if(before==null)before=Campaign.JSON.toJson(pr);var k=pr.owned.computeIfAbsent("knight",x->new Profile.Owned());knightMastery0=k.mastery;knightStage0=k.stage;
+                    var pr=camp.profile(player);if(before==null)before=Campaign.JSON.toJson(pr);var k=pr.owned.computeIfAbsent("knight",x->new Profile.Owned());knightMastery0=k.mastery;
                     k.copies=1;k.stars=1;k.mastery=0;pr.gold=1000;
                     var t=pr.owned.computeIfAbsent("sentinel",x->new Profile.Owned());t.copies=2;t.stars=2;t.kills=60;t.survived=10;t.mastery=1;
                     rngSaved=camp.rollRng;camp.rollRng=Engine.fixed(0);camp.save(player);stage=101;campReady=true;}
@@ -6179,16 +6195,26 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 3->{if(!(c.currentScreen instanceof CampScreen s)){c.setScreen(new CampScreen("recruit"));return;}
                     if(++wait==2)shoot("screens-recruit"); // the recruit page with its card actions, after the roll card (for the contact sheet)
                     if(wait<3||!shotDone(c))return;
-                    if(wait==40){RecruitPages.seenTroop=null;if(CampaignClient.notice.isEmpty())CampaignClient.notice="Order Squire rises to star 2!";String left=CampaignClient.notice;s.openTroop("sentinel"); // Task 12 re-review N2: the roll's notice must not follow the player to another card
-                        report("p2-notice-clears",CampaignClient.notice.isEmpty(),"the recruit page showed the notice \""+left+"\"; after opening the Templar's troop page it reads \""+CampaignClient.notice+"\" (want empty)");}
+                    if(wait==30){var me=c.player.getUuid();server(c,bb->bb.campaign.notice(me,NOTICE));} // the server holds the roll's notice, as after a duplicate roll
+                    if(wait==40){if(!NOTICE.equals(CampaignClient.notice)&&++noticeWaits<100){wait=39;return;}
+                        RecruitPages.seenTroop=null;noticeLeft=CampaignClient.shownNotice();noticeStates0=CampaignClient.acceptedStates;s.openTroop("sentinel");} // Task 12 re-review N2 and fix round 1 I1: the roll's notice must not follow the player to another card, not even when the next state packet brings it again
                     if(wait==50)shoot("chase-troop-card");
-                    if(wait>50&&shotDone(c)){var seen=RecruitPages.seenTroop;var t=Campaign.troop("sentinel");var n=ArmyCards.notes(t);
+                    if(wait>50&&noticePhase==0&&CampaignClient.acceptedStates>=noticeStates0+2){noticePhase=1; // two state packets after the page change: the server has sent the notice again, the screen must still not show it
+                        report("p2-notice-clears",NOTICE.equals(noticeLeft)&&CampaignClient.shownNotice().isEmpty()&&NOTICE.equals(CampaignClient.notice),"the recruit page showed the notice \""+noticeLeft+"\"; after opening the Templar's troop page and "+(CampaignClient.acceptedStates-noticeStates0)+" state packets the client still holds \""+CampaignClient.notice+"\" (the server resends it) and shows \""+CampaignClient.shownNotice()+"\" (want empty)");
+                        var me=c.player.getUuid();server(c,bb->bb.campaign.notice(me,NOTICE2));noticeWaits=0;}
+                    if(wait>50&&noticePhase==1){if(NOTICE2.equals(CampaignClient.shownNotice())||++noticeWaits>200){noticePhase=2;report("p2-notice-changes",NOTICE2.equals(CampaignClient.shownNotice()),"a new notice text after the page change is shown again: \""+CampaignClient.shownNotice()+"\" (want \""+NOTICE2+"\")");}}
+                    // fix round 2: the same words again, after the player acted, must show again (the server answers an unlock: with one fixed line)
+                    if(wait>50&&noticePhase==2){s.action("unlock:x");noticePhase=3;noticeWaits=0;}
+                    if(wait>50&&noticePhase==3){if(NOTICE3.equals(CampaignClient.shownNotice())){s.openTroop("sentinel");noticeStates0=CampaignClient.acceptedStates;noticePhase=4;}else if(++noticeWaits>200){report("p2-notice-repeats",false,"the server's answer \""+NOTICE3+"\" never showed (shows \""+CampaignClient.shownNotice()+"\")");noticePhase=6;}}
+                    if(wait>50&&noticePhase==4&&CampaignClient.acceptedStates>=noticeStates0+2){boolean held=NOTICE3.equals(CampaignClient.notice)&&CampaignClient.shownNotice().isEmpty();s.action("unlock:x");noticePhase=5;noticeWaits=0;noticeLeft=held?"":"precondition failed: the dismissed notice was not held and hidden";}
+                    if(wait>50&&noticePhase==5){boolean back=NOTICE3.equals(CampaignClient.shownNotice());if(back||++noticeWaits>200){noticePhase=6;report("p2-notice-repeats",back&&noticeLeft.isEmpty(),"a notice dismissed by a page change, then the same words from the server after the player acted again, shows again: \""+CampaignClient.shownNotice()+"\" (want \""+NOTICE3+"\") "+noticeLeft);}}
+                    if(wait>50&&noticePhase==6&&shotDone(c)){var seen=RecruitPages.seenTroop;var t=Campaign.troop("sentinel");var n=ArmyCards.notes(t);
                         boolean page=s.page.equals("troop")&&seen!=null&&seen.troop().equals("sentinel");
                         boolean notes=page&&n!=null&&!n.beats().isEmpty()&&seen.beats().equals(n.beats())&&seen.beatenBy().equals(n.beatenBy());
                         boolean glyphs=page&&seen.glyphs().contains("C1")&&seen.glyphs().contains("C3");
                         boolean stars=page&&seen.stars()==2,bars=page&&seen.masteryBars()==2*Spec.MASTERY.length;
                         boolean levels=page&&seen.levels().equals(List.of("Templar","Templar Knight","Templar Commander"));
-                        boolean lines=page&&n!=null&&seen.abilities().size()==3&&seen.abilities().stream().noneMatch(String::isEmpty)&&seen.abilities().get(1).equals(n.level2())&&seen.abilities().get(2).equals(n.level3());
+                        boolean lines=page&&n!=null&&seen.abilities().size()==3&&seen.abilities().stream().noneMatch(String::isEmpty)&&seen.abilities().get(1).equals(sheetAbilityText("sentinel_l2"))&&seen.abilities().get(2).equals(sheetAbilityText("sentinel_l3"));
                         boolean noEvolve=button(s,"Evolve",0)==null&&button(s,"EVOLVE",0)==null;
                         boolean shape=!sameShape(ArmyCards.glyph(true),ArmyCards.glyph(false));
                         boolean counts=page&&seen.counts().size()==Spec.MASTERY.length&&seen.counts().stream().allMatch(x->x.endsWith(" survived"));
@@ -6232,7 +6258,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     String trim="gravesandglory:textures/entity/troop/knight_veteran.png";
                     boolean names=n1.equals("Order Squire (Veteran)")&&n3.equals("Knight-Captain (Veteran)")&&n0.equals("Order Squire");
                     boolean one=l1!=null&&l1.look().veteran()&&String.valueOf(l1.skin()).endsWith("knight_s1.png")&&String.valueOf(l1.trim()).equals(trim);
-                    boolean three=l3!=null&&l3.look().veteran()&&l3.look().stage()==3&&String.valueOf(l3.skin()).endsWith("knight_s3.png")&&String.valueOf(l3.trim()).equals(trim);
+                    boolean three=l3!=null&&l3.look().veteran()&&l3.look().armourTier()==3&&String.valueOf(l3.skin()).endsWith("knight_s3.png")&&String.valueOf(l3.trim()).equals(trim);
                     boolean bare=l0!=null&&!l0.look().veteran()&&l0.trim()==null&&String.valueOf(l0.skin()).endsWith("knight_s1.png");
                     boolean named=serverWhy.contains("(Order Squire (Veteran)) is knight")&&serverWhy.contains("(Knight-Captain (Veteran)) is knight");
                     shot(c,"chase-veteran");
@@ -6280,11 +6306,11 @@ public final class Phase2Checks implements ClientModInitializer {
             try{
                 for(int W:new int[]{817,960}){int cw=(W-194-22)/3-10;
                     for(var t:Spec.TROOPS){int total=0;for(var q:CampScreen.pool(t.house()))total+=CampScreen.weight(q);
-                        for(int variant=0;variant<4;variant++){boolean owned=variant>0;int stage=Math.max(1,variant);
-                            s.card(g,new CampScreen.Card(t,owned,owned?1:0,stage,owned?2:0),0,0,cw,RecruitPages.CARD_H,total);drawn++;worst=Math.max(worst,s.cardLow);
-                            if(s.cardLow>top-2)bad.append(t.id()).append(owned?" stage "+stage:" locked").append(" at width ").append(W).append(": words to y+").append(s.cardLow).append("; ");}}}
+                        for(int variant=0;variant<2;variant++){boolean owned=variant>0;
+                            s.card(g,new CampScreen.Card(t,owned,owned?1:0,owned?2:0),0,0,cw,RecruitPages.CARD_H,total);drawn++;worst=Math.max(worst,s.cardLow);
+                            if(s.cardLow>top-2)bad.append(t.id()).append(owned?" owned":" locked").append(" at width ").append(W).append(": words to y+").append(s.cardLow).append("; ");}}}
             }finally{CampScreen.probe=false;}
-            report("p2-card-layout",bad.length()==0&&drawn>0,bad.length()==0?"CampScreen.card() drew "+drawn+" cards (30 troops x locked and 3 stages x widths 817 and 960); the lowest word or pip is at y+"+worst+", the limit y+"+(top-2)+", over the action button at y+"+top:"words reach the action button at y+"+top+": "+bad.toString().trim());
+            report("p2-card-layout",bad.length()==0&&drawn>0,bad.length()==0?"CampScreen.card() drew "+drawn+" cards (30 troops x locked and owned x widths 817 and 960); the lowest word or pip is at y+"+worst+", the limit y+"+(top-2)+", over the action button at y+"+top:"words reach the action button at y+"+top+": "+bad.toString().trim());
         }
     }
 
@@ -6323,7 +6349,7 @@ public final class Phase2Checks implements ClientModInitializer {
             var w=WANT.get(c);StringBuilder bad=new StringBuilder();
             Set<String> owned=new HashSet<>(COMMONS);owned.addAll(w.extra());
             if(!pr.owned.keySet().equals(owned))bad.append("owned ").append(new TreeSet<>(pr.owned.keySet())).append(" (want ").append(new TreeSet<>(owned)).append("); ");
-            if(!pr.owned.values().stream().allMatch(o->o.copies==1&&o.stars==1&&o.stage==1))bad.append("a troop is not at one copy, star 1, stage 1; ");
+            if(!pr.owned.values().stream().allMatch(o->o.copies==1&&o.stars==1))bad.append("a troop is not at one copy and star 1; ");
             if(!Collections.disjoint(pr.owned.keySet(),Set.of("mage","hexer","oracle","wraith")))bad.append("mage, hexer, oracle or wraith owned; ");
             if(pr.gold!=w.gold())bad.append("gold ").append(pr.gold).append(" (want ").append(w.gold()).append("); ");
             if(!pr.commander.equals(w.commander()))bad.append("class ").append(pr.commander).append(" (want ").append(w.commander()).append("); ");
@@ -6347,6 +6373,13 @@ public final class Phase2Checks implements ClientModInitializer {
                     before=Campaign.JSON.toJson(camp.profile(player));
                     try{fixtures(b);}catch(Exception e){report("p2-migrate-fixtures",false,e.toString());e.printStackTrace();}
                     try{importCache(b,p);}catch(Exception e){report("p2-migrate-import",false,e.toString());e.printStackTrace();}
+                    try{ // In-match progression Task 1: the evolution stage is gone from a profile. A file holding "stage":3 loads, and saving it writes no stage.
+                        var j=JsonParser.parseString(Campaign.JSON.toJson(new Profile())).getAsJsonObject();
+                        j.getAsJsonObject("owned").getAsJsonObject("knight").addProperty("stage",3);
+                        var loaded=Campaign.JSON.fromJson(j.toString(),Profile.class);loaded.sanitize();String saved=Campaign.JSON.toJson(loaded);
+                        var knight=loaded.owned.get("knight");
+                        report("p2-profile-stage-ignored",knight!=null&&knight.copies==1&&knight.stars==1&&!saved.contains("\"stage\""),"a profile file holding \"stage\":3 on the knight loads (knight "+(knight==null?"missing":"copies "+knight.copies+", stars "+knight.stars)+") and saving it writes "+(saved.contains("\"stage\"")?"a stage key (BAD)":"no stage key"));
+                    }catch(Exception e){report("p2-profile-stage-ignored",false,e.toString());}
                     try{
                         var pr=camp.profile(player);
                         for(var t:Spec.TROOPS)pr.owned.putIfAbsent(t.id(),new Profile.Owned());
@@ -6398,7 +6431,8 @@ public final class Phase2Checks implements ClientModInitializer {
         void importCache(GravesAndGlory.Battle b,net.minecraft.server.network.ServerPlayerEntity p)throws IOException{
             var camp=b.campaign;Path file=camp.directory.resolve(player+".json");StringBuilder bad=new StringBuilder();
             String cache=new String(fixture("profile-v1-cache.json"),java.nio.charset.StandardCharsets.UTF_8);
-            Files.deleteIfExists(file);camp.profiles.remove(player);camp.importAllowed.add(player);camp.collectionsReady.remove(player);
+            Files.deleteIfExists(file);camp.profiles.remove(player);camp.importAllowed.remove(player);camp.grantImport(player);camp.collectionsReady.remove(player); // the real first-visit gate (Campaign.joined calls it): no file, so the join grants the import
+            if(!camp.importAllowed.contains(player))bad.append("a join with no server file did not grant the import; ");
             camp.importProfile(p,cache);
             var got=camp.profile(player);Set<String> owned=new HashSet<>(COMMONS);owned.add("sentinel");
             if(!got.owned.keySet().equals(owned))bad.append("owned ").append(new TreeSet<>(got.owned.keySet())).append(" (want the 10 Commons and sentinel); ");
@@ -6407,6 +6441,7 @@ public final class Phase2Checks implements ClientModInitializer {
             boolean saved=Files.exists(file)&&Files.readString(file).contains("\"schema\": 2")&&JsonParser.parseString(Files.readString(file)).getAsJsonObject().get("gold").getAsInt()==900+3*REFUND;
             if(!saved)bad.append("the import was not saved as a schema 2 file; ");
             if(camp.importAllowed.contains(player)||!camp.collectionsReady.contains(player))bad.append("the permission was not used up or the collection is not ready; ");
+            camp.grantImport(player);if(camp.importAllowed.contains(player))bad.append("a join with a server file on disk granted the import (the server copy must win); ");
             byte[] first=Files.exists(file)?Files.readAllBytes(file):new byte[0];
             var rich=JsonParser.parseString(cache).getAsJsonObject();rich.addProperty("gold",99999);rich.addProperty("commander","arcanist");rich.getAsJsonArray("unlocked").add("stalker");
             camp.importProfile(p,rich.toString());
@@ -6838,14 +6873,14 @@ public final class Phase2Checks implements ClientModInitializer {
         void stageCheck(MinecraftClient c){
             wait++;
             if(wait==1)server(c,b->{for(int s=1;s<=3;s++){var u=post(b,gold,"knight",(2-s)*2.0,STUDIO,180+20);stage(u,s);stagers.add(u);}camera(b,0,1.6,STUDIO-5,0,8);});
-            if(wait==60&&(stagers.size()!=3||!there(c,0,1.6,STUDIO-5,0,8)||!stagers.stream().allMatch(u->drawn(c,u)!=null&&drawn(c,u).last.look().stage()==u.stage)))wait--;
+            if(wait==60&&(stagers.size()!=3||!there(c,0,1.6,STUDIO-5,0,8)||!stagers.stream().allMatch(u->drawn(c,u)!=null&&drawn(c,u).last.look().armourTier()==u.armourTier)))wait--;
             if(wait==61)for(var u:stagers)marks.put(u,drawCount(c,u));
             if(wait==80){
                 var m=TroopModels.model("knight");List<String> bad=new ArrayList<>();StringBuilder why=new StringBuilder();
                 for(var u:stagers){var d=drawn(c,u);var last=d==null?null:d.last;boolean fresh=d!=null&&d.count>marks.getOrDefault(u,0);
-                    String key=String.valueOf(u.stage);var skin=last==null?null:last.skin();String file=skin==null?"-":skin.getPath().substring(skin.getPath().lastIndexOf('/')+1);
-                    boolean good=fresh&&key.equals(last.relief())&&file.equals("knight_s"+u.stage+".png")&&m!=null&&key.equals(m.reliefKey(last.look()));
-                    if(!good)bad.add("stage "+u.stage+" drew relief "+(last==null?"-":last.relief())+" with skin "+file);why.append("stage ").append(u.stage).append(": skin ").append(file).append(", relief ").append(last==null?"-":last.relief()).append("; ");}
+                    String key=String.valueOf(u.armourTier);var skin=last==null?null:last.skin();String file=skin==null?"-":skin.getPath().substring(skin.getPath().lastIndexOf('/')+1);
+                    boolean good=fresh&&key.equals(last.relief())&&file.equals("knight_s"+u.armourTier+".png")&&m!=null&&key.equals(m.reliefKey(last.look()));
+                    if(!good)bad.add("stage "+u.armourTier+" drew relief "+(last==null?"-":last.relief())+" with skin "+file);why.append("stage ").append(u.armourTier).append(": skin ").append(file).append(", relief ").append(last==null?"-":last.relief()).append("; ");}
                 report("p2-depth-stage",bad.isEmpty(),"the knight at stages 1, 2 and 3 draws the relief key of the skin it binds: "+why.toString().trim()+(bad.isEmpty()?"":" wrong: "+bad));
                 server(c,b->discard(b,stagers));
                 cs=9;wait=0;
@@ -7036,7 +7071,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 ds.add(Math.sqrt(e.squaredDistanceTo(cam)));boolean n=TroopDepth.near(e);if(n)nearTrue++;
                 var dr=TroopRenderer.drawn(e);if(dr!=null&&dr.last!=null&&dr.last.relief()!=null)raisedLast++;
                 boolean front=(e.getX()-cam.x)*look.x()+(e.getZ()-cam.z)*look.z()>0;if(front){ahead++;if(n)aheadNear++;}
-                if(n){var lk=TroopModels.resolve(e);var mm=lk==null?null:TroopModels.modelOf(lk.troop().id());String key=lk==null?"?":lk.troop().id()+" s"+lk.stage()+" key "+(mm==null?"-":mm.reliefKey(lk));
+                if(n){var lk=TroopModels.resolve(e);var mm=lk==null?null:TroopModels.modelOf(lk.troop().id());String key=lk==null?"?":lk.troop().id()+" s"+lk.armourTier()+" key "+(mm==null?"-":mm.reliefKey(lk));
                     int[] t=tally.computeIfAbsent(key,k->new int[3]);t[0]++;if(dr!=null&&dr.last!=null&&dr.last.relief()!=null)t[1]++;if(front)t[2]++;}}
             Collections.sort(ds);int w24=0,w48=0;for(double d:ds){if(d<24)w24++;if(d<48)w48++;}
             return String.format(Locale.ROOT,"%s camera at (%.1f, %.1f, %.1f) yaw %.0f pitch %.0f holds %d troops: %d within 24 blocks, %d within 48, nearest %.1f, median %.1f; TroopDepth.near is true for %d of them (%d of the %d ahead of the camera), %d have a last draw with relief; near by kind (near, of them last drawn with relief, of them ahead): %s; ",name,cam.x,cam.y,cam.z,c.player.getYaw(),c.player.getPitch(),ds.size(),w24,w48,ds.isEmpty()?-1:ds.get(0),ds.isEmpty()?-1:ds.get(ds.size()/2),nearTrue,aheadNear,ahead,raisedLast,tally.entrySet().stream().map(en->en.getKey()+" "+en.getValue()[0]+"/"+en.getValue()[1]+"/"+en.getValue()[2]).collect(java.util.stream.Collectors.joining(", ")));
@@ -7106,9 +7141,9 @@ public final class Phase2Checks implements ClientModInitializer {
             if(c.getTextureManager().getOrDefault(WHITE,null)==null){var img=new NativeImage(16,16,false);img.fillRect(0,0,16,16,0xFFFFFFFF);c.getTextureManager().registerTexture(WHITE,new net.minecraft.client.texture.NativeImageBackedTexture(img));}
             if(squire==null&&c.world!=null){squire=figure(c,"knight",1);templar=figure(c,"sentinel",3);}
         }
-        /** A gold troop of one stage, dressed as the portraits are: its name, the painted shield and its weapon. */
+        /** A gold troop of one armour tier (its level the same), dressed as the portraits are: its name, its rank set locally (RankSync.setLocal), the painted shield and its weapon. */
         static MobEntity figure(MinecraftClient c,String troop,int stage){
-            var spec=ArmyCards.spec(troop);MobEntity m=ArmyMobs.portrait(spec.entity(),c.world);m.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.stageName(spec,stage)));
+            var spec=ArmyCards.spec(troop);MobEntity m=ArmyMobs.portrait(spec.entity(),c.world);m.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.levelName(spec,stage)));RankSync.setLocal(m,new RankSync.Rank(stage,1,stage));
             String dye="yellow";for(var fa:Spec.FACTIONS)if(fa.id().equals("gold"))dye=fa.dye();
             if(!spec.shield().equals("none"))m.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(spec,dye));
             m.equipStack(EquipmentSlot.MAINHAND,new ItemStack(net.minecraft.registry.Registries.ITEM.get(new Identifier(spec.weapon()))));

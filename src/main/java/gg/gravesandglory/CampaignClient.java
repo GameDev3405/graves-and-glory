@@ -26,7 +26,7 @@ public final class CampaignClient {
     static String text(JsonObject j,String key){return j.has(key)?j.get(key).getAsString():"";}
     /** The Long March number (sheet order) of the battle being fought; 1 when none is known. */
     static int battleOrder(){for(var row:Spec.CAMPAIGNBATTLES)if(row.id().equals(text(battle,"id")))return row.order();return 1;}
-    static boolean lead,fill=true;static String mode="2",notice="",headline="",partyKey="";
+    static boolean lead,fill=true;static String mode="2",notice="",dismissed="",headline="",partyKey="";
     /** The server's count of notices sent to this player, as last sent in the snapshot: it rises with each notice, even one that repeats the last text. */
     static int noticeSerial;
     /** The server-wide bot difficulty (a Spec.BOTCOMMAND id), as last sent in the snapshot. */
@@ -57,7 +57,9 @@ public final class CampaignClient {
     /** Whether the reveal on screen is the last roll's card: it arrived with this reveal and Skip reveal has not ended it. */
     static boolean rollShowing(){return lastRoll!=null&&revealUntil>System.currentTimeMillis()&&revealUntil==rollAt+REVEAL_MS;}
     /** Forgets the last roll and the first-snapshot mark when the client leaves a server: a restarted server counts n from 1 again, and its first snapshot must not reveal (review minor 5). */
-    static void forget(){lastRoll=null;rollAt=0;received=false;revealUntil=0;}
+    static void forget(){lastRoll=null;rollAt=0;received=false;revealUntil=0;armoury=LevelMath.Armoury.EMPTY;}
+    /** This army's Armoury from the last state_v9 (armouryHere and the buy states per banner troop type, LevelMath.decodeArmoury); empty before the first state, after a disconnect and until the server fills it (Task 5). The Armoury tab and the Iron Ledger glint read it. */
+    static LevelMath.Armoury armoury=LevelMath.Armoury.EMPTY;
     /** Reads the snapshot's lastRoll; a new one (another n) after the first snapshot starts the reveal. */
     static void acceptRoll(JsonObject j,boolean first){
         if(!j.has("lastRoll"))return;var r=j.getAsJsonObject("lastRoll");if(!r.has("n")||!r.has("troop"))return;
@@ -68,6 +70,13 @@ public final class CampaignClient {
     static int map=0,serial=-1,intro=0;static boolean lastRunning,waiting;
     public static double cameraX,cameraY,cameraZ;public static float cameraYaw,cameraPitch;
     public static boolean cinematic(){return camera!=null;}
+    /** The notice the player left behind by changing page: the server keeps sending it with every state packet, so the client hides that text until the server says something else (no protocol change; review I1). acceptedStates counts the state packets read (the harness waits for two). */
+    static int acceptedStates;
+    static String shownNotice(){return notice.equals(dismissed)?"":notice;}
+    /** Takes the notice of a state packet: a different text ends the dismissal of the old one (the same words stay dismissed until the player acts or another text comes). */
+    static void acceptNotice(String next){if(!next.equals(notice))dismissed="";notice=next;}
+    /** A report this client has not shown opens: the lines the player dismissed before belong to an earlier match. */
+    static void reportOpened(String id){shownResult=id;dismissed="";}
     static boolean previousHud;
     static ArmorStandEntity camera;static Perspective previous;static int cameraTicks;
     static Path collection(MinecraftClient c){return c.runDirectory.toPath().resolve((Diagnostics.active()?"gravesandglory/test-collections/":"gravesandglory/collections/")+c.getSession().getUuid()+".json");}
@@ -80,14 +89,14 @@ public final class CampaignClient {
             if(j.has("sides")){var s=j.getAsJsonArray("sides");if(s.size()==2)sides=new String[]{s.get(0).getAsString(),s.get(1).getAsString()};}
             if(j.has("banner")){var list=new java.util.ArrayList<String>();for(var e:j.getAsJsonArray("banner"))list.add(e.getAsString());banner=list;}social=j.has("social")?j.getAsJsonObject("social"):new JsonObject();progression=j.has("progression")?j.getAsJsonObject("progression"):new JsonObject();if(j.has("progression"))profile.progression=Campaign.JSON.fromJson(progression,Progression.State.class);players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
             JsonObject keyed=new JsonObject();for(var entry:party.entrySet())if(!entry.getKey().equals("inviteSeconds"))keyed.add(entry.getKey(),entry.getValue());partyKey=keyed.toString();
-            JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;padMine=pads.has("mine")?pads.get("mine").getAsInt():-1;tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;battle=j.has("battle")?j.getAsJsonObject("battle"):new JsonObject();fill=j.get("fill").getAsBoolean();difficulty=j.has("difficulty")?j.get("difficulty").getAsString():"normal";mode=j.get("mode").getAsString();notice=j.get("notice").getAsString();noticeSerial=j.has("noticeSerial")?j.get("noticeSerial").getAsInt():0;headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
+            JsonObject pads=j.getAsJsonObject("pads");padCountdown=pads.get("countdown").getAsInt();padDawn=pads.get("dawn").getAsInt();padDusk=pads.get("dusk").getAsInt();padSize=pads.has("size")?pads.get("size").getAsInt():2;padMine=pads.has("mine")?pads.get("mine").getAsInt():-1;tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;battle=j.has("battle")?j.getAsJsonObject("battle"):new JsonObject();fill=j.get("fill").getAsBoolean();difficulty=j.has("difficulty")?j.get("difficulty").getAsString():"normal";mode=j.get("mode").getAsString();acceptNotice(j.get("notice").getAsString());acceptedStates++;noticeSerial=j.has("noticeSerial")?j.get("noticeSerial").getAsInt():0;headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
             int next=j.get("map").getAsInt();if(next!=map||Spec.FACTIONS[0].spawnX()!=-283){map=next;if(c.getServer()==null)CampaignMaps.select(map);GravesAndGloryClient.invalidateMap(c);}
             waiting=j.has("waiting")&&j.get("waiting").getAsBoolean();
             int round=j.get("serial").getAsInt();intro=j.get("intro").getAsInt();
             if(round!=serial&&running&&intro>0){cameraTicks=120-intro;begin(c);}serial=round;
             if(!running)end(c);
             result=j.has("result")?j.getAsJsonObject("result"):new JsonObject();
-            if(!running&&result.has("id")&&!result.get("id").getAsString().equals(shownResult)){shownResult=result.get("id").getAsString();c.setScreen(new CampScreen("results"));}
+            if(!running&&result.has("id")&&!result.get("id").getAsString().equals(shownResult)){reportOpened(result.get("id").getAsString());c.setScreen(new CampScreen("results"));}
             else if(!running&&lastRunning&&!(c.currentScreen instanceof CampScreen)&&!(c.currentScreen instanceof CampaignLobbyScreen))c.setScreen(new CampScreen("home"));lastRunning=running;
             if(!j.get("collectionReady").getAsBoolean()){sendProfile(c);return;}String saved=Campaign.JSON.toJson(profile);if(saved.equals(lastSaved))return;lastSaved=saved;Path path=collection(c);Files.createDirectories(path.getParent());Path tmp=path.resolveSibling(path.getFileName()+".tmp");Files.writeString(tmp,saved);Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING);
         }catch(Exception e){System.err.println("[Graves and Glory] Collection sync could not be saved: "+e.getClass().getSimpleName());}

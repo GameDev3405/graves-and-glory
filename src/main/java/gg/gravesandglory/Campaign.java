@@ -37,6 +37,17 @@ public final class Campaign {
     final Map<UUID,String> notices=new HashMap<>();
     /** How many notices each player has been sent; the snapshot carries it so a client can tell a notice sent again from one it has already shown. */
     final Map<UUID,Integer> noticeSerials=new HashMap<>();
+    /**
+     * When each notice was posted (battle ticks). expireNotices drops an action's notice (notice) NOTICE_TICKS after it, so a notice the player dismissed on his screen
+     * cannot come back with a later camp snapshot (Phase 2 Task 13's trade-off, done in in-match progression Task 4; no protocol change). The same words posted again start
+     * a new 10 seconds. A line that tells the player's state (standing: the welcome, the match reward; the wait for the next round is an action's notice, it stops being true with the round) is marked STANDING and stays until the
+     * next notice replaces it.
+     */
+    final Map<UUID,Long> noticeAt=new HashMap<>();
+    /** How long an action's notice stays in the camp snapshot: 10 seconds. */
+    static final int NOTICE_TICKS=200;
+    /** noticeAt's mark for a standing line, which never expires. */
+    static final long STANDING=Long.MAX_VALUE;
     final Map<UUID,JsonObject> results=new HashMap<>();
     /** Per commander, the last roll or chosen buy (the snapshot's lastRoll, for the camp's roll result card): {n, troop, duplicate, starsBefore, starsAfter, shards}; n counts up so the client tells a new one from the same. Not saved. */
     final Map<UUID,JsonObject> lastRolls=new HashMap<>();
@@ -101,9 +112,11 @@ public final class Campaign {
     }
     /** The welcome notices a joining player gets (waiting while a battle runs, or in the camp), each naming his own menu key. */
     static final String WELCOME_WAIT="Battle in progress. Wait in camp for the next round. {key:menu} opens your war council.",WELCOME="Welcome to Graves and Glory. {key:menu} opens your war council.";
-    /** A notice for one player: kept for the camp snapshot (the client fills in its keys) and sent to the action bar, where each
-     *  {key:(id)} shows the player's own binding. */
-    void notice(UUID id,String text){notices.put(id,text);noticeSerials.merge(id,1,Integer::sum);var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)p.sendMessage(keyText(text),true);}
+    /** An action's result for the player (a refusal, a buy, a vote saved, the wait for the next round): shown on his action bar and kept in the camp snapshot for NOTICE_TICKS. The camp snapshot carries noticeSerials so a client can tell a notice sent again from one it has already shown, and the client fills in each {key:(id)} with the player's own binding. */
+    void notice(UUID id,String text){post(id,text,b.time);}
+    /** A line that tells the player's state (the welcome, the match reward): shown like a notice, but kept until the next notice replaces it. */
+    void standing(UUID id,String text){post(id,text,STANDING);}
+    private void post(UUID id,String text,long at){notices.put(id,text);noticeAt.put(id,at);noticeSerials.merge(id,1,Integer::sum);var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)p.sendMessage(keyText(text),true);}
     /** A {key:(id)} template as chat text: each text as it is, each id as Text.keybind of its binding (HintText.bindingKey), so
      *  every client shows its own key, or its "Not bound", named as its feed names it (KeybindTextMixin: a mouse button as LMB,
      *  RMB or MMB). */
@@ -112,23 +125,32 @@ public final class Campaign {
         for(int i=1;i<parts.size();i+=2)out.append(Text.keybind(HintText.bindingKey(parts.get(i)))).append(parts.get(i+1));
         return out;
     }
+    /** Drops every action's notice older than NOTICE_TICKS (tick, once a second); a standing line stays. A notice put without notice() (a harness's) is timed from the first pass that sees it. */
+    void expireNotices(){
+        notices.keySet().removeIf(id->{Long at=noticeAt.get(id);if(at==null){noticeAt.put(id,b.time);return false;}return at!=STANDING&&b.time-at>NOTICE_TICKS;});
+        noticeAt.keySet().retainAll(notices.keySet());
+    }
+    /** The first-visit rule: a player with no server file may bring his collection from his own computer, once; one with a file may not (the server copy wins). */
+    void grantImport(UUID id){if(!Files.exists(directory.resolve(id+".json")))importAllowed.add(id);}
     void joined(ServerPlayerEntity p){
-        if(!Files.exists(directory.resolve(p.getUuid()+".json")))importAllowed.add(p.getUuid());profile(p.getUuid());
+        grantImport(p.getUuid());profile(p.getUuid());
         // Rejoining the same battle keeps the original start time, so a dropped connection does not cost the reward.
         if(!(b.running&&participants.contains(p.getUuid())))joinedAt.put(p.getUuid(),b.time);var squad=b.squads.get(p.getUuid());
         if(b.running&&squad!=null&&squad.seated)b.toBase(p,squad.team);else toLobby(p);
-        notice(p.getUuid(),b.running&&(squad==null||!squad.seated)?WELCOME_WAIT:WELCOME);}
+        if(b.running&&(squad==null||!squad.seated))notice(p.getUuid(),WELCOME_WAIT); // true for the moments he reads it, and gone with the round (returnLobby) or after NOTICE_TICKS: no standing line, which the round's end would leave false
+        else standing(p.getUuid(),WELCOME);}
     void toLobby(ServerPlayerEntity p){var at=CampWorld.spawn(profile(p.getUuid()));b.relocate(p,at.x(),at.y(),at.z(),at.yaw(),at.pitch());p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();Commander.applyPlayer(p,null);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
         b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;Projectiles.clear(b);Abilities.clearBanners(b);
-        Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearSides();
+        Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearSides();b.clearProgression();
         b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}onPad.clear();padCountdown=-1;closeParty();
+        notices.values().removeIf(WELCOME_WAIT::equals);noticeAt.keySet().retainAll(notices.keySet()); // "Battle in progress" is no longer true
         for(var p:b.server.getPlayerManager().getPlayerList())toLobby(p);
     }
     /** Leaving frees the pad, any seat in a custom lobby, and invitations to it, and forgets which snapshot forms were logged for him. */
-    void left(UUID id){onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);}
+    void left(UUID id){onPad.remove(id);padRefused.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
     boolean handle(ServerPlayerEntity p,String cmd){
         if(cmd.startsWith("social:"))return socialCommand(p,cmd);
         if(cmd.startsWith("progress:"))return progressCommand(p,cmd);
@@ -271,23 +293,18 @@ public final class Campaign {
     }
     /** Units in the banner a commander would field now; 0 means he has no army to bring. */
     int bannerUnits(UUID id){var catalog=RosterMath.Catalog.fromSpec();return RosterMath.units(RosterMath.fieldable(profile(id).banner,catalog,RosterMath.fieldableHouses()),catalog);}
-    /** The progression multiplier of a commander's owned troop (spec 4.4): its star bonus plus its evolution stage bonus, capped at 1 + recruitment.capPct. Bots, and troops the commander does not own, fight at 1. */
-    double progression(GravesAndGlory.Squad s,Spec.TroopsRow t,boolean health){
+    /** The progression multiplier of a commander's owned troop (spec 4.4, in-match progression design 8): its star bonus alone, capped at 1 + recruitment.capPct. Levels and gear come from the soldier, not the profile. Bots, and troops the commander does not own, fight at 1. */
+    double progression(GravesAndGlory.Squad s,Spec.TroopsRow t){
         if(s.bot)return 1;var o=profile(s.owner).owned.get(t.id());if(o==null)return 1;
-        var rarity=RosterMath.rarityRow(t.rarity());double stage=0;
-        if(o.stage>=2)for(var e:Spec.EVOLUTIONS)if(e.troop().equals(t.evolveLine())&&e.stage()==o.stage)stage=health?e.healthPct():e.damagePct();
-        return RosterMath.progressionMultiplier(rarity==null?0:RosterMath.starPct(o.stars,rarity),stage,Spec.RECRUITMENT[0].capPct());
-    }
-    /** The evolution stage (1 to 3) a commander's owned troop fights at; 1 for a bot, for a troop he does not own and for one with no evolve line. */
-    int stage(GravesAndGlory.Squad s,Spec.TroopsRow t){
-        if(s.bot)return 1;var o=profile(s.owner).owned.get(t.id());return o==null?1:Math.max(1,Math.min(3,o.stage));
+        var rarity=RosterMath.rarityRow(t.rarity());
+        return RosterMath.progressionMultiplier(rarity==null?0:RosterMath.starPct(o.stars,rarity),Spec.RECRUITMENT[0].capPct());
     }
     /** Whether a commander's owned troop wears the veteran trim: Mastery II or higher (Houses spec 4.7, in-match progression design 4.4). Never a bot's. */
     boolean veteran(GravesAndGlory.Squad s,Spec.TroopsRow t){
         if(s.bot)return false;var o=profile(s.owner).owned.get(t.id());return o!=null&&o.mastery>=2;
     }
-    double damage(GravesAndGlory.Unit u){return progression(u.squad,u.spec,false);}
-    double health(GravesAndGlory.Squad s,Spec.TroopsRow t){return progression(s,t,true);}
+    double damage(GravesAndGlory.Unit u){return progression(u.squad,u.spec);}
+    double health(GravesAndGlory.Squad s,Spec.TroopsRow t){return progression(s,t);}
     /** Sets the side row each team flies this round (Battle.sides) from the seated commanders; see sidesFor. */
     void chooseSides(){b.sides=sidesFor(seats(s->s.seated));}
     /**
@@ -406,10 +423,10 @@ public final class Campaign {
             var paid=earned>0?RosterMath.matchRewards(slots,Houses.thresholds(Spec.HOUSES[0].id()),Profile.houseOrder(),s.team==winner):NO_REWARDS; // every House has the same slot thresholds (HousesCheck)
             paid.shards().forEach((h,n)->p.shards.merge(h,n,Integer::sum));paid.renown().forEach((h,n)->p.renown.merge(h,n,Integer::sum));
             List<String> titles=earned>0?ledger(p,s):List.of();int pacts=pacts(p);
-            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));results.put(id,report);
-            if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
+            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",earned>0);report.addProperty("gold",saved?earned:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));results.put(id,report);
+            if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));standing(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
             String extra=(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
-            notice(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":"")+extra);
+            standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(earned==0?" (reward requires 3 minutes of play)":"")+extra);
         }
         b.message=(winner<0?"Draw":b.side(winner).name()+" wins")+"! Back to the war council.";headline=b.message;
         for(var p:b.server.getPlayerManager().getPlayerList())if(participants.contains(p.getUuid()))p.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory","victory")),SoundCategory.PLAYERS,.8f,1); // each participant, to his own connection
@@ -451,6 +468,15 @@ public final class Campaign {
             JsonObject row=new JsonObject();row.addProperty("house",h.house());row.addProperty("tier",h.tier());row.addProperty("traitSeconds",h.traitSeconds());row.addProperty("shards",h.shards());row.addProperty("renown",h.renown());rows.add(row);}
         return rows;
     }
+    /**
+     * The report's levels rows (in-match progression design 7; Veterans.levelRows): one per banner troop type in banner order, the highest level a soldier of it reached this
+     * round, how many reached level 3, and the weapon and armour tier bought (1: none). Built before returnLobby clears the Armoury. Empty with progression off.
+     */
+    JsonArray reportLevels(GravesAndGlory.Squad s){
+        JsonArray rows=new JsonArray();if(!Veterans.enabled())return rows;
+        for(var r:Veterans.levelRows(b,s)){JsonObject row=new JsonObject();row.addProperty("troop",r.troop());row.addProperty("highestLevel",r.highest());row.addProperty("level3Count",r.level3s());row.addProperty("weapon",r.weapon());row.addProperty("armour",r.armour());rows.add(row);}
+        return rows;
+    }
     /** The report table for one commander: every seated army of both teams, his own team first (join order kept); a bot is named after its tier. */
     JsonArray reportSquads(GravesAndGlory.Squad me){
         JsonArray rows=new JsonArray();
@@ -469,6 +495,7 @@ public final class Campaign {
     /** Harness cameras: while false, the lobby leashes here and in the build tick leave every player where he stands. Always true in play. */
     boolean leash=true;
     void tick(){
+        if(b.time%20==0)expireNotices();
         if(pendingBattle!=null&&b.ready){ // the map of a campaign battle is built: it starts unless something changed meanwhile
             var row=pendingBattle;UUID id=pendingCommander;pendingBattle=null;pendingCommander=null;
             var host=b.server.getPlayerManager().getPlayer(id);String refused=host==null?"":soloRefusal(id,MARCH_SOLO);
@@ -501,6 +528,7 @@ public final class Campaign {
                     int price=Commander.cost(s,type); // the bot's class price (a Warlock's magic troops cost less)
                     while(have<want.getValue()&&s.gold>=price&&weight+type.slotWeight()<=GravesAndGlory.R.squadSize()){s.gold-=price;long previous=s.training.isEmpty()?b.time:s.training.getLast().finished();s.training.addLast(new GravesAndGlory.Training(type,Math.max(b.time,previous)+Commander.trainingTicks(s,type),price));weight+=type.slotWeight();have++;}
                 }
+                Veterans.botBuy(b,s); // then gear, from what the refill left, keeping its tier's reserve for rebuys (in-match progression design 9.1)
             }
             if(decide)botDecide(s,tier);
         }
@@ -589,7 +617,7 @@ public final class Campaign {
         return BattleMath.garrison(owners,s.team,at.toArray(double[][]::new),assignable,points,NEAR_RADIUS_FACTOR*tier.chargeDistance())[me];
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
-    void switchMap(int index){Projectiles.clear(b);Abilities.clearBanners(b);Houses.reset(b);b.clearSides();FeedEvents.clear();map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
+    void switchMap(int index){Projectiles.clear(b);Abilities.clearBanners(b);Houses.reset(b);b.clearSides();b.clearProgression();FeedEvents.clear();map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;}
     /** The lesson a commander is on, or -1: only a campaign battle whose sheet row teaches (lessons) shows them, to its commanders, until all four are done. They repeat on every replay. */
     int tutorialStep(UUID id){
         if(!b.running||activeBattle==null||!activeBattle.lessons()||!participants.contains(id))return -1;

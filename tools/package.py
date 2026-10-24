@@ -1,10 +1,14 @@
 import hashlib,json,pathlib,shutil,zipfile
 from release_config import version, source_identity, validate_player_jar
 root=pathlib.Path(__file__).resolve().parents[1]
+# The tier art gate (in-match progression design 4.4, round 34 question 6): refuse while any troop draws a stopgap tier
+# (python tools/build_skins.py --tiers lists them), unless --allow-stopgap marks a local build's file name -stopgap.
+import sys,build_skins
+stopgap=build_skins.release_gate(root,sys.argv[1:])
 dist=root/'dist';dist.mkdir(exist_ok=True)
 release_version=version()
 jar=root/f'build/libs/graves-and-glory-{release_version}.jar'
-package=dist/f'graves-and-glory-{release_version}.zip'
+package=dist/build_skins.release_name(release_version,stopgap,'.zip')
 identity=source_identity()
 api=next((pathlib.Path.home()/'.gradle/caches/modules-2/files-2.1/net.fabricmc.fabric-api/fabric-api/0.92.2+1.20.1').rglob('fabric-api-0.92.2+1.20.1.jar'))
 entries=[];files={}
