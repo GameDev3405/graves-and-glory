@@ -3,6 +3,7 @@
 "note":"Order Squire > Knight > Knight-Captain (unit identity 1): husk, biped, no scale; iron cap and hip-length white surcoat over mail, the team pale down it and the pennant; stage 3 crest plume. Young, clean-shaven; arming sword, the shield on the left arm.",
 "rig":"biped",
 "size":[128,64],
+"density":3,
 "idleArms":"hang",
 "parts":[
 {"part":"iron_cap","uv":[64,0]},
