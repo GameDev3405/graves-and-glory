@@ -31,13 +31,13 @@ The gate prints `gate <a> vs <b> win=<P>% pass|fail` (exit status 0 pass, 1 fail
 
 ## Results
 
-### In-match progression gate (2026-10-24; PASS at the as-designed 3 and 8, at 4 and 12 and at 5 and 14; shipped at 5 and 14; Task 11 of the in-match progression plan)
+### In-match progression gate (2026-10-24; PASS at the as-designed 3 and 8, at 4 and 12, at 5 and 14 and at 5 and 30; shipped at 5 and 30; Task 11 of the in-match progression plan)
 
-The question (design 9.2 of `docs/superpowers/specs/2026-10-22-in-match-progression-design.md`): do levels, the Armoury gear and the veteran bonuses shift the Houses' balance or the comeback rate? Measured with Kort's round-robin method (round 34 answer 1) on fast ticks, 200 rounds per condition, plus one real-time pair. Rules: every House within 10 points of its own levels-off share, and the pooled comeback rate (rounds won by the side trailing at 300 s) with levels on no more than 10 points below off. Result: both rules pass at every threshold tried (largest share move 4.9 points, comeback -4.5 points at worst). Kort's round-35 answer raised the level kill thresholds in two steps (from 3 and 8 to 4 and 12, then to 5 and 14) because the levels arrived early in the sim; at 5 and 14 the first level 2 (120 s) and the winner's level-2 share (35.5%) are inside their aims, the level 3 count (27 a round) is not and is a question for Kort. Fast ticks do not reproduce real time on the Gilded and Graveborn pair (below). Houses outside the 40 to 60% band in both runs (Graveborn, Ironclad, Tidecallers, Wildmoot) go to the Phase 2 end balance pass.
+The question (design 9.2 of `docs/superpowers/specs/2026-10-22-in-match-progression-design.md`): do levels, the Armoury gear and the veteran bonuses shift the Houses' balance or the comeback rate? Measured with Kort's round-robin method (round 34 answer 1) on fast ticks, 200 rounds per condition, plus one real-time pair. Rules: every House within 10 points of its own levels-off share, and the pooled comeback rate (rounds won by the side trailing at 300 s) with levels on no more than 10 points below off. Result: both rules pass at every threshold tried (largest share move 4.9 points; comeback within 4.5 points). Kort's round-35 answer raised the level kill thresholds in two steps (from 3 and 8 to 4 and 12, then to 5 and 14) because the levels arrived early in the sim, and his 2026-10-24 ruling raised the level 3 threshold to 30; at the shipped 5 and 30 the first level 2 (121 s), the winner's level-2 share (37.0%) and the level 3 count (5.9 a round) are all inside their aims. The baseline ran on `cdea2c4`, before the Phase 3 gate routing became global (`155f2cf`): retake it at the base merge. Fast ticks do not reproduce real time on the Gilded and Graveborn pair (below). Houses outside the 40 to 60% band in both runs (Graveborn, Ironclad, Tidecallers, Wildmoot) go to the Phase 2 end balance pass.
 
 #### Code, tools and method
 
-- Branch `progression-gate` in the worktree `bannerbound-gate-prog`, cut from `cdea2c4` (the whole-plan review fix round 1 of the in-match progression plan, Tasks 1 to 10 merged). Commits on it, in order: `1e708db` `tools/balance_method.py` and `tools/balance_sim.sh` (copied unchanged from the untracked working tree of `bannerbound-method`, base `5a88026`; their own commit, as the plan asks); `74bb8a8` the sim speed and balance-method test tools from the same tree (`-PsimFast`, `-PsimOverride`, the duel simulation, the type ledger; `build.gradle`, `BotSimulation`, `DuelSimulation`, `SheetOverride`, `TypeLedger`, `SimSpeed`, `FastTickMixin`); `d8bb4c4` `tools/progression_gate.py` and `test-tools/standalone/test_progression_gate.py` (red first: tool missing, then 13 tests OK); `a59efab` `SIM_LEVEL_SEED` in `balance_sim.sh` (a fixed world seed per run, vanilla `level-seed`); `ceba5bd` the gate prints the raw seat result; `522c856` the 4 and 12 thresholds and `a4900fb` the 5 and 14 thresholds (below), then this log.
+- Branch `progression-gate` in the worktree `bannerbound-gate-prog`, cut from `cdea2c4` (the whole-plan review fix round 1 of the in-match progression plan, Tasks 1 to 10 merged). Commits on it, in order: `1e708db` `tools/balance_method.py` and `tools/balance_sim.sh` (copied unchanged from the untracked working tree of `bannerbound-method`, base `5a88026`; their own commit, as the plan asks); `74bb8a8` the sim speed and balance-method test tools from the same tree (`-PsimFast`, `-PsimOverride`, the duel simulation, the type ledger; `build.gradle`, `BotSimulation`, `DuelSimulation`, `SheetOverride`, `TypeLedger`, `SimSpeed`, `FastTickMixin`); `d8bb4c4` `tools/progression_gate.py` and `test-tools/standalone/test_progression_gate.py` (red first: tool missing, then 13 tests OK); `a59efab` `SIM_LEVEL_SEED` in `balance_sim.sh` (a fixed world seed per run, vanilla `level-seed`); `ceba5bd` the gate prints the raw seat result; `522c856` the 4 and 12 thresholds and `a4900fb` the 5 and 14 thresholds, `fa59470` the level 3 threshold 30 (all below), then this log.
 - Method (round 34 answer 1, Kort's round 32 round robin): every ordered pair of the five `<house>_normal` banners (20 pairs), 10 matches per pair, maps 0 to 4 twice (`-PsimMaps=0,1,2,3,4`), normal bots on both seats, `-PsimRoundSeconds=900 -PsimFast=true` (with levels on the bots buy gear on their own: `botbuy` lines in the log), once with `-PsimProgression=off` (baseline) and once with `-PsimProgression=on`. A job is `tools/balance_sim.sh <name> <port> -PbotSim=10 -PsimDawn=normal -PsimDusk=normal -PsimMaps=0,1,2,3,4 -PsimRoundSeconds=900 -PsimFast=true -PsimProgression=<off|on> -PsimBanner0=<a>_normal -PsimBanner1=<b>_normal`; it makes a fresh server root `work/method/<name>-<HHMMSS>` and prints it. The queue runner (`work/gate/runq.py`, not committed) ran two jobs at once on ports 25741 and 25742, off and on of a pair side by side, kill-safe on a 5400 s budget, retrying a job once when gradle did not exit 0.
 - Seeds: the world seed of each ordered pair is `9000 + k` (`SIM_LEVEL_SEED`, k = 1 to 20 in the order gilded-graveborn, gilded-ironclad, gilded-tidecallers, gilded-wildmoot, graveborn-gilded, and so on, houses alphabetical), the same in the off job, the on job and every threshold setting, so a pair's maps are the same terrain in every condition. The real-time pair uses 9901. The bots, the combat and the vanilla entity AI are not seeded, so a seed fixes the world and nothing else (see Determinism).
 - Interval method (`tools/balance_method.py rr`, used by `tools/progression_gate.py`): Bradley-Terry with a seat term, logit P(team 0 wins) = s_i - s_j + h, the ratings s summing to 0 (weak normal prior, SD 3), a draw counting half, an aborted round left out; mirror pairs (a House against itself) only inform the seat term h. A House's share is its expected share against the other four Houses (equal weights). The 95% intervals come from the information matrix; the interval of a difference on - off uses the delta method on the two independent fits. A House's rule line reads "interval reaches past the limit" when the point difference is inside 10 points but the interval is not, so the pass is a point estimate. The comeback rate is a pooled proportion with a Wilson interval; the difference interval is the normal approximation.
@@ -151,7 +151,7 @@ wildmoot    tidecallers off 1-9-0 626s k111/161 | on 0-10-0 623s k114/149
 - The shares are saturated at both ends: Ironclad (98%) and Wildmoot (3%) win or lose nearly every round whatever the levels do, so the gate cannot move them; the movable part of the field is Gilded, Graveborn and Tidecallers. Houses outside 40 to 60% in both runs: Graveborn (67.3 / 65.1), Ironclad (98.2 / 98.5), Tidecallers (24.1 / 24.2) and Wildmoot (3.1 / 2.6): all four go to the Phase 2 end balance pass, nothing tuned here. Only Gilded sits inside the band (57.4 / 59.7).
 - Level aims, not a rule, all missed on the early side: the first level 2 median is 115 s (aim 120 to 180), 0 sides never reached it; the first level 3 median is 132 s, the median gap from a side's first level 2 to its first level 3 only 13 s (mean 30 s); 43.9% of the winner's living soldiers are level 2 or higher at the end (aim about a third), the loser's 12.4%; 24.8 level 3s per side per round, 49.5 a round (aim a few). Per House the first level 2 comes at 97 s (Graveborn) to 121 s (Ironclad).
 - Why they come early (`work/gate/extra-rr.txt`): a kill credits the killer, every helper of the killing team who touched the victim inside `progression.assistSeconds`, and every supporter of the killer or of a helper (`CreditLog.credited`, design 3.2), 4.7 soldiers a kill on average (median 4, p90 8, max 27; 5.3% of the 40831 logged kills credit 10 soldiers or more), and a victim of level N is worth N credits. With about 140 kills a side a round, a soldier near the fighting gets its first credits within the first fight or two, and the bounty rule (a victim is worth its own level in credits) feeds the climb. Seat check: team 0 won 49.0% off and 46.5% on (z -0.50), so the levels did not move the seat.
-- One pair was redone. `rr-off-graveborn-gilded` and `rr-on-graveborn-gilded` (seed 9005) crashed 195 and 199 s in with the Server Watchdog ("A single server tick took 60.00 seconds", main thread parked in `ServerChunkManager.getChunk` through `World.getChunk`); the queue runner had logged exit 0 because the shell script itself exited 0. Rerun with the same seed and arguments (`work/gate/queue-redo.log`, 22:56 to 23:14), they ran clean; the crashed roots are not in any number. The runner now retries a job once when gradle did not exit 0, and the collector takes only jobs with "gradle exit 0". The same crash hit `r412-on-graveborn-gilded` once (03:46, same stack) and the retry ran clean. It is a flake of the sim, not of the levels (the baseline job crashed too), and it has only ever hit this pair (seed 9005, three of its four first attempts so far), so the world at that seed may be the trigger; not investigated, nothing in this task touches it.
+- One pair was redone. `rr-off-graveborn-gilded` and `rr-on-graveborn-gilded` (seed 9005) crashed 195 and 199 s in with the Server Watchdog ("A single server tick took 60.00 seconds", main thread parked in `ServerChunkManager.getChunk` through `World.getChunk`); the queue runner had logged exit 0 because the shell script itself exited 0. Rerun with the same seed and arguments (`work/gate/queue-redo.log`, 22:56 to 23:14), they ran clean; the crashed roots are not in any number. The runner now retries a job once when gradle did not exit 0, and the collector takes only jobs with "gradle exit 0". The same crash hit `r412-on-graveborn-gilded` (03:46, same stack) and `r514-on-graveborn-gilded` (05:53), and the automatic retry ran clean each time; the 5 and 30 run's `r30-on-graveborn-gilded` ran clean on its first attempt. It is a flake of the sim, not of the levels (the baseline job crashed too), and it has only ever hit this pair (seed 9005: four of its five first attempts crashed, every rerun was clean), so the world at that seed plus timing may be the trigger; not investigated, nothing in this task touches it.
 
 
 #### Tuning round 1, thresholds 4 and 12 (levels.l2.kills 3 -> 4, levels.l3.kills 8 -> 12): PASS, level aims still early
@@ -232,7 +232,7 @@ wildmoot    tidecallers off 1-9-0 626s k111/161 | on 1-9-0 630s k118/156
 - By the coordinator's rule (Kort's round-35 follow-up): the first level 2 is still before about 120 s and the level 3s a round are still above about 8, so one further step, 5 and 14, was allowed.
 
 
-#### Tuning round 2, thresholds 5 and 14 (levels.l2.kills 4 -> 5, levels.l3.kills 12 -> 14): PASS, two of three aims met
+#### Tuning round 2, thresholds 5 and 14 (levels.l2.kills 4 -> 5, levels.l3.kills 12 -> 14): PASS, two of three aims met; the level 3 count asked
 
 Why: at 4 and 12 the first level 2 still landed before about 120 s (118 s) and the level 3s a round were still far above 8 (32.0). Kort's round-35 answer allowed one further step, 5 and 14, before asking again: `levels.l2.kills 4 -> 5` and `levels.l3.kills 12 -> 14`, nothing else. Tuning round 2 of the stop rule (the last).
 
@@ -328,17 +328,97 @@ r514: 400 sides; levels.csv level3Count per side 13.5
   soldiers that reached 40 credits:   1.8 per side per round,   3.6 a round
 ```
 
-- Summary of the three settings (200 rounds each, levels on, same ordered pairs and seeds; all three pass both rules):
+- Stop rule: two tuning rounds are used. The level-3 count still missed its aim, so it went to `docs/QUESTIONS-FOR-KORT.md` (section "Progression gate result: the level 3 count") with the numbers and the credit-log estimate (`levels.l3.kills 14 -> 30` recommended). Kort answered yes on 2026-10-24; that is round 3 below, taken on his ruling and not on the plan's rule.
+
+
+#### Tuning round 3, level 3 threshold 30 (levels.l3.kills 14 -> 30, levels.l2.kills stays 5; Kort's ruling of 2026-10-24): PASS, all three aims met
+
+Why: at 5 and 14 the level 3s were still 27.0 a round (13.5 a side; aim a few). The credit-log estimate for a higher threshold (above) said 7.7 a round at 30; Kort answered yes to `levels.l3.kills 14 -> 30`. One cell, lever 1 of design 9.2. The plan's two tuning rounds were already used, so this round exists on his ruling; the coordinator's rule was: if a rule failed or the level 3s landed far from the estimate, commit nothing and go back to 14 (neither happened).
+
+- Checks, red first, same recipe as before: `python tools/preflight.py` Preflight clean; standalone `HousesCheck` failed (`levels: 0, 5 and 14 kills ...`) before the pins moved, then every standalone check passed (`LevelMathCheck` `lm-thresholds` now 4->1, 5->2, 29->2, 30->3, `lm-carry` 30; `HousesCheck` 0, 5 and 30); `gradle build compileLocalTestTools localTestToolsJar --offline` BUILD SUCCESSFUL; harness client suites `levels,gear,statuses,ranks,banners,engine,levels-*` 205 pass, 0 fail (run in the gate worktree before the queue started, `work/gate/cli/`). The two-client LAN check was not rerun: the client slot was held by three Phase 3 clients and a second client in this worktree would have shared the build directory with the running sims; it passed at 4/12 and 5/14 and no network code changed.
+- Baseline reused: the levels-off runs of Run 1 (`rr-off-*`, with `rr-off-graveborn-gilded` from the redo). Levels off never reads `levels.kills`, and the 20 ordered pairs, the world seeds (`9000 + k`), the arguments and the code are the same as in the `on` jobs, so the baseline is the same experiment. Rerun: `on` only, 20 jobs `r30-on-*` (`work/gate/r30-jobs.txt`, same lines as `r514-jobs.txt`), 10:19 to 12:21; no Watchdog flake this time (`r30-on-graveborn-gilded` ran clean on its first attempt). Gate = `bash work/gate/gate2.sh rr r30 work/gate/queue-rr.log work/gate/queue-redo.log work/gate/queue-r30.log`, saved as `work/gate/r30-gate-final.txt`:
 
 ```
-thresholds   first lvl 2   first lvl 3   winner end share L2+   lvl 3 per side (a round)   median gap L2->L3   largest share move   comeback on-off
-3 and 8      115 s          132 s         43.9%                  24.8 (49.5)                13 s                +2.3 (Gilded)        -4.5 points
-4 and 12     118 s          148 s         41.2%                  16.0 (32.0)                31 s                -4.9 (Graveborn)     -0.2 points
-5 and 14     120 s          166 s         35.5%                  13.5 (27.0)                43 s                +3.5 (Gilded)        -0.6 points
-aim          120 to 180     -             about a third          a few                      -                   within 10 points     within 10 points
+progression gate: off 200 rounds in 20 runs, on 200 rounds in 20 runs (aborted rounds left out); limit 10 points; comeback pool drops rounds under 300 s
+seat: team 0 (Dawn) won 98 of 200 decided rounds off and 102 of 200 on; fitted seat term, team 0 wins an even pairing: off 45%, on 55%
+
+shares (Bradley-Terry expected share against the other Houses, 95% interval; raw = plain win rate over non-mirror rounds)
+  house          off %          (95%)    on %          (95%)   delta            (95%)  raw off  raw on  rule (|delta| <= 10)
+  gilded          57.4 (51.4 to 63.3)    52.4 (46.9 to 58.0)    -4.9  (-13.1 to +3.2)     57.5    52.5  PASS (interval reaches past the limit)
+  graveborn       67.3 (61.4 to 73.2)    72.3 (66.8 to 77.8)    +4.9  (-3.1 to +13.0)     67.5    72.5  PASS (interval reaches past the limit)
+  ironclad        98.2 (95.4 to 100.0)    97.0 (93.4 to 100.0)    -1.2   (-5.7 to +3.4)     98.8    97.5  PASS
+  tidecallers     24.1 (19.6 to 28.5)    25.3 (20.4 to 30.1)    +1.2   (-5.4 to +7.8)     23.8    25.0  PASS
+  wildmoot         3.1   (0.0 to 6.6)     3.0   (0.0 to 6.6)    -0.0   (-5.0 to +5.0)      2.5     2.5  PASS
+rule 1, every House within 10 points of its own baseline: PASS
+
+comeback (decided rounds won by the side trailing at 300 s; ties at 300 s, draws, aborted and rounds under 300 s are left out)
+  off  44 of 198 = 22.2% (Wilson 95% 17.0 to 28.5); left out: 0 under 300 s, 2 tied at 300 s, 0 draws, 0 aborted, of 200 rounds
+  on   51 of 200 = 25.5% (Wilson 95% 20.0 to 32.0); left out: 0 under 300 s, 0 tied at 300 s, 0 draws, 0 aborted, of 200 rounds
+  difference on - off: +3.3 points (95% -5.1 to +11.6)
+rule 2, comeback rate on no more than 10 points below off: PASS
+
+band (design 9.2: a House inside 40 to 60% is balanced; outside it in both conditions goes to the Phase 2 end balance pass, not this plan)
+  gilded       off  57.4% in, on  52.4% in
+  graveborn    off  67.3% OUT, on  72.3% OUT   <- outside in both: report
+  ironclad     off  98.2% OUT, on  97.0% OUT   <- outside in both: report
+  tidecallers  off  24.1% OUT, on  25.3% OUT   <- outside in both: report
+  wildmoot     off   3.1% OUT, on   3.0% OUT   <- outside in both: report
+
+level timings with levels on (tuning aim, not a rule; 200 rounds, 400 sides)
+  first level 2: median 121 s (aim 120 to 180: inside); 19 sides never reached it
+  first level 3: median 335 s; 155 sides never reached it
+  end share at level 2 or higher: winner 37.0% (aim about a third, 27 to 40: inside), loser 11.3%
+  level 3s per side per round: 3.0 (aim a few, not none and not a dozen: inside); both sides 5.9 a round
+  house        sides  1st lvl 2  1st lvl 3  end share  lvl 3/side
+  gilded          80      105.5        397      28.5%         3.0
+  graveborn       80      100.5        402      20.0%         1.3
+  ironclad        80      127.5        313      45.9%         3.0
+  tidecallers     80        103        324      16.3%         4.9
+  wildmoot        80        151        276      10.1%         2.6
+  baseline sanity (levels off): 0 sides reached level 2, level 3s per side 0.0
+
+gate progression shares=pass comeback=pass -> pass
 ```
 
-- Stop: two tuning rounds are used. The level-3 count still misses its aim, so it goes to `docs/QUESTIONS-FOR-KORT.md` (section "Progression gate: the level 3 count") with the numbers; nothing more is tuned here. The recommended answer there is one cell, `levels.l3.kills 14 -> 30`.
+- Pair matrix, off against on at 5 and 30 (`work/gate/pairs-r30.txt`):
+
+```
+gilded      graveborn   off 3-7-0 688s k154/144 | on 3-7-0 732s k150/139
+gilded      ironclad    off 0-10-0 629s k52/123 | on 0-10-0 630s k48/117
+gilded      tidecallers off 10-0-0 581s k129/95 | on 10-0-0 593s k129/92
+gilded      wildmoot    off 10-0-0 548s k139/43 | on 10-0-0 542s k146/27
+graveborn   gilded      off 7-3-0 783s k144/166 | on 10-0-0 717s k136/142
+graveborn   ironclad    off 0-10-0 675s k79/178 | on 1-9-0 639s k53/157
+graveborn   tidecallers off 9-1-0 593s k136/126 | on 10-0-0 574s k125/118
+graveborn   wildmoot    off 10-0-0 546s k141/88 | on 10-0-0 561s k144/87
+ironclad    gilded      off 10-0-0 667s k133/67 | on 10-0-0 665s k126/66
+ironclad    graveborn   off 9-1-0 650s k169/72 | on 10-0-0 632s k161/48
+ironclad    tidecallers off 10-0-0 604s k129/46 | on 9-1-0 581s k122/28
+ironclad    wildmoot    off 10-0-0 571s k135/21 | on 10-0-0 568s k135/17
+tidecallers gilded      off 0-10-0 585s k104/133 | on 1-9-0 563s k95/115
+tidecallers graveborn   off 0-10-0 594s k129/129 | on 0-10-0 568s k114/119
+tidecallers ironclad    off 0-10-0 580s k32/122 | on 0-10-0 585s k29/126
+tidecallers wildmoot    off 9-1-0 634s k160/123 | on 8-2-0 674s k173/132
+wildmoot    gilded      off 0-10-0 576s k65/151 | on 0-10-0 549s k28/143
+wildmoot    graveborn   off 0-10-0 552s k99/150 | on 0-10-0 549s k87/139
+wildmoot    ironclad    off 0-10-0 563s k24/138 | on 0-10-0 562s k20/136
+wildmoot    tidecallers off 1-9-0 626s k111/161 | on 0-10-0 636s k116/158
+```
+
+- Reading: both rules pass (Gilded -4.9 and Graveborn +4.9 are the largest moves, both with intervals reaching past the limit, so they are point estimates; comeback +3.3 points, interval -5.1 to +11.6). The seat is steady (team 0 won 51.0% on, 49.0% off, z +0.40). Gilded reads 52.4% on and stays in the band; Graveborn reads 72.3% on (67.3% off), further out of it.
+- Aims at 5 and 30: first level 2 median 121 s (inside 120 to 180; 19 of 400 sides never reached level 2); winner's end share at level 2 or higher 37.0% (inside; loser 11.3%); level 3s 3.0 a side and 5.9 a round (inside: a few), against the credit-log estimate of 7.7 (the estimate is an upper bound: fewer level 3s also means fewer high-bounty victims). First level 3 median 335 s and 155 of 400 sides never reached it: at 30 credits a level 3 is a late-round rank, and the median gap from a side's first level 2 to its first level 3 is 228 s. Per House (first level 2 / first level 3 / end share / level 3s a side): gilded 105.5 / 397 / 28.5% / 3.0; graveborn 100.5 / 402 / 20.0% / 1.3; ironclad 127.5 / 313 / 45.9% / 3.0; tidecallers 103 / 324 / 16.3% / 4.9; wildmoot 151 / 276 / 10.1% / 2.6. Kill credit sharing is unchanged (4.7 soldiers a kill, median 4, p90 8; `work/gate/extra-r30.txt`).
+- Summary of the four settings (200 rounds each, levels on, same ordered pairs and seeds; all four pass both rules):
+
+```
+thresholds   first lvl 2   first lvl 3   winner end share L2+   lvl 3 per side (a round)   median gap L2->L3   largest share move                comeback on-off
+3 and 8      115 s          132 s         43.9%                  24.8 (49.5)                13 s                +2.3 (Gilded)                     -4.5 points
+4 and 12     118 s          148 s         41.2%                  16.0 (32.0)                31 s                -4.9 (Graveborn)                  -0.2 points
+5 and 14     120 s          166 s         35.5%                  13.5 (27.0)                43 s                +3.5 (Gilded)                     -0.6 points
+5 and 30     121 s          335 s         37.0%                  3.0 (5.9)                  228 s               -4.9 / +4.9 (Gilded, Graveborn)   +3.3 points
+aim          120 to 180     -             about a third          a few                      -                   within 10 points                  within 10 points
+```
+
+- Caveat for every number above: the whole experiment (baseline and all four level settings) ran on `cdea2c4`, which does not have the Phase 3 gate routing and the pinned hop that became global in `155f2cf`. The shares, comeback rates and timings describe the `cdea2c4` game. The levels-off baseline must be retaken at the base merge (and the levels-on condition at 5 and 30 rerun once on the merged base) before these numbers are quoted for 0.5.0.
 
 
 #### Real-time check: fast ticks against real time, `gilded_normal` vs `graveborn_normal` (the current best pair), 900 s
@@ -407,10 +487,11 @@ gilded_normal: run A 20 matches, run B 20 matches
 
 #### Verdict, what went where
 
-- Gate result: PASS at the as-designed thresholds (3 and 8), PASS at 4 and 12, PASS at the final 5 and 14: every House within 10 points of its own baseline (largest move 3.5 points at the final setting, 4.9 at 4 and 12, 2.3 as designed) and the pooled comeback rate within 0.6 points of the baseline at the final setting (-4.5 as designed, -0.2 at 4 and 12).
-- Tuning applied (two rounds, both lever 1, both by Kort's round-35 answer): `levels.l2.kills 3 -> 4 -> 5` and `levels.l3.kills 8 -> 12 -> 14`; shipped state is 5 and 14. Nothing else in `sheets/design.json` changed (gear prices, gear percentages, level bonuses, `commanderBounty`, the banners and the 15% banner rule untouched).
-- Houses outside 40 to 60% in both conditions, reported to the Phase 2 end balance pass (not tuned here): Graveborn (67.3% off, 67.3% on at the final setting), Ironclad (98.2 / 94.9), Tidecallers (24.1 / 22.9), Wildmoot (3.1 / 4.0). Gilded is inside off (57.4%) and just over on (60.9%), so it is not reported. The Ironclad and Wildmoot shares are saturated, so the gate is blind to levels for them; the end pass should look at them with a pair that is not decided in the first fight.
-- Open for Kort (in `docs/QUESTIONS-FOR-KORT.md`): the level 3 count (27 a round at 5 and 14, aim a few) and the fast-tick against real-time difference.
+- Gate result: PASS at the as-designed thresholds (3 and 8), at 4 and 12, at 5 and 14 and at the final 5 and 30: every House within 10 points of its own baseline (largest move 2.3, 4.9, 3.5 and 4.9 points) and the pooled comeback rate never more than 4.5 points below the baseline (-4.5 as designed, -0.2, -0.6, and +3.3 at the final setting).
+- Tuning applied (three rounds, all lever 1 of design 9.2, thresholds only): `levels.l2.kills 3 -> 4 -> 5` and `levels.l3.kills 8 -> 12 -> 14 -> 30`; rounds 1 and 2 by Kort's round-35 answer, round 3 by his 2026-10-24 ruling. Shipped state is 5 and 30. Nothing else in `sheets/design.json` changed (gear prices, gear percentages, level bonuses, `commanderBounty`, `progression.assistSeconds`, the banners and the 15% banner rule untouched). At 5 and 30 all three level aims are inside their bands.
+- Houses outside 40 to 60% in both conditions, reported to the Phase 2 end balance pass (not tuned here): Graveborn (67.3% off, 72.3% on at the final setting), Ironclad (98.2 / 97.0), Tidecallers (24.1 / 25.3), Wildmoot (3.1 / 3.0). Gilded is inside both (57.4 / 52.4). The Ironclad and Wildmoot shares are saturated, so the gate is blind to levels for them; the end pass should look at them with a pair that is not decided in the first fight.
+- Open for Kort (in `docs/QUESTIONS-FOR-KORT.md`): the fast-tick against real-time difference. The real-time pair was run at 3 and 8 and at 5 and 14 and not rerun at 5 and 30 (level 3s are rarer still there; the pair showed no levels effect at either earlier setting).
+- Baseline: retake it at the base merge (see the caveat under round 3).
 - Not run: the difficulty ladder (Easy, Normal, Hard with gear buying on), which the plan marks report-only; the gate and its tuning took the time and the sim hours. `-PsimDawn=hard -PsimDusk=normal` on the same banners would do it.
 - Reproduce: `python tools/progression_gate.py --off <rr-off roots> --on <rr-on roots> [--json OUT]` over the server roots (each holds `botsim/results.csv` and `levels.csv`); fixture test `python test-tools/standalone/test_progression_gate.py` (13 tests).
 
@@ -927,7 +1008,7 @@ Round 3 (2026-10-22), the Gilded rows, on top of round 2. Controller ruling: Gil
 
 Not changed in round 3: every Graveborn row (they stay at the round 2 numbers), the other Gilded rows (the Order Archer, Order Longbow and Sunweaver health stay at spec; the diagnosis' five-row set that also cut them is the fallback if a later gate drifts under 40%), costs, counters and traits. No check hardcodes the Squire's or the Templar's health: `HousesCheck`, `BattleMathCheck` and `Phase2Checks` read the rows through `Campaign.troop(...)` and `Spec`, so none was changed.
 
-In-match progression Task 11 (2026-10-24): two tuning rounds, both lever 1 of design 9.2 (thresholds), both Kort's round-35 answer to "levels arrive early in the headless sim". Each is checked by `python tools/preflight.py` (Preflight clean; `Spec.java` regenerated, never hand-edited), the standalone checks and a rerun of the `on` condition (details under "In-match progression gate" in Results).
+In-match progression Task 11 (2026-10-24): three tuning rounds, all lever 1 of design 9.2 (thresholds): rounds 1 and 2 are Kort's round-35 answer to "levels arrive early in the headless sim", round 3 is his 2026-10-24 ruling on the level 3 count. Each is checked by `python tools/preflight.py` (Preflight clean; `Spec.java` regenerated, never hand-edited), the standalone checks and a rerun of the `on` condition (details under "In-match progression gate" in Results).
 
 Round 1 (commit `522c856`):
 
@@ -939,4 +1020,9 @@ Round 2 (commit `a4900fb`), on top of round 1:
 - `levels.l2.kills` 4 -> 5 and `levels.l3.kills` 12 -> 14. Reason: the first level 2 was still under about 120 s and the level 3s a round still far above 8.
 - Result: gate pass; first level 2 120 s, winner end share 35.5%, level 3s 27.0 a round (aim not met; asked in `docs/QUESTIONS-FOR-KORT.md`).
 
-Not changed: gear prices, gear percentages, level bonuses (`levels.l2.healthPct` and the others), `progression.commanderBounty`, every banner and the 15% banner rule. The standalone checks that pin the thresholds (`LevelMathCheck` `lm-thresholds` and `lm-carry`, `HousesCheck`) follow the sheet; the harness checks that need "just enough credits for level N" read `Spec.LEVELS` through `LevelChecks.L2` and `L3`.
+Round 3 (commit `fa59470`), on top of round 2:
+
+- `levels.l3.kills` 14 -> 30 (`levels.l2.kills` stays 5). Reason: level 3s still 27.0 a round at 5 and 14 (aim a few); the credit-log estimate for 30 was 7.7 a round.
+- Result: gate pass; first level 2 121 s, winner end share 37.0%, level 3s 5.9 a round; every aim inside its band.
+
+Not changed: gear prices, gear percentages, level bonuses (`levels.l2.healthPct` and the others), `progression.commanderBounty`, `progression.assistSeconds` (10), every banner and the 15% banner rule. The standalone checks that pin the thresholds (`LevelMathCheck` `lm-thresholds` and `lm-carry`, `HousesCheck`) follow the sheet; the harness checks that need "just enough credits for level N" read `Spec.LEVELS` through `LevelChecks.L2` and `L3`.
