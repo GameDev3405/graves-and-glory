@@ -3079,6 +3079,8 @@ public final class Phase1Checks implements ClientModInitializer {
         // client thread only
         int mark=-1,waitFrom,oldW,oldH,oldGui,index,sub,subAt,serial,serial1,serial2,menuCode=-1,gold=-1,landedAt=-1,origMap=-1,cardAsked=-1,fieldRow,goldBefore,xpBefore,pick;boolean finished,ok=true,slid,scalesOk=true,cardsOk=true;
         String why="",before="",focusName="",scalesWhy="",cardsWhy="";List<String> roll=List.of();String at0="",at19="";CampScreen table;
+        /** Claims with a House (War Table port Task 1): the House the banner leans on, the shards it held before a claim, and what the claims about to be pressed pay (worked out by the game's own rule, grant). */
+        String house="";int shardsBefore;Progression.Grant gA,gW,gT;
         final Set<Integer> rollSeen=new TreeSet<>(),oathSeen=new TreeSet<>();
 
         public void serverTick(GravesAndGlory.Battle b){var id=player;serverRoom=id!=null&&b.campaign.social.room(id)!=null;serverDifficulty=b.campaign.difficulty;
@@ -3341,6 +3343,27 @@ public final class Phase1Checks implements ClientModInitializer {
             }
         }
 
+        /** What claiming key would pay now, by the game's own rule: Progression.claim on a copy of the state (a JSON round trip) with every contract finished,
+         *  every tier reached and stored's own claim taken off. The expected words and amounts of the claim checks come from here and from the sheets, never from a number written out. */
+        static Progression.Grant grant(Progression.State src,String stored,String key){
+            var s=Campaign.JSON.fromJson(Campaign.JSON.toJson(src),Progression.State.class);s.sanitize();
+            s.dailyBattles=Math.max(s.dailyBattles,3);s.dailyCaptures=Math.max(s.dailyCaptures,1);s.dailyOrders=Math.max(s.dailyOrders,10);
+            s.weeklyBattles=Math.max(s.weeklyBattles,Progression.WEEKLY_BATTLES);s.xp=Math.max(s.xp,Progression.XP_PER_TIER*Progression.TIERS);s.claims.remove(stored);
+            return Progression.claim(s,key);
+        }
+        /** The hero letter's tier when the track starts at first (the page's own rule, UiMath.heroTier then the next title tier). */
+        static int heroAt(int first){return WarTablePages.titleFrom(UiMath.heroTier(first,WarTablePages.shown(),Progression.TIERS,WarTablePages.EVERY));}
+        /** A Roll plaque's two lines hold the words of the tier's reward (Progression.reward) and nothing else: "30 gold" reads "Gold / 30"; the article and the word House are left out. */
+        static boolean plaqueIs(int tier,String plaque){
+            if(plaque==null)return false;Set<String> want=new TreeSet<>(),got=new TreeSet<>();
+            for(String w:Progression.reward(tier).toLowerCase(Locale.ROOT).split(" "))if(!Set.of("a","an","house").contains(w))want.add(w);
+            for(String w:plaque.toLowerCase(Locale.ROOT).split("[ /]+"))if(!w.isEmpty())got.add(w);
+            return want.equals(got);
+        }
+        /** No House chip and no Rare chip on the page. */
+        static boolean noChips(MinecraftClient c){for(var h:Spec.HOUSES)if(box(c,"house-"+h.id())!=null)return false;return box(c,"rare")==null;}
+        String houseName0(){return RosterMath.houseName(house);}
+
         /** Contracts: the three dailies and the weekly where the page puts them; Reroll changes the third contract (or meets the
          *  server's refusal on the notice line) and then takes no press. Then, at 1920x1080 GUI 2, the first daily and the weekly
          *  completed on the server: Claim shows on those two notes only, each inside its note and clear of its count
@@ -3353,8 +3376,22 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 0->{boolean placed=Arrays.equals(rect("weekly"),new int[]{o[0]+328,o[1]+300,308,101})&&Arrays.equals(box(c,"reroll"),new int[]{o[0]+436,o[1]+252,88,24});
                     for(int i=0;i<3;i++)placed&=Arrays.equals(rect("note-"+i),new int[]{o[0]+140+240*i,o[1]+140,204,101});
                     boolean fresh=reroll!=null&&reroll.active&&"Swap the third contract, once a day".equals(text("reroll-hint"));
-                    ok&=placed&&fresh;why+="; notes "+str(rect("note-0"))+", "+str(rect("note-1"))+", "+str(rect("note-2"))+", weekly "+str(rect("weekly"))+", Reroll "+str(box(c,"reroll"))+(placed?"":" WRONG")
-                        +"; the third contract \""+text("contract-2")+"\", Reroll "+(fresh?"taking a press":"WRONG: dull (\""+text("reroll-hint")+"\")");
+                    // the House row: five chips in the Houses' order under the reset line, 24 tall or more, centred on the page, the banner's House chosen (its word, the pressed art), the reward words from the game's own rule
+                    house=RosterMath.rollHouse(CampaignClient.profile.banner);String houseName=RosterMath.houseName(house);
+                    boolean chips=true;int prevRight=-1;StringBuilder row=new StringBuilder();
+                    for(var h:Spec.HOUSES){int[] b=box(c,"house-"+h.id());
+                        boolean here=b!=null&&b[2]>=24&&b[3]>=24&&b[1]==o[1]+436&&b[0]>prevRight&&h.name().equals(text("house-"+h.id()))&&(h.id().equals(house)?"table/chip-house-on":"table/chip-house").equals(tex("house-"+h.id()));
+                        chips&=here;row.append(h.id()).append(' ').append(str(b)).append(here?"":" WRONG").append(", ");if(b!=null)prevRight=b[0]+b[2];}
+                    int[] first=box(c,"house-"+Spec.HOUSES[0].id()),last=box(c,"house-"+Spec.HOUSES[Spec.HOUSES.length-1].id());
+                    boolean centred=first!=null&&last!=null&&Math.abs((first[0]+last[0]+last[2])/2-(o[0]+480))<=2;
+                    boolean chosen=house.equals(text("house-chosen"));
+                    var g0=grant(pr,"daily:0","daily:0");var g1=grant(pr,"daily:1","daily:1");var g2=grant(pr,"daily:2","daily:2");var gw=grant(pr,"weekly","weekly:"+house);
+                    boolean words=(g0.gold()+" gold and "+g0.xp()+" XP").equals(text("reward-0"))&&(g1.gold()+" gold and "+g1.xp()+" XP").equals(text("reward-1"))&&(g2.gold()+" gold and "+g2.xp()+" XP").equals(text("reward-2"))
+                        &&(gw.gold()+" gold, "+gw.xp()+" XP and "+gw.shards()+" "+houseName+" shards").equals(text("reward-weekly"))&&text("shards-0")==null&&text("shards-1")==null&&text("shards-2")==null;
+                    ok&=placed&&fresh&&chips&&centred&&chosen&&words;why+="; notes "+str(rect("note-0"))+", "+str(rect("note-1"))+", "+str(rect("note-2"))+", weekly "+str(rect("weekly"))+", Reroll "+str(box(c,"reroll"))+(placed?"":" WRONG")
+                        +"; the third contract \""+text("contract-2")+"\", Reroll "+(fresh?"taking a press":"WRONG: dull (\""+text("reroll-hint")+"\")")
+                        +"; the House row "+row+"centred on the page="+centred+(chips&&centred?"":" WRONG")+", the banner's House "+house+" chosen (the drawn word \""+text("house-chosen")+"\")"+(chosen?"":" WRONG")
+                        +"; the rewards \""+text("reward-0")+"\", \""+text("reward-1")+"\", \""+text("reward-2")+"\" and the weekly's \""+text("reward-weekly")+"\" are Progression.claim's own words, no shards line yet"+(words?"":" WRONG");
                     serial=CampaignClient.noticeSerial;before=text("contract-2");landedAt=-1;click(c,box(c,"reroll"));next(tick);}
                 case 1->{boolean changed=!Objects.equals(before,text("contract-2")),noticed=CampaignClient.noticeSerial!=serial,landed=noticed&&(changed||refused(CampaignClient.notice));
                     if(landed&&landedAt<0)landedAt=tick;String n=text("notice");
@@ -3362,7 +3399,8 @@ public final class Phase1Checks implements ClientModInitializer {
                         boolean pass="progress:reroll".equals(lastSent())&&(changed?"Issue ten tactical orders".equals(text("contract-2"))&&REROLLED.equals(n)&&reroll!=null&&!reroll.active&&"Rerolled today".equals(text("reroll-hint")):refused(n));
                         ok&=pass;why+="; Reroll sent "+lastSent()+": the third contract reads \""+text("contract-2")+"\", the notice line \""+n+"\", Reroll "+(reroll!=null&&reroll.active?"still taking a press":"dull")+" (\""+text("reroll-hint")+"\")"+(pass?"":" WRONG");landedAt=-1;next(tick);}
                     else if(!landed&&k>100){ok=false;why+="; Reroll sent "+lastSent()+": no change and no refusal 100 ticks on (the third contract \""+text("contract-2")+"\", the notice \""+CampaignClient.notice+"\") WRONG";landedAt=-1;next(tick);}}
-                case 2->{window(c,1920,1080,2,true);goldBefore=CampaignClient.profile.gold;xpBefore=pr.xp;landedAt=-1; // one battle today, six this week
+                case 2->{window(c,1920,1080,2,true);goldBefore=CampaignClient.profile.gold;xpBefore=pr.xp;shardsBefore=CampaignClient.profile.shards.getOrDefault(house,0);landedAt=-1; // one battle today, six this week
+                    gA=grant(pr,"daily:0","daily:0");gW=grant(pr,"weekly","weekly:"+house);
                     server(c,b->{var s=b.campaign.profile(player).progression;Progression.reset(s,Progression.today());s.dailyBattles=1;s.weeklyBattles=Progression.WEEKLY_BATTLES;b.campaign.save(player);});next(tick);}
                 case 3->{if(k==18)UiRecruitChecks.park(c);boolean landed=pr.dailyBattles==1&&pr.weeklyBattles==Progression.WEEKLY_BATTLES;if(landed&&landedAt<0)landedAt=tick;
                     boolean drawn="Claim".equals(text("claim-0"))&&"Claim".equals(text("claim-weekly"));
@@ -3379,25 +3417,26 @@ public final class Phase1Checks implements ClientModInitializer {
                     else if(!landed&&k>100){ok=false;why+="; the finished contracts never reached the client (daily battles "+pr.dailyBattles+", weekly "+pr.weeklyBattles+") WRONG";sub=6;subAt=tick;}}
                 // each claim lands in the snapshot; the page draws the stamp and the server's notice a frame later: judged once drawn, or
                 // 20 ticks after the landing. Eight ticks at least between the presses, past CampScreen.action's 300 ms
-                case 4->{boolean landed=pr.claims.contains("daily:0");if(landed&&landedAt<0)landedAt=tick;String want="Claimed reward: +30 gold / +75 XP";
+                case 4->{boolean landed=pr.claims.contains("daily:0");if(landed&&landedAt<0)landedAt=tick;String want=gA.message();
                     boolean drawn="table/stamp-hollow".equals(tex("stamp-0"))&&"Claimed".equals(text("progress-0"))&&want.equals(text("notice"));
                     if(landed&&k>=8&&(drawn||tick>=landedAt+20)){
-                        boolean pass="progress:daily:0".equals(lastSent())&&drawn&&box(c,"claim-0")==null&&in(rect("stamp-0"),rect("note-0"))&&want.equals(CampaignClient.notice)&&CampaignClient.profile.gold==goldBefore+30&&pr.xp==xpBefore+75;
+                        boolean pass="progress:daily:0".equals(lastSent())&&drawn&&box(c,"claim-0")==null&&in(rect("stamp-0"),rect("note-0"))&&want.equals(CampaignClient.notice)&&CampaignClient.profile.gold==goldBefore+gA.gold()&&pr.xp==xpBefore+gA.xp();
                         ok&=pass;why+="; Claim on note 0 sent "+lastSent()+": claims "+pr.claims+", the note reads \""+text("progress-0")+"\", stamped "+tex("stamp-0")+" at "+str(rect("stamp-0"))+", Claim "+(box(c,"claim-0")==null?"gone":"still shown")
                             +", the notice line \""+text("notice")+"\", gold "+goldBefore+" to "+CampaignClient.profile.gold+", XP "+xpBefore+" to "+pr.xp+(pass?"":" WRONG");
                         landedAt=-1;click(c,box(c,"claim-weekly"));next(tick);}
                     else if(!landed&&k>100){ok=false;why+="; Claim on note 0 sent "+lastSent()+": the claim never landed (claims "+pr.claims+", the notice \""+CampaignClient.notice+"\") WRONG";sub=6;subAt=tick;}}
-                case 5->{boolean landed=pr.claims.contains("weekly");if(landed&&landedAt<0)landedAt=tick;String want="Claimed reward: +150 gold / +300 XP";
+                case 5->{boolean landed=pr.claims.contains("weekly");if(landed&&landedAt<0)landedAt=tick;String want=gW.message();
                     boolean drawn="table/stamp-hollow".equals(tex("stamp-weekly"))&&"Claimed".equals(text("progress-weekly"))&&want.equals(text("notice"));
                     if(landed&&k>=3&&(drawn||tick>=landedAt+20)){
-                        boolean pass="progress:weekly".equals(lastSent())&&drawn&&box(c,"claim-weekly")==null&&in(rect("stamp-weekly"),rect("weekly"))&&want.equals(CampaignClient.notice)&&CampaignClient.profile.gold==goldBefore+180&&pr.xp==xpBefore+375;
+                        boolean pass=("progress:weekly:"+house).equals(lastSent())&&drawn&&box(c,"claim-weekly")==null&&in(rect("stamp-weekly"),rect("weekly"))&&want.equals(CampaignClient.notice)&&CampaignClient.profile.gold==goldBefore+gA.gold()+gW.gold()&&pr.xp==xpBefore+gA.xp()+gW.xp()
+                            &&CampaignClient.profile.shards.getOrDefault(house,0)==shardsBefore+gW.shards()&&box(c,"house-"+house)!=null;
                         ok&=pass;why+="; Claim on the weekly sent "+lastSent()+": the note reads \""+text("progress-weekly")+"\", stamped "+tex("stamp-weekly")+" at "+str(rect("stamp-weekly"))+", Claim "+(box(c,"claim-weekly")==null?"gone":"still shown")
-                            +", the notice line \""+text("notice")+"\", gold "+CampaignClient.profile.gold+", XP "+pr.xp+(pass?"":" WRONG");
+                            +", the notice line \""+text("notice")+"\", gold "+CampaignClient.profile.gold+", XP "+pr.xp+", "+houseName0()+" shards "+shardsBefore+" to "+CampaignClient.profile.shards.getOrDefault(house,0)+" (want +"+gW.shards()+")"+(pass?"":" WRONG");
                         shot(c,"ui-page-contracts-claimed");landedAt=-1;next(tick);}
                     else if(!landed&&k>100){ok=false;why+="; Claim on the weekly sent "+lastSent()+": the claim never landed (claims "+pr.claims+", the notice \""+CampaignClient.notice+"\") WRONG";next(tick);}}
-                case 6->{int g0=goldBefore,x0=xpBefore; // put back: no claims, no battles, the XP and the gold as they were
-                    server(c,b->{var pp=b.campaign.profile(player);var s=pp.progression;s.claims.remove("daily:0");s.claims.remove("weekly");s.dailyBattles=0;s.weeklyBattles=0;s.xp=x0;pp.gold=g0;b.campaign.save(player);});next(tick);}
-                case 7->{boolean back=!pr.claims.contains("daily:0")&&!pr.claims.contains("weekly")&&pr.dailyBattles==0&&pr.weeklyBattles==0&&pr.xp==xpBefore&&CampaignClient.profile.gold==goldBefore;
+                case 6->{int g0=goldBefore,x0=xpBefore,s0=shardsBefore;String h0=house; // put back: no claims, no battles, the XP, the gold and the shards as they were
+                    server(c,b->{var pp=b.campaign.profile(player);var s=pp.progression;s.claims.remove("daily:0");s.claims.remove("weekly");s.dailyBattles=0;s.weeklyBattles=0;s.xp=x0;pp.gold=g0;if(s0<=0)pp.shards.remove(h0);else pp.shards.put(h0,s0);b.campaign.save(player);});next(tick);}
+                case 7->{boolean back=!pr.claims.contains("daily:0")&&!pr.claims.contains("weekly")&&pr.dailyBattles==0&&pr.weeklyBattles==0&&pr.xp==xpBefore&&CampaignClient.profile.gold==goldBefore&&CampaignClient.profile.shards.getOrDefault(house,0)==shardsBefore;
                     if(back&&(text("notice")==null||k>=200)){why+="; put back: no claims, XP "+pr.xp+", gold "+CampaignClient.profile.gold;stage=4;} // the claims' notice faded, for the grading shot
                     else if(!back&&k>100){ok=false;why+="; not put back: claims "+pr.claims+", XP "+pr.xp+", gold "+CampaignClient.profile.gold+" WRONG";stage=4;}}
                 default->stage=4;
@@ -3412,18 +3451,22 @@ public final class Phase1Checks implements ClientModInitializer {
         void chapter(MinecraftClient c,int tick){
             int k=at(tick);int[] o=WarTable.origin();var claim=button(c,"claim");var pr=CampaignClient.profile.progression;
             switch(sub){
-                case 0->{boolean dull=claim!=null&&!claim.active&&"table/btn-dull-240x40".equals(tex("claim"))&&"1".equals(text("first"))&&"0".equals(text("tier"))&&"15".equals(text("hero"));
+                case 0->{boolean dull=claim!=null&&!claim.active&&"table/btn-dull-240x40".equals(tex("claim"))&&"1".equals(text("first"))&&"0".equals(text("tier"))&&String.valueOf(heroAt(1)).equals(text("hero"))&&noChips(c);
                     ok&=dull;why+="; fresh: tier "+text("tier")+", the track from "+text("first")+", the hero tier "+text("hero")+" ("+text("hero-name")+"), Claim "+tex("claim")+(claim!=null&&claim.active?" taking a press":"")+(dull?"":" WRONG");
                     rollSeen.clear();oathSeen.clear();slid=false;landedAt=-1;
                     server(c,b->{var s=b.campaign.profile(player).progression;s.xp=2870;for(int t=1;t<=10;t++)s.claims.add(Progression.SEASON+":"+t);s.titles.add("Scout");s.titles.add("Pathfinder");b.campaign.save(player);});
                     next(tick);}
                 case 1->{if(pr.xp==2870&&pr.claims.contains(Progression.SEASON+":10")){window(c,1920,1080,2,true);next(tick);}else if(k>100){ok=false;why+="; tier 11 never reached the client WRONG";stage=4;}} // the rest at k 2, as the approved mockups
                 case 2->{if(k==18)UiRecruitChecks.park(c);if(k<20)return;tiersDrawn();
-                    boolean bright=claim!=null&&claim.active&&"table/btn-brass-240x40".equals(tex("claim"))&&"10".equals(text("first"))&&"11".equals(text("tier"))&&"20".equals(text("hero"))&&"Vanguard".equals(text("hero-name"))
-                        &&"Unlocks at 5,000 XP".equals(text("hero-state"))&&"2,870 / 7,500 XP".equals(text("xp"))&&"130 XP to tier 12".equals(text("to-next"));
+                    int ht=heroAt(10);String heroName=Progression.TITLES[WarTablePages.titleAt(ht)];
+                    boolean bright=claim!=null&&claim.active&&"table/btn-brass-240x40".equals(tex("claim"))&&"Claim".equals(text("claim"))&&"10".equals(text("first"))&&"11".equals(text("tier"))&&String.valueOf(ht).equals(text("hero"))&&heroName.equals(text("hero-name"))
+                        &&("Unlocks at "+UiMath.thousands(ht*Progression.XP_PER_TIER)+" XP").equals(text("hero-state"))&&(UiMath.thousands(2870)+" / "+UiMath.thousands(Progression.XP_PER_TIER*Progression.TIERS)+" XP").equals(text("xp"))
+                        &&(UiMath.thousands(12*Progression.XP_PER_TIER-2870)+" XP to tier 12").equals(text("to-next"))
+                        &&"Tier 11 gives".equals(text("gives-head"))&&Progression.reward(11).equals(text("gives"))&&noChips(c); // a gold tier waits: what it gives in the reward's own words, and no House row
+                    gT=grant(pr,Progression.SEASON+":11",Progression.SEASON+":11");
                     boolean plaques=Arrays.equals(rect("roll-10"),new int[]{o[0]+136,o[1]+320,68,80})&&Arrays.equals(rect("roll-11"),new int[]{o[0]+212,o[1]+312,68,88})&&Arrays.equals(rect("oath-12"),new int[]{o[0]+288,o[1]+408,68,80})
                         &&"chapter/plaque-tier-b".equals(tex("roll-10"))&&"chapter/plaque-tier-raised".equals(tex("roll-11"))&&"chapter/plaque-tier-dull-b".equals(tex("roll-12"))&&"table/stamp-hollow-b".equals(tex("stamp-10"))
-                        &&"Pathfinder / title".equals(text("roll-10"))&&"Gold / 25".equals(text("roll-11"))&&"Tabard / livery".equals(text("oath-11"))&&"Portrait / frame".equals(text("oath-10"))&&button(c,"title-10")!=null;
+                        &&"Pathfinder / title".equals(text("roll-10"))&&plaqueIs(11,text("roll-11"))&&plaqueIs(12,text("roll-12"))&&plaqueIs(13,text("roll-13"))&&"Tabard / livery".equals(text("oath-11"))&&"Portrait / frame".equals(text("oath-10"))&&button(c,"title-10")!=null;
                     ok&=bright&&plaques;why+="; tier 11 reached, 1 to 10 claimed: Claim "+tex("claim")+(claim!=null&&claim.active?" taking a press":" dull")+", the track from "+text("first")+", the hero tier "+text("hero")+" "+text("hero-name")+" (\""+text("hero-state")+"\"), \""+text("xp")+"\", \""+text("to-next")+"\""+(bright?"":" WRONG")
                         +"; roll-10 "+str(rect("roll-10"))+" "+tex("roll-10")+" \""+text("roll-10")+"\" stamped "+tex("stamp-10")+", roll-11 "+str(rect("roll-11"))+" "+tex("roll-11")+" \""+text("roll-11")+"\", roll-12 "+tex("roll-12")+", oath-11 \""+text("oath-11")+"\", oath-12 "+str(rect("oath-12"))+(plaques?"":" WRONG");
                     shot(c,"ui-page-chapter-claimable");click(c,box(c,"earlier"));next(tick);}
@@ -3439,7 +3482,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(landedAt<0&&pr.claims.contains(Progression.SEASON+":11"))landedAt=tick;
                     if(landedAt>0&&tick>=landedAt+12){
                         boolean pass="progress:founders:11".equals(lastSent())&&slid&&"11".equals(text("first"))&&Arrays.equals(rect("roll-11"),new int[]{o[0]+136,o[1]+312,68,88})&&claim!=null&&!claim.active&&"table/btn-dull-240x40".equals(tex("claim"))
-                            &&"table/stamp-hollow-fresh".equals(tex("stamp-11"))&&"Claimed reward: +25 gold".equals(text("notice"));
+                            &&"table/stamp-hollow-fresh".equals(tex("stamp-11"))&&gT.message().equals(text("notice"))&&"Locked".equals(text("claim"))&&Progression.refusal(pr,Progression.SEASON+":12").equals(text("claim-why"));
                         ok&=pass;why+="; Enter sent "+lastSent()+": the track "+(slid?"slid one plaque":"did not slide")+" to start at "+text("first")+" (roll-11 at "+str(rect("roll-11"))+"), Claim "+tex("claim")+", tier 11 stamped "+tex("stamp-11")+", the notice \""+text("notice")+"\""+(pass?"":" WRONG");
                         shot(c,"ui-page-chapter-claimed");landedAt=-1;next(tick);}
                     else if(k>120){ok=false;why+="; Enter sent "+lastSent()+": the claim never landed WRONG";stage=4;}}
@@ -3451,8 +3494,24 @@ public final class Phase1Checks implements ClientModInitializer {
                     else if(!landed&&k>100){ok=false;why+="; Pathfinder's plaque sent "+lastSent()+": the title is still "+pr.title+" WRONG";landedAt=-1;stage=4;}}
                 case 10->{if(k<8)return;landedAt=-1;click(c,box(c,"title-10"));next(tick);}
                 case 11->{boolean landed="Recruit".equals(pr.title);if(landed&&landedAt<0)landedAt=tick;
-                    if(landed&&k>=3&&("Pathfinder / title".equals(text("roll-10"))||tick>=landedAt+20)){boolean off="Pathfinder / title".equals(text("roll-10"))&&"progress:title:Recruit".equals(lastSent());ok&=off;why+=", pressed again it sent "+lastSent()+" and reads \""+text("roll-10")+"\""+(off?"":" WRONG");landedAt=-1;stage=4;}
+                    if(landed&&k>=3&&("Pathfinder / title".equals(text("roll-10"))||tick>=landedAt+20)){boolean off="Pathfinder / title".equals(text("roll-10"))&&"progress:title:Recruit".equals(lastSent());ok&=off;why+=", pressed again it sent "+lastSent()+" and reads \""+text("roll-10")+"\""+(off?"":" WRONG");landedAt=-1;next(tick);}
                     else if(!landed&&k>100){ok=false;why+="; pressed again: the title is still "+pr.title+" WRONG";landedAt=-1;stage=4;}}
+                // tier 12 reached, a shard tier: the House row shows, the banner's House chosen, the reward line names it; another chip moves the pick and the words; then the XP is put back
+                case 12->{if(k<6)return;landedAt=-1;int xp=12*Progression.XP_PER_TIER+10;server(c,b->{b.campaign.profile(player).progression.xp=xp;b.campaign.save(player);});next(tick);}
+                case 13->{if(pr.xp==12*Progression.XP_PER_TIER+10){if(landedAt<0)landedAt=tick;
+                        if(tick>=landedAt+8){String hn=RosterMath.houseName(house);boolean row=true;StringBuilder rw=new StringBuilder();
+                            for(var h:Spec.HOUSES){int[] b=box(c,"house-"+h.id());boolean here=b!=null&&b[2]>=24&&b[3]>=24&&h.name().equals(text("house-"+h.id()));row&=here;rw.append(h.id()).append(' ').append(str(b)).append(here?"":" WRONG").append(", ");}
+                            boolean gives="Tier 12 gives".equals(text("gives-head"))&&Progression.reward(12).replace("House shards",hn+" shards").equals(text("gives"))&&box(c,"rare")==null&&house.equals(text("house-chosen"));
+                            ok&=row&&gives;why+="; tier 12 reached (a shard tier): the House row "+rw+"the banner's House "+house+" chosen (\""+text("house-chosen")+"\"), the reward line \""+text("gives-head")+" "+text("gives")+"\""+(row&&gives?"":" WRONG");
+                            landedAt=-1;click(c,box(c,"house-tidecallers"));next(tick);}}
+                    else if(k>100){ok=false;why+="; tier 12 never reached the client WRONG";stage=4;}}
+                case 14->{if(k<4||!"tidecallers".equals(text("house-chosen"))&&k<40)return;
+                    String hn=RosterMath.houseName("tidecallers");boolean moved="tidecallers".equals(text("house-chosen"))&&"table/chip-house-on".equals(tex("house-tidecallers"))&&"table/chip-house".equals(tex("house-"+house))&&Progression.reward(12).replace("House shards",hn+" shards").equals(text("gives"));
+                    ok&=moved;why+="; the Tidecallers chip pressed: chosen \""+text("house-chosen")+"\", the line \""+text("gives")+"\""+(moved?"":" WRONG");shot(c,"ui-page-chapter-pick");
+                    click(c,box(c,"house-"+house));next(tick);}
+                case 15->{if(k<4||!house.equals(text("house-chosen"))&&k<40)return;boolean back=house.equals(text("house-chosen"));ok&=back;why+="; the banner's House pressed again: chosen \""+text("house-chosen")+"\""+(back?"":" WRONG");
+                    landedAt=-1;server(c,b->{b.campaign.profile(player).progression.xp=2870;b.campaign.save(player);});next(tick);}
+                case 16->{if(pr.xp==2870&&k>=3)stage=4;else if(k>100){ok=false;why+="; the XP was not put back WRONG";stage=4;}}
                 default->stage=4;
             }
         }
