@@ -33,7 +33,7 @@ final class RankChecks {
     }
 
     static final String TEX = "gravesandglory:textures/entity/troop/";
-    static final String SWORD = "arming_sword", SWORD_T2 = "arming_sword_t2";
+    static final String SWORD = "arming_sword", SWORD_T2 = "arming_sword_t2", SWORD_T3 = "arming_sword_t3";
 
     /**
      * The ranks suite. Scene A (12 blocks from the camera): a level-2 gold Squire, a level-3 violet Squire, a level-1 gold Squire
@@ -160,26 +160,25 @@ final class RankChecks {
                         wait = 0; cs = 6;
                     }
                 }
-                case 6 -> { wait++; // p2-armour-tier-skin and the ranks-tiers shot: the Squire at 1/1, 2/2 and 3/3, no weapon tier model yet (tier I draws)
+                case 6 -> { wait++; // p2-armour-tier-skin and the ranks-tiers shot: the Squire at 1/1, 2/2 and 3/3, each tier with its own sword (the art is painted: arming_sword, _t2, _t3)
                     if (!sceneB || tiers.size() < 3 || tiers.stream().anyMatch(u -> e(c, u) == null)) { wait = 0; return; }
                     if (wait == 2) markDraws(c, tiers);
                     if (wait >= 50 && drewSince(c, tiers, 5)) { if (!shotReady(c, "ranks-tiers")) { wait--; return; }
                         boolean ok = true; StringBuilder why = new StringBuilder();
                         for (var u : tiers) { var x = e(c, u); var l = last(x); int t = u.armourTier;
-                            boolean good = l != null && l.look().armourTier() == t && l.look().weaponTier() == t && file(l.skin()).equals("knight_s" + t + ".png") && SWORD.equals(l.weaponId()) && Objects.equals(RankSync.client(x), RankSync.of(u));
+                            boolean good = l != null && l.look().armourTier() == t && l.look().weaponTier() == t && file(l.skin()).equals("knight_s" + t + ".png") && (t >= 3 ? SWORD_T3 : t == 2 ? SWORD_T2 : SWORD).equals(l.weaponId()) && Objects.equals(RankSync.client(x), RankSync.of(u));
                             ok &= good; why.append(rank(RankSync.client(x))).append(": skin ").append(l == null ? "none" : file(l.skin())).append(", weapon ").append(l == null ? "none" : l.weaponId()).append(good ? "" : " (BAD)").append("; "); }
                         shot(c, "ranks-tiers");
-                        report("p2-armour-tier-skin", ok, "Squires at rank_v1 1/1/1, 2/2/2 and 3/3/3 bind knight_s1, _s2 and _s3, and with no arming_sword_t2 or _t3 yet every tier draws arming_sword (the stopgap): " + why.toString().trim() + " picture p2-ranks-tiers.png");
-                        var w = TroopModels.weapon(SWORD); if (w != null) TroopModels.addWeapon(SWORD_T2, renamed(w, SWORD_T2));
+                        report("p2-armour-tier-skin", ok, "Squires at rank_v1 1/1/1, 2/2/2 and 3/3/3 bind knight_s1, _s2 and _s3, and with the tier art painted tiers 1, 2 and 3 draw arming_sword, arming_sword_t2 and arming_sword_t3: " + why.toString().trim() + " picture p2-ranks-tiers.png");
                         markDraws(c, tiers); wait = 0; cs = 7;
                     }
                 }
-                case 7 -> { wait++; // p2-weapon-tier-model: with a tier 2 model, tier 2 and 3 draw it (3 has none: the stopgap), tier I keeps the tier I model; without it tier 2 draws tier I
+                case 7 -> { wait++; // p2-weapon-tier-model: tiers 1, 2 and 3 draw their own sword models; without the tier 2 model tier 2 draws tier I
                     if (wait >= 10 && drewSince(c, tiers, 3) && marks == 0) {
                         String[] got = new String[3]; for (int i = 0; i < 3; i++) { var l = last(e(c, tiers.get(i))); got[i] = l == null ? "none" : l.weaponId(); }
                         var three = TroopModels.weapon(SWORD, 3); int art3 = TroopModels.weaponArt(SWORD, 3);
-                        boolean with = SWORD.equals(got[0]) && SWORD_T2.equals(got[1]) && SWORD_T2.equals(got[2]) && three != null && SWORD_T2.equals(three.id()) && art3 == 2;
-                        report("p2-weapon-tier-model", with, "with arming_sword_t2 loaded (a harness copy of tier I: no tier art is painted yet) the Squires at weapon tiers 1, 2 and 3 draw " + Arrays.toString(got) + " (want arming_sword, arming_sword_t2, arming_sword_t2); TroopModels.weapon(arming_sword, 3) is " + (three == null ? "none" : three.id()) + ", weaponArt 3 -> " + art3);
+                        boolean with = SWORD.equals(got[0]) && SWORD_T2.equals(got[1]) && SWORD_T3.equals(got[2]) && three != null && SWORD_T3.equals(three.id()) && art3 == 3;
+                        report("p2-weapon-tier-model", with, "with the tier art painted the Squires at weapon tiers 1, 2 and 3 draw " + Arrays.toString(got) + " (want arming_sword, arming_sword_t2, arming_sword_t3); TroopModels.weapon(arming_sword, 3) is " + (three == null ? "none" : three.id()) + ", weaponArt 3 -> " + art3);
                         TroopModels.addWeapon(SWORD_T2, null); markDraws(c, tiers); marks = 1;
                     }
                     if (marks == 1 && drewSince(c, tiers, 3)) {
@@ -208,9 +207,9 @@ final class RankChecks {
                     if (wait >= 30 && drewSince(c, List.of(mage), 5)) {
                         var x = e(c, mage); var l = last(x); var m = TroopModels.model("mage"); var ch = TroopChevrons.drawn(x);
                         boolean ok = l != null && l.look().armourTier() == 3 && file(l.skin()).equals("mage_s1.png") && m != null && m.armourArt(3) == 1 && !m.ownSkins().contains(3)
-                            && (l.relief() == null || l.relief().equals("1")) && ch != null && ch.chevrons() == 2 && c.world.getTime() - ch.time() < 5 && "sun_staff".equals(l.weaponId());
+                            && (l.relief() == null || l.relief().equals("1")) && ch != null && ch.chevrons() == 2 && c.world.getTime() - ch.time() < 5 && "sun_staff_t3".equals(l.weaponId());
                         report("p2-tier-stopgap", ok, "the Sunweaver at rank " + rank(RankSync.client(x)) + " (own skins " + (m == null ? "-" : m.ownSkins()) + ") drew skin " + (l == null ? "none" : file(l.skin())) + ", relief key " + (l == null ? "-" : l.relief()) + ", weapon " + (l == null ? "none" : l.weaponId())
-                            + " (want mage_s1, relief 1 or flat, sun_staff: tier III draws tier I's art) and " + mark(ch) + " (want 2)");
+                            + " (want mage_s1, relief 1 or flat, sun_staff_t3: the staff's tier III art is painted, the Sunweaver's armour tier III skin is not) and " + mark(ch) + " (want 2)");
                         wait = 0; cs = 10;
                     }
                 }

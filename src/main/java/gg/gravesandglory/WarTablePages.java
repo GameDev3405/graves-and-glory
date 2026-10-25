@@ -58,6 +58,10 @@ final class WarTablePages {
     // Chapter (work/ui-concepts/track/pages.py): ten tiers shown, plaques 68 x 80 on a 76 pitch, the current tier's Roll plaque
     // lifted 8 px and 88 tall; the rod, the tier tags on it, the Roll's top and the Oath's top; the hero letter and the Claim plate.
     static final int TIERS = Progression.TIERS, SHOWN = 10, EVERY = 5;
+    /** Where tier t sits in Progression.TITLE_TIERS (Phase 2's chapter: titles at 5, 10, 15, 25 and 30, no Vanguard), or -1 for a tier with no title. */
+    static int titleAt(int t) { for (int i = 0; i < Progression.TITLE_TIERS.length; i++) if (Progression.TITLE_TIERS[i] == t) return i; return -1; }
+    /** The first title tier at or past t (the last one when t is beyond them): the tier the hero letter shows. */
+    static int titleFrom(int t) { for (int x : Progression.TITLE_TIERS) if (x >= t) return x; return Progression.TITLE_TIERS[Progression.TITLE_TIERS.length - 1]; }
     static final int X0 = 136, PITCH = 76, PW = 68, PH = 80, RH = 88, ROD_Y = 296, TAG_Y = 294, ROLL_TOP = 320, OATH_TOP = 408;
     static final int HERO_X = 56, HERO_Y = 72, CLAIM_X = 664, CLAIM_Y = 232;
     /** After a claim the track slides one plaque left over this many ticks, easing out. */
@@ -853,8 +857,8 @@ final class WarTablePages {
         int first = first(), tier = tier();
         for (int k = 0; k < n; k++) { // a claimed title on the track is worn (or taken off) from its Roll plaque
             int t = first + k;
-            if (t % EVERY != 0 || !claimed(t)) continue;
-            String title = Progression.TITLES[t / EVERY - 1];
+            if (titleAt(t) < 0 || !claimed(t)) continue;
+            String title = Progression.TITLES[titleAt(t)];
             boolean cur = t == tier;
             add("title-" + t, new UiButton(tr.x0() + PITCH * k, cur ? tr.rollTop() - 8 : tr.rollTop(), PW, cur ? RH : PH, Text.literal(title), b -> wear(title), (g, x, y, w, h, hot) -> titleHot(g, t, x, y)));
         }
@@ -912,7 +916,7 @@ final class WarTablePages {
         int tier = tier(), first = first();
         var tr = track();
         int[] h0 = col(C_HERO), b0 = col(C_BLOCK);
-        hero(g, h0[0], h0[1], UiMath.heroTier(first, tr.shown(), TIERS, EVERY), tier);
+        hero(g, h0[0], h0[1], titleFrom(UiMath.heroTier(first, tr.shown(), TIERS, EVERY)), tier);
         block(g, col(C_BLOCK_HEAD)[0], b0[0], b0[1], tier, progression());
         int lx = tr.labelX();
         g.drawText(font, "Tier", lx, tr.rodY() + 2, DarkUi.MUTED, false);
@@ -977,7 +981,7 @@ final class WarTablePages {
      *  short chains, 8 px taller. A gold tier names its 25 gold, a title tier its title ("worn" while it is the one worn). */
     void rollPlaque(DrawContext g, int t, int x, Track tr, int tier) {
         var font = font();
-        boolean cur = t == tier, done = claimed(t), locked = t > tier, title = t % EVERY == 0;
+        boolean cur = t == tier, done = claimed(t), locked = t > tier, title = titleAt(t) >= 0;
         int y = cur ? tr.rollTop() - 8 : tr.rollTop(), h = cur ? RH : PH, ly = 47 + tr.rollTop() - y; // one label line across the row
         String chain = locked ? "chapter/chain-dull-18" : cur ? "chapter/chain-10" : "chapter/chain-18";
         UiTex.draw(g, chain, x + 8, tr.rodY() + 6);
@@ -987,7 +991,7 @@ final class WarTablePages {
         UiTex.draw(g, plate, x, y);
         icon(g, title ? "chapter/ic-title" : "chapter/ic-coins", x, y, ly);
         if (locked) UiTex.draw(g, "chapter/hasp", x - 1, y + ly - 12);
-        String l1 = title ? Progression.TITLES[t / EVERY - 1] : "Gold", l2 = title ? (done && l1.equals(progression().title) ? "worn" : "title") : "25";
+        String l1 = title ? Progression.TITLES[titleAt(t)] : "Gold", l2 = title ? (done && l1.equals(progression().title) ? "worn" : "title") : "25";
         WarTableHome.centred(g, DarkUi.heading(l1), x + PW / 2, y + ly, DarkUi.IVORY);
         g.drawText(font, l2, x + PW / 2 - font.getWidth(l2) / 2, y + ly + 15, DarkUi.MUTED, false);
         if (done) {
@@ -1033,7 +1037,7 @@ final class WarTablePages {
     /** A title plaque's widget: the title's name underlined while hot. */
     void titleHot(DrawContext g, int t, int x, int y) {
         if (!hot(buttons.get("title-" + t))) return;
-        int ly = 47 + track().rollTop() - y, w = font().getWidth(DarkUi.heading(Progression.TITLES[t / EVERY - 1]));
+        int ly = 47 + track().rollTop() - y, w = font().getWidth(DarkUi.heading(Progression.TITLES[titleAt(t)]));
         underline(g, "title-" + t, x + PW / 2 - w / 2, y + ly + 12, w, DarkUi.IVORY);
     }
 
@@ -1059,7 +1063,7 @@ final class WarTablePages {
             portraitsDrawn.add(new PortraitDraw("hero", c.player.getGameProfile().getName(), Portrait.last()));
         }
         UiTex.draw(g, "table/frame-ornate-184", x + 8, y + 8);
-        String name = Progression.TITLES[t / EVERY - 1], kicker = "Tier " + t, kind = "Title, worn in camp";
+        String name = Progression.TITLES[titleAt(t)], kicker = "Tier " + t, kind = "Title, worn in camp";
         boolean got = claimed(t), worn = got && name.equals(progression().title);
         String state = worn ? "Worn in camp" : got ? "Claimed" : t <= tier ? "Yours to claim" : "Unlocks at " + UiMath.thousands(t * Progression.XP_PER_TIER) + " XP";
         g.drawText(font, kicker, cx - font.getWidth(kicker) / 2, y + 34, DarkUi.SEPIA, false);

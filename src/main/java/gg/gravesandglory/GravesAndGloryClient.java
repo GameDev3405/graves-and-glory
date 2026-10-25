@@ -109,7 +109,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
                 // while the round runs, a changed server message joins it as a notice with the player's own keys filled in.
                 if(run!=was)EventFeed.clear();if(run&&!was)BattleHud.roundShownMs=now;
                 if(run&&!msg.isEmpty()&&(!msg.equals(before)||!was))EventFeed.push("notice",t,HintText.expand(msg,GravesAndGloryClient::hint),now);
-                CampaignClient.armoury=armoury;sideIds=new String[]{sideA,sideB};houses=Collections.unmodifiableMap(tiers);commanderActive=ability;commanderReady=abilityReady;commanderFor=abilityFor;CampaignClient.accept(client,campaignJson,run);sightings=List.copyOf(sight);contested=contest;CommandMode.pings=java.util.List.copyOf(pings);CommandMode.seconds=seconds;CommandMode.noteGroups(CommandMode.groups,groups,net.minecraft.util.Util.getMeasuringTimeMs());CommandMode.groups=java.util.List.copyOf(groups);ready=r;running=run;dawn=a;dusk=b;message=msg;team=t;count=n;order=o;formation=f;respawn=resp;owners=own;progress=pr;challengers=ch;gold=g;nearBarracks=near;queued=q;trainingSeconds=eta;roster=owned;pending=waiting;markers=List.copyOf(friendly);abilityId=abilityRead;abilityRemaining=cooldownLeft;abilityTotal=cooldownAll;});
+                CampaignClient.armoury=armoury;sideIds=new String[]{sideA,sideB};houses=Collections.unmodifiableMap(tiers);commanderActive=ability;commanderReady=abilityReady;commanderFor=abilityFor;CampaignClient.accept(client,campaignJson,run);sightings=List.copyOf(sight);contested=contest;CommandMode.pings=java.util.List.copyOf(pings);CommandMode.seconds=seconds;CommandMode.noteGroups(CommandMode.groups,groups,net.minecraft.util.Util.getMeasuringTimeMs());CommandMode.groups=java.util.List.copyOf(groups);ready=r;running=run;dawn=a;dusk=b;message=msg;team=t;count=n;order=o;formation=f;respawn=resp;owners=own;progress=pr;challengers=ch;gold=g;nearBarracks=near;queued=q;trainingSeconds=eta;roster=owned;pending=waiting;markers=List.copyOf(friendly);abilityId=abilityRead;abilityRemaining=cooldownLeft;abilityTotal=cooldownAll;if(abilityRead.equals("none"))classAbility();});
         });
         ClientPlayConnectionEvents.JOIN.register((handler,sender,client)->{resetHud();CampaignClient.sendProfile(client);if(connectingInvitation&&!joined){joined=true;say("Melty joined: "+join);}});
         // The battle HUD's records (the feed, what the last frame drew, the lesson wrap, an aimed order) are cleared on the client
@@ -294,8 +294,14 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         if(CampaignClient.padCountdown>0)g.drawCenteredTextWithShadow(c.textRenderer,"War gates: "+CampaignClient.padCountdown+"s / Step off to cancel",w/2,24,DarkUi.GOLD);
         else if(CampaignClient.waiting)g.drawCenteredTextWithShadow(c.textRenderer,"A battle is underway / Your camp remains open",w/2,24,DarkUi.MUTED);
     }
-    /** What the ability tile drew in the last frame (the key chip, the active's name, the state line), so a check can read it. */
-    static List<String> abilityDrawn=List.of();
+    /** The commander class's active in the HUD's ability slot (BattleHud.ability). The slot reads the state packet's test-ability triple, which is "none" in play, so the active the packet
+     *  names (commanderActive) fills it: the seconds it still runs (commanderFor, against its duration) while it runs, then its cooldown (commanderReady, against the class's cooldown). An active this
+     *  build has no behaviour for (commanderReady below 0) leaves the slot empty: its key would only answer "not ready in this build". Client thread, after the packet's fields are read. */
+    static void classAbility(){
+        var row=Commander.byActive(commanderActive);if(row==null||commanderReady<0)return;
+        boolean running=commanderFor>0;abilityId=commanderActive;abilityRemaining=running?commanderFor:commanderReady;
+        abilityTotal=Math.max(abilityRemaining,running?row.durationTicks():row.cooldownTicks());
+    }
     /** The HUD: the camp line in camp, the entrance letterbox during a battle's entrance, else the Iron Ledger (BattleHud), with the
      *  contact accent over it. */
     static void renderHud(DrawContext g,float delta){

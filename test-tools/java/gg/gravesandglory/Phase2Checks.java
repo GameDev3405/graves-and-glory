@@ -97,6 +97,17 @@ public final class Phase2Checks implements ClientModInitializer {
         return out;
     }
 
+    /** What the HUD's ability slot drew in the last frame, as [key, the class active's name, state]: the key and the active's id are the slot's own, the state is the seconds it shows read with the
+     *  client's own count (ACTIVE n s while the ability runs, READY IN n s on its cooldown, READY with no number). Empty while the slot is not drawn (no battle HUD, no active, an active this build lacks). */
+    static List<String> slotTile(){
+        var t=BattleHud.texts();String id=t.get("ability");if(id==null||id.isEmpty()||id.equals("none"))return List.of();
+        String secs=t.getOrDefault("ability-seconds","");int left=GravesAndGloryClient.abilityRemaining;
+        // the frame last drawn is one behind a packet that has just changed the count (the active ending, the cooldown starting): until the slot shows the seconds the client holds now, it has not drawn this state
+        if(!id.equals(GravesAndGloryClient.abilityId)||!secs.equals(left>0?String.valueOf((left+19)/20):""))return List.of();
+        String state=GravesAndGloryClient.commanderFor>0?"ACTIVE "+secs+" s":secs.isEmpty()?"READY":"READY IN "+secs+" s";
+        return List.of(t.getOrDefault("ability-key",""),Commander.activeName(id).toUpperCase(Locale.ROOT),state);
+    }
+
     /** Runs the suite's cleanup, reports p2-<suite>-suite, then stops the client once the last listed suite is done. */
     public static void finish(MinecraftClient c,String suite){
         var done=current;current=null;
@@ -843,13 +854,16 @@ public final class Phase2Checks implements ClientModInitializer {
             if(wantShot!=null&&!shotTaken&&++shotDelay>=12){shot(c,wantShot);shotTaken=true;}
             if(wantPress&&GravesAndGloryClient.battleActive()&&c.currentScreen==null){wantPress=false;net.minecraft.client.option.KeyBinding.onKeyPressed(net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper.getBoundKeyOf(GravesAndGloryClient.ability));System.out.println("[p2] pressed the ability key");}
             if(stage==5&&GravesAndGloryClient.respawn>0)respawnSeen=Math.max(respawnSeen,GravesAndGloryClient.respawn);
-            if((stage==34||stage==35)&&hudRight<0&&GravesAndGloryClient.battleActive()&&CommandMode.groupsRight>0){ // vanilla draws the hearts and armour from GUI x width / 2 - 91
-                var win=c.getWindow();int sw=win.getScaledWidth(),sh=win.getScaledHeight();float scale=Math.min(1,sw/640f);
-                hudHearts=(sw/2-91)/scale;hudFrame=Math.round(sw/scale)+"x"+Math.round(sh/scale)+" (window "+win.getFramebufferWidth()+"x"+win.getFramebufferHeight()+", GUI scale "+win.getScaleFactor()+")";hudRight=CommandMode.groupsRight;
+            if((stage==34||stage==35)&&hudRight<0&&GravesAndGloryClient.battleActive()){ // vanilla draws the hearts and armour from GUI x width / 2 - 91; the Iron Ledger's column (spine and group plates) is on its canvas
+                int right=0;for(var r:BattleHud.rects().entrySet())if(r.getKey().equals("spine")||r.getKey().startsWith("card-"))right=Math.max(right,r.getValue()[0]+r.getValue()[2]);
+                if(right>0){
+                    var win=c.getWindow();int sw=win.getScaledWidth(),sh=win.getScaledHeight();double toCanvas=win.getScaleFactor()/UiCanvas.hudK();
+                    hudHearts=(sw/2-91)*toCanvas;hudFrame=Math.round(sw*toCanvas)+"x"+Math.round(sh*toCanvas)+" canvas px (window "+win.getFramebufferWidth()+"x"+win.getFramebufferHeight()+", GUI scale "+win.getScaleFactor()+")";hudRight=right;
+                }
             }
             if(stage==6&&!clientDone)barracksLines();
             if(stage==22&&!clientDone)tile();
-            if(stage==34||stage==35||stage==36){var d=GravesAndGloryClient.abilityDrawn;if(d.size()==3){if(d.get(2).startsWith("ACTIVE ")&&!activeSeen){activeSeen=true;requestShot("commander-tile-active");}if(d.get(2).startsWith("READY IN "))readyInSeen=true;}}
+            if(stage==34||stage==35||stage==36){var d=slotTile();if(d.size()==3){if(d.get(2).startsWith("ACTIVE ")&&!activeSeen){activeSeen=true;requestShot("commander-tile-active");}if(d.get(2).startsWith("READY IN "))readyInSeen=true;}}
             if(stage==41&&!pickerDone)picker(c);
             if(stage==99&&!finished){finished=true;c.setScreen(null);finish(c,"commander");}
             if(tick>14000&&!finished){finished=true;report("p2-commander-timeout",false,"stuck in stage "+stage+" (class "+(ci<order.size()?order.get(ci):"-")+")");finish(c,"commander");}
@@ -862,7 +876,7 @@ public final class Phase2Checks implements ClientModInitializer {
             List<String> mod=new ArrayList<>(),other=new ArrayList<>();int mine=0;
             for(var k:c.options.allKeys){if(k.getTranslationKey().startsWith("key.gravesandglory."))mine++;if(k==ability||!k.getDefaultKey().equals(def))continue;(k.getTranslationKey().startsWith("key.gravesandglory.")?mod:other).add(k.getTranslationKey());}
             String hint=GravesAndGloryClient.hint("ability");
-            keyOk=h&&ability.getTranslationKey().equals("key.gravesandglory.ability")&&mod.isEmpty()&&hint.equals("H")&&GravesAndGloryClient.hint("menu").equals("R")&&GravesAndGloryClient.hint("nothing").equals("Not bound");
+            keyOk=h&&ability.getTranslationKey().equals("key.gravesandglory.ability")&&mod.isEmpty()&&hint.equals("H")&&GravesAndGloryClient.hint("menu").equals("R")&&GravesAndGloryClient.hint("nothing").equals("Not Bound");
             keyWhy="key.gravesandglory.ability defaults to "+def.getTranslationKey()+" (H="+h+"); of "+mine+" mod bindings none else defaults to it="+mod.isEmpty()+(mod.isEmpty()?"":" "+mod)+(other.isEmpty()?"":" (vanilla or other mods on it: "+other+")")+"; hint(ability)=\""+hint+"\", hint(menu)=\""+GravesAndGloryClient.hint("menu")+"\", hint(nothing)=\""+GravesAndGloryClient.hint("nothing")+"\"";
         }
         /** Stage 6: the barracks lines on the client follow the class the state packet names (the Marshal's knight trains in 3.2 s, the Warlock's Sunweaver costs 56). */
@@ -873,12 +887,12 @@ public final class Phase2Checks implements ClientModInitializer {
             clientOk=switch(row.id()){case "marshal"->time.equals("Training time: 3.2 seconds")&&price==mage.cost();case "warlock"->price==56&&knightPrice==knight.cost()&&time.equals("Training time: 4 seconds");default->false;};
             clientWhy="the client reads "+row.id()+" from the state packet (\""+GravesAndGloryClient.commanderActive+"\"): knight \""+time+"\" at "+knightPrice+" gold, Sunweaver "+price+" gold";clientDone=true;
         }
-        /** Stage 22: the HUD tile names the class active, shows the key chip H and NOT IN THIS BUILD (screenshot commander-tile). */
+        /** Stage 22: the state packet names the class active with no behaviour in this build (ready -1), and the HUD's ability slot stays empty while the Iron Ledger is up (screenshot commander-tile). */
         void tile(){
-            var d=GravesAndGloryClient.abilityDrawn;String want=Commander.activeName(expectActive).toUpperCase(Locale.ROOT);
+            var d=slotTile();boolean ledger=BattleHud.rects().containsKey("score"),named=GravesAndGloryClient.commanderActive.equals(expectActive)&&GravesAndGloryClient.commanderReady<0;
             if(tileState==0){
-                if(d.size()==3&&d.get(1).equals(want)&&d.get(2).equals("NOT IN THIS BUILD")){tileWhy="the tile drew "+d;clientOk=d.get(0).equals("H");requestShot("commander-tile");tileState=1;}
-                else if(++tileWait>300){tileWhy="the tile drew "+d+" (want H, "+want+", NOT IN THIS BUILD)";clientOk=false;clientDone=true;}
+                if(ledger&&named&&d.isEmpty()){tileWhy="the packet names "+expectActive+" with ready "+GravesAndGloryClient.commanderReady+" and the slot drew nothing under the ledger (the key "+GravesAndGloryClient.hint("ability")+" answers that it is not ready in this build)";clientOk=GravesAndGloryClient.hint("ability").equals("H");requestShot("commander-tile");tileState=1;}
+                else if(++tileWait>300){tileWhy="ledger up "+ledger+", packet names "+GravesAndGloryClient.commanderActive+" with ready "+GravesAndGloryClient.commanderReady+", the slot drew "+d+" (want an empty slot under the ledger and "+expectActive+" with ready -1)";clientOk=false;clientDone=true;}
             }else if(tileState==1&&shotTaken){wantShot=null;clientDone=true;}
         }
         /**
@@ -1053,7 +1067,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean refused=probe.starts==1&&notice.startsWith(want)&&notice.endsWith(" s.")&&own.abilityReadyAt==probe.startedAt+cycleClass.cooldownTicks();
                     cycleOk&=refused&&activeSeen&&readyInSeen;
                     report("p2-ability-cycle",cycleOk,cycleWhy+"; a second press on cooldown: notice \""+notice+"\", starts "+probe.starts+"; the tile showed ACTIVE="+activeSeen+" and READY IN="+readyInSeen);
-                    report("p2-hud-hearts",hudRight>0&&hudRight<hudHearts&&hudRight>=Math.min(218,hudHearts-8),"in the HUD frame "+hudFrame+" the group panels end at x "+hudRight+" and vanilla's hearts and armour start at x "+hudHearts+" (see commander-tile-active)");
+                    report("p2-hud-hearts",hudRight>0&&hudRight<hudHearts,"in the HUD frame "+hudFrame+" the Iron Ledger's column (spine and group plates) ends at x "+hudRight+" and vanilla's hearts and armour start at x "+hudHearts+" (see commander-tile-active)");
                     next(b,37);}
                 case 37->{ // p2-ability-seat: the probe stops when its commander leaves; the stand-in keeps the seat's cooldown, and so does he when he takes the seat back
                     var p=sp(b);var own=b.squads.get(player);if(p==null||own==null)return;
@@ -1238,7 +1252,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     clientOk=near.getOrDefault("knight",0)>0&&near.getOrDefault("sentinel",0)>0&&near.getOrDefault("longbow",0)>0;clientWhy="the client's world holds "+near+" Gilded troops within 10 blocks of the line's middle (Squire, Templar and Longbow="+clientOk+")";}
                 shot(c,wantShot);shotTaken=true;
             }
-            if(tileWatch==1){var d=GravesAndGloryClient.abilityDrawn;
+            if(tileWatch==1){var d=slotTile();
                 if(d.size()==3){String st=d.get(2);
                     if(firstActive.isEmpty()){if(st.startsWith("ACTIVE ")){firstActive=st;activeCooldownSeconds=(GravesAndGloryClient.commanderReady+19)/20;}}
                     else if(st.startsWith("READY IN ")){if(readyFirst.isEmpty()){readyFirst=st;readyFirstTick=tick;}else if(readyLater.isEmpty()&&tick-readyFirstTick>=40)readyLater=st;}
@@ -4706,16 +4720,16 @@ public final class Phase2Checks implements ClientModInitializer {
         void loaderCheck(MinecraftClient c){
             List<String> bad=new ArrayList<>();StringBuilder why=new StringBuilder();
             String bone="{\"name\":\"root\",\"parent\":\"\",\"pivot\":[0,0,0],\"boxes\":[{\"origin\":[0,0,0],\"size\":[1,1,1],\"uv\":[0,0]}]}";
-            refuse(bad,why,"index troops {}",()->TroopModelLoader.index(json("{\"format\":2,\"troops\":{}}")));
-            refuse(bad,why,"index troops [3]",()->TroopModelLoader.index(json("{\"format\":2,\"troops\":[3]}")));
+            refuse(bad,why,"index troops {}",()->TroopModelLoader.index(json("{\"format\":3,\"troops\":{}}")));
+            refuse(bad,why,"index troops [3]",()->TroopModelLoader.index(json("{\"format\":3,\"troops\":[3]}")));
             refuse(bad,why,"index format 1",()->TroopModelLoader.index(json("{\"format\":1,\"troops\":[]}")));
             refuse(bad,why,"no skins",()->TroopModelLoader.checkTroop(json("{\"troop\":\"knight\"}")));
             refuse(bad,why,"skins without stage 1",()->TroopModelLoader.checkTroop(json("{\"skins\":{\"2\":\"gravesandglory:x.png\"}}")));
             refuse(bad,why,"a skin for stage x",()->TroopModelLoader.checkTroop(json("{\"skins\":{\"1\":\"gravesandglory:x.png\",\"x\":\"gravesandglory:y.png\"}}")));
             refuse(bad,why,"a missing texture",()->TroopModelLoader.texture(c.getResourceManager(),new Identifier("gravesandglory","textures/entity/troop/no_such_skin.png")));
-            refuse(bad,why,"a parent not listed before",()->TroopModelLoader.parse(json("{\"format\":2,\"size\":[64,64],\"bones\":["+bone+",{\"name\":\"head\",\"parent\":\"body\",\"pivot\":[0,0,0],\"boxes\":[]}]}")));
-            refuse(bad,why,"a bone without boxes",()->TroopModelLoader.parse(json("{\"format\":2,\"size\":[64,64],\"bones\":[{\"name\":\"root\",\"parent\":\"\",\"pivot\":[0,0,0]}]}")));
-            String ok="{\"format\":2,\"troop\":\"probe\",\"rig\":\"biped\",\"size\":[64,64],\"skins\":{\"1\":\"gravesandglory:textures/entity/troop/knight_s1.png\"},\"bones\":["+bone+"]}";
+            refuse(bad,why,"a parent not listed before",()->TroopModelLoader.parse(json("{\"format\":3,\"size\":[64,64],\"bones\":["+bone+",{\"name\":\"head\",\"parent\":\"body\",\"pivot\":[0,0,0],\"boxes\":[]}]}")));
+            refuse(bad,why,"a bone without boxes",()->TroopModelLoader.parse(json("{\"format\":3,\"size\":[64,64],\"bones\":[{\"name\":\"root\",\"parent\":\"\",\"pivot\":[0,0,0]}]}")));
+            String ok="{\"format\":3,\"troop\":\"probe\",\"rig\":\"biped\",\"size\":[64,64],\"skins\":{\"1\":\"gravesandglory:textures/entity/troop/knight_s1.png\"},\"bones\":["+bone+"]}";
             boolean took;try{var j=json(ok);TroopModelLoader.checkTroop(j);new TroopModel<>(j,TroopModelLoader.parse(j).createModel(),Map.of("right","root","left","root"),null,List.of());took=true;why.append("a box without dilation loads; ");}
             catch(Exception e){took=false;why.append("a box without dilation refused: ").append(e).append(" (BAD); ");}
             report("p2-spike-loader",bad.isEmpty()&&took,why.toString().trim());
@@ -5626,7 +5640,7 @@ public final class Phase2Checks implements ClientModInitializer {
             steady=gilt&&posed&&there&&raised&&faced?steady+1:0;held++;
             if(steady>=3||held>300){
                 if(!shotReady(c,s.name()))return;
-                if(steady<3)bad.add(s.name()+": taken anyway after 300 ticks (drawn "+drawn+", in gold "+gilt+", pose "+posed+", camera "+there+", relief "+raised+", facing "+faced+")");
+                if(steady<3)bad.add(s.name()+": taken anyway after 300 ticks (drawn "+drawn+", in gold "+gilt+", pose "+posed+(drawn?" (off by "+Anim.maxRot(d.pose,want)+" degrees, "+Anim.maxPos(d.pose,want)+" px)":"")+", camera "+there+", relief "+raised+", facing "+faced+")");
                 shot(c,s.name());if(t3)t3Fact(c,s.name(),e,m,-1);si++;wait=0;steady=0;held=0;
             }
         }

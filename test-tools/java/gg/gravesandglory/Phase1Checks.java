@@ -1347,7 +1347,7 @@ public final class Phase1Checks implements ClientModInitializer {
             }
         }
 
-        /** p1-ui-atlas: every atlas.json entry's PNG opens through the resource manager at the entry's size and UiTex read the entry alike; hud/card-sel is 181x68 at 1, 1; no name holds a mockup-only pt- texture and no PNG under textures/gui is missing from the atlas. */
+        /** p1-ui-atlas: every atlas.json entry's PNG opens through the resource manager at the entry's size and UiTex read the entry alike; hud/card-sel is 181x68 at 1, 1; no name holds a mockup-only pt- texture and no PNG under textures/gui is missing from the atlas (Phase 2's House glyphs under house/ are not the atlas's: tools/build_ui_art.py FOREIGN). */
         void atlas(MinecraftClient c){
             var rm=c.getResourceManager();var res=rm.getResource(UiTex.ATLAS);List<String> bad=new ArrayList<>();int opened=0;JsonObject textures=new JsonObject();
             if(res.isEmpty())bad.add("no "+UiTex.ATLAS);
@@ -1364,7 +1364,7 @@ public final class Phase1Checks implements ClientModInitializer {
             }
             for(var id:rm.findResources("textures/gui",f->f.getNamespace().equals("gravesandglory")&&f.getPath().endsWith(".png")).keySet()){
                 String n=id.getPath().substring("textures/gui/".length(),id.getPath().length()-4);
-                if(!textures.has(n))bad.add(id+" is not in the atlas");
+                if(!textures.has(n)&&!n.startsWith("house/"))bad.add(id+" is not in the atlas");
             }
             var card=UiTex.has("hud/card-sel")?UiTex.entry("hud/card-sel"):null;boolean cardOk=card!=null&&card.w()==181&&card.h()==68&&card.ox()==1&&card.oy()==1;
             report("p1-ui-atlas",bad.isEmpty()&&cardOk&&opened>0&&opened==textures.size(),opened+" of "+textures.size()+" atlas.json entries open through the resource manager at their listed size and read alike by UiTex; hud/card-sel "+(card==null?"missing":card.w()+"x"+card.h()+" at "+card.ox()+", "+card.oy())+" (181x68 at 1, 1 wanted); "+(bad.isEmpty()?"no pt- names and no PNG outside the atlas":bad.size()+" wrong: "+String.join("; ",bad.subList(0,Math.min(6,bad.size())))));
