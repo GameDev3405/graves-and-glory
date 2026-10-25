@@ -79,7 +79,7 @@ public final class BattleHud {
     public static Map<String,int[]> rects(){return rects;}
     /** The words and numbers the last frame drew: score-dawn, clock, score-dusk, count-(group), state-(group) (the word a card
      *  shows; on a chip ROUTING and Fallen as drawn, Fighting for its crossed swords and Steady for none), lesson (its lines
-     *  joined), respawn, feed-(row) (each feed line as trimmed), aim-name, ability, ability-seconds and ability-key. */
+     *  joined), respawn, feed-(row) (each feed line as trimmed), aim-name, ability, ability-icon (the texture drawn in the slot), ability-seconds and ability-key. */
     public static Map<String,String> texts(){return texts;}
     /** The chip and word texts of each row the hint slip last drew, in order; empty while the hint layer is down. */
     public static List<List<String>> hintRows(){return hintRows;}
@@ -476,14 +476,17 @@ public final class BattleHud {
         r.put("respawn",box);tx.put("respawn",line);
     }
 
-    /** The commander ability beside the hotbar, in GUI px at the player's GUI Scale: the iron slot, the horn, the cooldown sweep (a
+    /** The texture of an ability's own picture: hud/ability-<active id> (stand_fast, bloodrush, mark_prey, rally_horn, grave_bloom, forward_supply). */
+    static String abilityIcon(String id){return "hud/ability-"+id;}
+
+    /** The commander ability beside the hotbar, in GUI px at the player's GUI Scale: the iron slot, the active's own picture, the cooldown sweep (a
      *  veil over the part of the turn still to come and its bright leading edge), the key on its brass plate and the seconds left.
      *  A ready ability (nothing left of its cooldown) shows no sweep and no number. */
     static void ability(DrawContext g,MinecraftClient c,TextRenderer font,Map<String,int[]> r,Map<String,String> tx){
         String id=GravesAndGloryClient.abilityId;if(id.equals("none"))return;
         var w=c.getWindow();int x=w.getScaledWidth()/2+104,y=w.getScaledHeight()-47,left=GravesAndGloryClient.abilityRemaining,total=GravesAndGloryClient.abilityTotal;
         UiTex.draw(g,"hud/ability-slot",x,y);
-        UiTex.draw(g,"hud/horn",x+5,y+6); // every ability shows the horn until Phase 2 gives each its picture
+        String icon=abilityIcon(id);if(UiTex.has(icon))UiTex.draw(g,icon,x+5,y+6); // 22 x 20 as the horn was; an id with no picture leaves the vellum bare
         if(left>0&&total>0)sweep(g,x+4,y+4,Math.min(1,left/(double)total));
         UiTex.draw(g,"hud/key-brass-plate",x+1,y+1);
         String key=GravesAndGloryClient.hint("ability"),secs=left>0?String.valueOf((left+19)/20):"";
@@ -491,7 +494,7 @@ public final class BattleHud {
         if(!secs.isEmpty())g.drawText(font,secs,centred(font,secs,x+39),y+12,DarkUi.IVORY,true);
         double f=w.getScaleFactor()/UiCanvas.hudK();
         int x0=(int)Math.floor(x*f+1e-9),y0=(int)Math.floor(y*f+1e-9),x1=(int)Math.ceil((x+50)*f-1e-9),y1=(int)Math.ceil((y+32)*f-1e-9);
-        r.put("ability",new int[]{x0,y0,x1-x0,y1-y0});tx.put("ability",id);tx.put("ability-seconds",secs);tx.put("ability-key",key);
+        r.put("ability",new int[]{x0,y0,x1-x0,y1-y0});tx.put("ability",id);tx.put("ability-icon",UiTex.has(icon)?icon:"");tx.put("ability-seconds",secs);tx.put("ability-key",key);
     }
 
     /** The 24 px cooldown sweep at (x, y) by UiMath.sweep, filled one run of a row at a time. */

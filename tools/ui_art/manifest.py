@@ -9,6 +9,7 @@ import v4a_table, v4a_paper, v4a_hud, v4a_recruit, v4a_ink, v4a_map, v4a_furn, v
 from v4pal import IRON
 from v4a_hud import seal, track, spine, ledger_card, hp_fill, feed_glyph_ink, BRASSR
 import kit_extra
+import kit_icons
 import kit_props
 import kit_track
 import kit_maps
@@ -38,6 +39,10 @@ def crop(paint, x, y, w, h):
 for _n in ('boss-dawn', 'boss-dusk', 'chain', 'hook', 'hook-brass', 'stamp-rout', 'horn', 'ability-slot',
            'key-brass-plate', 'hp-channel', 'hp-channel-grey'):
     mock('hud', _n)
+# the class actives' own pictures for the ability slot (kit_icons.ABILITY), 22 x 20 as the horn is, drawn at (5, 6) of the slot by
+# BattleHud.ability by the active's id: hud/ability-stand_fast, -bloodrush, -mark_prey, -rally_horn (Muster), -grave_bloom, -forward_supply
+for _a, _paint in kit_icons.ABILITY.items():
+    add('hud/ability-' + _a, _paint)
 mock('hud', 'score-card', ox=1, oy=1)
 mock('hud', 'feed-slip', ox=1, oy=3)
 for _g in ('g-attack', 'g-hold', 'g-follow', 'g-shieldwall', 'g-line', 'g-compact', 'g-fight', 'g-cycle'):
@@ -135,6 +140,9 @@ for _p in ('banner', 'contracts', 'chapter', 'friends', 'field'):
 for _n, (_w, _h, _s) in kit_extra.SHEETS.items():
     add(_n, (lambda w, h, s: lambda: kit_extra.pinned(w, h, s))(_w, _h, _s))
 for _c, _paint in kit_extra.CLASS_ICONS.items():
+    add('table/icon-class-' + _c, _paint)
+# the six Phase 2 classes' icons (kit_icons): the plaque's icon slot was bare for them (WarTablePages.paintClass skips a missing icon)
+for _c, _paint in kit_icons.CLASS_ICONS.items():
     add('table/icon-class-' + _c, _paint)
 for _n, _paint in kit_track.TRACK.items():
     if _n.startswith('table/plaque-'):        # the open page's plaque slices as the plaque it stands in for

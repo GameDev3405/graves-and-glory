@@ -38,7 +38,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  while the client's ready is false, when step() does not run. clientTick runs every client tick, ready or not. */
     public interface HudWatch { void hudFrame(MinecraftClient c); default void clientTick(MinecraftClient c){} }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
-    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);}
+    static{SUITES.put("combat",Combat::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-icons",UiIconsChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front,hold;static boolean started; // hold: client ticks the current suite waits (Phase1Checks.window)
@@ -3584,6 +3584,153 @@ public final class Phase1Checks implements ClientModInitializer {
 
         /** Closes the table, puts the session's sheet back on Skirmish and the window as the suite found it; p1-ui-pages-suite follows. */
         void end(MinecraftClient c){finished=true;c.setScreen(null);CampaignClient.homeMode="skirmish";if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;}
+    }
+
+    /** UI follow-up to plan Task 9 (suite ui-icons): the six Phase 2 classes' icons on the War Table's Banner page and the six class actives'
+     *  own pictures in the HUD's ability slot. p1-ui-icons-atlas: every class of the sheet has table/icon-class-(id) (14 x 14) and its
+     *  active has hud/ability-(active) (22 x 20) in the atlas. p1-ui-icons-classes: the Banner page at 960x540 GUI 1 and at 1920x1080 GUI 2
+     *  draws a plaque for every class, the commander's own lit (screenshots ui-icons-classes, ui-icons-classes-gui2). p1-ui-icons-hud: in a
+     *  practice battle with testAbility set to each active, the slot draws that active's own picture (BattleHud.texts "ability-icon"),
+     *  cooling and ready at 1920x1080 GUI 2 and cooling at 960x540 GUI 1 (screenshots ui-icons-hud-(active)-cool-gui2, -ready-gui2,
+     *  -cool-gui1). p1-ui-icons-real: with testAbility cleared and the squad's class set to each class, the packet's class active fills the
+     *  slot with that class's picture (screenshots ui-icons-hud-(class)-real-gui2); an active this build has no behaviour for (ready below 0)
+     *  leaves the slot bare. */
+    static final class UiIconsChecks implements Suite,ServerWatch {
+        static final String[] ACTIVES={"stand_fast","bloodrush","mark_prey","rally_horn","grave_bloom","forward_supply"};
+        // the server thread writes these, the client thread reads them
+        volatile int stage;volatile UUID player;volatile String serverClass;
+        // client thread only
+        int mark=-1,waitFrom,oldW,oldH,oldGui,index,sub,subAt;boolean finished,hudOk=true,realOk=true;String hudWhy="",realWhy="";
+        int since(int tick){if(mark!=stage){mark=stage;waitFrom=tick;}return tick-waitFrom;}
+        void go(int s,int tick){sub=s;subAt=tick;}
+        int at(int tick){return tick-subAt;}
+        public void serverTick(GravesAndGlory.Battle b){
+            var own=player==null?null:b.squads.get(player);
+            if(stage==40&&player!=null){var p=b.server.getPlayerManager().getPlayer(player);if(p!=null&&skirmish(b,p,0,1,"normal")){UiHudChecks.quiet(b,b.squads.get(player));stage=41;}}
+            String want=serverClass;if(own!=null&&want!=null&&!want.equals(own.commander)){own.commander=want;Commander.reset(b,own);}
+        }
+        static String box(int[] a){return a==null?"none":a[0]+","+a[1]+" "+a[2]+"x"+a[3];}
+        /** The slot as the last frame drew it: the picture's texture, the key, the seconds, the rect. */
+        static String slot(){var t=BattleHud.texts();return "ability \""+t.get("ability")+"\", picture \""+t.get("ability-icon")+"\", key \""+t.get("ability-key")+"\", seconds \""+t.get("ability-seconds")+"\", rect "+box(BattleHud.rects().get("ability"));}
+        void fail(MinecraftClient c,String id,String why){report(id,false,why);end(c);}
+        void end(MinecraftClient c){
+            finished=true;c.setScreen(null);serverClass=null;
+            server(c,b->{b.testAbility=null;var own=player==null?null:b.squads.get(player);if(own!=null){own.commander="champion";Commander.reset(b,own);}if(b.running)b.campaign.returnLobby();});
+            if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;
+        }
+
+        public void step(MinecraftClient c,int tick){
+            if(tick>14000&&!finished){report("p1-ui-icons-timeout",false,"stuck in stage "+stage+" (active "+(index<ACTIVES.length?ACTIVES[index]:"none")+", step "+sub+")");end(c);return;}
+            switch(stage){
+                case 0->{ // the atlas, then a fresh commander (the Marshal) with 300 gold at camp, in no party or room, on a 960x540 GUI 1 window
+                    if(tick<20)return;var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();player=c.player.getUuid();
+                    List<String> bad=new ArrayList<>();
+                    for(var cl:Spec.CLASSES){
+                        String iconName="table/icon-class-"+cl.id(),pic=BattleHud.abilityIcon(cl.active()); // named in a variable: the generator's literal scan (build_ui_art --verify) reads only whole names
+                        var ic=UiTex.has(iconName)?UiTex.entry(iconName):null;
+                        if(ic==null||ic.w()!=14||ic.h()!=14)bad.add(iconName+(ic==null?" missing":" "+ic.w()+"x"+ic.h()));
+                        var ab=UiTex.has(pic)?UiTex.entry(pic):null;
+                        if(ab==null||ab.w()!=22||ab.h()!=20)bad.add(pic+(ab==null?" missing":" "+ab.w()+"x"+ab.h()));
+                    }
+                    boolean same=Spec.CLASSES.length==ACTIVES.length;for(int i=0;same&&i<ACTIVES.length;i++)same=Arrays.asList(ACTIVES).contains(Spec.CLASSES[i].active());
+                    report("p1-ui-icons-atlas",bad.isEmpty()&&same,Spec.CLASSES.length+" classes, each with its 14x14 icon and its active's 22x20 picture in the atlas"+(bad.isEmpty()?"":"; wrong: "+bad)+(same?"":"; the sheet's actives are not the six this suite knows"));
+                    c.setScreen(null);CampaignClient.homeMode="skirmish";window(c,960,540,1);stage=-1;
+                    server(c,b->{if(b.running)b.campaign.returnLobby();var id=player;b.campaign.social.leaveRoom(id);b.campaign.social.leaveParty(id);b.campaign.closeParty();b.campaign.difficulty="normal";
+                        var p=new Profile();p.gold=300;p.commander="marshal";b.campaign.profiles.put(id,p);b.campaign.save(id);stage=1;});
+                }
+                case 1->{ // the snapshot brings the fresh profile
+                    var p=CampaignClient.profile;boolean fresh=p.gold==300&&"marshal".equals(p.commander)&&!GravesAndGloryClient.running;
+                    if(!fresh){if(since(tick)>300)fail(c,"p1-ui-icons-setup","no fresh profile with 300 gold and the Marshal 300 ticks on: gold "+p.gold+", class "+p.commander);return;}
+                    stage=2;
+                }
+                case 2->{ // the Banner page from home's plaque at 960x540 GUI 1
+                    int k=since(tick);
+                    if(k==0){CampScreen.open("home");return;}
+                    if(k==10){UiHomeChecks.click(c,UiHomeChecks.box(c,"banner"));return;}
+                    if(k==20){UiRecruitChecks.park(c);return;}
+                    if(k==22){var s=UiPagesChecks.screen(c);
+                        if(s==null||!s.page.equals("banner")||UiPagesChecks.pages(c)==null){fail(c,"p1-ui-icons-classes","home's Banner plaque opened "+(s==null?"nothing":s.page));return;}
+                        shot(c,"ui-icons-classes");window(c,1920,1080,2,true);stage=3;}
+                }
+                case 3->{ // the same page at 1920x1080 GUI 2 (k 2)
+                    int k=since(tick);
+                    if(k==6)UiRecruitChecks.park(c);
+                    if(k==12){var s=UiPagesChecks.screen(c);
+                        List<String> boxes=new ArrayList<>(),missing=new ArrayList<>();
+                        for(var cl:Spec.CLASSES){int[] r=WarTablePages.rects().get("class-"+cl.id());boxes.add(cl.id()+" "+box(r));if(r==null)missing.add(cl.id());}
+                        shot(c,"ui-icons-classes-gui2");
+                        boolean ok=s!=null&&UiPagesChecks.pages(c)!=null&&missing.isEmpty()&&"table/plaque-120-here".equals(WarTablePages.textures().get("class-marshal"))&&"table/plaque-120".equals(WarTablePages.textures().get("class-champion"));
+                        report("p1-ui-icons-classes",ok,"the Banner page at 1920x1080 GUI 2 (canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", k "+UiCanvas.k()+") drew a plaque for each class, the Marshal's lit: "+boxes+(missing.isEmpty()?"":"; no plaque for "+missing)+(ok?"":" WRONG"));
+                        c.setScreen(null);window(c,960,540,1);stage=40; // the practice battle (the server starts it)
+                    }
+                }
+                case 41->{ // the Iron Ledger is up
+                    int k=since(tick);
+                    if(GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()&&BattleHud.rects().containsKey("score")&&k>=20){
+                        BattleHud.roundShownMs=net.minecraft.util.Util.getMeasuringTimeMs()-61000; // past the hint layer of the round's first seconds
+                        window(c,1920,1080,2,true);index=0;go(0,tick);stage=5;return;}
+                    if(k>1200)fail(c,"p1-ui-icons-hud","the battle HUD never came up (running "+GravesAndGloryClient.running+", ready "+GravesAndGloryClient.ready+", waiting "+CampaignClient.waiting+")");
+                }
+                case 5->hudSweep(c,tick,true); // each active cooling and ready at 1920x1080 GUI 2
+                case 6->hudSweep(c,tick,false); // each active cooling at 960x540 GUI 1
+                case 7->real(c,tick); // the class path at 1920x1080 GUI 2
+                case 8->{report("p1-ui-icons-hud",hudOk,hudWhy);report("p1-ui-icons-real",realOk,realWhy);end(c);}
+                case 99->{stage=100;finish(c,"ui-icons");}
+                default->{}
+            }
+        }
+
+        /** The six actives one after another through testAbility: the slot must draw hud/ability-(id), cooling (48 s) and, at GUI 2, ready. */
+        void hudSweep(MinecraftClient c,int tick,boolean gui2){
+            if(index>=ACTIVES.length){
+                if(gui2){window(c,960,540,1);index=0;go(0,tick);stage=6;}
+                else{window(c,1920,1080,2,true);server(c,b->b.testAbility=null);index=0;go(0,tick);stage=7;}
+                return;
+            }
+            String id=ACTIVES[index],gui=gui2?"gui2":"gui1";int k=at(tick);var t=BattleHud.texts();
+            switch(sub){
+                case 0->{server(c,b->b.testAbility=new GravesAndGlory.Battle.AbilityState(id,960,1800));go(1,tick);}
+                case 1->{
+                    boolean up=GravesAndGloryClient.abilityId.equals(id)&&id.equals(t.get("ability"))&&"48".equals(t.get("ability-seconds"));
+                    if(up&&k>=4){UiRecruitChecks.park(c);go(2,tick);}
+                    else if(k>200){hudOk=false;hudWhy+=(hudWhy.isEmpty()?"":"; ")+id+" never showed in the slot at "+gui+" ("+slot()+") WRONG";index++;go(0,tick);}
+                }
+                case 2->{
+                    if(k==3){shot(c,"ui-icons-hud-"+id+"-cool-"+gui);boolean pic=BattleHud.abilityIcon(id).equals(t.get("ability-icon"));hudOk&=pic;
+                        hudWhy+=(hudWhy.isEmpty()?"":"; ")+id+" "+gui+" cooling: "+slot()+(pic?"":" WRONG");
+                        if(gui2){server(c,b->b.testAbility=new GravesAndGlory.Battle.AbilityState(id,0,1800));go(3,tick);}else{index++;go(0,tick);}}
+                }
+                case 3->{
+                    boolean up=GravesAndGloryClient.abilityId.equals(id)&&id.equals(t.get("ability"))&&GravesAndGloryClient.abilityRemaining==0&&"".equals(t.get("ability-seconds"));
+                    if(up&&k>=4){shot(c,"ui-icons-hud-"+id+"-ready-"+gui);boolean pic=BattleHud.abilityIcon(id).equals(t.get("ability-icon"));hudOk&=pic;
+                        hudWhy+=" | ready: "+slot()+(pic?"":" WRONG");index++;go(0,tick);}
+                    else if(k>200){hudOk=false;hudWhy+=" | "+id+" ready never drew ("+slot()+") WRONG";index++;go(0,tick);}
+                }
+                default->{index++;go(0,tick);}
+            }
+        }
+
+        /** The class path: testAbility cleared, the squad's class set on the server, the packet's active fills the slot (the Quartermaster's
+         *  too once the build has Forward Supply; an active with no behaviour here, ready below 0, leaves it bare). */
+        void real(MinecraftClient c,int tick){
+            if(index>=Spec.CLASSES.length){stage=8;return;}
+            var cl=Spec.CLASSES[index];int k=at(tick);var t=BattleHud.texts();
+            switch(sub){
+                case 0->{if(k>=10){serverClass=cl.id();go(1,tick);}}
+                case 1->{
+                    boolean named=GravesAndGloryClient.commanderActive.equals(cl.active());
+                    boolean drawn=BattleHud.rects().containsKey("ability")&&cl.active().equals(t.get("ability"));
+                    if(named&&k>=8&&(drawn||GravesAndGloryClient.commanderReady<0)){
+                        UiRecruitChecks.park(c);String pic=t.getOrDefault("ability-icon","");
+                        boolean right=drawn?BattleHud.abilityIcon(cl.active()).equals(pic):!BattleHud.rects().containsKey("ability");
+                        realOk&=right;realWhy+=(realWhy.isEmpty()?"":"; ")+cl.id()+": the packet names "+GravesAndGloryClient.commanderActive+" (ready in "+GravesAndGloryClient.commanderReady+", running "+GravesAndGloryClient.commanderFor+"), the slot "+(drawn?"drew "+pic+" ("+slot()+")":"stayed bare")+(right?"":" WRONG");
+                        go(2,tick);}
+                    else if(k>300){realOk=false;realWhy+=(realWhy.isEmpty()?"":"; ")+cl.id()+": the slot never followed the class (packet "+GravesAndGloryClient.commanderActive+", ready "+GravesAndGloryClient.commanderReady+", "+slot()+") WRONG";index++;go(0,tick);}
+                }
+                case 2->{if(k==3){shot(c,"ui-icons-hud-"+cl.id()+"-real-gui2");index++;go(0,tick);}}
+                default->{index++;go(0,tick);}
+            }
+        }
     }
 
     /** UI polish M11, the last suite listed (it leaves the world): a disconnect empties what the battle HUD keeps between frames and
