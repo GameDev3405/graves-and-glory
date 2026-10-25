@@ -2637,30 +2637,38 @@ public final class Phase1Checks implements ClientModInitializer {
         void end(MinecraftClient c){finished=true;fakeResult=null;if(oldResult!=null)CampaignClient.result=oldResult;c.setScreen(null);CampaignClient.homeMode="skirmish";if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;}
     }
 
-    /** UI plan Task 6: the War Table recruit page on a fresh commander with 300 gold, at 960x540 GUI 1 (canvas 960x540, origin 0,0)
-     *  unless a step says otherwise. Layout: the banners and their labels, the roll with its mark and rules, the letter, the ladder,
-     *  the three columns on one top and one foot (the foot read from the framebuffer), what reached each portrait's drawEntity, and
-     *  the Odds note, which a click elsewhere closes; then the same page at 1920x1080 GUI 2 for grading. Enter held down enlists one
-     *  Dawn troop, and the letter opens on it under the broken seal; Choose recruits the troop shown; the Dusk banner lists Dusk's
-     *  roll and a click on Enlist draws from it. Broke: with 50 gold the plate turns iron, Choose goes sepia and takes no press, and
-     *  Enter sends nothing; a purse the server has emptied before the client saw it meets the server's refusal on the notice line;
-     *  once every Dawn troop is recruited the ladder runs out and Odds says so, and a roll:dawn sent anyway is refused on the notice
-     *  line with the gold untouched. Keys: with Tab's focus on Choose, Enter presses Choose; the underline follows the pointer or the
-     *  keyboard's focus, never a click's; the wheel; a held Esc closes the note, then goes home and no further; the back and Banner
-     *  plaques; B. Scales: the layout's page again (a fresh commander) at 854x480 GUI 2 (the compact page, UI Task 8b-2) and
-     *  1920x974 GUI 1 (the big-canvas oak to every edge). Keys reach the screen as GLFW sends them (a
-     *  press, a held key's repeats as more presses, then the release; Tab sets the keyboard's navigation first), clicks as Mouse
+    /** UI plan Task 6, restated for the War Table port (Task 4): the recruit page on a fresh commander with 1000 gold, at 960x540 GUI 1
+     *  (canvas 960x540, origin 0,0) unless a step says otherwise. The five Houses hang on the rod in Spec.HOUSES order and the steps
+     *  name them by index (the first is the House the page opens on, the second the one they switch to); the troops, prices, words
+     *  and odds come from Spec.TROOPS, RecruitView and RecruitPages.action, never from a literal, and the draw of a roll is fixed
+     *  (Campaign.rollRng) on the House's first Rare so the troop that arrives is known (RosterMath.roll with the same draw).
+     *  Layout: the banners and their labels, the roll with its mark and rules, the letter with its action tag and the words under
+     *  it, the ladder, the three columns on one top and one foot (the foot read from the framebuffer), what reached each portrait's
+     *  drawEntity, and the Odds note, which a click elsewhere closes; then the same page at 1920x1080 GUI 2 for grading. Enter held
+     *  down enlists one troop of the first House, and the letter opens on it under the broken seal; the tag buys the troop shown
+     *  (buy:, once, however fast it is pressed), an Epic not found shows "From letters only", a Legendary its inactive tag and why;
+     *  the second banner lists the second House's roll and a click on Enlist draws from it. Broke: with 50 gold the plate turns iron,
+     *  the tag goes sepia, says why and takes no press, and Enter sends nothing; a purse the server has emptied before the client saw
+     *  it meets the server's refusal on the notice line; a House whose every troop is owned lists them all as recruited, a troop at
+     *  full stars shows "Full stars" for its tag, and a roll:<house> sent anyway is refused with the gold untouched. Keys: with Tab's
+     *  focus on the tag, Enter presses it; the underline follows the pointer or the keyboard's focus, never a click's; the wheel; a
+     *  held Esc closes the note, then goes home and no further; the back and Banner plaques; B. Scales: the layout's page again (a fresh
+     *  commander) at 854x480 GUI 2 (the compact page, UI Task 8b-2) and 1920x974 GUI 1 (the big-canvas oak to every edge), every
+     *  line of the letter inside its paper at each size. The page never sends unlock: or army:. Keys reach the screen as GLFW sends
+     *  them (a press, a held key's repeats as more presses, then the release; Tab sets the keyboard's navigation first), clicks as Mouse
      *  sends them (the navigation turns to the mouse's), and the pointer the page reads when it draws is set where a check needs it
      *  (parked off every widget otherwise). */
     static final class UiRecruitChecks implements Suite {
-        static final String[] DAWN={"knight","archer","mage","sentinel","longbow","oracle"},DUSK={"revenant","bonebow","hexer","reaper","stalker","wraith"};
-        static final Set<String> DAWN_NEW=Set.of("sentinel","longbow","oracle"),DUSK_NEW=Set.of("reaper","stalker","wraith");
+        static final int GOLD=1000;
+        static final String H0=Spec.HOUSES[0].id(),H1=Spec.HOUSES[1].id();
+        /** The action tag's box on the 960 page: the letter's corner (328, 124) plus the tag's place in it. */
+        static final int[] CHOOSE={420,436,120,24};
         static final java.lang.reflect.Field MOUSE_X=mouseField("x"),MOUSE_Y=mouseField("y");
         // the server thread writes these, the client thread reads them
-        volatile int stage;volatile UUID player;
+        volatile int stage;volatile UUID player;volatile java.util.random.RandomGenerator rngSaved;
         // client thread only
         int mark=-1,waitFrom,oldW,oldH,oldGui,sentBefore,goldBefore,serialBefore,seen=-1;long revealBefore;boolean finished,layoutOk=true,keysOk=true,scalesOk=true;
-        String picked="",why="",layoutWhy="",keysWhy="",scalesWhy="";Set<String> before=Set.of();CampScreen table;
+        String picked="",why="",layoutWhy="",keysWhy="",scalesWhy="",compactWant="";Set<String> before=Set.of();CampScreen table;
 
         int since(int tick){if(mark!=stage){mark=stage;waitFrom=tick;}return tick-waitFrom;}
         static CampScreen screen(MinecraftClient c){return c.currentScreen instanceof CampScreen s?s:null;}
@@ -2675,14 +2683,35 @@ public final class Phase1Checks implements ClientModInitializer {
         static String hex(Integer c){return c==null?"none":String.format("%08x",c);}
         static String name(String troop){return ArmyCards.spec(troop).name();}
         static Set<String> owned(){return new LinkedHashSet<>(CampaignClient.profile.owned.keySet());}
+        /** What a new commander owns: one copy of each Common. */
+        static Set<String> start(){return new Profile().owned.keySet();}
         static String lastSent(){var s=WarTableRecruit.sent();return s.isEmpty()?"none":s.get(s.size()-1);}
         /** The rows the last frame drew, as troop ids in order. */
         static List<String> rowTroops(){List<String> out=new ArrayList<>();for(var r:WarTableRecruit.rows())out.add(r.troop());return out;}
+        /** A House's troops in Spec.TROOPS order. */
+        static List<String> troopsOf(String house){List<String> out=new ArrayList<>();for(var t:Spec.TROOPS)if(t.house().equals(house))out.add(t.id());return out;}
         /** The portrait the last frame drew at a place (row-(i) or letter), or null. */
         static WarTableRecruit.PortraitDraw portrait(String where){for(var p:WarTableRecruit.portraits())if(p.where().equals(where))return p;return null;}
-        /** The size a portrait window asks drawEntity for: 2 px (40) or 8 px (160) per model pixel, over the renderer's own scale of
-         *  the troop's entity, as the vanilla 1.20.1 renderers have it (husk 1.0625, wither skeleton 1.2, skeleton 1). */
-        static int size(String troop,int window){var e=ArmyCards.spec(troop).entity();float s=e.equals("wither_skeleton")?1.2f:e.equals("husk")?1.0625f:1f;return Math.round(16f*window/20f/s);}
+        /** The size a portrait window asks drawEntity for: UiMath.portraitSize over the scale the troop's renderer gives its model. */
+        static int size(String troop,int window){return Math.round(UiMath.portraitSize(window,0)/Portrait.modelScale(WarTableRecruit.model(troop)));}
+        /** The kind line under a troop's name on the letter: its rarity and its group ("rare infantry"). */
+        static String kind(String troop){var t=ArmyCards.spec(troop);return t.rarity()+" "+RecruitView.group(t.group()).toLowerCase(Locale.ROOT);}
+        /** The first troop of a House's roll the commander does not own that a Buy can take (a Common or a Rare), or null. */
+        static String firstBuyable(String house){for(var r:RecruitView.roll(house))if(!r.owned()&&!r.rarity().equals("epic")&&!r.rarity().equals("legendary"))return r.troopId();return null;}
+        /** A draw whose every nextInt(bound) is value mod bound (Campaign.rollRng). */
+        static java.util.random.RandomGenerator fixed(int value){return new java.util.random.RandomGenerator(){public long nextLong(){return value;}public int nextInt(int bound){return value%bound;}};}
+        /** The draw that lands a roll on the first Rare of a House: past all its Commons' weights. */
+        static int rareDraw(String house){int commons=0;for(var t:Spec.TROOPS)if(t.house().equals(house)&&t.rarity().equals("common"))commons++;return commons*RosterMath.rarityRow("common").rollWeight();}
+        /** The troop a roll of the House lands on with that draw and no letters before it, as Campaign.roll draws it (RosterMath.roll). */
+        static String drawn(String house,int draw,int pity){
+            List<String> commons=new ArrayList<>(),rares=new ArrayList<>();String epic=null;
+            for(var t:Spec.TROOPS)if(t.house().equals(house)){if(t.rarity().equals("common"))commons.add(t.id());else if(t.rarity().equals("rare"))rares.add(t.id());else if(t.rarity().equals("epic"))epic=t.id();}
+            return RosterMath.roll(commons,rares,epic,RosterMath.rarityRow("common").rollWeight(),RosterMath.rarityRow("rare").rollWeight(),RosterMath.rarityRow("epic").rollWeight(),pity,Spec.RECRUITMENT[0].epicPity(),fixed(draw)).troop();
+        }
+        /** Whether the page has sent an unlock: or an army: since the first n commands (both are refused in Phase 2). */
+        static boolean oldCommands(int from){var s=WarTableRecruit.sent();for(int i=from;i<s.size();i++)if(s.get(i).startsWith("unlock:")||s.get(i).startsWith("army:"))return true;return false;}
+        /** The banner of House i on the 960 page: the rod's left end plus 8 plus 112 a banner. */
+        static int bx(int i){return WarTableRecruit.rodX(Spec.HOUSES.length)+8+WarTableRecruit.BANNER_STEP*i;}
 
         /** A key's press as GLFW hands it over (Keyboard.onKey turns the navigation to the keyboard's before the screen hears Tab or
          *  an arrow); a held key's repeats are more presses with no release between. */
@@ -2717,237 +2746,222 @@ public final class Phase1Checks implements ClientModInitializer {
         /** The notice line where the page puts it: its first line's top at 504, centred on the ladder's axis (784), inside the page
          *  12 px from its right edge and foot. */
         static boolean noticePlaced(int[] n){int[] o=WarTable.origin();return n!=null&&n[1]==o[1]+504&&Math.abs(n[0]+n[2]/2-(o[0]+784))<=1&&n[0]+n[2]<=o[0]+948&&n[1]+n[3]<=o[1]+528;}
+        /** Every line the letter writes under its name (the reason under the tag, the outcome of a roll, the words that stand for a missing
+         *  tag) lies inside the paper, 8 px from its edges and above its foot, at this size; empty when it does. */
+        static String letterFits(){
+            var lt=rect("letter");List<String> bad=new ArrayList<>();if(lt==null)return "no letter drawn";
+            for(String k:new String[]{"reason","outcome","noaction"}){var r=rect(k);if(r!=null&&(r[0]<lt[0]+8||r[0]+r[2]>lt[0]+lt[2]-8||r[1]+r[3]>lt[1]+lt[3]-8))bad.add(k+" "+UiHomeChecks.str(r)+" not 8 px inside the paper "+UiHomeChecks.str(lt));}
+            return String.join("; ",bad);
+        }
+
+        public void cleanup(MinecraftClient c){
+            if(c.getServer()!=null)server(c,b->{if(rngSaved!=null){b.campaign.rollRng=rngSaved;rngSaved=null;}});
+        }
 
         public void step(MinecraftClient c,int tick){
             if(tick>7000&&!finished){report("p1-ui-recruit-timeout",false,"stuck in stage "+stage+": "+why);end(c);return;}
             switch(stage){
-                case 0->{ // a fresh commander with 300 gold at camp, the window at 960x540 GUI 1
+                case 0->{ // a fresh commander with GOLD gold at camp, the roll's draw fixed on the first House's first Rare, the window at 960x540 GUI 1
                     if(tick<20)return;var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();player=c.player.getUuid();
                     c.setScreen(null);window(c,960,540,1);stage=-1;
-                    server(c,b->{if(b.running)b.campaign.returnLobby();var p=new Profile();p.gold=300;b.campaign.profiles.put(player,p);b.campaign.save(player);stage=1;});
+                    server(c,b->{if(b.running)b.campaign.returnLobby();var p=new Profile();p.gold=GOLD;b.campaign.profiles.put(player,p);if(rngSaved==null)rngSaved=b.campaign.rollRng;b.campaign.rollRng=fixed(rareDraw(H0));b.campaign.save(player);stage=1;});
                 }
                 case 1->{ // the snapshot brings the fresh profile, then the table opens on the recruit page
-                    var p=CampaignClient.profile;boolean fresh=p.gold==300&&p.owned.keySet().equals(new Profile().owned.keySet());
-                    if(GravesAndGloryClient.running||!fresh){if(since(tick)>300){report("p1-ui-recruit-layout",false,"no fresh profile with 300 gold 300 ticks on: gold "+p.gold+", unlocked "+p.owned.keySet()+", running "+GravesAndGloryClient.running);end(c);}return;}
+                    var p=CampaignClient.profile;boolean fresh=p.gold==GOLD&&p.owned.keySet().equals(start());
+                    if(GravesAndGloryClient.running||!fresh){if(since(tick)>300){report("p1-ui-recruit-layout",false,"no fresh profile with "+GOLD+" gold 300 ticks on: gold "+p.gold+", unlocked "+p.owned.keySet()+", running "+GravesAndGloryClient.running);end(c);}return;}
                     CampScreen.open("recruit");stage=2;
                 }
                 case 2->{ // p1-ui-recruit-layout, then the Odds note and a click elsewhere
                     int k=since(tick);
                     if(k==0){park(c);return;}
-                    if(k==10){
-                        var r=page(c);var rows=WarTableRecruit.rows();var tx=WarTableRecruit.textures();
-                        int[] o=WarTable.origin();boolean canvas=UiCanvas.width()==960&&UiCanvas.height()==540&&UiCanvas.k()==1&&o[0]==0&&o[1]==0;
-                        int[] ld0=rect("label-dawn"),ld1=rect("label-dusk");
-                        boolean banners=Arrays.equals(rect("banner-dawn"),new int[]{372,13,104,60})&&Arrays.equals(rect("banner-dusk"),new int[]{484,13,104,50})
-                            &&Arrays.equals(box(c,"house-dawn"),rect("banner-dawn"))&&Arrays.equals(box(c,"house-dusk"),rect("banner-dusk"))
-                            &&"recruit/banner-gilded-on".equals(tx.get("banner-dawn"))&&"recruit/banner-graveborn".equals(tx.get("banner-dusk"))
-                            &&Arrays.equals(rect("rod"),new int[]{364,12,232,10})&&Spec.FACTIONS[0].name().equals(text("banner-dawn"))&&Spec.FACTIONS[1].name().equals(text("banner-dusk"))
-                            &&Integer.valueOf(DarkUi.INK_TEXT).equals(color("banner-dawn"))&&Integer.valueOf(DarkUi.IVORY).equals(color("banner-dusk"))
-                            // the labels centred 52 px into their banners, 27 down, inside the cloth
-                            &&ld0!=null&&ld0[0]+ld0[2]/2==424&&ld0[1]==40&&ld0[0]>=376&&ld0[0]+ld0[2]<=472&&ld1!=null&&ld1[0]+ld1[2]/2==536&&ld1[1]==40&&ld1[0]>=488&&ld1[0]+ld1[2]<=584;
-                        List<String> want=new ArrayList<>();for(var t:Spec.TROOPS)if(t.house().equals("gilded"))want.add(t.id());
-                        boolean inks=rows.size()==6;StringBuilder rowWhy=new StringBuilder();
-                        for(var row:rows){boolean mine=!DAWN_NEW.contains(row.troop());inks&=row.color()==(mine?DarkUi.INK_TEXT:DarkUi.SEPIA)&&row.silhouette()==!mine&&row.name().equals(name(row.troop()));rowWhy.append(row.troop()).append(row.color()==DarkUi.INK_TEXT?" ink":row.color()==DarkUi.SEPIA?" sepia":" "+hex(row.color())).append(row.silhouette()?" (silhouette)":"").append(", ");}
-                        // the selected row (Dawn Sentinel, row 3) under its mark, drawn from the row-mark art 4 px left of the row; the rules between rows, none at the mark's top
-                        boolean marks=Arrays.equals(rect("mark"),new int[]{52,308,234,58})&&Arrays.equals(rect("rule-1"),new int[]{72,196,208,1})&&Arrays.equals(rect("rule-2"),new int[]{72,252,208,1})
-                            &&!WarTableRecruit.rects().containsKey("rule-3")&&Arrays.equals(rect("rule-4"),new int[]{72,364,208,1})&&Arrays.equals(rect("rule-5"),new int[]{72,420,208,1});
-                        boolean roll=want.equals(Arrays.asList(DAWN))&&rowTroops().equals(want)&&inks&&marks;
-                        // live portraits: 40 px on the roll at 2 px per model pixel, 160 px in the letter at 8, each over its renderer's scale
-                        boolean portraits=true;StringBuilder ptWhy=new StringBuilder();
-                        for(int i=0;i<6;i++){var p=portrait("row-"+i);var d=p==null?null:p.drawn();portraits&=d!=null&&p.troop().equals(DAWN[i])&&d.window()==40&&d.x()==84&&d.feet()==220+56*i&&d.size()==size(DAWN[i],40)&&d.silhouette()==DAWN_NEW.contains(DAWN[i])&&d.left()==64&&d.top()==148+56*i;
-                            ptWhy.append(d==null?"none":d.size()+"@"+d.x()+","+d.feet()).append(" ");}
-                        var lp=portrait("letter");var ld=lp==null?null:lp.drawn();
-                        boolean letter="sentinel".equals(text("letter-troop"))&&name("sentinel").equals(text("letter-name"))&&Integer.valueOf(DarkUi.INK_TEXT).equals(color("letter-name"))
-                            &&ld!=null&&ld.window()==160&&ld.x()==480&&ld.feet()==452&&ld.size()==size("sentinel",160)&&ld.scale()==1.0625f&&!ld.silhouette()
-                            &&Arrays.equals(rect("window"),new int[]{400,164,160,160})&&Arrays.equals(box(c,"choose"),new int[]{436,440,88,24})&&Arrays.equals(rect("choose"),new int[]{436,440,88,24})
-                            &&"Infantry, not yet recruited".equals(text("letter-line1"))&&Integer.valueOf(DarkUi.SEPIA).equals(color("letter-line1"))
-                            &&("Deploys in battle for "+ArmyCards.spec("sentinel").cost()+" gold").equals(text("letter-line2"))&&Integer.valueOf(DarkUi.INK_TEXT).equals(color("letter-line2"))&&!WarTableRecruit.rects().containsKey("broken");
-                        boolean ladder="Enlist".equals(text("enlist"))&&Integer.valueOf(DarkUi.PLATE_INK).equals(color("enlist"))&&"100".equals(text("enlist-cost"))&&Integer.valueOf(DarkUi.PLATE_INK).equals(color("enlist-cost"))
-                            &&"table/btn-brass-240x40".equals(tx.get("enlist"))&&Arrays.equals(rect("enlist"),new int[]{664,354,240,40})
-                            &&"300".equals(text("purse"))&&Arrays.equals(rect("purse"),new int[]{758,406,52,26})&&"3 letters left".equals(text("rung"))&&Integer.valueOf(DarkUi.MUTED).equals(color("rung"))
-                            &&Arrays.equals(rect("bundle"),new int[]{664,124,240,218})&&Arrays.equals(rect("odds"),new int[]{752,468,64,24})&&!WarTableRecruit.rects().containsKey("notice");
-                        // one top and one foot for the three columns: the roll's, the letter's and the bundle's art drawn from 124; the paper's
-                        // foot (the row under the last opaque row at the art's middle column, its pixel read back from the framebuffer) of
-                        // the roll, the letter and the Odds tag within 3 px above 492
-                        int[] rl=rect("roll"),lt=rect("letter"),bd=rect("bundle"),od=rect("odds");
-                        Integer rf=rl==null?null:foot(c,"recruit/muster-roll",rl[0],rl[1],rl[2]/2),lf=lt==null?null:foot(c,"recruit/letter-hi",lt[0],lt[1],lt[2]/2),of=od==null?null:foot(c,"table/btn-vellum-64x24",od[0],od[1],od[2]/2);
-                        boolean baseline=Arrays.equals(rl,new int[]{41,124,270,372})&&Arrays.equals(lt,new int[]{328,124,310,376})&&bd!=null&&bd[1]==124
-                            &&rf!=null&&lf!=null&&of!=null&&rf>=489&&rf<=492&&lf>=489&&lf<=492&&of>=489&&of<=492;
-                        boolean chrome="table/oak-table-recruit".equals(tx.get("table"))&&Arrays.equals(box(c,"back"),new int[]{56,12,120,28})&&Arrays.equals(box(c,"banner"),new int[]{800,12,104,28})
-                            &&!WarTableRecruit.rects().containsKey("maproll")&&hotNone();
-                        layoutOk=r!=null&&canvas&&banners&&roll&&portraits&&letter&&ladder&&baseline&&chrome;
-                        layoutWhy="canvas "+UiCanvas.width()+"x"+UiCanvas.height()+" k "+UiCanvas.k()+(canvas?"":" WRONG")+"; banners dawn "+str(rect("banner-dawn"))+" "+tx.get("banner-dawn")+" \""+text("banner-dawn")+"\" "+hex(color("banner-dawn"))+" label "+str(ld0)+", dusk "+str(rect("banner-dusk"))+" "+tx.get("banner-dusk")+" \""+text("banner-dusk")+"\" "+hex(color("banner-dusk"))+" label "+str(ld1)+", rod "+str(rect("rod"))+(banners?"":" WRONG")
-                            +"; roll "+rowTroops()+": "+rowWhy+"mark "+str(rect("mark"))+", rules "+str(rect("rule-1"))+" "+str(rect("rule-2"))+" "+str(rect("rule-3"))+" "+str(rect("rule-4"))+" "+str(rect("rule-5"))+(roll?"":" WRONG")+"; portraits (size@x,feet) "+ptWhy+(portraits?"":"WRONG")
-                            +"; letter "+text("letter-troop")+" \""+text("letter-name")+"\" "+hex(color("letter-name"))+" / \""+text("letter-line1")+"\" "+hex(color("letter-line1"))+" / \""+text("letter-line2")+"\" "+hex(color("letter-line2"))+", portrait "+ld+", window "+str(rect("window"))+", choose "+str(box(c,"choose"))+(letter?"":" WRONG")
-                            +"; enlist \""+text("enlist")+"\" "+hex(color("enlist"))+" for "+text("enlist-cost")+" on "+tx.get("enlist")+", purse "+text("purse")+" "+str(rect("purse"))+", rung \""+text("rung")+"\" "+hex(color("rung"))+", bundle "+str(bd)+(ladder?"":" WRONG")
-                            +"; columns: roll "+str(rl)+", letter "+str(lt)+", bundle "+str(bd)+" from 124; the paper's foot (framebuffer) roll "+rf+", letter "+lf+", Odds tag "+of+(baseline?" (one foot at 492)":" WRONG")
-                            +"; table "+tx.get("table")+", back "+str(box(c,"back"))+", banner "+str(box(c,"banner"))+", no rolled map, underlined "+WarTableRecruit.underlined()+(chrome?"":" WRONG");
-                        shot(c,"ui-recruit");click(c,box(c,"odds"));return;}
-                    if(k==14){ // the note: the odds of each Dawn troop still to come, the rule, and their names
-                        boolean note=page(c)!=null&&page(c).odds&&Arrays.equals(rect("note"),new int[]{360,200,244,165})&&"Each new troop: 33.3%".equals(text("note-0"))&&WarTableRecruit.NO_DUPLICATES.equals(text("note-1"))
-                            &&name("sentinel").equals(text("note-2"))&&name("longbow").equals(text("note-3"))&&name("oracle").equals(text("note-4"))&&!WarTableRecruit.texts().containsKey("note-5");
-                        layoutOk&=note;layoutWhy+="; Odds opens the note "+str(rect("note"))+": \""+text("note-0")+"\" / \""+text("note-1")+"\" / "+text("note-2")+", "+text("note-3")+", "+text("note-4")+(note?"":" WRONG");
+                    if(k==10){layoutWhy=layout(c);shot(c,"ui-recruit");click(c,box(c,"odds"));return;}
+                    if(k==14){ // the note: the House's rules as RecruitView words them, each line inside the note
+                        var font=c.textRenderer;var rules=RecruitView.note(H0);List<String> got=new ArrayList<>();for(int i=0;text("note-"+i)!=null;i++)got.add(text("note-"+i));
+                        boolean wide=true;for(String g:got)wide&=font.getWidth(DarkUi.body(g))<=WarTableRecruit.NOTE_W;
+                        String joined=String.join(" ",got);
+                        boolean note=page(c)!=null&&page(c).odds&&Arrays.equals(rect("note"),new int[]{360,200,244,165})&&joined.equals(String.join(" ",rules))&&wide&&got.size()<=WarTableRecruit.NOTE_LINES&&!joined.contains("No duplicates")&&joined.contains(RecruitView.oddsLine(H0))
+                            &&200+34+12*(got.size()-1)+9<=200+165-12;
+                        layoutOk&=note;layoutWhy+="; Odds opens the note "+str(rect("note"))+": \""+joined+"\" in "+got.size()+" lines (want RecruitView.note, each inside "+WarTableRecruit.NOTE_W+" px, the odds line \""+RecruitView.oddsLine(H0)+"\", no \"No duplicates\")"+(note?"":" WRONG");
                         click(c,box(c,"row-0"));return;}
-                    if(k==18){boolean closed=page(c)!=null&&!page(c).odds&&!WarTableRecruit.rects().containsKey("note")&&"sentinel".equals(text("letter-troop"));
-                        layoutOk&=closed;layoutWhy+="; a click on row 0 "+(closed?"closed the note and went no further (the letter still shows sentinel)":"WRONG: note "+str(rect("note"))+", the letter "+text("letter-troop"));
+                    if(k==18){String sel=layoutSel;boolean closed=page(c)!=null&&!page(c).odds&&!WarTableRecruit.rects().containsKey("note")&&sel.equals(text("letter-troop"));
+                        layoutOk&=closed;layoutWhy+="; a click on row 0 "+(closed?"closed the note and went no further (the letter still shows "+sel+")":"WRONG: note "+str(rect("note"))+", the letter "+text("letter-troop"));
                         report("p1-ui-recruit-layout",layoutOk,layoutWhy);stage=3;}
                 }
                 case 3->{ // the same page at 1920x1080 GUI 2 (k 2, the 960x540 page at twice the size), for grading; then back, and Enter goes down
                     int k=since(tick);
                     if(k==0){window(c,1920,1080,2,true);return;}
                     if(k==18){park(c);return;}
-                    if(k==20){boolean same=page(c)!=null&&UiCanvas.k()==2&&UiCanvas.width()==960&&UiCanvas.height()==540&&Arrays.equals(box(c,"enlist"),new int[]{664,354,240,40})&&Arrays.equals(rect("banner-dawn"),new int[]{372,13,104,60})&&hotNone();
-                        why="1920x1080 GUI 2: k "+UiCanvas.k()+", canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", enlist "+str(box(c,"enlist"))+", underlined "+WarTableRecruit.underlined()+(same?"":" WRONG");System.out.println("[p1] ui-recruit "+why);
+                    if(k==20){var o=WarTable.origin();boolean same=page(c)!=null&&UiCanvas.k()==2&&UiCanvas.width()==960&&UiCanvas.height()==540&&Arrays.equals(box(c,"enlist"),new int[]{664,354,240,40})&&Arrays.equals(rect("banner-"+H0),new int[]{bx(0),13,104,60})&&hotNone()&&letterFits().isEmpty();
+                        why="1920x1080 GUI 2: k "+UiCanvas.k()+", canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", enlist "+str(box(c,"enlist"))+", underlined "+WarTableRecruit.underlined()+", letter "+(letterFits().isEmpty()?"inside its paper":letterFits())+(same?"":" WRONG");System.out.println("[p1] ui-recruit "+why);
                         if(!same)report("p1-ui-recruit-layout-1080",false,why);shot(c,"ui-recruit-1080");window(c,960,540,1);return;}
                     if(k==30){park(c);return;}
                     if(k==32){table=screen(c);goldBefore=CampaignClient.profile.gold;before=owned();sentBefore=WarTableRecruit.sent().size();revealBefore=CampaignClient.revealUntil;press(c,GLFW.GLFW_KEY_ENTER);stage=4;}
                 }
-                case 4->{ // p1-ui-recruit-enlist: Enter held down (the press, two repeats 400 ms apart, past the 300 ms throttle, then the release) sends one roll:dawn;
-                          // within 40 ticks one Dawn troop not yet recruited is, for 100 gold, on the letter under the broken seal
+                case 4->{ // p1-ui-recruit-enlist: Enter held down (the press, two repeats 400 ms apart, past the 300 ms throttle, then the release) sends one roll:<house>;
+                          // within 70 ticks the troop the fixed draw lands on is, for the price of a letter, on the letter under the broken seal
                     int k=since(tick);
                     if(k==8||k==16){press(c,GLFW.GLFW_KEY_ENTER);return;} // the held key's repeats, each another keyPressed
                     if(k==20){release(c,GLFW.GLFW_KEY_ENTER);return;}
                     if(k<46)return; // room for a second roll, had a repeat sent one, to come back
-                    var now=owned();now.removeAll(before);
-                    boolean arrived=now.size()==1&&DAWN_NEW.containsAll(now)&&CampaignClient.profile.gold==goldBefore-100&&CampaignClient.revealUntil!=revealBefore;
+                    String want=drawn(H0,rareDraw(H0),0);var now=owned();now.removeAll(before);
+                    boolean arrived=now.equals(Set.of(want))&&CampaignClient.profile.gold==goldBefore-RecruitView.cost()&&CampaignClient.revealUntil!=revealBefore;
                     if(!arrived&&k<=70)return;
-                    String id=now.isEmpty()?"none":now.iterator().next();var spec=ArmyCards.spec(id);
-                    String kind=spec==null?"":Arrays.stream(Spec.GROUPS).filter(g->g.id().equals(spec.group())).findFirst().map(Spec.GroupsRow::label).orElse("?")+", recruited";
-                    boolean ok=arrived&&id.equals(text("letter-troop"))&&Arrays.equals(rect("broken"),new int[]{463,108,35,36})&&"2 letters left".equals(text("rung"))&&kind.equals(text("letter-line1"))
-                        &&CampaignClient.profile.gold==200&&WarTableRecruit.sent().size()==sentBefore+1&&"roll:dawn".equals(lastSent())&&screen(c)==table&&table.held.isEmpty()&&!WarTableRecruit.texts().containsKey("notice");
-                    report("p1-ui-recruit-enlist",ok,"Enter held (a press, two repeats, the release) sent "+(WarTableRecruit.sent().size()-sentBefore)+" command(s), the last "+lastSent()+"; new "+now+", gold "+goldBefore+" -> "+CampaignClient.profile.gold+", reveal "+CampaignClient.revealUnit+"; the letter shows "+text("letter-troop")+" (\""+text("letter-line1")+"\"), broken seal "+str(rect("broken"))+", rung \""+text("rung")+"\", held keys after the release "+(table==null?"none":table.held)+", notice line "+(text("notice")==null?"none (the recruit's own notice came with the reveal)":"\""+text("notice")+"\"")+(arrived?"":", nothing arrived within 70 ticks"));
+                    String id=now.isEmpty()?"none":now.iterator().next();
+                    boolean ok=arrived&&id.equals(text("letter-troop"))&&Arrays.equals(rect("broken"),new int[]{463,108,35,36})&&UiMath.pityLine(RecruitView.pityLeft(H0)).equals(text("rung"))&&kind(id).equals(text("letter-line1"))
+                        &&!WarTableRecruit.texts().containsKey("letter-outcome")&&WarTableRecruit.sent().size()==sentBefore+1&&("roll:"+H0).equals(lastSent())&&!oldCommands(sentBefore)&&screen(c)==table&&table.held.isEmpty()&&!WarTableRecruit.texts().containsKey("notice");
+                    report("p1-ui-recruit-enlist",ok,"Enter held (a press, two repeats, the release) sent "+(WarTableRecruit.sent().size()-sentBefore)+" command(s), the last "+lastSent()+"; the fixed draw lands on "+want+", new "+now+", gold "+goldBefore+" -> "+CampaignClient.profile.gold+", reveal "+CampaignClient.revealUnit+"; the letter shows "+text("letter-troop")+" (\""+text("letter-line1")+"\"), broken seal "+str(rect("broken"))+", rung \""+text("rung")+"\", held keys after the release "+(table==null?"none":table.held)+", notice line "+(text("notice")==null?"none (the recruit's own notice came with the reveal)":"\""+text("notice")+"\"")+(arrived?"":", nothing arrived within 70 ticks"));
                     shot(c,"ui-recruit-enlist");stage=5;
                 }
-                case 5->{ // p1-ui-recruit-choose: a click on a Dawn row not yet recruited, then on Choose
+                case 5->{ // p1-ui-recruit-choose: a click on a troop of the first House a Buy can take and not owned, then the tag pressed twice in a row (one buy), then an Epic not found and a Legendary
                     int k=since(tick);
-                    if(k==0){int at=-1;var rows=WarTableRecruit.rows();for(var r:rows)if(at<0&&!CampaignClient.profile.owned.containsKey(r.troop())){at=r.index();picked=r.troop();}
-                        if(at<0){report("p1-ui-recruit-choose",false,"no Dawn row left to choose: rows "+rowTroops());stage=6;return;}
+                    if(k==0){picked=firstBuyable(H0);int at=-1;var rows=WarTableRecruit.rows();for(var r:rows)if(r.troop().equals(picked))at=r.index();
+                        if(picked==null||at<0){report("p1-ui-recruit-choose",false,"no troop of the first House left for a Buy: rows "+rowTroops());stage=6;return;}
                         click(c,box(c,"row-"+at));why="row "+at+" ("+picked+") clicked";return;}
-                    if(k==3){boolean shown=picked.equals(text("letter-troop"))&&!WarTableRecruit.rects().containsKey("broken")&&Arrays.equals(rect("choose"),new int[]{436,440,88,24})&&"100".equals(text("choose-cost"))&&Integer.valueOf(DarkUi.INK_TEXT).equals(color("choose-cost"))&&Integer.valueOf(DarkUi.INK_TEXT).equals(color("choose"));
-                        why+="; the letter shows "+text("letter-troop")+(shown?" with Choose for 100, the seal gone":" WRONG: choose "+str(rect("choose"))+" \""+text("choose-cost")+"\" ink "+hex(color("choose"))+" with "+CampaignClient.profile.gold+" gold, broken "+str(rect("broken")));
+                    if(k==3){var a=RecruitView.action(picked);
+                        boolean shown=a!=null&&picked.equals(text("letter-troop"))&&!WarTableRecruit.rects().containsKey("broken")&&Arrays.equals(rect("choose"),CHOOSE)&&Arrays.equals(box(c,"choose"),CHOOSE)&&a.command().equals("buy:"+picked)&&a.active()
+                            &&a.label().equals(text("choose"))&&("buy:"+picked).equals(text("choose-command"))&&Integer.valueOf(DarkUi.INK_TEXT).equals(color("choose"))&&a.tip().equals(text("reason"))&&Integer.valueOf(DarkUi.SEPIA).equals(color("reason"))&&letterFits().isEmpty();
+                        why+="; the letter shows "+text("letter-troop")+(shown?" with the tag \""+text("choose")+"\" ("+text("choose-command")+") and under it \""+text("reason")+"\"":" WRONG: tag \""+text("choose")+"\" "+text("choose-command")+" "+str(rect("choose"))+" ink "+hex(color("choose"))+" with "+CampaignClient.profile.gold+" gold, reason \""+text("reason")+"\", broken "+str(rect("broken"))+", "+letterFits());
                         if(!shown){report("p1-ui-recruit-choose",false,why);stage=6;return;}
                         goldBefore=CampaignClient.profile.gold;sentBefore=WarTableRecruit.sent().size();click(c,box(c,"choose"));return;}
-                    if(k>3){boolean done=CampaignClient.profile.owned.containsKey(picked)&&CampaignClient.profile.gold==goldBefore-100;
-                        if(!done&&k<=45)return;
-                        if(done&&k<48)return; // the reveal reaches the page
-                        boolean ok=done&&("unlock:"+picked).equals(lastSent())&&WarTableRecruit.sent().size()==sentBefore+1&&picked.equals(text("letter-troop"))&&WarTableRecruit.rects().containsKey("broken")&&!WarTableRecruit.rects().containsKey("choose")&&!WarTableRecruit.texts().containsKey("notice");
-                        report("p1-ui-recruit-choose",ok,why+"; Choose sent "+lastSent()+", "+picked+(CampaignClient.profile.owned.containsKey(picked)?" recruited":" not recruited")+", gold "+goldBefore+" -> "+CampaignClient.profile.gold+", the letter "+text("letter-troop")+" under the seal "+str(rect("broken"))+", Choose "+str(rect("choose"))+", notice line "+text("notice"));
-                        picked="";stage=6;}
+                    if(k==4){click(c,box(c,"choose"));return;} // the second press 50 ms on: the throttle and the page's wait for the camp's answer must turn it away
+                    if(k>4&&k<48)return; // the reveal reaches the page, and a second press that slipped through would have reached the purse
+                    if(k==48){boolean done=CampaignClient.profile.owned.containsKey(picked)&&CampaignClient.profile.gold==goldBefore-RecruitView.chooseCost();
+                        buyOk=done&&("buy:"+picked).equals(lastSent())&&WarTableRecruit.sent().size()==sentBefore+1&&!oldCommands(sentBefore)&&picked.equals(text("letter-troop"))&&WarTableRecruit.rects().containsKey("broken")&&!WarTableRecruit.texts().containsKey("notice");
+                        why+="; the tag pressed twice 50 ms apart sent "+WarTableRecruit.sent().subList(sentBefore,WarTableRecruit.sent().size())+", "+picked+(CampaignClient.profile.owned.containsKey(picked)?" recruited":" not recruited")+", gold "+goldBefore+" -> "+CampaignClient.profile.gold+" (one buy costs "+RecruitView.chooseCost()+"), the letter "+text("letter-troop")+" under the seal "+str(rect("broken"))+", notice line "+text("notice")+(buyOk?"":" WRONG");
+                        for(var t:Spec.TROOPS)if(t.house().equals(H0)){if(t.rarity().equals("epic"))epicId=t.id();if(t.rarity().equals("legendary"))legId=t.id();}
+                        int ei=-1;for(var r:WarTableRecruit.rows())if(r.troop().equals(epicId))ei=r.index();if(ei>=0)click(c,box(c,"row-"+ei));return;}
+                    if(k==52){ // the Epic not found: its words in place of a tag
+                        epicOk=epicId!=null&&epicId.equals(text("letter-troop"))&&!owned().contains(epicId)&&RecruitView.action(epicId)==null&&!RecruitView.noAction(epicId).isEmpty()&&RecruitView.noAction(epicId).equals(text("letter-none"))
+                            &&!WarTableRecruit.rects().containsKey("choose")&&box(c,"choose")==null&&letterFits().isEmpty();
+                        why+="; the Epic "+epicId+" not found: the letter says \""+text("letter-none")+"\" in place of a tag (tag "+str(rect("choose"))+")"+(epicOk?"":" WRONG");
+                        int li=-1;for(var r:WarTableRecruit.rows())if(r.troop().equals(legId))li=r.index();if(li>=0)click(c,box(c,"row-"+li));return;}
+                    if(k==56){ // the Legendary not found: its tag, inactive, and why in words
+                        var a=legId==null?null:RecruitView.action(legId);var p=page(c);
+                        legOk=a!=null&&legId.equals(text("letter-troop"))&&!a.active()&&a.label().equals(text("choose"))&&a.command().equals(text("choose-command"))&&a.command().startsWith("legendary:"+H0+":")&&p!=null&&p.choose!=null&&p.choose.visible&&!p.choose.active
+                            &&Integer.valueOf(DarkUi.SEPIA).equals(color("choose"))&&!a.tip().isEmpty()&&a.tip().equals(text("reason"))&&Integer.valueOf(DarkUi.INK_TEXT).equals(color("reason"))&&letterFits().isEmpty();
+                        why+="; the Legendary "+legId+" not found: the tag \""+text("choose")+"\" ("+text("choose-command")+") is inactive and under it \""+text("reason")+"\""+(legOk?"":" WRONG");
+                        shot(c,"ui-recruit-legendary");report("p1-ui-recruit-choose",buyOk&&epicOk&&legOk,why);stage=6;}
                 }
-                case 6->{ // p1-ui-recruit-dusk: the Dusk banner lists Dusk's six, its label not underlined (chosen, and a click's focus); a click on Enlist sends roll:dusk and a Dusk troop arrives
+                case 6->{ // p1-ui-recruit-dusk: the second banner lists the second House's roll, its label not underlined (chosen, and a click's focus); a click on Enlist sends roll:<house> and the troop of the fixed draw arrives
                     int k=since(tick);
-                    if(k==0){park(c);click(c,box(c,"house-dusk"));return;}
-                    if(k==4){var tx=WarTableRecruit.textures();List<String> want=new ArrayList<>();for(var t:Spec.TROOPS)if(t.house().equals("graveborn"))want.add(t.id());
-                        boolean inks=WarTableRecruit.rows().size()==6;StringBuilder rowWhy=new StringBuilder();for(var row:WarTableRecruit.rows()){boolean mine=!DUSK_NEW.contains(row.troop());inks&=row.color()==(mine?DarkUi.INK_TEXT:DarkUi.SEPIA)&&row.silhouette()==!mine;rowWhy.append(row.troop()).append(row.color()==DarkUi.INK_TEXT?" ink":row.color()==DarkUi.SEPIA?" sepia":" "+hex(row.color())).append(row.silhouette()?" (silhouette)":"").append(", ");}
-                        var lp=portrait("letter");var ld=lp==null?null:lp.drawn();
-                        boolean listed=want.equals(Arrays.asList(DUSK))&&rowTroops().equals(want)&&inks&&"recruit/banner-graveborn-on".equals(tx.get("banner-dusk"))&&"recruit/banner-gilded".equals(tx.get("banner-dawn"))
-                            &&Arrays.equals(rect("banner-dusk"),new int[]{484,13,104,60})&&Arrays.equals(rect("banner-dawn"),new int[]{372,13,104,50})&&Integer.valueOf(DarkUi.IVORY).equals(color("banner-dusk"))
-                            &&"reaper".equals(text("letter-troop"))&&ld!=null&&ld.scale()==1.2f&&ld.size()==size("reaper",160)&&"3 letters left".equals(text("rung"))&&hotNone();
-                        why="the Dusk banner: rows "+rowWhy+"banners dawn "+tx.get("banner-dawn")+" dusk "+tx.get("banner-dusk")+" "+str(rect("banner-dusk"))+" label "+hex(color("banner-dusk"))+", letter "+text("letter-troop")+" portrait "+ld+", rung \""+text("rung")+"\", underlined "+WarTableRecruit.underlined()+(listed?"":" WRONG");
+                    if(k==0){park(c);click(c,box(c,"house-"+H1));return;}
+                    if(k==4){var tx=WarTableRecruit.textures();List<String> want=troopsOf(H1);var have=owned();
+                        boolean inks=WarTableRecruit.rows().size()==want.size();StringBuilder rowWhy=new StringBuilder();for(var row:WarTableRecruit.rows()){boolean mine=have.contains(row.troop());inks&=row.color()==(mine?DarkUi.INK_TEXT:DarkUi.SEPIA)&&row.silhouette()==!mine&&row.name().equals(name(row.troop()));rowWhy.append(row.troop()).append(row.color()==DarkUi.INK_TEXT?" ink":row.color()==DarkUi.SEPIA?" sepia":" "+hex(row.color())).append(row.silhouette()?" (silhouette)":"").append(", ");}
+                        var lp=portrait("letter");var ld=lp==null?null:lp.drawn();String first=null;for(var r:RecruitView.roll(H1))if(first==null&&!r.owned())first=r.troopId();
+                        boolean listed=rowTroops().equals(want)&&inks&&("recruit/banner-"+H1+"-on").equals(tx.get("banner-"+H1))&&("recruit/banner-"+H0).equals(tx.get("banner-"+H0))
+                            &&Arrays.equals(rect("banner-"+H1),new int[]{bx(1),13,104,60})&&Arrays.equals(rect("banner-"+H0),new int[]{bx(0),13,104,50})&&Integer.valueOf(DarkUi.IVORY).equals(color("banner-"+H1))
+                            &&first!=null&&first.equals(text("letter-troop"))&&ld!=null&&ld.size()==size(first,160)&&UiMath.pityLine(RecruitView.pityLeft(H1)).equals(text("rung"))&&hotNone()&&!start().contains(drawn(H1,rareDraw(H0),0));
+                        why="the second banner: rows "+rowWhy+"banners "+H0+" "+tx.get("banner-"+H0)+" "+H1+" "+tx.get("banner-"+H1)+" "+str(rect("banner-"+H1))+" label "+hex(color("banner-"+H1))+", letter "+text("letter-troop")+" portrait "+ld+", rung \""+text("rung")+"\", underlined "+WarTableRecruit.underlined()+(listed?"":" WRONG");
                         shot(c,"ui-recruit-dusk");
                         if(!listed){report("p1-ui-recruit-dusk",false,why);stage=7;return;}
                         goldBefore=CampaignClient.profile.gold;before=owned();sentBefore=WarTableRecruit.sent().size();click(c,box(c,"enlist"));return;}
-                    if(k>4){var now=owned();now.removeAll(before);boolean arrived=now.size()==1&&DUSK_NEW.containsAll(now)&&CampaignClient.profile.gold==goldBefore-100;
+                    if(k>4){String want=drawn(H1,rareDraw(H0),0);var now=owned();now.removeAll(before);boolean arrived=now.equals(Set.of(want))&&CampaignClient.profile.gold==goldBefore-RecruitView.cost();
                         if(!arrived&&k<=45)return;
                         if(arrived&&k<48)return;
                         String id=now.isEmpty()?"none":now.iterator().next();
-                        boolean ok=arrived&&"roll:dusk".equals(lastSent())&&WarTableRecruit.sent().size()==sentBefore+1&&id.equals(text("letter-troop"))&&WarTableRecruit.rects().containsKey("broken")&&"2 letters left".equals(text("rung"));
-                        report("p1-ui-recruit-dusk",ok,why+"; a click on Enlist sent "+lastSent()+", new "+now+", gold "+goldBefore+" -> "+CampaignClient.profile.gold+", the letter "+text("letter-troop")+" under the seal "+str(rect("broken"))+", rung \""+text("rung")+"\"");
+                        boolean ok=arrived&&("roll:"+H1).equals(lastSent())&&WarTableRecruit.sent().size()==sentBefore+1&&id.equals(text("letter-troop"))&&WarTableRecruit.rects().containsKey("broken")&&UiMath.pityLine(RecruitView.pityLeft(H1)).equals(text("rung"));
+                        report("p1-ui-recruit-dusk",ok,why+"; a click on Enlist sent "+lastSent()+", the fixed draw lands on "+want+", new "+now+", gold "+goldBefore+" -> "+CampaignClient.profile.gold+", the letter "+text("letter-troop")+" under the seal "+str(rect("broken"))+", rung \""+text("rung")+"\"");
                         shot(c,"ui-recruit-dusk-enlist");stage=7;}
                 }
                 case 7->{ // p1-ui-recruit-broke: the server leaves 50 gold
                     stage=-1;server(c,b->{b.campaign.profile(player).gold=50;b.campaign.save(player);stage=71;});
                 }
-                case 71->{ // the snapshot brings the 50 gold, then the Dawn banner
+                case 71->{ // the snapshot brings the 50 gold, then the first banner
                     if(CampaignClient.profile.gold!=50){if(since(tick)>300){report("p1-ui-recruit-broke",false,"gold never reached 50: "+CampaignClient.profile.gold);stage=8;}return;}
-                    click(c,box(c,"house-dawn"));stage=72;
+                    click(c,box(c,"house-"+H0));stage=72;
                 }
-                case 72->{ // the iron plate: "Need 100"; Choose on the Dawn troop still to come goes sepia and takes no press; Enter sends nothing; then a purse the client still shows full
+                case 72->{ // the iron plate: "Need <cost>"; the tag on an owned Common goes sepia, says why in words and takes no press; Enter sends nothing; then a purse the client still shows full
                     int k=since(tick);
                     if(k==4){var tx=WarTableRecruit.textures();
-                        boolean iron="table/btn-iron-240x40".equals(tx.get("enlist"))&&"Enlist".equals(text("enlist"))&&Integer.valueOf(DarkUi.IVORY).equals(color("enlist"))&&"Need 100".equals(text("enlist-cost"))&&Integer.valueOf(DarkUi.ALARM_TEXT).equals(color("enlist-cost"))
-                            &&"1 letter left".equals(text("rung"))&&"50".equals(text("purse"))&&Arrays.equals(rect("banner-dawn"),new int[]{372,13,104,60});
-                        why="50 gold on Dawn: plate "+tx.get("enlist")+" \""+text("enlist")+"\" "+hex(color("enlist"))+", \""+text("enlist-cost")+"\" "+hex(color("enlist-cost"))+", purse "+text("purse")+", rung \""+text("rung")+"\""+(iron?"":" WRONG");
-                        int at=-1;for(var r:WarTableRecruit.rows())if(at<0&&!CampaignClient.profile.owned.containsKey(r.troop())){at=r.index();picked=r.troop();}
-                        if(!iron||at<0){report("p1-ui-recruit-broke",false,why+(at<0?"; no Dawn row left: "+rowTroops():""));stage=8;return;}
-                        click(c,box(c,"row-"+at));return;}
-                    if(k==8){var p=page(c);int[] ch=box(c,"choose");
-                        boolean sepia=picked.equals(text("letter-troop"))&&p!=null&&p.choose!=null&&p.choose.visible&&!p.choose.active&&Integer.valueOf(DarkUi.SEPIA).equals(color("choose"))&&Integer.valueOf(DarkUi.SEPIA).equals(color("choose-cost"))&&Arrays.equals(ch,new int[]{436,440,88,24});
-                        why+="; "+picked+" selected: Choose "+str(ch)+(p!=null&&p.choose!=null&&p.choose.active?" active":" inactive")+", ink "+hex(color("choose"))+", cost "+hex(color("choose-cost"))+(sepia?"":" WRONG");
+                        boolean iron="table/btn-iron-240x40".equals(tx.get("enlist"))&&"Enlist".equals(text("enlist"))&&Integer.valueOf(DarkUi.IVORY).equals(color("enlist"))&&("Need "+RecruitView.cost()).equals(text("enlist-cost"))&&Integer.valueOf(DarkUi.ALARM_TEXT).equals(color("enlist-cost"))
+                            &&UiMath.pityLine(RecruitView.pityLeft(H0)).equals(text("rung"))&&"50".equals(text("purse"))&&Arrays.equals(rect("banner-"+H0),new int[]{bx(0),13,104,60});
+                        why="50 gold on the first House: plate "+tx.get("enlist")+" \""+text("enlist")+"\" "+hex(color("enlist"))+", \""+text("enlist-cost")+"\" "+hex(color("enlist-cost"))+", purse "+text("purse")+", rung \""+text("rung")+"\""+(iron?"":" WRONG");
+                        picked=troopsOf(H0).get(0); // an owned Common: a Buy would add a copy, and 50 gold is short of its price
+                        if(!iron||!CampaignClient.profile.owned.containsKey(picked)){report("p1-ui-recruit-broke",false,why+(CampaignClient.profile.owned.containsKey(picked)?"":"; "+picked+" is not owned"));stage=8;return;}
+                        click(c,box(c,"row-0"));return;}
+                    if(k==8){var p=page(c);int[] ch=box(c,"choose");var a=RecruitView.action(picked);
+                        boolean sepia=a!=null&&!a.active()&&picked.equals(text("letter-troop"))&&p!=null&&p.choose!=null&&p.choose.visible&&!p.choose.active&&Integer.valueOf(DarkUi.SEPIA).equals(color("choose"))&&Arrays.equals(ch,CHOOSE)
+                            &&a.tip().equals(text("reason"))&&a.tip().contains(String.valueOf(RecruitView.chooseCost()))&&a.tip().contains("50")&&Integer.valueOf(DarkUi.INK_TEXT).equals(color("reason"))&&letterFits().isEmpty();
+                        why+="; "+picked+" selected: the tag "+str(ch)+(p!=null&&p.choose!=null&&p.choose.active?" active":" inactive")+" \""+text("choose")+"\", ink "+hex(color("choose"))+", under it \""+text("reason")+"\" in "+hex(color("reason"))+(sepia?"":" WRONG");
                         if(!sepia){report("p1-ui-recruit-broke",false,why);stage=8;return;}
                         pointer(c,ch[0]+ch[2]/2.0,ch[1]+ch[3]/2.0);sentBefore=WarTableRecruit.sent().size();click(c,ch);return;}
-                    if(k==12){boolean dead=!WarTableRecruit.underlined().contains("choose")&&WarTableRecruit.sent().size()==sentBefore&&!owned().contains(picked);
+                    if(k==12){boolean dead=!WarTableRecruit.underlined().contains("choose")&&WarTableRecruit.sent().size()==sentBefore;
                         why+="; the pointer over it and a click: "+(dead?"no underline, nothing sent":"WRONG: underlined "+WarTableRecruit.underlined()+", sent "+(WarTableRecruit.sent().size()-sentBefore));
                         if(!dead){report("p1-ui-recruit-broke",false,why);stage=8;return;}
                         park(c);before=owned();sentBefore=WarTableRecruit.sent().size();revealBefore=CampaignClient.revealUntil;tap(c,GLFW.GLFW_KEY_ENTER);return;}
                     if(k==38){boolean still=CampaignClient.profile.gold==50&&owned().equals(before)&&CampaignClient.revealUntil==revealBefore&&WarTableRecruit.sent().size()==sentBefore;
                         why+="; Enter: "+(still?"nothing sent, gold 50, no reveal":"WRONG: sent "+(WarTableRecruit.sent().size()-sentBefore)+", gold "+CampaignClient.profile.gold+", reveal "+(CampaignClient.revealUntil!=revealBefore));
                         if(!still){report("p1-ui-recruit-broke",false,why);stage=8;return;}
-                        // the server holds 50 but the client still shows 300 (a purse spent elsewhere since the last snapshot): Enter sends roll:dawn and the server refuses it
+                        // the server holds 50 but the client still shows 300 (a purse spent elsewhere since the last snapshot): Enter sends roll:<house> and the server refuses it
                         serialBefore=CampaignClient.noticeSerial;seen=-1;CampaignClient.profile.gold=300;page(c).refresh();sentBefore=WarTableRecruit.sent().size();tap(c,GLFW.GLFW_KEY_ENTER);return;}
                     if(k>38){
                         if(CampaignClient.noticeSerial==serialBefore){if(k<=90)return;}
                         else if(seen<0){seen=k;return;}
                         else if(k<seen+3)return; // the page takes the notice and a frame draws it
-                        String want="A unit roll costs "+Spec.RECRUITMENT[0].rollCost()+" gold. Earn gold by completing battles.";int[] n=rect("notice");
-                        boolean refused="roll:dawn".equals(lastSent())&&WarTableRecruit.sent().size()==sentBefore+1&&want.equals(CampaignClient.notice)&&want.equals(text("notice"))&&noticePlaced(n)
+                        int[] n=rect("notice");String told=CampaignClient.notice;
+                        boolean refused=("roll:"+H0).equals(lastSent())&&WarTableRecruit.sent().size()==sentBefore+1&&!told.isEmpty()&&told.contains(String.valueOf(RecruitView.cost()))&&told.equals(text("notice"))&&noticePlaced(n)
                             &&Integer.valueOf(DarkUi.IVORY).equals(color("notice"))&&CampaignClient.profile.gold==50&&owned().equals(before);
-                        why+="; the client shown 300 while the server holds 50: Enter sent "+lastSent()+", the notice line reads \""+text("notice")+"\" at "+str(n)+" "+hex(color("notice"))+", gold "+CampaignClient.profile.gold+(refused?"":" WRONG");
+                        why+="; the client shown 300 while the server holds 50: Enter sent "+lastSent()+", the server says \""+told+"\", the notice line reads \""+text("notice")+"\" at "+str(n)+" "+hex(color("notice"))+", gold "+CampaignClient.profile.gold+(refused?"":" WRONG");
                         if(!refused){report("p1-ui-recruit-broke",false,why);stage=8;return;}
-                        seen=-1;stage=-1;server(c,b->{var p=b.campaign.profile(player);for(var t:Spec.TROOPS)if(t.house().equals("gilded"))p.owned.putIfAbsent(t.id(),new Profile.Owned());b.campaign.save(player);stage=73;});}
+                        seen=-1;stage=-1;
+                        server(c,b->{var p=b.campaign.profile(player);for(var t:Spec.TROOPS)if(t.house().equals(H0))p.owned.putIfAbsent(t.id(),new Profile.Owned());var full=p.owned.get(troopsOf(H0).get(0));full.stars=Spec.RECRUITMENT[0].maxStars();b.campaign.save(player);stage=73;});}
                 }
-                case 73->{ // every Dawn troop recruited on the server; once the client has them, Odds
-                    boolean all=true;for(String id:DAWN)all&=CampaignClient.profile.owned.containsKey(id);
-                    if(!all){if(since(tick)>300){report("p1-ui-recruit-broke",false,why+"; the Dawn troops never all arrived: "+CampaignClient.profile.owned.keySet());stage=8;}return;}
+                case 73->{ // every troop of the first House owned on the server, the first of them at full stars; once the client has them, Odds
+                    boolean all=true;for(String id:troopsOf(H0))all&=CampaignClient.profile.owned.containsKey(id);
+                    var first=CampaignClient.profile.owned.get(troopsOf(H0).get(0));all&=first!=null&&first.stars>=Spec.RECRUITMENT[0].maxStars();
+                    if(!all){if(since(tick)>300){report("p1-ui-recruit-broke",false,why+"; the first House's troops never all arrived: "+CampaignClient.profile.owned.keySet());stage=8;}return;}
                     if(since(tick)<3)return;
-                    click(c,box(c,"odds"));stage=74;
+                    click(c,box(c,"row-0"));stage=731; // the client's own diff of newly owned troops reveals the last of them (the Lord Marshal) and the page selects it: the first troop is picked again
                 }
-                case 74->{ // the ladder has run out; the Odds note says so; Esc closes it and the page stays; a roll:dawn sent anyway is refused on the notice line
+                case 731->{if(since(tick)<3)return;if(!picked.equals(text("letter-troop"))){if(since(tick)>60){report("p1-ui-recruit-broke",false,why+"; the first troop never came back on the letter: "+text("letter-troop"));stage=8;}return;}click(c,box(c,"odds"));stage=74;}
+                case 74->{ // every troop owned: the roll lists them all as recruited and the first, at full stars, has no tag but says so; Esc closes the note and the page stays; a roll:<house> sent anyway is refused
                     int k=since(tick);
                     if(k==3){var tx=WarTableRecruit.textures();
-                        boolean found="table/btn-iron-240x40".equals(tx.get("enlist"))&&"Every troop found".equals(text("enlist"))&&!WarTableRecruit.texts().containsKey("enlist-cost")&&"No letters left".equals(text("rung"))&&!WarTableRecruit.rects().containsKey("bundle")
-                            &&"Nothing left to draw".equals(text("note-0"))&&WarTableRecruit.NO_DUPLICATES.equals(text("note-1"))&&!WarTableRecruit.texts().containsKey("note-2")&&Arrays.equals(rect("note"),new int[]{360,200,244,165})&&page(c)!=null&&page(c).odds;
-                        why+="; every Dawn troop recruited: plate "+tx.get("enlist")+" \""+text("enlist")+"\", cost "+text("enlist-cost")+", rung \""+text("rung")+"\", bundle "+str(rect("bundle"))+", Odds note "+str(rect("note"))+" \""+text("note-0")+"\" / \""+text("note-1")+"\" / "+text("note-2")+(found?"":" WRONG");
+                        boolean inks=WarTableRecruit.rows().size()==troopsOf(H0).size();for(var row:WarTableRecruit.rows())inks&=row.color()==DarkUi.INK_TEXT&&!row.silhouette();
+                        boolean full=picked.equals(text("letter-troop"))&&"Full stars".equals(text("letter-none"))&&RecruitView.noAction(picked).equals(text("letter-none"))&&!WarTableRecruit.rects().containsKey("choose")&&box(c,"choose")==null&&RecruitView.action(picked)==null&&!WarTableRecruit.rects().containsKey("reason")&&letterFits().isEmpty();
+                        boolean found="table/btn-iron-240x40".equals(tx.get("enlist"))&&("Need "+RecruitView.cost()).equals(text("enlist-cost"))&&page(c)!=null&&page(c).odds&&String.join(" ",noteLines()).equals(String.join(" ",RecruitView.note(H0)));
+                        why+="; every troop of the first House owned: rows "+(inks?"all ink, no silhouette":"WRONG")+", "+picked+" at "+Spec.RECRUITMENT[0].maxStars()+" stars: the letter says \""+text("letter-none")+"\" in place of a tag (tag "+str(rect("choose"))+", reason "+str(rect("reason"))+")"+(full?"":" WRONG")+", plate "+tx.get("enlist")+" \""+text("enlist-cost")+"\", Odds note "+str(rect("note"))+(found?"":" WRONG");
                         shot(c,"ui-recruit-broke");
-                        if(!found){report("p1-ui-recruit-broke",false,why);stage=8;return;}
+                        if(!inks||!full||!found){report("p1-ui-recruit-broke",false,why);stage=8;return;}
                         tap(c,GLFW.GLFW_KEY_ESCAPE);return;}
                     if(k==6){boolean closed=page(c)!=null&&!page(c).odds&&!WarTableRecruit.rects().containsKey("note");
                         why+="; Esc "+(closed?"closed the note and the page stayed":"WRONG: note "+str(rect("note"))+", page "+(page(c)!=null));
                         if(!closed){report("p1-ui-recruit-broke",false,why);stage=8;return;}
-                        // the page sends nothing now; a roll:dawn sent anyway (a stale client) must be refused by the server, gold untouched
-                        serialBefore=CampaignClient.noticeSerial;seen=-1;before=owned();GravesAndGloryClient.send("roll:dawn");return;}
+                        // the page sends nothing now; a roll:<house> sent anyway must be refused by the server, gold untouched
+                        serialBefore=CampaignClient.noticeSerial;seen=-1;before=owned();GravesAndGloryClient.send("roll:"+H0);return;}
                     if(k>6){
                         if(CampaignClient.noticeSerial==serialBefore){if(k<=60)return;}
                         else if(seen<0){seen=k;return;}
                         else if(k<seen+3)return;
-                        String want="Every "+Spec.FACTIONS[0].name()+" troop is already yours.";
-                        boolean refused=want.equals(CampaignClient.notice)&&want.equals(text("notice"))&&noticePlaced(rect("notice"))&&CampaignClient.profile.gold==50&&owned().equals(before);
-                        why+="; roll:dawn sent anyway: notice \""+CampaignClient.notice+"\" (serial "+serialBefore+" to "+CampaignClient.noticeSerial+"), the line reads \""+text("notice")+"\" at "+str(rect("notice"))+", gold "+CampaignClient.profile.gold+(refused?"":" WRONG");
+                        String told=CampaignClient.notice;
+                        boolean refused=!told.isEmpty()&&told.contains(String.valueOf(RecruitView.cost()))&&told.equals(text("notice"))&&noticePlaced(rect("notice"))&&CampaignClient.profile.gold==50&&owned().equals(before);
+                        why+="; roll:"+H0+" sent anyway: notice \""+told+"\" (serial "+serialBefore+" to "+CampaignClient.noticeSerial+"), the line reads \""+text("notice")+"\" at "+str(rect("notice"))+", gold "+CampaignClient.profile.gold+(refused?"":" WRONG");
                         report("p1-ui-recruit-broke",refused,why);seen=-1;stage=8;}
                 }
                 case 8->{stage=9;}
-                case 9->{ // p1-ui-recruit-keys: the page open with 300 gold again, so Choose can buy
+                case 9->{ // p1-ui-recruit-keys: the page open with GOLD gold again, so the tag can buy
                     if(page(c)==null)CampScreen.open("recruit");
-                    stage=-1;server(c,b->{b.campaign.profile(player).gold=300;b.campaign.save(player);stage=91;});
+                    stage=-1;server(c,b->{b.campaign.profile(player).gold=GOLD;b.campaign.save(player);stage=91;});
                 }
-                case 91->{ // the snapshot brings 300; the Dusk banner
-                    if(CampaignClient.profile.gold!=300||page(c)==null){if(since(tick)>300){report("p1-ui-recruit-keys",false,"no recruit page with 300 gold: gold "+CampaignClient.profile.gold+", page "+(page(c)!=null));stage=10;}return;}
-                    park(c);click(c,box(c,"house-dusk"));stage=92;
+                case 91->{ // the snapshot brings GOLD; the second banner
+                    if(CampaignClient.profile.gold!=GOLD||page(c)==null){if(since(tick)>300){report("p1-ui-recruit-keys",false,"no recruit page with "+GOLD+" gold: gold "+CampaignClient.profile.gold+", page "+(page(c)!=null));stage=10;}return;}
+                    page(c).odds=false; // a note left open by an earlier check would take the click
+                    park(c);click(c,box(c,"house-"+H1));stage=92;
                 }
-                case 92->{ // a Dusk row not yet recruited, by the mouse; Tab to Choose; Enter presses Choose, not Enlist
+                case 92->{ // a troop of the second House a Buy can take, by the mouse; Tab to the tag; Enter presses the tag, not Enlist
                     int k=since(tick);
-                    if(k==3){int at=-1;for(var r:WarTableRecruit.rows())if(at<0&&!CampaignClient.profile.owned.containsKey(r.troop())){at=r.index();picked=r.troop();}
-                        if(at<0){report("p1-ui-recruit-keys",false,"no Dusk row left to choose: rows "+rowTroops());stage=10;return;}
+                    if(k==3){picked=firstBuyable(H1);int at=-1;for(var r:WarTableRecruit.rows())if(r.troop().equals(picked))at=r.index();
+                        if(picked==null||at<0){report("p1-ui-recruit-keys",false,"no troop of the second House left for a Buy: rows "+rowTroops());stage=10;return;}
                         click(c,box(c,"row-"+at));return;}
-                    if(k==6){var p=page(c);if(p==null){report("p1-ui-recruit-keys",false,"the page closed before Tab");stage=10;return;}int n=0;while(n<20&&!(p.choose!=null&&p.choose.isFocused())){tap(c,GLFW.GLFW_KEY_TAB);n++;}
-                        keysWhy=picked+" selected by a click; "+n+" Tab presses put the focus on "+(p.choose!=null&&p.choose.isFocused()?"Choose":"something else");return;}
+                    if(k==6){var p=page(c);if(p==null){report("p1-ui-recruit-keys",false,"the page closed before Tab");stage=10;return;}int n=0;while(n<40&&!(p.choose!=null&&p.choose.isFocused())){tap(c,GLFW.GLFW_KEY_TAB);n++;}
+                        keysWhy=picked+" selected by a click; "+n+" Tab presses put the focus on "+(p.choose!=null&&p.choose.isFocused()?"the tag":"something else");return;}
                     if(k==9){var p=page(c);boolean focus=p!=null&&p.choose!=null&&p.choose.isFocused()&&p.choose.active&&c.getNavigationType().isKeyboard()&&WarTableRecruit.underlined().equals(Set.of("choose"));
                         keysOk&=focus;keysWhy+=", underlined "+WarTableRecruit.underlined()+(focus?"":" WRONG");
                         goldBefore=CampaignClient.profile.gold;sentBefore=WarTableRecruit.sent().size();tap(c,GLFW.GLFW_KEY_ENTER);return;}
-                    if(k>9){boolean done=CampaignClient.profile.owned.containsKey(picked)&&CampaignClient.profile.gold==goldBefore-100;
+                    if(k>9){boolean done=CampaignClient.profile.owned.containsKey(picked)&&CampaignClient.profile.gold==goldBefore-RecruitView.chooseCost();
                         if(!done&&k<=50)return;
                         if(done&&k<53)return;
-                        boolean ok=done&&WarTableRecruit.sent().size()==sentBefore+1&&("unlock:"+picked).equals(lastSent())&&picked.equals(text("letter-troop"));
+                        boolean ok=done&&WarTableRecruit.sent().size()==sentBefore+1&&("buy:"+picked).equals(lastSent())&&!oldCommands(sentBefore)&&picked.equals(text("letter-troop"));
                         keysOk&=ok;keysWhy+="; Enter sent "+WarTableRecruit.sent().subList(sentBefore,WarTableRecruit.sent().size())+", "+picked+(CampaignClient.profile.owned.containsKey(picked)?" recruited":" not recruited")+", gold "+goldBefore+" -> "+CampaignClient.profile.gold+(ok?"":" WRONG");
                         stage=93;}
                 }
@@ -2957,10 +2971,10 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==3){boolean none=hotNone();keysOk&=none;keysWhy+="; row 0 clicked, the pointer away: underlined "+WarTableRecruit.underlined()+(none?"":" WRONG");
                         int[] b=box(c,"odds");pointer(c,b[0]+b[2]/2.0,b[1]+b[3]/2.0);return;}
                     if(k==5){boolean odds=WarTableRecruit.underlined().equals(Set.of("odds"));keysOk&=odds;keysWhy+=", over Odds "+WarTableRecruit.underlined()+(odds?"":" WRONG");
-                        int[] b=box(c,"house-dusk");pointer(c,b[0]+b[2]/2.0,b[1]+b[3]/2.0);return;}
-                    if(k==7){boolean chosen=hotNone();keysOk&=chosen;keysWhy+=", over the chosen Dusk banner "+WarTableRecruit.underlined()+(chosen?"":" WRONG");
-                        int[] b=box(c,"house-dawn");pointer(c,b[0]+b[2]/2.0,b[1]+b[3]/2.0);return;}
-                    if(k==9){boolean other=WarTableRecruit.underlined().equals(Set.of("house-dawn"));keysOk&=other;keysWhy+=", over the Dawn banner "+WarTableRecruit.underlined()+(other?"":" WRONG");
+                        int[] b=box(c,"house-"+H1);pointer(c,b[0]+b[2]/2.0,b[1]+b[3]/2.0);return;}
+                    if(k==7){boolean chosen=hotNone();keysOk&=chosen;keysWhy+=", over the chosen second banner "+WarTableRecruit.underlined()+(chosen?"":" WRONG");
+                        int[] b=box(c,"house-"+H0);pointer(c,b[0]+b[2]/2.0,b[1]+b[3]/2.0);return;}
+                    if(k==9){boolean other=WarTableRecruit.underlined().equals(Set.of("house-"+H0));keysOk&=other;keysWhy+=", over the first banner "+WarTableRecruit.underlined()+(other?"":" WRONG");
                         park(c);stage=94;}
                 }
                 case 94->{ // the wheel: ten notches toward the player, ten away, a sideways turn (0) and two small turns; the roll stays between its ends
@@ -2986,7 +3000,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==10){var s=screen(c);boolean open=s!=null&&s==table&&s.page.equals("home");keysOk&=open;keysWhy+=", its repeat "+(open?"left the table open on home":"WRONG: "+(s==null?"closed the table":s.page));release(c,GLFW.GLFW_KEY_ESCAPE);
                         boolean clear=table!=null&&table.held.isEmpty();keysOk&=clear;keysWhy+=", held after the release "+(table==null?"?":table.held)+(clear?"":" WRONG");
                         click(c,UiHomeChecks.box(c,"recruit"));return;}
-                    if(k==13){var p=page(c);boolean back=p!=null&&p.house.equals("dawn");keysOk&=back;keysWhy+="; home's Recruit plaque "+(back?"reopened the page on Dawn":"WRONG: "+(p==null?"no page":p.house));click(c,box(c,"back"));return;}
+                    if(k==13){var p=page(c);boolean back=p!=null&&p.house.equals(H0);keysOk&=back;keysWhy+="; home's Recruit plaque "+(back?"reopened the page on the first House":"WRONG: "+(p==null?"no page":p.house));click(c,box(c,"back"));return;}
                     if(k==16){var s=screen(c);boolean home=s!=null&&s.page.equals("home");keysOk&=home;keysWhy+="; the back plaque "+(home?"went home":"WRONG: "+(s==null?"the table closed":s.page));click(c,UiHomeChecks.box(c,"recruit"));return;}
                     if(k==19){boolean again=page(c)!=null;keysOk&=again;if(!again)keysWhy+="; WRONG: home's Recruit plaque did not reopen the page";click(c,box(c,"banner"));return;}
                     if(k==22){var s=screen(c);boolean banner=s!=null&&s.page.equals("banner")&&s.pages!=null;keysOk&=banner;keysWhy+="; reopened, the Banner plaque "+(banner?"opened the Banner page":"WRONG: "+(s==null?c.currentScreen:s.page));CampScreen.open("recruit");return;}
@@ -2994,61 +3008,169 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==27){var s=screen(c);boolean banner=s!=null&&s.page.equals("banner")&&s.pages!=null;keysOk&=banner;keysWhy+="; reopened, B "+(banner?"opened the Banner page":"WRONG: "+(s==null?c.currentScreen:s.page));release(c,GLFW.GLFW_KEY_B);
                         report("p1-ui-recruit-keys",keysOk,keysWhy);CampScreen.open("recruit");stage=10;}
                 }
-                case 10->{ // p1-ui-recruit-scales: the page as the layout step saw it (a fresh commander with 300 gold, Dawn Sentinel on the letter)
-                    stage=-1;server(c,b->{var p=new Profile();p.gold=300;b.campaign.profiles.put(player,p);b.campaign.save(player);stage=101;});
+                case 10->{ // p1-ui-recruit-scales: the page as the layout step saw it (a fresh commander with GOLD gold)
+                    stage=-1;server(c,b->{var p=new Profile();p.gold=GOLD;b.campaign.profiles.put(player,p);b.campaign.save(player);stage=101;});
                 }
                 case 101->{ // the snapshot brings the fresh profile; the page opens anew, at 854x480 GUI 2 (the compact page, UI Task 8b-2)
-                    var p=CampaignClient.profile;boolean fresh=p.gold==300&&p.owned.keySet().equals(new Profile().owned.keySet());
-                    if(!fresh){if(since(tick)>300){report("p1-ui-recruit-scales",false,"no fresh profile with 300 gold 300 ticks on: gold "+p.gold+", unlocked "+p.owned.keySet());end(c);}return;}
+                    var p=CampaignClient.profile;boolean fresh=p.gold==GOLD&&p.owned.keySet().equals(start());
+                    if(!fresh){if(since(tick)>300){report("p1-ui-recruit-scales",false,"no fresh profile with "+GOLD+" gold 300 ticks on: gold "+p.gold+", unlocked "+p.owned.keySet());end(c);}return;}
                     CampScreen.open("recruit");window(c,854,480,2);stage=102;
                 }
                 case 102->{ // then 1920x974 GUI 1 (the big-canvas oak to the edges, UI Task 8b-2)
                     int k=since(tick);
                     if(k==18){park(c);return;}
-                    if(k==20){scalesWhy=small(c);shot(c,"ui-recruit-854");return;}
-                    if(k==22){window(c,1920,974,1,true);return;}
-                    if(k==40){park(c);return;}
-                    if(k==42){scalesWhy+="; "+big(c);shot(c,"ui-recruit-1920x974");return;}
-                    if(k==44){report("p1-ui-recruit-scales",scalesOk,scalesWhy);end(c);}
+                    if(k==20){scalesWhy=small(c);shot(c,"ui-recruit-854");stage=1021;}
+                }
+                case 1021->{ // the letter's reveal at 854x480: Enlist lands the House's first Rare, a new recruit under the broken seal
+                    int k=since(tick);
+                    if(k==2){compactWant=drawn(H0,rareDraw(H0),0);sentBefore=WarTableRecruit.sent().size();goldBefore=CampaignClient.profile.gold;click(c,box(c,"enlist"));return;}
+                    var r=CampaignClient.lastRoll;
+                    if(k>2&&r!=null&&r.troop().equals(compactWant)&&CampaignClient.rollShowing()){CampaignClient.revealHeldAt=600;stage=1022;return;}
+                    if(k>300){scalesOk=false;scalesWhy+="; WRONG: the roll's letter never showed at 854x480: lastRoll "+r;CampaignClient.revealHeldAt=-1;stage=1026;}
+                }
+                case 1022->{
+                    int k=since(tick);
+                    if(k==4){var bad=UiHomeChecks.fits(WarTableRecruit.rects(),boxes(c));String lf=letterFits();
+                        boolean ok=WarTable.compact()&&compactWant.equals(text("letter-troop"))&&WarTableRecruit.rects().containsKey("broken")&&text("letter-outcome")==null&&bad.isEmpty()&&lf.isEmpty()&&("roll:"+H0).equals(lastSent())&&CampaignClient.profile.gold==goldBefore-RecruitView.cost();
+                        scalesOk&=ok;scalesWhy+="; at 854x480 a new recruit's letter: "+text("letter-troop")+" under the seal "+str(rect("broken"))+", not fitting "+bad+", letter lines "+(lf.isEmpty()?"inside the paper":lf)+", tag \""+text("choose")+"\" under it \""+text("reason")+"\""+(ok?"":" WRONG");
+                        shot(c,"ui-recruit-854-roll");CampaignClient.revealHeldAt=-1;stage=1023;}
+                }
+                case 1023->{ // the reveal ends of itself; then the same draw lands on the troop it just raised: a copy, no seal, the star lit
+                    int k=since(tick);
+                    if(CampaignClient.rollShowing()){if(k>200){scalesOk=false;scalesWhy+="; WRONG: the first reveal never ended";stage=1026;}return;}
+                    if(k<4)return;
+                    goldBefore=CampaignClient.profile.gold;click(c,box(c,"enlist"));stage=1024;
+                }
+                case 1024->{
+                    int k=since(tick);var r=CampaignClient.lastRoll;
+                    if(k>2&&r!=null&&r.troop().equals(compactWant)&&r.duplicate()&&CampaignClient.rollShowing()){CampaignClient.revealHeldAt=600;stage=1025;return;}
+                    if(k>300){scalesOk=false;scalesWhy+="; WRONG: the copy's letter never showed at 854x480: lastRoll "+r;CampaignClient.revealHeldAt=-1;stage=1026;}
+                }
+                case 1025->{
+                    int k=since(tick);
+                    if(k==4){var r=CampaignClient.lastRoll;var bad=UiHomeChecks.fits(WarTableRecruit.rects(),boxes(c));String lf=letterFits();String want=r==null?"":RecruitPages.outcome(r,CampaignClient.profile);
+                        boolean ok=compactWant.equals(text("letter-troop"))&&!WarTableRecruit.rects().containsKey("broken")&&!want.isEmpty()&&want.equals(text("letter-outcome"))&&bad.isEmpty()&&lf.isEmpty()&&CampaignClient.profile.gold==goldBefore-RecruitView.cost();
+                        scalesOk&=ok;scalesWhy+="; the copy's letter: \""+text("letter-outcome")+"\" with stars "+text("letter-stars")+", no seal "+(WarTableRecruit.rects().containsKey("broken")?"WRONG":"drawn")+", not fitting "+bad+", letter lines "+(lf.isEmpty()?"inside the paper":lf)+(ok?"":" WRONG");
+                        shot(c,"ui-recruit-854-duplicate");CampaignClient.revealHeldAt=-1;stage=1026;}
+                }
+                case 1026->{ // the reveal over, the Odds note open: every line inside the page, nothing cut
+                    int k=since(tick);
+                    if(CampaignClient.rollShowing()){if(k>200){scalesOk=false;scalesWhy+="; WRONG: the reveal never ended";stage=1028;}return;}
+                    if(k<4)return;
+                    click(c,box(c,"odds"));stage=1027;
+                }
+                case 1027->{
+                    int k=since(tick);
+                    if(k==4){var bad=UiHomeChecks.fits(WarTableRecruit.rects(),boxes(c));var lines=noteLines();
+                        boolean ok=page(c)!=null&&page(c).odds&&!lines.isEmpty()&&String.join(" ",lines).equals(String.join(" ",RecruitView.note(H0)))&&bad.isEmpty()&&rect("note")!=null;
+                        scalesOk&=ok;scalesWhy+="; the Odds note at 854x480 "+str(rect("note"))+" holds "+lines.size()+" lines, not fitting "+bad+(ok?"":" WRONG");
+                        shot(c,"ui-recruit-854-odds");stage=1028;}
+                }
+                case 1028->{
+                    if(page(c)!=null)page(c).odds=false;stage=1029;
+                }
+                case 1029->{ // then 1920x974 GUI 1 (the big-canvas oak to the edges, UI Task 8b-2)
+                    int k=since(tick);
+                    if(k==2){window(c,1920,974,1,true);return;}
+                    if(k==20){park(c);return;}
+                    if(k==22){scalesWhy+="; "+big(c);shot(c,"ui-recruit-1920x974");return;}
+                    if(k==24){report("p1-ui-recruit-scales",scalesOk,scalesWhy);end(c);}
                 }
                 case 99->{stage=100;finish(c,"ui-recruit");}
                 default->{}
             }
         }
+        /** The Odds note's lines as the last frame drew them (note-0, note-1 ...). */
+        static List<String> noteLines(){List<String> got=new ArrayList<>();for(int i=0;text("note-"+i)!=null;i++)got.add(text("note-"+i));return got;}
+        /** The troop the layout step found selected (the first of the roll not owned), read when it checked the letter. */
+        String layoutSel="";
+        /** The layout of the page on a fresh commander (p1-ui-recruit-layout): returns what it read, and sets layoutOk. The first House's roll, its first unowned troop on the letter. */
+        String layout(MinecraftClient c){
+            var r=page(c);var rows=WarTableRecruit.rows();var tx=WarTableRecruit.textures();var hs=Spec.HOUSES;var have=start();
+            int[] o=WarTable.origin();boolean canvas=UiCanvas.width()==960&&UiCanvas.height()==540&&UiCanvas.k()==1&&o[0]==0&&o[1]==0;
+            // the rod and the five banners: the chosen one longer and in its bright cloth, every label centred 52 px into its cloth, 27 down, inside it
+            boolean banners=Arrays.equals(rect("rod"),new int[]{196,12,112*hs.length+8,10});StringBuilder bw=new StringBuilder();
+            for(int i=0;i<hs.length;i++){String id=hs[i].id();boolean on=i==0;int[] want={bx(i),13,104,on?60:50},lb=rect("label-"+id);
+                boolean ok=Arrays.equals(rect("banner-"+id),want)&&Arrays.equals(box(c,"house-"+id),want)&&("recruit/banner-"+id+(on?"-on":"")).equals(tx.get("banner-"+id))&&hs[i].name().equals(text("banner-"+id))
+                    &&Integer.valueOf(i==0?DarkUi.INK_TEXT:DarkUi.IVORY).equals(color("banner-"+id))&&lb!=null&&Math.abs(lb[0]+lb[2]/2-(bx(i)+52))<=1&&lb[1]==40&&lb[0]>=bx(i)+4&&lb[0]+lb[2]<=bx(i)+100;
+                banners&=ok;bw.append(id).append(' ').append(str(rect("banner-"+id))).append(' ').append(tx.get("banner-"+id)).append(" \"").append(text("banner-"+id)).append("\" ").append(hex(color("banner-"+id))).append(" label ").append(str(lb)).append(ok?"":" WRONG").append("; ");}
+            // the roll: the first House's six in Spec.TROOPS order, ink when owned and sepia (a silhouette) when not; the mark on the first unowned, the rules between rows
+            List<String> want=troopsOf(H0);int sel=-1;for(int i=0;i<want.size();i++)if(sel<0&&!have.contains(want.get(i)))sel=i;
+            layoutSel=sel<0?"":want.get(sel);
+            boolean inks=rows.size()==want.size();StringBuilder rowWhy=new StringBuilder();
+            for(var row:rows){boolean mine=have.contains(row.troop());inks&=row.color()==(mine?DarkUi.INK_TEXT:DarkUi.SEPIA)&&row.silhouette()==!mine&&row.name().equals(name(row.troop()));rowWhy.append(row.troop()).append(row.color()==DarkUi.INK_TEXT?" ink":row.color()==DarkUi.SEPIA?" sepia":" "+hex(row.color())).append(row.silhouette()?" (silhouette)":"").append(", ");}
+            boolean marks=sel>=0&&Arrays.equals(rect("mark"),new int[]{52,140+56*sel,234,58})&&!WarTableRecruit.rects().containsKey("rule-"+sel);
+            for(int i=1;i<want.size();i++)if(i!=sel)marks&=Arrays.equals(rect("rule-"+i),new int[]{72,140+56*i,208,1});
+            boolean roll=rowTroops().equals(want)&&inks&&marks;
+            // live portraits: 40 px on the roll at 2 px per model pixel, 160 px in the letter at 8, each over its renderer's scale
+            boolean portraits=true;StringBuilder ptWhy=new StringBuilder();
+            for(int i=0;i<want.size();i++){var p=portrait("row-"+i);var d=p==null?null:p.drawn();portraits&=d!=null&&p.troop().equals(want.get(i))&&d.window()==40&&d.x()==84&&d.top()==148+56*i&&d.feet()==148+56*i+UiMath.portraitFeet(40,0)&&d.size()==size(want.get(i),40)&&d.silhouette()==!have.contains(want.get(i))&&d.left()==64;
+                ptWhy.append(d==null?"none":d.size()+"@"+d.x()+","+d.feet()).append(" ");}
+            // the letter: the first unowned troop, its kind and price, and its action tag with the words under it
+            String sid=layoutSel;var sp=ArmyCards.spec(sid);var act=RecruitView.action(sid);var lp=portrait("letter");var ld=lp==null?null:lp.drawn();
+            boolean letter=sp!=null&&act!=null&&sid.equals(text("letter-troop"))&&name(sid).equals(text("letter-name"))&&Integer.valueOf(DarkUi.INK_TEXT).equals(color("letter-name"))
+                &&ld!=null&&ld.window()==160&&ld.x()==480&&ld.top()==164&&ld.feet()==164+UiMath.portraitFeet(160,0)&&ld.size()==size(sid,160)&&!ld.silhouette()
+                &&Arrays.equals(rect("window"),new int[]{400,164,160,160})&&kind(sid).equals(text("letter-line1"))&&Integer.valueOf(DarkUi.SEPIA).equals(color("letter-line1"))
+                &&("Deploys in battle for "+sp.cost()+" gold").equals(text("letter-line2"))&&Integer.valueOf(DarkUi.INK_TEXT).equals(color("letter-line2"))&&!WarTableRecruit.rects().containsKey("broken")
+                &&Arrays.equals(box(c,"choose"),CHOOSE)&&Arrays.equals(rect("choose"),CHOOSE)&&act.label().equals(text("choose"))&&("buy:"+sid).equals(text("choose-command"))&&act.command().equals("buy:"+sid)&&act.active()
+                &&Integer.valueOf(DarkUi.INK_TEXT).equals(color("choose"))&&act.tip().equals(text("reason"))&&Integer.valueOf(DarkUi.SEPIA).equals(color("reason"))&&letterFits().isEmpty();
+            boolean ladder="Enlist".equals(text("enlist"))&&Integer.valueOf(DarkUi.PLATE_INK).equals(color("enlist"))&&String.valueOf(RecruitView.cost()).equals(text("enlist-cost"))&&Integer.valueOf(DarkUi.PLATE_INK).equals(color("enlist-cost"))
+                &&"table/btn-brass-240x40".equals(tx.get("enlist"))&&Arrays.equals(rect("enlist"),new int[]{664,354,240,40})
+                &&String.valueOf(GOLD).equals(text("purse"))&&rect("purse")!=null&&rect("purse")[1]==406&&Math.abs(rect("purse")[0]+rect("purse")[2]/2-784)<=1&&UiMath.pityLine(RecruitView.pityLeft(H0)).equals(text("rung"))&&Integer.valueOf(DarkUi.MUTED).equals(color("rung"))
+                &&Arrays.equals(rect("bundle"),new int[]{664,124,240,218})&&Arrays.equals(rect("odds"),new int[]{752,468,64,24})&&!WarTableRecruit.rects().containsKey("notice");
+            // one top and one foot for the three columns: the roll's, the letter's and the bundle's art drawn from 124; the paper's
+            // foot (the row under the last opaque row at the art's middle column, its pixel read back from the framebuffer) of
+            // the roll, the letter and the Odds tag within 3 px above 492
+            int[] rl=rect("roll"),lt=rect("letter"),bd=rect("bundle"),od=rect("odds");
+            Integer rf=rl==null?null:foot(c,"recruit/muster-roll",rl[0],rl[1],rl[2]/2),lf=lt==null?null:foot(c,"recruit/letter-hi",lt[0],lt[1],lt[2]/2),of=od==null?null:foot(c,"table/btn-vellum-64x24",od[0],od[1],od[2]/2);
+            boolean baseline=Arrays.equals(rl,new int[]{41,124,270,372})&&Arrays.equals(lt,new int[]{328,124,310,376})&&bd!=null&&bd[1]==124
+                &&rf!=null&&lf!=null&&of!=null&&rf>=489&&rf<=492&&lf>=489&&lf<=492&&of>=489&&of<=492;
+            boolean chrome="table/oak-table-recruit".equals(tx.get("table"))&&Arrays.equals(box(c,"back"),new int[]{56,12,120,28})&&Arrays.equals(box(c,"banner"),new int[]{800,12,104,28})
+                &&!WarTableRecruit.rects().containsKey("maproll")&&hotNone();
+            layoutOk=r!=null&&canvas&&banners&&roll&&portraits&&letter&&ladder&&baseline&&chrome&&boxes(c).size()==2+hs.length+WarTableRecruit.ROWS+3;
+            return "canvas "+UiCanvas.width()+"x"+UiCanvas.height()+" k "+UiCanvas.k()+(canvas?"":" WRONG")+"; rod "+str(rect("rod"))+", banners "+bw+(banners?"":"WRONG")
+                +"; roll "+rowTroops()+": "+rowWhy+"mark "+str(rect("mark"))+", rules "+str(rect("rule-1"))+" "+str(rect("rule-2"))+" "+str(rect("rule-3"))+" "+str(rect("rule-4"))+" "+str(rect("rule-5"))+(roll?"":" WRONG")+"; portraits (size@x,feet) "+ptWhy+(portraits?"":"WRONG")
+                +"; letter "+text("letter-troop")+" \""+text("letter-name")+"\" "+hex(color("letter-name"))+" / \""+text("letter-line1")+"\" "+hex(color("letter-line1"))+" / \""+text("letter-line2")+"\" "+hex(color("letter-line2"))+", portrait "+ld+", window "+str(rect("window"))+", tag \""+text("choose")+"\" ("+text("choose-command")+") "+str(box(c,"choose"))+" "+hex(color("choose"))+", under it \""+text("reason")+"\" "+hex(color("reason"))+(letter?"":" WRONG")
+                +"; enlist \""+text("enlist")+"\" "+hex(color("enlist"))+" for "+text("enlist-cost")+" on "+tx.get("enlist")+", purse "+text("purse")+" "+str(rect("purse"))+", rung \""+text("rung")+"\" "+hex(color("rung"))+", bundle "+str(bd)+(ladder?"":" WRONG")
+                +"; columns: roll "+str(rl)+", letter "+str(lt)+", bundle "+str(bd)+" from 124; the paper's foot (framebuffer) roll "+rf+", letter "+lf+", Odds tag "+of+(baseline?" (one foot at 492)":" WRONG")
+                +"; table "+tx.get("table")+", back "+str(box(c,"back"))+", banner "+str(box(c,"banner"))+", "+boxes(c).size()+" widgets, no rolled map, underlined "+WarTableRecruit.underlined()+(chrome?"":" WRONG");
+        }
+        boolean buyOk,epicOk,legOk;String epicId,legId;
         /** 854x480 GUI 2, the first-launch window: the compact page (UI Task 8b-2; Kort, 2026-10-22: everything fits, no crop). The
          *  three columns close up and rise (roll box 27, letter 286, ladder 600 on its axis at 720), the rung's line and Odds share a
-         *  row under the purse, the Banner plaque stands 12 px from the right edge. Pins what lands where: every widget inside the
-         *  canvas, none overlapping, and every box the page drew and every widget 12 px inside, none under the rail (UiHomeChecks.fits). */
+         *  row under the purse, the Banner plaque stands 12 px from the right edge, and the five banners hang from the rod inside the
+         *  canvas clear of both plaques. Pins what lands where: every widget inside the canvas, none overlapping, every box the page
+         *  drew and every widget 12 px inside, none under the rail (UiHomeChecks.fits), and the letter's lines inside its paper. */
         String small(MinecraftClient c){
             int w=UiCanvas.width(),h=UiCanvas.height();var b=boxes(c);var r=WarTableRecruit.rects();
             List<String> out=new ArrayList<>(),over=new ArrayList<>();var keys=new ArrayList<>(b.keySet());
             for(int i=0;i<keys.size();i++){if(!UiHomeChecks.inside(b.get(keys.get(i)),w,h))out.add(keys.get(i)+" "+str(b.get(keys.get(i))));for(int j=i+1;j<keys.size();j++)if(UiHomeChecks.overlap(b.get(keys.get(i)),b.get(keys.get(j))))over.add(keys.get(i)+"/"+keys.get(j));}
-            var bad=UiHomeChecks.fits(r,b);
+            var bad=UiHomeChecks.fits(r,b);String letterBad=letterFits();
             int[] roll=r.get("roll"),enlist=box(c,"enlist"),rung=r.get("rung"),odds=box(c,"odds");
             boolean row=rung!=null&&odds!=null&&rung[0]+rung[2]<=odds[0]&&rung[1]>=odds[1]&&rung[1]+rung[3]<=odds[1]+odds[3]; // the rung's line and Odds on one row, either side of the axis
-            boolean ok=page(c)!=null&&WarTable.compact()&&w==854&&h==480&&UiCanvas.k()==1&&b.size()==13&&out.isEmpty()&&over.isEmpty()&&bad.isEmpty()&&row
-                &&Arrays.equals(roll,new int[]{12,92,270,372})&&Arrays.equals(enlist,new int[]{600,322,240,40})&&Arrays.equals(r.get("bundle"),new int[]{600,92,240,218})&&Arrays.equals(r.get("letter"),new int[]{286,92,310,376})&&Arrays.equals(box(c,"choose"),new int[]{394,408,88,24})
+            boolean ok=page(c)!=null&&WarTable.compact()&&w==854&&h==480&&UiCanvas.k()==1&&b.size()==2+Spec.HOUSES.length+WarTableRecruit.ROWS+3&&out.isEmpty()&&over.isEmpty()&&bad.isEmpty()&&letterBad.isEmpty()&&row
+                &&Arrays.equals(roll,new int[]{12,92,270,372})&&Arrays.equals(enlist,new int[]{600,322,240,40})&&Arrays.equals(r.get("bundle"),new int[]{600,92,240,218})&&Arrays.equals(r.get("letter"),new int[]{286,92,310,376})&&Arrays.equals(box(c,"choose"),new int[]{378,404,120,24})
                 &&Arrays.equals(box(c,"back"),new int[]{12,12,120,28})&&Arrays.equals(box(c,"banner"),new int[]{738,12,104,28})&&Arrays.equals(odds,new int[]{724,408,64,24})&&hotNone();
             scalesOk&=ok;
-            return "854x480 GUI 2 (compact "+WarTable.compact()+"): canvas "+w+"x"+h+" (k "+UiCanvas.k()+"), "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+", not fitting "+bad
-                +"; roll "+str(roll)+", letter "+str(r.get("letter"))+", choose "+str(box(c,"choose"))+", bundle "+str(r.get("bundle"))+", enlist "+str(enlist)+", rung "+str(rung)+" and odds "+str(odds)+(row?" on one row":" WRONG: not on one row")+", back "+str(box(c,"back"))+", banner "+str(box(c,"banner"))+(ok?"":" WRONG");
+            return "854x480 GUI 2 (compact "+WarTable.compact()+"): canvas "+w+"x"+h+" (k "+UiCanvas.k()+"), "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+", not fitting "+bad+", letter lines "+(letterBad.isEmpty()?"inside the paper":letterBad)
+                +"; roll "+str(roll)+", letter "+str(r.get("letter"))+", choose "+str(box(c,"choose"))+", reason "+str(r.get("reason"))+", bundle "+str(r.get("bundle"))+", enlist "+str(enlist)+", rung "+str(rung)+" and odds "+str(odds)+(row?" on one row":" WRONG: not on one row")+", back "+str(box(c,"back"))+", banner "+str(box(c,"banner"))+", the first banner "+str(box(c,"house-"+H0))+(ok?"":" WRONG");
         }
         /** 1920x974 GUI 1, a maximized window on a 1080p screen: the page stays centred on the big-canvas oak (UI Task 8b-2), which
          *  runs to every edge with no floor (read from the framebuffer as home's check reads it), the rail runs the width with the
-         *  banners hanging from it, and every widget is inside. */
+         *  banners hanging from it, every widget is inside and the letter's lines are inside its paper. */
         String big(MinecraftClient c){
             int cw=UiCanvas.width(),ch=UiCanvas.height(),k=UiCanvas.k();int[] o=WarTable.origin();var r=WarTableRecruit.rects();var b=boxes(c);
             int tx=(cw-WarTable.TABLE_W)/2,ty=(ch-WarTable.TABLE_H)/2;
             List<String> out=new ArrayList<>(),over=new ArrayList<>();var keys=new ArrayList<>(b.keySet());
             for(int i=0;i<keys.size();i++){if(!UiHomeChecks.inside(b.get(keys.get(i)),cw,ch))out.add(keys.get(i));for(int j=i+1;j<keys.size();j++)if(UiHomeChecks.overlap(b.get(keys.get(i)),b.get(keys.get(j))))over.add(keys.get(i)+"/"+keys.get(j));}
-            int[] t=r.get("table"),rail=r.get("rail"),enlist=box(c,"enlist"),roll=r.get("roll"),dawn=box(c,"house-dawn");
+            int[] t=r.get("table"),rail=r.get("rail"),enlist=box(c,"enlist"),roll=r.get("roll"),first=box(c,"house-"+H0);String letterBad=letterFits();
             boolean placed=cw==1920&&ch==974&&k==1&&o[0]==480&&o[1]==217&&Arrays.equals(t,new int[]{tx,ty,WarTable.TABLE_W,WarTable.TABLE_H})&&!r.containsKey("floor")&&rail!=null&&rail[2]==cw
-                &&Arrays.equals(enlist,new int[]{o[0]+664,o[1]+354,240,40})&&Arrays.equals(roll,new int[]{o[0]+41,o[1]+124,270,372})&&Arrays.equals(dawn,new int[]{o[0]+372,13,104,60})&&!r.containsKey("maproll")
-                &&Arrays.equals(r.get("bundle"),new int[]{o[0]+664,o[1]+124,240,218})&&Arrays.equals(box(c,"choose"),new int[]{o[0]+436,o[1]+440,88,24});
+                &&Arrays.equals(enlist,new int[]{o[0]+664,o[1]+354,240,40})&&Arrays.equals(roll,new int[]{o[0]+41,o[1]+124,270,372})&&Arrays.equals(first,new int[]{o[0]+bx(0),13,104,60})&&!r.containsKey("maproll")
+                &&Arrays.equals(r.get("bundle"),new int[]{o[0]+664,o[1]+124,240,218})&&Arrays.equals(box(c,"choose"),new int[]{o[0]+CHOOSE[0],o[1]+CHOOSE[1],CHOOSE[2],CHOOSE[3]});
             var floor=UiHomeChecks.oakToEdges(c);
-            boolean ok=page(c)!=null&&placed&&out.isEmpty()&&over.isEmpty()&&floor.isEmpty()&&b.size()==13&&hotNone();
+            boolean ok=page(c)!=null&&placed&&out.isEmpty()&&over.isEmpty()&&floor.isEmpty()&&letterBad.isEmpty()&&b.size()==2+Spec.HOUSES.length+WarTableRecruit.ROWS+3&&hotNone();
             scalesOk&=ok;
-            return "1920x974 GUI 1: canvas "+cw+"x"+ch+" (k "+k+"), origin "+o[0]+","+o[1]+", table "+str(t)+", rail "+str(rail)+", the Dawn banner "+str(dawn)+", roll "+str(roll)+", bundle "+str(r.get("bundle"))+", enlist "+str(enlist)+", choose "+str(box(c,"choose"))+", "+b.size()+" widgets, outside "+out+", overlapping "+over
+            return "1920x974 GUI 1: canvas "+cw+"x"+ch+" (k "+k+"), origin "+o[0]+","+o[1]+", table "+str(t)+", rail "+str(rail)+", the first banner "+str(first)+", roll "+str(roll)+", bundle "+str(r.get("bundle"))+", enlist "+str(enlist)+", choose "+str(box(c,"choose"))+", "+b.size()+" widgets, outside "+out+", overlapping "+over+", letter lines "+(letterBad.isEmpty()?"inside the paper":letterBad)
                 +"; the edges "+(floor.isEmpty()?"oak all round, no floor":"not oak at "+floor)+(ok?"":" WRONG");
         }
         /** Closes the table and puts the window back as the suite found it; p1-ui-recruit-suite follows. */

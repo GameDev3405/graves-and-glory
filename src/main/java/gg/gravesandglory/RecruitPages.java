@@ -32,19 +32,43 @@ final class RecruitPages {
     static Action action(Spec.TroopsRow t,Profile p){
         var R=Spec.RECRUITMENT[0];var o=p.owned.get(t.id());boolean full=o!=null&&o.stars>=R.maxStars();String house=RosterMath.houseName(t.house());
         int shards=p.shards.getOrDefault(t.house(),0),renown=p.renown.getOrDefault(t.house(),0);
+        // A tip says what the action does while it can be pressed and why it cannot while it cannot (the War Table writes it under the tag, the old troop page as a tooltip).
         switch(t.rarity()){
-            case "common","rare"->{if(full)return null;int cost=R.chosenCost();
-                return new Action("Buy "+cost,"buy:"+t.id(),p.gold>=cost,"Recruit "+t.name()+" for "+cost+" gold: "+(o==null?"it joins your collection.":"a copy toward its next star."));}
+            case "common","rare"->{if(full)return null;int cost=R.chosenCost();boolean ok=p.gold>=cost;
+                return new Action("Buy "+cost,"buy:"+t.id(),ok,!ok?"Need "+cost+" gold. You have "+p.gold+".":o==null?"Joins your collection.":copyLine(o,t));}
             case "epic","legendary"->{
-                if(o!=null){if(full)return null;var r=RosterMath.rarityRow(t.rarity());int cost=r==null?0:o.stars<=1?r.shardStar2():r.shardStar3();
-                    return new Action("Star "+(o.stars+1),"star:"+t.id(),shards>=cost,"Star "+(o.stars+1)+" of "+t.name()+" for "+cost+" "+house+" shards. You have "+shards+".");}
+                if(o!=null){if(full)return null;var r=RosterMath.rarityRow(t.rarity());int cost=r==null?0:o.stars<=1?r.shardStar2():r.shardStar3();boolean ok=shards>=cost;
+                    return new Action("Star "+(o.stars+1),"star:"+t.id(),ok,ok?"Star "+(o.stars+1)+" for "+cost+" "+house+" shards.":"Need "+cost+" "+house+" shards. You have "+shards+".");}
                 if(t.rarity().equals("epic"))return null;
                 if(p.writs>0)return new Action("Pact","legendary:"+t.house()+":pact",true,"Spend your Pact: "+t.name()+" joins your collection.");
                 boolean ready=renown>=R.renownForLegendary()&&shards>=R.legendaryShards();
-                return new Action(R.legendaryShards()+" shards","legendary:"+t.house()+":shards",ready,t.name()+" answers a Pact, or "+R.legendaryShards()+" "+house+" shards at "+R.renownForLegendary()+" Renown. You have "+shards+" shards and "+renown+" Renown.");
+                String tip=ready?t.name()+" joins your collection for "+R.legendaryShards()+" "+house+" shards."
+                    :"Needs "+(renown<R.renownForLegendary()?R.renownForLegendary()+" "+house+" Renown (you have "+renown+")":"")+(renown<R.renownForLegendary()&&shards<R.legendaryShards()?" and ":"")+(shards<R.legendaryShards()?R.legendaryShards()+" shards (you have "+shards+")":"")+", or a Pact.";
+                return new Action(R.legendaryShards()+" shards","legendary:"+t.house()+":shards",ready,tip);
             }
             default->{return null;}
         }
+    }
+    /** What an owned Common's or Rare's next copy does: "Adds a copy (2 of 4 toward star 3)". */
+    static String copyLine(Profile.Owned o,Spec.TroopsRow t){
+        int need=nextStarCopies(o,RosterMath.rarityRow(t.rarity()));
+        return need>0?"Adds a copy ("+o.copies+" of "+need+" toward star "+(o.stars+1)+").":"Adds a copy.";
+    }
+    /** How a roll or a chosen buy came out, in one line: shards at full stars, a new troop, a star gained, or the copy counted toward the next star. The roll card and the War Table's letter both write it. */
+    static String outcome(CampaignClient.LastRoll r,Profile p){
+        var t=ArmyCards.spec(r.troop());if(t==null)return "";var o=p.owned.get(t.id());int from=r.starsBefore(),to=Math.max(from,r.starsAfter());
+        if(r.shards()>0)return "+"+r.shards()+" "+RosterMath.houseName(t.house())+" shards: already at full stars";
+        if(!r.duplicate())return "Joined your collection";
+        if(to>from)return "Star "+from+" to star "+to;
+        int need=nextStarCopies(o,RosterMath.rarityRow(t.rarity()));
+        return o==null?"Another copy":need>0?"Copy "+o.copies+" of "+need+" toward star "+(o.stars+1):"Another copy";
+    }
+    /** The stars of a roll card at elapsed ms of a fill that takes CampaignClient.ROLL_FILL_MS in all: the whole stars filled, the star growing (-1 none) and how far it has grown (0 to 1). */
+    record Fill(int filled,int growing,float part){}
+    static Fill fill(int from,int to,long elapsed){
+        int filled=from,growing=-1;float part=0;
+        if(to>from){float span=(float)CampaignClient.ROLL_FILL_MS/(to-from);int k=(int)Math.min(to-from,elapsed/span);filled=from+k;if(filled<to){growing=filled;part=Math.min(1,(elapsed-k*span)/span);}}
+        return new Fill(filled,growing,part);
     }
     /** The action button's place on a card at (x, y, w, h). */
     static int[] actionBox(int x,int y,int w,int h){return new int[]{x+w-74,y+h-24,68,18};}
@@ -130,14 +154,9 @@ final class RecruitPages {
         g.drawText(f,f.trimToWidth(t.name(),room),tx,cy+42,DarkUi.PAPER,false);
         g.drawText(f,f.trimToWidth(CampScreen.cap(t.rarity())+" / "+RosterMath.houseName(t.house()),room),tx,cy+54,CampScreen.rarityColour(t.rarity()),false);
         long at=CampaignClient.rollElapsed();int from=r.starsBefore(),to=Math.max(from,r.starsAfter());
-        int filled=from,growing=-1;float part=0;
-        if(to>from){float span=(float)CampaignClient.ROLL_FILL_MS/(to-from);int k=(int)Math.min(to-from,at/span);filled=from+k;if(filled<to){growing=filled;part=Math.min(1,(at-k*span)/span);}}
+        var fill=fill(from,to,at);int filled=fill.filled(),growing=fill.growing();float part=fill.part();
         pips(g,tx,cy+72,16,6,filled,growing,part);
-        var o=CampaignClient.profile.owned.get(t.id());String what;int colour=DarkUi.GOLD;
-        if(r.shards()>0)what="+"+r.shards()+" "+RosterMath.houseName(t.house())+" shards: already at full stars";
-        else if(!r.duplicate())what="Joined your collection";
-        else if(to>from)what="Star "+from+" to star "+to;
-        else{int need=nextStarCopies(o,RosterMath.rarityRow(t.rarity()));what=o==null?"Another copy":need>0?"Copy "+o.copies+" of "+need+" toward star "+(o.stars+1):"Another copy";colour=DarkUi.PAPER;}
+        String what=outcome(r,CampaignClient.profile);int colour=r.shards()==0&&r.duplicate()&&to<=from?DarkUi.PAPER:DarkUi.GOLD;
         g.drawText(f,f.trimToWidth(what,room),tx,cy+100,colour,false);seenRoll=new SeenRoll(t.id(),label,from,to,filled,growing,part,what);
         g.drawText(f,f.trimToWidth(r.duplicate()?"Each star adds to its health and damage.":"Place it in your banner in the war council.",room),tx,cy+116,DarkUi.MUTED,false);
         g.drawText(f,f.trimToWidth("Click anywhere to continue",room),tx,cy+ch-22,DarkUi.MUTED,false);

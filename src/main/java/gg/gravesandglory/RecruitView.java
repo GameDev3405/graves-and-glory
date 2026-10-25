@@ -3,8 +3,7 @@ package gg.gravesandglory;
 import java.util.*;
 
 /** What the War Table recruit page shows, read from the camp state (UI plan Task 6): the Houses on the rod, each House's muster
- *  roll, how many letters are left and what a letter costs. Phase 1 has two Houses (the factions), no rarity, stars, locks or
- *  pity; Phase 2 replaces these bodies, and nothing else reads rarity, stars or pity. */
+ *  roll, what a letter and a chosen buy cost, the letter's action (RecruitPages.action) and the Odds note's words. */
 final class RecruitView {
     private RecruitView() {}
 
@@ -53,6 +52,56 @@ final class RecruitView {
     /** The gold a letter costs (Enlist). */
     static int cost() { return Spec.RECRUITMENT[0].rollCost(); }
 
-    /** The gold the letter's Choose costs, for a troop picked by name. */
+    /** The gold a chosen buy costs (the letter's Buy tag on a Common or a Rare). */
     static int chooseCost() { return Spec.RECRUITMENT[0].chosenCost(); }
+
+    /** The action the opened letter offers for a troop of the roll (a Buy, a Star, a Pact or shards), as RecruitPages.action gives it
+     *  for the commander's collection, or null when it offers none (an Epic not yet found: it comes from letters only; a troop at full stars). */
+    static RecruitPages.Action action(String troopId) {
+        var t = ArmyCards.spec(troopId);
+        return t == null ? null : RecruitPages.action(t, CampaignClient.profile);
+    }
+
+    /** What the letter says where its tag would stand when it has none: an Epic not yet found, or a troop at full stars; "" otherwise. */
+    static String noAction(String troopId) {
+        var t = ArmyCards.spec(troopId);
+        if (t == null || action(troopId) != null) return "";
+        return CampaignClient.profile.owned.containsKey(troopId) ? "Full stars" : "From letters only";
+    }
+
+    /** One rarity's chance of a letter: the rarity's id and its share of a roll in the House, in percent of 100. */
+    record Odd(String rarity, double percent) {}
+
+    /** The chance of each rarity a letter of the House can bring, from the sheets as Campaign.roll draws it: every Common weighs
+     *  rarities.rollWeight of common, every Rare that of rare, the one Epic that of epic, and a Legendary never comes from a
+     *  letter. Only the rarities the House has appear, in sheet order. */
+    static List<Odd> odds(String houseId) {
+        Map<String, Integer> count = new LinkedHashMap<>();
+        for (var t : Spec.TROOPS) if (t.house().equals(houseId) && !t.rarity().equals("legendary")) count.merge(t.rarity(), 1, Integer::sum);
+        int total = 0;
+        for (var e : count.entrySet()) { var r = RosterMath.rarityRow(e.getKey()); total += e.getValue() * (r == null ? 0 : r.rollWeight()); }
+        List<Odd> out = new ArrayList<>();
+        for (var r : Spec.RARITIES) {
+            Integer n = count.get(r.id());
+            if (n != null && total > 0) out.add(new Odd(r.id(), 100.0 * n * r.rollWeight() / total));
+        }
+        return out;
+    }
+
+    /** "Common 86%, Rare 12%, Epic 2%": the chance of each rarity as the Odds note writes it. */
+    static String oddsLine(String houseId) {
+        List<String> parts = new ArrayList<>();
+        for (var o : odds(houseId)) parts.add(Character.toUpperCase(o.rarity().charAt(0)) + o.rarity().substring(1) + " " + String.format(Locale.ROOT, "%.0f%%", o.percent()));
+        return String.join(", ", parts);
+    }
+
+    /** The Odds note's rule for a troop already owned (a letter that brings it counts a copy toward its next star), and for a Legendary. */
+    static final String COPY_RULE = "A troop you own gives a copy toward its next star.";
+    static final String LEGENDARY_RULE = "A Legendary comes from a Pact, not a letter.";
+
+    /** The Odds note's lines under its heading, before they are wrapped to the note's width: the chance of each rarity, the letters
+     *  left until the House's Epic is sure, the copy rule and the Legendary's rule. */
+    static List<String> note(String houseId) {
+        return List.of(oddsLine(houseId), UiMath.pityLine(pityLeft(houseId)), COPY_RULE, LEGENDARY_RULE);
+    }
 }

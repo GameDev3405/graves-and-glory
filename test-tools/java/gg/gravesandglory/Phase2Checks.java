@@ -480,9 +480,9 @@ public final class Phase2Checks implements ClientModInitializer {
             }
             if(hudState==1&&wantShot!=null&&shotTaken){wantShot=null;hudState=2;server(c,b->next(b,7));}
         }
-        /** Stage 51: the camp page `recruit` with its five House tabs, on the profile the v1 fixture migrated to; every tab is screenshotted (the brief names the first three). */
+        /** Stage 51: the War Table recruit page with its five House banners, on the profile the v1 fixture migrated to; every banner is chosen in turn and screenshotted: its roll shows the migrated profile's troops recruited and the rest as silhouettes, Enlist its price, the purse the migrated gold. */
         void recruit(MinecraftClient c){
-            var p=CampaignClient.profile;var houses=List.of("gilded","graveborn","wildmoot","ironclad","tidecallers");
+            var p=CampaignClient.profile;var houses=Arrays.stream(Spec.HOUSES).map(Spec.HousesRow::id).toList();
             if(rt==0){
                 if(p.gold==expectGold&&p.owned.containsKey("sentinel")&&!p.owned.containsKey("mage")){
                     CampaignClient.revealUntil=0;CampaignClient.notice=""; // what Skip reveal does, and the last roll's notice goes: the screenshots show the page itself
@@ -490,25 +490,30 @@ public final class Phase2Checks implements ClientModInitializer {
                 else if(++rtWait>300){rtOk=false;rtWhy.append("the migrated profile never reached the client (gold ").append(p.gold).append(", want ").append(expectGold).append("); ");rt=9;}
                 return;
             }
-            if(rt==1&&c.currentScreen instanceof CampScreen s){
-                if(++rtWait==1){
-                    String house=houses.get(ri);s.pickHouse(house);
-                    var tabs=s.houseTabs();boolean five=tabs.size()==5&&tabs.stream().map(t->t.house).toList().equals(houses);
-                    var cards=CampScreen.cards(house,p);Set<String> want=expected(house);Set<String> shown=new LinkedHashSet<>(),locked=new LinkedHashSet<>();
-                    for(var card:cards)(card.owned()?shown:locked).add(card.troop().id());
-                    boolean six=cards.stream().map(card->card.troop().id()).toList().equals(Arrays.stream(Spec.TROOPS).filter(t->t.house().equals(house)).map(Spec.TroopsRow::id).toList())&&cards.size()==6;
-                    boolean owned=shown.equals(want)&&locked.stream().noneMatch(want::contains);
-                    boolean selected=s.house.equals(house)&&tabs.stream().filter(t->t.selected()).map(t->t.house).toList().equals(List.of(house));
-                    boolean label=s.rollLabel().equals("ROLL "+RosterMath.houseName(house).toUpperCase()+" / "+Spec.RECRUITMENT[0].rollCost()+" GOLD")&&s.pityLine().equals("Epic guaranteed within "+(Spec.RECRUITMENT[0].epicPity()-p.pity.getOrDefault(house,0))+" rolls");
-                    boolean gold=s.header().contains(expectGold+" gold");
-                    boolean ok=five&&six&&owned&&selected&&label&&gold;rtOk&=ok;
-                    rtWhy.append(house).append(": tabs ").append(tabs.stream().map(t->t.house).toList()).append(five?"":" (BAD)").append(", cards owned ").append(shown).append(owned?"":" (want "+want+")").append(", locked ").append(locked).append(", \"").append(s.rollLabel()).append("\" / \"").append(s.pityLine()).append("\"").append(label?"":" (BAD)").append(", header \"").append(s.header()).append("\"").append(gold?"":" (BAD)").append(selected?"":" (tab not selected)").append("; ");
+            if(rt==1&&c.currentScreen instanceof CampScreen s&&s.recruit!=null){
+                String house=houses.get(ri);
+                if(++rtWait==1){var banner=s.recruit.button("house-"+house);if(banner!=null&&banner.visible)banner.onPress();}
+                if(rtWait==6){ // the page has drawn the House's banner chosen and its roll
+                    var rows=WarTableRecruit.rows();var tx=WarTableRecruit.textures();var tt=WarTableRecruit.texts();var rc=WarTableRecruit.rects();
+                    List<String> troops=Arrays.stream(Spec.TROOPS).filter(t->t.house().equals(house)).map(Spec.TroopsRow::id).toList();
+                    Set<String> want=expected(house),shown=new LinkedHashSet<>(),locked=new LinkedHashSet<>();
+                    for(var r:rows)(r.silhouette()?locked:shown).add(r.troop());
+                    boolean six=rows.size()==6&&rows.stream().map(WarTableRecruit.RowDraw::troop).toList().equals(troops);
+                    boolean owned=shown.equals(want)&&locked.stream().noneMatch(want::contains)&&rows.stream().allMatch(r->r.color()==(r.silhouette()?DarkUi.SEPIA:DarkUi.INK_TEXT));
+                    boolean five=houses.equals(Arrays.stream(Spec.HOUSES).map(Spec.HousesRow::id).toList());int[] prev=null;
+                    for(var h:Spec.HOUSES){int[] r0=rc.get("banner-"+h.id());five&=r0!=null&&(prev==null||r0[0]>prev[0])&&("recruit/banner-"+h.id()+(h.id().equals(house)?"-on":"")).equals(tx.get("banner-"+h.id()))&&h.name().equals(tt.get("banner-"+h.id()));prev=r0;}
+                    boolean selected=s.recruit.house.equals(house);
+                    int price=RecruitView.cost();boolean plate=(expectGold>=price?String.valueOf(price):"Need "+price).equals(tt.get("enlist-cost"))&&"Enlist".equals(tt.get("enlist"));
+                    boolean purse=String.valueOf(expectGold).equals(tt.get("purse"));
+                    boolean rung=UiMath.pityLine(RecruitView.pityLeft(house)).equals(tt.get("rung"));
+                    boolean ok=five&&six&&owned&&selected&&plate&&purse&&rung;rtOk&=ok;
+                    rtWhy.append(house).append(": banners ").append(five?"five in House order, this one chosen":"BAD").append(", roll ").append(rows.stream().map(WarTableRecruit.RowDraw::troop).toList()).append(six?"":" (BAD)").append(", recruited ").append(shown).append(owned?"":" (want "+want+")").append(", the rest as silhouettes ").append(locked).append(", Enlist \"").append(tt.get("enlist-cost")).append("\"").append(plate?"":" (BAD)").append(", purse ").append(tt.get("purse")).append(purse?"":" (BAD, want "+expectGold+")").append(", rung \"").append(tt.get("rung")).append("\"").append(rung?"":" (BAD)").append(selected?"":" (banner not chosen)").append("; ");
                     requestShot("engine-recruit-"+house);
                 }
                 if(wantShot!=null&&shotTaken){wantShot=null;ri++;rtWait=0;if(ri>=houses.size())rt=9;}
             }
             if(rt==9&&!rtDone){rtDone=true;c.setScreen(null);boolean ok=rtOk&&expectGold==420+3*Spec.ECONOMY[0].refundGold();String why=rtWhy.toString();
-                server(c,b->{report("p2-recruit-tabs",ok,"five House tabs on the camp page recruit after the v1 fixture migrated (gold "+expectGold+" = 420 + 3 x refund; the brief expected 420 with the mage and the hexer still owned, but the migration refunds the mage, the hexer and the wraith): "+why);next(b,60);});}
+                server(c,b->{report("p2-recruit-tabs",ok,"five House banners on the War Table recruit page after the v1 fixture migrated (gold "+expectGold+" = 420 + 3 x refund; the brief expected 420 with the mage and the hexer still owned, but the migration refunds the mage, the hexer and the wraith): "+why);next(b,60);});}
         }
 
         public void serverTick(GravesAndGlory.Battle b){
@@ -6334,7 +6339,7 @@ public final class Phase2Checks implements ClientModInitializer {
         GravesAndGlory.Squad mine;GravesAndGlory.Unit plain,vet1,vet3;
         String shot;int shotWait;boolean claimOk;String claimWhy="";
         /** Task 13 fix round 1 (review I1): the server keeps a notice and sends it with every state packet, so p2-notice-clears waits for two packets after the page change. */
-        static final String NOTICE="Order Squire rises to star 2!",NOTICE2="Choose dry ground or a crossing.",NOTICE3="Troops now join by recruitment rolls at the camp shrine.";int noticeStates0,noticeWaits,noticePhase;String noticeLeft="";
+        int noticeStates0,noticeWaits;
         /** The six Gilded holdings before the lineup shots made them Mastery II (null for one the profile lacked), put back at cleanup. */
         final Map<String,Integer> mastery0=new LinkedHashMap<>();volatile boolean lineupCast;volatile int lineupRound;
         String name(){return "screens";}
@@ -6342,6 +6347,28 @@ public final class Phase2Checks implements ClientModInitializer {
         volatile String before;volatile boolean restoreDone,restoreOk;volatile String restoreWhy="";
         /** p2-roll-card-troop: the roll serial before the troop page's buy, its phase, the frame its card showed, and what was drawn. */
         int buyN=-1,buyPhase,buySeenAt;boolean onTroop;String buyWhy="";
+        /** Task 4 (the War Table port): the recruit page's checks read the page's own words, boxes and colours as the last frame drew them (WarTableRecruit.texts, rects, colors), never a value worked out here.
+         *  goldWas and rollN are the purse and the roll serial before a press of Enlist, pressedAt the clock then, seenIn the ms from the press to the letter; a roll's server side (gold after, the knight's stars and copies) is
+         *  read at the server stages 110, 112 and 102; dupA is the first duplicate check's verdict (a star gained) held for the second (a copy counted). */
+        long pressedAt,seenIn=-1;int goldWas,rollN;volatile int goldAfter1=-1,goldAfter2=-1,goldAfter3=-1,dupStars=-1,dupCopies=-1;volatile boolean newOwned;boolean dupA;String dupWhy="";
+        /** The action checks (p2-recruit-choose, -star, -pact): act is 0 for the Buy, 1 for the Star, 2 for the Pact; the server's state after a press is read by snap into the s* fields. */
+        int act,actWait;boolean actOk;String actWhy="";volatile boolean fixture2Ready,got,sOwned;volatile int sGold,sShards,sWrits,sStars,sCopies;int goldB,shardsB,writsB,starsB;
+        /** The notice checks: np is the phase, the notice texts seen, the tick one first showed and the state packets counted from a reopen. */
+        int np,noticeTick,seenTick;String noticeA="",noticeB="",noticeC="";boolean shownA,fadedA,shownB,hiddenB,hiddenB2,shownC,hiddenC,shownC2;
+        static WarTableRecruit wpage(MinecraftClient c){return Phase1Checks.UiRecruitChecks.page(c);}
+        static int[] wbox(MinecraftClient c,String name){return Phase1Checks.UiRecruitChecks.box(c,name);}
+        static void wclick(MinecraftClient c,int[] b){Phase1Checks.UiRecruitChecks.click(c,b);}
+        static String wtext(String key){return WarTableRecruit.texts().get(key);}
+        static int rowIndex(String troop){for(var r:WarTableRecruit.rows())if(r.troop().equals(troop))return r.index();return -1;}
+        /** The troop of the first House a roll lands on past its Commons' weights plus one Rare's: its second Rare (new to the player: the fixture takes it away). */
+        static int newDraw(){return Phase1Checks.UiRecruitChecks.rareDraw(Spec.HOUSES[0].id())+RosterMath.rarityRow("rare").rollWeight();}
+        static String newId(){return Phase1Checks.UiRecruitChecks.drawn(Spec.HOUSES[0].id(),newDraw(),0);}
+        /** A House's troop of a rarity (the first in sheet order). */
+        static String troopOf(int house,String rarity){for(var t:Spec.TROOPS)if(t.house().equals(Spec.HOUSES[house].id())&&t.rarity().equals(rarity))return t.id();return null;}
+        /** Server: reads a troop and its House's holdings into the s* fields; got is true once they are there. */
+        /** The next of the three action checks, or on to the notices after the last. */
+        void nextAct(){act++;wait=0;actWait=0;if(act>2)cs=3;}
+        void snap(MinecraftClient c,String troop,String house){got=false;server(c,b->{var pr=b.campaign.profile(player);var o=pr.owned.get(troop);sGold=pr.gold;sShards=pr.shards.getOrDefault(house,0);sWrits=pr.writs;sOwned=o!=null;sStars=o==null?0:o.stars;sCopies=o==null?0:o.copies;got=true;});}
         /** Server: the six Gilded troops in a row at 6 blocks, the player's own at Mastery II (veteran) or the bot's (plain). */
         void lineup(GravesAndGlory.Battle b,boolean veteran){lineup(b,veteran,false);}
         /** The same with the player's own army on the violet side (team 1), for the trim against a cloth that is not brass-like. */
@@ -6368,8 +6395,14 @@ public final class Phase2Checks implements ClientModInitializer {
                     var pr=camp.profile(player);if(before==null)before=Campaign.JSON.toJson(pr);var k=pr.owned.computeIfAbsent("knight",x->new Profile.Owned());knightMastery0=k.mastery;
                     k.copies=1;k.stars=1;k.mastery=0;pr.gold=1000;
                     var t=pr.owned.computeIfAbsent("sentinel",x->new Profile.Owned());t.copies=2;t.stars=2;t.kills=60;t.survived=10;t.mastery=1;
-                    rngSaved=camp.rollRng;camp.rollRng=Engine.fixed(0);camp.save(player);stage=101;campReady=true;}
-                case 102->{var o=camp.profile(player).owned.get("knight");rollStars=o==null?-1:o.stars;rollCopies=o==null?-1:o.copies;camp.rollRng=rngSaved;rngSaved=null;stage=103;}
+                    pr.owned.remove(newId()); // the first roll's troop is new to the player
+                    rngSaved=camp.rollRng;camp.rollRng=Engine.fixed(newDraw());camp.save(player);stage=101;campReady=true;}
+                case 110->{var pr=camp.profile(player);goldAfter1=pr.gold;newOwned=pr.owned.containsKey(newId());camp.rollRng=Engine.fixed(0);stage=111;} // after the first roll (a new troop): the second lands on the knight, an owned Common
+                case 112->{var pr=camp.profile(player);var o=pr.owned.get("knight");goldAfter2=pr.gold;dupStars=o==null?-1:o.stars;dupCopies=o==null?-1:o.copies;camp.rollRng=Engine.fixed(0);stage=113;} // after the second (the knight's star 2): the third lands on the knight again
+                case 102->{var pr=camp.profile(player);var o=pr.owned.get("knight");goldAfter3=pr.gold;rollStars=o==null?-1:o.stars;rollCopies=o==null?-1:o.copies;camp.rollRng=rngSaved;rngSaved=null;stage=103;}
+                case 120->{var pr=camp.profile(player);var rich=RosterMath.rarityRow("epic"); // the action checks' fixture: a Rare of the second House not owned, the first House's Epic at star 1 with shards for two stars, its Legendary not owned and a Pact in hand
+                    pr.gold=1000;pr.owned.remove(troopOf(1,"rare"));var e=pr.owned.computeIfAbsent(troopOf(0,"epic"),x->new Profile.Owned());e.stars=1;e.copies=1;
+                    pr.owned.remove(troopOf(0,"legendary"));pr.writs=1;pr.shards.put(Spec.HOUSES[0].id(),rich.shardStar2()+rich.shardStar3());camp.save(player);stage=121;fixture2Ready=true;}
                 case 104->{var pr=camp.profile(player);var s=pr.progression;Progression.reset(s,Progression.today());
                     s.claims.remove("daily:2");s.claims.add("daily:0");s.claims.add("daily:1");s.rerolled=false;s.dailyCaptures=Math.max(1,s.dailyCaptures);
                     ironShards0=pr.shards.getOrDefault("ironclad",0);camp.save(player);stage=105;claimReady=true;}
@@ -6396,39 +6429,144 @@ public final class Phase2Checks implements ClientModInitializer {
             var p=CampaignClient.profile;
             switch(cs){
                 case 0->{var k=p.owned.get("knight");var t=p.owned.get("sentinel");
-                    if(campReady&&k!=null&&k.stars==1&&k.copies==1&&p.gold==1000&&t!=null&&t.mastery==1){CampaignClient.revealUntil=0;CampaignClient.notice="";c.setScreen(new CampScreen("recruit"));cs=1;wait=0;}
+                    if(campReady&&k!=null&&k.stars==1&&k.copies==1&&p.gold==1000&&t!=null&&t.mastery==1&&!p.owned.containsKey(newId())){CampaignClient.revealUntil=0;CampaignClient.notice="";c.setScreen(new CampScreen("recruit"));cs=1;wait=0;}
                     else if(++wait>600){report("p2-roll-card",false,"the fixture profile never reached the client");server(c,b->{if(stage==101)stage=102;});cs=3;wait=0;}}
-                case 1->{if(!(c.currentScreen instanceof CampScreen s))return;
-                    if(++wait==10){var roll=button(s,"ROLL GILDED",0);if(roll==null||!roll.active){report("p2-roll-card",false,"no active ROLL GILDED button on the recruit page");server(c,b->{if(stage==101)stage=102;});cs=3;wait=0;return;}
-                        RecruitPages.seenRoll=null;roll.onPress();}
+                case 1->{if(!(c.currentScreen instanceof CampScreen s))return; // p2-roll-card: Enlist on the War Table recruit page; the draw lands on a Rare the player does not own
+                    if(++wait==10){var page=wpage(c);var enlist=wbox(c,"enlist");
+                        if(page==null||enlist==null||!page.enlist.active){report("p2-roll-card",false,"no active Enlist on the War Table recruit page (page "+(page!=null)+", Enlist "+(enlist==null?"not drawn":"drawn")+")");server(c,b->{if(stage==101)stage=102;});cs=3;wait=0;return;}
+                        goldWas=p.gold;rollN=CampaignClient.lastRoll==null?-1:CampaignClient.lastRoll.n();pressedAt=System.currentTimeMillis();seenIn=-1;wclick(c,enlist);}
                     var r=CampaignClient.lastRoll;
-                    if(wait>10&&r!=null&&r.troop().equals("knight")&&CampaignClient.rollShowing()){CampaignClient.revealHeldAt=600;cs=2;wait=0;}
-                    else if(wait>400){report("p2-roll-card",false,"the roll's card never showed: lastRoll "+r+", showing "+CampaignClient.rollShowing());server(c,b->{if(stage==101)stage=102;});cs=3;wait=0;}}
-                case 2->{if(++wait==8){server(c,b->{if(stage==101)stage=102;});shoot("chase-roll-dup");}
-                    if(wait>8&&shotDone(c)&&stage>=103){var seen=RecruitPages.seenRoll;var r=CampaignClient.lastRoll;
-                        boolean card=seen!=null&&seen.troop().equals("knight")&&seen.label().equals("DUPLICATE")&&seen.from()==1&&seen.to()==2&&seen.filled()==1&&seen.growing()==1&&seen.part()>0.3f&&seen.part()<0.7f&&seen.outcome().equals("Star 1 to star 2");
-                        boolean snap=r!=null&&r.duplicate()&&r.starsBefore()==1&&r.starsAfter()==2&&r.shards()==0;boolean server=rollStars==2&&rollCopies==2;
-                        var dim=RecruitPages.rollDim;var sc=c.currentScreen;boolean full=dim!=null&&sc!=null&&dim[0]<=0&&dim[1]<=0&&dim[0]+dim[2]>=sc.width&&dim[1]+dim[3]>=sc.height;
-                        boolean quiet=!RecruitPages.noticeShown&&!CampaignClient.notice.isEmpty();
-                        report("p2-roll-card",card&&snap&&server&&full&&quiet,"the dim "+(dim==null?"none":Arrays.toString(dim))+" over the screen "+(sc==null?"none":sc.width+"x"+sc.height)+" (want all of it: one focal point)="+full+"; the notice \""+CampaignClient.notice+"\" drawn under the card="+RecruitPages.noticeShown+" (want not: the card says it)="+quiet+"; "+"a forced roll of the owned star-1 knight: the snapshot's lastRoll "+r+" (want a duplicate from star 1 to 2, no shards)="+snap+"; the card drawn "+seen+" (want DUPLICATE, 1 pip filled and the second half grown at 600 ms of 1200, Star 1 to star 2)="+card+"; the server holds the knight at star "+rollStars+", copies "+rollCopies+" (want 2, 2)="+server+"; picture p2-chase-roll-dup.png");
-                        CampaignClient.revealHeldAt=-1;CampaignClient.revealUntil=0;cs=3;wait=0;}}
+                    if(wait>10&&r!=null&&r.n()!=rollN&&r.troop().equals(newId())&&CampaignClient.rollShowing()){seenIn=System.currentTimeMillis()-pressedAt;CampaignClient.revealHeldAt=600;cs=2;wait=0;}
+                    else if(wait>400){report("p2-roll-card",false,"the roll's letter never showed: lastRoll "+r+", showing "+CampaignClient.rollShowing());server(c,b->{if(stage==101)stage=102;});cs=3;wait=0;}}
+                case 2->{if(++wait==8){server(c,b->{if(stage==101)stage=110;});shoot("wt-recruit-roll");} // p2-roll-card: the letter shows the troop the roll named, under the broken seal, the purse down by the price, the server the same
+                    if(wait>8&&shotDone(c)&&stage>=111){var r=CampaignClient.lastRoll;String id=newId();var t=ArmyCards.spec(id);var sent=WarTableRecruit.sent();
+                        boolean snap=r!=null&&!r.duplicate()&&r.troop().equals(id)&&r.starsBefore()==0&&r.starsAfter()==1&&r.shards()==0;
+                        boolean letter=id.equals(wtext("letter-troop"))&&t.name().equals(CampaignClient.revealUnit)&&t.name().equals(wtext("letter-name"))&&WarTableRecruit.rects().containsKey("broken")&&wtext("letter-outcome")==null&&wtext("notice")==null;
+                        boolean purse=p.gold==goldWas-RecruitView.cost()&&String.valueOf(p.gold).equals(wtext("purse"));
+                        boolean server=newOwned&&goldAfter1==p.gold;
+                        boolean timing=seenIn>=0&&seenIn<=CampaignClient.REVEAL_MS;
+                        boolean sends=!sent.isEmpty()&&("roll:"+Spec.HOUSES[0].id()).equals(sent.get(sent.size()-1))&&!Phase1Checks.UiRecruitChecks.oldCommands(0);
+                        report("p2-roll-card",snap&&letter&&purse&&server&&timing&&sends,"Enlist pressed with the draw on the first House's second Rare, "+id+" (not owned): the snapshot's lastRoll "+r+" (want a new troop, 0 to 1 stars, no shards)="+snap+"; the letter shows "+wtext("letter-troop")+" \""+wtext("letter-name")+"\" (reveal \""+CampaignClient.revealUnit+"\") under the broken seal "+Arrays.toString(WarTableRecruit.rects().get("broken"))+" with no outcome line and no notice line="+letter+"; the purse "+goldWas+" to "+p.gold+" (want -"+RecruitView.cost()+"), reads \""+wtext("purse")+"\"="+purse+"; the server holds the troop "+newOwned+" and "+goldAfter1+" gold="+server+"; the letter came "+seenIn+" ms after the press (the reveal lasts "+CampaignClient.REVEAL_MS+")="+timing+"; sent "+(sent.isEmpty()?"nothing":sent.get(sent.size()-1))+", no unlock: or army:="+sends+"; picture p2-wt-recruit-roll.png");
+                        CampaignClient.revealHeldAt=-1;cs=20;wait=0;}}
+                case 20->{if(!(c.currentScreen instanceof CampScreen s))return; // p2-recruit-duplicate, the star: the knight (an owned Common) comes again, its second copy raises it to star 2
+                    if(++wait==10){var enlist=wbox(c,"enlist");if(enlist==null){report("p2-recruit-duplicate",false,"no Enlist on the page");server(c,b->{if(stage==111)stage=102;});cs=3;wait=0;return;}
+                        goldWas=p.gold;rollN=CampaignClient.lastRoll==null?-1:CampaignClient.lastRoll.n();pressedAt=System.currentTimeMillis();wclick(c,enlist);}
+                    var r=CampaignClient.lastRoll;
+                    if(wait>10&&r!=null&&r.n()!=rollN&&r.troop().equals("knight")&&CampaignClient.rollShowing()){seenIn=System.currentTimeMillis()-pressedAt;CampaignClient.revealHeldAt=600;cs=21;wait=0;}
+                    else if(wait>400){report("p2-recruit-duplicate",false,"the duplicate's letter never showed: lastRoll "+r+", showing "+CampaignClient.rollShowing());server(c,b->{if(stage==111)stage=102;});cs=3;wait=0;}}
+                case 21->{if(++wait==8){server(c,b->{if(stage==111)stage=112;});shoot("wt-recruit-duplicate");} // 600 ms into the 1200 the star takes to fill
+                    if(wait>8&&shotDone(c)&&stage>=113){var r=CampaignClient.lastRoll;var fill=r==null?null:RecruitPages.fill(r.starsBefore(),Math.max(r.starsBefore(),r.starsAfter()),CampaignClient.ROLL_FILL_MS/2);
+                        boolean snap=r!=null&&r.duplicate()&&r.starsBefore()==1&&r.starsAfter()==2&&r.shards()==0;String want=r==null?"":RecruitPages.outcome(r,p);int pct=-1;try{pct=Integer.parseInt(wtext("letter-fill"));}catch(RuntimeException e){}
+                        boolean lit=snap&&want.equals(wtext("letter-outcome"))&&want.equals("Star 1 to star 2")&&"knight".equals(wtext("letter-troop"))&&!WarTableRecruit.rects().containsKey("broken")&&fill.filled()==1&&fill.growing()==1&&"1+".equals(wtext("letter-stars"))&&pct>30&&pct<70&&wtext("notice")==null;
+                        boolean purse=p.gold==goldWas-RecruitView.cost()&&String.valueOf(p.gold).equals(wtext("purse"));boolean server=dupStars==2&&dupCopies==2&&goldAfter2==p.gold;
+                        dupA=lit&&purse&&server;dupWhy="a second copy of the knight: the snapshot's lastRoll "+r+" (want a duplicate from star 1 to 2, no shards)="+snap+"; at 600 ms of "+CampaignClient.ROLL_FILL_MS+" the letter of "+wtext("letter-troop")+" shows stars \""+wtext("letter-stars")+"\" with the second "+wtext("letter-fill")+"% grown and the line \""+wtext("letter-outcome")+"\" (RecruitPages.outcome says \""+want+"\"), no broken seal "+Arrays.toString(WarTableRecruit.rects().get("broken"))+", no notice line="+lit+"; the purse "+goldWas+" to "+p.gold+"="+purse+"; the server holds the knight at star "+dupStars+", copies "+dupCopies+", gold "+goldAfter2+"="+server+"; picture p2-wt-recruit-duplicate.png";
+                        CampaignClient.revealHeldAt=-1;cs=22;wait=0;}}
+                case 22->{if(!(c.currentScreen instanceof CampScreen s))return; // p2-recruit-duplicate, the copy: the third copy counts toward star 3 and raises nothing
+                    if(++wait==10){var enlist=wbox(c,"enlist");goldWas=p.gold;rollN=CampaignClient.lastRoll==null?-1:CampaignClient.lastRoll.n();pressedAt=System.currentTimeMillis();if(enlist!=null)wclick(c,enlist);}
+                    var r=CampaignClient.lastRoll;
+                    if(wait>10&&r!=null&&r.n()!=rollN&&r.troop().equals("knight")&&CampaignClient.rollShowing()){CampaignClient.revealHeldAt=600;cs=23;wait=0;}
+                    else if(wait>400){report("p2-recruit-duplicate",false,dupWhy+"; the third copy's letter never showed: lastRoll "+r+", showing "+CampaignClient.rollShowing());server(c,b->{if(stage==113)stage=102;});cs=24;wait=0;}}
+                case 23->{if(++wait==8)server(c,b->{if(stage==113)stage=102;});
+                    if(wait>8&&stage>=103){var r=CampaignClient.lastRoll;var o=p.owned.get("knight");String want=r==null?"":RecruitPages.outcome(r,p);
+                        boolean snap=r!=null&&r.duplicate()&&r.starsBefore()==2&&r.starsAfter()==2&&r.shards()==0;
+                        boolean lit=snap&&want.equals(wtext("letter-outcome"))&&want.startsWith("Copy "+rollCopies+" of ")&&want.contains("toward star 3")&&"2".equals(wtext("letter-stars"))&&wtext("letter-fill")==null&&!WarTableRecruit.rects().containsKey("broken")&&"knight".equals(wtext("letter-troop"));
+                        boolean server=rollStars==2&&rollCopies==3&&o!=null&&o.copies==3&&goldAfter3==p.gold&&p.gold==goldWas-RecruitView.cost();
+                        report("p2-recruit-duplicate",dupA&&lit&&server,dupWhy+"; a third copy: lastRoll "+r+" (want a duplicate that stays at star 2)="+snap+"; the letter shows stars \""+wtext("letter-stars")+"\" and \""+wtext("letter-outcome")+"\" (RecruitPages.outcome says \""+want+"\"; want Copy 3 of n toward star 3), no broken seal="+lit+"; the server holds the knight at star "+rollStars+", copies "+rollCopies+" and "+goldAfter3+" gold (the client "+p.gold+")="+server);
+                        CampaignClient.revealHeldAt=-1;cs=24;wait=0;}}
+                case 24->{if(!(c.currentScreen instanceof CampScreen s)||wpage(c)==null)return; // p2-recruit-odds: the note states the real odds, the pity count and the copy rule, and not "No duplicates"
+                    if(++wait==3)wclick(c,wbox(c,"odds"));
+                    if(wait==12){String house=wpage(c).house;var font=c.textRenderer;List<String> lines=Phase1Checks.UiRecruitChecks.noteLines();String all=String.join(" ",lines);
+                        Map<String,Integer> n=new LinkedHashMap<>();int total=0;for(var t:Spec.TROOPS)if(t.house().equals(house)&&!t.rarity().equals("legendary")){n.merge(t.rarity(),1,Integer::sum);total+=RosterMath.rarityRow(t.rarity()).rollWeight();}
+                        List<String> odds=new ArrayList<>();for(var r:Spec.RARITIES){Integer cnt=n.get(r.id());if(cnt!=null)odds.add(Character.toUpperCase(r.id().charAt(0))+r.id().substring(1)+" "+Math.round(100.0*cnt*r.rollWeight()/total)+"%");}
+                        int pity=Math.max(1,Spec.RECRUITMENT[0].epicPity()-p.pity.getOrDefault(house,0));boolean wide=true;for(String l:lines)wide&=font.getWidth(DarkUi.body(l))<=WarTableRecruit.NOTE_W;
+                        boolean odd=!odds.isEmpty()&&all.contains(String.join(", ",odds)),pit=all.contains(UiMath.pityLine(pity)),copy=all.contains("copy")&&all.contains("next star"),old=all.contains("No duplicates")||all.contains("duplicates");
+                        boolean open=wpage(c).odds&&WarTableRecruit.rects().containsKey("note")&&!lines.isEmpty()&&wide&&lines.size()<=WarTableRecruit.NOTE_LINES;
+                        report("p2-recruit-odds",odd&&pit&&copy&&!old&&open,"the Odds note of "+house+" reads \""+all+"\" in "+lines.size()+" lines, each inside "+WarTableRecruit.NOTE_W+" px="+wide+"; the rarity shares from the sheet's roll weights "+odds+" are in it="+odd+"; the pity count \""+UiMath.pityLine(pity)+"\" (epicPity "+Spec.RECRUITMENT[0].epicPity()+" less the House's "+p.pity.getOrDefault(house,0)+")="+pit+"; the copy rule (a troop you own gives a copy toward its next star)="+copy+"; no \"No duplicates\" rule="+!old+"; picture p2-wt-recruit-odds.png");
+                        shoot("wt-recruit-odds");}
+                    if(wait>12&&shotDone(c)){wclick(c,new int[]{4,4,4,4});if(wpage(c)!=null&&wpage(c).odds)wpage(c).odds=false;cs=25;wait=0;act=0;server(c,b->{if(stage==103)stage=120;});}}
+                case 25->{if(!(c.currentScreen instanceof CampScreen s)||wpage(c)==null||!fixture2Ready)return; // p2-recruit-choose, -star and -pact: each presses the letter's tag on the troop it belongs to and reads the server
+                    var page=wpage(c);String[] tag={"p2-recruit-choose","p2-recruit-star","p2-recruit-pact"};
+                    int houseIx=act==0?1:0;String house=Spec.HOUSES[houseIx].id(),troop=act==0?troopOf(1,"rare"):act==1?troopOf(0,"epic"):troopOf(0,"legendary");
+                    String wantCmd=act==0?"buy:"+troop:act==1?"star:"+troop:"legendary:"+house+":pact";String wantLabel=act==0?"Buy "+RecruitView.chooseCost():act==1?"Star 2":"Pact";
+                    if(wait==0){
+                        if(act==0&&!(p.writs>=1&&p.gold==1000&&p.owned.containsKey(troopOf(0,"epic"))&&!p.owned.containsKey(troop)&&!p.owned.containsKey(troopOf(0,"legendary")))){if(++actWait>400){for(String t:tag)report(t,false,"the action fixture never reached the client (writs "+p.writs+", gold "+p.gold+")");cs=3;wait=0;}return;}
+                        wclick(c,wbox(c,"house-"+house));wait=1;actWait=0;return;}
+                    if(wait==1){int at=Phase1Checks.UiRecruitChecks.troopsOf(house).indexOf(troop);if(!page.house.equals(house)||at<0){if(++actWait>60){report(tag[act],false,"the banner of "+house+" or the row of "+troop+" is not there ("+page.house+", row "+at+")");nextAct();}return;}
+                        wclick(c,wbox(c,"row-"+at));wait=2;actWait=0;return;}
+                    if(wait==2){if(!troop.equals(wtext("letter-troop"))){if(++actWait>30){report(tag[act],false,"the letter shows "+wtext("letter-troop")+", not "+troop);nextAct();}return;}wait=3;return;}
+                    if(wait==3){var a=RecruitView.action(troop);
+                        boolean tagOk=a!=null&&a.active()&&a.label().equals(wtext("choose"))&&a.command().equals(wtext("choose-command"))&&a.command().equals(wantCmd)&&a.label().equals(wantLabel)&&Arrays.equals(wbox(c,"choose"),WarTableRecruit.rects().get("choose"));
+                        actWhy=(a==null?"no tag":"the tag \""+a.label()+"\" ("+a.command()+") under it \""+a.tip()+"\"")+" on "+troop+(tagOk?"":" WRONG (want \""+wantLabel+"\" sending "+wantCmd+")");
+                        if(!tagOk){report(tag[act],false,actWhy);nextAct();return;}
+                        goldB=p.gold;shardsB=p.shards.getOrDefault(Spec.HOUSES[0].id(),0);writsB=p.writs;starsB=p.owned.containsKey(troop)?p.owned.get(troop).stars:0;
+                        pressedAt=WarTableRecruit.sent().size();wclick(c,wbox(c,"choose"));wait=4;actWait=0;return;}
+                    if(wait==4){var o=p.owned.get(troop);boolean moved=act==0?o!=null:act==1?o!=null&&o.stars>starsB:o!=null&&p.writs<writsB;
+                        if(!moved){if(++actWait>200){report(tag[act],false,actWhy+"; the press changed nothing on the client in 200 ticks: sent "+WarTableRecruit.sent().subList((int)pressedAt,WarTableRecruit.sent().size()));nextAct();}return;}
+                        snap(c,troop,Spec.HOUSES[0].id());wait=5;actWait=0;return;}
+                    if(wait==5){if(!got){if(++actWait>100){report(tag[act],false,actWhy+"; the server's state never came");nextAct();}return;}
+                        var sent=WarTableRecruit.sent();List<String> mine=sent.subList((int)pressedAt,sent.size());var epic=RosterMath.rarityRow("epic");var o=p.owned.get(troop);
+                        boolean one=mine.equals(List.of(wantCmd))&&!Phase1Checks.UiRecruitChecks.oldCommands((int)pressedAt);
+                        boolean server=switch(act){
+                            case 0->sOwned&&sGold==goldB-RecruitView.chooseCost()&&p.gold==sGold&&troop.equals(wtext("letter-troop"))&&WarTableRecruit.rects().containsKey("broken");
+                            case 1->sOwned&&sStars==starsB+1&&sShards==shardsB-epic.shardStar2()&&p.shards.getOrDefault(Spec.HOUSES[0].id(),0)==sShards&&o!=null&&o.stars==sStars;
+                            default->sOwned&&sWrits==writsB-1&&p.writs==sWrits&&sStars==1&&troop.equals(wtext("letter-troop"))&&WarTableRecruit.rects().containsKey("broken");};
+                        String what=switch(act){
+                            case 0->"gold "+goldB+" to "+sGold+" on the server (want -"+RecruitView.chooseCost()+"), the troop owned="+sOwned+", the client reads "+p.gold+", the letter "+wtext("letter-troop")+" under the broken seal "+Arrays.toString(WarTableRecruit.rects().get("broken"));
+                            case 1->"the Epic from star "+starsB+" to "+sStars+" on the server, the House's shards "+shardsB+" to "+sShards+" (want -"+epic.shardStar2()+"), the client reads "+(o==null?-1:o.stars)+" stars and "+p.shards.getOrDefault(Spec.HOUSES[0].id(),0)+" shards";
+                            default->"the Pact "+writsB+" to "+sWrits+" on the server (want one spent), the Legendary owned="+sOwned+" at "+sStars+" star, the client reads "+p.writs+" Pacts, the letter "+wtext("letter-troop")+" under the broken seal "+Arrays.toString(WarTableRecruit.rects().get("broken"));};
+                        report(tag[act],one&&server,actWhy+"; the press sent "+mine+" (want exactly "+wantCmd+", never unlock: or army:)="+one+"; "+what+"="+server);
+                        nextAct();}}
                 case 3->{if(!(c.currentScreen instanceof CampScreen s)){c.setScreen(new CampScreen("recruit"));return;}
-                    if(++wait==2)shoot("screens-recruit"); // the recruit page with its card actions, after the roll card (for the contact sheet)
+                    if(++wait==2)shoot("screens-recruit"); // the recruit page after the rolls (for the contact sheet)
                     if(wait<3||!shotDone(c))return;
-                    if(wait==30){var me=c.player.getUuid();server(c,bb->bb.campaign.notice(me,NOTICE));} // the server holds the roll's notice, as after a duplicate roll
-                    if(wait==40){if(!NOTICE.equals(CampaignClient.notice)&&++noticeWaits<100){wait=39;return;}
-                        RecruitPages.seenTroop=null;noticeLeft=CampaignClient.shownNotice();noticeStates0=CampaignClient.acceptedStates;s.openTroop("sentinel");} // Task 12 re-review N2 and fix round 1 I1: the roll's notice must not follow the player to another card, not even when the next state packet brings it again
-                    if(wait==50)shoot("chase-troop-card");
-                    if(wait>50&&noticePhase==0&&CampaignClient.acceptedStates>=noticeStates0+2){noticePhase=1; // two state packets after the page change: the server has sent the notice again, the screen must still not show it
-                        report("p2-notice-clears",NOTICE.equals(noticeLeft)&&CampaignClient.shownNotice().isEmpty()&&NOTICE.equals(CampaignClient.notice),"the recruit page showed the notice \""+noticeLeft+"\"; after opening the Templar's troop page and "+(CampaignClient.acceptedStates-noticeStates0)+" state packets the client still holds \""+CampaignClient.notice+"\" (the server resends it) and shows \""+CampaignClient.shownNotice()+"\" (want empty)");
-                        var me=c.player.getUuid();server(c,bb->bb.campaign.notice(me,NOTICE2));noticeWaits=0;}
-                    if(wait>50&&noticePhase==1){if(NOTICE2.equals(CampaignClient.shownNotice())||++noticeWaits>200){noticePhase=2;report("p2-notice-changes",NOTICE2.equals(CampaignClient.shownNotice()),"a new notice text after the page change is shown again: \""+CampaignClient.shownNotice()+"\" (want \""+NOTICE2+"\")");}}
-                    // fix round 2: the same words again, after the player acted, must show again (the server answers an unlock: with one fixed line)
-                    if(wait>50&&noticePhase==2){s.action("unlock:x");noticePhase=3;noticeWaits=0;}
-                    if(wait>50&&noticePhase==3){if(NOTICE3.equals(CampaignClient.shownNotice())){s.openTroop("sentinel");noticeStates0=CampaignClient.acceptedStates;noticePhase=4;}else if(++noticeWaits>200){report("p2-notice-repeats",false,"the server's answer \""+NOTICE3+"\" never showed (shows \""+CampaignClient.shownNotice()+"\")");noticePhase=6;}}
-                    if(wait>50&&noticePhase==4&&CampaignClient.acceptedStates>=noticeStates0+2){boolean held=NOTICE3.equals(CampaignClient.notice)&&CampaignClient.shownNotice().isEmpty();s.action("unlock:x");noticePhase=5;noticeWaits=0;noticeLeft=held?"":"precondition failed: the dismissed notice was not held and hidden";}
-                    if(wait>50&&noticePhase==5){boolean back=NOTICE3.equals(CampaignClient.shownNotice());if(back||++noticeWaits>200){noticePhase=6;report("p2-notice-repeats",back&&noticeLeft.isEmpty(),"a notice dismissed by a page change, then the same words from the server after the player acted again, shows again: \""+CampaignClient.shownNotice()+"\" (want \""+NOTICE3+"\") "+noticeLeft);}}
-                    if(wait>50&&noticePhase==6&&shotDone(c)){var seen=RecruitPages.seenTroop;var t=Campaign.troop("sentinel");var n=ArmyCards.notes(t);
+                    if(wpage(c)==null){c.setScreen(new CampScreen("recruit"));wait=0;return;}
+                    cs=30;wait=0;np=0;}
+                case 30->{if(!(c.currentScreen instanceof CampScreen s)||wpage(c)==null)return; // p2-notice-clears, -changes and -repeats on the War Table's notice line
+                    wait++;
+                    switch(np){
+                        case 0->{ // a refusal: the Epic cannot be bought; it must show on the notice line, once
+                            if(wait==2){CampaignClient.revealUntil=0;noticeStates0=CampaignClient.noticeSerial;s.action("buy:"+troopOf(0,"epic"));np=1;wait=0;}}
+                        case 1->{String t=wtext("notice");
+                            if(CampaignClient.noticeSerial!=noticeStates0&&t!=null){noticeA=CampaignClient.notice;seenTick=wait;
+                                shownA=!noticeA.isEmpty()&&noticeA.equals(t)&&Phase1Checks.UiRecruitChecks.noticePlaced(WarTableRecruit.rects().get("notice"))&&Integer.valueOf(DarkUi.IVORY).equals(WarTableRecruit.colors().get("notice"));shoot("wt-recruit-notice");np=2;wait=0;}
+                            else if(wait>200){report("p2-notice-clears",false,"the Epic's refused buy never showed on the notice line (serial "+noticeStates0+" to "+CampaignClient.noticeSerial+", notice \""+CampaignClient.notice+"\")");np=3;wait=0;}}
+                        case 2->{ // it fades: gone within its time (WarTableHome.NOTICE_TICKS, then NOTICE_FADE_TICKS of fade)
+                            boolean taken=shotDone(c);if(taken&&wtext("notice")==null){fadedA=wait>=WarTableHome.NOTICE_TICKS&&wait<=WarTableHome.NOTICE_TICKS+WarTableHome.NOTICE_FADE_TICKS+10;np=3;wait=0;}
+                            else if(wait>300){fadedA=false;np=3;wait=0;}}
+                        case 3->{ // a second refusal, then the table closed and opened again while it still shows, and two state packets on
+                            if(wait==2){noticeStates0=CampaignClient.noticeSerial;s.action("star:knight");np=4;wait=0;}}
+                        case 4->{String t=wtext("notice");
+                            if(CampaignClient.noticeSerial!=noticeStates0&&t!=null){noticeB=CampaignClient.notice;shownB=!noticeB.isEmpty()&&noticeB.equals(t);noticeStates0=CampaignClient.acceptedStates;
+                                c.setScreen(null);c.setScreen(new CampScreen("recruit"));np=5;wait=0;}
+                            else if(wait>200){shownB=false;np=5;wait=0;noticeStates0=CampaignClient.acceptedStates;}}
+                        case 5->{if(wait==6)hiddenB=wpage(c)!=null&&wtext("notice")==null;
+                            if(wait>6&&CampaignClient.acceptedStates>=noticeStates0+2){hiddenB2=wpage(c)!=null&&wtext("notice")==null&&noticeB.equals(CampaignClient.notice)&&!noticeB.isEmpty();
+                                report("p2-notice-clears",shownA&&fadedA&&shownB&&hiddenB&&hiddenB2,"a refusal (the Epic's buy) showed once on the notice line \""+noticeA+"\" at its place, in the ivory ink="+shownA+" and was gone after its time="+fadedA+"; a second ("+noticeB+") showed="+shownB+", then the table was closed and opened again: the line is "+(hiddenB?"gone":"STILL THERE")+" and after "+(CampaignClient.acceptedStates-noticeStates0)+" state packets, with the server still sending \""+CampaignClient.notice+"\", it is "+(hiddenB2?"gone":"back")+"; picture p2-wt-recruit-notice.png");
+                                np=6;wait=0;}
+                            else if(wait>300){report("p2-notice-clears",false,"fewer than two state packets in 300 ticks after the reopen");np=6;wait=0;}}
+                        case 6->{ // other words after the table was reopened show again
+                            if(wait==2){noticeStates0=CampaignClient.noticeSerial;s.action("buy:"+troopOf(0,"epic"));}
+                            if(wait>2&&CampaignClient.noticeSerial!=noticeStates0&&wtext("notice")!=null){boolean back=wtext("notice").equals(CampaignClient.notice)&&!CampaignClient.notice.equals(noticeB);
+                                report("p2-notice-changes",back,"a new refusal after the reopen shows on the notice line: \""+wtext("notice")+"\" (want the server's \""+CampaignClient.notice+"\", not the earlier \""+noticeB+"\")");np=7;wait=0;}
+                            else if(wait>200){report("p2-notice-changes",false,"the new refusal never showed (serial "+noticeStates0+" to "+CampaignClient.noticeSerial+")");np=7;wait=0;}}
+                        case 7->{ // the same words again, after the player acted again, show again (the server answers an unlock: with one fixed line)
+                            if(wait==3){noticeStates0=CampaignClient.noticeSerial;s.action("unlock:x");}
+                            if(wait>3&&CampaignClient.noticeSerial!=noticeStates0&&wtext("notice")!=null&&wtext("notice").equals(CampaignClient.notice)){noticeC=CampaignClient.notice;shownC=noticeC.equals(wtext("notice")); // the line of the refusal before still shows until the page takes this one: wait for the words
+                                s.page("home");s.page("recruit");noticeStates0=CampaignClient.acceptedStates;np=8;wait=0;}
+                            else if(wait>200){report("p2-notice-repeats",false,"the answer to unlock:x never showed");np=10;wait=0;}}
+                        case 8->{if(wait==6)hiddenC=wpage(c)!=null&&wtext("notice")==null&&noticeC.equals(CampaignClient.notice);
+                            if(wait>6&&CampaignClient.acceptedStates>=noticeStates0+2){boolean still=wpage(c)!=null&&wtext("notice")==null;hiddenC&=still;np=9;wait=0;}
+                            else if(wait>300){np=9;wait=0;}}
+                        case 9->{if(wait==2){noticeStates0=CampaignClient.noticeSerial;s.action("unlock:x");}
+                            if(wait>2&&CampaignClient.noticeSerial!=noticeStates0&&wtext("notice")!=null){shownC2=noticeC.equals(CampaignClient.notice)&&noticeC.equals(wtext("notice"));
+                                report("p2-notice-repeats",shownC&&hiddenC&&shownC2,"the server's answer to unlock:x \""+noticeC+"\" showed="+shownC+", was gone after the page went home and came back and two state packets="+hiddenC+", and the same words after the player acted again showed again: \""+wtext("notice")+"\"="+shownC2);np=10;wait=0;}
+                            else if(wait>200){report("p2-notice-repeats",false,"the same words never showed again (serial "+noticeStates0+" to "+CampaignClient.noticeSerial+"): the first showed="+shownC+", gone="+hiddenC);np=10;wait=0;}}
+                        default->{ // on to the troop page (the old one, until the troop sheet replaces it)
+                            RecruitPages.seenTroop=null;s.openTroop("sentinel");cs=31;wait=0;}
+                    }}
+                case 31->{if(!(c.currentScreen instanceof CampScreen s))return; // p2-troop-card: the Templar's troop page
+                    if(++wait==5)shoot("chase-troop-card");
+                    if(wait>5&&shotDone(c)){var seen=RecruitPages.seenTroop;var t=Campaign.troop("sentinel");var n=ArmyCards.notes(t);
                         boolean page=s.page.equals("troop")&&seen!=null&&seen.troop().equals("sentinel");
                         boolean notes=page&&n!=null&&!n.beats().isEmpty()&&seen.beats().equals(n.beats())&&seen.beatenBy().equals(n.beatenBy());
                         boolean glyphs=page&&seen.glyphs().contains("C1")&&seen.glyphs().contains("C3");
@@ -6677,23 +6815,27 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 0->{ // wait for the server side, and for the snapshot with all 30 troops
                     if(!rosterSet||CampaignClient.profile.owned.size()<Spec.TROOPS.length){if(++wait>800){rosterOk=false;rosterWhy="the client's profile never showed all "+Spec.TROOPS.length+" troops (owned "+CampaignClient.profile.owned.size()+", roster set "+rosterSet+"); ";cs=9;}return;}
                     CampaignClient.revealUntil=0;CampaignClient.notice="";c.setScreen(new CampScreen("recruit"));cs=1;wait=0;}
-                case 1->{
-                    if(!(c.currentScreen instanceof CampScreen s)){if(++wait>40){c.setScreen(new CampScreen("recruit"));wait=0;}return;}
-                    var tabs=s.houseTabs();
-                    if(tabs.size()!=Spec.HOUSES.length){rosterOk=false;rosterWhy+="the recruit page has "+tabs.size()+" House tabs (want "+Spec.HOUSES.length+"); ";cs=9;return;}
-                    CampScreen.seenCards.clear();tabs.get(tabIdx).onPress();frames=0;cs=2;}
+                case 1->{ // the War Table recruit page opens on the first House; each later banner is pressed
+                    if(!(c.currentScreen instanceof CampScreen s)||s.recruit==null){if(++wait>40){c.setScreen(new CampScreen("recruit"));wait=0;}return;}
+                    if(tabIdx>0){var banner=s.recruit.button("house-"+Spec.HOUSES[tabIdx].id());if(banner==null||!banner.visible){rosterOk=false;rosterWhy+="no banner for "+Spec.HOUSES[tabIdx].id()+"; ";cs=9;return;}banner.onPress();}
+                    frames=0;cs=2;}
                 case 2->{
                     if(!(c.currentScreen instanceof CampScreen s))return;
-                    CampaignClient.revealUntil=0;CampaignClient.notice=""; // the roster's arrival would otherwise show its roll card over the cards
-                    if(++frames==8){var tab=s.houseTabs().get(tabIdx);String house=tab.house;
+                    CampaignClient.revealUntil=0;CampaignClient.notice=""; // the roster's arrival would otherwise light a letter
+                    if(++frames==8){String house=Spec.HOUSES[tabIdx].id();var rows=WarTableRecruit.rows();
                         var want=new ArrayList<String>();for(var t:Spec.TROOPS)if(t.house().equals(house))want.add(t.id());
-                        var seen=CampScreen.seenCards;boolean all=want.size()==6&&seen.keySet().equals(new HashSet<>(want))&&seen.values().stream().allMatch(v->v)&&tab.selected();
-                        if(!all){rosterOk=false;rosterWhy+=house+": drew "+seen+" (want these six owned: "+want+"), tab chosen "+tab.selected()+"; ";}
+                        boolean listed=want.size()==6&&rows.size()==6&&rows.stream().map(WarTableRecruit.RowDraw::troop).toList().equals(want);
+                        boolean inks=rows.stream().allMatch(r->!r.silhouette()&&r.color()==DarkUi.INK_TEXT);
+                        var faces=WarTableRecruit.portraits().stream().filter(q->q.where().startsWith("row-")).toList();
+                        boolean portraits=faces.size()==6&&faces.stream().allMatch(q->q.drawn()!=null&&!q.drawn().silhouette());
+                        boolean chosen=("recruit/banner-"+house+"-on").equals(WarTableRecruit.textures().get("banner-"+house))&&s.recruit.house.equals(house);
+                        boolean all=listed&&inks&&portraits&&chosen;
+                        if(!all){rosterOk=false;rosterWhy+=house+": drew "+rows.stream().map(WarTableRecruit.RowDraw::troop).toList()+" (want these six, all owned: "+want+"), inks "+inks+", portraits drawn flat "+!portraits+", banner chosen "+chosen+"; ";}
                         else rosterWhy+=house+" 6/6 owned; ";
-                        shot(c,tabIdx==0?"migration-full-roster":"migration-full-roster-"+house);}
+                        shot(c,"migration-full-roster-"+house);}
                     if(frames>=40){if(++tabIdx<Spec.HOUSES.length)cs=1;else cs=9;}}
                 case 9->{
-                    report("p2-full-roster",rosterOk&&rosterWhy.length()>0,"a profile owning all "+Spec.TROOPS.length+" troops at star 1 (the client shows "+CampaignClient.profile.owned.size()+"): "+rosterWhy+"pictures p2-migration-full-roster*.png");
+                    report("p2-full-roster",rosterOk&&rosterWhy.length()>0,"a profile owning all "+Spec.TROOPS.length+" troops at star 1 (the client shows "+CampaignClient.profile.owned.size()+"): "+rosterWhy+"pictures p2-migration-full-roster-<house>.png (five)");
                     cs=10;wait=0;server(c,b->stage=3);}
                 case 10->{if(restoreDone||++wait>200){report("p2-migrate-restore",restoreDone&&restoreOk,"the player's own profile put back after the import and the roster test, and read as before="+restoreOk);end(c);}}
                 default->{}
