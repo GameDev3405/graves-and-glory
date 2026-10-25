@@ -1,21 +1,29 @@
 package gg.gravesandglory;
 
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.resource.language.I18n;
+import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * Suites levels, gear and armoury of the in-match progression plan (Tasks 4, 5 and 8, lane A). Never included in releases.
  * Phase2Checks.SUITES takes these entries through register (GRAVES_PHASE2_CHECKS=<suite>), and the checks print through Phase2Checks.report.
- * Task 4 builds levels, Task 5 gear; armoury (Task 8) still reports fail p2-armoury-not-built.
+ * Task 4 builds levels, Task 5 gear, Task 8 the Armoury tab (its checks run on the real barracks screen; a suite still unbuilt reports NotBuilt).
  */
 final class LevelChecks {
     private LevelChecks() {}
@@ -27,7 +35,7 @@ final class LevelChecks {
     static void register(Map<String, Supplier<Phase2Checks.Suite>> suites) {
         suites.put("levels", Levels::new);
         suites.put("gear", Gear::new);
-        suites.put("armoury", () -> new NotBuilt("armoury", "Task 8: the Armoury tab"));
+        suites.put("armoury", Armoury::new);
     }
 
     /** A suite whose checks are not written yet: one fail line naming the task that writes them, then the suite ends. */
@@ -527,7 +535,7 @@ final class LevelChecks {
      * gear: command does, and he is moved to his barracks or to a point Dawn is made to hold for the tick of a buy, then back. It reuses the levels
      * suite's helpers (Levels) and runs its own stages.
      */
-    static final class Gear extends Levels {
+    static class Gear extends Levels {
         static final String ACTION = "Gear check: an action's notice expires";
         /** The stage that ends the suite: past every numbered stage (the levels suite's 99 would cut this one short at its stage 100). */
         static final int DONE = 999;
@@ -1061,6 +1069,453 @@ final class LevelChecks {
             } finally { Spec.GEARTIERS = sheet; home(b); }
             boolean ok = thrown.isEmpty() && why.equals("No such gear") && said.equals("No such gear") && own.gold == 1000;
             Phase2Checks.report("p2-gear-tier-cap", ok, "with a fourth row in the gearTiers sheet, Weapon IV of the Sunweaver: the refusal \"" + why + "\" and the command's notice \"" + said + "\" (want \"No such gear\" both)" + (thrown.isEmpty() ? "" : ", THREW " + thrown) + ", gold " + own.gold + " (want 1000)");
+        }
+    }
+
+    /**
+     * Task 8: the Armoury tab (in-match progression design 7 and 9.1; War Table port plan Task 8). The fixture is the gear suite's (Gear): a stone platform away from
+     * every buy place, the commander's army with a banner of five troop types (an Order Squire, an Order Archer, a Templar, an Order Longbow and a Sunweaver) and Armoury
+     * kits that put every buy state on show with the gold held at POT: a Squire with Weapon II bought and Armour II open, an archer with level 2 seen, a Templar with
+     * both weapon tiers and Armour II bought, a Longbow nobody has levelled and a Sunweaver short of gold. The commander is moved to his barracks or back to the platform by the
+     * server tick, as a buy needs. The client half opens the real screen (the lectern's BarracksScreen and its tab, or the Armoury key), reads the page's own buttons and
+     * clicks them through the screen's mouse handlers, so a press is what a player's is. Every expectation comes from the server's own state and refusals (Veterans), LevelMath and
+     * the sheet, never from the page's copy; the few words the plan names ("Bought", "Buy", "Not here") are the one thing the page owns.
+     */
+    static final class Armoury extends Gear {
+        static final List<String> BANNER5 = List.of("knight", "archer", "sentinel", "longbow", "mage", "^", "^", "^");
+        static final List<String> BANNER8 = List.of("knight", "archer", "sentinel", "longbow", "mage", "tc_admiral", "wm_oldhorn", "ic_colossus");
+        /** The gold the fixture holds: enough for a common tier II, short of a common tier III and of an epic tier II (from the sheet's prices; the fixture reports itself bad when that fails). */
+        static final int POT = LevelMath.price("common", 3) - 10;
+        /** The five sizes of the plan's text-fit rule (the p1-ui-*-scales sizes): window width, height and GUI scale. */
+        static final int[][] SIZES = {{1280, 720, 3}, {854, 480, 2}, {1920, 1080, 2}, {1920, 974, 1}, {1920, 1080, 1}};
+        static final String UNBOUND_LINE = "The Armoury key is not bound: set it in Controls";
+
+        /** What the server holds after its last tick: the Armoury it sends, the refusal of every buy as it words it for a commander at a buy place, the refusal of an open buy as the commander stands, the Squire's bought tiers and the gold. */
+        record Snap(LevelMath.Armoury armoury, Map<String, String> refusals, String away, int knightWeapon, int knightArmour, int gold, int earned) {}
+        volatile Snap snap; volatile int goldPin = -1; volatile String place = "home"; volatile boolean fixtureOk;
+        String placed = "";
+        // the client's phase machine and what the phases share
+        int phase, pt, earnedBefore, sync8 = -1, field8 = -1, oldW, oldH, oldGui, sizeAt, openFill = -1, goldBefore, packets0, packets, boughtAt = -1;
+        String lastSentBefore = "", clickState = "", sentCmd = "", fieldBad = "", fieldInfo = "", tabsFirst = "", scrollBad = "", scrollInfo = "";
+        final List<String> fitNotes = new ArrayList<>(), fitFails = new ArrayList<>(), keyNotes = new ArrayList<>(), refusalNotes = new ArrayList<>();
+        boolean refusalsOk = true, keyOk = true, tabsToggled, tabsClosed, staleKeyOpened;
+
+        // ---- the server half ----
+
+        @Override public void serverTick(GravesAndGlory.Battle b) {
+            if (player == null || stage >= DONE) return;
+            try { server(b); } catch (RuntimeException e) { Phase2Checks.report("p2-armoury-exception", false, "stage " + stage + ": " + e); e.printStackTrace(); next(b, DONE); }
+        }
+
+        void server(GravesAndGlory.Battle b) {
+            if (stage >= 10) pin(b);
+            switch (stage) {
+                case 1 -> { var p = sp(b); if (p == null || !Phase1Checks.skirmish(b, p, 0, 1, "normal")) return; next(b, 2); }
+                case 2 -> {
+                    if (since(b) < 10) return;
+                    stageFixture(b); b.campaign.introUntil = b.time; Veterans.override = null; Houses.forceRise = Boolean.FALSE;
+                    knight = Campaign.troop("knight"); archer = Campaign.troop("archer"); mage = Campaign.troop("mage");
+                    bannerBefore = own.banner; commanderBefore = own.commander; own.banner = new ArrayList<>(BANNER5);
+                    kits(b); place = "home"; placed = ""; home(b);
+                    var f = Spec.FACTIONS[0]; double reach = Spec.ECONOMY[0].accessRadius();
+                    double fromBarracks = distance(sp(b).getPos(), new Vec3d(f.barracksX(), 0, f.barracksZ()));
+                    boolean prices = POT >= LevelMath.price("common", 2) && POT < LevelMath.price("common", 3) && POT < LevelMath.price("epic", 2) && POT < LevelMath.price("rare", 3);
+                    boolean ok = prices && Veterans.types(own).size() == 5 && fromBarracks > reach && !Veterans.buyHere(b, sp(b), own);
+                    Phase2Checks.report("p2-armoury-fixture", ok, "the army's banner has " + Veterans.types(own).stream().map(Spec.TroopsRow::id).toList() + " (want five types), the gold held at " + POT + " (a common tier II at " + LevelMath.price("common", 2) + " is within it; a common tier III at " + LevelMath.price("common", 3) + ", an epic tier II at " + LevelMath.price("epic", 2) + " and a rare tier III at " + LevelMath.price("rare", 3) + " are beyond it: " + prices + "), the commander on the platform " + fmt(fromBarracks) + " blocks from his barracks (want more than " + fmt(reach) + ")");
+                    fixtureOk = ok; next(b, ok ? 10 : DONE);
+                }
+                default -> {}
+            }
+        }
+
+        /** The Armoury kits that put every buy state on show with POT gold (see the class comment); nothing for the Longbow. */
+        void kits(GravesAndGlory.Battle b) {
+            b.armouries.remove(own);
+            var k = Veterans.kit(b, own, "knight"); k.highest = 3; k.weapon = 2; k.armour = 1;
+            k = Veterans.kit(b, own, "archer"); k.highest = 2;
+            k = Veterans.kit(b, own, "sentinel"); k.highest = 3; k.weapon = 3; k.armour = 2;
+            k = Veterans.kit(b, own, "mage"); k.highest = 2;
+        }
+
+        /** Each server tick after the fixture: the gold held (while pinned), the commander where the phase wants him, and the snapshot the client half compares with. */
+        void pin(GravesAndGlory.Battle b) {
+            if (goldPin >= 0) own.gold = goldPin;
+            if (!place.equals(placed) || b.time % 20 == 0) { placed = place; if (place.equals("barracks")) toBarracks(b); else home(b); }
+            hold();
+            var p = sp(b); if (p == null) return;
+            Map<String, String> refusals = new HashMap<>();
+            for (var t : Veterans.types(own)) for (int col = 0; col < 4; col++) refusals.put(t.id() + ":" + ArmouryTab.TRACKS[col] + ":" + ArmouryTab.TIERS[col], Veterans.refusal(b, own, t, ArmouryTab.TRACKS[col], ArmouryTab.TIERS[col], true));
+            var sq = Veterans.peek(b, own, "knight");
+            snap = new Snap(Veterans.armouryState(b, own, p), refusals, Veterans.refusal(b, own, knight, LevelMath.ARMOUR, 2, Veterans.buyHere(b, p, own)), sq == null ? 1 : sq.weapon, sq == null ? 1 : sq.armour, own.gold, own.stats.goldEarned);
+        }
+
+        // ---- the client half ----
+
+        @Override public void step(MinecraftClient c, int tick) {
+            if (tick == 20) { c.setScreen(null); UUID id = c.player.getUuid(); Phase2Checks.server(c, b -> { player = id; next(b, 1); }); }
+            if (wantShot != null && !shotTaken && ++shotDelay >= shotAfter) { Phase2Checks.shot(c, wantShot); shotTaken = true; }
+            if (stage >= 10 && stage < DONE && !finished && phase < 99) {
+                try { phases(c); } catch (RuntimeException e) { Phase2Checks.report("p2-armoury-exception", false, "phase " + phase + " tick " + pt + ": " + e); e.printStackTrace(); end(c); }
+            }
+            if (stage == DONE && !finished) { finished = true; c.setScreen(null); Phase2Checks.finish(c, "armoury"); }
+            if (tick > 14000 && !finished) { finished = true; Phase2Checks.report("p2-armoury-timeout", false, "stuck in phase " + phase + " tick " + pt + " (stage " + stage + ")"); Phase2Checks.finish(c, "armoury"); }
+        }
+
+        @Override public void cleanup(MinecraftClient c) {
+            Veterans.override = null; goldPin = -1;
+            try { c.options.setKeyCode(GravesAndGloryClient.armoury, GravesAndGloryClient.armoury.getDefaultKey()); KeyBinding.updateKeysByCode(); } catch (RuntimeException ignored) {}
+            if (oldW > 0) Phase1Checks.window(c, oldW, oldH, oldGui);
+            super.cleanup(c);
+        }
+
+        void go(int p) { phase = p; pt = 0; }
+        void end(MinecraftClient c) { phase = 99; Phase2Checks.server(c, b -> next(b, DONE)); }
+        void bail(MinecraftClient c, String id, String why) { Phase2Checks.report(id, false, why); end(c); }
+        static RecruitmentScreen rs(MinecraftClient c) { return c.currentScreen instanceof RecruitmentScreen r ? r : null; }
+        String seen() { return "the client's Armoury " + CampaignClient.armoury + " and gold " + GravesAndGloryClient.gold + " against the server's " + snap; }
+        /** Whether the client holds what the server holds, and the commander stands (or not) where he may buy. */
+        boolean synced(boolean here) { var s = snap; return s != null && CampaignClient.armoury.equals(s.armoury()) && CampaignClient.armoury.here() == here && GravesAndGloryClient.gold == s.gold(); }
+        /** A click through the screen's own mouse handlers, at the centre of the widget (design pixels times the screen's scale, as the game hands the screen). */
+        static void click(RecruitmentScreen s, ButtonWidget b) {
+            double x = (b.getX() + b.getWidth() / 2.0) * s.uiScale, y = (b.getY() + b.getHeight() / 2.0) * s.uiScale;
+            s.mouseClicked(x, y, 0); s.mouseReleased(x, y, 0);
+        }
+        /** The pointer at the window's bottom-left corner, off every widget, as a player leaves it for a picture. */
+        static void park(MinecraftClient c) {
+            try {
+                var fx = net.minecraft.client.Mouse.class.getDeclaredField("x"); fx.setAccessible(true); fx.setDouble(c.mouse, 2);
+                var fy = net.minecraft.client.Mouse.class.getDeclaredField("y"); fy.setAccessible(true); fy.setDouble(c.mouse, c.getWindow().getHeight() - 2);
+            } catch (ReflectiveOperationException e) { throw new IllegalStateException(e); }
+        }
+        /** The key as the game would hand it to the binding: a press the next client tick reads. Only with no screen open (the game never counts a press a screen took). */
+        static void press(KeyBinding k) { KeyBinding.onKeyPressed(KeyBindingHelper.getBoundKeyOf(k)); }
+        static LevelMath.Buy stateAt(LevelMath.ArmouryRow r, int col) { return col == 0 ? r.weapon2() : col == 1 ? r.weapon3() : col == 2 ? r.armour2() : r.armour3(); }
+        static String key(ArmouryTab.Gear g) { return g.troop.id() + ":" + g.track + ":" + g.tier; }
+        /** The words a button must show for a server state, worked out from the sheet, LevelMath and the server's own refusal; null for a locked button (its text is the server's refusal). */
+        static List<String> expect(Spec.TroopsRow t, int tier, LevelMath.Buy state, boolean here, String refusal) {
+            int price = LevelMath.price(t.rarity(), tier);
+            return switch (state) {
+                case BOUGHT -> List.of("Bought");
+                case OPEN -> here ? List.of("Buy", price + " gold") : List.of(price + " gold", "Not here");
+                case UNAFFORDABLE -> List.of(price + " gold", here ? refusal : "Not here");
+                case LOCKED -> null;
+            };
+        }
+
+        void phases(MinecraftClient c) {
+            pt++;
+            var s = rs(c);
+            switch (phase) {
+                case 0 -> {
+                    if (!fixtureOk) return;
+                    oldW = c.getWindow().getWidth(); oldH = c.getWindow().getHeight(); oldGui = c.options.getGuiScale().getValue();
+                    go(1);
+                }
+                case 1 -> { // the kits seeded, the commander at his barracks with POT gold, the window at 960x540 GUI 1 (canvas 960x540)
+                    if (pt == 1) { goldPin = POT; place = "barracks"; c.setScreen(null); Phase1Checks.window(c, 960, 540, 1); Phase2Checks.server(c, b -> kits(b)); }
+                    if (pt > 20 && synced(true)) go(2); else if (pt > 600) bail(c, "p2-armoury-tab", "the client never held the server's Armoury at the barracks: " + seen());
+                }
+                case 2 -> { // the barracks opens as the lectern opens it, and the player clicks the Armoury tab
+                    if (pt == 1) c.setScreen(new GravesAndGloryClient.BarracksScreen());
+                    if (pt == 8) {
+                        if (s == null || s.tab != 0 || s.armouryTab == null) { bail(c, "p2-armoury-tab", "the barracks did not open on its own page with an Armoury tab: " + c.currentScreen); return; }
+                        click(s, s.armouryTab);
+                    }
+                    if (pt == 18) { if (s == null) { bail(c, "p2-armoury-tab", "the screen closed"); return; } evalTab(s); park(c); }
+                    if (pt == 24) Phase2Checks.shot(c, "armoury-tab");
+                    if (pt == 28) go(3);
+                }
+                case 3 -> { // the platform, away from every buy place
+                    if (pt == 1) { place = "home"; c.setScreen(null); }
+                    if (pt > 6 && synced(false)) go(4); else if (pt > 600) bail(c, "p2-armoury-field", "the client never held the server's Armoury away from the barracks: " + seen());
+                }
+                case 4 -> { // the Armoury key opens the tab in the field; a press on an open button sends nothing
+                    if (pt == 1) { lastSentBefore = GravesAndGloryClient.lastSent; press(GravesAndGloryClient.armoury); }
+                    if (pt == 10) {
+                        if (s == null || s.tab != 1) { bail(c, "p2-armoury-field", "the key did not open the Armoury tab: the screen is " + (s == null ? c.currentScreen : "the barracks page " + s.tab)); return; }
+                        evalField(s);
+                        GravesAndGloryClient.lastSent = ""; click(s, s.page.buttons.get(2)); // the Squire's Armour II: open at the barracks, greyed here
+                    }
+                    if (pt == 16) { evalFieldPress(s); park(c); }
+                    if (pt == 20 && s != null) s.setFocused(null); // the picture shows the page as a player leaves it, with no button picked out
+                    if (pt == 22) Phase2Checks.shot(c, "armoury-field");
+                    if (pt == 26) go(5);
+                }
+                case 5 -> { // back at the barracks, the tab still open
+                    if (pt == 1) { place = "barracks"; goldPin = POT; }
+                    if (pt > 6 && synced(true)) go(6); else if (pt > 600) bail(c, "p2-armoury-buy-click", "the client never held the server's Armoury at the barracks again: " + seen());
+                }
+                case 6 -> { // a click on the open Squire Armour II buys it; the page shows the server's answer within two state packets; presses that cannot buy answer with the reason
+                    if (s == null || s.tab != 1) { bail(c, "p2-armoury-buy-click", "the tab closed before the click"); return; }
+                    if (pt == 1) goldPin = -1; // free the gold: the match may earn some before the buy, and the server's own tally of earnings says how much
+                    if (pt == 3) { goldBefore = snap.gold(); earnedBefore = snap.earned(); } // a snapshot of a tick after the release: gold and earnings move together from here
+                    if (pt == 4) {
+                        var g = s.page.buttons.get(2); g.refresh(); clickState = g.state + " pressable " + g.pressable;
+                        packets0 = CampaignClient.acceptedStates; GravesAndGloryClient.lastSent = ""; click(s, g); sentCmd = GravesAndGloryClient.lastSent; boughtAt = -1;
+                    }
+                    if (pt > 4 && boughtAt < 0) { var g = s.page.buttons.get(2); g.refresh(); if (g.state == LevelMath.Buy.BOUGHT) { boughtAt = pt; packets = CampaignClient.acceptedStates - packets0; } }
+                    if (boughtAt > 0 && pt == boughtAt + 8) { evalBuy(s); goldPin = snap.gold(); GravesAndGloryClient.lastSent = ""; click(s, s.page.buttons.get(2)); } // the bought button again
+                    if (boughtAt > 0 && pt == boughtAt + 14) { answer(s, "a bought button", "bought", true); GravesAndGloryClient.lastSent = ""; click(s, s.page.buttons.get(12)); } // the Longbow's Weapon II: locked
+                    if (boughtAt > 0 && pt == boughtAt + 20) { answer(s, "a locked button", snap.refusals().get("longbow:weapon:2"), false); GravesAndGloryClient.lastSent = ""; click(s, s.page.buttons.get(16)); } // the Sunweaver's Weapon II: short of gold
+                    if (boughtAt > 0 && pt == boughtAt + 26) { answer(s, "an unaffordable button", snap.refusals().get("mage:weapon:2"), false); evalRefusals(); go(7); }
+                    if (pt > 400 && boughtAt < 0) bail(c, "p2-armoury-buy-click", "the Squire's Armour II never read bought after the click (sent \"" + sentCmd + "\", the button was " + clickState + "): " + seen());
+                }
+                case 7 -> { // the key's real name, a rebound key, an unbound key
+                    if (pt == 1) { c.setScreen(null); goldPin = POT; Phase2Checks.server(c, b -> kits(b)); }
+                    if (pt == 8) { keyDefault(c); press(GravesAndGloryClient.armoury); }
+                    if (pt == 14) { keyScreen(c, "the default key"); rebind(c, InputUtil.Type.KEYSYM.createFromCode(GLFW.GLFW_KEY_J)); c.setScreen(null); }
+                    if (pt == 17) { KeyBinding.onKeyPressed(InputUtil.Type.KEYSYM.createFromCode(GLFW.GLFW_KEY_U)); }
+                    if (pt == 19) { staleKeyOpened = c.currentScreen != null; }
+                    if (pt == 20) press(GravesAndGloryClient.armoury);
+                    if (pt == 26) { keyScreen(c, "the key J"); rebind(c, InputUtil.Type.MOUSE.createFromCode(2)); c.setScreen(null); }
+                    if (pt == 32) press(GravesAndGloryClient.armoury);
+                    if (pt == 38) { keyScreen(c, "the middle mouse button"); rebind(c, InputUtil.UNKNOWN_KEY); c.setScreen(null); }
+                    if (pt == 44) c.setScreen(new GravesAndGloryClient.BarracksScreen());
+                    if (pt == 50 && s != null) click(s, s.armouryTab);
+                    if (pt == 56) { keyScreen(c, "no key"); rebind(c, InputUtil.Type.KEYSYM.createFromCode(GLFW.GLFW_KEY_U)); c.setScreen(null); }
+                    if (pt == 62) { keyReport(); go(8); }
+                }
+                case 8 -> { // 854x480 GUI 2 (canvas 640x360): the Armoury at the barracks, then in the field; each waits until the client holds what the server holds
+                    if (pt == 1) { c.setScreen(null); place = "barracks"; Phase1Checks.window(c, 854, 480, 2); sync8 = -1; field8 = -1; }
+                    if (sync8 < 0) {
+                        if (pt >= 30) { if (synced(true)) { sync8 = pt; c.setScreen(new RecruitmentScreen(1)); } else if (pt > 600) { bail(c, "p2-armoury-fits", "no Armoury at 854x480: " + seen()); } }
+                        return;
+                    }
+                    int q = pt - sync8;
+                    if (q == 10) park(c);
+                    if (q == 14) Phase2Checks.shot(c, "armoury-tab-854");
+                    if (q == 16) { if (s != null) evalFit(c, s, "854x480 GUI 2, at the barracks"); place = "home"; }
+                    if (q > 20 && field8 < 0) {
+                        if (synced(false)) field8 = q; else if (q > 600) { bail(c, "p2-armoury-fits", "no field Armoury at 854x480: " + seen()); }
+                        return;
+                    }
+                    if (field8 < 0) return;
+                    int f = q - field8;
+                    if (f == 10) park(c);
+                    if (f == 14) Phase2Checks.shot(c, "armoury-field-854");
+                    if (f == 16) { if (s != null) evalFit(c, s, "854x480 GUI 2, in the field"); go(9); }
+                }
+                case 9 -> { // levels off: the tab says so
+                    if (pt == 1) Veterans.override = Boolean.FALSE;
+                    if (pt == 40) { park(c); evalOff(s); }
+                    if (pt == 44) Phase2Checks.shot(c, "armoury-off-854");
+                    if (pt == 46) { Veterans.override = null; place = "barracks"; Phase2Checks.server(c, b -> { own.banner = new ArrayList<>(BANNER8); kits(b); }); }
+                    if (pt > 60 && CampaignClient.armoury.rows().size() == 8 && s != null && s.page.total == 8) go(10); else if (pt > 600) bail(c, "p2-armoury-scroll", "the eight-type banner never reached the client: " + seen());
+                }
+                case 10 -> { // eight troop types at 854x480: the rows that fit, and the rest by the arrows, the wheel and Page Up and Down
+                    if (pt == 4) { if (s == null) { bail(c, "p2-armoury-scroll", "the screen closed"); return; } scrollSteps(s); }
+                    if (pt == 20) park(c);
+                    if (pt == 24) Phase2Checks.shot(c, "armoury-scroll-854");
+                    if (pt == 26) { scrollReport(s); go(11); }
+                }
+                case 11 -> { // the five sizes, the banner at its widest
+                    if (pt == 1) { var z = SIZES[sizeAt]; Phase1Checks.window(c, z[0], z[1], z[2], z[0] >= 1920); }
+                    if (pt == 40) { park(c); String label = SIZES[sizeAt][0] + "x" + SIZES[sizeAt][1] + " GUI " + SIZES[sizeAt][2]; if (s != null && s.tab == 1) evalFit(c, s, label); else fitFails.add("no Armoury tab at " + label); }
+                    if (pt == 44 && sizeAt == 2) Phase2Checks.shot(c, "armoury-tab-1920");
+                    if (pt == 46) { if (++sizeAt < SIZES.length) go(11); else { fitReport(); go(12); } }
+                }
+                case 12 -> { // the two pages as tabs of one screen, and the key as a toggle
+                    if (pt == 1) { Phase1Checks.window(c, 960, 540, 1); place = "barracks"; Phase2Checks.server(c, b -> { own.banner = new ArrayList<>(BANNER5); kits(b); }); }
+                    if (pt == 40) { if (s == null || s.tab != 1) { bail(c, "p2-armoury-tabs", "no Armoury tab open: " + c.currentScreen); return; } tabsFirst = backAt(s); click(s, s.barracksTab); }
+                    if (pt == 46) { if (s != null) evalTabs(s); }
+                    if (pt == 52) { if (s != null) s.keyPressed(KeyBindingHelper.getBoundKeyOf(GravesAndGloryClient.armoury).getCode(), 0, 0); }
+                    if (pt == 56) { tabsToggled = s != null && s.tab == 1 && rs(c) == s; if (s != null) s.keyPressed(KeyBindingHelper.getBoundKeyOf(GravesAndGloryClient.armoury).getCode(), 0, 0); }
+                    if (pt == 60) { tabsClosed = c.currentScreen == null; tabsReport(); end(c); }
+                }
+                default -> {}
+            }
+        }
+
+        // ---- the checks ----
+
+        /** p2-armoury-tab and p2-armoury-states: the page after a click on the Armoury tab, at the barracks, against the server's rows and refusals. */
+        void evalTab(RecruitmentScreen s) {
+            var sn = snap; var a = s.page; var rows = sn.armoury().rows(); StringBuilder bad = new StringBuilder(), words = new StringBuilder(), bad2 = new StringBuilder();
+            if (s.tab != 1) bad.append("the tab is " + s.tab + " after the click; ");
+            if (!s.armouryTab.getMessage().getString().startsWith("> ") || s.barracksTab.getMessage().getString().startsWith("> ")) bad.append("the open tab is not the one marked; ");
+            if (a.total != rows.size() || a.shown != rows.size() || a.scrolling) bad.append("the page shows " + a.shown + " of " + a.total + " rows (want all " + rows.size() + ", no scroll); ");
+            if (a.buttons.size() != 4 * rows.size()) bad.append(a.buttons.size() + " buttons (want " + 4 * rows.size() + "); ");
+            String names = String.join(" ", a.nameDrawn);
+            for (var r : rows) { var t = Campaign.troop(r.troop()); if (!names.contains(t.name())) bad.append("the name " + t.name() + " is not drawn (" + names + "); "); }
+            Set<LevelMath.Buy> seen = new HashSet<>(); Map<LevelMath.Buy, Integer> count = new java.util.EnumMap<>(LevelMath.Buy.class);
+            for (int i = 0; i < a.buttons.size() && i / 4 < rows.size(); i++) {
+                var g = a.buttons.get(i); g.refresh(); var row = rows.get(i / 4); int col = i % 4; var want = stateAt(row, col); seen.add(want); count.merge(want, 1, Integer::sum);
+                String who = key(g);
+                if (!g.troop.id().equals(row.troop()) || !g.track.equals(ArmouryTab.TRACKS[col]) || g.tier != ArmouryTab.TIERS[col]) bad.append(who + " is in the place of " + row.troop() + " column " + col + "; ");
+                if (g.state != want) bad.append(who + " reads " + g.state + ", the server's row says " + want + "; ");
+                String refusal = sn.refusals().get(who), text = String.join(" ", g.lines);
+                var exp = expect(g.troop, g.tier, want, true, refusal);
+                if (want == LevelMath.Buy.LOCKED) {
+                    boolean second = g.tier == 3 && (stateAt(row, col - 1) == LevelMath.Buy.OPEN || stateAt(row, col - 1) == LevelMath.Buy.UNAFFORDABLE) && text.equals("Buy " + (g.track.equals(LevelMath.ARMOUR) ? "Armour" : "Weapon") + " II first");
+                    if (!(text.equals(refusal) || second)) bad2.append(who + " says \"" + text + "\", the server's own refusal is \"" + refusal + "\"; ");
+                } else if (!g.lines.equals(exp)) bad2.append(who + " says " + g.lines + ", want " + exp + "; ");
+                if ((want == LevelMath.Buy.OPEN) != g.pressable) bad2.append(who + " " + want + " but pressable " + g.pressable + "; ");
+                if (g.hasGlyph() != (want == LevelMath.Buy.LOCKED || want == LevelMath.Buy.BOUGHT)) bad2.append(who + " glyph " + g.hasGlyph() + " for " + want + "; ");
+                double c1 = UiMath.contrast(g.mainUsed, g.fillUsed), c2 = g.lines.size() > 1 ? UiMath.contrast(g.secondUsed, g.fillUsed) : 21;
+                if (c1 < 4.5 || c2 < 4.5) bad2.append(who + " text contrast " + fmt(c1) + " and " + fmt(c2) + " (want 4.5); ");
+                if (want == LevelMath.Buy.OPEN && openFill < 0) openFill = g.fillUsed;
+                if (g.drawnLines == 0) bad2.append(who + " was never drawn; ");
+                if (i < 8) words.append(who).append("=").append(want).append(g.lines).append(" ");
+            }
+            double focusContrast = Math.min(UiMath.contrast(DarkUi.BRASS_HI, ArmouryTab.OPEN_FOCUS), UiMath.contrast(DarkUi.IVORY, ArmouryTab.OPEN_FOCUS));
+            if (focusContrast < 4.5) bad2.append("the hovered buy has contrast " + fmt(focusContrast) + "; ");
+            Phase2Checks.report("p2-armoury-tab", bad.length() == 0, "the Armoury tab opened by a click on the barracks' tab: " + a.shown + " rows for the banner " + rows.stream().map(LevelMath.ArmouryRow::troop).toList() + ", " + a.buttons.size() + " buttons each in the state of the server's row, the names drawn " + a.nameDrawn + "; the screen " + s.width + "x" + s.height + (bad.length() == 0 ? " (all as the server reports)" : "; WRONG: " + bad));
+            Phase2Checks.report("p2-armoury-states", seen.size() == 4 && bad2.length() == 0, "the fixture shows " + count + " (want all four states); the words as drawn, from the first two rows: " + words.toString().trim() + (bad2.length() == 0 ? "; every label is the sheet's price, \"Bought\", or the server's own refusal, every open buy is pressable and no other, every locked or bought button carries its glyph, text contrast at least 4.5" : "; WRONG: " + bad2));
+        }
+
+        /** p2-armoury-field, first half: the tab opened by the key with the commander on the platform; every button greyed (or locked, or bought), the footer the server's reason. */
+        void evalField(RecruitmentScreen s) {
+            var sn = snap; var a = s.page; var rows = sn.armoury().rows(); StringBuilder bad = new StringBuilder(); int greyed = 0;
+            if (sn.armoury().here()) bad.append("the server says he may buy here; ");
+            if (a.buttons.size() != 4 * rows.size()) bad.append(a.buttons.size() + " buttons; ");
+            for (int i = 0; i < a.buttons.size() && i / 4 < rows.size(); i++) {
+                var g = a.buttons.get(i); g.refresh(); var st = stateAt(rows.get(i / 4), i % 4);
+                if (g.pressable) bad.append(key(g) + " can be pressed away from a buy place; ");
+                if (st == LevelMath.Buy.OPEN || st == LevelMath.Buy.UNAFFORDABLE) {
+                    greyed++; var exp = expect(g.troop, g.tier, st, false, "");
+                    if (!g.lines.equals(exp)) bad.append(key(g) + " says " + g.lines + ", want " + exp + "; ");
+                    if (g.fillUsed == openFill) bad.append(key(g) + " is drawn as a buy that is ready; ");
+                }
+            }
+            if (greyed == 0) bad.append("the fixture has no open or unaffordable buy to grey; ");
+            String footer = String.join(" ", a.footerDrawn);
+            if (sn.away().isEmpty() || !footer.equals(sn.away())) bad.append("the footer says \"" + footer + "\", the server's refusal of an open buy here is \"" + sn.away() + "\"; ");
+            fieldBad = bad.toString(); fieldInfo = greyed + " open or short-of-gold buttons greyed, the footer \"" + footer + "\" (the server's own refusal \"" + sn.away() + "\")";
+        }
+
+        /** p2-armoury-field, second half: a press on the greyed Squire Armour II sent nothing, bought nothing and kept the reason on the page. */
+        void evalFieldPress(RecruitmentScreen s) {
+            var sn = snap; String sent = GravesAndGloryClient.lastSent, footer = s == null ? "" : String.join(" ", s.page.footerDrawn);
+            boolean none = sent.isEmpty() && sn.knightArmour() == 1 && sn.gold() == POT && footer.equals(sn.away());
+            Phase2Checks.report("p2-armoury-field", fieldBad.isEmpty() && none, "the Armoury key opened the tab on the platform: " + fieldInfo + (fieldBad.isEmpty() ? "" : "; WRONG: " + fieldBad) + "; a press on the greyed Squire Armour II sent \"" + sent + "\" (want nothing), the server's Squire armour tier " + sn.knightArmour() + " (want 1) and gold " + sn.gold() + " (want " + POT + "), the footer \"" + footer + "\"; the key was pressed with the last sent action \"" + lastSentBefore + "\"");
+        }
+
+        /** p2-armoury-buy-click: the click at the barracks sent the command, the server bought it, and the page read it within two state packets, with the server's notice in the footer. */
+        void evalBuy(RecruitmentScreen s) {
+            var sn = snap; var t = Campaign.troop("knight"); int price = LevelMath.price(t.rarity(), 2);
+            String wantNotice = t.name() + ": Armour " + MatchStats.roman(2) + " bought for " + price + " gold", footer = String.join(" ", s.page.footerDrawn);
+            var a3 = s.page.buttons.get(3); a3.refresh(); var a3Server = sn.armoury().rows().get(0).armour3();
+            boolean ok = sentCmd.equals("gear:knight:armour:2") && clickState.equals("OPEN pressable true") && packets >= 0 && packets <= 2 && sn.knightArmour() == 2 && sn.gold() == goldBefore - price + (sn.earned() - earnedBefore)
+                && footer.equals(wantNotice) && a3.state == a3Server && a3.state != LevelMath.Buy.LOCKED;
+            Phase2Checks.report("p2-armoury-buy-click", ok, "a click at the barracks on the " + clickState + " Squire Armour II sent \"" + sentCmd + "\" (want gear:knight:armour:2); the server's Squire armour tier is " + sn.knightArmour() + " (want 2), gold " + goldBefore + " -> " + sn.gold() + " (want -" + price + " and the " + (sn.earned() - earnedBefore) + " the match earned meanwhile); the page read it bought " + packets + " state packets after the click, " + boughtAt + " ticks (want 2 packets at most); the footer \"" + footer + "\" (want \"" + wantNotice + "\"); Armour III went from locked to " + a3.state + " (the server's row says " + a3Server + ")");
+        }
+
+        /** What a press that cannot buy answered: nothing sent, the reason in the footer. */
+        void answer(RecruitmentScreen s, String what, String want, boolean contains) {
+            String footer = String.join(" ", s.page.footerDrawn), sent = GravesAndGloryClient.lastSent;
+            boolean ok = sent.isEmpty() && want != null && !want.isEmpty() && (contains ? footer.contains(want) : footer.equals(want));
+            refusalsOk &= ok;
+            refusalNotes.add(what + " sent \"" + sent + "\" and the footer said \"" + footer + "\" (want " + (contains ? "a line with" : "exactly") + " \"" + want + "\")=" + ok);
+        }
+        void evalRefusals() { Phase2Checks.report("p2-armoury-refusals", refusalsOk && refusalNotes.size() == 3, "presses that cannot buy: " + String.join("; ", refusalNotes)); }
+
+        void keyDefault(MinecraftClient c) {
+            var k = GravesAndGloryClient.armoury; var def = k.getDefaultKey();
+            boolean u = def.getCategory() == InputUtil.Type.KEYSYM && def.getCode() == GLFW.GLFW_KEY_U;
+            List<String> mod = new ArrayList<>(), other = new ArrayList<>(); int mine = 0;
+            for (var b : c.options.allKeys) { if (b.getTranslationKey().startsWith("key.gravesandglory.")) mine++; if (b == k || !b.getDefaultKey().equals(def)) continue; (b.getTranslationKey().startsWith("key.gravesandglory.") ? mod : other).add(b.getTranslationKey()); }
+            boolean lang = I18n.hasTranslation("key.gravesandglory.armoury") && !I18n.translate("key.gravesandglory.armoury").equals("key.gravesandglory.armoury");
+            String hint = GravesAndGloryClient.hint("armoury");
+            boolean ok = u && k.getTranslationKey().equals("key.gravesandglory.armoury") && mod.isEmpty() && lang && hint.equals(k.getBoundKeyLocalizedText().getString());
+            keyOk &= ok;
+            keyNotes.add("key.gravesandglory.armoury defaults to " + def.getTranslationKey() + " (U=" + u + "); of " + mine + " mod bindings none else defaults to it=" + mod.isEmpty() + (mod.isEmpty() ? "" : " " + mod) + (other.isEmpty() ? "" : " (vanilla or other mods on it: " + other + ")") + "; its Controls name is translated=" + lang + "; hint(armoury)=\"" + hint + "\"");
+        }
+        void rebind(MinecraftClient c, InputUtil.Key key) { c.options.setKeyCode(GravesAndGloryClient.armoury, key); KeyBinding.updateKeysByCode(); }
+        /** The key line on the open tab: the player's own key for the Armoury as the hints name it, or how to bind one. */
+        void keyScreen(MinecraftClient c, String label) {
+            var s = rs(c); var k = GravesAndGloryClient.armoury;
+            if (s == null || s.tab != 1) { keyOk = false; keyNotes.add(label + ": the Armoury tab is not open (" + c.currentScreen + ")"); return; }
+            var bound = KeyBindingHelper.getBoundKeyOf(k); String hint = GravesAndGloryClient.hint("armoury"), line = s.page.hintDrawn;
+            String name = bound.getCategory() == InputUtil.Type.MOUSE ? HintText.mouseChip(bound.getCode()) : k.getBoundKeyLocalizedText().getString();
+            String want = k.isUnbound() ? UNBOUND_LINE : name + " opens the Armoury anywhere in battle";
+            boolean ok = line.equals(want) && (k.isUnbound() || hint.equals(name)) && !name.isEmpty() && s.page.fitFailures().isEmpty();
+            keyOk &= ok;
+            keyNotes.add(label + ": the footer reads \"" + line + "\" (want \"" + want + "\"), hint(armoury) \"" + hint + "\"" + (s.page.fitFailures().isEmpty() ? "" : ", the page does not fit " + s.page.fitFailures()) + "=" + ok);
+        }
+        void keyReport() {
+            keyOk &= !staleKeyOpened && keyNotes.size() == 5;
+            Phase2Checks.report("p2-armoury-key-hint", keyOk, String.join("; ", keyNotes) + "; the old key U after the rebind to J opened a screen=" + staleKeyOpened + " (want false)");
+        }
+
+        /** The page at a canvas: every button inside it and at least 20 x 20, every line of text whole in its box (the words, the names, the footer), nothing overlapping. */
+        void evalFit(MinecraftClient c, RecruitmentScreen s, String label) {
+            var a = s.page; List<String> bad = new ArrayList<>(a.fitFailures());
+            int cw = (int) (c.getWindow().getScaledWidth() / s.uiScale), ch = (int) (c.getWindow().getScaledHeight() / s.uiScale);
+            if (s.width != cw || s.height != ch) bad.add("the screen's canvas " + s.width + "x" + s.height + " is not the window's " + cw + "x" + ch);
+            if (a.buttons.isEmpty()) bad.add("no buy buttons");
+            int small = 999;
+            for (var e : s.children()) if (e instanceof ButtonWidget b && b.visible) {
+                small = Math.min(small, Math.min(b.getWidth(), b.getHeight()));
+                if (b.getWidth() < 20 || b.getHeight() < 20) bad.add("a hit target of " + b.getWidth() + "x" + b.getHeight() + " at " + b.getX() + "," + b.getY());
+                if (b.getX() < 0 || b.getY() < 0 || b.getX() + b.getWidth() > s.width || b.getY() + b.getHeight() > s.height) bad.add("a button outside the canvas at " + b.getX() + "," + b.getY() + " " + b.getWidth() + "x" + b.getHeight());
+            }
+            int widest = 0; for (var g : a.buttons) widest = Math.max(widest, g.drawnWidest);
+            fitNotes.add(label + ": canvas " + s.width + "x" + s.height + " (scale " + fmt(s.uiScale) + "), " + a.shown + " of " + a.total + " rows" + (a.scrolling ? " scrolling" : "") + ", buy buttons " + a.bw + " wide, rows " + a.rowH + " high, the widest drawn line " + widest + " px, the smallest hit target " + small + " px, " + (bad.isEmpty() ? "all whole and inside" : "FAILS " + bad));
+            if (!bad.isEmpty()) fitFails.add(label + ": " + bad);
+        }
+        void fitReport() {
+            boolean at854 = fitNotes.stream().anyMatch(n -> n.startsWith("854x480"));
+            Phase2Checks.report("p2-armoury-fits", fitFails.isEmpty() && at854 && fitNotes.size() >= 2 + SIZES.length, "the page measured as drawn at 854x480 (barracks and field) and at the five sizes with eight troop types: " + String.join(" | ", fitNotes) + (fitFails.isEmpty() ? "" : " | FAILED: " + fitFails));
+        }
+
+        /** p2-armoury-off: with levels off the tab says so and offers nothing to buy. */
+        void evalOff(RecruitmentScreen s) {
+            boolean ok = s != null && s.tab == 1 && s.page.message.equals("Levels are off") && s.page.buttons.isEmpty() && s.page.arrows.isEmpty() && CampaignClient.armoury.rows().isEmpty() && snap != null && snap.armoury().rows().isEmpty() && !Veterans.enabled() && s.page.headerDrawn.contains("Levels are off");
+            Phase2Checks.report("p2-armoury-off", ok, "with Veterans.override false the server sends " + (snap == null ? "nothing" : snap.armoury()) + " and the tab says \"" + (s == null ? "-" : s.page.message) + "\" with " + (s == null ? "-" : s.page.buttons.size() + " buy buttons") + " (want \"Levels are off\" and none)");
+        }
+
+        /** The eight-type banner on the 854x480 canvas: the rows that fit, then the arrows, the wheel and Page Up and Down move by a row, never past either end. */
+        void scrollSteps(RecruitmentScreen s) {
+            var a = s.page; StringBuilder bad = new StringBuilder(), info = new StringBuilder();
+            var all = BANNER8; int n = all.size();
+            if (!a.scrolling || a.total != n || a.shown >= n || a.shown < 3) bad.append("the page scrolls=" + a.scrolling + " showing " + a.shown + " of " + a.total + "; ");
+            int shown = a.shown; info.append(shown + " of " + n + " rows; ");
+            if (a.arrows.size() != 2) { bad.append(a.arrows.size() + " arrows; "); scrollBad = bad.toString(); return; }
+            if (a.arrows.get(0).live() || !a.arrows.get(1).live()) bad.append("at the top the up arrow is " + a.arrows.get(0).live() + " and the down arrow " + a.arrows.get(1).live() + "; ");
+            if (!ids(a).equals(all.subList(0, shown))) bad.append("the first rows are " + ids(a) + "; ");
+            click(s, a.arrows.get(1)); a = s.page;
+            if (a.first != 1 || !ids(a).equals(all.subList(1, 1 + shown)) || !a.arrows.get(0).live()) bad.append("after the down arrow the first row is " + a.first + " showing " + ids(a) + "; ");
+            for (int i = 0; i < n + 3; i++) s.mouseScrolled(120 * s.uiScale, 200 * s.uiScale, -1.0);
+            a = s.page;
+            if (a.first != n - shown || !ids(a).equals(all.subList(n - shown, n)) || a.arrows.get(1).live()) bad.append("the wheel down to the end left the first row at " + a.first + " (want " + (n - shown) + ") and the down arrow " + a.arrows.get(1).live() + "; ");
+            s.mouseScrolled(120 * s.uiScale, 200 * s.uiScale, 1.0); a = s.page;
+            if (a.first != n - shown - 1) bad.append("the wheel up from the end left the first row at " + a.first + "; ");
+            s.keyPressed(GLFW.GLFW_KEY_PAGE_DOWN, 0, 0); a = s.page;
+            if (a.first != n - shown) bad.append("Page Down left the first row at " + a.first + "; ");
+            s.keyPressed(GLFW.GLFW_KEY_PAGE_UP, 0, 0); s.keyPressed(GLFW.GLFW_KEY_PAGE_DOWN, 0, 0); a = s.page;
+            if (a.first != n - shown) bad.append("Page Up then Down left the first row at " + a.first + "; ");
+            List<String> cut = a.fitFailures(); if (!cut.isEmpty()) bad.append("the last page does not fit: " + cut + "; ");
+            info.append("the last page shows " + ids(a) + " from row " + (a.first + 1));
+            scrollBad = bad.toString(); scrollInfo = info.toString();
+        }
+        static List<String> ids(ArmouryTab a) { List<String> out = new ArrayList<>(); for (var g : a.buttons) if (!out.contains(g.troop.id())) out.add(g.troop.id()); return out; }
+        void scrollReport(RecruitmentScreen s) {
+            var a = s == null ? null : s.page; String count = a == null ? "" : "TROOPS  " + (a.first + 1) + "-" + (a.first + a.shown) + " OF " + a.total;
+            boolean counted = a != null && a.headerDrawn.contains(count);
+            Phase2Checks.report("p2-armoury-scroll", scrollBad.isEmpty() && counted, "eight troop types at 854x480: " + scrollInfo + "; the header reads \"" + count + "\" as drawn=" + counted + (scrollBad.isEmpty() ? "" : "; WRONG: " + scrollBad));
+        }
+
+        /** The Back button's place on a page: it keeps the barracks' own place on both tabs. */
+        static String backAt(RecruitmentScreen s) {
+            for (var e : s.children()) if (e instanceof ButtonWidget b && b.getMessage().getString().equals("Esc  Back")) return b.getX() + "," + b.getY() + " " + b.getWidth() + "x" + b.getHeight();
+            return "none";
+        }
+        String tabsBad = "", tabsInfo = "";
+        void evalTabs(RecruitmentScreen s) {
+            StringBuilder bad = new StringBuilder();
+            int rx = s.width * 65 / 100, rw = s.width - rx - 18, lw = s.width * 30 / 100;
+            if (s.tab != 0) bad.append("the click on the Barracks tab left the page at " + s.tab + "; ");
+            if (s.recruit == null || s.recruit.getX() != rx || s.recruit.getY() != s.height - 112 || s.recruit.getWidth() != rw || s.recruit.getHeight() != 26) bad.append("the RECRUIT button moved; ");
+            if (s.disband == null || s.disband.getX() != rx || s.disband.getY() != s.height - 79 || s.disband.getWidth() != rw || s.disband.getHeight() != 20) bad.append("the disband button moved; ");
+            if (s.cancel == null || s.cancel.getX() != 18 || s.cancel.getY() != s.height - 67 || s.cancel.getWidth() != lw || s.cancel.getHeight() != 20) bad.append("the cancel button moved; ");
+            String back = backAt(s), want = "18," + (s.height - 32) + " 90x20"; // 12 px off the bottom edge on both pages
+            if (!back.equals(want) || !back.equals(tabsFirst)) bad.append("Back is at " + back + " here and " + tabsFirst + " on the Armoury tab (want " + want + "); ");
+            if (s.barracksTab.getX() != 200 || s.barracksTab.getY() != 12 || s.armouryTab.getX() != 304 || s.armouryTab.getY() != 12 || !s.barracksTab.getMessage().getString().startsWith("> ") || s.armouryTab.getMessage().getString().startsWith("> ")) bad.append("the tabs are not where and as marked; ");
+            if (s.page.buttons.stream().anyMatch(g -> s.children().contains(g))) bad.append("the Armoury's buttons are still on the barracks page; ");
+            tabsBad = bad.toString(); tabsInfo = "the barracks page after the tab click: RECRUIT " + rx + "," + (s.height - 112) + " " + rw + "x26, cancel 18," + (s.height - 67) + ", Back " + back;
+        }
+        void tabsReport() {
+            Phase2Checks.report("p2-armoury-tabs", tabsBad.isEmpty() && tabsToggled && tabsClosed, tabsInfo + "; the key on the barracks page opened the Armoury tab of the same screen=" + tabsToggled + ", the key on the Armoury tab closed the screen=" + tabsClosed + (tabsBad.isEmpty() ? "" : "; WRONG: " + tabsBad));
         }
     }
 }

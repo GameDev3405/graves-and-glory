@@ -1,20 +1,37 @@
 package gg.gravesandglory;
 
+import net.minecraft.client.gui.Drawable;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.Element;
+import net.minecraft.client.gui.Selectable;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
+import org.lwjgl.glfw.GLFW;
 import java.util.*;
 import static gg.gravesandglory.GravesAndGloryClient.*;
 
-/** Real troop previews and server-authoritative purchases; no simulated UI inventory. */
+/** Real troop previews and server-authoritative purchases; no simulated UI inventory. Two pages as tabs: the barracks (0) and the Armoury (1, ArmouryTab). */
 class RecruitmentScreen extends ArmyScreen {
     record Controls(int index,ButtonWidget train,ButtonWidget disband){}
     final List<Controls> controls=new ArrayList<>();
-    ButtonWidget cancel,recruit,disband; int selected=-1; float uiScale=1;
-    RecruitmentScreen(){super("Barracks");}
+    ButtonWidget cancel,recruit,disband,barracksTab,armouryTab; int selected=-1; float uiScale=1;
+    /** The page shown: 0 the barracks, 1 the Armoury. The Armoury key opens the screen on page 1 (GravesAndGloryClient), the lectern on page 0. */
+    int tab; final ArmouryTab page=new ArmouryTab(this);
+    RecruitmentScreen(){this(0);}
+    RecruitmentScreen(int tab){super("Barracks");this.tab=tab;}
+    /** The page's widgets are added through the screen (addDrawableChild is protected), and the screen is built again when its rows change or scroll. */
+    <T extends Element&Drawable&Selectable> T add(T widget){return addDrawableChild(widget);}
+    void rebuild(){clearAndInit();}
+    void show(int next){if(tab!=next){tab=next;clearAndInit();}}
+    /** The two tabs beside the title, marked as the command screen marks its group (a "> " prefix, a gold edge and bar). */
+    void tabs(){
+        barracksTab=button((tab==0?"> ":"")+"Barracks",200,12,100,b->show(0));
+        armouryTab=button((tab==1?"> ":"")+"Armoury",304,12,100,b->show(1));
+    }
     @Override protected void init(){
         uiScale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/640f,client.getWindow().getScaledHeight()/360f));
         width=(int)(client.getWindow().getScaledWidth()/uiScale);height=(int)(client.getWindow().getScaledHeight()/uiScale);
+        if(tab==1){controls.clear();page.init();button("Esc  Back",18,height-32,90,b->close());tabs();return;}
         controls.clear();int row=0;int left=18,lw=width*30/100;var listed=bannerTroops();
         if(!listed.contains(selected))selected=listed.isEmpty()?-1:listed.get(0);
         int rowH=Math.max(14,Math.min(29,(height-67-6-82)/Math.max(1,listed.size()))); // a banner can list up to 11 troop types; the rows shrink to fit
@@ -32,7 +49,7 @@ class RecruitmentScreen extends ArmyScreen {
         recruit=primary("RECRUIT",rx,height-112,rw,b->{var c=chosen();if(c!=null&&c.train.active)c.train.onPress();});
         disband=button("Disband one / no refund",rx,height-79,rw,b->{var c=chosen();if(c!=null&&c.disband.active)c.disband.onPress();});
         cancel=button("Cancel queue / full refund",18,height-67,lw,b->send("cancel-training"));
-        button("Esc  Back",18,height-29,90,b->close());update();
+        button("Esc  Back",18,height-32,90,b->close());update();tabs();
     }
     final class RosterChoice extends ButtonWidget {
         final int index;
@@ -78,13 +95,21 @@ class RecruitmentScreen extends ArmyScreen {
         cancel.active=nearBarracks&&queued>0;
         if(c==null){recruit.active=false;disband.active=false;}
     }
-    @Override public void tick(){update();}
+    @Override public void tick(){if(tab==1)page.tick();else update();}
     @Override public boolean mouseClicked(double x,double y,int b){return super.mouseClicked(x/uiScale,y/uiScale,b);}
     @Override public boolean mouseReleased(double x,double y,int b){return super.mouseReleased(x/uiScale,y/uiScale,b);}
-    @Override public boolean mouseScrolled(double x,double y,double amount){return super.mouseScrolled(x/uiScale,y/uiScale,amount);}
+    @Override public boolean mouseScrolled(double x,double y,double amount){if(tab==1&&page.scroll(amount>0?-1:1))return true;return super.mouseScrolled(x/uiScale,y/uiScale,amount);}
+    /** The Armoury key switches to the Armoury page (from the barracks) or closes the screen (from the Armoury); Page Up and Down scroll the Armoury's troop rows. */
+    @Override public boolean keyPressed(int key,int scan,int mods){
+        if(armoury!=null&&armoury.matchesKey(key,scan)){if(tab==1)close();else show(1);return true;}
+        if(tab==1&&(key==GLFW.GLFW_KEY_PAGE_UP||key==GLFW.GLFW_KEY_PAGE_DOWN)&&page.scroll(key==GLFW.GLFW_KEY_PAGE_UP?-1:1))return true;
+        return super.keyPressed(key,scan,mods);
+    }
     @Override public void render(DrawContext g,int mx,int my,float delta){
-        update();g.getMatrices().push();g.getMatrices().scale(uiScale,uiScale,1);
-        DarkUi.background(g,width,height);DarkUi.title(g,"BARRACKS",18,15,DarkUi.IVORY);
+        if(tab==0)update();g.getMatrices().push();g.getMatrices().scale(uiScale,uiScale,1);
+        DarkUi.background(g,width,height);
+        if(tab==1){page.render(g);super.render(g,(int)(mx/uiScale),(int)(my/uiScale),delta);g.getMatrices().pop();return;}
+        DarkUi.title(g,"BARRACKS",18,15,DarkUi.IVORY);
         DarkUi.label(g,"Recruit and manage your army",18,40,DarkUi.MUTED);
         DarkUi.label(g,"GOLD  "+gold,width-190,19,DarkUi.GOLD);DarkUi.label(g,"ARMY  "+weight(false)+" / "+GravesAndGlory.R.squadSize()+" SLOTS",width-190,39,DarkUi.IVORY);
         int lw=width*30/100,rx=width*65/100,rw=width-rx-18;
