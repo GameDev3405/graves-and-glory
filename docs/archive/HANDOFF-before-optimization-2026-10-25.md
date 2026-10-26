@@ -1,0 +1,115 @@
+# Historical snapshot — not current instructions
+
+Preserved 2026-10-25. Use docs/WORKFLOW.md and docs/HANDOFF.md for current directions.
+
+# Handoff: Graves and Glory, 2026-10-21
+
+For a fresh Claude Code session taking over as controller. Read this, then the ledgers it names. Sections below are true as of the afternoon of 2026-10-21 (preview session closed) unless the State section here says otherwise; the weekly usage cap reset at noon that day.
+
+## State 2026-10-23 (orchestrator session, morning)
+
+The no-Minecraft rule is lifted; the harness-client cap is four (Kort, 2026-10-23). `docs/PROJECT-STATE.md` is archived to `docs/archive/`; this file is the state doc. Trust each plan's `progress.md` ledger over this summary.
+- **Phase 2 Houses** (`phase-2-houses`, worktree `bannerbound-p2`): Tasks 10, 11, 12 complete and reviewed (Task 12 head 49eebba). Task 13 (migration, regression, playtest doc, 0.5.0 version) was running. Veteran trim set is 8.5, accepted provisional (Kort); only the six Gilded trims exist. Known flakes: `p2-blight-gravecaller` (timing), anim platform light (recovery added). Balance, report-only: Tidecallers 7% round-robin share, Wildmoot 10% vs Ironclad and 0% vs Gilded, Gilded 82% (ledger, `tidecallers-runs-report.md`); all go to the end balance pass. Still open: Task 5d art half, Task 7 art half, the levels-and-gear plan, tier I to III art for every troop; 0.5.0 ships only after them.
+- **Phase 3 built world** (`phase-3-built-world`, `bannerbound-p3`): Task 3 camp base complete (terrain 9.0, Kort accepts the grey north wall; contact sheet sent). Task 4 House ring built (46bae7a), tents graded 8, fix round 1 (distinct roofs) running, then an independent grade (resume the grader). Next: Task 5 game half, then Tasks 6 to 9. Lesson-label overlap and the `{key:formation}` glyphs are on Task 5's fix list.
+- **UI plan** (`ui-plan`, `bannerbound-ui`): Tasks up to 8b-2 complete and approved (head 38ffe38). The Last Stand HUD task waits for the base merge. Not done: R1/R2 red runs to the end, two-client network check, real 854x480 and 4K windows.
+- **Phase 2 models** (`phase-2-models`): merged into `phase-2-houses` through Task 5d part 1.
+- **Phase 4**: not started; waits for the base merge. **Base merge** of the branches into `phase-1-solo-core` is Kort's call.
+- Kort's rulings 2026-10-23: commit the cleanup; accept the camp north wall; accept the veteran trim for now; Pacts on any finished match and a full-star buy is refused (as built).
+
+## Who and how
+
+- Kort (korttjepkema34@gmail.com) owns the modpack. Plain language, reads from his phone between sessions. He is the only person who merges, pushes or publishes; the controller never does.
+- **Questions rule:** never ask Kort in prose mid-work. Write questions to `docs/QUESTIONS-FOR-KORT.md` with a round number and carry on. When he asks "anything need my attention", present them as AskUserQuestion click-through, recommended option first, one after another. Record answers back into the file and the relevant spec or ledger.
+- **Grading rule:** every mockup, art set and world piece is graded by the controller against `work/ui-concepts/GRADING-RUBRIC.md`; nothing under 9 passes. Kort sees one 960-wide contact sheet per passing round (SendUserFile, proactive), not full frames.
+- **Builds rule:** send Kort each numbered build the moment it validates, unasked, with one line on what is in it.
+- **Token rules (Kort, 2026-10-19):** agent count is unlimited; everything else is lean. Message a parked agent only with work, batched. Art briefs: render, lint, one self-review, report. Opus max only for design, combat, model pipeline and large reviews; Sonnet for re-reviews, testers, doc and ledger edits, suite runs, small-diff reviews, mechanical builds; medium effort for mechanical agents. No Haiku. Whole briefs up front.
+- **Process:** superpowers subagent-driven development. Briefs, reports, review packages and ledgers live under `.superpowers/sdd/<plan>/` in the main worktree (git-ignored). Package a review with `{ git log --oneline A..B; git diff --stat A..B; git diff -U10 A..B; } > review-A..B.diff`. Opus task review, fix rounds by resuming the implementer (SendMessage to its id), Sonnet scoped re-review. Every decision goes into `progress.md` as `Ruling: what — why — cost if wrong`. The Write hook sometimes refuses agents' report files; then the controller writes the report from the hand-back.
+
+## GitHub
+
+Kort connected GitHub on 2026-10-20: `origin` is `https://github.com/GameDev3405/graves-and-glory.git`, `gh` is logged in as GameDev3405. Every work branch (phase-1-solo-core, phase-2-houses, phase-2-models, phase-3-built-world, ui-plan, preview-0.5) already has a remote copy, pushed by another session; `main` sits two commits behind phase-1-solo-core. Other sessions also pushed `codex/*` integration branches (banner, bot balance, UI compact) on 2026-10-20; read them before the base merge, do not assume they are reviewed. The standing rule holds: the controller never pushes, merges to main or publishes unless Kort says so in chat; when he does, push by branch name with `git push origin <branch>`.
+
+## Rules of the repo
+
+- Minecraft 1.20.1, Fabric 0.16.14, Fabric API 0.92.2, Loom 1.7.4, Java 17 at `C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot`, Gradle 8.8 offline: `G=$(ls -d ~/.gradle/wrapper/dists/gradle-8.8-bin/*/gradle-8.8/bin/gradle | head -1)`.
+- `src/main/java/gg/gravesandglory/Spec.java` is generated by `python tools/preflight.py` from `sheets/design.json`; never hand-edit it. Preflight must print `Preflight clean`.
+- Harness lives only in `test-tools/`. Suites launch a dev client into a fresh run root under `work/<phase>/` with `options.txt` seeded; copy the launch pattern of the latest run root in the same worktree.
+- Client rules: at most four harness clients at once across all worktrees (Kort raised it from two, 2026-10-23), one per agent, 30 minutes each; never compile while a client runs; if a java process runs with `--gameDir` outside `C:\Users\kortt\Melty\*\work\`, Kort is playing: wait, polling every 60 s up to 45 minutes. Headless botsims do not count.
+- CRLF working copy. Commit by path with `git -c user.name=Claude -c user.email=noreply@anthropic.com commit -F <msg file under work/p1/>`, trailer `Co-Authored-By: <model name> <noreply@anthropic.com>`. Never push, never publish, never use `mcp__melty__*`. `work/` is git-ignored; mockups and contact sheets are never committed.
+- Player-facing text says "Pact", never "Writ" (internal ids keep `writ`). All third-party resource packs were dropped on 2026-10-18 (Excalibur, Clarent, Fresh Animations, Faithful, EFA); mods and the Complementary Reimagined shader stay. Our own troop models replace EMF/ETF; those mods leave at Phase 2 Task 13.
+- Storybook and media are real in-game footage staged through the harness (`StoryStills`), shaders on; nothing painted. Current stills are pipeline placeholders until the named cast (Phase 4 Task 19) and the Phase 3 maps exist.
+- No brass fittings on table wood in the UI (no butterfly keys, mending plates, straps); chrome rails, plaques, frames, seals and the candle holder are fine.
+
+## graphify (code map, added 2026-10-21)
+
+- Kort asked for graphify (Graphify-Labs/graphify, Apache-2.0). CLI `graphify` 0.9.93 installed with `uv tool install graphifyy==0.9.93` (`~/.local/bin`). The project skill and two PreToolUse hooks (`graphify hook-guard`) live in the git-ignored `.claude/` of this checkout; `CLAUDE.md` holds its rules; `.graphifyignore` leaves out `design-archive/`.
+- Code-only graphs, built locally with no LLM (`GRAPHIFY_BACKEND=none graphify extract . --code-only`, then `graphify cluster-only . --no-label`), exist in `bannerbound`, `-p2`, `-p2b`, `-p3`, `-ui` and `-preview` under `graphify-out/` (ignored through `.git/info/exclude`). The p2b and ui graphs include their dirty partial work.
+- Use: `graphify query "<q>" --graph <worktree>/graphify-out/graph.json`, `graphify path A B`, `graphify explain X`. Refresh with `graphify update .` after code changes. Keep `GRAPHIFY_BACKEND=none` for builds: the docs pass and community naming would spend Claude tokens, and Kort has not ruled on that (questions file).
+
+## Added skills (2026-10-21)
+
+Kort asked for skills from mattpocock/skills (5beb35b) and nextlevelbuilder/ui-ux-pro-max-skill (56ea9cf). Installed into this checkout's git-ignored `.claude/skills/`: `to-questionnaire`, `writing-for-agents`, `domain-modeling`, `improve-codebase-architecture`, `codebase-design`, and the core `ui-ux-pro-max` skill only (its SKILL.md paths point at this checkout). Left out on purpose: Matt's tdd, code-review, diagnosing-bugs, implement, to-spec, to-tickets, handoff and grill skills (they duplicate superpowers or this HANDOFF process, or interview Kort mid-work) and the TypeScript ones; UI UX Pro Max's banner-design, brand, design, design-system, slides and ui-styling (web and marketing work; banner-design would misfire on this game's banners). `CLAUDE.md` says how the design skill may be used.
+
+## Worktrees and branches
+
+| Worktree | Branch | HEAD | State |
+|---|---|---|---|
+| `C:\Users\kortt\Melty\bannerbound` | `phase-1-solo-core` | a273522 | base; clean. Another session added the growth spec and the 0.6.0 plan (see below). |
+| `bannerbound-p2` | `phase-2-houses` | 6264f6a | clean; Task 6 built, review was running when the cap hit |
+| `bannerbound-p2b` | `phase-2-models` | 2bf40df | 18 uncommitted files: Task 5b (animation clips) half-written by an agent cut off by the cap |
+| `bannerbound-p3` | `phase-3-built-world` | 7f9d076 | 3 uncommitted files: fix round 3 (trampled earth) in progress when cut off |
+| `bannerbound-ui` | `ui-plan` | ebd3d98 | 47 uncommitted files: Task 7 half-written by an agent cut off by the cap |
+| `bannerbound-preview` | `preview-0.5` | 552a8c6 | clean; 0.5.0-preview1 built, verified and sent to Kort (see Last state). Throwaway. |
+| `bannerbound-runs`, `bannerbound-test` | detached | | archives, leave alone |
+
+Uncommitted work in p2b, p3 and ui belongs to agents that were resumable by id in the old session; in a new session those ids are gone. Treat the dirty files as partial work: read the diff, decide whether to keep it as the start of a fresh dispatch or `git stash` it with a name, and say which in the ledger.
+
+## Where each plan stands
+
+Ledgers: `.superpowers/sdd/2026-10-17-phase-2-houses/progress.md`, `.../2026-10-17-phase-3-built-world/progress.md`, `.../2026-10-18-ui-plan/progress.md`. Each lists every task as complete, mid-loop or dispatched, with rulings. Trust the ledger and `git log` over this summary.
+
+**Phase 2 Houses** (`docs/superpowers/plans/2026-10-17-phase-2-houses.md`, 15 tasks).
+- Tasks 1 to 4 complete and reviewed (data sheets; roster and profile v2; combat engine; six commander classes with the H ability key).
+- Task 5 (own troop model pipeline, four rigs, Gilded models and stage art) complete on `phase-2-models`, graded 9; review 2 (`task-5-review-2.md`) was running when the cap hit and has no file. Re-dispatch it: package `review-6065c48..2bf40df.diff` exists.
+- Task 5b (animation clips, 18 per rig) was dispatched on `phase-2-models` and cut off; its partial edits are the dirty files in p2b.
+- Task 6 (Gilded mechanics, Stand Fast, Rally Horn) built at 6264f6a with 16 deviations and rulings; its Opus review (`review-786bb2b..6264f6a.diff`) was cut off, no review file. Re-dispatch.
+- Next: Task 5c (troop tells), Task 7 Graveborn, then 8 to 13. `phase-2-models` merges into `phase-2-houses` before 5b's review closes.
+- Kort's rulings this week: stage 2 art keeps the spec (trim repaints); side colours stay; bots keep class passives; Quartermaster cap scales with his bonus.
+
+**Phase 3 built world** (`docs/superpowers/plans/2026-10-17-phase-3-built-world.md`).
+- Tasks 1 and 2 built; the walkthrough gate (suite `walkthrough`, a real walker over every road) graded the five maps 7.0 and listed seven defects. Fix round 2 fixed all seven (12 commits to 1d7f99e, graded 8.5); fix round 3, one item (trampled earth as one coherent pattern), was running at 7f9d076 when cut off; dirty files in p3 are its partial work. When it lands: one Sonnet re-review of rounds 2 and 3, then Task 3 (camp base).
+- Supply houses (Task 8b): the stuck-unit hop (`Tactics.walk` pinned hop, commit 155f2cf) and the supply-house gate routing are global: they apply to all units on all maps, so the Task 11 balance baseline must be taken with 155f2cf in. The first load after the campaign-4 layout bump rebuilds each map once and forgets the chosen map in that save once (the Campaign constructor only reads `map` when the layout string matches).
+- Supply-house flags: pole height follows elevation (`Arena.housePole`: Rivergate and Hollowwood 11, Kingsfield 12, Ironhold 13, Frostmarch 17); the formula is not in `Structures.hash`, so a future change to it needs a `Structures` salt bump. `p3-lm-cache-houses` runs on map 0 only.
+- Phase 3 is built and Kort passed its screenshot gate on 2026-10-24 (`phase-3-built-world` head f172667; eleven sheets and checklist in `bannerbound-p3/work/p3/task9-sheets/` and `docs/PHASE-3-SCREENSHOTS.md` on that branch; results and test roots in `.superpowers/sdd/2026-10-17-phase-3-built-world/task-9-report.md` and `task-9-fix1-report.md`, `task-9-fix2-report.md`). Pipeline, studio, camp, houses, yard 135/0; landmarks and supply on all five maps 0 fail; routes 49/0; walkthrough maps 0 to 4 130/132/130/133/140; Phase 1 suites 56/0; self-test 11/0. `tools/package.py` still fails on the stale `dependencies/manifest.json` until the base merge.
+- Unit AI is global and shipped: the stuck-unit hop (155f2cf), the supply-house gate routing and the wedge detour (`Wedge.java`, f54c49c, bounded in f172667: goal clamped to 80 blocks, one search a tick over all units, a miss remembered 300 ticks per unit; `GRAVES_NO_DETOUR=1` and `GRAVES_NO_HOP=1` are read in the shipped jar). The Task 11 balance baseline must be taken on a build with all three in (all five maps); at the base merge run the levels-on 5/30 round robin only (Kort, 2026-10-24).
+- Moss carpet is gone from the porches of `kit/house_a` and `kit/house_b` (30 cells, six per map): husk-height units could not step on it. The clearance rule (floor lift plus 1.95 for a husk) is a generator guard and `tools/clearscan.py` (git-ignored under `work/p3`); four places with the same pattern are parked (see `docs/PARKED.md`); Dusk wither skeletons (2.4 tall) were not scanned.
+
+**UI plan** (`docs/superpowers/plans/2026-10-18-ui-plan.md`).
+- Tasks 1 to 6 complete and reviewed (kit, HUD, chat, War Table home, recruit page). Task 7 (Banner, Contracts, Chapter as the approved reward track, Friends, field picker, painted map cards for all five maps) was dispatched on Opus and cut off; dirty files in ui are its partial work. Brief at `task-7-brief.md`; track layout at `work/ui-concepts/track/NOTES.md`. Then Task 8 polish (720p ledger scale, compact layout under 960 px, big-canvas floor), Task 9 regression.
+
+**Phase 4 modes and campaign** (`docs/superpowers/plans/2026-10-18-phase-4-modes-campaign.md`, 28 tasks, committed). Not started; waits for the base merge. Task 19 is the named cast (own faces on troop rigs, the Hollow standard as own banner art). Story spec and chapter 1 copy are approved.
+
+**Unit AI** (`docs/superpowers/specs/2026-10-18-unit-ai-design.md`): spec approved, no plan yet; write it once Phase 3 is further along.
+
+**Growth / 0.6.0** (`docs/superpowers/specs/2026-10-19-growth-design.md`, `docs/superpowers/plans/2026-10-19-0.6.0-the-field.md`): added by another session on 2026-10-19 after this controller's last work. Nothing in it starts before the 0.5.0 merge, except the eight merge-safe hooks the plan lists. Its open calls are at the end of the questions file.
+
+## Last state (2026-10-21, afternoon session)
+
+This session finished the preview build and installed graphify; nothing else moved. No agent and no game client is running.
+- **Preview 0.5.0-preview1 is done and sent to Kort.** `preview-0.5` at 552a8c6, worktree clean: f3fae2e (test tools compile against the merged Profile API), d37fe0a (merge of `phase-2-houses` 6264f6a, Task 6 batch 1, so H works for Champion and Marshal; Task 5's GildedArt check id is now `p2-gilded-art-timeout`), 552a8c6 (`docs/PREVIEW-0.5.md`, `docs/RELEASE-0.5.0-preview1.txt`). Self-test 11/11; Phase 2 engine, commander and gilded suites 32/35 (`p2-recruit-tabs` and `p2-hud-hearts` are stale against the UI branch; `p2-class-picker` is a real cut line on the Quartermaster card). `verify_package.py` PASS; `dist/graves-and-glory-0.5.0-preview1.mrpack` 22,821,222 bytes, sha256 37857e08...d39be. Not yet tried in Prism. Ledger and rulings: `.superpowers/sdd/preview-0.5/progress.md`.
+- The fixes in f3fae2e and d37fe0a (CampaignChecks tick-80 block, Phase1Checks renames, the shield column, the check id) are merge notes for the real base merge; the pinned dependency jars were copied into the preview worktree (git-ignored).
+- `task-5-review-2.md` (Phase 2) may still be partial, and the Task 6 review is still owed; both packages exist. The three cut-off implementers (Phase 3 fix round 3, UI Task 7, Phase 2 Task 5b) still hold their partial work in p3, ui and p2b.
+- Kort will send notes from playing the preview; fold them into the plans they touch.
+
+## Next, in order
+
+1. Re-dispatch the two cut-off reviews (Phase 2 Task 6, Phase 2 Task 5 review 2) on Opus; packages exist.
+2. Resume the three cut-off implementers as fresh dispatches with their briefs and the dirty diffs as a starting point: Phase 3 fix round 3 (Sonnet), UI Task 7 (Opus), Phase 2 Task 5b (Opus).
+3. Keep the four plans moving in parallel, one implementer per worktree, reviews after each task.
+4. Base merge of the four branches into `phase-1-solo-core` once Phase 2 reaches Task 13, Phase 3 its camp and walkthrough gates, UI Task 9; then 0.5.0 proper, then Phase 4.
+
+## Open for Kort
+
+Nothing in the questions file is unanswered except the growth design's six calls (end of `docs/QUESTIONS-FOR-KORT.md`), which another session queued, and round 22 (whether graphify maps the docs). Present them only when he asks.
+
+Ship-step note (2026-10-23): the EMF, ETF and Fresh Animations removal (and deleting the husk, skeleton and wither_skeleton `.jem` files) belongs to the 0.5.0 ship step, after the levels-and-gear plan and tier I to III art. Phase 2 Task 13 deferred it on purpose.

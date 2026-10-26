@@ -1,0 +1,116 @@
+[
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\merge-prep-report.md",
+    "copy": "docs\\archive\\local-decisions\\merge-prep-report.md",
+    "sha256": "5b87cfbd7c2484d17d16f9caa6a0ca35c7dc9fc59fca11832078098690106444",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-17-phase-1-solo-core\\progress.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-17-phase-1-solo-core\\progress.md",
+    "sha256": "db40d535559045808696aa1bd0b993aa2ca18f622a3f86db35b522231663e70d",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-17-phase-1-solo-core\\task-1-report.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-17-phase-1-solo-core\\task-1-report.md",
+    "sha256": "e78a5b1dccb6f0e9fcaa1ce40a185ab8f92d0cb37d0cff99e1bd786657fb0bff",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-17-phase-1-solo-core\\task-4-report.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-17-phase-1-solo-core\\task-4-report.md",
+    "sha256": "05d044a107dd860438b9523be78002f05a0e81e50c0ec1e40733e3901e590c34",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-17-phase-2-houses\\progress.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-17-phase-2-houses\\progress.md",
+    "sha256": "36d0d4db1c38e7ff44a2940a6bca0257abe528731ed41626327222cbb6f09fc5",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-17-phase-2-houses\\task-1-report.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-17-phase-2-houses\\task-1-report.md",
+    "sha256": "3f293b989d14c836178211ad5a84b9b52fc5d088e6bf09f24b6a78fd32d69820",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-17-phase-2-houses\\task-4-report.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-17-phase-2-houses\\task-4-report.md",
+    "sha256": "6df1c80e6a34e7a80897c5972fd3cd361add152dbe9c30b13659403f36ef0bcd",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-17-phase-3-built-world\\progress.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-17-phase-3-built-world\\progress.md",
+    "sha256": "3ec0cb43872ffa6802ff938608620696f9c068312c179d0624831ec392791fec",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-17-phase-3-built-world\\task-1-report.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-17-phase-3-built-world\\task-1-report.md",
+    "sha256": "05637656c1241345d0805ff9ed76c38f9fce2962e288edd782aeb1300725402d",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-17-phase-3-built-world\\task-4-report.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-17-phase-3-built-world\\task-4-report.md",
+    "sha256": "de4ea5a9888b13b7ec0b292d32cb326b8eed7624f682bf26d9965a22fe39404a",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-18-ui-plan\\progress.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-18-ui-plan\\progress.md",
+    "sha256": "a76ee72807e3688492ec864c43d025df8fe7738a2869c701655871ebd8e046ec",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-18-ui-plan\\task-1-report.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-18-ui-plan\\task-1-report.md",
+    "sha256": "8f164bed3d4aae89aba1c2cce8c5576fa2616ffcdab83d89818bf0dbbdfbead1",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-23-in-match-progression\\progress.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-23-in-match-progression\\progress.md",
+    "sha256": "b9c201b0e36b187c781c4c936b3d4b5c6b593a0ab134873ce9e501aadd9caa88",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-23-in-match-progression\\task-1-report.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-23-in-match-progression\\task-1-report.md",
+    "sha256": "9311879f2fe455de47d0d1990bc99fedff46dd0239a3c78e3df2f491f5dbe0f9",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-23-in-match-progression\\task-4-report.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-23-in-match-progression\\task-4-report.md",
+    "sha256": "b86202996ded1d2719fe64ba99cea747271905e6325bd2780ba25eaec3f14fc3",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-23-integration\\progress.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-23-integration\\progress.md",
+    "sha256": "735be8cc85ace9105dbaf0446d169709be043c29772985dd0d1a068cc9162c09",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-24-war-table-port-and-armoury\\task-1-report.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-24-war-table-port-and-armoury\\task-1-report.md",
+    "sha256": "c677009ea271e49ff7b265e7d2a8452086486717f1e757d6b89545ca1ac463d1",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\2026-10-24-war-table-port-and-armoury\\task-4-report.md",
+    "copy": "docs\\archive\\local-decisions\\2026-10-24-war-table-port-and-armoury\\task-4-report.md",
+    "sha256": "56b0a7fff7cc0e6fef65c866ad45673bf32c520141ed0358313618029d271b66",
+    "status": "historical; not current dispatch instructions"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Melty\\bannerbound\\.superpowers\\sdd\\preview-0.5\\progress.md",
+    "copy": "docs\\archive\\local-decisions\\preview-0.5\\progress.md",
+    "sha256": "daca91c7e16b9dd1f4621d4873f792c3c9190884a306bcfe913c735dd835a992",
+    "status": "historical; not current dispatch instructions"
+  }
+]

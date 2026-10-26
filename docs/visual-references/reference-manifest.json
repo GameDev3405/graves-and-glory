@@ -1,0 +1,27 @@
+[
+  {
+    "Source": "C:\\Users\\kortt\\Melty\\bannerbound-ui-p2\\work\\p2\\r-t4rec3-234605\\run\\screenshots\\p1-ui-recruit-1080.png",
+    "Copy": "C:\\Users\\kortt\\Documents\\Codex\\2026-10-25\\wha\\outputs\\visual-references\\01-recruitment-ui.png",
+    "SHA256": "2EE6B8CED73946AF9CF8BE57BB6B3535AEC04CE88B10E5EFF561C03FC37B0408"
+  },
+  {
+    "Source": "C:\\Users\\kortt\\Melty\\bannerbound-ui-p2\\work\\p2\\r-t4ms-233732\\run\\screenshots\\p2-screens-lineup-veteran.png",
+    "Copy": "C:\\Users\\kortt\\Documents\\Codex\\2026-10-25\\wha\\outputs\\visual-references\\02-veteran-units.png",
+    "SHA256": "FE46A27AA3A7EA9A8DA5CC42E240405517B360C38C2BFBC20C80DF8F8F22E939"
+  },
+  {
+    "Source": "C:\\Users\\kortt\\Melty\\bannerbound-ui-p2\\work\\p2\\r-t4ms-233732\\run\\screenshots\\p2-wt-recruit-roll.png",
+    "Copy": "C:\\Users\\kortt\\Documents\\Codex\\2026-10-25\\wha\\outputs\\visual-references\\03-recruitment-result.png",
+    "SHA256": "E54A1E4AABE0895A114FAFB52EA466A67C248FE32C45D1B8C8D24143D27CDA9A"
+  },
+  {
+    "Source": "C:\\Users\\kortt\\Melty\\bannerbound-ui-p2\\work\\p2\\r-t4rec3-234605\\run\\screenshots\\p1-ui-recruit-854.png",
+    "Copy": "C:\\Users\\kortt\\Documents\\Codex\\2026-10-25\\wha\\outputs\\visual-references\\04-small-window-check.png",
+    "SHA256": "75CFE8D4119F047DE16064485FC8C36F52857A0ADAE7A5515481BD0F85E619DB"
+  },
+  {
+    "Source": "C:\\Users\\kortt\\Melty\\bannerbound-ui-p2\\work\\p2\\r-t4eng-233424\\run\\screenshots\\p2-engine-hud.png",
+    "Copy": "C:\\Users\\kortt\\Documents\\Codex\\2026-10-25\\wha\\outputs\\visual-references\\05-hud-review.png",
+    "SHA256": "ABC7AEEC3E6DAFE642C4D893B27E3091CF5EBE10865892E057AB4C313C95FEB6"
+  }
+]

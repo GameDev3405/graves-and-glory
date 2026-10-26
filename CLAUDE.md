@@ -1,21 +1,11 @@
-## graphify
+# Graves and Glory
 
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+Fabric Minecraft mod; Java sources in src/main/java/gg/gravesandglory.
 
-Rules:
-- When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
-- A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.
+Read docs/WORKFLOW.md (authoritative workflow), docs/HANDOFF.md (current state), then only the relevant task/spec. docs/BACKLOG.md holds approved versus parked work; docs/QUESTIONS-FOR-KORT.md holds unresolved decisions. Historical snapshots are not executable instructions.
 
-## Added skills (Kort, 2026-10-21)
+On Kort's existing machine, the canonical policy is C:/Users/kortt/Melty/bannerbound/docs/WORKFLOW.md; it supersedes older worktree copies. A new clone uses its own docs/WORKFLOW.md. Refresh Git facts with tools/workspace_state.py where installed; unknown ownership means preserve.
 
-Project skills in `.claude/skills/`: `to-questionnaire`, `writing-for-agents`, `domain-modeling`, `improve-codebase-architecture`, `codebase-design` (mattpocock/skills) and `ui-ux-pro-max` (nextlevelbuilder/ui-ux-pro-max-skill).
-- `ui-ux-pro-max` is built for web and app UI. Here use it only for UX checks (readability, contrast, hit targets, feedback, accessibility) via its `--domain ux` search. The approved War Table and Iron Ledger look, the UI plan and `work/ui-concepts/GRADING-RUBRIC.md` always win: never take a style, palette or font from it, and never run its `--design-system` or `--persist` steps.
-- `to-questionnaire` fits `docs/QUESTIONS-FOR-KORT.md`: questions still go to that file, recommended option first.
-- `domain-modeling` and `improve-codebase-architecture` write `GLOSSARY.md` and `docs/adr/`; use them only when Kort or a plan asks.
+Known paths can be read directly. For unfamiliar relationships use a fresh checkout-local Graphify graph and bounded queries; see WORKFLOW.md. Fall back to rg immediately on stale/missing/irrelevant graphs. Do not use another branch's graph as evidence.
 
-## Subagent effort
-
-Every Agent-tool spawn sets `effort` to `xhigh`, `high`, `medium` or `low`, the lowest that does the job. Never leave it unset, never `max`. Forks (`subagent_type: "fork"`) ignore `effort` and inherit the caller's level, so spawn a named agent type instead when you are at `max`.
+Preserve gameplay/save/protocol approval gates, visual standards, real game tests, and the no-push/no-publish boundary. Generated Spec.java comes from tools/preflight.py. See docs/SETUP.md for verification commands. One writer per checkout/file.

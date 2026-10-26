@@ -1,0 +1,32 @@
+[
+  {
+    "source": "C:\\Users\\kortt\\Documents\\Codex\\2026-10-25\\wha\\outputs\\visual-references\\01-recruitment-ui.png",
+    "copy": "docs\\visual-references\\01-recruitment-ui.png",
+    "sha256": "2ee6b8ced73946af9cf8be57bb6b3535aec04ce88b10e5eff561c03fc37b0408"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Documents\\Codex\\2026-10-25\\wha\\outputs\\visual-references\\02-veteran-units.png",
+    "copy": "docs\\visual-references\\02-veteran-units.png",
+    "sha256": "fe46a27aa3a7ea9a8da5cc42e240405517b360c38c2bfbc20c80df8f8f22e939"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Documents\\Codex\\2026-10-25\\wha\\outputs\\visual-references\\03-recruitment-result.png",
+    "copy": "docs\\visual-references\\03-recruitment-result.png",
+    "sha256": "e54a1e4aabe0895a114fafb52ea466a67c248fe32c45d1b8c8d24143d27cda9a"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Documents\\Codex\\2026-10-25\\wha\\outputs\\visual-references\\04-small-window-check.png",
+    "copy": "docs\\visual-references\\04-small-window-check.png",
+    "sha256": "75cfe8d4119f047de16064485fc8c36f52857a0adae7a5515481bd0f85e619db"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Documents\\Codex\\2026-10-25\\wha\\outputs\\visual-references\\05-hud-review.png",
+    "copy": "docs\\visual-references\\05-hud-review.png",
+    "sha256": "abc7aeec3e6dafe642c4d893b27e3091cf5ebe10865892e057ab4c313c95feb6"
+  },
+  {
+    "source": "C:\\Users\\kortt\\Documents\\Codex\\2026-10-25\\wha\\outputs\\visual-references\\reference-manifest.json",
+    "copy": "docs\\visual-references\\reference-manifest.json",
+    "sha256": "f410d31b465265a4622225863e00826b3a38c429f27426cd913bbbc356f70ba4"
+  }
+]

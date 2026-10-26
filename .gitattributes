@@ -8,3 +8,8 @@
 *.ogg binary
 *.nbt binary
 *.mcfunction text eol=lf
+*.jem text eol=lf
+*.sh text eol=lf
+gradlew text eol=lf
+# Preserve the exact bytes identified by the historical provenance manifest.
+docs/archive/local-decisions/** -text whitespace=cr-at-eol

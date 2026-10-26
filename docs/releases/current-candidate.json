@@ -1,0 +1,42 @@
+{
+  "status": "development-build; release blocked",
+  "version": "0.5.0",
+  "commit": "da669eea15c2b647a07443925a92e9c16c3453be",
+  "dirty": true,
+  "source_identity": {
+    "version": "0.5.0",
+    "modId": "gravesandglory",
+    "sourceSha256": "859a2a93b7de5dcca1a1da80d83704550f0f21c629fe47ed72e3022ff9ac2c14"
+  },
+  "artifact": {
+    "path": "work\\candidates\\859a2a93b7de5dcca1a1da80d83704550f0f21c629fe47ed72e3022ff9ac2c14\\graves-and-glory-0.5.0.jar",
+    "sha256": "a9f2a9479a16acc8b694b4fa647afe7517c830d1b33c8578681a83e4606fcb9d",
+    "kind": "mod jar; not a playable modpack package",
+    "preserved_utc": "2026-10-26T00:55:02.236630+00:00"
+  },
+  "verification": {
+    "fast": "work/verify/20261025-195233-27672/result.json",
+    "game": "work/verify/20261025-195709-34528/result.json",
+    "strict_package": "failed: work/optimization/release-gate.log",
+    "fresh_checkout_initial": "work/optimization/fresh-checkout/work/verify/20261025-200251-33568/result.json (passed; CRLF fingerprint discrepancy subsequently fixed with .gitattributes)",
+    "fresh_checkout_final": "work/optimization/fresh-checkout/work/verify/20261025-205037-2532/result.json"
+  },
+  "acceptance": {
+    "implemented": true,
+    "fast_tested": true,
+    "combat_smoke_tested": true,
+    "visual_review_of_candidate": false,
+    "six_networked_players": false,
+    "accepted_release": false
+  },
+  "known_issues": [
+    "Strict packaging refuses 26 troops with missing/stopgap tier art",
+    "Outstanding UI lane integration and candidate-level visual checks",
+    "Full six-player, dedicated-server, reconnect/reward/restart validation not performed"
+  ],
+  "historical_preview": {
+    "commit": "552a8c6f77fec31bad06f0f7ac09ac59a729efc4",
+    "status": "historical, not current"
+  },
+  "questions": "../QUESTIONS-FOR-KORT.md"
+}
