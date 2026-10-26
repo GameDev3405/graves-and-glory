@@ -1,0 +1,3257 @@
+{
+  "description": "Reviewed navigation names inferred from actual symbols/files. Anchors, not changing cluster numbers, carry names across refreshes. These are code groups, not exact gameplay subsystem boundaries.",
+  "labels": [
+    {
+      "name": "Table Art & Reward Track",
+      "anchors": [
+        "tools_ui_art_v4lib_spr",
+        "tools_ui_art_v4lib_rgba",
+        "tools_ui_art_v4lib_spr_set",
+        "tools_ui_art_kit_track_soft_shadow",
+        "tools_ui_art_v4lib_spr_grid",
+        "tools_ui_art_kit_track_pad",
+        "tools_ui_art_v4a_furn_brass_button"
+      ],
+      "source_files": [
+        "tools/ui_art/kit_track.py",
+        "tools/ui_art/v4a_furn.py",
+        "tools/ui_art/v4lib.py"
+      ]
+    },
+    {
+      "name": "Troop Models & Animation",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_troopmodel_troopmodel",
+        "src_main_java_gg_gravesandglory_trooprenderer_trooprenderer",
+        "src_main_java_gg_gravesandglory_troopanimator_troopanimator_row",
+        "src_main_java_gg_gravesandglory_troopanimator_troopanimator_applyforced",
+        "src_main_java_gg_gravesandglory_troopanimator_troopanimator_apply",
+        "src_main_java_gg_gravesandglory_troopmodels_troopmodels_weapon",
+        "test_tools_java_gg_gravesandglory_phase2checks_turn_fact"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/TroopModel.java",
+        "src/main/java/gg/gravesandglory/TroopFeatures.java",
+        "src/main/java/gg/gravesandglory/TroopAnimator.java"
+      ]
+    },
+    {
+      "name": "Troop Model Visual Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase2checks_phase2checks_report",
+        "test_tools_java_gg_gravesandglory_phase2checks_phase2checks_server",
+        "src_main_java_gg_gravesandglory_troopmodels_troopmodels_model",
+        "test_tools_java_gg_gravesandglory_phase2checks_depth",
+        "test_tools_java_gg_gravesandglory_phase2checks_phase2checks",
+        "test_tools_java_gg_gravesandglory_phase2checks_stage",
+        "test_tools_java_gg_gravesandglory_phase2checks_stage_client"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java",
+        "test-tools/java/gg/gravesandglory/VisualChecks.java",
+        "test-tools/java/gg/gravesandglory/FacesChecks.java"
+      ]
+    },
+    {
+      "name": "Battle & Morale Checks",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_battle",
+        "src_main_java_gg_gravesandglory_gravesandglory_battle_spawn",
+        "test_tools_java_gg_gravesandglory_phase1checks_moralechecks_servertick",
+        "test_tools_java_gg_gravesandglory_phase1checks_moralechecks",
+        "test_tools_java_gg_gravesandglory_phase1checks_phase1checks_top",
+        "src_main_java_gg_gravesandglory_gravesandglory_battle_relocate",
+        "test_tools_java_gg_gravesandglory_phase1checks_phase1checks_skirmish"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase1Checks.java",
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java",
+        "src/main/java/gg/gravesandglory/Morale.java"
+      ]
+    },
+    {
+      "name": "Commander Abilities",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_squad",
+        "src_main_java_gg_gravesandglory_spec_troopsrow",
+        "src_main_java_gg_gravesandglory_commander_commander",
+        "test_tools_java_gg_gravesandglory_phase2checks_commanders",
+        "src_main_java_gg_gravesandglory_spec_classesrow",
+        "src_main_java_gg_gravesandglory_commander_commander_row",
+        "src_main_java_gg_gravesandglory_gravesandglory_battle_tick"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/Commander.java",
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java",
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "House & Troop Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase2checks_ironclad_stages",
+        "test_tools_java_gg_gravesandglory_phase2checks_wildmoot_stages",
+        "test_tools_java_gg_gravesandglory_phase2checks_tidecallers_stages",
+        "test_tools_java_gg_gravesandglory_phase2checks_graveborn_stages",
+        "src_main_java_gg_gravesandglory_campaign_campaign_troop",
+        "test_tools_java_gg_gravesandglory_phase2checks_wildmoot",
+        "src_main_java_gg_gravesandglory_combat_hitlog"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java",
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java",
+        "test-tools/java/gg/gravesandglory/AbilityLevelChecks.java"
+      ]
+    },
+    {
+      "name": "War Table Pages",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_wartablepages_wartablepages",
+        "src_main_java_gg_gravesandglory_uitex_uitex_draw",
+        "src_main_java_gg_gravesandglory_darkui_darkui_heading",
+        "src_main_java_gg_gravesandglory_darkui_darkui_body",
+        "src_main_java_gg_gravesandglory_wartablepages_wartablepages_font",
+        "src_main_java_gg_gravesandglory_wartablehome_wartablehome_centred",
+        "src_main_java_gg_gravesandglory_wartablepages_wartablepages_chapter"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/WarTablePages.java",
+        "src/main/java/gg/gravesandglory/WarTableHome.java",
+        "src/main/java/gg/gravesandglory/Portrait.java"
+      ]
+    },
+    {
+      "name": "UI Layout & Text",
+      "anchors": [
+        "test_tools_standalone_uimathcheck_uimathcheck_main",
+        "src_main_java_gg_gravesandglory_uimath_uimath",
+        "test_tools_java_gg_gravesandglory_phase1checks_uihudchecks_measure",
+        "src_main_java_gg_gravesandglory_gravesandgloryclient_gravesandgloryclient_hint",
+        "src_main_java_gg_gravesandglory_battlehud_battlehud_feed",
+        "src_main_java_gg_gravesandglory_gravesandgloryclient_gravesandgloryclient_campslips",
+        "src_main_java_gg_gravesandglory_uimath_uimath_hudlayout"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/UiMath.java",
+        "src/main/java/gg/gravesandglory/FeedLines.java",
+        "src/main/java/gg/gravesandglory/HintText.java"
+      ]
+    },
+    {
+      "name": "Recruitment Screen Art",
+      "anchors": [
+        "tools_ui_art_v4lib_noise",
+        "tools_ui_art_v4a_paper_wax_seal",
+        "tools_ui_art_v4art_oak_table",
+        "tools_ui_art_v4lib_mix",
+        "tools_ui_art_v4lib_dith",
+        "tools_ui_art_v4lib_grid_mask",
+        "tools_ui_art_v4a_recruit2_banner"
+      ],
+      "source_files": [
+        "tools/ui_art/v4a_recruit.py",
+        "tools/ui_art/kit_props.py",
+        "tools/ui_art/v4a_recruit2.py"
+      ]
+    },
+    {
+      "name": "Veteran Rank Rendering",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_troopmodels_troopmodels",
+        "test_tools_java_gg_gravesandglory_rankchecks_ranks_step",
+        "src_main_java_gg_gravesandglory_armycards_armycards_spec",
+        "src_main_java_gg_gravesandglory_armycards_armycards_portrait",
+        "test_tools_java_gg_gravesandglory_rankchecks_ranks",
+        "src_main_java_gg_gravesandglory_ranksync_ranksync",
+        "src_main_java_gg_gravesandglory_troopmodels_look"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/TroopModels.java",
+        "src/main/java/gg/gravesandglory/RankSync.java",
+        "test-tools/java/gg/gravesandglory/RankChecks.java"
+      ]
+    },
+    {
+      "name": "Combat Abilities & Statuses",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_unit",
+        "src_main_java_gg_gravesandglory_abilities_abilities",
+        "src_main_java_gg_gravesandglory_spec_abilitiesrow",
+        "src_main_java_gg_gravesandglory_abilities_abilities_row",
+        "src_main_java_gg_gravesandglory_statuses_statuses",
+        "src_main_java_gg_gravesandglory_combat_combat_resolve",
+        "src_main_java_gg_gravesandglory_abilities_abilities_tick"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/Abilities.java",
+        "src/main/java/gg/gravesandglory/Statuses.java",
+        "src/main/java/gg/gravesandglory/Combat.java"
+      ]
+    },
+    {
+      "name": "HUD Artwork",
+      "anchors": [
+        "tools_ui_art_v4a_paper_parchment",
+        "tools_ui_art_v4a_hud_iron_shade",
+        "tools_ui_art_v4a_hud_feed_slip",
+        "tools_ui_art_v4a_hud_ledger_card",
+        "tools_ui_art_v4a_hud_ability_slot",
+        "tools_ui_art_v4a_hud_seal",
+        "tools_ui_art_v4a_hud_corner_brackets"
+      ],
+      "source_files": [
+        "tools/ui_art/v4a_hud.py",
+        "tools/ui_art/kit_extra.py",
+        "tools/ui_art/v4a_paper.py"
+      ]
+    },
+    {
+      "name": "Client Commands & Camp",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandgloryclient_gravesandgloryclient_oninitializeclient",
+        "src_main_java_gg_gravesandglory_gravesandgloryclient_gravesandgloryclient",
+        "src_main_java_gg_gravesandglory_commandmode_commandmode",
+        "test_tools_java_gg_gravesandglory_campredesignchecks_campredesignchecks_oninitializeclient",
+        "src_main_java_gg_gravesandglory_gravesandgloryclient_gravesandgloryclient_battleactive",
+        "src_main_java_gg_gravesandglory_commandmode_commandmode_active",
+        "test_tools_java_gg_gravesandglory_revisionchecks_revisionchecks_oninitializeclient"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGloryClient.java",
+        "src/main/java/gg/gravesandglory/CommandMode.java",
+        "test-tools/java/gg/gravesandglory/CampNetworkChecks.java"
+      ]
+    },
+    {
+      "name": "Map Card Artwork",
+      "anchors": [
+        "tools_ui_art_kit_maps_map_hollowwood",
+        "tools_ui_art_kit_maps_map_ironhold",
+        "tools_ui_art_kit_maps_map_kingsfield",
+        "tools_ui_art_kit_maps_map_frostmarch",
+        "tools_ui_art_v4a_map_rivergate_map",
+        "tools_ui_art_v4a_map_stamp",
+        "tools_ui_art_v4a_map_relief_seal"
+      ],
+      "source_files": [
+        "tools/ui_art/kit_maps.py",
+        "tools/ui_art/v4a_map.py",
+        "tools/ui_art/v4a_ink.py"
+      ]
+    },
+    {
+      "name": "Camp & War Table Home",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_campscreen_campscreen",
+        "src_main_java_gg_gravesandglory_wartablehome_wartablehome",
+        "src_main_java_gg_gravesandglory_campscreen_campscreen_render",
+        "src_main_java_gg_gravesandglory_wartablehome_wartablehome_render",
+        "src_main_java_gg_gravesandglory_wartablehome_wartablehome_init",
+        "src_main_java_gg_gravesandglory_campscreen_campscreen_open",
+        "src_main_java_gg_gravesandglory_campscreen_campscreen_table"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/CampScreen.java",
+        "src/main/java/gg/gravesandglory/WarTableHome.java",
+        "src/main/java/gg/gravesandglory/WarTablePages.java"
+      ]
+    },
+    {
+      "name": "Veteran Levels",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_levelchecks_gear_gear",
+        "src_main_java_gg_gravesandglory_veterans_veterans",
+        "test_tools_java_gg_gravesandglory_levelchecks_levels_stages",
+        "test_tools_java_gg_gravesandglory_levelchecks_gear",
+        "test_tools_java_gg_gravesandglory_levelchecks_levels",
+        "src_main_java_gg_gravesandglory_veterans_veterans_botbuy",
+        "src_main_java_gg_gravesandglory_veterans_veterans_levelup"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/Veterans.java",
+        "test-tools/java/gg/gravesandglory/LevelChecks.java",
+        "src/main/java/gg/gravesandglory/LevelMath.java"
+      ]
+    },
+    {
+      "name": "World Walkthrough Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase3checks_walkthrough",
+        "test_tools_java_gg_gravesandglory_phase3checks_campwalk",
+        "test_tools_java_gg_gravesandglory_phase3checks_leg",
+        "test_tools_java_gg_gravesandglory_phase3checks_campwalk_step",
+        "test_tools_java_gg_gravesandglory_phase3checks_walkthrough_assemble",
+        "test_tools_java_gg_gravesandglory_phase3checks_walkthrough_scanmap",
+        "test_tools_java_gg_gravesandglory_phase3checks_legjob_step"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase3Checks.java",
+        "src/main/java/gg/gravesandglory/CampWorld.java",
+        "test-tools/java/gg/gravesandglory/MapRouteChecks.java"
+      ]
+    },
+    {
+      "name": "War Table Recruitment",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_wartablerecruit_wartablerecruit",
+        "src_main_java_gg_gravesandglory_uibutton_uibutton",
+        "src_main_java_gg_gravesandglory_wartablerecruit_wartablerecruit_init",
+        "src_main_java_gg_gravesandglory_wartablerecruit_wartablerecruit_render",
+        "src_main_java_gg_gravesandglory_recruitview_recruitview_roll",
+        "src_main_java_gg_gravesandglory_wartablerecruit_wartablerecruit_refresh",
+        "src_main_java_gg_gravesandglory_wartablerecruit_wartablerecruit_letter"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/WarTableRecruit.java",
+        "src/main/java/gg/gravesandglory/RecruitView.java",
+        "src/main/java/gg/gravesandglory/UiButton.java"
+      ]
+    },
+    {
+      "name": "Battle Arenas",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_arena_arena",
+        "test_tools_java_gg_gravesandglory_phase3checks_rebuild",
+        "src_main_java_gg_gravesandglory_arena_arena_river",
+        "src_main_java_gg_gravesandglory_arena_arena_height",
+        "src_main_java_gg_gravesandglory_arena_arena_buildcolumn",
+        "src_main_java_gg_gravesandglory_arena_arena_finishbuild",
+        "test_tools_java_gg_gravesandglory_phase3checks_rebuild_wear"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/Arena.java",
+        "test-tools/java/gg/gravesandglory/Phase3Checks.java",
+        "src/main/java/gg/gravesandglory/CampaignMaps.java"
+      ]
+    },
+    {
+      "name": "Lobby & Army Cards",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_campaignlobbyscreen_campaignlobbyscreen",
+        "src_main_java_gg_gravesandglory_darkui_darkui",
+        "src_main_java_gg_gravesandglory_campaignlobbyscreen_campaignlobbyscreen_render",
+        "src_main_java_gg_gravesandglory_campaignlobbyscreen_campaignlobbyscreen_init",
+        "src_main_java_gg_gravesandglory_campscreen_campscreen_clearandinit",
+        "src_main_java_gg_gravesandglory_recruitmentscreen_recruitmentscreen_render",
+        "src_main_java_gg_gravesandglory_gravesandgloryclient_armyscreen"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/CampaignLobbyScreen.java",
+        "src/main/java/gg/gravesandglory/DarkUi.java",
+        "src/main/java/gg/gravesandglory/ArmyCards.java"
+      ]
+    },
+    {
+      "name": "Battle HUD & Event Feed",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_battlehud_battlehud",
+        "test_tools_java_gg_gravesandglory_phase1checks_uifeedchecks_step",
+        "test_tools_java_gg_gravesandglory_phase1checks_uifeedchecks",
+        "src_main_java_gg_gravesandglory_battlehud_battlehud_card",
+        "src_main_java_gg_gravesandglory_battlehud_battlehud_chip",
+        "src_main_java_gg_gravesandglory_battlehud_battlehud_render",
+        "test_tools_java_gg_gravesandglory_phase1checks_uileavechecks_held"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/BattleHud.java",
+        "test-tools/java/gg/gravesandglory/Phase1Checks.java",
+        "src/main/java/gg/gravesandglory/EventFeed.java"
+      ]
+    },
+    {
+      "name": "Blockbench Model Converter",
+      "anchors": [
+        "tools_build_skins_cube_weapon_outputs",
+        "tools_bbmodel_read",
+        "tools_bbmodel_coplanar_faces",
+        "tools_bbmodel_gap",
+        "tools_bbmodel_cube",
+        "tools_bbmodel_joined",
+        "tools_bbmodel_bberror"
+      ],
+      "source_files": [
+        "tools/bbmodel.py",
+        "tools/build_skins.py"
+      ]
+    },
+    {
+      "name": "House Ability Level Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_abilitylevelchecks_statuschecks_run",
+        "test_tools_java_gg_gravesandglory_abilitylevelchecks_bench",
+        "test_tools_java_gg_gravesandglory_abilitylevelchecks_tidecallerslevels_tidecallerslevels",
+        "test_tools_java_gg_gravesandglory_abilitylevelchecks_gildedlevels_gildedlevels",
+        "test_tools_java_gg_gravesandglory_abilitylevelchecks_wildmootlevels_wildmootlevels",
+        "test_tools_java_gg_gravesandglory_phase2checks_staged_post",
+        "test_tools_java_gg_gravesandglory_abilitylevelchecks_ironcladlevels_ironcladlevels"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/AbilityLevelChecks.java",
+        "src/main/java/gg/gravesandglory/Statuses.java",
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java"
+      ]
+    },
+    {
+      "name": "Animation Clip Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase2checks_anim",
+        "test_tools_java_gg_gravesandglory_phase2checks_tells",
+        "test_tools_java_gg_gravesandglory_phase2checks_tells_shoot",
+        "src_main_java_gg_gravesandglory_troopclips_troopclips_of",
+        "test_tools_java_gg_gravesandglory_phase2checks_tells_step",
+        "src_main_java_gg_gravesandglory_troopmodels_troopmodels_rig",
+        "test_tools_java_gg_gravesandglory_phase2checks_tells_attacks"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java",
+        "src/main/java/gg/gravesandglory/TroopClips.java",
+        "src/main/java/gg/gravesandglory/ColossusClips.java"
+      ]
+    },
+    {
+      "name": "Troop AI & Tactics",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_arena_arena_ground",
+        "src_main_java_gg_gravesandglory_gravesandglory_gravesandglory",
+        "src_main_java_gg_gravesandglory_gravesandglory_battle_command",
+        "src_main_java_gg_gravesandglory_gravesandglory_gravesandglory_oninitialize",
+        "src_main_java_gg_gravesandglory_tactics_tactics",
+        "src_main_java_gg_gravesandglory_tactics_tactics_tick",
+        "src_main_java_gg_gravesandglory_tactics_tactics_walk"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java",
+        "src/main/java/gg/gravesandglory/Tactics.java",
+        "test-tools/java/gg/gravesandglory/DuelSimulation.java"
+      ]
+    },
+    {
+      "name": "Landmark & Supply Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase3checks_landmarks",
+        "test_tools_java_gg_gravesandglory_phase3checks_landmarks_check",
+        "test_tools_java_gg_gravesandglory_phase3checks_phase3checks",
+        "test_tools_java_gg_gravesandglory_phase3checks_phase3checks_name",
+        "test_tools_java_gg_gravesandglory_phase3checks_supply",
+        "test_tools_java_gg_gravesandglory_phase3checks_phase3checks_xyz",
+        "src_main_java_gg_gravesandglory_structures_structures_toworld"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase3Checks.java",
+        "src/main/java/gg/gravesandglory/Structures.java",
+        "src/main/java/gg/gravesandglory/Spec.java"
+      ]
+    },
+    {
+      "name": "Army Entity Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase2checks_screens_step",
+        "test_tools_java_gg_gravesandglory_phase2checks_screens",
+        "test_tools_java_gg_gravesandglory_phase2checks_sheetprobe",
+        "src_main_java_gg_gravesandglory_armymobs_armymobs",
+        "test_tools_java_gg_gravesandglory_phase2checks_capture",
+        "test_tools_java_gg_gravesandglory_phase2checks_sheetprobe_drawrig",
+        "src_main_java_gg_gravesandglory_armycards_armycards_size"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java",
+        "src/main/java/gg/gravesandglory/ArmyMobs.java",
+        "src/main/java/gg/gravesandglory/CampScreen.java"
+      ]
+    },
+    {
+      "name": "Camp World Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase3checks_phase3checks_report",
+        "test_tools_java_gg_gravesandglory_phase3checks_phase3checks_server",
+        "test_tools_java_gg_gravesandglory_phase3checks_camp",
+        "test_tools_java_gg_gravesandglory_phase3checks_camp_step",
+        "test_tools_java_gg_gravesandglory_phase3checks_houses_run",
+        "test_tools_java_gg_gravesandglory_phase3checks_phase3checks_finish",
+        "test_tools_java_gg_gravesandglory_phase3checks_phase3checks_view"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase3Checks.java",
+        "src/main/java/gg/gravesandglory/Spec.java",
+        "src/main/java/gg/gravesandglory/CampWorld.java"
+      ]
+    },
+    {
+      "name": "Skin Pipeline Regression Tests",
+      "anchors": [
+        "test_tools_standalone_test_build_skins_buildskinschecks_export",
+        "test_tools_standalone_test_build_skins_buildskinschecks_fails",
+        "test_tools_standalone_test_build_skins_export_assets",
+        "test_tools_standalone_test_build_skins_buildskinschecks_faces_troops",
+        "test_tools_standalone_test_build_skins_faces_fixture",
+        "test_tools_standalone_test_build_skins_put_png",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_faces_overlays_keep_off_variant_zero"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_build_skins.py"
+      ]
+    },
+    {
+      "name": "Campaign & Match Flow",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_campaign_campaign",
+        "src_main_java_gg_gravesandglory_profile_profile",
+        "src_main_java_gg_gravesandglory_campaign_campaign_handle",
+        "src_main_java_gg_gravesandglory_campaign_campaign_profile",
+        "src_main_java_gg_gravesandglory_campaign_campaign_tick",
+        "src_main_java_gg_gravesandglory_campaign_campaign_notice",
+        "src_main_java_gg_gravesandglory_campaign_campaign_snapshot"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/Campaign.java",
+        "src/main/java/gg/gravesandglory/RosterMath.java",
+        "src/main/java/gg/gravesandglory/Profile.java"
+      ]
+    },
+    {
+      "name": "Troop Cards & Purchases",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_recruitpages_recruitpages",
+        "src_main_java_gg_gravesandglory_recruitpages_recruitpages_trooppage",
+        "src_main_java_gg_gravesandglory_armycards_armycards",
+        "src_main_java_gg_gravesandglory_recruitpages_recruitpages_rollcard",
+        "src_main_java_gg_gravesandglory_campscreen_campscreen_card",
+        "src_main_java_gg_gravesandglory_armycards_recruit_renderbutton",
+        "src_main_java_gg_gravesandglory_darkui_darkui_model"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/RecruitPages.java",
+        "src/main/java/gg/gravesandglory/ArmyCards.java",
+        "src/main/java/gg/gravesandglory/CampScreen.java"
+      ]
+    },
+    {
+      "name": "Troop Skin Generator",
+      "anchors": [
+        "tools_build_skins_contact",
+        "tools_build_skins_make_quad",
+        "tools_build_skins_material_maps",
+        "tools_build_skins_turn_sheets",
+        "tools_build_skins_obb_overlap",
+        "tools_build_skins_world",
+        "tools_build_skins_bounds"
+      ],
+      "source_files": [
+        "tools/build_skins.py"
+      ]
+    },
+    {
+      "name": "Blockbench Converter Tests",
+      "anchors": [
+        "test_tools_standalone_test_bbmodel_cube",
+        "test_tools_standalone_test_bbmodel_bbmodelchecks",
+        "test_tools_standalone_test_bbmodel_project",
+        "test_tools_standalone_test_bbmodel_load",
+        "test_tools_standalone_test_bbmodel_bbmodelchecks_test_normals_and_winding",
+        "test_tools_standalone_test_bbmodel_bbmodelchecks_frame_cubes",
+        "test_tools_standalone_test_bbmodel_quad_normal"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_bbmodel.py",
+        "test-tools/standalone/test_build_skins.py"
+      ]
+    },
+    {
+      "name": "Camp Terrain",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_campterrain_campterrain",
+        "src_main_java_gg_gravesandglory_spec_camprow",
+        "src_main_java_gg_gravesandglory_campterrain_campterrain_noise",
+        "src_main_java_gg_gravesandglory_campterrain_campterrain_outcrop",
+        "test_tools_standalone_campterraincheck_campterraincheck_terrain",
+        "src_main_java_gg_gravesandglory_campterrain_campterrain_bank",
+        "src_main_java_gg_gravesandglory_campterrain_campterrain_heightraw"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/CampTerrain.java",
+        "test-tools/standalone/CampTerrainCheck.java",
+        "src/main/java/gg/gravesandglory/CampWorld.java"
+      ]
+    },
+    {
+      "name": "Structure Preview Studio",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_structurestudio_structurestudio",
+        "test_tools_java_gg_gravesandglory_phase3checks_studiochecks",
+        "test_tools_java_gg_gravesandglory_phase3checks_studiochecks_dumptrip",
+        "test_tools_java_gg_gravesandglory_phase3checks_studiochecks_buildreleases",
+        "test_tools_java_gg_gravesandglory_structurestudio_structurestudio_save",
+        "src_main_java_gg_gravesandglory_structures_structures_read",
+        "test_tools_java_gg_gravesandglory_phase3checks_studiochecks_dumporder"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/StructureStudio.java",
+        "test-tools/java/gg/gravesandglory/Phase3Checks.java",
+        "src/main/java/gg/gravesandglory/Structures.java"
+      ]
+    },
+    {
+      "name": "House Rules Tests",
+      "anchors": [
+        "test_tools_standalone_housescheck_housescheck_main",
+        "test_tools_standalone_housescheck_housescheck",
+        "src_main_java_gg_gravesandglory_countermath_hit",
+        "test_tools_standalone_housescheck_housescheck_levelcounters",
+        "test_tools_standalone_housescheck_housescheck_rollonce",
+        "test_tools_standalone_housescheck_housescheck_tags",
+        "test_tools_standalone_housescheck_housescheck_rarity"
+      ],
+      "source_files": [
+        "test-tools/standalone/HousesCheck.java",
+        "src/main/java/gg/gravesandglory/CounterMath.java",
+        "src/main/java/gg/gravesandglory/MatchStats.java"
+      ]
+    },
+    {
+      "name": "Troop Mesh Loading",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_troopmodelloader_troopmodelloader",
+        "src_main_java_gg_gravesandglory_troopmesh_troopmesh",
+        "src_main_java_gg_gravesandglory_troopmodelloader_troopmodelloader_reload",
+        "src_main_java_gg_gravesandglory_troopmodelloader_troopmodelloader_need",
+        "test_tools_java_gg_gravesandglory_phase2checks_depth_quadrules",
+        "src_main_java_gg_gravesandglory_troopmodelloader_troopmodelloader_parseweapon",
+        "test_tools_java_gg_gravesandglory_phase2checks_spike_loadercheck"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/TroopModelLoader.java",
+        "src/main/java/gg/gravesandglory/TroopMesh.java",
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java"
+      ]
+    },
+    {
+      "name": "Troop Animation Engine",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_troopanimator_troopanimator",
+        "src_main_java_gg_gravesandglory_troopanimator_state",
+        "src_main_java_gg_gravesandglory_troopanimator_troopanimator_plan",
+        "src_main_java_gg_gravesandglory_troopanimator_channel",
+        "src_main_java_gg_gravesandglory_troopanimator_track",
+        "src_main_java_gg_gravesandglory_troopanimator_state_update",
+        "src_main_java_gg_gravesandglory_troopanimator_plan"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/TroopAnimator.java",
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java"
+      ]
+    },
+    {
+      "name": "Combat Source References",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_armysupplybanner_interactat",
+        "src_main_java_gg_gravesandglory_gravesandglory_armywolf_interactmob",
+        "test_tools_java_gg_gravesandglory_phase2checks",
+        "test_tools_java_gg_gravesandglory_titledemos",
+        "src_main_java_gg_gravesandglory_abilities",
+        "src_main_java_gg_gravesandglory_commander",
+        "src_main_java_gg_gravesandglory_projectiles"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java",
+        "src/main/java/gg/gravesandglory/Abilities.java",
+        "src/main/java/gg/gravesandglory/CampaignMaps.java"
+      ]
+    },
+    {
+      "name": "Map Scenery",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_mapdressing_mapdressing",
+        "src_main_java_gg_gravesandglory_arena_arena_riverx",
+        "src_main_java_gg_gravesandglory_mapdressing_mapdressing_h",
+        "src_main_java_gg_gravesandglory_mapdressing_mapdressing_put",
+        "src_main_java_gg_gravesandglory_mapdressing_mapdressing_free",
+        "src_main_java_gg_gravesandglory_campaignmaps_campaignmaps_roaddistance",
+        "src_main_java_gg_gravesandglory_mapdressing_mapdressing_setpieces"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/MapDressing.java",
+        "src/main/java/gg/gravesandglory/CampaignMaps.java",
+        "src/main/java/gg/gravesandglory/Arena.java"
+      ]
+    },
+    {
+      "name": "World Builder References",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase3checks",
+        "test_tools_java_gg_gravesandglory_structurestudio",
+        "src_main_java_gg_gravesandglory_campworld",
+        "src_main_java_gg_gravesandglory_structures",
+        "src_main_java_gg_gravesandglory_armymobs",
+        "src_main_java_gg_gravesandglory_hinttext",
+        "test_tools_standalone_campterraincheck"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/ArmyMobs.java",
+        "src/main/java/gg/gravesandglory/CampWorld.java",
+        "src/main/java/gg/gravesandglory/HintText.java"
+      ]
+    },
+    {
+      "name": "Skin Templates & Contrast Tests",
+      "anchors": [
+        "test_tools_standalone_test_build_skins_buildskinschecks",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_contact_sheet",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_rig_tree",
+        "test_tools_standalone_test_build_skins_buildskinschecks_knight_with",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_template",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_templates_at_density",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_contact_contrast"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_build_skins.py"
+      ]
+    },
+    {
+      "name": "Model & Utility References",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_faceschecks",
+        "src_main_java_gg_gravesandglory_veterans",
+        "test_tools_java_gg_gravesandglory_rankchecks",
+        "src_main_java_gg_gravesandglory_troopmodelloader",
+        "src_main_java_gg_gravesandglory_uitex",
+        "test_tools_java_gg_gravesandglory_levelchecks",
+        "test_tools_java_gg_gravesandglory_uikitsheet"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/AdmissionPolicy.java",
+        "src/main/java/gg/gravesandglory/CreditLog.java",
+        "src/main/java/gg/gravesandglory/EventFeed.java"
+      ]
+    },
+    {
+      "name": "UI Canvas & Kit Preview",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_uicanvas_uicanvas_height",
+        "src_main_java_gg_gravesandglory_uicanvas_uicanvas_k",
+        "src_main_java_gg_gravesandglory_uicanvas_uicanvas_width",
+        "src_main_java_gg_gravesandglory_wartable_wartable_origin",
+        "src_main_java_gg_gravesandglory_wartable_wartable_compact",
+        "test_tools_java_gg_gravesandglory_uikitsheet_uikitsheet",
+        "src_main_java_gg_gravesandglory_uicanvas_uicanvas_hudk"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/UiKitSheet.java",
+        "src/main/java/gg/gravesandglory/UiCanvas.java",
+        "src/main/java/gg/gravesandglory/WarTable.java"
+      ]
+    },
+    {
+      "name": "Gilded House Combat Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase2checks_gilded_servertick",
+        "test_tools_java_gg_gravesandglory_phase2checks_gilded",
+        "src_main_java_gg_gravesandglory_gravesandglory_battle_startround",
+        "src_main_java_gg_gravesandglory_projectiles_projectiles_clear",
+        "src_main_java_gg_gravesandglory_abilities_abilities_clearbanners",
+        "test_tools_java_gg_gravesandglory_phase2checks_gilded_post",
+        "src_main_java_gg_gravesandglory_commander_commander_reset"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java",
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java",
+        "src/main/java/gg/gravesandglory/Campaign.java"
+      ]
+    },
+    {
+      "name": "Battle Report UI Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase1checks_phase1checks_report",
+        "test_tools_java_gg_gravesandglory_phase1checks_phase1checks",
+        "test_tools_java_gg_gravesandglory_phase1checks_uiiconschecks_step",
+        "test_tools_java_gg_gravesandglory_phase1checks_phase1checks_server",
+        "test_tools_java_gg_gravesandglory_phase1checks_reportchecks",
+        "test_tools_java_gg_gravesandglory_phase1checks_phase1checks_shot",
+        "test_tools_java_gg_gravesandglory_phase1checks_phase1checks_window"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase1Checks.java",
+        "src/main/java/gg/gravesandglory/BattleHud.java",
+        "test-tools/java/gg/gravesandglory/TitleDemos.java"
+      ]
+    },
+    {
+      "name": "Verification & World Tools",
+      "anchors": [
+        "tools_verify_run",
+        "tools_graph_state_refresh",
+        "tools_create_battle_audio_cue",
+        "tools_graph_state_inputs",
+        "tools_verify_java_home",
+        "tools_graph_state_check",
+        "tools_verify_game_guard"
+      ],
+      "source_files": [
+        "tools/verify.py",
+        "tools/graph_state.py",
+        "test-tools/saved-world/blocks_dump.py"
+      ]
+    },
+    {
+      "name": "Portrait Artwork",
+      "anchors": [
+        "tools_ui_art_v4a_portrait_biped",
+        "tools_ui_art_v4a_portrait_render",
+        "tools_ui_art_v4a_portrait_tex",
+        "tools_ui_art_v4a_portrait_sunweaver",
+        "tools_ui_art_v4a_portrait_box",
+        "tools_ui_art_v4a_portrait_from_view",
+        "tools_ui_art_v4a_portrait_longbow"
+      ],
+      "source_files": [
+        "tools/ui_art/v4a_portrait.py",
+        "tools/ui_art/kit_track.py",
+        "tools/ui_art/v4a_paper.py"
+      ]
+    },
+    {
+      "name": "Ink & Decorative Artwork",
+      "anchors": [
+        "tools_ui_art_v4a_ink_practice_drawing",
+        "tools_ui_art_v4a_ink_campaign_drawing",
+        "tools_ui_art_v4a_ink_ink",
+        "tools_ui_art_v4a_ink_skirmish_drawing",
+        "tools_ui_art_v4a_ink_longsword",
+        "tools_ui_art_v4a_ink_ink_wash",
+        "tools_ui_art_v4a_ink_ink_knock"
+      ],
+      "source_files": [
+        "tools/ui_art/v4a_ink.py",
+        "tools/ui_art/v4a_recruit.py",
+        "tools/ui_art/v4a_paper.py"
+      ]
+    },
+    {
+      "name": "Spider & Biped Clips",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_troopclips_clip",
+        "src_main_java_gg_gravesandglory_spiderclips_spiderclips",
+        "src_main_java_gg_gravesandglory_troopclips_clip_rot",
+        "src_main_java_gg_gravesandglory_spiderclips_spiderclips_leg",
+        "src_main_java_gg_gravesandglory_trooptells_trooptells",
+        "src_main_java_gg_gravesandglory_troopclips_kind",
+        "src_main_java_gg_gravesandglory_spiderclips_spiderclips_s"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/SpiderClips.java",
+        "src/main/java/gg/gravesandglory/TroopClips.java",
+        "src/main/java/gg/gravesandglory/TroopTells.java"
+      ]
+    },
+    {
+      "name": "Client Harness References",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_selftesthost_selftesthost",
+        "test_tools_java_gg_gravesandglory_testing_localvisualinspection_localvisualinspection",
+        "test_tools_java_gg_gravesandglory_selftesthost_selftesthost_oninitializeclient",
+        "test_tools_java_gg_gravesandglory_testing_localvisualinspection_localvisualinspection_oninitializeclient",
+        "test_tools_java_gg_gravesandglory_phase1checks",
+        "test_tools_java_gg_gravesandglory_ranknetworkchecks",
+        "test_tools_java_gg_gravesandglory_campnetworkchecks"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/SelfTestHost.java",
+        "test-tools/java/gg/gravesandglory/testing/LocalVisualInspection.java",
+        "src/main/java/gg/gravesandglory/Campaign.java"
+      ]
+    },
+    {
+      "name": "Face & Beard Bake Tests",
+      "anchors": [
+        "test_tools_standalone_test_build_skins_buildskinschecks_with_knight",
+        "test_tools_standalone_test_build_skins_find",
+        "test_tools_standalone_test_build_skins_buildskinschecks_bake",
+        "test_tools_standalone_test_build_skins_buildskinschecks_bake_fails",
+        "test_tools_standalone_test_build_skins_buildskinschecks_beard_troops",
+        "test_tools_standalone_test_build_skins_buildskinschecks_dense_troops",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_faces_dense_rules"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_build_skins.py"
+      ]
+    },
+    {
+      "name": "Relief Mesh Tests",
+      "anchors": [
+        "test_tools_standalone_test_build_skins_buildskinschecks_assert_quad",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_relief_density_three_is_the_same_shape",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_relief_density_three_fine_detail",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_relief_mesh",
+        "test_tools_standalone_test_build_skins_uv_box",
+        "test_tools_standalone_test_build_skins_buildskinschecks_mesh",
+        "test_tools_standalone_test_build_skins_buildskinschecks_assert_cube_quad"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_build_skins.py"
+      ]
+    },
+    {
+      "name": "Camp World Builder",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_campworld_campworld",
+        "src_main_java_gg_gravesandglory_campworld_campworld_terrain",
+        "src_main_java_gg_gravesandglory_campworld_campworld_build",
+        "test_tools_java_gg_gravesandglory_phase3checks_camp_idempotent",
+        "src_main_java_gg_gravesandglory_campworld_campworld_box",
+        "src_main_java_gg_gravesandglory_campworld_campworld_display",
+        "test_tools_java_gg_gravesandglory_phase3checks_camp_oldgone"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/CampWorld.java",
+        "test-tools/java/gg/gravesandglory/Phase3Checks.java",
+        "src/main/java/gg/gravesandglory/CampTerrain.java"
+      ]
+    },
+    {
+      "name": "Screen Widget References",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase1checks_bots_button",
+        "src_main_java_gg_gravesandglory_armycards",
+        "src_main_java_gg_gravesandglory_campscreen",
+        "src_main_java_gg_gravesandglory_recruitpages",
+        "src_main_java_gg_gravesandglory_wartablehome",
+        "src_main_java_gg_gravesandglory_wartablepages",
+        "src_main_java_gg_gravesandglory_portrait"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase1Checks.java",
+        "src/main/java/gg/gravesandglory/ArmyCards.java",
+        "src/main/java/gg/gravesandglory/CampaignLobbyScreen.java"
+      ]
+    },
+    {
+      "name": "House Traits & Battle Effects",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_houses_houses",
+        "src_main_java_gg_gravesandglory_spec_housetraitsrow",
+        "src_main_java_gg_gravesandglory_countermath_countermath_trait",
+        "src_main_java_gg_gravesandglory_houses_houses_traitfactor",
+        "src_main_java_gg_gravesandglory_battleeffects_battleeffects",
+        "src_main_java_gg_gravesandglory_houses_houses_packhunters",
+        "src_main_java_gg_gravesandglory_battleeffects_battleeffects_feedback"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/Houses.java",
+        "src/main/java/gg/gravesandglory/BattleEffects.java",
+        "src/main/java/gg/gravesandglory/CounterMath.java"
+      ]
+    },
+    {
+      "name": "War Table Page Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase1checks_uipageschecks",
+        "test_tools_java_gg_gravesandglory_phase1checks_uipageschecks_step",
+        "test_tools_java_gg_gravesandglory_phase1checks_uipageschecks_contracts",
+        "test_tools_java_gg_gravesandglory_phase1checks_uipageschecks_friends",
+        "test_tools_java_gg_gravesandglory_phase1checks_uipageschecks_layout",
+        "test_tools_java_gg_gravesandglory_phase1checks_uipageschecks_field",
+        "test_tools_java_gg_gravesandglory_phase1checks_uipageschecks_banner"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase1Checks.java",
+        "src/main/java/gg/gravesandglory/WarTablePages.java",
+        "src/main/java/gg/gravesandglory/WarTable.java"
+      ]
+    },
+    {
+      "name": "Weapon Model Validation Tests",
+      "anchors": [
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_bbmodel_weapon_rules",
+        "test_tools_standalone_test_build_skins_put_cube_weapon",
+        "test_tools_standalone_test_build_skins_cube_fixture",
+        "test_tools_standalone_test_build_skins_model_of",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_bbmodel_bow_rules",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_bbmodel_weapon",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_bbmodel_weapon_checks_name_the_cubes"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_build_skins.py"
+      ]
+    },
+    {
+      "name": "Recruitment UI Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase1checks_uirecruitchecks_step",
+        "test_tools_java_gg_gravesandglory_phase1checks_uirecruitchecks",
+        "test_tools_java_gg_gravesandglory_phase1checks_uirecruitchecks_big",
+        "test_tools_java_gg_gravesandglory_phase1checks_uirecruitchecks_small",
+        "test_tools_java_gg_gravesandglory_phase1checks_uirecruitchecks_page",
+        "test_tools_java_gg_gravesandglory_phase1checks_uirecruitchecks_tap",
+        "test_tools_java_gg_gravesandglory_phase1checks_uirecruitchecks_box"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase1Checks.java",
+        "src/main/java/gg/gravesandglory/WarTableRecruit.java"
+      ]
+    },
+    {
+      "name": "HUD Scaling Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase1checks_uihudchecks_step",
+        "test_tools_java_gg_gravesandglory_phase1checks_uihudchecks",
+        "src_main_java_gg_gravesandglory_hudsize_hudsize_get",
+        "test_tools_java_gg_gravesandglory_phase1checks_uihudchecks_sizesetting",
+        "src_main_java_gg_gravesandglory_hudsize_hudsize",
+        "test_tools_java_gg_gravesandglory_phase1checks_uihudchecks_end",
+        "src_main_java_gg_gravesandglory_hudsize_hudsize_set"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase1Checks.java",
+        "src/main/java/gg/gravesandglory/HudSize.java",
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Server & Version References",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_versiongate_versiongate",
+        "test_tools_java_gg_gravesandglory_testing_localintegration_localintegration",
+        "src_main_java_gg_gravesandglory_versiongate_versiongate_response",
+        "test_tools_java_gg_gravesandglory_testing_localintegration_localintegration_oninitialize",
+        "src_main_java_gg_gravesandglory_versiongate_versiongate_readbuild",
+        "src_main_java_gg_gravesandglory_versiongate_versiongate_versiongate",
+        "src_main_java_gg_gravesandglory_gravesandglory"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/VersionGate.java",
+        "test-tools/java/gg/gravesandglory/testing/LocalIntegration.java",
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Parties & Social Rooms",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_socialhub_socialhub",
+        "src_main_java_gg_gravesandglory_campaign_campaign_socialcommand",
+        "test_tools_standalone_camprulescheck_camprulescheck_main",
+        "src_main_java_gg_gravesandglory_socialhub_socialhub_room",
+        "src_main_java_gg_gravesandglory_socialhub_socialhub_party",
+        "src_main_java_gg_gravesandglory_socialhub_socialhub_group",
+        "src_main_java_gg_gravesandglory_socialhub_socialhub_leaveroom"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/SocialHub.java",
+        "test-tools/standalone/CampRulesCheck.java",
+        "src/main/java/gg/gravesandglory/Campaign.java"
+      ]
+    },
+    {
+      "name": "Balance Analysis",
+      "anchors": [
+        "tools_balance_method_report_rr",
+        "tools_balance_method_report_units",
+        "tools_balance_method_main",
+        "tools_balance_method_compare",
+        "tools_balance_method_compare_matches",
+        "tools_balance_method_read_csv",
+        "tools_balance_method_report_types"
+      ],
+      "source_files": [
+        "tools/balance_method.py"
+      ]
+    },
+    {
+      "name": "Workspace & Graph Tools",
+      "anchors": [
+        "tools_workspace_state_checkpoint",
+        "tools_graph_hook_advisory",
+        "tools_review_modrinth_review",
+        "tools_workspace_state_git",
+        "tools_workspace_state_inventory",
+        "tools_review_modrinth_get",
+        "tools_workspace_state_sha"
+      ],
+      "source_files": [
+        "tools/workspace_state.py",
+        "tools/review_modrinth.py",
+        "tools/graph_hook.py"
+      ]
+    },
+    {
+      "name": "UI Icon Artwork",
+      "anchors": [
+        "tools_ui_art_kit_icons_emblem_grave_bloom",
+        "tools_ui_art_kit_icons_paint",
+        "tools_ui_art_kit_icons_shade",
+        "tools_ui_art_kit_icons_emblem_bloodrush",
+        "tools_ui_art_kit_icons_emblem_forward_supply",
+        "tools_ui_art_kit_icons_emblem_mark_prey",
+        "tools_ui_art_kit_icons_emblem_rally_horn"
+      ],
+      "source_files": [
+        "tools/ui_art/kit_icons.py"
+      ]
+    },
+    {
+      "name": "UI Style Validation",
+      "anchors": [
+        "test_tools_standalone_test_ui_standard_check_file",
+        "test_tools_standalone_test_ui_standard_scan",
+        "test_tools_standalone_test_ui_standard_contrast",
+        "test_tools_standalone_test_ui_standard_any_method_spans",
+        "test_tools_standalone_test_ui_standard_body_span",
+        "test_tools_standalone_test_ui_standard_darkui_inks",
+        "test_tools_standalone_test_ui_standard_method_spans"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_ui_standard.py",
+        "docs/media/tools/stitch.py",
+        "test-tools/saved-world/items_census.py"
+      ]
+    },
+    {
+      "name": "Structure Generation",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_structures_structures",
+        "src_main_java_gg_gravesandglory_structures_structures_place",
+        "test_tools_java_gg_gravesandglory_phase3checks_walk",
+        "src_main_java_gg_gravesandglory_structures_structures_template",
+        "src_main_java_gg_gravesandglory_structures_placed",
+        "src_main_java_gg_gravesandglory_structures_structures_load",
+        "test_tools_java_gg_gravesandglory_phase3checks_landmarks_midqueue"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/Structures.java",
+        "test-tools/java/gg/gravesandglory/Phase3Checks.java",
+        "test-tools/java/gg/gravesandglory/StructureStudio.java"
+      ]
+    },
+    {
+      "name": "Player Profile Migration",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_rostermath_catalog",
+        "test_tools_standalone_profilemigrationcheck_profilemigrationcheck",
+        "test_tools_standalone_profilemigrationcheck_profilemigrationcheck_main",
+        "src_main_java_gg_gravesandglory_profilemigration_v1",
+        "src_main_java_gg_gravesandglory_profile_profile_sanitize",
+        "src_main_java_gg_gravesandglory_profilemigration_profilemigration_tov2",
+        "src_main_java_gg_gravesandglory_rostermath_rostermath_repack"
+      ],
+      "source_files": [
+        "test-tools/standalone/ProfileMigrationCheck.java",
+        "src/main/java/gg/gravesandglory/RosterMath.java",
+        "src/main/java/gg/gravesandglory/ProfileMigration.java"
+      ]
+    },
+    {
+      "name": "Chase & Migration Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase2checks_chase_servertick",
+        "test_tools_java_gg_gravesandglory_phase2checks_chase",
+        "test_tools_java_gg_gravesandglory_phase2checks_migration",
+        "test_tools_java_gg_gravesandglory_phase2checks_suite",
+        "test_tools_java_gg_gravesandglory_phase2checks_serverwatch",
+        "test_tools_java_gg_gravesandglory_phase2checks_migration_fixtures",
+        "test_tools_java_gg_gravesandglory_phase2checks_chase_profile"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java"
+      ]
+    },
+    {
+      "name": "Texture Density Fixtures",
+      "anchors": [
+        "test_tools_standalone_test_build_skins_fixture",
+        "test_tools_standalone_test_build_skins_densify",
+        "test_tools_standalone_test_build_skins_write_json",
+        "test_tools_standalone_test_build_skins_skin",
+        "test_tools_standalone_test_build_skins_buildskinschecks_tiers_root",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_cloth_layout_checks",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_density_defaults_change_nothing"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_build_skins.py"
+      ]
+    },
+    {
+      "name": "Release & Modpack Packaging",
+      "anchors": [
+        "tools_release_config_source_identity",
+        "tools_release_config_validate_player_jar",
+        "tools_export_modrinth_export",
+        "tools_release_config_version",
+        "tools_export_server_export",
+        "tools_verify_modrinth_verify",
+        "tools_build_skins_release_archive"
+      ],
+      "source_files": [
+        "tools/release_config.py",
+        "tools/build_skins.py",
+        "tools/export_modrinth.py"
+      ]
+    },
+    {
+      "name": "Camera & HUD Mixins",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_mixin_entrancecameramixin_entrancecameramixin_gravesandgloryentrance",
+        "test_tools_java_gg_gravesandglory_testing_mixin_titledemocameramixin_titledemocameramixin_gravesandglorytest_titledemocamera",
+        "src_main_java_gg_gravesandglory_mixin_entrancecameramixin_entrancecameramixin",
+        "test_tools_java_gg_gravesandglory_testing_mixin_titledemocameramixin_titledemocameramixin",
+        "src_main_java_gg_gravesandglory_mixin_cinematichudmixin_cinematichudmixin",
+        "src_main_java_gg_gravesandglory_mixin_entranceoverlaymixin_entranceoverlaymixin",
+        "src_main_java_gg_gravesandglory_mixin_hungerhudmixin_hungerhudmixin"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/mixin/EntranceCameraMixin.java",
+        "test-tools/java/gg/gravesandglory/testing/mixin/TitleDemoCameraMixin.java",
+        "src/main/java/gg/gravesandglory/mixin/HungerHudMixin.java"
+      ]
+    },
+    {
+      "name": "Chat Placement",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_mixin_chathudmixin_chathudmixin",
+        "src_main_java_gg_gravesandglory_chatplacement_chatplacement",
+        "src_main_java_gg_gravesandglory_chatplacement_chatplacement_lift",
+        "src_main_java_gg_gravesandglory_chatplacement_chatplacement_slot",
+        "src_main_java_gg_gravesandglory_mixin_chathudaccessor_chathudaccessor",
+        "src_main_java_gg_gravesandglory_mixin_chathudmixin_chathudmixin_gravesandglory_lift",
+        "src_main_java_gg_gravesandglory_mixin_chathudmixin_chathudmixin_gravesandglory_line"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/ChatPlacement.java",
+        "src/main/java/gg/gravesandglory/mixin/ChatHudMixin.java",
+        "src/main/java/gg/gravesandglory/mixin/ChatHudAccessor.java"
+      ]
+    },
+    {
+      "name": "Map Walkability",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_walkability_walkability_scan",
+        "src_main_java_gg_gravesandglory_campaignmaps_campaignmaps",
+        "src_main_java_gg_gravesandglory_spec_structuresrow",
+        "src_main_java_gg_gravesandglory_campaignmaps_campaignmaps_select",
+        "test_tools_java_gg_gravesandglory_phase3checks_routes",
+        "test_tools_java_gg_gravesandglory_walkability_walkability",
+        "src_main_java_gg_gravesandglory_campaignmaps_campaignmaps_padcenter"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/CampaignMaps.java",
+        "test-tools/java/gg/gravesandglory/Walkability.java",
+        "test-tools/java/gg/gravesandglory/Phase3Checks.java"
+      ]
+    },
+    {
+      "name": "Input & Simulation Mixins",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_testing_mixin_fasttickmixin_fasttickmixin",
+        "src_main_java_gg_gravesandglory_mixin_cinematichudmixin_cinematichudmixin_gravesandglorycinematic",
+        "src_main_java_gg_gravesandglory_mixin_commandinputmixin_commandinputmixin",
+        "src_main_java_gg_gravesandglory_mixin_chathudmixin_chathudmixin_gravesandglory_begin",
+        "src_main_java_gg_gravesandglory_mixin_chathudmixin_chathudmixin_gravesandglory_end",
+        "src_main_java_gg_gravesandglory_mixin_contactfeedbackmixin_contactfeedbackmixin",
+        "src_main_java_gg_gravesandglory_mixin_commandinputmixin_commandinputmixin_gravesandgloryattack"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/testing/mixin/FastTickMixin.java",
+        "src/main/java/gg/gravesandglory/mixin/CommandInputMixin.java",
+        "src/main/java/gg/gravesandglory/mixin/ContactFeedbackMixin.java"
+      ]
+    },
+    {
+      "name": "Animation & Network References",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_troopanimator",
+        "src_main_java_gg_gravesandglory_ranksync",
+        "src_main_java_gg_gravesandglory_tactics",
+        "src_main_java_gg_gravesandglory_campaignclient",
+        "src_main_java_gg_gravesandglory_commandmode",
+        "src_main_java_gg_gravesandglory_troopclips",
+        "src_main_java_gg_gravesandglory_feedevents"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/CampaignClient.java",
+        "src/main/java/gg/gravesandglory/CommandMode.java",
+        "src/main/java/gg/gravesandglory/FeedEvents.java"
+      ]
+    },
+    {
+      "name": "Troop Relief Export",
+      "anchors": [
+        "tools_build_skins_troop_outputs",
+        "tools_build_skins_relief_mesh",
+        "tools_build_skins_read_patch_file",
+        "tools_build_skins_tint",
+        "tools_build_skins_relief_sources",
+        "tools_build_skins_side_image",
+        "tools_build_skins_size_words"
+      ],
+      "source_files": [
+        "tools/build_skins.py"
+      ]
+    },
+    {
+      "name": "Skin Catalog & Templates",
+      "anchors": [
+        "tools_build_skins_catalog",
+        "tools_build_skins_relief_template",
+        "tools_build_skins_read_png",
+        "tools_build_skins_main",
+        "tools_build_skins_template",
+        "tools_build_skins_chevron",
+        "tools_build_skins_boxes"
+      ],
+      "source_files": [
+        "tools/build_skins.py"
+      ]
+    },
+    {
+      "name": "Progression Balance Gate",
+      "anchors": [
+        "tools_progression_gate_analyse",
+        "tools_progression_gate_load_condition",
+        "tools_progression_gate_unusable",
+        "tools_progression_gate_main",
+        "tools_progression_gate_render",
+        "tools_progression_gate_timings",
+        "tools_progression_gate_share_table"
+      ],
+      "source_files": [
+        "tools/progression_gate.py"
+      ]
+    },
+    {
+      "name": "Face & Relief Validation Tests",
+      "anchors": [
+        "test_tools_standalone_test_build_skins_relief_png",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_faces_free_rows",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_relief_rules",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_faces_dense_overlays_and_relief",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_relief_keys",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_faces_patch_rules_edit_go",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_veteran_trim_under_relief"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_build_skins.py"
+      ]
+    },
+    {
+      "name": "Model Geometry Baking",
+      "anchors": [
+        "tools_build_skins_fail",
+        "tools_build_skins_bake",
+        "tools_build_skins_load",
+        "tools_build_skins_vec",
+        "tools_build_skins_bake_bones",
+        "tools_build_skins_keys",
+        "tools_build_skins_parse_faces"
+      ],
+      "source_files": [
+        "tools/build_skins.py"
+      ]
+    },
+    {
+      "name": "Troop Turnaround Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase2checks_turn",
+        "test_tools_java_gg_gravesandglory_phase2checks_turn_shoot",
+        "test_tools_java_gg_gravesandglory_phase2checks_turn_step",
+        "test_tools_java_gg_gravesandglory_phase2checks_turn_cards",
+        "test_tools_java_gg_gravesandglory_phase2checks_turn_t3fact",
+        "test_tools_java_gg_gravesandglory_phase2checks_turn_nockfacts",
+        "test_tools_java_gg_gravesandglory_phase2checks_turn_facts"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java"
+      ]
+    },
+    {
+      "name": "Tier Art Release Gate",
+      "anchors": [
+        "tools_build_skins_export",
+        "tools_build_skins_verify",
+        "tools_build_skins_tier_table",
+        "tools_build_skins_tiers",
+        "tools_build_skins_release_gate",
+        "tools_build_skins_stopgaps",
+        "tools_build_skins_differs"
+      ],
+      "source_files": [
+        "tools/build_skins.py"
+      ]
+    },
+    {
+      "name": "Roster & Unlock Rules",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_rostermath_rostermath",
+        "src_main_java_gg_gravesandglory_campaign_campaign_finish",
+        "src_main_java_gg_gravesandglory_campaign_campaign_ledger",
+        "src_main_java_gg_gravesandglory_rostermath_rostermath_fieldablehouses",
+        "src_main_java_gg_gravesandglory_campaign_campaign_reporthouses",
+        "src_main_java_gg_gravesandglory_rostermath_rostermath_matchrewards",
+        "src_main_java_gg_gravesandglory_rostermath_rostermath_houseslots"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/RosterMath.java",
+        "src/main/java/gg/gravesandglory/Campaign.java",
+        "src/main/java/gg/gravesandglory/Houses.java"
+      ]
+    },
+    {
+      "name": "War Table Home Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase1checks_uihomechecks_step",
+        "test_tools_java_gg_gravesandglory_phase1checks_uihomechecks",
+        "test_tools_java_gg_gravesandglory_phase1checks_uihomechecks_bigcanvas",
+        "test_tools_java_gg_gravesandglory_phase1checks_uihomechecks_oaktoedges",
+        "test_tools_java_gg_gravesandglory_phase1checks_uihomechecks_box",
+        "test_tools_java_gg_gravesandglory_phase1checks_uihomechecks_overlap",
+        "test_tools_java_gg_gravesandglory_phase1checks_uihomechecks_gui"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase1Checks.java",
+        "src/main/java/gg/gravesandglory/WarTableHome.java",
+        "src/main/java/gg/gravesandglory/WarTable.java"
+      ]
+    },
+    {
+      "name": "Battle Arithmetic",
+      "anchors": [
+        "test_tools_standalone_battlemathcheck_battlemathcheck_main",
+        "src_main_java_gg_gravesandglory_battlemath_battlemath",
+        "src_main_java_gg_gravesandglory_campaign_campaign_botdecide",
+        "src_main_java_gg_gravesandglory_campaign_campaign_garrisonpoint",
+        "src_main_java_gg_gravesandglory_battlemath_battlemath_speedmodifier",
+        "src_main_java_gg_gravesandglory_battlemath_battlemath_relativebearing",
+        "src_main_java_gg_gravesandglory_battlemath_battlemath_strength"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/BattleMath.java",
+        "test-tools/standalone/BattleMathCheck.java",
+        "src/main/java/gg/gravesandglory/Campaign.java"
+      ]
+    },
+    {
+      "name": "Campaign Client State",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_campaignclient_campaignclient",
+        "src_main_java_gg_gravesandglory_campaignclient_campaignclient_accept",
+        "src_main_java_gg_gravesandglory_diagnostics_diagnostics_active",
+        "src_main_java_gg_gravesandglory_campaignclient_campaignclient_end",
+        "test_tools_java_gg_gravesandglory_levelchecks_gear_noticeredismissed",
+        "src_main_java_gg_gravesandglory_campaignclient_campaignclient_acceptroll",
+        "src_main_java_gg_gravesandglory_campaignclient_campaignclient_collection"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/CampaignClient.java",
+        "src/main/java/gg/gravesandglory/Diagnostics.java",
+        "src/main/java/gg/gravesandglory/GravesAndGloryClient.java"
+      ]
+    },
+    {
+      "name": "Combat & Compatibility",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_combat_combat",
+        "test_tools_java_gg_gravesandglory_compatibilitychecks_compatibilitychecks",
+        "test_tools_java_gg_gravesandglory_compatibilitychecks_compatibilitychecks_oninitializeclient",
+        "src_main_java_gg_gravesandglory_combat_combat_structureblow",
+        "src_main_java_gg_gravesandglory_combat_combat_combat",
+        "src_main_java_gg_gravesandglory_gravesandgloryclient",
+        "src_main_java_gg_gravesandglory_combat"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/Combat.java",
+        "test-tools/java/gg/gravesandglory/CompatibilityChecks.java",
+        "src/main/java/gg/gravesandglory/GravesAndGloryClient.java"
+      ]
+    },
+    {
+      "name": "Balance Gate Tests",
+      "anchors": [
+        "test_tools_standalone_test_progression_gate_progressiongate_setupclass",
+        "test_tools_standalone_test_progression_gate_write_run",
+        "tools_balance_gate_die",
+        "tools_balance_gate_load",
+        "tools_balance_gate_main",
+        "test_tools_standalone_test_progression_gate_build_matches",
+        "tools_balance_gate_seat_of"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_progression_gate.py",
+        "tools/balance_gate.py"
+      ]
+    },
+    {
+      "name": "Story Screenshot Staging",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_storystills_storystills",
+        "test_tools_java_gg_gravesandglory_storystills_storystills_run",
+        "test_tools_java_gg_gravesandglory_storystills_storystills_note",
+        "test_tools_java_gg_gravesandglory_storystills_storystills_step",
+        "test_tools_java_gg_gravesandglory_storystills_said",
+        "test_tools_java_gg_gravesandglory_storystills_storystills_done",
+        "src_main_java_gg_gravesandglory_presentation_presentation_shader"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/StoryStills.java",
+        "src/main/java/gg/gravesandglory/Presentation.java"
+      ]
+    },
+    {
+      "name": "Generated Design Sheets",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_spec_spec",
+        "src_main_java_gg_gravesandglory_spec_masteryrow",
+        "src_main_java_gg_gravesandglory_spec_levelabilitiesrow",
+        "src_main_java_gg_gravesandglory_spec_navigationrow",
+        "src_main_java_gg_gravesandglory_spec_ordersrow",
+        "src_main_java_gg_gravesandglory_spec_rulesrow",
+        "src_main_java_gg_gravesandglory_spec_terrainrow"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/Spec.java"
+      ]
+    },
+    {
+      "name": "Cuboid Texture Mapping",
+      "anchors": [
+        "tools_build_skins_grid",
+        "tools_build_skins_face",
+        "tools_build_skins_cuboid_faces",
+        "tools_build_skins_face_rects",
+        "tools_build_skins_grid_anchor",
+        "tools_build_skins_grid_inward",
+        "tools_build_skins_grid_shell_axes"
+      ],
+      "source_files": [
+        "tools/build_skins.py"
+      ]
+    },
+    {
+      "name": "Chapter Rewards & Progression",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_progression_progression",
+        "src_main_java_gg_gravesandglory_progression_state",
+        "src_main_java_gg_gravesandglory_progression_progression_claim",
+        "src_main_java_gg_gravesandglory_progression_progression_reset",
+        "src_main_java_gg_gravesandglory_progression_progression_tier",
+        "src_main_java_gg_gravesandglory_progression_progression_match",
+        "src_main_java_gg_gravesandglory_progression_progression_today"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/Progression.java",
+        "src/main/java/gg/gravesandglory/Campaign.java",
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java"
+      ]
+    },
+    {
+      "name": "Combat Duel Simulation",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_duelsimulation_duelsimulation",
+        "test_tools_java_gg_gravesandglory_duelsimulation_duelsimulation_tick",
+        "test_tools_java_gg_gravesandglory_duelsimulation_duelsimulation_startfight",
+        "test_tools_java_gg_gravesandglory_duelsimulation_duelsimulation_findcell",
+        "test_tools_java_gg_gravesandglory_duelsimulation_duelsimulation_oninitialize",
+        "test_tools_java_gg_gravesandglory_duelsimulation_lineup",
+        "test_tools_java_gg_gravesandglory_duelsimulation_duelsimulation_living"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/DuelSimulation.java"
+      ]
+    },
+    {
+      "name": "Parchment Artwork",
+      "anchors": [
+        "tools_ui_art_v4a_paper_rivergate_map",
+        "tools_ui_art_v4a_paper_pen",
+        "tools_ui_art_v4a_paper_skirmish_drawing",
+        "tools_ui_art_v4a_paper_campaign_drawing",
+        "tools_ui_art_v4a_paper_practice_drawing",
+        "tools_ui_art_v4a_paper_pen_layer_over",
+        "tools_ui_art_v4a_furn_map_sheet"
+      ],
+      "source_files": [
+        "tools/ui_art/v4a_paper.py",
+        "tools/ui_art/v4a_furn.py"
+      ]
+    },
+    {
+      "name": "Combat Engine Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase2checks_engine",
+        "test_tools_java_gg_gravesandglory_phase2checks_engine_servertick",
+        "test_tools_java_gg_gravesandglory_phase2checks_engine_apply",
+        "test_tools_java_gg_gravesandglory_phase2checks_engine_post",
+        "test_tools_java_gg_gravesandglory_phase2checks_engine_goalnames",
+        "test_tools_java_gg_gravesandglory_phase2checks_engine_cleanup",
+        "test_tools_java_gg_gravesandglory_phase2checks_engine_fixed"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java"
+      ]
+    },
+    {
+      "name": "UI Art Build & Workflow Checks",
+      "anchors": [
+        "tools_build_ui_art_paint",
+        "tools_build_ui_art_verify",
+        "tools_build_ui_art_check_flame",
+        "tools_build_ui_art_export",
+        "tools_build_ui_art_listed",
+        "test_tools_standalone_test_verification_workflow_evidencechecks",
+        "tools_build_ui_art_check_entry"
+      ],
+      "source_files": [
+        "tools/build_ui_art.py",
+        "test-tools/standalone/test_verification_workflow.py"
+      ]
+    },
+    {
+      "name": "Save & Layout Migration",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_campaign_campaign_campaign",
+        "src_main_java_gg_gravesandglory_legacydatamigration_legacydatamigration",
+        "test_tools_standalone_legacydatamigrationcheck_legacydatamigrationcheck_main",
+        "test_tools_standalone_legacydatamigrationcheck_legacydatamigrationcheck",
+        "src_main_java_gg_gravesandglory_campaign_campaign_cached",
+        "src_main_java_gg_gravesandglory_legacydatamigration_legacydatamigration_instance",
+        "src_main_java_gg_gravesandglory_layoutmarker_layoutmarker"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/LegacyDataMigration.java",
+        "test-tools/standalone/LegacyDataMigrationCheck.java",
+        "src/main/java/gg/gravesandglory/LayoutMarker.java"
+      ]
+    },
+    {
+      "name": "Training Yard Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase3checks_yard",
+        "test_tools_java_gg_gravesandglory_phase3checks_yard_step",
+        "test_tools_java_gg_gravesandglory_phase3checks_yard_panel",
+        "test_tools_java_gg_gravesandglory_phase3checks_yard_clientdisplay",
+        "test_tools_java_gg_gravesandglory_phase3checks_yard_at",
+        "test_tools_java_gg_gravesandglory_phase3checks_yard_boards",
+        "test_tools_java_gg_gravesandglory_phase3checks_panel"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase3Checks.java"
+      ]
+    },
+    {
+      "name": "Weapon Sprite Tests",
+      "anchors": [
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_weapon_rules",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_map_rules",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_pull_frames",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_weapon_rules_lone_grip_make",
+        "test_tools_standalone_test_build_skins_sprite_image",
+        "test_tools_standalone_test_build_skins_put_bow",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_weapon_rules_wide"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_build_skins.py"
+      ]
+    },
+    {
+      "name": "Boar & Wolf Army Units",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_armyboarkin",
+        "src_main_java_gg_gravesandglory_gravesandglory_armywolf",
+        "src_main_java_gg_gravesandglory_gravesandglory_armysupplybanner_remove",
+        "src_main_java_gg_gravesandglory_gravesandglory_armywolf_damage",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyboarkin_canconvertinwater",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyboarkin_chooserandomangertime",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyboarkin_initgoals"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Story Presentation",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_campaignclient_campaignclient_cinematic",
+        "src_main_java_gg_gravesandglory_presentationscreen_presentationscreen_init",
+        "src_main_java_gg_gravesandglory_presentation_presentation",
+        "src_main_java_gg_gravesandglory_presentationscreen_presentationscreen",
+        "test_tools_java_gg_gravesandglory_campaigndevcontrol_campaigndevcontrol_tick",
+        "src_main_java_gg_gravesandglory_presentation_presentation_load",
+        "src_main_java_gg_gravesandglory_mixin_entranceoverlaymixin_entranceoverlaymixin_gravesandglorybars"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/Presentation.java",
+        "src/main/java/gg/gravesandglory/PresentationScreen.java",
+        "test-tools/java/gg/gravesandglory/CampaignDevControl.java"
+      ]
+    },
+    {
+      "name": "Troop Rendering References",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_trooprenderers_trooprenderers_over",
+        "src_main_java_gg_gravesandglory_trooprenderers_trooprenderers",
+        "src_main_java_gg_gravesandglory_trooprenderers_trooprenderers_register",
+        "src_main_java_gg_gravesandglory_trooprenderers_trooprenderers_trooprenderers",
+        "test_tools_java_gg_gravesandglory_storystills",
+        "src_main_java_gg_gravesandglory_arena",
+        "src_main_java_gg_gravesandglory_trooprenderers"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/TroopRenderers.java",
+        "src/main/java/gg/gravesandglory/Arena.java",
+        "test-tools/java/gg/gravesandglory/StoryStills.java"
+      ]
+    },
+    {
+      "name": "Recruitment Screen",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_recruitmentscreen_recruitmentscreen",
+        "src_main_java_gg_gravesandglory_recruitmentscreen_recruitmentscreen_init",
+        "src_main_java_gg_gravesandglory_recruitmentscreen_recruitmentscreen_price",
+        "src_main_java_gg_gravesandglory_recruitmentscreen_recruitmentscreen_unavailable",
+        "src_main_java_gg_gravesandglory_recruitmentscreen_recruitmentscreen_trainable",
+        "src_main_java_gg_gravesandglory_recruitmentscreen_recruitmentscreen_update",
+        "src_main_java_gg_gravesandglory_recruitmentscreen_recruitmentscreen_listed"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/RecruitmentScreen.java"
+      ]
+    },
+    {
+      "name": "Campaign Integration Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_campaignchecks_campaignchecks_oninitializeclient",
+        "test_tools_java_gg_gravesandglory_campaignchecks_campaignchecks",
+        "src_main_java_gg_gravesandglory_rostermath_rostermath_units",
+        "src_main_java_gg_gravesandglory_campaign_campaign_progression",
+        "src_main_java_gg_gravesandglory_rostermath_rostermath_starpct",
+        "test_tools_java_gg_gravesandglory_campaignchecks_campaignchecks_server",
+        "src_main_java_gg_gravesandglory_campworld_campworld_incamp"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/CampaignChecks.java",
+        "src/main/java/gg/gravesandglory/RosterMath.java",
+        "src/main/java/gg/gravesandglory/Campaign.java"
+      ]
+    },
+    {
+      "name": "Title Screen Demos",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_titledemos_titledemos",
+        "test_tools_java_gg_gravesandglory_titledemos_titledemos_hill",
+        "test_tools_java_gg_gravesandglory_titledemos_titledemos_choosefacing",
+        "test_tools_java_gg_gravesandglory_titledemos_titledemos_begin",
+        "test_tools_java_gg_gravesandglory_titledemos_shot",
+        "test_tools_java_gg_gravesandglory_titledemos_titledemos_dry",
+        "test_tools_java_gg_gravesandglory_titledemos_view"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/TitleDemos.java"
+      ]
+    },
+    {
+      "name": "Pose & Keybind Mixins",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_testing_mixin_titledemoposemixin_titledemoposemixin",
+        "test_tools_java_gg_gravesandglory_testing_mixin_storystillsposemixin_storystillsposemixin_gravesandglorytest_storypose",
+        "src_main_java_gg_gravesandglory_mixin_keybindtextmixin_keybindtextmixin",
+        "test_tools_java_gg_gravesandglory_testing_mixin_storystillsposemixin_storystillsposemixin",
+        "src_main_java_gg_gravesandglory_mixin_keybindtextmixin_keybindtextmixin_gravesandglory_chip",
+        "test_tools_java_gg_gravesandglory_testing_mixin_titledemoposemixin_titledemoposemixin_gravesandglorytest_titledemopose",
+        "test_tools_java_gg_gravesandglory_testing_mixin_storystillsposemixin"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/mixin/KeybindTextMixin.java",
+        "test-tools/java/gg/gravesandglory/testing/mixin/StoryStillsPoseMixin.java",
+        "test-tools/java/gg/gravesandglory/testing/mixin/TitleDemoPoseMixin.java"
+      ]
+    },
+    {
+      "name": "Modpack Integrity Tests",
+      "anchors": [
+        "tools_export_modrinth_validate_index",
+        "test_tools_standalone_test_modrinth_export_modrinthformatchecks",
+        "test_tools_standalone_test_modrinth_export_modrinthformatchecks_fixture",
+        "test_tools_standalone_test_release_integrity_releaseintegritychecks",
+        "test_tools_standalone_test_release_integrity_releaseintegritychecks_fixture",
+        "test_tools_standalone_test_release_integrity_releaseintegritychecks_test_every_harness_class_is_refused",
+        "test_tools_standalone_test_modrinth_export_modrinthformatchecks_test_duplicate_and_unapproved_download"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_modrinth_export.py",
+        "test-tools/standalone/test_release_integrity.py",
+        "tools/export_modrinth.py"
+      ]
+    },
+    {
+      "name": "Faction Counter Rules",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_countermath_countermath",
+        "src_main_java_gg_gravesandglory_countermath_countermath_cardrows",
+        "src_main_java_gg_gravesandglory_countermath_countermath_winners",
+        "src_main_java_gg_gravesandglory_spec_countersrow",
+        "src_main_java_gg_gravesandglory_countermath_countermath_applied",
+        "src_main_java_gg_gravesandglory_countermath_countermath_counters",
+        "test_tools_standalone_housescheck_housescheck_cardrows"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/CounterMath.java",
+        "src/main/java/gg/gravesandglory/Spec.java",
+        "test-tools/standalone/HousesCheck.java"
+      ]
+    },
+    {
+      "name": "Projectiles & Impact Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase1checks_combat_servertick",
+        "src_main_java_gg_gravesandglory_projectiles_shot",
+        "test_tools_java_gg_gravesandglory_phase1checks_combat",
+        "src_main_java_gg_gravesandglory_projectiles_projectiles_fire",
+        "src_main_java_gg_gravesandglory_projectiles_projectiles",
+        "src_main_java_gg_gravesandglory_projectiles_projectiles_tick",
+        "src_main_java_gg_gravesandglory_projectiles_projectiles_aim"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/Projectiles.java",
+        "test-tools/java/gg/gravesandglory/Phase1Checks.java"
+      ]
+    },
+    {
+      "name": "Preflight & Saved World Tools",
+      "anchors": [
+        "test_tools_saved_world_nbt_entities_read_nbt",
+        "test_tools_saved_world_nbt_entities_read_nbt_payload",
+        "tools_preflight_nbt_skip",
+        "test_tools_saved_world_nbt_entities_read_nbt_string",
+        "test_tools_saved_world_nbt_entities_read_nbt_u",
+        "test_tools_saved_world_nbt_entities_chunks",
+        "tools_preflight_structure_header"
+      ],
+      "source_files": [
+        "tools/preflight.py",
+        "test-tools/saved-world/nbt_entities.py"
+      ]
+    },
+    {
+      "name": "UI Texture Loading",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_uitex_uitex_entry",
+        "src_main_java_gg_gravesandglory_uitex_uitex",
+        "src_main_java_gg_gravesandglory_uitex_uitex_three",
+        "src_main_java_gg_gravesandglory_uitex_uitex_has",
+        "src_main_java_gg_gravesandglory_uitex_uitex_bar",
+        "test_tools_java_gg_gravesandglory_uikitsheet_uikitsheet_draw",
+        "src_main_java_gg_gravesandglory_uitex_entry"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/UiTex.java",
+        "test-tools/java/gg/gravesandglory/UiKitSheet.java",
+        "test-tools/java/gg/gravesandglory/Phase1Checks.java"
+      ]
+    },
+    {
+      "name": "Weapon Sprite Export",
+      "anchors": [
+        "tools_build_skins_sprite_weapon_outputs",
+        "tools_build_skins_build",
+        "tools_build_skins_num",
+        "tools_build_skins_dumps",
+        "tools_build_skins_png_bytes",
+        "tools_build_skins_clean_bone",
+        "tools_build_skins_weapon_model"
+      ],
+      "source_files": [
+        "tools/build_skins.py"
+      ]
+    },
+    {
+      "name": "Tutorial Lesson Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase1checks_tutorialchecks",
+        "test_tools_java_gg_gravesandglory_phase1checks_tutorialchecks_step",
+        "test_tools_java_gg_gravesandglory_phase1checks_tutorialchecks_watch",
+        "test_tools_java_gg_gravesandglory_phase1checks_tutorialchecks_lesson",
+        "test_tools_java_gg_gravesandglory_phase1checks_tutorialchecks_servertick",
+        "src_main_java_gg_gravesandglory_gravesandgloryclient_gravesandgloryclient_lessontext",
+        "test_tools_java_gg_gravesandglory_phase1checks_run"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase1Checks.java",
+        "src/main/java/gg/gravesandglory/GravesAndGloryClient.java"
+      ]
+    },
+    {
+      "name": "Stuck Unit Detours",
+      "anchors": [
+        "test_tools_standalone_wedgecheck_wedgecheck_main",
+        "src_main_java_gg_gravesandglory_wedge_wedge",
+        "test_tools_standalone_wedgecheck_wedgecheck",
+        "test_tools_standalone_wedgecheck_unit",
+        "src_main_java_gg_gravesandglory_wedge_wedge_next",
+        "src_main_java_gg_gravesandglory_wedge_wedge_repeats",
+        "src_main_java_gg_gravesandglory_wedge_wedge_over"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/Wedge.java",
+        "test-tools/standalone/WedgeCheck.java"
+      ]
+    },
+    {
+      "name": "Bot Match Simulation",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_botsimulation_botsimulation",
+        "test_tools_java_gg_gravesandglory_botsimulation_botsimulation_tick",
+        "test_tools_java_gg_gravesandglory_botsimulation_botsimulation_record",
+        "test_tools_java_gg_gravesandglory_botsimulation_botsimulation_append",
+        "test_tools_java_gg_gravesandglory_botsimulation_botsimulation_proberow",
+        "test_tools_java_gg_gravesandglory_botsimulation_botsimulation_sample",
+        "test_tools_java_gg_gravesandglory_botsimulation_botsimulation_closefight"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/BotSimulation.java"
+      ]
+    },
+    {
+      "name": "Troop Face Visual Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_faceschecks_faces",
+        "test_tools_java_gg_gravesandglory_faceschecks_faces_step",
+        "test_tools_java_gg_gravesandglory_faceschecks_faces_models",
+        "test_tools_java_gg_gravesandglory_faceschecks_faces_field",
+        "test_tools_java_gg_gravesandglory_faceschecks_faces_everyonethere",
+        "test_tools_java_gg_gravesandglory_faceschecks_faces_faces",
+        "test_tools_java_gg_gravesandglory_faceschecks_faces_partsof"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/FacesChecks.java"
+      ]
+    },
+    {
+      "name": "Map Route Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_maproutechecks_maproutechecks",
+        "test_tools_java_gg_gravesandglory_meltytest_meltytest_report",
+        "test_tools_java_gg_gravesandglory_maproutechecks_maproutechecks_housegoal",
+        "test_tools_java_gg_gravesandglory_maproutechecks_maproutechecks_tick",
+        "test_tools_java_gg_gravesandglory_maproutechecks_maproutechecks_prepare",
+        "test_tools_java_gg_gravesandglory_maproutechecks_maproutechecks_standingcell",
+        "test_tools_java_gg_gravesandglory_maproutechecks_maproutechecks_preparehouse"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/MapRouteChecks.java",
+        "test-tools/java/gg/gravesandglory/Phase3Checks.java",
+        "test-tools/java/gg/gravesandglory/MeltyTest.java"
+      ]
+    },
+    {
+      "name": "Banner & Army Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase2checks_banners_servertick",
+        "test_tools_java_gg_gravesandglory_phase2checks_banners",
+        "test_tools_java_gg_gravesandglory_phase2checks_phase2checks_banner",
+        "test_tools_java_gg_gravesandglory_phase2checks_migration_importcache",
+        "test_tools_java_gg_gravesandglory_phase2checks_banners_lobbyview",
+        "test_tools_java_gg_gravesandglory_phase2checks_phase2checks_alive",
+        "test_tools_java_gg_gravesandglory_phase2checks_phase2checks_fixture"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java"
+      ]
+    },
+    {
+      "name": "Progression Gate Regression Tests",
+      "anchors": [
+        "test_tools_standalone_test_progression_gate_progressiongate",
+        "test_tools_standalone_test_progression_gate_progressiongate_analyse",
+        "test_tools_standalone_test_progression_gate_progressiongate_run_cli",
+        "test_tools_standalone_test_progression_gate_progressiongate_test_a_house_outside_the_band_in_both_runs_is_reported_not_failed",
+        "test_tools_standalone_test_progression_gate_progressiongate_test_big_share_delta_fails_rule_one",
+        "test_tools_standalone_test_progression_gate_progressiongate_test_cli_pass_and_fail_lines",
+        "test_tools_standalone_test_progression_gate_progressiongate_test_close_share_delta_passes_rule_one"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_progression_gate.py"
+      ]
+    },
+    {
+      "name": "Network Listener Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase1checks_listener",
+        "test_tools_java_gg_gravesandglory_phase1checks_listener_join",
+        "test_tools_java_gg_gravesandglory_phase2checks_target",
+        "test_tools_java_gg_gravesandglory_phase1checks_listener_listener",
+        "test_tools_java_gg_gravesandglory_phase1checks_listener_listener_object_net_minecraft_server_network_serverplaynetworkhandler_l135_sendpacket",
+        "test_tools_java_gg_gravesandglory_phase2checks_target_target",
+        "test_tools_java_gg_gravesandglory_phase2checks_target_isinvulnerableto"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase1Checks.java",
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java"
+      ]
+    },
+    {
+      "name": "Animation Frame Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase2checks_frame",
+        "test_tools_java_gg_gravesandglory_phase2checks_frame_watch",
+        "test_tools_java_gg_gravesandglory_phase2checks_frame_face",
+        "test_tools_java_gg_gravesandglory_phase2checks_frame_first",
+        "test_tools_java_gg_gravesandglory_phase2checks_frame_end",
+        "test_tools_java_gg_gravesandglory_phase2checks_frame_frame",
+        "test_tools_java_gg_gravesandglory_phase2checks_frame_near"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java",
+        "src/main/java/gg/gravesandglory/TroopModel.java"
+      ]
+    },
+    {
+      "name": "Face Texture Slots",
+      "anchors": [
+        "tools_build_skins_split_faces",
+        "tools_build_skins_box_rect",
+        "tools_build_skins_footprint",
+        "tools_build_skins_check_face_slots",
+        "tools_build_skins_face_slot_rects",
+        "tools_build_skins_paste_faces",
+        "tools_build_skins_reserve"
+      ],
+      "source_files": [
+        "tools/build_skins.py"
+      ]
+    },
+    {
+      "name": "Rank Network Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_ranknetworkchecks_ranknetworkchecks_host",
+        "test_tools_java_gg_gravesandglory_ranknetworkchecks_ranknetworkchecks",
+        "test_tools_java_gg_gravesandglory_ranknetworkchecks_ranknetworkchecks_guest",
+        "test_tools_java_gg_gravesandglory_ranknetworkchecks_ranknetworkchecks_prepare",
+        "test_tools_java_gg_gravesandglory_ranknetworkchecks_ranknetworkchecks_check",
+        "test_tools_java_gg_gravesandglory_ranknetworkchecks_ranknetworkchecks_line",
+        "test_tools_java_gg_gravesandglory_ranknetworkchecks_ranknetworkchecks_armoury"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/RankNetworkChecks.java"
+      ]
+    },
+    {
+      "name": "Troop Face Variants",
+      "anchors": [
+        "test_tools_standalone_troopfacescheck_troopfacescheck",
+        "src_main_java_gg_gravesandglory_troopfaces_troopfaces_variant",
+        "src_main_java_gg_gravesandglory_troopfaces_troopfaces",
+        "test_tools_standalone_troopfacescheck_troopfacescheck_check",
+        "src_main_java_gg_gravesandglory_troopfaces_troopfaces_pick",
+        "test_tools_standalone_troopfacescheck_troopfacescheck_main",
+        "test_tools_standalone_troopfacescheck_troopfacescheck_evenness"
+      ],
+      "source_files": [
+        "test-tools/standalone/TroopFacesCheck.java",
+        "src/main/java/gg/gravesandglory/TroopFaces.java"
+      ]
+    },
+    {
+      "name": "Harness Suite Registration",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase1checks_suite",
+        "test_tools_java_gg_gravesandglory_levelchecks_levelchecks",
+        "test_tools_java_gg_gravesandglory_faceschecks_faceschecks",
+        "test_tools_java_gg_gravesandglory_levelchecks_notbuilt",
+        "test_tools_java_gg_gravesandglory_rankchecks_rankchecks",
+        "test_tools_java_gg_gravesandglory_levelchecks_levelchecks_register",
+        "test_tools_java_gg_gravesandglory_abilitylevelchecks_abilitylevelchecks_register"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/LevelChecks.java",
+        "test-tools/java/gg/gravesandglory/FacesChecks.java",
+        "test-tools/java/gg/gravesandglory/Phase1Checks.java"
+      ]
+    },
+    {
+      "name": "Combat Type Ledger",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_typeledger_typeledger",
+        "test_tools_java_gg_gravesandglory_duelsimulation_duelsimulation_endfight",
+        "test_tools_java_gg_gravesandglory_typeledger_typeledger_tick",
+        "test_tools_java_gg_gravesandglory_typeledger_tracked",
+        "test_tools_java_gg_gravesandglory_typeledger_typeledger_row",
+        "test_tools_java_gg_gravesandglory_typeledger_row",
+        "test_tools_java_gg_gravesandglory_typeledger_tracked_tracked"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/TypeLedger.java",
+        "test-tools/java/gg/gravesandglory/DuelSimulation.java"
+      ]
+    },
+    {
+      "name": "House Sheet Validation Tests",
+      "anchors": [
+        "test_tools_standalone_test_preflight_houses_preflighthouses",
+        "test_tools_standalone_test_preflight_houses_preflighthouses_refused",
+        "test_tools_standalone_test_preflight_houses_preflighthouses_land",
+        "test_tools_standalone_test_preflight_houses_preflighthouses_test_partner_has_the_same_elevation_m",
+        "test_tools_standalone_test_preflight_houses_preflighthouses_test_another_landmark_must_keep_off_the_house",
+        "test_tools_standalone_test_preflight_houses_preflighthouses_test_partner_has_the_same_elevation",
+        "test_tools_standalone_test_preflight_houses_preflighthouses_house"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_preflight_houses.py"
+      ]
+    },
+    {
+      "name": "Level & Armoury Rules",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_levelmath_levelmath",
+        "src_main_java_gg_gravesandglory_levelmath_levelmath_botpicks",
+        "src_main_java_gg_gravesandglory_levelmath_buy",
+        "src_main_java_gg_gravesandglory_levelmath_levelmath_refusal",
+        "src_main_java_gg_gravesandglory_levelmath_levelmath_buystate",
+        "src_main_java_gg_gravesandglory_levelmath_levelmath_maxtier",
+        "src_main_java_gg_gravesandglory_levelmath_typestate"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/LevelMath.java"
+      ]
+    },
+    {
+      "name": "Level Arithmetic Tests",
+      "anchors": [
+        "test_tools_standalone_levelmathcheck_levelmathcheck_main",
+        "test_tools_standalone_levelmathcheck_levelmathcheck",
+        "src_main_java_gg_gravesandglory_levelmath_option",
+        "src_main_java_gg_gravesandglory_spec_botcommandrow",
+        "test_tools_standalone_levelmathcheck_levelmathcheck_reservekept",
+        "test_tools_standalone_levelmathcheck_levelmathcheck_troop",
+        "test_tools_standalone_levelmathcheck_levelmathcheck_picks"
+      ],
+      "source_files": [
+        "test-tools/standalone/LevelMathCheck.java",
+        "src/main/java/gg/gravesandglory/LevelMath.java",
+        "src/main/java/gg/gravesandglory/Spec.java"
+      ]
+    },
+    {
+      "name": "Simulation Sheet Overrides",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_botsimulation_botsimulation_oninitialize",
+        "test_tools_java_gg_gravesandglory_sheetoverride_sheetoverride",
+        "test_tools_java_gg_gravesandglory_sheetoverride_sheetoverride_applyfromproperty",
+        "test_tools_java_gg_gravesandglory_sheetoverride_sheetoverride_apply",
+        "test_tools_java_gg_gravesandglory_sheetoverride_sheetoverride_describe",
+        "test_tools_java_gg_gravesandglory_botsimulation_botsimulation_number",
+        "test_tools_java_gg_gravesandglory_botsimulation_botsimulation_tier"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/SheetOverride.java",
+        "test-tools/java/gg/gravesandglory/BotSimulation.java"
+      ]
+    },
+    {
+      "name": "Diagnostics Hooks",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_diagnostics_probe",
+        "src_main_java_gg_gravesandglory_diagnostics_diagnostics",
+        "src_main_java_gg_gravesandglory_diagnostics_diagnostics_tick",
+        "src_main_java_gg_gravesandglory_diagnostics_diagnostics_hidehud",
+        "src_main_java_gg_gravesandglory_diagnostics_diagnostics_selftest",
+        "src_main_java_gg_gravesandglory_diagnostics_diagnostics_start",
+        "src_main_java_gg_gravesandglory_diagnostics_probe_tick"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/Diagnostics.java"
+      ]
+    },
+    {
+      "name": "Supply House Routing",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_houseroute_houseroute_next",
+        "src_main_java_gg_gravesandglory_houseroute_houseroute",
+        "test_tools_standalone_houseroutecheck_houseroutecheck_main",
+        "test_tools_standalone_houseroutecheck_houseroutecheck",
+        "src_main_java_gg_gravesandglory_houseroute_houseroute_clear",
+        "src_main_java_gg_gravesandglory_houseroute_houseroute_inside",
+        "src_main_java_gg_gravesandglory_houseroute_houseroute_world"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/HouseRoute.java",
+        "test-tools/standalone/HouseRouteCheck.java"
+      ]
+    },
+    {
+      "name": "Local Test Evidence",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_localprobe_localprobe",
+        "test_tools_java_gg_gravesandglory_meltytest_meltytest",
+        "test_tools_java_gg_gravesandglory_meltytest_meltytest_active",
+        "test_tools_java_gg_gravesandglory_localprobe_localprobe_tick",
+        "test_tools_java_gg_gravesandglory_meltytest_meltytest_start",
+        "test_tools_java_gg_gravesandglory_localprobe_localprobe_active",
+        "test_tools_java_gg_gravesandglory_localprobe_localprobe_hidehud"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/LocalProbe.java",
+        "test-tools/java/gg/gravesandglory/MeltyTest.java",
+        "test-tools/java/gg/gravesandglory/VisualChecks.java"
+      ]
+    },
+    {
+      "name": "Evoker & Vindicator Units",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_armymob_armymob",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyevoker",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyvindicator",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyevoker_armyevoker",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyevoker_initgoals",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyevoker_shouldsave",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyvindicator_armyvindicator"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java",
+        "src/main/java/gg/gravesandglory/ArmyMob.java"
+      ]
+    },
+    {
+      "name": "Step Hop Regression Tests",
+      "anchors": [
+        "test_tools_standalone_stephopcheck_world",
+        "test_tools_standalone_stephopcheck_world_k",
+        "test_tools_standalone_stephopcheck_world_step",
+        "test_tools_standalone_stephopcheck_stephopcheck_main",
+        "test_tools_standalone_stephopcheck_stephopcheck",
+        "test_tools_standalone_stephopcheck_world_add",
+        "test_tools_standalone_stephopcheck_world_block"
+      ],
+      "source_files": [
+        "test-tools/standalone/StepHopCheck.java",
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Level Threshold Tests",
+      "anchors": [
+        "test_tools_standalone_levelmathcheck_wire",
+        "test_tools_standalone_levelmathcheck_wire_reader_object_levelmath_in_l56",
+        "test_tools_standalone_levelmathcheck_wire_reader",
+        "test_tools_standalone_levelmathcheck_wire_wire",
+        "test_tools_standalone_levelmathcheck_wire_b",
+        "test_tools_standalone_levelmathcheck_wire_bool",
+        "test_tools_standalone_levelmathcheck_wire_bytes"
+      ],
+      "source_files": [
+        "test-tools/standalone/LevelMathCheck.java"
+      ]
+    },
+    {
+      "name": "Preflight Rule Tests",
+      "anchors": [
+        "test_tools_standalone_test_preflight_rules_preflightrules",
+        "test_tools_standalone_test_preflight_rules_preflightrules_refuses",
+        "test_tools_standalone_test_preflight_rules_preflightrules_bot",
+        "test_tools_standalone_test_preflight_rules_preflightrules_run_preflight",
+        "test_tools_standalone_test_preflight_rules_preflightrules_test_every_difficulty_is_checked",
+        "test_tools_standalone_test_preflight_rules_preflightrules_test_gear_max_tier_runs_one_to_three",
+        "test_tools_standalone_test_preflight_rules_preflightrules_test_gear_priority_must_be_banner_role_or_open"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_preflight_rules.py"
+      ]
+    },
+    {
+      "name": "Economy Model",
+      "anchors": [
+        "tools_economy_model_main",
+        "tools_economy_model_house_gold",
+        "tools_economy_model_percentile",
+        "tools_economy_model_pools",
+        "tools_economy_model_sheets",
+        "tools_economy_model",
+        "tools_economy_model_rationale_1"
+      ],
+      "source_files": [
+        "tools/economy_model.py"
+      ]
+    },
+    {
+      "name": "Match Statistics",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_matchstats_matchstats",
+        "src_main_java_gg_gravesandglory_campscreen_campscreen_levelwords",
+        "src_main_java_gg_gravesandglory_matchstats_levelrow",
+        "src_main_java_gg_gravesandglory_matchstats_matchstats_leveltext",
+        "src_main_java_gg_gravesandglory_matchstats_matchstats_levelshort",
+        "src_main_java_gg_gravesandglory_matchstats_squadstats",
+        "src_main_java_gg_gravesandglory_matchstats_matchstats_mvp"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/MatchStats.java",
+        "src/main/java/gg/gravesandglory/CampScreen.java"
+      ]
+    },
+    {
+      "name": "Map Tour Harness",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_maptour_maptour",
+        "test_tools_java_gg_gravesandglory_maptour_maptour_oninitializeclient",
+        "test_tools_java_gg_gravesandglory_maptour_maptour_look",
+        "test_tools_java_gg_gravesandglory_maptour_view",
+        "test_tools_java_gg_gravesandglory_maptour_maptour_plan",
+        "test_tools_java_gg_gravesandglory_maptour_maptour_camera",
+        "test_tools_java_gg_gravesandglory_maptour_maptour_topdown"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/MapTour.java",
+        "src/main/java/gg/gravesandglory/Structures.java"
+      ]
+    },
+    {
+      "name": "Bear Army Unit",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_armybear",
+        "src_main_java_gg_gravesandglory_gravesandglory_armybear_armybear",
+        "src_main_java_gg_gravesandglory_gravesandglory_armybear_chooserandomangertime",
+        "src_main_java_gg_gravesandglory_gravesandglory_armybear_initgoals",
+        "src_main_java_gg_gravesandglory_gravesandglory_armybear_setangertime",
+        "src_main_java_gg_gravesandglory_gravesandglory_armybear_setangryat",
+        "src_main_java_gg_gravesandglory_gravesandglory_armybear_shouldsave"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Multiplayer Compatibility",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_versiongate_versiongate_registerserver",
+        "src_main_java_gg_gravesandglory_compatibilitypolicy_compatibilitypolicy",
+        "src_main_java_gg_gravesandglory_compatibilitypolicy_compatibilitypolicy_failure",
+        "src_main_java_gg_gravesandglory_compatibilitypolicy_compatibilitypolicy_required",
+        "test_tools_standalone_compatibilitypolicycheck_compatibilitypolicycheck_main",
+        "test_tools_standalone_compatibilitypolicycheck_compatibilitypolicycheck",
+        "test_tools_standalone_compatibilitypolicycheck_compatibilitypolicycheck_check"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/CompatibilityPolicy.java",
+        "test-tools/standalone/CompatibilityPolicyCheck.java",
+        "src/main/java/gg/gravesandglory/VersionGate.java"
+      ]
+    },
+    {
+      "name": "Kill & Assist Credit",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_creditlog_creditlog",
+        "src_main_java_gg_gravesandglory_creditlog_entry",
+        "src_main_java_gg_gravesandglory_creditlog_creditlog_put",
+        "src_main_java_gg_gravesandglory_creditlog_creditlog_trim",
+        "src_main_java_gg_gravesandglory_creditlog_creditlog_credited",
+        "src_main_java_gg_gravesandglory_creditlog_creditlog_hit",
+        "src_main_java_gg_gravesandglory_creditlog_creditlog_inwindow"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/CreditLog.java"
+      ]
+    },
+    {
+      "name": "Front Menu Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_frontmenuchecks_frontmenuchecks",
+        "test_tools_java_gg_gravesandglory_frontmenuchecks_frontmenuchecks_oninitializeclient",
+        "test_tools_java_gg_gravesandglory_frontmenuchecks_frontmenuchecks_controls",
+        "test_tools_java_gg_gravesandglory_frontmenuchecks_frontmenuchecks_find",
+        "src_main_java_gg_gravesandglory_packcontrols_packcontrols_prepare",
+        "test_tools_java_gg_gravesandglory_frontmenuchecks_frontmenuchecks_click",
+        "test_tools_java_gg_gravesandglory_frontmenuchecks_frontmenuchecks_report"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/FrontMenuChecks.java",
+        "src/main/java/gg/gravesandglory/PackControls.java"
+      ]
+    },
+    {
+      "name": "Player Admission Policy",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_admissionpolicy_admissionpolicy_decide",
+        "src_main_java_gg_gravesandglory_admissionpolicy_admissionpolicy",
+        "src_main_java_gg_gravesandglory_admissionpolicy_decision",
+        "test_tools_standalone_admissionpolicycheck_admissionpolicycheck",
+        "test_tools_standalone_admissionpolicycheck_admissionpolicycheck_main",
+        "src_main_java_gg_gravesandglory_admissionpolicy_seat",
+        "test_tools_standalone_admissionpolicycheck_admissionpolicycheck_seat"
+      ],
+      "source_files": [
+        "test-tools/standalone/AdmissionPolicyCheck.java",
+        "src/main/java/gg/gravesandglory/AdmissionPolicy.java"
+      ]
+    },
+    {
+      "name": "Front Menu",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_frontmenuscreen_frontmenuscreen",
+        "src_main_java_gg_gravesandglory_frontmenuscreen_frontmenuscreen_init",
+        "src_main_java_gg_gravesandglory_frontmenuscreen_frontmenuscreen_render",
+        "src_main_java_gg_gravesandglory_frontmenuscreen_frontmenuscreen_button",
+        "src_main_java_gg_gravesandglory_frontmenuscreen_frontmenuscreen_close",
+        "src_main_java_gg_gravesandglory_frontmenuscreen_frontmenuscreen_frontmenuscreen",
+        "src_main_java_gg_gravesandglory_frontmenuscreen_frontmenuscreen_maxtop"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/FrontMenuScreen.java"
+      ]
+    },
+    {
+      "name": "Model Rendering Cost Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase2checks_depthcost",
+        "test_tools_java_gg_gravesandglory_phase2checks_depth_costline",
+        "test_tools_java_gg_gravesandglory_phase2checks_depthcost_avgnear",
+        "test_tools_java_gg_gravesandglory_phase2checks_depthcost_avgrelief",
+        "test_tools_java_gg_gravesandglory_phase2checks_depthcost_mean",
+        "test_tools_java_gg_gravesandglory_phase2checks_depthcost_avgweapon",
+        "test_tools_java_gg_gravesandglory_phase2checks_depthcost_register"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java"
+      ]
+    },
+    {
+      "name": "Furniture Artwork",
+      "anchors": [
+        "tools_ui_art_v4a_furn_map_roll",
+        "tools_ui_art_v4a_furn_hit_cyl",
+        "tools_ui_art_v4a_furn_map_roll_ramp",
+        "tools_ui_art_v4a_furn_add",
+        "tools_ui_art_v4a_furn_dot",
+        "tools_ui_art_v4a_furn_map_roll_rib_px",
+        "tools_ui_art_v4a_furn_map_roll_proj"
+      ],
+      "source_files": [
+        "tools/ui_art/v4a_furn.py"
+      ]
+    },
+    {
+      "name": "Troop Copies & Stars",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_profile_owned",
+        "src_main_java_gg_gravesandglory_spec_raritiesrow",
+        "src_main_java_gg_gravesandglory_rostermath_rostermath_addcopy",
+        "src_main_java_gg_gravesandglory_rostermath_rostermath_maxstars",
+        "src_main_java_gg_gravesandglory_recruitpages_recruitpages_nextstarcopies",
+        "src_main_java_gg_gravesandglory_rostermath_rostermath_starfromcopies",
+        "test_tools_standalone_housescheck_housescheck_addcopyat"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/RosterMath.java",
+        "src/main/java/gg/gravesandglory/Profile.java",
+        "src/main/java/gg/gravesandglory/Spec.java"
+      ]
+    },
+    {
+      "name": "Weapon Mesh Geometry",
+      "anchors": [
+        "tools_build_skins_sprite_mesh",
+        "tools_build_skins_far_quads",
+        "tools_build_skins_runs",
+        "tools_build_skins_sprite_mesh_solid",
+        "tools_build_skins_sprite_mesh_whole",
+        "tools_build_skins_rationale_745",
+        "tools_build_skins_rationale_757"
+      ],
+      "source_files": [
+        "tools/build_skins.py"
+      ]
+    },
+    {
+      "name": "Drowned Army Unit",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_armydrowned",
+        "src_main_java_gg_gravesandglory_gravesandglory_armydrowned_armydrowned",
+        "src_main_java_gg_gravesandglory_gravesandglory_armydrowned_canconvertinwater",
+        "src_main_java_gg_gravesandglory_gravesandglory_armydrowned_initgoals",
+        "src_main_java_gg_gravesandglory_gravesandglory_armydrowned_isaffectedbydaylight",
+        "src_main_java_gg_gravesandglory_gravesandglory_armydrowned_shouldsave",
+        "drownedentity"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Husk Army Unit",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_armyhusk",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyhusk_armyhusk",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyhusk_canconvertinwater",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyhusk_initgoals",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyhusk_isaffectedbydaylight",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyhusk_shouldsave",
+        "huskentity"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Skeleton Army Unit",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_armyskeleton",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyskeleton_armyskeleton",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyskeleton_initgoals",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyskeleton_isaffectedbydaylight",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyskeleton_shouldsave",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyskeleton_updateattacktype",
+        "skeletonentity"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Stray Army Unit",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_armystray",
+        "src_main_java_gg_gravesandglory_gravesandglory_armystray_armystray",
+        "src_main_java_gg_gravesandglory_gravesandglory_armystray_initgoals",
+        "src_main_java_gg_gravesandglory_gravesandglory_armystray_isaffectedbydaylight",
+        "src_main_java_gg_gravesandglory_gravesandglory_armystray_shouldsave",
+        "src_main_java_gg_gravesandglory_gravesandglory_armystray_updateattacktype",
+        "strayentity"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Wither Skeleton Army Unit",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_armywither",
+        "src_main_java_gg_gravesandglory_gravesandglory_armywither_armywither",
+        "src_main_java_gg_gravesandglory_gravesandglory_armywither_initgoals",
+        "src_main_java_gg_gravesandglory_gravesandglory_armywither_isaffectedbydaylight",
+        "src_main_java_gg_gravesandglory_gravesandglory_armywither_shouldsave",
+        "src_main_java_gg_gravesandglory_gravesandglory_armywither_updateattacktype",
+        "witherskeletonentity"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Zombie Army Unit",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_armyzombie",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyzombie_armyzombie",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyzombie_canconvertinwater",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyzombie_initgoals",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyzombie_isaffectedbydaylight",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyzombie_shouldsave",
+        "zombieentity"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Stuck Unit Step Hop",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_stephop_probe",
+        "src_main_java_gg_gravesandglory_stephop_stephop",
+        "src_main_java_gg_gravesandglory_stephop_stephop_up",
+        "src_main_java_gg_gravesandglory_stephop_probe_floor",
+        "src_main_java_gg_gravesandglory_stephop_probe_open",
+        "src_main_java_gg_gravesandglory_stephop_stephop_stephop",
+        "src_main_java_gg_gravesandglory_stephop"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/StepHop.java"
+      ]
+    },
+    {
+      "name": "Ravager Army Unit",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_armyravager",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyravager_armyravager",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyravager_initgoals",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyravager_shouldsave",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyravager_tickmovement",
+        "ravagerentity"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Server Status Probe",
+      "anchors": [
+        "test_tools_standalone_server_status_probe_exact",
+        "test_tools_standalone_server_status_probe_readint",
+        "test_tools_standalone_server_status_probe_varint",
+        "test_tools_standalone_server_status_probe",
+        "test_tools_standalone_server_status_probe_rationale_1",
+        "socket"
+      ],
+      "source_files": [
+        "test-tools/standalone/server_status_probe.py"
+      ]
+    },
+    {
+      "name": "Harness Suite Runner",
+      "anchors": [
+        "docs_media_tools_run_suite",
+        "docs_media_tools_run_suite_graves_phase1_checks",
+        "docs_media_tools_run_suite_graves_roadmap_test_root",
+        "docs_media_tools_run_suite_java_home",
+        "docs_media_tools_run_suite_sh__entry"
+      ],
+      "source_files": [
+        "docs/media/tools/run-suite.sh"
+      ]
+    },
+    {
+      "name": "Golem Army Unit",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_armygolem",
+        "src_main_java_gg_gravesandglory_gravesandglory_armygolem_armygolem",
+        "src_main_java_gg_gravesandglory_gravesandglory_armygolem_initgoals",
+        "src_main_java_gg_gravesandglory_gravesandglory_armygolem_shouldsave",
+        "net_minecraft_entity_passive_irongolementity"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Pillager Army Unit",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_armypillager",
+        "src_main_java_gg_gravesandglory_gravesandglory_armypillager_armypillager",
+        "src_main_java_gg_gravesandglory_gravesandglory_armypillager_initgoals",
+        "src_main_java_gg_gravesandglory_gravesandglory_armypillager_shouldsave",
+        "pillagerentity"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Spider Army Unit",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_armyspider",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyspider_armyspider",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyspider_initgoals",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyspider_shouldsave",
+        "spiderentity"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Armoury Packet Decoding",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_levelmath_levelmath_decodearmoury",
+        "src_main_java_gg_gravesandglory_levelmath_in",
+        "src_main_java_gg_gravesandglory_levelmath_in_b",
+        "src_main_java_gg_gravesandglory_levelmath_in_bool",
+        "src_main_java_gg_gravesandglory_levelmath_in_str"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/LevelMath.java"
+      ]
+    },
+    {
+      "name": "Gear & Level Multipliers",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_spec_geartiersrow",
+        "src_main_java_gg_gravesandglory_levelmath_levelmath_damagefactor",
+        "src_main_java_gg_gravesandglory_levelmath_levelmath_tierrow",
+        "src_main_java_gg_gravesandglory_levelmath_levelmath_levelrow",
+        "src_main_java_gg_gravesandglory_spec_levelsrow"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/LevelMath.java",
+        "src/main/java/gg/gravesandglory/Spec.java"
+      ]
+    },
+    {
+      "name": "Armoury Packet Encoding",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_levelmath_levelmath_encodearmoury",
+        "src_main_java_gg_gravesandglory_levelmath_out",
+        "src_main_java_gg_gravesandglory_levelmath_out_b",
+        "src_main_java_gg_gravesandglory_levelmath_out_bool",
+        "src_main_java_gg_gravesandglory_levelmath_out_str"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/LevelMath.java"
+      ]
+    },
+    {
+      "name": "Duel Simulation Phases",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_duelsimulation_phase",
+        "test_tools_java_gg_gravesandglory_duelsimulation_phase_done",
+        "test_tools_java_gg_gravesandglory_duelsimulation_phase_fight",
+        "test_tools_java_gg_gravesandglory_duelsimulation_phase_gap",
+        "test_tools_java_gg_gravesandglory_duelsimulation_phase_wait"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/DuelSimulation.java"
+      ]
+    },
+    {
+      "name": "Rendering Cost Metrics",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase2checks_rendercost",
+        "test_tools_java_gg_gravesandglory_phase2checks_rendercost_register",
+        "test_tools_java_gg_gravesandglory_phase2checks_rendercost_rendered",
+        "test_tools_java_gg_gravesandglory_phase2checks_rendercost_start",
+        "test_tools_java_gg_gravesandglory_phase2checks_rendercost_summary"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java"
+      ]
+    },
+    {
+      "name": "Gradle Wrapper",
+      "anchors": [
+        "gradlew",
+        "gradlew__entry",
+        "gradlew_die",
+        "gradlew_warn"
+      ],
+      "source_files": [
+        "gradlew"
+      ]
+    },
+    {
+      "name": "Packet Writer Utilities",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_battle_wire_object_levelmath_out_l1064",
+        "src_main_java_gg_gravesandglory_gravesandglory_battle_wire_object_levelmath_out_l1064_b",
+        "src_main_java_gg_gravesandglory_gravesandglory_battle_wire_object_levelmath_out_l1064_bool",
+        "src_main_java_gg_gravesandglory_gravesandglory_battle_wire_object_levelmath_out_l1064_str"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Balance Simulation Launcher",
+      "anchors": [
+        "tools_balance_sim",
+        "tools_balance_sim_graves_roadmap_server_root",
+        "tools_balance_sim_java_home",
+        "tools_balance_sim_sh__entry"
+      ],
+      "source_files": [
+        "tools/balance_sim.sh"
+      ]
+    },
+    {
+      "name": "UI Art Delivery",
+      "anchors": [
+        "docs_media_tools_deliver",
+        "docs_media_tools_deliver_enc",
+        "docs_media_tools_deliver_sh__entry"
+      ],
+      "source_files": [
+        "docs/media/tools/deliver.sh"
+      ]
+    },
+    {
+      "name": "UI Art Delivery Helpers",
+      "anchors": [
+        "docs_media_tools_deliver2",
+        "docs_media_tools_deliver2_enc",
+        "docs_media_tools_deliver2_sh__entry"
+      ],
+      "source_files": [
+        "docs/media/tools/deliver2.sh"
+      ]
+    },
+    {
+      "name": "Test Random Number Source",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase2checks_engine_fixed_object_java_util_random_randomgenerator_l419",
+        "test_tools_java_gg_gravesandglory_phase2checks_engine_fixed_object_java_util_random_randomgenerator_l419_nextint",
+        "test_tools_java_gg_gravesandglory_phase2checks_engine_fixed_object_java_util_random_randomgenerator_l419_nextlong"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java"
+      ]
+    },
+    {
+      "name": "Gradle Build",
+      "anchors": [
+        "build"
+      ],
+      "source_files": [
+        "build.gradle"
+      ]
+    },
+    {
+      "name": "Gradle Settings",
+      "anchors": [
+        "settings"
+      ],
+      "source_files": [
+        "settings.gradle"
+      ]
+    },
+    {
+      "name": "Isolated Client Tests",
+      "anchors": [
+        "test_tools_isolated_checks"
+      ],
+      "source_files": [
+        "test-tools/isolated-checks.gradle"
+      ]
+    },
+    {
+      "name": "Isolated Server Tests",
+      "anchors": [
+        "test_tools_isolated_server"
+      ],
+      "source_files": [
+        "test-tools/isolated-server.gradle"
+      ]
+    },
+    {
+      "name": "Library Diagnostics",
+      "anchors": [
+        "tools_diagnose_libraries"
+      ],
+      "source_files": [
+        "tools/diagnose-libraries.gradle"
+      ]
+    },
+    {
+      "name": "UI Art Preview Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_uikitsheet_uikitsheet",
+        "test_tools_java_gg_gravesandglory_phase1checks_uiartchecks_step",
+        "test_tools_java_gg_gravesandglory_phase1checks_uiartchecks",
+        "test_tools_java_gg_gravesandglory_phase1checks_uiartchecks_shoot",
+        "test_tools_java_gg_gravesandglory_uikitsheet_item",
+        "test_tools_java_gg_gravesandglory_uikitsheet_uikitsheet_items",
+        "test_tools_java_gg_gravesandglory_phase1checks_uiartchecks_atlas"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/UiKitSheet.java",
+        "test-tools/java/gg/gravesandglory/Phase1Checks.java"
+      ]
+    },
+    {
+      "name": "Cinematic HUD Overlays",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_mixin_cinematichudmixin_cinematichudmixin_gravesandglorycinematic",
+        "src_main_java_gg_gravesandglory_mixin_cinematichudmixin_cinematichudmixin",
+        "src_main_java_gg_gravesandglory_mixin_entranceoverlaymixin_entranceoverlaymixin_gravesandglorybars",
+        "test_tools_java_gg_gravesandglory_testing_mixin_storystillsposemixin_storystillsposemixin_gravesandglorytest_storypose",
+        "src_main_java_gg_gravesandglory_mixin_entranceoverlaymixin_entranceoverlaymixin",
+        "src_main_java_gg_gravesandglory_mixin_cinematichudmixin_cinematichudmixin_gravesandglorycamp",
+        "test_tools_java_gg_gravesandglory_testing_mixin_titledemoposemixin_titledemoposemixin_gravesandglorytest_titledemopose"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/mixin/CinematicHudMixin.java",
+        "src/main/java/gg/gravesandglory/mixin/EntranceOverlayMixin.java",
+        "test-tools/java/gg/gravesandglory/testing/mixin/StoryStillsPoseMixin.java"
+      ]
+    },
+    {
+      "name": "UI Icon & Window Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase1checks_uiiconschecks_step",
+        "test_tools_java_gg_gravesandglory_phase1checks_phase1checks_window",
+        "test_tools_java_gg_gravesandglory_phase1checks_uiiconschecks",
+        "test_tools_java_gg_gravesandglory_phase1checks_uiiconschecks_hudsweep",
+        "test_tools_java_gg_gravesandglory_phase1checks_uiiconschecks_real",
+        "src_main_java_gg_gravesandglory_battlehud_battlehud_texts",
+        "test_tools_java_gg_gravesandglory_phase1checks_uiiconschecks_end"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase1Checks.java",
+        "src/main/java/gg/gravesandglory/BattleHud.java",
+        "src/main/java/gg/gravesandglory/WarTablePages.java"
+      ]
+    },
+    {
+      "name": "Interactive Command Playtest",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_revisionchecks_revisionchecks_oninitializeclient",
+        "test_tools_java_gg_gravesandglory_commandplaytest_commandplaytest_oninitializeclient",
+        "test_tools_java_gg_gravesandglory_commandplaytest_commandplaytest",
+        "test_tools_java_gg_gravesandglory_revisionchecks_revisionchecks",
+        "src_main_java_gg_gravesandglory_commandmode_commandmode_ping",
+        "src_main_java_gg_gravesandglory_gravesandgloryclient_mapscreen_mouseclicked",
+        "test_tools_java_gg_gravesandglory_commandplaytest_commandplaytest_server"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/CommandPlaytest.java",
+        "test-tools/java/gg/gravesandglory/RevisionChecks.java",
+        "src/main/java/gg/gravesandglory/CommandMode.java"
+      ]
+    },
+    {
+      "name": "Chat Text Metrics",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_chatplacement_chatplacement_lift",
+        "src_main_java_gg_gravesandglory_mixin_chathudaccessor_chathudaccessor",
+        "src_main_java_gg_gravesandglory_mixin_chathudaccessor_chathudaccessor_gravesandglory_getlineheight",
+        "src_main_java_gg_gravesandglory_mixin_livingentityrendereraccessor_livingentityrendereraccessor_gravesandglory_scale",
+        "src_main_java_gg_gravesandglory_mixin_chathudaccessor_chathudaccessor_gravesandglory_ischatfocused",
+        "src_main_java_gg_gravesandglory_chatplacement",
+        "src_main_java_gg_gravesandglory_mixin_chathudaccessor"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/mixin/ChatHudAccessor.java",
+        "src/main/java/gg/gravesandglory/ChatPlacement.java",
+        "src/main/java/gg/gravesandglory/mixin/LivingEntityRendererAccessor.java"
+      ]
+    },
+    {
+      "name": "Map Cache Markers",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_campaign_campaign_cached",
+        "src_main_java_gg_gravesandglory_layoutmarker_layoutmarker",
+        "src_main_java_gg_gravesandglory_campaign_campaign_built",
+        "test_tools_standalone_layoutmarkercheck_layoutmarkercheck_main",
+        "test_tools_standalone_layoutmarkercheck_layoutmarkercheck",
+        "src_main_java_gg_gravesandglory_campaign_campaign_layoutfile",
+        "src_main_java_gg_gravesandglory_layoutmarker_layoutmarker_current"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/LayoutMarker.java",
+        "test-tools/standalone/LayoutMarkerCheck.java",
+        "src/main/java/gg/gravesandglory/Campaign.java"
+      ]
+    },
+    {
+      "name": "Walkthrough Path Search",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase3checks_walk",
+        "test_tools_java_gg_gravesandglory_phase3checks_walk_free",
+        "test_tools_java_gg_gravesandglory_phase3checks_walk_search",
+        "test_tools_java_gg_gravesandglory_phase3checks_walk_stand",
+        "test_tools_java_gg_gravesandglory_phase3checks_walk_climb",
+        "test_tools_java_gg_gravesandglory_phase3checks_walk_floor",
+        "test_tools_java_gg_gravesandglory_phase3checks_walk_top"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase3Checks.java"
+      ]
+    },
+    {
+      "name": "Wolf Army Unit",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_armywolf",
+        "src_main_java_gg_gravesandglory_gravesandglory_armywolf_armywolf",
+        "src_main_java_gg_gravesandglory_gravesandglory_armywolf_chooserandomangertime",
+        "src_main_java_gg_gravesandglory_gravesandglory_armywolf_initgoals",
+        "src_main_java_gg_gravesandglory_gravesandglory_armywolf_setangertime",
+        "src_main_java_gg_gravesandglory_gravesandglory_armywolf_setangryat",
+        "src_main_java_gg_gravesandglory_gravesandglory_armywolf_shouldsave"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Camp Screen Interaction Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_campredesignchecks_campredesignchecks_oninitializeclient",
+        "test_tools_java_gg_gravesandglory_campredesignchecks_campredesignchecks",
+        "test_tools_java_gg_gravesandglory_campredesignchecks_campredesignchecks_server",
+        "test_tools_java_gg_gravesandglory_campredesignchecks_campredesignchecks_check",
+        "test_tools_java_gg_gravesandglory_campredesignchecks_campredesignchecks_press",
+        "test_tools_java_gg_gravesandglory_campredesignchecks_campredesignchecks_shot",
+        "test_tools_java_gg_gravesandglory_campredesignchecks_campredesignchecks_toggleready"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/CampRedesignChecks.java"
+      ]
+    },
+    {
+      "name": "Vanilla Hunger HUD Control",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_mixin_hungerhudmixin_hungerhudmixin",
+        "src_main_java_gg_gravesandglory_mixin_hungerhudmixin_hungerhudmixin_gravesandglory_food",
+        "src_main_java_gg_gravesandglory_mixin_hungerhudmixin",
+        "net_minecraft_client_gui_hud_ingamehud",
+        "com_llamalad7_mixinextras_injector_v2_wrapwithcondition",
+        "battlehud",
+        "slice"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/mixin/HungerHudMixin.java"
+      ]
+    },
+    {
+      "name": "Camp Multiplayer Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_campnetworkchecks_campnetworkchecks_oninitializeclient",
+        "test_tools_java_gg_gravesandglory_campnetworkchecks_campnetworkchecks",
+        "test_tools_java_gg_gravesandglory_campnetworkchecks_campnetworkchecks_server",
+        "test_tools_java_gg_gravesandglory_campnetworkchecks_campnetworkchecks_check",
+        "test_tools_java_gg_gravesandglory_campnetworkchecks_campnetworkchecks_connect",
+        "test_tools_java_gg_gravesandglory_campnetworkchecks_fileswrite",
+        "test_tools_java_gg_gravesandglory_campnetworkchecks_fileswrite_done"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/CampNetworkChecks.java"
+      ]
+    },
+    {
+      "name": "Visual Inspection Harness",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_visualchecks_visualchecks",
+        "test_tools_java_gg_gravesandglory_visualchecks_visualchecks_tick",
+        "test_tools_java_gg_gravesandglory_visualchecks_visualchecks_camera",
+        "test_tools_java_gg_gravesandglory_visualchecks_visualchecks_shot",
+        "test_tools_java_gg_gravesandglory_localprobe_localprobe_hidehud",
+        "test_tools_java_gg_gravesandglory_visualchecks_visualchecks_hidehud",
+        "test_tools_java_gg_gravesandglory_visualchecks_visualchecks_posing"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/VisualChecks.java",
+        "test-tools/java/gg/gravesandglory/LocalProbe.java"
+      ]
+    },
+    {
+      "name": "Release Harness Exclusion Tests",
+      "anchors": [
+        "test_tools_standalone_test_release_integrity_releaseintegritychecks",
+        "test_tools_standalone_test_release_integrity_releaseintegritychecks_fixture",
+        "test_tools_standalone_test_release_integrity_releaseintegritychecks_test_every_harness_class_is_refused",
+        "test_tools_standalone_test_release_integrity_releaseintegritychecks_test_harness_and_service_provider_rejection",
+        "test_tools_standalone_test_release_integrity_releaseintegritychecks_test_identity_and_stale_build_rejection",
+        "test_tools_standalone_test_release_integrity_rationale_42"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_release_integrity.py"
+      ]
+    },
+    {
+      "name": "Vindicator Army Unit",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_armyvindicator",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyvindicator_armyvindicator",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyvindicator_initgoals",
+        "src_main_java_gg_gravesandglory_gravesandglory_armyvindicator_shouldsave",
+        "vindicatorentity"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java"
+      ]
+    },
+    {
+      "name": "Bot Army Eligibility",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase2checks_phase2checks_fieldable",
+        "src_main_java_gg_gravesandglory_spec_botbannersrow",
+        "test_tools_java_gg_gravesandglory_phase2checks_phase2checks_housefieldable"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java",
+        "src/main/java/gg/gravesandglory/Spec.java"
+      ]
+    },
+    {
+      "name": "Troop Depth Visual Checks",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_troopmodels_troopmodels_model",
+        "test_tools_java_gg_gravesandglory_phase2checks_depth",
+        "test_tools_java_gg_gravesandglory_phase2checks_stage_camera",
+        "test_tools_java_gg_gravesandglory_phase2checks_stage_post",
+        "test_tools_java_gg_gravesandglory_phase2checks_depth_step",
+        "src_main_java_gg_gravesandglory_troopmodels_troopmodels_weapon",
+        "test_tools_java_gg_gravesandglory_phase2checks_depth_bowstage"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase2Checks.java",
+        "src/main/java/gg/gravesandglory/TroopModels.java",
+        "src/main/java/gg/gravesandglory/TroopModel.java"
+      ]
+    },
+    {
+      "name": "Rank Portrait Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_rankchecks_ranks_step",
+        "src_main_java_gg_gravesandglory_armycards_armycards_portrait",
+        "test_tools_java_gg_gravesandglory_rankchecks_ranks",
+        "src_main_java_gg_gravesandglory_ranksync_ranksync",
+        "src_main_java_gg_gravesandglory_ranksync_rank",
+        "src_main_java_gg_gravesandglory_armymobs_armymobs",
+        "src_main_java_gg_gravesandglory_armymobs_armymobs_levelname"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/RankSync.java",
+        "test-tools/java/gg/gravesandglory/RankChecks.java",
+        "src/main/java/gg/gravesandglory/ArmyMobs.java"
+      ]
+    },
+    {
+      "name": "Battle Feed UI Checks",
+      "anchors": [
+        "test_tools_java_gg_gravesandglory_phase1checks_uifeedchecks_step",
+        "test_tools_java_gg_gravesandglory_phase1checks_uifeedchecks",
+        "test_tools_java_gg_gravesandglory_phase1checks_serverwatch",
+        "test_tools_java_gg_gravesandglory_phase1checks_uileavechecks_held",
+        "test_tools_java_gg_gravesandglory_phase1checks_uileavechecks_records",
+        "test_tools_java_gg_gravesandglory_phase1checks_uileavechecks_step",
+        "test_tools_java_gg_gravesandglory_phase1checks_uileavechecks"
+      ],
+      "source_files": [
+        "test-tools/java/gg/gravesandglory/Phase1Checks.java",
+        "src/main/java/gg/gravesandglory/EventFeed.java",
+        "src/main/java/gg/gravesandglory/BattleHud.java"
+      ]
+    },
+    {
+      "name": "Animation State & Tracks",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_troopanimator_state",
+        "src_main_java_gg_gravesandglory_troopanimator_channel",
+        "src_main_java_gg_gravesandglory_troopanimator_track",
+        "src_main_java_gg_gravesandglory_troopanimator_state_update",
+        "src_main_java_gg_gravesandglory_troopanimator_channel_live",
+        "src_main_java_gg_gravesandglory_troopanimator_track_fadeout",
+        "src_main_java_gg_gravesandglory_troopanimator_channel_restart"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/TroopAnimator.java"
+      ]
+    },
+    {
+      "name": "UI Buttons & Camp Hints",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_uibutton_uibutton",
+        "src_main_java_gg_gravesandglory_uicanvas_uicanvas_hudk",
+        "src_main_java_gg_gravesandglory_uicanvas_uicanvas",
+        "src_main_java_gg_gravesandglory_gravesandgloryclient_gravesandgloryclient_campslips",
+        "src_main_java_gg_gravesandglory_uicanvas_uicanvas_window",
+        "src_main_java_gg_gravesandglory_uibutton_uibutton_renderbutton",
+        "src_main_java_gg_gravesandglory_uicanvas_uicanvas_scissor"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/UiButton.java",
+        "src/main/java/gg/gravesandglory/UiCanvas.java",
+        "src/main/java/gg/gravesandglory/WarTableHome.java"
+      ]
+    },
+    {
+      "name": "Combat Integration References",
+      "anchors": [
+        "src_main_java_gg_gravesandglory_gravesandglory_armysupplybanner_interactat",
+        "src_main_java_gg_gravesandglory_gravesandglory_armywolf_interactmob",
+        "src_main_java_gg_gravesandglory_abilities",
+        "src_main_java_gg_gravesandglory_commander",
+        "src_main_java_gg_gravesandglory_projectiles",
+        "test_tools_java_gg_gravesandglory_abilitylevelchecks",
+        "src_main_java_gg_gravesandglory_commandmode"
+      ],
+      "source_files": [
+        "src/main/java/gg/gravesandglory/GravesAndGlory.java",
+        "src/main/java/gg/gravesandglory/Abilities.java",
+        "src/main/java/gg/gravesandglory/BattleEffects.java"
+      ]
+    },
+    {
+      "name": "Skin Export Verification",
+      "anchors": [
+        "tools_build_skins_export",
+        "tools_build_skins_verify",
+        "test_tools_standalone_test_build_skins_data_url",
+        "tools_build_skins_differs",
+        "tools_build_skins_embedded_png",
+        "tools_build_skins_pixels",
+        "tools_build_skins_listed"
+      ],
+      "source_files": [
+        "tools/build_skins.py",
+        "test-tools/standalone/test_build_skins.py"
+      ]
+    },
+    {
+      "name": "Blockbench Weapon Rule Tests",
+      "anchors": [
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_bbmodel_weapon_rules",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_bbmodel_weapon_checks_name_the_cubes",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_bbmodel_weapon_rules_edit",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_bbmodel_weapon_rules_other_texture",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_bbmodel_weapon_rules_stretched",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_bbmodel_weapon_rules_not_a_png",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_bbmodel_weapon_rules_off_sheet"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_build_skins.py"
+      ]
+    },
+    {
+      "name": "Model Bounds & Transforms",
+      "anchors": [
+        "tools_build_skins_world",
+        "tools_build_skins_bounds",
+        "tools_build_skins_rotation",
+        "tools_build_skins_mat_mul",
+        "tools_build_skins_corners",
+        "tools_build_skins_rationale_471",
+        "tools_build_skins_rationale_480"
+      ],
+      "source_files": [
+        "tools/build_skins.py"
+      ]
+    },
+    {
+      "name": "Troop Contact Sheet Tests",
+      "anchors": [
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_contact_sheet",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_contact_sheet_band",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_contact_sheet_lettered",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_contact_sheet_picture",
+        "test_tools_standalone_test_build_skins_rationale_2896"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_build_skins.py"
+      ]
+    },
+    {
+      "name": "Contact Sheet Contrast Tests",
+      "anchors": [
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_contact_contrast",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_contact_contrast_brightest",
+        "test_tools_standalone_test_build_skins_rationale_2962"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_build_skins.py"
+      ]
+    },
+    {
+      "name": "Material Normal Map Tests",
+      "anchors": [
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_material_maps_tilt_follows_the_density",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_material_maps_tilt_follows_the_density_left_edge",
+        "test_tools_standalone_test_build_skins_rationale_1974"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_build_skins.py"
+      ]
+    },
+    {
+      "name": "Skin Template Painting Tests",
+      "anchors": [
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_template",
+        "test_tools_standalone_test_build_skins_buildskinschecks_test_template_shade",
+        "test_tools_standalone_test_build_skins_rationale_705"
+      ],
+      "source_files": [
+        "test-tools/standalone/test_build_skins.py"
+      ]
+    },
+    {
+      "name": "Colour Contrast Utilities",
+      "anchors": [
+        "tools_build_skins_contrast",
+        "tools_build_skins_contrast_luminance",
+        "tools_build_skins_rationale_1864"
+      ],
+      "source_files": [
+        "tools/build_skins.py"
+      ]
+    }
+  ]
+}

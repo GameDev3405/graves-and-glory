@@ -1,5 +1,6 @@
 """Local AST-only graph refresh and content-based freshness, including dirty files."""
 import argparse, hashlib, json, os, pathlib, shutil, subprocess, sys
+from graph_labels import apply_labels
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 OUT=ROOT/'graphify-out'
 def inputs():
@@ -29,6 +30,11 @@ def refresh():
     OUT.mkdir(exist_ok=True)
     for p in (stage/'graphify-out').iterdir():
         if p.is_file(): shutil.copy2(p,OUT/p.name)
+    apply_labels(OUT)
+    with log.open('a',encoding='utf8') as out:
+        result=subprocess.run(['graphify','export','html','--graph',str(OUT/'graph.json')],
+                              cwd=ROOT,env=env,stdout=out,stderr=subprocess.STDOUT)
+        if result.returncode: raise RuntimeError('Graph viewer export failed; see '+str(log))
     (OUT/'source-state.json').write_text(json.dumps(dict(inputs=before,graph_sha256=hashlib.sha256((OUT/'graph.json').read_bytes()).hexdigest(),
         head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT).decode().strip()),indent=2))
     print('Graph refreshed locally; '+str(len(graph['nodes']))+' nodes; log '+str(log))

@@ -15,7 +15,7 @@ python tools/verify.py release --offline
 
 The first build fills the Gradle cache and needs network access unless already cached. Offline verification reports missing dependencies as failures. JAVA_HOME takes priority; the runner can discover an installed Adoptium 17 or a PATH JDK 17. It does not change machine settings. Gradle distribution and wrapper JAR checksums were verified against services.gradle.org when installed; the distribution checksum remains pinned in gradle-wrapper.properties. Python dependency versions are recorded in requirements-dev.txt.
 
-Fast runs preflight, 155 unittest cases (153 existing plus two verification-safety regressions), script checks, asset verification, 15 standalone Java checks, the mod build and harness compilation. It never launches Minecraft. Preflight regenerates Spec.java and sheets/preflight.json; hashes before/after are saved, never blindly discarded. Do not share a writing checkout with another worker.
+Fast runs preflight, the Python unittest suite, script checks, asset verification, 15 standalone Java checks, the mod build and harness compilation. It never launches Minecraft. Preflight regenerates Spec.java and sheets/preflight.json; hashes before/after are saved, never blindly discarded. Do not share a writing checkout with another worker.
 
 Game runs fast then a real isolated Phase 1 combat client suite, requiring its exact completion marker. It is a smoke check, not six-player, visual or full lobby/rewards acceptance. The Windows process guard defers if any Minecraft client is running. No player process is terminated; only a timed-out process tree created by this runner is stopped. Runs live under work/verify/<timestamp-pid>/game. Runtime is capped at 30 minutes. The existing four-client ceiling remains; this conservative runner uses one client and refuses concurrent clients.
 
@@ -24,6 +24,8 @@ Release runs fast then strict package.py and verify_package.py, checking source 
 Every run saves result.json, exact commands/exit codes, full logs, source identity and generated-file hashes in work/verify. Failures return nonzero with a short excerpt. Preserve candidate artifacts under unique paths before rebuilding; update releases/current-candidate.json only with checks for that exact identity. Old sheets/verification.json evidence is historical unless its identity matches.
 
 ## Graph and Claude setup
+
+The viewer uses readable code-group names from docs/graph-labels.json. Names are matched to reviewed symbol anchors, so cluster renumbering does not rename a group to an unrelated subsystem. Newly discovered groups fall back to their actual file/symbol names. tools/graph_state.py refresh applies these names and regenerates graph.html after local clustering, with no external naming model. The names describe inferred code groups, not strict gameplay architecture boundaries.
 
 Graphify 0.9.93 is installed as the uv tool graphifyy; no automatic upgrade. `python tools/graph_state.py refresh` uses local AST extraction and no-label clustering. `python tools/graph_state.py check` verifies content hashes, including dirty/untracked code inputs and the graph. Read known files directly; bounded graph queries help unfamiliar relationships. Groovy extraction is incomplete; use direct source for Gradle files.
 

@@ -24,7 +24,7 @@ Approved by Kort on 2026-10-25 by requesting execution of optimization proposal 
 ## Navigation and Graphify
 - Read known file locations directly. For unfamiliar relationships, first check `python tools/graph_state.py check`, then bounded queries: `graphify query "question" --budget 1200 --graph <this-checkout>/graphify-out/graph.json`. Confirm results in source.
 - Missing/stale/irrelevant/failing graph: use rg promptly; do not query-loop. A different branch's graph is not current evidence.
-- After meaningful source batches/integration, run `python tools/graph_state.py refresh`. It uses Graphify 0.9.93 local AST extraction, GRAPHIFY_BACKEND=none and no-label clustering; the freshness record hashes dirty inputs and the graph. Do not run semantic docs/images indexing until a small experiment is approved. Do not upgrade Graphify automatically.
+- After meaningful source batches/integration, run `python tools/graph_state.py refresh`. It uses Graphify 0.9.93 local AST extraction, GRAPHIFY_BACKEND=none and no-label clustering, then applies readable local names from `docs/graph-labels.json` and rebuilds the HTML viewer. Names follow reviewed symbol anchors rather than changing cluster numbers; new groups fall back to actual file/symbol names. This naming step makes no external model calls. The freshness record hashes dirty inputs and the graph. Do not run semantic docs/images indexing until a small experiment is approved. Do not upgrade Graphify automatically.
 - Project-owned hook configuration is in tools/claude-hooks.json. Hooks are advisory, not a requirement to graph-query every known file. See SETUP.md for installation/testing. Never edit installed plugin caches as the durable fix.
 
 ## Sustainable execution
