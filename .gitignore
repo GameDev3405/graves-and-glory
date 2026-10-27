@@ -21,6 +21,7 @@ __pycache__/
 *upload-plan*.json
 
 # Local session state and scratch runs
-.claude/
+.claude/*
+!.claude/skills/
 work/
 .superpowers/
