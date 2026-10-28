@@ -62,8 +62,8 @@ public final class BipedClips {
      * The shield arm comes up to -40 and stays there, as the gilded thrust held it.
      */
     static Clip cut(){
-        return new Clip("attack").rot("right_arm",0,0,0,0, .12f,-135,0,40, .25f,-70,-25,8, .33f,-40,-25,0, .5f,0,0,0)
-            .rot("right_hand",0,0,0,0, .12f,-20,0,0, .25f,40,0,0, .33f,45,0,0, .5f,0,0,0)
+        return new Clip("attack").rot("right_arm",0,0,0,0, .12f,-135,15,45, .19f,-110,10,35, .25f,-70,-10,12, .33f,-40,-25,0, .5f,0,0,0)
+            .rot("right_hand",0,0,0,0, .12f,0,0,0, .19f,15,0,0, .25f,40,0,0, .33f,45,0,0, .5f,0,0,0)
             .rot("body",0,0,0,0, .12f,-6,25,0, .25f,12,-18,0, .33f,10,-22,0, .5f,0,0,0)
             .rot("head",0,0,0,0, .12f,-4,-12,0, .25f,6,10,0, .5f,0,0,0)
             .rot("left_arm",0,-40,0,0, .4f,-40,0,0, .5f,0,0,0)
@@ -84,7 +84,7 @@ public final class BipedClips {
         m.put("run",new Clip("run").wave("right_leg",0,0,-48,0,1).wave("left_leg",0,0,48,0,1).wave("right_arm",0,-30,12,0,1).wave("left_arm",0,0,-30,0,1)
             .hold("right_arm",0,0,8).hold("right_hand",w+5,0,0).hold("body",14,0,0).hold("head",-12,0,0).build());
         m.put("attack",cut().hold("right_arm",-8,0,6).hold("right_hand",w,0,0).build());
-        m.put("hit",hit().hold("right_arm",-8,0,6).hold("right_hand",w,0,0).rot("right_hand",0,0,0,0, .08f,-25,0,0, .3f,0,0,0).build());
+        m.put("hit",hit().hold("right_arm",-8,0,6).hold("right_hand",w,0,0).rot("right_hand",0,0,0,0, .08f,20,0,0, .3f,0,0,0).build());
         m.put("death",death().hold("right_hand",w,0,0).build());
         m.put("hold",new Clip("hold").hold("right_arm",-30,0,6).hold("left_arm",-20,0,0).hold("right_hand",w+30,0,0).wave("body",2,0,1,0,1).build());
         m.put("brace",new Clip("brace").pos("root",0,0,-1,0, 2,0,-1,0).hold("right_leg",-15,0,0).hold("left_leg",15,0,0)
@@ -98,20 +98,37 @@ public final class BipedClips {
      * arm's pitch back (-90 + arm + wrist = -80 keeps the top 10 degrees forward) and its roll back, so the shaft never leans into the hood.
      * The cast: the staff raised before the caster, lifting on the pulse, the off hand open ahead.
      */
+    /** The staff's wrist at rest: from the arm at -30 the top 25 degrees forward (-90 - 30 + 55 = -65 below level ahead), clear of the forearm. */
+    static final float STAFF_WRIST=55f;
+    /**
+     * A bow in the hanging hand (the Order Archer's and Longbow's idle, walk, run, hit and death): the wrist turns the bow's top 30 degrees
+     * ahead, out of the arm and the hood. The clip is written for both hands, since a troop with the bow in the left plays it mirrored.
+     */
+    static Map<String,Animation> bow(){
+        Map<String,Animation> m=new LinkedHashMap<>();float b=30;
+        m.put("idle",idle().hold("left_hand",b,0,0).hold("right_hand",b,0,0).build());
+        m.put("walk",new Clip("walk").wave("right_leg",0,0,-30,0,1).wave("left_leg",0,0,30,0,1).wave("right_arm",0,0,25,0,1).wave("left_arm",0,0,-25,0,1).wave("body",1,0,3,0,1)
+            .hold("left_hand",b,0,0).hold("right_hand",b,0,0).build());
+        m.put("run",new Clip("run").wave("right_leg",0,0,-50,0,1).wave("left_leg",0,0,50,0,1).wave("right_arm",0,0,45,0,1).wave("left_arm",0,0,-45,0,1).hold("body",10,0,0).hold("head",-8,0,0)
+            .hold("left_hand",b,0,0).hold("right_hand",b,0,0).build());
+        m.put("hit",hit().hold("left_hand",b,0,0).hold("right_hand",b,0,0).build());
+        m.put("death",death().hold("left_hand",b+20,0,0).hold("right_hand",b+20,0,0).build());
+        return Collections.unmodifiableMap(m);
+    }
     static Map<String,Animation> staff(){
         Map<String,Animation> m=new LinkedHashMap<>();
-        m.put("idle",idle().hold("right_arm",-30,0,12).hold("right_hand",40,0,-12).build());
+        m.put("idle",idle().hold("right_arm",-30,0,12).hold("right_hand",STAFF_WRIST,0,-12).build());
         m.put("walk",new Clip("walk").wave("right_leg",0,0,-30,0,1).wave("left_leg",0,0,30,0,1).wave("right_arm",0,-30,8,0,1).wave("left_arm",0,0,-25,0,1)
-            .wave("body",1,0,3,0,1).hold("right_arm",0,0,12).hold("right_hand",40,0,-12).build());
+            .wave("body",1,0,3,0,1).hold("right_arm",0,0,12).hold("right_hand",STAFF_WRIST,0,-12).build());
         m.put("run",new Clip("run").wave("right_leg",0,0,-50,0,1).wave("left_leg",0,0,50,0,1).wave("right_arm",0,-35,10,0,1).wave("left_arm",0,0,-45,0,1)
-            .hold("right_arm",0,0,12).hold("right_hand",35,0,-12).hold("body",10,0,0).hold("head",-8,0,0).build());
-        m.put("cast",new Clip("cast").hold("right_arm",-60,0,10).hold("right_hand",65,0,-10).wave("right_arm",0,0,-8,0,1).wave("right_hand",0,0,8,0,1)
+            .hold("right_arm",0,0,12).hold("right_hand",STAFF_WRIST-5,0,-12).hold("body",10,0,0).hold("head",-8,0,0).build());
+        m.put("cast",new Clip("cast").hold("right_arm",-60,0,10).hold("right_hand",STAFF_WRIST+30,0,-10).wave("right_arm",0,0,-8,0,1).wave("right_hand",0,0,8,0,1)
             .hold("left_arm",-65,-15,-12).wave("left_arm",0,0,6,.25f,1).hold("body",4,0,0).wave("body",0,0,3,0,1).hold("head",-6,0,0).build());
-        m.put("hit",hit().hold("right_arm",-30,0,12).hold("right_hand",40,0,-12).rot("right_hand",0,0,0,0, .08f,-50,0,-15, .3f,0,0,0).build());
-        m.put("death",death().hold("right_hand",40,0,-12).rot("right_hand",0,0,0,0, .55f,0,0,-5, .8f,0,0,-25, .9f,0,0,-25).build());
-        m.put("hold",new Clip("hold").hold("right_arm",-30,0,12).hold("left_arm",-20,0,0).hold("right_hand",40,0,-12).wave("body",2,0,1,0,1).build());
+        m.put("hit",hit().hold("right_arm",-30,0,12).hold("right_hand",STAFF_WRIST,0,-12).rot("right_hand",0,0,0,0, .08f,10,0,-10, .3f,0,0,0).build());
+        m.put("death",death().hold("right_hand",STAFF_WRIST+10,0,-12).rot("right_hand",0,0,0,0, .55f,0,0,-5, .8f,0,0,-25, .9f,0,0,-25).build());
+        m.put("hold",new Clip("hold").hold("right_arm",-30,0,12).hold("left_arm",-20,0,0).hold("right_hand",STAFF_WRIST,0,-12).wave("body",2,0,1,0,1).build());
         m.put("fall_back",new Clip("fall_back").wave("right_leg",0,0,25,0,1).wave("left_leg",0,0,-25,0,1)
-            .hold("right_arm",-40,0,12).hold("right_hand",50,0,-12).hold("left_arm",-40,0,0).hold("body",-5,0,0).build());
+            .hold("right_arm",-40,0,12).hold("right_hand",STAFF_WRIST+10,0,-12).hold("left_arm",-40,0,0).hold("body",-5,0,0).build());
         return Collections.unmodifiableMap(m);
     }
     /**

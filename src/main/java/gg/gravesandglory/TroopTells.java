@@ -111,8 +111,8 @@ public final class TroopTells {
         // the Order swordsmen and the mage play their weapon's set (BipedClips.sword and staff: the blade and the staff held clear of the body);
         // the Sentinel's walk is the slow plod (the stride short, the arms hardly swing, the body bobs half a pixel a step)
         o.put("knight",BipedClips.sword(false));o.put("gl_marshal",BipedClips.sword(false));o.put("sentinel",BipedClips.sword(true));
-        o.put("mage",BipedClips.staff());
-        o.put("longbow",Map.of("bow_draw",BipedClips.draw(25).build()));
+        o.put("mage",BipedClips.staff());o.put("archer",BipedClips.bow());
+        {Map<String,Animation> lb=new LinkedHashMap<>(BipedClips.bow());lb.put("bow_draw",BipedClips.draw(25).build());o.put("longbow",Collections.unmodifiableMap(lb));}
         // the lantern held up in the right hand, swaying a little; the left hand up beside it
         o.put("hexer",Map.of("cast",new Clip("cast").hold("right_arm",-120,0,0).hold("left_arm",-30,0,0).wave("right_arm",0,0,4,0,1).build()));
         o.put("wm_seer",Map.of("cast",new Clip("cast").hold("head",-50,0,0).hold("right_arm",-30,0,0).hold("left_arm",-30,0,0).wave("head",0,0,3,0,1).build()));
