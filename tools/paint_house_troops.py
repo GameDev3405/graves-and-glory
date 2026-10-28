@@ -501,11 +501,11 @@ TEAM = {
         box([-2.5, -11.5, 1.9], [5, 16, 1], 'back'),
     ], 'ic_tabard'),
     'ic_crest': ('head', True, 'The Hearthguard crest in the side\'s cloth: a horsehair plume along the comb and a tail down the back.', [
-        box([-0.5, -13.5, -4], [1, 3, 9], 'plume'),
-        box([-0.5, -12.5, 5], [1, 6, 1], 'tail'),
+        box([-1, -13.5, -4], [2, 3, 9], 'plume'),
+        box([-1, -12.5, 5], [2, 6, 1], 'tail'),
     ], 'plume'),
     'wm_kilt': ('body', False, 'The Tusk Spear war kilt in the side\'s cloth: barry with an ochre-stitched hem, the glyph on the front flap.', [
-        box([-3.5, 0.5, -2.9], [7, 6, 1], 'front'),
+        box([-3.5, 0.5, -4.4], [7, 6, 1], 'front, 1.5 px proud so the hunch does not sink it into the legs'),
         box([-3.5, 0.5, 1.9], [7, 6, 1], 'back'),
     ], 'wm_kilt'),
     'wm_headband': ('head', True, 'The Tusk Spear headband in the side\'s cloth, knotted at the back with two tails.', [
@@ -861,7 +861,7 @@ def paint_cloth():
         for i, b in enumerate(bxs):
             ctx = Ctx()
             ctx.stage, ctx.rng, ctx.note, ctx.bi = 1, rng, b['note'], i
-            outer = 'south' if b['note'] == 'back' else 'north'
+            outer = 'south' if b['note'].startswith('back') else 'north'
             for fname, (x0, y0, x1, y1) in face_rects(uvs[(n, i)], b['size'], CD).items():
                 ctx.face, ctx.w, ctx.h = fname, x1 - x0, y1 - y0
                 for yy in range(y0, y1):

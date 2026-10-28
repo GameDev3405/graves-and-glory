@@ -9,7 +9,7 @@
    "origin": [
     -3.5,
     0.5,
-    -2.9
+    -4.4
    ],
    "size": [
     7,
@@ -20,7 +20,7 @@
     0,
     17
    ],
-   "note": "front"
+   "note": "front, 1.5 px proud so the hunch does not sink it into the legs"
   },
   {
    "origin": [
@@ -35,7 +35,7 @@
    ],
    "uv": [
     108,
-    36
+    37
    ],
    "note": "back"
   }
