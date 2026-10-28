@@ -1,0 +1,130 @@
+{
+ "troop": "ic_hearthguard",
+ "note": "Ironclad Hearthguard (unit identity, Ironclad): vindicator, biped, broad and short; the square box helm with cheek plates, the slab pauldrons (the mark), arms folded at rest, a knee-length soot-iron scale coat under the team pale, the copper beard braided to the belt; stage 3 helm horns. Hearth axe, the shield on the left arm.",
+ "rig": "biped",
+ "size": [
+  128,
+  64
+ ],
+ "density": 3,
+ "bones": {
+  "body": {
+   "scale": [
+    1.2,
+    0.95,
+    1.15
+   ]
+  },
+  "right_arm": {
+   "scale": [
+    1.1,
+    0.9,
+    1.1
+   ]
+  },
+  "left_arm": {
+   "scale": [
+    1.1,
+    0.9,
+    1.1
+   ]
+  },
+  "right_leg": {
+   "scale": [
+    1.1,
+    0.8,
+    1.1
+   ]
+  },
+  "left_leg": {
+   "scale": [
+    1.1,
+    0.8,
+    1.1
+   ]
+  }
+ },
+ "idleArms": "folded",
+ "parts": [
+  {
+   "part": "box_helm",
+   "uv": [
+    32,
+    0
+   ]
+  },
+  {
+   "part": "braided_beard",
+   "uv": [
+    32,
+    0
+   ]
+  },
+  {
+   "part": "slab_pauldrons",
+   "uv": [
+    0,
+    12
+   ]
+  },
+  {
+   "part": "scale_coat_skirt",
+   "uv": [
+    72,
+    0
+   ]
+  },
+  {
+   "part": "helm_horns",
+   "uv": [
+    48,
+    10
+   ],
+   "stages": [
+    3
+   ]
+  },
+  {
+   "part": "chest_panel"
+  },
+  {
+   "part": "pennant",
+   "scale": [
+    0.833333,
+    1.052632,
+    0.869565
+   ],
+   "offset": [
+    0,
+    0.6316,
+    0.8696
+   ]
+  }
+ ],
+ "skins": {
+  "1": "ic_hearthguard_s1.png",
+  "2": "ic_hearthguard_s2.png",
+  "3": "ic_hearthguard_s3.png"
+ },
+ "weapon": "hearth_axe",
+ "hand": "right",
+ "portrait": "standard",
+ "faces": {
+  "density": 2,
+  "count": 4,
+  "slots": [
+   [
+    96,
+    48
+   ],
+   [
+    64,
+    48
+   ],
+   [
+    96,
+    32
+   ]
+  ]
+ }
+}

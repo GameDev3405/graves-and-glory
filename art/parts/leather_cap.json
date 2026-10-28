@@ -1,0 +1,60 @@
+{
+ "part": "leather_cap",
+ "note": "The Tusk Spear leather cap and the boar ears through it.",
+ "bone": "head",
+ "team": false,
+ "tag": "helm",
+ "boxes": [
+  {
+   "origin": [
+    -4.5,
+    -8.5,
+    -4.5
+   ],
+   "size": [
+    9,
+    2,
+    9
+   ],
+   "uv": [
+    0,
+    0
+   ],
+   "note": "cap"
+  },
+  {
+   "origin": [
+    -5.5,
+    -10,
+    0
+   ],
+   "size": [
+    2,
+    2,
+    1
+   ],
+   "uv": [
+    40,
+    9
+   ],
+   "note": "right ear"
+  },
+  {
+   "origin": [
+    3.5,
+    -10,
+    0
+   ],
+   "size": [
+    2,
+    2,
+    1
+   ],
+   "uv": [
+    46,
+    9
+   ],
+   "note": "left ear"
+  }
+ ]
+}

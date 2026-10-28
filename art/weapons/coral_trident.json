@@ -1,0 +1,18 @@
+{
+ "weapon": "coral_trident",
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "the grip's centre is the model origin (the fist covers y -2..+2); held upright like the staff"
+ },
+ "note": "The Trident Guard coral trident, tier I: a driftwood shaft, a verdigris collar and three bleached coral prongs with steel tips."
+}

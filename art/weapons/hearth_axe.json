@@ -1,0 +1,18 @@
+{
+ "weapon": "hearth_axe",
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   90,
+   45,
+   90
+  ],
+  "note": "the grip's centre is the model origin (the fist covers y -2..+2); the grip held like the swords: turned flat to the side, tilted 45 degrees forward"
+ },
+ "note": "The Hearthguard hearth axe, tier I: an ash haft, a leather grip, a soot-iron bearded blade with a bright bit and a back spike."
+}

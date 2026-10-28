@@ -1,0 +1,111 @@
+{
+ "part": "box_helm",
+ "note": "The Hearthguard box helm: a square soot-iron crown, a back plate and two cheek plates standing 1 px off the face, a brow bar and a short nasal; the eyes and the beard show through the opening.",
+ "bone": "head",
+ "team": false,
+ "tag": "helm",
+ "boxes": [
+  {
+   "origin": [
+    -5,
+    -9.5,
+    -5
+   ],
+   "size": [
+    10,
+    2,
+    10
+   ],
+   "uv": [
+    0,
+    0
+   ],
+   "note": "crown, 1 px proud all round"
+  },
+  {
+   "origin": [
+    -5,
+    -7.5,
+    3
+   ],
+   "size": [
+    10,
+    7,
+    2
+   ],
+   "uv": [
+    60,
+    15
+   ],
+   "note": "back plate"
+  },
+  {
+   "origin": [
+    -5,
+    -7.5,
+    -5
+   ],
+   "size": [
+    2,
+    7,
+    8
+   ],
+   "uv": [
+    68,
+    0
+   ],
+   "note": "right cheek plate, 1 px before the face"
+  },
+  {
+   "origin": [
+    3,
+    -7.5,
+    -5
+   ],
+   "size": [
+    2,
+    7,
+    8
+   ],
+   "uv": [
+    40,
+    11
+   ],
+   "note": "left cheek plate"
+  },
+  {
+   "origin": [
+    -3,
+    -7.5,
+    -5
+   ],
+   "size": [
+    6,
+    1,
+    1
+   ],
+   "uv": [
+    76,
+    24
+   ],
+   "note": "brow bar"
+  },
+  {
+   "origin": [
+    -0.5,
+    -6.5,
+    -5.5
+   ],
+   "size": [
+    1,
+    3,
+    1
+   ],
+   "uv": [
+    12,
+    12
+   ],
+   "note": "nasal"
+  }
+ ]
+}

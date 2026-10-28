@@ -1,0 +1,18 @@
+{
+ "weapon": "boar_spear",
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "the grip's centre is the model origin (the fist covers y -2..+2); held upright like the staff, so the crossbarred head stands over the cap"
+ },
+ "note": "The Tusk Spear boar spear, tier I: an ash shaft, a leaf head over an iron crossbar and a clay tassel; one head, never three."
+}

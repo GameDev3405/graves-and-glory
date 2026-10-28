@@ -1,0 +1,84 @@
+{
+ "troop": "wm_tusk",
+ "note": "Wildmoot Tusk Spear (unit identity, Wildmoot): zombified piglin, biped, hunched; boar-kin with a snout and big white tusks, a leather cap, a shaggy hide mantle over the team jerkin, the pennant; stage 3 tusk crown. The crossbarred boar spear stands with its head over the cap (the mark).",
+ "rig": "biped",
+ "size": [
+  128,
+  64
+ ],
+ "density": 3,
+ "hunch": 20,
+ "idleArms": "hang",
+ "parts": [
+  {
+   "part": "boar_snout",
+   "uv": [
+    100,
+    0
+   ]
+  },
+  {
+   "part": "tusks",
+   "uv": [
+    92,
+    3
+   ]
+  },
+  {
+   "part": "leather_cap",
+   "uv": [
+    32,
+    0
+   ]
+  },
+  {
+   "part": "hide_mantle",
+   "uv": [
+    68,
+    0
+   ]
+  },
+  {
+   "part": "tusk_crown",
+   "uv": [
+    68,
+    9
+   ],
+   "stages": [
+    3
+   ]
+  },
+  {
+   "part": "jerkin"
+  },
+  {
+   "part": "pennant"
+  }
+ ],
+ "skins": {
+  "1": "wm_tusk_s1.png",
+  "2": "wm_tusk_s2.png",
+  "3": "wm_tusk_s3.png"
+ },
+ "weapon": "boar_spear",
+ "hand": "right",
+ "portrait": "tall 4",
+ "faces": {
+  "density": 2,
+  "count": 4,
+  "slots": [
+   [
+    96,
+    48
+   ],
+   [
+    64,
+    48
+   ],
+   [
+    96,
+    32
+   ]
+  ]
+ }
+}

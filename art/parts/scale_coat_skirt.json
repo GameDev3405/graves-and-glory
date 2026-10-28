@@ -1,0 +1,26 @@
+{
+ "part": "scale_coat_skirt",
+ "note": "The knee-length skirt of the Hearthguard scale coat.",
+ "bone": "body",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -4.5,
+    0,
+    -2.5
+   ],
+   "size": [
+    9,
+    6,
+    5
+   ],
+   "uv": [
+    0,
+    0
+   ],
+   "note": "skirt to the knee"
+  }
+ ]
+}

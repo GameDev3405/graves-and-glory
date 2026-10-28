@@ -1,0 +1,60 @@
+{
+ "part": "braided_beard",
+ "note": "The Hearthguard copper beard: a square beard under the helm and one thick braid to the belt, ringed in brass.",
+ "bone": "head",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -3,
+    -2.5,
+    -5
+   ],
+   "size": [
+    6,
+    4,
+    2
+   ],
+   "uv": [
+    60,
+    24
+   ],
+   "note": "beard"
+  },
+  {
+   "origin": [
+    -1,
+    1.5,
+    -5
+   ],
+   "size": [
+    2,
+    8,
+    2
+   ],
+   "uv": [
+    88,
+    0
+   ],
+   "note": "the braid, before the chest"
+  },
+  {
+   "origin": [
+    -1.5,
+    6,
+    -5.5
+   ],
+   "size": [
+    3,
+    1,
+    3
+   ],
+   "uv": [
+    0,
+    12
+   ],
+   "note": "brass braid ring"
+  }
+ ]
+}

@@ -1,0 +1,43 @@
+{
+ "part": "scallop_shell",
+ "note": "The scallop shell on the Trident Guard back.",
+ "bone": "body",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -3.5,
+    -11,
+    2
+   ],
+   "size": [
+    7,
+    6,
+    1
+   ],
+   "uv": [
+    0,
+    0
+   ],
+   "note": "shell"
+  },
+  {
+   "origin": [
+    -1.5,
+    -5,
+    2
+   ],
+   "size": [
+    3,
+    1,
+    1
+   ],
+   "uv": [
+    32,
+    7
+   ],
+   "note": "hinge"
+  }
+ ]
+}

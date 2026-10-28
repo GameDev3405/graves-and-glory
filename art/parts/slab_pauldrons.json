@@ -1,0 +1,77 @@
+{
+ "part": "slab_pauldrons",
+ "note": "The Hearthguard mark: two flat soot-iron slabs on the shoulders, wider than the arms, a lame under each.",
+ "bone": "body",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -8.5,
+    -13.5,
+    -3
+   ],
+   "size": [
+    5,
+    3,
+    6
+   ],
+   "uv": [
+    60,
+    14
+   ],
+   "note": "right slab"
+  },
+  {
+   "origin": [
+    3.5,
+    -13.5,
+    -3
+   ],
+   "size": [
+    5,
+    3,
+    6
+   ],
+   "uv": [
+    0,
+    20
+   ],
+   "note": "left slab"
+  },
+  {
+   "origin": [
+    -8,
+    -10.5,
+    -2.5
+   ],
+   "size": [
+    3,
+    2,
+    5
+   ],
+   "uv": [
+    52,
+    0
+   ],
+   "note": "right lame"
+  },
+  {
+   "origin": [
+    5,
+    -10.5,
+    -2.5
+   ],
+   "size": [
+    3,
+    2,
+    5
+   ],
+   "uv": [
+    56,
+    7
+   ],
+   "note": "left lame"
+  }
+ ]
+}

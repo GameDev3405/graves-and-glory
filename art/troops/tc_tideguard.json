@@ -1,0 +1,97 @@
+{
+ "troop": "tc_tideguard",
+ "note": "Tidecallers Trident Guard (unit identity, Tidecallers): drowned, biped, upright and long-legged; bleached coral rising from both shoulders (the mark), barnacled mail, the scallop shell on the back, the finned iron cap, the team pale as a sash, the pennant; stage 3 coral crown. Coral trident.",
+ "rig": "biped",
+ "size": [
+  128,
+  64
+ ],
+ "density": 3,
+ "bones": {
+  "right_leg": {
+   "scale": [
+    1,
+    1.05,
+    1
+   ]
+  },
+  "left_leg": {
+   "scale": [
+    1,
+    1.05,
+    1
+   ]
+  }
+ },
+ "idleArms": "hang",
+ "parts": [
+  {
+   "part": "finned_cap",
+   "uv": [
+    32,
+    0
+   ]
+  },
+  {
+   "part": "coral_pauldrons",
+   "uv": [
+    68,
+    0
+   ]
+  },
+  {
+   "part": "scallop_shell",
+   "uv": [
+    84,
+    0
+   ]
+  },
+  {
+   "part": "coral_crown",
+   "uv": [
+    104,
+    9
+   ],
+   "stages": [
+    3
+   ]
+  },
+  {
+   "part": "chest_panel"
+  },
+  {
+   "part": "pennant",
+   "offset": [
+    0,
+    0,
+    0.5
+   ]
+  }
+ ],
+ "skins": {
+  "1": "tc_tideguard_s1.png",
+  "2": "tc_tideguard_s2.png",
+  "3": "tc_tideguard_s3.png"
+ },
+ "weapon": "coral_trident",
+ "hand": "right",
+ "portrait": "standard",
+ "faces": {
+  "density": 2,
+  "count": 4,
+  "slots": [
+   [
+    96,
+    48
+   ],
+   [
+    64,
+    48
+   ],
+   [
+    96,
+    32
+   ]
+  ]
+ }
+}

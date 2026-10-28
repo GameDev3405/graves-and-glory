@@ -1,0 +1,18 @@
+{
+ "weapon": "coral_trident_t3",
+ "thickness": 2,
+ "grip": {
+  "offset": [
+   0,
+   0,
+   0
+  ],
+  "rotation": [
+   0,
+   0,
+   0
+  ],
+  "note": "the grip's centre is the model origin (the fist covers y -2..+2); held upright like the staff"
+ },
+ "note": "tier III: a pearl at the fork and barbs on the middle prong."
+}

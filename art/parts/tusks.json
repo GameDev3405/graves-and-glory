@@ -1,0 +1,77 @@
+{
+ "part": "tusks",
+ "note": "The big white tusks rising beside the snout.",
+ "bone": "head",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -4,
+    -5.5,
+    -6.5
+   ],
+   "size": [
+    1,
+    4,
+    1
+   ],
+   "uv": [
+    28,
+    0
+   ],
+   "note": "right tusk"
+  },
+  {
+   "origin": [
+    -4.5,
+    -6.5,
+    -7
+   ],
+   "size": [
+    1,
+    1,
+    1
+   ],
+   "uv": [
+    0,
+    6
+   ],
+   "note": "right tusk tip"
+  },
+  {
+   "origin": [
+    3,
+    -5.5,
+    -6.5
+   ],
+   "size": [
+    1,
+    4,
+    1
+   ],
+   "uv": [
+    32,
+    0
+   ],
+   "note": "left tusk"
+  },
+  {
+   "origin": [
+    3.5,
+    -6.5,
+    -7
+   ],
+   "size": [
+    1,
+    1,
+    1
+   ],
+   "uv": [
+    4,
+    6
+   ],
+   "note": "left tusk tip"
+  }
+ ]
+}

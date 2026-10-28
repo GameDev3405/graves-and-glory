@@ -1,0 +1,43 @@
+{
+ "part": "boar_snout",
+ "note": "The Tusk Spear boar snout before the face, with the nose disc.",
+ "bone": "head",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -2.5,
+    -4,
+    -6
+   ],
+   "size": [
+    5,
+    4,
+    2
+   ],
+   "uv": [
+    0,
+    8
+   ],
+   "note": "snout"
+  },
+  {
+   "origin": [
+    -1.5,
+    -3.5,
+    -7
+   ],
+   "size": [
+    3,
+    2,
+    1
+   ],
+   "uv": [
+    20,
+    0
+   ],
+   "note": "nose disc"
+  }
+ ]
+}

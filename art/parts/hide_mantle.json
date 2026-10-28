@@ -1,0 +1,60 @@
+{
+ "part": "hide_mantle",
+ "note": "The Tusk Spear hide mantle: a shaggy roll over the shoulders, a bristled hump and a hide flap down the back.",
+ "bone": "body",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -5,
+    -12.5,
+    -3
+   ],
+   "size": [
+    10,
+    3,
+    6
+   ],
+   "uv": [
+    0,
+    0
+   ],
+   "note": "shoulder roll"
+  },
+  {
+   "origin": [
+    -1.5,
+    -14,
+    -0.5
+   ],
+   "size": [
+    3,
+    2,
+    4
+   ],
+   "uv": [
+    46,
+    8
+   ],
+   "note": "bristle hump"
+  },
+  {
+   "origin": [
+    -4.5,
+    -9.5,
+    2.5
+   ],
+   "size": [
+    9,
+    7,
+    1
+   ],
+   "uv": [
+    32,
+    0
+   ],
+   "note": "back flap"
+  }
+ ]
+}

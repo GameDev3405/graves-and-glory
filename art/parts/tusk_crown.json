@@ -1,0 +1,60 @@
+{
+ "part": "tusk_crown",
+ "note": "Tusk Spear stage 3: a crown of boar tusks on the cap.",
+ "bone": "head",
+ "team": false,
+ "tag": "helm",
+ "boxes": [
+  {
+   "origin": [
+    -3.5,
+    -11.5,
+    -3
+   ],
+   "size": [
+    1,
+    3,
+    1
+   ],
+   "uv": [
+    16,
+    0
+   ],
+   "note": "right tusk"
+  },
+  {
+   "origin": [
+    -0.5,
+    -12.5,
+    -3.5
+   ],
+   "size": [
+    1,
+    4,
+    1
+   ],
+   "uv": [
+    0,
+    0
+   ],
+   "note": "middle tusk"
+  },
+  {
+   "origin": [
+    2.5,
+    -11.5,
+    -3
+   ],
+   "size": [
+    1,
+    3,
+    1
+   ],
+   "uv": [
+    20,
+    0
+   ],
+   "note": "left tusk"
+  }
+ ]
+}
