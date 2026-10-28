@@ -17,16 +17,30 @@ public final class BipedClips {
             .rot("right_arm",0,-85,-62,0, .15f,-90,-66,0, .65f,-95,-70,0, .8f,-80,-105,0, 1.2f,-85,-62,0);
     }
     public static final Map<String,Animation> CLIPS=new TroopClips.Set18("biped")
-        .put(new Clip("idle").rot("body",0,0,0,0, 1.5f,1.5f,0,0, 3,0,0,0).rot("head",0,0,0,0, 1.5f,-1,0,0, 3,0,0,0)
-            .rot("right_arm",0,0,0,0, 1.5f,0,0,2, 3,0,0,0).rot("left_arm",0,0,0,0, 1.5f,0,0,-2, 3,0,0,0))
+        // Alive at rest: the breath lifts the chest, the weight shifts from foot to foot, the head turns a little and comes back.
+        .put(new Clip("idle").rot("body",0,0,0,0, .75f,1.5f,-2,0, 1.5f,2,0,1.5f, 2.25f,1.5f,2,0, 3,0,0,0)
+            .rot("head",0,0,0,0, .75f,-1,5,0, 1.5f,-2,0,0, 2.25f,0,-5,0, 3,0,0,0)
+            .rot("right_arm",0,0,0,0, 1.5f,3,0,4, 3,0,0,0).rot("left_arm",0,0,0,0, 1.5f,2,0,-4, 3,0,0,0)
+            .rot("right_leg",0,0,0,0, 1.5f,0,0,-1.5f, 3,0,0,0).rot("left_leg",0,0,0,0, 1.5f,0,0,1.5f, 3,0,0,0)
+            .pos("body",0,0,0,0, 1.5f,.4f,0,0, 3,0,0,0))
         .put(new Clip("walk").wave("right_leg",0,0,-30,0,1).wave("left_leg",0,0,30,0,1)
             .wave("right_arm",0,0,25,0,1).wave("left_arm",0,0,-25,0,1).wave("body",1,0,3,0,1))
         .put(new Clip("run").wave("right_leg",0,0,-50,0,1).wave("left_leg",0,0,50,0,1)
             .wave("right_arm",0,0,45,0,1).wave("left_arm",0,0,-45,0,1).hold("body",10,0,0).hold("head",-8,0,0))
-        .put(new Clip("attack").rot("right_arm",0,0,0,0, .12f,-110,0,0, .25f,-30,0,0, .33f,20,0,0, .5f,0,0,0)
-            .rot("right_hand",0,0,0,0, .12f,0,0,0, .25f,75,0,0, .33f,60,0,0, .5f,0,0,0)
-            .rot("body",0,0,0,0, .12f,0,20,0, .25f,0,0,0, .33f,0,-10,0, .5f,0,0,0))
-        .put(new Clip("hit").rot("body",0,0,0,0, .08f,-10,0,0, .3f,0,0,0).rot("head",0,0,0,0, .08f,-15,0,0, .3f,0,0,0))
+        // The sword cut: wound back over the shoulder with the weight on the back foot (0.12 s), the cut falling to the contact at 0.25 s
+        // (the body turned and leaning into it, the front foot stepped), through to the follow-through and the recovery.
+        .put(new Clip("attack").rot("right_arm",0,0,0,0, .12f,-155,15,0, .25f,-45,-22,0, .33f,-15,-25,0, .5f,0,0,0)
+            .rot("right_hand",0,0,0,0, .12f,-30,0,0, .25f,75,0,0, .33f,60,0,0, .5f,0,0,0)
+            .rot("body",0,0,0,0, .12f,-8,25,0, .25f,14,-15,0, .33f,12,-22,0, .5f,0,0,0)
+            .rot("head",0,0,0,0, .12f,-4,-10,0, .25f,6,8,0, .5f,0,0,0)
+            .rot("left_arm",0,0,0,0, .12f,-15,0,0, .25f,-40,10,0, .5f,0,0,0)
+            .rot("right_leg",0,0,0,0, .12f,15,0,0, .25f,-20,0,0, .5f,0,0,0)
+            .rot("left_leg",0,0,0,0, .12f,-10,0,0, .25f,12,0,0, .5f,0,0,0))
+        // The blow rocks it back: the body bends away and twists, the head snaps back, the arms fly out, the knees give; recovers by 0.3 s.
+        .put(new Clip("hit").rot("body",0,0,0,0, .08f,-20,10,4, .3f,0,0,0).rot("head",0,0,0,0, .08f,-28,-12,0, .3f,0,0,0)
+            .rot("right_arm",0,0,0,0, .08f,25,0,25, .3f,0,0,0).rot("left_arm",0,0,0,0, .08f,30,0,-25, .3f,0,0,0)
+            .rot("right_leg",0,0,0,0, .08f,-10,0,0, .3f,0,0,0).rot("left_leg",0,0,0,0, .08f,8,0,0, .3f,0,0,0)
+            .pos("root",0,0,0,0, .08f,0,-1,2, .3f,0,0,0))
         // The knees give, then the troop falls back flat about its feet, the arms flung out; a small bounce at 0.85 s.
         .put(new Clip("death",true)
             .rot("root",0,0,0,0, .25f,0,0,0, .4f,-15,0,0, .55f,-40,0,0, .7f,-70,0,0, .8f,-90,0,0, .85f,-86,0,0, .9f,-90,0,0)
@@ -42,8 +56,10 @@ public final class BipedClips {
         // points straight ahead, as the arrow goes); the right arm reaches across to the string (its hand within 2 px of the
         // string line at the draw: p2-anim-bow), draws at 0.65 s, which is held between shots, and looses at 0.8 s: the arm flung back.
         .put(draw(0))
-        .put(new Clip("cast").hold("right_arm",0,0,125).hold("left_arm",0,0,-125)
-            .wave("right_arm",0,0,10,0,1).wave("left_arm",0,0,10,0,1))
+        // The caster's stance: the casting arm raised ahead and out, the staff or the hand lifted, the off hand open at the side; the
+        // arm sways and the body leans into it as the loop pulses.
+        .put(new Clip("cast").hold("right_arm",-75,0,6).hold("right_hand",80,0,0).hold("left_arm",-50,10,-30).hold("head",-8,0,0)
+            .wave("right_arm",0,0,12,0,1).wave("left_arm",0,0,8,.25f,1).wave("body",0,3,3,0,1))
         .put(new Clip("kneel").pos("root",0,0,0,0, .3f,0,-2,0, .6f,0,-4,0)
             .rot("right_leg",0,0,0,0, .3f,25,0,0, .6f,48,0,0).rot("left_leg",0,0,0,0, .3f,-25,0,0, .6f,-48,0,0)
             .rot("body",0,0,0,0, .3f,5,0,0, .6f,10,0,0).rot("head",0,0,0,0, .3f,10,0,0, .6f,20,0,0)
