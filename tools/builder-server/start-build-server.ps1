@@ -18,5 +18,6 @@ while ($true) {
         Remove-Item -LiteralPath 'next-world.txt'
         continue
     }
+    if ($LASTEXITCODE -ne 0) { Write-Output "[builder] server exited with $LASTEXITCODE; restarting in 15 seconds"; Start-Sleep 15; continue }
     break
 }
