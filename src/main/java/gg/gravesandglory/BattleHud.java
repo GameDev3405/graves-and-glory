@@ -18,13 +18,14 @@ import java.util.*;
  *  key strip hangs under the bottom chip. All but the ability slot is drawn on the HUD's canvas (UiCanvas.hudK, at the player's
  *  HudSize), every plate where UiMath.hudLayout puts it for the frame's state (state()); the slot sits in vanilla GUI space at the
  *  player's GUI Scale, next to the hotbar. Colour never carries a meaning alone (spec 6.1): seals carry their owner's emblem, a
- *  routing group its stamp and grey plate, a fallen one its word, a fighting one the crossed swords. The event feed hangs at the
+ *  group at its last stand its stamp and the words LAST STAND, a fallen one its word on the grey plate, a fighting one the crossed
+ *  swords. The event feed hangs at the
  *  right edge; the hint layer (altLayer) hangs the hint slip above the column. What the last frame drew is kept for checks:
  *  cards(), seals(), rects(), texts(), hintRows(), hintEnds(), keyRows() and feedRows(). */
 public final class BattleHud {
     private BattleHud() {}
 
-    /** A plate of the group column the last frame drew: its group, its state (PLAIN, FLASH, SELECTED, ROUTING or FALLEN), whether
+    /** A plate of the group column the last frame drew: its group, its state (PLAIN, FLASH, SELECTED, LASTSTAND or FALLEN), whether
      *  it is the selected group's ledger card (tall, with the key row) rather than a chip, and its box in canvas px. */
     public record CardDraw(String group,String state,boolean tall,int x,int y,int w,int h){}
     /** A seal the last frame drew: its sprite and its place in canvas px. */
@@ -78,8 +79,10 @@ public final class BattleHud {
      *  from GUI px, rounded outward). */
     public static Map<String,int[]> rects(){return rects;}
     /** The words and numbers the last frame drew: score-dawn, clock, score-dusk, count-(group), state-(group) (the word a card
-     *  shows; on a chip ROUTING and Fallen as drawn, Fighting for its crossed swords and Steady for none), lesson (its lines
-     *  joined), respawn, feed-(row) (each feed line as trimmed), aim-name, ability, ability-icon (the texture drawn in the slot), ability-seconds and ability-key. */
+     *  shows; on a chip LAST STAND and Fallen as drawn, Fighting for its crossed swords and Steady for none), plate-(group) (the
+     *  atlas name of the plate drawn), stamp-(group) (the atlas name of the LAST STAND stamp, only while the group stands its last
+     *  stand), lesson (its lines joined), respawn, feed-(row) (each feed line as trimmed), aim-name, ability, ability-icon (the
+     *  texture drawn in the slot), ability-seconds and ability-key. */
     public static Map<String,String> texts(){return texts;}
     /** The chip and word texts of each row the hint slip last drew, in order; empty while the hint layer is down. */
     public static List<List<String>> hintRows(){return hintRows;}
@@ -244,73 +247,72 @@ public final class BattleHud {
         r.put("hints",box);
     }
 
-    /** A plate's state, first match wins: FALLEN (none left of a fielded group), ROUTING, FLASH (a loss in the last
-     *  CommandMode.FLASH_MS), SELECTED (the selected group, or every group while the army is), PLAIN. */
+    /** A plate's state, first match wins: FALLEN (none left of a fielded group), LASTSTAND (the server's last-stand bit: strength at
+     *  or under the share with an enemy near), FLASH (a loss in the last CommandMode.FLASH_MS), SELECTED (the selected group, or
+     *  every group while the army is), PLAIN. */
     static String plateState(CommandMode.Group grp,boolean chosen){
-        return grp.count()==0?"FALLEN":CommandMode.flashing(grp.id())?"FLASH":chosen?"SELECTED":"PLAIN";
+        return grp.count()==0?"FALLEN":grp.lastStand()?"LASTSTAND":CommandMode.flashing(grp.id())?"FLASH":chosen?"SELECTED":"PLAIN";
     }
 
-    /** The selected group's ledger card, 62 px tall, as the mock draws it: its name, its state word (the rout stamp; the fight
-     *  glyph before Fighting), the strength bar and count, the order and formation glyphs with their names, and the key row. */
+    /** The plate a card of a state is drawn on: grey for FALLEN, the red-ruled one for a FLASH, the live selected one otherwise, so
+     *  a group at its last stand, which fights on, keeps the live look. */
+    static String cardPlate(String state){return state.equals("FALLEN")?"hud/card-fallen-62":state.equals("FLASH")?"hud/card-flash-62":"hud/card-sel";}
+
+    /** The plate a chip of a state is drawn on, as cardPlate: brass while chosen (the whole army selected), iron otherwise. */
+    static String chipPlate(String state,boolean chosen){return state.equals("FALLEN")?"hud/chip-fallen":state.equals("FLASH")?"hud/chip-flash":chosen?"hud/chip-sel":"hud/chip-plain";}
+
+    /** The selected group's ledger card, 62 px tall, as the mock draws it: its name, its state word (the LAST STAND stamp with its
+     *  words; the fight glyph before Fighting), the strength bar and count, the order and formation glyphs with their names, and the
+     *  key row. */
     static void card(DrawContext g,TextRenderer font,CommandMode.Group grp,int[] box,Map<String,int[]> r,List<CardDraw> cd,Map<String,String> tx){
-        String id=grp.id(),state=plateState(grp,true);int x=box[0],y=box[1];
-        boolean down=state.equals("ROUTING")||state.equals("FALLEN");
-        switch(state){
-            case "FLASH"->UiTex.draw(g,"hud/card-flash-62",x,y);
-            case "SELECTED"->UiTex.draw(g,"hud/card-sel",x,y);
-            default->UiTex.draw(g,"hud/card-rout-62",x,y);
-        }
+        String id=grp.id(),state=plateState(grp,true),plate=cardPlate(state);int x=box[0],y=box[1];
+        boolean down=state.equals("FALLEN"),last=state.equals("LASTSTAND");
+        UiTex.draw(g,plate,x,y);
         UiTex.draw(g,"hud/hook-brass",x-7,y+3);
         g.drawText(font,DarkUi.heading(groupLabel(id)),x+10,y+7,DarkUi.INK_TEXT,false);
-        // The state, right-aligned to x 166: the rout stamp, or a word (the fight glyph before Fighting).
+        // The state, right-aligned to x 166: the LAST STAND stamp with its words, or a word (the fight glyph before Fighting).
         String word;
-        if(state.equals("ROUTING")){word="ROUTING";UiTex.draw(g,"hud/stamp-rout",x+108,y+4);g.drawText(font,word,centred(font,word,x+135),y+8,DarkUi.ROUT_TEXT,false);}
+        if(last){word="LAST STAND";UiTex.draw(g,"hud/stamp-last-card",x+100,y+4);g.drawText(font,word,centred(font,word,x+133),y+8,DarkUi.ROUT_TEXT,false);tx.put("stamp-"+id,"hud/stamp-last-card");}
         else{
-            word=state.equals("FALLEN")?"Fallen":grp.fighting()?"Fighting":"Steady";Text t=DarkUi.body(word);int wx=x+166-font.getWidth(t);
+            word=down?"Fallen":grp.fighting()?"Fighting":"Steady";Text t=DarkUi.body(word);int wx=x+166-font.getWidth(t);
             g.drawText(font,t,wx,y+7,word.equals("Steady")?DarkUi.SEPIA:DarkUi.INK_TEXT,false); // Fallen in ink: sepia on the grey plate is 3.5:1
             if(word.equals("Fighting"))UiTex.draw(g,"hud/g-fight",wx-3-9,y+9);
         }
         // Strength in its channel; during a flash the stretch just lost shows white, from the strength now to the strength before.
         if(down)UiTex.draw(g,"hud/hp-channel-grey",x+10,y+22);else UiTex.draw(g,"hud/hp-channel",x+10,y+22);
         int bar=UiMath.barWidth(grp.strength());
-        if(state.equals("ROUTING"))UiTex.bar(g,"hud/hp-rout",x+11,y+23,bar,false);
-        else if(!state.equals("FALLEN")){if(GravesAndGloryClient.team==1)UiTex.bar(g,"hud/hp-full-dusk",x+11,y+23,bar,false);else UiTex.bar(g,"hud/hp-full-dawn",x+11,y+23,bar,false);}
+        if(!down){if(GravesAndGloryClient.team==1)UiTex.bar(g,"hud/hp-full-dusk",x+11,y+23,bar,false);else UiTex.bar(g,"hud/hp-full-dawn",x+11,y+23,bar,false);}
         if(state.equals("FLASH"))UiTex.bar(g,"hud/hp-lost",x+11+bar,y+23,UiMath.barWidth(CommandMode.lostFrom(id))-bar,false);
         String count=UiMath.countText(grp.count(),grp.full());
-        g.drawText(font,count,x+166-font.getWidth(count)-1,y+21,down?DarkUi.ROUT_TEXT:DarkUi.INK_TEXT,false);
+        g.drawText(font,count,x+166-font.getWidth(count)-1,y+21,down||last?DarkUi.ROUT_TEXT:DarkUi.INK_TEXT,false); // the red count: the words say it too
         orderGlyph(g,grp.order(),down,x+10,y+30);
         g.drawText(font,orderLabel(grp.order()),x+22,y+31,DarkUi.INK_TEXT,false);
         formationGlyph(g,grp.formation(),down,x+72,y+30);
         g.drawText(font,formationLabel(grp.formation()),x+84,y+31,DarkUi.INK_TEXT,false);
         keyRow(g,font,id,x,y+44,DarkUi.SEPIA);
         cd.add(new CardDraw(id,state,true,x,y,box[2],box[3]));r.put("card-"+id,box);
-        tx.put("count-"+id,count);tx.put("state-"+id,word);
+        tx.put("count-"+id,count);tx.put("state-"+id,word);tx.put("plate-"+id,plate);
     }
 
-    /** Where a chip's state slot starts (66 px wide: the strength channel, the ROUTING stamp or Fallen), and how wide its name may
+    /** Where a chip's state slot starts (66 px wide: the strength channel, the LAST STAND stamp or Fallen), and how wide its name may
      *  run from x 10, 4 px short of the slot. */
     static final int CHIP_SLOT=56,CHIP_NAME_W=42;
 
     /** A group's chip, 176 x 18 (UI Task 8c): its hook on the spine, its name, its state slot, its count right-aligned to x 156 and,
      *  while it fights, the crossed swords at x 159. The slot holds the strength bar in its channel, the stretch just lost white
-     *  during a loss flash (the red rule round the chip); ROUTING's stamp and word in place of the bar; or Fallen, on the grey
-     *  plate. Steady is the chip without the swords: the chip calls the eye only for what has changed. Task 9's LAST STAND takes
-     *  this slot as ROUTING does: its stamp (hud/stamp-chip) and its words, never a colour alone (spec 6.1). */
+     *  during a loss flash (the red rule round the chip); the LAST STAND stamp (hud/stamp-last-chip) and its words in place of the
+     *  bar, on the live plate and with a red count, never a colour alone (spec 6.1); or Fallen, on the grey plate. Steady is the chip
+     *  without the swords: the chip calls the eye only for what has changed. */
     static void chip(DrawContext g,TextRenderer font,CommandMode.Group grp,int[] box,boolean chosen,Map<String,int[]> r,List<CardDraw> cd,Map<String,String> tx){
-        String id=grp.id(),state=plateState(grp,chosen);int x=box[0],y=box[1],sx=x+CHIP_SLOT;
-        boolean down=state.equals("ROUTING")||state.equals("FALLEN");
-        switch(state){
-            case "PLAIN"->UiTex.draw(g,"hud/chip-plain",x,y);
-            case "FLASH"->UiTex.draw(g,"hud/chip-flash",x,y);
-            case "SELECTED"->UiTex.draw(g,"hud/chip-sel",x,y);
-            default->UiTex.draw(g,"hud/chip-rout",x,y);
-        }
+        String id=grp.id(),state=plateState(grp,chosen),plate=chipPlate(state,chosen);int x=box[0],y=box[1],sx=x+CHIP_SLOT;
+        boolean down=state.equals("FALLEN"),last=state.equals("LASTSTAND");
+        UiTex.draw(g,plate,x,y);
         if(chosen)UiTex.draw(g,"hud/hook-brass",x-7,y+3);else UiTex.draw(g,"hud/hook",x-7,y+3);
         String name=UiMath.trim(groupLabel(id),CHIP_NAME_W,v->font.getWidth(DarkUi.heading(v)));
         g.drawText(font,DarkUi.heading(name),x+10,y+4,DarkUi.INK_TEXT,false);
         String word;
-        if(state.equals("ROUTING")){word="ROUTING";UiTex.draw(g,"hud/stamp-chip",sx,y+2);g.drawText(font,word,centred(font,word,sx+33),y+5,DarkUi.ROUT_TEXT,false);}
-        else if(state.equals("FALLEN")){word="Fallen";Text t=DarkUi.body(word);g.drawText(font,t,(int)Math.round(sx+33-font.getWidth(t)/2.0),y+4,DarkUi.INK_TEXT,false);} // ink: 6.4:1 on the grey plate, sepia 3.5:1
+        if(last){word="LAST STAND";UiTex.draw(g,"hud/stamp-last-chip",sx,y+2);g.drawText(font,word,centred(font,word,sx+33),y+4,DarkUi.ROUT_TEXT,false);tx.put("stamp-"+id,"hud/stamp-last-chip");}
+        else if(down){word="Fallen";Text t=DarkUi.body(word);g.drawText(font,t,(int)Math.round(sx+33-font.getWidth(t)/2.0),y+4,DarkUi.INK_TEXT,false);} // ink: 6.4:1 on the grey plate, sepia 3.5:1
         else{
             word=grp.fighting()?"Fighting":"Steady";int bar=UiMath.chipBar(grp.strength());
             UiTex.draw(g,"hud/chip-channel",sx,y+6);
@@ -319,9 +321,9 @@ public final class BattleHud {
             if(grp.fighting())UiTex.draw(g,"hud/g-fight",x+159,y+4);
         }
         String count=UiMath.countText(grp.count(),grp.full()); // up to 30/30, the full roster's 30 troops: 30 px, clear of the slot
-        g.drawText(font,count,x+156-font.getWidth(count),y+5,down?DarkUi.ROUT_TEXT:DarkUi.INK_TEXT,false);
+        g.drawText(font,count,x+156-font.getWidth(count),y+5,down||last?DarkUi.ROUT_TEXT:DarkUi.INK_TEXT,false);
         cd.add(new CardDraw(id,state,false,x,y,box[2],box[3]));r.put("card-"+id,box);
-        tx.put("count-"+id,count);tx.put("state-"+id,word);
+        tx.put("count-"+id,count);tx.put("state-"+id,word);tx.put("plate-"+id,plate);
     }
 
     /** The army's key strip under the bottom chip while the whole army is selected (UI Task 8c): the order keys of a card's key row
@@ -460,7 +462,7 @@ public final class BattleHud {
             case "hud/fgv-skull-grey"->UiTex.draw(g,"hud/fgv-skull-grey",x,y);
             case "hud/fgv-banner-down"->UiTex.draw(g,"hud/fgv-banner-down",x,y);
             case "hud/fgv-banner-up"->UiTex.draw(g,"hud/fgv-banner-up",x,y);
-            case "hud/fgv-rout"->UiTex.draw(g,"hud/fgv-rout",x,y);
+            case "hud/fgv-laststand"->UiTex.draw(g,"hud/fgv-laststand",x,y);
             case "hud/fgv-moon"->UiTex.draw(g,"hud/fgv-moon",x,y);
             default->UiTex.draw(g,"hud/fgv-sun",x,y);
         }
@@ -476,14 +478,19 @@ public final class BattleHud {
         r.put("respawn",box);tx.put("respawn",line);
     }
 
-    /** The texture of an ability's own picture: hud/ability-<active id> (stand_fast, bloodrush, mark_prey, rally_horn, grave_bloom, forward_supply). */
+    /** The texture of an ability's own picture: hud/ability-<active id> (stand_fast, bloodrush, mark_prey, rally_horn, grave_bloom). */
     static String abilityIcon(String id){return "hud/ability-"+id;}
+
+    /** The Quartermaster's active has no slot (Kort's ruling 5, 2026-10-24): forward supply works on its key, but the HUD shows it no
+     *  slot, no empty frame, no number, and nothing in rects() or texts(). */
+    static final String UNSHOWN_ABILITY="forward_supply";
 
     /** The commander ability beside the hotbar, in GUI px at the player's GUI Scale: the iron slot, the active's own picture, the cooldown sweep (a
      *  veil over the part of the turn still to come and its bright leading edge), the key on its brass plate and the seconds left.
-     *  A ready ability (nothing left of its cooldown) shows no sweep and no number. */
+     *  A ready ability (nothing left of its cooldown) shows no sweep and no number. The Quartermaster's forward supply (UNSHOWN_ABILITY)
+     *  and a commander with no active draw nothing here. */
     static void ability(DrawContext g,MinecraftClient c,TextRenderer font,Map<String,int[]> r,Map<String,String> tx){
-        String id=GravesAndGloryClient.abilityId;if(id.equals("none"))return;
+        String id=GravesAndGloryClient.abilityId;if(id.equals("none")||id.equals(UNSHOWN_ABILITY))return;
         var w=c.getWindow();int x=w.getScaledWidth()/2+104,y=w.getScaledHeight()-47,left=GravesAndGloryClient.abilityRemaining,total=GravesAndGloryClient.abilityTotal;
         UiTex.draw(g,"hud/ability-slot",x,y);
         String icon=abilityIcon(id);if(UiTex.has(icon))UiTex.draw(g,icon,x+5,y+6); // 22 x 20 as the horn was; an id with no picture leaves the vellum bare

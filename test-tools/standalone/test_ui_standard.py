@@ -12,6 +12,9 @@
 - the methods that draw player names (NAME_METHODS: the party's seats on home and Friends, the Invite tags) set only fixed words
   in the heading face: every heading( there takes one string literal, so a name, and the measure that trims one, is in
   Minecraft's face, whose 1 is no I (UI Task 8b, the Task 7 review's out-of-scope 1);
+- what a method of the battle HUD must draw by name, and must never (MUST_DRAW, NEVER_DRAW; War Table port Tasks 6 and 7): a card and a
+  chip at their last stand draw the stamp and its words LAST STAND, never a colour alone, and the ability slot never draws the title's
+  horn (each active has its own picture);
 - the back rail's camp plaques (RAIL, RAIL_X, RAIL_LABELS, RAIL_W) are declared once, in WarTableHome, and nowhere else (UI Task
   8b, the Task 7 review's Minor 8), and the lit plaque WarTablePages.here( draws for the open page ("table/plaque-N-here",
   written whole for build_ui_art --verify) names WarTableHome's RAIL_W as its N, so a new rail width cannot leave the lit plaque
@@ -33,6 +36,9 @@ ARGB = re.compile(r'\b0[xX][0-9a-fA-F]{8}(?![0-9a-fA-F_])')
 BACKSLASH = chr(92)
 KEY_TOKEN = re.compile(r'\{key:[^{}]*\}')
 LO_PLATE_TEXT = {'BattleHud': ('keyStrip', 'lesson')}
+# the literals a method must hold (a texture name or a word, quotes left off) and the ones it must not
+MUST_DRAW = {'BattleHud': {'card': ('hud/stamp-last-card', 'LAST STAND'), 'chip': ('hud/stamp-last-chip', 'LAST STAND')}}
+NEVER_DRAW = {'BattleHud': {'ability': ('hud/horn',)}}
 LO_VELLUM_EDGE = 0xbda97c
 INK_TOKEN = re.compile(r'\bDarkUi\s*\.\s*([A-Z][A-Z0-9_]*)\b')
 INK_DECL = re.compile(r'\b([A-Z][A-Z0-9_]*)\s*=\s*0[xX]([0-9a-fA-F]{8})\b')
@@ -221,6 +227,18 @@ def check_file(path):
                     if ratio is None or ratio < 4.5:
                         found.append(f'{path.name}:{line_of(text, m.start())}: DarkUi.{m.group(1)} in {method}( holds '
                                      + ('no known ink' if ratio is None else f'{ratio:.2f}:1') + ' on the darker vellum\'s edge #bda97c (wanted 4.5)')
+    for table, must in ((MUST_DRAW, True), (NEVER_DRAW, False)):
+        for method, names in table.get(name, {}).items():
+            spans = method_spans(code, method)
+            if not spans:
+                found.append(f'{path.name}: no static method {method}( to check what it draws')
+            for a, b in spans:
+                held = {literal.strip('"') for offset, literal in strings if a <= offset < b}
+                for wanted in names:
+                    if must and wanted not in held:
+                        found.append(f'{path.name}: {method}( never names "{wanted}" (a state carries its shape and its words, spec 6.1)')
+                    if not must and wanted in held:
+                        found.append(f'{path.name}:{line_of(text, a)}: {method}( names "{wanted}", which it must never draw')
     if name in NAME_METHODS:
         for method in NAME_METHODS[name]:
             spans = any_method_spans(code, method)

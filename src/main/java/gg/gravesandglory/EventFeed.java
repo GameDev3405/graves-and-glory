@@ -11,7 +11,7 @@ import java.util.List;
 public final class EventFeed {
     private EventFeed() {}
 
-    /** One line: its kind (point, loss, kill, down, up, rout, regroup, deploy or notice), the event's team, its text and when it
+    /** One line: its kind (point, loss, kill, down, up, laststand, deploy or notice), the event's team, its text and when it
      *  arrived (client clock, ms). */
     public record Line(String kind, int team, String text, long bornMs) {}
     private static final ArrayDeque<Line> lines = new ArrayDeque<>();

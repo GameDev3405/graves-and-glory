@@ -1423,15 +1423,21 @@ public final class Phase1Checks implements ClientModInitializer {
     /** UI Task 2: the Iron Ledger battle HUD and no hunger (UI spec 4.5), at 960x540 GUI 1 unless a check says otherwise. Practice on
      *  map 0 with the enemy army gone: the player's army stands on the Dawn road 63 blocks out from the base with the player just
      *  behind it, every troop frozen; one frozen Dusk revenant stands in front of the infantry (which then reads Fighting), and a
-     *  frozen Dawn knight and Dusk revenant share point B (contested); A is Dawn's and C is Dusk's. Three knights and a mage fall
-     *  first, so the cards read 9/12, 6/6 and 1/2 as in v4-hud-iron-ledger. Fixtures run on the server tick; every check reads what
+     *  frozen Dawn knight and Dusk revenant share point B (contested); A is Dawn's and C is Dusk's. The fixture states its own
+     *  banner (HUD_BANNER: ten knights, six archers and two Sunweavers by troop id), so the counts do not move with the starter army;
+     *  three knights and a Sunweaver fall first, so the cards read 7/10, 6/6 and 1/2. Fixtures run on the server tick; every check reads what
      *  BattleHud reports the last frame drew. Kingsfield (map 4, five points) comes last. Since UI Task 8c the selected group keeps
      *  its ledger card and every other group hangs as a chip; the window sweep runs at each HUD size (HudSize). */
     static final class UiHudChecks implements Suite,ServerWatch,HudWatch {
         static final double AX=-220,AZ=0; // open ground on the Dawn road, 63 blocks out from the live Dawn base at x=-283
         /** The column with ranged selected at 960x540 GUI 1 (UI Task 8c): the infantry's chip in its loss flash, ranged's ledger card,
-         *  support's chip routing, stacked 4 px apart up from the column's foot at y 522 (UiMathCheck pins the same boxes). */
-        static final List<BattleHud.CardDraw> CARDS=List.of(new BattleHud.CardDraw("infantry","FLASH",false,24,416,176,18),new BattleHud.CardDraw("ranged","SELECTED",true,24,438,176,62),new BattleHud.CardDraw("support","ROUTING",false,24,504,176,18));
+         *  support's chip at its last stand, stacked 4 px apart up from the column's foot at y 522 (UiMathCheck pins the same boxes). */
+        static final List<BattleHud.CardDraw> CARDS=List.of(new BattleHud.CardDraw("infantry","FLASH",false,24,416,176,18),new BattleHud.CardDraw("ranged","SELECTED",true,24,438,176,62),new BattleHud.CardDraw("support","LASTSTAND",false,24,504,176,18));
+        /** The banner the fixture fields, whatever the starter army is: a banner id or "troop*count" parts, as Phase2Checks.banner reads them
+         *  (^ is the second seat of the Sunweaver before it): 2 + 2 seats of Sunweaver, ten Order Squires and six Order Archers fill the
+         *  20 seats of rules.squadSize. Infantry 10, ranged 6, support 2 before the fixture's deaths. */
+        static final String HUD_BANNER="mage,^,mage,^,knight*10,archer*6";
+        static final int INFANTRY=10,RANGED=6,SUPPORT=2,KILLED_INFANTRY=3,KILLED_SUPPORT=1;
         static final List<BattleHud.SealDraw> SEALS=List.of(new BattleHud.SealDraw("hud/seal-dawn",439,41),new BattleHud.SealDraw("hud/seal-contested",467,40),new BattleHud.SealDraw("hud/seal-dusk",495,41));
         /** Width, height, GUI scale, 1 for a borderless window (the 1080 windows: see window(c,w,h,gui,bare)); the battle HUD's scale
          *  there at each size, Compact, Standard and Large (UI Task 8c, UiMath.hudScale: Compact at the kit scale on every window,
@@ -1511,14 +1517,14 @@ public final class Phase1Checks implements ClientModInitializer {
         }
 
         void fixture(GravesAndGlory.Battle b){
-            var p=sp(b);if(p==null||!skirmish(b,p,0,1,"normal"))return;
+            var p=sp(b);if(p==null||!Phase2Checks.skirmishBanners(b,p,0,HUD_BANNER,null))return;
             var own=b.squads.get(player);quiet(b,own);float yaw=-90;
             own.order="hold";own.formation="block";own.target=new Vec3d(AX,top(b,AX,AZ),AZ);own.yaw=yaw;
             own.assignments.put("infantry",new GravesAndGlory.Assignment("attack","shieldwall",new Vec3d(AX,top(b,AX,AZ),AZ),yaw));
             own.assignments.put("ranged",new GravesAndGlory.Assignment("hold","line",new Vec3d(AX-9,top(b,AX-9,AZ),AZ),yaw));
             own.assignments.put("support",new GravesAndGlory.Assignment("follow","block",new Vec3d(AX-16,top(b,AX-16,AZ+9),AZ+9),yaw));
             for(var u:b.units)if(u.squad==own){Vec3d at=b.formation(u);MoraleChecks.place(b,u,at.x,at.z,yaw);freeze(u);}
-            kill(b,own,"infantry",3);kill(b,own,"support",1);
+            kill(b,own,"infantry",KILLED_INFANTRY);kill(b,own,"support",KILLED_SUPPORT);
             var foes=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(AX+7,top(b,AX+7,AZ),AZ));foes.order="hold";foes.yaw=90;
             freeze(b.spawn(foes,troop("revenant"),0,new Vec3d(AX+7,top(b,AX+7,AZ),AZ)));
             var spot=b.points.get(1).spec;double px=spot.x(),pz=spot.z();
@@ -1589,7 +1595,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 case -1,1->{if(tick-waitFrom>2400){report("p1-ui-hud-fixture",false,"no fixture 2400 ticks after the request");end(c);}}
                 case 2->{ // the fixture on screen; then p1-ui-seals, part one
                     var inf=group("infantry");var ran=group("ranged");var sup=group("support");
-                    boolean shown=GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()&&inf!=null&&inf.count()==9&&ran!=null&&ran.count()==6&&sup!=null&&sup.count()==1
+                    boolean shown=GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()&&inf!=null&&inf.count()==INFANTRY-KILLED_INFANTRY&&ran!=null&&ran.count()==RANGED&&sup!=null&&sup.count()==SUPPORT-KILLED_SUPPORT
                         &&GravesAndGloryClient.ownerAt(0)==0&&GravesAndGloryClient.ownerAt(2)==1&&GravesAndGloryClient.contestedAt(1)&&!GravesAndGloryClient.contestedAt(0)&&!GravesAndGloryClient.contestedAt(2);
                     if(shown&&seen==0){seen=tick;BattleHud.roundShownMs=net.minecraft.util.Util.getMeasuringTimeMs()-61000;} // past the hint layer of the round's first seconds, 15 at Compact and 60 at Standard and Large (suite ui-feed checks it)
                     if(seen>0&&tick>=seen+2){sealsOk=BattleHud.seals().equals(SEALS);sealsWhy="owners [0, contested, 1]: "+BattleHud.seals()+(sealsOk?"":" (wanted "+SEALS+")");seen=0;stage=3;}
@@ -1604,18 +1610,18 @@ public final class Phase1Checks implements ClientModInitializer {
                         hungerOn=false;stage=10;
                     }else if(tick-waitFrom>600){watchHunger=false;report("p1-ui-no-hunger",false,"the hunger run did not finish: "+hungerSets+" sets, "+hungerOk+" good, "+hungerFrames+" frames at food 20 measured");hungerOn=false;stage=10;}
                 }
-                case 10->{ // p1-ui-cards: ranged selected, support routing, then infantry hurt
+                case 10->{ // p1-ui-cards: ranged selected, support at its last stand, then infantry hurt
                     CommandMode.selected="ranged";routSupport=true;waitFrom=tick;stage=-10;
                     server(c,b->{b.scores[0]=148;b.scores[1]=121;b.roundStarted=b.time-(b.roundSeconds-462)*20L;stage=11;}); // the mock's 148, 7:42 and 121
                 }
                 case 11->{
                     var cs=BattleHud.cards();
-                    if(cs.size()==3&&cs.get(2).state().equals("ROUTING")&&cs.get(1).tall()&&!CommandMode.flashing("infantry")){
+                    if(cs.size()==3&&cs.get(2).state().equals("LASTSTAND")&&cs.get(1).tall()&&!CommandMode.flashing("infantry")){
                         waitFrom=tick;stage=-12;
                         server(c,b->{var own=b.squads.get(player);int n=0;
                             for(var u:b.units)if(n<4&&u.squad==own&&u.spec.group().equals("infantry")&&u.mob.isAlive()&&u.mob.getHealth()>10){u.mob.damage(b.world.getDamageSources().magic(),10);n++;}
                             System.out.println("[p1] ui-hud: "+n+" knights take 10 magic damage");stage=12;});
-                    }else if(tick-waitFrom>200){report("p1-ui-cards",false,"support never drew ROUTING with ranged selected: "+cs);stage=20;}
+                    }else if(tick-waitFrom>200){report("p1-ui-cards",false,"support never drew LASTSTAND with ranged selected: "+cs);stage=20;}
                 }
                 case 12->{
                     if(CommandMode.flashing("infantry")){flashAt=tick;stage=13;}
@@ -1624,14 +1630,26 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 13->{
                     var cs=BattleHud.cards();var t=BattleHud.texts();boolean cards=cs.equals(CARDS);
                     // The fixture's counts and words; the ledger as the server set it (148, 7:42, 121), allowing one score tick and the seconds since.
-                    boolean words="9/12".equals(t.get("count-infantry"))&&"6/6".equals(t.get("count-ranged"))&&"1/2".equals(t.get("count-support"))
-                        &&"Fighting".equals(t.get("state-infantry"))&&"Steady".equals(t.get("state-ranged"))&&"ROUTING".equals(t.get("state-support"));
+                    String wantInf=(INFANTRY-KILLED_INFANTRY)+"/"+INFANTRY,wantRan=RANGED+"/"+RANGED,wantSup=(SUPPORT-KILLED_SUPPORT)+"/"+SUPPORT;
+                    boolean words=wantInf.equals(t.get("count-infantry"))&&wantRan.equals(t.get("count-ranged"))&&wantSup.equals(t.get("count-support"))
+                        &&"Fighting".equals(t.get("state-infantry"))&&"Steady".equals(t.get("state-ranged"))&&"LAST STAND".equals(t.get("state-support"))
+                        &&"hud/stamp-last-chip".equals(t.get("stamp-support"))&&"hud/chip-plain".equals(t.get("plate-support"))&&t.get("stamp-infantry")==null&&t.get("stamp-ranged")==null; // a chip at its last stand is a live chip, not the grey one, with the stamp and its words
                     int dawn=GravesAndGloryClient.dawn,dusk=GravesAndGloryClient.dusk,secs=CommandMode.seconds;
                     boolean ledger=String.valueOf(dawn).equals(t.get("score-dawn"))&&String.valueOf(dusk).equals(t.get("score-dusk"))&&UiMath.clock(secs).equals(t.get("clock"))
                         &&dawn>=148&&dawn<=149&&dusk>=121&&dusk<=122&&secs>=442&&secs<=462;
                     boolean match=cards&&words&&ledger;
                     if(match||tick>=flashAt+3){shot(c,"ui-hud-cards");
-                        report("p1-ui-cards",match,(tick-flashAt)+" client tick(s) after the flash the cards drew "+cs+(cards?"":" (wanted "+CARDS+")")+"; counts "+t.get("count-infantry")+", "+t.get("count-ranged")+", "+t.get("count-support")+" (wanted 9/12, 6/6, 1/2); words "+t.get("state-infantry")+", "+t.get("state-ranged")+", "+t.get("state-support")+" (wanted Fighting, Steady, ROUTING); ledger "+t.get("score-dawn")+" "+t.get("clock")+" "+t.get("score-dusk")+" (client "+dawn+", "+UiMath.clock(secs)+", "+dusk+"; wanted 148 or 149, 7:22 to 7:42, 121 or 122)");stage=20;}
+                        report("p1-ui-cards",match,(tick-flashAt)+" client tick(s) after the flash the cards drew "+cs+(cards?"":" (wanted "+CARDS+")")+"; counts "+t.get("count-infantry")+", "+t.get("count-ranged")+", "+t.get("count-support")+" (wanted "+wantInf+", "+wantRan+", "+wantSup+"); words "+t.get("state-infantry")+", "+t.get("state-ranged")+", "+t.get("state-support")+" (wanted Fighting, Steady, LAST STAND), support's stamp "+t.get("stamp-support")+" on plate "+t.get("plate-support")+" (wanted hud/stamp-last-chip on hud/chip-plain; none on the others); ledger "+t.get("score-dawn")+" "+t.get("clock")+" "+t.get("score-dusk")+" (client "+dawn+", "+UiMath.clock(secs)+", "+dusk+"; wanted 148 or 149, 7:22 to 7:42, 121 or 122)");CommandMode.selected="support";seen=0;waitFrom=tick;stage=14;}
+                }
+                case 14->{ // p1-ui-cards-last-stand: the same group selected, so its full card stands its last stand
+                    var cs=BattleHud.cards();var t=BattleHud.texts();var sup=cs.stream().filter(d->d.group().equals("support")).findFirst().orElse(null);
+                    boolean tall=sup!=null&&sup.tall()&&sup.state().equals("LASTSTAND");
+                    if(tall&&seen==0)seen=tick;else if(!tall)seen=0;
+                    if(seen>0&&tick>=seen+2){
+                        boolean ok=sup.h()==UiMath.CARD_H&&"LAST STAND".equals(t.get("state-support"))&&"1/2".equals(t.get("count-support"))&&"hud/stamp-last-card".equals(t.get("stamp-support"))&&"hud/card-sel".equals(t.get("plate-support"));
+                        shot(c,"ui-hud-last-stand-card");
+                        report("p1-ui-cards-last-stand",ok,"with support selected at its last stand the column drew "+cs+"; support's words "+t.get("state-support")+", count "+t.get("count-support")+", stamp "+t.get("stamp-support")+" on plate "+t.get("plate-support")+" (wanted its tall card, LAST STAND, 1/2, hud/stamp-last-card on the live hud/card-sel, not the grey card)");seen=0;stage=20;}
+                    else if(seen==0&&tick-waitFrom>200){report("p1-ui-cards-last-stand",false,"support selected at its last stand never drew its tall LASTSTAND card: "+cs);stage=20;}
                 }
                 case 20->{CommandMode.selected="all";routSupport=false;waitFrom=tick;stage=-20;server(c,b->{b.squads.get(player).lastStand.remove("support");stage=21;});}
                 case 21->{ // p1-ui-army-selected
@@ -1650,15 +1668,32 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(abilitySeen<0&&GravesAndGloryClient.abilityId.equals("rally_horn"))abilitySeen=tick;
                     if(abilitySeen>=0&&tick>=abilitySeen+1){
                         int[] r=BattleHud.rects().get("ability");String secs=BattleHud.texts().get("ability-seconds");
-                        abilityOk=abilitySeen-askAt<=12&&Arrays.equals(r,new int[]{584,493,50,32})&&"48".equals(secs);
-                        abilityWhy="the client read abilityId rally_horn "+(abilitySeen-askAt)+" client ticks after the request (10 server ticks, the hand-off and a frame allowed: 12); rect ability "+box(r)+", seconds \""+secs+"\", key \""+BattleHud.texts().get("ability-key")+"\"";
+                        String icon=BattleHud.texts().get("ability-icon");
+                        abilityOk=abilitySeen-askAt<=12&&Arrays.equals(r,new int[]{584,493,50,32})&&"48".equals(secs)&&"hud/ability-rally_horn".equals(icon);
+                        abilityWhy="the client read abilityId rally_horn "+(abilitySeen-askAt)+" client ticks after the request (10 server ticks, the hand-off and a frame allowed: 12); rect ability "+box(r)+", seconds \""+secs+"\", key \""+BattleHud.texts().get("ability-key")+"\", picture "+icon+" (wanted hud/ability-rally_horn, never the title's hud/horn)";
                         shot(c,"ui-hud-ability");askAt=tick;stage=-32;server(c,b->{b.testAbility=null;stage=32;});
                     }else if(abilitySeen<0&&tick-askAt>60){report("p1-ui-ability",false,"the client never read rally_horn (abilityId "+GravesAndGloryClient.abilityId+")");stage=40;}
                 }
-                case 32->{
-                    if(!BattleHud.rects().containsKey("ability")&&GravesAndGloryClient.abilityId.equals("none")){report("p1-ui-ability",abilityOk&&tick-askAt<=12,abilityWhy+"; with testAbility null the slot was gone "+(tick-askAt)+" client ticks later");stage=40;}
-                    else if(tick-askAt>60){report("p1-ui-ability",false,abilityWhy+"; the slot was still drawn 60 ticks after testAbility was cleared");stage=40;}
+                case 32->{ // testAbility cleared: the 960-tick test triple is gone, and the slot shows what play shows (GravesAndGloryClient.classAbility: the commander class's own active, or nothing for none and the unshown Forward Supply)
+                    if(seen==0&&GravesAndGloryClient.abilityRemaining!=960)seen=tick;
+                    if(seen>0&&tick>=seen+2){
+                        String id=GravesAndGloryClient.abilityId,icon=BattleHud.texts().get("ability-icon");boolean shown=BattleHud.rects().containsKey("ability");
+                        boolean right=id.equals("none")||id.equals(BattleHud.UNSHOWN_ABILITY)?!shown:shown&&("hud/ability-"+id).equals(icon);
+                        report("p1-ui-ability",abilityOk&&right&&seen-askAt<=12,abilityWhy+"; with testAbility null the client read abilityId \""+id+"\" "+(seen-askAt)+" client ticks later and the slot "+(shown?"drew picture "+icon:"was gone")+" (wanted its own picture for a class active, no slot for none)");
+                        askAt=tick;seen=0;stage=-33;server(c,b->{b.testAbility=new GravesAndGlory.Battle.AbilityState("forward_supply",960,1800);stage=33;});}
+                    else if(seen==0&&tick-askAt>60){report("p1-ui-ability",false,abilityWhy+"; the test ability (960 ticks) was still on the slot 60 ticks after testAbility was cleared");stage=40;}
                 }
+                case 33->{ // p1-ui-ability-hidden: the Quartermaster's Forward Supply draws no slot at all (the key stays bound)
+                    boolean named=GravesAndGloryClient.abilityId.equals("forward_supply");
+                    if(named&&seen==0)seen=tick;
+                    if(seen>0&&tick>=seen+3){
+                        boolean none=!BattleHud.rects().containsKey("ability")&&!BattleHud.texts().containsKey("ability")&&!BattleHud.texts().containsKey("ability-icon");
+                        shot(c,"ui-hud-ability-hidden");
+                        report("p1-ui-ability-hidden",none&&seen-askAt<=12,"the client read abilityId forward_supply "+(seen-askAt)+" client ticks after the request; the frame drew rects "+BattleHud.rects().keySet()+" (wanted no ability rect), picture \""+BattleHud.texts().get("ability-icon")+"\" (wanted none): no slot, no frame, no number; the key "+GravesAndGloryClient.hint("ability")+" stays bound");
+                        askAt=tick;seen=0;stage=-34;server(c,b->{b.testAbility=null;stage=34;});}
+                    else if(seen==0&&tick-askAt>60){report("p1-ui-ability-hidden",false,"the client never read forward_supply (abilityId "+GravesAndGloryClient.abilityId+")");stage=40;}
+                }
+                case 34->{if(GravesAndGloryClient.abilityRemaining!=960||tick-askAt>60)stage=40;}
                 case 40->{keepLesson=true;keepRespawn=true;win=0;pass=0;size=UiMath.HUD_COMPACT;HudSize.set(size);stage=-40;server(c,b->{b.testAbility=new GravesAndGlory.Battle.AbilityState("rally_horn",960,1800);stage=41;});}
                 case 41->{var s=WINDOWS[win];window(c,s[0],s[1],s[2],s[3]==1);waitFrom=tick;settled=0;stage=42;
                     BattleHud.roundShownMs=net.minecraft.util.Util.getMeasuringTimeMs()-(pass==1||pass==3?0:61000); // B and D: a round's first seconds, the hint layer up
@@ -1986,16 +2021,23 @@ public final class Phase1Checks implements ClientModInitializer {
         static final String NOTICE="{key:menu} opens your war council.";
         static final String LONG="The long notice of the flood check runs on well past the width of the feed slip, so the slip trims it";
         static final List<List<String>> HINT_ROWS=List.of(List.of("Not Bound","Map","K","Commands"),List.of("[","]","Turn","Left Alt","Hints")); // an unbound key in the game's own words (UI Task 8a)
-        /** p1-ui-feed-kinds (Task 3 review Minor 9): one feed line of each kind but the rout stamp, in three shots of Compact's leaf of
-         *  three lines (UI Task 8c), as a Dawn player sees them: each line's kind, team and text, then the row, glyph and ink the leaf
-         *  must draw it with (the inks written out, FeedLines' table: Dawn, Dusk, grey, loss red, brass, sepia). */
+        /** p1-ui-feed-kinds (Task 3 review Minor 9): one feed line of each kind, in three shots of Compact's leaf of three lines (UI Task 8c),
+         *  as a Dawn player sees them: each line's kind, team and text, then the row, glyph and ink the leaf must draw it with (the inks
+         *  written out, FeedLines' table: Dawn, Dusk, grey, loss red, brass, sepia). The words come from FeedLines and the sheets (the
+         *  troop names and the faction names the game prints), not from literals that a renamed troop would leave behind. */
         record FeedKind(String kind,int team,String text,int row,String glyph,int argb){}
+        static String side(int team){return FeedLines.teamShort(Spec.FACTIONS[team].name());}
         static final List<List<FeedKind>> FEED_KINDS=List.of(
-            List.of(new FeedKind("point",0,"Dawn took Mill Hamlet",0,"hud/fgv-seal-dawn",0xff1b4a47),new FeedKind("point",1,"Dusk took Trade Crossing",1,"hud/fgv-seal-x-dusk",0xff52376d),
-                new FeedKind("kill",0,"2 Dusk Revenants lost",2,"hud/fgv-skull-grey",0xff47433d)),
-            List.of(new FeedKind("loss",0,"3 Dawn Knights lost",0,"hud/fgv-skull",0xff7a2416),new FeedKind("deploy",0,"Dawn Knights deploying",1,"hud/fgv-sun",0xff3d3124),
-                new FeedKind("down",0,"Ansel's banner has fallen",2,"hud/fgv-banner-down",0xff5c3e00)),
-            List.of(new FeedKind("up",0,"Ansel is back in the field",1,"hud/fgv-banner-up",0xff5c3e00),new FeedKind("notice",0,"Capture the objectives.",2,"hud/fgv-sun",0xff3d3124)));
+            List.of(new FeedKind("point",0,FeedLines.pointTaken(side(0),"Mill Hamlet"),0,"hud/fgv-seal-dawn",0xff1b4a47),new FeedKind("point",1,FeedLines.pointTaken(side(1),"Trade Crossing"),1,"hud/fgv-seal-x-dusk",0xff52376d),
+                new FeedKind("kill",0,FeedLines.lost(2,troop("revenant").name()),2,"hud/fgv-skull-grey",0xff47433d)),
+            List.of(new FeedKind("loss",0,FeedLines.lost(3,troop("knight").name()),0,"hud/fgv-skull",0xff7a2416),new FeedKind("deploy",0,FeedLines.deploying(2,troop("knight").name()),1,"hud/fgv-sun",0xff3d3124),
+                new FeedKind("down",0,FeedLines.bannerDown("Ansel"),2,"hud/fgv-banner-down",0xff5c3e00)),
+            List.of(new FeedKind("up",0,FeedLines.bannerUp("Ansel"),0,"hud/fgv-banner-up",0xff5c3e00),new FeedKind("notice",0,"Capture the objectives.",1,"hud/fgv-sun",0xff3d3124),
+                new FeedKind("laststand",0,FeedLines.lastStand("Infantry"),2,"hud/fgv-laststand",0xff47433d)));
+        /** The banner every round of this suite fields (Phase2Checks.skirmishBanners), whatever the starter army is: a Sunweaver (two seats),
+         *  twelve Order Squires and six Order Archers fill the 20 seats, so the HUD has its three groups, the morale check its twelve knights
+         *  and the alt-layer check its three chips. */
+        static final String FEED_BANNER="mage,^,knight*12,archer*6";
         static final List<String> AIM_ROW=List.of("LMB","Confirm","RMB","Cancel");
         static final List<String> COLOURS=List.of("red","blue","green","gold","yellow","purple","white","grey","gray","orange","cyan","aqua","black","pink","violet","brown");
         static final UUID STALE=UUID.randomUUID(); // the remembered sighting the map stage keeps 100 ticks old
@@ -2100,7 +2142,7 @@ public final class Phase1Checks implements ClientModInitializer {
         }
 
         public void serverTick(GravesAndGlory.Battle b){
-            if(want>0){var p=sp(b);if(p!=null&&skirmish(b,p,want==4?4:0,1,"normal")){live=want;want=0;fixture(b,p,live);fixedAt=b.time;fixed=true;}}
+            if(want>0){var p=sp(b);if(p!=null&&Phase2Checks.skirmishBanners(b,p,want==4?4:0,FEED_BANNER,null)){live=want;want=0;fixture(b,p,live);fixedAt=b.time;fixed=true;}}
             if(live==2&&!pointOwned&&b.running&&!b.points.isEmpty()&&b.points.get(0).owner==0){pointTicks=b.time-fixedAt;pointOwned=true;}
             if(mapMarks&&b.running)marks(b);
             if(floodAt>=0&&floodSet<10&&b.running&&b.time-floodAt>=floodSet){b.message=floodSet==9?LONG:"Flood notice "+(floodSet+1);b.sendState();floodSet++;}
@@ -2237,13 +2279,13 @@ public final class Phase1Checks implements ClientModInitializer {
                     else if(since(tick)>1300){report("p1-ui-feed-point",false,"point 0 ("+pointName+") had no Dawn owner 1300 client ticks after the infantry was set to hold it; feed "+feed());stage=32;}
                 }
                 case 31->{
-                    String line="Dawn took "+pointName;long n=count("point",0,line);
+                    String line=FeedLines.pointTaken(side(0),pointName);long n=count("point",0,line);
                     if(n==1||tick>seen+20){report("p1-ui-feed-point",n==1&&pointTicks<=1200,fixture+"; Dawn owned it "+pointTicks+" server ticks later; "+(tick-seen)+" client ticks after that the feed held "+n+" line(s) ('point', 0, '"+line+"'): "+feed());stage=32;}
                 }
                 case 32->{EventFeed.clear();stage=-32;server(c,b->{lossKill(b);stage=33;});}
                 case 33->{ // p1-ui-feed-loss-kill
-                    if(since(tick)>=60){long lost=count("loss",0,"3 Dawn Knights lost"),slain=count("kill",0,"2 Dusk Revenants lost");
-                        report("p1-ui-feed-loss-kill",lost==1&&slain==1,killed+"; 60 client ticks later the feed held "+lost+" '3 Dawn Knights lost' (loss, 0) and "+slain+" '2 Dusk Revenants lost' (kill, 0): "+feed());stage=34;}
+                    if(since(tick)>=60){String lostLine=FeedLines.lost(3,troop("knight").name()),slainLine=FeedLines.lost(2,troop("revenant").name());long lost=count("loss",0,lostLine),slain=count("kill",0,slainLine);
+                        report("p1-ui-feed-loss-kill",lost==1&&slain==1,killed+"; 60 client ticks later the feed held "+lost+" '"+lostLine+"' (loss, 0) and "+slain+" '"+slainLine+"' (kill, 0): "+feed());stage=34;}
                 }
                 case 34,35,36->{ // p1-ui-feed-kinds: each set of lines on Compact's leaf alone, then its screenshot three ticks later
                     int set=stage-34;
@@ -2254,29 +2296,30 @@ public final class Phase1Checks implements ClientModInitializer {
                         kindsWhy+=(kindsWhy.isEmpty()?"":"; ")+"shot "+(set+1)+" (viewer team "+GravesAndGloryClient.team+"): drew "+got.stream().map(UiFeedChecks::feedRow).toList()+(ok?"":", WRONG (wanted "+want.stream().map(UiFeedChecks::feedRow).toList()+")");
                         shot(c,set==0?"ui-feed-kinds":"ui-feed-kinds-"+(set+1));
                         if(set<FEED_KINDS.size()-1)stage=35+set;
-                        else{report("p1-ui-feed-kinds",kindsOk,"one line of each kind but the rout stamp, pushed onto "+HudSize.NAMES[HudSize.get()]+"'s leaf as a Dawn player sees them: "+kindsWhy);EventFeed.clear();restart(c,3,50);}
+                        else{report("p1-ui-feed-kinds",kindsOk,"one line of each kind, pushed onto "+HudSize.NAMES[HudSize.get()]+"'s leaf as a Dawn player sees them: "+kindsWhy);EventFeed.clear();restart(c,3,50);}
                     }
                 }
                 // Round C: map 0
                 case 50->{EventFeed.clear();stage=-50;server(c,b->{killTroop(b,b.squads.get(player),"knight",10);stage=51;});}
-                case 51->{ // p1-ui-feed-rout: the morale rules rout the infantry
-                    int k=since(tick);
-                    if(count("rout",0,"Infantry routing")==1){routAt=k;stage=-52;server(c,b->{/* integration: no rally after no-routing; UI Task 9 rewrites ui-feed-rout */stage=52;});}
-                    else if(k>100){report("p1-ui-feed-rout",false,"no 'Infantry routing' line 100 client ticks after 10 of the 12 knights died: "+feed());stage=54;}
+                case 51->{ // p1-ui-feed-last-stand: ten of the twelve knights die with a revenant 7 blocks off, so Morale's pass tells the owner once
+                    int k=since(tick);String line=FeedLines.lastStand(Morale.label("infantry"));
+                    if(count("laststand",0,line)==1){routAt=k;stage=-52;server(c,b->{ // the group leaves and takes its last stand again inside lastStandFeedSeconds: no second line; the support Sunweaver at 20 percent with no enemy near: none
+                        var own=b.squads.get(player);own.lastStand.remove("infantry");
+                        for(var u:b.units)if(u.squad==own&&u.spec.group().equals("support")&&u.mob.isAlive())u.mob.setHealth(u.mob.getMaxHealth()*0.2f);
+                        stage=52;});}
+                    else if(k>100){report("p1-ui-feed-last-stand",false,"no '"+line+"' line 100 client ticks after 10 of the 12 knights died: "+feed());stage=54;}
                 }
                 case 52->{
                     int k=since(tick);
-                    if(count("regroup",0,"Infantry regrouped")==1){stage=-53;server(c,b->{/* integration: no rally after no-routing; UI Task 9 rewrites ui-feed-rout */stage=53;});}
-                    else if(k>40){report("p1-ui-feed-rout",false,"'Infantry routing' "+routAt+" client ticks after the deaths, but no 'Infantry regrouped' 40 ticks after Morale.rally: "+feed());stage=54;}
-                }
-                case 53->{
-                    if(since(tick)>=30){long regroups=lines().stream().filter(l->l.kind().equals("regroup")).count();
-                        report("p1-ui-feed-rout",regroups==1&&count("regroup",0,"Ranged regrouped")==0,"'Infantry routing' "+routAt+" client ticks after 10 of the 12 knights died, then 'Infantry regrouped' after Morale.rally; 30 ticks after Morale.rally on ranged (not routing) the feed holds "+regroups+" regroup line(s): "+feed());stage=54;}
+                    if(k>=120){String line=FeedLines.lastStand(Morale.label("infantry")),other=FeedLines.lastStand(Morale.label("support"));var inf=UiHudChecks.group("infantry");var sup=UiHudChecks.group("support");
+                        long tolds=lines().stream().filter(l->l.kind().equals("laststand")).count();int gate=Spec.COMBATDISCIPLINE[0].lastStandFeedSeconds();
+                        boolean ok=count("laststand",0,line)==1&&count("laststand",0,other)==0&&tolds==1&&inf!=null&&inf.lastStand()&&sup!=null&&!sup.lastStand();
+                        report("p1-ui-feed-last-stand",ok,"'"+line+"' "+routAt+" client ticks after 10 of the 12 knights died (an enemy within "+Spec.COMBATDISCIPLINE[0].lastStandRadius()+"); then the infantry left the state and took it again inside "+gate+" s and the Sunweaver fell to 20 percent with no enemy near: "+(k-0)+" client ticks later the feed holds "+tolds+" last-stand line(s) ("+count("laststand",0,line)+" for the infantry, "+count("laststand",0,other)+" for support), the infantry reads lastStand "+(inf==null?"?":inf.lastStand())+" and support "+(sup==null?"?":sup.lastStand())+": "+feed());stage=54;}
                 }
                 case 54->{EventFeed.clear();stage=-54;server(c,b->{deploy(b);stage=55;});}
                 case 55->{ // p1-ui-feed-deploy
-                    int k=since(tick);long n=count("deploy",0,"Dawn Knight deploying");
-                    if(n==1||k>400){report("p1-ui-feed-deploy",n==1,deployWhy+"; "+k+" client ticks later the feed held "+n+" 'Dawn Knight deploying' (deploy, 0): "+feed());stage=56;}
+                    int k=since(tick);String line=FeedLines.deploying(1,troop("knight").name());long n=count("deploy",0,line);
+                    if(n==1||k>400){report("p1-ui-feed-deploy",n==1,deployWhy+"; "+k+" client ticks later the feed held "+n+" '"+line+"' (deploy, 0): "+feed());stage=56;}
                 }
                 case 56->{banner=false;respawnSeen=false;seen2=0;sentBefore=FeedEvents.sent;stage=-56;server(c,b->{var p=sp(b);p.damage(p.getDamageSources().magic(),1000f);stage=57;});}
                 case 57->{ // p1-ui-feed-commander-solo
@@ -3778,6 +3821,8 @@ public final class Phase1Checks implements ClientModInitializer {
      *  leaves the slot bare. */
     static final class UiIconsChecks implements Suite,ServerWatch {
         static final String[] ACTIVES={"stand_fast","bloodrush","mark_prey","rally_horn","grave_bloom","forward_supply"};
+        /** The active whose slot the HUD hides (War Table port Task 6, ruling 5): the Quartermaster's Forward Supply; p1-ui-ability-hidden checks that it draws nothing. */
+        static final String HIDDEN="forward_supply";
         // the server thread writes these, the client thread reads them
         volatile int stage;volatile UUID player;volatile String serverClass;
         // client thread only
@@ -3869,6 +3914,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 return;
             }
             String id=ACTIVES[index],gui=gui2?"gui2":"gui1";int k=at(tick);var t=BattleHud.texts();
+            if(id.equals(HIDDEN)){index++;go(0,tick);return;} // no slot to draw a picture in
             switch(sub){
                 case 0->{server(c,b->b.testAbility=new GravesAndGlory.Battle.AbilityState(id,960,1800));go(1,tick);}
                 case 1->{
@@ -3901,10 +3947,10 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 1->{
                     boolean named=GravesAndGloryClient.commanderActive.equals(cl.active());
                     boolean drawn=BattleHud.rects().containsKey("ability")&&cl.active().equals(t.get("ability"));
-                    if(named&&k>=8&&(drawn||GravesAndGloryClient.commanderReady<0)){
+                    if(named&&k>=8&&(drawn||cl.active().equals(HIDDEN)||GravesAndGloryClient.commanderReady<0)){
                         UiRecruitChecks.park(c);String pic=t.getOrDefault("ability-icon","");
-                        boolean right=drawn?BattleHud.abilityIcon(cl.active()).equals(pic):!BattleHud.rects().containsKey("ability");
-                        realOk&=right;realWhy+=(realWhy.isEmpty()?"":"; ")+cl.id()+": the packet names "+GravesAndGloryClient.commanderActive+" (ready in "+GravesAndGloryClient.commanderReady+", running "+GravesAndGloryClient.commanderFor+"), the slot "+(drawn?"drew "+pic+" ("+slot()+")":"stayed bare")+(right?"":" WRONG");
+                        boolean right=drawn?!cl.active().equals(HIDDEN)&&BattleHud.abilityIcon(cl.active()).equals(pic):!BattleHud.rects().containsKey("ability");
+                        realOk&=right;realWhy+=(realWhy.isEmpty()?"":"; ")+cl.id()+": the packet names "+GravesAndGloryClient.commanderActive+" (ready in "+GravesAndGloryClient.commanderReady+", running "+GravesAndGloryClient.commanderFor+"), the slot "+(drawn?"drew "+pic+" ("+slot()+")":cl.active().equals(HIDDEN)?"was hidden, as the Quartermaster's is":"stayed bare")+(right?"":" WRONG");
                         go(2,tick);}
                     else if(k>300){realOk=false;realWhy+=(realWhy.isEmpty()?"":"; ")+cl.id()+": the slot never followed the class (packet "+GravesAndGloryClient.commanderActive+", ready "+GravesAndGloryClient.commanderReady+", "+slot()+") WRONG";index++;go(0,tick);}
                 }

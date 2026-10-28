@@ -6,8 +6,8 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import java.util.*;
 
 /** The server half of the battle event feed (UI spec 4.5): who is told what, as feed_v1 lines (kind, the event's team, text).
- *  A point taken goes to every player; a commander falling or returning to the seated players of his team but him; a rout, a
- *  regroup and a deploy to the army's owner. Losses, kills and deploys are counted per recipient, kind and troop and go out as one
+ *  A point taken goes to every player; a commander falling or returning to the seated players of his team but him; a last stand
+ *  and a deploy to the army's owner. Losses, kills and deploys are counted per recipient, kind and troop and go out as one
  *  line once their bucket is BUCKET_TICKS old ("3 Dawn Knights lost"). Bots are told nothing. Server thread only. */
 public final class FeedEvents {
     private FeedEvents() {}
@@ -51,14 +51,24 @@ public final class FeedEvents {
         }
     }
 
-    /** A group of s began to rout (routing true) or regrouped: "Support routing", "Ranged regrouped", to the owner. */
-    public static void rout(GravesAndGlory.Battle b, GravesAndGlory.Squad s, String group, boolean routing) {
-        if (s.bot) return;
-        var p = b.server.getPlayerManager().getPlayer(s.owner);
-        if (p == null) return;
-        String label = group;
-        for (var row : Spec.GROUPS) if (row.id().equals(group)) label = row.label();
-        send(p, routing ? "rout" : "regroup", s.team, routing ? FeedLines.routing(label) : FeedLines.regrouped(label));
+    /** The lines of Morale.lastStandLines already sent or passed over. The list only grows within a round and Morale.startRound empties
+     *  it, so a list shorter than this count means a new round began. */
+    private static int lastStandSeen;
+
+    /** A group of an army turned to its last stand: "Infantry make a last stand", to the army's owner. Morale throttles the lines
+     *  (one per group per combatDiscipline.lastStandFeedSeconds, a bot's army none), so each one in its list goes out as it is. */
+    static void lastStand(GravesAndGlory.Battle b) {
+        var lines = Morale.lastStandLines;
+        if (lines.size() < lastStandSeen) lastStandSeen = 0;
+        for (; lastStandSeen < lines.size(); lastStandSeen++) {
+            var line = lines.get(lastStandSeen);
+            var s = b.squads.get(line.owner());
+            var p = b.server.getPlayerManager().getPlayer(line.owner());
+            if (s == null || s.bot || p == null) continue;
+            String label = line.group();
+            for (var row : Spec.GROUPS) if (row.id().equals(line.group())) label = row.label();
+            send(p, "laststand", s.team, FeedLines.lastStand(label));
+        }
     }
 
     /** A trained troop took the field: counted into the owner's "Dawn Knights deploying" line. */
@@ -66,9 +76,11 @@ public final class FeedEvents {
         count(b, s, "deploy", troop, s.team);
     }
 
-    /** Each server tick: every bucket BUCKET_TICKS old goes out as its line. Outside a round nothing waits. */
+    /** Each server tick: every bucket BUCKET_TICKS old goes out as its line, and each new last-stand line of Morale's. Outside a round
+     *  nothing waits. */
     public static void tick(GravesAndGlory.Battle b) {
         if (!b.running) { pending.clear(); return; }
+        lastStand(b);
         for (var it = pending.entrySet().iterator(); it.hasNext(); ) {
             var e = it.next();
             Key k = e.getKey(); Bucket bucket = e.getValue();
@@ -79,8 +91,8 @@ public final class FeedEvents {
         }
     }
 
-    /** A new round or battlefield: nothing counted so far goes out. */
-    public static void clear() { pending.clear(); }
+    /** A new round or battlefield: nothing counted so far goes out, and no last-stand line recorded so far. */
+    public static void clear() { pending.clear(); lastStandSeen = Morale.lastStandLines.size(); }
 
     static void count(GravesAndGlory.Battle b, GravesAndGlory.Squad to, String kind, Spec.TroopsRow troop, int team) {
         if (to == null || to.bot) return;

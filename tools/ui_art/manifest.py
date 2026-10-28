@@ -13,6 +13,8 @@ import kit_icons
 import kit_props
 import kit_track
 import kit_maps
+import hud_laststand
+import hud_veterans
 
 MOCK = dict(v4art.ASSETS)
 for _mod in (v4a_table, v4a_paper, v4a_hud, v4a_recruit, v4a_ink, v4a_map, v4a_furn, v4a_portrait, v4a_recruit2):
@@ -36,7 +38,7 @@ def crop(paint, x, y, w, h):
 
 
 # ================================================================ hud/
-for _n in ('boss-dawn', 'boss-dusk', 'chain', 'hook', 'hook-brass', 'stamp-rout', 'horn', 'ability-slot',
+for _n in ('boss-dawn', 'boss-dusk', 'chain', 'hook', 'hook-brass', 'horn', 'ability-slot',
            'key-brass-plate', 'hp-channel', 'hp-channel-grey'):
     mock('hud', _n)
 # the class actives' own pictures for the ability slot (kit_icons.ABILITY), 22 x 20 as the horn is, drawn at (5, 6) of the slot by
@@ -64,21 +66,20 @@ add('hud/track-dawn-fill', crop(lambda: track(56, 1.0, 'dawn'), 1, 2, 54, 4))
 add('hud/track-dusk-fill', crop(lambda: track(56, 1.0, 'dusk'), 1, 2, 54, 4))
 # the spine, 9 x 58: its 24 px middle holds one rivet, so tiling keeps the painter's 24 px rivet pitch
 add('hud/spine', lambda: spine(56), kind='three-v', t=18, b=16)
-# the selected group's ledger card, 62 px tall with its key row (the mock's card-sel, and its loss flash and rout states from
+# the selected group's ledger card, 62 px tall with its key row (the mock's card-sel, and its loss flash and fallen states from
 # the same ledger_card arguments); the mock's 48 px cards and the plain iron card went with UI Task 8c, where only the
-# selected group keeps a card and every other group hangs as a chip
+# selected group keeps a card and every other group hangs as a chip. A group at its last stand keeps the live card-sel
 mock('hud', 'card-sel', ox=1, oy=1)
 add('hud/card-flash-62', lambda: ledger_card(176, 62, seed=12, flash=True), ox=2, oy=2)
-add('hud/card-rout-62', lambda: ledger_card(176, 62, kind='grey', seed=14, rust=0.35), ox=1, oy=1)
+add('hud/card-fallen-62', lambda: ledger_card(176, 62, kind='grey', seed=14, rust=0.35), ox=1, oy=1)
 # the lighter battle HUD (UI Task 8c, kit_extra): a group's chip in its four looks (iron, the loss flash, brass while the
-# army is selected, grey and rusted when routed or fallen), its strength channel and rout stamp, the army's key strip,
+# army is selected, grey and rusted when fallen), its strength channel, the army's key strip,
 # the tutorial's lesson note, the narrower hint slip and the Compact size's feed leaf of three entries
 add('hud/chip-plain', lambda: kit_extra.chip(seed=41), ox=1, oy=1)
 add('hud/chip-flash', lambda: kit_extra.chip(seed=42, flash=True), ox=2, oy=2)
 add('hud/chip-sel', lambda: kit_extra.chip(metal=BRASSR, seed=43), ox=1, oy=1)
-add('hud/chip-rout', lambda: kit_extra.chip('grey', seed=44, rust=0.35), ox=1, oy=1)
+add('hud/chip-fallen', lambda: kit_extra.chip('grey', seed=44, rust=0.35), ox=1, oy=1)
 add('hud/chip-channel', kit_extra.chip_channel)
-add('hud/stamp-chip', kit_extra.chip_stamp)
 add('hud/keys-strip', kit_extra.keys_strip, ox=1, oy=1)
 add('hud/lesson-note', kit_extra.lesson_note, kind='three-v', t=kit_extra.LESSON_T, b=kit_extra.LESSON_B, ox=1, oy=1)
 add('hud/notice-slip', kit_extra.hint_slip)
@@ -86,7 +87,6 @@ add('hud/feed-slip-3', kit_extra.feed_leaf_3, ox=1, oy=3)
 # bar fills, 102 x 3, cut to length in game (UiTex.bar)
 add('hud/hp-full-dawn', lambda: hp_fill(102))
 add('hud/hp-lost', lambda: hp_fill(102, 'lost'))
-add('hud/hp-rout', lambda: hp_fill(102, 'rout'))
 add('hud/hp-full-dusk', kit_extra.hp_full_dusk)
 mock('hud', 'key-chip', kind='three-h', l=3, r=3)
 # feed glyphs inked on the vellum slip: seal ours, struck seal theirs, in each team's hue
@@ -94,9 +94,23 @@ add('hud/fgv-seal-dawn', MOCK['fgv-seal'])
 add('hud/fgv-seal-x-dusk', MOCK['fgv-seal-x'])
 add('hud/fgv-seal-dusk', lambda: feed_glyph_ink('fg-seal', 'them'))
 add('hud/fgv-seal-x-dawn', lambda: feed_glyph_ink('fg-seal-x', 'us'))
-for _n in ('fgv-skull', 'fgv-skull-grey', 'fgv-banner-down', 'fgv-banner-up', 'fgv-rout', 'fgv-sun'):
+for _n in ('fgv-skull', 'fgv-skull-grey', 'fgv-banner-down', 'fgv-banner-up', 'fgv-sun'):
     mock('hud', _n)
 add('hud/fgv-moon', kit_extra.fgv_moon)
+# LAST STAND (War Table port Task 6, hud_laststand): the stamp a group at its last stand carries in a chip's state slot and on the
+# selected card, and the feed's glyph for its line. The plates stay as they are: it fights on, so its plate keeps the live look
+add('hud/stamp-last-chip', hud_laststand.chip_stamp)
+add('hud/stamp-last-card', hud_laststand.card_stamp)
+add('hud/fgv-laststand', hud_laststand.fgv_laststand)
+# the Iron Ledger's veteran pieces (War Table port Task 7, hud_veterans): a level-2 and a level-3 pip, the glint of an open Armoury
+# buy on 4 frames, and the level-3 feed line's glyph in each hue, solid for our own line and struck for an enemy's
+add('hud/pip-l2', hud_veterans.pip_l2)
+add('hud/pip-l3', hud_veterans.pip_l3)
+add('hud/pip-more', hud_veterans.pip_more)
+add('hud/glint', hud_veterans.glint, kind='sheet', frames=hud_veterans.GLINT_N)
+for _side, _hue in (('dawn', 'us'), ('dusk', 'them')):
+    add('hud/fgv-levelup-' + _side, (lambda h: lambda: hud_veterans.fgv_levelup(h))(_hue))
+    add('hud/fgv-levelup-x-' + _side, (lambda h: lambda: hud_veterans.fgv_levelup(h, True))(_hue))
 # cards that carry text
 add('hud/respawn-card', lambda: ledger_card(200, 28, 'lo', IRON, seed=16), ox=1, oy=1)
 
