@@ -1,4 +1,7 @@
-# Current handoff — 2026-10-25
+# Current handoff — 2026-10-28
+
+## Update 2026-10-28
+phase-1-solo-core is fast-forwarded locally to 3031161, the M1 UI integration result (reports/m1-ui-integration-2026-10-28.md). Nothing is pushed on phase-1-solo-core. The candidate record and jar are for this source (releases/current-candidate.json); six networked players, package gate and Kort's look remain open. The builder server is live (BUILDER-SERVER.md). Animation pass 1 runs in branch anim-pass-1, banner House chips in banner-task-3. A six-player test plan is drafted, not yet in the repo. SLICE-1 scoping is answered (BACKLOG.md, DECISIONS.md on builder-server); map parts wait on the builder. The sections below are the 2026-10-25 state and are partly superseded.
 
 Read WORKFLOW.md for policy; SETUP.md for commands. Integration checkout: bannerbound, phase-1-solo-core at da669eea15c2b647a07443925a92e9c16c3453be before optimization. Optimization tooling and durable documents are recorded in a local policy/tooling commit (see git log); pre-existing gameplay work remains separate. Refresh live facts with tools/workspace_state.py; see ../workspace-state.json from the checkout root's parent.
 

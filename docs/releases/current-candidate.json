@@ -1,16 +1,18 @@
 {
   "status": "development-build; release blocked",
   "version": "0.5.0",
-  "commit": "8524e703aaefc9df3a48c479ff99c717404f3e9f",
+  "commit": "30311614c26d32b7d5dc486c9d56f8dc5f3ae3ef",
   "dirty": false,
   "source_identity": {
     "version": "0.5.0",
     "modId": "gravesandglory",
-    "sourceSha256": "df6d7fb3212469ad4827607a1de3dd7da0f9fb067b0d31af3be0ad4d482a9cda"
+    "sourceSha256": "5e7be7be04a9dc3a6b9a20d2d6dfca9de1efc68ce331e61a30525e25ba23a5a2"
   },
   "artifact": {
-    "path": "not preserved for this source (the earlier jar belongs to 72cd850)",
-    "kind": "mod jar; not a playable modpack package"
+    "path": "work/candidates/5e7be7be04a9dc3a6b9a20d2d6dfca9de1efc68ce331e61a30525e25ba23a5a2/graves-and-glory-0.5.0.jar",
+    "sha256": "823efa5f32fc05ee07096f2e3f4856044b755556a94668200acbd4ea0937b392",
+    "kind": "mod jar; not a playable modpack package",
+    "note": "built from 3031161 with gradlew build -x test; 3031161 differs from verified 8524e70 only in a UiMath comment/test note, docs and this record, so fast/game results below were run on 8524e70 and are not re-run for this identity"
   },
   "verification": {
     "fast": "work/verify/20261028-160025-37468/result.json (pass, exit 0)",
