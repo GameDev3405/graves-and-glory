@@ -1,6 +1,6 @@
 {
  "troop": "ic_hearthguard",
- "note": "Ironclad Hearthguard (unit identity, Ironclad): vindicator, biped, broad and short; the square box helm with cheek plates, the slab pauldrons (the mark), arms folded at rest, a knee-length soot-iron scale coat under the team pale, the copper beard braided to the belt; stage 3 helm horns. Hearth axe, the shield on the left arm.",
+ "note": "Ironclad Hearthguard (unit identity, Ironclad): vindicator, biped, broad and short; the riveted box helm with cheek plates and a horsehair crest, the layered slab pauldrons (the mark), arms folded at rest, a breastplate over a knee-length soot-iron scale coat, the chequy team tabard under a brass-buckled belt, tassets, knee cops and sabatons, the copper beard braided to the belt; stage 3 helm horns. Hearth axe, the shield on the left arm. No back flag.",
  "rig": "biped",
  "size": [
   128,
@@ -49,7 +49,7 @@
   {
    "part": "box_helm",
    "uv": [
-    32,
+    0,
     0
    ]
   },
@@ -63,42 +63,60 @@
   {
    "part": "slab_pauldrons",
    "uv": [
-    0,
+    24,
+    0
+   ]
+  },
+  {
+   "part": "ic_breastplate",
+   "uv": [
+    59,
+    0
+   ]
+  },
+  {
+   "part": "ic_belt",
+   "uv": [
+    60,
     12
    ]
   },
   {
    "part": "scale_coat_skirt",
    "uv": [
-    72,
+    36,
     0
+   ]
+  },
+  {
+   "part": "ic_greave",
+   "uv": [
+    52,
+    17
+   ]
+  },
+  {
+   "part": "ic_greave_left",
+   "uv": [
+    56,
+    27
    ]
   },
   {
    "part": "helm_horns",
    "uv": [
-    48,
-    10
+    12,
+    0
    ],
    "stages": [
     3
    ]
   },
   {
-   "part": "chest_panel"
+   "part": "ic_tabard"
   },
   {
-   "part": "pennant",
-   "scale": [
-    0.833333,
-    1.052632,
-    0.869565
-   ],
-   "offset": [
-    0,
-    0.6316,
-    0.8696
-   ]
+   "part": "ic_crest"
   }
  ],
  "skins": {

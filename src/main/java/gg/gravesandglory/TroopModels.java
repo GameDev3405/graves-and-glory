@@ -13,7 +13,7 @@ import java.util.*;
  * models/troop/, and how a mob on the client maps to one. A troop is a plain vanilla mob named by Battle.spawn: its custom
  * name says only which troop it is (ArmyMobs.named reads any of its level names) and, ending " (Veteran)", that it wears the
  * veteran trim; its rank (level, weapon tier, armour tier) comes from rank_v1 (RankSync.client, in-match progression Task 9);
- * its gg_<side> scoreboard team gives the cloth its panels and pennant are drawn in.
+ * its gg_<side> scoreboard team gives the cloth its tabards, panels and plumes are drawn in.
  */
 public final class TroopModels {
     private TroopModels() {}

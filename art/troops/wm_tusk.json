@@ -1,6 +1,6 @@
 {
  "troop": "wm_tusk",
- "note": "Wildmoot Tusk Spear (unit identity, Wildmoot): zombified piglin, biped, hunched; boar-kin with a snout and big white tusks, a leather cap, a shaggy hide mantle over the team jerkin, the pennant; stage 3 tusk crown. The crossbarred boar spear stands with its head over the cap (the mark).",
+ "note": "Wildmoot Tusk Spear (unit identity, Wildmoot): zombified piglin, biped, hunched; boar-kin with a snout and big white tusks, a riveted leather cap under the team headband, a shaggy hide mantle and a spiked leather pauldron over a strapped jerkin, the barry team kilt, team forearm wraps, shin guards; stage 3 tusk crown. The crossbarred boar spear stands with its head over the cap (the mark). No back flag.",
  "rig": "biped",
  "size": [
   128,
@@ -13,15 +13,15 @@
   {
    "part": "boar_snout",
    "uv": [
-    100,
+    32,
     0
    ]
   },
   {
    "part": "tusks",
    "uv": [
-    92,
-    3
+    59,
+    0
    ]
   },
   {
@@ -34,25 +34,67 @@
   {
    "part": "hide_mantle",
    "uv": [
-    68,
+    52,
     0
+   ]
+  },
+  {
+   "part": "wm_pauldron",
+   "uv": [
+    32,
+    6
+   ]
+  },
+  {
+   "part": "wm_belt",
+   "uv": [
+    59,
+    0
+   ]
+  },
+  {
+   "part": "wm_shin",
+   "uv": [
+    99,
+    7
+   ]
+  },
+  {
+   "part": "wm_shin_left",
+   "uv": [
+    63,
+    9
    ]
   },
   {
    "part": "tusk_crown",
    "uv": [
-    68,
-    9
+    37,
+    0
    ],
    "stages": [
     3
    ]
   },
   {
-   "part": "jerkin"
+   "part": "wm_kilt"
   },
   {
-   "part": "pennant"
+   "part": "wm_headband"
+  },
+  {
+   "part": "wm_wraps",
+   "name": "wm_wraps_right"
+  },
+  {
+   "part": "wm_wraps",
+   "name": "wm_wraps_left",
+   "bone": "left_arm",
+   "offset": [
+    2,
+    0,
+    0
+   ]
   }
  ],
  "skins": {

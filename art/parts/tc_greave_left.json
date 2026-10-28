@@ -1,0 +1,43 @@
+{
+ "part": "tc_greave_left",
+ "note": "The left Trident Guard bronze greave and knee boss.",
+ "bone": "left_leg",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -2.5,
+    6,
+    -2.5
+   ],
+   "size": [
+    5,
+    5,
+    5
+   ],
+   "uv": [
+    47,
+    0
+   ],
+   "note": "greave"
+  },
+  {
+   "origin": [
+    -1,
+    4.5,
+    -3
+   ],
+   "size": [
+    2,
+    2,
+    1
+   ],
+   "uv": [
+    0,
+    2
+   ],
+   "note": "knee boss"
+  }
+ ]
+}

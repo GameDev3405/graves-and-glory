@@ -1,0 +1,26 @@
+{
+ "part": "wm_shin_left",
+ "note": "The left Tusk Spear shin guard.",
+ "bone": "left_leg",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -2.5,
+    5,
+    -2.5
+   ],
+   "size": [
+    5,
+    4,
+    5
+   ],
+   "uv": [
+    0,
+    0
+   ],
+   "note": "shin guard"
+  }
+ ]
+}

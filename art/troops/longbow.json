@@ -10,7 +10,6 @@
 {"part":"tall_quiver","uv":[64,12]},
 {"part":"gilt_sash","uv":[92,12]},
 {"part":"jerkin"},
-{"part":"pennant","scale":[1.111111,1.0,1.111111]},
 {"part":"long_feather","uv":[64,26],"stages":[3]}
 ],
 "skins":{"1":"longbow_s1.png","2":"longbow_s2.png","3":"longbow_s3.png"},

@@ -1,0 +1,43 @@
+{
+ "part": "ic_greave_left",
+ "note": "The left Hearthguard knee cop and sabaton toe.",
+ "bone": "left_leg",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -2.5,
+    4.5,
+    -2.75
+   ],
+   "size": [
+    5,
+    2,
+    1
+   ],
+   "uv": [
+    30,
+    0
+   ],
+   "note": "knee cop"
+  },
+  {
+   "origin": [
+    -1.75,
+    10,
+    -3
+   ],
+   "size": [
+    4,
+    2,
+    1
+   ],
+   "uv": [
+    0,
+    0
+   ],
+   "note": "sabaton toe"
+  }
+ ]
+}

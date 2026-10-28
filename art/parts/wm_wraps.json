@@ -1,0 +1,26 @@
+{
+ "part": "wm_wraps",
+ "note": "Tusk Spear forearm wraps in the side's cloth; the left copy takes bone left_arm, offset [2,0,0].",
+ "bone": "right_arm",
+ "team": true,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -3.5,
+    5,
+    -2.5
+   ],
+   "size": [
+    5,
+    2,
+    5
+   ],
+   "uv": [
+    88,
+    8
+   ],
+   "note": "wrap"
+  }
+ ]
+}

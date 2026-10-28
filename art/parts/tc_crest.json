@@ -1,0 +1,26 @@
+{
+ "part": "tc_crest",
+ "note": "The Trident Guard dorsal fin: bronze ribs over a membrane in the side's cloth.",
+ "bone": "head",
+ "team": true,
+ "tag": "helm",
+ "boxes": [
+  {
+   "origin": [
+    -0.5,
+    -11.5,
+    -3
+   ],
+   "size": [
+    1,
+    3,
+    7
+   ],
+   "uv": [
+    52,
+    27
+   ],
+   "note": "fin"
+  }
+ ]
+}

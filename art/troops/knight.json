@@ -9,8 +9,7 @@
 {"part":"iron_cap","uv":[64,0]},
 {"part":"surcoat_skirt","uv":[64,12]},
 {"part":"crest_plume","uv":[92,12],"stages":[3]},
-{"part":"chest_panel"},
-{"part":"pennant"}
+{"part":"chest_panel"}
 ],
 "skins":{"1":"knight_s1.png","2":"knight_s2.png","3":"knight_s3.png"},
 "weapon":"arming_sword",

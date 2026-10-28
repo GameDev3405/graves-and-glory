@@ -45,7 +45,7 @@ final class TroopFeatures {
 
     /**
      * The team bones in the cloth of the troop's side (team_cloth_<side>), of its dress when it has no side (a portrait wears
-     * the company's), or linen; the pennant and standard draw only for a troop on a side whose row flies one.
+     * the company's), or linen. Team colour reads through these accents (tabards, panels, plumes, wraps); no troop carries a back flag.
      */
     static final class Cloth<T extends MobEntity> extends FeatureRenderer<T,TroopModel<T>> {
         final TroopRenderer<T> r;Cloth(TroopRenderer<T> r){super(r);this.r=r;}

@@ -62,7 +62,7 @@ Sources (sizes in model pixels, y down, the ground at y 24, angles in degrees; a
                            armour tier the troop wears, never a fourth full skin. The troop's size, alpha 0 or 255, every
                            opaque texel on a texel every own skin paints, at most TRIM_SHARE of the stage 1 skin's opaque
                            texels, team tint rule 1; it takes no relief layer (a _veteran_r.png is refused).
-  art/team/team_cloth.png  the greyscale cloth template; its three greys take the side colour x1.0, x0.8 and x0.6, every
+  art/team/team_cloth.png  the greyscale cloth template; its field greys (192, 160, 128, 96, 64) take the side colour x1.2 (clipped), x1.0, x0.8, x0.6 and x0.42, every
                            other pixel keeps its paint. art/team/glyph_<glyph>.png: full-sheet masks, stamped in white.
   art/team/team_cloth.json optional {"density": N}: the template and the glyph masks are N texels a px of the cloth layout.
 
@@ -181,7 +181,7 @@ WEAPON_KEYS = {'weapon', 'density', 'thickness', 'grip', 'pull', 'nocks', 'note'
 RIG_KEYS = {'rig', 'size', 'outer', 'hands', 'bones', 'note'}
 IDLE_ARMS = ('hang', 'forward', 'folded')
 PORTRAIT = re.compile(r'(standard|tall \d+|wide \d+|beast \d+( yaw -?\d+)?)')
-GREYS = {(160, 160, 160): 1.0, (128, 128, 128): 0.8, (96, 96, 96): 0.6}   # the cloth template's field greys
+GREYS = {(192, 192, 192): 1.2, (160, 160, 160): 1.0, (128, 128, 128): 0.8, (96, 96, 96): 0.6, (64, 64, 64): 0.42}   # the cloth template's field greys (192 and 64: the highlight and the deep fold, clipped at 255)
 LINEN = (0xCF, 0xC6, 0xB0)
 COMPANY = (0x2A, 0x37, 0x47)   # the Hollow's navy (work/ui-concepts/storybook/NOTES.md), the company's cloth
 GLYPH = (0xF3, 0xEF, 0xE4)   # the pennant glyph's white, the white of the charges
@@ -2441,7 +2441,7 @@ def troop_outputs(cat, troop, weapon_lit):
 
 def cloth(cat: Catalog, side) -> Image.Image:
     """The team cloth sheet of a side (a factions id), linen for None, or the company's navy for 'company': the
-    template's three greys take the colour x1.0, x0.8 and x0.6, every other pixel keeps its paint, and a side's glyph mask
+    template's field greys take the colour x1.2, x1.0, x0.8, x0.6 and x0.42, every other pixel keeps its paint, and a side's glyph mask
     goes on in white (linen and the company carry none)."""
     if cat.template is None:
         fail('art/team/team_cloth.png is missing')
@@ -2473,7 +2473,7 @@ def cloth(cat: Catalog, side) -> Image.Image:
                     fail('glyph_%s.png: pixel (%d, %d) is not on a field grey of team_cloth.png' % (row['glyph'], x, y))
                 px[x, y] = GLYPH + (255,)
             elif k is not None:
-                px[x, y] = tuple(int(c * k + 0.5) for c in rgb) + (a,)
+                px[x, y] = tuple(min(255, int(c * k + 0.5)) for c in rgb) + (a,)
     return out
 
 

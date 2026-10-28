@@ -1,0 +1,43 @@
+{
+ "part": "ic_breastplate",
+ "note": "The Hearthguard breastplate over the scale coat, with a fauld lame at its foot.",
+ "bone": "body",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -4.5,
+    -12.5,
+    -2.5
+   ],
+   "size": [
+    9,
+    7,
+    5
+   ],
+   "uv": [
+    13,
+    0
+   ],
+   "note": "breastplate"
+  },
+  {
+   "origin": [
+    -4.5,
+    -5.5,
+    -2.5
+   ],
+   "size": [
+    9,
+    1,
+    5
+   ],
+   "uv": [
+    0,
+    35
+   ],
+   "note": "fauld lame"
+  }
+ ]
+}

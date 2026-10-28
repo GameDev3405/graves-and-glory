@@ -1,6 +1,6 @@
 {
  "part": "slab_pauldrons",
- "note": "The Hearthguard mark: two flat soot-iron slabs on the shoulders, wider than the arms, a lame under each.",
+ "note": "The Hearthguard mark: layered soot-iron pauldrons, a slab wider than the arm over two lames, a brass boss and a short spike on each.",
  "bone": "body",
  "team": false,
  "tag": "",
@@ -17,10 +17,78 @@
     6
    ],
    "uv": [
-    60,
-    14
+    82,
+    20
    ],
    "note": "right slab"
+  },
+  {
+   "origin": [
+    -8.25,
+    -10.5,
+    -2.75
+   ],
+   "size": [
+    4,
+    1,
+    5
+   ],
+   "uv": [
+    80,
+    11
+   ],
+   "note": "right first lame"
+  },
+  {
+   "origin": [
+    -8,
+    -9.5,
+    -2.5
+   ],
+   "size": [
+    3,
+    1,
+    4
+   ],
+   "uv": [
+    38,
+    0
+   ],
+   "note": "right second lame"
+  },
+  {
+   "origin": [
+    -7.5,
+    -14.5,
+    -1
+   ],
+   "size": [
+    2,
+    1,
+    2
+   ],
+   "uv": [
+    12,
+    17
+   ],
+   "note": "right boss"
+  },
+  {
+   "origin": [
+    -7,
+    -16.5,
+    -0.5
+   ],
+   "size": [
+    1,
+    2,
+    1
+   ],
+   "uv": [
+    99,
+    0
+   ],
+   "note": "right spike"
   },
   {
    "origin": [
@@ -35,43 +103,77 @@
    ],
    "uv": [
     0,
-    20
+    34
    ],
    "note": "left slab"
   },
   {
    "origin": [
-    -8,
+    4.25,
     -10.5,
-    -2.5
+    -2.75
    ],
    "size": [
-    3,
-    2,
+    4,
+    1,
     5
    ],
    "uv": [
-    52,
-    0
+    69,
+    26
    ],
-   "note": "right lame"
+   "note": "left first lame"
   },
   {
    "origin": [
     5,
-    -10.5,
+    -9.5,
     -2.5
    ],
    "size": [
     3,
-    2,
-    5
+    1,
+    4
    ],
    "uv": [
-    56,
-    7
+    60,
+    12
    ],
-   "note": "left lame"
+   "note": "left second lame"
+  },
+  {
+   "origin": [
+    5.5,
+    -14.5,
+    -1
+   ],
+   "size": [
+    2,
+    1,
+    2
+   ],
+   "uv": [
+    52,
+    20
+   ],
+   "note": "left boss"
+  },
+  {
+   "origin": [
+    6,
+    -16.5,
+    -0.5
+   ],
+   "size": [
+    1,
+    2,
+    1
+   ],
+   "uv": [
+    14,
+    4
+   ],
+   "note": "left spike"
   }
  ]
 }

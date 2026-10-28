@@ -1,6 +1,6 @@
 {
  "troop": "tc_tideguard",
- "note": "Tidecallers Trident Guard (unit identity, Tidecallers): drowned, biped, upright and long-legged; bleached coral rising from both shoulders (the mark), barnacled mail, the scallop shell on the back, the finned iron cap, the team pale as a sash, the pennant; stage 3 coral crown. Coral trident.",
+ "note": "Tidecallers Trident Guard (unit identity, Tidecallers): drowned, biped, upright and long-legged; bleached coral rising from both shoulders (the mark), a bronze scale cuirass over barnacled mail, the scallop shell on the back, the verdigris finned cap with the team fin, the barry-wavy team tabard, team wraps over bronze bracers, bronze greaves; stage 3 coral crown. Coral trident. No back flag.",
  "rig": "biped",
  "size": [
   128,
@@ -35,36 +35,80 @@
   {
    "part": "coral_pauldrons",
    "uv": [
-    68,
+    32,
+    0
+   ]
+  },
+  {
+   "part": "tc_cuirass",
+   "uv": [
+    52,
     0
    ]
   },
   {
    "part": "scallop_shell",
    "uv": [
-    84,
+    32,
+    7
+   ]
+  },
+  {
+   "part": "tc_bracer",
+   "uv": [
+    75,
+    15
+   ]
+  },
+  {
+   "part": "tc_bracer_left",
+   "uv": [
+    106,
+    15
+   ]
+  },
+  {
+   "part": "tc_greave",
+   "uv": [
+    91,
     0
+   ]
+  },
+  {
+   "part": "tc_greave_left",
+   "uv": [
+    44,
+    10
    ]
   },
   {
    "part": "coral_crown",
    "uv": [
-    104,
-    9
+    50,
+    0
    ],
    "stages": [
     3
    ]
   },
   {
-   "part": "chest_panel"
+   "part": "tc_crest"
   },
   {
-   "part": "pennant",
+   "part": "tc_tabard"
+  },
+  {
+   "part": "tc_wraps",
+   "name": "tc_wraps_right"
+  },
+  {
+   "part": "tc_wraps",
+   "name": "tc_wraps_left",
+   "bone": "left_arm",
    "offset": [
+    2,
     0,
-    0,
-    0.5
+    0
    ]
   }
  ],

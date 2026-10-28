@@ -1,0 +1,77 @@
+{
+ "part": "wm_pauldron",
+ "note": "The Tusk Spear left pauldron: a boiled-leather cup over the mantle with two bone spikes.",
+ "bone": "body",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    3.5,
+    -13.5,
+    -2.5
+   ],
+   "size": [
+    5,
+    3,
+    5
+   ],
+   "uv": [
+    71,
+    10
+   ],
+   "note": "leather cup"
+  },
+  {
+   "origin": [
+    4,
+    -10.5,
+    -2.25
+   ],
+   "size": [
+    4,
+    1,
+    4
+   ],
+   "uv": [
+    0,
+    5
+   ],
+   "note": "lame"
+  },
+  {
+   "origin": [
+    5,
+    -15.5,
+    -1
+   ],
+   "size": [
+    1,
+    2,
+    1
+   ],
+   "uv": [
+    0,
+    0
+   ],
+   "note": "front spike"
+  },
+  {
+   "origin": [
+    6.5,
+    -15,
+    0.5
+   ],
+   "size": [
+    1,
+    2,
+    1
+   ],
+   "uv": [
+    86,
+    1
+   ],
+   "note": "back spike"
+  }
+ ]
+}

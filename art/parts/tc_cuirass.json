@@ -1,0 +1,60 @@
+{
+ "part": "tc_cuirass",
+ "note": "The Trident Guard bronze scale cuirass over the mail, with a shell-clasped belt.",
+ "bone": "body",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -4.5,
+    -12.5,
+    -2.5
+   ],
+   "size": [
+    9,
+    7,
+    5
+   ],
+   "uv": [
+    16,
+    0
+   ],
+   "note": "scale cuirass"
+  },
+  {
+   "origin": [
+    -4.5,
+    -1,
+    -2.5
+   ],
+   "size": [
+    9,
+    2,
+    5
+   ],
+   "uv": [
+    0,
+    12
+   ],
+   "note": "belt"
+  },
+  {
+   "origin": [
+    -1,
+    -1.5,
+    -3
+   ],
+   "size": [
+    2,
+    2,
+    1
+   ],
+   "uv": [
+    12,
+    0
+   ],
+   "note": "shell clasp"
+  }
+ ]
+}

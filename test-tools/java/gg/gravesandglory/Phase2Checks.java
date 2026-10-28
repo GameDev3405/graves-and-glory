@@ -4661,7 +4661,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 var ht=board.getPlayerTeam(husk.getEntityName());ok&=ht==null;
                 report("p2-spike-teams",ok,why+"the husk on "+(ht==null?"no team":ht.getName()));});
             var km=TroopModels.model("knight");var sm=TroopModels.model("sentinel");
-            List<String> common=List.of("head","body","right_arm","left_arm","right_hand","left_hand","right_leg","left_leg","pennant");
+            List<String> common=List.of("head","body","right_arm","left_arm","right_hand","left_hand","right_leg","left_leg");
             boolean bones=km!=null&&sm!=null&&km.bones().containsAll(common)&&sm.bones().containsAll(common)&&km.bones().contains("iron_cap")&&sm.bones().containsAll(List.of("great_helm","long_tabard"));
             report("p2-spike-bones",bones,"knight bones "+(km==null?"none":km.bones())+"; sentinel bones "+(sm==null?"none":sm.bones()));
             if(km!=null&&sm!=null){var kb=km.restBounds();var sb=sm.restBounds();
@@ -4692,11 +4692,11 @@ public final class Phase2Checks implements ClientModInitializer {
             if(f==null){var e=dying==null?null:client(c,dying.mob);report("p2-spike-death",false,"the Squire was never drawn through its own model on its side in 300 ticks, so it was not killed: on this client="+(e!=null)+", drawn="+(e!=null&&TroopRenderer.drawn(e)!=null)+", look "+(e==null?"-":TroopModels.resolve(e))+(m==null?" (no knight model)":""));return;}
             if(!f.done||m==null){report("p2-spike-death",false,"no frame of the Squire's death second, off its team on this client, was drawn within 60 ticks of the kill"+(m==null?" (no knight model)":""));return;}
             var d=f.draw;List<String> bones=d==null?List.of():m.shownBones(d.bones());
-            int[] panel=f.face(m,"chest_panel",0),flag=f.face(m,"pennant",1,8);double ps=f.sideShare(panel,gold),fs=f.sideShare(flag,gold);
-            boolean ok=d!=null&&f.deathTime>=6&&"gold".equals(d.look().side())&&"gold".equals(d.cloth())&&bones.contains("chest_panel")&&bones.contains("pennant")&&ps>=0.5&&fs>=0.3;
-            f.save(c,"spike-death");f.saveProbe(c,"spike-death-probe",panel,flag);
-            report("p2-spike-death",ok,String.format(Locale.ROOT,"a frame at deathTime %d, the Squire on no team on this client: drawn with side %s, cloth %s (null is linen), chest panel and pennant shown=%s; the chest panel %s is %.0f%% gold, the flag %s %.0f%% (want 50 and 30 or more: the flag's white glyph fills its middle, so on the sheet a gold flag is 44%% gold at this inset and a linen one 0)",
-                f.deathTime,d==null?"-":d.look().side(),d==null?"-":d.cloth(),bones.contains("chest_panel")&&bones.contains("pennant"),Arrays.toString(panel),ps*100,Arrays.toString(flag),fs*100));
+            int[] panel=f.face(m,"chest_panel",0);double ps=f.sideShare(panel,gold);
+            boolean ok=d!=null&&f.deathTime>=6&&"gold".equals(d.look().side())&&"gold".equals(d.cloth())&&bones.contains("chest_panel")&&ps>=0.5;
+            f.save(c,"spike-death");f.saveProbe(c,"spike-death-probe",panel);
+            report("p2-spike-death",ok,String.format(Locale.ROOT,"a frame at deathTime %d, the Squire on no team on this client: drawn with side %s, cloth %s (null is linen), chest panel shown=%s; the chest panel %s is %.0f%% gold (want 50 or more; no troop carries a back flag)",
+                f.deathTime,d==null?"-":d.look().side(),d==null?"-":d.cloth(),bones.contains("chest_panel"),Arrays.toString(panel),ps*100));
             f.close();
         }
         /** p2-spike-spawn: the first frame that draws a Squire spawned off its team (the team comes TEAM_LATE ticks later) is not linen. */
@@ -4705,12 +4705,12 @@ public final class Phase2Checks implements ClientModInitializer {
             var e=born==null?null:client(c,born.mob);var d=e==null?null:TroopRenderer.drawn(e);
             if(f==null||!f.done||m==null||d==null||d.first==null){report("p2-spike-spawn",false,"the spawned Squire was "+(e==null?"never on this client":d==null?"never drawn":"drawn, but its first frame was not caught")+" in "+(TEAM_LATE+70)+" ticks");return;}
             var first=d.first;List<String> bones=m.shownBones(first.bones());
-            int[] panel=f.face(m,"chest_panel",0),flag=f.face(m,"pennant",1,8);double ps=f.sideShare(panel,gold),fs=f.sideShare(flag,gold);
+            int[] panel=f.face(m,"chest_panel",0);double ps=f.sideShare(panel,gold);
             double turn=Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(f.bodyYaw-180));
-            boolean ok=f.entity==e&&bornDrawn>=TEAM_LATE&&"gold".equals(first.look().side())&&"gold".equals(first.cloth())&&bones.contains("pennant")&&turn<=20&&ps>=0.5&&fs>=0.3;
-            f.save(c,"spike-spawn");f.saveProbe(c,"spike-spawn-probe",panel,flag);
-            report("p2-spike-spawn",ok,String.format(Locale.ROOT,"spawned off its team once the dead Squire had gone, the team sent %d ticks later: on this client %d ticks after the spawn, first drawn at %d (want %d or later: held until its side came), with side %s, cloth %s (null is linen), pennant shown=%s; in that first frame its back to the camera (body yaw %.0f, want 180 within 20), the chest panel %.0f%% gold, the flag %.0f%% (want 50 and 30 or more)",
-                TEAM_LATE,bornSeen,bornDrawn,TEAM_LATE,first.look().side(),first.cloth(),bones.contains("pennant"),f.bodyYaw,ps*100,fs*100));
+            boolean ok=f.entity==e&&bornDrawn>=TEAM_LATE&&"gold".equals(first.look().side())&&"gold".equals(first.cloth())&&bones.contains("chest_panel")&&turn<=20&&ps>=0.5;
+            f.save(c,"spike-spawn");f.saveProbe(c,"spike-spawn-probe",panel);
+            report("p2-spike-spawn",ok,String.format(Locale.ROOT,"spawned off its team once the dead Squire had gone, the team sent %d ticks later: on this client %d ticks after the spawn, first drawn at %d (want %d or later: held until its side came), with side %s, cloth %s (null is linen), chest panel shown=%s; in that first frame its back to the camera (body yaw %.0f, want 180 within 20), the chest panel %.0f%% gold (want 50 or more)",
+                TEAM_LATE,bornSeen,bornDrawn,TEAM_LATE,first.look().side(),first.cloth(),bones.contains("chest_panel"),f.bodyYaw,ps*100));
             f.close();
         }
         /** p2-spike-linen: a Squire whose team never reaches this client waits undrawn HOLD_TICKS (40), within a few, then draws in linen. */
@@ -4880,16 +4880,16 @@ public final class Phase2Checks implements ClientModInitializer {
             closeWhy.append(troop).append(" stage ").append(l==null?"-":String.valueOf(l.armourTier())).append(" side ").append(l==null?"-":l.side()).append(String.format(Locale.ROOT," at %.2f blocks",d))
                 .append(parts.isEmpty()?"":", "+String.join("+",parts)+" "+(on==parts.size()?"drawn":on==0?"not drawn":on+" of "+parts.size()+" drawn")).append(good?"":" (BAD)").append("; ");
         }
-        /** p2-gilded-cull: with only the top of Aldric's standard in view, at the bottom of the frame, he is drawn (the vanilla box test would drop him), the standard's cloth on the frame in gold. */
+        /** p2-gilded-cull (the standard is gone, 2026-10-28: it now reads the chest panel; the camera aim still needs re-checking in a game run): with only the top of Aldric's standard in view, at the bottom of the frame, he is drawn (the vanilla box test would drop him), the standard's cloth on the frame in gold. */
         void cullCheck(MinecraftClient c){
             var f=cullFrame;var m=TroopModels.model("gl_marshal");int gold=Frame.colour("gold");
             if(f==null||!f.done||m==null){report("p2-gilded-cull",false,"Aldric was not drawn in the 40 ticks the camera looked up at his standard"+(m==null?" (no model)":"")+": the frustum test dropped him");return;}
-            List<String> bones=f.draw==null?List.of():m.shownBones(f.draw.bones());int[] cloth=f.face(m,"standard",3,8);
+            List<String> bones=f.draw==null?List.of():m.shownBones(f.draw.bones());int[] cloth=f.face(m,"chest_panel",0);
             int on=f.onScreen(cloth);double share=f.sideShare(cloth,gold),half=Math.toDegrees(Math.atan(1/f.proj.m11()));
-            boolean ok=!f.vanillaSees&&f.draw!=null&&"gold".equals(f.draw.cloth())&&bones.contains("standard")&&on>=300&&share>=0.3;
+            boolean ok=!f.vanillaSees&&f.draw!=null&&"gold".equals(f.draw.cloth())&&bones.contains("chest_panel")&&on>=300&&share>=0.3;
             f.save(c,"gilded-cull");f.saveProbe(c,"gilded-cull-probe",cloth);
-            report("p2-gilded-cull",ok,String.format(Locale.ROOT,"the camera at %.2f, %.2f, %.2f, pitch %.1f (the view %.1f degrees each way up and down), Aldric at %.2f, %.2f, %.2f: the vanilla box test would draw him=%s (want false); drawn with cloth %s, standard shown=%s; its cloth at %s, %d pixels of it on the %dx%d frame (want 300 or more), %.0f%% of those gold (want 30 or more)",
-                f.cam.x,f.cam.y,f.cam.z,cullPitch,half,f.pos.x,f.pos.y,f.pos.z,f.vanillaSees,f.draw==null?"-":f.draw.cloth(),bones.contains("standard"),Arrays.toString(cloth),on,f.image.getWidth(),f.image.getHeight(),share*100));
+            report("p2-gilded-cull",ok,String.format(Locale.ROOT,"the camera at %.2f, %.2f, %.2f, pitch %.1f (the view %.1f degrees each way up and down), Aldric at %.2f, %.2f, %.2f: the vanilla box test would draw him=%s (want false); drawn with cloth %s, chest panel shown=%s; its cloth at %s, %d pixels of it on the %dx%d frame (want 300 or more), %.0f%% of those gold (want 30 or more)",
+                f.cam.x,f.cam.y,f.cam.z,cullPitch,half,f.pos.x,f.pos.y,f.pos.z,f.vanillaSees,f.draw==null?"-":f.draw.cloth(),bones.contains("chest_panel"),Arrays.toString(cloth),on,f.image.getWidth(),f.image.getHeight(),share*100));
             f.close();
         }
         /** Moves a posted troop to a side's gg_ team, with that side's painted shield. */
@@ -4897,14 +4897,14 @@ public final class Phase2Checks implements ClientModInitializer {
             var board=b.server.getScoreboard();String team="gg_"+side;var t=board.getTeam(team);if(t==null)t=board.addTeam(team);board.addPlayerToTeam(u.mob.getEntityName(),t);
             for(var f:Spec.FACTIONS)if(f.id().equals(side))u.mob.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(u.spec,f.dye()));
         }
-        /** p2-gilded-sides: the four Squires were last drawn each in its own side's cloth, with its flag; the crimson one was first drawn in gold, before its move. */
+        /** p2-gilded-sides: the four Squires were last drawn each in its own side's cloth, with its chest panel; the crimson one was first drawn in gold, before its move. */
         void sidesCheck(MinecraftClient c){
             var m=TroopModels.model("knight");boolean ok=m!=null;StringBuilder why=new StringBuilder();
             for(int i=0;i<4;i++){var e=client(c,sided.get(i).mob);var d=e==null?null:TroopRenderer.drawn(e);var last=d==null?null:d.last;var first=d==null?null:d.first;
                 List<String> shown=last==null||m==null?List.of():m.shownBones(last.bones());
-                boolean good=last!=null&&FOUR.get(i).equals(last.look().side())&&FOUR.get(i).equals(last.cloth())&&shown.contains("pennant")&&shown.contains("chest_panel");
+                boolean good=last!=null&&FOUR.get(i).equals(last.look().side())&&FOUR.get(i).equals(last.cloth())&&shown.contains("chest_panel");
                 if(i==2)good&=first!=null&&"gold".equals(first.look().side())&&"gold".equals(first.cloth())&&movedAt>=0;ok&=good;
-                why.append(FOUR.get(i)).append(": ").append(last==null?"not drawn":"drawn in "+last.cloth()+", flag "+(shown.contains("pennant")?"shown":"hidden"))
+                why.append(FOUR.get(i)).append(": ").append(last==null?"not drawn":"drawn in "+last.cloth()+", chest panel "+(shown.contains("chest_panel")?"shown":"hidden"))
                     .append(i==2?" (first drawn in "+(first==null?"-":first.cloth())+" at suite tick "+firstGold+", moved to crimson at "+movedAt+")":"").append(good?"":" (BAD)").append("; ");}
             report("p2-gilded-sides",ok,"one Squire on each side, left to right on the frame: "+why.toString().trim());
         }

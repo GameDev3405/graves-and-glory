@@ -20,20 +20,19 @@ import java.util.*;
 /**
  * One troop's own model (or a bare rig), built by TroopModelLoader from its generated models/troop JSON. Proportions are
  * baked in that file; this class shows and hides parts per armour tier (the stages key), weapon tier (weaponTiers), fold and helm, and TroopAnimator poses it from its rig's
- * clips (Task 5b). Team bones (panels, pennant, standard) are hidden for the skin pass and drawn by TroopFeatures.Cloth
+ * clips (Task 5b). Team bones (tabards, panels, plumes, wraps: the side's accent cloth; no troop carries a back flag) are hidden for the skin pass and drawn by TroopFeatures.Cloth
  * from the cloth sheet. One instance serves every entity of the troop, so prepare and setAngles run right before each draw.
  */
 public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel<T> {
     /** A bone as the generated file describes it. variants is empty for every bone but a face bone, which shows only for the face variants it names (TroopFaces.shows). */
     record Bone(String name,String parent,String part,boolean team,String tag,Set<Integer> stages,Set<Integer> weaponTiers,Set<Integer> variants){}
     static final float RAD=MathHelper.RADIANS_PER_DEGREE;
-    /** Head look limits in degrees: yaw both ways, pitch only downwards, so a helm never swings into the pennant pole behind it. */
+    /** Head look limits in degrees: yaw both ways, pitch only downwards, so a helm never swings into the shoulders behind it. */
     static final float HEAD_YAW=30,HEAD_DOWN=30;
     /** The reach of an off-hand shield from its hand bone, in model pixels (vanilla's held shield, held at its far corner). */
     static final double SHIELD_REACH=24;
     /** Bones a model may have: prepare records the bones a draw shows as bits of one long. */
     static final int MAX_BONES=64;
-    private static final Set<String> FLAGS=Set.of("pennant","standard");
     final ModelPart top;
     final String troop,rig,hand,idleArms,portrait,weapon;
     final Identifier veteran,glow,outer;final int glowFrom;
@@ -346,8 +345,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
      * Sets visibility for one draw: parts shown at the armour tier the Look's art draws as (armourArt, its stages key) and at
      * the weapon tier its weapon parts draw as (weaponPartTier, their weaponTiers key), the arms or arms_folded by the fold
      * (any model with an arms_folded bone folds when asked; TroopAnimator.folds asks), helm parts unless
-     * helmOff, and every team bone hidden for the skin pass (renderCloth shows the ones that draw: a pennant or standard
-     * only for a troop on a side whose row flies one).
+     * helmOff, and every team bone hidden for the skin pass (renderCloth shows the ones that draw at this tier and helm).
      */
     public void prepare(TroopModels.Look l,boolean folded,boolean helmOff){prepare(l,folded,helmOff,0);}
     /**
@@ -363,8 +361,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         }
         ModelPart right=parts.get("right_arm"),left=parts.get("left_arm"),fold=parts.get("arms_folded");
         if(fold!=null){fold.visible=this.folded;if(right!=null)right.visible=!this.folded;if(left!=null)left.visible=!this.folded;}
-        boolean flies=l!=null&&l.side()!=null&&l.troop().pennant();
-        for(int i=0;i<teamBones.size();i++){Bone b=teamBones.get(i);teamOn[i]=(b.stages().isEmpty()||b.stages().contains(stage))&&(b.weaponTiers().isEmpty()||b.weaponTiers().contains(arms))&&(!FLAGS.contains(b.part())||flies)&&(!helmOff||!"helm".equals(b.tag()));}
+        for(int i=0;i<teamBones.size();i++){Bone b=teamBones.get(i);teamOn[i]=(b.stages().isEmpty()||b.stages().contains(stage))&&(b.weaponTiers().isEmpty()||b.weaponTiers().contains(arms))&&(!helmOff||!"helm".equals(b.tag()));}
         long mask=0;int i=0,t=0;
         for(Bone b:info.values()){
             List<ModelPart> path=paths.get(b.name());boolean on=b.team()?teamOn[t++]:path.get(path.size()-1).visible;

@@ -9,8 +9,7 @@
 {"part":"white_hood","uv":[64,0]},
 {"part":"robe_skirt","uv":[64,19]},
 {"part":"sun_brooch","uv":[104,0]},
-{"part":"vestment"},
-{"part":"pennant","offset":[0,0.0,0.85]}
+{"part":"vestment"}
 ],
 "skins":{"1":"mage_s1.png"},
 "glow":"mage_e.png",

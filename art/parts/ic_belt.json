@@ -1,0 +1,60 @@
+{
+ "part": "ic_belt",
+ "note": "The Hearthguard sword belt over the tabard: a broad leather belt, a brass buckle and a belt pouch.",
+ "bone": "body",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -5,
+    -1,
+    -3
+   ],
+   "size": [
+    10,
+    2,
+    6
+   ],
+   "uv": [
+    0,
+    15
+   ],
+   "note": "belt"
+  },
+  {
+   "origin": [
+    -1,
+    -1.5,
+    -3.5
+   ],
+   "size": [
+    2,
+    3,
+    1
+   ],
+   "uv": [
+    34,
+    0
+   ],
+   "note": "brass buckle"
+  },
+  {
+   "origin": [
+    2.5,
+    -0.5,
+    -3.75
+   ],
+   "size": [
+    2,
+    2,
+    1
+   ],
+   "uv": [
+    62,
+    7
+   ],
+   "note": "pouch"
+  }
+ ]
+}

@@ -1,6 +1,6 @@
 {
  "part": "finned_cap",
- "note": "The Trident Guard finned iron cap: a skull cap, a dorsal fin and two fin ear guards.",
+ "note": "The Trident Guard verdigris cap: a riveted skull cap, a brow band and two fin ear guards (the dorsal fin is the team crest tc_crest).",
  "bone": "head",
  "team": false,
  "tag": "helm",
@@ -24,23 +24,6 @@
   },
   {
    "origin": [
-    -0.5,
-    -11.5,
-    -3
-   ],
-   "size": [
-    1,
-    3,
-    7
-   ],
-   "uv": [
-    36,
-    0
-   ],
-   "note": "dorsal fin"
-  },
-  {
-   "origin": [
     -5.5,
     -7,
     -1
@@ -51,7 +34,7 @@
     3
    ],
    "uv": [
-    84,
+    0,
     0
    ],
    "note": "right fin guard"
@@ -68,10 +51,27 @@
     3
    ],
    "uv": [
-    52,
-    7
+    27,
+    0
    ],
    "note": "left fin guard"
+  },
+  {
+   "origin": [
+    -4.75,
+    -6,
+    -4.75
+   ],
+   "size": [
+    9,
+    1,
+    1
+   ],
+   "uv": [
+    74,
+    11
+   ],
+   "note": "brow band"
   }
  ]
 }

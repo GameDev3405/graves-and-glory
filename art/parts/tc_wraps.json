@@ -1,0 +1,26 @@
+{
+ "part": "tc_wraps",
+ "note": "Trident Guard forearm wraps in the side's cloth above the bracer; the left copy takes bone left_arm, offset [2,0,0].",
+ "bone": "right_arm",
+ "team": true,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -3.5,
+    4,
+    -2.5
+   ],
+   "size": [
+    5,
+    2,
+    5
+   ],
+   "uv": [
+    108,
+    29
+   ],
+   "note": "wrap"
+  }
+ ]
+}

@@ -1,6 +1,6 @@
 {
  "part": "box_helm",
- "note": "The Hearthguard box helm: a square soot-iron crown, a back plate and two cheek plates standing 1 px off the face, a brow bar and a short nasal; the eyes and the beard show through the opening.",
+ "note": "The Hearthguard box helm: a riveted soot-iron crown with a raised comb, a back plate, two cheek plates standing 1 px off the face, a brow bar and a nasal; the eyes and the beard show through the opening.",
  "bone": "head",
  "team": false,
  "tag": "helm",
@@ -17,7 +17,7 @@
     10
    ],
    "uv": [
-    0,
+    32,
     0
    ],
    "note": "crown, 1 px proud all round"
@@ -34,8 +34,8 @@
     2
    ],
    "uv": [
-    60,
-    15
+    0,
+    32
    ],
    "note": "back plate"
   },
@@ -51,8 +51,8 @@
     8
    ],
    "uv": [
-    68,
-    0
+    92,
+    11
    ],
    "note": "right cheek plate, 1 px before the face"
   },
@@ -68,8 +68,8 @@
     8
    ],
    "uv": [
-    40,
-    11
+    56,
+    12
    ],
    "note": "left cheek plate"
   },
@@ -77,7 +77,7 @@
    "origin": [
     -3,
     -7.5,
-    -5
+    -5.25
    ],
    "size": [
     6,
@@ -85,8 +85,8 @@
     1
    ],
    "uv": [
-    76,
-    24
+    68,
+    18
    ],
    "note": "brow bar"
   },
@@ -94,7 +94,7 @@
    "origin": [
     -0.5,
     -6.5,
-    -5.5
+    -5.75
    ],
    "size": [
     1,
@@ -102,10 +102,27 @@
     1
    ],
    "uv": [
-    12,
-    12
+    38,
+    0
    ],
    "note": "nasal"
+  },
+  {
+   "origin": [
+    -1,
+    -10.5,
+    -4.5
+   ],
+   "size": [
+    2,
+    1,
+    9
+   ],
+   "uv": [
+    76,
+    17
+   ],
+   "note": "comb, front to back"
   }
  ]
 }

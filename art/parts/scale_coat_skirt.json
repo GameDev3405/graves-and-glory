@@ -1,6 +1,6 @@
 {
  "part": "scale_coat_skirt",
- "note": "The knee-length skirt of the Hearthguard scale coat.",
+ "note": "The knee-length skirt of the Hearthguard scale coat, with a plate tasset each side.",
  "bone": "body",
  "team": false,
  "tag": "",
@@ -17,10 +17,44 @@
     5
    ],
    "uv": [
-    0,
+    64,
     0
    ],
    "note": "skirt to the knee"
+  },
+  {
+   "origin": [
+    -5.5,
+    1,
+    -3
+   ],
+   "size": [
+    3,
+    4,
+    1
+   ],
+   "uv": [
+    0,
+    12
+   ],
+   "note": "right tasset"
+  },
+  {
+   "origin": [
+    2.5,
+    1,
+    -3
+   ],
+   "size": [
+    3,
+    4,
+    1
+   ],
+   "uv": [
+    16,
+    12
+   ],
+   "note": "left tasset"
   }
  ]
 }

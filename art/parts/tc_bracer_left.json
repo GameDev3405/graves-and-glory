@@ -1,0 +1,26 @@
+{
+ "part": "tc_bracer_left",
+ "note": "The left Trident Guard bronze bracer.",
+ "bone": "left_arm",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -1.5,
+    6,
+    -2.5
+   ],
+   "size": [
+    5,
+    3,
+    5
+   ],
+   "uv": [
+    0,
+    0
+   ],
+   "note": "left bronze bracer"
+  }
+ ]
+}

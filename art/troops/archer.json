@@ -9,7 +9,6 @@
 {"part":"linen_hood","uv":[64,0]},
 {"part":"white_quiver","uv":[64,18],"scale":[1.111111,1,1.111111]},
 {"part":"jerkin"},
-{"part":"pennant","scale":[1.111111,1.0,1.111111]},
 {"part":"signal_horn","uv":[88,18],"scale":[1.111111,1,1.111111],"stages":[3]}
 ],
 "skins":{"1":"archer_s1.png","2":"archer_s2.png","3":"archer_s3.png"},

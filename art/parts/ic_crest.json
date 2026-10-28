@@ -1,0 +1,43 @@
+{
+ "part": "ic_crest",
+ "note": "The Hearthguard crest in the side's cloth: a horsehair plume along the comb and a tail down the back.",
+ "bone": "head",
+ "team": true,
+ "tag": "helm",
+ "boxes": [
+  {
+   "origin": [
+    -0.5,
+    -13.5,
+    -4
+   ],
+   "size": [
+    1,
+    3,
+    9
+   ],
+   "uv": [
+    107,
+    0
+   ],
+   "note": "plume"
+  },
+  {
+   "origin": [
+    -0.5,
+    -12.5,
+    5
+   ],
+   "size": [
+    1,
+    6,
+    1
+   ],
+   "uv": [
+    12,
+    0
+   ],
+   "note": "tail"
+  }
+ ]
+}

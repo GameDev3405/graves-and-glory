@@ -1,0 +1,43 @@
+{
+ "part": "ic_tabard",
+ "note": "The Hearthguard tabard in the side's cloth: chequy with an ember bordure, the side's glyph on the chest and the lower flap, front and back, behind the folded arms.",
+ "bone": "body",
+ "team": true,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -2.5,
+    -11.5,
+    -2.9
+   ],
+   "size": [
+    5,
+    16,
+    1
+   ],
+   "uv": [
+    0,
+    0
+   ],
+   "note": "front"
+  },
+  {
+   "origin": [
+    -2.5,
+    -11.5,
+    1.9
+   ],
+   "size": [
+    5,
+    16,
+    1
+   ],
+   "uv": [
+    108,
+    12
+   ],
+   "note": "back"
+  }
+ ]
+}
