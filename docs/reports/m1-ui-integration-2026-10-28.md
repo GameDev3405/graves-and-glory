@@ -23,3 +23,11 @@ Not verified: six players, dedicated server, release/package tier, Phase 3/House
 
 Record: docs/releases/current-candidate.json updated for this identity (path is docs/releases/, older notes cite PROJECT/docs/releases/ or releases/ relative to docs).
 Next: finish plan Tasks 2, 3, 6, 7 then rerun; Spec.java/preflight.json regenerate as CRLF-only diffs (restored with git checkout).
+
+
+## Update after the approved follow-up (same day)
+Outcome: all suites green, banner House chips (plan Task 3 remainder) NOT built. Source commit 8524e70, sourceSha256 df6d7fb3...9cda, clean tree. phase-1-solo-core NOT fast-forwarded (left for the coordinator, see below). Nothing pushed.
+Changes: class picker cards fit their text (compact layout, fitted titles, full active names); banner roll hint now reads the banner's House; HUD feed text width 144/148 so "Infantry make a last stand" is whole at Compact; test fixtures fixed (fullCount reset when a fixture swaps banners; support last stand driven through Morale with a real enemy in range; feed last-stand wait shortened under the 6 s Compact feed life; banner fixture roll size 2).
+Verify: fast work/verify/20261028-160025-37468/result.json exit 0; game work/verify/20261028-160253-61580/result.json exit 0. Extra suites: Phase 1 (ui-art,ui-hud,ui-feed,ui-home,ui-recruit,ui-pages,ui-icons,ui-leave) 88 pass 0 fail; Phase 2 (screens,commander,armoury,gear) 82 pass 0 fail.
+Screenshots: work/m1-visual/b/run/screenshots/p2-commander-classes.png (class picker, read: fits); others under work/m1-visual/p1 and p2 run/screenshots.
+Not verified: House chips on banner page, six players, dedicated server, package tier, 1440p/4K, Armoury look, side-by-side against docs/visual-references.

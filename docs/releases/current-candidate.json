@@ -1,28 +1,26 @@
 {
   "status": "development-build; release blocked",
   "version": "0.5.0",
-  "commit": "72cd8500ca5bc9ab12fd9ba9634eab47c65023da",
+  "commit": "8524e703aaefc9df3a48c479ff99c717404f3e9f",
   "dirty": false,
   "source_identity": {
     "version": "0.5.0",
     "modId": "gravesandglory",
-    "sourceSha256": "d359e44c8603a9ec524560299c39fedae7d3a0c168626bc7bda324ff3f294a2d"
+    "sourceSha256": "df6d7fb3212469ad4827607a1de3dd7da0f9fb067b0d31af3be0ad4d482a9cda"
   },
   "artifact": {
-    "path": "work\\candidates\\d359e44c8603a9ec524560299c39fedae7d3a0c168626bc7bda324ff3f294a2d\\graves-and-glory-0.5.0.jar",
-    "sha256": "51cbc1d3b2a31a7122d979a6f82fc6ec44fd4c8108f0fefc650b1861762d9e2f",
-    "kind": "mod jar; not a playable modpack package",
-    "preserved_utc": "2026-10-28"
+    "path": "not preserved for this source (the earlier jar belongs to 72cd850)",
+    "kind": "mod jar; not a playable modpack package"
   },
   "verification": {
-    "fast": "work/verify/20261028-143943-46556/result.json (pass, exit 0)",
-    "game": "work/verify/20261028-144248-4440/result.json (pass, exit 0; Phase 1 combat smoke only)",
-    "ui_suites_phase1": "work/m1-visual/p1/evidence/local-checks.txt (81 pass, 6 fail)",
-    "ui_suites_phase2": "work/m1-visual/p2/evidence/local-checks.txt (80 pass, 2 fail)",
+    "fast": "work/verify/20261028-160025-37468/result.json (pass, exit 0)",
+    "game": "work/verify/20261028-160253-61580/result.json (pass, exit 0; Phase 1 combat smoke only)",
+    "ui_suites_phase1": "work/m1-visual/p1/evidence/local-checks.txt (88 pass, 0 fail)",
+    "ui_suites_phase2": "work/m1-visual/p2/evidence/local-checks.txt (82 pass, 0 fail)",
     "strict_package": "not run for this identity"
   },
   "acceptance": {
-    "implemented": "partial: War Table Tasks 1, 4, 5 and Armoury merged; class page, 20-seat banner page and HUD LAST STAND not finished",
+    "implemented": "partial: War Table Tasks 1, 2, 4, 5, Armoury, class cards, HUD LAST STAND and feed line done; banner House chips (Task 3) not built",
     "fast_tested": true,
     "combat_smoke_tested": true,
     "visual_review_of_candidate": "harness screenshots read by Claude only; Kort look pending",
@@ -30,11 +28,10 @@
     "accepted_release": false
   },
   "known_issues": [
-    "Banner page (p1-ui-page-banner) and class picker (p2-class-picker) still fail: plan Tasks 2 and 3 not built",
-    "HUD LAST STAND card, feed line and level-up lines fail (p1-ui-cards, -feed-kinds, -feed-last-stand): lane Tasks 6 and 7 unfinished",
+    "Banner page has no House chips or wide-troop/20-seat counts beyond what p1-ui-page-banner checks (plan Task 3 remainder)",
     "Strict packaging refuses 26 troops with missing/stopgap tier art",
     "Full six-player, dedicated-server, reconnect/reward/restart validation not performed",
-    "Record path is docs/releases/current-candidate.json (older notes say PROJECT/docs/releases/, or releases/ relative to docs/)"
+    "Armoury not restyled (awaits Kort)"
   ],
   "historical_preview": {
     "commit": "552a8c6f77fec31bad06f0f7ac09ac59a729efc4",
