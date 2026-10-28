@@ -76,7 +76,7 @@ def run(args):
         if args.tier=='game':
             game_guard()
             game=out/'game'; (game/'run').mkdir(parents=True); (game/'evidence').mkdir()
-            (game/'run/options.txt').write_text('pauseOnLostFocus:false\nrenderDistance:8\nsimulationDistance:6\nguiScale:3\n')
+            (game/'run/options.txt').write_text('pauseOnLostFocus:false\nonboardAccessibility:false\nrenderDistance:8\nsimulationDistance:6\nguiScale:3\n')
             env['GRAVES_ROADMAP_TEST_ROOT']=str(game)
             env['GRAVES_PHASE1_CHECKS']='combat'
             step('game',[*gradle,'runClient','-PlocalIntegration','-I','test-tools/isolated-checks.gradle'],1800)

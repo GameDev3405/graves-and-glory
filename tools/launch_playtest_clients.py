@@ -15,7 +15,7 @@ for n in range(1,4):
     if '--username' in args:args[args.index('--username')+1]=f'BannerGuest{n}'
     else:args.extend(['--username',f'BannerGuest{n}'])
     if '--uuid' in args:args[args.index('--uuid')+1]=''
-    (run/'options.txt').write_text('pauseOnLostFocus:false\nrenderDistance:8\nsimulationDistance:6\nguiScale:3\n')
+    (run/'options.txt').write_text('pauseOnLostFocus:false\nonboardAccessibility:false\nrenderDistance:8\nsimulationDistance:6\nguiScale:3\n')
     output=(runtime/'console.log').open('w');p=subprocess.Popen(args,cwd=run,stdout=output,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW)
     processes.append({'pid':p.pid,'name':f'BannerGuest{n}'})
 (r/'evidence/revision-02/guests.json').write_text(json.dumps(processes,indent=2));print('Started',len(processes),'local test clients:',[p['pid'] for p in processes])
