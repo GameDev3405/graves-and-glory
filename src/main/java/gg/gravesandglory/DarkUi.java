@@ -108,6 +108,11 @@ final class DarkUi {
     static void title(DrawContext g,String text,int x,int y,int color){
         g.getMatrices().push();g.getMatrices().translate(x,y,0);g.getMatrices().scale(1.35f,1.35f,1);g.drawText(MinecraftClient.getInstance().textRenderer,Text.literal(text).setStyle(Style.EMPTY.withFont(TITLE)),0,0,color,false);g.getMatrices().pop();
     }
+    /** A title at 1.35 scale, or smaller when its words would pass maxW. */
+    static void titleFit(DrawContext g,String text,int x,int y,int color,int maxW){
+        var tr=MinecraftClient.getInstance().textRenderer;float w=tr.getWidth(Text.literal(text).setStyle(Style.EMPTY.withFont(TITLE))),sc=Math.min(1.35f,w<=0?1.35f:maxW/w);
+        g.getMatrices().push();g.getMatrices().translate(x,y,0);g.getMatrices().scale(sc,sc,1);g.drawText(tr,Text.literal(text).setStyle(Style.EMPTY.withFont(TITLE)),0,0,color,false);g.getMatrices().pop();
+    }
     static void rule(DrawContext g,int x,int y,int w){g.fill(x,y,x+w,y+1,EDGE);}
     static void crest(DrawContext g,int x,int y,int size,boolean dusk){
         int col=dusk?0xff9e77ba:0xff70a8a4;

@@ -89,10 +89,10 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
             int x=getX(),y=getY(),w=width,h=height,room=w-20;boolean selected=pendingClass.equals(c.id());
             panel(g,x,y,w,h);
             if(selected){g.fill(x,y,x+w,y+3,DarkUi.GOLD);g.drawBorder(x,y,w,h,DarkUi.GOLD);}else if(isHovered()||isFocused())g.drawBorder(x,y,w,h,DarkUi.MUTED);
-            DarkUi.title(g,c.name().toUpperCase(Locale.ROOT),x+10,y+6,DarkUi.IVORY);
             String group=Arrays.stream(Spec.GROUPS).filter(r->r.id().equals(c.group())).map(r->r.label()).findFirst().orElse(c.group()).toUpperCase(Locale.ROOT);
             int gw=textRenderer.getWidth(DarkUi.body(group));DarkUi.label(g,group,x+w-10-gw,y+9,selected?DarkUi.GOLD:DarkUi.MUTED);
-            String cooldown=c.cooldownTicks()/20+" s cooldown";int cdw=textRenderer.getWidth(DarkUi.body(cooldown));
+            DarkUi.titleFit(g,c.name().toUpperCase(Locale.ROOT),x+10,y+6,DarkUi.IVORY,room-gw-8);
+            String an=Commander.activeName(c.active()).toUpperCase(Locale.ROOT),cooldown=c.cooldownTicks()/20+(textRenderer.getWidth(DarkUi.body(an))+textRenderer.getWidth(DarkUi.body(c.cooldownTicks()/20+" s cooldown"))+12>room?" s":" s cooldown");int cdw=textRenderer.getWidth(DarkUi.body(cooldown));
             DarkUi.label(g,cooldown,x+w-10-cdw,y+23,DarkUi.MUTED);text(g,Commander.activeName(c.active()).toUpperCase(Locale.ROOT),x+10,y+23,room-cdw-6,DarkUi.GOLD);
             clipped=0;int ty=y+33;var lines=textRenderer.wrapLines(DarkUi.body(c.activeText()),room);
             for(int i=0;i<lines.size();i++){if(ty+9>y+h){clipped++;continue;}g.drawText(textRenderer,lines.get(i),x+10,ty,DarkUi.IVORY,false);ty+=10;}
