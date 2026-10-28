@@ -1,22 +1,32 @@
-# Animation pass 1 handoff (2026-10-28, uncommitted)
-- Class set (coordinator decision): knight, archer, mage, sentinel, longbow, gl_marshal. House troops ic_hearthguard, wm_tusk, tc_tideguard have no model on any branch (gap; Kort decides).
-- Run 1 (knight/archer/mage) done: scratchpad run-before, sheets in scratchpad/sheets-before. Scores: attack knight 6, mage cast 6, idle 7 all, hit 7, walk/run/death 8.
-- Run 2 (sentinel,longbow,gl_marshal) running: scratchpad/run-before2 (gradle.log ends "exit N"). Composite with scratchpad/sheetmk.py RUN OUT idle,walk,run,attack,hit,death.
-- Next: write docs/ANIMATION-SPEC.md (<=100 lines), commit Phase A (spec, harness hook GRAVES_PHASE2_POSES, ANIMATION-PLAN, preflight-regenerated files), then Phase B: knight sword attack + mage cast first (extras class, client only; charge vs retreat needs protocol change = Kort later).
-- Turn stage logs "pose false (off by 30)" for knight idle-45: shots still taken; left as is.
+# Animation pass 1 handoff (2026-10-28, branch anim-pass-1, local only)
 
-## Phase B status (Sonnet, stopped on Kort's change of plan; UNVERIFIED)
-Done (only src/main/java/gg/gravesandglory/BipedClips.java changed; client-only, no server/protocol/sheet/TroopTells change):
-- idle: breath, weight shift, head turn, small bob (loop 3 s, start = end).
-- attack: sword cut, windup 0.12 s, contact 0.25 s (unchanged), follow-through, recover 0.5 s; round 2 lowered the contact arm to pitch -45 yaw -22.
-- hit: stronger recoil (body, head, arms, knees, root dip), 0.3 s.
-- cast: arm forward -75 with right_hand 80 (staff upright attempt), off hand open, sway. NOTE: several rotation tracks on one bone SUM in Animation (hold + wave add up), so waves use base 0.
-Sheets: round 1 (idle, hit, attack) rendered: hit clearly stronger (about 8.5-9), idle fine (about 8, snapshot), knight attack still read as a stiff arm (about 6.5) and mage cast was a T-pose reach (about 6); round 2 (attack only, with the changes above) rendered at scratchpad run-after2 / sheets-after2 but NOT looked at, so knight attack and mage cast scores are unknown.
-Not done: verify.py fast/game (never run), clip-presence check, Phase2Checks lookup updates (may need changes), after-sheets for sentinel/longbow/gl_marshal, charge/march variants, server-timing diff proof (expected: diff only touches BipedClips and test tools). HouseAttacks/TroopTells overrides for biped attack are not affected.
-Sheet commands: scratchpad sheet.sh NAME POSES (six-troop list includes House ids with no model), sheet2.sh for sentinel/longbow/gl_marshal, sheetmk.py RUN OUT POSES.
+Scope: six Order troops (knight, archer, mage, sentinel, longbow, gl_marshal). House troops untouched (no model on any branch).
+Client animation only: BipedClips, TroopTells OVERRIDES, TroopAnimator (one line: a forced house attack prefers the variant), test tools. No server, protocol, hit-timing or model JSON change; sword contact stays at 0.25 s.
 
-## Opus pass (2026-10-28, in progress)
-Findings so far (no code change yet beyond Sonnet's WIP):
-- Sonnet's BipedClips attack is not seen by knight/sentinel/gl_marshal: TroopTells.clip prefers HouseAttacks.VARIANTS "gilded" (the stiff level thrust, right_arm -95, wrist 140) for every gilded biped. Fix there or via per-troop OVERRIDES.
-- Self-clipping root cause: sword grips [90,45,90] point the blade up-forward 45 degrees from a hanging hand, so in idle/walk/hit the blade rises past the helmet and crosses the shield/torso in side view; the upright sun_staff (grip 0) tilts through hood and torso as the arm swings in walk/run.
-- Plan: wrist (right_hand) holds in base clips so the blade hangs forward/down and the staff stays upright beside the body, arm roll outward; rewrite gilded cut and cast; geometric clearance check in Phase2Checks (forEachCuboid, as TroopModel.extent does); re-render sheets (scratchpad sheet.sh/sheet2.sh, sheetmk.py).
+## What landed
+- Weapon sets: sword(plod) for knight, gl_marshal, sentinel (plod); staff() for mage. Each has idle, walk, run, attack/cast, hit, death, hold, brace/fall_back.
+- Cut keeps the blade right of the head until level (wrist 75 at rest). Staff wrist 55 (top 25 degrees forward).
+- Axe, spear, mace hooks (WEAPON_ATTACKS): no Order troop plays them.
+- New p2-anim-clear (Phase2Checks.clearance, in the Turn step): weapon mesh vs every body cuboid, 0.5 px depth. GRAVES_PHASE2_CLEAR=1 runs it alone.
+- bow() exists but is NOT wired. On archer and longbow it made the clipping worse (longbow face 3.2-3.8 px) and likely broke p2-turn-shots. Reverted after the last render; the revert is unrendered.
+
+## Scores (threshold 9; weapon through the body caps below 9)
+- Before (docs/reports/anim-pass-1/before): knight attack 6, mage cast 6, idle 7, hit 7, walk/run/death 8.
+- After (docs/reports/anim-pass-1/after, render 2):
+  - Sword troops: idle 8, walk 8, run 7, death 8.
+  - Sword attack: reads as a cut at contact, but is capped at 8. The windup goes 2.9-3.2 px into the head or helm at 0.15 s.
+  - Sword hit: capped at 8 (blade in the right arm, 0.55-0.93 px).
+  - Mage: capped at 8 (staff in the right arm about 1.15 px, death 0.86 px). This may be partly the fist inside the arm box (grip skip is 3.5 px).
+  - Archer: hood/body 1.7-2.2 px, capped at 8. Longbow: face/arm 2-3.7 px, capped at 8. Both are the vanilla carry, unchanged after the revert.
+- No clip reached 9. The two-correction limit is used, so this is recorded, not claimed done.
+
+## Not verified
+- The bow revert is unrendered; p2-turn-shots has not been re-run.
+- Sheets show one frame per state, not the arc.
+- Charge vs retreat: run covers both on the client. Splitting them needs protocol data, which needs Kort.
+
+## Next
+- Hand-key the sword windup in Blender: an arc above and outside the helm.
+- Hand-key the bow carry: read the bow frame axes first.
+- Widen the staff grip skip, or move the grip out of the arm box.
+- Re-render all six in one run and re-score.

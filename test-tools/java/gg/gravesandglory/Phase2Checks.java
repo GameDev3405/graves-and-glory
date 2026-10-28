@@ -6189,7 +6189,7 @@ public final class Phase2Checks implements ClientModInitializer {
         static final List<String> SWORD_SET=List.of("idle","walk","run","attack","hit","death","hold","brace","fall_back"),STAFF_SET=List.of("idle","walk","run","cast","hit","death","hold","fall_back"),BOW_SET=List.of("idle","walk","run","hit","death");
         static final List<OKey> OVERRIDE_KEYS=List.of(
             ok("knight","attack","right_arm",'p',.12f,-143),ok("knight","attack","right_hand",'p',.25f,115),ok("knight","idle","right_hand",'p',0,75),
-            ok("mage","idle","right_arm",'p',0,-30),ok("mage","idle","right_hand",'p',0,55),ok("mage","cast","right_arm",'p',0,-60),ok("archer","idle","left_hand",'p',0,30),
+            ok("mage","idle","right_arm",'p',0,-30),ok("mage","idle","right_hand",'p',0,55),ok("mage","cast","right_arm",'p',0,-60),
             ok("sentinel","walk","right_leg",'p',.25f,-20),ok("sentinel","walk","left_leg",'p',.25f,20),ok("sentinel","walk","right_arm",'p',.25f,8),ok("sentinel","walk","left_arm",'p',.25f,-8),ok("sentinel","walk","body",'u',.125f,.5f),
             ok("longbow","bow_draw","left_arm",'p',.3f,-90),ok("longbow","bow_draw","left_arm",'r',.3f,25),ok("longbow","bow_draw","right_arm",'y',.65f,-70),
             ok("hexer","cast","right_arm",'p',0,-120),ok("hexer","cast","left_arm",'p',0,-30),
@@ -6210,7 +6210,7 @@ public final class Phase2Checks implements ClientModInitializer {
             List<String> bad=new ArrayList<>();int n=0;
             Set<String> want=new TreeSet<>(List.of("longbow/bow_draw","hexer/cast","wm_seer/cast","ic_arbalist/bow_draw","ic_ballista/bow_draw","ic_mortar/bow_draw","tc_harpooner/bow_draw","tc_tideguard/attack","tc_admiral/attack"));
             // the weapon sets of animation pass 1 (BipedClips.sword and staff; the Sentinel's walk is its plod)
-            for(String t:List.of("knight","gl_marshal","sentinel"))for(String c:SWORD_SET)want.add(t+"/"+c);for(String c:STAFF_SET)want.add("mage/"+c);for(String t:List.of("archer","longbow"))for(String c:BOW_SET)want.add(t+"/"+c);
+            for(String t:List.of("knight","gl_marshal","sentinel"))for(String c:SWORD_SET)want.add(t+"/"+c);for(String c:STAFF_SET)want.add("mage/"+c);
             Set<String> have=new TreeSet<>();for(var e:TroopTells.OVERRIDES.entrySet())for(String clip:e.getValue().keySet())have.add(e.getKey()+"/"+clip);
             if(!have.equals(want))bad.add("the overrides are "+have+", the brief's are "+want);
             for(var e:TroopTells.OVERRIDES.entrySet()){

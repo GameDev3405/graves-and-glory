@@ -101,8 +101,8 @@ public final class BipedClips {
     /** The staff's wrist at rest: from the arm at -30 the top 25 degrees forward (-90 - 30 + 55 = -65 below level ahead), clear of the forearm. */
     static final float STAFF_WRIST=55f;
     /**
-     * A bow in the hanging hand (the Order Archer's and Longbow's idle, walk, run, hit and death): the wrist turns the bow's top 30 degrees
-     * ahead, out of the arm and the hood. The clip is written for both hands, since a troop with the bow in the left plays it mirrored.
+     * A bow carry (not wired: tried on the Order Archer and Longbow 2026-10-28, a wrist pitch of 30 drove the bow deeper into the body and
+     * the face, p2-anim-clear; the bow frame's axes need reading first). The wrist turns the bow's top 30 degrees. The clip is written for both hands, since a troop with the bow in the left plays it mirrored.
      */
     static Map<String,Animation> bow(){
         Map<String,Animation> m=new LinkedHashMap<>();float b=30;
