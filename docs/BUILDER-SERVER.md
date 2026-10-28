@@ -1,6 +1,6 @@
 # Builder server
 
-Creative server for the map/lobby builder. Hosted on tjepkema-server (`C:\GGBuild`), Tailscale only: `100.72.202.38:25570`. Join with the Graves and Glory modpack. Whitelist is on: add Minecraft names to `C:\GGBuild\whitelist.json` (and `ops.json` for `/map`), then restart the `GGBuilderServer` scheduled task.
+Creative server for the map/lobby builder. Hosted on tjepkema-server (`C:\GGBuild`), Tailscale only: `100.72.202.38:25570`. Join with the Graves and Glory modpack. Whitelist is on: add Minecraft names to `C:\GGBuild\whitelist.json` (and `ops.json` for `/map`), then restart the `GGBuilderServer` scheduled task. Current names: QuakeMoney42 and awesome34 (both whitelisted and op).
 
 ## For the builder
 - `/warp` lists places in the current world; `/warp <name>` teleports (`spawn`, `center`, `point-a`, landmarks, barracks, stations).
@@ -14,7 +14,7 @@ Creative server for the map/lobby builder. Hosted on tjepkema-server (`C:\GGBuil
 Backups: `C:\GGBuild\backups\<world>\<timestamp>.zip`; keep 48 hours, then one per day for 14 days.
 
 ## Operations
-- Start/stop: scheduled task `GGBuilderServer` (runs at kortt logon, hidden). To stop for good, stop the task and kill the `java` process with `gg.build` in its command line.
+- Start/stop: scheduled task `GGBuilderServer` (runs at machine boot as SYSTEM, hidden, so the server is up whenever the PC is on). The script relaunches after a crash; a clean `/stop` ends it. To stop for good, stop the task and kill the `java` process with `gg.build` in its command line.
 - Update the mod: stop, replace `C:\GGBuild\mods\graves-and-glory-0.5.0.jar`, start. World saves are untouched.
 - Firewall rule `Graves and Glory builder 25570 (Tailscale only)`; the Kingdom servers (25565-25567, 25571) are not touched.
 - When building is done, the finished worlds become the real maps/lobby (separate task; copy the saves).
