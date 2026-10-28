@@ -5189,9 +5189,9 @@ public final class Phase2Checks implements ClientModInitializer {
         static Key key(String rig,String clip,String bone,char chan,float at,float value){return new Key(rig,clip,bone,chan,at,value);}
         /** The table's headline number of each clip, read off the brief's clip table (angles in degrees, offsets in px, y up); a wrong sign, arm, rig or clip fails it. */
         static final List<Key> KEYS=List.of(
-            key("biped","idle","body",'p',1.5f,1.5f),key("biped","walk","right_leg",'p',.25f,-30),key("biped","run","right_leg",'p',.15f,-50),key("biped","attack","right_arm",'p',.12f,-110),
-            key("biped","hit","body",'p',.08f,-10),key("biped","death","root",'p',.8f,-90),key("biped","shield_up","left_arm",'p',.2f,-60),key("biped","bow_draw","left_arm",'p',.3f,-90),
-            key("biped","bow_draw","right_arm",'y',.65f,-70),key("biped","cast","right_arm",'r',.25f,125),key("biped","kneel","right_leg",'p',.6f,48),key("biped","point","right_arm",'p',.4f,-90),
+            key("biped","idle","body",'p',1.5f,1.5f),key("biped","walk","right_leg",'p',.25f,-30),key("biped","run","right_leg",'p',.15f,-50),key("biped","attack","right_arm",'p',.12f,-135),
+            key("biped","hit","body",'p',.08f,-20),key("biped","death","root",'p',.8f,-90),key("biped","shield_up","left_arm",'p',.2f,-60),key("biped","bow_draw","left_arm",'p',.3f,-90),
+            key("biped","bow_draw","right_arm",'y',.65f,-70),key("biped","cast","right_arm",'p',0,-75),key("biped","kneel","right_leg",'p',.6f,48),key("biped","point","right_arm",'p',.4f,-90),
             key("biped","sit","right_leg",'p',.6f,-90),key("biped","raise","right_arm",'p',.5f,-170),key("biped","fall","root",'p',.8f,90),key("biped","stand","root",'p',.3f,45),
             key("biped","brace","right_arm",'p',1,-70),key("biped","hold","right_arm",'p',1,-30),key("biped","fall_back","right_leg",'p',.25f,25),
             key("hound","idle","tail",'y',.375f,10),key("hound","walk","front_left_leg",'p',.25f,25),key("hound","run","front_left_leg",'p',.15f,-40),key("hound","attack","jaw",'p',.15f,30),
@@ -5586,7 +5586,7 @@ public final class Phase2Checks implements ClientModInitializer {
             if(tick>24000){report("p2-"+name()+"-timeout",false,"stuck at shot "+si+" of "+shots.size()+", client step "+cs+", server stage "+stage);end(c);return;}
             switch(cs){
                 case 0->{boolean lit=litStart(c);
-                    if(lit&&ready&&posted.size()==TROOPS.size()&&posted.stream().allMatch(u->client(c,u.mob)!=null)){facts();c.options.hudHidden=true;wait=0;cs=1;}
+                    if(lit&&ready&&posted.size()==TROOPS.size()&&posted.stream().allMatch(u->client(c,u.mob)!=null)){facts();clearance();if(CLEAR_ONLY)si=shots.size();c.options.hudHidden=true;wait=0;cs=1;}
                     else if(++wait%600==0)System.out.println("[p2-wait] turn step 0 after "+wait+" ticks: ready="+ready+", posted "+posted.size()+" of "+TROOPS.size()+"; "+litWhy(c));}
                 case 1->shoot(c);
                 case 3->cards(c);
@@ -5782,6 +5782,54 @@ public final class Phase2Checks implements ClientModInitializer {
             }
             for(String t:TROOPS){var m=TroopModels.model(t);if(m!=null)m.getPart().traverse().forEach(ModelPart::resetTransform);}
             if(tiers)nockFacts();
+        }
+        /** GRAVES_PHASE2_CLEAR (gravesandglory.turnClearOnly) set: the clearance check only, no shots. */
+        static final boolean CLEAR_ONLY=!System.getProperty("gravesandglory.turnClearOnly","").isEmpty();
+        /** The clearance check's troops and states, how far round the grip the weapon may sit in the hand (px) and how deep it may graze a box (px). */
+        static final List<String> CLEAR_TROOPS=List.of("knight","archer","mage","sentinel","longbow","gl_marshal"),CLEAR_STATES=List.of("idle","walk","run","attack","hit","death");
+        static final double CLEAR_GRIP=3.5,CLEAR_DEPTH=.5;
+        /**
+         * p2-anim-clear (animation pass 1): each Order troop has every state (idle, walk, run, attack, hit, death) through TroopAnimator.clip, and in each,
+         * sampled every 0.05 s as forced (TroopAnimator.applyForced, the shot's path), no point of its weapon's rest frame (a 5 by 5 grid on each quad)
+         * further than CLEAR_GRIP from the grip lies more than CLEAR_DEPTH inside a box of its own model, the holding arm and the head among them (the hand's
+         * own boxes aside). "[p2-anim-clear]" lines give each clip's deepest point. The shield is not modelled here: read it on the sheets.
+         */
+        void clearance(){
+            List<String> bad=new ArrayList<>(),missing=new ArrayList<>();int clips=0;
+            for(String t:CLEAR_TROOPS){
+                var m=TroopModels.model(t);var row=m==null?null:TroopAnimator.row(m);var w=m==null?null:TroopModels.weapon(m.weaponId());
+                if(m==null||row==null||w==null){missing.add(t+": no model, row or weapon");continue;}
+                boolean bow=TroopAnimator.bow(row),sh=units.containsKey(t)&&shield(t);String handBone=m.hand()+"_hand";
+                var mesh=w.frames().get(0);List<float[]> pts=new ArrayList<>();
+                for(int qi=0;qi<mesh.quads();qi++){float[] p=mesh.positions(qi);
+                    for(int ua=0;ua<=4;ua++)for(int va=0;va<=4;va++){float u=ua/4f,v=va/4f;float[] o=new float[3];
+                        for(int k=0;k<3;k++){float top=p[k]+(p[3+k]-p[k])*u,bot=p[9+k]+(p[6+k]-p[9+k])*u;o[k]=top+(bot-top)*v;}pts.add(o);}}
+                for(String c:CLEAR_STATES){
+                    var a=TroopAnimator.clip(m,c,bow);if(a==null){missing.add(t+" "+c);continue;}clips++;
+                    double worst=0;float worstAt=0;String worstBone="";
+                    for(float sec=0;sec<=a.lengthInSeconds()+1e-4f;sec+=.05f){
+                        m.getPart().traverse().forEach(ModelPart::resetTransform);TroopAnimator.applyForced(m,new TroopAnimator.Forced(c,sec),row,sh);
+                        MatrixStack mw=base();for(ModelPart p:m.handPath(m.hand()))p.rotate(mw);w.grip(mw);Matrix4f wm=new Matrix4f(mw.peek().getPositionMatrix());
+                        Vector4f g=new Vector4f(0,0,0,1);wm.transform(g);List<Vector4f> world=new ArrayList<>();
+                        for(float[] o:pts){Vector4f v=new Vector4f(o[0]/16f,o[1]/16f,o[2]/16f,1f);wm.transform(v);
+                            double dx=(v.x-g.x)*16,dy=(v.y-g.y)*16,dz=(v.z-g.z)*16;if(dx*dx+dy*dy+dz*dz>=CLEAR_GRIP*CLEAR_GRIP)world.add(v);}
+                        double[] deep={0};String[] in={""};
+                        m.getPart().forEachCuboid(base(),(entry,path,i,q)->{
+                            if(path.endsWith("/"+handBone))return;
+                            Matrix4f inv=new Matrix4f(entry.getPositionMatrix()).invert();
+                            for(Vector4f v:world){Vector4f l=new Vector4f(v);inv.transform(l);float x=l.x*16,y=l.y*16,z=l.z*16;
+                                if(x>q.minX&&x<q.maxX&&y>q.minY&&y<q.maxY&&z>q.minZ&&z<q.maxZ){
+                                    double d=Math.min(Math.min(Math.min(x-q.minX,q.maxX-x),Math.min(y-q.minY,q.maxY-y)),Math.min(z-q.minZ,q.maxZ-z));
+                                    if(d>deep[0]){deep[0]=d;in[0]=path;}}}});
+                        if(deep[0]>worst){worst=deep[0];worstAt=sec;worstBone=in[0];}
+                    }
+                    System.out.println(String.format(Locale.ROOT,"[p2-anim-clear] %s %s: the weapon at most %.2f px into %s (at %.2f s)",t,c,worst,worstBone.isEmpty()?"no box":worstBone,worstAt));
+                    if(worst>CLEAR_DEPTH)bad.add(String.format(Locale.ROOT,"%s %s %.1f px into %s at %.2f s",t,c,worst,worstBone,worstAt));
+                }
+                m.getPart().traverse().forEach(ModelPart::resetTransform);
+            }
+            report("p2-anim-clear",bad.isEmpty()&&missing.isEmpty()&&clips==CLEAR_TROOPS.size()*CLEAR_STATES.size(),clips+" clips of "+CLEAR_TROOPS.size()+" Order troops sampled every 0.05 s, the weapon no deeper than "+CLEAR_DEPTH+" px in its own body"
+                +(missing.isEmpty()?"":"; missing: "+missing)+(bad.isEmpty()?"":"; through the body: "+bad));
         }
         /** "[p2-hands-nock]" lines: each bow at each tier at the full draw, where the drawing hand is against the frame's nock, in the weapon frame (px, x right, y down, z thickness). */
         void nockFacts(){
@@ -6087,19 +6135,23 @@ public final class Phase2Checks implements ClientModInitializer {
         void lookup(){
             List<String> bad=new ArrayList<>();cases=0;
             same(bad,"longbow bow_draw",TroopTells.clip("longbow","gilded","biped","bow_draw"),TroopTells.OVERRIDES.get("longbow").get("bow_draw"));
-            same(bad,"knight attack (gilded)",TroopTells.clip("knight","gilded","biped","attack"),HouseAttacks.VARIANTS.get("gilded"));
+            same(bad,"knight attack (its sword set over the Gilded variant)",TroopTells.clip("knight","gilded","biped","attack"),TroopTells.OVERRIDES.get("knight").get("attack"));
+            same(bad,"a Gilded biped with no weapon set: the Gilded variant",TroopTells.clip("no_set_troop","gilded","biped","attack"),HouseAttacks.VARIANTS.get("gilded"));
             same(bad,"wm_hound attack (hound rig)",TroopTells.clip("wm_hound","wildmoot","hound","attack"),TroopClips.of("hound").get("attack"));
-            same(bad,"knight walk",TroopTells.clip("knight","gilded","biped","walk"),TroopClips.of("biped").get("walk"));
+            same(bad,"knight walk (its sword set)",TroopTells.clip("knight","gilded","biped","walk"),TroopTells.OVERRIDES.get("knight").get("walk"));
+            same(bad,"archer walk (the rig's)",TroopTells.clip("archer","gilded","biped","walk"),TroopClips.of("biped").get("walk"));
             same(bad,"tc_tideguard attack (its override over the Tidecallers' variant)",TroopTells.clip("tc_tideguard","tidecallers","biped","attack"),TroopTells.OVERRIDES.get("tc_tideguard").get("attack"));
             same(bad,"tc_raider attack (the Tidecallers' variant)",TroopTells.clip("tc_raider","tidecallers","biped","attack"),HouseAttacks.VARIANTS.get("tidecallers"));
             same(bad,"ic_colossus attack (colossus rig)",TroopTells.clip("ic_colossus","ironclad","colossus","attack"),TroopClips.of("colossus").get("attack"));
             same(bad,"wm_stalker attack (spider rig)",TroopTells.clip("wm_stalker","wildmoot","spider","attack"),TroopClips.of("spider").get("attack"));
             same(bad,"tc_brute attack (hound rig)",TroopTells.clip("tc_brute","tidecallers","hound","attack"),TroopClips.of("hound").get("attack"));
             same(bad,"a bare rig's attack (no troop, no House)",TroopTells.clip("",null,"biped","attack"),TroopClips.of("biped").get("attack"));
-            same(bad,"a knight's attack with no House",TroopTells.clip("knight",null,"biped","attack"),TroopClips.of("biped").get("attack"));
-            same(bad,"knight hit (no variant for any clip but attack)",TroopTells.clip("knight","gilded","biped","hit"),TroopClips.of("biped").get("hit"));
+            same(bad,"a knight's attack with no House (its own)",TroopTells.clip("knight",null,"biped","attack"),TroopTells.OVERRIDES.get("knight").get("attack"));
+            same(bad,"an archer's attack with no House",TroopTells.clip("archer",null,"biped","attack"),TroopClips.of("biped").get("attack"));
+            same(bad,"archer hit (no variant for any clip but attack)",TroopTells.clip("archer","gilded","biped","hit"),TroopClips.of("biped").get("hit"));
+            same(bad,"mage hit (its staff set)",TroopTells.clip("mage","gilded","biped","hit"),TroopTells.OVERRIDES.get("mage").get("hit"));
             same(bad,"sentinel walk (its plod)",TroopTells.clip("sentinel","gilded","biped","walk"),TroopTells.OVERRIDES.get("sentinel").get("walk"));
-            same(bad,"sentinel attack (the Gilded variant: an override of walk leaves it be)",TroopTells.clip("sentinel","gilded","biped","attack"),HouseAttacks.VARIANTS.get("gilded"));
+            same(bad,"sentinel attack (its sword set)",TroopTells.clip("sentinel","gilded","biped","attack"),TroopTells.OVERRIDES.get("sentinel").get("attack"));
             same(bad,"knight tell",TroopTells.clip("knight","gilded","biped","tell"),TroopTells.TELLS.get("knight"));
             // the mirror, read against the plain clip: another clip, on the bones with right and left swapped, and built once
             var draw=TroopTells.clip("longbow","gilded","biped","bow_draw"); var drawMirrored=TroopTells.clip("longbow","gilded","biped","bow_draw",true);cases++;
@@ -6122,19 +6174,22 @@ public final class Phase2Checks implements ClientModInitializer {
             }
             var knight=TroopModels.model("knight");
             if(knight!=null){
-                same(bad,"knight attack through the animator",TroopAnimator.clip(knight,"attack",false),HouseAttacks.VARIANTS.get("gilded"));
-                same(bad,"knight walk through the animator",TroopAnimator.clip(knight,"walk",false),TroopClips.of("biped").get("walk"));
+                same(bad,"knight attack through the animator",TroopAnimator.clip(knight,"attack",false),TroopTells.OVERRIDES.get("knight").get("attack"));
+                same(bad,"knight walk through the animator",TroopAnimator.clip(knight,"walk",false),TroopTells.OVERRIDES.get("knight").get("walk"));
                 same(bad,"knight attack forced as the graveborn's",TroopAnimator.clip(knight,"attack",false,"graveborn"),HouseAttacks.VARIANTS.get("graveborn"));
             }
             var longbow=TroopModels.model("longbow");
             if(longbow!=null)same(bad,"longbow draw through the animator",TroopAnimator.clip(longbow,"bow_draw",true),TroopTells.OVERRIDES.get("longbow").get("bow_draw"));
-            report("p2-tells-lookup",bad.isEmpty(),"the order override, House attack (biped attack only), rig clip, on "+cases+" cases through TroopTells.clip and on the real models through TroopAnimator.clip, and the mirrored draw on the swapped bones"+(bad.isEmpty()?"":"; wrong: "+bad));
+            report("p2-tells-lookup",bad.isEmpty(),"the troop's override (the Order weapon sets among them), House attack (biped attack only), rig clip, on "+cases+" cases through TroopTells.clip and on the real models through TroopAnimator.clip, and the mirrored draw on the swapped bones"+(bad.isEmpty()?"":"; wrong: "+bad));
         }
 
         /** One headline value of an override: the troop, the clip, a bone, a channel (p, y, r in degrees; u up in px), the second it is read at and the value. */
         record OKey(String troop,String clip,String bone,char chan,float at,float value){}
         static OKey ok(String troop,String clip,String bone,char chan,float at,float value){return new OKey(troop,clip,bone,chan,at,value);}
+        static final List<String> SWORD_SET=List.of("idle","walk","run","attack","hit","death","hold","brace","fall_back"),STAFF_SET=List.of("idle","walk","run","cast","hit","death","hold","fall_back");
         static final List<OKey> OVERRIDE_KEYS=List.of(
+            ok("knight","attack","right_arm",'p',.12f,-143),ok("knight","attack","right_hand",'p',.25f,115),ok("knight","idle","right_hand",'p',0,75),
+            ok("mage","idle","right_arm",'p',0,-30),ok("mage","idle","right_hand",'p',0,40),ok("mage","cast","right_arm",'p',0,-60),
             ok("sentinel","walk","right_leg",'p',.25f,-20),ok("sentinel","walk","left_leg",'p',.25f,20),ok("sentinel","walk","right_arm",'p',.25f,8),ok("sentinel","walk","left_arm",'p',.25f,-8),ok("sentinel","walk","body",'u',.125f,.5f),
             ok("longbow","bow_draw","left_arm",'p',.3f,-90),ok("longbow","bow_draw","left_arm",'r',.3f,25),ok("longbow","bow_draw","right_arm",'y',.65f,-70),
             ok("hexer","cast","right_arm",'p',0,-120),ok("hexer","cast","left_arm",'p',0,-30),
@@ -6153,7 +6208,9 @@ public final class Phase2Checks implements ClientModInitializer {
          */
         void overrides(){
             List<String> bad=new ArrayList<>();int n=0;
-            Set<String> want=new TreeSet<>(List.of("sentinel/walk","longbow/bow_draw","hexer/cast","wm_seer/cast","ic_arbalist/bow_draw","ic_ballista/bow_draw","ic_mortar/bow_draw","tc_harpooner/bow_draw","tc_tideguard/attack","tc_admiral/attack"));
+            Set<String> want=new TreeSet<>(List.of("longbow/bow_draw","hexer/cast","wm_seer/cast","ic_arbalist/bow_draw","ic_ballista/bow_draw","ic_mortar/bow_draw","tc_harpooner/bow_draw","tc_tideguard/attack","tc_admiral/attack"));
+            // the weapon sets of animation pass 1 (BipedClips.sword and staff; the Sentinel's walk is its plod)
+            for(String t:List.of("knight","gl_marshal","sentinel"))for(String c:SWORD_SET)want.add(t+"/"+c);for(String c:STAFF_SET)want.add("mage/"+c);
             Set<String> have=new TreeSet<>();for(var e:TroopTells.OVERRIDES.entrySet())for(String clip:e.getValue().keySet())have.add(e.getKey()+"/"+clip);
             if(!have.equals(want))bad.add("the overrides are "+have+", the brief's are "+want);
             for(var e:TroopTells.OVERRIDES.entrySet()){
@@ -6165,8 +6222,10 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(Math.abs(a.lengthInSeconds()-TroopClips.LENGTHS.get(c.getKey()))>1e-4)bad.add(what+" is "+a.lengthInSeconds()+" s, the clip it replaces "+TroopClips.LENGTHS.get(c.getKey()));
                     if(a.looping()!=(kind==TroopClips.Kind.LOOP))bad.add(what+" loops="+a.looping()+", but the clip it replaces is "+kind);
                     for(var bone:a.boneAnimations().keySet())if(!m.bones().contains(bone))bad.add(what+" moves "+bone+", which the "+rig+" rig lacks");
-                    float[] rest=Anim.sample(m,null,0);double rot,pos;
-                    if(kind==TroopClips.Kind.LOOP){var u=Anim.unwrapped(a);float[] first=Anim.sample(m,u,0),end=Anim.sample(m,u,a.lengthInSeconds());rot=Anim.maxRot(end,first);pos=Anim.maxPos(end,first);}
+                    // a once clip of a weapon set ends on the set's carry (its idle's first frame), the rest of them at rest; a held clip holds where it ends
+                    var carry=e.getValue().get("idle");float[] rest=carry!=null?Anim.sample(m,carry,0):Anim.sample(m,null,0);double rot,pos;
+                    if(kind==TroopClips.Kind.HOLD){rot=0;pos=0;}
+                    else if(kind==TroopClips.Kind.LOOP){var u=Anim.unwrapped(a);float[] first=Anim.sample(m,u,0),end=Anim.sample(m,u,a.lengthInSeconds());rot=Anim.maxRot(end,first);pos=Anim.maxPos(end,first);}
                     else{float[] end=Anim.sample(m,a,a.lengthInSeconds());rot=Anim.maxRot(end,rest);pos=Anim.maxPos(end,rest);}
                     if(rot>1||pos>.1)bad.add(String.format(Locale.ROOT,"%s ends %.2f degrees and %.2f px off where a %s clip ends",what,rot,pos,kind));
                     double apart=0;for(float t=0;t<=a.lengthInSeconds()+1e-4f;t+=.05f)apart=Math.max(apart,Anim.maxRot(Anim.sample(m,a,t),Anim.sample(m,plain,t)));
@@ -6179,7 +6238,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 double got=Anim.keyValue(m,a,Anim.key(rig,k.clip(),k.bone(),k.chan(),k.at(),k.value())),tol=k.chan()=='u'?.2:2;
                 if(Double.isNaN(got)||Math.abs(got-k.value())>tol)bad.add(String.format(Locale.ROOT,"%s %s %s %c at %.2f s: %.2f, want %.2f",k.troop(),k.clip(),k.bone(),k.chan(),k.at(),got,k.value()));
             }
-            report("p2-tells-overrides",bad.isEmpty()&&n==10,n+" overrides, each as long and of the kind of the clip it replaces, in its rig's bones, ending as its kind ends, 5 degrees or more from the rig's clip, "+OVERRIDE_KEYS.size()+" angles read off within 2 degrees (0.2 px)"+(bad.isEmpty()?"":"; wrong: "+bad));
+            report("p2-tells-overrides",bad.isEmpty()&&n==want.size(),n+" overrides (of "+want.size()+"), each as long and of the kind of the clip it replaces, in its rig's bones, ending as its kind ends, 5 degrees or more from the rig's clip, "+OVERRIDE_KEYS.size()+" angles read off within 2 degrees (0.2 px)"+(bad.isEmpty()?"":"; wrong: "+bad));
         }
 
         /** One headline value of a House attack: the House, a bone, a channel, the second it is read at (negative: the strike) and the value. */

@@ -27,6 +27,7 @@ allprojects {
    systemProperty 'gravesandglory.phase2Checks', System.getenv('GRAVES_PHASE2_CHECKS') ?: ''
    systemProperty 'gravesandglory.turnTroops', System.getenv('GRAVES_PHASE2_TURN') ?: 'gilded'
    systemProperty 'gravesandglory.turnPoses', System.getenv('GRAVES_PHASE2_POSES') ?: ''
+   systemProperty 'gravesandglory.turnClearOnly', System.getenv('GRAVES_PHASE2_CLEAR') ?: ''
    systemProperty 'gravesandglory.faceTroops', System.getenv('GRAVES_PHASE2_FACES') ?: ''
    systemProperty 'gravesandglory.faceForce', System.getenv('GRAVES_PHASE2_FACE') ?: '-1'
   }

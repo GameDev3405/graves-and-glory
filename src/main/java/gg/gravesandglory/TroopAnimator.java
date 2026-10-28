@@ -272,6 +272,7 @@ public final class TroopAnimator {
     static Animation clip(TroopModel<?> m,String clip,boolean bow,String house){
         boolean left="left".equals(m.hand()),mirror=clip.equals("bow_draw")?bow&&!left:left&&HANDED.contains(clip);
         Spec.TroopsRow row=house==null?row(m):null;
+        if(house!=null&&clip.equals("attack")){Animation v=TroopTells.clip(null,house,m.rig,clip,mirror);if(v!=null)return v;}
         return TroopTells.clip(m.troop,house!=null?house:row==null?null:row.house(),m.rig,clip,mirror);
     }
     static void animate(TroopModel<?> m,Animation a,float seconds,float w){if(a!=null&&w>1e-4f)AnimationHelper.animate(m,a,(long)(seconds*1000f),w,TMP);}
