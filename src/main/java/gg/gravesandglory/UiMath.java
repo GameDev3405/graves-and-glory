@@ -564,7 +564,7 @@ public final class UiMath {
         return size == HUD_COMPACT ? new int[]{w - 182, h / 2 - 22, 166, 44} : new int[]{w - 188, h / 2 - 38, 172, 74};
     }
 
-    /** How far a feed line's text runs from x 20 of its leaf: 134 px on Compact's leaf, 140 on the five-entry leaf, 12 px short of
+    /** How far a feed line's text runs from x 20 of its leaf: 144 px on Compact's leaf, 148 on the five-entry leaf, 2 and 4 px short of
      *  the binding on either. */
     public static int feedTextW(int size) { return size == HUD_COMPACT ? 144 : 148; }
 
