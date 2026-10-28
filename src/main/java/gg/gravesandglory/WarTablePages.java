@@ -46,13 +46,16 @@ final class WarTablePages {
     static final int TAG_X = 228, TAG_W = 60, TAG_H = 22, ADD_DY = 4, REMOVE_DY = 30;
     static final int SHEET_X = 328, SHEET_Y = 124, SEAT_X = 388, SEAT_Y = 180, SEAT_STEP = 56, SEAT = 48, SEATS = 20;
     static final int ARMED_X = 388, ARMED_Y = 412, CLEAR_X = 596, CLEAR_Y = 424;
-    static final int CLASS_X = 760, CLASS_Y = 140, CLASS_STEP = 40, CLASS_W = 120, BONUS_Y = 264, BONUS_W = 144;
+    static final int CLASS_X = 760, CLASS_Y = 140, CLASS_STEP = 40, CLASS_W = 120, BONUS_Y = 374, BONUS_W = 144;
     /** What a seat click places when the Clear tag is armed: the server's word for an empty seat. */
     static final String EMPTY = "empty";
     /** In the roll's last place, at its foot, while the House has troops not yet recruited (their places ruled and empty above
      *  it): where they come from, centred on the rows. */
     static final String ROLL_HINT = "More of your House's troops join the roll at the recruit table.";
     static final int ROLL_HINT_CX = 116, ROLL_HINT_W = 200;
+    /** The Banner's House row sits in the sheet's head: the chosen House shows seal, tick and name, the other four their seal only
+     *  (five names are 414 px wide and the sheet's paper holds 372); each chip's tooltip names its House. */
+    static final int BANNER_CHIPS_DY = 10, BANNER_CHIPS_CX = 202, BANNER_HEAD_DY = 44, BANNER_PAPER_X = 20, BANNER_PAPER_W = 364;
 
     // Contracts: the three daily notes in a row centred on the page, Reroll under the middle one, the weekly note under it.
     static final int NOTE_X = 140, NOTE_Y = 140, NOTE_STEP = 240, REROLL_X = 436, REROLL_Y = 252, WEEKLY_X = 328, WEEKLY_Y = 300, RESET_Y = 412;
@@ -133,7 +136,7 @@ final class WarTablePages {
      *  in two even lines under The Oath in place of "not sworn"; the letter and the chapter block 4 px under the rail. */
     static final int[] C_ROLL = {-29, -36}, C_SHEET = {-40, -36}, C_CLASS = {-62, -36}, C_CONTRACTS = {-55, -40}, C_FIELD = {-55, -36};
     static final int[] C_CAMP = {-44, -36}, C_PARTY = {-76, -36}, C_ROOM = {-76, -36}, C_HERO = {-44, -2}, C_BLOCK = {-64, -10}, C_BLOCK_HEAD = {-58, -10};
-    static final int C_CAMP_W = 200, C_BANNER_NOTICE_Y = 292, C_BANNER_NOTICE_LINES = 4, C_CONTRACTS_NOTICE_Y = 436, C_FIELD_NOTICE_Y = 425;
+    static final int C_CAMP_W = 200, C_BANNER_NOTICE_Y = 396, C_BANNER_NOTICE_LINES = 4, C_CONTRACTS_NOTICE_Y = 436, C_FIELD_NOTICE_Y = 425;
     static final int C_FRIENDS_NOTICE_Y = 400, C_FRIENDS_NOTICE_CX = 406, C_FRIENDS_NOTICE_W = 340, C_CHAPTER_NOTICE_Y = 188;
     /** The compact Chapter's track, in compact page px: nine tiers from x 150, the rod at 276, the Roll at 300 and the Oath at 388
      *  (its foot 12 px above the page's), the labels at x 12; and the hero letter's title seal on the letter's top right. */
@@ -547,15 +550,60 @@ final class WarTablePages {
     /** The House the commander fights for, as the old army page took it: the snapshot's team, Dawn before a team is known. */
     static int team() { return Math.max(0, Math.min(Spec.FACTIONS.length - 1, GravesAndGloryClient.team)); }
 
-    /** The troops of the commander's House he has recruited, in roll order (at most ROWS: Phase 1 has six to a House). */
+    /** The troops of the shown House he has recruited, in roll order (at most ROWS: a House holds six troops). */
     static List<RecruitView.Row> owned() {
         List<RecruitView.Row> out = new ArrayList<>();
-        for (var r : RecruitView.roll(RosterMath.rollHouse(CampaignClient.profile.banner))) if (r.owned() && out.size() < ROWS) out.add(r); // integration: the House the banner leans on
+        for (var r : RecruitView.roll(shownHouse())) if (r.owned() && out.size() < ROWS) out.add(r);
         return out;
     }
 
-    /** The seats a troop holds in the deployment (the army's count of it). */
-    static int seats(String troop) { return java.util.Collections.frequency(CampaignClient.profile.banner, troop); }
+    /** The copies of a troop in the deployment. */
+    static int copies(String troop) { return java.util.Collections.frequency(CampaignClient.profile.banner, troop); }
+    /** The seats a troop takes in the deployment: each copy takes its slot weight (an Epic two, a Legendary four). */
+    static int seats(String troop) { return copies(troop) * weight(troop); }
+    /** The seats one copy of a troop takes (the troops sheet's slotWeight, at least 1). */
+    static int weight(String troop) { return Math.max(1, RosterMath.Catalog.fromSpec().weight(troop)); }
+    /** The seats the banner uses: every seat that is not empty, the later halves of wide troops (MARKER) included. */
+    static int used() { int n = 0; for (var id : CampaignClient.profile.banner) if (!id.equals(RosterMath.EMPTY)) n++; return n; }
+    /** The seat a wide troop starts in when seat i is one of its later halves, else i itself. */
+    static int unitSeat(int i) {
+        var line = CampaignClient.profile.banner;
+        int j = Math.min(i, line.size() - 1);
+        while (j > 0 && RosterMath.MARKER.equals(line.get(j))) j--;
+        return Math.max(0, j);
+    }
+    /** The first seat of a run of w free seats in a row, or -1 when no run is long enough. */
+    static int firstRun(int w) {
+        var line = CampaignClient.profile.banner;
+        for (int i = 0; i + w <= line.size(); i++) {
+            boolean run = true;
+            for (int k = 0; k < w && run; k++) run = line.get(i + k).equals(EMPTY);
+            if (run) return i;
+        }
+        return -1;
+    }
+    /** Why Add would be refused for this troop (the server's own rules, RosterMath), or "" when it would take. */
+    static String addWhy(String troop) {
+        var c = RosterMath.Catalog.fromSpec();
+        String rarity = c.rarityOf(troop);
+        if (rarity != null) {
+            int units = 0;
+            for (var id : CampaignClient.profile.banner) if (rarity.equals(c.rarityOf(id))) units++;
+            int max = RosterMath.bannerMax(rarity);
+            if (units >= max) return "A banner holds " + max + " " + rarity + " troop" + (max == 1 ? "" : "s") + ".";
+        }
+        int w = weight(troop);
+        if (firstRun(w) < 0) return w > 1 ? "No " + w + " free seats together." : "Every seat is taken.";
+        return "";
+    }
+    /** The troop a seat shows: a wide troop's later half shows the troop, an empty seat EMPTY. */
+    static String drawnTroop(int i) {
+        var line = CampaignClient.profile.banner;
+        String id = i < line.size() ? line.get(i) : EMPTY;
+        if (!id.equals(RosterMath.MARKER)) return id;
+        String head = line.get(unitSeat(i));
+        return RosterMath.MARKER.equals(head) ? EMPTY : head;
+    }
     /** Integration: the seats the banner fills (not empty, not a marker of a wide troop). */
     static int filled() { int n = 0; for (var id : CampaignClient.profile.banner) if (!id.equals(RosterMath.EMPTY) && !id.equals(RosterMath.MARKER)) n++; return n; }
 
@@ -566,6 +614,11 @@ final class WarTablePages {
 
     void initBanner() {
         int[] r = col(C_ROLL), sh = col(C_SHEET), cl0 = col(C_CLASS);
+        for (var h : RecruitView.houses()) { // the House row first, so Tab meets it first; layoutBannerChips puts the chips in their places
+            final String id = h.id(), name = h.name();
+            var chip = add("house-" + id, new UiButton(sh[0] + SHEET_X, sh[1] + SHEET_Y, 26, CHIP_H, Text.literal(name), bb -> { bannerPick = id; refresh(); }, (g, bx, by, bw, bh, hot) -> paintBannerChip(g, id, name, bx, by, bw, bh)));
+            chip.setTooltip(Tooltip.of(Text.literal("Troops of " + name)));
+        }
         for (int i = 0; i < ROWS; i++) {
             final int index = i;
             int y = r[1] + ROW_TOP + ROW_H * i;
@@ -590,7 +643,8 @@ final class WarTablePages {
     void refreshBanner() {
         var roll = owned();
         if (armed == null || !armed.equals(EMPTY) && roll.stream().noneMatch(r -> r.troopId().equals(armed))) armed = roll.isEmpty() ? EMPTY : roll.get(0).troopId();
-        boolean free = battleFree(), room = filled() < SEATS;
+        boolean free = battleFree();
+        layoutBannerChips();
         for (int i = 0; i < ROWS; i++) {
             boolean shown = i < roll.size();
             String troop = shown ? roll.get(i).troopId() : "";
@@ -598,8 +652,13 @@ final class WarTablePages {
             var add = buttons.get("add-" + i);
             var remove = buttons.get("remove-" + i);
             if (row != null) { row.visible = shown; row.setMessage(Text.literal(shown ? roll.get(i).name() : "")); }
-            if (add != null) { add.visible = shown; add.active = shown && free && room; }
-            if (remove != null) { remove.visible = shown; remove.active = shown && free && seats(troop) > 0; }
+            String why = !shown ? "" : !free ? "Not while a battle is on." : addWhy(troop);
+            if (add != null) {
+                add.visible = shown; add.active = shown && free && why.isEmpty();
+                String tip = !shown ? "" : add.active ? (weight(troop) > 1 ? "Take " + weight(troop) + " free seats together" : "Take the first free seat") : why;
+                if (!tip.equals(addTips[i])) { addTips[i] = tip; add.setTooltip(tip.isEmpty() ? null : Tooltip.of(Text.literal(tip))); }
+            }
+            if (remove != null) { remove.visible = shown; remove.active = shown && free && copies(troop) > 0; }
         }
         for (int i = 0; i < SEATS; i++) {
             var s = buttons.get("seat-" + i);
@@ -613,6 +672,27 @@ final class WarTablePages {
         }
     }
 
+    private final String[] addTips = new String[ROWS];
+
+    /** The House chips in the sheet's head: the chosen one wide (seal, tick and name), the others a seal each, centred on the paper. */
+    void layoutBannerChips() {
+        int[] sh = col(C_SHEET);
+        var houses = RecruitView.houses();
+        String on = shownHouse();
+        int total = -CHIP_GAP;
+        for (var h : houses) total += chipSpan(h.id().equals(on), h.name()) + CHIP_GAP;
+        int x = sh[0] + SHEET_X + BANNER_CHIPS_CX - total / 2, y = sh[1] + SHEET_Y + BANNER_CHIPS_DY;
+        for (var h : houses) {
+            var b = buttons.get("house-" + h.id());
+            int w = chipSpan(h.id().equals(on), h.name());
+            if (b != null) b.moveTo(x, y, w, CHIP_H);
+            x += w + CHIP_GAP;
+        }
+    }
+
+    /** A Banner chip's width: the seal alone, or seal and name for the House shown. */
+    static int chipSpan(boolean on, String name) { return on ? chipWidth(name) : 2 * CHIP_PAD + CHIP_SEAL; }
+
     /** A click on row i arms its troop: a seat click then places it. */
     void arm(int i) {
         var roll = owned();
@@ -625,11 +705,12 @@ final class WarTablePages {
         var roll = owned();
         if (i >= roll.size()) return;
         String troop = roll.get(i).troopId(); var line = CampaignClient.profile.banner; // integration: p2 takes slot:<i>:<id>, not army:
-        int at = how.equals("add") ? line.indexOf(EMPTY) : line.lastIndexOf(troop);
+        int at = how.equals("add") ? firstRun(weight(troop)) : line.lastIndexOf(troop);
         if (at >= 0) send("slot:" + at + ":" + (how.equals("add") ? troop : EMPTY));
     }
 
-    void place(int seat, String troop) { if (troop != null) send("slot:" + seat + ":" + troop); }
+    /** A seat click: the troop goes in the seat; emptying a later half of a wide troop empties the troop's own seat (the server repacks). */
+    void place(int seat, String troop) { if (troop != null) send("slot:" + (EMPTY.equals(troop) ? unitSeat(seat) : seat) + ":" + troop); }
 
     void banner(DrawContext g) {
         int[] ro = col(C_ROLL), sh = col(C_SHEET), cl = col(C_CLASS);
@@ -639,7 +720,7 @@ final class WarTablePages {
         rectsDrawn.put("roll", UiTex.draw(g, "recruit/muster-roll", x, oy + ROLL_Y));
         for (int i = 0; i < roll.size(); i++) if (roll.get(i).troopId().equals(armed)) sel = i;
         if (sel >= 0) rectsDrawn.put("mark", UiTex.draw(g, "recruit/row-mark", x, oy + ROW_TOP + ROW_H * sel));
-        boolean more = RecruitView.roll(bannerHouse()).stream().anyMatch(r -> !r.owned());
+        boolean more = RecruitView.roll(shownHouse()).stream().anyMatch(r -> !r.owned());
         int places = more ? ROWS : roll.size(); // the House's troops not yet recruited keep their places on the roll, ruled and empty
         for (int i = 1; i < places; i++) if (i != sel) UiTex.draw(g, "recruit/rule-208", x + 16, oy + ROW_TOP + ROW_H * i);
         for (int i = 0; i < roll.size(); i++) rollRow(g, roll.get(i), i, x, oy + ROW_TOP + ROW_H * i);
@@ -649,6 +730,13 @@ final class WarTablePages {
             for (int i = 0; i < hint.size(); i++) WarTableHome.centred(g, DarkUi.body(hint.get(i)), x + ROLL_HINT_CX, top + 13 * i, DarkUi.SEPIA);
             textsDrawn.put("roll-hint", String.join(" ", hint));
             rectsDrawn.put("roll-hint", new int[]{x + ROLL_HINT_CX - ROLL_HINT_W / 2, top, ROLL_HINT_W, 13 * hint.size() - 4});
+        }
+        if (roll.isEmpty()) { // a House none of whose troops is recruited yet: the first place says so
+            var say = UiMath.lines("You have recruited no " + RosterMath.houseName(shownHouse()) + " troop yet.", ROLL_HINT_W, 2, s -> font().getWidth(DarkUi.body(s)));
+            int top = oy + ROW_TOP + (ROW_H - 13 * say.size()) / 2;
+            for (int i = 0; i < say.size(); i++) WarTableHome.centred(g, DarkUi.body(say.get(i)), x + ROLL_HINT_CX, top + 13 * i, DarkUi.INK_TEXT);
+            textsDrawn.put("roll-empty", String.join(" ", say));
+            rectsDrawn.put("roll-empty", new int[]{x + ROLL_HINT_CX - ROLL_HINT_W / 2, top, ROLL_HINT_W, 13 * say.size() - 4});
         }
         sheet(g, sh[0] + SHEET_X, sh[1] + SHEET_Y, sh[0], sh[1]);
         armedBand(g, sh[0] + ARMED_X, sh[1] + ARMED_Y);
@@ -667,9 +755,14 @@ final class WarTablePages {
         UiTex.draw(g, "table/frame-rim-48", x + 4, y + 4);
         String name = UiMath.trim(r.name(), NAME_W, s -> font.getWidth(DarkUi.heading(s)));
         g.drawText(font, DarkUi.heading(name), x + 60, y + 12, DarkUi.INK_TEXT, false);
-        int n = seats(r.troopId());
+        int n = seats(r.troopId()), w = weight(r.troopId());
         String count = n == 0 ? "No seats" : n == 1 ? "1 seat" : n + " seats";
         g.drawText(font, DarkUi.body(count), x + 60, y + 30, DarkUi.SEPIA, false);
+        if (w > 1) { // a wide troop says so in a word: each copy takes w seats
+            String wide = "Takes " + w + " seats";
+            g.drawText(font, DarkUi.body(wide), x + 60, y + 42, DarkUi.INK_TEXT, false);
+            textsDrawn.put("weight-" + i, wide);
+        }
         rectsDrawn.put("row-" + i, new int[]{x, y, ROW_W, ROW_H});
         textsDrawn.put("row-" + i, r.troopId());
         textsDrawn.put("count-" + i, count);
@@ -691,29 +784,47 @@ final class WarTablePages {
         var font = font();
         rectsDrawn.put("sheet", UiTex.draw(g, "table/sheet-banner", x, y));
         int t = team();
-        int nx = WarTableHome.centred(g, DarkUi.heading(Spec.FACTIONS[t].name()), x + 200, y + 16, DarkUi.INK_TEXT);
-        DarkUi.teamMark(g, t, nx - 11, y + 18);
-        String seated = filled() + " of " + SEATS + " seats filled";
-        WarTableHome.centred(g, DarkUi.body(seated), x + 200, y + 32, DarkUi.SEPIA);
+        int hy = y + BANNER_HEAD_DY;
+        DarkUi.teamMark(g, t, x + BANNER_PAPER_X, hy);
+        g.drawText(font, DarkUi.heading(Spec.FACTIONS[t].name()), x + BANNER_PAPER_X + 14, hy, DarkUi.INK_TEXT, false);
+        String seated = used() + "/" + SEATS + " seats";
+        int sw = font.getWidth(DarkUi.body(seated));
+        g.drawText(font, DarkUi.body(seated), x + BANNER_PAPER_X + BANNER_PAPER_W - sw, hy, DarkUi.SEPIA, false);
         textsDrawn.put("seated", seated);
+        rectsDrawn.put("seated", new int[]{x + BANNER_PAPER_X + BANNER_PAPER_W - sw, hy, sw, 9});
         g.drawText(font, DarkUi.body("Front"), x + 16, oy + SEAT_Y + 19, DarkUi.SEPIA, false);
         g.drawText(font, DarkUi.body("Rear"), x + 16, oy + SEAT_Y + 3 * SEAT_STEP + 19, DarkUi.SEPIA, false);
         var line = CampaignClient.profile.banner;
-        for (int i = 0; i < SEATS; i++)
-            seat(g, "seat-" + i, i < line.size() ? line.get(i) : EMPTY, ox + SEAT_X + SEAT_STEP * (i % 5), oy + SEAT_Y + SEAT_STEP * (i / 5));
+        for (int i = 0; i < SEATS; i++) {
+            String id = i < line.size() ? line.get(i) : EMPTY, label = null;
+            if (id.equals(RosterMath.MARKER)) { int u = unitSeat(i); label = (i - u + 1) + " of " + weight(line.get(u)); }
+            else if (!id.equals(EMPTY) && weight(id) > 1) label = "1 of " + weight(id);
+            seat(g, "seat-" + i, id, drawnTroop(i), ox + SEAT_X + SEAT_STEP * (i % 5), oy + SEAT_Y + SEAT_STEP * (i / 5), label); // a wide troop's later half draws the troop and its place in it
+        }
     }
 
     /** A seat, as home seats the party: the frame's back (the empty one for an empty seat), the troop's live model and the rim. */
-    void seat(DrawContext g, String where, String troop, int x, int y) {
-        boolean empty = troop.equals(EMPTY);
+    void seat(DrawContext g, String where, String troop, int x, int y) { seat(g, where, troop, troop, x, y, null); }
+
+    /** A seat that holds `troop` in the profile's banner and draws `drawn`, with "1 of 2" on the halves of a wide troop. */
+    void seat(DrawContext g, String where, String troop, String drawn, int x, int y, String label) {
+        boolean empty = drawn.equals(EMPTY);
         if (empty) UiTex.draw(g, "table/frame-back-empty-48", x + 4, y + 4);
         else UiTex.draw(g, "table/frame-back-48", x + 4, y + 4);
-        var e = empty ? null : WarTableRecruit.model(troop);
+        var e = empty ? null : WarTableRecruit.model(drawn);
         if (e != null) {
             Portrait.draw(g, e, x + 4, y + 4, 40, 0);
-            portraitsDrawn.add(new PortraitDraw(where, troop, Portrait.last()));
+            portraitsDrawn.add(new PortraitDraw(where, drawn, Portrait.last()));
         }
         UiTex.draw(g, "table/frame-rim-48", x, y);
+        if (label != null) {
+            var font = font();
+            int lw = font.getWidth(DarkUi.body(label));
+            UiTex.nine(g, "table/chip-house-on", x + SEAT - lw - 10, y + SEAT - 16, lw + 8, 12);
+            g.drawText(font, DarkUi.body(label), x + SEAT - lw - 6, y + SEAT - 14, DarkUi.INK_TEXT, false);
+            textsDrawn.put("wide-" + where, label);
+            rectsDrawn.put("wide-" + where, new int[]{x + SEAT - lw - 10, y + SEAT - 16, lw + 8, 12});
+        }
         rectsDrawn.put(where, new int[]{x, y, SEAT, SEAT});
         textsDrawn.put(where, troop);
     }
@@ -761,7 +872,7 @@ final class WarTablePages {
     // ===================================================================================================================== Claims with a House
 
     /** The House and the Rare picked on the Contracts and Chapter rows; null while none is (the banner's House, and that House's first Rare). */
-    private static String claimPick, rarePick;
+    private static String claimPick, rarePick, bannerPick;
     private static List<String> bannerSeen;
     private static String bannerHouse = "";
 
@@ -777,6 +888,9 @@ final class WarTablePages {
 
     static void pickHouse(String house) { claimPick = house; rarePick = null; }
 
+    /** The House whose roll the Banner page lists: the chip picked, else the one the banner leans on. */
+    static String shownHouse() { return bannerPick != null ? bannerPick : bannerHouse(); }
+
     /** The Rare troop tier 20 would give: the one picked among the Rares of the House picked, else the House's first ("" when it has none). */
     static String rarePick() {
         var rares = RecruitPages.rares(claimHouse());
@@ -790,7 +904,7 @@ final class WarTablePages {
     }
 
     /** Puts the picks back to none (the checks start from the defaults). */
-    static void forgetPicks() { claimPick = null; rarePick = null; }
+    static void forgetPicks() { claimPick = null; rarePick = null; bannerPick = null; }
 
     static Progression.State copyOf(Progression.State p) {
         var s = new Progression.State();
@@ -897,6 +1011,30 @@ final class WarTablePages {
         int tx = x + CHIP_PAD + CHIP_SEAL + CHIP_SEAL_GAP, ty = y + 6 + dy;
         g.drawText(font, label, tx, ty, DarkUi.INK_TEXT, false);
         if (hot(b)) underline(g, "house-" + id, tx, ty + 12, font.getWidth(label), DarkUi.INK_TEXT);
+        rectsDrawn.put("house-" + id, new int[]{x, y, w, h});
+        textsDrawn.put("house-" + id, name);
+        texturesDrawn.put("house-" + id, tex);
+        colorsDrawn.put("house-" + id, DarkUi.INK_TEXT);
+        if (on) textsDrawn.put("house-chosen", id);
+    }
+
+    /** A Banner chip: as paintChip, but the name is written only on the House shown; the others are a seal (the tooltip names them). */
+    void paintBannerChip(DrawContext g, String id, String name, int x, int y, int w, int h) {
+        var font = font();
+        var b = buttons.get("house-" + id);
+        boolean on = id.equals(shownHouse());
+        int dy = on ? 1 : 0;
+        String tex = on ? "table/chip-house-on" : "table/chip-house";
+        UiTex.nine(g, tex, x, y, w + 1, on ? h + CHIP_RULE : h + 2);
+        for (var row : Spec.HOUSES)
+            if (row.id().equals(id)) g.drawTexture(new Identifier(row.glyph()), x + CHIP_PAD, y + 4 + dy, 0f, 0f, CHIP_SEAL, CHIP_SEAL, CHIP_SEAL, CHIP_SEAL);
+        if (on) UiTex.draw(g, "table/ready-check", x + CHIP_PAD + 8, y + 4 + dy + 9);
+        if (on) {
+            var label = DarkUi.body(name);
+            int tx = x + CHIP_PAD + CHIP_SEAL + CHIP_SEAL_GAP, ty = y + 6 + dy;
+            g.drawText(font, label, tx, ty, DarkUi.INK_TEXT, false);
+            if (hot(b)) underline(g, "house-" + id, tx, ty + 12, font.getWidth(label), DarkUi.INK_TEXT);
+        } else if (hot(b)) underline(g, "house-" + id, x + CHIP_PAD, y + 4 + dy + CHIP_SEAL + 2, CHIP_SEAL, DarkUi.INK_TEXT);
         rectsDrawn.put("house-" + id, new int[]{x, y, w, h});
         textsDrawn.put("house-" + id, name);
         texturesDrawn.put("house-" + id, tex);
