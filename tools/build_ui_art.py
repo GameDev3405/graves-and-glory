@@ -35,6 +35,7 @@ KINDS = ('fixed', 'nine', 'three-h', 'three-v', 'sheet')
 def manifest():
     sys.path.insert(0, str(ART))
     import manifest as m
+    import wt_claims  # War Table port Task 1: the House chips join the manifest (their module adds them to m.MANIFEST)
     return m.MANIFEST
 
 

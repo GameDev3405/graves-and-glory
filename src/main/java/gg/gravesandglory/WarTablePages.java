@@ -6,9 +6,11 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.PlayerSkinDrawer;
+import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 import java.util.*;
 
@@ -54,6 +56,16 @@ final class WarTablePages {
 
     // Contracts: the three daily notes in a row centred on the page, Reroll under the middle one, the weekly note under it.
     static final int NOTE_X = 140, NOTE_Y = 140, NOTE_STEP = 240, REROLL_X = 436, REROLL_Y = 252, WEEKLY_X = 328, WEEKLY_Y = 300, RESET_Y = 412;
+    /** A daily note keeps a second reward line for the shards of the daily that completes all three, so its bar, count and Claim sit
+     *  lower than the weekly's (which pays its shards on its one line): offsets from the note's top. */
+    static final int DAILY_BAR_DY = 56, DAILY_STAMP_DY = 64, DAILY_CLAIM_DY = 66;
+    /** The House row (claims with a House, War Table port Task 1): five chips 24 tall, seal then name, 3 px apart, the House the
+     *  shards of the next claim go to pressed in with a tick, a rule under it and its word in the reward line. The Contracts row is
+     *  centred on the page under the reset line, the Chapter's starts at the chapter block's text column under its name. */
+    static final int CAPTION_GAP = 10;
+    static final int CHIP_H = 24, CHIP_GAP = 3, CHIP_SEAL = 16, CHIP_PAD = 5, CHIP_SEAL_GAP = 4, CHIP_RULE = 5, CHIPS_Y = 436, CHAPTER_CHIPS_Y = 110;
+    /** The Chapter's Rare chip (tier 20) and the lines of what the waiting tier gives, both left of the Claim plate. */
+    static final int RARE_W = 124, GIVES_W = 170, GIVES_GAP = 10;
 
     // Chapter (work/ui-concepts/track/pages.py): ten tiers shown, plaques 68 x 80 on a 76 pitch, the current tier's Roll plaque
     // lifted 8 px and 88 tall; the rod, the tier tags on it, the Roll's top and the Oath's top; the hero letter and the Claim plate.
@@ -121,7 +133,7 @@ final class WarTablePages {
      *  in two even lines under The Oath in place of "not sworn"; the letter and the chapter block 4 px under the rail. */
     static final int[] C_ROLL = {-29, -36}, C_SHEET = {-40, -36}, C_CLASS = {-62, -36}, C_CONTRACTS = {-55, -40}, C_FIELD = {-55, -36};
     static final int[] C_CAMP = {-44, -36}, C_PARTY = {-76, -36}, C_ROOM = {-76, -36}, C_HERO = {-44, -2}, C_BLOCK = {-64, -10}, C_BLOCK_HEAD = {-58, -10};
-    static final int C_CAMP_W = 200, C_BANNER_NOTICE_Y = 292, C_BANNER_NOTICE_LINES = 4, C_CONTRACTS_NOTICE_Y = 396, C_FIELD_NOTICE_Y = 425;
+    static final int C_CAMP_W = 200, C_BANNER_NOTICE_Y = 292, C_BANNER_NOTICE_LINES = 4, C_CONTRACTS_NOTICE_Y = 436, C_FIELD_NOTICE_Y = 425;
     static final int C_FRIENDS_NOTICE_Y = 400, C_FRIENDS_NOTICE_CX = 406, C_FRIENDS_NOTICE_W = 340, C_CHAPTER_NOTICE_Y = 188;
     /** The compact Chapter's track, in compact page px: nine tiers from x 150, the rod at 276, the Roll at 300 and the Oath at 388
      *  (its foot 12 px above the page's), the labels at x 12; and the hero letter's title seal on the letter's top right. */
@@ -216,6 +228,8 @@ final class WarTablePages {
      *  page last claimed (its stamp is the wet one); and the tick the track began to slide. */
     boolean paged;
     int pagedFirst = 1, shownFirst = -1, freshTier = -1;
+    /** The tooltips the Claim plate and the Rare chip carry now (set again only when their words change). */
+    String claimTip = "", rareTip = "";
     double slideAt = -1000;
 
     WarTablePages(CampScreen screen, String page) {
@@ -744,15 +758,169 @@ final class WarTablePages {
 
     static Progression.State progression() { return CampaignClient.profile.progression; }
 
+    // ===================================================================================================================== Claims with a House
+
+    /** The House and the Rare picked on the Contracts and Chapter rows; null while none is (the banner's House, and that House's first Rare). */
+    private static String claimPick, rarePick;
+    private static List<String> bannerSeen;
+    private static String bannerHouse = "";
+
+    /** The House the banner leans on (RosterMath.rollHouse), worked out again only when the banner changes. */
+    static String bannerHouse() {
+        var banner = CampaignClient.profile.banner;
+        if (!banner.equals(bannerSeen)) { bannerSeen = new ArrayList<>(banner); bannerHouse = RosterMath.rollHouse(banner); }
+        return bannerHouse;
+    }
+
+    /** The House the shards of the next claim go to: the chip picked, else the banner's House. */
+    static String claimHouse() { return claimPick != null ? claimPick : bannerHouse(); }
+
+    static void pickHouse(String house) { claimPick = house; rarePick = null; }
+
+    /** The Rare troop tier 20 would give: the one picked among the Rares of the House picked, else the House's first ("" when it has none). */
+    static String rarePick() {
+        var rares = RecruitPages.rares(claimHouse());
+        return rares.isEmpty() ? "" : rarePick != null && rares.contains(rarePick) ? rarePick : rares.get(0);
+    }
+
+    /** The next Rare of the House picked, round to the first again. */
+    static void cycleRare() {
+        var rares = RecruitPages.rares(claimHouse());
+        if (!rares.isEmpty()) rarePick = rares.get((rares.indexOf(rarePick()) + 1) % rares.size());
+    }
+
+    /** Puts the picks back to none (the checks start from the defaults). */
+    static void forgetPicks() { claimPick = null; rarePick = null; }
+
+    static Progression.State copyOf(Progression.State p) {
+        var s = new Progression.State();
+        s.schema = p.schema; s.xp = p.xp; s.totalBattles = p.totalBattles; s.totalWins = p.totalWins; s.weeklyBattles = p.weeklyBattles;
+        s.day = p.day; s.week = p.week; s.title = p.title; s.rerolled = p.rerolled;
+        s.dailyBattles = p.dailyBattles; s.dailyCaptures = p.dailyCaptures; s.dailyOrders = p.dailyOrders;
+        s.claims = new HashSet<>(p.claims); s.titles = new LinkedHashSet<>(p.titles); s.matchGrants = new LinkedHashSet<>(p.matchGrants);
+        return s;
+    }
+
+    /** What claiming key (daily:<slot>, weekly or founders:<tier>) would pay with arg (a House, or at tier 20 a Rare troop): Progression.claim run
+     *  on a copy of the state with the contract finished and the tier reached, so the reward words come from the game's own rule. */
+    static Progression.Grant payOf(String key, String arg) {
+        var s = copyOf(progression());
+        s.dailyBattles = Math.max(s.dailyBattles, 3); s.dailyCaptures = Math.max(s.dailyCaptures, 1); s.dailyOrders = Math.max(s.dailyOrders, 10);
+        s.weeklyBattles = Math.max(s.weeklyBattles, Progression.WEEKLY_BATTLES);
+        s.xp = Math.max(s.xp, Progression.XP_PER_TIER * TIERS);
+        s.claims.remove(key);
+        return Progression.claim(s, arg == null ? key : key + ":" + arg);
+    }
+
+    /** A grant as words: "30 gold and 75 XP", "150 gold, 300 XP and 10 Ironclad shards" (shards only when asked for; houseName null leaves the House out). */
+    static String words(Progression.Grant g, boolean shards, String houseName) {
+        List<String> parts = new ArrayList<>();
+        if (g.gold() > 0) parts.add(g.gold() + " gold");
+        if (g.xp() > 0) parts.add(g.xp() + " XP");
+        if (shards && g.shards() > 0) parts.add(g.shards() + " " + (houseName == null ? "" : houseName + " ") + "shards");
+        return switch (parts.size()) {
+            case 0 -> "";
+            case 1 -> parts.get(0);
+            case 2 -> parts.get(0) + " and " + parts.get(1);
+            default -> String.join(", ", parts.subList(0, parts.size() - 1)) + " and " + parts.get(parts.size() - 1);
+        };
+    }
+
+    /** Whether a claim that pays shards is still to come on the Contracts page: the daily that completes all three, or the weekly. */
+    static boolean shardsPending(Progression.State p) {
+        return !p.claims.contains("weekly") || !(p.claims.contains("daily:0") && p.claims.contains("daily:1") && p.claims.contains("daily:2"));
+    }
+
+    /** Whether the next Chapter claim pays shards to a House, or is the Rare of tier 20 (the chips show then). */
+    static boolean pickWanted() { int t = claimable(); return t > 0 && (Progression.SHARD_TIERS.contains(t) || t == Progression.RARE_TIER); }
+
+    /** The Chapter's Claim plate when no tier waits: the reason (Progression.refusal) is its tooltip, one word its plate. */
+    static String claimWhy() {
+        if (claimable() > 0) return "";
+        return Progression.refusal(progression(), Progression.SEASON + ":" + Math.min(lowestUnclaimed(), TIERS));
+    }
+
+    static String claimWord() { return claimable() > 0 ? "Claim" : lowestUnclaimed() > TIERS ? "Claimed" : "Locked"; }
+
+    /** What a tier gives, in the reward's own words (Progression.reward), a shard tier naming the House the shards go to. */
+    static String rewardOf(int t, String houseName) {
+        String r = Progression.reward(t);
+        return Progression.SHARD_TIERS.contains(t) ? r.replace("House shards", houseName + " shards") : r;
+    }
+
+    /** A Roll plaque's picture and its two lines, from the tier's reward words: a number leads ("30 gold" is Gold, 30), else the
+     *  noun and the kind ("a Rare troop" is Rare, troop; "Pennant pattern"). {icon, line 1, line 2}. */
+    static String[] rewardPlaque(int t) {
+        String[] w = Progression.reward(t).split(" ");
+        String l1, l2;
+        if (w[0].matches("\\d+")) { l1 = Progression.cap(w[w.length - 1]); l2 = w[0]; }
+        else { int i = w[0].equals("a") || w[0].equals("an") ? 1 : 0; l1 = w[i]; l2 = w.length > i + 1 ? w[w.length - 1] : ""; }
+        String icon = Progression.GOLD_TIERS.contains(t) ? "chapter/ic-coins" : Progression.SHARD_TIERS.contains(t) ? "chapter/ic-shards"
+            : t == Progression.RARE_TIER ? "recruit/wax-star" : "pennant_pattern".equals(Progression.COSMETIC_TIERS.get(t)) ? "chapter/ic-pennant"
+            : Progression.COSMETIC_TIERS.containsKey(t) ? "chapter/ic-frame" : "chapter/ic-coins";
+        return new String[]{icon, l1, l2};
+    }
+
+    /** One chip's width: padding, the seal, the name, padding. */
+    static int chipWidth(String name) { return CHIP_PAD + CHIP_SEAL + CHIP_SEAL_GAP + font().getWidth(DarkUi.body(name)) + CHIP_PAD; }
+
+    static int chipRowWidth() {
+        int w = 0;
+        for (var h : RecruitView.houses()) w += chipWidth(h.name()) + CHIP_GAP;
+        return w - CHIP_GAP;
+    }
+
+    /** The five House chips from x at y, one widget each (house-<id>), in the Houses' order. */
+    void houseChips(int x, int y) {
+        for (var h : RecruitView.houses()) {
+            final String id = h.id(), name = h.name();
+            int w = chipWidth(name);
+            var b = add("house-" + id, new UiButton(x, y, w, CHIP_H, Text.literal(name), bb -> pickHouse(id), (g, bx, by, bw, bh, hot) -> paintChip(g, id, name, bx, by, bw, bh)));
+            b.setTooltip(Tooltip.of(Text.literal("Shards from claims go to " + name)));
+            x += w + CHIP_GAP;
+        }
+    }
+
+    /** A chip: the House's seal and its name on a parchment tag; the House the claim goes to is set into the table (darker, no drop
+     *  shadow), carries a tick on its seal and a rule under it, so it is told by shape and depth and not by colour. */
+    void paintChip(DrawContext g, String id, String name, int x, int y, int w, int h) {
+        var font = font();
+        var b = buttons.get("house-" + id);
+        boolean on = id.equals(claimHouse());
+        int dy = on ? 1 : 0;
+        String tex = on ? "table/chip-house-on" : "table/chip-house";
+        UiTex.nine(g, tex, x, y, w + 1, on ? h + CHIP_RULE : h + 2);
+        for (var row : Spec.HOUSES)
+            if (row.id().equals(id)) g.drawTexture(new Identifier(row.glyph()), x + CHIP_PAD, y + 4 + dy, 0f, 0f, CHIP_SEAL, CHIP_SEAL, CHIP_SEAL, CHIP_SEAL);
+        if (on) UiTex.draw(g, "table/ready-check", x + CHIP_PAD + 8, y + 4 + dy + 9);
+        var label = DarkUi.body(name);
+        int tx = x + CHIP_PAD + CHIP_SEAL + CHIP_SEAL_GAP, ty = y + 6 + dy;
+        g.drawText(font, label, tx, ty, DarkUi.INK_TEXT, false);
+        if (hot(b)) underline(g, "house-" + id, tx, ty + 12, font.getWidth(label), DarkUi.INK_TEXT);
+        rectsDrawn.put("house-" + id, new int[]{x, y, w, h});
+        textsDrawn.put("house-" + id, name);
+        texturesDrawn.put("house-" + id, tex);
+        colorsDrawn.put("house-" + id, DarkUi.INK_TEXT);
+        if (on) textsDrawn.put("house-chosen", id);
+    }
+
     void initContracts() {
         int[] o = col(C_CONTRACTS);
         int ox = o[0], oy = o[1];
+        houseChips(ox + 480 - chipRowWidth() / 2, oy + CHIPS_Y); // before the Claims: the House is picked first, so Tab meets it first
         for (int i = 0; i < 3; i++) {
             final int slot = i;
-            tag("claim-" + i, ox + NOTE_X + NOTE_STEP * i + 124, oy + NOTE_Y + 64, 64, "Claim", () -> send("progress:daily:" + slot));
+            tag("claim-" + i, ox + NOTE_X + NOTE_STEP * i + 124, oy + NOTE_Y + DAILY_CLAIM_DY, 64, "Claim", () -> claimDaily(slot));
         }
         add("reroll", new UiButton(ox + REROLL_X, oy + REROLL_Y, 88, 24, Text.literal("Reroll"), b -> send("progress:reroll"), this::paintReroll));
-        tag("claim-weekly", ox + WEEKLY_X + 228, oy + WEEKLY_Y + 64, 64, "Claim", () -> send("progress:weekly"));
+        tag("claim-weekly", ox + WEEKLY_X + 228, oy + WEEKLY_Y + 64, 64, "Claim", () -> send(RecruitPages.contractClaim("weekly", claimHouse())));
+    }
+
+    /** A daily's Claim: the daily that completes all three names the House its shards go to (Progression.claim's rule, as RecruitPages.contractShards
+     *  reads it); the other two carry none. */
+    void claimDaily(int slot) {
+        String key = "daily:" + slot;
+        send(RecruitPages.contractShards(progression(), slot).isEmpty() ? "progress:" + key : RecruitPages.contractClaim(key, claimHouse()));
     }
 
     /** Claim shows while its contract can be claimed (Progression.claimable, the rule the Contracts badge counts); Reroll takes a
@@ -767,44 +935,67 @@ final class WarTablePages {
         if (w != null) w.visible = w.active = Progression.claimable(p, "weekly");
         var r = buttons.get("reroll");
         if (r != null) r.active = !p.rerolled && !p.claims.contains("daily:2");
+        for (var h : RecruitView.houses()) { // the row stays while a claim that pays shards is still to come
+            var chip = buttons.get("house-" + h.id());
+            if (chip != null) chip.visible = chip.active = shardsPending(p);
+        }
     }
 
     void contracts(DrawContext g, int ox, int oy) {
         var p = progression();
         String[] notes = {"table/note-contract", "table/note-contract-b", "table/note-contract-c"};
+        String house = claimHouse(), houseName = RosterMath.houseName(house);
         for (int i = 0; i < 3; i++) {
             int target = Progression.target(p, i);
-            note(g, "note-" + i, notes[i], ox + NOTE_X + NOTE_STEP * i, oy + NOTE_Y, 188, Progression.contract(p, i), (i == 1 ? 40 : 30) + " gold and 75 XP",
-                Math.min(Progression.progress(p, i), target), target, p.claims.contains("daily:" + i), "contract-" + i, "progress-" + i, i == 1 ? "table/stamp-hollow-b" : "table/stamp-hollow", "stamp-" + i);
+            boolean done = p.claims.contains("daily:" + i);
+            var pay = payOf("daily:" + i, house);
+            String extra = !done && pay.shards() > 0 ? "+ " + pay.shards() + " " + houseName + " shards" : "";
+            note(g, "note-" + i, notes[i], ox + NOTE_X + NOTE_STEP * i, oy + NOTE_Y, 188, Progression.contract(p, i), words(pay, false, null), extra, true,
+                Math.min(Progression.progress(p, i), target), target, done, "contract-" + i, "progress-" + i, i == 1 ? "table/stamp-hollow-b" : "table/stamp-hollow", "stamp-" + i);
         }
         String hint = p.rerolled ? "Rerolled today" : p.claims.contains("daily:2") ? "The third contract is already claimed" : "Swap the third contract, once a day";
         text(g, "reroll-hint", DarkUi.body(hint), hint, ox + REROLL_X + 96, oy + REROLL_Y + 6, DarkUi.MUTED);
         int weekly = Progression.WEEKLY_BATTLES;
-        note(g, "weekly", "table/note-weekly", ox + WEEKLY_X, oy + WEEKLY_Y, 292, "Complete " + weekly + " battles this week", "150 gold and 300 XP",
-            Math.min(p.weeklyBattles, weekly), weekly, p.claims.contains("weekly"), "weekly", "progress-weekly", "table/stamp-hollow", "stamp-weekly");
+        boolean weeklyDone = p.claims.contains("weekly");
+        note(g, "weekly", "table/note-weekly", ox + WEEKLY_X, oy + WEEKLY_Y, 292, "Complete " + weekly + " battles this week", words(payOf("weekly", house), true, weeklyDone ? null : houseName), "", false,
+            Math.min(p.weeklyBattles, weekly), weekly, weeklyDone, "weekly", "progress-weekly", "table/stamp-hollow", "stamp-weekly");
         String reset = "Daily contracts reset at 00:00 UTC, the weekly on Monday";
         WarTableHome.centred(g, DarkUi.body(reset), ox + 480, oy + RESET_Y, DarkUi.MUTED);
         textsDrawn.put("reset", reset);
+        if (shardsPending(p)) { // what the House row is for, left of it
+            String cap = "Shards for";
+            int cw = font().getWidth(DarkUi.body(cap)), cx = ox + 480 - chipRowWidth() / 2 - CAPTION_GAP - cw;
+            text(g, "chips-caption", DarkUi.body(cap), cap, cx, oy + CHIPS_Y + 6, DarkUi.MUTED);
+            rectsDrawn.put("chips-caption", new int[]{cx, oy + CHIPS_Y + 6, cw, 11});
+        }
     }
 
-    /** A contract's note: its name (a heading, its counts in words: UiMath.spellSmall) and its reward (SEPIA), the progress bar
-     *  and the count in 8 px right-aligned to right, and once claimed the Hollow's mark under the count, as the Chapter stamps a
-     *  claimed tier. Claim is a widget. */
-    void note(DrawContext g, String key, String tex, int x, int y, int right, String name, String reward, int done, int target, boolean claimed,
+    /** A contract's note: its name (a heading, its counts in words: UiMath.spellSmall) and its reward (SEPIA; the daily that completes all
+     *  three adds a second line for its shards, which name the House picked), the progress bar and the count in 8 px right-aligned
+     *  to right, and once claimed the Hollow's mark under the count, as the Chapter stamps a claimed tier. A tall note (the dailies)
+     *  keeps its bar, count and mark lower, under the second line. Claim is a widget. */
+    void note(DrawContext g, String key, String tex, int x, int y, int right, String name, String reward, String extra, boolean tall, int done, int target, boolean claimed,
               String nameKey, String countKey, String stamp, String stampKey) {
         var font = font();
+        String id = key.startsWith("note-") ? key.substring(5) : key;
         rectsDrawn.put(key, UiTex.draw(g, tex, x, y));
         String shown = UiMath.trim(UiMath.spellSmall(name), right - 12, s -> font.getWidth(DarkUi.heading(s)));
         text(g, nameKey, DarkUi.heading(shown), shown, x + 12, y + 12, DarkUi.INK_TEXT);
-        g.drawText(font, DarkUi.body(reward), x + 12, y + 30, DarkUi.SEPIA, false);
-        UiTex.draw(g, "hud/hp-channel", x + 12, y + 52);
-        UiTex.bar(g, "hud/hp-full-dawn", x + 13, y + 53, UiMath.barWidth(target <= 0 ? 0 : done / (float) target), false);
+        text(g, "reward-" + id, DarkUi.body(reward), reward, x + 12, y + 30, DarkUi.SEPIA);
+        rectsDrawn.put("reward-" + id, new int[]{x + 12, y + 30, font.getWidth(DarkUi.body(reward)), 11});
+        if (!extra.isEmpty()) {
+            text(g, "shards-" + id, DarkUi.body(extra), extra, x + 12, y + 43, DarkUi.SEPIA);
+            rectsDrawn.put("shards-" + id, new int[]{x + 12, y + 43, font.getWidth(DarkUi.body(extra)), 11});
+        }
+        int bar = y + (tall ? DAILY_BAR_DY : 52);
+        UiTex.draw(g, "hud/hp-channel", x + 12, bar);
+        UiTex.bar(g, "hud/hp-full-dawn", x + 13, bar + 1, UiMath.barWidth(target <= 0 ? 0 : done / (float) target), false);
         String count = claimed ? "Claimed" : done + " / " + target;
         int countW = font.getWidth(count);
-        text(g, countKey, Text.literal(count), count, x + right - countW, y + 51, DarkUi.INK_TEXT);
-        rectsDrawn.put(countKey, new int[]{x + right - countW, y + 51, countW, 8});
+        text(g, countKey, Text.literal(count), count, x + right - countW, bar - 1, DarkUi.INK_TEXT);
+        rectsDrawn.put(countKey, new int[]{x + right - countW, bar - 1, countW, 8});
         if (claimed) {
-            rectsDrawn.put(stampKey, UiTex.draw(g, stamp, x + right - 32, y + 62));
+            rectsDrawn.put(stampKey, UiTex.draw(g, stamp, x + right - 32, y + (tall ? DAILY_STAMP_DY : 62)));
             texturesDrawn.put(stampKey, stamp);
         }
     }
@@ -851,6 +1042,8 @@ final class WarTablePages {
         int[] b0 = col(C_BLOCK);
         var tr = track();
         int n = tr.shown();
+        houseChips(col(C_BLOCK_HEAD)[0] + 480, b0[1] + CHAPTER_CHIPS_Y); // the House and the Rare are picked before the Claim: Tab meets them first
+        add("rare", new UiButton(b0[0] + CLAIM_X - GIVES_GAP - RARE_W, b0[1] + CLAIM_Y, RARE_W, CHIP_H, Text.literal("Rare troop"), b -> cycleRare(), this::paintRare));
         add("claim", new UiButton(b0[0] + CLAIM_X, b0[1] + CLAIM_Y, 240, 40, Text.literal("Claim"), b -> claim(), this::paintClaim));
         add("earlier", new UiButton(tr.x0() - 20, tr.rodY() - 3, 15, 15, Text.literal("Earlier tiers"), b -> turn(-1), (g, x, y, w, h, hot) -> paintArrow(g, "earlier", "chapter/arrow-left", "chapter/arrow-left-dim", x, y)));
         add("later", new UiButton(tr.x0() + PITCH * n - 7, tr.rodY() - 3, 15, 15, Text.literal("Later tiers"), b -> turn(1), (g, x, y, w, h, hot) -> paintArrow(g, "later", "chapter/arrow-right", "chapter/arrow-right-dim", x, y)));
@@ -867,7 +1060,22 @@ final class WarTablePages {
     /** Claim takes a press while a tier waits; an arrow while the track can turn its way. */
     void refreshChapter() {
         var claim = buttons.get("claim");
-        if (claim != null) claim.active = claimable() > 0;
+        if (claim != null) {
+            claim.active = claimable() > 0;
+            String why = claimWhy();
+            if (!why.equals(claimTip)) { claimTip = why; claim.setTooltip(why.isEmpty() ? null : Tooltip.of(Text.literal(why))); }
+        }
+        boolean pick = pickWanted(), rareWanted = claimable() == Progression.RARE_TIER;
+        for (var h : RecruitView.houses()) {
+            var chip = buttons.get("house-" + h.id());
+            if (chip != null) chip.visible = chip.active = pick;
+        }
+        var rare = buttons.get("rare");
+        if (rare != null) {
+            rare.visible = rare.active = rareWanted && !rarePick().isEmpty();
+            String tip = "Next Rare troop of " + RosterMath.houseName(claimHouse());
+            if (!tip.equals(rareTip)) { rareTip = tip; rare.setTooltip(Tooltip.of(Text.literal(tip))); }
+        }
         int first = first();
         var earlier = buttons.get("earlier");
         var later = buttons.get("later");
@@ -875,10 +1083,12 @@ final class WarTablePages {
         if (later != null) later.active = first < TIERS - shown() + 1;
     }
 
-    /** Claim: the lowest tier reached and not yet claimed. The track goes back to its place, to slide on when the claim lands. */
+    /** Claim: the lowest tier reached and not yet claimed, with the House its shards go to or the Rare tier 20 gives (RecruitPages.foundersClaim:
+     *  a gold, title or cosmetic tier carries neither). The track goes back to its place, to slide on when the claim lands. */
     void claim() {
         int t = claimable();
-        if (t <= 0 || !send("progress:" + Progression.SEASON + ":" + t)) return;
+        if (t <= 0 || t == Progression.RARE_TIER && rarePick().isEmpty()) return;
+        if (!send(RecruitPages.foundersClaim(t, claimHouse(), rarePick()))) return;
         freshTier = t;
         if (paged) { paged = false; screen.rebuild(); } // the title plaques follow the track back
     }
@@ -918,6 +1128,7 @@ final class WarTablePages {
         int[] h0 = col(C_HERO), b0 = col(C_BLOCK);
         hero(g, h0[0], h0[1], titleFrom(UiMath.heroTier(first, tr.shown(), TIERS, EVERY)), tier);
         block(g, col(C_BLOCK_HEAD)[0], b0[0], b0[1], tier, progression());
+        gives(g, b0[0], b0[1]);
         int lx = tr.labelX();
         g.drawText(font, "Tier", lx, tr.rodY() + 2, DarkUi.MUTED, false);
         g.drawText(font, DarkUi.heading("The Roll"), lx, tr.rollTop() + 28, DarkUi.BRASS, false);
@@ -976,9 +1187,9 @@ final class WarTablePages {
         }
     }
 
-    /** A Roll plaque (pages.py's plaque_html): claimed, it carries the Hollow's mark (wet on the tier this page just claimed);
+    /** A Roll plaque (pages.py's plaque_html, its words and picture from the tier's reward: rewardPlaque): claimed, it carries the Hollow's mark (wet on the tier this page just claimed);
      *  reached, a bright frame; not reached, the dull frame under the iron hasp on dull chains. The current tier's hangs lifted on
-     *  short chains, 8 px taller. A gold tier names its 25 gold, a title tier its title ("worn" while it is the one worn). */
+     *  short chains, 8 px taller. Each tier names what it gives (30 gold, 10 shards, a Rare troop, a pattern or frame), a title tier its title ("worn" while it is the one worn). */
     void rollPlaque(DrawContext g, int t, int x, Track tr, int tier) {
         var font = font();
         boolean cur = t == tier, done = claimed(t), locked = t > tier, title = titleAt(t) >= 0;
@@ -989,9 +1200,10 @@ final class WarTablePages {
         String plate = cur ? "chapter/plaque-tier-raised" : locked ? (t % 2 == 1 ? "chapter/plaque-tier-dull" : "chapter/plaque-tier-dull-b")
             : (t % 2 == 1 ? "chapter/plaque-tier" : "chapter/plaque-tier-b");
         UiTex.draw(g, plate, x, y);
-        icon(g, title ? "chapter/ic-title" : "chapter/ic-coins", x, y, ly);
+        String[] reward = title ? null : rewardPlaque(t);
+        icon(g, title ? "chapter/ic-title" : reward[0], x, y, ly);
         if (locked) UiTex.draw(g, "chapter/hasp", x - 1, y + ly - 12);
-        String l1 = title ? Progression.TITLES[titleAt(t)] : "Gold", l2 = title ? (done && l1.equals(progression().title) ? "worn" : "title") : "25";
+        String l1 = title ? Progression.TITLES[titleAt(t)] : reward[1], l2 = title ? (done && l1.equals(progression().title) ? "worn" : "title") : reward[2];
         WarTableHome.centred(g, DarkUi.heading(l1), x + PW / 2, y + ly, DarkUi.IVORY);
         g.drawText(font, l2, x + PW / 2 - font.getWidth(l2) / 2, y + ly + 15, DarkUi.MUTED, false);
         if (done) {
@@ -1116,13 +1328,64 @@ final class WarTablePages {
         else UiTex.draw(g, "table/key-dull-37", x + 14, y + 13);
         g.drawText(font, "Enter", x + 18, y + 16, bright ? DarkUi.KEY_INK : DarkUi.DULL_KEY, false);
         int ink = bright ? DarkUi.PLATE_INK : DarkUi.MUTED;
-        var label = DarkUi.heading("Claim");
+        String word = claimWord();
+        var label = DarkUi.heading(word);
         int lx = WarTableHome.centred(g, label, x + 120, y + 14, ink);
         if (hot(b)) underline(g, "claim", lx, y + 26, font.getWidth(label), ink);
         rectsDrawn.put("claim", new int[]{x, y, w, h});
         texturesDrawn.put("claim", plate);
-        textsDrawn.put("claim", "Claim");
+        textsDrawn.put("claim", word);
         colorsDrawn.put("claim", ink);
+        String why = claimWhy();
+        if (!why.isEmpty()) textsDrawn.put("claim-why", why);
+    }
+
+    /** The Rare chip (tier 20): the Rare troop to be given, a parchment tag with its name and an arrow; a press shows the House's next Rare. */
+    void paintRare(DrawContext g, int x, int y, int w, int h, boolean hotIgnored) {
+        var font = font();
+        var b = buttons.get("rare");
+        String id = rarePick(), name = UiMath.trim(troopName(id), w - 30, s -> font.getWidth(DarkUi.body(s)));
+        UiTex.nine(g, "table/chip-house", x, y, w + 1, h + 2);
+        var label = DarkUi.body(name);
+        g.drawText(font, label, x + 8, y + 6, DarkUi.INK_TEXT, false);
+        g.drawText(font, DarkUi.body(">"), x + w - 14, y + 6, DarkUi.SEPIA, false);
+        if (hot(b)) underline(g, "rare", x + 8, y + 18, font.getWidth(label), DarkUi.INK_TEXT);
+        rectsDrawn.put("rare", new int[]{x, y, w, h});
+        textsDrawn.put("rare", name);
+        textsDrawn.put("rare-id", id);
+        colorsDrawn.put("rare", DarkUi.INK_TEXT);
+    }
+
+    /** Left of the Claim plate, right-aligned to it: what the tier waiting gives (a shard tier names the House picked), or at tier 20 the line
+     *  under the Rare chip that says whose Rare it is and which of how many. Nothing while no tier waits. */
+    void gives(DrawContext g, int ox, int oy) {
+        int t = claimable();
+        if (t <= 0) return;
+        var font = font();
+        int right = ox + CLAIM_X - GIVES_GAP, top = oy + CLAIM_Y;
+        String houseName = RosterMath.houseName(claimHouse());
+        if (t == Progression.RARE_TIER) {
+            var rares = RecruitPages.rares(claimHouse());
+            if (rares.isEmpty()) return;
+            String note = "Rare of " + houseName + ", " + (rares.indexOf(rarePick()) + 1) + " of " + rares.size();
+            int nw = font.getWidth(DarkUi.body(note));
+            text(g, "rare-note", DarkUi.body(note), note, right - nw, top + 28, DarkUi.IVORY);
+            rectsDrawn.put("rare-note", new int[]{right - nw, top + 28, nw, 11});
+            return;
+        }
+        String head = "Tier " + t + " gives";
+        text(g, "gives-head", DarkUi.body(head), head, right - font.getWidth(DarkUi.body(head)), top + 2, DarkUi.MUTED);
+        var lines = UiMath.lines(rewardOf(t, houseName), GIVES_W, 2, s -> font.getWidth(DarkUi.body(s)));
+        int left = right, low = top + 15;
+        for (int i = 0; i < lines.size(); i++) {
+            int w = font.getWidth(DarkUi.body(lines.get(i)));
+            g.drawText(font, DarkUi.body(lines.get(i)), right - w, top + 15 + 13 * i, DarkUi.IVORY, false);
+            left = Math.min(left, right - w);
+            low = top + 15 + 13 * i + 11;
+        }
+        textsDrawn.put("gives", String.join(" ", lines));
+        colorsDrawn.put("gives", DarkUi.IVORY);
+        rectsDrawn.put("gives", new int[]{left, top + 15, right - left, low - top - 15});
     }
 
     // ===================================================================================================================== Friends

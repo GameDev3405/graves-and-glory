@@ -270,5 +270,10 @@
 "recruit/coin-m":{"w":7,"h":7,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "recruit/pouch":{"w":30,"h":26,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "recruit/die":{"w":9,"h":9,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
-"recruit/odds-note":{"w":244,"h":165,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1}
+"recruit/odds-note":{"w":244,"h":165,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
+"table/chip-house":{"w":65,"h":26,"ox":0,"oy":0,"kind":"nine","l":4,"t":4,"r":5,"b":6,"frames":1},
+"table/chip-house-on":{"w":65,"h":29,"ox":0,"oy":0,"kind":"nine","l":4,"t":4,"r":5,"b":9,"frames":1},
+"chapter/ic-shards":{"w":31,"h":35,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
+"chapter/ic-pennant":{"w":36,"h":31,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
+"chapter/ic-frame":{"w":33,"h":39,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1}
 }}

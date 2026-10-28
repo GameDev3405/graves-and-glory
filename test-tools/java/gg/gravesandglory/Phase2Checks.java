@@ -6329,10 +6329,12 @@ public final class Phase2Checks implements ClientModInitializer {
     static final class Screens extends Stage {
         /** A bound texture id as text with a one-texel-a-px twin's _far taken out (knight_s1_far.png is knight_s1.png): a far or card draw of a density above 1 troop binds the twin, and the checks name the skin. */
         static String unfar(Object id){return String.valueOf(id).replace("_far.png",".png");}
-        volatile boolean campReady,claimReady,vetCast,claimed;volatile String serverWhy="";volatile int rollStars=-1,rollCopies=-1,ironShards0=-1,ironShards=-1;
+        volatile boolean campReady,claimReady,vetCast;volatile String serverWhy="";volatile int rollStars=-1,rollCopies=-1;
         java.util.random.RandomGenerator rngSaved;int knightMastery0=-1;
         GravesAndGlory.Squad mine;GravesAndGlory.Unit plain,vet1,vet3;
-        String shot;int shotWait;boolean claimOk;String claimWhy="";
+        String shot;int shotWait;
+        /** War Table port Task 1: the claims on the Contracts and Chapter pages (case 4). */
+        final ClaimChecks claims=new ClaimChecks();
         /** Task 13 fix round 1 (review I1): the server keeps a notice and sends it with every state packet, so p2-notice-clears waits for two packets after the page change. */
         static final String NOTICE="Order Squire rises to star 2!",NOTICE2="Choose dry ground or a crossing.",NOTICE3="Troops now join by recruitment rolls at the camp shrine.";int noticeStates0,noticeWaits,noticePhase;String noticeLeft="";
         /** The six Gilded holdings before the lineup shots made them Mastery II (null for one the profile lacked), put back at cleanup. */
@@ -6370,10 +6372,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     var t=pr.owned.computeIfAbsent("sentinel",x->new Profile.Owned());t.copies=2;t.stars=2;t.kills=60;t.survived=10;t.mastery=1;
                     rngSaved=camp.rollRng;camp.rollRng=Engine.fixed(0);camp.save(player);stage=101;campReady=true;}
                 case 102->{var o=camp.profile(player).owned.get("knight");rollStars=o==null?-1:o.stars;rollCopies=o==null?-1:o.copies;camp.rollRng=rngSaved;rngSaved=null;stage=103;}
-                case 104->{var pr=camp.profile(player);var s=pr.progression;Progression.reset(s,Progression.today());
-                    s.claims.remove("daily:2");s.claims.add("daily:0");s.claims.add("daily:1");s.rerolled=false;s.dailyCaptures=Math.max(1,s.dailyCaptures);
-                    ironShards0=pr.shards.getOrDefault("ironclad",0);camp.save(player);stage=105;claimReady=true;}
-                case 106->{var pr=camp.profile(player);ironShards=pr.shards.getOrDefault("ironclad",0);claimed=pr.progression.claims.contains("daily:2");stage=107;}
+                case 104->{stage=105;claimReady=true;} // the claims (ClaimChecks) arm their own fixtures: the dailies, a shard tier, tier 20
                 case 108->{var o=camp.profile(player).owned.get("knight");o.mastery=2;camp.save(player);
                     var a=ArmyMobs.named("Order Squire (Veteran)");var c3=ArmyMobs.named("Knight-Captain (Veteran)");
                     serverWhy="ArmyMobs.named(Order Squire (Veteran)) is "+(a==null?"null":a.id())+", named(Knight-Captain (Veteran)) is "+(c3==null?"null":c3.id());
@@ -6452,22 +6451,8 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean stale=CampaignClient.rollShowing();
                     report("p2-roll-card-troop",onTroop&&!stale,buyWhy+"; after the page went back to recruitment the card still shows="+stale+" (want false: leaving the page ends the reveal)");
                     CampaignClient.revealUntil=0;layout(c);server(c,b->stage=104);cs=4;wait=0;}
-                case 4->{if(!claimReady)return;
-                    if(!(c.currentScreen instanceof CampScreen s)||!s.page.equals("contracts")){if(++wait%20==5)c.setScreen(new CampScreen("contracts"));return;}
-                    if(++wait==10){var h=chip(s,"ironclad");if(h!=null)h.onPress();}
-                    if(wait==12)shoot("screens-contracts");
-                    if(wait>12&&wait<20&&!shotDone(c)){wait--;return;}
-                    if(wait==20){var claim=button(s,"Claim",2);GravesAndGloryClient.lastSent="";
-                        var h=chip(s,"ironclad");boolean chosen=s.claimHouse.equals("ironclad")&&h!=null&&h.selected();
-                        if(claim!=null)claim.onPress();String sent=GravesAndGloryClient.lastSent;
-                        server(c,b->stage=106);claimWhy="the picker on ironclad="+chosen+"; the third Claim button sent \""+sent+"\" (want progress:daily:2:ironclad)";claimOk=chosen&&sent.equals("progress:daily:2:ironclad");}
-                    if(wait>40&&stage>=107){boolean paid=claimed&&ironShards==ironShards0+Progression.DAILY_SHARDS;
-                        report("p2-claim-house",claimOk&&paid,claimWhy+"; the server stored daily:2="+claimed+" and the Ironclad shards went "+ironShards0+" to "+ironShards+" (want +"+Progression.DAILY_SHARDS+")="+paid);
-                        c.setScreen(new CampScreen("chapter"));cs=7;wait=0;}}
-                case 7->{if(!(c.currentScreen instanceof CampScreen s))return; // the chapter page at tiers 11 to 20, its House picker and tier 20's Rare (for the contact sheet)
-                    if(++wait==10){var next=button(s,"Next 10",0);if(next!=null)next.onPress();}
-                    if(wait==20)shoot("screens-chapter");
-                    if(wait>20&&shotDone(c)){c.setScreen(null);server(c,b->stage=108);cs=5;wait=0;}}
+                case 4->{if(!claimReady)return; // the claims of the War Table's Contracts and Chapter pages, pressed on the pages (ClaimChecks: p2-claim-house, -weekly, -founders-shards, -founders-rare, -sends, -fits, -default)
+                    if(claims.step(c,player)){c.setScreen(null);server(c,b->stage=108);cs=5;wait=0;}}
                 case 5->{if(!vetCast){if(++wait%600==0)System.out.println("[p2-wait] screens: veteran stage not cast after "+wait+" ticks, server stage "+stage);return;}
                     if(!litStart(c))return;c.options.hudHidden=true;cs=6;wait=0;}
                 case 6->{if(++wait<40)return;if(!shotReady(c,"chase-veteran")){wait--;return;} // Stage.shotReady holds, and recovers a dark platform
@@ -6531,6 +6516,443 @@ public final class Phase2Checks implements ClientModInitializer {
                             if(s.cardLow>top-2)bad.append(t.id()).append(owned?" owned":" locked").append(" at width ").append(W).append(": words to y+").append(s.cardLow).append("; ");}}}
             }finally{CampScreen.probe=false;}
             report("p2-card-layout",bad.length()==0&&drawn>0,bad.length()==0?"CampScreen.card() drew "+drawn+" cards (30 troops x locked and owned x widths 817 and 960); the lowest word or pip is at y+"+worst+", the limit y+"+(top-2)+", over the action button at y+"+top:"words reach the action button at y+"+top+": "+bad.toString().trim());
+        }
+    }
+
+    /**
+     * War Table port Task 1 (claims with a House): the Contracts and Chapter pages' claims, pressed on the real pages inside the Phase 2
+     * screens suite (Phase2Checks.Screens runs step() from its case 4). Every press is a click on a widget's canvas box; every word
+     * expected is worked out from the game's own sources (Progression's constants and its claim rule run on a copy of the server state,
+     * RosterMath, the sheets), never copied from the page.
+     *
+     * <pre>
+     * p2-claim-default          the House chip pressed in before any press is the banner's (RosterMath.rollHouse), told by art and word
+     * p2-claim-house            three dailies done: Claim on 0 and 1 send no House; Ironclad picked, Claim on 2 sends progress:daily:2:ironclad,
+     *                           the server stores daily:2 and Ironclad's shards rise by DAILY_SHARDS (no other House's), the gold by the grant
+     * p2-claim-weekly           Tidecallers picked, the weekly pays WEEKLY_SHARDS to Tidecallers, and the row goes once nothing pays shards
+     * p2-claim-founders-shards  a tier of SHARD_TIERS with Wildmoot picked pays TIER_SHARDS to Wildmoot (screenshot wt-chapter-pick)
+     * p2-claim-founders-rare    tier 20: the Rare chip cycles exactly the House's Rares (no non-Rare is offered), the one shown is claimed
+     * p2-claim-sends            the commands sent hold exactly the six strings, in order
+     * p2-claim-fits             hit targets 24 px or more, nothing overlapping, every reward line inside its note, at 960x540 and 854x480
+     * </pre>
+     */
+    static final class ClaimChecks {
+        static final String BANNER_HOUSE = "graveborn", DAILY_HOUSE = "ironclad", WEEKLY_HOUSE = "tidecallers", TIER_HOUSE = "wildmoot", RARE_HOUSE = "gilded";
+        static final List<String> IDS = List.of("p2-claim-default", "p2-claim-house", "p2-claim-weekly", "p2-claim-founders-shards", "p2-claim-founders-rare", "p2-claim-sends", "p2-claim-fits");
+
+        /** What the server held at a moment: gold, shards by House, the claims stored and the troops owned. */
+        record Snap(int gold, Map<String, Integer> shards, Set<String> claims, Set<String> owned) {
+            int shard(String house) { return shards.getOrDefault(house, 0); }
+            /** The shards gained in Houses other than house since before. */
+            int others(Snap before, String house) { int n = 0; for (var h : Spec.HOUSES) if (!h.id().equals(house)) n += shard(h.id()) - before.shard(h.id()); return n; }
+        }
+
+        // ---- the server thread writes, the client thread reads
+        volatile UUID player;
+        volatile boolean armed, read;
+        volatile Snap base, now;
+        volatile int tier, wantDailyGold, wantWeeklyGold;
+        volatile List<String> rares = List.of();
+
+        // ---- the client thread only
+        int sub, wait, sent0, cyc, oldW, oldH, oldGui = -1;
+        boolean finished, compact;
+        final Set<String> reported = new HashSet<>();
+        final List<String> expected = new ArrayList<>(), fitsBad = new ArrayList<>(), seen = new ArrayList<>();
+        Snap before;
+        String housePage = "", weeklyPage = "", tierPage = "", rarePage = "", pick = "";
+        boolean housePageOk, weeklyPageOk, tierPageOk, rarePageOk;
+
+        // ===================================================================================================== server side
+
+        static Snap snap(Profile pr) { return new Snap(pr.gold, new HashMap<>(pr.shards), new HashSet<>(pr.progression.claims), new HashSet<>(pr.owned.keySet())); }
+
+        /** The state as the game's own claim rule would leave it after keys, on a copy: {gold, shards} paid in all. */
+        static int[] pay(Progression.State s, String... keys) {
+            int gold = 0, shards = 0;
+            for (String k : keys) { var g = Progression.claim(s, k); gold += g.gold(); shards += g.shards(); }
+            return new int[]{gold, shards};
+        }
+
+        static Progression.State copy(Progression.State s) { return Campaign.JSON.fromJson(Campaign.JSON.toJson(s), Progression.State.class); }
+
+        /** A banner of 20 seats leaning on BANNER_HOUSE (its first two troops), so the default House is not one the picks use. */
+        static void lean(Profile pr) {
+            String[] ids = null;
+            for (var h : Spec.HOUSES) if (h.id().equals(BANNER_HOUSE)) ids = h.troops().split(",");
+            List<String> banner = new ArrayList<>();
+            int size = RosterMath.bannerSize();
+            while (banner.size() < size) banner.add(ids[banner.size() < 12 ? 0 : 1]);
+            pr.owned.putIfAbsent(ids[0], new Profile.Owned());
+            pr.owned.putIfAbsent(ids[1], new Profile.Owned());
+            pr.banner = banner;
+        }
+
+        void arm(Campaign camp, String what) {
+            var pr = camp.profile(player);
+            var s = pr.progression;
+            Progression.reset(s, Progression.today());
+            switch (what) {
+                case "dailies" -> {
+                    s.dailyBattles = Math.max(3, s.dailyBattles); s.dailyCaptures = Math.max(1, s.dailyCaptures); s.dailyOrders = Math.max(10, s.dailyOrders);
+                    s.weeklyBattles = Math.max(Progression.WEEKLY_BATTLES, s.weeklyBattles); s.rerolled = false;
+                    s.claims.removeIf(k -> k.startsWith("daily:")); s.claims.remove("weekly");
+                    lean(pr);
+                    var t = copy(s);
+                    wantDailyGold = pay(t, "daily:0", "daily:1", "daily:2:" + DAILY_HOUSE)[0];
+                    wantWeeklyGold = pay(t, "weekly:" + WEEKLY_HOUSE)[0];
+                }
+                case "tier" -> {
+                    tier = Collections.min(Progression.SHARD_TIERS);
+                    s.xp = tier * Progression.XP_PER_TIER + 10;
+                    s.claims.removeIf(k -> k.startsWith(Progression.SEASON + ":"));
+                    for (int t = 1; t < tier; t++) s.claims.add(Progression.SEASON + ":" + t);
+                }
+                case "rare" -> {
+                    s.xp = Progression.RARE_TIER * Progression.XP_PER_TIER + 10;
+                    s.claims.removeIf(k -> k.startsWith(Progression.SEASON + ":"));
+                    for (int t = 1; t < Progression.RARE_TIER; t++) s.claims.add(Progression.SEASON + ":" + t);
+                    List<String> rs = new ArrayList<>();
+                    for (var t : Spec.TROOPS) if (t.house().equals(RARE_HOUSE) && t.rarity().equals("rare")) rs.add(t.id());
+                    for (String id : rs) pr.owned.remove(id);
+                    rares = rs;
+                }
+                default -> throw new IllegalArgumentException(what);
+            }
+            base = snap(pr);
+            camp.save(player);
+            armed = true;
+        }
+
+        void arm(MinecraftClient c, String what) { armed = false; Phase2Checks.server(c, b -> arm(b.campaign, what)); }
+
+        void look(MinecraftClient c) { read = false; Phase2Checks.server(c, b -> { now = snap(b.campaign.profile(player)); read = true; }); }
+
+        // ===================================================================================================== client side
+
+        static int[] box(MinecraftClient c, String name) { return Phase1Checks.UiPagesChecks.box(c, name); }
+        static String text(String k) { return WarTablePages.texts().get(k); }
+        static String tex(String k) { return WarTablePages.textures().get(k); }
+        static int[] rect(String k) { return WarTablePages.rects().get(k); }
+        static String str(int[] b) { return Phase1Checks.UiHomeChecks.str(b); }
+        static void press(MinecraftClient c, String name) { Phase1Checks.UiRecruitChecks.click(c, box(c, name)); }
+        static boolean in(int[] a, int[] b) { return Phase1Checks.UiPagesChecks.in(a, b); }
+
+        void go(int next) { sub = next; wait = 0; }
+
+
+        void say(String id, boolean pass, String why) { if (reported.add(id)) Phase2Checks.report(id, pass, why); }
+
+        /** Reports every id not yet reported as failed with why, puts the window back and ends. */
+        void abort(MinecraftClient c, String why) {
+            for (String id : IDS) say(id, false, "the claims never finished: " + why);
+            windowBack(c);
+            finished = true;
+        }
+
+        void size(MinecraftClient c, boolean small) {
+            compact = small;
+            if (small) Phase1Checks.window(c, 854, 480, 2); else Phase1Checks.window(c, 960, 540, 1);
+        }
+
+        void windowBack(MinecraftClient c) { if (oldGui >= 0 && oldW > 0) Phase1Checks.window(c, oldW, oldH, oldGui); oldGui = -1; }
+
+        List<String> sentNow() { var all = WarTablePages.sent(); return new ArrayList<>(all.subList(Math.min(sent0, all.size()), all.size())); }
+
+        void pressSend(MinecraftClient c, String name, String command) { expected.add(command); press(c, name); }
+
+        /** What the page draws now, held to the fit rules: the House row's chips 24 px or more each way and 12 px inside the canvas, no widget
+         *  over another, no drawn box off the canvas or under the rail (UiHomeChecks.fits), and every reward line inside its note. */
+        void fits(MinecraftClient c, String label, boolean chips) {
+            var b = Phase1Checks.UiPagesChecks.boxes(c);
+            List<String> bad = new ArrayList<>();
+            if (chips) for (var h : Spec.HOUSES) {
+                int[] a = b.get("house-" + h.id());
+                if (a == null) { bad.add("chip " + h.id() + " missing"); continue; }
+                if (a[2] < 24 || a[3] < 24) bad.add("chip " + h.id() + " " + str(a) + " is under 24 px");
+            }
+            for (var e : b.entrySet()) if (!Phase1Checks.UiPagesChecks.within(e.getValue())) bad.add(e.getKey() + " " + str(e.getValue()) + " not 12 px inside the canvas");
+            var keys = new ArrayList<>(b.keySet());
+            for (int i = 0; i < keys.size(); i++) for (int j = i + 1; j < keys.size(); j++)
+                if (Phase1Checks.UiHomeChecks.overlap(b.get(keys.get(i)), b.get(keys.get(j)))) bad.add(keys.get(i) + " over " + keys.get(j));
+            int lastChip = -1, rareAt = -1, firstClaim = Integer.MAX_VALUE; // Tab order: the House is picked before the Rare, the Rare before the Claim
+            for (int i = 0; i < keys.size(); i++) {
+                String k = keys.get(i);
+                if (k.startsWith("house-")) lastChip = i;
+                if (k.equals("rare")) rareAt = i;
+                if (k.startsWith("claim")) firstClaim = Math.min(firstClaim, i);
+            }
+            if (chips && (lastChip > firstClaim || rareAt >= 0 && (lastChip > rareAt || rareAt > firstClaim))) bad.add("Tab order (" + keys + ") meets a Claim before the House row or the Rare chip");
+            bad.addAll(Phase1Checks.UiHomeChecks.fits(WarTablePages.rects(), b));
+            for (String[] pair : new String[][]{{"reward-0", "note-0"}, {"reward-1", "note-1"}, {"reward-2", "note-2"}, {"shards-0", "note-0"}, {"shards-1", "note-1"}, {"shards-2", "note-2"}, {"reward-weekly", "weekly"}})
+                if (rect(pair[0]) != null && !in(rect(pair[0]), rect(pair[1]))) bad.add(pair[0] + " " + str(rect(pair[0])) + " leaves " + pair[1] + " " + str(rect(pair[1])));
+            for (String drawn : new String[]{"gives", "rare-note"}) {
+                int[] r = rect(drawn);
+                if (r == null) continue;
+                for (var e : b.entrySet()) if (Phase1Checks.UiHomeChecks.overlap(r, e.getValue())) bad.add(drawn + " " + str(r) + " over " + e.getKey() + " " + str(e.getValue()));
+            }
+            if (!bad.isEmpty()) fitsBad.add(label + " (" + UiCanvas.width() + "x" + UiCanvas.height() + "): " + bad);
+        }
+
+        /** Runs one client tick of the claims; true once they are finished (all seven ids reported). */
+        boolean step(MinecraftClient c, UUID id) {
+            player = id;
+            if (finished) return true;
+            wait++;
+            try { run(c); } catch (RuntimeException e) { e.printStackTrace(); abort(c, "exception " + e); }
+            return finished;
+        }
+
+        void run(MinecraftClient c) {
+            var p = CampaignClient.profile;
+            var pr = p.progression;
+            switch (sub) {
+                case 0 -> { // the window at 960x540 GUI 1, the picks forgotten, the three dailies done and the weekly too, the banner leaning on Graveborn
+                    if (wait == 1) {
+                        oldW = c.getWindow().getWidth(); oldH = c.getWindow().getHeight(); oldGui = c.options.getGuiScale().getValue();
+                        size(c, false);
+                        WarTablePages.forgetPicks();
+                        sent0 = WarTablePages.sent().size();
+                        arm(c, "dailies");
+                    }
+                    if (wait > 10 && armed && pr.dailyBattles >= 3 && pr.weeklyBattles >= Progression.WEEKLY_BATTLES && pr.claims.stream().noneMatch(k -> k.startsWith("daily:")) && !pr.claims.contains("weekly") && p.banner.size() > 0 && p.banner.get(0).equals(lean0())) {
+                        c.setScreen(new CampScreen("contracts")); go(1);
+                    } else if (wait > 400) abort(c, "the dailies fixture never reached the client (daily battles " + pr.dailyBattles + ", weekly " + pr.weeklyBattles + ")");
+                }
+                case 1 -> { // the chip pressed in before any press is the banner's House
+                    if (wait < 14) return;
+                    String want = RosterMath.rollHouse(p.banner), chosen = text("house-chosen");
+                    boolean pass = want.equals(BANNER_HOUSE) && want.equals(chosen) && "table/chip-house-on".equals(tex("house-" + want)) && "table/chip-house".equals(tex("house-" + DAILY_HOUSE)) && box(c, "house-" + want) != null;
+                    say("p2-claim-default", pass, "the banner of " + p.banner.size() + " seats leans on " + BANNER_HOUSE + " (RosterMath.rollHouse: " + want + "); before any press the page has \"" + chosen + "\" pressed in (" + tex("house-" + want) + "), the others " + tex("house-" + DAILY_HOUSE) + "=" + pass);
+                    pressSend(c, "claim-0", "progress:daily:0"); go(2);
+                }
+                case 2 -> { // Claim on the first daily carries no House
+                    if (pr.claims.contains("daily:0") && wait >= 10) { pressSend(c, "claim-1", "progress:daily:1"); go(3); }
+                    else if (wait > 200) abort(c, "daily:0 never landed (claims " + pr.claims + ", sent " + sentNow() + ")");
+                }
+                case 3 -> {
+                    if (pr.claims.contains("daily:1") && wait >= 10) { press(c, "house-" + DAILY_HOUSE); go(4); }
+                    else if (wait > 200) abort(c, "daily:1 never landed (claims " + pr.claims + ", sent " + sentNow() + ")");
+                }
+                case 4 -> { // Ironclad pressed in: the shards line of the third daily names it; the picture is the contracts claim
+                    if (wait == 4) Phase1Checks.UiRecruitChecks.park(c);
+                    if (wait < 10) return;
+                    String hn = RosterMath.houseName(DAILY_HOUSE);
+                    boolean chosen = DAILY_HOUSE.equals(text("house-chosen")) && "table/chip-house-on".equals(tex("house-" + DAILY_HOUSE)) && "table/chip-house".equals(tex("house-" + BANNER_HOUSE));
+                    String line = text("shards-2");
+                    boolean words = ("+ " + Progression.DAILY_SHARDS + " " + hn + " shards").equals(line);
+                    var claim = Phase1Checks.UiPagesChecks.button(c, "claim-2");
+                    boolean live = claim != null && claim.visible && claim.active;
+                    int[] cap = rect("chips-caption"), firstChip = box(c, "house-" + Spec.HOUSES[0].id());
+                    boolean caption = "Shards for".equals(text("chips-caption")) && cap != null && firstChip != null && cap[0] + cap[2] + 4 <= firstChip[0];
+                    housePageOk = chosen && words && live && caption;
+                    housePage = "Ironclad pressed: the chip pressed in " + tex("house-" + DAILY_HOUSE) + " and \"" + text("house-chosen") + "\" chosen=" + chosen + ", the third daily's second line \"" + line + "\" (want \"+ " + Progression.DAILY_SHARDS + " " + hn + " shards\")=" + words + ", its Claim " + (live ? "taking a press" : "not live") + ", the row's caption \"" + text("chips-caption") + "\" left of it=" + caption;
+                    fits(c, "contracts", true);
+                    Phase2Checks.shot(c, "wt-contracts-claim");
+                    size(c, true); go(5);
+                }
+                case 5 -> { // the same page on the 854x480 canvas
+                    if (wait == 8) Phase1Checks.UiRecruitChecks.park(c);
+                    if (wait < 14) return;
+                    fits(c, "contracts", true);
+                    boolean there = DAILY_HOUSE.equals(text("house-chosen")) && box(c, "claim-2") != null;
+                    housePageOk &= there;
+                    housePage += "; at 854x480 the row and the third Claim " + (there ? "are there" : "WRONG: missing");
+                    Phase2Checks.shot(c, "wt-contracts-claim-compact");
+                    size(c, false); go(6);
+                }
+                case 6 -> {
+                    if (wait < 14) return;
+                    pressSend(c, "claim-2", "progress:daily:2:" + DAILY_HOUSE); go(7);
+                }
+                case 7 -> {
+                    if (pr.claims.contains("daily:2") && wait >= 3) { look(c); go(8); }
+                    else if (wait > 200) abort(c, "daily:2 never landed (claims " + pr.claims + ", sent " + sentNow() + ")");
+                }
+                case 8 -> {
+                    if (!read) { if (wait > 200) abort(c, "the server's read never came"); return; }
+                    var after = now; var b0 = base;
+                    boolean stored = after.claims().containsAll(List.of("daily:0", "daily:1", "daily:2"));
+                    int got = after.shard(DAILY_HOUSE) - b0.shard(DAILY_HOUSE), others = after.others(b0, DAILY_HOUSE), gold = after.gold() - b0.gold();
+                    boolean paid = got == Progression.DAILY_SHARDS && others == 0, goldOk = gold == wantDailyGold;
+                    boolean sends = sentNow().equals(List.of("progress:daily:0", "progress:daily:1", "progress:daily:2:" + DAILY_HOUSE));
+                    boolean once = box(c, "claim-0") == null && box(c, "claim-1") == null && box(c, "claim-2") == null;
+                    say("p2-claim-house", housePageOk && stored && paid && goldOk && sends && once,
+                        housePage + "; sent " + sentNow() + " (want daily:0, daily:1 with no House and daily:2:" + DAILY_HOUSE + ")=" + sends + "; the server stores " + after.claims().stream().filter(k -> k.startsWith("daily:")).sorted().toList() + "=" + stored
+                            + ", " + RosterMath.houseName(DAILY_HOUSE) + " shards " + b0.shard(DAILY_HOUSE) + " to " + after.shard(DAILY_HOUSE) + " (want +" + Progression.DAILY_SHARDS + "), other Houses " + (others >= 0 ? "+" : "") + others + " (want 0)=" + paid
+                            + ", gold +" + gold + " (want +" + wantDailyGold + ", the game's own grants)=" + goldOk + "; the three Claims gone once claimed=" + once);
+                    before = after;
+                    press(c, "house-" + WEEKLY_HOUSE); go(9);
+                }
+                case 9 -> { // Tidecallers pressed in: the weekly's one reward line names it
+                    if (wait < 8) return;
+                    String hn = RosterMath.houseName(WEEKLY_HOUSE), line = text("reward-weekly");
+                    boolean chosen = WEEKLY_HOUSE.equals(text("house-chosen")) && "table/chip-house-on".equals(tex("house-" + WEEKLY_HOUSE));
+                    boolean words = line != null && line.contains(Progression.WEEKLY_SHARDS + " " + hn + " shards") && !line.contains(RosterMath.houseName(DAILY_HOUSE));
+                    var claim = Phase1Checks.UiPagesChecks.button(c, "claim-weekly");
+                    boolean live = claim != null && claim.visible && claim.active;
+                    weeklyPageOk = chosen && words && live;
+                    weeklyPage = "Tidecallers pressed: chosen \"" + text("house-chosen") + "\"=" + chosen + ", the weekly's line \"" + line + "\" (want it to name " + Progression.WEEKLY_SHARDS + " " + hn + " shards)=" + words + ", its Claim " + (live ? "taking a press" : "not live");
+                    pressSend(c, "claim-weekly", "progress:weekly:" + WEEKLY_HOUSE); go(10);
+                }
+                case 10 -> {
+                    if (pr.claims.contains("weekly") && wait >= 3) { look(c); go(11); }
+                    else if (wait > 200) abort(c, "the weekly never landed (claims " + pr.claims + ", sent " + sentNow() + ")");
+                }
+                case 11 -> {
+                    if (!read) { if (wait > 200) abort(c, "the server's read never came"); return; }
+                    if (wait < 10) return; // the row goes a frame after the claim lands
+                    var after = now; var b0 = before;
+                    int got = after.shard(WEEKLY_HOUSE) - b0.shard(WEEKLY_HOUSE), others = after.others(b0, WEEKLY_HOUSE), gold = after.gold() - b0.gold();
+                    boolean stored = after.claims().contains("weekly"), paid = got == Progression.WEEKLY_SHARDS && others == 0, goldOk = gold == wantWeeklyGold;
+                    boolean sends = sentNow().get(sentNow().size() - 1).equals("progress:weekly:" + WEEKLY_HOUSE);
+                    boolean rowGone = Spec.HOUSES.length > 0 && Arrays.stream(Spec.HOUSES).allMatch(h -> box(c, "house-" + h.id()) == null);
+                    say("p2-claim-weekly", weeklyPageOk && stored && paid && goldOk && sends && rowGone,
+                        weeklyPage + "; sent \"" + sentNow().get(sentNow().size() - 1) + "\" (want progress:weekly:" + WEEKLY_HOUSE + ")=" + sends + "; the server stores weekly=" + stored + ", " + RosterMath.houseName(WEEKLY_HOUSE) + " shards "
+                            + b0.shard(WEEKLY_HOUSE) + " to " + after.shard(WEEKLY_HOUSE) + " (want +" + Progression.WEEKLY_SHARDS + "), other Houses " + (others >= 0 ? "+" : "") + others + " (want 0)=" + paid + ", gold +" + gold + " (want +" + wantWeeklyGold + ")=" + goldOk
+                            + "; with nothing left that pays shards the House row is " + (rowGone ? "gone" : "WRONG: still shown"));
+                    arm(c, "tier"); go(12);
+                }
+                case 12 -> { // the chapter at a shard tier
+                    if (armed && pr.xp / Progression.XP_PER_TIER == tier && !pr.claims.contains(Progression.SEASON + ":" + tier) && wait > 6) { c.setScreen(new CampScreen("chapter")); go(13); }
+                    else if (wait > 300) abort(c, "the tier " + tier + " fixture never reached the client (xp " + pr.xp + ")");
+                }
+                case 13 -> {
+                    if (wait < 14) return;
+                    press(c, "house-" + TIER_HOUSE); go(14);
+                }
+                case 14 -> { // Wildmoot pressed in: "Tier N gives" and the shards, naming it
+                    if (wait == 4) Phase1Checks.UiRecruitChecks.park(c);
+                    if (wait < 10) return;
+                    String hn = RosterMath.houseName(TIER_HOUSE), want = Progression.reward(tier).replace("House shards", hn + " shards");
+                    boolean chosen = TIER_HOUSE.equals(text("house-chosen")) && "table/chip-house-on".equals(tex("house-" + TIER_HOUSE));
+                    boolean words = ("Tier " + tier + " gives").equals(text("gives-head")) && want.equals(text("gives")) && box(c, "rare") == null;
+                    var claim = Phase1Checks.UiPagesChecks.button(c, "claim");
+                    boolean live = claim != null && claim.visible && claim.active;
+                    tierPageOk = chosen && words && live;
+                    tierPage = "tier " + tier + " (a shard tier) waits, Wildmoot pressed: chosen \"" + text("house-chosen") + "\"=" + chosen + ", \"" + text("gives-head") + " " + text("gives") + "\" (want \"" + want + "\")=" + words + ", Claim " + (live ? "taking a press" : "not live");
+                    fits(c, "chapter", true);
+                    Phase2Checks.shot(c, "wt-chapter-pick");
+                    size(c, true); go(15);
+                }
+                case 15 -> {
+                    if (wait == 8) Phase1Checks.UiRecruitChecks.park(c);
+                    if (wait < 14) return;
+                    fits(c, "chapter", true);
+                    boolean there = TIER_HOUSE.equals(text("house-chosen")) && box(c, "claim") != null && text("gives") != null;
+                    tierPageOk &= there;
+                    tierPage += "; at 854x480 the row, the line and Claim " + (there ? "are there" : "WRONG: missing");
+                    Phase2Checks.shot(c, "wt-chapter-pick-compact");
+                    size(c, false); go(16);
+                }
+                case 16 -> {
+                    if (wait < 14) return;
+                    pressSend(c, "claim", "progress:" + Progression.SEASON + ":" + tier + ":" + TIER_HOUSE); go(17);
+                }
+                case 17 -> {
+                    if (pr.claims.contains(Progression.SEASON + ":" + tier) && wait >= 3) { look(c); go(18); }
+                    else if (wait > 200) abort(c, "tier " + tier + " never landed (claims " + pr.claims + ", sent " + sentNow() + ")");
+                }
+                case 18 -> {
+                    if (!read) { if (wait > 200) abort(c, "the server's read never came"); return; }
+                    var after = now; var b0 = base;
+                    int got = after.shard(TIER_HOUSE) - b0.shard(TIER_HOUSE), others = after.others(b0, TIER_HOUSE);
+                    boolean stored = after.claims().contains(Progression.SEASON + ":" + tier), paid = got == Progression.TIER_SHARDS && others == 0;
+                    boolean sends = sentNow().get(sentNow().size() - 1).equals("progress:" + Progression.SEASON + ":" + tier + ":" + TIER_HOUSE);
+                    say("p2-claim-founders-shards", tierPageOk && stored && paid && sends,
+                        tierPage + "; sent \"" + sentNow().get(sentNow().size() - 1) + "\"=" + sends + "; the server stores " + Progression.SEASON + ":" + tier + "=" + stored + ", " + RosterMath.houseName(TIER_HOUSE) + " shards " + b0.shard(TIER_HOUSE) + " to " + after.shard(TIER_HOUSE)
+                            + " (want +" + Progression.TIER_SHARDS + "), other Houses " + (others >= 0 ? "+" : "") + others + " (want 0)=" + paid + "; picture p2-wt-chapter-pick.png");
+                    arm(c, "rare"); go(19);
+                }
+                case 19 -> { // tier 20: the chapter rebuilds on the state; a House is picked and the Rare chip appears
+                    if (armed && pr.xp / Progression.XP_PER_TIER == Progression.RARE_TIER && !pr.claims.contains(Progression.SEASON + ":" + Progression.RARE_TIER) && wait > 14) { press(c, "house-" + RARE_HOUSE); go(20); }
+                    else if (wait > 300) abort(c, "the tier " + Progression.RARE_TIER + " fixture never reached the client (xp " + pr.xp + ")");
+                }
+                case 20 -> {
+                    if (wait < 8) return;
+                    var rareList = rares;
+                    String first = rareList.isEmpty() ? "" : rareList.get(0);
+                    boolean chip = box(c, "rare") != null && first.equals(text("rare-id")) && RARE_HOUSE.equals(text("house-chosen"));
+                    rarePageOk = chip && rareList.size() >= 2;
+                    rarePage = "tier " + Progression.RARE_TIER + " waits, " + RosterMath.houseName(RARE_HOUSE) + " pressed: the Rare chip " + (box(c, "rare") != null ? "shown" : "WRONG: missing") + " at the House's first Rare \"" + text("rare-id") + "\" (want " + first + ")=" + chip + ", the House has " + rareList.size() + " Rares " + rareList;
+                    seen.clear(); cyc = 0;
+                    press(c, "rare"); go(21);
+                }
+                case 21 -> { // one press of the chip at a time: the Rares it offers, in turn
+                    if (wait < 4) return;
+                    seen.add(String.valueOf(text("rare-id")));
+                    cyc++;
+                    if (cyc < rares.size()) { press(c, "rare"); wait = 0; }
+                    else go(22);
+                }
+                case 22 -> {
+                    var rareList = rares;
+                    List<String> wantSeq = new ArrayList<>();
+                    for (int i = 1; i <= rareList.size(); i++) wantSeq.add(rareList.get(i % rareList.size()));
+                    boolean cycle = seen.equals(wantSeq);
+                    boolean allRare = seen.stream().allMatch(id -> { var t = Progression.troop(id); return t != null && t.rarity().equals("rare") && t.house().equals(RARE_HOUSE); });
+                    rarePageOk &= cycle && allRare;
+                    rarePage += "; the chip, pressed " + rareList.size() + " times, offered " + seen + " (want " + wantSeq + ", the Rares of " + RosterMath.houseName(RARE_HOUSE) + " in turn, no other)=" + cycle + ", each a Rare of the House=" + allRare;
+                    press(c, "rare"); go(23); // one more: the second Rare, the one claimed
+                }
+                case 23 -> {
+                    if (wait == 4) Phase1Checks.UiRecruitChecks.park(c);
+                    if (wait < 10) return;
+                    var rareList = rares;
+                    pick = rareList.get(1 % rareList.size());
+                    var t = Progression.troop(pick);
+                    String note = text("rare-note"), name = text("rare");
+                    boolean shown = pick.equals(text("rare-id")) && t != null && t.name().equals(name) && note != null && note.equals("Rare of " + RosterMath.houseName(RARE_HOUSE) + ", " + (1 % rareList.size() + 1) + " of " + rareList.size());
+                    var claim = Phase1Checks.UiPagesChecks.button(c, "claim");
+                    boolean live = claim != null && claim.visible && claim.active;
+                    rarePageOk &= shown && live;
+                    rarePage += "; the second Rare shown: id \"" + text("rare-id") + "\", the chip \"" + name + "\" (want " + (t == null ? "?" : t.name()) + "), the line \"" + note + "\"=" + shown + ", Claim " + (live ? "taking a press" : "not live");
+                    fits(c, "chapter at tier 20", true);
+                    Phase2Checks.shot(c, "wt-chapter-rare");
+                    size(c, true); go(24);
+                }
+                case 24 -> {
+                    if (wait == 8) Phase1Checks.UiRecruitChecks.park(c);
+                    if (wait < 14) return;
+                    fits(c, "chapter at tier 20", true);
+                    boolean there = box(c, "rare") != null && box(c, "claim") != null && text("rare-note") != null;
+                    rarePageOk &= there;
+                    rarePage += "; at 854x480 the chip, its line and Claim " + (there ? "are there" : "WRONG: missing");
+                    Phase2Checks.shot(c, "wt-chapter-rare-compact");
+                    size(c, false); go(25);
+                }
+                case 25 -> {
+                    if (wait < 14) return;
+                    pressSend(c, "claim", "progress:" + Progression.SEASON + ":" + Progression.RARE_TIER + ":" + pick); go(26);
+                }
+                case 26 -> {
+                    if (pr.claims.contains(Progression.SEASON + ":" + Progression.RARE_TIER) && wait >= 3) { look(c); go(27); }
+                    else if (wait > 200) abort(c, "tier " + Progression.RARE_TIER + " never landed (claims " + pr.claims + ", sent " + sentNow() + ")");
+                }
+                case 27 -> {
+                    if (!read) { if (wait > 200) abort(c, "the server's read never came"); return; }
+                    var after = now; var b0 = base;
+                    boolean stored = after.claims().contains(Progression.SEASON + ":" + Progression.RARE_TIER);
+                    boolean added = after.owned().contains(pick) && !b0.owned().contains(pick);
+                    boolean onlyOne = rares.stream().filter(after.owned()::contains).count() == 1;
+                    say("p2-claim-founders-rare", rarePageOk && stored && added && onlyOne,
+                        rarePage + "; sent \"" + sentNow().get(sentNow().size() - 1) + "\"; the server stores " + Progression.SEASON + ":" + Progression.RARE_TIER + "=" + stored + " and " + pick + " is now owned (was not)=" + added + ", the House's other Rare not=" + onlyOne + "; picture p2-wt-chapter-rare.png");
+                    List<String> want = new ArrayList<>(List.of("progress:daily:0", "progress:daily:1", "progress:daily:2:" + DAILY_HOUSE, "progress:weekly:" + WEEKLY_HOUSE,
+                        "progress:" + Progression.SEASON + ":" + tier + ":" + TIER_HOUSE, "progress:" + Progression.SEASON + ":" + Progression.RARE_TIER + ":" + pick));
+                    var sentAll = sentNow();
+                    say("p2-claim-sends", sentAll.equals(want) && expected.equals(want), "the commands sent from the pages, in order: " + sentAll + " (want exactly " + want + "; the dailies 0 and 1 carry no House, the shard tiers the House, tier " + Progression.RARE_TIER + " the Rare)");
+                    say("p2-claim-fits", fitsBad.isEmpty(), fitsBad.isEmpty() ? "the House row's chips (24 px or more each way), the Rare chip, every Claim and every reward line, at 960x540 and 854x480 on Contracts and on Chapter (shard tier and tier 20): inside the canvas 12 px from its edges, none over another, none under the rail, each line inside its note, " + "pictures p2-wt-contracts-claim(-compact).png, p2-wt-chapter-pick(-compact).png, p2-wt-chapter-rare(-compact).png" : "problems: " + fitsBad);
+                    windowBack(c);
+                    finished = true;
+                }
+                default -> finished = true;
+            }
+        }
+
+        /** The first seat the fixture's banner holds (its House's first troop), for the client to know the fixture has arrived. */
+        String lean0() {
+            for (var h : Spec.HOUSES) if (h.id().equals(BANNER_HOUSE)) return h.troops().split(",")[0];
+            return "";
         }
     }
 
