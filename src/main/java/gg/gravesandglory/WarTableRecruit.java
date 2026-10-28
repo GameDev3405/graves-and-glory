@@ -14,10 +14,14 @@ import java.util.*;
  *  rail's plaques and the banners by its x only, and everything is drawn in canvas pixels. Home's candle and inkwell are left
  *  off this page: the roll and the ladder stand where they would.
  *
- *  Enlist sends roll:<house> for a random troop of the House not yet recruited; the letter's Choose sends unlock:<troop> for the
- *  one shown. When a recruit arrives (CampaignClient's reveal) the page selects it and lays the broken House seal on its letter
- *  until another row is selected; the server plays the reveal's sound. A notice the server sends (a refusal, a save that failed)
- *  shows on the ladder's axis under its foot, as home shows one under Ride. */
+ *  Enlist sends roll:<house> for a letter of the House (a troop it holds already gives a copy toward its next star). The letter's
+ *  action tag is RecruitPages.action for the troop shown, so the page and the old camp screen never disagree on a rule: Buy
+ *  (buy:<troop>, a Common or a Rare, owned or not), Star (star:<troop>, an owned Epic or Legendary), Pact or shards (legendary:<house>:
+ *  pact|shards, a Legendary not yet found); an Epic not yet found shows the words "From letters only". The tag is still the widget
+ *  "choose". When a recruit arrives (CampaignClient's reveal) the page selects it and lays the broken House seal on its letter
+ *  until another row is selected; a duplicate gets no seal: the letter lights the star it gained or the copy it counted and
+ *  says so in a line (RecruitPages.outcome). The server plays the reveal's sound. A notice the server sends (a refusal, a save
+ *  that failed) shows on the ladder's axis under its foot, as home shows one under Ride. */
 final class WarTableRecruit {
     /** The rod under the rail: n Houses hang from x 196 + (5 - n) * 56 at y 12, the rod 112 n + 8 long; banner i hangs at rod x +
      *  8 + 112 i, top 13, 104 wide and 50 tall, the chosen one 60. Its name is centred 52 in, 27 down, trimmed to 96 px. */
@@ -28,17 +32,21 @@ final class WarTableRecruit {
     static final Set<String> LIGHT_CLOTHS = Set.of("gilded");
     /** The muster roll's box, its first row's top, a row's height, the rows shown at once and how wide a name may run. */
     static final int ROLL_X = 56, ROLL_Y = 124, ROLL_W = 240, ROLL_H = 368, ROW_TOP = 140, ROW_H = 56, ROWS = 6, NAME_W = 172;
-    /** The letter's box, how wide its lines may run and its Choose tag (box-relative). */
-    static final int LETTER_X = 328, LETTER_Y = 124, LETTER_W = 304, LETTER_H = 368, LINE_W = 272, CHOOSE_X = 108, CHOOSE_Y = 316;
+    /** The letter's box, how wide its lines may run and its action tag (box-relative: the tag is CHOOSE_W wide, centred on the
+     *  letter, with what it does, or why it cannot be pressed, in up to REASON_LINES lines REASON_STEP apart under it; the wax
+     *  seal of a recruited troop stands at WAX_X, WAX_Y). */
+    static final int LETTER_X = 328, LETTER_Y = 124, LETTER_W = 304, LETTER_H = 368, LINE_W = 272, CHOOSE_X = 92, CHOOSE_Y = 312, CHOOSE_W = 120, CHOOSE_H = 24;
+    static final int REASON_Y = 340, REASON_STEP = 12, REASON_LINES = 2, WAX_X = 36, WAX_Y = 304;
+    /** How long a press of the tag holds the next one (client ticks) while the camp has not yet answered it. */
+    static final int PENDING_TICKS = 30;
     /** The right column's axis and its rungs, top to bottom: the sealed letters, Enlist, the purse, the rung's line and Odds. */
     static final int AXIS = 784, BUNDLE_X = 664, BUNDLE_Y = 124, ENLIST_X = 664, ENLIST_Y = 354, PURSE_Y = 406, RUNG_Y = 442, ODDS_X = 752, ODDS_Y = 468;
-    /** The Odds note's corner, how wide its lines may run and how many troop names it lists. */
-    static final int NOTE_X = 360, NOTE_Y = 200, NOTE_W = 208, NOTE_NAMES = 6;
+    /** The Odds note's corner, how wide its lines may run and how many lines it may take under its heading. */
+    static final int NOTE_X = 360, NOTE_Y = 200, NOTE_W = 208, NOTE_LINES = 9;
     /** The server's notice: its first line's top, 12 px under the ladder's foot (492) as home's is 12 px under Ride (the purse
      *  takes the 12 px under the Enlist plate); its lines, centred on the axis, 13 px apart; how wide a line may run (to 12 px from
      *  the page's right edge) and how many lines it may take (the second ends 12 px above the page's foot). */
     static final int NOTICE_Y = 504, NOTICE_STEP = 13, NOTICE_W = 328, NOTICE_LINES = 2;
-    static final String NO_DUPLICATES = "No duplicates: every letter is a new troop.";
     /** The compact page (UI Task 8b-2, WarTable.compact): the three columns close up and rise 32 px (roll box at 27, letter at 286,
      *  ladder at 600 on the 854 page, their inks 10 px apart), the rung's line and Odds share one row either side of the axis
      *  under the purse, and the notice comes up under them, 240 px wide; the Banner plaque stands 12 px from the page's right
@@ -81,9 +89,11 @@ final class WarTableRecruit {
      *  scissored it: window. The words' extents: the banners' labels label-(house), the purse (pouch and sum), rung and notice
      *  (all its lines). Also table and rail as WarTable.drawChrome drew them. */
     static Map<String, int[]> rects() { return rects; }
-    /** Words drawn: banner-(house), letter-troop (the troop's id), letter-name, letter-line1, letter-line2, choose-cost, enlist
-     *  (the plate's label), enlist-cost ("100", "Need 100", or none when nothing is left), purse, rung, note-(i) (the Odds note's
-     *  lines under its heading) and notice (its lines joined by a space). */
+    /** Words drawn: banner-(house), letter-troop (the troop's id), letter-name, letter-line1, letter-line2 (the deploy line, absent while
+     *  a duplicate's outcome takes its place), letter-outcome, letter-stars (the stars lit, "1+" while one is growing) and letter-fill (its
+     *  percent) while a duplicate is lit, letter-none ("From letters only", "Full stars") where the troop has no tag, choose (the tag's
+     *  label), choose-command (what it sends) and reason (the words under it), enlist (the plate's label), enlist-cost ("100" or "Need
+     *  100"), purse, rung, note-(i) (the Odds note's lines under its heading) and notice (its lines joined by a space). */
     static Map<String, String> texts() { return texts; }
     /** The texture each part was drawn from: table, banner-(house), enlist and choose. */
     static Map<String, String> textures() { return textures; }
@@ -100,6 +110,12 @@ final class WarTableRecruit {
     final CampScreen screen;
     /** The chosen House's id, the selected troop's id, and the troop whose letter shows the broken seal (null: none). */
     String house, selected, broken;
+    /** The duplicate roll the letter is lighting, and the troop it came for (null: none): until the reveal ends or another troop is selected. */
+    CampaignClient.LastRoll lit;
+    String litTroop;
+    /** The camp state when the action tag was last pressed, and the tick: the tag takes no second press until the camp's state moves or PENDING_TICKS pass. */
+    String pendingState = "";
+    long pendingAt = -1000;
     /** CampaignClient.revealUntil when the page last took a reveal: a reveal from before the page opened stays untaken. */
     long revealSeen;
     /** Whether the Odds note is open, the roll's first row shown, and the wheel's turn carried toward the next whole row. */
@@ -144,14 +160,15 @@ final class WarTableRecruit {
             final int index = i;
             add("row-" + i, new UiButton(ro[0] + ROLL_X, ro[1] + ROW_TOP + ROW_H * i, ROLL_W, ROW_H, Text.literal(""), b -> pick(index), (g, x, y, w, h, hot) -> {}));
         }
-        choose = add("choose", new UiButton(lo[0] + LETTER_X + CHOOSE_X, lo[1] + LETTER_Y + CHOOSE_Y, 88, 24, Text.literal("Choose"), b -> chooseTroop(), this::paintChoose));
+        choose = add("choose", new UiButton(lo[0] + LETTER_X + CHOOSE_X, lo[1] + LETTER_Y + CHOOSE_Y, CHOOSE_W, CHOOSE_H, Text.literal("Buy"), b -> chooseTroop(), this::paintChoose));
         enlist = add("enlist", new UiButton(la[0] + ENLIST_X, la[1] + ENLIST_Y, 240, 40, Text.literal("Enlist"), b -> enlist(), this::paintEnlist));
         add("odds", new UiButton(compact ? la[0] + AXIS + 4 : la[0] + ODDS_X, la[1] + (compact ? COMPACT_ODDS_Y : ODDS_Y), 64, 24, Text.literal("Odds"), b -> odds = !odds, this::paintOdds));
         refresh();
     }
 
     /** Puts the widgets in step with the House, the selection and the purse: the chosen banner hangs longer, a row past the roll
-     *  hides, Choose shows under a troop not yet recruited, and Enlist and Choose take presses only while they can send. */
+     *  hides, the action tag shows under a troop that has an action (RecruitPages.action), and Enlist and the tag take presses
+     *  only while they can send. */
     void refresh() {
         var houses = RecruitView.houses();
         int ox = WarTable.origin()[0], rod = rodX(houses.size());
@@ -174,8 +191,10 @@ final class WarTableRecruit {
         }
         var row = row(roll, selected);
         if (choose != null) {
-            choose.visible = row != null && !row.owned() && !row.locked();
-            choose.active = choose.visible && canChoose();
+            var a = row == null ? null : RecruitView.action(row.troopId());
+            choose.visible = a != null;
+            choose.setMessage(Text.literal(a == null ? "" : a.label()));
+            choose.active = a != null && a.active() && battleFree() && !pending();
         }
         if (enlist != null) enlist.active = canEnlist();
     }
@@ -192,34 +211,46 @@ final class WarTableRecruit {
 
     static boolean battleFree() { return !GravesAndGloryClient.running || CampaignClient.waiting; }
 
-    boolean canEnlist() { return RecruitView.newLeft(house) > 0 && CampaignClient.profile.gold >= RecruitView.cost() && battleFree(); }
+    boolean canEnlist() { return CampaignClient.profile.gold >= RecruitView.cost() && battleFree(); }
 
-    boolean canChoose() { return CampaignClient.profile.gold >= RecruitView.chooseCost() && battleFree(); }
+    /** Whether a press of the tag is still on its way: the camp has not answered it (its state is as at the press) and PENDING_TICKS have not passed. */
+    boolean pending() { return !pendingState.isEmpty() && ticks - pendingAt < PENDING_TICKS && pendingState.equals(screen.state()); }
+
+    /** The words under the tag: what its action does, or why it cannot be pressed (RecruitPages.Action.tip), or, while a battle is on or a press is on its way, that. */
+    String reason(RecruitPages.Action a) {
+        if (!battleFree()) return "A battle is under way.";
+        if (pending()) return "Sent. Waiting for the camp.";
+        return a.tip();
+    }
 
     void back() { screen.page("home"); }
 
-    /** Hands a command to the server through the screen's throttle; recorded when it goes. */
-    void send(String cmd) {
-        if (!screen.action(cmd)) return;
+    /** Hands a command to the server through the screen's throttle; recorded when it goes. Returns whether it went. */
+    boolean send(String cmd) {
+        if (!screen.action(cmd)) return false;
         if (sentCommands.size() >= WarTablePages.SENT_KEPT) sentCommands.remove(0);
         sentCommands.add(cmd);
+        return true;
     }
 
     void enlist() { if (canEnlist()) send("roll:" + house); }
 
+    /** The action tag: sends what RecruitPages.action gives for the troop shown (buy:, star: or legendary:), once; the page never sends unlock: or army:. A second press waits for the camp's answer (pending). */
     void chooseTroop() {
         var row = row(RecruitView.roll(house), selected);
-        if (row != null && !row.owned() && !row.locked() && canChoose()) send("unlock:" + row.troopId());
+        var a = row == null ? null : RecruitView.action(row.troopId());
+        if (a == null || !a.active() || !battleFree() || pending()) return;
+        if (send(a.command())) { pendingState = screen.state(); pendingAt = ticks; refresh(); }
     }
 
     /** A click on a banner: its House's roll, nothing selected (refresh picks), the seal, the scroll and the wheel's carry gone. */
     void chooseHouse(String id) {
         if (id.equals(house)) return;
-        house = id; selected = null; broken = null; scroll = 0; wheel = 0;
+        house = id; selected = null; broken = null; lit = null; litTroop = null; scroll = 0; wheel = 0;
         refresh();
     }
 
-    /** A click on row i: its troop on the letter; the broken seal stays only on the troop it came with. */
+    /** A click on row i: its troop on the letter; the broken seal and the lit star stay only on the troop they came with. */
     void pick(int i) {
         var roll = RecruitView.roll(house);
         if (scroll + i < roll.size()) select(roll.get(scroll + i).troopId());
@@ -228,6 +259,7 @@ final class WarTableRecruit {
     void select(String troop) {
         selected = troop;
         if (!troop.equals(broken)) broken = null;
+        if (!troop.equals(litTroop)) { lit = null; litTroop = null; }
         refresh();
     }
 
@@ -241,8 +273,10 @@ final class WarTableRecruit {
     }
 
     /** A new reveal (CampaignClient.revealUntil moved) naming a troop on a House's roll: that House, that troop, its row in view and
-     *  the broken seal on its letter. A new notice (its serial moved) shows on the notice line, unless it came with the reveal:
-     *  that one is the recruit's own ("Unlocked permanently: ..."), which the letter under the broken seal already says. */
+     *  the broken seal on its letter, or, when the roll that brought it was a duplicate (CampaignClient.lastRoll), no seal: the
+     *  letter lights the star or the copy instead. The troop is found by its name, so a duplicate finds the troop it raised and
+     *  never lays a seal on it again. A new notice (its serial moved) shows on the notice line, unless it came with the reveal:
+     *  that one is the recruit's own ("Joined your collection: ..."), which the letter already says. */
     void tick() {
         ticks++;
         boolean revealed = false;
@@ -253,7 +287,12 @@ final class WarTableRecruit {
                 for (int i = 0; i < roll.size(); i++) {
                     if (!roll.get(i).name().equals(CampaignClient.revealUnit)) continue;
                     if (!h.id().equals(house)) { house = h.id(); scroll = 0; wheel = 0; }
-                    selected = roll.get(i).troopId(); broken = selected; revealed = true;
+                    selected = roll.get(i).troopId(); revealed = true;
+                    var last = CampaignClient.lastRoll;
+                    boolean duplicate = CampaignClient.rollShowing() && last != null && last.duplicate() && last.troop().equals(selected);
+                    broken = duplicate ? null : selected;
+                    lit = duplicate ? last : null;
+                    litTroop = duplicate ? selected : null;
                     if (i < scroll) scroll = i;
                     else if (i >= scroll + ROWS) scroll = i - ROWS + 1;
                 }
@@ -425,8 +464,14 @@ final class WarTableRecruit {
         rowsDrawn.add(new RowDraw(i, r.troopId(), name, color, silhouette));
     }
 
-    /** The opened letter: the selected troop's live model in the ornate frame, its name, what it is, its stars (Phase 2), what it
-     *  costs to deploy, and the broken House seal while it is the troop just recruited. Choose is a widget (paintChoose). */
+    /** Whether a reveal is on: the reveal's 2400 ms have not run out, or the harness holds its clock (CampaignClient.revealHeldAt). */
+    static boolean revealing() { return CampaignClient.revealHeldAt >= 0 || CampaignClient.revealUntil > System.currentTimeMillis(); }
+
+    /** The opened letter: the selected troop's live model in the ornate frame, its name, what it is, its stars, what it costs to
+     *  deploy, the broken House seal while it is the troop just recruited, and, for a duplicate roll still being shown, the star
+     *  that fills over CampaignClient.ROLL_FILL_MS and the line of what the copy did (RecruitPages.outcome) in place of the deploy
+     *  line. The action tag is a widget (paintChoose); under it the page writes what it does or why it cannot be pressed, and where
+     *  a troop has no tag, the words that say so ("From letters only", "Full stars"). */
     void letter(DrawContext g, RecruitView.Row r, int x, int y) {
         var font = MinecraftClient.getInstance().textRenderer;
         rectsDrawn.put("letter", UiTex.draw(g, "recruit/letter-hi", x, y));
@@ -447,43 +492,98 @@ final class WarTableRecruit {
         kind = UiMath.trim(kind, LINE_W, s -> font.getWidth(DarkUi.body(s)));
         int kindInk = DarkUi.SEPIA;
         WarTableHome.centred(g, DarkUi.body(kind), x + 152, y + 246, kindInk);
-        if (r.stars() > 0) {
+        boolean lighting = lit != null && r.troopId().equals(litTroop) && revealing();
+        var fill = lighting ? RecruitPages.fill(lit.starsBefore(), Math.max(lit.starsBefore(), lit.starsAfter()), CampaignClient.rollElapsed()) : new RecruitPages.Fill(r.stars(), -1, 0);
+        if (r.stars() > 0 || lighting) {
             for (int s = 0; s < 3; s++) {
-                if (s < r.stars()) UiTex.draw(g, "recruit/star-l", x + 127 + 19 * s, y + 268);
-                else UiTex.draw(g, "recruit/star-l-empty", x + 127 + 19 * s, y + 268);
+                int sx = x + 127 + 19 * s, sy = y + 268;
+                if (s < fill.filled()) UiTex.draw(g, "recruit/star-l", sx, sy);
+                else {
+                    UiTex.draw(g, "recruit/star-l-empty", sx, sy);
+                    if (s == fill.growing()) { // the star filling: the art's lower part, from its foot up
+                        int h = Math.max(1, Math.round(14 * fill.part()));
+                        UiTex.part(g, "recruit/star-l", sx, sy + 14 - h, 0, 14 - h, 14, h);
+                    }
+                }
             }
-            UiTex.draw(g, "recruit/sparkle", x + 127 + 19 * (r.stars() - 1) - 2, y + 266); // on the newest star
+            int newest = fill.growing() >= 0 ? fill.growing() : fill.filled() - 1;
+            if (newest >= 0) UiTex.draw(g, "recruit/sparkle", x + 127 + 19 * newest - 2, y + 266); // on the newest star
+            textsDrawn.put("letter-stars", fill.filled() + (fill.growing() >= 0 ? "+" : ""));
+            if (fill.growing() >= 0) textsDrawn.put("letter-fill", String.valueOf(Math.round(fill.part() * 100))); // how far the growing star has filled, in percent
         }
         var spec = ArmyCards.spec(r.troopId());
         String deploy = spec == null ? "" : "Deploys in battle for " + spec.cost() + " gold"; // Phase 2: the star bonus
+        String outcome = lighting ? RecruitPages.outcome(lit, CampaignClient.profile) : "";
         int deployInk = DarkUi.INK_TEXT;
-        WarTableHome.centred(g, DarkUi.body(deploy), x + 152, y + 292, deployInk);
-        if (r.owned() && r.stars() > 0) UiTex.draw(g, "recruit/wax-star", x + 136, y + 314);
+        if (outcome.isEmpty()) WarTableHome.centred(g, DarkUi.body(deploy), x + 152, y + 292, deployInk);
+        else {
+            String line = UiMath.trim(outcome, LINE_W, s -> font.getWidth(DarkUi.body(s)));
+            int lx = WarTableHome.centred(g, DarkUi.body(line), x + 152, y + 292, DarkUi.INK_TEXT);
+            rectsDrawn.put("outcome", new int[]{lx, y + 292, font.getWidth(DarkUi.body(line)), 11});
+            textsDrawn.put("letter-outcome", line);
+            colorsDrawn.put("letter-outcome", DarkUi.INK_TEXT);
+        }
+        if (r.owned() && r.stars() > 0) UiTex.draw(g, "recruit/wax-star", x + WAX_X, y + WAX_Y);
         if (r.troopId().equals(broken)) rectsDrawn.put("broken", UiTex.draw(g, "recruit/wax-broken", x + 135, y - 16));
+        var a = RecruitView.action(r.troopId());
+        int below = y + REASON_Y;
+        if (a != null) reasonLines(g, font, a, x, below);
+        else {
+            String none = RecruitView.noAction(r.troopId());
+            if (!none.isEmpty()) {
+                int nx = WarTableHome.centred(g, DarkUi.body(none), x + 152, y + CHOOSE_Y + 6, DarkUi.SEPIA);
+                rectsDrawn.put("noaction", new int[]{nx, y + CHOOSE_Y + 6, font.getWidth(DarkUi.body(none)), 11});
+                textsDrawn.put("letter-none", none);
+                colorsDrawn.put("letter-none", DarkUi.SEPIA);
+            }
+        }
         textsDrawn.put("letter-troop", r.troopId());
         textsDrawn.put("letter-name", name);
         textsDrawn.put("letter-line1", kind);
-        textsDrawn.put("letter-line2", deploy);
+        if (outcome.isEmpty()) textsDrawn.put("letter-line2", deploy);
         colorsDrawn.put("letter-name", nameInk);
         colorsDrawn.put("letter-line1", kindInk);
         colorsDrawn.put("letter-line2", deployInk);
     }
 
-    /** Choose: a vellum tag with the coin, the cost and the word; sepia, and no press, while the purse is short. */
+    /** The words under the action tag: what the action does while it can be pressed (sepia), why it cannot while it cannot (the
+     *  ink, "Need 300 gold"), in at most REASON_LINES lines of LINE_W (UiMath.lines), centred on the letter. The words say which it
+     *  is; the ink only stresses it. */
+    void reasonLines(DrawContext g, net.minecraft.client.font.TextRenderer font, RecruitPages.Action a, int x, int top) {
+        boolean usable = choose != null && choose.active;
+        var lines = UiMath.lines(reason(a), LINE_W, REASON_LINES, s -> font.getWidth(DarkUi.body(s)));
+        int ink = usable ? DarkUi.SEPIA : DarkUi.INK_TEXT, left = Integer.MAX_VALUE, right = Integer.MIN_VALUE;
+        for (int i = 0; i < lines.size(); i++) {
+            int lx = WarTableHome.centred(g, DarkUi.body(lines.get(i)), x + 152, top + REASON_STEP * i, ink);
+            left = Math.min(left, lx);
+            right = Math.max(right, lx + font.getWidth(DarkUi.body(lines.get(i))));
+        }
+        if (lines.isEmpty()) return;
+        rectsDrawn.put("reason", new int[]{left, top, right - left, REASON_STEP * (lines.size() - 1) + 11});
+        textsDrawn.put("reason", String.join(" ", lines));
+        colorsDrawn.put("reason", ink);
+    }
+
+    /** The letter's action tag (the widget "choose"): a vellum tag with the action's label (RecruitPages.Action.label: "Buy 300",
+     *  "Star 2", "Pact", "50 shards"), the coin before a Buy; sepia, and no press, while it cannot be pressed. */
     void paintChoose(DrawContext g, int x, int y, int w, int h, boolean hotIgnored) {
         var font = MinecraftClient.getInstance().textRenderer;
-        int ink = canChoose() ? DarkUi.INK_TEXT : DarkUi.SEPIA;
-        String cost = String.valueOf(RecruitView.chooseCost()), tag = "table/btn-vellum-88x24";
-        var label = heading("Choose");
-        UiTex.draw(g, tag, x, y);
-        UiTex.draw(g, "recruit/coin-m", x + 8, y + 8);
-        g.drawText(font, cost, x + 18, y + 8, ink, false);
-        g.drawText(font, label, x + 40, y + 6, ink, false);
-        if (hot(choose)) underline(g, "choose", x + 40, y + 18, font.getWidth(label), ink);
+        var row = row(RecruitView.roll(house), selected);
+        var a = row == null ? null : RecruitView.action(row.troopId());
+        if (a == null) return;
+        int ink = choose != null && choose.active ? DarkUi.INK_TEXT : DarkUi.SEPIA;
+        String tag = "table/btn-vellum-88x24";
+        var label = heading(a.label());
+        boolean gold = a.command().startsWith("buy:");
+        int lw = font.getWidth(label), span = lw + (gold ? 11 : 0), lx = x + (w - span) / 2 + (gold ? 11 : 0);
+        UiTex.nine(g, tag, x, y, w + 1, h + 2);
+        if (gold) UiTex.draw(g, "recruit/coin-m", lx - 11, y + 8);
+        g.drawText(font, label, lx, y + 6, ink, false);
+        if (hot(choose)) underline(g, "choose", lx, y + 18, lw, ink);
         rectsDrawn.put("choose", new int[]{x, y, w, h});
         texturesDrawn.put("choose", tag);
-        textsDrawn.put("choose-cost", cost);
-        colorsDrawn.put("choose-cost", ink);
+        textsDrawn.put("choose", a.label());
+        textsDrawn.put("choose-command", a.command());
         colorsDrawn.put("choose", ink);
     }
 
@@ -491,15 +591,15 @@ final class WarTableRecruit {
      *  widgets: paintEnlist, paintOdds). */
     void ladder(DrawContext g, int ox, int oy) {
         var font = MinecraftClient.getInstance().textRenderer;
-        int left = RecruitView.newLeft(house), pity = RecruitView.pityLeft(house);
-        if (left > 0) rectsDrawn.put("bundle", UiTex.draw(g, "recruit/letter-bundle", ox + BUNDLE_X, oy + BUNDLE_Y));
+        int pity = RecruitView.pityLeft(house);
+        rectsDrawn.put("bundle", UiTex.draw(g, "recruit/letter-bundle", ox + BUNDLE_X, oy + BUNDLE_Y));
         String gold = String.valueOf(CampaignClient.profile.gold);
         int pw = 34 + font.getWidth(gold), px = ox + AXIS - (pw + 1) / 2, py = oy + PURSE_Y; // the pouch and the sum, centred on the axis
         int[] pouch = UiTex.draw(g, "recruit/pouch", px, py);
         g.drawText(font, gold, px + 34, py + 10, DarkUi.IVORY, true);
         rectsDrawn.put("purse", new int[]{px, py, pw, pouch[3]});
         textsDrawn.put("purse", gold);
-        String rung = pity >= 0 ? UiMath.pityLine(pity) : UiMath.lettersLine(left);
+        String rung = UiMath.pityLine(pity);
         int rungInk = DarkUi.MUTED, rw = font.getWidth(DarkUi.body(rung)), ry = WarTable.compact() ? oy + COMPACT_ODDS_Y + 7 : oy + RUNG_Y;
         int rx = ox + AXIS - 4 - rw; // compact: right of it, Odds on the same row
         if (WarTable.compact()) g.drawText(font, DarkUi.body(rung), rx, ry, rungInk, false);
@@ -532,17 +632,16 @@ final class WarTableRecruit {
         colorsDrawn.put("notice", ink);
     }
 
-    /** Enlist: brass with the Enter key, the word and the cost; iron with "Need" and the cost in alarm while the purse is short;
-     *  iron with "Every troop found" once the House has none left to draw. */
+    /** Enlist: brass with the Enter key, the word and the cost; iron with "Need" and the cost in alarm while the purse is short. */
     void paintEnlist(DrawContext g, int x, int y, int w, int h, boolean hotIgnored) {
         var font = MinecraftClient.getInstance().textRenderer;
-        int left = RecruitView.newLeft(house), cost = RecruitView.cost();
-        boolean found = left <= 0, short_ = !found && CampaignClient.profile.gold < cost;
-        String plate = found || short_ ? "table/btn-iron-240x40" : "table/btn-brass-240x40";
-        String label = found ? "Every troop found" : "Enlist", price = null;
-        int ink = found || short_ ? DarkUi.IVORY : DarkUi.PLATE_INK, priceInk = 0;
+        int cost = RecruitView.cost();
+        boolean short_ = CampaignClient.profile.gold < cost;
+        String plate = short_ ? "table/btn-iron-240x40" : "table/btn-brass-240x40";
+        String label = "Enlist", price = null;
+        int ink = short_ ? DarkUi.IVORY : DarkUi.PLATE_INK, priceInk = 0;
         UiTex.draw(g, plate, x, y);
-        if (!found && !short_) {
+        if (!short_) {
             UiTex.draw(g, "table/key-brass-37", x + 14, y + 13);
             g.drawText(font, "Enter", x + 18, y + 16, DarkUi.KEY_INK, false);
         }
@@ -551,7 +650,7 @@ final class WarTableRecruit {
         if (short_) {
             price = "Need " + cost; priceInk = DarkUi.ALARM_TEXT;
             g.drawText(font, price, x + 224 - font.getWidth(price), y + 16, priceInk, false);
-        } else if (!found) {
+        } else {
             price = String.valueOf(cost); priceInk = DarkUi.PLATE_INK;
             int cx = x + 224 - font.getWidth(price);
             g.drawText(font, price, cx, y + 16, priceInk, false);
@@ -579,17 +678,18 @@ final class WarTableRecruit {
         rectsDrawn.put("odds", new int[]{x, y, w, h});
     }
 
-    /** The Odds note, pinned over the letter: the chance of each troop still to be drawn, the no-duplicates rule, and their names. */
+    /** The Odds note, pinned over the letter: the chance of each rarity in this House's letters (the weights of the sheet), the
+     *  letters left until its Epic is sure, the rule that a troop you own gives a copy toward its next star, and where a Legendary
+     *  comes from. Each rule wraps to the note's width (UiMath.lines), none is cut. */
     void note(DrawContext g, int x, int y) {
         var font = MinecraftClient.getInstance().textRenderer;
         rectsDrawn.put("note", UiTex.draw(g, "recruit/odds-note", x, y));
         g.drawText(font, heading("Odds"), x + 16, y + 12, DarkUi.INK_TEXT, false);
-        List<String> lines = new ArrayList<>(List.of(UiMath.oddsLine(RecruitView.newLeft(house)), NO_DUPLICATES));
-        for (var r : RecruitView.roll(house)) if (!r.owned() && !r.locked() && lines.size() < 2 + NOTE_NAMES) lines.add(r.name());
-        for (int i = 0; i < lines.size(); i++) {
-            String line = UiMath.trim(lines.get(i), NOTE_W, s -> font.getWidth(DarkUi.body(s)));
-            g.drawText(font, DarkUi.body(line), x + 16, y + 36 + 14 * i, DarkUi.INK_TEXT, false);
-            textsDrawn.put("note-" + i, line);
+        List<String> lines = new ArrayList<>();
+        for (String rule : RecruitView.note(house)) lines.addAll(UiMath.lines(rule, NOTE_W, 2, s -> font.getWidth(DarkUi.body(s))));
+        for (int i = 0; i < lines.size() && i < NOTE_LINES; i++) {
+            g.drawText(font, DarkUi.body(lines.get(i)), x + 16, y + 34 + 12 * i, DarkUi.INK_TEXT, false);
+            textsDrawn.put("note-" + i, lines.get(i));
         }
     }
 }
