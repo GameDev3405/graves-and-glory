@@ -5480,6 +5480,8 @@ public final class Phase2Checks implements ClientModInitializer {
             noTarget=true;
         }
         static final float YAW=180;
+        /** The clips of an animation contact sheet (GRAVES_PHASE2_POSES, the property gravesandglory.turnPoses; empty for the usual turnaround). */
+        static final List<String> POSES=Arrays.stream(System.getProperty("gravesandglory.turnPoses","").split(",")).map(String::trim).filter(x->!x.isEmpty()).toList();
         /** The face (TroopFaces) forced on every Turn shot, from GRAVES_PHASE2_FACE (the system property gravesandglory.faceForce); -1 for none: the troop wears the face its UUID gives it. */
         static final int FACE=Integer.getInteger("gravesandglory.faceForce",-1);
         static final int[] ANGLES={0,45,90,135,180,225,270,315};
@@ -5526,6 +5528,16 @@ public final class Phase2Checks implements ClientModInitializer {
                             shots.add(new Shot(k+clip+"-90",t,clip,clip,TroopClips.shotTime("biped",clip),90,null,false,false,tier));
                             shots.add(new Shot(k+clip+"-0",t,clip,clip,TroopClips.shotTime("biped",clip),0,null,false,false,tier));
                         }
+                    }
+                }
+                return;
+            }
+            if(!POSES.isEmpty()){ // GRAVES_PHASE2_POSES: an animation contact sheet, each listed clip at its shot time at 45 and 90 degrees (a bow or a caster shows bow_draw or cast for "attack")
+                for(String t:TROOPS){
+                    var row=ArmyCards.spec(t);boolean bow=row!=null&&TroopAnimator.bow(row),magic=row!=null&&row.magic();
+                    for(String p:POSES){
+                        String clip=p.equals("attack")?(bow?"bow_draw":magic?"cast":"attack"):p;
+                        for(int a:new int[]{45,90})shots.add(new Shot("anim-"+t+"-"+p+"-"+a,t,p,clip,TroopClips.shotTime("biped",clip),a,null,false,false));
                     }
                 }
                 return;
