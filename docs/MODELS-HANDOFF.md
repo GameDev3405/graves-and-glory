@@ -1,10 +1,11 @@
 # House troop models handoff (ic_hearthguard, wm_tusk, tc_tideguard), 2026-10-28
 
-Status: exploration done, no art written yet. Nothing is wired. Branch troop-models-house off phase-1-solo-core.
-Pipeline: sources in art/ (troops/<id>.json, parts/<part>.json, weapons/<id>.bbmodel+.json+.png+_m.png), built by `python tools/build_skins.py` into assets models/troop + textures/entity/troop + index.json; TroopModels loads index.json, TroopRenderers is data-driven (vindicator, drowned, zombified_piglin already covered). No Java change needed.
-Per troop needed: <id>.json (size [128,64], density 3, faces density 2 count 4 + slots), skins _s1/_s2/_s3 (384x192) + _s<n>_r relief + _veteran trim, <id>_faces.png (64x128, four 64x32 patches), new parts, weapon tiers I-III (bbmodel cubes at density 2, texture embedded or .png, _m material map keyed to MATERIALS).
-Specs: docs/superpowers/specs/2026-10-17-unit-identity.md sections Hearthguard (box_helm, braided_beard, slab_pauldrons, scale_coat_skirt, helm_horns s3, idleArms folded, scales body [1.2,.95,1.15] arms [1.1,.9,1.1] legs [1.1,.8,1.1], hearth_axe), Tusk Spear (hunch 20, boar_snout, tusks, leather_cap, hide_mantle, jerkin, tusk_crown s3, boar_spear), Trident Guard (legs [1,1.05,1], finned_cap, coral_pauldrons, scallop_shell, sash, coral_crown s3, coral_trident).
-Palettes: Ironclad soot #34373B brass #7F6232 leather #4B3A2C, copper beard #7A4A2E; Wildmoot russet #7A4127 bark #4A3626 clay #C8B48A; Tidecallers verdigris #4E7A6A barnacle #CFCBBE navy #1E2C44.
-Tools: `build_skins.py --template <troop>` writes work/troops/<troop>_template.png (box face map); `--tiers` lists stopgaps; `--turn <shots> <out>` builds turn sheets.
-Render: GRAVES_ROADMAP_TEST_ROOT=<work dir> GRAVES_PHASE2_CHECKS=turn GRAVES_PHASE2_TURN=ic_hearthguard,wm_tusk,tc_tideguard gradlew runClient -PlocalIntegration -I test-tools/isolated-checks.gradle (only when no Minecraft client runs).
-Left: everything above, then verify.py fast, turn sheets into work/troops/turn, commit.
+Status: built, wired through index.json (data-driven; no Java change), rendered in game. Branch troop-models-house off phase-1-solo-core; local commits only.
+Generator: tools/paint_house_troops.py writes art/parts (14 parts), art/troops (json, _s1-_s3, _veteran, _faces) and art/weapons (hearth_axe, boar_spear, coral_trident, tiers I-III); then `python tools/build_skins.py` and `--verify`.
+Sheets: work/troops/turn/turn-*.png (all three, first pass); work/troops/turn-r1/turn-ic_hearthguard.png (after lightening the helm and pauldrons to mid iron).
+Render: GRAVES_ROADMAP_TEST_ROOT=<new dir> GRAVES_PHASE2_CHECKS=turn GRAVES_PHASE2_TURN=<ids> gradlew runClient -PlocalIntegration -I test-tools/isolated-checks.gradle, only when no other client of Kort's runs.
+Pre-write <root>/run/options.txt with "onboardAccessibility:false\npauseOnLostFocus:false\nguiScale:3\n": Phase2Checks does not dismiss the first-run accessibility screen, and a fresh root stalls on it.
+The first run in a fresh worktree loaded without the main mod (NoClassDefFoundError Veterans$Tally); an identical retry loaded it. The cause is unknown.
+Deviations: chest_panel stands in for the tideguard sash and the hearthguard tabard; no relief (_r) layers; no outer layer. The hearthguard's folded-arm idle hides the axe (the axe and shield show only in attack).
+Unverified: the pennant offsets look right in the turn shots but were not checked against carry or banner code; there are no portrait or face close-up checks and no tier II/III renders (stage 1 only).
+verify.py fast needs pwsh: put a pwsh.exe copy of powershell.exe on PATH (in Git Bash use /c/... form, not C:/...).

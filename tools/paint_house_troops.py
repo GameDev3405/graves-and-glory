@@ -227,7 +227,7 @@ class Packer:
 
 
 def write_json(path, obj):
-    path.write_text(json.dumps(obj, indent=1) + '\n', encoding='utf-8')
+    path.write_text(json.dumps(obj, indent=1) + '\n', encoding='utf-8', newline='\n')
 
 
 def build_sources():
@@ -442,9 +442,9 @@ def hearthguard_mats(stage):
         'arms_folded': m_limb(sleeve, glove, 0.5),
         'right_leg': m_limb(m_cloth(mul(SCORCH, 0.9)), m_plate(SOOT, BRASS if stage == 3 else None), 0.55),
         'left_leg': m_limb(m_cloth(mul(SCORCH, 0.9)), m_plate(SOOT, BRASS if stage == 3 else None), 0.55),
-        'box_helm': m_plate(SOOT, helm_rim, BRASS if stage >= 2 else mul(SOOT, 1.4)),
+        'box_helm': m_plate(hexc('5C6066'), helm_rim, BRASS if stage >= 2 else mul(SOOT, 1.4)),
         'braided_beard': lambda ctx: (noise(ctx, BRASS_HI, 0.03) if ctx.note == 'brass braid ring' else m_hair(COPPER)(ctx)),
-        'slab_pauldrons': m_plate(SOOT, BRASS if stage >= 2 else mul(SOOT, 0.7), BRASS_HI if stage >= 2 else SOOT_HI),
+        'slab_pauldrons': m_plate(hexc('545860'), BRASS if stage >= 2 else mul(SOOT, 0.7), BRASS_HI if stage >= 2 else SOOT_HI),
         'scale_coat_skirt': coat,
         'helm_horns': m_bone(hexc('BDB29A'), hexc('E8E2CF'), 0.4),
     }
@@ -837,7 +837,7 @@ def write_weapon(wid, tier):
     t.update({'name': name, 'uuid': uid(), 'width': 64, 'height': 128, 'uv_width': 64, 'uv_height': 128,
               'source': 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode('ascii')})
     model['textures'] = [t]
-    (folder / (name + '.bbmodel')).write_text(json.dumps(model, indent=1), encoding='utf-8')
+    (folder / (name + '.bbmodel')).write_text(json.dumps(model, indent=1), encoding='utf-8', newline='\n')
     write_json(folder / (name + '.json'), {'weapon': name, 'thickness': thickness,
                                            'grip': {'offset': [0, 0, 0], 'rotation': rotation,
                                                     'note': 'the grip\'s centre is the model origin (the fist covers y -2..+2); ' + grip_note},
