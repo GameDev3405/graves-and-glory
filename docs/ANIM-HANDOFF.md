@@ -14,3 +14,9 @@ Done (only src/main/java/gg/gravesandglory/BipedClips.java changed; client-only,
 Sheets: round 1 (idle, hit, attack) rendered: hit clearly stronger (about 8.5-9), idle fine (about 8, snapshot), knight attack still read as a stiff arm (about 6.5) and mage cast was a T-pose reach (about 6); round 2 (attack only, with the changes above) rendered at scratchpad run-after2 / sheets-after2 but NOT looked at, so knight attack and mage cast scores are unknown.
 Not done: verify.py fast/game (never run), clip-presence check, Phase2Checks lookup updates (may need changes), after-sheets for sentinel/longbow/gl_marshal, charge/march variants, server-timing diff proof (expected: diff only touches BipedClips and test tools). HouseAttacks/TroopTells overrides for biped attack are not affected.
 Sheet commands: scratchpad sheet.sh NAME POSES (six-troop list includes House ids with no model), sheet2.sh for sentinel/longbow/gl_marshal, sheetmk.py RUN OUT POSES.
+
+## Opus pass (2026-10-28, in progress)
+Findings so far (no code change yet beyond Sonnet's WIP):
+- Sonnet's BipedClips attack is not seen by knight/sentinel/gl_marshal: TroopTells.clip prefers HouseAttacks.VARIANTS "gilded" (the stiff level thrust, right_arm -95, wrist 140) for every gilded biped. Fix there or via per-troop OVERRIDES.
+- Self-clipping root cause: sword grips [90,45,90] point the blade up-forward 45 degrees from a hanging hand, so in idle/walk/hit the blade rises past the helmet and crosses the shield/torso in side view; the upright sun_staff (grip 0) tilts through hood and torso as the arm swings in walk/run.
+- Plan: wrist (right_hand) holds in base clips so the blade hangs forward/down and the staff stays upright beside the body, arm roll outward; rewrite gilded cut and cast; geometric clearance check in Phase2Checks (forEachCuboid, as TroopModel.extent does); re-render sheets (scratchpad sheet.sh/sheet2.sh, sheetmk.py).
