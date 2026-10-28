@@ -70,7 +70,7 @@ public final class Phase2Checks implements ClientModInitializer {
     /** The army's troops leave, it takes this banner, and it forms again from it, as at the start of a round. */
     static void field(GravesAndGlory.Battle b,GravesAndGlory.Squad s,List<String> banner){
         for(var u:b.units)if(u.squad==s)u.mob.discard();b.units.removeIf(u->u.squad==s);
-        s.training.clear();s.fullHealth.clear();s.banner=new ArrayList<>(banner);b.reinforce(s);
+        s.training.clear();s.fullHealth.clear();s.fullCount.clear();s.banner=new ArrayList<>(banner);b.reinforce(s);
     }
     /** A banner from a botBanners id, or from "knight*12,archer*8": each part a troop id, ^ or empty, optionally times a count. */
     static List<String> banner(String spec){

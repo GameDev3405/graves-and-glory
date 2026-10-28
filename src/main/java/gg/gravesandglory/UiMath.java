@@ -566,7 +566,7 @@ public final class UiMath {
 
     /** How far a feed line's text runs from x 20 of its leaf: 134 px on Compact's leaf, 140 on the five-entry leaf, 12 px short of
      *  the binding on either. */
-    public static int feedTextW(int size) { return size == HUD_COMPACT ? 134 : 140; }
+    public static int feedTextW(int size) { return size == HUD_COMPACT ? 144 : 148; }
 
     /** A feed row's y in its leaf, row 0 at the top: Compact's leaf rules its entries from y 7, the five-entry leaf from y 9, 12 px
      *  apart on both. */

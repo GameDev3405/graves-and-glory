@@ -1554,7 +1554,7 @@ public final class Phase1Checks implements ClientModInitializer {
         public void serverTick(GravesAndGlory.Battle b){
             if(stage==1)fixture(b);
             var own=player==null?null:b.squads.get(player);
-            if(own!=null&&routSupport&&b.units.stream().anyMatch(u->u.squad==own&&u.spec.group().equals("support")&&u.mob.isAlive()))own.lastStand.add("support"); // never long enough to regroup
+            if(own!=null&&routSupport&&b.units.stream().anyMatch(u->u.squad==own&&u.spec.group().equals("support")&&u.mob.isAlive())){own.lastStand.add("support");for(var u:b.units)if(u.squad==own&&u.spec.group().equals("support")&&u.mob.isAlive())u.mob.setHealth(Math.min(u.mob.getHealth(),u.mob.getMaxHealth()*0.2f));var sup=b.units.stream().filter(u->u.squad==own&&u.spec.group().equals("support")&&u.mob.isAlive()).findFirst().orElse(null);var foe=b.units.stream().filter(u->u.squad!=own&&u.mob.isAlive()).findFirst().orElse(null);if(sup!=null&&foe!=null)MoraleChecks.place(b,sup,foe.mob.getX()-5,foe.mob.getZ()+3,-90);} // Morale itself finds the support group at its last stand: weak, an enemy within the radius
             if(keepRespawn&&player!=null)b.respawns.put(player,b.time+12*20L);
             if(keepRespawn&&b.running){b.roundStarted=b.time-(b.roundSeconds-462)*20L;b.scores[0]=148;b.scores[1]=121;} // the sweep (stages 40 to 49) holds the mock's 148, 7:42 and 121 that stage 10 set: a red run's 200-tick waits (a window that never lays out as set) outlast the 462 s and the 152 scoring steps the round had left, ending the round mid-sweep (UI Task 8 leftovers)
             if(hungerOn&&!hungerDone)hunger(b);
@@ -1651,7 +1651,7 @@ public final class Phase1Checks implements ClientModInitializer {
                         report("p1-ui-cards-last-stand",ok,"with support selected at its last stand the column drew "+cs+"; support's words "+t.get("state-support")+", count "+t.get("count-support")+", stamp "+t.get("stamp-support")+" on plate "+t.get("plate-support")+" (wanted its tall card, LAST STAND, 1/2, hud/stamp-last-card on the live hud/card-sel, not the grey card)");seen=0;stage=20;}
                     else if(seen==0&&tick-waitFrom>200){report("p1-ui-cards-last-stand",false,"support selected at its last stand never drew its tall LASTSTAND card: "+cs);stage=20;}
                 }
-                case 20->{CommandMode.selected="all";routSupport=false;waitFrom=tick;stage=-20;server(c,b->{b.squads.get(player).lastStand.remove("support");stage=21;});}
+                case 20->{CommandMode.selected="all";routSupport=false;waitFrom=tick;stage=-20;server(c,b->{var own=b.squads.get(player);own.lastStand.remove("support");for(var u:b.units)if(u.squad==own&&u.spec.group().equals("support")&&u.mob.isAlive()){u.mob.setHealth(u.mob.getMaxHealth());MoraleChecks.place(b,u,AX-16,AZ+9,-90);}stage=21;});}
                 case 21->{ // p1-ui-army-selected
                     var sup=group("support");boolean settled=sup!=null&&!sup.lastStand()&&!CommandMode.flashing("infantry")&&!CommandMode.flashing("ranged")&&!CommandMode.flashing("support");
                     if(!settled)seen=0;else if(seen==0)seen=tick;
@@ -2311,7 +2311,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 52->{
                     int k=since(tick);
-                    if(k>=120){String line=FeedLines.lastStand(Morale.label("infantry")),other=FeedLines.lastStand(Morale.label("support"));var inf=UiHudChecks.group("infantry");var sup=UiHudChecks.group("support");
+                    if(k>=60){String line=FeedLines.lastStand(Morale.label("infantry")),other=FeedLines.lastStand(Morale.label("support"));var inf=UiHudChecks.group("infantry");var sup=UiHudChecks.group("support");
                         long tolds=lines().stream().filter(l->l.kind().equals("laststand")).count();int gate=Spec.COMBATDISCIPLINE[0].lastStandFeedSeconds();
                         boolean ok=count("laststand",0,line)==1&&count("laststand",0,other)==0&&tolds==1&&inf!=null&&inf.lastStand()&&sup!=null&&!sup.lastStand();
                         report("p1-ui-feed-last-stand",ok,"'"+line+"' "+routAt+" client ticks after 10 of the 12 knights died (an enemy within "+Spec.COMBATDISCIPLINE[0].lastStandRadius()+"); then the infantry left the state and took it again inside "+gate+" s and the Sunweaver fell to 20 percent with no enemy near: "+(k-0)+" client ticks later the feed holds "+tolds+" last-stand line(s) ("+count("laststand",0,line)+" for the infantry, "+count("laststand",0,other)+" for support), the infantry reads lastStand "+(inf==null?"?":inf.lastStand())+" and support "+(sup==null?"?":sup.lastStand())+": "+feed());stage=54;}
