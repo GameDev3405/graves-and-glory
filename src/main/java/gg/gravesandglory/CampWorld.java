@@ -136,6 +136,12 @@ final class CampWorld {
         warTable(w);
         mark(w,hash);
     }
+    /** The builder server: terrain and pieces, once. No people, no war table, no marker; BuildMode keeps its own. */
+    static void buildBare(ServerWorld w){
+        terrain(w);
+        var c=Spec.CAMP[0];
+        for(var row:Spec.CAMPPIECES)Structures.place(w,row.template(),c.originX()+row.dx(),row.y(),c.originZ()+row.dz(),row.rotation());
+    }
     static long millis(long started){return (System.nanoTime()-started)/1000000;}
     static long millis(long from,long to){return (to-from)/1000000;}
 

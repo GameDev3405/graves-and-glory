@@ -60,9 +60,10 @@ public final class GravesAndGlory implements ModInitializer {
         Commander.register();
         // A planted banner block must not outlive the battle in the save.
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {if(battle!=null)Abilities.serverStopping(battle);});
+        if (BuildMode.active()) BuildMode.init();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             // Only the dedicated Graves and Glory save belongs to this mod.
-            if (java.util.Set.of("Graves and Glory", "Bannerbound").contains(server.getSaveProperties().getLevelName())) battle = new Battle(server);
+            if (!BuildMode.active() && java.util.Set.of("Graves and Glory", "Bannerbound").contains(server.getSaveProperties().getLevelName())) battle = new Battle(server);
         });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> battle=null);
         // Old saves decode our vanilla entity types as ordinary hostile mobs.
