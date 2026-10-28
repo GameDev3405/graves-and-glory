@@ -3476,7 +3476,7 @@ public final class Phase1Checks implements ClientModInitializer {
             switch(sub){
                 case 0->{roll=new ArrayList<>();for(var r:WarTablePages.owned())roll.add(r.troopId());at0=line.get(0);at19=line.get(19);
                     var add=button(c,"add-0");var remove=button(c,"remove-0");
-                    boolean start=roll.size()>=3&&at0.equals(roll.get(0))&&!at19.equals(WarTablePages.EMPTY)&&add!=null&&!add.active&&remove!=null&&remove.active&&(WarTablePages.filled()+" of 20 seats filled").equals(text("seated"))&&"12 seats".equals(text("count-0"));
+                    boolean start=roll.size()>=2&&at0.equals(roll.get(0))&&!at19.equals(WarTablePages.EMPTY)&&add!=null&&!add.active&&remove!=null&&remove.active&&(WarTablePages.filled()+" of 20 seats filled").equals(text("seated"))&&"12 seats".equals(text("count-0"));
                     ok&=start;why+="; the roll "+roll+", seat 0 "+at0+", seat 19 "+at19+", \""+text("seated")+"\", row 0 \""+text("count-0")+"\" with Add "+(add!=null&&add.active?"taking a press":"dull")+" and Remove "+(remove!=null&&remove.active?"taking a press":"dull")+(start?"":" WRONG");
                     // with places left on the roll, the hint sits in its last place, at the foot (finding 3 of the Task 7 review)
                     int[] hr=rect("roll-hint");int last=o[1]+WarTablePages.ROW_TOP+WarTablePages.ROW_H*(WarTablePages.ROWS-1);

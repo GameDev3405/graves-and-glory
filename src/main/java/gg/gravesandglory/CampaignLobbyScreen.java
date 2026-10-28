@@ -68,9 +68,9 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
     /** The classes by track (hero, then general, in sheet order), one row of cards each. */
     static List<List<Spec.ClassesRow>> classTracks(){Map<String,List<Spec.ClassesRow>> out=new LinkedHashMap<>();for(var c:Spec.CLASSES)out.computeIfAbsent(c.track(),k->new ArrayList<>()).add(c);return new ArrayList<>(out.values());}
     /** The y of a track's heading; its cards stand 12 below it. */
-    int classRowTop(int row){return 81+row*(classPanelHeight()+17);}
+    int classRowTop(int row){return 81+row*(classPanelHeight()+14);}
     /** The card height: the room between the tab bar and the footer, shared by the track rows and their headings. */
-    int classPanelHeight(){int rows=Math.max(1,classTracks().size());return (height-41-81-5*(rows-1))/rows-12;}
+    int classPanelHeight(){int rows=Math.max(1,classTracks().size());return (height-41-81-2*(rows-1))/rows-12;}
     /** A track heading's note. */
     static String trackNote(String track){return switch(track){case "hero"->"Fights in the front rank";case "general"->"Commands the whole army";default->"";};}
     /** The track headings drawn in the last frame, top to bottom, for the checks. */
@@ -94,11 +94,11 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
             int gw=textRenderer.getWidth(DarkUi.body(group));DarkUi.label(g,group,x+w-10-gw,y+9,selected?DarkUi.GOLD:DarkUi.MUTED);
             String cooldown=c.cooldownTicks()/20+" s cooldown";int cdw=textRenderer.getWidth(DarkUi.body(cooldown));
             DarkUi.label(g,cooldown,x+w-10-cdw,y+23,DarkUi.MUTED);text(g,Commander.activeName(c.active()).toUpperCase(Locale.ROOT),x+10,y+23,room-cdw-6,DarkUi.GOLD);
-            clipped=0;int ty=y+34;var lines=textRenderer.wrapLines(DarkUi.body(c.activeText()),room);
-            for(int i=0;i<lines.size();i++){if(i>=ACTIVE_LINES){clipped++;continue;}g.drawText(textRenderer,lines.get(i),x+10,ty,DarkUi.IVORY,false);ty+=10;}
-            int py=y+34+10*ACTIVE_LINES+2;DarkUi.label(g,"PASSIVE",x+10,py,DarkUi.MUTED);int pw=textRenderer.getWidth(DarkUi.body("PASSIVE"))+6;DarkUi.rule(g,x+10+pw,py+5,room-pw);
-            ty=py+11;lines=textRenderer.wrapLines(DarkUi.body(c.passiveText()),room);
-            for(int i=0;i<lines.size();i++){if(i>=PASSIVE_LINES||ty+9>y+h){clipped++;continue;}g.drawText(textRenderer,lines.get(i),x+10,ty,DarkUi.IVORY,false);ty+=10;}
+            clipped=0;int ty=y+33;var lines=textRenderer.wrapLines(DarkUi.body(c.activeText()),room);
+            for(int i=0;i<lines.size();i++){if(ty+9>y+h){clipped++;continue;}g.drawText(textRenderer,lines.get(i),x+10,ty,DarkUi.IVORY,false);ty+=10;}
+            int py=ty;DarkUi.label(g,"PASSIVE",x+10,py,DarkUi.MUTED);int pw=textRenderer.getWidth(DarkUi.body("PASSIVE"))+6;DarkUi.rule(g,x+10+pw,py+5,room-pw);
+            ty=py+10;lines=textRenderer.wrapLines(DarkUi.body(c.passiveText()),room);
+            for(int i=0;i<lines.size();i++){if(ty+9>y+h){clipped++;continue;}g.drawText(textRenderer,lines.get(i),x+10,ty,DarkUi.IVORY,false);ty+=10;}
         }
     }
     /** An invitation waits for this player: they are not in the lobby yet and the lead's invite has not expired. */

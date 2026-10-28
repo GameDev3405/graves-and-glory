@@ -639,7 +639,7 @@ final class WarTablePages {
         rectsDrawn.put("roll", UiTex.draw(g, "recruit/muster-roll", x, oy + ROLL_Y));
         for (int i = 0; i < roll.size(); i++) if (roll.get(i).troopId().equals(armed)) sel = i;
         if (sel >= 0) rectsDrawn.put("mark", UiTex.draw(g, "recruit/row-mark", x, oy + ROW_TOP + ROW_H * sel));
-        boolean more = RecruitView.roll(Spec.FACTIONS[team()].id()).stream().anyMatch(r -> !r.owned());
+        boolean more = RecruitView.roll(bannerHouse()).stream().anyMatch(r -> !r.owned());
         int places = more ? ROWS : roll.size(); // the House's troops not yet recruited keep their places on the roll, ruled and empty
         for (int i = 1; i < places; i++) if (i != sel) UiTex.draw(g, "recruit/rule-208", x + 16, oy + ROW_TOP + ROW_H * i);
         for (int i = 0; i < roll.size(); i++) rollRow(g, roll.get(i), i, x, oy + ROW_TOP + ROW_H * i);
