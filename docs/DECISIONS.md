@@ -11,3 +11,5 @@ Accepted prior decisions (full context in archived questions): 3 texels/model pi
 Historical evidence copied from local-only ledgers is under archive/local-decisions with original path/hash manifest. These reports preserve decisions and exact historical checks, but their old dispatch/model instructions are superseded and their tests do not certify a new source fingerprint.
 
 Excalibur resource pack (Kort, 2026-10-28): the author, Maffhew, answered "Yes that's ok" in Discord to Kort's request to use it in the modpack (CC BY-NC-ND 3.0; Kort may add paid features later and the author's reply did not address that, so re-ask him before charging). This supersedes the 2026-10-18 no-third-party-resource-packs decision for Excalibur only. Fresh Animations is not wanted; own animations are planned. Credit the author in the pack listing.
+
+Animation approach (Kort, 2026-10-28): hybrid. Code-authored clips for everyday states (mostly built: see docs/ANIMATION-PLAN.md), hand-keyed Blender clips only for signature attacks and the charge. First pass all six classes, core states; formation and charge second; build after SLICE-1 scoping.
