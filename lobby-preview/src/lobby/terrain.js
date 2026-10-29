@@ -38,7 +38,7 @@ export function buildTerrain(ctx) {
   const stone = id('stone'), deep = id('deepslate'), dirt = id('dirt'), grass = id('grass_block'), andesite = id('andesite'), cobble = id('cobblestone'), mossCobble = id('mossy_cobblestone'), snow = id('snow_block'), tuff = id('tuff'), gravel = id('gravel'), moss = id('moss_block'), podzol = id('podzol'), coarse = id('coarse_dirt'), sand = id('sand'), water = id('water'), basalt = id('basalt');
   const H = new Float32Array(176 * 176);
   const hi = (x, z) => (z - WZ0) * SX + (x - WX0);
-  for (let z = WZ0; z <= WZ1; z++) for (let x = WX0; x <= WX1; x++) H[hi(x, z)] = groundHeight(x, z);
+  for (let z = WZ0; z <= WZ1; z++) for (let x = WX0; x <= WX1; x++) { let g = groundHeight(x, z); if (g > 22) g = 22 + (g - 22) * 0.62; H[hi(x, z)] = g; }
   // world edge walls so the border is never visible
   for (let z = WZ0; z <= WZ1; z++) for (let x = WX0; x <= WX1; x++) {
     const e = Math.min(x - WX0, WX1 - x, z - WZ0, WZ1 - z);
@@ -58,7 +58,7 @@ export function buildTerrain(ctx) {
       else if (y < h - 1) b = slope > 1.6 ? stone : dirt;
       else {
         // surface block
-        if (h > 38) b = snow;
+        if (h > 36) b = snow;
         else if (h > 30 && slope > 1.0) b = n > 0.55 ? snow : andesite;
         else if (slope > 3.0) b = n > 0.6 ? andesite : n > 0.4 ? stone : cobble;
         else if (slope > 1.9) b = n > 0.55 ? mossCobble : n > 0.35 ? stone : coarse;

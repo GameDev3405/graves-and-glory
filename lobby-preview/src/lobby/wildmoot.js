@@ -55,8 +55,8 @@ export function buildWildmoot(ctx) {
   P.fill(-5, 0, -4, -5, 0, -7, 'spruce_planks_slab'); for (const z of [-7, -4]) P.set(-5, -1, z, 'spruce_planks'); P.set(-4, 0, -6, 'barrel'); P.set(-5, 1, -6, 'candle');
 
   /* ---- yard dressing ---- */
-  // log palisade along the sides
-  for (const sgn of [-1, 1]) for (let z = -9; z <= 9; z++) { if (Math.abs(z) < 3 && false) continue; const h = 2 + (hash(z, sgn, 3) > 0.5 ? 1 : 0); P.fill(sgn * 10, 0, z, sgn * 10, h, z, 'spruce_log'); if (hash(z, sgn, 9) > 0.7) P.set(sgn * 10, h + 1, z, 'spruce_fence'); }
+  // log palisade along the sides (a gap near the plaza keeps the way to the west stair open)
+  for (const sgn of [-1, 1]) for (let z = -9; z <= 9; z++) { if (sgn === 1 && z >= 6) continue; const h = 2 + (hash(z, sgn, 3) > 0.5 ? 1 : 0); P.fill(sgn * 10, 0, z, sgn * 10, h, z, 'spruce_log'); if (hash(z, sgn, 9) > 0.7) P.set(sgn * 10, h + 1, z, 'spruce_fence'); }
   for (let x = -10; x <= 10; x++) { const h = 2 + (hash(x, 2, 3) > 0.5 ? 1 : 0); P.fill(x, 0, -9, x, h, -9, 'spruce_log'); }
   // kennel with wolves
   P.fill(8, 0, -2, 9, 0, 2, 'spruce_planks'); P.fill(8, 1, -2, 9, 1, -2, 'spruce_fence'); P.fill(8, 1, 2, 9, 1, 2, 'spruce_fence');
@@ -64,12 +64,12 @@ export function buildWildmoot(ctx) {
   // drying racks with hides
   for (const z of [-4, 0]) { P.fill(-9, 0, z, -9, 2, z, 'spruce_fence'); P.fill(-9, 2, z, -9, 2, z + 2, 'spruce_fence'); P.fill(-9, 0, z + 2, -9, 1, z + 2, 'spruce_fence'); bannerAt(ctx, P, -8.6, 2.1, z + 1, 90, { w: 1, h: 1.6, emblem: 'antler', bg: 0x7a5230, trim: 0x4a3020, kind: 'wall' }); }
   // hay bales, stumps, mushrooms
-  for (const [x, z] of [[-8, 5], [-8, 6], [-9, 6], [8, 6], [9, 7], [8, 7]]) P.set(x, 0, z, 'hay_block');
+  for (const [x, z] of [[-8, 5], [-8, 6], [-9, 6], [8, -5], [9, -6], [8, -6]]) P.set(x, 0, z, 'hay_block');
   for (const [x, z] of [[-7, -7], [7, -7], [3, 8], [-3, 9]]) { P.set(x, 0, z, 'dark_oak_log'); }
   for (let i = 0; i < 26; i++) { const x = Math.floor(hash(i, 1, 55) * 20) - 10, z = Math.floor(hash(i, 2, 55) * 19) - 8; const c = hash(i, 3, 5); if (Math.abs(x) < 7 && Math.abs(z) < 9) continue; P.setIfAir(x, 0, z, c < 0.35 ? 'red_mushroom' : c < 0.6 ? 'brown_mushroom' : c < 0.85 ? 'fern' : 'cobweb'); }
   // the woods brought into camp
   for (const [x, z] of [[-9, -7], [-9, 8], [9, -6]]) { const mx = P.mx(x, z), mz = P.mz(x, z); oak(w, mx, 6, mz, 7, 'dark_oak_leaves', 'dark_oak_log', 3); }
-  const sx = P.mx(9, 8), sz = P.mz(9, 8); spruce(w, sx, 6, sz, 10, 3);
+  const sx = P.mx(9, -7), sz = P.mz(9, -7); spruce(w, sx, 6, sz, 10, 3);
   signAt(ctx, P, 0, 4.9, 9.55, 0, { text: 'THE WILDMOOT', sub: 'Hounds · Hunters · Web Stalkers · Tusk Spears · Seers', w: 6.4, h: 1.0, style: 'wood', size: 0.5 });
   signAt(ctx, P, 0, 2.9, -3.4, 0, { text: 'OLD HORN', sub: 'the Antlered Alpha · Legendary', w: 3.4, h: 0.9, style: 'wood' });
   bannerAt(ctx, P, -5, 7.6, 10, 0, { w: 1.3, h: 3.2, emblem: 'antler', bg: 0x7a3426, trim: 0xd89a30, kind: 'wall' });

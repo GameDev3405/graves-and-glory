@@ -62,6 +62,21 @@ function NAVYD() { return C.navyD; }
 mk.ic_ballista = () => { const g = new Figure(1); const e = ballista({ scale: 0.7 }); e.root.position.set(0.25, 0, 0.2); g.root.add(e.root); const c = humanoid({ head: 'human', skin: 0xc8946a, beard: 0x3a2a20, torso: C.soot, legs: 0x3a363e, sleeve: C.soot, accessories: [acc.helm(C.steelD, { nasal: true }), acc.goggles()], armPose: { R: -0.7, L: -0.5 } }); c.root.position.set(-0.55, 0, -0.35); g.root.add(c.root); g.children = [e, c]; g.setLight = (col) => { e.setLight(col); c.setLight(col); }; g.kind = 'crew'; g.crew = c; g.height = 1.9; return g; };
 mk.ic_mortar = () => { const g = new Figure(1); const e = mortar({ scale: 0.8 }); e.root.position.set(0.1, 0, 0.2); g.root.add(e.root); const c = humanoid({ head: 'human', skin: 0xc8946a, beard: 0xb86a30, torso: 0x4a3a30, legs: 0x3a3028, sleeve: 0x4a3a30, accessories: [acc.helm(C.steelD, { horns: true }), acc.apron(C.black), acc.crate()], armPose: { R: -1.0, L: -1.0 } }); c.root.position.set(-0.6, 0, -0.3); g.root.add(c.root); g.children = [e, c]; g.setLight = (col) => { e.setLight(col); c.setLight(col); }; g.kind = 'crew'; g.crew = c; g.height = 1.9; return g; };
 
+const folk = {
+  recruit: () => humanoid({ head: 'human', hair: 0x6a4a30, torso: C.steelD, legs: 0x4a3a2a, tabard: NAVY, sleeve: C.steelD, accessories: [acc.sword(0xa88a5a, C.brownD, 13), acc.shield(0x6a4a2a, 0x3a2a1a, { h: 11, w: 8 })], armPose: { R: -0.6, L: -0.2 } }),
+  recruit2: () => humanoid({ head: 'human', hair: 0x2a2a2a, skin: 0xb88858, torso: 0x6a5a48, legs: 0x4a4a52, tabard: NAVY, sleeve: 0x6a5a48, accessories: [acc.sword(0xa88a5a, C.brownD, 13), acc.helm(C.steelD, { nasal: true })], armPose: { R: -0.6, L: -0.2 } }),
+  archerRecruit: () => humanoid({ head: 'human', hair: 0x8a5a2a, torso: 0x5a6a3a, legs: 0x4a3a2a, sleeve: 0x5a6a3a, accessories: [acc.bow(24), acc.quiver(), acc.hat(0x5a6a3a)], armPose: { R: -1.4, L: -1.5 } }),
+  smith: () => humanoid({ head: 'human', hair: 0x3a2a1a, beard: 0x3a2a1a, bulk: 1.12, torso: 0x6a4a30, legs: 0x3a3028, sleeve: 0x6a4a30, accessories: [acc.apron(C.black), acc.hammer(C.steelD, 18)], armPose: { R: -0.5, L: -0.3 } }),
+  cook: () => humanoid({ head: 'human', hair: 0xcfcfcf, torso: 0xb8a88a, legs: 0x4a3a2a, sleeve: 0xb8a88a, accessories: [acc.apron(C.white), acc.hat(C.white, { tall: true }), acc.staff('orb', 0xe8c070, 18, 0x6a4a28)], armPose: { R: -0.9, L: -0.2 } }),
+  courier: () => humanoid({ head: 'human', hair: 0x5a3a2a, torso: NAVY, legs: 0x3a3a48, sleeve: NAVY, accessories: [acc.backpack(0x6a4a2a), acc.scroll(), acc.hat(NAVY, { feather: C.gold })], armPose: { R: -0.6, L: -0.2 } }),
+  guardG: () => humanoid({ head: 'human', torso: C.steel, legs: C.steelD, tabard: C.white, emblem: C.gold, sleeve: C.steelD, pauldrons: C.steelL, greaves: C.steelL, accessories: [acc.helm(C.steelL, { crest: C.gold, nasal: true }), acc.spear(40), acc.shield(C.white, C.gold, { kite: true })], armPose: { R: -0.35, L: -0.15 } }),
+  guardH: () => humanoid({ head: 'human', hair: 0x3a2a1a, torso: C.steelD, legs: 0x3a3a48, tabard: NAVY, emblem: C.gold, sleeve: C.steelD, pauldrons: C.steelD, accessories: [acc.helm(C.steelD, { nasal: true, plume: NAVY }), acc.spear(40)], armPose: { R: -0.35, L: -0.15 } }),
+  folk1: () => humanoid({ head: 'human', hair: 0x6a4a2a, torso: 0x8a3a30, legs: 0x4a3a2a, sleeve: 0x8a3a30, armPose: { R: 0.1, L: 0.1 } }),
+  folk2: () => humanoid({ head: 'human', hair: 0xd8c080, skin: 0xe0b890, torso: 0x3a5a7a, legs: 0x3a3a3a, sleeve: 0x3a5a7a, accessories: [acc.backpack(0x5a4028)], armPose: { R: 0.1, L: 0.1 } }),
+  folk3: () => humanoid({ head: 'villager', torso: 0x6a8a4a, legs: 0x4a3a28, sleeve: 0x6a8a4a, accessories: [acc.hat(0x8a6a3c)], armPose: { R: 0.1, L: 0.1 } }),
+  folk4: () => humanoid({ head: 'human', hair: 0x1a1a1a, skin: 0xa87858, torso: 0xd8b04a, legs: 0x5a2a2a, sleeve: 0xd8b04a, accessories: [acc.scroll()], armPose: { R: -0.7, L: 0.1 } }),
+};
+export function makeFolk(id) { const f = folk[id]; if (!f) throw new Error('no folk ' + id); return f(); }
 export function makeFigure(id) { const f = mk[id]; if (!f) throw new Error('no figure ' + id); return f(); }
 
 // armour-stand style mannequins for the Armory (House sets)

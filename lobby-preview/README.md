@@ -17,6 +17,20 @@ Then open <http://localhost:8080>. (Windows: double-click `start.bat`.) Chrome, 
 Three.js is vendored in `vendor/`, so it works offline. The page loads the game's fonts from Google Fonts when online and
 falls back to Georgia / system fonts when not.
 
+
+## A look before you run it
+
+| | |
+|---|---|
+| ![Spawn court](previews/01-spawn-court.jpg) **Spawn court:** the Hollow Seal, bunting, the stair and the standard | ![Camp from the southwest](previews/02-camp-from-the-southwest.jpg) **The whole camp** from the southwest |
+| ![House Ring](previews/03-house-ring.jpg) **House Ring:** five-House mosaic and the Muster Standard | ![Ironclad Hold](previews/04-ironclad-hold.jpg) **Ironclad Hold:** brass-and-soot forge gate |
+| ![Gilded Oathhall](previews/05-gilded-oathhall.jpg) **Gilded Oathhall** | ![Tidepost](previews/06-tidecallers-tidepost.jpg) **Tidecallers' Tidepost** |
+| ![Barrow Shrine](previews/07-graveborn-barrow-shrine.jpg) **Graveborn Barrow Shrine** | ![Command Pavilion](previews/08-command-pavilion.jpg) **Command Pavilion** and the war table |
+| ![War Gates](previews/09-war-gates.jpg) **War Gates** (Dawn teal, Dusk violet) | ![Companions' Fire](previews/10-companions-fire.jpg) **The Companions' Fire** |
+| ![Blueprint](previews/11-blueprint-map.jpg) **Blueprint map** (Tab) | ![Dialogue](previews/12-talk-to-pell.jpg) **Talk to the keepers** (E) |
+
+![Tour and builder notes](previews/13-tour-and-builder-notes.jpg)
+
 ## What you can do
 
 | Key | Action |

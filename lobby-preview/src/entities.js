@@ -1,6 +1,6 @@
 // Turns the build registries (signs, banners, figures, props) into live THREE objects, animates them and answers "what am I looking at".
 import * as THREE from '../vendor/three.module.min.js';
-import { makeFigure, mannequin } from './catalog.js';
+import { makeFigure, makeFolk, mannequin } from './catalog.js';
 import { quadruped, ballista, mortar, bookModel, hornModel, C as FC } from './figures.js';
 import { TROOPS, RARITY, HOUSE_NAMES, NPCS, CLASSES } from './data.js';
 
@@ -112,6 +112,8 @@ export class Entities {
     for (const t of ctx.troops) this.addTroop(t);
     for (const n of ctx.npcs) this.addNpc(n);
     for (const p of ctx.props) this.addProp(p);
+    this.folk = []; for (const f of ctx.ambient) this.addFolk(f);
+    this.bunting = []; for (const b of ctx.bunting) this.addBunting(b);
     env.onChange.push(() => this.relight());
     this.relight();
   }
@@ -200,9 +202,72 @@ export class Entities {
     this.figures.push(ent);
   }
 
+  addFolk(a) {
+    const fig = makeFolk(a.id); const rot = deg(a.yaw) + Math.PI;
+    fig.root.position.set(a.x, a.y, a.z); fig.root.rotation.y = rot; this.group.add(fig.root);
+    this.addLit((c) => fig.setLight(c), [a.x, a.y + 1, a.z]);
+    const f = { fig, a, path: a.path, i: 1, dir: 1, speed: a.speed ?? 1.35, ph: a.ph ?? Math.random() * 9, yawCur: rot, x: a.x, z: a.z, wait: 0, anim: a.anim || 'stand' };
+    if (a.path && a.path.length > 1) { fig.root.position.set(a.path[0][0], a.y, a.path[0][1]); f.x = a.path[0][0]; f.z = a.path[0][1]; }
+    this.folk.push(f);
+  }
+  addBunting(b) {
+    const n = b.n ?? 12, cols = b.colors ?? [0xe9ecec, 0x5a7a3a, 0xc4552e, 0x3a3640, 0x3fa58c, 0x2a3f9c, 0xe6bd48];
+    const pos = new Float32Array(n * 9), col = new Float32Array(n * 9);
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    for (let k = 0; k < n; k++) { const c = new THREE.Color(cols[k % cols.length]); for (let v = 0; v < 3; v++) { col[k * 9 + v * 3] = c.r; col[k * 9 + v * 3 + 1] = c.g; col[k * 9 + v * 3 + 2] = c.b * 1; } }
+    const mat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(geo, mat); mesh.frustumCulled = false; this.group.add(mesh);
+    const ropeGeo = new THREE.BufferGeometry(); const rp = new Float32Array((n * 2 + 1) * 3 * 2); ropeGeo.setAttribute('position', new THREE.BufferAttribute(rp, 3));
+    const rope = new THREE.LineSegments(ropeGeo, new THREE.LineBasicMaterial({ color: 0x2a1c10 })); rope.frustumCulled = false; this.group.add(rope);
+    const o = { b, n, pos, geo, rp, ropeGeo, mat, ph: Math.random() * 9 };
+    this.bunting.push(o); this.addLit((c) => mat.color.copy(c).multiplyScalar(1.15), [(b.a[0] + b.to[0]) / 2, b.a[1], (b.a[2] + b.to[2]) / 2]);
+    this.updateBunting(o, 0);
+  }
+  updateBunting(o, t) {
+    const { b, n, pos, rp } = o, A = b.a, B = b.to, sag = b.sag ?? 1.4, len = b.len ?? 0.9;
+    const pt = (u) => [A[0] + (B[0] - A[0]) * u, A[1] + (B[1] - A[1]) * u - sag * 4 * u * (1 - u), A[2] + (B[2] - A[2]) * u];
+    const dx = B[0] - A[0], dz = B[2] - A[2], L = Math.hypot(dx, dz) || 1, hw = (0.42 * 1) / L;
+    for (let k = 0; k < n; k++) {
+      const u = (k + 0.5) / n, p0 = pt(u - hw), p1 = pt(u + hw), pm = pt(u);
+      const sw = Math.sin(t * 2.2 + o.ph + k * 0.9) * 0.18;
+      pos.set([p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], pm[0] - dz / L * sw, pm[1] - len, pm[2] + dx / L * sw], k * 9);
+    }
+    const seg = n * 2; let q = 0;
+    for (let k = 0; k < seg; k++) { const a = pt(k / seg), c = pt((k + 1) / seg); rp.set([a[0], a[1] + 0.02, a[2], c[0], c[1] + 0.02, c[2]], q); q += 6; }
+    o.geo.attributes.position.needsUpdate = true; o.ropeGeo.attributes.position.needsUpdate = true; o.ropeGeo.setDrawRange(0, seg * 2);
+  }
+  animFolk(f, t, dt, camPos) {
+    const fig = f.fig, P = fig.parts, ap = fig.armPose || {};
+    const dxc = camPos.x - f.x, dzc = camPos.z - f.z; if (dxc * dxc + dzc * dzc > 80 * 80) return;
+    let moving = false;
+    if (f.anim === 'walk' && f.path) {
+      const tgt = f.path[f.i], dx = tgt[0] - f.x, dz = tgt[1] - f.z, d = Math.hypot(dx, dz);
+      if (f.wait > 0) f.wait -= dt;
+      else if (d < 0.15) { f.i += f.dir; if (f.i >= f.path.length || f.i < 0) { f.dir *= -1; f.i += 2 * f.dir; f.wait = 1.2 + Math.random() * 2; } }
+      else { const st = Math.min(d, f.speed * dt); f.x += dx / d * st; f.z += dz / d * st; moving = true; const want = Math.atan2(dx, dz); let dd = Math.atan2(Math.sin(want - f.yawCur), Math.cos(want - f.yawCur)); f.yawCur += dd * Math.min(1, dt * 6); fig.root.rotation.y = f.yawCur; fig.root.position.x = f.x; fig.root.position.z = f.z; }
+    }
+    if (moving) {
+      f.ph += dt * f.speed * 4.6; const s = Math.sin(f.ph);
+      P.legR.rotation.x = s * 0.7; P.legL.rotation.x = -s * 0.7; P.armR.rotation.x = (ap.R ?? 0) * 0.4 - s * 0.55; P.armL.rotation.x = (ap.L ?? 0) * 0.4 + s * 0.55; fig.root.position.y = f.a.y + Math.abs(s) * 0.035; P.body.rotation.x = 0.04;
+    } else {
+      P.legR.rotation.x *= 0.85; P.legL.rotation.x *= 0.85;
+      switch (f.anim) {
+        case 'swing': { const c = (t * 1.3 + f.ph) % 3; const sw = c < 1 ? Math.sin(c * Math.PI) : 0; P.armR.rotation.x = -0.4 - sw * 1.5; P.armL.rotation.x = -0.3 + sw * 0.4; P.body.rotation.y = sw * -0.35; P.legR.rotation.x = sw * 0.3; break; }
+        case 'shoot': { const c = (t * 0.35 + f.ph) % 1; const pull = c < 0.7 ? c / 0.7 : 0; P.armL.rotation.x = -1.5; P.armR.rotation.x = -1.5 + pull * 0.15; P.armR.rotation.y = -pull * 0.8; P.body.rotation.y = 0; if (c > 0.7) P.armR.rotation.y = 0.2; break; }
+        case 'hammer': { const s = Math.sin(t * 5 + f.ph); P.armR.rotation.x = -0.9 - Math.max(0, s) * 0.9; P.armL.rotation.x = -0.4; P.body.rotation.x = Math.max(0, -s) * 0.12; break; }
+        case 'stir': { P.armR.rotation.x = -1.1 + Math.sin(t * 1.7 + f.ph) * 0.12; P.armR.rotation.z = Math.cos(t * 1.7 + f.ph) * 0.25; P.armL.rotation.x = -0.3; break; }
+        default: P.armR.rotation.x = (ap.R ?? 0) + Math.sin(t * 1.4 + f.ph) * 0.03; P.armL.rotation.x = (ap.L ?? 0) + Math.cos(t * 1.3 + f.ph) * 0.03; P.body.rotation.x = 0; fig.root.position.y = f.a.y;
+      }
+    }
+    P.body.scale.y = 1 + Math.sin(t * 1.6 + f.ph) * 0.01;
+    if (P.head && f.anim !== 'shoot') { const dx = camPos.x - f.x, dz = camPos.z - f.z; let tgt = 0; if (dx * dx + dz * dz < 64) { const w2 = Math.atan2(dx, dz) - fig.root.rotation.y; tgt = Math.max(-0.9, Math.min(0.9, Math.atan2(Math.sin(w2), Math.cos(w2)))); } P.head.rotation.y += (tgt - P.head.rotation.y) * 0.08; }
+  }
+
   /* ---------------- animation ---------------- */
   update(t, dt, camPos) {
     const cx = camPos.x, cz = camPos.z;
+    for (const f of this.folk) this.animFolk(f, t, dt, camPos);
+    for (const o of this.bunting) this.updateBunting(o, t);
     for (const b of this.banners) {
       const arr = b.geo.attributes.position.array, base = b.base, n = arr.length / 3;
       for (let i = 0; i < n; i++) {

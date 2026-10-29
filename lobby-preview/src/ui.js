@@ -55,7 +55,7 @@ export class UI {
     for (const k of PRESET_ORDER) { const b = el('button', k === this.app.env.name ? 'on' : '', PRESETS[k].label); b.dataset.t = k; b.onclick = () => { this.app.setTime(k); [...t.children].forEach((c) => c.classList.toggle('on', c === b)); }; t.appendChild(b); }
     $('#enter').onclick = () => this.enter();
   }
-  enter() { $('#intro').classList.add('hidden'); $('#hud').classList.remove('hidden'); this.app.requestLock(); this.setPaused(false); }
+  enter() { $('#intro').classList.add('hidden'); $('#hud').classList.remove('hidden'); this.app.requestLock(); this.setPaused(false); try { this.app.audio.start(); this.soundBtn && (this.soundBtn.classList.add('on'), this.soundBtn.textContent = 'On'); } catch (e) { /* no audio */ } }
   buildSettings() {
     const A = this.app, root = $('#tab-settings'); root.innerHTML = ''; const box = el('div', 'set'); root.appendChild(box);
     const row = (label, ctrl) => { const r = el('div', 'row'); r.appendChild(el('label', '', label)); r.appendChild(ctrl); box.appendChild(r); return r; };
@@ -66,6 +66,8 @@ export class UI {
     row('Mouse sensitivity', slider(0.0008, 0.005, 0.0001, 0.0022, (v) => { A.player.sens = v; }));
     row('Render distance fog', slider(0, 0.012, 0.0005, 0.0048, (v) => { A.env.uniforms.uFogD.value = v; }));
     const tog = (label, init, f) => { const b = el('button', init ? 'on' : '', init ? 'On' : 'Off'); b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); b.textContent = on ? 'On' : 'Off'; f(on); }; row(label, b); return b; };
+    this.soundBtn = tog('Ambient sound (K)', false, (v) => { v ? A.audio.start() : A.audio.stop(); });
+    row('Sound volume', slider(0, 1, 0.05, 0.5, (v) => A.audio.setVolume(v)));
     tog('Name labels', true, (v) => { A.entities.labelsOn = v; });
     tog('Head bob', true, (v) => { A.player.enableBob = v; });
     tog('Bright (builder lighting)', false, (v) => A.setBright(v));
@@ -75,7 +77,7 @@ export class UI {
   }
   buildHelp() {
     const g = el('div', 'helpgrid');
-    const items = [['W A S D / arrows', 'Walk'], ['Shift', 'Sprint'], ['Space', 'Jump · double-tap to toggle flight'], ['C / Ctrl', 'Crouch · fly down'], ['E', 'Talk to the NPC or inspect the troop you are looking at'], ['Click', 'Copy the coordinates of the block under the crosshair'], ['Tab / M', 'Blueprint map (top-down, with grid and zones)'], ['Esc', 'Tour and builder\'s notes'], ['1–9, 0', 'Jump to a tour stop (Seal, Stair, Ring, Gilded, Wildmoot, Ironclad, Tide, Graveborn, Command, Gates)'], ['T', 'Cycle time of day (dusk, golden hour, night, dawn, noon)'], ['B', 'Bright mode — flat lighting, handy for counting blocks'], ['U', 'Cycle troop display state: mixed / all unlocked / all locked'], ['L', 'Toggle name labels'], ['F', 'Toggle flight'], ['H', 'Hide / show the HUD'], ['P', 'Save a screenshot']];
+    const items = [['W A S D / arrows', 'Walk'], ['Shift', 'Sprint'], ['Space', 'Jump · double-tap to toggle flight'], ['C / Ctrl', 'Crouch · fly down'], ['E', 'Talk to the NPC or inspect the troop you are looking at'], ['Click', 'Copy the coordinates of the block under the crosshair'], ['Tab / M', 'Blueprint map (top-down, with grid and zones)'], ['Esc', 'Tour and builder\'s notes'], ['1–9, 0', 'Jump to a tour stop (Seal, Stair, Ring, Gilded, Wildmoot, Ironclad, Tide, Graveborn, Command, Gates)'], ['T', 'Cycle time of day (dusk, golden hour, night, dawn, noon)'], ['B', 'Bright mode — flat lighting, handy for counting blocks'], ['U', 'Cycle troop display state: mixed / all unlocked / all locked'], ['L', 'Toggle name labels'], ['K', 'Ambient sound on / off (wind, fires, footsteps, a distant war horn)'], ['F', 'Toggle flight'], ['H', 'Hide / show the HUD'], ['P', 'Save a screenshot']];
     for (const [k, v] of items) g.appendChild(el('div', '', `<kbd>${k}</kbd> ${v}`));
     $('#tab-help').appendChild(g);
   }
@@ -135,6 +137,7 @@ export class UI {
         case 'KeyB': A.setBright(!(A.env.uniforms.uBright.value > 0)); this.toast(A.env.uniforms.uBright.value > 0 ? 'Bright mode on' : 'Bright mode off'); break;
         case 'KeyU': { const m = ['mixed', 'all', 'locked']; A.entities.setUnlockMode(m[(m.indexOf(A.entities.unlockMode) + 1) % 3]); this.toast('Troop displays: ' + A.entities.unlockMode); break; }
         case 'KeyL': A.entities.labelsOn = !A.entities.labelsOn; break;
+        case 'KeyK': { const on = !A.audio.on; on ? A.audio.start() : A.audio.stop(); this.soundBtn && (this.soundBtn.classList.toggle('on', on), this.soundBtn.textContent = on ? 'On' : 'Off'); this.toast('Ambient sound ' + (on ? 'on' : 'off')); break; }
         case 'KeyF': A.player.flying = !A.player.flying; A.player.vel.y = 0; this.toast(A.player.flying ? 'Flying' : 'Walking'); break;
         case 'KeyH': this.hidden = !this.hidden; $('#hud').style.opacity = this.hidden ? 0 : 1; break;
         case 'KeyP': A.screenshot(); break;

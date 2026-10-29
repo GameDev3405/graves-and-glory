@@ -42,21 +42,19 @@ export function buildCommand(ctx) {
     const F = sgn > 0 ? 'E' : 'W';
     for (let k = 1; k <= 10; k++) {
       const yk = k - 11;                      // local y of this step's block
-      const xf = 12 + 2 * (k - 1), xb = xf + 1;
+      const xf = 14 + 2 * (k - 1), xb = xf + 1;
       for (let z = -36; z <= -34; z++) {
         P.fill(sgn * xf, -10, z, sgn * xf, yk - 1, z, 'stone_bricks'); P.fill(sgn * xb, -10, z, sgn * xb, yk, z, 'stone_bricks');
         P.set(sgn * xf, yk, z, ((z === -35) ? 'polished_andesite_stairs' : 'stone_bricks_stairs') + '@' + F);
         if (z === -35) P.set(sgn * xb, yk, z, 'polished_andesite');
       }
-      // rail on the plaza side
-      P.set(sgn * xb, yk + 1, -33, 'stone_bricks_wall'); P.set(sgn * xf, yk + 1 - 0, -33, hash(k, 1, 1) > 2 ? 'air' : 'stone_bricks_wall');
-      if (k % 2 === 0) P.set(sgn * xb, yk + 2, -33, 'lantern');
+      // rail on the plaza side (open at the foot so the stair can be entered from the plaza)
+      if (k >= 2) { P.set(sgn * xb, yk + 1, -33, 'stone_bricks_wall'); P.set(sgn * xf, yk + 1, -33, 'stone_bricks_wall'); if (k % 2 === 0) P.set(sgn * xb, yk + 2, -33, 'lantern'); }
     }
     // landing
-    for (let x = 32; x <= 36; x++) for (let z = -36; z <= -34; z++) { P.fill(sgn * x, -10, z, sgn * x, -1, z, 'stone_bricks'); }
-    for (let x = 32; x <= 36; x++) P.set(sgn * x, 0, -33, 'stone_bricks_wall');
-    for (let z = -36; z <= -34; z++) P.set(sgn * 37, -1, z, 'stone_bricks');
-    bigBrazier(P, sgn * 34, 0, -35, false);
+    for (let x = 34; x <= 38; x++) for (let z = -36; z <= -34; z++) { P.fill(sgn * x, -10, z, sgn * x, -1, z, 'stone_bricks'); }
+    for (let x = 34; x <= 38; x++) P.set(sgn * x, 0, -33, 'stone_bricks_wall');
+    bigBrazier(P, sgn * 36, 0, -35, false);
   }
 
   /* ---- the great Hollow Standard at the front edge ---- */
@@ -65,7 +63,7 @@ export function buildCommand(ctx) {
   P.set(0, 31, -39, 'gold_block'); P.set(0, 32, -39, 'lantern'); for (let i = 0; i < 4; i++) { P.set(i % 2 ? 1 : -1, 29 - i, -39, 'air'); }
   // cross arm
   P.fill(-3, 28, -39, 3, 28, -39, 'dark_oak_fence');
-  bannerAt(ctx, P, 0.5, 28, -38.4, 0, { w: 5.2, h: 11, emblem: 'hollow', bg: 0x1d2a5c, trim: 0xc9a24a, kind: 'standard' });
+  bannerAt(ctx, P, 0.5, 28, -38.4, 0, { w: 7.2, h: 14, emblem: 'hollow', bg: 0x1d2a5c, trim: 0xc9a24a, kind: 'standard' });
   signAt(ctx, P, 0, 1.4, -37.4, 0, { text: 'THE HOLLOW STANDARD', sub: 'carried by the Hollow, borne by you', w: 3.6, h: 0.9, style: 'gold' });
   ctx.markers.push({ x: 0, z: -39, label: 'Hollow Standard', kind: 'landmark' });
 
@@ -127,6 +125,10 @@ export function buildCommand(ctx) {
   for (const x of [-10, 10]) for (const z of [TZ - 5, TZ + 5]) { bigBrazier(P, x, 0, z, false); }
   for (const x of [-5, 5]) for (const z of [TZ - 4, TZ + 3]) { P.set(x, 11, z, 'chain'); P.set(x, 10, z, 'chain'); P.set(x, 9, z, 'lantern~'); }
   for (const x of [-9, 9]) for (const z of [TZ - 7, TZ + 2]) bannerAt(ctx, P, x, 5, z, x > 0 ? -90 : 90, { w: 1, h: 1.4, emblem: 'map', bg: 0xe2d3a4, trim: 0x5c4a32, kind: 'wall' });
+  // a row of ridge lanterns and wall lamps so the tent glows from inside
+  for (let z = TZ - 8; z <= TZ + 8; z += 3) { P.set(0, 10, z, 'chain'); P.set(0, 9, z, 'chain'); P.set(0, 8, z, 'lantern~'); }
+  for (const sgn of [-1, 1]) for (const z of [TZ - 9, TZ - 3, TZ + 3, TZ + 9]) { P.set(sgn * 13, 3, z, 'lantern'); P.set(sgn * 13, 0, z, 'candle'); }
+  for (const x of [-6, 6]) for (const z of [TTZ - 5, TTZ + 5]) P.set(x, 1, z, 'candle');
   // the company standard behind the table
   P.fill(0, 0, TZ - 8, 0, 8, TZ - 8, 'stripped_dark_oak_log'); P.set(0, 9, TZ - 8, 'gold_block');
   bannerAt(ctx, P, 0.5, 8.5, TZ - 7.4, 0, { w: 2.2, h: 5.6, emblem: 'hollow', bg: 0x1d2a5c, trim: 0xc9a24a, kind: 'standard' });

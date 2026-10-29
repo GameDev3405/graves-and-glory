@@ -14,6 +14,10 @@ export function buildYard(ctx) {
   for (let x = -13; x <= 13; x++) for (const z of [-11]) { const h = 2 + (hash(x, z, 4) > 0.5 ? 1 : 0); P.fill(x, 0, z, x, h, z, 'spruce_log'); }
   for (let z = -11; z <= 11; z++) for (const x of [-13, 13]) { const h = 2 + (hash(x, z, 5) > 0.5 ? 1 : 0); P.fill(x, 0, z, x, h, z, 'spruce_log'); if (hash(x, z, 6) > 0.8) P.set(x, h + 1, z, 'spruce_fence'); }
   for (let x = -13; x <= 13; x++) { if (Math.abs(x) <= 3) continue; P.fill(x, 0, 11, x, 2, 11, 'spruce_log'); }
+  // palisade lamps so the yard is usable after dusk
+  for (let x = -12; x <= 12; x += 6) { P.fill(x, 0, -10, x, 3, -10, 'spruce_fence'); P.set(x, 4, -10, 'lantern'); }
+  for (const sgn of [-1, 1]) for (let z = -8; z <= 8; z += 8) { P.fill(sgn * 12, 0, z, sgn * 12, 3, z, 'spruce_fence'); P.set(sgn * 12, 4, z, 'lantern'); }
+  for (const [x, z] of [[-4, -1], [4, 6], [-6, 6], [8, -3]]) { P.fill(x, 0, z, x, 3, z, 'spruce_fence'); P.set(x, 4, z, 'lantern'); }
   // START gate at the front (local +z)
   for (const x of [-3, 3]) { P.fill(x, 0, 11, x, 6, 11, 'stripped_spruce_log'); P.set(x, 7, 11, 'lantern'); P.set(x, 5, 11, 'orange_terracotta'); P.set(x, 2, 11, 'orange_terracotta'); }
   P.fill(-3, 6, 11, 3, 6, 11, 'spruce_planks'); P.fill(-2, 7, 11, 2, 7, 11, 'spruce_planks_slab');

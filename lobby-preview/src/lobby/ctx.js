@@ -12,6 +12,8 @@ export class Ctx {
     this.banners = [];     // cloth that waves
     this.emitters = [];    // particles: smoke, embers, soul wisps, fireflies ...
     this.markers = [];     // points of interest for the blueprint map
+    this.ambient = [];     // unnamed camp folk that walk or work
+    this.bunting = [];     // strings of little pennants
     this.reserved = new Uint8Array(SX * SZ);   // columns that trees/props must leave alone
     this.heights = new Int16Array(SX * SZ);    // terrain surface height per column (first air y)
   }
@@ -29,6 +31,7 @@ export class Ctx {
   npc(n) { this.npcs.push(n); }
   troop(t) { this.troops.push(t); }
   prop(p) { this.props.push(p); }
+  folk(f) { this.ambient.push(f); }
 }
 
 /* ---------- noise ---------- */

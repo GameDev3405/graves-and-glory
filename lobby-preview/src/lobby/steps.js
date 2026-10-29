@@ -8,6 +8,7 @@ import { buildCommand } from './command.js';
 import { buildArmory, buildMuster, buildArchive } from './services.js';
 import { buildYard, buildGates } from './gates.js';
 import { buildValley } from './dress.js';
+import { buildLife } from './life.js';
 export const STEPS = [
   ['Building the court and the Founders\' Stair', buildCourt],
   ['Forging the Ironclad Hold', buildIronclad],
@@ -22,4 +23,5 @@ export const STEPS = [
   ['Marking out the Training Yard', buildYard],
   ['Raising the War Gates', buildGates],
   ['Planting the woods and laying the road', buildValley],
+  ['Bringing the camp to life', buildLife],
 ];

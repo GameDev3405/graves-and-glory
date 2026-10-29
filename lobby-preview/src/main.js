@@ -9,10 +9,14 @@ import { Entities } from './entities.js';
 import { Particles } from './particles.js';
 import { UI } from './ui.js';
 import { NPCS } from './data.js';
+import { Ambience } from './audio.js';
+import { BLOCKS } from './blocks.js';
 
 const $ = (s) => document.querySelector(s);
 const canvas = $('#c');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: false });
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: false }); }
+catch (e) { document.getElementById('lmsg').textContent = 'This preview needs a browser with WebGL2 (current Chrome, Edge, Firefox or Safari).'; throw e; }
 renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.6));
 const scene = new THREE.Scene();
@@ -21,7 +25,7 @@ let particles = null;
 function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); if (particles) particles.setScale(renderer.domElement.height * 0.5 / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 0.5); }
 addEventListener('resize', resize); resize();
 
-const L = window.__lobby = { THREE, scene, camera, renderer, canvas, ready: false, locked: false, NPCS };
+const L = window.__lobby = { THREE, scene, camera, renderer, canvas, ready: false, locked: false, NPCS, BLOCKS };
 const setProgress = (msg, f) => { $('#lmsg').textContent = msg; if (f !== undefined) $('#lbar').style.width = (f * 100) + '%'; };
 const tick = () => new Promise((r) => setTimeout(r, 12));
 
@@ -40,6 +44,7 @@ const tick = () => new Promise((r) => setTimeout(r, 12));
   setProgress('Laying the blocks', 0.72); await tick();
   const meshes = buildMeshes(ctx.w, atlas.rows, env.materials); scene.add(meshes);
   setProgress('Raising banners, signs and soldiers', 0.88); await tick();
+  try { await Promise.race([Promise.all([document.fonts.load('bold 40px Marcellus'), document.fonts.load('600 20px Lato'), document.fonts.load('20px Lato')]), new Promise((r) => setTimeout(r, 2500))]); } catch (e) { /* offline: system fonts */ }
   const entities = new Entities(ctx, scene, env, ctx.w);
   particles = new Particles(scene, env); particles.scanWorld(ctx.w);
   for (const e of ctx.emitters) particles.emitter(e);
@@ -56,6 +61,7 @@ const tick = () => new Promise((r) => setTimeout(r, 12));
   L.shot = (x, y, z, yawDeg, pitchDeg, fov) => { player.flying = true; L.tp(x, y - 1.62, z, yawDeg, pitchDeg); if (fov) { camera.fov = fov; camera.updateProjectionMatrix(); } L.frame(1.0, 0.016); };
   L.frame = (t, dt) => { env.update(t, camera); entities.update(t, dt, camera.position); particles.update(t, dt, camera); renderer.render(scene, camera); };
   L.screenshot = () => { renderer.render(scene, camera); canvas.toBlob((b) => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'banner-camp-' + Date.now() + '.png'; a.click(); L.ui.toast('Screenshot saved'); }); };
+  const audio = L.audio = new Ambience(L); audio.scanFires(particles);
   const ui = L.ui = new UI(L);
   const spawn = ctx.spawn || { x: 0, y: 2, z: 28, yaw: 0 };
   L.tp(spawn.x, spawn.y, spawn.z, spawn.yaw, 4);
@@ -74,7 +80,7 @@ const tick = () => new Promise((r) => setTimeout(r, 12));
     const t = now / 1000;
     if (!ui.paused) player.update(dt); else player.update(0);
     if (t - lastTile > 0.16) { lastTile = t; atlas.repaint('water', t * 2.2); atlas.repaint('lava', t * 1.3); tex.needsUpdate = true; }
-    ui.updateHUD(dt, t);
+    ui.updateHUD(dt, t); audio.update(dt, t);
     L.frame(t, dt);
   })(last);
 })().catch((e) => { console.error(e); setProgress('Error: ' + e.message + (e.stack ? ' @ ' + e.stack.split('\n')[1] : '')); });

@@ -34,11 +34,11 @@ export function brazier(pen, x, y, z, soul = false) {
   pen.set(x, y + 1, z, soul ? 'soul_campfire' : 'campfire');
 }
 export function bigBrazier(pen, x, y, z, soul = false) {
+  // post, a plus-shaped slab plate, the fire sitting on it, and a ring of four short wall posts as a cage
   pen.fill(x, y, z, x, y + 1, z, 'polished_blackstone_wall');
-  for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) pen.set(x + dx, y + 2, z + dz, 'polished_blackstone_bricks_slab');
-  pen.set(x, y + 2, z, 'polished_blackstone_bricks');
-  pen.set(x, y + 3, z, soul ? 'soul_campfire' : 'campfire');
-  for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) pen.set(x + dx, y + 3, z + dz, 'polished_blackstone_bricks_slab');
+  pen.set(x, y + 2, z, soul ? 'soul_campfire' : 'campfire');
+  for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) pen.set(x + dx, y + 2, z + dz, 'polished_blackstone_bricks_slab');
+  for (const [dx, dz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) pen.set(x + dx, y + 2, z + dz, 'polished_blackstone_wall');
 }
 export function pennantString(pen, x1, y1, z1, x2, y2, z2, colors) {
   // bunting: a chain of coloured carpets? Rendered as banners entities by the caller; here only the catenary of chains
@@ -124,3 +124,6 @@ export function pointedArch(pen, cx, y0, z, hw, rise, stairs, solid) {
     pen.set(cx + half, y, z, half === 0 ? solid : stairs + '@E'); pen.set(cx - half, y, z, half === 0 ? solid : stairs + '@W');
   }
 }
+
+export function folkAt(ctx, pen, lx, ly, lz, lyaw, o) { const p = pen.pos(lx, ly, lz); ctx.folk({ x: p.x, y: p.y, z: p.z, yaw: pen.yaw(lyaw), ...o }); }
+export function walkPath(ctx, o) { const p = o.path[0]; ctx.folk({ x: p[0], y: o.y, z: p[1], yaw: 0, anim: 'walk', ...o }); }

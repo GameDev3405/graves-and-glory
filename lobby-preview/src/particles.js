@@ -53,7 +53,7 @@ export class Particles {
       case 'sparkle': p.sy = e.y + rand(0, h); p.max = rand(1.5, 3.5); p.vy = rand(0.05, 0.25); p.size = rand(0.07, 0.16); p.c = C(e.color ?? 0xffe9a0); break;
       case 'bubble': p.sy = e.y + rand(0, 1); p.max = rand(2, 4); p.vy = rand(0.4, 0.9); p.size = rand(0.07, 0.14); p.c = C(0xcfeeff); break;
       case 'dust': p.sy = e.y + rand(0, h); p.max = rand(4, 8); p.vx = rand(0.1, 0.5); p.vz = rand(-0.1, 0.1); p.vy = rand(-0.02, 0.1); p.size = rand(0.05, 0.1); p.c = C(0xc8b090); break;
-      case 'flame': p.max = rand(0.45, 0.9); p.vy = rand(0.9, 1.6); p.vx = rand(-0.08, 0.08); p.vz = rand(-0.08, 0.08); p.size = rand(0.28, 0.46); p.c = C(e.color ?? [0xffa030, 0xffd060, 0xff7a20][Math.floor(Math.random() * 3)]); break;
+      case 'flame': p.max = rand(0.45, 0.9); p.vy = rand(0.9, 1.6); p.vx = rand(-0.08, 0.08); p.vz = rand(-0.08, 0.08); p.size = rand(0.28, 0.46) * (e.sz ?? 1); p.c = C(e.color ?? [0xffa030, 0xffd060, 0xff7a20][Math.floor(Math.random() * 3)]); break;
     }
     if (first) p.life = Math.random() * p.max;
     p.ph = Math.random() * 100;
@@ -73,10 +73,10 @@ export class Particles {
         switch (k) {
           case 'lantern': this.halo(px, y + 0.35, pz, 0xffc060, 2.2, 0.26); break;
           case 'soul_lantern': this.halo(px, y + 0.35, pz, 0x70e8ff, 2.2, 0.26); break;
-          case 'torch': this.halo(px, y + 0.8, pz, 0xffb050, 1.7, 0.28); this.emitter({ type: 'flame', x: px, y: y + 0.7, z: pz, w: 0.1, n: 2 }); break;
+          case 'torch': this.halo(px, y + 0.8, pz, 0xffb050, 2.4, 0.34); this.emitter({ type: 'flame', x: px, y: y + 0.7, z: pz, w: 0.1, n: 3, sz: 0.9 }); break;
           case 'soul_torch': this.halo(px, y + 0.8, pz, 0x70e8ff, 1.7, 0.28); this.emitter({ type: 'flame', x: px, y: y + 0.7, z: pz, w: 0.1, n: 2, color: 0x6fe8ff }); break;
-          case 'campfire': this.halo(px, y + 0.7, pz, 0xff9a3a, 4.2, 0.3); this.emitter({ type: 'flame', x: px, y: y + 0.3, z: pz, w: 0.5, n: 7 }); this.emitter({ type: 'ember', x: px, y: y + 0.6, z: pz, w: 0.4, n: 4 }); this.emitter({ type: 'smoke', x: px, y: y + 0.9, z: pz, w: 0.3, h: 5, n: 3 }); break;
-          case 'soul_campfire': this.halo(px, y + 0.7, pz, 0x70e8ff, 4.2, 0.3); this.emitter({ type: 'flame', x: px, y: y + 0.3, z: pz, w: 0.5, n: 7, color: 0x6fe8ff }); this.emitter({ type: 'soul', x: px, y: y + 0.8, z: pz, w: 0.4, h: 3, n: 3 }); break;
+          case 'campfire': this.halo(px, y + 0.8, pz, 0xff9a3a, 6.5, 0.42); this.emitter({ type: 'flame', x: px, y: y + 0.3, z: pz, w: 0.45, n: 10, sz: 2.1 }); this.emitter({ type: 'ember', x: px, y: y + 0.6, z: pz, w: 0.4, n: 4 }); this.emitter({ type: 'smoke', x: px, y: y + 0.9, z: pz, w: 0.3, h: 5, n: 3 }); break;
+          case 'soul_campfire': this.halo(px, y + 0.8, pz, 0x70e8ff, 6.5, 0.42); this.emitter({ type: 'flame', x: px, y: y + 0.3, z: pz, w: 0.45, n: 10, sz: 2.1, color: 0x6fe8ff }); this.emitter({ type: 'soul', x: px, y: y + 0.8, z: pz, w: 0.4, h: 3, n: 3 }); break;
           case 'candle': this.halo(px, y + 0.5, pz, 0xffd070, 1.1, 0.3); break;
           case 'lava': if ((lavaCount++ % 3) === 0) { this.halo(px, y + 1, pz, 0xff8a2a, 3.2, 0.25); this.emitter({ type: 'ember', x: px, y: y + 0.9, z: pz, w: 0.8, n: 1 }); } break;
           case 'amethyst_cluster': this.halo(px, y + 0.5, pz, 0xc89cff, 1.8, 0.22); break;

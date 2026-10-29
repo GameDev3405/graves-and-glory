@@ -23,6 +23,7 @@ This private GitHub repository preserves the local Minecraft modpack project and
 | Design specifications | [Specs](../superpowers/specs/) |
 | Story text | [Copy](../copy/) |
 | Code, assets and game data | `src/`, `sheets/` |
+| Walkable lobby design reference for the builder | [`lobby-preview/`](../../lobby-preview/README.md) (run `./start.sh`, open localhost:8080) |
 | Development and packaging instructions | [How to edit](../../HOW-TO-EDIT.md) |
 | Work log | [Update plan](../../UPDATE_PLAN.md) |
 | Design mockups and artwork tools | [Design archive](../../design-archive/) |
