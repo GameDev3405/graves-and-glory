@@ -18,7 +18,7 @@ Fixed in both places:
 | Checkout | Branch | Head | State at report time |
 |---|---|---|---|
 | `bannerbound` | `main` | `1f6c799` | Phase 2 dismissal committed |
-| `bannerbound-wt-rebase` | `work/war-table-rebase` | `85f095e` | dismissal in the rebased branch |
+| `bannerbound-wt-rebase` | `work/war-table-rebase` | `85f095e` | dismissal uncommitted in the working tree; the checked run used it. The identical line is committed on `main` |
 | `bannerbound-anim` | `work/anim-pass-1` | `9fe0fcf` | dismissal and launcher seed uncommitted on the WIP branch |
 | `bannerbound-models` | `work/troop-models-house` | `b9884ff` | dismissal and launcher seed uncommitted on the WIP branch |
 
