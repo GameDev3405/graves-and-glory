@@ -32,6 +32,9 @@ final class WarTableTroop {
 
     /** A portrait the last frame drew: the troop, where (letter) and what Portrait.draw passed to drawEntity. */
     record PortraitDraw(String troop, String where, Portrait.Drawn drawn) {}
+    /** A counter line the last frame drew, in order: a troop can draw the same row for both what it deals and what it takes, so the
+     *  id-keyed texts map would keep only the last; this list keeps every line. */
+    record CounterDraw(String id, boolean favour, String text) {}
 
     // What the last frame drew, refilled every frame and read by the checks through the views below.
     private static final Map<String, int[]> rectsDrawn = new LinkedHashMap<>();
@@ -39,6 +42,7 @@ final class WarTableTroop {
     private static final Map<String, Integer> colorsDrawn = new LinkedHashMap<>();
     private static final Map<String, String> texturesDrawn = new LinkedHashMap<>();
     private static final List<PortraitDraw> portraitsDrawn = new ArrayList<>();
+    private static final List<CounterDraw> countersDrawn = new ArrayList<>();
     private static final Set<String> underlinedDrawn = new LinkedHashSet<>();
     private static final List<String> sentCommands = new ArrayList<>();
     private static final Map<String, int[]> rects = Collections.unmodifiableMap(rectsDrawn);
@@ -46,6 +50,7 @@ final class WarTableTroop {
     private static final Map<String, Integer> colors = Collections.unmodifiableMap(colorsDrawn);
     private static final Map<String, String> textures = Collections.unmodifiableMap(texturesDrawn);
     private static final List<PortraitDraw> portraits = Collections.unmodifiableList(portraitsDrawn);
+    private static final List<CounterDraw> counters = Collections.unmodifiableList(countersDrawn);
     private static final Set<String> underlined = Collections.unmodifiableSet(underlinedDrawn);
     private static final List<String> sent = Collections.unmodifiableList(sentCommands);
 
@@ -64,6 +69,8 @@ final class WarTableTroop {
     /** The texture each part was drawn from: table, choose, tab-troop and tab-matchups. */
     static Map<String, String> textures() { return textures; }
     static List<PortraitDraw> portraits() { return portraits; }
+    /** The counter lines the last frame drew, in order, including a row drawn both ways. */
+    static List<CounterDraw> counters() { return counters; }
     /** The widgets the last frame drew with their label underlined (hot: under the pointer, or holding the keyboard's focus). */
     static Set<String> underlined() { return underlined; }
     /** The last WarTablePages.SENT_KEPT commands the sheet handed to the server (after CampScreen.action's throttle let it through). */
@@ -215,7 +222,7 @@ final class WarTableTroop {
     }
 
     void render(DrawContext g) {
-        rectsDrawn.clear(); textsDrawn.clear(); colorsDrawn.clear(); texturesDrawn.clear(); portraitsDrawn.clear(); underlinedDrawn.clear();
+        rectsDrawn.clear(); textsDrawn.clear(); colorsDrawn.clear(); texturesDrawn.clear(); portraitsDrawn.clear(); countersDrawn.clear(); underlinedDrawn.clear();
         var t = spec();
         UiCanvas.begin(g);
         try {
@@ -525,9 +532,11 @@ final class WarTableTroop {
         if (rows.isEmpty()) line(g, "counter-none", "No damage rules apply.", x, ry, DarkUi.SEPIA);
         for (var r : rows) {
             boolean good = ArmyCards.favours(r);
+            String text = ArmyCards.counterText(r);
             ArmyCards.swords(g, x, ry + 1, good ? DarkUi.INK_TEXT : DarkUi.ROUT_TEXT, !good);
             textsDrawn.put("glyph-" + r.id(), good ? "favour" : "against");
-            ry = block(g, "counter-" + r.id(), ArmyCards.counterText(r), x + 14, ry, TEXT_W - 14, 2, good ? DarkUi.INK_TEXT : DarkUi.ROUT_TEXT) + 1;
+            countersDrawn.add(new CounterDraw(r.id(), good, text));
+            ry = block(g, "counter-" + r.id(), text, x + 14, ry, TEXT_W - 14, 2, good ? DarkUi.INK_TEXT : DarkUi.ROUT_TEXT) + 1;
         }
     }
 
