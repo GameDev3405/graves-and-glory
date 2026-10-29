@@ -22,10 +22,10 @@ falls back to Georgia / system fonts when not.
 
 | | |
 |---|---|
-| ![Spawn court](previews/01-spawn-court.jpg) **Spawn court:** the Hollow Seal, bunting, the stair and the standard | ![Camp from the southwest](previews/02-camp-from-the-southwest.jpg) **The whole camp** from the southwest |
-| ![House Ring](previews/03-house-ring.jpg) **House Ring:** five-House mosaic and the Muster Standard | ![Ironclad Hold](previews/04-ironclad-hold.jpg) **Ironclad Hold:** brass-and-soot forge gate |
+| ![Spawn court](previews/01-spawn-court.jpg) **Spawn plaza:** the Hollow Seal, bunting, the Chapter Wall, the stair and the standard | ![Camp from the southwest](previews/02-camp-from-the-southwest.jpg) **The whole camp** from the southwest |
+| ![House Terrace](previews/03-house-ring.jpg) **The House Terrace** above the Chapter Wall: Gilded, the Command Hill and the Muster Standard | ![Ironclad Hold](previews/04-ironclad-hold.jpg) **Ironclad Hold:** brass-and-soot forge gate |
 | ![Gilded Oathhall](previews/05-gilded-oathhall.jpg) **Gilded Oathhall** | ![Tidepost](previews/06-tidecallers-tidepost.jpg) **Tidecallers' Tidepost** |
-| ![Barrow Shrine](previews/07-graveborn-barrow-shrine.jpg) **Graveborn Barrow Shrine** | ![Command Pavilion](previews/08-command-pavilion.jpg) **Command Pavilion** and the war table |
+| ![Barrow Shrine](previews/07-graveborn-barrow-shrine.jpg) **Graveborn Barrow Shrine** | ![Command Pavilion](previews/08-command-pavilion.jpg) **Command Pavilion** and the war table on top of the Command Hill |
 | ![War Gates](previews/09-war-gates.jpg) **War Gates** (Dawn teal, Dusk violet) | ![Companions' Fire](previews/10-companions-fire.jpg) **The Companions' Fire** |
 | ![Blueprint](previews/11-blueprint-map.jpg) **Blueprint map** (Tab) | ![Dialogue](previews/12-talk-to-pell.jpg) **Talk to the keepers** (E) |
 
@@ -47,24 +47,28 @@ falls back to Georgia / system fonts when not.
 | U | cycle troop displays: mixed / all unlocked / all locked |
 | P | save a PNG screenshot |
 
-Coordinates match a Minecraft world: the spawn court floor is **y 64**, the House Ring **y 70**, the Command Terrace **y 80**.
-`x` runs east, `z` runs south, the spawn seal is at **x 0, z 30**, north is up on the blueprint.
+Coordinates match a Minecraft world: the Lower Camp floor is **y 64**, the House Terrace **y 70**, the Command Hill **y 76**.
+`x` runs east, `z` runs south, the spawn seal is at **x 0, z 53**, north is up on the blueprint.
 
 ## The layout in one paragraph
 
-You arrive on the Hollow Seal in the lower court and look north up the Founders' Stair (with the 30-niche Chapter Wall)
-to the House Ring, where the five Houses face a mosaic and the Muster Standard: Gilded Oathhall and Wildmoot Lodge to the
-west, Tidecallers' Tidepost and the Graveborn Barrow Shrine to the east, the Ironclad Hold forge cut into the cliff in the
-middle. Twin stairs climb either side of the Hold to the Command Terrace: the war tent with the relief war table and the
-storybook, the Companions' Fire, the Commander's Gallery (six classes) and the great Hollow Standard. In the lower court the
-Armory (Quartermaster), the Muster (Recruiter), the Archive (Pell, contracts, the Founders' Stone) and the Training Yard
-(Drillmaster, START arch for battle 1) flank the avenue, which ends at the twin War Gates (Dawn teal, Dusk violet), the
-Steward's tower and the battle-map board. Beyond the gates a road crosses a bridge toward five beacon towers, one per battlefield.
+You arrive on the Hollow Seal in the middle of the **Lower Camp**, a wide open plaza (no building closer than 9 blocks to another). Four
+service buildings stand on its edges with their doors facing the seal: the Armory (Quartermaster) and the Training Yard (Drillmaster,
+START arch for battle 1) on the west, the Muster (Recruiter) and the Archive (Pell, contracts, the Founders' Stone) on the east. The
+War Gates (Dawn teal, Dusk violet) close the south end with the Steward's tower, the Horn tower and the battle-map board, and a road
+leads on across a bridge toward five beacon towers, one per battlefield. In front of you the **Founders' Chapter Wall** (30 niches) runs
+the whole width of the terrace, with one grand stair up to the **House Terrace**: the five-House mosaic and the Muster Standard at the
+head of the stair, the **Command Hill** (war tent, relief war table, storybook, Hollow Standard) in the middle, and the Houses on a wide
+arc around it, every door facing the hill: Gilded Oathhall and the Barrow Shrine flank the entrance, Wildmoot Lodge and the Ironclad Hold
+stand on the west, the Tidecallers' Tidepost and the Commander's Gallery (six classes) on the east, and the Companions' Fire is a quiet
+glade behind the hill. Roads run out from the hill like spokes to every House door. Trees grow only on the slopes and at the outskirts,
+never between buildings. The layout plan this was built from: [`previews/banner-camp-new-layout.png`](previews/banner-camp-new-layout.png).
 
 ## How it is made
 
 * `src/blocks.js`: block catalogue (each with its vanilla `mc` name) and a procedurally painted 16 px texture atlas. No game or Minecraft assets are used.
 * `src/world.js`: voxel storage, a small building DSL (`Pen`), Minecraft-style sky/block light flood fill, smooth lighting and ambient occlusion, chunk mesher.
+* `src/lobby/layout.js`: where everything stands (one table of positions, rotations and zone rectangles; change a building's place here).
 * `src/lobby/*.js`: the design itself, one file per area. Each area is plain block-placement code (`fill`, `walls`, `gable`, `disc`...), so it reads like a build plan.
 * `src/figures.js`, `src/catalog.js`: the voxel troops, NPCs, beasts and siege engines. `src/data.js`: troop stats and NPC notes taken from `docs/superpowers/specs`.
 * `src/entities.js`, `src/particles.js`, `src/ui.js`: signs, banners, labels, particles, HUD, tour and blueprint.

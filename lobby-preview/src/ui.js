@@ -107,7 +107,7 @@ export class UI {
       <h4>Builder's notes</h4><ul>${(z.builder || []).map((b) => `<li>${b}</li>`).join('')}</ul>
       <h4>Bill of materials · ${z.bomTotal || 0} blocks placed here · top ${bom.length}</h4>
       <div class="bom">${bom.map((b) => `<div><i style="background:${this.blockColor(BLOCKS[b.id])}"></i><span>${b.mc}</span><b>${b.n}</b></div>`).join('')}</div>
-      <p style="font-size:12px;color:#8a8a94;margin-top:16px">Coordinates are Minecraft-style: the court floor is y 64, the House Ring is y 70, the Command Terrace is y 80. Block names are the nearest vanilla block; counts come from this model.</p>`;
+      <p style="font-size:12px;color:#8a8a94;margin-top:16px">Coordinates are Minecraft-style: the Lower Camp floor is y 64, the House Terrace is y 70 and the Command Hill is y 76. Block names are the nearest vanilla block; counts come from this model.</p>`;
     $('#tp').onclick = () => { this.app.tpZone(z); this.closeMenu(true); };
     $('#fly').onclick = () => { this.app.overview(z); this.closeMenu(true); };
   }
@@ -238,7 +238,7 @@ export class UI {
     for (const m of A.ctx.markers) { c.fillStyle = '#ffd24a'; c.beginPath(); c.arc(X(m.x), Z(m.z), 4, 0, 7); c.fill(); c.strokeStyle = '#000'; c.lineWidth = 1; c.stroke(); }
     for (const n of A.ctx.npcs) { if (n.kind === 'classfig') continue; c.fillStyle = '#7fffe0'; c.beginPath(); c.arc(X(n.x), Z(n.z), 3, 0, 7); c.fill(); }
     // terrace legend
-    c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(8, H - 74, 280, 66); c.fillStyle = '#eee'; c.font = '12px Lato'; c.fillText('Levels (Minecraft y):  Court 64 · House Ring 70 · Command Terrace 80', 14, H - 54); c.fillText('● yellow = landmark   ● teal = NPC   brightness = height', 14, H - 36); c.fillText('Spawn seal at x 0 / z 30 · north is up', 14, H - 18);
+    c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(8, H - 74, 280, 66); c.fillStyle = '#eee'; c.font = '12px Lato'; c.fillText('Levels (Minecraft y):  Lower Camp 64 · House Terrace 70 · Command Hill 76', 14, H - 54); c.fillText('● yellow = landmark   ● teal = NPC   brightness = height', 14, H - 36); c.fillText('Spawn seal at x 0 / z ' + Math.round(A.ctx.spawn.z) + ' · north is up', 14, H - 18);
     // player
     const p = A.player.pos; c.save(); c.translate(X(p.x), Z(p.z)); c.rotate(-A.player.yaw); c.fillStyle = '#ff4a4a'; c.strokeStyle = '#fff'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(0, -9); c.lineTo(6, 6); c.lineTo(0, 3); c.lineTo(-6, 6); c.closePath(); c.fill(); c.stroke(); c.restore();
     this.bpScale = S;

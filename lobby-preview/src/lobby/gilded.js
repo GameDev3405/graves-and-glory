@@ -1,11 +1,12 @@
 // Gilded Order: "the oath that holds the line". A white-and-gold colonnade chapel with a stained-glass apse.
 import { plinth, signAt, bannerAt, propAt, emitAt, cherry, azaleaBush, flowers } from './kit.js';
+import { PLACE, RECT } from './layout.js';
 import { pave } from './kit.js';
 
 export function buildGilded(ctx) {
   const w = ctx.w;
   w.beginZone('gilded');
-  const P = w.pen(-43, 6, -17, 3);            // front faces east, toward the House Ring plaza
+  const PLC = PLACE.gilded; const P = w.pen(PLC.x, PLC.y, PLC.z, PLC.rot);            // front faces east, toward the Command Hill
   const Q = 'quartz_block', G = 'gold_block';
 
   /* ---- platform + steps ---- */
@@ -80,8 +81,8 @@ export function buildGilded(ctx) {
     for (const z of [-9, 0, 9]) { P.fill(x + sgn * 2, 0, z, x + sgn * 2, 3, z, 'spruce_fence'); P.set(x + sgn * 2, 4, z, 'lantern'); }
   }
   emitAt(ctx, P, 0, 12, 0, { type: 'sparkle', w: 6, h: 6, n: 24, color: 0xffe9a0 });
-  ctx.reserve(-53, -28, -30, -5);
-  ctx.zone({ id: 'gilded', name: 'The Gilded Order · Oathhall', color: '#e9ecec', rect: [-54, -28, -30, -5], y: [5, 24], tour: { x: -30, y: 7, z: -17, yaw: 90, pitch: 4 },
+  ctx.reserve(...RECT.gilded);
+  ctx.zone({ id: 'gilded', name: 'The Gilded Order · Oathhall', color: '#e9ecec', rect: RECT.gilded, y: [5, 24], tour: { x: -32, y: 7, z: -2, yaw: 90, pitch: 4 },
     house: 'gilded', what: 'The Gilded Order House tent: a white-and-gold colonnade chapel. A carpeted aisle leads to a dais where Lord Marshal Aldric (the Order\'s Legendary) stands before a stained-glass window. Five troop plinths flank the aisle. Cherry trees and azalea hedges soften the sides.',
     builder: ['Palette: quartz block + pillars, polished andesite (steel), gold blocks, white/yellow carpet, white banners with the gold sun.', 'Footprint 19 x 21, platform 1 block tall with gold border and a 2-step approach from the plaza.', 'Eight quartz pillars (7 tall) with gold bands, gold-trimmed architrave, gable roof of quartz stairs (ridge of gold blocks), pediment with a gold-block sun and a sea lantern core.', 'Back apse: pointed window of yellow / light blue stained-glass panes, lit from behind by lanterns.', 'Aisle: white carpet with yellow edges, dais of 3 steps.'] });
 }

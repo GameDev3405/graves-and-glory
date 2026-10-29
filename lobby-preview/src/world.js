@@ -2,7 +2,7 @@
 import * as THREE from '../vendor/three.module.min.js';
 import { BLOCKS, BY_NAME, tileUV } from './blocks.js';
 
-export const WX0 = -88, WY0 = -16, WZ0 = -88, SX = 176, SY = 80, SZ = 176;
+export const WX0 = -128, WY0 = -16, WZ0 = -128, SX = 256, SY = 80, SZ = 256;
 export const WX1 = WX0 + SX - 1, WY1 = WY0 + SY - 1, WZ1 = WZ0 + SZ - 1;
 export const DISPLAY_Y = 64;            // relative y 0 == Minecraft y 64 in the builder's readouts
 const SLICE = SX * SZ;

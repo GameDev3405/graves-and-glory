@@ -1,11 +1,12 @@
 // Wildmoot: "the woods have teeth". A timber longhouse under a steep hide roof, ringed by woods, wolf kennel and totems.
 import { plinth, signAt, bannerAt, propAt, emitAt, oak, spruce, flowers } from './kit.js';
+import { PLACE, RECT } from './layout.js';
 import { hash } from './ctx.js';
 
 export function buildWildmoot(ctx) {
   const w = ctx.w;
   w.beginZone('wildmoot');
-  const P = w.pen(-21, 6, -23, 3);
+  const PLC = PLACE.wildmoot; const P = w.pen(PLC.x, PLC.y, PLC.z, PLC.rot);
   const LOG = 'dark_oak_log', PL = 'spruce_planks';
 
   /* ---- earthen yard ---- */
@@ -75,8 +76,8 @@ export function buildWildmoot(ctx) {
   bannerAt(ctx, P, -5, 7.6, 10, 0, { w: 1.3, h: 3.2, emblem: 'antler', bg: 0x7a3426, trim: 0xd89a30, kind: 'wall' });
   bannerAt(ctx, P, 5, 7.6, 10, 0, { w: 1.3, h: 3.2, emblem: 'antler', bg: 0x7a3426, trim: 0xd89a30, kind: 'wall' });
   emitAt(ctx, P, 0, 3, 0, { type: 'firefly', w: 10, h: 4, n: 14 });
-  ctx.reserve(-34, -34, -10, -12);
-  ctx.zone({ id: 'wildmoot', name: 'The Wildmoot · Moot Lodge', color: '#d89a30', rect: [-34, -34, -10, -12], y: [5, 22], tour: { x: -9, y: 7, z: -23, yaw: 90, pitch: 4 },
+  ctx.reserve(...RECT.wildmoot);
+  ctx.zone({ id: 'wildmoot', name: 'The Wildmoot · Moot Lodge', color: '#d89a30', rect: RECT.wildmoot, y: [5, 22], tour: { x: -32, y: 7, z: -42, yaw: 90, pitch: 4 },
     house: 'wildmoot', what: 'The Wildmoot House tent: a timber longhouse under a steep hide roof (spruce with ochre stripes), carved totems with skulls and antlers at the open front, a central fire pit, hides on the walls. Five troop plinths line the hall, Old Horn the Antlered Alpha stands at the back. A wolf kennel, drying racks and a brought-in grove of dark oaks make the yard.',
     builder: ['Palette: dark oak logs + spruce planks, ochre (orange terracotta / jungle planks) warpaint, bone blocks, brown + red wool hides, hay, podzol ground.', 'Hall 13 x 17, walls 4 tall, gable roof ridge 11 high; roof stairs spruce with a jungle-plank stripe every third row; dark oak log ridge.', 'Front: two 8-high stripped spruce totems with ochre rings, skeleton skulls and fence antlers; lintel of dark oak.', 'Interior fire: campfire in a cobblestone ring, floor of planks with a brown/red carpet runner.'] });
 }

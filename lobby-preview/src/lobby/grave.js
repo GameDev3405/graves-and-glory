@@ -1,11 +1,12 @@
 // Graveborn: "the dead who answered the horn". A walled barrow-yard, open graves for plinths and a skull-faced mausoleum.
 import { plinth, signAt, bannerAt, propAt, emitAt, deadTree } from './kit.js';
+import { PLACE, RECT } from './layout.js';
 import { hash } from './ctx.js';
 
 export function buildGrave(ctx) {
   const w = ctx.w;
   w.beginZone('graveborn');
-  const P = w.pen(49, 6, -17, 1);                 // front faces west
+  const PLC = PLACE.grave; const P = w.pen(PLC.x, PLC.y, PLC.z, PLC.rot);                 // front faces west
   const MB = 'mossy_stone_bricks', BO = 'bone_block';
 
   /* ---- ground ---- */
@@ -88,8 +89,8 @@ export function buildGrave(ctx) {
   emitAt(ctx, P, 0, 0.3, 3, { type: 'soul', w: 18, h: 5, n: 46 });
   emitAt(ctx, P, 0, 0, 3, { type: 'mist', w: 18, h: 1.2, n: 26, color: 0x9ad8c8 });
   emitAt(ctx, P, 0, 1, -6, { type: 'soul', w: 5, h: 5, n: 16 });
-  ctx.reserve(38, -28, 60, -6);
-  ctx.zone({ id: 'graveborn', name: 'The Graveborn · Barrow Shrine', color: '#6fe8ff', rect: [38, -28, 60, -6], y: [5, 22], tour: { x: 37, y: 7, z: -17, yaw: 270, pitch: 3 },
+  ctx.reserve(...RECT.grave);
+  ctx.zone({ id: 'graveborn', name: 'The Graveborn · Barrow Shrine', color: '#6fe8ff', rect: RECT.grave, y: [5, 22], tour: { x: 33, y: 7, z: -2, yaw: 270, pitch: 3 },
     house: 'graveborn', what: 'The Graveborn recruit at this graveyard shrine (not a tent): a walled barrow-yard under cold soul-light. Troops rise from open graves on mossy mounds; the mausoleum at the back has a bone-white skull glowing on its gable and the Hollow King waiting on his bone dais. Dead trees, cobwebs, tombstones and drifting teal wisps fill the yard.',
     builder: ['Palette: bone blocks, mossy stone bricks + mossy cobblestone, deepslate tiles, soul lanterns / soul torches (cyan), iron bars.', 'Yard 21 x 20 inside a mossy brick wall + iron bar fence, with chiselled brick pillars topped by soul lanterns every 4-8 blocks.', 'Gate: two 7-high deepslate pillars with wither skulls, iron-bar arch.', 'Mausoleum 15 x 7, walls 5 high, deepslate-tile gable roof, bone-block skull on the front gable with sea-lantern eyes.', 'Dead trees: dark oak logs with fence branches and cobwebs.'] });
 }

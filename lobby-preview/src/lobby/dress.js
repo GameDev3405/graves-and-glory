@@ -4,13 +4,14 @@ import { BY_NAME } from '../blocks.js';
 import { hash, fbm, smooth } from './ctx.js';
 import { spruce, oak, cherry, flowers, azaleaBush, bigBrazier, ironLamp } from './kit.js';
 import { signAt, bannerAt, emitAt } from './kit.js';
+import { plateauDist, RIVER_Z } from './layout.js';
 
 export function buildValley(ctx) {
   const w = ctx.w, P = w.pen(0, 0, 0);
   w.beginZone('valley');
   const surf = (x, z) => ctx.surface(x, z);
   // --- road from the gates down the valley (gravel, cobble edges), light posts every 8
-  for (let z = 56; z <= 85; z++) {
+  for (let z = 84; z <= 117; z++) {
     const cx = Math.round(Math.sin(z * 0.11) * 3);
     for (let x = cx - 3; x <= cx + 3; x++) {
       const h = surf(x, z); if (h === undefined) continue;
@@ -22,7 +23,7 @@ export function buildValley(ctx) {
     if (z % 8 === 0) { for (const sgn of [-1, 1]) { const x = cx + sgn * 4, h = surf(x, z); w.set(x, h, z, 'dark_oak_fence'); w.set(x, h + 1, z, 'dark_oak_fence'); w.set(x, h + 2, z, 'dark_oak_fence'); w.set(x, h + 3, z, 'lantern'); } }
   }
   // --- river across the valley with a stone bridge on the road
-  const RZ = 72;
+  const RZ = RIVER_Z;
   const level = Math.round(surf(0, RZ)) - 2;
   for (let x = WX0 + 6; x <= WX1 - 6; x++) {
     const zc = RZ + Math.round(Math.sin(x * 0.09) * 3);
@@ -56,7 +57,7 @@ export function buildValley(ctx) {
   /* --- five beacon towers on the far hills: one fire per battlefield --- */
   const B = [['RIVERGATE VALLEY', -66, 0x3a8ac8, 'trident'], ['IRONHOLD SIEGE', -33, 0xf08a3c, 'anvil'], ['FROSTMARCH PASS', 0, 0xcfe8ff, 'moon'], ['HOLLOWWOOD REACH', 33, 0x5a7a3a, 'skull'], ['KINGSFIELD CROSSROADS', 66, 0xe6bd48, 'crown']];
   for (const [name, x, col, emb] of B) {
-    const z = 80; const h = Math.max(surf(x, z), surf(x + 2, z), surf(x - 2, z));
+    const z = 112; const h = Math.max(surf(x, z), surf(x + 2, z), surf(x - 2, z));
     const Q = w.pen(x, h, z, 2);
     Q.fill(-2, -4, -2, 2, -1, 2, 'cobblestone'); Q.fill(-2, 0, -2, 2, 0, 2, 'stone_bricks');
     Q.fill(-1, 1, -1, 1, 8, 1, 'stone_bricks'); for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) Q.fill(dx, 1, dz, dx, 8, dz, 'polished_andesite');
@@ -68,7 +69,7 @@ export function buildValley(ctx) {
     ctx.reserve(x - 3, z - 3, x + 3, z + 3);
     ctx.markers.push({ x, z, label: name, kind: 'beacon' });
   }
-  ctx.zone({ id: 'valley', name: 'The Valley & the Five Beacons', color: '#6a8a5a', rect: [-80, 56, 80, 86], y: [-14, 24], tour: { x: 0, y: -2, z: 60, yaw: 180, pitch: 4 },
+  ctx.zone({ id: 'valley', name: 'The Valley & the Five Beacons', color: '#6a8a5a', rect: [-80, 84, 80, 118], y: [-14, 24], tour: { x: 0, y: 1, z: 88, yaw: 180, pitch: 4 },
     what: 'Beyond the War Gates a gravel road runs south across a stone bridge over a river and on toward the battlefields. Five beacon towers on the far hills carry one fire per battlefield: Rivergate, Ironhold, Frostmarch, Hollowwood and Kingsfield. They are purely scenery (the matches are held on separate maps) but they give the gates a horizon.',
     builder: ['Road 7 wide: gravel and coarse dirt with a cobblestone edge, dark oak fence lamp posts every 8 blocks.', 'River 5 wide, 2 deep, banks of sand; bridge 9 wide with a shallow hump, stone brick walls and lanterns.', 'Beacon towers: 3x3 stone brick shafts 9 high with a campfire on a magma block and a House-coloured banner.'] });
 
@@ -78,12 +79,12 @@ export function buildValley(ctx) {
   for (let z = WZ0 + 3; z <= WZ1 - 3; z += 2) for (let x = WX0 + 3; x <= WX1 - 3; x += 2) {
     const jx = x + Math.floor(hash(x, z, 31) * 2), jz = z + Math.floor(hash(x, z, 32) * 2);
     if (jx < WX0 + 2 || jx > WX1 - 2 || jz < WZ0 + 2 || jz > WZ1 - 2) continue;
-    if (ctx.isReserved(jx, jz)) continue;
+    if (ctx.isReserved(jx, jz) || plateauDist(jx, jz) < 5) continue;   // no trees on the two courts or hugging their edges
     const h = surf(jx, jz); const below = w.get(jx, h - 1, jz);
     if (below !== id.grass_block && below !== id.podzol && below !== id.moss_block) continue;
     if (w.get(jx, h, jz) !== 0) continue;
-    const r = Math.hypot(jx * 0.75, jz - 8); const far = smooth(34, 78, r);
-    const inValley = jz > 58;
+    const far = smooth(4, 44, plateauDist(jx, jz));
+    const inValley = jz > 90;
     let p = 0.015 + far * 0.2 + (inValley ? 0.05 : 0); p *= 0.55 + 0.9 * fbm(jx * 0.07, jz * 0.07, 12);
     if (h > 40) p = 0;
     const roll = hash(jx, jz, 33);
@@ -103,7 +104,7 @@ export function buildValley(ctx) {
   for (let z = WZ0 + 2; z <= WZ1 - 2; z++) for (let x = WX0 + 2; x <= WX1 - 2; x++) {
     if (ctx.isReserved(x, z)) continue;
     const h = surf(x, z); const below = w.get(x, h - 1, z); if (below !== id.grass_block && below !== id.podzol) continue; if (w.get(x, h, z) !== 0) continue;
-    const r = hash(x, z, 40), near = Math.hypot(x * 0.8, z - 10) < 48;
+    const r = hash(x, z, 40), near = plateauDist(x, z) < 6;
     if (r < 0.11) w.set(x, h, z, 'short_grass');
     else if (r < 0.135) w.set(x, h, z, 'tall_grass');
     else if (r < 0.155) w.set(x, h, z, 'fern');

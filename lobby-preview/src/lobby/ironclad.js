@@ -1,13 +1,14 @@
-// Ironclad: "the hold remembers every siege". A forge-hall cut into the cliff under the Command Terrace.
+// Ironclad: "the hold remembers every siege". A free-standing forge-hall on the north-west of the House Terrace.
 import { plinth, signAt, bannerAt, npcAt, propAt, emitAt, bigBrazier, pave } from './kit.js';
+import { PLACE, RECT } from './layout.js';
 
 export function buildIronclad(ctx) {
   const w = ctx.w;
   w.beginZone('ironclad');
-  const P = w.pen(0, 6, -37, 0);   // local y 0 = T2 surface; local z 0 = the cliff face; +z = toward the plaza
+  const PLC = PLACE.ironclad; const P = w.pen(PLC.x, PLC.y, PLC.z, PLC.rot);   // local y 0 = terrace surface; local z 0 = the hall's front wall; +z = toward the plaza
   const BR = 'polished_blackstone_bricks', DB = 'deepslate_bricks';
 
-  /* ---- hall: 23 wide, 16 deep, 8 tall, cut into the mountain ---- */
+  /* ---- hall: 23 wide, 16 deep, 8 tall ---- */
   P.clear(-11, 0, -15, 11, 7, -1);
   P.shell(-12, -1, -16, 12, 8, 0, DB);
   P.fill(-11, -1, -15, 11, -1, -1, 'deepslate_tiles');
@@ -106,15 +107,15 @@ export function buildIronclad(ctx) {
   // siege engines on the plaza
   propAt(ctx, P, -17, 0, 11, 25, { type: 'ballista', scale: 1 }); propAt(ctx, P, 17, 0, 11, -25, { type: 'mortar', scale: 1 });
   P.fill(-19, -1, 9, -15, -1, 13, 'cobblestone'); P.fill(15, -1, 9, 19, -1, 13, 'cobblestone');
-  // chimneys through the Command Terrace floor with smoke
+  // chimneys rising from the roof with smoke
   for (const x of [-9, 9]) {
     P.fill(x - 1, 9, -8, x + 1, 17, -6, 'polished_blackstone_bricks'); P.clear(x, 10, -7, x, 17, -7); P.fill(x - 1, 18, -8, x + 1, 18, -6, 'polished_blackstone_bricks_slab'); P.clear(x, 18, -7, x, 18, -7);
     for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) P.set(x + dx, 19, -7 + dz, 'polished_blackstone_wall');
     P.set(x, 10, -7, 'magma_block'); P.set(x, 9, -7, 'magma_block');
     emitAt(ctx, P, x, 18.5, -7, { type: 'smoke', w: 1, h: 10, n: 18 });
   }
-  ctx.reserve(-14, -54, 14, -29);
-  ctx.zone({ id: 'ironclad', name: 'The Ironclad Hold', color: '#f08a3c', rect: [-14, -54, 14, -29], y: [5, 26], tour: { x: 0, y: 7, z: -22, yaw: 0, pitch: 4 },
-    house: 'ironclad', what: 'The Ironclad House tent: a squat forge-hall carved into the cliff beneath the Command Terrace. The player recruits Ironclad troops here; each of the six troops stands on a lit plinth (LOCKED or the player\'s star rating) and Brassjaw, the Forge Colossus, dominates the back on a raised dais. Outside stand a ballista and a mortar.',
-    builder: ['Palette: polished blackstone bricks, deepslate tiles, brass (cut copper / gold), ember orange (shroomlight, magma, blast furnaces, lava behind iron bars).', 'Hall 23 x 16 x 8 inside the cliff, entrance arch 11 wide x 8 tall (stepped with stair blocks), raised portcullis of iron bars.', 'Troop alcoves: 3x3 plinth recessed 3 deep into the side walls with a shroomlight above.', 'Brassjaw: 5x5 plinth with a raised gold-block top, a magma-block seal behind.', 'Two chimneys rise through the Command Terrace floor and smoke.'] });
+  ctx.reserve(...RECT.ironclad);
+  ctx.zone({ id: 'ironclad', name: 'The Ironclad Hold', color: '#f08a3c', rect: RECT.ironclad, y: [5, 26], tour: { x: -38, y: 7, z: -50, yaw: 0, pitch: 4 },
+    house: 'ironclad', what: 'The Ironclad House tent: a squat forge-hall standing on the north-west of the House Terrace, its back to the mountain. The player recruits Ironclad troops here; each of the six troops stands on a lit plinth (LOCKED or the player\'s star rating) and Brassjaw, the Forge Colossus, dominates the back on a raised dais. Outside stand a ballista and a mortar.',
+    builder: ['Palette: polished blackstone bricks, deepslate tiles, brass (cut copper / gold), ember orange (shroomlight, magma, blast furnaces, lava behind iron bars).', 'Hall 23 x 16 x 8 free-standing, walls of deepslate bricks, entrance arch 11 wide x 8 tall (stepped with stair blocks), raised portcullis of iron bars.', 'Troop alcoves: 3x3 plinth recessed 3 deep into the side walls with a shroomlight above.', 'Brassjaw: 5x5 plinth with a raised gold-block top, a magma-block seal behind.', 'Two chimneys rise from the roof and smoke.'] });
 }

@@ -1,12 +1,13 @@
 // Service buildings of the lower court: Armory (Quartermaster), Muster Hall (Recruiter), Archive (Pell).
 import { pave, STONE_PAVE, bigBrazier, ironLamp, plinth, signAt, bannerAt, npcAt, propAt, emitAt, oak, spruce, flowers, azaleaBush } from './kit.js';
+import { PLACE, RECT } from './layout.js';
 import { hash } from './ctx.js';
 
 /* ===================================================================== ARMORY */
 export function buildArmory(ctx) {
   const w = ctx.w;
   w.beginZone('armory');
-  const P = w.pen(-24, 0, 24, 3);      // front faces east (toward the avenue)
+  const PLC = PLACE.armory; const P = w.pen(PLC.x, PLC.y, PLC.z, PLC.rot);      // front faces east (toward the plaza)
   const BR = 'stone_bricks', PL = 'dark_oak_planks', LOG = 'dark_oak_log';
 
   P.fill(-10, -1, -10, 10, -1, 10, 'stone_bricks'); pave(P, -10, -10, 10, 10, -1, STONE_PAVE);
@@ -47,8 +48,8 @@ export function buildArmory(ctx) {
   bannerAt(ctx, P, -9, 5.4, 6.8, 0, { w: 1.2, h: 3.6, emblem: 'hollow', bg: 0x1d2a5c, trim: 0xc9a24a, kind: 'wall' });
   bannerAt(ctx, P, 9, 5.4, 6.8, 0, { w: 1.2, h: 3.6, emblem: 'hollow', bg: 0x1d2a5c, trim: 0xc9a24a, kind: 'wall' });
   ironLamp(P, -9, 0, 10, 5); ironLamp(P, 9, 0, -9, 5);
-  ctx.reserve(-36, 12, -12, 36);
-  ctx.zone({ id: 'armory', name: 'The Armory · Quartermaster', color: '#4a7ac8', rect: [-36, 12, -12, 36], y: [-1, 14], tour: { x: -12, y: 1, z: 24, yaw: 90, pitch: 6 },
+  ctx.reserve(...RECT.armory);
+  ctx.zone({ id: 'armory', name: 'The Armory · Quartermaster', color: '#4a7ac8', rect: RECT.armory, y: [-1, 14], tour: { x: -30, y: 1, z: 44, yaw: 90, pitch: 6 },
     npc: 'quartermaster', what: 'SHOP + ARMY. The Quartermaster sells and equips: the player arranges their twenty deployment slots, buys gear and opens the collection here (this is the station that opens the war council\'s army page). A stone-and-timber storehouse behind a navy-and-white awning counter; four mannequins show each House\'s gear; a forge stands in the corner.',
     builder: ['Storehouse 19 x 11: stone-brick base 2 high, dark oak plank/log upper, gable roof of dark oak stairs, ridge of dark oak log.', 'Counter: barrels with spruce slabs; awning 17 x 4 of alternating blue and white wool stepping down; stripped dark oak posts.', 'Forge corner: blast furnaces, anvil, grindstone, smithing table, cauldron; blackstone brick chimney.', 'Mannequin row of four armour stands, one per House set.'] });
 }
@@ -57,7 +58,7 @@ export function buildArmory(ctx) {
 export function buildMuster(ctx) {
   const w = ctx.w;
   w.beginZone('muster');
-  const P = w.pen(26, 0, 24, 1);       // front faces west
+  const PLC = PLACE.muster; const P = w.pen(PLC.x, PLC.y, PLC.z, PLC.rot);       // front faces west
   const R = 10;
   // floor disc with a five-pointed star
   P.disc(0, -1, 0, R + 1, 'polished_andesite');
@@ -111,17 +112,17 @@ export function buildMuster(ctx) {
   for (let x = -3; x <= 3; x++) P.set(x, -1, 12, 'polished_andesite');
   for (const x of [-4, 4]) { bigBrazier(P, x, 0, 11, false); }
   signAt(ctx, P, 0, 9.3, 10.6, 0, { text: 'THE MUSTER', sub: 'Recruiter · unlock new troops · the Roll', w: 4.6, h: 1.0, style: 'gold', size: 0.55 });
-  ctx.reserve(14, 12, 38, 36);
-  ctx.zone({ id: 'muster', name: 'The Muster · Recruiter', color: '#9a4ac8', rect: [14, 12, 38, 36], y: [-1, 24], tour: { x: 11, y: 1, z: 24, yaw: 270, pitch: 8 },
+  ctx.reserve(...RECT.muster);
+  ctx.zone({ id: 'muster', name: 'The Muster · Recruiter', color: '#9a4ac8', rect: RECT.muster, y: [-1, 24], tour: { x: 30, y: 1, z: 44, yaw: 270, pitch: 8 },
     npc: 'recruiter', what: 'NEW TROOPS. The Recruiter runs the Roll: a rolled troop (100 gold, no duplicates) permanently unlocks one of the 24 troops not yet owned. A domed rotunda with a glowing amethyst-and-crying-obsidian altar, a five-pointed brass star inlaid in the floor and the five House banners round the wall. The Recruiter waits behind the pact table.',
-    builder: ['Rotunda radius 10: eight quartz pillars with amethyst bases, glass-pane balustrade (purple/blue), open entrance on the avenue side.', 'Dome of alternating blue / purple concrete gores with brass ribs, topped by a gold block and lantern.', 'Floor: polished deepslate, purple ring, brass five-point star, blue centre disc.', 'Altar: crying obsidian disc, two amethyst blocks, amethyst clusters, candles.'] });
+    builder: ['Rotunda radius 10: eight quartz pillars with amethyst bases, glass-pane balustrade (purple/blue), open entrance on the plaza side.', 'Dome of alternating blue / purple concrete gores with brass ribs, topped by a gold block and lantern.', 'Floor: polished deepslate, purple ring, brass five-point star, blue centre disc.', 'Altar: crying obsidian disc, two amethyst blocks, amethyst clusters, candles.'] });
 }
 
 /* ===================================================================== ARCHIVE */
 export function buildArchive(ctx) {
   const w = ctx.w;
   w.beginZone('archive');
-  const P = w.pen(52, 0, 22, 1);       // front faces west
+  const PLC = PLACE.archive; const P = w.pen(PLC.x, PLC.y, PLC.z, PLC.rot);       // front faces west
   const R = 8, H = 13;
   P.disc(0, -1, 0, R + 2, 'polished_andesite');
   P.disc(0, -1, 0, R, 'dark_oak_planks');
@@ -168,8 +169,8 @@ export function buildArchive(ctx) {
   bannerAt(ctx, P, -4.2, 6.9, 9.3, 0, { w: 1.1, h: 3.4, emblem: 'hollow', bg: 0x1d2a5c, trim: 0xc9a24a, kind: 'wall' });
   bannerAt(ctx, P, 4.2, 6.9, 9.3, 0, { w: 1.1, h: 3.4, emblem: 'hollow', bg: 0x1d2a5c, trim: 0xc9a24a, kind: 'wall' });
   for (const x of [-7, 7]) ironLamp(P, x, 0, 11, 5, true);
-  ctx.reserve(40, 8, 64, 36);
-  ctx.zone({ id: 'archive', name: 'The Archive · Pell', color: '#8fb0d8', rect: [40, 8, 64, 36], y: [-1, 30], tour: { x: 38, y: 1, z: 22, yaw: 270, pitch: 6 },
+  ctx.reserve(...RECT.archive);
+  ctx.zone({ id: 'archive', name: 'The Archive · Pell', color: '#8fb0d8', rect: RECT.archive, y: [-1, 30], tour: { x: 34, y: 1, z: 76, yaw: 270, pitch: 6 },
     npc: 'pell', what: 'DAILY + WEEKLY CONTRACTS. Pell the Archivist keeps the contract boards (claimable gold and XP) and the Founders\' Stone, carved with the Horn\'s rule. A round stone tower with a bookshelf-lined reading ring on two floors, a conical dark-oak and deepslate roof, a bell by the door and three notice boards in front.',
     builder: ['Tower radius 8, wall 13 high in stone bricks (mossy streaks), arched west door, glass and yellow-stained windows.', 'Two storeys of bookshelves, upper balcony ring of dark oak planks with fence rail.', 'Founders\' Stone: 1-wide basalt/deepslate pillar 6 high with soul lanterns on its flank, on a stone-brick dais. Carve the three lines of the Horn\'s rule on a sign / item frames.', 'Conical roof of alternating dark oak and deepslate tile rings with an oxidised copper cap and gold finial.', 'Three notice boards (dark oak frame, 3 high) with paper-style signs.'] });
 }

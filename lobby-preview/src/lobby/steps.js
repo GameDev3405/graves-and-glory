@@ -7,6 +7,7 @@ import { buildGrave } from './grave.js';
 import { buildCommand } from './command.js';
 import { buildArmory, buildMuster, buildArchive } from './services.js';
 import { buildYard, buildGates } from './gates.js';
+import { buildGarden } from './garden.js';
 import { buildValley } from './dress.js';
 import { buildLife } from './life.js';
 export const STEPS = [
@@ -22,6 +23,7 @@ export const STEPS = [
   ['Shelving the Archive', buildArchive],
   ['Marking out the Training Yard', buildYard],
   ['Raising the War Gates', buildGates],
+  ['Planting the gardens', buildGarden],
   ['Planting the woods and laying the road', buildValley],
   ['Bringing the camp to life', buildLife],
 ];

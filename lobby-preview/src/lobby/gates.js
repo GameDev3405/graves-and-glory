@@ -1,12 +1,13 @@
 // Training Yard (Drillmaster) and the twin War Gates with the Steward's tower.
 import { pave, STONE_PAVE, GRAVEL_PATH, bigBrazier, ironLamp, plinth, signAt, bannerAt, npcAt, propAt, emitAt, oak, spruce, flowers } from './kit.js';
+import { PLACE, RECT } from './layout.js';
 import { hash } from './ctx.js';
 
 /* ===================================================================== TRAINING YARD */
 export function buildYard(ctx) {
   const w = ctx.w;
   w.beginZone('yard');
-  const P = w.pen(-49, 0, 26, 3);      // front (gate) faces east
+  const PLC = PLACE.yard; const P = w.pen(PLC.x, PLC.y, PLC.z, PLC.rot);      // front (gate) faces east
   // ground: packed earth with gravel lanes
   for (let x = -13; x <= 13; x++) for (let z = -11; z <= 11; z++) { const h = hash(x, z, 21); P.set(x, -1, z, h > 0.8 ? 'gravel' : h > 0.45 ? 'coarse_dirt' : h > 0.3 ? 'podzol' : 'dirt'); }
   for (let z = -2; z <= 11; z++) for (const x of [-1, 0, 1]) P.set(x, -1, z, 'gravel');
@@ -52,8 +53,8 @@ export function buildYard(ctx) {
   for (const [x, z] of [[-6, 9], [-5, 9], [-6, 10]]) P.set(x, 0, z, 'hay_block');
   signAt(ctx, P, 0, 2.7, -10.55, 0, { text: 'THE TRAINING YARD', sub: 'Drillmaster · learn command before the march', w: 4.6, h: 0.9, style: 'wood', size: 0.5 });
   emitAt(ctx, P, 0, 0.5, 0, { type: 'dust', w: 20, h: 2, n: 24 });
-  ctx.reserve(-62, 12, -36, 42);
-  ctx.zone({ id: 'yard', name: 'The Training Yard · Drillmaster', color: '#d89a30', rect: [-62, 12, -36, 42], y: [-1, 10], tour: { x: -36, y: 1, z: 26, yaw: 90, pitch: 6 },
+  ctx.reserve(...RECT.yard);
+  ctx.zone({ id: 'yard', name: 'The Training Yard · Drillmaster', color: '#d89a30', rect: RECT.yard, y: [-1, 10], tour: { x: -38, y: 1, z: 76, yaw: 90, pitch: 6 },
     npc: 'drillmaster', what: 'TUTORIAL. The training yard is where a new commander learns: four lesson boards name the player\'s own keys, six straw dummies and an archery lane let them try orders, and the START arch launches campaign battle 1 (The Training Field). A commander who has not cleared battle 1 spawns here.',
     builder: ['Palisade of spruce logs 2-3 high around a 27 x 23 packed-earth yard (coarse dirt / podzol / gravel).', 'START arch: two 7-high stripped spruce posts with orange terracotta bands, spruce plank beam, hanging bell, navy banners and the battle sign.', 'Six dummies: fence post, hay block body, fence arms, target block head. Archery lane of three target blocks on posts, hay-bale firing marks.', 'Four lesson boards on fence posts along the north palisade; obstacle course (log hurdles, terracotta mud, plank wall) on the south side; small barracks hut.'] });
 }
@@ -62,7 +63,7 @@ export function buildYard(ctx) {
 export function buildGates(ctx) {
   const w = ctx.w;
   w.beginZone('gates');
-  const P = w.pen(0, 0, 52, 0);        // local z grows southward; the court is at negative z
+  const PLC = PLACE.gates; const P = w.pen(PLC.x, PLC.y, PLC.z, PLC.rot);        // local z grows southward; the court is at negative z
   const BR = 'stone_bricks', PA = 'polished_andesite';
   // apron + road leading down to the valley
   pave(P, -34, 3, 34, 12, -1, STONE_PAVE);
@@ -168,9 +169,9 @@ export function buildGates(ctx) {
   bannerAt(ctx, P, 22, 7, -4.6, 180, { w: 1.0, h: 3.0, emblem: 'hollow', bg: 0x1d2a5c, trim: 0xc9a24a, kind: 'wall' });
   // braziers + lamps along the wall front, flowers
   for (const x of [-22, -6, 6, 22]) bigBrazier(P, x, 0, -6, false);
-  for (let x = -33; x <= 33; x += 3) if (Math.abs(x) > 8 && Math.abs(Math.abs(x) - 14) > 5 && Math.abs(x) < 24) { P.set(x, -1, -6, 'moss_block'); flowers(w, x, 0, 46); }
-  ctx.reserve(-36, 38, 36, 62);
-  ctx.zone({ id: 'gates', name: 'The War Gates', color: '#6fe8ff', rect: [-36, 38, 36, 62], y: [-1, 35], tour: { x: 0, y: 1, z: 36, yaw: 180, pitch: 8 },
+  for (let x = -33; x <= 33; x += 3) if (Math.abs(x) > 8 && Math.abs(Math.abs(x) - 14) > 5 && Math.abs(x) < 24) { P.set(x, -1, -6, 'moss_block'); flowers(w, P.mx(x, -6), 0, P.mz(x, -6)); }
+  ctx.reserve(...RECT.gates);
+  ctx.zone({ id: 'gates', name: 'The War Gates', color: '#6fe8ff', rect: RECT.gates, y: [-1, 35], tour: { x: 0, y: 1, z: 64, yaw: 180, pitch: 8 },
     npc: 'steward', what: 'MATCHMAKING. Twin gates face the battlefields: the Dawn gate (teal) in the west, the Dusk gate (violet) in the east, each with a ready pad. A party must stand together on one pad; when both sides are ready the countdown (hourglass) runs and the gates open. Five map pedestals between the gates vote on the battlefield (Rivergate, Ironhold, Frostmarch, Hollowwood, Kingsfield), each a tiny diorama. The east tower is the Steward\'s office for parties and rooms; the west tower is the horn tower.',
     builder: ['Wall 69 x 7 deep x 11 high in stone bricks, battlement walkway, two 7-wide pointed arches (stair blocks) each filled with stained glass: cyan for Dawn, purple for Dusk.', 'Ready pads: radius-5 discs, polished deepslate rim, concrete in team colour, brass ring, sea lanterns; overhead wooden arch with team wool.', 'Map board: five 3x3 polished andesite plinths with miniature landscapes, lectern each with a vote sign.', 'Towers radius 5, 17 high with conical roofs in team concrete and brass bands; Steward\'s office open on the court side with a desk, cartography table and three notice boards.'] });
 }

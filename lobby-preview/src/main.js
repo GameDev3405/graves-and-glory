@@ -37,7 +37,7 @@ const tick = () => new Promise((r) => setTimeout(r, 12));
   tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter; tex.generateMipmaps = false; tex.colorSpace = THREE.NoColorSpace;
   const env = new Env(scene, tex); env.setPreset(params.get('time') || 'dusk');
   const ctx = new Ctx();
-  let n = 0; const steps = 14;
+  let n = 0; const steps = 15;
   await buildLobby(ctx, (m) => setProgress(m, 0.05 + 0.45 * Math.min(1, n++ / steps)));
   setProgress('Lighting the lanterns', 0.56); await tick();
   ctx.w.computeLight();

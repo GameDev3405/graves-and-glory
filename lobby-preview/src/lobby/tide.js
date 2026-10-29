@@ -1,11 +1,12 @@
 // Tidecallers: "the sea wants the land back". A verdigris shell-hall behind a glowing tidal pool, with a pier.
 import { plinth, signAt, bannerAt, propAt, emitAt, lampPost } from './kit.js';
+import { PLACE, RECT } from './layout.js';
 import { hash } from './ctx.js';
 
 export function buildTide(ctx) {
   const w = ctx.w;
   w.beginZone('tidecallers');
-  const P = w.pen(26, 6, -23, 1);                 // front faces west
+  const PLC = PLACE.tide; const P = w.pen(PLC.x, PLC.y, PLC.z, PLC.rot);                 // front faces west
   const CU = 'oxidized_cut_copper', PB = 'prismarine_bricks', DP = 'dark_prismarine';
 
   /* ---- ground + pool ---- */
@@ -70,8 +71,8 @@ export function buildTide(ctx) {
   emitAt(ctx, P, 0, 0, 3, { type: 'mist', w: 8, h: 2.5, n: 22 });
   emitAt(ctx, P, 0, -2, 4, { type: 'bubble', w: 8, h: 3, n: 20 });
   emitAt(ctx, P, -5, 5, -7, { type: 'sparkle', w: 5, h: 4, n: 12, color: 0x7fffe0 });
-  ctx.reserve(16, -34, 36, -12);
-  ctx.zone({ id: 'tidecallers', name: 'The Tidecallers · Tidepost', color: '#3fa58c', rect: [16, -34, 36, -12], y: [-5, 20], tour: { x: 12, y: 7, z: -23, yaw: 270, pitch: 3 },
+  ctx.reserve(...RECT.tide);
+  ctx.zone({ id: 'tidecallers', name: 'The Tidecallers · Tidepost', color: '#3fa58c', rect: RECT.tide, y: [-5, 20], tour: { x: 34, y: 7, z: -40, yaw: 270, pitch: 3 },
     house: 'tidecallers', what: 'The Tidecallers House tent: a verdigris shell-hall behind a three-block-deep tidal pool lit by sea lanterns. A timber pier leads over the water to a whale-rib arch; five troops stand on prismarine islets, Admiral Vael waits inside. A rowboat is moored beside the pier, mist drifts off the water.',
     builder: ['Palette: oxidised cut copper (verdigris), prismarine bricks + dark prismarine, bone (whale ribs), deep teal-navy banners, sea lanterns, spruce pier.', 'Pool 19 x 12, 3 deep: sand/prismarine floor, sea lanterns on the floor, kelp, seagrass and coral.', 'Pier 5 wide on stripped spruce pilings with fence rails and lanterns every 4 blocks.', 'Hall 19 x 8, walls 5 high, roof of oxidised copper stairs with a prismarine ridge, entrance framed by a bone-block rib arch.'] });
 }
