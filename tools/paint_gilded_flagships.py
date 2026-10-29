@@ -48,11 +48,11 @@ NAVY = H.ramp('0E1320', '18202F', '232E42', '33425A', '4E6078')
 # left bone, because the build refuses a negative scale and the part library names a part's bone.
 
 R_PAULDRON = [
-    box([-4.5, -3, -3], [6, 3, 6], 'right cap over the shoulder'),
-    box([-5, -3.5, -3.5], [7, 1, 6], 'right rolled rim'),
-    box([-4.5, 0, -3], [5, 1, 5], 'right first lame'),
-    box([-4, 1, -2.5], [4, 1, 4], 'right second lame'),
-    box([-2, -3.5, -3.75], [2, 1, 1], 'right gilt boss'),
+    box([-4.5, -1, -3], [6, 3, 6], 'right cap over the shoulder'),
+    box([-5, -1.5, -3.5], [7, 1, 6], 'right rolled rim'),
+    box([-4.5, 2, -3], [5, 1, 5], 'right first lame'),
+    box([-4, 3, -2.5], [4, 1, 4], 'right second lame'),
+    box([-2, -1.5, -3.75], [2, 1, 1], 'right gilt boss'),
 ]
 
 # A dark cloth sleeve proud of the mail, and a gauntlet that closes the arm at the wrist. Both are geometry, not paint:
@@ -68,35 +68,38 @@ R_GAUNTLET = [
 
 PARTS = {
     'g_kettle_helm': ('head', True, 'The Gilded kettle helm: a stepped dome under a wide brim, a comb along the crown, '
-                                    'a rear neck flare, a nasal bar and two cheek plates; the face stays open under the brim.', [
+                                    'a rear neck flare, a nasal bar and two cheek plates that sit on the skull (not 0.5 px off it, '
+                                    'which read as bare skin at 45 degrees); the face stays open under the brim.', [
         box([-5, -10.5, -5], [10, 2, 10], 'crown band'),
         box([-4.5, -8.8, -4.5], [9, 1, 9], 'dome lower'),
         box([-3.5, -7.6, -3.5], [7, 1, 7], 'dome upper'),
-        box([-2.5, -6.9, -2.5], [5, 1, 5], 'dome cap'),
-        box([-6.5, -6.6, -6], [13, 1, 12], 'wide brim'),
-        box([-4, -5.8, 5.2], [8, 2, 1], 'rear neck flare'),
-        box([-0.5, -5.7, -6.2], [1, 3, 1], 'nasal bar'),
-        box([-5.5, -6.2, -4.8], [1, 4, 8], 'right cheek plate'),
-        box([4.5, -6.2, -4.8], [1, 4, 8], 'left cheek plate'),
+        box([-6.5, -6.9, -5.4], [13, 1, 10], 'wide brim'),
+        box([-4, -5.9, 5.0], [8, 2, 1], 'rear neck flare'),
+        box([-0.5, -6.4, -5.9], [1, 2, 1], 'nasal bar'),
+        box([-4.6, -6.6, -4.4], [1, 3, 8], 'right cheek plate'),
+        box([3.6, -6.6, -4.4], [1, 3, 8], 'left cheek plate'),
         box([-0.6, -11, -3.5], [1, 1, 7], 'comb'),
     ]),
-    'g_great_helm': ('head', True, 'The Gilded great helm: a flat stepped crown, a raised comb, a brow band, a protruding '
-                                   'visor snout, side vents, a neck guard and a gilt cross. It closes the face completely.', [
+    'g_great_helm': ('head', True, 'The Gilded great helm: a flat stepped crown, a raised comb set into it, a brow band over a '
+                                   'recessed sight slit split by a nose bar, a stepped chin plate, a gilt cross proud of the chin, '
+                                   'side vents and a neck guard. It closes the face completely.', [
         box([-5, -9, -5], [10, 8, 10], 'shell'),
         box([-4.5, -10, -4.5], [9, 1, 9], 'top step'),
         box([-3.5, -11, -3.5], [7, 1, 7], 'flat crown'),
-        box([-1, -11.5, -5], [2, 1, 10], 'comb ridge'),
-        box([-5.5, -8.4, -5.6], [11, 1, 1], 'brow band'),
-        box([-0.5, -7.5, -6.4], [1, 5, 1], 'cross upright'),
-        box([-3, -5.2, -6.4], [6, 1, 1], 'cross arm'),
-        box([-3, -6, -7], [6, 2, 2], 'visor snout deep'),
+        box([-1, -11.6, -4], [2, 1, 8], 'comb ridge'),
+        box([-4.5, -8.6, -5.5], [9, 1, 1], 'brow band'),
+        box([-3, -7.4, -5.3], [6, 1, 1], 'visor slit'),
+        box([-0.5, -7.4, -6.0], [1, 3, 1], 'nose bar'),
+        box([-2.5, -4.2, -5.7], [5, 2, 1], 'chin plate'),
+        box([-0.5, -4.4, -6.2], [1, 2, 1], 'cross upright'),
+        box([-1.5, -3.8, -6.2], [3, 1, 1], 'cross arm'),
         box([-5.5, -0.8, -4.5], [11, 2, 9], 'neck guard'),
-        box([-5.3, -5.4, -3.2], [1, 3, 2], 'right vent'),
-        box([4.9, -5.4, -3.2], [1, 3, 2], 'left vent'),
+        box([-5.6, -5.6, -2.4], [1, 2, 2], 'right vent'),
+        box([4.6, -5.6, -2.4], [1, 2, 2], 'left vent'),
     ]),
     'g_mail_coif': ('head', False, 'The mail coif under the helm: a dark ring at the neck and the jaw, so the head sits in the '
                                    'armour instead of on it.', [
-        box([-4.5, -4, -4.5], [9, 2, 9], 'neck ring'),
+        box([-4.6, -0.4, -4.6], [9, 1, 9], 'neck ring'),
     ]),
     'g_pauldron': ('right_arm', False, 'The Gilded layered pauldron, right: a plate over the shoulder with a rolled rim and two '
                                        'lames below it. It widens the armoured silhouette and moves with the arm.', R_PAULDRON),
@@ -148,32 +151,33 @@ PARTS = {
         box([-2, 10, -3], [4, 2, 2], 'sabaton'),
         box([-2, 11, -3.5], [4, 1, 1], 'toe'),
     ]),
-    'g_surcoat': ('body', False, 'The Gilded surcoat skirt: two white panels from the belt to the upper thigh, split at the '
-                                 'front and cut high so thigh, knee and greave all read below it.', [
-        box([-4.5, -2, -2.5], [4, 3, 5], 'surcoat skirt right'),
-        box([0.4, -2, -2.5], [4, 3, 5], 'surcoat skirt left'),
+    'g_surcoat': ('body', False, 'The Gilded surcoat skirt: two white panels from the belt to the mid thigh, butted against '
+                                 'the team pale so the pale reads as a stripe down the cloth, and cut high so thigh, knee and '
+                                 'greave all read below it.', [
+        box([-4.85, -2.6, -2.55], [3, 7, 5], 'surcoat skirt right'),
+        box([1.85, -2.6, -2.55], [3, 7, 5], 'surcoat skirt left'),
     ]),
-    'g_cape': ('body', False, 'The Gilded mantle: a shoulder roll over two long split tails, each with an outer and a mid '
-                              'fold, a stepped hem and gilt edge trim. The centre stays open so the legs read through the '
-                              'cape. Static geometry, no pole and no flag.', [
-        box([-4, -12, 2.4], [8, 2, 1], 'shoulder roll'),
-        box([-4, -10, 2.9], [3, 13, 1], 'left tail'),
-        box([1, -10, 2.9], [3, 13, 1], 'right tail'),
-        box([-4.1, -10, 2.6], [1, 11, 1], 'left outer fold'),
-        box([3.1, -10, 2.6], [1, 11, 1], 'right outer fold'),
-        box([-2.8, -10, 3.1], [1, 13, 1], 'left mid fold'),
-        box([1.8, -10, 3.1], [1, 13, 1], 'right mid fold'),
-        box([-4, -10, 3.3], [1, 11, 1], 'left trim'),
-        box([3, -10, 3.3], [1, 11, 1], 'right trim'),
-        box([-4, 2, 3], [3, 1, 1], 'left hem'),
-        box([1, 2, 3], [3, 1, 1], 'right hem'),
+    'g_cape': ('body', False, 'The Gilded mantle: a yoke across the shoulder blades over two split tails, each a two-step '
+                              'fold with a raised outer edge, a dark hem and gilt trim, the centre open over the team tabard so the '
+                              'leg split reads from behind. It hangs to the knee. Static, no pole, no flag.', [
+        box([-5, -12.6, 2.3], [10, 2, 1], 'shoulder yoke'),
+        box([-4.6, -10.8, 2.3], [3, 8, 1], 'left upper tail'),
+        box([-4.8, -2.8, 2.5], [3, 6, 1], 'left lower tail'),
+        box([1.6, -10.8, 2.3], [3, 8, 1], 'right upper tail'),
+        box([1.8, -2.8, 2.5], [3, 6, 1], 'right lower tail'),
+        box([-4.6, -10.8, 3.1], [1, 14, 1], 'left trim'),
+        box([3.6, -10.8, 3.1], [1, 14, 1], 'right trim'),
+        box([-2.6, -10.8, 2.2], [1, 15, 1], 'left inner fold'),
+        box([1.6, -10.8, 2.2], [1, 15, 1], 'right inner fold'),
+        box([-4.6, 3.2, 2.5], [3, 1, 2], 'left hem'),
+        box([1.6, 3.2, 2.5], [3, 1, 2], 'right hem'),
     ]),
     'g_crest': ('head', True, 'The Knight-Captain crest: a gilt socket and a white plume stepping back in three tapering blocks, '
                               'so the profile reads as a swept plume rather than a post.', [
-        box([-1.5, -11.5, -3], [3, 1, 3], 'socket'),
-        box([-1, -12.5, -2], [2, 1, 4], 'plume base'),
-        box([-0.5, -13.5, 0], [2, 1, 3], 'plume mid'),
-        box([0, -14.5, 1], [1, 1, 2], 'plume tip'),
+        box([-1.5, -11.4, -2.5], [3, 1, 3], 'socket'),
+        box([-1, -12.6, -2], [2, 1, 5], 'plume base'),
+        box([-0.5, -13.6, 1], [2, 1, 4], 'plume mid'),
+        box([0, -14.6, 3], [1, 1, 4], 'plume tip'),
     ]),
 }
 
@@ -220,7 +224,9 @@ TROOPS = {
 
 # ---------------------------------------------------------------- materials
 def steel_mats(stage, templar):
-    plate = H.rivet_metal(STEEL, GILT if stage >= 2 else STEEL, every=5,
+    # Gilt rivets only on the third tier: at stage 2 a gilt stud on every five texels of every plate read as gold
+    # measles in the live client, and the plan keeps House gold under a fifth of the surface.
+    plate = H.rivet_metal(STEEL, GILT if stage >= 3 else IRON, every=7,
                           rim=GILT if stage >= 3 else None, base=0.58)
     smooth = H.metal(STEEL, rim=GILT if stage >= 3 else None, seam=4, base=0.58)
     mail = H.mail(IRON)
@@ -289,6 +295,36 @@ FACE_SETS = {
     ],
 }
 
+
+# ---------------------------------------------------------------- faces
+# paint_house_troops' face painter has House-specific faces and a generic fallback that paints a four-texel dark eye
+# band. The Knight's kettle helm is open, so that fallback read as a blindfold in the live client. These two faces are
+# painted here instead: one-texel eyes with skin between them, a brow, a nose and a mouth.
+def gilded_face_px(troop, n, x, y, skin, hair, eye):
+    if y == 0:
+        return H.mul(hair, 0.9) if x not in (0, 7) else skin
+    if y == 1:
+        return H.mix(hair, skin, 0.45) if 1 <= x <= 6 else skin
+    if y == 2:
+        return H.mul(skin, 0.92)
+    if y == 3:
+        if x in (2, 5):
+            return eye
+        if x in (1, 6):
+            return H.mul(skin, 0.72)
+        return skin
+    if y == 4 and x in (3, 4):
+        return H.mul(skin, 0.86)
+    if y == 5 and x in (1, 6):
+        return H.mul(skin, 0.9)
+    if y == 6 and x in (3, 4):
+        return H.mul(skin, 0.55)
+    if y == 7:
+        return H.mul(skin, 0.94)
+    return skin
+
+
+H.face_px = gilded_face_px
 
 # ---------------------------------------------------------------- run
 H.PARTS = PARTS

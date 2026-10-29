@@ -1,41 +1,41 @@
 {
  "part": "g_surcoat",
- "note": "The Gilded surcoat skirt: two white panels from the belt to the upper thigh, split at the front and cut high so thigh, knee and greave all read below it.",
+ "note": "The Gilded surcoat skirt: two white panels from the belt to the mid thigh, butted against the team pale so the pale reads as a stripe down the cloth, and cut high so thigh, knee and greave all read below it.",
  "bone": "body",
  "team": false,
  "tag": "",
  "boxes": [
   {
    "origin": [
-    -4.5,
-    -2,
-    -2.5
+    -4.85,
+    -2.6,
+    -2.55
    ],
    "size": [
-    4,
     3,
+    7,
     5
    ],
    "uv": [
-    160,
-    0
+    114,
+    19
    ],
    "note": "surcoat skirt right"
   },
   {
    "origin": [
-    0.4,
-    -2,
-    -2.5
+    1.85,
+    -2.6,
+    -2.55
    ],
    "size": [
-    4,
     3,
+    7,
     5
    ],
    "uv": [
-    201,
-    0
+    130,
+    20
    ],
    "note": "surcoat skirt left"
   }

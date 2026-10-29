@@ -1,194 +1,194 @@
 {
  "part": "g_cape",
- "note": "The Gilded mantle: a shoulder roll over two long split tails, each with an outer and a mid fold, a stepped hem and gilt edge trim. The centre stays open so the legs read through the cape. Static geometry, no pole and no flag.",
+ "note": "The Gilded mantle: a yoke across the shoulder blades over two split tails, each a two-step fold with a raised outer edge, a dark hem and gilt trim, the centre open over the team tabard so the leg split reads from behind. It hangs to the knee. Static, no pole, no flag.",
  "bone": "body",
  "team": false,
  "tag": "",
  "boxes": [
   {
    "origin": [
-    -4,
-    -12,
-    2.4
+    -5,
+    -12.6,
+    2.3
    ],
    "size": [
-    8,
+    10,
     2,
     1
    ],
    "uv": [
-    118,
-    35
+    94,
+    21
    ],
-   "note": "shoulder roll"
+   "note": "shoulder yoke"
   },
   {
    "origin": [
-    -4,
-    -10,
-    2.9
+    -4.6,
+    -10.8,
+    2.3
    ],
    "size": [
     3,
-    13,
+    8,
     1
    ],
    "uv": [
-    20,
-    32
+    245,
+    0
    ],
-   "note": "left tail"
+   "note": "left upper tail"
   },
   {
    "origin": [
-    1,
-    -10,
-    2.9
-   ],
-   "size": [
-    3,
-    13,
-    1
-   ],
-   "uv": [
-    28,
-    32
-   ],
-   "note": "right tail"
-  },
-  {
-   "origin": [
-    -4.1,
-    -10,
-    2.6
-   ],
-   "size": [
-    1,
-    11,
-    1
-   ],
-   "uv": [
-    92,
-    32
-   ],
-   "note": "left outer fold"
-  },
-  {
-   "origin": [
-    3.1,
-    -10,
-    2.6
-   ],
-   "size": [
-    1,
-    11,
-    1
-   ],
-   "uv": [
-    209,
-    34
-   ],
-   "note": "right outer fold"
-  },
-  {
-   "origin": [
+    -4.8,
     -2.8,
-    -10,
-    3.1
+    2.5
    ],
    "size": [
-    1,
-    13,
+    3,
+    6,
     1
    ],
    "uv": [
-    36,
-    32
+    247,
+    10
    ],
-   "note": "left mid fold"
+   "note": "left lower tail"
+  },
+  {
+   "origin": [
+    1.6,
+    -10.8,
+    2.3
+   ],
+   "size": [
+    3,
+    8,
+    1
+   ],
+   "uv": [
+    236,
+    10
+   ],
+   "note": "right upper tail"
   },
   {
    "origin": [
     1.8,
-    -10,
+    -2.8,
+    2.5
+   ],
+   "size": [
+    3,
+    6,
+    1
+   ],
+   "uv": [
+    245,
+    23
+   ],
+   "note": "right lower tail"
+  },
+  {
+   "origin": [
+    -4.6,
+    -10.8,
     3.1
    ],
    "size": [
     1,
-    13,
+    14,
     1
    ],
    "uv": [
-    88,
+    142,
     32
-   ],
-   "note": "right mid fold"
-  },
-  {
-   "origin": [
-    -4,
-    -10,
-    3.3
-   ],
-   "size": [
-    1,
-    11,
-    1
-   ],
-   "uv": [
-    64,
-    35
    ],
    "note": "left trim"
   },
   {
    "origin": [
-    3,
-    -10,
-    3.3
+    3.6,
+    -10.8,
+    3.1
    ],
    "size": [
     1,
-    11,
+    14,
     1
    ],
    "uv": [
-    68,
-    35
+    146,
+    32
    ],
    "note": "right trim"
   },
   {
    "origin": [
-    -4,
-    2,
-    3
+    -2.6,
+    -10.8,
+    2.2
+   ],
+   "size": [
+    1,
+    15,
+    1
+   ],
+   "uv": [
+    134,
+    32
+   ],
+   "note": "left inner fold"
+  },
+  {
+   "origin": [
+    1.6,
+    -10.8,
+    2.2
+   ],
+   "size": [
+    1,
+    15,
+    1
+   ],
+   "uv": [
+    138,
+    32
+   ],
+   "note": "right inner fold"
+  },
+  {
+   "origin": [
+    -4.6,
+    3.2,
+    2.5
    ],
    "size": [
     3,
     1,
-    1
+    2
    ],
    "uv": [
-    248,
-    6
+    201,
+    34
    ],
    "note": "left hem"
   },
   {
    "origin": [
-    1,
-    2,
-    3
+    1.6,
+    3.2,
+    2.5
    ],
    "size": [
     3,
     1,
-    1
+    2
    ],
    "uv": [
-    248,
-    8
+    211,
+    34
    ],
    "note": "right hem"
   }

@@ -1,6 +1,6 @@
 {
  "part": "g_great_helm",
- "note": "The Gilded great helm: a flat stepped crown, a raised comb, a brow band, a protruding visor snout, side vents, a neck guard and a gilt cross. It closes the face completely.",
+ "note": "The Gilded great helm: a flat stepped crown, a raised comb set into it, a brow band over a recessed sight slit split by a nose bar, a stepped chin plate, a gilt cross proud of the chin, side vents and a neck guard. It closes the face completely.",
  "bone": "head",
  "team": false,
  "tag": "helm",
@@ -34,7 +34,7 @@
     9
    ],
    "uv": [
-    197,
+    83,
     11
    ],
    "note": "top step"
@@ -51,67 +51,50 @@
     7
    ],
    "uv": [
-    56,
-    18
+    131,
+    12
    ],
    "note": "flat crown"
   },
   {
    "origin": [
     -1,
-    -11.5,
-    -5
+    -11.6,
+    -4
    ],
    "size": [
     2,
     1,
-    10
+    8
    ],
    "uv": [
     223,
-    11
+    20
    ],
    "note": "comb ridge"
   },
   {
    "origin": [
-    -5.5,
-    -8.4,
-    -5.6
+    -4.5,
+    -8.6,
+    -5.5
    ],
    "size": [
-    11,
+    9,
     1,
     1
    ],
    "uv": [
-    164,
-    37
+    60,
+    34
    ],
    "note": "brow band"
   },
   {
    "origin": [
-    -0.5,
-    -7.5,
-    -6.4
-   ],
-   "size": [
-    1,
-    5,
-    1
-   ],
-   "uv": [
-    237,
-    3
-   ],
-   "note": "cross upright"
-  },
-  {
-   "origin": [
     -3,
-    -5.2,
-    -6.4
+    -7.4,
+    -5.3
    ],
    "size": [
     6,
@@ -122,24 +105,75 @@
     47,
     8
    ],
-   "note": "cross arm"
+   "note": "visor slit"
   },
   {
    "origin": [
-    -3,
-    -6,
-    -7
+    -0.5,
+    -7.4,
+    -6.0
    ],
    "size": [
-    6,
-    2,
-    2
+    1,
+    3,
+    1
    ],
    "uv": [
-    193,
+    82,
+    0
+   ],
+   "note": "nose bar"
+  },
+  {
+   "origin": [
+    -2.5,
+    -4.2,
+    -5.7
+   ],
+   "size": [
+    5,
+    2,
+    1
+   ],
+   "uv": [
+    189,
     34
    ],
-   "note": "visor snout deep"
+   "note": "chin plate"
+  },
+  {
+   "origin": [
+    -0.5,
+    -4.4,
+    -6.2
+   ],
+   "size": [
+    1,
+    2,
+    1
+   ],
+   "uv": [
+    128,
+    0
+   ],
+   "note": "cross upright"
+  },
+  {
+   "origin": [
+    -1.5,
+    -3.8,
+    -6.2
+   ],
+   "size": [
+    3,
+    1,
+    1
+   ],
+   "uv": [
+    12,
+    16
+   ],
+   "note": "cross arm"
   },
   {
    "origin": [
@@ -153,41 +187,41 @@
     9
    ],
    "uv": [
-    170,
+    178,
     0
    ],
    "note": "neck guard"
   },
   {
    "origin": [
-    -5.3,
-    -5.4,
-    -3.2
+    -5.6,
+    -5.6,
+    -2.4
    ],
    "size": [
     1,
-    3,
+    2,
     2
    ],
    "uv": [
-    32,
+    56,
     0
    ],
    "note": "right vent"
   },
   {
    "origin": [
-    4.9,
-    -5.4,
-    -3.2
+    4.6,
+    -5.6,
+    -2.4
    ],
    "size": [
     1,
-    3,
+    2,
     2
    ],
    "uv": [
-    56,
+    180,
     0
    ],
    "note": "left vent"
