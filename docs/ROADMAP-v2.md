@@ -69,9 +69,8 @@ Run the levels-on round robin on the adopted maps. Paint tier art for the 26 tro
 
 ## 4. Next actions (approved plan)
 
-1. **Phase 0.5.** Re-run the fast and game tiers on `main` and record the baseline candidate.
-2. **Phase 0.6.** Book the six-player baseline date with five friends.
-3. **Phase 0.7.** Publish the Phase 0/1 task board with owners, state and evidence links.
+1. **Phase 0.6.** Book the six-player baseline date with five friends.
+2. **Phase 0.7.** Publish the Phase 0/1 task board with owners, state and evidence links.
 
 Then start Phase 1: rebase the War Table, House-model and animation lanes, run the six-player network baseline, and cut 0.5.1. The full sequence is in PLAN-TO-1.0.md.
 

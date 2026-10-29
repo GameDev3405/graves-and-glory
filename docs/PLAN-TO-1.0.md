@@ -39,7 +39,7 @@ Policy still applies: `docs/WORKFLOW.md`. Gameplay, save, protocol and dependenc
 
 ## 1. Baseline: what exists on 2026-10-28
 
-`main` is the 0.5.0 development integration at `ef82180` (docs tip). The verified candidate is `v0.5.0-dev.20261028` at `c4f8771`, source identity `c41a0e1`, verified at `fa2f31e` by the fast tier (22 checks) and the game tier (12 checks). No release is published.
+`main` is the 0.5.0 development integration at `f1f6047` (approved-plan docs tip). The Phase 0 baseline re-verified source identity `c41a0e1` at `f1f6047` with the fast tier (22 checks) and the game tier (23 checks). The earlier `v0.5.0-dev.20261028` tag marks `c4f8771`. No release is published.
 
 | Area | Current state | The gap to 1.0 |
 |---|---|---|
@@ -85,11 +85,11 @@ Goal: one agreed scope, one baseline, no moving target.
 | 0.2 | Freeze the 1.0 scope and exclusions; no new feature enters without removing another | Done 2026-10-28 | Kort | `docs/BACKLOG.md` updated |
 | 0.3 | Confirm the slice battle map (Ironhold, section 7.1) | Done 2026-10-28 | Kort | Decision recorded |
 | 0.4 | Confirm the map adoption format and AI build authority (sections 7.2 and 7.3) | Done 2026-10-28 | Kort | Decision recorded |
-| 0.5 | Re-run fast and game on `main`; record the baseline candidate | Open | Agent | `work/verify`, candidate record |
+| 0.5 | Re-run fast and game on `main`; record the baseline candidate | Done 2026-10-28 | Agent | `work/verify/20261028-231020-35520`, `work/verify/20261028-231257-41152`; candidate record |
 | 0.6 | Book the six-player baseline date with five friends | Open | Kort | Date in `docs/SIX-PLAYER-TEST-PLAN.md` |
 | 0.7 | Make a single visible board: one row per phase task, owner, state, evidence link | Open | Agent | `docs/BACKLOG.md` or GitHub Project |
 
-Phase 0 status: 0.1 to 0.4 are complete. The plan and the seven decisions are approved and recorded in `docs/DECISIONS.md`; the scope freeze and the Ironhold, overlay and AI-authority decisions are in section 7. Remaining: 0.5 baseline re-run, 0.6 six-player date, 0.7 board.
+Phase 0 status: 0.1 to 0.5 are complete. The plan and the seven decisions are approved and recorded in `docs/DECISIONS.md`; the scope freeze and the Ironhold, overlay and AI-authority decisions are in section 7. The baseline is fast 22/22 and game 23/23 at `f1f6047`, source identity `c41a0e1`. Remaining: 0.6 six-player date, 0.7 board.
 
 Exit: scope signed, baseline green, six-player date booked, slice map and adoption format chosen.
 

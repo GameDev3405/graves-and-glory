@@ -1,7 +1,7 @@
 {
   "status": "development-build; release blocked",
   "version": "0.5.0",
-  "commit": "fa2f31e19301fbb92496d272d7c793bce75e72f1",
+  "commit": "f1f60472517555ed1f6e1faac4ae373b0899ad27",
   "dirty": false,
   "source_identity": {
     "version": "0.5.0",
@@ -12,11 +12,12 @@
     "path": "work/candidates/c41a0e1cef708e00a3a6030e1afde5b9a4194e0a83c93937116c050887efd0e4/graves-and-glory-0.5.0.jar",
     "sha256": "61a1c8845ded9f9c1f66a2af2b337d6c11f13e5c3fb2a146b2033236042435a3",
     "kind": "mod jar; not a playable modpack package",
-    "note": "built from the clean 2026-10-28 integration; verified at fa2f31e. The record and cleanup report are docs-only commits after that head, so the source identity is unchanged."
+    "note": "built from the clean 2026-10-28 integration at source identity c41a0e1; the record, cleanup and plan commits after fa2f31e are docs-only, so the source identity is unchanged. Re-verified at f1f6047.",
+    "source_commit": "fa2f31e19301fbb92496d272d7c793bce75e72f1"
   },
   "verification": {
-    "fast": "work/verify/20261028-192147-35288/result.json (pass, exit 0; head fa2f31e, dirty false, 22 checks)",
-    "game": "work/verify/20261028-193007-9180/result.json (pass, exit 0; head fa2f31e, dirty false; Phase 1 combat smoke only)",
+    "fast": "work/verify/20261028-231020-35520/result.json (pass, exit 0; head f1f6047, dirty false, 22 checks)",
+    "game": "work/verify/20261028-231257-41152/result.json (pass, exit 0; head f1f6047, dirty false; Phase 1 combat smoke only)",
     "strict_package": "not run for this identity; the documented gate still refuses 26 troops with missing complete tier art",
     "ui_suites": "the M1 extra UI suites were not re-run for this head; fast includes ui-standard and ui-assets"
   },
@@ -43,6 +44,8 @@
   "questions": "../QUESTIONS-FOR-KORT.md",
   "branch": "main",
   "tag": "v0.5.0-dev.20261028",
+  "tag_target": "c4f8771",
+  "tag_note": "marks c4f8771; f1f6047 is a docs-only re-verification",
   "previous_candidate": {
     "commit": "30311614c26d32b7d5dc486c9d56f8dc5f3ae3ef",
     "sourceSha256": "5e7be7be04a9dc3a6b9a20d2d6dfca9de1efc68ce331e61a30525e25ba23a5a2",

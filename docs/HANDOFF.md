@@ -2,9 +2,9 @@
 
 ## Where we are
 
-`main` is now the 0.5.0 development integration, promoted from `phase-1-solo-core` plus the M1 UI work, the banner page and the harness Narrator fix. Source identity: `c41a0e1cef708e00a3a6030e1afde5b9a4194e0a83c93937116c050887efd0e4`. `main` and the three `work/*` lanes are pushed to GitHub; the verified source head is `fa2f31e` and the record commit is `c4f8771`, tagged `v0.5.0-dev.20261028`. It is not a published release; six-player, dedicated-server, visual and package gates remain open.
+`main` is now the 0.5.0 development integration, promoted from `phase-1-solo-core` plus the M1 UI work, the banner page and the harness Narrator fix. Source identity: `c41a0e1cef708e00a3a6030e1afde5b9a4194e0a83c93937116c050887efd0e4`. `main` and the three `work/*` lanes are pushed to GitHub; the Phase 0 baseline re-verified source identity `c41a0e1` at `f1f6047`, while the `v0.5.0-dev.20261028` tag marks the earlier `c4f8771` record commit. It is not a published release; six-player, dedicated-server, visual and package gates remain open.
 
-Approved plan: [PLAN-TO-1.0.md](PLAN-TO-1.0.md), approved 2026-10-28. Phase 0 is in progress: 0.1 to 0.4 are complete; 0.5 baseline re-run, 0.6 six-player date and 0.7 task board remain.
+Approved plan: [PLAN-TO-1.0.md](PLAN-TO-1.0.md), approved 2026-10-28. Phase 0 is in progress: 0.1 to 0.5 are complete; 0.6 six-player date and 0.7 task board remain. The baseline passed fast 22/22 and game 23/23 at `f1f6047`; see `reports/phase-0-5-baseline-2026-10-28.md`.
 
 Merged and in `main`:
 
@@ -38,7 +38,7 @@ Not done:
 | `work/war-table-troop` | War Table troop sheet (Task 5), WIP and unmerged. |
 | `heraldic-units` | External heraldic-unit reference sheets; worktree in `Documents/gg-hx`. |
 
-Tags: `v0.4.0` marks the old `main`; `v0.5.0-dev.20261028` marks this candidate. `archive/2026-10/*` tags preserve the tips of removed historical branches (preview, codex experiments, snapshots, art bake-offs, builder docs). All five branches and all 19 tags are on GitHub; removed remote branches are listed in the cleanup report.
+Tags: `v0.4.0` marks the old `main`; `v0.5.0-dev.20261028` marks the earlier `c4f8771` record commit, not the `f1f6047` baseline tip. `archive/2026-10/*` tags preserve the tips of removed historical branches (preview, codex experiments, snapshots, art bake-offs, builder docs). All five project branches and all 19 tags are on GitHub; a separate `claude/eloquent-fermat-lw270a` branch also exists, and removed remote branches are listed in the cleanup report.
 
 ## Candidate and evidence
 
@@ -46,10 +46,9 @@ Tags: `v0.4.0` marks the old `main`; `v0.5.0-dev.20261028` marks this candidate.
 
 ## Next actions
 
-1. Phase 0.5: re-run the fast and game tiers on `main` and record the baseline candidate.
-2. Phase 0.6: book the six-player baseline date with five friends.
-3. Phase 0.7: publish the single Phase 0/1 task board with owners, state and evidence links.
-4. Then start Phase 1: rebase the War Table, House-model and animation lanes, run the six-player network baseline, and cut 0.5.1.
+1. Phase 0.6: book the six-player baseline date with five friends.
+2. Phase 0.7: publish the single Phase 0/1 task board with owners, state and evidence links.
+3. Then start Phase 1: rebase the War Table, House-model and animation lanes, run the six-player network baseline, and cut 0.5.1.
 
 ## Constraints
 

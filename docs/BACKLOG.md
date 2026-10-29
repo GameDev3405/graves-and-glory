@@ -6,7 +6,7 @@ Only explicitly approved unblocked items may run unattended. The 2026-10-28 clea
 |---|---|---|
 | OPT-1 | Done | Workflow, navigation, verification and Graphify tooling are in place; see the optimization report for the evidence. |
 | CLEANUP-1 | Done 2026-10-28 | `main` promoted to the 0.5.0 integration; README, HANDOFF, BACKLOG, ROADMAP and candidate record reconciled; old remote branches archived and removed. See `reports/cleanup-2026-10-28.md`. |
-| PLAN-1.0 | Approved 2026-10-28; Phase 0 in progress | Full-vision 1.0 plan and seven decisions approved (`docs/PLAN-TO-1.0.md`, `docs/DECISIONS.md`). Phase 0 complete: 0.1 to 0.4. Open: 0.5 baseline re-run, 0.6 six-player date, 0.7 single board. |
+| PLAN-1.0 | Approved 2026-10-28; Phase 0 in progress | Full-vision 1.0 plan and seven decisions approved (`docs/PLAN-TO-1.0.md`, `docs/DECISIONS.md`). Phase 0 complete: 0.1 to 0.5. Open: 0.6 six-player date, 0.7 single board. Baseline evidence is in `docs/reports/phase-0-5-baseline-2026-10-28.md`. |
 | OPT-2 | Deferred by Kort 2026-10-28 | All 30 worktrees and their run evidence are retained. No worktree or bulk run data was deleted; revisit only with explicit per-folder approval. |
 | OPT-3 | Awaiting observations | Measure the next five comparable accepted deliverables and the next full usage cycle in `EFFICIENCY.md`. |
 | SLICE-1 | Scope and plan approved 2026-10-28; Phase 0 in progress | 3v3 humans plus bots, one House per player, six classes, a short campaign run, one capture scenario and a six-client baseline first. Slice map is Ironhold; map adoption and AI build authority are decided in PLAN-TO-1.0.md. Do not implement map/lobby work until Phase 0 exits. |
