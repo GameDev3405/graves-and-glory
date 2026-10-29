@@ -1,10 +1,10 @@
-# Current handoff — 2026-10-28
+# Current handoff — 2026-10-29
 
 ## Where we are
 
 `main` is now the 0.5.0 development integration, promoted from `phase-1-solo-core` plus the M1 UI work, the banner page and the harness Narrator fix. Source identity: `c41a0e1cef708e00a3a6030e1afde5b9a4194e0a83c93937116c050887efd0e4`. `main` and the three `work/*` lanes are pushed to GitHub; the Phase 0 baseline re-verified source identity `c41a0e1` at `f1f6047`, while the `v0.5.0-dev.20261028` tag marks the earlier `c4f8771` record commit. It is not a published release; six-player, dedicated-server, visual and package gates remain open.
 
-Approved plan: [PLAN-TO-1.0.md](PLAN-TO-1.0.md), approved 2026-10-28. Phase 0 is in progress: 0.1 to 0.5 are complete; 0.6 six-player date and 0.7 task board remain. The baseline passed fast 22/22 and game 23/23 at `f1f6047`; see `reports/phase-0-5-baseline-2026-10-28.md`.
+Approved plan: [PLAN-TO-1.0.md](PLAN-TO-1.0.md), approved 2026-10-28. Phase 0: 0.1 to 0.5 complete; 0.6 skipped by Kort 2026-10-28; 0.7 board remains open. Phase 1.1 is green on `work/war-table-rebase` (`a423cc8`); Kort's visual review and the merge decision remain. Phase 1.4 is done and checked; 1.8 is skipped for now. The baseline passed fast 22/22 and game 23/23 at `f1f6047`; see `reports/phase-0-5-baseline-2026-10-28.md`.
 
 Merged and in `main`:
 
@@ -16,7 +16,7 @@ Merged and in `main`:
 
 In progress:
 
-- **War Table troop sheet (Task 5):** `work/war-table-troop`, a 553-line `WarTableTroop` plus recruit-page wiring and layout checks. It was built after the recruit commit but never committed, so it was absent from every branch and from M1. Preserved as WIP; not merged, rebased or verified.
+- **War Table troop sheet (Task 5):** rebased onto `main` at `1f6c799` on `work/war-table-rebase`; `a423cc8` has both checks suites green (fast/game 23/23 and Phase 2 `screens`). The original `work/war-table-troop` tip is preserved untouched. Not merged or pushed; Kort's visual review is the remaining gate. See `reports/war-table-troop-2026-10-28.md` (on that branch).
 - **Animation pass 1:** `work/anim-pass-1`, six Order troops. Weapon clearance fixed; no clip reached 9; the bow carry revert is unrendered and `p2-turn-shots` has not been re-run.
 - **House troop models:** `work/troop-models-house`, three troops (Hearthguard, Tusk, Tideguard) in stage-1 plate. Back flags removed; team colour now reads through cloth and House trim. Kort's look, tiers II/III, other sides and face close-ups remain.
 - **Armoury restyle:** waits on Kort's War Table Task 10 look; the tab is currently a plain dark panel.
@@ -35,7 +35,8 @@ Not done:
 | `main` | Current 0.5.0 development integration. |
 | `work/anim-pass-1` | Animation pass 1, code clips for the six troop classes. |
 | `work/troop-models-house` | House troop art, three troops at stage 1. |
-| `work/war-table-troop` | War Table troop sheet (Task 5), WIP and unmerged. |
+| `work/war-table-troop` | Original War Table troop sheet WIP tip (`30b447b`), preserved untouched. |
+| `work/war-table-rebase` | Rebased troop sheet, checks green at `a423cc8`; awaits Kort's visual review and merge decision. |
 | `heraldic-units` | External heraldic-unit reference sheets; worktree in `Documents/gg-hx`. |
 
 Tags: `v0.4.0` marks the old `main`; `v0.5.0-dev.20261028` marks the earlier `c4f8771` record commit, not the `f1f6047` baseline tip. `archive/2026-10/*` tags preserve the tips of removed historical branches (preview, codex experiments, snapshots, art bake-offs, builder docs). All five project branches and all 19 tags are on GitHub; a separate `claude/eloquent-fermat-lw270a` branch also exists, and removed remote branches are listed in the cleanup report.
@@ -46,9 +47,9 @@ Tags: `v0.4.0` marks the old `main`; `v0.5.0-dev.20261028` marks the earlier `c4
 
 ## Next actions
 
-1. Phase 0.6: book the six-player baseline date with five friends.
-2. Phase 0.7: publish the single Phase 0/1 task board with owners, state and evidence links.
-3. Then start Phase 1: rebase the War Table, House-model and animation lanes, run the six-player network baseline, and cut 0.5.1.
+1. Phase 1.5 and 1.6: rebase the animation and House-model lanes onto `main` (`1f6c799`), then finish and review them; 1.4 is already in `main`.
+2. Phase 1.1: review the rebased troop sheet (`work/war-table-rebase`, `a423cc8`), then merge or park; rerun the game tier on the merged tree.
+3. Phase 1.3: Banner and Field page polish once 1.1 is decided.
 
 ## Constraints
 

@@ -86,12 +86,12 @@ Goal: one agreed scope, one baseline, no moving target.
 | 0.3 | Confirm the slice battle map (Ironhold, section 7.1) | Done 2026-10-28 | Kort | Decision recorded |
 | 0.4 | Confirm the map adoption format and AI build authority (sections 7.2 and 7.3) | Done 2026-10-28 | Kort | Decision recorded |
 | 0.5 | Re-run fast and game on `main`; record the baseline candidate | Done 2026-10-28 | Agent | `work/verify/20261028-231020-35520`, `work/verify/20261028-231257-41152`; candidate record |
-| 0.6 | Book the six-player baseline date with five friends | Open | Kort | Date in `docs/SIX-PLAYER-TEST-PLAN.md` |
+| 0.6 | Book the six-player baseline date with five friends | Skipped 2026-10-28 | Kort | Kort: skip the six-player game for now; continue the roadmap |
 | 0.7 | Make a single visible board: one row per phase task, owner, state, evidence link | Open | Agent | `docs/BACKLOG.md` or GitHub Project |
 
-Phase 0 status: 0.1 to 0.5 are complete. The plan and the seven decisions are approved and recorded in `docs/DECISIONS.md`; the scope freeze and the Ironhold, overlay and AI-authority decisions are in section 7. The baseline is fast 22/22 and game 23/23 at `f1f6047`, source identity `c41a0e1`. Remaining: 0.6 six-player date, 0.7 board.
+Phase 0 status: 0.1 to 0.5 are complete. The plan and the seven decisions are approved and recorded in `docs/DECISIONS.md`; the baseline is fast 22/22 and game 23/23 at `f1f6047`, source identity `c41a0e1`. 0.6 is skipped for now by Kort, who directed work to continue on the roadmap. 0.7 remains open but is not blocking; Phase 1.1 is green on `work/war-table-rebase`, and Phase 1.4 (harness Narrator parity) is done.
 
-Exit: scope signed, baseline green, six-player date booked, slice map and adoption format chosen.
+Exit: scope signed, baseline green, slice map and adoption format chosen. The six-player date (0.6) is skipped for now; the board (0.7) remains open.
 
 ### Phase 1: Close 0.5.x and prove the network (6 to 10 weeks)
 
@@ -111,6 +111,8 @@ Goal: no stranded WIP, a clean 0.5.1 candidate, and a real six-player network ba
 | 1.10 | Cut 0.5.1: fast, game, record, tag. No release | S | Agent | 1.1 to 1.7, 1.9 |
 
 Branch facts at 2026-10-28: `work/war-table-troop` is 36 commits behind `main` and 1 ahead; `work/troop-models-house` and `work/anim-pass-1` are 14 behind, 5 and 6 ahead. The fast and game tiers have run on `main`'s candidate only, not on any lane tip. A lane's old report is not certification: rebase, compile and re-run the relevant tiers before merge.
+
+Phase 1 status at 2026-10-29: 1.1 is rebased and green at `a423cc8` on `work/war-table-rebase` and awaits Kort's visual review; 1.4 is done and checked (22/22 Phase 2 checks in a fresh root with no `options.txt`, `docs/reports/phase-1-4-harness-narrator-2026-10-29.md`); 1.8 is skipped by Kort for now. Next: 1.5 and 1.6, then 1.3.
 
 Exit: all 0.5.x WIP is merged or explicitly parked; every lane is rebased and re-verified; 0.5.1 is green; six humans have played three matches; blockers and majors are closed; the network baseline report exists.
 
@@ -423,7 +425,7 @@ The sum is roughly 50 to 75 weeks if every phase is sequential. With art, maps a
 ## 10. First ten actions
 
 1. Approve this plan and the seven decisions in section 7.
-2. Book the six-player baseline date and the five friends.
+2. Six-player baseline skipped for now; continue Phase 1.1 review and Phase 1.4 harness parity.
 3. Run the six-player baseline on the current candidate and generated Rivergate.
 4. Fix the harness Narrator screen, then rebase and merge the War Table troop sheet.
 5. Rebase and merge the three House models; record their 8/10 baseline and known flaws.

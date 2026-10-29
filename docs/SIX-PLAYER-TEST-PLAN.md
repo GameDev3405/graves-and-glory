@@ -1,6 +1,27 @@
 # Six-player test plan (SLICE-1, SLICE-03)
 
-2026-10-28. Approved as the Phase 1 baseline method; not yet scheduled or run. Baseline first, then acceptance. Sources read: `docs/WORKFLOW.md`, `docs/SETUP.md`, `docs/SLICE-1-CHECKPOINT.md`, `docs/DECISIONS.md` (SLICE-1 scoping answers, Excalibur), `docs/BUILDER-SERVER.md`, `docs/ROADMAP-v2.md` (M6), `tools/builder-server/start-build-server.ps1`, `tools/export_server.py`. [A] = assumption. No server was run and nothing was deployed.
+2026-10-28. Approved as the Phase 1 baseline method; not scheduled or run. Kort skipped the 3v3 baseline on 2026-10-28 ("skip the 6 player game") and directed work to continue on the roadmap. Baseline first, then acceptance. Sources read: `docs/WORKFLOW.md`, `docs/SETUP.md`, `docs/SLICE-1-CHECKPOINT.md`, `docs/DECISIONS.md` (SLICE-1 scoping answers, Excalibur), `docs/BUILDER-SERVER.md`, `docs/ROADMAP-v2.md` (M6), `tools/builder-server/start-build-server.ps1`, `tools/export_server.py`. [A] = assumption. No server was run and nothing was deployed.
+
+## 0. Scheduling status
+
+Kort skipped the six-player baseline on 2026-10-28 and directed work to continue on the roadmap. No date is held. The confirmation checklist and invite draft below are retained for when the session is rescheduled.
+
+| Field | Value |
+|---|---|
+| Status | Skipped by Kort on 2026-10-28; no date held |
+| Server | tjepkema-server, `C:\GGMatch`, port 25580 |
+| Players | Kort plus five friends |
+
+Confirmation checklist:
+- [ ] Five friends confirm the two-hour window.
+- [ ] Candidate jar and friends' pack are built and recorded.
+- [ ] Tailscale reachability checked from each machine.
+- [ ] Whitelist has all six Minecraft names.
+- [ ] `C:\GGMatch` is deployed on port 25580; builder on 25570 untouched.
+
+Invite draft (update the date and time before sending):
+
+> Graves and Glory 3v3 baseline - [date and time to be confirmed]. I need five players for a two-hour test: lobby, three matches, rewards, one reconnect and a restart. Please reply if you can make it; I will send the pack and Tailscale details once we have five.
 
 ## 1. Scope and rules
 - 3v3 humans on two teams, six real clients. Bots fill empty seats only. Headless bots never count as players (WORKFLOW.md, DECISIONS.md).

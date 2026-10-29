@@ -69,8 +69,11 @@ Run the levels-on round robin on the adopted maps. Paint tier art for the 26 tro
 
 ## 4. Next actions (approved plan)
 
-1. **Phase 0.6.** Book the six-player baseline date with five friends.
-2. **Phase 0.7.** Publish the Phase 0/1 task board with owners, state and evidence links.
+1. **Phase 1.5 and 1.6.** Rebase the animation and House-model lanes onto `main`, then finish and review them. Phase 1.4 (harness Narrator parity) is done.
+2. **Phase 1.1.** Review the rebased troop sheet (`work/war-table-rebase`, `a423cc8`) and decide whether it enters 0.5.1.
+3. **Phase 1.3.** Banner and Field page polish once 1.1 is decided.
+
+The six-player date (0.6) is skipped for now by Kort; the Phase 0.7 board remains open.
 
 Then start Phase 1: rebase the War Table, House-model and animation lanes, run the six-player network baseline, and cut 0.5.1. The full sequence is in PLAN-TO-1.0.md.
 
