@@ -11,7 +11,7 @@ Only explicitly approved unblocked items may run unattended. The 2026-10-28 clea
 | OPT-3 | Awaiting observations | Measure the next five comparable accepted deliverables and the next full usage cycle in `EFFICIENCY.md`. |
 | SLICE-1 | Scope and plan approved 2026-10-28; Phase 0 in progress | 3v3 humans plus bots, one House per player, six classes, a short campaign run, one capture scenario and a six-client baseline first. Slice map is Ironhold; map adoption and AI build authority are decided in PLAN-TO-1.0.md. Do not implement map/lobby work until Phase 0 exits. |
 | UI-INTEGRATION | Done | Claims, recruit, Armoury, class cards, banner House chips and the HUD LAST STAND/feed work are in `main`. |
-| TASK-5 | WIP branch `work/war-table-troop` | The War Table troop sheet, recruit-page wiring and layout checks were built but never committed before M1. Preserved; needs rebase, compile and game checks before it can enter a candidate. |
+| TASK-5 | Rebased; green; awaits Kort | The War Table troop sheet, recruit-page wiring and checks are rebased onto `main` at `1f6c799` on `work/war-table-rebase` (`a423cc8`). Fast/game 23/23 and the Phase 2 `screens` suite pass. Not merged or pushed; visual acceptance and the merge decision are Kort's. See `reports/war-table-troop-2026-10-28.md`. |
 | ARMOURY-LOOK | Waits for Kort | The Armoury tab is a plain dark panel. Its War Table restyle waits for Kort's Task 10 look. |
 | ANIM-1 | WIP branch `work/anim-pass-1` | Animation pass 1 for the six Order troop classes. Weapon clipping improved but no clip reached 9; bow revert is unrendered. |
 | MODELS-1 | WIP branch `work/troop-models-house` | Three House troops in stage-1 plate, flags removed. Kort's look, tiers II/III, other sides and face close-ups remain. |
