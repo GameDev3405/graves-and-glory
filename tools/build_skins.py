@@ -12,6 +12,13 @@ rule 8 as Kort ruled it, Needs Kort 11).
                                                   pixels (another Pillow or zlib may encode the same pixels in other
                                                   bytes), anything else byte for byte; exit 1 naming the first
                                                   difference
+  python tools/build_skins.py --to-bbmodel <troop>  write art/troops/<troop>.bbmodel: one display group turned 180 about
+                                                  x (Blockbench y is up, the rig y down), a group per rig bone and
+                                                  part, box-UV skin cubes. From then on the build takes the troop's
+                                                  skin geometry from the project; the json keeps scales and the
+                                                  parts. It refuses to overwrite: the project is the source after
+                                                  the export, so the json's geometry keys are deleted in the same
+                                                  commit (art pipeline v2 section 2.3)
   python tools/build_skins.py --tiers             print per troop its armour and weapon tiers I to III and the tier each
                                                   draws (III->II: tier III's art is missing, it draws tier II's), then the
                                                   stopgap list, which tools/package.py refuses while it is not empty
@@ -114,6 +121,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import uuid
 import colorsys
 from collections import Counter
 from pathlib import Path
@@ -509,24 +517,41 @@ def bounds(bones, include=lambda b: True):
     return [min(p[i] for p in pts) for i in range(3)], [max(p[i] for p in pts) for i in range(3)]
 
 
-def bake_bones(rig, what, overrides=None, parts=(), hunch=0.0, folded=True, stages=(1,)):
-    """The rig's bones with the troop's overrides and parts, scaled, hunched and set on the ground; parts first checked.
-    parts: (entry, part) pairs. Returns the bone dicts, parents first."""
+def merge_bones(rig, what, overrides=None, parts=(), folded=True, stages=(1,), source=None):
+    """The rig's bones with the troop's overrides and parts, before scale, hunch and the stand-on-the-ground shift.
+    parts: (entry, part) pairs. `source` is a troop .bbmodel's rig bones (bbmodel.troop_bones): the bone groups own the
+    skin geometry then, the troop json keeps only each bone's scale, and the parts are still built here from the library.
+    Returns (bones by name, scale by name), parents first."""
     bones, scale = {}, {}
-    for b in rig['bones']:
-        bones[b['name']] = {'name': b['name'], 'parent': b['parent'], 'part': '', 'team': False, 'tag': '', 'stages': [], 'weaponTiers': [],
-                            'pivot': [float(c) for c in b['pivot']], 'rotation': [float(c) for c in b.get('rotation', [0, 0, 0])],
-                            'boxes': check_boxes(b.get('boxes', []), what)}
-    for name, ov in (overrides or {}).items():
-        if name not in bones:
-            fail('%s: unknown bone %s (bones names a bone the %s rig lacks)' % (what, name, rig['rig']))
-        keys(ov, {'pivot', 'boxes', 'scale', 'note'}, '%s bones %s' % (what, name))
-        if 'pivot' in ov:
-            bones[name]['pivot'] = vec(ov['pivot'], 3, '%s bones %s pivot' % (what, name))
-        if 'boxes' in ov:
-            bones[name]['boxes'] = check_boxes(ov['boxes'], '%s bones %s' % (what, name))
-        if 'scale' in ov:
-            scale[name] = scale3(ov['scale'], '%s bones %s' % (what, name))
+    if source is not None:
+        # Geometry lives in the .bbmodel: a pivot or boxes left in the troop json would be a second, silent copy.
+        bones = {name: dict(b, pivot=list(b['pivot']), rotation=list(b['rotation']),
+                            boxes=[dict(x, origin=list(x['origin']), dilation=list(x['dilation'])) for x in b['boxes']])
+                 for name, b in source.items()}
+        for name, ov in (overrides or {}).items():
+            if name not in bones:
+                fail('%s: unknown bone %s (bones names a bone the %s rig lacks)' % (what, name, rig['rig']))
+            if set(ov) & {'pivot', 'boxes'}:
+                fail('%s: bones %s still sets %s: a troop with a .bbmodel keeps its geometry there, not in the json'
+                     % (what, name, ', '.join(sorted(set(ov) & {'pivot', 'boxes'}))))
+            keys(ov, {'scale', 'note'}, '%s bones %s' % (what, name))
+            if 'scale' in ov:
+                scale[name] = scale3(ov['scale'], '%s bones %s' % (what, name))
+    else:
+        for b in rig['bones']:
+            bones[b['name']] = {'name': b['name'], 'parent': b['parent'], 'part': '', 'team': False, 'tag': '', 'stages': [], 'weaponTiers': [],
+                                'pivot': [float(c) for c in b['pivot']], 'rotation': [float(c) for c in b.get('rotation', [0, 0, 0])],
+                                'boxes': check_boxes(b.get('boxes', []), what)}
+        for name, ov in (overrides or {}).items():
+            if name not in bones:
+                fail('%s: unknown bone %s (bones names a bone the %s rig lacks)' % (what, name, rig['rig']))
+            keys(ov, {'pivot', 'boxes', 'scale', 'note'}, '%s bones %s' % (what, name))
+            if 'pivot' in ov:
+                bones[name]['pivot'] = vec(ov['pivot'], 3, '%s bones %s pivot' % (what, name))
+            if 'boxes' in ov:
+                bones[name]['boxes'] = check_boxes(ov['boxes'], '%s bones %s' % (what, name))
+            if 'scale' in ov:
+                scale[name] = scale3(ov['scale'], '%s bones %s' % (what, name))
     if not folded and 'arms_folded' in bones:
         bones['arms_folded']['boxes'] = []
     for entry, part in parts:
@@ -571,6 +596,13 @@ def bake_bones(rig, what, overrides=None, parts=(), hunch=0.0, folded=True, stag
         base = scale3(part.get('scale', 1), 'part ' + pid)   # the part's own scale, then the troop's for it
         k = scale.get(anchor, ONE)
         scale[name] = tuple(k[i] * base[i] * own[i] for i in range(3))
+    return bones, scale
+
+
+def bake_bones(rig, what, overrides=None, parts=(), hunch=0.0, folded=True, stages=(1,), source=None):
+    """The rig's bones with the troop's overrides and parts, scaled, hunched and set on the ground; parts first checked.
+    parts: (entry, part) pairs; `source` is a troop .bbmodel's rig bones (see merge_bones). Returns the bone dicts, parents first."""
+    bones, scale = merge_bones(rig, what, overrides, parts, folded, stages, source)
     for b in bones.values():
         k = scale.get(b['name'], ONE)
         if k == ONE:
@@ -2141,7 +2173,21 @@ def bake(cat: Catalog, troop: str) -> dict:
             fail('%s: unknown part %s' % (troop, e.get('part')))
         parts.append((e, p))
     stages = cat.stages[troop]
-    bones = bake_bones(rig, troop, src.get('bones'), parts, float(hunch), idle == 'folded', stages)
+    # A troop with a .bbmodel (art pipeline v2 section 2.2) takes its skin geometry from the bone groups; the json keeps
+    # each bone's scale, and the parts are still the library's. The export writes the pre-scale rig, so the build's bake
+    # is unchanged and the output must be byte-identical to the json-only build's (--to-bbmodel's gate).
+    model_source = None
+    project = cat.root / 'art/troops' / (troop + '.bbmodel')
+    if project.is_file():
+        try:
+            model_source = bbmodel.troop_bones(bbmodel.read(project), rig, parts)
+        except bbmodel.BBError as e:
+            fail('%s: %s' % (troop, e))
+        folded_in_project = bool(model_source['arms_folded']['boxes'])
+        if (idle == 'folded') != folded_in_project:
+            fail('%s: art/troops/%s.bbmodel has %s arms_folded boxes but idleArms is %s: re-export it with --to-bbmodel'
+                 % (troop, troop, 'folded' if folded_in_project else 'no', idle))
+    bones = bake_bones(rig, troop, src.get('bones'), parts, float(hunch), idle == 'folded', stages, source=model_source)
     if faces and faces['count'] > 1 and troop_files(cat, troop)[1]['outer']:
         fail('%s: faces and an outer layer together: the outer twin of the head would lose its box to the face bones' % troop)
     df = face_density(faces, density, troop)[0] if faces else density
@@ -2809,11 +2855,154 @@ def template(cat: Catalog, troop: str) -> Image.Image:
     return im
 
 
+def box_face_rects(uv, size):
+    """The six faces of a box's ModelPart layout as (x0, y0, x1, y1) on the sheet, one rect each (footprint's two rows
+    split): up, down, east, north, west, south."""
+    u, v = uv
+    w, h, d = size
+    return {'up': (u + d, v, u + d + w, v + d), 'down': (u + d + w, v, u + d + 2 * w, v + d),
+            'east': (u, v + d, u + d, v + d + h), 'north': (u + d, v + d, u + d + w, v + d + h),
+            'west': (u + d + w, v + d, u + d + 2 * w, v + d + h), 'south': (u + d + 2 * w, v + d, u + d + 2 * w + w, v + d + h)}
+
+
+def troop_project(cat, troop):
+    """Writes art/troops/<troop>.bbmodel from the troop json: one display group turned 180 about x (Blockbench's y is up,
+    the rig's is down) around groups named for the rig bones and parts, with the skin cubes box UV on the troop sheet.
+    The rig's own coordinates, rotations and UVs are kept as they are, so the build reads the file back unchanged."""
+    src = cat.troops.get(troop)
+    if src is None:
+        fail('%s: no art/troops/%s.json' % (troop, troop))
+    dest = cat.root / 'art/troops' / (troop + '.bbmodel')
+    if dest.is_file():
+        fail('%s: art/troops/%s.bbmodel already exists; it is the source of the troop\'s skin geometry now. Delete it '
+             'first only if the json still holds that geometry, or the boxes move out of the build.' % (troop, troop))
+    rig = cat.rigs.get(src.get('rig'))
+    if rig is None:
+        fail('%s: unknown rig %s' % (troop, src.get('rig')))
+    size = vec(src.get('size', rig['size']), 2, troop + ' size', ints=True, minimum=1)
+    idle = src.get('idleArms', 'hang')
+    if idle not in IDLE_ARMS:
+        fail('%s: idleArms %s is not one of %s' % (troop, idle, ', '.join(IDLE_ARMS)))
+    parts = []
+    for e in src.get('parts', []):
+        p = cat.parts.get(e.get('part'))
+        if p is None:
+            fail('%s: unknown part %s' % (troop, e.get('part')))
+        parts.append((e, p))
+    stages = cat.stages[troop]
+    bones, _ = merge_bones(rig, troop, src.get('bones'), parts, idle == 'folded', stages)
+    order = list(bones.values())
+    flat = {}
+    for b in order:
+        p = flat.get(b['parent'], [0.0, 0.0, 0.0])
+        flat[b['name']] = [p[i] + b['pivot'][i] for i in range(3)]
+
+    def name_of(b):
+        if not b['part']:
+            return b['name']
+        if b['team']:
+            return 'team:' + b['part'] + ('' if b['name'] == b['part'] else ':' + b['name'])
+        return 'part:' + b['part'] + ('' if b['name'] == b['part'] else ':' + b['name'])
+
+    def uid(kind, key):
+        return str(uuid.uuid5(uuid.NAMESPACE_URL, 'gravesandglory/troop/%s/%s/%s' % (troop, kind, key)))
+
+    group_name = {b['name']: name_of(b) for b in order}
+    skins = src.get('skins') or {}
+    if not skins.get('1'):
+        fail('%s: skins needs a tier 1 skin to show in Blockbench' % troop)
+    textures, skin_tex = [], {}
+    for tier in sorted(stages):
+        f = skins.get(str(tier))
+        if not f:
+            continue
+        path = cat.root / 'art/troops' / f
+        if not path.is_file():
+            fail('%s: %s is missing from art/troops' % (troop, f))
+        with Image.open(path) as im:
+            w, h = im.size
+        skin_tex[tier] = len(textures)
+        textures.append({'name': f, 'relative_path': f, 'width': w, 'height': h,
+                         'uv_width': size[0], 'uv_height': size[1], 'particle': False, 'render_mode': 'default'})
+    team = any(b['team'] for b in order)
+    cloth_tex = None
+    if team:
+        path = cat.root / 'art/team/team_cloth.png'
+        if not path.is_file():
+            fail('%s: team parts need art/team/team_cloth.png' % troop)
+        with Image.open(path) as im:
+            w, h = im.size
+        cloth_tex = len(textures)
+        textures.append({'name': 'team_cloth.png', 'relative_path': '../team/team_cloth.png', 'width': w, 'height': h,
+                         'uv_width': cat.cloth_layout[0], 'uv_height': cat.cloth_layout[1], 'particle': False, 'render_mode': 'default'})
+
+    groups, elements, child_groups, child_cubes = [], [], {}, {}
+    for b in order:
+        name = group_name[b['name']]
+        groups.append({'uuid': uid('group', name), 'name': name, 'origin': [num(c) for c in flat[b['name']]],
+                       'rotation': [num(c) for c in b['rotation']], 'color': 0, 'visibility': True, 'isOpen': True,
+                       'autouv': 0, 'export': True, 'locked': False, 'selected': False})
+        child_groups.setdefault(name, [])
+        child_cubes[name] = []
+    for b in order:
+        name = group_name[b['name']]
+        if b['parent']:
+            child_groups[group_name[b['parent']]].append(name)
+    for b in order:
+        name = group_name[b['name']]
+        base = flat[b['name']]
+        for i, box in enumerate(b['boxes']):
+            if box['mirror']:
+                fail('%s: box %d of %s is mirrored; a troop .bbmodel round-trip does not carry a mirrored box yet '
+                     '(the rig has one in arms_folded): export this troop when its idleArms is hang, or add mirror support'
+                     % (troop, i, name))
+            frm = [base[j] + box['origin'][j] for j in range(3)]
+            to = [frm[j] + box['size'][j] for j in range(3)]
+            eid = uid('cube', '%s#%d' % (name, i))
+            if b['team']:
+                if cloth_tex is None:
+                    fail('%s: team part %s has no cloth texture' % (troop, name))
+                faces = {f: {'uv': [float(c) for c in r], 'texture': cloth_tex} for f, r in box_face_rects(box['uv'], box['size']).items()}
+                element = {'uuid': eid, 'name': '%s_%d' % (name, i), 'type': 'cube', 'box_uv': False, 'rescale': False,
+                           'locked': False, 'light_emission': 0, 'render_order': 'default', 'allow_mirror_modeling': True,
+                           'from': [num(c) for c in frm], 'to': [num(c) for c in to], 'autouv': 0, 'color': 0,
+                           'origin': [num(c) for c in base], 'faces': faces}
+            else:
+                element = {'uuid': eid, 'name': '%s_%d' % (name, i), 'type': 'cube', 'box_uv': True, 'rescale': False,
+                           'locked': False, 'light_emission': 0, 'render_order': 'default', 'allow_mirror_modeling': True,
+                           'from': [num(c) for c in frm], 'to': [num(c) for c in to], 'autouv': 0, 'color': 0,
+                           'origin': [num(c) for c in base], 'uv_offset': [int(box['uv'][0]), int(box['uv'][1])],
+                           'faces': {f: {'texture': 0} for f in bbmodel.FACES}}
+            elements.append(element)
+            child_cubes[name].append(eid)
+
+    def node(name):
+        return {'name': name, 'uuid': uid('group', name), 'export': True, 'isOpen': True,
+                'children': [node(c) for c in child_groups[name]] + child_cubes[name]}
+
+    display = {'uuid': uid('group', 'model'), 'name': 'model', 'origin': [0, 0, 0], 'rotation': [180, 0, 0], 'color': 0,
+               'visibility': True, 'isOpen': True, 'autouv': 0, 'export': True, 'locked': False, 'selected': False}
+    project = {'meta': {'format_version': '5.0', 'model_format': 'free', 'box_uv': True},
+               'name': troop, 'model_identifier': '', 'visible_box': [1, 1, 0], 'variable_placeholders': '',
+               'variable_placeholder_buttons': [], 'timeline_setups': [], 'unhandled_root_fields': {},
+               'resolution': {'width': size[0], 'height': size[1]}, 'elements': elements,
+               'groups': [display] + groups,
+               'outliner': [{'name': 'model', 'uuid': display['uuid'], 'export': True, 'isOpen': True,
+                             'children': [node('root')]}],
+               'textures': textures}
+    return bbmodel.write(project, dest)
+
+
 def main(args):
     if args == ['--verify']:
         return verify(ROOT)
     if args == ['--tiers']:
         return tiers(ROOT)
+    if len(args) == 2 and args[0] == '--to-bbmodel':
+        cat = load(ROOT)
+        path = troop_project(cat, args[1])
+        print('build_skins: wrote %s' % path.relative_to(ROOT).as_posix())
+        return 0
     if len(args) == 2 and args[0] == '--template':
         cat = load(ROOT)
         for im, name in ((template(cat, args[1]), '_template.png'), (relief_template(cat, args[1]), '_relief_template.png')):
