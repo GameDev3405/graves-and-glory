@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Banner Camp — Lobby Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Marcellus&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="loading">
+  <div class="lt">BANNER CAMP</div>
+  <div class="ls">Graves and Glory · lobby preview</div>
+  <div id="lmsg">Preparing…</div>
+  <div class="bar"><i id="lbar"></i></div>
+</div>
+
+<div id="intro" class="hidden">
+  <div class="panel intro-panel">
+    <div class="lt">BANNER CAMP</div>
+    <div class="ls">A walk-through of the finished lobby · the builder's reference</div>
+    <p class="lead">Five Houses, four keepers, one standard. Walk the camp, read the signs, look at the troops. Everything is made of blocks you can place in Minecraft; hover a block to see its coordinates and the vanilla block it stands for.</p>
+    <div class="keys">
+      <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk</div><div><kbd>Shift</kbd> sprint</div><div><kbd>Space</kbd> jump · tap twice to fly</div><div><kbd>C</kbd> crouch / fly down</div>
+      <div><kbd>E</kbd> talk to what you look at</div><div><kbd>Tab</kbd> blueprint map</div><div><kbd>Esc</kbd> tour &amp; builder notes</div><div><kbd>T</kbd> time of day</div>
+      <div><kbd>Click</kbd> copy block coordinates</div><div><kbd>B</kbd> bright (no shadows)</div><div><kbd>U</kbd> locked / unlocked troops</div><div><kbd>P</kbd> save screenshot</div>
+    </div>
+    <div class="times" id="introTimes"></div>
+    <button id="enter" class="big">Enter the camp</button>
+    <div class="fine">Mouse look needs pointer lock: click Enter. Press Esc any time to open the tour.</div>
+  </div>
+</div>
+
+<div id="hud" class="hidden">
+  <div id="cross"></div>
+  <div id="topleft"><div id="coords"></div><div id="blockinfo"></div></div>
+  <div id="zonebanner"><div class="zt"></div><div class="zs"></div></div>
+  <div id="card" class="hidden"></div>
+  <div id="dialog" class="hidden"></div>
+  <div id="toast"></div>
+  <div id="hints"><span><kbd>E</kbd> talk</span><span><kbd>Tab</kbd> blueprint</span><span><kbd>Esc</kbd> tour</span><span><kbd>T</kbd> time</span><span><kbd>B</kbd> bright</span><span><kbd>U</kbd> troops</span><span><kbd>H</kbd> hide</span></div>
+</div>
+
+<div id="menu" class="hidden">
+  <div class="panel menu-panel">
+    <div class="menu-head">
+      <div><div class="lt small">BANNER CAMP</div><div class="ls">Tour &amp; builder's notes</div></div>
+      <div class="tabs"><button data-tab="tour" class="on">Tour</button><button data-tab="settings">Settings</button><button data-tab="help">Controls</button></div>
+      <button id="resume" class="big">Resume ▸</button>
+    </div>
+    <div class="menu-body">
+      <div id="tab-tour" class="tab">
+        <div id="zoneList"></div>
+        <div id="zoneDetail"></div>
+      </div>
+      <div id="tab-settings" class="tab hidden"></div>
+      <div id="tab-help" class="tab hidden"></div>
+    </div>
+  </div>
+</div>
+
+<div id="bp" class="hidden">
+  <div class="bp-head"><span>Blueprint · top-down, north is up · grid every 8 blocks (Minecraft x / z shown)</span><span class="bp-help">click a zone for its notes · double-click to teleport · Tab / M to close</span></div>
+  <div class="bp-wrap"><canvas id="bpc"></canvas><div id="bpinfo"></div></div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
