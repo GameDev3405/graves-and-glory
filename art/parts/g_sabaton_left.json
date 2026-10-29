@@ -1,0 +1,43 @@
+{
+ "part": "g_sabaton_left",
+ "note": "The Gilded sabaton toe on the left foot.",
+ "bone": "left_leg",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -2,
+    10,
+    -3
+   ],
+   "size": [
+    4,
+    2,
+    2
+   ],
+   "uv": [
+    164,
+    12
+   ],
+   "note": "sabaton"
+  },
+  {
+   "origin": [
+    -2,
+    11,
+    -3.5
+   ],
+   "size": [
+    4,
+    1,
+    1
+   ],
+   "uv": [
+    52,
+    18
+   ],
+   "note": "toe"
+  }
+ ]
+}

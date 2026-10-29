@@ -1,0 +1,162 @@
+{
+ "part": "g_kettle_helm",
+ "note": "The Gilded kettle helm: a stepped dome under a wide brim, a comb along the crown, a rear neck flare, a nasal bar and two cheek plates that sit on the skull (not 0.5 px off it, which read as bare skin at 45 degrees); the face stays open under the brim.",
+ "bone": "head",
+ "team": false,
+ "tag": "helm",
+ "boxes": [
+  {
+   "origin": [
+    -5,
+    -10.5,
+    -5
+   ],
+   "size": [
+    10,
+    2,
+    10
+   ],
+   "uv": [
+    138,
+    0
+   ],
+   "note": "crown band"
+  },
+  {
+   "origin": [
+    -4.5,
+    -8.8,
+    -4.5
+   ],
+   "size": [
+    9,
+    1,
+    9
+   ],
+   "uv": [
+    218,
+    0
+   ],
+   "note": "dome lower"
+  },
+  {
+   "origin": [
+    -3.5,
+    -7.6,
+    -3.5
+   ],
+   "size": [
+    7,
+    1,
+    7
+   ],
+   "uv": [
+    110,
+    11
+   ],
+   "note": "dome upper"
+  },
+  {
+   "origin": [
+    -6.5,
+    -6.9,
+    -5.4
+   ],
+   "size": [
+    13,
+    1,
+    10
+   ],
+   "uv": [
+    92,
+    0
+   ],
+   "note": "wide brim"
+  },
+  {
+   "origin": [
+    -4,
+    -5.9,
+    5.0
+   ],
+   "size": [
+    8,
+    2,
+    1
+   ],
+   "uv": [
+    150,
+    32
+   ],
+   "note": "rear neck flare"
+  },
+  {
+   "origin": [
+    -0.5,
+    -6.4,
+    -5.9
+   ],
+   "size": [
+    1,
+    2,
+    1
+   ],
+   "uv": [
+    97,
+    0
+   ],
+   "note": "nasal bar"
+  },
+  {
+   "origin": [
+    -4.6,
+    -6.6,
+    -4.4
+   ],
+   "size": [
+    1,
+    3,
+    8
+   ],
+   "uv": [
+    237,
+    12
+   ],
+   "note": "right cheek plate"
+  },
+  {
+   "origin": [
+    3.6,
+    -6.6,
+    -4.4
+   ],
+   "size": [
+    1,
+    3,
+    8
+   ],
+   "uv": [
+    193,
+    15
+   ],
+   "note": "left cheek plate"
+  },
+  {
+   "origin": [
+    -0.6,
+    -11,
+    -3.5
+   ],
+   "size": [
+    1,
+    1,
+    7
+   ],
+   "uv": [
+    236,
+    23
+   ],
+   "note": "comb"
+  }
+ ]
+}

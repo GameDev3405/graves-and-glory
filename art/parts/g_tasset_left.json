@@ -1,0 +1,26 @@
+{
+ "part": "g_tasset_left",
+ "note": "A short plate tasset over the left thigh.",
+ "bone": "left_leg",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -2,
+    -1,
+    -2.5
+   ],
+   "size": [
+    4,
+    2,
+    5
+   ],
+   "uv": [
+    223,
+    29
+   ],
+   "note": "tasset"
+  }
+ ]
+}

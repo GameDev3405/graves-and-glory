@@ -367,5 +367,93 @@ class BBModelChecks(unittest.TestCase):
             self.assertEqual(bbmodel.file_density(path), 2.0)
 
 
+def troop_group(name, parent, origin=(0, 0, 0), rotation=(0, 0, 0), children=()):
+    """A troop group and its outliner node; children are group/node pairs or cube ids."""
+    gid = str(uuid.uuid5(uuid.NAMESPACE_URL, 'troop group ' + name))
+    g = {'name': name, 'uuid': gid, 'origin': list(origin), 'rotation': list(rotation), 'export': True}
+    node = {'name': name, 'uuid': gid, 'children': [c[1] if isinstance(c, tuple) else c for c in children]}
+    return g, node
+
+
+def troop_cube(name, frm, to, uv):
+    return {'name': name, 'uuid': str(uuid.uuid5(uuid.NAMESPACE_URL, 'troop cube ' + name)), 'type': 'cube',
+            'box_uv': True, 'from': list(frm), 'to': list(to), 'uv_offset': list(uv),
+            'faces': {f: {'texture': 0} for f in FACE_ORDER}}
+
+
+def troop_project(groups, outliner, elements=()):
+    return {'meta': {'format_version': '5.0', 'model_format': 'free', 'box_uv': True}, 'name': 'fixture',
+            'elements': list(elements), 'groups': groups, 'outliner': outliner, 'textures': []}
+
+
+class TroopBonesChecks(unittest.TestCase):
+    """tools/bbmodel.py troop_bones: the bone groups against the rig, and part groups against the part library."""
+    RIG = {'rig': 'biped', 'size': [64, 64], 'bones': [
+        {'name': 'root', 'parent': '', 'pivot': [0, 0, 0], 'boxes': []},
+        {'name': 'body', 'parent': 'root', 'pivot': [0, 12, 0], 'boxes': []},
+        {'name': 'head', 'parent': 'body', 'pivot': [0, -12, 0], 'boxes': []}]}
+
+    def fixture(self, cube_to=(4, 12, 2), body_rot=(0, 0, 0), include_head=True):
+        base = (0, 12, 0)
+        body_cube = troop_cube('body_0', (-4, 0, -2), cube_to, (16, 16))
+        body, body_node = troop_group('body', 'root', origin=base, rotation=body_rot, children=[body_cube['uuid']])
+        head_origin = (0, 0, 0)   # body's origin (0, 12, 0) plus the head pivot (0, -12, 0)
+        head, head_node = troop_group('head', 'body', origin=head_origin)
+        root, root_node = troop_group('root', 'model')
+        groups = [body, head, root]
+        outliner = [{'name': 'model', 'uuid': str(uuid.uuid5(uuid.NAMESPACE_URL, 'troop group model')),
+                     'children': [root_node]}]
+        groups.append({'name': 'model', 'uuid': outliner[0]['uuid'], 'origin': [0, 0, 0], 'rotation': [180, 0, 0], 'export': True})
+        if not include_head:
+            groups.remove(head)
+            root_node['children'] = [body_node]
+            body_node['children'] = [body_cube['uuid']]
+        else:
+            root_node['children'] = [body_node]
+            body_node['children'] = [head_node, body_cube['uuid']]
+        return troop_project(groups, outliner, [body_cube])
+
+    def test_reads_bone_pivots_and_boxes(self):
+        bones = bbmodel.troop_bones(self.fixture(), self.RIG)
+        self.assertEqual(list(bones), ['root', 'body', 'head'])
+        self.assertEqual(bones['body']['pivot'], [0, 12, 0])
+        self.assertEqual(bones['head']['pivot'], [0, -12, 0])
+        self.assertEqual(bones['body']['boxes'], [{'origin': [-4, -12, -2], 'size': [8, 12, 4], 'uv': [16, 16],
+                                                   'mirror': False, 'dilation': [0, 0, 0]}])
+        self.assertEqual(bones['head']['boxes'], [])
+
+    def test_rejects_missing_bone_wrong_turn_and_loose_cube(self):
+        with self.assertRaises(bbmodel.BBError) as e:
+            bbmodel.troop_bones(self.fixture(include_head=False), self.RIG)
+        self.assertIn('no group for the biped bone head', str(e.exception))
+        with self.assertRaises(bbmodel.BBError) as e:
+            bbmodel.troop_bones(self.fixture(body_rot=(10, 0, 0)), self.RIG)
+        self.assertIn('turned', str(e.exception))
+        p = self.fixture()
+        p['elements'][0]['box_uv'] = False
+        with self.assertRaises(bbmodel.BBError) as e:
+            bbmodel.troop_bones(p, self.RIG)
+        self.assertIn('not box UV', str(e.exception))
+
+    def test_checks_part_groups_against_the_library(self):
+        entry = {'part': 'crest', 'uv': [0, 0], 'offset': [0, -2, 0], 'rotation': [0, 0, 0]}
+        part = {'part': 'crest', 'bone': 'body', 'team': False, 'tag': '', 'pivot': [0, 0, 0],
+                'boxes': [{'origin': [0, 0, 0], 'size': [2, 4, 2], 'uv': [40, 40]}]}
+        cube = troop_cube('crest_0', (0, 10, 0), (2, 14, 2), (40, 40))
+        crest, crest_node = troop_group('part:crest', 'body', origin=(0, 10, 0), children=[cube['uuid']])
+        p = self.fixture()
+        p['groups'].append(crest)
+        p['elements'].append(cube)
+        root_node = p['outliner'][0]['children'][0]
+        body_node = root_node['children'][0]
+        body_node['children'].append(crest_node)
+        bones = bbmodel.troop_bones(p, self.RIG, [(entry, part)])
+        self.assertEqual(list(bones), ['root', 'body', 'head'])   # part bones are still built from the json
+        p['elements'][-1]['to'] = [3, 14, 2]
+        with self.assertRaises(bbmodel.BBError) as e:
+            bbmodel.troop_bones(p, self.RIG, [(entry, part)])
+        self.assertIn('part library', str(e.exception))
+
+
 if __name__ == '__main__':
     unittest.main()

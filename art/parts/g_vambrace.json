@@ -1,0 +1,43 @@
+{
+ "part": "g_vambrace",
+ "note": "The Gilded steel vambrace and cuff on the right forearm.",
+ "bone": "right_arm",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -3.5,
+    6,
+    -2.5
+   ],
+   "size": [
+    5,
+    3,
+    5
+   ],
+   "uv": [
+    32,
+    8
+   ],
+   "note": "vambrace"
+  },
+  {
+   "origin": [
+    -4,
+    5.5,
+    -3
+   ],
+   "size": [
+    6,
+    1,
+    6
+   ],
+   "uv": [
+    171,
+    23
+   ],
+   "note": "cuff"
+  }
+ ]
+}

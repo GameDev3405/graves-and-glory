@@ -15,9 +15,11 @@ The density (texels a px) is 2 for a weapon unless art/weapons/<name>.json says 
 Reading never looks at visibility: a hidden group or cube is still a frame or a cube (only `rest` is saved visible, so
 Blockbench shows one weapon and not four laid over each other).
 
-TODO (stage 2, troops): `troop_bones(model, rig)` (a troop project's bone groups against its rig) and `write(model, path)`
-for build_skins.py --to-bbmodel <troop>. Troops are the only thing converted to a .bbmodel; weapons are authored in
-Blockbench and are only ever read here (art pipeline v2 sections 2.3 and 2.4).
+Troops (stage 2, art pipeline v2 sections 2.3 and 2.4) go both ways: `write` saves a project build_skins.py builds from
+the JSON, and `troop_bones` reads a troop project's bone groups back against its rig, checking the part groups against the
+part library. Troops are the only thing converted to a .bbmodel; weapons are authored in Blockbench and only ever read.
+A troop project keeps the rig's y-down coordinates and puts everything under one display group turned 180 degrees about
+x, so Blockbench (y up) shows the model upright without changing a cube or a UV. That group is not model data.
 """
 import itertools
 import json
@@ -187,6 +189,7 @@ def read(path) -> Model:
     if not isinstance(data, dict) or not isinstance(data.get('elements'), list) or not isinstance(data.get('outliner'), list):
         raise BBError('%s: not a Blockbench project (no elements or outliner)' % path)
     model = Model(str(data.get('name', '')), [Texture(i, t) for i, t in enumerate(data.get('textures') or [])])
+    model.data = data   # the raw project, for troop_bones (read's frames flatten the groups a troop needs)
     elements = {}
     for e in data['elements']:
         kind = e.get('type', 'cube')
@@ -236,6 +239,185 @@ def read(path) -> Model:
         if uid not in placed:
             model.root.append(Cube(e, None, [], True))
     return model
+
+
+def write(project, path):
+    """Writes a project dict as a .bbmodel (indent 1, a final newline); makes the folder. Returns the path written."""
+    path = pathlib.Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(project, indent=1) + '\n', encoding='utf-8')
+    return path
+
+
+def _same(a, b, eps=1e-6):
+    return len(a) == len(b) and all(abs(float(x) - float(y)) <= eps for x, y in zip(a, b))
+
+
+def _vec3(v, what):
+    if not isinstance(v, (list, tuple)) or len(v) != 3:
+        raise BBError('%s must be three numbers, not %r' % (what, v))
+    try:
+        return [float(c) for c in v]
+    except (TypeError, ValueError):
+        raise BBError('%s must be three numbers, not %r' % (what, v))
+
+
+def _troop_cube(e, base, what):
+    """One skin cube of a bone group as bake_bones keeps a box: origin from the group origin, size, uv, no dilation."""
+    if e.get('type', 'cube') != 'cube':
+        raise BBError('%s: element %s is a %s; a troop is cubes only' % (what, e.get('name', e.get('uuid')), e.get('type')))
+    rot = e.get('rotation') or [0, 0, 0]
+    if any(abs(float(c)) > 1e-9 for c in rot):
+        raise BBError('%s: cube %s is turned %s; turn its bone group, not the cube' % (what, e.get('name', e.get('uuid')), rot))
+    if not e.get('box_uv', False):
+        raise BBError('%s: cube %s is not box UV; a skin cube is box UV on the troop sheet' % (what, e.get('name', e.get('uuid'))))
+    uv = e.get('uv_offset')
+    if not isinstance(uv, (list, tuple)) or len(uv) != 2:
+        raise BBError('%s: cube %s needs a uv_offset (its box on the troop sheet)' % (what, e.get('name', e.get('uuid'))))
+    frm, to = _vec3(e.get('from'), 'cube %s from' % what), _vec3(e.get('to'), 'cube %s to' % what)
+    size = [to[i] - frm[i] for i in range(3)]
+    if any(s < -1e-9 or abs(s - round(s)) > 1e-6 for s in size):
+        raise BBError('%s: cube %s is %s px across; a troop box is a whole number of px' % (what, e.get('name', e.get('uuid')), size))
+    if e.get('mirror', False) or e.get('mirror_uv', False):
+        raise BBError('%s: cube %s is mirrored; troop .bbmodel cubes are unmirrored in this version (the rig has one '
+                      'mirrored arms_folded cube, which a folded troop cannot round-trip yet)' % (what, e.get('name', e.get('uuid'))))
+    return {'origin': [frm[i] - base[i] for i in range(3)], 'size': [int(round(s)) for s in size],
+            'uv': [int(uv[0]), int(uv[1])], 'mirror': False, 'dilation': [0.0, 0.0, 0.0]}
+
+
+def troop_bones(model, rig, parts=()):
+    """A troop project's rig bone groups as bake_bones takes them (before scale, hunch and the stand-on-the-ground shift).
+
+    The one top-level group (`model`, turned 180, 0, 0 so Blockbench's y-up view shows the rig's y-down model upright) is a
+    display group, not data. Each rig bone is a group named as the rig names it, at the bone's model-space pivot, with the
+    rig's rest rotation; its cubes are the bone's boxes (box UV on the troop sheet). The part groups (`part:<part>[:<name>]`,
+    `team:<part>`) are checked against art/parts/<part>.json: the library stays the source of part boxes, so a part group's
+    cubes must be the library's boxes at the group's origin, and the group must hang from the entry's anchor. Part bones are
+    still built from the JSON by build_skins.py (only their groups are checked here). Returns name -> bone, rig order.
+    Raises BBError.
+    """
+    data = getattr(model, 'data', model)
+    groups = {g['uuid']: g for g in data.get('groups') or [] if 'uuid' in g}
+    elements = {e['uuid']: e for e in data.get('elements') or [] if 'uuid' in e}
+    parents, owner = {}, {}
+
+    def walk(node, parent):
+        uid = node.get('uuid') if isinstance(node, dict) else node
+        if uid in elements:
+            if parent is None:
+                raise BBError('cube %s sits at the root; every cube belongs to a group' % elements[uid].get('name', uid))
+            owner[uid] = parent
+            return
+        if uid not in groups:
+            raise BBError('the outliner names %s, which is no group or cube' % uid)
+        if uid in parents:
+            raise BBError('group %s is in the outliner twice' % groups[uid].get('name', uid))
+        if not isinstance(node, dict):
+            raise BBError('group %s appears as a bare id, without its children' % groups[uid].get('name', uid))
+        parents[uid] = parent
+        for child in node.get('children') or []:
+            walk(child, uid)
+
+    for node in data.get('outliner') or []:
+        walk(node, None)
+    outside = set(groups) - set(parents)
+    if outside:
+        raise BBError('groups outside the outliner: %s' % ', '.join(str(groups[u].get('name', u)) for u in sorted(outside)))
+    tops = [u for u in groups if parents[u] is None]
+    if len(tops) != 1:
+        raise BBError('%d top-level groups; a troop has one display group called model' % len(tops))
+    display = groups[tops[0]]
+    if display.get('name') != 'model':
+        raise BBError('the top-level group is %s; a troop\'s display group is called model' % display.get('name'))
+    if not _same([float(c) for c in display.get('rotation') or [0, 0, 0]], [180.0, 0.0, 0.0]):
+        raise BBError('the model display group is turned %s; it must be 180, 0, 0 (Blockbench y is up, the rig y down)'
+                      % (display.get('rotation') or [0, 0, 0]))
+    if not _same(_vec3(display.get('origin') or [0, 0, 0], 'the model display group origin'), [0.0, 0.0, 0.0]):
+        raise BBError('the model display group is at %s; it must sit at the origin' % (display.get('origin') or [0, 0, 0]))
+
+    byname = {}
+    for uid, g in groups.items():
+        name = g.get('name')
+        if name in byname:
+            raise BBError('two groups called %s' % name)
+        byname[name] = uid
+    rig_names = [b['name'] for b in rig['bones']]
+    for name in rig_names:
+        if name not in byname:
+            raise BBError('the project has no group for the %s bone %s' % (rig['rig'], name))
+    bones, origins = {}, {}
+    for b in rig['bones']:
+        uid = byname[b['name']]
+        g = groups[uid]
+        origin = _vec3(g.get('origin'), 'group %s origin' % b['name'])
+        parent = b['parent']
+        want_parent = byname.get(parent) if parent else tops[0]
+        got_parent = parents[uid]
+        if got_parent != want_parent:
+            raise BBError('group %s hangs from %s, not %s' % (b['name'], groups.get(got_parent, {}).get('name') if got_parent else 'the top level', parent or 'model'))
+        base = origins.get(parent, [0.0, 0.0, 0.0])
+        rot = [float(c) for c in g.get('rotation') or [0, 0, 0]]
+        want = [float(c) for c in b.get('rotation', [0, 0, 0])]
+        if not _same(rot, want):
+            raise BBError('group %s is turned %s; the rig says %s' % (b['name'], rot, want))
+        boxes = [_troop_cube(e, origin, 'group ' + b['name']) for euid, e in elements.items() if owner.get(euid) == uid]
+        bones[b['name']] = {'name': b['name'], 'parent': parent, 'part': '', 'team': False, 'tag': '', 'stages': [],
+                            'weaponTiers': [], 'pivot': [origin[i] - base[i] for i in range(3)], 'rotation': rot, 'boxes': boxes}
+        origins[b['name']] = origin
+
+    entries = {entry.get('name', part['part']): (entry, part) for entry, part in parts}
+    seen_parts = set()
+    for uid, g in groups.items():
+        name = g.get('name') or ''
+        if not (name.startswith('part:') or name.startswith('team:')):
+            continue
+        team = name.startswith('team:')
+        bits = name[5:].split(':')
+        if len(bits) > 2:
+            raise BBError('group %s: a part group is part:<part>[:<name>] or team:<part>[:<name>]' % name)
+        pid, pname = bits[0], (bits[1] if len(bits) > 1 else bits[0])
+        if pname not in entries:
+            raise BBError('group %s: no part entry called %s in the troop json' % (name, pname))
+        entry, part = entries[pname]
+        if part['part'] != pid:
+            raise BBError('group %s: part %s is not %s' % (name, pid, part['part']))
+        if team != part['team']:
+            raise BBError('group %s: part %s is %s team part' % (name, pid, 'a' if part['team'] else 'no'))
+        anchor = entry.get('bone', part['bone'])
+        if anchor not in origins:
+            raise BBError('group %s hangs from %s, which is no bone or earlier part' % (name, anchor))
+        if parents[uid] != byname.get(anchor):
+            raise BBError('group %s is not under its anchor bone %s' % (name, anchor))
+        pivot = [a + b2 for a, b2 in zip(_vec3(part.get('pivot', [0, 0, 0]), 'part ' + pid + ' pivot'),
+                                         _vec3(entry.get('offset', [0, 0, 0]), 'part ' + pname + ' offset'))]
+        origin = _vec3(g.get('origin'), 'group %s origin' % name)
+        want = [origins[anchor][i] + pivot[i] for i in range(3)]
+        if not _same(origin, want):
+            raise BBError('group %s is at %s; the troop json puts it at %s' % (name, origin, want))
+        rot = [float(c) for c in g.get('rotation') or [0, 0, 0]]
+        want = [float(c) for c in entry.get('rotation', part.get('rotation', [0, 0, 0]))]
+        if not _same(rot, want):
+            raise BBError('group %s is turned %s; the troop json says %s' % (name, rot, want))
+        cubes = [elements[euid] for euid in elements if owner.get(euid) == uid]
+        if len(cubes) != len(part['boxes']):
+            raise BBError('group %s has %d cubes; part %s has %d boxes' % (name, len(cubes), pid, len(part['boxes'])))
+        for i, (e, box) in enumerate(zip(cubes, part['boxes'])):
+            frm, to = _vec3(e.get('from'), 'cube from'), _vec3(e.get('to'), 'cube to')
+            want_from = [origin[k] + box['origin'][k] for k in range(3)]
+            want_to = [want_from[k] + box['size'][k] for k in range(3)]
+            if not _same(frm, want_from) or not _same(to, want_to):
+                raise BBError('group %s cube %d is %s..%s; the part library puts it at %s..%s'
+                              % (name, i, frm, to, want_from, want_to))
+        origins[pname] = origin
+        seen_parts.add(pname)
+    missing = set(entries) - seen_parts
+    if missing:
+        raise BBError('the troop json lists parts with no group: %s' % ', '.join(sorted(missing)))
+    known = {byname[n] for n in rig_names} | {u for u, g in groups.items() if (g.get('name') or '').startswith(('part:', 'team:'))}
+    for euid in elements:
+        if owner.get(euid) not in known:
+            raise BBError('cube %s sits under %s, not a bone or part group' % (elements[euid].get('name', euid), groups.get(owner.get(euid), {}).get('name', 'the root')))
+    return bones
 
 
 # ---- the weapon quads ----

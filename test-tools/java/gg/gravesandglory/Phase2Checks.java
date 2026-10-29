@@ -5454,6 +5454,8 @@ public final class Phase2Checks implements ClientModInitializer {
      */
     static final class Turn extends Stage {
         static final List<String> TROOPS=troops(System.getProperty("gravesandglory.turnTroops","gilded"));
+        /** The armour tier every turn-suite troop is put at (GRAVES_PHASE2_STAGE; 1 unless asked): the shots then show that stage's gated parts. */
+        static final int STAGE=Integer.getInteger("gravesandglory.turnStage",1);
         /** The hands suite (Turn in its tiers mode): each troop with its weapon at tiers I to III in hand (suite hands, evidence p2-hands-shots). */
         final boolean tiers;
         /** The t3 mode (suite t3): the texel-3 trial's distance and card shots. */
@@ -5546,7 +5548,7 @@ public final class Phase2Checks implements ClientModInitializer {
         }
         void cast(GravesAndGlory.Battle b){
             if(t3){force(b,site.add(-T3_HALF-2,0,-T3_HALF-2),site.add(T3_HALF+2,0,T3_HALF+2));floor(b,T3_HALF);}
-            for(int i=0;i<TROOPS.size();i++){var u=post(b,gold,TROOPS.get(i),0,0,YAW);if(t3)stage(u,3);units.put(TROOPS.get(i),u);place(u,i,false);}
+            for(int i=0;i<TROOPS.size();i++){var u=post(b,gold,TROOPS.get(i),0,0,YAW);int tier=t3?3:STAGE;if(tier>1)stage(u,tier);units.put(TROOPS.get(i),u);place(u,i,false);}
             camera(b,0,EYE,DIST,0,0);
         }
         /** The t3 mode's shots (see the class comment). */
@@ -5629,6 +5631,9 @@ public final class Phase2Checks implements ClientModInitializer {
                 settle=t3?12:change?15:0;steady=0;held=0;return;
             }
             if(wait<6+settle)return;
+            // A stage change renames the troop, which replaces the client entity, and the forced pose went with the old id:
+            // re-assert it until the draw is steady, rather than take a shot whose pose is the rest pose.
+            if(steady==0)TroopAnimator.forced.put(e.getId(),new TroopAnimator.Forced(s.clip(),s.at()));
             var d=TroopRenderer.drawn(e);boolean drawn=d!=null&&d.pose!=null&&d.last!=null&&d.count>lastCount;lastCount=d==null?0:d.count;
             boolean gilt=drawn&&"gold".equals(d.last.cloth());
             // the relief is what the shot claims: drawn (the troop is near) unless the shot is the flat one; a troop without relief has none to claim
@@ -5641,6 +5646,9 @@ public final class Phase2Checks implements ClientModInitializer {
             float[] want=pose(m,s,shield(s.troop()));boolean posed=drawn&&Anim.maxRot(d.pose,want)<=1&&Anim.maxPos(d.pose,want)<=0.1;
             var p=c.player;boolean there=Math.abs(p.getX()-(site.getX()+.5+cam[0]))<.05&&Math.abs(p.getEyeY()-(site.getY()+cam[1]))<.05&&Math.abs(p.getZ()-(site.getZ()+.5+cam[2]))<.05
                 &&Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(p.getYaw()-(float)cam[3]))<1&&Math.abs(p.getPitch()-cam[4])<1;
+            // The first shots of a run sometimes find the spectator still short of the mark: the teleport sent with the shot is
+            // dropped while the client settles. Re-send the same camera, the same check, instead of failing a shot the model passed.
+            if(!there&&(wait==60||wait==120||wait==180||wait==240)){final double[] v=cam;server(c,b->camera(b,v[0],v[1],v[2],(float)v[3],(float)v[4]));}
             // (t3) the troop has turned to face north, as pinned: a shot taken while it still turned showed its side to a camera aimed at the front
             boolean faced=!t3||(e instanceof net.minecraft.entity.LivingEntity le&&Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(le.getBodyYaw()-YAW))<2&&Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(le.prevBodyYaw-YAW))<2);
             steady=gilt&&posed&&there&&raised&&faced?steady+1:0;held++;

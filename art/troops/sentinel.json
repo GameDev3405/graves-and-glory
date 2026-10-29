@@ -1,23 +1,246 @@
 {
-"troop":"sentinel",
-"note":"Templar > Templar Knight > Templar Commander (unit identity 1): husk, biped, tall; white plate, the flat-topped great helm, the team long tabard with the white cross and the gilt belt, the pennant; stage 3 cape. Longsword, the shield on the left arm.",
-"rig":"biped",
-"size":[128,64],
-"bones":{"body":{"scale":[1.05,1.1,1.05]},"right_leg":{"scale":[1,1.15,1]},"left_leg":{"scale":[1,1.15,1]}},
-"idleArms":"hang",
-"parts":[
-{"part":"great_helm","uv":[64,0]},
-{"part":"long_tabard"},
-{"part":"tabard_skirt","name":"tabard_skirt_right"},
-{"part":"tabard_skirt","name":"tabard_skirt_left","bone":"left_leg","offset":[-0.8,0,0]},
-{"part":"pennant","scale":[0.952381,0.909091,0.952381],"offset":[0,-1.0909,0.2381]},
-{"part":"cape","uv":[64,20],"stages":[3]},
-{"part":"cape_skirt","name":"cape_skirt_right","uv":[64,41],"stages":[3]},
-{"part":"cape_skirt","name":"cape_skirt_left","bone":"left_leg","offset":[3.2,0,0],"uv":[80,41],"stages":[3]}
-],
-"skins":{"1":"sentinel_s1.png","2":"sentinel_s2.png","3":"sentinel_s3.png"},
-"weapon":"longsword",
-"hand":"right",
-"portrait":"tall 2",
-"faces":{"density":2,"count":1,"note":"the great helm hides the whole head: only the canonical face is wired; the other three patches of sentinel_faces.png are banked for a helm-off scene (Kort decides)"}
+ "troop": "sentinel",
+ "note": "Gilded Templar > Templar Knight > Templar Commander (unit identity, Gilded): husk, biped, tall and broad; the stepped great helm with a comb, brow, visor snout and gilt cross, a team long tabard over heroic plate, pauldrons, short tassets, dark sleeves, steel vambraces and gauntlets, greaves and sabatons; stage 2 cape; stage 3 gold filigree and crest. Longsword, the shield on the left arm. No back flag.",
+ "rig": "biped",
+ "size": [
+  256,
+  128
+ ],
+ "density": 3,
+ "bones": {
+  "body": {
+   "scale": [
+    1.18,
+    1.05,
+    1.18
+   ]
+  },
+  "right_arm": {
+   "pivot": [
+    -6.4,
+    -10.6,
+    0
+   ],
+   "scale": [
+    1.12,
+    1.05,
+    1.12
+   ]
+  },
+  "left_arm": {
+   "pivot": [
+    6.4,
+    -10.6,
+    0
+   ],
+   "scale": [
+    1.12,
+    1.05,
+    1.12
+   ]
+  },
+  "right_leg": {
+   "pivot": [
+    -3.3,
+    12,
+    0
+   ],
+   "scale": [
+    1.08,
+    1.08,
+    1.08
+   ]
+  },
+  "left_leg": {
+   "pivot": [
+    3.3,
+    12,
+    0
+   ],
+   "scale": [
+    1.08,
+    1.08,
+    1.08
+   ]
+  }
+ },
+ "idleArms": "hang",
+ "parts": [
+  {
+   "part": "g_great_helm",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_mail_coif",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_breastplate",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_belt",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_sleeve",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_sleeve_left",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_gauntlet",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_gauntlet_left",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_pauldron",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_pauldron_left",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_tasset_right",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_tasset_left",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_vambrace",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_vambrace_left",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_greave",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_greave_left",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_sabaton",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_sabaton_left",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_cape",
+   "uv": [
+    0,
+    0
+   ],
+   "stages": [
+    2,
+    3
+   ]
+  },
+  {
+   "part": "g_crest",
+   "uv": [
+    0,
+    0
+   ],
+   "stages": [
+    3
+   ]
+  },
+  {
+   "part": "long_tabard"
+  }
+ ],
+ "skins": {
+  "1": "sentinel_s1.png",
+  "2": "sentinel_s2.png",
+  "3": "sentinel_s3.png"
+ },
+ "weapon": "longsword",
+ "hand": "right",
+ "portrait": "tall 4",
+ "faces": {
+  "density": 2,
+  "count": 4,
+  "slots": [
+   [
+    96,
+    48
+   ],
+   [
+    64,
+    48
+   ],
+   [
+    96,
+    32
+   ]
+  ]
+ }
 }

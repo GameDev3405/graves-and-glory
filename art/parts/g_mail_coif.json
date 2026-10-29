@@ -1,0 +1,26 @@
+{
+ "part": "g_mail_coif",
+ "note": "The mail coif under the helm: a dark ring at the neck and the jaw, so the head sits in the armour instead of on it.",
+ "bone": "head",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -4.6,
+    -0.4,
+    -4.6
+   ],
+   "size": [
+    9,
+    1,
+    9
+   ],
+   "uv": [
+    209,
+    10
+   ],
+   "note": "neck ring"
+  }
+ ]
+}

@@ -1,0 +1,196 @@
+{
+ "part": "g_cape",
+ "note": "The Gilded mantle: a yoke across the shoulder blades over two split tails, each a two-step fold with a raised outer edge, a dark hem and gilt trim, the centre open over the team tabard so the leg split reads from behind. It hangs to the knee. Static, no pole, no flag.",
+ "bone": "body",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -5,
+    -12.6,
+    2.3
+   ],
+   "size": [
+    10,
+    2,
+    1
+   ],
+   "uv": [
+    94,
+    21
+   ],
+   "note": "shoulder yoke"
+  },
+  {
+   "origin": [
+    -4.6,
+    -10.8,
+    2.3
+   ],
+   "size": [
+    3,
+    8,
+    1
+   ],
+   "uv": [
+    245,
+    0
+   ],
+   "note": "left upper tail"
+  },
+  {
+   "origin": [
+    -4.8,
+    -2.8,
+    2.5
+   ],
+   "size": [
+    3,
+    6,
+    1
+   ],
+   "uv": [
+    247,
+    10
+   ],
+   "note": "left lower tail"
+  },
+  {
+   "origin": [
+    1.6,
+    -10.8,
+    2.3
+   ],
+   "size": [
+    3,
+    8,
+    1
+   ],
+   "uv": [
+    236,
+    10
+   ],
+   "note": "right upper tail"
+  },
+  {
+   "origin": [
+    1.8,
+    -2.8,
+    2.5
+   ],
+   "size": [
+    3,
+    6,
+    1
+   ],
+   "uv": [
+    245,
+    23
+   ],
+   "note": "right lower tail"
+  },
+  {
+   "origin": [
+    -4.6,
+    -10.8,
+    3.1
+   ],
+   "size": [
+    1,
+    14,
+    1
+   ],
+   "uv": [
+    142,
+    32
+   ],
+   "note": "left trim"
+  },
+  {
+   "origin": [
+    3.6,
+    -10.8,
+    3.1
+   ],
+   "size": [
+    1,
+    14,
+    1
+   ],
+   "uv": [
+    146,
+    32
+   ],
+   "note": "right trim"
+  },
+  {
+   "origin": [
+    -2.6,
+    -10.8,
+    2.2
+   ],
+   "size": [
+    1,
+    15,
+    1
+   ],
+   "uv": [
+    134,
+    32
+   ],
+   "note": "left inner fold"
+  },
+  {
+   "origin": [
+    1.6,
+    -10.8,
+    2.2
+   ],
+   "size": [
+    1,
+    15,
+    1
+   ],
+   "uv": [
+    138,
+    32
+   ],
+   "note": "right inner fold"
+  },
+  {
+   "origin": [
+    -4.6,
+    3.2,
+    2.5
+   ],
+   "size": [
+    3,
+    1,
+    2
+   ],
+   "uv": [
+    201,
+    34
+   ],
+   "note": "left hem"
+  },
+  {
+   "origin": [
+    1.6,
+    3.2,
+    2.5
+   ],
+   "size": [
+    3,
+    1,
+    2
+   ],
+   "uv": [
+    211,
+    34
+   ],
+   "note": "right hem"
+  }
+ ]
+}
