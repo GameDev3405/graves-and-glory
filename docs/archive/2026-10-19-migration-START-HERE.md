@@ -1,3 +1,5 @@
+> **Archived 2026-10-28.** This described the 2026-10-19 GitHub migration. Current state: [HANDOFF.md](../HANDOFF.md).
+
 # Start here: Graves and Glory
 
 This private GitHub repository preserves the local Minecraft modpack project and its parallel Claude/Codex work. Migration date: October 19, 2026. The original directory name, `bannerbound`, predates the game's rename.

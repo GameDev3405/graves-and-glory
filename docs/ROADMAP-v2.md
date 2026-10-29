@@ -6,32 +6,32 @@
 
 | Area | State | Evidence |
 |---|---|---|
-| Tooling and workflow (old Phase 0) | Done. Fast and game verify tiers PASS on source `859a2a93…` | `reports/optimization-2026-10-25.md` |
-| Solo core, Houses, in-match progression (old Phases 1-2) | Merged into `phase-1-solo-core`. Progression gate passed headless (`5bad9a3`). No Kort playtest gate is recorded | `git merge-base`: `phase-2-houses`, `progression-gate` are ancestors |
+| Tooling and workflow (old Phase 0) | Done. Fast and game tiers pass on the 2026-10-28 integration; exact identity and evidence are in `docs/releases/current-candidate.json` | `reports/optimization-2026-10-25.md`; `reports/cleanup-2026-10-28.md` |
+| Solo core, Houses, in-match progression (old Phases 1-2) | Merged into `main`; progression gate passed headless (`5bad9a3`). No Kort playtest gate is recorded | `git merge-base`; `HANDOFF.md` |
 | Built world (old Phase 3) | Merged (`f172667`), then parked at the screenshot gate | `PARKED.md`, 2026-10-24 |
-| UI | `ui-plan` and `ui-icons` merged. Claims (`5dcf3da`), recruit (`1e79065`) and Armoury (`92a4e8a`) are each one commit ahead and not merged. HUD lane `bannerbound-ui-hud` has 35 dirty paths | `git`; `HANDOFF.md` |
+| UI | Claims, recruit, Armoury, class cards, banner House chips and HUD LAST STAND/feed are merged into `main`. The War Table troop sheet (Task 5) is WIP on `work/war-table-troop`; the Armoury restyle waits for Kort | `git`; `HANDOFF.md`; `BACKLOG.md` |
 | Modes and campaign (old Phase 4) | Spec approved 2026-10-18 and a 28-task plan written. No implementation commits | `a119e5c`, `2d86d60` |
 | Friends and public (old Phases 5-6) | Not started | — |
-| Builder server | Live on tjepkema-server, `100.72.202.38:25570`, six worlds. Code is on branch `builder-server` (`88a01ba`, `b8df429`), not merged | `BUILDER-SERVER.md` |
-| Animations | A code-authored keyframe system already exists (`TroopAnimator`, `TroopClips`, `BipedClips`, `TroopTells`; Phase 2 Task 5b). It has idle, walk, run, attack, hit, death, brace, bow_draw, shield_up and cast clips | source |
+| Builder server | Live on tjepkema-server, `100.72.202.38:25570`, six worlds. The code is merged into `main`; the docs live in the main checkout | `BUILDER-SERVER.md` |
+| Animations | Pass 1 is WIP on `work/anim-pass-1`; weapon clipping is improved but no clip reached 9. The code-authored keyframe system and harness checks are in `main` | `HANDOFF.md`; `ANIMATION-PLAN.md` |
 | Tier art | Strict package gate fails: 26 troops lack complete tier art of their own | optimization report |
 | Balance | The levels-on round robin retake is pending. The Graveborn-vs-Gilded gate failure (PARKED, Task 7) has no recorded resolution | `BACKLOG.md` BALANCE |
-| Candidate record | Exists at `docs/releases/current-candidate.json`, but it is stale. It describes `da669ee` (dirty) as "development-build; release blocked" | file |
+| Candidate record | Current at `docs/releases/current-candidate.json` for the 2026-10-28 integration; release remains blocked by the six-player, visual and package gates | file |
 | Media | Parked by Kort until maps and units are final | `BACKLOG.md` |
 
-The main checkout (`builder-server`) has uncommitted edits to `PARKED.md`, two plans, `preflight.json` and `Spec.java`. Their owner is unknown, so they are preserved.
+The 2026-10-28 cleanup promoted `main`, committed the preserved plans and handoffs, and kept all 30 worktrees and run evidence. See `reports/cleanup-2026-10-28.md`.
 
 ## 2. Milestones, in order
 
-**M1. Local UI integration.** Claude can start now; Kort delegated the decision.
-Work in a new integration checkout cut from `phase-1-solo-core`. Merge claims, then recruit, then Armoury. Claims and recruit overlap only in `Phase1Checks` and `Phase2Checks`, and no lane touches save, protocol or sheet files. Export the HUD lane's dirty diff as a patch and apply it there; leave the lane checkout untouched. Merge `builder-server` too: BuildMode stays inert without `-Dgg.build`.
-*Exit:* fast and game tiers PASS on the new source identity; War Table pages pass a visual check at the reference sizes (including VIS-01); the candidate record is updated for that identity; `phase-1-solo-core` is fast-forwarded locally; nothing is pushed. Kort's look is War Table plan Task 10.
+**M1. Local UI integration (done 2026-10-28).** Claims, recruit, Armoury, class cards, banner and HUD are merged; the War Table troop sheet remains WIP on `work/war-table-troop`.
+The work merged claims, recruit, Armoury, the HUD patch, the banner page and the builder-server docs; BuildMode stays inert without `-Dgg.build`. The War Table troop sheet was built after the recruit commit but never committed, so it remains WIP on `work/war-table-troop`.
+*Exit:* fast and game tiers pass on the new source identity; War Table pages pass a visual check at the reference sizes (including VIS-01); the candidate record is updated for that identity; `main` is fast-forwarded. Kort's look is War Table plan Task 10.
 
 **M2. SLICE-1 scoping.** Planning checkpoint; blocked on Kort.
 Decide SLICE-01 to SLICE-03 together: team split, content counts, slice maps, campaign segment (from the Phase 4 plan), competitive scenario, performance and bot targets, and six-client hardware.
 *Exit:* a written slice spec Kort has approved. M5 and M6 depend on it.
 
-**M3. Animation spec.** Planning now; building after M2.
+**M3. Animation spec.** Pass 1 is in progress on `work/anim-pass-1`; signature/Blender work and pass 2 follow M2.
 Pass 1 covers all six classes in their core states: idle, walk, run, hit, death, and an attack per weapon (sword, axe, spear, trident, bow and so on). Pass 2 adds formation hold with teammates and the charge. Recommendation: extend the existing `TroopAnimator` with a hybrid. The procedural base (walk, run and idle blending already exist) stays in code, and signature attacks are hand-keyed clips. Kort or the builder may supply files, so the spec fixes one import format.
 Animation is client-only and must not change server hit timing; a change there is a gameplay change. If pass 2 needs new stance data, that is a protocol change needing approval.
 *Exit:* approved spec. Then a pass-1 contact sheet per class and state at threshold 9, with no `TroopTells` regression.
@@ -66,9 +66,9 @@ Run the levels-on round robin on the adopted maps. Paint tier art for the 26 tro
 
 ## 4. Recommended next 3 actions
 
-1. **Record the 2026-10-28 decisions.** Put Excalibur, the human builder and the animation plan in `DECISIONS.md`, `BACKLOG.md` and `HANDOFF.md`. Correct the candidate path to `docs/releases/current-candidate.json`. This is small and needs no approval.
-2. **Run M1, the local UI integration.** One Sonnet worker in a fresh checkout. Acceptance is the M1 exit criteria. No push.
-3. **Hold the M2 SLICE-1 checkpoint with Kort.** Bring one-page drafts of the M3 animation spec and the M5 map-adoption spec, so the slice decision also fixes animation scope and slice maps.
+1. **Review the troop sheet.** Rebase `work/war-table-troop`, compile it, run the War Table/troop-sheet checks and decide whether it enters the next candidate. This is small and needs no gameplay decision.
+2. **Hold the M2 SLICE-1 checkpoint with Kort.** Bring the animation and map-adoption drafts, so the slice decision also fixes animation scope and slice maps.
+3. **Validate the candidate.** Run staged client/server, interactive/visual and persistence checks, then six networked players. Bots do not count.
 
 ## 5. Decisions only Kort can make
 
@@ -81,4 +81,4 @@ Run the levels-on round robin on the adopted maps. Paint tier art for the 26 tro
 7. Whether packaging for friends may use stopgap tier art, or the strict gate stays, and who paints the 26 troops.
 8. Whether status effects also hit player commanders (round 34, question 3).
 9. The version number of the next candidate.
-10. Disposal of inactive worktrees (OWN-01). This blocks deletion only.
+10. Disposal of inactive worktrees (OWN-01). Kort chose on 2026-10-28 to keep all 30 worktrees and their evidence; deletion remains a future decision.

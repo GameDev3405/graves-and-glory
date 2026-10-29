@@ -1,8 +1,10 @@
+> **Archived 2026-10-28.** Task brief for a parallel modeling comparison; see [HANDOFF.md](../HANDOFF.md) for the current lane state.
+
 # Modeling handoff for a new AI (2026-10-28)
 
 Goal: you are being compared against the AI that built the current House troop models. Kort's verdict on that work: the general design is right, but the units look cheap. He wants high-quality, detailed units like high-end Minecraft knight/armour sets (CurseForge-style). Do a better job, or show clearly where you can't.
 
-Read `docs/HANDOFF-FOR-NEW-AI.md` first for repo and git reality (GitHub is not the true state). This file covers modeling only.
+Read `2026-10-28-handoff-for-new-ai.md` first for the historical repo and git context. This file covers modeling only.
 
 ## Where to work
 - Repo: `C:/Users/kortt/Melty/` worktrees. Start from branch `troop-models-house` (b9884ff, local only). Do not edit `C:/Users/kortt/Melty/bannerbound-models` itself, which is the other AI's checkout and holds its work. Make your own worktree: `git worktree add ../bannerbound-models2 -b troop-models-house-v2 troop-models-house` (run from `bannerbound`). One writer per checkout.

@@ -1,18 +1,18 @@
-> **Project navigation:** [Start here — branches, plans, artwork and work in progress](docs/migration/START-HERE.md). This private repository preserves parallel development; `main` is the 0.4.0 base, not a merge of every feature.
+> **Current state (2026-10-28):** `main` is the 0.5.0 development integration — five Houses, thirty troops, six commander classes, in-match levels and gear, the War Table, and the builder server. It is not a published release. Start with [docs/HANDOFF.md](docs/HANDOFF.md) for what is done, in progress and blocked; [docs/BACKLOG.md](docs/BACKLOG.md), [docs/DECISIONS.md](docs/DECISIONS.md) and [docs/SETUP.md](docs/SETUP.md) are the active records. Active work is on `work/*` branches; historical lanes are preserved under `archive/2026-10/*` tags.
 
 
 
-# Graves and Glory 0.5.0 (Houses candidate)
+# Graves and Glory 0.5.0 (Houses development integration)
 
-This is a local release candidate. Isolated game checks do not constitute a
-production launcher installation or an eight-human Internet multiplayer playtest.
+This is the current development integration, not a published release. Isolated game checks do not constitute a
+production launcher installation or a six-player networked playtest.
 Public Internet matchmaking and the home-hosted official service remain planned
 work. This candidate reworks the solo game: shots that fly before they land,
 lines that fight on to a last stand (nothing routs in 0.5.0), recruits deploying from held points, Easy, Normal and
 Hard bots, a guided first campaign battle and a report after every match (see
 "0.4.0 solo rework candidate" below). Version 0.5.0 adds five Houses (thirty troops), schema 2 collections that migrate
-from older camps, six commander classes and the recruit and troop card pages; it
-has no levels or gear yet and is a local candidate for Kort's playtest only
+from older camps, six commander classes, in-match levels and gear tiers with the Armoury, the War Table pages, the banner page, and the live builder server; it
+remains a local candidate for Kort's playtest only
 (docs/PHASE-2-PLAYTEST.md). Nothing in this update has been published
 automatically.
 
@@ -20,8 +20,8 @@ Clients must match the server's game version and build identity. A missing or
 incompatible pack receives an update instruction before entering the world.
 This compatibility check does not authenticate progression or prevent cheating.
 
-This modpack ships no third-party resource packs (Kort, 2026-10-18). Its look is
-its own built-in assets plus the shaders credited below.
+This modpack currently ships no third-party resource packs. Its look is
+its own built-in assets plus the shaders credited below. Excalibur is approved in principle for the friends' pack (M4) but is not in this candidate.
 
 Upgrades copy legacy Bannerbound collections, deployment data and visual
 preferences into the current folders without overwriting current files. When
@@ -77,7 +77,7 @@ The war council, collection, class selection, command controls and battlefield p
 
 Visuals & sound in the lobby lets each player choose one shader: Complementary Reimagined r5.5.1, Complementary Unbound r5.5.1, MakeUp Ultra Fast 9.5g, or shaders off. Shader changes are saved locally. Shaders begin off for reliable battle performance on a range of PCs; selecting one loads it inside the game. Complementary's pinned releases have an explicit modpack distribution grant; the latest shader versions have different distribution terms and are not silently substituted.
 
-The look is the modpack's own. It ships no third-party resource packs, so there is no world texture choice: Minecraft's textures come from each player's own game, and the built-in armory pack adds the weapon and armour overlays. Each player's graphics choices are independent in multiplayer.
+The look is the modpack's own. This candidate ships no third-party resource packs, so there is no world texture choice: Minecraft's textures come from each player's own game, and the built-in armory pack adds the weapon and armour overlays. Each player's graphics choices are independent in multiplayer.
 
 Confirmed commander hits receive a brief ink-and-gold contact accent and restrained camera recoil. Choose Off, Subtle (default), or Strong. Ambient troop fights never trigger repeated screen flashes; accents do not stop the simulation, change damage or interrupt other players. The camera entrance is sampled every rendered frame instead of stepping its coordinates at the simulation tick rate.
 

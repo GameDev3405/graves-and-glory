@@ -1,3 +1,5 @@
+> **Archived 2026-10-28.** Written before the repository cleanup; its branch and candidate facts are historical. Current state: [HANDOFF.md](../HANDOFF.md).
+
 # Handoff for a new AI (written 2026-10-28)
 
 GitHub (https://github.com/GameDev3405/graves-and-glory.git) is NOT the real state. Most real work lives in local branches and git worktrees on Kort's Windows PC under `C:/Users/kortt/Melty/`. Read this first, then `docs/WORKFLOW.md` (authoritative policy), `docs/HANDOFF.md` (older, dated 2026-10-25), `docs/DECISIONS.md`, `docs/ROADMAP-v2.md`.
