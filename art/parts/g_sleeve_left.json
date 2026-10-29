@@ -1,0 +1,26 @@
+{
+ "part": "g_sleeve_left",
+ "note": "A dark cloth sleeve over the left upper arm.",
+ "bone": "left_arm",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -1.7000000000000002,
+    -2.2,
+    -2.4
+   ],
+   "size": [
+    5,
+    5,
+    5
+   ],
+   "uv": [
+    175,
+    21
+   ],
+   "note": "left sleeve"
+  }
+ ]
+}

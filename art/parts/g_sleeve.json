@@ -1,0 +1,26 @@
+{
+ "part": "g_sleeve",
+ "note": "A dark cloth sleeve over the right upper arm, proud of the torso so the arm reads as a separate shape even before the pauldron.",
+ "bone": "right_arm",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -3.3,
+    -2.2,
+    -2.4
+   ],
+   "size": [
+    5,
+    5,
+    5
+   ],
+   "uv": [
+    82,
+    0
+   ],
+   "note": "right sleeve"
+  }
+ ]
+}

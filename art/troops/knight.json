@@ -1,20 +1,272 @@
 {
-"troop":"knight",
-"note":"Order Squire > Knight > Knight-Captain (unit identity 1): husk, biped, no scale; iron cap and hip-length white surcoat over mail, the team pale down it and the pennant; stage 3 crest plume. Young, clean-shaven; arming sword, the shield on the left arm.",
-"rig":"biped",
-"size":[128,64],
-"density":3,
-"idleArms":"hang",
-"parts":[
-{"part":"iron_cap","uv":[64,0]},
-{"part":"surcoat_skirt","uv":[64,12]},
-{"part":"crest_plume","uv":[92,12],"stages":[3]},
-{"part":"chest_panel"},
-{"part":"pennant"}
-],
-"skins":{"1":"knight_s1.png","2":"knight_s2.png","3":"knight_s3.png"},
-"weapon":"arming_sword",
-"hand":"right",
-"portrait":"standard",
-"faces":{"density":2,"count":4,"slots":[[96,48],[64,48],[96,32]]}
+ "troop": "knight",
+ "note": "Gilded Order Squire > Knight > Knight-Captain (unit identity, Gilded): husk, biped, heroic scale; the kettle helm over a mail coif, a short split surcoat under a team chest panel, dark sleeves, steel vambraces and gauntlets, greaves and sabatons; stage 2 pauldrons, breastplate and short tassets; stage 3 crest and folded cape. Arming sword, the shield on the left arm. No back flag.",
+ "rig": "biped",
+ "size": [
+  256,
+  128
+ ],
+ "density": 3,
+ "bones": {
+  "body": {
+   "scale": [
+    1.12,
+    1.0,
+    1.12
+   ]
+  },
+  "right_arm": {
+   "pivot": [
+    -6.3,
+    -10.6,
+    0
+   ],
+   "scale": [
+    1.08,
+    1.0,
+    1.08
+   ]
+  },
+  "left_arm": {
+   "pivot": [
+    6.3,
+    -10.6,
+    0
+   ],
+   "scale": [
+    1.08,
+    1.0,
+    1.08
+   ]
+  },
+  "right_leg": {
+   "pivot": [
+    -3.2,
+    12,
+    0
+   ],
+   "scale": [
+    1.05,
+    1.08,
+    1.05
+   ]
+  },
+  "left_leg": {
+   "pivot": [
+    3.2,
+    12,
+    0
+   ],
+   "scale": [
+    1.05,
+    1.08,
+    1.05
+   ]
+  }
+ },
+ "idleArms": "hang",
+ "parts": [
+  {
+   "part": "g_kettle_helm",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_mail_coif",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_belt",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_surcoat",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_sleeve",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_sleeve_left",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_gauntlet",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_gauntlet_left",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_vambrace",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_vambrace_left",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_greave",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_greave_left",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_sabaton",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_sabaton_left",
+   "uv": [
+    0,
+    0
+   ]
+  },
+  {
+   "part": "g_pauldron",
+   "uv": [
+    0,
+    0
+   ],
+   "stages": [
+    2,
+    3
+   ]
+  },
+  {
+   "part": "g_pauldron_left",
+   "uv": [
+    0,
+    0
+   ],
+   "stages": [
+    2,
+    3
+   ]
+  },
+  {
+   "part": "g_breastplate",
+   "uv": [
+    0,
+    0
+   ],
+   "stages": [
+    2,
+    3
+   ]
+  },
+  {
+   "part": "g_tasset_right",
+   "uv": [
+    0,
+    0
+   ],
+   "stages": [
+    2,
+    3
+   ]
+  },
+  {
+   "part": "g_tasset_left",
+   "uv": [
+    0,
+    0
+   ],
+   "stages": [
+    2,
+    3
+   ]
+  },
+  {
+   "part": "g_crest",
+   "uv": [
+    0,
+    0
+   ],
+   "stages": [
+    3
+   ]
+  },
+  {
+   "part": "g_cape",
+   "uv": [
+    0,
+    0
+   ],
+   "stages": [
+    3
+   ]
+  },
+  {
+   "part": "chest_panel"
+  }
+ ],
+ "skins": {
+  "1": "knight_s1.png",
+  "2": "knight_s2.png",
+  "3": "knight_s3.png"
+ },
+ "weapon": "arming_sword",
+ "hand": "right",
+ "portrait": "standard",
+ "faces": {
+  "density": 2,
+  "count": 4,
+  "slots": [
+   [
+    96,
+    48
+   ],
+   [
+    64,
+    48
+   ],
+   [
+    96,
+    32
+   ]
+  ]
+ }
 }

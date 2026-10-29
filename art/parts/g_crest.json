@@ -1,0 +1,77 @@
+{
+ "part": "g_crest",
+ "note": "The Knight-Captain crest: a gilt socket and a white plume stepping back in three tapering blocks, so the profile reads as a swept plume rather than a post.",
+ "bone": "head",
+ "team": false,
+ "tag": "helm",
+ "boxes": [
+  {
+   "origin": [
+    -1.5,
+    -11.5,
+    -3
+   ],
+   "size": [
+    3,
+    1,
+    3
+   ],
+   "uv": [
+    155,
+    36
+   ],
+   "note": "socket"
+  },
+  {
+   "origin": [
+    -1,
+    -12.5,
+    -2
+   ],
+   "size": [
+    2,
+    1,
+    4
+   ],
+   "uv": [
+    110,
+    13
+   ],
+   "note": "plume base"
+  },
+  {
+   "origin": [
+    -0.5,
+    -13.5,
+    0
+   ],
+   "size": [
+    2,
+    1,
+    3
+   ],
+   "uv": [
+    130,
+    0
+   ],
+   "note": "plume mid"
+  },
+  {
+   "origin": [
+    0,
+    -14.5,
+    1
+   ],
+   "size": [
+    1,
+    1,
+    2
+   ],
+   "uv": [
+    248,
+    3
+   ],
+   "note": "plume tip"
+  }
+ ]
+}

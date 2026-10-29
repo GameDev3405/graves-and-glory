@@ -1,0 +1,94 @@
+{
+ "part": "g_pauldron",
+ "note": "The Gilded layered pauldron, right: a plate over the shoulder with a rolled rim and two lames below it. It widens the armoured silhouette and moves with the arm.",
+ "bone": "right_arm",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -4.5,
+    -3,
+    -3
+   ],
+   "size": [
+    6,
+    3,
+    6
+   ],
+   "uv": [
+    127,
+    20
+   ],
+   "note": "right cap over the shoulder"
+  },
+  {
+   "origin": [
+    -5,
+    -3.5,
+    -3.5
+   ],
+   "size": [
+    7,
+    1,
+    6
+   ],
+   "uv": [
+    195,
+    21
+   ],
+   "note": "right rolled rim"
+  },
+  {
+   "origin": [
+    -4.5,
+    0,
+    -3
+   ],
+   "size": [
+    5,
+    1,
+    5
+   ],
+   "uv": [
+    173,
+    31
+   ],
+   "note": "right first lame"
+  },
+  {
+   "origin": [
+    -4,
+    1,
+    -2.5
+   ],
+   "size": [
+    4,
+    1,
+    4
+   ],
+   "uv": [
+    227,
+    32
+   ],
+   "note": "right second lame"
+  },
+  {
+   "origin": [
+    -2,
+    -3.5,
+    -3.75
+   ],
+   "size": [
+    2,
+    1,
+    1
+   ],
+   "uv": [
+    173,
+    3
+   ],
+   "note": "right gilt boss"
+  }
+ ]
+}

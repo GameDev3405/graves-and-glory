@@ -1,0 +1,196 @@
+{
+ "part": "g_cape",
+ "note": "The Gilded mantle: a shoulder roll over two long split tails, each with an outer and a mid fold, a stepped hem and gilt edge trim. The centre stays open so the legs read through the cape. Static geometry, no pole and no flag.",
+ "bone": "body",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -4,
+    -12,
+    2.4
+   ],
+   "size": [
+    8,
+    2,
+    1
+   ],
+   "uv": [
+    118,
+    35
+   ],
+   "note": "shoulder roll"
+  },
+  {
+   "origin": [
+    -4,
+    -10,
+    2.9
+   ],
+   "size": [
+    3,
+    13,
+    1
+   ],
+   "uv": [
+    20,
+    32
+   ],
+   "note": "left tail"
+  },
+  {
+   "origin": [
+    1,
+    -10,
+    2.9
+   ],
+   "size": [
+    3,
+    13,
+    1
+   ],
+   "uv": [
+    28,
+    32
+   ],
+   "note": "right tail"
+  },
+  {
+   "origin": [
+    -4.1,
+    -10,
+    2.6
+   ],
+   "size": [
+    1,
+    11,
+    1
+   ],
+   "uv": [
+    92,
+    32
+   ],
+   "note": "left outer fold"
+  },
+  {
+   "origin": [
+    3.1,
+    -10,
+    2.6
+   ],
+   "size": [
+    1,
+    11,
+    1
+   ],
+   "uv": [
+    209,
+    34
+   ],
+   "note": "right outer fold"
+  },
+  {
+   "origin": [
+    -2.8,
+    -10,
+    3.1
+   ],
+   "size": [
+    1,
+    13,
+    1
+   ],
+   "uv": [
+    36,
+    32
+   ],
+   "note": "left mid fold"
+  },
+  {
+   "origin": [
+    1.8,
+    -10,
+    3.1
+   ],
+   "size": [
+    1,
+    13,
+    1
+   ],
+   "uv": [
+    88,
+    32
+   ],
+   "note": "right mid fold"
+  },
+  {
+   "origin": [
+    -4,
+    -10,
+    3.3
+   ],
+   "size": [
+    1,
+    11,
+    1
+   ],
+   "uv": [
+    64,
+    35
+   ],
+   "note": "left trim"
+  },
+  {
+   "origin": [
+    3,
+    -10,
+    3.3
+   ],
+   "size": [
+    1,
+    11,
+    1
+   ],
+   "uv": [
+    68,
+    35
+   ],
+   "note": "right trim"
+  },
+  {
+   "origin": [
+    -4,
+    2,
+    3
+   ],
+   "size": [
+    3,
+    1,
+    1
+   ],
+   "uv": [
+    248,
+    6
+   ],
+   "note": "left hem"
+  },
+  {
+   "origin": [
+    1,
+    2,
+    3
+   ],
+   "size": [
+    3,
+    1,
+    1
+   ],
+   "uv": [
+    248,
+    8
+   ],
+   "note": "right hem"
+  }
+ ]
+}

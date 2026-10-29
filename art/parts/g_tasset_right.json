@@ -1,0 +1,26 @@
+{
+ "part": "g_tasset_right",
+ "note": "A short plate tasset over the right thigh; the thigh and knee stay visible below it.",
+ "bone": "right_leg",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -2,
+    -1,
+    -2.5
+   ],
+   "size": [
+    4,
+    2,
+    5
+   ],
+   "uv": [
+    213,
+    29
+   ],
+   "note": "tasset"
+  }
+ ]
+}

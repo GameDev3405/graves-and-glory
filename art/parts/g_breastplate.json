@@ -1,0 +1,60 @@
+{
+ "part": "g_breastplate",
+ "note": "The Gilded breastplate over the mail: a chest plate, a fauld at the waist and a gorget collar, each a little proud of the body.",
+ "bone": "body",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -4.5,
+    -12,
+    -3
+   ],
+   "size": [
+    9,
+    7,
+    5
+   ],
+   "uv": [
+    87,
+    13
+   ],
+   "note": "breastplate"
+  },
+  {
+   "origin": [
+    -4.5,
+    -5,
+    -3
+   ],
+   "size": [
+    9,
+    1,
+    5
+   ],
+   "uv": [
+    190,
+    28
+   ],
+   "note": "fauld"
+  },
+  {
+   "origin": [
+    -3.5,
+    -12.5,
+    -2.5
+   ],
+   "size": [
+    7,
+    1,
+    5
+   ],
+   "uv": [
+    121,
+    29
+   ],
+   "note": "gorget"
+  }
+ ]
+}

@@ -1,0 +1,43 @@
+{
+ "part": "g_gauntlet_left",
+ "note": "The left gauntlet fist and knuckle plate at the wrist.",
+ "bone": "left_hand",
+ "team": false,
+ "tag": "",
+ "boxes": [
+  {
+   "origin": [
+    -1.4,
+    0,
+    -1.6
+   ],
+   "size": [
+    3,
+    3,
+    3
+   ],
+   "uv": [
+    145,
+    20
+   ],
+   "note": "left fist"
+  },
+  {
+   "origin": [
+    -2,
+    0.6,
+    -2
+   ],
+   "size": [
+    4,
+    1,
+    4
+   ],
+   "uv": [
+    72,
+    32
+   ],
+   "note": "left knuckle plate"
+  }
+ ]
+}
