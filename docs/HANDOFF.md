@@ -4,7 +4,7 @@
 
 `main` is now the 0.5.0 development integration, promoted from `phase-1-solo-core` plus the M1 UI work, the banner page and the harness Narrator fix. Source identity: `c41a0e1cef708e00a3a6030e1afde5b9a4194e0a83c93937116c050887efd0e4`. `main` and the three `work/*` lanes are pushed to GitHub; the Phase 0 baseline re-verified source identity `c41a0e1` at `f1f6047`, while the `v0.5.0-dev.20261028` tag marks the earlier `c4f8771` record commit. It is not a published release; six-player, dedicated-server, visual and package gates remain open.
 
-Approved plan: [PLAN-TO-1.0.md](PLAN-TO-1.0.md), approved 2026-10-28. Phase 0: 0.1 to 0.5 complete; 0.6 skipped by Kort 2026-10-28; 0.7 board remains open. Phase 1.1 is green on `work/war-table-rebase` (`a423cc8`); Kort's visual review and the merge decision remain. Phase 1.4 is done and checked; 1.8 is skipped for now. The baseline passed fast 22/22 and game 23/23 at `f1f6047`; see `reports/phase-0-5-baseline-2026-10-28.md`.
+Approved plan: [PLAN-TO-1.0.md](PLAN-TO-1.0.md), approved 2026-10-28. Phase 0: 0.1 to 0.5 complete; 0.6 skipped by Kort 2026-10-28; 0.7 board is done (`docs/BOARD.md`). Phase 1.1 is green on `work/war-table-rebase` (`a423cc8`); Kort's visual review and the merge decision remain. Phase 1.4 is done and checked; 1.8 is skipped for now. The baseline passed fast 22/22 and game 23/23 at `f1f6047`; see `reports/phase-0-5-baseline-2026-10-28.md`.
 
 Merged and in `main`:
 
@@ -17,7 +17,7 @@ Merged and in `main`:
 In progress:
 
 - **War Table troop sheet (Task 5):** rebased onto `main` at `1f6c799` on `work/war-table-rebase`; `a423cc8` has both checks suites green (fast/game 23/23 and Phase 2 `screens`). The original `work/war-table-troop` tip is preserved untouched. Not merged or pushed; Kort's visual review is the remaining gate. See `reports/war-table-troop-2026-10-28.md` (on that branch).
-- **Animation pass 1:** `work/anim-pass-1`, six Order troops. Weapon clearance fixed; no clip reached 9; the bow carry revert is unrendered and `p2-turn-shots` has not been re-run.
+- **Animation pass 1:** rebased onto `main` at `d0c8d7f` on `work/anim-rebase` (`b023fe1`). All 12 animation checks pass and 196 turn shots render, including the reverted bow carry. The clearance measurement stays 0.6 to 3.7 px (recorded for Blender pass 2), which is why `p2-turn-suite` reads false. Original `work/anim-pass-1` tip preserved; not merged or pushed.
 - **House troop models:** rebased onto `main` at `18522ba` on `work/models-rebase` (`bf86e26`); fast 22/22, Gilded art 7/7 and the turn suite pass, and the cull check is re-aimed. Three troops (Hearthguard, Tusk, Tideguard) in stage-1 plate, still 8/10 against the 9 gate; Kort's look, tiers II/III, other sides and face close-ups remain. Original `work/troop-models-house` tip preserved; not merged or pushed.
 - **Armoury restyle:** waits on Kort's War Table Task 10 look; the tab is currently a plain dark panel.
 
@@ -33,7 +33,8 @@ Not done:
 | Branch | Purpose |
 |---|---|
 | `main` | Current 0.5.0 development integration. |
-| `work/anim-pass-1` | Animation pass 1, code clips for the six troop classes. |
+| `work/anim-pass-1` | Animation pass 1, six Order troops; original WIP tip. |
+| `work/anim-rebase` | Rebased animation pass 1, animation suite green at `b023fe1`; awaits Kort's visual review and merge decision. |
 | `work/troop-models-house` | House troop art, three troops at stage 1; original WIP tip. |
 | `work/models-rebase` | Rebased House models, checks green at `bf86e26`; awaits Kort's visual review and merge decision. |
 | `work/war-table-troop` | Original War Table troop sheet WIP tip (`30b447b`), preserved untouched. |
@@ -48,9 +49,9 @@ Tags: `v0.4.0` marks the old `main`; `v0.5.0-dev.20261028` marks the earlier `c4
 
 ## Next actions
 
-1. Phase 1.5: rebase the animation lane onto `main`, re-render the contact sheets and record the clipping exceptions.
-2. Phase 1.1 and 1.6: Kort reviews the rebased troop sheet (`work/war-table-rebase`, `a423cc8`) and House models (`work/models-rebase`, `bf86e26`), then merge or park; rerun the game tier on the merged tree.
-3. Phase 1.3: Banner and Field page polish once 1.1 is decided.
+1. Kort: review the three rebased lanes (`work/war-table-rebase` `a423cc8`, `work/models-rebase` `bf86e26`, `work/anim-rebase` `b023fe1`), then merge or park; rerun the game tier on any merged tree.
+2. Keep `docs/BOARD.md` current as each task moves; it is the single board.
+3. Phase 1.3: Banner and Field page polish once 1.1 is decided; 1.7 follows the House models' acceptance.
 
 ## Constraints
 

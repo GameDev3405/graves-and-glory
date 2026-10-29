@@ -69,11 +69,11 @@ Run the levels-on round robin on the adopted maps. Paint tier art for the 26 tro
 
 ## 4. Next actions (approved plan)
 
-1. **Phase 1.5.** Rebase the animation lane onto `main`, re-render the contact sheets and record the clipping exceptions. Phase 1.4 is done and 1.6 is rebased, green and awaiting review.
-2. **Phase 1.1.** Review the rebased troop sheet (`work/war-table-rebase`, `a423cc8`) and decide whether it enters 0.5.1.
-3. **Phase 1.3.** Banner and Field page polish once 1.1 is decided.
+1. **Kort's review.** The three rebased lanes (War Table, House models, animation pass 1) await visual review and a merge or park decision.
+2. **Board.** `docs/BOARD.md` is the single task board; keep it current as tasks move.
+3. **Phase 1.3.** Banner and Field page polish once 1.1 is decided; 1.7 follows the House models' acceptance.
 
-The six-player date (0.6) is skipped for now by Kort; the Phase 0.7 board remains open.
+The six-player date (0.6) is skipped for now by Kort; the 0.7 board is published at `docs/BOARD.md`.
 
 Then start Phase 1: rebase the War Table, House-model and animation lanes, run the six-player network baseline, and cut 0.5.1. The full sequence is in PLAN-TO-1.0.md.
 
