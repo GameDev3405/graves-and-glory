@@ -1,11 +1,11 @@
 # Six-player test plan (SLICE-1, SLICE-03)
 
-2026-10-28. Draft, not approved or run. Baseline first, then acceptance. Sources read: `docs/WORKFLOW.md`, `docs/SETUP.md`, `docs/SLICE-1-CHECKPOINT.md`, `docs/DECISIONS.md` (SLICE-1 scoping answers, Excalibur), `docs/BUILDER-SERVER.md`, `docs/ROADMAP-v2.md` (M6), `tools/builder-server/start-build-server.ps1`, `tools/export_server.py`. [A] = assumption. No server was run and nothing was deployed.
+2026-10-28. Approved as the Phase 1 baseline method; not yet scheduled or run. Baseline first, then acceptance. Sources read: `docs/WORKFLOW.md`, `docs/SETUP.md`, `docs/SLICE-1-CHECKPOINT.md`, `docs/DECISIONS.md` (SLICE-1 scoping answers, Excalibur), `docs/BUILDER-SERVER.md`, `docs/ROADMAP-v2.md` (M6), `tools/builder-server/start-build-server.ps1`, `tools/export_server.py`. [A] = assumption. No server was run and nothing was deployed.
 
 ## 1. Scope and rules
 - 3v3 humans on two teams, six real clients. Bots fill empty seats only. Headless bots never count as players (WORKFLOW.md, DECISIONS.md).
 - Clients: Kort's PC plus friends' machines, all joining tjepkema-server (Tailscale, Windows 11, Java 17, 100.72.202.38).
-- Targets are set after the baseline. Working guess: 60 fps on each client, server tick keeps up (MSPT under 50 ms) [A].
+- Working targets approved 2026-10-28: 60 fps on each client and server MSPT p95 under 50 ms; confirm after the Phase 3 baseline.
 - Never touch ports 25565-25567, 25571 (Kingdom) or 25570 (builder). Match server uses **25580** [A, any free port].
 - Never stop Kort's game or the builder server. `tools/verify.py game` is only a one-client smoke check and does not count here (SETUP.md).
 - Version stays 0.5.x. Friends' build may use stopgap tier art; the strict package gate applies only to public release.
@@ -76,7 +76,7 @@ Blocker = crash, desync, lost rewards, unplayable. Claude triages into BACKLOG; 
 | 1 | Six humans in one match | all stay connected to the end; no bot counted |
 | 2 | Loop | lobby, match, rewards, return, second match |
 | 3 | Client fps | at or above the agreed target on every machine |
-| 4 | Server tick | MSPT p95 under 50 ms [A] |
+| 4 | Server tick | MSPT p95 under 50 ms (working target, confirm after Phase 3) |
 | 5 | Reconnect | side, House, class restored; no duplicates |
 | 6 | Restart | lobby restart keeps persistence; mid-match as decided |
 | 7 | Persistence | all section 7 fields intact |

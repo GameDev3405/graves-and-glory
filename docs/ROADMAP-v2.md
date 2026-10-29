@@ -1,6 +1,8 @@
 # Graves and Glory roadmap v2
 
-2026-10-28. Proposal written from Kort's statements this session and the current docs. It replaces the sequencing in `VISION-AND-ROADMAP.md` section 11 once Kort accepts it. The vision's pitch, pillars, Houses, commander, battle and economy sections still stand except where section 3 below says otherwise. Policy and approval gates are in `WORKFLOW.md`: gameplay, save, protocol and dependency changes need Kort's decision; nothing is pushed, published or merged on a gameplay branch without him.
+2026-10-28. Working roadmap written from Kort's statements and the current docs. It supersedes the sequencing in `VISION-AND-ROADMAP.md` section 11; the approved execution plan is `PLAN-TO-1.0.md`. The vision's pitch, pillars, Houses, commander, battle and economy sections still stand except where section 3 below says otherwise. Policy and approval gates are in `WORKFLOW.md`: gameplay, save, protocol and dependency changes need Kort's decision; nothing is pushed, published or merged on a gameplay branch without him.
+
+**Approved execution plan (2026-10-28):** [PLAN-TO-1.0.md](PLAN-TO-1.0.md) is the ordered work and the Phase 0 decision record. Where this roadmap conflicts with it — map authoring, adoption, the slice map, mode/campaign sequencing and the decision list — the plan and `DECISIONS.md` win. This file remains the vision-to-milestones map.
 
 ## 1. Where we stand (checked against docs and git on 2026-10-28)
 
@@ -23,13 +25,14 @@ The 2026-10-28 cleanup promoted `main`, committed the preserved plans and handof
 
 ## 2. Milestones, in order
 
+**Superseded by PLAN-TO-1.0.md (2026-10-28):** the phase plan replaces these milestones for execution. M1 is done; M2 is complete (scope and plan approved, slice map Ironhold); M3 to M8 remain the capability areas, sequenced by the plan.
+
 **M1. Local UI integration (done 2026-10-28).** Claims, recruit, Armoury, class cards, banner and HUD are merged; the War Table troop sheet remains WIP on `work/war-table-troop`.
 The work merged claims, recruit, Armoury, the HUD patch, the banner page and the builder-server docs; BuildMode stays inert without `-Dgg.build`. The War Table troop sheet was built after the recruit commit but never committed, so it remains WIP on `work/war-table-troop`.
 *Exit:* fast and game tiers pass on the new source identity; War Table pages pass a visual check at the reference sizes (including VIS-01); the candidate record is updated for that identity; `main` is fast-forwarded. Kort's look is War Table plan Task 10.
 
-**M2. SLICE-1 scoping.** Planning checkpoint; blocked on Kort.
-Decide SLICE-01 to SLICE-03 together: team split, content counts, slice maps, campaign segment (from the Phase 4 plan), competitive scenario, performance and bot targets, and six-client hardware.
-*Exit:* a written slice spec Kort has approved. M5 and M6 depend on it.
+**M2. SLICE-1 scoping (done 2026-10-28).** Kort approved the scope and PLAN-TO-1.0.md; the slice map is Ironhold, map adoption is overlay-first and AI build authority is recorded. Remaining detail: bot-quality targets, lobby/map art direction and when each builder world is done.
+*Exit:* met for the plan. M5 and M6 are sequenced by the plan.
 
 **M3. Animation spec.** Pass 1 is in progress on `work/anim-pass-1`; signature/Blender work and pass 2 follow M2.
 Pass 1 covers all six classes in their core states: idle, walk, run, hit, death, and an attack per weapon (sword, axe, spear, trident, bow and so on). Pass 2 adds formation hold with teammates and the charge. Recommendation: extend the existing `TroopAnimator` with a hybrid. The procedural base (walk, run and idle blending already exist) stays in code, and signature attacks are hand-keyed clips. Kort or the builder may supply files, so the spec fixes one import format.
@@ -57,20 +60,24 @@ Run the levels-on round robin on the adopted maps. Paint tier art for the 26 tro
 
 ## 3. What changed from the old roadmap
 
-- **Maps and lobby:** Claude no longer builds structures or maps; a human builder does, on the builder server. The Claude-built Phase 3 landmarks are now only the builder's starting worlds. The "Last Watch" camp redesign moves to the builder, and Claude's map work becomes tooling and M5 adoption. Old section 13 used "builder" to mean Claude; "builder" now means the human.
+- **Maps and lobby (superseded 2026-10-28):** the approved plan puts map building back with the AI, with Kort and one friend editing the persistent builder server. The builder worlds remain the editable source; the Claude-built Phase 3 landmarks are the starting worlds. Old section 13 used "builder" to mean Claude; "builder" now means the human-editable server. See PLAN-TO-1.0.md sections 4 and 7.3.
 - **Resource packs:** the 2026-10-18 rule of no third-party resource packs is lifted for Excalibur only. Clarent and Fresh Animations stay out.
 - **Animations:** a new workstream, M3.
 - **Sequencing:** milestones now centre on the six-player slice (optimization v2, 2026-10-25) instead of one Kort playtest per phase.
 - **Superseded:** old section 12 model routing gives way to `WORKFLOW.md`, plus Kort's 2026-10-28 ban on Fable models. Versioning is stale: the mod is already 0.5.0 without the friends phase.
 - **Dropped or parked, not deleted:** Claude-authored camp and landmark structures, media, the withdrawn growth/0.6.0 plan, mounts, the escort variant and public play.
 
-## 4. Recommended next 3 actions
+## 4. Next actions (approved plan)
 
-1. **Review the troop sheet.** Rebase `work/war-table-troop`, compile it, run the War Table/troop-sheet checks and decide whether it enters the next candidate. This is small and needs no gameplay decision.
-2. **Hold the M2 SLICE-1 checkpoint with Kort.** Bring the animation and map-adoption drafts, so the slice decision also fixes animation scope and slice maps.
-3. **Validate the candidate.** Run staged client/server, interactive/visual and persistence checks, then six networked players. Bots do not count.
+1. **Phase 0.5.** Re-run the fast and game tiers on `main` and record the baseline candidate.
+2. **Phase 0.6.** Book the six-player baseline date with five friends.
+3. **Phase 0.7.** Publish the Phase 0/1 task board with owners, state and evidence links.
+
+Then start Phase 1: rebase the War Table, House-model and animation lanes, run the six-player network baseline, and cut 0.5.1. The full sequence is in PLAN-TO-1.0.md.
 
 ## 5. Decisions only Kort can make
+
+**Status 2026-10-28:** items 1, 4, 7, 9 and 10 are fully answered in PLAN-TO-1.0.md and DECISIONS.md; items 2, 3 and 5 are partly answered (performance targets, adoption and AI authority, hybrid animation approach). Still open: bot-quality targets, when each builder world is done, who keys the Blender clips, the pass-2 protocol change (item 6) and status effects on commanders (item 8).
 
 1. SLICE-1 scope: team split, content counts, slice maps, campaign segment and competitive scenario (SLICE-01).
 2. Performance and bot-quality targets, and the six-client test hardware (SLICE-03).

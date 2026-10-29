@@ -4,6 +4,8 @@
 
 `main` is now the 0.5.0 development integration, promoted from `phase-1-solo-core` plus the M1 UI work, the banner page and the harness Narrator fix. Source identity: `c41a0e1cef708e00a3a6030e1afde5b9a4194e0a83c93937116c050887efd0e4`. `main` and the three `work/*` lanes are pushed to GitHub; the verified source head is `fa2f31e` and the record commit is `c4f8771`, tagged `v0.5.0-dev.20261028`. It is not a published release; six-player, dedicated-server, visual and package gates remain open.
 
+Approved plan: [PLAN-TO-1.0.md](PLAN-TO-1.0.md), approved 2026-10-28. Phase 0 is in progress: 0.1 to 0.4 are complete; 0.5 baseline re-run, 0.6 six-player date and 0.7 task board remain.
+
 Merged and in `main`:
 
 - Five Houses, thirty troops, six commander classes, House traits and abilities.
@@ -44,10 +46,10 @@ Tags: `v0.4.0` marks the old `main`; `v0.5.0-dev.20261028` marks this candidate.
 
 ## Next actions
 
-1. Review `work/war-table-troop`: rebase it, compile, run the War Table/troop-sheet checks and decide whether it enters the next candidate.
-2. Hold the SLICE-1 checkpoint (M2) with Kort. Slice map, lobby/map art direction, bot targets and map adoption still wait on the builder.
-3. Validate the candidate through staged client/server, interactive/visual, persistence and eventually six networked players. Bots never count as players.
-4. Run the balance retake and paint tier art after map adoption.
+1. Phase 0.5: re-run the fast and game tiers on `main` and record the baseline candidate.
+2. Phase 0.6: book the six-player baseline date with five friends.
+3. Phase 0.7: publish the single Phase 0/1 task board with owners, state and evidence links.
+4. Then start Phase 1: rebase the War Table, House-model and animation lanes, run the six-player network baseline, and cut 0.5.1.
 
 ## Constraints
 
