@@ -1,49 +1,51 @@
 {
   "status": "development-build; release blocked",
   "version": "0.5.0",
-  "commit": "30311614c26d32b7d5dc486c9d56f8dc5f3ae3ef",
+  "commit": "fa2f31e19301fbb92496d272d7c793bce75e72f1",
   "dirty": false,
   "source_identity": {
     "version": "0.5.0",
     "modId": "gravesandglory",
-    "sourceSha256": "5e7be7be04a9dc3a6b9a20d2d6dfca9de1efc68ce331e61a30525e25ba23a5a2"
+    "sourceSha256": "c41a0e1cef708e00a3a6030e1afde5b9a4194e0a83c93937116c050887efd0e4"
   },
   "artifact": {
-    "path": "work/candidates/5e7be7be04a9dc3a6b9a20d2d6dfca9de1efc68ce331e61a30525e25ba23a5a2/graves-and-glory-0.5.0.jar",
-    "sha256": "823efa5f32fc05ee07096f2e3f4856044b755556a94668200acbd4ea0937b392",
+    "path": "work/candidates/c41a0e1cef708e00a3a6030e1afde5b9a4194e0a83c93937116c050887efd0e4/graves-and-glory-0.5.0.jar",
+    "sha256": "61a1c8845ded9f9c1f66a2af2b337d6c11f13e5c3fb2a146b2033236042435a3",
     "kind": "mod jar; not a playable modpack package",
-    "note": "built from 3031161 with gradlew build -x test; 3031161 differs from verified 8524e70 only in a UiMath comment/test note, docs and this record, so fast/game results below were run on 8524e70 and are not re-run for this identity"
+    "note": "built from the clean 2026-10-28 integration; verified at fa2f31e. The record and cleanup report are docs-only commits after that head, so the source identity is unchanged."
   },
   "verification": {
-    "fast": "work/verify/20261028-160025-37468/result.json (pass, exit 0)",
-    "game": "work/verify/20261028-160253-61580/result.json (pass, exit 0; Phase 1 combat smoke only)",
-    "ui_suites_phase1": "work/m1-visual/p1/evidence/local-checks.txt (88 pass, 0 fail)",
-    "ui_suites_phase2": "work/m1-visual/p2/evidence/local-checks.txt (82 pass, 0 fail)",
-    "strict_package": "not run for this identity"
+    "fast": "work/verify/20261028-192147-35288/result.json (pass, exit 0; head fa2f31e, dirty false, 22 checks)",
+    "game": "work/verify/20261028-193007-9180/result.json (pass, exit 0; head fa2f31e, dirty false; Phase 1 combat smoke only)",
+    "strict_package": "not run for this identity; the documented gate still refuses 26 troops with missing complete tier art",
+    "ui_suites": "the M1 extra UI suites were not re-run for this head; fast includes ui-standard and ui-assets"
   },
   "acceptance": {
-    "implemented": "partial: War Table Tasks 1, 2, 4, 5, Armoury, class cards, HUD LAST STAND and feed line done; banner House chips (Task 3) not built",
+    "implemented": "partial: Houses, progression, War Table claims/recruit/class cards/Armoury tab/HUD and banner merged; War Table troop sheet (Task 5) WIP; Armoury restyle pending",
     "fast_tested": true,
     "combat_smoke_tested": true,
-    "visual_review_of_candidate": "harness screenshots read by Claude only; Kort look pending",
+    "visual_review_of_candidate": false,
     "six_networked_players": false,
     "accepted_release": false
   },
   "known_issues": [
-    "Banner page has no House chips or wide-troop/20-seat counts beyond what p1-ui-page-banner checks (plan Task 3 remainder)",
-    "Strict packaging refuses 26 troops with missing/stopgap tier art",
-    "Full six-player, dedicated-server, reconnect/reward/restart validation not performed",
-    "Armoury not restyled (awaits Kort)"
+    "War Table troop sheet (Task 5) is preserved on work/war-table-troop; it is not merged, rebased or verified",
+    "Strict packaging refuses 26 troops with missing or incomplete own tier art",
+    "Six networked players, dedicated server, reconnect/restart and persistence were not tested",
+    "Armoury is not restyled (waits for Kort); animation pass 1 and the House models are WIP",
+    "1440p/4K, hover/focus/disabled states and Kort's visual look are not checked",
+    "The extra M1 UI suites were not re-run for this head; the fast UI checks pass"
   ],
   "historical_preview": {
     "commit": "552a8c6f77fec31bad06f0f7ac09ac59a729efc4",
-    "status": "historical, not current"
+    "status": "historical, not current; known Quartermaster clipping defect"
   },
   "questions": "../QUESTIONS-FOR-KORT.md",
-  "branch": "m1-ui-integration",
+  "branch": "main",
+  "tag": "v0.5.0-dev.20261028",
   "previous_candidate": {
-    "commit": "da669eea15c2b647a07443925a92e9c16c3453be",
-    "sourceSha256": "859a2a93b7de5dcca1a1da80d83704550f0f21c629fe47ed72e3022ff9ac2c14",
+    "commit": "30311614c26d32b7d5dc486c9d56f8dc5f3ae3ef",
+    "sourceSha256": "5e7be7be04a9dc3a6b9a20d2d6dfca9de1efc68ce331e61a30525e25ba23a5a2",
     "status": "superseded"
   }
 }
