@@ -136,9 +136,12 @@ final class WarTableRecruit {
         house = RecruitView.houses().stream().anyMatch(h -> h.id().equals(screen.stationHouse)) ? screen.stationHouse : RecruitView.houses().get(0).id(); // a House ring tent (recruit:<house>) opens on its House
         revealSeen = CampaignClient.revealUntil;
         noticeSerialSeen = CampaignClient.noticeSerial;
+        var back = ArmyCards.spec(screen.troop); // back from the troop sheet (WarTableTroop.back): its House, its troop selected; read once
+        screen.troop = "";
+        if (back != null && RecruitView.houses().stream().anyMatch(h -> h.id().equals(back.house()))) { house = back.house(); selected = back.id(); }
     }
 
-    /** The widget a name stands for (back, banner, house-(id), row-(i), choose, enlist, odds), or null. */
+    /** The widget a name stands for (back, banner, house-(id), row-(i), choose, sheet, enlist, odds), or null. */
     UiButton button(String name) { return buttons.get(name); }
 
     UiButton add(String name, UiButton b) { buttons.put(name, b); return screen.add(b); }
@@ -161,6 +164,7 @@ final class WarTableRecruit {
             add("row-" + i, new UiButton(ro[0] + ROLL_X, ro[1] + ROW_TOP + ROW_H * i, ROLL_W, ROW_H, Text.literal(""), b -> pick(index), (g, x, y, w, h, hot) -> {}));
         }
         choose = add("choose", new UiButton(lo[0] + LETTER_X + CHOOSE_X, lo[1] + LETTER_Y + CHOOSE_Y, CHOOSE_W, CHOOSE_H, Text.literal("Buy"), b -> chooseTroop(), this::paintChoose));
+        add("sheet", new UiButton(lo[0] + LETTER_X + 152 - LINE_W / 2, lo[1] + LETTER_Y + WarTableTroop.NAME_Y, LINE_W, WarTableTroop.NAME_H, Text.literal("Troop sheet"), b -> openSheet(), this::paintSheet));
         enlist = add("enlist", new UiButton(la[0] + ENLIST_X, la[1] + ENLIST_Y, 240, 40, Text.literal("Enlist"), b -> enlist(), this::paintEnlist));
         add("odds", new UiButton(compact ? la[0] + AXIS + 4 : la[0] + ODDS_X, la[1] + (compact ? COMPACT_ODDS_Y : ODDS_Y), 64, 24, Text.literal("Odds"), b -> odds = !odds, this::paintOdds));
         refresh();
@@ -195,6 +199,15 @@ final class WarTableRecruit {
             choose.visible = a != null;
             choose.setMessage(Text.literal(a == null ? "" : a.label()));
             choose.active = a != null && a.active() && battleFree() && !pending();
+        }
+        var sheet = buttons.get("sheet");
+        if (sheet != null) {
+            sheet.visible = row != null;
+            if (row != null) {
+                var font = MinecraftClient.getInstance().textRenderer;
+                int[] lo = letterAt(), w = {font.getWidth(DarkUi.focal(UiMath.trim(row.name(), LINE_W, s -> font.getWidth(DarkUi.focal(s))))) + 8};
+                sheet.moveTo(lo[0] + LETTER_X + 152 - w[0] / 2, lo[1] + LETTER_Y + WarTableTroop.NAME_Y, w[0], WarTableTroop.NAME_H);
+            }
         }
         if (enlist != null) enlist.active = canEnlist();
     }
@@ -241,6 +254,11 @@ final class WarTableRecruit {
         var a = row == null ? null : RecruitView.action(row.troopId());
         if (a == null || !a.active() || !battleFree() || pending()) return;
         if (send(a.command())) { pendingState = screen.state(); pendingAt = ticks; refresh(); }
+    }
+
+    /** A click on the letter's name: the troop sheet of the troop shown (CampScreen page troop); it takes the reveal's end with it. */
+    void openSheet() {
+        if (selected != null) screen.openTroop(selected);
     }
 
     /** A click on a banner: its House's roll, nothing selected (refresh picks), the seal, the scroll and the wheel's carry gone. */
@@ -487,7 +505,8 @@ final class WarTableRecruit {
         UiTex.draw(g, "table/frame-ornate-184", x + 60, y + 28);
         String name = UiMath.trim(r.name(), LINE_W, s -> font.getWidth(DarkUi.focal(s)));
         int nameInk = DarkUi.INK_TEXT;
-        WarTableHome.centred(g, DarkUi.focal(name), x + 152, y + 224, nameInk);
+        int nameX = WarTableHome.centred(g, DarkUi.focal(name), x + 152, y + 224, nameInk);
+        rectsDrawn.put("name", new int[]{nameX, y + 224, font.getWidth(DarkUi.focal(name)), 11}); // the words the sheet widget covers
         String kind = r.rarity().isEmpty() ? r.group() + (r.owned() ? ", recruited" : ", not yet recruited") : r.rarity() + " " + r.group().toLowerCase(Locale.ROOT);
         kind = UiMath.trim(kind, LINE_W, s -> font.getWidth(DarkUi.body(s)));
         int kindInk = DarkUi.SEPIA;
@@ -562,6 +581,16 @@ final class WarTableRecruit {
         rectsDrawn.put("reason", new int[]{left, top, right - left, REASON_STEP * (lines.size() - 1) + 11});
         textsDrawn.put("reason", String.join(" ", lines));
         colorsDrawn.put("reason", ink);
+    }
+
+    /** The sheet widget over the letter's name: a thin rule under the name says it can be pressed (a line, not only a colour); the name's ink
+     *  and a second line under it while hot (the pointer or the keyboard's focus). The widget is as wide as the name, so the paper beside it is not a button. */
+    void paintSheet(DrawContext g, int x, int y, int w, int h, boolean hotIgnored) {
+        boolean hot = hot(buttons.get("sheet"));
+        int ink = hot ? DarkUi.INK_TEXT : DarkUi.SEPIA;
+        g.fill(x + 4, y + 15, x + w - 4, y + 16, ink);
+        if (hot) underline(g, "sheet", x + 4, y + 17, w - 8, ink);
+        rectsDrawn.put("sheet", new int[]{x, y, w, h});
     }
 
     /** The letter's action tag (the widget "choose"): a vellum tag with the action's label (RecruitPages.Action.label: "Buy 300",
