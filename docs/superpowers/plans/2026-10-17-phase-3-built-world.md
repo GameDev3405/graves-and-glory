@@ -358,7 +358,7 @@ World footprints, for checks: gilded x -31..-21, z -322..-310; wildmoot x -24..-
 ### Task 5: Training yard and the tutorial hooks
 
 **Files:**
-- Modify: `sheets/design.json` (`pieces`, `campPieces` and `campStations` rows below; `camp` gains `firstDx -33.5`, `firstDz 6.5`, `firstYaw 90.0`; new sheet `campLessons`)
+- Modify: `sheets/design.json` (`pieces`, `campPieces` and `campStations` rows below; `camp` gains `firstDx -32.5`, `firstDz 6.5`, `firstYaw 90.0`; new sheet `campLessons`)
 - Modify: `tools/preflight.py` (`campLessons` ids unique; every `{key:<id>}` names `menu, attack, follow, formation, map, rotate_left, rotate_right, confirm, cancel` or `use`)
 - Create: `test-tools/resources/data/gravesandglory_studio/functions/camp/training_yard.mcfunction` and its export
 - Modify: `src/main/java/gg/gravesandglory/CampWorld.java` (`lessons`, `dummies`, first arrival in `spawn`)
@@ -379,7 +379,7 @@ World footprints, for checks: gilded x -31..-21, z -322..-310; wildmoot x -24..-
 **Yard brief** (23x31x8, facing south, open on the east): fenced coarse dirt and gravel; four backboards (dark oak planks) at local x 0, z 4..6, 10..12, 16..18 and 22..24, y 1..4, one behind each lesson; six dummy pads (smooth stone) along z 9 at x 4..14 step 2; weapon racks; a shade roof over x 16..20, z 13..17 for the Drillmaster.
 
 **Interfaces:**
-- `CampWorld.spawn(Profile p)` returns the first arrival `(originX+firstDx, spawnY, originZ+firstDz)` = (-33.5,65,-303.5), yaw 90, pitch 8 while `p.campaignCleared==0`, else the normal spawn.
+- `CampWorld.spawn(Profile p)` returns the first arrival `(originX+firstDx, spawnY, originZ+firstDz)` = (-32.5,65,-303.5), yaw 90, pitch 8 while `p.campaignCleared==0`, else the normal spawn.
 - `CampWorld.lessons(ServerWorld w)`: one TextDisplay per row at `(originX+dx, y, originZ+dz)`, billboard center, the label style, text through `CampWorld.text`, tags `TAG` and `camp-lesson:<id>`.
 - `CampWorld.dummies(ServerWorld w)`: six armor stands at (-52.5+2k, 65, -309.5), yaw -90, invulnerable, no gravity, iron helmet and leather chestplate, tags `TAG` and `camp-dummy`.
 - Page `train` on `CampScreen`: heading TRAINING YARD, the `march-1` row's name and briefing, buttons START (sends `campaign:march-1`) and PRACTICE (sends `camp:practice`).
@@ -391,7 +391,7 @@ World footprints, for checks: gilded x -31..-21, z -322..-310; wildmoot x -24..-
   - `p3-yard-start`: pressing START gives `running` within 900 ticks with `activeBattle` `march-1`; then `returnLobby`.
   - `p3-yard-lessons`: four TextDisplays tagged `camp-lesson:*` at their rows; each text's JSON holds the keybind `key.gravesandglory.menu`, `formation`, `attack` and `key.use` in turn; with `menu` rebound to K, the rendered lesson 1 reads `Press K,` (screenshot `camp-yard-lessons` from (-51.5,67.6,-313.5) to (-55.5,67.2,-313.5); restore the binding).
   - `p3-yard-dummies`: six armor stands tagged `camp-dummy` at their positions, invulnerable.
-  - `p3-yard-first-arrival`: with `campaignCleared=0`, `toLobby` puts the player within 0.1 of (-33.5,65,-303.5) facing yaw 90 (screenshot `camp-first-arrival`, the player's view); with `campaignCleared=1`, at the normal spawn. Restore the profile.
+  - `p3-yard-first-arrival`: with `campaignCleared=0`, `toLobby` puts the player within 0.1 of (-32.5,65,-303.5) facing yaw 90 (screenshot `camp-first-arrival`, the player's view); with `campaignCleared=1`, at the normal spawn. Restore the profile.
   - Screenshot `camp-yard` from (-28.5,69,-290) to (-46,66,-304).
 - [ ] **Step 4: Implement** `spawn`'s first arrival, `lessons`, `dummies` and page `train`.
 - [ ] **Step 5: Compile; run `yard,camp,routes`.** Expected the five `p3-yard-*` ids, both suite lines, the camp ids and the route check; the tester sees the four boards, six dummies and the Drillmaster in `camp-yard` and reads lesson 1's key in `camp-yard-lessons`.
@@ -519,10 +519,12 @@ World values the checks must reproduce: `rg-mill` cover (-25.5,66.6,-167.5) to (
 | id | width | depth | height | palette | purpose |
 |---|---|---|---|---|---|
 | ironhold/keep | 47 | 27 | 22 | stone | river keep south of B |
-| ironhold/gate | 7 | 51 | 14 | stone | west gate, 11-wide passage |
-| ironhold/curtain | 5 | 31 | 15 | stone | curtain section with end towers |
+| ironhold/gate | 7 | 47 | 17 | stone | west gate, 11-wide passage |
+| ironhold/curtain | 5 | 31 | 19 | stone | curtain section with end towers |
 | ironhold/hay_barn | 25 | 19 | 13 | wood | hay barn and hay yard |
 | ironhold/garrison | 31 | 23 | 15 | stone | garrison barracks and yard |
+
+> Amended by the controller, 2026-10-23, after Task 7 (built and accepted by the reviewer): the gate piece is 7 x 47, not 7 x 51 (the studio and preflight limit an odd size to 48 at most; the stubs are 2 blocks shorter, the passage stays at world z -5..5 and the plan's world values for cover and sight hold), and the gate and curtain are 17 and 19 high (lantern posts, tower roofs, flagpole). Towers read as 14 and 15 high in the text below plus those additions.
 
 `landmarks` (map 1, elevation 64, encloses `-`; then the four `ih-` tower rows):
 
@@ -630,7 +632,7 @@ World values: `fm-lodge` cover (-75.5,66.6,-184.5) and sight (-67.5,72.6,-172.5)
 
 **Briefs:**
 - `frostmarch/lodge`: the hall (dark spruce and stone, snowy roofs) at x 0..16, an east door at z 9..11; the yard at x 17..26, z 0..18 inside a 2-high stone wall on its north, east and south sides; the gate at x 26, z 12..16 (the lodge lane leaves there) under a gatehouse at x 23..26, z 11..17 whose upper room has its floor at y 6 (feet 7) and an east window at x 26, y 8..9, z 14..15.
-- `frostmarch/refuge`: a stone hut with a lean-to and a brazier; doors on all four sides (its lane starts at the centre).
+- `frostmarch/refuge`: a stone hut with a lean-to and a brazier; doors on all four sides (its lane starts at the centre). *Built as stone-footed timber under a dark oak roof (the sheet palette says wood), graded 9.0; Kort's vision names a cave refuge carved into rock: his call whether it is redone (QUESTIONS-FOR-KORT).*
 - `frostmarch/signal_tower`: a stone tower with an inner stair to a parapet; the signal fire on netherrack, netherrack at y 19 and fire at y 20.
 - `hollowwood/chapel`: a ruined deepslate chapel; the south door at x 5..9, y 1..4 (the chapel lane leaves there); in the south wall (z 22) a window at x 11..14, y 2..3 and solid wall at x 15..16 from y 1 to 6; inside, x 11..16, z 19..21, y 1..3 kept clear.
 - `hollowwood/sawmill`: a log ramp and a stonecutter bench under a roof, open on the east (its lane leaves there).
@@ -679,10 +681,10 @@ The buildings of the supply-houses spec (`docs/superpowers/specs/2026-10-22-supp
 | rg-supply-sw | 0 | supply/rivergate | -125 | 72 | 180 | 74 | - | - |
 | rg-supply-ne | 0 | supply/rivergate | 125 | -72 | 0 | 74 | - | - |
 | rg-supply-se | 0 | supply/rivergate | 125 | 72 | 180 | 74 | - | - |
-| ih-supply-nw | 1 | supply/ironhold | -140 | -72 | 0 | 76 | - | - |
+| ih-supply-nw | 1 | supply/ironhold | -140 | -72 | 0 | 77 | - | - |
 | ih-supply-sw | 1 | supply/ironhold | -125 | 72 | 180 | 77 | - | - |
 | ih-supply-ne | 1 | supply/ironhold | 125 | -72 | 0 | 77 | - | - |
-| ih-supply-se | 1 | supply/ironhold | 140 | 72 | 180 | 76 | - | - |
+| ih-supply-se | 1 | supply/ironhold | 140 | 72 | 180 | 77 | - | - |
 | fm-supply-nw | 2 | supply/frostmarch | -125 | -72 | 0 | 80 | - | - |
 | fm-supply-sw | 2 | supply/frostmarch | -125 | 72 | 180 | 80 | - | - |
 | fm-supply-ne | 2 | supply/frostmarch | 125 | -72 | 0 | 80 | - | - |
@@ -719,10 +721,10 @@ World values the checks must reproduce, for a house at (x, z) with elevation E: 
 | rg-supply-sw | 0 | Westhill Barn | rg-supply-sw | -125 | 66 | -125 | 0 | 74 |
 | rg-supply-ne | 0 | Eastmill Granary | rg-supply-ne | 125 | -66 | 125 | 0 | 74 |
 | rg-supply-se | 0 | Easthill Barn | rg-supply-se | 125 | 66 | 125 | 0 | 74 |
-| ih-supply-nw | 1 | West Armoury | ih-supply-nw | -140 | -66 | -140 | 0 | 76 |
+| ih-supply-nw | 1 | West Armoury | ih-supply-nw | -140 | -66 | -140 | 0 | 77 |
 | ih-supply-sw | 1 | West Quarters | ih-supply-sw | -125 | 66 | -125 | 0 | 77 |
 | ih-supply-ne | 1 | East Armoury | ih-supply-ne | 125 | -66 | 125 | 0 | 77 |
-| ih-supply-se | 1 | East Quarters | ih-supply-se | 140 | 66 | 140 | 0 | 76 |
+| ih-supply-se | 1 | East Quarters | ih-supply-se | 140 | 66 | 140 | 0 | 77 |
 | fm-supply-nw | 2 | West Ridge Hut | fm-supply-nw | -125 | -66 | -125 | 0 | 80 |
 | fm-supply-sw | 2 | West Fur Store | fm-supply-sw | -125 | 66 | -125 | 0 | 80 |
 | fm-supply-ne | 2 | East Ridge Hut | fm-supply-ne | 125 | -66 | 125 | 0 | 80 |
