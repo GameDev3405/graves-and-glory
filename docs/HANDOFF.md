@@ -2,7 +2,7 @@
 
 ## Where we are
 
-`main` is now the 0.5.0 development integration, promoted from `phase-1-solo-core` plus the M1 UI work, the banner page and the harness Narrator fix. Source identity: `c41a0e1cef708e00a3a6030e1afde5b9a4194e0a83c93937116c050887efd0e4`. It is not a published release; six-player, dedicated-server, visual and package gates remain open.
+`main` is now the 0.5.0 development integration, promoted from `phase-1-solo-core` plus the M1 UI work, the banner page and the harness Narrator fix. Source identity: `c41a0e1cef708e00a3a6030e1afde5b9a4194e0a83c93937116c050887efd0e4`. `main` and the three `work/*` lanes are pushed to GitHub; the verified source head is `fa2f31e` and the record commit is `c4f8771`, tagged `v0.5.0-dev.20261028`. It is not a published release; six-player, dedicated-server, visual and package gates remain open.
 
 Merged and in `main`:
 
@@ -36,7 +36,7 @@ Not done:
 | `work/war-table-troop` | War Table troop sheet (Task 5), WIP and unmerged. |
 | `heraldic-units` | External heraldic-unit reference sheets; worktree in `Documents/gg-hx`. |
 
-Tags: `v0.4.0` marks the old `main`; `v0.5.0-dev.20261028` marks this candidate. `archive/2026-10/*` tags preserve the tips of removed historical branches (preview, codex experiments, snapshots, art bake-offs, builder docs).
+Tags: `v0.4.0` marks the old `main`; `v0.5.0-dev.20261028` marks this candidate. `archive/2026-10/*` tags preserve the tips of removed historical branches (preview, codex experiments, snapshots, art bake-offs, builder docs). All five branches and all 19 tags are on GitHub; removed remote branches are listed in the cleanup report.
 
 ## Candidate and evidence
 
