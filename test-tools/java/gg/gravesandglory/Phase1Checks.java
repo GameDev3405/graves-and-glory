@@ -3127,13 +3127,16 @@ public final class Phase1Checks implements ClientModInitializer {
                 &&rf!=null&&lf!=null&&of!=null&&rf>=489&&rf<=492&&lf>=489&&lf<=492&&of>=489&&of<=492;
             boolean chrome="table/oak-table-recruit".equals(tx.get("table"))&&Arrays.equals(box(c,"back"),new int[]{56,12,120,28})&&Arrays.equals(box(c,"banner"),new int[]{800,12,104,28})
                 &&!WarTableRecruit.rects().containsKey("maproll")&&hotNone();
-            layoutOk=r!=null&&canvas&&banners&&roll&&portraits&&letter&&ladder&&baseline&&chrome&&boxes(c).size()==2+hs.length+WarTableRecruit.ROWS+3;
+            int[] sb=box(c,"sheet"),nm=rect("name"); // the widget that opens the troop sheet covers the letter's name and little more
+            boolean sheet=sb!=null&&nm!=null&&sb[0]<=nm[0]&&sb[0]+sb[2]>=nm[0]+nm[2]&&sb[1]<=nm[1]&&sb[1]+sb[3]>=nm[1]+11&&sb[2]<=nm[2]+10&&sb[1]+sb[3]<=rect("letter")[1]+240&&!WarTableRecruit.underlined().contains("sheet");
+            layoutOk=r!=null&&canvas&&banners&&roll&&portraits&&letter&&ladder&&baseline&&chrome&&sheet&&boxes(c).size()==2+hs.length+WarTableRecruit.ROWS+4;
             return "canvas "+UiCanvas.width()+"x"+UiCanvas.height()+" k "+UiCanvas.k()+(canvas?"":" WRONG")+"; rod "+str(rect("rod"))+", banners "+bw+(banners?"":"WRONG")
                 +"; roll "+rowTroops()+": "+rowWhy+"mark "+str(rect("mark"))+", rules "+str(rect("rule-1"))+" "+str(rect("rule-2"))+" "+str(rect("rule-3"))+" "+str(rect("rule-4"))+" "+str(rect("rule-5"))+(roll?"":" WRONG")+"; portraits (size@x,feet) "+ptWhy+(portraits?"":"WRONG")
                 +"; letter "+text("letter-troop")+" \""+text("letter-name")+"\" "+hex(color("letter-name"))+" / \""+text("letter-line1")+"\" "+hex(color("letter-line1"))+" / \""+text("letter-line2")+"\" "+hex(color("letter-line2"))+", portrait "+ld+", window "+str(rect("window"))+", tag \""+text("choose")+"\" ("+text("choose-command")+") "+str(box(c,"choose"))+" "+hex(color("choose"))+", under it \""+text("reason")+"\" "+hex(color("reason"))+(letter?"":" WRONG")
                 +"; enlist \""+text("enlist")+"\" "+hex(color("enlist"))+" for "+text("enlist-cost")+" on "+tx.get("enlist")+", purse "+text("purse")+" "+str(rect("purse"))+", rung \""+text("rung")+"\" "+hex(color("rung"))+", bundle "+str(bd)+(ladder?"":" WRONG")
                 +"; columns: roll "+str(rl)+", letter "+str(lt)+", bundle "+str(bd)+" from 124; the paper's foot (framebuffer) roll "+rf+", letter "+lf+", Odds tag "+of+(baseline?" (one foot at 492)":" WRONG")
-                +"; table "+tx.get("table")+", back "+str(box(c,"back"))+", banner "+str(box(c,"banner"))+", "+boxes(c).size()+" widgets, no rolled map, underlined "+WarTableRecruit.underlined()+(chrome?"":" WRONG");
+                +"; table "+tx.get("table")+", back "+str(box(c,"back"))+", banner "+str(box(c,"banner"))+", "+boxes(c).size()+" widgets, no rolled map, underlined "+WarTableRecruit.underlined()+(chrome?"":" WRONG")
+                +"; the sheet widget "+str(sb)+" over the name "+str(nm)+(sheet?"":" WRONG");
         }
         boolean buyOk,epicOk,legOk;String epicId,legId;
         /** 854x480 GUI 2, the first-launch window: the compact page (UI Task 8b-2; Kort, 2026-10-22: everything fits, no crop). The
@@ -3148,7 +3151,7 @@ public final class Phase1Checks implements ClientModInitializer {
             var bad=UiHomeChecks.fits(r,b);String letterBad=letterFits();
             int[] roll=r.get("roll"),enlist=box(c,"enlist"),rung=r.get("rung"),odds=box(c,"odds");
             boolean row=rung!=null&&odds!=null&&rung[0]+rung[2]<=odds[0]&&rung[1]>=odds[1]&&rung[1]+rung[3]<=odds[1]+odds[3]; // the rung's line and Odds on one row, either side of the axis
-            boolean ok=page(c)!=null&&WarTable.compact()&&w==854&&h==480&&UiCanvas.k()==1&&b.size()==2+Spec.HOUSES.length+WarTableRecruit.ROWS+3&&out.isEmpty()&&over.isEmpty()&&bad.isEmpty()&&letterBad.isEmpty()&&row
+            boolean ok=page(c)!=null&&WarTable.compact()&&w==854&&h==480&&UiCanvas.k()==1&&b.size()==2+Spec.HOUSES.length+WarTableRecruit.ROWS+4&&out.isEmpty()&&over.isEmpty()&&bad.isEmpty()&&letterBad.isEmpty()&&row
                 &&Arrays.equals(roll,new int[]{12,92,270,372})&&Arrays.equals(enlist,new int[]{600,322,240,40})&&Arrays.equals(r.get("bundle"),new int[]{600,92,240,218})&&Arrays.equals(r.get("letter"),new int[]{286,92,310,376})&&Arrays.equals(box(c,"choose"),new int[]{378,404,120,24})
                 &&Arrays.equals(box(c,"back"),new int[]{12,12,120,28})&&Arrays.equals(box(c,"banner"),new int[]{738,12,104,28})&&Arrays.equals(odds,new int[]{724,408,64,24})&&hotNone();
             scalesOk&=ok;
@@ -3168,7 +3171,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 &&Arrays.equals(enlist,new int[]{o[0]+664,o[1]+354,240,40})&&Arrays.equals(roll,new int[]{o[0]+41,o[1]+124,270,372})&&Arrays.equals(first,new int[]{o[0]+bx(0),13,104,60})&&!r.containsKey("maproll")
                 &&Arrays.equals(r.get("bundle"),new int[]{o[0]+664,o[1]+124,240,218})&&Arrays.equals(box(c,"choose"),new int[]{o[0]+CHOOSE[0],o[1]+CHOOSE[1],CHOOSE[2],CHOOSE[3]});
             var floor=UiHomeChecks.oakToEdges(c);
-            boolean ok=page(c)!=null&&placed&&out.isEmpty()&&over.isEmpty()&&floor.isEmpty()&&letterBad.isEmpty()&&b.size()==2+Spec.HOUSES.length+WarTableRecruit.ROWS+3&&hotNone();
+            boolean ok=page(c)!=null&&placed&&out.isEmpty()&&over.isEmpty()&&floor.isEmpty()&&letterBad.isEmpty()&&b.size()==2+Spec.HOUSES.length+WarTableRecruit.ROWS+4&&hotNone();
             scalesOk&=ok;
             return "1920x974 GUI 1: canvas "+cw+"x"+ch+" (k "+k+"), origin "+o[0]+","+o[1]+", table "+str(t)+", rail "+str(rail)+", the first banner "+str(first)+", roll "+str(roll)+", bundle "+str(r.get("bundle"))+", enlist "+str(enlist)+", choose "+str(box(c,"choose"))+", "+b.size()+" widgets, outside "+out+", overlapping "+over+", letter lines "+(letterBad.isEmpty()?"inside the paper":letterBad)
                 +"; the edges "+(floor.isEmpty()?"oak all round, no floor":"not oak at "+floor)+(ok?"":" WRONG");
