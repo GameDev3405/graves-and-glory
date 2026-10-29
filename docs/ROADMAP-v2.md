@@ -69,7 +69,7 @@ Run the levels-on round robin on the adopted maps. Paint tier art for the 26 tro
 
 ## 4. Next actions (approved plan)
 
-1. **Phase 1.5 and 1.6.** Rebase the animation and House-model lanes onto `main`, then finish and review them. Phase 1.4 (harness Narrator parity) is done.
+1. **Phase 1.5.** Rebase the animation lane onto `main`, re-render the contact sheets and record the clipping exceptions. Phase 1.4 is done and 1.6 is rebased, green and awaiting review.
 2. **Phase 1.1.** Review the rebased troop sheet (`work/war-table-rebase`, `a423cc8`) and decide whether it enters 0.5.1.
 3. **Phase 1.3.** Banner and Field page polish once 1.1 is decided.
 

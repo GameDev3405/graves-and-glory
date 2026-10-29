@@ -112,7 +112,7 @@ Goal: no stranded WIP, a clean 0.5.1 candidate, and a real six-player network ba
 
 Branch facts at 2026-10-28: `work/war-table-troop` is 36 commits behind `main` and 1 ahead; `work/troop-models-house` and `work/anim-pass-1` are 14 behind, 5 and 6 ahead. The fast and game tiers have run on `main`'s candidate only, not on any lane tip. A lane's old report is not certification: rebase, compile and re-run the relevant tiers before merge.
 
-Phase 1 status at 2026-10-29: 1.1 is rebased and green at `a423cc8` on `work/war-table-rebase` and awaits Kort's visual review; 1.4 is done and checked (22/22 Phase 2 checks in a fresh root with no `options.txt`, `docs/reports/phase-1-4-harness-narrator-2026-10-29.md`); 1.8 is skipped by Kort for now. Next: 1.5 and 1.6, then 1.3.
+Phase 1 status at 2026-10-29: 1.1 is rebased and green at `a423cc8` on `work/war-table-rebase` and awaits Kort's visual review; 1.4 is done and checked (22/22 Phase 2 checks in a fresh root with no `options.txt`, `docs/reports/phase-1-4-harness-narrator-2026-10-29.md`); 1.6 is rebased and green at `bf86e26` on `work/models-rebase` (fast 22/22, Gilded art 7/7, turn suite) and awaits Kort's visual review; 1.8 is skipped by Kort for now. Next: 1.5, then 1.3.
 
 Exit: all 0.5.x WIP is merged or explicitly parked; every lane is rebased and re-verified; 0.5.1 is green; six humans have played three matches; blockers and majors are closed; the network baseline report exists.
 

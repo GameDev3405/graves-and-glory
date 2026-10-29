@@ -18,7 +18,7 @@ In progress:
 
 - **War Table troop sheet (Task 5):** rebased onto `main` at `1f6c799` on `work/war-table-rebase`; `a423cc8` has both checks suites green (fast/game 23/23 and Phase 2 `screens`). The original `work/war-table-troop` tip is preserved untouched. Not merged or pushed; Kort's visual review is the remaining gate. See `reports/war-table-troop-2026-10-28.md` (on that branch).
 - **Animation pass 1:** `work/anim-pass-1`, six Order troops. Weapon clearance fixed; no clip reached 9; the bow carry revert is unrendered and `p2-turn-shots` has not been re-run.
-- **House troop models:** `work/troop-models-house`, three troops (Hearthguard, Tusk, Tideguard) in stage-1 plate. Back flags removed; team colour now reads through cloth and House trim. Kort's look, tiers II/III, other sides and face close-ups remain.
+- **House troop models:** rebased onto `main` at `18522ba` on `work/models-rebase` (`bf86e26`); fast 22/22, Gilded art 7/7 and the turn suite pass, and the cull check is re-aimed. Three troops (Hearthguard, Tusk, Tideguard) in stage-1 plate, still 8/10 against the 9 gate; Kort's look, tiers II/III, other sides and face close-ups remain. Original `work/troop-models-house` tip preserved; not merged or pushed.
 - **Armoury restyle:** waits on Kort's War Table Task 10 look; the tab is currently a plain dark panel.
 
 Not done:
@@ -34,7 +34,8 @@ Not done:
 |---|---|
 | `main` | Current 0.5.0 development integration. |
 | `work/anim-pass-1` | Animation pass 1, code clips for the six troop classes. |
-| `work/troop-models-house` | House troop art, three troops at stage 1. |
+| `work/troop-models-house` | House troop art, three troops at stage 1; original WIP tip. |
+| `work/models-rebase` | Rebased House models, checks green at `bf86e26`; awaits Kort's visual review and merge decision. |
 | `work/war-table-troop` | Original War Table troop sheet WIP tip (`30b447b`), preserved untouched. |
 | `work/war-table-rebase` | Rebased troop sheet, checks green at `a423cc8`; awaits Kort's visual review and merge decision. |
 | `heraldic-units` | External heraldic-unit reference sheets; worktree in `Documents/gg-hx`. |
@@ -47,8 +48,8 @@ Tags: `v0.4.0` marks the old `main`; `v0.5.0-dev.20261028` marks the earlier `c4
 
 ## Next actions
 
-1. Phase 1.5 and 1.6: rebase the animation and House-model lanes onto `main` (`1f6c799`), then finish and review them; 1.4 is already in `main`.
-2. Phase 1.1: review the rebased troop sheet (`work/war-table-rebase`, `a423cc8`), then merge or park; rerun the game tier on the merged tree.
+1. Phase 1.5: rebase the animation lane onto `main`, re-render the contact sheets and record the clipping exceptions.
+2. Phase 1.1 and 1.6: Kort reviews the rebased troop sheet (`work/war-table-rebase`, `a423cc8`) and House models (`work/models-rebase`, `bf86e26`), then merge or park; rerun the game tier on the merged tree.
 3. Phase 1.3: Banner and Field page polish once 1.1 is decided.
 
 ## Constraints
