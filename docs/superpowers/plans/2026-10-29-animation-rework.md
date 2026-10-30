@@ -548,7 +548,7 @@ New sheet data:
 - Steps:
   - [ ] **Step 1:** Write the failing checks:
     - `ease(0)==0`, `ease(1)==1`, `ease(.5)==.5`;
-    - `gait` stays in [-1, 1] with its peak before π/2 (snappy footfall);
+    - `gait` stays in [-1, 1] and crests early (reaches 0.95 before π/3, at least 0.25 rad before plain sine; its true peak is π/2), giving a snappy footfall;
     - `approach` reaches the same value at 20 fps and 240 fps after 1 s, within 1e-3;
     - `spring` is stable at dt 0.1 and settles to its target within 2 s;
     - `seed` gives the same values for the same UUID;
