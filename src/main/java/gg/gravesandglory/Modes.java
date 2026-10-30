@@ -22,7 +22,9 @@ public final class Modes {
     /** The second mode, and the first that hosts one map only (Phase 4 Task 5). */
     public static final String SIEGE="siege";
     private static final Map<String,Function<Spec.ModesRow,BattleMode>> BUILDERS=new LinkedHashMap<>();
-    static{register(DOMINATION,DominationMode::new);register(SIEGE,SiegeMode::new);}
+    /** Siege has no stages or gate HP yet, so only the Phase 4 checks register it: a real lobby must not offer a mode that cannot be won. */
+    static final boolean CHECK_SIEGE=!System.getProperty("gravesandglory.phase4Checks","").isBlank();
+    static{register(DOMINATION,DominationMode::new);if(CHECK_SIEGE)register(SIEGE,SiegeMode::new);}
     private Modes(){}
     public static void register(String id,Function<Spec.ModesRow,BattleMode> factory){BUILDERS.put(id,factory);}
     public static boolean registered(String id){return BUILDERS.containsKey(id);}
