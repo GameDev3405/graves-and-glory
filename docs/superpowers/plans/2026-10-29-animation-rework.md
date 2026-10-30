@@ -814,5 +814,6 @@ Each task runs the cycle from Task 16, Steps 2–6. A family's grading uses its 
 
 - [ ] **Step 1:** Run a 60-v-60 battle with every house in an isolated root. Capture a crowd video and stills at 10, 30 and 60 blocks. A fresh reviewer grades the whole against the §3 goals and anti-goals.
 - [ ] **Step 2:** Run `hl-corpse-load` again with every final model.
-- [ ] **Step 3:** Run `python tools/verify.py game --offline` and `release --offline`. Expect both PASS.
-- [ ] **Step 4:** Update DECISIONS, HANDOFF, BACKLOG, ART-STYLE-GUIDE (the jointed-rig rules) and the media-shoot note (the unit models are final). Hand the evidence and grades to Kort. Nothing is pushed or merged.
+- [ ] **Step 3:** Final per-unit review (Kort, 2026-10-29): for each of the 30 troops, a fresh Sonnet 5.5 subagent at high effort (`model: sonnet`, `effort: high`), which has built and graded nothing in this effort, reviews the unit's model and every one of its clips against the §3 goals, its house reference and the motion-grade evidence. A unit is done only when that reviewer passes it; any finding goes back to an Opus 5.5 high implementer and the same unit is reviewed again by a new Sonnet reviewer.
+- [ ] **Step 4:** Run `python tools/verify.py game --offline` and `release --offline`. Expect both PASS.
+- [ ] **Step 5:** Update DECISIONS, HANDOFF, BACKLOG, ART-STYLE-GUIDE (the jointed-rig rules) and the media-shoot note (the unit models are final). Hand the evidence and grades to Kort. Nothing is pushed or merged.
