@@ -64,6 +64,14 @@ Clips are hand-keyed in Blockbench and converted to JSON by `tools/clips.py`. Th
   - `right_shin` / `left_shin`: children of the legs, pivot `[0, 6, 0]`.
   - `right_hand` / `left_hand` move under the forearms, pivot `[0, 4, 0]`.
   - Upper limb boxes are 4×6×4 above the joint; lower limb boxes are 4×6×4 below it.
+  - The hand stays at arm-frame `[∓1, 8, 0]`, exactly where it is today, so the held-item offset in `TroopFeatures` (about 2 px further down the arm, near arm y10) rides along and no weapon grip changes. Task 9 pins this.
+- **Freebuff's Gilded handoff (2026-10-29), to keep:**
+  - Sleeves that start below the elbow sit wholly on the forearm (the mage's bell sleeves, 5×5×5 at y4).
+  - Robes and skirt flaps that cross the knee stay on the upper leg (mage robe tiers, archer, longbow, gl_marshal flaps) so a knee bend can't tear them; Task 16 checks they clear the shin at full bend.
+  - The couter sits on the forearm and the knee cop on the shin, with a lip about 0.5 px proud covering the seam.
+  - Weapon frames have at most 128 quads. Each weapon tier gets its own `_e` glow texture, because `glow_source` falls back to the base weapon's. A lit weapon texel counts 4 toward the rarity glow cap.
+  - Keep `LEATH[4]` off team-tinted areas; it fails the team-tint check.
+  - Bow troops use `draw-*`/`loose-*` shots, not `attack-*`.
 
 ## Review Focus
 
@@ -500,7 +508,8 @@ New sheet data:
   - [ ] **Step 1:** Write the failing tests:
     - `test_biped_has_joints`: names, parents, pivots exactly as in Global Constraints.
     - `test_split_limb_uv_covers_vanilla_layout`: the union of upper and lower face UVs equals the original box UV rects.
-    - `test_hand_world_position_unchanged_at_rest`: the hand's rest world point equals the old `[-1, 8, 0]` in arm space.
+    - `test_hand_world_position_unchanged_at_rest`: the hand's rest world point equals the old `[-1, 8, 0]` in arm space (and `[1, 8, 0]` on the left).
+  - In `mo-rig`, a sword and a bow held at rest render with a pixel diff of at most 0.5% against today's, so no grip moved.
   - [ ] **Step 2:** Run `python -m unittest discover -s test-tools/standalone -p test_build_skins.py` and confirm it FAILs. Implement. Confirm it PASSes.
   - [ ] **Step 3:** Rebuild the skins with `python tools/build_skins.py`. `mo-rig`: every modelled troop renders at rest with a pixel diff of at most 0.5% against the pre-change turnaround. Bending the elbow 90° and the knee 90° shows no gap, because the cop covers it. Capture `mo-rig-*.png`.
   - [ ] **Step 4:** Commit:
@@ -759,7 +768,7 @@ Each house runs this cycle:
 
 | Task | House | Troops | Notes |
 |---|---|---|---|
-| 16b | Gilded (finish) | knight, archer, sentinel, longbow, mage, gl_marshal | start from Freebuff's committed builders; split all six at the joints; finish the order_bow, longbow and sun_staff tiers; Freebuff reviews against its own intent |
+| 16b | Gilded (finish) | knight, archer, sentinel, longbow, mage, gl_marshal | Freebuff's committed builders are installed and approved in game, with order_bow, longbow and sun_staff tiers if its in-flight work lands. This task splits all six at the joints and re-shoots archer and longbow `draw-0`/`loose-0`, because the forearm bend moves the bow grip. Freebuff reviews against its own intent. |
 | 17 | Graveborn | revenant, bonebow, reaper, stalker, hexer, gb_hollowking | skeleton and wither-skeleton proportions: thin limbs, tall |
 | 18 | Wildmoot humanoids | wm_hunter, wm_tusk, wm_seer | piglin proportions; tusk spear |
 | 19 | Wildmoot beasts | wm_hound, wm_stalker, wm_oldhorn | rebuild the jointed hound and spider rigs (`art/rigs/hound.json`, `spider.json`); a new `art/rigs/bear.json` for wm_oldhorn (antlered alpha). Each new rig follows Task 9's test pattern. |
