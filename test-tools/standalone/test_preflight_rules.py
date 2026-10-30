@@ -82,5 +82,48 @@ class PreflightRules(unittest.TestCase):
             with self.subTest(tier=tier):
                 self.refuses(lambda d, tier=tier: self.bot(d, tier).__setitem__('gearPriority', 'x'), 'botCommand/' + tier)
 
+    # ---- the animation rework: troop families, attack variants, Hold's wall (Shieldwall is gone) ----
+    def troop(self, data, tid):
+        return next(t for t in data['troops'] if t['id'] == tid)
+
+    def test_family_must_be_known(self):
+        self.refuses(lambda d: self.troop(d, 'knight').__setitem__('family', 'lance'), 'knight', 'family', 'lance')
+
+    def test_melee_family_needs_variants(self):
+        def drop(d):
+            d['attackVariants'] = [r for r in d['attackVariants'] if r['family'] != 'sword_shield']
+        self.refuses(drop, 'sword_shield', 'attackVariants')
+
+    def test_variant_impact_ticks_positive(self):
+        for bad in (0, -1, 2.5):
+            with self.subTest(impactTicks=bad):
+                self.refuses(lambda d, bad=bad: d['attackVariants'][0].__setitem__('impactTicks', bad), 'attackVariants', 'impactTicks')
+
+    def test_variant_family_must_be_used_by_a_troop(self):
+        def orphan(d):
+            row = dict(d['attackVariants'][0])
+            row['id'] = 'lance_thrust'
+            row['family'] = 'lance'
+            d['attackVariants'].append(row)
+        self.refuses(orphan, 'lance_thrust', 'family')
+
+    def test_shieldwall_formation_rejected(self):
+        def wall(d):
+            if not any(f['id'] == 'shieldwall' for f in d['formations']):
+                row = dict(d['formations'][0])
+                row['id'] = 'shieldwall'
+                row['label'] = 'Shieldwall'
+                d['formations'].append(row)
+        self.refuses(wall, 'shieldwall', 'Hold')
+
+    def test_combat_discipline_new_bounds(self):
+        bad = {'shieldWallCell': (0.5, 1.31), 'crawlShare': (0.0, 1.0), 'fireMemoryTicks': (0,), 'volleyPeakPerBlock': (0.0, -0.1),
+               'volleyPeakMax': (0.0,), 'crossbowArcScale': (0.0, 1.01), 'thrownArcScale': (0.0, 1.01), 'meleeReachGrace': (-0.01,),
+               'corpseLieTicks': (-1,), 'corpseFadeTicks': (0,), 'arcTravelScale': (0.99, 2.01), 'heavyHitShare': (0.10, 0.05)}
+        for col, values in bad.items():
+            for value in values:
+                with self.subTest(column=col, value=value):
+                    self.refuses(lambda d, col=col, value=value: d['combatDiscipline'][0].__setitem__(col, value), 'combatDiscipline', col)
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

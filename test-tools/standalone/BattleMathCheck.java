@@ -54,14 +54,14 @@ public final class BattleMathCheck {
             && BattleMath.laneTarget(5,1,5) == 4 && BattleMath.laneTarget(7,1,5) == 2, "a lane past the last point wraps round (lane 3 on three points is lane 0), mirrored for Dusk");
         check(!BattleMath.timedCharge(60,20,8,1.3,18) && BattleMath.timedCharge(15,20,8,1.3,18) && BattleMath.timedCharge(60,20,8,1.5,0), "hard waits for range; normal ignores distance");
         check(!BattleMath.timedCharge(15,8,20,1.3,18), "an outnumbered army does not charge even with the enemy in range");
-        check(BattleMath.shieldwallVsArchers(4,0,3,true) && !BattleMath.shieldwallVsArchers(4,1,3,true) && !BattleMath.shieldwallVsArchers(4,0,3,false), "shieldwall only vs archers, only with shields");
+        check(java.util.Arrays.stream(Spec.FORMATIONS).noneMatch(f -> f.id().equals("shieldwall")) && Spec.FORMATIONS.length == 4, "the Shieldwall formation is gone: the cycle is Compact, Line, Wedge and Loose, and Hold builds the wall");
         double reach=2.8*2.8; // a knight's sword reach, squared
         check(!BattleMath.raiseShield("block","attack",2*2,reach,true) && !BattleMath.raiseShield("block","attack",reach,reach,true), "block: the shield comes down with the enemy in sword reach, so the knight can swing");
         check(BattleMath.raiseShield("block","attack",4*4,reach,true) && !BattleMath.raiseShield("block","attack",7*7,reach,true), "block: the shield is up on the approach (enemy at 4 blocks), not yet at 7");
         check(BattleMath.raiseShield("block","attack",5.9*5.9,reach,true) && !BattleMath.raiseShield("block","attack",6*6,reach,true), "block: the shield rises inside 6 blocks, not at 6");
-        check(BattleMath.raiseShield("shieldwall","attack",2*2,reach,true) && BattleMath.raiseShield("shieldwall","hold",20*20,reach,true), "shieldwall braces in reach and at range");
-        check(!BattleMath.raiseShield("block","charge",4*4,reach,true) && !BattleMath.raiseShield("shieldwall","charge",2*2,reach,true) && !BattleMath.raiseShield("shieldwall","retreat",4*4,reach,true), "no shield on a charge or a retreat");
-        check(!BattleMath.raiseShield("block","attack",4*4,reach,false) && !BattleMath.raiseShield("shieldwall","hold",4*4,reach,false) && !BattleMath.raiseShield("loose","attack",4*4,reach,true), "no shield with no enemy, or outside block and shieldwall");
+        check(!BattleMath.raiseShield("shieldwall","attack",4*4,reach,true) && !BattleMath.raiseShield("shieldwall","hold",20*20,reach,true), "a stale shieldwall id raises nothing of its own: the formation is gone");
+        check(!BattleMath.raiseShield("block","charge",4*4,reach,true) && !BattleMath.raiseShield("block","charge",5*5,reach,true) && !BattleMath.raiseShield("block","retreat",4*4,reach,true), "no shield on a charge or a retreat");
+        check(!BattleMath.raiseShield("block","attack",4*4,reach,false) && !BattleMath.raiseShield("block","hold",4*4,reach,false) && !BattleMath.raiseShield("loose","attack",4*4,reach,true), "no shield with no enemy, or outside block and shieldwall");
         check(MatchStats.winRate(7,10) == .7 && MatchStats.winRate(0,0) == 0, "win rate");
         var st=new MatchStats.SquadStats(); st.goldEarned+=5; check(st.goldEarned == 5, "stats accumulate");
         var a=new MatchStats.SquadStats(); a.kills=4; a.objectiveSeconds=10; var b2=new MatchStats.SquadStats(); b2.kills=4; b2.objectiveSeconds=30;

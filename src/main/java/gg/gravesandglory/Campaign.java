@@ -539,8 +539,6 @@ public final class Campaign {
         for(var row:Spec.BOTCOMMAND)if(row.id().equals("normal"))return row;
         return Spec.BOTCOMMAND[0];
     }
-    /** An enemy infantry unit this close to a Hard bot's army counts as melee: no shieldwall. */
-    static final double MELEE_THREAT_RANGE=8;
     /** A remembered enemy counts as near a point, or near an army, within this many times the point's radius or the tier's charge distance. */
     static final double NEAR_RADIUS_FACTOR=2;
     /** One command decision for a bot army, run at its tier's cadence: retreat or rally, pick the point to take, set the order, stamp the charge (Battle.markCharge; a bot's command plays no sound).
@@ -585,16 +583,6 @@ public final class Campaign {
             }
         }
         s.yaw=s.team==0?-90:90;
-        if(!retreating&&tier.shieldwallVsArchers()){
-            // Brace the shield troops when remembered archers are in range and nothing has closed to melee. Only troops with a shield can brace.
-            boolean shields=mine.stream().anyMatch(u->u.spec.group().equals("infantry")&&u.tags.contains("shield"));
-            int ranged=0,melee=0;
-            for(var entry:seen.entrySet()){var enemy=foes.get(entry.getKey());
-                double d=Math.hypot(entry.getValue().x()-center.x,entry.getValue().z()-center.z);
-                if(enemy.spec.group().equals("ranged")&&d<=tier.archerThreatRange())ranged++;
-                else if(enemy.spec.group().equals("infantry")&&d<=MELEE_THREAT_RANGE)melee++;}
-            if(BattleMath.shieldwallVsArchers(ranged,melee,tier.archerThreatCount(),shields))s.assignments.put("infantry",new GravesAndGlory.Assignment(s.order,"shieldwall",s.target,s.yaw));
-        }
         if(!s.order.equals(wasOrder)||!Objects.equals(s.target,wasTarget))s.arrived.clear(); // a new order or spot ends an arrival (Tactics.arrived); the same decision again keeps it
         if(s.order.equals("charge")&&couldCharge)b.markCharge(s,"all");
     }

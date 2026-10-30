@@ -23,8 +23,6 @@
 "hud/g-hold-faded":{"w":9,"h":9,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "hud/g-follow":{"w":9,"h":9,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "hud/g-follow-faded":{"w":9,"h":9,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
-"hud/g-shieldwall":{"w":9,"h":9,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
-"hud/g-shieldwall-faded":{"w":9,"h":9,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "hud/g-line":{"w":9,"h":9,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "hud/g-line-faded":{"w":9,"h":9,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},
 "hud/g-compact":{"w":9,"h":9,"ox":0,"oy":0,"kind":"fixed","l":0,"t":0,"r":0,"b":0,"frames":1},

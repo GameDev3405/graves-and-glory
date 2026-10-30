@@ -137,7 +137,7 @@ python tools/export_server.py         -> dist/graves-and-glory-<version>-server.
 - Several design sheets are unused by code: `hooks`, `landmarkStyle`, `recruitmentView`, `terrainStyle`, and `CampaignRow` fields `duplicateRefund` and `starterGold`.
 - No third-party resource packs ship (Kort, 2026-10-18). Excalibur's skeleton and wither-skeleton geometry was CC-BY-NC-ND, so do not copy any third-party pack's model files into Graves and Glory.
 - Player 3D depth is an overlay, not a new model. Its in-game look has not been verified.
-- Batches 1-4 (respawn countdown, key strip, result headline and PLAY AGAIN, Shieldwall, bot retreat and charge) compile and package. Their in-game behaviour is not yet verified. Balance of bot retreat and charge needs human playtests.
+- Batches 1-4 (respawn countdown, key strip, result headline and PLAY AGAIN, bot retreat and charge) compile and package. Their in-game behaviour is not yet verified. Balance of bot retreat and charge needs human playtests.
 - `tools/prepare_preview_checks.py` and `tools/implement_experience.py` reference removed hooks. Do not run them.
 - `CommandPlaytest` writes to `evidence/revision-02` (relative to the run folder) and creates that folder itself when it is missing.
 

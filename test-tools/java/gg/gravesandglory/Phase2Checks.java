@@ -1190,7 +1190,7 @@ public final class Phase2Checks implements ClientModInitializer {
         /** A husk row made for the counters check: an Order Squire (melee) or an Order Archer (ranged) carrying this ability and these tags. */
         static Spec.TroopsRow synthetic(String id,String name,boolean ranged,String ability,String tags){
             var k=Campaign.troop(ranged?"archer":"knight");
-            return new Spec.TroopsRow(id,k.house(),k.rarity(),name,"husk",k.group(),k.health(),k.damage(),k.range(),k.ranged(),k.speed(),k.cooldown(),k.cost(),k.trainingSeconds(),false,k.weapon(),k.helmet(),k.chest(),tags,ability,"none",k.slotWeight(),k.pennant(),k.shield(),k.texture());
+            return new Spec.TroopsRow(id,k.house(),k.rarity(),name,"husk",k.group(),k.health(),k.damage(),k.range(),k.ranged(),k.speed(),k.cooldown(),k.cost(),k.trainingSeconds(),false,k.weapon(),k.helmet(),k.chest(),tags,ability,"none",k.slotWeight(),k.pennant(),k.shield(),k.texture(),k.family());
         }
         static Vec3d ground(GravesAndGlory.Battle b,double x,double z){return new Vec3d(x,Phase1Checks.top(b,x,z),z);}
         static void place(GravesAndGlory.Battle b,GravesAndGlory.Unit u,double x,double z,float yaw){u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(x,Phase1Checks.top(b,x,z),z,yaw,0);u.mob.setHeadYaw(yaw);u.mob.setBodyYaw(yaw);u.deployed=u.mob.getPos();u.lastPosition=u.mob.getPos();u.nextPath=0;u.stuckTicks=0;}
@@ -1588,7 +1588,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     for(var s:b.squads.values()){s.reinforceAt=Long.MAX_VALUE;s.training.clear();if(s.bot)b.campaign.botRespawns.put(s.owner,Long.MAX_VALUE);}
                     own=b.squads.get(player);for(var u:new ArrayList<>(b.units))if(u.squad!=own){u.mob.discard();b.units.remove(u);}
                     audit(b,"showcase",false);reset(own);
-                    own.assignments.put("infantry",new GravesAndGlory.Assignment("move","shieldwall",ground(b,SX,SZ),-90));
+                    own.assignments.put("infantry",new GravesAndGlory.Assignment("move","line",ground(b,SX,SZ),-90));
                     own.assignments.put("ranged",new GravesAndGlory.Assignment("hold","block",ground(b,SX,SZ),-90)); // Battle.formation sets ranged 5 and support 9 behind the line
                     own.assignments.put("support",new GravesAndGlory.Assignment("hold","block",ground(b,SX,SZ),-90));
                     var p=sp(b);p.changeGameMode(net.minecraft.world.GameMode.SPECTATOR);
@@ -1603,7 +1603,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     next(b,73);
                 }
                 case 73->{ // the shield line holds: Aldric plants his banner while the Bone Archers come into range and loose
-                    if(since(b)==60)order(b,"infantry","hold","shieldwall",SX,SZ,-90);
+                    if(since(b)==60)order(b,"infantry","hold","line",SX,SZ,-90); // Hold builds the shield wall
                     long arrows=b.shots.stream().filter(s->s.squad()==dusk&&s.kind().equals("arrow")).count();
                     if(since(b)>60&&!b.banners.isEmpty()&&(arrows>0||since(b)>240)&&wantShot==null){arrowsAtShot=(int)arrows;sp(b).sendMessage(net.minecraft.text.Text.empty(),true);requestShot("gilded-showcase");next(b,74);} // the order's action bar line is cleared off the picture
                     else if(since(b)>400){report("p2-gilded-showcase",false,"no banner was planted ("+b.banners.size()+" standing) or no arrow flew ("+arrows+")");clearFixture(b);next(b,80);}
@@ -1611,9 +1611,9 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 74->{if(!shotTaken)return;
                     var banner=b.banners.isEmpty()?null:b.banners.get(0);boolean standing=banner!=null&&banner.block()!=null&&b.world.getBlockState(banner.block()).getBlock() instanceof net.minecraft.block.BannerBlock;
                     long squires=alive(b,own,"knight"),templars=alive(b,own,"sentinel"),longbows=alive(b,own,"longbow"),aldric=alive(b,own,"gl_marshal");
-                    boolean wall=b.storedAssignment(own,"infantry").formation.equals("shieldwall")&&b.storedAssignment(own,"infantry").order.equals("hold");
+                    boolean wall=b.storedAssignment(own,"infantry").formation.equals("line")&&b.storedAssignment(own,"infantry").order.equals("hold");
                     boolean ok=hudOk&&clientOk&&standing&&squires>0&&templars>0&&longbows>0&&aldric>0&&wall&&arrowsAtShot>0&&own.traits.getOrDefault("gilded",0)==3;
-                    report("p2-gilded-showcase",ok,"map "+b.campaign.map+": "+hudWhy+"; "+clientWhy+"; the army's traits "+own.traits+"; Aldric's banner stands="+standing+(banner==null?"":" at "+fmt(banner.at().x)+", "+fmt(banner.at().z))+"; "+squires+" Order Squires, "+templars+" Templars, "+longbows+" Order Longbows and Aldric="+(aldric>0)+" with the infantry on Hold in a shieldwall="+wall+"; "+arrowsAtShot+" Bone Archer arrows in flight at the request (see p2-gilded-showcase.png)");
+                    report("p2-gilded-showcase",ok,"map "+b.campaign.map+": "+hudWhy+"; "+clientWhy+"; the army's traits "+own.traits+"; Aldric's banner stands="+standing+(banner==null?"":" at "+fmt(banner.at().x)+", "+fmt(banner.at().z))+"; "+squires+" Order Squires, "+templars+" Templars, "+longbows+" Order Longbows and Aldric="+(aldric>0)+" with the infantry on Hold in line (Hold builds the wall)="+wall+"; "+arrowsAtShot+" Bone Archer arrows in flight at the request (see p2-gilded-showcase.png)");
                     wantShot=null;clearFixture(b);next(b,80);
                 }
                 case 80->{ // p2-gilded-tick-cost: eight bot armies, four under gilded_hard against four under graveborn_hard
@@ -2575,7 +2575,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     golemId=-1;clearFixture(b,"swing done");next(b,45);
                 }
                 case 45->{ // p2-ironclad-spacing: the room a body takes, in formation and on a bridge lane
-                    reset(own);own.order="attack";own.formation="shieldwall";own.target=centre();own.yaw=-90;
+                    reset(own);own.order="attack";own.formation="block";own.target=centre();own.yaw=-90;
                     for(int i=0;i<4;i++)us[i]=post(b,own,Campaign.troop("ic_hearthguard"),i,-8,-4+i*2,-90,true);
                     u1=post(b,own,Campaign.troop("ic_colossus"),4,-8,6,-90,true);u2=post(b,own,Campaign.troop("ic_arbalist"),5,-10,0,-90,true);
                     double sg=GravesAndGlory.Battle.spacing(u1),sh=GravesAndGlory.Battle.spacing(us[0]),sa=GravesAndGlory.Battle.spacing(u2);
@@ -2588,8 +2588,8 @@ public final class Phase2Checks implements ClientModInitializer {
                     var bridges=Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList();
                     double lane1=(4%5-2)*sg,lane0=(0%5-2)*sh;
                     boolean laneG=bridges.stream().anyMatch(br->Math.abs((rg.z-br.z())-lane1)<1e-4),laneH=bridges.stream().anyMatch(br->Math.abs((rh.z-br.z())-lane0)<1e-4);
-                    boolean ok2=close(sg,1.7)&&close(sh,1.3)&&close(sa,1.3)&&close(with,1.7)&&close(without,1.5)&&laneG&&laneH;
-                    report("p2-ironclad-spacing",ok2,"the room a body takes (width + 0.3, at least 1.3): Brassjaw "+fmt(sg)+" (want 1.70), a Hearthguard "+fmt(sh)+" and an Arbalist "+fmt(sa)+" (want 1.30); in a shieldwall (spacing 1.5) the neighbours of a group with Brassjaw in it stand "+fmt(with)+" apart (want 1.70) and without him "+fmt(without)+" (want 1.50); the bridge lane of his slot 4 is z "+fmt(rg.z)+" past the bridge's centre, offset "+fmt(lane1)+" (3.4; it was 2.6 with the fixed 1.3)="+laneG+", a Hearthguard's slot 0 "+fmt(rh.z)+", offset "+fmt(lane0)+"="+laneH);
+                    boolean ok2=close(sg,1.7)&&close(sh,1.3)&&close(sa,1.3)&&close(with,1.8)&&close(without,1.8)&&laneG&&laneH; // Compact's 1.8 cell holds Brassjaw's 1.7; the wall cell (Task 2) brings back a cell he widens
+                    report("p2-ironclad-spacing",ok2,"the room a body takes (width + 0.3, at least 1.3): Brassjaw "+fmt(sg)+" (want 1.70), a Hearthguard "+fmt(sh)+" and an Arbalist "+fmt(sa)+" (want 1.30); in Compact (spacing 1.8) the neighbours of a group with Brassjaw in it stand "+fmt(with)+" apart (want 1.80, his 1.7 fits the cell) and without him "+fmt(without)+" (want 1.80); the bridge lane of his slot 4 is z "+fmt(rg.z)+" past the bridge's centre, offset "+fmt(lane1)+" (3.4; it was 2.6 with the fixed 1.3)="+laneG+", a Hearthguard's slot 0 "+fmt(rh.z)+", offset "+fmt(lane0)+"="+laneH);
                     clearFixture(b,"spacing");own.formation="block";reset(own);next(b,50);
                 }
                 case 50->{ // p2-entrench, on a platform over the objective B: six Ironclad slots (tier I) of the commander's army, none of them has moved
@@ -3885,7 +3885,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     for(int i=0;i<4;i++)us[i]=post(b,own,"wm_hound",-6,-6+i*2,-90,true);us[4]=post(b,own,"wm_hunter",-8,-3,-90,true);us[5]=post(b,own,"wm_hunter",-8,3,-90,true);us[6]=post(b,own,"wm_tusk",-5,-8,-90,true);us[7]=post(b,own,"wm_tusk",-5,8,-90,true);
                     us[8]=post(b,dawn,"knight",-2,-4,-90,true); // an ally's troop (Dawn's)
                     for(int i=0;i<12;i++)line[i]=bare(post(b,dusk,"archer",2+(i%6)*1.2,i<6?3:6,90,true));
-                    formationWas=dusk.formation;dusk.formation="shieldwall";shieldUp=bare(post(b,dusk,"knight",0,0,90,true)); // facing the Reaver 3 west of it, its shield kept and raised from now (hold, and Tactics' brace agrees in a shield wall)
+                    formationWas=dusk.formation;dusk.formation="block";shieldUp=bare(post(b,dusk,"knight",0,0,90,true)); // facing the Reaver 3 west of it, its shield kept and raised from now (hold, and Tactics agrees: Compact raises it with the Reaver outside sword reach)
                     int lostBefore=own.stats.lost;
                     for(var u:List.of(us[0],us[1],us[4]))u.mob.damage(b.world.getDamageSources().generic(),1000f);
                     boolean fell=own.stats.lost==lostBefore+3;
@@ -5313,8 +5313,8 @@ public final class Phase2Checks implements ClientModInitializer {
         // ---- the stance sync ----
         /** One stance step: the drill's order and formation, and the stance its three knights must then read on this client within 20 ticks. A Retreat's spot lies 40 blocks off, so the group has not arrived (Tactics.arrived) and runs. */
         record StanceStep(String what,String order,String formation,String want){}
-        static final List<StanceStep> STANCE_STEPS=List.of(new StanceStep("hold in shieldwall","hold","shieldwall","brace"),new StanceStep("charge","charge","line","run"),
-            new StanceStep("follow","follow","line",""),new StanceStep("retreat in line","retreat","line","run"),new StanceStep("hold in line","hold","line","hold"));
+        static final List<StanceStep> STANCE_STEPS=List.of(new StanceStep("hold in Compact (Hold braces a shield troop)","hold","block","brace"),new StanceStep("charge","charge","line","run"),
+            new StanceStep("follow","follow","line",""),new StanceStep("retreat in line","retreat","line","run"),new StanceStep("hold in line (Hold braces a shield troop)","hold","line","brace"));
         Vec3d drillTarget;
         boolean stanceOk=true;final StringBuilder stanceWhy=new StringBuilder();int lateSeen=-1,trackingBefore,beatBefore;String lateStance="-";
         void stance(MinecraftClient c,int tick){
@@ -5329,27 +5329,27 @@ public final class Phase2Checks implements ClientModInitializer {
                 return;
             }
             if(regPhase>0){register(c,tick);return;}
-            // a knight spawned into the group on hold in line: its first tick on this client reads hold, sent when the player started tracking it
+            // a knight spawned into the group on hold in line: its first tick on this client reads brace (Hold braces a shield troop), sent when the player started tracking it
             if(wait==1){trackingBefore=Tactics.trackingSends;beatBefore=Tactics.stanceSends;since=tick;server(c,b->late=post(b,drill,"knight",-2.5,5,180));return;}
             var e=late==null?null:client(c,late.mob);
             if(e!=null&&lateSeen<0){lateSeen=tick-since;lateStance=TroopAnimator.STANCES.getOrDefault(e.getId(),"");}
             if(lateSeen>=0||tick-since>60){
-                int sends=Tactics.trackingSends-trackingBefore;boolean good=lateSeen>=0&&"hold".equals(lateStance)&&sends>=1;stanceOk&=good;
+                int sends=Tactics.trackingSends-trackingBefore;boolean good=lateSeen>=0&&"brace".equals(lateStance)&&sends>=1;stanceOk&=good;
                 stanceWhy.append("a knight spawned into the group on hold in line: on this client ").append(lateSeen<0?"never":lateSeen+" ticks after the spawn").append(", reading \"").append(lateStance)
-                    .append("\" on that first tick (want hold); ").append(sends).append(" START_TRACKING stance sends (want 1 or more), ").append(Tactics.stanceSends-beatBefore).append(" beat sends meanwhile").append(good?"":" (BAD)");
+                    .append("\" on that first tick (want brace: Hold braces a shield troop); ").append(sends).append(" START_TRACKING stance sends (want 1 or more), ").append(Tactics.stanceSends-beatBefore).append(" beat sends meanwhile").append(good?"":" (BAD)");
                 regPhase=1;wait=0;}
         }
-        /** A player whose client registers stance_v1 late (Task 5b review, minor 4): this client's stances are cleared, the REGISTER event runs for it, and the four knights of the drill must read hold again. */
+        /** A player whose client registers stance_v1 late (Task 5b review, minor 4): this client's stances are cleared, the REGISTER event runs for it, and the four knights of the drill must read brace again (Hold braces a shield troop). */
         int regPhase,regBefore,regSince;
         void register(MinecraftClient c,int tick){
             if(regPhase==1){TroopAnimator.STANCES.clear();regBefore=Tactics.registerSends;regSince=tick;UUID id=c.player.getUuid();
                 server(c,b->{var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)net.fabricmc.fabric.api.networking.v1.S2CPlayChannelEvents.REGISTER.invoker().onChannelRegister(p.networkHandler,net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.getSender(p),b.server,List.of(GravesAndGlory.STANCE));});
                 regPhase=2;return;}
             List<GravesAndGlory.Unit> four=new ArrayList<>(group);if(late!=null)four.add(late);boolean all=true;
-            for(var u:four){var e=client(c,u.mob);all&=e!=null&&TroopAnimator.STANCES.getOrDefault(e.getId(),"").equals("hold");}
+            for(var u:four){var e=client(c,u.mob);all&=e!=null&&TroopAnimator.STANCES.getOrDefault(e.getId(),"").equals("brace");} // on hold in line: Hold braces a shield troop
             if(all||tick-regSince>40){
                 int sends=Tactics.registerSends-regBefore;boolean good=all&&sends>=four.size();stanceOk&=good;
-                stanceWhy.append("; a client registering stance_v1 late (its stances cleared, then the REGISTER event run for this player): ").append(sends).append(" stance sends (want ").append(four.size()).append(" or more), the four knights read hold again ")
+                stanceWhy.append("; a client registering stance_v1 late (its stances cleared, then the REGISTER event run for this player): ").append(sends).append(" stance sends (want ").append(four.size()).append(" or more), the four knights read brace again (Hold, a shield troop) ")
                     .append(all?(tick-regSince)+" ticks later":"never (40 ticks)").append(good?"":" (BAD)");
                 report("p2-anim-stance",stanceOk,stanceWhy.toString().trim());
                 server(c,b->{var d=drill;d.order="follow";if(drillTarget!=null)d.target=drillTarget;camera(b,0,1.6,-6,0,8);});cs=3;wait=0;si=0;regPhase=0;}

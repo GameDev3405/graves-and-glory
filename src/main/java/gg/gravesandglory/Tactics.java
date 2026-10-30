@@ -48,7 +48,7 @@ final class Tactics {
     static Vec3d slotCentre(GravesAndGlory.Battle b,List<GravesAndGlory.Unit> members){Vec3d sum=Vec3d.ZERO;for(var m:members)sum=sum.add(b.formation(m));return sum.multiply(1.0/members.size());}
     static String stance(GravesAndGlory.Assignment a,GravesAndGlory.Unit u){
         return switch(a.order){
-            case "hold"->"shieldwall".equals(a.formation)||ArmyMobs.tags(u.spec).contains("spear")?"brace":"hold";
+            case "hold"->ArmyMobs.tags(u.spec).contains("shield")||ArmyMobs.tags(u.spec).contains("spear")?"brace":"hold"; // Hold builds the wall: shield and spear troops brace
             case "fall_back"->"fall_back";
             case "charge","retreat"->"run";
             default->"";
@@ -119,7 +119,7 @@ final class Tactics {
         if(enemy!=u.lockedTarget){u.lockedTarget=enemy;u.lockUntil=time+Spec.COMBATDISCIPLINE[0].targetMemoryTicks();}
         mob.setTarget(enemy);mob.setAttacking(enemy!=null);
         double reach=Abilities.range(battle,u);boolean ranged=u.spec.ranged();
-        boolean shield=u.tags.contains("shield")&&BattleMath.raiseShield(a.formation,a.order,nearest,reach*reach,enemy!=null); // block: up on the approach, down to swing once the enemy is in reach; shieldwall: the full brace
+        boolean shield=u.tags.contains("shield")&&BattleMath.raiseShield(a.formation,a.order,nearest,reach*reach,enemy!=null); // block: up on the approach, down to swing once the enemy is in reach
         if(shield&&!mob.isUsingItem())mob.setCurrentHand(Hand.OFF_HAND);else if(!shield&&mob.isUsingItem())mob.stopUsingItem();
         Abilities.tick(battle,u,enemy,time); // mend heals and a caster's spell bursts on the beat
         double flee=Math.max(N.rangedRetreatDistance(),Abilities.minRange(u)); // a ranged troop backs off from an enemy this near; one with a minimum range (the Mortar) from anything inside it

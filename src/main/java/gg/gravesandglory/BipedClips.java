@@ -72,7 +72,7 @@ public final class BipedClips {
             .rot("right_leg",0,0,0,0, .8f,0,0,0).rot("left_leg",0,0,0,0, .8f,0,0,0)
             .rot("right_arm",0,-175,0,8, .3f,-45,0,5, .6f,-20,0,0, .8f,0,0,0)
             .rot("left_arm",0,-175,0,-8, .3f,-45,0,-5, .6f,-20,0,0, .8f,0,0,0))
-        // Hold in shieldwall, or a spear: knees bent, leaning into the blow, the weapon arm level.
+        // Hold, for a shield or a spear troop: knees bent, leaning into the blow, the weapon arm level.
         .put(new Clip("brace").pos("root",0,0,-1,0, 2,0,-1,0).hold("right_leg",-15,0,0).hold("left_leg",15,0,0)
             .wave("body",0,15,1,0,1).hold("right_arm",-70,0,0).hold("head",-15,0,0))
         .put(new Clip("hold").hold("right_arm",-30,0,0).hold("left_arm",-20,0,0).wave("body",2,0,1,0,1))

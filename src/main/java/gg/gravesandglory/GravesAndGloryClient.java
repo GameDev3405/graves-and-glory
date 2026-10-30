@@ -254,7 +254,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static String lessonText(int step){
         return switch(step){
             case 0->"Press "+hint("menu")+", choose a group and Move, then click the ground to send them.";
-            case 1->"Press "+hint("formation")+" to change formation. Shieldwall holds a line; Wedge breaks one.";
+            case 1->"Press "+hint("formation")+" to change formation. Line holds a front; Wedge breaks one.";
             case 2->"Press "+hint("attack")+" and aim at an enemy or a point to send your army in.";
             default->"Press "+hint("use")+" at your barracks lectern to recruit. Trained troops march out from the held point nearest the fight.";
         };
@@ -357,7 +357,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             panel(g,4,35,80,132);panel(g,width-80,39,76,32);
             int cardWidth=Math.min(105,(width-24)/Spec.FORMATIONS.length),i=0;
             for(var f:Spec.FORMATIONS){int x=width/2-Spec.FORMATIONS.length*cardWidth/2+i*cardWidth;panel(g,x,height-65,cardWidth-3,37);if(f.id().equals(CommandMode.formation))g.drawBorder(x,height-65,cardWidth-3,37,DarkUi.GOLD);
-                for(int n=0;n<12;n++){int col=f.id().equals("line")||f.id().equals("shieldwall")?6:4;int dx=n%col*7,dy=n/col*6;if(f.wedge()){int rank=(int)Math.sqrt(n);dx=(n-rank*rank-rank)*7+20;dy=rank*6;}if(f.id().equals("loose")){dx*=2;dy*=2;}g.fill(x+12+dx,height-60+dy,x+15+dx,height-57+dy,DarkUi.GOLD);}i++;}
+                for(int n=0;n<12;n++){int col=f.id().equals("line")?6:4;int dx=n%col*7,dy=n/col*6;if(f.wedge()){int rank=(int)Math.sqrt(n);dx=(n-rank*rank-rank)*7+20;dy=rank*6;}if(f.id().equals("loose")){dx*=2;dy*=2;}g.fill(x+12+dx,height-60+dy,x+15+dx,height-57+dy,DarkUi.GOLD);}i++;}
             g.drawCenteredTextWithShadow(textRenderer,"Choose group and order. Aim and confirm in the battlefield.",width/2,32,DarkUi.IVORY);super.render(g,mx,my,delta);
         }
     }
