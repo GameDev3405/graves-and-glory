@@ -68,6 +68,7 @@ Clips are hand-keyed in Blockbench and converted to JSON by `tools/clips.py`. Th
 - **Freebuff's Gilded handoff (2026-10-29), to keep:**
   - Sleeves that start below the elbow sit wholly on the forearm (the mage's bell sleeves, 5×5×5 at y4).
   - Robes and skirt flaps that cross the knee stay on the upper leg (mage robe tiers, archer, longbow, gl_marshal flaps) so a knee bend can't tear them; Task 16 checks they clear the shin at full bend.
+  - The mage's robe stays rigid on the thigh, so the mage's knee flex is capped at 10° and it glides (Freebuff's rig review option B; my ruling, Kort may overrule).
   - The couter sits on the forearm and the knee cop on the shin, with a lip about 0.5 px proud covering the seam.
   - Weapon frames have at most 128 quads. Each weapon tier gets its own `_e` glow texture, because `glow_source` falls back to the base weapon's. A lit weapon texel counts 4 toward the rarity glow cap.
   - Keep `LEATH[4]` off team-tinted areas; it fails the team-tint check.
@@ -495,6 +496,12 @@ New sheet data:
     - reparent the hands;
     - split each limb box into upper and lower 4×6×4 boxes, with per-face UVs that map the halves of the vanilla 64×64 limb layout (top face on the upper box, bottom face on the lower);
     - include the forearms in `arms_folded`.
+  - Freebuff's rig review (2026-10-29), in the Gilded builders under `art/hand/**`:
+    - **Joint caps:** the split creates an upper-box bottom face and a lower-box top face at the joint. Every arm, sleeve and leg painter (and handlib's `K.arm`/`K.leg`) paints them in the skin, cloth or armour colour of that row, so a bent joint shows a solid cap instead of a hole. Recheck the veteran 20% cap with the new denominator.
+    - **Shield:** reparent from `left_arm` at `SHIELD_PIVOT (2.7, 10, -1.5)` to `left_forearm` at `(1.7, 6, -1.5)` for knight, sentinel and gl_marshal. `SHIELD_ROT = Rx(45)*Ry(-60)` stays until Task 16 re-derives it from the new carry.
+    - **Knee cops** (knight, sentinel, gl_marshal, longbow s3; z -3..-1): move from y6–8 to start at y5 on the shin so the lip covers the seam. Couters move to the forearm unchanged.
+    - **Back flaps:** sentinel skirts (both tiers, y0–8 at z 2.45) shorten the back flap to end at y7; longbow `jack` flaps move from z ±2.2 to ±2.3.
+    - **Bare seams** (stages with no couter or cop): the joint caps cover the wedge; no lower-box overlap, so the 4×6×4 contract stands. `mo-rig`'s 90° bend images are the evidence; Task 16 grades them.
   - `tools/build_skins.py` and `tools/bbmodel.py`: carry the new bones and per-face UVs.
   - `TroopModel.java`: build the new parts; the folded-arms swap includes the forearms.
   - `TroopFeatures.java`: items follow the hand bones' full chain.
@@ -730,7 +737,7 @@ Deliverable: every sword-and-shield state and clip on the knight model (Freebuff
 - Create: `art/clips/biped/sword_shield.bbmodel` and `art/clips/biped/common.bbmodel` (hits and deaths shared by every biped family; families override where their gear changes them)
 - Modify:
   - the `attackVariants` impactTicks to match the keyed clips
-  - the knight shield carry angles: `SHIELD_ROT` in `TroopFeatures` and the Gilded shield placement are re-derived here.
+  - the knight shield carry angles: `SHIELD_ROT` in `TroopFeatures` and the Gilded shield placement are re-derived here. `Rx(45)*Ry(-60)` exactly undoes the old 45° shoulder carry; if the new carry splits that angle between shoulder and elbow, recompute it so the board doesn't tilt, then re-shoot the knight's shield in hold and idle.
 
 **Steps:**
 
