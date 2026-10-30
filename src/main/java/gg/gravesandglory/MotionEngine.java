@@ -9,8 +9,14 @@ import java.util.Objects;
 /**
  * The layered troop motion engine (animation rework design section 6.1). Each frame, every bone's six channels are the sum
  * of six layers, applied in order: locomotion, stance, life, action, look and secondary. The feet are planted after look,
- * from the summed pose. Stances and actions are clips; the other layers are procedural ({@link MotionBody}). Every state
- * weight ramps toward its target at its own rate on render time and is shaped by {@link MotionMath#ease}. Pure.
+ * from the summed pose. Stances and actions are clips ({@link MotionStack}); the other layers are procedural
+ * ({@link MotionBody}, {@link MotionFeet}). Every state weight ramps toward its target at its own rate on render time and is
+ * shaped by {@link MotionMath#ease}.
+ *
+ * <p>Frame-rate independence: every integrator treats the frame as the interval (last, now]. Weights ramp toward the
+ * target they had last frame, a layer or track pushed this frame starts moving next frame, springs chase a target that
+ * moves linearly across the frame, and phases integrate their rate with the trapezoid rule. Input that changes at a shared
+ * sample time therefore gives the same pose at 20, 60 and 240 fps. Steady-state frames do not allocate. Pure.
  */
 public final class MotionEngine {
     private MotionEngine() {}
@@ -18,7 +24,7 @@ public final class MotionEngine {
     static final int RX = 0, RY = 1, RZ = 2, TX = 3, TY = 4, TZ = 5;
     /** Seconds each state weight takes to ramp fully on or off. */
     static final double STANCE_BLEND = 0.45, MOVE_BLEND = 0.3, RUN_BLEND = 0.5, COMBAT_BLEND = 0.6, GAIT_BLEND = 0.4,
-            TURN_BLEND = 0.3, LIFE_BLEND = 0.5, LOOK_BLEND = 0.4, CALM_BLEND = 0.35;
+            TURN_BLEND = 0.3, LIFE_BLEND = 0.5, LOOK_BLEND = 0.4, CALM_BLEND = 0.35, SETTLE_BLEND = 0.5;
     /**
      * An engine-made fade may move a channel at most this far in one 60 fps frame (degrees, pixels). This leaves room under
      * the 12 degree / 1.5 px pop limit for the procedural layers moving in the same frame.
@@ -28,17 +34,24 @@ public final class MotionEngine {
     /** The largest gains an attack (seed amp) and a hit clip (weight scale times seed amp) can play at. */
     static final double ATTACK_GAIN = 1.1, HIT_GAIN = 1.35 * 1.1;
     /** Bounds on everything the procedural layers can add to one channel (degrees, pixels). */
-    static final double PROC_ROT = 360, PROC_PX = 16;
-    static final int ATTACK = 0, HIT = 1, DEATH = 2, MAX_LAYERS = 12, MAX_TRACKS = 12;
+    static final double PROC_ROT = 180, PROC_PX = 16;
+    static final int ATTACK = 0, HIT = 1, DEATH = 2, MERGED = 3, MAX_LAYERS = 6, MAX_TRACKS = 6;
+    /** The limb angle wraps on a whole number of strides, so the gait phase (limb angle times 0.6662) runs on across it. */
+    static final double LIMB_WRAP = 100000 * MotionMath.TAU / 0.6662;
+    /** Ramp slots in {@link State#w}. */
+    static final int W_MOVE = 0, W_RUN = 1, W_COMBAT = 2, W_SHUFFLE = 3, W_BACK = 4, W_TURN = 5, W_LIFE = 6, W_LOOK = 7,
+            W_CALM = 8, W_SETTLE = 9, WEIGHTS = 10;
 
     /**
      * One weapon family's clips (design section 6.2), resolved from ClipLibrary.
      * <ul>
      * <li>stances by name: idle, carry, guard, brace, wall, shield, aim and rest. A missing stance falls back along
      * {@link #stanceChain}.</li>
-     * <li>attacks by variant.</li>
+     * <li>attacks by variant: the server's variant picks {@code floorMod(variant, attacks.size())}.</li>
      * <li>hits by zone: head, body, legs and block. A missing zone falls back to body.</li>
-     * <li>deaths by "kind/direction", then "any/direction". The direction is front, back, left or right.</li>
+     * <li>deaths by "kind/direction", then "any/direction". The direction is front, back, left or right. Death clips are
+     * absolute relative to rest: on death the stance fades to rest and life, look and hit reactions fade out, so the
+     * corpse is the death clip's last key and nothing else.</li>
      * </ul>
      */
     public record Family(String name, Map<String, Clip> stances, List<Clip> attacks, Map<String, List<Clip>> hits, Map<String, Clip> deaths) {
@@ -53,29 +66,50 @@ public final class MotionEngine {
         }
     }
 
-    /** Per-entity engine state: weights, springs, the stance stack, the active actions, hit reactions and the novelty timer. */
+    /**
+     * Per-entity engine state: weights, phases, springs, the stance stack, the active tracks, hit reactions, the novelty
+     * timer and the scratch the layers reuse every frame.
+     */
     public static final class State {
         boolean started, moving, dead;
         double last;
-        /** Linear ramps in [0, 1]; the engine uses their eased values. */
-        double move, run, combat, shuffle, back, turn, life, look, calm;
-        double turnPhase, breathPhase, flutter, yawRate;
-        final List<Layer> stances = new ArrayList<>();
-        final List<Track> tracks = new ArrayList<>();
+        /** Linear ramps in [0, 1] (the engine uses their eased values) and the target each had last frame. */
+        final double[] w = new double[WEIGHTS], wTarget = new double[WEIGHTS];
+        double turnPhase, turnRate, breathPhase, breathRate, flutter, flutterRate, yawRate, yawRateTarget;
+        final List<MotionStack.Layer> stances = new ArrayList<>(MAX_LAYERS + 1);
+        final List<MotionStack.Track> tracks = new ArrayList<>(MAX_TRACKS + 1);
         int ids;
         MotionInput.Attack attack;
         MotionInput.Hit hit, lethal;
-        final List<MotionBody.Pulse> pulses = new ArrayList<>();
-        final double[] react = new double[MotionBody.REACT], reactVel = new double[MotionBody.REACT];
-        double lookYaw, lookYawVel, lookPitch, lookPitchVel;
-        double capeX, capeXVel, capeY, capeYVel, crestX, crestXVel, crestY, crestYVel;
+        final List<MotionBody.Pulse> pulses = new ArrayList<>(MotionBody.MAX_PULSES + 1);
+        final double[] react = new double[MotionBody.REACT], reactVel = new double[MotionBody.REACT],
+                reactPrev = new double[MotionBody.REACT], reactTarget = new double[MotionBody.REACT];
+        final double[] look = new double[2], lookVel = new double[2], lookPrev = new double[2];
+        final double[] lag = new double[MotionBody.LAGS], lagVel = new double[MotionBody.LAGS], lagPrev = new double[MotionBody.LAGS],
+                lagTarget = new double[MotionBody.LAGS];
         double noveltyNext;
         long noveltyRng;
         /** Novelty idles started so far. */
         int novelties;
-        MotionBody.Novelty novelty;
+        /** The novelty idle playing: its kind (-1 for none), start, length and side. */
+        int novKind = -1;
+        double novStart, novLength, novSide;
+        /**
+         * What the planted-feet solve corrected last frame, as the leg channels would jump if it let go at once: the largest
+         * rotation (degrees) and translation (pixels), scaled by how much the feet would be planted with no leg-keying clip.
+         */
+        double plantRot, plantPx;
         final Frame frame = new Frame();
-        final Map<String, double[]> buf = new HashMap<>(), acc = new HashMap<>(), one = new HashMap<>();
+
+        // scratch, so steady-state frames do not allocate
+        final double[] tmp = new double[6];
+        final Clip[] mixClips = new Clip[MotionStack.LAYER_CLIPS];
+        final double[] mixCoef = new double[MotionStack.LAYER_CLIPS];
+        final double[] shares = new double[MAX_TRACKS + 1];
+        final double[] fadeRot = new double[MotionStack.FADE_FRAMES + 1], fadePx = new double[MotionStack.FADE_FRAMES + 1];
+        final Pose fadeMine = new Pose(), fadeUnder = new Pose(), merged = new Pose(), mergeTmp = new Pose();
+        final double[][] feet = new double[2][3], sol = new double[2][3];
+        final double[] vec = new double[3], rootFull = new double[6], knee = new double[2];
     }
 
     /** What one frame's layers share: the sanitised input and the eased weights. */
@@ -83,63 +117,14 @@ public final class MotionEngine {
         double now, dt, speed, limbAngle, headYaw, headPitch, yawRate, aimPitch;
         boolean first, dead, enemy;
         MotionMath.Seed seed;
-        /** Eased weights: moving, running, combat, shield shuffle, backpedal, turning in place, life, look; calm is raw. */
-        double m, run, cw, sh, bp, tw, lw, lookW, calm;
+        /** Eased weights: moving, running, combat, shield shuffle, backpedal, turning in place, life, look, settle; calm is raw. */
+        double m, run, cw, sh, bp, tw, lw, lookW, settle, calm;
         /** How much of the pose leg-keying actions own, and how much the aim stance does. */
         double bodyAction, aim;
     }
 
-    record Layer(String key, Clip clip, double[] raw) {}
-
-    /** An action clip playing as an offset on the stance. For a death, a and b blend by mix. */
-    static final class Track {
-        final int id, kind;
-        final Clip a, b;
-        final double mix, gain, start, impact, tempo;
-        final boolean legs;
-        double x, fadeIn = FADES[0], fadeOut = FADES[0];
-        boolean leaving;
-
-        Track(int id, int kind, Clip a, Clip b, double mix, double gain, double start, double tempo) {
-            this.id = id; this.kind = kind; this.a = a; this.b = b; this.mix = b == null ? 0 : mix; this.gain = gain;
-            this.start = start; this.tempo = tempo; this.impact = a.impact() < 0 ? -1 : a.impact() / (double) Clip.TICKS;
-            this.legs = keysLegs(a) || (b != null && keysLegs(b));
-        }
-
-        /** Clip time: real time up to the impact marker, so the impact lands on the server's tick, then the unit's tempo. */
-        double time(double now) {
-            double e = Math.max(0, now - start);
-            if (impact < 0) return e * tempo;
-            return e <= impact ? e : impact + (e - impact) * tempo;
-        }
-
-        double length() { return b == null ? a.length() : Math.max(a.length(), b.length()); }
-
-        /** Clears out, then writes gain times the clip (or the blend) at {@code now} into it. */
-        void sample(double now, Map<String, double[]> out, Map<String, double[]> tmp) {
-            out.clear();
-            double t = time(now);
-            add(a, t, gain * (1 - mix), out, tmp);
-            if (b != null && mix > 0) add(b, t, gain * mix, out, tmp);
-        }
-
-        private static void add(Clip clip, double t, double w, Map<String, double[]> out, Map<String, double[]> tmp) {
-            tmp.clear();
-            clip.sample(t, tmp);
-            for (var e : tmp.entrySet()) {
-                double[] o = out.computeIfAbsent(e.getKey(), k -> new double[6]), v = e.getValue();
-                for (int c = 0; c < 6; c++) o[c] += w * v[c];
-            }
-        }
-    }
-
-    /** One clip a track is playing, for tests and culling: its clip time and its share of the track's gain. */
+    /** One clip a track is playing, for tests and culling: its clip time and its effective share of the fold, times the track's gain. */
     record Playing(int id, Clip clip, double time, double gain) {}
-
-    static boolean keysLegs(Clip c) {
-        for (String b : c.bones()) if (b.endsWith("_leg") || b.endsWith("_shin")) return true;
-        return false;
-    }
 
     /** Poses one entity for this frame into {@code out}, clearing it first. */
     public static void pose(MotionInput in, State st, Family fam, Pose out) {
@@ -152,7 +137,7 @@ public final class MotionEngine {
         st.last = f.now;
         f.seed = in.seed();
         f.speed = clamp(finite(in.limbSpeed()), 0, 1.5);
-        f.limbAngle = finite(in.limbAngle()) % 1.0e6;
+        f.limbAngle = finite(in.limbAngle()) % LIMB_WRAP;
         f.headYaw = clamp(finite(in.headYaw()), -85, 85);
         f.headPitch = clamp(finite(in.headPitch()), -60, 60);
         f.yawRate = clamp(finite(in.bodyYawRate()), -720, 720);
@@ -165,100 +150,73 @@ public final class MotionEngine {
         if (f.speed > 0.1) st.moving = true;
         else if (f.speed < 0.04) st.moving = false;
         boolean moving = st.moving && !f.dead;
-        st.move = ramp(st.move, moving ? 1 : 0, MOVE_BLEND, f);
-        st.run = ramp(st.run, moving ? MotionMath.clamp01((f.speed - 0.35) / 0.6) : 0, RUN_BLEND, f);
-        st.combat = ramp(st.combat, f.enemy ? 1 : 0, COMBAT_BLEND, f);
-        st.shuffle = ramp(st.shuffle, !f.dead && (in.shieldUp() || stance.equals("shield_move")) ? 1 : 0, GAIT_BLEND, f);
-        st.back = ramp(st.back, !f.dead && stance.equals("fall_back") ? 1 : 0, GAIT_BLEND, f);
-        st.turn = ramp(st.turn, !moving && !f.dead ? MotionMath.clamp01((Math.abs(f.yawRate) - 30) / 60) : 0, TURN_BLEND, f);
-        st.life = ramp(st.life, f.dead ? 0 : 1, LIFE_BLEND, f);
-        st.look = ramp(st.look, f.dead ? 0 : 1, LOOK_BLEND, f);
-        f.m = MotionMath.ease(st.move); f.run = MotionMath.ease(st.run); f.cw = MotionMath.ease(st.combat);
-        f.sh = MotionMath.ease(st.shuffle); f.bp = MotionMath.ease(st.back); f.tw = MotionMath.ease(st.turn);
-        f.lw = MotionMath.ease(st.life); f.lookW = MotionMath.ease(st.look);
+        ramp(st, W_MOVE, moving ? 1 : 0, MOVE_BLEND, f);
+        ramp(st, W_RUN, moving ? MotionMath.clamp01((f.speed - 0.35) / 0.6) : 0, RUN_BLEND, f);
+        ramp(st, W_COMBAT, f.enemy ? 1 : 0, COMBAT_BLEND, f);
+        ramp(st, W_SHUFFLE, !f.dead && (in.shieldUp() || stance.equals("shield_move")) ? 1 : 0, GAIT_BLEND, f);
+        ramp(st, W_BACK, !f.dead && stance.equals("fall_back") ? 1 : 0, GAIT_BLEND, f);
+        ramp(st, W_TURN, !moving && !f.dead ? MotionMath.clamp01((Math.abs(f.yawRate) - 30) / 60) : 0, TURN_BLEND, f);
+        ramp(st, W_LIFE, f.dead ? 0 : 1, LIFE_BLEND, f);
+        ramp(st, W_LOOK, f.dead ? 0 : 1, LOOK_BLEND, f);
+        double[] w = st.w;
+        f.m = MotionMath.ease(w[W_MOVE]); f.run = MotionMath.ease(w[W_RUN]); f.cw = MotionMath.ease(w[W_COMBAT]);
+        f.sh = MotionMath.ease(w[W_SHUFFLE]); f.bp = MotionMath.ease(w[W_BACK]); f.tw = MotionMath.ease(w[W_TURN]);
+        f.lw = MotionMath.ease(w[W_LIFE]); f.lookW = MotionMath.ease(w[W_LOOK]);
 
         events(in, st, fam, f);
         boolean acting = !st.tracks.isEmpty() || !st.pulses.isEmpty();
-        st.calm = ramp(st.calm, !moving && !f.enemy && !acting && !f.dead && st.turn == 0 ? 1 : 0, CALM_BLEND, f);
-        f.calm = st.calm;
+        ramp(st, W_CALM, !moving && !f.enemy && !acting && !f.dead && w[W_TURN] == 0 ? 1 : 0, CALM_BLEND, f);
+        f.calm = w[W_CALM];
+        ramp(st, W_SETTLE, f.dead && MotionStack.deathPlayed(st, f.now) ? 0 : 1, SETTLE_BLEND, f);
+        f.settle = MotionMath.ease(w[W_SETTLE]);
 
         MotionBody.locomotion(f, st, out);
-        stance(st, fam, f, stance, in.shieldUp(), out);
+        MotionStack.stance(st, fam, f, stanceKey(stance, in.shieldUp(), f.enemy, moving, f.dead), out);
         MotionBody.life(f, st, out);
-        action(st, f, out);
+        MotionStack.action(st, f, out);
         MotionBody.react(f, st, out);
         MotionBody.look(f, st, out);
-        MotionBody.plant(f, st, out);
+        MotionFeet.plant(f, st, out);
         MotionBody.secondary(f, st, out);
         st.dead = f.dead;
     }
 
-    /** The stance key for this frame's state (design section 6.2). */
+    /**
+     * The stance key for this frame's state (design section 6.2). Hold, or an enemy near, raises the guard; Run is the march
+     * carry unless an enemy is near, when it is a charge with the guard up. A dead unit's stance is rest ("dead" has no clip).
+     */
     static String stanceKey(String stance, boolean shieldUp, boolean enemy, boolean moving, boolean dead) {
-        if (dead) return "idle";
+        if (dead) return "dead";
         switch (stance) {
             case "wall": return "wall";
             case "brace": return shieldUp ? "shield" : "brace";
             case "ranged_aim": return "aim";
             case "ranged_rest": return "rest";
-            case "run": return "carry";
+            case "hold": return shieldUp ? "shield" : "guard";
+            case "run": return enemy ? "guard" : "carry";
             default:
         }
         if (stance.equals("shield_move") || shieldUp) return "shield";
         return enemy ? "guard" : moving ? "carry" : "idle";
     }
 
-    /** Where a family without a stance clip falls back to, nearest first. */
-    static List<String> stanceChain(String key) {
+    private static final String[] CARRY = {"carry", "idle"}, GUARD = {"guard", "carry", "idle"}, BRACE = {"brace", "guard", "carry", "idle"},
+            WALL = {"wall", "shield", "brace", "guard", "carry", "idle"}, SHIELD = {"shield", "wall", "guard", "carry", "idle"},
+            AIM = {"aim", "guard", "carry", "idle"}, REST = {"rest", "carry", "idle"}, IDLE = {"idle", "carry"}, NONE = {};
+
+    /** Where a family without a stance clip falls back to, nearest first. Shared arrays: never modify. */
+    static String[] stanceChain(String key) {
         switch (key) {
-            case "carry": return List.of("carry", "idle");
-            case "guard": return List.of("guard", "carry", "idle");
-            case "brace": return List.of("brace", "guard", "carry", "idle");
-            case "wall": return List.of("wall", "shield", "brace", "guard", "carry", "idle");
-            case "shield": return List.of("shield", "wall", "guard", "carry", "idle");
-            case "aim": return List.of("aim", "guard", "carry", "idle");
-            case "rest": return List.of("rest", "carry", "idle");
-            default: return List.of("idle", "carry");
+            case "carry": return CARRY;
+            case "guard": return GUARD;
+            case "brace": return BRACE;
+            case "wall": return WALL;
+            case "shield": return SHIELD;
+            case "aim": return AIM;
+            case "rest": return REST;
+            case "dead": return NONE;
+            default: return IDLE;
         }
-    }
-
-    /**
-     * Stance: a stack of layers. A change pushes a new layer on top that ramps in over STANCE_BLEND with a cosine ease. The
-     * layers below hold their weights, so only one weight moves at a time, and they drop out once the top is fully in. The
-     * pose is the fold acc = acc (1 - w) + clip w from the bottom up. Looping stances play at the unit's tempo and phase.
-     */
-    static void stance(State st, Family fam, Frame f, String stance, boolean shieldUp, Pose out) {
-        String key = stanceKey(stance, shieldUp, f.enemy, st.moving && !f.dead, f.dead);
-        Clip clip = null;
-        for (String k : stanceChain(key)) if ((clip = fam.stances().get(k)) != null) break;
-        Layer top = st.stances.isEmpty() ? null : st.stances.get(st.stances.size() - 1);
-        if (top == null || top.clip() != clip) {
-            st.stances.add(top = new Layer(key, clip, new double[]{f.first ? 1 : 0}));
-            if (st.stances.size() > MAX_LAYERS) st.stances.remove(0);
-        }
-        top.raw()[0] = Math.min(1, top.raw()[0] + f.dt / STANCE_BLEND);
-        if (top.raw()[0] >= 1) while (st.stances.size() > 1) st.stances.remove(0);
-
-        Map<String, double[]> acc = st.acc;
-        acc.clear();
-        double aim = 0;
-        for (Layer l : st.stances) {
-            double w = MotionMath.ease(l.raw()[0]);
-            aim = aim * (1 - w) + (l.key().equals("aim") ? w : 0);
-            for (double[] v : acc.values()) for (int c = 0; c < 6; c++) v[c] *= 1 - w;
-            if (l.clip() == null || w == 0) continue;
-            st.buf.clear();
-            Clip c = l.clip();
-            c.sample(c.loop() ? f.now * f.seed.tempo() + f.seed.phase() / MotionMath.TAU * c.length() : c.length(), st.buf);
-            for (var e : st.buf.entrySet()) {
-                double[] o = acc.computeIfAbsent(e.getKey(), k -> new double[6]), v = e.getValue();
-                for (int ch = 0; ch < 6; ch++) o[ch] += w * v[ch];
-            }
-        }
-        out.add(acc, 1);
-        f.aim = aim;
-        out.add("right_arm", RX, f.aimPitch * aim);
-        out.add("left_arm", RX, f.aimPitch * aim);
     }
 
     /** Starts attacks, hit reactions and deaths from this frame's input. A new event is one not equal to the last seen. */
@@ -267,10 +225,9 @@ public final class MotionEngine {
         if (attack != null && !attack.equals(st.attack)) {
             st.attack = attack;
             if (!f.dead && !fam.attacks().isEmpty()) {
-                int n = fam.attacks().size();
-                Clip clip = fam.attacks().get(Math.floorMod(attack.variant() + (int) (f.seed.variantBias() >>> 40), n));
-                Track tr = new Track(st.ids++, ATTACK, clip, null, 0, f.seed.amp(), attack.startTick() / (double) Clip.TICKS, f.seed.tempo());
-                if (tr.time(f.now) < clip.length() - 0.05) begin(st, tr, f);
+                Clip clip = fam.attacks().get(Math.floorMod(attack.variant(), fam.attacks().size()));
+                var tr = new MotionStack.Track(st.ids++, ATTACK, clip, null, 0, f.seed.amp(), attack.startTick() / (double) Clip.TICKS, f.seed.tempo());
+                if (tr.time(f.now) < clip.length() - 0.05) MotionStack.begin(st, tr, f);
             }
         }
         MotionInput.Hit hit = in.hit();
@@ -285,15 +242,15 @@ public final class MotionEngine {
                 List<Clip> set = fam.hits().get(hit.blocked() ? "block" : zone(hit.zone()));
                 if (set == null || set.isEmpty()) set = fam.hits().get("body");
                 if (set != null && !set.isEmpty()) {
-                    Clip clip = set.get(Math.floorMod((int) (hit.tick() ^ (f.seed.variantBias() >>> 32)), set.size()));
-                    Track tr = new Track(st.ids++, HIT, clip, null, 0, scale, at, f.seed.tempo());
-                    if (tr.time(f.now) < clip.length() - 0.05) begin(st, tr, f);
+                    Clip clip = set.get(Math.floorMod((int) hit.tick(), set.size()));
+                    var tr = new MotionStack.Track(st.ids++, HIT, clip, null, 0, scale, at, f.seed.tempo());
+                    if (tr.time(f.now) < clip.length() - 0.05) MotionStack.begin(st, tr, f);
                 }
             }
         }
         if (f.dead && !st.dead) {
-            Track tr = death(st, fam, f, finite(in.deathSeconds()));
-            if (tr != null) begin(st, tr, f);
+            MotionStack.Track tr = death(st, fam, f, finite(in.deathSeconds()));
+            if (tr != null) MotionStack.begin(st, tr, f);
         }
     }
 
@@ -311,7 +268,7 @@ public final class MotionEngine {
      * A death clip chosen from the lethal blow. Up to 90 degrees off the front it mixes front with the side the blow came
      * from; past 90 it mixes that side with back. A missing direction falls back to the nearest one the family has.
      */
-    static Track death(State st, Family fam, Frame f, double seconds) {
+    static MotionStack.Track death(State st, Family fam, Frame f, double seconds) {
         String kind = st.lethal == null || st.lethal.kind() == null ? "any" : st.lethal.kind();
         double bearing = st.lethal == null ? 0 : Math.IEEEremainder(finite(st.lethal.bearing()), 360);
         String side = bearing > 0 ? "right" : "left";
@@ -327,7 +284,7 @@ public final class MotionEngine {
             mix = 0;
         } else if (a == null) { a = b; b = null; mix = 0; }
         else if (b == null || b == a) { b = null; mix = 0; }
-        return new Track(st.ids++, DEATH, a, b, mix, 1, f.now - Math.max(0, seconds), 1);
+        return new MotionStack.Track(st.ids++, DEATH, a, b, mix, 1, f.now - Math.max(0, seconds), 1);
     }
 
     static Clip deathClip(Family fam, String kind, String dir) {
@@ -337,112 +294,8 @@ public final class MotionEngine {
         return c;
     }
 
-    /** Pushes a track on top. The tracks below hold their weights; the new one fades in as fast as the pop budget allows. */
-    static void begin(State st, Track tr, Frame f) {
-        if (f.first) tr.x = 1;
-        else tr.fadeIn = fadeTime(st, tr, f.now, st.tracks.size(), true);
-        st.tracks.add(tr);
-        if (st.tracks.size() > MAX_TRACKS) st.tracks.remove(0);
-    }
-
-    /**
-     * The shortest fade in FADES whose per-frame weight change, times the gap between the track and the fold of the tracks
-     * below it at each coming 60 fps frame, stays within FADE_ROT and FADE_PX. A clip that keys the legs also hands the feet
-     * from the planted solve to the clip, so its gap counts that too. The longest fade is the fallback.
-     */
-    static double fadeTime(State st, Track tr, double now, int below, boolean in) {
-        int frames = (int) Math.ceil(60 * FADES[FADES.length - 1]) + 1;
-        double[] rot = new double[frames + 1], px = new double[frames + 1];
-        Map<String, double[]> mine = new HashMap<>(), under = new HashMap<>(), tmp = new HashMap<>(), one = new HashMap<>();
-        for (int k = 0; k <= frames; k++) {
-            double t = now + k / 60.0, r = 0, p = 0;
-            tr.sample(t, mine, tmp);
-            fold(st.tracks, below, t, under, one, tmp);
-            for (var e : mine.entrySet()) {
-                double[] u = under.get(e.getKey()), v = e.getValue();
-                for (int c = 0; c < 6; c++) {
-                    double gap = Math.abs(v[c] - (u == null ? 0 : u[c]));
-                    if (c < 3) r = Math.max(r, gap); else p = Math.max(p, gap);
-                }
-            }
-            for (var e : under.entrySet()) if (!mine.containsKey(e.getKey())) {
-                double[] u = e.getValue();
-                for (int c = 0; c < 6; c++) if (c < 3) r = Math.max(r, Math.abs(u[c])); else p = Math.max(p, Math.abs(u[c]));
-            }
-            if (tr.legs) { r += 20; p += 1; }
-            rot[k] = r;
-            px[k] = p;
-        }
-        double x0 = in ? 0 : tr.x;
-        for (double fade : FADES) {
-            boolean ok = true;
-            double prev = MotionMath.ease(x0);
-            for (int k = 1; k <= frames && ok; k++) {
-                double x = in ? Math.min(1, k / (60 * fade)) : Math.max(0, x0 - k / (60 * fade)), w = MotionMath.ease(x), dw = Math.abs(w - prev);
-                prev = w;
-                ok = dw * rot[k] <= FADE_ROT && dw * px[k] <= FADE_PX;
-            }
-            if (ok) return fade;
-        }
-        return FADES[FADES.length - 1];
-    }
-
-    /** The fold of tracks[0, count) at time t into out. */
-    static void fold(List<Track> tracks, int count, double t, Map<String, double[]> out, Map<String, double[]> one, Map<String, double[]> tmp) {
-        out.clear();
-        for (int i = 0; i < count; i++) {
-            Track tr = tracks.get(i);
-            double w = MotionMath.ease(tr.x);
-            for (double[] v : out.values()) for (int c = 0; c < 6; c++) v[c] *= 1 - w;
-            if (w == 0) continue;
-            tr.sample(t, one, tmp);
-            for (var e : one.entrySet()) {
-                double[] o = out.computeIfAbsent(e.getKey(), k -> new double[6]), v = e.getValue();
-                for (int c = 0; c < 6; c++) o[c] += w * v[c];
-            }
-        }
-    }
-
-    /**
-     * Action: the tracks' fold, added to the stance as an offset. Only the top track changes weight. It rises until it covers
-     * the ones below, which then drop. Once its clip ends (for a death, once the unit lives again) it leaves.
-     */
-    static void action(State st, Frame f, Pose out) {
-        List<Track> tracks = st.tracks;
-        if (!tracks.isEmpty()) {
-            Track top = tracks.get(tracks.size() - 1);
-            if (!top.leaving && (top.kind == DEATH ? !f.dead : top.time(f.now) >= top.length())) {
-                top.leaving = true;
-                top.fadeOut = fadeTime(st, top, f.now, tracks.size() - 1, false);
-            }
-            if (top.leaving) {
-                top.x = Math.max(0, top.x - f.dt / top.fadeOut);
-                if (top.x <= 0) tracks.remove(tracks.size() - 1);
-            } else {
-                top.x = Math.min(1, top.x + f.dt / top.fadeIn);
-                if (top.x >= 1) while (tracks.size() > 1) tracks.remove(0);
-            }
-        }
-        double legs = 0;
-        for (Track tr : tracks) {
-            double w = MotionMath.ease(tr.x);
-            legs = legs * (1 - w) + (tr.legs ? w : 0);
-        }
-        f.bodyAction = legs;
-        fold(tracks, tracks.size(), f.now, st.acc, st.one, st.buf);
-        out.add(st.acc, 1);
-    }
-
-    /** The clips the tracks are playing at {@code now}, bottom first, each with its share of the track's gain. */
-    static List<Playing> playing(State st, double now) {
-        List<Playing> list = new ArrayList<>();
-        for (Track tr : st.tracks) {
-            double t = tr.time(now);
-            list.add(new Playing(tr.id * 2, tr.a, t, tr.gain * (1 - tr.mix)));
-            if (tr.b != null) list.add(new Playing(tr.id * 2 + 1, tr.b, t, tr.gain * tr.mix));
-        }
-        return list;
-    }
+    /** The clips the tracks are playing at {@code now}, bottom first, each with its effective share of the fold. */
+    static List<Playing> playing(State st, double now) { return MotionStack.playing(st, now); }
 
     /** Active tracks, hit pulses and stance layers: the state that grows with events. */
     static int load(State st) { return st.tracks.size() + st.pulses.size() + st.stances.size(); }
@@ -464,11 +317,15 @@ public final class MotionEngine {
 
     private static void max(double[] into, double[] reach, double gain) { for (int c = 0; c < 6; c++) into[c] = Math.max(into[c], reach[c] * gain); }
 
-    /** Moves a linear weight toward its target by dt / seconds. The first frame snaps to it. */
-    static double ramp(double raw, double target, double seconds, Frame f) {
-        if (f.first) return target;
-        double step = f.dt / seconds;
-        return raw < target ? Math.min(target, raw + step) : Math.max(target, raw - step);
+    /**
+     * Moves ramp i toward the target it had last frame by dt / seconds, then records this frame's target, so a target that
+     * changes at a sample time starts moving from that time at any frame rate. The first frame snaps to the target.
+     */
+    static void ramp(State st, int i, double target, double seconds, Frame f) {
+        if (f.first) { st.w[i] = target; st.wTarget[i] = target; return; }
+        double goal = st.wTarget[i], raw = st.w[i], step = f.dt / seconds;
+        st.w[i] = raw < goal ? Math.min(goal, raw + step) : Math.max(goal, raw - step);
+        st.wTarget[i] = target;
     }
 
     static double finite(double v) { return Double.isFinite(v) ? v : 0; }

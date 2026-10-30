@@ -4,7 +4,7 @@ package gg.gravesandglory;
 public final class MotionMath {
     private MotionMath() {}
 
-    static final double TAU = 2 * Math.PI, MAX_DT = 0.1, SPRING_STEP = 1 / 120.0;
+    static final double TAU = 2 * Math.PI, MAX_DT = 0.1;
 
     static double clamp01(double x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
     static double clampDt(double dt) { return dt > 0 ? Math.min(dt, MAX_DT) : 0; }
@@ -31,21 +31,53 @@ public final class MotionMath {
     public record Spring(double pos, double vel) {}
 
     /**
-     * Semi-implicit Euler spring, sub-stepped at no more than 1/120 s so it stays stable at low frame rates. At step h it is
-     * stable while stiffness*h^2 + 2*damping*h < 4: with h = 1/120, stiffness under about 57,600 and damping under 240.
-     * A negative or NaN stiffness or damping counts as 0.
+     * Damped spring x'' = stiffness * (target - x) - damping * x', solved exactly over dt (under-, critically and over-damped),
+     * so it is unconditionally stable and gives the same motion at any frame rate. dt is clamped to 0.1 s. A negative or NaN
+     * stiffness or damping counts as 0; with stiffness 0 the target is ignored and the velocity only decays.
      */
     public static Spring spring(Spring s, double target, double stiffness, double damping, double dt) {
-        if (!(stiffness > 0)) stiffness = 0;
-        if (!(damping > 0)) damping = 0;
+        double[] pos = {s.pos()}, vel = {s.vel()};
+        step(pos, vel, 0, target, target, stiffness, damping, dt);
+        return new Spring(pos[0], vel[0]);
+    }
+
+    /** {@link #spring} in place on pos[i] and vel[i] with a constant target, without allocating. */
+    static void step(double[] pos, double[] vel, int i, double target, double stiffness, double damping, double dt) {
+        step(pos, vel, i, target, target, stiffness, damping, dt);
+    }
+
+    /**
+     * {@link #spring} in place on pos[i] and vel[i], with the target moving linearly from {@code from} (last frame's target)
+     * to {@code to} across the frame. Treating the target as continuous, not held for the whole frame, is what keeps a
+     * spring chasing a moving target the same at 20 and 240 frames per second. Does not allocate.
+     */
+    static void step(double[] pos, double[] vel, int i, double from, double to, double stiffness, double damping, double dt) {
+        double k = stiffness > 1e-9 ? stiffness : 0, d = damping > 0 ? damping : 0;
         dt = clampDt(dt);
-        int n = Math.max(1, (int) Math.ceil(dt / SPRING_STEP - 1e-9));
-        double h = dt / n, pos = s.pos(), vel = s.vel();
-        for (int i = 0; i < n; i++) {
-            vel += (stiffness * (target - pos) - damping * vel) * h;
-            pos += vel * h;
+        if (dt == 0) return;
+        double x = pos[i], v = vel[i], slope = 0, base = 0, end = 0;
+        if (k > 0) {
+            slope = Double.isFinite(from) ? (to - from) / dt : 0;
+            base = (Double.isFinite(from) ? from : to) - d * slope / k;
+            end = to - d * slope / k;
         }
-        return new Spring(pos, vel);
+        double e = x - base, ev = v - slope, a = -d / 2, q = k - d * d / 4, c, sn;
+        if (q > 0) {
+            double w = Math.sqrt(q);
+            c = Math.cos(w * dt);
+            sn = Math.sin(w * dt) / w;
+        } else if (q < 0) {
+            double b = Math.sqrt(-q);
+            c = Math.cosh(b * dt);
+            sn = Math.sinh(b * dt) / b;
+        } else {
+            c = 1;
+            sn = dt;
+        }
+        double decay = Math.exp(a * dt), bb = ev - a * e;
+        double e1 = decay * (e * c + bb * sn), ev1 = decay * (ev * c + (a * bb - q * e) * sn);
+        pos[i] = (k > 0 ? end : 0) + e1;
+        vel[i] = slope + ev1;
     }
 
     /**

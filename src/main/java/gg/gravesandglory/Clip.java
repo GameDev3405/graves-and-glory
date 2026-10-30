@@ -114,6 +114,23 @@ public final class Clip {
     }
 
     /**
+     * Adds {@code w} times this clip at {@code seconds} into {@code out}, bone by bone, using {@code tmp} (at least six
+     * doubles) as scratch. Times as {@link #sample}; allocates only the first time {@code out} meets a bone.
+     */
+    public void add(double seconds, Pose out, double w, double[] tmp) {
+        if (w == 0) return;
+        double t = Double.isFinite(seconds) ? seconds : 0;
+        if (loop) { t %= length; if (t < 0) t += length; }
+        else t = Math.min(Math.max(t, 0), length);
+        for (int b = 0; b < bones.length; b++) {
+            channel(rotation[b], loop, t, tmp, 0);
+            channel(position[b], loop, t, tmp, 3);
+            double[] o = out.get(bones[b]);
+            for (int c = 0; c < 6; c++) o[c] += w * tmp[c];
+        }
+    }
+
+    /**
      * The largest |value| each of the six channels can reach on any bone at any time: the clip's envelope for culling.
      * Computed once when the clip is built (final, so safely published) and exact rather than sampled, so a short bezier or
      * catmullrom overshoot between samples is never missed.
@@ -199,8 +216,12 @@ public final class Clip {
         if (before.i() == LINEAR && (after.i() == LINEAR || after.i() == STEP)) {
             for (int a = 0; a < 3; a++) o[at + a] = before.post()[a] + (after.v()[a] - before.post()[a]) * alpha;
         } else if (before.i() == CATMULLROM || after.i() == CATMULLROM) {
-            Key[] around = around(keys, loop, bi);
-            for (int a = 0; a < 3; a++) o[at + a] = catmullrom(around[0], before, after, around[1], a, alpha);
+            Key bp = bi >= 1 ? keys[bi - 1] : null, ap = bi + 2 < keys.length ? keys[bi + 2] : null;   // as around(), without the array
+            if (loop && keys.length >= 3) {
+                if (bp == null) bp = keys[keys.length - 2];
+                if (ap == null) ap = keys[1];
+            }
+            for (int a = 0; a < 3; a++) o[at + a] = catmullrom(bp, before, after, ap, a, alpha);
         } else {
             for (int a = 0; a < 3; a++) o[at + a] = bezier(before, after, a, alpha);
         }
@@ -218,9 +239,29 @@ public final class Clip {
 
     /** Keyframe.getCatmullromLerp on three.js SplineCurve.getPoint, term for term. */
     static double catmullrom(Key bp, Key before, Key after, Key ap, int axis, double alpha) {
-        double[] h = hermite(bp, before, after, ap, axis, alpha);
-        double w = h[4], t2 = w * w, t3 = w * t2;
-        return h[0] * t3 + h[1] * t2 + h[2] * w + h[3];
+        double s0 = 0, s1 = 0, s2 = 0, s3 = 0;   // hermite()'s points without its arrays; the same arithmetic
+        int n = 0;
+        if (bp != null && !before.split()) { s0 = bp.post()[axis]; n++; }
+        double v = before.post()[axis];
+        if (n == 0) s0 = v; else s1 = v;
+        n++;
+        v = after.v()[axis];
+        if (n == 1) s1 = v; else s2 = v;
+        n++;
+        if (ap != null && !after.split()) { v = ap.v()[axis]; if (n == 2) s2 = v; else s3 = v; n++; }
+        double t = (alpha + (bp != null ? 1 : 0)) / (n - 1), p = (n - 1) * t;
+        int i = (int) Math.floor(p);
+        double w = p - i;
+        double p0 = pick(i == 0 ? i : i - 1, s0, s1, s2, s3), p1 = pick(i, s0, s1, s2, s3);
+        double p2 = pick(i > n - 2 ? n - 1 : i + 1, s0, s1, s2, s3), p3 = pick(i > n - 3 ? n - 1 : i + 2, s0, s1, s2, s3);
+        double v0 = (p2 - p0) * 0.5, v1 = (p3 - p1) * 0.5;
+        double a = 2 * p1 - 2 * p2 + v0 + v1, b = -3 * p1 + 3 * p2 - 2 * v0 - v1;
+        double t2 = w * w, t3 = w * t2;
+        return a * t3 + b * t2 + v0 * w + p1;
+    }
+
+    private static double pick(int i, double s0, double s1, double s2, double s3) {
+        return i <= 0 ? s0 : i == 1 ? s1 : i == 2 ? s2 : s3;
     }
 
     /**
