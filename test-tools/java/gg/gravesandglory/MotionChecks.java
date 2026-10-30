@@ -7,6 +7,7 @@ import net.minecraft.client.render.entity.model.EntityModel;
 import net.minecraft.client.util.ScreenshotRecorder;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
+import net.minecraft.util.math.Direction;
 import org.joml.Vector4f;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -16,7 +17,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -35,10 +39,64 @@ import static gg.gravesandglory.Phase2Checks.server;
  * captures. On a rig with forearms and shins, each stage also gets bend shots: both elbows at 90 degrees (the forearms pitched
  * -90) and both knees at 90 (the shins pitched +90, or the troop's own knee limit when it has one), added by the harness after
  * the clip (MotionRigPoseMixin), so the joint caps and cops can be looked at.
+ * <p>mo-loader-faceuv (Task 9 fix round 1): a faceuv box built through the loader against build_skins.cuboid_faces; the motion
+ * suite runs it first, and GRAVES_PHASE2_CHECKS=motion-loader runs it alone.
  */
 public final class MotionChecks {
     private MotionChecks() {}
-    static void register(Map<String, Supplier<Phase2Checks.Suite>> suites) { suites.put("motion", Rig::new); }
+    static void register(Map<String, Supplier<Phase2Checks.Suite>> suites) {
+        suites.put("motion", Rig::new);
+        suites.put("motion-loader", () -> (c, tick) -> { loaderFaceUv(); Phase2Checks.finish(c, "motion-loader"); });
+    }
+
+    /**
+     * Boxes for mo-loader-faceuv, each a bone of its own: its name, its box json and, per face, the four corners with the texel
+     * each reads ("d:x,y,z,u,v ..." by Direction id, ";" between faces), as build_skins.cuboid_faces lays them out (generated
+     * from it). An uneven 3x5x2 box with all six faces moved, so a width and depth mix-up shows; the rig's right forearm box,
+     * its top and bottom moved; the uneven box without faceuv, the vanilla Cuboid against the same transcription.
+     */
+    static final String[][] FACEUV_BOXES = {
+        {"moved", "{\"origin\":[-1,-2,-3],\"size\":[3,5,2],\"uv\":[2,3],\"faceuv\":{\"top\":[0,40],\"bottom\":[10,40],\"right\":[20,40],\"front\":[30,40],\"left\":[40,40],\"back\":[50,40]}}",
+            "0:2,-2,-1,3,40 -1,-2,-1,0,40 -1,-2,-3,0,42 2,-2,-3,3,42;1:2,3,-3,13,42 -1,3,-3,10,42 -1,3,-1,10,40 2,3,-1,13,40;2:2,-2,-3,33,40 -1,-2,-3,30,40 -1,3,-3,30,45 2,3,-3,33,45;3:-1,-2,-1,53,40 2,-2,-1,50,40 2,3,-1,50,45 -1,3,-1,53,45;4:-1,-2,-3,22,40 -1,-2,-1,20,40 -1,3,-1,20,45 -1,3,-3,22,45;5:2,-2,-1,42,40 2,-2,-3,40,40 2,3,-3,40,45 2,3,-1,42,45"},
+        {"right_forearm", "{\"origin\":[-2,0,-2],\"size\":[4,6,4],\"uv\":[40,22],\"faceuv\":{\"top\":[44,26],\"bottom\":[48,16]}}",
+            "0:2,0,2,48,26 -2,0,2,44,26 -2,0,-2,44,30 2,0,-2,48,30;1:2,6,-2,52,20 -2,6,-2,48,20 -2,6,2,48,16 2,6,2,52,16;2:2,0,-2,48,26 -2,0,-2,44,26 -2,6,-2,44,32 2,6,-2,48,32;3:-2,0,2,56,26 2,0,2,52,26 2,6,2,52,32 -2,6,2,56,32;4:-2,0,-2,44,26 -2,0,2,40,26 -2,6,2,40,32 -2,6,-2,44,32;5:2,0,2,52,26 2,0,-2,48,26 2,6,-2,48,32 2,6,2,52,32"},
+        {"plain", "{\"origin\":[-1,-2,-3],\"size\":[3,5,2],\"uv\":[2,3]}",
+            "0:2,-2,-1,7,3 -1,-2,-1,4,3 -1,-2,-3,4,5 2,-2,-3,7,5;1:2,3,-3,10,5 -1,3,-3,7,5 -1,3,-1,7,3 2,3,-1,10,3;2:2,-2,-3,7,5 -1,-2,-3,4,5 -1,3,-3,4,10 2,3,-3,7,10;3:-1,-2,-1,12,5 2,-2,-1,9,5 2,3,-1,9,10 -1,3,-1,12,10;4:-1,-2,-3,4,5 -1,-2,-1,2,5 -1,3,-1,2,10 -1,3,-3,4,10;5:2,-2,-1,9,5 2,-2,-3,7,5 2,3,-3,7,10 2,3,-1,9,10"}};
+
+    /**
+     * mo-loader-faceuv (Task 9 fix round 1, review M1): no troop model uses faceuv yet, so no render reaches the loader's faceuv
+     * path. Each FACEUV_BOXES box, loaded through TroopModelLoader on a 64x64 sheet, must give exactly one quad a face, with the
+     * quad's normal that face's direction and its four corners each reading the texel the Python side expects.
+     */
+    static void loaderFaceUv() {
+        List<String> bad = new ArrayList<>(); int quads = 0;
+        StringBuilder bones = new StringBuilder("{\"name\":\"root\",\"parent\":\"\",\"pivot\":[0,0,0],\"boxes\":[]}");
+        for (String[] b : FACEUV_BOXES) bones.append(",{\"name\":\"").append(b[0]).append("\",\"parent\":\"root\",\"pivot\":[0,0,0],\"boxes\":[").append(b[1]).append("]}");
+        try {
+            var j = com.google.gson.JsonParser.parseString("{\"format\":3,\"troop\":\"probe\",\"rig\":\"biped\",\"size\":[64,64],"
+                + "\"skins\":{\"1\":\"gravesandglory:textures/entity/troop/knight_s1.png\"},\"bones\":[" + bones + "]}").getAsJsonObject();
+            TroopModelLoader.checkTroop(j);
+            var m = new TroopModel<>(j, TroopModelLoader.parse(j).createModel(), Map.of("right", "root", "left", "root"), null, List.of());
+            for (String[] b : FACEUV_BOXES) {
+                Map<Integer, Set<String>> want = new TreeMap<>(), got = new TreeMap<>();
+                for (String face : b[2].split(";")) { String[] f = face.split(":"); want.put(Integer.parseInt(f[0]), new TreeSet<>(List.of(f[1].split(" ")))); }
+                ModelPart part = m.part(b[0]);
+                if (part == null) { bad.add(b[0] + ": no part"); continue; }
+                for (var cuboid : Phase2Checks.Depth.cuboidFaces(part)) for (float[] q : cuboid) {
+                    quads++;
+                    Direction dir = Direction.fromVector(Math.round(q[0]), Math.round(q[1]), Math.round(q[2]));
+                    if (dir == null) { bad.add(b[0] + ": a quad with normal " + q[0] + "," + q[1] + "," + q[2]); continue; }
+                    Set<String> corners = new TreeSet<>();
+                    for (int k = 0; k < 4; k++) corners.add(String.format(Locale.ROOT, "%s,%s,%s,%s,%s", num(q[3 + 5 * k]), num(q[4 + 5 * k]), num(q[5 + 5 * k]), num(q[6 + 5 * k] * 64), num(q[7 + 5 * k] * 64)));
+                    if (got.put(dir.getId(), corners) != null) bad.add(b[0] + ": two quads face " + dir);
+                }
+                for (int d = 0; d < 6; d++) if (!Objects.equals(want.get(d), got.get(d))) bad.add(b[0] + " " + Direction.byId(d) + ": got " + got.get(d) + ", want " + want.get(d));
+            }
+        } catch (Exception e) { bad.add("threw " + e); }
+        report("mo-loader-faceuv", bad.isEmpty() && quads == 18, quads + " quads of 3 boxes (an uneven box with every face moved, the rig's right forearm, the uneven box without faceuv) against build_skins.cuboid_faces" + (bad.isEmpty() ? ": every corner and texel as expected" : ": " + bad));
+    }
+    /** A coordinate or texel as cuboid_faces prints it: whole numbers without a point, to 3 places otherwise. */
+    static String num(float v) { float r = Math.round(v * 1000) / 1000f; return r == Math.round(r) ? Integer.toString(Math.round(r)) : String.format(Locale.ROOT, "%.3f", r).replaceAll("0+$", ""); }
 
     /** Harness only: pitch added to bones after the clip, by entity id (radians, bone name to added pitch). Read by MotionRigPoseMixin. */
     public static final Map<Integer, Map<String, Float>> BENDS = new ConcurrentHashMap<>();
@@ -73,6 +131,7 @@ public final class MotionChecks {
         String name() { return "motion"; }
 
         Rig() {
+            loaderFaceUv();
             Phase2Checks.Turn.hook();
             for (String t : TroopModels.ids()) {
                 var m = TroopModels.model(t);

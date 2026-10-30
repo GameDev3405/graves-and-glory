@@ -3271,6 +3271,24 @@ class JointedRigChecks(unittest.TestCase):
         self.assertEqual(self.rig['hands'], {'right': 'right_hand', 'left': 'left_hand'})
         build_skins.check_rig(type('Cat', (), {'rigs': {'biped': self.rig}})(), 'biped')
 
+    def test_every_troop_project_bakes_jointed(self):
+        """Every troop of the real catalog bakes (a .bbmodel's bone groups must carry the rig's elbows and knees: the release
+        build skips bake for hand-authored troops, so only this reaches the projects), with each limb jointed, the hand on the
+        forearm, and --template and the relief template drawn."""
+        cat = build_skins.load(build_skins.ROOT)
+        projects = sorted(p.stem for p in (build_skins.ROOT / 'art/troops').glob('*.bbmodel'))
+        self.assertTrue(projects)
+        self.assertTrue(set(projects) <= set(cat.troops), projects)
+        for troop in sorted(cat.troops):
+            with self.subTest(troop=troop, project=troop in projects):
+                bones = {b['name']: b for b in build_skins.bake(cat, troop)['bones']}
+                for upper, lower, _ in self.LIMBS:
+                    self.assertEqual(bones[lower]['parent'], upper)
+                    self.assertEqual([b['size'] for b in bones[upper]['boxes']][:1], [[4, 6, 4]])
+                    self.assertIn([4, 6, 4], [b['size'] for b in bones[lower]['boxes']])
+                self.assertEqual((bones['right_hand']['parent'], bones['left_hand']['parent']), ('right_forearm', 'left_forearm'))
+                self.assertEqual(build_skins.template(cat, troop).size, build_skins.relief_template(cat, troop).size)
+
     def test_split_limb_uv_covers_vanilla_layout(self):
         """Each limb is two 4x6x4 boxes, the joint at the bone's pivot; the union of their faces' texels is the vanilla 4x12x4 box's
         layout, the top face on the upper box and the bottom face on the lower, and each joint cap reads that box's own front."""

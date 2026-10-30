@@ -206,9 +206,10 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     @Override public ModelPart getPart(){return top;}
     /** A bone by its name, for AnimationHelper (the default would take "root" for the unnamed top part). */
     @Override public Optional<ModelPart> getChild(String name){return Optional.ofNullable(parts.get(name));}
-    public ModelPart bone(String name){return parts.get(name);}
     /** A bone's part by its name (the rig's elbow and knee bones, right_forearm, left_forearm, right_shin and left_shin, among them), or null. */
-    public ModelPart part(String bone){return parts.get(bone);}
+    public ModelPart bone(String name){return parts.get(name);}
+    /** The animation rework's rig-contract name for {@link #bone(String)}: the same part. */
+    public ModelPart part(String bone){return bone(bone);}
     /**
      * A bone's joint limit, [min, max] degrees of pitch from its file pose, or null for a bone the file gives none (any bend).
      * R7 of the animation rework: the mage's shins carry [0, 10], so its robe, which hangs rigid from the thigh, never parts from the shin.

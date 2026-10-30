@@ -455,5 +455,61 @@ class TroopBonesChecks(unittest.TestCase):
         self.assertIn('part library', str(e.exception))
 
 
+def jointed_cube(name, base, box):
+    """A jointed limb's box as build_skins.troop_project writes it: box_uv off, uv_offset the box's uv, a uv on each face
+    from box_face_rects (faceuv moving its faces)."""
+    import build_skins
+    frm = [base[i] + box['origin'][i] for i in range(3)]
+    return {'name': name, 'uuid': str(uuid.uuid5(uuid.NAMESPACE_URL, 'troop cube ' + name)), 'type': 'cube',
+            'box_uv': False, 'from': frm, 'to': [frm[i] + box['size'][i] for i in range(3)], 'origin': list(base),
+            'uv_offset': list(box['uv']),
+            'faces': {f: {'uv': [float(c) for c in r], 'texture': 0}
+                      for f, r in build_skins.box_face_rects(box['uv'], box['size'], box.get('faceuv')).items()}}
+
+
+class JointedCubeChecks(unittest.TestCase):
+    """tools/bbmodel.py _troop_cube on a jointed limb's per-face cube (Task 9): faceuv out to per-face UVs and back."""
+    RIG = json.loads((pathlib.Path(__file__).resolve().parents[2] / 'art/rigs/biped.json').read_text(encoding='utf-8'))
+
+    def test_every_rig_faceuv_box_round_trips(self):
+        """Every faceuv box of the biped rig, written as troop_project writes it, reads back as the same box."""
+        seen = 0
+        for bone in self.RIG['bones']:
+            for i, box in enumerate(bone['boxes']):
+                if not box.get('faceuv'):
+                    continue
+                seen += 1
+                with self.subTest(bone=bone['name'], box=i):
+                    base = [-6.0, 6.2, 0.5]   # any group origin: the box's origin is read relative to it
+                    got = bbmodel._troop_cube(jointed_cube(bone['name'] + '_0', base, box), base, 'fixture')
+                    self.assertEqual(got, {'origin': box['origin'], 'size': box['size'], 'uv': box['uv'], 'mirror': False,
+                                           'dilation': [0, 0, 0], 'faceuv': box['faceuv']})
+        self.assertEqual(seen, 8)   # the four limbs' upper and lower boxes
+
+    def test_unmoved_per_face_cube_has_no_faceuv(self):
+        box = {'origin': [-2, 0, -2], 'size': [4, 6, 4], 'uv': [40, 22]}
+        got = bbmodel._troop_cube(jointed_cube('plain', [0, 0, 0], box), [0, 0, 0], 'fixture')
+        self.assertNotIn('faceuv', got)
+        self.assertEqual((got['origin'], got['size'], got['uv']), ([-2, 0, -2], [4, 6, 4], [40, 22]))
+
+    def test_rejects_a_face_off_its_layout_size(self):
+        """A per-face rectangle that is not its face's box UV size, or not on whole texels, is refused with the face named."""
+        box = {'origin': [-2, 0, -2], 'size': [4, 6, 4], 'uv': [40, 22], 'faceuv': {'top': [44, 26], 'bottom': [48, 16]}}
+        for face, rect, size in (('up', [44, 26, 49, 30], '4x4'), ('north', [44, 26, 48, 31], '4x6'),
+                                 ('down', [48.5, 16, 52.5, 20], '4x4')):
+            with self.subTest(face=face):
+                e = jointed_cube('right_forearm_0', [0, 0, 0], box)
+                e['faces'][face]['uv'] = rect
+                with self.assertRaises(bbmodel.BBError) as err:
+                    bbmodel._troop_cube(e, [0, 0, 0], 'fixture')
+                self.assertIn('face %s' % face, str(err.exception))
+                self.assertIn('keeps its box UV size, %s' % size, str(err.exception))
+        e = jointed_cube('right_forearm_0', [0, 0, 0], box)
+        del e['faces']['west']['uv']
+        with self.assertRaises(bbmodel.BBError) as err:
+            bbmodel._troop_cube(e, [0, 0, 0], 'fixture')
+        self.assertIn('a uv on each of its six faces', str(err.exception))
+
+
 if __name__ == '__main__':
     unittest.main()
