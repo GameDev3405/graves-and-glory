@@ -208,6 +208,9 @@ public final class MotionRulingsCheck {
     /** Steady-state frames allocate nothing: ThreadMXBean.getThreadAllocatedBytes over 10,000 frames after a 20,000-frame warm-up. */
     static String allocation(MotionEngine.Family fam, MotionMath.Seed[] seeds) {
         var mx = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
+        check(mx.isThreadAllocatedMemorySupported(), "this JVM cannot measure thread allocation, so the check would pass trivially");
+        if (!mx.isThreadAllocatedMemoryEnabled()) mx.setThreadAllocatedMemoryEnabled(true);
+        check(mx.isThreadAllocatedMemoryEnabled(), "thread allocation measurement is disabled, so the check would pass trivially");
         long id = Thread.currentThread().getId();
         StringBuilder report = new StringBuilder();
         String[] names = {"idle", "walking guard", "corpse", "aiming"};
@@ -224,6 +227,7 @@ public final class MotionRulingsCheck {
             Pose out = new Pose();
             for (int f = 0; f < warm; f++) MotionEngine.pose(inputs[f], st, fam, out);
             long b0 = mx.getThreadAllocatedBytes(id), b1 = mx.getThreadAllocatedBytes(id);
+            check(b0 >= 0 && b1 >= b0, "thread allocation reads should be real counts: " + b0 + ", " + b1);
             long base = b1 - b0;
             long before = mx.getThreadAllocatedBytes(id);
             for (int f = warm; f < n; f++) MotionEngine.pose(inputs[f], st, fam, out);
@@ -406,7 +410,9 @@ public final class MotionRulingsCheck {
 
     /**
      * No clones: 100 units that differ only in seed, over a 4 s idle of the body and arms. The 5th percentile of the 4,950
-     * pairwise RMS distances is at least 2.5 degrees and the closest pair at least 1 degree.
+     * pairwise RMS distances is at least 2.5 degrees and the closest pair at least 1 degree. Distance alone misses units that
+     * move in step at a small offset, so over an 8 s idle each unit's channels are detrended (least-squares line removed)
+     * and the 95th percentile of the pairwise motion correlations stays below 0.4.
      */
     static String noClones(MotionEngine.Family fam) {
         MotionMath.Seed[] many = seeds(100, 9100);
@@ -422,7 +428,35 @@ public final class MotionRulingsCheck {
         dist.sort(null);
         double least = dist.get(0), p5 = dist.get((int) (0.05 * dist.size()));
         check(p5 >= 2.5 && least >= 1, "no clones: 5th percentile " + p5 + ", closest " + least + " degrees RMS");
-        return String.format("closest %.2f, 5th percentile %.2f, median %.2f deg RMS", least, p5, dist.get(dist.size() / 2));
+        double[][] motion = new double[many.length][];
+        for (int i = 0; i < many.length; i++) motion[i] = detrended(idleTrace(fam, many[i], 8, "body", "right_arm", "left_arm"));
+        List<Double> corr = new ArrayList<>();
+        for (int i = 0; i < many.length; i++) for (int j = i + 1; j < many.length; j++) {
+            double ab = 0, aa = 0, bb = 0;
+            for (int k = 0; k < motion[i].length; k++) { ab += motion[i][k] * motion[j][k]; aa += motion[i][k] * motion[i][k]; bb += motion[j][k] * motion[j][k]; }
+            corr.add(ab / Math.sqrt(Math.max(1e-12, aa * bb)));
+        }
+        corr.sort(null);
+        double p95 = corr.get((int) (0.95 * corr.size())), most = corr.get(corr.size() - 1);
+        check(p95 < 0.4, "no clones: units should not move in step, 95th percentile motion correlation " + p95 + " (max " + most + ")");
+        return String.format("closest %.2f, 5th percentile %.2f, median %.2f deg RMS; motion correlation p95 %.3f, max %.3f",
+            least, p5, dist.get(dist.size() / 2), p95, most);
+    }
+
+    /** Every channel of a trace with its least-squares line removed, laid end to end: the motion alone, mean zero per channel. */
+    static double[] detrended(double[][] trace) {
+        int n = trace.length, channels = trace[0].length;
+        double[] motion = new double[n * channels];
+        double tMean = (n - 1) / 2.0, tVar = 0;
+        for (int f = 0; f < n; f++) tVar += (f - tMean) * (f - tMean);
+        for (int c = 0; c < channels; c++) {
+            double mean = 0, cov = 0;
+            for (int f = 0; f < n; f++) mean += trace[f][c] / n;
+            for (int f = 0; f < n; f++) cov += (f - tMean) * (trace[f][c] - mean);
+            double slope = cov / tVar;
+            for (int f = 0; f < n; f++) motion[c * n + f] = trace[f][c] - mean - slope * (f - tMean);
+        }
+        return motion;
     }
 
     /**
@@ -533,7 +567,42 @@ public final class MotionRulingsCheck {
             if (c > best) { best = c; bestLag = lag; }
         }
         check(best > 0.8, "the tabard should follow the forward leg: correlation " + best + " at lag " + bestLag);
-        return String.format("correlation %.3f at a %d-frame lag", best, bestLag);
+        double[] walk = tabardRun(fam, seeds[5], 0.5), run = tabardRun(fam, seeds[5], 1.5);
+        check(walk[3] >= 0.4, "walking, the tabard should swing with the forward leg about as much as the old rigid follow (0.46): swing share " + walk[3]);
+        check(run[1] <= run[2] * 0.5, "at a sprint the tabard's per-frame step should change smoothly, with no cusp where the legs cross: worst change "
+            + run[1] + " against the thigh's own " + run[2]);
+        return String.format("correlation %.3f at a %d-frame lag, walking swing share %.2f; at speed 1.5 worst step %.2f deg/frame, step change %.2f (thigh %.2f), swing share %.2f",
+            best, bestLag, walk[3], run[0], run[1], run[2], run[3]);
+    }
+
+    /**
+     * A steady gait at this speed: {the tabard's worst per-frame step, the worst change between consecutive steps, the
+     * thigh's own worst step change, the tabard's swing range over the forward leg's}.
+     */
+    static double[] tabardRun(MotionEngine.Family fam, MotionMath.Seed seed, double speed) {
+        Drive d = new Drive(seed);
+        d.target = d.limbSpeed = speed;
+        var st = new MotionEngine.State();
+        Pose out = new Pose();
+        double prevTab = Double.NaN, prevStep = Double.NaN, prevLeg = Double.NaN, prevLegStep = Double.NaN;
+        double step = 0, change = 0, legChange = 0, tabLo = 1e9, tabHi = -1e9, legLo = 1e9, legHi = -1e9;
+        for (int f = 0; f < 60 * 8; f++) {
+            MotionEngine.pose(d.in(), st, fam, out);
+            double tab = out.get("tabard", 0), leg = out.get("right_leg", 0), fwd = Math.min(0, Math.min(leg, out.get("left_leg", 0)));
+            if (f >= 180) {
+                double s = tab - prevTab, ls = leg - prevLeg;
+                step = Math.max(step, Math.abs(s));
+                if (!Double.isNaN(prevStep)) change = Math.max(change, Math.abs(s - prevStep));
+                if (!Double.isNaN(prevLegStep)) legChange = Math.max(legChange, Math.abs(ls - prevLegStep));
+                prevStep = s;
+                prevLegStep = ls;
+                tabLo = Math.min(tabLo, tab); tabHi = Math.max(tabHi, tab); legLo = Math.min(legLo, fwd); legHi = Math.max(legHi, fwd);
+            }
+            prevTab = tab;
+            prevLeg = leg;
+            d.step(1 / 60.0);
+        }
+        return new double[]{step, change, legChange, (tabHi - tabLo) / Math.max(1e-9, legHi - legLo)};
     }
 
     static double corr(double[] a, double[] b) {
@@ -544,7 +613,7 @@ public final class MotionRulingsCheck {
         return sab / Math.sqrt(saa * sbb + 1e-30);
     }
 
-    /** Loose straps spring-lag the hips and torso: they swing while walking, trail the body, and settle when it stops. */
+    /** Loose straps spring-lag the hips and torso: they swing at least 8 degrees while walking, trail the body, and settle when it stops. */
     static String straps(MotionEngine.Family fam, MotionMath.Seed[] seeds) {
         StringBuilder report = new StringBuilder();
         for (String strap : new String[]{"right_strap", "left_strap"}) {
@@ -561,7 +630,7 @@ public final class MotionRulingsCheck {
                 if (f > 60 * 7) still = Math.max(still, Math.abs(out.get(strap, 2)) + Math.abs(out.get(strap, 0)));
                 d.step(1 / 60.0);
             }
-            check(hi - lo > 3, strap + " should swing while walking: range " + (hi - lo));
+            check(hi - lo >= 8, strap + " should swing at least 8 degrees while walking (design section 6.1: alive): range " + (hi - lo));
             check(still < 3, strap + " should settle once the unit stands: " + still);
             report.append(String.format("%s swing %.1f, standing %.2f; ", strap, hi - lo, still));
         }

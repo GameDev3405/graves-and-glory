@@ -338,12 +338,15 @@ final class MotionBody {
     // ---- secondary ----
 
     /** The secondary springs' channels in State.lag. */
-    static final int CAPE_X = 0, CAPE_Y = 1, CREST_X = 2, CREST_Y = 3, RSTRAP_Z = 4, RSTRAP_X = 5, LSTRAP_Z = 6, LSTRAP_X = 7, LAGS = 8;
-    private static final double[] LAG_K = {70, 70, 160, 160, 80, 80, 100, 100}, LAG_D = {8, 8, 9, 9, 9, 9, 9, 9};
+    static final int CAPE_X = 0, CAPE_Y = 1, CREST_X = 2, CREST_Y = 3, RSTRAP_Z = 4, RSTRAP_X = 5, LSTRAP_Z = 6, LSTRAP_X = 7, TABARD = 8, LAGS = 9;
+    private static final double[] LAG_K = {70, 70, 160, 160, 80, 80, 100, 100, 600}, LAG_D = {8, 8, 9, 9, 7, 7, 7, 7, 35};
+    /** How far loose straps swing per degree of hip lag, how much of the forward leg the tabard follows, and the soft min's rounding (degrees). */
+    static final double STRAP_GAIN = 1.2, TABARD_FOLLOW = 0.7, SOFT_MIN = 12;
 
     /**
      * Secondary motion: cape, tabard, crest and strap bones lag their parents on underdamped springs and settle. The cape
-     * streams back with speed and flutters on a run, and swings out on a body turn. The tabard follows the forward leg. The
+     * streams back with speed and flutters on a run, and swings out on a body turn. The tabard spring-lags the forward leg,
+     * taken through a soft min, so it does not jerk where the legs cross or when a clip swings them. The
      * crest trails the head. Loose straps swing with the hips. Each spring chases a target moving linearly across the frame,
      * and the flutter integrates its rate with the trapezoid rule. Once a corpse's death clip has played, the lag terms fade
      * out with the settle weight, so a corpse lies still. Bones a model lacks are ignored by the renderer.
@@ -356,6 +359,8 @@ final class MotionBody {
         t[CAPE_X] = bodyX; t[CAPE_Y] = bodyY; t[CREST_X] = headX; t[CREST_Y] = headY;
         t[RSTRAP_Z] = t[LSTRAP_Z] = hipZ;
         t[RSTRAP_X] = t[LSTRAP_X] = hipX;
+        double legs = softMin(softMin(out.get("right_leg", RX), out.get("left_leg", RX)), 0);
+        t[TABARD] = legs;
         double rate = 7 + 5 * f.run;
         if (f.first) {
             System.arraycopy(t, 0, lag, 0, LAGS);
@@ -378,14 +383,23 @@ final class MotionBody {
         double lagX = (lag[CAPE_X] - bodyX) * settle, lagY = (lag[CAPE_Y] - bodyY) * settle;
         out.add("cape", RX, MotionEngine.clamp(a * (14 + 22 * f.run) + 2.5 * a * Math.sin(st.flutter) + 0.9 * lagX, -15, 75));
         out.add("cape", RZ, MotionEngine.clamp(0.6 * lagY - 0.03 * st.yawRate * settle, -20, 20));
-        double legs = Math.min(0, Math.min(out.get("right_leg", RX), out.get("left_leg", RX)));
-        out.add("tabard", RX, MotionEngine.clamp(a * (6 + 10 * f.run) + 0.6 * lagX + 0.4 * legs, -60, 60));
+        double follow = legs + (lag[TABARD] - legs) * settle;
+        out.add("tabard", RX, MotionEngine.clamp(a * (6 + 10 * f.run) + 0.6 * lagX + TABARD_FOLLOW * follow, -60, 60));
         out.add("crest", RX, MotionEngine.clamp(1.1 * (lag[CREST_X] - headX) * settle + 6 * a, -35, 35));
         out.add("crest", RZ, MotionEngine.clamp(0.5 * (lag[CREST_Y] - headY) * settle, -25, 25));
-        out.add("right_strap", RZ, MotionEngine.clamp(0.8 * (lag[RSTRAP_Z] - hipZ), -35, 35) * settle);
-        out.add("right_strap", RX, MotionEngine.clamp(0.8 * (lag[RSTRAP_X] - hipX), -35, 35) * settle);
-        out.add("left_strap", RZ, MotionEngine.clamp(0.8 * (lag[LSTRAP_Z] - hipZ), -35, 35) * settle);
-        out.add("left_strap", RX, MotionEngine.clamp(0.8 * (lag[LSTRAP_X] - hipX), -35, 35) * settle);
+        out.add("right_strap", RZ, MotionEngine.clamp(STRAP_GAIN * (lag[RSTRAP_Z] - hipZ), -35, 35) * settle);
+        out.add("right_strap", RX, MotionEngine.clamp(STRAP_GAIN * (lag[RSTRAP_X] - hipX), -35, 35) * settle);
+        out.add("left_strap", RZ, MotionEngine.clamp(STRAP_GAIN * (lag[LSTRAP_Z] - hipZ), -35, 35) * settle);
+        out.add("left_strap", RX, MotionEngine.clamp(STRAP_GAIN * (lag[LSTRAP_X] - hipX), -35, 35) * settle);
+    }
+
+    /**
+     * The smaller of a and b, rounded over SOFT_MIN degrees where they cross: its slope changes smoothly from one to the
+     * other, so a bone following the forward leg has no velocity cusp where the legs pass. Never above min(a, b).
+     */
+    static double softMin(double a, double b) {
+        double h = a - b;
+        return 0.5 * (a + b - Math.sqrt(h * h + SOFT_MIN * SOFT_MIN));
     }
 
     static double lerp(double a, double b, double t) { return a + (b - a) * t; }

@@ -50,6 +50,9 @@ public final class MotionLayersCheck {
         }
     }
 
+    /** The schedule's worst pop as a share of the 12 degree / 1.5 px bar: kept clear of 1 so a retune cannot creep up to it. */
+    static final double POP_MARGIN = 0.85;
+
     /**
      * The shared schedule at this speed, three seeds: no channel moves more than 12 degrees or 1.5 px in a 60 fps frame
      * (scaled up for the 0.1 s hitch) beyond what the playing clips' own keys move at their effective shares and what the
@@ -75,7 +78,7 @@ public final class MotionLayersCheck {
             }
             if (pops.worst > worst) { worst = pops.worst; where = pops.where; }
         }
-        check(worst <= 1, "no pops at speed " + speed + ": worst ratio " + worst + " at " + where);
+        check(worst <= POP_MARGIN, "no pops at speed " + speed + ": worst ratio " + worst + " at " + where + " (bar " + POP_MARGIN + ")");
         return String.format("worst ratio %.3f at %s", worst, where);
     }
 
@@ -234,17 +237,22 @@ public final class MotionLayersCheck {
             MotionEngine.pose(d.in(), st, fam, out);
             List<MotionEngine.Playing> playing = MotionEngine.playing(st, d.time);
             if (playing.size() == 2) {
-                double top = playing.get(1).gain() / seeds[5].amp(), bottom = playing.get(0).gain() / seeds[5].amp();
-                double own = MotionMath.ease(st.tracks.get(0).x);
-                check(top >= 0 && top <= 1 && Math.abs(bottom - own * (1 - top)) < 1e-9, "a covered track's share should be its weight times what the top leaves: " + bottom + " under " + top + " (own weight " + own + ")");
-                worst = Math.max(worst, Math.abs(bottom - own * (1 - top)));
+                // Expected shares from each track's fade progress alone, with the cosine ease written out here.
+                double wBottom = cosineEase(st.tracks.get(0).x), wTop = cosineEase(st.tracks.get(1).x);
+                double wantTop = wTop * seeds[5].amp(), wantBottom = wBottom * (1 - wTop) * seeds[5].amp();
+                double top = playing.get(1).gain(), bottom = playing.get(0).gain();
+                check(Math.abs(top - wantTop) < 1e-9 && Math.abs(bottom - wantBottom) < 1e-9, "effective shares should be w_top and w_bottom (1 - w_top): got "
+                    + top + " / " + bottom + ", want " + wantTop + " / " + wantBottom);
+                worst = Math.max(worst, Math.max(Math.abs(top - wantTop), Math.abs(bottom - wantBottom)));
                 checked++;
             }
             d.step(1 / 60.0);
         }
         check(checked > 3, "the second attack should fade in over several frames: " + checked);
-        return checked + " overlapped frames";
+        return String.format("%d overlapped frames, worst error %.1e", checked, worst);
     }
+
+    static double cosineEase(double x) { return (1 - Math.cos(Math.PI * Math.max(0, Math.min(1, x)))) / 2; }
 
     /** An attack every other frame for a second keeps the tracks bounded without dropping a weighted one. */
     static String trackOverflow(MotionEngine.Family fam, MotionMath.Seed[] seeds) {

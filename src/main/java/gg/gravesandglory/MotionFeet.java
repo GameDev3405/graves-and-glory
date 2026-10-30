@@ -27,13 +27,14 @@ final class MotionFeet {
      * knee buckle from a legs hit bends each knee by its own amount: the hips roll toward the deeper buckle so both feet
      * still reach, then the root dips just enough for both legs to keep a soft knee. Each leg is solved analytically (two
      * bones, knee hinge on x, thigh yaw kept) so the foot lands on its target. Moving, turning in place or a clip that keys
-     * the legs hands the feet back, eased by the same weights; the buckle then bends the knees directly.
+     * the legs hands the feet back, eased by the same weights; the buckle then bends the knees directly. Death hands them
+     * back too, and a revive eases them in again over PLANT_BLEND.
      *
      * <p>Records in State how far the corrected channels sit from the uncorrected ones (plantRot, plantPx), so a fade that
      * changes how much the clips own the legs can count the hand-off in its pop budget.
      */
     static void plant(MotionEngine.Frame f, MotionEngine.State st, Pose out) {
-        double base = (1 - f.m) * (1 - f.tw), pw = base * (1 - Math.min(1, f.bodyAction));
+        double base = (1 - f.m) * (1 - f.tw) * f.plant, pw = base * (1 - Math.min(1, f.bodyAction));
         double[] k = st.knee;
         k[0] = Math.max(0, st.react[MotionBody.KNEE_R]) * f.lw;
         k[1] = Math.max(0, st.react[MotionBody.KNEE_L]) * f.lw;

@@ -24,7 +24,7 @@ public final class MotionEngine {
     static final int RX = 0, RY = 1, RZ = 2, TX = 3, TY = 4, TZ = 5;
     /** Seconds each state weight takes to ramp fully on or off. */
     static final double STANCE_BLEND = 0.45, MOVE_BLEND = 0.3, RUN_BLEND = 0.5, COMBAT_BLEND = 0.6, GAIT_BLEND = 0.4,
-            TURN_BLEND = 0.3, LIFE_BLEND = 0.5, LOOK_BLEND = 0.4, CALM_BLEND = 0.35, SETTLE_BLEND = 0.5;
+            TURN_BLEND = 0.3, LIFE_BLEND = 0.5, LOOK_BLEND = 0.4, CALM_BLEND = 0.35, SETTLE_BLEND = 0.5, PLANT_BLEND = 0.6;
     /**
      * An engine-made fade may move a channel at most this far in one 60 fps frame (degrees, pixels). This leaves room under
      * the 12 degree / 1.5 px pop limit for the procedural layers moving in the same frame.
@@ -40,7 +40,7 @@ public final class MotionEngine {
     static final double LIMB_WRAP = 100000 * MotionMath.TAU / 0.6662;
     /** Ramp slots in {@link State#w}. */
     static final int W_MOVE = 0, W_RUN = 1, W_COMBAT = 2, W_SHUFFLE = 3, W_BACK = 4, W_TURN = 5, W_LIFE = 6, W_LOOK = 7,
-            W_CALM = 8, W_SETTLE = 9, WEIGHTS = 10;
+            W_CALM = 8, W_SETTLE = 9, W_PLANT = 10, WEIGHTS = 11;
 
     /**
      * One weapon family's clips (design section 6.2), resolved from ClipLibrary.
@@ -117,8 +117,12 @@ public final class MotionEngine {
         double now, dt, speed, limbAngle, headYaw, headPitch, yawRate, aimPitch;
         boolean first, dead, enemy;
         MotionMath.Seed seed;
-        /** Eased weights: moving, running, combat, shield shuffle, backpedal, turning in place, life, look, settle; calm is raw. */
-        double m, run, cw, sh, bp, tw, lw, lookW, settle, calm;
+        /**
+         * Eased weights: moving, running, combat, shield shuffle, backpedal, turning in place, life, look, settle and planted
+         * feet; calm is raw. The planted-feet weight drops on death and eases back in on revive, so the feet are not
+         * re-planted at full strength while the body rises.
+         */
+        double m, run, cw, sh, bp, tw, lw, lookW, settle, plant, calm;
         /** How much of the pose leg-keying actions own, and how much the aim stance does. */
         double bodyAction, aim;
     }
@@ -158,10 +162,11 @@ public final class MotionEngine {
         ramp(st, W_TURN, !moving && !f.dead ? MotionMath.clamp01((Math.abs(f.yawRate) - 30) / 60) : 0, TURN_BLEND, f);
         ramp(st, W_LIFE, f.dead ? 0 : 1, LIFE_BLEND, f);
         ramp(st, W_LOOK, f.dead ? 0 : 1, LOOK_BLEND, f);
+        ramp(st, W_PLANT, f.dead ? 0 : 1, PLANT_BLEND, f);
         double[] w = st.w;
         f.m = MotionMath.ease(w[W_MOVE]); f.run = MotionMath.ease(w[W_RUN]); f.cw = MotionMath.ease(w[W_COMBAT]);
         f.sh = MotionMath.ease(w[W_SHUFFLE]); f.bp = MotionMath.ease(w[W_BACK]); f.tw = MotionMath.ease(w[W_TURN]);
-        f.lw = MotionMath.ease(w[W_LIFE]); f.lookW = MotionMath.ease(w[W_LOOK]);
+        f.lw = MotionMath.ease(w[W_LIFE]); f.lookW = MotionMath.ease(w[W_LOOK]); f.plant = MotionMath.ease(w[W_PLANT]);
 
         events(in, st, fam, f);
         boolean acting = !st.tracks.isEmpty() || !st.pulses.isEmpty();
