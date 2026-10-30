@@ -74,6 +74,20 @@ for f in sides:
 if len({f['glyph'] for f in sides})!=len(sides) or len({f['color'] for f in sides})!=len(sides): errors.append('factions: every side needs its own colour and its own glyph')
 troops={r['id']:r for r in data['troops']}
 if data['rules'][0]['playersPerTeam']*2!=data['rules'][0]['maxPlayers']: errors.append('capacity mismatch: maxPlayers must be playersPerTeam for each of the two teams')
+# Battle modes (Phase 4 Task 2): the mode's own numbers live on a modes row, so the frame reads a row instead of Domination's
+# hard-coded win score, score interval and round length, and a new mode adds a row rather than another branch in Battle.
+modes=data.get('modes',[])
+if not modes: errors.append('modes: at least one row; domination is the mode every map hosts and the round falls back to')
+if 'domination' not in {m['id'] for m in modes}: errors.append('modes: no domination row, the mode a lobby opens on')
+for m in modes:
+    where=f'modes/{m["id"]}'
+    for part in m['maps'].split(','):
+        if not part.strip().isdigit() or int(part) not in range(len(data['maps'])): errors.append(f'{where}: maps entry {part!r} is not a map index 0..{len(data["maps"])-1}')
+    if m['timeout'] not in ('score','team0','team1'): errors.append(f'{where}: timeout {m["timeout"]!r} is not score, team0 or team1')
+    if m['ruleLine'].count('{n}')>1: errors.append(f'{where}: ruleLine holds more than one {{n}}')
+    if m['roundSeconds']<0 or m['winTarget']<0 or m['scoreInterval']<0: errors.append(f'{where}: roundSeconds, winTarget and scoreInterval cannot be negative')
+    if m['scoreInterval']>0 and m['winTarget']<=0: errors.append(f'{where}: a mode that scores needs a winTarget above 0')
+    if m['scoreInterval']==0 and m['timeout']=='score': errors.append(f'{where}: timeout score needs a scoreInterval above 0')
 groups={g['id'] for g in data.get('groups',[])}
 orders={o['id'] for o in data['orders']}
 for t in data['troops']:
@@ -151,6 +165,7 @@ for r in data['ui']:
         for id in r['bottom'].split(','):
             if id not in formationIds: errors.append('UI formation reference missing: '+id)
 # Phase 2 Houses (spec 6.1): a troop's House, rarity, ability and evolve line (the levelNames key since the in-match progression design) are its own columns.
+# (modes, above, left the rules row its arena, capacity and reinforcement columns and took the round's own numbers with it.)
 squad=data['rules'][0]['squadSize']
 houses={h['id']:h for h in data['houses']}
 rarities={r['id']:r for r in data['rarities']}

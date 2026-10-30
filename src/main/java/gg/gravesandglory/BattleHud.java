@@ -164,7 +164,7 @@ public final class BattleHud {
     static void ledger(DrawContext g,TextRenderer font,Map<String,int[]> at,Map<String,int[]> r,Map<String,String> tx){
         int[] card=at.get("score"),dawnBoss=at.get("dawn-boss"),duskBoss=at.get("dusk-boss");int cx=card[0]+card[2]/2,y=card[1]+8;
         String dawn=String.valueOf(GravesAndGloryClient.dawn),clock=UiMath.clock(CommandMode.seconds),dusk=String.valueOf(GravesAndGloryClient.dusk);
-        int win=GravesAndGlory.R.winScore(),wa=font.getWidth(dawn),wc=font.getWidth(clock),wd=font.getWidth(dusk);
+        int win=Modes.row(Modes.DOMINATION).winTarget(),wa=font.getWidth(dawn),wc=font.getWidth(clock),wd=font.getWidth(dusk);
         UiTex.draw(g,"hud/score-card",card[0],card[1]);
         // The row as the mock lays it out: each 8 px text takes its width plus one, with 6 px gaps round the two 56 px tracks.
         int x=(int)Math.round(cx-(wa+1+wc+1+wd+1+2*56+4*6)/2.0);

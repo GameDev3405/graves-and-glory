@@ -1212,8 +1212,6 @@
       "maxPlayers": 8,
       "playersPerTeam": 4,
       "squadSize": 20,
-      "winScore": 300,
-      "scoreInterval": 80,
       "respawnSeconds": 12,
       "reinforceSeconds": 25,
       "friendlyFire": false,
@@ -1226,8 +1224,21 @@
       "worldHalfX": 366,
       "worldHalfZ": 266,
       "automaticReinforcements": false,
-      "commandCooldownTicks": 4,
-      "roundSeconds": 900
+      "commandCooldownTicks": 4
+    }
+  ],
+  "modes": [
+    {
+      "id": "domination",
+      "name": "Domination",
+      "maps": "0,1,2,3,4",
+      "roundSeconds": 900,
+      "winTarget": 300,
+      "scoreInterval": 80,
+      "passiveScale": 1.0,
+      "pointScale": 1.0,
+      "timeout": "score",
+      "ruleLine": "Domination to {n}"
     }
   ],
   "hooks": [

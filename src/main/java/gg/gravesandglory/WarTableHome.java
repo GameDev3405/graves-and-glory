@@ -428,7 +428,7 @@ final class WarTableHome {
         } else textsDrawn.put("field-card", "none");
         int n = switch (focused) { case 0 -> 1; case 2 -> next().size(); default -> CampaignClient.padSize; };
         String tier = CampaignClient.tierName(focused == 2 ? next().difficulty() : CampaignClient.difficulty);
-        String rule = "Domination to " + GravesAndGlory.R.winScore(), teams = n + " v " + n + ", " + tier + (n == 1 ? " bot" : " bots");
+        String rule = Modes.ruleLine(Modes.DOMINATION), teams = n + " v " + n + ", " + tier + (n == 1 ? " bot" : " bots");
         centred(g, DarkUi.body(rule), x + 84, y + 120, DarkUi.SEPIA);
         centred(g, DarkUi.body(teams), x + 84, y + 132, DarkUi.SEPIA);
         rectsDrawn.put("field", new int[]{x, y, 168, 188});

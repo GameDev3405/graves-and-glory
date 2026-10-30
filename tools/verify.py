@@ -64,7 +64,7 @@ def run(args):
         gson=list((pathlib.Path.home()/'.gradle/caches/modules-2/files-2.1/com.google.code.gson/gson/2.10.1').glob('*/*.jar'))
         if not gson: raise RuntimeError('Gson 2.10.1 missing; run documented online setup once')
         classes=out/'classes'; classes.mkdir()
-        names='Spec BattleMath MatchStats Progression Profile ProfileMigration RosterMath CounterMath LevelMath CreditLog AdmissionPolicy SocialHub CampTerrain CompatibilityPolicy HouseRoute StepHop Wedge LayoutMarker LegacyDataMigration TroopFaces UiMath HintText FeedLines'.split()
+        names='Spec BattleMath ModeMath MatchStats Progression Profile ProfileMigration RosterMath CounterMath LevelMath CreditLog AdmissionPolicy SocialHub CampTerrain CompatibilityPolicy HouseRoute StepHop Wedge LayoutMarker LegacyDataMigration TroopFaces UiMath HintText FeedLines'.split()
         checks=sorted((ROOT/'test-tools/standalone').glob('*Check.java'))
         sources=[ROOT/'src/main/java/gg/gravesandglory'/(n+'.java') for n in names]
         game_guard()
