@@ -211,6 +211,10 @@ def glow(bone, box):
     return brooch_lit if bone.name == "brooch" else None
 
 # ---- assembling ----
+# The robe hangs rigid from the thigh to the shin's hem, so the knee may bend only a little before the shin would leave it:
+# the shins carry a joint limit of 0..10 degrees ("limit" in the troop file, TroopModel.jointLimit), and the walk glides.
+SHIN_LIMIT = (0, 10)
+
 def bones():
     B = []
     B.append(Bone("root", ""))
@@ -219,16 +223,12 @@ def bones():
     for k in range(4):
         B.append(Bone(f"face_v{k}", "head", variants=[k], boxes=[
             Box((-4, -8, -4), (8, 8, 8), sage_face(k)), Box((-3, -1, -4.4), (6, 4, 1), beard)]))
-    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), sleeve)]))
-    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), sleeve)]))
-    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    B += arms(sleeve)
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg)]))
-    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), leg)]))
+    B += legs(leg, limit=SHIN_LIMIT)
     # the bell sleeves
-    B.append(Bone("right_bell", "right_arm", boxes=[Box((-3.5, 4, -2.5), (5, 5, 5), bell)]))
-    B.append(Bone("left_bell", "left_arm", boxes=[Box((-1.5, 4, -2.5), (5, 5, 5), bell)]))
+    B.append(Bone("right_bell", "right_forearm", boxes=[Box((-2.5, 0, -2.5), (5, 5, 5), bell)]))
+    B.append(Bone("left_bell", "left_forearm", boxes=[Box((-2.5, 0, -2.5), (5, 5, 5), bell)]))
     # the cowl, deep, a little peak over the brow; the mantle on the shoulders
     B.append(Bone("cowl", "head", tag="helm", boxes=[
         Box((-5, -9, -5), (10, 10, 10), cowl)]))

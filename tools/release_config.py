@@ -39,7 +39,7 @@ def validate_player_jar(path, expected):
                      'Phase3Checks', 'StructureStudio', 'Walkability', 'gravesandglory_studio', 'p3_marker',
                      'VisualChecks', 'RevisionChecks', 'LocalProbe', 'LegacyDataMigrationCheck',
                      'CompatibilityChecks', 'CompatibilityPolicyCheck', 'FrontMenuChecks', 'AdmissionPolicyCheck', 'CampRulesCheck', 'CampRedesignChecks', 'CampNetworkChecks', 'MapTour', 'Phase1Checks', 'BattleMathCheck', 'BotSimulation', 'Phase2Checks', 'HousesCheck', 'ProfileMigrationCheck', 'UiMathCheck', 'UiKitSheet', 'LevelMathCheck', 'LevelChecks', 'AbilityLevelChecks', 'RankChecks', 'RankNetworkChecks', 'SelfTestHost', 'CommandPlaytest', 'TitleDemo',
-                     'CampTerrainCheck', 'HouseRouteCheck', 'StepHopCheck', 'WedgeCheck', 'LayoutMarkerCheck', 'TroopFacesCheck', 'FacesChecks', 'MotionMathCheck', 'MotionEngineCheck', 'MotionRulingsCheck', 'MotionLayersCheck',
+                     'CampTerrainCheck', 'HouseRouteCheck', 'StepHopCheck', 'WedgeCheck', 'LayoutMarkerCheck', 'TroopFacesCheck', 'FacesChecks', 'MotionChecks', 'MotionMathCheck', 'MotionEngineCheck', 'MotionRulingsCheck', 'MotionLayersCheck',
                      'DuelSimulation', 'SheetOverride', 'TypeLedger', 'StoryStills',
                      'gg/gravesandglory/testing/', 'META-INF/services/gg.gravesandglory.Diagnostics$Probe')
         for name in jar.namelist():

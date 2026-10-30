@@ -262,15 +262,32 @@ def _vec3(v, what):
         raise BBError('%s must be three numbers, not %r' % (what, v))
 
 
+# A skin cube's Blockbench faces by the FACEUV names of build_skins (the display group's 180 turn swaps east and west).
+TROOP_FACE = (('up', 'top'), ('down', 'bottom'), ('east', 'right'), ('north', 'front'), ('west', 'left'), ('south', 'back'))
+
+
+def _face_layout(uv, size):
+    """The box UV layout's face rectangles (x0, y0, x1, y1) by FACEUV name (build_skins.face_layout without faceuv)."""
+    (u, v), (w, h, d) = uv, size
+    at = {'top': (u + d, v, w, d), 'bottom': (u + d + w, v, w, d), 'right': (u, v + d, d, h), 'front': (u + d, v + d, w, h),
+          'left': (u + d + w, v + d, d, h), 'back': (u + 2 * d + w, v + d, w, h)}
+    return {k: (x, y, x + fw, y + fh) for k, (x, y, fw, fh) in at.items()}
+
+
 def _troop_cube(e, base, what):
-    """One skin cube of a bone group as bake_bones keeps a box: origin from the group origin, size, uv, no dilation."""
+    """One skin cube of a bone group as bake_bones keeps a box: origin from the group origin, size, uv, no dilation. A cube
+    with per-face UVs (box_uv off) is a jointed limb's box: its uv_offset is the box's uv, and a face whose rectangle is not
+    the box UV layout's becomes that face's "faceuv" entry; every face keeps its layout size."""
     if e.get('type', 'cube') != 'cube':
         raise BBError('%s: element %s is a %s; a troop is cubes only' % (what, e.get('name', e.get('uuid')), e.get('type')))
     rot = e.get('rotation') or [0, 0, 0]
     if any(abs(float(c)) > 1e-9 for c in rot):
         raise BBError('%s: cube %s is turned %s; turn its bone group, not the cube' % (what, e.get('name', e.get('uuid')), rot))
-    if not e.get('box_uv', False):
-        raise BBError('%s: cube %s is not box UV; a skin cube is box UV on the troop sheet' % (what, e.get('name', e.get('uuid'))))
+    faces = e.get('faces') or {}
+    per_face = not e.get('box_uv', False)
+    if per_face and not all(isinstance((faces.get(f) or {}).get('uv'), (list, tuple)) for f, _ in TROOP_FACE):
+        raise BBError('%s: cube %s is not box UV; a skin cube is box UV on the troop sheet, or a jointed limb\'s box with '
+                      'a uv on each of its six faces' % (what, e.get('name', e.get('uuid'))))
     uv = e.get('uv_offset')
     if not isinstance(uv, (list, tuple)) or len(uv) != 2:
         raise BBError('%s: cube %s needs a uv_offset (its box on the troop sheet)' % (what, e.get('name', e.get('uuid'))))
@@ -281,8 +298,21 @@ def _troop_cube(e, base, what):
     if e.get('mirror', False) or e.get('mirror_uv', False):
         raise BBError('%s: cube %s is mirrored; troop .bbmodel cubes are unmirrored in this version (the rig has one '
                       'mirrored arms_folded cube, which a folded troop cannot round-trip yet)' % (what, e.get('name', e.get('uuid'))))
-    return {'origin': [frm[i] - base[i] for i in range(3)], 'size': [int(round(s)) for s in size],
-            'uv': [int(uv[0]), int(uv[1])], 'mirror': False, 'dilation': [0.0, 0.0, 0.0]}
+    box = {'origin': [frm[i] - base[i] for i in range(3)], 'size': [int(round(s)) for s in size],
+           'uv': [int(uv[0]), int(uv[1])], 'mirror': False, 'dilation': [0.0, 0.0, 0.0]}
+    if per_face:
+        layout, moved = _face_layout(box['uv'], box['size']), {}
+        for bb, name in TROOP_FACE:
+            r = [float(c) for c in faces[bb]['uv']]
+            want = layout[name]
+            if any(abs(c - round(c)) > 1e-6 for c in r) or (r[2] - r[0], r[3] - r[1]) != (want[2] - want[0], want[3] - want[1]):
+                raise BBError('%s: cube %s face %s reads %s; a face keeps its box UV size, %dx%d, at whole texels'
+                              % (what, e.get('name', e.get('uuid')), bb, r, want[2] - want[0], want[3] - want[1]))
+            if tuple(int(round(c)) for c in r) != want:
+                moved[name] = [int(round(r[0])), int(round(r[1]))]
+        if moved:
+            box['faceuv'] = moved
+    return box
 
 
 def troop_bones(model, rig, parts=()):

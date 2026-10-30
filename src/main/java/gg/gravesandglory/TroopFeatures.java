@@ -76,7 +76,10 @@ final class TroopFeatures {
         }
     }
 
-    /** The troop's own weapon model at its hand bone, at the weapon tier it wears (<weapon>_t<n>; a tier without a model draws the highest tier below it), and the weapon's glow. */
+    /**
+     * The troop's own weapon model at its hand bone, at the weapon tier it wears (<weapon>_t<n>; a tier without a model draws the highest tier below it), and the weapon's glow.
+     * The weapon follows handPath, the whole chain from the root part to the hand: on the jointed biped (Task 9) that is the arm, the forearm and the hand, so it bends with the elbow.
+     */
     static final class Weapon<T extends MobEntity> extends FeatureRenderer<T,TroopModel<T>> {
         final TroopRenderer<T> r;Weapon(TroopRenderer<T> r){super(r);this.r=r;}
         @Override public void render(MatrixStack m,VertexConsumerProvider v,int light,T e,float limbAngle,float limbDistance,float tickDelta,float age,float headYaw,float headPitch){

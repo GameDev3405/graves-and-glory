@@ -30,6 +30,7 @@ allprojects {
    systemProperty 'gravesandglory.turnWeapon', System.getenv('GRAVES_PHASE2_WEAPON') ?: '1'
    systemProperty 'gravesandglory.faceTroops', System.getenv('GRAVES_PHASE2_FACES') ?: ''
    systemProperty 'gravesandglory.faceForce', System.getenv('GRAVES_PHASE2_FACE') ?: '-1'
+   systemProperty 'gravesandglory.motionBaseline', System.getenv('GRAVES_MOTION_BASELINE') ?: ''
   }
  }
 }

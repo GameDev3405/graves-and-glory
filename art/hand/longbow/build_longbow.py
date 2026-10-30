@@ -166,8 +166,8 @@ def flap(T, M, tier, inner_x, white):
 # ---- the Mastery II trim ----
 def veteran(bone, box):
     n = bone.name
-    if n.endswith("_arm"): return A.vet_band((6,))
-    if n.endswith("_leg"): return A.vet_band((6,))
+    if n.endswith(("_arm", "_forearm")): return A.vet_band((6,))
+    if n.endswith(("_leg", "_shin")): return A.vet_band((6,))
     return None
 
 # ---- assembling ----
@@ -178,13 +178,9 @@ def bones():
     B.append(Bone("head", "body", (0, -12, 0)))
     for k in range(4):
         B.append(Bone(f"face_v{k}", "head", boxes=[Box((-4, -8, -4), (8, 8, 8), face_painter(k))], variants=[k]))
-    B.append(Bone("right_arm", "body", (-5, -10, 0), [Box((-3, -2, -2), (4, 12, 4), per_tier(arm))]))
-    B.append(Bone("right_hand", "right_arm", (-1, 8, 0)))
-    B.append(Bone("left_arm", "body", (5, -10, 0), [Box((-1, -2, -2), (4, 12, 4), per_tier(arm))]))
-    B.append(Bone("left_hand", "left_arm", (1, 8, 0)))
+    B += arms(per_tier(arm))
     B.append(Bone("arms_folded", "body", (0, -9, -1), rot=(-43, 0, 0)))
-    B.append(Bone("right_leg", "root", (-1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), per_tier(leg))]))
-    B.append(Bone("left_leg", "root", (1.9, 12, 0), [Box((-2, 0, -2), (4, 12, 4), per_tier(leg))]))
+    B += legs(per_tier(leg))
     # the felt cap (I): a crown over the hair, a peak over the brow, a tail turned back
     B.append(Bone("felt_cap", "head", tag="helm", stages=[1], boxes=[
         Box((-4.5, -10, -4.5), (9, 3, 9), felt_crown), Box((-4.5, -8, -6.5), (9, 1, 2), felt_peak),
@@ -207,15 +203,15 @@ def bones():
     for side in ("right", "left"):
         inner = 3 if side == "right" else 0
         B.append(Bone(f"{side}_jack", f"{side}_leg", boxes=[
-            Box((-2, 0, -2.2), (4, 7, 0), jack_skirt), Box((-2, 0, 2.2), (4, 7, 0), jack_skirt)]))
+            Box((-2, 0, -2.3), (4, 7, 0), jack_skirt), Box((-2, 0, 2.3), (4, 7, 0), jack_skirt)]))
         for g in (1, 2, 3):
             B.append(Bone(f"{side}_skirt_t{g}", f"{side}_leg", team=True, stages=[g], boxes=[
                 Box((-2, 0, -2.45), (4, 4, 0), ("flap", g, inner, side == "left"), sheet="cloth"),
                 Box((-2, 0, 2.45), (4, 4, 0), ("flap", g, 3 - inner, side == "right"), sheet="cloth")]))
-        B.append(Bone(f"{side}_knee", f"{side}_leg", stages=[3], boxes=[
-            Box((-1.5, 6, -2.6), (3, 2, 1), per_tier(A.knee_cop, (3,)))]))
-        B.append(Bone(f"{side}_boot_cuff", f"{side}_leg", stages=[2, 3], boxes=[
-            Box((-2.5, 8, -2.5), (5, 2, 5), per_tier(A.boot_cuff, (2, 3)))]))
+        B.append(Bone(f"{side}_knee", f"{side}_shin", stages=[3], boxes=[
+            Box((-1.5, -1, -2.6), (3, 2, 1), per_tier(A.knee_cop, (3,)))]))
+        B.append(Bone(f"{side}_boot_cuff", f"{side}_shin", stages=[2, 3], boxes=[
+            Box((-2.5, 2, -2.5), (5, 2, 5), per_tier(A.boot_cuff, (2, 3)))]))
     return B
 
 def cloth_painter(spec, side):

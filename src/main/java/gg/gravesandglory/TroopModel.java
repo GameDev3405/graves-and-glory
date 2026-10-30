@@ -48,6 +48,8 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     private final Set<Integer> partTiers=new TreeSet<>();
     private final Map<String,ModelPart> parts=new LinkedHashMap<>();
     private final Map<String,Bone> info=new LinkedHashMap<>();
+    /** The bones with a joint limit ("limit" in the file, TroopModelLoader.limit): [min, max] degrees of pitch from the file pose. */
+    private final Map<String,float[]> limits=new HashMap<>();
     private final Map<String,List<ModelPart>> paths=new HashMap<>();
     private final List<List<ModelPart>> teamPaths=new ArrayList<>();
     private final List<Bone> teamBones=new ArrayList<>();
@@ -131,7 +133,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
             Set<Integer> variants=new TreeSet<>();if(b.has("variants"))for(var s:b.getAsJsonArray("variants"))variants.add(s.getAsInt());
             Bone bone=new Bone(name,parent,str(b,"part"),b.has("team")&&b.get("team").getAsBoolean(),str(b,"tag"),Collections.unmodifiableSet(stages),Collections.unmodifiableSet(arms),Collections.unmodifiableSet(variants));
             ModelPart p=parent.isEmpty()?top.getChild(name):parts.get(parent).getChild(name);
-            parts.put(name,p);info.put(name,bone);
+            parts.put(name,p);info.put(name,bone);float[] limit=TroopModelLoader.limit(b,name);if(limit!=null)limits.put(name,limit);
             List<ModelPart> path=new ArrayList<>(parent.isEmpty()?List.of(top):paths.get(parent));path.add(p);paths.put(name,List.copyOf(path));
             if(bone.team()){teamPaths.add(paths.get(name));teamBones.add(bone);}
             if(outerTop!=null&&bone.part().isEmpty()){ModelPart twin=parent.isEmpty()?outerTop.getChild(name):outerParts.get(parent).getChild(name);outerParts.put(name,twin);}
@@ -172,10 +174,13 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         String weaponBone=this.hands.get(hand);
         for(String side:List.of("right","left")){
             String h=this.hands.get(side);Bone hb=h==null?null:info.get(h);if(hb==null||hb.parent().isEmpty())continue;
-            double[] shoulder=at.get(hb.parent()),held=at.get(h);double item=0;
+            // a jointed arm (Task 9) swings from its shoulder, the forearm's parent: the reach of the whole arm, the elbow bent any way
+            // inside it (the hand is never farther from the shoulder than with the arm straight, as at rest)
+            String arm=hb.parent();if(arm.endsWith("_forearm")&&!info.get(arm).parent().isEmpty())arm=info.get(arm).parent();
+            double[] shoulder=at.get(arm),held=at.get(h);double item=0;
             if(h.equals(weaponBone))for(double[] p:weaponPoints)item=Math.max(item,Math.sqrt(p[0]*p[0]+p[1]*p[1]+p[2]*p[2]));
             else item=SHIELD_REACH;
-            spheres.add(sphere(shoulder,Math.max(reachOf(hb.parent(),shoulder,corners),dist(shoulder,held)+item)));
+            spheres.add(sphere(shoulder,Math.max(reachOf(arm,shoulder,corners),dist(shoulder,held)+item)));
         }
         for(double[] s:spheres){radius=Math.max(radius,Math.hypot(s[0],s[2])+s[3]);high=Math.min(high,s[1]-s[3]);low=Math.max(low,s[1]+s[3]);}
         boolean any=low>-Double.MAX_VALUE;
@@ -202,6 +207,13 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     /** A bone by its name, for AnimationHelper (the default would take "root" for the unnamed top part). */
     @Override public Optional<ModelPart> getChild(String name){return Optional.ofNullable(parts.get(name));}
     public ModelPart bone(String name){return parts.get(name);}
+    /** A bone's part by its name (the rig's elbow and knee bones, right_forearm, left_forearm, right_shin and left_shin, among them), or null. */
+    public ModelPart part(String bone){return parts.get(bone);}
+    /**
+     * A bone's joint limit, [min, max] degrees of pitch from its file pose, or null for a bone the file gives none (any bend).
+     * R7 of the animation rework: the mage's shins carry [0, 10], so its robe, which hangs rigid from the thigh, never parts from the shin.
+     */
+    public float[] jointLimit(String bone){float[] l=limits.get(bone);return l==null?null:l.clone();}
     public Set<String> bones(){return Collections.unmodifiableSet(parts.keySet());}
     /** The skin bones shown at armour and weapon tier I, at rest, in model pixels (y down, the ground at y 24). */
     public Box restBounds(){return rest;}
