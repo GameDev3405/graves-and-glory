@@ -1,6 +1,8 @@
 package gg.gravesandglory;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /** Pure Phase 1 battle maths: projectile travel, HUD loss detection, the speed modifier and the wounded share. Never shipped. */
 public final class BattleMathCheck {
@@ -300,6 +302,18 @@ public final class BattleMathCheck {
         check(BattleMath.pointIncome(0, 3, 2, 9) == 0 && BattleMath.pointIncome(4, 0, 2, 9) == 8 && BattleMath.pointIncome(9, 0, 2, 9) == 9, "nothing held pays nothing; a sheet with no point gold keeps its plain cap");
         check(BattleMath.classCost(70, 1 - 0.2) == 56 && BattleMath.classCost(22, 1) == 22 && BattleMath.classCost(45, 0.8) == 36 && BattleMath.classCost(25, 0.9) == 23, "the Warlock's 20% off: a 70-gold Sunweaver costs 56; costs round half up");
         check(BattleMath.trainingTicks(4.0, 1 - 0.2) == 64 && BattleMath.trainingTicks(4.0, 1) == 80 && BattleMath.trainingTicks(3.5, 0.8) == 56 && BattleMath.trainingTicks(9.0, 0.8) == 144, "the Marshal's drill: a knight's 80 ticks become 64");
+        // Task 5: melee damage lands on the swing's impact frame
+        check(BattleMath.strikeLands(true, false, true, 9, 2.8, .5) && !BattleMath.strikeLands(true, false, true, 3.4*3.4, 2.8, .5), "in reach plus grace lands; beyond misses");
+        check(!BattleMath.strikeLands(false, false, true, 1, 2.8, .5) && !BattleMath.strikeLands(true, true, true, 1, 2.8, .5) && !BattleMath.strikeLands(true, false, false, 1, 2.8, .5), "dead or stunned attacker, dead target: no blow");
+        for (int i = 0; i < 50; i++) check(BattleMath.pickVariant(3, 1, i) != 1, "no immediate repeat");
+        check(BattleMath.pickVariant(1, 0, 7) == 0, "a single variant always plays");
+        Set<Integer> others = new HashSet<>(); for (long r = -6; r < 6; r++) {int v = BattleMath.pickVariant(3, 1, r); check(v >= 0 && v < 3, "a picked variant is one of the family's"); others.add(v);}
+        check(others.equals(Set.of(0, 2)) && BattleMath.pickVariant(2, 0, 99) == 1 && BattleMath.pickVariant(2, 1, -5) == 0, "every other variant can play; with two they alternate");
+        Set<Integer> first = new HashSet<>(); for (long r = 0; r < 9; r++) first.add(BattleMath.pickVariant(3, -1, r));
+        check(first.equals(Set.of(0, 1, 2)) && BattleMath.pickVariant(0, -1, 4) == 0, "a troop's first swing may be any variant; an empty family plays index 0");
+        // M10: the blow lands before the attacker's next swing can start, even under a shortened cooldown
+        check(BattleMath.impactDelay(12, 25) == 12 && BattleMath.impactDelay(7, 20) == 7 && BattleMath.impactDelay(12, 12) == 11 && BattleMath.impactDelay(12, 5) == 4 && BattleMath.impactDelay(8, 1) == 0 && BattleMath.impactDelay(8, 0) == 0 && BattleMath.impactDelay(-3, 20) == 0, "impact delay: the sheet's impactTicks, clamped to land a tick before the next swing");
+        for (int cd = 1; cd <= 40; cd++) for (int imp = 0; imp <= 14; imp++) check(BattleMath.impactDelay(imp, cd) < Math.max(1, cd) && BattleMath.impactDelay(imp, cd) <= imp, "impact delay " + imp + " under a cooldown of " + cd + " lands before the next swing");
         System.out.println("BattleMathCheck: " + checks + " checks passed");
     }
 }

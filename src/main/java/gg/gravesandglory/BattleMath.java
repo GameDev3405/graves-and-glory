@@ -504,4 +504,30 @@ public final class BattleMath {
     public static int classCost(int cost, double factor) { return (int) Math.round(cost * factor); }
     /** Ticks a troop trains under a class factor (the Marshal's drill): the sheet seconds times 20 times the factor, rounded. */
     public static long trainingTicks(double seconds, double factor) { return Math.round(seconds * 20 * factor); }
+    /**
+     * Whether a melee swing's blow lands on its impact frame: the attacker still alive and not stunned since it swung, the target
+     * still alive, and the target within the attacker's reach plus the grace (distSq in squared blocks). A blow that fails this misses.
+     */
+    public static boolean strikeLands(boolean attackerAlive, boolean stunnedSinceSwing, boolean targetAlive, double distSq, double reach, double grace) {
+        double far = reach + grace;
+        return attackerAlive && !stunnedSinceSwing && targetAlive && distSq <= far * far;
+    }
+    /**
+     * The index of the swing a troop plays out of its family's count variants, from a random roll: never last (the swing it played
+     * before) while there is another to play. A first swing (last outside 0..count-1) may be any; one or no variant plays index 0.
+     */
+    public static int pickVariant(int count, int last, long roll) {
+        if (count <= 1) return 0;
+        if (last < 0 || last >= count) return (int) Math.floorMod(roll, (long) count);
+        int i = (int) Math.floorMod(roll, (long) (count - 1));
+        return i >= last ? i + 1 : i;
+    }
+    /**
+     * Ticks from a melee swing to its blow: the swing's impactTicks, but always at least a tick before the attacker's next swing can
+     * start (untilNextSwing ticks off, after the swing's cooldown, however a haste shortens it), so no blow is ever still pending when
+     * the next swing comes.
+     */
+    public static int impactDelay(int impactTicks, long untilNextSwing) {
+        return (int) Math.max(0, Math.min(impactTicks, untilNextSwing - 1));
+    }
 }

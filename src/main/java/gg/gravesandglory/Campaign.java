@@ -142,7 +142,7 @@ public final class Campaign {
     void toLobby(ServerPlayerEntity p){var at=CampWorld.spawn(profile(p.getUuid()));b.relocate(p,at.x(),at.y(),at.z(),at.yaw(),at.pitch());p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();Commander.applyPlayer(p,null);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
-        b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;Projectiles.clear(b);Abilities.clearBanners(b);
+        b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);
         Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearSides();b.clearProgression();
         b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}onPad.clear();padCountdown=-1;closeParty();
@@ -605,7 +605,7 @@ public final class Campaign {
         return BattleMath.garrison(owners,s.team,at.toArray(double[][]::new),assignable,points,NEAR_RADIUS_FACTOR*tier.chargeDistance())[me];
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
-    void switchMap(int index){Projectiles.clear(b);Abilities.clearBanners(b);Houses.reset(b);b.clearSides();b.clearProgression();FeedEvents.clear();map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;Structures.clearQueue();b.placing=false;}
+    void switchMap(int index){Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);Houses.reset(b);b.clearSides();b.clearProgression();FeedEvents.clear();map=index;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;Structures.clearQueue();b.placing=false;}
     /** The lesson a commander is on, or -1: only a campaign battle whose sheet row teaches (lessons) shows them, to its commanders, until all four are done. They repeat on every replay. */
     int tutorialStep(UUID id){
         if(!b.running||activeBattle==null||!activeBattle.lessons()||!participants.contains(id))return -1;

@@ -265,12 +265,22 @@ final class Abilities {
             }
             case "mend" -> {}
             default -> {
-                float amount = (float) baseHit(b, u);
                 animate(b, u);
                 // The hit is decided now; a ranged hit lands when its visible arrow arrives.
-                if (u.spec.ranged()) Projectiles.fire(b, u, enemy, visual(u), amount); else Combat.resolve(b, u, enemy, amount, "melee", false);
+                if (u.spec.ranged()) Projectiles.fire(b, u, enemy, visual(u), (float) baseHit(b, u)); else land(b, u, enemy);
             }
         }
+    }
+
+    /** Whether the troop's attack is a melee blow (a troop not ranged whose ability row strikes rather than casts or mends): the blow Tactics lands on its swing's impact frame. */
+    static boolean melee(GravesAndGlory.Unit u) {
+        if (u.spec.ranged()) return false;
+        return switch (row(u).mechanic()) {case "blight", "mist", "mend" -> false; default -> true;};
+    }
+
+    /** A melee troop's blow on the enemy: its base hit through Combat.resolve, which runs the on-hit abilities (attack, and Tactics.land on the impact frame). */
+    static void land(GravesAndGlory.Battle b, GravesAndGlory.Unit u, LivingEntity enemy) {
+        Combat.resolve(b, u, enemy, (float) baseHit(b, u), "melee", false);
     }
 
     /** The swing a golem or a ravager shows: the client plays it on entity status 4, which their own attack goal would send and a troop has no such goal. */

@@ -63,6 +63,13 @@ import static gg.gravesandglory.Phase2Checks.server;
  * fired keeps vanilla's attitude (N8). Then six Dusk Order Archers (AI on, pinned, on Attack) shoot a line of six frozen dummies 20 blocks
  * off: their damage a second over ticks 40-440 is within 3% of ARC_DPS_BASE, which this stage measured at BASE (straight shots) on the same
  * world seed. The screenshot, hl-arc.png, is the bow's arrow near its peak, seen from the side.</li>
+ * <li>hl-impact (Task 5): on the same patch, a Dusk Order Squire (AI on, pinned, on Attack) 1.8 east of a frozen dummy of the commander's army.
+ * Each of three swings hurts the dummy exactly its swing's impactTicks (attackVariants) after the swing tick, never on the swing tick, and no
+ * swing repeats the one before. The dummy carried 6 blocks off on a swing's tick takes nothing (the blow misses), the swing's cooldown stands,
+ * and the Squire's next swing comes at its first 10-tick beat after the cooldown. A Squire killed on its swing's tick deals nothing. A dummy on
+ * 1 health killed by a fresh Squire's blow on its impact frame credits that Squire the bounty once, and his army one kill and the dummy's
+ * army one loss; a dummy killed by a generic kill on the Squire's swing tick is nobody's kill (a miss, no credit). A round ended on a swing's
+ * tick leaves no blow pending, and none lands in the next round.</li>
  * </ul>
  */
 final class HoldLineChecks {
@@ -155,6 +162,17 @@ final class HoldLineChecks {
         int arcIndex;
         double bowPeak = Double.NaN, arcLostAt;
         final List<GravesAndGlory.Unit> arcDummies = new ArrayList<>();
+        // hl-impact (Task 5)
+        /** hl-impact's Dusk Order Squire (AI on, pinned) and the frozen dummy it strikes; where the dummy stands. */
+        GravesAndGlory.Unit impKnight, impTarget;
+        Vec3d impHome;
+        /** The swing hl-impact watches (its tick and its pending blow), the last swing tick seen, the tick the dummy was hurt or died (-1 not yet), and a saved tick. */
+        long impSwingAt = -1, impSeen = -1, impHurtAt = -1, impNext;
+        GravesAndGlory.Battle.PendingStrike impStrike;
+        float impHealth;
+        int impSwings, impHurts, impLastVariant = -1, impMissed, impLanded, impCredits, impKills, impLost, impBounty;
+        boolean impPass = true;
+        final List<String> impWhy = new ArrayList<>();
 
         static final double WALL = 0.7;
 
@@ -268,7 +286,7 @@ final class HoldLineChecks {
             if (player == null || stage >= 99) return;
             if (stage == 73 && arcTarget != null) arcAim = Projectiles.aim(arcTarget.mob); // where the battle aimed this tick, before the pins move the dummy on
             hold(); // the pinned enemies of hl-raise and hl-crawl stand where they were put
-            try {stages(b); if (stage >= 40) shieldStages(b); if (stage >= 70) arcStages(b);} catch (RuntimeException e) {report("hl-exception", false, "stage " + stage + ": " + e); e.printStackTrace(); next(b, 99);}
+            try {stages(b); if (stage >= 40) shieldStages(b); if (stage >= 70) arcStages(b); if (stage >= 80) impactStages(b);} catch (RuntimeException e) {report("hl-exception", false, "stage " + stage + ": " + e); e.printStackTrace(); next(b, 99);}
         }
 
         void stages(GravesAndGlory.Battle b) {
@@ -850,7 +868,7 @@ final class HoldLineChecks {
                     long t = since(b); boolean there = d <= Spec.NAVIGATION[0].arrivalTolerance() && houseKnight.mob.isAlive();
                     if (!there && t < 1800) return;
                     report("hl-house", there, houseText + ": " + (there ? "he reached it in " + t + " ticks (" + fmt(t / 20.0) + " s)" : "he did not reach it in " + t + " ticks; the nearest he came " + fmt(houseBest) + ", standing at (" + fmt(houseKnight.mob.getX()) + "," + fmt(houseKnight.mob.getY()) + "," + fmt(houseKnight.mob.getZ()) + ")") + ", " + fmt(d) + " from it (want within the arrival tolerance " + fmt(Spec.NAVIGATION[0].arrivalTolerance()) + " within 1800 ticks); stretch let-gos while he walked " + (Tactics.stretchStuck - houseStuckBefore) + "=" + there);
-                    next(b, 99);
+                    next(b, 80);
                 }
                 default -> {}
             }
@@ -1001,6 +1019,165 @@ final class HoldLineChecks {
                     report("hl-arc", arcPass, String.join("; ", arcWhy));
                     unpin(b, archers); archers.clear(); unpin(b, arcDummies); arcDummies.clear(); Projectiles.clear(b);
                     next(b, 60);
+                }
+                default -> {}
+            }
+        }
+        /** hl-impact's dummy stands here from now on (its pin moves with it). */
+        void impMove(Vec3d at) {pins.removeIf(p -> p.u() == impTarget); pins.add(new Pin(impTarget, at, -90f)); Phase2Checks.Engine.apply(impTarget, at, -90f);}
+        /** A new swing of hl-impact's Squire on this tick (Tactics.swing stamps swungAt): its pending blow; null when it did not swing this tick. */
+        GravesAndGlory.Battle.PendingStrike impSwung(GravesAndGlory.Battle b) {
+            if (impKnight == null || impKnight.swungAt != b.time || impKnight.swungAt == impSeen) return null;
+            impSeen = impKnight.swungAt;
+            for (var s : b.strikes) if (s.attacker() == impKnight && s.landsAt() > b.time) return s;
+            impPass = false; impWhy.add("the Squire swung on tick " + b.time + " with no blow pending (want one, landing on a later tick)=false");
+            return null;
+        }
+        /** The impact frame of a blow's swing, from the sheet: its family's attackVariants row's impactTicks. */
+        static int impactTicks(GravesAndGlory.Battle.PendingStrike s) {return Tactics.variants(s.attacker().spec.family()).get(s.variant()).impactTicks();}
+        /** The next hl-impact stage, and how the check stands so far once the last one is done. */
+        void impFinish(GravesAndGlory.Battle b) {report("hl-impact", impPass, String.join("; ", impWhy)); next(b, 99);}
+
+        /**
+         * hl-impact (stages 80-89, Task 5): see the class comment. Every wait is bounded (200 ticks for a swing that never comes, 400 for the first three).
+         */
+        void impactStages(GravesAndGlory.Battle b) {
+            var row = Campaign.troop("knight"); int cd = row.cooldown(), beat = (cd + 9) / 10 * 10; // Tactics acts on a 10-tick beat
+            switch (stage) {
+                case 80 -> {
+                    clearFixture(b, "hl-impact"); crawlers.clear(); archers.clear(); Projectiles.clear(b); b.strikes.clear();
+                    own.assignments.clear(); own.arrived.clear(); own.shotAt.clear(); dusk.assignments.clear(); dusk.shotAt.clear(); dusk.order = "attack";
+                    impHome = ground(b, patch[0] + 4, patch[2]);
+                    // the camera 24 blocks north of the pair, looking south at them: their chunks stay loaded, and the dummy stays the Squire's nearest enemy
+                    var p = sp(b); b.relocate(p, impHome.x + 1, Phase1Checks.top(b, impHome.x + 1, impHome.z - 24) + 6, impHome.z - 24, 0f, 15f);
+                    impTarget = dummy(b, 20, impHome);
+                    impKnight = pinned(b, "knight", 21, ground(b, impHome.x + 1.8, impHome.z), false);
+                    impHealth = impTarget.mob.getHealth(); impSeen = -1; impSwings = 0; impHurts = 0; impSwingAt = -1; impHurtAt = -1; impStrike = null; impLastVariant = -1;
+                    next(b, 81);
+                }
+                case 81 -> { // three swings: each blow hurts the dummy exactly its swing's impactTicks after the swing tick, and no sooner
+                    float h = impTarget.mob.getHealth();
+                    if (h < impHealth) {
+                        impHurts++;
+                        boolean on = impStrike != null && impHurtAt < 0 && b.time - impSwingAt == impactTicks(impStrike); impPass &= on;
+                        impWhy.add("swing " + impSwings + " (" + (impStrike == null ? "none" : Tactics.variants(row.family()).get(impStrike.variant()).id() + ", impactTicks " + impactTicks(impStrike)) + ") on tick " + impSwingAt + " hurt the dummy " + fmt(impHealth - h) + " on tick " + b.time + ", " + (b.time - impSwingAt) + " ticks after it=" + on);
+                        impHurtAt = b.time; impHealth = h;
+                    }
+                    var s = impSwung(b);
+                    if (s != null) {
+                        if (impStrike != null && impHurtAt < 0) {impPass = false; impWhy.add("swing " + impSwings + " on tick " + impSwingAt + " never hurt the dummy before the next swing=false");}
+                        boolean fresh = s.variant() != impLastVariant; impPass &= fresh;
+                        if (!fresh) impWhy.add("swing " + (impSwings + 1) + " repeats swing " + impSwings + "'s variant " + s.variant() + "=false");
+                        impLastVariant = s.variant(); impSwings++; impSwingAt = b.time; impStrike = s; impHurtAt = -1; impTarget.mob.timeUntilRegen = 0;
+                    }
+                    if (impSwings >= 3 && impHurtAt >= 0 || since(b) > 400) {
+                        boolean all = impSwings >= 3 && impHurts == impSwings; impPass &= all;
+                        impWhy.add(impSwings + " swings, " + impHurts + " blows on the dummy (want 3, one a swing)=" + all);
+                        // the dummy goes 6 blocks off for 60 ticks: the Squire's cooldown goes stale, so its next swing starts it afresh (Tactics: time + cooldown)
+                        impMove(ground(b, impHome.x - 6, impHome.z));
+                        next(b, 82);
+                    }
+                }
+                case 82 -> {
+                    if (since(b) < 60) return;
+                    impMove(impHome); impHealth = impTarget.mob.getHealth(); impMissed = Tactics.strikesMissed; impStrike = null;
+                    next(b, 83);
+                }
+                case 83 -> { // the swing: on its tick the dummy is carried 6 blocks off (7.8 from the Squire, past its reach plus meleeReachGrace)
+                    var s = impSwung(b);
+                    if (s != null) {impSwingAt = b.time; impStrike = s; impNext = impKnight.nextAttack; impMove(ground(b, impHome.x - 6, impHome.z)); next(b, 84); return;}
+                    if (since(b) > 200) {impPass = false; impWhy.add("the Squire never swung at the returned dummy=false"); next(b, 85);}
+                }
+                case 84 -> { // past the impact frame: nothing hurt the dummy, the blow missed and the cooldown stands; then, the dummy back in reach, the next swing
+                    if (impSeen == impSwingAt) {
+                        if (b.time <= impStrike.landsAt()) return;
+                        float h = impTarget.mob.getHealth(); boolean none = h == impHealth && Tactics.strikesMissed == impMissed + 1 && impKnight.nextAttack == impNext; impPass &= none;
+                        impWhy.add("the dummy carried 6 blocks off on the swing's tick (" + impSwingAt + "; its blow due on " + impStrike.landsAt() + ") lost " + fmt(impHealth - h) + " health, blows missed " + (Tactics.strikesMissed - impMissed) + " (want 0 and 1), the Squire's next attack at " + impKnight.nextAttack + " (set on the swing to " + impNext + ", want unchanged)=" + none);
+                        impMove(impHome); impSeen = -2; // back in reach: watch for the next swing
+                        return;
+                    }
+                    if (impKnight.swungAt > impSwingAt) {
+                        long gap = impKnight.swungAt - impSwingAt; boolean after = gap == beat; impPass &= after;
+                        impWhy.add("its next swing came on tick " + impKnight.swungAt + ", " + gap + " ticks after the missed one (want the cooldown " + cd + " rounded up to the 10-tick beat, " + beat + ")=" + after);
+                        impSeen = impKnight.swungAt; impHealth = impTarget.mob.getHealth(); next(b, 85); return;
+                    }
+                    if (since(b) > 200) {impPass = false; impWhy.add("no swing after the missed one=false"); next(b, 85);}
+                }
+                case 85 -> { // a Squire killed on its swing's tick deals nothing
+                    float h = impTarget.mob.getHealth();
+                    if (impSeen == -3) {
+                        if (b.time <= impStrike.landsAt() + 2) return;
+                        boolean none = h == impHealth && !impKnight.mob.isAlive() && Tactics.strikesMissed == impMissed + 1 && b.strikes.stream().noneMatch(x -> x.attacker() == impKnight); impPass &= none;
+                        impWhy.add("the Squire killed on its swing's tick (" + impSwingAt + "; its blow due on " + impStrike.landsAt() + "; alive after: " + impKnight.mob.isAlive() + ") took " + fmt(impHealth - h) + " health off the dummy, blows missed " + (Tactics.strikesMissed - impMissed) + " (want 0 health and 1 miss)=" + none);
+                        unpin(b, List.of(impKnight, impTarget)); next(b, 86); return;
+                    }
+                    if (h < impHealth) impHealth = h; // the previous swing's blow, landing while this stage waits
+                    var s = impSwung(b);
+                    if (s != null) {impSwingAt = b.time; impStrike = s; impHealth = h; impMissed = Tactics.strikesMissed; impSeen = -3; impKnight.mob.kill(); return;}
+                    if (since(b) > 200) {impPass = false; impWhy.add("the Squire never swung again=false"); unpin(b, List.of(impKnight, impTarget)); next(b, 86);}
+                }
+                case 86 -> { // kill credit: a fresh Squire and a dummy on 1 health
+                    impTarget = dummy(b, 22, impHome); impTarget.mob.setHealth(1f);
+                    impKnight = pinned(b, "knight", 23, ground(b, impHome.x + 1.8, impHome.z), false);
+                    impBounty = LevelMath.bounty(impTarget.level, false, impTarget.temporary);
+                    impCredits = impKnight.credits; impKills = dusk.stats.kills; impLost = own.stats.lost; impLanded = Tactics.strikesLanded; impSeen = -1; impStrike = null; impHurtAt = -1;
+                    next(b, 87);
+                }
+                case 87 -> { // the blow that kills it on the impact frame credits the Squire the bounty once, and his army one kill
+                    if (impStrike == null) {
+                        if (!impTarget.mob.isAlive() && impHurtAt < 0) impHurtAt = b.time;
+                        var s = impSwung(b);
+                        if (s != null) {impStrike = s; impSwingAt = b.time;}
+                        else if (since(b) > 200) {impPass = false; impWhy.add("the fresh Squire never swung at the 1-health dummy=false"); unpin(b, List.of(impTarget)); impTarget = dummy(b, 24, impHome); next(b, 88);}
+                        return;
+                    }
+                    if (!impTarget.mob.isAlive() && impHurtAt < 0) impHurtAt = b.time;
+                    if (b.time < impStrike.landsAt() + 10) return;
+                    boolean on = Veterans.enabled();
+                    boolean once = impHurtAt == impStrike.landsAt() && Tactics.strikesLanded - impLanded == 1 && impKnight.credits - impCredits == impBounty && dusk.stats.kills - impKills == 1 && own.stats.lost - impLost == 1;
+                    impPass &= once && on;
+                    impWhy.add("a 1-health dummy died on tick " + impHurtAt + " (the blow swung on " + impSwingAt + ", due on " + impStrike.landsAt() + "): the Squire's kill credits went up " + (impKnight.credits - impCredits) + " (want the bounty " + impBounty + " once), his army's kills " + (dusk.stats.kills - impKills) + " and the dummy's army's losses " + (own.stats.lost - impLost) + " (want 1 each), blows landed " + (Tactics.strikesLanded - impLanded) + " (want 1); progression on: " + on + "=" + (once && on));
+                    // a victim killed by something else (a generic kill, no attacker) on the swing's tick: the blow misses and the kill is nobody's
+                    unpin(b, List.of(impTarget));
+                    impTarget = dummy(b, 24, impHome);
+                    impCredits = impKnight.credits; impKills = dusk.stats.kills; impLost = own.stats.lost; impMissed = Tactics.strikesMissed; impLanded = Tactics.strikesLanded; impStrike = null;
+                    next(b, 88);
+                }
+                case 88 -> { // a victim that dies to something else between swing and impact is nobody's kill
+                    if (impStrike == null) {
+                        var s = impSwung(b);
+                        if (s != null) {impStrike = s; impSwingAt = b.time; impTarget.mob.kill();}
+                        else if (since(b) > 200) {impPass = false; impWhy.add("the Squire never swung at the second victim=false"); next(b, 89);}
+                        return;
+                    }
+                    if (b.time < impStrike.landsAt() + 10) return;
+                    boolean nobody = !impTarget.mob.isAlive() && Tactics.strikesMissed - impMissed == 1 && Tactics.strikesLanded == impLanded && impKnight.credits == impCredits && dusk.stats.kills == impKills && own.stats.lost - impLost == 1;
+                    impPass &= nobody;
+                    impWhy.add("a dummy killed by a generic kill on the Squire's swing tick (" + impSwingAt + "; its blow due on " + impStrike.landsAt() + "): blows missed " + (Tactics.strikesMissed - impMissed) + " and landed " + (Tactics.strikesLanded - impLanded) + " (want 1 and 0), the Squire's credits up " + (impKnight.credits - impCredits) + " and his army's kills up " + (dusk.stats.kills - impKills) + " (want 0 each), the dummy's army's losses up " + (own.stats.lost - impLost) + " (want 1)=" + nobody);
+                    unpin(b, List.of(impTarget));
+                    impTarget = dummy(b, 25, impHome); impStrike = null;
+                    next(b, 89);
+                }
+                case 89 -> { // the round ends on a swing's tick with its blow pending: the lobby clears it, and none lands in the next round
+                    if (impStrike == null) {
+                        var s = impSwung(b);
+                        if (s != null) {
+                            impStrike = s; impSwingAt = b.time;
+                            int before = b.strikes.size(); b.campaign.returnLobby(); int left = b.strikes.size();
+                            impLanded = Tactics.strikesLanded; impMissed = Tactics.strikesMissed;
+                            boolean cleared = before >= 1 && left == 0; impPass &= cleared;
+                            impWhy.add("the round ended on the Squire's swing tick (" + impSwingAt + ") with " + before + " blow(s) pending (its own due on " + impStrike.landsAt() + "): " + left + " left (want 0)=" + cleared);
+                            fixture.clear(); pins.clear(); impKnight = null; impTarget = null; impNext = -1; // returnLobby took every troop
+                        } else if (since(b) > 200) {impPass = false; impWhy.add("the Squire never swung at the round-end dummy=false"); impFinish(b);}
+                        return;
+                    }
+                    if (!b.running) {var p = sp(b); if (p != null) Phase1Checks.skirmish(b, p, 0, 1, "normal"); return;}
+                    if (impNext < 0) impNext = b.time; // the next round's first tick of play
+                    if (b.time < Math.max(b.campaign.introUntil, impStrike.landsAt()) + 10) return;
+                    boolean none = Tactics.strikesLanded == impLanded && Tactics.strikesMissed == impMissed;
+                    impPass &= none;
+                    impWhy.add("the next round ran from tick " + impNext + " (play from " + b.campaign.introUntil + ") to " + b.time + ", past the old blow's frame " + impStrike.landsAt() + ": blows landed " + (Tactics.strikesLanded - impLanded) + " and missed " + (Tactics.strikesMissed - impMissed) + " (want 0 each)=" + none);
+                    impFinish(b);
                 }
                 default -> {}
             }

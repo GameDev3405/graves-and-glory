@@ -235,8 +235,8 @@ final class Tactics {
                 else mob.getNavigation().stop();
                 if(time>=u.nextAttack&&time>=u.stunnedUntil&&!Abilities.tooClose(u,nearest)){
                     int cooldown=u.spec.cooldown();u.nextAttack=u.nextAttack<time-10?time+cooldown:u.nextAttack+cooldown;mob.swingHand(Hand.MAIN_HAND);
-                    BattleEffects.strike(battle,u,enemy);
-                    Abilities.attack(battle,u,enemy,time);
+                    // A melee blow lands on its swing's impact frame (swing, land); a shot or a spell goes now.
+                    if(!swing(battle,u,enemy,time)){BattleEffects.strike(battle,u,enemy);Abilities.attack(battle,u,enemy,time);}
                     if(ranged){
                         battle.world.playSound(null,mob.getBlockPos(),u.spec.magic()?SoundEvents.ENTITY_EVOKER_CAST_SPELL:SoundEvents.ENTITY_ARROW_SHOOT,SoundCategory.HOSTILE,.25f,1.1f);
                     }
@@ -475,5 +475,52 @@ final class Tactics {
         if(time>=u.nextPath||u.lastGoal==null||u.lastGoal.squaredDistanceTo(next)>9||mob.getNavigation().isIdle()){
             mob.getNavigation().startMovingTo(next.x,next.y,next.z,speed);u.lastGoal=next;u.nextPath=time+N.repathTicks();
         }
+    }
+
+    /** Each family's swings (attackVariants rows) in the sheet's order, the order the client's ClipLibrary plays them by. */
+    private static Map<String,List<Spec.AttackVariantsRow>> variantsByFamily;
+    /** The swings of this troop family, in the sheet's order; none for a family the sheet lacks. */
+    static List<Spec.AttackVariantsRow> variants(String family){
+        if(variantsByFamily==null){var m=new HashMap<String,List<Spec.AttackVariantsRow>>();for(var r:Spec.ATTACKVARIANTS)m.computeIfAbsent(r.family(),k->new ArrayList<>()).add(r);variantsByFamily=m;}
+        return variantsByFamily.getOrDefault(family,List.of());
+    }
+    /** Melee swings begun, blows landed on their impact frame and blows that missed there (strikeLands false), since the server started: the live checks read them. */
+    static int swings,strikesLanded,strikesMissed;
+    /**
+     * A melee troop's swing (its cooldown already taken and its arm swung): the swing it plays (never the one before, BattleMath.pickVariant), its golem or ravager
+     * swing shown now, and its blow queued for the impact frame, that swing's impactTicks on (clamped to land before the next swing can start,
+     * BattleMath.impactDelay). False for a troop whose attack is not a melee blow (Abilities.melee) or whose family has no swings: its attack goes now.
+     */
+    static boolean swing(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity enemy,long time){
+        if(!Abilities.melee(u))return false;
+        var rows=variants(u.spec.family());if(rows.isEmpty())return false;
+        int variant=BattleMath.pickVariant(rows.size(),u.lastVariant,b.world.random.nextLong());
+        int delay=BattleMath.impactDelay(rows.get(variant).impactTicks(),u.nextAttack-time);
+        u.lastVariant=variant;u.swungAt=time;swings++;
+        Abilities.animate(b,u);
+        var strike=new GravesAndGlory.Battle.PendingStrike(u,enemy,variant,time+delay);
+        if(delay>0)b.strikes.add(strike);else land(b,strike);
+        return true;
+    }
+    /** Lands every pending blow whose impact frame has come (Battle.tick, after the shots and before the troops act). */
+    static void land(GravesAndGlory.Battle b){
+        if(b.strikes.isEmpty())return;
+        List<GravesAndGlory.Battle.PendingStrike> due=new ArrayList<>();
+        b.strikes.removeIf(s->{if(s.landsAt()>b.time)return false;due.add(s);return true;});
+        for(var s:due)land(b,s);
+    }
+    /**
+     * One blow on its impact frame: its flash and cue and its hit (Combat.resolve, with the on-hit abilities) if BattleMath.strikeLands: the attacker alive
+     * and not stunned since it swung, the target alive (a commander struck down, a spectator awaiting his respawn, is not) and within the attacker's reach
+     * plus meleeReachGrace. Otherwise the blow misses; the swing's cooldown stands either way.
+     */
+    static void land(GravesAndGlory.Battle b,GravesAndGlory.Battle.PendingStrike s){
+        var u=s.attacker();LivingEntity target=s.target();
+        boolean attackerAlive=u.mob.isAlive()&&!u.mob.isRemoved();
+        boolean targetAlive=target.isAlive()&&!target.isRemoved()&&!(target instanceof ServerPlayerEntity p&&(p.isSpectator()||b.respawns.containsKey(p.getUuid())));
+        if(!BattleMath.strikeLands(attackerAlive,u.stunnedUntil>u.swungAt,targetAlive,u.mob.squaredDistanceTo(target),Abilities.range(b,u),Spec.COMBATDISCIPLINE[0].meleeReachGrace())){strikesMissed++;return;}
+        strikesLanded++;
+        BattleEffects.strike(b,u,target);
+        Abilities.land(b,u,target);
     }
 }

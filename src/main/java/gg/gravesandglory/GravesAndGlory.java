@@ -221,6 +221,8 @@ public final class GravesAndGlory implements ModInitializer {
         Spec.TroopsRow spec;
         int slot;
         long nextAttack;long abilityAt,windupUntil;Vec3d spellCenter;
+        /** The battle tick of the troop's last melee swing whose blow is pending or landed (Tactics.swing; -1 none), and the swing it played: an index into its family's attackVariants rows (Tactics.variants), so the next never repeats it (BattleMath.pickVariant; -1 none yet). */
+        long swungAt=-1;int lastVariant=-1;
         long nextPath;
         Vec3d lastPosition,lastGoal,deployed;
         /** A wall troop's jump onto its slot on a rise (Tactics.settle, Tactics.hop): the slot (null: none), the tick it ends by, and whether it has left the ground. */
@@ -522,6 +524,13 @@ public final class GravesAndGlory implements ModInitializer {
         void clearProgression(){Veterans.clear(this);Statuses.clear(this);RankSync.clear(this);fallen.clear();}
         public final List<Capture> points=new ArrayList<>();
         public final List<Projectiles.Shot> shots=new ArrayList<>();
+        /**
+         * A melee swing whose blow is still to come (Task 5): the attacker, its target, the swing it plays (an index into its family's attackVariants rows,
+         * Tactics.variants) and the battle tick of its impact frame. Tactics.land lands it then, if BattleMath.strikeLands; startRound, Campaign.returnLobby
+         * (round end and battle stop) and switchMap clear the list, so no blow crosses a round.
+         */
+        public record PendingStrike(Unit attacker,LivingEntity target,int variant,long landsAt){}
+        public final List<PendingStrike> strikes=new ArrayList<>();
         /** Landed shots' arrows held where they landed for a tick or two (Projectiles.LINGER_TICKS) before they go. */
         public final List<Projectiles.Landed> landed=new ArrayList<>();
         /** The standing banners (the Oath Banner); Abilities.bannerTick takes them down on time, and startRound, the lobby and a map switch clear them. */
@@ -674,7 +683,7 @@ public final class GravesAndGlory implements ModInitializer {
             campaign.tick();
             updateUnitChunks();
             if(running&&time>=campaign.introUntil){
-                Projectiles.tick(this);Commander.tick(this);Abilities.bannerTick(this);Houses.expire(this);Statuses.tick(this);
+                Projectiles.tick(this);Tactics.land(this);Commander.tick(this);Abilities.bannerTick(this);Houses.expire(this);Statuses.tick(this);
                 if(time%20==0){Morale.tick(this);Houses.tick(this);}
                 if(time%10==0)Houses.countTargeters(this);
                 for(Unit u:new ArrayList<>(units))unitTick(u);
@@ -965,7 +974,7 @@ public final class GravesAndGlory implements ModInitializer {
         /** The deploy notice after "<troop> trained: " (a null anchor means the barracks). */
         String deployNote(Squad s,Anchor anchor){return anchor==null?"deploying from barracks":"deploying at "+anchor.name();}
         void startRound(){
-            Projectiles.clear(this);Abilities.clearBanners(this);Houses.reset(this);FeedEvents.clear();clearProgression();
+            Projectiles.clear(this);strikes.clear();Abilities.clearBanners(this);Houses.reset(this);FeedEvents.clear();clearProgression();
             campaign.prepareRound();
             clearSides();
             Arrays.fill(scores,0);pointSeconds=new int[2][points.size()];
