@@ -807,7 +807,7 @@ public final class Phase1Checks implements ClientModInitializer {
         final Map<UUID,Vec3d> firstTarget=new HashMap<>();final Map<UUID,Long> decidedAt=new HashMap<>();
         GravesAndGlory.Squad hard;List<GravesAndGlory.Unit> foes=new ArrayList<>();
         String farOrder="";boolean noShieldwall;double gap;
-        GravesAndGlory.Unit hexer,aim;final Map<GravesAndGlory.Unit,Float> hpBefore=new HashMap<>();final Set<GravesAndGlory.Unit> bracedBefore=new HashSet<>();boolean frontalBlocked;String frontalWhy="";
+        GravesAndGlory.Unit hexer,aim;final Map<GravesAndGlory.Unit,Float> hpBefore=new HashMap<>();final Set<GravesAndGlory.Unit> bracedBefore=new HashSet<>();boolean frontalBlocked,facingOk;String frontalWhy="",facingWhy="";
 
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
         long since(GravesAndGlory.Battle b){return b.time-stageAt;}
@@ -962,7 +962,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     System.out.println("[p1] no-shieldwall fixture: army centre "+at+", "+sighted+" Dusk sightings, Normal leaves infantry in "+hard.formation+" (no override="+normalPlain+"), Hard infantry assignment "+(wall==null?"none":wall.order+"/"+wall.formation)+", Shieldwall gone from the sheet="+gone);
                     noShieldwall=normalPlain&&hardPlain&&gone;
                     // Hold builds the wall: the Hard army holds where it stands in Compact, so its shield troops brace for p1-bots-blight (BattleMath.raiseShield on Hold)
-                    hard.assignments.clear();hard.order="hold";hard.formation="block";hard.target=at;next(b,12);
+                    hard.assignments.clear();hard.order="hold";hard.formation="block";hard.target=at;hard.yaw=-90;next(b,12); // facing +x, at the archers
                 }}
                 case 12->{
                     if(since(b)>=40){
@@ -975,16 +975,19 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 13->{ // p1-bots-blight: a frontal blow on a knight braced on Hold is blocked; a Gravecaller burst on the same wall is not
                     var knights=shields(b,hard);
                     if(hexer==null){
+                        // The wall settles first (bounded): every knight within 1.5 of his place, where Tactics.stretch holds him to Hold's yaw; then every braced knight must face the archers (+x, yaw -90).
+                        double off=knights.stream().mapToDouble(u->Math.sqrt(GravesAndGlory.Battle.horizontalDistance(u.mob.getPos(),b.formation(u)))).max().orElse(0);
+                        if(off>1.5&&since(b)<200)return;
                         var braced=knights.stream().filter(u->u.mob.isBlocking()).toList();
                         if(braced.size()<2){report("p1-bots-blight",false,"only "+braced.size()+" knights braced");for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,14);return;}
-                        // The guard is a braced knight that faces the archers (+x, Hold's yaw): a man still stepping onto his slot faces where he steps, and a blow from +x is no frontal one for him.
-                        var facing=braced.stream().filter(u->Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.getYaw()+90))<60).toList();
-                        if(facing.isEmpty()){report("p1-bots-blight",false,"none of "+braced.size()+" braced knights faces the archers (yaws "+braced.stream().map(u->String.format(java.util.Locale.ROOT,"%.0f",u.mob.getYaw())).toList()+")");for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,14);return;}
-                        var guard=facing.get(0);aim=braced.stream().filter(u->u!=guard).findFirst().get();double hx=aim.mob.getX()+12,hz=aim.mob.getZ(); // 12 blocks ahead of the wall (Dawn faces +x), inside every shield arc
+                        List<String> askew=new ArrayList<>();
+                        for(var u:braced){double dy=Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.getYaw()+90)),db=Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.bodyYaw+90));if(dy>10||db>10)askew.add(u.slot+": yaw "+String.format(java.util.Locale.ROOT,"%.0f",u.mob.getYaw())+" body "+String.format(java.util.Locale.ROOT,"%.0f",u.mob.bodyYaw));}
+                        facingOk=askew.isEmpty();facingWhy=(braced.size()-askew.size())+" of "+braced.size()+" braced knights face the archers within 10 degrees, yaw and body, "+since(b)+" ticks on (the farthest knight "+String.format(java.util.Locale.ROOT,"%.2f",off)+" from his place)"+(facingOk?"":"; askew "+askew)+"="+facingOk;
+                        aim=braced.get(0);var guard=braced.get(1);double hx=aim.mob.getX()+12,hz=aim.mob.getZ(); // 12 blocks ahead of the wall (Dawn faces +x), inside every shield arc
                         var squad=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(hx,top(b,hx,hz),hz));squad.order="hold";squad.yaw=90;
                         hexer=freezeIt(b.spawn(squad,troop("hexer"),0,new Vec3d(hx,top(b,hx,hz),hz)));foes.add(hexer);
-                        float hp=guard.mob.getHealth();int regen=guard.mob.timeUntilRegen;var blowSource=b.world.getDamageSources().mobAttack(hexer.mob);String pose=String.format(java.util.Locale.ROOT,"guard yaw %.1f body %.1f head %.1f pitch %.1f at %s moving=%s vel %s, hexer at %s, blockedByShield=%s",guard.mob.getYaw(),guard.mob.bodyYaw,guard.mob.getHeadYaw(),guard.mob.getPitch(),guard.mob.getPos(),!guard.mob.getNavigation().isIdle(),guard.mob.getVelocity(),hexer.mob.getPos(),guard.mob.blockedByShield(blowSource));boolean hit=guard.mob.damage(b.world.getDamageSources().mobAttack(hexer.mob),5);
-                        frontalBlocked=!hit&&regen<=10&&guard.mob.getHealth()==hp;frontalWhy=facing.size()+" of "+braced.size()+" braced knights face the archers; a frontal blow of 5 from the Gravecaller on one: health "+hp+" -> "+guard.mob.getHealth()+" (hurt cooldown before it "+regen+"; "+pose+")";
+                        float hp=guard.mob.getHealth();int regen=guard.mob.timeUntilRegen;boolean hit=guard.mob.damage(b.world.getDamageSources().mobAttack(hexer.mob),5);
+                        frontalBlocked=!hit&&regen<=10&&guard.mob.getHealth()==hp;frontalWhy=facingWhy+"; a frontal blow of 5 from the Gravecaller on a braced knight: health "+hp+" -> "+guard.mob.getHealth()+" (hurt cooldown before it "+regen+(frontalBlocked?"":String.format(java.util.Locale.ROOT,"; its yaw %.0f, at %s, the Gravecaller at %s",guard.mob.getYaw(),guard.mob.getPos(),hexer.mob.getPos()))+")";
                     }
                     if(hexer.spellCenter!=null||hpBefore.isEmpty()){
                         if(since(b)>60){report("p1-bots-blight",false,"the burst never landed; "+frontalWhy);for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,14);return;}
@@ -995,7 +998,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     }
                     float before=hpBefore.getOrDefault(aim,0f),after=aim.mob.getHealth();boolean aimBraced=bracedBefore.contains(aim);
                     long hitBraced=bracedBefore.stream().filter(u->u.mob.getHealth()<hpBefore.get(u)).count();
-                    report("p1-bots-blight",frontalBlocked&&aimBraced&&after<before,frontalWhy+", blocked="+frontalBlocked+"; then a Gravecaller burst on a braced knight (braced="+aimBraced+"): health "+before+" -> "+after+"; "+hitBraced+" of "+bracedBefore.size()+" braced knights lost health");
+                    report("p1-bots-blight",facingOk&&frontalBlocked&&aimBraced&&after<before,frontalWhy+", blocked="+frontalBlocked+"; then a Gravecaller burst on a braced knight (braced="+aimBraced+"): health "+before+" -> "+after+"; "+hitBraced+" of "+bracedBefore.size()+" braced knights lost health");
                     for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();hexer=null;next(b,14);
                 }
                 case 14->{ // p1-bots-charge-timing: eight frozen Dusk revenants 60 blocks away, then 15 blocks away

@@ -82,11 +82,8 @@ final class Tactics {
     }
     /** Whether the unit's squad group was shot at within fireMemoryTicks (BattleMath.underFire). */
     static boolean underFire(GravesAndGlory.Battle b,GravesAndGlory.Unit u){return BattleMath.underFire(b.time,u.squad.shotAt.getOrDefault(u.spec.group(),0L),C.fireMemoryTicks());}
-    /** The order a shield troop raises its shield by: an arrived Retreat or Move group stands as on Hold (the latch Squad.arrived, which arrived sets on the beat). */
-    static String shieldOrder(GravesAndGlory.Unit u,GravesAndGlory.Assignment a){
-        if(u.squad.arrived.contains(u.spec.group())&&(a.order.equals("move")||a.order.equals("retreat")))return "hold";
-        return a.order;
-    }
+    /** The order a shield troop raises its shield by (BattleMath.shieldOrder): an arrived Move group stands as on Hold (the latch Squad.arrived, which arrived sets on the beat); a Retreat never raises. */
+    static String shieldOrder(GravesAndGlory.Unit u,GravesAndGlory.Assignment a){return BattleMath.shieldOrder(a.order,u.squad.arrived.contains(u.spec.group()));}
     /** Squared distance to the nearest living enemy troop or commander inside scouting range that the troop can see (one line-of-sight test, on the
      *  nearest), or -1 for none: on Hold a shield wall raises its shields once an enemy is in sight, not only once one walks into its leash. */
     static double sighted(GravesAndGlory.Battle b,GravesAndGlory.Unit u){
@@ -104,20 +101,58 @@ final class Tactics {
         Abilities.keepSpeed(u.mob,CRAWL_ID,"Graves and Glory crawl",on?BattleMath.speedModifier(C.crawlShare(),u.mob.isTouchingWater()):0);
     }
     /** Between beats a shield troop re-reads the distance to the enemy it chose on its beat, so it lowers its shield on the tick that enemy steps
-     *  into sword reach (BattleMath.raiseShield), and drops it on the tick its order turns to Charge or Retreat. Otherwise it keeps the beat's
-     *  decision until the next beat. The crawl is kept every tick. */
+     *  into sword reach (BattleMath.raiseShield), and drops it on the tick its order turns to Charge or Retreat. With no enemy chosen it re-reads
+     *  the fire: off Hold the shield follows it tick by tick (it drops with the crawl when the fire memory runs out); on Hold fire raises it at once,
+     *  and an enemy only in sight keeps the beat's decision until the next beat. The crawl is kept every tick. */
     static void brace(GravesAndGlory.Battle battle,GravesAndGlory.Unit u){
         if(!u.tags.contains("shield"))return;
-        var a=battle.assignment(u);String order=shieldOrder(u,a);var t=u.lockedTarget;
-        if(t!=null&&t.isAlive()){double reach=Abilities.range(battle,u);shield(u.mob,BattleMath.raiseShield(order,underFire(battle,u),u.mob.squaredDistanceTo(t),reach*reach,true));}
-        else if(order.equals("charge")||order.equals("retreat"))shield(u.mob,false);
+        var a=battle.assignment(u);String order=shieldOrder(u,a);var t=u.lockedTarget;boolean fire=underFire(battle,u);
+        if(t!=null&&t.isAlive()){double reach=Abilities.range(battle,u);shield(u.mob,BattleMath.raiseShield(order,fire,u.mob.squaredDistanceTo(t),reach*reach,true));}
+        else if(!order.equals("hold"))shield(u.mob,BattleMath.raiseShield(order,fire,Double.MAX_VALUE,0,false));
+        else if(fire)shield(u.mob,true);
         crawl(battle,u,order);
+    }
+    /**
+     * The last stretch (ruling R21): a wall troop (Battle.walls) with no enemy chosen faces its Hold yaw (yaw, body and head) every tick within
+     * STRETCH of its slot, and steps in without turning: sideways or backwards as well as forwards. Each tick its level velocity is 0.454 of the
+     * way to the slot (settle's share: let go at any tick, it coasts onto the slot), no faster than its walking pace (pace), until the arrival
+     * tolerance, where settle on the beat takes the last of it. Pressed against the face of a rise its slot is on (onRise), it jumps as settle
+     * does, and faces the same way through the jump (hop carries it). It yields when it has an enemy (it turns only to fight one), and where the
+     * slot is no level step or one-block rise away (level): walk's paths take that. In the air it only keeps facing. Returns whether it holds the troop.
+     */
+    static boolean stretch(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,GravesAndGlory.Assignment a,long time){
+        if(!GravesAndGlory.Battle.walls(u,a.order))return false;
+        var t=u.lockedTarget;if(t!=null&&t.isAlive())return false;
+        var mob=u.mob;if(u.place==null)u.place=battle.formation(u);Vec3d goal=u.place;
+        if(u.hopTo!=null){face(mob,a.yaw);return true;}
+        double d2=GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal);
+        if(d2>STRETCH*STRETCH||!level(battle,mob,goal))return false;
+        mob.getNavigation().stop();face(mob,a.yaw);
+        double tolerance=N.arrivalTolerance();if(d2<=tolerance*tolerance||!mob.isOnGround())return true;
+        if(mob.horizontalCollision&&onRise(mob,goal)){mob.getJumpControl().setActive();u.hopTo=goal;u.hopUntil=time+HOP_TICKS;u.hopAirborne=false;hops++;return true;}
+        double length=Math.sqrt(d2),step=Math.min(length*.454,pace(mob));Vec3d delta=goal.subtract(mob.getPos());
+        mob.setVelocity(delta.x/length*step,mob.getVelocity().y,delta.z/length*step);
+        return true;
+    }
+    /** How near its slot a wall troop is held to its Hold yaw: walk's precise range, inside which it would otherwise step (MoveControl) facing its step. */
+    static final double STRETCH=N.preciseRange();
+    /** Sets the mob's yaw, body yaw and head yaw. */
+    static void face(MobEntity mob,float yaw){mob.setYaw(yaw);mob.setBodyYaw(yaw);mob.setHeadYaw(yaw);}
+    /** A troop's walking pace in blocks a tick on level ground: MoveControl gives it forward input s (its movement speed), vanilla adds 0.98 s x s
+     *  of velocity a tick, and ground friction keeps 0.546 of it, so it settles at 0.98 s x s / 0.454. Its speed modifiers (crawl, Howl) count. */
+    static double pace(MobEntity mob){double s=mob.getAttributeValue(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);return .98*s*s/.454;}
+    /** Whether a slot is a level step or a one-block rise away (walk's precise branch): its cell and the one above are air, its ground is within
+     *  1.1 of the troop's feet, and it is no river water below the crossings. */
+    static boolean level(GravesAndGlory.Battle battle,MobEntity mob,Vec3d goal){
+        int gx=(int)Math.floor(goal.x),gz=(int)Math.floor(goal.z),gy=Arena.ground(gx,gz)+1;
+        return Math.abs(mob.getY()-gy)<1.1&&!(Arena.river(gx,gz)&&Arena.ground(gx,gz)<64)&&battle.world.getBlockState(new BlockPos(gx,gy,gz)).isAir()&&battle.world.getBlockState(new BlockPos(gx,gy+1,gz)).isAir();
     }
     /** How far a troop picks its targets: the order's engage radius, or for a siege troop (tag siege) at least its weapon's reach (Entrench's bonus included), so artillery shoots what it can reach and not only what the order's leash allows. The sheet's order radii are untouched. */
     static double engageRadius(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,double order){return u.tags.contains("siege")?Math.max(order,Abilities.range(battle,u)):order;}
     static void tick(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,long time){
         hop(u,time); // a wall troop jumping onto its slot on a rise is carried over the edge every tick of the jump
-        if(time%10!=u.slot%10){brace(battle,u);return;} // the shield is decided every tick; everything else on the unit's 10-tick beat
+        if(time%10!=u.slot%10){brace(battle,u);stretch(battle,u,battle.assignment(u),time);return;} // the shield and a wall troop's last stretch every tick; everything else on the unit's 10-tick beat
+        u.place=null; // the beat reads the slot again
         var mob=u.mob;var s=u.squad;var a=battle.assignment(u);
         Houses.sample(battle,u); // Entrench: has it stood still since its last beat
         Houses.swim(battle,u); // Riptide: faster while it touches water or it rains
@@ -159,7 +194,7 @@ final class Tactics {
         double reach=Abilities.range(battle,u);boolean ranged=u.spec.ranged();
         if(enemy!=null&&nearest<=reach*reach)stamp(battle,u,enemy); // an archer taking aim from within its reach puts its target's group under fire
         if(u.tags.contains("shield")){ // Hold: up with any enemy picked or in sight; other orders: up under archer fire; never on Charge or Retreat, down to swing once the enemy is in reach
-            String shieldOrder=arrived?"hold":a.order;double near=nearest;boolean any=enemy!=null;
+            String shieldOrder=shieldOrder(u,a);double near=nearest;boolean any=enemy!=null;
             if(!any&&shieldOrder.equals("hold")){double seen=sighted(battle,u);if(seen>=0){any=true;near=seen;}}
             shield(mob,BattleMath.raiseShield(shieldOrder,underFire(battle,u),near,reach*reach,any));
             crawl(battle,u,shieldOrder);
@@ -190,8 +225,8 @@ final class Tactics {
         }else if(close!=null&&ranged){ // everything in its leash stands inside its minimum range: nothing to shoot; it backs off (unless it holds) and does not walk off to its formation
             if(!hold&&closest<flee*flee)backOff(battle,u,close,time);else mob.getNavigation().stop();
         }else{
-            Vec3d goal=battle.formation(u);
-            if(GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal)>N.arrivalTolerance()*N.arrivalTolerance())walk(battle,u,goal,time,order.moveMultiplier());
+            Vec3d goal=battle.formation(u);u.place=goal;
+            if(GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal)>N.arrivalTolerance()*N.arrivalTolerance()){if(!stretch(battle,u,a,time))walk(battle,u,goal,time,order.moveMultiplier());} // a wall troop's last stretch faces its Hold yaw (stretch)
             else{mob.getNavigation().stop();mob.setYaw(a.yaw);mob.setHeadYaw(a.yaw);mob.setBodyYaw(a.yaw);if(GravesAndGlory.Battle.walls(u,a.order))settle(u,goal,time);}
         }
     }

@@ -419,13 +419,17 @@ public final class BattleMath {
     }
     /** Whether a shield troop holds its shield up. Never on a charge or a retreat, and never with an enemy in reach
      *  (nearestSq at or inside reachSq, both squared blocks): the troop lowers it to swing, as a player must. On Hold any
-     *  enemy raises it (hasEnemy: one picked or in sight); on any other order only archer fire does (underFire). */
+     *  enemy raises it (hasEnemy: one picked or in sight), and so does archer fire from one it cannot see (underFire);
+     *  on any other order only archer fire does. */
     public static boolean raiseShield(String order, boolean underFire, double nearestSq, double reachSq, boolean hasEnemy) {
         if (order.equals("charge") || order.equals("retreat")) return false;
         if (hasEnemy && nearestSq <= reachSq) return false;
-        if (order.equals("hold")) return hasEnemy;
+        if (order.equals("hold")) return hasEnemy || underFire;
         return underFire;
     }
+    /** The order a shield troop raises its shield by (raiseShield): a Move group that has arrived stands as on Hold. A Retreat
+     *  stays a Retreat, arrived or not, so it never raises; walls, formation and settle keep the order itself. */
+    public static String shieldOrder(String order, boolean arrived) { return arrived && order.equals("move") ? "hold" : order; }
     /** Whether a squad group is still under fire: it was shot at (shotAt, battle ticks; 0 means never) at most memoryTicks ago. */
     public static boolean underFire(long now, long shotAt, int memoryTicks) { return shotAt > 0 && now - shotAt <= memoryTicks; }
     /**

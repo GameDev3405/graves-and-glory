@@ -17,7 +17,8 @@ import static gg.gravesandglory.Phase2Checks.server;
  * four Shieldbreakers) on Hold in Compact, all with their AI on, start a few blocks off their slots and walk in. After 200 ticks the
  * wall's neighbours in each rank (by the places of its layout) stand 0.7 apart (the wall cell, give or take 0.05), no two bodies' boxes overlap
  * by more than 0.02, every Shieldbreaker stands behind the Hearthguard's ranks, the Marshal's place has at least his width and 0.1 of room to
- * the places beside it, the shield troops brace, and nothing still shuffles in the last 40 ticks (no jam, no stutter). The screenshot is hl-wall.png.</li>
+ * the places beside it, the shield troops brace, every wall troop faces its Hold yaw within 10 degrees (yaw and body yaw: ruling R21, Tactics.stretch),
+ * and nothing still shuffles in the last 40 ticks (no jam, no stutter). The screenshot is hl-wall.png.</li>
  * <li>hl-deploy: before the round's fixture, a mixed Ironclad banner (Hearthguard with shields, Brassjaw golems without) is deployed at the
  * barracks (Battle.deploy, forward reinforcement off): no two deploy points stand closer than the two troops' half widths and 0.1.</li>
  * <li>hl-reinforce: the round-start rows (Battle.reinforce) of two Hearthguard rows and a mixed row: the wall rows one deep wall 0.7 apart, the
@@ -31,9 +32,11 @@ import static gg.gravesandglory.Phase2Checks.server;
  * holes closed one at a time (no man more than two places, one per loss). The screenshot is hl-wall-loss2.png.</li>
  * <li>hl-mirror: the command preview's places (CommandMode.places, from the client's own markers and group counts) are the server's slots
  * (Battle.formation) of the commander's Line on Hold after the losses, as a set of {side, back} from the order's point.</li>
- * <li>hl-raise (Task 3): then, with no enemy anywhere, no shield troop of either wall holds its shield up; a frozen Dusk Revenant pinned 12
- * blocks in front of the Line's point (in sight, outside Hold's ten-block leash) raises every shield of both walls within 20 ticks (the
- * screenshot is hl-raise.png); pinned 1.8 in front of a front-rank Squire, 12 ticks later every shield troop inside its reach (Abilities.range,
+ * <li>hl-raise (Task 3): then, with no enemy anywhere, no shield troop of either wall holds its shield up; a frozen Dusk Order Archer out of
+ * every wall troop's sight shoots one Squire through Projectiles.fire, and 4 ticks later every shield troop of his squad's group holds its shield
+ * up on Hold and none of the other squad's does; a frozen Dusk Revenant pinned 12
+ * blocks in front of the Line's point (in sight, outside Hold's ten-block leash) raises every shield of both walls within 20 ticks, every wall
+ * troop facing its Hold yaw within 10 degrees (the screenshot is hl-raise.png); pinned 1.8 in front of a front-rank Squire, 12 ticks later every shield troop inside its reach (Abilities.range,
  * less 0.3) has lowered its shield to strike and every one beyond it (plus 0.3) still holds it up; then both walls Charge, their groups
  * stamped shot at every tick, and no shield is up on any of the next 40 ticks.</li>
  * <li>hl-crawl (Task 3): six tough Order Squires of the commander's army with full knockback resistance on the same level patch. Unfired,
@@ -66,7 +69,7 @@ final class HoldLineChecks {
         /** The level patch flat found (its west end x, standing y, z). */
         double[] patch;
         // hl-raise
-        GravesAndGlory.Unit foe, front;
+        GravesAndGlory.Unit foe, front, archer, shotKnight;
         final List<String> raiseWhy = new ArrayList<>();
         boolean raisePass = true;
         int chargeRaised, chargeTicks;
@@ -397,7 +400,21 @@ final class HoldLineChecks {
             }
             boolean still = moved < 0.05 && wallOff < 0.1 && restOff <= tolerance + 0.05; pass &= still;
             why.add("in the last 40 ticks the most any troop moved is " + fmt(moved) + " (" + mover + "; want under 0.05: no jam, no stutter); the farthest wall troop from its slot stands " + fmt(wallOff) + " off it (" + wallWorst + "; want under 0.1), the farthest of the rest " + fmt(restOff) + " (" + restWorst + "; want within the arrival tolerance " + fmt(tolerance) + ")=" + still);
+            String[] face = facing(b); boolean faces = face[0].equals("true"); pass &= faces; why.add(face[1] + "=" + faces);
             report("hl-wall", pass, String.join("; ", why));
+        }
+        /** Every living wall troop of the fixture (Battle.walls) faces its Hold yaw within 10 degrees, yaw and body yaw (ruling R21): whether, and the line. */
+        String[] facing(GravesAndGlory.Battle b) {
+            int n = 0; double worst = 0; String who = "none"; List<String> askew = new ArrayList<>();
+            for (var u : fixture) {
+                if (!u.mob.isAlive() || !GravesAndGlory.Battle.walls(u, b.assignment(u).order)) continue;
+                n++; float want = b.assignment(u).yaw;
+                double d = Math.max(Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.getYaw() - want)), Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.bodyYaw - want)));
+                if (d > worst) {worst = d; who = name(u);}
+                if (d > 10) askew.add(name(u) + " " + fmt(d));
+            }
+            boolean ok = n > 0 && askew.isEmpty();
+            return new String[]{String.valueOf(ok), n + " wall troops face their Hold yaw, yaw and body: the worst " + fmt(worst) + " degrees off (" + who + "; want within 10)" + (askew.isEmpty() ? "" : ", askew " + askew)};
         }
 
         /**
@@ -526,6 +543,32 @@ final class HoldLineChecks {
                     var shields = shieldTroops(); long up = shields.stream().filter(u -> u.mob.isUsingItem()).count();
                     boolean none = up == 0 && !shields.isEmpty(); raisePass &= none;
                     raiseWhy.add("with no enemy anywhere " + up + " of " + shields.size() + " shield troops hold their shield up (want none)=" + none);
+                    // a frozen Dusk Order Archer out of every wall troop's sight (beyond scouting range) shoots one Squire through Projectiles.fire
+                    Vec3d far = null;
+                    for (double[] o : new double[][]{{-45, 0}, {0, -45}, {0, 45}, {45, 0}, {-40, -20}, {-40, 20}}) {
+                        double x = lineAt.x + o[0], z = lineAt.z + o[1];
+                        if (!GravesAndGlory.Battle.inArena(x, z) || Arena.ground((int) Math.floor(x), (int) Math.floor(z)) < 64) continue;
+                        Vec3d at = ground(b, x, z); double range = Spec.SCOUTING[0].range();
+                        if (shields.stream().allMatch(u -> u.mob.getPos().distanceTo(at) > range + 2)) {far = at; break;}
+                    }
+                    if (far == null) {raisePass = false; raiseWhy.add("no spot in the arena out of the walls' sight for the unseen archer=false"); foe = pinned(b, "revenant", 0, ground(b, lineAt.x + 12, lineAt.z), true); next(b, 41); return;}
+                    archer = pinned(b, "archer", 1, far, true); shotKnight = null;
+                    for (var k : knights) if (k.mob.isAlive()) {shotKnight = k; break;}
+                    Projectiles.fire(b, archer, shotKnight.mob, "arrow", 0.5f);
+                    next(b, 44);
+                }
+                case 44 -> {
+                    if (since(b) < 4) return;
+                    int group = 0, groupUp = 0, other = 0, otherUp = 0;
+                    for (var u : shieldTroops()) {
+                        boolean mine = u.squad == shotKnight.squad && u.spec.group().equals(shotKnight.spec.group());
+                        if (mine) {group++; if (u.mob.isUsingItem()) groupUp++;} else {other++; if (u.mob.isUsingItem()) otherUp++;}
+                    }
+                    double nearest = 1e9; for (var u : shieldTroops()) nearest = Math.min(nearest, u.mob.getPos().distanceTo(archer.mob.getPos()));
+                    boolean unseen = group > 0 && groupUp == group && otherUp == 0; raisePass &= unseen;
+                    raiseWhy.add("a frozen Dusk Order Archer " + fmt(nearest) + " from the nearest wall troop (beyond sight, " + fmt(Spec.SCOUTING[0].range()) + ") shoots " + name(shotKnight) + " (Projectiles.fire): 4 ticks later " + groupUp + " of " + group + " shield troops of his squad's group hold their shields up on Hold (want all), " + otherUp + " of " + other + " of the other squad (want none: not shot at)=" + unseen);
+                    var shooter = archer; b.shots.removeIf(q -> {if (q.shooter() != shooter) return false; if (q.visual() != null) q.visual().discard(); return true;}); // the arrow never lands: its knockback would put the shot knight out of the wall
+                    unpin(b, List.of(archer)); archer = null; own.shotAt.clear(); dawn.shotAt.clear();
                     foe = pinned(b, "revenant", 0, ground(b, lineAt.x + 12, lineAt.z), true);
                     next(b, 41);
                 }
@@ -534,6 +577,7 @@ final class HoldLineChecks {
                     var shields = shieldTroops(); long up = shields.stream().filter(u -> u.mob.isUsingItem()).count();
                     boolean all = up == shields.size() && !shields.isEmpty(); raisePass &= all;
                     raiseWhy.add("a frozen Dusk Revenant " + fmt(distance(foe.mob.getPos(), lineAt)) + " in front of the Line's point (outside Hold's leash, in sight): " + up + " of " + shields.size() + " shield troops raise their shields within 20 ticks (want all)=" + all);
+                    String[] face = facing(b); boolean faces = face[0].equals("true"); raisePass &= faces; raiseWhy.add("with their shields up " + face[1] + "=" + faces);
                     requestShot("hl-raise", 4);
                     for (var k : knights) if (k.mob.isAlive() && (front == null || backNow(b, k) + 0.01 * Math.abs(k.mob.getZ() - lineAt.z) < backNow(b, front) + 0.01 * Math.abs(front.mob.getZ() - lineAt.z))) front = k;
                     Vec3d at = new Vec3d(front.mob.getX() + 1.8, front.mob.getY(), front.mob.getZ());

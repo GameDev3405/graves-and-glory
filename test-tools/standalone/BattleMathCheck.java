@@ -240,6 +240,10 @@ public final class BattleMathCheck {
         check(!BattleMath.raiseShield("charge", true, 50, 4, true) && !BattleMath.raiseShield("retreat", true, 50, 4, true), "never on charge or retreat");
         check(BattleMath.raiseShield("hold", false, 50, 4, true) && !BattleMath.raiseShield("hold", false, 3, 4, true), "hold: up, down to strike in reach");
         check(BattleMath.raiseShield("move", true, 400, 4, true) && !BattleMath.raiseShield("move", false, 400, 4, true), "moving: up only under fire");
+        check(BattleMath.raiseShield("hold", true, 0, 4, false), "hold: an archer it cannot see raises it");
+        check(BattleMath.shieldOrder("move", true).equals("hold") && BattleMath.shieldOrder("move", false).equals("move") && BattleMath.shieldOrder("retreat", true).equals("retreat")
+            && !BattleMath.raiseShield(BattleMath.shieldOrder("retreat", true), true, 1e9, 4, false) && BattleMath.raiseShield(BattleMath.shieldOrder("move", true), false, 100, 4, true),
+            "an arrived Move holds its shields as on Hold; a Retreat, arrived and under fire, never raises");
         check(BattleMath.underFire(160, 100, 60) && !BattleMath.underFire(161, 100, 60) && !BattleMath.underFire(5, 0, 60), "fire memory");
         check(!BattleMath.raiseShield("hold", false, 0, 4, false) && !BattleMath.raiseShield("hold", true, 4, 4, true) && BattleMath.raiseShield("attack", true, 0, 4, false), "hold with no enemy stays down; an enemy at exactly reach lowers it; arrows with no enemy picked still raise it");
         check(MatchStats.winRate(7,10) == .7 && MatchStats.winRate(0,0) == 0, "win rate");
