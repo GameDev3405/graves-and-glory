@@ -102,6 +102,10 @@ Gate: Kort approves committing Freebuff's uncommitted work on `art/knight-1x` in
 
 Phase 1 doesn't wait for Task 0. Phases 2–5 do.
 
+**Other worktrees (checked 2026-10-29):**
+- `bannerbound-modes` (`mode/frame`) has uncommitted edits to `sheets/design.json`, `tools/preflight.py`, `Campaign.java`, `GravesAndGlory.java` and `DuelSimulation.java`, which Tasks 1, 5 and 7 also edit. Phase 1 starts only after that work is committed; rebase onto it, then regenerate `Spec.java` and `preflight.json` with `tools/preflight.py` instead of merging them.
+- `bannerbound-models` (`work/troop-models-house`) is superseded by Phase 4 (Kort, 2026-10-29). Leave it untouched; don't merge or reuse its models or `tools/paint_house_troops.py`.
+
 ---
 
 ## Phase 1: Gameplay and network (server, starting now from `main`)
@@ -755,6 +759,8 @@ Each house task delivers, per troop:
 - in-game turnaround and battle-distance shots.
 
 All on the jointed rig, following every art rule in Global Constraints.
+
+ic_hearthguard, wm_tusk and tc_tideguard are modelled from scratch here. Their versions on `work/troop-models-house` are superseded (Kort, 2026-10-29) and are not a starting point.
 
 Each house runs this cycle:
 
