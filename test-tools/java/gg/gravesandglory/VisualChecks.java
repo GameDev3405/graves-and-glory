@@ -55,7 +55,7 @@ final class VisualChecks {
         if(GravesAndGlory.battle!=null&&GravesAndGlory.battle.testStage>=8&&elapsed>700){
             if(!showcaseStarted){showcaseStarted=true;showcase=0;}
             showcase++;
-            if(showcase==1){c.getServer().execute(()->GravesAndGlory.battle.prepareVisualSquads(false));camera(c,-76,80,-21,0,35);}
+            if(showcase==1){c.getServer().execute(()->{var b=GravesAndGlory.battle;b.prepareVisualSquads(false);b.issue(b.testSquad,"all","hold","block",b.testSquad.target,-90,-1);});camera(c,-76,80,-21,0,35);} // a Hold order (Task 2): each formation forms round the point with its shield troops closed into the wall in front (the default Hold leaves them where they deployed)
             for(int i=0;i<Spec.FORMATIONS.length;i++){
                 if(showcase==20+i*100)GravesAndGloryClient.send("formation:"+Spec.FORMATIONS[i].id());
                 if(showcase==100+i*100)shot(c,"formation-"+Spec.FORMATIONS[i].id());

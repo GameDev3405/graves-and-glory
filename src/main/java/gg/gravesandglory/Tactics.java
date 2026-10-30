@@ -149,9 +149,20 @@ final class Tactics {
         }else{
             Vec3d goal=battle.formation(u);
             if(GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal)>N.arrivalTolerance()*N.arrivalTolerance())walk(battle,u,goal,time,order.moveMultiplier());
-            else{mob.getNavigation().stop();mob.setYaw(a.yaw);mob.setHeadYaw(a.yaw);mob.setBodyYaw(a.yaw);}
+            else{mob.getNavigation().stop();if(GravesAndGlory.Battle.walls(u,a.order))settle(mob,goal);mob.setYaw(a.yaw);mob.setHeadYaw(a.yaw);mob.setBodyYaw(a.yaw);}
         }
     }
+    /**
+     * A wall troop inside the arrival tolerance of its slot is set going the rest of the way: the tolerance (0.35) is half its 0.7 cell, so one
+     * left there would lean on its neighbour, and the walk stops short or overshoots by about that much. On the ground a velocity v carries a mob
+     * v / (1 - 0.546) = 2.2 v before friction stops it, so 0.454 of the way is the whole way, and it stops on its slot. A mob in the air is left.
+     */
+    static void settle(MobEntity mob,Vec3d goal){
+        Vec3d delta=goal.subtract(mob.getPos()).multiply(1,0,1);
+        if(mob.isOnGround()&&delta.lengthSquared()>SETTLED*SETTLED)mob.setVelocity(delta.x*.454,mob.getVelocity().y,delta.z*.454);
+    }
+    /** How near its slot a wall troop must stand to be left alone by settle. */
+    static final double SETTLED=.03;
     /** Five blocks straight away from an enemy, at a hurried walk: how a ranged troop backs off from one too near. */
     static void backOff(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,LivingEntity from,long time){
         Vec3d away=u.mob.getPos().subtract(from.getPos()).multiply(1,0,1).normalize();
@@ -170,7 +181,7 @@ final class Tactics {
                 if(d<score){score=d;best=bridge;}
             }
             if(best!=null){
-                double offset=(u.slot%5-2)*GravesAndGlory.Battle.spacing(u);
+                var battle=GravesAndGlory.battle;double offset=(u.slot%5-2)*(battle==null?GravesAndGlory.Battle.spacing(u):battle.cell(u)); // its lane: a wall troop's cell on Hold, else its body's room
                 double entry=best.x()+Math.signum(side)*(best.width()/2.0-N.bridgeEntryInset());
                 boolean onBridge=Math.abs(here.z-best.z())<best.depth()/2.0-1&&Math.abs(here.x-best.x())<best.width()/2.0+2;
                 double x=onBridge?best.x()+Math.signum(destination)*(best.width()/2.0+2):entry;
@@ -203,7 +214,7 @@ final class Tactics {
     }
     /** How many times a stuck unit was set on the step beside it (StepHop); the route harness prints it. GRAVES_NO_HOP=1 leaves the hop out (the control of the house marches). */
     static int stepHops;static final boolean HOP=System.getenv("GRAVES_NO_HOP")==null;
-    /** The unit stood still for the stuck time: when the cell beside it that is nearest its waypoint is one block up (a step under a low skirt of leaves, which a jump cannot make), it is set on that cell. */
+    /** The unit stood still for the stuck time: when the cell beside it that is nearest its waypoint is one block up (a step under a low skirt of leaves, which a jump cannot make), it is set on that cell, at the point of it nearest the waypoint. */
     static boolean stepHop(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d goal){
         if(!HOP)return false;
         var w=battle.world;var mob=u.mob;
@@ -213,7 +224,9 @@ final class Tactics {
         });
         if(c==null)return false;
         if(TRACE_HOPS)System.out.println("[Graves and Glory] step hop of slot "+u.slot+" from ("+String.format("%.1f,%.1f,%.1f",mob.getX(),mob.getY(),mob.getZ())+") to ("+c[0]+","+c[1]+","+c[2]+") on its way to ("+String.format("%.1f,%.1f",goal.x,goal.z)+")");
-        mob.refreshPositionAndAngles(c[0]+.5,c[1],c[2]+.5,mob.getYaw(),mob.getPitch());mob.setVelocity(Vec3d.ZERO);stepHops++;
+        // on the point of the step nearest the waypoint, not its middle: two wall neighbours 0.7 apart that hop onto one block stand apart, as they walked
+        double half=mob.getWidth()/2;double x=net.minecraft.util.math.MathHelper.clamp(goal.x,c[0]+half,c[0]+1-half),z=net.minecraft.util.math.MathHelper.clamp(goal.z,c[2]+half,c[2]+1-half);
+        mob.refreshPositionAndAngles(x,c[1],z,mob.getYaw(),mob.getPitch());mob.setVelocity(Vec3d.ZERO);stepHops++;
         PINS.remove(u);
         return true;
     }

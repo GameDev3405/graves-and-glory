@@ -79,19 +79,25 @@ public final class CommandMode {
         if(colour.getRgb()==net.minecraft.util.Formatting.LIGHT_PURPLE.getColorValue())return 1;
         return -1;
     }
+    /** The army's own troops of this group, as the state packet names them (its markers); a troop's sheet row names its mob and tags. */
+    static java.util.List<Spec.TroopsRow> troops(Group group){
+        java.util.List<Spec.TroopsRow> out=new java.util.ArrayList<>();
+        for(var m:GravesAndGloryClient.markers){if(!m.own())continue;var spec=ArmyMobs.named(m.name());if(spec!=null&&spec.group().equals(group.id()))out.add(spec);}
+        return out;
+    }
     /**
-     * The cell the server forms this group in (Battle.formation): the formation's spacing, or the room of the widest body among the army's troops of the group
-     * (BattleMath.spacing of the troop's mob width) when that is more. The state packet names each own troop, and a troop's sheet row names its mob.
+     * The places, {side, back} from the order's point before facing, the server forms a group of `count` in (Battle.formation, through the same
+     * BattleMath.holdLayout): on Hold its shield troops close into the wall in the front ranks, the rest form behind them, and any other order
+     * forms all of it in one cell, the formation's spacing or the widest body's room. `troops` are the group's soldiers as far as known; any
+     * count past them is laid out as a husk-wide soldier with no shield. The places depend only on the counts and cells, so the markers'
+     * order need not be the server's slot order.
      */
-    static double cell(Group group,double formationSpacing){
-        double cell=formationSpacing;
-        for(var m:GravesAndGloryClient.markers){
-            if(!m.own())continue;
-            var spec=ArmyMobs.named(m.name());if(spec==null||!spec.group().equals(group.id()))continue;
-            var id=net.minecraft.util.Identifier.tryParse(spec.entity());
-            if(id!=null&&net.minecraft.registry.Registries.ENTITY_TYPE.containsId(id))cell=Math.max(cell,BattleMath.spacing(net.minecraft.registry.Registries.ENTITY_TYPE.get(id).getWidth()));
-        }
-        return cell;
+    static double[][] places(java.util.List<Spec.TroopsRow> troops,int count,String groupId,String order,Spec.FormationsRow f){
+        boolean[] shield=new boolean[count];double[] width=new double[count];
+        for(int i=0;i<count;i++){var t=i<troops.size()?troops.get(i):null;width[i]=t==null?net.minecraft.entity.EntityType.HUSK.getWidth():ArmyMobs.width(t);shield[i]=t!=null&&order.equals("hold")&&ArmyMobs.tags(t).contains("shield");}
+        double[][] places=BattleMath.holdLayout(shield,width,f.spacing(),Spec.COMBATDISCIPLINE[0].shieldWallCell(),BattleMath.groupColumns(groupId,f.columns()),f.wedge());
+        double role=BattleMath.roleDepth(groupId);for(double[] p:places)p[1]+=role;
+        return places;
     }
     static void tick(MinecraftClient c){
         preview.clear();if(!GravesAndGloryClient.battleActive()){cancel();return;}if(!active()||c.player==null||c.world==null||c.currentScreen!=null)return;
@@ -109,11 +115,8 @@ public final class CommandMode {
         var f=java.util.Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(formation)).findFirst().orElse(Spec.FORMATIONS[0]);
         var dust=new DustParticleEffect(new Vector3f(.95f,.82f,.44f),1.15f);
         for(Group group:groups)if(selected.equals("all")||selected.equals(group.id())){
-            int columns=Math.min(f.columns(),group.id().equals("support")?2:group.id().equals("ranged")?6:12);
-            double role=group.id().equals("support")?9:group.id().equals("ranged")?5:0,cell=cell(group,f.spacing());
-            for(int i=0;i<group.count();i++){
-                double side=(i%columns-(columns-1)/2.0)*cell,back=role+(i/columns+1)*cell;
-                if(f.wedge()){int rank=(int)Math.floor(Math.sqrt(i));side=(i-rank*rank-rank)*cell;back=role+(rank+1)*cell;}
+            for(double[] place:places(troops(group),group.count(),group.id(),pending,f)){
+                double side=place[0],back=place[1];
                 double angle=Math.toRadians(facing),x=destination.x+Math.cos(angle)*side+Math.sin(angle)*back,z=destination.z+Math.sin(angle)*side-Math.cos(angle)*back;
                 preview.add(new Vec3d(x,Arena.ground((int)x,(int)z)+1.05,z));
             }

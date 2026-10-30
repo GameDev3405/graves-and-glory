@@ -29,6 +29,33 @@ public final class BattleMathCheck {
         check(BattleMath.nearestAnchor(-100, 0, -108, 0, ax, az) == -1, "base wins when the fight is at home");
         check(BattleMath.nearestAnchor(40, 0, -108, 0, new double[0], new double[0]) == -1, "no anchors means base");
         check(BattleMath.spacing(0.6) == 1.3 && Math.abs(BattleMath.spacing(1.4) - 1.7) < 1e-9 && Math.abs(BattleMath.spacing(1.95) - 2.25) < 1e-9, "spacing: a husk or illager takes 1.3, an iron golem 1.7, a ravager 2.25");
+        check(BattleMath.shieldCell(0.6, 0.7) == 0.7, "a husk-wide shield troop takes the 0.7 wall cell");
+        check(Math.abs(BattleMath.shieldCell(0.9, 0.7) - 1.0) < 1e-9, "a large shield troop takes its width plus 0.1");
+        double[] c = BattleMath.holdSlots(new boolean[]{true,false,true}, new double[]{.6,.6,.6}, 1.8, 0.7);
+        check(c[0] == 0.7 && c[2] == 0.7 && c[1] == 1.8, "shield units close up; others keep the formation cell");
+        check(BattleMath.holdSlots(new boolean[]{false}, new double[]{1.4}, 1.8, 0.7)[0] == 1.8 && Math.abs(BattleMath.holdSlots(new boolean[]{true,false}, new double[]{1.4,1.95}, 1.8, 0.7)[0] - 1.5) < 1e-9 && Math.abs(BattleMath.holdSlots(new boolean[]{true,false}, new double[]{1.4,1.95}, 1.8, 0.7)[1] - 2.25) < 1e-9, "a golem-wide shield troop takes 1.5, a ravager behind it its 2.25 room");
+        // the Hold layout (Battle.formation and CommandMode both call it): shield ranks in front at their cell, the rest behind at theirs
+        double[][] old = BattleMath.holdLayout(new boolean[7], new double[]{.6,.6,.6,1.4,.6,.6,.6}, 1.8, 0.7, 5, false);
+        boolean same = true;
+        for (int i = 0; i < 7; i++) same &= Math.abs(old[i][0] - (i % 5 - 2) * 1.8) < 1e-9 && Math.abs(old[i][1] - (i / 5 + 1) * 1.8) < 1e-9;
+        check(same, "with no shield unit the layout is the old one: one cell, the formation's 1.8 (it holds Brassjaw's 1.7)");
+        double[][] wedgeOld = BattleMath.holdLayout(new boolean[5], new double[]{.6,.6,.6,.6,.6}, 1.8, 0.7, 5, true);
+        check(wedgeOld[0][0] == 0 && wedgeOld[0][1] == 1.8 && wedgeOld[1][0] == -1.8 && wedgeOld[3][0] == 1.8 && Math.abs(wedgeOld[2][1] - 3.6) < 1e-9 && Math.abs(wedgeOld[4][1] - 5.4) < 1e-9 && wedgeOld[4][0] == -3.6, "the old wedge: 1, then 3 a rank, then 5");
+        boolean[] mix = {true,false,true,true,false,true,true,true};double[] w8 = {.6,.6,.6,.6,.6,.6,.6,.6};
+        double[][] hold = BattleMath.holdLayout(mix, w8, 1.8, 0.7, 5, false);
+        check(Math.abs(hold[0][0] + 1.4) < 1e-9 && Math.abs(hold[2][0] + 0.7) < 1e-9 && Math.abs(hold[0][1] - 0.7) < 1e-9 && Math.abs(hold[7][1] - 1.4) < 1e-9, "six shield units in block: five abreast 0.7 apart, 0.7 back, the sixth a rank behind");
+        check(Math.abs(hold[1][1] - (1.4 + 1.8)) < 1e-9 && Math.abs(hold[4][1] - (1.4 + 1.8)) < 1e-9 && Math.abs(hold[1][0] + 3.6) < 1e-9 && Math.abs(hold[4][0] + 1.8) < 1e-9, "the two others form behind the two shield ranks at the 1.8 cell, in the columns of the block");
+        check(BattleMath.ranks(0,5,false) == 0 && BattleMath.ranks(5,5,false) == 1 && BattleMath.ranks(6,5,false) == 2 && BattleMath.ranks(1,5,true) == 1 && BattleMath.ranks(4,5,true) == 2 && BattleMath.ranks(5,5,true) == 3, "ranks in rows and in the wedge");
+        double[][] wedgeHold = BattleMath.holdLayout(new boolean[]{true,true,true,true,false}, new double[]{.6,.6,.6,.6,.6}, 1.8, 0.7, 5, true);
+        check(Math.abs(wedgeHold[1][0] + 0.7) < 1e-9 && Math.abs(wedgeHold[3][1] - 1.4) < 1e-9 && wedgeHold[4][0] == 0 && Math.abs(wedgeHold[4][1] - (1.4 + 1.8)) < 1e-9, "a wedge on Hold keeps its shape at 0.7, the rest start a wedge of their own behind it");
+        // the command preview sees the markers in another order than the slots: the same places come out
+        boolean[] shuffled = {false,true,true,true,true,false,true,true};
+        double[][] other = BattleMath.holdLayout(shuffled, w8, 1.8, 0.7, 5, false);
+        java.util.Set<String> setA = new java.util.TreeSet<>(), setB = new java.util.TreeSet<>();
+        for (int i = 0; i < 8; i++) { setA.add(String.format(java.util.Locale.ROOT, "%.4f,%.4f", hold[i][0], hold[i][1])); setB.add(String.format(java.util.Locale.ROOT, "%.4f,%.4f", other[i][0], other[i][1])); }
+        check(setA.equals(setB) && setA.size() == 8, "the places depend on the counts and cells, not on the order the units come in");
+        double[] row = BattleMath.deployRow(new double[]{2.5,2.5,2.5,2.5,2.5}), wall = BattleMath.deployRow(new double[]{.7,.7,.7,2.5,2.5});
+        check(row[0] == -5 && row[2] == 0 && row[4] == 5 && Math.abs(wall[1] - wall[0] - 0.7) < 1e-9 && Math.abs(wall[2] - wall[1] - 0.7) < 1e-9 && wall[2] == 0 && Math.abs(wall[3] - wall[2] - 1.6) < 1e-9, "a deploy row: the old 2.5 places, and shield troops shoulder to shoulder at 0.7");
         double[] px={-44,0,44}, pz={-43,0,43}; int[] own={-1,-1,-1};
         check(BattleMath.leastDefended(0,0,px,pz,own,new int[]{0,9,0},1,25) != 1, "nine defenders push hard bots off the centre");
         check(BattleMath.leastDefended(0,0,px,pz,own,new int[]{0,0,0},1,25) == 1, "undefended nearest point wins");

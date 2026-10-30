@@ -45,6 +45,61 @@ public final class BattleMath {
     }
     /** The room a body of this width takes in a formation and on a bridge: its width and 0.3, at least 1.3. A formation's cell is the widest such room in its group, at least the formation's own spacing; the server (Battle.formation) and the command preview (CommandMode) both read it. */
     public static double spacing(double width) { return Math.max(1.3, width + 0.3); }
+    /** A shield troop's cell on Hold (animation rework §7.2): the shield-wall cell (combatDiscipline.shieldWallCell), or its body's width and 0.1 when that is more, so neighbouring collision boxes keep a gap and never push each other apart. */
+    public static double shieldCell(double width, double wallCell) { return Math.max(wallCell, width + 0.1); }
+    /** The cell of each unit of a group on Hold: a shield unit its shieldCell, any other the formation's cell or its body's room (spacing) when that is more. */
+    public static double[] holdSlots(boolean[] shield, double[] width, double formationCell, double wallCell) {
+        double[] cells = new double[shield.length];
+        for (int i = 0; i < cells.length; i++) cells[i] = shield[i] ? shieldCell(width[i], wallCell) : Math.max(formationCell, spacing(width[i]));
+        return cells;
+    }
+    /** How many ranks this many places take in a formation's shape: rows of `columns`, or the wedge's ranks of 1, 3, 5... */
+    public static int ranks(int count, int columns, boolean wedge) {
+        if (count <= 0) return 0;
+        return wedge ? (int) Math.floor(Math.sqrt(count - 1)) + 1 : (count - 1) / columns + 1;
+    }
+    /**
+     * A group's places (Battle.formation, and the command preview in CommandMode, which must agree): {side, back} for each unit, in the order
+     * given (the server gives slot order), before the group's role depth. `shield` marks the units that close into the wall (shield troops on Hold;
+     * all false on any other order). The shield units come first, in the front ranks of the formation's shape, at the widest of their cells; the
+     * others take the ranks behind them at the widest of theirs. With no shield unit this is the old layout: one cell, the formation's spacing or
+     * the widest body's room. The places depend only on how many units of each kind there are and their cells, not on their order.
+     */
+    public static double[][] holdLayout(boolean[] shield, double[] width, double formationCell, double wallCell, int columns, boolean wedge) {
+        double[] cells = holdSlots(shield, width, formationCell, wallCell);
+        int shields = 0; double front = 0, rear = formationCell;
+        for (int i = 0; i < cells.length; i++) if (shield[i]) { shields++; front = Math.max(front, cells[i]); } else rear = Math.max(rear, cells[i]);
+        double depth = ranks(shields, columns, wedge) * front;
+        double[][] places = new double[cells.length][];
+        int s = 0, o = 0;
+        for (int i = 0; i < cells.length; i++) {
+            boolean wall = shield[i]; int index = wall ? s++ : o++; double cell = wall ? front : rear;
+            double side = (index % columns - (columns - 1) / 2.0) * cell, back = (index / columns + 1) * cell;
+            if (wedge) { int rank = (int) Math.floor(Math.sqrt(index)); side = (index - rank * rank - rank) * cell; back = (rank + 1) * cell; }
+            places[i] = new double[]{side, wall ? back : depth + back};
+        }
+        return places;
+    }
+    /** How far behind its order's point a group forms (Battle.formation and CommandMode): support 9, siege 7 (a mortar cannot fire within its minimum range), ranged 5, the rest 0. */
+    public static double roleDepth(String group) {
+        return switch (group) { case "support" -> 9; case "siege" -> 7; case "ranged" -> 5; default -> 0; };
+    }
+    /** How many abreast a group forms in a formation of this many columns: support 2, siege and ranged 6, the rest 12. */
+    public static int groupColumns(String group, int formationColumns) {
+        return Math.min(formationColumns, switch (group) { case "support" -> 2; case "siege", "ranged" -> 6; default -> 12; });
+    }
+    /**
+     * The sideways offsets of one deploy row (Battle.reinforce) from the cells of its places: neighbours stand half of each one's cell apart, so
+     * shield troops form their default Hold at the wall cell, and the row is centred on its middle place (index 2 of a row of 5). With every cell
+     * the same c this is (i - 2) x c, the old row.
+     */
+    public static double[] deployRow(double[] cells) {
+        double[] at = new double[cells.length];
+        for (int i = 1; i < cells.length; i++) at[i] = at[i - 1] + (cells[i - 1] + cells[i]) / 2;
+        int middle = (cells.length - 1) / 2; double shift = cells.length == 0 ? 0 : at[middle];
+        for (int i = 0; i < at.length; i++) at[i] -= shift;
+        return at;
+    }
     /** Index of the anchor nearest the target (tx,tz), or -1 when no anchor is strictly nearer to the target than the base (bx,bz). */
     public static int nearestAnchor(double tx, double tz, double bx, double bz, double[] ax, double[] az) {
         int best = -1;

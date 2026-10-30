@@ -51,7 +51,7 @@ public final class Phase2Checks implements ClientModInitializer {
     public interface ServerWatch { void serverTick(GravesAndGlory.Battle b); }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
     static{SUITES.put("banners",Banners::new);SUITES.put("engine",Engine::new);SUITES.put("commander",Commanders::new);SUITES.put("gilded",Gilded::new);SUITES.put("spike",Spike::new);SUITES.put("gilded-art",GildedArt::new);SUITES.put("graveborn",Graveborn::new);SUITES.put("ironclad",Ironclad::new);SUITES.put("tidecallers",Tidecallers::new);SUITES.put("wildmoot",Wildmoot::new);SUITES.put("chase",Chase::new);SUITES.put("anim",Anim::new);SUITES.put("turn",Turn::new);SUITES.put("hands",()->new Turn(true));SUITES.put("t3",()->new Turn(false,true));SUITES.put("tells",Tells::new);SUITES.put("depth",Depth::new);SUITES.put("screens",Screens::new);SUITES.put("migration",Migration::new);}
-    static{LevelChecks.register(SUITES);AbilityLevelChecks.register(SUITES);RankChecks.register(SUITES);FacesChecks.register(SUITES);MotionChecks.register(SUITES);} // in-match progression: levels, gear, armoury; statuses, levels-<house>; ranks (each file owns its entries)
+    static{LevelChecks.register(SUITES);AbilityLevelChecks.register(SUITES);RankChecks.register(SUITES);FacesChecks.register(SUITES);MotionChecks.register(SUITES);HoldLineChecks.register(SUITES);} // in-match progression: levels, gear, armoury; statuses, levels-<house>; ranks (each file owns its entries)
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     static int tick,front;static boolean started;
@@ -2574,7 +2574,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     report("p2-golem-swing",sent>=2&&sent<=4&&hit&&mate&&seen>0,"in 130 ticks Brassjaw's swings sent "+sent+" entity-status-4 packets (want 2 to 4: one per swing, cooldown 36; a Hearthguard swinging beside him sends none), they cost the knight "+fmt(foeHp-us[0].mob.getHealth())+" health, the Hearthguard's cost its knight "+fmt(foeHp2-us[1].mob.getHealth())+"; the client saw the golem's attack animation run (attackTicksLeft up to "+seen+", want above 0)");
                     golemId=-1;clearFixture(b,"swing done");next(b,45);
                 }
-                case 45->{ // p2-ironclad-spacing: the room a body takes, in formation and on a bridge lane
+                case 45->{ // p2-ironclad-spacing: the room a body takes, in formation and on a bridge lane; on Hold the shield wall's cell, which a wide shield troop widens
                     reset(own);own.order="attack";own.formation="block";own.target=centre();own.yaw=-90;
                     for(int i=0;i<4;i++)us[i]=post(b,own,Campaign.troop("ic_hearthguard"),i,-8,-4+i*2,-90,true);
                     u1=post(b,own,Campaign.troop("ic_colossus"),4,-8,6,-90,true);u2=post(b,own,Campaign.troop("ic_arbalist"),5,-10,0,-90,true);
@@ -2588,8 +2588,17 @@ public final class Phase2Checks implements ClientModInitializer {
                     var bridges=Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList();
                     double lane1=(4%5-2)*sg,lane0=(0%5-2)*sh;
                     boolean laneG=bridges.stream().anyMatch(br->Math.abs((rg.z-br.z())-lane1)<1e-4),laneH=bridges.stream().anyMatch(br->Math.abs((rh.z-br.z())-lane0)<1e-4);
-                    boolean ok2=close(sg,1.7)&&close(sh,1.3)&&close(sa,1.3)&&close(with,1.8)&&close(without,1.8)&&laneG&&laneH; // Compact's 1.8 cell holds Brassjaw's 1.7; the wall cell (Task 2) brings back a cell he widens
-                    report("p2-ironclad-spacing",ok2,"the room a body takes (width + 0.3, at least 1.3): Brassjaw "+fmt(sg)+" (want 1.70), a Hearthguard "+fmt(sh)+" and an Arbalist "+fmt(sa)+" (want 1.30); in Compact (spacing 1.8) the neighbours of a group with Brassjaw in it stand "+fmt(with)+" apart (want 1.80, his 1.7 fits the cell) and without him "+fmt(without)+" (want 1.80); the bridge lane of his slot 4 is z "+fmt(rg.z)+" past the bridge's centre, offset "+fmt(lane1)+" (3.4; it was 2.6 with the fixed 1.3)="+laneG+", a Hearthguard's slot 0 "+fmt(rh.z)+", offset "+fmt(lane0)+"="+laneH);
+                    // Hold (Task 2): the Hearthguard close to the 0.7 wall cell in the front rank; Brassjaw (no shield) forms behind them in Compact's 1.8 cell.
+                    // A golem-wide shield troop (Brassjaw's row with the shield tag: no such troop is in the sheet yet) widens the wall to his width + 0.1 = 1.5.
+                    b.issue(own,"infantry","hold","block",centre(),-90,-1);
+                    double wall=b.formation(us[0]).distanceTo(b.formation(us[1])),golemBack=b.formation(u1).x-b.formation(us[0]).x;var rw=Tactics.route(us[0],goal);
+                    var c0=u1.spec;var wide=new Spec.TroopsRow(c0.id(),c0.house(),c0.rarity(),c0.name(),c0.entity(),c0.group(),c0.health(),c0.damage(),c0.range(),c0.ranged(),c0.speed(),c0.cooldown(),c0.cost(),c0.trainingSeconds(),c0.magic(),c0.weapon(),c0.helmet(),c0.chest(),"shield,large",c0.ability(),c0.evolveLine(),c0.slotWeight(),c0.pennant(),c0.shield(),c0.texture(),c0.family());
+                    b.units.remove(u1);u3=post(b,own,wide,4,-8,6,-90,true);
+                    double widened=b.formation(us[0]).distanceTo(b.formation(us[1])),cellW=b.cell(u3);
+                    boolean hold=Math.abs(wall-0.7)<1e-3&&golemBack<-1&&bridges.stream().anyMatch(br->Math.abs((rw.z-br.z())-(0%5-2)*0.7)<1e-4)&&Math.abs(widened-1.5)<1e-3&&Math.abs(cellW-1.5)<1e-3;
+                    boolean ok2=close(sg,1.7)&&close(sh,1.3)&&close(sa,1.3)&&close(with,1.8)&&close(without,1.8)&&laneG&&laneH&&hold; // Compact's 1.8 cell holds Brassjaw's 1.7; on Hold the wall cell is the one a wide shield troop widens
+                    report("p2-ironclad-spacing",ok2,"the room a body takes (width + 0.3, at least 1.3): Brassjaw "+fmt(sg)+" (want 1.70), a Hearthguard "+fmt(sh)+" and an Arbalist "+fmt(sa)+" (want 1.30); attacking in Compact (spacing 1.8) the neighbours of a group with Brassjaw in it stand "+fmt(with)+" apart (want 1.80, his 1.7 fits the cell) and without him "+fmt(without)+" (want 1.80); the bridge lane of his slot 4 is z "+fmt(rg.z)+" past the bridge's centre, offset "+fmt(lane1)+" (3.4; it was 2.6 with the fixed 1.3)="+laneG+", a Hearthguard's slot 0 "+fmt(rh.z)+", offset "+fmt(lane0)+"="+laneH
+                        +"; on Hold the Hearthguard stand "+fmt(wall)+" apart (want 0.70, the wall cell), Brassjaw "+fmt(-golemBack)+" behind them (want past 1), a Hearthguard's bridge lane at the wall cell (z "+fmt(rw.z)+", want offset -1.40), and with a golem-wide shield troop in the wall its cell is "+fmt(cellW)+" and the Hearthguard stand "+fmt(widened)+" apart (want 1.50: his width + 0.1)="+hold);
                     clearFixture(b,"spacing");own.formation="block";reset(own);next(b,50);
                 }
                 case 50->{ // p2-entrench, on a platform over the objective B: six Ironclad slots (tier I) of the commander's army, none of them has moved

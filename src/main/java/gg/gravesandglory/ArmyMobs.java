@@ -68,6 +68,11 @@ public final class ArmyMobs {
         if (id != null && Registries.ENTITY_TYPE.containsId(id) && Registries.ENTITY_TYPE.get(id).create(w) instanceof MobEntity mob) return mob;
         return new HuskEntity(EntityType.HUSK, w);
     }
+    /** The width of the troop's body: its sheet entity's, or a husk's for an id the game does not know (the deploy rows and the command preview read it before a mob exists). */
+    public static double width(Spec.TroopsRow t) {
+        Identifier id = Identifier.tryParse(t.entity());
+        return id != null && Registries.ENTITY_TYPE.containsId(id) ? Registries.ENTITY_TYPE.get(id).getWidth() : EntityType.HUSK.getWidth();
+    }
 
     /** Whether the entity is a troop of the army (an ArmyMob). */
     public static boolean isTroop(Entity e) { return e instanceof ArmyMob; }

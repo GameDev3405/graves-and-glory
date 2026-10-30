@@ -823,17 +823,23 @@ public final class GravesAndGlory implements ModInitializer {
         }
         /** The room a troop's body takes in a formation and the lane it takes on a bridge: its width and 0.3, at least 1.3 (BattleMath.spacing). */
         public static double spacing(Unit u){return BattleMath.spacing(u.mob.getWidth());}
+        /** Whether the unit closes into the shield wall under this order: a shield troop on Hold (animation rework §7.2). */
+        static boolean walls(Unit u,String order){return order.equals("hold")&&u.tags.contains("shield");}
+        /** The unit's formation slot: its deploy spot on a player's default Hold, else its place in its group's formation round the order's point (BattleMath.holdLayout). */
         Vec3d formation(Unit u){
             Assignment a=assignment(u);if(!u.squad.bot&&u.squad.order.equals("hold")&&!u.squad.assignments.containsKey(u.spec.group()))return u.deployed;var f=Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(a.formation)).findFirst().orElse(Spec.FORMATIONS[0]);
-            int slot=0;double cell=f.spacing();
-            for(Unit other:units)if(other.squad==u.squad&&other.spec.group().equals(u.spec.group())&&other.mob.isAlive()){if(other.slot<u.slot)slot++;cell=Math.max(cell,spacing(other));} // the cell is the widest body of the group, so a golem's neighbours do not overlap it
-            boolean siege=u.spec.group().equals("siege"); // behind the archers: a mortar cannot fire at what stands within its minimum range
-            double role=u.spec.group().equals("support")?9:siege?7:u.spec.group().equals("ranged")?5:0;
-            int columns=Math.min(f.columns(),u.spec.group().equals("support")?2:siege||u.spec.group().equals("ranged")?6:12);
-            double side=(slot%columns-(columns-1)/2.0)*cell,back=role+(slot/columns+1)*cell;
-            if(f.wedge()){int rank=(int)Math.floor(Math.sqrt(slot));side=(slot-rank*rank-rank)*cell;back=role+(rank+1)*cell;}
+            // the group in slot order (u before any other of its slot, as the old count of lower slots placed it); BattleMath.holdLayout lays it out: on Hold its shield troops close into the wall in the front ranks, the rest form behind them
+            List<Unit> group=new ArrayList<>();group.add(u);
+            for(Unit other:units)if(other!=u&&other.squad==u.squad&&other.spec.group().equals(u.spec.group())&&other.mob.isAlive())group.add(other);
+            group.sort(Comparator.comparingInt(m->m.slot));
+            boolean[] shield=new boolean[group.size()];double[] width=new double[group.size()];int at=0;
+            for(int i=0;i<shield.length;i++){Unit m=group.get(i);shield[i]=walls(m,a.order);width[i]=m.mob.getWidth();if(m==u)at=i;}
+            double[] place=BattleMath.holdLayout(shield,width,f.spacing(),Spec.COMBATDISCIPLINE[0].shieldWallCell(),BattleMath.groupColumns(u.spec.group(),f.columns()),f.wedge())[at];
+            double side=place[0],back=BattleMath.roleDepth(u.spec.group())+place[1];
             double angle=Math.toRadians(a.yaw);return a.target.add(Math.cos(angle)*side+Math.sin(angle)*back,0,Math.sin(angle)*side-Math.cos(angle)*back);
         }
+        /** The cell the unit takes under its order: on Hold a shield troop's wall cell (BattleMath.shieldCell), any other its body's room (spacing). The bridge lanes use it (Tactics.route). */
+        double cell(Unit u){return walls(u,assignment(u).order)?BattleMath.shieldCell(u.mob.getWidth(),Spec.COMBATDISCIPLINE[0].shieldWallCell()):spacing(u);}
         public boolean atBarracks(ServerPlayerEntity p,Squad s){
             var f=Spec.FACTIONS[s.team];return horizontalDistance(p.getPos(),new Vec3d(f.barracksX(),65,f.barracksZ()))<=Spec.ECONOMY[0].accessRadius()*Spec.ECONOMY[0].accessRadius();
         }
@@ -942,9 +948,13 @@ public final class GravesAndGlory implements ModInitializer {
             for(Squad other:squads.values())if(other!=s&&other.seated&&other.team==s.team)count++; // this team's armies, this one included (a joining squad is not in squads yet)
             List<String> line=s.banner; // from Campaign.prepareRound: the slot index is the position, and empty and ^ slots stay empty
             Morale.lineup(this,s,line);
+            // each row of 5 places: 2.5 apart, a shield troop's at its wall cell, so the player's default Hold (his troops stand where they deployed) already closes the wall (BattleMath.deployRow)
+            double wall=Spec.COMBATDISCIPLINE[0].shieldWallCell();double[] cells=new double[(Math.max(line.size(),1)+4)/5*5];Arrays.fill(cells,2.5);
+            for(int i=0;i<line.size();i++){var spec=Campaign.troop(line.get(i));if(spec!=null&&ArmyMobs.tags(spec).contains("shield"))cells[i]=BattleMath.shieldCell(ArmyMobs.width(spec),wall);}
             for(String id:line){int position=slot++;if(position>=R.squadSize()||occupied.contains(position))continue;
                 var spec=Campaign.troop(id);if(spec==null)continue;
-                double side=s.team==0?1:-1,x=base(s.team).x+side*(20-position/5*3),z=base(s.team).z+side*((index-(count-1)/2.0)*22+(position%5-2)*2.5); // rows centred on the base for any army count; Dusk's mirror Dawn's, so army i forms on the side of its lane point (BattleMath.laneTarget)
+                double row=BattleMath.deployRow(Arrays.copyOfRange(cells,position/5*5,position/5*5+5))[position%5];
+                double side=s.team==0?1:-1,x=base(s.team).x+side*(20-position/5*3),z=base(s.team).z+side*((index-(count-1)/2.0)*22+row); // rows centred on the base for any army count; Dusk's mirror Dawn's, so army i forms on the side of its lane point (BattleMath.laneTarget)
                 spawn(s,spec,position,new Vec3d(x,Arena.ground((int)x,(int)z)+1,z));
             }
             Houses.recompute(s);
