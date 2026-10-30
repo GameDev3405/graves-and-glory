@@ -1,5 +1,6 @@
 {
  "weapon": "order_bow",
+ "density": 1,
  "thickness": 2,
  "grip": {
   "offset": [
@@ -21,21 +22,21 @@
  ],
  "nocks": [
   [
-   -3.98,
-   0.0
+   -3.3196,
+   0
   ],
   [
-   -4.55,
-   0.0
+   -4.1631,
+   0
   ],
   [
-   -5.13,
-   0.0
+   -4.9065,
+   0
   ],
   [
-   -5.7,
-   0.0
+   -5.65,
+   0
   ]
  ],
- "note": "The Archer's bow, tier I (plain): a dark-wood recurve of five staves a limb with a few one unbroken grain line on each stave and three light flecks a limb, a leather grip between leather-wrapped risers, self nocks; 25.9 px tall; the string to the left (-x), drawn 0.57 px a frame (full draw at x -5.7, within 2 px of the clip's drawing hand)."
+ "note": "order_bow"
 }

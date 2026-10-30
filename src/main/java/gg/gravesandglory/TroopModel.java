@@ -37,6 +37,8 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     final ModelPart top;
     final String troop,rig,hand,idleArms,portrait,weapon;
     final Identifier veteran,glow,outer;final int glowFrom;
+    /** The troop's own cloth sheets ("cloth": a texture id prefix, <prefix><side>.png), or "" for the shared team_cloth_ sheets. */
+    final String cloth;
     /** Texels a model px of this troop's PNGs carry (the file's "density", 1 unless it says; texel-3 plan): above 1 the build also ships a one-texel-a-px twin of each PNG (TroopModels.twin). */
     final int density;
     /** The faces of this troop (texel-3 faces design F2): how many face bones its head has (0 for a troop with none), the face a card portrait wears, and the face a singular character is pinned to (-1 for none). */
@@ -59,6 +61,8 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     /** The outer layer's twin (rig boxes dilated by the rig's outer), or null; its bones copy this model's pose. */
     final ModelPart outerTop;private final Map<String,ModelPart> outerParts=new HashMap<>();
     boolean folded;
+    /** Whether the troop holds nothing in its off hand, so the model's own shield parts (tag shield) hide; TroopRenderer sets it before prepare. */
+    boolean shieldOff;
     private long shown;
     /** The bits of the team bones in a shownMask. */
     private final long teamBits;
@@ -84,7 +88,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     boolean reliefSpent;int reliefDrawn;
 
     private TroopModel(){
-        super(RenderLayer::getEntityCutout);top=new ModelPart(List.of(),Map.of());troop=rig=hand=idleArms=portrait=weapon="";
+        super(RenderLayer::getEntityCutout);top=new ModelPart(List.of(),Map.of());troop=rig=hand=idleArms=portrait=weapon=cloth="";
         veteran=glow=outer=null;glowFrom=1;density=1;faceCount=0;faceCard=0;faceFixed=-1;teamOn=new boolean[0];hands=Map.of();rest=new Box(0,0,0,0,0,0);outerTop=null;
         cullRadius=cullBottom=cullTop=0;crown=Double.NaN;teamBits=0;weaponPoints=List.of();relief=Map.of();reliefWalk=Map.of();
     }
@@ -100,7 +104,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         super(RenderLayer::getEntityCutout);
         this.top=top;this.hands=Map.copyOf(hands);this.outerTop=outerTop;this.weaponPoints=List.copyOf(weaponPoints);
         troop=str(json,"troop");rig=str(json,"rig");hand=str(json,"hand");idleArms=json.has("idleArms")?str(json,"idleArms"):"hang";
-        portrait=str(json,"portrait");weapon=str(json,"weapon");
+        portrait=str(json,"portrait");weapon=str(json,"weapon");cloth=str(json,"cloth");
         veteran=id(str(json,"veteran"));glow=id(str(json,"glow"));outer=id(str(json,"outer"));
         glowFrom=json.has("glowFrom")?json.get("glowFrom").getAsInt():1;
         density=json.has("density")?json.get("density").getAsInt():1;
@@ -357,14 +361,14 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     public void prepare(TroopModels.Look l,boolean folded,boolean helmOff,int variant){
         int stage=armourArt(l==null?1:l.armourTier()),arms=weaponPartTier(l==null?1:l.weaponTier());this.folded=folded&&parts.containsKey("arms_folded");
         for(Bone b:info.values()){
-            boolean on=(b.stages().isEmpty()||b.stages().contains(stage))&&(b.weaponTiers().isEmpty()||b.weaponTiers().contains(arms));if(helmOff&&"helm".equals(b.tag()))on=false;
+            boolean on=(b.stages().isEmpty()||b.stages().contains(stage))&&(b.weaponTiers().isEmpty()||b.weaponTiers().contains(arms));if(helmOff&&"helm".equals(b.tag()))on=false;if(shieldOff&&"shield".equals(b.tag()))on=false;
             on&=TroopFaces.shows(b.variants(),variant,faceCount);
             parts.get(b.name()).visible=on&&!b.team();
         }
         ModelPart right=parts.get("right_arm"),left=parts.get("left_arm"),fold=parts.get("arms_folded");
         if(fold!=null){fold.visible=this.folded;if(right!=null)right.visible=!this.folded;if(left!=null)left.visible=!this.folded;}
         boolean flies=l!=null&&l.side()!=null&&l.troop().pennant();
-        for(int i=0;i<teamBones.size();i++){Bone b=teamBones.get(i);teamOn[i]=(b.stages().isEmpty()||b.stages().contains(stage))&&(b.weaponTiers().isEmpty()||b.weaponTiers().contains(arms))&&(!FLAGS.contains(b.part())||flies)&&(!helmOff||!"helm".equals(b.tag()));}
+        for(int i=0;i<teamBones.size();i++){Bone b=teamBones.get(i);teamOn[i]=(b.stages().isEmpty()||b.stages().contains(stage))&&(b.weaponTiers().isEmpty()||b.weaponTiers().contains(arms))&&(!FLAGS.contains(b.part())||flies)&&(!helmOff||!"helm".equals(b.tag()))&&(!shieldOff||!"shield".equals(b.tag()));}
         long mask=0;int i=0,t=0;
         for(Bone b:info.values()){
             List<ModelPart> path=paths.get(b.name());boolean on=b.team()?teamOn[t++]:path.get(path.size()-1).visible;
@@ -415,6 +419,8 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     private static String str(JsonObject o,String key){return o.has(key)&&!o.get(key).isJsonNull()?o.get(key).getAsString():"";}
     private static Identifier id(String s){return s.isEmpty()?null:new Identifier(s);}
     private static double[] vec(JsonObject o,String key){JsonArray a=o.getAsJsonArray(key);double[] v=new double[a.size()];for(int i=0;i<v.length;i++)v[i]=a.get(i).getAsDouble();return v;}
+    /** Whether the model carries its own shield (bones tagged shield), drawn in place of the vanilla shield item (TroopFeatures.Shield). */
+    boolean ownShield(){for(Bone b:info.values())if("shield".equals(b.tag()))return true;return false;}
     private static double[][] identity(){return new double[][]{{1,0,0},{0,1,0},{0,0,1}};}
     /** The ModelPart rotation (pitch, yaw, roll in degrees) as a matrix: Z then Y then X, as Quaternionf.rotationZYX. */
     static double[][] rotation(double[] deg){

@@ -5456,6 +5456,8 @@ public final class Phase2Checks implements ClientModInitializer {
         static final List<String> TROOPS=troops(System.getProperty("gravesandglory.turnTroops","gilded"));
         /** The armour tier every turn-suite troop is put at (GRAVES_PHASE2_STAGE; 1 unless asked): the shots then show that stage's gated parts. */
         static final int STAGE=Integer.getInteger("gravesandglory.turnStage",1);
+        /** The weapon tier every turn-suite troop holds (GRAVES_PHASE2_WEAPON; 1 unless asked), so a weapon's tiers can be shot at any armour stage. */
+        static final int WEAPON=Integer.getInteger("gravesandglory.turnWeapon",1);
         /** The hands suite (Turn in its tiers mode): each troop with its weapon at tiers I to III in hand (suite hands, evidence p2-hands-shots). */
         final boolean tiers;
         /** The t3 mode (suite t3): the texel-3 trial's distance and card shots. */
@@ -5548,7 +5550,7 @@ public final class Phase2Checks implements ClientModInitializer {
         }
         void cast(GravesAndGlory.Battle b){
             if(t3){force(b,site.add(-T3_HALF-2,0,-T3_HALF-2),site.add(T3_HALF+2,0,T3_HALF+2));floor(b,T3_HALF);}
-            for(int i=0;i<TROOPS.size();i++){var u=post(b,gold,TROOPS.get(i),0,0,YAW);int tier=t3?3:STAGE;if(tier>1)stage(u,tier);units.put(TROOPS.get(i),u);place(u,i,false);}
+            for(int i=0;i<TROOPS.size();i++){var u=post(b,gold,TROOPS.get(i),0,0,YAW);int tier=t3?3:STAGE;if(tier>1||WEAPON>1)stage(u,tier,t3?1:WEAPON,tier);units.put(TROOPS.get(i),u);place(u,i,false);}
             camera(b,0,EYE,DIST,0,0);
         }
         /** The t3 mode's shots (see the class comment). */
