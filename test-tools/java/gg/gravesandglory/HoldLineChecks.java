@@ -46,6 +46,15 @@ import static gg.gravesandglory.Phase2Checks.server;
  * shields up and the crawl modifier (Tactics.CRAWL_ID) on. The archers removed, the 10-tick mean speed is back to 0.85 v0 with no crawl
  * modifier within fireMemoryTicks + 20. With the archers back, on Hold, the knights walking 27 blocks back to their slots under fire with
  * their shields up keep 0.85 v0 over ticks 10-30, and none carries the crawl modifier.</li>
+ * <li>hl-arc (Task 4): on the same patch, a frozen dummy of the commander's army; 22 blocks east of it, in turn, a frozen Dusk Order Archer,
+ * Arbalist (crossbow), Harpooner (thrown trident), Ballista crew and Mortar crew each fire one shot of their own kind (Abilities.visual) at it
+ * through Projectiles.fire, and the arrow's place is read after each tick's move. The bow's peak over the straight line from bow to target is
+ * 5.5 +/- 0.5 (volleyPeakPerBlock x 22, under volleyPeakMax); the crossbow's is crossbowArcScale (0.4) of the bow's and the trident's
+ * thrownArcScale (0.6) of it, +/- 0.02; the siege pair's stay within 0.05 of the line. Every shot leaves the queue and hurts the dummy exactly
+ * travelTicks (times arcTravelScale, 1) after it was fired, its arrow within 0.3 of the dummy's body then, and its first tick climbs at
+ * BattleMath.launchPitch within 0.5 degrees. Then six Dusk Order Archers (AI on, pinned, on Attack) shoot a line of six frozen dummies 20 blocks
+ * off: their damage a second over ticks 40-440 is within 3% of ARC_DPS_BASE, which this stage measured at BASE (straight shots) on the same
+ * world seed. The screenshot, hl-arc.png, is the bow's arrow near its peak.</li>
  * </ul>
  */
 final class HoldLineChecks {
@@ -92,6 +101,25 @@ final class HoldLineChecks {
         double v0, v1;
         long recoveredAt;
         int crawlingAtRemoval, holdCrawled, holdUp, holdFire;
+        // hl-arc (Task 4)
+        /** The shooters of hl-arc's single shots, in turn, each 22 blocks from the dummy: a bow, a crossbow, a thrown trident, then the siege pair that keeps a straight flight. */
+        static final String[] ARC_SHOOTERS = {"archer", "ic_arbalist", "tc_harpooner", "ic_ballista", "ic_mortar"};
+        /**
+         * The damage a second six Dusk Order Archers deal to the six-dummy line of hl-arc's volley stage at BASE 2cc6d9a (Projectiles before Task 4:
+         * straight shots), measured by this check on the same world seed before the arc went in; the arc must leave it within 3%.
+         */
+        static final double ARC_DPS_BASE = 10.560; // 211.20 over the 400 ticks in both BASE runs, test-tools/work/t4/base-1 and base-2
+        final List<String> arcWhy = new ArrayList<>();
+        boolean arcPass = true;
+        GravesAndGlory.Unit arcTarget, arcShooter;
+        Projectiles.Shot arcShot;
+        net.minecraft.entity.Entity arcArrow;
+        /** The shot's arrow where it stands after each tick's move (age 1 on), the last its place on the landing tick. */
+        final List<Vec3d> arcPath = new ArrayList<>();
+        float arcHealth;
+        int arcIndex;
+        double bowPeak = Double.NaN, arcLostAt;
+        final List<GravesAndGlory.Unit> arcDummies = new ArrayList<>();
 
         static final double WALL = 0.7;
 
@@ -202,7 +230,7 @@ final class HoldLineChecks {
         @Override public void serverTick(GravesAndGlory.Battle b) {
             if (player == null || stage >= 99) return;
             hold(); // the pinned enemies of hl-raise and hl-crawl stand where they were put
-            try {stages(b); if (stage >= 40) shieldStages(b);} catch (RuntimeException e) {report("hl-exception", false, "stage " + stage + ": " + e); e.printStackTrace(); next(b, 99);}
+            try {stages(b); if (stage >= 40) shieldStages(b); if (stage >= 70) arcStages(b);} catch (RuntimeException e) {report("hl-exception", false, "stage " + stage + ": " + e); e.printStackTrace(); next(b, 99);}
         }
 
         void stages(GravesAndGlory.Battle b) {
@@ -748,7 +776,7 @@ final class HoldLineChecks {
                     crawlWhy.add("on Hold, walking back to their slots under fire (" + holdFire + " of " + samples + " knight-ticks under fire, " + holdUp + " with the shield up), they keep " + fmt(vh * 20) + " blocks a second over ticks 10-30, " + fmt(vh / Math.max(v0, 1e-9)) + " of v0 (want at least 0.85), " + holdCrawled + " knight-ticks crawling (want 0)=" + free);
                     report("hl-crawl", crawlPass, String.join("; ", crawlWhy));
                     unpin(b, archers); archers.clear();
-                    next(b, 60);
+                    next(b, 70);
                 }
                 case 60 -> { // hl-house (R1): the fixture leaves; the camera goes to the supply houses west of the river so their chunks are loaded
                     clearFixture(b, "hl-house"); knights.clear(); hearthguard.clear(); breakers.clear(); crawlers.clear(); marshal = null;
@@ -788,6 +816,111 @@ final class HoldLineChecks {
                 }
                 default -> {}
             }
+        }
+
+        /** A frozen Order Archer of the commander's army at 4000 health pinned at this point, facing east: a target of hl-arc. */
+        GravesAndGlory.Unit dummy(GravesAndGlory.Battle b, int slot, Vec3d at) {
+            var u = tough(b.spawn(own, Campaign.troop("archer"), slot, at)); Phase1Checks.freeze(u);
+            fixture.add(u); pins.add(new Pin(u, at, -90f)); u.deployed = at; Phase2Checks.Engine.apply(u, at, -90f); return u;
+        }
+        /** How far p stands over the straight line from a to c, at p's place along that line seen from above. */
+        static double overLine(Vec3d a, Vec3d c, Vec3d p) {
+            double hx = c.x - a.x, hz = c.z - a.z, hh = hx * hx + hz * hz;
+            double along = hh == 0 ? 0 : ((p.x - a.x) * hx + (p.z - a.z) * hz) / hh;
+            return p.y - (a.y + along * (c.y - a.y));
+        }
+        /** The health the volley's dummies have lost so far. */
+        double arcLost() {double sum = 0; for (var u : arcDummies) sum += u.mob.getMaxHealth() - u.mob.getHealth(); return sum;}
+
+        /** hl-arc (stages 70-77, Task 4): one shot from each of ARC_SHOOTERS at a pinned dummy 22 blocks off, then a six-archer volley's damage a second. */
+        void arcStages(GravesAndGlory.Battle b) {
+            var cd = Spec.COMBATDISCIPLINE[0];
+            switch (stage) {
+                case 70 -> {
+                    clearFixture(b, "hl-arc"); crawlers.clear(); archers.clear(); Projectiles.clear(b);
+                    own.assignments.clear(); own.arrived.clear(); own.shotAt.clear(); dusk.assignments.clear(); dusk.shotAt.clear();
+                    arcTarget = dummy(b, 0, ground(b, patch[0] + 2, patch[2]));
+                    // the camera 12 blocks north of the flights' middle, looking south (yaw 0) and a little up at them (the single shooters are frozen: none shoots the commander)
+                    var p = sp(b); b.relocate(p, patch[0] + 13, Phase1Checks.top(b, patch[0] + 13, patch[2] - 12) + 1, patch[2] - 12, 0f, -12f);
+                    arcIndex = 0;
+                    next(b, 71);
+                }
+                case 71 -> { // the next shooter, frozen (it never shoots of its own accord) and pinned 22 blocks east of the dummy, facing it
+                    if (since(b) < 20) return;
+                    arcShooter = pinned(b, ARC_SHOOTERS[arcIndex], 1, ground(b, arcTarget.mob.getX() + 22, arcTarget.mob.getZ()), true);
+                    next(b, 72);
+                }
+                case 72 -> { // its shot, of the kind its own attack fires (Abilities.visual), through Projectiles.fire
+                    if (since(b) < 2) return;
+                    arcTarget.mob.timeUntilRegen = 0; arcTarget.mob.hurtTime = 0;
+                    Projectiles.fire(b, arcShooter, arcTarget.mob, Abilities.visual(arcShooter), 2f);
+                    arcShot = b.shots.get(b.shots.size() - 1); arcArrow = arcShot.visual(); arcPath.clear(); arcHealth = arcTarget.mob.getHealth();
+                    if (arcIndex == 0) requestShot("hl-arc", 4); // the bow's arrow near its peak
+                    next(b, 73);
+                }
+                case 73 -> { // after each tick's move (the world ticks the arrow before the battle steers or lands it) its place; the landing tick's is its last
+                    if (arcArrow != null) arcPath.add(arcArrow.getPos());
+                    String id = ARC_SHOOTERS[arcIndex];
+                    if (b.shots.contains(arcShot)) {
+                        if (since(b) <= 60) return;
+                        arcPass = false; arcWhy.add(id + "'s shot still in flight 60 ticks after it was fired=false");
+                        Projectiles.clear(b);
+                    } else arcLanded(b, cd, id);
+                    unpin(b, List.of(arcShooter)); arcShooter = null; arcShot = null; arcArrow = null;
+                    next(b, ++arcIndex < ARC_SHOOTERS.length ? 71 : 76);
+                }
+                case 76 -> { // the volley; it starts on a 20-tick boundary of the battle clock, so the archers' timers and the 10-tick sight refresh fall alike in every run
+                    if (b.time % 20 != 0) return;
+                    unpin(b, List.of(arcTarget)); arcTarget = null; Projectiles.clear(b);
+                    // the camera 34 blocks north of the patch, out of every archer's reach (an enemy player is a target)
+                    var p = sp(b); b.relocate(p, patch[0] + 13, Phase1Checks.top(b, patch[0] + 13, patch[2] - 34) + 6, patch[2] - 34, 0f, 15f);
+                    dusk.order = "attack"; dusk.assignments.clear(); dusk.shotAt.clear(); own.shotAt.clear();
+                    for (int i = 0; i < 6; i++) arcDummies.add(dummy(b, 10 + i, ground(b, patch[0] + 4, patch[2] - 5 + 2 * i)));
+                    for (int i = 0; i < 6; i++) archers.add(pinned(b, "archer", i, ground(b, patch[0] + 24, patch[2] - 5 + 2 * i), false));
+                    arcLostAt = 0;
+                    next(b, 77);
+                }
+                case 77 -> { // damage a second over ticks 40-440 of the volley, against the baseline measured at BASE
+                    long t = since(b);
+                    if (t == 40) arcLostAt = arcLost();
+                    if (t < 440) return;
+                    double dps = (arcLost() - arcLostAt) / 20.0;
+                    long alive = arcDummies.stream().filter(u -> u.mob.isAlive()).count();
+                    boolean steady = dps > 0 && alive == arcDummies.size() && Math.abs(dps - ARC_DPS_BASE) <= 0.03 * ARC_DPS_BASE; arcPass &= steady;
+                    arcWhy.add(String.format(Locale.ROOT, "six Dusk Order Archers (AI on, pinned, on Attack) shooting six frozen dummies 20 blocks off (%d of 6 alive) deal %.3f damage a second over ticks 40-440 (%.2f in all; want the BASE baseline %.3f +/- 3%%, from %.3f to %.3f)", alive, dps, dps * 20, ARC_DPS_BASE, ARC_DPS_BASE * 0.97, ARC_DPS_BASE * 1.03) + "=" + steady);
+                    report("hl-arc", arcPass, String.join("; ", arcWhy));
+                    unpin(b, archers); archers.clear(); unpin(b, arcDummies); arcDummies.clear(); Projectiles.clear(b);
+                    next(b, 60);
+                }
+                default -> {}
+            }
+        }
+        /** One hl-arc shot has left the queue: its peak over the straight line, its landing place and tick, and its launch angle, against the sheet's arc. */
+        void arcLanded(GravesAndGlory.Battle b, Spec.CombatDisciplineRow cd, String id) {
+            Vec3d from = arcShot.from(), to = Projectiles.aim(arcTarget.mob);
+            double dist = from.distanceTo(to), flat = Math.sqrt(GravesAndGlory.Battle.horizontalDistance(from, to));
+            int travel = BattleMath.travelTicks(dist, cd.arrowSpeed(), cd.projectileMinTicks(), cd.projectileMaxTicks());
+            // the arc each weapon should take (animation rework section 5): a bow the whole of it, a crossbow and a thrown trident their sheet scales, siege none
+            double scale = switch (id) {case "archer" -> 1; case "ic_arbalist" -> cd.crossbowArcScale(); case "tc_harpooner" -> cd.thrownArcScale(); default -> 0;};
+            double wantPeak = BattleMath.arcPeak(dist, cd.volleyPeakPerBlock(), cd.volleyPeakMax(), scale);
+            int wantTicks = BattleMath.arcTravelTicks(travel, wantPeak, cd.arcTravelScale());
+            long age = b.time - arcShot.fired(), queued = arcShot.lands() - arcShot.fired();
+            double peak = -1e9; int peakAt = 0; List<String> heights = new ArrayList<>();
+            for (int i = 0; i < arcPath.size(); i++) {double h = overLine(from, to, arcPath.get(i)); heights.add(fmt(h)); if (h > peak) {peak = h; peakAt = i + 1;}}
+            Vec3d end = arcPath.isEmpty() ? null : arcPath.get(arcPath.size() - 1), first = arcPath.isEmpty() ? null : arcPath.get(0);
+            double miss = end == null ? 1e9 : end.distanceTo(to);
+            double pitch = first == null ? Double.NaN : Math.toDegrees(Math.atan2(first.y - from.y, Math.sqrt(GravesAndGlory.Battle.horizontalDistance(from, first))));
+            double wantPitch = BattleMath.launchPitch(flat, to.y - from.y, wantPeak, wantTicks);
+            float hurt = arcHealth - arcTarget.mob.getHealth();
+            boolean timed = age == wantTicks && queued == wantTicks && (cd.arcTravelScale() != 1 || wantTicks == travel);
+            boolean landed = miss <= 0.3 && hurt > 0 && timed && arcPath.size() == age;
+            boolean launched = Math.abs(pitch - wantPitch) <= 0.5;
+            String shape; boolean shaped;
+            if (id.equals("archer")) {bowPeak = peak; shaped = Math.abs(peak - 5.5) <= 0.5; shape = "peak " + fmt(peak) + " over the straight line at tick " + peakAt + " (want 5.5 +/- 0.5; the sheet's " + fmt(wantPeak) + ")";}
+            else if (scale > 0) {double ratio = peak / bowPeak; shaped = bowPeak > 0.5 && Math.abs(ratio - scale) <= 0.02; shape = "peak " + fmt(peak) + " at tick " + peakAt + ", " + String.format(Locale.ROOT, "%.3f", ratio) + " of the bow's (want " + fmt(scale) + " +/- 0.02)";}
+            else {shaped = Math.abs(peak) <= 0.05; shape = "peak " + fmt(peak) + " (want a straight flight, within 0.05 of the line)";}
+            boolean pass = shaped && landed && launched; arcPass &= pass;
+            arcWhy.add(id + " (" + Abilities.visual(arcShooter) + ", " + fmt(dist) + " blocks): " + shape + ", heights by tick " + heights + "; it left the queue " + age + " ticks after it was fired, queued for " + queued + " (want travelTicks " + travel + " x arcTravelScale " + fmt(cd.arcTravelScale()) + " = " + wantTicks + "), its arrow " + fmt(miss) + " from the dummy's body then (want 0.3 at most), the dummy hurt " + fmt(hurt) + "; the first tick climbs at " + fmt(pitch) + " degrees (want BattleMath.launchPitch " + fmt(wantPitch) + " +/- 0.5)=" + pass);
         }
         /**
          * hl-house's wall: a block of the outer wall of a supply house west of the river (the first found from outside, along each side of the footprint, away from the gates),

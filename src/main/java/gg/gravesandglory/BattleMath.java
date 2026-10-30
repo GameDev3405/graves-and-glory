@@ -14,6 +14,41 @@ public final class BattleMath {
         long ticks = Math.round(distance / blocksPerTick);
         return (int) Math.max(minTicks, Math.min(maxTicks, ticks));
     }
+    /**
+     * A volley's peak (animation rework section 5): how far over the straight line from bow to target a shot rises mid-flight, in blocks. It grows
+     * with range (perBlock a block, combatDiscipline volleyPeakPerBlock), stops growing at max (volleyPeakMax), and is scaled by the weapon (arcScale).
+     */
+    public static double arcPeak(double dist, double perBlock, double max, double scale) { return Math.min(max, dist * perBlock) * scale; }
+    /** How far over its straight line a shot stands at t of its flight (0 launch, 1 landing): a parabola, 0 at both ends and peak at the middle; flat outside the flight. */
+    public static double arcHeight(double t, double peak) {
+        double f = Math.max(0, Math.min(1, t));
+        return 4 * peak * f * (1 - f);
+    }
+    /**
+     * The launch angle, in degrees above the horizontal (Minecraft's own pitch is its negative), of a shot dist out horizontally and dy up whose
+     * arc peaks at peak over ticks of flight: the tangent of the path at launch. A shot's launch velocity is (dist, dy + 4 peak) / ticks, the
+     * straight line's plus the parabola's starting climb (arcHeight's slope at 0); the flight time scales both alike, so it never tilts the angle.
+     */
+    public static double launchPitch(double dist, double dy, double peak, int ticks) {
+        double n = Math.max(1, ticks), rise = (dy + 4 * peak) / n, run = dist / n;
+        return rise == 0 ? 0 : Math.toDegrees(Math.atan2(rise, run));
+    }
+    /**
+     * How a weapon scales the volley's arc: a bow 1, a crossbow crossbowScale (combatDiscipline crossbowArcScale; a flatter, faster bolt), a thrown
+     * trident thrownScale (thrownArcScale). Siege weapons (the Ballista Crew's bolt), the Mortar's crew, casters and every other family keep their
+     * straight flight: 0.
+     */
+    public static double arcScale(String family, boolean siege, double crossbowScale, double thrownScale) {
+        if (siege) return 0;
+        return switch (family) {
+            case "bow" -> 1;
+            case "crossbow" -> crossbowScale;
+            case "thrower" -> thrownScale;
+            default -> 0;
+        };
+    }
+    /** An arced shot's flight in ticks: travelTicks times scale (combatDiscipline arcTravelScale, 1 to 2), rounded; a shot with no arc keeps travelTicks. At 1, no flight time changes. */
+    public static int arcTravelTicks(int travel, double peak, double scale) { return peak > 0 ? (int) Math.round(travel * scale) : travel; }
     /** Whether a blow struck at lastHitAt can still credit a death at now: no more than window ticks ago, and not in the future. */
     public static boolean creditWindowOpen(long now, long lastHitAt, int window) {
         long age = now - lastHitAt;

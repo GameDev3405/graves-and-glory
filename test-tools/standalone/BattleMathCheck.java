@@ -82,6 +82,18 @@ public final class BattleMathCheck {
         check(BattleMath.travelTicks(22, 2.2, 2, 14) == 10, "arrow at max range lands in 10 ticks");
         check(BattleMath.travelTicks(1, 2.2, 2, 14) == 2, "point-blank shots still travel the minimum");
         check(BattleMath.travelTicks(400, 1.2, 2, 14) == 14, "travel is capped");
+        // volley arcs (animation rework Task 4): a range-scaled parabola over the straight line, flight time unchanged
+        check(BattleMath.arcHeight(0, 5) == 0 && BattleMath.arcHeight(1, 5) == 0 && BattleMath.arcHeight(.5, 5) == 5, "arc is a parabola peaking mid-flight");
+        check(BattleMath.arcPeak(22, .25, 6, 1) == 5.5 && BattleMath.arcPeak(40, .25, 6, 1) == 6 && Math.abs(BattleMath.arcPeak(22, .25, 6, .4) - 2.2) < 1e-9, "peak grows with range, capped, scaled");
+        check(BattleMath.launchPitch(20, 0, 0, 10) == 0 && BattleMath.launchPitch(20, 0, 5, 10) > 30, "flat with no arc; lofted with one");
+        check(Math.abs(BattleMath.arcHeight(.25, 4) - 3) < 1e-9 && BattleMath.arcHeight(-.5, 4) == 0 && BattleMath.arcHeight(1.5, 4) == 0 && BattleMath.arcHeight(.5, 0) == 0, "a quarter of the way up the arc stands at three quarters of its peak; outside the flight (before launch, after landing) and with no peak it is flat");
+        check(Math.abs(BattleMath.launchPitch(20, 0, 5, 10) - 45) < 1e-9 && Math.abs(BattleMath.launchPitch(20, -20, 5, 7)) < 1e-9 && Math.abs(BattleMath.launchPitch(10, 10, 0, 4) - 45) < 1e-9 && BattleMath.launchPitch(20, 0, 5, 0) == BattleMath.launchPitch(20, 0, 5, 10),
+            "the launch tangent: up 4 x peak over the range (45 degrees for 20 out and 20 up), a downhill shot's arc can cancel the drop, a straight shot up a slope follows it, and the flight time never tilts it");
+        check(Math.abs(BattleMath.launchPitch(0, 0, 5, 10) - 90) < 1e-9 && BattleMath.launchPitch(0, 0, 0, 10) == 0, "a shot at its own feet: straight up with an arc, flat with none (never NaN)");
+        check(BattleMath.arcScale("bow", false, .4, .6) == 1 && BattleMath.arcScale("crossbow", false, .4, .6) == .4 && BattleMath.arcScale("thrower", false, .4, .6) == .6, "by weapon: a bow arcs fully, a crossbow at crossbowArcScale, a thrown trident at thrownArcScale");
+        check(BattleMath.arcScale("crossbow", true, .4, .6) == 0 && BattleMath.arcScale("crew", true, .4, .6) == 0 && BattleMath.arcScale("caster", false, .4, .6) == 0 && BattleMath.arcScale("sword", false, .4, .6) == 0, "the Ballista's siege bolt, the Mortar's crew, a caster's bolt and anything else fly as before: no arc");
+        check(BattleMath.arcTravelTicks(10, 5.5, 1) == 10 && BattleMath.arcTravelTicks(10, 5.5, 1.5) == 15 && BattleMath.arcTravelTicks(7, 2, 1.25) == 9 && BattleMath.arcTravelTicks(10, 0, 2) == 10 && BattleMath.arcTravelTicks(10, 5.5, 2) == 20,
+            "an arced shot's flight is travelTicks x arcTravelScale, rounded (1.0 changes nothing); a shot with no arc keeps travelTicks");
         check(BattleMath.creditWindowOpen(100, 100, 34) && BattleMath.creditWindowOpen(134, 100, 34) && !BattleMath.creditWindowOpen(135, 100, 34), "a death with no attacker credits the last blow on the window's last tick (34 on) but not one tick after");
         check(!BattleMath.creditWindowOpen(5000, 100, 34) && !BattleMath.creditWindowOpen(100, 101, 34) && BattleMath.creditWindowOpen(7, 7, 0), "a blow minutes old credits nothing (a fall, lava or /kill long after), nor does one stamped in the future; a zero window still takes the same tick");
         check(BattleMath.tookLoss(.80f, 12, .78f, 12) && BattleMath.tookLoss(.8f, 12, .9f, 11), "health drop or a death flashes");

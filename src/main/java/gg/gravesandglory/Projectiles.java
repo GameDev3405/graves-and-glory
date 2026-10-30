@@ -21,17 +21,31 @@ public final class Projectiles {
     /** Ticks after an enemy's last blow on a unit during which a death with no attacker still credits the blow's army. lastHitAt is stamped when a blow lands (melee, or an arrow on impact), so flight time never counts: this is a blow-to-death allowance, sized as projectileMaxTicks plus 20 so a late shot plus a short fall still pays. The +20 is a code-held tuning number; see docs/PARKED.md. */
     public static final int CREDIT_WINDOW_TICKS=C.projectileMaxTicks()+20;
     /** kind: "arrow" (damage, vanilla arrow visual), "trident" (the same damage as an arrow, a flying trident for the visual: the Harpooner's), "bolt" (the blight cast, visual only; with a target and an amount, a magic shot that damages on landing), "mend" (heal).
-     *  The blight cast's bolt has no target: it flies to the fixed point {@code at}; other shots follow their target and leave {@code at} null. */
-    public record Shot(GravesAndGlory.Unit shooter,GravesAndGlory.Squad squad,LivingEntity target,String kind,float amount,Vec3d from,long fired,long lands,Entity visual,Vec3d at){}
+     *  The blight cast's bolt has no target: it flies to the fixed point {@code at}; other shots follow their target and leave {@code at} null.
+     *  peak is how far the shot's arc rises over its straight line mid-flight (0: a straight shot), and ticks its whole flight (lands - fired). */
+    public record Shot(GravesAndGlory.Unit shooter,GravesAndGlory.Squad squad,LivingEntity target,String kind,float amount,Vec3d from,long fired,long lands,Entity visual,Vec3d at,double peak,int ticks){
+        /** A straight shot (no arc) whose flight is lands - fired. */
+        public Shot(GravesAndGlory.Unit shooter,GravesAndGlory.Squad squad,LivingEntity target,String kind,float amount,Vec3d from,long fired,long lands,Entity visual,Vec3d at){
+            this(shooter,squad,target,kind,amount,from,fired,lands,visual,at,0,(int)(lands-fired));
+        }
+    }
     private Projectiles(){}
 
     static Vec3d aim(LivingEntity target){return new Vec3d(target.getX(),target.getBodyY(.5),target.getZ());}
+    /** How the shooter's weapon scales a volley's arc (BattleMath.arcScale): a bow 1, a crossbow crossbowArcScale, a thrown trident thrownArcScale; a siege troop (the Ballista and Mortar crews) none. */
+    static double arcScale(GravesAndGlory.Unit u){
+        return BattleMath.arcScale(u.spec.family(),u.tags.contains("siege")||u.spec.group().equals("siege"),C.crossbowArcScale(),C.thrownArcScale());
+    }
 
     public static void fire(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,String kind,float amount){
         Vec3d from=u.mob.getEyePos(),to=aim(target);
         Tactics.stamp(b,u,target); // archer fire: the target's group is under fire (Squad.shotAt)
         boolean arrow=kind.equals("arrow")||kind.equals("trident");
-        int travel=BattleMath.travelTicks(from.distanceTo(to),arrow?C.arrowSpeed():C.boltSpeed(),C.projectileMinTicks(),C.projectileMaxTicks());
+        double dist=from.distanceTo(to);
+        // A volley's arc (animation rework section 5): an arrow or a trident rises volleyPeakPerBlock a block of range over its straight line, up to
+        // volleyPeakMax, scaled by the weapon; bolts, mends and siege shots fly straight. Flight time is the straight shot's times arcTravelScale (1: unchanged).
+        double peak=arrow?BattleMath.arcPeak(dist,C.volleyPeakPerBlock(),C.volleyPeakMax(),arcScale(u)):0;
+        int travel=BattleMath.arcTravelTicks(BattleMath.travelTicks(dist,arrow?C.arrowSpeed():C.boltSpeed(),C.projectileMinTicks(),C.projectileMaxTicks()),peak,C.arcTravelScale());
         long lands=b.time+travel;
         Entity visual=null;
         if(arrow){
@@ -39,10 +53,11 @@ public final class Projectiles {
             PersistentProjectileEntity a=kind.equals("trident")?new TridentEntity(b.world,u.mob,new ItemStack(Items.TRIDENT)):new ArrowEntity(b.world,from.x,from.y,from.z);
             a.setPosition(from);
             a.setNoGravity(true);a.setNoClip(true);a.pickupType=PersistentProjectileEntity.PickupPermission.DISALLOWED;a.addCommandTag(TAG);
-            Vec3d v=to.subtract(from).multiply(1.0/travel);a.setVelocity(v.x,v.y,v.z,(float)v.length(),0);
+            // The straight line's step plus the arc's starting climb (the slope of BattleMath.arcHeight at launch), so the arrow leaves at BattleMath.launchPitch.
+            Vec3d v=to.subtract(from).multiply(1.0/travel).add(0,4*peak/travel,0);a.setVelocity(v.x,v.y,v.z,(float)v.length(),0);
             visual=a;
         }
-        b.shots.add(new Shot(u,u.squad,target,kind,amount,from,b.time,lands,visual,null));
+        b.shots.add(new Shot(u,u.squad,target,kind,amount,from,b.time,lands,visual,null,peak,travel));
         // Queued first, then spawned: the load handler also runs for a new spawn, and discards a tagged arrow that no queued shot owns.
         if(visual!=null)b.world.spawnEntity(visual);
     }
@@ -61,8 +76,10 @@ public final class Projectiles {
             Vec3d to=s.target==null?s.at:aim(s.target);
             if(b.time>=s.lands){drop(b,s);land(b,s,to);continue;}
             if(s.visual!=null){
-                // Steer so the arrow meets a moving target exactly on its landing tick.
-                Vec3d v=to.subtract(s.visual.getPos()).multiply(1.0/Math.max(1,s.lands-b.time));
+                // Steer so the arrow meets a moving target exactly on its landing tick, riding its arc: the aim point is the target lifted by the arc's
+                // height now, so the straight part of the step closes on the target as before; the arc's step to its next height rides on top. Peak 0 is a straight shot.
+                long age=b.time-s.fired;double n=Math.max(1,s.ticks),now=BattleMath.arcHeight(age/n,s.peak),then=BattleMath.arcHeight((age+1)/n,s.peak);
+                Vec3d v=to.add(0,now,0).subtract(s.visual.getPos()).multiply(1.0/Math.max(1,s.lands-b.time)).add(0,then-now,0);
                 s.visual.setVelocity(v);s.visual.velocityModified=true;
             }else{
                 double t=Math.min(1,(b.time-s.fired)/(double)Math.max(1,s.lands-s.fired));Vec3d p=s.from.lerp(to,t);
