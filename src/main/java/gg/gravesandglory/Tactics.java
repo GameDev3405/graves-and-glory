@@ -149,17 +149,37 @@ final class Tactics {
         }else{
             Vec3d goal=battle.formation(u);
             if(GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal)>N.arrivalTolerance()*N.arrivalTolerance())walk(battle,u,goal,time,order.moveMultiplier());
-            else{mob.getNavigation().stop();if(GravesAndGlory.Battle.walls(u,a.order))settle(mob,goal);mob.setYaw(a.yaw);mob.setHeadYaw(a.yaw);mob.setBodyYaw(a.yaw);}
+            else{mob.getNavigation().stop();mob.setYaw(a.yaw);mob.setHeadYaw(a.yaw);mob.setBodyYaw(a.yaw);if(GravesAndGlory.Battle.walls(u,a.order))settle(mob,goal);}
         }
     }
     /**
      * A wall troop inside the arrival tolerance of its slot is set going the rest of the way: the tolerance (0.35) is half its 0.7 cell, so one
      * left there would lean on its neighbour, and the walk stops short or overshoots by about that much. On the ground a velocity v carries a mob
      * v / (1 - 0.546) = 2.2 v before friction stops it, so 0.454 of the way is the whole way, and it stops on its slot. A mob in the air is left.
+     * A slot on a rise one block high (onRise) is jumped onto instead: the level push would only press the troop against the face of the rise.
      */
     static void settle(MobEntity mob,Vec3d goal){
         Vec3d delta=goal.subtract(mob.getPos()).multiply(1,0,1);
-        if(mob.isOnGround()&&delta.lengthSquared()>SETTLED*SETTLED)mob.setVelocity(delta.x*.454,mob.getVelocity().y,delta.z*.454);
+        if(!mob.isOnGround()||delta.lengthSquared()<=SETTLED*SETTLED)return;
+        if(onRise(mob,goal)){
+            // its move control jumps it (a target above its step height and this near is a jump) and carries it on over the edge while in the air; it faces its slot for the hop, and the next beat turns it back
+            mob.setYaw((float)(MathHelper.atan2(delta.z,delta.x)*MathHelper.DEGREES_PER_RADIAN)-90f);
+            mob.getMoveControl().moveTo(goal.x,Math.floor(mob.getY()+.1)+1,goal.z,1);
+            return;
+        }
+        mob.setVelocity(delta.x*.454,mob.getVelocity().y,delta.z*.454);
+    }
+    /**
+     * The troop's slot reaches over the edge of a rise one block high: its body on the slot, at the troop's own level, would stand in the rise
+     * (higher than a step climbs), and one block up it has room, as it has above itself for the jump. A slot 0.7 wide on ground with a step in it
+     * is stood on from the top of the rise; a troop that comes to it along the lower ground stops against the face, as much short of its slot as
+     * its body reaches over the edge (0.15 for a slot 0.15 from it), inside the arrival tolerance, so walk, which jumps, is not called again. Its
+     * neighbour in the rank, pushed off it, stays short of his own slot too (HoldLineChecks: a Squire 0.15 short, the Marshal beside him 0.165).
+     */
+    static boolean onRise(MobEntity mob,Vec3d goal){
+        var w=mob.getWorld();Box body=mob.getBoundingBox();double floor=Math.floor(mob.getY()+.1);
+        Box there=body.offset(goal.x-mob.getX(),floor-mob.getY(),goal.z-mob.getZ());
+        return !w.isSpaceEmpty(mob,there.offset(0,mob.getStepHeight(),0))&&w.isSpaceEmpty(mob,there.offset(0,1,0))&&w.isSpaceEmpty(mob,body.offset(0,floor+1-mob.getY(),0));
     }
     /** How near its slot a wall troop must stand to be left alone by settle. */
     static final double SETTLED=.03;
