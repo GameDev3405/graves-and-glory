@@ -115,8 +115,8 @@ public final class BotSimulation implements ModInitializer {
         notReady=0;if(b.running)return;
         int map=maps[match%maps.length];
         if(b.campaign.map!=map){b.campaign.switchMap(map);return;}
-        var c=b.campaign;c.size=size;c.fill=true;c.practice=false;c.difficulty=dawnTier;b.roundSeconds=roundSeconds;c.lastWinner=ABORTED;
-        b.startRound();
+        var c=b.campaign;c.size=size;c.fill=true;c.practice=false;c.difficulty=dawnTier;c.lastWinner=ABORTED;
+        b.startRound();b.roundSeconds=roundSeconds; // after startRound, which sets the row's clock
         armies.clear();for(var s:b.squads.values())if(s.bot){if(s.team==1)s.tier=duskTier;armies.add(s);}
         field(b);seen.clear();resetStats();ledger.reset(b.time);wallStart=System.currentTimeMillis();
         score300[0]=score300[1]=-1;startedAt=b.roundStarted;tallies[0]=tallies[1]=null;shareLevel2[0]=shareLevel2[1]=-1;

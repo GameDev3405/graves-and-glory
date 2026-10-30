@@ -1,6 +1,9 @@
 package gg.gravesandglory;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import net.minecraft.util.math.Vec3d;
+import java.util.List;
 
 /**
  * One battle mode's rules, owned per round (Phase 4 Task 2). The defaults below are Domination's behaviour, so
@@ -19,6 +22,8 @@ public abstract class BattleMode {
     public int ruleN(){return row.winTarget();}
     /** Called after the round is prepared and before the first reinforce: a mode places what its round needs here. */
     public void setup(GravesAndGlory.Battle b){}
+    /** Writes the round's crash marker; a mode that takes flags down or saves pieces says so here. */
+    public void mark(GravesAndGlory.Battle b){Modes.mark(b,b.world.getTimeOfDay(),false,List.of());}
     /** Called when a round ends, a map changes or the server stops; must be idempotent and undo setup and the round's changes. */
     public void teardown(GravesAndGlory.Battle b){}
     /** Each running tick, after captureTick: the mode's scoring and its own timers. */
@@ -51,4 +56,17 @@ public abstract class BattleMode {
     public int[] max(GravesAndGlory.Battle b){return new int[]{row.winTarget(),row.winTarget()};}
     /** How each ledger number reads (ModeMath.ledgerText): plain, fraction or percent. */
     public String[] formats(){return new String[]{"plain","plain"};}
+    /** The side a commander's how-to lines are written for (attack or defend). Domination asks the same of both sides. */
+    public String howToSide(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return "attack";}
+    /** The lobby's mode block: id, name, rule, how-to lines, side, the tracks and their formats. */
+    public JsonObject snapshot(GravesAndGlory.Battle b,GravesAndGlory.Squad viewer){
+        JsonObject j=new JsonObject();
+        j.addProperty("id",id());j.addProperty("name",name());j.addProperty("rule",rule());
+        JsonArray how=new JsonArray();for(String line:ModeMath.howTo(row.howTo()))how.add(line);j.add("howTo",how);
+        JsonArray defend=new JsonArray();for(String line:ModeMath.howTo(row.howToDefend()))defend.add(line);j.add("howToDefend",defend);
+        j.addProperty("side",howToSide(b,viewer));
+        JsonArray max=new JsonArray();for(int n:max(b))max.add(n);j.add("max",max);
+        JsonArray formats=new JsonArray();for(String f:formats())formats.add(f);j.add("format",formats);
+        return j;
+    }
 }

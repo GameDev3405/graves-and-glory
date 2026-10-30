@@ -513,6 +513,8 @@ public final class GravesAndGlory implements ModInitializer {
         /** A round boundary for in-match progression (startRound, Campaign.returnLobby and switchMap): the credit logs, every Armoury, every status, every client's ranks and the fallen troops' records go. */
         void clearProgression(){Veterans.clear(this);Statuses.clear(this);RankSync.clear(this);fallen.clear();}
         public final List<Capture> points=new ArrayList<>();
+        /** The pieces this round's mode saved before changing them (Phase 4 Task 5); teardown and the crash marker put them back. */
+        public final List<Structures.Saved> saves=new ArrayList<>();
         public final List<Projectiles.Shot> shots=new ArrayList<>();
         /** The standing banners (the Oath Banner); Abilities.bannerTick takes them down on time, and startRound, the lobby and a map switch clear them. */
         public final List<Abilities.Banner> banners=new ArrayList<>();
@@ -626,7 +628,16 @@ public final class GravesAndGlory implements ModInitializer {
             server.setDifficulty(Difficulty.NORMAL,true);
             clearOldUnits();
             // Only inhabited chunks tick. Unit navigation tickets are maintained below.
-            CampaignMaps.lobby(world);ready=campaign.cached();
+            CampaignMaps.lobby(world);if(campaign.cached()){System.out.println("[Graves and Glory] Cached map ready.");mapReady();}
+        }
+        /**
+         * The arena is ready, built or cached: read back what an interrupted round changed, then open the camp. Called after
+         * the constructor's time of day and CampaignMaps.lobby, and after the build path's Arena.finish, so a recovered time
+         * is the one that stands. The camp's war table is laid down by the build path before this.
+         */
+        void mapReady(){
+            Modes.recover(this);
+            ready=true;placing=false;message="Your war council is ready. Press {key:menu}.";
         }
         public void tick(){
             time++;
@@ -649,7 +660,7 @@ public final class GravesAndGlory implements ModInitializer {
                     // The columns are built: the landmarks of the map go down one a tick on the finished ground, and the map is ready once the last is placed.
                     if(!placing){Arena.finish(world);Structures.queueLandmarks(world);placing=true;}
                     else if(Structures.step(world)){
-                        campaign.built();CampWorld.warTable(world);ready=true;placing=false;message="Your war council is ready. Press {key:menu}.";
+                        campaign.built();CampWorld.warTable(world);mapReady();
                         Diagnostics.report("arena-ready",true,null);
                     }
                 }
@@ -925,13 +936,16 @@ public final class GravesAndGlory implements ModInitializer {
         /** The deploy notice after "<troop> trained: " (a null anchor means the barracks). */
         String deployNote(Squad s,Anchor anchor){return anchor==null?"deploying from barracks":"deploying at "+anchor.name();}
         void startRound(){
-            mode=Modes.create(Modes.DOMINATION);
+            if(!Modes.registered(campaign.battleMode)||!Modes.hosts(campaign.battleMode,campaign.map))campaign.battleMode=Modes.DOMINATION;
+            mode=Modes.create(campaign.battleMode);
+            roundSeconds=mode.row.roundSeconds();
             Projectiles.clear(this);Abilities.clearBanners(this);Houses.reset(this);FeedEvents.clear();clearProgression();
             campaign.prepareRound();
-            mode.setup(this);
             clearSides();
             Arrays.fill(scores,0);pointSeconds=new int[2][points.size()];
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
+            saves.clear();
+            mode.setup(this); // after the flags, so a mode that takes them down keeps them down
             respawns.clear();BattleEffects.startRound();Morale.startRound();
             for(Squad s:squads.values()){
                 Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.arrived.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.fullCount.clear();s.chargedAt.clear();s.traits.clear();s.fallen.clear();s.hitBy=null;s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=fieldBase(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
@@ -940,6 +954,7 @@ public final class GravesAndGlory implements ModInitializer {
                 reinforce(s);
             }
             rounds++;roundStarted=time;running=true;message=ROUND_START;
+            mode.mark(this); // the mode says what it changed: flags down, saved pieces
         }
         void reinforce(Squad s){
             Set<Integer> occupied=new HashSet<>();fielded(s).forEach(u->occupied.add(u.slot));

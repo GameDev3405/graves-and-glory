@@ -88,6 +88,9 @@ for m in modes:
     if m['roundSeconds']<0 or m['winTarget']<0 or m['scoreInterval']<0: errors.append(f'{where}: roundSeconds, winTarget and scoreInterval cannot be negative')
     if m['scoreInterval']>0 and m['winTarget']<=0: errors.append(f'{where}: a mode that scores needs a winTarget above 0')
     if m['scoreInterval']==0 and m['timeout']=='score': errors.append(f'{where}: timeout score needs a scoreInterval above 0')
+    for column in ('howTo','howToDefend'):
+        parts=[p.strip() for p in m.get(column,'').split('|') if p.strip()]
+        if not 1<=len(parts)<=3: errors.append(f'{where}: {column} holds {len(parts)} parts, want 1 to 3')
 groups={g['id'] for g in data.get('groups',[])}
 orders={o['id'] for o in data['orders']}
 for t in data['troops']:

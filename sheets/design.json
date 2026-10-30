@@ -1238,7 +1238,23 @@
       "passiveScale": 1.0,
       "pointScale": 1.0,
       "timeout": "score",
-      "ruleLine": "Domination to {n}"
+      "ruleLine": "Domination to {n}",
+      "howTo": "Send troops onto a point to take it; hold it to score. | Recruits march out from the held point nearest the fight. | Reach the target score first, or lead when time ends.",
+      "howToDefend": "Send troops onto a point to take it; hold it to score. | Recruits march out from the held point nearest the fight. | Reach the target score first, or lead when time ends."
+    },
+    {
+      "id": "siege",
+      "name": "Siege",
+      "maps": "1",
+      "roundSeconds": 600,
+      "winTarget": 3,
+      "scoreInterval": 0,
+      "passiveScale": 1.0,
+      "pointScale": 0.0,
+      "timeout": "team1",
+      "ruleLine": "Siege of Ironhold",
+      "howTo": "Take the Outer Yard. | Break the gate; siege troops strike it four times harder. | Seize the keep before the clock runs out.",
+      "howToDefend": "Hold the yard, then the gate, then the keep. | The gate is where they break. | When the clock runs out, Ironhold is yours."
     }
   ],
   "hooks": [
