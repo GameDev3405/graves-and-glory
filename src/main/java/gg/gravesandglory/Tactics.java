@@ -69,12 +69,49 @@ final class Tactics {
         for(GravesAndGlory.Unit u:b.units)if(!u.stance.isEmpty()&&PlayerLookup.tracking(u.mob).contains(p))sent+=sendStance(u,List.of(p));
         return sent;
     }
-    /** Between beats a shield troop re-reads the distance to the enemy it chose on its beat, so a block knight lowers its shield on the tick
-     *  that enemy steps into sword reach (BattleMath.raiseShield). With no live target it keeps the beat's decision until the next beat. */
+    /** The crawl's movement-speed modifier (MULTIPLY_TOTAL, kept through Abilities.keepSpeed like the Howl's): it multiplies with the Howl, Muster and the order's moveMultiplier. */
+    static final UUID CRAWL_ID=UUID.fromString("9c3e7a51-4f2b-4d8e-b6a0-2e5d1c7f3a94");
+    static final Spec.CombatDisciplineRow C=Spec.COMBATDISCIPLINE[0];
+    /** Archer fire (the rework's section 5): a bow, crossbow or thrower troop. A caster's spell or the Mortar's shell is no arrow to raise a shield against. */
+    static boolean archer(GravesAndGlory.Unit u){var f=u.spec.family();return f.equals("bow")||f.equals("crossbow")||f.equals("thrower");}
+    /** When an archer shoots at an enemy troop (Projectiles.fire) or takes aim at one from within its reach (tick), marks that troop's squad group as
+     *  shot at now (Squad.shotAt). Any other shooter, or a target that is no enemy troop (a commander, a banner, an ally being mended), marks nothing. */
+    static void stamp(GravesAndGlory.Battle b,GravesAndGlory.Unit shooter,Entity target){
+        if(!archer(shooter))return;var victim=Combat.unitOf(b,target);
+        if(victim!=null&&victim.squad.team!=shooter.squad.team)victim.squad.shotAt.put(victim.spec.group(),b.time);
+    }
+    /** Whether the unit's squad group was shot at within fireMemoryTicks (BattleMath.underFire). */
+    static boolean underFire(GravesAndGlory.Battle b,GravesAndGlory.Unit u){return BattleMath.underFire(b.time,u.squad.shotAt.getOrDefault(u.spec.group(),0L),C.fireMemoryTicks());}
+    /** The order a shield troop raises its shield by: an arrived Retreat or Move group stands as on Hold (the latch Squad.arrived, which arrived sets on the beat). */
+    static String shieldOrder(GravesAndGlory.Unit u,GravesAndGlory.Assignment a){
+        if(u.squad.arrived.contains(u.spec.group())&&(a.order.equals("move")||a.order.equals("retreat")))return "hold";
+        return a.order;
+    }
+    /** Squared distance to the nearest living enemy troop or commander inside scouting range that the troop can see (one line-of-sight test, on the
+     *  nearest), or -1 for none: on Hold a shield wall raises its shields once an enemy is in sight, not only once one walks into its leash. */
+    static double sighted(GravesAndGlory.Battle b,GravesAndGlory.Unit u){
+        double range=Spec.SCOUTING[0].range(),best=range*range;LivingEntity seen=null;
+        for(var other:b.units)if(other.squad.team!=u.squad.team&&other.mob.isAlive()){double d=u.mob.squaredDistanceTo(other.mob);if(d<best){best=d;seen=other.mob;}}
+        for(ServerPlayerEntity p:b.server.getPlayerManager().getPlayerList()){var other=b.squads.get(p.getUuid());if(other!=null&&other.team!=u.squad.team&&!p.isSpectator()&&p.isAlive()){double d=u.mob.squaredDistanceTo(p);if(d<best){best=d;seen=p;}}}
+        return seen!=null&&u.mob.canSee(seen)?best:-1;
+    }
+    /** Raises or lowers a shield troop's shield (the off hand: Combat counts it raised while the item is in use). */
+    static void shield(MobEntity mob,boolean up){if(up&&!mob.isUsingItem())mob.setCurrentHand(Hand.OFF_HAND);else if(!up&&mob.isUsingItem())mob.stopUsingItem();}
+    /** The crawl (section 5): a shield troop with its shield up under archer fire on any order but Hold moves at crawlShare of its pace. Kept every tick
+     *  (brace), so it comes off on the tick the shield drops, the fire memory runs out or the order turns to Hold; never stacked (Abilities.keepSpeed). */
+    static void crawl(GravesAndGlory.Battle b,GravesAndGlory.Unit u,String order){
+        boolean on=u.tags.contains("shield")&&u.mob.isUsingItem()&&!order.equals("hold")&&underFire(b,u);
+        Abilities.keepSpeed(u.mob,CRAWL_ID,"Graves and Glory crawl",on?BattleMath.speedModifier(C.crawlShare(),u.mob.isTouchingWater()):0);
+    }
+    /** Between beats a shield troop re-reads the distance to the enemy it chose on its beat, so it lowers its shield on the tick that enemy steps
+     *  into sword reach (BattleMath.raiseShield), and drops it on the tick its order turns to Charge or Retreat. Otherwise it keeps the beat's
+     *  decision until the next beat. The crawl is kept every tick. */
     static void brace(GravesAndGlory.Battle battle,GravesAndGlory.Unit u){
-        var t=u.lockedTarget;if(!u.tags.contains("shield")||t==null||!t.isAlive())return;
-        var a=battle.assignment(u);double reach=Abilities.range(battle,u);boolean shield=BattleMath.raiseShield(a.formation,a.order,u.mob.squaredDistanceTo(t),reach*reach,true);
-        if(shield&&!u.mob.isUsingItem())u.mob.setCurrentHand(Hand.OFF_HAND);else if(!shield&&u.mob.isUsingItem())u.mob.stopUsingItem();
+        if(!u.tags.contains("shield"))return;
+        var a=battle.assignment(u);String order=shieldOrder(u,a);var t=u.lockedTarget;
+        if(t!=null&&t.isAlive()){double reach=Abilities.range(battle,u);shield(u.mob,BattleMath.raiseShield(order,underFire(battle,u),u.mob.squaredDistanceTo(t),reach*reach,true));}
+        else if(order.equals("charge")||order.equals("retreat"))shield(u.mob,false);
+        crawl(battle,u,order);
     }
     /** How far a troop picks its targets: the order's engage radius, or for a siege troop (tag siege) at least its weapon's reach (Entrench's bonus included), so artillery shoots what it can reach and not only what the order's leash allows. The sheet's order radii are untouched. */
     static double engageRadius(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,double order){return u.tags.contains("siege")?Math.max(order,Abilities.range(battle,u)):order;}
@@ -120,8 +157,13 @@ final class Tactics {
         if(enemy!=u.lockedTarget){u.lockedTarget=enemy;u.lockUntil=time+Spec.COMBATDISCIPLINE[0].targetMemoryTicks();}
         mob.setTarget(enemy);mob.setAttacking(enemy!=null);
         double reach=Abilities.range(battle,u);boolean ranged=u.spec.ranged();
-        boolean shield=u.tags.contains("shield")&&BattleMath.raiseShield(a.formation,a.order,nearest,reach*reach,enemy!=null); // block: up on the approach, down to swing once the enemy is in reach
-        if(shield&&!mob.isUsingItem())mob.setCurrentHand(Hand.OFF_HAND);else if(!shield&&mob.isUsingItem())mob.stopUsingItem();
+        if(enemy!=null&&nearest<=reach*reach)stamp(battle,u,enemy); // an archer taking aim from within its reach puts its target's group under fire
+        if(u.tags.contains("shield")){ // Hold: up with any enemy picked or in sight; other orders: up under archer fire; never on Charge or Retreat, down to swing once the enemy is in reach
+            String shieldOrder=arrived?"hold":a.order;double near=nearest;boolean any=enemy!=null;
+            if(!any&&shieldOrder.equals("hold")){double seen=sighted(battle,u);if(seen>=0){any=true;near=seen;}}
+            shield(mob,BattleMath.raiseShield(shieldOrder,underFire(battle,u),near,reach*reach,any));
+            crawl(battle,u,shieldOrder);
+        }
         Abilities.tick(battle,u,enemy,time); // mend heals and a caster's spell bursts on the beat
         double flee=Math.max(N.rangedRetreatDistance(),Abilities.minRange(u)); // a ranged troop backs off from an enemy this near; one with a minimum range (the Mortar) from anything inside it
         if(enemy!=null){

@@ -417,13 +417,17 @@ public final class BattleMath {
     public static boolean timedCharge(double nearestEnemyDistance, long living, long enemiesNear, double chargeRatio, double chargeDistance) {
         return living >= enemiesNear * chargeRatio && (chargeDistance <= 0 || nearestEnemyDistance <= chargeDistance);
     }
-    /** Whether a shield troop holds its shield up. Block raises it only on the approach, with the
-     *  enemy inside 6 blocks but outside sword reach (reachSq: the troop's range, squared), and lowers it to swing once the enemy is in
-     *  reach, as a player must. Never on a charge or a retreat. Distances are squared, in blocks. */
-    public static boolean raiseShield(String formation, String order, double nearestSq, double reachSq, boolean hasEnemy) {
-        if (!hasEnemy || order.equals("charge") || order.equals("retreat")) return false;
-        return formation.equals("block") && nearestSq > reachSq && nearestSq < 6 * 6;
+    /** Whether a shield troop holds its shield up. Never on a charge or a retreat, and never with an enemy in reach
+     *  (nearestSq at or inside reachSq, both squared blocks): the troop lowers it to swing, as a player must. On Hold any
+     *  enemy raises it (hasEnemy: one picked or in sight); on any other order only archer fire does (underFire). */
+    public static boolean raiseShield(String order, boolean underFire, double nearestSq, double reachSq, boolean hasEnemy) {
+        if (order.equals("charge") || order.equals("retreat")) return false;
+        if (hasEnemy && nearestSq <= reachSq) return false;
+        if (order.equals("hold")) return hasEnemy;
+        return underFire;
     }
+    /** Whether a squad group is still under fire: it was shot at (shotAt, battle ticks; 0 means never) at most memoryTicks ago. */
+    public static boolean underFire(long now, long shotAt, int memoryTicks) { return shotAt > 0 && now - shotAt <= memoryTicks; }
     /**
      * Round gold from held points per income tick: held times (pointGold + bonus), capped at objectiveIncomeCap scaled by the same
      * ratio, so the cap still stands for the same number of points (the Quartermaster's bonus: 3 a point becomes 5, and the cap of 9,

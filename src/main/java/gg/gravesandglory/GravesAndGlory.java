@@ -193,6 +193,8 @@ public final class GravesAndGlory implements ModInitializer {
         final Map<String,Double> fullHealth=new HashMap<>();
         /** Battle time (ticks) each group's order last became Charge (Battle.markCharge): the counter table's charge impact reads it. */
         final Map<String,Long> chargedAt=new HashMap<>();
+        /** Battle time (ticks) each group was last shot at by an enemy archer, or taken aim at from within its reach (Tactics.stamp): its shield troops raise their shields and crawl while it is fresh (Tactics.underFire). */
+        final Map<String,Long> shotAt=new HashMap<>();
         /** House id to trait tier (1 to 3) for the Houses this army's living troops reach, from their slot weights; Houses.recompute keeps it. */
         final Map<String,Integer> traits=new LinkedHashMap<>();
         /** Troop id to how many of them this army lost this round and has not had back as a Reaver's Bloodrush refund (Commander.Bloodrush); the round's start clears it. */
@@ -799,7 +801,7 @@ public final class GravesAndGlory implements ModInitializer {
             for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id()))){
                 Assignment a=new Assignment(action,formation,dest,yaw);a.enemy=enemyId;a.issued=time;s.assignments.put(g.id(),a);s.arrived.remove(g.id());
             }
-            for(Unit u:units)if(u.squad==s&&(group.equals("all")||u.spec.group().equals(group))){u.lockedTarget=null;u.spellCenter=null;u.mob.setTarget(null);u.mob.getNavigation().stop();u.nextPath=0;u.stuckTicks=0;}
+            for(Unit u:units)if(u.squad==s&&(group.equals("all")||u.spec.group().equals(group))){Abilities.keepSpeed(u.mob,Tactics.CRAWL_ID,"Graves and Glory crawl",0);u.lockedTarget=null;u.spellCenter=null;u.mob.setTarget(null);u.mob.getNavigation().stop();u.nextPath=0;u.stuckTicks=0;}
         }
         public void tactical(ServerPlayerEntity p,String group,String action,String formation,double x,double z,float yaw,int enemyId){
             Squad s=squads.get(p.getUuid());
@@ -966,7 +968,7 @@ public final class GravesAndGlory implements ModInitializer {
             for(Capture p:points){p.owner=-1;p.progress=0;p.challenger=-1;Arena.flag(world,p.spec,-1);}
             respawns.clear();BattleEffects.startRound();Morale.startRound();
             for(Squad s:squads.values()){
-                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.arrived.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.fullCount.clear();s.places.clear();s.chargedAt.clear();s.traits.clear();s.fallen.clear();s.hitBy=null;s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
+                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.arrived.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.fullCount.clear();s.places.clear();s.chargedAt.clear();s.shotAt.clear();s.traits.clear();s.fallen.clear();s.hitBy=null;s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=base(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
                 var player=server.getPlayerManager().getPlayer(s.owner);
                 if(player!=null){toBase(player,s.team);player.changeGameMode(GameMode.ADVENTURE);equipPlayer(player);}
                 reinforce(s);

@@ -29,6 +29,7 @@ public final class Projectiles {
 
     public static void fire(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,String kind,float amount){
         Vec3d from=u.mob.getEyePos(),to=aim(target);
+        Tactics.stamp(b,u,target); // archer fire: the target's group is under fire (Squad.shotAt)
         boolean arrow=kind.equals("arrow")||kind.equals("trident");
         int travel=BattleMath.travelTicks(from.distanceTo(to),arrow?C.arrowSpeed():C.boltSpeed(),C.projectileMinTicks(),C.projectileMaxTicks());
         long lands=b.time+travel;

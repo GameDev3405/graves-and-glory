@@ -31,6 +31,17 @@ import static gg.gravesandglory.Phase2Checks.server;
  * holes closed one at a time (no man more than two places, one per loss). The screenshot is hl-wall-loss2.png.</li>
  * <li>hl-mirror: the command preview's places (CommandMode.places, from the client's own markers and group counts) are the server's slots
  * (Battle.formation) of the commander's Line on Hold after the losses, as a set of {side, back} from the order's point.</li>
+ * <li>hl-raise (Task 3): then, with no enemy anywhere, no shield troop of either wall holds its shield up; a frozen Dusk Revenant pinned 12
+ * blocks in front of the Line's point (in sight, outside Hold's ten-block leash) raises every shield of both walls within 20 ticks (the
+ * screenshot is hl-raise.png); pinned 1.8 in front of a front-rank Squire, 12 ticks later every shield troop inside its reach (Abilities.range,
+ * less 0.3) has lowered its shield to strike and every one beyond it (plus 0.3) still holds it up; then both walls Charge, their groups
+ * stamped shot at every tick, and no shield is up on any of the next 40 ticks.</li>
+ * <li>hl-crawl (Task 3): six tough Order Squires of the commander's army with full knockback resistance on the same level patch. Unfired,
+ * they Move 30 blocks east: their mean speed over ticks 30-70 is v0. Back at the start, six Dusk Order Archers (AI on, pinned 11 blocks to the
+ * side, on Attack) shoot them while they Move again: their mean speed over ticks 30-130 is within 15% of crawlShare times v0, with their
+ * shields up and the crawl modifier (Tactics.CRAWL_ID) on. The archers removed, the 10-tick mean speed is back to 0.85 v0 with no crawl
+ * modifier within fireMemoryTicks + 20. With the archers back, on Hold, the knights walking 27 blocks back to their slots under fire with
+ * their shields up keep 0.85 v0 over ticks 10-30, and none carries the crawl modifier.</li>
  * </ul>
  */
 final class HoldLineChecks {
@@ -52,6 +63,23 @@ final class HoldLineChecks {
         volatile Set<String> serverPlaces;
         volatile boolean mirrorDone;
         int mirrorWait;
+        /** The level patch flat found (its west end x, standing y, z). */
+        double[] patch;
+        // hl-raise
+        GravesAndGlory.Unit foe, front;
+        final List<String> raiseWhy = new ArrayList<>();
+        boolean raisePass = true;
+        int chargeRaised, chargeTicks;
+        // hl-crawl
+        final List<GravesAndGlory.Unit> crawlers = new ArrayList<>(), archers = new ArrayList<>();
+        final List<String> crawlWhy = new ArrayList<>();
+        boolean crawlPass = true;
+        Vec3d crawlFrom, crawlTo;
+        final Map<GravesAndGlory.Unit, Vec3d> snap = new HashMap<>();
+        final Map<Long, Map<GravesAndGlory.Unit, Vec3d>> track = new HashMap<>();
+        double v0, v1;
+        long recoveredAt;
+        int crawlingAtRemoval, holdCrawled, holdUp, holdFire;
 
         static final double WALL = 0.7;
 
@@ -107,7 +135,7 @@ final class HoldLineChecks {
             if (wantShot != null && !shotTaken) {c.options.hudHidden = true; if (++shotDelay >= shotAfter) {ScreenshotRecorder.saveScreenshot(c.runDirectory, wantShot + ".png", c.getFramebuffer(), t -> {}); shotTaken = true; c.options.hudHidden = false;}}
             if (stage == 30 && serverPlaces != null && !mirrorDone) mirror(c);
             if (stage == 99 && !finished) {finished = true; c.setScreen(null); Phase2Checks.finish(c, "holdline");}
-            if (tick > 6000 && !finished) {finished = true; report("hl-timeout", false, "stuck in stage " + stage); Phase2Checks.finish(c, "holdline");}
+            if (tick > 9000 && !finished) {finished = true; report("hl-timeout", false, "stuck in stage " + stage); Phase2Checks.finish(c, "holdline");}
         }
 
         /** hl-mirror, on the client: the preview's places from the markers and the group card, against the server's. Waits (up to 200 client ticks) for the state packet to show the whole group. */
@@ -122,12 +150,13 @@ final class HoldLineChecks {
             boolean pass = client.equals(serverPlaces) && client.size() == want;
             report("hl-mirror", pass, "the command preview of the commander's Line on Hold (" + (group == null ? "no infantry card" : group.count() + " on the card") + ", " + troops.size() + " own markers named) places " + client + "; the server's slots are " + serverPlaces + " (want the same set)");
             mirrorDone = true;
-            server(c, b -> next(b, 99));
+            server(c, b -> next(b, 40));
         }
 
         @Override public void serverTick(GravesAndGlory.Battle b) {
             if (player == null || stage >= 99) return;
-            try {stages(b);} catch (RuntimeException e) {report("hl-exception", false, "stage " + stage + ": " + e); e.printStackTrace(); next(b, 99);}
+            hold(); // the pinned enemies of hl-raise and hl-crawl stand where they were put
+            try {stages(b); if (stage >= 40) shieldStages(b);} catch (RuntimeException e) {report("hl-exception", false, "stage " + stage + ": " + e); e.printStackTrace(); next(b, 99);}
         }
 
         void stages(GravesAndGlory.Battle b) {
@@ -138,7 +167,7 @@ final class HoldLineChecks {
                     if (since(b) < 10) return;
                     stageFixture(b);
                     deploy(b);
-                    double[] g = flat(b);
+                    double[] g = flat(b); patch = g;
                     if (g == null) {report("hl-wall", false, "no level, open patch of real ground west of the river on map 0"); next(b, 99); return;}
                     lineAt = ground(b, g[0] + 20.5, g[2] - 3.5); blockAt = ground(b, g[0] + 20.5, g[2] + 5.5);
                     cameraAt = new Vec3d(g[0] + 28, lineAt.y + 2.2, g[2] + 1);
@@ -446,6 +475,173 @@ final class HoldLineChecks {
             boolean gaps = g[2] > 0 && g[0] >= WALL - 0.05 && g[1] <= WALL + 0.05; pass &= gaps;
             why.add("the wall's " + (int) g[2] + " pairs of rank neighbours stand " + fmt(g[0]) + " to " + fmt(g[1]) + " apart (want 0.70 +/- 0.05)=" + gaps);
             report(check, pass, String.join("; ", why));
+        }
+
+        /** The fixture's living shield troops of the commander's side (both walls, team 0). */
+        List<GravesAndGlory.Unit> shieldTroops() {
+            List<GravesAndGlory.Unit> out = new ArrayList<>();
+            for (var u : fixture) if (u.mob.isAlive() && u.squad.team == 0 && u.tags.contains("shield")) out.add(u);
+            return out;
+        }
+        /** Whether the troop carries the crawl's movement-speed modifier. */
+        static boolean crawling(GravesAndGlory.Unit u) {
+            var speed = u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);
+            return speed != null && speed.getModifier(Tactics.CRAWL_ID) != null;
+        }
+        /** A Dusk troop at 4000 health pinned at this point (re-placed each tick by hold()), facing west. */
+        GravesAndGlory.Unit pinned(GravesAndGlory.Battle b, String troop, int slot, Vec3d at, boolean freeze) {
+            var u = tough(b.spawn(dusk, Campaign.troop(troop), slot, at)); if (freeze) Phase1Checks.freeze(u);
+            fixture.add(u); pins.add(new Pin(u, at, 90f)); u.deployed = at; Phase2Checks.Engine.apply(u, at, 90f); return u;
+        }
+        /** These pinned troops leave the battle. */
+        void unpin(GravesAndGlory.Battle b, List<GravesAndGlory.Unit> gone) {
+            for (var u : gone) u.mob.discard();
+            b.units.removeAll(gone); fixture.removeAll(gone); pins.removeIf(p -> gone.contains(p.u()));
+        }
+        /** The six knights put down at this x on the knights' lane, three abreast, facing east. */
+        void lineUp(GravesAndGlory.Battle b, double x) {
+            for (int i = 0; i < crawlers.size(); i++) {
+                var u = crawlers.get(i); Vec3d at = ground(b, x - i / 3, crawlFrom.z + (i % 3 - 1));
+                u.mob.getNavigation().stop(); Phase2Checks.Engine.apply(u, at, -90f); u.deployed = at; u.lastPosition = at; u.nextPath = 0; u.stuckTicks = 0;
+            }
+        }
+        /** Six Dusk Order Archers on Attack, AI on, pinned in a row 11 blocks south of the knights' lane. */
+        void archersUp(GravesAndGlory.Battle b) {
+            dusk.order = "attack"; dusk.assignments.clear();
+            for (int i = 0; i < 6; i++) archers.add(pinned(b, "archer", i, ground(b, patch[0] + 6.5 + 2 * i, crawlFrom.z + 11), false));
+        }
+        void snap(Map<GravesAndGlory.Unit, Vec3d> into) {into.clear(); for (var u : crawlers) into.put(u, u.mob.getPos());}
+        /** The knights' mean horizontal speed (blocks a tick) from the positions then to now, over this many ticks. */
+        double speed(Map<GravesAndGlory.Unit, Vec3d> then, double ticks) {
+            double sum = 0; int n = 0;
+            for (var u : crawlers) {Vec3d p = then.get(u); if (p != null) {sum += distance(p, u.mob.getPos()); n++;}}
+            return n == 0 ? 0 : sum / n / ticks;
+        }
+
+        /** hl-raise (stages 40-43) and hl-crawl (stages 50-56), on the server after the Task 2 stages. */
+        void shieldStages(GravesAndGlory.Battle b) {
+            switch (stage) {
+                case 40 -> {
+                    if (since(b) < 20) return;
+                    var shields = shieldTroops(); long up = shields.stream().filter(u -> u.mob.isUsingItem()).count();
+                    boolean none = up == 0 && !shields.isEmpty(); raisePass &= none;
+                    raiseWhy.add("with no enemy anywhere " + up + " of " + shields.size() + " shield troops hold their shield up (want none)=" + none);
+                    foe = pinned(b, "revenant", 0, ground(b, lineAt.x + 12, lineAt.z), true);
+                    next(b, 41);
+                }
+                case 41 -> {
+                    if (since(b) < 20) return;
+                    var shields = shieldTroops(); long up = shields.stream().filter(u -> u.mob.isUsingItem()).count();
+                    boolean all = up == shields.size() && !shields.isEmpty(); raisePass &= all;
+                    raiseWhy.add("a frozen Dusk Revenant " + fmt(distance(foe.mob.getPos(), lineAt)) + " in front of the Line's point (outside Hold's leash, in sight): " + up + " of " + shields.size() + " shield troops raise their shields within 20 ticks (want all)=" + all);
+                    requestShot("hl-raise", 4);
+                    for (var k : knights) if (k.mob.isAlive() && (front == null || backNow(b, k) + 0.01 * Math.abs(k.mob.getZ() - lineAt.z) < backNow(b, front) + 0.01 * Math.abs(front.mob.getZ() - lineAt.z))) front = k;
+                    Vec3d at = new Vec3d(front.mob.getX() + 1.8, front.mob.getY(), front.mob.getZ());
+                    pins.removeIf(p -> p.u() == foe); pins.add(new Pin(foe, at, 90f)); Phase2Checks.Engine.apply(foe, at, 90f);
+                    next(b, 42);
+                }
+                case 42 -> {
+                    if (since(b) < 12) return;
+                    int inReach = 0, beyond = 0, wrong = 0; List<String> bad = new ArrayList<>();
+                    for (var u : shieldTroops()) {
+                        double d = Math.sqrt(u.mob.squaredDistanceTo(foe.mob)), r = Abilities.range(b, u); boolean up = u.mob.isUsingItem();
+                        if (d < r - 0.3) {inReach++; if (up) {wrong++; bad.add(name(u) + " up at " + fmt(d));}}
+                        else if (d > r + 0.3) {beyond++; if (!up) {wrong++; bad.add(name(u) + " down at " + fmt(d));}}
+                    }
+                    boolean lowered = !front.mob.isUsingItem(), rule = wrong == 0 && inReach > 0 && beyond > 0 && lowered; raisePass &= rule;
+                    raiseWhy.add("the Revenant pinned 1.8 in front of " + name(front) + ": 12 ticks later " + inReach + " shield troops stand inside their reach (less 0.3) and " + beyond + " beyond it (plus 0.3); " + wrong + " hold the wrong way " + bad + "; " + name(front) + " lowered=" + lowered + " (want every one in reach down to strike, every one beyond up)=" + rule);
+                    b.issue(own, "infantry", "charge", "line", foe.mob.getPos(), -90, foe.mob.getId());
+                    b.issue(dawn, "all", "charge", "block", foe.mob.getPos(), -90, foe.mob.getId());
+                    for (var u : shieldTroops()) u.squad.shotAt.put(u.spec.group(), b.time);
+                    chargeRaised = 0; chargeTicks = 0;
+                    next(b, 43);
+                }
+                case 43 -> {
+                    boolean fire = true;
+                    for (var u : shieldTroops()) {u.squad.shotAt.put(u.spec.group(), b.time); fire &= Tactics.underFire(b, u); if (u.mob.isUsingItem()) chargeRaised++;}
+                    chargeTicks++;
+                    if (since(b) < 40) return;
+                    boolean never = chargeRaised == 0 && fire; raisePass &= never;
+                    raiseWhy.add("both walls ordered to Charge, their groups shot at every tick (under fire " + fire + "): " + chargeRaised + " shield-troop ticks raised over " + chargeTicks + " ticks (want 0)=" + never);
+                    report("hl-raise", raisePass, String.join("; ", raiseWhy));
+                    next(b, 50);
+                }
+                case 50 -> {
+                    clearFixture(b, "hl-crawl"); knights.clear(); hearthguard.clear(); breakers.clear(); foe = null; front = null;
+                    own.assignments.clear(); own.arrived.clear(); own.shotAt.clear();
+                    crawlFrom = ground(b, patch[0] + 1.5, patch[2] - 2.5); crawlTo = ground(b, crawlFrom.x + 30, crawlFrom.z);
+                    for (int i = 0; i < 6; i++) {
+                        var u = tough(b.spawn(own, Campaign.troop("knight"), i, crawlFrom)); fixture.add(u); crawlers.add(u);
+                        var kb = u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_KNOCKBACK_RESISTANCE); if (kb != null) kb.setBaseValue(1);
+                    }
+                    lineUp(b, crawlFrom.x);
+                    b.issue(own, "infantry", "hold", "line", crawlFrom, -90, -1);
+                    var p = sp(b); b.relocate(p, crawlFrom.x + 15, Phase1Checks.top(b, crawlFrom.x + 15, crawlFrom.z - 14) + 2.2, crawlFrom.z - 14, 0f, 20f);
+                    next(b, 51);
+                }
+                case 51 -> {
+                    if (since(b) < 60) return;
+                    b.issue(own, "infantry", "move", "line", crawlTo, -90, -1);
+                    next(b, 52);
+                }
+                case 52 -> { // unfired: v0 over ticks 30-70 of the Move
+                    if (since(b) == 30) snap(snap);
+                    if (since(b) < 70) return;
+                    v0 = speed(snap, 40);
+                    long crawled = crawlers.stream().filter(Wall::crawling).count();
+                    boolean ok = v0 > 0.05 && crawled == 0; crawlPass &= ok;
+                    crawlWhy.add("unfired, the six Squires Move at " + fmt(v0 * 20) + " blocks a second (ticks 30-70; " + crawled + " with the crawl modifier, want 0)=" + ok);
+                    lineUp(b, crawlFrom.x); b.issue(own, "infantry", "hold", "line", crawlFrom, -90, -1);
+                    archersUp(b);
+                    next(b, 53);
+                }
+                case 53 -> {
+                    if (since(b) < 40) return;
+                    b.issue(own, "infantry", "move", "line", crawlTo, -90, -1);
+                    next(b, 54);
+                }
+                case 54 -> { // under fire: v1 over ticks 30-130 of the Move
+                    if (since(b) == 30) snap(snap);
+                    if (since(b) == 80) {
+                        long up = crawlers.stream().filter(u -> u.mob.isUsingItem()).count(), crawled = crawlers.stream().filter(Wall::crawling).count();
+                        boolean fire = Tactics.underFire(b, crawlers.get(0)), on = up == crawlers.size() && crawled == crawlers.size() && fire; crawlPass &= on;
+                        crawlWhy.add("80 ticks into the Move under the archers' fire " + up + " of 6 hold their shields up and " + crawled + " carry the crawl modifier (group under fire " + fire + "; want all)=" + on);
+                    }
+                    if (since(b) < 130) return;
+                    v1 = speed(snap, 100);
+                    double share = Spec.COMBATDISCIPLINE[0].crawlShare(), want = share * v0; boolean slow = Math.abs(v1 - want) <= 0.15 * want; crawlPass &= slow;
+                    crawlWhy.add("under fire they Move at " + fmt(v1 * 20) + " blocks a second (ticks 30-130), " + fmt(v1 / Math.max(v0, 1e-9)) + " of v0 (want crawlShare " + fmt(share) + " x v0 = " + fmt(want * 20) + " +/- 15%)=" + slow);
+                    crawlingAtRemoval = (int) crawlers.stream().filter(Wall::crawling).count();
+                    unpin(b, archers); archers.clear(); track.clear(); recoveredAt = -1;
+                    next(b, 55);
+                }
+                case 55 -> { // the archers gone: the 10-tick mean speed back to 0.85 v0 with no crawl modifier within fireMemoryTicks + 20
+                    long t = since(b); Map<GravesAndGlory.Unit, Vec3d> now = new HashMap<>(); snap(now); track.put(t, now);
+                    int limit = Spec.COMBATDISCIPLINE[0].fireMemoryTicks() + 20;
+                    if (recoveredAt < 0 && track.containsKey(t - 10) && speed(track.get(t - 10), 10) >= 0.85 * v0 && crawlers.stream().noneMatch(Wall::crawling)) recoveredAt = t;
+                    if (t < limit) return;
+                    boolean back = recoveredAt >= 0 && recoveredAt <= limit; crawlPass &= back;
+                    crawlWhy.add("the archers removed (" + crawlingAtRemoval + " crawling then): the 10-tick mean speed is back to 0.85 v0 with no crawl modifier " + (recoveredAt < 0 ? "never" : recoveredAt + " ticks") + " later (want within fireMemoryTicks + 20 = " + limit + ")=" + back);
+                    // Hold: the knights walk back to their slots 27 blocks west, under fire, shields up, never crawling
+                    lineUp(b, crawlFrom.x + 27); archersUp(b);
+                    b.issue(own, "infantry", "hold", "line", crawlFrom, -90, -1); own.shotAt.put("infantry", b.time);
+                    holdCrawled = 0; holdUp = 0; holdFire = 0;
+                    next(b, 56);
+                }
+                case 56 -> {
+                    long t = since(b);
+                    if (t >= 10) for (var u : crawlers) {if (crawling(u)) holdCrawled++; if (u.mob.isUsingItem()) holdUp++; if (Tactics.underFire(b, u)) holdFire++;}
+                    if (t == 10) snap(snap);
+                    if (t < 30) return;
+                    double vh = speed(snap, 20); int samples = 21 * crawlers.size();
+                    boolean free = vh >= 0.85 * v0 && holdCrawled == 0 && holdUp == samples && holdFire == samples; crawlPass &= free;
+                    crawlWhy.add("on Hold, walking back to their slots under fire (" + holdFire + " of " + samples + " knight-ticks under fire, " + holdUp + " with the shield up), they keep " + fmt(vh * 20) + " blocks a second over ticks 10-30, " + fmt(vh / Math.max(v0, 1e-9)) + " of v0 (want at least 0.85), " + holdCrawled + " knight-ticks crawling (want 0)=" + free);
+                    report("hl-crawl", crawlPass, String.join("; ", crawlWhy));
+                    unpin(b, archers); archers.clear();
+                    next(b, 99);
+                }
+                default -> {}
+            }
         }
     }
 }

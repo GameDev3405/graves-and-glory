@@ -977,11 +977,14 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(hexer==null){
                         var braced=knights.stream().filter(u->u.mob.isBlocking()).toList();
                         if(braced.size()<2){report("p1-bots-blight",false,"only "+braced.size()+" knights braced");for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,14);return;}
-                        aim=braced.get(0);var guard=braced.get(1);double hx=aim.mob.getX()+12,hz=aim.mob.getZ(); // 12 blocks ahead of the wall (Dawn faces +x), inside every shield arc
+                        // The guard is a braced knight that faces the archers (+x, Hold's yaw): a man still stepping onto his slot faces where he steps, and a blow from +x is no frontal one for him.
+                        var facing=braced.stream().filter(u->Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.getYaw()+90))<60).toList();
+                        if(facing.isEmpty()){report("p1-bots-blight",false,"none of "+braced.size()+" braced knights faces the archers (yaws "+braced.stream().map(u->String.format(java.util.Locale.ROOT,"%.0f",u.mob.getYaw())).toList()+")");for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,14);return;}
+                        var guard=facing.get(0);aim=braced.stream().filter(u->u!=guard).findFirst().get();double hx=aim.mob.getX()+12,hz=aim.mob.getZ(); // 12 blocks ahead of the wall (Dawn faces +x), inside every shield arc
                         var squad=new GravesAndGlory.Squad(UUID.randomUUID(),1,new Vec3d(hx,top(b,hx,hz),hz));squad.order="hold";squad.yaw=90;
                         hexer=freezeIt(b.spawn(squad,troop("hexer"),0,new Vec3d(hx,top(b,hx,hz),hz)));foes.add(hexer);
-                        float hp=guard.mob.getHealth();int regen=guard.mob.timeUntilRegen;boolean hit=guard.mob.damage(b.world.getDamageSources().mobAttack(hexer.mob),5);
-                        frontalBlocked=!hit&&regen<=10&&guard.mob.getHealth()==hp;frontalWhy="a frontal blow of 5 from the Gravecaller on a braced knight: health "+hp+" -> "+guard.mob.getHealth()+" (hurt cooldown before it "+regen+")";
+                        float hp=guard.mob.getHealth();int regen=guard.mob.timeUntilRegen;var blowSource=b.world.getDamageSources().mobAttack(hexer.mob);String pose=String.format(java.util.Locale.ROOT,"guard yaw %.1f body %.1f head %.1f pitch %.1f at %s moving=%s vel %s, hexer at %s, blockedByShield=%s",guard.mob.getYaw(),guard.mob.bodyYaw,guard.mob.getHeadYaw(),guard.mob.getPitch(),guard.mob.getPos(),!guard.mob.getNavigation().isIdle(),guard.mob.getVelocity(),hexer.mob.getPos(),guard.mob.blockedByShield(blowSource));boolean hit=guard.mob.damage(b.world.getDamageSources().mobAttack(hexer.mob),5);
+                        frontalBlocked=!hit&&regen<=10&&guard.mob.getHealth()==hp;frontalWhy=facing.size()+" of "+braced.size()+" braced knights face the archers; a frontal blow of 5 from the Gravecaller on one: health "+hp+" -> "+guard.mob.getHealth()+" (hurt cooldown before it "+regen+"; "+pose+")";
                     }
                     if(hexer.spellCenter!=null||hpBefore.isEmpty()){
                         if(since(b)>60){report("p1-bots-blight",false,"the burst never landed; "+frontalWhy);for(var u:foes)u.mob.discard();b.units.removeAll(foes);foes.clear();next(b,14);return;}
