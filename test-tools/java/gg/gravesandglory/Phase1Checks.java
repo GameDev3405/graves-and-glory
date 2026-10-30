@@ -801,7 +801,7 @@ public final class Phase1Checks implements ClientModInitializer {
 
     /** Task 4: bot difficulty tiers. The command, the lobby and camp buttons and the Hard cadence first (map 0), then Hard's decisions on Kingsfield Crossroads (map 4, five points). Stages run on the server tick; the UI stages run on the client tick. */
     static final class Bots implements Suite,ServerWatch {
-        volatile int stage;volatile String wantShot;volatile boolean finished,shotAsked;
+        volatile int stage;volatile String wantShot;volatile boolean finished;
         volatile UUID player;long stageAt;int shotDelay,lobbyAt=-1,homeAt=-1;
         boolean lobbyOk,commandOk,homeOk,buttonOk,tiersOk,refusedOk;String lobbyWhy="",homeWhy="",tiersWhy="";
         final Map<UUID,Vec3d> firstTarget=new HashMap<>();final Map<UUID,Long> decidedAt=new HashMap<>();

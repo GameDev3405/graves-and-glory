@@ -61,7 +61,7 @@ public final class BattleMathCheck {
         check(BattleMath.raiseShield("block","attack",5.9*5.9,reach,true) && !BattleMath.raiseShield("block","attack",6*6,reach,true), "block: the shield rises inside 6 blocks, not at 6");
         check(!BattleMath.raiseShield("shieldwall","attack",4*4,reach,true) && !BattleMath.raiseShield("shieldwall","hold",20*20,reach,true), "a stale shieldwall id raises nothing of its own: the formation is gone");
         check(!BattleMath.raiseShield("block","charge",4*4,reach,true) && !BattleMath.raiseShield("block","charge",5*5,reach,true) && !BattleMath.raiseShield("block","retreat",4*4,reach,true), "no shield on a charge or a retreat");
-        check(!BattleMath.raiseShield("block","attack",4*4,reach,false) && !BattleMath.raiseShield("block","hold",4*4,reach,false) && !BattleMath.raiseShield("loose","attack",4*4,reach,true), "no shield with no enemy, or outside block and shieldwall");
+        check(!BattleMath.raiseShield("block","attack",4*4,reach,false) && !BattleMath.raiseShield("block","hold",4*4,reach,false) && !BattleMath.raiseShield("loose","attack",4*4,reach,true), "no shield with no enemy, or outside block");
         check(MatchStats.winRate(7,10) == .7 && MatchStats.winRate(0,0) == 0, "win rate");
         var st=new MatchStats.SquadStats(); st.goldEarned+=5; check(st.goldEarned == 5, "stats accumulate");
         var a=new MatchStats.SquadStats(); a.kills=4; a.objectiveSeconds=10; var b2=new MatchStats.SquadStats(); b2.kills=4; b2.objectiveSeconds=30;

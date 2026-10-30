@@ -3880,12 +3880,12 @@ public final class Phase2Checks implements ClientModInitializer {
                     clearFixture(b,"bloodrush");unbuild(b);reset(own);Commander.reset(b,own);own.training.clear();own.order="hold";dawn.order="hold";dusk.order="hold";
                     var c=Commander.row(own);
                     boolean sheet=c.id().equals("reaver")&&c.active().equals("bloodrush")&&c.cooldownTicks()==1500&&c.durationTicks()==200&&near(c.value1(),.3)&&near(c.value2(),3);
-                    p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);b.relocate(p,site.getX()+.5-3,site.getY(),site.getZ()+.5,-90f,0f);
+                    p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);b.relocate(p,site.getX()+.5-4,site.getY(),site.getZ()+.5,-90f,0f); // 4 blocks from the shield knight: well past its 2.8 reach, inside the 6-block raise range
                     own.banner=new ArrayList<>(banner("wm_hound*4,wm_hunter*2,wm_tusk*2,empty*12"));
                     for(int i=0;i<4;i++)us[i]=post(b,own,"wm_hound",-6,-6+i*2,-90,true);us[4]=post(b,own,"wm_hunter",-8,-3,-90,true);us[5]=post(b,own,"wm_hunter",-8,3,-90,true);us[6]=post(b,own,"wm_tusk",-5,-8,-90,true);us[7]=post(b,own,"wm_tusk",-5,8,-90,true);
                     us[8]=post(b,dawn,"knight",-2,-4,-90,true); // an ally's troop (Dawn's)
                     for(int i=0;i<12;i++)line[i]=bare(post(b,dusk,"archer",2+(i%6)*1.2,i<6?3:6,90,true));
-                    formationWas=dusk.formation;dusk.formation="block";shieldUp=bare(post(b,dusk,"knight",0,0,90,true)); // facing the Reaver 3 west of it, its shield kept and raised from now (hold, and Tactics agrees: Compact raises it with the Reaver outside sword reach)
+                    formationWas=dusk.formation;dusk.formation="block";shieldUp=bare(post(b,dusk,"knight",0,0,90,true)); // facing the Reaver 4 west of it, its shield kept and raised from now (hold, and Tactics agrees: Compact raises it with the Reaver outside sword reach)
                     int lostBefore=own.stats.lost;
                     for(var u:List.of(us[0],us[1],us[4]))u.mob.damage(b.world.getDamageSources().generic(),1000f);
                     boolean fell=own.stats.lost==lostBefore+3;
@@ -5328,6 +5328,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     si++;wait=0;}
                 return;
             }
+            if(regPhase>=3){plainHold(c,tick);return;}
             if(regPhase>0){register(c,tick);return;}
             // a knight spawned into the group on hold in line: its first tick on this client reads brace (Hold braces a shield troop), sent when the player started tracking it
             if(wait==1){trackingBefore=Tactics.trackingSends;beatBefore=Tactics.stanceSends;since=tick;server(c,b->late=post(b,drill,"knight",-2.5,5,180));return;}
@@ -5351,6 +5352,16 @@ public final class Phase2Checks implements ClientModInitializer {
                 int sends=Tactics.registerSends-regBefore;boolean good=all&&sends>=four.size();stanceOk&=good;
                 stanceWhy.append("; a client registering stance_v1 late (its stances cleared, then the REGISTER event run for this player): ").append(sends).append(" stance sends (want ").append(four.size()).append(" or more), the four knights read brace again (Hold, a shield troop) ")
                     .append(all?(tick-regSince)+" ticks later":"never (40 ticks)").append(good?"":" (BAD)");
+                regPhase=3;}
+        }
+        /** A troop with neither a shield nor a spear (a revenant) joins the drill on hold in line: Hold braces only shield and spear troops, so it reads plain "hold". */
+        volatile GravesAndGlory.Unit plainHold;int plainSince;
+        void plainHold(MinecraftClient c,int tick){
+            if(regPhase==3){plainSince=tick;server(c,b->plainHold=post(b,drill,"revenant",2.5,5,180));regPhase=4;return;}
+            var e=plainHold==null?null:client(c,plainHold.mob);String read=e==null?"-":TroopAnimator.STANCES.getOrDefault(e.getId(),"");
+            if("hold".equals(read)||tick-plainSince>40){
+                boolean good="hold".equals(read)&&tick-plainSince<=20;stanceOk&=good;
+                stanceWhy.append("; a revenant (no shield, no spear) joining the group on hold in line reads \"").append(read).append("\" ").append(tick-plainSince).append(" ticks after the spawn (want hold: Hold braces only shield and spear troops, within 20 ticks)").append(good?"":" (BAD)");
                 report("p2-anim-stance",stanceOk,stanceWhy.toString().trim());
                 server(c,b->{var d=drill;d.order="follow";if(drillTarget!=null)d.target=drillTarget;camera(b,0,1.6,-6,0,8);});cs=3;wait=0;si=0;regPhase=0;}
         }

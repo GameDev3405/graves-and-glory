@@ -162,7 +162,7 @@ public final class CounterMath {
         return switch (kind) {
             case "melee" -> Set.of("melee");
             case "arrow" -> Set.of("arrow", "shot");
-            case "bolt" -> Set.of("bolt", "shot", "magic");
+            case "bolt" -> Set.of("bolt", "shot", "magic"); // a caster's magic bolt. Not the attackVariants kind "bolt", which is a crossbow's animation kind (crossbows fire "arrow" here)
             case "blight" -> Set.of("blight", "magic");
             case "slam" -> Set.of("slam", "melee");
             default -> Set.of();

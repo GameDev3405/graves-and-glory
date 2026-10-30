@@ -100,6 +100,10 @@ class PreflightRules(unittest.TestCase):
                 self.refuses(lambda d, bad=bad: d['attackVariants'][0].__setitem__('impactTicks', bad), 'attackVariants', 'impactTicks')
 
     def test_variant_family_must_be_used_by_a_troop(self):
+        # Vacate a known family: the harpooner joins the bows, so the thrower rows belong to no troop.
+        self.refuses(lambda d: self.troop(d, 'tc_harpooner').__setitem__('family', 'bow'), 'thrower_throw', 'used by no troop')
+
+    def test_variant_family_must_be_known(self):
         def orphan(d):
             row = dict(d['attackVariants'][0])
             row['id'] = 'lance_thrust'
@@ -124,6 +128,21 @@ class PreflightRules(unittest.TestCase):
             for value in values:
                 with self.subTest(column=col, value=value):
                     self.refuses(lambda d, col=col, value=value: d['combatDiscipline'][0].__setitem__(col, value), 'combatDiscipline', col)
+        # mediumHitShare's own bounds (heavyHitShare raised out of the way so only the medium bound is broken)
+        for value in (0.0, 1.0):
+            with self.subTest(column='mediumHitShare', value=value):
+                def medium(d, value=value):
+                    d['combatDiscipline'][0]['mediumHitShare'] = value
+                    d['combatDiscipline'][0]['heavyHitShare'] = 0.99
+                self.refuses(medium, 'combatDiscipline', 'mediumHitShare')
+        # a tick column must be a whole number
+        for col in ('fireMemoryTicks', 'corpseLieTicks', 'corpseFadeTicks'):
+            with self.subTest(column=col, value='non-int'):
+                self.refuses(lambda d, col=col: d['combatDiscipline'][0].__setitem__(col, 40.5), 'combatDiscipline', col, 'whole number')
+        # a missing column
+        for col in ('shieldWallCell', 'heavyHitShare'):
+            with self.subTest(column=col, value='missing'):
+                self.refuses(lambda d, col=col: d['combatDiscipline'][0].pop(col), 'combatDiscipline', 'missing', col)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
