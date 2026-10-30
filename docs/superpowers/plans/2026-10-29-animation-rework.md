@@ -768,7 +768,7 @@ Each house runs this cycle:
 
 | Task | House | Troops | Notes |
 |---|---|---|---|
-| 16b | Gilded (finish) | knight, archer, sentinel, longbow, mage, gl_marshal | Freebuff's committed builders are installed and approved in game, with order_bow, longbow and sun_staff tiers if its in-flight work lands. This task splits all six at the joints and re-shoots archer and longbow `draw-0`/`loose-0`, because the forearm bend moves the bow grip. Freebuff reviews against its own intent. |
+| 16b | Gilded (finish) | knight, archer, sentinel, longbow, mage, gl_marshal | Freebuff's committed builders are installed and approved in game, except two items Kort stopped mid-flight on 2026-10-29: the sun_staff tiers (finish `art/hand/weapons/build_sun_staff.py` from whatever the helper left, then install it on the mage) and the in-game check of the order_bow and longbow tiers and the Longbowman. This task finishes both, splits all six at the joints and re-shoots archer and longbow `draw-0`/`loose-0`, because the forearm bend moves the bow grip. Freebuff reviews against its own intent. |
 | 17 | Graveborn | revenant, bonebow, reaper, stalker, hexer, gb_hollowking | skeleton and wither-skeleton proportions: thin limbs, tall |
 | 18 | Wildmoot humanoids | wm_hunter, wm_tusk, wm_seer | piglin proportions; tusk spear |
 | 19 | Wildmoot beasts | wm_hound, wm_stalker, wm_oldhorn | rebuild the jointed hound and spider rigs (`art/rigs/hound.json`, `spider.json`); a new `art/rigs/bear.json` for wm_oldhorn (antlered alpha). Each new rig follows Task 9's test pattern. |
