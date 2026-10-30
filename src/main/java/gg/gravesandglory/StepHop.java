@@ -42,4 +42,11 @@ final class StepHop {
     static boolean onRise(double x,double y,double z,double half,double height,double gx,double gz,double step,Room w){
         return !w.empty(gx-half,y+step,gz-half,gx+half,y+step+height,gz+half)&&w.empty(gx-half,y+1,gz-half,gx+half,y+1+height,gz+half)&&w.empty(x-half,y+1,z-half,x+half,y+1+height,z+half);
     }
+    /** The level velocity of a jump carried toward its slot: share of the way (dx, dz), cut down to cap in length (its direction kept), so a jump begun far from
+     *  the slot is no faster than a walk-pace jump. */
+    static double[] pull(double dx,double dz,double share,double cap){
+        double x=dx*share,z=dz*share,l=Math.hypot(x,z);
+        if(l>cap&&l>0){x*=cap/l;z*=cap/l;}
+        return new double[]{x,z};
+    }
 }

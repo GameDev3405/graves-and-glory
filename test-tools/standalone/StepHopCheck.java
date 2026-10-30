@@ -90,6 +90,14 @@ public final class StepHopCheck {
   check(StepHop.onRise(10.5,69.875,10.5,0.3,1.95,9.85,10.5,0.6,sandRise),"Soul sand a block higher, from soul sand, is a rise");
   var roof=new Heights(70.0).set(9,10,71.0).ceiling(10,10,72.5);
   check(!StepHop.onRise(10.5,70.0,10.5,0.3,1.95,9.85,10.5,0.6,roof),"With no room to jump above the troop it does not jump");
+  // the hop pull (Tactics.hop): half the way to the slot, never more than the cap (0.3, a walk-pace jump) in length, its direction kept
+  double[] far=StepHop.pull(2.0,0.0,0.5,0.3);check(Math.abs(far[0]-0.3)<1e-9&&far[1]==0,"A jump begun 2 blocks from its slot is carried at the cap, 0.3 a tick, not 1.0");
+  double[] diag=StepHop.pull(1.4,1.4,0.5,0.3);check(Math.abs(Math.hypot(diag[0],diag[1])-0.3)<1e-9&&Math.abs(diag[0]-diag[1])<1e-12,"A diagonal jump from far is capped at 0.3 in length and keeps its direction");
+  double[] near=StepHop.pull(0.4,-0.3,0.5,0.3);check(Math.abs(near[0]-0.2)<1e-12&&Math.abs(near[1]+0.15)<1e-12,"A jump from 0.5 away is carried half the way, under the cap");
+  double[] pace=StepHop.pull(0.6,0.0,0.5,0.169);check(Math.abs(pace[0]-0.169)<1e-12,"A slower troop is capped at its own walking pace");
+  double[] none=StepHop.pull(0,0,0.5,0.3);check(none[0]==0&&none[1]==0,"On the slot there is no pull");
+  for(int i=0;i<360;i+=7){double r=Math.toRadians(i);for(double d=0;d<=2.5;d+=0.1){double[] v=StepHop.pull(Math.cos(r)*d,Math.sin(r)*d,0.5,0.3);if(Math.hypot(v[0],v[1])>0.3+1e-9){check(false,"pull over the cap at "+i+" degrees, "+d);}}}
+  check(true,"No pull from 0 to 2.5 blocks round the compass exceeds the cap");
   System.out.println("PASS "+count+" step hop scenarios");
  }
 }

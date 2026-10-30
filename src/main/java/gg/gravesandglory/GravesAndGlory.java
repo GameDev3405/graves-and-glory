@@ -224,7 +224,7 @@ public final class GravesAndGlory implements ModInitializer {
         long nextPath;
         Vec3d lastPosition,lastGoal,deployed;
         /** A wall troop's jump onto its slot on a rise (Tactics.settle, Tactics.hop): the slot (null: none), the tick it ends by, and whether it has left the ground. */
-        Vec3d hopTo;long hopUntil;boolean hopAirborne;
+        Vec3d hopTo;long hopUntil;boolean hopAirborne;double stretchBest;long stretchAt=-1,stretchOff;
         /** A wall troop's slot as Tactics.stretch last read it (Battle.formation): cleared on every beat, read again at most once until the next. */
         Vec3d place;
         int stuckTicks;

@@ -114,24 +114,50 @@ final class Tactics {
     }
     /**
      * The last stretch (ruling R21): a wall troop (Battle.walls) with no enemy chosen faces its Hold yaw (yaw, body and head) every tick within
-     * STRETCH of its slot, and steps in without turning: sideways or backwards as well as forwards. Each tick its level velocity is 0.454 of the
-     * way to the slot (settle's share: let go at any tick, it coasts onto the slot), no faster than its walking pace (pace), until the arrival
-     * tolerance, where settle on the beat takes the last of it. Pressed against the face of a rise its slot is on (onRise), it jumps as settle
-     * does, and faces the same way through the jump (hop carries it). It yields when it has an enemy (it turns only to fight one), and where the
-     * slot is no level step or one-block rise away (level): walk's paths take that. In the air it only keeps facing. Returns whether it holds the troop.
+     * STRETCH of its slot, and steps in without turning: sideways or backwards as well as forwards. It is a layer over walk, not a way round it:
+     * it holds the troop only where walk would step it straight onto its slot (walk's precise branch), that is, when its way is not routed
+     * (route gives the slot itself: no bridge, no house gate), it is on no detour, and every cell of the straight line to the slot is open and
+     * level (clear). Anywhere else walk routes it, turning as it walks. The step is a level velocity toward the slot of walking pace (pace), or
+     * 0.454 of the way once that is less (let go at any tick, it coasts onto the slot), down to SETTLED: one smooth motion onto the slot, with no
+     * stop at the arrival tolerance for settle to slide it on later. The velocity is used, not MoveControl.strafeTo, because strafe input is
+     * capped at a quarter of the movement speed (0.245 s a tick for speed s), short of walking pace (0.98 s x s) for any troop faster than 0.25
+     * (a Squire at 0.28 would step in at 89% of his walk). A troop that gains less than PROGRESS in STUCK ticks (a body or a corner in its way)
+     * is let go for STUCK_OFF ticks, so walk's stuck handling, StepHop and detours take it. Pressed against the face of a rise its slot is on
+     * (onRise), it jumps as settle does, and faces the same way through the jump (hop carries it). It yields when it has an enemy (it turns only
+     * to fight one). In the air it only keeps facing. Returns whether it holds the troop.
      */
     static boolean stretch(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,GravesAndGlory.Assignment a,long time){
-        if(!GravesAndGlory.Battle.walls(u,a.order))return false;
-        var t=u.lockedTarget;if(t!=null&&t.isAlive())return false;
+        var t=u.lockedTarget;
+        if(!GravesAndGlory.Battle.walls(u,a.order)||t!=null&&t.isAlive()){u.stretchAt=-1;return false;}
         var mob=u.mob;if(u.place==null)u.place=battle.formation(u);Vec3d goal=u.place;
         if(u.hopTo!=null){face(mob,a.yaw);return true;}
         double d2=GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal);
-        if(d2>STRETCH*STRETCH||!level(battle,mob,goal))return false;
+        if(d2>STRETCH*STRETCH||time<u.stretchOff||!clear(battle,u,goal)){u.stretchAt=-1;return false;}
+        double d=Math.sqrt(d2);
+        if(d>N.arrivalTolerance()){ // the stuck fallback: no gain of PROGRESS for STUCK ticks lets walk have it
+            if(u.stretchAt<0||d<u.stretchBest-PROGRESS){u.stretchBest=d;u.stretchAt=time;}
+            else if(time-u.stretchAt>=STUCK){u.stretchOff=time+STUCK_OFF;u.stretchAt=-1;stretchStuck++;return false;}
+        }else u.stretchAt=-1;
         mob.getNavigation().stop();face(mob,a.yaw);
-        double tolerance=N.arrivalTolerance();if(d2<=tolerance*tolerance||!mob.isOnGround())return true;
+        if(d<=SETTLED||!mob.isOnGround())return true;
         if(mob.horizontalCollision&&onRise(mob,goal)){mob.getJumpControl().setActive();u.hopTo=goal;u.hopUntil=time+HOP_TICKS;u.hopAirborne=false;hops++;return true;}
-        double length=Math.sqrt(d2),step=Math.min(length*.454,pace(mob));Vec3d delta=goal.subtract(mob.getPos());
-        mob.setVelocity(delta.x/length*step,mob.getVelocity().y,delta.z/length*step);
+        double step=Math.min(d*.454,pace(mob));Vec3d delta=goal.subtract(mob.getPos());
+        mob.setVelocity(delta.x/d*step,mob.getVelocity().y,delta.z/d*step);
+        return true;
+    }
+    /** The stuck fallback of the stretch: a gain this small (blocks) in STUCK ticks is no progress, and the troop is left to walk for STUCK_OFF ticks; how many times that happened (HoldLineChecks reads it). */
+    static final double PROGRESS=.05;static final int STUCK=20,STUCK_OFF=100;static int stretchStuck;
+    /** The troop would walk straight onto its goal (walk's precise branch): no detour, no routed way (route gives the goal itself), and every cell the
+     *  straight line from it to the goal crosses (sampled each 0.25 block) is open and level (open). */
+    static boolean clear(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d goal){
+        if(u.detour!=null||GravesAndGlory.Battle.horizontalDistance(route(u,goal),goal)>1e-6)return false;
+        var mob=u.mob;double dx=goal.x-mob.getX(),dz=goal.z-mob.getZ();int n=Math.max(1,(int)Math.ceil(Math.sqrt(dx*dx+dz*dz)/.25));
+        int lx=Integer.MIN_VALUE,lz=Integer.MIN_VALUE;
+        for(int i=0;i<=n;i++){
+            int x=(int)Math.floor(mob.getX()+dx*i/n),z=(int)Math.floor(mob.getZ()+dz*i/n);
+            if(x==lx&&z==lz)continue;lx=x;lz=z;
+            if(!open(battle,mob,x,z))return false;
+        }
         return true;
     }
     /** How near its slot a wall troop is held to its Hold yaw: walk's precise range, inside which it would otherwise step (MoveControl) facing its step. */
@@ -141,10 +167,10 @@ final class Tactics {
     /** A troop's walking pace in blocks a tick on level ground: MoveControl gives it forward input s (its movement speed), vanilla adds 0.98 s x s
      *  of velocity a tick, and ground friction keeps 0.546 of it, so it settles at 0.98 s x s / 0.454. Its speed modifiers (crawl, Howl) count. */
     static double pace(MobEntity mob){double s=mob.getAttributeValue(net.minecraft.entity.attribute.EntityAttributes.GENERIC_MOVEMENT_SPEED);return .98*s*s/.454;}
-    /** Whether a slot is a level step or a one-block rise away (walk's precise branch): its cell and the one above are air, its ground is within
-     *  1.1 of the troop's feet, and it is no river water below the crossings. */
-    static boolean level(GravesAndGlory.Battle battle,MobEntity mob,Vec3d goal){
-        int gx=(int)Math.floor(goal.x),gz=(int)Math.floor(goal.z),gy=Arena.ground(gx,gz)+1;
+    /** Whether a cell is a level step or a one-block rise away (walk's precise branch tests its goal's cell so): the cell and the one above are air,
+     *  its ground is within 1.1 of the troop's feet, and it is no river water below the crossings. */
+    static boolean open(GravesAndGlory.Battle battle,MobEntity mob,int gx,int gz){
+        int gy=Arena.ground(gx,gz)+1;
         return Math.abs(mob.getY()-gy)<1.1&&!(Arena.river(gx,gz)&&Arena.ground(gx,gz)<64)&&battle.world.getBlockState(new BlockPos(gx,gy,gz)).isAir()&&battle.world.getBlockState(new BlockPos(gx,gy+1,gz)).isAir();
     }
     /** How far a troop picks its targets: the order's engage radius, or for a siege troop (tag siege) at least its weapon's reach (Entrench's bonus included), so artillery shoots what it can reach and not only what the order's leash allows. The sheet's order radii are untouched. */
@@ -195,7 +221,7 @@ final class Tactics {
         if(enemy!=null&&nearest<=reach*reach)stamp(battle,u,enemy); // an archer taking aim from within its reach puts its target's group under fire
         if(u.tags.contains("shield")){ // Hold: up with any enemy picked or in sight; other orders: up under archer fire; never on Charge or Retreat, down to swing once the enemy is in reach
             String shieldOrder=shieldOrder(u,a);double near=nearest;boolean any=enemy!=null;
-            if(!any&&shieldOrder.equals("hold")){double seen=sighted(battle,u);if(seen>=0){any=true;near=seen;}}
+            if(!any&&shieldOrder.equals("hold")&&sighted(battle,u)>=0){any=true;near=Double.MAX_VALUE;} // an enemy only in sight is not picked (outside the leash), so it is never struck at and never lowers the shield, however near
             shield(mob,BattleMath.raiseShield(shieldOrder,underFire(battle,u),near,reach*reach,any));
             crawl(battle,u,shieldOrder);
         }
@@ -245,7 +271,8 @@ final class Tactics {
         mob.setVelocity(delta.x*.454,mob.getVelocity().y,delta.z*.454);
     }
     /**
-     * Every tick of a wall troop's jump onto its slot (settle): its level velocity is HOP_PULL of the way to the slot, so once its feet clear the
+     * Every tick of a wall troop's jump onto its slot (settle): its level velocity is HOP_PULL of the way to the slot, no faster than its walking pace and never over HOP_CAP
+     * (StepHop.pull: a jump begun from the far side of the stretch is no lunge), so once its feet clear the
      * edge it comes down on the slot (the next beat's settle finishes the last of it). The jump ends when it lands after being in the air, after
      * HOP_TICKS, or when it walks off (to fight, or on a new order).
      */
@@ -253,11 +280,11 @@ final class Tactics {
         if(u.hopTo==null)return;var mob=u.mob;
         if(!mob.isAlive()||time>u.hopUntil||!mob.getNavigation().isIdle()||u.hopAirborne&&mob.isOnGround()){u.hopTo=null;return;}
         if(!mob.isOnGround())u.hopAirborne=true;
-        Vec3d delta=u.hopTo.subtract(mob.getPos()).multiply(1,0,1);
-        mob.setVelocity(delta.x*HOP_PULL,mob.getVelocity().y,delta.z*HOP_PULL);
+        Vec3d delta=u.hopTo.subtract(mob.getPos()).multiply(1,0,1);double[] v=StepHop.pull(delta.x,delta.z,HOP_PULL,Math.min(HOP_CAP,pace(mob)));
+        mob.setVelocity(v[0],mob.getVelocity().y,v[1]);
     }
     /** The share of the way to its slot a jumping wall troop is carried each tick, how long a jump may last, and how many jumps settle started (HoldLineChecks reads it). */
-    static final double HOP_PULL=.5;static final int HOP_TICKS=20;static int hops;
+    static final double HOP_PULL=.5,HOP_CAP=.3;static final int HOP_TICKS=20;static int hops;
     /**
      * The troop's slot reaches over the edge of a rise one block high (StepHop.onRise): its body on the slot, at the troop's own level, would
      * stand in the rise (higher than a step climbs), and one block up it has room, as it has above itself for the jump. The level is the troop's

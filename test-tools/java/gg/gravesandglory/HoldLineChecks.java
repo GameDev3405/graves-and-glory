@@ -3,6 +3,7 @@ package gg.gravesandglory;
 import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.ScreenshotRecorder;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import java.util.*;
 import java.util.function.Supplier;
@@ -73,6 +74,14 @@ final class HoldLineChecks {
         final List<String> raiseWhy = new ArrayList<>();
         boolean raisePass = true;
         int chargeRaised, chargeTicks;
+        /** hl-raise's per-tick shield sample under fire on Hold: the knight set by the Revenant, the samples, how many down, and who. */
+        GravesAndGlory.Unit nearKnight;
+        int fireSamples, fireDown; final List<String> fireDownAt = new ArrayList<>();
+        // hl-wall's per-tick facing sample (fix round 2, R2): each wall troop's position a tick ago, and the samples
+        final Map<GravesAndGlory.Unit, Vec3d> lastAt = new HashMap<>();
+        int faceSamples, faceBack, faceSide, faceAir, faceRouted; final List<String> faceRoutedWho = new ArrayList<>(); double faceWorst; String faceWho = "none"; final List<String> faceBad = new ArrayList<>();
+        // hl-house (fix round 2, R1)
+        GravesAndGlory.Unit houseKnight; Vec3d houseSlot, houseStart; String houseText; long houseAt; double houseBest = 99; int houseStuckBefore;
         // hl-crawl
         final List<GravesAndGlory.Unit> crawlers = new ArrayList<>(), archers = new ArrayList<>();
         final List<String> crawlWhy = new ArrayList<>();
@@ -120,11 +129,45 @@ final class HoldLineChecks {
         }
         /** Every unit a few blocks off its slot: its slot's offset from the order's point spread to 1/0.7 of it, then 3 blocks out in front, on the ground, facing the order's way. */
         void scatter(GravesAndGlory.Battle b) {
+            // the ends of each squad's ranks (the troops farthest to a side) come in from 1.7 blocks out to that side instead, so the wall is seen stepping in sideways as well as backwards
+            Map<GravesAndGlory.Squad, Double> widest = new HashMap<>();
+            for (var u : fixture) widest.merge(u.squad, Math.abs(side(b, u)), Math::max);
             for (var u : fixture) {
                 var a = b.assignment(u); Vec3d slot = b.formation(u), off = slot.subtract(a.target).multiply(1 / WALL);
-                Vec3d at = ground(b, a.target.x + off.x + 3, a.target.z + off.z);
+                double side = side(b, u), angle = Math.toRadians(a.yaw);
+                Vec3d at = Math.abs(side) >= widest.get(u.squad) - 0.01 ? ground(b, slot.x + Math.cos(angle) * Math.signum(side) * 1.7, slot.z + Math.sin(angle) * Math.signum(side) * 1.7)
+                    : ground(b, a.target.x + off.x + 3, a.target.z + off.z);
                 u.mob.getNavigation().stop(); u.mob.refreshPositionAndAngles(at.x, at.y, at.z, -90, 0); u.mob.setVelocity(Vec3d.ZERO);
                 u.deployed = at; u.lastPosition = at; u.nextPath = 0; u.stuckTicks = 0;
+            }
+        }
+
+        /** The troop's slot to the side of its order's point (along the rank: Battle.formation's side axis). */
+        static double side(GravesAndGlory.Battle b, GravesAndGlory.Unit u) {
+            var a = b.assignment(u); Vec3d off = b.formation(u).subtract(a.target); double angle = Math.toRadians(a.yaw);
+            return off.x * Math.cos(angle) + off.z * Math.sin(angle);
+        }
+        /**
+         * hl-wall's per-tick facing sample (R2): every living wall troop within 2 blocks of its slot that moved more than 0.02 in the last tick faces its Hold yaw within
+         * 15 degrees, yaw and body yaw, on every such tick. Each sample is sorted by the way its step went against its facing: back (more than 135 degrees off), side (45-135)
+         * or ahead; in the air counts apart. With the stretch off (Tactics.stretch returning false) the walk turns them to their steps and this goes red (fix round 2).
+         */
+        void sampleFacing(GravesAndGlory.Battle b) {
+            for (var u : fixture) {
+                if (!u.mob.isAlive() || !GravesAndGlory.Battle.walls(u, b.assignment(u).order)) continue;
+                Vec3d now = u.mob.getPos(), then = lastAt.put(u, now); if (then == null) continue;
+                double dx = now.x - then.x, dz = now.z - then.z, moved = Math.sqrt(dx * dx + dz * dz);
+                if (moved <= 0.02 || distance(now, b.formation(u)) > 2) continue;
+                // R1: where walk routes him (a detour round a body, or the straight line to his slot not clear) the stretch yields and he walks without the facing; counted apart, not held to the yaw
+                if (u.detour != null || !Tactics.clear(b, u, b.formation(u))) {faceRouted++; if (faceRoutedWho.size() < 6) faceRoutedWho.add(name(u) + (u.detour != null ? " on a detour" : " with the line blocked") + " at " + fmt(distance(now, b.formation(u)))); continue;}
+                float want = b.assignment(u).yaw; faceSamples++;
+                double off = Math.max(Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.getYaw() - want)), Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.bodyYaw - want)));
+                double step = Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees((float) Math.toDegrees(Math.atan2(-dx, dz)) - want));
+                if (step > 135) faceBack++; else if (step >= 45) faceSide++;
+                if (!u.mob.isOnGround()) faceAir++;
+                if (off > faceWorst) {faceWorst = off; faceWho = name(u);}
+                if (off > 15 && faceBad.size() < 6) faceBad.add(name(u) + " " + fmt(off) + " at " + fmt(distance(now, b.formation(u))) + (b.time < u.stretchOff ? " (let go as stuck)" : "") + (u.hopTo != null ? " (hopping)" : "") + (u.lockedTarget != null && u.lockedTarget.isAlive() ? " (fighting)" : ""));
+                else if (off > 15) faceBad.add("");
             }
         }
 
@@ -191,6 +234,7 @@ final class HoldLineChecks {
                     next(b, 10);
                 }
                 case 10 -> {
+                    sampleFacing(b);
                     if (since(b) == 160) for (var u : fixture) settledAt.put(u, u.mob.getPos());
                     if (since(b) == 190) requestShot("hl-wall", 4);
                     if (since(b) < 200) return;
@@ -401,6 +445,8 @@ final class HoldLineChecks {
             boolean still = moved < 0.05 && wallOff < 0.1 && restOff <= tolerance + 0.05; pass &= still;
             why.add("in the last 40 ticks the most any troop moved is " + fmt(moved) + " (" + mover + "; want under 0.05: no jam, no stutter); the farthest wall troop from its slot stands " + fmt(wallOff) + " off it (" + wallWorst + "; want under 0.1), the farthest of the rest " + fmt(restOff) + " (" + restWorst + "; want within the arrival tolerance " + fmt(tolerance) + ")=" + still);
             String[] face = facing(b); boolean faces = face[0].equals("true"); pass &= faces; why.add(face[1] + "=" + faces);
+            long bad = faceBad.size(); boolean walkIn = faceSamples >= 20 && bad == 0 && faceBack > 0 && faceSide > 0 && faceRouted * 4 <= faceSamples; pass &= walkIn;
+            why.add("walking in, every tick: " + faceSamples + " samples of a wall troop within 2 blocks of its slot moving over 0.02 a tick (" + faceBack + " stepping back, " + faceSide + " sideways, " + (faceSamples - faceBack - faceSide) + " ahead, " + faceAir + " in the air), " + bad + " more than 15 degrees off its Hold yaw" + (bad == 0 ? "" : " " + faceBad.stream().filter(x -> !x.isEmpty()).toList()) + ", the worst " + fmt(faceWorst) + " (" + faceWho + "); besides, " + faceRouted + " ticks walk routed him (the stretch yields, no facing)" + (faceRouted == 0 ? "" : " " + faceRoutedWho) + " (want at least 20 samples, some back and some sideways, none off, and routed ticks at most a quarter of the samples)=" + walkIn);
             report("hl-wall", pass, String.join("; ", why));
         }
         /** Every living wall troop of the fixture (Battle.walls) faces its Hold yaw within 10 degrees, yaw and body yaw (ruling R21): whether, and the line. */
@@ -570,6 +616,26 @@ final class HoldLineChecks {
                     var shooter = archer; b.shots.removeIf(q -> {if (q.shooter() != shooter) return false; if (q.visual() != null) q.visual().discard(); return true;}); // the arrow never lands: its knockback would put the shot knight out of the wall
                     unpin(b, List.of(archer)); archer = null; own.shotAt.clear(); dawn.shotAt.clear();
                     foe = pinned(b, "revenant", 0, ground(b, lineAt.x + 12, lineAt.z), true);
+                    // m1: a Squire of the shot group set 1.5 from the Revenant (in sword reach, outside Hold's leash of 10 from the Line's point, so never picked), the group shot at every tick
+                    for (var k : knights) if (k.mob.isAlive() && k != shotKnight) {nearKnight = k; break;}
+                    Vec3d by = ground(b, foe.mob.getX() - 1.5, foe.mob.getZ());
+                    pins.add(new Pin(nearKnight, by, -90f)); Phase2Checks.Engine.apply(nearKnight, by, -90f);
+                    fireSamples = 0; fireDown = 0; fireDownAt.clear();
+                    next(b, 46);
+                }
+                case 46 -> {
+                    own.shotAt.put("infantry", b.time); dawn.shotAt.put("infantry", b.time);
+                    long t = since(b);
+                    if (t >= 6) for (var u : shieldTroops()) {fireSamples++; if (!u.mob.isUsingItem()) {fireDown++; if (fireDownAt.size() < 6) fireDownAt.add(name(u) + " at tick " + t);}}
+                    if (t < 46) return;
+                    double d = Math.sqrt(nearKnight.mob.squaredDistanceTo(foe.mob)), leash = distance(foe.mob.getPos(), lineAt);
+                    boolean steady = fireSamples > 0 && fireDown == 0 && d < Abilities.range(b, nearKnight) && leash > 10;
+                    raisePass &= steady;
+                    raiseWhy.add("on Hold under fire (their groups shot at every tick), with " + name(nearKnight) + " set " + fmt(d) + " from the Revenant (in his reach " + fmt(Abilities.range(b, nearKnight)) + ", the Revenant " + fmt(leash) + " from the Line's point: outside Hold's leash of 10, never picked): over ticks 6-46 " + fireDown + " of " + fireSamples + " shield-troop ticks had the shield down (want 0: up every tick, no drop on the beat)" + (fireDownAt.isEmpty() ? "" : " " + fireDownAt) + "=" + steady);
+                    pins.removeIf(p -> p.u() == nearKnight);
+                    var a = b.assignment(nearKnight); Vec3d back = b.formation(nearKnight);
+                    nearKnight.mob.getNavigation().stop(); Phase2Checks.Engine.apply(nearKnight, back, a.yaw); nearKnight.mob.setVelocity(Vec3d.ZERO); nearKnight.lastPosition = back; nearKnight.stuckTicks = 0;
+                    own.shotAt.clear(); dawn.shotAt.clear();
                     next(b, 41);
                 }
                 case 41 -> {
@@ -682,10 +748,80 @@ final class HoldLineChecks {
                     crawlWhy.add("on Hold, walking back to their slots under fire (" + holdFire + " of " + samples + " knight-ticks under fire, " + holdUp + " with the shield up), they keep " + fmt(vh * 20) + " blocks a second over ticks 10-30, " + fmt(vh / Math.max(v0, 1e-9)) + " of v0 (want at least 0.85), " + holdCrawled + " knight-ticks crawling (want 0)=" + free);
                     report("hl-crawl", crawlPass, String.join("; ", crawlWhy));
                     unpin(b, archers); archers.clear();
+                    next(b, 60);
+                }
+                case 60 -> { // hl-house (R1): the fixture leaves; the camera goes to the supply houses west of the river so their chunks are loaded
+                    clearFixture(b, "hl-house"); knights.clear(); hearthguard.clear(); breakers.clear(); crawlers.clear(); marshal = null;
+                    for (var r : Tactics.housesOfMap()) if (r.x() < 0) force(b, new BlockPos(r.x() - 24, 0, r.z() - 24), new BlockPos(r.x() + 24, 0, r.z() + 24));
+                    var r = Arrays.stream(Tactics.housesOfMap()).filter(h -> h.x() < 0).findFirst().orElse(null);
+                    var p = sp(b); if (r != null && p != null) b.relocate(p, r.x() - 26, Phase1Checks.top(b, r.x() - 26, r.z()) + 8, r.z(), -90f, 20f);
+                    next(b, 61);
+                }
+                case 61 -> {
+                    if (since(b) < 60) return;
+                    double[] w = houseWall(b);
+                    if (w == null) {report("hl-house", false, "no stretch of the outer wall of a supply house west of the river with open level ground 3 deep inside it and 1 outside, away from the gates"); next(b, 99); return;}
+                    var r = Tactics.housesOfMap()[(int) w[0]]; double dx = w[3], dz = w[4];
+                    // the wall block (w[1], w[2]); its inner face is half a block in from its centre; the slot 0.35 inside it, the troop 0.4 outside its outer face
+                    houseSlot = new Vec3d(w[1] + .5 - dx * (.5 + .35), w[5], w[2] + .5 - dz * (.5 + .35));
+                    houseStart = new Vec3d(w[1] + .5 + dx * (.5 + .4), w[6], w[2] + .5 + dz * (.5 + .4));
+                    float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz)); // facing out over the wall
+                    houseKnight = b.spawn(own, Campaign.troop("knight"), 0, houseStart); fixture.add(houseKnight);
+                    houseKnight.mob.refreshPositionAndAngles(houseStart.x, houseStart.y, houseStart.z, yaw, 0);
+                    b.issue(own, "infantry", "hold", "line", houseSlot, yaw, -1);
+                    Vec3d f = b.formation(houseKnight);
+                    b.issue(own, "infantry", "hold", "line", houseSlot.add(houseSlot.x - f.x, 0, houseSlot.z - f.z), yaw, -1);
+                    f = b.formation(houseKnight);
+                    boolean blocked = !Tactics.clear(b, houseKnight, f);
+                    double[] gate = HouseRoute.next(r.x(), r.z(), r.rotation(), houseStart.x, houseStart.z, f.x, f.z, 0);
+                    houseText = "a Squire " + fmt(distance(houseStart, f)) + " from his Hold slot, outside the wall of " + r.id() + " at (" + (int) w[1] + "," + (int) w[2] + ") with his slot 0.35 inside it (slot off by " + fmt(distance(f, houseSlot)) + "); the straight line blocked (the stretch must yield)=" + blocked + ", routed by a gate (HouseRoute.next " + (gate == null ? "none" : "(" + fmt(gate[0]) + "," + fmt(gate[1]) + ")") + ")";
+                    houseAt = b.time; houseBest = 99; houseStuckBefore = Tactics.stretchStuck;
+                    if (!blocked || gate == null || distance(f, houseSlot) > 0.05 || distance(houseStart, f) > 2) {report("hl-house", false, houseText + " (want blocked, a gate, the slot where it was put and the Squire within 2 of it)"); next(b, 99); return;}
+                    next(b, 62);
+                }
+                case 62 -> {
+                    double d = distance(houseKnight.mob.getPos(), b.formation(houseKnight)); houseBest = Math.min(houseBest, d);
+                    long t = since(b); boolean there = d <= Spec.NAVIGATION[0].arrivalTolerance() && houseKnight.mob.isAlive();
+                    if (!there && t < 1800) return;
+                    report("hl-house", there, houseText + ": " + (there ? "he reached it in " + t + " ticks (" + fmt(t / 20.0) + " s)" : "he did not reach it in " + t + " ticks; the nearest he came " + fmt(houseBest) + ", standing at (" + fmt(houseKnight.mob.getX()) + "," + fmt(houseKnight.mob.getY()) + "," + fmt(houseKnight.mob.getZ()) + ")") + ", " + fmt(d) + " from it (want within the arrival tolerance " + fmt(Spec.NAVIGATION[0].arrivalTolerance()) + " within 1800 ticks); stretch let-gos while he walked " + (Tactics.stretchStuck - houseStuckBefore) + "=" + there);
                     next(b, 99);
                 }
                 default -> {}
             }
         }
+        /**
+         * hl-house's wall: a block of the outer wall of a supply house west of the river (the first found from outside, along each side of the footprint, away from the gates),
+         * exactly 2 high over the level ground outside it (the yard wall, not a building's), with the cell outside and three cells inside open (air at feet and head, and nothing
+         * overhead inside) on that same level, so the slot inside is in the open yard.
+         * Returns {house index, wall x, wall z, outward dx, outward dz, standing y inside, standing y outside}, or null.
+         */
+        double[] houseWall(GravesAndGlory.Battle b) {
+            var houses = Tactics.housesOfMap();
+            int[][] dirs = {{-1, 0}, {0, -1}, {1, 0}, {0, 1}};
+            for (int h = 0; h < houses.length; h++) {
+                var r = houses[h]; if (r.x() >= 0) continue;
+                for (int[] d : dirs) for (int lateral = -8; lateral <= 8; lateral++) {
+                    int reach = d[0] != 0 ? 20 : 22;
+                    for (int k = reach; k >= 10; k--) {
+                        int x = r.x() + d[0] * k + (d[0] == 0 ? lateral : 0), z = r.z() + d[1] * k + (d[1] == 0 ? lateral : 0);
+                        int floor = Phase1Checks.top(b, x + d[0] + .5, z + d[1] + .5) == 0 ? -1 : (int) Phase1Checks.top(b, x + d[0] + .5, z + d[1] + .5);
+                        if (!solid(b, x, floor, z) || !solid(b, x, floor + 1, z)) continue; // not the wall (2 high over the ground outside)
+                        if (solid(b, x, floor + 2, z)) break; // a building's wall (a barn or a hall), not the yard wall: the slot would be under a roof
+                        boolean ok = openAt(b, x + d[0], floor, z + d[1]);
+                        for (int i = 1; i <= 3 && ok; i++) ok = openAt(b, x - d[0] * i, floor, z - d[1] * i) && !solid(b, x - d[0] * i, floor + 2, z - d[1] * i); // the yard, open overhead (no lean-to roof)
+                        if (ok) {
+                            double sx = x + .5 - d[0] * .85, sz = z + .5 - d[1] * .85, ox = x + .5 + d[0] * .9, oz = z + .5 + d[1] * .9;
+                            if (HouseRoute.inside(r.x(), r.z(), sx, sz, 0.5) && HouseRoute.next(r.x(), r.z(), r.rotation(), ox, oz, sx, sz, 0) != null) return new double[]{h, x, z, d[0], d[1], floor, floor};
+                        }
+                        break; // the first wall from outside on this line decides it
+                    }
+                }
+            }
+            return null;
+        }
+        /** The block at (x, y, z) has a collision shape. */
+        static boolean solid(GravesAndGlory.Battle b, int x, int y, int z) {var at = new BlockPos(x, y, z); return !b.world.getBlockState(at).getCollisionShape(b.world, at).isEmpty();}
+        /** A troop could stand in the cell (x, z) at y: solid below, empty at its feet and head. */
+        static boolean openAt(GravesAndGlory.Battle b, int x, int y, int z) {return solid(b, x, y - 1, z) && !solid(b, x, y, z) && !solid(b, x, y + 1, z);}
     }
 }
